@@ -168,8 +168,14 @@ mdarray<double,2> Forces_PS::calc_nonlocal_forces(K_set& kset) const
 
     forces.zero();
 
+    for(int ikp=0; ikp < kset.num_kpoints(); ikp++)
+    {
+        K_point *kp = kset.k_point(ikp);
 
+        add_k_point_contribution_to_nonlocal<double_complex>(*kp, forces);
+    }
 
+    ctx_.comm().allreduce(&forces(0,0),forces.size());
 
     return std::move(forces);
 }

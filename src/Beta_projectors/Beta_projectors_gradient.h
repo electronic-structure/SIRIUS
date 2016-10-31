@@ -95,7 +95,7 @@ public:
         return beta_phi_[calc_component__];
     }
 
-
+    //void inner(int chunk__,  wave_functions& phi__, int idx0__, int n__, mdarray<double_complex, 2> &beta_gk, mdarray<double, 1> &beta_phi);
     template <typename T>
     void inner(int chunk__, wave_functions& phi__, int idx0__, int n__)
     {

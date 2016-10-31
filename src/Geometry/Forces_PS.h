@@ -30,13 +30,13 @@ private:
     //---------------------------------------------------------------
     //---------------------------------------------------------------
     template<typename T>
-    void add_k_point_contribution_to_nonlocal(K_point& kpoint, mdarray<double,2>& forces)
+    void add_k_point_contribution_to_nonlocal(K_point& kpoint, mdarray<double,2>& forces) const
     {
         Unit_cell &unit_cell = ctx_.unit_cell();
 
         Beta_projectors &bp = kpoint.beta_projectors();
 
-        Beta_projectors_gradient bp_grad(bp);
+        Beta_projectors_gradient bp_grad(&bp);
 
         for (int icnk = 0; icnk < bp.num_beta_chunks(); icnk++)
         {
@@ -92,20 +92,19 @@ private:
                                 double diag_fact = ibf == jbf ? 1.0 : 2.0 ;
 
                                 // calc scalar part of the forces
-                                double scalar_part = 2 * diag_fact *
+                                double_complex scalar_part = 2 * diag_fact *
                                         kpoint.band_occupancy(ibnd + ispn * ctx_.num_fv_states()) *
                                         D_aug_mtrx(ibf, jbf) *
                                         std::conj(bp_phi_chunk(offs + ibf, ibnd));
 
                                 // multiply scalar part by gradient components
-                                for(int comp: {0,1,2}) forces(comp,ia) += scalar_part * bp_grad_phi_chunk[comp](offs + jbf, ibnd);
+                                for(int comp: {0,1,2}) forces(comp,ia) += (scalar_part * bp_grad_phi_chunk[comp](offs + jbf, ibnd)).real();
                             }
                         }
                     }
                 }
             }
         }
-
     }
 
 public:

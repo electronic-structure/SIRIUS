@@ -152,6 +152,8 @@ mdarray<double,2 > DFT_ground_state::forces()
         std::cout<< loc_forces(0,ia) <<"   "<< loc_forces(1,ia) << "   " << loc_forces(2,ia) << std::endl;
     }
 
+
+
     mdarray<double,2 > us_forces = forces_->calc_ultrasoft_forces();
 
     std::cout<<"===== Forces: ultrasoft contribution =====" << std::endl;
@@ -159,6 +161,17 @@ mdarray<double,2 > DFT_ground_state::forces()
     for(int ia=0; ia < unit_cell_.num_atoms(); ia++)
     {
         std::cout<< us_forces(0,ia) <<"   "<< us_forces(1,ia) << "   " << us_forces(2,ia) << std::endl;
+    }
+
+
+
+    mdarray<double,2 > nl_forces = forces_->calc_nonlocal_forces(kset_);
+
+    std::cout<<"===== Forces: non-local contribution =====" << std::endl;
+
+    for(int ia=0; ia < unit_cell_.num_atoms(); ia++)
+    {
+        std::cout<< nl_forces(0,ia) <<"   "<< nl_forces(1,ia) << "   " << nl_forces(2,ia) << std::endl;
     }
 
     return std::move(loc_forces);
