@@ -667,6 +667,12 @@ void sirius_generate_effective_potential()
     dft_ground_state->generate_effective_potential();
 }
 
+void sirius_initialize_subspace()
+{
+    PROFILE();
+    dft_ground_state->initialize_subspace();
+}
+
 void sirius_generate_density(int32_t* kset_id__)
 {
     PROFILE();
