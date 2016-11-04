@@ -336,6 +336,13 @@ module sirius
             integer,                  intent(out) :: ig
         end subroutine
 
+        subroutine sirius_get_global_kpoint_index(kset_id, ikloc, ik)&
+            &bind(C, name="sirius_get_global_kpoint_index")
+            integer,                  intent(in)  :: kset_id
+            integer,                  intent(in) :: ikloc
+            integer,                  intent(out)  :: ik
+        end subroutine
+
         subroutine sirius_get_max_num_mt_points(max_num_mt_points)&
             &bind(C, name="sirius_get_max_num_mt_points")
             integer,                 intent(out) :: max_num_mt_points
