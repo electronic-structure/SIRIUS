@@ -2239,8 +2239,6 @@ void sirius_set_atom_type_beta_rf(char* label__,
     }
     type.pp_desc().beta_radial_functions = mdarray<double, 2>(type.num_mt_points(), *num_beta__);
     beta_rf >> type.pp_desc().beta_radial_functions;
-    //type.pp_desc().augmentation_ = true;
-    //type.pp_desc().is_initialized = true;
 }
 
 void sirius_set_atom_type_q_rf(char* label__,
@@ -2258,20 +2256,16 @@ void sirius_set_atom_type_q_rf(char* label__,
     /* allocate space for radial functions of Q operator */
     type.pp_desc().q_radial_functions_l = mdarray<double, 3>(type.num_mt_points(), nbeta * (nbeta + 1) / 2, 2 * type.pp_desc().lmax_beta_ + 1);
 
-    for (int nb = 0; nb < nbeta; nb++)
-    {
-        for (int mb = nb; mb < nbeta; mb++)
-        {
+    for (int nb = 0; nb < nbeta; nb++) {
+        for (int mb = nb; mb < nbeta; mb++) {
             /* combined index */
             int ijv = (mb + 1) * mb / 2 + nb;
 
-            if (*lmax__ ==  type.pp_desc().lmax_beta_)
-            {
-                for (int l = 0; l <= 2 * type.pp_desc().lmax_beta_; l++)
+            if (*lmax__ ==  type.pp_desc().lmax_beta_) {
+                for (int l = 0; l <= 2 * type.pp_desc().lmax_beta_; l++) {
                     std::memcpy(&type.pp_desc().q_radial_functions_l(0, ijv, l), &q_rf(0, ijv, l), type.num_mt_points() * sizeof(double));
-            }
-            else
-            {
+                }
+            } else {
                 std::stringstream s;
                 s << "wrong lmax for " << std::string(label__) << " " << std::endl
                   << "lmax: " << *lmax__ << std::endl
@@ -2280,6 +2274,7 @@ void sirius_set_atom_type_q_rf(char* label__,
             }
         }
     }
+    type.pp_desc().augment = true;
 }
 
 void sirius_set_atom_type_rho_core(char const* label__,
