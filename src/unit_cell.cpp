@@ -427,12 +427,6 @@ void Unit_cell::print_info()
             printf("\n");
         }
     }
-    
-    printf("\n");
-    printf("total nuclear charge        : %i\n", total_nuclear_charge_);
-    printf("number of core electrons    : %f\n", num_core_electrons_);
-    printf("number of valence electrons : %f\n", num_valence_electrons_);
-    printf("total number of electrons   : %f\n", num_electrons_);
 }
 
 unit_cell_parameters_descriptor Unit_cell::unit_cell_parameters()
