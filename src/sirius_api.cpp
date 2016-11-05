@@ -1508,12 +1508,12 @@ void sirius_solve_fv(int32_t const* kset_id__,
     }
 }
 
-/// Get the total size of wave-function (number of mt coefficients + number of G+k coefficients)
-void sirius_get_mtgk_size(int32_t* kset_id, int32_t* ik, int32_t* mtgk_size)
-{
-    PROFILE();
-    *mtgk_size = (*kset_list[*kset_id])[*ik - 1]->wf_size();
-}
+///// Get the total size of wave-function (number of mt coefficients + number of G+k coefficients)
+//void sirius_get_mtgk_size(int32_t* kset_id, int32_t* ik, int32_t* mtgk_size)
+//{
+//    PROFILE();
+//    *mtgk_size = (*kset_list[*kset_id])[*ik - 1]->wf_size();
+//}
 
 void sirius_get_spinor_wave_functions(int32_t* kset_id, int32_t* ik, double_complex* spinor_wave_functions__)
 {
