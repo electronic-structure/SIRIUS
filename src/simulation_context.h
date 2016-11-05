@@ -521,10 +521,20 @@ inline void Simulation_context::initialize()
         }
     } else {
         if (evsn[0] == "") {
+            #ifdef __SCALAPACK
             evsn[0] = "scalapack";
+            #endif
+            #ifdef __ELPA
+            evsn[0] = "elpa1";
+            #endif
         }
         if (evsn[1] == "") {
+            #ifdef __SCALAPACK
+            evsn[1] = "scalapack";
+            #endif
+            #ifdef __ELPA
             evsn[1] = "elpa1";
+            #endif
         }
     }
 
@@ -661,6 +671,10 @@ inline void Simulation_context::print_info()
     }
 
     printf("\n");
+    printf("total nuclear charge               : %i\n", unit_cell_.total_nuclear_charge());
+    printf("number of core electrons           : %f\n", unit_cell_.num_core_electrons());
+    printf("number of valence electrons        : %f\n", unit_cell_.num_valence_electrons());
+    printf("total number of electrons          : %f\n", unit_cell_.num_electrons());
     printf("total number of aw basis functions : %i\n", unit_cell_.mt_aw_basis_size());
     printf("total number of lo basis functions : %i\n", unit_cell_.mt_lo_basis_size());
     printf("number of first-variational states : %i\n", num_fv_states());
@@ -753,8 +767,7 @@ inline void Simulation_context::print_info()
         }
     }
 
-    printf("\n");
-    printf("processing unit : ");
+    printf("processing unit                    : ");
     switch (processing_unit()) {
         case CPU: {
             printf("CPU\n");
