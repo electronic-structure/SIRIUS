@@ -950,6 +950,11 @@ class Bound_state: public Radial_solver
         {
             return rho_;
         }
+
+        Spline<double> const& u() const
+        {
+            return u_;
+        }
 };
 
 class Enu_finder: public Radial_solver
