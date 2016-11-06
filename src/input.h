@@ -193,7 +193,7 @@ struct Iterative_solver_input_section
     double energy_tolerance_{1e-6};
     double residual_tolerance_{1e-6};
     int converge_by_energy_{1}; // TODO: rename, this is meaningless
-    int converge_occupied_{1};
+    int converge_occupied_{0};
     int min_num_res_{0};
     int real_space_prj_{0}; // TODO: move it from here to parameters
     double R_mask_scale_{1.5};

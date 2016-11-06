@@ -413,12 +413,12 @@ void DFT_ground_state::initialize_subspace()
     PROFILE_WITH_TIMER("sirius::DFT_ground_state::initialize_subspace");
 
     int nq = 20;
-    int lmax = 4;
+    int lmax = 2;
     /* this is the regular grid in reciprocal space in the range [0, |G+k|_max ] */
     Radial_grid qgrid(linear_grid, nq, 0, ctx_.gk_cutoff());
 
     /* interpolate I_{\alpha,n}(q) = <j_{l_n}(q*x) | wf_{n,l_n}(x) > with splines */
-    std::vector< std::vector< Spline<double> > > rad_int(unit_cell_.num_atom_types());
+    std::vector<std::vector<Spline<double>>> rad_int(unit_cell_.num_atom_types());
     
     /* spherical Bessel functions jl(qx) for atom types */
     mdarray<Spherical_Bessel_functions, 2> jl(nq, unit_cell_.num_atom_types());
@@ -431,25 +431,32 @@ void DFT_ground_state::initialize_subspace()
             jl(iq, iat) = Spherical_Bessel_functions(lmax, atom_type.radial_grid(), qgrid[iq]);
         }
 
-        rad_int[iat].resize(atom_type.pp_desc().atomic_pseudo_wfs_.size());
+        //rad_int[iat].resize(atom_type.pp_desc().atomic_pseudo_wfs_.size());
+        rad_int[iat].resize(lmax + 1);
         /* loop over all pseudo wave-functions */
-        for (size_t i = 0; i < atom_type.pp_desc().atomic_pseudo_wfs_.size(); i++) {
-            rad_int[iat][i] = Spline<double>(qgrid);
+        //for (size_t i = 0; i < atom_type.pp_desc().atomic_pseudo_wfs_.size(); i++) {
+        for (int l = 0; l <= lmax; l++) {
+            //rad_int[iat][i] = Spline<double>(qgrid);
+            rad_int[iat][l] = Spline<double>(qgrid);
             
             /* interpolate atomic_pseudo_wfs(r) */
             Spline<double> wf(atom_type.radial_grid());
             for (int ir = 0; ir < atom_type.num_mt_points(); ir++) {
-                wf[ir] = atom_type.pp_desc().atomic_pseudo_wfs_[i].second[ir];
+                //wf[ir] = atom_type.pp_desc().atomic_pseudo_wfs_[i].second[ir];
+                double x = atom_type.radial_grid(ir);
+                wf[ir] = std::exp(-4 * x) * std::pow(x, l);
             }
             wf.interpolate();
             
-            int l = atom_type.pp_desc().atomic_pseudo_wfs_[i].first;
+            //int l = atom_type.pp_desc().atomic_pseudo_wfs_[i].first;
             #pragma omp parallel for
             for (int iq = 0; iq < nq; iq++) {
-                rad_int[iat][i][iq] = sirius::inner(jl(iq, iat)[l], wf, 1);
+                //rad_int[iat][i][iq] = sirius::inner(jl(iq, iat)[l], wf, 1);
+                rad_int[iat][l][iq] = sirius::inner(jl(iq, iat)[l], wf, 2);
             }
 
-            rad_int[iat][i].interpolate();
+            //rad_int[iat][i].interpolate();
+            rad_int[iat][l].interpolate();
         }
     }
 
@@ -457,10 +464,11 @@ void DFT_ground_state::initialize_subspace()
     int N{0};
     for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
         auto& atom_type = unit_cell_.atom_type(iat);
-        int n{0};
-        for (auto& wf: atom_type.pp_desc().atomic_pseudo_wfs_) {
-            n += (2 * wf.first + 1);
-        }
+        int n = Utils::lmmax(lmax);
+        //int n{0};
+        //for (auto& wf: atom_type.pp_desc().atomic_pseudo_wfs_) {
+        //    n += (2 * wf.first + 1);
+        //}
         N += atom_type.num_atoms() * n;
     }
     printf("number of atomic orbitals: %i\n", N);

@@ -32,12 +32,14 @@ inline void Band::initialize_subspace(K_point* kp__,
                 double_complex phase_factor = std::exp(double_complex(0.0, -phase));
 
                 auto& atom_type = unit_cell_.atom(ia).type();
-                for (size_t i = 0; i < atom_type.pp_desc().atomic_pseudo_wfs_.size(); i++) {
-                    int l = atom_type.pp_desc().atomic_pseudo_wfs_[i].first;
+                //for (size_t i = 0; i < atom_type.pp_desc().atomic_pseudo_wfs_.size(); i++) {
+                for (int l = 0; l <= lmax__; l++) {
+                    //int l = atom_type.pp_desc().atomic_pseudo_wfs_[i].first;
                     for (int m = -l; m <= l; m++) {
                         int lm = Utils::lm_by_l_m(l, m);
                         double_complex z = std::pow(double_complex(0, -1), l) * fourpi / std::sqrt(unit_cell_.omega());
-                        phi.pw_coeffs().prime(igk_loc, n++) = z * phase_factor * gkvec_rlm[lm] * rad_int__[atom_type.id()][i](vs[0]);
+                        //phi.pw_coeffs().prime(igk_loc, n++) = z * phase_factor * gkvec_rlm[lm] * rad_int__[atom_type.id()][i](vs[0]);
+                        phi.pw_coeffs().prime(igk_loc, n++) = z * phase_factor * gkvec_rlm[lm] * rad_int__[atom_type.id()][l](vs[0]);
                     }
                 }
             }
