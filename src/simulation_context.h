@@ -501,6 +501,16 @@ inline void Simulation_context::initialize()
         s << "not enough first-variational states : " << num_fv_states();
         TERMINATE(s);
     }
+
+    if (cyclic_block_size() < 0) {
+        double a = std::min(std::log2(double(num_fv_states_) / blacs_grid_->num_ranks_col()),
+                            std::log2(double(num_fv_states_) / blacs_grid_->num_ranks_row()));
+        if (a < 1) {
+            control_input_section_.cyclic_block_size_ = 2;
+        } else {
+            control_input_section_.cyclic_block_size_ = static_cast<int>(std::min(128.0, std::pow(2.0, static_cast<int>(a))) + 1e-12);
+        }
+    }
     
     std::string evsn[] = {std_evp_solver_name(), gen_evp_solver_name()};
 

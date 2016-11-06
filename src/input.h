@@ -237,7 +237,7 @@ struct Iterative_solver_input_section
 struct Control_input_section
 {
     std::vector<int> mpi_grid_dims_;
-    int cyclic_block_size_{32};
+    int cyclic_block_size_{-1};
     bool reduce_gvec_{true};
     std::string std_evp_solver_name_{""};
     std::string gen_evp_solver_name_{""};
