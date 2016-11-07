@@ -14,6 +14,7 @@
 namespace sirius
 {
 
+/// Stores gradient components of beta over atomic positions d <G+k | Beta > / d Rn
 class Beta_projectors_gradient
 {
 protected:
@@ -25,7 +26,7 @@ protected:
     std::array<matrix<double_complex>, 3> chunk_comp_gk_a_;
 
     // inner product store
-    std::array<matrix<double_complex>, 3> beta_phi_;
+    std::array<mdarray<double, 1>, 3> beta_phi_;
 
     Beta_projectors *bp_;
 
@@ -87,19 +88,18 @@ public:
     }
 
 
+    /// calculates inner product <beta_grad | Psi >
     template <typename T>
-    const matrix<double_complex>& inner(int chunk__, wave_functions& phi__, int idx0__, int n__, int calc_component__)
+    void inner(int chunk__, wave_functions& phi__, int idx0__, int n__, int calc_component__)
     {
         bp_->inner<T>(chunk__, phi__, idx0__, n__, chunk_comp_gk_a_[calc_component__], beta_phi_[calc_component__]);
-
-        return beta_phi_[calc_component__];
     }
 
     //void inner(int chunk__,  wave_functions& phi__, int idx0__, int n__, mdarray<double_complex, 2> &beta_gk, mdarray<double, 1> &beta_phi);
     template <typename T>
     void inner(int chunk__, wave_functions& phi__, int idx0__, int n__)
     {
-        for(int comp: {0,1,2}) inner<T>(chunk__, phi__, idx0__, n__, chunk_comp_gk_a_[comp], beta_phi_[comp]);
+        for(int comp: {0,1,2}) inner<T>(chunk__, phi__, idx0__, n__, comp);
     }
 
     template <typename T>

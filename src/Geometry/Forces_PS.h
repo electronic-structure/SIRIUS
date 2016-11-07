@@ -38,6 +38,9 @@ private:
 
         Beta_projectors_gradient bp_grad(&bp);
 
+        // from formula
+        double main_two_factor = -2.0;
+
         for (int icnk = 0; icnk < bp.num_beta_chunks(); icnk++)
         {
             // generate chunk for inner product of beta gradient
@@ -87,18 +90,16 @@ private:
 
                         for(int ibf = 0; ibf < unit_cell.atom(ia).type().mt_lo_basis_size(); ibf++ )
                         {
-                            for(int jbf = 0; jbf <= ibf; ibf++ )
+                            for(int jbf = 0; jbf < unit_cell.atom(ia).type().mt_lo_basis_size(); jbf++ )
                             {
-                                double diag_fact = ibf == jbf ? 1.0 : 2.0 ;
-
                                 // calc scalar part of the forces
-                                double_complex scalar_part = 2 * diag_fact *
-                                        kpoint.band_occupancy(ibnd + ispn * ctx_.num_fv_states()) *
+                                double_complex scalar_part = main_two_factor *
+                                        kpoint.band_occupancy(ibnd + ispn * ctx_.num_fv_states()) * kpoint.weight() *
                                         D_aug_mtrx(ibf, jbf) *
-                                        std::conj(bp_phi_chunk(offs + ibf, ibnd));
+                                        std::conj(bp_phi_chunk(offs + jbf, ibnd));
 
                                 // multiply scalar part by gradient components
-                                for(int comp: {0,1,2}) forces(comp,ia) += (scalar_part * bp_grad_phi_chunk[comp](offs + jbf, ibnd)).real();
+                                for(int comp: {0,1,2}) forces(comp,ia) += (scalar_part * bp_grad_phi_chunk[comp](offs + ibf, ibnd)).real();
                             }
                         }
                     }

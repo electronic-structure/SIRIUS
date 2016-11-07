@@ -51,6 +51,7 @@ const int _beta_desc_ia_ = 3;
 
 class Beta_projectors_gradient;
 
+/// Stores <G+k | beta> expansion
 class Beta_projectors
 {
     friend class Beta_projectors_gradient;
@@ -114,6 +115,7 @@ class Beta_projectors
                     
         void split_in_chunks();
 
+        /// calculates < Beta | Psi > inner product
         template <typename T>
         void inner(int chunk__,  wave_functions& phi__, int idx0__, int n__, mdarray<double_complex, 2> &beta_gk, mdarray<double, 1> &beta_phi);
 
