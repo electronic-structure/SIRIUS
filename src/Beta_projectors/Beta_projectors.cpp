@@ -126,10 +126,10 @@ void Beta_projectors::generate_beta_gk_t()
         auto& atom_type = unit_cell_.atom_type(iat);
         for (int idxrf = 0; idxrf < atom_type.mt_radial_basis_size(); idxrf++)
         {
-            int nr = atom_type.uspp().num_beta_radial_points[idxrf];
+            int nr = atom_type.pp_desc().num_beta_radial_points[idxrf];
             beta_rf(idxrf, iat) = Spline<double>(atom_type.radial_grid());
             for (int ir = 0; ir < nr; ir++)
-                beta_rf(idxrf, iat)[ir] = atom_type.uspp().beta_radial_functions(ir, idxrf);
+                beta_rf(idxrf, iat)[ir] = atom_type.pp_desc().beta_radial_functions(ir, idxrf);
             beta_rf(idxrf, iat).interpolate();
         }
     }
@@ -167,7 +167,7 @@ void Beta_projectors::generate_beta_gk_t()
                     for (int idxrf = 0; idxrf < atom_type.mt_radial_basis_size(); idxrf++)
                     {
                         int l = atom_type.indexr(idxrf).l;
-                        int nr = atom_type.uspp().num_beta_radial_points[idxrf];
+                        int nr = atom_type.pp_desc().num_beta_radial_points[idxrf];
                         /* compute \int j_l(|G+k|r) beta_l(r) r dr */
                         /* remeber that beta(r) are defined as miltiplied by r */
                         beta_radial_integrals_[idxrf] = sirius::inner(jl[iat][l], beta_rf(idxrf, iat), 1, nr);

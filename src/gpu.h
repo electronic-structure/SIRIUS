@@ -165,7 +165,7 @@ void cufft_backward_transform(cufftHandle plan, cuDoubleComplex* fft_buffer);
 
 void scale_matrix_columns_gpu(int nrow, int ncol, void* mtrx, double* a);
 
-void scale_matrix_rows_gpu(int nrow, int ncol, void* mtrx, double* v);
+void scale_matrix_rows_gpu(int nrow, int ncol, void* mtrx, double const* v);
 
 void scale_matrix_elements_gpu(cuDoubleComplex* ptr__,
                                int ld__,

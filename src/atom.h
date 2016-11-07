@@ -141,7 +141,7 @@ class Atom
                         int lm1    = type().indexb(xi1).lm;
                         int idxrf1 = type().indexb(xi1).idxrf;
                         if (lm1 == lm2) {
-                            d_mtrx_(xi1, xi2, 0) = type().uspp().d_mtrx_ion(idxrf1, idxrf2);
+                            d_mtrx_(xi1, xi2, 0) = type().pp_desc().d_mtrx_ion(idxrf1, idxrf2);
                         }
                     }
                 }

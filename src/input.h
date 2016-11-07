@@ -26,7 +26,10 @@
 #define __INPUT_H__
 
 #include "vector3d.h"
+#include "matrix3d.h"
 #include "runtime.h"
+#include "constants.h"
+#include "utils.h"
 
 namespace sirius {
 
@@ -99,8 +102,18 @@ struct Unit_cell_input_section
                 a2_[x] = a2[x] * scale;
             }
 
+            matrix3d<double> lv;
+            for (int x: {0, 1, 2}) {
+                lv(x, 0) = a0_[x];
+                lv(x, 1) = a1_[x];
+                lv(x, 2) = a2_[x];
+            }
+            auto ilv = inverse(lv);
+            
             labels_.clear();
             coordinates_.clear();
+
+            std::string units = section.value("atom_coordinate_units", "lattice");
             
             for (auto& label: section["atom_types"]) {
                 if (std::find(std::begin(labels_), std::end(labels_), label) != std::end(labels_)) {
@@ -125,6 +138,20 @@ struct Unit_cell_input_section
                     }
                     if (v.size() == 3) {
                         v.resize(6, 0.0);
+                    }
+
+                    vector3d<double> v1(v[0], v[1], v[2]);
+                    if (units == "A") {
+                        for (int x: {0, 1, 2}) {
+                            v1[x] /= bohr_radius;
+                        }
+                    }
+                    if (units == "au" || units == "A") {
+                        v1 = ilv * v1;
+                        auto rv1 = Utils::reduce_coordinates(v1);
+                        for (int x: {0, 1, 2}) {
+                            v[x] = rv1.first[x];
+                        }
                     }
 
                     coordinates_[iat].push_back(v);
@@ -171,6 +198,7 @@ struct Iterative_solver_input_section
     int real_space_prj_{0}; // TODO: move it from here to parameters
     double R_mask_scale_{1.5};
     double mask_alpha_{3};
+    int num_singular_{-1};
 
     void read(json const& parser)
     {
@@ -186,6 +214,7 @@ struct Iterative_solver_input_section
             real_space_prj_     = parser["iterative_solver"].value("real_space_prj", real_space_prj_);
             R_mask_scale_       = parser["iterative_solver"].value("R_mask_scale", R_mask_scale_);
             mask_alpha_         = parser["iterative_solver"].value("mask_alpha", mask_alpha_);
+            num_singular_       = parser["iterative_solver"].value("num_singular", num_singular_);
         }
     }
 };
@@ -256,6 +285,7 @@ struct Parameters_input_section
     int num_dft_iter_{100};
     double energy_tol_{1e-5};
     double potential_tol_{1e-5};
+    bool molecule_{false};
 
     void read(json const& parser)
     {
@@ -293,6 +323,7 @@ struct Parameters_input_section
         num_dft_iter_   = parser["parameters"].value("num_dft_iter", num_dft_iter_);
         energy_tol_     = parser["parameters"].value("energy_tol", energy_tol_);
         potential_tol_  = parser["parameters"].value("potential_tol", potential_tol_);
+        molecule_       = parser["parameters"].value("molecule", molecule_);
     }
 };
 

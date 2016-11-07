@@ -249,53 +249,52 @@ class Matching_coefficients
 
             int iat = type.id();
                 
-            matrix3d<double> A;
 
             std::vector<double_complex> phase_factors(num_gkvec_);
-            for (int igk = 0; igk < num_gkvec_; igk++)
-            {
+            #pragma omp parallel for
+            for (int igk = 0; igk < num_gkvec_; igk++) {
                 double phase = twopi * (gklo_basis_descriptors_[igk].gkvec * unit_cell_.atom(ia).position());
                 phase_factors[igk] = std::exp(double_complex(0, phase));
             }
-
-            for (int xi = 0; xi < type.mt_aw_basis_size(); xi++)
+            
+            #pragma omp parallel
             {
-                int l = type.indexb(xi).l;
-                int lm = type.indexb(xi).lm;
-                int nu = type.indexb(xi).order; 
+                matrix3d<double> A;
+                #pragma omp for
+                for (int xi = 0; xi < type.mt_aw_basis_size(); xi++) {
+                    int l = type.indexb(xi).l;
+                    int lm = type.indexb(xi).lm;
+                    int nu = type.indexb(xi).order; 
 
-                /* order of augmentation for a given orbital quantum number */
-                int num_aw = static_cast<int>(type.aw_descriptor(l).size());
-                
-                /* create matrix of radial derivatives */
-                for (int order = 0; order < num_aw; order++)
-                {
-                    for (int dm = 0; dm < num_aw; dm++) A(dm, order) = atom.symmetry_class().aw_surface_dm(l, order, dm);
-                }
+                    /* order of augmentation for a given orbital quantum number */
+                    int num_aw = static_cast<int>(type.aw_descriptor(l).size());
+                    
+                    /* create matrix of radial derivatives */
+                    for (int order = 0; order < num_aw; order++) {
+                        for (int dm = 0; dm < num_aw; dm++) {
+                            A(dm, order) = atom.symmetry_class().aw_surface_dm(l, order, dm);
+                        }
+                    }
 
-                switch (num_aw)
-                {
-                    /* APW */
-                    case 1:
-                    {
-                        generate<1>(num_gkvec_, phase_factors, iat, l, lm, nu, A, &alm(0, xi));
-                        break;
-                    }
-                    /* LAPW */
-                    case 2:
-                    {
-                        generate<2>(num_gkvec_, phase_factors, iat, l, lm, nu, A, &alm(0, xi));
-                        break;
-                    }
-                    /* Super LAPW */
-                    case 3:
-                    {
-                        generate<3>(num_gkvec_, phase_factors, iat, l, lm, nu, A, &alm(0, xi));
-                        break;
-                    }
-                    default:
-                    {
-                        TERMINATE("wrong order of augmented wave");
+                    switch (num_aw) {
+                        /* APW */
+                        case 1: {
+                            generate<1>(num_gkvec_, phase_factors, iat, l, lm, nu, A, &alm(0, xi));
+                            break;
+                        }
+                        /* LAPW */
+                        case 2: {
+                            generate<2>(num_gkvec_, phase_factors, iat, l, lm, nu, A, &alm(0, xi));
+                            break;
+                        }
+                        /* Super LAPW */
+                        case 3: {
+                            generate<3>(num_gkvec_, phase_factors, iat, l, lm, nu, A, &alm(0, xi));
+                            break;
+                        }
+                        default: {
+                            TERMINATE("wrong order of augmented wave");
+                        }
                     }
                 }
             }

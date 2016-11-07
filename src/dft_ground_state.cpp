@@ -476,19 +476,19 @@ void DFT_ground_state::initialize_subspace()
             jl(iq, iat) = Spherical_Bessel_functions(lmax, atom_type.radial_grid(), qgrid[iq]);
         }
 
-        rad_int[iat].resize(atom_type.uspp().atomic_pseudo_wfs_.size());
+        rad_int[iat].resize(atom_type.pp_desc().atomic_pseudo_wfs_.size());
         /* loop over all pseudo wave-functions */
-        for (size_t i = 0; i < atom_type.uspp().atomic_pseudo_wfs_.size(); i++) {
+        for (size_t i = 0; i < atom_type.pp_desc().atomic_pseudo_wfs_.size(); i++) {
             rad_int[iat][i] = Spline<double>(qgrid);
             
             /* interpolate atomic_pseudo_wfs(r) */
             Spline<double> wf(atom_type.radial_grid());
             for (int ir = 0; ir < atom_type.num_mt_points(); ir++) {
-                wf[ir] = atom_type.uspp().atomic_pseudo_wfs_[i].second[ir];
+                wf[ir] = atom_type.pp_desc().atomic_pseudo_wfs_[i].second[ir];
             }
             wf.interpolate();
             
-            int l = atom_type.uspp().atomic_pseudo_wfs_[i].first;
+            int l = atom_type.pp_desc().atomic_pseudo_wfs_[i].first;
             #pragma omp parallel for
             for (int iq = 0; iq < nq; iq++) {
                 rad_int[iat][i][iq] = sirius::inner(jl(iq, iat)[l], wf, 1);
@@ -503,7 +503,7 @@ void DFT_ground_state::initialize_subspace()
     for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
         auto& atom_type = unit_cell_.atom_type(iat);
         int n{0};
-        for (auto& wf: atom_type.uspp().atomic_pseudo_wfs_) {
+        for (auto& wf: atom_type.pp_desc().atomic_pseudo_wfs_) {
             n += (2 * wf.first + 1);
         }
         N += atom_type.num_atoms() * n;

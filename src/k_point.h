@@ -66,6 +66,8 @@ class K_point
 
         /// First-variational eigen vectors, distributed in slabs.
         std::unique_ptr<wave_functions> fv_eigen_vectors_slab_;
+
+        std::unique_ptr<wave_functions> singular_components_;
         
         /// Second-variational eigen vectors.
         /** Second-variational eigen-vectors are stored as one or two \f$ N_{fv} \times N_{fv} \f$ matrices in
@@ -407,6 +409,11 @@ class K_point
         inline wave_functions& spinor_wave_functions(int ispn__)
         {
             return *(spinor_wave_functions_[ispn__]);
+        }
+
+        inline wave_functions& singular_components()
+        {
+            return *singular_components_;
         }
 
         inline vector3d<double> vk() const
