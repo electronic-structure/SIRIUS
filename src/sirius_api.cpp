@@ -3041,4 +3041,16 @@ void sirius_get_paw_one_elec_energy(double* one_elec_en__)
     }
 }
 
+void sirius_reduce_coordinates(ftn_double* coord__,
+                               ftn_double* reduced_coord__, 
+                               ftn_int* T__)
+{
+    vector3d<double> coord(coord__[0], coord__[1], coord__[2]);
+    auto result = Utils::reduce_coordinates(coord);
+    for (int x: {0, 1, 2}) {
+        reduced_coord__[x] = result.first[x];
+        T__[x] = result.second[x];
+    }
+}
+
 } // extern "C"

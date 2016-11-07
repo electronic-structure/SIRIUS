@@ -812,6 +812,13 @@ module sirius
             real(8),              intent(out) :: one_elec_en__
         end subroutine
 
+        subroutine sirius_reduce_coordinates(coord, reduced_coord, T)&
+            &bind(C, name="sirius_reduce_coordinates")
+            real(8),                  intent(in)  :: coord
+            real(8),                  intent(out) :: reduced_coord
+            integer,                  intent(out) :: T
+        end subroutine
+
     end interface
 
 contains
