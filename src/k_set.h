@@ -317,8 +317,7 @@ inline void K_set::sync_band_energies()
 {
     mdarray<double, 2> band_energies(ctx_.num_bands(), num_kpoints());
 
-    for (int ikloc = 0; ikloc < spl_num_kpoints_.local_size(); ikloc++)
-    {
+    for (int ikloc = 0; ikloc < spl_num_kpoints_.local_size(); ikloc++) {
         int ik = spl_num_kpoints_[ikloc];
         kpoints_[ik]->get_band_energies(&band_energies(0, ik));
     }
@@ -326,7 +325,9 @@ inline void K_set::sync_band_energies()
                       ctx_.num_bands() * spl_num_kpoints_.global_offset(),
                       ctx_.num_bands() * spl_num_kpoints_.local_size());
 
-    for (int ik = 0; ik < num_kpoints(); ik++) kpoints_[ik]->set_band_energies(&band_energies(0, ik));
+    for (int ik = 0; ik < num_kpoints(); ik++) {
+        kpoints_[ik]->set_band_energies(&band_energies(0, ik));
+    }
 }
 
 inline double K_set::valence_eval_sum()

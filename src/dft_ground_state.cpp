@@ -485,7 +485,7 @@ void DFT_ground_state::initialize_subspace()
                                                       potential_.effective_magnetic_field(), N, lmax, rad_int);
         }
     }
-
+    kset_.sync_band_energies();
     kset_.find_band_occupancies();
 
     /* reset the energies for the iterative solver to do at least two steps */
