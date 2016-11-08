@@ -420,18 +420,25 @@ class Band
                     ptr = new Eigenproblem_lapack(2 * linalg_base::dlamch('S'));
                     break;
                 }
+                #ifdef __SCALAPACK
                 case ev_scalapack: {
                     ptr = new Eigenproblem_scalapack(blacs_grid_, ctx_.cyclic_block_size(), ctx_.cyclic_block_size(), 1e-12);
                     break;
                 }
+                #endif
+                #ifdef __PLASMA
                 case ev_plasma: {
                     ptr = new Eigenproblem_plasma();
                     break;
                 }
+                #endif
+                #ifdef __MAGMA
                 case ev_magma: {
                     ptr = new Eigenproblem_magma();
                     break;
                 }
+                #endif
+                #ifdef __ELPA
                 case ev_elpa1: {
                     ptr = new Eigenproblem_elpa1(blacs_grid_, ctx_.cyclic_block_size());
                     break;
@@ -440,6 +447,7 @@ class Band
                     ptr = new Eigenproblem_elpa2(blacs_grid_, ctx_.cyclic_block_size());
                     break;
                 }
+                #endif
                 default: {
                     TERMINATE("wrong standard eigen-value solver");
                 }
@@ -452,10 +460,13 @@ class Band
                     ptr = new Eigenproblem_lapack(2 * linalg_base::dlamch('S'));
                     break;
                 }
+                #ifdef __SCALAPACK
                 case ev_scalapack: {
                     ptr = new Eigenproblem_scalapack(blacs_grid_, ctx_.cyclic_block_size(), ctx_.cyclic_block_size(), 1e-12);
                     break;
                 }
+                #endif
+                #ifdef __ELPA
                 case ev_elpa1: {
                     ptr = new Eigenproblem_elpa1(blacs_grid_, ctx_.cyclic_block_size());
                     break;
@@ -464,10 +475,14 @@ class Band
                     ptr = new Eigenproblem_elpa2(blacs_grid_, ctx_.cyclic_block_size());
                     break;
                 }
+                #endif
+                #ifdef __MAGMA
                 case ev_magma: {
                     ptr = new Eigenproblem_magma();
                     break;
                 }
+                #endif
+                #ifdef __RS_GEN_EIG
                 case ev_rs_gpu: {
                     ptr = new Eigenproblem_RS_GPU(blacs_grid_, ctx_.cyclic_block_size(), ctx_.cyclic_block_size());
                     break;
@@ -476,6 +491,7 @@ class Band
                     ptr = new Eigenproblem_RS_CPU(blacs_grid_, ctx_.cyclic_block_size(), ctx_.cyclic_block_size());
                     break;
                 }
+                #endif
                 default: {
                     TERMINATE("wrong generalized eigen-value solver");
                 }
@@ -746,6 +762,7 @@ class Band
                              Periodic_function<double>* effective_potential, 
                              Periodic_function<double>* effective_magnetic_field[3]) const;
 
+        /// Solve \f$ \hat H \psi = E \psi \f$ and find eigen-states of the Hamiltonian.
         inline void solve_for_kset(K_set& kset,
                                    Potential& potential,
                                    bool precompute) const;

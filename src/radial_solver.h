@@ -950,6 +950,11 @@ class Bound_state: public Radial_solver
         {
             return rho_;
         }
+
+        Spline<double> const& u() const
+        {
+            return u_;
+        }
 };
 
 class Enu_finder: public Radial_solver
@@ -1037,6 +1042,7 @@ class Enu_finder: public Radial_solver
              * at the muffin-tin boundary. This will be the bottom of the band. */
             de = 1e-4;
             for (int i = 0; i < 100; i++) {
+                de *= 1.1;
                 enu -= de;
                 switch (rel__) {
                     case relativity_t::none: {
@@ -1055,51 +1061,45 @@ class Enu_finder: public Radial_solver
                         TERMINATE_NOT_IMPLEMENTED
                     }
                 }
-                de *= 1.1;
                 if (surface_deriv() * sd <= 0) {
                     break;
                 }
             }
 
-            ///* refine bottom energy */
-            //double e1 = enu;
-            //double e0 = enu + de;
+            /* refine bottom energy */
+            double e1 = enu;
+            double e0 = enu + de;
 
-            //for (int i = 0; i < 100; i++) {
-            //    enu = (e1 + e0) / 2.0;
-            //    switch (rel__)
-            //    {
-            //        case relativity_t::none:
-            //        {
-            //            integrate_forward_rk4<relativity_t::none, false>(enu, l_, 0, chi_p, chi_q, p, dpdr, q, dqdr);
-            //            break;
-            //        }
-            //        case relativity_t::koelling_harmon:
-            //        {
-            //            integrate_forward_rk4<relativity_t::koelling_harmon, false>(enu, l_, 0, chi_p, chi_q, p, dpdr, q, dqdr);
-            //            break;
-            //        }
-            //        case relativity_t::zora:
-            //        {
-            //            integrate_forward_rk4<relativity_t::zora, false>(enu, l_, 0, chi_p, chi_q, p, dpdr, q, dqdr);
-            //            break;
-            //        }
-            //        default:
-            //        {
-            //            TERMINATE_NOT_IMPLEMENTED
-            //        }
-            //    }
-            //    /* derivative at the boundary */
-            //    if (std::abs(surface_deriv()) < 1e-10) {
-            //        break;
-            //    }
+            for (int i = 0; i < 100; i++) {
+                enu = (e1 + e0) / 2.0;
+                switch (rel__) {
+                    case relativity_t::none: {
+                        integrate_forward_rk4<relativity_t::none, false>(enu, l_, 0, chi_p, chi_q, p, dpdr, q, dqdr);
+                        break;
+                    }
+                    case relativity_t::koelling_harmon: {
+                        integrate_forward_rk4<relativity_t::koelling_harmon, false>(enu, l_, 0, chi_p, chi_q, p, dpdr, q, dqdr);
+                        break;
+                    }
+                    case relativity_t::zora: {
+                        integrate_forward_rk4<relativity_t::zora, false>(enu, l_, 0, chi_p, chi_q, p, dpdr, q, dqdr);
+                        break;
+                    }
+                    default: {
+                        TERMINATE_NOT_IMPLEMENTED
+                    }
+                }
+                /* derivative at the boundary */
+                if (std::abs(surface_deriv()) < 1e-10) {
+                    break;
+                }
 
-            //    if (surface_deriv() * sd > 0) {
-            //        e0 = enu;
-            //    } else {
-            //        e1 = enu;
-            //    }
-            //}
+                if (surface_deriv() * sd > 0) {
+                    e0 = enu;
+                } else {
+                    e1 = enu;
+                }
+            }
         
             ebot_ = enu;
             /* last check */
@@ -1134,7 +1134,8 @@ class Enu_finder: public Radial_solver
                 std::stringstream s;
                 s << "wrong number of nodes: " << nn << " instead of " << n_ - l_ - 1 << std::endl
                   << "n: " << n_ << ", l: " << l_ << std::endl
-                  << "etop: " << etop_ << " ebot: " << ebot_;
+                  << "etop: " << etop_ << " ebot: " << ebot_ << std::endl
+                  << "initial surface derivative: " << sd;
 
                 TERMINATE(s);
             }

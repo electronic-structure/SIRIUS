@@ -16,10 +16,11 @@ inline void Band::diag_fv_full_potential_exact(K_point* kp, Periodic_function<do
         TERMINATE("eigen-value solver is not parallel");
     }
 
+    auto mem_type = (gen_evp_solver().type() == ev_magma) ? memory_t::host_pinned : memory_t::host;
     int ngklo = kp->gklo_basis_size();
     int bs = ctx_.cyclic_block_size();
-    dmatrix<double_complex> h(ngklo, ngklo, ctx_.blacs_grid(), bs, bs);
-    dmatrix<double_complex> o(ngklo, ngklo, ctx_.blacs_grid(), bs, bs);
+    dmatrix<double_complex> h(ngklo, ngklo, ctx_.blacs_grid(), bs, bs, mem_type);
+    dmatrix<double_complex> o(ngklo, ngklo, ctx_.blacs_grid(), bs, bs, mem_type);
     
     /* setup Hamiltonian and overlap */
     switch (ctx_.processing_unit()) {
@@ -65,11 +66,15 @@ inline void Band::diag_fv_full_potential_exact(K_point* kp, Periodic_function<do
     runtime::Timer t("sirius::Band::diag_fv_full_potential|genevp");
     
     if (gen_evp_solver().solve(kp->gklo_basis_size(), ctx_.num_fv_states(), h.at<CPU>(), h.ld(), o.at<CPU>(), o.ld(), 
-                               eval.data(), kp->fv_eigen_vectors().prime().at<CPU>(), kp->fv_eigen_vectors().prime().ld(),
+                               eval.data(), kp->fv_eigen_vectors().at<CPU>(), kp->fv_eigen_vectors().ld(),
                                kp->gklo_basis_size_row(), kp->gklo_basis_size_col())) {
         TERMINATE("error in generalized eigen-value problem");
     }
     kp->set_fv_eigen_values(&eval[0]);
+
+    /* remap to slab */
+    kp->fv_eigen_vectors_slab().pw_coeffs().remap_from(kp->fv_eigen_vectors(), 0);
+    kp->fv_eigen_vectors_slab().mt_coeffs().remap_from(kp->fv_eigen_vectors(), kp->num_gkvec());
 
     //== wave_functions phi(ctx_, kp->comm(), kp->gkvec(), unit_cell_.num_atoms(),
     //==                    [this](int ia) {return unit_cell_.atom(ia).mt_lo_basis_size(); }, ctx_.num_fv_states());
@@ -622,19 +627,14 @@ inline void Band::diag_pseudo_potential_davidson(K_point* kp__,
     /* residuals */
     wave_functions res(ctx_, kp__->comm(), kp__->gkvec(), num_bands);
 
-    //auto mem_type = (gen_evp_solver_->type() == ev_magma) ? memory_t::host_pinned : memory_t::host;
-
-    #ifdef __GPU
-    if (gen_evp_solver_->type() == ev_magma) {
-        TERMINATE("remember to pin memory in dmatrix");
-    }
-    #endif
+    auto mem_type = (std_evp_solver().type() == ev_magma) ? memory_t::host_pinned : memory_t::host;
+    //auto mem_type = memory_t::host;
 
     int bs = ctx_.cyclic_block_size();
 
-    dmatrix<T> hmlt(num_phi, num_phi, ctx_.blacs_grid(), bs, bs);
+    dmatrix<T> hmlt(num_phi, num_phi, ctx_.blacs_grid(), bs, bs, mem_type);
     dmatrix<T> ovlp(num_phi, num_phi, ctx_.blacs_grid(), bs, bs);
-    dmatrix<T> evec(num_phi, num_phi, ctx_.blacs_grid(), bs, bs);
+    dmatrix<T> evec(num_phi, num_phi, ctx_.blacs_grid(), bs, bs, mem_type);
     dmatrix<T> hmlt_old(num_phi, num_phi, ctx_.blacs_grid(), bs, bs);
     dmatrix<T> ovlp_old(num_phi, num_phi, ctx_.blacs_grid(), bs, bs);
 

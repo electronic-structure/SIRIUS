@@ -459,6 +459,11 @@ class Unit_cell
             assert(id__ >= 0 && id__ < (int)atoms_.size());
             return atoms_[id__];
         }
+
+        inline int total_nuclear_charge() const
+        {
+            return total_nuclear_charge_;
+        }
        
         /// Total number of electrons (core + valence).
         inline double num_electrons() const

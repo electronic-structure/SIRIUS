@@ -123,14 +123,7 @@ class DFT_ground_state
 
         double energy_vha()
         {
-            double eh = potential_.energy_vha();
-
-//          if(ctx_.esm_type() == paw_pseudopotential)
-//          {
-//              eh += potential_->PAW_hartree_total_energy();
-//          }
-
-            return eh;
+            return potential_.energy_vha();
         }
         
         double energy_vxc()
@@ -144,10 +137,6 @@ class DFT_ground_state
             if (!ctx_.full_potential()) {
                 exc += density_.rho_pseudo_core()->inner(potential_.xc_energy_density());
             }
-//            if(ctx_.esm_type() == paw_pseudopotential)
-//            {
-//              exc += potential_->PAW_xc_total_energy();
-//            }
             return exc;
         }
 

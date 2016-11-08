@@ -37,8 +37,6 @@ namespace sirius {
 /** \note At some point we need to update the atomic potential with the new MT potential. This is simple if the 
           effective potential is a global function. Otherwise we need to pass the effective potential between MPI ranks.
           This is also simple, but requires some time. It is also easier to mix the global functions.  */
-
-
 class Potential 
 {
     private:
@@ -237,9 +235,6 @@ class Potential
                             Periodic_function<double>* exc);
 
         void init();
-
-
-
 
     public:
 
@@ -552,20 +547,26 @@ class Potential
         inline size_t size()
         {
             size_t s = effective_potential_->size();
-            for (int i = 0; i < ctx_.num_mag_dims(); i++) s += effective_magnetic_field_[i]->size();
+            for (int i = 0; i < ctx_.num_mag_dims(); i++) {
+                s += effective_magnetic_field_[i]->size();
+            }
             return s;
         }
 
         inline void pack(Mixer<double>* mixer)
         {
             size_t n = effective_potential_->pack(0, mixer);
-            for (int i = 0; i < ctx_.num_mag_dims(); i++) n += effective_magnetic_field_[i]->pack(n, mixer);
+            for (int i = 0; i < ctx_.num_mag_dims(); i++) {
+                n += effective_magnetic_field_[i]->pack(n, mixer);
+            }
         }
 
         inline void unpack(double const* buffer)
         {
             size_t n = effective_potential_->unpack(buffer);
-            for (int i = 0; i < ctx_.num_mag_dims(); i++) n += effective_magnetic_field_[i]->unpack(&buffer[n]);
+            for (int i = 0; i < ctx_.num_mag_dims(); i++) {
+                n += effective_magnetic_field_[i]->unpack(&buffer[n]);
+            }
         }
 
         //void copy_xc_potential(double* vxcmt, double* vxcir);

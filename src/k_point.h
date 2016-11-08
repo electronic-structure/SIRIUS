@@ -62,7 +62,7 @@ class K_point
         std::vector<double> fv_eigen_values_;
 
         /// First-variational eigen vectors, distributed over 2D BLACS grid.
-        std::unique_ptr<matrix_storage<double_complex, matrix_storage_t::block_cyclic>> fv_eigen_vectors_;
+        dmatrix<double_complex> fv_eigen_vectors_;
 
         /// First-variational eigen vectors, distributed in slabs.
         std::unique_ptr<wave_functions> fv_eigen_vectors_slab_;
@@ -90,13 +90,17 @@ class K_point
         /// Band energies.
         std::vector<double> band_energies_; 
 
-        Matching_coefficients* alm_coeffs_row_{nullptr};
+        std::unique_ptr<Matching_coefficients> alm_coeffs_row_{nullptr};
 
-        Matching_coefficients* alm_coeffs_col_{nullptr};
-
-        Matching_coefficients* alm_coeffs_{nullptr};
+        std::unique_ptr<Matching_coefficients> alm_coeffs_col_{nullptr};
 
         std::unique_ptr<Matching_coefficients> alm_coeffs_loc_{nullptr};
+
+        std::vector<int> igk_row_;
+
+        std::vector<int> igk_col_;
+
+        std::vector<int> igk_loc_;
 
         /// Number of G+k vectors distributed along rows of MPI grid
         int num_gkvec_row_{0};
@@ -104,25 +108,19 @@ class K_point
         /// Number of G+k vectors distributed along columns of MPI grid
         int num_gkvec_col_{0};
 
-        /// Short information about each G+k or lo basis function.
-        /** This is a global array. Each MPI rank of the 2D grid has exactly the same copy. */
-        std::vector<gklo_basis_descriptor> gklo_basis_descriptors_;
-
         /// Basis descriptors distributed between rows of the 2D MPI grid.
         /** This is a local array. Only MPI ranks belonging to the same column have identical copies of this array. */
-        std::vector<gklo_basis_descriptor> gklo_basis_descriptors_row_;
+        std::vector<lo_basis_descriptor> lo_basis_descriptors_row_;
         
         /// Basis descriptors distributed between columns of the 2D MPI grid.
         /** This is a local array. Only MPI ranks belonging to the same row have identical copies of this array. */
-        std::vector<gklo_basis_descriptor> gklo_basis_descriptors_col_;
-
-        std::vector<gklo_basis_descriptor> gklo_basis_descriptors_loc_;
+        std::vector<lo_basis_descriptor> lo_basis_descriptors_col_;
 
         /// List of columns of the Hamiltonian and overlap matrix lo block (local index) for a given atom.
-        std::vector< std::vector<int> > atom_lo_cols_;
+        std::vector<std::vector<int>> atom_lo_cols_;
 
         /// list of rows of the Hamiltonian and overlap matrix lo block (local index) for a given atom
-        std::vector< std::vector<int> > atom_lo_rows_;
+        std::vector<std::vector<int>> atom_lo_rows_;
 
         /// imaginary unit to the power of l
         std::vector<double_complex> zil_;
@@ -140,7 +138,7 @@ class K_point
 
         int num_ranks_row_;
 
-        Beta_projectors* beta_projectors_{nullptr};
+        std::unique_ptr<Beta_projectors> beta_projectors_{nullptr};
        
         /// Preconditioner matrix for Chebyshev solver.  
         mdarray<double_complex, 3> p_mtrx_;
@@ -153,12 +151,8 @@ class K_point
         /// Communicator between(!!) columns.
         Communicator const& comm_col_;
 
-        /// Build G+k and lo basis descriptors.
-        inline void build_gklo_basis_descriptors();
+        inline void generate_gklo_basis();
 
-        /// Distribute basis function index between rows and columns of MPI grid.
-        inline void distribute_basis_index();
-        
         /// Test orthonormalization of first-variational states.
         inline void test_fv_states();
 
@@ -194,15 +188,6 @@ class K_point
             #ifndef __GPU
             if (ctx_.processing_unit() == GPU) TERMINATE_NO_GPU
             #endif
-        }
-
-        ~K_point()
-        {
-            PROFILE();
-            if (alm_coeffs_ != nullptr) delete alm_coeffs_;
-            if (alm_coeffs_row_ != nullptr) delete alm_coeffs_row_;
-            if (alm_coeffs_col_ != nullptr) delete alm_coeffs_col_;
-            if (beta_projectors_ != nullptr) delete beta_projectors_;
         }
 
         /// Initialize the k-point related arrays and data
@@ -298,53 +283,23 @@ class K_point
          *  Thus, the total number of coefficients representing a wave-funstion is equal
          *  to the number of muffin-tin basis functions of the form \f$ f_{\ell \lambda}^{\alpha}(r) 
          *  Y_{\ell m}(\hat {\bf r}) \f$ plust the number of G+k plane waves. */ 
-        inline int wf_size() const // TODO: better name for this
-        {
-            switch (ctx_.esm_type())
-            {
-                case electronic_structure_method_t::full_potential_lapwlo:
-                case electronic_structure_method_t::full_potential_pwlo:
-                {
-                    return unit_cell_.mt_basis_size() + num_gkvec();
-                    break;
-                }
+        //inline int wf_size() const // TODO: better name for this
+        //{
+        //    if (ctx_.full_potential()) {
+        //        return unit_cell_.mt_basis_size() + num_gkvec();
+        //    } else {
+        //        return num_gkvec();
+        //    }
+        //}
 
-                //TODO case paw_pseudopotential think about
-                case electronic_structure_method_t::paw_pseudopotential:
-                case electronic_structure_method_t::ultrasoft_pseudopotential:
-                case electronic_structure_method_t::norm_conserving_pseudopotential:
-                {
-                    return num_gkvec();
-                    break;
-                }
-            }
-            return -1; // make compiler happy
-        }
-
-        inline int wf_pw_offset() const
-        {
-            switch (ctx_.esm_type())
-            {
-                case electronic_structure_method_t::full_potential_lapwlo:
-                case electronic_structure_method_t::full_potential_pwlo:
-                {
-                    return unit_cell_.mt_basis_size();
-                    break;
-                }
-                case electronic_structure_method_t::paw_pseudopotential:
-                case electronic_structure_method_t::ultrasoft_pseudopotential:
-                case electronic_structure_method_t::norm_conserving_pseudopotential:
-                {
-                    return 0;
-                    break;
-                }
-                default:
-                {
-                    TERMINATE("wrong type of electronic structure method");
-                    return -1; //make compiler happy
-                }
-            }
-        }
+        //inline int wf_pw_offset() const
+        //{
+        //    if (ctx_.full_potential()) {
+        //        return unit_cell_.mt_basis_size();
+        //    } else {
+        //        return 0;
+        //    }
+        //}
 
         inline void get_band_occupancies(double* band_occupancies) const
         {
@@ -421,20 +376,16 @@ class K_point
             return vk_;
         }
 
-        /// Basis size of our electronic structure method.
-        /** In case of full-potential LAPW+lo or PW+lo method the total number of 
-         *  basis functions is equal to the number of (augmented) plane-waves plus the number 
-         *  of local orbitals. In case of plane-wave pseudopotential method this is just the 
-         *  number of G+k vectors. */
+        /// Basis size of LAPW+lo method.
         inline int gklo_basis_size() const
         {
-            return static_cast<int>(gklo_basis_descriptors_.size());
+            return static_cast<int>(num_gkvec() + unit_cell_.mt_lo_basis_size());
         }
-        
-        /// Local number of basis functions for each MPI rank in the row of the 2D MPI grid.
-        inline int gklo_basis_size_row() const
+
+        /// Local number of G+k vectors in case of flat distributon.
+        inline int num_gkvec_loc() const
         {
-            return static_cast<int>(gklo_basis_descriptors_row_.size());
+            return gkvec_.gvec_count(comm_.rank());
         }
         
         /// Local number of G+k vectors for each MPI rank in the row of the 2D MPI grid.
@@ -446,15 +397,15 @@ class K_point
         /// Local number of local orbitals for each MPI rank in the row of the 2D MPI grid.
         inline int num_lo_row() const
         {
-            return static_cast<int>(gklo_basis_descriptors_row_.size() - num_gkvec_row_);
+            return static_cast<int>(lo_basis_descriptors_row_.size());
         }
 
-        /// Local number of basis functions for each MPI rank in the column of the 2D MPI grid.
-        inline int gklo_basis_size_col() const
+        /// Local number of basis functions for each MPI rank in the row of the 2D MPI grid.
+        inline int gklo_basis_size_row() const
         {
-            return static_cast<int>(gklo_basis_descriptors_col_.size());
+            return num_gkvec_row() + num_lo_row();
         }
-        
+
         /// Local number of G+k vectors for each MPI rank in the column of the 2D MPI grid.
         inline int num_gkvec_col() const
         {
@@ -464,25 +415,40 @@ class K_point
         /// Local number of local orbitals for each MPI rank in the column of the 2D MPI grid.
         inline int num_lo_col() const
         {
-            return static_cast<int>(gklo_basis_descriptors_col_.size() - num_gkvec_col_);
+            return static_cast<int>(lo_basis_descriptors_col_.size());
         }
 
-        inline gklo_basis_descriptor const& gklo_basis_descriptor_col(int idx) const
+        /// Local number of basis functions for each MPI rank in the column of the 2D MPI grid.
+        inline int gklo_basis_size_col() const
         {
-            assert(idx >=0 && idx < (int)gklo_basis_descriptors_col_.size());
-            return gklo_basis_descriptors_col_[idx];
+            return num_gkvec_col() + num_lo_col();
+        }
+
+        inline lo_basis_descriptor const& lo_basis_descriptor_col(int idx) const
+        {
+            assert(idx >=0 && idx < (int)lo_basis_descriptors_col_.size());
+            return lo_basis_descriptors_col_[idx];
         }
         
-        inline gklo_basis_descriptor const& gklo_basis_descriptor_row(int idx) const
+        inline lo_basis_descriptor const& lo_basis_descriptor_row(int idx) const
         {
-            assert(idx >= 0 && idx < (int)gklo_basis_descriptors_row_.size());
-            return gklo_basis_descriptors_row_[idx];
+            assert(idx >= 0 && idx < (int)lo_basis_descriptors_row_.size());
+            return lo_basis_descriptors_row_[idx];
         }
 
-        inline gklo_basis_descriptor const& gklo_basis_descriptor_loc(int idx__) const
+        inline int igk_loc(int idx__) const
         {
-            assert(idx__ >= 0 && idx__ < (int)gklo_basis_descriptors_loc_.size());
-            return gklo_basis_descriptors_loc_[idx__];
+            return igk_loc_[idx__];
+        }
+
+        inline int igk_row(int idx__) const
+        {
+            return igk_row_[idx__];
+        }
+
+        inline int igk_col(int idx__) const
+        {
+            return igk_col_[idx__];
         }
 
         inline int num_ranks_row() const
@@ -540,9 +506,9 @@ class K_point
             return atom_lo_rows_[ia][i];
         }
 
-        inline matrix_storage<double_complex, matrix_storage_t::block_cyclic>& fv_eigen_vectors()
+        inline dmatrix<double_complex>& fv_eigen_vectors()
         {
-            return *fv_eigen_vectors_;
+            return fv_eigen_vectors_;
         }
 
         inline wave_functions& fv_eigen_vectors_slab()
@@ -575,19 +541,14 @@ class K_point
             return *gkvec_vloc_;
         }
 
-        inline Matching_coefficients* alm_coeffs_row()
+        inline Matching_coefficients const& alm_coeffs_row()
         {
-            return alm_coeffs_row_;
+            return *alm_coeffs_row_;
         }
 
-        inline Matching_coefficients* alm_coeffs_col()
+        inline Matching_coefficients const& alm_coeffs_col()
         {
-            return alm_coeffs_col_;
-        }
-
-        inline Matching_coefficients const& alm_coeffs() const
-        {
-            return *alm_coeffs_;
+            return *alm_coeffs_col_;
         }
 
         inline Matching_coefficients const& alm_coeffs_loc() const
@@ -620,11 +581,6 @@ class K_point
             return p_mtrx_;
         }
 
-        inline int num_gkvec_loc() const
-        {
-            return gkvec_.gvec_count(comm_.rank());
-        }
-
         Beta_projectors& beta_projectors()
         {
             return *beta_projectors_;
@@ -634,8 +590,7 @@ class K_point
 #include "K_point/generate_fv_states.hpp"
 #include "K_point/generate_spinor_wave_functions.hpp"
 #include "K_point/generate_gkvec.hpp"
-#include "K_point/build_gklo_basis_descriptors.hpp"
-#include "K_point/distribute_basis_index.hpp"
+#include "K_point/generate_gklo_basis.hpp"
 #include "K_point/initialize.hpp"
 #include "K_point/k_point.hpp"
 #include "K_point/test_fv_states.hpp"

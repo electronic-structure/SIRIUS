@@ -377,6 +377,16 @@ void sirius_set_gamma_point(ftn_int* gamma_point__)
     sim_ctx->set_gamma_point(*gamma_point__);
 }
 
+void sirius_set_valence_relativity(ftn_char str__)
+{
+    sim_ctx->set_valence_relativity(str__);
+}
+
+void sirius_set_core_relativity(ftn_char str__)
+{
+    sim_ctx->set_core_relativity(str__);
+}
+
 /// Initialize the global variables.
 /** The function must be called after setting up the lattice vectors, plane wave-cutoff, autormt flag and loading
  *  atom types and atoms into the unit cell.
@@ -1331,83 +1341,77 @@ void sirius_get_basis_functions_index(int32_t* mt_basis_size, int32_t* offset_wf
 }
 
 /// Get number of G+k vectors for a given k-point in the set
-void sirius_get_num_gkvec(int32_t* kset_id, int32_t* ik, int32_t* num_gkvec)
+void sirius_get_num_gkvec(ftn_int* kset_id__,
+                          ftn_int* ik__,
+                          ftn_int* num_gkvec__)
 {
     PROFILE();
-    *num_gkvec = (*kset_list[*kset_id])[*ik - 1]->num_gkvec();
+    auto ks = kset_list[*kset_id__];
+    auto kp = (*kset_list[*kset_id__])[*ik__ - 1];
+    /* get rank that stores a given k-point */
+    int rank = ks->spl_num_kpoints().local_rank(*ik__ - 1);
+    auto& comm_k = sim_ctx->mpi_grid().communicator(1 << _mpi_dim_k_);
+    if (rank == comm_k.rank()) {
+        *num_gkvec__ = kp->num_gkvec();
+    }
+    comm_k.bcast(num_gkvec__, 1, rank);
 }
 
 /// Get maximum number of G+k vectors across all k-points in the set
-void sirius_get_max_num_gkvec(int32_t const* kset_id__,
-                              int32_t* max_num_gkvec__)
+void sirius_get_max_num_gkvec(ftn_int* kset_id__,
+                              ftn_int* max_num_gkvec__)
 {
     PROFILE();
     *max_num_gkvec__ = kset_list[*kset_id__]->max_num_gkvec();
 }
 
 /// Get all G+k vector related arrays
-void sirius_get_gkvec_arrays(int32_t* kset_id,
-                             int32_t* ik,
-                             int32_t* num_gkvec,
-                             int32_t* gvec_index,
-                             double* gkvec__,
-                             double* gkvec_cart__,
-                             double* gkvec_len,
-                             double* gkvec_tp__,
-                             double_complex* gkvec_phase_factors__,
-                             int32_t* ld)
+void sirius_get_gkvec_arrays(ftn_int*    kset_id__,
+                             ftn_int*    ik__,
+                             ftn_int*    num_gkvec__,
+                             ftn_int*    gvec_index__,
+                             ftn_double* gkvec__,
+                             ftn_double* gkvec_cart__,
+                             ftn_double* gkvec_len,
+                             ftn_double* gkvec_tp__)
 {
     PROFILE();
+    
+    auto ks = kset_list[*kset_id__];
+    auto kp = (*kset_list[*kset_id__])[*ik__ - 1];
 
-    /* position of processors which store a given k-point */
-    int rank = kset_list[*kset_id]->spl_num_kpoints().local_rank(*ik - 1);
+    /* get rank that stores a given k-point */
+    int rank = ks->spl_num_kpoints().local_rank(*ik__ - 1);
 
-    auto& comm_r = sim_ctx->mpi_grid().communicator(1 << _mpi_dim_k_row_);
     auto& comm_k = sim_ctx->mpi_grid().communicator(1 << _mpi_dim_k_);
 
-    if (rank == comm_k.rank())
-    {
-        sirius::K_point* kp = (*kset_list[*kset_id])[*ik - 1];
-        *num_gkvec = kp->num_gkvec();
+    if (rank == comm_k.rank()) {
+        *num_gkvec__ = kp->num_gkvec();
         mdarray<double, 2> gkvec(gkvec__, 3, kp->num_gkvec());
         mdarray<double, 2> gkvec_cart(gkvec_cart__, 3, kp->num_gkvec());
         mdarray<double, 2> gkvec_tp(gkvec_tp__, 2, kp->num_gkvec());
 
-        for (int igk = 0; igk < kp->num_gkvec(); igk++)
-        {
+        for (int igk = 0; igk < kp->num_gkvec(); igk++) {
             auto gkc = kp->gkvec().gkvec_cart(igk);
+            auto G = kp->gkvec().gvec(igk);
 
-            //gvec_index[igk] = kp->gvec_index(igk) + 1; // Fortran counts form 1
-            gvec_index[igk] = igk + 1; // Fortran counts from 1
-            for (int x = 0; x < 3; x++)
-            {
-                gkvec(x, igk) = kp->gkvec().gkvec(igk)[x]; //kp->gkvec<fractional>(igk)[x];
-                gkvec_cart(x, igk) = gkc[x]; //kp->gkvec().cart_shifted(igk)[x]; //kp->gkvec<cartesian>(igk)[x];
+            gvec_index__[igk] = sim_ctx->gvec().index_by_gvec(G) + 1; // Fortran counts from 1
+            for (int x: {0, 1, 2}) {
+                gkvec(x, igk) = kp->gkvec().gkvec(igk)[x];
+                gkvec_cart(x, igk) = gkc[x];
             }
             auto rtp = sirius::SHT::spherical_coordinates(gkc);
             gkvec_len[igk] = rtp[0];
             gkvec_tp(0, igk) = rtp[1];
             gkvec_tp(1, igk) = rtp[2];
         }
-
-        mdarray<double_complex, 2> gkvec_phase_factors(gkvec_phase_factors__, *ld, sim_ctx->unit_cell().num_atoms());
-        gkvec_phase_factors.zero();
-        STOP();
-        //for (int igkloc = 0; igkloc < kp->num_gkvec_row(); igkloc++)
-        //{
-        //    int igk = kp->gklo_basis_descriptor_row(igkloc).igk;
-        //    for (int ia = 0; ia < sim_ctx->unit_cell().num_atoms(); ia++)
-        //        gkvec_phase_factors(igk, ia) = kp->gkvec_phase_factor(igkloc, ia);
-        //}
-        comm_r.allreduce(&gkvec_phase_factors(0, 0), (int)gkvec_phase_factors.size());
     }
-    comm_k.bcast(num_gkvec, 1, rank);
-    comm_k.bcast(gvec_index, *num_gkvec, rank);
-    comm_k.bcast(gkvec__, *num_gkvec * 3, rank);
-    comm_k.bcast(gkvec_cart__, *num_gkvec * 3, rank);
-    comm_k.bcast(gkvec_len, *num_gkvec, rank);
-    comm_k.bcast(gkvec_tp__, *num_gkvec * 2, rank);
-    comm_k.bcast(gkvec_phase_factors__, *ld * sim_ctx->unit_cell().num_atoms(), rank);
+    comm_k.bcast(num_gkvec__,  1,                rank);
+    comm_k.bcast(gvec_index__, *num_gkvec__,     rank);
+    comm_k.bcast(gkvec__,      *num_gkvec__ * 3, rank);
+    comm_k.bcast(gkvec_cart__, *num_gkvec__ * 3, rank);
+    comm_k.bcast(gkvec_len,    *num_gkvec__,     rank);
+    comm_k.bcast(gkvec_tp__,   *num_gkvec__ * 2, rank);
 }
 
 void sirius_get_matching_coefficients(int32_t const* kset_id__,
@@ -1510,12 +1514,12 @@ void sirius_solve_fv(int32_t const* kset_id__,
     }
 }
 
-/// Get the total size of wave-function (number of mt coefficients + number of G+k coefficients)
-void sirius_get_mtgk_size(int32_t* kset_id, int32_t* ik, int32_t* mtgk_size)
-{
-    PROFILE();
-    *mtgk_size = (*kset_list[*kset_id])[*ik - 1]->wf_size();
-}
+///// Get the total size of wave-function (number of mt coefficients + number of G+k coefficients)
+//void sirius_get_mtgk_size(int32_t* kset_id, int32_t* ik, int32_t* mtgk_size)
+//{
+//    PROFILE();
+//    *mtgk_size = (*kset_list[*kset_id])[*ik - 1]->wf_size();
+//}
 
 void sirius_get_spinor_wave_functions(int32_t* kset_id, int32_t* ik, double_complex* spinor_wave_functions__)
 {
@@ -1614,7 +1618,10 @@ void sirius_get_energy_kin(double* energy_kin)
 }
 
 /// Generate XC potential and magnetic field
-void sirius_generate_xc_potential(double* vxcmt__, double* vxcit__, double* bxcmt__, double* bxcit__)
+void sirius_generate_xc_potential(ftn_double* vxcmt__,
+                                  ftn_double* vxcit__,
+                                  ftn_double* bxcmt__,
+                                  ftn_double* bxcit__)
 {
     PROFILE();
 
@@ -1646,10 +1653,12 @@ void sirius_generate_xc_potential(double* vxcmt__, double* vxcit__, double* bxcm
     }
 }
 
-void sirius_generate_coulomb_potential(double* vclmt__, double* vclit__)
+void sirius_generate_coulomb_potential(ftn_double* vclmt__,
+                                       ftn_double* vclit__)
 {
     PROFILE();
     sim_ctx->fft().prepare(sim_ctx->gvec().partition());
+    density->rho()->fft_transform(-1);
     potential->poisson(density->rho(), potential->hartree_potential());
     sim_ctx->fft().dismiss();
     potential->hartree_potential()->copy_to_global_ptr(vclmt__, vclit__);
@@ -1699,69 +1708,145 @@ void sirius_radial_solver(ftn_char    type__,
     std::memcpy(q1__, std::get<4>(result).data(), rgrid.num_points() * sizeof(double));
 }
 
-void sirius_get_aw_radial_function(int32_t const* ia__,
-                                   int32_t const* l__,
-                                   int32_t const* io__,
-                                   double* f__)
+void sirius_get_aw_radial_function(ftn_int*    ia__,
+                                   ftn_int*    l__,
+                                   ftn_int*    io__,
+                                   ftn_double* f__)
 {
     PROFILE();
     int ia = *ia__ - 1;
     int io = *io__ - 1;
     auto& atom = sim_ctx->unit_cell().atom(ia);
     int idxrf = atom.type().indexr_by_l_order(*l__, io);
-    for (int ir = 0; ir < atom.num_mt_points(); ir++) f__[ir] = atom.symmetry_class().radial_function(ir, idxrf);
+    for (int ir = 0; ir < atom.num_mt_points(); ir++) {
+        f__[ir] = atom.symmetry_class().radial_function(ir, idxrf);
+    }
 }
 
-void sirius_get_aw_deriv_radial_function(int32_t* ia__,
-                                         int32_t* l__,
-                                         int32_t* io__,
-                                         double* dfdr__)
+void sirius_set_aw_radial_function(ftn_int*    ia__,
+                                   ftn_int*    l__,
+                                   ftn_int*    io__,
+                                   ftn_double* f__)
 {
     PROFILE();
     int ia = *ia__ - 1;
     int io = *io__ - 1;
     auto& atom = sim_ctx->unit_cell().atom(ia);
     int idxrf = atom.type().indexr_by_l_order(*l__, io);
-    for (int ir = 0; ir < atom.num_mt_points(); ir++)
-    {
-        double rinv = atom.type().radial_grid().x_inv(ir);
-        dfdr__[ir] = atom.symmetry_class().r_deriv_radial_function(ir, idxrf) * rinv;
+    for (int ir = 0; ir < atom.num_mt_points(); ir++) {
+        atom.symmetry_class().radial_function(ir, idxrf) = f__[ir];
     }
 }
 
-void sirius_get_aw_surface_derivative(int32_t* ia__, int32_t* l__, int32_t* io__, double* dawrf__)
+void sirius_set_aw_radial_function_derivative(ftn_int*    ia__,
+                                              ftn_int*    l__,
+                                              ftn_int*    io__,
+                                              ftn_double* f__)
 {
     PROFILE();
-    *dawrf__ = sim_ctx->unit_cell().atom(*ia__ - 1).symmetry_class().aw_surface_dm(*l__, *io__ - 1, 1);
+    int ia = *ia__ - 1;
+    int io = *io__ - 1;
+    auto& atom = sim_ctx->unit_cell().atom(ia);
+    int idxrf = atom.type().indexr_by_l_order(*l__, io);
+    for (int ir = 0; ir < atom.num_mt_points(); ir++) {
+        atom.symmetry_class().radial_function_derivative(ir, idxrf) = f__[ir] * atom.type().radial_grid()[ir];
+    }
 }
 
-void sirius_get_lo_radial_function(int32_t const* ia__,
-                                   int32_t const* idxlo__,
-                                   double* f__)
+//void sirius_get_aw_deriv_radial_function(int32_t* ia__,
+//                                         int32_t* l__,
+//                                         int32_t* io__,
+//                                         double* dfdr__)
+//{
+//    PROFILE();
+//    int ia = *ia__ - 1;
+//    int io = *io__ - 1;
+//    auto& atom = sim_ctx->unit_cell().atom(ia);
+//    int idxrf = atom.type().indexr_by_l_order(*l__, io);
+//    for (int ir = 0; ir < atom.num_mt_points(); ir++)
+//    {
+//        double rinv = atom.type().radial_grid().x_inv(ir);
+//        dfdr__[ir] = atom.symmetry_class().r_deriv_radial_function(ir, idxrf) * rinv;
+//    }
+//}
+
+void sirius_get_aw_surface_derivative(ftn_int*    ia__,
+                                      ftn_int*    l__,
+                                      ftn_int*    io__,
+                                      ftn_int*    dm__,
+                                      ftn_double* deriv__)
+{
+    PROFILE();
+    *deriv__ = sim_ctx->unit_cell().atom(*ia__ - 1).symmetry_class().aw_surface_dm(*l__, *io__ - 1, *dm__);
+}
+
+void sirius_set_aw_surface_derivative(ftn_int*    ia__,
+                                      ftn_int*    l__,
+                                      ftn_int*    io__,
+                                      ftn_int*    dm__,
+                                      ftn_double* deriv__)
+{
+    PROFILE();
+    sim_ctx->unit_cell().atom(*ia__ - 1).symmetry_class().set_aw_surface_deriv(*l__, *io__ - 1, *dm__, *deriv__);
+}
+
+void sirius_get_lo_radial_function(ftn_int*    ia__,
+                                   ftn_int*    idxlo__,
+                                   ftn_double* f__)
 {
     PROFILE();
     int ia = *ia__ - 1;
     int idxlo = *idxlo__ - 1;
     auto& atom = sim_ctx->unit_cell().atom(ia);
     int idxrf = atom.type().indexr_by_idxlo(idxlo);
-    for (int ir = 0; ir < atom.num_mt_points(); ir++) f__[ir] = atom.symmetry_class().radial_function(ir, idxrf);
+    for (int ir = 0; ir < atom.num_mt_points(); ir++) {
+        f__[ir] = atom.symmetry_class().radial_function(ir, idxrf);
+    }
 }
 
-void sirius_get_lo_deriv_radial_function(int32_t const* ia__,
-                                         int32_t const* idxlo__,
-                                         double* dfdr__)
+void sirius_set_lo_radial_function(ftn_int*    ia__,
+                                   ftn_int*    idxlo__,
+                                   ftn_double* f__)
 {
     PROFILE();
     int ia = *ia__ - 1;
     int idxlo = *idxlo__ - 1;
     auto& atom = sim_ctx->unit_cell().atom(ia);
     int idxrf = atom.type().indexr_by_idxlo(idxlo);
-    for (int ir = 0; ir < atom.num_mt_points(); ir++)
-    {
-        double rinv = atom.type().radial_grid().x_inv(ir);
-        dfdr__[ir] = atom.symmetry_class().r_deriv_radial_function(ir, idxrf) * rinv;
+    for (int ir = 0; ir < atom.num_mt_points(); ir++) {
+        atom.symmetry_class().radial_function(ir, idxrf) = f__[ir];
     }
 }
+
+void sirius_set_lo_radial_function_derivative(ftn_int*    ia__,
+                                              ftn_int*    idxlo__,
+                                              ftn_double* f__)
+{
+    PROFILE();
+    int ia = *ia__ - 1;
+    int idxlo = *idxlo__ - 1;
+    auto& atom = sim_ctx->unit_cell().atom(ia);
+    int idxrf = atom.type().indexr_by_idxlo(idxlo);
+    for (int ir = 0; ir < atom.num_mt_points(); ir++) {
+        atom.symmetry_class().radial_function_derivative(ir, idxrf) = f__[ir] * atom.type().radial_grid()[ir];
+    }
+}
+
+//void sirius_get_lo_deriv_radial_function(int32_t const* ia__,
+//                                         int32_t const* idxlo__,
+//                                         double* dfdr__)
+//{
+//    PROFILE();
+//    int ia = *ia__ - 1;
+//    int idxlo = *idxlo__ - 1;
+//    auto& atom = sim_ctx->unit_cell().atom(ia);
+//    int idxrf = atom.type().indexr_by_idxlo(idxlo);
+//    for (int ir = 0; ir < atom.num_mt_points(); ir++)
+//    {
+//        double rinv = atom.type().radial_grid().x_inv(ir);
+//        dfdr__[ir] = atom.symmetry_class().r_deriv_radial_function(ir, idxrf) * rinv;
+//    }
+//}
 
 void sirius_get_aw_lo_o_radial_integral(int32_t* ia__, int32_t* l, int32_t* io1, int32_t* ilo2,
                                         double* oalo)
@@ -1773,6 +1858,31 @@ void sirius_get_aw_lo_o_radial_integral(int32_t* ia__, int32_t* l, int32_t* io1,
     int order2 = sim_ctx->unit_cell().atom(ia).type().indexr(idxrf2).order;
 
     *oalo = sim_ctx->unit_cell().atom(ia).symmetry_class().o_radial_integral(*l, *io1 - 1, order2);
+}
+
+void sirius_set_aw_lo_o_radial_integral(int32_t* ia__,
+                                        int32_t* l__,
+                                        int32_t* io1__,
+                                        int32_t* ilo2__,
+                                        double* oalo__)
+{
+    PROFILE();
+    int ia = *ia__ - 1;
+
+    int idxrf2 = sim_ctx->unit_cell().atom(ia).type().indexr_by_idxlo(*ilo2__ - 1);
+    int order2 = sim_ctx->unit_cell().atom(ia).type().indexr(idxrf2).order;
+
+    //double d1 = std::abs(*oalo__ - sim_ctx->unit_cell().atom(ia).symmetry_class().o_radial_integral(*l__, *io1__ - 1, order2));
+    //double d2 = std::abs(*oalo__ - sim_ctx->unit_cell().atom(ia).symmetry_class().o_radial_integral(*l__, order2, *io1__ - 1));
+    //
+    //if (d1 > 1e-6) {
+    //    printf("ia: %i, oalo diff=%f\n", ia, d1);
+    //}
+    //if (d2 > 1e-6) {
+    //    printf("ia: %i, oloa diff=%f\n", ia, d2);
+    //}
+    sim_ctx->unit_cell().atom(ia).symmetry_class().set_o_radial_integral(*l__, *io1__ - 1, order2, *oalo__);
+    sim_ctx->unit_cell().atom(ia).symmetry_class().set_o_radial_integral(*l__, order2, *io1__ - 1, *oalo__);
 }
 
 void sirius_get_lo_lo_o_radial_integral(int32_t* ia__, int32_t* l, int32_t* ilo1, int32_t* ilo2,
@@ -1789,6 +1899,29 @@ void sirius_get_lo_lo_o_radial_integral(int32_t* ia__, int32_t* l, int32_t* ilo1
     *ololo = sim_ctx->unit_cell().atom(ia).symmetry_class().o_radial_integral(*l, order1, order2);
 }
 
+void sirius_set_lo_lo_o_radial_integral(int32_t* ia__,
+                                        int32_t* l__,
+                                        int32_t* ilo1__,
+                                        int32_t* ilo2__,
+                                        double* ololo__)
+{
+    PROFILE();
+    int ia = *ia__ - 1;
+
+    int idxrf1 = sim_ctx->unit_cell().atom(ia).type().indexr_by_idxlo(*ilo1__ - 1);
+    int order1 = sim_ctx->unit_cell().atom(ia).type().indexr(idxrf1).order;
+    int idxrf2 = sim_ctx->unit_cell().atom(ia).type().indexr_by_idxlo(*ilo2__ - 1);
+    int order2 = sim_ctx->unit_cell().atom(ia).type().indexr(idxrf2).order;
+
+    //double d1 = std::abs(*ololo__ - sim_ctx->unit_cell().atom(ia).symmetry_class().o_radial_integral(*l__, order1, order2));
+    //
+    //if (d1 > 1e-6) {
+    //    printf("ia: %i, ololo diff=%f\n", ia, d1);
+    //}
+
+    sim_ctx->unit_cell().atom(ia).symmetry_class().set_o_radial_integral(*l__, order1, order2, *ololo__);
+}
+
 void sirius_get_aw_aw_h_radial_integral(int32_t* ia__, int32_t* l1, int32_t* io1, int32_t* l2,
                                         int32_t* io2, int32_t* lm3, double* haa)
 {
@@ -1800,6 +1933,29 @@ void sirius_get_aw_aw_h_radial_integral(int32_t* ia__, int32_t* l1, int32_t* io1
     *haa = sim_ctx->unit_cell().atom(ia).h_radial_integrals(idxrf1, idxrf2)[*lm3 - 1];
 }
 
+void sirius_set_aw_aw_h_radial_integral(int32_t* ia__,
+                                        int32_t* l1__,
+                                        int32_t* io1__,
+                                        int32_t* l2__,
+                                        int32_t* io2__,
+                                        int32_t* lm3__,
+                                        double* haa__)
+{
+    PROFILE();
+    int ia = *ia__ - 1;
+    int idxrf1 = sim_ctx->unit_cell().atom(ia).type().indexr_by_l_order(*l1__, *io1__ - 1);
+    int idxrf2 = sim_ctx->unit_cell().atom(ia).type().indexr_by_l_order(*l2__, *io2__ - 1);
+    
+    //double d1 = std::abs(*haa__ - sim_ctx->unit_cell().atom(ia).h_radial_integrals(idxrf1, idxrf2)[*lm3__ - 1]);
+    //
+    //if (d1 > 1e-3) {
+    //    printf("ia: %i, l1: %i, io1: %i, l2: %i, io2: %i, lm3: %i, haa diff=%f\n", ia, *l1__, *io1__, *l2__, *io2__, *lm3__, d1);
+    //    printf("exciting value: %f, sirius value: %f\n", *haa__, sim_ctx->unit_cell().atom(ia).h_radial_integrals(idxrf1, idxrf2)[*lm3__ - 1]);
+    //}
+
+    sim_ctx->unit_cell().atom(ia).h_radial_integrals(idxrf1, idxrf2)[*lm3__ - 1] = *haa__;
+}
+
 void sirius_get_lo_aw_h_radial_integral(int32_t* ia__, int32_t* ilo1, int32_t* l2, int32_t* io2, int32_t* lm3,
                                         double* hloa)
 {
@@ -1809,6 +1965,31 @@ void sirius_get_lo_aw_h_radial_integral(int32_t* ia__, int32_t* ilo1, int32_t* l
     int idxrf2 = sim_ctx->unit_cell().atom(ia).type().indexr_by_l_order(*l2, *io2 - 1);
 
     *hloa = sim_ctx->unit_cell().atom(ia).h_radial_integrals(idxrf1, idxrf2)[*lm3 - 1];
+}
+
+void sirius_set_lo_aw_h_radial_integral(int32_t* ia__,
+                                        int32_t* ilo1__,
+                                        int32_t* l2__,
+                                        int32_t* io2__,
+                                        int32_t* lm3__,
+                                        double* hloa__)
+{
+    PROFILE();
+    int ia = *ia__ - 1;
+    int idxrf1 = sim_ctx->unit_cell().atom(ia).type().indexr_by_idxlo(*ilo1__ - 1);
+    int idxrf2 = sim_ctx->unit_cell().atom(ia).type().indexr_by_l_order(*l2__, *io2__ - 1);
+
+    //double d1 = std::abs(*hloa__ -  sim_ctx->unit_cell().atom(ia).h_radial_integrals(idxrf1, idxrf2)[*lm3__ - 1]);
+    //double d2 = std::abs(*hloa__ -  sim_ctx->unit_cell().atom(ia).h_radial_integrals(idxrf2, idxrf1)[*lm3__ - 1]);
+    //if (d1 > 1e-6) {
+    //    printf("ia: %i, hloa diff=%f\n", ia, d1);
+    //}
+    //if (d2 > 1e-6) {
+    //    printf("ia: %i, halo diff=%f\n", ia, d2);
+    //}
+
+    sim_ctx->unit_cell().atom(ia).h_radial_integrals(idxrf1, idxrf2)[*lm3__ - 1] = *hloa__;
+    sim_ctx->unit_cell().atom(ia).h_radial_integrals(idxrf2, idxrf1)[*lm3__ - 1] = *hloa__;
 }
 
 
@@ -1823,10 +2004,36 @@ void sirius_get_lo_lo_h_radial_integral(int32_t* ia__, int32_t* ilo1, int32_t* i
     *hlolo = sim_ctx->unit_cell().atom(ia).h_radial_integrals(idxrf1, idxrf2)[*lm3 - 1];
 }
 
+void sirius_set_lo_lo_h_radial_integral(int32_t* ia__,
+                                        int32_t* ilo1__,
+                                        int32_t* ilo2__,
+                                        int32_t* lm3__,
+                                        double* hlolo__)
+{
+    PROFILE();
+    int ia = *ia__ - 1;
+    int idxrf1 = sim_ctx->unit_cell().atom(ia).type().indexr_by_idxlo(*ilo1__ - 1);
+    int idxrf2 = sim_ctx->unit_cell().atom(ia).type().indexr_by_idxlo(*ilo2__ - 1);
+
+    //double d1 = std::abs(*hlolo__ -  sim_ctx->unit_cell().atom(ia).h_radial_integrals(idxrf1, idxrf2)[*lm3__ - 1]);
+    //if (d1 > 1e-6) {
+    //    printf("ia: %i, lo1: %i, lo2: %i, lm3: %i, hlolo diff=%f\n", ia, *ilo1__, *ilo2__, *lm3__, d1);
+    //    printf("exciting value: %f, sirius value: %f\n", *hlolo__, sim_ctx->unit_cell().atom(ia).h_radial_integrals(idxrf1, idxrf2)[*lm3__ - 1]);
+    //}
+
+    sim_ctx->unit_cell().atom(ia).h_radial_integrals(idxrf1, idxrf2)[*lm3__ - 1] = *hlolo__;
+}
+
 void sirius_generate_potential_pw_coefs()
 {
     PROFILE();
     potential->generate_pw_coefs();
+}
+
+void sirius_set_effective_potential_pw_coeffs(double_complex* f_pw__)
+{
+    PROFILE();
+    std::memcpy(&potential->effective_potential()->f_pw(0), f_pw__, sim_ctx->gvec().num_gvec() * sizeof(double_complex));
 }
 
 void sirius_generate_density_pw_coefs()
@@ -1872,6 +2079,9 @@ void sirius_ground_state_initialize(int32_t* kset_id__)
     if (dft_ground_state != nullptr) TERMINATE("dft_ground_state object is already allocate");
 
     dft_ground_state = new sirius::DFT_ground_state(*sim_ctx, *potential, *density, *kset_list[*kset_id__], 1);
+    if (!sim_ctx->full_potential()) {
+        dft_ground_state->initialize_subspace();
+    }
 }
 
 void sirius_ground_state_clear()
@@ -1891,6 +2101,18 @@ void sirius_get_fft_comm(int32_t* fcomm__)
 {
     PROFILE();
     *fcomm__ = MPI_Comm_c2f(sim_ctx->fft().comm().mpi_comm());
+}
+
+void sirius_get_kpoint_inner_comm(int32_t* fcomm__)
+{
+    PROFILE();
+    *fcomm__ = MPI_Comm_c2f(sim_ctx->mpi_grid().communicator(1 << _mpi_dim_k_row_ | 1 << _mpi_dim_k_col_).mpi_comm());
+}
+
+void sirius_get_all_kpoints_comm(int32_t* fcomm__)
+{
+    PROFILE();
+    *fcomm__ = MPI_Comm_c2f(sim_ctx->mpi_grid().communicator(1 << _mpi_dim_k_).mpi_comm());
 }
 
 void sirius_forces(double* forces__)
@@ -2023,8 +2245,6 @@ void sirius_set_atom_type_beta_rf(char* label__,
     }
     type.pp_desc().beta_radial_functions = mdarray<double, 2>(type.num_mt_points(), *num_beta__);
     beta_rf >> type.pp_desc().beta_radial_functions;
-    //type.pp_desc().augmentation_ = true;
-    //type.pp_desc().is_initialized = true;
 }
 
 void sirius_set_atom_type_q_rf(char* label__,
@@ -2042,20 +2262,16 @@ void sirius_set_atom_type_q_rf(char* label__,
     /* allocate space for radial functions of Q operator */
     type.pp_desc().q_radial_functions_l = mdarray<double, 3>(type.num_mt_points(), nbeta * (nbeta + 1) / 2, 2 * type.pp_desc().lmax_beta_ + 1);
 
-    for (int nb = 0; nb < nbeta; nb++)
-    {
-        for (int mb = nb; mb < nbeta; mb++)
-        {
+    for (int nb = 0; nb < nbeta; nb++) {
+        for (int mb = nb; mb < nbeta; mb++) {
             /* combined index */
             int ijv = (mb + 1) * mb / 2 + nb;
 
-            if (*lmax__ ==  type.pp_desc().lmax_beta_)
-            {
-                for (int l = 0; l <= 2 * type.pp_desc().lmax_beta_; l++)
+            if (*lmax__ ==  type.pp_desc().lmax_beta_) {
+                for (int l = 0; l <= 2 * type.pp_desc().lmax_beta_; l++) {
                     std::memcpy(&type.pp_desc().q_radial_functions_l(0, ijv, l), &q_rf(0, ijv, l), type.num_mt_points() * sizeof(double));
-            }
-            else
-            {
+                }
+            } else {
                 std::stringstream s;
                 s << "wrong lmax for " << std::string(label__) << " " << std::endl
                   << "lmax: " << *lmax__ << std::endl
@@ -2064,6 +2280,7 @@ void sirius_set_atom_type_q_rf(char* label__,
             }
         }
     }
+    type.pp_desc().augment = true;
 }
 
 void sirius_set_atom_type_rho_core(char const* label__,
@@ -2830,6 +3047,18 @@ void sirius_get_paw_one_elec_energy(double* one_elec_en__)
     else
     {
         TERMINATE("ERROR: ");
+    }
+}
+
+void sirius_reduce_coordinates(ftn_double* coord__,
+                               ftn_double* reduced_coord__, 
+                               ftn_int* T__)
+{
+    vector3d<double> coord(coord__[0], coord__[1], coord__[2]);
+    auto result = Utils::reduce_coordinates(coord);
+    for (int x: {0, 1, 2}) {
+        reduced_coord__[x] = result.first[x];
+        T__[x] = result.second[x];
     }
 }
 

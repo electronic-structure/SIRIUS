@@ -297,6 +297,11 @@ inline void Band::solve_for_kset(K_set& kset, Potential& potential, bool precomp
         }
     }
 
+    /* experimental: switch to faster solver method after 1st iteration */
+    if (!ctx_.full_potential()) {
+        ctx_.iterative_solver_input_section().converge_occupied_ = 1;
+    }
+
     /* synchronize eigen-values */
     kset.sync_band_energies();
 

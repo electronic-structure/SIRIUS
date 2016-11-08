@@ -32,12 +32,14 @@ inline void Band::initialize_subspace(K_point* kp__,
                 double_complex phase_factor = std::exp(double_complex(0.0, -phase));
 
                 auto& atom_type = unit_cell_.atom(ia).type();
-                for (size_t i = 0; i < atom_type.pp_desc().atomic_pseudo_wfs_.size(); i++) {
-                    int l = atom_type.pp_desc().atomic_pseudo_wfs_[i].first;
+                //for (size_t i = 0; i < atom_type.pp_desc().atomic_pseudo_wfs_.size(); i++) {
+                for (int l = 0; l <= lmax__; l++) {
+                    //int l = atom_type.pp_desc().atomic_pseudo_wfs_[i].first;
                     for (int m = -l; m <= l; m++) {
                         int lm = Utils::lm_by_l_m(l, m);
                         double_complex z = std::pow(double_complex(0, -1), l) * fourpi / std::sqrt(unit_cell_.omega());
-                        phi.pw_coeffs().prime(igk_loc, n++) = z * phase_factor * gkvec_rlm[lm] * rad_int__[atom_type.id()][i](vs[0]);
+                        //phi.pw_coeffs().prime(igk_loc, n++) = z * phase_factor * gkvec_rlm[lm] * rad_int__[atom_type.id()][i](vs[0]);
+                        phi.pw_coeffs().prime(igk_loc, n++) = z * phase_factor * gkvec_rlm[lm] * rad_int__[atom_type.id()][l](vs[0]);
                     }
                 }
             }
@@ -138,9 +140,9 @@ inline void Band::initialize_subspace(K_point* kp__,
     //#endif
 
     int bs = ctx_.cyclic_block_size();
-    dmatrix<T> hmlt(num_phi, num_phi, ctx_.blacs_grid(), bs, bs);
-    dmatrix<T> ovlp(num_phi, num_phi, ctx_.blacs_grid(), bs, bs);
-    dmatrix<T> evec(num_phi, num_phi, ctx_.blacs_grid(), bs, bs);
+    auto mem_type = (std_evp_solver().type() == ev_magma) ? memory_t::host_pinned : memory_t::host;
+    dmatrix<T> hmlt(num_phi, num_phi, ctx_.blacs_grid(), bs, bs, mem_type);
+    dmatrix<T> evec(num_phi, num_phi, ctx_.blacs_grid(), bs, bs, mem_type);
     dmatrix<T> hmlt_old;
 
     std::vector<double> eval(num_bands);
@@ -155,7 +157,6 @@ inline void Band::initialize_subspace(K_point* kp__,
         ophi.allocate_on_device();
         wf_tmp.allocate_on_device();
         evec.allocate(memory_t::device);
-        ovlp.allocate(memory_t::device);
         hmlt.allocate(memory_t::device);
     }
     #endif
@@ -172,7 +173,7 @@ inline void Band::initialize_subspace(K_point* kp__,
         /* apply Hamiltonian and overlap operators to the new basis functions */
         apply_h_o<T>(kp__, ispn, 0, num_phi, phi, hphi, ophi, hloc, d_op, q_op);
         
-        orthogonalize<T>(0, num_phi, phi, hphi, ophi, ovlp, wf_tmp);
+        orthogonalize<T>(0, num_phi, phi, hphi, ophi, hmlt, wf_tmp);
 
         /* setup eigen-value problem */
         set_subspace_mtrx<T>(0, num_phi, phi, hphi, hmlt, hmlt_old);

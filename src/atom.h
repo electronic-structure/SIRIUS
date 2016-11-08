@@ -119,10 +119,13 @@ class Atom
 
             if (type().parameters().full_potential()) {
                 int lmmax = Utils::lmmax(lmax_pot_);
+                int nrf = type().indexr().size();
 
-                h_radial_integrals_ = mdarray<double, 3>(lmmax, type().indexr().size(), type().indexr().size());
+                h_radial_integrals_ = mdarray<double, 3>(lmmax, nrf, nrf);
+                h_radial_integrals_.zero();
 
-                b_radial_integrals_ = mdarray<double, 4>(lmmax, type().indexr().size(), type().indexr().size(), type().parameters().num_mag_dims());
+                b_radial_integrals_ = mdarray<double, 4>(lmmax, nrf, nrf, type().parameters().num_mag_dims());
+                b_radial_integrals_.zero();
 
                 occupation_matrix_ = mdarray<double_complex, 4>(16, 16, 2, 2);
 
@@ -268,7 +271,12 @@ class Atom
         {
             return &h_radial_integrals_(0, idxrf1, idxrf2);
         }
-        
+
+        inline double* h_radial_integrals(int idxrf1, int idxrf2)
+        {
+            return &h_radial_integrals_(0, idxrf1, idxrf2);
+        }
+
         inline double const* b_radial_integrals(int idxrf1, int idxrf2, int x) const
         {
             return &b_radial_integrals_(0, idxrf1, idxrf2, x);

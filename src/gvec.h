@@ -490,7 +490,7 @@ class Gvec
             int z0 = G__[2] - z_columns_[icol].z[0];
             int offs = (z0 >= 0) ? z0 : z0 + col_size;
             int ig = ig0 + offs;
-            //assert(ig < num_gvec());
+            assert(ig < num_gvec());
             return ig;
         }
 

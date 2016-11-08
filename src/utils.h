@@ -371,8 +371,13 @@ class Utils
                 }
             }
             for (int x: {0, 1, 2}) {
-                if (std::abs(coord[x] - (v.first[x] + v.second[x])) > 1e-12) {
-                    TERMINATE("wrong coordinate reduction");
+                if (std::abs(coord[x] - (v.first[x] + v.second[x])) > eps) {
+                    std::stringstream s;
+                    s << "wrong coordinate reduction" << std::endl
+                      << "  original coord: " << coord << std::endl
+                      << "  reduced coord: " << v.first << std::endl
+                      << "  T: " << v.second;
+                    TERMINATE(s);
                 }
             }
             return v;

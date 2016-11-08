@@ -193,7 +193,7 @@ struct Iterative_solver_input_section
     double energy_tolerance_{1e-6};
     double residual_tolerance_{1e-6};
     int converge_by_energy_{1}; // TODO: rename, this is meaningless
-    int converge_occupied_{1};
+    int converge_occupied_{0};
     int min_num_res_{0};
     int real_space_prj_{0}; // TODO: move it from here to parameters
     double R_mask_scale_{1.5};
@@ -237,12 +237,12 @@ struct Iterative_solver_input_section
 struct Control_input_section
 {
     std::vector<int> mpi_grid_dims_;
-    int cyclic_block_size_{32};
+    int cyclic_block_size_{-1};
     bool reduce_gvec_{true};
-    std::string std_evp_solver_name_{"lapack"};
-    std::string gen_evp_solver_name_{"lapack"};
+    std::string std_evp_solver_name_{""};
+    std::string gen_evp_solver_name_{""};
     std::string fft_mode_{"serial"};
-    std::string processing_unit_{"cpu"};
+    std::string processing_unit_{""};
     double rmt_max_{2.2};
     double spglib_tolerance_{1e-4};
 
@@ -258,7 +258,10 @@ struct Control_input_section
         rmt_max_             = parser["control"].value("rmt_max", rmt_max_);
         spglib_tolerance_    = parser["control"].value("spglib_tolerance", spglib_tolerance_);
 
-        std::transform(processing_unit_.begin(), processing_unit_.end(), processing_unit_.begin(), ::tolower);
+        auto strings = {&std_evp_solver_name_, &gen_evp_solver_name_, &fft_mode_, &processing_unit_};
+        for (auto s: strings) {
+            std::transform(s->begin(), s->end(), s->begin(), ::tolower);
+        }
     }
 };
 
