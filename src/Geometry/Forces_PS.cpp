@@ -183,4 +183,11 @@ mdarray<double,2> Forces_PS::calc_nonlocal_forces(K_set& kset) const
 
 
 
+//---------------------------------------------------------------
+//---------------------------------------------------------------
+void Forces_PS::symmetrize_forces(mdarray<double,2>& forces)
+{
+
+}
+
 }

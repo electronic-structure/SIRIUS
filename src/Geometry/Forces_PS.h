@@ -108,6 +108,8 @@ private:
         }
     }
 
+    void symmetrize_forces(mdarray<double,2>& forces);
+
 public:
     Forces_PS(Simulation_context &ctx, Density& density, Potential& potential)
     : ctx_(ctx), density_(density), potential_(potential)
