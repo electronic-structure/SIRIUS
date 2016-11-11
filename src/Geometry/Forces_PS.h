@@ -75,6 +75,7 @@ private:
                 {
                     int ia = bp.beta_chunk(icnk).desc_(3, ia_chunk);
                     int offs = bp.beta_chunk(icnk).desc_(1, ia_chunk);
+                    int iat = unit_cell.atom(ia).type_id();
 
                     // mpi
                     // TODO make in smart way with matrix multiplication
@@ -84,8 +85,9 @@ private:
 
                         auto D_aug_mtrx = [&](int i, int j)
                                 {
+
                                     return unit_cell.atom(ia).d_mtrx(i, j, ispn) - kpoint.band_energy(ibnd) *
-                                            ctx_.augmentation_op(ia).q_mtrx(i, j);
+                                            ctx_.augmentation_op(iat).q_mtrx(i, j);
                                 };
 
                         for(int ibf = 0; ibf < unit_cell.atom(ia).type().mt_lo_basis_size(); ibf++ )
