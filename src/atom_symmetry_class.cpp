@@ -98,11 +98,18 @@ void Atom_symmetry_class::generate_aw_radial_functions(relativity_t rel__)
                 norm = 1.0 / std::sqrt(norm);
 
                 for (int ir = 0; ir < nmtp; ir++) {
-                    radial_functions_(ir, idxrf, 0) *= (norm * atom_type_.radial_grid().x_inv(ir));
+                    radial_functions_(ir, idxrf, 0) *= norm;
                     radial_functions_(ir, idxrf, 1) *= norm;
                 }
                 for (int i: {0, 1, 2}) {
                     aw_surface_derivatives_(order, l, i) *= norm;
+                }
+            }
+            /* divide by r */
+            for (int order = 0; order < (int)aw_descriptor(l).size(); order++) {
+                int idxrf = atom_type_.indexr().index_by_l_order(l, order);
+                for (int ir = 0; ir < nmtp; ir++) {
+                    radial_functions_(ir, idxrf, 0) *= atom_type_.radial_grid().x_inv(ir);
                 }
             }
         }
@@ -122,29 +129,28 @@ void Atom_symmetry_class::generate_lo_radial_functions(relativity_t rel__)
         double a[3][3];
 
         #pragma omp for schedule(dynamic, 1)
-        for (int idxlo = 0; idxlo < num_lo_descriptors(); idxlo++)
-        {
+        for (int idxlo = 0; idxlo < num_lo_descriptors(); idxlo++) {
             /* number of radial solutions */
             int num_rs = static_cast<int>(lo_descriptor(idxlo).rsd_set.size());
             assert(num_rs <= 3);
 
-            std::vector< std::vector<double> > p(num_rs);
-            std::vector< std::vector<double> > rdudr(num_rs);
+            std::vector<std::vector<double>> p(num_rs);
+            std::vector<std::vector<double>> rdudr(num_rs);
             std::array<double, 2> uderiv;
 
-            for (int order = 0; order < num_rs; order++)
-            {
+            for (int order = 0; order < num_rs; order++) {
                 auto rsd = lo_descriptor(idxlo).rsd_set[order];
                 
                 solver.solve(rel__, rsd.dme, rsd.l, rsd.enu, p[order], rdudr[order], uderiv);
 
                 /* find norm of the radial solution */
-                for (int ir = 0; ir < nmtp; ir++) s[ir] = std::pow(p[order][ir], 2);
+                for (int ir = 0; ir < nmtp; ir++) {
+                    s[ir] = std::pow(p[order][ir], 2);
+                }
                 double norm = 1.0 / std::sqrt(s.interpolate().integrate(0));
 
                 /* normalize radial solution and divide by r */
-                for (int ir = 0; ir < nmtp; ir++)
-                {
+                for (int ir = 0; ir < nmtp; ir++) {
                     p[order][ir] *= (norm * atom_type_.radial_grid().x_inv(ir));
                     /* don't divide rdudr by r */
                     rdudr[order][ir] *= norm;
@@ -335,128 +341,6 @@ void Atom_symmetry_class::dump_lo()
     fclose(fout);
 }
 
-//void Atom_symmetry_class::transform_radial_functions(bool ort_lo, bool ort_aw)
-//{
-//    runtime::Timer t("sirius::Atom_symmetry_class::transform_radial_functions");
-//
-//    int nmtp = atom_type_.num_mt_points();
-//    Spline<double> s(atom_type_.radial_grid());
-//    for (int l = 0; l <= atom_type_.indexr().lmax_lo(); l++)
-//    {
-//        // if we have local orbitals for the given l
-//        if ((atom_type_.indexr().num_lo(l) > 1) && ort_lo)
-//        {
-//            int naw = (atom_type_.num_aw_descriptors() > l) ? (int)atom_type_.aw_descriptor(l).size() : 0;
-//
-//            // orthogonalize local orbitals
-//            for (int order1 = 1; order1 < atom_type_.indexr().num_lo(l); order1++)
-//            {
-//                int idxrf1 = atom_type_.indexr().index_by_l_order(l, naw + order1);
-//
-//                for (int order2 = 0; order2 < order1; order2++)
-//                {
-//                    int idxrf2 = atom_type_.indexr().index_by_l_order(l, naw + order2);
-//
-//                    for (int ir = 0; ir < nmtp; ir++)
-//                        s[ir] = radial_functions_(ir, idxrf1, 0) * radial_functions_(ir, idxrf2, 0);
-//                    double t1 = s.interpolate().integrate(2);
-//                        
-//                    for (int ir = 0; ir < nmtp; ir++)
-//                    {
-//                        radial_functions_(ir, idxrf1, 0) -= radial_functions_(ir, idxrf2, 0) * t1;
-//                        radial_functions_(ir, idxrf1, 1) -= radial_functions_(ir, idxrf2, 1) * t1;
-//                    }
-//                }
-//                    
-//                /* normalize again */
-//                for (int ir = 0; ir < nmtp; ir++) s[ir] = pow(radial_functions_(ir, idxrf1, 0), 2);
-//                double norm = s.interpolate().integrate(2);
-//
-//                if (std::abs(norm) < 1e-10) 
-//                {
-//                    std::stringstream s;
-//                    s << "local orbital radial function for l = " << l << ", order = " << order1 << 
-//                         " is linearly dependent";
-//                    TERMINATE(s);
-//                }
-//
-//                norm = 1.0 / std::sqrt(norm);
-//
-//                for (int ir = 0; ir < nmtp; ir++)
-//                {
-//                    radial_functions_(ir, idxrf1, 0) *= norm;
-//                    radial_functions_(ir, idxrf1, 1) *= norm;
-//                }
-//            }
-//        }
-//        
-//        if ((atom_type_.indexr().num_lo(l) > 0) && ort_aw)
-//        {
-//            int naw = (int)atom_type_.aw_descriptor(l).size();
-//
-//            /* orthogonalize aw functions to local orbitals */
-//            for (int order1 = 0; order1 < naw; order1++)
-//            {
-//                int idxrf1 = atom_type_.indexr().index_by_l_order(l, order1);
-//                for (int order2 = 0; order2 < atom_type_.indexr().num_lo(l); order2++)
-//                {
-//                    int idxrf2 = atom_type_.indexr().index_by_l_order(l, naw + order2);
-//                    
-//                    for (int ir = 0; ir < nmtp; ir++)
-//                        s[ir] = radial_functions_(ir, idxrf1, 0) * radial_functions_(ir, idxrf2, 0);
-//                    s.interpolate();
-//                    double t1 = s.integrate(1);
-//                        
-//                    for (int ir = 0; ir < nmtp; ir++)
-//                    {
-//                        radial_functions_(ir, idxrf1, 0) -= atom_type_.radial_grid(ir) * 
-//                                                            radial_functions_(ir, idxrf2, 0) * t1;
-//                        radial_functions_(ir, idxrf1, 1) -= radial_functions_(ir, idxrf2, 1) * t1;
-//                    }
-//                }
-//                    
-//                /* normalize again */
-//                for (int ir = 0; ir < nmtp; ir++) s[ir] = pow(radial_functions_(ir, idxrf1, 0), 2);
-//                double norm = s.interpolate().integrate(0);
-//
-//                if (fabs(norm) < 1e-10) 
-//                    TERMINATE("aw radial function is linearly dependent");
-//
-//                norm = 1.0 / std::sqrt(norm);
-//
-//                for (int ir = 0; ir < nmtp; ir++)
-//                {
-//                    radial_functions_(ir, idxrf1, 0) *= norm;
-//                    radial_functions_(ir, idxrf1, 1) *= norm;
-//                }
-//
-//                TERMINATE("first, fix the radial derivative");
-//                
-//                // this is not precise
-//                double rderiv = (radial_functions_(nmtp - 1, idxrf1, 0) - radial_functions_(nmtp - 2, idxrf1, 0)) / 
-//                                atom_type_.radial_grid().dx(nmtp - 2);
-//                double R = atom_type_.mt_radius();
-//
-//                aw_surface_derivatives_(order1, l, 0) = (rderiv - radial_functions_(nmtp - 1, idxrf1, 0) / R) / R;
-//            }
-//
-//        }
-//    }
-//   
-//    /* divide AW radial functions by r */
-//    for (int l = 0; l < num_aw_descriptors(); l++)
-//    {
-//        for (int order = 0; order < (int)aw_descriptor(l).size(); order++)
-//        {
-//            int idxrf = atom_type_.indexr().index_by_l_order(l, order);
-//            for (int ir = 0; ir < nmtp; ir++)
-//            {
-//                radial_functions_(ir, idxrf, 0) *= atom_type_.radial_grid().x_inv(ir);
-//            }
-//        }
-//    }
-//}
-
 void Atom_symmetry_class::initialize()
 {
     aw_surface_derivatives_ = mdarray<double, 3>(atom_type_.max_aw_order(), atom_type_.num_aw_descriptors(), 3);
@@ -497,13 +381,15 @@ void Atom_symmetry_class::set_spherical_potential(std::vector<double> const& vs_
 
     spherical_potential_ = vs__;
 
+    //HDF5_tree fout("mt_potential.h5", true);
+    //fout.write("potential", spherical_potential_);
+
     ///* write spherical potential */
     //std::stringstream sstr;
     //sstr << "mt_spheric_potential_" << id_ << ".dat";
     //FILE* fout = fopen(sstr.str().c_str(), "w");
 
-    //for (int ir = 0; ir < atom_type_.num_mt_points(); ir++)
-    //{
+    //for (int ir = 0; ir < atom_type_.num_mt_points(); ir++) {
     //    double r = atom_type_.radial_grid(ir);
     //    fprintf(fout, "%20.10f %20.10f \n", r, spherical_potential_[ir] + atom_type_.zn() / r);
     //}
@@ -550,36 +436,18 @@ void Atom_symmetry_class::generate_radial_functions(relativity_t rel__)
 {
     runtime::Timer t("sirius::Atom_symmetry_class::generate_radial_functions");
 
-    #ifdef __PRINT_OBJECT_HASH
-    DUMP("hash(spherical_potential): %16llX", mdarray<double, 1>(&spherical_potential_[0], atom_type_.num_mt_points()).hash());
-    #endif
-
     radial_functions_.zero();
 
     find_enu(rel__);
 
     generate_aw_radial_functions(rel__);
 
-    #ifdef __PRINT_OBJECT_HASH
-    DUMP("hash(aw_radial_functions): %16llX", radial_functions_.hash());
-    #endif
-
     generate_lo_radial_functions(rel__);
 
-    #ifdef __PRINT_OBJECT_HASH
-    DUMP("hash(aw_and_lo_radial_functions): %16llX", radial_functions_.hash());
-    #endif
-
-    //transform_radial_functions(false, false);
-
     #ifdef __PRINT_OBJECT_CHECKSUM
-    DUMP("checksum(spherical_potential): %18.10f", mdarray<double, 1>(&spherical_potential_[0], atom_type_.num_mt_points()).checksum());
+    DUMP("checksum(spherical_potential): %18.10f", mdarray<double, 1>(spherical_potential_.data(), atom_type_.num_mt_points()).checksum());
     DUMP("checksum(radial_functions): %18.10f", radial_functions_.checksum());
     #endif
-    #ifdef __PRINT_OBJECT_HASH
-    DUMP("hash(radial_functions): %16llX", radial_functions_.hash());
-    #endif
-
     
     //** if (verbosity_level > 0)
     //** {
@@ -598,6 +466,7 @@ void Atom_symmetry_class::generate_radial_functions(relativity_t rel__)
     //**     }
     //**     fclose(fout);
     //** }
+    //** STOP();
 }
 
 void Atom_symmetry_class::sync_radial_functions(Communicator const& comm__, int const rank__)
