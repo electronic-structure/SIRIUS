@@ -289,7 +289,6 @@ inline void Band::apply_o(K_point* kp__,
 
 inline void Band::apply_fv_h_o(K_point* kp__,
                                Interstitial_operator& istl_op__, 
-                               Periodic_function<double>* effective_potential__,
                                int nlo__,
                                int N__,
                                int n__,
@@ -465,8 +464,11 @@ inline void Band::apply_fv_h_o(K_point* kp__,
                               hphi__.pw_coeffs().prime().ld());
         }
         #endif
-
         t1.stop();
+
+        if (!nlo) {
+            continue;
+        }
             
         /* local orbital coefficients of atom ia for all states */
         matrix<double_complex> phi_lo_ia(nlo, n__);
