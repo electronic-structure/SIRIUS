@@ -85,21 +85,25 @@ inline void Band::diag_fv_full_potential_exact(K_point* kp, Periodic_function<do
     //== 
     //== for (int i = 0; i < ctx_.num_fv_states(); i++) {
     //==     std::memcpy(phi.pw_coeffs().prime().at<CPU>(0, i),
-    //==                 kp->fv_eigen_vectors().prime().at<CPU>(0, i),
+    //==                 kp->fv_eigen_vectors().at<CPU>(0, i),
     //==                 kp->num_gkvec() * sizeof(double_complex));
-
-    //==     std::memcpy(phi.mt_coeffs().prime().at<CPU>(0, i),
-    //==                 kp->fv_eigen_vectors().prime().at<CPU>(kp->num_gkvec(), i),
-    //==                 unit_cell_.mt_lo_basis_size() * sizeof(double_complex));
-
+    //==     if (unit_cell_.mt_lo_basis_size()) {
+    //==         std::memcpy(phi.mt_coeffs().prime().at<CPU>(0, i),
+    //==                     kp->fv_eigen_vectors().at<CPU>(kp->num_gkvec(), i),
+    //==                     unit_cell_.mt_lo_basis_size() * sizeof(double_complex));
+    //==     }
     //== }
-    //== apply_fv_h_o(kp, effective_potential, 0, ctx_.num_fv_states(), phi, hphi, ophi);
 
-    //== matrix<double_complex> ovlp(ctx_.num_fv_states(), ctx_.num_fv_states());
-    //== matrix<double_complex> hmlt(ctx_.num_fv_states(), ctx_.num_fv_states());
+    //== Interstitial_operator istl_op(ctx_.fft_coarse(), ctx_.gvec_coarse(),
+    //==                               ctx_.mpi_grid_fft_vloc().communicator(1 << 1),
+    //==                               effective_potential, ctx_.step_function());
+    //== apply_fv_h_o(kp, istl_op, 0, 0, ctx_.num_fv_states(), phi, hphi, ophi);
 
-    //== inner(phi, 0, ctx_.num_fv_states(), hphi, 0, ctx_.num_fv_states(), hmlt, 0, 0, kp->comm(), ctx_.processing_unit());
-    //== inner(phi, 0, ctx_.num_fv_states(), ophi, 0, ctx_.num_fv_states(), ovlp, 0, 0, kp->comm(), ctx_.processing_unit());
+    //== dmatrix<double_complex> ovlp(ctx_.num_fv_states(), ctx_.num_fv_states(), ctx_.blacs_grid(), ctx_.cyclic_block_size(), ctx_.cyclic_block_size());
+    //== dmatrix<double_complex> hmlt(ctx_.num_fv_states(), ctx_.num_fv_states(), ctx_.blacs_grid(), ctx_.cyclic_block_size(), ctx_.cyclic_block_size());
+
+    //== inner(phi, 0, ctx_.num_fv_states(), hphi, 0, ctx_.num_fv_states(), hmlt, 0, 0);
+    //== inner(phi, 0, ctx_.num_fv_states(), ophi, 0, ctx_.num_fv_states(), ovlp, 0, 0);
 
     //== for (int i = 0; i < ctx_.num_fv_states(); i++) {
     //==     for (int j = 0; j < ctx_.num_fv_states(); j++) {
@@ -113,7 +117,6 @@ inline void Band::diag_fv_full_potential_exact(K_point* kp, Periodic_function<do
     //==         }
     //==     }
     //== }
-    //== STOP();
 }
 
 template <typename T>
@@ -502,7 +505,7 @@ inline void Band::diag_fv_full_potential_davidson(K_point* kp,
     /* start iterative diagonalization */
     for (int k = 0; k < itso.num_steps_; k++) {
         /* apply Hamiltonian and overlap operators to the new basis functions */
-        apply_fv_h_o(kp, istl_op, effective_potential, nlo, N, n, phi, hphi, ophi);
+        apply_fv_h_o(kp, istl_op, nlo, N, n, phi, hphi, ophi);
         
         orthogonalize(N, n, phi, hphi, ophi, ovlp, res);
 
