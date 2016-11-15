@@ -233,7 +233,10 @@ class Timer
               comm_(nullptr),
               active_(false)
         {
-            if (timers().count(label_) == 0) timers()[label_] = std::vector<double>();
+            #pragma omp critical
+            if (timers().count(label_) == 0) {
+                timers()[label_] = std::vector<double>();
+            }
 
             start();
         }
@@ -273,13 +276,13 @@ class Timer
             #endif
 
             #ifdef __TIMER
-            #ifndef NDEBUG
-            if (omp_get_num_threads() != 1) {
-                printf("std::map used by Timer is not thread-safe\n");
-                printf("timer name: %s\n", label_.c_str());
-                exit(-1);
-            }
-            #endif
+            //#ifndef NDEBUG
+            //if (omp_get_num_threads() != 1) {
+            //    printf("std::map used by Timer is not thread-safe\n");
+            //    printf("timer name: %s\n", label_.c_str());
+            //    exit(-1);
+            //}
+            //#endif
 
             if (active_) {
                 printf("timer %s is already running\n", label_.c_str());
@@ -326,6 +329,7 @@ class Timer
             double val = tdiff.count();
             #endif
             
+            #pragma omp critical
             timers()[label_].push_back(val);
 
             active_ = false;
