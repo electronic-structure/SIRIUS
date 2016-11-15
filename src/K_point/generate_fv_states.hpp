@@ -92,9 +92,11 @@ inline void K_point::generate_fv_states()
                             tmp1.at<CPU>(0, i),
                             mt_aw_size * sizeof(double_complex));
                 /* lo block */
-                std::memcpy(fv_states().mt_coeffs().prime().at<CPU>(offset1 + mt_aw_size, i),
-                            fv_eigen_vectors_slab().mt_coeffs().prime().at<CPU>(offset2, i),
-                            mt_lo_size * sizeof(double_complex));
+                if (mt_lo_size) {
+                    std::memcpy(fv_states().mt_coeffs().prime().at<CPU>(offset1 + mt_aw_size, i),
+                                fv_eigen_vectors_slab().mt_coeffs().prime().at<CPU>(offset2, i),
+                                mt_lo_size * sizeof(double_complex));
+                }
             }
         }
     }
