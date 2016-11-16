@@ -732,7 +732,7 @@ inline void Band::diag_pseudo_potential_davidson(K_point* kp__,
         /* check if occupied bands have converged */
         bool occ_band_converged = true;
         for (int i = 0; i < num_bands; i++) {
-            if (kp__->band_occupancy(i + ispn__ * ctx_.num_fv_states()) > 1e-2 &&
+            if (kp__->band_occupancy(i + ispn__ * ctx_.num_fv_states()) > 1e-6 &&
                 std::abs(eval_old[i] - eval[i]) > ctx_.iterative_solver_tolerance()) {
                 occ_band_converged = false;
             }
