@@ -248,19 +248,21 @@ struct Control_input_section
 
     void read(json const& parser)
     {
-        mpi_grid_dims_       = parser["control"].value("mpi_grid_dims", mpi_grid_dims_); 
-        cyclic_block_size_   = parser["control"].value("cyclic_block_size", cyclic_block_size_);
-        std_evp_solver_name_ = parser["control"].value("std_evp_solver_type", std_evp_solver_name_);
-        gen_evp_solver_name_ = parser["control"].value("gen_evp_solver_type", gen_evp_solver_name_);
-        processing_unit_     = parser["control"].value("processing_unit", processing_unit_);
-        fft_mode_            = parser["control"].value("fft_mode", fft_mode_);
-        reduce_gvec_         = parser["control"].value("reduce_gvec", reduce_gvec_);
-        rmt_max_             = parser["control"].value("rmt_max", rmt_max_);
-        spglib_tolerance_    = parser["control"].value("spglib_tolerance", spglib_tolerance_);
+        if (parser.count("control")) {
+            mpi_grid_dims_       = parser["control"].value("mpi_grid_dims", mpi_grid_dims_); 
+            cyclic_block_size_   = parser["control"].value("cyclic_block_size", cyclic_block_size_);
+            std_evp_solver_name_ = parser["control"].value("std_evp_solver_type", std_evp_solver_name_);
+            gen_evp_solver_name_ = parser["control"].value("gen_evp_solver_type", gen_evp_solver_name_);
+            processing_unit_     = parser["control"].value("processing_unit", processing_unit_);
+            fft_mode_            = parser["control"].value("fft_mode", fft_mode_);
+            reduce_gvec_         = parser["control"].value("reduce_gvec", reduce_gvec_);
+            rmt_max_             = parser["control"].value("rmt_max", rmt_max_);
+            spglib_tolerance_    = parser["control"].value("spglib_tolerance", spglib_tolerance_);
 
-        auto strings = {&std_evp_solver_name_, &gen_evp_solver_name_, &fft_mode_, &processing_unit_};
-        for (auto s: strings) {
-            std::transform(s->begin(), s->end(), s->begin(), ::tolower);
+            auto strings = {&std_evp_solver_name_, &gen_evp_solver_name_, &fft_mode_, &processing_unit_};
+            for (auto s: strings) {
+                std::transform(s->begin(), s->end(), s->begin(), ::tolower);
+            }
         }
     }
 };
@@ -292,41 +294,43 @@ struct Parameters_input_section
 
     void read(json const& parser)
     {
-        esm_ = parser["parameters"].value("electronic_structure_method", esm_);
-        std::transform(esm_.begin(), esm_.end(), esm_.begin(), ::tolower);
+        if (parser.count("parameters")) {
+            esm_ = parser["parameters"].value("electronic_structure_method", esm_);
+            std::transform(esm_.begin(), esm_.end(), esm_.begin(), ::tolower);
 
-        /* read list of XC functionals */
-        if (parser["parameters"].count("xc_functionals")) {
-            xc_functionals_.clear();
-            for (auto& label: parser["parameters"]["xc_functionals"]) {
-                xc_functionals_.push_back(label);
+            /* read list of XC functionals */
+            if (parser["parameters"].count("xc_functionals")) {
+                xc_functionals_.clear();
+                for (auto& label: parser["parameters"]["xc_functionals"]) {
+                    xc_functionals_.push_back(label);
+                }
             }
+
+            core_relativity_ = parser["parameters"].value("core_relativity", core_relativity_);
+            std::transform(core_relativity_.begin(), core_relativity_.end(), core_relativity_.begin(), ::tolower);
+
+            valence_relativity_ = parser["parameters"].value("valence_relativity", valence_relativity_);
+            std::transform(valence_relativity_.begin(), valence_relativity_.end(), valence_relativity_.begin(), ::tolower);
+
+            num_fv_states_  = parser["parameters"].value("num_fv_states", num_fv_states_);
+            smearing_width_ = parser["parameters"].value("smearing_width", smearing_width_);
+            pw_cutoff_      = parser["parameters"].value("pw_cutoff", pw_cutoff_);
+            aw_cutoff_      = parser["parameters"].value("aw_cutoff", aw_cutoff_);
+            gk_cutoff_      = parser["parameters"].value("gk_cutoff", gk_cutoff_);
+            lmax_apw_       = parser["parameters"].value("lmax_apw", lmax_apw_);
+            lmax_rho_       = parser["parameters"].value("lmax_rho", lmax_rho_);
+            lmax_pot_       = parser["parameters"].value("lmax_pot", lmax_pot_);
+            num_mag_dims_   = parser["parameters"].value("num_mag_dims", num_mag_dims_);
+            auto_rmt_       = parser["parameters"].value("auto_rmt", auto_rmt_);
+            use_symmetry_   = parser["parameters"].value("use_symmetry", use_symmetry_);
+            gamma_point_    = parser["parameters"].value("gamma_point", gamma_point_);
+            ngridk_         = parser["parameters"].value("ngridk", ngridk_);
+            shiftk_         = parser["parameters"].value("shiftk", shiftk_);
+            num_dft_iter_   = parser["parameters"].value("num_dft_iter", num_dft_iter_);
+            energy_tol_     = parser["parameters"].value("energy_tol", energy_tol_);
+            potential_tol_  = parser["parameters"].value("potential_tol", potential_tol_);
+            molecule_       = parser["parameters"].value("molecule", molecule_);
         }
-
-        core_relativity_ = parser["parameters"].value("core_relativity", core_relativity_);
-        std::transform(core_relativity_.begin(), core_relativity_.end(), core_relativity_.begin(), ::tolower);
-
-        valence_relativity_ = parser["parameters"].value("valence_relativity", valence_relativity_);
-        std::transform(valence_relativity_.begin(), valence_relativity_.end(), valence_relativity_.begin(), ::tolower);
-
-        num_fv_states_  = parser["parameters"].value("num_fv_states", num_fv_states_);
-        smearing_width_ = parser["parameters"].value("smearing_width", smearing_width_);
-        pw_cutoff_      = parser["parameters"].value("pw_cutoff", pw_cutoff_);
-        aw_cutoff_      = parser["parameters"].value("aw_cutoff", aw_cutoff_);
-        gk_cutoff_      = parser["parameters"].value("gk_cutoff", gk_cutoff_);
-        lmax_apw_       = parser["parameters"].value("lmax_apw", lmax_apw_);
-        lmax_rho_       = parser["parameters"].value("lmax_rho", lmax_rho_);
-        lmax_pot_       = parser["parameters"].value("lmax_pot", lmax_pot_);
-        num_mag_dims_   = parser["parameters"].value("num_mag_dims", num_mag_dims_);
-        auto_rmt_       = parser["parameters"].value("auto_rmt", auto_rmt_);
-        use_symmetry_   = parser["parameters"].value("use_symmetry", use_symmetry_);
-        gamma_point_    = parser["parameters"].value("gamma_point", gamma_point_);
-        ngridk_         = parser["parameters"].value("ngridk", ngridk_);
-        shiftk_         = parser["parameters"].value("shiftk", shiftk_);
-        num_dft_iter_   = parser["parameters"].value("num_dft_iter", num_dft_iter_);
-        energy_tol_     = parser["parameters"].value("energy_tol", energy_tol_);
-        potential_tol_  = parser["parameters"].value("potential_tol", potential_tol_);
-        molecule_       = parser["parameters"].value("molecule", molecule_);
     }
 };
 
