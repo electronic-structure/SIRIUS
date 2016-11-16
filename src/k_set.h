@@ -315,6 +315,8 @@ class K_set
 
 inline void K_set::sync_band_energies()
 {
+    PROFILE();
+
     mdarray<double, 2> band_energies(ctx_.num_bands(), num_kpoints());
 
     for (int ikloc = 0; ikloc < spl_num_kpoints_.local_size(); ikloc++) {
@@ -346,7 +348,7 @@ inline double K_set::valence_eval_sum()
 
 inline void K_set::find_band_occupancies()
 {
-    runtime::Timer t("sirius::K_set::find_band_occupancies");
+    PROFILE_WITH_TIMER("sirius::K_set::find_band_occupancies");
 
     double ef{0};
     double de{0.1};
@@ -358,6 +360,7 @@ inline void K_set::find_band_occupancies()
 
     mdarray<double, 2> bnd_occ(ctx_.num_bands(), num_kpoints());
     
+    int step{0};
     /* calculate occupations */
     while (std::abs(ne - unit_cell_.num_valence_electrons()) >= 1e-11) {
         /* update Efermi */
@@ -376,7 +379,27 @@ inline void K_set::find_band_occupancies()
         s = (ne > unit_cell_.num_valence_electrons()) ? -1 : 1;
         /* reduce de step if we change the direction, otherwise increase the step */
         de = (s != sp) ? (-de * 0.5) : (de * 1.25); 
-    } 
+
+        if (step > 10000) {
+            std::stringstream s;
+            s << "search of band occupancies failed";
+            WARNING(s);
+
+            ef = 0;
+
+            for (int ik = 0; ik < num_kpoints(); ik++) {
+                ne = unit_cell_.num_valence_electrons();
+                for (int j = 0; j < ctx_.num_bands(); j++) {
+                    bnd_occ(j, ik) = std::min(ne, static_cast<double>(ctx_.max_occupancy()));
+                    ne = std::max(ne - ctx_.max_occupancy(), 0.0);
+                }
+            }
+
+            break;
+        }
+        step++;
+    }
+
     energy_fermi_ = ef;
 
     for (int ik = 0; ik < num_kpoints(); ik++) {
