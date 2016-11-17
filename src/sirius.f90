@@ -819,6 +819,15 @@ module sirius
             integer,                  intent(out) :: T
         end subroutine
 
+        subroutine sirius_fderiv(m, np, x, f, g)&
+            &bind(C, name="sirius_fderiv")
+            integer,                  intent(in)  :: m
+            integer,                  intent(in)  :: np
+            real(8),                  intent(in)  :: x
+            real(8),                  intent(in)  :: f
+            real(8),                  intent(out) :: g
+        end subroutine
+
     end interface
 
 contains
