@@ -2079,9 +2079,9 @@ void sirius_ground_state_initialize(int32_t* kset_id__)
     if (dft_ground_state != nullptr) TERMINATE("dft_ground_state object is already allocate");
 
     dft_ground_state = new sirius::DFT_ground_state(*sim_ctx, *potential, *density, *kset_list[*kset_id__], 1);
-    if (!sim_ctx->full_potential()) {
-        dft_ground_state->initialize_subspace();
-    }
+//    if (!sim_ctx->full_potential()) {
+//        dft_ground_state->initialize_subspace();
+//    }
 }
 
 void sirius_ground_state_clear()

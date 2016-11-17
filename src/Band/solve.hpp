@@ -311,15 +311,15 @@ inline void Band::solve_for_kset(K_set& kset, Potential& potential, bool precomp
         for (int ik = 0; ik < kset.num_kpoints(); ik++) {
             printf("ik : %2i, ", ik);
             if (ctx_.num_mag_dims() != 1) {
-                for (int j = 0; j < std::min(10, ctx_.num_bands()); j++) {
+                for (int j = 0; j < std::min(100, ctx_.num_bands()); j++) {
                     printf("%12.6f", kset.k_point(ik)->band_energy(j));
                 }
             } else {
-                for (int j = 0; j < std::min(10, ctx_.num_fv_states()); j++) {
+                for (int j = 0; j < std::min(100, ctx_.num_fv_states()); j++) {
                     printf("%12.6f", kset.k_point(ik)->band_energy(j));
                 }
                 printf("\n         ");
-                for (int j = 0; j < std::min(10, ctx_.num_fv_states()); j++) {
+                for (int j = 0; j < std::min(100, ctx_.num_fv_states()); j++) {
                     printf("%12.6f", kset.k_point(ik)->band_energy(ctx_.num_fv_states() + j));
                 }
             }
