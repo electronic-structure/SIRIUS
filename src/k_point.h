@@ -330,6 +330,11 @@ class K_point
         {
             return band_occupancies_[j];
         }
+
+        inline double& band_occupancy(int j)
+        {
+            return band_occupancies_[j];
+        }
         
         inline double band_energy(int j) const
         {
