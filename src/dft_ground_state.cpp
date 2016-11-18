@@ -141,7 +141,7 @@ void DFT_ground_state::forces(mdarray<double, 2>& forces__)
     //Force::total_force(ctx_, potential_, density_, kset_, forces__);
 }
 
-int DFT_ground_state::find(double potential_tol, double energy_tol, int num_dft_iter)
+int DFT_ground_state::find(double potential_tol, double energy_tol, int num_dft_iter, bool write_state)
 {
     runtime::Timer t("sirius::DFT_ground_state::scf_loop");
     
@@ -264,9 +264,11 @@ int DFT_ground_state::find(double potential_tol, double energy_tol, int num_dft_
         eold = etot;
     }
     
-    ctx_.create_storage_file();
-    potential_.save();
-    density_.save();
+    if (write_state) {
+        ctx_.create_storage_file();
+        potential_.save();
+        density_.save();
+    }
 
 //    tbb_init.terminate();
 
@@ -471,7 +473,10 @@ void DFT_ground_state::initialize_subspace()
         //}
         N += atom_type.num_atoms() * n;
     }
-    printf("number of atomic orbitals: %i\n", N);
+
+    if (ctx_.comm().rank() == 0 && ctx_.control().verbosity_ > 2) {
+        printf("number of atomic orbitals: %i\n", N);
+    }
 
     for (int ikloc = 0; ikloc < kset_.spl_num_kpoints().local_size(); ikloc++) {
         int ik = kset_.spl_num_kpoints(ikloc);
@@ -485,8 +490,6 @@ void DFT_ground_state::initialize_subspace()
                                                       potential_.effective_magnetic_field(), N, lmax, rad_int);
         }
     }
-    //kset_.sync_band_energies();
-    //kset_.find_band_occupancies();
 
     /* reset the energies for the iterative solver to do at least two steps */
     for (int ik = 0; ik < kset_.num_kpoints(); ik++) {

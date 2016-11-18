@@ -80,7 +80,7 @@ class DFT_ground_state
 
         void forces(mdarray<double, 2>& atom_force);
 
-        int find(double potential_tol, double energy_tol, int num_dft_iter);
+        int find(double potential_tol, double energy_tol, int num_dft_iter, bool write_state);
 
         void relax_atom_positions();
 
