@@ -187,13 +187,17 @@ struct Mixer_input_section
 /** \todo real-space projectors are not part of iterative solver */
 struct Iterative_solver_input_section
 {
+    /// Type of the iterative solver.
     std::string type_{""};
+    /// Number of steps (iterations) of the solver.
     int num_steps_{20};
+    /// Size of the variational subspace is this number times the number of bands.
     int subspace_size_{4};
-    double energy_tolerance_{1e-6};
+    double energy_tolerance_{1e-2};
     double residual_tolerance_{1e-6};
     int converge_by_energy_{1}; // TODO: rename, this is meaningless
-    int converge_occupied_{0};
+    /// Minumum band occupancy at which the band's residual is added to the variational subspace.
+    double min_occupancy_{1e-3};
     int min_num_res_{0};
     int real_space_prj_{0}; // TODO: move it from here to parameters
     double R_mask_scale_{1.5};
@@ -209,7 +213,7 @@ struct Iterative_solver_input_section
             energy_tolerance_   = parser["iterative_solver"].value("energy_tolerance", energy_tolerance_);
             residual_tolerance_ = parser["iterative_solver"].value("residual_tolerance", residual_tolerance_);
             converge_by_energy_ = parser["iterative_solver"].value("converge_by_energy", converge_by_energy_);
-            converge_occupied_  = parser["iterative_solver"].value("converge_occupied", converge_occupied_);
+            min_occupancy_      = parser["iterative_solver"].value("min_occupancy", min_occupancy_);
             min_num_res_        = parser["iterative_solver"].value("min_num_res", min_num_res_);
             real_space_prj_     = parser["iterative_solver"].value("real_space_prj", real_space_prj_);
             R_mask_scale_       = parser["iterative_solver"].value("R_mask_scale", R_mask_scale_);
@@ -245,6 +249,7 @@ struct Control_input_section
     std::string processing_unit_{""};
     double rmt_max_{2.2};
     double spglib_tolerance_{1e-4};
+    int verbosity_{0};
 
     void read(json const& parser)
     {
@@ -258,6 +263,7 @@ struct Control_input_section
             reduce_gvec_         = parser["control"].value("reduce_gvec", reduce_gvec_);
             rmt_max_             = parser["control"].value("rmt_max", rmt_max_);
             spglib_tolerance_    = parser["control"].value("spglib_tolerance", spglib_tolerance_);
+            verbosity_           = parser["control"].value("verbosity", verbosity_);
 
             auto strings = {&std_evp_solver_name_, &gen_evp_solver_name_, &fft_mode_, &processing_unit_};
             for (auto s: strings) {
