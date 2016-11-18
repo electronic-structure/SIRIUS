@@ -249,11 +249,9 @@ inline void Band::get_singular_components(K_point* kp__, Interstitial_operator& 
     /* number of newly added basis functions */
     int n = ncomp;
 
-    #if (__VERBOSITY > 2)
-    if (kp__->comm().rank() == 0) {
+    if (ctx_.control().verbosity_ > 2 && kp__->comm().rank() == 0) {
         DUMP("iterative solver tolerance: %18.12f", ctx_.iterative_solver_tolerance());
     }
-    #endif
 
     #ifdef __PRINT_MEMORY_USAGE
     MEMORY_USAGE_INFO();
@@ -289,14 +287,12 @@ inline void Band::get_singular_components(K_point* kp__, Interstitial_operator& 
             TERMINATE(s);
         }
 
-        #if (__VERBOSITY > 2)
-        if (kp__->comm().rank() == 0) {
+        if (ctx_.control().verbosity_ > 2 && kp__->comm().rank() == 0) {
             DUMP("step: %i, current subspace size: %i, maximum subspace size: %i", k, N, num_phi);
             for (int i = 0; i < ncomp; i++) {
                 DUMP("eval[%i]=%20.16f, diff=%20.16f", i, eval[i], std::abs(eval[i] - eval_old[i]));
             }
         }
-        #endif
 
         /* don't compute residuals on last iteration */
         if (k != itso.num_steps_ - 1) {
@@ -316,11 +312,9 @@ inline void Band::get_singular_components(K_point* kp__, Interstitial_operator& 
                 break;
             }
             else { /* otherwise, set Psi as a new trial basis */
-                #if (__VERBOSITY > 2)
-                if (kp__->comm().rank() == 0) {
+                if (ctx_.control().verbosity_ > 2 && kp__->comm().rank() == 0) {
                     DUMP("subspace size limit reached");
                 }
-                #endif
 
                 ovlp_old.zero();
                 for (int i = 0; i < ncomp; i++) {
@@ -488,11 +482,9 @@ inline void Band::diag_fv_full_potential_davidson(K_point* kp,
     /* number of newly added basis functions */
     int n = nlo + ncomp + num_bands;
 
-    #if (__VERBOSITY > 2)
-    if (kp->comm().rank() == 0) {
+    if (ctx_.control().verbosity_ > 2 && kp->comm().rank() == 0) {
         DUMP("iterative solver tolerance: %18.12f", ctx_.iterative_solver_tolerance());
     }
-    #endif
 
     #ifdef __PRINT_MEMORY_USAGE
     MEMORY_USAGE_INFO();
@@ -528,14 +520,12 @@ inline void Band::diag_fv_full_potential_davidson(K_point* kp,
             TERMINATE(s);
         }
 
-        #if (__VERBOSITY > 2)
-        if (kp->comm().rank() == 0) {
+        if (ctx_.control().verbosity_ > 2 && kp->comm().rank() == 0) {
             DUMP("step: %i, current subspace size: %i, maximum subspace size: %i", k, N, num_phi);
             for (int i = 0; i < num_bands; i++) {
                 DUMP("eval[%i]=%20.16f, diff=%20.16f", i, eval[i], std::abs(eval[i] - eval_old[i]));
             }
         }
-        #endif
 
         /* don't compute residuals on last iteration */
         if (k != itso.num_steps_ - 1) {
@@ -555,11 +545,9 @@ inline void Band::diag_fv_full_potential_davidson(K_point* kp,
                 break;
             }
             else { /* otherwise, set Psi as a new trial basis */
-                #if (__VERBOSITY > 2)
-                if (kp->comm().rank() == 0) {
+                if (ctx_.control().verbosity_ > 2 && kp->comm().rank() == 0) {
                     DUMP("subspace size limit reached");
                 }
-                #endif
  
                 /* update basis functions */
                 phi.copy_from(psi, 0, num_bands, nlo + ncomp);
@@ -680,11 +668,9 @@ inline void Band::diag_pseudo_potential_davidson(K_point* kp__,
     /* number of newly added basis functions */
     int n = num_bands;
 
-    #if (__VERBOSITY > 2)
-    if (kp__->comm().rank() == 0) {
+    if (ctx_.control().verbosity_ > 2 && kp__->comm().rank() == 0) {
         DUMP("iterative solver tolerance: %18.12f", ctx_.iterative_solver_tolerance());
     }
-    #endif
 
     #ifdef __PRINT_MEMORY_USAGE
     MEMORY_USAGE_INFO();
@@ -720,15 +706,13 @@ inline void Band::diag_pseudo_potential_davidson(K_point* kp__,
             TERMINATE(s);
         }
         
-        #if (__VERBOSITY > 2)
-        if (kp__->comm().rank() == 0) {
+        if (ctx_.control().verbosity_ > 2 && kp__->comm().rank() == 0) {
             DUMP("step: %i, current subspace size: %i, maximum subspace size: %i", k, N, num_phi);
             for (int i = 0; i < num_bands; i++) {
                 DUMP("eval[%i]=%20.16f, diff=%20.16f, occ=%20.16f", i, eval[i], std::abs(eval[i] - eval_old[i]),
                      kp__->band_occupancy(i + ispn__ * ctx_.num_fv_states()));
             }
         }
-        #endif
 
         ///* check if occupied bands have converged */
         //bool occ_band_converged = true;
@@ -760,11 +744,9 @@ inline void Band::diag_pseudo_potential_davidson(K_point* kp__,
                 break;
             }
             else { /* otherwise, set Psi as a new trial basis */
-                #if (__VERBOSITY > 2)
-                if (kp__->comm().rank() == 0) {
+                if (ctx_.control().verbosity_ > 2 && kp__->comm().rank() == 0) {
                     DUMP("subspace size limit reached");
                 }
-                #endif
                 hmlt_old.zero();
                 for (int i = 0; i < num_bands; i++) {
                     hmlt_old.set(i, i, eval[i]);
