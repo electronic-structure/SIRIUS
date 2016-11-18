@@ -250,6 +250,7 @@ struct Control_input_section
     double rmt_max_{2.2};
     double spglib_tolerance_{1e-4};
     int verbosity_{0};
+    bool print_performance_{false};
 
     void read(json const& parser)
     {
@@ -264,6 +265,7 @@ struct Control_input_section
             rmt_max_             = parser["control"].value("rmt_max", rmt_max_);
             spglib_tolerance_    = parser["control"].value("spglib_tolerance", spglib_tolerance_);
             verbosity_           = parser["control"].value("verbosity", verbosity_);
+            print_performance_   = parser["control"].value("print_performance", print_performance_);
 
             auto strings = {&std_evp_solver_name_, &gen_evp_solver_name_, &fft_mode_, &processing_unit_};
             for (auto s: strings) {

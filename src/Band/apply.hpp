@@ -110,7 +110,7 @@ void Band::apply_h_o(K_point* kp__,
     #endif
     t1 += runtime::wtime();
 
-    if (kp__->comm().rank() == 0) {
+    if (kp__->comm().rank() == 0 && ctx_.control().print_performance_) {
         DUMP("hloc performace: %12.6f bands/sec", n__ / t1);
     }
 
