@@ -215,6 +215,9 @@ double ground_state(Simulation_context&       ctx,
     #ifdef __PRINT_MEMORY_USAGE
     MEMORY_USAGE_INFO();
     #endif
+
+    std::string ref_file = args.value<std::string>("test_against", "");
+    bool write_state = (ref_file.size() == 0);
     
     DFT_ground_state dft(ctx, potential, density, ks, inp.use_symmetry_);
 
@@ -232,7 +235,24 @@ double ground_state(Simulation_context&       ctx,
         }
     }
     
-    int result = dft.find(inp.potential_tol_, inp.energy_tol_, inp.num_dft_iter_);
+    int result = dft.find(inp.potential_tol_, inp.energy_tol_, inp.num_dft_iter_, write_state);
+
+    if (ref_file.size() != 0) {
+        json dict;
+        dict["ground_state"] = dft.serialize();
+        json dict_ref;
+        std::ifstream(ref_file) >> dict_ref;
+        
+        double e1 = dict["ground_state"]["energy"]["total"];
+        double e2 = dict_ref["ground_state"]["energy"]["total"];
+
+        if (std::abs(e1 - e2) > 1e-8) {
+            printf("total energy is different\n");
+            exit(1);
+        }
+
+        write_output = 0;
+    }
     
     if (write_output) {
         json dict;
@@ -247,6 +267,7 @@ double ground_state(Simulation_context&       ctx,
                               std::ofstream::out | std::ofstream::trunc);
             ofs << dict.dump(4);
         }
+        
         if (args.exist("aiida_output")) {
             json dict;
             json_output_common(dict);
@@ -504,6 +525,7 @@ int main(int argn, char** argv)
     args.register_key("--task=", "{int} task id");
     args.register_key("--mpi_grid=", "{vector int} MPI grid dimensions");
     args.register_key("--aiida_output", "write output for AiiDA");
+    args.register_key("--test_against=", "{string} json file with reference values");
 
     args.parse_args(argn, argv);
 
@@ -518,4 +540,5 @@ int main(int argn, char** argv)
     run_tasks(args);
     
     sirius::finalize();
+    return 0;
 }
