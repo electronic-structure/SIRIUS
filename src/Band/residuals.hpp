@@ -203,7 +203,7 @@ inline int Band::residuals(K_point* kp__,
         std::vector<int> ev_idx;
         for (int i = 0; i < num_bands__; i++) {
             bool take_res = true;
-            if (itso.converge_occupied_ && kp__->band_occupancy(i + ispn__ * ctx_.num_fv_states()) < 1e-10) {
+            if (kp__->band_occupancy(i + ispn__ * ctx_.num_fv_states()) < itso.min_occupancy_) {
                 take_res = false;
             }
             if (take_res && std::abs(eval__[i] - eval_old__[i]) > itso.energy_tolerance_) {
@@ -254,11 +254,9 @@ inline int Band::residuals(K_point* kp__,
                 n++;
             }
         }
-        #if (__VERBOSITY > 2)
-        if (kp__->comm().rank() == 0) {
+        if (ctx_.control().verbosity_ > 2 && kp__->comm().rank() == 0) {
             DUMP("initial and final number of residuals : %i %i", nmax, n);
         }
-        #endif
     } else {
         /* compute H\Psi_{i} = \sum_{mu} H\phi_{mu} * Z_{mu, i} and O\Psi_{i} = \sum_{mu} O\phi_{mu} * Z_{mu, i} */
         transform<T>({&hphi__, &ophi__}, 0, N__, evec__, 0, 0, {&hpsi__, &opsi__}, 0, num_bands__);
@@ -267,7 +265,7 @@ inline int Band::residuals(K_point* kp__,
 
         for (int i = 0; i < num_bands__; i++) {
             bool take_res = true;
-            if (itso.converge_occupied_ && kp__->band_occupancy(i + ispn__ * ctx_.num_fv_states()) < 1e-10) {
+            if (kp__->band_occupancy(i + ispn__ * ctx_.num_fv_states()) < itso.min_occupancy_) {
                 take_res = false;
             }
 
