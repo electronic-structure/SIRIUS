@@ -1,6 +1,6 @@
 {
   "control" : {
-      "!mpi_grid_dims" : [2],
+      "!mpi_grid_dims" : [4],
       "cyclic_block_size" : 16,
       "processing_unit" : "cpu",
       "std_evp_solver_type" : "lapack",
@@ -28,7 +28,7 @@
 
       "num_dft_iter" : 100,
 
-      "ngridk" : [3,3,3],
+      "ngridk" : [2,2,2],
 
       "reduce_gvec": 0
   },
@@ -46,7 +46,7 @@
     "unit_cell": {
         "atom_files": {
             "Li" : "Li.pz-s-kjpaw_psl.0.2.1.UPF.json",
-            "F"  : "F.pz-n-kjpaw_psl.0.1.UPF.json"
+            "F"  : "F.pz-n-rrkjus_psl.0.1.UPF.json"
         },
         "atom_types": [
             "Li",
@@ -68,6 +68,11 @@
                     0.25,
                     0.749999999999998,
                     0.250000000000001
+                ],
+                [
+                    0.249999999999998,
+                    0.75,
+                    0.750000000000001
                 ],
                 [
                     0.749999999999998,

@@ -1,6 +1,6 @@
 {
   "control" : {
-      "!mpi_grid_dims" : [2],
+      "mpi_grid_dims" : [2],
       "cyclic_block_size" : 16,
       "processing_unit" : "cpu",
       "std_evp_solver_type" : "lapack",
@@ -28,7 +28,7 @@
 
       "num_dft_iter" : 100,
 
-      "ngridk" : [3,3,3],
+      "ngridk" : [2,2,2],
 
       "reduce_gvec": 0
   },
