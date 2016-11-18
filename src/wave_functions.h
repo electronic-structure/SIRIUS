@@ -1026,6 +1026,7 @@ inline void inner(wave_functions& bra__,
     }
 
     #ifdef __PRINT_PERFORMANCE
+    comm.barrier();
     time += runtime::wtime();
     int k = bra__.pw_coeffs().num_rows_loc();
     if (bra__.has_mt()) {
