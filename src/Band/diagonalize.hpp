@@ -198,8 +198,10 @@ inline void Band::get_singular_components(K_point* kp__, Interstitial_operator& 
     auto& psi = kp__->singular_components();
 
     int ncomp = psi.num_wf();
-
-    printf("number of singular components: %i\n", ncomp);
+    
+    if (ctx_.comm().rank() == 0 && ctx_.control().verbosity_ > 2) {
+        printf("number of singular components: %i\n", ncomp);
+    }
 
     auto& itso = ctx_.iterative_solver_input_section();
 
@@ -264,7 +266,7 @@ inline void Band::get_singular_components(K_point* kp__, Interstitial_operator& 
     /* start iterative diagonalization */
     for (int k = 0; k < itso.num_steps_; k++) {
         /* apply Hamiltonian and overlap operators to the new basis functions */
-        apply_o(kp__, istl_op__, N, n, phi, ophi);
+        apply_o_apw(kp__, istl_op__, N, n, phi, ophi);
 
         orthogonalize(N, n, phi, ophi, ovlp, res);
         

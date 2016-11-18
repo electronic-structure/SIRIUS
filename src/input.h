@@ -197,7 +197,7 @@ struct Iterative_solver_input_section
     double residual_tolerance_{1e-6};
     int converge_by_energy_{1}; // TODO: rename, this is meaningless
     /// Minumum band occupancy at which the band's residual is added to the variational subspace.
-    double min_occupancy_{1e-3};
+    double min_occupancy_{1e-5};
     int min_num_res_{0};
     int real_space_prj_{0}; // TODO: move it from here to parameters
     double R_mask_scale_{1.5};

@@ -119,12 +119,12 @@ class Band
                                                     Periodic_function<double>* effective_potential__,
                                                     Interstitial_operator& istl_op__) const;
 
-        inline void apply_o(K_point* kp__,
-                            Interstitial_operator& istl_op__,
-                            int N,
-                            int n,
-                            wave_functions& phi__,
-                            wave_functions& ophi__) const;
+        inline void apply_o_apw(K_point* kp__,
+                                Interstitial_operator& istl_op__,
+                                int N,
+                                int n,
+                                wave_functions& phi__,
+                                wave_functions& ophi__) const;
 
         inline void get_singular_components(K_point* kp__,
                                             Interstitial_operator& istl_op__) const;

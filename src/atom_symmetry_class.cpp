@@ -216,8 +216,6 @@ void Atom_symmetry_class::generate_lo_radial_functions(relativity_t rel__)
     #if (__VERIFICATION > 0)
     if (num_lo_descriptors() > 0) check_lo_linear_independence(0.0001);
     #endif
-
-    //if (verbosity_level > 0) dump_lo();
 }
 
 std::vector<int> Atom_symmetry_class::check_lo_linear_independence(double tol__)
@@ -449,7 +447,7 @@ void Atom_symmetry_class::generate_radial_functions(relativity_t rel__)
     DUMP("checksum(radial_functions): %18.10f", radial_functions_.checksum());
     #endif
     
-    //** if (verbosity_level > 0)
+    //** if (true)
     //** {
     //**     std::stringstream s;
     //**     s << "radial_functions_" << id_ << ".dat";

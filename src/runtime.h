@@ -646,14 +646,7 @@ class Profiler
 
 #define STOP() TERMINATE("terminated by request")
 
-#if (__VERBOSITY > 1)
-const bool _enable_dump_ = true;
-#else
-const bool _enable_dump_ = false;
-#endif
-
 #define DUMP(...)                                                                     \
-if (_enable_dump_)                                                                    \
 {                                                                                     \
     char str__[1024];                                                                 \
     /* int x__ = snprintf(str__, 1024, "[%s:%04i] ", __func__, mpi_comm_world().rank()); */ \

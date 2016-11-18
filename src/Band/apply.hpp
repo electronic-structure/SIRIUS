@@ -193,14 +193,14 @@ void Band::apply_h_o(K_point* kp__,
     //== }
 }
 
-inline void Band::apply_o(K_point* kp__,
-                          Interstitial_operator& istl_op__, 
-                          int N__,
-                          int n__,
-                          wave_functions& phi__,
-                          wave_functions& ophi__) const
+inline void Band::apply_o_apw(K_point* kp__,
+                              Interstitial_operator& istl_op__, 
+                              int N__,
+                              int n__,
+                              wave_functions& phi__,
+                              wave_functions& ophi__) const
 {
-    PROFILE_WITH_TIMER("sirius::Band::apply_o");
+    PROFILE_WITH_TIMER("sirius::Band::apply_o_apw");
 
     /* interstitial part */
     istl_op__.apply_o(kp__->gkvec_vloc(), N__, n__, phi__, ophi__);
@@ -221,8 +221,6 @@ inline void Band::apply_o(K_point* kp__,
         auto& atom = unit_cell_.atom(ia);
         int nmt = atom.mt_aw_basis_size();
         kp__->alm_coeffs_loc().generate(ia, alm);
-
-        runtime::Timer t1("sirius::Band::apply_o|apw-apw");
 
         if (ctx_.processing_unit() == CPU) {
             /* tmp(lm, i) = A(G, lm)^{T} * C(G, i) */
@@ -275,8 +273,6 @@ inline void Band::apply_o(K_point* kp__,
                               ophi__.pw_coeffs().prime().ld());
         }
         #endif
-
-        t1.stop();
     }
 
     #ifdef __PRINT_OBJECT_CHECKSUM

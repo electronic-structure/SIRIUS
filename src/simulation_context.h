@@ -574,11 +574,9 @@ inline void Simulation_context::initialize()
         *evst[i] = str_to_ev_solver_t[name];
     }
 
-    #if (__VERBOSITY > 0)
-    if (comm_.rank() == 0) {
+    if (control().verbosity_ > 0 && comm_.rank() == 0) {
         print_info();
     }
-    #endif
 
     if (esm_type() == electronic_structure_method_t::ultrasoft_pseudopotential ||
         esm_type() == electronic_structure_method_t::paw_pseudopotential) {
@@ -789,6 +787,11 @@ inline void Simulation_context::print_info()
             printf("GPU\n");
             break;
         }
+    }
+    if (processing_unit() == GPU) {
+        #ifdef __GPU
+        cuda_device_info();
+        #endif
     }
    
     int i{1};

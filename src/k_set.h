@@ -187,9 +187,9 @@ class K_set
                 kpoints_[spl_num_kpoints_[ikloc]]->initialize();
             }
 
-            #if (__VERBOSITY > 0)
-            print_info();
-            #endif
+            if (ctx_.control().verbosity_ > 0) {
+                print_info();
+            }
         }
 
         /// Find Fermi energy and band occupation numbers
@@ -382,7 +382,7 @@ inline void K_set::find_band_occupancies()
 
         if (step > 10000) {
             std::stringstream s;
-            s << "search of band occupancies failed";
+            s << "search of band occupancies failed after 10000 steps";
             WARNING(s);
 
             ef = 0;
@@ -410,19 +410,16 @@ inline void K_set::find_band_occupancies()
     
     int nve = static_cast<int>(unit_cell_.num_valence_electrons() + 1e-12);
     if (ctx_.num_spins() == 2 || 
-        (std::abs(nve - unit_cell_.num_valence_electrons()) < 1e-12 && nve % 2 == 0))
-    {
+        (std::abs(nve - unit_cell_.num_valence_electrons()) < 1e-12 && nve % 2 == 0)) {
         /* find band gap */
         std::vector< std::pair<double, double> > eband;
         std::pair<double, double> eminmax;
 
-        for (int j = 0; j < ctx_.num_bands(); j++)
-        {
+        for (int j = 0; j < ctx_.num_bands(); j++) {
             eminmax.first = 1e10;
             eminmax.second = -1e10;
 
-            for (int ik = 0; ik < num_kpoints(); ik++)
-            {
+            for (int ik = 0; ik < num_kpoints(); ik++) {
                 eminmax.first = std::min(eminmax.first, kpoints_[ik]->band_energy(j));
                 eminmax.second = std::max(eminmax.second, kpoints_[ik]->band_energy(j));
             }
@@ -433,16 +430,19 @@ inline void K_set::find_band_occupancies()
         std::sort(eband.begin(), eband.end());
 
         int ist = nve;
-        if (ctx_.num_spins() == 1) ist /= 2; 
+        if (ctx_.num_spins() == 1) {
+            ist /= 2; 
+        }
 
-        if (eband[ist].first > eband[ist - 1].second) band_gap_ = eband[ist].first - eband[ist - 1].second;
+        if (eband[ist].first > eband[ist - 1].second) {
+            band_gap_ = eband[ist].first - eband[ist - 1].second;
+        }
     }
 }
 
 inline void K_set::print_info()
 {
-    if (comm_k_.rank() == 0 && ctx_.blacs_grid().comm().rank() == 0)
-    {
+    if (comm_k_.rank() == 0 && ctx_.blacs_grid().comm().rank() == 0) {
         printf("\n");
         printf("total number of k-points : %i\n", num_kpoints());
         for (int i = 0; i < 80; i++) printf("-");
@@ -454,17 +454,17 @@ inline void K_set::print_info()
         printf("\n");
     }
 
-    if (ctx_.blacs_grid().comm().rank() == 0)
-    {
+    if (ctx_.blacs_grid().comm().rank() == 0) {
         runtime::pstdout pout(comm_k_);
-        for (int ikloc = 0; ikloc < (int)spl_num_kpoints().local_size(); ikloc++)
-        {
+        for (int ikloc = 0; ikloc < (int)spl_num_kpoints().local_size(); ikloc++) {
             int ik = spl_num_kpoints(ikloc);
             pout.printf("%4i   %8.4f %8.4f %8.4f   %12.6f     %6i", 
                         ik, kpoints_[ik]->vk()[0], kpoints_[ik]->vk()[1], kpoints_[ik]->vk()[2], 
                         kpoints_[ik]->weight(), kpoints_[ik]->num_gkvec());
 
-            if (ctx_.full_potential()) pout.printf("            %6i", kpoints_[ik]->gklo_basis_size());
+            if (ctx_.full_potential()) {
+                pout.printf("            %6i", kpoints_[ik]->gklo_basis_size());
+            }
             
             pout.printf("\n");
         }
@@ -662,29 +662,6 @@ inline void K_set::load()
 //==         if (eband[ist].first > eband[ist - 1].second) gap = eband[ist].first - eband[ist - 1].second;
 //== 
 //==         band_gap_ = gap;
-//==     }
-//==     
-//==     if (Platform::mpi_rank() == 0 && verbosity_level >= 5)
-//==     {
-//==         printf("Lowest band occupancies\n");
-//==         for (int ik = 0; ik < num_kpoints(); ik++)
-//==         {
-//==             printf("ik : %2i, ", ik); 
-//==             if (ctx_.num_mag_dims() != 1)
-//==             {
-//==                 for (int j = 0; j < std::min(10, ctx_.num_bands()); j++) 
-//==                     printf("%12.6f", kpoints_[ik]->band_occupancy(j));
-//==             }
-//==             else
-//==             {
-//==                 for (int j = 0; j < std::min(10, ctx_.num_fv_states()); j++) 
-//==                     printf("%12.6f", kpoints_[ik]->band_occupancy(j));
-//==                 printf("\n         ");
-//==                 for (int j = 0; j < std::min(10, ctx_.num_fv_states()); j++) 
-//==                     printf("%12.6f", kpoints_[ik]->band_occupancy(ctx_.num_fv_states() + j));
-//==             }
-//==             printf("\n");
-//==         }
 //==     }
 //== }
 };
