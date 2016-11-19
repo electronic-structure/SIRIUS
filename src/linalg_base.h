@@ -37,6 +37,12 @@ struct linalg_const
         return a;
     }
 
+    static T const& two()
+    {
+        static const T a = 2;
+        return a;
+    }
+
     static T const& m_one()
     {
         static const T a = -1;

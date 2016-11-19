@@ -25,6 +25,7 @@
 #ifndef __WAVE_FUNCTIONS_H__
 #define __WAVE_FUNCTIONS_H__
 
+#include <cstdlib>
 #include "gvec.h"
 #include "mpi_grid.h"
 #include "linalg.h"
@@ -634,8 +635,8 @@ inline void transform(double alpha__,
         if (wf_in__[0]->has_mt()) {
             k += wf_in__[0]->mt_coeffs().num_rows_loc();
         }
-        printf("transform() performance: %12.6f GFlops/rank, [m,n,k=%i %i %i, nvec=%i]\n",
-               ngop * m__ * n__ * k * nwf / time, k, n__, m__, nwf);
+        printf("transform() performance: %12.6f GFlops/rank, [m,n,k=%i %i %i, nvec=%i, time=%f (sec)]\n",
+               ngop * m__ * n__ * k * nwf / time, k, n__, m__, nwf, time);
         #endif
         return;
     }
@@ -833,8 +834,10 @@ inline void inner(wave_functions& bra__,
 
     auto& comm = bra__.comm();
     auto pu = bra__.params().processing_unit();
+    
+    const char* sddk_pp_raw = std::getenv("SDDK_PRINT_PERFORMANCE");
+    std::string sddk_pp = (sddk_pp_raw == NULL) ? "" : std::string(sddk_pp_raw);
 
-    #ifdef __PRINT_PERFORMANCE
     double ngop{0};
     if (std::is_same<T, double>::value) {
         ngop = 2e-9;
@@ -842,9 +845,17 @@ inline void inner(wave_functions& bra__,
     if (std::is_same<T, double_complex>::value) {
         ngop = 8e-9;
     }
-    #endif
+    double time = -runtime::wtime();
 
-    auto local_inner = [pu, &comm](wave_functions& bra__, int i0__, int m__, wave_functions& ket__, int j0__, int n__, T* buf__, int ld__){
+    auto local_inner = [pu, &comm](wave_functions& bra__,
+                                   int i0__,
+                                   int m__,
+                                   wave_functions& ket__,
+                                   int j0__,
+                                   int n__,
+                                   T* buf__,
+                                   int ld__,
+                                   int stream_id){
         if (std::is_same<T, double_complex>::value) {
             if (pu == CPU) {
                 linalg<CPU>::gemm(2, 0, m__, n__, bra__.pw_coeffs().num_rows_loc(),
@@ -866,18 +877,17 @@ inline void inner(wave_functions& bra__,
                 linalg<GPU>::gemm(2, 0, m__, n__, bra__.pw_coeffs().num_rows_loc(),
                                   bra__.pw_coeffs().prime().at<GPU>(0, i0__), bra__.pw_coeffs().prime().ld(),
                                   ket__.pw_coeffs().prime().at<GPU>(0, j0__), ket__.pw_coeffs().prime().ld(),
-                                  reinterpret_cast<double_complex*>(buf__), ld__);
+                                  reinterpret_cast<double_complex*>(buf__), ld__,
+                                  stream_id);
                 if (bra__.has_mt() && bra__.mt_coeffs().num_rows_loc()) {
-                    double_complex alpha(1, 0);
                     linalg<GPU>::gemm(2, 0, m__, n__, bra__.mt_coeffs().num_rows_loc(),
-                                      &alpha,
+                                      &linalg_const<double_complex>::one(),
                                       bra__.mt_coeffs().prime().at<GPU>(0, i0__), bra__.mt_coeffs().prime().ld(),
                                       ket__.mt_coeffs().prime().at<GPU>(0, j0__), ket__.mt_coeffs().prime().ld(),
-                                      &alpha,
-                                      reinterpret_cast<double_complex*>(buf__), ld__);
-                    acc::sync_stream(-1);
+                                      &linalg_const<double_complex>::one(),
+                                      reinterpret_cast<double_complex*>(buf__), ld__,
+                                      stream_id);
                 }
-                acc::sync_stream(-1);
             }
             #endif
         }
@@ -905,39 +915,30 @@ inline void inner(wave_functions& bra__,
             
             #ifdef __GPU
             if (pu == GPU) {
-                double alpha{2};
-                double beta{0};
                 linalg<GPU>::gemm(2, 0, m__, n__, 2 * bra__.pw_coeffs().num_rows_loc(),
-                                  &alpha,
+                                  &linalg_const<double>::two(),
                                   reinterpret_cast<double*>(bra__.pw_coeffs().prime().at<GPU>(0, i0__)), 2 * bra__.pw_coeffs().prime().ld(),
                                   reinterpret_cast<double*>(ket__.pw_coeffs().prime().at<GPU>(0, j0__)), 2 * ket__.pw_coeffs().prime().ld(),
-                                  &beta,
+                                  &linalg_const<double>::zero(),
                                   reinterpret_cast<double*>(buf__), ld__);
                 /* subtract one extra G=0 contribution */
                 if (comm.rank() == 0) {
-                    double a1{-1};
-                    linalg<GPU>::ger(m__, n__, &a1,
+                    linalg<GPU>::ger(m__, n__, &linalg_const<double>::m_one(),
                                     reinterpret_cast<double*>(bra__.pw_coeffs().prime().at<GPU>(0, i0__)), 2 * bra__.pw_coeffs().prime().ld(),
                                     reinterpret_cast<double*>(ket__.pw_coeffs().prime().at<GPU>(0, j0__)), 2 * ket__.pw_coeffs().prime().ld(),
                                     reinterpret_cast<double*>(buf__), ld__); 
-                    acc::sync_stream(-1);
-
                 }
                 if (bra__.has_mt() && bra__.mt_coeffs().num_rows_loc()) {
                     TERMINATE_NOT_IMPLEMENTED;
                 }
-                acc::sync_stream(-1);
             }
             #endif
         }
     };
 
     if (comm.size() == 1) {
-        #ifdef __PRINT_PERFORMANCE
-        double time = -runtime::wtime();
-        #endif
         T* buf = (pu == CPU) ? result__.template at<CPU>(irow0__, jcol0__) : result__.template at<GPU>(irow0__, jcol0__);
-        local_inner(bra__, i0__, m__, ket__, j0__, n__, buf, result__.ld());
+        local_inner(bra__, i0__, m__, ket__, j0__, n__, buf, result__.ld(), -1);
         #ifdef __GPU
         if (pu == GPU) {
             acc::copyout(result__.template at<CPU>(irow0__, jcol0__), result__.ld(),
@@ -945,24 +946,20 @@ inline void inner(wave_functions& bra__,
                          m__, n__);
         }
         #endif
-        #ifdef __PRINT_PERFORMANCE
-        time += runtime::wtime();
-        int k = bra__.pw_coeffs().num_rows_loc();
-        if (bra__.has_mt()) {
-            k += bra__.mt_coeffs().num_rows_loc();
+        if (sddk_pp.size()) {
+            time += runtime::wtime();
+            int k = bra__.pw_coeffs().num_rows_loc();
+            if (bra__.has_mt()) {
+                k += bra__.mt_coeffs().num_rows_loc();
+            }
+            printf("inner() performance: %12.6f GFlops/rank, [m,n,k=%i %i %i, time=%f (sec)]\n", ngop * m__ * n__ * k / time, m__, n__, k, time);
         }
-        printf("inner() performance: %12.6f GFlops/rank, [m,n,k=%i %i %i]\n", ngop * m__ * n__ * k / time, m__, n__, k);
-        #endif
         return;
     }
-
-    #ifdef __PRINT_PERFORMANCE
-    double time = -runtime::wtime();
-    #endif
-
+    
     const int BS = sddk_block_size;
 
-    mdarray<T, 2> c_tmp(BS * BS, 2, memory_t::host, "inner::c_tmp");
+    mdarray<T, 2> c_tmp(BS * BS, 2, memory_t::host_pinned, "inner::c_tmp");
     if (pu == GPU) {
         c_tmp.allocate(memory_t::device);
     }
@@ -973,70 +970,172 @@ inline void inner(wave_functions& bra__,
     std::array<MPI_Request, 2> req = {MPI_REQUEST_NULL, MPI_REQUEST_NULL};
     std::array<std::array<int, 4>, 2> dims;
 
-    auto store_panel = [&req, &result__, &dims, &c_tmp, irow0__, jcol0__](int s)
-    {
-        MPI_Wait(&req[s % 2], MPI_STATUS_IGNORE);
+    if (pu == GPU) {
+        #ifdef __GPU
+        /* state of the buffers:
+         * state = 0: buffer is free
+         * state = 1: buffer stores result of local zgemm */
+        int buf_state[] = {0, 0};
+         
+        omp_set_nested(1);
+        int nt = omp_get_max_threads();
+        if (nt < 2) {
+            TERMINATE("minimum two threads are required");
+        }
 
-        #pragma omp parallel for
-        for (int jcol = 0; jcol < dims[s % 2][3]; jcol++) {
-            for (int irow = 0; irow < dims[s % 2][2]; irow++) {
-                result__.set(irow0__ + irow +  dims[s % 2][0], jcol0__ + jcol +  dims[s % 2][1],
-                             c_tmp(irow + dims[s % 2][2] * jcol, s % 2));
+        #pragma omp parallel num_threads(2) shared(buf_state)
+        {
+            /* this thread will call cudaZgemm */
+            if (omp_get_thread_num() == 1) {
+
+                int s{0};
+                for (int ibc = 0; ibc < nbc; ibc++) {
+                    int j0 = ibc * BS;
+                    int ncol = std::min(n__, (ibc + 1) * BS) - j0;
+
+                    for (int ibr = 0; ibr < nbr; ibr++) {
+                        int i0 = ibr * BS;
+                        int nrow = std::min(m__, (ibr + 1) * BS) - i0;
+
+                        int st{1};
+                        /* wait for the release of the buffer */
+                        while (st) {
+                            #pragma omp atomic read
+                            st = buf_state[s % 2];
+                        }
+
+                        T* buf = (pu == CPU) ? c_tmp.template at<CPU>(0, s % 2) : c_tmp.template at<GPU>(0, s % 2);
+                        local_inner(bra__, i0__ + i0, nrow, ket__, j0__ + j0, ncol, buf, nrow, s % 2);
+
+                        #ifdef __GPU
+                        if (pu == GPU) {
+                            acc::copyout(c_tmp.template at<CPU>(0, s % 2), c_tmp.template at<GPU>(0, s % 2), nrow * ncol, s % 2);
+                        }
+                        #endif
+
+                        #pragma omp atomic write
+                        /* lock the buffer */
+                        buf_state[s % 2] = 1;
+                        
+                        s++;
+                    }
+                }
+            } else { /* this thread will do allreduce and store */
+                omp_set_num_threads(nt - 1);
+                int s{0};
+                for (int ibc = 0; ibc < nbc; ibc++) {
+                    int j0 = ibc * BS;
+                    int ncol = std::min(n__, (ibc + 1) * BS) - j0;
+
+                    for (int ibr = 0; ibr < nbr; ibr++) {
+                        int i0 = ibr * BS;
+                        int nrow = std::min(m__, (ibr + 1) * BS) - i0;
+
+                        int st{0};
+                        /* wait for the lock of the buffer */
+                        while (!st) {
+                            #pragma omp atomic read
+                            st = buf_state[s % 2];
+                        }
+                        /* wait for the cuda stream */
+                        #ifdef __GPU
+                        if (pu == GPU) {
+                            acc::sync_stream(s % 2);
+                        }
+                        #endif
+                        
+                        comm.allreduce(c_tmp.template at<CPU>(0, s % 2), nrow * ncol);
+
+                        /* store panel */
+                        #pragma omp parallel for
+                        for (int jcol = 0; jcol < ncol; jcol++) {
+                            for (int irow = 0; irow < nrow; irow++) {
+                                result__.set(irow0__ + irow + i0, jcol0__ + jcol + j0,
+                                             c_tmp(irow + nrow * jcol, s % 2));
+                            }
+                        }
+
+                        #pragma omp atomic write
+                        /* release the buffer */
+                        buf_state[s % 2] = 0;
+
+                        s++;
+                    }
+                }
             }
         }
-    };
 
-    int s{0};
-    for (int ibc = 0; ibc < nbc; ibc++) {
-        int j0 = ibc * BS;
-        int ncol = std::min(n__, (ibc + 1) * BS) - j0;
+        omp_set_nested(0);
+        omp_set_num_threads(nt);
+        #endif
+    }
+    
+    if (pu == CPU) {
+        auto store_panel = [&req, &result__, &dims, &c_tmp, irow0__, jcol0__](int s)
+        {
+            MPI_Wait(&req[s % 2], MPI_STATUS_IGNORE);
 
-        for (int ibr = 0; ibr < nbr; ibr++) {
-            int i0 = ibr * BS;
-            int nrow = std::min(m__, (ibr + 1) * BS) - i0;
+            #pragma omp parallel for
+            for (int jcol = 0; jcol < dims[s % 2][3]; jcol++) {
+                for (int irow = 0; irow < dims[s % 2][2]; irow++) {
+                    result__.set(irow0__ + irow +  dims[s % 2][0], jcol0__ + jcol +  dims[s % 2][1],
+                                 c_tmp(irow + dims[s % 2][2] * jcol, s % 2));
+                }
+            }
+        };
 
+        int s{0};
+        for (int ibc = 0; ibc < nbc; ibc++) {
+            int j0 = ibc * BS;
+            int ncol = std::min(n__, (ibc + 1) * BS) - j0;
+
+            for (int ibr = 0; ibr < nbr; ibr++) {
+                int i0 = ibr * BS;
+                int nrow = std::min(m__, (ibr + 1) * BS) - i0;
+
+                if (req[s % 2] != MPI_REQUEST_NULL) {
+                    store_panel(s);
+                }
+
+                dims[s % 2][0] = i0;
+                dims[s % 2][1] = j0;
+                dims[s % 2][2] = nrow;
+                dims[s % 2][3] = ncol;
+
+                T* buf = (pu == CPU) ? c_tmp.template at<CPU>(0, s % 2) : c_tmp.template at<GPU>(0, s % 2);
+                local_inner(bra__, i0__ + i0, nrow, ket__, j0__ + j0, ncol, buf, nrow, -1);
+
+                #ifdef __GPU
+                if (pu == GPU) {
+                    acc::copyout(c_tmp.template at<CPU>(0, s % 2), c_tmp.template at<GPU>(0, s % 2), nrow * ncol);
+                }
+                #endif
+
+                comm.iallreduce(c_tmp.template at<CPU>(0, s % 2), nrow * ncol, &req[s % 2]);
+                
+                s++;
+            }
+        }
+
+        for (int s: {0, 1}) {
             if (req[s % 2] != MPI_REQUEST_NULL) {
                 store_panel(s);
             }
-
-            dims[s % 2][0] = i0;
-            dims[s % 2][1] = j0;
-            dims[s % 2][2] = nrow;
-            dims[s % 2][3] = ncol;
-
-            T* buf = (pu == CPU) ? c_tmp.template at<CPU>(0, s % 2) : c_tmp.template at<GPU>(0, s % 2);
-            local_inner(bra__, i0__ + i0, nrow, ket__, j0__ + j0, ncol, buf, nrow);
-
-            #ifdef __GPU
-            if (pu == GPU) {
-                acc::copyout(c_tmp.template at<CPU>(0, s % 2), c_tmp.template at<GPU>(0, s % 2), nrow * ncol);
-            }
-            #endif
-
-            comm.iallreduce(c_tmp.template at<CPU>(0, s % 2), nrow * ncol, &req[s % 2]);
-            
-            s++;
         }
     }
 
-    for (int s: {0, 1}) {
-        if (req[s % 2] != MPI_REQUEST_NULL) {
-            store_panel(s);
+    if (sddk_pp.size()) {
+        comm.barrier();
+        time += runtime::wtime();
+        int k = bra__.pw_coeffs().num_rows_loc();
+        if (bra__.has_mt()) {
+            k += bra__.mt_coeffs().num_rows_loc();
+        }
+        comm.allreduce(&k, 1);
+        if (comm.rank() == 0) {
+            printf("inner() performance: %12.6f GFlops/rank, [m,n,k=%i %i %i, time=%f (sec)]\n", ngop * m__ * n__ * k / time / comm.size(), m__, n__, k, time);
         }
     }
-
-    #ifdef __PRINT_PERFORMANCE
-    comm.barrier();
-    time += runtime::wtime();
-    int k = bra__.pw_coeffs().num_rows_loc();
-    if (bra__.has_mt()) {
-        k += bra__.mt_coeffs().num_rows_loc();
-    }
-    comm.allreduce(&k, 1);
-    if (comm.rank() == 0) {
-        printf("inner() performance: %12.6f GFlops/rank, [m,n,k=%i %i %i]\n", ngop * m__ * n__ * k / time / comm.size(), m__, n__, k);
-    }
-    #endif
 }
 
 template <typename T>
