@@ -241,10 +241,14 @@ class Symmetry
                                mdarray<double, 3>& fz_rlm__,
                                Communicator const& comm__) const;
         
+        mdarray<double, 2> symmetrize_cart_vectors(mdarray<double, 2>& cart_vectors__) const;
+
         int get_irreducible_reciprocal_mesh(vector3d<int> k_mesh__,
                                             vector3d<int> is_shift__,
                                             mdarray<double, 2>& kp__,
                                             std::vector<double>& wk__) const;
+
+
 };
 
 }

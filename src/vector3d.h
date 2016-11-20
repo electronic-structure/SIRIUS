@@ -47,6 +47,7 @@ class vector3d
             vec_[0] = vec_[1] = vec_[2] = 0;
         }
 
+
         /// Construct arbitrary vector
         vector3d(T x, T y, T z)
         {
@@ -70,6 +71,10 @@ class vector3d
                 vec_[x] = v__[x];
             }
         }
+
+        vector3d(T* ptr)
+        : this(ptr[0], ptr[1], ptr[2])
+        {}
 
         /// Access vector elements
         inline T& operator[](const int i)
@@ -104,6 +109,15 @@ class vector3d
             return a;
         }
 
+        inline vector3d<T> operator+=(vector3d<T> const& b)
+        {
+            vec_[0] += b.vec_[0];
+            vec_[1] += b.vec_[1];
+            vec_[2] += b.vec_[2];
+
+            return *this;
+        }
+
         inline vector3d<T> operator-(vector3d<T> const& b) const
         {
             vector3d<T> a = *this;
@@ -121,6 +135,26 @@ class vector3d
                 a[x] *= p;
             }
             return a;
+        }
+
+        template <typename U>
+        inline vector3d<T> operator / (U p)
+        {
+            vector3d<T> a = *this;
+            a[0] /= p;
+            a[1] /= p;
+            a[2] /= p;
+            return a;
+        }
+
+        template <typename U>
+        inline vector3d<T> operator /= (U p)
+        {
+            vec_[0] /= p;
+            vec_[1] /= p;
+            vec_[2] /= p;
+
+            return *this;
         }
 };
 
