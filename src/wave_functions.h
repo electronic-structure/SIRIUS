@@ -45,7 +45,7 @@ extern "C" void add_checksum_gpu(cuDoubleComplex* wf__,
                                  cuDoubleComplex* result__);
 #endif
 
-const int sddk_block_size = 256;
+const int sddk_default_block_size = 256;
 
 namespace sirius {
 
@@ -454,7 +454,6 @@ inline void transform(double alpha__,
     
     auto pu = wf_in__[0]->params().processing_unit();
 
-    #ifdef __PRINT_PERFORMANCE
     double ngop{0};
     if (std::is_same<T, double>::value) {
         ngop = 2e-9;
@@ -462,7 +461,12 @@ inline void transform(double alpha__,
     if (std::is_same<T, double_complex>::value) {
         ngop = 8e-9;
     }
-    #endif
+
+    const char* sddk_pp_raw = std::getenv("SDDK_PRINT_PERFORMANCE");
+    int sddk_pp = (sddk_pp_raw == NULL) ? 0 : std::atoi(sddk_pp_raw);
+
+    const char* sddk_bs_raw = std::getenv("SDDK_BLOCK_SIZE");
+    int sddk_block_size = (sddk_bs_raw == NULL) ? sddk_default_block_size : std::atoi(sddk_bs_raw);
 
     auto local_transform = [pu, alpha__](wave_functions* wf_in__, int i0__, int m__, matrix<T>& mtrx__, int irow0__, int jcol0__,
                                          wave_functions* wf_out__, int j0__, int n__)
@@ -615,11 +619,13 @@ inline void transform(double alpha__,
     }
     t1.stop();
     
+    if (sddk_pp) {
+        comm.barrier();
+    }
+    double time = -runtime::wtime();
+    
     /* trivial case */
     if (comm.size() == 1) {
-        #ifdef __PRINT_PERFORMANCE
-        double time = -runtime::wtime();
-        #endif
         #ifdef __GPU
         if (pu == GPU) {
             acc::copyin(mtrx__.template at<GPU>(irow0__, jcol0__), mtrx__.ld(),
@@ -629,22 +635,17 @@ inline void transform(double alpha__,
         for (int iv = 0; iv < nwf; iv++) {
             local_transform(wf_in__[iv], i0__, m__, mtrx__, irow0__, jcol0__, wf_out__[iv], j0__, n__);
         }
-        #ifdef __PRINT_PERFORMANCE
-        time += runtime::wtime();
-        int k = wf_in__[0]->pw_coeffs().num_rows_loc();
-        if (wf_in__[0]->has_mt()) {
-            k += wf_in__[0]->mt_coeffs().num_rows_loc();
+        if (sddk_pp) {
+            time += runtime::wtime();
+            int k = wf_in__[0]->pw_coeffs().num_rows_loc();
+            if (wf_in__[0]->has_mt()) {
+                k += wf_in__[0]->mt_coeffs().num_rows_loc();
+            }
+            printf("transform() performance: %12.6f GFlops/rank, [m,n,k=%i %i %i, nvec=%i, time=%f (sec)]\n",
+                   ngop * m__ * n__ * k * nwf / time, k, n__, m__, nwf, time);
         }
-        printf("transform() performance: %12.6f GFlops/rank, [m,n,k=%i %i %i, nvec=%i, time=%f (sec)]\n",
-               ngop * m__ * n__ * k * nwf / time, k, n__, m__, nwf, time);
-        #endif
         return;
     }
-
-    #ifdef __PRINT_PERFORMANCE
-    comm.barrier();
-    double time = -runtime::wtime();
-    #endif
 
     const int BS = sddk_block_size;
 
@@ -742,19 +743,19 @@ inline void transform(double alpha__,
         }
     }
 
-    #ifdef __PRINT_PERFORMANCE
-    comm.barrier();
-    time += runtime::wtime();
-    int k = wf_in__[0]->pw_coeffs().num_rows_loc();
-    if (wf_in__[0]->has_mt()) {
-        k += wf_in__[0]->mt_coeffs().num_rows_loc();
+    if (sddk_pp) {
+        comm.barrier();
+        time += runtime::wtime();
+        int k = wf_in__[0]->pw_coeffs().num_rows_loc();
+        if (wf_in__[0]->has_mt()) {
+            k += wf_in__[0]->mt_coeffs().num_rows_loc();
+        }
+        comm.allreduce(&k, 1);
+        if (comm.rank() == 0) {
+            printf("transform() performance: %12.6f GFlops/rank, [m,n,k=%i %i %i, nvec=%i, time=%f (sec)]\n",
+                   ngop * m__ * n__ * k * nwf / time / comm.size(), k, n__, m__, nwf,  time);
+        }
     }
-    comm.allreduce(&k, 1);
-    if (comm.rank() == 0) {
-        printf("transform() performance: %12.6f GFlops/rank, [m,n,k=%i %i %i, nvec=%i, time=%f (sec)]\n",
-               ngop * m__ * n__ * k * nwf / time / comm.size(), k, n__, m__, nwf,  time);
-    }
-    #endif
 }
 
 template <typename T>
@@ -836,7 +837,10 @@ inline void inner(wave_functions& bra__,
     auto pu = bra__.params().processing_unit();
     
     const char* sddk_pp_raw = std::getenv("SDDK_PRINT_PERFORMANCE");
-    std::string sddk_pp = (sddk_pp_raw == NULL) ? "" : std::string(sddk_pp_raw);
+    int sddk_pp = (sddk_pp_raw == NULL) ? 0 : std::atoi(sddk_pp_raw);
+
+    const char* sddk_bs_raw = std::getenv("SDDK_BLOCK_SIZE");
+    int sddk_block_size = (sddk_bs_raw == NULL) ? sddk_default_block_size : std::atoi(sddk_bs_raw);
 
     double ngop{0};
     if (std::is_same<T, double>::value) {
@@ -844,6 +848,10 @@ inline void inner(wave_functions& bra__,
     }
     if (std::is_same<T, double_complex>::value) {
         ngop = 8e-9;
+    }
+
+    if (sddk_pp) {
+        comm.barrier();
     }
     double time = -runtime::wtime();
 
@@ -946,7 +954,7 @@ inline void inner(wave_functions& bra__,
                          m__, n__);
         }
         #endif
-        if (sddk_pp.size()) {
+        if (sddk_pp) {
             time += runtime::wtime();
             int k = bra__.pw_coeffs().num_rows_loc();
             if (bra__.has_mt()) {
@@ -1124,7 +1132,7 @@ inline void inner(wave_functions& bra__,
         }
     }
 
-    if (sddk_pp.size()) {
+    if (sddk_pp) {
         comm.barrier();
         time += runtime::wtime();
         int k = bra__.pw_coeffs().num_rows_loc();
