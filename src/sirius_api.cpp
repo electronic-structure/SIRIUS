@@ -3062,4 +3062,34 @@ void sirius_reduce_coordinates(ftn_double* coord__,
     }
 }
 
+void sirius_fderiv(ftn_int* m__,
+                   ftn_int* np__,
+                   ftn_double* x__,
+                   ftn_double* f__,
+                   ftn_double* g__)
+{
+    int np = *np__;
+    sirius::Radial_grid rgrid(np, x__);
+    sirius::Spline<double> s(rgrid);
+    for (int i = 0; i < np; i++) {
+        s[i] = f__[i];
+    }
+    s.interpolate();
+    switch (*m__) {
+        case -1: {
+            std::vector<double> g(np);
+            s.integrate(g, 0);
+            for (int i = 0; i < np; i++) {
+                g__[i] = g[i];
+            }
+            return;
+        }
+        default: {
+             TERMINATE_NOT_IMPLEMENTED;
+        }
+    }
+}
+
+
+
 } // extern "C"

@@ -58,10 +58,6 @@ namespace sirius {
         if (call_mpi_init__) Communicator::initialize();
 
         #ifdef __GPU
-        //cuda_initialize();
-        #if defined(__VERBOSITY) && (__VERBOSITY > 0)
-        if (mpi_comm_world().rank() == 0) cuda_device_info();
-        #endif
         cuda_create_streams(omp_get_max_threads() + 1);
         cublas_create_handles(omp_get_max_threads() + 1);
         #endif

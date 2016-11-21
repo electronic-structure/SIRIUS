@@ -356,7 +356,8 @@ inline void Simulation_context::init_fft()
     gvec_ = Gvec({0, 0, 0}, rlv, pw_cutoff(), fft_->grid(),
                  comm_.size(), fft_->comm(), control_input_section_.reduce_gvec_);
 
-    double gpu_workload = (mpi_grid_fft_vloc_->communicator(1 << 0).size() == 1) ? 1.0 : 0.9;
+    //double gpu_workload = (mpi_grid_fft_vloc_->communicator(1 << 0).size() == 1) ? 1.0 : 0.9;
+    double gpu_workload = (mpi_grid_fft_vloc_->communicator().size() == 1) ? 1.0 : 0.9;
     /* create FFT driver for coarse mesh */
     fft_coarse_ = std::unique_ptr<FFT3D>(new FFT3D(FFT3D_grid(2 * gk_cutoff(), rlv),
                                                    mpi_grid_fft_vloc_->communicator(1 << 0),
@@ -573,11 +574,9 @@ inline void Simulation_context::initialize()
         *evst[i] = str_to_ev_solver_t[name];
     }
 
-    #if (__VERBOSITY > 0)
-    if (comm_.rank() == 0) {
+    if (control().verbosity_ > 0 && comm_.rank() == 0) {
         print_info();
     }
-    #endif
 
     if (esm_type() == electronic_structure_method_t::ultrasoft_pseudopotential ||
         esm_type() == electronic_structure_method_t::paw_pseudopotential) {
@@ -788,6 +787,11 @@ inline void Simulation_context::print_info()
             printf("GPU\n");
             break;
         }
+    }
+    if (processing_unit() == GPU) {
+        #ifdef __GPU
+        cuda_device_info();
+        #endif
     }
    
     int i{1};

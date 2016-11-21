@@ -48,7 +48,7 @@ class Mixer
         double beta_;
         
         /// Number of times mixer was called so far.
-        int count_;
+        int count_{0};
         
         /// Temporary storage for the input data.
         mdarray<T, 1> input_buffer_;
@@ -63,7 +63,7 @@ class Mixer
         Communicator const& comm_;
 
         /// Residual sum of squares.
-        double rss_;
+        double rss_{0};
 
         /// Return position in the list of mixed vectors for the given mixing step.
         inline int idx_hist(int step__) const
@@ -108,9 +108,7 @@ class Mixer
             : size_(size__), 
               max_history_(max_history__), 
               beta_(beta__), 
-              count_(0),
-              comm_(comm__),
-              rss_(0)
+              comm_(comm__)
         {
             spl_size_ = splindex<block, size_t>(size_, comm_.size(), comm_.rank());
             /* allocate input buffer (local size) */

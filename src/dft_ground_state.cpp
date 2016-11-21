@@ -109,9 +109,7 @@ void DFT_ground_state::move_atoms(int istep)
 
     //mdarray<double, 2> atom_force(3, unit_cell_.num_atoms());
     //forces(atom_force);
-    //#if (__VERBOSITY > 0)
-    //if (ctx_.comm().rank() == 0)
-    //{
+    //if (ctx_.control().verbosity_ > 2 && ctx__.comm().rank() == 0) {
     //    printf("\n");
     //    printf("Atomic forces\n");
     //    for (int ia = 0; ia < unit_cell_.num_atoms(); ia++)
@@ -119,7 +117,6 @@ void DFT_ground_state::move_atoms(int istep)
     //        printf("ia : %i, force : %12.6f %12.6f %12.6f\n", ia, atom_force(0, ia), atom_force(1, ia), atom_force(2, ia));
     //    }
     //}
-    //#endif
 
     //for (int ia = 0; ia < unit_cell_.num_atoms(); ia++)
     //{
@@ -177,9 +174,7 @@ mdarray<double,2 > DFT_ground_state::forces()
     return std::move(loc_forces);
 }
 
-
-
-int DFT_ground_state::find(double potential_tol, double energy_tol, int num_dft_iter)
+int DFT_ground_state::find(double potential_tol, double energy_tol, int num_dft_iter, bool write_state)
 {
     runtime::Timer t("sirius::DFT_ground_state::scf_loop");
     
@@ -287,7 +282,6 @@ int DFT_ground_state::find(double potential_tol, double energy_tol, int num_dft_
             ctx_.set_iterative_solver_tolerance(std::min(ctx_.iterative_solver_tolerance(), tol));
         }
 
-
         /* write some information */
         print_info();
 
@@ -303,16 +297,16 @@ int DFT_ground_state::find(double potential_tol, double energy_tol, int num_dft_
         eold = etot;
     }
     
-    ctx_.create_storage_file();
-    potential_.save();
-    density_.save();
+    if (write_state) {
+        ctx_.create_storage_file();
+        potential_.save();
+        density_.save();
+    }
 
 //    tbb_init.terminate();
 
     return result;
 }
-
-
 
 void DFT_ground_state::relax_atom_positions()
 {
@@ -326,8 +320,6 @@ void DFT_ground_state::relax_atom_positions()
     //    //ctx_.print_info();
     //}
 }
-
-
 
 void DFT_ground_state::print_info()
 {
@@ -451,8 +443,6 @@ void DFT_ground_state::print_info()
     }
 }
 
-
-
 void DFT_ground_state::initialize_subspace()
 {
     PROFILE_WITH_TIMER("sirius::DFT_ground_state::initialize_subspace");
@@ -516,7 +506,10 @@ void DFT_ground_state::initialize_subspace()
         //}
         N += atom_type.num_atoms() * n;
     }
-    printf("number of atomic orbitals: %i\n", N);
+
+    if (ctx_.comm().rank() == 0 && ctx_.control().verbosity_ > 2) {
+        printf("number of atomic orbitals: %i\n", N);
+    }
 
     for (int ikloc = 0; ikloc < kset_.spl_num_kpoints().local_size(); ikloc++) {
         int ik = kset_.spl_num_kpoints(ikloc);
@@ -531,12 +524,11 @@ void DFT_ground_state::initialize_subspace()
         }
     }
 
-    kset_.find_band_occupancies();
-
     /* reset the energies for the iterative solver to do at least two steps */
     for (int ik = 0; ik < kset_.num_kpoints(); ik++) {
         for (int i = 0; i < ctx_.num_bands(); i++) {
             kset_[ik]->band_energy(i) = 0;
+            kset_[ik]->band_occupancy(i) = ctx_.max_occupancy();
         }
     }
 }

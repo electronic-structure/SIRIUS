@@ -1026,6 +1026,7 @@ inline void inner(wave_functions& bra__,
     }
 
     #ifdef __PRINT_PERFORMANCE
+    comm.barrier();
     time += runtime::wtime();
     int k = bra__.pw_coeffs().num_rows_loc();
     if (bra__.has_mt()) {
@@ -1089,10 +1090,16 @@ inline void orthogonalize(int N__,
             }
             #endif
         } else { /* CPU version */
+            //Utils::check_hermitian("OVLP", o__, n__);
+            //o__.serialize("overlap.dat", n__);
             /* Cholesky factorization */
             if (int info = linalg<CPU>::potrf(n__, &o__(0, 0), o__.ld())) {
                 std::stringstream s;
-                s << "error in factorization, info = " << info;
+                s << "error in factorization, info = " << info << std::endl
+                  << "number of existing states: " << N__ << std::endl
+                  << "number of new states: " << n__ << std::endl
+                  << "number of wave_functions: " << wfs__.size() << std::endl
+                  << "idx_bra: " << idx_bra__ << " " << "idx_ket:" << idx_ket__;
                 TERMINATE(s);
             }
             /* inversion of triangular matrix */

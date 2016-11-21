@@ -216,13 +216,9 @@ void Potential::poisson_atom_vmt(Spheric_function<function_domain_t::spectral,do
 
     int lmax_rho = 2*atom.type().indexr().lmax_lo();
 
-
-
     std::vector<double> qmt(lmsize, 0);
 
     std::vector<int> l_by_lm = Utils::l_by_lm(lmax_rho);
-
-//  std::cout<<lmsize<<" "<<lmax_rho<<" "<< R <<std::endl;
 
     #pragma omp parallel default(shared)
     {
@@ -276,8 +272,7 @@ void Potential::poisson_vmt(Periodic_function<double>* rho__,
 
     qmt__.zero();
     
-    for (int ialoc = 0; ialoc < (int)unit_cell_.spl_num_atoms().local_size(); ialoc++)
-    {
+    for (int ialoc = 0; ialoc < unit_cell_.spl_num_atoms().local_size(); ialoc++) {
         int ia = unit_cell_.spl_num_atoms(ialoc);
 
         double R = unit_cell_.atom(ia).mt_radius();
@@ -291,8 +286,7 @@ void Potential::poisson_vmt(Periodic_function<double>* rho__,
             std::vector<double> g2;
 
             #pragma omp for
-            for (int lm = 0; lm < ctx_.lmmax_rho(); lm++)
-            {
+            for (int lm = 0; lm < ctx_.lmmax_rho(); lm++) {
                 int l = l_by_lm_[lm];
 
                 auto rholm = rho__->f_mt(ialoc).component(lm);
@@ -300,18 +294,16 @@ void Potential::poisson_vmt(Periodic_function<double>* rho__,
                 /* save multipole moment */
                 qmt[lm] = rholm.integrate(g1, l + 2);
                 
-                if (lm < ctx_.lmmax_pot())
-                {
+                if (lm < ctx_.lmmax_pot()) {
                     rholm.integrate(g2, 1 - l);
                     
                     double d1 = 1.0 / std::pow(R, 2 * l + 1); 
                     double d2 = 1.0 / double(2 * l + 1); 
-                    for (int ir = 0; ir < nmtp; ir++)
-                    {
+                    for (int ir = 0; ir < nmtp; ir++) {
                         double r = unit_cell_.atom(ia).radial_grid(ir);
 
                         double vlm = (1.0 - std::pow(r / R, 2 * l + 1)) * g1[ir] / std::pow(r, l + 1) +
-                                      (g2[nmtp - 1] - g2[ir]) * std::pow(r, l) - (g1[nmtp - 1] - g1[ir]) * std::pow(r, l) * d1;
+                                      (g2.back() - g2[ir]) * std::pow(r, l) - (g1.back() - g1[ir]) * std::pow(r, l) * d1;
 
                         vh__->f_mt<index_domain_t::local>(lm, ir, ialoc) = fourpi * vlm * d2;
                     }
@@ -344,18 +336,29 @@ void Potential::poisson(Periodic_function<double>* rho, Periodic_function<double
         /* true multipole moments */
         mdarray<double_complex, 2> qmt(ctx_.lmmax_rho(), unit_cell_.num_atoms());
         poisson_vmt(rho, vh, qmt);
+        
+        //== for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
+        //==     for (int lm = 0; lm < ctx_.lmmax_rho(); lm++) {
+        //==         printf("qmt(%2i, %2i) = %18.12f %18.12f\n", lm, ia, qmt(lm, ia).real(), qmt(lm, ia).imag());
+        //==     }
+        //==     printf("\n");
+        //== }
 
         #ifdef __PRINT_OBJECT_CHECKSUM
         double_complex z1 = qmt.checksum();
         DUMP("checksum(qmt): %18.10f %18.10f", std::real(z1), std::imag(z1));
         #endif
-        #ifdef __PRINT_OBJECT_HASH
-        DUMP("hash(qmt): %16llX", qmt.hash());
-        #endif
 
         /* compute multipoles of interstitial density in MT region */
         mdarray<double_complex, 2> qit(ctx_.lmmax_rho(), unit_cell_.num_atoms());
         poisson_sum_G(ctx_.lmmax_rho(), &rho->f_pw(0), sbessel_mom_, qit);
+
+        //== for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
+        //==     for (int lm = 0; lm < ctx_.lmmax_rho(); lm++) {
+        //==         printf("qi(%2i, %2i) = %18.12f %18.12f\n", lm, ia, qit(lm, ia).real(), qit(lm, ia).imag());
+        //==     }
+        //==     printf("\n");
+        //== }
 
         #ifdef __PRINT_OBJECT_CHECKSUM
         double_complex z2 = qit.checksum();
@@ -462,7 +465,7 @@ void Potential::poisson(Periodic_function<double>* rho, Periodic_function<double
         
     /* add nucleus potential and contribution to Hartree energy */
     if (ctx_.full_potential()) {
-        double evha_nuc_ = 0;
+        double evha_nuc{0};
         for (int ialoc = 0; ialoc < unit_cell_.spl_num_atoms().local_size(); ialoc++) {
             int ia = unit_cell_.spl_num_atoms(ialoc);
             auto& atom = unit_cell_.atom(ia);
@@ -472,10 +475,10 @@ void Potential::poisson(Periodic_function<double>* rho, Periodic_function<double
                 hartree_potential_->f_mt<index_domain_t::local>(0, ir, ialoc) -= atom.zn() / r / y00;
                 srho[ir] = rho->f_mt<index_domain_t::local>(0, ir, ialoc);
             }
-            evha_nuc_ -= atom.zn() * srho.interpolate().integrate(1) / y00;
+            evha_nuc -= atom.zn() * srho.interpolate().integrate(1) / y00;
         }
-        ctx_.comm().allreduce(&evha_nuc_, 1);
-        energy_vha_ += evha_nuc_;
+        ctx_.comm().allreduce(&evha_nuc, 1);
+        energy_vha_ += evha_nuc;
     }
 }
 

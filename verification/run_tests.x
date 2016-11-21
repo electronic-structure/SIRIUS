@@ -1,10 +1,11 @@
 #!/bin/bash
 
-tests='test_init test_sht test_fft_correctness test_fft_real test_spline test_rot_ylm test_linalg test_wf_ortho'
+tests='test1 test2'
 
 for test in $tests; do
   echo "running '${test}'"
-  ./${test}
+  cd ${test}
+  ../../apps/dft_loop/sirius.scf --test_against=output_ref.json
   err=$?
 
   if [ ${err} == 0 ]; then
@@ -13,6 +14,7 @@ for test in $tests; do
     echo "'${test}' failed"
     exit ${err}
   fi
+  cd ../
 done
 
 echo "All tests were passed correctly!"

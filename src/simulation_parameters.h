@@ -465,6 +465,11 @@ class Simulation_parameters
         {
             return molecule_;
         }
+
+        inline Control_input_section const& control() const
+        {
+            return control_input_section_;
+        }
 };
 
 };

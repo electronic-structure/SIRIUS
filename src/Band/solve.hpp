@@ -297,16 +297,10 @@ inline void Band::solve_for_kset(K_set& kset, Potential& potential, bool precomp
         }
     }
 
-    /* experimental: switch to faster solver method after 1st iteration */
-    if (!ctx_.full_potential()) {
-        ctx_.iterative_solver_input_section().converge_occupied_ = 1;
-    }
-
     /* synchronize eigen-values */
     kset.sync_band_energies();
 
-    #if (__VERBOSITY > 0)
-    if (ctx_.comm().rank() == 0) {
+    if (ctx_.control().verbosity_ > 0 && ctx_.comm().rank() == 0) {
         printf("Lowest band energies\n");
         for (int ik = 0; ik < kset.num_kpoints(); ik++) {
             printf("ik : %2i, ", ik);
@@ -335,6 +329,5 @@ inline void Band::solve_for_kset(K_set& kset, Potential& potential, bool precomp
         //== }
         //== fclose(fout);
     }
-    #endif
 }
 

@@ -1,4 +1,4 @@
-// Copyright (c) 2013-2014 Anton Kozhevnikov, Thomas Schulthess
+// Copyright (c) 2013-2016 Anton Kozhevnikov, Thomas Schulthess
 // All rights reserved.
 // 
 // Redistribution and use in source and binary forms, with or without modification, are permitted provided that 
@@ -86,10 +86,6 @@ class Atom_symmetry_class
 
         /// Generate local orbital raidal functions
         void generate_lo_radial_functions(relativity_t rel__);
-
-        /// Transform radial functions
-        /** Local orbitals are orthogonalized and all radial functions are divided by r. */
-        //void transform_radial_functions(bool ort_lo, bool ort_aw);
 
     public:
     
