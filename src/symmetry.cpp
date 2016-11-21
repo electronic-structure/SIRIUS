@@ -713,13 +713,15 @@ mdarray<double, 2> Symmetry::symmetrize_cart_vectors(mdarray<double, 2>& cart_ve
 
         vector3d<double> lat_vec = inverse_lattice_vectors_ * cart_vec__;
 
-        vector3d<double> sym_vec = lat_vec;
+        vector3d<double> sym_vec;
 
         for (int i = 0; i < num_mag_sym(); i++)
         {
             auto &R = magnetic_group_symmetry(i).spg_op.R;
 
-            sym_vec += R * lat_vec;
+            auto &t = magnetic_group_symmetry(i).spg_op.t;
+
+            sym_vec += R * lat_vec + t;
         }
 
         vector3d<double> sym_cart_vec = lattice_vectors_ * sym_vec;
