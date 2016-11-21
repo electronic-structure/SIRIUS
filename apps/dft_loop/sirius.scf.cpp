@@ -254,6 +254,8 @@ double ground_state(Simulation_context&       ctx,
         write_output = 0;
     }
     
+    dft.forces();
+
     if (write_output) {
         json dict;
         json_output_common(dict);

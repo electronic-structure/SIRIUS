@@ -1,0 +1,50 @@
+&control
+    calculation='scf'
+    restart_mode='from_scratch',
+    pseudo_dir = './',
+    outdir='./',
+    prefix='cu',
+    tstress = .true.,
+    tprnfor = .true.,
+    verbosity = 'high',
+    iprint = 1
+ /
+ &system
+    ibrav = 0, nat= 16, ntyp= 2,
+    ecutwfc = 40.0, ecutrho = 500.0, nspin = 1,
+    starting_magnetization(1) = 0.0, starting_magnetization(2) = 0.0,
+    occupations='smearing', smearing='gaussian', degauss=0.02
+ /
+ &electrons
+  electron_maxstep=100,
+  diago_thr_init=1D-6,
+    diagonalization='david'
+    conv_thr = 1.0e-8
+    mixing_beta = 0.7
+ /
+CELL_PARAMETERS bohr
+0.000000  7.608040  7.608040
+7.608040  0.000000  7.608040
+7.608040  7.608040  0.000000
+ATOMIC_SPECIES
+Li  6.941 Li.pz-s-kjpaw_psl.0.2.1.UPF
+F  18.998 F.pz-n-kjpaw_psl.0.1.UPF
+ATOMIC_POSITIONS crystal
+Li  0.000000  0.000000  0.500000
+Li  0.000000  0.000000  0.000000
+Li  0.000000  0.500000  0.500000
+Li  0.000000  0.500000  0.000000
+Li  0.500000  0.000000  0.500000
+Li  0.500000  0.000000  0.000000
+Li  0.500000  0.500000  0.500000
+Li  0.500000  0.500000  0.000000
+F  0.250000  0.250000  0.25
+F  0.250000  0.250000  0.75
+F  0.250000  0.750000  0.25
+F  0.250000  0.750000  0.75
+F  0.750000  0.250000  0.25
+F  0.750000  0.250000  0.75
+F  0.750000  0.750000  0.25
+F  0.750000  0.750000  0.75
+K_POINTS (automatic)
+ 3 3 3 0 0 0

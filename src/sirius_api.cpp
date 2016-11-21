@@ -677,6 +677,12 @@ void sirius_generate_effective_potential()
     dft_ground_state->generate_effective_potential();
 }
 
+void sirius_initialize_subspace()
+{
+    PROFILE();
+    dft_ground_state->initialize_subspace();
+}
+
 void sirius_generate_density(int32_t* kset_id__)
 {
     PROFILE();
@@ -2073,9 +2079,9 @@ void sirius_ground_state_initialize(int32_t* kset_id__)
     if (dft_ground_state != nullptr) TERMINATE("dft_ground_state object is already allocate");
 
     dft_ground_state = new sirius::DFT_ground_state(*sim_ctx, *potential, *density, *kset_list[*kset_id__], 1);
-    if (!sim_ctx->full_potential()) {
-        dft_ground_state->initialize_subspace();
-    }
+//    if (!sim_ctx->full_potential()) {
+//        dft_ground_state->initialize_subspace();
+//    }
 }
 
 void sirius_ground_state_clear()
@@ -2112,8 +2118,8 @@ void sirius_get_all_kpoints_comm(int32_t* fcomm__)
 void sirius_forces(double* forces__)
 {
     PROFILE();
-    mdarray<double, 2> forces(forces__, 3, sim_ctx->unit_cell().num_atoms());
-    dft_ground_state->forces(forces);
+    //mdarray<double, 2> forces(forces__, 3, sim_ctx->unit_cell().num_atoms());
+    //dft_ground_state->forces(forces);
 }
 
 void sirius_set_atom_pos(int32_t* atom_id, double* pos)
@@ -2978,6 +2984,9 @@ void sirius_set_atom_type_paw_data(char* label__,
     if (*num_occ__ != type.pp_desc().num_beta_radial_functions) {
         TERMINATE("PAW error: different number of occupations and wave functions!");
     }
+
+    // we load PAW, so we set is_paw to true
+    pp_desc.is_paw = true;
 
     // load parameters
     pp_desc.core_energy = *core_energy__;

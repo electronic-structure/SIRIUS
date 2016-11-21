@@ -1,6 +1,6 @@
 {
   "control" : {
-      "mpi_grid_dims" : [2],
+      "!mpi_grid_dims" : [2],
       "cyclic_block_size" : 16,
       "processing_unit" : "cpu",
       "std_evp_solver_type" : "lapack",
@@ -10,7 +10,7 @@
   "parameters" : {
       "electronic_structure_method" : "paw_pseudopotential",
 
-      "!num_fv_states" : 40,
+      "num_fv_states" : 48,
 
       "xc_functionals" : ["XC_LDA_X", "XC_LDA_C_PZ"],
 
@@ -28,7 +28,7 @@
 
       "num_dft_iter" : 100,
 
-      "ngridk" : [2,2,2],
+      "ngridk" : [3,3,3],
 
       "reduce_gvec": 0
   },

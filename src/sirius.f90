@@ -326,6 +326,10 @@ module sirius
             &bind(C, name="sirius_generate_effective_potential")
         end subroutine
 
+        subroutine sirius_initialize_subspace()&
+            &bind(C, name="sirius_initialize_subspace")
+        end subroutine
+
         subroutine sirius_find_band_occupancies(kset_id)&
             &bind(C, name="sirius_find_band_occupancies")
             integer,                 intent(in) :: kset_id
@@ -411,6 +415,13 @@ module sirius
             &bind(C, name="sirius_get_gvec_index")
             integer,                  intent(in)  :: gvec(3)
             integer,                  intent(out) :: ig
+        end subroutine
+
+        subroutine sirius_get_global_kpoint_index(kset_id, ikloc, ik)&
+            &bind(C, name="sirius_get_global_kpoint_index")
+            integer,                  intent(in)  :: kset_id
+            integer,                  intent(in) :: ikloc
+            integer,                  intent(out)  :: ik
         end subroutine
 
         subroutine sirius_get_max_num_mt_points(max_num_mt_points)&
@@ -769,16 +780,16 @@ module sirius
         !---- PAW API ------------------------
         !-------------------------------------
         subroutine sirius_set_atom_type_paw_data(label__, &
-                                                ae_wfc_rf__, &
-                                                ps_wfc_rf__, &
-                                                num_wfc__,&
-                                                ld__,&
-                                                cutoff_radius_index__,&
-                                                core_energy__,&
-                                                ae_core_charge__,&
-                                                num_ae_core_charge__,&
-                                                occupations__,&
-                                                num_occ__)&
+            ae_wfc_rf__, &
+            ps_wfc_rf__, &
+            num_wfc__,&
+            ld__,&
+            cutoff_radius_index__,&
+            core_energy__,&
+            ae_core_charge__,&
+            num_ae_core_charge__,&
+            occupations__,&
+            num_occ__)&
 
             &bind(C, name="sirius_set_atom_type_paw_data")
 

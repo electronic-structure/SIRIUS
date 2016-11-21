@@ -90,25 +90,49 @@ class Potential
 
         std::vector<XC_functional*> xc_func_;
 
+        // Store form factors because it is needed by forces calculation
+        mdarray<double, 2> vloc_radial_integrals_;
+
         //------------------------------------------------
         //--- PAW parameters and functions -----------------------
         //------------------------------------------------
-        std::vector< mdarray<double,3> > ae_paw_local_potential_;
-        std::vector< mdarray<double,3> > ps_paw_local_potential_;
+        struct paw_potential_data_t
+        {
+            Atom *atom_{nullptr};
 
+            int abs_ind{-1};
 
-        // because one need to call allreduce for a whole matrix
-        mdarray<double_complex,4>  paw_dij_;
+            int paw_ind{-1};
+
+            mdarray<double,3> ae_potential_;
+            mdarray<double,3> ps_potential_;
+
+            double hartree_energy_{0.0};
+            double xc_energy_{0.0};
+            double core_energy_{0.0};
+            double one_elec_energy_{0.0};
+        };
 
         std::vector< double > paw_hartree_energies_;
         std::vector< double > paw_xc_energies_;
         std::vector< double > paw_core_energies_;
         std::vector< double > paw_one_elec_energies_;
 
-        double paw_hartree_total_energy_;
-        double paw_xc_total_energy_;
-        double paw_total_core_energy_;
-        double paw_one_elec_energy_;
+        double paw_hartree_total_energy_{0.0};
+        double paw_xc_total_energy_{0.0};
+        double paw_total_core_energy_{0.0};
+        double paw_one_elec_energy_{0.0};
+
+        std::vector<paw_potential_data_t> paw_potential_data_;
+
+        // because one need to call allreduce for a whole matrix
+        mdarray<double_complex,4>  paw_dij_;
+
+        int max_paw_basis_size{0};
+        //---- old ------------------------
+        std::vector< mdarray<double,3> > ae_paw_local_potential_;
+        std::vector< mdarray<double,3> > ps_paw_local_potential_;
+
 
         //--- PAW  functions ---
         void init_PAW();
@@ -128,7 +152,7 @@ class Potential
         // TODO DO
         void xc_mt_PAW_noncollinear(    )   {     };
 
-        void calc_PAW_local_potential(int spl_atom_index,
+        void calc_PAW_local_potential(paw_potential_data_t &pdd,
                                       mdarray<double, 2> &ae_full_density,
                                       mdarray<double, 2> &ps_full_density,
                                       mdarray<double, 3> &ae_local_magnetization,
@@ -136,13 +160,13 @@ class Potential
 
 
 
-        void calc_PAW_local_Dij(int spl_atom_index, mdarray<double_complex,4>& paw_dij);
+        void calc_PAW_local_Dij(paw_potential_data_t &pdd, mdarray<double_complex,4>& paw_dij);
 
         double calc_PAW_hartree_potential(Atom& atom, const Radial_grid& grid,
                                              mdarray<double, 2> &full_density,
                                              mdarray<double, 3> &out_atom_pot);
 
-        double calc_PAW_one_elec_energy(int atom_index,
+        double calc_PAW_one_elec_energy(paw_potential_data_t &pdd,
                                         const mdarray<double_complex,4>& density_matrix,
                                         const mdarray<double_complex,4>& paw_dij);
 
@@ -506,8 +530,14 @@ class Potential
         double PAW_one_elec_energy(){ return paw_one_elec_energy_; }
 
         //------------------------------------------------
+        //--- For forces ------------------------------
         //------------------------------------------------
 
+        mdarray<double, 2> const& get_vloc_radial_integrals(){ return vloc_radial_integrals_; }
+
+        //------------------------------------------------
+        //--- next ------------------------------
+        //------------------------------------------------
 
         void check_potential_continuity_at_mt();
 

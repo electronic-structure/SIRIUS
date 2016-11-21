@@ -5,14 +5,16 @@ include ../make.inc
 SRC =  LebedevLaikov.cpp \
        potential.cpp symmetry.cpp \
        spheric_function.cpp force.cpp dft_ground_state.cpp real_space_prj.cpp \
-       beta_projectors.cpp \
+       Beta_projectors/Beta_projectors.cpp \
        atom_type.cpp atom.cpp atom_symmetry_class.cpp unit_cell.cpp \
        Potential/potential.cpp \
        Potential/poisson.cpp \
        Potential/xc.cpp \
        Potential/generate_local_potential.cpp \
        Potential/generate_effective_potential.cpp \
-       Potential/paw_potential.cpp
+       Potential/paw_potential.cpp\
+			 Geometry/Forces_PS.cpp
+
 
 OBJ = $(SRC:.cpp=.o)
 
@@ -69,9 +71,9 @@ all: log $(OBJ) sirius_api.o sirius.o
 #	$(CXX) $(CXX_OPT_DBG) -c -o $(*D)/$(*F).o $<
 
 debug: CXX_OPT=$(CXX_OPT_DBG)
-debug: $(OBJ_DBG)
-	ar -r libsirius.dbg.a $(OBJ_DBG)
-
+debug: $(OBJ_DBG) sirius_api.o sirius.o
+	ar -r libsirius.a $(OBJ_DBG)
+	ar -r libsirius_f.a $(OBJ_DBG) sirius_api.o sirius.o
 
 
 # TODO: platform-independent python script
