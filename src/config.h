@@ -36,8 +36,6 @@
 
 //== #define __PRINT_MEMORY_USAGE
 
-//== #define __PRINT_PERFORMANCE
-
 //== #define __SCALAPACK
 
 //== #define __PILAENV_BLOCKSIZE=2048

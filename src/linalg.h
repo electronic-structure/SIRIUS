@@ -208,8 +208,8 @@ class linalg<GPU>: public linalg_base
                          T* beta, T* y, ftn_int incy, int stream_id);
 
         template <typename T>
-        static void gemm(int transa, int transb, ftn_int m, ftn_int n, ftn_int k, T* alpha, T const* A, ftn_int lda,
-                         T const* B, ftn_int ldb, T* beta, T* C, ftn_int ldc, int stream_id = -1);
+        static void gemm(int transa, int transb, ftn_int m, ftn_int n, ftn_int k, T const* alpha, T const* A, ftn_int lda,
+                         T const* B, ftn_int ldb, T const* beta, T* C, ftn_int ldc, int stream_id = -1);
 
         template <typename T>
         static void gemm(int transa, int transb, ftn_int m, ftn_int n, ftn_int k, T const* A, ftn_int lda,
@@ -239,7 +239,7 @@ class linalg<GPU>: public linalg_base
         static void trmm(char side, char uplo, char transa, ftn_int m, ftn_int n, T* aplha, T* A, ftn_int lda, T* B, ftn_int ldb);
 
         template<typename T>
-        static void ger(ftn_int m, ftn_int n, T* alpha, T* x, ftn_int incx, T* y, ftn_int incy, T* A, ftn_int lda, int stream_id = -1);
+        static void ger(ftn_int m, ftn_int n, T const* alpha, T* x, ftn_int incx, T* y, ftn_int incy, T* A, ftn_int lda, int stream_id = -1);
 
         template <typename T>
         static void axpy(int n__, T const* alpha__, T const* x__, int incx__, T* y__, int incy__);
@@ -827,8 +827,8 @@ inline void linalg<GPU>::gemv<ftn_double_complex>(int trans, ftn_int m, ftn_int 
 // Generic interface to zgemm
 template<>
 inline void linalg<GPU>::gemm<ftn_double_complex>(int transa, int transb, ftn_int m, ftn_int n, ftn_int k,
-                                                  ftn_double_complex* alpha, ftn_double_complex const* A, ftn_int lda,
-                                                  ftn_double_complex const* B, ftn_int ldb, ftn_double_complex* beta,
+                                                  ftn_double_complex const* alpha, ftn_double_complex const* A, ftn_int lda,
+                                                  ftn_double_complex const* B, ftn_int ldb, ftn_double_complex const* beta,
                                                   ftn_double_complex* C, ftn_int ldc, int stream_id)
 {
     cublas_zgemm(transa, transb, m, n, k, alpha, A, lda, B, ldb, beta, C, ldc, stream_id);
@@ -837,8 +837,8 @@ inline void linalg<GPU>::gemm<ftn_double_complex>(int transa, int transb, ftn_in
 // Generic interface to dgemm
 template<>
 inline void linalg<GPU>::gemm<ftn_double>(int transa, int transb, ftn_int m, ftn_int n, ftn_int k,
-                                          ftn_double* alpha, ftn_double const* A, ftn_int lda,
-                                          ftn_double const* B, ftn_int ldb, ftn_double* beta,
+                                          ftn_double const* alpha, ftn_double const* A, ftn_int lda,
+                                          ftn_double const* B, ftn_int ldb, ftn_double const* beta,
                                           ftn_double* C, ftn_int ldc, int stream_id)
 {
     cublas_dgemm(transa, transb, m, n, k, alpha, A, lda, B, ldb, beta, C, ldc, stream_id);
@@ -933,7 +933,7 @@ inline void linalg<GPU>::trmm<ftn_double_complex>(char side,
 template<>
 inline void linalg<GPU>::ger<ftn_double>(ftn_int     m,
                                          ftn_int     n,
-                                         ftn_double* alpha,
+                                         ftn_double const* alpha,
                                          ftn_double* x,
                                          ftn_int     incx,
                                          ftn_double* y,
@@ -948,7 +948,7 @@ inline void linalg<GPU>::ger<ftn_double>(ftn_int     m,
 template<>
 inline void linalg<GPU>::ger<ftn_double_complex>(ftn_int             m,
                                                  ftn_int             n,
-                                                 ftn_double_complex* alpha,
+                                                 ftn_double_complex const* alpha,
                                                  ftn_double_complex* x,
                                                  ftn_int             incx,
                                                  ftn_double_complex* y,
