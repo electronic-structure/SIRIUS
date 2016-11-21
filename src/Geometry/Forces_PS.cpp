@@ -177,7 +177,8 @@ mdarray<double,2> Forces_PS::calc_nonlocal_forces(K_set& kset) const
 
     ctx_.comm().allreduce(&forces(0,0),forces.size());
 
-    return std::move(forces);
+    //return std::move(forces);
+    return std::move( unit_cell.symmetry().symmetrize_cart_vectors(forces) );
 }
 
 

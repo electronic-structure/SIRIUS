@@ -73,7 +73,7 @@ class vector3d
         }
 
         vector3d(T* ptr)
-        : this(ptr[0], ptr[1], ptr[2])
+        : vector3d(ptr[0], ptr[1], ptr[2])
         {}
 
         /// Access vector elements

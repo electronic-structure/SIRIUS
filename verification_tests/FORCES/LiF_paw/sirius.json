@@ -5,7 +5,7 @@
       "processing_unit" : "cpu",
       "std_evp_solver_type" : "lapack",
       "gen_evp_solver_type" : "lapack",
-      "reduce_gvec": false
+      "reduce_gvec": true
   },
 
   "parameters" : {
@@ -17,7 +17,7 @@
 
       "smearing_width" : 0.025,
 
-      "use_symmetry" : 0,
+      "use_symmetry" : 1,
 
       "num_mag_dims" : 0,
 
