@@ -119,12 +119,12 @@ class Band
                                                     Periodic_function<double>* effective_potential__,
                                                     Interstitial_operator& istl_op__) const;
 
-        inline void apply_o(K_point* kp__,
-                            Interstitial_operator& istl_op__,
-                            int N,
-                            int n,
-                            wave_functions& phi__,
-                            wave_functions& ophi__) const;
+        inline void apply_o_apw(K_point* kp__,
+                                Interstitial_operator& istl_op__,
+                                int N,
+                                int n,
+                                wave_functions& phi__,
+                                wave_functions& ophi__) const;
 
         inline void get_singular_components(K_point* kp__,
                                             Interstitial_operator& istl_op__) const;
@@ -332,9 +332,6 @@ class Band
                 Interstitial_operator istl_op(ctx_.fft_coarse(), ctx_.gvec_coarse(),
                                               ctx_.mpi_grid_fft_vloc().communicator(1 << 1),
                                               effective_potential__, ctx_.step_function());
-                //Interstitial_operator istl_op(ctx_.fft(), ctx_.gvec(),
-                //                              ctx_.mpi_grid_fft().communicator(1 << 1),
-                //                              effective_potential__, ctx_.step_function());
                 diag_fv_full_potential_davidson(kp__, effective_potential__, istl_op);
             }
         }
@@ -420,18 +417,25 @@ class Band
                     ptr = new Eigenproblem_lapack(2 * linalg_base::dlamch('S'));
                     break;
                 }
+                #ifdef __SCALAPACK
                 case ev_scalapack: {
                     ptr = new Eigenproblem_scalapack(blacs_grid_, ctx_.cyclic_block_size(), ctx_.cyclic_block_size(), 1e-12);
                     break;
                 }
+                #endif
+                #ifdef __PLASMA
                 case ev_plasma: {
                     ptr = new Eigenproblem_plasma();
                     break;
                 }
+                #endif
+                #ifdef __MAGMA
                 case ev_magma: {
                     ptr = new Eigenproblem_magma();
                     break;
                 }
+                #endif
+                #ifdef __ELPA
                 case ev_elpa1: {
                     ptr = new Eigenproblem_elpa1(blacs_grid_, ctx_.cyclic_block_size());
                     break;
@@ -440,6 +444,7 @@ class Band
                     ptr = new Eigenproblem_elpa2(blacs_grid_, ctx_.cyclic_block_size());
                     break;
                 }
+                #endif
                 default: {
                     TERMINATE("wrong standard eigen-value solver");
                 }
@@ -452,10 +457,13 @@ class Band
                     ptr = new Eigenproblem_lapack(2 * linalg_base::dlamch('S'));
                     break;
                 }
+                #ifdef __SCALAPACK
                 case ev_scalapack: {
                     ptr = new Eigenproblem_scalapack(blacs_grid_, ctx_.cyclic_block_size(), ctx_.cyclic_block_size(), 1e-12);
                     break;
                 }
+                #endif
+                #ifdef __ELPA
                 case ev_elpa1: {
                     ptr = new Eigenproblem_elpa1(blacs_grid_, ctx_.cyclic_block_size());
                     break;
@@ -464,10 +472,14 @@ class Band
                     ptr = new Eigenproblem_elpa2(blacs_grid_, ctx_.cyclic_block_size());
                     break;
                 }
+                #endif
+                #ifdef __MAGMA
                 case ev_magma: {
                     ptr = new Eigenproblem_magma();
                     break;
                 }
+                #endif
+                #ifdef __RS_GEN_EIG
                 case ev_rs_gpu: {
                     ptr = new Eigenproblem_RS_GPU(blacs_grid_, ctx_.cyclic_block_size(), ctx_.cyclic_block_size());
                     break;
@@ -476,6 +488,7 @@ class Band
                     ptr = new Eigenproblem_RS_CPU(blacs_grid_, ctx_.cyclic_block_size(), ctx_.cyclic_block_size());
                     break;
                 }
+                #endif
                 default: {
                     TERMINATE("wrong generalized eigen-value solver");
                 }
@@ -726,7 +739,6 @@ class Band
          */
         inline void apply_fv_h_o(K_point* kp__,
                                  Interstitial_operator& istl_op__,
-                                 Periodic_function<double>* effective_potential__,
                                  int nlo,
                                  int N,
                                  int n,

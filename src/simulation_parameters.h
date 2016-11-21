@@ -415,7 +415,7 @@ class Simulation_parameters
             return mixer_input_section_;
         }
 
-        inline Iterative_solver_input_section const& iterative_solver_input_section() const
+        inline Iterative_solver_input_section& iterative_solver_input_section()
         {
             return iterative_solver_input_section_;
         }
@@ -464,6 +464,11 @@ class Simulation_parameters
         inline bool molecule() const
         {
             return molecule_;
+        }
+
+        inline Control_input_section const& control() const
+        {
+            return control_input_section_;
         }
 };
 

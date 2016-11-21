@@ -94,6 +94,16 @@ module sirius
             integer,                 intent(in) :: dims
         end subroutine
 
+        subroutine sirius_set_valence_relativity(str)&
+            &bind(C, name="sirius_set_valence_relativity")
+            character, dimension(*), intent(in) :: str
+        end subroutine
+
+        subroutine sirius_set_core_relativity(str)&
+            &bind(C, name="sirius_set_core_relativity")
+            character, dimension(*), intent(in) :: str
+        end subroutine
+
         subroutine sirius_set_atom_type_properties(label, symbol, zn, mass, mt_radius, num_mt_points)&
             &bind(C, name="sirius_set_atom_type_properties")
             character, dimension(*), intent(in) :: label
@@ -215,6 +225,15 @@ module sirius
             real(8),                 intent(in) :: enu
         end subroutine
 
+        subroutine sirius_get_aw_surface_derivative(ia, l, io, dm, deriv)&
+            &bind(C, name="sirius_get_aw_surface_derivative")
+            integer,                 intent(in)  :: ia
+            integer,                 intent(in)  :: l
+            integer,                 intent(in)  :: io
+            integer,                 intent(in)  :: dm
+            real(8),                 intent(out) :: deriv
+        end subroutine
+
         subroutine sirius_set_aw_surface_derivative(ia, l, io, dm, deriv)&
             &bind(C, name="sirius_set_aw_surface_derivative")
             integer,                 intent(in) :: ia
@@ -307,6 +326,10 @@ module sirius
             &bind(C, name="sirius_generate_effective_potential")
         end subroutine
 
+        subroutine sirius_initialize_subspace()&
+            &bind(C, name="sirius_initialize_subspace")
+        end subroutine
+
         subroutine sirius_find_band_occupancies(kset_id)&
             &bind(C, name="sirius_find_band_occupancies")
             integer,                 intent(in) :: kset_id
@@ -392,6 +415,13 @@ module sirius
             &bind(C, name="sirius_get_gvec_index")
             integer,                  intent(in)  :: gvec(3)
             integer,                  intent(out) :: ig
+        end subroutine
+
+        subroutine sirius_get_global_kpoint_index(kset_id, ikloc, ik)&
+            &bind(C, name="sirius_get_global_kpoint_index")
+            integer,                  intent(in)  :: kset_id
+            integer,                  intent(in) :: ikloc
+            integer,                  intent(out)  :: ik
         end subroutine
 
         subroutine sirius_get_max_num_mt_points(max_num_mt_points)&
@@ -528,20 +558,20 @@ module sirius
             &bind(C, name="sirius_generate_radial_integrals")
         end subroutine
 
-        subroutine sirius_get_aw_deriv_radial_function(ia, l, io, dfdr)&
-            &bind(C, name="sirius_get_aw_deriv_radial_function")
-            integer,                 intent(in)  :: ia
-            integer,                 intent(in)  :: l
-            integer,                 intent(in)  :: io
-            real(8),                 intent(out) :: dfdr
-        end subroutine
+        !subroutine sirius_get_aw_deriv_radial_function(ia, l, io, dfdr)&
+        !    &bind(C, name="sirius_get_aw_deriv_radial_function")
+        !    integer,                 intent(in)  :: ia
+        !    integer,                 intent(in)  :: l
+        !    integer,                 intent(in)  :: io
+        !    real(8),                 intent(out) :: dfdr
+        !end subroutine
 
-        subroutine sirius_get_lo_deriv_radial_function(ia, idxlo, dfdr)&
-            &bind(C, name="sirius_get_lo_deriv_radial_function")
-            integer,                 intent(in)  :: ia
-            integer,                 intent(in)  :: idxlo
-            real(8),                 intent(out) :: dfdr
-        end subroutine
+        !subroutine sirius_get_lo_deriv_radial_function(ia, idxlo, dfdr)&
+        !    &bind(C, name="sirius_get_lo_deriv_radial_function")
+        !    integer,                 intent(in)  :: ia
+        !    integer,                 intent(in)  :: idxlo
+        !    real(8),                 intent(out) :: dfdr
+        !end subroutine
 
         subroutine sirius_get_aw_radial_function(ia, l, io, f)&
             &bind(C, name="sirius_get_aw_radial_function")
@@ -559,6 +589,14 @@ module sirius
             real(8),                 intent(in)  :: f
         end subroutine
 
+        subroutine sirius_set_aw_radial_function_derivative(ia, l, io, f)&
+            &bind(C, name="sirius_set_aw_radial_function_derivative")
+            integer,                 intent(in)  :: ia
+            integer,                 intent(in)  :: l
+            integer,                 intent(in)  :: io
+            real(8),                 intent(in)  :: f
+        end subroutine
+
         subroutine sirius_get_lo_radial_function(ia, idxlo, f)&
             &bind(C, name="sirius_get_lo_radial_function")
             integer,                 intent(in)  :: ia
@@ -568,6 +606,13 @@ module sirius
 
         subroutine sirius_set_lo_radial_function(ia, idxlo, f)&
             &bind(C, name="sirius_set_lo_radial_function")
+            integer,                 intent(in)  :: ia
+            integer,                 intent(in)  :: idxlo
+            real(8),                 intent(in)  :: f
+        end subroutine
+
+        subroutine sirius_set_lo_radial_function_derivative(ia, idxlo, f)&
+            &bind(C, name="sirius_set_lo_radial_function_derivative")
             integer,                 intent(in)  :: ia
             integer,                 intent(in)  :: idxlo
             real(8),                 intent(in)  :: f
@@ -693,6 +738,10 @@ module sirius
             &bind(C, name="sirius_write_json_output")
         end subroutine
 
+        subroutine sirius_ground_state_print_info()&
+            &bind(C, name="sirius_ground_state_print_info")
+        end subroutine
+
         subroutine sirius_density_initialize_aux(rhoit, rhomt, magit, magmt)&
             &bind(C, name="sirius_density_initialize")
             use, intrinsic :: ISO_C_BINDING
@@ -731,16 +780,16 @@ module sirius
         !---- PAW API ------------------------
         !-------------------------------------
         subroutine sirius_set_atom_type_paw_data(label__, &
-                                                ae_wfc_rf__, &
-                                                ps_wfc_rf__, &
-                                                num_wfc__,&
-                                                ld__,&
-                                                cutoff_radius_index__,&
-                                                core_energy__,&
-                                                ae_core_charge__,&
-                                                num_ae_core_charge__,&
-                                                occupations__,&
-                                                num_occ__)&
+            ae_wfc_rf__, &
+            ps_wfc_rf__, &
+            num_wfc__,&
+            ld__,&
+            cutoff_radius_index__,&
+            core_energy__,&
+            ae_core_charge__,&
+            num_ae_core_charge__,&
+            occupations__,&
+            num_occ__)&
 
             &bind(C, name="sirius_set_atom_type_paw_data")
 
@@ -772,6 +821,22 @@ module sirius
         subroutine sirius_get_paw_one_elec_energy(one_elec_en__)&
             &bind(C, name="sirius_get_paw_one_elec_energy")
             real(8),              intent(out) :: one_elec_en__
+        end subroutine
+
+        subroutine sirius_reduce_coordinates(coord, reduced_coord, T)&
+            &bind(C, name="sirius_reduce_coordinates")
+            real(8),                  intent(in)  :: coord
+            real(8),                  intent(out) :: reduced_coord
+            integer,                  intent(out) :: T
+        end subroutine
+
+        subroutine sirius_fderiv(m, np, x, f, g)&
+            &bind(C, name="sirius_fderiv")
+            integer,                  intent(in)  :: m
+            integer,                  intent(in)  :: np
+            real(8),                  intent(in)  :: x
+            real(8),                  intent(in)  :: f
+            real(8),                  intent(out) :: g
         end subroutine
 
     end interface

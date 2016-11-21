@@ -97,22 +97,85 @@ void create_supercell(cmd_args& args__)
     }
 }
 
+void find_primitive()
+{
+    Simulation_context ctx("sirius.json", mpi_comm_self());
+
+    double lattice[3][3];
+    for (int i: {0, 1, 2}) {
+        for (int j: {0, 1, 2}) {
+            lattice[i][j] = ctx.unit_cell().lattice_vector(j)[i];
+        }
+    }
+    mdarray<double, 2> positions(3, 4 * ctx.unit_cell().num_atoms());
+    mdarray<int, 1> types(4 * ctx.unit_cell().num_atoms());
+    for (int ia = 0; ia < ctx.unit_cell().num_atoms(); ia++) {
+        for (int x: {0, 1, 2}) {
+            positions(x, ia) = ctx.unit_cell().atom(ia).position()[x];
+            types(ia) = ctx.unit_cell().atom(ia).type_id();
+        }
+    }
+
+    int nat_new = spg_find_primitive(lattice, (double(*)[3])&positions(0, 0), &types[0], ctx.unit_cell().num_atoms(), 1e-4);
+    printf("new number of atoms: %i\n", nat_new);
+
+    Simulation_context ctx_new(mpi_comm_self());
+
+    vector3d<double> a0, a1, a2;
+    for (int x = 0; x < 3; x++) {
+        a0[x] = lattice[x][0];
+        a1[x] = lattice[x][1];
+        a2[x] = lattice[x][2];
+    }
+    ctx_new.unit_cell().set_lattice_vectors(a0, a1, a2);
+
+    for (int iat = 0; iat < ctx.unit_cell().num_atom_types(); iat++)
+    {
+        auto label = ctx.unit_cell().atom_type(iat).label();
+        ctx_new.unit_cell().add_atom_type(label, "");
+    }
+   
+    for (int iat = 0; iat < ctx.unit_cell().num_atom_types(); iat++) {
+        auto label = ctx.unit_cell().atom_type(iat).label();
+
+        for (int i = 0; i < nat_new; i++) {
+            if (types[i] == iat) {
+                vector3d<double> p(positions(0, i), positions(1, i), positions(2, i));
+                ctx_new.unit_cell().add_atom(label, p);
+            }
+        }
+    }
+    
+    json dict;
+    dict["unit_cell"] = ctx_new.unit_cell().serialize();
+    if (mpi_comm_world().rank() == 0) {
+        std::ofstream ofs("unit_cell.json", std::ofstream::out | std::ofstream::trunc);
+        ofs << dict.dump(4);
+    }
+
+}
+
 int main(int argn, char** argv)
 {
     cmd_args args;
     args.register_key("--supercell=", "{string} transformation matrix (9 numbers)");
     args.register_key("--qe", "create input for QE");
+    args.register_key("--find_primitive", "find a primitive cell");
 
     args.parse_args(argn, argv);
-    if (args.exist("help"))
-    {
+    if (args.exist("help")) {
         printf("Usage: %s [options]\n", argv[0]);
         args.print_help();
         return 0;
     }
 
     sirius::initialize(1);
-    if (args.exist("supercell")) create_supercell(args);
+    if (args.exist("supercell")) {
+        create_supercell(args);
+    }
+    if (args.exist("find_primitive")) {
+        find_primitive();
+    }
 
 
     sirius::finalize();

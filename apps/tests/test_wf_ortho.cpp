@@ -21,7 +21,6 @@ void test_wf_ortho(std::vector<int> mpi_grid_dims__,
     /* parameters to pass to wave-functions */
     Simulation_parameters params;
     params.set_processing_unit(pu);
-    params.set_esm_type("ultrasoft_pseudopotential");
 
     if (mpi_comm_world().rank() == 0) {
         printf("total number of G-vectors: %i\n", gvec.num_gvec());
@@ -43,11 +42,48 @@ void test_wf_ortho(std::vector<int> mpi_grid_dims__,
         }
     }
     dmatrix<double_complex> ovlp(2 * num_bands__, 2 * num_bands__, blacs_grid, bs__, bs__);
-    
+
+    #ifdef __GPU
+    if (pu == GPU) {
+        phi.allocate_on_device();
+        phi.copy_to_device(0, 2 * num_bands__);
+
+        hphi.allocate_on_device();
+        hphi.copy_to_device(0, 2 * num_bands__);
+        
+        ophi.allocate_on_device();
+        ophi.copy_to_device(0, 2 * num_bands__);
+
+        tmp.allocate_on_device();
+
+        if (mpi_comm_world().size() == 1) {
+            ovlp.allocate(memory_t::device);
+        }
+    }
+    #endif
 
     mpi_comm_world().barrier();
+    runtime::Timer t1("ortho");
     orthogonalize<double_complex>(0, num_bands__, phi, hphi, ophi, ovlp, tmp);
     orthogonalize<double_complex>(num_bands__, num_bands__, phi, hphi, ophi, ovlp, tmp);
+    mpi_comm_world().barrier();
+    double tval = t1.stop();
+
+    int k = gvec.num_gvec();
+    
+    // one inner product
+    long double flop1 = 8.0 * num_bands__ * num_bands__ * k;
+    // one Cholesky + one inversion, inversion cost is half-Cholesky
+    long double flop2 = 1.5 * (8.0 / 3) * num_bands__ * num_bands__ * num_bands__;
+    // three transformations
+    long double flop3 = 3.0 * 8.0 * num_bands__ * k * num_bands__;
+
+    long double num_gflop = 1e-9 * (flop1 + flop3 + 2.0 * (flop1 + flop2 + flop3));
+    
+    if (mpi_comm_world().rank() == 0) {
+        printf("total performance            : %18.6Lf GFlop/s\n", num_gflop / tval);
+        printf("average MPI rank performance : %18.6Lf GFlop/s\n", num_gflop / tval / mpi_comm_world().size());
+    }
 
     inner(phi, 0, 2 * num_bands__, ophi, 0, 2 * num_bands__, ovlp, 0, 0);
 

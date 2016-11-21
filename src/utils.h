@@ -277,7 +277,8 @@ class Utils
             fclose(fout);
         }
 
-        static void check_hermitian(const std::string& name, mdarray<double_complex, 2>& mtrx, int n = -1)
+        template <typename T>
+        static void check_hermitian(const std::string& name, matrix<T> const& mtrx, int n = -1)
         {
             assert(mtrx.size(0) == mtrx.size(1));
 
@@ -285,15 +286,14 @@ class Utils
             int i0 = -1;
             int j0 = -1;
 
-            if (n == -1) n = (int)mtrx.size(0);
+            if (n == -1) {
+                n = static_cast<int>(mtrx.size(0));
+            }
 
-            for (int i = 0; i < n; i++)
-            {
-                for (int j = 0; j < n; j++)
-                {
-                    double diff = std::abs(mtrx(i, j) - std::conj(mtrx(j, i)));
-                    if (diff > maxdiff)
-                    {
+            for (int i = 0; i < n; i++) {
+                for (int j = 0; j < n; j++) {
+                    double diff = std::abs(mtrx(i, j) - type_wrapper<T>::conjugate(mtrx(j, i)));
+                    if (diff > maxdiff) {
                         maxdiff = diff;
                         i0 = i;
                         j0 = j;
@@ -301,10 +301,9 @@ class Utils
                 }
             }
 
-            if (maxdiff > 1e-10)
-            {
+            if (maxdiff > 1e-10) {
                 std::stringstream s;
-                s << name << " is not a hermitian matrix" << std::endl
+                s << name << " is not a symmetric or hermitian matrix" << std::endl
                   << "  maximum error: i, j : " << i0 << " " << j0 << " diff : " << maxdiff;
 
                 WARNING(s);
@@ -371,8 +370,13 @@ class Utils
                 }
             }
             for (int x: {0, 1, 2}) {
-                if (std::abs(coord[x] - (v.first[x] + v.second[x])) > 1e-12) {
-                    TERMINATE("wrong coordinate reduction");
+                if (std::abs(coord[x] - (v.first[x] + v.second[x])) > eps) {
+                    std::stringstream s;
+                    s << "wrong coordinate reduction" << std::endl
+                      << "  original coord: " << coord << std::endl
+                      << "  reduced coord: " << v.first << std::endl
+                      << "  T: " << v.second;
+                    TERMINATE(s);
                 }
             }
             return v;

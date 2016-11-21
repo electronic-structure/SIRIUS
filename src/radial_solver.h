@@ -654,53 +654,6 @@ class Radial_solver
         {
             auto result = solve(rel__, dme__, l__, 0, enu__);
             int nr = num_points();
-            //std::vector<std::vector<double>> p;
-            //std::vector<std::vector<double>> q;
-            //std::vector<std::vector<double>> dpdr;
-            //std::vector<std::vector<double>> dqdr;
-
-            //Spline<double> chi_p(radial_grid_);
-            //Spline<double> chi_q(radial_grid_);
-
-            //int nn{0};
-
-            //for (int j = 0; j <= dme__; j++) {
-            //    p.push_back(std::move(std::vector<double>(nr)));
-            //    q.push_back(std::move(std::vector<double>(nr)));
-            //    dpdr.push_back(std::move(std::vector<double>(nr)));
-            //    dqdr.push_back(std::move(std::vector<double>(nr)));
-
-            //    if (j) {
-            //        if (rel__ == relativity_t::none || rel__ == relativity_t::zora) {
-            //            for (int i = 0; i < nr; i++) chi_q[i] = -j * p[j - 1][i];
-            //            chi_q.interpolate();
-            //        }
-            //        else if (rel__ == relativity_t::koelling_harmon) {
-            //            STOP();
-            //        }
-            //        else {
-            //            TERMINATE_NOT_IMPLEMENTED
-            //        }
-            //    }
-
-            //    switch (rel__) {
-            //        case relativity_t::none: {
-            //            nn = integrate_forward_rk4<relativity_t::none, false>(enu__, l__, 0, chi_p, chi_q, p[j], dpdr[j], q[j], dqdr[j]);
-            //            break;
-            //        }
-            //        case relativity_t::koelling_harmon: {
-            //            nn = integrate_forward_rk4<relativity_t::koelling_harmon, false>(enu__, l__, 0, chi_p, chi_q, p[j], dpdr[j], q[j], dqdr[j]);
-            //            break;
-            //        }
-            //        case relativity_t::zora: {
-            //            nn = integrate_forward_rk4<relativity_t::zora, false>(enu__, l__, 0, chi_p, chi_q, p[j], dpdr[j], q[j], dqdr[j]);
-            //            break;
-            //        }
-            //        default: {
-            //            TERMINATE_NOT_IMPLEMENTED
-            //        }
-            //    }
-            //}
 
             auto p0 = std::get<1>(result);
             auto p1 = std::get<2>(result);
@@ -949,6 +902,11 @@ class Bound_state: public Radial_solver
         Spline<double> const& rho() const
         {
             return rho_;
+        }
+
+        Spline<double> const& u() const
+        {
+            return u_;
         }
 };
 

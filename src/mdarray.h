@@ -868,12 +868,22 @@ class mdarray: public mdarray_base<T, N>
             this->init_dimensions({d0, d1, d2, d3});
             this->raw_ptr_ = ptr__;
         }
+
+        mdarray<T, N>& operator=(std::function<T(int64_t, int64_t)> f__)
+        {
+            assert(N == 2);
+
+            for (int64_t i1 = this->dims_[1].begin(); i1 <= this->dims_[1].end(); i1++) {
+                for (int64_t i0 = this->dims_[0].begin(); i0 <= this->dims_[0].end(); i0++) {
+                    (*this)(i0, i1) = f__(i0, i1);
+                }
+            }
+            return *this;
+        }
 };
 
 // Alias for matrix
 template <typename T> using matrix = mdarray<T, 2>;
-
-// TODO:: allgather for mdarray with last index distributed
 
 #endif // __MDARRAY_H__
 

@@ -28,8 +28,8 @@
 #include "periodic_function.h"
 #include "matching_coefficients.h"
 #include "blacs_grid.h"
+#include "Beta_projectors/Beta_projectors.h"
 #include "wave_functions.h"
-#include "beta_projectors.h"
 
 namespace sirius
 {
@@ -283,53 +283,23 @@ class K_point
          *  Thus, the total number of coefficients representing a wave-funstion is equal
          *  to the number of muffin-tin basis functions of the form \f$ f_{\ell \lambda}^{\alpha}(r) 
          *  Y_{\ell m}(\hat {\bf r}) \f$ plust the number of G+k plane waves. */ 
-        inline int wf_size() const // TODO: better name for this
-        {
-            switch (ctx_.esm_type())
-            {
-                case electronic_structure_method_t::full_potential_lapwlo:
-                case electronic_structure_method_t::full_potential_pwlo:
-                {
-                    return unit_cell_.mt_basis_size() + num_gkvec();
-                    break;
-                }
+        //inline int wf_size() const // TODO: better name for this
+        //{
+        //    if (ctx_.full_potential()) {
+        //        return unit_cell_.mt_basis_size() + num_gkvec();
+        //    } else {
+        //        return num_gkvec();
+        //    }
+        //}
 
-                //TODO case paw_pseudopotential think about
-                case electronic_structure_method_t::paw_pseudopotential:
-                case electronic_structure_method_t::ultrasoft_pseudopotential:
-                case electronic_structure_method_t::norm_conserving_pseudopotential:
-                {
-                    return num_gkvec();
-                    break;
-                }
-            }
-            return -1; // make compiler happy
-        }
-
-        inline int wf_pw_offset() const
-        {
-            switch (ctx_.esm_type())
-            {
-                case electronic_structure_method_t::full_potential_lapwlo:
-                case electronic_structure_method_t::full_potential_pwlo:
-                {
-                    return unit_cell_.mt_basis_size();
-                    break;
-                }
-                case electronic_structure_method_t::paw_pseudopotential:
-                case electronic_structure_method_t::ultrasoft_pseudopotential:
-                case electronic_structure_method_t::norm_conserving_pseudopotential:
-                {
-                    return 0;
-                    break;
-                }
-                default:
-                {
-                    TERMINATE("wrong type of electronic structure method");
-                    return -1; //make compiler happy
-                }
-            }
-        }
+        //inline int wf_pw_offset() const
+        //{
+        //    if (ctx_.full_potential()) {
+        //        return unit_cell_.mt_basis_size();
+        //    } else {
+        //        return 0;
+        //    }
+        //}
 
         inline void get_band_occupancies(double* band_occupancies) const
         {
@@ -357,6 +327,11 @@ class K_point
         }
 
         inline double band_occupancy(int j) const
+        {
+            return band_occupancies_[j];
+        }
+
+        inline double& band_occupancy(int j)
         {
             return band_occupancies_[j];
         }

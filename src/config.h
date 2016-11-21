@@ -89,16 +89,6 @@ const bool check_pseudo_charge = false;
 #define __VERIFICATION 0
 #endif
 
-/// Verbosity level.
-/** Controls the ammount of information printed to standard output. 
- *  verbosity_level = 0 : silent mode, nothing is printed \n
- *  verbosity_level >= 1 : print global parameters of the calculation \n
- *  verbosity_level >= 2 : (suggested default) print information of any initialized k_set \n
- */
-#ifndef __VERBOSITY
-#define __VERBOSITY 2
-#endif
-
 const bool use_second_variation = true;
 
 #endif // __CONFIG_H__

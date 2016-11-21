@@ -27,7 +27,6 @@
 
 #include "splindex.h"
 #include "mdarray.h"
-#include "communicator.h"
 #include "blacs_grid.h"
 
 /// Distributed matrix.
@@ -75,9 +74,10 @@ class dmatrix: public matrix<T>
         {
         }
         
-        dmatrix(int num_rows__, int num_cols__, BLACS_grid const& blacs_grid__, int bs_row__, int bs_col__)
+        dmatrix(int num_rows__, int num_cols__, BLACS_grid const& blacs_grid__, int bs_row__, int bs_col__, memory_t mem_type__ = memory_t::host)
             : matrix<T>(splindex<block_cyclic>(num_rows__, blacs_grid__.num_ranks_row(), blacs_grid__.rank_row(), bs_row__).local_size(),
-                        splindex<block_cyclic>(num_cols__, blacs_grid__.num_ranks_col(), blacs_grid__.rank_col(), bs_col__).local_size()),
+                        splindex<block_cyclic>(num_cols__, blacs_grid__.num_ranks_col(), blacs_grid__.rank_col(), bs_col__).local_size(),
+                        mem_type__),
               num_rows_(num_rows__),
               num_cols_(num_cols__),
               bs_row_(bs_row__),
@@ -89,7 +89,7 @@ class dmatrix: public matrix<T>
             init();
         }
 
-        dmatrix(T* ptr__, int num_rows__, int num_cols__, BLACS_grid const& blacs_grid__, int bs_row__, int bs_col__) 
+        dmatrix(T* ptr__, int num_rows__, int num_cols__, BLACS_grid const& blacs_grid__, int bs_row__, int bs_col__)
             : matrix<T>(ptr__,
                         splindex<block_cyclic>(num_rows__, blacs_grid__.num_ranks_row(), blacs_grid__.rank_row(), bs_row__).local_size(),
                         splindex<block_cyclic>(num_cols__, blacs_grid__.num_ranks_col(), blacs_grid__.rank_col(), bs_col__).local_size()),
@@ -278,7 +278,90 @@ class dmatrix: public matrix<T>
             assert(blacs_grid_ != nullptr);
             return *blacs_grid_;
         }
+
+        inline void serialize(std::string name__, int n__) const;
 };
+
+template<>
+inline void dmatrix<double_complex>::serialize(std::string name__, int n__) const
+{
+    mdarray<double_complex, 2> full_mtrx(num_rows(), num_cols());
+    full_mtrx.zero();
+
+    for (int j = 0; j < num_cols_local(); j++) {
+        for (int i = 0; i < num_rows_local(); i++) {
+            full_mtrx(irow(i), icol(j)) = (*this)(i, j);
+        }
+    }
+    blacs_grid_->comm().allreduce(full_mtrx.at<CPU>(), static_cast<int>(full_mtrx.size()));
+
+    json dict;
+    dict["mtrx_re"] = json::array();
+    for (int i = 0; i < num_rows(); i++) {
+        dict["mtrx_re"].push_back(json::array());
+        for (int j = 0; j < num_cols(); j++) {
+            dict["mtrx_re"][i].push_back(full_mtrx(i, j).real());
+        }
+    }
+    
+    if (blacs_grid_->comm().rank() == 0) {
+        std::cout << "mtrx: " << name__ << std::endl;
+        //std::cout << dict.dump(4);
+
+        printf("{\n");
+        for (int i = 0; i < n__; i++) {
+            printf("{");
+            for (int j = 0; j < n__; j++) {
+                printf("%18.12f + I * %18.12f", full_mtrx(i, j).real(), full_mtrx(i, j).imag());
+                if (j != n__ - 1) {
+                    printf(",");
+                }
+            }
+            if (i != n__ - 1) {
+                printf("},\n");
+            } else {
+                printf("}\n");
+            }
+        }
+        printf("}\n");
+    }
+
+   // std::ofstream ofs(aiida_output_file, std::ofstream::out | std::ofstream::trunc);
+   // ofs << dict.dump(4);
+}
+
+template<>
+inline void dmatrix<double>::serialize(std::string name__, int n__) const
+{
+    mdarray<double, 2> full_mtrx(num_rows(), num_cols());
+    full_mtrx.zero();
+
+    for (int j = 0; j < num_cols_local(); j++) {
+        for (int i = 0; i < num_rows_local(); i++) {
+            full_mtrx(irow(i), icol(j)) = (*this)(i, j);
+        }
+    }
+    blacs_grid_->comm().allreduce(full_mtrx.at<CPU>(), static_cast<int>(full_mtrx.size()));
+
+    json dict;
+    dict["mtrx"] = json::array();
+    for (int i = 0; i < num_rows(); i++) {
+        dict["mtrx"].push_back(json::array());
+        for (int j = 0; j < num_cols(); j++) {
+            dict["mtrx"][i].push_back(full_mtrx(i, j));
+        }
+    }
+    
+    if (blacs_grid_->comm().rank() == 0) {
+        std::cout << "mtrx: " << name__ << std::endl;
+        std::cout << dict.dump(4);
+    }
+
+   // std::ofstream ofs(aiida_output_file, std::ofstream::out | std::ofstream::trunc);
+   // ofs << dict.dump(4);
+
+
+}
 
 #endif // __DMATRIX_H__
 

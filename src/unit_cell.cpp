@@ -134,6 +134,8 @@ void Unit_cell::initialize()
             mt_lo_basis_descriptors_[n].xi = xi;
         }
     }
+
+    init_paw();
 }
 
 void Unit_cell::get_symmetry()
@@ -427,12 +429,6 @@ void Unit_cell::print_info()
             printf("\n");
         }
     }
-    
-    printf("\n");
-    printf("total nuclear charge        : %i\n", total_nuclear_charge_);
-    printf("number of core electrons    : %f\n", num_core_electrons_);
-    printf("number of valence electrons : %f\n", num_valence_electrons_);
-    printf("total number of electrons   : %f\n", num_electrons_);
 }
 
 unit_cell_parameters_descriptor Unit_cell::unit_cell_parameters()
@@ -711,22 +707,20 @@ void Unit_cell::generate_radial_functions()
         int rank = spl_num_atom_symmetry_classes().local_rank(ic);
         atom_symmetry_class(ic).sync_radial_functions(comm_, rank);
     }
-
-    #if (__VERBOSITY > 0) 
-    runtime::pstdout pout(comm_);
     
-    for (int icloc = 0; icloc < (int)spl_num_atom_symmetry_classes().local_size(); icloc++)
-    {
-        int ic = spl_num_atom_symmetry_classes(icloc);
-        atom_symmetry_class(ic).write_enu(pout);
-    }
+    if (parameters_.control().verbosity_ > 0) {
+        runtime::pstdout pout(comm_);
+        
+        for (int icloc = 0; icloc < (int)spl_num_atom_symmetry_classes().local_size(); icloc++) {
+            int ic = spl_num_atom_symmetry_classes(icloc);
+            atom_symmetry_class(ic).write_enu(pout);
+        }
 
-    if (comm_.rank() == 0)
-    {
-        printf("\n");
-        printf("Linearization energies\n");
+        if (comm_.rank() == 0) {
+            printf("\n");
+            printf("Linearization energies\n");
+        }
     }
-    #endif
 }
 
 void Unit_cell::generate_radial_integrals()

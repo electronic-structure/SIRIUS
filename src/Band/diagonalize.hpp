@@ -16,10 +16,11 @@ inline void Band::diag_fv_full_potential_exact(K_point* kp, Periodic_function<do
         TERMINATE("eigen-value solver is not parallel");
     }
 
+    auto mem_type = (gen_evp_solver().type() == ev_magma) ? memory_t::host_pinned : memory_t::host;
     int ngklo = kp->gklo_basis_size();
     int bs = ctx_.cyclic_block_size();
-    dmatrix<double_complex> h(ngklo, ngklo, ctx_.blacs_grid(), bs, bs);
-    dmatrix<double_complex> o(ngklo, ngklo, ctx_.blacs_grid(), bs, bs);
+    dmatrix<double_complex> h(ngklo, ngklo, ctx_.blacs_grid(), bs, bs, mem_type);
+    dmatrix<double_complex> o(ngklo, ngklo, ctx_.blacs_grid(), bs, bs, mem_type);
     
     /* setup Hamiltonian and overlap */
     switch (ctx_.processing_unit()) {
@@ -84,21 +85,25 @@ inline void Band::diag_fv_full_potential_exact(K_point* kp, Periodic_function<do
     //== 
     //== for (int i = 0; i < ctx_.num_fv_states(); i++) {
     //==     std::memcpy(phi.pw_coeffs().prime().at<CPU>(0, i),
-    //==                 kp->fv_eigen_vectors().prime().at<CPU>(0, i),
+    //==                 kp->fv_eigen_vectors().at<CPU>(0, i),
     //==                 kp->num_gkvec() * sizeof(double_complex));
-
-    //==     std::memcpy(phi.mt_coeffs().prime().at<CPU>(0, i),
-    //==                 kp->fv_eigen_vectors().prime().at<CPU>(kp->num_gkvec(), i),
-    //==                 unit_cell_.mt_lo_basis_size() * sizeof(double_complex));
-
+    //==     if (unit_cell_.mt_lo_basis_size()) {
+    //==         std::memcpy(phi.mt_coeffs().prime().at<CPU>(0, i),
+    //==                     kp->fv_eigen_vectors().at<CPU>(kp->num_gkvec(), i),
+    //==                     unit_cell_.mt_lo_basis_size() * sizeof(double_complex));
+    //==     }
     //== }
-    //== apply_fv_h_o(kp, effective_potential, 0, ctx_.num_fv_states(), phi, hphi, ophi);
 
-    //== matrix<double_complex> ovlp(ctx_.num_fv_states(), ctx_.num_fv_states());
-    //== matrix<double_complex> hmlt(ctx_.num_fv_states(), ctx_.num_fv_states());
+    //== Interstitial_operator istl_op(ctx_.fft_coarse(), ctx_.gvec_coarse(),
+    //==                               ctx_.mpi_grid_fft_vloc().communicator(1 << 1),
+    //==                               effective_potential, ctx_.step_function());
+    //== apply_fv_h_o(kp, istl_op, 0, 0, ctx_.num_fv_states(), phi, hphi, ophi);
 
-    //== inner(phi, 0, ctx_.num_fv_states(), hphi, 0, ctx_.num_fv_states(), hmlt, 0, 0, kp->comm(), ctx_.processing_unit());
-    //== inner(phi, 0, ctx_.num_fv_states(), ophi, 0, ctx_.num_fv_states(), ovlp, 0, 0, kp->comm(), ctx_.processing_unit());
+    //== dmatrix<double_complex> ovlp(ctx_.num_fv_states(), ctx_.num_fv_states(), ctx_.blacs_grid(), ctx_.cyclic_block_size(), ctx_.cyclic_block_size());
+    //== dmatrix<double_complex> hmlt(ctx_.num_fv_states(), ctx_.num_fv_states(), ctx_.blacs_grid(), ctx_.cyclic_block_size(), ctx_.cyclic_block_size());
+
+    //== inner(phi, 0, ctx_.num_fv_states(), hphi, 0, ctx_.num_fv_states(), hmlt, 0, 0);
+    //== inner(phi, 0, ctx_.num_fv_states(), ophi, 0, ctx_.num_fv_states(), ovlp, 0, 0);
 
     //== for (int i = 0; i < ctx_.num_fv_states(); i++) {
     //==     for (int j = 0; j < ctx_.num_fv_states(); j++) {
@@ -112,7 +117,6 @@ inline void Band::diag_fv_full_potential_exact(K_point* kp, Periodic_function<do
     //==         }
     //==     }
     //== }
-    //== STOP();
 }
 
 template <typename T>
@@ -194,8 +198,10 @@ inline void Band::get_singular_components(K_point* kp__, Interstitial_operator& 
     auto& psi = kp__->singular_components();
 
     int ncomp = psi.num_wf();
-
-    printf("number of singular components: %i\n", ncomp);
+    
+    if (ctx_.comm().rank() == 0 && ctx_.control().verbosity_ > 2) {
+        printf("number of singular components: %i\n", ncomp);
+    }
 
     auto& itso = ctx_.iterative_solver_input_section();
 
@@ -245,11 +251,9 @@ inline void Band::get_singular_components(K_point* kp__, Interstitial_operator& 
     /* number of newly added basis functions */
     int n = ncomp;
 
-    #if (__VERBOSITY > 2)
-    if (kp__->comm().rank() == 0) {
+    if (ctx_.control().verbosity_ > 2 && kp__->comm().rank() == 0) {
         DUMP("iterative solver tolerance: %18.12f", ctx_.iterative_solver_tolerance());
     }
-    #endif
 
     #ifdef __PRINT_MEMORY_USAGE
     MEMORY_USAGE_INFO();
@@ -262,7 +266,7 @@ inline void Band::get_singular_components(K_point* kp__, Interstitial_operator& 
     /* start iterative diagonalization */
     for (int k = 0; k < itso.num_steps_; k++) {
         /* apply Hamiltonian and overlap operators to the new basis functions */
-        apply_o(kp__, istl_op__, N, n, phi, ophi);
+        apply_o_apw(kp__, istl_op__, N, n, phi, ophi);
 
         orthogonalize(N, n, phi, ophi, ovlp, res);
         
@@ -285,14 +289,12 @@ inline void Band::get_singular_components(K_point* kp__, Interstitial_operator& 
             TERMINATE(s);
         }
 
-        #if (__VERBOSITY > 2)
-        if (kp__->comm().rank() == 0) {
+        if (ctx_.control().verbosity_ > 2 && kp__->comm().rank() == 0) {
             DUMP("step: %i, current subspace size: %i, maximum subspace size: %i", k, N, num_phi);
             for (int i = 0; i < ncomp; i++) {
                 DUMP("eval[%i]=%20.16f, diff=%20.16f", i, eval[i], std::abs(eval[i] - eval_old[i]));
             }
         }
-        #endif
 
         /* don't compute residuals on last iteration */
         if (k != itso.num_steps_ - 1) {
@@ -312,11 +314,9 @@ inline void Band::get_singular_components(K_point* kp__, Interstitial_operator& 
                 break;
             }
             else { /* otherwise, set Psi as a new trial basis */
-                #if (__VERBOSITY > 2)
-                if (kp__->comm().rank() == 0) {
+                if (ctx_.control().verbosity_ > 2 && kp__->comm().rank() == 0) {
                     DUMP("subspace size limit reached");
                 }
-                #endif
 
                 ovlp_old.zero();
                 for (int i = 0; i < ncomp; i++) {
@@ -484,11 +484,9 @@ inline void Band::diag_fv_full_potential_davidson(K_point* kp,
     /* number of newly added basis functions */
     int n = nlo + ncomp + num_bands;
 
-    #if (__VERBOSITY > 2)
-    if (kp->comm().rank() == 0) {
+    if (ctx_.control().verbosity_ > 2 && kp->comm().rank() == 0) {
         DUMP("iterative solver tolerance: %18.12f", ctx_.iterative_solver_tolerance());
     }
-    #endif
 
     #ifdef __PRINT_MEMORY_USAGE
     MEMORY_USAGE_INFO();
@@ -501,7 +499,7 @@ inline void Band::diag_fv_full_potential_davidson(K_point* kp,
     /* start iterative diagonalization */
     for (int k = 0; k < itso.num_steps_; k++) {
         /* apply Hamiltonian and overlap operators to the new basis functions */
-        apply_fv_h_o(kp, istl_op, effective_potential, nlo, N, n, phi, hphi, ophi);
+        apply_fv_h_o(kp, istl_op, nlo, N, n, phi, hphi, ophi);
         
         orthogonalize(N, n, phi, hphi, ophi, ovlp, res);
 
@@ -524,14 +522,12 @@ inline void Band::diag_fv_full_potential_davidson(K_point* kp,
             TERMINATE(s);
         }
 
-        #if (__VERBOSITY > 2)
-        if (kp->comm().rank() == 0) {
+        if (ctx_.control().verbosity_ > 2 && kp->comm().rank() == 0) {
             DUMP("step: %i, current subspace size: %i, maximum subspace size: %i", k, N, num_phi);
             for (int i = 0; i < num_bands; i++) {
                 DUMP("eval[%i]=%20.16f, diff=%20.16f", i, eval[i], std::abs(eval[i] - eval_old[i]));
             }
         }
-        #endif
 
         /* don't compute residuals on last iteration */
         if (k != itso.num_steps_ - 1) {
@@ -551,11 +547,9 @@ inline void Band::diag_fv_full_potential_davidson(K_point* kp,
                 break;
             }
             else { /* otherwise, set Psi as a new trial basis */
-                #if (__VERBOSITY > 2)
-                if (kp->comm().rank() == 0) {
+                if (ctx_.control().verbosity_ > 2 && kp->comm().rank() == 0) {
                     DUMP("subspace size limit reached");
                 }
-                #endif
  
                 /* update basis functions */
                 phi.copy_from(psi, 0, num_bands, nlo + ncomp);
@@ -626,19 +620,14 @@ inline void Band::diag_pseudo_potential_davidson(K_point* kp__,
     /* residuals */
     wave_functions res(ctx_, kp__->comm(), kp__->gkvec(), num_bands);
 
-    //auto mem_type = (gen_evp_solver_->type() == ev_magma) ? memory_t::host_pinned : memory_t::host;
-
-    #ifdef __GPU
-    if (gen_evp_solver_->type() == ev_magma) {
-        TERMINATE("remember to pin memory in dmatrix");
-    }
-    #endif
+    auto mem_type = (std_evp_solver().type() == ev_magma) ? memory_t::host_pinned : memory_t::host;
+    //auto mem_type = memory_t::host;
 
     int bs = ctx_.cyclic_block_size();
 
-    dmatrix<T> hmlt(num_phi, num_phi, ctx_.blacs_grid(), bs, bs);
+    dmatrix<T> hmlt(num_phi, num_phi, ctx_.blacs_grid(), bs, bs, mem_type);
     dmatrix<T> ovlp(num_phi, num_phi, ctx_.blacs_grid(), bs, bs);
-    dmatrix<T> evec(num_phi, num_phi, ctx_.blacs_grid(), bs, bs);
+    dmatrix<T> evec(num_phi, num_phi, ctx_.blacs_grid(), bs, bs, mem_type);
     dmatrix<T> hmlt_old(num_phi, num_phi, ctx_.blacs_grid(), bs, bs);
     dmatrix<T> ovlp_old(num_phi, num_phi, ctx_.blacs_grid(), bs, bs);
 
@@ -681,11 +670,9 @@ inline void Band::diag_pseudo_potential_davidson(K_point* kp__,
     /* number of newly added basis functions */
     int n = num_bands;
 
-    #if (__VERBOSITY > 2)
-    if (kp__->comm().rank() == 0) {
+    if (ctx_.control().verbosity_ > 2 && kp__->comm().rank() == 0) {
         DUMP("iterative solver tolerance: %18.12f", ctx_.iterative_solver_tolerance());
     }
-    #endif
 
     #ifdef __PRINT_MEMORY_USAGE
     MEMORY_USAGE_INFO();
@@ -721,47 +708,47 @@ inline void Band::diag_pseudo_potential_davidson(K_point* kp__,
             TERMINATE(s);
         }
         
-        #if (__VERBOSITY > 2)
-        if (kp__->comm().rank() == 0) {
+        if (ctx_.control().verbosity_ > 2 && kp__->comm().rank() == 0) {
             DUMP("step: %i, current subspace size: %i, maximum subspace size: %i", k, N, num_phi);
             for (int i = 0; i < num_bands; i++) {
-                DUMP("eval[%i]=%20.16f, diff=%20.16f", i, eval[i], std::abs(eval[i] - eval_old[i]));
+                DUMP("eval[%i]=%20.16f, diff=%20.16f, occ=%20.16f", i, eval[i], std::abs(eval[i] - eval_old[i]),
+                     kp__->band_occupancy(i + ispn__ * ctx_.num_fv_states()));
             }
         }
-        #endif
 
-        /* check if occupied bands have converged */
-        bool occ_band_converged = true;
-        for (int i = 0; i < num_bands; i++) {
-            if (kp__->band_occupancy(i + ispn__ * ctx_.num_fv_states()) > 1e-2 &&
-                std::abs(eval_old[i] - eval[i]) > ctx_.iterative_solver_tolerance()) {
-                occ_band_converged = false;
-            }
-        }
+        ///* check if occupied bands have converged */
+        //bool occ_band_converged = true;
+        //for (int i = 0; i < num_bands; i++) {
+        //    if (kp__->band_occupancy(i + ispn__ * ctx_.num_fv_states()) > 1e-6 &&
+        //        std::abs(eval_old[i] - eval[i]) > ctx_.iterative_solver_tolerance()) {
+        //        occ_band_converged = false;
+        //    }
+        //}
 
         /* don't compute residuals on last iteration */
-        if (k != itso.num_steps_ - 1 && !occ_band_converged) {
+        //if (k != itso.num_steps_ - 1 && !occ_band_converged) {
+        if (k != itso.num_steps_ - 1) {
             /* get new preconditionined residuals, and also hpsi and opsi as a by-product */
             n = residuals<T>(kp__, ispn__, N, num_bands, eval, eval_old, evec, hphi, ophi, hpsi, opsi, res, h_diag, o_diag);
         }
 
         /* check if we run out of variational space or eigen-vectors are converged or it's a last iteration */
-        if (N + n > num_phi || n <= itso.min_num_res_ || k == (itso.num_steps_ - 1) || occ_band_converged) {   
+        //if (N + n > num_phi || n <= itso.min_num_res_ || k == (itso.num_steps_ - 1) || occ_band_converged) {   
+        if (N + n > num_phi || n <= itso.min_num_res_ || k == (itso.num_steps_ - 1)) {
             runtime::Timer t1("sirius::Band::diag_pseudo_potential_davidson|update_phi");
             /* recompute wave-functions */
             /* \Psi_{i} = \sum_{mu} \phi_{mu} * Z_{mu, i} */
             transform<T>(phi, 0, N, evec, 0, 0, psi, 0, num_bands);
 
             /* exit the loop if the eigen-vectors are converged or this is a last iteration */
-            if (n <= itso.min_num_res_ || k == (itso.num_steps_ - 1) || occ_band_converged) {
+            //if (n <= itso.min_num_res_ || k == (itso.num_steps_ - 1) || occ_band_converged) {
+            if (n <= itso.min_num_res_ || k == (itso.num_steps_ - 1)) {
                 break;
             }
             else { /* otherwise, set Psi as a new trial basis */
-                #if (__VERBOSITY > 2)
-                if (kp__->comm().rank() == 0) {
+                if (ctx_.control().verbosity_ > 2 && kp__->comm().rank() == 0) {
                     DUMP("subspace size limit reached");
                 }
-                #endif
                 hmlt_old.zero();
                 for (int i = 0; i < num_bands; i++) {
                     hmlt_old.set(i, i, eval[i]);

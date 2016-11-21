@@ -94,7 +94,7 @@ class Simulation_context: public Simulation_parameters
         
         #ifdef __GPU
         mdarray<int, 2> gvec_coord_;
-        std::vector< mdarray<double, 2> > atom_coord_;
+        std::vector<mdarray<double, 2>> atom_coord_;
         #endif
 
         double time_active_;
@@ -356,10 +356,12 @@ inline void Simulation_context::init_fft()
     gvec_ = Gvec({0, 0, 0}, rlv, pw_cutoff(), fft_->grid(),
                  comm_.size(), fft_->comm(), control_input_section_.reduce_gvec_);
 
+    //double gpu_workload = (mpi_grid_fft_vloc_->communicator(1 << 0).size() == 1) ? 1.0 : 0.9;
+    double gpu_workload = (mpi_grid_fft_vloc_->communicator().size() == 1) ? 1.0 : 0.9;
     /* create FFT driver for coarse mesh */
     fft_coarse_ = std::unique_ptr<FFT3D>(new FFT3D(FFT3D_grid(2 * gk_cutoff(), rlv),
                                                    mpi_grid_fft_vloc_->communicator(1 << 0),
-                                                   processing_unit(), 0.9));
+                                                   processing_unit(), gpu_workload));
 
     /* create a list of G-vectors for corase FFT grid */
     gvec_coarse_ = Gvec({0, 0, 0}, rlv, gk_cutoff() * 2, fft_coarse_->grid(),
@@ -377,6 +379,13 @@ inline void Simulation_context::initialize()
     
     /* get processing unit */
     std::string pu = control_input_section_.processing_unit_;
+    if (pu == "") {
+        #ifdef __GPU
+        pu = "gpu";
+        #else
+        pu = "cpu";
+        #endif
+    }
     if (pu == "cpu") {
         processing_unit_ = CPU;
     } else {
@@ -494,22 +503,50 @@ inline void Simulation_context::initialize()
         s << "not enough first-variational states : " << num_fv_states();
         TERMINATE(s);
     }
+
+    if (cyclic_block_size() < 0) {
+        double a = std::min(std::log2(double(num_fv_states_) / blacs_grid_->num_ranks_col()),
+                            std::log2(double(num_fv_states_) / blacs_grid_->num_ranks_row()));
+        if (a < 1) {
+            control_input_section_.cyclic_block_size_ = 2;
+        } else {
+            control_input_section_.cyclic_block_size_ = static_cast<int>(std::min(128.0, std::pow(2.0, static_cast<int>(a))) + 1e-12);
+        }
+    }
     
     std::string evsn[] = {std_evp_solver_name(), gen_evp_solver_name()};
 
     if (mpi_grid_->size(1 << _mpi_dim_k_row_ | 1 << _mpi_dim_k_col_) == 1) {
         if (evsn[0] == "") {
+            #if defined(__GPU) && defined(__MAGMA)
+            evsn[0] = "magma";
+            #else
             evsn[0] = "lapack";
+            #endif
         }
         if (evsn[1] == "") {
+            #if defined(__GPU) && defined(__MAGMA)
+            evsn[1] = "magma";
+            #else
             evsn[1] = "lapack";
+            #endif
         }
     } else {
         if (evsn[0] == "") {
+            #ifdef __SCALAPACK
             evsn[0] = "scalapack";
+            #endif
+            #ifdef __ELPA
+            evsn[0] = "elpa1";
+            #endif
         }
         if (evsn[1] == "") {
+            #ifdef __SCALAPACK
+            evsn[1] = "scalapack";
+            #endif
+            #ifdef __ELPA
             evsn[1] = "elpa1";
+            #endif
         }
     }
 
@@ -537,11 +574,9 @@ inline void Simulation_context::initialize()
         *evst[i] = str_to_ev_solver_t[name];
     }
 
-    #if (__VERBOSITY > 0)
-    if (comm_.rank() == 0) {
+    if (control().verbosity_ > 0 && comm_.rank() == 0) {
         print_info();
     }
-    #endif
 
     if (esm_type() == electronic_structure_method_t::ultrasoft_pseudopotential ||
         esm_type() == electronic_structure_method_t::paw_pseudopotential) {
@@ -646,6 +681,10 @@ inline void Simulation_context::print_info()
     }
 
     printf("\n");
+    printf("total nuclear charge               : %i\n", unit_cell_.total_nuclear_charge());
+    printf("number of core electrons           : %f\n", unit_cell_.num_core_electrons());
+    printf("number of valence electrons        : %f\n", unit_cell_.num_valence_electrons());
+    printf("total number of electrons          : %f\n", unit_cell_.num_electrons());
     printf("total number of aw basis functions : %i\n", unit_cell_.mt_aw_basis_size());
     printf("total number of lo basis functions : %i\n", unit_cell_.mt_lo_basis_size());
     printf("number of first-variational states : %i\n", num_fv_states());
@@ -661,86 +700,105 @@ inline void Simulation_context::print_info()
     printf("cyclic block size                  : %i\n", cyclic_block_size());
     printf("|G+k| cutoff                       : %f\n", gk_cutoff());
 
+    std::string reln[] = {"valence relativity                 : ",
+                          "core relativity                    : "};
+
+    relativity_t relt[] = {valence_relativity_, core_relativity_};
+    for (int i = 0; i < 2; i++) {
+        printf("%s", reln[i].c_str());
+        switch (relt[i]) {
+            case relativity_t::none: {
+                printf("none\n");
+                break;
+            }
+            case relativity_t::koelling_harmon: {
+                printf("Koelling-Harmon\n");
+                break;
+            }
+            case relativity_t::zora: {
+                printf("zora\n");
+                break;
+            }
+            case relativity_t::iora: {
+                printf("iora\n");
+                break;
+            }
+            case relativity_t::dirac: {
+                printf("Dirac\n");
+                break;
+            }
+        }
+    }
+
     std::string evsn[] = {"standard eigen-value solver        : ",
                           "generalized eigen-value solver     : "};
 
     ev_solver_t evst[] = {std_evp_solver_type_, gen_evp_solver_type_};
-    for (int i = 0; i < 2; i++)
-    {
+    for (int i = 0; i < 2; i++) {
         printf("%s", evsn[i].c_str());
-        switch (evst[i])
-        {
-            case ev_lapack:
-            {
+        switch (evst[i]) {
+            case ev_lapack: {
                 printf("LAPACK\n");
                 break;
             }
             #ifdef __SCALAPACK
-            case ev_scalapack:
-            {
+            case ev_scalapack: {
                 printf("ScaLAPACK\n");
                 break;
             }
-            case ev_elpa1:
-            {
+            case ev_elpa1: {
                 printf("ELPA1\n");
                 break;
             }
-            case ev_elpa2:
-            {
+            case ev_elpa2: {
                 printf("ELPA2\n");
                 break;
             }
-            case ev_rs_gpu:
-            {
+            case ev_rs_gpu: {
                 printf("RS_gpu\n");
                 break;
             }
-            case ev_rs_cpu:
-            {
+            case ev_rs_cpu: {
                 printf("RS_cpu\n");
                 break;
             }
             #endif
-            case ev_magma:
-            {
+            case ev_magma: {
                 printf("MAGMA\n");
                 break;
             }
-            case ev_plasma:
-            {
+            case ev_plasma: {
                 printf("PLASMA\n");
                 break;
             }
-            default:
-            {
+            default: {
                 TERMINATE("wrong eigen-value solver");
             }
         }
     }
 
-    printf("\n");
-    printf("processing unit : ");
-    switch (processing_unit())
-    {
-        case CPU:
-        {
+    printf("processing unit                    : ");
+    switch (processing_unit()) {
+        case CPU: {
             printf("CPU\n");
             break;
         }
-        case GPU:
-        {
+        case GPU: {
             printf("GPU\n");
             break;
         }
     }
+    if (processing_unit() == GPU) {
+        #ifdef __GPU
+        cuda_device_info();
+        #endif
+    }
    
-    int i = 1;
+    int i{1};
     printf("\n");
     printf("XC functionals\n");
     printf("==============\n");
-    for (auto& xc_label: xc_functionals())
-    {
+    for (auto& xc_label: xc_functionals()) {
         XC_functional xc(xc_label, num_spins());
         printf("%i) %s: %s\n", i, xc_label.c_str(), xc.name().c_str());
         printf("%s\n", xc.refs().c_str());

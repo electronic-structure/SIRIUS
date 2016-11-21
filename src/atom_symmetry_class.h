@@ -1,4 +1,4 @@
-// Copyright (c) 2013-2014 Anton Kozhevnikov, Thomas Schulthess
+// Copyright (c) 2013-2016 Anton Kozhevnikov, Thomas Schulthess
 // All rights reserved.
 // 
 // Redistribution and use in source and binary forms, with or without modification, are permitted provided that 
@@ -87,10 +87,6 @@ class Atom_symmetry_class
         /// Generate local orbital raidal functions
         void generate_lo_radial_functions(relativity_t rel__);
 
-        /// Transform radial functions
-        /** Local orbitals are orthogonalized and all radial functions are divided by r. */
-        void transform_radial_functions(bool ort_lo, bool ort_aw);
-
     public:
     
         /// Constructor
@@ -136,14 +132,14 @@ class Atom_symmetry_class
             assert(dm <= 2);
             aw_surface_derivatives_(order, l, dm) = deriv;
         }
-        
+
         /// Find core states and generate core density.
         void generate_core_charge_density(relativity_t core_rel__);
 
         void find_enu(relativity_t rel__);
 
         void write_enu(runtime::pstdout& pout) const;
-        
+
         /// Generate radial overlap and SO integrals
         /** In the case of spin-orbit interaction the following integrals are computed:
          *  \f[
@@ -156,7 +152,7 @@ class Atom_symmetry_class
          *  \f]
          */
         void generate_radial_integrals(relativity_t rel__);
-        
+
         /// Return symmetry class id.
         inline int id() const
         {
@@ -168,7 +164,7 @@ class Atom_symmetry_class
         {
             atom_id_.push_back(atom_id__);
         }
-        
+
         /// Return number of atoms belonging to the current symmetry class.
         inline int num_atoms() const
         {
@@ -180,21 +176,30 @@ class Atom_symmetry_class
             return atom_id_[idx];
         }
 
-        inline double& radial_function(int ir, int idx)
-        {
-            return radial_functions_(ir, idx, 0);
-        }
-
+        /// Get a value of the radial functions.
         inline double radial_function(int ir, int idx) const
         {
             return radial_functions_(ir, idx, 0);
         }
 
-        inline double r_deriv_radial_function(int ir, int idx) const
+        /// Get a reference to the value of the radial function.
+        inline double& radial_function(int ir, int idx)
+        {
+            return radial_functions_(ir, idx, 0);
+        }
+
+        /// Get a value of the radial function derivative.
+        inline double radial_function_derivative(int ir, int idx) const
         {
             return radial_functions_(ir, idx, 1);
         }
-        
+
+        /// Get a reference to the value of the radial function derivative.
+        inline double& radial_function_derivative(int ir, int idx)
+        {
+            return radial_functions_(ir, idx, 1);
+        }
+
         inline double h_spherical_integral(int i1, int i2) const
         {
             return h_spherical_integrals_(i1, i2);
@@ -209,12 +214,12 @@ class Atom_symmetry_class
         {
             o_radial_integrals_(l, order1, order2) = oint__;
         }
-        
+
         inline double so_radial_integral(int l, int order1, int order2) const
         {
             return so_radial_integrals_(l, order1, order2);
         }
-        
+
         inline double core_charge_density(int ir) const
         {
             assert(ir >= 0 && ir < (int)core_charge_density_.size());
@@ -236,7 +241,7 @@ class Atom_symmetry_class
         {
             return core_leakage_;
         }
-        
+
         inline int num_aw_descriptors() const
         {
             return static_cast<int>(aw_descriptors_.size());
@@ -246,7 +251,7 @@ class Atom_symmetry_class
         {
             return aw_descriptors_[idx__];
         }
-        
+
         inline int num_lo_descriptors() const
         {
             return static_cast<int>(lo_descriptors_.size());
@@ -261,23 +266,23 @@ class Atom_symmetry_class
         {
             aw_descriptors_[l][order].enu = enu;
         }
-        
+
         inline double get_aw_enu(int l, int order) const
         {
             return aw_descriptors_[l][order].enu;
         }
-        
+
         inline void set_lo_enu(int idxlo, int order, double enu)
         {
             lo_descriptors_[idxlo].rsd_set[order].enu = enu;
         }
-        
+
         inline double get_lo_enu(int idxlo, int order) const
         {
             return lo_descriptors_[idxlo].rsd_set[order].enu;
         }
 };
 
-};
+}
 
 #endif // __ATOM_SYMMETRY_CLASS_H__

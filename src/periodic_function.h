@@ -162,9 +162,6 @@ class Periodic_function: public Smooth_periodic_function<T>
             }
         }
         
-        /// Copy from source
-        //void copy(Periodic_function<T>* src);
-
         inline void copy_to_global_ptr(T* f_mt__, T* f_it__) const
         {
             std::memcpy(f_it__, this->f_rg_.template at<CPU>(), this->fft_->local_size() * sizeof(T));
@@ -451,45 +448,42 @@ class Periodic_function: public Smooth_periodic_function<T>
             assert(&unit_cell_ == &g__->unit_cell_);
             assert(&comm_ == &g__->comm_);
             
-            T result = 0.0;
-            T ri = 0.0;
+            T result_rg{0};
             
-            if (!parameters_.full_potential())
-            {
+            if (!parameters_.full_potential()) {
                 #pragma omp parallel
                 {
-                    T ri_t = 0;
+                    T rt{0};
                     
                     #pragma omp for
-                    for (int irloc = 0; irloc < this->fft_->local_size(); irloc++)
-                        ri_t += type_wrapper<T>::conjugate(this->f_rg(irloc)) * g__->f_rg(irloc);
+                    for (int irloc = 0; irloc < this->fft_->local_size(); irloc++) {
+                        rt += type_wrapper<T>::conjugate(this->f_rg(irloc)) * g__->f_rg(irloc);
+                    }
         
                     #pragma omp critical
-                    ri += ri_t;
+                    result_rg += rt;
                 }
-            }
-            else
-            {
-                for (int irloc = 0; irloc < this->fft_->local_size(); irloc++)
-                {
-                    ri += type_wrapper<T>::conjugate(this->f_rg(irloc)) * g__->f_rg(irloc) * 
-                          this->step_function_.theta_r(irloc);
+            } else {
+                for (int irloc = 0; irloc < this->fft_->local_size(); irloc++) {
+                    result_rg += type_wrapper<T>::conjugate(this->f_rg(irloc)) * g__->f_rg(irloc) * 
+                                 this->step_function_.theta_r(irloc);
                 }
             }
                     
-            ri *= (unit_cell_.omega() / this->fft_->size());
-            this->fft_->comm().allreduce(&ri, 1);
-            
-            if (parameters_.full_potential())
-            {
-                for (int ialoc = 0; ialoc < unit_cell_.spl_num_atoms().local_size(); ialoc++)
-                    result += sirius::inner(f_mt(ialoc), g__->f_mt(ialoc));
-                comm_.allreduce(&result, 1);
+            result_rg *= (unit_cell_.omega() / this->fft_->size());
+            this->fft_->comm().allreduce(&result_rg, 1);
+
+            T result_mt{0};
+            if (parameters_.full_potential()) {
+                for (int ialoc = 0; ialoc < unit_cell_.spl_num_atoms().local_size(); ialoc++) {
+                    auto r = sirius::inner(f_mt(ialoc), g__->f_mt(ialoc));
+                    result_mt += r;
+                }
+                comm_.allreduce(&result_mt, 1);
             }
         
-            return result + ri;
+            return result_mt + result_rg;
         }
-
 };
 
 };

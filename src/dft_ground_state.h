@@ -30,6 +30,7 @@
 #include "k_set.h"
 #include "force.h"
 #include "json.hpp"
+#include "Geometry/Forces_PS.h"
 
 using json = nlohmann::json;
 
@@ -51,6 +52,8 @@ class DFT_ground_state
         K_set& kset_;
 
         Band band_;
+
+        std::unique_ptr<Forces_PS> forces_;
 
         int use_symmetry_;
 
@@ -74,13 +77,15 @@ class DFT_ground_state
               use_symmetry_(use_symmetry__)
         {
             if (!ctx_.full_potential()) ewald_energy_ = ewald_energy();
+
+            forces_ = std::unique_ptr<Forces_PS>(new Forces_PS(ctx_, density_, potential_));
         }
 
         void move_atoms(int istep);
 
-        void forces(mdarray<double, 2>& atom_force);
+        mdarray<double, 2> forces();
 
-        int find(double potential_tol, double energy_tol, int num_dft_iter);
+        int find(double potential_tol, double energy_tol, int num_dft_iter, bool write_state);
 
         void relax_atom_positions();
 
@@ -118,14 +123,7 @@ class DFT_ground_state
 
         double energy_vha()
         {
-            double eh = potential_.energy_vha();
-
-//          if(ctx_.esm_type() == paw_pseudopotential)
-//          {
-//              eh += potential_->PAW_hartree_total_energy();
-//          }
-
-            return eh;
+            return potential_.energy_vha();
         }
         
         double energy_vxc()
@@ -139,10 +137,6 @@ class DFT_ground_state
             if (!ctx_.full_potential()) {
                 exc += density_.rho_pseudo_core()->inner(potential_.xc_energy_density());
             }
-//            if(ctx_.esm_type() == paw_pseudopotential)
-//            {
-//              exc += potential_->PAW_xc_total_energy();
-//            }
             return exc;
         }
 

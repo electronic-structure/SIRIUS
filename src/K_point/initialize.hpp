@@ -34,11 +34,14 @@ inline void K_point::initialize()
      */
     int nst = (ctx_.num_mag_dims() == 3) ? ctx_.num_bands() : ctx_.num_fv_states();
 
+    auto mem_type_evp = (ctx_.std_evp_solver_type() == ev_magma) ? memory_t::host_pinned : memory_t::host;
+    auto mem_type_gevp = (ctx_.gen_evp_solver_type() == ev_magma) ? memory_t::host_pinned : memory_t::host;
+
     if (use_second_variation && ctx_.need_sv()) {
         /* in case of collinear magnetism store pure up and pure dn components, otherwise store the full matrix */
-        sv_eigen_vectors_[0] = dmatrix<double_complex>(nst, nst, ctx_.blacs_grid(), bs, bs);
+        sv_eigen_vectors_[0] = dmatrix<double_complex>(nst, nst, ctx_.blacs_grid(), bs, bs, mem_type_evp);
         if (ctx_.num_mag_dims() == 1) {
-            sv_eigen_vectors_[1] = dmatrix<double_complex>(nst, nst, ctx_.blacs_grid(), bs, bs);
+            sv_eigen_vectors_[1] = dmatrix<double_complex>(nst, nst, ctx_.blacs_grid(), bs, bs, mem_type_evp);
         }
     }
 
@@ -147,7 +150,7 @@ inline void K_point::initialize()
                 }
             }
             if (ctx_.iterative_solver_input_section().type_ == "exact") {
-                fv_eigen_vectors_ = dmatrix<double_complex>(gklo_basis_size(), ctx_.num_fv_states(), ctx_.blacs_grid(), bs, bs);
+                fv_eigen_vectors_ = dmatrix<double_complex>(gklo_basis_size(), ctx_.num_fv_states(), ctx_.blacs_grid(), bs, bs, mem_type_gevp);
             } else {
                 int ncomp = ctx_.iterative_solver_input_section().num_singular_;
                 if (ncomp < 0) {
