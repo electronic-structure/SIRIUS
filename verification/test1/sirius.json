@@ -6,7 +6,7 @@
     },
 
     "parameters" : {
-        "electronic_structure_method" : "ultrasoft_pseudopotential",
+        "electronic_structure_method" : "pseudopotential",
 
         "num_fv_states" : 40,
 
