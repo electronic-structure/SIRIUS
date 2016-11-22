@@ -11,14 +11,11 @@ inline void Density::initial_density()
     } else {
         initial_density_pseudo();
 
-        if(ctx_.esm_type() == electronic_structure_method_t::paw_pseudopotential)
-        {
-            init_paw();
+        init_paw();
 
-            init_density_matrix_for_paw();
+        init_density_matrix_for_paw();
 
-            generate_paw_loc_density();
-        }
+        generate_paw_loc_density();
     }
 
     ctx_.fft().dismiss();
