@@ -73,9 +73,9 @@ class type_wrapper<double>
             return v;
         }
 
-        static inline double sift(double_complex const& v)
+        static inline double real(double const& v)
         {
-            return std::real(v);
+            return v;
         }
 
         static bool is_complex()
@@ -121,20 +121,20 @@ class type_wrapper<float>
 };
 
 template<> 
-class type_wrapper< std::complex<double> >
+class type_wrapper<double_complex>
 {
     public:
-        typedef std::complex<double> complex_t;
+        typedef double_complex complex_t;
         typedef double real_t;
         
-        static inline std::complex<double> conjugate(double_complex const& v)
+        static inline double_complex conjugate(double_complex const& v)
         {
-            return conj(v);
+            return std::conj(v);
         }
-        
-        static inline std::complex<double> sift(double_complex const& v)
+
+        static inline double real(double_complex const& v)
         {
-            return v;
+            return v.real();
         }
         
         static hid_t hdf5_type_id()

@@ -697,6 +697,8 @@ inline void Band::diag_pseudo_potential_davidson(K_point* kp__,
         /* increase size of the variation space */
         N += n;
 
+        hmlt.make_real_diag(N);
+
         eval_old = eval;
 
         /* solve standard eigen-value problem with the size N */
@@ -710,30 +712,21 @@ inline void Band::diag_pseudo_potential_davidson(K_point* kp__,
         
         if (ctx_.control().verbosity_ > 2 && kp__->comm().rank() == 0) {
             DUMP("step: %i, current subspace size: %i, maximum subspace size: %i", k, N, num_phi);
-            for (int i = 0; i < num_bands; i++) {
-                DUMP("eval[%i]=%20.16f, diff=%20.16f, occ=%20.16f", i, eval[i], std::abs(eval[i] - eval_old[i]),
-                     kp__->band_occupancy(i + ispn__ * ctx_.num_fv_states()));
+            if (ctx_.control().verbosity_ > 3) {
+                for (int i = 0; i < num_bands; i++) {
+                    DUMP("eval[%i]=%20.16f, diff=%20.16f, occ=%20.16f", i, eval[i], std::abs(eval[i] - eval_old[i]),
+                         kp__->band_occupancy(i + ispn__ * ctx_.num_fv_states()));
+                }
             }
         }
 
-        ///* check if occupied bands have converged */
-        //bool occ_band_converged = true;
-        //for (int i = 0; i < num_bands; i++) {
-        //    if (kp__->band_occupancy(i + ispn__ * ctx_.num_fv_states()) > 1e-6 &&
-        //        std::abs(eval_old[i] - eval[i]) > ctx_.iterative_solver_tolerance()) {
-        //        occ_band_converged = false;
-        //    }
-        //}
-
         /* don't compute residuals on last iteration */
-        //if (k != itso.num_steps_ - 1 && !occ_band_converged) {
         if (k != itso.num_steps_ - 1) {
             /* get new preconditionined residuals, and also hpsi and opsi as a by-product */
             n = residuals<T>(kp__, ispn__, N, num_bands, eval, eval_old, evec, hphi, ophi, hpsi, opsi, res, h_diag, o_diag);
         }
 
         /* check if we run out of variational space or eigen-vectors are converged or it's a last iteration */
-        //if (N + n > num_phi || n <= itso.min_num_res_ || k == (itso.num_steps_ - 1) || occ_band_converged) {   
         if (N + n > num_phi || n <= itso.min_num_res_ || k == (itso.num_steps_ - 1)) {
             runtime::Timer t1("sirius::Band::diag_pseudo_potential_davidson|update_phi");
             /* recompute wave-functions */
@@ -741,7 +734,6 @@ inline void Band::diag_pseudo_potential_davidson(K_point* kp__,
             transform<T>(phi, 0, N, evec, 0, 0, psi, 0, num_bands);
 
             /* exit the loop if the eigen-vectors are converged or this is a last iteration */
-            //if (n <= itso.min_num_res_ || k == (itso.num_steps_ - 1) || occ_band_converged) {
             if (n <= itso.min_num_res_ || k == (itso.num_steps_ - 1)) {
                 break;
             }

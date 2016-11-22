@@ -233,6 +233,20 @@ class dmatrix: public matrix<T>
             }
         }
 
+        inline void make_real_diag(int n__)
+        {
+            for (int i = 0; i < n__; i++) {
+                auto r = spl_row_.location(i);
+                if (blacs_grid_->rank_row() == r.rank) {
+                    auto c = spl_col_.location(i);
+                    if (blacs_grid_->rank_col() == c.rank) {
+                        T v = (*this)(r.local_index, c.local_index);
+                        (*this)(r.local_index, c.local_index) = type_wrapper<T>::real(v);
+                    }
+                }
+            }
+        }
+
         inline splindex<block_cyclic> const& spl_col() const
         {
             return spl_col_;
