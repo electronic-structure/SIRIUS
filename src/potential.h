@@ -93,19 +93,16 @@ class Potential
         // Store form factors because it is needed by forces calculation
         mdarray<double, 2> vloc_radial_integrals_;
 
-        //------------------------------------------------
-        //--- PAW parameters and functions -----------------------
-        //------------------------------------------------
         struct paw_potential_data_t
         {
             Atom *atom_{nullptr};
 
-            int abs_ind{-1};
+            int ia{-1};
 
-            int paw_ind{-1};
+            int ia_paw{-1};
 
-            mdarray<double,3> ae_potential_;
-            mdarray<double,3> ps_potential_;
+            mdarray<double, 3> ae_potential_;
+            mdarray<double, 3> ps_potential_;
 
             double hartree_energy_{0.0};
             double xc_energy_{0.0};
@@ -113,10 +110,10 @@ class Potential
             double one_elec_energy_{0.0};
         };
 
-        std::vector< double > paw_hartree_energies_;
-        std::vector< double > paw_xc_energies_;
-        std::vector< double > paw_core_energies_;
-        std::vector< double > paw_one_elec_energies_;
+        std::vector<double> paw_hartree_energies_;
+        std::vector<double> paw_xc_energies_;
+        std::vector<double> paw_core_energies_;
+        std::vector<double> paw_one_elec_energies_;
 
         double paw_hartree_total_energy_{0.0};
         double paw_xc_total_energy_{0.0};
@@ -125,16 +122,10 @@ class Potential
 
         std::vector<paw_potential_data_t> paw_potential_data_;
 
-        // because one need to call allreduce for a whole matrix
-        mdarray<double_complex,4>  paw_dij_;
+        mdarray<double_complex, 4> paw_dij_;
 
-        int max_paw_basis_size{0};
-        //---- old ------------------------
-        std::vector< mdarray<double,3> > ae_paw_local_potential_;
-        std::vector< mdarray<double,3> > ps_paw_local_potential_;
+        int max_paw_basis_size_{0};
 
-
-        //--- PAW  functions ---
         void init_PAW();
 
         double xc_mt_PAW_nonmagnetic(Radial_grid const& rgrid,
@@ -160,21 +151,19 @@ class Potential
 
 
 
-        void calc_PAW_local_Dij(paw_potential_data_t &pdd, mdarray<double_complex,4>& paw_dij);
+        void calc_PAW_local_Dij(paw_potential_data_t &pdd, mdarray<double_complex, 4>& paw_dij);
 
         double calc_PAW_hartree_potential(Atom& atom, const Radial_grid& grid,
                                              mdarray<double, 2> &full_density,
                                              mdarray<double, 3> &out_atom_pot);
 
         double calc_PAW_one_elec_energy(paw_potential_data_t &pdd,
-                                        const mdarray<double_complex,4>& density_matrix,
-                                        const mdarray<double_complex,4>& paw_dij);
+                                        const mdarray<double_complex, 4>& density_matrix,
+                                        const mdarray<double_complex, 4>& paw_dij);
 
 
         void add_paw_Dij_to_atom_Dmtrx();
 
-        //------------------------------------------------
-        //------------------------------------------------
         //Spheric_function<function_domain_t::spectral,double>
         /// Compute MT part of the potential and MT multipole moments
         void poisson_vmt(Periodic_function<double>* rho__, 
@@ -506,38 +495,57 @@ class Potential
          */
         void generate_D_operator_matrix();
 
-        //------------------------------------------------
-        //--- PAW functions ------------------------------
-        //------------------------------------------------
         void generate_PAW_effective_potential(Density& density);
 
-        const std::vector< double >&  PAW_hartree_energies(){ return paw_hartree_energies_; }
+        std::vector<double> const& PAW_hartree_energies() const
+        {
+            return paw_hartree_energies_;
+        }
 
-        const std::vector< double >&  PAW_xc_energies(){ return paw_xc_energies_; }
+        std::vector<double> const& PAW_xc_energies() const
+        {
+            return paw_xc_energies_;
+        }
 
-        const std::vector< double >&  PAW_core_energies(){ return paw_core_energies_; }
+        std::vector<double> const& PAW_core_energies() const
+        {
+            return paw_core_energies_;
+        }
 
-        const std::vector< double >&  PAW_one_elec_energies(){ return paw_one_elec_energies_; }
+        std::vector<double> const& PAW_one_elec_energies()
+        {
+            return paw_one_elec_energies_;
+        }
 
-        double PAW_hartree_total_energy(){ return paw_hartree_total_energy_; }
+        double PAW_hartree_total_energy() const
+        {
+            return paw_hartree_total_energy_;
+        }
 
-        double PAW_xc_total_energy(){ return paw_xc_total_energy_; }
+        double PAW_xc_total_energy() const
+        {
+            return paw_xc_total_energy_;
+        }
 
-        double PAW_total_core_energy(){ return paw_total_core_energy_; }
+        double PAW_total_core_energy() const
+        {
+            return paw_total_core_energy_;
+        }
 
-        double PAW_total_energy(){ return paw_hartree_total_energy_ + paw_xc_total_energy_ ; }
+        double PAW_total_energy()
+        {
+            return paw_hartree_total_energy_ + paw_xc_total_energy_ ;
+        }
 
-        double PAW_one_elec_energy(){ return paw_one_elec_energy_; }
+        double PAW_one_elec_energy()
+        {
+            return paw_one_elec_energy_;
+        }
 
-        //------------------------------------------------
-        //--- For forces ------------------------------
-        //------------------------------------------------
-
-        mdarray<double, 2> const& get_vloc_radial_integrals(){ return vloc_radial_integrals_; }
-
-        //------------------------------------------------
-        //--- next ------------------------------
-        //------------------------------------------------
+        mdarray<double, 2> const& get_vloc_radial_integrals()
+        {
+            return vloc_radial_integrals_;
+        }
 
         void check_potential_continuity_at_mt();
 

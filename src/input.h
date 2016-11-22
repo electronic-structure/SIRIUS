@@ -251,6 +251,7 @@ struct Control_input_section
     double spglib_tolerance_{1e-4};
     int verbosity_{0};
     bool print_performance_{false};
+    int num_bands_to_print_{10};
 
     void read(json const& parser)
     {
@@ -266,6 +267,7 @@ struct Control_input_section
             spglib_tolerance_    = parser["control"].value("spglib_tolerance", spglib_tolerance_);
             verbosity_           = parser["control"].value("verbosity", verbosity_);
             print_performance_   = parser["control"].value("print_performance", print_performance_);
+            num_bands_to_print_  = parser["control"].value("num_bands_to_print", num_bands_to_print_);
 
             auto strings = {&std_evp_solver_name_, &gen_evp_solver_name_, &fft_mode_, &processing_unit_};
             for (auto s: strings) {

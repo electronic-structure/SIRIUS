@@ -62,12 +62,10 @@ class Unit_cell
         /// Split index of atoms.
         splindex<block> spl_num_atoms_;
         
-        /// List of PAW atoms pointers
-        std::vector<Atom*> paw_atoms_;
+        /// Global index of atom by index of PAW atom.
+        std::vector<int> paw_atom_index_;
 
-        std::vector<int> atom_ind_by_paw_;
-
-        /// Split index of paw atoms.
+        /// Split index of PAW atoms.
         splindex<block> spl_num_paw_atoms_;
 
         /// Split index of atom symmetry classes.
@@ -251,48 +249,43 @@ class Unit_cell
 
         }
 
-        /// add paw atoms
+        /// Add PAW atoms.
         void init_paw()
         {
-            paw_atoms_.clear();
-
-            for(int i=0; i < static_cast<int>(atoms_.size()); i++)
-            {
-
-                if( atoms_[i].type().pp_desc().is_paw )
-                {
-                    paw_atoms_.push_back(&atoms_[i]);
-                    atom_ind_by_paw_.push_back(i);
+            for (int ia = 0; ia < num_atoms(); ia++) {
+                if (atom(ia).type().pp_desc().is_paw) {
+                    paw_atom_index_.push_back(ia);
                 }
             }
 
-            spl_num_paw_atoms_ = splindex<block>(static_cast<int>(paw_atoms_.size()), comm_.size(), comm_.rank());
-
-            std::cout<<"Number of PAW atoms: "<<paw_atoms_.size()<<std::endl;
+            spl_num_paw_atoms_ = splindex<block>(num_paw_atoms(), comm_.size(), comm_.rank());
+            
+            if (parameters_.control().verbosity_ > 1 && comm_.rank() == 0) {
+                printf("Number of PAW atoms: %i\n", num_paw_atoms());
+            }
         }
 
-        /// get spl index of paw atoms
-        inline splindex<block> get_spl_num_paw_atoms(){ return spl_num_paw_atoms_;}
-
-        /// get an array of paw atoms
-        inline std::vector<Atom*>& get_paw_atoms(){ return paw_atoms_; }
-
-        /// return number of PAW atoms
-        inline int get_num_paw_atoms(){ return static_cast<int>(paw_atoms_.size()); }
-
-        inline int paw_atom_ind_by_paw_spl(int paw_spl_ind){ return spl_num_paw_atoms_[paw_spl_ind];}
-
-        inline Atom* paw_atom_by_spl_ind(int paw_spl_ind){ return paw_atoms_[ paw_atom_ind_by_paw_spl(paw_spl_ind) ]; }
-
-        inline Atom* paw_atom(int paw_ind){ return paw_atoms_[ paw_ind ]; }
-
-        inline int abs_atom_ind_by_paw(int paw_ind)
+        /// Return number of PAW atoms.
+        inline int num_paw_atoms() const
         {
-            assert(paw_ind >= 0 && paw_ind < (int)atom_ind_by_paw_.size());
-            return static_cast<int>(atom_ind_by_paw_[paw_ind]);
+            return static_cast<int>(paw_atom_index_.size());
         }
 
-        int abs_atom_ind_by_paw_spl(int paw_spl_ind) { return abs_atom_ind_by_paw(paw_atom_ind_by_paw_spl(paw_spl_ind)); }
+        /// Get split index of PAW atoms.
+        inline splindex<block> spl_num_paw_atoms() const
+        {
+            return spl_num_paw_atoms_;
+        }
+
+        inline int spl_num_paw_atoms(int idx__) const
+        {
+            return spl_num_paw_atoms_[idx__];
+        }
+
+        inline int paw_atom_index(int ipaw__) const
+        {
+            return paw_atom_index_[ipaw__];
+        }
 
         /// Add new atom without vector field to the list of atom types.
         void add_atom(const std::string label, vector3d<double> position)

@@ -56,8 +56,7 @@ inline void Density::generate_valence(K_set& ks__)
             add_k_point_contribution_dm<double_complex>(kp, density_matrix_);
         }
         
-        if (ctx_.esm_type() == electronic_structure_method_t::ultrasoft_pseudopotential ||
-            ctx_.esm_type() == electronic_structure_method_t::paw_pseudopotential) {
+        if (ctx_.esm_type() == electronic_structure_method_t::pseudopotential) {
             if (ctx_.gamma_point()) {
                 add_k_point_contribution_dm<double>(kp, density_matrix_);
             } else {
@@ -120,7 +119,7 @@ inline void Density::generate_valence(K_set& ks__)
         augment(ks__);
     }
 
-    if (ctx_.esm_type() == electronic_structure_method_t::paw_pseudopotential) {
+    if (ctx_.esm_type() == electronic_structure_method_t::pseudopotential) {
         symmetrize_density_matrix();
     }
 }

@@ -43,28 +43,25 @@ public:
     }
 
 
-    void calc_gradient(int calc_component)
+    void calc_gradient(int calc_component__)
     {
-        const Gvec &gkvec = bp_->gk_vectors();
+        Gvec const& gkvec = bp_->gk_vectors();
 
-        const matrix<double_complex> &beta_comps = bp_->beta_gk_a();
+        matrix<double_complex> const& beta_comps = bp_->beta_gk_a();
 
-        double_complex Im(0,1);
+        double_complex Im(0, 1);
 
         #pragma omp parallel for
-        for(int ibf=0; ibf< bp_->beta_gk_a().size(1); ibf++)
-        {
-            for(int igk_loc=0; igk_loc < bp_->num_gkvec_loc(); igk_loc++)
-            {
+        for (size_t ibf = 0; ibf < bp_->beta_gk_a().size(1); ibf++) {
+            for (int igk_loc = 0; igk_loc < bp_->num_gkvec_loc(); igk_loc++) {
                 int igk = gkvec.gvec_offset(bp_->comm().rank()) + igk_loc;
 
-                double gkvec_comp = gkvec.gkvec_cart(igk)[calc_component];
+                double gkvec_comp = gkvec.gkvec_cart(igk)[calc_component__];
 
-                components_gk_a_[calc_component](igk_loc, ibf) = - Im * gkvec_comp * beta_comps(igk_loc,ibf);
+                components_gk_a_[calc_component__](igk_loc, ibf) = - Im * gkvec_comp * beta_comps(igk_loc,ibf);
             }
         }
     }
-
 
     void generate(int chunk__, int calc_component__)
     {
@@ -81,14 +78,14 @@ public:
         #endif
     }
 
-
     void generate(int chunk__)
     {
-        for(int comp: {0,1,2}) generate(chunk__, comp);
+        for(int comp: {0, 1, 2}) {
+            generate(chunk__, comp);
+        }
     }
 
-
-    /// calculates inner product <beta_grad | Psi >
+    /// Calculates inner product <beta_grad | Psi>.
     template <typename T>
     void inner(int chunk__, wave_functions& phi__, int idx0__, int n__, int calc_component__)
     {

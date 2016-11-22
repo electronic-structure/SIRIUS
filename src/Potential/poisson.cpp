@@ -203,10 +203,10 @@ void Potential::poisson_add_pseudo_pw(mdarray<double_complex, 2>& qmt,
     ctx_.comm().allgather(&rho_pw[0], ctx_.gvec_offset(), ctx_.gvec_count());
 }
 
-void Potential::poisson_atom_vmt(Spheric_function<function_domain_t::spectral,double> &rho_mt,
-                            Spheric_function<function_domain_t::spectral,double> &vh_mt,
-                            mdarray<double_complex, 1>& qmt_ext,
-                            Atom &atom)
+void Potential::poisson_atom_vmt(Spheric_function<function_domain_t::spectral, double>& rho_mt,
+                                 Spheric_function<function_domain_t::spectral, double>& vh_mt,
+                                 mdarray<double_complex, 1>& qmt_ext,
+                                 Atom& atom)
 {
     //double R = atom.mt_radius();
     int nmtp = atom.num_mt_points();
@@ -214,7 +214,7 @@ void Potential::poisson_atom_vmt(Spheric_function<function_domain_t::spectral,do
     // passed size of qmt_mt must be equal to
     int lmsize = rho_mt.angular_domain_size();
 
-    int lmax_rho = 2*atom.type().indexr().lmax_lo();
+    int lmax_rho = 2 * atom.type().indexr().lmax_lo();
 
     std::vector<double> qmt(lmsize, 0);
 
@@ -245,13 +245,6 @@ void Potential::poisson_atom_vmt(Spheric_function<function_domain_t::spectral,do
                 double vlm = g1[ir] / std::pow(r, l + 1) + (g2.back() - g2[ir]) * std::pow(r, l);
 
                 vh_mt(lm, ir) = pref * vlm;
-
-                ////////////////////////////////////////////////////////////////////
-//              if(lm==0 && ir> 930)
-//              {
-//                  std::cout<<"g2 " << g2[ir]<<" vh "<<vh_mt(lm, ir)<<std::endl;
-//              }
-                //////////////////////////////////////////////////////////////////////
             }
         }
     }

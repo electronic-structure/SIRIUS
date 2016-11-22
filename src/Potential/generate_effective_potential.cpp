@@ -82,8 +82,7 @@ void Potential::generate_effective_potential(Periodic_function<double>* rho,
 
     ctx_.fft().dismiss();
 
-    if (ctx_.esm_type() == electronic_structure_method_t::ultrasoft_pseudopotential ||
-        ctx_.esm_type() == electronic_structure_method_t::paw_pseudopotential) {
+    if (!ctx_.full_potential()) {
         generate_D_operator_matrix();
     }
 }

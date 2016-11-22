@@ -180,7 +180,7 @@ def parse_PAW(upf_dict, root):
 
     #------ Read PP_PAW section: occupation, AE_NLCC, AE_VLOC
     node = root.findall("./PP_PAW")[0]
-    upf_dict['header']["paw_core_energy"] = float(node.attrib['core_energy'])
+    upf_dict['header']["paw_core_energy"] = float(node.attrib['core_energy']) / 2 # convert to Ha
 
     node = root.findall("./PP_PAW/PP_OCCUPATIONS")[0]
     size = int(node.attrib['size'])
@@ -201,7 +201,7 @@ def parse_PAW(upf_dict, root):
     size = int(node.attrib['size'])
 
     for i in range(size):
-        upf_dict['paw_data']['ae_local_potential'] = [float(e) for e in str.split(node.text)]
+        upf_dict['paw_data']['ae_local_potential'] = [float(e) / 2 for e in str.split(node.text)] # convert to Ha
 
 
 

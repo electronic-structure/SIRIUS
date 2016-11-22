@@ -214,9 +214,7 @@ class Simulation_parameters
 
             m["full_potential_lapwlo"]           = electronic_structure_method_t::full_potential_lapwlo;
             m["full_potential_pwlo"]             = electronic_structure_method_t::full_potential_pwlo;
-            m["ultrasoft_pseudopotential"]       = electronic_structure_method_t::ultrasoft_pseudopotential;
-            m["norm_conserving_pseudopotential"] = electronic_structure_method_t::norm_conserving_pseudopotential;
-            m["paw_pseudopotential"]             = electronic_structure_method_t::paw_pseudopotential;
+            m["pseudopotential"]                 = electronic_structure_method_t::pseudopotential;
 
             if (m.count(name__) == 0) {
                 std::stringstream s;
