@@ -1,4 +1,4 @@
-// Copyright (c) 2013-2014 Anton Kozhevnikov, Thomas Schulthess
+// Copyright (c) 2013-2016 Anton Kozhevnikov, Thomas Schulthess
 // All rights reserved.
 // 
 // Redistribution and use in source and binary forms, with or without modification, are permitted provided that 
@@ -216,7 +216,7 @@ int DFT_ground_state::find(double potential_tol, double energy_tol, int num_dft_
             ctx_.set_iterative_solver_tolerance(std::min(ctx_.iterative_solver_tolerance(), tol));
         }
 
-        if (ctx_.esm_type() == electronic_structure_method_t::paw_pseudopotential) {
+        if (ctx_.esm_type() == electronic_structure_method_t::pseudopotential) {
             density_.generate_paw_loc_density();
         }
 
@@ -338,7 +338,7 @@ void DFT_ground_state::print_info()
 
     double one_elec_en = evalsum1 - (evxc + evha);
 
-    if (ctx_.esm_type() == electronic_structure_method_t::paw_pseudopotential) {
+    if (ctx_.esm_type() == electronic_structure_method_t::pseudopotential) {
         one_elec_en -= potential_.PAW_one_elec_energy();
     }
 
