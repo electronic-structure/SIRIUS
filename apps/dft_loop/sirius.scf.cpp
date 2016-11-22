@@ -254,7 +254,9 @@ double ground_state(Simulation_context&       ctx,
         write_output = 0;
     }
     
-    dft.forces();
+    if (!ctx.full_potential()) {
+        dft.forces();
+    }
 
     if (write_output) {
         json dict;
