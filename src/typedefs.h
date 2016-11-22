@@ -31,31 +31,21 @@
 #include <assert.h>
 #include <complex>
 
-typedef std::complex<double> double_complex;
+using double_complex = std::complex<double>;
 
 enum class spin_block_t {nm, uu, ud, dd, du};
-
-//enum lattice_t {direct, reciprocal};
-
-//enum coordinates_t {cartesian, fractional};
 
 /// Type of electronic structure methods.
 enum class electronic_structure_method_t 
 {
     /// Full potential linearized augmented plane waves with local orbitals.
-    full_potential_lapwlo, 
+    full_potential_lapwlo,
 
     /// Full potential plane waves with local orbitals (heavily experimental and not completely implemented).
-    full_potential_pwlo, 
+    full_potential_pwlo,
 
-    /// Ultrasoft pseudopotential with plane wave basis (experimental).
-    ultrasoft_pseudopotential,
-
-    /// PAW pseudopotential with plane wave basis (experimental).
-    paw_pseudopotential,
-
-    /// Norm-conserving pseudopotential with plane wave basis (experimental).
-    norm_conserving_pseudopotential
+    /// Pseudopotential (ultrasoft, norm-conserving, PAW).
+    pseudopotential
 };
 
 enum class index_domain_t {global, local};
