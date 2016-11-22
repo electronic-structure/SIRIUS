@@ -120,11 +120,10 @@ mdarray<double,2> Forces_PS::calc_ultrasoft_forces() const
             // cartesian form for getting cartesian force components
             vector3d<double> gvec_cart = veff_full->gvec().gvec_cart(ig);
 
-            // store conjugate of g component of veff
-            double_complex veff_of_g = reduce_g_fact * std::conj(veff_full->f_pw_local(ig));
-
             // scalar part of a force without multipying by G-vector and Qij
-            double_complex g_atom_part =  ctx_.unit_cell().omega() * veff_of_g * std::exp(double_complex(0.0, - twopi * (gvec * atom.position())));
+            // omega * V_conj(G) * exp(-i G Rn)
+            double_complex g_atom_part =  reduce_g_fact * ctx_.unit_cell().omega() * std::conj(veff_full->f_pw_local(ig)) *
+                    std::exp(double_complex(0.0, - twopi * (gvec * atom.position())));
 
             const Augmentation_operator &aug_op = ctx_.augmentation_op(iat);
 
@@ -137,14 +136,14 @@ mdarray<double,2> Forces_PS::calc_ultrasoft_forces() const
 
                     double diag_fact = ib1 == ib2 ? 1.0 : 2.0;
 
-                    // scalar part of force
-                    double_complex z = diag_fact * density_matrix(ib1,ib2,0,ia).real() * g_atom_part *
+                    //  [omega * V_conj(G) * exp(-i G Rn) ] * rho_ij * Qij(G)
+                    double_complex z = diag_fact * g_atom_part * density_matrix(ib1,ib2,0,ia).real() *
                             double_complex( aug_op.q_pw( iqij , 2*igloc ), aug_op.q_pw( iqij , 2*igloc + 1 ) );
 
                     // get force components multiplying by cartesian G-vector ( -image part goes from formula)
-                    forces(0, ia) += - (gvec_cart[0] * z).imag();
-                    forces(1, ia) += - (gvec_cart[1] * z).imag();
-                    forces(2, ia) += - (gvec_cart[2] * z).imag();
+                    forces(0, ia) -=  (gvec_cart[0] * z).imag();
+                    forces(1, ia) -=  (gvec_cart[1] * z).imag();
+                    forces(2, ia) -=  (gvec_cart[2] * z).imag();
                 }
             }
         }
@@ -178,7 +177,7 @@ mdarray<double,2> Forces_PS::calc_nonlocal_forces(K_set& kset) const
     ctx_.comm().allreduce(&forces(0,0),forces.size());
 
     //return std::move(forces);
-    return std::move( unit_cell.symmetry().symmetrize_cart_vectors(forces) );
+    return std::move( symmetrize_forces(forces) );
 }
 
 
@@ -186,9 +185,42 @@ mdarray<double,2> Forces_PS::calc_nonlocal_forces(K_set& kset) const
 
 //---------------------------------------------------------------
 //---------------------------------------------------------------
-void Forces_PS::symmetrize_forces(mdarray<double,2>& forces)
+mdarray<double, 2> Forces_PS::symmetrize_forces(mdarray<double,2>& forces) const
 {
+    mdarray<double, 2> symm_lat_forces(forces.size(0), forces.size(1));
 
+    symm_lat_forces.zero();
+
+    matrix3d<double> const& lattice_vectors = ctx_.unit_cell().symmetry().lattice_vectors();
+    matrix3d<double> const& inverse_lattice_vectors = ctx_.unit_cell().symmetry().inverse_lattice_vectors();
+
+    #pragma omp parallel for
+    for(int ia = 0; ia < (int)forces.size(1); ia++)
+    {
+        vector3d<double> cart_force(&forces(0,ia));
+
+        vector3d<double> lat_force = inverse_lattice_vectors * (cart_force / (double)ctx_.unit_cell().symmetry().num_mag_sym());
+
+        for (int isym = 0; isym < ctx_.unit_cell().symmetry().num_mag_sym(); isym++)
+        {
+            int ja = ctx_.unit_cell().symmetry().sym_table(ia,isym);
+
+            auto &R = ctx_.unit_cell().symmetry().magnetic_group_symmetry(isym).spg_op.R;
+
+            vector3d<double> rot_force = lattice_vectors * ( R * lat_force );
+
+            #pragma omp atomic update
+            symm_lat_forces(0, ja) += rot_force[0];
+
+            #pragma omp atomic update
+            symm_lat_forces(1, ja) += rot_force[1];
+
+            #pragma omp atomic update
+            symm_lat_forces(2, ja) += rot_force[2];
+        }
+    }
+
+    return std::move(symm_lat_forces);
 }
 
 }

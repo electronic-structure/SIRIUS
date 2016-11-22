@@ -1,11 +1,9 @@
-
 {
   "control" : {
       "cyclic_block_size" : 16,
       "processing_unit" : "cpu",
       "std_evp_solver_type" : "lapack",
-      "gen_evp_solver_type" : "lapack",
-      "reduce_gvec": true
+      "gen_evp_solver_type" : "lapack"
   },
 
   "parameters" : {
@@ -29,7 +27,9 @@
 
       "num_dft_iter" : 100,
 
-      "ngridk" : [4,4,4]
+      "ngridk" : [8,8,8],
+
+      "reduce_gvec": 0
   },
 
     "iterative_solver" : {
@@ -53,12 +53,12 @@
 
             "atom_files" : {
                 "Li" : "Li.pz-s-kjpaw_psl.0.2.1.UPF.json",
-                "F"  : "F.pz-n-kjpaw_psl.0.1.UPF.json"
+                "F"  : "F.pz-n-rrkjus_psl.0.1.UPF.json"
             },
 
             "atoms" : {
                 "F" : [
-                    [0.49, 0.495, 0.495]
+                    [0.5, 0.5, 0.5]
                 ],
                 "Li" : [
                     [0, 0, 0]

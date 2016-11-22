@@ -240,8 +240,7 @@ class Symmetry
                                mdarray<double, 3>& fy_rlm__,
                                mdarray<double, 3>& fz_rlm__,
                                Communicator const& comm__) const;
-        
-        mdarray<double, 2> symmetrize_cart_vectors(mdarray<double, 2>& cart_vectors__) const;
+
 
         int get_irreducible_reciprocal_mesh(vector3d<int> k_mesh__,
                                             vector3d<int> is_shift__,
@@ -249,6 +248,15 @@ class Symmetry
                                             std::vector<double>& wk__) const;
 
 
+        matrix3d<double> const& lattice_vectors() const
+        {
+            return lattice_vectors_;
+        }
+
+        matrix3d<double> const& inverse_lattice_vectors() const
+        {
+            return inverse_lattice_vectors_;
+        }
 };
 
 }

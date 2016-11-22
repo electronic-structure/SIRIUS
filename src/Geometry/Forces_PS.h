@@ -70,7 +70,7 @@ private:
 
                 int nbnd_loc = spl_nbnd.local_size();
 
-                // omp
+                #pragma omp parallel for
                 for(int ia_chunk = 0; ia_chunk < bp.beta_chunk(icnk).num_atoms_; ia_chunk++)
                 {
                     int ia = bp.beta_chunk(icnk).desc_(3, ia_chunk);
@@ -110,7 +110,7 @@ private:
         }
     }
 
-    void symmetrize_forces(mdarray<double,2>& forces);
+    mdarray<double, 2> symmetrize_forces(mdarray<double,2>& forces) const;
 
 public:
     Forces_PS(Simulation_context &ctx, Density& density, Potential& potential)
