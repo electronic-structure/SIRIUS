@@ -370,6 +370,11 @@ class Periodic_function: public Smooth_periodic_function<T>
             return f_pw_(ig__);
         }
 
+        inline complex_t const& f_pw(int ig__) const
+        {
+            return f_pw_(ig__);
+        }
+
         inline complex_t& f_pw(vector3d<int> const& G__)
         {
             return f_pw_(this->gvec().index_by_gvec(G__));
