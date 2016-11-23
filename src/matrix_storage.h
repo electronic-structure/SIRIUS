@@ -372,103 +372,103 @@ class matrix_storage<T, matrix_storage_t::slab>
 
 };
 
-template <typename T>
-class matrix_storage<T, matrix_storage_t::block_cyclic> 
-{
-    private:
-
-        int num_rows_;
-        
-        int num_cols_;
-
-        int bs_;
-
-        BLACS_grid const& blacs_grid_;
-
-        BLACS_grid const& blacs_grid_slice_;
-
-        dmatrix<T> prime_;
-
-        dmatrix<T> extra_;
-
-        /// Raw buffer for the extra storage.
-        mdarray<T, 1> extra_buf_;
-
-        /// Column distribution in auxiliary matrix.
-        splindex<block> spl_num_col_;
-
-    public:
-
-        matrix_storage(int num_rows__, int num_cols__, int bs__, BLACS_grid const& blacs_grid__, BLACS_grid const& blacs_grid_slice__)
-            : num_rows_(num_rows__),
-              num_cols_(num_cols__),
-              bs_(bs__),
-              blacs_grid_(blacs_grid__),
-              blacs_grid_slice_(blacs_grid_slice__)
-        {
-            assert(blacs_grid_slice__.num_ranks_row() == 1);
-
-            prime_ = dmatrix<T>(num_rows_, num_cols_, blacs_grid_, bs_, bs_);
-        }
-        
-        /// Set extra-storage matrix.
-        void set_num_extra(int n__)
-        {
-            /* this is how n wave-functions will be distributed between panels */
-            spl_num_col_ = splindex<block>(n__, blacs_grid_slice_.num_ranks_col(), blacs_grid_slice_.rank_col());
-
-            int bs = splindex_base<int>::block_size(n__, blacs_grid_slice_.num_ranks_col());
-            if (blacs_grid_.comm().size() > 1) {
-                size_t sz = num_rows_ * bs;
-                if (extra_buf_.size() < sz) {
-                    extra_buf_ = mdarray<T, 1>(sz);
-                }
-                extra_ = dmatrix<T>(&extra_buf_[0], num_rows_, n__, blacs_grid_slice_, 1, bs);
-            } else {
-                extra_ = dmatrix<T>(prime_.template at<CPU>(), num_rows_, n__, blacs_grid_slice_, 1, bs);
-            }
-        }
-
-        void remap_forward(int idx0__, int n__)
-        {
-            PROFILE_WITH_TIMER("sirius::matrix_storage::remap_forward");
-            set_num_extra(n__);
-            if (blacs_grid_.comm().size() > 1) {
-                #ifdef __SCALAPACK
-                linalg<CPU>::gemr2d(num_rows_, n__, prime_, 0, idx0__, extra_, 0, 0, blacs_grid_.context());
-                #else
-                TERMINATE_NO_SCALAPACK
-                #endif
-            }
-        }
-
-        void remap_backward(int idx0__, int n__)
-        {
-            PROFILE_WITH_TIMER("sirius::matrix_storage::remap_backward");
-            if (blacs_grid_.comm().size() > 1) {
-                #ifdef __SCALAPACK
-                linalg<CPU>::gemr2d(num_rows_, n__, extra_, 0, 0, prime_, 0, idx0__, blacs_grid_.context());
-                #else
-                TERMINATE_NO_SCALAPACK
-                #endif
-            }
-        }
-
-        dmatrix<double_complex>& prime()
-        {
-            return prime_;
-        }
-
-        dmatrix<double_complex>& extra()
-        {
-            return extra_;
-        }
-
-        inline splindex<block> const& spl_num_col() const
-        {
-            return spl_num_col_;
-        }
-};
+//== template <typename T>
+//== class matrix_storage<T, matrix_storage_t::block_cyclic> 
+//== {
+//==     private:
+//== 
+//==         int num_rows_;
+//==         
+//==         int num_cols_;
+//== 
+//==         int bs_;
+//== 
+//==         BLACS_grid const& blacs_grid_;
+//== 
+//==         BLACS_grid const& blacs_grid_slice_;
+//== 
+//==         dmatrix<T> prime_;
+//== 
+//==         dmatrix<T> extra_;
+//== 
+//==         /// Raw buffer for the extra storage.
+//==         mdarray<T, 1> extra_buf_;
+//== 
+//==         /// Column distribution in auxiliary matrix.
+//==         splindex<block> spl_num_col_;
+//== 
+//==     public:
+//== 
+//==         matrix_storage(int num_rows__, int num_cols__, int bs__, BLACS_grid const& blacs_grid__, BLACS_grid const& blacs_grid_slice__)
+//==             : num_rows_(num_rows__),
+//==               num_cols_(num_cols__),
+//==               bs_(bs__),
+//==               blacs_grid_(blacs_grid__),
+//==               blacs_grid_slice_(blacs_grid_slice__)
+//==         {
+//==             assert(blacs_grid_slice__.num_ranks_row() == 1);
+//== 
+//==             prime_ = dmatrix<T>(num_rows_, num_cols_, blacs_grid_, bs_, bs_);
+//==         }
+//==         
+//==         /// Set extra-storage matrix.
+//==         void set_num_extra(int n__)
+//==         {
+//==             /* this is how n wave-functions will be distributed between panels */
+//==             spl_num_col_ = splindex<block>(n__, blacs_grid_slice_.num_ranks_col(), blacs_grid_slice_.rank_col());
+//== 
+//==             int bs = splindex_base<int>::block_size(n__, blacs_grid_slice_.num_ranks_col());
+//==             if (blacs_grid_.comm().size() > 1) {
+//==                 size_t sz = num_rows_ * bs;
+//==                 if (extra_buf_.size() < sz) {
+//==                     extra_buf_ = mdarray<T, 1>(sz);
+//==                 }
+//==                 extra_ = dmatrix<T>(&extra_buf_[0], num_rows_, n__, blacs_grid_slice_, 1, bs);
+//==             } else {
+//==                 extra_ = dmatrix<T>(prime_.template at<CPU>(), num_rows_, n__, blacs_grid_slice_, 1, bs);
+//==             }
+//==         }
+//== 
+//==         void remap_forward(int idx0__, int n__)
+//==         {
+//==             PROFILE_WITH_TIMER("sirius::matrix_storage::remap_forward");
+//==             set_num_extra(n__);
+//==             if (blacs_grid_.comm().size() > 1) {
+//==                 #ifdef __SCALAPACK
+//==                 linalg<CPU>::gemr2d(num_rows_, n__, prime_, 0, idx0__, extra_, 0, 0, blacs_grid_.context());
+//==                 #else
+//==                 TERMINATE_NO_SCALAPACK
+//==                 #endif
+//==             }
+//==         }
+//== 
+//==         void remap_backward(int idx0__, int n__)
+//==         {
+//==             PROFILE_WITH_TIMER("sirius::matrix_storage::remap_backward");
+//==             if (blacs_grid_.comm().size() > 1) {
+//==                 #ifdef __SCALAPACK
+//==                 linalg<CPU>::gemr2d(num_rows_, n__, extra_, 0, 0, prime_, 0, idx0__, blacs_grid_.context());
+//==                 #else
+//==                 TERMINATE_NO_SCALAPACK
+//==                 #endif
+//==             }
+//==         }
+//== 
+//==         dmatrix<double_complex>& prime()
+//==         {
+//==             return prime_;
+//==         }
+//== 
+//==         dmatrix<double_complex>& extra()
+//==         {
+//==             return extra_;
+//==         }
+//== 
+//==         inline splindex<block> const& spl_num_col() const
+//==         {
+//==             return spl_num_col_;
+//==         }
+//== };
 
 }
 

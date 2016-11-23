@@ -145,18 +145,11 @@ class Density
          *  In case of pseudo-potential, full matrix for all atoms is stored. */
         mdarray<double_complex, 4> density_matrix_;
 
-        /// ae and ps local densities used for PAW
-        std::vector< mdarray<double, 2> > paw_ae_local_density_; //vector iterates atoms
-        std::vector< mdarray<double, 2> > paw_ps_local_density_;
-
-        std::vector< mdarray<double, 3> > paw_ae_local_magnetization_; //vector iterates atoms
-        std::vector< mdarray<double, 3> > paw_ps_local_magnetization_;
-
         struct paw_density_data_t
         {
             Atom *atom_{nullptr};
 
-            int abs_ind;
+            int ia{-1};
 
             /// ae and ps local densities
             mdarray<double, 2> ae_density_;
@@ -196,19 +189,13 @@ class Density
         std::vector<int> lf_gvec_;
         std::vector<int> hf_gvec_;
 
-        //---------------------------------
-        // PAW private methods
-        //---------------------------------
-        /// allocate PAW data
+        /// Allocate PAW data.
         void init_paw();
 
         void generate_paw_atom_density(paw_density_data_t &pdd);
 
         /// Initialize \rho_{ij} - density matrix, occupation on basis of beta-projectors (used for PAW).
         void init_density_matrix_for_paw();
-
-        //-----------------------------------
-        //-----------------------------------
 
         /// Symmetrize density matrix.
         /** Initially, density matrix is obtained with summation over irreducible BZ:
@@ -367,10 +354,6 @@ class Density
             ctx_.fft().dismiss();
         }
 
-
-
-
-
     public:
 
         /// Constructor
@@ -386,8 +369,7 @@ class Density
             rho_ = new Periodic_function<double>(ctx_, ctx_.lmmax_rho(), 1);
 
             /* core density of the pseudopotential method */
-            if (!ctx_.full_potential())
-            {
+            if (!ctx_.full_potential()) {
                 rho_pseudo_core_ = new Periodic_function<double>(ctx_, 0, false);
                 rho_pseudo_core_->zero();
 
@@ -518,8 +500,6 @@ class Density
                     TERMINATE("wrong mixer type");
                 }
             }
-
-
         }
         
         /// Destructor
@@ -765,23 +745,26 @@ class Density
 
         /// generate n_1 and \tilda{n}_1 in lm components
         void generate_paw_loc_density();
-        void generate_paw_loc_density_();
 
-        std::vector< mdarray<double, 2> >* get_paw_ae_local_density(){ return &paw_ae_local_density_; }
+        mdarray<double, 2>* get_ae_paw_atom_density(int spl_paw_ind)
+        {
+            return &paw_density_data_[spl_paw_ind].ae_density_;
+        }
 
-        std::vector< mdarray<double, 2> >* get_paw_ps_local_density(){ return &paw_ps_local_density_; }
+        mdarray<double, 2>* get_ps_paw_atom_density(int spl_paw_ind)
+        {
+            return &paw_density_data_[spl_paw_ind].ps_density_;
+        }
 
-        std::vector< mdarray<double, 3> >* get_paw_ae_local_magnetization(){ return &paw_ae_local_magnetization_; }
+        mdarray<double, 3>* get_ae_paw_atom_magn(int spl_paw_ind)
+        {
+            return &paw_density_data_[spl_paw_ind].ae_magnetization_;
+        }
 
-        std::vector< mdarray<double, 3> >* get_paw_ps_local_magnetization(){ return &paw_ps_local_magnetization_; }
-
-        mdarray<double, 2>* get_ae_paw_atom_density(int spl_paw_ind){ return &paw_density_data_[spl_paw_ind].ae_density_; }
-
-        mdarray<double, 2>* get_ps_paw_atom_density(int spl_paw_ind){ return &paw_density_data_[spl_paw_ind].ps_density_; }
-
-        mdarray<double, 3>* get_ae_paw_atom_magn(int spl_paw_ind){ return &paw_density_data_[spl_paw_ind].ae_magnetization_; }
-
-        mdarray<double, 3>* get_ps_paw_atom_magn(int spl_paw_ind){ return &paw_density_data_[spl_paw_ind].ps_magnetization_; }
+        mdarray<double, 3>* get_ps_paw_atom_magn(int spl_paw_ind)
+        {
+            return &paw_density_data_[spl_paw_ind].ps_magnetization_;
+        }
 
         void allocate()
         {

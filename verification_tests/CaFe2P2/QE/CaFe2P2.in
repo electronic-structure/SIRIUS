@@ -1,0 +1,45 @@
+&CONTROL
+  calculation = 'scf'
+  prefix = 'pwscf'
+  pseudo_dir = './'
+  restart_mode = 'from_scratch'
+  verbosity = 'high'
+/
+&SYSTEM
+  degauss =   2.0000000000d-02
+  ecutrho =   256
+  ecutwfc =   36
+  ibrav = 0
+  nat = 5
+  ntyp = 3
+  occupations = 'smearing'
+  smearing = 'gauss'
+  degauss = 0.05
+  nbnd = 40
+  nosym=.true.
+/
+&ELECTRONS
+  conv_thr =   1.0000000000d-12
+  electron_maxstep = 50
+  mixing_beta = 0.95
+/
+&IONS
+/
+&CELL
+/
+ATOMIC_SPECIES
+Ca     40.078 ca_lda_v1.uspp.F.UPF
+Fe     55.847 fe_lda_v1.5.uspp.F.UPF
+P      30.97376 p_lda_v1.5.uspp.F.UPF
+ATOMIC_POSITIONS angstrom
+Ca           0.0000000000       0.0000000000       0.0000000000 
+Fe           0.0000000000       1.9275000000       2.4962500000 
+Fe           1.9275000000       0.0000000000       2.4962500000 
+P            0.0000000000       0.0000000000       3.6375355000 
+P            0.0000000000       0.0000000000       6.3474645000 
+K_POINTS automatic
+2 2 2 0 0 0
+CELL_PARAMETERS angstrom
+     -1.9275000000       1.9275000000       4.9925000000
+      1.9275000000      -1.9275000000       4.9925000000
+      1.9275000000       1.9275000000      -4.9925000000

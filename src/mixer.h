@@ -48,7 +48,7 @@ class Mixer
         double beta_;
         
         /// Number of times mixer was called so far.
-        int count_;
+        int count_{0};
         
         /// Temporary storage for the input data.
         mdarray<T, 1> input_buffer_;
@@ -63,7 +63,7 @@ class Mixer
         Communicator const& comm_;
 
         /// Residual sum of squares.
-        double rss_;
+        double rss_{0};
 
         /// Return position in the list of mixed vectors for the given mixing step.
         inline int idx_hist(int step__) const
@@ -108,9 +108,7 @@ class Mixer
             : size_(size__), 
               max_history_(max_history__), 
               beta_(beta__), 
-              count_(0),
-              comm_(comm__),
-              rss_(0)
+              comm_(comm__)
         {
             spl_size_ = splindex<block, size_t>(size_, comm_.size(), comm_.rank());
             /* allocate input buffer (local size) */
@@ -292,7 +290,7 @@ class Broyden1: public Mixer<T>
                             T dr1 = residuals_(i, i1) - residuals_(i, i2);
                             T dr2 = residuals_(i, i3) - residuals_(i, i4);
 
-                            S(j1, j2) += type_wrapper<double>::sift(type_wrapper<T>::conjugate(dr1) * dr2) * w(this->spl_size_[i]);
+                            S(j1, j2) += type_wrapper<T>::real(type_wrapper<T>::conjugate(dr1) * dr2) * w(this->spl_size_[i]);
                         }
                         S(j2, j1) = S(j1, j2);
                     }
@@ -330,7 +328,7 @@ class Broyden1: public Mixer<T>
                     for (size_t i = 0; i < this->spl_size_.local_size(); i++) 
                     {
                         T dr = residuals_(i, i1) - residuals_(i, i2);
-                        c(j) += type_wrapper<double>::sift(type_wrapper<T>::conjugate(dr) * residuals_(i, ipos) * w(this->spl_size_[i]));
+                        c(j) += type_wrapper<T>::real(type_wrapper<T>::conjugate(dr) * residuals_(i, ipos) * w(this->spl_size_[i]));
                     }
                 }
                 this->comm_.allreduce(c.at<CPU>(), (int)c.size());
@@ -446,7 +444,7 @@ class Broyden2: public Mixer<T>
                     for (int j2 = 0; j2 <= j1; j2++) {
                         int i2 = this->idx_hist(this->count_ - N + j2);
                         for (size_t i = 0; i < this->spl_size_.local_size(); i++) {
-                            S(j1, j2) += type_wrapper<double>::sift(type_wrapper<T>::conjugate(residuals_(i, i1)) * residuals_(i, i2));
+                            S(j1, j2) += type_wrapper<T>::real(type_wrapper<T>::conjugate(residuals_(i, i1)) * residuals_(i, i2));
                         }
                         S(j2, j1) = S(j1, j2);
                     }

@@ -45,24 +45,16 @@ inline void Band::solve_fd(K_point* kp__,
                            Periodic_function<double>* effective_potential__, 
                            Periodic_function<double>* effective_magnetic_field__[3]) const
 {
-    switch (ctx_.esm_type())
-    {
-        case electronic_structure_method_t::paw_pseudopotential:
-        case electronic_structure_method_t::ultrasoft_pseudopotential:
-        case electronic_structure_method_t::norm_conserving_pseudopotential:
-        {
-            if (ctx_.gamma_point())
-            {
+    switch (ctx_.esm_type()) {
+        case electronic_structure_method_t::pseudopotential: {
+            if (ctx_.gamma_point()) {
                 diag_pseudo_potential<double>(kp__, effective_potential__, effective_magnetic_field__);
-            }
-            else
-            {
+            } else {
                 diag_pseudo_potential<double_complex>(kp__, effective_potential__, effective_magnetic_field__);
             }
             break;
         }
-        default:
-        {
+        default: {
             TERMINATE_NOT_IMPLEMENTED
         }
     }
@@ -297,29 +289,23 @@ inline void Band::solve_for_kset(K_set& kset, Potential& potential, bool precomp
         }
     }
 
-    /* experimental: switch to faster solver method after 1st iteration */
-    if (!ctx_.full_potential()) {
-        ctx_.iterative_solver_input_section().converge_occupied_ = 1;
-    }
-
     /* synchronize eigen-values */
     kset.sync_band_energies();
 
-    #if (__VERBOSITY > 0)
-    if (ctx_.comm().rank() == 0) {
+    if (ctx_.control().verbosity_ > 0 && ctx_.comm().rank() == 0) {
         printf("Lowest band energies\n");
         for (int ik = 0; ik < kset.num_kpoints(); ik++) {
             printf("ik : %2i, ", ik);
             if (ctx_.num_mag_dims() != 1) {
-                for (int j = 0; j < std::min(100, ctx_.num_bands()); j++) {
+                for (int j = 0; j < std::min(ctx_.control().num_bands_to_print_, ctx_.num_bands()); j++) {
                     printf("%12.6f", kset.k_point(ik)->band_energy(j));
                 }
             } else {
-                for (int j = 0; j < std::min(100, ctx_.num_fv_states()); j++) {
+                for (int j = 0; j < std::min(ctx_.control().num_bands_to_print_, ctx_.num_fv_states()); j++) {
                     printf("%12.6f", kset.k_point(ik)->band_energy(j));
                 }
                 printf("\n         ");
-                for (int j = 0; j < std::min(100, ctx_.num_fv_states()); j++) {
+                for (int j = 0; j < std::min(ctx_.control().num_bands_to_print_, ctx_.num_fv_states()); j++) {
                     printf("%12.6f", kset.k_point(ik)->band_energy(ctx_.num_fv_states() + j));
                 }
             }
@@ -335,6 +321,5 @@ inline void Band::solve_for_kset(K_set& kset, Potential& potential, bool precomp
         //== }
         //== fclose(fout);
     }
-    #endif
 }
 

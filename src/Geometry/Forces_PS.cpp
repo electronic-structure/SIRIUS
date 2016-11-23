@@ -26,7 +26,10 @@ mdarray<double,2> Forces_PS::calc_local_forces() const
     // other
     Unit_cell &unit_cell = ctx_.unit_cell();
 
-    splindex<block> spl_ngv(valence_rho->gvec().num_gvec(), ctx_.comm().size(), ctx_.comm().rank());
+    Gvec const& gvecs = ctx_.gvec();
+
+    int gvec_count = gvecs.gvec_count(ctx_.comm().rank());
+    int gvec_offset = gvecs.gvec_offset(ctx_.comm().rank());
 
     //mdarray<double_complex, 2> vloc_G_comp(unit_cell.num_atoms(), spl_ngv.local_size() );
 
@@ -44,18 +47,18 @@ mdarray<double,2> Forces_PS::calc_local_forces() const
 
         int iat = atom.type_id();
 
-        for (int igloc = 0; igloc < spl_ngv.local_size(); igloc++)
+        for (int igloc = 0; igloc < gvec_count; igloc++)
         {
-            int ig = spl_ngv[igloc];
+            int ig = gvec_offset + igloc;
 
-            int igs = valence_rho->gvec().shell(ig);
+            int igs = gvecs.shell(ig);
 
             // fractional form for calculation of scalar product with atomic position
             // since atomic positions are stored in fractional coords
-            vector3d<int> gvec = valence_rho->gvec().gvec(ig);
+            vector3d<int> gvec = gvecs.gvec(ig);
 
             // cartesian form for getting cartesian force components
-            vector3d<double> gvec_cart = valence_rho->gvec().gvec_cart(ig);
+            vector3d<double> gvec_cart = gvecs.gvec_cart(ig);
 
             // store conj(rho_G) * 4 * pi
             double_complex g_dependent_prefactor =  fact * std::conj( valence_rho->f_pw_local(igloc) ) * fourpi;
@@ -65,9 +68,9 @@ mdarray<double,2> Forces_PS::calc_local_forces() const
                     std::exp(double_complex(0.0, - twopi * (gvec * atom.position())));
 
             // get force components multiplying by cartesian G-vector ( -image part goes from formula)
-            forces(0, ia) += - (gvec_cart[0] * z).imag();
-            forces(1, ia) += - (gvec_cart[1] * z).imag();
-            forces(2, ia) += - (gvec_cart[2] * z).imag();
+            forces(0, ia) -= (gvec_cart[0] * z).imag();
+            forces(1, ia) -= (gvec_cart[1] * z).imag();
+            forces(2, ia) -= (gvec_cart[2] * z).imag();
         }
     }
 

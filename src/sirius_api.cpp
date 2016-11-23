@@ -2079,9 +2079,6 @@ void sirius_ground_state_initialize(int32_t* kset_id__)
     if (dft_ground_state != nullptr) TERMINATE("dft_ground_state object is already allocate");
 
     dft_ground_state = new sirius::DFT_ground_state(*sim_ctx, *potential, *density, *kset_list[*kset_id__], 1);
-//    if (!sim_ctx->full_potential()) {
-//        dft_ground_state->initialize_subspace();
-//    }
 }
 
 void sirius_ground_state_clear()
@@ -2947,10 +2944,6 @@ void sirius_set_mpi_grid_dims(int *ndims__, int* dims__)
     sim_ctx->set_mpi_grid_dims(dims);
 }
 
-
-//----------------------------------------------------------------------
-//---- PAW API ----------------------------------------------------------
-//----------------------------------------------------------------------
 void sirius_set_atom_type_paw_data(char* label__,
                                    double* ae_wfc_rf__,
                                    double* ps_wfc_rf__,
@@ -2989,7 +2982,7 @@ void sirius_set_atom_type_paw_data(char* label__,
     pp_desc.is_paw = true;
 
     // load parameters
-    pp_desc.core_energy = *core_energy__;
+    pp_desc.core_energy = (*core_energy__) * 0.5; // convert Ry to Ha
 
     pp_desc.cutoff_radius_index = *cutoff_radius_index__;
 
@@ -3006,26 +2999,22 @@ void sirius_set_atom_type_paw_data(char* label__,
     aewfcs >> pp_desc.all_elec_wfc;
     pswfcs >> pp_desc.pseudo_wfc;
 
-    for(int i=0;i<type.pp_desc().num_beta_radial_functions;i++)
-    {
-        std::memcpy( &pp_desc.all_elec_wfc(0, i), &aewfcs(0, i), (pp_desc.cutoff_radius_index) * sizeof(double));
-        std::memcpy( &pp_desc.pseudo_wfc(0, i),   &pswfcs(0, i), (pp_desc.cutoff_radius_index) * sizeof(double));
+    for (int i = 0; i < type.pp_desc().num_beta_radial_functions; i++) {
+        std::memcpy(&pp_desc.all_elec_wfc(0, i), &aewfcs(0, i), pp_desc.cutoff_radius_index * sizeof(double));
+        std::memcpy(&pp_desc.pseudo_wfc(0, i),   &pswfcs(0, i), pp_desc.cutoff_radius_index * sizeof(double));
     }
 
     // read ae core charge
     pp_desc.all_elec_core_charge.resize(type.num_mt_points());
 
-    std::memcpy( pp_desc.all_elec_core_charge.data(), ae_core_charge__, type.num_mt_points() * sizeof(double));
+    std::memcpy(pp_desc.all_elec_core_charge.data(), ae_core_charge__, type.num_mt_points() * sizeof(double));
 
     // read occupations
     pp_desc.occupations.resize(type.pp_desc().num_beta_radial_functions);
 
-    std::memcpy( pp_desc.occupations.data(), occupations__, type.pp_desc().num_beta_radial_functions * sizeof(double));
+    std::memcpy(pp_desc.occupations.data(), occupations__, type.pp_desc().num_beta_radial_functions * sizeof(double));
 }
 
-
-//----------------------------------------------------------------------
-//----------------------------------------------------------------------
 void sirius_get_paw_total_energy(double* tot_en__)
 {
     if( potential )
@@ -3061,5 +3050,35 @@ void sirius_reduce_coordinates(ftn_double* coord__,
         T__[x] = result.second[x];
     }
 }
+
+void sirius_fderiv(ftn_int* m__,
+                   ftn_int* np__,
+                   ftn_double* x__,
+                   ftn_double* f__,
+                   ftn_double* g__)
+{
+    int np = *np__;
+    sirius::Radial_grid rgrid(np, x__);
+    sirius::Spline<double> s(rgrid);
+    for (int i = 0; i < np; i++) {
+        s[i] = f__[i];
+    }
+    s.interpolate();
+    switch (*m__) {
+        case -1: {
+            std::vector<double> g(np);
+            s.integrate(g, 0);
+            for (int i = 0; i < np; i++) {
+                g__[i] = g[i];
+            }
+            return;
+        }
+        default: {
+             TERMINATE_NOT_IMPLEMENTED;
+        }
+    }
+}
+
+
 
 } // extern "C"

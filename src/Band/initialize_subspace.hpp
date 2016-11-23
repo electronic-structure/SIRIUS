@@ -200,13 +200,11 @@ inline void Band::initialize_subspace(K_point* kp__,
         }
         #endif
 
-        #if (__VERBOSITY > 2)
-        if (kp__->comm().rank() == 0) {
+        if (ctx_.control().verbosity_ > 2 && kp__->comm().rank() == 0) {
             for (int i = 0; i < num_bands; i++) {
                 DUMP("eval[%i]=%20.16f", i, eval[i]);
             }
         }
-        #endif
         
         /* compute wave-functions */
         /* \Psi_{i} = \sum_{mu} \phi_{mu} * Z_{mu, i} */

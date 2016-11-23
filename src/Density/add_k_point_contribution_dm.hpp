@@ -69,9 +69,7 @@ inline void Density::add_k_point_contribution_dm(K_point* kp__,
         }
     }
 
-    if (ctx_.esm_type() == electronic_structure_method_t::ultrasoft_pseudopotential ||
-        ctx_.esm_type() == electronic_structure_method_t::norm_conserving_pseudopotential ||
-        ctx_.esm_type() == electronic_structure_method_t::paw_pseudopotential) {
+    if (ctx_.esm_type() == electronic_structure_method_t::pseudopotential) {
         if (!ctx_.unit_cell().mt_lo_basis_size()) {
             return;
         }

@@ -4,7 +4,7 @@
         "processing_unit" : "cpu",
         "std_evp_solver_type" : "lapack",
         "gen_evp_solver_type" : "lapack",
-        "reduce_gvec" : true
+        "verbosity" : 2
     },
 
     "parameters" : {

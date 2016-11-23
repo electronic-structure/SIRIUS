@@ -85,7 +85,7 @@ class DFT_ground_state
 
         mdarray<double, 2> forces();
 
-        int find(double potential_tol, double energy_tol, int num_dft_iter);
+        int find(double potential_tol, double energy_tol, int num_dft_iter, bool write_state);
 
         void relax_atom_positions();
 
@@ -201,33 +201,21 @@ class DFT_ground_state
         {
             double tot_en{0};
 
-            switch (ctx_.esm_type())
-            {
+            switch (ctx_.esm_type()) {
                 case electronic_structure_method_t::full_potential_lapwlo:
-                case electronic_structure_method_t::full_potential_pwlo:
-                {
+                case electronic_structure_method_t::full_potential_pwlo: {
                     tot_en = (energy_kin() + energy_exc() + 0.5 * energy_vha() + energy_enuc());
+                    break;
                 }
-                break;
 
-                case electronic_structure_method_t::ultrasoft_pseudopotential:
-                case electronic_structure_method_t::norm_conserving_pseudopotential:
-                {
-                    tot_en = kset_.valence_eval_sum() - energy_veff() + 0.5 * energy_vha() +
-                             energy_exc() + ewald_energy_;
+                case electronic_structure_method_t::pseudopotential: {
+                    tot_en = (kset_.valence_eval_sum() - energy_veff() - potential_.PAW_one_elec_energy())
+                             + 0.5 * energy_vha() + energy_exc() + potential_.PAW_total_energy() +
+                             ewald_energy_ ;
+                    break;
                 }
-                break;
 
-                case electronic_structure_method_t::paw_pseudopotential:
-                {
-                    tot_en = (kset_.valence_eval_sum() - energy_veff() - potential_.PAW_one_elec_energy())    // Ekin
-                             + 0.5 * energy_vha() + energy_exc() + potential_.PAW_total_energy() +            // Epot
-                             ewald_energy_ ;                                                                  // Ewald
-                }
-                break;
-
-                default:
-                {
+                default: {
                     STOP();
                 }
             }
@@ -237,30 +225,18 @@ class DFT_ground_state
 
         void generate_effective_potential()
         {
-            switch(ctx_.esm_type())
-            {
+            switch(ctx_.esm_type()) {
                 case electronic_structure_method_t::full_potential_lapwlo:
-                case electronic_structure_method_t::full_potential_pwlo:
-                {
+                case electronic_structure_method_t::full_potential_pwlo: {
                     potential_.generate_effective_potential(density_.rho(), density_.magnetization());
                     break;
                 }
 
-                //TODO case paw_pseudopotential think about
-                case electronic_structure_method_t::ultrasoft_pseudopotential:
-                case electronic_structure_method_t::norm_conserving_pseudopotential:
-                {
-                    potential_.generate_effective_potential(density_.rho(), density_.rho_pseudo_core(), density_.magnetization());
-                    break;
-                };
-
-                case electronic_structure_method_t::paw_pseudopotential:
-                {
+                case electronic_structure_method_t::pseudopotential: {
                     potential_.generate_effective_potential(density_.rho(), density_.rho_pseudo_core(), density_.magnetization());
                     potential_.generate_PAW_effective_potential(density_);
                     break;
                 }
-
             }
         }
 

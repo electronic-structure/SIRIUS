@@ -35,10 +35,8 @@ Potential::Potential(Simulation_context& ctx__)
 {
     runtime::Timer t("sirius::Potential::Potential");
 
-    if (ctx_.full_potential() || ctx_.esm_type() == electronic_structure_method_t::paw_pseudopotential) {
-        lmax_ = std::max(ctx_.lmax_rho(), ctx_.lmax_pot());
-        sht_ = std::unique_ptr<SHT>(new SHT(lmax_));
-    }
+    lmax_ = std::max(ctx_.lmax_rho(), ctx_.lmax_pot());
+    sht_ = std::unique_ptr<SHT>(new SHT(lmax_));
 
     if (ctx_.esm_type() == electronic_structure_method_t::full_potential_lapwlo) {
         l_by_lm_ = Utils::l_by_lm(lmax_);
@@ -100,9 +98,7 @@ Potential::Potential(Simulation_context& ctx__)
     }
 
     /* in case of PAW */
-    if (ctx_.esm_type() == electronic_structure_method_t::paw_pseudopotential) {
-        init_PAW();
-    }
+    init_PAW();
 }
 
 Potential::~Potential()

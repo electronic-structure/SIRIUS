@@ -36,8 +36,6 @@
 
 //== #define __PRINT_MEMORY_USAGE
 
-//== #define __PRINT_PERFORMANCE
-
 //== #define __SCALAPACK
 
 //== #define __PILAENV_BLOCKSIZE=2048
@@ -87,16 +85,6 @@ const bool check_pseudo_charge = false;
  *  __VERIFICATION = 1 : basic checkes \n */
 #ifndef __VERIFICATION
 #define __VERIFICATION 0
-#endif
-
-/// Verbosity level.
-/** Controls the ammount of information printed to standard output. 
- *  verbosity_level = 0 : silent mode, nothing is printed \n
- *  verbosity_level >= 1 : print global parameters of the calculation \n
- *  verbosity_level >= 2 : (suggested default) print information of any initialized k_set \n
- */
-#ifndef __VERBOSITY
-#define __VERBOSITY 2
 #endif
 
 const bool use_second_variation = true;
