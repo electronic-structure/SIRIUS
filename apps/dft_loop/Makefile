@@ -2,7 +2,7 @@ include ../../make.inc
 
 LIB_SIRIUS = ../../src/libsirius.a
 
-LIB_SIRIUS_DBG = ../../src/libsirius.dbg.a
+LIB_SIRIUS_DBG = ../../src/libsirius.a
 
 INCLUDE = -I./../../src
 

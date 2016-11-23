@@ -141,39 +141,40 @@ mdarray<double,2 > DFT_ground_state::forces()
 {
     //STOP();
 
+
     mdarray<double,2 > loc_forces = forces_->calc_local_forces( );
-
-    //Force::total_force(ctx_, potential_, density_, kset_, forces__);
-
-    std::cout<<"===== Forces: local contribution =====" << std::endl;
-
-    std::cout<< std::fixed << std::setprecision(7);
-
-    for(int ia=0; ia < unit_cell_.num_atoms(); ia++)
-    {
-        std::cout<< unit_cell_.atom(ia).type_id()<<" "<< loc_forces(0,ia) <<"   "<< loc_forces(1,ia) << "   " << loc_forces(2,ia) << std::endl;
-    }
-
-
 
     mdarray<double,2 > us_forces = forces_->calc_ultrasoft_forces();
 
-    std::cout<<"===== Forces: ultrasoft contribution =====" << std::endl;
-
-    for(int ia=0; ia < unit_cell_.num_atoms(); ia++)
-    {
-        std::cout<< unit_cell_.atom(ia).type_id()<<" "<< us_forces(0,ia) <<"   "<< us_forces(1,ia) << "   " << us_forces(2,ia) << std::endl;
-    }
-
-
-
     mdarray<double,2 > nl_forces = forces_->calc_nonlocal_forces(kset_);
 
-    std::cout<<"===== Forces: non-local contribution =====" << std::endl;
 
-    for(int ia=0; ia < unit_cell_.num_atoms(); ia++)
+    //Force::total_force(ctx_, potential_, density_, kset_, forces__);
+
+    if(ctx_.comm().rank() == 0)
     {
-        std::cout<< unit_cell_.atom(ia).type_id()<<" "<< nl_forces(0,ia) <<"   "<< nl_forces(1,ia) << "   " << nl_forces(2,ia) << std::endl;
+        std::cout<<"===== Forces: local contribution =====" << std::endl;
+
+        std::cout<< std::fixed << std::setprecision(7);
+
+        for(int ia=0; ia < unit_cell_.num_atoms(); ia++)
+        {
+            std::cout<< unit_cell_.atom(ia).type_id()<<" "<< loc_forces(0,ia) <<"   "<< loc_forces(1,ia) << "   " << loc_forces(2,ia) << std::endl;
+        }
+
+        std::cout<<"===== Forces: ultrasoft contribution =====" << std::endl;
+
+        for(int ia=0; ia < unit_cell_.num_atoms(); ia++)
+        {
+            std::cout<< unit_cell_.atom(ia).type_id()<<" "<< us_forces(0,ia) <<"   "<< us_forces(1,ia) << "   " << us_forces(2,ia) << std::endl;
+        }
+
+        std::cout<<"===== Forces: non-local contribution =====" << std::endl;
+
+        for(int ia=0; ia < unit_cell_.num_atoms(); ia++)
+        {
+            std::cout<< unit_cell_.atom(ia).type_id()<<" "<< nl_forces(0,ia) <<"   "<< nl_forces(1,ia) << "   " << nl_forces(2,ia) << std::endl;
+        }
     }
 
     return std::move(loc_forces);

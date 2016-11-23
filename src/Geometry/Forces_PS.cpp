@@ -93,7 +93,10 @@ mdarray<double,2> Forces_PS::calc_ultrasoft_forces() const
     // other
     Unit_cell &unit_cell = ctx_.unit_cell();
 
-    splindex<block> spl_ngv(veff_full->gvec().num_gvec(), ctx_.comm().size(), ctx_.comm().rank());
+    Gvec const& gvecs = ctx_.gvec();
+
+    int gvec_count = gvecs.gvec_count(ctx_.comm().rank());
+    int gvec_offset = gvecs.gvec_offset(ctx_.comm().rank());
 
     mdarray<double,2> forces(3, unit_cell.num_atoms());
 
@@ -109,16 +112,16 @@ mdarray<double,2> Forces_PS::calc_ultrasoft_forces() const
 
         int iat = atom.type_id();
 
-        for (int igloc = 0; igloc < spl_ngv.local_size(); igloc++)
+        for (int igloc = 0; igloc < gvec_count; igloc++)
         {
-            int ig = spl_ngv[igloc];
+            int ig = gvec_offset + igloc;
 
             // fractional form for calculation of scalar product with atomic position
             // since atomic positions are stored in fractional coords
-            vector3d<int> gvec = veff_full->gvec().gvec(ig);
+            vector3d<int> gvec = gvecs.gvec(ig);
 
             // cartesian form for getting cartesian force components
-            vector3d<double> gvec_cart = veff_full->gvec().gvec_cart(ig);
+            vector3d<double> gvec_cart = gvecs.gvec_cart(ig);
 
             // scalar part of a force without multipying by G-vector and Qij
             // omega * V_conj(G) * exp(-i G Rn)
@@ -167,9 +170,11 @@ mdarray<double,2> Forces_PS::calc_nonlocal_forces(K_set& kset) const
 
     forces.zero();
 
-    for(int ikp=0; ikp < kset.num_kpoints(); ikp++)
+    auto& spl_num_kp = kset.spl_num_kpoints();
+
+    for(int ikploc=0; ikploc < spl_num_kp.local_size() ; ikploc++)
     {
-        K_point *kp = kset.k_point(ikp);
+        K_point *kp = kset.k_point(spl_num_kp[ikploc]);
 
         add_k_point_contribution_to_nonlocal<double_complex>(*kp, forces);
     }
