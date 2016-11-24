@@ -202,19 +202,8 @@ inline int Band::residuals(K_point* kp__,
         /* main trick here: first estimate energy difference, and only then compute unconverged residuals */
         std::vector<int> ev_idx;
         for (int i = 0; i < num_bands__; i++) {
-            bool take_res = false;
-            /* check empty bands */
-            if (kp__->band_occupancy(i + ispn__ * ctx_.num_fv_states()) < itso.min_occupancy_ &&
-                std::abs(eval__[i] - eval_old__[i]) > std::max(1e-7, itso.energy_tolerance_)) {
-                take_res = true;
-            }
-            /* check occupied bands */
-            if (kp__->band_occupancy(i + ispn__ * ctx_.num_fv_states()) >= itso.min_occupancy_ &&
-                std::abs(eval__[i] - eval_old__[i]) > itso.energy_tolerance_) {
-                take_res = true;
-            }
-
-            if (take_res) {
+            double tol = itso.energy_tolerance_ + 1e-7 * std::abs(kp__->band_occupancy(i + ispn__ * ctx_.num_fv_states()) / ctx_.max_occupancy() - 1);
+            if (std::abs(eval__[i] - eval_old__[i]) > tol) {
                 ev_idx.push_back(i);
             }
         }
