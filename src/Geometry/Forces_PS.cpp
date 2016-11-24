@@ -60,10 +60,8 @@ mdarray<double,2> Forces_PS::calc_local_forces() const
             // cartesian form for getting cartesian force components
             vector3d<double> gvec_cart = gvecs.gvec_cart(ig);
 
-            double_complex rho_comp = valence_rho->f_pw(ig);
-
             // store conj(rho_G) * 4 * pi
-            double_complex g_dependent_prefactor =  fact * fourpi * std::conj( rho_comp ) ;
+            double_complex g_dependent_prefactor =  fact * fourpi * std::conj( valence_rho->f_pw(ig) ) ;
 
             // scalar part of a force without multipying by G-vector
             double_complex z = vloc_radial_integrals(iat, igs) * g_dependent_prefactor *
