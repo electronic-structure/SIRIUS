@@ -1,9 +1,9 @@
 {
     "control" : {
         "cyclic_block_size" : 16,
-        "processing_unit" : "gpu",
-        "std_evp_solver_type" : "scalapack",
-        "gen_evp_solver_type" : "scalapack"
+        "processing_unit" : "cpu",
+        "std_evp_solver_type" : "lapack",
+        "gen_evp_solver_type" : "lapack"
     },
 
     "parameters" : {
@@ -13,17 +13,17 @@
         "valence_relativity" : "none",
         "core_relativity" : "none",
         "num_fv_states" : 10,
-        "aw_cutoff" : 9.0,
-        "pw_cutoff" : 35.00,
+        "aw_cutoff" : 5.0,
+        "pw_cutoff" : 15.00,
         "auto_rmt" : 1,
         "use_symmetry": 1,
         "ngridk" : [1,1,1],
         "potential_tol" : 1e-7,
         "energy_tol" : 1e-7,
         "num_dft_iter" : 100,
-        "lmax_apw"     : 12,
-        "lmax_pot"     : 12,
-        "lmax_rho"     : 12
+        "lmax_apw"     : 8,
+        "lmax_pot"     : 8,
+        "lmax_rho"     : 8
     },
 
     "iterative_solver" : {
@@ -42,7 +42,7 @@
                               [0, 1, 0], 
                               [0, 0, 1]
                             ],
-        "lattice_vectors_scale" : 30,
+        "lattice_vectors_scale" : 14,
 
         "atom_types" : ["H", "O"],
 

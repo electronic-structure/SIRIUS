@@ -4,7 +4,7 @@
     "std_evp_solver_type" : "lapack",
     "gen_evp_solver_type" : "lapack",
     "!num_fv_states" : 40,
-    "electronic_structure_method" : "paw_pseudopotential",
+    "electronic_structure_method" : "pseudopotential",
 
     "xc_functionals" : ["XC_LDA_X", "XC_LDA_C_PZ"],
 

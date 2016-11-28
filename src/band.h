@@ -498,6 +498,10 @@ class Band
             if (std_evp_solver_->parallel() != gen_evp_solver_->parallel()) {
                 TERMINATE("both eigen-value solvers must be serial or parallel");
             }
+
+            if (!std_evp_solver_->parallel() && blacs_grid_.comm().size() > 1) {
+                TERMINATE("eigen-value solvers must be parallel");
+            }
         }
 
         /// Apply the muffin-tin part of the Hamiltonian to the apw basis functions of an atom.
