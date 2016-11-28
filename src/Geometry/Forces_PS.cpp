@@ -47,6 +47,7 @@ mdarray<double,2> Forces_PS::calc_local_forces() const
 
         int iat = atom.type_id();
 
+        // mpi distributed
         for (int igloc = 0; igloc < gvec_count; igloc++)
         {
             int ig = gvec_offset + igloc;
@@ -60,11 +61,8 @@ mdarray<double,2> Forces_PS::calc_local_forces() const
             // cartesian form for getting cartesian force components
             vector3d<double> gvec_cart = gvecs.gvec_cart(ig);
 
-            // store conj(rho_G) * 4 * pi
-            double_complex g_dependent_prefactor =  fact * fourpi * std::conj( valence_rho->f_pw(ig) ) ;
-
             // scalar part of a force without multipying by G-vector
-            double_complex z = vloc_radial_integrals(iat, igs) * g_dependent_prefactor *
+            double_complex z = fact * fourpi * vloc_radial_integrals(iat, igs) * std::conj( valence_rho->f_pw(ig) ) *
                     std::exp(double_complex(0.0, - twopi * (gvec * atom.position())));
 
             // get force components multiplying by cartesian G-vector ( -image part goes from formula)
@@ -81,6 +79,77 @@ mdarray<double,2> Forces_PS::calc_local_forces() const
 
 
 
+//---------------------------------------------------------------
+//---------------------------------------------------------------
+mdarray<double,2> Forces_PS::calc_nlcc_forces() const
+{
+    // get main arrays
+    Periodic_function<double>* xc_pot = potential_.xc_potential();
+
+    // check because it is not allocated in dft loop
+    if ( !xc_pot->is_f_pw_allocated() )
+    {
+        xc_pot->allocate_pw();
+    }
+
+    // transform from real space to reciprocal
+    xc_pot->fft().prepare(xc_pot->gvec().partition() );
+    xc_pot->fft_transform(-1);
+    xc_pot->fft().dismiss( );
+
+    const mdarray<double, 2>&  rho_core_radial_integrals = density_.rho_pseudo_core_radial_integrals();
+
+    Unit_cell &unit_cell = ctx_.unit_cell();
+
+    Gvec const& gvecs = ctx_.gvec();
+
+    int gvec_count = gvecs.gvec_count(ctx_.comm().rank());
+    int gvec_offset = gvecs.gvec_offset(ctx_.comm().rank());
+
+    mdarray<double,2> forces(3, unit_cell.num_atoms());
+
+    forces.zero();
+
+    double fact = gvecs.reduced() ? 2.0 : 1.0 ;
+
+    // here the calculations are in lattice vectors space
+    #pragma omp parallel for
+    for (int ia = 0; ia < unit_cell.num_atoms(); ia++)
+    {
+        Atom &atom = unit_cell.atom(ia);
+
+        int iat = atom.type_id();
+
+        // mpi distributed
+        for (int igloc = 0; igloc < gvec_count; igloc++)
+        {
+            int ig = gvec_offset + igloc;
+
+            int igs = gvecs.shell(ig);
+
+            // fractional form for calculation of scalar product with atomic position
+            // since atomic positions are stored in fractional coords
+            vector3d<int> gvec = gvecs.gvec(ig);
+
+            // cartesian form for getting cartesian force components
+            vector3d<double> gvec_cart = gvecs.gvec_cart(ig);
+
+            // scalar part of a force without multipying by G-vector
+            double_complex z = fact * fourpi * rho_core_radial_integrals(iat, igs) * std::conj( xc_pot->f_pw(ig) ) *
+                    std::exp(double_complex(0.0, - twopi * (gvec * atom.position())));
+
+            // get force components multiplying by cartesian G-vector ( -image part goes from formula)
+            forces(0, ia) -= (gvec_cart[0] * z).imag();
+            forces(1, ia) -= (gvec_cart[1] * z).imag();
+            forces(2, ia) -= (gvec_cart[2] * z).imag();
+        }
+    }
+
+    ctx_.comm().allreduce(&forces(0,0),forces.size());
+
+    return std::move(forces);
+}
+
 
 //---------------------------------------------------------------
 //---------------------------------------------------------------
@@ -90,8 +159,6 @@ mdarray<double,2> Forces_PS::calc_ultrasoft_forces() const
     const mdarray<double_complex, 4> &density_matrix = density_.density_matrix();
 
     const Periodic_function<double> *veff_full = potential_.effective_potential();
-
-    //Periodic_function<double> **magnetization = potential_.effective_magnetic_field();
 
     // other
     Unit_cell &unit_cell = ctx_.unit_cell();

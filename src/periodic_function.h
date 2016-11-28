@@ -96,6 +96,9 @@ class Periodic_function: public Smooth_periodic_function<T>
             }
         }
         
+        /// is plane wave part allocated?
+        bool is_f_pw_allocated_{false};
+
     public:
 
         /// Constructor
@@ -111,6 +114,7 @@ class Periodic_function: public Smooth_periodic_function<T>
               angular_domain_size_(angular_domain_size__)
         {
             if (allocate_pw__) {
+                is_f_pw_allocated_ = true;
                 f_pw_ = mdarray<double_complex, 1>(gvec_.num_gvec());
                 this->f_pw_local_ = mdarray<double_complex, 1>(&f_pw_[this->gvec().partition().gvec_offset_fft()],
                                                                this->fft_->local_size());
@@ -121,6 +125,26 @@ class Periodic_function: public Smooth_periodic_function<T>
             }
         }
         
+        /// check wether pw is allocated
+        bool is_f_pw_allocated()
+        {
+            return is_f_pw_allocated_;
+        }
+
+        /// allocated memory for plane wave expansion coefficients
+        void allocate_pw()
+        {
+            if (is_f_pw_allocated_)
+            {
+                return;
+            }
+
+            is_f_pw_allocated_ = true;
+            f_pw_ = mdarray<double_complex, 1>(gvec_.num_gvec());
+            this->f_pw_local_ = mdarray<double_complex, 1>(&f_pw_[this->gvec().partition().gvec_offset_fft()],
+                                                           this->fft_->local_size());
+        }
+
         /// Allocate memory for muffin-tin part.
         void allocate_mt(bool allocate_global__)
         {

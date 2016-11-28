@@ -139,7 +139,9 @@ mdarray<double,2 > DFT_ground_state::forces()
     //STOP();
 
 
-    mdarray<double,2 > loc_forces = forces_->calc_local_forces( );
+    mdarray<double,2 > loc_forces = forces_->calc_local_forces();
+
+    mdarray<double,2 > nlcc_forces = forces_->calc_nlcc_forces();
 
     mdarray<double,2 > us_forces = forces_->calc_ultrasoft_forces();
 
@@ -150,27 +152,34 @@ mdarray<double,2 > DFT_ground_state::forces()
 
     if(ctx_.comm().rank() == 0)
     {
-        std::cout<<"===== Forces: local contribution =====" << std::endl;
-
         std::cout<< std::fixed << std::setprecision(7);
 
+        std::cout<<"===== Forces: ultrasoft contribution from Qij =====" << std::endl;
+
         for(int ia=0; ia < unit_cell_.num_atoms(); ia++)
         {
-            std::cout<< unit_cell_.atom(ia).type_id()<<" "<< loc_forces(0,ia) <<"   "<< loc_forces(1,ia) << "   " << loc_forces(2,ia) << std::endl;
+            std::cout<< "Atom " << unit_cell_.atom(ia).type_id()<<"\t force = \t"<< us_forces(0,ia) <<"\t"<< us_forces(1,ia) << "\t" << us_forces(2,ia) << std::endl;
         }
 
-        std::cout<<"===== Forces: ultrasoft contribution =====" << std::endl;
+        std::cout<<"===== Forces: non-local contribution from Beta-projectors =====" << std::endl;
 
         for(int ia=0; ia < unit_cell_.num_atoms(); ia++)
         {
-            std::cout<< unit_cell_.atom(ia).type_id()<<" "<< us_forces(0,ia) <<"   "<< us_forces(1,ia) << "   " << us_forces(2,ia) << std::endl;
+            std::cout<< "Atom " << unit_cell_.atom(ia).type_id()<<"\t force = \t"<< nl_forces(0,ia) <<"\t"<< nl_forces(1,ia) << "\t" << nl_forces(2,ia) << std::endl;
         }
 
-        std::cout<<"===== Forces: non-local contribution =====" << std::endl;
+        std::cout<<"===== Forces: local contribution from local potential=====" << std::endl;
 
         for(int ia=0; ia < unit_cell_.num_atoms(); ia++)
         {
-            std::cout<< unit_cell_.atom(ia).type_id()<<" "<< nl_forces(0,ia) <<"   "<< nl_forces(1,ia) << "   " << nl_forces(2,ia) << std::endl;
+            std::cout<<"Atom " << unit_cell_.atom(ia).type_id()<<"\t force = \t"<< loc_forces(0,ia) <<"\t"<< loc_forces(1,ia) << "\t" << loc_forces(2,ia) << std::endl;
+        }
+
+        std::cout<<"===== Forces: nlcc contribution from core density=====" << std::endl;
+
+        for(int ia=0; ia < unit_cell_.num_atoms(); ia++)
+        {
+            std::cout<< "Atom " << unit_cell_.atom(ia).type_id()<<"\t force = \t"<< nlcc_forces(0,ia) <<"\t"<< nlcc_forces(1,ia) << "\t" << nlcc_forces(2,ia) << std::endl;
         }
     }
 

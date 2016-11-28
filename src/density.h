@@ -162,6 +162,10 @@ class Density
         std::vector<paw_density_data_t> paw_density_data_;
 
 
+        /// core density radial integrals
+        mdarray<double, 2> rho_pseudo_core_radial_integrals_;
+
+
         /// Pointer to charge density.
         /** In the case of full-potential calculation this is the full (valence + core) electron charge density.
          *  In the case of pseudopotential this is the valence charge density. */ 
@@ -345,9 +349,9 @@ class Density
         {
             PROFILE_WITH_TIMER("sirius::Density::generate_pseudo_core_charge_density");
 
-            auto rho_core_radial_integrals = generate_rho_radial_integrals(2);
+            rho_pseudo_core_radial_integrals_ = generate_rho_radial_integrals(2);
 
-            std::vector<double_complex> v = unit_cell_.make_periodic_function(rho_core_radial_integrals, ctx_.gvec());
+            std::vector<double_complex> v = unit_cell_.make_periodic_function(rho_pseudo_core_radial_integrals_, ctx_.gvec());
             ctx_.fft().prepare(ctx_.gvec().partition());
             ctx_.fft().transform<1>(ctx_.gvec().partition(), &v[ctx_.gvec().partition().gvec_offset_fft()]);
             ctx_.fft().output(&rho_pseudo_core_->f_rg(0));
@@ -888,6 +892,11 @@ class Density
         mdarray<double_complex, 4> const& density_matrix() const
         {
             return density_matrix_;
+        }
+
+        mdarray<double, 2> const& rho_pseudo_core_radial_integrals() const
+        {
+            return rho_pseudo_core_radial_integrals_;
         }
 };
 

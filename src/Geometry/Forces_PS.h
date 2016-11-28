@@ -122,6 +122,9 @@ public:
     mdarray<double,2> calc_ultrasoft_forces() const;
 
     mdarray<double,2> calc_nonlocal_forces(K_set& kset) const;
+
+    mdarray<double,2> calc_nlcc_forces() const;
+
     //vector<vector3d> calc_local_forces(mdarray<double, 2> &rho_radial_integrals, mdarray<double, 2> &vloc_radial_integrals);
 };
 
