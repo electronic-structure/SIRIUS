@@ -626,7 +626,7 @@ inline void Band::diag_pseudo_potential_davidson(K_point* kp__,
     int bs = ctx_.cyclic_block_size();
 
     dmatrix<T> hmlt(num_phi, num_phi, ctx_.blacs_grid(), bs, bs, mem_type);
-    dmatrix<T> ovlp(num_phi, num_phi, ctx_.blacs_grid(), bs, bs);
+    dmatrix<T> ovlp(num_phi, num_phi, ctx_.blacs_grid(), bs, bs, mem_type);
     dmatrix<T> evec(num_phi, num_phi, ctx_.blacs_grid(), bs, bs, mem_type);
     dmatrix<T> hmlt_old(num_phi, num_phi, ctx_.blacs_grid(), bs, bs);
     dmatrix<T> ovlp_old(num_phi, num_phi, ctx_.blacs_grid(), bs, bs);
@@ -687,27 +687,48 @@ inline void Band::diag_pseudo_potential_davidson(K_point* kp__,
         /* apply Hamiltonian and overlap operators to the new basis functions */
         apply_h_o<T>(kp__, ispn__, N, n, phi, hphi, ophi, h_op__, d_op__, q_op__);
         
-        orthogonalize<T>(N, n, phi, hphi, ophi, ovlp, res);
+        if (itso.orthogonalize_) {
+            orthogonalize<T>(N, n, phi, hphi, ophi, ovlp, res);
+        }
 
         /* setup eigen-value problem
          * N is the number of previous basis functions
          * n is the number of new basis functions */
         set_subspace_mtrx(N, n, phi, hphi, hmlt, hmlt_old);
+        if (!itso.orthogonalize_) {
+            set_subspace_mtrx(N, n, phi, ophi, ovlp, ovlp_old);
+        }
 
         /* increase size of the variation space */
         N += n;
 
         hmlt.make_real_diag(N);
+        if (!itso.orthogonalize_) {
+            ovlp.make_real_diag(N);
+        }
 
         eval_old = eval;
 
-        /* solve standard eigen-value problem with the size N */
-        if (std_evp_solver().solve(N,  num_bands, hmlt.template at<CPU>(), hmlt.ld(),
-                                   eval.data(), evec.template at<CPU>(), evec.ld(),
-                                   hmlt.num_rows_local(), hmlt.num_cols_local())) {
-            std::stringstream s;
-            s << "error in diagonalziation";
-            TERMINATE(s);
+        if (itso.orthogonalize_) {
+            /* solve standard eigen-value problem with the size N */
+            if (std_evp_solver().solve(N, num_bands, hmlt.template at<CPU>(), hmlt.ld(),
+                                       eval.data(), evec.template at<CPU>(), evec.ld(),
+                                       hmlt.num_rows_local(), hmlt.num_cols_local())) {
+                std::stringstream s;
+                s << "error in diagonalziation";
+                TERMINATE(s);
+            }
+        } else {
+            /* solve generalized eigen-value problem with the size N */
+            if (gen_evp_solver().solve(N, num_bands,
+                                       hmlt.template at<CPU>(), hmlt.ld(),
+                                       ovlp.template at<CPU>(), ovlp.ld(),
+                                       eval.data(), evec.template at<CPU>(), evec.ld(),
+                                       hmlt.num_rows_local(), hmlt.num_cols_local())) {
+                std::stringstream s;
+                s << "error in diagonalziation";
+                TERMINATE(s);
+            }
         }
         
         if (ctx_.control().verbosity_ > 2 && kp__->comm().rank() == 0) {
@@ -744,6 +765,12 @@ inline void Band::diag_pseudo_potential_davidson(K_point* kp__,
                 hmlt_old.zero();
                 for (int i = 0; i < num_bands; i++) {
                     hmlt_old.set(i, i, eval[i]);
+                }
+                if (!itso.orthogonalize_) {
+                    ovlp_old.zero();
+                    for (int i = 0; i < num_bands; i++) {
+                        ovlp_old.set(i, i, 1);
+                    }
                 }
 
                 /* need to compute all hpsi and opsi states (not only unconverged) */
