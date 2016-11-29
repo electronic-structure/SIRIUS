@@ -229,7 +229,6 @@ mdarray<double,2> Forces_PS::calc_ultrasoft_forces() const
 
 
 
-
 //---------------------------------------------------------------
 //---------------------------------------------------------------
 mdarray<double,2> Forces_PS::calc_nonlocal_forces(K_set& kset) const
@@ -256,6 +255,12 @@ mdarray<double,2> Forces_PS::calc_nonlocal_forces(K_set& kset) const
 }
 
 
+//---------------------------------------------------------------
+//---------------------------------------------------------------
+mdarray<double,2> Forces_PS::calc_ewald_forces() const
+{
+
+}
 
 
 //---------------------------------------------------------------

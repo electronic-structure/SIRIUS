@@ -39,6 +39,8 @@ Beta_projectors::Beta_projectors(Communicator const& comm__,
       lmax_beta_(unit_cell_.lmax()),
       pu_(pu__)
 {
+    PROFILE_WITH_TIMER("sirius::Beta_projectors::Beta_projectors");
+
     num_gkvec_loc_ = gkvec_.gvec_count(comm_.rank());
 
     split_in_chunks();
