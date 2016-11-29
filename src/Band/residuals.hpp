@@ -261,13 +261,9 @@ inline int Band::residuals(K_point* kp__,
         auto res_norm = residuals_aux(kp__, num_bands__, eval__, hpsi__, opsi__, res__, h_diag__, o_diag__);
 
         for (int i = 0; i < num_bands__; i++) {
-            bool take_res = true;
-            if (kp__->band_occupancy(i + ispn__ * ctx_.num_fv_states()) < itso.min_occupancy_) {
-                take_res = false;
-            }
-
+            double tol = itso.residual_tolerance_ + 1e-3 * std::abs(kp__->band_occupancy(i + ispn__ * ctx_.num_fv_states()) / ctx_.max_occupancy() - 1);
             /* take the residual if it's norm is above the threshold */
-            if (take_res && res_norm[i] > itso.residual_tolerance_) {
+            if (res_norm[i] > tol) {
                 /* shift unconverged residuals to the beginning of array */
                 if (n != i) {
                     res__.copy_from(res__, i, 1, n);
