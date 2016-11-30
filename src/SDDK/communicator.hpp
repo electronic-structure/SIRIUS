@@ -30,13 +30,13 @@
 #include <vector>
 #include <complex>
 
-#define CALL_MPI(func__, args__)                                                        \
-    {                                                                                   \
-        if (func__ args__ != MPI_SUCCESS) {                                             \
-            printf("error in %s at line %i of file %s\n", #func__, __LINE__, __FILE__); \
-            MPI_Abort(MPI_COMM_WORLD, -1);                                              \
-        }                                                                               \
-    }
+#define CALL_MPI(func__, args__)                                                    \
+{                                                                                   \
+    if (func__ args__ != MPI_SUCCESS) {                                             \
+        printf("error in %s at line %i of file %s\n", #func__, __LINE__, __FILE__); \
+        MPI_Abort(MPI_COMM_WORLD, -1);                                              \
+    }                                                                               \
+}
 
 enum mpi_op_t
 {
@@ -115,6 +115,31 @@ struct alltoall_descriptor
     std::vector<int> rdispls;
 };
 
+struct block_data_descriptor
+{
+    int num_ranks{-1};
+    std::vector<int> counts;
+    std::vector<int> offsets;
+
+    block_data_descriptor()
+    {
+    }
+
+    block_data_descriptor(int num_ranks__)
+        : num_ranks(num_ranks__)
+    {
+        counts  = std::vector<int>(num_ranks, 0);
+        offsets = std::vector<int>(num_ranks, 0);
+    }
+
+    void calc_offsets()
+    {
+        for (int i = 1; i < num_ranks; i++) {
+            offsets[i] = offsets[i - 1] + counts[i - 1];
+        }
+    }
+};
+
 // TODO: proper way of controlling who owns comm and who needs to free it
 
 /// MPI communicator wrapper.
@@ -139,7 +164,8 @@ class Communicator
     }
 
     Communicator(MPI_Comm mpi_comm__)
-        : mpi_comm_(mpi_comm__), need_to_free_(false)
+        : mpi_comm_(mpi_comm__)
+        , need_to_free_(false)
     {
     }
 
@@ -348,17 +374,18 @@ class Communicator
         offsets[rank()] = offset__;
         CALL_MPI(MPI_Allgather, (MPI_IN_PLACE, 0, MPI_DATATYPE_NULL, &offsets[0], 1, mpi_type_wrapper<int>::kind(), mpi_comm_));
 
-        //this->allgather(sendbuf__, count__, recvbuf__, counts.data(), offsets.data());
+        // this->allgather(sendbuf__, count__, recvbuf__, counts.data(), offsets.data());
 
         CALL_MPI(MPI_Allgatherv, (sendbuf__, count__, mpi_type_wrapper<T>::kind(), recvbuf__, &counts[0], &offsets[0],
                                   mpi_type_wrapper<T>::kind(), mpi_comm_));
     }
 
     template <typename T>
-    void allgather(T* const sendbuf__, int sendcount__, T* recvbuf__, int const* recvcounts__, int const* displs__) const
+    void allgather(T* const sendbuf__, int sendcount__, T* recvbuf__, int const* recvcounts__,
+                   int const* displs__) const
     {
-        CALL_MPI(MPI_Allgatherv, (sendbuf__, sendcount__, mpi_type_wrapper<T>::kind(),
-                                  recvbuf__, recvcounts__, displs__, mpi_type_wrapper<T>::kind(), mpi_comm_));
+        CALL_MPI(MPI_Allgatherv, (sendbuf__, sendcount__, mpi_type_wrapper<T>::kind(), recvbuf__, recvcounts__,
+                                  displs__, mpi_type_wrapper<T>::kind(), mpi_comm_));
     }
 
     template <typename T>
@@ -420,16 +447,16 @@ class Communicator
     template <typename T>
     void alltoall(T const* sendbuf__, int sendcounts__, T* recvbuf__, int recvcounts__) const
     {
-        CALL_MPI(MPI_Alltoall, (sendbuf__, sendcounts__, mpi_type_wrapper<T>::kind(),
-                                recvbuf__, recvcounts__, mpi_type_wrapper<T>::kind(), mpi_comm_));
+        CALL_MPI(MPI_Alltoall, (sendbuf__, sendcounts__, mpi_type_wrapper<T>::kind(), recvbuf__, recvcounts__,
+                                mpi_type_wrapper<T>::kind(), mpi_comm_));
     }
 
     template <typename T>
-    void alltoall(T const* sendbuf__, int const* sendcounts__, int const* sdispls__,
-                  T* recvbuf__, int const* recvcounts__, int const* rdispls__) const
+    void alltoall(T const* sendbuf__, int const* sendcounts__, int const* sdispls__, T* recvbuf__,
+                  int const* recvcounts__, int const* rdispls__) const
     {
-        CALL_MPI(MPI_Alltoallv, (sendbuf__, sendcounts__, sdispls__, mpi_type_wrapper<T>::kind(),
-                                 recvbuf__, recvcounts__, rdispls__, mpi_type_wrapper<T>::kind(), mpi_comm_));
+        CALL_MPI(MPI_Alltoallv, (sendbuf__, sendcounts__, sdispls__, mpi_type_wrapper<T>::kind(), recvbuf__,
+                                 recvcounts__, rdispls__, mpi_type_wrapper<T>::kind(), mpi_comm_));
     }
 
     //==alltoall_descriptor map_alltoall(std::vector<int> local_sizes_in, std::vector<int> local_sizes_out) const

@@ -347,7 +347,7 @@ inline void Simulation_context::init_fft()
     }
 
     /* create FFT driver for dense mesh (density and potential) */
-    fft_ = std::unique_ptr<FFT3D>(new FFT3D(FFT3D_grid(pw_cutoff(), rlv),
+    fft_ = std::unique_ptr<FFT3D>(new FFT3D(Utils::find_translations(pw_cutoff(), rlv),
                                             mpi_grid_fft_->communicator(1 << 0),
                                             processing_unit(), 0.9));
 
@@ -359,7 +359,7 @@ inline void Simulation_context::init_fft()
     //double gpu_workload = (mpi_grid_fft_vloc_->communicator(1 << 0).size() == 1) ? 1.0 : 0.9;
     double gpu_workload = (mpi_grid_fft_vloc_->communicator().size() == 1) ? 1.0 : 0.9;
     /* create FFT driver for coarse mesh */
-    fft_coarse_ = std::unique_ptr<FFT3D>(new FFT3D(FFT3D_grid(2 * gk_cutoff(), rlv),
+    fft_coarse_ = std::unique_ptr<FFT3D>(new FFT3D(Utils::find_translations(2 * gk_cutoff(), rlv),
                                                    mpi_grid_fft_vloc_->communicator(1 << 0),
                                                    processing_unit(), gpu_workload));
 

@@ -30,7 +30,7 @@
 #include "sddk.hpp"
 #include "vector3d.h"
 #include "descriptors.h"
-#include "fft3d_grid.h"
+#include "fft3d_grid.hpp"
 #include "gvec.h"
 
 #ifdef __GPU

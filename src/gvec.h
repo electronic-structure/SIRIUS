@@ -29,7 +29,7 @@
 
 #include "sirius_internal.h"
 #include "descriptors.h"
-#include "fft3d_grid.h"
+#include "fft3d_grid.hpp"
 
 namespace sirius {
 

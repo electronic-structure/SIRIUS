@@ -557,7 +557,7 @@ void Unit_cell::find_nearest_neighbours(double cluster_radius)
 {
     runtime::Timer t("sirius::Unit_cell::find_nearest_neighbours");
 
-    vector3d<int> max_frac_coord = Utils::find_translations(cluster_radius, lattice_vectors_);
+    auto max_frac_coord = Utils::find_translations(cluster_radius, lattice_vectors_);
    
     nearest_neighbours_.clear();
     nearest_neighbours_.resize(num_atoms());

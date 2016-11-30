@@ -382,7 +382,7 @@ class Utils
             return v;
         }
 
-        static vector3d<int> find_translations(double radius__, matrix3d<double> const& lattice_vectors__)
+        static std::array<int, 3> find_translations(double radius__, matrix3d<double> const& lattice_vectors__)
         {
             /* Volume = |(a0 x a1) * a2| = N1 * N2 * N3 * determinant of a lattice vectors matrix 
                Volume = h * S = 2 * R * |a_i x a_j| * N_i * N_j */
@@ -399,7 +399,7 @@ class Utils
             limits[1] = static_cast<int>(2 * radius__ * cross(a0, a2).length() / det) + 1;
             limits[2] = static_cast<int>(2 * radius__ * cross(a0, a1).length() / det) + 1;
 
-            return limits;
+            return {limits[0], limits[1], limits[2]};
         }
 
         static std::vector< std::pair<int, int> > l_m_by_lm(int lmax)
