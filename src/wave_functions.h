@@ -27,7 +27,7 @@
 
 #include <cstdlib>
 #include "gvec.h"
-#include "mpi_grid.h"
+#include "mpi_grid.hpp"
 #include "linalg.h"
 #include "matrix_storage.h"
 

@@ -26,7 +26,6 @@
 #define __EIGENPROBLEM_H__
 
 #include "constants.h"
-#include "blacs_grid.h"
 #include "linalg.h"
 
 /// Type of the solver to use for the standard or generalized eigen-value problem

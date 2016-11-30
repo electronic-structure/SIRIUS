@@ -37,7 +37,7 @@
 #include <iostream>
 #include <algorithm>
 #include "config.h"
-#include "communicator.h"
+#include "communicator.hpp"
 #include "gpu.h"
 #include "runtime.h"
 

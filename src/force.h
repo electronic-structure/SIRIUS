@@ -29,7 +29,7 @@
 #include "band.h"
 #include "potential.h"
 #include "density.h"
-#include "mdarray.h"
+#include "mdarray.hpp"
 
 namespace sirius
 {

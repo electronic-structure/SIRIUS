@@ -26,7 +26,7 @@
 #define __BETA_PROJECTORS_H__
 
 #include "gpu.h"
-#include "communicator.h"
+#include "communicator.hpp"
 #include "unit_cell.h"
 #include "wave_functions.h"
 #include "sbessel.h"

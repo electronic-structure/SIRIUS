@@ -15,7 +15,7 @@
 #include <cstring>
 #include <cstdarg>
 #include "config.h"
-#include "communicator.h"
+#include "communicator.hpp"
 #include "json.hpp"
 #ifdef __GPU
 #include "gpu.h"

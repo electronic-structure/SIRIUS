@@ -26,7 +26,6 @@
 #define __K_SET_H__
 
 #include "k_point.h"
-#include "blacs_grid.h"
 #include "vector3d.h"
 
 namespace sirius {

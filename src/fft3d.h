@@ -27,8 +27,7 @@
 
 #include <fftw3.h>
 #include "typedefs.h"
-#include "mdarray.h"
-#include "splindex.h"
+#include "sddk.hpp"
 #include "vector3d.h"
 #include "descriptors.h"
 #include "fft3d_grid.h"

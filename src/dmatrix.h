@@ -25,9 +25,7 @@
 #ifndef __DMATRIX_H__
 #define __DMATRIX_H__
 
-#include "splindex.h"
-#include "mdarray.h"
-#include "blacs_grid.h"
+#include "sddk.hpp"
 
 /// Distributed matrix.
 template <typename T>

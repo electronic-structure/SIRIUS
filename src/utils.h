@@ -32,7 +32,7 @@
 #include "sirius_internal.h"
 #include "typedefs.h"
 #include "constants.h"
-#include "mdarray.h"
+#include "mdarray.hpp"
 #include "vector3d.h"
 #include "matrix3d.h"
 

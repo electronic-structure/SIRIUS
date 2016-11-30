@@ -30,7 +30,7 @@
 #include "atom_type.h"
 #include "atom_symmetry_class.h"
 #include "atom.h"
-#include "mpi_grid.h"
+#include "mpi_grid.hpp"
 #include "symmetry.h"
 #include "input.h"
 #include "simulation_parameters.h"

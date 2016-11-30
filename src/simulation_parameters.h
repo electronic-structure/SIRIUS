@@ -25,7 +25,7 @@
 #ifndef __SIMULATION_PARAMETERS_H__
 #define __SIMULATION_PARAMETERS_H__
 
-#include "mdarray.h"
+#include "mdarray.hpp"
 #include "typedefs.h"
 #include "utils.h"
 #include "sirius_internal.h"

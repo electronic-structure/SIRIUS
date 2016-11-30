@@ -26,7 +26,7 @@
 #ifndef __ATOM_TYPE_H__
 #define __ATOM_TYPE_H__
 
-#include "mdarray.h"
+#include "mdarray.hpp"
 #include "descriptors.h"
 #include "vector3d.h"
 #include "utils.h"

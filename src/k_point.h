@@ -27,7 +27,6 @@
 
 #include "periodic_function.h"
 #include "matching_coefficients.h"
-#include "blacs_grid.h"
 #include "Beta_projectors/Beta_projectors.h"
 #include "wave_functions.h"
 

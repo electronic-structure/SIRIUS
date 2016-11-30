@@ -26,7 +26,7 @@
 #define __SIMULATION_CONTEXT_H__
 
 #include "simulation_parameters.h"
-#include "mpi_grid.h"
+#include "mpi_grid.hpp"
 #include "step_function.h"
 #include "real_space_prj.h"
 #include "version.h"

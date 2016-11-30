@@ -26,7 +26,7 @@
 #define __PERIODIC_FUNCTION_H__
 
 #include "simulation_context.h"
-#include "mdarray.h"
+#include "mdarray.hpp"
 #include "spheric_function.h"
 #include "smooth_periodic_function.h"
 #include "mixer.h"

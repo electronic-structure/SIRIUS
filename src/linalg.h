@@ -27,8 +27,8 @@
 
 #include <stdint.h>
 #include "typedefs.h"
-#include "linalg_base.h"
-#include "mdarray.h"
+#include "linalg_base.hpp"
+#include "mdarray.hpp"
 #include "dmatrix.h"
 
 /// Linear algebra interface class.
