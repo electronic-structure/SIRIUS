@@ -27,9 +27,7 @@
 
 #include <stdint.h>
 #include "typedefs.h"
-#include "linalg_base.hpp"
-#include "mdarray.hpp"
-#include "dmatrix.h"
+#include "sddk.hpp"
 
 /// Linear algebra interface class.
 template <device_t pu>

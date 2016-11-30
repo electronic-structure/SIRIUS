@@ -6,5 +6,6 @@
 #include "blacs_grid.hpp"
 #include "splindex.hpp"
 #include "mdarray.hpp"
+#include "dmatrix.hpp"
 
 #endif

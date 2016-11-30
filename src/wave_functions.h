@@ -29,7 +29,7 @@
 #include "gvec.h"
 #include "mpi_grid.hpp"
 #include "linalg.h"
-#include "matrix_storage.h"
+#include "matrix_storage.hpp"
 
 #ifdef __GPU
 extern "C" void add_square_sum_gpu(cuDoubleComplex const* wf__,
