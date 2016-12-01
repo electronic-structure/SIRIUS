@@ -136,11 +136,15 @@ void DFT_ground_state::move_atoms(int istep)
 
 mdarray<double,2 > DFT_ground_state::forces()
 {
+    PROFILE_WITH_TIMER("sirius::Forces_PS::calc_local_forces");
+
     //STOP();
     mdarray<double,2 > loc_forces = forces_->calc_local_forces();
     mdarray<double,2 > nlcc_forces = forces_->calc_nlcc_forces();
     mdarray<double,2 > us_forces = forces_->calc_ultrasoft_forces();
     mdarray<double,2 > nl_forces = forces_->calc_nonlocal_forces(kset_);
+    mdarray<double,2 > ewald_forces = forces_->calc_ewald_forces();
+
 
     if(ctx_.comm().rank() == 0)
     {
@@ -164,6 +168,9 @@ mdarray<double,2 > DFT_ground_state::forces()
 
         std::cout<<"===== Forces: nlcc contribution from core density=====" << std::endl;
         print_forces(nlcc_forces);
+
+        std::cout<<"===== Forces: Ewald forces from ions =====" << std::endl;
+        print_forces(ewald_forces);
     }
 
     return std::move(loc_forces);

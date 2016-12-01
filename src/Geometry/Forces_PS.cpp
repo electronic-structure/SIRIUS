@@ -18,6 +18,8 @@ namespace sirius
 //---------------------------------------------------------------
 mdarray<double,2> Forces_PS::calc_local_forces() const
 {
+    PROFILE_WITH_TIMER("sirius::Forces_PS::calc_local_forces");
+
     // get main arrays
     const Periodic_function<double>* valence_rho = density_.rho();
 
@@ -83,6 +85,8 @@ mdarray<double,2> Forces_PS::calc_local_forces() const
 //---------------------------------------------------------------
 mdarray<double,2> Forces_PS::calc_nlcc_forces() const
 {
+    PROFILE_WITH_TIMER("sirius::Forces_PS::calc_nlcc_force");
+
     // get main arrays
     Periodic_function<double>* xc_pot = potential_.xc_potential();
 
@@ -155,6 +159,8 @@ mdarray<double,2> Forces_PS::calc_nlcc_forces() const
 //---------------------------------------------------------------
 mdarray<double,2> Forces_PS::calc_ultrasoft_forces() const
 {
+    PROFILE_WITH_TIMER("sirius::Forces_PS::calc_ultrasoft_forces");
+
     // get main arrays
     const mdarray<double_complex, 4> &density_matrix = density_.density_matrix();
 
@@ -195,7 +201,7 @@ mdarray<double,2> Forces_PS::calc_ultrasoft_forces() const
 
             // scalar part of a force without multipying by G-vector and Qij
             // omega * V_conj(G) * exp(-i G Rn)
-            double_complex g_atom_part =  reduce_g_fact * ctx_.unit_cell().omega() * std::conj(veff_full->f_pw_local(ig)) *
+            double_complex g_atom_part =  reduce_g_fact * ctx_.unit_cell().omega() * std::conj(veff_full->f_pw(ig)) *
                     std::exp(double_complex(0.0, - twopi * (gvec * atom.position())));
 
             const Augmentation_operator &aug_op = ctx_.augmentation_op(iat);
@@ -233,6 +239,8 @@ mdarray<double,2> Forces_PS::calc_ultrasoft_forces() const
 //---------------------------------------------------------------
 mdarray<double,2> Forces_PS::calc_nonlocal_forces(K_set& kset) const
 {
+    PROFILE_WITH_TIMER("sirius::Forces_PS::calc_nonlocal_forces");
+
     Unit_cell &unit_cell = ctx_.unit_cell();
 
     mdarray<double,2> forces(3, unit_cell.num_atoms());
@@ -255,11 +263,115 @@ mdarray<double,2> Forces_PS::calc_nonlocal_forces(K_set& kset) const
 }
 
 
+//-----------------------------------------
+// for omp reduction
+//------------------------------------------
+template<typename T>
+void init_mdarray2d(mdarray<T,2> &priv, mdarray<T,2> &orig )
+{
+    priv = mdarray<double,2>(orig.size(0),orig.size(1)); priv.zero();
+}
+
+template<typename T>
+void add_mdarray2d(mdarray<T,2> &in, mdarray<T,2> &out)
+{
+    for(int i = 0; i < in.size(1); i++ )
+    {
+        for(int j = 0; j < in.size(0); j++ )
+        {
+            out(j,i) += in(j,i);
+        }
+    }
+}
+
 //---------------------------------------------------------------
 //---------------------------------------------------------------
 mdarray<double,2> Forces_PS::calc_ewald_forces() const
 {
+    PROFILE_WITH_TIMER("sirius::Forces_PS::calc_ewald_forces");
 
+    Unit_cell &unit_cell = ctx_.unit_cell();
+
+    mdarray<double,2> forces(3, unit_cell.num_atoms());
+
+    forces.zero();
+
+    #pragma omp declare reduction( + : mdarray<double,2> : add_mdarray2d(omp_in, omp_out))  initializer( init_mdarray2d(omp_priv, omp_orig) )
+
+
+    // 1 / ( 2 sigma^2 )
+    double alpha = 1.5;
+
+    double prefac = (ctx_.gvec().reduced() ? 4.0 : 2.0) * (twopi / unit_cell.omega());
+
+    //mpi
+    #pragma omp parallel for reduction( + : forces )
+    for (int igloc = 0; igloc < ctx_.gvec_count(); igloc++)
+    {
+        int ig = ctx_.gvec_offset() + igloc;
+
+        if( ig == 0 )
+        {
+            continue;
+        }
+
+        double g2 = std::pow(ctx_.gvec().shell_len(ctx_.gvec().shell(ig)), 2);
+
+        // cartesian form for getting cartesian force components
+        vector3d<double> gvec_cart = ctx_.gvec().gvec_cart(ig);
+
+        double_complex rho(0, 0);
+
+        for (int ja = 0; ja < unit_cell.num_atoms(); ja++)
+        {
+            rho += ctx_.gvec_phase_factor(ig, ja) * static_cast<double>(unit_cell.atom(ja).zn());
+        }
+
+        rho = std::conj(rho);
+
+        for (int ja = 0; ja < unit_cell.num_atoms(); ja++)
+        {
+            double scalar_part = prefac * (rho * ctx_.gvec_phase_factor(ig, ja)).imag() *
+                    static_cast<double>(unit_cell.atom(ja).zn()) * std::exp(-g2 / (4 * alpha) ) / g2;
+
+            for(int x: {0,1,2})
+            {
+                forces(x,ja) += scalar_part * gvec_cart[x];
+            }
+
+        }
+    }
+
+    ctx_.comm().allreduce(&forces(0,0),forces.size());
+
+
+    double invpi = 1. / pi;
+
+    #pragma omp parallel for
+    for (int ia = 0; ia < unit_cell.num_atoms(); ia++)
+    {
+        for (int i = 1; i < unit_cell.num_nearest_neighbours(ia); i++)
+        {
+            int ja = unit_cell.nearest_neighbour(i, ia).atom_id;
+
+            double d = unit_cell.nearest_neighbour(i, ia).distance;
+
+            double d2 = d*d;
+
+            vector3d<double> t = unit_cell.lattice_vectors() * unit_cell.nearest_neighbour(i, ia).translation;
+
+            double scalar_part = static_cast<double>(unit_cell.atom(ia).zn() * unit_cell.atom(ja).zn()) / d2 *
+                          ( gsl_sf_erfc(std::sqrt(alpha) * d) / d  +  2.0 * std::sqrt(alpha * invpi ) * std::exp( - d2 * alpha ) );
+
+
+            for(int x: {0,1,2})
+            {
+                forces(x,ia) += scalar_part * t[x];
+            }
+        }
+    }
+
+    return std::move(forces);
 }
 
 

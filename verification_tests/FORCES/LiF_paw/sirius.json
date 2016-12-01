@@ -3,8 +3,8 @@
   "control" : {
       "cyclic_block_size" : 16,
       "processing_unit" : "cpu",
-      "std_evp_solver_type" : "lapack",
-      "gen_evp_solver_type" : "lapack",
+      "!std_evp_solver_type" : "lapack",
+      "!gen_evp_solver_type" : "lapack",
       "reduce_gvec": true
   },
 
@@ -58,7 +58,7 @@
 
             "atoms" : {
                 "F" : [
-                    [0.49, 0.495, 0.495]
+                    [0.4, 0.42, 0.42]
                 ],
                 "Li" : [
                     [0, 0, 0]
