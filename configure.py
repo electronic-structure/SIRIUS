@@ -161,6 +161,7 @@ def main():
     clean_packages = []
 
     makeinc.write("CXX_OPT := $(CXX_OPT) -I" + os.getcwd() + "/src\n")
+    makeinc.write("CXX_OPT := $(CXX_OPT) -I" + os.getcwd() + "/src/SDDK\n")
 
     if "install" in platform:
         for name in platform["install"]:
