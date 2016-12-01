@@ -25,6 +25,8 @@
 #ifndef __FFT3D_GRID_HPP__
 #define __FFT3D_GRID_HPP__
 
+namespace sddk {
+
 /// Handling of FFT grids.
 class FFT3D_grid
 {
@@ -166,5 +168,7 @@ class FFT3D_grid
         return index_by_coord(coord[0], coord[1], coord[2]);
     }
 };
+
+} // namespace sddk
 
 #endif // __FFT3D_GRID_HPP__

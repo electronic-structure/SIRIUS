@@ -27,6 +27,8 @@
 
 #include "blacs_grid.hpp"
 
+namespace sddk {
+
 /// Distributed matrix.
 template <typename T>
 class dmatrix : public matrix<T>
@@ -202,7 +204,7 @@ class dmatrix : public matrix<T>
                 auto c = spl_col_.location(i);
                 if (blacs_grid_->rank_col() == c.rank) {
                     T v = (*this)(r.local_index, c.local_index);
-                    (*this)(r.local_index, c.local_index) = type_wrapper<T>::real(v);
+                    (*this)(r.local_index, c.local_index) = sddk_type_wrapper<T>::real(v);
                 }
             }
         }
@@ -270,17 +272,17 @@ inline void dmatrix<double_complex>::serialize(std::string name__, int n__) cons
     }
     blacs_grid_->comm().allreduce(full_mtrx.at<CPU>(), static_cast<int>(full_mtrx.size()));
 
-    json dict;
-    dict["mtrx_re"] = json::array();
-    for (int i = 0; i < num_rows(); i++) {
-        dict["mtrx_re"].push_back(json::array());
-        for (int j = 0; j < num_cols(); j++) {
-            dict["mtrx_re"][i].push_back(full_mtrx(i, j).real());
-        }
-    }
+    //json dict;
+    //dict["mtrx_re"] = json::array();
+    //for (int i = 0; i < num_rows(); i++) {
+    //    dict["mtrx_re"].push_back(json::array());
+    //    for (int j = 0; j < num_cols(); j++) {
+    //        dict["mtrx_re"][i].push_back(full_mtrx(i, j).real());
+    //    }
+    //}
 
     if (blacs_grid_->comm().rank() == 0) {
-        std::cout << "mtrx: " << name__ << std::endl;
+        //std::cout << "mtrx: " << name__ << std::endl;
         // std::cout << dict.dump(4);
 
         printf("{\n");
@@ -318,22 +320,24 @@ inline void dmatrix<double>::serialize(std::string name__, int n__) const
     }
     blacs_grid_->comm().allreduce(full_mtrx.at<CPU>(), static_cast<int>(full_mtrx.size()));
 
-    json dict;
-    dict["mtrx"] = json::array();
-    for (int i = 0; i < num_rows(); i++) {
-        dict["mtrx"].push_back(json::array());
-        for (int j = 0; j < num_cols(); j++) {
-            dict["mtrx"][i].push_back(full_mtrx(i, j));
-        }
-    }
+    //json dict;
+    //dict["mtrx"] = json::array();
+    //for (int i = 0; i < num_rows(); i++) {
+    //    dict["mtrx"].push_back(json::array());
+    //    for (int j = 0; j < num_cols(); j++) {
+    //        dict["mtrx"][i].push_back(full_mtrx(i, j));
+    //    }
+    //}
 
-    if (blacs_grid_->comm().rank() == 0) {
-        std::cout << "mtrx: " << name__ << std::endl;
-        std::cout << dict.dump(4);
-    }
+    //if (blacs_grid_->comm().rank() == 0) {
+    //    std::cout << "mtrx: " << name__ << std::endl;
+    //    std::cout << dict.dump(4);
+    //}
 
     // std::ofstream ofs(aiida_output_file, std::ofstream::out | std::ofstream::trunc);
     // ofs << dict.dump(4);
 }
+
+} // namespace sddk
 
 #endif // __DMATRIX_HPP__

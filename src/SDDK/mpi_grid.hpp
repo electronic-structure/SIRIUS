@@ -25,8 +25,10 @@
 #ifndef __MPI_GRID_HPP__
 #define __MPI_GRID_HPP__
 
+#include "sddk_internal.hpp"
 #include "communicator.hpp"
-//#include "runtime.h"
+
+namespace sddk {
 
 /// MPI grid interface
 /** The following terminology is used. Suppose we have a 4x5 grid of MPI ranks. We say it's a two-\em dimensional
@@ -74,7 +76,7 @@ class MPI_grid
     /// Initialize the grid.
     void initialize()
     {
-        PROFILE();
+        PROFILE("sddk::MPI_grid::initialize");
 
         if (dimensions_.size() == 0) {
             TERMINATE("no dimensions provided for the MPI grid");
@@ -168,7 +170,7 @@ class MPI_grid
 
     void finalize()
     {
-        PROFILE();
+        PROFILE("sddk::MPI_grid::finalize");
 
         communicators_.clear();
         communicator_root_.clear();
@@ -184,22 +186,24 @@ class MPI_grid
 
   public:
     MPI_grid(std::vector<int> dimensions__, Communicator const& parent_communicator__)
-        : dimensions_(dimensions__), parent_communicator_(parent_communicator__)
+        : dimensions_(dimensions__)
+        , parent_communicator_(parent_communicator__)
     {
-        PROFILE();
+        PROFILE("sddk::MPI_grid::MPI_grid");
         initialize();
     }
 
     MPI_grid(Communicator const& parent_communicator__)
-        : dimensions_({parent_communicator__.size()}), parent_communicator_(parent_communicator__)
+        : dimensions_({parent_communicator__.size()})
+        , parent_communicator_(parent_communicator__)
     {
-        PROFILE();
+        PROFILE("sddk::MPI_grid::MPI_grid");
         initialize();
     }
 
     ~MPI_grid()
     {
-        PROFILE();
+        PROFILE("sddk::MPI_grid::~MPI_grid");
         finalize();
     }
 
@@ -256,7 +260,9 @@ class Communicator_bundle
     int id_;
 
   public:
-    Communicator_bundle() : size_(-1), id_(-1)
+    Communicator_bundle()
+        : size_(-1)
+        , id_(-1)
     {
     }
 
@@ -289,5 +295,7 @@ class Communicator_bundle
         return id_;
     }
 };
+
+} // namespace sddk
 
 #endif // __MPI_GRID_HPP__

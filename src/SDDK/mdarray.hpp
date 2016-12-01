@@ -39,6 +39,8 @@
 #include "gpu.h"
 #endif
 
+namespace sddk {
+
 #ifdef __GPU
 extern "C" void add_checksum_gpu(cuDoubleComplex* wf__,
                                  int num_rows_loc__,
@@ -867,5 +869,7 @@ class mdarray : public mdarray_base<T, N>
 // Alias for matrix
 template <typename T>
 using matrix = mdarray<T, 2>;
+
+} // namespace sddk
 
 #endif // __MDARRAY_HPP__

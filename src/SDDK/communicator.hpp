@@ -30,6 +30,8 @@
 #include <vector>
 #include <complex>
 
+namespace sddk {
+
 #define CALL_MPI(func__, args__)                                                    \
 {                                                                                   \
     if (func__ args__ != MPI_SUCCESS) {                                             \
@@ -542,5 +544,7 @@ inline Communicator const& mpi_comm_world()
     static Communicator comm(MPI_COMM_WORLD);
     return comm;
 }
+
+} // namespace sddk
 
 #endif // __COMMUNICATOR_HPP__

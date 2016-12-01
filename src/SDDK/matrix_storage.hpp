@@ -25,6 +25,8 @@
 #ifndef __MATRIX_STORAGE_HPP__
 #define __MATRIX_STORAGE_HPP__
 
+namespace sddk {
+
 enum class matrix_storage_t
 {
     slab,
@@ -69,7 +71,7 @@ class matrix_storage<T, matrix_storage_t::slab>
         , num_rows_loc_(num_rows_loc__)
         , num_cols_(num_cols__)
     {
-        PROFILE();
+        PROFILE("sddk::matrix_storage::matrix_storage");
         /* primary storage of PW wave functions: slabs */
         prime_ = mdarray<T, 2>(num_rows_loc_, num_cols_, memory_t::host, "matrix_storage.prime_");
     }
@@ -113,7 +115,7 @@ class matrix_storage<T, matrix_storage_t::slab>
     inline void remap_forward(block_data_descriptor const& row_distr__, Communicator const& comm_col__, int n__,
                               int idx0__ = 0)
     {
-        PROFILE_WITH_TIMER("sirius::matrix_storage::remap_forward");
+        PROFILE("sddk::matrix_storage::remap_forward");
 
         set_num_extra(row_distr__.counts.back() + row_distr__.offsets.back(), comm_col__, n__, idx0__);
 
@@ -155,7 +157,7 @@ class matrix_storage<T, matrix_storage_t::slab>
     inline void remap_backward(block_data_descriptor const& row_distr__, Communicator const& comm_col__, int n__,
                                int idx0__ = 0)
     {
-        PROFILE_WITH_TIMER("sirius::matrix_storage::remap_backward");
+        PROFILE("sddk::matrix_storage::remap_backward");
 
         if (comm_col__.size() == 1) {
             return;
@@ -195,7 +197,7 @@ class matrix_storage<T, matrix_storage_t::slab>
 
     inline void remap_from(dmatrix<T> const& mtrx__, int irow0__)
     {
-        PROFILE_WITH_TIMER("sirius::matrix_storage::remap_from");
+        PROFILE("sddk::matrix_storage::remap_from");
 
         if (mtrx__.num_cols() != num_cols_) {
             TERMINATE("different number of columns");
@@ -418,7 +420,7 @@ class matrix_storage<T, matrix_storage_t::slab>
 //==
 //==         void remap_forward(int idx0__, int n__)
 //==         {
-//==             PROFILE_WITH_TIMER("sirius::matrix_storage::remap_forward");
+//==             PROFILE("sddk::matrix_storage::remap_forward");
 //==             set_num_extra(n__);
 //==             if (blacs_grid_.comm().size() > 1) {
 //==                 #ifdef __SCALAPACK
@@ -431,7 +433,7 @@ class matrix_storage<T, matrix_storage_t::slab>
 //==
 //==         void remap_backward(int idx0__, int n__)
 //==         {
-//==             PROFILE_WITH_TIMER("sirius::matrix_storage::remap_backward");
+//==             PROFILE("sddk::matrix_storage::remap_backward");
 //==             if (blacs_grid_.comm().size() > 1) {
 //==                 #ifdef __SCALAPACK
 //==                 linalg<CPU>::gemr2d(num_rows_, n__, extra_, 0, 0, prime_, 0, idx0__, blacs_grid_.context());
@@ -456,5 +458,7 @@ class matrix_storage<T, matrix_storage_t::slab>
 //==             return spl_num_col_;
 //==         }
 //== };
+
+} // namespace sddk
 
 #endif // __MATRIX_STORAGE_HPP__

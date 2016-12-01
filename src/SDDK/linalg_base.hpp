@@ -28,6 +28,8 @@
 #include "blas_lapack.h"
 #include "scalapack.h"
 
+namespace sddk {
+
 template <typename T>
 struct linalg_const
 {
@@ -221,5 +223,7 @@ class linalg_base
     }
 #endif
 };
+
+} // namespace sddk
 
 #endif // __LINALG_BASE_HPP__

@@ -30,6 +30,8 @@
 #include <sstream>
 #include <limits>
 
+namespace sddk {
+
 enum splindex_t
 {
     block,
@@ -342,5 +344,7 @@ class splindex<block_cyclic, T> : public splindex_base<T>
         return global_index(idxloc__, this->rank_);
     }
 };
+
+} // namespace sddk
 
 #endif // __SPLINDEX_HPP__

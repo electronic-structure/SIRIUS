@@ -25,8 +25,11 @@
 #ifndef __BLACS_GRID_HPP__
 #define __BLACS_GRID_HPP__
 
+#include <memory>
 #include "mpi_grid.hpp"
 #include "linalg_base.hpp"
+
+namespace sddk {
 
 /// BLACS grid wrapper.
 class BLACS_grid
@@ -55,10 +58,13 @@ class BLACS_grid
 
   public:
     BLACS_grid(Communicator const& comm__, int num_ranks_row__, int num_ranks_col__)
-        : comm_(comm__), num_ranks_row_(num_ranks_row__), num_ranks_col_(num_ranks_col__), blacs_handler_(-1),
-          blacs_context_(-1)
+        : comm_(comm__)
+        , num_ranks_row_(num_ranks_row__)
+        , num_ranks_col_(num_ranks_col__)
+        , blacs_handler_(-1)
+        , blacs_context_(-1)
     {
-        PROFILE();
+        PROFILE("sddk::BLACS_grid::BLACS_grid");
 
         mpi_grid_ = std::unique_ptr<MPI_grid>(new MPI_grid({num_ranks_row__, num_ranks_col__}, comm_));
 
@@ -98,7 +104,7 @@ class BLACS_grid
 
     ~BLACS_grid()
     {
-        PROFILE();
+        PROFILE("sddk::BLACS_grid::~BLACS_grid");
 
         #ifdef __SCALAPACK
         linalg_base::gridexit(blacs_context_);
@@ -156,5 +162,7 @@ class BLACS_grid
         return *mpi_grid_;
     }
 };
+
+} // namespace sddk
 
 #endif // __BLACS_GRID_HPP__
