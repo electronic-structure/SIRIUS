@@ -6,15 +6,12 @@ void test_hloc(std::vector<int> mpi_grid_dims__, double cutoff__, int num_bands_
                int use_gpu__, double gpu_workload__)
 {
     device_t pu = static_cast<device_t>(use_gpu__);
-    Simulation_parameters params;
-    params.set_processing_unit(pu);
-    params.set_esm_type("ultrasoft_pseudopotential");
 
     MPI_grid mpi_grid(mpi_grid_dims__, mpi_comm_world()); 
     
     matrix3d<double> M = {{1, 0, 0}, {0, 1, 0}, {0, 0, 1}};
 
-    FFT3D_grid fft_box(2.01 * cutoff__, M);
+    FFT3D_grid fft_box(Utils::find_translations(2.01 * cutoff__, M));
 
     FFT3D fft(fft_box, mpi_grid.communicator(1 << 0), pu, gpu_workload__);
 
@@ -38,13 +35,13 @@ void test_hloc(std::vector<int> mpi_grid_dims__, double cutoff__, int num_bands_
     
     Hloc_operator hloc(fft, gvec.partition(), mpi_grid.communicator(1 << 1), veff);
 
-    wave_functions phi(params, mpi_comm_world(), gvec, 4 * num_bands__);
+    wave_functions phi(pu, mpi_comm_world(), gvec, 4 * num_bands__);
     for (int i = 0; i < 4 * num_bands__; i++) {
         for (int j = 0; j < phi.pw_coeffs().num_rows_loc(); j++) {
             phi.pw_coeffs().prime(j, i) = type_wrapper<double_complex>::random();
         }
     }
-    wave_functions hphi(params, mpi_comm_world(), gvec, 4 * num_bands__);
+    wave_functions hphi(pu, mpi_comm_world(), gvec, 4 * num_bands__);
 
     #ifdef __GPU
     if (pu == GPU) {
@@ -55,7 +52,7 @@ void test_hloc(std::vector<int> mpi_grid_dims__, double cutoff__, int num_bands_
     #endif
     
     mpi_comm_world().barrier();
-    runtime::Timer t1("h_loc");
+    sddk::timer t1("h_loc");
     for (int i = 0; i < 4; i++)
     {
         hphi.copy_from(phi, i * num_bands__, num_bands__);
@@ -119,7 +116,7 @@ int main(int argn, char** argv)
         test_hloc(mpi_grid_dims, cutoff, num_bands, use_gpu, gpu_workload);
     }
     mpi_comm_world().barrier();
-    runtime::Timer::print();
-    runtime::Timer::print_all();
+    sddk::timer::print();
+    //runtime::Timer::print_all();
     sirius::finalize();
 }

@@ -41,7 +41,7 @@ int const nop_gemm = 8;
 
 double test_gemm(int M, int N, int K, int transa)
 {
-    runtime::Timer t("test_gemm"); 
+    sddk::timer t("test_gemm"); 
     
     mdarray<gemm_type, 2> a, b, c;
     int imax, jmax;
@@ -75,7 +75,7 @@ double test_gemm(int M, int N, int K, int transa)
     printf("a.ld() = %i\n", a.ld());
     printf("b.ld() = %i\n", b.ld());
     printf("c.ld() = %i\n", c.ld());
-    runtime::Timer t1("gemm_only"); 
+    sddk::timer t1("gemm_only"); 
     linalg<CPU>::gemm(transa, 0, M, N, K, a.at<CPU>(), a.ld(), b.at<CPU>(), b.ld(), c.at<CPU>(), c.ld());
     double tval = t1.stop();
     double perf = nop_gemm * 1e-9 * M * N * K / tval;
