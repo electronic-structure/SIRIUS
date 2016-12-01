@@ -18,22 +18,37 @@ inline Communicator const& map_fcomm(int fcomm__)
     return comm;
 }
 
+inline int get_next_free_object_id()
+{
+    for (int i = 0; i < (int)sddk_objects.size(); i++) {
+        if (sddk_objects[i] == nullptr) {
+            return i;
+        }
+    }
+    sddk_objects.push_back(nullptr);
+    return static_cast<int>(sddk_objects.size() - 1);
+}
+
 extern "C" {
 
 void sddk_init();
 
+/// Create FFT grid.
 void sddk_create_fft_grid(ftn_int* dims__,
                           ftn_int* fft_grid_id__) 
 {
-    sddk_objects.push_back(new FFT3D_grid({dims__[0], dims__[1], dims__[2]}));
-    *fft_grid_id__ = static_cast<int>(sddk_objects.size() - 1);
+    *fft_grid_id__ = get_next_free_object_id();
+    sddk_objects[*fft_grid_id__] = new FFT3D_grid({dims__[0], dims__[1], dims__[2]});
 }
 
+/// Delete FFT grid.
 void sddk_delete_fft_grid(ftn_int* fft_grid_id__)
 {
     delete reinterpret_cast<FFT3D_grid*>(sddk_objects[*fft_grid_id__]);
+    sddk_objects[*fft_grid_id__] = nullptr;
 }
 
+/// Create list of G-vectors.
 void sddk_create_gvec(ftn_double* vk__,
                       ftn_double* b1__,
                       ftn_double* b2__,
@@ -55,31 +70,40 @@ void sddk_create_gvec(ftn_double* vk__,
         lat_vec(x, 1) = b2__[x];
         lat_vec(x, 2) = b3__[x];
     }
-    sddk_objects.push_back(new Gvec({vk__[0], vk__[1], vk__[2]},
-                                    lat_vec,
-                                    *gmax__, 
-                                    *reinterpret_cast<FFT3D_grid*>(sddk_objects[*fft_grid_id__]),
-                                    *num_ranks__,
-                                    comm,
-                                    reduce_gvec));
 
-    *gvec_id__ = static_cast<int>(sddk_objects.size() - 1);
+    *gvec_id__ = get_next_free_object_id();
+    sddk_objects[*gvec_id__] = new Gvec({vk__[0], vk__[1], vk__[2]},
+                                        lat_vec,
+                                        *gmax__, 
+                                        *reinterpret_cast<FFT3D_grid*>(sddk_objects[*fft_grid_id__]),
+                                        *num_ranks__,
+                                        comm,
+                                        reduce_gvec);
 }
 
+/// Delete list of G-vectors.
 void sddk_delete_gvec(ftn_int* gvec_id__)
 {
     delete reinterpret_cast<Gvec*>(sddk_objects[*gvec_id__]);
+    sddk_objects[*gvec_id__] = nullptr;
 }
 
+/// Create FFT driver.
 void sddk_create_fft(ftn_int* fft_grid_id__,
                      ftn_int* fcomm__,
                      ftn_int* fft_id__)
 {
     auto& comm = map_fcomm(*fcomm__);
     auto& fft_grid = *reinterpret_cast<FFT3D_grid*>(sddk_objects[*fft_grid_id__]);
+    
+    *fft_id__ = get_next_free_object_id();
+    sddk_objects[*fft_id__] = new FFT3D(fft_grid, comm, device_t::CPU);
+}
 
-    sddk_objects.push_back(new FFT3D(fft_grid, comm, device_t::CPU));
-    *fft_id__ = static_cast<int>(sddk_objects.size() - 1);
+void sddk_delete_fft(ftn_int* fft_id__)
+{
+    delete reinterpret_cast<FFT3D*>(sddk_objects[*fft_id__]);
+    sddk_objects[*fft_id__] = nullptr;
 }
 
 void sddk_get_num_gvec(ftn_int* gvec_id__, ftn_int* num_gvec__)

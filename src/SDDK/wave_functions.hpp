@@ -57,8 +57,6 @@ class wave_functions
 
         Gvec const& gkvec_;
 
-        Gvec_partition gkvec_full_;
-
         splindex<block> spl_num_atoms_;
 
         block_data_descriptor mt_coeffs_distr_;
@@ -89,7 +87,6 @@ class wave_functions
             : pu_(pu__),
               comm_(comm__),
               gkvec_(gkvec__),
-              gkvec_full_(gkvec_, mpi_comm_self()),
               num_wf_(num_wf__)
         {
             pw_coeffs_ = std::unique_ptr<matrix_storage<double_complex, matrix_storage_t::slab>>(
@@ -106,7 +103,6 @@ class wave_functions
             : pu_(pu__),
               comm_(comm__),
               gkvec_(gkvec__),
-              gkvec_full_(gkvec_, mpi_comm_self()),
               num_wf_(num_wf__),
               has_mt_(true)
         {
@@ -247,30 +243,6 @@ class wave_functions
         inline void copy_from(wave_functions const& src__, int i0__, int n__)
         {
             copy_from(src__, i0__, n__, i0__);
-        }
-
-        inline void prepare_full_column_distr(int n__)
-        {
-            pw_coeffs().set_num_extra(gkvec_.num_gvec(), comm_, n__);
-            if (has_mt_) {
-                mt_coeffs().set_num_extra(num_mt_coeffs_, comm_, n__);
-            }
-        }
-
-        inline void remap_to_full_column_distr(int n__)
-        {
-            pw_coeffs().remap_forward(gkvec_full_.gvec_fft_slab(), comm_, n__);
-            if (has_mt_) {
-                mt_coeffs().remap_forward(mt_coeffs_distr_, comm_, n__);
-            }
-        }
-
-        inline void remap_to_prime_distr(int n__)
-        {
-            pw_coeffs().remap_backward(gkvec_full_.gvec_fft_slab(), comm_, n__);
-            if (has_mt_) {
-                mt_coeffs().remap_backward(mt_coeffs_distr_, comm_, n__);
-            }
         }
 
         /// Compute L2 norm of first n wave-functions.

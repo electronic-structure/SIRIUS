@@ -21,6 +21,11 @@ module sddk
             integer,                 intent(out) :: fft_id
         end subroutine
 
+        subroutine sddk_delete_fft(fft_id)&
+            &bind(C, name="sddk_delete_fft")
+            integer,                 intent(in)  :: fft_id
+        end subroutine
+
         subroutine sddk_create_gvec(vk, b1, b2, b3, gmax, fft_grid_id, num_ranks, fcomm, reduce_gvec, gvec_id)&
             &bind(C, name="sddk_create_gvec")
             real(8),                 intent(in)  :: vk(3)

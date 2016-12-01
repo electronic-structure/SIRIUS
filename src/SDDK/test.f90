@@ -30,6 +30,21 @@ write(*,*)"local number of G-vectors and offset: ", num_gvec_loc, gvec_offset
 
 call sddk_create_fft(fft_grid_id, MPI_COMM_WORLD, fft_id)
 
+write(*,*)fft_grid_id, gvec_id, fft_id
+
+call sddk_delete_fft(fft_id)
+call sddk_delete_gvec(gvec_id)
+call sddk_delete_fft_grid(fft_grid_id)
+
+
+
+
+call sddk_create_fft_grid((/50, 50, 50/), fft_grid_id)
+call sddk_create_gvec((/0.d0, 0.d0, 0.d0/), recip_lat(:, 1), recip_lat(:, 2), recip_lat(:, 3), gmax,&
+                      &fft_grid_id, num_ranks, 0, MPI_COMM_WORLD, gvec_id)
+
+write(*,*)fft_grid_id, gvec_id
+
 call sddk_delete_gvec(gvec_id)
 call sddk_delete_fft_grid(fft_grid_id)
 
