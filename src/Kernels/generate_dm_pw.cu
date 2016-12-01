@@ -1,4 +1,4 @@
-#include "kernels_common.h"
+#include "../SDDK/GPU/cuda_common.h"
 
 extern "C" void* cuda_malloc(size_t size);
 extern "C" void cuda_free(void* ptr);

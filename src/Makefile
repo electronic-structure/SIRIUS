@@ -24,9 +24,9 @@ OBJ = $(SRC:.cpp=.o)
 
 ifneq (,$(findstring D__GPU,$(CXX_OPT)))
 	OBJ := $(OBJ) \
-	Kernels/cuda_interface.o \
-	Kernels/cufft_interface.o \
-	Kernels/cublas_interface.o \
+	SDDK/GPU/cuda_interface.o \
+	SDDK/GPU/cufft_interface.o \
+	SDDK/GPU/cublas_interface.o \
 	Kernels/cuda_uspp_kernels.o \
 	Kernels/scale_matrix.o \
 	Kernels/spline.o \
@@ -42,7 +42,7 @@ ifneq (,$(findstring D__GPU,$(CXX_OPT)))
 endif
 
 ifneq (,$(findstring D__MAGMA,$(CXX_OPT)))
-	OBJ := $(OBJ) Kernels/magma_interface.o
+	OBJ := $(OBJ) SDDK/GPU/magma_interface.o
 endif
 
 ifneq (,$(findstring D__PLASMA,$(CXX_OPT)))

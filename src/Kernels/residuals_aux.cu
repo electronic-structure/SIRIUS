@@ -1,4 +1,4 @@
-#include "kernels_common.h"
+#include "../SDDK/GPU/cuda_common.h"
 
 __global__ void compute_residuals_gpu_kernel
 (

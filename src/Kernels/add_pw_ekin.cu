@@ -1,4 +1,4 @@
-#include "kernels_common.h"
+#include "../SDDK/GPU/cuda_common.h"
 
 __global__ void add_pw_ekin_gpu_kernel(int num_gvec__,
                                        double const* pw_ekin__,
