@@ -71,16 +71,16 @@ void sddk_delete_gvec(ftn_int* gvec_id__)
     delete reinterpret_cast<Gvec*>(sddk_objects[*gvec_id__]);
 }
 
-//void sddk_create_fft(ftn_int* fft_grid_id__,
-//                     ftn_int* fcomm__,
-//                     ftn_int* fft_id__)
-//{
-//    auto& comm = map_fcomm(*fcomm__);
-//    auto& fft_grid = *reinterpret_cast<FFT3D_grid*>(sddk_objects[*fft_grid_id__]);
-//
-//    sddk_objects.push_back(new FFT3D(fft_grid, comm, device_t::CPU));
-//    *fft_id__ = static_cast<int>(sddk_objects.size() - 1);
-//}
+void sddk_create_fft(ftn_int* fft_grid_id__,
+                     ftn_int* fcomm__,
+                     ftn_int* fft_id__)
+{
+    auto& comm = map_fcomm(*fcomm__);
+    auto& fft_grid = *reinterpret_cast<FFT3D_grid*>(sddk_objects[*fft_grid_id__]);
+
+    sddk_objects.push_back(new FFT3D(fft_grid, comm, device_t::CPU));
+    *fft_id__ = static_cast<int>(sddk_objects.size() - 1);
+}
 
 void sddk_get_num_gvec(ftn_int* gvec_id__, ftn_int* num_gvec__)
 {

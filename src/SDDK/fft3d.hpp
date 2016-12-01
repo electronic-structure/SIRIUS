@@ -232,7 +232,7 @@ class FFT3D
                                 double_complex* data__,
                                 mdarray<double_complex, 1>& fft_buffer_aux__)
         {
-            PROFILE("sirius::FFT3D::transform_z_serial");
+            PROFILE("sddk::FFT3D::transform_z_serial");
 
             double norm = 1.0 / size();
             #pragma omp parallel
@@ -298,14 +298,14 @@ class FFT3D
                                   double_complex* data__,
                                   mdarray<double_complex, 1>& fft_buffer_aux__)
         {
-            PROFILE("sirius::FFT3D::transform_z_parallel");
+            PROFILE("sddk::FFT3D::transform_z_parallel");
 
             int rank = comm_.rank();
             int num_zcol_local = gvec__.zcol_distr_fft().counts[rank];
             double norm = 1.0 / size();
 
             if (direction == -1) {
-                sddk::timer t("sirius::FFT3D::transform_z_parallel|comm");
+                sddk::timer t("sddk::FFT3D::transform_z_parallel|comm");
 
                 block_data_descriptor send(comm_.size());
                 block_data_descriptor recv(comm_.size());
@@ -395,7 +395,7 @@ class FFT3D
 
             /* scatter z-columns between slabs of FFT buffer */
             if (direction == 1) {
-                sddk::timer t("sirius::FFT3D::transform_z_parallel|comm");
+                sddk::timer t("sddk::FFT3D::transform_z_parallel|comm");
 
                 block_data_descriptor send(comm_.size());
                 block_data_descriptor recv(comm_.size());
@@ -420,7 +420,7 @@ class FFT3D
         void transform_xy(Gvec_partition const& gvec__,
                           mdarray<double_complex, 1>& fft_buffer_aux__)
         {
-            PROFILE("sirius::FFT3D::transform_xy");
+            PROFILE("sddk::FFT3D::transform_xy");
 
             int size_xy = grid_.size(0) * grid_.size(1);
             int first_z{0};
@@ -531,7 +531,7 @@ class FFT3D
                           mdarray<double_complex, 1>& fft_buffer_aux1__, 
                           mdarray<double_complex, 1>& fft_buffer_aux2__)
         {
-            PROFILE("sirius::FFT3D::transform_xy");
+            PROFILE("sddk::FFT3D::transform_xy");
 
             if (!gvec__.reduced()) {
                 TERMINATE("reduced set of G-vectors is required");
@@ -668,7 +668,7 @@ class FFT3D
               pu_(pu__),
               grid_(grid__)
         {
-            PROFILE("sirius::FFT3D::FFT3D");
+            PROFILE("sddk::FFT3D::FFT3D");
 
             /* split z-direction */
             spl_z_ = splindex<block>(grid_.size(2), comm_.size(), comm_.rank());
@@ -892,7 +892,7 @@ class FFT3D
         /// Prepare FFT driver to transfrom functions with gvec_fft_distr.
         void prepare(Gvec_partition const& gvec__)
         {
-            PROFILE("sirius::FFT3D::prepare");
+            PROFILE("sddk::FFT3D::prepare");
 
             int nc = gvec__.reduced() ? 2 : 1;
 
@@ -994,7 +994,7 @@ class FFT3D
         template <int direction>
         void transform(Gvec_partition const& gvec__, double_complex* data__)
         {
-            PROFILE("sirius::FFT3D::transform");
+            PROFILE("sddk::FFT3D::transform");
 
             if (!prepared_) {
                 TERMINATE("FFT3D is not ready");
@@ -1079,7 +1079,7 @@ class FFT3D
         template <int direction>
         void transform(Gvec_partition const& gvec__, double_complex* data1__, double_complex* data2__)
         {
-            PROFILE("sirius::FFT3D::transform");
+            PROFILE("sddk::FFT3D::transform");
 
             if (!prepared_) {
                 TERMINATE("FFT3D is not ready");

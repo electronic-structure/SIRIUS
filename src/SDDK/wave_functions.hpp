@@ -423,7 +423,7 @@ inline void transform(double alpha__,
                       int j0__,
                       int n__)
 {
-    PROFILE("sirius::wave_functions::transform");
+    PROFILE("sddk::wave_functions::transform");
 
     static_assert(std::is_same<T, double>::value || std::is_same<T, double_complex>::value, "wrong type");
 
@@ -538,7 +538,7 @@ inline void transform(double alpha__,
         #endif
     };
     
-    sddk::timer t1("sirius::wave_functions::transform|init");
+    sddk::timer t1("sddk::wave_functions::transform|init");
     /* initial values for the resulting wave-functions */
     for (int iv = 0; iv < nwf; iv++) {
         if (pu == CPU) {
@@ -812,7 +812,7 @@ inline void inner(wave_functions& bra__,
                   int irow0__,
                   int jcol0__)
 {
-    PROFILE("sirius::wave_functions::inner");
+    PROFILE("sddk::wave_functions::inner");
 
     static_assert(std::is_same<T, double>::value || std::is_same<T, double_complex>::value, "wrong type");
     
@@ -1144,7 +1144,7 @@ inline void orthogonalize(int N__,
                           dmatrix<T>& o__,
                           wave_functions& tmp__)
 {
-    PROFILE("sirius::wave_functions::orthogonalize");
+    PROFILE("sddk::wave_functions::orthogonalize");
 
     auto pu = wfs__[0]->pu();
         
@@ -1272,7 +1272,7 @@ inline void orthogonalize(int N__,
         }
         #endif
     } else { /* parallel transformation */
-        sddk::timer t1("sirius::wave_functions::orthogonalize|potrf");
+        sddk::timer t1("sddk::wave_functions::orthogonalize|potrf");
         if (int info = linalg<CPU>::potrf(n__, o__)) {
             std::stringstream s;
             s << "error in factorization, info = " << info;
@@ -1280,7 +1280,7 @@ inline void orthogonalize(int N__,
         }
         t1.stop();
 
-        sddk::timer t2("sirius::wave_functions::orthogonalize|trtri");
+        sddk::timer t2("sddk::wave_functions::orthogonalize|trtri");
         if (linalg<CPU>::trtri(n__, o__)) {
             TERMINATE("error in inversion");
         }
