@@ -11,8 +11,8 @@
 #include "../simulation_context.h"
 #include "../periodic_function.h"
 #include "../augmentation_operator.h"
-#include "../Beta_projectors/Beta_projectors.h"
-#include "../Beta_projectors/Beta_projectors_gradient.h"
+#include "../Beta_projectors/beta_projectors.h"
+#include "../Beta_projectors/beta_projectors_gradient.h"
 #include "../potential.h"
 #include "../density.h"
 

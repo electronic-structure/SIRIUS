@@ -9,7 +9,7 @@
 #define SRC_BETA_PROJECTORS_BETA_PROJECTORS_GRADIENT_H_
 
 
-#include "Beta_projectors.h"
+#include "beta_projectors.h"
 
 namespace sirius
 {

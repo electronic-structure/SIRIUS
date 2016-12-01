@@ -27,7 +27,7 @@
 
 #include "periodic_function.h"
 #include "matching_coefficients.h"
-#include "Beta_projectors/Beta_projectors.h"
+#include "Beta_projectors/beta_projectors.h"
 #include "wave_functions.hpp"
 
 namespace sirius

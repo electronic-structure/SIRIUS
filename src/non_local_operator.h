@@ -25,7 +25,7 @@
 #ifndef __NON_LOCAL_OPERATOR_H__
 #define __NON_LOCAL_OPERATOR_H__
 
-#include "Beta_projectors/Beta_projectors.h"
+#include "Beta_projectors/beta_projectors.h"
 #include "simulation_context.h"
 
 namespace sirius {
