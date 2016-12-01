@@ -49,7 +49,7 @@ class Free_atom: public sirius::Atom_type
 
         double ground_state(double solver_tol, double energy_tol, double charge_tol, std::vector<double>& enu, bool rel)
         {
-            runtime::Timer t("sirius::Free_atom::ground_state");
+            PROFILE("sirius::Free_atom::ground_state");
         
             int np = radial_grid().num_points();
             assert(np > 0);
