@@ -5,7 +5,7 @@ include ../make.inc
 SRC =  LebedevLaikov.cpp \
        potential.cpp symmetry.cpp \
        spheric_function.cpp force.cpp dft_ground_state.cpp real_space_prj.cpp \
-       Beta_projectors/Beta_projectors.cpp \
+       Beta_projectors/beta_projectors.cpp \
        atom_type.cpp atom.cpp atom_symmetry_class.cpp unit_cell.cpp \
        Potential/potential.cpp \
        Potential/poisson.cpp \

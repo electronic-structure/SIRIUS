@@ -22,7 +22,7 @@
  *  \brief Contains implementation of sirius::Beta_projectors class.
  */
 
-#include "Beta_projectors.h"
+#include "beta_projectors.h"
 
 namespace sirius {
 
