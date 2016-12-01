@@ -264,7 +264,7 @@ double ground_state(Simulation_context&       ctx,
         
         dict["task"] = static_cast<int>(task);
         dict["ground_state"] = dft.serialize();
-        dict["timers"] = runtime::Timer::serialize();
+        dict["timers"] = Utils::serialize_timers();
  
         if (ctx.comm().rank() == 0) {
             std::ofstream ofs(std::string("output_") + ctx.start_time_tag() + std::string(".json"),
@@ -296,7 +296,7 @@ double ground_state(Simulation_context&       ctx,
     /* wait for all */
     ctx.comm().barrier();
 
-    runtime::Timer::print();
+    sddk::timer::print(0);
 
     return dft.total_energy();
 }
