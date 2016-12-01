@@ -1,6 +1,6 @@
 inline void K_point::generate_gkvec(double gk_cutoff)
 {
-    PROFILE();
+    PROFILE("sirius::K_point::generate_gkvec");
 
     if (ctx_.full_potential() && (gk_cutoff * unit_cell_.max_mt_radius() > ctx_.lmax_apw())) {
         std::stringstream s;

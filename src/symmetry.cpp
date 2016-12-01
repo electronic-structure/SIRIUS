@@ -38,7 +38,7 @@ Symmetry::Symmetry(matrix3d<double>& lattice_vectors__,
       types_(types__),
       tolerance_(tolerance__)
 {
-    PROFILE();
+    PROFILE("sirius::Symmetry::Symmetry");
 
     if (lattice_vectors__.det() < 0) {
         std::stringstream s;
@@ -284,7 +284,7 @@ int Symmetry::get_irreducible_reciprocal_mesh(vector3d<int> k_mesh__,
 
 void Symmetry::check_gvec_symmetry(Gvec const& gvec__) const
 {
-    PROFILE();
+    PROFILE("sirius::Symmetry::check_gvec_symmetry");
 
     for (int isym = 0; isym < num_mag_sym(); isym++)
     {
@@ -344,7 +344,7 @@ void Symmetry::symmetrize_function(double_complex* f_pw__,
                                    Gvec const& gvec__,
                                    Communicator const& comm__) const
 {
-    runtime::Timer t("sirius::Symmetry::symmetrize_function_pw", comm__);
+    PROFILE("sirius::Symmetry::symmetrize_function_pw");
 
     int gvec_count = gvec__.gvec_count(comm__.rank());
     int gvec_offset = gvec__.gvec_offset(comm__.rank());
@@ -410,7 +410,7 @@ void Symmetry::symmetrize_vector(double_complex* fz_pw__,
                                  Gvec const& gvec__,
                                  Communicator const& comm__) const
 {
-    runtime::Timer t("sirius::Symmetry::symmetrize_vector_pw");
+    PROFILE("sirius::Symmetry::symmetrize_vector_pw");
     
     int gvec_count = gvec__.gvec_count(comm__.rank());
     int gvec_offset = gvec__.gvec_offset(comm__.rank());
@@ -471,7 +471,7 @@ void Symmetry::symmetrize_vector(double_complex* fx_pw__,
                                  Gvec const& gvec__,
                                  Communicator const& comm__) const
 {
-    runtime::Timer t("sirius::Symmetry::symmetrize_vector_pw");
+    PROFILE("sirius::Symmetry::symmetrize_vector_pw");
     
     int gvec_count = gvec__.gvec_count(comm__.rank());
     int gvec_offset = gvec__.gvec_offset(comm__.rank());
@@ -546,7 +546,7 @@ void Symmetry::symmetrize_vector(double_complex* fx_pw__,
 void Symmetry::symmetrize_function(mdarray<double, 3>& frlm__,
                                    Communicator const& comm__) const
 {
-    runtime::Timer t("sirius::Symmetry::symmetrize_function_mt");
+    PROFILE("sirius::Symmetry::symmetrize_function_mt");
 
     int lmmax = (int)frlm__.size(0);
     int nrmax = (int)frlm__.size(1);
@@ -589,7 +589,7 @@ void Symmetry::symmetrize_function(mdarray<double, 3>& frlm__,
 void Symmetry::symmetrize_vector(mdarray<double, 3>& vz_rlm__,
                                  Communicator const& comm__) const
 {
-    runtime::Timer t("sirius::Symmetry::symmetrize_vector_mt");
+    PROFILE("sirius::Symmetry::symmetrize_vector_mt");
 
     int lmmax = (int)vz_rlm__.size(0);
     int nrmax = (int)vz_rlm__.size(1);
@@ -637,7 +637,7 @@ void Symmetry::symmetrize_vector(mdarray<double, 3>& vx_rlm__,
                                  mdarray<double, 3>& vz_rlm__,
                                  Communicator const& comm__) const
 {
-    runtime::Timer t("sirius::Symmetry::symmetrize_vector_mt");
+    PROFILE("sirius::Symmetry::symmetrize_vector_mt");
 
     int lmmax = (int)vx_rlm__.size(0);
     int nrmax = (int)vx_rlm__.size(1);

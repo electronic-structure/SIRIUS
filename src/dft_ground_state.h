@@ -245,7 +245,7 @@ class DFT_ground_state
                         Periodic_function<double>* gx__,
                         Periodic_function<double>* gy__)
         {
-            PROFILE();
+            PROFILE("sirius::DFT_ground_state::symmetrize");
 
             auto& comm = ctx_.comm();
 

@@ -29,11 +29,10 @@ extern "C" {
 #include <spglib.h>
 }
 
-#include "vector3d.h"
-#include "matrix3d.h"
+#include "matrix3d.hpp"
 #include "constants.h"
 #include "utils.h"
-#include "gvec.h"
+#include "gvec.hpp"
 
 namespace sirius {
 

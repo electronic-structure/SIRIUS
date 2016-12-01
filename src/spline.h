@@ -25,7 +25,7 @@
 #ifndef __SPLINE_H__
 #define __SPLINE_H__
 
-#include "linalg.h"
+#include "linalg.hpp"
 
 // TODO: add back() method like in std::vector
 

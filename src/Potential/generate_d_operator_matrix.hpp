@@ -34,7 +34,7 @@ extern "C" void mul_veff_with_phase_factors_gpu(int                   num_atoms_
 
 inline void Potential::generate_D_operator_matrix()
 {
-    PROFILE_WITH_TIMER("sirius::Potential::generate_D_operator_matrix");
+    PROFILE("sirius::Potential::generate_D_operator_matrix");
 
     /* store effective potential and magnetic field in a vector */
     std::vector<Periodic_function<double>*> veff_vec(ctx_.num_mag_dims() + 1);

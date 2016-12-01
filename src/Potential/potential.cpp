@@ -33,7 +33,7 @@ Potential::Potential(Simulation_context& ctx__)
       pseudo_density_order(9),
       mixer_(nullptr)
 {
-    runtime::Timer t("sirius::Potential::Potential");
+    PROFILE("sirius::Potential::Potential");
 
     lmax_ = std::max(ctx_.lmax_rho(), ctx_.lmax_pot());
     sht_ = std::unique_ptr<SHT>(new SHT(lmax_));

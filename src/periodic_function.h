@@ -26,7 +26,6 @@
 #define __PERIODIC_FUNCTION_H__
 
 #include "simulation_context.h"
-#include "mdarray.hpp"
 #include "spheric_function.h"
 #include "smooth_periodic_function.h"
 #include "mixer.h"
@@ -140,7 +139,7 @@ class Periodic_function: public Smooth_periodic_function<T>
         /// Syncronize global muffin-tin array.
         void sync_mt()
         {
-            runtime::Timer t("sirius::Periodic_function::sync_mt");
+            PROFILE("sirius::Periodic_function::sync_mt");
             assert(f_mt_.size() != 0); 
 
             int ld = angular_domain_size_ * unit_cell_.max_num_mt_points(); 
@@ -182,7 +181,7 @@ class Periodic_function: public Smooth_periodic_function<T>
         /// Add the function
         void add(Periodic_function<T>* g)
         {
-            runtime::Timer t("sirius::Periodic_function::add");
+            PROFILE("sirius::Periodic_function::add");
 
             #pragma omp parallel for
             for (int irloc = 0; irloc < this->fft_->local_size(); irloc++) {
@@ -197,7 +196,7 @@ class Periodic_function: public Smooth_periodic_function<T>
 
         T integrate(std::vector<T>& mt_val, T& it_val)
         {
-            runtime::Timer t("sirius::Periodic_function::integrate");
+            PROFILE("sirius::Periodic_function::integrate");
 
             it_val = 0;
             
@@ -290,7 +289,7 @@ class Periodic_function: public Smooth_periodic_function<T>
 
         size_t pack(size_t offset__, Mixer<double>* mixer__)
         {
-            runtime::Timer t("sirius::Periodic_function::pack");
+            PROFILE("sirius::Periodic_function::pack");
 
             size_t n = 0;
             
@@ -319,7 +318,7 @@ class Periodic_function: public Smooth_periodic_function<T>
         
         size_t unpack(T const* array__)
         {
-            runtime::Timer t("sirius::Periodic_function::unpack");
+            PROFILE("sirius::Periodic_function::unpack");
 
             size_t n = 0;
 
@@ -427,7 +426,7 @@ class Periodic_function: public Smooth_periodic_function<T>
             
             /* collect all PW coefficients */
             if (direction__ == -1) {
-                runtime::Timer t("sirius::Periodic_function::fft_transform|comm");
+                sddk::timer t("sirius::Periodic_function::fft_transform|comm");
                 this->fft_->comm().allgather(&f_pw_(0), this->gvec().partition().gvec_offset_fft(),
                                              this->gvec().partition().gvec_count_fft());
             }
@@ -441,7 +440,7 @@ class Periodic_function: public Smooth_periodic_function<T>
         /// Compute inner product <f|g>
         T inner(Periodic_function<T> const* g__) const
         {
-            runtime::Timer t("sirius::Periodic_function::inner");
+            PROFILE("sirius::Periodic_function::inner");
         
             assert(this->fft_ == g__->fft_);
             assert(&step_function_ == &g__->step_function_);

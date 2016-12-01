@@ -32,9 +32,7 @@
 #include "sirius_internal.h"
 #include "typedefs.h"
 #include "constants.h"
-#include "mdarray.hpp"
-#include "vector3d.h"
-#include "matrix3d.h"
+#include "sddk.hpp"
 
 /// Utility class.
 class Utils
@@ -55,7 +53,9 @@ class Utils
         static inline int lmax_by_lmmax(int lmmax__)
         {
             int lmax = int(std::sqrt(double(lmmax__)) + 1e-8) - 1;
-            if (lmmax(lmax) != lmmax__) TERMINATE("wrong lmmax");
+            if (lmmax(lmax) != lmmax__) {
+                TERMINATE("wrong lmmax");
+            }
             return lmax;
         }
 
@@ -381,12 +381,15 @@ class Utils
             }
             return v;
         }
-
+        
+        /// Find supercell that circumscribes the sphere with a given radius.
+        /** Serach for the translation limits (N1, N2, N3) such that the resulting supercell with the lattice
+         *  vectors a1 * N1, a2 * N2, a3 * N3 fully contains the sphere with a given radius. This is done
+         *  by equating the expressions for the volume of the supercell:
+         *   Volume = |(A1 x A2) * A3| = N1 * N2 * N3 * |(a1 x a2) * a3 | 
+         *   Volume = h * S = 2 * R * |a_i x a_j| * N_i * N_j */
         static std::array<int, 3> find_translations(double radius__, matrix3d<double> const& lattice_vectors__)
         {
-            /* Volume = |(a0 x a1) * a2| = N1 * N2 * N3 * determinant of a lattice vectors matrix 
-               Volume = h * S = 2 * R * |a_i x a_j| * N_i * N_j */
-
             vector3d<double> a0(lattice_vectors__(0, 0), lattice_vectors__(1, 0), lattice_vectors__(2, 0));
             vector3d<double> a1(lattice_vectors__(0, 1), lattice_vectors__(1, 1), lattice_vectors__(2, 1));
             vector3d<double> a2(lattice_vectors__(0, 2), lattice_vectors__(1, 2), lattice_vectors__(2, 2));
@@ -427,6 +430,34 @@ class Utils
         {
             return (T(0) < val) - (val < T(0));
         }
+
+        static json serialize_timers()
+        {
+            json dict;
+
+            /* collect local timers */
+            for (auto& it: sddk::timer::timers()) {
+                sddk::timer::timer_stats ts;
+
+                ts.count = static_cast<int>(it.second.size());
+                ts.total_value = 0.0;
+                ts.min_value = 1e100;
+                ts.max_value = 0.0;
+                for (int i = 0; i < ts.count; i++) {
+                    ts.total_value += it.second[i];
+                    ts.min_value = std::min(ts.min_value, it.second[i]);
+                    ts.max_value = std::max(ts.max_value, it.second[i]);
+                }
+                ts.average_value = (ts.count == 0) ? 0.0 : ts.total_value / ts.count;
+                if (ts.count == 0) {
+                    ts.min_value = 0.0;
+                }
+
+                dict[it.first] = {ts.total_value, ts.average_value, ts.min_value, ts.max_value};
+            }
+            return std::move(dict);
+        }
+
 };
 
 #endif

@@ -46,7 +46,7 @@ class Augmentation_operator
         /// Get radial integrals of Q-operator with spherical Bessel functions.
         mdarray<double, 3> get_radial_integrals(Gvec const& gvec__)
         {
-            PROFILE_WITH_TIMER("sirius::Augmentation_operator::get_radial_integrals");
+            PROFILE("sirius::Augmentation_operator::get_radial_integrals");
 
             // TODO: this can be distributed over G-shells (each mpi rank holds radial integrals only for
             //       G-shells of local fraction of G-vectors
@@ -109,7 +109,7 @@ class Augmentation_operator
 
         void generate_pw_coeffs(double omega__, Gvec const& gvec__)
         {
-            PROFILE_WITH_TIMER("sirius::Augmentation_operator::generate_pw_coeffs");
+            PROFILE("sirius::Augmentation_operator::generate_pw_coeffs");
         
             auto qri = get_radial_integrals(gvec__);
 

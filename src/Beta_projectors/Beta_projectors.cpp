@@ -291,7 +291,7 @@ void Beta_projectors::split_in_chunks()
 
 void Beta_projectors::generate(int chunk__)
 {
-    PROFILE_WITH_TIMER("sirius::Beta_projectors::generate");
+    PROFILE("sirius::Beta_projectors::generate");
 
     if (pu_ == CPU)
     {
@@ -320,7 +320,7 @@ template<>
 void Beta_projectors::inner<double_complex>(int chunk__, wave_functions& phi__,
                                             int idx0__, int n__, mdarray<double_complex, 2> &beta_gk, mdarray<double, 1> &beta_phi)
 {
-    PROFILE_WITH_TIMER("sirius::Beta_projectors::inner");
+    PROFILE("sirius::Beta_projectors::inner");
 
     assert(num_gkvec_loc_ == phi__.pw_coeffs().num_rows_loc());
 
@@ -377,7 +377,7 @@ template<>
 void Beta_projectors::inner<double>(int chunk__,  wave_functions& phi__,
                                     int idx0__, int n__, mdarray<double_complex, 2> &beta_gk, mdarray<double, 1> &beta_phi)
 {
-    PROFILE_WITH_TIMER("sirius::Beta_projectors::inner");
+    PROFILE("sirius::Beta_projectors::inner");
 
     assert(num_gkvec_loc_ == phi__.pw_coeffs().num_rows_loc());
 

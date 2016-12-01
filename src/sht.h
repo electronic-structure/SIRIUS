@@ -33,7 +33,7 @@
 #include <vector>
 #include "typedefs.h"
 #include "utils.h"
-#include "linalg.h"
+#include "linalg.hpp"
 #include "LebedevLaikov.h"
 
 namespace sirius

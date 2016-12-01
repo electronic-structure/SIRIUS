@@ -25,7 +25,7 @@
 #ifndef __HLOC_OPERATOR_H__
 #define __HLOC_OPERATOR_H__
 
-#include "wave_functions.h"
+#include "wave_functions.hpp"
 #include "periodic_function.h"
 
 #ifdef __GPU
@@ -114,7 +114,7 @@ class Hloc_operator
               gkvec_(gkvec__),
               comm_col_(comm_col__)
         {
-            PROFILE();
+            PROFILE("sirius::Hloc_operator::Hloc_operator");
 
             /* cache kinteic energy of plane-waves */
             pw_ekin_ = mdarray<double, 1>(gkvec_.gvec_count_fft());
@@ -205,7 +205,7 @@ class Hloc_operator
         
         void apply(int ispn__, wave_functions& hphi__, int idx0__, int n__)
         {
-            PROFILE_WITH_TIMER("sirius::Hloc_operator::apply");
+            PROFILE("sirius::Hloc_operator::apply");
 
             hphi__.pw_coeffs().remap_forward(gkvec_.gvec_fft_slab(), comm_col_, n__, idx0__);
 

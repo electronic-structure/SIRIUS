@@ -105,7 +105,7 @@ class sbessel_approx
             : unit_cell_(unit_cell__),
               lmax_(lmax__)
         {
-            runtime::Timer t("sirius::sbessel_approx");
+            PROFILE("sirius::sbessel_approx");
 
             qnu_ = mdarray<std::vector<double>, 2>(lmax_ + 1, unit_cell_.num_atom_types());
 
@@ -130,7 +130,7 @@ class sbessel_approx
 
         void approximate(std::vector<double> const& q__)
         {
-            runtime::Timer t("sirius::sbessel_approx::approximate");
+            PROFILE("sirius::sbessel_approx::approximate");
 
             coeffs_ = mdarray<double, 4>(nqnu_max_, q__.size(), lmax_ + 1, unit_cell_.num_atom_types());
             
@@ -313,7 +313,7 @@ class Spherical_Bessel_approximant
             : lmax_(lmax__),
               R_(R__)
         {
-            runtime::Timer t("sirius::Spherical_Bessel_approximant");
+            PROFILE("sirius::Spherical_Bessel_approximant");
 
             qnu_ = std::vector< std::vector<double> >(lmax_ + 1);
 
@@ -536,7 +536,7 @@ class Spherical_Bessel_approximant2
             : lmax_(lmax__),
               R_(R__)
         {
-            runtime::Timer t("sirius::Spherical_Bessel_approximant");
+            PROFILE("sirius::Spherical_Bessel_approximant");
 
             int nq = nfreq(qmin__, qmax__, 0, R__, 1e-12);
             qnu_.resize(nq);

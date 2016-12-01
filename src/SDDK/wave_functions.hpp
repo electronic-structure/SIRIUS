@@ -17,19 +17,18 @@
 // CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR 
 // OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-/** \file wave_functions.h
+/** \file wave_functions.hpp
  *   
- *  \brief Contains declaration and implementation of sirius::wave_functions class.
+ *  \brief Contains declaration and implementation of wave_functions class.
  */
 
-#ifndef __WAVE_FUNCTIONS_H__
-#define __WAVE_FUNCTIONS_H__
+#ifndef __WAVE_FUNCTIONS_HPP__
+#define __WAVE_FUNCTIONS_HPP__
 
 #include <cstdlib>
-#include "gvec.h"
-#include "mpi_grid.hpp"
-#include "linalg.h"
-#include "matrix_storage.hpp"
+#include "linalg.hpp"
+
+namespace sddk {
 
 #ifdef __GPU
 extern "C" void add_square_sum_gpu(cuDoubleComplex const* wf__,
@@ -47,14 +46,12 @@ extern "C" void add_checksum_gpu(cuDoubleComplex* wf__,
 
 const int sddk_default_block_size = 256;
 
-namespace sirius {
-
 /// Wave-functions representation.
 class wave_functions
 {
     private:
-
-        Simulation_parameters const& params_;
+        
+        device_t pu_;
 
         Communicator const& comm_;
 
@@ -85,30 +82,28 @@ class wave_functions
     public:
         
         /// Constructor for PW wave-functions.
-        wave_functions(Simulation_parameters const& params__,
+        wave_functions(device_t pu__,
                        Communicator const& comm__,
                        Gvec const& gkvec__,
                        int num_wf__)
-            : params_(params__),
+            : pu_(pu__),
               comm_(comm__),
               gkvec_(gkvec__),
               gkvec_full_(gkvec_, mpi_comm_self()),
               num_wf_(num_wf__)
         {
             pw_coeffs_ = std::unique_ptr<matrix_storage<double_complex, matrix_storage_t::slab>>(
-                new matrix_storage<double_complex, matrix_storage_t::slab>(gkvec_.gvec_count(comm_.rank()),
-                                                                           num_wf_,
-                                                                           params_.processing_unit()));
+                new matrix_storage<double_complex, matrix_storage_t::slab>(gkvec_.gvec_count(comm_.rank()), num_wf_, pu_));
         }
 
         /// Constructor for LAPW wave-functions.
-        wave_functions(Simulation_parameters const& params__,
+        wave_functions(device_t pu__,
                        Communicator const& comm__,
                        Gvec const& gkvec__,
                        int num_atoms__,
                        std::function<int(int)> mt_size__,
                        int num_wf__)
-            : params_(params__),
+            : pu_(pu__),
               comm_(comm__),
               gkvec_(gkvec__),
               gkvec_full_(gkvec_, mpi_comm_self()),
@@ -116,9 +111,7 @@ class wave_functions
               has_mt_(true)
         {
             pw_coeffs_ = std::unique_ptr<matrix_storage<double_complex, matrix_storage_t::slab>>(
-                new matrix_storage<double_complex, matrix_storage_t::slab>(gkvec_.gvec_count(comm_.rank()),
-                                                                           num_wf_,
-                                                                           params_.processing_unit()));
+                new matrix_storage<double_complex, matrix_storage_t::slab>(gkvec_.gvec_count(comm_.rank()), num_wf_, pu_));
 
             spl_num_atoms_ = splindex<block>(num_atoms__, comm_.size(), comm_.rank());
             mt_coeffs_distr_ = block_data_descriptor(comm_.size());
@@ -137,8 +130,7 @@ class wave_functions
             
             mt_coeffs_ = std::unique_ptr<matrix_storage<double_complex, matrix_storage_t::slab>>(
                 new matrix_storage<double_complex, matrix_storage_t::slab>(mt_coeffs_distr_.counts[comm_.rank()],
-                                                                           num_wf_,
-                                                                           params_.processing_unit()));
+                                                                           num_wf_, pu_));
         }
 
         inline matrix_storage<double_complex, matrix_storage_t::slab>& pw_coeffs()
@@ -175,11 +167,6 @@ class wave_functions
             return num_wf_;
         }
 
-        inline Simulation_parameters const& params() const
-        {
-            return params_;
-        }
-
         inline splindex<block> const& spl_num_atoms() const
         {
             return spl_num_atoms_;
@@ -195,7 +182,7 @@ class wave_functions
                               int n__,
                               int j0__)
         {
-            switch (params_.processing_unit()) {
+            switch (pu_) {
                 case CPU: {
                     std::memcpy(pw_coeffs().prime().at<CPU>(0, j0__),
                                 src__.pw_coeffs().prime().at<CPU>(0, i0__),
@@ -294,13 +281,13 @@ class wave_functions
             mdarray<double, 1> norm(n__, memory_t::host, "l2norm");
             norm.zero();
             #ifdef __GPU
-            if (params_.processing_unit() == GPU) {
+            if (pu_ == GPU) {
                 norm.allocate(memory_t::device);
                 norm.zero_on_device();
             }
             #endif
              
-            if (params_.processing_unit() == CPU) {
+            if (pu_ == CPU) {
                 #pragma omp parallel for
                 for (int i = 0; i < n__; i++) {
                     for (int ig = 0; ig < pw_coeffs().num_rows_loc(); ig++) {
@@ -321,7 +308,7 @@ class wave_functions
                 }
             }
             #ifdef __GPU
-            if (params_.processing_unit() == GPU) {
+            if (pu_ == GPU) {
                 add_square_sum_gpu(pw_coeffs().prime().at<GPU>(), pw_coeffs().num_rows_loc(), n__,
                                    gkvec_.reduced(), comm_.rank(), norm.at<GPU>());
                 if (has_mt_ && mt_coeffs().num_rows_loc()) {
@@ -338,7 +325,7 @@ class wave_functions
             }
 
             #ifdef __GPU
-            if (params_.processing_unit() == GPU) {
+            if (pu_ == GPU) {
                 norm.copy_to_device();
             }
             #endif
@@ -351,12 +338,17 @@ class wave_functions
             return comm_;
         }
 
+        device_t pu() const
+        {
+            return pu_;
+        }
+
         inline double_complex checksum(int i0__, int n__)
         {
             assert(n__ != 0);
             double_complex cs(0, 0);
             #ifdef __GPU
-            if (params_.processing_unit() == GPU) {
+            if (pu_ == GPU) {
                 mdarray<double_complex, 1> cs1(n__, memory_t::host | memory_t::device, "checksum");
                 cs1.zero_on_device();
                 add_checksum_gpu(pw_coeffs().prime().at<GPU>(0, i0__), pw_coeffs().num_rows_loc(), n__, cs1.at<GPU>());
@@ -367,7 +359,7 @@ class wave_functions
                 cs = cs1.checksum();
             }
             #endif
-            if (params_.processing_unit() == CPU) {
+            if (pu_ == CPU) {
                 for (int i = 0; i < n__; i++) {
                     for (int j = 0; j < pw_coeffs().num_rows_loc(); j++) {
                         cs += pw_coeffs().prime(j, i0__ + i);
@@ -414,7 +406,6 @@ class wave_functions
             }
         }
         #endif
-
 };
 
 /// Linear transformation of the wave-functions.
@@ -432,7 +423,7 @@ inline void transform(double alpha__,
                       int j0__,
                       int n__)
 {
-    PROFILE_WITH_TIMER("sirius::wave_functions::transform");
+    PROFILE("sirius::wave_functions::transform");
 
     static_assert(std::is_same<T, double>::value || std::is_same<T, double_complex>::value, "wrong type");
 
@@ -443,7 +434,6 @@ inline void transform(double alpha__,
     int nwf = static_cast<int>(wf_in__.size()); 
     auto& comm = mtrx__.blacs_grid().comm();
     for (int i = 0; i < nwf; i++) { 
-        assert(&wf_in__[i]->params() == &wf_out__[i]->params());
         assert(wf_in__[i]->pw_coeffs().num_rows_loc() == wf_out__[i]->pw_coeffs().num_rows_loc());
         if (wf_in__[i]->has_mt()) {
             assert(wf_in__[i]->mt_coeffs().num_rows_loc() == wf_out__[i]->mt_coeffs().num_rows_loc());
@@ -452,7 +442,7 @@ inline void transform(double alpha__,
         assert(wf_out__[i]->comm().size() == comm.size());
     }
     
-    auto pu = wf_in__[0]->params().processing_unit();
+    auto pu = wf_in__[0]->pu();
 
     double ngop{0};
     if (std::is_same<T, double>::value) {
@@ -502,7 +492,7 @@ inline void transform(double alpha__,
                                   beta,
                                   reinterpret_cast<double*>(wf_out__->pw_coeffs().prime().at<CPU>(0, j0__)), 2 * wf_out__->pw_coeffs().prime().ld());
                 if (wf_in__->has_mt()) {
-                    TERMINATE_NOT_IMPLEMENTED;
+                    TERMINATE("not implemented");
                 }
             }
         }
@@ -540,7 +530,7 @@ inline void transform(double alpha__,
                                   &beta,
                                   reinterpret_cast<double*>(wf_out__->pw_coeffs().prime().at<GPU>(0, j0__)), 2 * wf_out__->pw_coeffs().prime().ld());
                 if (wf_in__->has_mt()) {
-                    TERMINATE_NOT_IMPLEMENTED;
+                    TERMINATE("not implemented");
                 }
                 acc::sync_stream(-1);
             }
@@ -548,7 +538,7 @@ inline void transform(double alpha__,
         #endif
     };
     
-    runtime::Timer t1("sirius::wave_functions::transform|init");
+    sddk::timer t1("sirius::wave_functions::transform|init");
     /* initial values for the resulting wave-functions */
     for (int iv = 0; iv < nwf; iv++) {
         if (pu == CPU) {
@@ -622,7 +612,7 @@ inline void transform(double alpha__,
     if (sddk_pp) {
         comm.barrier();
     }
-    double time = -runtime::wtime();
+    double time = -omp_get_wtime();
     
     /* trivial case */
     if (comm.size() == 1) {
@@ -636,7 +626,7 @@ inline void transform(double alpha__,
             local_transform(wf_in__[iv], i0__, m__, mtrx__, irow0__, jcol0__, wf_out__[iv], j0__, n__);
         }
         if (sddk_pp) {
-            time += runtime::wtime();
+            time += omp_get_wtime();
             int k = wf_in__[0]->pw_coeffs().num_rows_loc();
             if (wf_in__[0]->has_mt()) {
                 k += wf_in__[0]->mt_coeffs().num_rows_loc();
@@ -745,7 +735,7 @@ inline void transform(double alpha__,
 
     if (sddk_pp) {
         comm.barrier();
-        time += runtime::wtime();
+        time += omp_get_wtime();
         int k = wf_in__[0]->pw_coeffs().num_rows_loc();
         if (wf_in__[0]->has_mt()) {
             k += wf_in__[0]->mt_coeffs().num_rows_loc();
@@ -822,11 +812,10 @@ inline void inner(wave_functions& bra__,
                   int irow0__,
                   int jcol0__)
 {
-    PROFILE_WITH_TIMER("sirius::wave_functions::inner");
+    PROFILE("sirius::wave_functions::inner");
 
     static_assert(std::is_same<T, double>::value || std::is_same<T, double_complex>::value, "wrong type");
     
-    assert(&bra__.params() == &ket__.params());
     assert(&bra__.comm() == &ket__.comm());
     assert(bra__.pw_coeffs().num_rows_loc() == ket__.pw_coeffs().num_rows_loc());
     if (bra__.has_mt()) {
@@ -834,7 +823,7 @@ inline void inner(wave_functions& bra__,
     }
 
     auto& comm = bra__.comm();
-    auto pu = bra__.params().processing_unit();
+    auto pu = bra__.pu();
     
     const char* sddk_pp_raw = std::getenv("SDDK_PRINT_PERFORMANCE");
     int sddk_pp = (sddk_pp_raw == NULL) ? 0 : std::atoi(sddk_pp_raw);
@@ -853,7 +842,7 @@ inline void inner(wave_functions& bra__,
     if (sddk_pp) {
         comm.barrier();
     }
-    double time = -runtime::wtime();
+    double time = -omp_get_wtime();
 
     auto local_inner = [pu, &comm](wave_functions& bra__,
                                    int i0__,
@@ -917,7 +906,7 @@ inline void inner(wave_functions& bra__,
 
                 }
                 if (bra__.has_mt() && bra__.mt_coeffs().num_rows_loc()) {
-                    TERMINATE_NOT_IMPLEMENTED;
+                    TERMINATE("not implemented");
                 }
             }
             
@@ -937,7 +926,7 @@ inline void inner(wave_functions& bra__,
                                     reinterpret_cast<double*>(buf__), ld__); 
                 }
                 if (bra__.has_mt() && bra__.mt_coeffs().num_rows_loc()) {
-                    TERMINATE_NOT_IMPLEMENTED;
+                    TERMINATE("not implemented");
                 }
             }
             #endif
@@ -955,7 +944,7 @@ inline void inner(wave_functions& bra__,
         }
         #endif
         if (sddk_pp) {
-            time += runtime::wtime();
+            time += omp_get_wtime();
             int k = bra__.pw_coeffs().num_rows_loc();
             if (bra__.has_mt()) {
                 k += bra__.mt_coeffs().num_rows_loc();
@@ -1134,7 +1123,7 @@ inline void inner(wave_functions& bra__,
 
     if (sddk_pp) {
         comm.barrier();
-        time += runtime::wtime();
+        time += omp_get_wtime();
         int k = bra__.pw_coeffs().num_rows_loc();
         if (bra__.has_mt()) {
             k += bra__.mt_coeffs().num_rows_loc();
@@ -1155,14 +1144,9 @@ inline void orthogonalize(int N__,
                           dmatrix<T>& o__,
                           wave_functions& tmp__)
 {
-    PROFILE_WITH_TIMER("sirius::wave_functions::orthogonalize");
+    PROFILE("sirius::wave_functions::orthogonalize");
 
-    for (size_t i = 0; i < wfs__.size(); i++) {
-        assert(&wfs__[0]->params() == &wfs__[i]->params());
-        assert(&tmp__.params() == &wfs__[i]->params());
-    }
-
-    auto pu = wfs__[0]->params().processing_unit();
+    auto pu = wfs__[0]->pu();
         
     /* project out the old subspace:
      * |\tilda phi_new> = |phi_new> - |phi_old><phi_old|phi_new> */
@@ -1288,7 +1272,7 @@ inline void orthogonalize(int N__,
         }
         #endif
     } else { /* parallel transformation */
-        runtime::Timer t1("sirius::wave_functions::orthogonalize|potrf");
+        sddk::timer t1("sirius::wave_functions::orthogonalize|potrf");
         if (int info = linalg<CPU>::potrf(n__, o__)) {
             std::stringstream s;
             s << "error in factorization, info = " << info;
@@ -1296,7 +1280,7 @@ inline void orthogonalize(int N__,
         }
         t1.stop();
 
-        runtime::Timer t2("sirius::wave_functions::orthogonalize|trtri");
+        sddk::timer t2("sirius::wave_functions::orthogonalize|trtri");
         if (linalg<CPU>::trtri(n__, o__)) {
             TERMINATE("error in inversion");
         }
@@ -1356,6 +1340,6 @@ inline void orthogonalize(int N__,
     orthogonalize(N__, n__, wfs, 0, 0, o__, tmp__);
 }
 
-}
+} // namespace sddk
 
 #endif

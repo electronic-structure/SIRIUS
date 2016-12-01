@@ -465,14 +465,16 @@ void Potential::load()
     
     effective_potential_->hdf5_read(fout["effective_potential"]);
 
-    for (int j = 0; j < ctx_.num_mag_dims(); j++)
+    for (int j = 0; j < ctx_.num_mag_dims(); j++) {
         effective_magnetic_field_[j]->hdf5_read(fout["effective_magnetic_field"][j]);
+    }
     
     //== for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++)
     //==     fout["effective_potential"]["free_atom_potential"].read(iat, unit_cell_.atom_type(iat)->free_atom_potential());
 
-    if (ctx_.full_potential()) update_atomic_potential();
+    if (ctx_.full_potential()) {
+        update_atomic_potential();
+    }
 }
-
 
 }

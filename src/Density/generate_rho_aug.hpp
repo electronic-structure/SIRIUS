@@ -2,7 +2,7 @@ template <device_t pu>
 inline void Density::generate_rho_aug(std::vector<Periodic_function<double>*> rho__,
                                       mdarray<double_complex, 2>& rho_aug__)
 {
-    PROFILE_WITH_TIMER("sirius::Density::generate_rho_aug");
+    PROFILE("sirius::Density::generate_rho_aug");
 
     if (pu == CPU) {
         rho_aug__.zero();
@@ -49,7 +49,7 @@ inline void Density::generate_rho_aug(std::vector<Periodic_function<double>*> rh
         }
 
         if (pu == CPU) {
-            runtime::Timer t2("sirius::Density::generate_rho_aug|phase_fac");
+            sddk::timer t2("sirius::Density::generate_rho_aug|phase_fac");
             /* treat phase factors as real array with x2 size */
             mdarray<double, 2> phase_factors(atom_type.num_atoms(), ctx_.gvec_count() * 2);
 
@@ -69,7 +69,7 @@ inline void Density::generate_rho_aug(std::vector<Periodic_function<double>*> rh
             mdarray<double, 2> dm_pw(nbf * (nbf + 1) / 2, ctx_.gvec_count() * 2);
 
             for (int iv = 0; iv < ctx_.num_mag_dims() + 1; iv++) {
-                runtime::Timer t3("sirius::Density::generate_rho_aug|gemm");
+                sddk::timer t3("sirius::Density::generate_rho_aug|gemm");
                 linalg<CPU>::gemm(0, 0, nbf * (nbf + 1) / 2, 2 * ctx_.gvec_count(), atom_type.num_atoms(), 
                                   &dm(0, 0, iv), dm.ld(),
                                   &phase_factors(0, 0), phase_factors.ld(), 
@@ -84,7 +84,7 @@ inline void Density::generate_rho_aug(std::vector<Periodic_function<double>*> rh
                 }
                 #endif
 
-                runtime::Timer t4("sirius::Density::generate_rho_aug|sum");
+                sddk::timer t4("sirius::Density::generate_rho_aug|sum");
                 #pragma omp parallel for
                 for (int igloc = 0; igloc < ctx_.gvec_count(); igloc++) {
                     double_complex zsum(0, 0);

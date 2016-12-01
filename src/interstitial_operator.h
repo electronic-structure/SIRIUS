@@ -82,7 +82,7 @@ class Interstitial_operator
                    wave_functions& hphi__,
                    wave_functions& ophi__)
         {
-            PROFILE_WITH_TIMER("sirius::Interstitial_operator::apply");
+            PROFILE("sirius::Interstitial_operator::apply");
 
             fft_.prepare(gkvec_par__);
 
@@ -196,7 +196,7 @@ class Interstitial_operator
                      wave_functions& phi__,
                      wave_functions& ophi__) const
         {
-            PROFILE_WITH_TIMER("sirius::Interstitial_operator::apply_o");
+            PROFILE("sirius::Interstitial_operator::apply_o");
 
             fft_.prepare(gkvec_par__);
 

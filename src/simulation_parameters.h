@@ -25,7 +25,6 @@
 #ifndef __SIMULATION_PARAMETERS_H__
 #define __SIMULATION_PARAMETERS_H__
 
-#include "mdarray.hpp"
 #include "typedefs.h"
 #include "utils.h"
 #include "sirius_internal.h"
@@ -112,7 +111,7 @@ class Simulation_parameters
         /// Import data from initial input parameters.
         void import(std::string const& fname__)
         {
-            PROFILE();
+            PROFILE("sirius::Simulation_parameters::import");
 
             json dict;
             std::ifstream(fname__) >> dict;

@@ -328,7 +328,7 @@ class Density
         /// Generate charge density of core states
         void generate_core_charge_density()
         {
-            PROFILE_WITH_TIMER("sirius::Density::generate_core_charge_density");
+            PROFILE("sirius::Density::generate_core_charge_density");
 
             for (int icloc = 0; icloc < unit_cell_.spl_num_atom_symmetry_classes().local_size(); icloc++) {
                 int ic = unit_cell_.spl_num_atom_symmetry_classes(icloc);
@@ -343,7 +343,7 @@ class Density
 
         void generate_pseudo_core_charge_density()
         {
-            PROFILE_WITH_TIMER("sirius::Density::generate_pseudo_core_charge_density");
+            PROFILE("sirius::Density::generate_pseudo_core_charge_density");
 
             auto rho_core_radial_integrals = generate_rho_radial_integrals(2);
 
@@ -618,7 +618,7 @@ class Density
          */
         void augment(K_set& ks__) // TODO: skip when norm-conserving potential is used for all species
         {
-            PROFILE_WITH_TIMER("sirius::Density::augment");
+            PROFILE("sirius::Density::augment");
 
             /* collect density and magnetization into single array */
             std::vector<Periodic_function<double>*> rho_vec(ctx_.num_mag_dims() + 1);
@@ -661,7 +661,7 @@ class Density
                 }
             }
 
-            runtime::Timer t5("sirius::Density::augment|mpi");
+            sddk::timer t5("sirius::Density::augment|mpi");
             for (auto e: rho_vec) {
                 ctx_.comm().allgather(&e->f_pw(0), ctx_.gvec_offset(), ctx_.gvec_count());
 

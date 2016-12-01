@@ -34,7 +34,7 @@ void Potential::xc_mt_nonmagnetic(Radial_grid const& rgrid,
                                   Spheric_function<spatial, double>& vxc_tp, 
                                   Spheric_function<spatial, double>& exc_tp)
 {
-    runtime::Timer t("sirius::Potential::xc_mt_nonmagnetic");
+    PROFILE("sirius::Potential::xc_mt_nonmagnetic");
 
     bool is_gga = false;
     for (auto& ixc: xc_func) if (ixc->is_gga()) is_gga = true;
@@ -163,7 +163,7 @@ void Potential::xc_mt_magnetic(Radial_grid const& rgrid,
                                Spheric_function<spatial, double>& vxc_dn_tp, 
                                Spheric_function<spatial, double>& exc_tp)
 {
-    runtime::Timer t("sirius::Potential::xc_mt_magnetic");
+    PROFILE("sirius::Potential::xc_mt_magnetic");
 
     bool is_gga = false;
     for (auto& ixc: xc_func) if (ixc->is_gga()) is_gga = true;
@@ -346,7 +346,7 @@ void Potential::xc_mt(Periodic_function<double>* rho,
                       Periodic_function<double>* bxc[3], 
                       Periodic_function<double>* exc)
 {
-    runtime::Timer t2("sirius::Potential::xc_mt");
+    PROFILE("sirius::Potential::xc_mt");
 
     for (int ialoc = 0; ialoc < (int)unit_cell_.spl_num_atoms().local_size(); ialoc++)
     {
@@ -495,7 +495,7 @@ void Potential::xc_it_nonmagnetic(Periodic_function<double>* rho__,
                                   Periodic_function<double>* vxc__, 
                                   Periodic_function<double>* exc__)
 {
-    PROFILE_WITH_TIMER("sirius::Potential::xc_it_nonmagnetic");
+    PROFILE("sirius::Potential::xc_it_nonmagnetic");
 
     bool is_gga = false;
     for (auto& ixc: xc_func__) {
@@ -668,7 +668,7 @@ void Potential::xc_it_magnetic(Periodic_function<double>* rho,
                                Periodic_function<double>* bxc[3], 
                                Periodic_function<double>* exc)
 {
-    runtime::Timer t("sirius::Potential::xc_it_magnetic");
+    PROFILE("sirius::Potential::xc_it_magnetic");
 
     bool is_gga = false;
     for (auto& ixc: xc_func) {
@@ -902,7 +902,7 @@ void Potential::xc(Periodic_function<double>* rho,
                    Periodic_function<double>* bxc[3], 
                    Periodic_function<double>* exc)
 {
-    PROFILE_WITH_TIMER("sirius::Potential::xc");
+    PROFILE("sirius::Potential::xc");
 
     if (ctx_.xc_functionals().size() == 0)
     {

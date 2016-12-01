@@ -9,5 +9,7 @@
 #include "dmatrix.hpp"
 #include "matrix_storage.hpp"
 #include "gvec.hpp"
+#include "fft3d.hpp"
+#include "wave_functions.hpp"
 
 #endif

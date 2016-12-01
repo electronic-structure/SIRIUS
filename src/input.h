@@ -25,8 +25,7 @@
 #ifndef __INPUT_H__
 #define __INPUT_H__
 
-#include "vector3d.h"
-#include "matrix3d.h"
+#include "matrix3d.hpp"
 #include "runtime.h"
 #include "constants.h"
 #include "utils.h"

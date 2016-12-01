@@ -20,7 +20,7 @@ void Potential::poisson_sum_G(int lmmax__,
                               mdarray<double, 3>& fl__,
                               matrix<double_complex>& flm__)
 {
-    PROFILE_WITH_TIMER("sirius::Potential::poisson_sum_G");
+    PROFILE("sirius::Potential::poisson_sum_G");
     
     int ngv_loc = ctx_.gvec().gvec_count(comm_.rank());
 
@@ -137,7 +137,7 @@ void Potential::poisson_add_pseudo_pw(mdarray<double_complex, 2>& qmt,
                                       mdarray<double_complex, 2>& qit,
                                       double_complex* rho_pw)
 {
-    PROFILE_WITH_TIMER("sirius::Potential::poisson_add_pseudo_pw");
+    PROFILE("sirius::Potential::poisson_add_pseudo_pw");
     
     /* The following term is added to the plane-wave coefficients of the charge density:
      * Integrate[SphericalBesselJ[l,a*x]*p[x,R]*x^2,{x,0,R},Assumptions->{l>=0,n>=0,R>0,a>0}] / 
@@ -261,7 +261,7 @@ void Potential::poisson_vmt(Periodic_function<double>* rho__,
                             Periodic_function<double>* vh__,
                             mdarray<double_complex, 2>& qmt__)
 {
-    PROFILE_WITH_TIMER("sirius::Potential::poisson_vmt");
+    PROFILE("sirius::Potential::poisson_vmt");
 
     qmt__.zero();
     
@@ -321,7 +321,7 @@ void Potential::poisson_vmt(Periodic_function<double>* rho__,
 
 void Potential::poisson(Periodic_function<double>* rho, Periodic_function<double>* vh)
 {
-    PROFILE_WITH_TIMER("sirius::Potential::poisson");
+    PROFILE("sirius::Potential::poisson");
 
     /* in case of full potential we need to do pseudo-charge multipoles */
     if (ctx_.full_potential()) {
@@ -407,7 +407,7 @@ void Potential::poisson(Periodic_function<double>* rho, Periodic_function<double
         poisson_sum_G(ctx_.lmmax_pot(), &vh->f_pw(0), sbessel_mt_, vmtlm);
         
         /* add boundary condition and convert to Rlm */
-        runtime::Timer t1("sirius::Potential::poisson|bc");
+        sddk::timer t1("sirius::Potential::poisson|bc");
         mdarray<double, 2> rRl(unit_cell_.max_num_mt_points(), ctx_.lmax_pot() + 1);
         int type_id_prev = -1;
 

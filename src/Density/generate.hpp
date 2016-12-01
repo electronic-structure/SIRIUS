@@ -1,6 +1,6 @@
 inline void Density::generate_valence(K_set& ks__)
 {
-    PROFILE_WITH_TIMER("sirius::Density::generate_valence");
+    PROFILE("sirius::Density::generate_valence");
 
     double wt{0};
     double occ_val{0};
@@ -126,7 +126,7 @@ inline void Density::generate_valence(K_set& ks__)
 
 inline void Density::generate(K_set& ks__)
 {
-    PROFILE_WITH_TIMER("sirius::Density::generate");
+    PROFILE("sirius::Density::generate");
 
     generate_valence(ks__);
 

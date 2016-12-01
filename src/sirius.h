@@ -31,7 +31,6 @@ using json = nlohmann::json;
 #include "input.h"
 #include "cmd_args.h"
 #include "constants.h"
-#include "linalg.h"
 #include "radial_grid.h"
 #include "spline.h"
 #include "radial_solver.h"

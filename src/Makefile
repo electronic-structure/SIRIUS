@@ -13,7 +13,7 @@ SRC =  LebedevLaikov.cpp \
        Potential/generate_local_potential.cpp \
        Potential/generate_effective_potential.cpp \
        Potential/paw_potential.cpp\
-			 Geometry/Forces_PS.cpp
+       Geometry/Forces_PS.cpp
 
 
 OBJ = $(SRC:.cpp=.o)

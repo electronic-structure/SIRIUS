@@ -38,7 +38,7 @@ Band::residuals_aux(K_point* kp__,
                     mdarray<double, 1>& h_diag__,
                     mdarray<double, 1>& o_diag__) const
 {
-    PROFILE_WITH_TIMER("sirius::Band::residuals_aux");
+    PROFILE("sirius::Band::residuals_aux");
 
     assert(kp__->num_gkvec_loc() == res__.pw_coeffs().num_rows_loc());
     assert(kp__->num_gkvec_loc() == hpsi__.pw_coeffs().num_rows_loc());
@@ -190,7 +190,7 @@ inline int Band::residuals(K_point* kp__,
                            mdarray<double, 1>& h_diag__,
                            mdarray<double, 1>& o_diag__) const
 {
-    PROFILE_WITH_TIMER("sirius::Band::residuals");
+    PROFILE("sirius::Band::residuals");
 
     assert(N__ != 0);
 

@@ -26,7 +26,7 @@
 #define __EIGENPROBLEM_H__
 
 #include "constants.h"
-#include "linalg.h"
+#include "linalg.hpp"
 
 /// Type of the solver to use for the standard or generalized eigen-value problem
 enum ev_solver_t 
@@ -186,8 +186,6 @@ class Eigenproblem_lapack: public Eigenproblem
                   double_complex* Z, int32_t ldz,
                   int32_t num_rows_loc = 0, int32_t num_cols_loc = 0) const
         {
-            PROFILE_WITH_TIMER("Eigenproblem_lapack|AZ=eBZ");
-
             assert(nevec <= matrix_size);
 
             int nb = linalg_base::ilaenv(1, "ZHETRD", "U", matrix_size, 0, 0, 0);
@@ -240,8 +238,6 @@ class Eigenproblem_lapack: public Eigenproblem
                   double* Z, int32_t ldz,
                   int32_t num_rows_loc = 0, int32_t num_cols_loc = 0) const
         {
-            PROFILE_WITH_TIMER("Eigenproblem_lapack|AD=eBD");
-
             assert(nevec <= matrix_size);
 
             int nb = linalg_base::ilaenv(1, "DSYTRD", "U", matrix_size, 0, 0, 0);
@@ -286,8 +282,6 @@ class Eigenproblem_lapack: public Eigenproblem
 
         int solve(int32_t matrix_size, double_complex* A, int32_t lda, double* eval, double_complex* Z, int32_t ldz) const
         {
-            PROFILE_WITH_TIMER("Eigenproblem_lapack|AZ=eZ");
-
             std::vector<int32_t> work_sizes = get_work_sizes(matrix_size);
             
             std::vector<double_complex> work(work_sizes[0]);
@@ -312,8 +306,6 @@ class Eigenproblem_lapack: public Eigenproblem
 
         int solve(int32_t matrix_size, double* A, int32_t lda, double* eval, double* Z, int32_t ldz) const
         {
-            PROFILE_WITH_TIMER("Eigenproblem_lapack|AD=eD");
-
             std::vector<int32_t> work_sizes = get_work_sizes(matrix_size);
 
             int32_t lwork = 1 + 6 * matrix_size + 2 * matrix_size * matrix_size;
@@ -348,8 +340,6 @@ class Eigenproblem_lapack: public Eigenproblem
                   int32_t num_rows_loc = 0,
                   int32_t num_cols_loc = 0) const
         {
-            PROFILE_WITH_TIMER("Eigenproblem_lapack|AD=eD");
-
             int32_t lwork = -1;
             double lwork1, vl, vu;
             int32_t il, iu, m, info;
@@ -401,8 +391,6 @@ class Eigenproblem_lapack: public Eigenproblem
                   int32_t         num_rows_loc = 0,
                   int32_t         num_cols_loc = 0) const
         {
-            PROFILE_WITH_TIMER("Eigenproblem_lapack|AZ=eZ");
-
             int32_t lwork = -1;
             double vl, vu;
             int32_t il, iu, m, info;
@@ -709,8 +697,6 @@ class Eigenproblem_scalapack: public Eigenproblem
                   double_complex* Z,
                   int32_t         ldz) const
         {
-            PROFILE_WITH_TIMER("Eigenproblem_scalapack|AZ=eZ");
-
             int desca[9];
             linalg_base::descinit(desca, matrix_size, matrix_size, bs_row_, bs_col_, 0, 0, blacs_context_, lda);
             
@@ -761,8 +747,6 @@ class Eigenproblem_scalapack: public Eigenproblem
                   double_complex* Z, int32_t ldz,
                   int32_t num_rows_loc = 0, int32_t num_cols_loc = 0) const
         {
-            PROFILE_WITH_TIMER("Eigenproblem_scalapack|AZ=eBZ");
-
             assert(nevec <= matrix_size);
             
             int32_t desca[9];
@@ -858,8 +842,6 @@ class Eigenproblem_scalapack: public Eigenproblem
                   double* Z, int32_t ldz,
                   int32_t num_rows_loc = 0, int32_t num_cols_loc = 0) const
         {
-            PROFILE_WITH_TIMER("Eigenproblem_scalapack|AD=eBD");
-
             assert(nevec <= matrix_size);
             
             int32_t desca[9];
@@ -950,8 +932,6 @@ class Eigenproblem_scalapack: public Eigenproblem
                   int32_t num_rows_loc = 0,
                   int32_t num_cols_loc = 0) const
         {
-            PROFILE_WITH_TIMER("Eigenproblem_scalapack|AD=eD");
-
             assert(nevec <= matrix_size);
             
             int32_t desca[9];
@@ -1039,8 +1019,6 @@ class Eigenproblem_scalapack: public Eigenproblem
                   int32_t         num_rows_loc = 0,
                   int32_t         num_cols_loc = 0) const
         {
-            PROFILE_WITH_TIMER("Eigenproblem_scalapack|AZ=eZ");
-
             assert(nevec <= matrix_size);
             
             int32_t desca[9];
@@ -1295,7 +1273,7 @@ class Eigenproblem_elpa: public Eigenproblem
                                    matrix<double_complex>& tmp1__,
                                    matrix<double_complex>& tmp2__) const
         {
-            TIMER("Eigenproblem_elpa:transform_to_standard");
+            PROFILE("Eigenproblem_elpa:transform_to_standard");
             
             /* compute Cholesky decomposition of B: B=L*L^H; overwrite B with L */
             FORTRAN(elpa_cholesky_complex_wrapper)(&matrix_size__, B__, &ldb__, &block_size_, &num_cols_loc__, &mpi_comm_rows_, &mpi_comm_cols_);
@@ -1337,7 +1315,7 @@ class Eigenproblem_elpa: public Eigenproblem
                                    matrix<double>& tmp1__,
                                    matrix<double>& tmp2__) const
         {
-            TIMER("Eigenproblem_elpa:transform_to_standard");
+            PROFILE("Eigenproblem_elpa:transform_to_standard");
             
             /* compute Cholesky decomposition of B: B=L*L^H; overwrite B with L */
             FORTRAN(elpa_cholesky_real_wrapper)(&matrix_size__, B__, &ldb__, &block_size_, &num_cols_loc__, &mpi_comm_rows_, &mpi_comm_cols_);
@@ -1378,7 +1356,7 @@ class Eigenproblem_elpa: public Eigenproblem
                             matrix<double_complex>& tmp1__,
                             matrix<double_complex>& tmp2__) const
         {
-            TIMER("Eigenproblem_elpa:transform_back");
+            PROFILE("Eigenproblem_elpa:transform_back");
 
             int32_t descb[9];
             linalg_base::descinit(descb, matrix_size__, matrix_size__, block_size_, block_size_, 0, 0, blacs_context_, ldb__);
@@ -1398,7 +1376,7 @@ class Eigenproblem_elpa: public Eigenproblem
                             matrix<double>& tmp1__,
                             matrix<double>& tmp2__) const
         {
-            TIMER("Eigenproblem_elpa:transform_back");
+            PROFILE("Eigenproblem_elpa:transform_back");
 
             int32_t descb[9];
             linalg_base::descinit(descb, matrix_size__, matrix_size__, block_size_, block_size_, 0, 0, blacs_context_, ldb__);
@@ -1438,7 +1416,7 @@ class Eigenproblem_elpa1: public Eigenproblem_elpa
             transform_to_standard(matrix_size, A, lda, B, ldb, num_rows_loc, num_cols_loc, tmp1, tmp2);
 
             std::vector<double> w(matrix_size);
-            runtime::Timer t("Eigenproblem_elpa1|diag");
+            sddk::timer t("Eigenproblem_elpa1|diag");
             FORTRAN(elpa_solve_evp_complex)(&matrix_size, &nevec, A, &lda, &w[0], tmp1.at<CPU>(), &num_rows_loc, 
                                             &block_size_, &num_cols_loc, &mpi_comm_rows_, &mpi_comm_cols_);
             t.stop();
@@ -1464,7 +1442,7 @@ class Eigenproblem_elpa1: public Eigenproblem_elpa
             transform_to_standard(matrix_size, A, lda, B, ldb, num_rows_loc, num_cols_loc, tmp1, tmp2);
 
             std::vector<double> w(matrix_size);
-            runtime::Timer t("Eigenproblem_elpa1|diag");
+            sddk::timer t("Eigenproblem_elpa1|diag");
             FORTRAN(elpa_solve_evp_real)(&matrix_size, &nevec, A, &lda, &w[0], tmp1.at<CPU>(), &num_rows_loc, 
                                          &block_size_, &num_cols_loc, &mpi_comm_rows_, &mpi_comm_cols_);
             t.stop();
@@ -1484,7 +1462,7 @@ class Eigenproblem_elpa1: public Eigenproblem_elpa
             assert(nevec <= matrix_size);
 
             std::vector<double> w(matrix_size);
-            runtime::Timer t("Eigenproblem_elpa1|diag");
+            sddk::timer t("Eigenproblem_elpa1|diag");
             FORTRAN(elpa_solve_evp_real)(&matrix_size, &nevec, A, &lda, &w[0], Z, &ldz, 
                                          &block_size_, &num_cols_loc, &mpi_comm_rows_, &mpi_comm_cols_);
             t.stop();
@@ -1502,7 +1480,7 @@ class Eigenproblem_elpa1: public Eigenproblem_elpa
             assert(nevec <= matrix_size);
 
             std::vector<double> w(matrix_size);
-            runtime::Timer t("Eigenproblem_elpa1|diag");
+            sddk::timer t("Eigenproblem_elpa1|diag");
             FORTRAN(elpa_solve_evp_complex)(&matrix_size, &nevec, A, &lda, &w[0], Z, &ldz, 
                                             &block_size_, &num_cols_loc, &mpi_comm_rows_, &mpi_comm_cols_);
             t.stop();
@@ -1548,7 +1526,7 @@ class Eigenproblem_elpa2: public Eigenproblem_elpa
             transform_to_standard(matrix_size, A, lda, B, ldb, num_rows_loc, num_cols_loc, tmp1, tmp2);
 
             std::vector<double> w(matrix_size);
-            runtime::Timer t("Eigenproblem_elpa2|diag");
+            sddk::timer t("Eigenproblem_elpa2|diag");
             FORTRAN(elpa_solve_evp_complex_2stage)(&matrix_size, &nevec, A, &lda, &w[0], tmp1.at<CPU>(), &num_rows_loc, 
                                                    &block_size_, &num_cols_loc, &mpi_comm_rows_, &mpi_comm_cols_, &mpi_comm_all_);
             t.stop();
@@ -1574,7 +1552,7 @@ class Eigenproblem_elpa2: public Eigenproblem_elpa
             transform_to_standard(matrix_size, A, lda, B, ldb, num_rows_loc, num_cols_loc, tmp1, tmp2);
 
             std::vector<double> w(matrix_size);
-            runtime::Timer t("Eigenproblem_elpa2|diag");
+            sddk::timer t("Eigenproblem_elpa2|diag");
             FORTRAN(elpa_solve_evp_real_2stage)(&matrix_size, &nevec, A, &lda, &w[0], tmp1.at<CPU>(), &num_rows_loc, 
                                                 &block_size_, &num_cols_loc, &mpi_comm_rows_, &mpi_comm_cols_, &mpi_comm_all_);
             t.stop();
@@ -1594,7 +1572,7 @@ class Eigenproblem_elpa2: public Eigenproblem_elpa
             assert(nevec <= matrix_size);
 
             std::vector<double> w(matrix_size);
-            runtime::Timer t("Eigenproblem_elpa2|diag");
+            sddk::timer t("Eigenproblem_elpa2|diag");
             FORTRAN(elpa_solve_evp_real_2stage)(&matrix_size, &nevec, A, &lda, &w[0], Z, &ldz, 
                                                 &block_size_, &num_cols_loc, &mpi_comm_rows_, &mpi_comm_cols_, &mpi_comm_all_);
             t.stop();

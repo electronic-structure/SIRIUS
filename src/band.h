@@ -219,7 +219,7 @@ class Band
                                       dmatrix<T>& mtrx__,
                                       dmatrix<T>& mtrx_old__) const
         {
-            PROFILE_WITH_TIMER("sirius::Band::set_subspace_mtrx");
+            PROFILE("sirius::Band::set_subspace_mtrx");
             
             assert(n__ != 0);
             if (mtrx_old__.size()) {
@@ -314,7 +314,7 @@ class Band
                                    Periodic_function<double>* effective_potential__,
                                    Periodic_function<double>* effective_magnetic_field__[3]) const
         {
-            PROFILE_WITH_TIMER("sirius::Band::diag_pseudo_potential");
+            PROFILE("sirius::Band::diag_pseudo_potential");
 
             Hloc_operator hloc(ctx_.fft_coarse(), kp__->gkvec_vloc(), ctx_.mpi_grid_fft_vloc().communicator(1 << 1),
                                ctx_.num_mag_dims(), ctx_.gvec_coarse(), effective_potential__, effective_magnetic_field__);
@@ -374,7 +374,7 @@ class Band
               unit_cell_(ctx__.unit_cell()),
               blacs_grid_(ctx__.blacs_grid())
         {
-            PROFILE();
+            PROFILE("sirius::Band::Band");
 
             gaunt_coefs_ = std::unique_ptr<Gaunt_coefficients<double_complex>>(
                 new Gaunt_coefficients<double_complex>(ctx_.lmax_apw(), 

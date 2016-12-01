@@ -26,7 +26,6 @@
 #define __DESCRIPTORS_H__
 
 #include "mdarray.hpp"
-#include "vector3d.h"
 #include "utils.h"
 
 /// Describes single atomic level.
@@ -151,7 +150,7 @@ struct nearest_neighbour_descriptor
     int atom_id;
 
     /// translation along each lattice vector
-    vector3d<int> translation;
+    std::array<int, 3> translation;
 
     /// distance from the central atom
     double distance;
@@ -240,23 +239,6 @@ struct mt_basis_descriptor
 {
     int ia;
     int xi;
-};
-
-struct z_column_descriptor
-{
-    int x;
-    int y;
-
-    /// Z-coordinates of the column.
-    std::vector<int> z;
-
-    z_column_descriptor()
-    {
-    }
-
-    z_column_descriptor(int x__, int y__, std::vector<int> z__) : x(x__), y(y__), z(z__)
-    {
-    }
 };
 
 #endif

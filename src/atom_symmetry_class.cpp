@@ -396,7 +396,7 @@ void Atom_symmetry_class::set_spherical_potential(std::vector<double> const& vs_
 
 void Atom_symmetry_class::find_enu(relativity_t rel__)
 {
-    runtime::Timer t("sirius::Atom_symmetry_class::find_enu");
+    PROFILE("sirius::Atom_symmetry_class::find_enu");
 
     std::vector<radial_solution_descriptor*> rs_with_auto_enu;
     
@@ -432,7 +432,7 @@ void Atom_symmetry_class::find_enu(relativity_t rel__)
 
 void Atom_symmetry_class::generate_radial_functions(relativity_t rel__)
 {
-    runtime::Timer t("sirius::Atom_symmetry_class::generate_radial_functions");
+    PROFILE("sirius::Atom_symmetry_class::generate_radial_functions");
 
     radial_functions_.zero();
 
@@ -494,7 +494,7 @@ void Atom_symmetry_class::sync_core_charge_density(Communicator const& comm__, i
 
 void Atom_symmetry_class::generate_radial_integrals(relativity_t rel__)
 {
-    runtime::Timer t("sirius::Atom_symmetry_class::generate_radial_integrals");
+    PROFILE("sirius::Atom_symmetry_class::generate_radial_integrals");
 
     int nmtp = atom_type_.num_mt_points();
 
@@ -623,7 +623,7 @@ void Atom_symmetry_class::write_enu(runtime::pstdout& pout) const
 
 void Atom_symmetry_class::generate_core_charge_density(relativity_t core_rel__)
 {
-    runtime::Timer t("sirius::Atom_symmetry_class::generate_core_charge_density");
+    PROFILE("sirius::Atom_symmetry_class::generate_core_charge_density");
 
     /* nothing to do */
     if (atom_type_.num_core_electrons() == 0.0) {

@@ -26,7 +26,7 @@
 #define __STEP_FUNCTION_H__
 
 #include "unit_cell.h"
-#include "fft3d.h"
+#include "fft3d.hpp"
 
 namespace sirius {
 
@@ -84,7 +84,7 @@ class Step_function
                       Gvec const& gvec__,
                       Communicator const& comm__)
         {
-            PROFILE();
+            PROFILE("sirius::Step_function::Step_function");
 
             if (unit_cell__.num_atoms() == 0) {
                 return;

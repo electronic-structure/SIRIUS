@@ -17,17 +17,17 @@
 // CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR 
 // OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-/** \file linalg.h
+/** \file linalg.hpp
  *
  *  \brief Linear algebra interface.
  */
 
-#ifndef __LINALG_H__
-#define __LINALG_H__
+#ifndef __LINALG_HPP__
+#define __LINALG_HPP__
 
 #include <stdint.h>
-#include "typedefs.h"
-#include "sddk.hpp"
+
+namespace sddk {
 
 /// Linear algebra interface class.
 template <device_t pu>
@@ -970,5 +970,7 @@ inline void linalg<GPU>::axpy<ftn_double_complex>(ftn_int n__,
 }
 #endif // __GPU
 
-#endif // __LINALG_H__
+} // namespace sddk
+
+#endif // __LINALG_HPP__
 

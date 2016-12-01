@@ -17,21 +17,20 @@
 // CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR 
 // OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-/** \file fft3d.h
+/** \file fft3d.hpp
  *   
  *  \brief Contains declaration and partial implementation of FFT3D class.
  */
 
-#ifndef __FFT3D_H__
-#define __FFT3D_H__
+#ifndef __FFT3D_HPP__
+#define __FFT3D_HPP__
 
 #include <fftw3.h>
-#include "typedefs.h"
-#include "sddk.hpp"
-#include "vector3d.h"
-#include "descriptors.h"
+#include "vector3d.hpp"
 #include "fft3d_grid.hpp"
-#include "gvec.h"
+#include "gvec.hpp"
+
+namespace sddk {
 
 #ifdef __GPU
 extern "C" void unpack_z_cols_gpu(cuDoubleComplex* z_cols_packed__,
@@ -92,8 +91,6 @@ extern "C" void cufft_batch_unload_gpu(int fft_size,
 #endif
 
 //#define __CUFFT3D
-
-namespace sirius {
 
 /// Implementation of FFT3D.
 /** FFT convention:
@@ -235,7 +232,7 @@ class FFT3D
                                 double_complex* data__,
                                 mdarray<double_complex, 1>& fft_buffer_aux__)
         {
-            TIMER("sirius::FFT3D::transform_z_serial");
+            PROFILE("sirius::FFT3D::transform_z_serial");
 
             double norm = 1.0 / size();
             #pragma omp parallel
@@ -301,14 +298,14 @@ class FFT3D
                                   double_complex* data__,
                                   mdarray<double_complex, 1>& fft_buffer_aux__)
         {
-            TIMER("sirius::FFT3D::transform_z_parallel");
+            PROFILE("sirius::FFT3D::transform_z_parallel");
 
             int rank = comm_.rank();
             int num_zcol_local = gvec__.zcol_distr_fft().counts[rank];
             double norm = 1.0 / size();
 
             if (direction == -1) {
-                runtime::Timer t("sirius::FFT3D::transform_z_parallel|comm");
+                sddk::timer t("sirius::FFT3D::transform_z_parallel|comm");
 
                 block_data_descriptor send(comm_.size());
                 block_data_descriptor recv(comm_.size());
@@ -398,7 +395,7 @@ class FFT3D
 
             /* scatter z-columns between slabs of FFT buffer */
             if (direction == 1) {
-                runtime::Timer t("sirius::FFT3D::transform_z_parallel|comm");
+                sddk::timer t("sirius::FFT3D::transform_z_parallel|comm");
 
                 block_data_descriptor send(comm_.size());
                 block_data_descriptor recv(comm_.size());
@@ -423,7 +420,7 @@ class FFT3D
         void transform_xy(Gvec_partition const& gvec__,
                           mdarray<double_complex, 1>& fft_buffer_aux__)
         {
-            TIMER("sirius::FFT3D::transform_xy");
+            PROFILE("sirius::FFT3D::transform_xy");
 
             int size_xy = grid_.size(0) * grid_.size(1);
             int first_z{0};
@@ -534,7 +531,7 @@ class FFT3D
                           mdarray<double_complex, 1>& fft_buffer_aux1__, 
                           mdarray<double_complex, 1>& fft_buffer_aux2__)
         {
-            TIMER("sirius::FFT3D::transform_xy");
+            PROFILE("sirius::FFT3D::transform_xy");
 
             if (!gvec__.reduced()) {
                 TERMINATE("reduced set of G-vectors is required");
@@ -671,7 +668,7 @@ class FFT3D
               pu_(pu__),
               grid_(grid__)
         {
-            PROFILE();
+            PROFILE("sirius::FFT3D::FFT3D");
 
             /* split z-direction */
             spl_z_ = splindex<block>(grid_.size(2), comm_.size(), comm_.rank());
@@ -895,7 +892,7 @@ class FFT3D
         /// Prepare FFT driver to transfrom functions with gvec_fft_distr.
         void prepare(Gvec_partition const& gvec__)
         {
-            PROFILE_WITH_TIMER("sirius::FFT3D::prepare");
+            PROFILE("sirius::FFT3D::prepare");
 
             int nc = gvec__.reduced() ? 2 : 1;
 
@@ -997,7 +994,7 @@ class FFT3D
         template <int direction>
         void transform(Gvec_partition const& gvec__, double_complex* data__)
         {
-            TIMER("sirius::FFT3D::transform");
+            PROFILE("sirius::FFT3D::transform");
 
             if (!prepared_) {
                 TERMINATE("FFT3D is not ready");
@@ -1025,7 +1022,7 @@ class FFT3D
             #ifdef __GPU
             if (comm_.size() == 1 && gpu_only_impl_ && cuda_check_device_ptr(data__)) {
                 if (gvec__.reduced()) {
-                    TERMINATE_NOT_IMPLEMENTED
+                    TERMINATE("not implemented");
                 } else {
                     transform_3d_serial_gpu<direction, false>(gvec__, data__);
                 }
@@ -1082,7 +1079,7 @@ class FFT3D
         template <int direction>
         void transform(Gvec_partition const& gvec__, double_complex* data1__, double_complex* data2__)
         {
-            TIMER("sirius::FFT3D::transform");
+            PROFILE("sirius::FFT3D::transform");
 
             if (!prepared_) {
                 TERMINATE("FFT3D is not ready");
@@ -1168,7 +1165,7 @@ class FFT3D
         #endif
 };
 
-}
+} // namespace sddk
 
 #endif // __FFT3D_H__
 

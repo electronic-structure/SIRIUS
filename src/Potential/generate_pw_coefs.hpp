@@ -1,6 +1,6 @@
 inline void Potential::generate_pw_coefs()
 {
-    PROFILE_WITH_TIMER("sirius::Potential::generate_pw_coefs");
+    PROFILE("sirius::Potential::generate_pw_coefs");
 
     ctx_.fft().prepare(ctx_.gvec().partition());
 

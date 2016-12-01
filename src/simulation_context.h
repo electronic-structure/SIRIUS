@@ -122,7 +122,7 @@ class Simulation_context: public Simulation_parameters
             : comm_(comm__),
               unit_cell_(*this, comm_)
         {
-            PROFILE();
+            PROFILE("sirius::Simulation_context::Simulation_context");
             init();
             import(fname__);
             unit_cell_.import(unit_cell_input_section_);
@@ -132,19 +132,19 @@ class Simulation_context: public Simulation_parameters
             : comm_(comm__),
               unit_cell_(*this, comm_)
         {
-            PROFILE();
+            PROFILE("sirius::Simulation_context::Simulation_context");
             init();
         }
         
         ~Simulation_context()
         {
-            PROFILE();
+            PROFILE("sirius::Simulation_context::~Simulation_context");
 
-            time_active_ += runtime::wtime();
+            //time_active_ += runtime::wtime();
 
-            if (mpi_comm_world().rank() == 0 && initialized_) {
-                printf("Simulation_context active time: %.4f sec.\n", time_active_);
-            }
+            //if (mpi_comm_world().rank() == 0 && initialized_) {
+            //    printf("Simulation_context active time: %.4f sec.\n", time_active_);
+            //}
         }
 
         /// Initialize the similation (can only be called once).
@@ -370,7 +370,7 @@ inline void Simulation_context::init_fft()
 
 inline void Simulation_context::initialize()
 {
-    PROFILE();
+    PROFILE("sirius::Simulation_context::initialize");
 
     /* can't initialize twice */
     if (initialized_) {
@@ -610,7 +610,7 @@ inline void Simulation_context::initialize()
         #endif
     }
     
-    time_active_ = -runtime::wtime();
+    //time_active_ = -runtime::wtime();
 
     initialized_ = true;
 }

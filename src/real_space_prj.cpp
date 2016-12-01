@@ -15,7 +15,7 @@ Real_space_prj::Real_space_prj(Unit_cell& unit_cell__,
       R_mask_scale_(R_mask_scale__),
       mask_alpha_(mask_alpha__)
 {
-    runtime::Timer t("sirius::Real_space_prj::Real_space_prj");
+    PROFILE("sirius::Real_space_prj::Real_space_prj");
 
     pw_cutoff__ *= mask_alpha__;
 
@@ -326,7 +326,7 @@ Real_space_prj::Real_space_prj(Unit_cell& unit_cell__,
 
 mdarray<double, 3> Real_space_prj::generate_beta_radial_integrals(mdarray<Spline<double>, 2>& beta_rf__, int m__)
 {
-    runtime::Timer t("sirius::Real_space_prj::generate_beta_radial_integrals");
+    PROFILE("sirius::Real_space_prj::generate_beta_radial_integrals");
 
     mdarray<double, 3> beta_radial_integrals(unit_cell_.max_mt_radial_basis_size(),
                                              unit_cell_.num_atom_types(),
@@ -383,7 +383,7 @@ mdarray<double, 3> Real_space_prj::generate_beta_radial_integrals(mdarray<Spline
 
 mdarray<double_complex, 2> Real_space_prj::generate_beta_pw_t(mdarray<double, 3>& beta_radial_integrals__)
 {
-    runtime::Timer t("sirius::Real_space_prj::generate_beta_pw_t");
+    PROFILE("sirius::Real_space_prj::generate_beta_pw_t");
     STOP();
 
     mdarray<double_complex, 2> beta_pw_t;//(spl_num_gvec_.local_size(), unit_cell_.num_beta_t());

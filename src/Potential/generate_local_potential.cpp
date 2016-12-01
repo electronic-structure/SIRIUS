@@ -4,7 +4,7 @@ namespace sirius {
 
 void Potential::generate_local_potential()
 {
-    PROFILE_WITH_TIMER("sirius::Potential::generate_local_potential");
+    PROFILE("sirius::Potential::generate_local_potential");
 
     vloc_radial_integrals_ = mdarray<double, 2>(unit_cell_.num_atom_types(), ctx_.gvec().num_shells());
 

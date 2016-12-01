@@ -109,7 +109,7 @@ Band::get_h_diag(K_point* kp__,
                  double v0__,
                  D_operator<T>& d_op__) const
 {
-    PROFILE_WITH_TIMER("sirius::Band::get_h_diag");
+    PROFILE("sirius::Band::get_h_diag");
 
     mdarray<double, 1> h_diag(kp__->num_gkvec_loc());
 
@@ -172,7 +172,7 @@ inline mdarray<double, 1>
 Band::get_o_diag(K_point* kp__,
                  Q_operator<T>& q_op__) const
 {
-    PROFILE_WITH_TIMER("sirius::Band::get_o_diag");
+    PROFILE("sirius::Band::get_o_diag");
 
     mdarray<double, 1> o_diag(kp__->num_gkvec_loc());
     for (int ig = 0; ig < kp__->num_gkvec_loc(); ig++) {

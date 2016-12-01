@@ -6,12 +6,12 @@ inline void Band::initialize_subspace(K_point* kp__,
                                       int lmax__,
                                       std::vector< std::vector< Spline<double> > >& rad_int__) const
 {
-    PROFILE_WITH_TIMER("sirius::Band::initialize_subspace");
+    PROFILE("sirius::Band::initialize_subspace");
 
     /* number of basis functions */
     int num_phi = std::max(num_ao__, ctx_.num_fv_states());
 
-    wave_functions phi(ctx_, kp__->comm(), kp__->gkvec(), num_phi);
+    wave_functions phi(ctx_.processing_unit(), kp__->comm(), kp__->gkvec(), num_phi);
 
     #pragma omp parallel
     {
@@ -127,9 +127,9 @@ inline void Band::initialize_subspace(K_point* kp__,
     Q_operator<T> q_op(ctx_, kp__->beta_projectors());
 
     /* allocate wave-functions */
-    wave_functions hphi(ctx_, kp__->comm(), kp__->gkvec(), num_phi);
-    wave_functions ophi(ctx_, kp__->comm(), kp__->gkvec(), num_phi);
-    wave_functions wf_tmp(ctx_, kp__->comm(), kp__->gkvec(), num_phi);
+    wave_functions hphi(ctx_.processing_unit(), kp__->comm(), kp__->gkvec(), num_phi);
+    wave_functions ophi(ctx_.processing_unit(), kp__->comm(), kp__->gkvec(), num_phi);
+    wave_functions wf_tmp(ctx_.processing_unit(), kp__->comm(), kp__->gkvec(), num_phi);
 
     //#ifdef __GPU
     //if (gen_evp_solver_->type() == ev_magma)
