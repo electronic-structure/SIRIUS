@@ -112,8 +112,7 @@ class matrix_storage<T, matrix_storage_t::slab>
         }
     }
 
-    inline void remap_forward(block_data_descriptor const& row_distr__, Communicator const& comm_col__, int n__,
-                              int idx0__ = 0)
+    inline void remap_forward(block_data_descriptor const& row_distr__, Communicator const& comm_col__, int n__, int idx0__ = 0)
     {
         PROFILE("sddk::matrix_storage::remap_forward");
 
