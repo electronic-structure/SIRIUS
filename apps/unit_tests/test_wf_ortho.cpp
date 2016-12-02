@@ -15,12 +15,10 @@ void test_wf_ortho(std::vector<int> mpi_grid_dims__,
     matrix3d<double> M = {{1, 0, 0}, {0, 1, 0}, {0, 0, 1}};
     
     /* create FFT box */
-    FFT3D_grid fft_box(2.01 * cutoff__, M);
+    FFT3D_grid fft_box(Utils::find_translations(2.01 * cutoff__, M));
     /* create G-vectors */
     Gvec gvec(vector3d<double>(0, 0, 0), M, cutoff__, fft_box, mpi_comm_world().size(), mpi_comm_world(), false);
     /* parameters to pass to wave-functions */
-    Simulation_parameters params;
-    params.set_processing_unit(pu);
 
     //if (mpi_comm_world().rank() == 0) {
     //    printf("total number of G-vectors: %i\n", gvec.num_gvec());
@@ -33,9 +31,9 @@ void test_wf_ortho(std::vector<int> mpi_grid_dims__,
         return 20;
     };
 
-    wave_functions phi(params, mpi_comm_world(), gvec, num_atoms, nmt, 2 * num_bands__);
-    wave_functions hphi(params, mpi_comm_world(), gvec, num_atoms, nmt, 2 * num_bands__);
-    wave_functions tmp(params, mpi_comm_world(), gvec, num_atoms, nmt, 2 * num_bands__);
+    wave_functions phi(pu, mpi_comm_world(), gvec, num_atoms, nmt, 2 * num_bands__);
+    wave_functions hphi(pu, mpi_comm_world(), gvec, num_atoms, nmt, 2 * num_bands__);
+    wave_functions tmp(pu, mpi_comm_world(), gvec, num_atoms, nmt, 2 * num_bands__);
     
     phi.pw_coeffs().prime() = [](int64_t i0, int64_t i1){return type_wrapper<double_complex>::random();};
     phi.mt_coeffs().prime() = [](int64_t i0, int64_t i1){return type_wrapper<double_complex>::random();};
