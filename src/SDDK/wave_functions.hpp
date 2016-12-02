@@ -626,6 +626,8 @@ inline void transform(double alpha__,
 
     block_data_descriptor sd(comm.size());
 
+    double time_mpi{0};
+
     for (int ibc = 0; ibc < nbc; ibc++) {
         /* global index of column */
         int j0 = ibc * BS;
@@ -667,8 +669,10 @@ inline void transform(double alpha__,
                                 local_size_row * sizeof(T));
                 }
             }
+            double t0 = omp_get_wtime();
             /* collect submatrix */
             comm.allgather(&buf[0], sd.counts.data(), sd.offsets.data());
+            time_mpi += (omp_get_wtime() - t0);
             
             /* unpack data */
             std::vector<int> counts(comm.size(), 0);
@@ -715,8 +719,8 @@ inline void transform(double alpha__,
         }
         comm.allreduce(&k, 1);
         if (comm.rank() == 0) {
-            printf("transform() performance: %12.6f GFlops/rank, [m,n,k=%i %i %i, nvec=%i, time=%f (sec)]\n",
-                   ngop * m__ * n__ * k * nwf / time / comm.size(), k, n__, m__, nwf,  time);
+            printf("transform() performance: %12.6f GFlops/rank, [m,n,k=%i %i %i, nvec=%i, time=%f (sec), time_mpi=%f (sec)]\n",
+                   ngop * m__ * n__ * k * nwf / time / comm.size(), k, n__, m__, nwf,  time, time_mpi);
         }
     }
 }
