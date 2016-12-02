@@ -144,7 +144,6 @@ class Band
                                                    Hloc_operator& h_op__,
                                                    D_operator<T>& d_op__,
                                                    Q_operator<T>& q_op__) const;
-
         /// RMM-DIIS diagonalization.
         template <typename T>
         inline void diag_pseudo_potential_rmm_diis(K_point* kp__,
@@ -211,7 +210,7 @@ class Band
         /// Setup the subspace matrix.
         /** Compute \f$ O_{ii'} = \langle \phi_i | \hat O | \phi_{i'} \rangle \f$ operator matrix
          *  for the subspace spanned by the wave-functions \f$ \phi_i \f$. The matrix is always returned
-         *  in the CPU pointer because the eigen-value solvers start from the CPU. */
+         *  in the CPU pointer because most of the standard math libraries start from the CPU. */
         template <typename T>
         inline void set_subspace_mtrx(int N__,
                                       int n__,
@@ -294,33 +293,6 @@ class Band
             }
         }
                 
-        //== template <typename T>
-        //== inline void diag_subspace_mtrx(int N__,
-        //==                                int num_bands__,
-        //==                                dmatrix<T>& mtrx__,
-        //==                                dmatrix<T>& evec__,
-        //==                                std::vector<double>& eval__) const
-        //== {
-        //==     PROFILE_WITH_TIMER("sirius::Band::diag_subspace_mtrx");
-
-        //==     int result = std_evp_solver().solve(N__,  num_bands__, mtrx__.template at<CPU>(), mtrx__.ld(),
-        //==                                         &eval__[0], evec__.template at<CPU>(), evec__.ld(),
-        //==                                         mtrx__.num_rows_local(), mtrx__.num_cols_local());
-        //==     if (result) {
-        //==         std::stringstream s;
-        //==         s << "error in diagonalziation";
-        //==         TERMINATE(s);
-        //==     }
-
-        //==     /* copy eigen-vectors to GPU */
-        //==     #ifdef __GPU
-        //==     if (ctx_.processing_unit() == GPU) {
-        //==         //acc::copyin(evec__.at<GPU>(), evec__.ld(), evec__.at<CPU>(), evec__.ld(), N__, num_bands__);
-        //==         evec__.copy_to_device(); // TODO: copy only necessary elements
-        //==     }
-        //==     #endif
-        //== }
-
         /// Diagonalize a full-potential Hamiltonian.
         void diag_fv_full_potential(K_point* kp__,
                                     Periodic_function<double>* effective_potential__) const
@@ -497,6 +469,10 @@ class Band
 
             if (std_evp_solver_->parallel() != gen_evp_solver_->parallel()) {
                 TERMINATE("both eigen-value solvers must be serial or parallel");
+            }
+
+            if (!std_evp_solver_->parallel() && blacs_grid_.comm().size() > 1) {
+                TERMINATE("eigen-value solvers must be parallel");
             }
         }
 

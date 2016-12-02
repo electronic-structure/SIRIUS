@@ -1,6 +1,6 @@
 #!/bin/bash
 
-tests='test1 test2'
+tests='test1 test2 test3 test4'
 
 for test in $tests; do
   echo "running '${test}'"

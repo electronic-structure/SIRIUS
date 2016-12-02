@@ -328,6 +328,8 @@ class Gvec
               reduce_gvec_(reduce_gvec__),
               num_ranks_(num_ranks__)
         {
+            PROFILE_WITH_TIMER("sirius::Gvec");
+
             find_z_columns(Gmax__, fft_box__);
 
             distribute_z_columns();
