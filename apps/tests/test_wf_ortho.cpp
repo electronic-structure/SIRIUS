@@ -118,6 +118,9 @@ int main(int argn, char** argv)
     auto bs = args.value<int>("bs", 16);
 
     sirius::initialize(1);
+    if (mpi_comm_world().rank() == 0) {
+        printf("Running on %i x %i MPI grid\n", mpi_grid_dims[0], mpi_grid_dims[1]);
+    }
     for (int i = 0; i < repeat; i++) {
         test_wf_ortho(mpi_grid_dims, cutoff, num_bands, use_gpu, bs);
     }
