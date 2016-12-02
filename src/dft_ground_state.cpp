@@ -138,17 +138,12 @@ mdarray<double,2 > DFT_ground_state::forces()
 {
     PROFILE_WITH_TIMER("sirius::Forces_PS::calc_local_forces");
 
-    //STOP();
-    mdarray<double,2 > loc_forces = forces_->calc_local_forces();
-    mdarray<double,2 > nlcc_forces = forces_->calc_nlcc_forces();
-    mdarray<double,2 > us_forces = forces_->calc_ultrasoft_forces();
-    mdarray<double,2 > nl_forces = forces_->calc_nonlocal_forces(kset_);
-    mdarray<double,2 > ewald_forces = forces_->calc_ewald_forces();
+    mdarray<double,2 > forces = forces_->calc_forces();
 
 
     if(ctx_.comm().rank() == 0)
     {
-        auto print_forces=[&](mdarray<double, 2> &forces)
+        auto print_forces=[&](mdarray<double, 2> const& forces)
         {
             for(int ia=0; ia < unit_cell_.num_atoms(); ia++)
             {
@@ -157,23 +152,26 @@ mdarray<double,2 > DFT_ground_state::forces()
             }
         };
 
+        std::cout<<"===== Total Forces =====" << std::endl;
+        print_forces( forces );
+
         std::cout<<"===== Forces: ultrasoft contribution from Qij =====" << std::endl;
-        print_forces(us_forces);
+        print_forces( forces_->ultrasoft_forces() );
 
         std::cout<<"===== Forces: non-local contribution from Beta-projectors =====" << std::endl;
-        print_forces(nl_forces);
+        print_forces( forces_->nonlocal_forces() );
 
         std::cout<<"===== Forces: local contribution from local potential=====" << std::endl;
-        print_forces(loc_forces);
+        print_forces( forces_->local_forces() );
 
         std::cout<<"===== Forces: nlcc contribution from core density=====" << std::endl;
-        print_forces(nlcc_forces);
+        print_forces( forces_->nlcc_forces() );
 
         std::cout<<"===== Forces: Ewald forces from ions =====" << std::endl;
-        print_forces(ewald_forces);
+        print_forces( forces_->ewald_forces() );
     }
 
-    return std::move(loc_forces);
+    return std::move(forces);
 }
 
 int DFT_ground_state::find(double potential_tol, double energy_tol, int num_dft_iter, bool write_state)

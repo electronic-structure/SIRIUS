@@ -26,11 +26,19 @@ private:
     Simulation_context &ctx_;
     Density &density_;
     Potential &potential_;
+    K_set& kset_;
+
+    mdarray<double,2> local_forces_;
+    mdarray<double,2> ultrasoft_forces_;
+    mdarray<double,2> nonlocal_forces_;
+    mdarray<double,2> nlcc_forces_;
+    mdarray<double,2> ewald_forces_;
+//    mdarray<double,2> total_forces_;
 
     //---------------------------------------------------------------
     //---------------------------------------------------------------
     template<typename T>
-    void add_k_point_contribution_to_nonlocal(K_point& kpoint, mdarray<double,2>& forces) const
+    void add_k_point_contribution_to_nonlocal(K_point& kpoint, mdarray<double,2>& forces)
     {
         Unit_cell &unit_cell = ctx_.unit_cell();
 
@@ -110,24 +118,59 @@ private:
         }
     }
 
-    mdarray<double, 2> symmetrize_forces(mdarray<double,2>& forces) const;
+    void symmetrize_forces(mdarray<double,2>& unsym_forces, mdarray<double,2>& sym_forces );
 
 public:
-    Forces_PS(Simulation_context &ctx, Density& density, Potential& potential)
-    : ctx_(ctx), density_(density), potential_(potential)
-    {}
+    Forces_PS(Simulation_context &ctx, Density& density, Potential& potential, K_set& kset)
+    : ctx_(ctx), density_(density), potential_(potential), kset_(kset)
+    {
+        local_forces_       = mdarray<double,2>(3, ctx_.unit_cell().num_atoms());
+        ultrasoft_forces_   = mdarray<double,2>(3, ctx_.unit_cell().num_atoms());
+        nonlocal_forces_    = mdarray<double,2>(3, ctx_.unit_cell().num_atoms());
+        nlcc_forces_        = mdarray<double,2>(3, ctx_.unit_cell().num_atoms());
+        ewald_forces_       = mdarray<double,2>(3, ctx_.unit_cell().num_atoms());
+//        total_forces_       = mdarray<double,2>(3, ctx_.unit_cell().num_atoms());
+    }
 
-    mdarray<double,2> calc_local_forces() const;
+    void calc_local_forces(mdarray<double,2>& forces);
 
-    mdarray<double,2> calc_ultrasoft_forces() const;
+    void calc_ultrasoft_forces(mdarray<double,2>& forces);
 
-    mdarray<double,2> calc_nonlocal_forces(K_set& kset) const;
+    void calc_nonlocal_forces(mdarray<double,2>& forces);
 
-    mdarray<double,2> calc_nlcc_forces() const;
+    void calc_nlcc_forces(mdarray<double,2>& forces);
 
-    mdarray<double,2> calc_ewald_forces() const;
+    void calc_ewald_forces(mdarray<double,2>& forces);
 
-    //vector<vector3d> calc_local_forces(mdarray<double, 2> &rho_radial_integrals, mdarray<double, 2> &vloc_radial_integrals);
+    mdarray<double,2> calc_forces();
+
+    mdarray<double,2> const& local_forces()
+    {
+        return local_forces_;
+    }
+
+    mdarray<double,2> const& ultrasoft_forces()
+    {
+        return ultrasoft_forces_;
+    }
+
+    mdarray<double,2> const& nonlocal_forces()
+    {
+        return nonlocal_forces_;
+    }
+
+    mdarray<double,2> const& nlcc_forces()
+    {
+        return nlcc_forces_;
+    }
+
+    mdarray<double,2> const& ewald_forces()
+    {
+        return ewald_forces_;
+    }
+
+    mdarray<double,2> get_summed_forces();
+
 };
 
 }

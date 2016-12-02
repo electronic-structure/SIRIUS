@@ -16,7 +16,7 @@ namespace sirius
 
 //---------------------------------------------------------------
 //---------------------------------------------------------------
-mdarray<double,2> Forces_PS::calc_local_forces() const
+void Forces_PS::calc_local_forces(mdarray<double,2>& forces)
 {
     PROFILE_WITH_TIMER("sirius::Forces_PS::calc_local_forces");
 
@@ -35,7 +35,10 @@ mdarray<double,2> Forces_PS::calc_local_forces() const
 
     //mdarray<double_complex, 2> vloc_G_comp(unit_cell.num_atoms(), spl_ngv.local_size() );
 
-    mdarray<double,2> forces(3, unit_cell.num_atoms());
+    if ( forces.size(0) != 3 || forces.size(1) != unit_cell.num_atoms() )
+    {
+        TERMINATE("forces array has wrong number of elements");
+    }
 
     forces.zero();
 
@@ -75,15 +78,13 @@ mdarray<double,2> Forces_PS::calc_local_forces() const
     }
 
     ctx_.comm().allreduce(&forces(0,0),forces.size());
-
-    return std::move(forces);
 }
 
 
 
 //---------------------------------------------------------------
 //---------------------------------------------------------------
-mdarray<double,2> Forces_PS::calc_nlcc_forces() const
+void Forces_PS::calc_nlcc_forces(mdarray<double,2>& forces)
 {
     PROFILE_WITH_TIMER("sirius::Forces_PS::calc_nlcc_force");
 
@@ -109,8 +110,6 @@ mdarray<double,2> Forces_PS::calc_nlcc_forces() const
 
     int gvec_count = gvecs.gvec_count(ctx_.comm().rank());
     int gvec_offset = gvecs.gvec_offset(ctx_.comm().rank());
-
-    mdarray<double,2> forces(3, unit_cell.num_atoms());
 
     forces.zero();
 
@@ -151,13 +150,12 @@ mdarray<double,2> Forces_PS::calc_nlcc_forces() const
 
     ctx_.comm().allreduce(&forces(0,0),forces.size());
 
-    return std::move(forces);
 }
 
 
 //---------------------------------------------------------------
 //---------------------------------------------------------------
-mdarray<double,2> Forces_PS::calc_ultrasoft_forces() const
+void Forces_PS::calc_ultrasoft_forces(mdarray<double,2>& forces)
 {
     PROFILE_WITH_TIMER("sirius::Forces_PS::calc_ultrasoft_forces");
 
@@ -173,8 +171,6 @@ mdarray<double,2> Forces_PS::calc_ultrasoft_forces() const
 
     int gvec_count = gvecs.gvec_count(ctx_.comm().rank());
     int gvec_offset = gvecs.gvec_offset(ctx_.comm().rank());
-
-    mdarray<double,2> forces(3, unit_cell.num_atoms());
 
     forces.zero();
 
@@ -229,37 +225,35 @@ mdarray<double,2> Forces_PS::calc_ultrasoft_forces() const
     }
 
     ctx_.comm().allreduce(&forces(0,0),forces.size());
-
-    return std::move(forces);
 }
 
 
 
 //---------------------------------------------------------------
 //---------------------------------------------------------------
-mdarray<double,2> Forces_PS::calc_nonlocal_forces(K_set& kset) const
+void Forces_PS::calc_nonlocal_forces(mdarray<double,2>& forces)
 {
     PROFILE_WITH_TIMER("sirius::Forces_PS::calc_nonlocal_forces");
 
     Unit_cell &unit_cell = ctx_.unit_cell();
 
-    mdarray<double,2> forces(3, unit_cell.num_atoms());
+    mdarray<double, 2> unsym_forces(forces.size(0), forces.size(1));
 
+    unsym_forces.zero();
     forces.zero();
 
-    auto& spl_num_kp = kset.spl_num_kpoints();
+    auto& spl_num_kp = kset_.spl_num_kpoints();
 
     for(int ikploc=0; ikploc < spl_num_kp.local_size() ; ikploc++)
     {
-        K_point *kp = kset.k_point(spl_num_kp[ikploc]);
+        K_point *kp = kset_.k_point(spl_num_kp[ikploc]);
 
-        add_k_point_contribution_to_nonlocal<double_complex>(*kp, forces);
+        add_k_point_contribution_to_nonlocal<double_complex>(*kp, unsym_forces);
     }
 
     ctx_.comm().allreduce(&forces(0,0),forces.size());
 
-    //return std::move(forces);
-    return std::move( symmetrize_forces(forces) );
+    symmetrize_forces(unsym_forces, forces);
 }
 
 
@@ -286,13 +280,11 @@ void add_mdarray2d(mdarray<T,2> &in, mdarray<T,2> &out)
 
 //---------------------------------------------------------------
 //---------------------------------------------------------------
-mdarray<double,2> Forces_PS::calc_ewald_forces() const
+void Forces_PS::calc_ewald_forces(mdarray<double,2>& forces)
 {
     PROFILE_WITH_TIMER("sirius::Forces_PS::calc_ewald_forces");
 
     Unit_cell &unit_cell = ctx_.unit_cell();
-
-    mdarray<double,2> forces(3, unit_cell.num_atoms());
 
     forces.zero();
 
@@ -370,26 +362,20 @@ mdarray<double,2> Forces_PS::calc_ewald_forces() const
             }
         }
     }
-
-    return std::move(forces);
 }
 
 
 //---------------------------------------------------------------
 //---------------------------------------------------------------
-mdarray<double, 2> Forces_PS::symmetrize_forces(mdarray<double,2>& forces) const
+void Forces_PS::symmetrize_forces(mdarray<double,2>& unsym_forces, mdarray<double,2>& sym_forces )
 {
-    mdarray<double, 2> symm_lat_forces(forces.size(0), forces.size(1));
-
-    symm_lat_forces.zero();
-
     matrix3d<double> const& lattice_vectors = ctx_.unit_cell().symmetry().lattice_vectors();
     matrix3d<double> const& inverse_lattice_vectors = ctx_.unit_cell().symmetry().inverse_lattice_vectors();
 
     #pragma omp parallel for
-    for(int ia = 0; ia < (int)forces.size(1); ia++)
+    for(int ia = 0; ia < (int)unsym_forces.size(1); ia++)
     {
-        vector3d<double> cart_force(&forces(0,ia));
+        vector3d<double> cart_force(&unsym_forces(0,ia));
 
         vector3d<double> lat_force = inverse_lattice_vectors * (cart_force / (double)ctx_.unit_cell().symmetry().num_mag_sym());
 
@@ -402,17 +388,48 @@ mdarray<double, 2> Forces_PS::symmetrize_forces(mdarray<double,2>& forces) const
             vector3d<double> rot_force = lattice_vectors * ( R * lat_force );
 
             #pragma omp atomic update
-            symm_lat_forces(0, ja) += rot_force[0];
+            sym_forces(0, ja) += rot_force[0];
 
             #pragma omp atomic update
-            symm_lat_forces(1, ja) += rot_force[1];
+            sym_forces(1, ja) += rot_force[1];
 
             #pragma omp atomic update
-            symm_lat_forces(2, ja) += rot_force[2];
+            sym_forces(2, ja) += rot_force[2];
         }
     }
-
-    return std::move(symm_lat_forces);
 }
+
+
+//---------------------------------------------------------------
+//---------------------------------------------------------------
+mdarray<double,2> Forces_PS::calc_forces()
+{
+    calc_local_forces(local_forces_);
+    calc_ultrasoft_forces(ultrasoft_forces_);
+    calc_nonlocal_forces(nonlocal_forces_);
+    calc_nlcc_forces(nlcc_forces_);
+    calc_ewald_forces(ewald_forces_);
+
+    return std::move(get_summed_forces());
+}
+
+
+//---------------------------------------------------------------
+//---------------------------------------------------------------
+mdarray<double,2> Forces_PS::get_summed_forces()
+{
+    mdarray<double,2> total_forces(3, ctx_.unit_cell().num_atoms());
+
+    total_forces.zero();
+
+    #pragma omp parallel for
+    for(int i = 0; i < total_forces.size(); i++ )
+    {
+        total_forces[i] = local_forces_[i] + ultrasoft_forces_[i] + nonlocal_forces_[i] + nlcc_forces_[i] + ewald_forces_[i];
+    }
+
+    return std::move(total_forces);
+}
+
 
 }
