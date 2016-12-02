@@ -955,23 +955,26 @@ inline void inner(wave_functions& bra__,
 
         #pragma omp parallel num_threads(2) shared(buf_state)
         {
-            /* this thread will call cudaZgemm */
-            if (omp_get_thread_num() == 1) {
+            if (omp_get_thread_num() == 0) {
+                omp_set_num_threads(nt - 1);
+            }
 
-                int s{0};
-                for (int ibc = 0; ibc < nbc; ibc++) {
-                    int j0 = ibc * BS;
-                    int ncol = std::min(n__, (ibc + 1) * BS) - j0;
+            int s{0};
+            for (int ibc = 0; ibc < nbc; ibc++) {
+                int j0 = ibc * BS;
+                int ncol = std::min(n__, (ibc + 1) * BS) - j0;
 
-                    for (int ibr = 0; ibr < nbr; ibr++) {
-                        int i0 = ibr * BS;
-                        int nrow = std::min(m__, (ibr + 1) * BS) - i0;
+                for (int ibr = 0; ibr < nbr; ibr++) {
+                    int i0 = ibr * BS;
+                    int nrow = std::min(m__, (ibr + 1) * BS) - i0;
 
-                        int st{1};
+                    /* this thread will call cudaZgemm */
+                    if (omp_get_thread_num() == 1) {
+                        int state{1};
                         /* wait for the release of the buffer */
-                        while (st) {
+                        while (state) {
                             #pragma omp atomic read
-                            st = buf_state[s % 2];
+                            state = buf_state[s % 2];
                         }
 
                         T* buf = (pu == CPU) ? c_tmp.template at<CPU>(0, s % 2) : c_tmp.template at<GPU>(0, s % 2);
@@ -986,26 +989,12 @@ inline void inner(wave_functions& bra__,
                         #pragma omp atomic write
                         /* lock the buffer */
                         buf_state[s % 2] = 1;
-                        
-                        s++;
-                    }
-                }
-            } else { /* this thread will do allreduce and store */
-                omp_set_num_threads(nt - 1);
-                int s{0};
-                for (int ibc = 0; ibc < nbc; ibc++) {
-                    int j0 = ibc * BS;
-                    int ncol = std::min(n__, (ibc + 1) * BS) - j0;
-
-                    for (int ibr = 0; ibr < nbr; ibr++) {
-                        int i0 = ibr * BS;
-                        int nrow = std::min(m__, (ibr + 1) * BS) - i0;
-
-                        int st{0};
+                    } else { /* this thread will do allreduce and store */
+                        int state{0};
                         /* wait for the lock of the buffer */
-                        while (!st) {
+                        while (!state) {
                             #pragma omp atomic read
-                            st = buf_state[s % 2];
+                            state = buf_state[s % 2];
                         }
                         /* wait for the cuda stream */
                         #ifdef __GPU
@@ -1028,13 +1017,11 @@ inline void inner(wave_functions& bra__,
                         #pragma omp atomic write
                         /* release the buffer */
                         buf_state[s % 2] = 0;
-
-                        s++;
                     }
+                    s++;
                 }
             }
         }
-
         omp_set_nested(0);
         omp_set_num_threads(nt);
         #endif
