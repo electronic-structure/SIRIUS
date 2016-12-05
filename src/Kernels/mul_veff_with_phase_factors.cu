@@ -3,13 +3,14 @@
 __global__ void mul_veff_with_phase_factors_gpu_kernel(int num_gvec_loc__,
                                                        cuDoubleComplex const* veff__, 
                                                        int const* gvec__, 
+                                                       int num_atoms__,
                                                        double const* atom_pos__, 
                                                        cuDoubleComplex* veff_a__)
 {
     int ia = blockIdx.y;
-    double ax = atom_pos__[array2D_offset(0, ia, 3)];
-    double ay = atom_pos__[array2D_offset(1, ia, 3)];
-    double az = atom_pos__[array2D_offset(2, ia, 3)];
+    double ax = atom_pos__[array2D_offset(ia, 0, num_atoms__)];
+    double ay = atom_pos__[array2D_offset(ia, 1, num_atoms__)];
+    double az = atom_pos__[array2D_offset(ia, 2, num_atoms__)];
 
     int igloc = blockDim.x * blockIdx.x + threadIdx.x;
     if (igloc < num_gvec_loc__)
@@ -42,6 +43,7 @@ extern "C" void mul_veff_with_phase_factors_gpu(int num_atoms__,
         num_gvec_loc__,
         veff__,
         gvec__,
+        num_atoms__,
         atom_pos__,
         (cuDoubleComplex*)veff_a__
     );

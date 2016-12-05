@@ -598,11 +598,12 @@ inline void Simulation_context::initialize()
         gvec_coord_.copy_to_device();
 
         for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
-            atom_coord_.push_back(std::move(mdarray<double, 2>(3, unit_cell_.atom_type(iat).num_atoms(), memory_t::host | memory_t::device)));
-            for (int i = 0; i < unit_cell_.atom_type(iat).num_atoms(); i++) {
+            int nat = unit_cell_.atom_type(iat).num_atoms();
+            atom_coord_.push_back(std::move(mdarray<double, 2>(nat, 3, memory_t::host | memory_t::device)));
+            for (int i = 0; i < nat; i++) {
                 int ia = unit_cell_.atom_type(iat).atom_id(i);
                 for (int x: {0, 1, 2}) {
-                    atom_coord_.back()(x, i) = unit_cell_.atom(ia).position()[x];
+                    atom_coord_.back()(i, x) = unit_cell_.atom(ia).position()[x];
                 }
             }
             atom_coord_.back().copy_to_device();

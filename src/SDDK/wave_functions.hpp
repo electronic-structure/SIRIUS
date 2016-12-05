@@ -661,7 +661,7 @@ inline void transform(double alpha__,
             sd.calc_offsets();
 
             assert(sd.offsets.back() + sd.counts.back() <= (int)buf.size());
-            /* fetch elements of sub-matrix matrix */
+            /* fetch elements of sub-matrix */
             if (local_size_row) {
                 for (int j = 0; j < local_size_col; j++) {
                     std::memcpy(&buf[sd.offsets[comm.rank()] + local_size_row * j],

@@ -15,25 +15,20 @@ SRC =  LebedevLaikov.cpp \
        Potential/paw_potential.cpp\
        Geometry/Forces_PS.cpp
 
-
 OBJ = $(SRC:.cpp=.o)
-
-
-
-
 
 ifneq (,$(findstring D__GPU,$(CXX_OPT)))
 	OBJ := $(OBJ) \
 	SDDK/GPU/cuda_interface.o \
 	SDDK/GPU/cufft_interface.o \
 	SDDK/GPU/cublas_interface.o \
+	SDDK/GPU/pack_unpack_z_columns.o \
 	Kernels/cuda_uspp_kernels.o \
 	Kernels/scale_matrix.o \
 	Kernels/spline.o \
 	Kernels/create_beta_gk.o \
 	Kernels/mul_veff_with_phase_factors.o \
 	Kernels/density_rg.o \
-	Kernels/pack_unpack_z_columns.o \
 	Kernels/residuals_aux.o \
 	Kernels/generate_dm_pw.o \
 	Kernels/sum_q_pw_dm_pw.o \

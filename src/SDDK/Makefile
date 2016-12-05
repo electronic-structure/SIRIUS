@@ -10,7 +10,8 @@ ifneq (,$(findstring D__GPU,$(CXX_OPT)))
 	OBJ := $(OBJ) \
 	GPU/cuda_interface.o \
 	GPU/cufft_interface.o \
-	GPU/cublas_interface.o
+	GPU/cublas_interface.o \
+	GPU/pack_unpack_z_columns.o
 endif
 
 ifneq (,$(findstring D__MAGMA,$(CXX_OPT)))
