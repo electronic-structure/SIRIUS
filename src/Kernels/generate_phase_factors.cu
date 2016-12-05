@@ -3,6 +3,7 @@
 __global__ void generate_phase_factors_gpu_kernel
 (
     int num_gvec_loc, 
+    int num_atoms,
     double const* atom_pos, 
     int const* gvec, 
     cuDoubleComplex* phase_factors
@@ -11,15 +12,14 @@ __global__ void generate_phase_factors_gpu_kernel
     int ia = blockIdx.y;
     int igloc = blockIdx.x * blockDim.x + threadIdx.x;
 
-    if (igloc < num_gvec_loc)
-    {
-        int gvx = gvec[array2D_offset(0, igloc, 3)];
-        int gvy = gvec[array2D_offset(1, igloc, 3)];
-        int gvz = gvec[array2D_offset(2, igloc, 3)];
+    if (igloc < num_gvec_loc) {
+        int gvx = gvec[array2D_offset(igloc, 0, num_gvec_loc)];
+        int gvy = gvec[array2D_offset(igloc, 1, num_gvec_loc)];
+        int gvz = gvec[array2D_offset(igloc, 2, num_gvec_loc)];
     
-        double ax = atom_pos[array2D_offset(0, ia, 3)];
-        double ay = atom_pos[array2D_offset(1, ia, 3)];
-        double az = atom_pos[array2D_offset(2, ia, 3)];
+        double ax = atom_pos[array2D_offset(ia, 0, num_atoms)];
+        double ay = atom_pos[array2D_offset(ia, 1, num_atoms)];
+        double az = atom_pos[array2D_offset(ia, 2, num_atoms)];
 
         double p = twopi * (ax * gvx + ay * gvy + az * gvz);
 
@@ -44,6 +44,7 @@ extern "C" void generate_phase_factors_gpu(int num_gvec_loc__,
     generate_phase_factors_gpu_kernel<<<grid_b, grid_t>>>
     (
         num_gvec_loc__, 
+        num_atoms__,
         atom_pos__, 
         gvec__, 
         phase_factors__
