@@ -211,6 +211,7 @@ class FFT3D
 
                     /* transform all columns */
                     cufft_forward_transform(cufft_plan_z_, fft_buffer_aux1_.at<GPU>());
+                    acc::zero(data__, gvec__.num_gvec());
                     /* get all columns from FFT buffer */
                     cufft_batch_unload_gpu(gvec__.num_zcol() * grid_.size(2), gvec__.num_gvec(), 1, 
                                            z_col_map_.at<GPU>(), fft_buffer_aux1_.at<GPU>(), data__, 0.0, 1.0 / size());
