@@ -32,6 +32,14 @@
 #include "version.h"
 #include "augmentation_operator.h"
 
+#ifdef __GPU
+extern "C" void generate_phase_factors_gpu(int num_gvec_loc__,
+                                           int num_atoms__,
+                                           int const* gvec__,
+                                           double const* atom_pos__,
+                                           cuDoubleComplex* phase_factors__);
+#endif
+
 namespace sirius {
 
 /// Simulation context is a set of parameters and objects describing a single simulation. 
@@ -320,12 +328,26 @@ class Simulation_context: public Simulation_parameters
         inline void generate_phase_factors(int iat__, mdarray<double_complex, 2>& phase_factors__) const
         {
             int na = unit_cell_.atom_type(iat__).num_atoms();
-            #pragma omp parallel for
-            for (int igloc = 0; igloc < gvec_count(); igloc++) {
-                int ig = gvec_offset() + igloc;
-                for (int i = 0; i < na; i++) {
-                    int ia = unit_cell_.atom_type(iat__).atom_id(i);
-                    phase_factors__(igloc, i) = gvec_phase_factor(ig, ia);
+            switch (processing_unit_) {
+                case CPU: {
+                    #pragma omp parallel for
+                    for (int igloc = 0; igloc < gvec_count(); igloc++) {
+                        int ig = gvec_offset() + igloc;
+                        for (int i = 0; i < na; i++) {
+                            int ia = unit_cell_.atom_type(iat__).atom_id(i);
+                            phase_factors__(igloc, i) = gvec_phase_factor(ig, ia);
+                        }
+                    }
+                    break;
+                }
+                case GPU: {
+                    #ifdef __GPU
+                    generate_phase_factors_gpu(gvec_count(), na, gvec_coord().at<GPU>(), atom_coord(iat__).at<GPU>(),
+                                               phase_factors__.at<GPU>());
+                    #else
+                    TERMINATE_NO_GPU
+                    #endif
+                    break;
                 }
             }
         }
