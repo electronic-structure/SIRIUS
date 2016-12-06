@@ -1263,14 +1263,6 @@ inline void orthogonalize(int N__,
             e->copy_from(tmp__, 0, n__, N__);
         }
     }
-
-    #ifdef __PRINT_OBJECT_CHECKSUM
-    for (auto& e: wfs__) {
-        auto cs = e->checksum(N__, n__);
-        DUMP("checksum(orthogonalize(wf)): %18.10f %18.10f", cs.real(), cs.imag());
-    }
-    #endif
-
 }
 
 template <typename T>
