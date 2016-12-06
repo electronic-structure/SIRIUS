@@ -2,14 +2,6 @@
 
 namespace sirius {
 
-#ifdef __GPU
-extern "C" void generate_phase_factors_gpu(int num_gvec_loc__,
-                                           int num_atoms__,
-                                           int const* gvec__,
-                                           double const* atom_pos__,
-                                           cuDoubleComplex* phase_factors__);
-#endif
-
 /** The following operation is performed:
  *  \f[
  *    q_{\ell m}^{\alpha} = \sum_{\bf G} 4\pi \rho({\bf G}) e^{i{\bf G}{\bf r}_{\alpha}}i^{\ell}f_{\ell}^{\alpha}(G) Y_{\ell m}^{*}(\hat{\bf G})
@@ -135,122 +127,6 @@ void Potential::poisson_add_pseudo_pw(mdarray<double_complex, 2>& qmt,
 
     ctx_.comm().allgather(&rho_pw[0], ctx_.gvec_offset(), ctx_.gvec_count());
 }
-
-void Potential::poisson_atom_vmt(Spheric_function<function_domain_t::spectral, double>& rho_mt,
-                                 Spheric_function<function_domain_t::spectral, double>& vh_mt,
-                                 mdarray<double_complex, 1>& qmt_ext,
-                                 Atom& atom)
-{
-    //double R = atom.mt_radius();
-    int nmtp = atom.num_mt_points();
-
-    // passed size of qmt_mt must be equal to
-    int lmsize = rho_mt.angular_domain_size();
-
-    int lmax_rho = 2 * atom.type().indexr().lmax_lo();
-
-    std::vector<double> qmt(lmsize, 0);
-
-    std::vector<int> l_by_lm = Utils::l_by_lm(lmax_rho);
-
-    #pragma omp parallel default(shared)
-    {
-        std::vector<double> g1;
-        std::vector<double> g2;
-
-        #pragma omp for
-        for (int lm = 0; lm < lmsize; lm++)
-        {
-            int l = l_by_lm[lm];
-
-            auto rholm = rho_mt.component(lm);
-
-            /* save multipole moment */
-            qmt[lm] = rholm.integrate(g1, l + 2);
-
-            rholm.integrate(g2, 1 - l);
-
-            double pref = fourpi / double(2 * l + 1);
-            for (int ir = 0; ir < nmtp; ir++)
-            {
-                double r = atom.radial_grid(ir);
-
-                double vlm = g1[ir] / std::pow(r, l + 1) + (g2.back() - g2[ir]) * std::pow(r, l);
-
-                vh_mt(lm, ir) = pref * vlm;
-            }
-        }
-    }
-
-//  std::cout<<"pvmt done"<<std::endl;
-
-    SHT::convert(lmax_rho, &qmt[0], &qmt_ext(0));
-
-    /* nuclear multipole moment */
-    qmt_ext(0) -= atom.zn() * y00;
-}
-
-void Potential::poisson_vmt(Periodic_function<double>* rho__, 
-                            Periodic_function<double>* vh__,
-                            mdarray<double_complex, 2>& qmt__)
-{
-    PROFILE("sirius::Potential::poisson_vmt");
-
-    qmt__.zero();
-    
-    for (int ialoc = 0; ialoc < unit_cell_.spl_num_atoms().local_size(); ialoc++) {
-        int ia = unit_cell_.spl_num_atoms(ialoc);
-
-        double R = unit_cell_.atom(ia).mt_radius();
-        int nmtp = unit_cell_.atom(ia).num_mt_points();
-
-        std::vector<double> qmt(ctx_.lmmax_rho(), 0);
-       
-        #pragma omp parallel default(shared)
-        {
-            std::vector<double> g1;
-            std::vector<double> g2;
-
-            #pragma omp for
-            for (int lm = 0; lm < ctx_.lmmax_rho(); lm++) {
-                int l = l_by_lm_[lm];
-
-                auto rholm = rho__->f_mt(ialoc).component(lm);
-
-                /* save multipole moment */
-                qmt[lm] = rholm.integrate(g1, l + 2);
-                
-                if (lm < ctx_.lmmax_pot()) {
-                    rholm.integrate(g2, 1 - l);
-                    
-                    double d1 = 1.0 / std::pow(R, 2 * l + 1); 
-                    double d2 = 1.0 / double(2 * l + 1); 
-                    for (int ir = 0; ir < nmtp; ir++) {
-                        double r = unit_cell_.atom(ia).radial_grid(ir);
-
-                        double vlm = (1.0 - std::pow(r / R, 2 * l + 1)) * g1[ir] / std::pow(r, l + 1) +
-                                      (g2.back() - g2[ir]) * std::pow(r, l) - (g1.back() - g1[ir]) * std::pow(r, l) * d1;
-
-                        vh__->f_mt<index_domain_t::local>(lm, ir, ialoc) = fourpi * vlm * d2;
-                    }
-                }
-            }
-        }
-
-        SHT::convert(ctx_.lmax_rho(), &qmt[0], &qmt__(0, ia));
-
-        /* constant part of nuclear potential -z*(1/r - 1/R) */
-        for (int ir = 0; ir < nmtp; ir++) {
-            vh__->f_mt<index_domain_t::local>(0, ir, ialoc) += unit_cell_.atom(ia).zn() / R / y00;
-        }
-
-        /* nuclear multipole moment */
-        qmt__(0, ia) -= unit_cell_.atom(ia).zn() * y00;
-    }
-
-    ctx_.comm().allreduce(&qmt__(0, 0), (int)qmt__.size());
-}
-
 
 void Potential::poisson(Periodic_function<double>* rho, Periodic_function<double>* vh)
 {

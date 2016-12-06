@@ -38,7 +38,7 @@ Potential::Potential(Simulation_context& ctx__)
     lmax_ = std::max(ctx_.lmax_rho(), ctx_.lmax_pot());
     sht_ = std::unique_ptr<SHT>(new SHT(lmax_));
 
-    if (ctx_.esm_type() == electronic_structure_method_t::full_potential_lapwlo) {
+    if (lmax_ >= 0) {
         l_by_lm_ = Utils::l_by_lm(lmax_);
 
         /* precompute i^l */

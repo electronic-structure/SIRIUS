@@ -163,18 +163,90 @@ class Potential
 
 
         void add_paw_Dij_to_atom_Dmtrx();
+        
+        /// Solve Poisson equation for a single atom.
+        template <bool free_atom>
+        inline std::vector<double>
+        poisson_vmt(Atom const& atom__,
+                    Spheric_function<function_domain_t::spectral, double> const& rho_mt__,
+                    Spheric_function<function_domain_t::spectral, double>& vha_mt__) const
+        {
+            assert(rho_mt__.angular_domain_size() >= ctx_.lmmax_rho());
+            assert(vha_mt__.angular_domain_size() >= ctx_.lmmax_pot());
+            assert((int)l_by_lm_.size() >= ctx_.lmmax_rho());
+            std::vector<double> qmt(ctx_.lmmax_rho(), 0);
 
-        //Spheric_function<function_domain_t::spectral,double>
-        /// Compute MT part of the potential and MT multipole moments
-        void poisson_vmt(Periodic_function<double>* rho__, 
-                         Periodic_function<double>* vh__,
-                         mdarray<double_complex, 2>& qmt__);
+            double R = atom__.mt_radius();
+            int nmtp = atom__.num_mt_points();
+
+            #pragma omp parallel
+            {
+                std::vector<double> g1;
+                std::vector<double> g2;
+
+                #pragma omp for
+                for (int lm = 0; lm < ctx_.lmmax_rho(); lm++) {
+                    int l = l_by_lm_[lm];
+
+                    auto rholm = rho_mt__.component(lm);
+
+                    /* save multipole moment */
+                    qmt[lm] = rholm.integrate(g1, l + 2);
+                    
+                    if (lm < ctx_.lmmax_pot()) {
+
+                        rholm.integrate(g2, 1 - l);
+
+                        double d2 = fourpi / double(2 * l + 1); 
+                        double vlm;
+
+                        for (int ir = 0; ir < nmtp; ir++) {
+                            double r = atom__.radial_grid(ir);
+
+                            if (free_atom) {
+                                vlm = g1[ir] / std::pow(r, l + 1) + (g2.back() - g2[ir]) * std::pow(r, l);
+                            } else {
+                                double d1 = 1.0 / std::pow(R, 2 * l + 1); 
+                                vlm = (1.0 - std::pow(r / R, 2 * l + 1)) * g1[ir] / std::pow(r, l + 1) +
+                                      (g2.back() - g2[ir]) * std::pow(r, l) - (g1.back() - g1[ir]) * std::pow(r, l) * d1;
+                            }
+                            vha_mt__(lm, ir) = vlm * d2;
+                        }
+                    }
+                }
+            }
+            if (!free_atom) {
+                /* constant part of nuclear potential -z*(1/r - 1/R) */
+                for (int ir = 0; ir < nmtp; ir++) {
+                    vha_mt__(0, ir) += atom__.zn() / R / y00;
+                }
+            }
+            /* nuclear multipole moment */
+            qmt[0] -= atom__.zn() * y00;
+
+            return std::move(qmt);
+        }
 
         /// Compute MT part of the potential and MT multipole moments
-        void poisson_atom_vmt(Spheric_function<function_domain_t::spectral,double> &rho_mt,
-                        Spheric_function<function_domain_t::spectral,double> &vh_mt,
-                        mdarray<double_complex, 1>& qmt_mt,
-                        Atom &atom);
+        inline void poisson_vmt(Periodic_function<double>* rho__, 
+                                Periodic_function<double>* vh__,
+                                mdarray<double_complex, 2>& qmt__)
+        {
+            PROFILE("sirius::Potential::poisson_vmt");
+
+            qmt__.zero();
+            
+            for (int ialoc = 0; ialoc < unit_cell_.spl_num_atoms().local_size(); ialoc++) {
+                int ia = unit_cell_.spl_num_atoms(ialoc);
+
+                auto qmt = poisson_vmt<false>(unit_cell_.atom(ia), rho__->f_mt(ialoc),
+                                              const_cast<Spheric_function<function_domain_t::spectral, double>&>(vh__->f_mt(ialoc)));
+
+                SHT::convert(ctx_.lmax_rho(), &qmt[0], &qmt__(0, ia));
+            }
+
+            ctx_.comm().allreduce(&qmt__(0, 0), (int)qmt__.size());
+        }
 
         /// Perform a G-vector summation of plane-wave coefficiens multiplied by radial integrals.
         void poisson_sum_G(int lmmax__, 

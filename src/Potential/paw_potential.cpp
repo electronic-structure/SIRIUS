@@ -247,12 +247,7 @@ double Potential::calc_PAW_hartree_potential(Atom& atom,
     Spheric_function<spectral,double> atom_pot_sf(lmsize_rho, grid);
     atom_pot_sf.zero();
 
-    // create qmt to store multipoles
-    mdarray<double_complex,1> qmt(lmsize_rho);
-
-    // solve poisson eq and fill 0th spin component of hartree array (in nonmagnetic we have only this)
-    qmt.zero();
-    poisson_atom_vmt(dens_sf, atom_pot_sf, qmt, atom);
+    poisson_vmt<true>(atom, dens_sf, atom_pot_sf);
 
     // make spher funcs from arrays
     Spheric_function<spectral,double> out_atom_pot_sf(&out_atom_pot(0, 0, 0), lmsize_rho, grid);

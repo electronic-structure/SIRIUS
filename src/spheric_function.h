@@ -142,13 +142,16 @@ class Spheric_function
 
         Spline<T> component(int lm__) const
         {
-            if (domain_t != spectral) TERMINATE("function is not is spectral domain");
+            if (domain_t != spectral) {
+                TERMINATE("function is not is spectral domain");
+            }
 
             Spline<T> s(radial_grid());
-            for (int ir = 0; ir < radial_grid_->num_points(); ir++) s[ir] = data_(lm__, ir);
+            for (int ir = 0; ir < radial_grid_->num_points(); ir++) {
+                s[ir] = data_(lm__, ir);
+            }
             return std::move(s.interpolate());
         }
-
 
         T value(double theta__, double phi__, int jr__, double dr__) const
         {
