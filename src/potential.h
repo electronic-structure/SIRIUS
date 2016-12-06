@@ -232,12 +232,53 @@ class Potential
 
         ~Potential();
 
-        void set_effective_potential_ptr(double* veffmt, double* veffit);
-        
-        void set_effective_magnetic_field_ptr(double* beffmt, double* beffit);
+        inline void set_effective_potential_ptr(double* veffmt, double* veffit)
+        {
+            if (ctx_.full_potential()) {
+                effective_potential_->set_mt_ptr(veffmt);
+            }
+            effective_potential_->set_rg_ptr(veffit);
+        }
+
+        inline void set_effective_magnetic_field_ptr(double* beffmt, double* beffit)
+        {
+            if (ctx_.num_mag_dims() == 0) {
+                return;
+            }
+            assert(ctx_.num_spins() == 2);
+            
+            /* set temporary array wrapper */
+            mdarray<double, 4> beffmt_tmp(beffmt, ctx_.lmmax_pot(), unit_cell_.max_num_mt_points(), 
+                                          unit_cell_.num_atoms(), ctx_.num_mag_dims());
+            mdarray<double, 2> beffit_tmp(beffit, ctx_.fft().size(), ctx_.num_mag_dims());
+            
+            if (ctx_.num_mag_dims() == 1) {
+                /* z-component */
+                effective_magnetic_field_[0]->set_mt_ptr(&beffmt_tmp(0, 0, 0, 0));
+                effective_magnetic_field_[0]->set_rg_ptr(&beffit_tmp(0, 0));
+            }
+            
+            if (ctx_.num_mag_dims() == 3) {
+                /* z-component */
+                effective_magnetic_field_[0]->set_mt_ptr(&beffmt_tmp(0, 0, 0, 2));
+                effective_magnetic_field_[0]->set_rg_ptr(&beffit_tmp(0, 2));
+                /* x-component */
+                effective_magnetic_field_[1]->set_mt_ptr(&beffmt_tmp(0, 0, 0, 0));
+                effective_magnetic_field_[1]->set_rg_ptr(&beffit_tmp(0, 0));
+                /* y-component */
+                effective_magnetic_field_[2]->set_mt_ptr(&beffmt_tmp(0, 0, 0, 1));
+                effective_magnetic_field_[2]->set_rg_ptr(&beffit_tmp(0, 1));
+            }
+        }
          
         /// Zero effective potential and magnetic field.
-        void zero();
+        inline void zero()
+        {
+            effective_potential_->zero();
+            for (int j = 0; j < ctx_.num_mag_dims(); j++) {
+                effective_magnetic_field_[j]->zero();
+            }
+        }
 
         /// Poisson solver.
         /** Detailed explanation is available in:
@@ -455,11 +496,61 @@ class Potential
                                                  Periodic_function<double>* rho_core, 
                                                  Periodic_function<double>* magnetization[3]);
 
-        void save();
+        inline void save()
+        {
+            if (comm_.rank() == 0) {
+                HDF5_tree fout(storage_file_name, false);
+
+                effective_potential_->hdf5_write(fout["effective_potential"]);
+
+                for (int j = 0; j < ctx_.num_mag_dims(); j++) {
+                    effective_magnetic_field_[j]->hdf5_write(fout["effective_magnetic_field"].create_node(j));
+                }
+            }
+            comm_.barrier();
+        }
         
-        void load();
+        inline void load()
+        {
+            HDF5_tree fout(storage_file_name, false);
+            
+            effective_potential_->hdf5_read(fout["effective_potential"]);
+
+            for (int j = 0; j < ctx_.num_mag_dims(); j++) {
+                effective_magnetic_field_[j]->hdf5_read(fout["effective_magnetic_field"][j]);
+            }
+            
+            if (ctx_.full_potential()) {
+                update_atomic_potential();
+            }
+        }
         
-        void update_atomic_potential();
+        inline void update_atomic_potential()
+        {
+            for (int ic = 0; ic < unit_cell_.num_atom_symmetry_classes(); ic++) {
+                int ia = unit_cell_.atom_symmetry_class(ic).atom_id(0);
+                int nmtp = unit_cell_.atom(ia).num_mt_points();
+               
+                std::vector<double> veff(nmtp);
+               
+                for (int ir = 0; ir < nmtp; ir++) {
+                    veff[ir] = y00 * effective_potential_->f_mt<index_domain_t::global>(0, ir, ia);
+                }
+
+               unit_cell_.atom_symmetry_class(ic).set_spherical_potential(veff);
+            }
+            
+            for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
+                double* veff = &effective_potential_->f_mt<index_domain_t::global>(0, 0, ia);
+                
+                double* beff[] = {nullptr, nullptr, nullptr};
+                for (int i = 0; i < ctx_.num_mag_dims(); i++) {
+                    beff[i] = &effective_magnetic_field_[i]->f_mt<index_domain_t::global>(0, 0, ia);
+                }
+                
+                unit_cell_.atom(ia).set_nonspherical_potential(veff, beff);
+            }
+        }
         
         template <device_t pu> 
         void add_mt_contribution_to_pw();
@@ -582,10 +673,6 @@ class Potential
             }
         }
 
-        //void copy_xc_potential(double* vxcmt, double* vxcir);
-
-        //void copy_effective_magnetic_field(double* beffmt, double* beffit);
-        
         Periodic_function<double>* effective_potential()
         {
             return effective_potential_;
