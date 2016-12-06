@@ -1,4 +1,4 @@
-// Copyright (c) 2013-2015 Anton Kozhevnikov, Thomas Schulthess
+// Copyright (c) 2013-2016 Anton Kozhevnikov, Thomas Schulthess
 // All rights reserved.
 // 
 // Redistribution and use in source and binary forms, with or without modification, are permitted provided that 
@@ -45,11 +45,9 @@ class Potential
 
         Unit_cell& unit_cell_;
 
-        Step_function const* step_function_;
-
         Communicator const& comm_;
 
-        Periodic_function<double>* effective_potential_;
+        std::unique_ptr<Periodic_function<double>> effective_potential_;
 
         Periodic_function<double>* effective_magnetic_field_[3];
  
@@ -747,7 +745,7 @@ class Potential
 
         Periodic_function<double>* effective_potential()
         {
-            return effective_potential_;
+            return effective_potential_.get();
         }
 
         Spheric_function<spectral, double> const& effective_potential_mt(int ialoc) const
@@ -788,7 +786,9 @@ class Potential
         void allocate()
         {
             effective_potential_->allocate_mt(true);
-            for (int j = 0; j < ctx_.num_mag_dims(); j++) effective_magnetic_field_[j]->allocate_mt(true);
+            for (int j = 0; j < ctx_.num_mag_dims(); j++) {
+                effective_magnetic_field_[j]->allocate_mt(true);
+            }
         }
 
         inline double vh_el(int ia)
@@ -807,18 +807,14 @@ class Potential
             if (ctx_.mixer_input_section().type_ == "linear")
             {
                 mixer_ = new Linear_mixer<double>(size(), ctx_.mixer_input_section().beta_, comm_);
-            }
-            else if (ctx_.mixer_input_section().type_ == "broyden1")
-            {
+            } else if (ctx_.mixer_input_section().type_ == "broyden1") {
                 std::vector<double> weights;
                 mixer_ = new Broyden1<double>(size(),
                                               ctx_.mixer_input_section().max_history_,
                                               ctx_.mixer_input_section().beta_,
                                               weights,
                                               comm_);
-            }
-            else if (ctx_.mixer_input_section().type_ == "broyden2")
-            {
+            } else if (ctx_.mixer_input_section().type_ == "broyden2") {
                 std::vector<double> weights;
                 mixer_ = new Broyden2<double>(size(),
                                               ctx_.mixer_input_section().max_history_,
@@ -827,9 +823,7 @@ class Potential
                                               ctx_.mixer_input_section().linear_mix_rms_tol_,
                                               weights,
                                               comm_);
-            }
-            else
-            {
+            } else {
                 TERMINATE("wrong mixer type");
             }
             pack(mixer_);

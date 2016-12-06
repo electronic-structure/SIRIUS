@@ -38,7 +38,7 @@ inline void Potential::generate_D_operator_matrix()
 
     /* store effective potential and magnetic field in a vector */
     std::vector<Periodic_function<double>*> veff_vec(ctx_.num_mag_dims() + 1);
-    veff_vec[0] = effective_potential_;
+    veff_vec[0] = effective_potential_.get();
     for (int j = 0; j < ctx_.num_mag_dims(); j++) {
         veff_vec[1 + j] = effective_magnetic_field_[j];
     }

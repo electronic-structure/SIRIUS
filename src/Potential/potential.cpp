@@ -55,7 +55,7 @@ Potential::Potential(Simulation_context& ctx__)
         }
     }
 
-    effective_potential_ = new Periodic_function<double>(ctx_, ctx_.lmmax_pot(), 1);
+    effective_potential_ = std::unique_ptr<Periodic_function<double>>(new Periodic_function<double>(ctx_, ctx_.lmmax_pot(), 1));
     
     //int need_gvec = (ctx_.full_potential()) ? 0 : 1;
     int need_gvec{1};
@@ -103,7 +103,6 @@ Potential::Potential(Simulation_context& ctx__)
 
 Potential::~Potential()
 {
-    delete effective_potential_; 
     for (int j = 0; j < ctx_.num_mag_dims(); j++) delete effective_magnetic_field_[j];
     delete hartree_potential_;
     delete xc_potential_;
