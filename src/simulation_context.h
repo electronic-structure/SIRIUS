@@ -295,12 +295,6 @@ class Simulation_context: public Simulation_parameters
             return phase_factors_(0, G[0], ia__) * phase_factors_(1, G[1], ia__) * phase_factors_(2, G[2], ia__);
         }
 
-        inline double_complex gvec_coarse_phase_factor(int ig__, int ia__) const
-        {
-            auto G = gvec_coarse_.gvec(ig__);
-            return phase_factors_(0, G[0], ia__) * phase_factors_(1, G[1], ia__) * phase_factors_(2, G[2], ia__);
-        }
-
         inline int gvec_count() const
         {
             return gvec_.gvec_count(comm_.rank());
@@ -322,6 +316,19 @@ class Simulation_context: public Simulation_parameters
             return atom_coord_[iat__];
         }
         #endif
+
+        inline void generate_phase_factors(int iat__, mdarray<double_complex, 2>& phase_factors__) const
+        {
+            int na = unit_cell_.atom_type(iat__).num_atoms();
+            #pragma omp parallel for
+            for (int igloc = 0; igloc < gvec_count(); igloc++) {
+                int ig = gvec_offset() + igloc;
+                for (int i = 0; i < na; i++) {
+                    int ia = unit_cell_.atom_type(iat__).atom_id(i);
+                    phase_factors__(igloc, i) = gvec_phase_factor(ig, ia);
+                }
+            }
+        }
 };
 
 inline void Simulation_context::init_fft()
