@@ -1,4 +1,5 @@
 #include <unistd.h>
+#include <cublas.h>
 #include <cublas_v2.h>
 #include "cuda_common.h"
 
