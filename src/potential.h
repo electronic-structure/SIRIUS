@@ -185,7 +185,7 @@ class Potential
         /// Add contribution from the pseudocharge to the plane-wave expansion
         void poisson_add_pseudo_pw(mdarray<double_complex, 2>& qmt, mdarray<double_complex, 2>& qit, double_complex* rho_pw);
 
-        void generate_local_potential();
+        inline void generate_local_potential();
         
         void xc_mt_nonmagnetic(Radial_grid const& rgrid,
                                std::vector<XC_functional*>& xc_func,
@@ -684,17 +684,13 @@ class Potential
             unpack(mixer_->output_buffer());
             return rms;
         }
-
-        //inline void checksum()
-        //{
-        //    DUMP("checksum(veff): %18.10f %18.10f\n", effective_potential_->f_mt().checksum(), effective_potential_->f_it().checksum());
-        //}
 };
 
 #include "Potential/init.hpp"
 #include "Potential/generate_d_operator_matrix.hpp"
 #include "Potential/generate_pw_coefs.hpp"
 #include "Potential/generate_effective_potential.hpp"
+#include "Potential/generate_local_potential.hpp"
 
 };
 
