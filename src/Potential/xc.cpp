@@ -904,33 +904,22 @@ void Potential::xc(Periodic_function<double>* rho,
 {
     PROFILE("sirius::Potential::xc");
 
-    if (ctx_.xc_functionals().size() == 0)
-    {
+    if (ctx_.xc_functionals().size() == 0) {
         vxc->zero();
         exc->zero();
         for (int i = 0; i < ctx_.num_mag_dims(); i++) bxc[i]->zero();
         return;
     }
 
-    /* list of XC functionals */
-//    std::vector<XC_functional*> &xc_func = xc_func_;
-//    for (auto& xc_label: ctx_.xc_functionals())
-//    {
-//        xc_func.push_back(new XC_functional(xc_label, ctx_.num_spins()));
-//    }
-   
-    if (ctx_.full_potential()) xc_mt(rho, magnetization, xc_func_, vxc, bxc, exc);
-    
-    if (ctx_.num_spins() == 1)
-    {
-        xc_it_nonmagnetic(rho, xc_func_, vxc, exc);
+    if (ctx_.full_potential()) {
+        xc_mt(rho, magnetization, xc_func_, vxc, bxc, exc);
     }
-    else
-    {
+    
+    if (ctx_.num_spins() == 1) {
+        xc_it_nonmagnetic(rho, xc_func_, vxc, exc);
+    } else {
         xc_it_magnetic(rho, magnetization, xc_func_, vxc, bxc, exc);
     }
-
-    //for (auto& ixc: xc_func) delete ixc;
 }
 
 };

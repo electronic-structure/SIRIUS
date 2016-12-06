@@ -31,8 +31,7 @@
 #include "radial_grid.h"
 #include "spline.h"
 
-namespace sirius
-{
+namespace sirius {
 
 /// Function in spherical harmonics or spherical coordinates representation.
 template <function_domain_t domain_t, typename T = double_complex>
@@ -168,35 +167,31 @@ class Spheric_function
 
 };
 
-
-
-//-------------------------------------------------------------------------------------
-/// dot operator
-template <function_domain_t domain_t, typename T>
-Spheric_function<domain_t, T> operator*(Spheric_function<domain_t, T> const& a__, Spheric_function<domain_t, T> const& b__)
+/// Multiplication of two functions in spatial domain.
+template <typename T>
+Spheric_function<spatial, T> operator*(Spheric_function<spatial, T> const& a__, Spheric_function<spatial, T> const& b__)
 {
-    if (a__.radial_grid().hash() != b__.radial_grid().hash()) TERMINATE("wrong radial grids");
-    if (a__.angular_domain_size() != b__.angular_domain_size()) TERMINATE("wrong angular domain sizes");
+    if (a__.radial_grid().hash() != b__.radial_grid().hash()) {
+        TERMINATE("wrong radial grids");
+    }
+    if (a__.angular_domain_size() != b__.angular_domain_size()) {
+        TERMINATE("wrong angular domain sizes");
+    }
 
-    Spheric_function<domain_t, T> res( a__.angular_domain_size(), a__.radial_grid() );
+    Spheric_function<spatial, T> res(a__.angular_domain_size(), a__.radial_grid());
 
-    const T* ptr_lhs = &a__(0,0);
-    const T* ptr_rhs = &b__(0,0);
-    T* ptr_res = &res(0,0);
+    T const* ptr_lhs = &a__(0, 0);
+    T const* ptr_rhs = &b__(0, 0);
+    T* ptr_res = &res(0, 0);
 
-    for (int i = 0; i < a__.size(); i++)
-    {
+    for (int i = 0; i < a__.size(); i++) {
         ptr_res[i] = ptr_lhs[i] * ptr_rhs[i];
     }
 
     return std::move(res);
 }
 
-
-
-
-//-------------------------------------------------------------------------------------
-/// plus operator
+/// Summation of two functions.
 template <function_domain_t domain_t, typename T>
 Spheric_function<domain_t, T> operator+(Spheric_function<domain_t, T> const& a__, Spheric_function<domain_t, T> const& b__)
 {
@@ -218,61 +213,45 @@ Spheric_function<domain_t, T> operator+(Spheric_function<domain_t, T> const& a__
     return std::move(result);
 }
 
-
-
-
-//-------------------------------------------------------------------------------------
-/// minus operator
+/// Subtraction of functions.
 template <function_domain_t domain_t, typename T>
 Spheric_function<domain_t, T> operator-(Spheric_function<domain_t, T> const& a__, Spheric_function<domain_t, T> const& b__)
 {
-    Spheric_function<domain_t, T> res( a__.angular_domain_size(), a__.radial_grid() );
+    Spheric_function<domain_t, T> res(a__.angular_domain_size(), a__.radial_grid());
 
-    const T* ptr_lhs = &a__(0,0);
-    const T* ptr_rhs = &b__(0,0);
-    T* ptr_res = &res(0,0);
+    T const* ptr_lhs = &a__(0, 0);
+    T const* ptr_rhs = &b__(0, 0);
+    T* ptr_res = &res(0, 0);
 
-    for (int i = 0; i < a__.size(); i++)
-    {
+    for (int i = 0; i < a__.size(); i++) {
         ptr_res[i] = ptr_lhs[i] - ptr_rhs[i];
     }
 
     return std::move(res);
 }
 
-
-
-//-------------------------------------------------------------------------------------
-/// scale sperical function
+/// Multiply function by a scalar.
 template <function_domain_t domain_t, typename T>
 Spheric_function<domain_t, T> operator*(T a__, Spheric_function<domain_t, T> const& b__)
 {
-    Spheric_function<domain_t, T> res( b__.angular_domain_size(), b__.radial_grid() );
+    Spheric_function<domain_t, T> res(b__.angular_domain_size(), b__.radial_grid());
 
-    const T* ptr_rhs = &b__(0,0);
-    T* ptr_res = &res(0,0);
+    T const* ptr_rhs = &b__(0, 0);
+    T* ptr_res = &res(0, 0);
 
-    for (int i = 0; i < b__.size(); i++)
-    {
+    for (int i = 0; i < b__.size(); i++) {
         ptr_res[i] = a__ * ptr_rhs[i];
     }
 
     return std::move(res);
 }
-
-
-
-//-------------------------------------------------------------------------------------
-/// scale sperical function (inverse order)
+/// Multiply function by a scalar (inverse order).
 template <function_domain_t domain_t, typename T>
-Spheric_function<domain_t, T> operator*(Spheric_function<domain_t, T> const& b__, T a__ )
+Spheric_function<domain_t, T> operator*(Spheric_function<domain_t, T> const& b__, T a__)
 {
     return std::move(a__ * b__);
 }
 
-
-
-//-------------------------------------------------------------------------------------
 /// Inner product of two spherical functions.
 template <function_domain_t domain_t, typename T>
 T inner(Spheric_function<domain_t, T> const& f1, Spheric_function<domain_t, T> const& f2)
@@ -297,9 +276,6 @@ T inner(Spheric_function<domain_t, T> const& f1, Spheric_function<domain_t, T> c
     return s.interpolate().integrate(2);
 }
 
-
-
-//-------------------------------------------------------------------------------------
 /// Compute Laplacian of the spheric function.
 /** Laplacian in spherical coordinates has the following expression:
  *  \f[
@@ -337,10 +313,6 @@ Spheric_function<spectral, T> laplacian(Spheric_function<spectral, T> const& f__
     return std::move(g);
 }
 
-
-
-
-//-------------------------------------------------------------------------------------
 /// Convert from Ylm to Rlm representation.
 inline Spheric_function<spectral, double> convert(Spheric_function<spectral, double_complex> const& f__)
 {
@@ -377,10 +349,7 @@ inline Spheric_function<spectral, double> convert(Spheric_function<spectral, dou
     return std::move(g);
 }
 
-
-
-
-//-------------------------------------------------------------------------------------
+/// Convert from Rlm to Ylm representation.
 inline Spheric_function<spectral, double_complex> convert(Spheric_function<spectral, double> const& f__)
 {
     int lmax = Utils::lmax_by_lmmax(f__.angular_domain_size());
@@ -416,9 +385,7 @@ inline Spheric_function<spectral, double_complex> convert(Spheric_function<spect
     return std::move(g);
 }
 
-
-
-//-------------------------------------------------------------------------------------
+/// Transform to spatial domain (to r, \theta, \phi coordinates).
 template <typename T>
 Spheric_function<spatial, T> transform(SHT* sht__, Spheric_function<spectral, T> const& f__)
 {
@@ -430,10 +397,7 @@ Spheric_function<spatial, T> transform(SHT* sht__, Spheric_function<spectral, T>
     return std::move(g);
 }
 
-
-
-
-//-------------------------------------------------------------------------------------
+/// Transform to spectral domain.
 template <typename T>
 Spheric_function<spectral, T> transform(SHT* sht__, Spheric_function<spatial, T> const& f__)
 {
@@ -444,10 +408,6 @@ Spheric_function<spectral, T> transform(SHT* sht__, Spheric_function<spatial, T>
     return std::move(g);
 }
 
-
-
-
-//-------------------------------------------------------------------------------------
 /// Gradient of a spheric function.
 template <function_domain_t domain_t, typename T = double_complex>
 class Spheric_function_gradient
@@ -491,23 +451,110 @@ class Spheric_function_gradient
         }
 };
 
-
-
-//-------------------------------------------------------------------------------------
 /// Gradient of the function in complex spherical harmonics.
-Spheric_function_gradient<spectral, double_complex> gradient(Spheric_function<spectral, double_complex>& f);
+inline Spheric_function_gradient<spectral, double_complex> gradient(Spheric_function<spectral, double_complex>& f)
+{
+    Spheric_function_gradient<spectral, double_complex> g(f.angular_domain_size(), f.radial_grid());
+    for (int i = 0; i < 3; i++)
+    {
+        g[i] = Spheric_function<spectral, double_complex>(f.angular_domain_size(), f.radial_grid());
+        g[i].zero();
+    }
+            
+    int lmax = Utils::lmax_by_lmmax(f.angular_domain_size());
 
+    //Spline<double_complex> s(f.radial_grid());
 
+    for (int l = 0; l <= lmax; l++)
+    {
+        double d1 = sqrt(double(l + 1) / double(2 * l + 3));
+        double d2 = sqrt(double(l) / double(2 * l - 1));
 
-//-------------------------------------------------------------------------------------
+        for (int m = -l; m <= l; m++)
+        {
+            int lm = Utils::lm_by_l_m(l, m);
+            auto s = f.component(lm);
+
+            for (int mu = -1; mu <= 1; mu++)
+            {
+                int j = (mu + 2) % 3; // map -1,0,1 to 1,2,0
+
+                if ((l + 1) <= lmax && abs(m + mu) <= l + 1)
+                {
+                    int lm1 = Utils::lm_by_l_m(l + 1, m + mu); 
+                    double d = d1 * SHT::clebsch_gordan(l, 1, l + 1, m, mu, m + mu);
+                    for (int ir = 0; ir < f.radial_grid().num_points(); ir++)
+                        g[j](lm1, ir) += (s.deriv(1, ir) - f(lm, ir) * f.radial_grid().x_inv(ir) * double(l)) * d;  
+                }
+                if ((l - 1) >= 0 && abs(m + mu) <= l - 1)
+                {
+                    int lm1 = Utils::lm_by_l_m(l - 1, m + mu); 
+                    double d = d2 * SHT::clebsch_gordan(l, 1, l - 1, m, mu, m + mu); 
+                    for (int ir = 0; ir < f.radial_grid().num_points(); ir++)
+                        g[j](lm1, ir) -= (s.deriv(1, ir) + f(lm, ir) * f.radial_grid().x_inv(ir) * double(l + 1)) * d;
+                }
+            }
+        }
+    }
+
+    double_complex d1(1.0 / sqrt(2.0), 0);
+    double_complex d2(0, 1.0 / sqrt(2.0));
+
+    for (int ir = 0; ir < f.radial_grid().num_points(); ir++)
+    {
+        for (int lm = 0; lm < f.angular_domain_size(); lm++)
+        {
+            double_complex g_p = g[0](lm, ir);
+            double_complex g_m = g[1](lm, ir);
+            g[0](lm, ir) = d1 * (g_m - g_p);
+            g[1](lm, ir) = d2 * (g_m + g_p);
+        }
+    }
+
+    return g;
+}
+
 /// Gradient of the function in real spherical harmonics.
-Spheric_function_gradient<spectral, double> gradient(Spheric_function<spectral, double> const& f);
+inline Spheric_function_gradient<spectral, double> gradient(Spheric_function<spectral, double> const& f)
+{
+    int lmax = Utils::lmax_by_lmmax(f.angular_domain_size());
+    SHT sht(lmax);
+    auto zf = convert(f);
+    auto zg = gradient(zf);
+    Spheric_function_gradient<spectral, double> g(f.angular_domain_size(), f.radial_grid());
+    for (int x: {0, 1, 2}) {
+        g[x] = convert(zg[x]);
+    }
+    return g;
+}
 
+/// Dot product of two gradiensts.
+inline Spheric_function<spatial, double> operator*(Spheric_function_gradient<spatial, double> const& f, 
+                                                   Spheric_function_gradient<spatial, double> const& g)
+{
+    for (int x: {0, 1, 2}) {
+        if (f[x].radial_grid().hash() != g[x].radial_grid().hash()) {
+            TERMINATE("wrong radial grids");
+        }
+        
+        if (f[x].angular_domain_size() != g[x].angular_domain_size()) {
+            TERMINATE("wrong number of angular points");
+        }
+    }
 
+    Spheric_function<spatial, double> result(f.angular_domain_size(), f.radial_grid());
+    result.zero();
 
-//-------------------------------------------------------------------------------------
-Spheric_function<spatial, double> operator*(Spheric_function_gradient<spatial, double> const& f, 
-                                            Spheric_function_gradient<spatial, double> const& g);
+    for (int x: {0, 1, 2}) {
+        for (int ir = 0; ir < f[x].radial_grid().num_points(); ir++) {
+            for (int tp = 0; tp < f[x].angular_domain_size(); tp++) {
+                result(tp, ir) += f[x](tp, ir) * g[x](tp, ir);
+            }
+        }
+    }
+
+    return result;
+}
 
 }
 
