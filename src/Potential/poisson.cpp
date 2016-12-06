@@ -21,87 +21,61 @@ void Potential::poisson_sum_G(int lmmax__,
                               matrix<double_complex>& flm__)
 {
     PROFILE("sirius::Potential::poisson_sum_G");
-    
-    int ngv_loc = ctx_.gvec().gvec_count(comm_.rank());
+
+    int ngv_loc = ctx_.gvec_count();
 
     int na_max = 0;
     for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
         na_max = std::max(na_max, unit_cell_.atom_type(iat).num_atoms());
     }
-    
-    matrix<double_complex> phase_factors(ngv_loc, na_max);
-    matrix<double_complex> zm(lmmax__, ngv_loc);
-    matrix<double_complex> tmp(lmmax__, na_max);
 
-    if (ctx_.processing_unit() == CPU) {
-        for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
-            double t = -omp_get_wtime();
-            int na = unit_cell_.atom_type(iat).num_atoms();
-            #pragma omp parallel for
-            for (int igloc = 0; igloc < ngv_loc; igloc++) {
-                int ig = ctx_.gvec().gvec_offset(comm_.rank()) + igloc;
-                for (int i = 0; i < na; i++) {
-                    int ia = unit_cell_.atom_type(iat).atom_id(i);
-                    phase_factors(igloc, i) = ctx_.gvec_phase_factor(ig, ia);
-                }
-                for (int lm = 0; lm < lmmax__; lm++) {
-                    int l = l_by_lm_[lm];
-                    zm(lm, igloc) = fourpi * fpw__[ig] * zilm_[lm] *
-                                    fl__(l, iat, ctx_.gvec().shell(ig)) * std::conj(gvec_ylm_(lm, igloc));
-                }
-            }
-            linalg<CPU>::gemm(0, 0, lmmax__, na, ngv_loc, zm.at<CPU>(), zm.ld(), phase_factors.at<CPU>(), phase_factors.ld(),
-                              tmp.at<CPU>(), tmp.ld());
-            if (ctx_.control().print_performance_) {
-                t += omp_get_wtime();
-                if (comm_.rank() == 0) {
-                    printf("poisson_sum_G() performance: %12.6f GFlops/rank, [m,n,k=%i %i %i, time=%f (sec)]\n",
-                           8e-9 * lmmax__ * na * ctx_.gvec().num_gvec() / t / comm_.size(), lmmax__, na, ctx_.gvec().num_gvec(), t);
-                }
-            }
-            for (int i = 0; i < na; i++) {
-                int ia = unit_cell_.atom_type(iat).atom_id(i);
-                for (int lm = 0; lm < lmmax__; lm++) {
-                    flm__(lm, ia) = tmp(lm, i);
-                }
+    matrix<double_complex> phase_factors(ngv_loc, na_max, ctx_.main_memory_t());
+    matrix<double_complex> zm(lmmax__, ngv_loc, ctx_.dual_memory_t());
+    matrix<double_complex> tmp(lmmax__, na_max, ctx_.dual_memory_t());
+
+    for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
+        double t = -omp_get_wtime();
+        int na = unit_cell_.atom_type(iat).num_atoms();
+        ctx_.generate_phase_factors(iat, phase_factors);
+        #pragma omp parallel for
+        for (int igloc = 0; igloc < ngv_loc; igloc++) {
+            int ig = ctx_.gvec_offset() + igloc;
+            for (int lm = 0; lm < lmmax__; lm++) {
+                int l = l_by_lm_[lm];
+                zm(lm, igloc) = fourpi * fpw__[ig] * zilm_[lm] *
+                                fl__(l, iat, ctx_.gvec().shell(ig)) * std::conj(gvec_ylm_(lm, igloc));
             }
         }
-    }
-
-    if (ctx_.processing_unit() == GPU) {
-        #ifdef __GPU
-        phase_factors.allocate(memory_t::device);
-        zm.allocate(memory_t::device);
-        tmp.allocate(memory_t::device);
-
-        for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
-            int na = unit_cell_.atom_type(iat).num_atoms();
-            
-            generate_phase_factors_gpu(ngv_loc, na, ctx_.gvec_coord().at<GPU>(), ctx_.atom_coord(iat).at<GPU>(), phase_factors.at<GPU>());
-
-            #pragma omp parallel for
-            for (int igloc = 0; igloc < ngv_loc; igloc++) {
-                int ig = ctx_.gvec().gvec_offset(comm_.rank()) + igloc;
-                for (int lm = 0; lm < lmmax__; lm++) {
-                    int l = l_by_lm_[lm];
-                    zm(lm, igloc) = fourpi * fpw__[ig] * zilm_[lm] *
-                                    fl__(l, iat, ctx_.gvec().shell(ig)) * std::conj(gvec_ylm_(lm, igloc));
-                }
+        switch (ctx_.processing_unit()) {
+            case CPU: {
+                linalg<CPU>::gemm(0, 0, lmmax__, na, ngv_loc, zm.at<CPU>(), zm.ld(), phase_factors.at<CPU>(), phase_factors.ld(),
+                                  tmp.at<CPU>(), tmp.ld());
+                break;
             }
-            zm.copy_to_device();
-            linalg<GPU>::gemm(0, 0, lmmax__, na, ngv_loc, zm.at<GPU>(), zm.ld(), phase_factors.at<GPU>(), phase_factors.ld(),
-                              tmp.at<GPU>(), tmp.ld());
-            tmp.copy_to_host();
-            for (int i = 0; i < na; i++) {
-                int ia = unit_cell_.atom_type(iat).atom_id(i);
-                for (int lm = 0; lm < lmmax__; lm++) {
-                    flm__(lm, ia) = tmp(lm, i);
-                }
+            case GPU: {
+                #ifdef __GPU
+                zm.copy_to_device();
+                linalg<GPU>::gemm(0, 0, lmmax__, na, ngv_loc, zm.at<GPU>(), zm.ld(), phase_factors.at<GPU>(), phase_factors.ld(),
+                                  tmp.at<GPU>(), tmp.ld());
+                tmp.copy_to_host();
+                #endif
+                break;
             }
         }
-        #else
-        TERMINATE_NO_GPU
-        #endif
+
+        if (ctx_.control().print_performance_) {
+            t += omp_get_wtime();
+            if (comm_.rank() == 0) {
+                printf("poisson_sum_G() performance: %12.6f GFlops/rank, [m,n,k=%i %i %i, time=%f (sec)]\n",
+                       8e-9 * lmmax__ * na * ctx_.gvec().num_gvec() / t / comm_.size(), lmmax__, na, ctx_.gvec().num_gvec(), t);
+            }
+        }
+        for (int i = 0; i < na; i++) {
+            int ia = unit_cell_.atom_type(iat).atom_id(i);
+            for (int lm = 0; lm < lmmax__; lm++) {
+                flm__(lm, ia) = tmp(lm, i);
+            }
+        }
     }
     
     ctx_.comm().allreduce(&flm__(0, 0), (int)flm__.size());
