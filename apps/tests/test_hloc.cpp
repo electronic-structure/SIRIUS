@@ -15,12 +15,11 @@ void test_hloc(std::vector<int> mpi_grid_dims__, double cutoff__, int num_bands_
 
     FFT3D fft(fft_box, mpi_grid.communicator(1 << 0), pu, gpu_workload__);
 
-    Gvec gvec(vector3d<double>(0, 0, 0), M, cutoff__, fft_box, mpi_grid.size(), mpi_grid.communicator(1 << 0), false);
+    Gvec gvec({0, 0, 0}, M, cutoff__, fft_box, mpi_grid.size(), mpi_grid.communicator(1 << 0), false);
 
     std::vector<double> veff(fft.local_size(), 2.0);
 
-    if (mpi_comm_world().rank() == 0)
-    {
+    if (mpi_comm_world().rank() == 0) {
         printf("total number of G-vectors: %i\n", gvec.num_gvec());
         printf("local number of G-vectors: %i\n", gvec.gvec_count(0));
         printf("FFT grid size: %i %i %i\n", fft_box.size(0), fft_box.size(1), fft_box.size(2));
@@ -53,8 +52,7 @@ void test_hloc(std::vector<int> mpi_grid_dims__, double cutoff__, int num_bands_
     
     mpi_comm_world().barrier();
     sddk::timer t1("h_loc");
-    for (int i = 0; i < 4; i++)
-    {
+    for (int i = 0; i < 4; i++) {
         hphi.copy_from(phi, i * num_bands__, num_bands__);
         #ifdef __GPU
         if (pu == GPU && !fft.gpu_only()) {
@@ -82,8 +80,7 @@ void test_hloc(std::vector<int> mpi_grid_dims__, double cutoff__, int num_bands_
         TERMINATE("NaN");
     }
     mpi_comm_world().allreduce(&diff, 1);
-    if (mpi_comm_world().rank() == 0)
-    {
+    if (mpi_comm_world().rank() == 0) {
         printf("diff: %18.12f\n", diff);
     }
 
