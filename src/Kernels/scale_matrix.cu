@@ -43,6 +43,7 @@ __global__ void scale_matrix_rows_gpu_kernel
     int icol = blockIdx.y;
     int irow = blockDim.x * blockIdx.x + threadIdx.x;
     if (irow < nrow__) {
+        cuDoubleComplex z = mtrx__[array2D_offset(irow, icol, nrow__)];
         mtrx__[array2D_offset(irow, icol, nrow__)] = make_cuDoubleComplex(z.x * v__[irow], z.y * v__[irow]);
     }
 }
