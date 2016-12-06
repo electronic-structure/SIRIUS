@@ -441,14 +441,19 @@ class Potential
          *      V^{\downarrow}({\bf r}) &=& V_{xc}({\bf r}) - {\rm B}_{xc}({\bf r}) 
          *  \f}
          */
-        void xc(Periodic_function<double>* rho, Periodic_function<double>* magnetization[3], 
-                Periodic_function<double>* vxc, Periodic_function<double>* bxc[3], Periodic_function<double>* exc);
+        void xc(Periodic_function<double>* rho,
+                Periodic_function<double>* magnetization[3], 
+                Periodic_function<double>* vxc,
+                Periodic_function<double>* bxc[3],
+                Periodic_function<double>* exc);
         
         /// Generate effective potential and magnetic field from charge density and magnetization.
-        void generate_effective_potential(Periodic_function<double>* rho, Periodic_function<double>* magnetization[3]);
+        inline void generate_effective_potential(Periodic_function<double>* rho,
+                                                 Periodic_function<double>* magnetization[3]);
         
-        void generate_effective_potential(Periodic_function<double>* rho, Periodic_function<double>* rho_core, 
-                                          Periodic_function<double>* magnetization[3]);
+        inline void generate_effective_potential(Periodic_function<double>* rho,
+                                                 Periodic_function<double>* rho_core, 
+                                                 Periodic_function<double>* magnetization[3]);
 
         void save();
         
@@ -689,6 +694,7 @@ class Potential
 #include "Potential/init.hpp"
 #include "Potential/generate_d_operator_matrix.hpp"
 #include "Potential/generate_pw_coefs.hpp"
+#include "Potential/generate_effective_potential.hpp"
 
 };
 
