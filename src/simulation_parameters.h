@@ -467,6 +467,19 @@ class Simulation_parameters
         {
             return control_input_section_;
         }
+
+        inline memory_t main_memory_t() const
+        {
+            if (processing_unit_ == GPU) {
+                return memory_t::device;
+            }
+            return memory_t::host;
+        }
+
+        inline memory_t dual_memory_t() const
+        {
+            return (memory_t::host | memory_t::device);
+        }
 };
 
 };
