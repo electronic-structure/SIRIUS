@@ -196,7 +196,7 @@ class Symmetry
             return sym_table_(ia__, isym__);
         }
 
-        void check_gvec_symmetry(Gvec const& gvec__) const;
+        void check_gvec_symmetry(Gvec const& gvec__, Communicator const& comm__) const;
 
         /// Symmetrize scalar function.
         /** The following operation is performed:
