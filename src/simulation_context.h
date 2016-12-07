@@ -485,9 +485,9 @@ inline void Simulation_context::initialize()
     //}
 
     if (unit_cell_.num_atoms() != 0) {
-        unit_cell_.symmetry().check_gvec_symmetry(gvec_);
+        unit_cell_.symmetry().check_gvec_symmetry(gvec_, comm_);
         if (!full_potential()) {
-            unit_cell_.symmetry().check_gvec_symmetry(gvec_coarse_);
+            unit_cell_.symmetry().check_gvec_symmetry(gvec_coarse_, comm_);
         }
     }
 
