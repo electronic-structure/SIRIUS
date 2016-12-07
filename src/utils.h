@@ -62,8 +62,7 @@ class Utils
         static inline bool file_exists(const std::string file_name)
         {
             std::ifstream ifs(file_name.c_str());
-            if (ifs.is_open()) return true;
-            return false;
+            return ifs.is_open();
         }
 
         static inline double fermi_dirac_distribution(double e)
