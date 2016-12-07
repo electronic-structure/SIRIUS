@@ -50,6 +50,8 @@ inline void Band::diag_fv_full_potential_exact(K_point* kp, Periodic_function<do
     #ifdef __PRINT_OBJECT_CHECKSUM
     auto z1 = h.checksum();
     auto z2 = o.checksum();
+    kp->comm().allreduce(&z1, 1);
+    kp->comm().allreduce(&z2, 1);
     DUMP("checksum(h): %18.10f %18.10f", std::real(z1), std::imag(z1));
     DUMP("checksum(o): %18.10f %18.10f", std::real(z2), std::imag(z2));
     #endif
@@ -72,6 +74,18 @@ inline void Band::diag_fv_full_potential_exact(K_point* kp, Periodic_function<do
     }
     t.stop();
     kp->set_fv_eigen_values(&eval[0]);
+
+    if (ctx_.control().verbosity_ > 2 && kp->comm().rank() == 0) {
+        for (int i = 0; i < ctx_.num_fv_states(); i++) {
+            DUMP("eval[%i]=%20.16f", i, eval[i]);
+        }
+    }
+
+    #ifdef __PRINT_OBJECT_CHECKSUM
+    z1 = kp->fv_eigen_vectors().checksum();
+    kp->comm().allreduce(&z1, 1);
+    DUMP("checksum(fv_eigen_vectors): %18.10f %18.10f", std::real(z1), std::imag(z1));
+    #endif
 
     /* remap to slab */
     kp->fv_eigen_vectors_slab().pw_coeffs().remap_from(kp->fv_eigen_vectors(), 0);
