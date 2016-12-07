@@ -677,9 +677,7 @@ class Density
 
         template <device_t pu>
         inline void generate_rho_aug(std::vector<Periodic_function<double>*> rho__,
-                              mdarray<double_complex, 2>& rho_aug__);
-        
-
+                                     mdarray<double_complex, 2>& rho_aug__);
 
         /// Check density at MT boundary
         void check_density_continuity_at_mt();
