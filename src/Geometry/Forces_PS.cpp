@@ -402,34 +402,41 @@ void Forces_PS::symmetrize_forces(mdarray<double,2>& unsym_forces, mdarray<doubl
 
 //---------------------------------------------------------------
 //---------------------------------------------------------------
-mdarray<double,2> Forces_PS::calc_forces()
+void Forces_PS::calc_forces_contributions()
 {
     calc_local_forces(local_forces_);
     calc_ultrasoft_forces(ultrasoft_forces_);
     calc_nonlocal_forces(nonlocal_forces_);
     calc_nlcc_forces(nlcc_forces_);
     calc_ewald_forces(ewald_forces_);
-
-    return std::move(get_summed_forces());
 }
 
 
 //---------------------------------------------------------------
 //---------------------------------------------------------------
-mdarray<double,2> Forces_PS::get_summed_forces()
+mdarray<double,2> Forces_PS::sum_forces()
 {
     mdarray<double,2> total_forces(3, ctx_.unit_cell().num_atoms());
 
-    total_forces.zero();
-
-    #pragma omp parallel for
-    for(int i = 0; i < total_forces.size(); i++ )
-    {
-        total_forces[i] = local_forces_[i] + ultrasoft_forces_[i] + nonlocal_forces_[i] + nlcc_forces_[i] + ewald_forces_[i];
-    }
+    sum_forces(total_forces);
 
     return std::move(total_forces);
 }
 
+
+
+void Forces_PS::sum_forces(mdarray<double,2>& inout_total_forces)
+{
+    if(inout_total_forces.size() != local_forces_.size())
+    {
+        TERMINATE("ERROR: Passed total forces array has wrong length!");
+    }
+
+    #pragma omp parallel for
+    for(int i = 0; i < inout_total_forces.size(); i++ )
+    {
+        inout_total_forces[i] = local_forces_[i] + ultrasoft_forces_[i] + nonlocal_forces_[i] + nlcc_forces_[i] + ewald_forces_[i];
+    }
+}
 
 }

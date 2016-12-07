@@ -1,13 +1,13 @@
  &control
-    calculation='scf'
+    calculation='relax'
     restart_mode='from_scratch',
     pseudo_dir = './',
     outdir='./',
     prefix='cu',
     tstress = .true.,
     tprnfor = .true.,
-    verbosity = 'high',
-    iprint = 1
+    verbosity = 'low',
+    iprint = 100
  /
  &system
     ibrav = 0, nat= 2, ntyp= 2,
@@ -22,6 +22,9 @@
     conv_thr = 1.0e-8
     mixing_beta = 0.7
  /
+ &ions
+ ion_dynamics = 'bfgs'
+ /
 CELL_PARAMETERS
  0 3.80402 3.80402
  3.80402 0 3.80402
@@ -34,3 +37,4 @@ ATOMIC_POSITIONS crystal
  F  0.4 0.42 0.42
 K_POINTS (automatic)
  4 4 4 0 0 0
+ 

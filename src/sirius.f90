@@ -839,6 +839,11 @@ module sirius
             real(8),                  intent(out) :: g
         end subroutine
 
+        subroutine sirius_calc_forces(forces)&
+            &bind(C, name="sirius_calc_forces")
+            real(8),                 intent(out) :: forces
+        end subroutine
+
     end interface
 
 contains
@@ -928,5 +933,7 @@ contains
         call sirius_add_atom_aux(label_ptr, pos_ptr, vfield_ptr)
 
     end subroutine
+
+
 
 end module

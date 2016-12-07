@@ -132,14 +132,13 @@ void DFT_ground_state::move_atoms(int istep)
 }
 
 
-
-
-mdarray<double,2 > DFT_ground_state::forces()
+void DFT_ground_state::forces(mdarray<double, 2>& inout_forces)
 {
-    PROFILE_WITH_TIMER("sirius::Forces_PS::calc_local_forces");
+    PROFILE_WITH_TIMER("sirius::DFT_ground_state::forces");
 
-    mdarray<double,2 > forces = forces_->calc_forces();
+    forces_->calc_forces_contributions();
 
+    forces_->sum_forces(inout_forces);
 
     if(ctx_.comm().rank() == 0)
     {
@@ -152,8 +151,8 @@ mdarray<double,2 > DFT_ground_state::forces()
             }
         };
 
-        std::cout<<"===== Total Forces =====" << std::endl;
-        print_forces( forces );
+        std::cout<<"===== Total Forces in Ha/bohr =====" << std::endl;
+        print_forces( inout_forces );
 
         std::cout<<"===== Forces: ultrasoft contribution from Qij =====" << std::endl;
         print_forces( forces_->ultrasoft_forces() );
@@ -170,8 +169,18 @@ mdarray<double,2 > DFT_ground_state::forces()
         std::cout<<"===== Forces: Ewald forces from ions =====" << std::endl;
         print_forces( forces_->ewald_forces() );
     }
+}
 
-    return std::move(forces);
+
+mdarray<double,2 > DFT_ground_state::forces()
+{
+    PROFILE_WITH_TIMER("sirius::DFT_ground_state::forces");
+
+    mdarray<double,2 > tot_forces(3, unit_cell_.num_atoms());
+
+    forces(tot_forces);
+
+    return std::move(tot_forces);
 }
 
 int DFT_ground_state::find(double potential_tol, double energy_tol, int num_dft_iter, bool write_state)

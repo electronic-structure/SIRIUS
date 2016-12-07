@@ -142,7 +142,7 @@ public:
 
     void calc_ewald_forces(mdarray<double,2>& forces);
 
-    mdarray<double,2> calc_forces();
+    void calc_forces_contributions();
 
     mdarray<double,2> const& local_forces()
     {
@@ -169,7 +169,9 @@ public:
         return ewald_forces_;
     }
 
-    mdarray<double,2> get_summed_forces();
+    mdarray<double,2> sum_forces();
+
+    void sum_forces(mdarray<double,2>& inout_total_forces);
 
 };
 

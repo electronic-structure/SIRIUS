@@ -3079,6 +3079,14 @@ void sirius_fderiv(ftn_int* m__,
     }
 }
 
+//---------------------------------------------
+//--------------- GEOMETRY --------------------
+//---------------------------------------------
+void sirius_calc_forces(double* forces__)
+{
+    mdarray<double,2> forces(forces__, 3, sim_ctx->unit_cell().num_atoms() );
 
+    dft_ground_state->forces(forces);
+}
 
 } // extern "C"
