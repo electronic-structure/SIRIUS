@@ -495,6 +495,9 @@ void run_tasks(cmd_args const& args)
     task_t task = static_cast<task_t>(args.value<int>("task", 0));
     /* get the input file name */
     std::string fname = args.value<std::string>("input", "sirius.json");
+    if (!Utils::file_exists(fname)) {
+        TERMINATE("input file does not exist");
+    }
     /* read json file */
     json dict;
     std::ifstream(fname) >> dict;
