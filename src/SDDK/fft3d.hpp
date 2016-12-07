@@ -811,16 +811,6 @@ class FFT3D
             }
         }
         
-        //inline void output(int n__, int const* map__, double_complex* data__)
-        //{
-        //    for (int i = 0; i < n__; i++) data__[i] = fftw_buffer_[map__[i]];
-        //}
-
-        //inline void output(int n__, int const* map__, double_complex* data__, double beta__)
-        //{
-        //    for (int i = 0; i < n__; i++) data__[i] += beta__ * fftw_buffer_[map__[i]];
-        //}
-
         FFT3D_grid const& grid() const
         {
             return grid_;
