@@ -28,9 +28,9 @@
       "energy_tol" : 1e-8,
       "potential_tol" : 1e-8,
 
-      "num_dft_iter" : 1,
+      "num_dft_iter" : 3,
 
-      "ngridk" : [3,3,3],
+      "ngridk" : [2,2,2],
 
       "reduce_gvec": 0
   },

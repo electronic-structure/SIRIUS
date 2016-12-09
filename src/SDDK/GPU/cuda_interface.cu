@@ -5,7 +5,7 @@
 #include <signal.h>
 #include <assert.h>
 #include <nvToolsExt.h>
-#include "kernels_common.h"
+#include "cuda_common.h"
 
 #ifdef NDEBUG
     #define CALL_CUDA(func__, args__)                                                                                  \
@@ -75,28 +75,28 @@ void cuda_device_info()
      
     CALL_CUDA(cudaGetDeviceProperties, (&devprop, 0));
     
-    printf("name                        : %s \n",       devprop.name);
-    printf("major                       : %i \n",       devprop.major);
-    printf("minor                       : %i \n",       devprop.minor);
-    printf("asyncEngineCount            : %i \n",       devprop.asyncEngineCount);
-    printf("canMapHostMemory            : %i \n",       devprop.canMapHostMemory);
-    printf("clockRate                   : %i kHz \n",   devprop.clockRate);
-    printf("concurrentKernels           : %i \n",       devprop.concurrentKernels);
-    printf("ECCEnabled                  : %i \n",       devprop.ECCEnabled);
-    printf("l2CacheSize                 : %i kB \n",    devprop.l2CacheSize / 1024);
-    printf("maxGridSize                 : %i %i %i \n", devprop.maxGridSize[0], devprop.maxGridSize[1], devprop.maxGridSize[2]);
-    printf("maxThreadsDim               : %i %i %i \n", devprop.maxThreadsDim[0], devprop.maxThreadsDim[1], devprop.maxThreadsDim[2]);
-    printf("maxThreadsPerBlock          : %i \n",       devprop.maxThreadsPerBlock);
-    printf("maxThreadsPerMultiProcessor : %i \n",       devprop.maxThreadsPerMultiProcessor);
-    printf("memoryBusWidth              : %i bits \n",  devprop.memoryBusWidth);
-    printf("memoryClockRate             : %i kHz \n",   devprop.memoryClockRate);
-    printf("memPitch                    : %zi \n",      devprop.memPitch);
-    printf("multiProcessorCount         : %i \n",       devprop.multiProcessorCount);
-    printf("regsPerBlock                : %i \n",       devprop.regsPerBlock);
-    printf("sharedMemPerBlock           : %li kB \n",   devprop.sharedMemPerBlock / 1024);
-    printf("totalConstMem               : %li kB \n",   devprop.totalConstMem / 1024);
-    printf("totalGlobalMem              : %li kB \n",   devprop.totalGlobalMem / 1024);
-    printf("available memory            : %li kB \n",   cuda_get_free_mem() / 1024);
+    printf("  name                             : %s \n",       devprop.name);
+    printf("  major                            : %i \n",       devprop.major);
+    printf("  minor                            : %i \n",       devprop.minor);
+    printf("  asyncEngineCount                 : %i \n",       devprop.asyncEngineCount);
+    printf("  canMapHostMemory                 : %i \n",       devprop.canMapHostMemory);
+    printf("  clockRate                        : %i kHz \n",   devprop.clockRate);
+    printf("  concurrentKernels                : %i \n",       devprop.concurrentKernels);
+    printf("  ECCEnabled                       : %i \n",       devprop.ECCEnabled);
+    printf("  l2CacheSize                      : %i kB \n",    devprop.l2CacheSize / 1024);
+    printf("  maxGridSize                      : %i %i %i \n", devprop.maxGridSize[0], devprop.maxGridSize[1], devprop.maxGridSize[2]);
+    printf("  maxThreadsDim                    : %i %i %i \n", devprop.maxThreadsDim[0], devprop.maxThreadsDim[1], devprop.maxThreadsDim[2]);
+    printf("  maxThreadsPerBlock               : %i \n",       devprop.maxThreadsPerBlock);
+    printf("  maxThreadsPerMultiProcessor      : %i \n",       devprop.maxThreadsPerMultiProcessor);
+    printf("  memoryBusWidth                   : %i bits \n",  devprop.memoryBusWidth);
+    printf("  memoryClockRate                  : %i kHz \n",   devprop.memoryClockRate);
+    printf("  memPitch                         : %zi \n",      devprop.memPitch);
+    printf("  multiProcessorCount              : %i \n",       devprop.multiProcessorCount);
+    printf("  regsPerBlock                     : %i \n",       devprop.regsPerBlock);
+    printf("  sharedMemPerBlock                : %li kB \n",   devprop.sharedMemPerBlock / 1024);
+    printf("  totalConstMem                    : %li kB \n",   devprop.totalConstMem / 1024);
+    printf("  totalGlobalMem                   : %li kB \n",   devprop.totalGlobalMem / 1024);
+    printf("  available memory                 : %li kB \n",   cuda_get_free_mem() / 1024);
 }
 
 void print_cuda_timers()

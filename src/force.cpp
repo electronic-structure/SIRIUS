@@ -30,7 +30,7 @@ void Force::compute_dmat(Simulation_parameters const& parameters__,
                          K_point* kp__,
                          dmatrix<double_complex>& dm__)
 {
-    runtime::Timer t("sirius::Force::compute_dmat");
+    PROFILE("sirius::Force::compute_dmat");
 
     dm__.zero();
 
@@ -90,7 +90,7 @@ void Force::ibs_force(Simulation_context& ctx__,
                       mdarray<double, 2>& ffac__,
                       mdarray<double, 2>& forcek__)
 {
-    runtime::Timer timer("sirius::Force::ibs_force");
+    PROFILE("sirius::Force::ibs_force");
 
     auto& param = ctx__;
     auto& uc = ctx__.unit_cell();
@@ -245,7 +245,7 @@ void Force::total_force(Simulation_context& ctx__,
                         K_set* ks__,
                         mdarray<double, 2>& force__)
 {
-    runtime::Timer t("sirius::Force::total_force");
+    PROFILE("sirius::Force::total_force");
 
     auto& uc = ctx__.unit_cell();
 

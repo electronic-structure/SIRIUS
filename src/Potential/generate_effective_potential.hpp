@@ -1,11 +1,7 @@
-#include "potential.h"
-
-namespace sirius {
-
-void Potential::generate_effective_potential(Periodic_function<double>* rho, 
-                                             Periodic_function<double>* magnetization[3])
+inline void Potential::generate_effective_potential(Periodic_function<double>* rho, 
+                                                    Periodic_function<double>* magnetization[3])
 {
-    PROFILE_WITH_TIMER("sirius::Potential::generate_effective_potential");
+    PROFILE("sirius::Potential::generate_effective_potential");
 
     ctx_.fft().prepare(ctx_.gvec().partition());
 
@@ -39,11 +35,11 @@ void Potential::generate_effective_potential(Periodic_function<double>* rho,
     ctx_.fft().dismiss();
 }
 
-void Potential::generate_effective_potential(Periodic_function<double>* rho, 
-                                             Periodic_function<double>* rho_core, 
-                                             Periodic_function<double>* magnetization[3])
+inline void Potential::generate_effective_potential(Periodic_function<double>* rho, 
+                                                    Periodic_function<double>* rho_core, 
+                                                    Periodic_function<double>* magnetization[3])
 {
-    PROFILE_WITH_TIMER("sirius::Potential::generate_effective_potential");
+    PROFILE("sirius::Potential::generate_effective_potential");
 
     ctx_.fft().prepare(ctx_.gvec().partition());
 
@@ -86,5 +82,3 @@ void Potential::generate_effective_potential(Periodic_function<double>* rho,
         generate_D_operator_matrix();
     }
 }
-
-};

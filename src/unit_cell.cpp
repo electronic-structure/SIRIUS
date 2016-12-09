@@ -28,7 +28,7 @@ namespace sirius {
 
 void Unit_cell::initialize()
 {
-    PROFILE();
+    PROFILE("sirius::Unit_cell::initialize");
 
     /* split number of atom between all MPI ranks */
     spl_num_atoms_ = splindex<block>(num_atoms(), comm_.size(), comm_.rank());
@@ -140,7 +140,7 @@ void Unit_cell::initialize()
 
 void Unit_cell::get_symmetry()
 {
-    runtime::Timer t("sirius::Unit_cell::get_symmetry");
+    PROFILE("sirius::Unit_cell::get_symmetry");
     
     if (num_atoms() == 0) {
         return;
@@ -555,9 +555,9 @@ json Unit_cell::serialize()
 
 void Unit_cell::find_nearest_neighbours(double cluster_radius)
 {
-    runtime::Timer t("sirius::Unit_cell::find_nearest_neighbours");
+    PROFILE("sirius::Unit_cell::find_nearest_neighbours");
 
-    vector3d<int> max_frac_coord = Utils::find_translations(cluster_radius, lattice_vectors_);
+    auto max_frac_coord = Utils::find_translations(cluster_radius, lattice_vectors_);
    
     nearest_neighbours_.clear();
     nearest_neighbours_.resize(num_atoms());
@@ -582,7 +582,7 @@ void Unit_cell::find_nearest_neighbours(double cluster_radius)
                     nnd.translation[1] = i1;
                     nnd.translation[2] = i2;
                     
-                    vector3d<double> vt = get_cartesian_coordinates(nnd.translation);
+                    vector3d<double> vt = get_cartesian_coordinates<int>(nnd.translation);
                     
                     for (int ja = 0; ja < num_atoms(); ja++)
                     {
@@ -694,7 +694,7 @@ bool Unit_cell::is_point_in_mt(vector3d<double> vc, int& ja, int& jr, double& dr
 
 void Unit_cell::generate_radial_functions()
 {
-    PROFILE_WITH_TIMER("sirius::Unit_cell::generate_radial_functions");
+    PROFILE("sirius::Unit_cell::generate_radial_functions");
    
     for (int icloc = 0; icloc < (int)spl_num_atom_symmetry_classes().local_size(); icloc++)
     {
@@ -725,7 +725,7 @@ void Unit_cell::generate_radial_functions()
 
 void Unit_cell::generate_radial_integrals()
 {
-    PROFILE_WITH_TIMER("sirius::Unit_cell::generate_radial_integrals");
+    PROFILE("sirius::Unit_cell::generate_radial_integrals");
 
     for (int icloc = 0; icloc < spl_num_atom_symmetry_classes().local_size(); icloc++)
     {
@@ -777,7 +777,7 @@ std::string Unit_cell::chemical_formula()
 std::vector<double_complex> Unit_cell::make_periodic_function(mdarray<double, 2>& form_factors__,
                                                               Gvec const& gvec__) const
 {
-    PROFILE_WITH_TIMER("sirius::Unit_cell::make_periodic_function");
+    PROFILE("sirius::Unit_cell::make_periodic_function");
 
     assert((int)form_factors__.size(0) == num_atom_types());
 

@@ -25,8 +25,7 @@
 #ifndef __INPUT_H__
 #define __INPUT_H__
 
-#include "vector3d.h"
-#include "matrix3d.h"
+#include "matrix3d.hpp"
 #include "runtime.h"
 #include "constants.h"
 #include "utils.h"
@@ -166,7 +165,7 @@ struct Mixer_input_section
     double beta_{0.9};
     double beta0_{0.15};
     double linear_mix_rms_tol_{1e6};
-    std::string type_{"broyden2"};
+    std::string type_{"broyden1"};
     int max_history_{8};
     bool exist_{false};
 
@@ -197,12 +196,17 @@ struct Iterative_solver_input_section
     double residual_tolerance_{1e-6};
     int converge_by_energy_{1}; // TODO: rename, this is meaningless
     /// Minumum band occupancy at which the band's residual is added to the variational subspace.
-    double min_occupancy_{1e-5};
+    //double min_occupancy_{1e-5};
     int min_num_res_{0};
     int real_space_prj_{0}; // TODO: move it from here to parameters
     double R_mask_scale_{1.5};
     double mask_alpha_{3};
+    /// Number of singular components for the LAPW Davidson solver.
     int num_singular_{-1};
+    /// Control the subspace expansion.
+    /** If true, keep basis orthogonal and solve standard eigen-value problem. If false, add preconditioned residuals
+     *  as they are and solve generalized eigen-value problem. */
+    bool orthogonalize_{true};
 
     void read(json const& parser)
     {
@@ -213,12 +217,13 @@ struct Iterative_solver_input_section
             energy_tolerance_   = parser["iterative_solver"].value("energy_tolerance", energy_tolerance_);
             residual_tolerance_ = parser["iterative_solver"].value("residual_tolerance", residual_tolerance_);
             converge_by_energy_ = parser["iterative_solver"].value("converge_by_energy", converge_by_energy_);
-            min_occupancy_      = parser["iterative_solver"].value("min_occupancy", min_occupancy_);
+            //min_occupancy_      = parser["iterative_solver"].value("min_occupancy", min_occupancy_);
             min_num_res_        = parser["iterative_solver"].value("min_num_res", min_num_res_);
             real_space_prj_     = parser["iterative_solver"].value("real_space_prj", real_space_prj_);
             R_mask_scale_       = parser["iterative_solver"].value("R_mask_scale", R_mask_scale_);
             mask_alpha_         = parser["iterative_solver"].value("mask_alpha", mask_alpha_);
             num_singular_       = parser["iterative_solver"].value("num_singular", num_singular_);
+            orthogonalize_      = parser["iterative_solver"].value("orthogonalize", orthogonalize_);
         }
     }
 };

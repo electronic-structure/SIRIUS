@@ -27,7 +27,7 @@
 
 #include "sirius_io.h"
 #include "atom_type.h"
-#include "communicator.h"
+#include "communicator.hpp"
 
 namespace sirius {
 

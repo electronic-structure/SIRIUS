@@ -15,12 +15,9 @@ void test_wf_ortho(std::vector<int> mpi_grid_dims__,
     matrix3d<double> M = {{1, 0, 0}, {0, 1, 0}, {0, 0, 1}};
     
     /* create FFT box */
-    FFT3D_grid fft_box(2.01 * cutoff__, M);
+    FFT3D_grid fft_box(Utils::find_translations(2.01 * cutoff__, M));
     /* create G-vectors */
     Gvec gvec(vector3d<double>(0, 0, 0), M, cutoff__, fft_box, mpi_comm_world().size(), mpi_comm_world(), false);
-    /* parameters to pass to wave-functions */
-    Simulation_parameters params;
-    params.set_processing_unit(pu);
 
     if (mpi_comm_world().rank() == 0) {
         printf("total number of G-vectors: %i\n", gvec.num_gvec());
@@ -28,10 +25,10 @@ void test_wf_ortho(std::vector<int> mpi_grid_dims__,
         printf("FFT grid size: %i %i %i\n", fft_box.size(0), fft_box.size(1), fft_box.size(2));
     }
 
-    wave_functions phi(params, mpi_comm_world(), gvec, 2 * num_bands__);
-    wave_functions hphi(params, mpi_comm_world(), gvec, 2 * num_bands__);
-    wave_functions ophi(params, mpi_comm_world(), gvec, 2 * num_bands__);
-    wave_functions tmp(params, mpi_comm_world(), gvec, 2 * num_bands__);
+    wave_functions phi(pu, mpi_comm_world(), gvec, 2 * num_bands__);
+    wave_functions hphi(pu, mpi_comm_world(), gvec, 2 * num_bands__);
+    wave_functions ophi(pu, mpi_comm_world(), gvec, 2 * num_bands__);
+    wave_functions tmp(pu, mpi_comm_world(), gvec, 2 * num_bands__);
     tmp.pw_coeffs().prime().zero();
 
     for (int i = 0; i < 2 * num_bands__; i++) {
@@ -63,7 +60,7 @@ void test_wf_ortho(std::vector<int> mpi_grid_dims__,
     #endif
 
     mpi_comm_world().barrier();
-    runtime::Timer t1("ortho");
+    sddk::timer t1("ortho");
     orthogonalize<double_complex>(0, num_bands__, phi, hphi, ophi, ovlp, tmp);
     orthogonalize<double_complex>(num_bands__, num_bands__, phi, hphi, ophi, ovlp, tmp);
     mpi_comm_world().barrier();
@@ -121,11 +118,14 @@ int main(int argn, char** argv)
     auto bs = args.value<int>("bs", 16);
 
     sirius::initialize(1);
+    if (mpi_comm_world().rank() == 0) {
+        printf("Running on %i x %i MPI grid\n", mpi_grid_dims[0], mpi_grid_dims[1]);
+    }
     for (int i = 0; i < repeat; i++) {
         test_wf_ortho(mpi_grid_dims, cutoff, num_bands, use_gpu, bs);
     }
     mpi_comm_world().barrier();
-    runtime::Timer::print();
-    runtime::Timer::print_all();
+    sddk::timer::print();
+    //sddk::timer::print_all();
     sirius::finalize();
 }

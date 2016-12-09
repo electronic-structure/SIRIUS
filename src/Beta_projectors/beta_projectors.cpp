@@ -22,7 +22,7 @@
  *  \brief Contains implementation of sirius::Beta_projectors class.
  */
 
-#include "Beta_projectors.h"
+#include "beta_projectors.h"
 
 namespace sirius {
 
@@ -39,7 +39,7 @@ Beta_projectors::Beta_projectors(Communicator const& comm__,
       lmax_beta_(unit_cell_.lmax()),
       pu_(pu__)
 {
-    PROFILE_WITH_TIMER("sirius::Beta_projectors::Beta_projectors");
+    PROFILE("sirius::Beta_projectors::Beta_projectors");
 
     num_gkvec_loc_ = gkvec_.gvec_count(comm_.rank());
 
@@ -293,7 +293,7 @@ void Beta_projectors::split_in_chunks()
 
 void Beta_projectors::generate(int chunk__)
 {
-    PROFILE_WITH_TIMER("sirius::Beta_projectors::generate");
+    PROFILE("sirius::Beta_projectors::generate");
 
     if (pu_ == CPU)
     {
@@ -322,7 +322,7 @@ template<>
 void Beta_projectors::inner<double_complex>(int chunk__, wave_functions& phi__,
                                             int idx0__, int n__, mdarray<double_complex, 2> &beta_gk, mdarray<double, 1> &beta_phi)
 {
-    PROFILE_WITH_TIMER("sirius::Beta_projectors::inner");
+    PROFILE("sirius::Beta_projectors::inner");
 
     assert(num_gkvec_loc_ == phi__.pw_coeffs().num_rows_loc());
 
@@ -379,7 +379,7 @@ template<>
 void Beta_projectors::inner<double>(int chunk__,  wave_functions& phi__,
                                     int idx0__, int n__, mdarray<double_complex, 2> &beta_gk, mdarray<double, 1> &beta_phi)
 {
-    PROFILE_WITH_TIMER("sirius::Beta_projectors::inner");
+    PROFILE("sirius::Beta_projectors::inner");
 
     assert(num_gkvec_loc_ == phi__.pw_coeffs().num_rows_loc());
 

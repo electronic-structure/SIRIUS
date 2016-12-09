@@ -1,6 +1,7 @@
 #include <unistd.h>
+#include <cublas.h>
 #include <cublas_v2.h>
-#include "kernels_common.h"
+#include "cuda_common.h"
 
 cublasHandle_t cublas_null_stream_handle;
 std::vector<cublasHandle_t> cublas_handles;

@@ -1,4 +1,4 @@
-// Copyright (c) 2013-2015 Anton Kozhevnikov, Thomas Schulthess
+// Copyright (c) 2013-2016 Anton Kozhevnikov, Thomas Schulthess
 // All rights reserved.
 // 
 // Redistribution and use in source and binary forms, with or without modification, are permitted provided that 
@@ -25,9 +25,11 @@
 #ifndef __SPLINE_H__
 #define __SPLINE_H__
 
-#include "linalg.h"
+#include "linalg.hpp"
 
 // TODO: add back() method like in std::vector
+
+// TODO: [?] store radial grid, not the pointer to the grid.
 
 namespace sirius {
 

@@ -4,7 +4,7 @@ namespace sirius {
 
 void Atom_type::init(int offset_lo__)
 {
-    PROFILE();
+    PROFILE("sirius::Atom_type::init");
 
     /* check if the class instance was already initialized */
     if (initialized_) {

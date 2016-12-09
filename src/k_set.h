@@ -26,8 +26,7 @@
 #define __K_SET_H__
 
 #include "k_point.h"
-#include "blacs_grid.h"
-#include "vector3d.h"
+#include "vector3d.hpp"
 
 namespace sirius {
 
@@ -67,7 +66,7 @@ class K_set
               unit_cell_(ctx__.unit_cell()),
               comm_k_(comm_k__)
         {
-            PROFILE();
+            PROFILE("sirius::K_set::K_set");
         }
 
         K_set(Simulation_context& ctx__,
@@ -79,7 +78,7 @@ class K_set
               unit_cell_(ctx__.unit_cell()),
               comm_k_(comm_k__)
         {
-            PROFILE();
+            PROFILE("sirius::K_set::K_set");
 
             int nk;
             mdarray<double, 2> kp;
@@ -173,7 +172,8 @@ class K_set
 
         ~K_set()
         {
-            PROFILE();
+            PROFILE("sirius::K_set::~K_set");
+            //PROFILE();
             clear();
         }
         
@@ -221,14 +221,16 @@ class K_set
         
         void add_kpoint(double* vk__, double weight__)
         {
-            PROFILE();
+            PROFILE("sirius::K_set::add_kpoint");
             kpoints_.push_back(new K_point(ctx_, vk__, weight__));
         }
 
         void add_kpoints(mdarray<double, 2>& kpoints__, double* weights__)
         {
-            PROFILE();
-            for (int ik = 0; ik < (int)kpoints__.size(1); ik++) add_kpoint(&kpoints__(0, ik), weights__[ik]);
+            PROFILE("sirius::K_set::add_kpoints");
+            for (size_t ik = 0; ik < kpoints__.size(1); ik++) {
+                add_kpoint(&kpoints__(0, ik), weights__[ik]);
+            }
         }
 
         inline K_point* operator[](int i)
@@ -240,8 +242,10 @@ class K_set
 
         void clear()
         {
-            PROFILE();
-            for (size_t ik = 0; ik < kpoints_.size(); ik++) delete kpoints_[ik];
+            PROFILE("sirius::K_set::clear");
+            for (size_t ik = 0; ik < kpoints_.size(); ik++) {
+                delete kpoints_[ik];
+            }
             kpoints_.clear();
         }
         
@@ -315,7 +319,7 @@ class K_set
 
 inline void K_set::sync_band_energies()
 {
-    PROFILE();
+    PROFILE("sirius::K_set::sync_band_energies");
 
     mdarray<double, 2> band_energies(ctx_.num_bands(), num_kpoints());
 
@@ -348,7 +352,7 @@ inline double K_set::valence_eval_sum()
 
 inline void K_set::find_band_occupancies()
 {
-    PROFILE_WITH_TIMER("sirius::K_set::find_band_occupancies");
+    PROFILE("sirius::K_set::find_band_occupancies");
 
     double ef{0};
     double de{0.1};

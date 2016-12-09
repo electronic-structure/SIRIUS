@@ -1,6 +1,5 @@
 #include <sirius.h>
 #include <thread>
-#include <wave_functions.h>
 
 using namespace sirius;
 
@@ -10,7 +9,7 @@ void test1(vector3d<int> const& dims__, double cutoff__, device_t pu__)
     matrix3d<double> M;
     M(0, 0) = M(1, 1) = M(2, 2) = 1.0;
 
-    FFT3D_grid fft_grid(cutoff__, M);
+    FFT3D_grid fft_grid(Utils::find_translations(cutoff__, M));
 
     FFT3D fft(fft_grid, mpi_comm_world(), pu__);
 
@@ -66,7 +65,7 @@ void test2(vector3d<int> const& dims__, double cutoff__, device_t pu__)
     matrix3d<double> M;
     M(0, 0) = M(1, 1) = M(2, 2) = 1.0;
 
-    FFT3D_grid fft_grid(cutoff__, M);
+    FFT3D_grid fft_grid(Utils::find_translations(cutoff__, M));
 
     FFT3D fft(fft_grid, mpi_comm_world(), pu__);
 

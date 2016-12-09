@@ -11,7 +11,7 @@ void Band::apply_h(K_point* kp__,
                    Hloc_operator& h_op,
                    D_operator<T>& d_op) const
 {
-    PROFILE_WITH_TIMER("sirius::Band::apply_h");
+    PROFILE("sirius::Band::apply_h");
     #ifdef __GPU
     STOP();
     #endif
@@ -86,9 +86,9 @@ void Band::apply_h_o(K_point* kp__,
                      D_operator<T>& d_op,
                      Q_operator<T>& q_op) const
 {
-    PROFILE_WITH_TIMER("sirius::Band::apply_h_o");
+    PROFILE("sirius::Band::apply_h_o");
     
-    double t1 = -runtime::wtime();
+    double t1 = -omp_get_wtime();
     /* set initial hphi */
     hphi__.copy_from(phi__, N__, n__);
 
@@ -108,7 +108,7 @@ void Band::apply_h_o(K_point* kp__,
         hphi__.pw_coeffs().copy_to_device(N__, n__);
     }
     #endif
-    t1 += runtime::wtime();
+    t1 += omp_get_wtime();
 
     if (kp__->comm().rank() == 0 && ctx_.control().print_performance_) {
         DUMP("hloc performace: %12.6f bands/sec", n__ / t1);
@@ -200,7 +200,7 @@ inline void Band::apply_o_apw(K_point* kp__,
                               wave_functions& phi__,
                               wave_functions& ophi__) const
 {
-    PROFILE_WITH_TIMER("sirius::Band::apply_o_apw");
+    PROFILE("sirius::Band::apply_o_apw");
 
     /* interstitial part */
     istl_op__.apply_o(kp__->gkvec_vloc(), N__, n__, phi__, ophi__);
@@ -292,7 +292,7 @@ inline void Band::apply_fv_h_o(K_point* kp__,
                                wave_functions& hphi__,
                                wave_functions& ophi__) const
 {
-    PROFILE_WITH_TIMER("sirius::Band::apply_fv_h_o");
+    PROFILE("sirius::Band::apply_fv_h_o");
 
     assert(ophi__.mt_coeffs().num_rows_loc() == hphi__.mt_coeffs().num_rows_loc());
     
@@ -370,7 +370,7 @@ inline void Band::apply_fv_h_o(K_point* kp__,
         }
         #endif
 
-        runtime::Timer t1("sirius::Band::apply_fv_h_o|apw-apw");
+        sddk::timer t1("sirius::Band::apply_fv_h_o|apw-apw");
 
         if (ctx_.processing_unit() == CPU) {
             /* tmp(lm, i) = A(G, lm)^{T} * C(G, i) */
@@ -478,7 +478,7 @@ inline void Band::apply_fv_h_o(K_point* kp__,
         }
         kp__->comm().bcast(phi_lo_ia.at<CPU>(), static_cast<int>(phi_lo_ia.size()), ia_location.rank);
 
-        runtime::Timer t2("sirius::Band::apply_fv_h_o|apw-lo");
+        sddk::timer t2("sirius::Band::apply_fv_h_o|apw-lo");
         halm.zero();
         #pragma omp parallel for
         for (int ilo = 0; ilo < nlo; ilo++) {
@@ -624,7 +624,7 @@ inline void Band::apply_fv_h_o(K_point* kp__,
         //}
         t2.stop();
 
-        runtime::Timer t3("sirius::Band::apply_fv_h_o|lo-apw");
+        sddk::timer t3("sirius::Band::apply_fv_h_o|lo-apw");
         /* lo-APW contribution */
         for (int i = 0; i < n__; i++) {
             for (int ilo = 0; ilo < type.mt_lo_basis_size(); ilo++) {
@@ -695,7 +695,7 @@ inline void Band::apply_magnetic_field(wave_functions& fv_states__,
                                        Periodic_function<double>* effective_magnetic_field__[3],
                                        std::vector<wave_functions>& hpsi__) const
 {
-    PROFILE_WITH_TIMER("sirius::Band::apply_magnetic_field");
+    PROFILE("sirius::Band::apply_magnetic_field");
 
     assert(hpsi__.size() == 2 || hpsi__.size() == 3);
 

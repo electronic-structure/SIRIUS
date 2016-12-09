@@ -13,7 +13,7 @@
         "valence_relativity" : "none",
         "core_relativity" : "none",
         "!num_fv_states" : 50,
-        "aw_cutoff" : 9.45,
+        "aw_cutoff" : 7.0,
         "pw_cutoff" : 20.00,
         "auto_rmt" : 0,
         "use_symmetry": 1,
@@ -21,6 +21,16 @@
         "potential_tol" : 1e-5,
         "energy_tol" : 1e-8,
         "num_dft_iter" : 100
+    },
+
+    "!iterative_solver" : {
+        "energy_tolerance" : 1e-4,
+        "residual_tolerance" : 1e-5,
+        "num_steps" : 8,
+        "subspace_size" : 8,
+        "type" : "davidson",
+        "converge_by_energy" : 0,
+        "converge_occupied" : 0
     },
 
     "unit_cell" : {

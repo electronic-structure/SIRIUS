@@ -10,7 +10,7 @@ extern "C" void compute_chebyshev_polynomial_gpu(int num_gkvec,
 
 inline void Band::diag_fv_full_potential_exact(K_point* kp, Periodic_function<double>* effective_potential) const
 {
-    PROFILE_WITH_TIMER("sirius::Band::diag_fv_full_potential_exact");
+    PROFILE("sirius::Band::diag_fv_full_potential_exact");
 
     if (kp->num_ranks() > 1 && !gen_evp_solver().parallel()) {
         TERMINATE("eigen-value solver is not parallel");
@@ -63,13 +63,14 @@ inline void Band::diag_fv_full_potential_exact(K_point* kp, Periodic_function<do
     
     std::vector<double> eval(ctx_.num_fv_states());
     
-    runtime::Timer t("sirius::Band::diag_fv_full_potential|genevp");
+    sddk::timer t("sirius::Band::diag_fv_full_potential|genevp");
     
     if (gen_evp_solver().solve(kp->gklo_basis_size(), ctx_.num_fv_states(), h.at<CPU>(), h.ld(), o.at<CPU>(), o.ld(), 
                                eval.data(), kp->fv_eigen_vectors().at<CPU>(), kp->fv_eigen_vectors().ld(),
                                kp->gklo_basis_size_row(), kp->gklo_basis_size_col())) {
         TERMINATE("error in generalized eigen-value problem");
     }
+    t.stop();
     kp->set_fv_eigen_values(&eval[0]);
 
     /* remap to slab */
@@ -126,7 +127,7 @@ inline void Band::diag_pseudo_potential_exact(K_point* kp__,
                                               D_operator<T>& d_op__,
                                               Q_operator<T>& q_op__) const
 {
-    PROFILE();
+    PROFILE("sirius::Band::diag_pseudo_potential_exact");
 
     /* short notation for target wave-functions */
     auto& psi = kp__->spinor_wave_functions(ispn__);
@@ -136,9 +137,9 @@ inline void Band::diag_pseudo_potential_exact(K_point* kp__,
 
     int ngk = kp__->num_gkvec();
 
-    wave_functions  phi(ctx_, kp__->comm(), kp__->gkvec(), ngk);
-    wave_functions hphi(ctx_, kp__->comm(), kp__->gkvec(), ngk);
-    wave_functions ophi(ctx_, kp__->comm(), kp__->gkvec(), ngk);
+    wave_functions  phi(ctx_.processing_unit(), kp__->comm(), kp__->gkvec(), ngk);
+    wave_functions hphi(ctx_.processing_unit(), kp__->comm(), kp__->gkvec(), ngk);
+    wave_functions ophi(ctx_.processing_unit(), kp__->comm(), kp__->gkvec(), ngk);
     
     std::vector<double> eval(ngk);
 
@@ -175,7 +176,7 @@ inline void Band::diag_pseudo_potential_exact(K_point* kp__,
 
 inline void Band::get_singular_components(K_point* kp__, Interstitial_operator& istl_op__) const
 {
-    PROFILE_WITH_TIMER("sirius::Band::get_singular_components");
+    PROFILE("sirius::Band::get_singular_components");
 
     auto o_diag_tmp = get_o_diag(kp__, ctx_.step_function().theta_pw(0).real());
     
@@ -207,10 +208,10 @@ inline void Band::get_singular_components(K_point* kp__, Interstitial_operator& 
 
     int num_phi = itso.subspace_size_ * ncomp;
 
-    wave_functions  phi(ctx_, kp__->comm(), kp__->gkvec(), num_phi);
-    wave_functions ophi(ctx_, kp__->comm(), kp__->gkvec(), num_phi);
-    wave_functions opsi(ctx_, kp__->comm(), kp__->gkvec(), ncomp);
-    wave_functions  res(ctx_, kp__->comm(), kp__->gkvec(), ncomp);
+    wave_functions  phi(ctx_.processing_unit(), kp__->comm(), kp__->gkvec(), num_phi);
+    wave_functions ophi(ctx_.processing_unit(), kp__->comm(), kp__->gkvec(), num_phi);
+    wave_functions opsi(ctx_.processing_unit(), kp__->comm(), kp__->gkvec(), ncomp);
+    wave_functions  res(ctx_.processing_unit(), kp__->comm(), kp__->gkvec(), ncomp);
 
     int bs = ctx_.cyclic_block_size();
 
@@ -304,7 +305,7 @@ inline void Band::get_singular_components(K_point* kp__, Interstitial_operator& 
 
         /* check if we run out of variational space or eigen-vectors are converged or it's a last iteration */
         if (N + n > num_phi || n <= itso.min_num_res_ || k == (itso.num_steps_ - 1)) {   
-            runtime::Timer t1("sirius::Band::diag_fv_full_potential_davidson|update_phi");
+            sddk::timer t1("sirius::Band::diag_fv_full_potential_davidson|update_phi");
             /* recompute wave-functions */
             /* \Psi_{i} = \sum_{mu} \phi_{mu} * Z_{mu, i} */
             transform(phi, 0, N, evec, 0, 0, psi, 0, ncomp);
@@ -347,7 +348,7 @@ inline void Band::diag_fv_full_potential_davidson(K_point* kp,
                                                   Periodic_function<double>* effective_potential,
                                                   Interstitial_operator& istl_op) const
 {
-    PROFILE_WITH_TIMER("sirius::Band::diag_fv_full_potential_davidson");
+    PROFILE("sirius::Band::diag_fv_full_potential_davidson");
 
     get_singular_components(kp, istl_op);
 
@@ -375,19 +376,19 @@ inline void Band::diag_fv_full_potential_davidson(K_point* kp,
     }
 
     /* allocate wave-functions */
-    wave_functions  phi(ctx_, kp->comm(), kp->gkvec(), unit_cell_.num_atoms(),
+    wave_functions  phi(ctx_.processing_unit(), kp->comm(), kp->gkvec(), unit_cell_.num_atoms(),
                         [this](int ia){return unit_cell_.atom(ia).mt_lo_basis_size();}, num_phi);
-    wave_functions hphi(ctx_, kp->comm(), kp->gkvec(), unit_cell_.num_atoms(),
+    wave_functions hphi(ctx_.processing_unit(), kp->comm(), kp->gkvec(), unit_cell_.num_atoms(),
                         [this](int ia){return unit_cell_.atom(ia).mt_lo_basis_size();}, num_phi);
-    wave_functions ophi(ctx_, kp->comm(), kp->gkvec(), unit_cell_.num_atoms(),
+    wave_functions ophi(ctx_.processing_unit(), kp->comm(), kp->gkvec(), unit_cell_.num_atoms(),
                         [this](int ia){return unit_cell_.atom(ia).mt_lo_basis_size();}, num_phi);
-    wave_functions hpsi(ctx_, kp->comm(), kp->gkvec(), unit_cell_.num_atoms(),
+    wave_functions hpsi(ctx_.processing_unit(), kp->comm(), kp->gkvec(), unit_cell_.num_atoms(),
                         [this](int ia){return unit_cell_.atom(ia).mt_lo_basis_size();}, num_bands);
-    wave_functions opsi(ctx_, kp->comm(), kp->gkvec(), unit_cell_.num_atoms(),
+    wave_functions opsi(ctx_.processing_unit(), kp->comm(), kp->gkvec(), unit_cell_.num_atoms(),
                         [this](int ia){return unit_cell_.atom(ia).mt_lo_basis_size();}, num_bands);
 
     /* residuals */
-    wave_functions res(ctx_, kp->comm(), kp->gkvec(), unit_cell_.num_atoms(),
+    wave_functions res(ctx_.processing_unit(), kp->comm(), kp->gkvec(), unit_cell_.num_atoms(),
                        [this](int ia){return unit_cell_.atom(ia).mt_lo_basis_size();}, nlo + ncomp + 2 * num_bands);
 
     //auto mem_type = (gen_evp_solver_->type() == ev_magma) ? memory_t::host_pinned : memory_t::host;
@@ -537,7 +538,7 @@ inline void Band::diag_fv_full_potential_davidson(K_point* kp,
 
         /* check if we run out of variational space or eigen-vectors are converged or it's a last iteration */
         if (N + n > num_phi || n <= itso.min_num_res_ || k == (itso.num_steps_ - 1)) {   
-            runtime::Timer t1("sirius::Band::diag_fv_full_potential_davidson|update_phi");
+            sddk::timer t1("sirius::Band::diag_fv_full_potential_davidson|update_phi");
             /* recompute wave-functions */
             /* \Psi_{i} = \sum_{mu} \phi_{mu} * Z_{mu, i} */
             transform(phi, 0, N, evec, 0, 0, psi, 0, num_bands);
@@ -582,7 +583,7 @@ inline void Band::diag_pseudo_potential_davidson(K_point* kp__,
                                                  D_operator<T>& d_op__,
                                                  Q_operator<T>& q_op__) const
 {
-    PROFILE_WITH_TIMER("sirius::Band::diag_pseudo_potential_davidson");
+    PROFILE("sirius::Band::diag_pseudo_potential_davidson");
 
     #ifdef __PRINT_MEMORY_USAGE
     MEMORY_USAGE_INFO();
@@ -612,13 +613,13 @@ inline void Band::diag_pseudo_potential_davidson(K_point* kp__,
     int num_phi = std::min(itso.subspace_size_ * num_bands, kp__->num_gkvec());
 
     /* allocate wave-functions */
-    wave_functions  phi(ctx_, kp__->comm(), kp__->gkvec(), num_phi);
-    wave_functions hphi(ctx_, kp__->comm(), kp__->gkvec(), num_phi);
-    wave_functions ophi(ctx_, kp__->comm(), kp__->gkvec(), num_phi);
-    wave_functions hpsi(ctx_, kp__->comm(), kp__->gkvec(), num_bands);
-    wave_functions opsi(ctx_, kp__->comm(), kp__->gkvec(), num_bands);
+    wave_functions  phi(ctx_.processing_unit(), kp__->comm(), kp__->gkvec(), num_phi);
+    wave_functions hphi(ctx_.processing_unit(), kp__->comm(), kp__->gkvec(), num_phi);
+    wave_functions ophi(ctx_.processing_unit(), kp__->comm(), kp__->gkvec(), num_phi);
+    wave_functions hpsi(ctx_.processing_unit(), kp__->comm(), kp__->gkvec(), num_bands);
+    wave_functions opsi(ctx_.processing_unit(), kp__->comm(), kp__->gkvec(), num_bands);
     /* residuals */
-    wave_functions res(ctx_, kp__->comm(), kp__->gkvec(), num_bands);
+    wave_functions res(ctx_.processing_unit(), kp__->comm(), kp__->gkvec(), num_bands);
 
     auto mem_type = (std_evp_solver().type() == ev_magma) ? memory_t::host_pinned : memory_t::host;
     //auto mem_type = memory_t::host;
@@ -626,7 +627,7 @@ inline void Band::diag_pseudo_potential_davidson(K_point* kp__,
     int bs = ctx_.cyclic_block_size();
 
     dmatrix<T> hmlt(num_phi, num_phi, ctx_.blacs_grid(), bs, bs, mem_type);
-    dmatrix<T> ovlp(num_phi, num_phi, ctx_.blacs_grid(), bs, bs);
+    dmatrix<T> ovlp(num_phi, num_phi, ctx_.blacs_grid(), bs, bs, mem_type);
     dmatrix<T> evec(num_phi, num_phi, ctx_.blacs_grid(), bs, bs, mem_type);
     dmatrix<T> hmlt_old(num_phi, num_phi, ctx_.blacs_grid(), bs, bs);
     dmatrix<T> ovlp_old(num_phi, num_phi, ctx_.blacs_grid(), bs, bs);
@@ -687,27 +688,48 @@ inline void Band::diag_pseudo_potential_davidson(K_point* kp__,
         /* apply Hamiltonian and overlap operators to the new basis functions */
         apply_h_o<T>(kp__, ispn__, N, n, phi, hphi, ophi, h_op__, d_op__, q_op__);
         
-        orthogonalize<T>(N, n, phi, hphi, ophi, ovlp, res);
+        if (itso.orthogonalize_) {
+            orthogonalize<T>(N, n, phi, hphi, ophi, ovlp, res);
+        }
 
         /* setup eigen-value problem
          * N is the number of previous basis functions
          * n is the number of new basis functions */
         set_subspace_mtrx(N, n, phi, hphi, hmlt, hmlt_old);
+        if (!itso.orthogonalize_) {
+            set_subspace_mtrx(N, n, phi, ophi, ovlp, ovlp_old);
+        }
 
         /* increase size of the variation space */
         N += n;
 
         hmlt.make_real_diag(N);
+        if (!itso.orthogonalize_) {
+            ovlp.make_real_diag(N);
+        }
 
         eval_old = eval;
 
-        /* solve standard eigen-value problem with the size N */
-        if (std_evp_solver().solve(N,  num_bands, hmlt.template at<CPU>(), hmlt.ld(),
-                                   eval.data(), evec.template at<CPU>(), evec.ld(),
-                                   hmlt.num_rows_local(), hmlt.num_cols_local())) {
-            std::stringstream s;
-            s << "error in diagonalziation";
-            TERMINATE(s);
+        if (itso.orthogonalize_) {
+            /* solve standard eigen-value problem with the size N */
+            if (std_evp_solver().solve(N, num_bands, hmlt.template at<CPU>(), hmlt.ld(),
+                                       eval.data(), evec.template at<CPU>(), evec.ld(),
+                                       hmlt.num_rows_local(), hmlt.num_cols_local())) {
+                std::stringstream s;
+                s << "error in diagonalziation";
+                TERMINATE(s);
+            }
+        } else {
+            /* solve generalized eigen-value problem with the size N */
+            if (gen_evp_solver().solve(N, num_bands,
+                                       hmlt.template at<CPU>(), hmlt.ld(),
+                                       ovlp.template at<CPU>(), ovlp.ld(),
+                                       eval.data(), evec.template at<CPU>(), evec.ld(),
+                                       hmlt.num_rows_local(), hmlt.num_cols_local())) {
+                std::stringstream s;
+                s << "error in diagonalziation";
+                TERMINATE(s);
+            }
         }
         
         if (ctx_.control().verbosity_ > 2 && kp__->comm().rank() == 0) {
@@ -728,7 +750,7 @@ inline void Band::diag_pseudo_potential_davidson(K_point* kp__,
 
         /* check if we run out of variational space or eigen-vectors are converged or it's a last iteration */
         if (N + n > num_phi || n <= itso.min_num_res_ || k == (itso.num_steps_ - 1)) {
-            runtime::Timer t1("sirius::Band::diag_pseudo_potential_davidson|update_phi");
+            sddk::timer t1("sirius::Band::diag_pseudo_potential_davidson|update_phi");
             /* recompute wave-functions */
             /* \Psi_{i} = \sum_{mu} \phi_{mu} * Z_{mu, i} */
             transform<T>(phi, 0, N, evec, 0, 0, psi, 0, num_bands);
@@ -744,6 +766,12 @@ inline void Band::diag_pseudo_potential_davidson(K_point* kp__,
                 hmlt_old.zero();
                 for (int i = 0; i < num_bands; i++) {
                     hmlt_old.set(i, i, eval[i]);
+                }
+                if (!itso.orthogonalize_) {
+                    ovlp_old.zero();
+                    for (int i = 0; i < num_bands; i++) {
+                        ovlp_old.set(i, i, 1);
+                    }
                 }
 
                 /* need to compute all hpsi and opsi states (not only unconverged) */
@@ -787,7 +815,7 @@ inline void Band::diag_pseudo_potential_chebyshev(K_point* kp__,
                                                   Q_operator<T>& q_op__,
                                                   P_operator<T>& p_op__) const
 {
-    PROFILE_WITH_TIMER("sirius::Band::diag_pseudo_potential_chebyshev");
+    PROFILE("sirius::Band::diag_pseudo_potential_chebyshev");
 
 //==     auto pu = ctx_.processing_unit();
 //== 
@@ -1052,7 +1080,7 @@ inline void Band::diag_pseudo_potential_rmm_diis(K_point* kp__,
     //==     return;
     //== }
 
-    //== PROFILE_WITH_TIMER("sirius::Band::diag_pseudo_potential_rmm_diis");
+    //== PROFILE("sirius::Band::diag_pseudo_potential_rmm_diis");
 
     //== /* get diagonal elements for preconditioning */
     //== auto h_diag = get_h_diag(kp__, ispn__, h_op__.v0(ispn__), d_op__);

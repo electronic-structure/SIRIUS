@@ -31,7 +31,7 @@ namespace sirius {
 
 double DFT_ground_state::ewald_energy()
 {
-    runtime::Timer t("sirius::DFT_ground_state::ewald_energy");
+    PROFILE("sirius::DFT_ground_state::ewald_energy");
 
     double alpha = 1.5;
     
@@ -134,7 +134,7 @@ void DFT_ground_state::move_atoms(int istep)
 
 void DFT_ground_state::forces(mdarray<double, 2>& inout_forces)
 {
-    PROFILE_WITH_TIMER("sirius::DFT_ground_state::forces");
+    PROFILE("sirius::DFT_ground_state::forces");
 
     forces_->calc_forces_contributions();
 
@@ -174,7 +174,7 @@ void DFT_ground_state::forces(mdarray<double, 2>& inout_forces)
 
 mdarray<double,2 > DFT_ground_state::forces()
 {
-    PROFILE_WITH_TIMER("sirius::DFT_ground_state::forces");
+    PROFILE("sirius::DFT_ground_state::forces");
 
     mdarray<double,2 > tot_forces(3, unit_cell_.num_atoms());
 
@@ -185,7 +185,7 @@ mdarray<double,2 > DFT_ground_state::forces()
 
 int DFT_ground_state::find(double potential_tol, double energy_tol, int num_dft_iter, bool write_state)
 {
-    runtime::Timer t("sirius::DFT_ground_state::scf_loop");
+    PROFILE("sirius::DFT_ground_state::scf_loop");
     
     double eold{0}, rms{0};
 
@@ -200,7 +200,7 @@ int DFT_ground_state::find(double potential_tol, double energy_tol, int num_dft_
 //    tbb::task_scheduler_init tbb_init(omp_get_num_threads());
 
     for (int iter = 0; iter < num_dft_iter; iter++) {
-        runtime::Timer t1("sirius::DFT_ground_state::scf_loop|iteration");
+        sddk::timer t1("sirius::DFT_ground_state::scf_loop|iteration");
 
         /* find new wave-functions */
         band_.solve_for_kset(kset_, potential_, true);
@@ -454,7 +454,7 @@ void DFT_ground_state::print_info()
 
 void DFT_ground_state::initialize_subspace()
 {
-    PROFILE_WITH_TIMER("sirius::DFT_ground_state::initialize_subspace");
+    PROFILE("sirius::DFT_ground_state::initialize_subspace");
 
     int nq = 20;
     int lmax = 2;

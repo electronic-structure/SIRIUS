@@ -1,4 +1,4 @@
-#include "kernels_common.h"
+#include "cuda_common.h"
 
 template <int direction, bool conjugate>
 __global__ void pack_unpack_z_cols_gpu_kernel

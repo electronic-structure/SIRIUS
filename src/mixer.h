@@ -217,7 +217,7 @@ class Broyden1: public Mixer<T>
 
         double mix()
         {
-            runtime::Timer t("sirius::Broyden1::mix");
+            PROFILE("sirius::Broyden1::mix");
             
             //== /* weights as a functor */
             //== struct w_functor
@@ -402,7 +402,7 @@ class Broyden2: public Mixer<T>
 
         double mix()
         {
-            runtime::Timer t("sirius::Broyden2::mix");
+            PROFILE("sirius::Broyden2::mix");
 
             /* weights as a lambda function */
             auto w = [this](size_t idx)
@@ -422,6 +422,8 @@ class Broyden2: public Mixer<T>
                 this->rss_ += std::pow(std::abs(residuals_(i, ipos)), 2) * w(this->spl_size_[i]);
             }
             this->comm_.allreduce(&this->rss_, 1);
+
+            std::cout<<"RSS  ---------- "<<this->rss_<<std::endl;
 
             /* exit if the vector has converged */
             if (this->rss_ < 1e-11) return 0.0;

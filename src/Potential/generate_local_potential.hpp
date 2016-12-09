@@ -1,10 +1,6 @@
-#include "potential.h"
-
-namespace sirius {
-
-void Potential::generate_local_potential()
+inline void Potential::generate_local_potential()
 {
-    PROFILE_WITH_TIMER("sirius::Potential::generate_local_potential");
+    PROFILE("sirius::Potential::generate_local_potential");
 
     vloc_radial_integrals_ = mdarray<double, 2>(unit_cell_.num_atom_types(), ctx_.gvec().num_shells());
 
@@ -15,10 +11,10 @@ void Potential::generate_local_potential()
     {
         /* splines for all atom types */
         std::vector< Spline<double> > sa(unit_cell_.num_atom_types());
-        
+
         for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++)
             sa[iat] = Spline<double>(unit_cell_.atom_type(iat).radial_grid());
-    
+
         #pragma omp for
         for (int igsloc = 0; igsloc < spl_gshells.local_size(); igsloc++)
         {
@@ -61,5 +57,3 @@ void Potential::generate_local_potential()
     ctx_.fft().output(&local_potential_->f_rg(0));
     ctx_.fft().dismiss();
 }
-
-};

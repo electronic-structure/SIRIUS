@@ -1,4 +1,4 @@
-#include "kernels_common.h"
+#include "../SDDK/GPU/cuda_common.h"
 
 extern "C" void* cuda_malloc(size_t size);
 extern "C" void cuda_free(void* ptr);
@@ -20,9 +20,9 @@ __global__ void generate_phase_factors_conj_gpu_kernel
 )
 {
     int ia = blockIdx.y;
-    double ax = atom_pos__[array2D_offset(0, ia, 3)];
-    double ay = atom_pos__[array2D_offset(1, ia, 3)];
-    double az = atom_pos__[array2D_offset(2, ia, 3)];
+    double ax = atom_pos__[array2D_offset(ia, 0, num_atoms__)];
+    double ay = atom_pos__[array2D_offset(ia, 1, num_atoms__)];
+    double az = atom_pos__[array2D_offset(ia, 2, num_atoms__)];
 
     int igloc = blockIdx.x * blockDim.x + threadIdx.x;
 

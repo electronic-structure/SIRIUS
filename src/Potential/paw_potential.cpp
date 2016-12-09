@@ -65,7 +65,7 @@ void Potential::init_PAW()
 
 void Potential::generate_PAW_effective_potential(Density& density)
 {
-    PROFILE_WITH_TIMER("sirius::Potential::generate_PAW_effective_potential");
+    PROFILE("sirius::Potential::generate_PAW_effective_potential");
 
     if (!unit_cell_.num_paw_atoms()) {
         return;
@@ -247,12 +247,7 @@ double Potential::calc_PAW_hartree_potential(Atom& atom,
     Spheric_function<spectral,double> atom_pot_sf(lmsize_rho, grid);
     atom_pot_sf.zero();
 
-    // create qmt to store multipoles
-    mdarray<double_complex,1> qmt(lmsize_rho);
-
-    // solve poisson eq and fill 0th spin component of hartree array (in nonmagnetic we have only this)
-    qmt.zero();
-    poisson_atom_vmt(dens_sf, atom_pot_sf, qmt, atom);
+    poisson_vmt<true>(atom, dens_sf, atom_pot_sf);
 
     // make spher funcs from arrays
     Spheric_function<spectral,double> out_atom_pot_sf(&out_atom_pot(0, 0, 0), lmsize_rho, grid);
@@ -292,8 +287,6 @@ void Potential::calc_PAW_local_potential(paw_potential_data_t& pdd,
                                          mdarray<double, 3>& ae_local_magnetization,
                                          mdarray<double, 3>& ps_local_magnetization)
 {
-    //PROFILE_WITH_TIMER("sirius::Potential::calc_PAW_local_potential");
-
     auto& pp_desc = pdd.atom_->type().pp_desc();
 
     //-----------------------------------------
@@ -361,8 +354,6 @@ void Potential::calc_PAW_local_potential(paw_potential_data_t& pdd,
 
 void Potential::calc_PAW_local_Dij(paw_potential_data_t &pdd, mdarray<double_complex,4>& paw_dij)
 {
-    //PROFILE_WITH_TIMER("sirius::Potential::calc_PAW_local_Dij");
-
     int paw_ind = pdd.ia_paw;
 
     auto& atom_type = pdd.atom_->type();

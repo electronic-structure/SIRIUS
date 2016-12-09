@@ -111,7 +111,7 @@ inline void Band::solve_fd(K_point* kp__,
 inline void Band::solve_sv(K_point* kp,
                            Periodic_function<double>* effective_magnetic_field[3]) const
 {
-    PROFILE_WITH_TIMER("sirius::Band::solve_sv");
+    PROFILE("sirius::Band::solve_sv");
 
     if (!ctx_.need_sv()) {
         kp->bypass_sv();
@@ -127,7 +127,7 @@ inline void Band::solve_sv(K_point* kp,
     /* product of the second-variational Hamiltonian and a first-variational wave-function */
     std::vector<wave_functions> hpsi;
     for (int i = 0; i < ctx_.num_mag_comp(); i++) {
-        hpsi.push_back(std::move(wave_functions(ctx_,
+        hpsi.push_back(std::move(wave_functions(ctx_.processing_unit(),
                                                 kp->comm(),
                                                 kp->gkvec(),
                                                 unit_cell_.num_atoms(),
@@ -214,7 +214,7 @@ inline void Band::solve_sv(K_point* kp,
                 h.add(i, i, kp->fv_eigen_value(i));
             }
         
-            runtime::Timer t1("sirius::Band::solve_sv|stdevp");
+            sddk::timer t1("sirius::Band::solve_sv|stdevp");
             std_evp_solver().solve(nfv, h.at<CPU>(), h.ld(), &band_energies[ispn * nfv],
                                    kp->sv_eigen_vectors(ispn).at<CPU>(), kp->sv_eigen_vectors(ispn).ld());
         }
@@ -243,7 +243,7 @@ inline void Band::solve_sv(K_point* kp,
             h.add(i,       i,       kp->fv_eigen_value(i));
             h.add(i + nfv, i + nfv, kp->fv_eigen_value(i));
         }
-        runtime::Timer t1("sirius::Band::solve_sv|stdevp");
+        sddk::timer t1("sirius::Band::solve_sv|stdevp");
         std_evp_solver().solve(nb, h.at<CPU>(), h.ld(), &band_energies[0],
                                kp->sv_eigen_vectors(0).at<CPU>(), kp->sv_eigen_vectors(0).ld());
     }
@@ -260,7 +260,7 @@ inline void Band::solve_sv(K_point* kp,
 
 inline void Band::solve_for_kset(K_set& kset, Potential& potential, bool precompute) const
 {
-    PROFILE_WITH_TIMER("sirius::Band::solve_for_kset");
+    PROFILE("sirius::Band::solve_for_kset");
 
     if (precompute && ctx_.full_potential()) {
         potential.generate_pw_coefs();

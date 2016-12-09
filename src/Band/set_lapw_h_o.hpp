@@ -28,7 +28,7 @@ inline void Band::set_fv_h_o<CPU, electronic_structure_method_t::full_potential_
                                                                                         dmatrix<double_complex>& h__,
                                                                                         dmatrix<double_complex>& o__) const
 {
-    PROFILE_WITH_TIMER("sirius::Band::set_fv_h_o");
+    PROFILE("sirius::Band::set_fv_h_o");
     
     h__.zero();
     o__.zero();
@@ -47,7 +47,7 @@ inline void Band::set_fv_h_o<CPU, electronic_structure_method_t::full_potential_
     mdarray<double_complex, 2> alm_col(kp__->num_gkvec_col(), max_mt_aw);
     mdarray<double_complex, 2> halm_col(kp__->num_gkvec_col(), max_mt_aw);
 
-    runtime::Timer t1("sirius::Band::set_fv_h_o|zgemm");
+    sddk::timer t1("sirius::Band::set_fv_h_o|zgemm");
     for (int iblk = 0; iblk < nblk; iblk++)
     {
         int num_mt_aw = 0;
@@ -132,9 +132,9 @@ inline void Band::set_fv_h_o<GPU, electronic_structure_method_t::full_potential_
                                                                                         dmatrix<double_complex>& h__,
                                                                                         dmatrix<double_complex>& o__) const
 {
-    runtime::Timer t("sirius::Band::set_fv_h_o");
+    PROFILE("sirius::Band::set_fv_h_o");
     
-    runtime::Timer t2("sirius::Band::set_fv_h_o|alloc");
+    sddk::timer t2("sirius::Band::set_fv_h_o|alloc");
     h__.zero();
     h__.allocate(memory_t::device);
     h__.zero_on_device();
@@ -160,7 +160,7 @@ inline void Band::set_fv_h_o<GPU, electronic_structure_method_t::full_potential_
     mdarray<double_complex, 3> halm_col(kp__->num_gkvec_col(), max_mt_aw, 2, memory_t::host_pinned | memory_t::device);
     t2.stop();
 
-    runtime::Timer t1("sirius::Band::set_fv_h_o|zgemm");
+    sddk::timer t1("sirius::Band::set_fv_h_o|zgemm");
     for (int iblk = 0; iblk < nblk; iblk++) {
         int num_mt_aw = 0;
         std::vector<int> offsets(num_atoms_in_block);
@@ -327,7 +327,7 @@ inline void Band::set_fv_h_o_it(K_point* kp,
                                 mdarray<double_complex, 2>& h,
                                 mdarray<double_complex, 2>& o) const
 {
-    runtime::Timer t("sirius::Band::set_fv_h_o_it");
+    PROFILE("sirius::Band::set_fv_h_o_it");
 
     #ifdef __PRINT_OBJECT_CHECKSUM
     double_complex z1 = mdarray<double_complex, 1>(&effective_potential->f_pw(0), ctx_.gvec().num_gvec()).checksum();
@@ -357,7 +357,7 @@ inline void Band::set_fv_h_o_lo_lo(K_point* kp,
                                    mdarray<double_complex, 2>& h,
                                    mdarray<double_complex, 2>& o) const
 {
-    runtime::Timer t("sirius::Band::set_fv_h_o_lo_lo");
+    PROFILE("sirius::Band::set_fv_h_o_lo_lo");
 
     /* lo-lo block */
     #pragma omp parallel for default(shared)
@@ -391,9 +391,9 @@ inline void Band::set_fv_h_o_lo_lo(K_point* kp,
 inline void Band::set_o_lo_lo(K_point* kp,
                               mdarray<double_complex, 2>& o) const
 {
-    runtime::Timer t("sirius::Band::set_o_lo_lo");
+    PROFILE("sirius::Band::set_o_lo_lo");
 
-    // lo-lo block
+    /* lo-lo block */
     #pragma omp parallel for default(shared)
     for (int icol = 0; icol < kp->num_lo_col(); icol++) {
         int ia  = kp->lo_basis_descriptor_col(icol).ia;
@@ -419,7 +419,7 @@ inline void Band::set_o_lo_lo(K_point* kp,
 inline void Band::set_o_it(K_point* kp,
                            mdarray<double_complex, 2>& o) const
 {
-    runtime::Timer t("sirius::Band::set_o_it");
+    PROFILE("sirius::Band::set_o_it");
 
     #pragma omp parallel for default(shared)
     for (int igk_col = 0; igk_col < kp->num_gkvec_col(); igk_col++) {
@@ -504,7 +504,7 @@ template <spin_block_t sblock>
 void Band::set_h_it(K_point* kp, Periodic_function<double>* effective_potential, 
                     Periodic_function<double>* effective_magnetic_field[3], mdarray<double_complex, 2>& h) const
 {
-    runtime::Timer t("sirius::Band::set_h_it");
+    PROFILE("sirius::Band::set_h_it");
 
     #pragma omp parallel for default(shared)
     for (int igk_col = 0; igk_col < kp->num_gkvec_col(); igk_col++) {
@@ -552,9 +552,9 @@ void Band::set_h_it(K_point* kp, Periodic_function<double>* effective_potential,
 template <spin_block_t sblock>
 void Band::set_h_lo_lo(K_point* kp, mdarray<double_complex, 2>& h) const
 {
-    runtime::Timer t("sirius::Band::set_h_lo_lo");
+    PROFILE("sirius::Band::set_h_lo_lo");
 
-    // lo-lo block
+    /* lo-lo block */
     #pragma omp parallel for default(shared)
     for (int icol = 0; icol < kp->num_lo_col(); icol++) {
         int ia     = kp->lo_basis_descriptor_col(icol).ia;

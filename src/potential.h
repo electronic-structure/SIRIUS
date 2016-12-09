@@ -1,4 +1,4 @@
-// Copyright (c) 2013-2015 Anton Kozhevnikov, Thomas Schulthess
+// Copyright (c) 2013-2016 Anton Kozhevnikov, Thomas Schulthess
 // All rights reserved.
 // 
 // Redistribution and use in source and binary forms, with or without modification, are permitted provided that 
@@ -45,11 +45,9 @@ class Potential
 
         Unit_cell& unit_cell_;
 
-        Step_function const* step_function_;
-
         Communicator const& comm_;
 
-        Periodic_function<double>* effective_potential_;
+        std::unique_ptr<Periodic_function<double>> effective_potential_;
 
         Periodic_function<double>* effective_magnetic_field_[3];
  
@@ -163,18 +161,90 @@ class Potential
 
 
         void add_paw_Dij_to_atom_Dmtrx();
+        
+        /// Solve Poisson equation for a single atom.
+        template <bool free_atom>
+        inline std::vector<double>
+        poisson_vmt(Atom const& atom__,
+                    Spheric_function<function_domain_t::spectral, double> const& rho_mt__,
+                    Spheric_function<function_domain_t::spectral, double>& vha_mt__) const
+        {
+            assert(rho_mt__.angular_domain_size() >= ctx_.lmmax_rho());
+            assert(vha_mt__.angular_domain_size() >= ctx_.lmmax_pot());
+            assert((int)l_by_lm_.size() >= ctx_.lmmax_rho());
+            std::vector<double> qmt(ctx_.lmmax_rho(), 0);
 
-        //Spheric_function<function_domain_t::spectral,double>
-        /// Compute MT part of the potential and MT multipole moments
-        void poisson_vmt(Periodic_function<double>* rho__, 
-                         Periodic_function<double>* vh__,
-                         mdarray<double_complex, 2>& qmt__);
+            double R = atom__.mt_radius();
+            int nmtp = atom__.num_mt_points();
+
+            #pragma omp parallel
+            {
+                std::vector<double> g1;
+                std::vector<double> g2;
+
+                #pragma omp for
+                for (int lm = 0; lm < ctx_.lmmax_rho(); lm++) {
+                    int l = l_by_lm_[lm];
+
+                    auto rholm = rho_mt__.component(lm);
+
+                    /* save multipole moment */
+                    qmt[lm] = rholm.integrate(g1, l + 2);
+                    
+                    if (lm < ctx_.lmmax_pot()) {
+
+                        rholm.integrate(g2, 1 - l);
+
+                        double d2 = fourpi / double(2 * l + 1); 
+                        double vlm;
+
+                        for (int ir = 0; ir < nmtp; ir++) {
+                            double r = atom__.radial_grid(ir);
+
+                            if (free_atom) {
+                                vlm = g1[ir] / std::pow(r, l + 1) + (g2.back() - g2[ir]) * std::pow(r, l);
+                            } else {
+                                double d1 = 1.0 / std::pow(R, 2 * l + 1); 
+                                vlm = (1.0 - std::pow(r / R, 2 * l + 1)) * g1[ir] / std::pow(r, l + 1) +
+                                      (g2.back() - g2[ir]) * std::pow(r, l) - (g1.back() - g1[ir]) * std::pow(r, l) * d1;
+                            }
+                            vha_mt__(lm, ir) = vlm * d2;
+                        }
+                    }
+                }
+            }
+            if (!free_atom) {
+                /* constant part of nuclear potential -z*(1/r - 1/R) */
+                for (int ir = 0; ir < nmtp; ir++) {
+                    vha_mt__(0, ir) += atom__.zn() / R / y00;
+                }
+            }
+            /* nuclear multipole moment */
+            qmt[0] -= atom__.zn() * y00;
+
+            return std::move(qmt);
+        }
 
         /// Compute MT part of the potential and MT multipole moments
-        void poisson_atom_vmt(Spheric_function<function_domain_t::spectral,double> &rho_mt,
-                        Spheric_function<function_domain_t::spectral,double> &vh_mt,
-                        mdarray<double_complex, 1>& qmt_mt,
-                        Atom &atom);
+        inline void poisson_vmt(Periodic_function<double>* rho__, 
+                                Periodic_function<double>* vh__,
+                                mdarray<double_complex, 2>& qmt__)
+        {
+            PROFILE("sirius::Potential::poisson_vmt");
+
+            qmt__.zero();
+            
+            for (int ialoc = 0; ialoc < unit_cell_.spl_num_atoms().local_size(); ialoc++) {
+                int ia = unit_cell_.spl_num_atoms(ialoc);
+
+                auto qmt = poisson_vmt<false>(unit_cell_.atom(ia), rho__->f_mt(ialoc),
+                                              const_cast<Spheric_function<function_domain_t::spectral, double>&>(vh__->f_mt(ialoc)));
+
+                SHT::convert(ctx_.lmax_rho(), &qmt[0], &qmt__(0, ia));
+            }
+
+            ctx_.comm().allreduce(&qmt__(0, 0), (int)qmt__.size());
+        }
 
         /// Perform a G-vector summation of plane-wave coefficiens multiplied by radial integrals.
         void poisson_sum_G(int lmmax__, 
@@ -185,7 +255,7 @@ class Potential
         /// Add contribution from the pseudocharge to the plane-wave expansion
         void poisson_add_pseudo_pw(mdarray<double_complex, 2>& qmt, mdarray<double_complex, 2>& qit, double_complex* rho_pw);
 
-        void generate_local_potential();
+        inline void generate_local_potential();
         
         void xc_mt_nonmagnetic(Radial_grid const& rgrid,
                                std::vector<XC_functional*>& xc_func,
@@ -232,12 +302,53 @@ class Potential
 
         ~Potential();
 
-        void set_effective_potential_ptr(double* veffmt, double* veffit);
-        
-        void set_effective_magnetic_field_ptr(double* beffmt, double* beffit);
+        inline void set_effective_potential_ptr(double* veffmt, double* veffit)
+        {
+            if (ctx_.full_potential()) {
+                effective_potential_->set_mt_ptr(veffmt);
+            }
+            effective_potential_->set_rg_ptr(veffit);
+        }
+
+        inline void set_effective_magnetic_field_ptr(double* beffmt, double* beffit)
+        {
+            if (ctx_.num_mag_dims() == 0) {
+                return;
+            }
+            assert(ctx_.num_spins() == 2);
+            
+            /* set temporary array wrapper */
+            mdarray<double, 4> beffmt_tmp(beffmt, ctx_.lmmax_pot(), unit_cell_.max_num_mt_points(), 
+                                          unit_cell_.num_atoms(), ctx_.num_mag_dims());
+            mdarray<double, 2> beffit_tmp(beffit, ctx_.fft().size(), ctx_.num_mag_dims());
+            
+            if (ctx_.num_mag_dims() == 1) {
+                /* z-component */
+                effective_magnetic_field_[0]->set_mt_ptr(&beffmt_tmp(0, 0, 0, 0));
+                effective_magnetic_field_[0]->set_rg_ptr(&beffit_tmp(0, 0));
+            }
+            
+            if (ctx_.num_mag_dims() == 3) {
+                /* z-component */
+                effective_magnetic_field_[0]->set_mt_ptr(&beffmt_tmp(0, 0, 0, 2));
+                effective_magnetic_field_[0]->set_rg_ptr(&beffit_tmp(0, 2));
+                /* x-component */
+                effective_magnetic_field_[1]->set_mt_ptr(&beffmt_tmp(0, 0, 0, 0));
+                effective_magnetic_field_[1]->set_rg_ptr(&beffit_tmp(0, 0));
+                /* y-component */
+                effective_magnetic_field_[2]->set_mt_ptr(&beffmt_tmp(0, 0, 0, 1));
+                effective_magnetic_field_[2]->set_rg_ptr(&beffit_tmp(0, 1));
+            }
+        }
          
         /// Zero effective potential and magnetic field.
-        void zero();
+        inline void zero()
+        {
+            effective_potential_->zero();
+            for (int j = 0; j < ctx_.num_mag_dims(); j++) {
+                effective_magnetic_field_[j]->zero();
+            }
+        }
 
         /// Poisson solver.
         /** Detailed explanation is available in:
@@ -441,20 +552,75 @@ class Potential
          *      V^{\downarrow}({\bf r}) &=& V_{xc}({\bf r}) - {\rm B}_{xc}({\bf r}) 
          *  \f}
          */
-        void xc(Periodic_function<double>* rho, Periodic_function<double>* magnetization[3], 
-                Periodic_function<double>* vxc, Periodic_function<double>* bxc[3], Periodic_function<double>* exc);
+        void xc(Periodic_function<double>* rho,
+                Periodic_function<double>* magnetization[3], 
+                Periodic_function<double>* vxc,
+                Periodic_function<double>* bxc[3],
+                Periodic_function<double>* exc);
         
         /// Generate effective potential and magnetic field from charge density and magnetization.
-        void generate_effective_potential(Periodic_function<double>* rho, Periodic_function<double>* magnetization[3]);
+        inline void generate_effective_potential(Periodic_function<double>* rho,
+                                                 Periodic_function<double>* magnetization[3]);
         
-        void generate_effective_potential(Periodic_function<double>* rho, Periodic_function<double>* rho_core, 
-                                          Periodic_function<double>* magnetization[3]);
+        inline void generate_effective_potential(Periodic_function<double>* rho,
+                                                 Periodic_function<double>* rho_core, 
+                                                 Periodic_function<double>* magnetization[3]);
 
-        void save();
+        inline void save()
+        {
+            if (comm_.rank() == 0) {
+                HDF5_tree fout(storage_file_name, false);
+
+                effective_potential_->hdf5_write(fout["effective_potential"]);
+
+                for (int j = 0; j < ctx_.num_mag_dims(); j++) {
+                    effective_magnetic_field_[j]->hdf5_write(fout["effective_magnetic_field"].create_node(j));
+                }
+            }
+            comm_.barrier();
+        }
         
-        void load();
+        inline void load()
+        {
+            HDF5_tree fout(storage_file_name, false);
+            
+            effective_potential_->hdf5_read(fout["effective_potential"]);
+
+            for (int j = 0; j < ctx_.num_mag_dims(); j++) {
+                effective_magnetic_field_[j]->hdf5_read(fout["effective_magnetic_field"][j]);
+            }
+            
+            if (ctx_.full_potential()) {
+                update_atomic_potential();
+            }
+        }
         
-        void update_atomic_potential();
+        inline void update_atomic_potential()
+        {
+            for (int ic = 0; ic < unit_cell_.num_atom_symmetry_classes(); ic++) {
+                int ia = unit_cell_.atom_symmetry_class(ic).atom_id(0);
+                int nmtp = unit_cell_.atom(ia).num_mt_points();
+               
+                std::vector<double> veff(nmtp);
+               
+                for (int ir = 0; ir < nmtp; ir++) {
+                    veff[ir] = y00 * effective_potential_->f_mt<index_domain_t::global>(0, ir, ia);
+                }
+
+               unit_cell_.atom_symmetry_class(ic).set_spherical_potential(veff);
+            }
+            
+            for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
+                double* veff = &effective_potential_->f_mt<index_domain_t::global>(0, 0, ia);
+                
+                double* beff[] = {nullptr, nullptr, nullptr};
+                for (int i = 0; i < ctx_.num_mag_dims(); i++) {
+                    beff[i] = &effective_magnetic_field_[i]->f_mt<index_domain_t::global>(0, 0, ia);
+                }
+                
+                unit_cell_.atom(ia).set_nonspherical_potential(veff, beff);
+            }
+        }
         
         template <device_t pu> 
         void add_mt_contribution_to_pw();
@@ -577,13 +743,9 @@ class Potential
             }
         }
 
-        //void copy_xc_potential(double* vxcmt, double* vxcir);
-
-        //void copy_effective_magnetic_field(double* beffmt, double* beffit);
-        
         Periodic_function<double>* effective_potential()
         {
-            return effective_potential_;
+            return effective_potential_.get();
         }
 
         Spheric_function<spectral, double> const& effective_potential_mt(int ialoc) const
@@ -624,7 +786,9 @@ class Potential
         void allocate()
         {
             effective_potential_->allocate_mt(true);
-            for (int j = 0; j < ctx_.num_mag_dims(); j++) effective_magnetic_field_[j]->allocate_mt(true);
+            for (int j = 0; j < ctx_.num_mag_dims(); j++) {
+                effective_magnetic_field_[j]->allocate_mt(true);
+            }
         }
 
         inline double vh_el(int ia)
@@ -643,18 +807,14 @@ class Potential
             if (ctx_.mixer_input_section().type_ == "linear")
             {
                 mixer_ = new Linear_mixer<double>(size(), ctx_.mixer_input_section().beta_, comm_);
-            }
-            else if (ctx_.mixer_input_section().type_ == "broyden1")
-            {
+            } else if (ctx_.mixer_input_section().type_ == "broyden1") {
                 std::vector<double> weights;
                 mixer_ = new Broyden1<double>(size(),
                                               ctx_.mixer_input_section().max_history_,
                                               ctx_.mixer_input_section().beta_,
                                               weights,
                                               comm_);
-            }
-            else if (ctx_.mixer_input_section().type_ == "broyden2")
-            {
+            } else if (ctx_.mixer_input_section().type_ == "broyden2") {
                 std::vector<double> weights;
                 mixer_ = new Broyden2<double>(size(),
                                               ctx_.mixer_input_section().max_history_,
@@ -663,9 +823,7 @@ class Potential
                                               ctx_.mixer_input_section().linear_mix_rms_tol_,
                                               weights,
                                               comm_);
-            }
-            else
-            {
+            } else {
                 TERMINATE("wrong mixer type");
             }
             pack(mixer_);
@@ -679,16 +837,13 @@ class Potential
             unpack(mixer_->output_buffer());
             return rms;
         }
-
-        //inline void checksum()
-        //{
-        //    DUMP("checksum(veff): %18.10f %18.10f\n", effective_potential_->f_mt().checksum(), effective_potential_->f_it().checksum());
-        //}
 };
 
 #include "Potential/init.hpp"
 #include "Potential/generate_d_operator_matrix.hpp"
 #include "Potential/generate_pw_coefs.hpp"
+#include "Potential/generate_effective_potential.hpp"
+#include "Potential/generate_local_potential.hpp"
 
 };
 

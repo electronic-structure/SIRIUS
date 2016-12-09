@@ -145,7 +145,7 @@ void test_spline_5()
         s2[i].interpolate();
     }
     mdarray<double, 2> prod(n, n);
-    runtime::Timer t("spline|inner");
+    sddk::timer t("spline|inner");
     #pragma omp parallel for
     for (int i = 0; i < n; i++)
     {

@@ -2,7 +2,7 @@ template <typename T>
 inline void Density::add_k_point_contribution_dm(K_point* kp__,
                                                  mdarray<double_complex, 4>& density_matrix__)
 {
-    PROFILE_WITH_TIMER("sirius::Density::add_k_point_contribution_dm");
+    PROFILE("sirius::Density::add_k_point_contribution_dm");
     
     if (ctx_.esm_type() == electronic_structure_method_t::full_potential_lapwlo) {
         /* non-magnetic or spin-collinear case */

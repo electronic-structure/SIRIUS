@@ -1,6 +1,6 @@
 inline void K_point::generate_spinor_wave_functions()
 {
-    PROFILE_WITH_TIMER("sirius::K_point::generate_spinor_wave_functions");
+    PROFILE("sirius::K_point::generate_spinor_wave_functions");
 
     if (use_second_variation) {
         if (!ctx_.need_sv()) {

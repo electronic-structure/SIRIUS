@@ -25,7 +25,7 @@
 #ifndef __NON_LOCAL_OPERATOR_H__
 #define __NON_LOCAL_OPERATOR_H__
 
-#include "Beta_projectors/Beta_projectors.h"
+#include "Beta_projectors/beta_projectors.h"
 #include "simulation_context.h"
 
 namespace sirius {
@@ -57,7 +57,7 @@ class Non_local_operator
 
         Non_local_operator(Beta_projectors& beta__, device_t pu__) : beta_(beta__), pu_(pu__)
         {
-            PROFILE();
+            PROFILE("sirius::Non_local_operator::Non_local_operator");
 
             auto& uc = beta_.unit_cell();
             packed_mtrx_offset_ = mdarray<int, 1>(uc.num_atoms());
@@ -103,7 +103,7 @@ inline void Non_local_operator<double_complex>::apply(int chunk__,
                                                       int idx0__,
                                                       int n__)
 {
-    PROFILE_WITH_TIMER("sirius::Non_local_operator::apply");
+    PROFILE("sirius::Non_local_operator::apply");
 
     if (is_null_) return;
 
@@ -183,7 +183,7 @@ inline void Non_local_operator<double>::apply(int chunk__,
                                               int idx0__,
                                               int n__)
 {
-    PROFILE_WITH_TIMER("sirius::Non_local_operator::apply");
+    PROFILE("sirius::Non_local_operator::apply");
 
     if (is_null_) return;
 

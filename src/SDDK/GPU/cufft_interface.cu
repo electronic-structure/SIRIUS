@@ -1,7 +1,7 @@
 #include <unistd.h>
 #include <cufft.h>
 #include <cuda.h>
-#include "kernels_common.h"
+#include "cuda_common.h"
 
 extern "C" void cuda_memset(void* ptr, int value, size_t size);
 

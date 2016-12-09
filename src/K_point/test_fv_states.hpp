@@ -1,6 +1,6 @@
 inline void K_point::test_fv_states()
 {
-    PROFILE();
+    PROFILE("sirius::K_point::test_fv_states");
 
     STOP();
 

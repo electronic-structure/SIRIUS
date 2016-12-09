@@ -2,14 +2,6 @@
 
 namespace sirius {
 
-#ifdef __GPU
-extern "C" void generate_phase_factors_gpu(int num_gvec_loc__,
-                                           int num_atoms__,
-                                           int const* gvec__,
-                                           double const* atom_pos__,
-                                           cuDoubleComplex* phase_factors__);
-#endif
-
 /** The following operation is performed:
  *  \f[
  *    q_{\ell m}^{\alpha} = \sum_{\bf G} 4\pi \rho({\bf G}) e^{i{\bf G}{\bf r}_{\alpha}}i^{\ell}f_{\ell}^{\alpha}(G) Y_{\ell m}^{*}(\hat{\bf G})
@@ -20,114 +12,62 @@ void Potential::poisson_sum_G(int lmmax__,
                               mdarray<double, 3>& fl__,
                               matrix<double_complex>& flm__)
 {
-    PROFILE_WITH_TIMER("sirius::Potential::poisson_sum_G");
-    
-    int ngv_loc = ctx_.gvec().gvec_count(comm_.rank());
+    PROFILE("sirius::Potential::poisson_sum_G");
+
+    int ngv_loc = ctx_.gvec_count();
 
     int na_max = 0;
     for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
         na_max = std::max(na_max, unit_cell_.atom_type(iat).num_atoms());
     }
-    
-    matrix<double_complex> phase_factors(ngv_loc, na_max);
-    matrix<double_complex> zm(lmmax__, ngv_loc);
-    matrix<double_complex> tmp(lmmax__, na_max);
 
-    if (ctx_.processing_unit() == CPU) {
-        for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
-            #ifdef __PRINT_PERFORMANCE
-            double t = -runtime::wtime();
-            #endif
-            int na = unit_cell_.atom_type(iat).num_atoms();
-            #pragma omp parallel for
-            for (int igloc = 0; igloc < ngv_loc; igloc++) {
-                int ig = ctx_.gvec().gvec_offset(comm_.rank()) + igloc;
-                for (int i = 0; i < na; i++) {
-                    int ia = unit_cell_.atom_type(iat).atom_id(i);
-                    phase_factors(igloc, i) = ctx_.gvec_phase_factor(ig, ia);
-                }
-                for (int lm = 0; lm < lmmax__; lm++) {
-                    int l = l_by_lm_[lm];
-                    zm(lm, igloc) = fourpi * fpw__[ig] * zilm_[lm] *
-                                    fl__(l, iat, ctx_.gvec().shell(ig)) * std::conj(gvec_ylm_(lm, igloc));
-                }
+    matrix<double_complex> phase_factors(ngv_loc, na_max, ctx_.main_memory_t());
+    matrix<double_complex> zm(lmmax__, ngv_loc, ctx_.dual_memory_t());
+    matrix<double_complex> tmp(lmmax__, na_max, ctx_.dual_memory_t());
+
+    for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
+        double t = -omp_get_wtime();
+        int na = unit_cell_.atom_type(iat).num_atoms();
+        ctx_.generate_phase_factors(iat, phase_factors);
+        #pragma omp parallel for
+        for (int igloc = 0; igloc < ngv_loc; igloc++) {
+            int ig = ctx_.gvec_offset() + igloc;
+            for (int lm = 0; lm < lmmax__; lm++) {
+                int l = l_by_lm_[lm];
+                zm(lm, igloc) = fourpi * fpw__[ig] * zilm_[lm] *
+                                fl__(l, iat, ctx_.gvec().shell(ig)) * std::conj(gvec_ylm_(lm, igloc));
             }
-            linalg<CPU>::gemm(0, 0, lmmax__, na, ngv_loc, zm.at<CPU>(), zm.ld(), phase_factors.at<CPU>(), phase_factors.ld(),
-                              tmp.at<CPU>(), tmp.ld());
-            #ifdef __PRINT_PERFORMANCE
-            t += runtime::wtime();
+        }
+        switch (ctx_.processing_unit()) {
+            case CPU: {
+                linalg<CPU>::gemm(0, 0, lmmax__, na, ngv_loc, zm.at<CPU>(), zm.ld(), phase_factors.at<CPU>(), phase_factors.ld(),
+                                  tmp.at<CPU>(), tmp.ld());
+                break;
+            }
+            case GPU: {
+                #ifdef __GPU
+                zm.copy_to_device();
+                linalg<GPU>::gemm(0, 0, lmmax__, na, ngv_loc, zm.at<GPU>(), zm.ld(), phase_factors.at<GPU>(), phase_factors.ld(),
+                                  tmp.at<GPU>(), tmp.ld());
+                tmp.copy_to_host();
+                #endif
+                break;
+            }
+        }
+
+        if (ctx_.control().print_performance_) {
+            t += omp_get_wtime();
             if (comm_.rank() == 0) {
                 printf("poisson_sum_G() performance: %12.6f GFlops/rank, [m,n,k=%i %i %i, time=%f (sec)]\n",
                        8e-9 * lmmax__ * na * ctx_.gvec().num_gvec() / t / comm_.size(), lmmax__, na, ctx_.gvec().num_gvec(), t);
             }
-            #endif
-            for (int i = 0; i < na; i++) {
-                int ia = unit_cell_.atom_type(iat).atom_id(i);
-                for (int lm = 0; lm < lmmax__; lm++) {
-                    flm__(lm, ia) = tmp(lm, i);
-                }
+        }
+        for (int i = 0; i < na; i++) {
+            int ia = unit_cell_.atom_type(iat).atom_id(i);
+            for (int lm = 0; lm < lmmax__; lm++) {
+                flm__(lm, ia) = tmp(lm, i);
             }
         }
-    }
-
-    if (ctx_.processing_unit() == GPU)
-    {
-        #ifdef __GPU
-        auto gvec = mdarray<int, 2>(3, ngv_loc, memory_t::host | memory_t::device);
-        for (int igloc = 0; igloc < ngv_loc; igloc++) {
-            for (int x = 0; x < 3; x++) {
-                gvec(x, igloc) = ctx_.gvec().gvec(ctx_.gvec_offset() + igloc)[x];
-            }
-        }
-        gvec.copy_to_device();
-
-        phase_factors.allocate(memory_t::device);
-        zm.allocate(memory_t::device);
-        tmp.allocate(memory_t::device);
-
-        double_complex alpha(1, 0);
-        double_complex beta(0, 0);
-
-        for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++)
-        {
-            int na = unit_cell_.atom_type(iat).num_atoms();
-            
-            mdarray<double, 2> atom_pos(3, na);
-            for (int i = 0; i < na; i++)
-            {
-                int ia = unit_cell_.atom_type(iat).atom_id(i);
-                auto pos = unit_cell_.atom(ia).position();
-                for (int x = 0; x < 3; x++) atom_pos(x, i) = pos[x];
-            }
-            atom_pos.allocate(memory_t::device);
-            atom_pos.copy_to_device();
-
-            generate_phase_factors_gpu(ngv_loc, na, gvec.at<GPU>(), atom_pos.at<GPU>(), phase_factors.at<GPU>());
-
-            #pragma omp parallel for
-            for (int igloc = 0; igloc < ngv_loc; igloc++)
-            {
-                int ig = ctx_.gvec().gvec_offset(comm_.rank()) + igloc;
-                for (int lm = 0; lm < lmmax__; lm++)
-                {
-                    int l = l_by_lm_[lm];
-                    zm(lm, igloc) = fourpi * fpw__[ig] * zilm_[lm] *
-                                    fl__(l, iat, ctx_.gvec().shell(ig)) * std::conj(gvec_ylm_(lm, igloc));
-                }
-            }
-            zm.copy_to_device();
-            linalg<GPU>::gemm(0, 0, lmmax__, na, ngv_loc, &alpha, zm.at<GPU>(), zm.ld(), phase_factors.at<GPU>(), phase_factors.ld(),
-                              &beta, tmp.at<GPU>(), tmp.ld());
-            tmp.copy_to_host();
-            for (int i = 0; i < na; i++)
-            {
-                int ia = unit_cell_.atom_type(iat).atom_id(i);
-                for (int lm = 0; lm < lmmax__; lm++) flm__(lm, ia) = tmp(lm, i);
-            }
-        }
-        #else
-        TERMINATE_NO_GPU
-        #endif
     }
     
     ctx_.comm().allreduce(&flm__(0, 0), (int)flm__.size());
@@ -137,7 +77,7 @@ void Potential::poisson_add_pseudo_pw(mdarray<double_complex, 2>& qmt,
                                       mdarray<double_complex, 2>& qit,
                                       double_complex* rho_pw)
 {
-    PROFILE_WITH_TIMER("sirius::Potential::poisson_add_pseudo_pw");
+    PROFILE("sirius::Potential::poisson_add_pseudo_pw");
     
     /* The following term is added to the plane-wave coefficients of the charge density:
      * Integrate[SphericalBesselJ[l,a*x]*p[x,R]*x^2,{x,0,R},Assumptions->{l>=0,n>=0,R>0,a>0}] / 
@@ -146,182 +86,51 @@ void Potential::poisson_add_pseudo_pw(mdarray<double_complex, 2>& qmt,
      * the difference bethween true and interstitial-in-the-mt multipole moments and divided by the 
      * moment of the pseudodensity.
      */
-    #pragma omp parallel default(shared)
-    {
-        int tid = omp_get_thread_num();
-        splindex<block> spl_gv_t(ctx_.gvec().gvec_count(comm_.rank()), omp_get_num_threads(), tid);
-        std::vector<double_complex> pseudo_pw_t(spl_gv_t.local_size(), complex_zero); 
+    for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
+        int iat = unit_cell_.atom(ia).type_id();
 
-        for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
-            int iat = unit_cell_.atom(ia).type_id();
+        double R = unit_cell_.atom(ia).mt_radius();
 
-            double R = unit_cell_.atom(ia).mt_radius();
-
-            /* compute G-vector independent prefactor */
-            std::vector<double_complex> zp(ctx_.lmmax_rho());
-            for (int l = 0, lm = 0; l <= ctx_.lmax_rho(); l++) {
-                for (int m = -l; m <= l; m++, lm++) {
-                    zp[lm] = (qmt(lm, ia) - qit(lm, ia)) * std::conj(zil_[l]) * gamma_factors_R_(l, iat);
-                }
-            }
-
-            for (int igloc_t = 0; igloc_t < spl_gv_t.local_size(); igloc_t++) {
-                int igloc = spl_gv_t[igloc_t];
-                int ig = ctx_.gvec().gvec_offset(comm_.rank()) + igloc;
-
-                double gR = ctx_.gvec().gvec_len(ig) * R;
-                
-                double_complex zt = fourpi * std::conj(ctx_.gvec_phase_factor(ig, ia)) / unit_cell_.omega();
-
-                if (ig) {
-                    double_complex zt2(0, 0);
-                    for (int l = 0, lm = 0; l <= ctx_.lmax_rho(); l++) {
-                        double_complex zt1(0, 0);
-                        for (int m = -l; m <= l; m++, lm++) {
-                            zt1 += gvec_ylm_(lm, igloc) * zp[lm];
-                        }
-
-                        zt2 += zt1 * sbessel_mt_(l + pseudo_density_order + 1, iat, ctx_.gvec().shell(ig));
-                    }
-
-                    pseudo_pw_t[igloc_t] += zt * zt2 * std::pow(2.0 / gR, pseudo_density_order + 1);
-                } else { // for |G|=0
-                    pseudo_pw_t[igloc_t] += zt * y00 * (qmt(0, ia) - qit(0, ia));
-                }
+        /* compute G-vector independent prefactor */
+        std::vector<double_complex> zp(ctx_.lmmax_rho());
+        for (int l = 0, lm = 0; l <= ctx_.lmax_rho(); l++) {
+            for (int m = -l; m <= l; m++, lm++) {
+                zp[lm] = (qmt(lm, ia) - qit(lm, ia)) * std::conj(zil_[l]) * gamma_factors_R_(l, iat);
             }
         }
+        
+        /* add pseudo_density to interstitial charge density so that rho(G) has the correct 
+         * multipole moments in the muffin-tins */
+        #pragma omp parallel for schedule(static)
+        for (int igloc = 0; igloc < ctx_.gvec_count(); igloc++) {
+            int ig = ctx_.gvec_offset() + igloc;
 
-        /* add pseudo_density to interstitial charge density;
-         * now rho(G) has the correct multipole moments in the muffin-tins */
-        for (int igloc_t = 0; igloc_t < spl_gv_t.local_size(); igloc_t++) {
-            int igloc = spl_gv_t[igloc_t];
-            int ig = ctx_.gvec().gvec_offset(comm_.rank()) + igloc;
-            rho_pw[ig] += pseudo_pw_t[igloc_t];
+            double gR = ctx_.gvec().gvec_len(ig) * R;
+            
+            double_complex zt = fourpi * std::conj(ctx_.gvec_phase_factor(ig, ia)) / unit_cell_.omega();
+
+            if (ig) {
+                double_complex zt2(0, 0);
+                for (int l = 0, lm = 0; l <= ctx_.lmax_rho(); l++) {
+                    double_complex zt1(0, 0);
+                    for (int m = -l; m <= l; m++, lm++) {
+                        zt1 += gvec_ylm_(lm, igloc) * zp[lm];
+                    }
+                    zt2 += zt1 * sbessel_mt_(l + pseudo_density_order + 1, iat, ctx_.gvec().shell(ig));
+                }
+                rho_pw[ig] += zt * zt2 * std::pow(2.0 / gR, pseudo_density_order + 1);
+            } else { /* for |G|=0 */
+                rho_pw[ig] += zt * y00 * (qmt(0, ia) - qit(0, ia));
+            }
         }
     }
 
     ctx_.comm().allgather(&rho_pw[0], ctx_.gvec_offset(), ctx_.gvec_count());
 }
 
-void Potential::poisson_atom_vmt(Spheric_function<function_domain_t::spectral, double>& rho_mt,
-                                 Spheric_function<function_domain_t::spectral, double>& vh_mt,
-                                 mdarray<double_complex, 1>& qmt_ext,
-                                 Atom& atom)
-{
-    //double R = atom.mt_radius();
-    int nmtp = atom.num_mt_points();
-
-    // passed size of qmt_mt must be equal to
-    int lmsize = rho_mt.angular_domain_size();
-
-    int lmax_rho = 2 * atom.type().indexr().lmax_lo();
-
-    std::vector<double> qmt(lmsize, 0);
-
-    std::vector<int> l_by_lm = Utils::l_by_lm(lmax_rho);
-
-    #pragma omp parallel default(shared)
-    {
-        std::vector<double> g1;
-        std::vector<double> g2;
-
-        #pragma omp for
-        for (int lm = 0; lm < lmsize; lm++)
-        {
-            int l = l_by_lm[lm];
-
-            auto rholm = rho_mt.component(lm);
-
-            /* save multipole moment */
-            qmt[lm] = rholm.integrate(g1, l + 2);
-
-            rholm.integrate(g2, 1 - l);
-
-            double pref = fourpi / double(2 * l + 1);
-            for (int ir = 0; ir < nmtp; ir++)
-            {
-                double r = atom.radial_grid(ir);
-
-                double vlm = g1[ir] / std::pow(r, l + 1) + (g2.back() - g2[ir]) * std::pow(r, l);
-
-                vh_mt(lm, ir) = pref * vlm;
-            }
-        }
-    }
-
-//  std::cout<<"pvmt done"<<std::endl;
-
-    SHT::convert(lmax_rho, &qmt[0], &qmt_ext(0));
-
-    /* nuclear multipole moment */
-    qmt_ext(0) -= atom.zn() * y00;
-}
-
-void Potential::poisson_vmt(Periodic_function<double>* rho__, 
-                            Periodic_function<double>* vh__,
-                            mdarray<double_complex, 2>& qmt__)
-{
-    PROFILE_WITH_TIMER("sirius::Potential::poisson_vmt");
-
-    qmt__.zero();
-    
-    for (int ialoc = 0; ialoc < unit_cell_.spl_num_atoms().local_size(); ialoc++) {
-        int ia = unit_cell_.spl_num_atoms(ialoc);
-
-        double R = unit_cell_.atom(ia).mt_radius();
-        int nmtp = unit_cell_.atom(ia).num_mt_points();
-
-        std::vector<double> qmt(ctx_.lmmax_rho(), 0);
-       
-        #pragma omp parallel default(shared)
-        {
-            std::vector<double> g1;
-            std::vector<double> g2;
-
-            #pragma omp for
-            for (int lm = 0; lm < ctx_.lmmax_rho(); lm++) {
-                int l = l_by_lm_[lm];
-
-                auto rholm = rho__->f_mt(ialoc).component(lm);
-
-                /* save multipole moment */
-                qmt[lm] = rholm.integrate(g1, l + 2);
-                
-                if (lm < ctx_.lmmax_pot()) {
-                    rholm.integrate(g2, 1 - l);
-                    
-                    double d1 = 1.0 / std::pow(R, 2 * l + 1); 
-                    double d2 = 1.0 / double(2 * l + 1); 
-                    for (int ir = 0; ir < nmtp; ir++) {
-                        double r = unit_cell_.atom(ia).radial_grid(ir);
-
-                        double vlm = (1.0 - std::pow(r / R, 2 * l + 1)) * g1[ir] / std::pow(r, l + 1) +
-                                      (g2.back() - g2[ir]) * std::pow(r, l) - (g1.back() - g1[ir]) * std::pow(r, l) * d1;
-
-                        vh__->f_mt<index_domain_t::local>(lm, ir, ialoc) = fourpi * vlm * d2;
-                    }
-                }
-            }
-        }
-
-        SHT::convert(ctx_.lmax_rho(), &qmt[0], &qmt__(0, ia));
-
-        /* constant part of nuclear potential -z*(1/r - 1/R) */
-        for (int ir = 0; ir < nmtp; ir++) {
-            vh__->f_mt<index_domain_t::local>(0, ir, ialoc) += unit_cell_.atom(ia).zn() / R / y00;
-        }
-
-        /* nuclear multipole moment */
-        qmt__(0, ia) -= unit_cell_.atom(ia).zn() * y00;
-    }
-
-    ctx_.comm().allreduce(&qmt__(0, 0), (int)qmt__.size());
-}
-
-
 void Potential::poisson(Periodic_function<double>* rho, Periodic_function<double>* vh)
 {
-    PROFILE_WITH_TIMER("sirius::Potential::poisson");
+    PROFILE("sirius::Potential::poisson");
 
     /* in case of full potential we need to do pseudo-charge multipoles */
     if (ctx_.full_potential()) {
@@ -407,7 +216,7 @@ void Potential::poisson(Periodic_function<double>* rho, Periodic_function<double
         poisson_sum_G(ctx_.lmmax_pot(), &vh->f_pw(0), sbessel_mt_, vmtlm);
         
         /* add boundary condition and convert to Rlm */
-        runtime::Timer t1("sirius::Potential::poisson|bc");
+        sddk::timer t1("sirius::Potential::poisson|bc");
         mdarray<double, 2> rRl(unit_cell_.max_num_mt_points(), ctx_.lmax_pot() + 1);
         int type_id_prev = -1;
 

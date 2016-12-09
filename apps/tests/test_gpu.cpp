@@ -11,7 +11,7 @@ void test_gpu(int N)
 
     DUMP("hash(buf): %llX", buf.hash());
 
-    buf.allocate_on_device();
+    buf.allocate(memory_t::device);
     buf.copy_to_device();
     buf.zero();
     buf.copy_to_host();

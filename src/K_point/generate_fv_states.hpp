@@ -24,7 +24,7 @@
 
 inline void K_point::generate_fv_states()
 {
-    PROFILE_WITH_TIMER("sirius::K_point::generate_fv_states");
+    PROFILE("sirius::K_point::generate_fv_states");
     
     if (!ctx_.full_potential()) {
         return;
