@@ -195,9 +195,9 @@ double ground_state(Simulation_context&       ctx,
                     Parameters_input_section& inp,
                     int                       write_output)
 {
-    #ifdef __PRINT_MEMORY_USAGE
-    MEMORY_USAGE_INFO();
-    #endif
+    if (ctx.control().print_memory_usage_) {
+        MEMORY_USAGE_INFO();
+    }
     
     Potential potential(ctx);
     potential.allocate();
@@ -205,16 +205,16 @@ double ground_state(Simulation_context&       ctx,
     Density density(ctx);
     density.allocate();
 
-    #ifdef __PRINT_MEMORY_USAGE
-    MEMORY_USAGE_INFO();
-    #endif
+    if (ctx.control().print_memory_usage_) {
+        MEMORY_USAGE_INFO();
+    }
 
     K_set ks(ctx, ctx.mpi_grid().communicator(1 << _mpi_dim_k_), inp.ngridk_, inp.shiftk_, inp.use_symmetry_);
     ks.initialize();
-    
-    #ifdef __PRINT_MEMORY_USAGE
-    MEMORY_USAGE_INFO();
-    #endif
+
+    if (ctx.control().print_memory_usage_) {
+        MEMORY_USAGE_INFO();
+    }
 
     std::string ref_file = args.value<std::string>("test_against", "");
     bool write_state = (ref_file.size() == 0);
@@ -231,7 +231,7 @@ double ground_state(Simulation_context&       ctx,
         density.initial_density();
         dft.generate_effective_potential();
         if (!ctx.full_potential()) {
-            dft.initialize_subspace();
+            dft.band().initialize_subspace(ks, potential);
         }
     }
     
