@@ -211,6 +211,8 @@ struct Iterative_solver_input_section
      *  as they are and solve generalized eigen-value problem. */
     bool orthogonalize_{true};
 
+    std::string init_subspace_{"lcao"};
+
     void read(json const& parser)
     {
         if (parser.count("iterative_solver")) {
@@ -226,6 +228,9 @@ struct Iterative_solver_input_section
             mask_alpha_         = parser["iterative_solver"].value("mask_alpha", mask_alpha_);
             num_singular_       = parser["iterative_solver"].value("num_singular", num_singular_);
             orthogonalize_      = parser["iterative_solver"].value("orthogonalize", orthogonalize_);
+            init_subspace_      = parser["iterative_solver"].value("init_subspace", init_subspace_);
+            std::transform(init_subspace_.begin(), init_subspace_.end(), init_subspace_.begin(), ::tolower);
+
         }
     }
 };
