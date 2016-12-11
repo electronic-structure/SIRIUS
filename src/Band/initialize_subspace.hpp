@@ -106,6 +106,7 @@ inline void Band::initialize_subspace(K_point* kp__,
     int num_phi = std::max(num_ao__, ctx_.num_fv_states());
     
     wave_functions phi(ctx_.processing_unit(), kp__->comm(), kp__->gkvec(), num_phi);
+    phi.pw_coeffs().prime().zero();
 
     if (num_ao__ > 0) {
         #pragma omp parallel
@@ -145,18 +146,33 @@ inline void Band::initialize_subspace(K_point* kp__,
     }
 
     assert(kp__->num_gkvec() > num_phi + 10);
-    double norm = std::sqrt(1.0 / kp__->num_gkvec()); 
-    std::vector<double_complex> v(kp__->num_gkvec());
+    //double norm = std::sqrt(1.0 / kp__->num_gkvec()); 
+    //std::vector<double_complex> v(kp__->num_gkvec());
+    //std::vector<double_complex> v(kp__->num_gkvec_loc());
+    //std::srand(kp__->comm().rank() + 1);
     for (int i = 0; i < num_phi - num_ao__; i++) {
-        std::generate(v.begin(), v.end(), []{return type_wrapper<double_complex>::random();});
-        v[0]     = 0.0;
-        v[i + 1] = 1.0 / norm;
-        v[i + 2] = 0.5 / norm;
-        v[i + 3] = 0.25 / norm;
+        //std::generate(v.begin(), v.end(), []{return type_wrapper<double_complex>::random();});
+        //v[0]     = 0.0;
+        //v[i + 1] = 1.0 / norm;
+        //v[i + 2] = 0.5 / norm;
+        //v[i + 3] = 0.25 / norm;
         for (int igk_loc = 0; igk_loc < kp__->num_gkvec_loc(); igk_loc++) {
             /* global index of G+k vector */
             int igk = kp__->gkvec().gvec_offset(kp__->comm().rank()) + igk_loc;
-            phi.pw_coeffs().prime(igk_loc, num_ao__ + i) = v[igk] * norm;
+            //phi.pw_coeffs().prime(igk_loc, num_ao__ + i) = v[igk] * norm;
+            //phi.pw_coeffs().prime(igk_loc, num_ao__ + i) = v[igk_loc] * norm;
+            if (igk == 0) {
+                phi.pw_coeffs().prime(igk_loc, num_ao__ + i) = 0.0;
+            }
+            if (igk == i + 1) {
+                phi.pw_coeffs().prime(igk_loc, num_ao__ + i) = 1.0;
+            }
+            if (igk == i + 2) {
+                phi.pw_coeffs().prime(igk_loc, num_ao__ + i) = 0.5;
+            }
+            if (igk == i + 3) {
+                phi.pw_coeffs().prime(igk_loc, num_ao__ + i) = 0.25;
+            }
         }
     }
 
