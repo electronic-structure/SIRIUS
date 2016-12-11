@@ -474,9 +474,9 @@ inline void Simulation_context::initialize()
     /* initialize FFT interface */
     init_fft();
 
-    #ifdef __PRINT_MEMORY_USAGE
-    MEMORY_USAGE_INFO();
-    #endif
+    if (control().print_memory_usage_) {
+        MEMORY_USAGE_INFO();
+    }
 
     //if (comm_.rank() == 0)
     //{
@@ -704,7 +704,7 @@ inline void Simulation_context::print_info()
     printf("  number of G-shells                    : %i\n", gvec_coarse_.num_shells());
     printf("\n");
 
-    unit_cell_.print_info();
+    unit_cell_.print_info(control().verbosity_);
     for (int i = 0; i < unit_cell_.num_atom_types(); i++) {
         unit_cell_.atom_type(i).print_info();
     }
