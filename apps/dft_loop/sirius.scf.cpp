@@ -195,7 +195,7 @@ double ground_state(Simulation_context&       ctx,
                     Parameters_input_section& inp,
                     int                       write_output)
 {
-    if (ctx.control().print_memory_usage_) {
+    if (ctx.comm().rank() == 0 && ctx.control().print_memory_usage_) {
         MEMORY_USAGE_INFO();
     }
     
@@ -205,14 +205,14 @@ double ground_state(Simulation_context&       ctx,
     Density density(ctx);
     density.allocate();
 
-    if (ctx.control().print_memory_usage_) {
+    if (ctx.comm().rank() == 0 && ctx.control().print_memory_usage_) {
         MEMORY_USAGE_INFO();
     }
 
     K_set ks(ctx, ctx.mpi_grid().communicator(1 << _mpi_dim_k_), inp.ngridk_, inp.shiftk_, inp.use_symmetry_);
     ks.initialize();
 
-    if (ctx.control().print_memory_usage_) {
+    if (ctx.comm().rank() == 0 && ctx.control().print_memory_usage_) {
         MEMORY_USAGE_INFO();
     }
 
