@@ -642,9 +642,9 @@ void sirius_generate_effective_potential()
     dft_ground_state->generate_effective_potential();
 }
 
-void sirius_initialize_subspace()
+void sirius_initialize_subspace(ftn_int* kset_id__)
 {
-    dft_ground_state->initialize_subspace();
+    dft_ground_state->band().initialize_subspace(*kset_list[*kset_id__], *potential);
 }
 
 void sirius_generate_density(int32_t* kset_id__)

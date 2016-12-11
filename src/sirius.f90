@@ -326,8 +326,9 @@ module sirius
             &bind(C, name="sirius_generate_effective_potential")
         end subroutine
 
-        subroutine sirius_initialize_subspace()&
+        subroutine sirius_initialize_subspace(kset_id)&
             &bind(C, name="sirius_initialize_subspace")
+            integer,                 intent(in) :: kset_id
         end subroutine
 
         subroutine sirius_find_band_occupancies(kset_id)&
