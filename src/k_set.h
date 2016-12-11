@@ -39,6 +39,8 @@ struct kq
     vector3d<int> K;
 };
 
+// TODO: rename K_set -> K_point_set
+
 /// Set of k-points.
 class K_set
 {
