@@ -354,7 +354,7 @@ class Smooth_periodic_function
             }
         }
 };
-}
+} // namespace experimental
 
 }
 

@@ -221,11 +221,11 @@ inline void Band::initialize_subspace(K_point* kp__,
                 s << "error in diagonalziation";
                 TERMINATE(s);
             }
-            if (eo[0] < 0) {
-                TERMINATE("overlap matrix is not positively defined");
-            }
             if (kp__->comm().rank() == 0) {
                 printf("[verification] minimum eiegen-value of the overlap matrix: %18.12f\n", eo[0]);
+            }
+            if (eo[0] < 0) {
+                TERMINATE("overlap matrix is not positively defined");
             }
         }
         
