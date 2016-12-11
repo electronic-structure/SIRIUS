@@ -285,6 +285,7 @@ struct Control_input_section
             verification_        = parser["control"].value("verification", verification_);
             print_performance_   = parser["control"].value("print_performance", print_performance_);
             print_memory_usage_  = parser["control"].value("print_memory_usage", print_memory_usage_);
+            print_checksum_      = parser["control"].value("print_checksum", print_checksum_);
             num_bands_to_print_  = parser["control"].value("num_bands_to_print", num_bands_to_print_);
 
             auto strings = {&std_evp_solver_name_, &gen_evp_solver_name_, &fft_mode_, &processing_unit_};
