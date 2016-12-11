@@ -474,7 +474,7 @@ inline void Simulation_context::initialize()
     /* initialize FFT interface */
     init_fft();
 
-    if (control().print_memory_usage_) {
+    if (comm_.rank() == 0 && control().print_memory_usage_) {
         MEMORY_USAGE_INFO();
     }
 
