@@ -599,13 +599,9 @@ inline void Band::diag_pseudo_potential_davidson(K_point* kp__,
 {
     PROFILE("sirius::Band::diag_pseudo_potential_davidson");
 
-    #ifdef __PRINT_MEMORY_USAGE
-    MEMORY_USAGE_INFO();
-    #ifdef __GPU
-    size_t gpu_mem = cuda_get_free_mem() >> 20;
-    printf("[rank%04i at line %i of file %s] CUDA free memory: %i Mb\n", mpi_comm_world().rank(), __LINE__, __FILE__, gpu_mem);
-    #endif
-    #endif
+    if (kp__->comm().rank() == 0 && ctx_.control().print_memory_usage_) {
+        MEMORY_USAGE_INFO();
+    }
 
     /* get diagonal elements for preconditioning */
     auto h_diag = get_h_diag(kp__, ispn__, h_op__.v0(ispn__), d_op__);
@@ -685,18 +681,14 @@ inline void Band::diag_pseudo_potential_davidson(K_point* kp__,
     /* number of newly added basis functions */
     int n = num_bands;
 
-    if (ctx_.control().verbosity_ > 2 && kp__->comm().rank() == 0) {
+    if (ctx_.control().verbosity_ >= 2 && kp__->comm().rank() == 0) {
         DUMP("iterative solver tolerance: %18.12f", ctx_.iterative_solver_tolerance());
     }
 
-    #ifdef __PRINT_MEMORY_USAGE
-    MEMORY_USAGE_INFO();
-    #ifdef __GPU
-    gpu_mem = cuda_get_free_mem() >> 20;
-    printf("[rank%04i at line %i of file %s] CUDA free memory: %i Mb\n", mpi_comm_world().rank(), __LINE__, __FILE__, gpu_mem);
-    #endif
-    #endif
-    
+    if (kp__->comm().rank() == 0 && ctx_.control().print_memory_usage_) {
+        MEMORY_USAGE_INFO();
+    }
+
     /* start iterative diagonalization */
     for (int k = 0; k < itso.num_steps_; k++) {
         /* apply Hamiltonian and overlap operators to the new basis functions */
@@ -746,9 +738,9 @@ inline void Band::diag_pseudo_potential_davidson(K_point* kp__,
             }
         }
         
-        if (ctx_.control().verbosity_ > 2 && kp__->comm().rank() == 0) {
+        if (ctx_.control().verbosity_ >= 2 && kp__->comm().rank() == 0) {
             DUMP("step: %i, current subspace size: %i, maximum subspace size: %i", k, N, num_phi);
-            if (ctx_.control().verbosity_ > 3) {
+            if (ctx_.control().verbosity_ >= 3) {
                 for (int i = 0; i < num_bands; i++) {
                     DUMP("eval[%i]=%20.16f, diff=%20.16f, occ=%20.16f", i, eval[i], std::abs(eval[i] - eval_old[i]),
                          kp__->band_occupancy(i + ispn__ * ctx_.num_fv_states()));
