@@ -126,43 +126,33 @@ inline void get_proc_status(size_t* VmHWM__, size_t* VmRSS__)
     *VmRSS__ = 0;
 
     std::ifstream ifs("/proc/self/status");
-    if (ifs.is_open())
-    {
+    if (ifs.is_open()) {
         size_t tmp;
         std::string str; 
         std::string units;
-        while (std::getline(ifs, str))
-        {
+        while (std::getline(ifs, str)) {
             auto p = str.find("VmHWM:");
-            if (p != std::string::npos)
-            {
+            if (p != std::string::npos) {
                 std::stringstream s(str.substr(p + 7));
                 s >> tmp;
                 s >> units;
 
-                if (units != "kB")
-                {
+                if (units != "kB") {
                     printf("runtime::get_proc_status(): wrong units");
-                }
-                else
-                {
+                } else {
                     *VmHWM__ = tmp * 1024;
                 }
             }
 
             p = str.find("VmRSS:");
-            if (p != std::string::npos)
-            {
+            if (p != std::string::npos) {
                 std::stringstream s(str.substr(p + 7));
                 s >> tmp;
                 s >> units;
 
-                if (units != "kB")
-                {
+                if (units != "kB") {
                     printf("runtime::get_proc_status(): wrong units");
-                }
-                else
-                {
+                } else {
                     *VmRSS__ = tmp * 1024;
                 }
             }
@@ -665,28 +655,24 @@ inline int get_num_threads()
     }                                 \
 }
 
-#define MEMORY_USAGE_INFO()                                                                  \
-{                                                                                            \
-    size_t VmRSS, VmHWM;                                                                     \
-    runtime::get_proc_status(&VmHWM, &VmRSS);                                                \
-    printf("[rank%04i at line %i of file %s] VmHWM: %i Mb, VmRSS: %i Mb\n",                  \
-           mpi_comm_world().rank(), __LINE__, __FILE__, int(VmHWM >> 20), int(VmRSS >> 20)); \
+inline void print_memory_usage(const char* file__, int line__)
+{
+    size_t VmRSS, VmHWM;
+    runtime::get_proc_status(&VmHWM, &VmRSS);
+
+    std::vector<char> str(2048);
+    int n = snprintf(&str[0], 2048, "[rank%04i at line %i of file %s]", mpi_comm_world().rank(), line__, file__);
+
+    n += snprintf(&str[n], 2048, " VmHWM: %i Mb, VmRSS: %i Mb", static_cast<int>(VmHWM >> 20), static_cast<int>(VmRSS >> 20));
+
+    #ifdef __GPU
+    size_t gpu_mem = cuda_get_free_mem();
+    n += snprintf(&str[n], 2048, ", GPU free memory: %i Mb", static_cast<int>(gpu_mem >> 20));
+    #endif
+
+    printf("%s\n", &str[0]);
 }
 
-//#ifdef __GNUC__
-//#define __function_name__ __PRETTY_FUNCTION__
-//#else
-//#define __function_name__ __func__
-//#endif
-
-//#ifdef __PROFILE
-//  #define PROFILE() runtime::Profiler profiler__(__function_name__, __FILE__, __LINE__);
-//  #define PROFILE_WITH_TIMER(name) runtime::Profiler profiler__(__function_name__, __FILE__, __LINE__, name);
-//#else
-//  #define PROFILE(...)
-//  #define PROFILE_WITH_TIMER(name) 
-//#endif
-
-//#define TIMER(name) runtime::Timer timer__(name);
+#define MEMORY_USAGE_INFO() print_memory_usage(__FILE__, __LINE__);
 
 #endif // __RUNTIME_H__

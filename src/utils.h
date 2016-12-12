@@ -62,8 +62,7 @@ class Utils
         static inline bool file_exists(const std::string file_name)
         {
             std::ifstream ifs(file_name.c_str());
-            if (ifs.is_open()) return true;
-            return false;
+            return ifs.is_open();
         }
 
         static inline double fermi_dirac_distribution(double e)
@@ -308,6 +307,32 @@ class Utils
 
                 WARNING(s);
             }
+        }
+        
+        template <typename T>
+        static inline double check_hermitian(dmatrix<T>& mtrx__, int n__)
+        {
+            dmatrix<T> tmp(n__, n__, mtrx__.blacs_grid(), mtrx__.bs_row(), mtrx__.bs_col());
+            linalg<CPU>::tranc(n__, n__, mtrx__, 0, 0, tmp, 0, 0);
+
+            splindex<block_cyclic> spl_r(n__, mtrx__.blacs_grid().num_ranks_row(), mtrx__.blacs_grid().rank_row(), mtrx__.bs_row());
+            splindex<block_cyclic> spl_c(n__, mtrx__.blacs_grid().num_ranks_col(), mtrx__.blacs_grid().rank_col(), mtrx__.bs_col());
+            
+            double max_diff{0};
+            for (int i = 0; i < spl_c.local_size(); i++) {
+                for (int j = 0; j < spl_r.local_size(); j++) {
+                    max_diff = std::max(max_diff, std::abs(mtrx__(j, i) - tmp(j, i)));
+                    //if (std::abs(mtrx__(j, i) - type_wrapper<T>::conjugate(tmp(j, i))) > eps) {
+                    //    return 1;
+                    //    //std::stringstream s;
+                    //    //s << "matrix is not hermitian" << std::endl
+                    //    //  << "i = " << i << ", j = " << j << " " << mtrx__(i, j) << " " << tmp(i, j);
+                    //    //TERMINATE(s);
+                    //}
+                }
+            }
+            mtrx__.blacs_grid().comm().template allreduce<double, op_max>(&max_diff, 1);
+            return max_diff;
         }
 
         static double confined_polynomial(double r, double R, int p1, int p2, int dm)

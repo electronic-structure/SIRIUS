@@ -272,26 +272,31 @@ int Symmetry::get_irreducible_reciprocal_mesh(vector3d<int> k_mesh__,
     kp__ = mdarray<double, 2>(3, nknr);
 
     int n = 0;
-    for (auto it = wknr.begin(); it != wknr.end(); it++)
-    {
+    for (auto it = wknr.begin(); it != wknr.end(); it++) {
         wk__[n] = double(it->second) / nktot;
-        for (int x = 0; x < 3; x++) kp__(x, n) = double(grid_address(x, it->first) + is_shift__[x] / 2.0) / k_mesh__[x];
+        for (int x = 0; x < 3; x++) {
+            kp__(x, n) = double(grid_address(x, it->first) + is_shift__[x] / 2.0) / k_mesh__[x];
+        }
         n++;
     }
 
     return nknr;
 }
 
-void Symmetry::check_gvec_symmetry(Gvec const& gvec__) const
+void Symmetry::check_gvec_symmetry(Gvec const& gvec__, Communicator const& comm__) const
 {
     PROFILE("sirius::Symmetry::check_gvec_symmetry");
 
-    for (int isym = 0; isym < num_mag_sym(); isym++)
-    {
+    int gvec_count  = gvec__.gvec_count(comm__.rank());
+    int gvec_offset = gvec__.gvec_offset(comm__.rank());
+    
+    #pragma omp parallel for
+    for (int isym = 0; isym < num_mag_sym(); isym++) {
         auto sm = magnetic_group_symmetry(isym).spg_op.R;
 
-        for (int ig = 0; ig < gvec__.num_gvec(); ig++)
-        {
+        for (int igloc = 0; igloc < gvec_count; igloc++) {
+            int ig = gvec_offset + igloc;
+
             auto gv = gvec__.gvec(ig);
             /* apply symmetry operation to the G-vector */
             auto gv_rot = transpose(sm) * gv;

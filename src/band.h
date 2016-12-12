@@ -769,15 +769,18 @@ class Band
         template <typename T>
         inline mdarray<double, 1> get_o_diag(K_point* kp__,
                                              Q_operator<T>& q_op__) const;
-        
+
+        inline void initialize_subspace(K_set& kset__,
+                                        Potential& potential__) const;
+
         /// Initialize the wave-functions subspace.
         template <typename T>
-        void initialize_subspace(K_point* kp__,
-                                 Periodic_function<double>* effective_potential__,
-                                 Periodic_function<double>* effective_magnetic_field[3],
-                                 int num_ao__,
-                                 int lmax__,
-                                 std::vector< std::vector< Spline<double> > >& rad_int__) const;
+        inline void initialize_subspace(K_point* kp__,
+                                        Periodic_function<double>* effective_potential__,
+                                        Periodic_function<double>* effective_magnetic_field[3],
+                                        int num_ao__,
+                                        int lmax__,
+                                        std::vector< std::vector<Spline<double>>> const& rad_int__) const;
 };
 
 #include "Band/get_h_o_diag.hpp"

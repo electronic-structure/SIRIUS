@@ -47,8 +47,7 @@ sirius::Mixer<double>* mixer_pot = nullptr;
 
 std::map<std::string, sddk::timer*> ftimers;
 
-extern "C"
-{
+extern "C" {
 
 /// Initialize the library.
 /** \param [in] call_mpi_init .true. if the library needs to call MPI_Init()
@@ -67,20 +66,173 @@ void sirius_initialize(int32_t* call_mpi_init__)
     sirius::initialize(call_mpi_init);
 }
 
+/// Clear global variables and destroy all objects
+void sirius_clear(void)
+{
+    if (density != nullptr) {
+        delete density;
+        density = nullptr;
+    }
+    if (potential != nullptr) {
+        delete potential;
+        potential = nullptr;
+    }
+    if (dft_ground_state != nullptr) {
+        delete dft_ground_state;
+        dft_ground_state = nullptr;
+    }
+    for (size_t i = 0; i < kset_list.size(); i++) {
+        if (kset_list[i] != nullptr) {
+            delete kset_list[i];
+            kset_list[i] = nullptr;
+        }
+    }
+    if (sim_ctx != nullptr) {
+        delete sim_ctx;
+        sim_ctx = nullptr;
+    }
+
+    kset_list.clear();
+}
+
+
 void sirius_create_simulation_context(const char* config_file_name__)
 {
     std::string config_file_name(config_file_name__);
-    if (config_file_name.length() == 0)
-    {
+    if (config_file_name.length() == 0) {
         sim_ctx = new sirius::Simulation_context(mpi_comm_world());
-        #ifdef __GPU
-        sim_ctx->set_processing_unit(GPU);
-        #endif
-    }
-    else
-    {
+    } else {
         sim_ctx = new sirius::Simulation_context(config_file_name, mpi_comm_world());
     }
+}
+
+/// Initialize the global variables.
+/** The function must be called after setting up the lattice vectors, plane wave-cutoff, autormt flag and loading
+ *  atom types and atoms into the unit cell.
+ */
+void sirius_initialize_simulation_context()
+{
+    sim_ctx->initialize();
+}
+
+void sirius_delete_simulation_context()
+{
+    if (sim_ctx != nullptr) {
+        delete sim_ctx;
+    }
+    sim_ctx = nullptr;
+}
+
+/// Initialize the Potential object.
+/** \param [in] veffmt pointer to the muffin-tin part of the effective potential
+ *  \param [in] veffit pointer to the interstitial part of the effective potential
+ *  \param [in] beffmt pointer to the muffin-tin part of effective magnetic field
+ *  \param [in] beffit pointer to the interstitial part of the effective magnetic field
+ */
+void sirius_create_potential(double* veffit__,
+                             double* veffmt__,
+                             double* beffit__,
+                             double* beffmt__)
+{
+    potential = new sirius::Potential(*sim_ctx);
+    potential->set_effective_potential_ptr(veffmt__, veffit__);
+    potential->set_effective_magnetic_field_ptr(beffmt__, beffit__);
+}
+
+void sirius_delete_potential()
+{
+    if (potential != nullptr) {
+        delete potential;
+    }
+    potential = nullptr;
+}
+
+/// Initialize the Density object.
+/** \param [in] rhomt pointer to the muffin-tin part of the density
+ *  \param [in] rhoit pointer to the interstitial part of the denssity
+ *  \param [in] magmt pointer to the muffin-tin part of the magnetization
+ *  \param [in] magit pointer to the interstitial part of the magnetization
+ */
+void sirius_create_density(double* rhoit__,
+                           double* rhomt__,
+                           double* magit__,
+                           double* magmt__)
+{
+    density = new sirius::Density(*sim_ctx);
+    density->set_charge_density_ptr(rhomt__, rhoit__);
+    density->set_magnetization_ptr(magmt__, magit__);
+}
+
+void sirius_delete_density()
+{
+    if (density != nullptr) {
+        delete density;
+    }
+    density = nullptr;
+}
+
+/// Create the k-point set from the list of k-points and return it's id
+void sirius_create_kset(int32_t* num_kpoints__,
+                        double* kpoints__,
+                        double* kpoint_weights__,
+                        int32_t* init_kset__,
+                        int32_t* kset_id__)
+{
+    mdarray<double, 2> kpoints(kpoints__, 3, *num_kpoints__);
+
+    sirius::K_set* new_kset = new sirius::K_set(*sim_ctx, sim_ctx->mpi_grid().communicator(1 << _mpi_dim_k_));
+    new_kset->add_kpoints(kpoints, kpoint_weights__);
+    if (*init_kset__) {
+        new_kset->initialize();
+    }
+
+    kset_list.push_back(new_kset);
+    *kset_id__ = (int)kset_list.size() - 1;
+}
+
+void sirius_create_irreducible_kset_(int32_t* mesh__, int32_t* is_shift__, int32_t* use_sym__, int32_t* kset_id__)
+{
+    for (int x = 0; x < 3; x++) {
+        if (!(is_shift__[x] == 0 || is_shift__[x] == 1)) {
+            std::stringstream s;
+            s << "wrong k-shift " << is_shift__[0] << " " << is_shift__[1] << " " << is_shift__[2];
+            TERMINATE(s);
+        }
+    }
+
+    sirius::K_set* new_kset = new sirius::K_set(*sim_ctx,
+                                                sim_ctx->mpi_grid().communicator(1 << _mpi_dim_k_),
+                                                vector3d<int>(mesh__[0], mesh__[1], mesh__[2]),
+                                                vector3d<int>(is_shift__[0], is_shift__[1], is_shift__[2]),
+                                                *use_sym__);
+
+    new_kset->initialize();
+
+    kset_list.push_back(new_kset);
+    *kset_id__ = (int)kset_list.size() - 1;
+}
+
+void sirius_delete_kset(int32_t* kset_id__)
+{
+    if (kset_list[*kset_id__] != nullptr) {
+        delete kset_list[*kset_id__];
+    }
+    kset_list[*kset_id__] = nullptr;
+}
+
+void sirius_create_ground_state(int32_t* kset_id__)
+{
+    if (dft_ground_state != nullptr) {
+        TERMINATE("dft_ground_state object is already allocate");
+    }
+
+    dft_ground_state = new sirius::DFT_ground_state(*sim_ctx, *potential, *density, *kset_list[*kset_id__], 1);
+}
+
+void sirius_delete_ground_state()
+{
+    delete dft_ground_state;
+    dft_ground_state = nullptr;
 }
 
 void sirius_set_lmax_apw(int32_t* lmax_apw__)
@@ -377,47 +529,6 @@ void sirius_set_core_relativity(ftn_char str__)
     sim_ctx->set_core_relativity(str__);
 }
 
-/// Initialize the global variables.
-/** The function must be called after setting up the lattice vectors, plane wave-cutoff, autormt flag and loading
- *  atom types and atoms into the unit cell.
- */
-void sirius_global_initialize()
-{
-    sim_ctx->initialize();
-}
-
-/// Initialize the Density object.
-/** \param [in] rhomt pointer to the muffin-tin part of the density
- *  \param [in] rhoit pointer to the interstitial part of the denssity
- *  \param [in] magmt pointer to the muffin-tin part of the magnetization
- *  \param [in] magit pointer to the interstitial part of the magnetization
- */
-void sirius_density_initialize(double* rhoit__,
-                               double* rhomt__,
-                               double* magit__,
-                               double* magmt__)
-{
-    density = new sirius::Density(*sim_ctx);
-    density->set_charge_density_ptr(rhomt__, rhoit__);
-    density->set_magnetization_ptr(magmt__, magit__);
-}
-
-/// Initialize the Potential object.
-/** \param [in] veffmt pointer to the muffin-tin part of the effective potential
- *  \param [in] veffit pointer to the interstitial part of the effective potential
- *  \param [in] beffmt pointer to the muffin-tin part of effective magnetic field
- *  \param [in] beffit pointer to the interstitial part of the effective magnetic field
- */
-void sirius_potential_initialize(double* veffit__,
-                                 double* veffmt__,
-                                 double* beffit__,
-                                 double* beffmt__)
-{
-    potential = new sirius::Potential(*sim_ctx);
-    potential->set_effective_potential_ptr(veffmt__, veffit__);
-    potential->set_effective_magnetic_field_ptr(beffmt__, beffit__);
-}
-
 /// Get maximum number of muffin-tin radial points.
 /** \param [out] max_num_mt_points maximum number of muffin-tin points */
 void sirius_get_max_num_mt_points(int32_t* max_num_mt_points__)
@@ -591,47 +702,6 @@ void sirius_get_num_core_electrons(double* num_core_electrons__)
     *num_core_electrons__ = sim_ctx->unit_cell().num_core_electrons();
 }
 
-/// Clear global variables and destroy all objects
-void sirius_clear(void)
-{
-
-    if (density != nullptr)
-    {
-        delete density;
-        density = nullptr;
-    }
-    if (potential != nullptr)
-    {
-        delete potential;
-        potential = nullptr;
-    }
-    if (dft_ground_state != nullptr)
-    {
-        delete dft_ground_state;
-        dft_ground_state = nullptr;
-    }
-    for (int i = 0; i < (int)kset_list.size(); i++)
-    {
-        if (kset_list[i] != nullptr)
-        {
-            delete kset_list[i];
-            kset_list[i] = nullptr;
-        }
-    }
-    if (sim_ctx != nullptr)
-    {
-        delete sim_ctx;
-        sim_ctx = nullptr;
-    }
-
-    if (sim_ctx != nullptr)
-    {
-        delete sim_ctx;
-        sim_ctx = nullptr;
-    }
-    kset_list.clear();
-}
-
 void sirius_generate_initial_density()
 {
     density->initial_density();
@@ -642,9 +712,9 @@ void sirius_generate_effective_potential()
     dft_ground_state->generate_effective_potential();
 }
 
-void sirius_initialize_subspace()
+void sirius_initialize_subspace(ftn_int* kset_id__)
 {
-    dft_ground_state->initialize_subspace();
+    dft_ground_state->band().initialize_subspace(*kset_list[*kset_id__], *potential);
 }
 
 void sirius_generate_density(int32_t* kset_id__)
@@ -1120,54 +1190,6 @@ void sirius_get_lo_enu(int32_t const* ia__,
                        double* enu__)
 {
     *enu__ = sim_ctx->unit_cell().atom(*ia__ - 1).symmetry_class().get_lo_enu(*idxlo__ - 1, *order__ - 1);
-}
-
-/// Create the k-point set from the list of k-points and return it's id
-void sirius_create_kset(int32_t* num_kpoints__,
-                        double* kpoints__,
-                        double* kpoint_weights__,
-                        int32_t* init_kset__,
-                        int32_t* kset_id__)
-{
-    mdarray<double, 2> kpoints(kpoints__, 3, *num_kpoints__);
-
-    sirius::K_set* new_kset = new sirius::K_set(*sim_ctx, sim_ctx->mpi_grid().communicator(1 << _mpi_dim_k_));
-    new_kset->add_kpoints(kpoints, kpoint_weights__);
-    if (*init_kset__) new_kset->initialize();
-
-    kset_list.push_back(new_kset);
-    *kset_id__ = (int)kset_list.size() - 1;
-
-}
-
-void sirius_create_irreducible_kset_(int32_t* mesh__, int32_t* is_shift__, int32_t* use_sym__, int32_t* kset_id__)
-{
-    for (int x = 0; x < 3; x++)
-    {
-        if (!(is_shift__[x] == 0 || is_shift__[x] == 1))
-        {
-            std::stringstream s;
-            s << "wrong k-shift " << is_shift__[0] << " " << is_shift__[1] << " " << is_shift__[2];
-            TERMINATE(s);
-        }
-    }
-
-    sirius::K_set* new_kset = new sirius::K_set(*sim_ctx,
-                                                sim_ctx->mpi_grid().communicator(1 << _mpi_dim_k_),
-                                                vector3d<int>(mesh__[0], mesh__[1], mesh__[2]),
-                                                vector3d<int>(is_shift__[0], is_shift__[1], is_shift__[2]),
-                                                *use_sym__);
-
-    new_kset->initialize();
-
-    kset_list.push_back(new_kset);
-    *kset_id__ = (int)kset_list.size() - 1;
-}
-
-void sirius_delete_kset(int32_t* kset_id__)
-{
-    delete kset_list[*kset_id__];
-    kset_list[*kset_id__] = nullptr;
 }
 
 void sirius_get_local_num_kpoints(int32_t* kset_id, int32_t* nkpt_loc)
@@ -1939,19 +1961,6 @@ void sirius_get_num_fv_states(int32_t* num_fv_states__)
 void sirius_set_num_fv_states(int32_t* num_fv_states__)
 {
     sim_ctx->set_num_fv_states(*num_fv_states__);
-}
-
-void sirius_ground_state_initialize(int32_t* kset_id__)
-{
-    if (dft_ground_state != nullptr) TERMINATE("dft_ground_state object is already allocate");
-
-    dft_ground_state = new sirius::DFT_ground_state(*sim_ctx, *potential, *density, *kset_list[*kset_id__], 1);
-}
-
-void sirius_ground_state_clear()
-{
-    delete dft_ground_state;
-    dft_ground_state = nullptr;
 }
 
 void sirius_get_mpi_comm(int32_t* directions__, int32_t* fcomm__)

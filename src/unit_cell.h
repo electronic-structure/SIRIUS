@@ -295,7 +295,7 @@ class Unit_cell
         }
         
         /// Print basic info.
-        void print_info();
+        void print_info(int verbosity_);
 
         unit_cell_parameters_descriptor unit_cell_parameters();
         

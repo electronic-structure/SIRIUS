@@ -17,8 +17,12 @@ module sirius
             character, dimension(*), intent(in) :: config_file_name
         end subroutine
 
-        subroutine sirius_global_initialize()&
-            &bind(C, name="sirius_global_initialize")
+        subroutine sirius_initialize_simulation_context()&
+            &bind(C, name="sirius_initialize_simulation_context")
+        end subroutine
+
+        subroutine sirius_delete_simulation_context()&
+            &bind(C, name="sirius_delete_simulation_context")
         end subroutine
 
         subroutine sirius_set_lattice_vectors(a1, a2, a3)&
@@ -311,9 +315,13 @@ module sirius
             integer,                 intent(out) :: num_fv_states
         end subroutine
 
-        subroutine sirius_ground_state_initialize(kset_id)&
-            &bind(C, name="sirius_ground_state_initialize")
+        subroutine sirius_create_ground_state(kset_id)&
+            &bind(C, name="sirius_create_ground_state")
             integer,                 intent(in) :: kset_id
+        end subroutine
+
+        subroutine sirius_delete_ground_state()&
+            &bind(C, name="sirius_delete_ground_state")
         end subroutine
 
         subroutine sirius_find_eigen_states(kset_id, precompute)&
@@ -326,8 +334,9 @@ module sirius
             &bind(C, name="sirius_generate_effective_potential")
         end subroutine
 
-        subroutine sirius_initialize_subspace()&
+        subroutine sirius_initialize_subspace(kset_id)&
             &bind(C, name="sirius_initialize_subspace")
+            integer,                 intent(in) :: kset_id
         end subroutine
 
         subroutine sirius_find_band_occupancies(kset_id)&
@@ -374,6 +383,11 @@ module sirius
             real(8),                 intent(in) :: kpoint_weights
             integer,                 intent(in) :: init_kset
             integer,                 intent(out) :: kset_id
+        end subroutine
+
+        subroutine sirius_delete_kset(kset_id)&
+            &bind(C, name="sirius_delete_kset")
+            integer,                 intent(in) :: kset_id
         end subroutine
 
         subroutine sirius_get_band_energies(kset_id, ik, band_energies)&
@@ -742,8 +756,8 @@ module sirius
             &bind(C, name="sirius_ground_state_print_info")
         end subroutine
 
-        subroutine sirius_density_initialize_aux(rhoit, rhomt, magit, magmt)&
-            &bind(C, name="sirius_density_initialize")
+        subroutine sirius_create_density_aux(rhoit, rhomt, magit, magmt)&
+            &bind(C, name="sirius_create_density")
             use, intrinsic :: ISO_C_BINDING
             type(C_PTR), value, intent(in) :: rhoit
             type(C_PTR), value, intent(in) :: rhomt
@@ -751,13 +765,23 @@ module sirius
             type(C_PTR), value, intent(in) :: magmt
         end subroutine
 
-        subroutine sirius_potential_initialize_aux(veffit, veffmt, beffit, beffmt)&
-            &bind(C, name="sirius_potential_initialize")
+        subroutine sirius_delete_density()&
+            &bind(C, name="sirius_delete_density")
+            use, intrinsic :: ISO_C_BINDING
+        end subroutine
+
+        subroutine sirius_create_potential_aux(veffit, veffmt, beffit, beffmt)&
+            &bind(C, name="sirius_create_potential")
             use, intrinsic :: ISO_C_BINDING
             type(C_PTR), value, intent(in) :: veffit
             type(C_PTR), value, intent(in) :: veffmt
             type(C_PTR), value, intent(in) :: beffit
             type(C_PTR), value, intent(in) :: beffmt
+        end subroutine
+
+        subroutine sirius_delete_potential()&
+            &bind(C, name="sirius_delete_potential")
+            use, intrinsic :: ISO_C_BINDING
         end subroutine
 
         subroutine sirius_add_atom_type_aux(label, fname)&
@@ -859,7 +883,7 @@ contains
         c_string(len_trim(f_string) + 1) = C_NULL_CHAR
     end function c_str
 
-    subroutine sirius_density_initialize(rhoit, magit, rhomt, magmt)
+    subroutine sirius_create_density(rhoit, magit, rhomt, magmt)
         implicit none
         real(8),           target, intent(in) :: rhoit
         real(8), optional, target, intent(in) :: magit
@@ -878,11 +902,11 @@ contains
         magmt_ptr = C_NULL_PTR
         if (present(magmt)) magmt_ptr = C_LOC(magmt)
 
-        call sirius_density_initialize_aux(rhoit_ptr, rhomt_ptr, magit_ptr, magmt_ptr)
+        call sirius_create_density_aux(rhoit_ptr, rhomt_ptr, magit_ptr, magmt_ptr)
 
     end subroutine
 
-    subroutine sirius_potential_initialize(veffit, beffit, veffmt, beffmt)
+    subroutine sirius_create_potential(veffit, beffit, veffmt, beffmt)
         implicit none
         real(8),           target, intent(in) :: veffit
         real(8), optional, target, intent(in) :: beffit
@@ -901,7 +925,7 @@ contains
         beffmt_ptr = C_NULL_PTR
         if (present(beffmt)) beffmt_ptr = C_LOC(beffmt)
 
-        call sirius_potential_initialize_aux(veffit_ptr, veffmt_ptr, beffit_ptr, beffmt_ptr)
+        call sirius_create_potential_aux(veffit_ptr, veffmt_ptr, beffit_ptr, beffmt_ptr)
 
     end subroutine
 

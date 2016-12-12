@@ -12,6 +12,22 @@ inline void K_point::generate_spinor_wave_functions()
         int nfv = ctx_.num_fv_states();
         int nbnd = (ctx_.num_mag_dims() == 3) ? ctx_.num_bands() : nfv;
 
+        #ifdef __GPU
+        if (ctx_.processing_unit() == GPU) {
+            fv_states().allocate_on_device();
+            fv_states().copy_to_device(0, nfv);
+            for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
+                spinor_wave_functions(ispn).allocate_on_device();
+            }
+            sv_eigen_vectors_[0].allocate(memory_t::device);
+            sv_eigen_vectors_[0].copy_to_device();
+            if (ctx_.num_mag_dims() != 3) {
+                sv_eigen_vectors_[1].allocate(memory_t::device);
+                sv_eigen_vectors_[1].copy_to_device();
+            }
+        }
+        #endif
+
         for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
             int s, o;
 
@@ -27,6 +43,21 @@ inline void K_point::generate_spinor_wave_functions()
             /* multiply consecutively up and dn blocks */
             transform(fv_states(), 0, nfv, sv_eigen_vectors_[s], o, 0, spinor_wave_functions(ispn), 0, nbnd);
         }
+
+        #ifdef __GPU
+        if (ctx_.processing_unit() == GPU) {
+            fv_states().deallocate_on_device();
+            for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
+                spinor_wave_functions(ispn).copy_to_host(0, nbnd);
+                spinor_wave_functions(ispn).deallocate_on_device();
+            }
+            sv_eigen_vectors_[0].deallocate_on_device();
+            if (ctx_.num_mag_dims() != 3) {
+                sv_eigen_vectors_[1].deallocate_on_device();
+            }
+        }
+        #endif
+
     } else {
         TERMINATE_NOT_IMPLEMENTED;
     }

@@ -522,106 +522,6 @@ inline void Band::apply_fv_h_o(K_point* kp__,
                           zone,
                           hphi__.pw_coeffs().prime().at<CPU>(0, N__),
                           hphi__.pw_coeffs().prime().ld());
-
-
-        ///* APW-lo contribution */
-        //for (int ilo = 0; ilo < nlo; ilo++) {
-        //    int xi_lo = type.mt_aw_basis_size() + ilo;
-        //    /* local orbital indices */
-        //    //int l_lo     = type.indexb(xi_lo).l;
-        //    int lm_lo    = type.indexb(xi_lo).lm;
-        //    //int order_lo = type.indexb(xi_lo).order;
-        //    int idxrf_lo = type.indexb(xi_lo).idxrf;
-        //    
-        //    //== /* contribution to O|phi> */
-        //    //== for (int order_aw = 0; order_aw < (int)type.aw_descriptor(l_lo).size(); order_aw++) {
-        //    //==     if (ctx_.processing_unit() == CPU) {
-        //    //==         for (int i = 0; i < n__; i++) {
-        //    //==             v[i] = phi_lo_ia(ilo, i) * atom.symmetry_class().o_radial_integral(l_lo, order_aw, order_lo);
-        //    //==         }
-        //    //==         linalg<CPU>::ger(kp__->num_gkvec_loc(), n__,
-        //    //==                          zone,
-        //    //==                          alm.at<CPU>(0, type.indexb_by_lm_order(lm_lo, order_aw)), 1,
-        //    //==                          v.at<CPU>(), 1,
-        //    //==                          ophi__.pw_coeffs().prime().at<CPU>(0, N__),
-        //    //==                          ophi__.pw_coeffs().prime().ld());
-
-        //    //==         //#pragma omp parallel
-        //    //==         //for (int i = 0; i < n__; i++) {
-        //    //==         //    /* APW-lo contribution */
-        //    //==         //    auto z = phi_lo_ia(ilo, i) * atom.symmetry_class().o_radial_integral(l_lo, order_aw, order_lo);
-        //    //==         //    #pragma omp for
-        //    //==         //    for (int ig = 0; ig < kp__->num_gkvec_loc(); ig++) {
-        //    //==         //        ophi__.pw_coeffs().prime(ig, N__ + i) += alm(ig, type.indexb_by_lm_order(lm_lo, order_aw)) * z;
-        //    //==         //    }
-        //    //==         //}
-        //    //==     }
-        //    //==     #ifdef __GPU
-        //    //==     if (ctx_.processing_unit() == GPU) {
-        //    //==         for (int i = 0; i < n__; i++) {
-        //    //==             v[i] = phi_lo_ia(ilo, i) * atom.symmetry_class().o_radial_integral(l_lo, order_aw, order_lo);
-        //    //==         }
-        //    //==         v.copy_to_device();
-
-        //    //==         linalg<GPU>::ger(kp__->num_gkvec_loc(), n__,
-        //    //==                          &zone,
-        //    //==                          alm.at<GPU>(0, type.indexb_by_lm_order(lm_lo, order_aw)), 1,
-        //    //==                          v.at<GPU>(), 1,
-        //    //==                          ophi__.pw_coeffs().prime().at<GPU>(0, N__),
-        //    //==                          ophi__.pw_coeffs().prime().ld(),
-        //    //==                          0);
-        //    //==     }
-        //    //==     #endif
-        //    //== }
-        //    
-        //    /* contribution to H|phi> */
-        //    //std::vector<double_complex> hmt(nmt);
-        //    for (int xi = 0; xi < nmt; xi++) {
-        //        int lm_aw    = type.indexb(xi).lm;
-        //        int idxrf_aw = type.indexb(xi).idxrf;
-        //        auto& gc = gaunt_coefs_->gaunt_vector(lm_aw, lm_lo);
-        //        hmt[xi] = atom.radial_integrals_sum_L3<spin_block_t::nm>(idxrf_aw, idxrf_lo, gc);
-        //    }
-        //    linalg<CPU>::gemv(0, kp__->num_gkvec_loc(), nmt, double_complex(1, 0), alm.at<CPU>(), alm.ld(),
-        //                      hmt.data(), 1, double_complex(0, 0), halm.at<CPU>(), 1);
-
-        //    if (ctx_.processing_unit() == CPU) {
-        //        for (int i = 0; i < n__; i++) {
-        //            v[i] = phi_lo_ia(ilo, i);
-        //        }
-        //        linalg<CPU>::ger(kp__->num_gkvec_loc(), n__,
-        //                         zone,
-        //                         halm.at<CPU>(), 1,
-        //                         v.at<CPU>(), 1,
-        //                         hphi__.pw_coeffs().prime().at<CPU>(0, N__),
-        //                         hphi__.pw_coeffs().prime().ld());
-        //        //#pragma omp parallel
-        //        //for (int i = 0; i < n__; i++) {
-        //        //    auto z = phi_lo_ia(ilo, i);
-        //        //    #pragma omp for
-        //        //    for (int ig = 0; ig < kp__->num_gkvec_loc(); ig++) {
-        //        //        hphi__.pw_coeffs().prime(ig, N__ + i) += halm(ig, 0) * z; 
-        //        //    }
-        //        //}
-        //    }
-        //    #ifdef __GPU
-        //    if (ctx_.processing_unit() == GPU) {
-        //        for (int i = 0; i < n__; i++) {
-        //            v[i] = phi_lo_ia(ilo, i);
-        //        }
-        //        v.copy_to_device();
-        //        halm.copy_to_device(kp__->num_gkvec_loc());
-
-        //        linalg<GPU>::ger(kp__->num_gkvec_loc(), n__,
-        //                         &zone,
-        //                         halm.at<GPU>(), 1,
-        //                         v.at<GPU>(), 1,
-        //                         hphi__.pw_coeffs().prime().at<GPU>(0, N__),
-        //                         hphi__.pw_coeffs().prime().ld(),
-        //                         0);
-        //    }
-        //    #endif
-        //}
         t2.stop();
 
         sddk::timer t3("sirius::Band::apply_fv_h_o|lo-apw");
@@ -690,6 +590,7 @@ inline void Band::apply_fv_h_o(K_point* kp__,
     #endif
 }
 
+//TODO: port to GPU
 inline void Band::apply_magnetic_field(wave_functions& fv_states__,
                                        Gvec const& gkvec__,
                                        Periodic_function<double>* effective_magnetic_field__[3],
@@ -703,8 +604,8 @@ inline void Band::apply_magnetic_field(wave_functions& fv_states__,
                                           ctx_.mpi_grid_fft().communicator(1 << 1),
                                           ctx_.num_fv_states());
     
-    std::vector<int> iv;
-    iv.push_back(0);
+    /* components of H|psi> to with H is applied */
+    std::vector<int> iv(1, 0);
     if (hpsi__.size() == 3) {
         iv.push_back(2);
     }
@@ -727,13 +628,25 @@ inline void Band::apply_magnetic_field(wave_functions& fv_states__,
         ctx_.fft().transform<1>(gkvec__.partition(), fv_states__.pw_coeffs().extra().at<CPU>(0, i));
         /* save for a reuse */
         if (hpsi__.size() == 3) {
+            STOP(); // fix output of fft driver
             ctx_.fft().output(&psi_r[0]);
         }
+        #ifdef __GPU
+        if (ctx_.fft().hybrid()) {
+            ctx_.fft().buffer().copy_to_host();
+        }
+        #endif
 
         for (int ir = 0; ir < ctx_.fft().local_size(); ir++) {
             /* hpsi(r) = psi(r) * B_z(r) * Theta(r) */
             ctx_.fft().buffer(ir) *= (effective_magnetic_field__[0]->f_rg(ir) * ctx_.step_function().theta_r(ir));
         }
+
+        #ifdef __GPU
+        if (ctx_.fft().hybrid()) {
+            ctx_.fft().buffer().copy_to_device();
+        }
+        #endif
         ctx_.fft().transform<-1>(gkvec__.partition(), hpsi__[0].pw_coeffs().extra().at<CPU>(0, i));
 
         if (hpsi__.size() == 3) {
@@ -743,6 +656,11 @@ inline void Band::apply_magnetic_field(wave_functions& fv_states__,
                                         double_complex(effective_magnetic_field__[1]->f_rg(ir),
                                                       -effective_magnetic_field__[2]->f_rg(ir));
             }
+            #ifdef __GPU
+            if (ctx_.fft().hybrid()) {
+                ctx_.fft().buffer().copy_to_device();
+            }
+            #endif
             ctx_.fft().transform<-1>(gkvec__.partition(), hpsi__[2].pw_coeffs().extra().at<CPU>(0, i));
         }
     }

@@ -327,23 +327,23 @@ bool Unit_cell::check_mt_overlap(int& ia__, int& ja__)
     return false;
 }
 
-void Unit_cell::print_info()
+void Unit_cell::print_info(int verbosity_)
 {
     printf("\n");
     printf("Unit cell\n");
-    for (int i = 0; i < 80; i++) printf("-");
+    for (int i = 0; i < 80; i++) {
+        printf("-");
+    }
     printf("\n");
     
     printf("lattice vectors\n");
-    for (int i = 0; i < 3; i++)
-    {
+    for (int i = 0; i < 3; i++) {
         printf("  a%1i : %18.10f %18.10f %18.10f \n", i + 1, lattice_vectors_(0, i), 
                                                              lattice_vectors_(1, i), 
                                                              lattice_vectors_(2, i)); 
     }
     printf("reciprocal lattice vectors\n");
-    for (int i = 0; i < 3; i++)
-    {
+    for (int i = 0; i < 3; i++) {
         printf("  b%1i : %18.10f %18.10f %18.10f \n", i + 1, reciprocal_lattice_vectors_(0, i), 
                                                              reciprocal_lattice_vectors_(1, i), 
                                                              reciprocal_lattice_vectors_(2, i));
@@ -356,8 +356,7 @@ void Unit_cell::print_info()
     
     printf("\n"); 
     printf("number of atom types : %i\n", num_atom_types());
-    for (int i = 0; i < num_atom_types(); i++)
-    {
+    for (int i = 0; i < num_atom_types(); i++) {
         int id = atom_type(i).id();
         printf("type id : %i   symbol : %2s   mt_radius : %10.6f\n", id, atom_type(i).symbol().c_str(), 
                                                                          atom_type(i).mt_radius()); 
@@ -365,26 +364,26 @@ void Unit_cell::print_info()
 
     printf("number of atoms : %i\n", num_atoms());
     printf("number of symmetry classes : %i\n", num_atom_symmetry_classes());
-    printf("\n"); 
-    printf("atom id              position            type id    class id\n");
-    printf("------------------------------------------------------------\n");
-    for (int i = 0; i < num_atoms(); i++)
-    {
-        auto pos = atom(i).position();
-        printf("%6i      %f %f %f   %6i      %6i\n", i, pos[0], pos[1], pos[2], atom(i).type_id(), atom(i).symmetry_class_id());
-    }
-   
     printf("\n");
-    for (int ic = 0; ic < num_atom_symmetry_classes(); ic++)
-    {
-        printf("class id : %i   atom id : ", ic);
-        for (int i = 0; i < atom_symmetry_class(ic).num_atoms(); i++)
-            printf("%i ", atom_symmetry_class(ic).atom_id(i));  
+    if (verbosity_ >= 2) {
+        printf("atom id              position            type id    class id\n");
+        printf("------------------------------------------------------------\n");
+        for (int i = 0; i < num_atoms(); i++) {
+            auto pos = atom(i).position();
+            printf("%6i      %f %f %f   %6i      %6i\n", i, pos[0], pos[1], pos[2], atom(i).type_id(), atom(i).symmetry_class_id());
+        }
+   
         printf("\n");
+        for (int ic = 0; ic < num_atom_symmetry_classes(); ic++) {
+            printf("class id : %i   atom id : ", ic);
+            for (int i = 0; i < atom_symmetry_class(ic).num_atoms(); i++) {
+                printf("%i ", atom_symmetry_class(ic).atom_id(i));
+            }
+            printf("\n");
+        }
     }
 
-    if (symmetry_ != nullptr)
-    {
+    if (symmetry_ != nullptr) {
         printf("\n");
         printf("space group number   : %i\n", symmetry_->spacegroup_number());
         printf("international symbol : %s\n", symmetry_->international_symbol().c_str());
@@ -392,41 +391,51 @@ void Unit_cell::print_info()
         printf("number of operations : %i\n", symmetry_->num_mag_sym());
         printf("transformation matrix : \n");
         auto tm = symmetry_->transformation_matrix();
-        for (int i = 0; i < 3; i++)
-        {
-            for (int j = 0; j < 3; j++) printf("%12.6f ", tm(i, j));
+        for (int i = 0; i < 3; i++) {
+            for (int j = 0; j < 3; j++) {
+                printf("%12.6f ", tm(i, j));
+            }
             printf("\n");
         }
         printf("origin shift : \n");
         auto t = symmetry_->origin_shift();
         printf("%12.6f %12.6f %12.6f\n", t[0], t[1], t[2]);
+        
+        if (verbosity_ >= 2) {
+            printf("symmetry operations  : \n");
+            for (int isym = 0; isym < symmetry_->num_mag_sym(); isym++) {
+                auto R = symmetry_->magnetic_group_symmetry(isym).spg_op.R;
+                auto t = symmetry_->magnetic_group_symmetry(isym).spg_op.t;
+                auto S = symmetry_->magnetic_group_symmetry(isym).spin_rotation;
 
-        printf("symmetry operations  : \n");
-        for (int isym = 0; isym < symmetry_->num_mag_sym(); isym++)
-        {
-            auto R = symmetry_->magnetic_group_symmetry(isym).spg_op.R;
-            auto t = symmetry_->magnetic_group_symmetry(isym).spg_op.t;
-            auto S = symmetry_->magnetic_group_symmetry(isym).spin_rotation;
-
-            printf("isym : %i\n", isym);
-            printf("R : ");
-            for (int i = 0; i < 3; i++)
-            {
-                if (i) printf("    ");
-                for (int j = 0; j < 3; j++) printf("%3i ", R(i, j));
+                printf("isym : %i\n", isym);
+                printf("R : ");
+                for (int i = 0; i < 3; i++) {
+                    if (i) {
+                        printf("    ");
+                    }
+                    for (int j = 0; j < 3; j++) {
+                        printf("%3i ", R(i, j));
+                    }
+                    printf("\n");
+                }
+                printf("T : ");
+                for (int j = 0; j < 3; j++) {
+                    printf("%8.4f ", t[j]);
+                }
+                printf("\n");
+                printf("S : ");
+                for (int i = 0; i < 3; i++) {
+                    if (i) {
+                        printf("    ");
+                    }
+                    for (int j = 0; j < 3; j++) {
+                        printf("%8.4f ", S(i, j));
+                    }
+                    printf("\n");
+                }
                 printf("\n");
             }
-            printf("T : ");
-            for (int j = 0; j < 3; j++) printf("%8.4f ", t[j]);
-            printf("\n");
-            printf("S : ");
-            for (int i = 0; i < 3; i++)
-            {
-                if (i) printf("    ");
-                for (int j = 0; j < 3; j++) printf("%8.4f ", S(i, j));
-                printf("\n");
-            }
-            printf("\n");
         }
     }
 }

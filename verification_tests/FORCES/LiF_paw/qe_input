@@ -7,7 +7,8 @@
     tstress = .true.,
     tprnfor = .true.,
     verbosity = 'low',
-    iprint = 100
+    iprint = 100,
+	forc_conv_thr = 0.001
  /
  &system
     ibrav = 0, nat= 2, ntyp= 2,

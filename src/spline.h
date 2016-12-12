@@ -208,6 +208,7 @@ class Spline
         {
             assert(i >= 0);
             assert(i < num_points() - 1);
+            assert(dx >= 0);
             return coeffs_(i, 0) + dx * (coeffs_(i, 1) + dx * (coeffs_(i, 2) + dx * coeffs_(i, 3)));
         }
         
@@ -215,36 +216,32 @@ class Spline
         {
             assert(i >= 0);
             assert(i < num_points() - 1);
-
-            switch (dm)
-            {
-                case 0:
-                {
-                    return coeffs_(i, 0) + dx * (coeffs_(i, 1) + dx * (coeffs_(i, 2) + dx * coeffs_(i, 3)));
+            assert(dx >= 0);
+            
+            T result = 0;
+            switch (dm) {
+                case 0: {
+                    result = coeffs_(i, 0) + dx * (coeffs_(i, 1) + dx * (coeffs_(i, 2) + dx * coeffs_(i, 3)));
                     break;
                 }
-                case 1:
-                {
-                    return coeffs_(i, 1) + (coeffs_(i, 2) * 2.0 + coeffs_(i, 3) * dx * 3.0) * dx;
+                case 1: {
+                    result = coeffs_(i, 1) + (coeffs_(i, 2) * 2.0 + coeffs_(i, 3) * dx * 3.0) * dx;
                     break;
                 }
-                case 2:
-                {
-                    return coeffs_(i, 2) * 2.0 + coeffs_(i, 3) * dx * 6.0;
+                case 2: {
+                    result = coeffs_(i, 2) * 2.0 + coeffs_(i, 3) * dx * 6.0;
                     break;
                 }
-                case 3:
-                {
-                    return coeffs_(i, 3) * 6.0;
+                case 3: {
+                    result = coeffs_(i, 3) * 6.0;
                     break;
                 }
-                default:
-                {
+                default: {
                     TERMINATE("wrong order of derivative");
-                    return 0.0; // make compiler happy
                     break;
                 }
             }
+            return result;
         }
 
         inline T deriv(int dm, int i) const

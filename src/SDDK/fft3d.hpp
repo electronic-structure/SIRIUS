@@ -562,9 +562,12 @@ class FFT3D
                         break;
                     }
                     case -1: {
-                        /* stream #1 copies part of FFT buffer to CPU */
-                        acc::copyout(fft_buffer_.at<CPU>(cufft_nbatch_xy_ * size_xy), fft_buffer_.at<GPU>(cufft_nbatch_xy_ * size_xy),
-                                     size_xy * (local_size_z_ - cufft_nbatch_xy_), 1);
+                        /* if we do some part on CPU */
+                        if (!gpu_only_impl_) {
+                            /* stream #1 copies part of FFT buffer to CPU */
+                            acc::copyout(fft_buffer_.at<CPU>(cufft_nbatch_xy_ * size_xy), fft_buffer_.at<GPU>(cufft_nbatch_xy_ * size_xy),
+                                         size_xy * (local_size_z_ - cufft_nbatch_xy_), 1);
+                        }
                         /* stream #0 executes FFT */
                         cufft_forward_transform(cufft_plan_xy_, fft_buffer_.at<GPU>());
                         /* stream #0 packs z-columns */
@@ -647,7 +650,7 @@ class FFT3D
                 
             #ifdef __GPU
             if (pu_ == GPU) {
-                if (direction == 1) {
+                if (direction == 1 && !gpu_only_impl_) {
                     /* stream #1 copies data to GPU */
                     acc::copyin(fft_buffer_.at<GPU>(cufft_nbatch_xy_ * size_xy), fft_buffer_.at<CPU>(cufft_nbatch_xy_ * size_xy),
                                 size_xy * (local_size_z_ - cufft_nbatch_xy_));
@@ -811,16 +814,6 @@ class FFT3D
             }
         }
         
-        //inline void output(int n__, int const* map__, double_complex* data__)
-        //{
-        //    for (int i = 0; i < n__; i++) data__[i] = fftw_buffer_[map__[i]];
-        //}
-
-        //inline void output(int n__, int const* map__, double_complex* data__, double beta__)
-        //{
-        //    for (int i = 0; i < n__; i++) data__[i] += beta__ * fftw_buffer_[map__[i]];
-        //}
-
         FFT3D_grid const& grid() const
         {
             return grid_;

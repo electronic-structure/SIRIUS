@@ -211,9 +211,9 @@ class Simulation_parameters
         {
             std::map<std::string, electronic_structure_method_t> m;
 
-            m["full_potential_lapwlo"]           = electronic_structure_method_t::full_potential_lapwlo;
-            m["full_potential_pwlo"]             = electronic_structure_method_t::full_potential_pwlo;
-            m["pseudopotential"]                 = electronic_structure_method_t::pseudopotential;
+            m["full_potential_lapwlo"] = electronic_structure_method_t::full_potential_lapwlo;
+            m["full_potential_pwlo"]   = electronic_structure_method_t::full_potential_pwlo;
+            m["pseudopotential"]       = electronic_structure_method_t::pseudopotential;
 
             if (m.count(name__) == 0) {
                 std::stringstream s;

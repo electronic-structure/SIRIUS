@@ -39,6 +39,8 @@ struct kq
     vector3d<int> K;
 };
 
+// TODO: rename K_set -> K_point_set
+
 /// Set of k-points.
 class K_set
 {
@@ -50,9 +52,9 @@ class K_set
 
         splindex<block> spl_num_kpoints_;
 
-        double energy_fermi_;
+        double energy_fermi_{0};
 
-        double band_gap_;
+        double band_gap_{0};
 
         Unit_cell& unit_cell_;
 

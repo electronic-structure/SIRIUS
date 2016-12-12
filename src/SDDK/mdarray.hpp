@@ -870,6 +870,18 @@ class mdarray : public mdarray_base<T, N>
 template <typename T>
 using matrix = mdarray<T, 2>;
 
+template <typename T, int N>
+std::ostream& operator<<(std::ostream& out, mdarray<T, N>& v)
+{
+    for (size_t i = 0; i < v.size(); i++) {
+        if (i) {
+            out << std::string(" ");
+        }
+        out << v[i];
+    }
+    return out;
+}
+
 } // namespace sddk
 
 #endif // __MDARRAY_HPP__

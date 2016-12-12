@@ -90,7 +90,7 @@ class type_wrapper<double>
 
         static inline double random()
         {
-            return double(rand()) / RAND_MAX;
+            return double(std::rand()) / RAND_MAX;
         }
 };
 
@@ -154,7 +154,7 @@ class type_wrapper<double_complex>
         
         static inline std::complex<double> random()
         {
-            return std::complex<double>(double(rand()) / RAND_MAX, double(rand()) / RAND_MAX);
+            return std::complex<double>(double(std::rand()) / RAND_MAX, double(std::rand()) / RAND_MAX);
         }
 };
 
@@ -168,16 +168,16 @@ class type_wrapper<int>
         }
 };
 
-template<> 
-class type_wrapper<char>
-{
-    public:
-
-        static inline char random()
-        {
-            return static_cast<char>(255 * (double(rand()) / RAND_MAX));
-        }
-};
+//template<> 
+//class type_wrapper<char>
+//{
+//    public:
+//
+//        static inline char random()
+//        {
+//            return static_cast<char>(255 * (double(std::rand()) / RAND_MAX));
+//        }
+//};
 
 enum class relativity_t
 {
