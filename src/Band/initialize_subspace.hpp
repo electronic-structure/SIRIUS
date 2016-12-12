@@ -8,11 +8,11 @@ inline void Band::initialize_subspace(K_set& kset__,
     /* interpolate I_{\alpha,n}(q) = <j_{l_n}(q*x) | wf_{n,l_n}(x) > with splines */
     std::vector<std::vector<Spline<double>>> rad_int(unit_cell_.num_atom_types());
 
-    if (ctx_.iterative_solver_input_section().init_subspace_ == "lcao") {
-        int nq = 20;
-        /* this is the regular grid in reciprocal space in the range [0, |G+k|_max ] */
-        Radial_grid qgrid(linear_grid, nq, 0, ctx_.gk_cutoff());
+    int nq = static_cast<int>(ctx_.gk_cutoff() * 5);
+    /* this is the regular grid in reciprocal space in the range [0, |G+k|_max ] */
+    Radial_grid qgrid(linear_grid, nq, 0, ctx_.gk_cutoff());
 
+    if (ctx_.iterative_solver_input_section().init_subspace_ == "lcao") {
         /* spherical Bessel functions jl(qx) for atom types */
         mdarray<Spherical_Bessel_functions, 2> jl(nq, unit_cell_.num_atom_types());
 
@@ -226,6 +226,7 @@ inline void Band::initialize_subspace(K_point* kp__,
         /* do some checks */
         if (ctx_.control().verification_ >= 1) {
             set_subspace_mtrx<T>(0, num_phi, phi, ophi, hmlt, hmlt_old);
+            hmlt.serialize("overlap", num_phi);
             double max_diff = Utils::check_hermitian(hmlt, num_phi);
             if (max_diff > 1e-12) {
                 std::stringstream s;
