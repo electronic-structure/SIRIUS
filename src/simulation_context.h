@@ -417,12 +417,10 @@ inline void Simulation_context::initialize()
     }
     if (pu == "cpu") {
         processing_unit_ = CPU;
+    } else if (pu == "gpu") {
+        processing_unit_ = GPU;
     } else {
-        if (pu == "gpu") {
-            processing_unit_ = GPU;
-        } else {
-            TERMINATE("wrong processing unit");
-        }
+        TERMINATE("wrong processing unit");
     }
 
     /* check if we can use a GPU device */
