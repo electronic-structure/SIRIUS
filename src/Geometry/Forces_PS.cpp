@@ -237,7 +237,7 @@ void Forces_PS::calc_nonlocal_forces(mdarray<double,2>& forces)
 
     Unit_cell &unit_cell = ctx_.unit_cell();
 
-    mdarray<double, 2> unsym_forces(forces.size(0), forces.size(1));
+    mdarray<double, 2> unsym_forces( forces.size(0), forces.size(1));
 
     unsym_forces.zero();
     forces.zero();
@@ -248,15 +248,10 @@ void Forces_PS::calc_nonlocal_forces(mdarray<double,2>& forces)
     {
         K_point *kp = kset_.k_point(spl_num_kp[ikploc]);
 
-        add_k_point_contribution_to_nonlocal<double_complex>(*kp, unsym_forces);
+        add_k_point_contribution_to_nonlocal2<double_complex>(*kp, unsym_forces);
     }
 
-    for(int ia=0; ia < unit_cell.num_atoms(); ia++)
-    {
-        printf("Atom %4i    force = %15.7f  %15.7f  %15.7f \n",
-               unit_cell.atom(ia).type_id(), unsym_forces(0,ia), unsym_forces(1,ia), unsym_forces(2,ia));
-    }
-    //ctx_.comm().allreduce(&unsym_forces(0,0),unsym_forces.size());
+    ctx_.comm().allreduce(&unsym_forces(0,0),unsym_forces.size());
 
     symmetrize_forces(unsym_forces, forces);
 }
@@ -409,15 +404,10 @@ void Forces_PS::symmetrize_forces(mdarray<double,2>& unsym_forces, mdarray<doubl
 //---------------------------------------------------------------
 void Forces_PS::calc_forces_contributions()
 {
-    std::cout<<"0"<<std::endl;
     calc_local_forces(local_forces_);
-    std::cout<<"1"<<std::endl;
     calc_ultrasoft_forces(ultrasoft_forces_);
-    std::cout<<"2"<<std::endl;
     calc_nonlocal_forces(nonlocal_forces_);
-    std::cout<<"3"<<std::endl;
     calc_nlcc_forces(nlcc_forces_);
-    std::cout<<"4"<<std::endl;
     calc_ewald_forces(ewald_forces_);
 }
 
