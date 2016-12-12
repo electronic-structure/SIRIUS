@@ -702,8 +702,27 @@ inline void Band::diag_pseudo_potential_davidson(K_point* kp__,
          * N is the number of previous basis functions
          * n is the number of new basis functions */
         set_subspace_mtrx(N, n, phi, hphi, hmlt, hmlt_old);
+
+        if (ctx_.control().verification_ >= 1) {
+            double max_diff = Utils::check_hermitian(hmlt, N + n);
+            if (max_diff > 1e-12) {
+                std::stringstream s;
+                s << "H matrix is not hermitian, max_err = " << max_diff;
+                TERMINATE(s);
+            }
+        }
+
         if (!itso.orthogonalize_) {
+            /* setup overlap matrix */
             set_subspace_mtrx(N, n, phi, ophi, ovlp, ovlp_old);
+            if (ctx_.control().verification_ >= 1) {
+                double max_diff = Utils::check_hermitian(ovlp, N + n);
+                if (max_diff > 1e-12) {
+                    std::stringstream s;
+                    s << "S matrix is not hermitian, max_err = " << max_diff;
+                    TERMINATE(s);
+                }
+            }
         }
 
         /* increase size of the variation space */
