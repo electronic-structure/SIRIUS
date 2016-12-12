@@ -226,7 +226,7 @@ inline void Band::initialize_subspace(K_point* kp__,
         /* do some checks */
         if (ctx_.control().verification_ >= 1) {
             set_subspace_mtrx<T>(0, num_phi, phi, ophi, hmlt, hmlt_old);
-            hmlt.serialize("overlap", num_phi);
+            //hmlt.serialize("overlap", num_phi);
             double max_diff = Utils::check_hermitian(hmlt, num_phi);
             if (max_diff > 1e-12) {
                 std::stringstream s;
