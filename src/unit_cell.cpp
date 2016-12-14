@@ -105,10 +105,8 @@ void Unit_cell::initialize()
     spl_num_atom_symmetry_classes_ = splindex<block>(num_atom_symmetry_classes(), comm_.size(), comm_.rank());
     
     volume_mt_ = 0.0;
-    if (parameters_.full_potential())
-    {
-        for (int ia = 0; ia < num_atoms(); ia++)
-        {
+    if (parameters_.full_potential()) {
+        for (int ia = 0; ia < num_atoms(); ia++) {
             volume_mt_ += fourpi * std::pow(atom(ia).mt_radius(), 3) / 3.0; 
         }
     }
@@ -116,20 +114,16 @@ void Unit_cell::initialize()
     volume_it_ = omega() - volume_mt_;
 
     mt_aw_basis_descriptors_.resize(mt_aw_basis_size_);
-    for (int ia = 0, n = 0; ia < num_atoms(); ia++)
-    {
-        for (int xi = 0; xi < atom(ia).mt_aw_basis_size(); xi++, n++)
-        {
+    for (int ia = 0, n = 0; ia < num_atoms(); ia++) {
+        for (int xi = 0; xi < atom(ia).mt_aw_basis_size(); xi++, n++) {
             mt_aw_basis_descriptors_[n].ia = ia;
             mt_aw_basis_descriptors_[n].xi = xi;
         }
     }
 
     mt_lo_basis_descriptors_.resize(mt_lo_basis_size_);
-    for (int ia = 0, n = 0; ia < num_atoms(); ia++)
-    {
-        for (int xi = 0; xi < atom(ia).mt_lo_basis_size(); xi++, n++)
-        {
+    for (int ia = 0, n = 0; ia < num_atoms(); ia++) {
+        for (int xi = 0; xi < atom(ia).mt_lo_basis_size(); xi++, n++) {
             mt_lo_basis_descriptors_[n].ia = ia;
             mt_lo_basis_descriptors_[n].xi = xi;
         }
