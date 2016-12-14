@@ -167,7 +167,7 @@ class Step_function
         }
        
         /// Return plane-wave coefficient of the step function.
-        inline double_complex theta_pw(int ig__) const
+        inline double_complex const& theta_pw(int ig__) const
         {
             assert(ig__ >= 0 && ig__ < (int)step_function_pw_.size());
             return step_function_pw_[ig__];
