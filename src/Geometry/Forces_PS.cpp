@@ -330,7 +330,6 @@ void Forces_PS::calc_ewald_forces(mdarray<double,2>& forces)
             {
                 forces(x,ja) += scalar_part * gvec_cart[x];
             }
-
         }
     }
 
@@ -371,6 +370,8 @@ void Forces_PS::symmetrize_forces(mdarray<double,2>& unsym_forces, mdarray<doubl
 {
     sddk::matrix3d<double> const& lattice_vectors = ctx_.unit_cell().symmetry().lattice_vectors();
     sddk::matrix3d<double> const& inverse_lattice_vectors = ctx_.unit_cell().symmetry().inverse_lattice_vectors();
+
+    sym_forces.zero();
 
     #pragma omp parallel for
     for(int ia = 0; ia < (int)unsym_forces.size(1); ia++)
@@ -432,11 +433,15 @@ void Forces_PS::sum_forces(mdarray<double,2>& inout_total_forces)
         TERMINATE("ERROR: Passed total forces array has wrong length!");
     }
 
+    mdarray<double,2> total_forces(3, ctx_.unit_cell().num_atoms());
+
     #pragma omp parallel for
     for(int i = 0; i < inout_total_forces.size(); i++ )
     {
-        inout_total_forces[i] = local_forces_[i] + ultrasoft_forces_[i] + nonlocal_forces_[i] + nlcc_forces_[i] + ewald_forces_[i];
+        total_forces[i] = local_forces_[i] + ultrasoft_forces_[i] + nonlocal_forces_[i] + nlcc_forces_[i] + ewald_forces_[i];
     }
+
+    symmetrize_forces(total_forces, inout_total_forces);
 }
 
 }

@@ -7,7 +7,7 @@
   },
 
   "parameters" : {
-      "electronic_structure_method" : "ultrasoft_pseudopotential",
+      "electronic_structure_method" : "pseudopotential",
 
       "!num_fv_states" : 40,
 
@@ -20,7 +20,7 @@
       "num_mag_dims" : 0,
 
       "gk_cutoff" : 6.0,
-      "pw_cutoff" : 20.00,
+      "pw_cutoff" : 15.00,
 
       "energy_tol" : 1e-8,
       "potential_tol" : 1e-8,
@@ -57,7 +57,7 @@
 
             "atoms" : {
                 "F" : [
-                    [0.5, 0.5, 0.5]
+                    [0.4, 0.42, 0.42]
                 ],
                 "Li" : [
                     [0, 0, 0]

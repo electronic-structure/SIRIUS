@@ -3,8 +3,8 @@
       "!mpi_grid_dims" : [2],
       "cyclic_block_size" : 16,
       "processing_unit" : "cpu",
-      "std_evp_solver_type" : "scalapack",
-      "gen_evp_solver_type" : "scalapack",
+      "!std_evp_solver_type" : "scalapack",
+      "!gen_evp_solver_type" : "scalapack",
 	  "verbosity": 2,
 	  "num_bands_to_print": 100
   },
@@ -12,7 +12,7 @@
   "parameters" : {
       "electronic_structure_method" : "pseudopotential",
 
-      "num_fv_states" : 48,
+      "!num_fv_states" : 48,
 
       "xc_functionals" : ["XC_LDA_X", "XC_LDA_C_PZ"],
 
@@ -23,12 +23,12 @@
       "num_mag_dims" : 0,
 
       "gk_cutoff" : 6.0,
-      "pw_cutoff" : 25.00,
+      "pw_cutoff" : 20.00,
 
       "energy_tol" : 1e-8,
       "potential_tol" : 1e-8,
 
-      "num_dft_iter" : 3,
+      "num_dft_iter" : 100,
 
       "ngridk" : [2,2,2],
 

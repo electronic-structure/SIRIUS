@@ -162,7 +162,7 @@ struct Unit_cell_input_section
 
 struct Mixer_input_section
 {
-    double beta_{0.9};
+    double beta_{0.7};
     double beta0_{0.15};
     double linear_mix_rms_tol_{1e6};
     std::string type_{"broyden1"};

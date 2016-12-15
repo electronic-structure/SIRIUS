@@ -99,11 +99,10 @@ private:
                         int ibnd = spl_nbnd[ibnd_loc];
 
                         auto D_aug_mtrx = [&](int i, int j)
-                                                            {
-
+                        {
                             return unit_cell.atom(ia).d_mtrx(i, j, ispn) - kpoint.band_energy(ibnd) *
                                     ctx_.augmentation_op(iat).q_mtrx(i, j);
-                                                            };
+                        };
 
                         for(int ibf = 0; ibf < unit_cell.atom(ia).type().mt_lo_basis_size(); ibf++ )
                         {

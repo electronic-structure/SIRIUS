@@ -20,7 +20,7 @@
   electron_maxstep=100,
   diago_thr_init=1D-12,
     diagonalization='david'
-    conv_thr = 1.0e-8
+    conv_thr = 1.0e-10
     mixing_beta = 0.7
  /
  &ions
