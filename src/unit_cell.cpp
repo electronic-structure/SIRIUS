@@ -699,19 +699,17 @@ void Unit_cell::generate_radial_functions()
 {
     PROFILE("sirius::Unit_cell::generate_radial_functions");
    
-    for (int icloc = 0; icloc < (int)spl_num_atom_symmetry_classes().local_size(); icloc++)
-    {
+    for (int icloc = 0; icloc < (int)spl_num_atom_symmetry_classes().local_size(); icloc++) {
         int ic = spl_num_atom_symmetry_classes(icloc);
         atom_symmetry_class(ic).generate_radial_functions(parameters_.valence_relativity());
     }
 
-    for (int ic = 0; ic < num_atom_symmetry_classes(); ic++)
-    {
+    for (int ic = 0; ic < num_atom_symmetry_classes(); ic++) {
         int rank = spl_num_atom_symmetry_classes().local_rank(ic);
         atom_symmetry_class(ic).sync_radial_functions(comm_, rank);
     }
     
-    if (parameters_.control().verbosity_ > 0) {
+    if (parameters_.control().verbosity_ >= 1) {
         runtime::pstdout pout(comm_);
         
         for (int icloc = 0; icloc < (int)spl_num_atom_symmetry_classes().local_size(); icloc++) {
@@ -724,32 +722,33 @@ void Unit_cell::generate_radial_functions()
             printf("Linearization energies\n");
         }
     }
+    if (parameters_.control().verbosity_ >= 4 && comm_.rank() == 0) {
+        for (int ic = 0; ic < num_atom_symmetry_classes(); ic++) {
+            atom_symmetry_class(ic).dump_lo();
+        }
+    }
 }
 
 void Unit_cell::generate_radial_integrals()
 {
     PROFILE("sirius::Unit_cell::generate_radial_integrals");
 
-    for (int icloc = 0; icloc < spl_num_atom_symmetry_classes().local_size(); icloc++)
-    {
+    for (int icloc = 0; icloc < spl_num_atom_symmetry_classes().local_size(); icloc++) {
         int ic = spl_num_atom_symmetry_classes(icloc);
         atom_symmetry_class(ic).generate_radial_integrals(parameters_.valence_relativity());
     }
 
-    for (int ic = 0; ic < num_atom_symmetry_classes(); ic++)
-    {
+    for (int ic = 0; ic < num_atom_symmetry_classes(); ic++) {
         int rank = spl_num_atom_symmetry_classes().local_rank(ic);
         atom_symmetry_class(ic).sync_radial_integrals(comm_, rank);
     }
 
-    for (int ialoc = 0; ialoc < spl_num_atoms_.local_size(); ialoc++)
-    {
+    for (int ialoc = 0; ialoc < spl_num_atoms_.local_size(); ialoc++) {
         int ia = spl_num_atoms_[ialoc];
         atom(ia).generate_radial_integrals(parameters_.processing_unit(), mpi_comm_self());
     }
     
-    for (int ia = 0; ia < num_atoms(); ia++)
-    {
+    for (int ia = 0; ia < num_atoms(); ia++) {
         int rank = spl_num_atoms().local_rank(ia);
         atom(ia).sync_radial_integrals(comm_, rank);
     }
