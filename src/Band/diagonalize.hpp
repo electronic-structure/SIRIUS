@@ -8,7 +8,7 @@ extern "C" void compute_chebyshev_polynomial_gpu(int num_gkvec,
                                                  cuDoubleComplex* phi2);
 #endif
 
-inline void Band::diag_fv_full_potential_exact(K_point* kp, Periodic_function<double>* effective_potential) const
+inline void Band::diag_fv_full_potential_exact(K_point* kp, Potential const& potential__) const
 {
     PROFILE("sirius::Band::diag_fv_full_potential_exact");
 
@@ -25,12 +25,12 @@ inline void Band::diag_fv_full_potential_exact(K_point* kp, Periodic_function<do
     /* setup Hamiltonian and overlap */
     switch (ctx_.processing_unit()) {
         case CPU: {
-            set_fv_h_o<CPU, electronic_structure_method_t::full_potential_lapwlo>(kp, effective_potential, h, o);
+            set_fv_h_o<CPU, electronic_structure_method_t::full_potential_lapwlo>(kp, potential__, h, o);
             break;
         }
         #ifdef __GPU
         case GPU: {
-            set_fv_h_o<GPU, electronic_structure_method_t::full_potential_lapwlo>(kp, effective_potential, h, o);
+            set_fv_h_o<GPU, electronic_structure_method_t::full_potential_lapwlo>(kp, potential__, h, o);
             break;
         }
         #endif
@@ -39,27 +39,27 @@ inline void Band::diag_fv_full_potential_exact(K_point* kp, Periodic_function<do
         }
     }
 
-    // TODO: move debug code to a separate function
-    #if (__VERIFICATION > 0)
-    if (!gen_evp_solver()->parallel()) {
-        Utils::check_hermitian("h", h.panel());
-        Utils::check_hermitian("o", o.panel());
+    if (ctx_.control().verification_ >= 1) {
+        double max_diff = Utils::check_hermitian(h, ngklo);
+        if (max_diff > 1e-12) {
+            TERMINATE("H matrix is not hermitian");
+        }
+        max_diff = Utils::check_hermitian(o, ngklo);
+        if (max_diff > 1e-12) {
+            TERMINATE("O matrix is not hermitian");
+        }
     }
-    #endif
 
-    #ifdef __PRINT_OBJECT_CHECKSUM
-    auto z1 = h.checksum();
-    auto z2 = o.checksum();
-    kp->comm().allreduce(&z1, 1);
-    kp->comm().allreduce(&z2, 1);
-    DUMP("checksum(h): %18.10f %18.10f", std::real(z1), std::imag(z1));
-    DUMP("checksum(o): %18.10f %18.10f", std::real(z2), std::imag(z2));
-    #endif
-
-    #ifdef __PRINT_OBJECT_HASH
-    DUMP("hash(h): %16llX", h.panel().hash());
-    DUMP("hash(o): %16llX", o.panel().hash());
-    #endif
+    if (ctx_.control().print_checksum_) {
+        auto z1 = h.checksum();
+        auto z2 = o.checksum();
+        kp->comm().allreduce(&z1, 1);
+        kp->comm().allreduce(&z2, 1);
+        if (kp->comm().rank() == 0) {
+            DUMP("checksum(h): %18.10f %18.10f", std::real(z1), std::imag(z1));
+            DUMP("checksum(o): %18.10f %18.10f", std::real(z2), std::imag(z2));
+        }
+    }
 
     assert(kp->gklo_basis_size() > ctx_.num_fv_states());
     
@@ -75,17 +75,19 @@ inline void Band::diag_fv_full_potential_exact(K_point* kp, Periodic_function<do
     t.stop();
     kp->set_fv_eigen_values(&eval[0]);
 
-    if (ctx_.control().verbosity_ > 2 && kp->comm().rank() == 0) {
+    if (ctx_.control().verbosity_ >= 3 && kp->comm().rank() == 0) {
         for (int i = 0; i < ctx_.num_fv_states(); i++) {
             DUMP("eval[%i]=%20.16f", i, eval[i]);
         }
     }
 
-    #ifdef __PRINT_OBJECT_CHECKSUM
-    z1 = kp->fv_eigen_vectors().checksum();
-    kp->comm().allreduce(&z1, 1);
-    DUMP("checksum(fv_eigen_vectors): %18.10f %18.10f", std::real(z1), std::imag(z1));
-    #endif
+    if (ctx_.control().print_checksum_) {
+        auto z1 = kp->fv_eigen_vectors().checksum();
+        kp->comm().allreduce(&z1, 1);
+        if (kp->comm().rank() == 0) {
+            DUMP("checksum(fv_eigen_vectors): %18.10f %18.10f", std::real(z1), std::imag(z1));
+        }
+    }
 
     /* remap to slab */
     kp->fv_eigen_vectors_slab().pw_coeffs().remap_from(kp->fv_eigen_vectors(), 0);
@@ -214,7 +216,7 @@ inline void Band::get_singular_components(K_point* kp__, Interstitial_operator& 
 
     int ncomp = psi.num_wf();
     
-    if (ctx_.comm().rank() == 0 && ctx_.control().verbosity_ > 2) {
+    if (ctx_.comm().rank() == 0 && ctx_.control().verbosity_ >= 3) {
         printf("number of singular components: %i\n", ncomp);
     }
 
@@ -266,7 +268,7 @@ inline void Band::get_singular_components(K_point* kp__, Interstitial_operator& 
     /* number of newly added basis functions */
     int n = ncomp;
 
-    if (ctx_.control().verbosity_ > 2 && kp__->comm().rank() == 0) {
+    if (ctx_.control().verbosity_ >= 3 && kp__->comm().rank() == 0) {
         DUMP("iterative solver tolerance: %18.12f", ctx_.iterative_solver_tolerance());
     }
 
