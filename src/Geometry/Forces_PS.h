@@ -51,9 +51,11 @@ private:
         for (int icnk = 0; icnk < bp.num_beta_chunks(); icnk++)
         {
             // generate chunk for inner product of beta gradient
+            bp_grad.prepare(icnk);
             bp_grad.generate(icnk);
 
             // generate chunk for inner product of beta
+            bp.prepare();
             bp.generate(icnk);
 
             for (int ispn = 0; ispn < ctx_.num_spins(); ispn++)
@@ -121,6 +123,9 @@ private:
                     }
                 }
             }
+
+            bp.dismiss();
+            bp_grad.dismiss();
         }
     }
 

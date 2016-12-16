@@ -19,13 +19,16 @@ class Beta_projectors_gradient
 {
 protected:
 
-    // local array of gradient components. dimensions: 0 - gk, 1-orbitals
+    /// local array of gradient components. dimensions: 0 - gk, 1-orbitals
     std::array<matrix<double_complex>, 3> components_gk_a_;
 
-    // the same but for one chunk
+    /// the same but for one chunk
     std::array<matrix<double_complex>, 3> chunk_comp_gk_a_;
 
-    // inner product store
+    /// the same but for one chunk on gpu
+    std::array<matrix<double_complex>, 3> chunk_comp_gk_a_gpu_;
+
+    /// inner product store
     std::array<mdarray<double, 1>, 3> beta_phi_;
 
     Beta_projectors *bp_;
@@ -40,6 +43,14 @@ public:
             components_gk_a_[comp] = matrix<double_complex>( bp_->beta_gk_a().size(0), bp_->beta_gk_a().size(1) );
             calc_gradient(comp);
         }
+
+        // on GPU we create arrays without allocation, it will before use
+//        #ifdef __GPU
+//        for(int comp: {0,1,2})
+//        {
+//            chunk_comp_gk_a_gpu_[comp] = matrix<double_complex>(bp_->beta_gk_a().size(0), bp_->beta_gk_a().size(1), memory_t::none);
+//        }
+//        #endif
     }
 
 
@@ -68,12 +79,19 @@ public:
         if (bp_->proc_unit() == CPU)
         {
             chunk_comp_gk_a_[calc_component__] = mdarray<double_complex, 2>(&components_gk_a_[calc_component__](0, bp_->beta_chunk(chunk__).offset_),
-                                                  bp_->num_gkvec_loc(), bp_->beta_chunk(chunk__).num_beta_);
+                                                                            bp_->num_gkvec_loc(),
+                                                                            bp_->beta_chunk(chunk__).num_beta_);
         }
+
         #ifdef __GPU
         if (bp_->proc_unit() == GPU)
         {
-            TERMINATE_NOT_IMPLEMENTED
+            chunk_comp_gk_a_[calc_component__] = mdarray<double_complex, 2>(&components_gk_a_[calc_component__](0, bp_->beta_chunk(chunk__).offset_),
+                                                                            chunk_comp_gk_a_gpu_[comp].at<GPU>(),
+                                                                            bp_->num_gkvec_loc(),
+                                                                            bp_->beta_chunk(chunk__).num_beta_);
+
+            chunk_comp_gk_a_[calc_component__].copy_to_device();
         }
         #endif
     }
@@ -122,6 +140,34 @@ public:
         for(int comp: {0,1,2}) chunk_beta_phi[comp] = beta_phi<T>(chunk__, n__, comp);
 
         return std::move(chunk_beta_phi);
+    }
+
+    void prepare(int chunk__)
+    {
+        #ifdef __GPU
+        if (pu_ == GPU)
+        {
+            for(int comp: {0,1,2})
+            {
+                chunk_comp_gk_a_gpu_[comp] = matrix<double_complex>(bp_->num_gkvec_loc(), bp_->beta_chunk(chunk__).num_beta_, memory_t::device);
+                beta_phi_[comp].allocate(memory_t::device);
+            }
+        }
+        #endif
+    }
+
+    void dismiss()
+    {
+        #ifdef __GPU
+        if (pu_ == GPU)
+        {
+            for(int comp: {0,1,2})
+            {
+                chunk_comp_gk_a_gpu_[comp].deallocate_on_device();
+                beta_phi_[comp].deallocate_on_device();
+            }
+        }
+        #endif
     }
 };
 
