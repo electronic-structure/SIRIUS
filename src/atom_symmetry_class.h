@@ -51,7 +51,12 @@ class Atom_symmetry_class
         /// Spherical part of the effective potential.
         std::vector<double> spherical_potential_;
 
-        /// List of radial functions.
+        /// List of radial functions for the LAPW basis.
+        /** This array stores all the radial functions (AW and LO) and their derivatives. Radial derivatives of functions 
+         *  are multiplied by \f$ x \f$.\n
+         *  1-st dimension: index of radial point \n
+         *  2-nd dimension: index of radial function \n
+         *  3-nd dimension: 0 - function itself, 1 - radial derivative */
         mdarray<double, 3> radial_functions_;
         
         /// Surface derivatives of AW radial functions.
@@ -60,20 +65,23 @@ class Atom_symmetry_class
         /// Spherical part of radial integral.
         mdarray<double, 2> h_spherical_integrals_;
 
-        /// overlap integrals
+        /// Overlap integrals.
         mdarray<double, 3> o_radial_integrals_;
 
-        /// spin-orbit interaction integrals
+        /// Overlap integrals for IORA relativistic treatment.
+        mdarray<double, 2> o1_radial_integrals_;
+
+        /// Spin-orbit interaction integrals.
         mdarray<double, 3> so_radial_integrals_;
 
-        /// core charge density
+        /// Core charge density.
         std::vector<double> core_charge_density_;
 
-        /// core eigen-value sum
-        double core_eval_sum_;
+        /// Core eigen-value sum.
+        double core_eval_sum_{0};
 
-        /// core leakage
-        double core_leakage_;
+        /// Core leakage.
+        double core_leakage_{0};
         
         /// list of radial descriptor sets used to construct augmented waves 
         mutable std::vector<radial_solution_descriptor_set> aw_descriptors_;
@@ -91,16 +99,47 @@ class Atom_symmetry_class
     
         /// Constructor
         Atom_symmetry_class(int id_, Atom_type const& atom_type_) 
-            : id_(id_), 
-              atom_type_(atom_type_), 
-              core_eval_sum_(0.0), 
-              core_leakage_(0.0)
+            : id_(id_)
+            , atom_type_(atom_type_)
         {
-            if (atom_type_.initialized()) initialize();
-        }
+            if (!atom_type_.initialized()) {
+                TERMINATE("atom type is not initialized");
+            }
 
-        /// Initialize the symmetry class
-        void initialize();
+            aw_surface_derivatives_ = mdarray<double, 3>(atom_type_.max_aw_order(), atom_type_.num_aw_descriptors(), 3);
+
+            radial_functions_ = mdarray<double, 3>(atom_type_.num_mt_points(), atom_type_.mt_radial_basis_size(), 2);
+
+            h_spherical_integrals_ = mdarray<double, 2>(atom_type_.mt_radial_basis_size(), atom_type_.mt_radial_basis_size());
+            h_spherical_integrals_.zero();
+            
+            o_radial_integrals_ = mdarray<double, 3>(atom_type_.indexr().lmax() + 1, atom_type_.indexr().max_num_rf(), 
+                                                     atom_type_.indexr().max_num_rf());
+            o_radial_integrals_.zero();
+            
+            so_radial_integrals_ = mdarray<double, 3>(atom_type_.indexr().lmax() + 1, atom_type_.indexr().max_num_rf(), 
+                                                      atom_type_.indexr().max_num_rf());
+            so_radial_integrals_.zero();
+
+            if (atom_type_.parameters().valence_relativity() == relativity_t::iora) {
+                o1_radial_integrals_ = mdarray<double, 2>(atom_type_.mt_radial_basis_size(), atom_type_.mt_radial_basis_size());
+                o1_radial_integrals_.zero();
+            }
+
+            /* copy descriptors because enu is defferent between atom classes */
+            aw_descriptors_.resize(atom_type_.num_aw_descriptors());
+            for (int i = 0; i < num_aw_descriptors(); i++) {
+                aw_descriptors_[i] = atom_type_.aw_descriptor(i);
+            }
+
+            lo_descriptors_.resize(atom_type_.num_lo_descriptors());
+            for (int i = 0; i < num_lo_descriptors(); i++) {
+                lo_descriptors_[i] = atom_type_.lo_descriptor(i);
+            }
+            
+            core_charge_density_.resize(atom_type_.num_mt_points());
+            std::memset(&core_charge_density_[0], 0, atom_type_.num_mt_points() * sizeof(double));
+        }
 
         /// Set the spherical component of the potential
         /** Atoms belonging to the same symmetry class have the same spherical potential. */
@@ -213,6 +252,11 @@ class Atom_symmetry_class
         inline void set_o_radial_integral(int l, int order1, int order2, double oint__)
         {
             o_radial_integrals_(l, order1, order2) = oint__;
+        }
+
+        inline double const& o1_radial_integral(int xi1__, int xi2__) const
+        {
+            return o1_radial_integrals_(xi1__, xi2__);
         }
 
         inline double so_radial_integral(int l, int order1, int order2) const

@@ -171,6 +171,16 @@ void Atom_symmetry_class::generate_lo_radial_functions(relativity_t rel__)
 
             if (info) {
                 std::stringstream s;
+                s << "a[i][j] = ";
+                for (int i = 0; i < num_rs; i++) {
+                    for (int j = 0; j < num_rs; j++) {
+                        s << a[i][j] << " ";
+                    }
+                }
+                s << std::endl;
+                s << "atom: " << atom_type_.label() << std::endl
+                  << "zn: " << atom_type_.zn() << std::endl
+                  << "l: " << lo_descriptor(idxlo).l << std::endl;
                 s << "gesv returned " << info;
                 TERMINATE(s);
             }
@@ -213,9 +223,9 @@ void Atom_symmetry_class::generate_lo_radial_functions(relativity_t rel__)
         }
     }
     
-    #if (__VERIFICATION > 0)
-    if (num_lo_descriptors() > 0) check_lo_linear_independence(0.0001);
-    #endif
+    if (atom_type_.parameters().control().verification_ > 0 && num_lo_descriptors() > 0) {
+        check_lo_linear_independence(0.0001);
+    }
 }
 
 std::vector<int> Atom_symmetry_class::check_lo_linear_independence(double tol__)
@@ -310,11 +320,9 @@ void Atom_symmetry_class::dump_lo()
     s << "local_orbitals_" << id_ << ".dat";
     FILE* fout = fopen(s.str().c_str(), "w");
 
-    for (int ir = 0; ir <atom_type_.num_mt_points(); ir++)
-    {
+    for (int ir = 0; ir <atom_type_.num_mt_points(); ir++) {
         fprintf(fout, "%f ", atom_type_.radial_grid(ir));
-        for (int idxlo = 0; idxlo < num_lo_descriptors(); idxlo++)
-        {
+        for (int idxlo = 0; idxlo < num_lo_descriptors(); idxlo++) {
             int idxrf = atom_type_.indexr().index_by_idxlo(idxlo);
             fprintf(fout, "%f ", radial_functions_(ir, idxrf, 0));
         }
@@ -323,52 +331,18 @@ void Atom_symmetry_class::dump_lo()
     fclose(fout);
     
     s.str("");
-    s << "local_orbitals_h_" << id_ << ".dat";
+    s << "local_orbitals_deriv_" << id_ << ".dat";
     fout = fopen(s.str().c_str(), "w");
 
-    for (int ir = 0; ir <atom_type_.num_mt_points(); ir++)
-    {
+    for (int ir = 0; ir <atom_type_.num_mt_points(); ir++) {
         fprintf(fout, "%f ", atom_type_.radial_grid(ir));
-        for (int idxlo = 0; idxlo < num_lo_descriptors(); idxlo++)
-        {
+        for (int idxlo = 0; idxlo < num_lo_descriptors(); idxlo++) {
             int idxrf = atom_type_.indexr().index_by_idxlo(idxlo);
             fprintf(fout, "%f ", radial_functions_(ir, idxrf, 1));
         }
         fprintf(fout, "\n");
     }
     fclose(fout);
-}
-
-void Atom_symmetry_class::initialize()
-{
-    aw_surface_derivatives_ = mdarray<double, 3>(atom_type_.max_aw_order(), atom_type_.num_aw_descriptors(), 3);
-
-    radial_functions_ = mdarray<double, 3>(atom_type_.num_mt_points(), atom_type_.mt_radial_basis_size(), 2);
-
-    h_spherical_integrals_ = mdarray<double, 2>(atom_type_.mt_radial_basis_size(), atom_type_.mt_radial_basis_size());
-    h_spherical_integrals_.zero();
-    
-    o_radial_integrals_ = mdarray<double, 3>(atom_type_.indexr().lmax() + 1, atom_type_.indexr().max_num_rf(), 
-                                             atom_type_.indexr().max_num_rf());
-    o_radial_integrals_.zero();
-    
-    so_radial_integrals_ = mdarray<double, 3>(atom_type_.indexr().lmax() + 1, atom_type_.indexr().max_num_rf(), 
-                                              atom_type_.indexr().max_num_rf());
-    so_radial_integrals_.zero();
-
-    /* copy descriptors because enu is defferent between atom classes */
-    aw_descriptors_.resize(atom_type_.num_aw_descriptors());
-    for (int i = 0; i < num_aw_descriptors(); i++) {
-        aw_descriptors_[i] = atom_type_.aw_descriptor(i);
-    }
-
-    lo_descriptors_.resize(atom_type_.num_lo_descriptors());
-    for (int i = 0; i < num_lo_descriptors(); i++) {
-        lo_descriptors_[i] = atom_type_.lo_descriptor(i);
-    }
-    
-    core_charge_density_.resize(atom_type_.num_mt_points());
-    std::memset(&core_charge_density_[0], 0, atom_type_.num_mt_points() * sizeof(double));
 }
 
 void Atom_symmetry_class::set_spherical_potential(std::vector<double> const& vs__)
@@ -546,6 +520,31 @@ void Atom_symmetry_class::generate_radial_integrals(relativity_t rel__)
                             s[ir] = radial_functions_(ir, idxrf1, 0) * radial_functions_(ir, idxrf2, 0);
                         }
                         o_radial_integrals_(l, order1, order2) = s.interpolate().integrate(2);
+                    }
+                }
+            }
+        }
+    }
+    if (atom_type_.parameters().valence_relativity() == relativity_t::iora) {
+        o1_radial_integrals_.zero();
+        #pragma omp parallel default(shared)
+        {
+            Spline<double> s(atom_type_.radial_grid()); 
+            #pragma omp for
+            for (int i1 = 0; i1 < atom_type_.mt_radial_basis_size(); i1++) {
+                for (int i2 = 0; i2 < atom_type_.mt_radial_basis_size(); i2++) {
+                    /* for spherical part of potential integrals are diagonal in l */
+                    if (atom_type_.indexr(i1).l == atom_type_.indexr(i2).l) {
+                        int ll = atom_type_.indexr(i1).l * (atom_type_.indexr(i1).l + 1);
+                        for (int ir = 0; ir < nmtp; ir++) {
+                            double Minv = std::pow(1 - spherical_potential_[ir] * sq_alpha_half, -2);
+                            /* u_1(r) * u_2(r) */
+                            double t0 = radial_functions_(ir, i1, 0) * radial_functions_(ir, i2, 0);
+                            /* r*u'_1(r) * r*u'_2(r) */
+                            double t1 = radial_functions_(ir, i1, 1) * radial_functions_(ir, i2, 1);
+                            s[ir] = sq_alpha_half * 0.5 * Minv * (t1 + t0 * 0.5 * ll);
+                        }
+                        o1_radial_integrals_(i1, i2) = s.interpolate().integrate(0);
                     }
                 }
             }
