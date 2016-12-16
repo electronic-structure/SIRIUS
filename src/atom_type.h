@@ -329,7 +329,7 @@ class Atom_type
         /// list of radial descriptor sets used to construct local orbitals
         std::vector<local_orbital_descriptor> lo_descriptors_;
         
-        /// maximum number of aw radial functions across angular momentums
+        /// Maximum number of AW radial functions across angular momentums.
         int max_aw_order_{0};
 
         int offset_lo_{-1};
@@ -339,10 +339,6 @@ class Atom_type
         basis_functions_index indexb_;
 
         pseudopotential_descriptor pp_desc_;
-
-        //uspp_descriptor uspp_;
-
-        //PAW_descriptor paw_;
 
         /// Inverse of (Q_{\xi \xi'j}^{-1} + beta_pw^{H}_{\xi} * beta_pw_{xi'})
         /** Used in Chebyshev iterative solver as a block-diagonal preconditioner */
@@ -653,7 +649,7 @@ class Atom_type
 
         inline int num_aw_descriptors() const
         {
-            return (int)aw_descriptors_.size();
+            return static_cast<int>(aw_descriptors_.size());
         }
 
         inline radial_solution_descriptor_set const& aw_descriptor(int l) const
@@ -675,6 +671,12 @@ class Atom_type
         inline int max_aw_order() const
         {
             return max_aw_order_;
+        }
+
+        /// Order of augmented wave radial functions for a given l.
+        inline int aw_order(int l__) const
+        {
+            return static_cast<int>(aw_descriptor(l__).size());
         }
 
         inline radial_functions_index const& indexr() const
