@@ -244,6 +244,7 @@ class Simulation_parameters
 
             m["none"]            = relativity_t::none;
             m["zora"]            = relativity_t::zora;
+            m["iora"]            = relativity_t::iora;
             m["koelling_harmon"] = relativity_t::koelling_harmon;
 
             if (m.count(name__) == 0) {
