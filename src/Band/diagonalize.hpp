@@ -42,11 +42,17 @@ inline void Band::diag_fv_full_potential_exact(K_point* kp, Potential const& pot
     if (ctx_.control().verification_ >= 1) {
         double max_diff = Utils::check_hermitian(h, ngklo);
         if (max_diff > 1e-12) {
-            TERMINATE("H matrix is not hermitian");
+            std::stringstream s;
+            s << "H matrix is not hermitian" << std::endl
+              << "max error: " << max_diff;
+            TERMINATE(s);
         }
         max_diff = Utils::check_hermitian(o, ngklo);
         if (max_diff > 1e-12) {
-            TERMINATE("O matrix is not hermitian");
+            std::stringstream s;
+            s << "O matrix is not hermitian" << std::endl
+              << "max error: " << max_diff;
+            TERMINATE(s);
         }
     }
 
@@ -92,6 +98,37 @@ inline void Band::diag_fv_full_potential_exact(K_point* kp, Potential const& pot
     /* remap to slab */
     kp->fv_eigen_vectors_slab().pw_coeffs().remap_from(kp->fv_eigen_vectors(), 0);
     kp->fv_eigen_vectors_slab().mt_coeffs().remap_from(kp->fv_eigen_vectors(), kp->num_gkvec());
+    
+    /* renormalize wave-functions */
+    if (ctx_.valence_relativity() == relativity_t::iora) {
+        wave_functions ofv(ctx_.processing_unit(), kp->comm(), kp->gkvec(), unit_cell_.num_atoms(),
+                           [this](int ia){return unit_cell_.atom(ia).mt_lo_basis_size();}, ctx_.num_fv_states());
+
+        Interstitial_operator istl_op(ctx_.fft_coarse(), ctx_.gvec_coarse(),
+                                      ctx_.mpi_grid_fft_vloc().communicator(1 << 1),
+                                      const_cast<Potential&>(potential__).effective_potential(), ctx_.step_function());
+        apply_fv_o(kp, false, false, istl_op, 0, ctx_.num_fv_states(), kp->fv_eigen_vectors_slab(), ofv);
+
+        std::vector<double> norm(ctx_.num_fv_states(), 0);
+        for (int i = 0; i < ctx_.num_fv_states(); i++) {
+            for (int j = 0; j < ofv.pw_coeffs().num_rows_loc(); j++) {
+                norm[i] += std::real(std::conj(kp->fv_eigen_vectors_slab().pw_coeffs().prime(j, i)) * ofv.pw_coeffs().prime(j, i));
+            }
+            for (int j = 0; j < ofv.mt_coeffs().num_rows_loc(); j++) {
+                norm[i] += std::real(std::conj(kp->fv_eigen_vectors_slab().mt_coeffs().prime(j, i)) * ofv.mt_coeffs().prime(j, i));
+            }
+        }
+        kp->comm().allreduce(norm);
+        for (int i = 0; i < ctx_.num_fv_states(); i++) {
+            norm[i] = 1 / std::sqrt(norm[i]);
+            for (int j = 0; j < ofv.pw_coeffs().num_rows_loc(); j++) {
+                kp->fv_eigen_vectors_slab().pw_coeffs().prime(j, i) *= norm[i];
+            }
+            for (int j = 0; j < ofv.mt_coeffs().num_rows_loc(); j++) {
+                kp->fv_eigen_vectors_slab().mt_coeffs().prime(j, i) *= norm[i];
+            }
+        }
+    }
 
     //== wave_functions phi(ctx_, kp->comm(), kp->gkvec(), unit_cell_.num_atoms(),
     //==                    [this](int ia) {return unit_cell_.atom(ia).mt_lo_basis_size(); }, ctx_.num_fv_states());
@@ -263,7 +300,7 @@ inline void Band::get_singular_components(K_point* kp__, Interstitial_operator& 
     phi.copy_from(psi, 0, ncomp);
 
     /* current subspace size */
-    int N = 0;
+    int N{0};
 
     /* number of newly added basis functions */
     int n = ncomp;
@@ -283,7 +320,7 @@ inline void Band::get_singular_components(K_point* kp__, Interstitial_operator& 
     /* start iterative diagonalization */
     for (int k = 0; k < itso.num_steps_; k++) {
         /* apply Hamiltonian and overlap operators to the new basis functions */
-        apply_o_apw(kp__, istl_op__, N, n, phi, ophi);
+        apply_fv_o(kp__, true, true, istl_op__, N, n, phi, ophi);
 
         orthogonalize(N, n, phi, ophi, ovlp, res);
         
