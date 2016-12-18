@@ -455,6 +455,9 @@ void Atom_symmetry_class::sync_radial_integrals(Communicator const& comm__, int 
     comm__.bcast(h_spherical_integrals_.at<CPU>(), (int)h_spherical_integrals_.size(), rank__);
     comm__.bcast(o_radial_integrals_.at<CPU>(), (int)o_radial_integrals_.size(), rank__);
     comm__.bcast(so_radial_integrals_.at<CPU>(), (int)so_radial_integrals_.size(), rank__);
+    if (atom_type_.parameters().valence_relativity() == relativity_t::iora) {
+        comm__.bcast(o1_radial_integrals_.at<CPU>(), (int)o1_radial_integrals_.size(), rank__);
+    }
 }
 
 void Atom_symmetry_class::sync_core_charge_density(Communicator const& comm__, int const rank__)
