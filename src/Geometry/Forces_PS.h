@@ -48,6 +48,17 @@ private:
         // from formula
         double main_two_factor = -2.0;
 
+        #ifdef __GPU
+        for (int ispn = 0; ispn < ctx_.num_spins(); ispn++)
+        {
+            if( bp.proc_unit() == GPU )
+            {
+                kpoint.spinor_wave_functions(ispn).allocate_on_device();
+                kpoint.spinor_wave_functions(ispn).copy_to_device();
+            }
+        }
+        #endif
+
         bp_grad.prepare();
         bp.prepare();
 
@@ -130,6 +141,16 @@ private:
 
         bp.dismiss();
         bp_grad.dismiss();
+
+        #ifdef __GPU
+        for (int ispn = 0; ispn < ctx_.num_spins(); ispn++)
+        {
+            if( bp.proc_unit() == GPU )
+            {
+                kpoint.spinor_wave_functions(ispn).deallocate_on_device();
+            }
+        }
+        #endif
     }
 
     //---------------------------------------------------------------
