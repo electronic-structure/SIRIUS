@@ -45,12 +45,12 @@ public:
         }
 
         // on GPU we create arrays without allocation, it will before use
-//        #ifdef __GPU
-//        for(int comp: {0,1,2})
-//        {
-//            chunk_comp_gk_a_gpu_[comp] = matrix<double_complex>(bp_->beta_gk_a().size(0), bp_->beta_gk_a().size(1), memory_t::none);
-//        }
-//        #endif
+        #ifdef __GPU
+        for(int comp: {0,1,2})
+        {
+            chunk_comp_gk_a_gpu_[comp] = matrix<double_complex>( bp_->num_gkvec_loc() , bp_->max_num_beta() , memory_t::none);
+        }
+        #endif
     }
 
 
@@ -142,14 +142,14 @@ public:
         return std::move(chunk_beta_phi);
     }
 
-    void prepare(int chunk__)
+    void prepare()
     {
         #ifdef __GPU
         if (bp_->proc_unit() == GPU)
         {
             for(int comp: {0,1,2})
             {
-                chunk_comp_gk_a_gpu_[comp] = matrix<double_complex>(bp_->num_gkvec_loc(), bp_->beta_chunk(chunk__).num_beta_, memory_t::device);
+                chunk_comp_gk_a_gpu_[comp].allocate(memory_t::device);
                 beta_phi_[comp].allocate(memory_t::device);
             }
         }

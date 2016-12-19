@@ -48,14 +48,15 @@ private:
         // from formula
         double main_two_factor = -2.0;
 
+        bp_grad.prepare();
+        bp.prepare();
+
         for (int icnk = 0; icnk < bp.num_beta_chunks(); icnk++)
         {
             // generate chunk for inner product of beta gradient
-            bp_grad.prepare(icnk);
             bp_grad.generate(icnk);
 
             // generate chunk for inner product of beta
-            bp.prepare();
             bp.generate(icnk);
 
             for (int ispn = 0; ispn < ctx_.num_spins(); ispn++)
@@ -63,12 +64,14 @@ private:
                 /* total number of occupied bands for this spin */
                 int nbnd = kpoint.num_occupied_bands(ispn);
 
+		std::cout<<"grad"<<std::endl;
                 // inner product of beta gradient and WF
                 bp_grad.inner<T>(icnk, kpoint.spinor_wave_functions(ispn), 0, nbnd);
 
                 // get inner product
                 std::array<matrix<T>, 3> bp_grad_phi_chunk = bp_grad.beta_phi<T>(icnk, nbnd);
 
+		std::cout<<"bp"<<std::endl;
                 // inner product of beta and WF
                 bp.inner<T>(icnk, kpoint.spinor_wave_functions(ispn), 0, nbnd);
 
@@ -123,10 +126,10 @@ private:
                     }
                 }
             }
-
-            bp.dismiss();
-            bp_grad.dismiss();
         }
+
+        bp.dismiss();
+        bp_grad.dismiss();
     }
 
     //---------------------------------------------------------------

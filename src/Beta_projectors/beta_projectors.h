@@ -205,6 +205,11 @@ class Beta_projectors
             inner<T>(chunk__, phi__, idx0__, n__, beta_gk_, beta_phi_);
         }
 
+        int max_num_beta()
+        {
+            return max_num_beta_;
+        }
+
         void prepare()
         {
             #ifdef __GPU
