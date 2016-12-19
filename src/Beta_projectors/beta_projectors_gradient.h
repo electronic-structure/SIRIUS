@@ -87,7 +87,7 @@ public:
         if (bp_->proc_unit() == GPU)
         {
             chunk_comp_gk_a_[calc_component__] = mdarray<double_complex, 2>(&components_gk_a_[calc_component__](0, bp_->beta_chunk(chunk__).offset_),
-                                                                            chunk_comp_gk_a_gpu_[comp].at<GPU>(),
+                                                                            chunk_comp_gk_a_gpu_[calc_component__].at<GPU>(),
                                                                             bp_->num_gkvec_loc(),
                                                                             bp_->beta_chunk(chunk__).num_beta_);
 
@@ -145,7 +145,7 @@ public:
     void prepare(int chunk__)
     {
         #ifdef __GPU
-        if (pu_ == GPU)
+        if (bp_->proc_unit() == GPU)
         {
             for(int comp: {0,1,2})
             {
@@ -159,7 +159,7 @@ public:
     void dismiss()
     {
         #ifdef __GPU
-        if (pu_ == GPU)
+        if (bp_->proc_unit() == GPU)
         {
             for(int comp: {0,1,2})
             {
