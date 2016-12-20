@@ -53,8 +53,9 @@ private:
         {
             if( bp.proc_unit() == GPU )
             {
+                int nbnd = kpoint.num_occupied_bands(ispn);
                 kpoint.spinor_wave_functions(ispn).allocate_on_device();
-                kpoint.spinor_wave_functions(ispn).copy_to_device();
+                kpoint.spinor_wave_functions(ispn).copy_to_device(0, nbnd);
             }
         }
         #endif
@@ -75,14 +76,12 @@ private:
                 /* total number of occupied bands for this spin */
                 int nbnd = kpoint.num_occupied_bands(ispn);
 
-		std::cout<<"grad"<<std::endl;
                 // inner product of beta gradient and WF
                 bp_grad.inner<T>(icnk, kpoint.spinor_wave_functions(ispn), 0, nbnd);
 
                 // get inner product
                 std::array<matrix<T>, 3> bp_grad_phi_chunk = bp_grad.beta_phi<T>(icnk, nbnd);
 
-		std::cout<<"bp"<<std::endl;
                 // inner product of beta and WF
                 bp.inner<T>(icnk, kpoint.spinor_wave_functions(ispn), 0, nbnd);
 

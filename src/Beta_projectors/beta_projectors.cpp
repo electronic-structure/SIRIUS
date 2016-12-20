@@ -348,16 +348,10 @@ void Beta_projectors::inner<double_complex>(int chunk__, wave_functions& phi__,
         }
         case GPU: {
             #ifdef __GPU
-std::cout<<"beta_phi"<<" "<< beta_phi.size(0)<< " "<< nbeta<<" "<<n__<<" "<< beta_phi.on_device() <<std::endl;
-std::cout<<"beta_gk"<<" "<< beta_gk.size(0)<< " "<< beta_gk.size(1)<<" "<< beta_gk.on_device() <<std::endl;
-std::cout<<"phi "<< phi__.pw_coeffs().prime().on_device()<< " " << ctx_.processing_unit() <<std::endl;
-
             linalg<GPU>::gemm(2, 0, nbeta, n__, num_gkvec_loc_, beta_gk.at<GPU>(), num_gkvec_loc_,
                               phi__.pw_coeffs().prime().at<GPU>(0, idx0__), phi__.pw_coeffs().prime().ld(),
                               (double_complex*)beta_phi.at<GPU>(), nbeta);
-std::cout<<"beta_phi_copy_to_host"<<std::endl;
             beta_phi.copy_to_host(2 * nbeta * n__);
-std::cout<<"done "<<std::endl;
             #else
             TERMINATE_NO_GPU
             #endif
