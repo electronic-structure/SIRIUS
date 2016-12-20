@@ -479,7 +479,10 @@ class Simulation_parameters
 
         inline memory_t dual_memory_t() const
         {
-            return (memory_t::host | memory_t::device);
+            if (processing_unit_ == GPU) {
+                return (memory_t::host | memory_t::device);
+            }
+            return memory_t::host;
         }
 };
 
