@@ -71,7 +71,7 @@ class pstdout
         void flush()
         {
             std::vector<int> counts(comm_.size());
-            comm_.allgather(&count_, &counts[0], comm_.rank(), 1); 
+            comm_.allgather(&count_, counts.data(), comm_.rank(), 1); 
             
             int offset{0};
             for (int i = 0; i < comm_.rank(); i++) {

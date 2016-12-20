@@ -215,7 +215,7 @@ class K_set
                 auto ik = spl_num_kpoints_[ikloc];
                 max_num_gkvec = std::max(max_num_gkvec, kpoints_[ik]->num_gkvec());
             }
-            comm_k_.allreduce<int, op_max>(&max_num_gkvec, 1);
+            comm_k_.allreduce<int, mpi_op_t::op_max>(&max_num_gkvec, 1);
             return max_num_gkvec;
         }
 
@@ -253,7 +253,7 @@ class K_set
         
         inline int num_kpoints()
         {
-            return (int)kpoints_.size();
+            return static_cast<int>(kpoints_.size());
         }
 
         inline splindex<block>& spl_num_kpoints()

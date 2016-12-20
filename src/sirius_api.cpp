@@ -3034,14 +3034,21 @@ void sirius_get_wave_functions(ftn_int* kset_id__,
     mdarray<int, 2> gvec_k(gvec_k__, 3, *npw__);
     mdarray<double_complex, 2> evc(evc__, *ld__, sim_ctx->num_bands());
     evc.zero();
+    
+    std::vector<double_complex> wf_tmp(kp->num_gkvec());
+    int gkvec_count = kp->gkvec().gvec_count(kp->comm().rank());
+    int gkvec_offset = kp->gkvec().gvec_offset(kp->comm().rank());
 
     for (int i = 0; i < sim_ctx->num_bands(); i++) {
+        std::memcpy(&wf_tmp[gkvec_offset], &kp->spinor_wave_functions(0).pw_coeffs().prime(0, i), gkvec_count * sizeof(double_complex));
+        kp->comm().allgather(wf_tmp.data(), gkvec_offset, gkvec_count);
+
         for (int ig = 0; ig < *npw__; ig++) {
             int ig1 = kp->gkvec().index_by_gvec({gvec_k(0, ig), gvec_k(1, ig), gvec_k(2, ig)});
             if (ig1 < 0 || ig1 >= kp->num_gkvec()) {
                 TERMINATE("G-vector is out of range");
             }
-            evc(ig, i) = kp->spinor_wave_functions(0).pw_coeffs().prime(ig1, i);
+            evc(ig, i) = wf_tmp[ig1];
         }
     }
 }

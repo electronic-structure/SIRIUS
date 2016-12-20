@@ -297,15 +297,6 @@ class K_point
         //    }
         //}
 
-        //inline int wf_pw_offset() const
-        //{
-        //    if (ctx_.full_potential()) {
-        //        return unit_cell_.mt_basis_size();
-        //    } else {
-        //        return 0;
-        //    }
-        //}
-
         inline void get_band_occupancies(double* band_occupancies) const
         {
             assert(static_cast<int>(band_occupancies_.size()) == ctx_.num_bands());

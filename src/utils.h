@@ -331,7 +331,7 @@ class Utils
                     //}
                 }
             }
-            mtrx__.blacs_grid().comm().template allreduce<double, op_max>(&max_diff, 1);
+            mtrx__.blacs_grid().comm().template allreduce<double, mpi_op_t::op_max>(&max_diff, 1);
             return max_diff;
         }
 
