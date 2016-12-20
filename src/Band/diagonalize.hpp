@@ -862,6 +862,13 @@ inline void Band::diag_pseudo_potential_davidson(K_point* kp__,
         kp__->band_energy(j + ispn__ * ctx_.num_fv_states()) = eval[j];
     }
 
+    if (ctx_.control().print_checksum_) {
+        auto cs = psi.checksum(0, ctx_.num_fv_states());
+        if (kp__->comm().rank() == 0) {
+            DUMP("checksum(psi): %18.10f %18.10f", cs.real(), cs.imag());
+        }
+    }
+
     #ifdef __GPU
     if (ctx_.processing_unit() == GPU) {
         psi.pw_coeffs().copy_to_host(0, num_bands);
