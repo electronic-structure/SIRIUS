@@ -418,13 +418,13 @@ class Density
                 }
 
                 /* find high-frequency G-vectors */
-                for (int ig = 0; ig < ctx_.gvec().num_gvec(); ig++)
-                {
-                    if (ctx_.gvec().gvec_len(ig) > 2 * ctx_.gk_cutoff()) hf_gvec_.push_back(ig);
+                for (int ig = 0; ig < ctx_.gvec().num_gvec(); ig++) {
+                    if (ctx_.gvec().gvec_len(ig) > 2 * ctx_.gk_cutoff()) {
+                        hf_gvec_.push_back(ig);
+                    }
                 }
 
-                if (static_cast<int>(hf_gvec_.size()) != ctx_.gvec().num_gvec() - ctx_.gvec_coarse().num_gvec())
-                {
+                if (static_cast<int>(hf_gvec_.size()) != ctx_.gvec().num_gvec() - ctx_.gvec_coarse().num_gvec()) {
                     std::stringstream s;
                     s << "Wrong count of high-frequency G-vectors" << std::endl
                       << "number of found high-frequency G-vectors: " << hf_gvec_.size() << std::endl
@@ -515,12 +515,14 @@ class Density
         }
 
         /// Set pointers to muffin-tin and interstitial charge density arrays
-        void set_charge_density_ptr(double* rhomt, double* rhoir)
+        void set_charge_density_ptr(double* rhomt, double* rhorg)
         {
-            if (ctx_.full_potential()) {
+            if (ctx_.full_potential() && rhomt) {
                 rho_->set_mt_ptr(rhomt);
             }
-            rho_->set_rg_ptr(rhoir);
+            if (rhorg) {
+                rho_->set_rg_ptr(rhorg);
+            }
         }
         
         /// Set pointers to muffin-tin and interstitial magnetization arrays
@@ -538,20 +540,31 @@ class Density
             
             if (ctx_.num_mag_dims() == 1) {
                 /* z component is the first and only one */
-                magnetization_[0]->set_mt_ptr(&magmt_tmp(0, 0, 0, 0));
-                magnetization_[0]->set_rg_ptr(&magir_tmp(0, 0));
+                if (magmt) {
+                    magnetization_[0]->set_mt_ptr(&magmt_tmp(0, 0, 0, 0));
+                }
+                if (magir) {
+                    magnetization_[0]->set_rg_ptr(&magir_tmp(0, 0));
+                }
             }
 
             if (ctx_.num_mag_dims() == 3) {
-                /* z component is the first */
-                magnetization_[0]->set_mt_ptr(&magmt_tmp(0, 0, 0, 2));
-                magnetization_[0]->set_rg_ptr(&magir_tmp(0, 2));
-                /* x component is the second */
-                magnetization_[1]->set_mt_ptr(&magmt_tmp(0, 0, 0, 0));
-                magnetization_[1]->set_rg_ptr(&magir_tmp(0, 0));
-                /* y component is the third */
-                magnetization_[2]->set_mt_ptr(&magmt_tmp(0, 0, 0, 1));
-                magnetization_[2]->set_rg_ptr(&magir_tmp(0, 1));
+                if (magmt) {
+                    /* z component is the first */
+                    magnetization_[0]->set_mt_ptr(&magmt_tmp(0, 0, 0, 2));
+                    /* x component is the second */
+                    magnetization_[1]->set_mt_ptr(&magmt_tmp(0, 0, 0, 0));
+                    /* y component is the third */
+                    magnetization_[2]->set_mt_ptr(&magmt_tmp(0, 0, 0, 1));
+                }
+                if (magir) {
+                    /* z component is the first */
+                    magnetization_[0]->set_rg_ptr(&magir_tmp(0, 2));
+                    /* x component is the second */
+                    magnetization_[1]->set_rg_ptr(&magir_tmp(0, 0));
+                    /* y component is the third */
+                    magnetization_[2]->set_rg_ptr(&magir_tmp(0, 1));
+                }
             }
         }
         
