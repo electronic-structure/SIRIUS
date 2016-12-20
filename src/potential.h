@@ -311,10 +311,12 @@ class Potential
 
         inline void set_effective_potential_ptr(double* veffmt, double* veffit)
         {
-            if (ctx_.full_potential()) {
+            if (ctx_.full_potential() && veffmt) {
                 effective_potential_->set_mt_ptr(veffmt);
             }
-            effective_potential_->set_rg_ptr(veffit);
+            if (veffit) {
+                effective_potential_->set_rg_ptr(veffit);
+            }
         }
 
         inline void set_effective_magnetic_field_ptr(double* beffmt, double* beffit)
@@ -331,20 +333,31 @@ class Potential
             
             if (ctx_.num_mag_dims() == 1) {
                 /* z-component */
-                effective_magnetic_field_[0]->set_mt_ptr(&beffmt_tmp(0, 0, 0, 0));
-                effective_magnetic_field_[0]->set_rg_ptr(&beffit_tmp(0, 0));
+                if (beffmt) {
+                    effective_magnetic_field_[0]->set_mt_ptr(&beffmt_tmp(0, 0, 0, 0));
+                }
+                if (beffit) {
+                    effective_magnetic_field_[0]->set_rg_ptr(&beffit_tmp(0, 0));
+                }
             }
             
             if (ctx_.num_mag_dims() == 3) {
-                /* z-component */
-                effective_magnetic_field_[0]->set_mt_ptr(&beffmt_tmp(0, 0, 0, 2));
-                effective_magnetic_field_[0]->set_rg_ptr(&beffit_tmp(0, 2));
-                /* x-component */
-                effective_magnetic_field_[1]->set_mt_ptr(&beffmt_tmp(0, 0, 0, 0));
-                effective_magnetic_field_[1]->set_rg_ptr(&beffit_tmp(0, 0));
-                /* y-component */
-                effective_magnetic_field_[2]->set_mt_ptr(&beffmt_tmp(0, 0, 0, 1));
-                effective_magnetic_field_[2]->set_rg_ptr(&beffit_tmp(0, 1));
+                if (beffmt) {
+                    /* z-component */
+                    effective_magnetic_field_[0]->set_mt_ptr(&beffmt_tmp(0, 0, 0, 2));
+                    /* x-component */
+                    effective_magnetic_field_[1]->set_mt_ptr(&beffmt_tmp(0, 0, 0, 0));
+                    /* y-component */
+                    effective_magnetic_field_[2]->set_mt_ptr(&beffmt_tmp(0, 0, 0, 1));
+                }
+                if (beffit) {
+                    /* z-component */
+                    effective_magnetic_field_[0]->set_rg_ptr(&beffit_tmp(0, 2));
+                    /* x-component */
+                    effective_magnetic_field_[1]->set_rg_ptr(&beffit_tmp(0, 0));
+                    /* y-component */
+                    effective_magnetic_field_[2]->set_rg_ptr(&beffit_tmp(0, 1));
+                }
             }
         }
          
