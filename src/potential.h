@@ -40,7 +40,7 @@ namespace sirius {
 class Potential 
 {
     private:
-        
+
         Simulation_context& ctx_;
 
         Unit_cell& unit_cell_;
@@ -54,7 +54,7 @@ class Potential
         Periodic_function<double>* hartree_potential_;
         Periodic_function<double>* xc_potential_;
         Periodic_function<double>* xc_energy_density_;
-        
+
         /// Local part of pseudopotential.
         Periodic_function<double>* local_potential_;
 
@@ -65,13 +65,13 @@ class Potential
         mdarray<double, 2> gamma_factors_R_;
 
         int lmax_;
-        
+
         std::unique_ptr<SHT> sht_;
 
         int pseudo_density_order;
 
         std::vector<double_complex> zil_;
-        
+
         std::vector<double_complex> zilm_;
 
         std::vector<int> l_by_lm_;
@@ -79,7 +79,7 @@ class Potential
         mdarray<double_complex, 2> gvec_ylm_;
 
         double energy_vha_;
-        
+
         /// Electronic part of Hartree potential.
         /** Used to compute electron-nuclear contribution to the total energy */
         mdarray<double, 1> vh_el_;
@@ -90,6 +90,15 @@ class Potential
 
         // Store form factors because it is needed by forces calculation
         mdarray<double, 2> vloc_radial_integrals_;
+ 
+        /// Plane-wave coefficients of the effective potential weighted by the unit step-function.
+        mdarray<double_complex, 1> veff_pw_;
+
+        /// Plane-wave coefficients of the inverse relativistic mass weighted by the unit step-function.
+        mdarray<double_complex, 1> rm_inv_pw_;
+ 
+        /// Plane-wave coefficients of the squared inverse relativistic mass weighted by the unit step-function.
+        mdarray<double_complex, 1> rm2_inv_pw_;
 
         struct paw_potential_data_t
         {
@@ -146,8 +155,6 @@ class Potential
                                       mdarray<double, 2> &ps_full_density,
                                       mdarray<double, 3> &ae_local_magnetization,
                                       mdarray<double, 3> &ps_local_magnetization);
-
-
 
         void calc_PAW_local_Dij(paw_potential_data_t &pdd, mdarray<double_complex, 4>& paw_dij);
 
@@ -304,10 +311,12 @@ class Potential
 
         inline void set_effective_potential_ptr(double* veffmt, double* veffit)
         {
-            if (ctx_.full_potential()) {
+            if (ctx_.full_potential() && veffmt) {
                 effective_potential_->set_mt_ptr(veffmt);
             }
-            effective_potential_->set_rg_ptr(veffit);
+            if (veffit) {
+                effective_potential_->set_rg_ptr(veffit);
+            }
         }
 
         inline void set_effective_magnetic_field_ptr(double* beffmt, double* beffit)
@@ -324,20 +333,31 @@ class Potential
             
             if (ctx_.num_mag_dims() == 1) {
                 /* z-component */
-                effective_magnetic_field_[0]->set_mt_ptr(&beffmt_tmp(0, 0, 0, 0));
-                effective_magnetic_field_[0]->set_rg_ptr(&beffit_tmp(0, 0));
+                if (beffmt) {
+                    effective_magnetic_field_[0]->set_mt_ptr(&beffmt_tmp(0, 0, 0, 0));
+                }
+                if (beffit) {
+                    effective_magnetic_field_[0]->set_rg_ptr(&beffit_tmp(0, 0));
+                }
             }
             
             if (ctx_.num_mag_dims() == 3) {
-                /* z-component */
-                effective_magnetic_field_[0]->set_mt_ptr(&beffmt_tmp(0, 0, 0, 2));
-                effective_magnetic_field_[0]->set_rg_ptr(&beffit_tmp(0, 2));
-                /* x-component */
-                effective_magnetic_field_[1]->set_mt_ptr(&beffmt_tmp(0, 0, 0, 0));
-                effective_magnetic_field_[1]->set_rg_ptr(&beffit_tmp(0, 0));
-                /* y-component */
-                effective_magnetic_field_[2]->set_mt_ptr(&beffmt_tmp(0, 0, 0, 1));
-                effective_magnetic_field_[2]->set_rg_ptr(&beffit_tmp(0, 1));
+                if (beffmt) {
+                    /* z-component */
+                    effective_magnetic_field_[0]->set_mt_ptr(&beffmt_tmp(0, 0, 0, 2));
+                    /* x-component */
+                    effective_magnetic_field_[1]->set_mt_ptr(&beffmt_tmp(0, 0, 0, 0));
+                    /* y-component */
+                    effective_magnetic_field_[2]->set_mt_ptr(&beffmt_tmp(0, 0, 0, 1));
+                }
+                if (beffit) {
+                    /* z-component */
+                    effective_magnetic_field_[0]->set_rg_ptr(&beffit_tmp(0, 2));
+                    /* x-component */
+                    effective_magnetic_field_[1]->set_rg_ptr(&beffit_tmp(0, 0));
+                    /* y-component */
+                    effective_magnetic_field_[2]->set_rg_ptr(&beffit_tmp(0, 1));
+                }
             }
         }
          
@@ -836,6 +856,21 @@ class Potential
             double rms = mixer_->mix();
             unpack(mixer_->output_buffer());
             return rms;
+        }
+
+        double_complex const& veff_pw(int ig__) const
+        {
+            return veff_pw_(ig__);
+        }
+
+        double_complex const& rm_inv_pw(int ig__) const
+        {
+            return rm_inv_pw_(ig__);
+        }
+
+        double_complex const& rm2_inv_pw(int ig__) const
+        {
+            return rm2_inv_pw_(ig__);
         }
 };
 

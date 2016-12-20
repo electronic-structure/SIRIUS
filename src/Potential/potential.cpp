@@ -90,6 +90,20 @@ Potential::Potential(Simulation_context& ctx__)
         }
     }
 
+    if (ctx_.full_potential()) {
+        switch (ctx_.valence_relativity()) {
+            case relativity_t::iora: {
+                rm2_inv_pw_ = mdarray<double_complex, 1>(ctx_.gvec().num_gvec());
+            }
+            case relativity_t::zora: {
+                rm_inv_pw_ = mdarray<double_complex, 1>(ctx_.gvec().num_gvec());
+            }
+            default: {
+                veff_pw_ = mdarray<double_complex, 1>(ctx_.gvec().num_gvec());
+            }
+        }
+    }
+
     init();
 
     /* create list of XC functionals */

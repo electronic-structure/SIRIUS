@@ -425,6 +425,13 @@ module sirius
             complex(8),              intent(out) :: rho_pw
         end subroutine
 
+        subroutine sirius_get_veff_pw(num_gvec, gvec, veff_pw)&
+            &bind(C, name="sirius_get_veff_pw")
+            integer,                 intent(in)  :: num_gvec
+            integer,                 intent(in)  :: gvec
+            complex(8),              intent(out) :: veff_pw
+        end subroutine
+
         subroutine sirius_get_gvec_index(gvec, ig)&
             &bind(C, name="sirius_get_gvec_index")
             integer,                  intent(in)  :: gvec(3)
@@ -863,6 +870,41 @@ module sirius
             real(8),                  intent(out) :: g
         end subroutine
 
+
+        subroutine sirius_get_wave_functions(kset_id, ik, npw, gvec_k, evc, ld)&
+            &bind(C, name="sirius_get_wave_functions")
+            integer,                  intent(in)  :: kset_id
+            integer,                  intent(in)  :: ik
+            integer,                  intent(in)  :: npw
+            integer,                  intent(in)  :: gvec_k
+            complex(8),               intent(out) :: evc
+            integer,                  intent(in)  :: ld
+        end subroutine
+
+        subroutine sirius_get_d_mtrx(ia, d_mtrx, ld)&
+            &bind(C, name="sirius_get_d_mtrx")
+            integer,                  intent(in)  :: ia
+            real(8),                  intent(out) :: d_mtrx
+            integer,                  intent(in)  :: ld
+        end subroutine
+
+        subroutine sirius_get_q_mtrx(iat, q_mtrx, ld)&
+            &bind(C, name="sirius_get_q_mtrx")
+            integer,                  intent(in)  :: iat
+            real(8),                  intent(out) :: q_mtrx
+            integer,                  intent(in)  :: ld
+        end subroutine
+
+        subroutine sirius_get_density_matrix(ih, jh, ia, dm)&
+            &bind(C, name="sirius_get_density_matrix")
+            integer,                  intent(in)  :: ih
+            integer,                  intent(in)  :: jh
+            integer,                  intent(in)  :: ia
+            real(8),                  intent(out) :: dm
+        end subroutine
+
+
+
         subroutine sirius_calc_forces(forces)&
             &bind(C, name="sirius_calc_forces")
             real(8),                 intent(out) :: forces
@@ -885,13 +927,14 @@ contains
 
     subroutine sirius_create_density(rhoit, magit, rhomt, magmt)
         implicit none
-        real(8),           target, intent(in) :: rhoit
+        real(8), optional, target, intent(in) :: rhoit
         real(8), optional, target, intent(in) :: magit
         real(8), optional, target, intent(in) :: rhomt
         real(8), optional, target, intent(in) :: magmt
         type(C_PTR) rhoit_ptr, rhomt_ptr, magit_ptr, magmt_ptr
 
-        rhoit_ptr = C_LOC(rhoit)
+        rhoit_ptr = C_NULL_PTR
+        if (present(rhoit)) rhoit_ptr = C_LOC(rhoit)
         
         magit_ptr = C_NULL_PTR
         if (present(magit)) magit_ptr = C_LOC(magit)
@@ -908,13 +951,14 @@ contains
 
     subroutine sirius_create_potential(veffit, beffit, veffmt, beffmt)
         implicit none
-        real(8),           target, intent(in) :: veffit
+        real(8), optional, target, intent(in) :: veffit
         real(8), optional, target, intent(in) :: beffit
         real(8), optional, target, intent(in) :: veffmt
         real(8), optional, target, intent(in) :: beffmt
         type(C_PTR) veffit_ptr, veffmt_ptr, beffit_ptr, beffmt_ptr
 
-        veffit_ptr = C_LOC(veffit)
+        veffit_ptr = C_NULL_PTR
+        if (present(veffit)) veffit_ptr = C_LOC(veffit)
 
         beffit_ptr = C_NULL_PTR
         if (present(beffit)) beffit_ptr = C_LOC(beffit)

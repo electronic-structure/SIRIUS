@@ -23,7 +23,7 @@
  */
 
 inline void Band::solve_fv(K_point* kp__,
-                           Periodic_function<double>* effective_potential__) const
+                           Potential const& potential__) const
 {
     if (kp__->gklo_basis_size() < ctx_.num_fv_states()) {
         TERMINATE("basis size is too small");
@@ -32,7 +32,7 @@ inline void Band::solve_fv(K_point* kp__,
     switch (ctx_.esm_type()) {
         case electronic_structure_method_t::full_potential_pwlo:
         case electronic_structure_method_t::full_potential_lapwlo: {
-            diag_fv_full_potential(kp__, effective_potential__);
+            diag_fv_full_potential(kp__, potential__);
             break;
         }
         default: {
@@ -257,13 +257,15 @@ inline void Band::solve_sv(K_point* kp,
     kp->set_band_energies(&band_energies[0]);
 }
 
-inline void Band::solve_for_kset(K_set& kset, Potential& potential, bool precompute) const
+inline void Band::solve_for_kset(K_set& kset__,
+                                 Potential& potential__,
+                                 bool precompute__) const
 {
     PROFILE("sirius::Band::solve_for_kset");
 
-    if (precompute && ctx_.full_potential()) {
-        potential.generate_pw_coefs();
-        potential.update_atomic_potential();
+    if (precompute__ && ctx_.full_potential()) {
+        potential__.generate_pw_coefs();
+        potential__.update_atomic_potential();
         unit_cell_.generate_radial_functions();
         unit_cell_.generate_radial_integrals();
     }
@@ -271,41 +273,41 @@ inline void Band::solve_for_kset(K_set& kset, Potential& potential, bool precomp
     // TODO: mapping to coarse effective potential is k-point independent
 
     /* solve secular equation and generate wave functions */
-    for (int ikloc = 0; ikloc < kset.spl_num_kpoints().local_size(); ikloc++) {
-        int ik = kset.spl_num_kpoints(ikloc);
+    for (int ikloc = 0; ikloc < kset__.spl_num_kpoints().local_size(); ikloc++) {
+        int ik = kset__.spl_num_kpoints(ikloc);
 
         if (use_second_variation && ctx_.full_potential()) {
             /* solve non-magnetic Hamiltonian (so-called first variation) */
-            solve_fv(kset.k_point(ik), potential.effective_potential());
+            solve_fv(kset__.k_point(ik), potential__);
             /* generate first-variational states */
-            kset.k_point(ik)->generate_fv_states();
+            kset__.k_point(ik)->generate_fv_states();
             /* solve magnetic Hamiltonian */
-            solve_sv(kset.k_point(ik), potential.effective_magnetic_field());
+            solve_sv(kset__.k_point(ik), potential__.effective_magnetic_field());
             /* generate spinor wave-functions */
-            kset.k_point(ik)->generate_spinor_wave_functions();
+            kset__.k_point(ik)->generate_spinor_wave_functions();
         } else {
-            solve_fd(kset.k_point(ik), potential.effective_potential(), potential.effective_magnetic_field());
+            solve_fd(kset__.k_point(ik), potential__.effective_potential(), potential__.effective_magnetic_field());
         }
     }
 
     /* synchronize eigen-values */
-    kset.sync_band_energies();
+    kset__.sync_band_energies();
 
     if (ctx_.control().verbosity_ > 0 && ctx_.comm().rank() == 0) {
         printf("Lowest band energies\n");
-        for (int ik = 0; ik < kset.num_kpoints(); ik++) {
+        for (int ik = 0; ik < kset__.num_kpoints(); ik++) {
             printf("ik : %2i, ", ik);
             if (ctx_.num_mag_dims() != 1) {
                 for (int j = 0; j < std::min(ctx_.control().num_bands_to_print_, ctx_.num_bands()); j++) {
-                    printf("%12.6f", kset.k_point(ik)->band_energy(j));
+                    printf("%12.6f", kset__.k_point(ik)->band_energy(j));
                 }
             } else {
                 for (int j = 0; j < std::min(ctx_.control().num_bands_to_print_, ctx_.num_fv_states()); j++) {
-                    printf("%12.6f", kset.k_point(ik)->band_energy(j));
+                    printf("%12.6f", kset__.k_point(ik)->band_energy(j));
                 }
                 printf("\n         ");
                 for (int j = 0; j < std::min(ctx_.control().num_bands_to_print_, ctx_.num_fv_states()); j++) {
-                    printf("%12.6f", kset.k_point(ik)->band_energy(ctx_.num_fv_states() + j));
+                    printf("%12.6f", kset__.k_point(ik)->band_energy(ctx_.num_fv_states() + j));
                 }
             }
             printf("\n");

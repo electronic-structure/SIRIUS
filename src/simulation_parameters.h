@@ -244,6 +244,7 @@ class Simulation_parameters
 
             m["none"]            = relativity_t::none;
             m["zora"]            = relativity_t::zora;
+            m["iora"]            = relativity_t::iora;
             m["koelling_harmon"] = relativity_t::koelling_harmon;
 
             if (m.count(name__) == 0) {
@@ -478,7 +479,10 @@ class Simulation_parameters
 
         inline memory_t dual_memory_t() const
         {
-            return (memory_t::host | memory_t::device);
+            if (processing_unit_ == GPU) {
+                return (memory_t::host | memory_t::device);
+            }
+            return memory_t::host;
         }
 };
 

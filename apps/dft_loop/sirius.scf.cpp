@@ -246,7 +246,7 @@ double ground_state(Simulation_context&       ctx,
         double e1 = dict["ground_state"]["energy"]["total"];
         double e2 = dict_ref["ground_state"]["energy"]["total"];
 
-        if (std::abs(e1 - e2) > 1e-8) {
+        if (std::abs(e1 - e2) > 1e-7) {
             printf("total energy is different\n");
             exit(1);
         }
