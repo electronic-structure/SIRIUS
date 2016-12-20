@@ -224,13 +224,11 @@ inline void Band::apply_fv_o(K_point* kp__,
 
     #ifdef __GPU
     if (ctx_.processing_unit() == GPU) {
-        STOP();
-        //phi__.mt_coeffs().copy_to_host(N__, n__);
-        //alm.allocate(memory_t::device);
-        //tmp.allocate(memory_t::device);
-        //halm.allocate(memory_t::device);
-        //htmp.allocate(memory_t::device);
-        //v.allocate(memory_t::device);
+        if (!apw_only__) {
+            phi__.mt_coeffs().copy_to_host(N__, n__);
+        }
+        alm.allocate(memory_t::device);
+        tmp.allocate(memory_t::device);
     }
     #endif
 
@@ -392,7 +390,7 @@ inline void Band::apply_fv_o(K_point* kp__,
     }
 
     #ifdef __GPU
-    if (ctx_.processing_unit() == GPU) {
+    if (ctx_.processing_unit() == GPU && !apw_only__) {
         ophi__.mt_coeffs().copy_to_device(N__, n__);
     }
     #endif
