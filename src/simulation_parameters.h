@@ -25,7 +25,6 @@
 #ifndef __SIMULATION_PARAMETERS_H__
 #define __SIMULATION_PARAMETERS_H__
 
-#include "mdarray.h"
 #include "typedefs.h"
 #include "utils.h"
 #include "sirius_internal.h"
@@ -112,7 +111,7 @@ class Simulation_parameters
         /// Import data from initial input parameters.
         void import(std::string const& fname__)
         {
-            PROFILE();
+            PROFILE("sirius::Simulation_parameters::import");
 
             json dict;
             std::ifstream(fname__) >> dict;
@@ -212,9 +211,9 @@ class Simulation_parameters
         {
             std::map<std::string, electronic_structure_method_t> m;
 
-            m["full_potential_lapwlo"]           = electronic_structure_method_t::full_potential_lapwlo;
-            m["full_potential_pwlo"]             = electronic_structure_method_t::full_potential_pwlo;
-            m["pseudopotential"]                 = electronic_structure_method_t::pseudopotential;
+            m["full_potential_lapwlo"] = electronic_structure_method_t::full_potential_lapwlo;
+            m["full_potential_pwlo"]   = electronic_structure_method_t::full_potential_pwlo;
+            m["pseudopotential"]       = electronic_structure_method_t::pseudopotential;
 
             if (m.count(name__) == 0) {
                 std::stringstream s;
@@ -245,6 +244,7 @@ class Simulation_parameters
 
             m["none"]            = relativity_t::none;
             m["zora"]            = relativity_t::zora;
+            m["iora"]            = relativity_t::iora;
             m["koelling_harmon"] = relativity_t::koelling_harmon;
 
             if (m.count(name__) == 0) {
@@ -467,6 +467,22 @@ class Simulation_parameters
         inline Control_input_section const& control() const
         {
             return control_input_section_;
+        }
+
+        inline memory_t main_memory_t() const
+        {
+            if (processing_unit_ == GPU) {
+                return memory_t::device;
+            }
+            return memory_t::host;
+        }
+
+        inline memory_t dual_memory_t() const
+        {
+            if (processing_unit_ == GPU) {
+                return (memory_t::host | memory_t::device);
+            }
+            return memory_t::host;
         }
 };
 

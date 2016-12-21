@@ -25,8 +25,7 @@
 #ifndef __INPUT_H__
 #define __INPUT_H__
 
-#include "vector3d.h"
-#include "matrix3d.h"
+#include "matrix3d.hpp"
 #include "runtime.h"
 #include "constants.h"
 #include "utils.h"
@@ -163,10 +162,10 @@ struct Unit_cell_input_section
 
 struct Mixer_input_section
 {
-    double beta_{0.9};
+    double beta_{0.7};
     double beta0_{0.15};
     double linear_mix_rms_tol_{1e6};
-    std::string type_{"broyden2"};
+    std::string type_{"broyden1"};
     int max_history_{8};
     bool exist_{false};
 
@@ -189,25 +188,30 @@ struct Iterative_solver_input_section
 {
     /// Type of the iterative solver.
     std::string type_{""};
+
     /// Number of steps (iterations) of the solver.
     int num_steps_{20};
+
     /// Size of the variational subspace is this number times the number of bands.
     int subspace_size_{4};
     double energy_tolerance_{1e-2};
     double residual_tolerance_{1e-6};
     int converge_by_energy_{1}; // TODO: rename, this is meaningless
-    /// Minumum band occupancy at which the band's residual is added to the variational subspace.
-    //double min_occupancy_{1e-5};
+
     int min_num_res_{0};
     int real_space_prj_{0}; // TODO: move it from here to parameters
     double R_mask_scale_{1.5};
     double mask_alpha_{3};
+
     /// Number of singular components for the LAPW Davidson solver.
     int num_singular_{-1};
+
     /// Control the subspace expansion.
     /** If true, keep basis orthogonal and solve standard eigen-value problem. If false, add preconditioned residuals
      *  as they are and solve generalized eigen-value problem. */
     bool orthogonalize_{true};
+
+    std::string init_subspace_{"lcao"};
 
     void read(json const& parser)
     {
@@ -218,13 +222,15 @@ struct Iterative_solver_input_section
             energy_tolerance_   = parser["iterative_solver"].value("energy_tolerance", energy_tolerance_);
             residual_tolerance_ = parser["iterative_solver"].value("residual_tolerance", residual_tolerance_);
             converge_by_energy_ = parser["iterative_solver"].value("converge_by_energy", converge_by_energy_);
-            //min_occupancy_      = parser["iterative_solver"].value("min_occupancy", min_occupancy_);
             min_num_res_        = parser["iterative_solver"].value("min_num_res", min_num_res_);
             real_space_prj_     = parser["iterative_solver"].value("real_space_prj", real_space_prj_);
             R_mask_scale_       = parser["iterative_solver"].value("R_mask_scale", R_mask_scale_);
             mask_alpha_         = parser["iterative_solver"].value("mask_alpha", mask_alpha_);
             num_singular_       = parser["iterative_solver"].value("num_singular", num_singular_);
             orthogonalize_      = parser["iterative_solver"].value("orthogonalize", orthogonalize_);
+            init_subspace_      = parser["iterative_solver"].value("init_subspace", init_subspace_);
+            std::transform(init_subspace_.begin(), init_subspace_.end(), init_subspace_.begin(), ::tolower);
+
         }
     }
 };
@@ -255,8 +261,17 @@ struct Control_input_section
     std::string processing_unit_{""};
     double rmt_max_{2.2};
     double spglib_tolerance_{1e-4};
+    /// Level of verbosity.
+    /** The following convention in proposed:
+     *    - 0: silent mode (no output is printed) \n
+     *    - 1: basic output (low level of output) \n
+     *    - 2: extended output (medium level of output) \n
+     *    - 3: extensive output (hi level of output) */
     int verbosity_{0};
+    int verification_{0};
     bool print_performance_{false};
+    bool print_memory_usage_{false};
+    bool print_checksum_{false};
     int num_bands_to_print_{10};
 
     void read(json const& parser)
@@ -272,7 +287,10 @@ struct Control_input_section
             rmt_max_             = parser["control"].value("rmt_max", rmt_max_);
             spglib_tolerance_    = parser["control"].value("spglib_tolerance", spglib_tolerance_);
             verbosity_           = parser["control"].value("verbosity", verbosity_);
+            verification_        = parser["control"].value("verification", verification_);
             print_performance_   = parser["control"].value("print_performance", print_performance_);
+            print_memory_usage_  = parser["control"].value("print_memory_usage", print_memory_usage_);
+            print_checksum_      = parser["control"].value("print_checksum", print_checksum_);
             num_bands_to_print_  = parser["control"].value("num_bands_to_print", num_bands_to_print_);
 
             auto strings = {&std_evp_solver_name_, &gen_evp_solver_name_, &fft_mode_, &processing_unit_};

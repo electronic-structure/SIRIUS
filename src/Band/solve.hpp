@@ -1,4 +1,4 @@
-// Copyright (c) 2013-2014 Anton Kozhevnikov, Thomas Schulthess
+// Copyright (c) 2013-2016 Anton Kozhevnikov, Thomas Schulthess
 // All rights reserved.
 // 
 // Redistribution and use in source and binary forms, with or without modification, are permitted provided that 
@@ -23,7 +23,7 @@
  */
 
 inline void Band::solve_fv(K_point* kp__,
-                           Periodic_function<double>* effective_potential__) const
+                           Potential const& potential__) const
 {
     if (kp__->gklo_basis_size() < ctx_.num_fv_states()) {
         TERMINATE("basis size is too small");
@@ -32,7 +32,7 @@ inline void Band::solve_fv(K_point* kp__,
     switch (ctx_.esm_type()) {
         case electronic_structure_method_t::full_potential_pwlo:
         case electronic_structure_method_t::full_potential_lapwlo: {
-            diag_fv_full_potential(kp__, effective_potential__);
+            diag_fv_full_potential(kp__, potential__);
             break;
         }
         default: {
@@ -111,7 +111,7 @@ inline void Band::solve_fd(K_point* kp__,
 inline void Band::solve_sv(K_point* kp,
                            Periodic_function<double>* effective_magnetic_field[3]) const
 {
-    PROFILE_WITH_TIMER("sirius::Band::solve_sv");
+    PROFILE("sirius::Band::solve_sv");
 
     if (!ctx_.need_sv()) {
         kp->bypass_sv();
@@ -127,7 +127,7 @@ inline void Band::solve_sv(K_point* kp,
     /* product of the second-variational Hamiltonian and a first-variational wave-function */
     std::vector<wave_functions> hpsi;
     for (int i = 0; i < ctx_.num_mag_comp(); i++) {
-        hpsi.push_back(std::move(wave_functions(ctx_,
+        hpsi.push_back(std::move(wave_functions(ctx_.processing_unit(),
                                                 kp->comm(),
                                                 kp->gkvec(),
                                                 unit_cell_.num_atoms(),
@@ -160,68 +160,61 @@ inline void Band::solve_sv(K_point* kp,
 
     //== if (ctx_.so_correction()) apply_so_correction(kp->fv_states_col(), hpsi);
 
+    int nfv = ctx_.num_fv_states();
+    int bs  = ctx_.cyclic_block_size();
+
     #ifdef __GPU
-    if (ctx_.processing_unit() == GPU && kp->num_ranks() == 1) {
-        STOP();
-        //kp->fv_states<true>().coeffs().allocate(memory_t::device);
-        //kp->fv_states<true>().coeffs().copy_to_device();
+    if (ctx_.processing_unit() == GPU) {
+        kp->fv_states().allocate_on_device();
+        kp->fv_states().copy_to_device(0, nfv);
+        for (int i = 0; i < ctx_.num_mag_comp(); i++) {
+            hpsi[i].allocate_on_device();
+            hpsi[i].copy_to_device(0, nfv);
+        }
+    }
+    #endif
+
+    #ifdef __PRINT_OBJECT_CHECKSUM
+    auto z1 = kp->fv_states().checksum(0, nfv);
+    DUMP("checksum(fv_states): %18.10f %18.10f", std::real(z1), std::imag(z1));
+    for (int i = 0; i < ctx_.num_mag_comp(); i++) {
+        z1 = hpsi[i].checksum(0, nfv);
+        DUMP("checksum(hpsi[i]): %18.10f %18.10f", std::real(z1), std::imag(z1));
     }
     #endif
  
-    int nfv = ctx_.num_fv_states();
-    int bs = ctx_.cyclic_block_size();
-
     if (ctx_.num_mag_dims() != 3) {
         dmatrix<double_complex> h(nfv, nfv, ctx_.blacs_grid(), bs, bs);
-
-        if (ctx_.processing_unit() == GPU && kp->num_ranks() == 1) {
-            #ifdef __GPU
-            STOP();
-            //h.allocate(memory_t::device);
-            #endif
+        #ifdef __GPU
+        if (kp->num_ranks() == 1 && ctx_.processing_unit() == GPU) {
+            h.allocate(memory_t::device);
         }
-
+        #endif
         /* perform one or two consecutive diagonalizations */
         for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
+
+            /* compute <wf_i | h * wf_j> */
             inner(kp->fv_states(), 0, nfv, hpsi[ispn], 0, nfv, h, 0, 0);
-            //if (ctx_.processing_unit() == GPU && kp->num_ranks() == 1) {
-            //    #ifdef __GPU
-            //    runtime::Timer t4("sirius::Band::solve_sv|zgemm");
-            //    hpsi[ispn]->coeffs().allocate(memory_t::device);
-            //    hpsi[ispn]->coeffs().copy_to_device();
-            //    linalg<GPU>::gemm(2, 0, nfv, nfv, fvsz,
-            //                      &alpha, 
-            //                      kp->fv_states<true>().coeffs().at<GPU>(), kp->fv_states<true>().coeffs().ld(),
-            //                      hpsi[ispn]->coeffs().at<GPU>(), hpsi[ispn]->coeffs().ld(),
-            //                      &beta,
-            //                      h.at<GPU>(), h.ld());
-            //    h.copy_to_host();
-            //    hpsi[ispn]->coeffs().deallocate_on_device();
-            //    double tval = t4.stop();
-            //    DUMP("effective zgemm performance: %12.6f GFlops", 
-            //         8e-9 * ctx_.num_fv_states() * ctx_.num_fv_states() * fvsz / tval);
-            //    #else
-            //    TERMINATE_NO_GPU
-            //    #endif
-            //} else {
-            //    STOP();
-            //    ///* compute <wf_i | h * wf_j> for up-up or dn-dn block */
-            //    //linalg<CPU>::gemm(2, 0, nfv, nfv, fvsz, complex_one, kp->fv_states<true>().prime(), hpsi[ispn]->prime(),
-            //    //                  complex_zero, h);
-            //}
             
             for (int i = 0; i < nfv; i++) {
                 h.add(i, i, kp->fv_eigen_value(i));
             }
-        
-            runtime::Timer t1("sirius::Band::solve_sv|stdevp");
+            #ifdef __PRINT_OBJECT_CHECKSUM
+            auto z1 = h.checksum();
+            DUMP("checksum(h): %18.10f %18.10f", std::real(z1), std::imag(z1));
+            #endif
+            sddk::timer t1("sirius::Band::solve_sv|stdevp");
             std_evp_solver().solve(nfv, h.at<CPU>(), h.ld(), &band_energies[ispn * nfv],
                                    kp->sv_eigen_vectors(ispn).at<CPU>(), kp->sv_eigen_vectors(ispn).ld());
         }
     } else {
         int nb = ctx_.num_bands();
         dmatrix<double_complex> h(nb, nb, ctx_.blacs_grid(), bs, bs);
-
+        #ifdef __GPU
+        if (kp->num_ranks() == 1 && ctx_.processing_unit() == GPU) {
+            h.allocate(memory_t::device);
+        }
+        #endif
         /* compute <wf_i | h * wf_j> for up-up block */
         inner(kp->fv_states(), 0, nfv, hpsi[0], 0, nfv, h, 0, 0);
         /* compute <wf_i | h * wf_j> for dn-dn block */
@@ -243,28 +236,36 @@ inline void Band::solve_sv(K_point* kp,
             h.add(i,       i,       kp->fv_eigen_value(i));
             h.add(i + nfv, i + nfv, kp->fv_eigen_value(i));
         }
-        runtime::Timer t1("sirius::Band::solve_sv|stdevp");
+        #ifdef __PRINT_OBJECT_CHECKSUM
+        auto z1 = h.checksum();
+        DUMP("checksum(h): %18.10f %18.10f", std::real(z1), std::imag(z1));
+        #endif
+        sddk::timer t1("sirius::Band::solve_sv|stdevp");
         std_evp_solver().solve(nb, h.at<CPU>(), h.ld(), &band_energies[0],
                                kp->sv_eigen_vectors(0).at<CPU>(), kp->sv_eigen_vectors(0).ld());
     }
- 
-    if (ctx_.processing_unit() == GPU && kp->num_ranks() == 1) {
-        #ifdef __GPU
-        STOP();
-        //kp->fv_states<true>().coeffs().deallocate_on_device();
-        #endif
-    }
 
+    #ifdef __GPU
+    if (ctx_.processing_unit() == GPU) {
+        kp->fv_states().deallocate_on_device();
+        for (int i = 0; i < ctx_.num_mag_comp(); i++) {
+            hpsi[i].deallocate_on_device();
+        }
+    }
+    #endif
+ 
     kp->set_band_energies(&band_energies[0]);
 }
 
-inline void Band::solve_for_kset(K_set& kset, Potential& potential, bool precompute) const
+inline void Band::solve_for_kset(K_set& kset__,
+                                 Potential& potential__,
+                                 bool precompute__) const
 {
-    PROFILE_WITH_TIMER("sirius::Band::solve_for_kset");
+    PROFILE("sirius::Band::solve_for_kset");
 
-    if (precompute && ctx_.full_potential()) {
-        potential.generate_pw_coefs();
-        potential.update_atomic_potential();
+    if (precompute__ && ctx_.full_potential()) {
+        potential__.generate_pw_coefs();
+        potential__.update_atomic_potential();
         unit_cell_.generate_radial_functions();
         unit_cell_.generate_radial_integrals();
     }
@@ -272,41 +273,41 @@ inline void Band::solve_for_kset(K_set& kset, Potential& potential, bool precomp
     // TODO: mapping to coarse effective potential is k-point independent
 
     /* solve secular equation and generate wave functions */
-    for (int ikloc = 0; ikloc < kset.spl_num_kpoints().local_size(); ikloc++) {
-        int ik = kset.spl_num_kpoints(ikloc);
+    for (int ikloc = 0; ikloc < kset__.spl_num_kpoints().local_size(); ikloc++) {
+        int ik = kset__.spl_num_kpoints(ikloc);
 
         if (use_second_variation && ctx_.full_potential()) {
             /* solve non-magnetic Hamiltonian (so-called first variation) */
-            solve_fv(kset.k_point(ik), potential.effective_potential());
+            solve_fv(kset__.k_point(ik), potential__);
             /* generate first-variational states */
-            kset.k_point(ik)->generate_fv_states();
+            kset__.k_point(ik)->generate_fv_states();
             /* solve magnetic Hamiltonian */
-            solve_sv(kset.k_point(ik), potential.effective_magnetic_field());
+            solve_sv(kset__.k_point(ik), potential__.effective_magnetic_field());
             /* generate spinor wave-functions */
-            kset.k_point(ik)->generate_spinor_wave_functions();
+            kset__.k_point(ik)->generate_spinor_wave_functions();
         } else {
-            solve_fd(kset.k_point(ik), potential.effective_potential(), potential.effective_magnetic_field());
+            solve_fd(kset__.k_point(ik), potential__.effective_potential(), potential__.effective_magnetic_field());
         }
     }
 
     /* synchronize eigen-values */
-    kset.sync_band_energies();
+    kset__.sync_band_energies();
 
     if (ctx_.control().verbosity_ > 0 && ctx_.comm().rank() == 0) {
         printf("Lowest band energies\n");
-        for (int ik = 0; ik < kset.num_kpoints(); ik++) {
+        for (int ik = 0; ik < kset__.num_kpoints(); ik++) {
             printf("ik : %2i, ", ik);
             if (ctx_.num_mag_dims() != 1) {
                 for (int j = 0; j < std::min(ctx_.control().num_bands_to_print_, ctx_.num_bands()); j++) {
-                    printf("%12.6f", kset.k_point(ik)->band_energy(j));
+                    printf("%12.6f", kset__.k_point(ik)->band_energy(j));
                 }
             } else {
                 for (int j = 0; j < std::min(ctx_.control().num_bands_to_print_, ctx_.num_fv_states()); j++) {
-                    printf("%12.6f", kset.k_point(ik)->band_energy(j));
+                    printf("%12.6f", kset__.k_point(ik)->band_energy(j));
                 }
                 printf("\n         ");
                 for (int j = 0; j < std::min(ctx_.control().num_bands_to_print_, ctx_.num_fv_states()); j++) {
-                    printf("%12.6f", kset.k_point(ik)->band_energy(ctx_.num_fv_states() + j));
+                    printf("%12.6f", kset__.k_point(ik)->band_energy(ctx_.num_fv_states() + j));
                 }
             }
             printf("\n");

@@ -4,7 +4,7 @@ namespace sirius {
 
 void Atom_type::init(int offset_lo__)
 {
-    PROFILE();
+    PROFILE("sirius::Atom_type::init");
 
     /* check if the class instance was already initialized */
     if (initialized_) {
@@ -554,11 +554,13 @@ void Atom_type::read_pseudo_paw(json const& parser)
     pp_desc_.pseudo_wfc.zero();
 
     /* read ae and ps wave functions */
-    for (int i = 0; i < num_wfc; i++) {
+    for (int i = 0; i < num_wfc; i++)
+    {
         /* read ae wave func */
         auto wfc = parser["pseudo_potential"]["paw_data"]["ae_wfc"][i]["radial_function"].get<std::vector<double>>();
 
-        if ((int)wfc.size() > num_mt_points_) {
+        if ((int)wfc.size() > num_mt_points_)
+        {
             std::stringstream s;
             s << "wrong size of beta functions for atom type " << symbol_ << " (label: " << label_ << ")" << std::endl
               << "size of beta radial functions in the file: " << wfc.size() << std::endl
@@ -573,7 +575,8 @@ void Atom_type::read_pseudo_paw(json const& parser)
 
         wfc = parser["pseudo_potential"]["paw_data"]["ps_wfc"][i]["radial_function"].get<std::vector<double>>();
 
-        if ((int)wfc.size() > num_mt_points_) {
+        if ((int)wfc.size() > num_mt_points_)
+        {
             std::stringstream s;
             s << "wrong size of beta functions for atom type " << symbol_ << " (label: " << label_ << ")" << std::endl
               << "size of beta radial functions in the file: " << wfc.size() << std::endl

@@ -87,6 +87,54 @@ namespace sirius {
  *    \ddot{q}'(r) &=& \big(V(r) - E + \frac{\ell(\ell+1)}{2Mr^2}\big) \ddot{p}(r) - \frac{\ddot{q}(r)}{r} - 2 \big(1 + \frac{\ell(\ell+1)\alpha^2}{4M^2r^2}\big)\dot{p}(r) 
  *      + \frac{\ell(\ell+1)\alpha^4}{4M^3r^2} p(r)
  *  \f}
+ *
+ *  Derivation of IORA.
+ *
+ *  First thing to do is to expand the \f$ 1/M \f$ to the first order in \f$ E \f$:
+ *  \f[
+ *    \frac{1}{M} = \frac{1}{1-\frac{\alpha^2}{2} V(r)} - \frac{\alpha^2 E}{2 (1-\frac{\alpha^2}{2} V(r))^2} + O(E^2) = 
+ *     \frac{1}{M_0} - \frac{\alpha^2}{2} \frac{1}{M_0^2} E
+ *  \f]
+ *  From this expansion we can derive the exression for \f$ M \f$:
+ *  \f[
+ *    M = \Big(\frac{1}{M}\Big)^{-1} = \frac{M_0}{1 - \frac{\alpha^2}{2}\frac{E}{M_0}}
+ *  \f]
+ *  Now we insert this expressions into the scalar-relativistic equations:
+ *  \f[
+ *    \left\{
+ *    \begin{array}{ll}
+ *    \displaystyle p'(r) = 2 \frac{M_0}{1 - \frac{\alpha^2}{2}\frac{E}{M_0}} q(r) + \frac{p(r)}{r} \\
+ *    \displaystyle q'(r) = \Big(V(r) - E + \frac{\ell(\ell+1)}{2r^2} \big(\frac{1}{M_0} - \frac{\alpha^2}{2} \frac{E}{M_0^2} \big) \Big) p(r) - \frac{q(r)}{r} = 
+ *              \Big(V(r) - E + \frac{\ell(\ell+1)}{2 M_0 r^2} - \frac{\alpha^2}{2} \frac{\ell(\ell+1) E}{2 M_0^2 r^2} \Big) p(r) - \frac{q(r)}{r} 
+ *    \end{array}
+ *    \right.
+ *  \f]
+ *  The first energy derivatives are then:
+ *  \f[
+ *    \left\{
+ *    \begin{array}{ll}
+ *    \displaystyle \dot{p}'(r) = 2 \frac{M_0}{1 - \frac{\alpha^2}{2}\frac{E}{M_0}} \dot{q}(r) +
+ *                                \frac{\dot{p}(r)}{r} + \frac{\alpha^2}{(1 - \frac{\alpha^2 E}{2 M_0})^2} q(r)  \\
+ *    \displaystyle \dot{q}'(r) = \Big(V(r) - E + \frac{\ell(\ell+1)}{2 M_0 r^2} - \frac{\alpha^2}{2} \frac{\ell(\ell+1)}{2 M_0^2 r^2} E \Big) \dot{p}(r) -
+ *                                \frac{\dot{q}(r)}{r} -
+ *                                \Big(1 + \frac{\alpha^2}{2} \frac{\ell(\ell+1)}{2 M_0^2 r^2} \Big) p(r)
+ *    \end{array}
+ *    \right.
+ *  \f]
+ *  The second energy derivatives are:
+ *  \f[
+ *    \left\{
+ *    \begin{array}{ll}
+ *    \displaystyle \ddot{p}'(r) = 2 \frac{M_0}{1 - \frac{\alpha^2}{2}\frac{E}{M_0}} \ddot{q}(r) + 
+ *                                 \frac{\ddot{p}(r)}{r} +
+ *                                 \frac{2 \alpha^2}{(1 - \frac{\alpha^2 E}{2 M_0})^2} \dot{q}(r) + 
+ *                                 \frac{\alpha^4}{2 M_0 (1 - \frac{\alpha^2 E}{2 M_0})^3} q(r) \\
+ *    \displaystyle \ddot{q}'(r) = \Big(V(r) - E + \frac{\ell(\ell+1)}{2 M_0 r^2} - \frac{\alpha^2}{2} \frac{\ell(\ell+1)}{2 M_0^2 r^2} E \Big) \ddot{p}(r) - 
+ *                                  \frac{\ddot{q}(r)}{r} -
+ *                                  2 \Big(1 + \frac{\alpha^2}{2} \frac{\ell(\ell+1)}{2 M_0^2 r^2} \Big) \dot{p}(r)
+ *    \end{array}
+ *    \right.
+ *  \f]
  */
 class Radial_solver
 {
@@ -123,16 +171,12 @@ class Radial_solver
             
             double sq_alpha_half = 0.5 / rest_energy;
 
-            if (rel == relativity_t::none || rel == relativity_t::dirac) sq_alpha_half = 0;
-
-            double enu0 = enu__;
-
-            if (rel == relativity_t::zora) enu0 = 0;
+            if (rel == relativity_t::none) {
+                sq_alpha_half = 0;
+            }
 
             double ll_half = l__ * (l__ + 1) / 2.0;
 
-            if (rel == relativity_t::dirac) ll_half = 0;
-            
             double kappa{0};
             if (rel == relativity_t::dirac) {
                 if (k__ == l__) {
@@ -143,6 +187,28 @@ class Radial_solver
                     TERMINATE("wrong k");
                 }
             }
+
+            auto rel_mass = [sq_alpha_half](double enu__, double v__) -> double 
+            {
+                switch (rel) {
+                    case relativity_t::none: {
+                        return 1.0;
+                    }
+                    case relativity_t::koelling_harmon: {
+                        return 1.0 + sq_alpha_half * (enu__ - v__);
+                    }
+                    case relativity_t::zora: {
+                        return 1.0 - sq_alpha_half * v__;
+                    }
+                    case relativity_t::iora: {
+                        double m0 = 1.0 - sq_alpha_half * v__;
+                        return m0 / (1 - sq_alpha_half * enu__ / m0);
+                    }
+                    default: {
+                        return 1.0;
+                    }
+                }
+            };
 
             /* try to find classical turning point */
             int idx_ctp{-1};
@@ -165,13 +231,12 @@ class Radial_solver
             }
 
             /* here and below var0 means var(x), var2 means var(x+h) and var1 means var(x+h/2) */
-            double x2 = radial_grid_[0];
-            double xinv2 = radial_grid_.x_inv(0);
-            double v2 = ve_[0] - zn_ / x2;
-            double M2 = 1 - (v2 - enu0) * sq_alpha_half;
-            double chiq2 = chi_q__[0];
-            double vll2 = ll_half / M2 / std::pow(x2, 2);
-            double veff2 = (v2 + vll2);
+            double x2     = radial_grid_[0];
+            double xinv2  = radial_grid_.x_inv(0);
+            double v2     = ve_[0] - zn_ / x2;
+            double M2     = rel_mass(enu__, v2);
+            double chi_p2 = chi_p__[0];
+            double chi_q2 = chi_q__[0];
 
             /* r->0 asymptotics */
             if (rel != relativity_t::dirac) {
@@ -206,80 +271,98 @@ class Radial_solver
 
             int last{0};
             
-            for (int i = 0; i < nr - 1; i++)
-            {
+            for (int i = 0; i < nr - 1; i++) {
                 /* copy previous values */
-                double x0    = x2;
-                double xinv0 = xinv2;
-                double M0    = M2;
-                double chiq0 = chiq2;
-                double veff0 = veff2;
-                double p0    = p2;
-                double q0    = q2;
-
+                double x0     = x2;
+                double xinv0  = xinv2;
+                double M0     = M2;
+                double chi_p0 = chi_p2;
+                double chi_q0 = chi_q2;
+                double v0     = v2;
+                double p0     = p2;
+                double q0     = q2;
                 /* radial grid step */
-                double h = radial_grid_.dx(i);
+                double h      = radial_grid_.dx(i);
                 /* mid-point */
                 double h_half = h / 2;
                 double x1     = x0 + h_half;
                 double xinv1  = 1.0 / x1;
-                double chiq1  = chi_q__(i, h_half);
+                double chi_p1 = chi_p__(i, h_half);
+                double chi_q1 = chi_q__(i, h_half);
                 double v1     = ve_(i, h_half) - zn_ * xinv1;
-                double M1     = 1 - (v1 - enu0) * sq_alpha_half;
-                double vll1   = ll_half / M1 / std::pow(x1, 2);
-                double veff1  = (v1 + vll1);
+                double M1     = rel_mass(enu__, v1);
 
                 /* next point */
-                x2    = radial_grid_[i + 1];
-                xinv2 = radial_grid_.x_inv(i + 1);
-                chiq2 = chi_q__[i + 1];
-                v2    = ve_[i + 1] - zn_ * xinv2;
-                M2    = 1 - (v2 - enu0) * sq_alpha_half;
-                vll2  = ll_half / M2 / std::pow(x2, 2);
-                veff2 = (v2 + vll2);
+                x2            = radial_grid_[i + 1];
+                xinv2         = radial_grid_.x_inv(i + 1);
+                chi_p2        = chi_p__[i + 1];
+                chi_q2        = chi_q__[i + 1];
+                v2            = ve_[i + 1] - zn_ * xinv2;
+                M2            = rel_mass(enu__, v2);
                 
                 if (rel == relativity_t::none || rel == relativity_t::koelling_harmon || rel == relativity_t::zora) {
                     /* k0 = F(Y(x), x) */
-                    pk[0] = 2 * M0 * q0          + p0 * xinv0;
-                    qk[0] = (veff0 - enu__) * p0 - q0 * xinv0 + chiq0;
+                    pk[0] = 2 * M0 * q0                                        + p0 * xinv0;
+                    qk[0] = (v0 - enu__ + ll_half / M0 / std::pow(x0, 2)) * p0 - q0 * xinv0 + chi_q0;
 
                     /* k1 = F(Y(x) + k0 * h/2, x + h/2) */
-                    pk[1] = 2 * M1          * (q0 + qk[0] * h_half) + (p0 + pk[0] * h_half) * xinv1;
-                    qk[1] = (veff1 - enu__) * (p0 + pk[0] * h_half) - (q0 + qk[0] * h_half) * xinv1 + chiq1;
+                    pk[1] = 2 * M1                                        * (q0 + qk[0] * h_half) + (p0 + pk[0] * h_half) * xinv1;
+                    qk[1] = (v1 - enu__ + ll_half / M1 / std::pow(x1, 2)) * (p0 + pk[0] * h_half) - (q0 + qk[0] * h_half) * xinv1 + chi_q1;
 
                     /* k2 = F(Y(x) + k1 * h/2, x + h/2) */
-                    pk[2] = 2 * M1          * (q0 + qk[1] * h_half) + (p0 + pk[1] * h_half) * xinv1; 
-                    qk[2] = (veff1 - enu__) * (p0 + pk[1] * h_half) - (q0 + qk[1] * h_half) * xinv1 + chiq1;
+                    pk[2] = 2 * M1                                        * (q0 + qk[1] * h_half) + (p0 + pk[1] * h_half) * xinv1; 
+                    qk[2] = (v1 - enu__ + ll_half / M1 / std::pow(x1, 2)) * (p0 + pk[1] * h_half) - (q0 + qk[1] * h_half) * xinv1 + chi_q1;
 
                     /* k3 = F(Y(x) + k2 * h, x + h) */
-                    pk[3] = 2 * M2          * (q0 + qk[2] * h) + (p0 + pk[2] * h) * xinv2; 
-                    qk[3] = (veff2 - enu__) * (p0 + pk[2] * h) - (q0 + qk[2] * h) * xinv2 + chiq2;
-                    
-                    /* Y(x + h) = Y(x) + h * (k0 + 2 * k1 + 2 * k2 + k3) / 6 */
-                    p2 = p0 + (pk[0] + 2 * (pk[1] + pk[2]) + pk[3]) * h / 6.0;
-                    q2 = q0 + (qk[0] + 2 * (qk[1] + qk[2]) + qk[3]) * h / 6.0;
+                    pk[3] = 2 * M2                                        * (q0 + qk[2] * h) + (p0 + pk[2] * h) * xinv2; 
+                    qk[3] = (v2 - enu__ + ll_half / M2 / std::pow(x2, 2)) * (p0 + pk[2] * h) - (q0 + qk[2] * h) * xinv2 + chi_q2;
+                }
+                if (rel == relativity_t::iora) {
+                    double m0 = 1 - sq_alpha_half * v0;
+                    double m1 = 1 - sq_alpha_half * v1;
+                    double m2 = 1 - sq_alpha_half * v2;
+
+                    double a0 = ll_half / m0 / std::pow(x0, 2);
+                    double a1 = ll_half / m1 / std::pow(x1, 2);
+                    double a2 = ll_half / m2 / std::pow(x2, 2);
+
+                    /* k0 = F(Y(x), x) */
+                    pk[0] = 2 * M0 * q0                                              + p0 * xinv0 + chi_p0;
+                    qk[0] = (v0 - enu__ + a0 - sq_alpha_half * a0 * enu__ / m0) * p0 - q0 * xinv0 + chi_q0;
+
+                    /* k1 = F(Y(x) + k0 * h/2, x + h/2) */
+                    pk[1] = 2 * M1                                              * (q0 + qk[0] * h_half) + (p0 + pk[0] * h_half) * xinv1 + chi_p1;
+                    qk[1] = (v1 - enu__ + a1 - sq_alpha_half * a1 * enu__ / m1) * (p0 + pk[0] * h_half) - (q0 + qk[0] * h_half) * xinv1 + chi_q1;
+
+                    /* k2 = F(Y(x) + k1 * h/2, x + h/2) */
+                    pk[2] = 2 * M1                                              * (q0 + qk[1] * h_half) + (p0 + pk[1] * h_half) * xinv1 + chi_p1; 
+                    qk[2] = (v1 - enu__ + a1 - sq_alpha_half * a1 * enu__ / m1) * (p0 + pk[1] * h_half) - (q0 + qk[1] * h_half) * xinv1 + chi_q1;
+
+                    /* k3 = F(Y(x) + k2 * h, x + h) */
+                    pk[3] = 2 * M2                                              * (q0 + qk[2] * h) + (p0 + pk[2] * h) * xinv2 + chi_p2; 
+                    qk[3] = (v2 - enu__ + a2 - sq_alpha_half * a2 * enu__ / m2) * (p0 + pk[2] * h) - (q0 + qk[2] * h) * xinv2 + chi_q2;
+
                 }
                 if (rel == relativity_t::dirac) {
                     /* k0 = F(Y(x), x) */
-                    pk[0] = alpha * (2 * rest_energy + enu__ - veff0) * q0 - kappa * p0 * xinv0;
-                    qk[0] = alpha * (veff0 - enu__)                   * p0 + kappa * q0 * xinv0;
+                    pk[0] = alpha * (2 * rest_energy + enu__ - v0) * q0 - kappa * p0 * xinv0;
+                    qk[0] = alpha * (v0 - enu__)                   * p0 + kappa * q0 * xinv0;
 
                     /* k1 = F(Y(x) + k0 * h/2, x + h/2) */
-                    pk[1] = alpha * (2 * rest_energy + enu__ - veff1) * (q0 + qk[0] * h_half) - kappa * (p0 + pk[0] * h_half) * xinv1;
-                    qk[1] = alpha * (veff1 - enu__)                   * (p0 + pk[0] * h_half) + kappa * (q0 + qk[0] * h_half) * xinv1;
+                    pk[1] = alpha * (2 * rest_energy + enu__ - v1) * (q0 + qk[0] * h_half) - kappa * (p0 + pk[0] * h_half) * xinv1;
+                    qk[1] = alpha * (v1 - enu__)                   * (p0 + pk[0] * h_half) + kappa * (q0 + qk[0] * h_half) * xinv1;
 
                     /* k2 = F(Y(x) + k1 * h/2, x + h/2) */
-                    pk[2] = alpha * (2 * rest_energy + enu__ - veff1) * (q0 + qk[1] * h_half) - kappa * (p0 + pk[1] * h_half) * xinv1;
-                    qk[2] = alpha * (veff1 - enu__)                   * (p0 + pk[1] * h_half) + kappa * (q0 + qk[1] * h_half) * xinv1;
+                    pk[2] = alpha * (2 * rest_energy + enu__ - v1) * (q0 + qk[1] * h_half) - kappa * (p0 + pk[1] * h_half) * xinv1;
+                    qk[2] = alpha * (v1 - enu__)                   * (p0 + pk[1] * h_half) + kappa * (q0 + qk[1] * h_half) * xinv1;
                     
                     /* k3 = F(Y(x) + k2 * h, x + h) */
-                    pk[3] = alpha * (2 * rest_energy + enu__ - veff2) * (q0 + qk[2] * h) - kappa * (p0 + pk[2] * h) * xinv2;
-                    qk[3] = alpha * (veff2 - enu__)                   * (p0 + pk[2] * h) + kappa * (q0 + qk[2] * h) * xinv2;
-
-                    /* Y(x + h) = Y(x) + h * (k0 + 2 * k1 + 2 * k2 + k3) / 6 */
-                    p2 = p0 + (pk[0] + 2 * (pk[1] + pk[2]) + pk[3]) * h / 6.0;
-                    q2 = q0 + (qk[0] + 2 * (qk[1] + qk[2]) + qk[3]) * h / 6.0;
+                    pk[3] = alpha * (2 * rest_energy + enu__ - v2) * (q0 + qk[2] * h) - kappa * (p0 + pk[2] * h) * xinv2;
+                    qk[3] = alpha * (v2 - enu__)                   * (p0 + pk[2] * h) + kappa * (q0 + qk[2] * h) * xinv2;
                 }
+                /* Y(x + h) = Y(x) + h * (k0 + 2 * k1 + 2 * k2 + k3) / 6 */
+                p2 = p0 + (pk[0] + 2 * (pk[1] + pk[2]) + pk[3]) * h / 6.0;
+                q2 = q0 + (qk[0] + 2 * (qk[1] + qk[2]) + qk[3]) * h / 6.0;
 
                 /* check overflow */
                 //if (std::abs(p2) > 1e10 || std::abs(q2) > 1e10) {
@@ -337,25 +420,37 @@ class Radial_solver
             /* get number of nodes */
             int nn{0};
             for (int i = 0; i < nr - 1; i++) {
-                if (p__[i] * p__[i + 1] < 0.0) nn++;
+                if (p__[i] * p__[i + 1] < 0.0) {
+                    nn++;
+                }
             }
 
-            for (int i = 0; i < nr; i++)
-            {
-                if (rel == relativity_t::none || rel == relativity_t::koelling_harmon || rel == relativity_t::zora)
-                {
+            for (int i = 0; i < nr; i++) {
+                if (rel == relativity_t::none || rel == relativity_t::koelling_harmon || rel == relativity_t::zora) {
                     double V = ve_[i] - zn_ * radial_grid_.x_inv(i); 
-                    double M = 1.0 - (V - enu0) * sq_alpha_half;
+                    double M = rel_mass(enu__, V);
+                    double v1 = ll_half / M / std::pow(radial_grid_[i], 2);
 
                     /* P' = 2MQ + \frac{P}{r} */
                     dpdr__[i] = 2 * M * q__[i] + p__[i] * radial_grid_.x_inv(i);
 
                     /* Q' = (V - E + \frac{\ell(\ell + 1)}{2 M r^2}) P - \frac{Q}{r} */
-                    dqdr__[i] = (V - enu__ + ll_half / M / std::pow(radial_grid_[i], 2)) * p__[i] - 
-                                q__[i] * radial_grid_.x_inv(i) + chi_q__[i];
+                    dqdr__[i] = (V - enu__ + v1) * p__[i] - q__[i] * radial_grid_.x_inv(i) + chi_q__[i];
                 }
-                if (rel == relativity_t::dirac)
-                {
+                if (rel == relativity_t::iora) {
+                    double V = ve_[i] - zn_ * radial_grid_.x_inv(i); 
+                    double M = rel_mass(enu__, V);
+                    double M0 = 1 - sq_alpha_half * V;
+                    double v1 = ll_half / M0 / std::pow(radial_grid_[i], 2);
+                    double v2 = sq_alpha_half * ll_half * enu__ / std::pow(radial_grid_[i] * M0, 2);
+
+                    /* P' = 2MQ + \frac{P}{r} */
+                    dpdr__[i] = 2 * M * q__[i] + p__[i] * radial_grid_.x_inv(i) + chi_p__[i];
+
+                    /* Q' = (V - E + \frac{\ell(\ell + 1)}{2 M r^2}) P - \frac{Q}{r} */
+                    dqdr__[i] = (V - enu__ + v1 - v2) * p__[i] - q__[i] * radial_grid_.x_inv(i) + chi_q__[i];
+                }
+                if (rel == relativity_t::dirac) {
                     double V = ve_[i] - zn_ * radial_grid_.x_inv(i);
                     /* P' = ... */
                     dpdr__[i] = alpha * (2 * rest_energy + enu__ - V) * q__[i] - kappa * p__[i] * radial_grid_.x_inv(i);
@@ -584,13 +679,37 @@ class Radial_solver
 
                 if (j) {
                     if (rel__ == relativity_t::none || rel__ == relativity_t::zora) {
-                        for (int i = 0; i < nr; i++) chi_q[i] = -j * p[j - 1][i];
+                        for (int i = 0; i < nr; i++) {
+                            chi_q[i] = -j * p[j - 1][i];
+                        }
                         chi_q.interpolate();
-                    }
-                    else if (rel__ == relativity_t::koelling_harmon) {
-                        STOP();
-                    }
-                    else {
+                    } else if (rel__ == relativity_t::iora) {
+                        double sq_alpha = std::pow(speed_of_light, -2);
+                        double ll_half = l__ * (l__ + 1) / 2.0;
+
+                        if (j == 1) {
+                            for (int i = 0; i < nr; i++) {
+                                double V = ve_[i] - zn_ * radial_grid_.x_inv(i);
+                                double M = 1 - 0.5 * sq_alpha * V;
+                                double x = radial_grid_[i];
+                                chi_p[i] = q[j - 1][i] * sq_alpha / std::pow(1 - sq_alpha * enu__ / 2 / M, 2);
+                                chi_q[i] = -p[j - 1][i] * (1 + 0.5 * sq_alpha * ll_half / std::pow(M * x, 2));
+                            }
+                        } else if (j == 2) {
+                            for (int i = 0; i < nr; i++) {
+                                double V = ve_[i] - zn_ * radial_grid_.x_inv(i);
+                                double M = 1 - 0.5 * sq_alpha * V;
+                                double x = radial_grid_[i];
+                                chi_p[i] = q[j - 1][i] * 2 * sq_alpha / std::pow(1 - sq_alpha * enu__ / 2 / M, 2) + 
+                                           q[j - 2][i] * std::pow(sq_alpha, 2) / 2 / M / std::pow(1 - sq_alpha * enu__ / 2 / M, 3);
+                                chi_q[i] = -p[j - 1][i] * 2 * (1 + 0.5 * sq_alpha * ll_half / std::pow(M * x, 2));
+                            }
+                        } else {
+                            TERMINATE_NOT_IMPLEMENTED
+                        }
+                        chi_p.interpolate();
+                        chi_q.interpolate();
+                    } else {
                         TERMINATE_NOT_IMPLEMENTED
                     }
                 }
@@ -606,6 +725,10 @@ class Radial_solver
                     }
                     case relativity_t::zora: {
                         nn = integrate_forward_rk4<relativity_t::zora, false>(enu__, l__, 0, chi_p, chi_q, p[j], dpdr[j], q[j], dqdr[j]);
+                        break;
+                    }
+                    case relativity_t::iora: {
+                        nn = integrate_forward_rk4<relativity_t::iora, false>(enu__, l__, 0, chi_p, chi_q, p[j], dpdr[j], q[j], dqdr[j]);
                         break;
                     }
                     default: {
@@ -959,6 +1082,10 @@ class Enu_finder: public Radial_solver
                         nnd = integrate_forward_rk4<relativity_t::zora, false>(enu, l_, 0, chi_p, chi_q, p, dpdr, q, dqdr);
                         break;
                     }
+                    case relativity_t::iora: {
+                        nnd = integrate_forward_rk4<relativity_t::iora, false>(enu, l_, 0, chi_p, chi_q, p, dpdr, q, dqdr);
+                        break;
+                    }
                     default: {
                         TERMINATE_NOT_IMPLEMENTED
                     }
@@ -1010,6 +1137,10 @@ class Enu_finder: public Radial_solver
                         integrate_forward_rk4<relativity_t::zora, false>(enu, l_, 0, chi_p, chi_q, p, dpdr, q, dqdr);
                         break;
                     }
+                    case relativity_t::iora: {
+                        integrate_forward_rk4<relativity_t::iora, false>(enu, l_, 0, chi_p, chi_q, p, dpdr, q, dqdr);
+                        break;
+                    }
                     default: {
                         TERMINATE_NOT_IMPLEMENTED
                     }
@@ -1036,6 +1167,10 @@ class Enu_finder: public Radial_solver
                     }
                     case relativity_t::zora: {
                         integrate_forward_rk4<relativity_t::zora, false>(enu, l_, 0, chi_p, chi_q, p, dpdr, q, dqdr);
+                        break;
+                    }
+                    case relativity_t::iora: {
+                        integrate_forward_rk4<relativity_t::iora, false>(enu, l_, 0, chi_p, chi_q, p, dpdr, q, dqdr);
                         break;
                     }
                     default: {
@@ -1068,6 +1203,10 @@ class Enu_finder: public Radial_solver
                 }
                 case relativity_t::zora: {
                     nn = integrate_forward_rk4<relativity_t::zora, false>(enu, l_, 0, chi_p, chi_q, p, dpdr, q, dqdr);
+                    break;
+                }
+                case relativity_t::iora: {
+                    nn = integrate_forward_rk4<relativity_t::iora, false>(enu, l_, 0, chi_p, chi_q, p, dpdr, q, dqdr);
                     break;
                 }
                 default: {

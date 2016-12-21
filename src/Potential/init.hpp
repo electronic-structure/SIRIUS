@@ -22,7 +22,6 @@ inline void Potential::init()
          * Subscript[j, n](z)=Sqrt[\[Pi]/2]/Sqrt[z]Subscript[J, n+1/2](z) */
         sbessel_mom_ = mdarray<double, 3>(ctx_.lmax_rho() + 1, unit_cell_.num_atom_types(),
                                           ctx_.gvec().num_shells());
-        //sbessel_mom_.allocate();
         sbessel_mom_.zero();
 
         for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {

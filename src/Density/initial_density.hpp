@@ -1,6 +1,6 @@
 inline void Density::initial_density()
 {
-    PROFILE_WITH_TIMER("sirius::Density::initial_density");
+    PROFILE("sirius::Density::initial_density");
 
     zero();
 
@@ -310,7 +310,7 @@ inline void Density::initial_density_full_pot()
     std::vector<double_complex> zil(lmax + 1);
     for (int l = 0; l <= lmax; l++) zil[l] = std::pow(double_complex(0, 1), l);
     
-    runtime::Timer t3("sirius::Density::initial_density|znulm");
+    sddk::timer t3("sirius::Density::initial_density|znulm");
     
     mdarray<double_complex, 3> znulm(sba.nqnu_max(), lmmax, unit_cell_.num_atoms());
     znulm.zero();
@@ -360,7 +360,7 @@ inline void Density::initial_density_full_pot()
     DUMP("checksum(znulm): %18.10f %18.10f", std::real(z3), std::imag(z3));
     #endif
     
-    runtime::Timer t4("sirius::Density::initial_density|rholm");
+    sddk::timer t4("sirius::Density::initial_density|rholm");
     
     SHT sht(lmax);
     

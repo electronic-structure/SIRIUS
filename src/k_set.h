@@ -26,8 +26,7 @@
 #define __K_SET_H__
 
 #include "k_point.h"
-#include "blacs_grid.h"
-#include "vector3d.h"
+#include "vector3d.hpp"
 
 namespace sirius {
 
@@ -40,6 +39,8 @@ struct kq
     vector3d<int> K;
 };
 
+// TODO: rename K_set -> K_point_set
+
 /// Set of k-points.
 class K_set
 {
@@ -49,11 +50,12 @@ class K_set
 
         std::vector<K_point*> kpoints_;
 
-        splindex<block> spl_num_kpoints_;
+        //splindex<block> spl_num_kpoints_;
+        splindex<chunk> spl_num_kpoints_;
 
-        double energy_fermi_;
+        double energy_fermi_{0};
 
-        double band_gap_;
+        double band_gap_{0};
 
         Unit_cell& unit_cell_;
 
@@ -63,11 +65,11 @@ class K_set
 
         K_set(Simulation_context& ctx__,
               Communicator const& comm_k__)
-            : ctx_(ctx__),
-              unit_cell_(ctx__.unit_cell()),
-              comm_k_(comm_k__)
+            : ctx_(ctx__)
+            , unit_cell_(ctx__.unit_cell())
+            , comm_k_(comm_k__)
         {
-            PROFILE();
+            PROFILE("sirius::K_set::K_set");
         }
 
         K_set(Simulation_context& ctx__,
@@ -75,11 +77,11 @@ class K_set
               vector3d<int> k_grid__,
               vector3d<int> k_shift__,
               int use_symmetry__) 
-            : ctx_(ctx__),
-              unit_cell_(ctx__.unit_cell()),
-              comm_k_(comm_k__)
+            : ctx_(ctx__)
+            , unit_cell_(ctx__.unit_cell())
+            , comm_k_(comm_k__)
         {
-            PROFILE();
+            PROFILE("sirius::K_set::K_set");
 
             int nk;
             mdarray<double, 2> kp;
@@ -168,20 +170,28 @@ class K_set
             //    for (int ik = 0; ik < nk; ik++) add_kpoint(&vk(0, ik), wk[ik]);
             //}
 
-            for (int ik = 0; ik < nk; ik++) add_kpoint(&kp(0, ik), wk[ik]);
+            for (int ik = 0; ik < nk; ik++) {
+                add_kpoint(&kp(0, ik), wk[ik]);
+            }
         }
 
         ~K_set()
         {
-            PROFILE();
+            PROFILE("sirius::K_set::~K_set");
+            //PROFILE();
             clear();
         }
         
         /// Initialize the k-point set
-        void initialize()
+        void initialize(std::vector<int> counts = std::vector<int>())
         {
             /* distribute k-points along the 1-st dimension of the MPI grid */
-            spl_num_kpoints_ = splindex<block>(num_kpoints(), comm_k_.size(), comm_k_.rank());
+            if (counts.empty()) {
+                splindex<block> spl_tmp(num_kpoints(), comm_k_.size(), comm_k_.rank());
+                spl_num_kpoints_ = splindex<chunk>(num_kpoints(), comm_k_.size(), comm_k_.rank(), spl_tmp.counts());
+            } else {
+                spl_num_kpoints_ = splindex<chunk>(num_kpoints(), comm_k_.size(), comm_k_.rank(), counts);
+            }
 
             for (int ikloc = 0; ikloc < spl_num_kpoints_.local_size(); ikloc++) {
                 kpoints_[spl_num_kpoints_[ikloc]]->initialize();
@@ -213,7 +223,7 @@ class K_set
                 auto ik = spl_num_kpoints_[ikloc];
                 max_num_gkvec = std::max(max_num_gkvec, kpoints_[ik]->num_gkvec());
             }
-            comm_k_.allreduce<int, op_max>(&max_num_gkvec, 1);
+            comm_k_.allreduce<int, mpi_op_t::op_max>(&max_num_gkvec, 1);
             return max_num_gkvec;
         }
 
@@ -221,14 +231,16 @@ class K_set
         
         void add_kpoint(double* vk__, double weight__)
         {
-            PROFILE();
+            PROFILE("sirius::K_set::add_kpoint");
             kpoints_.push_back(new K_point(ctx_, vk__, weight__));
         }
 
         void add_kpoints(mdarray<double, 2>& kpoints__, double* weights__)
         {
-            PROFILE();
-            for (int ik = 0; ik < (int)kpoints__.size(1); ik++) add_kpoint(&kpoints__(0, ik), weights__[ik]);
+            PROFILE("sirius::K_set::add_kpoints");
+            for (size_t ik = 0; ik < kpoints__.size(1); ik++) {
+                add_kpoint(&kpoints__(0, ik), weights__[ik]);
+            }
         }
 
         inline K_point* operator[](int i)
@@ -240,22 +252,24 @@ class K_set
 
         void clear()
         {
-            PROFILE();
-            for (size_t ik = 0; ik < kpoints_.size(); ik++) delete kpoints_[ik];
+            PROFILE("sirius::K_set::clear");
+            for (size_t ik = 0; ik < kpoints_.size(); ik++) {
+                delete kpoints_[ik];
+            }
             kpoints_.clear();
         }
         
-        inline int num_kpoints()
+        inline int num_kpoints() const
         {
-            return (int)kpoints_.size();
+            return static_cast<int>(kpoints_.size());
         }
 
-        inline splindex<block>& spl_num_kpoints()
+        inline splindex<chunk> const& spl_num_kpoints() const
         {
             return spl_num_kpoints_;
         }
         
-        inline int spl_num_kpoints(int ikloc)
+        inline int spl_num_kpoints(int ikloc) const
         {
             return spl_num_kpoints_[ikloc];
         }
@@ -275,12 +289,12 @@ class K_set
             kpoints_[ik]->get_band_energies(band_energies);
         }
         
-        inline double energy_fermi()
+        inline double energy_fermi() const
         {
             return energy_fermi_;
         }
 
-        inline double band_gap()
+        inline double band_gap() const
         {
             return band_gap_;
         }
@@ -311,11 +325,16 @@ class K_set
         }
 
         inline K_point* k_point(int ik) {return kpoints_[ik];}
+
+        inline Communicator const& comm() const
+        {
+            return comm_k_;
+        }
 };
 
 inline void K_set::sync_band_energies()
 {
-    PROFILE();
+    PROFILE("sirius::K_set::sync_band_energies");
 
     mdarray<double, 2> band_energies(ctx_.num_bands(), num_kpoints());
 
@@ -348,7 +367,7 @@ inline double K_set::valence_eval_sum()
 
 inline void K_set::find_band_occupancies()
 {
-    PROFILE_WITH_TIMER("sirius::K_set::find_band_occupancies");
+    PROFILE("sirius::K_set::find_band_occupancies");
 
     double ef{0};
     double de{0.1};

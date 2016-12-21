@@ -29,11 +29,10 @@ extern "C" {
 #include <spglib.h>
 }
 
-#include "vector3d.h"
-#include "matrix3d.h"
+#include "matrix3d.hpp"
 #include "constants.h"
 #include "utils.h"
-#include "gvec.h"
+#include "gvec.hpp"
 
 namespace sirius {
 
@@ -197,7 +196,7 @@ class Symmetry
             return sym_table_(ia__, isym__);
         }
 
-        void check_gvec_symmetry(Gvec const& gvec__) const;
+        void check_gvec_symmetry(Gvec const& gvec__, Communicator const& comm__) const;
 
         /// Symmetrize scalar function.
         /** The following operation is performed:
@@ -240,11 +239,23 @@ class Symmetry
                                mdarray<double, 3>& fy_rlm__,
                                mdarray<double, 3>& fz_rlm__,
                                Communicator const& comm__) const;
-        
+
+
         int get_irreducible_reciprocal_mesh(vector3d<int> k_mesh__,
                                             vector3d<int> is_shift__,
                                             mdarray<double, 2>& kp__,
                                             std::vector<double>& wk__) const;
+
+
+        matrix3d<double> const& lattice_vectors() const
+        {
+            return lattice_vectors_;
+        }
+
+        matrix3d<double> const& inverse_lattice_vectors() const
+        {
+            return inverse_lattice_vectors_;
+        }
 };
 
 }

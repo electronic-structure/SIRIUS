@@ -37,7 +37,7 @@
 #include <iostream>
 #include <algorithm>
 #include "config.h"
-#include "communicator.h"
+#include "communicator.hpp"
 #include "gpu.h"
 #include "runtime.h"
 
@@ -285,6 +285,8 @@ namespace sirius {
 //!           ...
 //!           #endif // __SIRIUS_INTERNAL_H__
 //!       \endcode
+//! We use clang-format utility to enforce the basic formatting style. Please have a look at .clang-format config file 
+//! in the source root folder for the definitions.
 //!        
 //! Class naming convention.
 //!      

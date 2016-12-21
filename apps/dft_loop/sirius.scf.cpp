@@ -195,9 +195,9 @@ double ground_state(Simulation_context&       ctx,
                     Parameters_input_section& inp,
                     int                       write_output)
 {
-    #ifdef __PRINT_MEMORY_USAGE
-    MEMORY_USAGE_INFO();
-    #endif
+    if (ctx.comm().rank() == 0 && ctx.control().print_memory_usage_) {
+        MEMORY_USAGE_INFO();
+    }
     
     Potential potential(ctx);
     potential.allocate();
@@ -205,16 +205,16 @@ double ground_state(Simulation_context&       ctx,
     Density density(ctx);
     density.allocate();
 
-    #ifdef __PRINT_MEMORY_USAGE
-    MEMORY_USAGE_INFO();
-    #endif
+    if (ctx.comm().rank() == 0 && ctx.control().print_memory_usage_) {
+        MEMORY_USAGE_INFO();
+    }
 
     K_set ks(ctx, ctx.mpi_grid().communicator(1 << _mpi_dim_k_), inp.ngridk_, inp.shiftk_, inp.use_symmetry_);
     ks.initialize();
-    
-    #ifdef __PRINT_MEMORY_USAGE
-    MEMORY_USAGE_INFO();
-    #endif
+
+    if (ctx.comm().rank() == 0 && ctx.control().print_memory_usage_) {
+        MEMORY_USAGE_INFO();
+    }
 
     std::string ref_file = args.value<std::string>("test_against", "");
     bool write_state = (ref_file.size() == 0);
@@ -231,7 +231,7 @@ double ground_state(Simulation_context&       ctx,
         density.initial_density();
         dft.generate_effective_potential();
         if (!ctx.full_potential()) {
-            dft.initialize_subspace();
+            dft.band().initialize_subspace(ks, potential);
         }
     }
     
@@ -246,7 +246,7 @@ double ground_state(Simulation_context&       ctx,
         double e1 = dict["ground_state"]["energy"]["total"];
         double e2 = dict_ref["ground_state"]["energy"]["total"];
 
-        if (std::abs(e1 - e2) > 1e-8) {
+        if (std::abs(e1 - e2) > 1e-7) {
             printf("total energy is different\n");
             exit(1);
         }
@@ -264,7 +264,7 @@ double ground_state(Simulation_context&       ctx,
         
         dict["task"] = static_cast<int>(task);
         dict["ground_state"] = dft.serialize();
-        dict["timers"] = runtime::Timer::serialize();
+        dict["timers"] = Utils::serialize_timers();
  
         if (ctx.comm().rank() == 0) {
             std::ofstream ofs(std::string("output_") + ctx.start_time_tag() + std::string(".json"),
@@ -296,7 +296,7 @@ double ground_state(Simulation_context&       ctx,
     /* wait for all */
     ctx.comm().barrier();
 
-    runtime::Timer::print();
+    sddk::timer::print(0);
 
     return dft.total_energy();
 }
@@ -495,6 +495,9 @@ void run_tasks(cmd_args const& args)
     task_t task = static_cast<task_t>(args.value<int>("task", 0));
     /* get the input file name */
     std::string fname = args.value<std::string>("input", "sirius.json");
+    if (!Utils::file_exists(fname)) {
+        TERMINATE("input file does not exist");
+    }
     /* read json file */
     json dict;
     std::ifstream(fname) >> dict;

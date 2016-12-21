@@ -33,12 +33,12 @@ Potential::Potential(Simulation_context& ctx__)
       pseudo_density_order(9),
       mixer_(nullptr)
 {
-    runtime::Timer t("sirius::Potential::Potential");
+    PROFILE("sirius::Potential::Potential");
 
     lmax_ = std::max(ctx_.lmax_rho(), ctx_.lmax_pot());
     sht_ = std::unique_ptr<SHT>(new SHT(lmax_));
 
-    if (ctx_.esm_type() == electronic_structure_method_t::full_potential_lapwlo) {
+    if (lmax_ >= 0) {
         l_by_lm_ = Utils::l_by_lm(lmax_);
 
         /* precompute i^l */
@@ -55,7 +55,7 @@ Potential::Potential(Simulation_context& ctx__)
         }
     }
 
-    effective_potential_ = new Periodic_function<double>(ctx_, ctx_.lmmax_pot(), 1);
+    effective_potential_ = std::unique_ptr<Periodic_function<double>>(new Periodic_function<double>(ctx_, ctx_.lmmax_pot(), 1));
     
     //int need_gvec = (ctx_.full_potential()) ? 0 : 1;
     int need_gvec{1};
@@ -90,6 +90,20 @@ Potential::Potential(Simulation_context& ctx__)
         }
     }
 
+    if (ctx_.full_potential()) {
+        switch (ctx_.valence_relativity()) {
+            case relativity_t::iora: {
+                rm2_inv_pw_ = mdarray<double_complex, 1>(ctx_.gvec().num_gvec());
+            }
+            case relativity_t::zora: {
+                rm_inv_pw_ = mdarray<double_complex, 1>(ctx_.gvec().num_gvec());
+            }
+            default: {
+                veff_pw_ = mdarray<double_complex, 1>(ctx_.gvec().num_gvec());
+            }
+        }
+    }
+
     init();
 
     /* create list of XC functionals */
@@ -103,7 +117,6 @@ Potential::Potential(Simulation_context& ctx__)
 
 Potential::~Potential()
 {
-    delete effective_potential_; 
     for (int j = 0; j < ctx_.num_mag_dims(); j++) delete effective_magnetic_field_[j];
     delete hartree_potential_;
     delete xc_potential_;

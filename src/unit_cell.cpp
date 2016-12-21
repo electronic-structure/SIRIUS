@@ -28,7 +28,7 @@ namespace sirius {
 
 void Unit_cell::initialize()
 {
-    PROFILE();
+    PROFILE("sirius::Unit_cell::initialize");
 
     /* split number of atom between all MPI ranks */
     spl_num_atoms_ = splindex<block>(num_atoms(), comm_.size(), comm_.rank());
@@ -105,10 +105,8 @@ void Unit_cell::initialize()
     spl_num_atom_symmetry_classes_ = splindex<block>(num_atom_symmetry_classes(), comm_.size(), comm_.rank());
     
     volume_mt_ = 0.0;
-    if (parameters_.full_potential())
-    {
-        for (int ia = 0; ia < num_atoms(); ia++)
-        {
+    if (parameters_.full_potential()) {
+        for (int ia = 0; ia < num_atoms(); ia++) {
             volume_mt_ += fourpi * std::pow(atom(ia).mt_radius(), 3) / 3.0; 
         }
     }
@@ -116,20 +114,16 @@ void Unit_cell::initialize()
     volume_it_ = omega() - volume_mt_;
 
     mt_aw_basis_descriptors_.resize(mt_aw_basis_size_);
-    for (int ia = 0, n = 0; ia < num_atoms(); ia++)
-    {
-        for (int xi = 0; xi < atom(ia).mt_aw_basis_size(); xi++, n++)
-        {
+    for (int ia = 0, n = 0; ia < num_atoms(); ia++) {
+        for (int xi = 0; xi < atom(ia).mt_aw_basis_size(); xi++, n++) {
             mt_aw_basis_descriptors_[n].ia = ia;
             mt_aw_basis_descriptors_[n].xi = xi;
         }
     }
 
     mt_lo_basis_descriptors_.resize(mt_lo_basis_size_);
-    for (int ia = 0, n = 0; ia < num_atoms(); ia++)
-    {
-        for (int xi = 0; xi < atom(ia).mt_lo_basis_size(); xi++, n++)
-        {
+    for (int ia = 0, n = 0; ia < num_atoms(); ia++) {
+        for (int xi = 0; xi < atom(ia).mt_lo_basis_size(); xi++, n++) {
             mt_lo_basis_descriptors_[n].ia = ia;
             mt_lo_basis_descriptors_[n].xi = xi;
         }
@@ -140,7 +134,7 @@ void Unit_cell::initialize()
 
 void Unit_cell::get_symmetry()
 {
-    runtime::Timer t("sirius::Unit_cell::get_symmetry");
+    PROFILE("sirius::Unit_cell::get_symmetry");
     
     if (num_atoms() == 0) {
         return;
@@ -327,23 +321,23 @@ bool Unit_cell::check_mt_overlap(int& ia__, int& ja__)
     return false;
 }
 
-void Unit_cell::print_info()
+void Unit_cell::print_info(int verbosity_)
 {
     printf("\n");
     printf("Unit cell\n");
-    for (int i = 0; i < 80; i++) printf("-");
+    for (int i = 0; i < 80; i++) {
+        printf("-");
+    }
     printf("\n");
     
     printf("lattice vectors\n");
-    for (int i = 0; i < 3; i++)
-    {
+    for (int i = 0; i < 3; i++) {
         printf("  a%1i : %18.10f %18.10f %18.10f \n", i + 1, lattice_vectors_(0, i), 
                                                              lattice_vectors_(1, i), 
                                                              lattice_vectors_(2, i)); 
     }
     printf("reciprocal lattice vectors\n");
-    for (int i = 0; i < 3; i++)
-    {
+    for (int i = 0; i < 3; i++) {
         printf("  b%1i : %18.10f %18.10f %18.10f \n", i + 1, reciprocal_lattice_vectors_(0, i), 
                                                              reciprocal_lattice_vectors_(1, i), 
                                                              reciprocal_lattice_vectors_(2, i));
@@ -356,8 +350,7 @@ void Unit_cell::print_info()
     
     printf("\n"); 
     printf("number of atom types : %i\n", num_atom_types());
-    for (int i = 0; i < num_atom_types(); i++)
-    {
+    for (int i = 0; i < num_atom_types(); i++) {
         int id = atom_type(i).id();
         printf("type id : %i   symbol : %2s   mt_radius : %10.6f\n", id, atom_type(i).symbol().c_str(), 
                                                                          atom_type(i).mt_radius()); 
@@ -365,26 +358,26 @@ void Unit_cell::print_info()
 
     printf("number of atoms : %i\n", num_atoms());
     printf("number of symmetry classes : %i\n", num_atom_symmetry_classes());
-    printf("\n"); 
-    printf("atom id              position            type id    class id\n");
-    printf("------------------------------------------------------------\n");
-    for (int i = 0; i < num_atoms(); i++)
-    {
-        auto pos = atom(i).position();
-        printf("%6i      %f %f %f   %6i      %6i\n", i, pos[0], pos[1], pos[2], atom(i).type_id(), atom(i).symmetry_class_id());
-    }
-   
     printf("\n");
-    for (int ic = 0; ic < num_atom_symmetry_classes(); ic++)
-    {
-        printf("class id : %i   atom id : ", ic);
-        for (int i = 0; i < atom_symmetry_class(ic).num_atoms(); i++)
-            printf("%i ", atom_symmetry_class(ic).atom_id(i));  
+    if (verbosity_ >= 2) {
+        printf("atom id              position            type id    class id\n");
+        printf("------------------------------------------------------------\n");
+        for (int i = 0; i < num_atoms(); i++) {
+            auto pos = atom(i).position();
+            printf("%6i      %f %f %f   %6i      %6i\n", i, pos[0], pos[1], pos[2], atom(i).type_id(), atom(i).symmetry_class_id());
+        }
+   
         printf("\n");
+        for (int ic = 0; ic < num_atom_symmetry_classes(); ic++) {
+            printf("class id : %i   atom id : ", ic);
+            for (int i = 0; i < atom_symmetry_class(ic).num_atoms(); i++) {
+                printf("%i ", atom_symmetry_class(ic).atom_id(i));
+            }
+            printf("\n");
+        }
     }
 
-    if (symmetry_ != nullptr)
-    {
+    if (symmetry_ != nullptr) {
         printf("\n");
         printf("space group number   : %i\n", symmetry_->spacegroup_number());
         printf("international symbol : %s\n", symmetry_->international_symbol().c_str());
@@ -392,41 +385,51 @@ void Unit_cell::print_info()
         printf("number of operations : %i\n", symmetry_->num_mag_sym());
         printf("transformation matrix : \n");
         auto tm = symmetry_->transformation_matrix();
-        for (int i = 0; i < 3; i++)
-        {
-            for (int j = 0; j < 3; j++) printf("%12.6f ", tm(i, j));
+        for (int i = 0; i < 3; i++) {
+            for (int j = 0; j < 3; j++) {
+                printf("%12.6f ", tm(i, j));
+            }
             printf("\n");
         }
         printf("origin shift : \n");
         auto t = symmetry_->origin_shift();
         printf("%12.6f %12.6f %12.6f\n", t[0], t[1], t[2]);
+        
+        if (verbosity_ >= 2) {
+            printf("symmetry operations  : \n");
+            for (int isym = 0; isym < symmetry_->num_mag_sym(); isym++) {
+                auto R = symmetry_->magnetic_group_symmetry(isym).spg_op.R;
+                auto t = symmetry_->magnetic_group_symmetry(isym).spg_op.t;
+                auto S = symmetry_->magnetic_group_symmetry(isym).spin_rotation;
 
-        printf("symmetry operations  : \n");
-        for (int isym = 0; isym < symmetry_->num_mag_sym(); isym++)
-        {
-            auto R = symmetry_->magnetic_group_symmetry(isym).spg_op.R;
-            auto t = symmetry_->magnetic_group_symmetry(isym).spg_op.t;
-            auto S = symmetry_->magnetic_group_symmetry(isym).spin_rotation;
-
-            printf("isym : %i\n", isym);
-            printf("R : ");
-            for (int i = 0; i < 3; i++)
-            {
-                if (i) printf("    ");
-                for (int j = 0; j < 3; j++) printf("%3i ", R(i, j));
+                printf("isym : %i\n", isym);
+                printf("R : ");
+                for (int i = 0; i < 3; i++) {
+                    if (i) {
+                        printf("    ");
+                    }
+                    for (int j = 0; j < 3; j++) {
+                        printf("%3i ", R(i, j));
+                    }
+                    printf("\n");
+                }
+                printf("T : ");
+                for (int j = 0; j < 3; j++) {
+                    printf("%8.4f ", t[j]);
+                }
+                printf("\n");
+                printf("S : ");
+                for (int i = 0; i < 3; i++) {
+                    if (i) {
+                        printf("    ");
+                    }
+                    for (int j = 0; j < 3; j++) {
+                        printf("%8.4f ", S(i, j));
+                    }
+                    printf("\n");
+                }
                 printf("\n");
             }
-            printf("T : ");
-            for (int j = 0; j < 3; j++) printf("%8.4f ", t[j]);
-            printf("\n");
-            printf("S : ");
-            for (int i = 0; i < 3; i++)
-            {
-                if (i) printf("    ");
-                for (int j = 0; j < 3; j++) printf("%8.4f ", S(i, j));
-                printf("\n");
-            }
-            printf("\n");
         }
     }
 }
@@ -555,9 +558,9 @@ json Unit_cell::serialize()
 
 void Unit_cell::find_nearest_neighbours(double cluster_radius)
 {
-    runtime::Timer t("sirius::Unit_cell::find_nearest_neighbours");
+    PROFILE("sirius::Unit_cell::find_nearest_neighbours");
 
-    vector3d<int> max_frac_coord = Utils::find_translations(cluster_radius, lattice_vectors_);
+    auto max_frac_coord = Utils::find_translations(cluster_radius, lattice_vectors_);
    
     nearest_neighbours_.clear();
     nearest_neighbours_.resize(num_atoms());
@@ -582,7 +585,7 @@ void Unit_cell::find_nearest_neighbours(double cluster_radius)
                     nnd.translation[1] = i1;
                     nnd.translation[2] = i2;
                     
-                    vector3d<double> vt = get_cartesian_coordinates(nnd.translation);
+                    vector3d<double> vt = get_cartesian_coordinates<int>(nnd.translation);
                     
                     for (int ja = 0; ja < num_atoms(); ja++)
                     {
@@ -694,21 +697,19 @@ bool Unit_cell::is_point_in_mt(vector3d<double> vc, int& ja, int& jr, double& dr
 
 void Unit_cell::generate_radial_functions()
 {
-    PROFILE_WITH_TIMER("sirius::Unit_cell::generate_radial_functions");
+    PROFILE("sirius::Unit_cell::generate_radial_functions");
    
-    for (int icloc = 0; icloc < (int)spl_num_atom_symmetry_classes().local_size(); icloc++)
-    {
+    for (int icloc = 0; icloc < (int)spl_num_atom_symmetry_classes().local_size(); icloc++) {
         int ic = spl_num_atom_symmetry_classes(icloc);
         atom_symmetry_class(ic).generate_radial_functions(parameters_.valence_relativity());
     }
 
-    for (int ic = 0; ic < num_atom_symmetry_classes(); ic++)
-    {
+    for (int ic = 0; ic < num_atom_symmetry_classes(); ic++) {
         int rank = spl_num_atom_symmetry_classes().local_rank(ic);
         atom_symmetry_class(ic).sync_radial_functions(comm_, rank);
     }
     
-    if (parameters_.control().verbosity_ > 0) {
+    if (parameters_.control().verbosity_ >= 1) {
         runtime::pstdout pout(comm_);
         
         for (int icloc = 0; icloc < (int)spl_num_atom_symmetry_classes().local_size(); icloc++) {
@@ -721,32 +722,33 @@ void Unit_cell::generate_radial_functions()
             printf("Linearization energies\n");
         }
     }
+    if (parameters_.control().verbosity_ >= 4 && comm_.rank() == 0) {
+        for (int ic = 0; ic < num_atom_symmetry_classes(); ic++) {
+            atom_symmetry_class(ic).dump_lo();
+        }
+    }
 }
 
 void Unit_cell::generate_radial_integrals()
 {
-    PROFILE_WITH_TIMER("sirius::Unit_cell::generate_radial_integrals");
+    PROFILE("sirius::Unit_cell::generate_radial_integrals");
 
-    for (int icloc = 0; icloc < spl_num_atom_symmetry_classes().local_size(); icloc++)
-    {
+    for (int icloc = 0; icloc < spl_num_atom_symmetry_classes().local_size(); icloc++) {
         int ic = spl_num_atom_symmetry_classes(icloc);
         atom_symmetry_class(ic).generate_radial_integrals(parameters_.valence_relativity());
     }
 
-    for (int ic = 0; ic < num_atom_symmetry_classes(); ic++)
-    {
+    for (int ic = 0; ic < num_atom_symmetry_classes(); ic++) {
         int rank = spl_num_atom_symmetry_classes().local_rank(ic);
         atom_symmetry_class(ic).sync_radial_integrals(comm_, rank);
     }
 
-    for (int ialoc = 0; ialoc < spl_num_atoms_.local_size(); ialoc++)
-    {
+    for (int ialoc = 0; ialoc < spl_num_atoms_.local_size(); ialoc++) {
         int ia = spl_num_atoms_[ialoc];
         atom(ia).generate_radial_integrals(parameters_.processing_unit(), mpi_comm_self());
     }
     
-    for (int ia = 0; ia < num_atoms(); ia++)
-    {
+    for (int ia = 0; ia < num_atoms(); ia++) {
         int rank = spl_num_atoms().local_rank(ia);
         atom(ia).sync_radial_integrals(comm_, rank);
     }
@@ -777,7 +779,7 @@ std::string Unit_cell::chemical_formula()
 std::vector<double_complex> Unit_cell::make_periodic_function(mdarray<double, 2>& form_factors__,
                                                               Gvec const& gvec__) const
 {
-    PROFILE_WITH_TIMER("sirius::Unit_cell::make_periodic_function");
+    PROFILE("sirius::Unit_cell::make_periodic_function");
 
     assert((int)form_factors__.size(0) == num_atom_types());
 

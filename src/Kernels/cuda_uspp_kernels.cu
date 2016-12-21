@@ -1,4 +1,4 @@
-#include "kernels_common.h"
+#include "../SDDK/GPU/cuda_common.h"
 
 extern cudaStream_t* streams;
 extern "C" void* cuda_malloc(size_t size);

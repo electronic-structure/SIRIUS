@@ -25,7 +25,7 @@
 #ifndef __CMD_ARGS_H__
 #define __CMD_ARGS_H__
 
-#include "vector3d.h"
+#include "vector3d.hpp"
 
 /// Simple command line arguments handler.
 class cmd_args

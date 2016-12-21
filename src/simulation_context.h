@@ -26,11 +26,19 @@
 #define __SIMULATION_CONTEXT_H__
 
 #include "simulation_parameters.h"
-#include "mpi_grid.h"
+#include "mpi_grid.hpp"
 #include "step_function.h"
 #include "real_space_prj.h"
 #include "version.h"
 #include "augmentation_operator.h"
+
+#ifdef __GPU
+extern "C" void generate_phase_factors_gpu(int num_gvec_loc__,
+                                           int num_atoms__,
+                                           int const* gvec__,
+                                           double const* atom_pos__,
+                                           cuDoubleComplex* phase_factors__);
+#endif
 
 namespace sirius {
 
@@ -122,7 +130,7 @@ class Simulation_context: public Simulation_parameters
             : comm_(comm__),
               unit_cell_(*this, comm_)
         {
-            PROFILE();
+            PROFILE("sirius::Simulation_context::Simulation_context");
             init();
             import(fname__);
             unit_cell_.import(unit_cell_input_section_);
@@ -132,19 +140,19 @@ class Simulation_context: public Simulation_parameters
             : comm_(comm__),
               unit_cell_(*this, comm_)
         {
-            PROFILE();
+            PROFILE("sirius::Simulation_context::Simulation_context");
             init();
         }
         
         ~Simulation_context()
         {
-            PROFILE();
+            PROFILE("sirius::Simulation_context::~Simulation_context");
 
-            time_active_ += runtime::wtime();
+            //time_active_ += runtime::wtime();
 
-            if (mpi_comm_world().rank() == 0 && initialized_) {
-                printf("Simulation_context active time: %.4f sec.\n", time_active_);
-            }
+            //if (mpi_comm_world().rank() == 0 && initialized_) {
+            //    printf("Simulation_context active time: %.4f sec.\n", time_active_);
+            //}
         }
 
         /// Initialize the similation (can only be called once).
@@ -295,12 +303,6 @@ class Simulation_context: public Simulation_parameters
             return phase_factors_(0, G[0], ia__) * phase_factors_(1, G[1], ia__) * phase_factors_(2, G[2], ia__);
         }
 
-        inline double_complex gvec_coarse_phase_factor(int ig__, int ia__) const
-        {
-            auto G = gvec_coarse_.gvec(ig__);
-            return phase_factors_(0, G[0], ia__) * phase_factors_(1, G[1], ia__) * phase_factors_(2, G[2], ia__);
-        }
-
         inline int gvec_count() const
         {
             return gvec_.gvec_count(comm_.rank());
@@ -322,6 +324,33 @@ class Simulation_context: public Simulation_parameters
             return atom_coord_[iat__];
         }
         #endif
+
+        inline void generate_phase_factors(int iat__, mdarray<double_complex, 2>& phase_factors__) const
+        {
+            int na = unit_cell_.atom_type(iat__).num_atoms();
+            switch (processing_unit_) {
+                case CPU: {
+                    #pragma omp parallel for
+                    for (int igloc = 0; igloc < gvec_count(); igloc++) {
+                        int ig = gvec_offset() + igloc;
+                        for (int i = 0; i < na; i++) {
+                            int ia = unit_cell_.atom_type(iat__).atom_id(i);
+                            phase_factors__(igloc, i) = gvec_phase_factor(ig, ia);
+                        }
+                    }
+                    break;
+                }
+                case GPU: {
+                    #ifdef __GPU
+                    generate_phase_factors_gpu(gvec_count(), na, gvec_coord().at<GPU>(), atom_coord(iat__).at<GPU>(),
+                                               phase_factors__.at<GPU>());
+                    #else
+                    TERMINATE_NO_GPU
+                    #endif
+                    break;
+                }
+            }
+        }
 };
 
 inline void Simulation_context::init_fft()
@@ -347,7 +376,7 @@ inline void Simulation_context::init_fft()
     }
 
     /* create FFT driver for dense mesh (density and potential) */
-    fft_ = std::unique_ptr<FFT3D>(new FFT3D(FFT3D_grid(pw_cutoff(), rlv),
+    fft_ = std::unique_ptr<FFT3D>(new FFT3D(Utils::find_translations(pw_cutoff(), rlv),
                                             mpi_grid_fft_->communicator(1 << 0),
                                             processing_unit(), 0.9));
 
@@ -359,7 +388,7 @@ inline void Simulation_context::init_fft()
     //double gpu_workload = (mpi_grid_fft_vloc_->communicator(1 << 0).size() == 1) ? 1.0 : 0.9;
     double gpu_workload = (mpi_grid_fft_vloc_->communicator().size() == 1) ? 1.0 : 0.9;
     /* create FFT driver for coarse mesh */
-    fft_coarse_ = std::unique_ptr<FFT3D>(new FFT3D(FFT3D_grid(2 * gk_cutoff(), rlv),
+    fft_coarse_ = std::unique_ptr<FFT3D>(new FFT3D(Utils::find_translations(2 * gk_cutoff(), rlv),
                                                    mpi_grid_fft_vloc_->communicator(1 << 0),
                                                    processing_unit(), gpu_workload));
 
@@ -370,7 +399,7 @@ inline void Simulation_context::init_fft()
 
 inline void Simulation_context::initialize()
 {
-    PROFILE();
+    PROFILE("sirius::Simulation_context::initialize");
 
     /* can't initialize twice */
     if (initialized_) {
@@ -388,12 +417,10 @@ inline void Simulation_context::initialize()
     }
     if (pu == "cpu") {
         processing_unit_ = CPU;
+    } else if (pu == "gpu") {
+        processing_unit_ = GPU;
     } else {
-        if (pu == "gpu") {
-            processing_unit_ = GPU;
-        } else {
-            TERMINATE("wrong processing unit");
-        }
+        TERMINATE("wrong processing unit");
     }
 
     /* check if we can use a GPU device */
@@ -445,9 +472,9 @@ inline void Simulation_context::initialize()
     /* initialize FFT interface */
     init_fft();
 
-    #ifdef __PRINT_MEMORY_USAGE
-    MEMORY_USAGE_INFO();
-    #endif
+    if (comm_.rank() == 0 && control().print_memory_usage_) {
+        MEMORY_USAGE_INFO();
+    }
 
     //if (comm_.rank() == 0)
     //{
@@ -456,9 +483,9 @@ inline void Simulation_context::initialize()
     //}
 
     if (unit_cell_.num_atoms() != 0) {
-        unit_cell_.symmetry().check_gvec_symmetry(gvec_);
+        unit_cell_.symmetry().check_gvec_symmetry(gvec_, comm_);
         if (!full_potential()) {
-            unit_cell_.symmetry().check_gvec_symmetry(gvec_coarse_);
+            unit_cell_.symmetry().check_gvec_symmetry(gvec_coarse_, comm_);
         }
     }
 
@@ -598,11 +625,12 @@ inline void Simulation_context::initialize()
         gvec_coord_.copy_to_device();
 
         for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
-            atom_coord_.push_back(std::move(mdarray<double, 2>(3, unit_cell_.atom_type(iat).num_atoms(), memory_t::host | memory_t::device)));
-            for (int i = 0; i < unit_cell_.atom_type(iat).num_atoms(); i++) {
+            int nat = unit_cell_.atom_type(iat).num_atoms();
+            atom_coord_.push_back(std::move(mdarray<double, 2>(nat, 3, memory_t::host | memory_t::device)));
+            for (int i = 0; i < nat; i++) {
                 int ia = unit_cell_.atom_type(iat).atom_id(i);
                 for (int x: {0, 1, 2}) {
-                    atom_coord_.back()(x, i) = unit_cell_.atom(ia).position()[x];
+                    atom_coord_.back()(i, x) = unit_cell_.atom(ia).position()[x];
                 }
             }
             atom_coord_.back().copy_to_device();
@@ -610,7 +638,7 @@ inline void Simulation_context::initialize()
         #endif
     }
     
-    time_active_ = -runtime::wtime();
+    //time_active_ = -runtime::wtime();
 
     initialized_ = true;
 }
@@ -674,7 +702,7 @@ inline void Simulation_context::print_info()
     printf("  number of G-shells                    : %i\n", gvec_coarse_.num_shells());
     printf("\n");
 
-    unit_cell_.print_info();
+    unit_cell_.print_info(control().verbosity_);
     for (int i = 0; i < unit_cell_.num_atom_types(); i++) {
         unit_cell_.atom_type(i).print_info();
     }

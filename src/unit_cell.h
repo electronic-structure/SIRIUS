@@ -30,7 +30,7 @@
 #include "atom_type.h"
 #include "atom_symmetry_class.h"
 #include "atom.h"
-#include "mpi_grid.h"
+#include "mpi_grid.hpp"
 #include "symmetry.h"
 #include "input.h"
 #include "simulation_parameters.h"
@@ -216,7 +216,7 @@ class Unit_cell
         /// Add new atom type to the list of atom types and read necessary data from the .json file
         void add_atom_type(const std::string label, const std::string file_name)
         {
-            PROFILE();
+            PROFILE("sirius::Unit_cell::add_atom_type");
 
             if (atoms_.size()) {
                 TERMINATE("Can't add new atom type if atoms are already added");
@@ -229,7 +229,7 @@ class Unit_cell
         /// Add new atom to the list of atom types.
         void add_atom(const std::string label, vector3d<double> position, vector3d<double> vector_field)
         {
-            PROFILE();
+            PROFILE("sirius::Unit_cell::add_atom");
 
             if (atom_type_id_map_.count(label) == 0) {
                 std::stringstream s;
@@ -290,12 +290,12 @@ class Unit_cell
         /// Add new atom without vector field to the list of atom types.
         void add_atom(const std::string label, vector3d<double> position)
         {
-            PROFILE();
+            PROFILE("sirius::Unit_cell::add_atom");
             add_atom(label, position, {0, 0, 0});
         }
         
         /// Print basic info.
-        void print_info();
+        void print_info(int verbosity_);
 
         unit_cell_parameters_descriptor unit_cell_parameters();
         
@@ -622,7 +622,7 @@ class Unit_cell
 
         void import(Unit_cell_input_section const& inp__)
         {
-            PROFILE();
+            PROFILE("sirius::Unit_cell::import");
  
             if (inp__.exist_) {
                 /* first, load all types */

@@ -25,11 +25,6 @@
 #ifndef __CONFIG_H__
 #define __CONFIG_H__
 
-#define __TIMER
-//== #define __TIMER_TIMEOFDAY
-//== #define __TIMER_MPI_WTIME
-#define __TIMER_CHRONO
-
 //== #define __PRINT_OBJECT_HASH
 
 //== #define __PRINT_OBJECT_CHECKSUM
@@ -65,9 +60,9 @@
 //== #pragma message("NDEBUG is not defined. Assert statements are enabled.")
 //== #endif
 
-#define __PROFILE
+//#define __PROFILE
+//#define __PROFILE_TIME
 //#define __PROFILE_STACK
-#define __PROFILE_TIME
 //#define __PROFILE_FUNC
 
 #if defined(__LIBSCI_ACC) && !defined(__GPU)

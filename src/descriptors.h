@@ -25,8 +25,7 @@
 #ifndef __DESCRIPTORS_H__
 #define __DESCRIPTORS_H__
 
-#include "mdarray.h"
-#include "vector3d.h"
+#include "mdarray.hpp"
 #include "utils.h"
 
 /// Describes single atomic level.
@@ -151,7 +150,7 @@ struct nearest_neighbour_descriptor
     int atom_id;
 
     /// translation along each lattice vector
-    vector3d<int> translation;
+    sddk::vector3d<int> translation;
 
     /// distance from the central atom
     double distance;
@@ -240,47 +239,6 @@ struct mt_basis_descriptor
 {
     int ia;
     int xi;
-};
-
-struct block_data_descriptor
-{
-    int num_ranks{-1};
-    std::vector<int> counts;
-    std::vector<int> offsets;
-
-    block_data_descriptor()
-    {
-    }
-
-    block_data_descriptor(int num_ranks__) : num_ranks(num_ranks__)
-    {
-        counts  = std::vector<int>(num_ranks, 0);
-        offsets = std::vector<int>(num_ranks, 0);
-    }
-
-    void calc_offsets()
-    {
-        for (int i = 1; i < num_ranks; i++) {
-            offsets[i] = offsets[i - 1] + counts[i - 1];
-        }
-    }
-};
-
-struct z_column_descriptor
-{
-    int x;
-    int y;
-
-    /// Z-coordinates of the column.
-    std::vector<int> z;
-
-    z_column_descriptor()
-    {
-    }
-
-    z_column_descriptor(int x__, int y__, std::vector<int> z__) : x(x__), y(y__), z(z__)
-    {
-    }
 };
 
 #endif

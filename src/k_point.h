@@ -27,9 +27,8 @@
 
 #include "periodic_function.h"
 #include "matching_coefficients.h"
-#include "blacs_grid.h"
-#include "Beta_projectors/Beta_projectors.h"
-#include "wave_functions.h"
+#include "Beta_projectors/beta_projectors.h"
+#include "wave_functions.hpp"
 
 namespace sirius
 {
@@ -170,9 +169,11 @@ class K_point
               comm_row_(ctx_.blacs_grid().comm_row()),
               comm_col_(ctx_.blacs_grid().comm_col())
         {
-            PROFILE();
+            PROFILE("sirius::K_point::K_point");
 
-            for (int x = 0; x < 3; x++) vk_[x] = vk__[x];
+            for (int x = 0; x < 3; x++) {
+                vk_[x] = vk__[x];
+            }
             
             band_occupancies_ = std::vector<double>(ctx_.num_bands(), 1);
             band_energies_    = std::vector<double>(ctx_.num_bands(), 0);
@@ -183,10 +184,14 @@ class K_point
             rank_row_ = comm_row_.rank();
             rank_col_ = comm_col_.rank();
 
-            if (comm_.rank() != ctx_.blacs_grid_slice().comm().rank()) TERMINATE("ranks don't match");
+            if (comm_.rank() != ctx_.blacs_grid_slice().comm().rank()) {
+                TERMINATE("ranks don't match");
+            }
             
             #ifndef __GPU
-            if (ctx_.processing_unit() == GPU) TERMINATE_NO_GPU
+            if (ctx_.processing_unit() == GPU) {
+                TERMINATE_NO_GPU
+            }
             #endif
         }
 
@@ -289,15 +294,6 @@ class K_point
         //        return unit_cell_.mt_basis_size() + num_gkvec();
         //    } else {
         //        return num_gkvec();
-        //    }
-        //}
-
-        //inline int wf_pw_offset() const
-        //{
-        //    if (ctx_.full_potential()) {
-        //        return unit_cell_.mt_basis_size();
-        //    } else {
-        //        return 0;
         //    }
         //}
 

@@ -83,10 +83,10 @@ class Band
         void apply_uj_correction(mdarray<double_complex, 2>& fv_states, mdarray<double_complex, 3>& hpsi);
 
         /// Add interstitial contribution to apw-apw block of Hamiltonian and overlap
-        inline void set_fv_h_o_it(K_point* kp,
-                                  Periodic_function<double>* effective_potential, 
-                                  matrix<double_complex>& h,
-                                  matrix<double_complex>& o) const;
+        inline void set_fv_h_o_it(K_point* kp__,
+                                  Potential const& potential__, 
+                                  matrix<double_complex>& h__,
+                                  matrix<double_complex>& o__) const;
 
         inline void set_o_it(K_point* kp, mdarray<double_complex, 2>& o) const;
 
@@ -113,19 +113,21 @@ class Band
                           mdarray<double_complex, 2>& h);
        
         inline void diag_fv_full_potential_exact(K_point* kp__,
-                                                Periodic_function<double>* effective_potential__) const;
+                                                 Potential const& potential__) const;
         
         inline void diag_fv_full_potential_davidson(K_point* kp__,
                                                     Periodic_function<double>* effective_potential__,
                                                     Interstitial_operator& istl_op__) const;
 
-        inline void apply_o_apw(K_point* kp__,
-                                Interstitial_operator& istl_op__,
-                                int N,
-                                int n,
-                                wave_functions& phi__,
-                                wave_functions& ophi__) const;
-
+        inline void apply_fv_o(K_point* kp__,
+                               bool apw_only__,
+                               bool add_o1__,
+                               Interstitial_operator& istl_op__, 
+                               int N__,
+                               int n__,
+                               wave_functions& phi__,
+                               wave_functions& ophi__) const;
+        
         inline void get_singular_components(K_point* kp__,
                                             Interstitial_operator& istl_op__) const;
 
@@ -219,7 +221,7 @@ class Band
                                       dmatrix<T>& mtrx__,
                                       dmatrix<T>& mtrx_old__) const
         {
-            PROFILE_WITH_TIMER("sirius::Band::set_subspace_mtrx");
+            PROFILE("sirius::Band::set_subspace_mtrx");
             
             assert(n__ != 0);
             if (mtrx_old__.size()) {
@@ -295,16 +297,16 @@ class Band
                 
         /// Diagonalize a full-potential Hamiltonian.
         void diag_fv_full_potential(K_point* kp__,
-                                    Periodic_function<double>* effective_potential__) const
+                                    Potential const& potential__) const
         {
             auto& itso = ctx_.iterative_solver_input_section();
             if (itso.type_ == "exact") {
-                diag_fv_full_potential_exact(kp__, effective_potential__);
+                diag_fv_full_potential_exact(kp__, potential__);
             } else if (itso.type_ == "davidson") {
                 Interstitial_operator istl_op(ctx_.fft_coarse(), ctx_.gvec_coarse(),
                                               ctx_.mpi_grid_fft_vloc().communicator(1 << 1),
-                                              effective_potential__, ctx_.step_function());
-                diag_fv_full_potential_davidson(kp__, effective_potential__, istl_op);
+                                              const_cast<Potential&>(potential__).effective_potential(), ctx_.step_function());
+                diag_fv_full_potential_davidson(kp__, const_cast<Potential&>(potential__).effective_potential(), istl_op);
             }
         }
 
@@ -314,7 +316,7 @@ class Band
                                    Periodic_function<double>* effective_potential__,
                                    Periodic_function<double>* effective_magnetic_field__[3]) const
         {
-            PROFILE_WITH_TIMER("sirius::Band::diag_pseudo_potential");
+            PROFILE("sirius::Band::diag_pseudo_potential");
 
             Hloc_operator hloc(ctx_.fft_coarse(), kp__->gkvec_vloc(), ctx_.mpi_grid_fft_vloc().communicator(1 << 1),
                                ctx_.num_mag_dims(), ctx_.gvec_coarse(), effective_potential__, effective_magnetic_field__);
@@ -374,7 +376,7 @@ class Band
               unit_cell_(ctx__.unit_cell()),
               blacs_grid_(ctx__.blacs_grid())
         {
-            PROFILE();
+            PROFILE("sirius::Band::Band");
 
             gaunt_coefs_ = std::unique_ptr<Gaunt_coefficients<double_complex>>(
                 new Gaunt_coefficients<double_complex>(ctx_.lmax_apw(), 
@@ -494,19 +496,40 @@ class Band
             auto& type = atom__.type();
 
             // TODO: this is k-independent and can in principle be precomputed together with radial integrals if memory is available
-            // TODO: check that hmt is indeed Hermitian; compute  upper triangular part and use zhemm
+            // TODO: for spin-collinear case hmt is Hermitian; compute upper triangular part and use zhemm
             mdarray<double_complex, 2> hmt(type.mt_aw_basis_size(), type.mt_aw_basis_size());
             /* compute the muffin-tin Hamiltonian */
             for (int j2 = 0; j2 < type.mt_aw_basis_size(); j2++) {
-                int lm2 = type.indexb(j2).lm;
+                int lm2    = type.indexb(j2).lm;
                 int idxrf2 = type.indexb(j2).idxrf;
                 for (int j1 = 0; j1 < type.mt_aw_basis_size(); j1++) {
-                    int lm1 = type.indexb(j1).lm;
+                    int lm1    = type.indexb(j1).lm;
                     int idxrf1 = type.indexb(j1).idxrf;
                     hmt(j1, j2) = atom__.radial_integrals_sum_L3<sblock>(idxrf1, idxrf2, gaunt_coefs_->gaunt_vector(lm1, lm2));
                 }
             }
             linalg<CPU>::gemm(0, 1, num_gkvec__, type.mt_aw_basis_size(), type.mt_aw_basis_size(), alm__, hmt, halm__);
+        }
+
+        void apply_o1mt_to_apw(Atom const&                 atom__,
+                               int                         num_gkvec__,
+                               mdarray<double_complex, 2>& alm__,
+                               mdarray<double_complex, 2>& oalm__) const
+        {
+            auto& type = atom__.type();
+
+            for (int j = 0; j < type.mt_aw_basis_size(); j++) {
+                int l     = type.indexb(j).l;
+                int lm    = type.indexb(j).lm;
+                int idxrf = type.indexb(j).idxrf;
+                for (int order = 0; order < type.aw_order(l); order++) {
+                    int j1 = type.indexb().index_by_lm_order(lm, order);
+                    int idxrf1 = type.indexr().index_by_l_order(l, order);
+                    for (int ig = 0; ig < num_gkvec__; ig++) {
+                        oalm__(ig, j) += atom__.symmetry_class().o1_radial_integral(idxrf, idxrf1) * alm__(ig, j1);
+                    }
+                }
+            }
         }
  
         /// Setup apw-lo and lo-apw blocs of Hamiltonian and overlap matrices
@@ -592,7 +615,7 @@ class Band
          */
         template <device_t pu, electronic_structure_method_t basis>
         inline void set_fv_h_o(K_point* kp,
-                               Periodic_function<double>* effective_potential,
+                               Potential const& potential__,
                                dmatrix<double_complex>& h,
                                dmatrix<double_complex>& o) const;
         
@@ -724,7 +747,7 @@ class Band
 
         /// Solve first-variational (non-magnetic) problem
         inline void solve_fv(K_point* kp__,
-                             Periodic_function<double>* effective_potential__) const;
+                             Potential const& potential__) const;
 
         /// Solve second-variational problem
         inline void solve_sv(K_point* kp,
@@ -735,9 +758,9 @@ class Band
                              Periodic_function<double>* effective_magnetic_field[3]) const;
 
         /// Solve \f$ \hat H \psi = E \psi \f$ and find eigen-states of the Hamiltonian.
-        inline void solve_for_kset(K_set& kset,
-                                   Potential& potential,
-                                   bool precompute) const;
+        inline void solve_for_kset(K_set& kset__,
+                                   Potential& potential__,
+                                   bool precompute__) const;
 
         inline Eigenproblem const& std_evp_solver() const
         {
@@ -769,15 +792,17 @@ class Band
         template <typename T>
         inline mdarray<double, 1> get_o_diag(K_point* kp__,
                                              Q_operator<T>& q_op__) const;
-        
+
+        inline void initialize_subspace(K_set& kset__,
+                                        Potential& potential__) const;
+
         /// Initialize the wave-functions subspace.
         template <typename T>
-        void initialize_subspace(K_point* kp__,
-                                 Periodic_function<double>* effective_potential__,
-                                 Periodic_function<double>* effective_magnetic_field[3],
-                                 int num_ao__,
-                                 int lmax__,
-                                 std::vector< std::vector< Spline<double> > >& rad_int__) const;
+        inline void initialize_subspace(K_point* kp__,
+                                        Periodic_function<double>* effective_potential__,
+                                        Periodic_function<double>* effective_magnetic_field[3],
+                                        int num_ao__,
+                                        std::vector<std::vector<Spline<double>>> const& rad_int__) const;
 };
 
 #include "Band/get_h_o_diag.hpp"

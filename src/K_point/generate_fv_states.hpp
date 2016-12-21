@@ -24,7 +24,7 @@
 
 inline void K_point::generate_fv_states()
 {
-    PROFILE_WITH_TIMER("sirius::K_point::generate_fv_states");
+    PROFILE("sirius::K_point::generate_fv_states");
     
     if (!ctx_.full_potential()) {
         return;
@@ -37,10 +37,6 @@ inline void K_point::generate_fv_states()
     }
     #endif
 
-    /* get thread id */
-    #ifdef __GPU
-    //int tid = omp_get_thread_num();
-    #endif
     mdarray<double_complex, 2> alm(num_gkvec_loc(), unit_cell_.max_mt_aw_basis_size(), memory_t::host_pinned);
     mdarray<double_complex, 2> tmp(unit_cell_.max_mt_aw_basis_size(), ctx_.num_fv_states());
 
@@ -51,7 +47,6 @@ inline void K_point::generate_fv_states()
     }
     #endif
     
-    //#pragma omp for
     for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
         auto location = fv_eigen_vectors_slab().spl_num_atoms().location(ia);
         /* number of alm coefficients for atom */
@@ -82,6 +77,11 @@ inline void K_point::generate_fv_states()
         #endif
 
         comm_.reduce(tmp1.at<CPU>(), static_cast<int>(tmp1.size()), location.rank);
+
+        #ifdef __PRINT_OBJECT_CHECKSUM
+        auto z1 = tmp1.checksum();
+        DUMP("checksum(tmp1): %18.10f %18.10f", std::real(z1), std::imag(z1));
+        #endif
 
         if (location.rank == comm_.rank()) {
             int offset1 = fv_states().offset_mt_coeffs(location.local_index);

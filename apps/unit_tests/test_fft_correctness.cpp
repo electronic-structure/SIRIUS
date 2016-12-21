@@ -6,7 +6,7 @@ void test_fft(double cutoff__)
 {
     matrix3d<double> M = {{1, 0, 0}, {0, 1, 0}, {0, 0, 1}};
 
-    FFT3D_grid fft_grid(cutoff__, M);
+    FFT3D_grid fft_grid(Utils::find_translations(cutoff__, M));
 
     FFT3D fft(fft_grid, mpi_comm_world(), CPU);
 
@@ -197,7 +197,7 @@ int main(int argn, char **argv)
 
     test_fft(cutoff);
 
-    runtime::Timer::print();
+    sddk::timer::print();
     
     sirius::finalize();
     return 0;

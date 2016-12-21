@@ -2,38 +2,29 @@ include ../make.inc
 
 .SUFFIXES: .cpp .cu .f90
 
-SRC =  LebedevLaikov.cpp \
-       potential.cpp symmetry.cpp \
-       spheric_function.cpp force.cpp dft_ground_state.cpp real_space_prj.cpp \
-       Beta_projectors/Beta_projectors.cpp \
+SRC =  LebedevLaikov.cpp symmetry.cpp force.cpp dft_ground_state.cpp real_space_prj.cpp \
        atom_type.cpp atom.cpp atom_symmetry_class.cpp unit_cell.cpp \
        Potential/potential.cpp \
        Potential/poisson.cpp \
        Potential/xc.cpp \
-       Potential/generate_local_potential.cpp \
-       Potential/generate_effective_potential.cpp \
        Potential/paw_potential.cpp\
-			 Geometry/Forces_PS.cpp
-
+       Geometry/Forces_PS.cpp \
+       Beta_projectors/beta_projectors.cpp
 
 OBJ = $(SRC:.cpp=.o)
 
-
-
-
-
 ifneq (,$(findstring D__GPU,$(CXX_OPT)))
 	OBJ := $(OBJ) \
-	Kernels/cuda_interface.o \
-	Kernels/cufft_interface.o \
-	Kernels/cublas_interface.o \
+	SDDK/GPU/cuda_interface.o \
+	SDDK/GPU/cufft_interface.o \
+	SDDK/GPU/cublas_interface.o \
+	SDDK/GPU/pack_unpack_z_columns.o \
 	Kernels/cuda_uspp_kernels.o \
 	Kernels/scale_matrix.o \
 	Kernels/spline.o \
 	Kernels/create_beta_gk.o \
 	Kernels/mul_veff_with_phase_factors.o \
 	Kernels/density_rg.o \
-	Kernels/pack_unpack_z_columns.o \
 	Kernels/residuals_aux.o \
 	Kernels/generate_dm_pw.o \
 	Kernels/sum_q_pw_dm_pw.o \
@@ -42,7 +33,7 @@ ifneq (,$(findstring D__GPU,$(CXX_OPT)))
 endif
 
 ifneq (,$(findstring D__MAGMA,$(CXX_OPT)))
-	OBJ := $(OBJ) Kernels/magma_interface.o
+	OBJ := $(OBJ) SDDK/GPU/magma_interface.o
 endif
 
 ifneq (,$(findstring D__PLASMA,$(CXX_OPT)))
