@@ -882,6 +882,17 @@ module sirius
             integer,                  intent(in)  :: ld
         end subroutine
 
+        subroutine sirius_get_beta_projectors(kset_id, ik, npw, gvec_k, vkb, ld, nkb)&
+            &bind(C, name="sirius_get_beta_projectors")
+            integer,                  intent(in)  :: kset_id
+            integer,                  intent(in)  :: ik
+            integer,                  intent(in)  :: npw
+            integer,                  intent(in)  :: gvec_k
+            complex(8),               intent(out) :: vkb
+            integer,                  intent(in)  :: ld
+            integer,                  intent(in)  :: nkb
+        end subroutine
+
         subroutine sirius_get_d_mtrx(ia, d_mtrx, ld)&
             &bind(C, name="sirius_get_d_mtrx")
             integer,                  intent(in)  :: ia
