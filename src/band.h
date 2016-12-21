@@ -802,8 +802,7 @@ class Band
                                         Periodic_function<double>* effective_potential__,
                                         Periodic_function<double>* effective_magnetic_field[3],
                                         int num_ao__,
-                                        int lmax__,
-                                        std::vector< std::vector<Spline<double>>> const& rad_int__) const;
+                                        std::vector<std::vector<Spline<double>>> const& rad_int__) const;
 };
 
 #include "Band/get_h_o_diag.hpp"

@@ -172,18 +172,25 @@ void sirius_delete_density()
 }
 
 /// Create the k-point set from the list of k-points and return it's id
-void sirius_create_kset(int32_t* num_kpoints__,
-                        double* kpoints__,
-                        double* kpoint_weights__,
-                        int32_t* init_kset__,
-                        int32_t* kset_id__)
+void sirius_create_kset(ftn_int*    num_kpoints__,
+                        ftn_double* kpoints__,
+                        ftn_double* kpoint_weights__,
+                        ftn_int*    init_kset__,
+                        ftn_int*    kset_id__,
+                        ftn_int*    nk_loc__)
 {
     mdarray<double, 2> kpoints(kpoints__, 3, *num_kpoints__);
 
     sirius::K_set* new_kset = new sirius::K_set(*sim_ctx, sim_ctx->mpi_grid().communicator(1 << _mpi_dim_k_));
     new_kset->add_kpoints(kpoints, kpoint_weights__);
     if (*init_kset__) {
-        new_kset->initialize();
+        std::vector<int> counts;
+        if (nk_loc__ != NULL) {
+            for (int i = 0; i < new_kset->comm().size(); i++) {
+                counts.push_back(nk_loc__[i]);
+            }
+        }
+        new_kset->initialize(counts);
     }
 
     kset_list.push_back(new_kset);
@@ -2611,7 +2618,7 @@ void sirius_get_d_mtrx(ftn_int* ia__,
     int nbf = atom.mt_basis_size();
 
     /* index of Rlm of QE */
-    auto idx_Rlm = [](int lm)
+    auto idx_Rlm = [](int lm) // TODO: move duplicated code to a separate inline function
     {
         int l = static_cast<int>(std::sqrt(static_cast<double>(lm) + 1e-12));
         int m = lm - l * l - l;
@@ -3035,14 +3042,78 @@ void sirius_get_wave_functions(ftn_int* kset_id__,
     mdarray<int, 2> gvec_k(gvec_k__, 3, *npw__);
     mdarray<double_complex, 2> evc(evc__, *ld__, sim_ctx->num_bands());
     evc.zero();
+    
+    std::vector<double_complex> wf_tmp(kp->num_gkvec());
+    int gkvec_count = kp->gkvec().gvec_count(kp->comm().rank());
+    int gkvec_offset = kp->gkvec().gvec_offset(kp->comm().rank());
 
     for (int i = 0; i < sim_ctx->num_bands(); i++) {
+        std::memcpy(&wf_tmp[gkvec_offset], &kp->spinor_wave_functions(0).pw_coeffs().prime(0, i), gkvec_count * sizeof(double_complex));
+        kp->comm().allgather(wf_tmp.data(), gkvec_offset, gkvec_count);
+
         for (int ig = 0; ig < *npw__; ig++) {
             int ig1 = kp->gkvec().index_by_gvec({gvec_k(0, ig), gvec_k(1, ig), gvec_k(2, ig)});
             if (ig1 < 0 || ig1 >= kp->num_gkvec()) {
                 TERMINATE("G-vector is out of range");
             }
-            evc(ig, i) = kp->spinor_wave_functions(0).pw_coeffs().prime(ig1, i);
+            evc(ig, i) = wf_tmp[ig1];
+        }
+    }
+}
+
+void sirius_get_beta_projectors(ftn_int* kset_id__,
+                                ftn_int* ik__,
+                                ftn_int* npw__,
+                                ftn_int* gvec_k__,
+                                ftn_double_complex* vkb__,
+                                ftn_int* ld__,
+                                ftn_int* nkb__)
+{
+    if (*nkb__ != sim_ctx->unit_cell().mt_lo_basis_size()) {
+        TERMINATE("wrong number of beta-projectors");
+    }
+
+    auto kset = kset_list[*kset_id__];
+    auto kp = (*kset)[*ik__ - 1];
+    auto& beta_gk = kp->beta_projectors().beta_gk();
+
+    mdarray<int, 2> gvec_k(gvec_k__, 3, *npw__);
+    mdarray<double_complex, 2> vkb(vkb__, *ld__, *nkb__);
+    vkb.zero();
+    
+    std::vector<double_complex> wf_tmp(kp->num_gkvec());
+    int gkvec_count = kp->gkvec().gvec_count(kp->comm().rank());
+    int gkvec_offset = kp->gkvec().gvec_offset(kp->comm().rank());
+
+    for (int ia = 0; ia < sim_ctx->unit_cell().num_atoms(); ia++) {
+        auto& atom = sim_ctx->unit_cell().atom(ia);
+        
+        int nbf = atom.mt_basis_size();
+
+        /* index of Rlm of QE */
+        auto idx_Rlm = [](int lm)
+        {
+            int l = static_cast<int>(std::sqrt(static_cast<double>(lm) + 1e-12));
+            int m = lm - l * l - l;
+            return (m > 0) ? 2 * m - 1 : -2 * m;
+        };
+
+        for (int xi = 0; xi < nbf; xi++) {
+            int lm     = atom.type().indexb(xi).lm;
+            int idxrf  = atom.type().indexb(xi).idxrf;
+            /* position in QE array */
+            int xi1 = atom.type().indexb().index_by_idxrf(idxrf) + idx_Rlm(lm);
+
+            std::memcpy(&wf_tmp[gkvec_offset], &beta_gk(0, atom.offset_lo() + xi), gkvec_count * sizeof(double_complex));
+            kp->comm().allgather(wf_tmp.data(), gkvec_offset, gkvec_count);
+
+            for (int ig = 0; ig < *npw__; ig++) {
+                int ig1 = kp->gkvec().index_by_gvec({gvec_k(0, ig), gvec_k(1, ig), gvec_k(2, ig)});
+                if (ig1 < 0 || ig1 >= kp->num_gkvec()) {
+                    TERMINATE("G-vector is out of range");
+                }
+                vkb(ig, atom.offset_lo() + xi1) = wf_tmp[ig1];
+            }
         }
     }
 }

@@ -40,7 +40,7 @@ namespace sddk {
     }                                                                               \
 }
 
-enum mpi_op_t
+enum class mpi_op_t
 {
     op_sum,
     op_max
@@ -283,16 +283,16 @@ class Communicator
     }
 
     /// Perform the in-place (the output buffer is used as the input buffer) all-to-all reduction.
-    template <typename T, mpi_op_t mpi_op__ = op_sum>
+    template <typename T, mpi_op_t mpi_op__ = mpi_op_t::op_sum>
     inline void allreduce(T* buffer__, int count__) const
     {
         MPI_Op op;
         switch (mpi_op__) {
-            case op_sum: {
+            case mpi_op_t::op_sum: {
                 op = MPI_SUM;
                 break;
             }
-            case op_max: {
+            case mpi_op_t::op_max: {
                 op = MPI_MAX;
                 break;
             }
@@ -306,22 +306,22 @@ class Communicator
     }
 
     /// Perform the in-place (the output buffer is used as the input buffer) all-to-all reduction.
-    template <typename T, mpi_op_t op__ = op_sum>
+    template <typename T, mpi_op_t op__ = mpi_op_t::op_sum>
     inline void allreduce(std::vector<T>& buffer__) const
     {
-        allreduce<T, op__>(&buffer__[0], static_cast<int>(buffer__.size()));
+        allreduce<T, op__>(buffer__.data(), static_cast<int>(buffer__.size()));
     }
 
-    template <typename T, mpi_op_t mpi_op__ = op_sum>
+    template <typename T, mpi_op_t mpi_op__ = mpi_op_t::op_sum>
     inline void iallreduce(T* buffer__, int count__, MPI_Request* req__) const
     {
         MPI_Op op;
         switch (mpi_op__) {
-            case op_sum: {
+            case mpi_op_t::op_sum: {
                 op = MPI_SUM;
                 break;
             }
-            case op_max: {
+            case mpi_op_t::op_max: {
                 op = MPI_MAX;
                 break;
             }
@@ -356,7 +356,8 @@ class Communicator
         str__ = std::string(buf);
         delete[] buf;
     }
-
+    
+    /// In-place MPI_Allgatherv.
     template <typename T>
     void allgather(T* buffer__, int const* recvcounts__, int const* displs__) const
     {
@@ -364,24 +365,7 @@ class Communicator
                                   mpi_type_wrapper<T>::kind(), mpi_comm_));
     }
 
-    template <typename T>
-    void allgather(T const* sendbuf__, T* recvbuf__, int offset__, int count__) const
-    {
-        // TODO: pack in one call
-        std::vector<int> counts(size());
-        counts[rank()] = count__;
-        CALL_MPI(MPI_Allgather, (MPI_IN_PLACE, 0, MPI_DATATYPE_NULL, &counts[0], 1, mpi_type_wrapper<int>::kind(), mpi_comm_));
-
-        std::vector<int> offsets(size());
-        offsets[rank()] = offset__;
-        CALL_MPI(MPI_Allgather, (MPI_IN_PLACE, 0, MPI_DATATYPE_NULL, &offsets[0], 1, mpi_type_wrapper<int>::kind(), mpi_comm_));
-
-        // this->allgather(sendbuf__, count__, recvbuf__, counts.data(), offsets.data());
-
-        CALL_MPI(MPI_Allgatherv, (sendbuf__, count__, mpi_type_wrapper<T>::kind(), recvbuf__, &counts[0], &offsets[0],
-                                  mpi_type_wrapper<T>::kind(), mpi_comm_));
-    }
-
+    /// Out-of-place MPI_Allgatherv.
     template <typename T>
     void allgather(T* const sendbuf__, int sendcount__, T* recvbuf__, int const* recvcounts__,
                    int const* displs__) const
@@ -391,13 +375,13 @@ class Communicator
     }
 
     template <typename T>
-    void allgather(T* buffer__, int offset__, int count__) const
+    void allgather(T const* sendbuf__, T* recvbuf__, int offset__, int count__) const
     {
         std::vector<int> v(size() * 2);
         v[2 * rank()]     = count__;
         v[2 * rank() + 1] = offset__;
 
-        CALL_MPI(MPI_Allgather, (MPI_IN_PLACE, 0, MPI_DATATYPE_NULL, &v[0], 2, mpi_type_wrapper<int>::kind(), mpi_comm_));
+        CALL_MPI(MPI_Allgather, (MPI_IN_PLACE, 0, MPI_DATATYPE_NULL, v.data(), 2, mpi_type_wrapper<int>::kind(), mpi_comm_));
 
         std::vector<int> counts(size());
         std::vector<int> offsets(size());
@@ -406,7 +390,31 @@ class Communicator
             counts[i]  = v[2 * i];
             offsets[i] = v[2 * i + 1];
         }
-        allgather(buffer__, &counts[0], &offsets[0]);
+
+        //allgather(sendbuf__, count__, recvbuf__, counts.data(), offsets.data());
+
+        CALL_MPI(MPI_Allgatherv, (sendbuf__, count__, mpi_type_wrapper<T>::kind(), recvbuf__, counts.data(), offsets.data(),
+                                  mpi_type_wrapper<T>::kind(), mpi_comm_));
+    }
+
+    /// In-place MPI_Allgatherv.
+    template <typename T>
+    void allgather(T* buffer__, int offset__, int count__) const
+    {
+        std::vector<int> v(size() * 2);
+        v[2 * rank()]     = count__;
+        v[2 * rank() + 1] = offset__;
+
+        CALL_MPI(MPI_Allgather, (MPI_IN_PLACE, 0, MPI_DATATYPE_NULL, v.data(), 2, mpi_type_wrapper<int>::kind(), mpi_comm_));
+
+        std::vector<int> counts(size());
+        std::vector<int> offsets(size());
+
+        for (int i = 0; i < size(); i++) {
+            counts[i]  = v[2 * i];
+            offsets[i] = v[2 * i + 1];
+        }
+        allgather(buffer__, counts.data(), offsets.data());
     }
 
     template <typename T>

@@ -50,7 +50,8 @@ class K_set
 
         std::vector<K_point*> kpoints_;
 
-        splindex<block> spl_num_kpoints_;
+        //splindex<block> spl_num_kpoints_;
+        splindex<chunk> spl_num_kpoints_;
 
         double energy_fermi_{0};
 
@@ -64,9 +65,9 @@ class K_set
 
         K_set(Simulation_context& ctx__,
               Communicator const& comm_k__)
-            : ctx_(ctx__),
-              unit_cell_(ctx__.unit_cell()),
-              comm_k_(comm_k__)
+            : ctx_(ctx__)
+            , unit_cell_(ctx__.unit_cell())
+            , comm_k_(comm_k__)
         {
             PROFILE("sirius::K_set::K_set");
         }
@@ -76,9 +77,9 @@ class K_set
               vector3d<int> k_grid__,
               vector3d<int> k_shift__,
               int use_symmetry__) 
-            : ctx_(ctx__),
-              unit_cell_(ctx__.unit_cell()),
-              comm_k_(comm_k__)
+            : ctx_(ctx__)
+            , unit_cell_(ctx__.unit_cell())
+            , comm_k_(comm_k__)
         {
             PROFILE("sirius::K_set::K_set");
 
@@ -169,7 +170,9 @@ class K_set
             //    for (int ik = 0; ik < nk; ik++) add_kpoint(&vk(0, ik), wk[ik]);
             //}
 
-            for (int ik = 0; ik < nk; ik++) add_kpoint(&kp(0, ik), wk[ik]);
+            for (int ik = 0; ik < nk; ik++) {
+                add_kpoint(&kp(0, ik), wk[ik]);
+            }
         }
 
         ~K_set()
@@ -180,10 +183,15 @@ class K_set
         }
         
         /// Initialize the k-point set
-        void initialize()
+        void initialize(std::vector<int> counts = std::vector<int>())
         {
             /* distribute k-points along the 1-st dimension of the MPI grid */
-            spl_num_kpoints_ = splindex<block>(num_kpoints(), comm_k_.size(), comm_k_.rank());
+            if (counts.empty()) {
+                splindex<block> spl_tmp(num_kpoints(), comm_k_.size(), comm_k_.rank());
+                spl_num_kpoints_ = splindex<chunk>(num_kpoints(), comm_k_.size(), comm_k_.rank(), spl_tmp.counts());
+            } else {
+                spl_num_kpoints_ = splindex<chunk>(num_kpoints(), comm_k_.size(), comm_k_.rank(), counts);
+            }
 
             for (int ikloc = 0; ikloc < spl_num_kpoints_.local_size(); ikloc++) {
                 kpoints_[spl_num_kpoints_[ikloc]]->initialize();
@@ -215,7 +223,7 @@ class K_set
                 auto ik = spl_num_kpoints_[ikloc];
                 max_num_gkvec = std::max(max_num_gkvec, kpoints_[ik]->num_gkvec());
             }
-            comm_k_.allreduce<int, op_max>(&max_num_gkvec, 1);
+            comm_k_.allreduce<int, mpi_op_t::op_max>(&max_num_gkvec, 1);
             return max_num_gkvec;
         }
 
@@ -251,17 +259,17 @@ class K_set
             kpoints_.clear();
         }
         
-        inline int num_kpoints()
+        inline int num_kpoints() const
         {
-            return (int)kpoints_.size();
+            return static_cast<int>(kpoints_.size());
         }
 
-        inline splindex<block>& spl_num_kpoints()
+        inline splindex<chunk> const& spl_num_kpoints() const
         {
             return spl_num_kpoints_;
         }
         
-        inline int spl_num_kpoints(int ikloc)
+        inline int spl_num_kpoints(int ikloc) const
         {
             return spl_num_kpoints_[ikloc];
         }
@@ -281,12 +289,12 @@ class K_set
             kpoints_[ik]->get_band_energies(band_energies);
         }
         
-        inline double energy_fermi()
+        inline double energy_fermi() const
         {
             return energy_fermi_;
         }
 
-        inline double band_gap()
+        inline double band_gap() const
         {
             return band_gap_;
         }
@@ -317,6 +325,11 @@ class K_set
         }
 
         inline K_point* k_point(int ik) {return kpoints_[ik];}
+
+        inline Communicator const& comm() const
+        {
+            return comm_k_;
+        }
 };
 
 inline void K_set::sync_band_energies()
