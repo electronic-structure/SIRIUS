@@ -144,6 +144,28 @@ void test4()
     }
 }
 
+void test5()
+{
+    printf("\n");
+    printf("test5\n");
+    for (int num_ranks = 1; num_ranks < 20; num_ranks++) {
+        for (int N = 1; N < 1130; N++) {
+            splindex<block> spl_tmp(N, num_ranks, 0);
+
+            splindex<chunk> spl(N, num_ranks, 0, spl_tmp.counts());
+
+            for (int i = 0; i < N; i++) {
+                int rank = spl.local_rank(i);
+                int offset = spl.local_index(i);
+                if (i != spl.global_index(offset, rank)) {
+                    std::cout << "wrong index" << std::endl;
+                    exit(0);
+                }
+            }
+        }
+    }
+}
+
 int main(int argn, char** argv)
 {
     sirius::initialize(1);
@@ -152,5 +174,6 @@ int main(int argn, char** argv)
     //test2();
     test3();
     test4();
+    test5();
     sirius::finalize();
 }
