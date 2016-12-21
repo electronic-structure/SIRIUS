@@ -3,7 +3,7 @@ inline void Band::initialize_subspace(K_set& kset__,
 {
     PROFILE("sirius::Band::initialize_subspace");
 
-    int lmax{1};
+    //int lmax{2};
     int N{0};
     /* interpolate I_{\alpha,n}(q) = <j_{l_n}(q*x) | wf_{n,l_n}(x) > with splines */
     std::vector<std::vector<Spline<double>>> rad_int(unit_cell_.num_atom_types());
@@ -21,14 +21,14 @@ inline void Band::initialize_subspace(K_set& kset__,
             /* create jl(qx) */
             #pragma omp parallel for
             for (int iq = 0; iq < nq; iq++) {
-                jl(iq, iat) = Spherical_Bessel_functions(lmax, atom_type.radial_grid(), qgrid[iq]);
+                jl(iq, iat) = Spherical_Bessel_functions(atom_type.indexr().lmax(), atom_type.radial_grid(), qgrid[iq]);
             }
 
             //rad_int[iat].resize(atom_type.pp_desc().atomic_pseudo_wfs_.size());
-            rad_int[iat].resize(lmax + 1);
+            rad_int[iat].resize(atom_type.indexr().lmax() + 1);
             /* loop over all pseudo wave-functions */
             //for (size_t i = 0; i < atom_type.pp_desc().atomic_pseudo_wfs_.size(); i++) {
-            for (int l = 0; l <= lmax; l++) {
+            for (int l = 0; l <= atom_type.indexr().lmax(); l++) {
                 //rad_int[iat][i] = Spline<double>(qgrid);
                 rad_int[iat][l] = Spline<double>(qgrid);
                 
@@ -57,7 +57,7 @@ inline void Band::initialize_subspace(K_set& kset__,
         /* get the total number of atomic-centered orbitals */
         for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
             auto& atom_type = unit_cell_.atom_type(iat);
-            int n = Utils::lmmax(lmax);
+            int n = Utils::lmmax(atom_type.indexr().lmax());
             //int n{0};
             //for (auto& wf: atom_type.pp_desc().atomic_pseudo_wfs_) {
             //    n += (2 * wf.first + 1);
@@ -76,10 +76,10 @@ inline void Band::initialize_subspace(K_set& kset__,
         
         if (ctx_.gamma_point()) {
             initialize_subspace<double>(kp, potential__.effective_potential(),
-                                        potential__.effective_magnetic_field(), N, lmax, rad_int);
+                                        potential__.effective_magnetic_field(), N, rad_int);
         } else {
             initialize_subspace<double_complex>(kp, potential__.effective_potential(),
-                                                potential__.effective_magnetic_field(), N, lmax, rad_int);
+                                                potential__.effective_magnetic_field(), N, rad_int);
         }
     }
 
@@ -97,7 +97,6 @@ inline void Band::initialize_subspace(K_point* kp__,
                                       Periodic_function<double>* effective_potential__,
                                       Periodic_function<double>* effective_magnetic_field__[3],
                                       int num_ao__,
-                                      int lmax__,
                                       std::vector<std::vector<Spline<double>>> const& rad_int__) const
 {
     PROFILE("sirius::Band::initialize_subspace|kp");
@@ -111,7 +110,7 @@ inline void Band::initialize_subspace(K_point* kp__,
     if (num_ao__ > 0) {
         #pragma omp parallel
         {
-            std::vector<double> gkvec_rlm(Utils::lmmax(lmax__));
+            std::vector<double> gkvec_rlm(Utils::lmmax(unit_cell_.lmax()));
             /* fill first N functions with atomic orbitals */
             #pragma omp for
             for (int igk_loc = 0; igk_loc < kp__->num_gkvec_loc(); igk_loc++) {
@@ -122,7 +121,7 @@ inline void Band::initialize_subspace(K_point* kp__,
                 int idx_gk = static_cast<int>((vs[0] / ctx_.gk_cutoff()) * (rad_int__[0][0].num_points() - 1));
                 double dgk = vs[0] - rad_int__[0][0].radial_grid()[idx_gk];
                 /* compute real spherical harmonics for G+k vector */
-                SHT::spherical_harmonics(lmax__, vs[1], vs[2], &gkvec_rlm[0]);
+                SHT::spherical_harmonics(unit_cell_.lmax(), vs[1], vs[2], &gkvec_rlm[0]);
 
                 int n{0};
                 for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
@@ -131,7 +130,7 @@ inline void Band::initialize_subspace(K_point* kp__,
 
                     auto& atom_type = unit_cell_.atom(ia).type();
                     //for (size_t i = 0; i < atom_type.pp_desc().atomic_pseudo_wfs_.size(); i++) {
-                    for (int l = 0; l <= lmax__; l++) {
+                    for (int l = 0; l <= atom_type.indexr().lmax(); l++) {
                         //int l = atom_type.pp_desc().atomic_pseudo_wfs_[i].first;
                         for (int m = -l; m <= l; m++) {
                             int lm = Utils::lm_by_l_m(l, m);
