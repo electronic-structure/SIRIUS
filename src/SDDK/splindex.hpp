@@ -32,11 +32,11 @@
 
 namespace sddk {
 
-enum splindex_t
+enum splindex_t // TODO: enum class
 {
     block,
     block_cyclic,
-    custom
+    chunk
 };
 
 /// Base class for split index.
@@ -186,8 +186,9 @@ class splindex<block, T> : public splindex_base<T>
     {
         assert(rank__ >= 0 && rank__ < this->num_ranks_);
 
-        if (local_size(rank__) == 0)
+        if (local_size(rank__) == 0) {
             return std::numeric_limits<T>::max();
+        }
 
         assert(idxloc__ < local_size(rank__));
 
@@ -348,7 +349,7 @@ class splindex<block_cyclic, T> : public splindex_base<T>
 
 /// Specialization for the block distribution.
 template <typename T>
-class splindex<custom, T> : public splindex_base<T>
+class splindex<chunk, T> : public splindex_base<T>
 {
   private:
     std::vector<std::vector<T>> global_index_;
@@ -361,9 +362,7 @@ class splindex<custom, T> : public splindex_base<T>
     }
     
     /// Constructor with specific partitioning.
-    /** The idx_map vector is expected to be of global size and store global to local index mapping for
-     *  consecutive order of ranks. */
-    splindex(T global_index_size__, int num_ranks__, int rank__, std::vector<T> idx_map__)
+    splindex(T global_index_size__, int num_ranks__, int rank__, std::vector<T> const& counts__)
     {
         this->global_index_size_ = global_index_size__;
 
@@ -380,18 +379,15 @@ class splindex<custom, T> : public splindex_base<T>
             throw std::runtime_error(s.str());
         }
         this->rank_ = rank__;
-        
-        for (T i = 0; i < global_index_size__; i++) {
-            if (idx_map__[i] == 0) {
-                global_index_.push_back(std::vector<T>());
-            }
-            global_index_.back().push_back(i);
-        }
+
         for (int r = 0; r < num_ranks__; r++) {
-            for (int i = 0; i < local_size(r); i++) {
-                locations_.push_back(splindex_base<T>::location_t(i, r));
+            global_index_.push_back(std::vector<T>());
+            for (int i = 0; i < counts__[r]; i++) {
+                global_index_.back().push_back(static_cast<T>(locations_.size()));
+                locations_.push_back(typename splindex_base<T>::location_t(i, r));
             }
         }
+        
         assert(static_cast<T>(locations_.size()) == global_index_size__);
     }
 
@@ -419,12 +415,23 @@ class splindex<custom, T> : public splindex_base<T>
 
     inline T global_index(T idxloc__, int rank__) const
     {
+        if (local_size(rank__) == 0) {
+            return std::numeric_limits<T>::max();
+        }
+
+        assert(idxloc__ < local_size(rank__));
+
         return global_index_[rank__][idxloc__];
     }
 
     inline T operator[](T idxloc__) const
     {
         return global_index(idxloc__, this->rank_);
+    }
+
+    inline T global_offset() const
+    {
+        return global_index(0, this->rank_);
     }
 };
 

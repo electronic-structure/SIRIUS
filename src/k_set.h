@@ -50,7 +50,8 @@ class K_set
 
         std::vector<K_point*> kpoints_;
 
-        splindex<block> spl_num_kpoints_;
+        //splindex<block> spl_num_kpoints_;
+        splindex<chunk> spl_num_kpoints_;
 
         double energy_fermi_{0};
 
@@ -182,8 +183,9 @@ class K_set
         /// Initialize the k-point set
         void initialize()
         {
+            splindex<block> spl_tmp(num_kpoints(), comm_k_.size(), comm_k_.rank());
             /* distribute k-points along the 1-st dimension of the MPI grid */
-            spl_num_kpoints_ = splindex<block>(num_kpoints(), comm_k_.size(), comm_k_.rank());
+            spl_num_kpoints_ = splindex<chunk>(num_kpoints(), comm_k_.size(), comm_k_.rank(), spl_tmp.counts());
 
             for (int ikloc = 0; ikloc < spl_num_kpoints_.local_size(); ikloc++) {
                 kpoints_[spl_num_kpoints_[ikloc]]->initialize();
@@ -251,17 +253,17 @@ class K_set
             kpoints_.clear();
         }
         
-        inline int num_kpoints()
+        inline int num_kpoints() const
         {
             return static_cast<int>(kpoints_.size());
         }
 
-        inline splindex<block>& spl_num_kpoints()
+        inline splindex<chunk> const& spl_num_kpoints() const
         {
             return spl_num_kpoints_;
         }
         
-        inline int spl_num_kpoints(int ikloc)
+        inline int spl_num_kpoints(int ikloc) const
         {
             return spl_num_kpoints_[ikloc];
         }
@@ -281,12 +283,12 @@ class K_set
             kpoints_[ik]->get_band_energies(band_energies);
         }
         
-        inline double energy_fermi()
+        inline double energy_fermi() const
         {
             return energy_fermi_;
         }
 
-        inline double band_gap()
+        inline double band_gap() const
         {
             return band_gap_;
         }
