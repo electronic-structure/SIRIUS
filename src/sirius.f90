@@ -376,13 +376,15 @@ module sirius
             &bind(C, name="sirius_symmetrize_density")
         end subroutine
 
-        subroutine sirius_create_kset(num_kpoints, kpoints, kpoint_weights, init_kset, kset_id)&
+        subroutine sirius_create_kset_aux(num_kpoints, kpoints, kpoint_weights, init_kset, kset_id, nk_loc_ptr)&
             &bind(C, name="sirius_create_kset")
-            integer,                 intent(in) :: num_kpoints
-            real(8),                 intent(in) :: kpoints
-            real(8),                 intent(in) :: kpoint_weights
-            integer,                 intent(in) :: init_kset
+            use, intrinsic :: ISO_C_BINDING
+            integer,                 intent(in)  :: num_kpoints
+            real(8),                 intent(in)  :: kpoints
+            real(8),                 intent(in)  :: kpoint_weights
+            integer,                 intent(in)  :: init_kset
             integer,                 intent(out) :: kset_id
+            type(C_PTR), value,      intent(in)  :: nk_loc_ptr
         end subroutine
 
         subroutine sirius_delete_kset(kset_id)&
@@ -991,6 +993,22 @@ contains
         if (present(vfield)) vfield_ptr = C_LOC(vfield)
 
         call sirius_add_atom_aux(label_ptr, pos_ptr, vfield_ptr)
+
+    end subroutine
+
+    subroutine sirius_create_kset(num_kpoints, kpoints, kpoint_weights, init_kset, kset_id, nk_loc)
+        integer,                                 intent(in)  :: num_kpoints
+        real(8),                                 intent(in)  :: kpoints
+        real(8),                                 intent(in)  :: kpoint_weights
+        integer,                                 intent(in)  :: init_kset
+        integer,                                 intent(out) :: kset_id
+        integer, optional, target,               intent(in)  :: nk_loc
+        type(C_PTR) nk_loc_ptr
+
+        nk_loc_ptr = C_NULL_PTR
+        if (present(nk_loc)) nk_loc_ptr = C_LOC(nk_loc)
+        
+        call sirius_create_kset_aux(num_kpoints, kpoints, kpoint_weights, init_kset, kset_id, nk_loc_ptr)
 
     end subroutine
 

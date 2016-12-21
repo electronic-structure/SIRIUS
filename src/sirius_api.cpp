@@ -172,18 +172,25 @@ void sirius_delete_density()
 }
 
 /// Create the k-point set from the list of k-points and return it's id
-void sirius_create_kset(int32_t* num_kpoints__,
-                        double* kpoints__,
-                        double* kpoint_weights__,
-                        int32_t* init_kset__,
-                        int32_t* kset_id__)
+void sirius_create_kset(ftn_int*    num_kpoints__,
+                        ftn_double* kpoints__,
+                        ftn_double* kpoint_weights__,
+                        ftn_int*    init_kset__,
+                        ftn_int*    kset_id__,
+                        ftn_int*    nk_loc__)
 {
     mdarray<double, 2> kpoints(kpoints__, 3, *num_kpoints__);
 
     sirius::K_set* new_kset = new sirius::K_set(*sim_ctx, sim_ctx->mpi_grid().communicator(1 << _mpi_dim_k_));
     new_kset->add_kpoints(kpoints, kpoint_weights__);
     if (*init_kset__) {
-        new_kset->initialize();
+        std::vector<int> counts;
+        if (nk_loc__ != NULL) {
+            for (int i = 0; i < new_kset->comm().size(); i++) {
+                counts.push_back(nk_loc__[i]);
+            }
+        }
+        new_kset->initialize(counts);
     }
 
     kset_list.push_back(new_kset);

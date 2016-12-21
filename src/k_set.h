@@ -65,9 +65,9 @@ class K_set
 
         K_set(Simulation_context& ctx__,
               Communicator const& comm_k__)
-            : ctx_(ctx__),
-              unit_cell_(ctx__.unit_cell()),
-              comm_k_(comm_k__)
+            : ctx_(ctx__)
+            , unit_cell_(ctx__.unit_cell())
+            , comm_k_(comm_k__)
         {
             PROFILE("sirius::K_set::K_set");
         }
@@ -77,9 +77,9 @@ class K_set
               vector3d<int> k_grid__,
               vector3d<int> k_shift__,
               int use_symmetry__) 
-            : ctx_(ctx__),
-              unit_cell_(ctx__.unit_cell()),
-              comm_k_(comm_k__)
+            : ctx_(ctx__)
+            , unit_cell_(ctx__.unit_cell())
+            , comm_k_(comm_k__)
         {
             PROFILE("sirius::K_set::K_set");
 
@@ -170,7 +170,9 @@ class K_set
             //    for (int ik = 0; ik < nk; ik++) add_kpoint(&vk(0, ik), wk[ik]);
             //}
 
-            for (int ik = 0; ik < nk; ik++) add_kpoint(&kp(0, ik), wk[ik]);
+            for (int ik = 0; ik < nk; ik++) {
+                add_kpoint(&kp(0, ik), wk[ik]);
+            }
         }
 
         ~K_set()
@@ -181,11 +183,15 @@ class K_set
         }
         
         /// Initialize the k-point set
-        void initialize()
+        void initialize(std::vector<int> counts = std::vector<int>())
         {
-            splindex<block> spl_tmp(num_kpoints(), comm_k_.size(), comm_k_.rank());
             /* distribute k-points along the 1-st dimension of the MPI grid */
-            spl_num_kpoints_ = splindex<chunk>(num_kpoints(), comm_k_.size(), comm_k_.rank(), spl_tmp.counts());
+            if (counts.empty()) {
+                splindex<block> spl_tmp(num_kpoints(), comm_k_.size(), comm_k_.rank());
+                spl_num_kpoints_ = splindex<chunk>(num_kpoints(), comm_k_.size(), comm_k_.rank(), spl_tmp.counts());
+            } else {
+                spl_num_kpoints_ = splindex<chunk>(num_kpoints(), comm_k_.size(), comm_k_.rank(), counts);
+            }
 
             for (int ikloc = 0; ikloc < spl_num_kpoints_.local_size(); ikloc++) {
                 kpoints_[spl_num_kpoints_[ikloc]]->initialize();
@@ -319,6 +325,11 @@ class K_set
         }
 
         inline K_point* k_point(int ik) {return kpoints_[ik];}
+
+        inline Communicator const& comm() const
+        {
+            return comm_k_;
+        }
 };
 
 inline void K_set::sync_band_energies()
