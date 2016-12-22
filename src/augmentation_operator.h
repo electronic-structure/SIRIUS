@@ -155,9 +155,9 @@ class Augmentation_operator
                 double g = gvec__.gvec_len(ig);
                 
                 /* position in the linear grid of |G| values */
-                int idx_g = static_cast<int>((qgrid_.num_points() - 1) * g / atom_type_.parameters().pw_cutoff());
+                int iq = static_cast<int>((qgrid_.num_points() - 1) * g / atom_type_.parameters().pw_cutoff());
                 /* delta */
-                double dg = g - qgrid_[idx_g];
+                double dq = g - qgrid_[iq];
 
                 std::vector<double_complex> v(lmmax);
 
@@ -175,7 +175,7 @@ class Augmentation_operator
                         int idxrf12 = idxrf2 * (idxrf2 + 1) / 2 + idxrf1;
                         
                         for (int lm3 = 0; lm3 < lmmax; lm3++) {
-                            v[lm3] = std::conj(zilm[lm3]) * gvec_rlm(lm3, igloc) * qri(idxrf12, l_by_lm[lm3])(idx_g, dg);
+                            v[lm3] = std::conj(zilm[lm3]) * gvec_rlm(lm3, igloc) * qri(idxrf12, l_by_lm[lm3])(iq, dq);
                         }
 
                         double_complex z = fourpi_omega * gaunt_coefs.sum_L3_gaunt(lm2, lm1, &v[0]);

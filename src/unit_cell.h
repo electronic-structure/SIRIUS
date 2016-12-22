@@ -646,6 +646,11 @@ class Unit_cell
                 set_lattice_vectors(inp__.a0_, inp__.a1_, inp__.a2_);
             }
         }
+        
+        Simulation_parameters const& parameters() const
+        {
+            return parameters_;
+        }
 };
     
 };

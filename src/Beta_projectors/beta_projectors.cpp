@@ -26,18 +26,15 @@
 
 namespace sirius {
 
-
-//--------------------------------------------------------------------------------------
-//--------------------------------------------------------------------------------------
 Beta_projectors::Beta_projectors(Communicator const& comm__,
                                  Unit_cell const& unit_cell__,
                                  Gvec const& gkvec__,
                                  device_t pu__)
-    : comm_(comm__),
-      unit_cell_(unit_cell__),
-      gkvec_(gkvec__),
-      lmax_beta_(unit_cell_.lmax()),
-      pu_(pu__)
+    : comm_(comm__)
+    , unit_cell_(unit_cell__)
+    , gkvec_(gkvec__)
+    , lmax_beta_(unit_cell_.lmax())
+    , pu_(pu__)
 {
     PROFILE("sirius::Beta_projectors::Beta_projectors");
 
@@ -48,12 +45,10 @@ Beta_projectors::Beta_projectors(Communicator const& comm__,
     generate_beta_gk_t();
 
     #ifdef __GPU
-    if (pu_ == GPU)
-    {
+    if (pu_ == GPU) {
         gkvec_coord_ = mdarray<double, 2>(3, num_gkvec_loc_, memory_t::host | memory_t::device);
         /* copy G+k vectors */
-        for (int igk_loc = 0; igk_loc < num_gkvec_loc_; igk_loc++)
-        {
+        for (int igk_loc = 0; igk_loc < num_gkvec_loc_; igk_loc++) {
             int igk  = gkvec_.gvec_offset(comm_.rank()) + igk_loc;
             auto vgk = gkvec_.gkvec(igk);
             for (auto x: {0, 1, 2}) {
@@ -71,16 +66,12 @@ Beta_projectors::Beta_projectors(Communicator const& comm__,
     beta_gk_a_ = matrix<double_complex>(num_gkvec_loc_, unit_cell_.mt_lo_basis_size());
 
     #pragma omp for
-    for (int ia = 0; ia < unit_cell_.num_atoms(); ia++)
-    {
-        for (int xi = 0; xi < unit_cell_.atom(ia).mt_lo_basis_size(); xi++)
-        {
-            for (int igk_loc = 0; igk_loc < num_gkvec_loc_; igk_loc++)
-            {
+    for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
+        for (int xi = 0; xi < unit_cell_.atom(ia).mt_lo_basis_size(); xi++) {
+            for (int igk_loc = 0; igk_loc < num_gkvec_loc_; igk_loc++) {
                 int igk = gkvec_.gvec_offset(comm_.rank()) + igk_loc;
                 double phase = twopi * (gkvec_.gkvec(igk) * unit_cell_.atom(ia).position());
 
-                //TODO may be calculate offset_lo right here instead to store it in atom(ia), since it has meaning only for beta_gk
                 beta_gk_a_(igk_loc, unit_cell_.atom(ia).offset_lo() + xi) =
                     beta_gk_t_(igk_loc, unit_cell_.atom(ia).type().offset_lo() + xi) * std::exp(double_complex(0.0, -phase));
             }
@@ -88,112 +79,96 @@ Beta_projectors::Beta_projectors(Communicator const& comm__,
     }
 }
 
-
-
-
-
-
-//--------------------------------------------------------------------------------------
-//--------------------------------------------------------------------------------------
 void Beta_projectors::generate_beta_gk_t()
 {
     if (!num_beta_t_) {
         return;
     }
-
-    /* find shells of G+k vectors */
-    std::map<size_t, std::vector<int> > gksh;
-    for (int igk_loc = 0; igk_loc < gkvec_.gvec_count(comm_.rank()); igk_loc++)
-    {
-        int igk = gkvec_.gvec_offset(comm_.rank()) + igk_loc;
-        size_t gk_len = static_cast<size_t>(gkvec_.gkvec_cart(igk).length() * 1e10);
-        if (!gksh.count(gk_len)) gksh[gk_len] = std::vector<int>();
-        gksh[gk_len].push_back(igk_loc);
-    }
-
-    std::vector<std::pair<double, std::vector<int> > > gkvec_shells;
-
-    for (auto it = gksh.begin(); it != gksh.end(); it++)
-    {
-        gkvec_shells.push_back(std::pair<double, std::vector<int> >(static_cast<double>(it->first) * 1e-10, it->second));
-    }
-
+    
+    int nq = static_cast<int>(12 * unit_cell_.parameters().gk_cutoff());
+    Radial_grid qgrid(linear_grid, nq, 0, unit_cell_.parameters().gk_cutoff());
+ 
     /* allocate array */
     beta_gk_t_ = matrix<double_complex>(gkvec_.gvec_count(comm_.rank()), num_beta_t_);
 
     /* interpolate beta radial functions */
     mdarray<Spline<double>, 2> beta_rf(unit_cell_.max_mt_radial_basis_size(), unit_cell_.num_atom_types());
-    for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++)
-    {
+    for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
         auto& atom_type = unit_cell_.atom_type(iat);
-        for (int idxrf = 0; idxrf < atom_type.mt_radial_basis_size(); idxrf++)
-        {
+        #pragma omp parallel for
+        for (int idxrf = 0; idxrf < atom_type.mt_radial_basis_size(); idxrf++) {
             int nr = atom_type.pp_desc().num_beta_radial_points[idxrf];
             beta_rf(idxrf, iat) = Spline<double>(atom_type.radial_grid());
-            for (int ir = 0; ir < nr; ir++)
+            for (int ir = 0; ir < nr; ir++) {
                 beta_rf(idxrf, iat)[ir] = atom_type.pp_desc().beta_radial_functions(ir, idxrf);
+            }
             beta_rf(idxrf, iat).interpolate();
         }
     }
 
-    // TODO: use bessel function interpolation?
-
-    /* compute <G+k|beta> */
-    #pragma omp parallel
-    {
-        std::vector<double> gkvec_rlm(Utils::lmmax(lmax_beta_));
-        std::vector<double> beta_radial_integrals_(unit_cell_.max_mt_radial_basis_size());
-        std::vector<Spherical_Bessel_functions> jl(unit_cell_.num_atom_types());
-        #pragma omp for
-        for (size_t ish = 0; ish < gkvec_shells.size(); ish++)
-        {
-            /* find spherical Bessel function for |G+k|r argument */
-            for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++)
-            {
-                auto& atom_type = unit_cell_.atom_type(iat);
-                jl[iat] = Spherical_Bessel_functions(atom_type.indexr().lmax(), atom_type.radial_grid(), gkvec_shells[ish].first);
-            }
-
-            for (size_t i = 0; i < gkvec_shells[ish].second.size(); i++)
-            {
-                int igk_loc = gkvec_shells[ish].second[i];
-                int igk = gkvec_.gvec_offset(comm_.rank()) + igk_loc;
-                /* vs = {r, theta, phi} */
-                auto vs = SHT::spherical_coordinates(gkvec_.gkvec_cart(igk));
-                /* compute real spherical harmonics for G+k vector */
-                SHT::spherical_harmonics(lmax_beta_, vs[1], vs[2], &gkvec_rlm[0]);
-
-                for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++)
-                {
-                    auto& atom_type = unit_cell_.atom_type(iat);
-                    for (int idxrf = 0; idxrf < atom_type.mt_radial_basis_size(); idxrf++)
-                    {
-                        int l = atom_type.indexr(idxrf).l;
-                        int nr = atom_type.pp_desc().num_beta_radial_points[idxrf];
-                        /* compute \int j_l(|G+k|r) beta_l(r) r dr */
-                        /* remeber that beta(r) are defined as miltiplied by r */
-                        beta_radial_integrals_[idxrf] = sirius::inner(jl[iat][l], beta_rf(idxrf, iat), 1, nr);
-                    }
-
-                    for (int xi = 0; xi < atom_type.mt_basis_size(); xi++)
-                    {
-                        int l = atom_type.indexb(xi).l;
-                        int lm = atom_type.indexb(xi).lm;
-                        int idxrf = atom_type.indexb(xi).idxrf;
-
-                        double_complex z = std::pow(double_complex(0, -1), l) * fourpi / std::sqrt(unit_cell_.omega());
-                        beta_gk_t_(igk_loc, atom_type.offset_lo() + xi) = z * gkvec_rlm[lm] * beta_radial_integrals_[idxrf];
-                    }
-                }
+    /* interpolate <j_l(qr)|beta> radial integrals */
+    mdarray<Spline<double>, 2> rad_int(unit_cell_.max_mt_radial_basis_size(), unit_cell_.num_atom_types());
+    for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
+        auto& atom_type = unit_cell_.atom_type(iat);
+        for (int idxrf = 0; idxrf < atom_type.mt_radial_basis_size(); idxrf++) {
+            rad_int(idxrf, iat) = Spline<double>(qgrid);
+        }
+    }
+    
+    for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
+        auto& atom_type = unit_cell_.atom_type(iat);
+        #pragma omp parallel for
+        for (int iq = 0; iq < qgrid.num_points(); iq++) {
+            Spherical_Bessel_functions jl(lmax_beta_, atom_type.radial_grid(), qgrid[iq]);
+            for (int idxrf = 0; idxrf < atom_type.mt_radial_basis_size(); idxrf++) {
+                int l  = atom_type.indexr(idxrf).l;
+                int nr = atom_type.pp_desc().num_beta_radial_points[idxrf];
+                /* compute \int j_l(|G+k|r) beta_l(r) r dr */
+                /* remeber that beta(r) are defined as miltiplied by r */
+                rad_int(idxrf, iat)[iq] = sirius::inner(jl[l], beta_rf(idxrf, iat), 1, nr);
             }
         }
     }
 
-    #ifdef __PRINT_OBJECT_CHECKSUM
-    auto c1 = beta_gk_t_.checksum();
-    comm_.allreduce(&c1, 1);
-    DUMP("checksum(beta_gk_t) : %18.10f %18.10f", c1.real(), c1.imag())
-    #endif
+    for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
+        auto& atom_type = unit_cell_.atom_type(iat);
+        for (int idxrf = 0; idxrf < atom_type.mt_radial_basis_size(); idxrf++) {
+            rad_int(idxrf, iat).interpolate();
+        }
+    }
+
+    /* compute <G+k|beta> */
+    #pragma omp parallel for
+    for (int igkloc = 0; igkloc < gkvec_.gvec_count(comm_.rank()); igkloc++) {
+        int igk = gkvec_.gvec_offset(comm_.rank()) + igkloc;
+        double gk = gkvec_.gvec_len(igk);
+        /* vs = {r, theta, phi} */
+        auto vs = SHT::spherical_coordinates(gkvec_.gkvec_cart(igk));
+        /* compute real spherical harmonics for G+k vector */
+        std::vector<double> gkvec_rlm(Utils::lmmax(lmax_beta_));
+        SHT::spherical_harmonics(lmax_beta_, vs[1], vs[2], &gkvec_rlm[0]);
+        /* position in the linear grid of |G| values */
+        int iq = static_cast<int>((qgrid.num_points() - 1) * gk / unit_cell_.parameters().gk_cutoff());
+        /* delta */
+        double dq = gk - qgrid[iq];
+        for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
+            auto& atom_type = unit_cell_.atom_type(iat);
+            for (int xi = 0; xi < atom_type.mt_basis_size(); xi++) {
+                int l     = atom_type.indexb(xi).l;
+                int lm    = atom_type.indexb(xi).lm;
+                int idxrf = atom_type.indexb(xi).idxrf;
+
+                double_complex z = std::pow(double_complex(0, -1), l) * fourpi / std::sqrt(unit_cell_.omega());
+                beta_gk_t_(igkloc, atom_type.offset_lo() + xi) = z * gkvec_rlm[lm] * rad_int(idxrf, iat)(iq, dq);
+            }
+        }
+    }
+
+    if (unit_cell_.parameters().control().print_checksum_) {
+        auto c1 = beta_gk_t_.checksum();
+        comm_.allreduce(&c1, 1);
+        DUMP("checksum(beta_gk_t) : %18.10f %18.10f", c1.real(), c1.imag())
+    }
 }
 
 void Beta_projectors::split_in_chunks()

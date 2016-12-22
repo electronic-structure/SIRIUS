@@ -88,14 +88,10 @@ class Beta_projectors
         /** Store as double to handle both gamma- and general k-point cases */
         mdarray<double, 1> beta_phi_;
 
-
-
         #ifdef __GPU
         /// Explicit GPU buffer for beta-projectors.
         matrix<double_complex> beta_gk_gpu_;
         #endif
-        
-
 
         struct beta_chunk_t
         {
