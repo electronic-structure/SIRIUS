@@ -2193,22 +2193,26 @@ void sirius_get_rho_pw(ftn_int*            num_gvec__,
     mdarray<int, 2> gvec(gvec__, 3, *num_gvec__);
 
     for (int i = 0; i < *num_gvec__; i++) {
+        bool is_inverse{false};
         vector3d<int> G(gvec(0, i), gvec(1, i), gvec(2, i));
         int ig = sim_ctx->gvec().index_by_gvec(G);
+        if (ig == -1 && sim_ctx->gvec().reduced()) {
+            ig = sim_ctx->gvec().index_by_gvec(G * (-1));
+            is_inverse = true;
+        }
         if (ig == -1) {
-            if (sim_ctx->gvec().reduced()) {
-                int ig1 = sim_ctx->gvec().index_by_gvec(G * (-1));
-                if (ig1 == -1) {
-                    std::stringstream s;
-                    auto gvc = sim_ctx->unit_cell().reciprocal_lattice_vectors() * vector3d<double>(G[0], G[1], G[2]);
-                    s << "wrong index of G-vector" << std::endl
-                      << "input G-vector: " << G << " (length: " << gvc.length() << " [a.u.^-1])" << std::endl;
-                    TERMINATE(s);
-                }
-                rho_pw__[i] = std::conj(density->rho()->f_pw(ig1));
-            } else {
-                TERMINATE("wrong index of G-vector");
-            }
+            std::stringstream s;
+            auto gvc = sim_ctx->unit_cell().reciprocal_lattice_vectors() * vector3d<double>(G[0], G[1], G[2]);
+            s << "wrong index of G-vector" << std::endl
+              << "input G-vector: " << G << " (length: " << gvc.length() << " [a.u.^-1])" << std::endl;
+            TERMINATE(s);
+        }
+        //if (ig == -1 ) {
+        //    rho_pw__[i] = 0;
+        //    continue;
+        //}
+        if (is_inverse) {
+            rho_pw__[i] = std::conj(density->rho()->f_pw(ig));
         } else {
             rho_pw__[i] = density->rho()->f_pw(ig);
         }
