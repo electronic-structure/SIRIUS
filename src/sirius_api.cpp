@@ -2199,7 +2199,11 @@ void sirius_get_rho_pw(ftn_int*            num_gvec__,
             if (sim_ctx->gvec().reduced()) {
                 int ig1 = sim_ctx->gvec().index_by_gvec(G * (-1));
                 if (ig1 == -1) {
-                    TERMINATE("wrong index of G-vector");
+                    std::stringstream s;
+                    auto gvc = sim_ctx->unit_cell().reciprocal_lattice_vectors() * vector3d<double>(G[0], G[1], G[2]);
+                    s << "wrong index of G-vector" << std::endl
+                      << "input G-vector: " << G << " (length: " << gvc.length() << " [a.u.^-1])" << std::endl;
+                    TERMINATE(s);
                 }
                 rho_pw__[i] = std::conj(density->rho()->f_pw(ig1));
             } else {
