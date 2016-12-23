@@ -528,6 +528,11 @@ class Gvec
     {
         return *gvec_partition_;
     }
+
+    vector3d<double> const& vk() const
+    {
+        return vk_;
+    }
 };
 
 inline void Gvec_partition::build_fft_distr()

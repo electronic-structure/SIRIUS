@@ -302,11 +302,17 @@ class Simulation_context: public Simulation_parameters
             return augmentation_op_[iat__];
         }
 
+        inline double_complex gvec_phase_factor(vector3d<int> G__, int ia__) const
+        {
+            return phase_factors_(0, G__[0], ia__) *
+                   phase_factors_(1, G__[1], ia__) *
+                   phase_factors_(2, G__[2], ia__);
+        }
+
         /// Phase factors \f$ e^{i {\bf G} {\bf r}_{\alpha}} \f$
         inline double_complex gvec_phase_factor(int ig__, int ia__) const
         {
-            auto G = gvec_.gvec(ig__);
-            return phase_factors_(0, G[0], ia__) * phase_factors_(1, G[1], ia__) * phase_factors_(2, G[2], ia__);
+            return gvec_phase_factor(gvec_.gvec(ig__), ia__);
         }
 
         inline int gvec_count() const

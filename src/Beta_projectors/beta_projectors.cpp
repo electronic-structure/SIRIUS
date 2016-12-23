@@ -66,13 +66,20 @@ Beta_projectors::Beta_projectors(Simulation_context const& ctx__,
 
     #pragma omp for
     for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
+        double phase = twopi * (gkvec_.vk() * unit_cell_.atom(ia).position());
+        double_complex phase_k = std::exp(double_complex(0.0, phase));
+
+        std::vector<double_complex> phase_gk(num_gkvec_loc_);
+        for (int igk_loc = 0; igk_loc < num_gkvec_loc_; igk_loc++) {
+            int igk = gkvec_.gvec_offset(comm_.rank()) + igk_loc;
+            auto G = gkvec_.gvec(igk);
+            phase_gk[igk_loc] = std::conj(ctx__.gvec_phase_factor(G, ia) * phase_k);
+        }
+
         for (int xi = 0; xi < unit_cell_.atom(ia).mt_lo_basis_size(); xi++) {
             for (int igk_loc = 0; igk_loc < num_gkvec_loc_; igk_loc++) {
-                int igk = gkvec_.gvec_offset(comm_.rank()) + igk_loc;
-                double phase = twopi * (gkvec_.gkvec(igk) * unit_cell_.atom(ia).position());
-
                 beta_gk_a_(igk_loc, unit_cell_.atom(ia).offset_lo() + xi) =
-                    beta_gk_t_(igk_loc, unit_cell_.atom(ia).type().offset_lo() + xi) * std::exp(double_complex(0.0, -phase));
+                    beta_gk_t_(igk_loc, unit_cell_.atom(ia).type().offset_lo() + xi) * phase_gk[igk_loc];
             }
         }
     }
