@@ -80,6 +80,8 @@ Beta_projectors::Beta_projectors(Simulation_context const& ctx__,
 
 void Beta_projectors::generate_beta_gk_t(Simulation_context const& ctx__)
 {
+    PROFILE("sirius::Beta_projectors::generate_beta_gk_t");
+
     if (!num_beta_t_) {
         return;
     }
