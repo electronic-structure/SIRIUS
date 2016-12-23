@@ -30,6 +30,7 @@
 #include "unit_cell.h"
 #include "wave_functions.hpp"
 #include "sbessel.h"
+#include "simulation_context.h"
 
 #ifdef __GPU
 extern "C" void create_beta_gk_gpu(int num_atoms,
@@ -43,11 +44,12 @@ extern "C" void create_beta_gk_gpu(int num_atoms,
 
 namespace sirius {
 
-const int _beta_desc_nbf_ = 0;
-const int _beta_desc_offset_ = 1;
-const int _beta_desc_offset_t_ = 2;
-const int _beta_desc_ia_ = 3;
-
+enum beta_desc_idx {
+    nbf      = 0,
+    offset   = 1,
+    offset_t = 2,
+    ia       = 3
+};
 
 class Beta_projectors_gradient;
 
@@ -107,22 +109,24 @@ class Beta_projectors
         int max_num_beta_;
 
         /// Generate plane-wave coefficients for beta-projectors of atom types.
-        void generate_beta_gk_t();
+        void generate_beta_gk_t(Simulation_context const& ctx__);
                     
         void split_in_chunks();
 
         /// calculates < Beta | Psi > inner product
         template <typename T>
-        void inner(int chunk__,  wave_functions& phi__, int idx0__, int n__, mdarray<double_complex, 2> &beta_gk, mdarray<double, 1> &beta_phi);
+        void inner(int chunk__,
+                   wave_functions& phi__,
+                   int idx0__,
+                   int n__,
+                   mdarray<double_complex, 2>& beta_gk__,
+                   mdarray<double, 1>& beta_phi__);
 
     public:
 
-        //Beta_projectors(Beta_projectors& ) {}
-
-        Beta_projectors(Communicator const& comm__,
-                        Unit_cell const& unit_cell__,
-                        Gvec const& gkvec__,
-                        device_t pu__);
+        Beta_projectors(Simulation_context const& ctx__,
+                        Communicator const& comm__,
+                        Gvec const& gkvec__);
 
         matrix<double_complex>& beta_gk_t()
         {

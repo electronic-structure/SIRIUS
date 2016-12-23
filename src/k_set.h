@@ -50,7 +50,6 @@ class K_set
 
         std::vector<K_point*> kpoints_;
 
-        //splindex<block> spl_num_kpoints_;
         splindex<chunk> spl_num_kpoints_;
 
         double energy_fermi_{0};

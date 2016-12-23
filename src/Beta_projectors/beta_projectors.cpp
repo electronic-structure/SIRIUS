@@ -26,15 +26,14 @@
 
 namespace sirius {
 
-Beta_projectors::Beta_projectors(Communicator const& comm__,
-                                 Unit_cell const& unit_cell__,
-                                 Gvec const& gkvec__,
-                                 device_t pu__)
+Beta_projectors::Beta_projectors(Simulation_context const& ctx__,
+                                 Communicator const& comm__,
+                                 Gvec const& gkvec__)
     : comm_(comm__)
-    , unit_cell_(unit_cell__)
+    , unit_cell_(ctx__.unit_cell())
     , gkvec_(gkvec__)
     , lmax_beta_(unit_cell_.lmax())
-    , pu_(pu__)
+    , pu_(ctx__.processing_unit())
 {
     PROFILE("sirius::Beta_projectors::Beta_projectors");
 
@@ -42,7 +41,7 @@ Beta_projectors::Beta_projectors(Communicator const& comm__,
 
     split_in_chunks();
 
-    generate_beta_gk_t();
+    generate_beta_gk_t(ctx__);
 
     #ifdef __GPU
     if (pu_ == GPU) {
@@ -79,68 +78,22 @@ Beta_projectors::Beta_projectors(Communicator const& comm__,
     }
 }
 
-void Beta_projectors::generate_beta_gk_t()
+void Beta_projectors::generate_beta_gk_t(Simulation_context const& ctx__)
 {
     if (!num_beta_t_) {
         return;
     }
-    
-    int nq = static_cast<int>(12 * unit_cell_.parameters().gk_cutoff());
-    Radial_grid qgrid(linear_grid, nq, 0, unit_cell_.parameters().gk_cutoff());
- 
+
     /* allocate array */
     beta_gk_t_ = matrix<double_complex>(gkvec_.gvec_count(comm_.rank()), num_beta_t_);
-
-    /* interpolate beta radial functions */
-    mdarray<Spline<double>, 2> beta_rf(unit_cell_.max_mt_radial_basis_size(), unit_cell_.num_atom_types());
-    for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
-        auto& atom_type = unit_cell_.atom_type(iat);
-        #pragma omp parallel for
-        for (int idxrf = 0; idxrf < atom_type.mt_radial_basis_size(); idxrf++) {
-            int nr = atom_type.pp_desc().num_beta_radial_points[idxrf];
-            beta_rf(idxrf, iat) = Spline<double>(atom_type.radial_grid());
-            for (int ir = 0; ir < nr; ir++) {
-                beta_rf(idxrf, iat)[ir] = atom_type.pp_desc().beta_radial_functions(ir, idxrf);
-            }
-            beta_rf(idxrf, iat).interpolate();
-        }
-    }
-
-    /* interpolate <j_l(qr)|beta> radial integrals */
-    mdarray<Spline<double>, 2> rad_int(unit_cell_.max_mt_radial_basis_size(), unit_cell_.num_atom_types());
-    for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
-        auto& atom_type = unit_cell_.atom_type(iat);
-        for (int idxrf = 0; idxrf < atom_type.mt_radial_basis_size(); idxrf++) {
-            rad_int(idxrf, iat) = Spline<double>(qgrid);
-        }
-    }
     
-    for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
-        auto& atom_type = unit_cell_.atom_type(iat);
-        #pragma omp parallel for
-        for (int iq = 0; iq < qgrid.num_points(); iq++) {
-            Spherical_Bessel_functions jl(lmax_beta_, atom_type.radial_grid(), qgrid[iq]);
-            for (int idxrf = 0; idxrf < atom_type.mt_radial_basis_size(); idxrf++) {
-                int l  = atom_type.indexr(idxrf).l;
-                int nr = atom_type.pp_desc().num_beta_radial_points[idxrf];
-                /* compute \int j_l(|G+k|r) beta_l(r) r dr */
-                /* remeber that beta(r) are defined as miltiplied by r */
-                rad_int(idxrf, iat)[iq] = sirius::inner(jl[l], beta_rf(idxrf, iat), 1, nr);
-            }
-        }
-    }
-
-    for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
-        auto& atom_type = unit_cell_.atom_type(iat);
-        for (int idxrf = 0; idxrf < atom_type.mt_radial_basis_size(); idxrf++) {
-            rad_int(idxrf, iat).interpolate();
-        }
-    }
-
+    auto& qgrid = ctx__.qgrid_gkmax();
+    auto& beta_radial_integrals = ctx__.beta_radial_integrals();
+ 
     /* compute <G+k|beta> */
     #pragma omp parallel for
     for (int igkloc = 0; igkloc < gkvec_.gvec_count(comm_.rank()); igkloc++) {
-        int igk = gkvec_.gvec_offset(comm_.rank()) + igkloc;
+        int igk   = gkvec_.gvec_offset(comm_.rank()) + igkloc;
         double gk = gkvec_.gvec_len(igk);
         /* vs = {r, theta, phi} */
         auto vs = SHT::spherical_coordinates(gkvec_.gkvec_cart(igk));
@@ -159,7 +112,7 @@ void Beta_projectors::generate_beta_gk_t()
                 int idxrf = atom_type.indexb(xi).idxrf;
 
                 double_complex z = std::pow(double_complex(0, -1), l) * fourpi / std::sqrt(unit_cell_.omega());
-                beta_gk_t_(igkloc, atom_type.offset_lo() + xi) = z * gkvec_rlm[lm] * rad_int(idxrf, iat)(iq, dq);
+                beta_gk_t_(igkloc, atom_type.offset_lo() + xi) = z * gkvec_rlm[lm] * beta_radial_integrals(idxrf, iat)(iq, dq);
             }
         }
     }
@@ -182,32 +135,32 @@ void Beta_projectors::split_in_chunks()
 
     int offset_in_beta_gk = 0;
 
-    for (int ib = 0; ib < num_beta_chunks; ib++)
-    {
+    for (int ib = 0; ib < num_beta_chunks; ib++) {
         /* number of atoms in chunk */
         int na = spl_beta_chunks.local_size(ib);
         beta_chunks_(ib).num_atoms_ = na;
-        beta_chunks_(ib).desc_ = mdarray<int, 2>(4, na);
-        beta_chunks_(ib).atom_pos_ = mdarray<double, 2>(3, na);
+        beta_chunks_(ib).desc_      = mdarray<int, 2>(4, na);
+        beta_chunks_(ib).atom_pos_  = mdarray<double, 2>(3, na);
 
-        int num_beta = 0;
+        int num_beta{0};
 
-        for (int i = 0; i < na; i++)
-        {
+        for (int i = 0; i < na; i++) {
             /* global index of atom by local index and chunk */
             int ia = spl_beta_chunks.global_index(i, ib);
             auto pos = unit_cell_.atom(ia).position();
             auto& type = unit_cell_.atom(ia).type();
             /* atom fractional coordinates */
-            for (int x: {0, 1, 2}) beta_chunks_(ib).atom_pos_(x, i) = pos[x];
+            for (int x: {0, 1, 2}) {
+                beta_chunks_(ib).atom_pos_(x, i) = pos[x];
+            }
             /* number of beta functions for atom */
-            beta_chunks_(ib).desc_(_beta_desc_nbf_, i) = type.mt_basis_size();
+            beta_chunks_(ib).desc_(beta_desc_idx::nbf, i) = type.mt_basis_size();
             /* offset in beta_gk*/
-            beta_chunks_(ib).desc_(_beta_desc_offset_, i) = num_beta;
+            beta_chunks_(ib).desc_(beta_desc_idx::offset, i) = num_beta;
             /* offset in beta_gk_t */
-            beta_chunks_(ib).desc_(_beta_desc_offset_t_, i) = type.offset_lo();
+            beta_chunks_(ib).desc_(beta_desc_idx::offset_t, i) = type.offset_lo();
             /* global index of atom */
-            beta_chunks_(ib).desc_(_beta_desc_ia_, i) = ia;
+            beta_chunks_(ib).desc_(beta_desc_idx::ia, i) = ia;
 
             num_beta += type.mt_basis_size();
         }
@@ -217,8 +170,7 @@ void Beta_projectors::split_in_chunks()
         offset_in_beta_gk += num_beta;
 
         #ifdef __GPU
-        if (pu_ == GPU)
-        {
+        if (pu_ == GPU) {
             beta_chunks_[ib].desc_.allocate(memory_t::device);
             beta_chunks_[ib].desc_.copy_to_device();
 
@@ -229,55 +181,26 @@ void Beta_projectors::split_in_chunks()
     }
 
     max_num_beta_ = 0;
-    for (int ib = 0; ib < num_beta_chunks; ib++)
-    {
+    for (int ib = 0; ib < num_beta_chunks; ib++) {
         max_num_beta_ = std::max(max_num_beta_, beta_chunks_(ib).num_beta_);
     }
 
     num_beta_t_ = 0;
-    for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) num_beta_t_ += unit_cell_.atom_type(iat).mt_lo_basis_size();
+    for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
+        num_beta_t_ += unit_cell_.atom_type(iat).mt_lo_basis_size();
+    }
 }
-
-//
-//void Beta_projectors::generate(int chunk__, mdarray<double_complex, 2> &beta_gk_a, mdarray<double_complex, 2> &beta_gk )
-//{
-//    if (pu_ == CPU)
-//    {
-//        beta_gk = mdarray<double_complex, 2>(&beta_gk_a(0, beta_chunk(chunk__).offset_),
-//                                              num_gkvec_loc_, beta_chunk(chunk__).num_beta_);
-//    }
-//    #ifdef __GPU
-//    if (pu_ == GPU)
-//    {
-//        beta_gk_ = mdarray<double_complex, 2>(&beta_gk_a_(0, beta_chunk(chunk__).offset_), beta_gk_gpu_.at<GPU>(),
-//                                              num_gkvec_loc_, beta_chunk(chunk__).num_beta_);
-//
-//        auto& desc = beta_chunk(chunk__).desc_;
-//        create_beta_gk_gpu(beta_chunk(chunk__).num_atoms_,
-//                           num_gkvec_loc_,
-//                           desc.at<GPU>(),
-//                           beta_gk_t_.at<GPU>(),
-//                           gkvec_coord_.at<GPU>(),
-//                           beta_chunk(chunk__).atom_pos_.at<GPU>(),
-//                           beta_gk.at<GPU>());
-//    }
-//    #endif
-//}
-
-
 
 void Beta_projectors::generate(int chunk__)
 {
     PROFILE("sirius::Beta_projectors::generate");
 
-    if (pu_ == CPU)
-    {
+    if (pu_ == CPU) {
         beta_gk_ = mdarray<double_complex, 2>(&beta_gk_a_(0, beta_chunk(chunk__).offset_),
                                               num_gkvec_loc_, beta_chunk(chunk__).num_beta_);
     }
     #ifdef __GPU
-    if (pu_ == GPU)
-    {
+    if (pu_ == GPU) {
         beta_gk_ = mdarray<double_complex, 2>(&beta_gk_a_(0, beta_chunk(chunk__).offset_), beta_gk_gpu_.at<GPU>(),
                                               num_gkvec_loc_, beta_chunk(chunk__).num_beta_);
 
@@ -429,14 +352,5 @@ void Beta_projectors::inner<double>(int chunk__,  wave_functions& phi__,
     }
     #endif
 }
-
-
-
-//
-//std::array<Beta_projectors, 3> Beta_projectors::gradient_atomic_pos()
-//{
-//    std::vector<>
-//}
-
 
 };
