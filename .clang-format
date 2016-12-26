@@ -32,4 +32,8 @@ SortIncludes: 'false'
 BinPackParameters: 'true'
 BinPackArguments: 'true'
 MaxEmptyLinesToKeep: 1
+ColumnLimit: 120
+BreakConstructorInitializersBeforeComma: 'true'
+ConstructorInitializerIndentWidth: 4
+BinPackParameters: 'false'
 ...

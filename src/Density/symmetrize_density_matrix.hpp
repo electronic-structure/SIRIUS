@@ -1,6 +1,6 @@
 inline void Density::symmetrize_density_matrix()
 {
-    PROFILE_WITH_TIMER("sirius::Density::symmetrize_density_matrix");
+    PROFILE("sirius::Density::symmetrize_density_matrix");
 
     auto& sym = unit_cell_.symmetry();
 

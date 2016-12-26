@@ -33,14 +33,12 @@ Potential::Potential(Simulation_context& ctx__)
       pseudo_density_order(9),
       mixer_(nullptr)
 {
-    runtime::Timer t("sirius::Potential::Potential");
+    PROFILE("sirius::Potential::Potential");
 
-    if (ctx_.full_potential() || ctx_.esm_type() == electronic_structure_method_t::paw_pseudopotential) {
-        lmax_ = std::max(ctx_.lmax_rho(), ctx_.lmax_pot());
-        sht_ = std::unique_ptr<SHT>(new SHT(lmax_));
-    }
+    lmax_ = std::max(ctx_.lmax_rho(), ctx_.lmax_pot());
+    sht_ = std::unique_ptr<SHT>(new SHT(lmax_));
 
-    if (ctx_.esm_type() == electronic_structure_method_t::full_potential_lapwlo) {
+    if (lmax_ >= 0) {
         l_by_lm_ = Utils::l_by_lm(lmax_);
 
         /* precompute i^l */
@@ -57,7 +55,7 @@ Potential::Potential(Simulation_context& ctx__)
         }
     }
 
-    effective_potential_ = new Periodic_function<double>(ctx_, ctx_.lmmax_pot(), 1);
+    effective_potential_ = std::unique_ptr<Periodic_function<double>>(new Periodic_function<double>(ctx_, ctx_.lmmax_pot(), 1));
     
     //int need_gvec = (ctx_.full_potential()) ? 0 : 1;
     int need_gvec{1};
@@ -74,8 +72,7 @@ Potential::Potential(Simulation_context& ctx__)
     xc_energy_density_ = new Periodic_function<double>(ctx_, ctx_.lmmax_pot(), 0);
     xc_energy_density_->allocate_mt(false);
 
-    if (!ctx_.full_potential())
-    {
+    if (!ctx_.full_potential()) {
         local_potential_ = new Periodic_function<double>(ctx_, 0, 0);
         local_potential_->zero();
 
@@ -84,33 +81,42 @@ Potential::Potential(Simulation_context& ctx__)
 
     vh_el_ = mdarray<double, 1>(unit_cell_.num_atoms());
 
-    init();
-
     if (ctx_.full_potential()) {
-        gvec_ylm_ = mdarray<double_complex, 2>(ctx_.lmmax_pot(), ctx_.gvec_count());
-        for (int igloc = 0; igloc < ctx_.gvec_count(); igloc++) {
-            int ig = ctx_.gvec_offset() + igloc;
+        gvec_ylm_ = mdarray<double_complex, 2>(ctx_.lmmax_pot(), ctx_.gvec().gvec_count(comm_.rank()));
+        for (int igloc = 0; igloc < ctx_.gvec().gvec_count(comm_.rank()); igloc++) {
+            int ig = ctx_.gvec().gvec_offset(comm_.rank()) + igloc;
             auto rtp = SHT::spherical_coordinates(ctx_.gvec().gvec_cart(ig));
             SHT::spherical_harmonics(ctx_.lmax_pot(), rtp[1], rtp[2], &gvec_ylm_(0, igloc));
         }
     }
 
-    // create list of XC functionals
-    for (auto& xc_label: ctx_.xc_functionals())
-    {
+    if (ctx_.full_potential()) {
+        switch (ctx_.valence_relativity()) {
+            case relativity_t::iora: {
+                rm2_inv_pw_ = mdarray<double_complex, 1>(ctx_.gvec().num_gvec());
+            }
+            case relativity_t::zora: {
+                rm_inv_pw_ = mdarray<double_complex, 1>(ctx_.gvec().num_gvec());
+            }
+            default: {
+                veff_pw_ = mdarray<double_complex, 1>(ctx_.gvec().num_gvec());
+            }
+        }
+    }
+
+    init();
+
+    /* create list of XC functionals */
+    for (auto& xc_label: ctx_.xc_functionals()) {
         xc_func_.push_back(new XC_functional(xc_label, ctx_.num_spins()));
     }
 
-    // if PAW calc
-    if(ctx_.esm_type() == electronic_structure_method_t::paw_pseudopotential)
-    {
-        init_PAW();
-    }
+    /* in case of PAW */
+    init_PAW();
 }
 
 Potential::~Potential()
 {
-    delete effective_potential_; 
     for (int j = 0; j < ctx_.num_mag_dims(); j++) delete effective_magnetic_field_[j];
     delete hartree_potential_;
     delete xc_potential_;

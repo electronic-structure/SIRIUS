@@ -109,13 +109,13 @@ Band::get_h_diag(K_point* kp__,
                  double v0__,
                  D_operator<T>& d_op__) const
 {
-    PROFILE_WITH_TIMER("sirius::Band::get_h_diag");
+    PROFILE("sirius::Band::get_h_diag");
 
     mdarray<double, 1> h_diag(kp__->num_gkvec_loc());
 
     /* local H contribution */
     for (int ig_loc = 0; ig_loc < kp__->num_gkvec_loc(); ig_loc++) {
-        int ig = kp__->gklo_basis_descriptor_loc(ig_loc).ig;
+        int ig = kp__->igk_loc(ig_loc);
         auto vgk = kp__->gkvec().gkvec_cart(ig);
         h_diag[ig_loc] = 0.5 * (vgk * vgk) + v0__;
     }
@@ -172,7 +172,7 @@ inline mdarray<double, 1>
 Band::get_o_diag(K_point* kp__,
                  Q_operator<T>& q_op__) const
 {
-    PROFILE_WITH_TIMER("sirius::Band::get_o_diag");
+    PROFILE("sirius::Band::get_o_diag");
 
     mdarray<double, 1> o_diag(kp__->num_gkvec_loc());
     for (int ig = 0; ig < kp__->num_gkvec_loc(); ig++) {
@@ -185,7 +185,7 @@ Band::get_o_diag(K_point* kp__,
 
     for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
         auto& atom_type = unit_cell_.atom_type(iat);
-        if (!atom_type.uspp().augmentation_) {
+        if (!atom_type.pp_desc().augment) {
             continue;
         }
 

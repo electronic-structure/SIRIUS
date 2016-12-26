@@ -1,6 +1,6 @@
 inline void Density::generate_valence_density_mt(K_set& ks)
 {
-    PROFILE_WITH_TIMER("sirius::Density::generate_valence_density_mt");
+    PROFILE("sirius::Density::generate_valence_density_mt");
 
     /* compute occupation matrix */
     if (ctx_.uj_correction())
@@ -78,7 +78,7 @@ inline void Density::generate_valence_density_mt(K_set& ks)
         int nmtp = atom_type.num_mt_points();
         int num_rf_pairs = atom_type.mt_radial_basis_size() * (atom_type.mt_radial_basis_size() + 1) / 2;
         
-        runtime::Timer t1("sirius::Density::generate|sum_zdens");
+        sddk::timer t1("sirius::Density::generate|sum_zdens");
         switch (ctx_.num_mag_dims())
         {
             case 3:
@@ -99,7 +99,7 @@ inline void Density::generate_valence_density_mt(K_set& ks)
         }
         t1.stop();
         
-        runtime::Timer t2("sirius::Density::generate|expand_lm");
+        sddk::timer t2("sirius::Density::generate|expand_lm");
         /* collect radial functions */
         for (int idxrf2 = 0; idxrf2 < atom_type.mt_radial_basis_size(); idxrf2++)
         {
@@ -150,126 +150,10 @@ inline void Density::generate_valence_density_mt(K_set& ks)
     }
 }
 
-inline void Density::generate_paw_loc_density()
-{
-    PROFILE_WITH_TIMER("sirius::Density::generate_paw_loc_density");
-    
-    #pragma omp parallel for
-    for(int i = 0; i < unit_cell_.spl_num_atoms().local_size(); i++)
-//    tbb::parallel_for( size_t(0), (size_t)unit_cell_.spl_num_atoms().local_size(), [&]( size_t i )
-    {
-        int ia = unit_cell_.spl_num_atoms(i);
-
-        auto& atom = unit_cell_.atom(ia);
-
-        auto& atom_type = atom.type();
-
-        auto& paw = atom_type.get_PAW_descriptor();
-
-        auto& uspp = atom_type.uspp();
-
-        std::vector<int> l_by_lm = Utils::l_by_lm( 2 * atom_type.indexr().lmax_lo() );
-
-        //TODO calculate not for every atom but for every atom type
-        Gaunt_coefficients<double> GC(atom_type.indexr().lmax_lo(),
-                2*atom_type.indexr().lmax_lo(),
-                atom_type.indexr().lmax_lo(),
-                SHT::gaunt_rlm);
-
-        // get density for current atom
-        mdarray<double,2> &ae_atom_density = paw_ae_local_density_[i];
-        mdarray<double,2> &ps_atom_density = paw_ps_local_density_[i];
-
-        ae_atom_density.zero();
-        ps_atom_density.zero();
-
-        // and magnetization
-        auto &ae_atom_magnetization = paw_ae_local_magnetization_[i];
-        auto &ps_atom_magnetization = paw_ps_local_magnetization_[i];
-
-        ae_atom_magnetization.zero();
-        ps_atom_magnetization.zero();
-
-        // get radial grid to divide density over r^2
-        auto &grid = atom_type.radial_grid();
-
-        // iterate over local basis functions (or over lm1 and lm2)
-        for (int ib2 = 0; ib2 < atom_type.indexb().size(); ib2++)
-        {
-            for(int ib1 = 0; ib1 <= ib2; ib1++)
-            {
-                // get lm quantum numbers (lm index) of the basis functions
-                int lm2 = atom_type.indexb(ib2).lm;
-                int lm1 = atom_type.indexb(ib1).lm;
-
-                //get radial basis functions indices
-                int irb2 = atom_type.indexb(ib2).idxrf;
-                int irb1 = atom_type.indexb(ib1).idxrf;
-
-                // index to iterate Qij,
-                int iqij = irb2 * (irb2 + 1) / 2 + irb1;
-
-                // get num of non-zero GC
-                int num_non_zero_gk = GC.num_gaunt(lm1,lm2);
-
-                double diag_coef = ib1 == ib2 ? 1. : 2. ;
-
-                // add nonzero coefficients
-                for(int inz = 0; inz < num_non_zero_gk; inz++)
-                {
-                    auto& lm3coef = GC.gaunt(lm1,lm2,inz);
-
-                    // iterate over radial points
-                    // this part in fortran looks better, is there the same for c++?
-                    for(int irad = 0; irad < (int)grid.num_points(); irad++)
-                    {
-                        // we need to divide density over r^2 since wave functions are stored multiplied by r
-                        double inv_r2 = diag_coef /(grid[irad] * grid[irad]);
-
-                        // TODO for 3 spin dimensions 3th density spin component must be complex
-                        // replace order of indices for density from {irad,lm} to {lm,irad}
-                        // to be in according with ELK and other SIRIUS code
-                        double ae_part = inv_r2 * lm3coef.coef * paw.all_elec_wfc(irad,irb1) * paw.all_elec_wfc(irad,irb2);
-                        double ps_part = inv_r2 * lm3coef.coef *
-                                ( paw.pseudo_wfc(irad,irb1) * paw.pseudo_wfc(irad,irb2)  + uspp.q_radial_functions_l(irad,iqij,l_by_lm[lm3coef.lm3]));
-
-                        // calculate UP density (or total in case of nonmagnetic)
-                        double ae_dens_u =  density_matrix_(ib1,ib2,0,ia).real() * ae_part;
-                        double ps_dens_u =  density_matrix_(ib1,ib2,0,ia).real() * ps_part;
-
-                        // add density UP to the total density
-                        ae_atom_density(lm3coef.lm3,irad) += ae_dens_u;
-                        ps_atom_density(lm3coef.lm3,irad) += ps_dens_u;
-
-                        switch(ctx_.num_spins())
-                        {
-                            case 2:
-                            {
-                                double ae_dens_d =  density_matrix_(ib1,ib2,1,ia).real() * ae_part;
-                                double ps_dens_d =  density_matrix_(ib1,ib2,1,ia).real() * ps_part;
-
-                                // add density DOWN to the total density
-                                ae_atom_density(lm3coef.lm3,irad) += ae_dens_d;
-                                ps_atom_density(lm3coef.lm3,irad) += ps_dens_d;
-
-                                // add magnetization to 2nd components (0th and 1st are always zero )
-                                ae_atom_magnetization(lm3coef.lm3,irad,0)= ae_dens_u - ae_dens_d;
-                                ps_atom_magnetization(lm3coef.lm3,irad,0)= ps_dens_u - ps_dens_d;
-                            }break;
-
-                            case 3:
-                            {
-                                TERMINATE("PAW: non collinear is not implemented");
-                            }break;
-
-                            default:break;
-                        }
 
 
-                    }
-                }
-            }
-        }
-    } 
-}
+
+
+
+
 

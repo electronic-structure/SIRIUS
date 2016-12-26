@@ -26,16 +26,13 @@
 #ifndef __ATOM_TYPE_H__
 #define __ATOM_TYPE_H__
 
-#include "mdarray.h"
 #include "descriptors.h"
-#include "vector3d.h"
+#include "vector3d.hpp"
 #include "utils.h"
 #include "radial_grid.h"
 #include "radial_solver.h"
 #include "xc_functional.h"
 #include "simulation_parameters.h"
-
-#include "PAW/PAW_descriptor.h"
 
 namespace sirius {
 
@@ -332,7 +329,7 @@ class Atom_type
         /// list of radial descriptor sets used to construct local orbitals
         std::vector<local_orbital_descriptor> lo_descriptors_;
         
-        /// maximum number of aw radial functions across angular momentums
+        /// Maximum number of AW radial functions across angular momentums.
         int max_aw_order_{0};
 
         int offset_lo_{-1};
@@ -341,9 +338,7 @@ class Atom_type
         
         basis_functions_index indexb_;
 
-        uspp_descriptor uspp_;
-
-        PAW_descriptor paw_;
+        pseudopotential_descriptor pp_desc_;
 
         /// Inverse of (Q_{\xi \xi'j}^{-1} + beta_pw^{H}_{\xi} * beta_pw_{xi'})
         /** Used in Chebyshev iterative solver as a block-diagonal preconditioner */
@@ -409,8 +404,10 @@ class Atom_type
         Radial_grid radial_grid_;
 
         /// Density of a free atom.
-        Spline<double> free_atom_density_;
-        
+        Spline<double> free_atom_density_spline_;
+
+        std::vector<double> free_atom_density_;
+
         /// Radial grid of a free atom.
         Radial_grid free_atom_radial_grid_;
 
@@ -627,12 +624,12 @@ class Atom_type
 
         inline double free_atom_density(const int idx) const
         {
-            return free_atom_density_[idx];
+            return free_atom_density_spline_[idx];
         }
 
         inline double free_atom_density(double x) const
         {
-            return free_atom_density_(x);
+            return free_atom_density_spline_(x);
         }
 
         //inline double free_atom_potential(const int idx) const
@@ -652,7 +649,7 @@ class Atom_type
 
         inline int num_aw_descriptors() const
         {
-            return (int)aw_descriptors_.size();
+            return static_cast<int>(aw_descriptors_.size());
         }
 
         inline radial_solution_descriptor_set const& aw_descriptor(int l) const
@@ -674,6 +671,12 @@ class Atom_type
         inline int max_aw_order() const
         {
             return max_aw_order_;
+        }
+
+        /// Order of augmented wave radial functions for a given l.
+        inline int aw_order(int l__) const
+        {
+            return static_cast<int>(aw_descriptor(l__).size());
         }
 
         inline radial_functions_index const& indexr() const
@@ -748,25 +751,14 @@ class Atom_type
             return -1;
         }
 
-        //TODO rename these two methods, unsafe method is needed?
-        inline uspp_descriptor& uspp()
+        inline pseudopotential_descriptor const& pp_desc() const
         {
-            return uspp_;
+            return pp_desc_;
         }
 
-        inline uspp_descriptor const& uspp() const
+        inline pseudopotential_descriptor& pp_desc()
         {
-            return uspp_;
-        }
-
-        inline PAW_descriptor const& get_PAW_descriptor() const
-        {
-            return paw_;
-        }
-
-        inline PAW_descriptor& get_PAW_descriptor_unsafe()
-        {
-            return paw_;
+            return pp_desc_;
         }
 
         inline void set_symbol(const std::string symbol__)
@@ -849,8 +841,8 @@ class Atom_type
 
         inline void set_d_mtrx_ion(matrix<double>& d_mtrx_ion__)
         {
-            uspp_.d_mtrx_ion = matrix<double>(d_mtrx_ion__.size(0), d_mtrx_ion__.size(1));
-            d_mtrx_ion__ >> uspp_.d_mtrx_ion;
+            pp_desc_.d_mtrx_ion = matrix<double>(d_mtrx_ion__.size(0), d_mtrx_ion__.size(1));
+            d_mtrx_ion__ >> pp_desc_.d_mtrx_ion;
         }
 
         inline mdarray<int, 2> const& idx_radial_integrals() const
@@ -879,12 +871,11 @@ class Atom_type
             free_atom_radial_grid_ = Radial_grid(num_points__, points__);
         }
 
-        //void set_free_atom_potential(int num_points__, double const* vs__)
-        //{
-        //    free_atom_potential_ = Spline<double>(free_atom_radial_grid_);
-        //    for (int i = 0; i < num_points__; i++) free_atom_potential_[i] = vs__[i];
-        //    free_atom_potential_.interpolate();
-        //}
+        void set_free_atom_density(int num_points__, double const* dens__)
+        {
+            free_atom_density_.resize(num_points__);
+            std::memcpy(free_atom_density_.data(), dens__, num_points__ * sizeof(double));
+        }
 };
 
 };

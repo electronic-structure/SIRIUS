@@ -145,12 +145,26 @@ class Density
          *  In case of pseudo-potential, full matrix for all atoms is stored. */
         mdarray<double_complex, 4> density_matrix_;
 
-        /// ae and ps local densities used for PAW
-        std::vector< mdarray<double, 2> > paw_ae_local_density_; //vector iterates atoms
-        std::vector< mdarray<double, 2> > paw_ps_local_density_;
+        struct paw_density_data_t
+        {
+            Atom *atom_{nullptr};
 
-        std::vector< mdarray<double, 3> > paw_ae_local_magnetization_; //vector iterates atoms
-        std::vector< mdarray<double, 3> > paw_ps_local_magnetization_;
+            int ia{-1};
+
+            /// ae and ps local densities
+            mdarray<double, 2> ae_density_;
+            mdarray<double, 2> ps_density_;
+
+            mdarray<double, 3> ae_magnetization_;
+            mdarray<double, 3> ps_magnetization_;
+        };
+
+        std::vector<paw_density_data_t> paw_density_data_;
+
+
+        /// core density radial integrals
+        mdarray<double, 2> rho_pseudo_core_radial_integrals_;
+
 
         /// Pointer to charge density.
         /** In the case of full-potential calculation this is the full (valence + core) electron charge density.
@@ -178,6 +192,14 @@ class Density
 
         std::vector<int> lf_gvec_;
         std::vector<int> hf_gvec_;
+
+        /// Allocate PAW data.
+        void init_paw();
+
+        void generate_paw_atom_density(paw_density_data_t &pdd);
+
+        /// Initialize \rho_{ij} - density matrix, occupation on basis of beta-projectors (used for PAW).
+        void init_density_matrix_for_paw();
 
         /// Symmetrize density matrix.
         /** Initially, density matrix is obtained with summation over irreducible BZ:
@@ -310,7 +332,7 @@ class Density
         /// Generate charge density of core states
         void generate_core_charge_density()
         {
-            PROFILE_WITH_TIMER("sirius::Density::generate_core_charge_density");
+            PROFILE("sirius::Density::generate_core_charge_density");
 
             for (int icloc = 0; icloc < unit_cell_.spl_num_atom_symmetry_classes().local_size(); icloc++) {
                 int ic = unit_cell_.spl_num_atom_symmetry_classes(icloc);
@@ -325,19 +347,16 @@ class Density
 
         void generate_pseudo_core_charge_density()
         {
-            PROFILE_WITH_TIMER("sirius::Density::generate_pseudo_core_charge_density");
+            PROFILE("sirius::Density::generate_pseudo_core_charge_density");
 
-            auto rho_core_radial_integrals = generate_rho_radial_integrals(2);
+            rho_pseudo_core_radial_integrals_ = generate_rho_radial_integrals(2);
 
-            std::vector<double_complex> v = unit_cell_.make_periodic_function(rho_core_radial_integrals, ctx_.gvec());
+            std::vector<double_complex> v = unit_cell_.make_periodic_function(rho_pseudo_core_radial_integrals_, ctx_.gvec());
             ctx_.fft().prepare(ctx_.gvec().partition());
             ctx_.fft().transform<1>(ctx_.gvec().partition(), &v[ctx_.gvec().partition().gvec_offset_fft()]);
             ctx_.fft().output(&rho_pseudo_core_->f_rg(0));
             ctx_.fft().dismiss();
         }
-
-        /// Initialize \rho_{ij} - density matrix, occupation on basis of beta-projectors (used for PAW).
-        void initialize_beta_density_matrix();
 
     public:
 
@@ -354,8 +373,7 @@ class Density
             rho_ = new Periodic_function<double>(ctx_, ctx_.lmmax_rho(), 1);
 
             /* core density of the pseudopotential method */
-            if (!ctx_.full_potential())
-            {
+            if (!ctx_.full_potential()) {
                 rho_pseudo_core_ = new Periodic_function<double>(ctx_, 0, false);
                 rho_pseudo_core_->zero();
 
@@ -367,23 +385,16 @@ class Density
             
             using gc_z = Gaunt_coefficients<double_complex>;
 
-            switch (ctx_.esm_type())
-            {
-                case electronic_structure_method_t::full_potential_lapwlo:
-                {
+            switch (ctx_.esm_type()) {
+                case electronic_structure_method_t::full_potential_lapwlo: {
                     gaunt_coefs_ = std::unique_ptr<gc_z>(new gc_z(ctx_.lmax_apw(), ctx_.lmax_rho(), ctx_.lmax_apw(), SHT::gaunt_hybrid));
                     break;
                 }
-                case electronic_structure_method_t::full_potential_pwlo:
-                {
+                case electronic_structure_method_t::full_potential_pwlo: {
                     gaunt_coefs_ = std::unique_ptr<gc_z>(new gc_z(ctx_.lmax_pw(), ctx_.lmax_rho(), ctx_.lmax_pw(), SHT::gaunt_hybrid));
                     break;
                 }
-
-                case electronic_structure_method_t::paw_pseudopotential:
-                case electronic_structure_method_t::ultrasoft_pseudopotential:
-                case electronic_structure_method_t::norm_conserving_pseudopotential:
-                {
+                default : {
                     break;
                 }
             }
@@ -411,13 +422,13 @@ class Density
                 }
 
                 /* find high-frequency G-vectors */
-                for (int ig = 0; ig < ctx_.gvec().num_gvec(); ig++)
-                {
-                    if (ctx_.gvec().gvec_len(ig) > 2 * ctx_.gk_cutoff()) hf_gvec_.push_back(ig);
+                for (int ig = 0; ig < ctx_.gvec().num_gvec(); ig++) {
+                    if (ctx_.gvec().gvec_len(ig) > 2 * ctx_.gk_cutoff()) {
+                        hf_gvec_.push_back(ig);
+                    }
                 }
 
-                if (static_cast<int>(hf_gvec_.size()) != ctx_.gvec().num_gvec() - ctx_.gvec_coarse().num_gvec())
-                {
+                if (static_cast<int>(hf_gvec_.size()) != ctx_.gvec().num_gvec() - ctx_.gvec_coarse().num_gvec()) {
                     std::stringstream s;
                     s << "Wrong count of high-frequency G-vectors" << std::endl
                       << "number of found high-frequency G-vectors: " << hf_gvec_.size() << std::endl
@@ -493,41 +504,6 @@ class Density
                     TERMINATE("wrong mixer type");
                 }
             }
-
-            //--- Allocate local PAW density arrays ---
-
-            for(int i = 0; i < unit_cell_.spl_num_atoms().local_size(); i++)
-            {
-                int ia = unit_cell_.spl_num_atoms(i);
-
-                auto& atom = unit_cell_.atom(ia);
-
-                auto& atype = atom.type();
-
-                int n_mt_points = atype.num_mt_points();
-
-                int rad_func_lmax = atype.indexr().lmax_lo();
-                int n_rho_lm_comp = (2 * rad_func_lmax + 1) * (2 * rad_func_lmax + 1);
-
-                // allocate
-                mdarray<double, 2> ae_atom_density(n_rho_lm_comp, n_mt_points);
-                mdarray<double, 2> ps_atom_density(n_rho_lm_comp, n_mt_points);
-
-                // add
-                paw_ae_local_density_.push_back(std::move(ae_atom_density));
-                paw_ps_local_density_.push_back(std::move(ps_atom_density));
-
-                // magnetization
-                mdarray<double, 3> ae_atom_magn(n_rho_lm_comp, n_mt_points, 3);
-                mdarray<double, 3> ps_atom_magn(n_rho_lm_comp, n_mt_points, 3);
-
-                ae_atom_magn.zero();
-                ps_atom_magn.zero();
-
-                paw_ae_local_magnetization_.push_back(std::move(ae_atom_magn));
-                paw_ps_local_magnetization_.push_back(std::move(ps_atom_magn));
-
-            }
         }
         
         /// Destructor
@@ -543,12 +519,14 @@ class Density
         }
 
         /// Set pointers to muffin-tin and interstitial charge density arrays
-        void set_charge_density_ptr(double* rhomt, double* rhoir)
+        void set_charge_density_ptr(double* rhomt, double* rhorg)
         {
-            if (ctx_.full_potential()) {
+            if (ctx_.full_potential() && rhomt) {
                 rho_->set_mt_ptr(rhomt);
             }
-            rho_->set_rg_ptr(rhoir);
+            if (rhorg) {
+                rho_->set_rg_ptr(rhorg);
+            }
         }
         
         /// Set pointers to muffin-tin and interstitial magnetization arrays
@@ -566,20 +544,31 @@ class Density
             
             if (ctx_.num_mag_dims() == 1) {
                 /* z component is the first and only one */
-                magnetization_[0]->set_mt_ptr(&magmt_tmp(0, 0, 0, 0));
-                magnetization_[0]->set_rg_ptr(&magir_tmp(0, 0));
+                if (magmt) {
+                    magnetization_[0]->set_mt_ptr(&magmt_tmp(0, 0, 0, 0));
+                }
+                if (magir) {
+                    magnetization_[0]->set_rg_ptr(&magir_tmp(0, 0));
+                }
             }
 
             if (ctx_.num_mag_dims() == 3) {
-                /* z component is the first */
-                magnetization_[0]->set_mt_ptr(&magmt_tmp(0, 0, 0, 2));
-                magnetization_[0]->set_rg_ptr(&magir_tmp(0, 2));
-                /* x component is the second */
-                magnetization_[1]->set_mt_ptr(&magmt_tmp(0, 0, 0, 0));
-                magnetization_[1]->set_rg_ptr(&magir_tmp(0, 0));
-                /* y component is the third */
-                magnetization_[2]->set_mt_ptr(&magmt_tmp(0, 0, 0, 1));
-                magnetization_[2]->set_rg_ptr(&magir_tmp(0, 1));
+                if (magmt) {
+                    /* z component is the first */
+                    magnetization_[0]->set_mt_ptr(&magmt_tmp(0, 0, 0, 2));
+                    /* x component is the second */
+                    magnetization_[1]->set_mt_ptr(&magmt_tmp(0, 0, 0, 0));
+                    /* y component is the third */
+                    magnetization_[2]->set_mt_ptr(&magmt_tmp(0, 0, 0, 1));
+                }
+                if (magir) {
+                    /* z component is the first */
+                    magnetization_[0]->set_rg_ptr(&magir_tmp(0, 2));
+                    /* x component is the second */
+                    magnetization_[1]->set_rg_ptr(&magir_tmp(0, 0));
+                    /* y component is the third */
+                    magnetization_[2]->set_rg_ptr(&magir_tmp(0, 1));
+                }
             }
         }
         
@@ -646,7 +635,7 @@ class Density
          */
         void augment(K_set& ks__) // TODO: skip when norm-conserving potential is used for all species
         {
-            PROFILE_WITH_TIMER("sirius::Density::augment");
+            PROFILE("sirius::Density::augment");
 
             /* collect density and magnetization into single array */
             std::vector<Periodic_function<double>*> rho_vec(ctx_.num_mag_dims() + 1);
@@ -689,7 +678,7 @@ class Density
                 }
             }
 
-            runtime::Timer t5("sirius::Density::augment|mpi");
+            sddk::timer t5("sirius::Density::augment|mpi");
             for (auto e: rho_vec) {
                 ctx_.comm().allgather(&e->f_pw(0), ctx_.gvec_offset(), ctx_.gvec_count());
 
@@ -705,10 +694,7 @@ class Density
 
         template <device_t pu>
         inline void generate_rho_aug(std::vector<Periodic_function<double>*> rho__,
-                              mdarray<double_complex, 2>& rho_aug__);
-        
-        /// generate n_1 and \tilda{n}_1 in lm components
-        void generate_paw_loc_density();
+                                     mdarray<double_complex, 2>& rho_aug__);
 
         /// Check density at MT boundary
         void check_density_continuity_at_mt();
@@ -772,24 +758,27 @@ class Density
             return rho_->f_mt(ialoc);
         }
 
-        std::vector< mdarray<double, 2> >* get_paw_ae_local_density()
+        /// generate n_1 and \tilda{n}_1 in lm components
+        void generate_paw_loc_density();
+
+        mdarray<double, 2>* get_ae_paw_atom_density(int spl_paw_ind)
         {
-            return &paw_ae_local_density_;
+            return &paw_density_data_[spl_paw_ind].ae_density_;
         }
 
-        std::vector< mdarray<double, 2> >* get_paw_ps_local_density()
+        mdarray<double, 2>* get_ps_paw_atom_density(int spl_paw_ind)
         {
-            return &paw_ps_local_density_;
+            return &paw_density_data_[spl_paw_ind].ps_density_;
         }
 
-        std::vector< mdarray<double, 3> >* get_paw_ae_local_magnetization()
+        mdarray<double, 3>* get_ae_paw_atom_magn(int spl_paw_ind)
         {
-            return &paw_ae_local_magnetization_;
+            return &paw_density_data_[spl_paw_ind].ae_magnetization_;
         }
 
-        std::vector< mdarray<double, 3> >* get_paw_ps_local_magnetization()
+        mdarray<double, 3>* get_ps_paw_atom_magn(int spl_paw_ind)
         {
-            return &paw_ps_local_magnetization_;
+            return &paw_density_data_[spl_paw_ind].ps_magnetization_;
         }
 
         void allocate()
@@ -915,6 +904,11 @@ class Density
         {
             return density_matrix_;
         }
+
+        mdarray<double, 2> const& rho_pseudo_core_radial_integrals() const
+        {
+            return rho_pseudo_core_radial_integrals_;
+        }
 };
 
 #include "Density/initial_density.hpp"
@@ -926,7 +920,7 @@ class Density
 #include "Density/generate_valence_density_mt.hpp"
 #include "Density/generate_rho_radial_integrals.hpp"
 #include "Density/check_density_continuity_at_mt.hpp"
-
+#include "Density/paw_density.hpp"
 }
 
 #endif // __DENSITY_H__

@@ -19,11 +19,12 @@
 
 #include <sirius.h>
 
-class Free_atom : public sirius::Atom_type
+class Free_atom: public sirius::Atom_type
 {
     private:
 
         mdarray<double, 2> free_atom_orbital_density_;
+        mdarray<double, 2> free_atom_wave_functions_;
         sirius::Spline<double> free_atom_potential_;
 
     public:
@@ -48,12 +49,13 @@ class Free_atom : public sirius::Atom_type
 
         double ground_state(double solver_tol, double energy_tol, double charge_tol, std::vector<double>& enu, bool rel)
         {
-            runtime::Timer t("sirius::Free_atom::ground_state");
+            PROFILE("sirius::Free_atom::ground_state");
         
             int np = radial_grid().num_points();
             assert(np > 0);
 
             free_atom_orbital_density_ = mdarray<double, 2>(np, num_atomic_levels()); 
+            free_atom_wave_functions_ = mdarray<double, 2>(np, num_atomic_levels());
             
             sirius::XC_functional Ex("XC_LDA_X", 1);
             sirius::XC_functional Ec("XC_LDA_C_VWN", 1);
@@ -125,11 +127,13 @@ class Free_atom : public sirius::Atom_type
                                                         atomic_level(ist).k, radial_grid(), veff, enu[ist]);
                         enu[ist] = bound_state.enu();
                         auto& bs_rho = bound_state.rho();
+                        auto& bs_u = bound_state.u();
                         
                         /* assume a spherical symmetry */
                         for (int i = 0; i < np; i++)
                         {
                             free_atom_orbital_density_(i, ist) = bs_rho[i];
+                            free_atom_wave_functions_(i, ist) = bs_u[i];
                             /* sum of squares of spherical harmonics for angular momentm l is (2l+1)/4pi */
                             rho_t[i] += atomic_level(ist).occupancy * free_atom_orbital_density_(i, ist) / fourpi;
                         }
@@ -217,7 +221,7 @@ class Free_atom : public sirius::Atom_type
                 TERMINATE(s);
             }
             
-            free_atom_density_ = sirius::Spline<double>(radial_grid_, rho.values());
+            free_atom_density_spline_ = sirius::Spline<double>(radial_grid_, rho.values());
             
             free_atom_potential_ = sirius::Spline<double>(radial_grid_, vrho);
 
@@ -250,6 +254,11 @@ class Free_atom : public sirius::Atom_type
         inline double free_atom_orbital_density(int ir, int ist)
         {
             return free_atom_orbital_density_(ir, ist);
+        }
+
+        inline double free_atom_wave_function(int ir, int ist)
+        {
+            return free_atom_wave_functions_(ir, ist);
         }
 
         inline double free_atom_potential(double x)
@@ -292,7 +301,7 @@ Free_atom init_atom_configuration(const std::string& label, sirius::Simulation_p
 }
 
 void generate_atom_file(Free_atom& a,
-                        double core_cutoff_energy,
+                        double core_cutoff,
                         const std::string& lo_type,
                         int apw_order,
                         double apw_enu,
@@ -331,13 +340,14 @@ void generate_atom_file(Free_atom& a,
     std::memset(&e_nl_c[0][0], 0, 32 * sizeof(double));
     std::memset(&e_nl_v[0][0], 0, 32 * sizeof(double));
 
-    double core_cutoff_radius{1.5};
-    
     printf("\n");
     printf("Core / valence partitioning\n");
     printf("---------------------------\n");
-    printf("core cutoff energy       : %f\n", core_cutoff_energy);
-    printf("core cutoff radius       : %f\n", core_cutoff_radius);
+    if (core_cutoff <= 0) {
+        printf("core cutoff energy       : %f\n", core_cutoff);
+    } else {
+        printf("core cutoff radius       : %f\n", core_cutoff);
+    }
     sirius::Spline<double> rho_c(a.radial_grid());
     sirius::Spline<double> rho(a.radial_grid());
     sirius::Spline<double> s(a.radial_grid());
@@ -367,8 +377,8 @@ void generate_atom_file(Free_atom& a,
         }
 
         /* assign this state to core */
-        //if (enu[ist] < core_cutoff_energy) {
-        if (rc < core_cutoff_radius) {
+        if ((core_cutoff <= 0 && enu[ist] < core_cutoff) ||
+            (core_cutoff > 0 && rc < core_cutoff)) {
             core.push_back(a.atomic_level(ist));
             printf("  => core (rc = %f)\n", rc);
 
@@ -402,6 +412,7 @@ void generate_atom_file(Free_atom& a,
     for (size_t i = 0; i < valence.size(); i++) {
         lmax = std::max(lmax, valence[i].l); 
     }
+    printf("lmax: %i\n", lmax);
 
     /* valence principal quantum numbers for each l */
     std::array<std::vector<int>, 4> n_v;
@@ -430,6 +441,24 @@ void generate_atom_file(Free_atom& a,
     //}
     //fclose(fout);
     
+    //mdarray<int, 2> nl_st(8, 4);
+    //nl_st.zero();
+
+    //FILE* fout = fopen((a.symbol() + "_wfs.dat").c_str(), "w");
+    //for (int ist = 0; ist < a.num_atomic_levels(); ist++) {
+    //    int n = a.atomic_level(ist).n;
+    //    int l = a.atomic_level(ist).l;
+    //    if (!nl_st(n, l) && !nl_c[n][l]) {
+    //        for (int ir = 0; ir < a.radial_grid().num_points(); ir++) {
+    //            double x = a.radial_grid(ir);
+    //            fprintf(fout, "%12.6f %16.8f\n", x, a.free_atom_wave_function(ir, ist));
+    //        }
+    //        fprintf(fout, "\n");
+    //        nl_st(n, l) = 1;
+    //    }
+    //}
+    //fclose(fout);
+    
     /* estimate effective infinity */
     std::vector<double> g;
     rho.interpolate().integrate(g, 2);
@@ -443,7 +472,7 @@ void generate_atom_file(Free_atom& a,
     printf("Effective infinity : %f\n", rinf);
 
     /* estimate core radius */
-    double core_radius = core_cutoff_radius;
+    double core_radius = (core_cutoff > 0) ? core_cutoff : 0.65;
     if (ncore != 0) {
         std::vector<double> g;
         rho_c.interpolate().integrate(g, 2);
@@ -460,11 +489,7 @@ void generate_atom_file(Free_atom& a,
     int nrmt{1500};
 
     printf("minimum MT radius : %f\n", core_radius);
-    if (ncore) {
-        dict["rmt"] = core_radius;
-    } else {
-        dict["rmt"] = 0.65;
-    }
+    dict["rmt"] = core_radius;
     dict["nrmt"] = nrmt;
     dict["rinf"] = rinf;
     
@@ -547,7 +572,7 @@ void generate_atom_file(Free_atom& a,
     }
      
     if (lo_type.find("lo3") != std::string::npos) {
-        for (int l = lmax + 1; l < lmax + 3; l++) {
+        for (int l = lmax + 1; l < lmax + 4; l++) {
             a.add_lo_descriptor(idxlo, 0, l, 0.15, 0, 0);
             a.add_lo_descriptor(idxlo, 0, l, 0.15, 1, 0);
             idxlo++;
@@ -555,6 +580,16 @@ void generate_atom_file(Free_atom& a,
             a.add_lo_descriptor(idxlo, 0, l, 0.15, 1, 0);
             a.add_lo_descriptor(idxlo, 0, l, 0.15, 2, 0);
             idxlo++;
+        }
+    }
+
+    if (lo_type.find("lo4") != std::string::npos) {
+        for (int n = 1; n <= 6; n++) {
+            for (int l = 0; l < n; l++) {
+                a.add_lo_descriptor(idxlo, n, l, 0.15, 0, 1);
+                a.add_lo_descriptor(idxlo, n, l, 0.15, 1, 1);
+                idxlo++;
+            }
         }
     }
  
@@ -576,7 +611,8 @@ void generate_atom_file(Free_atom& a,
     a.set_mt_radius(2.0);
     a.set_num_mt_points(1500);
     a.set_radial_grid(1500, &x[0]);
- 
+    
+    printf("=== initializing atom ===\n");
     a.init(0);
     sirius::Atom_symmetry_class atom_class(0, a);
     atom_class.initialize();
@@ -652,161 +688,161 @@ void generate_atom_file(Free_atom& a,
     auto inc = atom_class.check_lo_linear_independence(0.0001);
     dict["lo"] = json::array();
 
-    for (int j = 0; j < a.num_lo_descriptors(); j++) {
-        auto s = lo_to_str(a.lo_descriptor(j));
+    for (int j = 0; j < atom_class.num_lo_descriptors(); j++) {
+        auto s = lo_to_str(atom_class.lo_descriptor(j));
         if (!inc[j]) {
             printf("X ");
         } else {
             printf("  ");
-            dict["lo"].push_back({{"l", a.lo_descriptor(j).l}, {"basis", json::parse(s)}});
+            dict["lo"].push_back({{"l", atom_class.lo_descriptor(j).l}, {"basis", json::parse(s)}});
         }
-        printf("l: %i, basis: %s\n", a.lo_descriptor(j).l, s.c_str());
+        printf("l: %i, basis: %s\n", atom_class.lo_descriptor(j).l, s.c_str());
     }
 
     dict["free_atom"] = json::object();
     dict["free_atom"]["density"] = fa_rho;
     dict["free_atom"]["radial_grid"] = fa_r;
     
-    std::ofstream ofs( a.symbol() + std::string(".json"), std::ofstream::out | std::ofstream::trunc);
+    std::ofstream ofs(a.symbol() + std::string(".json"), std::ofstream::out | std::ofstream::trunc);
     ofs << dict.dump(4);
     ofs.close();
 
-    if (write_to_xml)
-    {
-        std::string fname = a.symbol() + std::string(".xml");
-        FILE* fout = fopen(fname.c_str(), "w");
-        fprintf(fout, "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n");
-        fprintf(fout, "<spdb>\n");
-        fprintf(fout, "  <sp chemicalSymbol=\"%s\" name=\"%s\" z=\"%f\" mass=\"%f\">\n", a.symbol().c_str(), a.name().c_str(), -1.0 * a.zn(), a.mass());
-        fprintf(fout, "    <muffinTin rmin=\"%e\" radius=\"%f\" rinf=\"%f\" radialmeshPoints=\"%i\"/>\n", 1e-6, 2.0, rinf, 1000);
+    //if (write_to_xml)
+    //{
+    //    std::string fname = a.symbol() + std::string(".xml");
+    //    FILE* fout = fopen(fname.c_str(), "w");
+    //    fprintf(fout, "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n");
+    //    fprintf(fout, "<spdb>\n");
+    //    fprintf(fout, "  <sp chemicalSymbol=\"%s\" name=\"%s\" z=\"%f\" mass=\"%f\">\n", a.symbol().c_str(), a.name().c_str(), -1.0 * a.zn(), a.mass());
+    //    fprintf(fout, "    <muffinTin rmin=\"%e\" radius=\"%f\" rinf=\"%f\" radialmeshPoints=\"%i\"/>\n", 1e-6, 2.0, rinf, 1000);
 
-        for (int ist = 0; ist < a.num_atomic_levels(); ist++)
-        {
-            std::string str_core = (enu[ist] < core_cutoff_energy) ? "true" : "false";
+    //    for (int ist = 0; ist < a.num_atomic_levels(); ist++)
+    //    {
+    //        std::string str_core = (enu[ist] < core_cutoff_energy) ? "true" : "false";
 
-            fprintf(fout, "      <atomicState n=\"%i\" l=\"%i\" kappa=\"%i\" occ=\"%f\" core=\"%s\"/>\n",
-                    a.atomic_level(ist).n,
-                    a.atomic_level(ist).l,
-                    a.atomic_level(ist).k,
-                    a.atomic_level(ist).occupancy,
-                    str_core.c_str());
-        }
-        fprintf(fout, "      <basis>\n");
-        fprintf(fout, "        <default type=\"lapw\" trialEnergy=\"0.15\" searchE=\"false\"/>\n");
-        for (int l = 0; l < 4; l++)
-        {
-            if (n_v[l].size() == 1)
-            {
-                int n = n_v[l][0];
+    //        fprintf(fout, "      <atomicState n=\"%i\" l=\"%i\" kappa=\"%i\" occ=\"%f\" core=\"%s\"/>\n",
+    //                a.atomic_level(ist).n,
+    //                a.atomic_level(ist).l,
+    //                a.atomic_level(ist).k,
+    //                a.atomic_level(ist).occupancy,
+    //                str_core.c_str());
+    //    }
+    //    fprintf(fout, "      <basis>\n");
+    //    fprintf(fout, "        <default type=\"lapw\" trialEnergy=\"0.15\" searchE=\"false\"/>\n");
+    //    for (int l = 0; l < 4; l++)
+    //    {
+    //        if (n_v[l].size() == 1)
+    //        {
+    //            int n = n_v[l][0];
 
-                fprintf(fout, "        <lo l=\"%i\">\n", l);
-                fprintf(fout, "          <wf matchingOrder=\"0\" trialEnergy=\"%f\" searchE=\"false\"/>\n", e_nl_v[n][l]);
-                fprintf(fout, "          <wf matchingOrder=\"1\" trialEnergy=\"%f\" searchE=\"false\"/>\n", e_nl_v[n][l]);
-                fprintf(fout, "        </lo>\n");
+    //            fprintf(fout, "        <lo l=\"%i\">\n", l);
+    //            fprintf(fout, "          <wf matchingOrder=\"0\" trialEnergy=\"%f\" searchE=\"false\"/>\n", e_nl_v[n][l]);
+    //            fprintf(fout, "          <wf matchingOrder=\"1\" trialEnergy=\"%f\" searchE=\"false\"/>\n", e_nl_v[n][l]);
+    //            fprintf(fout, "        </lo>\n");
 
-                fprintf(fout, "        <lo l=\"%i\">\n", l);
-                fprintf(fout, "          <wf matchingOrder=\"1\" trialEnergy=\"%f\" searchE=\"false\"/>\n", e_nl_v[n][l]);
-                fprintf(fout, "          <wf matchingOrder=\"2\" trialEnergy=\"%f\" searchE=\"false\"/>\n", e_nl_v[n][l]);
-                fprintf(fout, "        </lo>\n");
-                
-                fprintf(fout, "        <lo l=\"%i\">\n", l);
-                fprintf(fout, "          <wf matchingOrder=\"2\" trialEnergy=\"%f\" searchE=\"false\"/>\n", e_nl_v[n][l]);
-                fprintf(fout, "          <wf matchingOrder=\"3\" trialEnergy=\"%f\" searchE=\"false\"/>\n", e_nl_v[n][l]);
-                fprintf(fout, "        </lo>\n");
-            }
-            if (n_v[l].size() > 1)
-            {
-                for (size_t i = 0; i < n_v[l].size() - 1; i++)
-                {
-                    int n = n_v[l][i];
-                    int n1 = n_v[l][i + 1];
+    //            fprintf(fout, "        <lo l=\"%i\">\n", l);
+    //            fprintf(fout, "          <wf matchingOrder=\"1\" trialEnergy=\"%f\" searchE=\"false\"/>\n", e_nl_v[n][l]);
+    //            fprintf(fout, "          <wf matchingOrder=\"2\" trialEnergy=\"%f\" searchE=\"false\"/>\n", e_nl_v[n][l]);
+    //            fprintf(fout, "        </lo>\n");
+    //            
+    //            fprintf(fout, "        <lo l=\"%i\">\n", l);
+    //            fprintf(fout, "          <wf matchingOrder=\"2\" trialEnergy=\"%f\" searchE=\"false\"/>\n", e_nl_v[n][l]);
+    //            fprintf(fout, "          <wf matchingOrder=\"3\" trialEnergy=\"%f\" searchE=\"false\"/>\n", e_nl_v[n][l]);
+    //            fprintf(fout, "        </lo>\n");
+    //        }
+    //        if (n_v[l].size() > 1)
+    //        {
+    //            for (size_t i = 0; i < n_v[l].size() - 1; i++)
+    //            {
+    //                int n = n_v[l][i];
+    //                int n1 = n_v[l][i + 1];
 
-                    fprintf(fout, "        <lo l=\"%i\">\n", l);
-                    fprintf(fout, "          <wf matchingOrder=\"0\" trialEnergy=\"%f\" searchE=\"false\"/>\n", e_nl_v[n][l]);
-                    fprintf(fout, "          <wf matchingOrder=\"1\" trialEnergy=\"%f\" searchE=\"false\"/>\n", e_nl_v[n][l]);
-                    fprintf(fout, "        </lo>\n");
+    //                fprintf(fout, "        <lo l=\"%i\">\n", l);
+    //                fprintf(fout, "          <wf matchingOrder=\"0\" trialEnergy=\"%f\" searchE=\"false\"/>\n", e_nl_v[n][l]);
+    //                fprintf(fout, "          <wf matchingOrder=\"1\" trialEnergy=\"%f\" searchE=\"false\"/>\n", e_nl_v[n][l]);
+    //                fprintf(fout, "        </lo>\n");
 
-                    fprintf(fout, "        <lo l=\"%i\">\n", l);
-                    fprintf(fout, "          <wf matchingOrder=\"1\" trialEnergy=\"%f\" searchE=\"false\"/>\n", e_nl_v[n][l]);
-                    fprintf(fout, "          <wf matchingOrder=\"2\" trialEnergy=\"%f\" searchE=\"false\"/>\n", e_nl_v[n][l]);
-                    fprintf(fout, "        </lo>\n");
-                    
-                    fprintf(fout, "        <lo l=\"%i\">\n", l);
-                    fprintf(fout, "          <wf matchingOrder=\"2\" trialEnergy=\"%f\" searchE=\"false\"/>\n", e_nl_v[n][l]);
-                    fprintf(fout, "          <wf matchingOrder=\"0\" trialEnergy=\"%f\" searchE=\"false\"/>\n", e_nl_v[n1][l]);
-                    fprintf(fout, "        </lo>\n");
-                }
-                int n = n_v[l].back();
-                fprintf(fout, "        <lo l=\"%i\">\n", l);
-                fprintf(fout, "          <wf matchingOrder=\"0\" trialEnergy=\"%f\" searchE=\"false\"/>\n", e_nl_v[n][l]);
-                fprintf(fout, "          <wf matchingOrder=\"1\" trialEnergy=\"%f\" searchE=\"false\"/>\n", e_nl_v[n][l]);
-                fprintf(fout, "        </lo>\n");
-            }
+    //                fprintf(fout, "        <lo l=\"%i\">\n", l);
+    //                fprintf(fout, "          <wf matchingOrder=\"1\" trialEnergy=\"%f\" searchE=\"false\"/>\n", e_nl_v[n][l]);
+    //                fprintf(fout, "          <wf matchingOrder=\"2\" trialEnergy=\"%f\" searchE=\"false\"/>\n", e_nl_v[n][l]);
+    //                fprintf(fout, "        </lo>\n");
+    //                
+    //                fprintf(fout, "        <lo l=\"%i\">\n", l);
+    //                fprintf(fout, "          <wf matchingOrder=\"2\" trialEnergy=\"%f\" searchE=\"false\"/>\n", e_nl_v[n][l]);
+    //                fprintf(fout, "          <wf matchingOrder=\"0\" trialEnergy=\"%f\" searchE=\"false\"/>\n", e_nl_v[n1][l]);
+    //                fprintf(fout, "        </lo>\n");
+    //            }
+    //            int n = n_v[l].back();
+    //            fprintf(fout, "        <lo l=\"%i\">\n", l);
+    //            fprintf(fout, "          <wf matchingOrder=\"0\" trialEnergy=\"%f\" searchE=\"false\"/>\n", e_nl_v[n][l]);
+    //            fprintf(fout, "          <wf matchingOrder=\"1\" trialEnergy=\"%f\" searchE=\"false\"/>\n", e_nl_v[n][l]);
+    //            fprintf(fout, "        </lo>\n");
+    //        }
 
 
 
-            //if (n_v[l].size())
-            //    fprintf(fout, "        <custom l=\"%i\" type=\"lapw\" trialEnergy=\"%f\" searchE=\"false\"/>\n", l, e_nl_v[n_v[l].front()][l]);
+    //        //if (n_v[l].size())
+    //        //    fprintf(fout, "        <custom l=\"%i\" type=\"lapw\" trialEnergy=\"%f\" searchE=\"false\"/>\n", l, e_nl_v[n_v[l].front()][l]);
 
-            //for (int n = 1; n <= 7; n++)
-            //{
-            //    if (nl_v[n][l])
-            //    {
-            //        fprintf(fout, "        <lo l=\"%i\">\n", l);
-            //        fprintf(fout, "          <wf matchingOrder=\"0\" trialEnergy=\"%f\" searchE=\"false\"/>\n", e_nl_v[n][l]);
-            //        fprintf(fout, "          <wf matchingOrder=\"1\" trialEnergy=\"%f\" searchE=\"false\"/>\n", e_nl_v[n][l]);
-            //        fprintf(fout, "        </lo>\n");
+    //        //for (int n = 1; n <= 7; n++)
+    //        //{
+    //        //    if (nl_v[n][l])
+    //        //    {
+    //        //        fprintf(fout, "        <lo l=\"%i\">\n", l);
+    //        //        fprintf(fout, "          <wf matchingOrder=\"0\" trialEnergy=\"%f\" searchE=\"false\"/>\n", e_nl_v[n][l]);
+    //        //        fprintf(fout, "          <wf matchingOrder=\"1\" trialEnergy=\"%f\" searchE=\"false\"/>\n", e_nl_v[n][l]);
+    //        //        fprintf(fout, "        </lo>\n");
 
-            //        //if (e_nl_v[n][l] > -5.0)
-            //        //{
-            //            fprintf(fout, "        <lo l=\"%i\">\n", l);
-            //            fprintf(fout, "          <wf matchingOrder=\"1\" trialEnergy=\"%f\" searchE=\"false\"/>\n", e_nl_v[n][l]);
-            //            fprintf(fout, "          <wf matchingOrder=\"2\" trialEnergy=\"%f\" searchE=\"false\"/>\n", e_nl_v[n][l]);
-            //            fprintf(fout, "        </lo>\n");
-            //        //}
-            //        
-            //        //if (e_nl_v[n][l] > -1.0)
-            //        //{
-            //            fprintf(fout, "        <lo l=\"%i\">\n", l);
-            //            fprintf(fout, "          <wf matchingOrder=\"2\" trialEnergy=\"%f\" searchE=\"false\"/>\n", e_nl_v[n][l]);
-            //            fprintf(fout, "          <wf matchingOrder=\"3\" trialEnergy=\"%f\" searchE=\"false\"/>\n", e_nl_v[n][l]);
-            //            fprintf(fout, "        </lo>\n");
-            //        //}
+    //        //        //if (e_nl_v[n][l] > -5.0)
+    //        //        //{
+    //        //            fprintf(fout, "        <lo l=\"%i\">\n", l);
+    //        //            fprintf(fout, "          <wf matchingOrder=\"1\" trialEnergy=\"%f\" searchE=\"false\"/>\n", e_nl_v[n][l]);
+    //        //            fprintf(fout, "          <wf matchingOrder=\"2\" trialEnergy=\"%f\" searchE=\"false\"/>\n", e_nl_v[n][l]);
+    //        //            fprintf(fout, "        </lo>\n");
+    //        //        //}
+    //        //        
+    //        //        //if (e_nl_v[n][l] > -1.0)
+    //        //        //{
+    //        //            fprintf(fout, "        <lo l=\"%i\">\n", l);
+    //        //            fprintf(fout, "          <wf matchingOrder=\"2\" trialEnergy=\"%f\" searchE=\"false\"/>\n", e_nl_v[n][l]);
+    //        //            fprintf(fout, "          <wf matchingOrder=\"3\" trialEnergy=\"%f\" searchE=\"false\"/>\n", e_nl_v[n][l]);
+    //        //            fprintf(fout, "        </lo>\n");
+    //        //        //}
 
-            //        //fprintf(fout, "        <lo l=\"%i\">\n", l);
-            //        //fprintf(fout, "          <wf matchingOrder=\"0\" trialEnergy=\"%f\" searchE=\"true\"/>\n", e_nl_v[n][l]);
-            //        //fprintf(fout, "          <wf matchingOrder=\"1\" trialEnergy=\"%f\" searchE=\"true\"/>\n", e_nl_v[n][l]);
-            //        //fprintf(fout, "        </lo>\n");
-            //        //
-            //        //if (e_nl_v[n][l] < -1.0)
-            //        //{
-            //        //    fprintf(fout, "        <lo l=\"%i\">\n", l);
-            //        //    fprintf(fout, "          <wf matchingOrder=\"0\" trialEnergy=\"0.15\" searchE=\"false\"/>\n");
-            //        //    fprintf(fout, "          <wf matchingOrder=\"1\" trialEnergy=\"0.15\" searchE=\"false\"/>\n");
-            //        //    fprintf(fout, "          <wf matchingOrder=\"0\" trialEnergy=\"%f\" searchE=\"true\"/>\n", e_nl_v[n][l]);
-            //        //    fprintf(fout, "        </lo>\n");
-            //        //}
-            //    }
-            //}
-        }
-        for (int l = lmax + 1; l <= lmax + 3; l++)
-        {
-            fprintf(fout, "        <lo l=\"%i\">\n", l);
-            fprintf(fout, "          <wf matchingOrder=\"0\" trialEnergy=\"0.15\" searchE=\"false\"/>\n");
-            fprintf(fout, "          <wf matchingOrder=\"1\" trialEnergy=\"0.15\" searchE=\"false\"/>\n");
-            fprintf(fout, "        </lo>\n");
+    //        //        //fprintf(fout, "        <lo l=\"%i\">\n", l);
+    //        //        //fprintf(fout, "          <wf matchingOrder=\"0\" trialEnergy=\"%f\" searchE=\"true\"/>\n", e_nl_v[n][l]);
+    //        //        //fprintf(fout, "          <wf matchingOrder=\"1\" trialEnergy=\"%f\" searchE=\"true\"/>\n", e_nl_v[n][l]);
+    //        //        //fprintf(fout, "        </lo>\n");
+    //        //        //
+    //        //        //if (e_nl_v[n][l] < -1.0)
+    //        //        //{
+    //        //        //    fprintf(fout, "        <lo l=\"%i\">\n", l);
+    //        //        //    fprintf(fout, "          <wf matchingOrder=\"0\" trialEnergy=\"0.15\" searchE=\"false\"/>\n");
+    //        //        //    fprintf(fout, "          <wf matchingOrder=\"1\" trialEnergy=\"0.15\" searchE=\"false\"/>\n");
+    //        //        //    fprintf(fout, "          <wf matchingOrder=\"0\" trialEnergy=\"%f\" searchE=\"true\"/>\n", e_nl_v[n][l]);
+    //        //        //    fprintf(fout, "        </lo>\n");
+    //        //        //}
+    //        //    }
+    //        //}
+    //    }
+    //    for (int l = lmax + 1; l <= lmax + 3; l++)
+    //    {
+    //        fprintf(fout, "        <lo l=\"%i\">\n", l);
+    //        fprintf(fout, "          <wf matchingOrder=\"0\" trialEnergy=\"0.15\" searchE=\"false\"/>\n");
+    //        fprintf(fout, "          <wf matchingOrder=\"1\" trialEnergy=\"0.15\" searchE=\"false\"/>\n");
+    //        fprintf(fout, "        </lo>\n");
 
-            fprintf(fout, "        <lo l=\"%i\">\n", l);
-            fprintf(fout, "          <wf matchingOrder=\"1\" trialEnergy=\"0.15\" searchE=\"false\"/>\n");
-            fprintf(fout, "          <wf matchingOrder=\"2\" trialEnergy=\"0.15\" searchE=\"false\"/>\n");
-            fprintf(fout, "        </lo>\n");
-        }
-        fprintf(fout, "      </basis>\n");
-        fprintf(fout, "  </sp>\n");
-        fprintf(fout, "</spdb>\n");
+    //        fprintf(fout, "        <lo l=\"%i\">\n", l);
+    //        fprintf(fout, "          <wf matchingOrder=\"1\" trialEnergy=\"0.15\" searchE=\"false\"/>\n");
+    //        fprintf(fout, "          <wf matchingOrder=\"2\" trialEnergy=\"0.15\" searchE=\"false\"/>\n");
+    //        fprintf(fout, "        </lo>\n");
+    //    }
+    //    fprintf(fout, "      </basis>\n");
+    //    fprintf(fout, "  </sp>\n");
+    //    fprintf(fout, "</spdb>\n");
 
-        fclose(fout);
-    }
+    //    fclose(fout);
+    //}
  
 }
 
@@ -818,7 +854,7 @@ int main(int argn, char **argv)
     cmd_args args;
     args.register_key("--symbol=", "{string} symbol of a chemical element");
     args.register_key("--type=", "{lo1, lo2, lo3, LO1, LO2} type of local orbital basis");
-    args.register_key("--core=", "{double} cutoff energy (in Ha) for the core states");
+    args.register_key("--core=", "{double} cutoff for core states: energy (in Ha, if <0), radius (in a.u. if >0)");
     args.register_key("--order=", "{int} order of augmentation");
     args.register_key("--apw_enu=", "{double} default value for APW linearization energies");
     args.register_key("--auto_enu", "allow search of APW linearization energies");
@@ -855,7 +891,7 @@ int main(int argn, char **argv)
 
     auto symbol = args.value<std::string>("symbol");
 
-    double core_cutoff_energy = args.value<double>("core", -10.0);
+    double core_cutoff = args.value<double>("core", -10.0);
 
     std::string lo_type = args.value<std::string>("type", "lo1");
 
@@ -873,7 +909,7 @@ int main(int argn, char **argv)
     param.set_lmax_apw(-1);
     Free_atom a = init_atom_configuration(symbol, param);
     
-    generate_atom_file(a, core_cutoff_energy, lo_type, apw_order, apw_enu, auto_enu, write_to_xml, rel);
+    generate_atom_file(a, core_cutoff, lo_type, apw_order, apw_enu, auto_enu, write_to_xml, rel);
 
     sirius::finalize();
 }

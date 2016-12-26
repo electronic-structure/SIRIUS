@@ -31,31 +31,21 @@
 #include <assert.h>
 #include <complex>
 
-typedef std::complex<double> double_complex;
+using double_complex = std::complex<double>;
 
 enum class spin_block_t {nm, uu, ud, dd, du};
-
-//enum lattice_t {direct, reciprocal};
-
-//enum coordinates_t {cartesian, fractional};
 
 /// Type of electronic structure methods.
 enum class electronic_structure_method_t 
 {
     /// Full potential linearized augmented plane waves with local orbitals.
-    full_potential_lapwlo, 
+    full_potential_lapwlo,
 
     /// Full potential plane waves with local orbitals (heavily experimental and not completely implemented).
-    full_potential_pwlo, 
+    full_potential_pwlo,
 
-    /// Ultrasoft pseudopotential with plane wave basis (experimental).
-    ultrasoft_pseudopotential,
-
-    /// PAW pseudopotential with plane wave basis (experimental).
-    paw_pseudopotential,
-
-    /// Norm-conserving pseudopotential with plane wave basis (experimental).
-    norm_conserving_pseudopotential
+    /// Pseudopotential (ultrasoft, norm-conserving, PAW).
+    pseudopotential
 };
 
 enum class index_domain_t {global, local};
@@ -83,9 +73,9 @@ class type_wrapper<double>
             return v;
         }
 
-        static inline double sift(double_complex const& v)
+        static inline double real(double const& v)
         {
-            return std::real(v);
+            return v;
         }
 
         static bool is_complex()
@@ -100,7 +90,7 @@ class type_wrapper<double>
 
         static inline double random()
         {
-            return double(rand()) / RAND_MAX;
+            return double(std::rand()) / RAND_MAX;
         }
 };
 
@@ -131,20 +121,20 @@ class type_wrapper<float>
 };
 
 template<> 
-class type_wrapper< std::complex<double> >
+class type_wrapper<double_complex>
 {
     public:
-        typedef std::complex<double> complex_t;
+        typedef double_complex complex_t;
         typedef double real_t;
         
-        static inline std::complex<double> conjugate(double_complex const& v)
+        static inline double_complex conjugate(double_complex const& v)
         {
-            return conj(v);
+            return std::conj(v);
         }
-        
-        static inline std::complex<double> sift(double_complex const& v)
+
+        static inline double real(double_complex const& v)
         {
-            return v;
+            return v.real();
         }
         
         static hid_t hdf5_type_id()
@@ -164,7 +154,7 @@ class type_wrapper< std::complex<double> >
         
         static inline std::complex<double> random()
         {
-            return std::complex<double>(double(rand()) / RAND_MAX, double(rand()) / RAND_MAX);
+            return std::complex<double>(double(std::rand()) / RAND_MAX, double(std::rand()) / RAND_MAX);
         }
 };
 
@@ -178,16 +168,16 @@ class type_wrapper<int>
         }
 };
 
-template<> 
-class type_wrapper<char>
-{
-    public:
-
-        static inline char random()
-        {
-            return static_cast<char>(255 * (double(rand()) / RAND_MAX));
-        }
-};
+//template<> 
+//class type_wrapper<char>
+//{
+//    public:
+//
+//        static inline char random()
+//        {
+//            return static_cast<char>(255 * (double(std::rand()) / RAND_MAX));
+//        }
+//};
 
 enum class relativity_t
 {

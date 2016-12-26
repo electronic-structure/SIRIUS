@@ -3,10 +3,10 @@
 
 #include <vector>
 #include "typedefs.h"
-#include "vector3d.h"
-#include "mdarray.h"
+#include "vector3d.hpp"
+#include "mdarray.hpp"
 #include "unit_cell.h"
-#include "fft3d.h"
+#include "fft3d.hpp"
 
 namespace sirius {
 

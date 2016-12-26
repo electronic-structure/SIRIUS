@@ -38,12 +38,12 @@ Band::residuals_aux(K_point* kp__,
                     mdarray<double, 1>& h_diag__,
                     mdarray<double, 1>& o_diag__) const
 {
-    PROFILE_WITH_TIMER("sirius::Band::residuals_aux");
+    PROFILE("sirius::Band::residuals_aux");
 
     assert(kp__->num_gkvec_loc() == res__.pw_coeffs().num_rows_loc());
     assert(kp__->num_gkvec_loc() == hpsi__.pw_coeffs().num_rows_loc());
     assert(kp__->num_gkvec_loc() == opsi__.pw_coeffs().num_rows_loc());
-    if (ctx_.full_potential()) {
+    if (res__.has_mt()) {
         assert(res__.mt_coeffs().num_rows_loc() == hpsi__.mt_coeffs().num_rows_loc());
         assert(res__.mt_coeffs().num_rows_loc() == opsi__.mt_coeffs().num_rows_loc());
     }
@@ -67,7 +67,7 @@ Band::residuals_aux(K_point* kp__,
             for (int ig = 0; ig < res__.pw_coeffs().num_rows_loc(); ig++) {
                 res__.pw_coeffs().prime(ig, i) = hpsi__.pw_coeffs().prime(ig, i) - eval__[i] * opsi__.pw_coeffs().prime(ig, i);
             }
-            if (ctx_.full_potential() && res__.mt_coeffs().num_rows_loc()) {
+            if (res__.has_mt() && res__.mt_coeffs().num_rows_loc()) {
                 for (int j = 0; j < res__.mt_coeffs().num_rows_loc(); j++) {
                     res__.mt_coeffs().prime(j, i) = hpsi__.mt_coeffs().prime(j, i) - eval__[i] * opsi__.mt_coeffs().prime(j, i);
                 }
@@ -82,7 +82,7 @@ Band::residuals_aux(K_point* kp__,
                               kp__->num_gkvec_loc(),
                               num_bands__,
                               eval.at<GPU>());
-        if (ctx_.full_potential() && res__.mt_coeffs().num_rows_loc()) {
+        if (res__.has_mt() && res__.mt_coeffs().num_rows_loc()) {
             compute_residuals_gpu(hpsi__.mt_coeffs().prime().at<GPU>(),
                                   opsi__.mt_coeffs().prime().at<GPU>(),
                                   res__.mt_coeffs().prime().at<GPU>(),
@@ -106,7 +106,7 @@ Band::residuals_aux(K_point* kp__,
                 p = 0.5 * (1 + p + std::sqrt(1 + (p - 1) * (p - 1)));
                 res__.pw_coeffs().prime(ig, i) /= p;
             }
-            if (ctx_.full_potential()) {
+            if (res__.has_mt()) {
                 for (int j = 0; j < res__.mt_coeffs().num_rows_loc(); j++) {
                     double p = h_diag__[kp__->num_gkvec_loc() + j] - eval__[i] * o_diag__[kp__->num_gkvec_loc() + j];
                     p = 0.5 * (1 + p + std::sqrt(1 + (p - 1) * (p - 1)));
@@ -123,7 +123,7 @@ Band::residuals_aux(K_point* kp__,
                                  eval.at<GPU>(),
                                  h_diag__.at<GPU>(),
                                  o_diag__.at<GPU>());
-        if (ctx_.full_potential() && res__.mt_coeffs().num_rows_loc()) {
+        if (res__.has_mt() && res__.mt_coeffs().num_rows_loc()) {
             apply_preconditioner_gpu(res__.mt_coeffs().prime().at<GPU>(),
                                      res__.mt_coeffs().num_rows_loc(),
                                      num_bands__,
@@ -144,7 +144,7 @@ Band::residuals_aux(K_point* kp__,
             for (int ig = 0; ig < res__.pw_coeffs().num_rows_loc(); ig++) {
                 res__.pw_coeffs().prime(ig, i) *= a;
             }
-            if (ctx_.full_potential() && res__.mt_coeffs().num_rows_loc()) {
+            if (res__.has_mt() && res__.mt_coeffs().num_rows_loc()) {
                 for (int j = 0; j < res__.mt_coeffs().num_rows_loc(); j++) {
                     res__.mt_coeffs().prime(j, i) *= a;
                 }
@@ -162,7 +162,7 @@ Band::residuals_aux(K_point* kp__,
                                  res__.pw_coeffs().prime().at<GPU>(),
                                  p_norm.at<GPU>());
 
-        if (ctx_.full_potential() && res__.mt_coeffs().num_rows_loc()) {
+        if (res__.has_mt() && res__.mt_coeffs().num_rows_loc()) {
             scale_matrix_columns_gpu(res__.mt_coeffs().num_rows_loc(),
                                      num_bands__,
                                      res__.mt_coeffs().prime().at<GPU>(),
@@ -190,7 +190,7 @@ inline int Band::residuals(K_point* kp__,
                            mdarray<double, 1>& h_diag__,
                            mdarray<double, 1>& o_diag__) const
 {
-    PROFILE_WITH_TIMER("sirius::Band::residuals");
+    PROFILE("sirius::Band::residuals");
 
     assert(N__ != 0);
 
@@ -202,11 +202,8 @@ inline int Band::residuals(K_point* kp__,
         /* main trick here: first estimate energy difference, and only then compute unconverged residuals */
         std::vector<int> ev_idx;
         for (int i = 0; i < num_bands__; i++) {
-            bool take_res = true;
-            if (itso.converge_occupied_ && kp__->band_occupancy(i + ispn__ * ctx_.num_fv_states()) < 1e-10) {
-                take_res = false;
-            }
-            if (take_res && std::abs(eval__[i] - eval_old__[i]) > itso.energy_tolerance_) {
+            double tol = itso.energy_tolerance_ + 1e-7 * std::abs(kp__->band_occupancy(i + ispn__ * ctx_.num_fv_states()) / ctx_.max_occupancy() - 1);
+            if (std::abs(eval__[i] - eval_old__[i]) > tol) {
                 ev_idx.push_back(i);
             }
         }
@@ -254,11 +251,9 @@ inline int Band::residuals(K_point* kp__,
                 n++;
             }
         }
-        #if (__VERBOSITY > 2)
-        if (kp__->comm().rank() == 0) {
+        if (ctx_.control().verbosity_ > 2 && kp__->comm().rank() == 0) {
             DUMP("initial and final number of residuals : %i %i", nmax, n);
         }
-        #endif
     } else {
         /* compute H\Psi_{i} = \sum_{mu} H\phi_{mu} * Z_{mu, i} and O\Psi_{i} = \sum_{mu} O\phi_{mu} * Z_{mu, i} */
         transform<T>({&hphi__, &ophi__}, 0, N__, evec__, 0, 0, {&hpsi__, &opsi__}, 0, num_bands__);
@@ -266,13 +261,9 @@ inline int Band::residuals(K_point* kp__,
         auto res_norm = residuals_aux(kp__, num_bands__, eval__, hpsi__, opsi__, res__, h_diag__, o_diag__);
 
         for (int i = 0; i < num_bands__; i++) {
-            bool take_res = true;
-            if (itso.converge_occupied_ && kp__->band_occupancy(i + ispn__ * ctx_.num_fv_states()) < 1e-10) {
-                take_res = false;
-            }
-
+            double tol = itso.residual_tolerance_ + 1e-3 * std::abs(kp__->band_occupancy(i + ispn__ * ctx_.num_fv_states()) / ctx_.max_occupancy() - 1);
             /* take the residual if it's norm is above the threshold */
-            if (take_res && res_norm[i] > itso.residual_tolerance_) {
+            if (res_norm[i] > tol) {
                 /* shift unconverged residuals to the beginning of array */
                 if (n != i) {
                     res__.copy_from(res__, i, 1, n);
@@ -295,3 +286,4 @@ inline int Band::residuals(K_point* kp__,
 
     return n;
 }
+

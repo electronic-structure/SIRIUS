@@ -1,6 +1,6 @@
 inline void Density::initial_density()
 {
-    PROFILE_WITH_TIMER("sirius::Density::initial_density");
+    PROFILE("sirius::Density::initial_density");
 
     zero();
 
@@ -11,11 +11,11 @@ inline void Density::initial_density()
     } else {
         initial_density_pseudo();
 
-        if(ctx_.esm_type() == electronic_structure_method_t::paw_pseudopotential) {
-            initialize_beta_density_matrix();
+        init_paw();
 
-            generate_paw_loc_density();
-        }
+        init_density_matrix_for_paw();
+
+        generate_paw_loc_density();
     }
 
     ctx_.fft().dismiss();
@@ -237,12 +237,12 @@ inline void Density::initial_density_pseudo()
 
 
 
-//----------------------------------------------------------------------------------------------------
-//----------------------------------------------------------------------------------------------------
 inline void Density::initial_density_full_pot()
 {
     /* initialize smooth density of free atoms */
-    for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) unit_cell_.atom_type(iat).init_free_atom(true);
+    for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
+        unit_cell_.atom_type(iat).init_free_atom(true);
+    }
     
     /* compute radial integrals */
     auto rho_radial_integrals = generate_rho_radial_integrals(0);
@@ -270,9 +270,10 @@ inline void Density::initial_density_full_pot()
     #endif
     
     /* remove possible negative noise */
-    for (int ir = 0; ir < ctx_.fft().local_size(); ir++)
-    {
-        if (rho_->f_rg(ir) < 0) rho_->f_rg(ir) = 0;
+    for (int ir = 0; ir < ctx_.fft().local_size(); ir++) {
+        if (rho_->f_rg(ir) < 0) {
+            rho_->f_rg(ir) = 0;
+        }
     }
     
     /* mapping between G-shell (global index) and a list of G-vectors (local index) */
@@ -289,16 +290,17 @@ inline void Density::initial_density_full_pot()
     
     /* list of G-shells for the curent MPI rank */
     std::vector<std::pair<int, std::vector<int> > > gsh_list;
-    for (auto& i: gsh_map) gsh_list.push_back(std::pair<int, std::vector<int> >(i.first, i.second));
+    for (auto& i: gsh_map) {
+        gsh_list.push_back(std::pair<int, std::vector<int> >(i.first, i.second));
+    }
     
-    int lmax = ctx_.lmax_rho();
-    int lmmax = ctx_.lmmax_rho();
+    int lmax = 1; //ctx_.lmax_rho();
+    int lmmax = Utils::lmmax(lmax); //ctx_.lmmax_rho();
     
     sbessel_approx sba(unit_cell_, lmax, ctx_.gvec().shell_len(1), ctx_.gvec().shell_len(ctx_.gvec().num_shells() - 1), 1e-6);
     
     std::vector<double> gvec_len(gsh_list.size());
-    for (int i = 0; i < (int)gsh_list.size(); i++)
-    {
+    for (int i = 0; i < (int)gsh_list.size(); i++) {
         gvec_len[i] = ctx_.gvec().shell_len(gsh_list[i].first);
     }
     sba.approximate(gvec_len);
@@ -308,7 +310,7 @@ inline void Density::initial_density_full_pot()
     std::vector<double_complex> zil(lmax + 1);
     for (int l = 0; l <= lmax; l++) zil[l] = std::pow(double_complex(0, 1), l);
     
-    runtime::Timer t3("sirius::Density::initial_density|znulm");
+    sddk::timer t3("sirius::Density::initial_density|znulm");
     
     mdarray<double_complex, 3> znulm(sba.nqnu_max(), lmmax, unit_cell_.num_atoms());
     znulm.zero();
@@ -343,7 +345,9 @@ inline void Density::initial_density_full_pot()
                     
                     auto z2 = z1 * zil[l] * gvec_ylm(lm, igloc);
                     
-                    for (int iq = 0; iq < nqnu; iq++) znulm(iq, lm, ia) += z2 * sba.coeff(iq, i, l, iat);
+                    for (int iq = 0; iq < nqnu; iq++) {
+                        znulm(iq, lm, ia) += z2 * sba.coeff(iq, i, l, iat);
+                    }
                 }
             }
         }
@@ -356,7 +360,7 @@ inline void Density::initial_density_full_pot()
     DUMP("checksum(znulm): %18.10f %18.10f", std::real(z3), std::imag(z3));
     #endif
     
-    runtime::Timer t4("sirius::Density::initial_density|rholm");
+    sddk::timer t4("sirius::Density::initial_density|rholm");
     
     SHT sht(lmax);
     
@@ -452,61 +456,4 @@ inline void Density::initial_density_full_pot()
     }
 }
 
-inline void Density::initialize_beta_density_matrix()
-{
-    density_matrix_.zero();
 
-    for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++)
-    {
-        auto& atom_type = unit_cell_.atom_type(iat);
-
-        int nbf = atom_type.mt_basis_size();
-
-        const std::vector<double> &occupations = atom_type.get_PAW_descriptor().occupations;
-
-        #pragma omp parallel for
-        for (int i = 0; i < atom_type.num_atoms(); i++)
-        {
-            int ia = atom_type.atom_id(i);
-
-            // magnetization vector
-            vector3d<double> magn = unit_cell_.atom(ia).vector_field();
-            double norm = magn.length();
-
-
-            for (int xi = 0; xi < nbf; xi++)
-            {
-                basis_function_index_descriptor const& basis_func_index_dsc = atom_type.indexb()[xi];
-
-                int rad_func_index = basis_func_index_dsc.idxrf;
-
-                double occ = occupations[rad_func_index];
-
-                int l = basis_func_index_dsc.l;
-
-                switch (ctx_.num_mag_dims())
-                {
-                    case 0:
-                    {
-                        density_matrix_(xi,xi,0,ia) = occ / (double)( 2 * l + 1 );
-
-                        std::cout<<density_matrix_(xi,xi,0,ia)<<std::endl;
-                        break;
-                    }
-
-                    case 1:
-                    {
-                        double nm = (norm < 1. ) ? magn[0] : 1.;
-
-                        density_matrix_(xi,xi,0,ia) = 0.5 * (1.0 + nm ) * occ / (double)( 2 * l + 1 );
-                        density_matrix_(xi,xi,1,ia) = 0.5 * (1.0 - nm ) * occ / (double)( 2 * l + 1 );
-
-                        std::cout<<density_matrix_(xi,xi,0,ia)<<" "<<density_matrix_(xi,xi,1,ia)<<std::endl;
-                        break;
-                    }
-                }
-
-            }
-        }
-    }
-}

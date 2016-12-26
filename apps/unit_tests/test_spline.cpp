@@ -145,7 +145,7 @@ void test_spline_5()
         s2[i].interpolate();
     }
     mdarray<double, 2> prod(n, n);
-    runtime::Timer t("spline|inner");
+    sddk::timer t("spline|inner");
     #pragma omp parallel for
     for (int i = 0; i < n; i++)
     {
@@ -330,6 +330,37 @@ void test7()
 
 }
 
+void test8()
+{
+    int N = 400;
+    double r0 = 1e-6;
+    double r1 = 3.0;
+    
+    Radial_grid r(pow3_grid, N, r0, r1);
+
+    auto int_s0 = [](double x, double a1, double a2) {
+        return (2*a2 + 2*a1*a2*x + std::pow(a1,2)*(-1 + a2*std::pow(x,2)))/(std::pow(a1,3)*std::exp(a1*x));
+    };
+    auto int_s2 = [](double x, double a1, double a2) {
+        return (24*a2 + 24*a1*a2*x + std::pow(a1,4)*std::pow(x,2)*(-1 + a2*std::pow(x,2)) + 
+               2*std::pow(a1,2)*(-1 + 6*a2*std::pow(x,2)) + std::pow(a1,3)*(-2*x + 4*a2*std::pow(x,3)))/
+               (std::pow(a1,5)*std::exp(a1*x));
+    };
+    for (int i1 = 1; i1 < 5; i1++) {
+        for (int i2 = 1; i2 < 5; i2++) {
+            double a1 = i1;
+            double a2 = i2;
+            Spline<double> s(r, [a1, a2](double x){return std::exp(-a1 * x) * (1 - a2 * x * x);});
+
+            printf("test8: diff: %18.12f\n", std::abs(s.integrate(0) - (int_s0(r1, a1, a2) - int_s0(r0, a1, a2))));
+            printf("test8: diff: %18.12f\n", std::abs(s.integrate(2) - (int_s2(r1, a1, a2) - int_s2(r0, a1, a2))));
+        }
+    }
+
+
+
+}
+
 
 int main(int argn, char** argv)
 {
@@ -368,6 +399,8 @@ int main(int argn, char** argv)
     test6();
 
     test7();
+
+    test8();
 
     sirius::finalize();
     

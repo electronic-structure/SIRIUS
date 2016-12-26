@@ -4,7 +4,7 @@
  */
 inline mdarray<double, 2> Density::generate_rho_radial_integrals(int type__)
 {
-    runtime::Timer t("sirius::Density::generate_rho_radial_integrals");
+    PROFILE("sirius::Density::generate_rho_radial_integrals");
 
     mdarray<double, 2> rho_radial_integrals(unit_cell_.num_atom_types(), ctx_.gvec().num_shells());
 
@@ -75,17 +75,17 @@ inline mdarray<double, 2> Density::generate_rho_radial_integrals(int type__)
                     }
                 }
 
-                if (type__ == 1)
-                {
-                    for (int ir = 0; ir < sa[iat].num_points(); ir++) 
-                        sa[iat][ir] = jl[0][ir] * atom_type.uspp().total_charge_density[ir];
+                if (type__ == 1) {
+                    for (int ir = 0; ir < sa[iat].num_points(); ir++) {
+                        sa[iat][ir] = jl[0][ir] * atom_type.pp_desc().total_charge_density[ir];
+                    }
                     rho_radial_integrals(iat, igs) = sa[iat].interpolate().integrate(0) / fourpi;
                 }
 
                 if (type__ == 2)
                 {
                     for (int ir = 0; ir < sa[iat].num_points(); ir++) 
-                        sa[iat][ir] = jl[0][ir] * atom_type.uspp().core_charge_density[ir];
+                        sa[iat][ir] = jl[0][ir] * atom_type.pp_desc().core_charge_density[ir];
                     rho_radial_integrals(iat, igs) = sa[iat].interpolate().integrate(2);
                 }
             }

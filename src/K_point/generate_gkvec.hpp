@@ -1,6 +1,6 @@
 inline void K_point::generate_gkvec(double gk_cutoff)
 {
-    PROFILE();
+    PROFILE("sirius::K_point::generate_gkvec");
 
     if (ctx_.full_potential() && (gk_cutoff * unit_cell_.max_mt_radius() > ctx_.lmax_apw())) {
         std::stringstream s;
@@ -19,13 +19,8 @@ inline void K_point::generate_gkvec(double gk_cutoff)
     }
 
     /* create G+k vectors */
-    if (ctx_.full_potential()) {
-        gkvec_ = Gvec(vk_, ctx_.unit_cell().reciprocal_lattice_vectors(), gk_cutoff, ctx_.fft().grid(), num_ranks(),
-                      ctx_.mpi_grid_fft().communicator(1 << 0), ctx_.gamma_point());
-    } else {
-        gkvec_ = Gvec(vk_, ctx_.unit_cell().reciprocal_lattice_vectors(), gk_cutoff, ctx_.fft_coarse().grid(), num_ranks(),
-                      ctx_.mpi_grid_fft().communicator(1 << 0), ctx_.gamma_point());
-        /* auxiliary partition for Hloc */
-        gkvec_vloc_ = std::unique_ptr<Gvec_partition>(new Gvec_partition(gkvec_, ctx_.mpi_grid_fft_vloc().communicator(1 << 0)));
-    }
+    gkvec_ = Gvec(vk_, ctx_.unit_cell().reciprocal_lattice_vectors(), gk_cutoff, ctx_.fft().grid(), num_ranks(),
+                  ctx_.mpi_grid_fft().communicator(1 << 0), ctx_.gamma_point());
+    /* auxiliary partition for Hloc */
+    gkvec_vloc_ = std::unique_ptr<Gvec_partition>(new Gvec_partition(gkvec_, ctx_.mpi_grid_fft_vloc().communicator(1 << 0)));
 }

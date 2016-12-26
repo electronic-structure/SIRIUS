@@ -25,15 +25,10 @@
 #ifndef __K_SET_H__
 #define __K_SET_H__
 
-//#include "band.h"
-//#include "potential.h"
 #include "k_point.h"
-#include "blacs_grid.h"
-#include "vector3d.h"
+#include "vector3d.hpp"
 
-
-namespace sirius 
-{
+namespace sirius {
 
 struct kq
 {
@@ -44,6 +39,8 @@ struct kq
     vector3d<int> K;
 };
 
+// TODO: rename K_set -> K_point_set
+
 /// Set of k-points.
 class K_set
 {
@@ -53,11 +50,11 @@ class K_set
 
         std::vector<K_point*> kpoints_;
 
-        splindex<block> spl_num_kpoints_;
+        splindex<chunk> spl_num_kpoints_;
 
-        double energy_fermi_;
+        double energy_fermi_{0};
 
-        double band_gap_;
+        double band_gap_{0};
 
         Unit_cell& unit_cell_;
 
@@ -67,11 +64,11 @@ class K_set
 
         K_set(Simulation_context& ctx__,
               Communicator const& comm_k__)
-            : ctx_(ctx__),
-              unit_cell_(ctx__.unit_cell()),
-              comm_k_(comm_k__)
+            : ctx_(ctx__)
+            , unit_cell_(ctx__.unit_cell())
+            , comm_k_(comm_k__)
         {
-            PROFILE();
+            PROFILE("sirius::K_set::K_set");
         }
 
         K_set(Simulation_context& ctx__,
@@ -79,11 +76,11 @@ class K_set
               vector3d<int> k_grid__,
               vector3d<int> k_shift__,
               int use_symmetry__) 
-            : ctx_(ctx__),
-              unit_cell_(ctx__.unit_cell()),
-              comm_k_(comm_k__)
+            : ctx_(ctx__)
+            , unit_cell_(ctx__.unit_cell())
+            , comm_k_(comm_k__)
         {
-            PROFILE();
+            PROFILE("sirius::K_set::K_set");
 
             int nk;
             mdarray<double, 2> kp;
@@ -172,20 +169,37 @@ class K_set
             //    for (int ik = 0; ik < nk; ik++) add_kpoint(&vk(0, ik), wk[ik]);
             //}
 
-            for (int ik = 0; ik < nk; ik++) add_kpoint(&kp(0, ik), wk[ik]);
+            for (int ik = 0; ik < nk; ik++) {
+                add_kpoint(&kp(0, ik), wk[ik]);
+            }
         }
 
         ~K_set()
         {
-            PROFILE();
+            PROFILE("sirius::K_set::~K_set");
+            //PROFILE();
             clear();
         }
         
         /// Initialize the k-point set
-        void initialize();
+        void initialize(std::vector<int> counts = std::vector<int>())
+        {
+            /* distribute k-points along the 1-st dimension of the MPI grid */
+            if (counts.empty()) {
+                splindex<block> spl_tmp(num_kpoints(), comm_k_.size(), comm_k_.rank());
+                spl_num_kpoints_ = splindex<chunk>(num_kpoints(), comm_k_.size(), comm_k_.rank(), spl_tmp.counts());
+            } else {
+                spl_num_kpoints_ = splindex<chunk>(num_kpoints(), comm_k_.size(), comm_k_.rank(), counts);
+            }
 
-        /// Solve \f$ \hat H \psi = E \psi \f$ and find eigen-states of the Hamiltonian
-        //void find_eigen_states(Potential* potential, Band const& band__, bool precompute);
+            for (int ikloc = 0; ikloc < spl_num_kpoints_.local_size(); ikloc++) {
+                kpoints_[spl_num_kpoints_[ikloc]]->initialize();
+            }
+
+            if (ctx_.control().verbosity_ > 0) {
+                print_info();
+            }
+        }
 
         /// Find Fermi energy and band occupation numbers
         void find_band_occupancies();
@@ -201,20 +215,31 @@ class K_set
 
         void load();
 
-        int max_num_gkvec();
+        int max_num_gkvec()
+        {
+            int max_num_gkvec{0};
+            for (int ikloc = 0; ikloc < spl_num_kpoints_.local_size(); ikloc++) {
+                auto ik = spl_num_kpoints_[ikloc];
+                max_num_gkvec = std::max(max_num_gkvec, kpoints_[ik]->num_gkvec());
+            }
+            comm_k_.allreduce<int, mpi_op_t::op_max>(&max_num_gkvec, 1);
+            return max_num_gkvec;
+        }
 
         void force(mdarray<double, 2>& forcek);
         
         void add_kpoint(double* vk__, double weight__)
         {
-            PROFILE();
+            PROFILE("sirius::K_set::add_kpoint");
             kpoints_.push_back(new K_point(ctx_, vk__, weight__));
         }
 
         void add_kpoints(mdarray<double, 2>& kpoints__, double* weights__)
         {
-            PROFILE();
-            for (int ik = 0; ik < (int)kpoints__.size(1); ik++) add_kpoint(&kpoints__(0, ik), weights__[ik]);
+            PROFILE("sirius::K_set::add_kpoints");
+            for (size_t ik = 0; ik < kpoints__.size(1); ik++) {
+                add_kpoint(&kpoints__(0, ik), weights__[ik]);
+            }
         }
 
         inline K_point* operator[](int i)
@@ -226,22 +251,24 @@ class K_set
 
         void clear()
         {
-            PROFILE();
-            for (size_t ik = 0; ik < kpoints_.size(); ik++) delete kpoints_[ik];
+            PROFILE("sirius::K_set::clear");
+            for (size_t ik = 0; ik < kpoints_.size(); ik++) {
+                delete kpoints_[ik];
+            }
             kpoints_.clear();
         }
         
-        inline int num_kpoints()
+        inline int num_kpoints() const
         {
-            return (int)kpoints_.size();
+            return static_cast<int>(kpoints_.size());
         }
 
-        inline splindex<block>& spl_num_kpoints()
+        inline splindex<chunk> const& spl_num_kpoints() const
         {
             return spl_num_kpoints_;
         }
         
-        inline int spl_num_kpoints(int ikloc)
+        inline int spl_num_kpoints(int ikloc) const
         {
             return spl_num_kpoints_[ikloc];
         }
@@ -261,12 +288,12 @@ class K_set
             kpoints_[ik]->get_band_energies(band_energies);
         }
         
-        inline double energy_fermi()
+        inline double energy_fermi() const
         {
             return energy_fermi_;
         }
 
-        inline double band_gap()
+        inline double band_gap() const
         {
             return band_gap_;
         }
@@ -297,29 +324,20 @@ class K_set
         }
 
         inline K_point* k_point(int ik) {return kpoints_[ik];}
+
+        inline Communicator const& comm() const
+        {
+            return comm_k_;
+        }
 };
-
-inline void K_set::initialize()
-{
-    /* distribute k-points along the 1-st dimension of the MPI grid */
-    spl_num_kpoints_ = splindex<block>(num_kpoints(), comm_k_.size(), comm_k_.rank());
-
-    for (int ikloc = 0; ikloc < spl_num_kpoints_.local_size(); ikloc++)
-    {
-        kpoints_[spl_num_kpoints_[ikloc]]->initialize();
-    }
-
-    #if (__VERBOSITY > 0)
-    print_info();
-    #endif
-}
 
 inline void K_set::sync_band_energies()
 {
+    PROFILE("sirius::K_set::sync_band_energies");
+
     mdarray<double, 2> band_energies(ctx_.num_bands(), num_kpoints());
 
-    for (int ikloc = 0; ikloc < spl_num_kpoints_.local_size(); ikloc++)
-    {
+    for (int ikloc = 0; ikloc < spl_num_kpoints_.local_size(); ikloc++) {
         int ik = spl_num_kpoints_[ikloc];
         kpoints_[ik]->get_band_energies(&band_energies(0, ik));
     }
@@ -327,77 +345,10 @@ inline void K_set::sync_band_energies()
                       ctx_.num_bands() * spl_num_kpoints_.global_offset(),
                       ctx_.num_bands() * spl_num_kpoints_.local_size());
 
-    for (int ik = 0; ik < num_kpoints(); ik++) kpoints_[ik]->set_band_energies(&band_energies(0, ik));
+    for (int ik = 0; ik < num_kpoints(); ik++) {
+        kpoints_[ik]->set_band_energies(&band_energies(0, ik));
+    }
 }
-
-//void K_set::find_eigen_states(Potential* potential, Band const& band__, bool precompute)
-//{
-//    runtime::Timer t("sirius::K_set::find_eigen_states", ctx_.comm());
-//
-//    if (precompute && ctx_.full_potential())
-//    {
-//        potential->generate_pw_coefs();
-//        potential->update_atomic_potential();
-//        unit_cell_.generate_radial_functions();
-//        unit_cell_.generate_radial_integrals();
-//    }
-//
-//    // TODO: mapping to coarse effective potential is k-point independent
-//
-//    /* solve secular equation and generate wave functions */
-//    for (int ikloc = 0; ikloc < spl_num_kpoints().local_size(); ikloc++)
-//    {
-//        int ik = spl_num_kpoints(ikloc);
-//        if (use_second_variation && ctx_.full_potential())
-//        {
-//            band__.solve_fv(kpoints_[ik], potential->effective_potential());
-//            kpoints_[ik]->generate_fv_states();
-//            band__.solve_sv(kpoints_[ik], potential->effective_magnetic_field());
-//            kpoints_[ik]->generate_spinor_wave_functions();
-//        }
-//        else
-//        {
-//            band__.solve_fd(kpoints_[ik], potential->effective_potential(), potential->effective_magnetic_field());
-//        }
-//    }
-//
-//    /* synchronize eigen-values */
-//    sync_band_energies();
-//
-//    #if (__VERBOSITY > 0)
-//    if (ctx_.comm().rank() == 0)
-//    {
-//        printf("Lowest band energies\n");
-//        for (int ik = 0; ik < num_kpoints(); ik++)
-//        {
-//            printf("ik : %2i, ", ik);
-//            if (ctx_.num_mag_dims() != 1)
-//            {
-//                for (int j = 0; j < std::min(10, ctx_.num_bands()); j++)
-//                    printf("%12.6f", kpoints_[ik]->band_energy(j));
-//            }
-//            else
-//            {
-//                for (int j = 0; j < std::min(10, ctx_.num_fv_states()); j++)
-//                    printf("%12.6f", kpoints_[ik]->band_energy(j));
-//                printf("\n         ");
-//                for (int j = 0; j < std::min(10, ctx_.num_fv_states()); j++)
-//                    printf("%12.6f", kpoints_[ik]->band_energy(ctx_.num_fv_states() + j));
-//            }
-//            printf("\n");
-//        }
-//
-//        //== FILE* fout = fopen("eval.txt", "w");
-//        //== for (int ik = 0; ik < num_kpoints(); ik++)
-//        //== {
-//        //==     fprintf(fout, "ik : %2i\n", ik);
-//        //==     for (int j = 0; j < ctx_.num_bands(); j++)
-//        //==         fprintf(fout, "%4i: %18.10f\n", j, kpoints_[ik]->band_energy(j));
-//        //== }
-//        //== fclose(fout);
-//    }
-//    #endif
-//}
 
 inline double K_set::valence_eval_sum()
 {
@@ -415,7 +366,7 @@ inline double K_set::valence_eval_sum()
 
 inline void K_set::find_band_occupancies()
 {
-    runtime::Timer t("sirius::K_set::find_band_occupancies");
+    PROFILE("sirius::K_set::find_band_occupancies");
 
     double ef{0};
     double de{0.1};
@@ -427,6 +378,7 @@ inline void K_set::find_band_occupancies()
 
     mdarray<double, 2> bnd_occ(ctx_.num_bands(), num_kpoints());
     
+    int step{0};
     /* calculate occupations */
     while (std::abs(ne - unit_cell_.num_valence_electrons()) >= 1e-11) {
         /* update Efermi */
@@ -445,7 +397,27 @@ inline void K_set::find_band_occupancies()
         s = (ne > unit_cell_.num_valence_electrons()) ? -1 : 1;
         /* reduce de step if we change the direction, otherwise increase the step */
         de = (s != sp) ? (-de * 0.5) : (de * 1.25); 
-    } 
+
+        if (step > 10000) {
+            std::stringstream s;
+            s << "search of band occupancies failed after 10000 steps";
+            WARNING(s);
+
+            ef = 0;
+
+            for (int ik = 0; ik < num_kpoints(); ik++) {
+                ne = unit_cell_.num_valence_electrons();
+                for (int j = 0; j < ctx_.num_bands(); j++) {
+                    bnd_occ(j, ik) = std::min(ne, static_cast<double>(ctx_.max_occupancy()));
+                    ne = std::max(ne - ctx_.max_occupancy(), 0.0);
+                }
+            }
+
+            break;
+        }
+        step++;
+    }
+
     energy_fermi_ = ef;
 
     for (int ik = 0; ik < num_kpoints(); ik++) {
@@ -456,19 +428,16 @@ inline void K_set::find_band_occupancies()
     
     int nve = static_cast<int>(unit_cell_.num_valence_electrons() + 1e-12);
     if (ctx_.num_spins() == 2 || 
-        (std::abs(nve - unit_cell_.num_valence_electrons()) < 1e-12 && nve % 2 == 0))
-    {
+        (std::abs(nve - unit_cell_.num_valence_electrons()) < 1e-12 && nve % 2 == 0)) {
         /* find band gap */
         std::vector< std::pair<double, double> > eband;
         std::pair<double, double> eminmax;
 
-        for (int j = 0; j < ctx_.num_bands(); j++)
-        {
+        for (int j = 0; j < ctx_.num_bands(); j++) {
             eminmax.first = 1e10;
             eminmax.second = -1e10;
 
-            for (int ik = 0; ik < num_kpoints(); ik++)
-            {
+            for (int ik = 0; ik < num_kpoints(); ik++) {
                 eminmax.first = std::min(eminmax.first, kpoints_[ik]->band_energy(j));
                 eminmax.second = std::max(eminmax.second, kpoints_[ik]->band_energy(j));
             }
@@ -479,16 +448,19 @@ inline void K_set::find_band_occupancies()
         std::sort(eband.begin(), eband.end());
 
         int ist = nve;
-        if (ctx_.num_spins() == 1) ist /= 2; 
+        if (ctx_.num_spins() == 1) {
+            ist /= 2; 
+        }
 
-        if (eband[ist].first > eband[ist - 1].second) band_gap_ = eband[ist].first - eband[ist - 1].second;
+        if (eband[ist].first > eband[ist - 1].second) {
+            band_gap_ = eband[ist].first - eband[ist - 1].second;
+        }
     }
 }
 
 inline void K_set::print_info()
 {
-    if (comm_k_.rank() == 0 && ctx_.blacs_grid().comm().rank() == 0)
-    {
+    if (comm_k_.rank() == 0 && ctx_.blacs_grid().comm().rank() == 0) {
         printf("\n");
         printf("total number of k-points : %i\n", num_kpoints());
         for (int i = 0; i < 80; i++) printf("-");
@@ -500,17 +472,17 @@ inline void K_set::print_info()
         printf("\n");
     }
 
-    if (ctx_.blacs_grid().comm().rank() == 0)
-    {
+    if (ctx_.blacs_grid().comm().rank() == 0) {
         runtime::pstdout pout(comm_k_);
-        for (int ikloc = 0; ikloc < (int)spl_num_kpoints().local_size(); ikloc++)
-        {
+        for (int ikloc = 0; ikloc < (int)spl_num_kpoints().local_size(); ikloc++) {
             int ik = spl_num_kpoints(ikloc);
             pout.printf("%4i   %8.4f %8.4f %8.4f   %12.6f     %6i", 
                         ik, kpoints_[ik]->vk()[0], kpoints_[ik]->vk()[1], kpoints_[ik]->vk()[2], 
                         kpoints_[ik]->weight(), kpoints_[ik]->num_gkvec());
 
-            if (ctx_.full_potential()) pout.printf("            %6i", kpoints_[ik]->gklo_basis_size());
+            if (ctx_.full_potential()) {
+                pout.printf("            %6i", kpoints_[ik]->gklo_basis_size());
+            }
             
             pout.printf("\n");
         }
@@ -646,18 +618,6 @@ inline void K_set::load()
 //==     }
 //== }
 
-inline int K_set::max_num_gkvec()
-{
-    int max_num_gkvec_ = 0;
-    for (int ikloc = 0; ikloc < spl_num_kpoints_.local_size(); ikloc++)
-    {
-        auto ik = spl_num_kpoints_[ikloc];
-        max_num_gkvec_ = std::max(max_num_gkvec_, kpoints_[ik]->num_gkvec());
-    }
-    comm_k_.allreduce<int, op_max>(&max_num_gkvec_, 1);
-    return max_num_gkvec_;
-}
-
 //== void K_set::fixed_band_occupancies()
 //== {
 //==     Timer t("sirius::K_set::fixed_band_occupancies");
@@ -720,29 +680,6 @@ inline int K_set::max_num_gkvec()
 //==         if (eband[ist].first > eband[ist - 1].second) gap = eband[ist].first - eband[ist - 1].second;
 //== 
 //==         band_gap_ = gap;
-//==     }
-//==     
-//==     if (Platform::mpi_rank() == 0 && verbosity_level >= 5)
-//==     {
-//==         printf("Lowest band occupancies\n");
-//==         for (int ik = 0; ik < num_kpoints(); ik++)
-//==         {
-//==             printf("ik : %2i, ", ik); 
-//==             if (ctx_.num_mag_dims() != 1)
-//==             {
-//==                 for (int j = 0; j < std::min(10, ctx_.num_bands()); j++) 
-//==                     printf("%12.6f", kpoints_[ik]->band_occupancy(j));
-//==             }
-//==             else
-//==             {
-//==                 for (int j = 0; j < std::min(10, ctx_.num_fv_states()); j++) 
-//==                     printf("%12.6f", kpoints_[ik]->band_occupancy(j));
-//==                 printf("\n         ");
-//==                 for (int j = 0; j < std::min(10, ctx_.num_fv_states()); j++) 
-//==                     printf("%12.6f", kpoints_[ik]->band_occupancy(ctx_.num_fv_states() + j));
-//==             }
-//==             printf("\n");
-//==         }
 //==     }
 //== }
 };

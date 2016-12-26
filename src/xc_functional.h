@@ -1,4 +1,4 @@
-// Copyright (c) 2013-2014 Anton Kozhevnikov, Thomas Schulthess
+// Copyright (c) 2013-2016 Anton Kozhevnikov, Thomas Schulthess
 // All rights reserved.
 // 
 // Redistribution and use in source and binary forms, with or without modification, are permitted provided that 
@@ -29,8 +29,7 @@
 #include <string.h>
 #include "utils.h"
 
-namespace sirius
-{
+namespace sirius {
 
 const std::map<std::string, int> libxc_functionals = {
     {"XC_LDA_X", XC_LDA_X}, /* Exchange */
@@ -421,12 +420,16 @@ class XC_functional
               num_spins_(num_spins__)
         {
             /* check if functional name is in list */
-            if (libxc_functionals.count(libxc_name_) == 0)
-                TERMINATE("XC functional is unknown");
+            if (libxc_functionals.count(libxc_name_) == 0) {
+                std::stringstream s;
+                s << "XC functional " << libxc_name__ << " is unknown";
+                TERMINATE(s);
+            }
 
             /* init xc functional handler */
-            if (xc_func_init(&handler_, libxc_functionals.at(libxc_name_), num_spins_) != 0) 
+            if (xc_func_init(&handler_, libxc_functionals.at(libxc_name_), num_spins_) != 0) {
                 TERMINATE("xc_func_init() failed");
+            }
         }
 
         ~XC_functional()
@@ -685,6 +688,6 @@ class XC_functional
         }
 };
 
-};
+}
 
 #endif // __XC_FUNCTIONAL_H__

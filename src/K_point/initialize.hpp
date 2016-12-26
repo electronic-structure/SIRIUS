@@ -1,6 +1,6 @@
 inline void K_point::initialize()
 {
-    PROFILE_WITH_TIMER("sirius::K_point::initialize");
+    PROFILE("sirius::K_point::initialize");
     
     zil_.resize(ctx_.lmax_apw() + 1);
     for (int l = 0; l <= ctx_.lmax_apw(); l++) {
@@ -34,11 +34,14 @@ inline void K_point::initialize()
      */
     int nst = (ctx_.num_mag_dims() == 3) ? ctx_.num_bands() : ctx_.num_fv_states();
 
+    auto mem_type_evp = (ctx_.std_evp_solver_type() == ev_magma) ? memory_t::host_pinned : memory_t::host;
+    auto mem_type_gevp = (ctx_.gen_evp_solver_type() == ev_magma) ? memory_t::host_pinned : memory_t::host;
+
     if (use_second_variation && ctx_.need_sv()) {
         /* in case of collinear magnetism store pure up and pure dn components, otherwise store the full matrix */
-        sv_eigen_vectors_[0] = dmatrix<double_complex>(nst, nst, ctx_.blacs_grid(), bs, bs);
+        sv_eigen_vectors_[0] = dmatrix<double_complex>(nst, nst, ctx_.blacs_grid(), bs, bs, mem_type_evp);
         if (ctx_.num_mag_dims() == 1) {
-            sv_eigen_vectors_[1] = dmatrix<double_complex>(nst, nst, ctx_.blacs_grid(), bs, bs);
+            sv_eigen_vectors_[1] = dmatrix<double_complex>(nst, nst, ctx_.blacs_grid(), bs, bs, mem_type_evp);
         }
     }
 
@@ -46,58 +49,11 @@ inline void K_point::initialize()
         fv_eigen_values_.resize(ctx_.num_fv_states());
     }
 
-    /* Find the cutoff for G+k vectors. For pseudopotential calculations this comes 
-     * form the input whereas for full-potential calculations this is derived 
-     * from rgkmax (aw_cutoff here) and minimal MT radius. */
-    double gk_cutoff = 0;
-    switch (ctx_.esm_type())
-    {
-        case electronic_structure_method_t::paw_pseudopotential:
-        case electronic_structure_method_t::ultrasoft_pseudopotential:
-        case electronic_structure_method_t::norm_conserving_pseudopotential:
-        {
-            gk_cutoff = ctx_.gk_cutoff();
-            break;
-        }
-        case electronic_structure_method_t::full_potential_lapwlo:
-        {
-            //gk_cutoff = ctx_.aw_cutoff() / unit_cell_.min_mt_radius();
-            gk_cutoff = ctx_.aw_cutoff() / unit_cell_.max_mt_radius();
-            break;
-        }
-        default:
-        {
-            STOP();
-        }
-    }
-
     /* Build a full list of G+k vectors for all MPI ranks */
-    generate_gkvec(gk_cutoff);
+    generate_gkvec(ctx_.gk_cutoff());
     /* build a list of basis functions */
-    build_gklo_basis_descriptors();
-    /* distribute basis functions */
-    distribute_basis_index();
-    
-    if (ctx_.full_potential())
-    {
-        atom_lo_cols_.clear();
-        atom_lo_cols_.resize(unit_cell_.num_atoms());
+    generate_gklo_basis();
 
-        atom_lo_rows_.clear();
-        atom_lo_rows_.resize(unit_cell_.num_atoms());
-
-        for (int icol = num_gkvec_col(); icol < gklo_basis_size_col(); icol++)
-        {
-            int ia = gklo_basis_descriptor_col(icol).ia;
-            atom_lo_cols_[ia].push_back(icol);
-        }
-        
-        for (int irow = num_gkvec_row(); irow < gklo_basis_size_row(); irow++)
-        {
-            int ia = gklo_basis_descriptor_row(irow).ia;
-            atom_lo_rows_[ia].push_back(irow);
-        }
-    }
     if (ctx_.esm_type() == electronic_structure_method_t::full_potential_pwlo)
     {
         /** \todo Correct the memory leak */
@@ -111,32 +67,28 @@ inline void K_point::initialize()
     }
 
     if (ctx_.esm_type() == electronic_structure_method_t::full_potential_lapwlo) {
-        alm_coeffs_ = new Matching_coefficients(unit_cell_, ctx_.lmax_apw(), num_gkvec(),
-                                                gklo_basis_descriptors_);
-        alm_coeffs_row_ = new Matching_coefficients(unit_cell_, ctx_.lmax_apw(), num_gkvec_row(),
-                                                    gklo_basis_descriptors_row_);
-        alm_coeffs_col_ = new Matching_coefficients(unit_cell_, ctx_.lmax_apw(), num_gkvec_col(),
-                                                    gklo_basis_descriptors_col_);
-        alm_coeffs_loc_ = std::unique_ptr<Matching_coefficients>(new Matching_coefficients(unit_cell_,
-                                                                                           ctx_.lmax_apw(),
-                                                                                           num_gkvec_loc(),
-                                                                                           gklo_basis_descriptors_loc_));
+        if (ctx_.iterative_solver_input_section().type_ == "exact") {
+            alm_coeffs_row_ = std::unique_ptr<Matching_coefficients>(
+                new Matching_coefficients(unit_cell_, ctx_.lmax_apw(), num_gkvec_row(), igk_row_, gkvec_));
+            alm_coeffs_col_ = std::unique_ptr<Matching_coefficients>(
+                new Matching_coefficients(unit_cell_, ctx_.lmax_apw(), num_gkvec_col(), igk_col_, gkvec_));
+        }
+        alm_coeffs_loc_ = std::unique_ptr<Matching_coefficients>(
+            new Matching_coefficients(unit_cell_, ctx_.lmax_apw(), num_gkvec_loc(), igk_loc_, gkvec_));
     }
 
-    /* compute |beta> projectors for atom types */
-    if (!ctx_.full_potential())
-    {
-        beta_projectors_ = new Beta_projectors(comm_, unit_cell_, gkvec_, ctx_.processing_unit());
+    if (!ctx_.full_potential()) {
+        /* compute |beta> projectors for atom types */
+        beta_projectors_ = std::unique_ptr<Beta_projectors>(new Beta_projectors(ctx_, comm_, gkvec_));
         
-        if (true)
-        {
+        if (false) {
             p_mtrx_ = mdarray<double_complex, 3>(unit_cell_.max_mt_basis_size(), unit_cell_.max_mt_basis_size(), unit_cell_.num_atom_types());
             p_mtrx_.zero();
 
             for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
                 auto& atom_type = unit_cell_.atom_type(iat);
                 
-                if (!atom_type.uspp().augmentation_) {
+                if (!atom_type.pp_desc().augment) {
                     continue;
                 }
                 int nbf = atom_type.mt_basis_size();
@@ -175,37 +127,57 @@ inline void K_point::initialize()
 
     if (ctx_.full_potential()) {
         if (use_second_variation) {
-            if (ctx_.iterative_solver_input_section().type_ == "exact") {
-                fv_eigen_vectors_ = std::unique_ptr<matrix_storage<double_complex, matrix_storage_t::block_cyclic>>(
-                    new matrix_storage<double_complex, matrix_storage_t::block_cyclic>(gklo_basis_size(),
-                                                                                       ctx_.num_fv_states(),
-                                                                                       bs,
-                                                                                       ctx_.blacs_grid(),
-                                                                                       ctx_.blacs_grid_slice()));
-            } else {
-                fv_eigen_vectors_slab_ = std::unique_ptr<wave_functions>(
-                    new wave_functions(ctx_, comm(), gkvec(), unit_cell_.num_atoms(),
-                        [this](int ia){return unit_cell_.atom(ia).mt_lo_basis_size();}, ctx_.num_fv_states()));
+            /* allocate fv eien vectors */
+            fv_eigen_vectors_slab_ = std::unique_ptr<wave_functions>(
+                new wave_functions(ctx_.processing_unit(), comm(), gkvec(), unit_cell_.num_atoms(),
+                    [this](int ia){return unit_cell_.atom(ia).mt_lo_basis_size();}, ctx_.num_fv_states()));
 
-                fv_eigen_vectors_slab_->pw_coeffs().prime().zero();
-                fv_eigen_vectors_slab_->mt_coeffs().prime().zero();
+            fv_eigen_vectors_slab_->pw_coeffs().prime().zero();
+            fv_eigen_vectors_slab_->mt_coeffs().prime().zero();
+            /* starting guess for wave-functions */
+            for (int i = 0; i < ctx_.num_fv_states(); i++) {
+                for (int igloc = 0; igloc < gkvec().gvec_count(comm().rank()); igloc++) {
+                    int ig = igloc + gkvec().gvec_offset(comm().rank());
+                    if (ig == i) {
+                        fv_eigen_vectors_slab_->pw_coeffs().prime(igloc, i) = 1.0;
+                    }
+                    if (ig == i + 1) {
+                        fv_eigen_vectors_slab_->pw_coeffs().prime(igloc, i) = 0.5;
+                    }
+                    if (ig == i + 2) {
+                        fv_eigen_vectors_slab_->pw_coeffs().prime(igloc, i) = 0.125;
+                    }
+                }
+            }
+            if (ctx_.iterative_solver_input_section().type_ == "exact") {
+                fv_eigen_vectors_ = dmatrix<double_complex>(gklo_basis_size(), ctx_.num_fv_states(), ctx_.blacs_grid(), bs, bs, mem_type_gevp);
+            } else {
+                int ncomp = ctx_.iterative_solver_input_section().num_singular_;
+                if (ncomp < 0) {
+                    ncomp = ctx_.num_fv_states();
+                }
+
+                singular_components_ = std::unique_ptr<wave_functions>(new wave_functions(ctx_.processing_unit(), comm(), gkvec(), ncomp));
+                singular_components_->pw_coeffs().prime().zero();
                 /* starting guess for wave-functions */
-                for (int i = 0; i < ctx_.num_fv_states(); i++) {
-                    for (int ig = 0; ig < gkvec().gvec_count(comm().rank()); ig++) {
-                        if (ig + gkvec().gvec_offset(comm().rank()) == i) {
-                            fv_eigen_vectors_slab_->pw_coeffs().prime(ig, i) = 1.0;
+                for (int i = 0; i < ncomp; i++) {
+                    for (int igloc = 0; igloc < gkvec().gvec_count(comm().rank()); igloc++) {
+                        int ig = igloc + gkvec().gvec_offset(comm().rank());
+                        if (ig == i) {
+                            singular_components_->pw_coeffs().prime(igloc, i) = 1.0;
                         }
-                        if (ig + gkvec().gvec_offset(comm().rank()) == i + 1) {
-                            fv_eigen_vectors_slab_->pw_coeffs().prime(ig, i) = 0.5;
+                        if (ig == i + 1) {
+                            singular_components_->pw_coeffs().prime(igloc, i) = 0.5;
                         }
-                        if (ig + gkvec().gvec_offset(comm().rank()) == i + 2) {
-                            fv_eigen_vectors_slab_->pw_coeffs().prime(ig, i) = 0.25;
+                        if (ig == i + 2) {
+                            singular_components_->pw_coeffs().prime(igloc, i) = 0.125;
                         }
+                        singular_components_->pw_coeffs().prime(igloc, i) += 0.01 * type_wrapper<double_complex>::random();
                     }
                 }
             }
 
-            fv_states_ = std::unique_ptr<wave_functions>(new wave_functions(ctx_,
+            fv_states_ = std::unique_ptr<wave_functions>(new wave_functions(ctx_.processing_unit(),
                                                                             comm(),
                                                                             gkvec(),
                                                                             unit_cell_.num_atoms(),
@@ -216,7 +188,7 @@ inline void K_point::initialize()
                                                                             ctx_.num_fv_states()));
 
             for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-                spinor_wave_functions_[ispn] = std::unique_ptr<wave_functions>(new wave_functions(ctx_,
+                spinor_wave_functions_[ispn] = std::unique_ptr<wave_functions>(new wave_functions(ctx_.processing_unit(),
                                                                                                   comm(),
                                                                                                   gkvec(),
                                                                                                   unit_cell_.num_atoms(),
@@ -233,7 +205,7 @@ inline void K_point::initialize()
         assert(ctx_.num_fv_states() < num_gkvec());
 
         for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-            spinor_wave_functions_[ispn] = std::unique_ptr<wave_functions>(new wave_functions(ctx_, comm(), gkvec(), nst));
+            spinor_wave_functions_[ispn] = std::unique_ptr<wave_functions>(new wave_functions(ctx_.processing_unit(), comm(), gkvec(), nst));
         }
     }
 }

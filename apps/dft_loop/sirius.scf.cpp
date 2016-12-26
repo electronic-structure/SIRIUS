@@ -154,9 +154,9 @@ void json_output_common(json& dict__)
     dict__["threads_per_rank"] = omp_get_max_threads();
 }
 
-Simulation_context* create_sim_ctx(std::string                     fname__,
-                                   cmd_args const&                 args__,
-                                   Parameters_input_section const& inp__)
+std::unique_ptr<Simulation_context> create_sim_ctx(std::string                     fname__,
+                                                   cmd_args const&                 args__,
+                                                   Parameters_input_section const& inp__)
 {
     Simulation_context* ctx_ptr = new Simulation_context(fname__, mpi_comm_world());
     Simulation_context& ctx = *ctx_ptr;
@@ -184,8 +184,9 @@ Simulation_context* create_sim_ctx(std::string                     fname__,
     ctx.set_core_relativity(inp__.core_relativity_);
     ctx.set_valence_relativity(inp__.valence_relativity_);
     ctx.set_gamma_point(inp__.gamma_point_);
+    ctx.set_molecule(inp__.molecule_);
 
-    return ctx_ptr;
+    return std::move(std::unique_ptr<Simulation_context>(ctx_ptr));
 }
 
 double ground_state(Simulation_context&       ctx,
@@ -194,9 +195,9 @@ double ground_state(Simulation_context&       ctx,
                     Parameters_input_section& inp,
                     int                       write_output)
 {
-    #ifdef __PRINT_MEMORY_USAGE
-    MEMORY_USAGE_INFO();
-    #endif
+    if (ctx.comm().rank() == 0 && ctx.control().print_memory_usage_) {
+        MEMORY_USAGE_INFO();
+    }
     
     Potential potential(ctx);
     potential.allocate();
@@ -204,16 +205,19 @@ double ground_state(Simulation_context&       ctx,
     Density density(ctx);
     density.allocate();
 
-    #ifdef __PRINT_MEMORY_USAGE
-    MEMORY_USAGE_INFO();
-    #endif
+    if (ctx.comm().rank() == 0 && ctx.control().print_memory_usage_) {
+        MEMORY_USAGE_INFO();
+    }
 
     K_set ks(ctx, ctx.mpi_grid().communicator(1 << _mpi_dim_k_), inp.ngridk_, inp.shiftk_, inp.use_symmetry_);
     ks.initialize();
-    
-    #ifdef __PRINT_MEMORY_USAGE
-    MEMORY_USAGE_INFO();
-    #endif
+
+    if (ctx.comm().rank() == 0 && ctx.control().print_memory_usage_) {
+        MEMORY_USAGE_INFO();
+    }
+
+    std::string ref_file = args.value<std::string>("test_against", "");
+    bool write_state = (ref_file.size() == 0);
     
     DFT_ground_state dft(ctx, potential, density, ks, inp.use_symmetry_);
 
@@ -227,25 +231,47 @@ double ground_state(Simulation_context&       ctx,
         density.initial_density();
         dft.generate_effective_potential();
         if (!ctx.full_potential()) {
-            dft.initialize_subspace();
+            dft.band().initialize_subspace(ks, potential);
         }
     }
     
-    int result = dft.find(inp.potential_tol_, inp.energy_tol_, inp.num_dft_iter_);
+    int result = dft.find(inp.potential_tol_, inp.energy_tol_, inp.num_dft_iter_, write_state);
+
+    if (ref_file.size() != 0) {
+        json dict;
+        dict["ground_state"] = dft.serialize();
+        json dict_ref;
+        std::ifstream(ref_file) >> dict_ref;
+        
+        double e1 = dict["ground_state"]["energy"]["total"];
+        double e2 = dict_ref["ground_state"]["energy"]["total"];
+
+        if (std::abs(e1 - e2) > 1e-7) {
+            printf("total energy is different\n");
+            exit(1);
+        }
+
+        write_output = 0;
+    }
     
+    if (!ctx.full_potential()) {
+        dft.forces();
+    }
+
     if (write_output) {
         json dict;
         json_output_common(dict);
         
         dict["task"] = static_cast<int>(task);
         dict["ground_state"] = dft.serialize();
-        dict["timers"] = runtime::Timer::serialize();
+        dict["timers"] = Utils::serialize_timers();
  
         if (ctx.comm().rank() == 0) {
             std::ofstream ofs(std::string("output_") + ctx.start_time_tag() + std::string(".json"),
                               std::ofstream::out | std::ofstream::trunc);
             ofs << dict.dump(4);
         }
+        
         if (args.exist("aiida_output")) {
             json dict;
             json_output_common(dict);
@@ -270,7 +296,7 @@ double ground_state(Simulation_context&       ctx,
     /* wait for all */
     ctx.comm().barrier();
 
-    runtime::Timer::print();
+    sddk::timer::print(0);
 
     return dft.total_energy();
 }
@@ -367,7 +393,7 @@ void volume_relaxation(task_t task, cmd_args args, Parameters_input_section& inp
     std::map<double, double> etot;
 
     auto run_gs = [&etot, &fname, &args, &inp](double s) {
-        std::unique_ptr<Simulation_context> ctx0(create_sim_ctx(fname, args, inp));
+        auto ctx0 = create_sim_ctx(fname, args, inp);
         auto lv = ctx0->unit_cell().lattice_vectors();
         ctx0->unit_cell().set_lattice_vectors(lv * s);
         ctx0->initialize();
@@ -443,7 +469,7 @@ void volume_relaxation(task_t task, cmd_args args, Parameters_input_section& inp
     dict["etot"]["scale0"] = scale0;
 
     if (true) {
-        std::unique_ptr<Simulation_context> ctx0(create_sim_ctx(fname, args, inp));
+        auto ctx0 = create_sim_ctx(fname, args, inp);
         auto lv = ctx0->unit_cell().lattice_vectors();
         ctx0->unit_cell().set_lattice_vectors(lv * scale0);
         dict["unit_cell"] = ctx0->unit_cell().serialize();
@@ -469,6 +495,9 @@ void run_tasks(cmd_args const& args)
     task_t task = static_cast<task_t>(args.value<int>("task", 0));
     /* get the input file name */
     std::string fname = args.value<std::string>("input", "sirius.json");
+    if (!Utils::file_exists(fname)) {
+        TERMINATE("input file does not exist");
+    }
     /* read json file */
     json dict;
     std::ifstream(fname) >> dict;
@@ -481,7 +510,7 @@ void run_tasks(cmd_args const& args)
     }
 
     if (task == task_t::ground_state_new || task == task_t::ground_state_restart) {
-        std::unique_ptr<Simulation_context> ctx(create_sim_ctx(fname, args, inp));
+        auto ctx = create_sim_ctx(fname, args, inp);
         ctx->initialize();
         ground_state(*ctx, task, args, inp, 1);
     }
@@ -503,6 +532,7 @@ int main(int argn, char** argv)
     args.register_key("--task=", "{int} task id");
     args.register_key("--mpi_grid=", "{vector int} MPI grid dimensions");
     args.register_key("--aiida_output", "write output for AiiDA");
+    args.register_key("--test_against=", "{string} json file with reference values");
 
     args.parse_args(argn, argv);
 
@@ -517,4 +547,5 @@ int main(int argn, char** argv)
     run_tasks(args);
     
     sirius::finalize();
+    return 0;
 }

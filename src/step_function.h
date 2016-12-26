@@ -26,7 +26,7 @@
 #define __STEP_FUNCTION_H__
 
 #include "unit_cell.h"
-#include "fft3d.h"
+#include "fft3d.hpp"
 
 namespace sirius {
 
@@ -84,7 +84,7 @@ class Step_function
                       Gvec const& gvec__,
                       Communicator const& comm__)
         {
-            PROFILE();
+            PROFILE("sirius::Step_function::Step_function");
 
             if (unit_cell__.num_atoms() == 0) {
                 return;
@@ -167,7 +167,7 @@ class Step_function
         }
        
         /// Return plane-wave coefficient of the step function.
-        inline double_complex theta_pw(int ig__) const
+        inline double_complex const& theta_pw(int ig__) const
         {
             assert(ig__ >= 0 && ig__ < (int)step_function_pw_.size());
             return step_function_pw_[ig__];

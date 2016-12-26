@@ -1,4 +1,4 @@
-// Copyright (c) 2013-2014 Anton Kozhevnikov, Thomas Schulthess
+// Copyright (c) 2013-2016 Anton Kozhevnikov, Thomas Schulthess
 // All rights reserved.
 // 
 // Redistribution and use in source and binary forms, with or without modification, are permitted provided that 
@@ -24,13 +24,6 @@
 
 #ifndef __CONFIG_H__
 #define __CONFIG_H__
-
-//#include "typedefs.h"
-
-#define __TIMER
-//== #define __TIMER_TIMEOFDAY
-//== #define __TIMER_MPI_WTIME
-#define __TIMER_CHRONO
 
 //== #define __PRINT_OBJECT_HASH
 
@@ -67,9 +60,9 @@
 //== #pragma message("NDEBUG is not defined. Assert statements are enabled.")
 //== #endif
 
-#define __PROFILE
+//#define __PROFILE
+//#define __PROFILE_TIME
 //#define __PROFILE_STACK
-#define __PROFILE_TIME
 //#define __PROFILE_FUNC
 
 #if defined(__LIBSCI_ACC) && !defined(__GPU)
@@ -87,21 +80,6 @@ const bool check_pseudo_charge = false;
  *  __VERIFICATION = 1 : basic checkes \n */
 #ifndef __VERIFICATION
 #define __VERIFICATION 0
-#endif
-
-/// Verbosity level.
-/** Controls the ammount of information printed to standard output. 
- *  verbosity_level = 0 : silent mode, nothing is printed \n
- *  verbosity_level >= 1 : print global parameters of the calculation \n
- *  verbosity_level >= 2 : (suggested default) print information of any initialized k_set \n
- *  verbosity_level >= 3 : print extended information about band distribution \n
- *  verbosity_level >= 4 : print linearization energies \n
- *  verbosity_level >= 5 : print lowest eigen-values \n
- *  verbosity_level >= 6 : print forces contributions \n
- *  verbosity_level >= 10 : log functions eneter and exit \n
- */
-#ifndef __VERBOSITY
-#define __VERBOSITY 2
 #endif
 
 const bool use_second_variation = true;

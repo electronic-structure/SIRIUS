@@ -1,6 +1,6 @@
 inline void Density::add_k_point_contribution_rg(K_point* kp__)
 {
-    PROFILE_WITH_TIMER("sirius::Density::add_k_point_contribution_rg");
+    PROFILE("sirius::Density::add_k_point_contribution_rg");
 
     int nfv = ctx_.num_fv_states();
     double omega = unit_cell_.omega();

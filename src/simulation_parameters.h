@@ -25,7 +25,6 @@
 #ifndef __SIMULATION_PARAMETERS_H__
 #define __SIMULATION_PARAMETERS_H__
 
-#include "mdarray.h"
 #include "typedefs.h"
 #include "utils.h"
 #include "sirius_internal.h"
@@ -81,6 +80,8 @@ class Simulation_parameters
         /// True if gamma-point (real) version of the PW code is used.
         bool gamma_point_{false};
 
+        bool molecule_{false};
+
         /// Type of the processing unit.
         device_t processing_unit_{CPU};
     
@@ -110,7 +111,7 @@ class Simulation_parameters
         /// Import data from initial input parameters.
         void import(std::string const& fname__)
         {
-            PROFILE();
+            PROFILE("sirius::Simulation_parameters::import");
 
             json dict;
             std::ifstream(fname__) >> dict;
@@ -210,14 +211,11 @@ class Simulation_parameters
         {
             std::map<std::string, electronic_structure_method_t> m;
 
-            m["full_potential_lapwlo"]           = electronic_structure_method_t::full_potential_lapwlo;
-            m["full_potential_pwlo"]             = electronic_structure_method_t::full_potential_pwlo;
-            m["ultrasoft_pseudopotential"]       = electronic_structure_method_t::ultrasoft_pseudopotential;
-            m["norm_conserving_pseudopotential"] = electronic_structure_method_t::norm_conserving_pseudopotential;
-            m["paw_pseudopotential"]             = electronic_structure_method_t::paw_pseudopotential;
+            m["full_potential_lapwlo"] = electronic_structure_method_t::full_potential_lapwlo;
+            m["full_potential_pwlo"]   = electronic_structure_method_t::full_potential_pwlo;
+            m["pseudopotential"]       = electronic_structure_method_t::pseudopotential;
 
-            if (m.count(name__) == 0)
-            {
+            if (m.count(name__) == 0) {
                 std::stringstream s;
                 s << "wrong type of electronic structure method: " << name__;
                 TERMINATE(s);
@@ -246,6 +244,7 @@ class Simulation_parameters
 
             m["none"]            = relativity_t::none;
             m["zora"]            = relativity_t::zora;
+            m["iora"]            = relativity_t::iora;
             m["koelling_harmon"] = relativity_t::koelling_harmon;
 
             if (m.count(name__) == 0) {
@@ -260,7 +259,12 @@ class Simulation_parameters
         {
             processing_unit_ = pu__;
         }
-    
+
+        inline void set_molecule(bool molecule__)
+        {
+            molecule_ = molecule__;
+        }
+
         inline int lmax_apw() const
         {
             return lmax_apw_;
@@ -409,7 +413,7 @@ class Simulation_parameters
             return mixer_input_section_;
         }
 
-        inline Iterative_solver_input_section const& iterative_solver_input_section() const
+        inline Iterative_solver_input_section& iterative_solver_input_section()
         {
             return iterative_solver_input_section_;
         }
@@ -453,6 +457,32 @@ class Simulation_parameters
         inline double spglib_tolerance() const
         {
             return control_input_section_.spglib_tolerance_;
+        }
+
+        inline bool molecule() const
+        {
+            return molecule_;
+        }
+
+        inline Control_input_section const& control() const
+        {
+            return control_input_section_;
+        }
+
+        inline memory_t main_memory_t() const
+        {
+            if (processing_unit_ == GPU) {
+                return memory_t::device;
+            }
+            return memory_t::host;
+        }
+
+        inline memory_t dual_memory_t() const
+        {
+            if (processing_unit_ == GPU) {
+                return (memory_t::host | memory_t::device);
+            }
+            return memory_t::host;
         }
 };
 

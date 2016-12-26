@@ -1,6 +1,6 @@
 inline void Density::generate_valence(K_set& ks__)
 {
-    PROFILE_WITH_TIMER("sirius::Density::generate_valence");
+    PROFILE("sirius::Density::generate_valence");
 
     double wt{0};
     double occ_val{0};
@@ -56,8 +56,7 @@ inline void Density::generate_valence(K_set& ks__)
             add_k_point_contribution_dm<double_complex>(kp, density_matrix_);
         }
         
-        if (ctx_.esm_type() == electronic_structure_method_t::ultrasoft_pseudopotential ||
-            ctx_.esm_type() == electronic_structure_method_t::paw_pseudopotential) {
+        if (ctx_.esm_type() == electronic_structure_method_t::pseudopotential) {
             if (ctx_.gamma_point()) {
                 add_k_point_contribution_dm<double>(kp, density_matrix_);
             } else {
@@ -120,14 +119,14 @@ inline void Density::generate_valence(K_set& ks__)
         augment(ks__);
     }
 
-    if (ctx_.esm_type() == electronic_structure_method_t::paw_pseudopotential) {
+    if (ctx_.esm_type() == electronic_structure_method_t::pseudopotential) {
         symmetrize_density_matrix();
     }
 }
 
 inline void Density::generate(K_set& ks__)
 {
-    PROFILE_WITH_TIMER("sirius::Density::generate");
+    PROFILE("sirius::Density::generate");
 
     generate_valence(ks__);
 

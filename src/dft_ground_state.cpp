@@ -1,4 +1,4 @@
-// Copyright (c) 2013-2014 Anton Kozhevnikov, Thomas Schulthess
+// Copyright (c) 2013-2016 Anton Kozhevnikov, Thomas Schulthess
 // All rights reserved.
 // 
 // Redistribution and use in source and binary forms, with or without modification, are permitted provided that 
@@ -31,7 +31,7 @@ namespace sirius {
 
 double DFT_ground_state::ewald_energy()
 {
-    runtime::Timer t("sirius::DFT_ground_state::ewald_energy");
+    PROFILE("sirius::DFT_ground_state::ewald_energy");
 
     double alpha = 1.5;
     
@@ -109,9 +109,7 @@ void DFT_ground_state::move_atoms(int istep)
 
     //mdarray<double, 2> atom_force(3, unit_cell_.num_atoms());
     //forces(atom_force);
-    //#if (__VERBOSITY > 0)
-    //if (ctx_.comm().rank() == 0)
-    //{
+    //if (ctx_.control().verbosity_ > 2 && ctx__.comm().rank() == 0) {
     //    printf("\n");
     //    printf("Atomic forces\n");
     //    for (int ia = 0; ia < unit_cell_.num_atoms(); ia++)
@@ -119,7 +117,6 @@ void DFT_ground_state::move_atoms(int istep)
     //        printf("ia : %i, force : %12.6f %12.6f %12.6f\n", ia, atom_force(0, ia), atom_force(1, ia), atom_force(2, ia));
     //    }
     //}
-    //#endif
 
     //for (int ia = 0; ia < unit_cell_.num_atoms(); ia++)
     //{
@@ -134,16 +131,61 @@ void DFT_ground_state::move_atoms(int istep)
     //}
 }
 
-void DFT_ground_state::forces(mdarray<double, 2>& forces__)
-{
-    STOP();
 
-    //Force::total_force(ctx_, potential_, density_, kset_, forces__);
+void DFT_ground_state::forces(mdarray<double, 2>& inout_forces)
+{
+    PROFILE("sirius::DFT_ground_state::forces");
+
+    forces_->calc_forces_contributions();
+
+    forces_->sum_forces(inout_forces);
+
+    if(ctx_.comm().rank() == 0)
+    {
+        auto print_forces=[&](mdarray<double, 2> const& forces)
+        {
+            for(int ia=0; ia < unit_cell_.num_atoms(); ia++)
+            {
+                printf("Atom %4i    force = %15.7f  %15.7f  %15.7f \n",
+                       unit_cell_.atom(ia).type_id(), forces(0,ia), forces(1,ia), forces(2,ia));
+            }
+        };
+
+        std::cout<<"===== Total Forces in Ha/bohr =====" << std::endl;
+        print_forces( inout_forces );
+
+        std::cout<<"===== Forces: ultrasoft contribution from Qij =====" << std::endl;
+        print_forces( forces_->ultrasoft_forces() );
+
+        std::cout<<"===== Forces: non-local contribution from Beta-projectors =====" << std::endl;
+        print_forces( forces_->nonlocal_forces() );
+
+        std::cout<<"===== Forces: local contribution from local potential=====" << std::endl;
+        print_forces( forces_->local_forces() );
+
+        std::cout<<"===== Forces: nlcc contribution from core density=====" << std::endl;
+        print_forces( forces_->nlcc_forces() );
+
+        std::cout<<"===== Forces: Ewald forces from ions =====" << std::endl;
+        print_forces( forces_->ewald_forces() );
+    }
 }
 
-int DFT_ground_state::find(double potential_tol, double energy_tol, int num_dft_iter)
+
+mdarray<double,2 > DFT_ground_state::forces()
 {
-    runtime::Timer t("sirius::DFT_ground_state::scf_loop");
+    PROFILE("sirius::DFT_ground_state::forces");
+
+    mdarray<double,2 > tot_forces(3, unit_cell_.num_atoms());
+
+    forces(tot_forces);
+
+    return std::move(tot_forces);
+}
+
+int DFT_ground_state::find(double potential_tol, double energy_tol, int num_dft_iter, bool write_state)
+{
+    PROFILE("sirius::DFT_ground_state::scf_loop");
     
     double eold{0}, rms{0};
 
@@ -158,7 +200,7 @@ int DFT_ground_state::find(double potential_tol, double energy_tol, int num_dft_
 //    tbb::task_scheduler_init tbb_init(omp_get_num_threads());
 
     for (int iter = 0; iter < num_dft_iter; iter++) {
-        runtime::Timer t1("sirius::DFT_ground_state::scf_loop|iteration");
+        sddk::timer t1("sirius::DFT_ground_state::scf_loop|iteration");
 
         /* find new wave-functions */
         band_.solve_for_kset(kset_, potential_, true);
@@ -183,7 +225,7 @@ int DFT_ground_state::find(double potential_tol, double energy_tol, int num_dft_
             ctx_.set_iterative_solver_tolerance(std::min(ctx_.iterative_solver_tolerance(), tol));
         }
 
-        if (ctx_.esm_type() == electronic_structure_method_t::paw_pseudopotential) {
+        if (ctx_.esm_type() == electronic_structure_method_t::pseudopotential) {
             density_.generate_paw_loc_density();
         }
 
@@ -264,9 +306,11 @@ int DFT_ground_state::find(double potential_tol, double energy_tol, int num_dft_
         eold = etot;
     }
     
-    ctx_.create_storage_file();
-    potential_.save();
-    density_.save();
+    if (write_state) {
+        ctx_.create_storage_file();
+        potential_.save();
+        density_.save();
+    }
 
 //    tbb_init.terminate();
 
@@ -303,7 +347,7 @@ void DFT_ground_state::print_info()
 
     double one_elec_en = evalsum1 - (evxc + evha);
 
-    if (ctx_.esm_type() == electronic_structure_method_t::paw_pseudopotential) {
+    if (ctx_.esm_type() == electronic_structure_method_t::pseudopotential) {
         one_elec_en -= potential_.PAW_one_elec_energy();
     }
 
@@ -404,86 +448,6 @@ void DFT_ground_state::print_info()
         printf("\n");
         if (ctx_.full_potential()) {
             printf("core leakage : %18.8f\n", core_leak);
-        }
-    }
-}
-
-void DFT_ground_state::initialize_subspace()
-{
-    PROFILE_WITH_TIMER("sirius::DFT_ground_state::initialize_subspace");
-
-    int nq = 20;
-    int lmax = 4;
-    /* this is the regular grid in reciprocal space in the range [0, |G+k|_max ] */
-    Radial_grid qgrid(linear_grid, nq, 0, ctx_.gk_cutoff());
-
-    /* interpolate I_{\alpha,n}(q) = <j_{l_n}(q*x) | wf_{n,l_n}(x) > with splines */
-    std::vector< std::vector< Spline<double> > > rad_int(unit_cell_.num_atom_types());
-    
-    /* spherical Bessel functions jl(qx) for atom types */
-    mdarray<Spherical_Bessel_functions, 2> jl(nq, unit_cell_.num_atom_types());
-
-    for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
-        auto& atom_type = unit_cell_.atom_type(iat);
-        /* create jl(qx) */
-        #pragma omp parallel for
-        for (int iq = 0; iq < nq; iq++) {
-            jl(iq, iat) = Spherical_Bessel_functions(lmax, atom_type.radial_grid(), qgrid[iq]);
-        }
-
-        rad_int[iat].resize(atom_type.uspp().atomic_pseudo_wfs_.size());
-        /* loop over all pseudo wave-functions */
-        for (size_t i = 0; i < atom_type.uspp().atomic_pseudo_wfs_.size(); i++) {
-            rad_int[iat][i] = Spline<double>(qgrid);
-            
-            /* interpolate atomic_pseudo_wfs(r) */
-            Spline<double> wf(atom_type.radial_grid());
-            for (int ir = 0; ir < atom_type.num_mt_points(); ir++) {
-                wf[ir] = atom_type.uspp().atomic_pseudo_wfs_[i].second[ir];
-            }
-            wf.interpolate();
-            
-            int l = atom_type.uspp().atomic_pseudo_wfs_[i].first;
-            #pragma omp parallel for
-            for (int iq = 0; iq < nq; iq++) {
-                rad_int[iat][i][iq] = sirius::inner(jl(iq, iat)[l], wf, 1);
-            }
-
-            rad_int[iat][i].interpolate();
-        }
-    }
-
-    /* get the total number of atomic-centered orbitals */
-    int N{0};
-    for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
-        auto& atom_type = unit_cell_.atom_type(iat);
-        int n{0};
-        for (auto& wf: atom_type.uspp().atomic_pseudo_wfs_) {
-            n += (2 * wf.first + 1);
-        }
-        N += atom_type.num_atoms() * n;
-    }
-    printf("number of atomic orbitals: %i\n", N);
-
-    for (int ikloc = 0; ikloc < kset_.spl_num_kpoints().local_size(); ikloc++) {
-        int ik = kset_.spl_num_kpoints(ikloc);
-        auto kp = kset_[ik];
-        
-        if (ctx_.gamma_point()) {
-            band_.initialize_subspace<double>(kp, potential_.effective_potential(),
-                                              potential_.effective_magnetic_field(), N, lmax, rad_int);
-        } else {
-            band_.initialize_subspace<double_complex>(kp, potential_.effective_potential(),
-                                                      potential_.effective_magnetic_field(), N, lmax, rad_int);
-        }
-    }
-
-    kset_.find_band_occupancies();
-
-    /* reset the energies for the iterative solver to do at least two steps */
-    for (int ik = 0; ik < kset_.num_kpoints(); ik++) {
-        for (int i = 0; i < ctx_.num_bands(); i++) {
-            kset_[ik]->band_energy(i) = 0;
         }
     }
 }

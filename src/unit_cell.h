@@ -30,7 +30,7 @@
 #include "atom_type.h"
 #include "atom_symmetry_class.h"
 #include "atom.h"
-#include "mpi_grid.h"
+#include "mpi_grid.hpp"
 #include "symmetry.h"
 #include "input.h"
 #include "simulation_parameters.h"
@@ -58,10 +58,16 @@ class Unit_cell
         
         /// List of atoms.
         std::vector<Atom> atoms_;
-       
+
         /// Split index of atoms.
         splindex<block> spl_num_atoms_;
         
+        /// Global index of atom by index of PAW atom.
+        std::vector<int> paw_atom_index_;
+
+        /// Split index of PAW atoms.
+        splindex<block> spl_num_paw_atoms_;
+
         /// Split index of atom symmetry classes.
         splindex<block> spl_num_atom_symmetry_classes_;
 
@@ -117,16 +123,16 @@ class Unit_cell
         /// List of equivalent atoms, provided externally.
         std::vector<int> equivalent_atoms_;
     
-        /// Maximum number of muffin-tin points across all atom types.
+        /// Maximum number of muffin-tin points among all atom types.
         int max_num_mt_points_{0};
         
         /// Total number of MT basis functions.
         int mt_basis_size_{0};
         
-        /// Maximum number of MT basis functions across all atoms.
+        /// Maximum number of MT basis functions among all atoms.
         int max_mt_basis_size_{0};
 
-        /// Maximum number of MT radial basis functions across all atoms.
+        /// Maximum number of MT radial basis functions among all atoms.
         int max_mt_radial_basis_size_{0};
 
         /// Total number of augmented wave basis functions in the muffin-tins.
@@ -143,8 +149,11 @@ class Unit_cell
         /// Total number of local orbital basis functions.
         int mt_lo_basis_size_{0};
 
-        /// Maximum AW basis size across all atoms.
+        /// Maximum AW basis size among all atoms.
         int max_mt_aw_basis_size_{0};
+        
+        /// Maximum local orbital basis size among all atoms.
+        int max_mt_lo_basis_size_{0};
 
         /// List of nearest neighbours for each atom.
         std::vector< std::vector<nearest_neighbour_descriptor> > nearest_neighbours_;
@@ -207,7 +216,7 @@ class Unit_cell
         /// Add new atom type to the list of atom types and read necessary data from the .json file
         void add_atom_type(const std::string label, const std::string file_name)
         {
-            PROFILE();
+            PROFILE("sirius::Unit_cell::add_atom_type");
 
             if (atoms_.size()) {
                 TERMINATE("Can't add new atom type if atoms are already added");
@@ -220,7 +229,7 @@ class Unit_cell
         /// Add new atom to the list of atom types.
         void add_atom(const std::string label, vector3d<double> position, vector3d<double> vector_field)
         {
-            PROFILE();
+            PROFILE("sirius::Unit_cell::add_atom");
 
             if (atom_type_id_map_.count(label) == 0) {
                 std::stringstream s;
@@ -236,17 +245,57 @@ class Unit_cell
             
             atoms_.push_back(std::move(Atom(atom_type(label), position, vector_field)));
             atom_type(label).add_atom_id(static_cast<int>(atoms_.size()) - 1);
+
+
+        }
+
+        /// Add PAW atoms.
+        void init_paw()
+        {
+            for (int ia = 0; ia < num_atoms(); ia++) {
+                if (atom(ia).type().pp_desc().is_paw) {
+                    paw_atom_index_.push_back(ia);
+                }
+            }
+
+            spl_num_paw_atoms_ = splindex<block>(num_paw_atoms(), comm_.size(), comm_.rank());
+            
+            if (parameters_.control().verbosity_ > 1 && comm_.rank() == 0) {
+                printf("Number of PAW atoms: %i\n", num_paw_atoms());
+            }
+        }
+
+        /// Return number of PAW atoms.
+        inline int num_paw_atoms() const
+        {
+            return static_cast<int>(paw_atom_index_.size());
+        }
+
+        /// Get split index of PAW atoms.
+        inline splindex<block> spl_num_paw_atoms() const
+        {
+            return spl_num_paw_atoms_;
+        }
+
+        inline int spl_num_paw_atoms(int idx__) const
+        {
+            return spl_num_paw_atoms_[idx__];
+        }
+
+        inline int paw_atom_index(int ipaw__) const
+        {
+            return paw_atom_index_[ipaw__];
         }
 
         /// Add new atom without vector field to the list of atom types.
         void add_atom(const std::string label, vector3d<double> position)
         {
-            PROFILE();
+            PROFILE("sirius::Unit_cell::add_atom");
             add_atom(label, position, {0, 0, 0});
         }
         
         /// Print basic info.
-        void print_info();
+        void print_info(int verbosity_);
 
         unit_cell_parameters_descriptor unit_cell_parameters();
         
@@ -403,38 +452,43 @@ class Unit_cell
             assert(id__ >= 0 && id__ < (int)atoms_.size());
             return atoms_[id__];
         }
+
+        inline int total_nuclear_charge() const
+        {
+            return total_nuclear_charge_;
+        }
        
-        /// Total number of electrons (core + valence)
+        /// Total number of electrons (core + valence).
         inline double num_electrons() const
         {
             return num_electrons_;
         }
 
-        /// Number of valence electrons
+        /// Number of valence electrons.
         inline double num_valence_electrons() const
         {
             return num_valence_electrons_;
         }
         
-        /// Number of core electrons
+        /// Number of core electrons.
         inline double num_core_electrons() const
         {
             return num_core_electrons_;
         }
         
-        /// Maximum number of muffin-tin points across all atom types
+        /// Maximum number of muffin-tin points among all atom types.
         inline int max_num_mt_points() const
         {
             return max_num_mt_points_;
         }
         
-        /// Total number of the augmented wave basis functions over all atoms
+        /// Total number of the augmented wave basis functions over all atoms.
         inline int mt_aw_basis_size() const
         {
             return mt_aw_basis_size_;
         }
 
-        /// Total number of local orbital basis functions over all atoms
+        /// Total number of local orbital basis functions over all atoms.
         inline int mt_lo_basis_size() const
         {
             return mt_lo_basis_size_;
@@ -442,41 +496,46 @@ class Unit_cell
 
         /// Total number of the muffin-tin basis functions.
         /** Total number of MT basis functions equals to the sum of the total number of augmented wave
-         *  basis functions and the total number of local orbital basis functions across all atoms. It controls 
+         *  basis functions and the total number of local orbital basis functions among all atoms. It controls 
          *  the size of the muffin-tin part of the first-variational states and second-variational wave functions. */
         inline int mt_basis_size() const
         {
             return mt_basis_size_;
         }
         
-        /// Maximum number of basis functions across all atom types
+        /// Maximum number of basis functions among all atom types.
         inline int max_mt_basis_size() const
         {
             return max_mt_basis_size_;
         }
 
-        /// Maximum number of radial functions actoss all atom types
+        /// Maximum number of radial functions among all atom types.
         inline int max_mt_radial_basis_size() const
         {
             return max_mt_radial_basis_size_;
         }
 
-        /// Minimum muffin-tin radius
+        /// Minimum muffin-tin radius.
         inline double min_mt_radius() const
         {
             return min_mt_radius_;
         }
 
-        /// Maximum muffin-tin radius
+        /// Maximum muffin-tin radius.
         inline double max_mt_radius() const
         {
             return max_mt_radius_;
         }
 
-        /// Maximum number of AW basis functions across all atom types
+        /// Maximum number of AW basis functions among all atom types.
         inline int max_mt_aw_basis_size() const
         {
             return max_mt_aw_basis_size_;
+        }
+
+        inline int max_mt_lo_basis_size() const
+        {
+            return max_mt_lo_basis_size_;
         }
 
         void set_equivalent_atoms(int const* equivalent_atoms__)
@@ -563,7 +622,7 @@ class Unit_cell
 
         void import(Unit_cell_input_section const& inp__)
         {
-            PROFILE();
+            PROFILE("sirius::Unit_cell::import");
  
             if (inp__.exist_) {
                 /* first, load all types */
@@ -586,6 +645,11 @@ class Unit_cell
 
                 set_lattice_vectors(inp__.a0_, inp__.a1_, inp__.a2_);
             }
+        }
+        
+        Simulation_parameters const& parameters() const
+        {
+            return parameters_;
         }
 };
     

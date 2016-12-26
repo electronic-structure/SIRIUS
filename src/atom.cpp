@@ -13,7 +13,7 @@ extern "C" void spline_inner_product_gpu_v3(int const* idx_ri__,
 
 void Atom::generate_radial_integrals(device_t pu__, Communicator const& comm__)
 {
-    PROFILE_WITH_TIMER("sirius::Atom::generate_radial_integrals");
+    PROFILE("sirius::Atom::generate_radial_integrals");
     
     int lmmax = Utils::lmmax(lmax_pot_);
     int nmtp = type().num_mt_points();
@@ -70,7 +70,7 @@ void Atom::generate_radial_integrals(device_t pu__, Communicator const& comm__)
         auto& rf_coef = type().rf_coef();
         auto& vrf_coef = type().vrf_coef();
 
-        runtime::Timer t1("sirius::Atom::generate_radial_integrals|interp");
+        sddk::timer t1("sirius::Atom::generate_radial_integrals|interp");
         #pragma omp parallel
         {
             //int tid = Platform::thread_id();
@@ -104,12 +104,14 @@ void Atom::generate_radial_integrals(device_t pu__, Communicator const& comm__)
         t1.stop();
 
         result.allocate(memory_t::device);
-        runtime::Timer t2("sirius::Atom::generate_radial_integrals|inner");
+        sddk::timer t2("sirius::Atom::generate_radial_integrals|inner");
         spline_inner_product_gpu_v3(idx_ri.at<GPU>(), (int)idx_ri.size(1), nmtp, rgrid.x().at<GPU>(), rgrid.dx().at<GPU>(),
                                     rf_coef.at<GPU>(), vrf_coef.at<GPU>(), result.at<GPU>());
         cuda_device_synchronize();
-        double tval = t2.stop();
-        DUMP("spline GPU integration performance: %12.6f GFlops", 1e-9 * double(idx_ri.size(1)) * nmtp * 85 / tval);
+        if (type().parameters().control().print_performance_) {
+            double tval = t2.stop();
+            DUMP("spline GPU integration performance: %12.6f GFlops", 1e-9 * double(idx_ri.size(1)) * nmtp * 85 / tval);
+        }
         result.copy_to_host();
         result.deallocate_on_device();
         #else
@@ -118,7 +120,7 @@ void Atom::generate_radial_integrals(device_t pu__, Communicator const& comm__)
     }
     if (pu__ == CPU)
     {
-        runtime::Timer t1("sirius::Atom::generate_radial_integrals|interp");
+        sddk::timer t1("sirius::Atom::generate_radial_integrals|interp");
         #pragma omp parallel
         {
             #pragma omp for
@@ -140,14 +142,16 @@ void Atom::generate_radial_integrals(device_t pu__, Communicator const& comm__)
         }
         t1.stop();
 
-        runtime::Timer t2("sirius::Atom::generate_radial_integrals|inner");
+        sddk::timer t2("sirius::Atom::generate_radial_integrals|inner");
         #pragma omp parallel for
         for (int j = 0; j < (int)idx_ri.size(1); j++)
         {
             result(j) = inner(rf_spline[idx_ri(0, j)], vrf_spline[idx_ri(1, j)], 2);
         }
-        double tval = t2.stop();
-        DUMP("spline CPU integration performance: %12.6f GFlops", 1e-9 * double(idx_ri.size(1)) * nmtp * 85 / tval);
+        if (type().parameters().control().print_performance_) {
+            double tval = t2.stop();
+            DUMP("spline CPU integration performance: %12.6f GFlops", 1e-9 * double(idx_ri.size(1)) * nmtp * 85 / tval);
+        }
     }
     
     int n = 0;

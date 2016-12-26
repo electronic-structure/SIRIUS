@@ -84,6 +84,11 @@ class Smooth_periodic_function
             return f_pw_local_(ig__);
         }
 
+        inline const double_complex& f_pw_local(int ig__) const
+        {
+            return f_pw_local_(ig__);
+        }
+
         FFT3D& fft()
         {
             assert(fft_ != nullptr);
@@ -104,26 +109,22 @@ class Smooth_periodic_function
 
         void fft_transform(int direction__)
         {
-            runtime::Timer t("sirius::Smooth_periodic_function::fft_transform");
+            PROFILE("sirius::Smooth_periodic_function::fft_transform");
 
             assert(gvec_ != nullptr);
 
-            switch (direction__)
-            {
-                case 1:
-                {
+            switch (direction__) {
+                case 1: {
                     fft_->transform<1>(gvec_->partition(), &f_pw_local_(0));
                     fft_->output(&f_rg_(0));
                     break;
                 }
-                case -1:
-                {
+                case -1: {
                     fft_->input(&f_rg_(0));
                     fft_->transform<-1>(gvec_->partition(), &f_pw_local_(0));
                     break;
                 }
-                default:
-                {
+                default: {
                     TERMINATE("wrong fft direction");
                 }
             }
@@ -321,7 +322,7 @@ class Smooth_periodic_function
 
         void fft_transform(int direction__)
         {
-            runtime::Timer t("sirius::Smooth_periodic_function::fft_transform");
+            PROFILE("sirius::Smooth_periodic_function::fft_transform");
 
             assert(gvec_ != nullptr);
 
@@ -353,7 +354,7 @@ class Smooth_periodic_function
             }
         }
 };
-}
+} // namespace experimental
 
 }
 

@@ -25,7 +25,7 @@
 #ifndef __NON_LOCAL_OPERATOR_H__
 #define __NON_LOCAL_OPERATOR_H__
 
-#include "beta_projectors.h"
+#include "Beta_projectors/beta_projectors.h"
 #include "simulation_context.h"
 
 namespace sirius {
@@ -57,7 +57,7 @@ class Non_local_operator
 
         Non_local_operator(Beta_projectors& beta__, device_t pu__) : beta_(beta__), pu_(pu__)
         {
-            PROFILE();
+            PROFILE("sirius::Non_local_operator::Non_local_operator");
 
             auto& uc = beta_.unit_cell();
             packed_mtrx_offset_ = mdarray<int, 1>(uc.num_atoms());
@@ -103,7 +103,7 @@ inline void Non_local_operator<double_complex>::apply(int chunk__,
                                                       int idx0__,
                                                       int n__)
 {
-    PROFILE_WITH_TIMER("sirius::Non_local_operator::apply");
+    PROFILE("sirius::Non_local_operator::apply");
 
     if (is_null_) return;
 
@@ -183,7 +183,7 @@ inline void Non_local_operator<double>::apply(int chunk__,
                                               int idx0__,
                                               int n__)
 {
-    PROFILE_WITH_TIMER("sirius::Non_local_operator::apply");
+    PROFILE("sirius::Non_local_operator::apply");
 
     if (is_null_) return;
 
@@ -324,7 +324,7 @@ class Q_operator: public Non_local_operator<T>
             for (int ia = 0; ia < uc.num_atoms(); ia++)
             {
                 int iat = uc.atom(ia).type().id();
-                if (!uc.atom_type(iat).uspp().augmentation_) {
+                if (!uc.atom_type(iat).pp_desc().augment) {
                     continue;
                 }
                 int nbf = uc.atom(ia).mt_basis_size();
@@ -332,7 +332,7 @@ class Q_operator: public Non_local_operator<T>
                 {
                     for (int xi1 = 0; xi1 < nbf; xi1++)
                     {
-                        if (ctx__.unit_cell().atom_type(iat).uspp().augmentation_) {
+                        if (ctx__.unit_cell().atom_type(iat).pp_desc().augment) {
                             this->op_(this->packed_mtrx_offset_(ia) + xi2 * nbf + xi1, 0) = ctx__.augmentation_op(iat).q_mtrx(xi1, xi2);
                         }
                     }
@@ -362,7 +362,7 @@ class P_operator: public Non_local_operator<T>
             auto& uc = this->beta_.unit_cell();
             for (int ia = 0; ia < uc.num_atoms(); ia++) {
                 int iat = uc.atom(ia).type().id();
-                if (!uc.atom_type(iat).uspp().augmentation_) {
+                if (!uc.atom_type(iat).pp_desc().augment) {
                     continue;
                 }
                 int nbf = uc.atom(ia).mt_basis_size();
