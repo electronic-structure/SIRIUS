@@ -4,7 +4,8 @@
         "processing_unit" : "cpu",
     
         "std_evp_solver_type" : "lapack",
-        "gen_evp_solver_type" : "lapack"
+        "gen_evp_solver_type" : "lapack",
+        "verbosity" : 3
     },
 
     "parameters" : {
@@ -18,9 +19,9 @@
 
         "num_mag_dims" : 1,
 
-        "num_dft_iter" : 20,
+        "num_dft_iter" : 1,
 
-        "ngridk" : [4,4,4],
+        "ngridk" : [2,2,2],
     
         "use_symmetry" : 1,
 
