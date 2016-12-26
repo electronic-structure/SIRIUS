@@ -1,9 +1,10 @@
 {
     "control" : {
         "cyclic_block_size" : 16,
-        "processing_unit" : "cpu",
+        "processing_unit" : "gpu",
         "std_evp_solver_type" : "lapack",
-        "gen_evp_solver_type" : "lapack"
+        "gen_evp_solver_type" : "lapack",
+        "verbosity" : 2
     },
 
     "parameters" : {
@@ -13,8 +14,8 @@
         "valence_relativity" : "none",
         "core_relativity" : "none",
         "num_fv_states" : 10,
-        "aw_cutoff" : 5.0,
-        "pw_cutoff" : 15.00,
+        "aw_cutoff" : 3.0,
+        "pw_cutoff" : 12.00,
         "auto_rmt" : 1,
         "use_symmetry": 1,
         "ngridk" : [1,1,1],
