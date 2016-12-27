@@ -93,6 +93,21 @@ class wave_functions
                 new matrix_storage<double_complex, matrix_storage_t::slab>(gkvec_.gvec_count(comm_.rank()), num_wf_, pu_));
         }
 
+        /// Constructor for PW wave-functions.
+        wave_functions(double_complex* ptr__,
+                       device_t pu__,
+                       Communicator const& comm__,
+                       Gvec const& gkvec__,
+                       int num_wf__)
+            : pu_(pu__),
+              comm_(comm__),
+              gkvec_(gkvec__),
+              num_wf_(num_wf__)
+        {
+            pw_coeffs_ = std::unique_ptr<matrix_storage<double_complex, matrix_storage_t::slab>>(
+                new matrix_storage<double_complex, matrix_storage_t::slab>(ptr__, gkvec_.gvec_count(comm_.rank()), num_wf_, pu_));
+        }
+
         /// Constructor for LAPW wave-functions.
         wave_functions(device_t pu__,
                        Communicator const& comm__,
