@@ -661,14 +661,27 @@ inline void Band::diag_pseudo_potential_davidson(K_point* kp__,
     /* number of auxiliary basis functions */
     int num_phi = std::min(itso.subspace_size_ * num_bands, kp__->num_gkvec());
 
+    size_t size = sizeof(double_complex) * kp__->num_gkvec_loc() * (3 * num_phi + 3 * num_bands);
+    double_complex* mem_buf_ptr = static_cast<double_complex*>(ctx_.memory_buffer(size));
+
     /* allocate wave-functions */
-    wave_functions  phi(ctx_.processing_unit(), kp__->comm(), kp__->gkvec(), num_phi);
-    wave_functions hphi(ctx_.processing_unit(), kp__->comm(), kp__->gkvec(), num_phi);
-    wave_functions ophi(ctx_.processing_unit(), kp__->comm(), kp__->gkvec(), num_phi);
-    wave_functions hpsi(ctx_.processing_unit(), kp__->comm(), kp__->gkvec(), num_bands);
-    wave_functions opsi(ctx_.processing_unit(), kp__->comm(), kp__->gkvec(), num_bands);
+    wave_functions  phi(mem_buf_ptr, ctx_.processing_unit(), kp__->comm(), kp__->gkvec(), num_phi);
+    mem_buf_ptr += kp__->num_gkvec_loc() * num_phi;
+
+    wave_functions hphi(mem_buf_ptr, ctx_.processing_unit(), kp__->comm(), kp__->gkvec(), num_phi);
+    mem_buf_ptr += kp__->num_gkvec_loc() * num_phi;
+
+    wave_functions ophi(mem_buf_ptr, ctx_.processing_unit(), kp__->comm(), kp__->gkvec(), num_phi);
+    mem_buf_ptr += kp__->num_gkvec_loc() * num_phi;
+
+    wave_functions hpsi(mem_buf_ptr, ctx_.processing_unit(), kp__->comm(), kp__->gkvec(), num_bands);
+    mem_buf_ptr += kp__->num_gkvec_loc() * num_bands;
+
+    wave_functions opsi(mem_buf_ptr, ctx_.processing_unit(), kp__->comm(), kp__->gkvec(), num_bands);
+    mem_buf_ptr += kp__->num_gkvec_loc() * num_bands;
+
     /* residuals */
-    wave_functions res(ctx_.processing_unit(), kp__->comm(), kp__->gkvec(), num_bands);
+    wave_functions res(mem_buf_ptr, ctx_.processing_unit(), kp__->comm(), kp__->gkvec(), num_bands);
 
     auto mem_type = (std_evp_solver().type() == ev_magma) ? memory_t::host_pinned : memory_t::host;
     //auto mem_type = memory_t::host;
