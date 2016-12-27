@@ -110,11 +110,15 @@ class Simulation_context: public Simulation_parameters
 
         mdarray<Spline<double>, 2> beta_radial_integrals_;
 
+        mdarray<char, 1> memory_buffer_;
+
         double time_active_;
         
         bool initialized_{false};
 
         void init_fft();
+
+        inline void generate_beta_radial_integrals();
 
         /* copy constructor is forbidden */
         Simulation_context(Simulation_context const&) = delete;
@@ -379,7 +383,13 @@ class Simulation_context: public Simulation_parameters
             return beta_radial_integrals_;
         }
 
-        inline void generate_beta_radial_integrals();
+        inline void* memory_buffer(size_t size__)
+        {
+            if (memory_buffer_.size() < size__) {
+                memory_buffer_ = mdarray<char, 1>(size__);
+            }
+            return memory_buffer_.at<CPU>();
+        }
 };
 
 inline void Simulation_context::init_fft()
