@@ -2,8 +2,7 @@ include ../make.inc
 
 .SUFFIXES: .cpp .cu .f90
 
-SRC =  LebedevLaikov.cpp symmetry.cpp force.cpp dft_ground_state.cpp real_space_prj.cpp \
-       unit_cell.cpp \
+SRC =  LebedevLaikov.cpp symmetry.cpp force.cpp dft_ground_state.cpp \
        Potential/potential.cpp \
        Potential/poisson.cpp \
        Potential/xc.cpp \
