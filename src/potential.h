@@ -264,43 +264,43 @@ class Potential
 
         inline void generate_local_potential();
         
-        void xc_mt_nonmagnetic(Radial_grid const& rgrid,
-                               std::vector<XC_functional*>& xc_func,
-                               Spheric_function<spectral, double> const& rho_lm,
-                               Spheric_function<spatial, double>& rho_tp,
-                               Spheric_function<spatial, double>& vxc_tp, 
-                               Spheric_function<spatial, double>& exc_tp);
+        inline void xc_mt_nonmagnetic(Radial_grid const& rgrid,
+                                      std::vector<XC_functional*>& xc_func,
+                                      Spheric_function<spectral, double> const& rho_lm,
+                                      Spheric_function<spatial, double>& rho_tp,
+                                      Spheric_function<spatial, double>& vxc_tp, 
+                                      Spheric_function<spatial, double>& exc_tp);
 
-        void xc_mt_magnetic(Radial_grid const& rgrid, 
-                            std::vector<XC_functional*>& xc_func,
-                            Spheric_function<spectral, double>& rho_up_lm, 
-                            Spheric_function<spatial, double>& rho_up_tp, 
-                            Spheric_function<spectral, double>& rho_dn_lm, 
-                            Spheric_function<spatial, double>& rho_dn_tp, 
-                            Spheric_function<spatial, double>& vxc_up_tp, 
-                            Spheric_function<spatial, double>& vxc_dn_tp, 
-                            Spheric_function<spatial, double>& exc_tp);
+        inline void xc_mt_magnetic(Radial_grid const& rgrid, 
+                                   std::vector<XC_functional*>& xc_func,
+                                   Spheric_function<spectral, double>& rho_up_lm, 
+                                   Spheric_function<spatial, double>& rho_up_tp, 
+                                   Spheric_function<spectral, double>& rho_dn_lm, 
+                                   Spheric_function<spatial, double>& rho_dn_tp, 
+                                   Spheric_function<spatial, double>& vxc_up_tp, 
+                                   Spheric_function<spatial, double>& vxc_dn_tp, 
+                                   Spheric_function<spatial, double>& exc_tp);
 
-        void xc_mt(Periodic_function<double>* rho, 
-                   Periodic_function<double>* magnetization[3], 
-                   std::vector<XC_functional*>& xc_func,
-                   Periodic_function<double>* vxc, 
-                   Periodic_function<double>* bxc[3], 
-                   Periodic_function<double>* exc);
+        inline void xc_mt(Periodic_function<double>* rho, 
+                          Periodic_function<double>* magnetization[3], 
+                          std::vector<XC_functional*>& xc_func,
+                          Periodic_function<double>* vxc, 
+                          Periodic_function<double>* bxc[3], 
+                          Periodic_function<double>* exc);
     
-        void xc_it_nonmagnetic(Periodic_function<double>* rho, 
-                               std::vector<XC_functional*>& xc_func,
-                               Periodic_function<double>* vxc, 
-                               Periodic_function<double>* exc);
+        inline void xc_it_nonmagnetic(Periodic_function<double>* rho, 
+                                      std::vector<XC_functional*>& xc_func,
+                                      Periodic_function<double>* vxc, 
+                                      Periodic_function<double>* exc);
 
-        void xc_it_magnetic(Periodic_function<double>* rho, 
-                            Periodic_function<double>* magnetization[3], 
-                            std::vector<XC_functional*>& xc_func,
-                            Periodic_function<double>* vxc, 
-                            Periodic_function<double>* bxc[3], 
-                            Periodic_function<double>* exc);
+        inline void xc_it_magnetic(Periodic_function<double>* rho, 
+                                   Periodic_function<double>* magnetization[3], 
+                                   std::vector<XC_functional*>& xc_func,
+                                   Periodic_function<double>* vxc, 
+                                   Periodic_function<double>* bxc[3], 
+                                   Periodic_function<double>* exc);
 
-        void init();
+        inline void init();
 
     public:
 
@@ -879,6 +879,7 @@ class Potential
 #include "Potential/generate_pw_coefs.hpp"
 #include "Potential/generate_effective_potential.hpp"
 #include "Potential/generate_local_potential.hpp"
+#include "Potential/xc.hpp"
 
 };
 
