@@ -3,7 +3,7 @@ include ../make.inc
 .SUFFIXES: .cpp .cu .f90
 
 SRC =  LebedevLaikov.cpp symmetry.cpp force.cpp dft_ground_state.cpp real_space_prj.cpp \
-       atom.cpp unit_cell.cpp \
+       unit_cell.cpp \
        Potential/potential.cpp \
        Potential/poisson.cpp \
        Potential/xc.cpp \
