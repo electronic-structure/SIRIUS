@@ -253,12 +253,12 @@ class DFT_ground_state
             unit_cell_.symmetry().symmetrize_function(&f__->f_pw(0), ctx_.gvec(), comm);
             switch (ctx_.num_mag_dims()) {
                 case 1: {
-                    unit_cell_.symmetry().symmetrize_vector(&gz__->f_pw(0), ctx_.gvec(), comm);
+                    unit_cell_.symmetry().symmetrize_vector_function(&gz__->f_pw(0), ctx_.gvec(), comm);
                     break;
                 }
                 case 3: {
-                    unit_cell_.symmetry().symmetrize_vector(&gx__->f_pw(0), &gy__->f_pw(0), &gz__->f_pw(0),
-                                                            ctx_.gvec(), comm);
+                    unit_cell_.symmetry().symmetrize_vector_function(&gx__->f_pw(0), &gy__->f_pw(0), &gz__->f_pw(0),
+                                                                     ctx_.gvec(), comm);
                     break;
                 }
             }
@@ -268,11 +268,11 @@ class DFT_ground_state
                 unit_cell_.symmetry().symmetrize_function(f__->f_mt(), comm);
                 switch (ctx_.num_mag_dims()) {
                     case 1: {
-                        unit_cell_.symmetry().symmetrize_vector(gz__->f_mt(), comm);
+                        unit_cell_.symmetry().symmetrize_vector_function(gz__->f_mt(), comm);
                         break;
                     }
                     case 3: {
-                        unit_cell_.symmetry().symmetrize_vector(gx__->f_mt(), gy__->f_mt(), gz__->f_mt(), comm);
+                        unit_cell_.symmetry().symmetrize_vector_function(gx__->f_mt(), gy__->f_mt(), gz__->f_mt(), comm);
                         break;
                     }
                 }
