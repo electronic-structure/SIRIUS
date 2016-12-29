@@ -1,16 +1,12 @@
-#include "potential.h"
-
-namespace sirius {
-
 /** The following operation is performed:
  *  \f[
  *    q_{\ell m}^{\alpha} = \sum_{\bf G} 4\pi \rho({\bf G}) e^{i{\bf G}{\bf r}_{\alpha}}i^{\ell}f_{\ell}^{\alpha}(G) Y_{\ell m}^{*}(\hat{\bf G})
  *  \f]
  */
-void Potential::poisson_sum_G(int lmmax__,
-                              double_complex* fpw__,
-                              mdarray<double, 3>& fl__,
-                              matrix<double_complex>& flm__)
+inline void Potential::poisson_sum_G(int lmmax__,
+                                     double_complex* fpw__,
+                                     mdarray<double, 3>& fl__,
+                                     matrix<double_complex>& flm__)
 {
     PROFILE("sirius::Potential::poisson_sum_G");
 
@@ -73,9 +69,9 @@ void Potential::poisson_sum_G(int lmmax__,
     ctx_.comm().allreduce(&flm__(0, 0), (int)flm__.size());
 }
 
-void Potential::poisson_add_pseudo_pw(mdarray<double_complex, 2>& qmt,
-                                      mdarray<double_complex, 2>& qit,
-                                      double_complex* rho_pw)
+inline void Potential::poisson_add_pseudo_pw(mdarray<double_complex, 2>& qmt,
+                                             mdarray<double_complex, 2>& qit,
+                                             double_complex* rho_pw)
 {
     PROFILE("sirius::Potential::poisson_add_pseudo_pw");
     
@@ -128,7 +124,7 @@ void Potential::poisson_add_pseudo_pw(mdarray<double_complex, 2>& qmt,
     ctx_.comm().allgather(&rho_pw[0], ctx_.gvec_offset(), ctx_.gvec_count());
 }
 
-void Potential::poisson(Periodic_function<double>* rho, Periodic_function<double>* vh)
+inline void Potential::poisson(Periodic_function<double>* rho, Periodic_function<double>* vh)
 {
     PROFILE("sirius::Potential::poisson");
 
@@ -283,5 +279,3 @@ void Potential::poisson(Periodic_function<double>* rho, Periodic_function<double
         energy_vha_ += evha_nuc;
     }
 }
-
-};

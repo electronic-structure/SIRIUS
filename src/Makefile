@@ -4,7 +4,6 @@ include ../make.inc
 
 SRC =  LebedevLaikov.cpp symmetry.cpp force.cpp dft_ground_state.cpp \
        Potential/potential.cpp \
-       Potential/poisson.cpp \
        Potential/paw_potential.cpp\
        Geometry/Forces_PS.cpp \
        Beta_projectors/beta_projectors.cpp

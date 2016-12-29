@@ -254,13 +254,13 @@ class Potential
         }
 
         /// Perform a G-vector summation of plane-wave coefficiens multiplied by radial integrals.
-        void poisson_sum_G(int lmmax__, 
+        inline void poisson_sum_G(int lmmax__, 
                            double_complex* fpw__, 
                            mdarray<double, 3>& fl__, 
                            mdarray<double_complex, 2>& flm__);
         
         /// Add contribution from the pseudocharge to the plane-wave expansion
-        void poisson_add_pseudo_pw(mdarray<double_complex, 2>& qmt, mdarray<double_complex, 2>& qit, double_complex* rho_pw);
+        inline void poisson_add_pseudo_pw(mdarray<double_complex, 2>& qmt, mdarray<double_complex, 2>& qit, double_complex* rho_pw);
 
         inline void generate_local_potential();
         
@@ -509,7 +509,7 @@ class Potential
          *          Y_{\ell m}^{*}({\bf \hat x'}) Y_{\ell m}(\hat {\bf x})
          *  \f]
          */
-        void poisson(Periodic_function<double>* rho, Periodic_function<double>* vh);
+        inline void poisson(Periodic_function<double>* rho, Periodic_function<double>* vh);
         
         /// Generate XC potential and energy density
         /** In case of spin-unpolarized GGA the XC potential has the following expression:
@@ -880,6 +880,7 @@ class Potential
 #include "Potential/generate_effective_potential.hpp"
 #include "Potential/generate_local_potential.hpp"
 #include "Potential/xc.hpp"
+#include "Potential/poisson.hpp"
 
 };
 
