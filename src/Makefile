@@ -3,8 +3,6 @@ include ../make.inc
 .SUFFIXES: .cpp .cu .f90
 
 SRC =  LebedevLaikov.cpp force.cpp \
-       Potential/potential.cpp \
-       Potential/paw_potential.cpp\
        Geometry/Forces_PS.cpp \
        Beta_projectors/beta_projectors.cpp
 

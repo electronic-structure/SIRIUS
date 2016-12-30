@@ -2,12 +2,12 @@ inline void Potential::init()
 {
     if (ctx_.esm_type() == electronic_structure_method_t::full_potential_lapwlo) {
         /* compute values of spherical Bessel functions at MT boundary */
-        sbessel_mt_ = mdarray<double, 3>(lmax_ + pseudo_density_order + 2, unit_cell_.num_atom_types(), 
+        sbessel_mt_ = mdarray<double, 3>(lmax_ + pseudo_density_order_ + 2, unit_cell_.num_atom_types(), 
                                          ctx_.gvec().num_shells());
 
         for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
             for (int igs = 0; igs < ctx_.gvec().num_shells(); igs++) {
-                gsl_sf_bessel_jl_array(lmax_ + pseudo_density_order + 1, 
+                gsl_sf_bessel_jl_array(lmax_ + pseudo_density_order_ + 1, 
                                        ctx_.gvec().shell_len(igs) * unit_cell_.atom_type(iat).mt_radius(), 
                                        &sbessel_mt_(0, iat, igs));
             }
@@ -46,7 +46,7 @@ inline void Potential::init()
                 long double Rl = std::pow(unit_cell_.atom_type(iat).mt_radius(), l);
 
                 int n_min = (2 * l + 3);
-                int n_max = (2 * l + 1) + (2 * pseudo_density_order + 2);
+                int n_max = (2 * l + 1) + (2 * pseudo_density_order_ + 2);
                 /* split factorial product into two parts to avoid overflow */
                 long double f1 = 1.0;
                 long double f2 = 1.0;

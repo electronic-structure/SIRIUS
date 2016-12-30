@@ -112,9 +112,9 @@ inline void Potential::poisson_add_pseudo_pw(mdarray<double_complex, 2>& qmt,
                     for (int m = -l; m <= l; m++, lm++) {
                         zt1 += gvec_ylm_(lm, igloc) * zp[lm];
                     }
-                    zt2 += zt1 * sbessel_mt_(l + pseudo_density_order + 1, iat, ctx_.gvec().shell(ig));
+                    zt2 += zt1 * sbessel_mt_(l + pseudo_density_order_ + 1, iat, ctx_.gvec().shell(ig));
                 }
-                rho_pw[ig] += zt * zt2 * std::pow(2.0 / gR, pseudo_density_order + 1);
+                rho_pw[ig] += zt * zt2 * std::pow(2.0 / gR, pseudo_density_order_ + 1);
             } else { /* for |G|=0 */
                 rho_pw[ig] += zt * y00 * (qmt(0, ia) - qit(0, ia));
             }

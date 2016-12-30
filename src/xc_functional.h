@@ -413,6 +413,8 @@ class XC_functional
         /* forbid assigment operator */
         XC_functional& operator=(const XC_functional& src) = delete;
 
+        bool initialized_{false};
+
     public:
 
         XC_functional(const std::string libxc_name__, int num_spins__)
@@ -430,11 +432,24 @@ class XC_functional
             if (xc_func_init(&handler_, libxc_functionals.at(libxc_name_), num_spins_) != 0) {
                 TERMINATE("xc_func_init() failed");
             }
+
+            initialized_ = true;
+        }
+
+        XC_functional(XC_functional&& src__)
+        {
+            this->libxc_name_  = src__.libxc_name_;
+            this->num_spins_   = src__.num_spins_;
+            this->handler_     = src__.handler_;
+            this->initialized_ = true;
+            src__.initialized_ = false;
         }
 
         ~XC_functional()
         {
-            xc_func_end(&handler_);
+            if (initialized_) {
+                xc_func_end(&handler_);
+            }
         }
 
         const std::string name() const
@@ -445,12 +460,12 @@ class XC_functional
         const std::string refs() const
         {
             std::stringstream s;
-            for (int i = 0; i < 5; i++)
-            {
-                if (handler_.info->refs[i] == NULL) break;
+            for (int i = 0; i < 5; i++) {
+                if (handler_.info->refs[i] == NULL) {
+                    break;
+                }
                 s << std::string(handler_.info->refs[i]->ref);
-                if (strlen(handler_.info->refs[i]->doi) > 0)
-                {
+                if (strlen(handler_.info->refs[i]->doi) > 0) {
                     s << " (" << std::string(handler_.info->refs[i]->doi) << ")";
                 }
                 s << std::endl;
@@ -496,14 +511,10 @@ class XC_functional
 
         void set_relativistic(bool enabled__)
         {
-            if (is_exchange())
-            {
-                if (enabled__)
-                {
+            if (is_exchange()) {
+                if (enabled__) {
                     xc_lda_x_set_params(&handler_, 4.0/3.0, XC_RELATIVISTIC, 0.0);
-                }
-                else
-                {
+                } else {
                     xc_lda_x_set_params(&handler_, 4.0/3.0, XC_NON_RELATIVISTIC, 0.0);
                 }
             }
@@ -515,13 +526,13 @@ class XC_functional
                      double* v, 
                      double* e)
         {
-            if (family() != XC_FAMILY_LDA) TERMINATE("wrong XC");
+            if (family() != XC_FAMILY_LDA) {
+                TERMINATE("wrong XC");
+            }
 
             /* check density */
-            for (int i = 0; i < size; i++)
-            {
-                if (rho[i] < 0)
-                {
+            for (int i = 0; i < size; i++) {
+                if (rho[i] < 0) {
                     std::stringstream s;
                     s << "rho is negative : " << Utils::double_to_string(rho[i]);
                     TERMINATE(s);
@@ -539,21 +550,21 @@ class XC_functional
                      double* v_dn,
                      double* e)
         {
-            if (family() != XC_FAMILY_LDA) TERMINATE("wrong XC");
+            if (family() != XC_FAMILY_LDA) {
+                TERMINATE("wrong XC");
+            }
 
             std::vector<double> rho_ud(size * 2);
             /* check and rearrange density */
-            for (int i = 0; i < size; i++)
-            {
-                if (rho_up[i] < 0 || rho_dn[i] < 0)
-                {
+            for (int i = 0; i < size; i++) {
+                if (rho_up[i] < 0 || rho_dn[i] < 0) {
                     std::stringstream s;
                     s << "rho is negative : " << Utils::double_to_string(rho_up[i]) 
                       << " " << Utils::double_to_string(rho_dn[i]);
                     TERMINATE(s);
                 }
                 
-                rho_ud[2 * i] = rho_up[i];
+                rho_ud[2 * i]     = rho_up[i];
                 rho_ud[2 * i + 1] = rho_dn[i];
             }
             
@@ -562,8 +573,7 @@ class XC_functional
             xc_lda_exc_vxc(&handler_, size, &rho_ud[0], &e[0], &v_ud[0]);
             
             /* extract potential */
-            for (int i = 0; i < size; i++)
-            {
+            for (int i = 0; i < size; i++) {
                 v_up[i] = v_ud[2 * i];
                 v_dn[i] = v_ud[2 * i + 1];
             }
@@ -576,21 +586,21 @@ class XC_functional
                      double* v_dn,
                      double* e)
         {
-            if (family() != XC_FAMILY_LDA) TERMINATE("wrong XC");
+            if (family() != XC_FAMILY_LDA) {
+                TERMINATE("wrong XC");
+            }
 
             std::vector<double> rho_ud(size * 2);
             /* check and rearrange density */
-            for (int i = 0; i < size; i++)
-            {
-                if (rho_up[i] < 0 || rho_dn[i] < 0)
-                {
+            for (int i = 0; i < size; i++) {
+                if (rho_up[i] < 0 || rho_dn[i] < 0) {
                     std::stringstream s;
                     s << "rho is negative : " << Utils::double_to_string(rho_up[i]) 
                       << " " << Utils::double_to_string(rho_dn[i]);
                     TERMINATE(s);
                 }
                 
-                rho_ud[2 * i] = rho_up[i];
+                rho_ud[2 * i]     = rho_up[i];
                 rho_ud[2 * i + 1] = rho_dn[i];
             }
             
@@ -600,11 +610,10 @@ class XC_functional
             xc_lda_exc_vxc(&handler_, size, &rho_ud[0], &e_tmp[0], &v_ud[0]);
             
             /* extract potential */
-            for (int i = 0; i < size; i++)
-            {
+            for (int i = 0; i < size; i++) {
                 v_up[i] += v_ud[2 * i];
                 v_dn[i] += v_ud[2 * i + 1];
-                e[i] += e_tmp[i];
+                e[i]    += e_tmp[i];
             }
         }
 

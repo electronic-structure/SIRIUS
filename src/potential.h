@@ -68,7 +68,7 @@ class Potential
 
         std::unique_ptr<SHT> sht_;
 
-        int pseudo_density_order;
+        int pseudo_density_order_{9};
 
         std::vector<double_complex> zil_;
 
@@ -84,9 +84,9 @@ class Potential
         /** Used to compute electron-nuclear contribution to the total energy */
         mdarray<double, 1> vh_el_;
 
-        Mixer<double>* mixer_;
+        Mixer<double>* mixer_{nullptr};
 
-        std::vector<XC_functional*> xc_func_;
+        std::vector<XC_functional> xc_func_;
 
         // Store form factors because it is needed by forces calculation
         mdarray<double, 2> vloc_radial_integrals_;
@@ -265,14 +265,14 @@ class Potential
         inline void generate_local_potential();
         
         inline void xc_mt_nonmagnetic(Radial_grid const& rgrid,
-                                      std::vector<XC_functional*>& xc_func,
+                                      std::vector<XC_functional>& xc_func,
                                       Spheric_function<spectral, double> const& rho_lm,
                                       Spheric_function<spatial, double>& rho_tp,
                                       Spheric_function<spatial, double>& vxc_tp, 
                                       Spheric_function<spatial, double>& exc_tp);
 
         inline void xc_mt_magnetic(Radial_grid const& rgrid, 
-                                   std::vector<XC_functional*>& xc_func,
+                                   std::vector<XC_functional>& xc_func,
                                    Spheric_function<spectral, double>& rho_up_lm, 
                                    Spheric_function<spatial, double>& rho_up_tp, 
                                    Spheric_function<spectral, double>& rho_dn_lm, 
@@ -283,19 +283,19 @@ class Potential
 
         inline void xc_mt(Periodic_function<double>* rho, 
                           Periodic_function<double>* magnetization[3], 
-                          std::vector<XC_functional*>& xc_func,
+                          std::vector<XC_functional>& xc_func,
                           Periodic_function<double>* vxc, 
                           Periodic_function<double>* bxc[3], 
                           Periodic_function<double>* exc);
     
         inline void xc_it_nonmagnetic(Periodic_function<double>* rho, 
-                                      std::vector<XC_functional*>& xc_func,
+                                      std::vector<XC_functional>& xc_func,
                                       Periodic_function<double>* vxc, 
                                       Periodic_function<double>* exc);
 
         inline void xc_it_magnetic(Periodic_function<double>* rho, 
                                    Periodic_function<double>* magnetization[3], 
-                                   std::vector<XC_functional*>& xc_func,
+                                   std::vector<XC_functional>& xc_func,
                                    Periodic_function<double>* vxc, 
                                    Periodic_function<double>* bxc[3], 
                                    Periodic_function<double>* exc);
@@ -305,9 +305,108 @@ class Potential
     public:
 
         /// Constructor
-        Potential(Simulation_context& ctx__);
+        Potential(Simulation_context& ctx__)
+            : ctx_(ctx__)
+            , unit_cell_(ctx__.unit_cell())
+            , comm_(ctx__.comm())
+        {
+            PROFILE("sirius::Potential::Potential");
 
-        ~Potential();
+            lmax_ = std::max(ctx_.lmax_rho(), ctx_.lmax_pot());
+            sht_ = std::unique_ptr<SHT>(new SHT(lmax_));
+
+            if (lmax_ >= 0) {
+                l_by_lm_ = Utils::l_by_lm(lmax_);
+
+                /* precompute i^l */
+                zil_.resize(lmax_ + 1);
+                for (int l = 0; l <= lmax_; l++) {
+                    zil_[l] = std::pow(double_complex(0, 1), l);
+                }
+                
+                zilm_.resize(Utils::lmmax(lmax_));
+                for (int l = 0, lm = 0; l <= lmax_; l++) {
+                    for (int m = -l; m <= l; m++, lm++) {
+                        zilm_[lm] = zil_[l];
+                    }
+                }
+            }
+
+            effective_potential_ = std::unique_ptr<Periodic_function<double>>(new Periodic_function<double>(ctx_, ctx_.lmmax_pot(), 1));
+            
+            //int need_gvec = (ctx_.full_potential()) ? 0 : 1;
+            int need_gvec{1};
+            for (int j = 0; j < ctx_.num_mag_dims(); j++) {
+                effective_magnetic_field_[j] = new Periodic_function<double>(ctx_, ctx_.lmmax_pot(), need_gvec);
+            }
+            
+            hartree_potential_ = new Periodic_function<double>(ctx_, ctx_.lmmax_pot(), 1);
+            hartree_potential_->allocate_mt(false);
+            
+            xc_potential_ = new Periodic_function<double>(ctx_, ctx_.lmmax_pot(), 0);
+            xc_potential_->allocate_mt(false);
+            
+            xc_energy_density_ = new Periodic_function<double>(ctx_, ctx_.lmmax_pot(), 0);
+            xc_energy_density_->allocate_mt(false);
+
+            if (!ctx_.full_potential()) {
+                local_potential_ = new Periodic_function<double>(ctx_, 0, 0);
+                local_potential_->zero();
+
+                generate_local_potential();
+            }
+
+            vh_el_ = mdarray<double, 1>(unit_cell_.num_atoms());
+
+            if (ctx_.full_potential()) {
+                gvec_ylm_ = mdarray<double_complex, 2>(ctx_.lmmax_pot(), ctx_.gvec().gvec_count(comm_.rank()));
+                for (int igloc = 0; igloc < ctx_.gvec().gvec_count(comm_.rank()); igloc++) {
+                    int ig = ctx_.gvec().gvec_offset(comm_.rank()) + igloc;
+                    auto rtp = SHT::spherical_coordinates(ctx_.gvec().gvec_cart(ig));
+                    SHT::spherical_harmonics(ctx_.lmax_pot(), rtp[1], rtp[2], &gvec_ylm_(0, igloc));
+                }
+            }
+
+            if (ctx_.full_potential()) {
+                switch (ctx_.valence_relativity()) {
+                    case relativity_t::iora: {
+                        rm2_inv_pw_ = mdarray<double_complex, 1>(ctx_.gvec().num_gvec());
+                    }
+                    case relativity_t::zora: {
+                        rm_inv_pw_ = mdarray<double_complex, 1>(ctx_.gvec().num_gvec());
+                    }
+                    default: {
+                        veff_pw_ = mdarray<double_complex, 1>(ctx_.gvec().num_gvec());
+                    }
+                }
+            }
+
+            init();
+
+            /* create list of XC functionals */
+            for (auto& xc_label: ctx_.xc_functionals()) {
+                xc_func_.push_back(std::move(XC_functional(xc_label, ctx_.num_spins())));
+            }
+
+            /* in case of PAW */
+            init_PAW();
+        }
+
+        ~Potential()
+        {
+            for (int j = 0; j < ctx_.num_mag_dims(); j++) {
+                delete effective_magnetic_field_[j];
+            }
+            delete hartree_potential_;
+            delete xc_potential_;
+            delete xc_energy_density_;
+            if (!ctx_.full_potential()) {
+                delete local_potential_;
+            }
+            if (mixer_ != nullptr) {
+                delete mixer_;
+            }
+        }
 
         inline void set_effective_potential_ptr(double* veffmt, double* veffit)
         {
@@ -881,6 +980,7 @@ class Potential
 #include "Potential/generate_local_potential.hpp"
 #include "Potential/xc.hpp"
 #include "Potential/poisson.hpp"
+#include "Potential/paw_potential.hpp"
 
 };
 
