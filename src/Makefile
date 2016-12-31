@@ -3,8 +3,7 @@ include ../make.inc
 .SUFFIXES: .cpp .cu .f90
 
 SRC =  LebedevLaikov.cpp force.cpp \
-       Geometry/Forces_PS.cpp \
-       Beta_projectors/beta_projectors.cpp
+       Geometry/Forces_PS.cpp
 
 OBJ = $(SRC:.cpp=.o)
 
