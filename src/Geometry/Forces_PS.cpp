@@ -6,9 +6,6 @@
  */
 
 #include "Forces_PS.h"
-
-//#include "../Beta_gradient/Beta_projectors_gradient.h"
-
 #include "../k_set.h"
 
 namespace sirius
@@ -35,8 +32,7 @@ void Forces_PS::calc_local_forces(mdarray<double,2>& forces)
 
     //mdarray<double_complex, 2> vloc_G_comp(unit_cell.num_atoms(), spl_ngv.local_size() );
 
-    if ( forces.size(0) != 3 || forces.size(1) != unit_cell.num_atoms() )
-    {
+    if (forces.size(0) != 3 || (int)forces.size(1) != unit_cell.num_atoms()) {
         TERMINATE("forces array has wrong number of elements");
     }
 
@@ -77,7 +73,7 @@ void Forces_PS::calc_local_forces(mdarray<double,2>& forces)
         }
     }
 
-    ctx_.comm().allreduce(&forces(0,0),forces.size());
+    ctx_.comm().allreduce(&forces(0,0), static_cast<int>(forces.size()));
 }
 
 
@@ -148,7 +144,7 @@ void Forces_PS::calc_nlcc_forces(mdarray<double,2>& forces)
         }
     }
 
-    ctx_.comm().allreduce(&forces(0,0),forces.size());
+    ctx_.comm().allreduce(&forces(0,0), static_cast<int>(forces.size()));
 
 }
 
@@ -224,7 +220,7 @@ void Forces_PS::calc_ultrasoft_forces(mdarray<double,2>& forces)
         }
     }
 
-    ctx_.comm().allreduce(&forces(0,0),forces.size());
+    ctx_.comm().allreduce(&forces(0,0), static_cast<int>(forces.size()));
 }
 
 
@@ -234,8 +230,6 @@ void Forces_PS::calc_ultrasoft_forces(mdarray<double,2>& forces)
 void Forces_PS::calc_nonlocal_forces(mdarray<double,2>& forces)
 {
     PROFILE("sirius::Forces_PS::calc_nonlocal_forces");
-
-    Unit_cell &unit_cell = ctx_.unit_cell();
 
     mdarray<double, 2> unsym_forces( forces.size(0), forces.size(1));
 
@@ -251,7 +245,7 @@ void Forces_PS::calc_nonlocal_forces(mdarray<double,2>& forces)
         add_k_point_contribution_to_nonlocal2<double_complex>(*kp, unsym_forces);
     }
 
-    ctx_.comm().allreduce(&unsym_forces(0,0),unsym_forces.size());
+    ctx_.comm().allreduce(&unsym_forces(0,0), static_cast<int>(unsym_forces.size()));
 
     symmetrize_forces(unsym_forces, forces);
 }
@@ -269,10 +263,8 @@ void init_mdarray2d(mdarray<T,2> &priv, mdarray<T,2> &orig )
 template<typename T>
 void add_mdarray2d(mdarray<T,2> &in, mdarray<T,2> &out)
 {
-    for(int i = 0; i < in.size(1); i++ )
-    {
-        for(int j = 0; j < in.size(0); j++ )
-        {
+    for(size_t i = 0; i < in.size(1); i++ ) {
+        for(size_t j = 0; j < in.size(0); j++ ) {
             out(j,i) += in(j,i);
         }
     }
@@ -333,7 +325,7 @@ void Forces_PS::calc_ewald_forces(mdarray<double,2>& forces)
         }
     }
 
-    ctx_.comm().allreduce(&forces(0,0),forces.size());
+    ctx_.comm().allreduce(&forces(0,0), static_cast<int>(forces.size()));
 
 
     double invpi = 1. / pi;
@@ -436,8 +428,7 @@ void Forces_PS::sum_forces(mdarray<double,2>& inout_total_forces)
     mdarray<double,2> total_forces(3, ctx_.unit_cell().num_atoms());
 
     #pragma omp parallel for
-    for(int i = 0; i < inout_total_forces.size(); i++ )
-    {
+    for(size_t i = 0; i < inout_total_forces.size(); i++ ) {
         total_forces[i] = local_forces_[i] + ultrasoft_forces_[i] + nonlocal_forces_[i] + nlcc_forces_[i] + ewald_forces_[i];
     }
 
