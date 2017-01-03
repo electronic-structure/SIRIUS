@@ -209,7 +209,7 @@ class Band
                              mdarray<double, 1>& h_diag__,
                              mdarray<double, 1>& o_diag__) const;
         
-        /// Setup the subspace matrix.
+        /// Setup the Hermitian subspace matrix.
         /** Compute \f$ O_{ii'} = \langle \phi_i | \hat O | \phi_{i'} \rangle \f$ operator matrix
          *  for the subspace spanned by the wave-functions \f$ \phi_i \f$. The matrix is always returned
          *  in the CPU pointer because most of the standard math libraries start from the CPU. */
@@ -268,6 +268,8 @@ class Band
                 mtrx__.blacs_grid().comm().allreduce(&cs, 1);
                 DUMP("checksum(subspace_mtrx): %18.10f %18.10f", cs.real(), cs.imag());
             }
+
+            mtrx__.make_real_diag(N__ + n__);
 
             /* save new matrix */
             if (mtrx_old__.size()) {

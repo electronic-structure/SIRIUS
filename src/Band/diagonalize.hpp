@@ -684,7 +684,6 @@ inline void Band::diag_pseudo_potential_davidson(K_point* kp__,
     wave_functions res(mem_buf_ptr, ctx_.processing_unit(), kp__->comm(), kp__->gkvec(), num_bands);
 
     auto mem_type = (std_evp_solver().type() == ev_magma) ? memory_t::host_pinned : memory_t::host;
-    //auto mem_type = memory_t::host;
 
     int bs = ctx_.cyclic_block_size();
 
@@ -780,19 +779,29 @@ inline void Band::diag_pseudo_potential_davidson(K_point* kp__,
         /* increase size of the variation space */
         N += n;
 
-        hmlt.make_real_diag(N);
-        if (!itso.orthogonalize_) {
-            ovlp.make_real_diag(N);
-        }
+        //hmlt.make_real_diag(N);
+        //if (!itso.orthogonalize_) {
+        //    ovlp.make_real_diag(N);
+        //}
 
         eval_old = eval;
         
         sddk::timer t1("sirius::Band::diag_pseudo_potential_davidson|evp");
         if (itso.orthogonalize_) {
             /* solve standard eigen-value problem with the size N */
-            if (std_evp_solver().solve(N, num_bands, hmlt.template at<CPU>(), hmlt.ld(),
-                                       eval.data(), evec.template at<CPU>(), evec.ld(),
-                                       hmlt.num_rows_local(), hmlt.num_cols_local())) {
+            int result = std_evp_solver().solve(N, num_bands, hmlt.template at<CPU>(), hmlt.ld(),
+                                                eval.data(), evec.template at<CPU>(), evec.ld(),
+                                                hmlt.num_rows_local(), hmlt.num_cols_local());
+            if (result && std_evp_solver().type() == ev_magma) {
+                #pragma omp parallel for
+                for (int i = 0; i < N; i++) {
+                    std::memcpy(&hmlt(0, i), &hmlt_old(0, i), N * sizeof(T));
+                }
+                result = Eigenproblem_lapack().solve(N, num_bands, hmlt.template at<CPU>(), hmlt.ld(),
+                                                     eval.data(), evec.template at<CPU>(), evec.ld(),
+                                                     hmlt.num_rows_local(), hmlt.num_cols_local());
+            }
+            if (result) {
                 std::stringstream s;
                 s << "error in diagonalziation";
                 TERMINATE(s);

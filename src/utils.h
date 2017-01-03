@@ -322,13 +322,6 @@ class Utils
             for (int i = 0; i < spl_c.local_size(); i++) {
                 for (int j = 0; j < spl_r.local_size(); j++) {
                     max_diff = std::max(max_diff, std::abs(mtrx__(j, i) - tmp(j, i)));
-                    //if (std::abs(mtrx__(j, i) - type_wrapper<T>::conjugate(tmp(j, i))) > eps) {
-                    //    return 1;
-                    //    //std::stringstream s;
-                    //    //s << "matrix is not hermitian" << std::endl
-                    //    //  << "i = " << i << ", j = " << j << " " << mtrx__(i, j) << " " << tmp(i, j);
-                    //    //TERMINATE(s);
-                    //}
                 }
             }
             mtrx__.blacs_grid().comm().template allreduce<double, mpi_op_t::op_max>(&max_diff, 1);
