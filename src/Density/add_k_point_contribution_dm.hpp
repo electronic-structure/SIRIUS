@@ -26,8 +26,8 @@ inline void Density::add_k_point_contribution_dm(K_point* kp__,
                         }
                     }
                     /* add |psi_j> n_j <psi_j| to density matrix */
-                    linalg<CPU>::gemm(0, 1, mt_basis_size, mt_basis_size, nbnd, complex_one, 
-                                          &wf1(0, 0), wf1.ld(), &wf2(0, 0), wf2.ld(), complex_one, 
+                    linalg<CPU>::gemm(0, 1, mt_basis_size, mt_basis_size, nbnd, linalg_const<double_complex>::one(), 
+                                          &wf1(0, 0), wf1.ld(), &wf2(0, 0), wf2.ld(), linalg_const<double_complex>::one(), 
                                           density_matrix__.at<CPU>(0, 0, ispn, ia), density_matrix__.ld());
                 }
             }
@@ -57,13 +57,13 @@ inline void Density::add_k_point_contribution_dm(K_point* kp__,
                 }
                 /* compute diagonal terms */
                 for (int ispn = 0; ispn < 2; ispn++) {
-                    linalg<CPU>::gemm(0, 1, mt_basis_size, mt_basis_size, nbnd, complex_one, 
-                                      &wf1(0, 0, ispn), wf1.ld(), &wf2(0, 0, ispn), wf2.ld(), complex_one, 
+                    linalg<CPU>::gemm(0, 1, mt_basis_size, mt_basis_size, nbnd, linalg_const<double_complex>::one(), 
+                                      &wf1(0, 0, ispn), wf1.ld(), &wf2(0, 0, ispn), wf2.ld(), linalg_const<double_complex>::one(), 
                                       density_matrix__.at<CPU>(0, 0, ispn, ia), density_matrix__.ld());
                 }
                 /* offdiagonal term */
-                linalg<CPU>::gemm(0, 1, mt_basis_size, mt_basis_size, nbnd, complex_one, 
-                                  &wf1(0, 0, 1), wf1.ld(), &wf2(0, 0, 0), wf2.ld(), complex_one, 
+                linalg<CPU>::gemm(0, 1, mt_basis_size, mt_basis_size, nbnd, linalg_const<double_complex>::one(), 
+                                  &wf1(0, 0, 1), wf1.ld(), &wf2(0, 0, 0), wf2.ld(), linalg_const<double_complex>::one(), 
                                   density_matrix__.at<CPU>(0, 0, 2, ia), density_matrix__.ld());
             }
         }
@@ -116,8 +116,8 @@ inline void Density::add_k_point_contribution_dm(K_point* kp__,
                                     }
                                 }
 
-                                linalg<CPU>::gemm(0, 1, nbf, nbf, nbnd_loc, complex_one, &bp1(0, 0), bp1.ld(),
-                                                  &bp2(0, 0), bp2.ld(), complex_one, &density_matrix__(0, 0, ispn, ja), 
+                                linalg<CPU>::gemm(0, 1, nbf, nbf, nbnd_loc, linalg_const<double_complex>::one(), &bp1(0, 0), bp1.ld(),
+                                                  &bp2(0, 0), bp2.ld(), linalg_const<double_complex>::one(), &density_matrix__(0, 0, ispn, ja), 
                                                   density_matrix__.ld());
                             }
                         }

@@ -25,10 +25,6 @@
 #ifndef __CONSTANTS_H__
 #define __CONSTANTS_H__
 
-#include <complex>
-#include "atomic_conf.h"
-#include "atomic_symb.h"
-
 const int major_version = 3;
 const int minor_version = 12;
 
@@ -53,17 +49,8 @@ const double fourpi = 12.566370614359172954;
 /// First spherical harmonic \f$ Y_{00} = \frac{1}{\sqrt{4\pi}} \f$.
 const double y00 = 0.28209479177387814347;
 
+/// Hartree in electron-volt units.
 const double ha2ev = 27.21138505;
-
-const double pw_cutoff_default = 20.0; 
-
-const double aw_cutoff_default = 7.0;
-
-const int lmax_apw_default = 8;
-
-const int lmax_rho_default = 7;
-
-const int lmax_pot_default = 7;
 
 const char* const storage_file_name = "sirius.h5";
 
@@ -72,12 +59,6 @@ const int _mpi_dim_k_ = 0;
 const int _mpi_dim_k_row_ = 1;
 
 const int _mpi_dim_k_col_ = 2;
-
-const std::complex<double> complex_one(1, 0);
-
-const std::complex<double> complex_i(0, 1);
-
-const std::complex<double> complex_zero(0, 0);
 
 #endif // __CONSTANTS_H__
 

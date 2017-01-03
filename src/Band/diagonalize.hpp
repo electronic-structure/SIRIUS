@@ -197,7 +197,9 @@ inline void Band::diag_pseudo_potential_exact(K_point* kp__,
     std::vector<double> eval(ngk);
 
     phi.pw_coeffs().prime().zero();
-    for (int i = 0; i < ngk; i++) phi.pw_coeffs().prime(i, i) = complex_one;
+    for (int i = 0; i < ngk; i++) {
+        phi.pw_coeffs().prime(i, i) = 1;
+    }
 
     apply_h_o(kp__, ispn__, 0, ngk, phi, hphi, ophi, h_op__, d_op__, q_op__);
         

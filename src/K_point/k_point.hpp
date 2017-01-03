@@ -479,9 +479,10 @@ inline void K_point::get_sv_eigen_vectors(mdarray<double_complex, 2>& sv_evec)
 
     sv_evec.zero();
 
-    if (!ctx_.need_sv())
-    {
-        for (int i = 0; i < ctx_.num_fv_states(); i++) sv_evec(i, i) = complex_one;
+    if (!ctx_.need_sv()) {
+        for (int i = 0; i < ctx_.num_fv_states(); i++) {
+            sv_evec(i, i) = 1;
+        }
         return;
     }
 

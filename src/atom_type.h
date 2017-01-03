@@ -26,6 +26,7 @@
 #ifndef __ATOM_TYPE_H__
 #define __ATOM_TYPE_H__
 
+#include "atomic_conf.h"
 #include "descriptors.h"
 #include "vector3d.hpp"
 #include "utils.h"

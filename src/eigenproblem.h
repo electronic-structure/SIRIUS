@@ -1299,14 +1299,14 @@ class Eigenproblem_elpa: public Eigenproblem
             int32_t descc[9];
             linalg_base::descinit(descc, matrix_size__, matrix_size__, block_size_, block_size_, 0, 0, blacs_context_, lda__);
             
-            linalg_base::pztranc(matrix_size__, matrix_size__, complex_one, tmp1__.at<CPU>(), 1, 1, descc, 
-                                 complex_zero, tmp2__.at<CPU>(), 1, 1, descc);
+            linalg_base::pztranc(matrix_size__, matrix_size__, linalg_const<double_complex>::one(), tmp1__.at<CPU>(), 1, 1, descc, 
+                                 linalg_const<double_complex>::zero(), tmp2__.at<CPU>(), 1, 1, descc);
 
             FORTRAN(elpa_mult_ah_b_complex_wrapper)("U", "U", &matrix_size__, &matrix_size__, B__, &ldb__, tmp2__.at<CPU>(), &num_rows_loc__, 
                                                     &block_size_, &mpi_comm_rows_, &mpi_comm_cols_, A__, &lda__, (int32_t)1, 
                                                     (int32_t)1);
 
-            linalg_base::pztranc(matrix_size__, matrix_size__, complex_one, A__, 1, 1, descc, complex_zero, 
+            linalg_base::pztranc(matrix_size__, matrix_size__, linalg_const<double_complex>::one(), A__, 1, 1, descc, linalg_const<double_complex>::zero(), 
                                  tmp1__.at<CPU>(), 1, 1, descc);
 
             for (int i = 0; i < num_cols_loc__; i++)
@@ -1373,7 +1373,7 @@ class Eigenproblem_elpa: public Eigenproblem
             int32_t descb[9];
             linalg_base::descinit(descb, matrix_size__, matrix_size__, block_size_, block_size_, 0, 0, blacs_context_, ldb__);
 
-            linalg_base::pztranc(matrix_size__, matrix_size__, complex_one, B__, 1, 1, descb, complex_zero, 
+            linalg_base::pztranc(matrix_size__, matrix_size__, linalg_const<double_complex>::one(), B__, 1, 1, descb, linalg_const<double_complex>::zero(), 
                                  tmp2__.at<CPU>(), 1, 1, descb);
 
             FORTRAN(elpa_mult_ah_b_complex_wrapper)("L", "N", &matrix_size__, &nevec__, tmp2__.at<CPU>(), &num_rows_loc__, tmp1__.at<CPU>(), 
