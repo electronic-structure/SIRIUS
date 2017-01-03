@@ -196,7 +196,7 @@ extern "C" void magma_dsyevdx_wrapper(int32_t matrix_size, int32_t nv, double* a
     free(w);
 }
 
-extern "C" void magma_zheevdx_wrapper(int32_t matrix_size, int32_t nv, cuDoubleComplex* a, int32_t lda, double* eval)
+extern "C" int magma_zheevdx_wrapper(int32_t matrix_size, int32_t nv, cuDoubleComplex* a, int32_t lda, double* eval)
 {
     int info, m;
 
@@ -231,27 +231,35 @@ extern "C" void magma_zheevdx_wrapper(int32_t matrix_size, int32_t nv, cuDoubleC
     magma_zheevdx(MagmaVec, MagmaRangeI, MagmaLower, matrix_size, a, lda, 0.0, 0.0, 1, nv, &m, &w[0],
                   h_work, lwork, rwork, lrwork, iwork, liwork, &info);
     
+    bool is_ok = true;
     if (info) {
-        printf("magma_zheevdx : %i\n", info);
+        printf("magma_zheevdx : error code = %i\n", info);
         if (info == MAGMA_ERR_DEVICE_ALLOC) {
             printf("this is MAGMA_ERR_DEVICE_ALLOC\n");
         }
-        exit(-1);
+        is_ok = false;
     }    
 
     if (m < nv) {
-        printf("Not all eigen-vectors are found.\n");
-        printf("requested number of eigen-vectors: %i\n", nv);
-        printf("found number of eigen-vectors: %i\n", m);
-        exit(-1);
+        printf("magma_zheevdx: not all eigen-vectors are found\n");
+        printf("  requested number of eigen-vectors: %i\n", nv);
+        printf("  found number of eigen-vectors: %i\n", m);
+        is_ok = false;
     }
-
-    memcpy(eval, &w[0], nv * sizeof(double));
+    
+    if (is_ok) {
+        memcpy(eval, &w[0], nv * sizeof(double));
+    }
 
     cudaFreeHost(h_work);
     cudaFreeHost(rwork);
     free(iwork);
     free(w);
+
+    if (is_ok) {
+        return 0;
+    }
+    return 1;
 }
 
 extern "C" int magma_zheevdx_2stage_wrapper(int32_t matrix_size, int32_t nv, cuDoubleComplex* a, int32_t lda, double* eval)

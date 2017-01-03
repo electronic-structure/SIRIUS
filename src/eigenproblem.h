@@ -492,7 +492,7 @@ extern "C" void magma_dsygvdx_2stage_wrapper(int32_t matrix_size, int32_t nv, vo
 
 extern "C" void magma_dsyevdx_wrapper(int32_t matrix_size, int32_t nv, double* a, int32_t lda, double* eval);
 
-extern "C" void magma_zheevdx_wrapper(int32_t matrix_size, int32_t nv, double_complex* a, int32_t lda, double* eval);
+extern "C" int magma_zheevdx_wrapper(int32_t matrix_size, int32_t nv, double_complex* a, int32_t lda, double* eval);
 
 extern "C" int magma_zheevdx_2stage_wrapper(int32_t matrix_size, int32_t nv, cuDoubleComplex* a, int32_t lda, double* eval);
 #endif
@@ -591,7 +591,8 @@ class Eigenproblem_magma: public Eigenproblem
 
             int nt = omp_get_max_threads();
             
-            int result = magma_zheevdx_2stage_wrapper(matrix_size, nevec, A, lda, eval);
+            //int result = magma_zheevdx_2stage_wrapper(matrix_size, nevec, A, lda, eval);
+            int result = magma_zheevdx_wrapper(matrix_size, nevec, A, lda, eval);
 
             if (nt != omp_get_max_threads()) {
                 TERMINATE("magma has changed the number of threads");
