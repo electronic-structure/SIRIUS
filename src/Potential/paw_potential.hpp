@@ -476,7 +476,7 @@ inline void Potential::add_paw_Dij_to_atom_Dmtrx()
         for (int is = 0; is < ctx_.num_mag_comp(); is++) {
             for (int ib2 = 0; ib2 < atom.mt_lo_basis_size(); ib2++) {
                 for (int ib1 = 0; ib1 < atom.mt_lo_basis_size(); ib1++) {
-                     atom.d_mtrx(ib1, ib2, is) += paw_dij_(ib1, ib2, is, i);
+                     atom.d_mtrx(ib1, ib2, is) += paw_dij_(ib1, ib2, is, i).real();
                 }
             }
         }

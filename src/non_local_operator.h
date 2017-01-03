@@ -278,7 +278,7 @@ class D_operator: public Non_local_operator<T>
                         for (int xi1 = 0; xi1 < nbf; xi1++)
                         {
                             assert(uc.atom(ia).d_mtrx(xi1, xi2, j).imag() < 1e-10);
-                            this->op_(this->packed_mtrx_offset_(ia) + xi2 * nbf + xi1, j) = uc.atom(ia).d_mtrx(xi1, xi2, j).real();
+                            this->op_(this->packed_mtrx_offset_(ia) + xi2 * nbf + xi1, j) = uc.atom(ia).d_mtrx(xi1, xi2, j);
                         }
                     }
                 }

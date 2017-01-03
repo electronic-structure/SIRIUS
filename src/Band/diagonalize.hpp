@@ -786,7 +786,8 @@ inline void Band::diag_pseudo_potential_davidson(K_point* kp__,
         }
 
         eval_old = eval;
-
+        
+        sddk::timer t1("sirius::Band::diag_pseudo_potential_davidson|evp");
         if (itso.orthogonalize_) {
             /* solve standard eigen-value problem with the size N */
             if (std_evp_solver().solve(N, num_bands, hmlt.template at<CPU>(), hmlt.ld(),
@@ -808,6 +809,7 @@ inline void Band::diag_pseudo_potential_davidson(K_point* kp__,
                 TERMINATE(s);
             }
         }
+        t1.stop();
         
         if (ctx_.control().verbosity_ >= 2 && kp__->comm().rank() == 0) {
             DUMP("step: %i, current subspace size: %i, maximum subspace size: %i", k, N, num_phi);

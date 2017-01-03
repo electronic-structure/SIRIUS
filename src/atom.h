@@ -1,4 +1,4 @@
-// Copyright (c) 2013-2015 Anton Kozhevnikov, Thomas Schulthess
+// Copyright (c) 2013-2017 Anton Kozhevnikov, Thomas Schulthess
 // All rights reserved.
 // 
 // Redistribution and use in source and binary forms, with or without modification, are permitted provided that 
@@ -86,16 +86,21 @@ class Atom
         /// Orbital quantum number for UJ correction.
         int uj_correction_l_{-1};
 
-        /// D_{ij} matrix of the pseudo-potential method.
-        mdarray<double_complex, 3> d_mtrx_; //TODO: this should be real and stored in auxiliary form.
+        /// Auxiliary form of the D_{ij} operator matrix of the pseudo-potential method.
+        /** The matrix is calculated for the scalar and vector effective fields (thus, it is real and symmetric).
+         *  \f[
+         *      D_{\xi \xi'}^{\alpha} = \int V({\bf r}) Q_{\xi \xi'}^{\alpha}({\bf r}) d{\bf r}
+         *  \f]
+         */
+        mdarray<double, 3> d_mtrx_;
 
     public:
     
         /// Constructor.
         Atom(Atom_type const& type__, vector3d<double> position__, vector3d<double> vector_field__)
-            : type_(type__),
-              position_(position__),
-              vector_field_(vector_field__)
+            : type_(type__)
+            , position_(position__)
+            , vector_field_(vector_field__)
         {
             for (int x: {0, 1, 2}) {
                 if (position_[x] < 0 || position_[x] >= 1) {
@@ -134,7 +139,7 @@ class Atom
 
             if (!type().parameters().full_potential()) {
                 int nbf = type().mt_lo_basis_size();
-                d_mtrx_ = mdarray<double_complex, 3>(nbf, nbf, type().parameters().num_mag_dims() + 1);
+                d_mtrx_ = mdarray<double, 3>(nbf, nbf, type().parameters().num_mag_dims() + 1);
                 d_mtrx_.zero();
 
                 for (int xi2 = 0; xi2 < nbf; xi2++) {
@@ -405,12 +410,12 @@ class Atom
              return uj_correction_matrix_(lm1, lm2, ispn1, ispn2);
         }
 
-        inline double_complex& d_mtrx(int xi1, int xi2, int iv)
+        inline double& d_mtrx(int xi1, int xi2, int iv)
         {
             return d_mtrx_(xi1, xi2, iv);
         }
 
-        inline double_complex const& d_mtrx(int xi1, int xi2, int iv) const
+        inline double const& d_mtrx(int xi1, int xi2, int iv) const
         {
             return d_mtrx_(xi1, xi2, iv);
         }
