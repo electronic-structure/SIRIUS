@@ -615,7 +615,6 @@ void generate_atom_file(Free_atom& a,
     printf("=== initializing atom ===\n");
     a.init(0);
     sirius::Atom_symmetry_class atom_class(0, a);
-    atom_class.initialize();
     atom_class.set_spherical_potential(veff);
     atom_class.generate_radial_functions(relativity_t::none);
     runtime::pstdout pout(mpi_comm_self());
