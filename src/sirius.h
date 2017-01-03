@@ -51,7 +51,7 @@ using json = nlohmann::json;
 #include "k_point.h"
 #include "band.h"
 #include "potential.h"
-#include "k_set.h"
+#include "k_point_set.h"
 #include "density.h"
 #include "force.h"
 #include "dft_ground_state.h"

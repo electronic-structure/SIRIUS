@@ -27,7 +27,7 @@
 
 #include "potential.h"
 #include "density.h"
-#include "k_set.h"
+#include "k_point_set.h"
 #include "force.h"
 #include "json.hpp"
 #include "Geometry/Forces_PS.h"
@@ -49,7 +49,7 @@ class DFT_ground_state
 
         Density& density_;
 
-        K_set& kset_;
+        K_point_set& kset_;
 
         Band band_;
 
@@ -66,7 +66,7 @@ class DFT_ground_state
         DFT_ground_state(Simulation_context& ctx__,
                          Potential& potential__,
                          Density& density__,
-                         K_set& kset__,
+                         K_point_set& kset__,
                          int use_symmetry__)
             : ctx_(ctx__),
               unit_cell_(ctx__.unit_cell()),

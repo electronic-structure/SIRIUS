@@ -242,7 +242,7 @@ void Force::ibs_force(Simulation_context& ctx__,
 void Force::total_force(Simulation_context& ctx__,
                         Potential* potential__,
                         Density* density__,
-                        K_set* ks__,
+                        K_point_set* ks__,
                         mdarray<double, 2>& force__)
 {
     PROFILE("sirius::Force::total_force");

@@ -30,7 +30,7 @@
 #include "non_local_operator.h"
 #include "hloc_operator.h"
 #include "potential.h"
-#include "k_set.h"
+#include "k_point_set.h"
 #include "interstitial_operator.h"
 
 namespace sirius
@@ -758,7 +758,7 @@ class Band
                              Periodic_function<double>* effective_magnetic_field[3]) const;
 
         /// Solve \f$ \hat H \psi = E \psi \f$ and find eigen-states of the Hamiltonian.
-        inline void solve_for_kset(K_set& kset__,
+        inline void solve_for_kset(K_point_set& kset__,
                                    Potential& potential__,
                                    bool precompute__) const;
 
@@ -793,7 +793,7 @@ class Band
         inline mdarray<double, 1> get_o_diag(K_point* kp__,
                                              Q_operator<T>& q_op__) const;
 
-        inline void initialize_subspace(K_set& kset__,
+        inline void initialize_subspace(K_point_set& kset__,
                                         Potential& potential__) const;
 
         /// Initialize the wave-functions subspace.

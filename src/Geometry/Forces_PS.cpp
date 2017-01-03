@@ -6,7 +6,7 @@
  */
 
 #include "Forces_PS.h"
-#include "../k_set.h"
+#include "../k_point_set.h"
 
 namespace sirius
 {

@@ -1,9 +1,8 @@
-inline void Band::initialize_subspace(K_set& kset__,
+inline void Band::initialize_subspace(K_point_set& kset__,
                                       Potential& potential__) const
 {
     PROFILE("sirius::Band::initialize_subspace");
 
-    //int lmax{2};
     int N{0};
     /* interpolate I_{\alpha,n}(q) = <j_{l_n}(q*x) | wf_{n,l_n}(x) > with splines */
     std::vector<std::vector<Spline<double>>> rad_int(unit_cell_.num_atom_types());

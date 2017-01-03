@@ -26,7 +26,7 @@
 #define __DENSITY_H__
 
 #include "periodic_function.h"
-#include "k_set.h"
+#include "k_point_set.h"
 #include "simulation_context.h"
 
 #ifdef __GPU
@@ -327,7 +327,7 @@ class Density
         inline void add_k_point_contribution_rg(K_point* kp__);
 
         /// Generate valence density in the muffin-tins 
-        void generate_valence_density_mt(K_set& ks);
+        void generate_valence_density_mt(K_point_set& ks);
         
         /// Generate charge density of core states
         void generate_core_charge_density()
@@ -605,10 +605,10 @@ class Density
         void initial_density_full_pot();
 
         /// Generate full charge density (valence + core) and magnetization from the wave functions.
-        inline void generate(K_set& ks__);
+        inline void generate(K_point_set& ks__);
 
         /// Generate valence charge density and magnetization from the wave functions.
-        inline void generate_valence(K_set& ks__);
+        inline void generate_valence(K_point_set& ks__);
         
         /// Add augmentation charge Q(r)
         /** Restore valence density by adding the Q-operator constribution.
@@ -633,7 +633,7 @@ class Density
          *      d_{\xi \xi'}^{A}({\bf G}) = \sum_{\alpha(A)} d_{\xi \xi'}^{\alpha(A)} e^{-i{\bf G}\tau_{\alpha(A)}} 
          *  \f]
          */
-        void augment(K_set& ks__) // TODO: skip when norm-conserving potential is used for all species
+        void augment(K_point_set& ks__) // TODO: skip when norm-conserving potential is used for all species
         {
             PROFILE("sirius::Density::augment");
 

@@ -34,7 +34,7 @@ sirius::Density* density = nullptr;
 sirius::Potential* potential = nullptr;
 
 /// List of pointers to the sets of k-points.
-std::vector<sirius::K_set*> kset_list;
+std::vector<sirius::K_point_set*> kset_list;
 
 /// DFT ground state wrapper
 sirius::DFT_ground_state* dft_ground_state = nullptr;
@@ -181,7 +181,7 @@ void sirius_create_kset(ftn_int*    num_kpoints__,
 {
     mdarray<double, 2> kpoints(kpoints__, 3, *num_kpoints__);
 
-    sirius::K_set* new_kset = new sirius::K_set(*sim_ctx, sim_ctx->mpi_grid().communicator(1 << _mpi_dim_k_));
+    sirius::K_point_set* new_kset = new sirius::K_point_set(*sim_ctx, sim_ctx->mpi_grid().communicator(1 << _mpi_dim_k_));
     new_kset->add_kpoints(kpoints, kpoint_weights__);
     if (*init_kset__) {
         std::vector<int> counts;
@@ -207,7 +207,7 @@ void sirius_create_irreducible_kset_(int32_t* mesh__, int32_t* is_shift__, int32
         }
     }
 
-    sirius::K_set* new_kset = new sirius::K_set(*sim_ctx,
+    sirius::K_point_set* new_kset = new sirius::K_point_set(*sim_ctx,
                                                 sim_ctx->mpi_grid().communicator(1 << _mpi_dim_k_),
                                                 vector3d<int>(mesh__[0], mesh__[1], mesh__[2]),
                                                 vector3d<int>(is_shift__[0], is_shift__[1], is_shift__[2]),
@@ -917,7 +917,7 @@ void sirius_load_kset(int32_t* kset_id)
 //==
 //==     std::vector<double> xaxis;
 //==
-//==     sirius::K_set kset_(global_parameters);
+//==     sirius::K_point_set kset_(global_parameters);
 //==
 //==     double prev_seg_len = 0.0;
 //==
@@ -2018,7 +2018,7 @@ void sirius_create_storage_file()
 
 void sirius_test_spinor_wave_functions(int32_t* kset_id)
 {
-    sirius::K_set* kset = kset_list[*kset_id];
+    sirius::K_point_set* kset = kset_list[*kset_id];
     for (int ikloc = 0; ikloc < (int)kset->spl_num_kpoints().local_size(); ikloc++)
     {
         int ik = kset->spl_num_kpoints(ikloc);

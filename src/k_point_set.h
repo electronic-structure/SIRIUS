@@ -17,13 +17,13 @@
 // CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR 
 // OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-/** \file k_set.h
+/** \file k_point_set.h
  *
- *  \brief Contains declaration and partial implementation of sirius::K_set class.
+ *  \brief Contains declaration and partial implementation of sirius::K_point_set class.
  */
 
-#ifndef __K_SET_H__
-#define __K_SET_H__
+#ifndef __K_POINT_SET_H__
+#define __K_POINT_SET_H__
 
 #include "k_point.h"
 #include "vector3d.hpp"
@@ -39,10 +39,8 @@ struct kq
     vector3d<int> K;
 };
 
-// TODO: rename K_set -> K_point_set
-
 /// Set of k-points.
-class K_set
+class K_point_set
 {
     private:
     
@@ -62,16 +60,16 @@ class K_set
 
     public:
 
-        K_set(Simulation_context& ctx__,
+        K_point_set(Simulation_context& ctx__,
               Communicator const& comm_k__)
             : ctx_(ctx__)
             , unit_cell_(ctx__.unit_cell())
             , comm_k_(comm_k__)
         {
-            PROFILE("sirius::K_set::K_set");
+            PROFILE("sirius::K_point_set::K_point_set");
         }
 
-        K_set(Simulation_context& ctx__,
+        K_point_set(Simulation_context& ctx__,
               Communicator const& comm_k__,
               vector3d<int> k_grid__,
               vector3d<int> k_shift__,
@@ -80,7 +78,7 @@ class K_set
             , unit_cell_(ctx__.unit_cell())
             , comm_k_(comm_k__)
         {
-            PROFILE("sirius::K_set::K_set");
+            PROFILE("sirius::K_point_set::K_point_set");
 
             int nk;
             mdarray<double, 2> kp;
@@ -174,10 +172,9 @@ class K_set
             }
         }
 
-        ~K_set()
+        ~K_point_set()
         {
-            PROFILE("sirius::K_set::~K_set");
-            //PROFILE();
+            PROFILE("sirius::K_point_set::~K_point_set");
             clear();
         }
         
@@ -230,13 +227,13 @@ class K_set
         
         void add_kpoint(double* vk__, double weight__)
         {
-            PROFILE("sirius::K_set::add_kpoint");
+            PROFILE("sirius::K_point_set::add_kpoint");
             kpoints_.push_back(new K_point(ctx_, vk__, weight__));
         }
 
         void add_kpoints(mdarray<double, 2>& kpoints__, double* weights__)
         {
-            PROFILE("sirius::K_set::add_kpoints");
+            PROFILE("sirius::K_point_set::add_kpoints");
             for (size_t ik = 0; ik < kpoints__.size(1); ik++) {
                 add_kpoint(&kpoints__(0, ik), weights__[ik]);
             }
@@ -251,7 +248,7 @@ class K_set
 
         void clear()
         {
-            PROFILE("sirius::K_set::clear");
+            PROFILE("sirius::K_point_set::clear");
             for (size_t ik = 0; ik < kpoints_.size(); ik++) {
                 delete kpoints_[ik];
             }
@@ -331,9 +328,9 @@ class K_set
         }
 };
 
-inline void K_set::sync_band_energies()
+inline void K_point_set::sync_band_energies()
 {
-    PROFILE("sirius::K_set::sync_band_energies");
+    PROFILE("sirius::K_point_set::sync_band_energies");
 
     mdarray<double, 2> band_energies(ctx_.num_bands(), num_kpoints());
 
@@ -350,7 +347,7 @@ inline void K_set::sync_band_energies()
     }
 }
 
-inline double K_set::valence_eval_sum()
+inline double K_point_set::valence_eval_sum()
 {
     double eval_sum = 0.0;
 
@@ -364,9 +361,9 @@ inline double K_set::valence_eval_sum()
     return eval_sum;
 }
 
-inline void K_set::find_band_occupancies()
+inline void K_point_set::find_band_occupancies()
 {
-    PROFILE("sirius::K_set::find_band_occupancies");
+    PROFILE("sirius::K_point_set::find_band_occupancies");
 
     double ef{0};
     double de{0.1};
@@ -458,23 +455,29 @@ inline void K_set::find_band_occupancies()
     }
 }
 
-inline void K_set::print_info()
+inline void K_point_set::print_info()
 {
     if (comm_k_.rank() == 0 && ctx_.blacs_grid().comm().rank() == 0) {
         printf("\n");
         printf("total number of k-points : %i\n", num_kpoints());
-        for (int i = 0; i < 80; i++) printf("-");
+        for (int i = 0; i < 80; i++) {
+            printf("-");
+        }
         printf("\n");
         printf("  ik                vk                    weight  num_gkvec");
-        if (ctx_.full_potential()) printf("   gklo_basis_size");
+        if (ctx_.full_potential()) {
+            printf("   gklo_basis_size");
+        }
         printf("\n");
-        for (int i = 0; i < 80; i++) printf("-");
+        for (int i = 0; i < 80; i++) {
+            printf("-");
+        }
         printf("\n");
     }
 
     if (ctx_.blacs_grid().comm().rank() == 0) {
         runtime::pstdout pout(comm_k_);
-        for (int ikloc = 0; ikloc < (int)spl_num_kpoints().local_size(); ikloc++) {
+        for (int ikloc = 0; ikloc < spl_num_kpoints().local_size(); ikloc++) {
             int ik = spl_num_kpoints(ikloc);
             pout.printf("%4i   %8.4f %8.4f %8.4f   %12.6f     %6i", 
                         ik, kpoints_[ik]->vk()[0], kpoints_[ik]->vk()[1], kpoints_[ik]->vk()[2], 
@@ -489,7 +492,7 @@ inline void K_set::print_info()
     }
 }
 
-inline void K_set::save()
+inline void K_point_set::save()
 {
     TERMINATE("fix me");
     STOP();
@@ -497,8 +500,8 @@ inline void K_set::save()
     //==if (comm_.rank() == 0)
     //=={
     //==    HDF5_tree fout(storage_file_name, false);
-    //==    fout.create_node("K_set");
-    //==    fout["K_set"].write("num_kpoints", num_kpoints());
+    //==    fout.create_node("K_point_set");
+    //==    fout["K_point_set"].write("num_kpoints", num_kpoints());
     //==}
     //==comm_.barrier();
     //==
@@ -516,21 +519,21 @@ inline void K_set::save()
 }
 
 /// \todo check parameters of saved data in a separate function
-inline void K_set::load()
+inline void K_point_set::load()
 {
     STOP();
 
     //== HDF5_tree fin(storage_file_name, false);
 
     //== int num_kpoints_in;
-    //== fin["K_set"].read("num_kpoints", &num_kpoints_in);
+    //== fin["K_point_set"].read("num_kpoints", &num_kpoints_in);
 
     //== std::vector<int> ikidx(num_kpoints(), -1); 
     //== // read available k-points
     //== double vk_in[3];
     //== for (int jk = 0; jk < num_kpoints_in; jk++)
     //== {
-    //==     fin["K_set"][jk].read("coordinates", vk_in, 3);
+    //==     fin["K_point_set"][jk].read("coordinates", vk_in, 3);
     //==     for (int ik = 0; ik < num_kpoints(); ik++)
     //==     {
     //==         vector3d<double> dvk; 
@@ -547,11 +550,11 @@ inline void K_set::load()
     //== {
     //==     int rank = spl_num_kpoints_.local_rank(ik);
     //==     
-    //==     if (comm_.rank() == rank) kpoints_[ik]->load(fin["K_set"], ikidx[ik]);
+    //==     if (comm_.rank() == rank) kpoints_[ik]->load(fin["K_point_set"], ikidx[ik]);
     //== }
 }
 
-//== void K_set::save_wave_functions()
+//== void K_point_set::save_wave_functions()
 //== {
 //==     if (Platform::mpi_rank() == 0)
 //==     {
@@ -574,7 +577,7 @@ inline void K_set::load()
 //==     }
 //== }
 //== 
-//== void K_set::load_wave_functions()
+//== void K_point_set::load_wave_functions()
 //== {
 //==     HDF5_tree fin(storage_file_name, false);
 //==     int num_spins;
@@ -618,9 +621,9 @@ inline void K_set::load()
 //==     }
 //== }
 
-//== void K_set::fixed_band_occupancies()
+//== void K_point_set::fixed_band_occupancies()
 //== {
-//==     Timer t("sirius::K_set::fixed_band_occupancies");
+//==     Timer t("sirius::K_point_set::fixed_band_occupancies");
 //== 
 //==     if (ctx_.num_mag_dims() != 1) error_local(__FILE__, __LINE__, "works only for collinear magnetism");
 //== 
@@ -684,5 +687,5 @@ inline void K_set::load()
 //== }
 };
 
-#endif // __K_SET_H__
+#endif // __K_POINT_SET_H__
 
