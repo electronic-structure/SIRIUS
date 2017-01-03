@@ -242,18 +242,6 @@ class Band
             /* <{phi,phi_new}|Op|phi_new> */
             inner(phi__, 0, N__ + n__, op_phi__, N__, n__, mtrx__, 0, N__);
             
-            //== #ifdef __GPU
-            //== if (ctx_.processing_unit() == GPU) {
-            //==     /* copy N x n distributed panel to CPU */
-            //==     splindex<block_cyclic>  spl_row(N__ + n__, mtrx__.blacs_grid().num_ranks_row(), mtrx__.blacs_grid().rank_row(), mtrx__.bs_row());
-            //==     splindex<block_cyclic> spl_col0(N__,       mtrx__.blacs_grid().num_ranks_col(), mtrx__.blacs_grid().rank_col(), mtrx__.bs_col());
-            //==     splindex<block_cyclic> spl_col1(N__ + n__, mtrx__.blacs_grid().num_ranks_col(), mtrx__.blacs_grid().rank_col(), mtrx__.bs_col());
-            //==     acc::copyout(mtrx__.template at<CPU>(0, spl_col0.local_size()), mtrx__.ld(),
-            //==                  mtrx__.template at<GPU>(0, spl_col0.local_size()), mtrx__.ld(),
-            //==                  spl_row.local_size(), spl_col1.local_size() - spl_col0.local_size());
-            //== }
-            //== #endif
-
             /* restore lower part */
             if (N__ > 0) {
                 if (mtrx__.blacs_grid().comm().size() == 1) {
@@ -268,8 +256,7 @@ class Band
                 }
             }
 
-            #ifdef __PRINT_OBJECT_CHECKSUM
-            {
+            if (ctx_.control().print_checksum_) {
                 splindex<block_cyclic> spl_row(N__ + n__, mtrx__.blacs_grid().num_ranks_row(), mtrx__.blacs_grid().rank_row(), mtrx__.bs_row());
                 splindex<block_cyclic> spl_col(N__ + n__, mtrx__.blacs_grid().num_ranks_col(), mtrx__.blacs_grid().rank_col(), mtrx__.bs_col());
                 double_complex cs(0, 0);
@@ -281,7 +268,6 @@ class Band
                 mtrx__.blacs_grid().comm().allreduce(&cs, 1);
                 DUMP("checksum(subspace_mtrx): %18.10f %18.10f", cs.real(), cs.imag());
             }
-            #endif
 
             /* save new matrix */
             if (mtrx_old__.size()) {
