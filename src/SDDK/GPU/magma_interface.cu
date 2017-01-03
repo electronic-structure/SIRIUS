@@ -242,8 +242,9 @@ extern "C" int magma_zheevdx_wrapper(int32_t matrix_size, int32_t nv, cuDoubleCo
 
     if (m < nv) {
         printf("magma_zheevdx: not all eigen-vectors are found\n");
-        printf("  requested number of eigen-vectors: %i\n", nv);
-        printf("  found number of eigen-vectors: %i\n", m);
+        printf("  matrix size:                       %i\n", matrix_size);
+        printf("  target number of eigen-vectors:    %i\n", nv);
+        printf("  number of eigen-vectors found:     %i\n", m);
         is_ok = false;
     }
     
@@ -308,8 +309,9 @@ extern "C" int magma_zheevdx_2stage_wrapper(int32_t matrix_size, int32_t nv, cuD
 
     if (m < nv) {
         printf("magma_zheevdx_2stage: not all eigen-vectors are found\n");
-        printf("  requested number of eigen-vectors: %i\n", nv);
-        printf("  found number of eigen-vectors: %i\n", m);
+        printf("  matrix size:                       %i\n", matrix_size);
+        printf("  target number of eigen-vectors:    %i\n", nv);
+        printf("  number of eigen-vectors found:     %i\n", m);
         is_ok = false;
     }
     
