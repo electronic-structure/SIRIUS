@@ -260,10 +260,6 @@ class Unit_cell
             }
 
             spl_num_paw_atoms_ = splindex<block>(num_paw_atoms(), comm_.size(), comm_.rank());
-            
-            if (parameters_.control().verbosity_ > 1 && comm_.rank() == 0) {
-                printf("Number of PAW atoms: %i\n", num_paw_atoms());
-            }
         }
 
         /// Return number of PAW atoms.
@@ -383,7 +379,6 @@ class Unit_cell
         inline int num_atom_types() const
         {
             assert(atom_types_.size() == atom_type_id_map_.size());
-
             return static_cast<int>(atom_types_.size());
         }
 
@@ -985,8 +980,11 @@ inline void Unit_cell::print_info(int verbosity_)
 
     printf("number of atoms : %i\n", num_atoms());
     printf("number of symmetry classes : %i\n", num_atom_symmetry_classes());
-    printf("\n");
+    if (!parameters_.full_potential()) {
+        printf("number of PAW atoms : %i\n", num_paw_atoms());
+    }
     if (verbosity_ >= 2) {
+        printf("\n");
         printf("atom id              position            type id    class id\n");
         printf("------------------------------------------------------------\n");
         for (int i = 0; i < num_atoms(); i++) {
