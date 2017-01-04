@@ -108,7 +108,7 @@ class Potential
 
             int ia_paw{-1};
 
-            mdarray<double, 3> ae_potential_;
+            mdarray<double, 3> ae_potential_; // TODO: -> Spheric_function
             mdarray<double, 3> ps_potential_;
 
             double hartree_energy_{0.0};
@@ -136,31 +136,31 @@ class Potential
         void init_PAW();
 
         double xc_mt_PAW_nonmagnetic(Radial_grid const& rgrid,
-                                     mdarray<double, 3> &out_atom_pot,
-                                     mdarray<double, 2> &full_rho_lm,
-                                     const std::vector<double> &rho_core);
+                                     mdarray<double, 3>& out_atom_pot,
+                                     mdarray<double, 2> const& full_rho_lm,
+                                     std::vector<double> const& rho_core);
 
 
         double xc_mt_PAW_collinear(Radial_grid const& rgrid,
                                    mdarray<double,3> &out_atom_pot,
-                                   mdarray<double,2> &full_rho_lm,
-                                   mdarray<double,3> &magnetization_lm,
-                                   const std::vector<double> &rho_core);
+                                   mdarray<double,2> const& full_rho_lm,
+                                   mdarray<double,3> const& magnetization_lm,
+                                   std::vector<double> const& rho_core);
 
         // TODO DO
         void xc_mt_PAW_noncollinear(    )   {     };
 
         void calc_PAW_local_potential(paw_potential_data_t &pdd,
-                                      mdarray<double, 2> &ae_full_density,
-                                      mdarray<double, 2> &ps_full_density,
-                                      mdarray<double, 3> &ae_local_magnetization,
-                                      mdarray<double, 3> &ps_local_magnetization);
+                                      mdarray<double, 2> const& ae_full_density,
+                                      mdarray<double, 2> const& ps_full_density,
+                                      mdarray<double, 3> const& ae_local_magnetization,
+                                      mdarray<double, 3> const& ps_local_magnetization);
 
         void calc_PAW_local_Dij(paw_potential_data_t &pdd, mdarray<double_complex, 4>& paw_dij);
 
         double calc_PAW_hartree_potential(Atom& atom, const Radial_grid& grid,
-                                             mdarray<double, 2> &full_density,
-                                             mdarray<double, 3> &out_atom_pot);
+                                          mdarray<double, 2> const& full_density,
+                                          mdarray<double, 3>& out_atom_pot);
 
         double calc_PAW_one_elec_energy(paw_potential_data_t &pdd,
                                         const mdarray<double_complex, 4>& density_matrix,
@@ -176,9 +176,16 @@ class Potential
                     Spheric_function<function_domain_t::spectral, double> const& rho_mt__,
                     Spheric_function<function_domain_t::spectral, double>& vha_mt__) const
         {
-            assert(rho_mt__.angular_domain_size() >= ctx_.lmmax_rho());
-            assert(vha_mt__.angular_domain_size() >= ctx_.lmmax_pot());
-            assert((int)l_by_lm_.size() >= ctx_.lmmax_rho());
+            int lmmax_rho = rho_mt__.angular_domain_size();
+            int lmmax_pot = vha_mt__.angular_domain_size();
+            assert((int)l_by_lm_.size() >= lmmax_rho);
+            if (lmmax_rho > ctx_.lmmax_rho()) {
+                std::stringstream s;
+                s << "wrong angular size of rho_mt for atom of " << atom__.type().symbol() << std::endl
+                  << "  lmmax_rho: " << lmmax_rho << std::endl
+                  << "  ctx.lmmax_rho(): " << ctx_.lmmax_rho();
+                TERMINATE(s);
+            }
             std::vector<double> qmt(ctx_.lmmax_rho(), 0);
 
             double R = atom__.mt_radius();
@@ -190,7 +197,7 @@ class Potential
                 std::vector<double> g2;
 
                 #pragma omp for
-                for (int lm = 0; lm < ctx_.lmmax_rho(); lm++) {
+                for (int lm = 0; lm < lmmax_rho; lm++) {
                     int l = l_by_lm_[lm];
 
                     auto rholm = rho_mt__.component(lm);
@@ -198,7 +205,7 @@ class Potential
                     /* save multipole moment */
                     qmt[lm] = rholm.integrate(g1, l + 2);
                     
-                    if (lm < ctx_.lmmax_pot()) {
+                    if (lm < lmmax_pot) {
 
                         rholm.integrate(g2, 1 - l);
 
@@ -255,9 +262,9 @@ class Potential
 
         /// Perform a G-vector summation of plane-wave coefficiens multiplied by radial integrals.
         inline void poisson_sum_G(int lmmax__, 
-                           double_complex* fpw__, 
-                           mdarray<double, 3>& fl__, 
-                           mdarray<double_complex, 2>& flm__);
+                                  double_complex* fpw__, 
+                                  mdarray<double, 3>& fl__, 
+                                  mdarray<double_complex, 2>& flm__);
         
         /// Add contribution from the pseudocharge to the plane-wave expansion
         inline void poisson_add_pseudo_pw(mdarray<double_complex, 2>& qmt, mdarray<double_complex, 2>& qit, double_complex* rho_pw);

@@ -761,24 +761,24 @@ class Density
         /// generate n_1 and \tilda{n}_1 in lm components
         void generate_paw_loc_density();
 
-        mdarray<double, 2>* get_ae_paw_atom_density(int spl_paw_ind)
+        mdarray<double, 2> const& ae_paw_atom_density(int spl_paw_ind) const
         {
-            return &paw_density_data_[spl_paw_ind].ae_density_;
+            return paw_density_data_[spl_paw_ind].ae_density_;
         }
 
-        mdarray<double, 2>* get_ps_paw_atom_density(int spl_paw_ind)
+        mdarray<double, 2> const& ps_paw_atom_density(int spl_paw_ind) const
         {
-            return &paw_density_data_[spl_paw_ind].ps_density_;
+            return paw_density_data_[spl_paw_ind].ps_density_;
         }
 
-        mdarray<double, 3>* get_ae_paw_atom_magn(int spl_paw_ind)
+        mdarray<double, 3> const& ae_paw_atom_magn(int spl_paw_ind) const
         {
-            return &paw_density_data_[spl_paw_ind].ae_magnetization_;
+            return paw_density_data_[spl_paw_ind].ae_magnetization_;
         }
 
-        mdarray<double, 3>* get_ps_paw_atom_magn(int spl_paw_ind)
+        mdarray<double, 3> const& ps_paw_atom_magn(int spl_paw_ind) const
         {
-            return &paw_density_data_[spl_paw_ind].ps_magnetization_;
+            return paw_density_data_[spl_paw_ind].ps_magnetization_;
         }
 
         void allocate()

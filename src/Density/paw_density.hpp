@@ -82,8 +82,6 @@ inline void Density::init_density_matrix_for_paw()
                 case 0:
                 {
                     density_matrix_(xi,xi,0,ia) = occ / (double)( 2 * l + 1 );
-
-//                    std::cout<<density_matrix_(xi,xi,0,ia)<<std::endl;
                     break;
                 }
 
@@ -93,8 +91,6 @@ inline void Density::init_density_matrix_for_paw()
 
                     density_matrix_(xi,xi,0,ia) = 0.5 * (1.0 + nm ) * occ / (double)( 2 * l + 1 );
                     density_matrix_(xi,xi,1,ia) = 0.5 * (1.0 - nm ) * occ / (double)( 2 * l + 1 );
-
-//                    std::cout<<density_matrix_(xi,xi,0,ia)<<" "<<density_matrix_(xi,xi,1,ia)<<std::endl;
                     break;
                 }
             }
@@ -110,10 +106,6 @@ inline void Density::generate_paw_atom_density(paw_density_data_t &pdd)
     auto& atom_type = pdd.atom_->type();
 
     auto& pp_desc = atom_type.pp_desc();
-
-    //auto& paw = atom_type.get_PAW_descriptor();
-
-    //auto& uspp = atom_type.uspp();
 
     std::vector<int> l_by_lm = Utils::l_by_lm( 2 * atom_type.indexr().lmax_lo() );
 
@@ -172,41 +164,37 @@ inline void Density::generate_paw_atom_density(paw_density_data_t &pdd)
                     // to be in according with ELK and other SIRIUS code
                     double ae_part = inv_r2 * lm3coef.coef * pp_desc.all_elec_wfc(irad,irb1) * pp_desc.all_elec_wfc(irad,irb2);
                     double ps_part = inv_r2 * lm3coef.coef *
-                            ( pp_desc.pseudo_wfc(irad,irb1) * pp_desc.pseudo_wfc(irad,irb2)  + pp_desc.q_radial_functions_l(irad,iqij,l_by_lm[lm3coef.lm3]));
+                            (pp_desc.pseudo_wfc(irad,irb1) * pp_desc.pseudo_wfc(irad,irb2) + pp_desc.q_radial_functions_l(irad,iqij,l_by_lm[lm3coef.lm3]));
 
                     // calculate UP density (or total in case of nonmagnetic)
-                    double ae_dens_u =  density_matrix_(ib1,ib2,0,ia).real() * ae_part;
-                    double ps_dens_u =  density_matrix_(ib1,ib2,0,ia).real() * ps_part;
+                    double ae_dens_u = density_matrix_(ib1, ib2, 0, ia).real() * ae_part;
+                    double ps_dens_u = density_matrix_(ib1, ib2, 0, ia).real() * ps_part;
 
                     // add density UP to the total density
-                    pdd.ae_density_(lm3coef.lm3,irad) += ae_dens_u;
-                    pdd.ps_density_(lm3coef.lm3,irad) += ps_dens_u;
+                    pdd.ae_density_(lm3coef.lm3, irad) += ae_dens_u;
+                    pdd.ps_density_(lm3coef.lm3, irad) += ps_dens_u;
 
-                    switch(ctx_.num_spins())
-                    {
-                        case 2:
-                        {
-                            double ae_dens_d =  density_matrix_(ib1,ib2,1,ia).real() * ae_part;
-                            double ps_dens_d =  density_matrix_(ib1,ib2,1,ia).real() * ps_part;
+                    switch(ctx_.num_spins()) {
+                        case 2: {
+                            double ae_dens_d = density_matrix_(ib1, ib2, 1, ia).real() * ae_part;
+                            double ps_dens_d = density_matrix_(ib1, ib2, 1, ia).real() * ps_part;
 
                             // add density DOWN to the total density
-                            pdd.ae_density_(lm3coef.lm3,irad) += ae_dens_d;
-                            pdd.ps_density_(lm3coef.lm3,irad) += ps_dens_d;
+                            pdd.ae_density_(lm3coef.lm3, irad) += ae_dens_d;
+                            pdd.ps_density_(lm3coef.lm3, irad) += ps_dens_d;
 
                             // add magnetization to 2nd components (0th and 1st are always zero )
-                            pdd.ae_magnetization_(lm3coef.lm3,irad,0) = ae_dens_u - ae_dens_d;
-                            pdd.ps_magnetization_(lm3coef.lm3,irad,0) = ps_dens_u - ps_dens_d;
-                        }break;
-
-                        case 3:
-                        {
+                            pdd.ae_magnetization_(lm3coef.lm3, irad, 0) = ae_dens_u - ae_dens_d;
+                            pdd.ps_magnetization_(lm3coef.lm3, irad, 0) = ps_dens_u - ps_dens_d;
+                            break;
+                        }
+                        case 3: {
                             TERMINATE("PAW: non collinear is not implemented");
-                        }break;
-
-                        default:break;
+                        }
+                        default: {
+                            break;
+                        }
                     }
-
-
                 }
             }
         }

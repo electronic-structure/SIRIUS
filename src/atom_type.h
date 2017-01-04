@@ -1,4 +1,4 @@
-// Copyright (c) 2013-2016 Anton Kozhevnikov, Thomas Schulthess
+// Copyright (c) 2013-2017 Anton Kozhevnikov, Thomas Schulthess
 // All rights reserved.
 // 
 // Redistribution and use in source and binary forms, with or without modification, are permitted provided that 
@@ -368,7 +368,7 @@ class Atom_type
 
         inline void read_input(const std::string& fname);
     
-        inline  void init_aw_descriptors(int lmax)
+        inline void init_aw_descriptors(int lmax)
         {
             assert(lmax >= -1);
 
@@ -421,14 +421,14 @@ class Atom_type
                   double                                mass__, 
                   std::vector<atomic_level_descriptor>& levels__,
                   radial_grid_t                         grid_type__)
-            : parameters_(parameters__),
-              symbol_(symbol__), 
-              name_(name__), 
-              zn_(zn__), 
-              mass_(mass__), 
-              mt_radius_(2.0), 
-              num_mt_points_(2000 + zn__ * 50), 
-              atomic_levels_(levels__)
+            : parameters_(parameters__)
+            , symbol_(symbol__)
+            , name_(name__)
+            , zn_(zn__)
+            , mass_(mass__)
+            , mt_radius_(2.0)
+            , num_mt_points_(2000 + zn__ * 50)
+            , atomic_levels_(levels__)
         {
             radial_grid_ = Radial_grid(grid_type__, num_mt_points_, 1e-6 / zn_, 20.0 + 0.25 * zn_); 
         }
@@ -437,10 +437,10 @@ class Atom_type
                   int                          id__, 
                   std::string                  label__, 
                   std::string                  file_name__)
-            : parameters_(parameters__),
-              id_(id__), 
-              label_(label__),
-              file_name_(file_name__)
+            : parameters_(parameters__)
+            , id_(id__)
+            , label_(label__)
+            , file_name_(file_name__)
         {
         }
 
@@ -1144,6 +1144,7 @@ inline void Atom_type::print_info() const
 
     printf("\n");
     printf("total number of radial functions : %i\n", indexr().size());
+    printf("lmax of radial functions : %i\n", indexr().lmax());
     printf("maximum number of radial functions per orbital quantum number: %i\n", indexr().max_num_rf());
     printf("total number of basis functions : %i\n", indexb().size());
     printf("number of aw basis functions : %i\n", indexb().size_aw());

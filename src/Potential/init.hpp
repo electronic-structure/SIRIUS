@@ -33,9 +33,6 @@ inline void Potential::init()
                 }
             }
         }
-        #ifdef __PRINT_OBJECT_HASH
-        DUMP("hash(sbessel_mom): %16llX", sbessel_mom_.hash());
-        #endif
         
         /* compute Gamma[5/2 + n + l] / Gamma[3/2 + l] / R^l
          *
