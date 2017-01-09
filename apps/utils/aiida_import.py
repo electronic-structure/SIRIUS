@@ -6,26 +6,22 @@ au2angs = 1.889725989
 
 def main():
 
-    if len(sys.argv) != 3:
+    if len(sys.argv) != 2:
         print("Usage: python %s input.json length_units"%(sys.argv[0]))
         print("       where length_units = 'ang' or 'au'")
         sys.exit(0)
 
     jin = json.load(open(sys.argv[1], 'r'))
 
-    lu = sys.argv[2]
-    if lu not in ('ang', 'au'):
-        print("wrong units of length")
-        sys.exit(0)
-
     StructureData = DataFactory('structure')
+
+    scale = jin["unit_cell"]["lattice_vectors_scale"]
 
     L = jin["unit_cell"]["lattice_vectors"]
 
-    if lu == 'au':
-        for i in range(3):
-            for j in range(3):
-                L[i][j] /= au2angs
+    for i in range(3):
+        for j in range(3):
+            L[i][j] = L[i][j] * scale / au2angs
 
     print("lattice vectors: ", L)
 

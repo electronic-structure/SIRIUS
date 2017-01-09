@@ -197,7 +197,9 @@ inline void Band::diag_pseudo_potential_exact(K_point* kp__,
     std::vector<double> eval(ngk);
 
     phi.pw_coeffs().prime().zero();
-    for (int i = 0; i < ngk; i++) phi.pw_coeffs().prime(i, i) = complex_one;
+    for (int i = 0; i < ngk; i++) {
+        phi.pw_coeffs().prime(i, i) = 1;
+    }
 
     apply_h_o(kp__, ispn__, 0, ngk, phi, hphi, ophi, h_op__, d_op__, q_op__);
         
@@ -661,17 +663,29 @@ inline void Band::diag_pseudo_potential_davidson(K_point* kp__,
     /* number of auxiliary basis functions */
     int num_phi = std::min(itso.subspace_size_ * num_bands, kp__->num_gkvec());
 
+    size_t size = sizeof(double_complex) * kp__->num_gkvec_loc() * (3 * num_phi + 3 * num_bands);
+    double_complex* mem_buf_ptr = static_cast<double_complex*>(ctx_.memory_buffer(size));
+
     /* allocate wave-functions */
-    wave_functions  phi(ctx_.processing_unit(), kp__->comm(), kp__->gkvec(), num_phi);
-    wave_functions hphi(ctx_.processing_unit(), kp__->comm(), kp__->gkvec(), num_phi);
-    wave_functions ophi(ctx_.processing_unit(), kp__->comm(), kp__->gkvec(), num_phi);
-    wave_functions hpsi(ctx_.processing_unit(), kp__->comm(), kp__->gkvec(), num_bands);
-    wave_functions opsi(ctx_.processing_unit(), kp__->comm(), kp__->gkvec(), num_bands);
+    wave_functions  phi(mem_buf_ptr, ctx_.processing_unit(), kp__->comm(), kp__->gkvec(), num_phi);
+    mem_buf_ptr += kp__->num_gkvec_loc() * num_phi;
+
+    wave_functions hphi(mem_buf_ptr, ctx_.processing_unit(), kp__->comm(), kp__->gkvec(), num_phi);
+    mem_buf_ptr += kp__->num_gkvec_loc() * num_phi;
+
+    wave_functions ophi(mem_buf_ptr, ctx_.processing_unit(), kp__->comm(), kp__->gkvec(), num_phi);
+    mem_buf_ptr += kp__->num_gkvec_loc() * num_phi;
+
+    wave_functions hpsi(mem_buf_ptr, ctx_.processing_unit(), kp__->comm(), kp__->gkvec(), num_bands);
+    mem_buf_ptr += kp__->num_gkvec_loc() * num_bands;
+
+    wave_functions opsi(mem_buf_ptr, ctx_.processing_unit(), kp__->comm(), kp__->gkvec(), num_bands);
+    mem_buf_ptr += kp__->num_gkvec_loc() * num_bands;
+
     /* residuals */
-    wave_functions res(ctx_.processing_unit(), kp__->comm(), kp__->gkvec(), num_bands);
+    wave_functions res(mem_buf_ptr, ctx_.processing_unit(), kp__->comm(), kp__->gkvec(), num_bands);
 
     auto mem_type = (std_evp_solver().type() == ev_magma) ? memory_t::host_pinned : memory_t::host;
-    //auto mem_type = memory_t::host;
 
     int bs = ctx_.cyclic_block_size();
 
@@ -767,18 +781,29 @@ inline void Band::diag_pseudo_potential_davidson(K_point* kp__,
         /* increase size of the variation space */
         N += n;
 
-        hmlt.make_real_diag(N);
-        if (!itso.orthogonalize_) {
-            ovlp.make_real_diag(N);
-        }
+        //hmlt.make_real_diag(N);
+        //if (!itso.orthogonalize_) {
+        //    ovlp.make_real_diag(N);
+        //}
 
         eval_old = eval;
-
+        
+        sddk::timer t1("sirius::Band::diag_pseudo_potential_davidson|evp");
         if (itso.orthogonalize_) {
             /* solve standard eigen-value problem with the size N */
-            if (std_evp_solver().solve(N, num_bands, hmlt.template at<CPU>(), hmlt.ld(),
-                                       eval.data(), evec.template at<CPU>(), evec.ld(),
-                                       hmlt.num_rows_local(), hmlt.num_cols_local())) {
+            int result = std_evp_solver().solve(N, num_bands, hmlt.template at<CPU>(), hmlt.ld(),
+                                                eval.data(), evec.template at<CPU>(), evec.ld(),
+                                                hmlt.num_rows_local(), hmlt.num_cols_local());
+            if (result && std_evp_solver().type() == ev_magma) {
+                #pragma omp parallel for
+                for (int i = 0; i < N; i++) {
+                    std::memcpy(&hmlt(0, i), &hmlt_old(0, i), N * sizeof(T));
+                }
+                result = Eigenproblem_lapack().solve(N, num_bands, hmlt.template at<CPU>(), hmlt.ld(),
+                                                     eval.data(), evec.template at<CPU>(), evec.ld(),
+                                                     hmlt.num_rows_local(), hmlt.num_cols_local());
+            }
+            if (result) {
                 std::stringstream s;
                 s << "error in diagonalziation";
                 TERMINATE(s);
@@ -795,6 +820,7 @@ inline void Band::diag_pseudo_potential_davidson(K_point* kp__,
                 TERMINATE(s);
             }
         }
+        t1.stop();
         
         if (ctx_.control().verbosity_ >= 2 && kp__->comm().rank() == 0) {
             DUMP("step: %i, current subspace size: %i, maximum subspace size: %i", k, N, num_phi);

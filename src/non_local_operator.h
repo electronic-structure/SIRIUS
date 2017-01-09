@@ -268,30 +268,21 @@ class D_operator: public Non_local_operator<T>
 
             auto& uc = this->beta_.unit_cell();
 
-            for (int j = 0; j < ctx__.num_mag_dims() + 1; j++)
-            {
-                for (int ia = 0; ia < uc.num_atoms(); ia++)
-                {
+            for (int j = 0; j < ctx__.num_mag_dims() + 1; j++) {
+                for (int ia = 0; ia < uc.num_atoms(); ia++) {
                     int nbf = uc.atom(ia).mt_basis_size();
-                    for (int xi2 = 0; xi2 < nbf; xi2++)
-                    {
-                        for (int xi1 = 0; xi1 < nbf; xi1++)
-                        {
-                            assert(uc.atom(ia).d_mtrx(xi1, xi2, j).imag() < 1e-10);
-                            this->op_(this->packed_mtrx_offset_(ia) + xi2 * nbf + xi1, j) = uc.atom(ia).d_mtrx(xi1, xi2, j).real();
+                    for (int xi2 = 0; xi2 < nbf; xi2++) {
+                        for (int xi1 = 0; xi1 < nbf; xi1++) {
+                            this->op_(this->packed_mtrx_offset_(ia) + xi2 * nbf + xi1, j) = uc.atom(ia).d_mtrx(xi1, xi2, j);
                         }
                     }
                 }
             }
-            if (ctx__.num_mag_dims())
-            {
-                for (int ia = 0; ia < uc.num_atoms(); ia++)
-                {
+            if (ctx__.num_mag_dims()) {
+                for (int ia = 0; ia < uc.num_atoms(); ia++) {
                     int nbf = uc.atom(ia).mt_basis_size();
-                    for (int xi2 = 0; xi2 < nbf; xi2++)
-                    {
-                        for (int xi1 = 0; xi1 < nbf; xi1++)
-                        {
+                    for (int xi2 = 0; xi2 < nbf; xi2++) {
+                        for (int xi1 = 0; xi1 < nbf; xi1++) {
                             auto v0 = this->op_(this->packed_mtrx_offset_(ia) + xi2 * nbf + xi1, 0); 
                             auto v1 = this->op_(this->packed_mtrx_offset_(ia) + xi2 * nbf + xi1, 1); 
                             this->op_(this->packed_mtrx_offset_(ia) + xi2 * nbf + xi1, 0) = std::real(v0 + v1);

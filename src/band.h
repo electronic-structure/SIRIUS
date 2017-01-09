@@ -30,7 +30,7 @@
 #include "non_local_operator.h"
 #include "hloc_operator.h"
 #include "potential.h"
-#include "k_set.h"
+#include "k_point_set.h"
 #include "interstitial_operator.h"
 
 namespace sirius
@@ -209,7 +209,7 @@ class Band
                              mdarray<double, 1>& h_diag__,
                              mdarray<double, 1>& o_diag__) const;
         
-        /// Setup the subspace matrix.
+        /// Setup the Hermitian subspace matrix.
         /** Compute \f$ O_{ii'} = \langle \phi_i | \hat O | \phi_{i'} \rangle \f$ operator matrix
          *  for the subspace spanned by the wave-functions \f$ \phi_i \f$. The matrix is always returned
          *  in the CPU pointer because most of the standard math libraries start from the CPU. */
@@ -242,18 +242,6 @@ class Band
             /* <{phi,phi_new}|Op|phi_new> */
             inner(phi__, 0, N__ + n__, op_phi__, N__, n__, mtrx__, 0, N__);
             
-            //== #ifdef __GPU
-            //== if (ctx_.processing_unit() == GPU) {
-            //==     /* copy N x n distributed panel to CPU */
-            //==     splindex<block_cyclic>  spl_row(N__ + n__, mtrx__.blacs_grid().num_ranks_row(), mtrx__.blacs_grid().rank_row(), mtrx__.bs_row());
-            //==     splindex<block_cyclic> spl_col0(N__,       mtrx__.blacs_grid().num_ranks_col(), mtrx__.blacs_grid().rank_col(), mtrx__.bs_col());
-            //==     splindex<block_cyclic> spl_col1(N__ + n__, mtrx__.blacs_grid().num_ranks_col(), mtrx__.blacs_grid().rank_col(), mtrx__.bs_col());
-            //==     acc::copyout(mtrx__.template at<CPU>(0, spl_col0.local_size()), mtrx__.ld(),
-            //==                  mtrx__.template at<GPU>(0, spl_col0.local_size()), mtrx__.ld(),
-            //==                  spl_row.local_size(), spl_col1.local_size() - spl_col0.local_size());
-            //== }
-            //== #endif
-
             /* restore lower part */
             if (N__ > 0) {
                 if (mtrx__.blacs_grid().comm().size() == 1) {
@@ -268,8 +256,7 @@ class Band
                 }
             }
 
-            #ifdef __PRINT_OBJECT_CHECKSUM
-            {
+            if (ctx_.control().print_checksum_) {
                 splindex<block_cyclic> spl_row(N__ + n__, mtrx__.blacs_grid().num_ranks_row(), mtrx__.blacs_grid().rank_row(), mtrx__.bs_row());
                 splindex<block_cyclic> spl_col(N__ + n__, mtrx__.blacs_grid().num_ranks_col(), mtrx__.blacs_grid().rank_col(), mtrx__.bs_col());
                 double_complex cs(0, 0);
@@ -281,7 +268,8 @@ class Band
                 mtrx__.blacs_grid().comm().allreduce(&cs, 1);
                 DUMP("checksum(subspace_mtrx): %18.10f %18.10f", cs.real(), cs.imag());
             }
-            #endif
+
+            mtrx__.make_real_diag(N__ + n__);
 
             /* save new matrix */
             if (mtrx_old__.size()) {
@@ -758,7 +746,7 @@ class Band
                              Periodic_function<double>* effective_magnetic_field[3]) const;
 
         /// Solve \f$ \hat H \psi = E \psi \f$ and find eigen-states of the Hamiltonian.
-        inline void solve_for_kset(K_set& kset__,
+        inline void solve_for_kset(K_point_set& kset__,
                                    Potential& potential__,
                                    bool precompute__) const;
 
@@ -793,7 +781,7 @@ class Band
         inline mdarray<double, 1> get_o_diag(K_point* kp__,
                                              Q_operator<T>& q_op__) const;
 
-        inline void initialize_subspace(K_set& kset__,
+        inline void initialize_subspace(K_point_set& kset__,
                                         Potential& potential__) const;
 
         /// Initialize the wave-functions subspace.

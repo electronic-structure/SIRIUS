@@ -76,6 +76,16 @@ class matrix_storage<T, matrix_storage_t::slab>
         prime_ = mdarray<T, 2>(num_rows_loc_, num_cols_, memory_t::host, "matrix_storage.prime_");
     }
 
+    matrix_storage(T* ptr__, int num_rows_loc__, int num_cols__, device_t pu__)
+        : pu_(pu__)
+        , num_rows_loc_(num_rows_loc__)
+        , num_cols_(num_cols__)
+    {
+        PROFILE("sddk::matrix_storage::matrix_storage");
+        /* primary storage of PW wave functions: slabs */
+        prime_ = mdarray<T, 2>(ptr__, num_rows_loc_, num_cols_, "matrix_storage.prime_");
+    }
+
     /// Set the dimensions of the extra matrix storage.
     /** \param [in] num_rows Number of rows in the extra matrix storage.
      *  \param [in] comm Communicator used to distribute columns of the matrix.

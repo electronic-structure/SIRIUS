@@ -1,4 +1,4 @@
-inline void Density::generate_valence_density_mt(K_set& ks)
+inline void Density::generate_valence_density_mt(K_point_set& ks)
 {
     PROFILE("sirius::Density::generate_valence_density_mt");
 

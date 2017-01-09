@@ -492,7 +492,9 @@ extern "C" void magma_dsygvdx_2stage_wrapper(int32_t matrix_size, int32_t nv, vo
 
 extern "C" void magma_dsyevdx_wrapper(int32_t matrix_size, int32_t nv, double* a, int32_t lda, double* eval);
 
-extern "C" void magma_zheevdx_wrapper(int32_t matrix_size, int32_t nv, double_complex* a, int32_t lda, double* eval);
+extern "C" int magma_zheevdx_wrapper(int32_t matrix_size, int32_t nv, double_complex* a, int32_t lda, double* eval);
+
+extern "C" int magma_zheevdx_2stage_wrapper(int32_t matrix_size, int32_t nv, cuDoubleComplex* a, int32_t lda, double* eval);
 #endif
 
 /// Interface for MAGMA eigen-value solvers.
@@ -518,12 +520,14 @@ class Eigenproblem_magma: public Eigenproblem
             
             magma_zhegvdx_2stage_wrapper(matrix_size, nevec, A, lda, B, ldb, eval);
 
-            if (nt != omp_get_max_threads())
-            {
+            if (nt != omp_get_max_threads()) {
                 TERMINATE("magma has changed the number of threads");
             }
             
-            for (int i = 0; i < nevec; i++) std::memcpy(&Z[ldz * i], &A[lda * i], matrix_size * sizeof(double_complex));
+            #pragma omp parallel for
+            for (int i = 0; i < nevec; i++) {
+                std::memcpy(&Z[ldz * i], &A[lda * i], matrix_size * sizeof(double_complex));
+            }
 
             return 0;
         }
@@ -541,12 +545,14 @@ class Eigenproblem_magma: public Eigenproblem
             
             magma_dsygvdx_2stage_wrapper(matrix_size, nevec, A, lda, B, ldb, eval);
 
-            if (nt != omp_get_max_threads())
-            {
+            if (nt != omp_get_max_threads()) {
                 TERMINATE("magma has changed the number of threads");
             }
-            
-            for (int i = 0; i < nevec; i++) std::memcpy(&Z[ldz * i], &A[lda * i], matrix_size * sizeof(double));
+
+            #pragma omp parallel for
+            for (int i = 0; i < nevec; i++) {
+                std::memcpy(&Z[ldz * i], &A[lda * i], matrix_size * sizeof(double));
+            }
 
             return 0;
         }
@@ -563,12 +569,14 @@ class Eigenproblem_magma: public Eigenproblem
             
             magma_dsyevdx_wrapper(matrix_size, nevec, A, lda, eval);
 
-            if (nt != omp_get_max_threads())
-            {
+            if (nt != omp_get_max_threads()) {
                 TERMINATE("magma has changed the number of threads");
             }
             
-            for (int i = 0; i < nevec; i++) std::memcpy(&Z[ldz * i], &A[lda * i], matrix_size * sizeof(double));
+            #pragma omp parallel for
+            for (int i = 0; i < nevec; i++) {
+                std::memcpy(&Z[ldz * i], &A[lda * i], matrix_size * sizeof(double));
+            }
 
             return 0;
         }
@@ -583,18 +591,22 @@ class Eigenproblem_magma: public Eigenproblem
 
             int nt = omp_get_max_threads();
             
-            magma_zheevdx_wrapper(matrix_size, nevec, A, lda, eval);
+            //int result = magma_zheevdx_2stage_wrapper(matrix_size, nevec, A, lda, eval);
+            int result = magma_zheevdx_wrapper(matrix_size, nevec, A, lda, eval);
 
-            if (nt != omp_get_max_threads())
-            {
+            if (nt != omp_get_max_threads()) {
                 TERMINATE("magma has changed the number of threads");
             }
             
-            for (int i = 0; i < nevec; i++) {
-                std::memcpy(&Z[ldz * i], &A[lda * i], matrix_size * sizeof(double_complex));
+            if (result == 0) {
+                #pragma omp parallel for
+                for (int i = 0; i < nevec; i++) {
+                    std::memcpy(&Z[ldz * i], &A[lda * i], matrix_size * sizeof(double_complex));
+                }
+                return 0;
             }
 
-            return 0;
+            return 1;
         }
         #endif
 
@@ -1287,14 +1299,14 @@ class Eigenproblem_elpa: public Eigenproblem
             int32_t descc[9];
             linalg_base::descinit(descc, matrix_size__, matrix_size__, block_size_, block_size_, 0, 0, blacs_context_, lda__);
             
-            linalg_base::pztranc(matrix_size__, matrix_size__, complex_one, tmp1__.at<CPU>(), 1, 1, descc, 
-                                 complex_zero, tmp2__.at<CPU>(), 1, 1, descc);
+            linalg_base::pztranc(matrix_size__, matrix_size__, linalg_const<double_complex>::one(), tmp1__.at<CPU>(), 1, 1, descc, 
+                                 linalg_const<double_complex>::zero(), tmp2__.at<CPU>(), 1, 1, descc);
 
             FORTRAN(elpa_mult_ah_b_complex_wrapper)("U", "U", &matrix_size__, &matrix_size__, B__, &ldb__, tmp2__.at<CPU>(), &num_rows_loc__, 
                                                     &block_size_, &mpi_comm_rows_, &mpi_comm_cols_, A__, &lda__, (int32_t)1, 
                                                     (int32_t)1);
 
-            linalg_base::pztranc(matrix_size__, matrix_size__, complex_one, A__, 1, 1, descc, complex_zero, 
+            linalg_base::pztranc(matrix_size__, matrix_size__, linalg_const<double_complex>::one(), A__, 1, 1, descc, linalg_const<double_complex>::zero(), 
                                  tmp1__.at<CPU>(), 1, 1, descc);
 
             for (int i = 0; i < num_cols_loc__; i++)
@@ -1361,7 +1373,7 @@ class Eigenproblem_elpa: public Eigenproblem
             int32_t descb[9];
             linalg_base::descinit(descb, matrix_size__, matrix_size__, block_size_, block_size_, 0, 0, blacs_context_, ldb__);
 
-            linalg_base::pztranc(matrix_size__, matrix_size__, complex_one, B__, 1, 1, descb, complex_zero, 
+            linalg_base::pztranc(matrix_size__, matrix_size__, linalg_const<double_complex>::one(), B__, 1, 1, descb, linalg_const<double_complex>::zero(), 
                                  tmp2__.at<CPU>(), 1, 1, descb);
 
             FORTRAN(elpa_mult_ah_b_complex_wrapper)("L", "N", &matrix_size__, &nevec__, tmp2__.at<CPU>(), &num_rows_loc__, tmp1__.at<CPU>(), 

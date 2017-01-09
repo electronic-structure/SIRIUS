@@ -26,7 +26,7 @@
 #define __DENSITY_H__
 
 #include "periodic_function.h"
-#include "k_set.h"
+#include "k_point_set.h"
 #include "simulation_context.h"
 
 #ifdef __GPU
@@ -152,7 +152,7 @@ class Density
             int ia{-1};
 
             /// ae and ps local densities
-            mdarray<double, 2> ae_density_;
+            mdarray<double, 2> ae_density_; // TODO: -> Spheric_function
             mdarray<double, 2> ps_density_;
 
             mdarray<double, 3> ae_magnetization_;
@@ -327,7 +327,7 @@ class Density
         inline void add_k_point_contribution_rg(K_point* kp__);
 
         /// Generate valence density in the muffin-tins 
-        void generate_valence_density_mt(K_set& ks);
+        void generate_valence_density_mt(K_point_set& ks);
         
         /// Generate charge density of core states
         void generate_core_charge_density()
@@ -605,10 +605,10 @@ class Density
         void initial_density_full_pot();
 
         /// Generate full charge density (valence + core) and magnetization from the wave functions.
-        inline void generate(K_set& ks__);
+        inline void generate(K_point_set& ks__);
 
         /// Generate valence charge density and magnetization from the wave functions.
-        inline void generate_valence(K_set& ks__);
+        inline void generate_valence(K_point_set& ks__);
         
         /// Add augmentation charge Q(r)
         /** Restore valence density by adding the Q-operator constribution.
@@ -633,7 +633,7 @@ class Density
          *      d_{\xi \xi'}^{A}({\bf G}) = \sum_{\alpha(A)} d_{\xi \xi'}^{\alpha(A)} e^{-i{\bf G}\tau_{\alpha(A)}} 
          *  \f]
          */
-        void augment(K_set& ks__) // TODO: skip when norm-conserving potential is used for all species
+        void augment(K_point_set& ks__) // TODO: skip when norm-conserving potential is used for all species
         {
             PROFILE("sirius::Density::augment");
 
@@ -761,24 +761,24 @@ class Density
         /// generate n_1 and \tilda{n}_1 in lm components
         void generate_paw_loc_density();
 
-        mdarray<double, 2>* get_ae_paw_atom_density(int spl_paw_ind)
+        mdarray<double, 2> const& ae_paw_atom_density(int spl_paw_ind) const
         {
-            return &paw_density_data_[spl_paw_ind].ae_density_;
+            return paw_density_data_[spl_paw_ind].ae_density_;
         }
 
-        mdarray<double, 2>* get_ps_paw_atom_density(int spl_paw_ind)
+        mdarray<double, 2> const& ps_paw_atom_density(int spl_paw_ind) const
         {
-            return &paw_density_data_[spl_paw_ind].ps_density_;
+            return paw_density_data_[spl_paw_ind].ps_density_;
         }
 
-        mdarray<double, 3>* get_ae_paw_atom_magn(int spl_paw_ind)
+        mdarray<double, 3> const& ae_paw_atom_magn(int spl_paw_ind) const
         {
-            return &paw_density_data_[spl_paw_ind].ae_magnetization_;
+            return paw_density_data_[spl_paw_ind].ae_magnetization_;
         }
 
-        mdarray<double, 3>* get_ps_paw_atom_magn(int spl_paw_ind)
+        mdarray<double, 3> const& ps_paw_atom_magn(int spl_paw_ind) const
         {
-            return &paw_density_data_[spl_paw_ind].ps_magnetization_;
+            return paw_density_data_[spl_paw_ind].ps_magnetization_;
         }
 
         void allocate()

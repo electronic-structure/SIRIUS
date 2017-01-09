@@ -1,16 +1,12 @@
-#include "potential.h"
-
-namespace sirius {
-
 /** The following operation is performed:
  *  \f[
  *    q_{\ell m}^{\alpha} = \sum_{\bf G} 4\pi \rho({\bf G}) e^{i{\bf G}{\bf r}_{\alpha}}i^{\ell}f_{\ell}^{\alpha}(G) Y_{\ell m}^{*}(\hat{\bf G})
  *  \f]
  */
-void Potential::poisson_sum_G(int lmmax__,
-                              double_complex* fpw__,
-                              mdarray<double, 3>& fl__,
-                              matrix<double_complex>& flm__)
+inline void Potential::poisson_sum_G(int lmmax__,
+                                     double_complex* fpw__,
+                                     mdarray<double, 3>& fl__,
+                                     matrix<double_complex>& flm__)
 {
     PROFILE("sirius::Potential::poisson_sum_G");
 
@@ -73,9 +69,9 @@ void Potential::poisson_sum_G(int lmmax__,
     ctx_.comm().allreduce(&flm__(0, 0), (int)flm__.size());
 }
 
-void Potential::poisson_add_pseudo_pw(mdarray<double_complex, 2>& qmt,
-                                      mdarray<double_complex, 2>& qit,
-                                      double_complex* rho_pw)
+inline void Potential::poisson_add_pseudo_pw(mdarray<double_complex, 2>& qmt,
+                                             mdarray<double_complex, 2>& qit,
+                                             double_complex* rho_pw)
 {
     PROFILE("sirius::Potential::poisson_add_pseudo_pw");
     
@@ -116,9 +112,9 @@ void Potential::poisson_add_pseudo_pw(mdarray<double_complex, 2>& qmt,
                     for (int m = -l; m <= l; m++, lm++) {
                         zt1 += gvec_ylm_(lm, igloc) * zp[lm];
                     }
-                    zt2 += zt1 * sbessel_mt_(l + pseudo_density_order + 1, iat, ctx_.gvec().shell(ig));
+                    zt2 += zt1 * sbessel_mt_(l + pseudo_density_order_ + 1, iat, ctx_.gvec().shell(ig));
                 }
-                rho_pw[ig] += zt * zt2 * std::pow(2.0 / gR, pseudo_density_order + 1);
+                rho_pw[ig] += zt * zt2 * std::pow(2.0 / gR, pseudo_density_order_ + 1);
             } else { /* for |G|=0 */
                 rho_pw[ig] += zt * y00 * (qmt(0, ia) - qit(0, ia));
             }
@@ -128,7 +124,7 @@ void Potential::poisson_add_pseudo_pw(mdarray<double_complex, 2>& qmt,
     ctx_.comm().allgather(&rho_pw[0], ctx_.gvec_offset(), ctx_.gvec_count());
 }
 
-void Potential::poisson(Periodic_function<double>* rho, Periodic_function<double>* vh)
+inline void Potential::poisson(Periodic_function<double>* rho, Periodic_function<double>* vh)
 {
     PROFILE("sirius::Potential::poisson");
 
@@ -283,5 +279,3 @@ void Potential::poisson(Periodic_function<double>* rho, Periodic_function<double
         energy_vha_ += evha_nuc;
     }
 }
-
-};

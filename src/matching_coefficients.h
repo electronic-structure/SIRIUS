@@ -220,7 +220,7 @@ class Matching_coefficients
                     }
                     
                     for (int l = 0; l <= lmax_apw__; l++) {
-                        double_complex z = std::pow(complex_i, l);
+                        double_complex z = std::pow(double_complex(0, 1), l);
                         double f = fourpi / std::sqrt(unit_cell_.omega());
                         alm_b_(0, igk, l, iat) = z * f * sbessel_mt(l, 0); 
                         alm_b_(1, igk, l, iat) = z * f * sbessel_mt(l, 1);

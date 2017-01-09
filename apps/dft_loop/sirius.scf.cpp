@@ -209,7 +209,7 @@ double ground_state(Simulation_context&       ctx,
         MEMORY_USAGE_INFO();
     }
 
-    K_set ks(ctx, ctx.mpi_grid().communicator(1 << _mpi_dim_k_), inp.ngridk_, inp.shiftk_, inp.use_symmetry_);
+    K_point_set ks(ctx, ctx.mpi_grid().communicator(1 << _mpi_dim_k_), inp.ngridk_, inp.shiftk_, inp.use_symmetry_);
     ks.initialize();
 
     if (ctx.comm().rank() == 0 && ctx.control().print_memory_usage_) {

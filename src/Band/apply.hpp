@@ -820,10 +820,10 @@ inline void Band::apply_magnetic_field(wave_functions& fv_states__,
         }
         /* compute bwf = B_z*|wf_j> */
         linalg<CPU>::hemm(0, 0, mt_basis_size, ctx_.num_fv_states(),
-                          complex_one,
+                          linalg_const<double_complex>::one(),
                           zm.at<CPU>(), zm.ld(), 
                           fv_states__.mt_coeffs().prime().at<CPU>(offset, 0), fv_states__.mt_coeffs().prime().ld(),
-                          complex_zero,
+                          linalg_const<double_complex>::zero(),
                           hpsi__[0].mt_coeffs().prime().at<CPU>(offset, 0), hpsi__[0].mt_coeffs().prime().ld());
         
         /* compute bwf = (B_x - iB_y)|wf_j> */
@@ -831,13 +831,13 @@ inline void Band::apply_magnetic_field(wave_functions& fv_states__,
             /* reuse first (z) component of zm matrix to store (B_x - iB_y) */
             for (int xi2 = 0; xi2 < mt_basis_size; xi2++) {
                 for (int xi1 = 0; xi1 <= xi2; xi1++) {
-                    zm(xi1, xi2, 0) = zm(xi1, xi2, 1) - complex_i * zm(xi1, xi2, 2);
+                    zm(xi1, xi2, 0) = zm(xi1, xi2, 1) - double_complex(0, 1) * zm(xi1, xi2, 2);
                 }
                 
                 /* remember: zm for x,y,z, components of magnetic field is hermitian and we computed 
                  * only the upper triangular part */
                 for (int xi1 = xi2 + 1; xi1 < mt_basis_size; xi1++) {
-                    zm(xi1, xi2, 0) = std::conj(zm(xi2, xi1, 1)) - complex_i * std::conj(zm(xi2, xi1, 2));
+                    zm(xi1, xi2, 0) = std::conj(zm(xi2, xi1, 1)) - double_complex(0, 1) * std::conj(zm(xi2, xi1, 2));
                 }
             }
               

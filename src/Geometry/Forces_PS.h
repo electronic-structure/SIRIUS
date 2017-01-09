@@ -26,15 +26,13 @@ private:
     Simulation_context &ctx_;
     Density &density_;
     Potential &potential_;
-    K_set& kset_;
+    K_point_set& kset_;
 
     mdarray<double,2> local_forces_;
     mdarray<double,2> ultrasoft_forces_;
     mdarray<double,2> nonlocal_forces_;
     mdarray<double,2> nlcc_forces_;
     mdarray<double,2> ewald_forces_;
-//    mdarray<double,2> total_forces_;
-
 
     template<typename T>
     void add_k_point_contribution_to_nonlocal2(K_point& kpoint, mdarray<double,2>& forces)
@@ -261,7 +259,7 @@ private:
     void symmetrize_forces(mdarray<double,2>& unsym_forces, mdarray<double,2>& sym_forces );
 
 public:
-    Forces_PS(Simulation_context &ctx, Density& density, Potential& potential, K_set& kset)
+    Forces_PS(Simulation_context &ctx, Density& density, Potential& potential, K_point_set& kset)
     : ctx_(ctx), density_(density), potential_(potential), kset_(kset)
     {
         local_forces_       = mdarray<double,2>(3, ctx_.unit_cell().num_atoms());
@@ -269,7 +267,6 @@ public:
         nonlocal_forces_    = mdarray<double,2>(3, ctx_.unit_cell().num_atoms());
         nlcc_forces_        = mdarray<double,2>(3, ctx_.unit_cell().num_atoms());
         ewald_forces_       = mdarray<double,2>(3, ctx_.unit_cell().num_atoms());
-//        total_forces_       = mdarray<double,2>(3, ctx_.unit_cell().num_atoms());
     }
 
     void calc_local_forces(mdarray<double,2>& forces);

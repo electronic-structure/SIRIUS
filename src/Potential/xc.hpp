@@ -1,50 +1,20 @@
-// Copyright (c) 2013-2016 Anton Kozhevnikov, Thomas Schulthess
-// All rights reserved.
-// 
-// Redistribution and use in source and binary forms, with or without modification, are permitted provided that 
-// the following conditions are met:
-// 
-// 1. Redistributions of source code must retain the above copyright notice, this list of conditions and the 
-//    following disclaimer.
-// 2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions 
-//    and the following disclaimer in the documentation and/or other materials provided with the distribution.
-// 
-// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED 
-// WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A 
-// PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR 
-// ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, 
-// PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER 
-// CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR 
-// OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-
-/** \file xc.cpp
- *   
- *  \brief Contains implementation of sirius::Potential::xc() and related functions.
- */
-
-#include "potential.h"
-#include "smooth_periodic_function.h"
-
-namespace sirius {
-
-void Potential::xc_mt_nonmagnetic(Radial_grid const& rgrid,
-                                  std::vector<XC_functional*>& xc_func,
-                                  Spheric_function<spectral, double> const& rho_lm, 
-                                  Spheric_function<spatial, double>& rho_tp, 
-                                  Spheric_function<spatial, double>& vxc_tp, 
-                                  Spheric_function<spatial, double>& exc_tp)
+inline void Potential::xc_mt_nonmagnetic(Radial_grid const& rgrid,
+                                         std::vector<XC_functional>& xc_func,
+                                         Spheric_function<spectral, double> const& rho_lm, 
+                                         Spheric_function<spatial, double>& rho_tp, 
+                                         Spheric_function<spatial, double>& vxc_tp, 
+                                         Spheric_function<spatial, double>& exc_tp)
 {
     PROFILE("sirius::Potential::xc_mt_nonmagnetic");
 
     bool is_gga = false;
-    for (auto& ixc: xc_func) if (ixc->is_gga()) is_gga = true;
+    for (auto& ixc: xc_func) if (ixc.is_gga()) is_gga = true;
 
     Spheric_function_gradient<spatial, double> grad_rho_tp(sht_->num_points(), rgrid);
     Spheric_function<spatial, double> lapl_rho_tp;
     Spheric_function<spatial, double> grad_rho_grad_rho_tp;
 
-    if (is_gga)
-    {
+    if (is_gga) {
         /* compute gradient in Rlm spherical harmonics */
         auto grad_rho_lm = gradient(rho_lm);
 
@@ -67,28 +37,23 @@ void Potential::xc_mt_nonmagnetic(Radial_grid const& rgrid,
     vxc_tp.zero();
 
     Spheric_function<spatial, double> vsigma_tp;
-    if (is_gga)
-    {
+    if (is_gga) {
         vsigma_tp = Spheric_function<spatial, double>(sht_->num_points(), rgrid);
         vsigma_tp.zero();
     }
 
     /* loop over XC functionals */
-    for (auto& ixc: xc_func)
-    {
+    for (auto& ixc: xc_func) {
         /* if this is an LDA functional */
-        if (ixc->is_lda())
-        {
+        if (ixc.is_lda()) {
             #pragma omp parallel
             {
                 std::vector<double> exc_t(sht_->num_points());
                 std::vector<double> vxc_t(sht_->num_points());
                 #pragma omp for
-                for (int ir = 0; ir < rgrid.num_points(); ir++)
-                {
-                    ixc->get_lda(sht_->num_points(), &rho_tp(0, ir), &vxc_t[0], &exc_t[0]);
-                    for (int itp = 0; itp < sht_->num_points(); itp++)
-                    {
+                for (int ir = 0; ir < rgrid.num_points(); ir++) {
+                    ixc.get_lda(sht_->num_points(), &rho_tp(0, ir), &vxc_t[0], &exc_t[0]);
+                    for (int itp = 0; itp < sht_->num_points(); itp++) {
                         /* add Exc contribution */
                         exc_tp(itp, ir) += exc_t[itp];
 
@@ -98,8 +63,7 @@ void Potential::xc_mt_nonmagnetic(Radial_grid const& rgrid,
                 }
             }
         }
-        if (ixc->is_gga())
-        {
+        if (ixc.is_gga()) {
             #pragma omp parallel
             {
                 std::vector<double> exc_t(sht_->num_points());
@@ -108,7 +72,7 @@ void Potential::xc_mt_nonmagnetic(Radial_grid const& rgrid,
                 #pragma omp for
                 for (int ir = 0; ir < rgrid.num_points(); ir++)
                 {
-                    ixc->get_gga(sht_->num_points(), &rho_tp(0, ir), &grad_rho_grad_rho_tp(0, ir), &vrho_t[0], &vsigma_t[0], &exc_t[0]);
+                    ixc.get_gga(sht_->num_points(), &rho_tp(0, ir), &grad_rho_grad_rho_tp(0, ir), &vrho_t[0], &vsigma_t[0], &exc_t[0]);
                     for (int itp = 0; itp < sht_->num_points(); itp++)
                     {
                         /* add Exc contribution */
@@ -153,20 +117,24 @@ void Potential::xc_mt_nonmagnetic(Radial_grid const& rgrid,
     }
 }
 
-void Potential::xc_mt_magnetic(Radial_grid const& rgrid,
-                               std::vector<XC_functional*>& xc_func,
-                               Spheric_function<spectral, double>& rho_up_lm, 
-                               Spheric_function<spatial, double>& rho_up_tp, 
-                               Spheric_function<spectral, double>& rho_dn_lm, 
-                               Spheric_function<spatial, double>& rho_dn_tp, 
-                               Spheric_function<spatial, double>& vxc_up_tp, 
-                               Spheric_function<spatial, double>& vxc_dn_tp, 
-                               Spheric_function<spatial, double>& exc_tp)
+inline void Potential::xc_mt_magnetic(Radial_grid const& rgrid,
+                                      std::vector<XC_functional>& xc_func,
+                                      Spheric_function<spectral, double>& rho_up_lm, 
+                                      Spheric_function<spatial, double>& rho_up_tp, 
+                                      Spheric_function<spectral, double>& rho_dn_lm, 
+                                      Spheric_function<spatial, double>& rho_dn_tp, 
+                                      Spheric_function<spatial, double>& vxc_up_tp, 
+                                      Spheric_function<spatial, double>& vxc_dn_tp, 
+                                      Spheric_function<spatial, double>& exc_tp)
 {
     PROFILE("sirius::Potential::xc_mt_magnetic");
 
     bool is_gga = false;
-    for (auto& ixc: xc_func) if (ixc->is_gga()) is_gga = true;
+    for (auto& ixc: xc_func) {
+        if (ixc.is_gga()) {
+            is_gga = true;
+        }
+    }
 
     Spheric_function_gradient<spatial, double> grad_rho_up_tp(sht_->num_points(), rgrid);
     Spheric_function_gradient<spatial, double> grad_rho_dn_tp(sht_->num_points(), rgrid);
@@ -230,19 +198,16 @@ void Potential::xc_mt_magnetic(Radial_grid const& rgrid,
     for (auto& ixc: xc_func)
     {
         /* if this is an LDA functional */
-        if (ixc->is_lda())
-        {
+        if (ixc.is_lda()) {
             #pragma omp parallel
             {
                 std::vector<double> exc_t(sht_->num_points());
                 std::vector<double> vxc_up_t(sht_->num_points());
                 std::vector<double> vxc_dn_t(sht_->num_points());
                 #pragma omp for
-                for (int ir = 0; ir < rgrid.num_points(); ir++)
-                {
-                    ixc->get_lda(sht_->num_points(), &rho_up_tp(0, ir), &rho_dn_tp(0, ir), &vxc_up_t[0], &vxc_dn_t[0], &exc_t[0]);
-                    for (int itp = 0; itp < sht_->num_points(); itp++)
-                    {
+                for (int ir = 0; ir < rgrid.num_points(); ir++) {
+                    ixc.get_lda(sht_->num_points(), &rho_up_tp(0, ir), &rho_dn_tp(0, ir), &vxc_up_t[0], &vxc_dn_t[0], &exc_t[0]);
+                    for (int itp = 0; itp < sht_->num_points(); itp++) {
                         /* add Exc contribution */
                         exc_tp(itp, ir) += exc_t[itp];
 
@@ -253,8 +218,7 @@ void Potential::xc_mt_magnetic(Radial_grid const& rgrid,
                 }
             }
         }
-        if (ixc->is_gga())
-        {
+        if (ixc.is_gga()) {
             #pragma omp parallel
             {
                 std::vector<double> exc_t(sht_->num_points());
@@ -264,23 +228,21 @@ void Potential::xc_mt_magnetic(Radial_grid const& rgrid,
                 std::vector<double> vsigma_ud_t(sht_->num_points());
                 std::vector<double> vsigma_dd_t(sht_->num_points());
                 #pragma omp for
-                for (int ir = 0; ir < rgrid.num_points(); ir++)
-                {
-                    ixc->get_gga(sht_->num_points(), 
-                                 &rho_up_tp(0, ir), 
-                                 &rho_dn_tp(0, ir), 
-                                 &grad_rho_up_grad_rho_up_tp(0, ir), 
-                                 &grad_rho_up_grad_rho_dn_tp(0, ir), 
-                                 &grad_rho_dn_grad_rho_dn_tp(0, ir),
-                                 &vrho_up_t[0], 
-                                 &vrho_dn_t[0],
-                                 &vsigma_uu_t[0], 
-                                 &vsigma_ud_t[0],
-                                 &vsigma_dd_t[0],
-                                 &exc_t[0]);
+                for (int ir = 0; ir < rgrid.num_points(); ir++) {
+                    ixc.get_gga(sht_->num_points(), 
+                                &rho_up_tp(0, ir), 
+                                &rho_dn_tp(0, ir), 
+                                &grad_rho_up_grad_rho_up_tp(0, ir), 
+                                &grad_rho_up_grad_rho_dn_tp(0, ir), 
+                                &grad_rho_dn_grad_rho_dn_tp(0, ir),
+                                &vrho_up_t[0], 
+                                &vrho_dn_t[0],
+                                &vsigma_uu_t[0], 
+                                &vsigma_ud_t[0],
+                                &vsigma_dd_t[0],
+                                &exc_t[0]);
 
-                    for (int itp = 0; itp < sht_->num_points(); itp++)
-                    {
+                    for (int itp = 0; itp < sht_->num_points(); itp++) {
                         /* add Exc contribution */
                         exc_tp(itp, ir) += exc_t[itp];
 
@@ -298,8 +260,7 @@ void Potential::xc_mt_magnetic(Radial_grid const& rgrid,
         }
     }
 
-    if (is_gga)
-    {
+    if (is_gga) {
         /* forward transform vsigma to Rlm */
         auto vsigma_uu_lm = transform(sht_.get(), vsigma_uu_tp);
         auto vsigma_ud_lm = transform(sht_.get(), vsigma_ud_tp);
@@ -339,12 +300,12 @@ void Potential::xc_mt_magnetic(Radial_grid const& rgrid,
     }
 }
 
-void Potential::xc_mt(Periodic_function<double>* rho, 
-                      Periodic_function<double>* magnetization[3],
-                      std::vector<XC_functional*>& xc_func,
-                      Periodic_function<double>* vxc, 
-                      Periodic_function<double>* bxc[3], 
-                      Periodic_function<double>* exc)
+inline void Potential::xc_mt(Periodic_function<double>* rho, 
+                             Periodic_function<double>* magnetization[3],
+                             std::vector<XC_functional>& xc_func,
+                             Periodic_function<double>* vxc, 
+                             Periodic_function<double>* bxc[3], 
+                             Periodic_function<double>* exc)
 {
     PROFILE("sirius::Potential::xc_mt");
 
@@ -490,16 +451,16 @@ void Potential::xc_mt(Periodic_function<double>* rho,
     }
 }
 
-void Potential::xc_it_nonmagnetic(Periodic_function<double>* rho__, 
-                                  std::vector<XC_functional*>& xc_func__,
-                                  Periodic_function<double>* vxc__, 
-                                  Periodic_function<double>* exc__)
+inline void Potential::xc_it_nonmagnetic(Periodic_function<double>* rho__, 
+                                         std::vector<XC_functional>& xc_func__,
+                                         Periodic_function<double>* vxc__, 
+                                         Periodic_function<double>* exc__)
 {
     PROFILE("sirius::Potential::xc_it_nonmagnetic");
 
     bool is_gga = false;
     for (auto& ixc: xc_func__) {
-        if (ixc->is_gga()) {
+        if (ixc.is_gga()) {
             is_gga = true;
         }
     }
@@ -567,8 +528,7 @@ void Potential::xc_it_nonmagnetic(Periodic_function<double>* rho__,
     }
 
     /* loop over XC functionals */
-    for (auto& ixc: xc_func__)
-    {
+    for (auto& ixc: xc_func__) {
         #pragma omp parallel
         {
             /* split local size between threads */
@@ -577,17 +537,15 @@ void Potential::xc_it_nonmagnetic(Periodic_function<double>* rho__,
             std::vector<double> exc_t(spl_np_t.local_size());
 
             /* if this is an LDA functional */
-            if (ixc->is_lda())
-            {
+            if (ixc.is_lda()) {
                 std::vector<double> vxc_t(spl_np_t.local_size());
 
-                ixc->get_lda(spl_np_t.local_size(),
-                             &rho__->f_rg(spl_np.global_offset() + spl_np_t.global_offset()),
-                             &vxc_t[0],
-                             &exc_t[0]);
+                ixc.get_lda(spl_np_t.local_size(),
+                            &rho__->f_rg(spl_np.global_offset() + spl_np_t.global_offset()),
+                            &vxc_t[0],
+                            &exc_t[0]);
 
-                for (int i = 0; i < spl_np_t.local_size(); i++)
-                {
+                for (int i = 0; i < spl_np_t.local_size(); i++) {
                     /* add Exc contribution */
                     exc_tmp(spl_np_t[i]) += exc_t[i];
 
@@ -595,21 +553,19 @@ void Potential::xc_it_nonmagnetic(Periodic_function<double>* rho__,
                     vxc_tmp(spl_np_t[i]) += vxc_t[i];
                 }
             }
-            if (ixc->is_gga())
-            {
+            if (ixc.is_gga()) {
                 std::vector<double> vrho_t(spl_np_t.local_size());
                 std::vector<double> vsigma_t(spl_np_t.local_size());
                 
-                ixc->get_gga(spl_np_t.local_size(), 
-                             &rho__->f_rg(spl_np.global_offset() + spl_np_t.global_offset()), 
-                             &grad_rho_grad_rho.f_rg(spl_np.global_offset() + spl_np_t.global_offset()),
-                             &vrho_t[0], 
-                             &vsigma_t[0], 
-                             &exc_t[0]);
+                ixc.get_gga(spl_np_t.local_size(), 
+                            &rho__->f_rg(spl_np.global_offset() + spl_np_t.global_offset()), 
+                            &grad_rho_grad_rho.f_rg(spl_np.global_offset() + spl_np_t.global_offset()),
+                            &vrho_t[0], 
+                            &vsigma_t[0], 
+                            &exc_t[0]);
 
 
-                for (int i = 0; i < spl_np_t.local_size(); i++)
-                {
+                for (int i = 0; i < spl_np_t.local_size(); i++) {
                     /* add Exc contribution */
                     exc_tmp(spl_np_t[i]) += exc_t[i];
 
@@ -661,18 +617,18 @@ void Potential::xc_it_nonmagnetic(Periodic_function<double>* rho__,
     #endif
 }
 
-void Potential::xc_it_magnetic(Periodic_function<double>* rho, 
-                               Periodic_function<double>* magnetization[3], 
-                               std::vector<XC_functional*>& xc_func,
-                               Periodic_function<double>* vxc, 
-                               Periodic_function<double>* bxc[3], 
-                               Periodic_function<double>* exc)
+inline void Potential::xc_it_magnetic(Periodic_function<double>* rho, 
+                                      Periodic_function<double>* magnetization[3], 
+                                      std::vector<XC_functional>& xc_func,
+                                      Periodic_function<double>* vxc, 
+                                      Periodic_function<double>* bxc[3], 
+                                      Periodic_function<double>* exc)
 {
     PROFILE("sirius::Potential::xc_it_magnetic");
 
     bool is_gga = false;
     for (auto& ixc: xc_func) {
-        if (ixc->is_gga()) {
+        if (ixc.is_gga()) {
             is_gga = true;
         }
     }
@@ -780,16 +736,16 @@ void Potential::xc_it_magnetic(Periodic_function<double>* rho,
             std::vector<double> exc_t(spl_t.local_size());
 
             /* if this is an LDA functional */
-            if (ixc->is_lda()) {
+            if (ixc.is_lda()) {
                 std::vector<double> vxc_up_t(spl_t.local_size());
                 std::vector<double> vxc_dn_t(spl_t.local_size());
 
-                ixc->get_lda(spl_t.local_size(), 
-                             &rho_up.f_rg(spl_t.global_offset()), 
-                             &rho_dn.f_rg(spl_t.global_offset()), 
-                             &vxc_up_t[0], 
-                             &vxc_dn_t[0], 
-                             &exc_t[0]);
+                ixc.get_lda(spl_t.local_size(), 
+                            &rho_up.f_rg(spl_t.global_offset()), 
+                            &rho_dn.f_rg(spl_t.global_offset()), 
+                            &vxc_up_t[0], 
+                            &vxc_dn_t[0], 
+                            &exc_t[0]);
 
                 for (int i = 0; i < spl_t.local_size(); i++) {
                     /* add Exc contribution */
@@ -800,25 +756,25 @@ void Potential::xc_it_magnetic(Periodic_function<double>* rho,
                     vxc_dn_tmp(spl_t[i]) += vxc_dn_t[i];
                 }
             }
-            if (ixc->is_gga()) {
+            if (ixc.is_gga()) {
                 std::vector<double> vrho_up_t(spl_t.local_size());
                 std::vector<double> vrho_dn_t(spl_t.local_size());
                 std::vector<double> vsigma_uu_t(spl_t.local_size());
                 std::vector<double> vsigma_ud_t(spl_t.local_size());
                 std::vector<double> vsigma_dd_t(spl_t.local_size());
-                
-                ixc->get_gga(spl_t.local_size(), 
-                             &rho_up.f_rg(spl_t.global_offset()), 
-                             &rho_dn.f_rg(spl_t.global_offset()), 
-                             &grad_rho_up_grad_rho_up.f_rg(spl_t.global_offset()), 
-                             &grad_rho_up_grad_rho_dn.f_rg(spl_t.global_offset()), 
-                             &grad_rho_dn_grad_rho_dn.f_rg(spl_t.global_offset()), 
-                             &vrho_up_t[0], 
-                             &vrho_dn_t[0], 
-                             &vsigma_uu_t[0], 
-                             &vsigma_ud_t[0], 
-                             &vsigma_dd_t[0], 
-                             &exc_t[0]);
+
+                ixc.get_gga(spl_t.local_size(), 
+                            &rho_up.f_rg(spl_t.global_offset()), 
+                            &rho_dn.f_rg(spl_t.global_offset()), 
+                            &grad_rho_up_grad_rho_up.f_rg(spl_t.global_offset()), 
+                            &grad_rho_up_grad_rho_dn.f_rg(spl_t.global_offset()), 
+                            &grad_rho_dn_grad_rho_dn.f_rg(spl_t.global_offset()), 
+                            &vrho_up_t[0], 
+                            &vrho_dn_t[0], 
+                            &vsigma_uu_t[0], 
+                            &vsigma_ud_t[0], 
+                            &vsigma_dd_t[0], 
+                            &exc_t[0]);
 
                 for (int i = 0; i < spl_t.local_size(); i++) {
                     /* add Exc contribution */
@@ -852,7 +808,7 @@ void Potential::xc_it_magnetic(Periodic_function<double>* rho,
         vsigma_uu.fft_transform(-1);
         vsigma_ud.fft_transform(-1);
         vsigma_dd.fft_transform(-1);
-        
+
         /* gradient of vsigma in plane-wave domain */
         auto grad_vsigma_uu = gradient(vsigma_uu);
         auto grad_vsigma_ud = gradient(vsigma_ud);
@@ -896,11 +852,11 @@ void Potential::xc_it_magnetic(Periodic_function<double>* rho,
     }
 }
 
-void Potential::xc(Periodic_function<double>* rho, 
-                   Periodic_function<double>* magnetization[3], 
-                   Periodic_function<double>* vxc, 
-                   Periodic_function<double>* bxc[3], 
-                   Periodic_function<double>* exc)
+inline void Potential::xc(Periodic_function<double>* rho, 
+                          Periodic_function<double>* magnetization[3], 
+                          Periodic_function<double>* vxc, 
+                          Periodic_function<double>* bxc[3], 
+                          Periodic_function<double>* exc)
 {
     PROFILE("sirius::Potential::xc");
 
@@ -914,12 +870,10 @@ void Potential::xc(Periodic_function<double>* rho,
     if (ctx_.full_potential()) {
         xc_mt(rho, magnetization, xc_func_, vxc, bxc, exc);
     }
-    
+
     if (ctx_.num_spins() == 1) {
         xc_it_nonmagnetic(rho, xc_func_, vxc, exc);
     } else {
         xc_it_magnetic(rho, magnetization, xc_func_, vxc, bxc, exc);
     }
 }
-
-};

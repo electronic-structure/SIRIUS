@@ -2,14 +2,8 @@ include ../make.inc
 
 .SUFFIXES: .cpp .cu .f90
 
-SRC =  LebedevLaikov.cpp symmetry.cpp force.cpp dft_ground_state.cpp real_space_prj.cpp \
-       atom_type.cpp atom.cpp atom_symmetry_class.cpp unit_cell.cpp \
-       Potential/potential.cpp \
-       Potential/poisson.cpp \
-       Potential/xc.cpp \
-       Potential/paw_potential.cpp\
-       Geometry/Forces_PS.cpp \
-       Beta_projectors/beta_projectors.cpp
+SRC =  LebedevLaikov.cpp force.cpp \
+       Geometry/Forces_PS.cpp
 
 OBJ = $(SRC:.cpp=.o)
 

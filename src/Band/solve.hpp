@@ -257,7 +257,7 @@ inline void Band::solve_sv(K_point* kp,
     kp->set_band_energies(&band_energies[0]);
 }
 
-inline void Band::solve_for_kset(K_set& kset__,
+inline void Band::solve_for_kset(K_point_set& kset__,
                                  Potential& potential__,
                                  bool precompute__) const
 {
