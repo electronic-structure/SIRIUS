@@ -3017,6 +3017,30 @@ void sirius_get_beta_projectors(ftn_int* kset_id__,
     }
 }
 
+void sirius_get_beta_projectors_by_kp(ftn_int* kset_id__,
+                                      ftn_double* vk__,
+                                      ftn_int* npw__,
+                                      ftn_int* gvec_k__,
+                                      ftn_double_complex* vkb__,
+                                      ftn_int* ld__,
+                                      ftn_int* nkb__)
+{
+    vector3d<double> vk(vk__[0], vk__[1], vk__[2]);
+
+    auto kset = kset_list[*kset_id__];
+    for (int ikloc = 0; ikloc < kset->spl_num_kpoints().local_size(); ikloc++) {
+        int ik = kset->spl_num_kpoints(ikloc);
+        auto kp = (*kset)[ik];
+        if ((kp->vk() - vk).length() < 1e-12) {
+            sirius_get_beta_projectors(kset_id__, &ik, npw__, gvec_k__, vkb__, ld__, nkb__);
+            return;
+        }
+    }
+    std::stringstream s;
+    s << "k-point " << vk << " is not found";
+    TERMINATE(s);
+}
+
 void sirius_get_density_matrix(ftn_int*    ih__,
                                ftn_int*    jh__,
                                ftn_int*    ia__,
@@ -3025,13 +3049,11 @@ void sirius_get_density_matrix(ftn_int*    ih__,
     *dm__ = density->density_matrix()(*ih__ - 1, *jh__ - 1, 0, *ia__ - 1).real();
 }
 
-
 void sirius_calc_forces(double* forces__)
 {
-	mdarray<double,2> forces(forces__, 3, sim_ctx->unit_cell().num_atoms() );
-	
-	dft_ground_state->forces(forces);
+    mdarray<double,2> forces(forces__, 3, sim_ctx->unit_cell().num_atoms() );
 
+    dft_ground_state->forces(forces);
 }
 
 } // extern "C"
