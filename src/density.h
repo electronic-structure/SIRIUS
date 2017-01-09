@@ -152,7 +152,7 @@ class Density
             int ia{-1};
 
             /// ae and ps local densities
-            mdarray<double, 2> ae_density_;
+            mdarray<double, 2> ae_density_; // TODO: -> Spheric_function
             mdarray<double, 2> ps_density_;
 
             mdarray<double, 3> ae_magnetization_;
