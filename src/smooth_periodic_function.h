@@ -222,7 +222,19 @@ Smooth_periodic_function<T> operator*(Smooth_periodic_function_gradient<T>& grad
     return std::move(result);
 }
 
+/// Experimental features.
 namespace experimental {
+
+/// Representation of a smooth (Fourier-transformable) periodic function.
+/** The class is designed to handle periodic functions such as density or potential, defined on a regular-space grid.
+ *  The following functionality is expected:
+ *    - access to real-space values
+ *    - access to plane-wave coefficients
+ *    - distribution of plane-wave coefficients over entire communicator
+ *    - Fourier transformation using FFT communicator
+ *    - gather PW coefficients into global array
+ *  In some cases the PW coefficients are not necessary and only the real-space values are stored.
+ */
 template <typename T>
 class Smooth_periodic_function
 {
@@ -249,6 +261,11 @@ class Smooth_periodic_function
 
         /// Distribution of G-vectors inside FFT slab.
         block_data_descriptor gvec_fft_slab_;
+        
+        /* copy constructor is not allowed */
+        Smooth_periodic_function(Smooth_periodic_function<T> const& src__) = delete;
+        /* assigment is not allowed */
+        Smooth_periodic_function<T>& operator=(Smooth_periodic_function<T> const& src__) = delete;
 
     public:
         
@@ -258,9 +275,9 @@ class Smooth_periodic_function
         }
 
         Smooth_periodic_function(FFT3D& fft__, Gvec const& gvec__, Communicator const& comm__)
-            : fft_(&fft__),
-              gvec_(&gvec__),
-              comm_(&comm__)
+            : fft_(&fft__)
+            , gvec_(&gvec__)
+            , comm_(&comm__)
         {
             f_rg_ = mdarray<T, 1>(fft_->local_size());
             f_pw_fft_ = mdarray<double_complex, 1>(gvec_->partition().gvec_count_fft());
@@ -354,8 +371,9 @@ class Smooth_periodic_function
             }
         }
 };
+
 } // namespace experimental
 
-}
+} // namespace sirius
 
 #endif // __SMOOTH_PERIODIC_FUNCTION_H__
