@@ -161,10 +161,8 @@ class Density
 
         std::vector<paw_density_data_t> paw_density_data_;
 
-
-        /// core density radial integrals
+        /// Core density radial integrals.
         mdarray<double, 2> rho_pseudo_core_radial_integrals_;
-
 
         /// Pointer to charge density.
         /** In the case of full-potential calculation this is the full (valence + core) electron charge density.
