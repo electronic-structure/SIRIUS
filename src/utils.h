@@ -324,7 +324,7 @@ class Utils
                     max_diff = std::max(max_diff, std::abs(mtrx__(j, i) - tmp(j, i)));
                 }
             }
-            mtrx__.blacs_grid().comm().template allreduce<double, mpi_op_t::op_max>(&max_diff, 1);
+            mtrx__.blacs_grid().comm().template allreduce<double, mpi_op_t::max>(&max_diff, 1);
             return max_diff;
         }
 
