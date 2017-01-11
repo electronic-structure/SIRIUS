@@ -252,7 +252,6 @@ class Smooth_periodic_function
         
         /// Communicator which is orthogonal to FFT communicator.
         /** This communicator is used to collect G-vectors for the FFT driver. */ 
-        //std::unique_ptr<Communicator> comm_local_{nullptr};
         Communicator comm_local_;
         
         /// Function on the regular real-space grid.
