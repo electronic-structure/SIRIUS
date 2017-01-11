@@ -61,22 +61,22 @@ class K_point_set
     public:
 
         K_point_set(Simulation_context& ctx__,
-              Communicator const& comm_k__)
-            : ctx_(ctx__)
-            , unit_cell_(ctx__.unit_cell())
-            , comm_k_(comm_k__)
+                    Communicator const& comm_k__)
+                  : ctx_(ctx__)
+                  , unit_cell_(ctx__.unit_cell())
+                  , comm_k_(comm_k__)
         {
             PROFILE("sirius::K_point_set::K_point_set");
         }
 
         K_point_set(Simulation_context& ctx__,
-              Communicator const& comm_k__,
-              vector3d<int> k_grid__,
-              vector3d<int> k_shift__,
-              int use_symmetry__) 
-            : ctx_(ctx__)
-            , unit_cell_(ctx__.unit_cell())
-            , comm_k_(comm_k__)
+                    Communicator const& comm_k__,
+                    vector3d<int> k_grid__,
+                    vector3d<int> k_shift__,
+                    int use_symmetry__) 
+                  : ctx_(ctx__)
+                  , unit_cell_(ctx__.unit_cell())
+                  , comm_k_(comm_k__)
         {
             PROFILE("sirius::K_point_set::K_point_set");
 
