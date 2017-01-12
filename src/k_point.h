@@ -184,10 +184,6 @@ class K_point
             rank_row_ = comm_row_.rank();
             rank_col_ = comm_col_.rank();
 
-            if (comm_.rank() != ctx_.blacs_grid_slice().comm().rank()) {
-                TERMINATE("ranks don't match");
-            }
-            
             #ifndef __GPU
             if (ctx_.processing_unit() == GPU) {
                 TERMINATE_NO_GPU
