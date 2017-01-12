@@ -162,7 +162,7 @@ std::unique_ptr<Simulation_context> create_sim_ctx(std::string                  
     Simulation_context& ctx = *ctx_ptr;
 
     std::vector<int> mpi_grid_dims = ctx.mpi_grid_dims();
-    mpi_grid_dims = args__.value< std::vector<int> >("mpi_grid", mpi_grid_dims);
+    mpi_grid_dims = args__.value<std::vector<int>>("mpi_grid", mpi_grid_dims);
     ctx.set_mpi_grid_dims(mpi_grid_dims);
 
     ctx.set_esm_type(inp__.esm_);
@@ -209,7 +209,7 @@ double ground_state(Simulation_context&       ctx,
         MEMORY_USAGE_INFO();
     }
 
-    K_point_set ks(ctx, ctx.mpi_grid().communicator(1 << _mpi_dim_k_), inp.ngridk_, inp.shiftk_, inp.use_symmetry_);
+    K_point_set ks(ctx, inp.ngridk_, inp.shiftk_, inp.use_symmetry_);
     ks.initialize();
 
     if (ctx.comm().rank() == 0 && ctx.control().print_memory_usage_) {
