@@ -181,7 +181,7 @@ void sirius_create_kset(ftn_int*    num_kpoints__,
 {
     mdarray<double, 2> kpoints(kpoints__, 3, *num_kpoints__);
 
-    sirius::K_point_set* new_kset = new sirius::K_point_set(*sim_ctx, sim_ctx->mpi_grid().communicator(1 << _mpi_dim_k_));
+    sirius::K_point_set* new_kset = new sirius::K_point_set(*sim_ctx);
     new_kset->add_kpoints(kpoints, kpoint_weights__);
     if (*init_kset__) {
         std::vector<int> counts;
@@ -208,10 +208,9 @@ void sirius_create_irreducible_kset_(int32_t* mesh__, int32_t* is_shift__, int32
     }
 
     sirius::K_point_set* new_kset = new sirius::K_point_set(*sim_ctx,
-                                                sim_ctx->mpi_grid().communicator(1 << _mpi_dim_k_),
-                                                vector3d<int>(mesh__[0], mesh__[1], mesh__[2]),
-                                                vector3d<int>(is_shift__[0], is_shift__[1], is_shift__[2]),
-                                                *use_sym__);
+                                                            vector3d<int>(mesh__[0], mesh__[1], mesh__[2]),
+                                                            vector3d<int>(is_shift__[0], is_shift__[1], is_shift__[2]),
+                                                            *use_sym__);
 
     new_kset->initialize();
 
@@ -1293,7 +1292,7 @@ void sirius_get_num_gkvec(ftn_int* kset_id__,
     auto kp = (*kset_list[*kset_id__])[*ik__ - 1];
     /* get rank that stores a given k-point */
     int rank = ks->spl_num_kpoints().local_rank(*ik__ - 1);
-    auto& comm_k = sim_ctx->mpi_grid().communicator(1 << _mpi_dim_k_);
+    auto& comm_k = sim_ctx->comm_k();
     if (rank == comm_k.rank()) {
         *num_gkvec__ = kp->num_gkvec();
     }
@@ -1324,7 +1323,7 @@ void sirius_get_gkvec_arrays(ftn_int*    kset_id__,
     /* get rank that stores a given k-point */
     int rank = ks->spl_num_kpoints().local_rank(*ik__ - 1);
 
-    auto& comm_k = sim_ctx->mpi_grid().communicator(1 << _mpi_dim_k_);
+    auto& comm_k = sim_ctx->comm_k();
 
     if (rank == comm_k.rank()) {
         *num_gkvec__ = kp->num_gkvec();
@@ -1399,32 +1398,32 @@ void sirius_get_matching_coefficients(int32_t const* kset_id__,
     //}
 }
 
-/// Get first-variational matrices of Hamiltonian and overlap
-/** Radial integrals and plane-wave coefficients of the interstitial potential must be calculated prior to
- *  Hamiltonian and overlap matrix construction.
- */
-void sirius_get_fv_h_o(int32_t const* kset_id__,
-                       int32_t const* ik__,
-                       int32_t const* size__,
-                       double_complex* h__,
-                       double_complex* o__)
-{
-    int rank = kset_list[*kset_id__]->spl_num_kpoints().local_rank(*ik__ - 1);
-
-    if (rank == sim_ctx->mpi_grid().coordinate(0))
-    {
-        auto kp = (*kset_list[*kset_id__])[*ik__ - 1];
-
-        if (*size__ != kp->gklo_basis_size())
-        {
-            TERMINATE("wrong matrix size");
-        }
-
-        dmatrix<double_complex> h(h__, kp->gklo_basis_size(), kp->gklo_basis_size(), sim_ctx->blacs_grid(), sim_ctx->cyclic_block_size(), sim_ctx->cyclic_block_size());
-        dmatrix<double_complex> o(o__, kp->gklo_basis_size(), kp->gklo_basis_size(), sim_ctx->blacs_grid(), sim_ctx->cyclic_block_size(), sim_ctx->cyclic_block_size());
-        dft_ground_state->band().set_fv_h_o<CPU, electronic_structure_method_t::full_potential_lapwlo>(kp, *potential, h, o);
-    }
-}
+///// Get first-variational matrices of Hamiltonian and overlap
+///** Radial integrals and plane-wave coefficients of the interstitial potential must be calculated prior to
+// *  Hamiltonian and overlap matrix construction.
+// */
+//void sirius_get_fv_h_o(int32_t const* kset_id__,
+//                       int32_t const* ik__,
+//                       int32_t const* size__,
+//                       double_complex* h__,
+//                       double_complex* o__)
+//{
+//    int rank = kset_list[*kset_id__]->spl_num_kpoints().local_rank(*ik__ - 1);
+//
+//    if (rank == sim_ctx->mpi_grid().coordinate(0))
+//    {
+//        auto kp = (*kset_list[*kset_id__])[*ik__ - 1];
+//
+//        if (*size__ != kp->gklo_basis_size())
+//        {
+//            TERMINATE("wrong matrix size");
+//        }
+//
+//        dmatrix<double_complex> h(h__, kp->gklo_basis_size(), kp->gklo_basis_size(), sim_ctx->blacs_grid(), sim_ctx->cyclic_block_size(), sim_ctx->cyclic_block_size());
+//        dmatrix<double_complex> o(o__, kp->gklo_basis_size(), kp->gklo_basis_size(), sim_ctx->blacs_grid(), sim_ctx->cyclic_block_size(), sim_ctx->cyclic_block_size());
+//        dft_ground_state->band().set_fv_h_o<CPU, electronic_structure_method_t::full_potential_lapwlo>(kp, *potential, h, o);
+//    }
+//}
 
 //void sirius_solve_fv(int32_t const* kset_id__,
 //                     int32_t const* ik__,
@@ -1970,10 +1969,10 @@ void sirius_set_num_fv_states(int32_t* num_fv_states__)
     sim_ctx->set_num_fv_states(*num_fv_states__);
 }
 
-void sirius_get_mpi_comm(int32_t* directions__, int32_t* fcomm__)
-{
-    *fcomm__ = MPI_Comm_c2f(sim_ctx->mpi_grid().communicator(*directions__).mpi_comm());
-}
+//void sirius_get_mpi_comm(int32_t* directions__, int32_t* fcomm__)
+//{
+//    *fcomm__ = MPI_Comm_c2f(sim_ctx->mpi_grid().communicator(*directions__).mpi_comm());
+//}
 
 void sirius_get_fft_comm(int32_t* fcomm__)
 {
@@ -1982,12 +1981,12 @@ void sirius_get_fft_comm(int32_t* fcomm__)
 
 void sirius_get_kpoint_inner_comm(int32_t* fcomm__)
 {
-    *fcomm__ = MPI_Comm_c2f(sim_ctx->mpi_grid().communicator(1 << _mpi_dim_k_row_ | 1 << _mpi_dim_k_col_).mpi_comm());
+    *fcomm__ = MPI_Comm_c2f(sim_ctx->comm_band().mpi_comm());
 }
 
 void sirius_get_all_kpoints_comm(int32_t* fcomm__)
 {
-    *fcomm__ = MPI_Comm_c2f(sim_ctx->mpi_grid().communicator(1 << _mpi_dim_k_).mpi_comm());
+    *fcomm__ = MPI_Comm_c2f(sim_ctx->comm_k().mpi_comm());
 }
 
 void sirius_forces(double* forces__)

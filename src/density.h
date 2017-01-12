@@ -169,6 +169,8 @@ class Density
          *  In the case of pseudopotential this is the valence charge density. */ 
         Periodic_function<double>* rho_;
 
+        std::unique_ptr<experimental::Smooth_periodic_function<double>> rho_coarse_;
+
         /// Pointer to pseudo core charge density
         /** In the case of pseudopotential we need to know the non-linear core correction to the 
          *  exchange-correlation energy which is introduced trough the pseudo core density: 
@@ -181,7 +183,7 @@ class Density
         /// Non-zero Gaunt coefficients.
         std::unique_ptr< Gaunt_coefficients<double_complex> > gaunt_coefs_;
         
-        /// fast mapping between composite lm index and corresponding orbital quantum number
+        /// Fast mapping between composite lm index and corresponding orbital quantum number.
         std::vector<int> l_by_lm_;
 
         Mixer<double_complex>* high_freq_mixer_;
@@ -369,6 +371,10 @@ class Density
               mixer_(nullptr)
         {
             rho_ = new Periodic_function<double>(ctx_, ctx_.lmmax_rho(), 1);
+
+            rho_coarse_ = std::unique_ptr<experimental::Smooth_periodic_function<double>>(
+                new experimental::Smooth_periodic_function<double>(ctx_.fft_coarse(), ctx_.gvec_coarse(), ctx_.comm())
+            );
 
             /* core density of the pseudopotential method */
             if (!ctx_.full_potential()) {

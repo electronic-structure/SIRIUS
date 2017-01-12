@@ -81,9 +81,7 @@ inline void Density::generate_valence(K_point_set& ks__)
     }
 
     /* reduce arrays; assume that each rank did its own fraction of the density */
-    auto& comm = (ctx_.fft().parallel()) ? ctx_.mpi_grid().communicator(1 << _mpi_dim_k_ | 1 << _mpi_dim_k_col_)
-                                         : ctx_.comm();
-
+    auto& comm = ctx_.comm_ortho_fft();
     comm.allreduce(&rho_->f_rg(0), ctx_.fft().local_size()); 
     for (int j = 0; j < ctx_.num_mag_dims(); j++) {
         comm.allreduce(&magnetization_[j]->f_rg(0), ctx_.fft().local_size()); 

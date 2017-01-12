@@ -44,17 +44,16 @@ namespace sirius {
 
 /// Simulation context is a set of parameters and objects describing a single simulation. 
 /** The order of initialization of the simulation context is the following: first, the default parameter 
- *  values are set in set_defaults() method, then (optionally) import() method is called and the parameters are 
+ *  values are set in the constructor, then (optionally) import() method is called and the parameters are 
  *  overwritten with the those from the input file, and finally, the user sets the values with set_...() metods.
- *  Then the atom types and atoms can be added to the simulation and the context can be initialized with the 
- *  corresponding method. */
+ *  Then the unit cell can be populated and the context can be initialized. */
 class Simulation_context: public Simulation_parameters
 {
     private:
 
         /// Communicator for this simulation.
         Communicator const& comm_;
-
+        
         /// Unit cell of the simulation.
         Unit_cell unit_cell_;
 
@@ -70,19 +69,19 @@ class Simulation_context: public Simulation_parameters
         /// 2D BLACS grid for distributed linear algebra operations.
         std::unique_ptr<BLACS_grid> blacs_grid_;
 
-        /// 1D BLACS grid for a "slice" data distribution of full-potential wave-functions.
-        /** This grid is used to distribute band index and keep a whole wave-function */
-        std::unique_ptr<BLACS_grid> blacs_grid_slice_;
-
+        /// Fine-grained FFT for density and potential.
         std::unique_ptr<FFT3D> fft_;
-
+        
+        /// Coarse-grained FFT for application of Vloc and density summation.
         std::unique_ptr<FFT3D> fft_coarse_;
 
         /// Step function is used in full-potential methods.
         std::unique_ptr<Step_function> step_function_;
-
+    
+        /// G-vectors within the Gmax cutoff.
         Gvec gvec_;
-
+        
+        /// G-vectors within the 2 * |Gmax^{WF}| cutoff.
         Gvec gvec_coarse_;
 
         std::vector<Augmentation_operator> augmentation_op_;
@@ -123,7 +122,7 @@ class Simulation_context: public Simulation_parameters
         /* copy constructor is forbidden */
         Simulation_context(Simulation_context const&) = delete;
 
-        void init()
+        void start()
         {
             gettimeofday(&start_time_, NULL);
             
@@ -141,7 +140,7 @@ class Simulation_context: public Simulation_parameters
               unit_cell_(*this, comm_)
         {
             PROFILE("sirius::Simulation_context::Simulation_context");
-            init();
+            start();
             import(fname__);
             unit_cell_.import(unit_cell_input_section_);
         }
@@ -151,7 +150,7 @@ class Simulation_context: public Simulation_parameters
               unit_cell_(*this, comm_)
         {
             PROFILE("sirius::Simulation_context::Simulation_context");
-            init();
+            start();
         }
         
         ~Simulation_context()
@@ -205,16 +204,6 @@ class Simulation_context: public Simulation_parameters
             return gvec_coarse_;
         }
 
-        Communicator const& comm() const
-        {
-            return comm_;
-        }
-
-        MPI_grid const& mpi_grid() const
-        {
-            return *mpi_grid_;
-        }
-
         MPI_grid const& mpi_grid_fft() const
         {
             return *mpi_grid_fft_;
@@ -230,9 +219,31 @@ class Simulation_context: public Simulation_parameters
             return *blacs_grid_;
         }
 
-        BLACS_grid const& blacs_grid_slice() const
+        /// Total communicator of the context.
+        Communicator const& comm() const
         {
-            return *blacs_grid_slice_;
+            return comm_;
+        }
+        
+        /// Communicator between k-points.
+        Communicator const& comm_k() const
+        {
+            /* 3rd dimension of the MPI grid is used for k-point distribution */
+            return mpi_grid_->communicator(1 << 2);
+        }
+        
+        /// Band and BLACS grid communicator.
+        Communicator const& comm_band() const
+        {
+            /* 1st and 2nd dimensions of the MPI grid are used for parallelization inside k-point */
+            return mpi_grid_->communicator(1 << 0 | 1 << 1);
+        }
+        
+        /// Communicator which is orthogonal to the FFT communicator.
+        /** This communicator is used to sum the density and parallelize the XC calculation on the regualar FFT grid. */
+        Communicator const& comm_ortho_fft() const
+        {
+            return mpi_grid_->communicator(1 << 1 | 1 << 2);
         }
 
         inline int num_fv_states() const
@@ -396,22 +407,23 @@ inline void Simulation_context::init_fft()
 {
     auto rlv = unit_cell_.reciprocal_lattice_vectors();
 
-    auto& comm = mpi_grid_->communicator(1 << _mpi_dim_k_row_ | 1 << _mpi_dim_k_col_);
+    auto& comm = comm_band();
+
+    int npr = control_input_section_.mpi_grid_dims_[0];
+    int npc = control_input_section_.mpi_grid_dims_[1];
 
     if (!(control_input_section_.fft_mode_ == "serial" || control_input_section_.fft_mode_ == "parallel")) {
         TERMINATE("wrong FFT mode");
     }
 
-    mpi_grid_fft_ = std::unique_ptr<MPI_grid>(new MPI_grid({mpi_grid_->dimension_size(_mpi_dim_k_row_),
-                                                            mpi_grid_->dimension_size(_mpi_dim_k_col_)}, comm));
+    mpi_grid_fft_ = std::unique_ptr<MPI_grid>(new MPI_grid({npr, npc}, comm));
 
     if (control_input_section_.fft_mode_ == "serial") {
         /* serial FFT in Hloc */
         mpi_grid_fft_vloc_ = std::unique_ptr<MPI_grid>(new MPI_grid({1, comm.size()}, comm));
     } else {
         /* parallel FFT in Hloc */
-        mpi_grid_fft_vloc_ = std::unique_ptr<MPI_grid>(new MPI_grid({mpi_grid_->dimension_size(_mpi_dim_k_row_),
-                                                                     mpi_grid_->dimension_size(_mpi_dim_k_col_)}, comm));
+        mpi_grid_fft_vloc_ = std::unique_ptr<MPI_grid>(new MPI_grid({npr, npc}, comm));
     }
 
     /* create FFT driver for dense mesh (density and potential) */
@@ -471,8 +483,27 @@ inline void Simulation_context::initialize()
     
     /* check MPI grid dimensions and set a default grid if needed */
     if (!control_input_section_.mpi_grid_dims_.size()) {
-        control_input_section_.mpi_grid_dims_ = {comm_.size()};
+        control_input_section_.mpi_grid_dims_ = {1, 1};
     }
+    if (control_input_section_.mpi_grid_dims_.size() != 2) {
+        TERMINATE("wrong MPI grid");
+    }
+    
+    int npr = control_input_section_.mpi_grid_dims_[0];
+    int npc = control_input_section_.mpi_grid_dims_[1];
+    int npb = npr * npc;
+    int npk = comm_.size() / npb;
+    if (npk * npb != comm_.size()) {
+        std::stringstream s;
+        s << "Can't divide " << comm_.size() << " ranks into groups of size " << npb;
+        TERMINATE(s);
+    }
+
+    /* setup MPI grid */
+    mpi_grid_ = std::unique_ptr<MPI_grid>(new MPI_grid({npr, npc, npk}, comm_));
+    
+    /* setup BLACS grid */
+    blacs_grid_ = std::unique_ptr<BLACS_grid>(new BLACS_grid(comm_band(), npr, npc));
     
     /* can't use reduced G-vectors in LAPW code */
     if (full_potential()) {
@@ -486,14 +517,6 @@ inline void Simulation_context::initialize()
             iterative_solver_input_section_.type_ = "davidson";
         }
     }
-
-    /* setup MPI grid */
-    mpi_grid_ = std::unique_ptr<MPI_grid>(new MPI_grid(control_input_section_.mpi_grid_dims_, comm_));
-
-    blacs_grid_ = std::unique_ptr<BLACS_grid>(new BLACS_grid(mpi_grid_->communicator(1 << _mpi_dim_k_row_ | 1 << _mpi_dim_k_col_), 
-                                                             mpi_grid_->dimension_size(_mpi_dim_k_row_), mpi_grid_->dimension_size(_mpi_dim_k_col_)));
-    
-    blacs_grid_slice_ = std::unique_ptr<BLACS_grid>(new BLACS_grid(blacs_grid_->comm(), 1, blacs_grid_->comm().size()));
 
     /* initialize variables, related to the unit cell */
     unit_cell_.initialize();
@@ -582,7 +605,7 @@ inline void Simulation_context::initialize()
     
     std::string evsn[] = {std_evp_solver_name(), gen_evp_solver_name()};
 
-    if (mpi_grid_->size(1 << _mpi_dim_k_row_ | 1 << _mpi_dim_k_col_) == 1) {
+    if (comm_band().size() == 1) {
         if (evsn[0] == "") {
             #if defined(__GPU) && defined(__MAGMA)
             evsn[0] = "magma";

@@ -60,46 +60,38 @@ class K_point_set
 
     public:
 
-        K_point_set(Simulation_context& ctx__,
-                    Communicator const& comm_k__)
+        K_point_set(Simulation_context& ctx__)
                   : ctx_(ctx__)
                   , unit_cell_(ctx__.unit_cell())
-                  , comm_k_(comm_k__)
+                  , comm_k_(ctx__.comm_k())
         {
             PROFILE("sirius::K_point_set::K_point_set");
         }
 
         K_point_set(Simulation_context& ctx__,
-                    Communicator const& comm_k__,
                     vector3d<int> k_grid__,
                     vector3d<int> k_shift__,
                     int use_symmetry__) 
                   : ctx_(ctx__)
                   , unit_cell_(ctx__.unit_cell())
-                  , comm_k_(comm_k__)
+                  , comm_k_(ctx_.comm_k())
         {
             PROFILE("sirius::K_point_set::K_point_set");
 
             int nk;
             mdarray<double, 2> kp;
             std::vector<double> wk;
-            if (use_symmetry__)
-            {
+            if (use_symmetry__) {
                 nk = unit_cell_.symmetry().get_irreducible_reciprocal_mesh(k_grid__, k_shift__, kp, wk);
-            }
-            else
-            {
+            } else {
                 nk = k_grid__[0] * k_grid__[1] * k_grid__[2];
                 wk = std::vector<double>(nk, 1.0 / nk);
                 kp = mdarray<double, 2>(3, nk);
 
                 int ik = 0;
-                for (int i0 = 0; i0 < k_grid__[0]; i0++)
-                {
-                    for (int i1 = 0; i1 < k_grid__[1]; i1++)
-                    {
-                        for (int i2 = 0; i2 < k_grid__[2]; i2++)
-                        {
+                for (int i0 = 0; i0 < k_grid__[0]; i0++) {
+                    for (int i1 = 0; i1 < k_grid__[1]; i1++) {
+                        for (int i2 = 0; i2 < k_grid__[2]; i2++) {
                             kp(0, ik) = double(i0 + k_shift__[0] / 2.0) / k_grid__[0];
                             kp(1, ik) = double(i1 + k_shift__[1] / 2.0) / k_grid__[1];
                             kp(2, ik) = double(i2 + k_shift__[2] / 2.0) / k_grid__[2];

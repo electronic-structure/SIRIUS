@@ -468,8 +468,7 @@ inline void Potential::xc_it_nonmagnetic(Periodic_function<double>* rho__,
     int num_points = ctx_.fft().local_size();
 
     /* we can use this comm for parallelization */
-    auto& comm = (ctx_.fft().parallel()) ? ctx_.mpi_grid().communicator(1 << _mpi_dim_k_ | 1 << _mpi_dim_k_col_)
-                                         : ctx_.comm();
+    auto& comm = ctx_.comm_ortho_fft();
 
     /* split real-space points between available ranks */
     splindex<block> spl_np(num_points, comm.size(), comm.rank());
