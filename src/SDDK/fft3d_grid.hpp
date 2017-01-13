@@ -83,12 +83,6 @@ class FFT3D_grid
         find_grid_size(initial_dims__);
     }
 
-    //FFT3D_grid(double cutoff__, matrix3d<double> M__)
-    //{
-    //    auto initial_dims = Utils::find_translations(cutoff__, M__);
-    //    find_grid_size(initial_dims);
-    //}
-
     /// Limits of a given dimension.
     inline const std::pair<int, int>& limits(int idim__) const
     {
