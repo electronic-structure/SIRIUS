@@ -28,7 +28,9 @@
 #include <numeric>
 #include <map>
 #include "fft3d_grid.hpp"
-#include "matrix3d.hpp"
+#include "geometry3d.hpp"
+
+using namespace geometry3d;
 
 namespace sddk {
 
@@ -132,8 +134,6 @@ class Gvec_partition
     inline bool reduced() const;
 };
 
-// TODO: G-vector partitioning is not part of G-vector class because we can have several G-vector partitions
-
 /// Store list of G-vectors for FFTs and G+k basis functions.
 class Gvec
 {
@@ -143,8 +143,20 @@ class Gvec
     /// k-vector of G+k.
     vector3d<double> vk_;
 
+    /// Cutoff for |G+k| vectors.
+    double Gmax_;
+
     /// Reciprocal lattice vectors.
     matrix3d<double> lattice_vectors_;
+
+    /// Total communicator which is used to distribute G or G+k vectors.
+    Communicator const* comm_{nullptr};
+
+    /// Communicator of FFT driver.
+    Communicator const* comm_fft_{nullptr};
+
+    /// Communicator which is orthogonal to FFT communicator.
+    Communicator comm_ortho_fft_;
 
     /// Indicates that G-vectors are reduced by inversion symmetry.
     bool reduce_gvec_;
@@ -320,33 +332,18 @@ class Gvec
         }
     }
 
-  public:
-    /// Default constructor.
-    Gvec()
+    void init()
     {
-    }
+        PROFILE("sddk::Gvec::init");
 
-    /// Constructor.
-    Gvec(vector3d<double> vk__,
-         matrix3d<double> M__,
-         double Gmax__,
-         FFT3D_grid const& fft_box__,
-         int num_ranks__,
-         Communicator const& fft_comm__,
-         bool reduce_gvec__)
-        : vk_(vk__)
-        , lattice_vectors_(M__)
-        , reduce_gvec_(reduce_gvec__)
-        , num_ranks_(num_ranks__)
-    {
-        PROFILE("sddk::Gvec");
+        auto fft_grid = FFT3D_grid(find_translations(Gmax_, lattice_vectors_));
 
-        find_z_columns(Gmax__, fft_box__);
+        find_z_columns(Gmax_, fft_grid);
 
         distribute_z_columns();
 
         gvec_index_by_xy_ =
-            mdarray<int, 3>(2, fft_box__.limits(0), fft_box__.limits(1), memory_t::host, "Gvec.gvec_index_by_xy_");
+            mdarray<int, 3>(2, fft_grid.limits(0), fft_grid.limits(1), memory_t::host, "Gvec.gvec_index_by_xy_");
         std::fill(gvec_index_by_xy_.at<CPU>(), gvec_index_by_xy_.at<CPU>() + gvec_index_by_xy_.size(), -1);
 
         /* build the full G-vector index and reverse mapping */
@@ -383,7 +380,57 @@ class Gvec
         find_gvec_shells();
 
         /* create default partition for G-vectors */
-        gvec_partition_ = std::unique_ptr<Gvec_partition>(new Gvec_partition(*this, fft_comm__));
+        gvec_partition_ = std::unique_ptr<Gvec_partition>(new Gvec_partition(*this, *comm_fft_));
+    }
+
+  public:
+    /// Default constructor.
+    Gvec()
+    {
+    }
+
+    /// Constructor for G+k vectors.
+    /** \param [in] vk          K-point vector of G+k
+     *  \param [in] M           Reciprocal lattice vecotors in comumn order
+     *  \param [in] Gmax        Cutoff for G+k vectors
+     *  \param [in] comm        Total communicator which is used to distribute G-vectors
+     *  \param [in] comm_fft    FFT communicator
+     *  \param [in] reduce_gvec True if G-vectors need to be reduced by inversion symmetry.
+     */
+    Gvec(vector3d<double> vk__,
+         matrix3d<double> M__,
+         double Gmax__,
+         Communicator const& comm__,
+         Communicator const& comm_fft__,
+         bool reduce_gvec__)
+        : vk_(vk__)
+        , Gmax_(Gmax__)
+        , lattice_vectors_(M__)
+        , comm_(&comm__)
+        , comm_fft_(&comm_fft__)
+        , comm_ortho_fft_(comm__.split(comm_fft__.rank()))
+        , reduce_gvec_(reduce_gvec__)
+        , num_ranks_(comm__.size())
+    {
+        init();
+    }
+    
+    /// Constructor for G-vectors.
+    Gvec(matrix3d<double> M__,
+         double Gmax__,
+         Communicator const& comm__,
+         Communicator const& comm_fft__,
+         bool reduce_gvec__)
+        : vk_({0, 0, 0})
+        , Gmax_(Gmax__)
+        , lattice_vectors_(M__)
+        , comm_(&comm__)
+        , comm_fft_(&comm_fft__)
+        , comm_ortho_fft_(comm__.split(comm_fft__.rank()))
+        , reduce_gvec_(reduce_gvec__)
+        , num_ranks_(comm__.size())
+    {
+        init();
     }
 
     /// Move assigment operator.
@@ -391,7 +438,11 @@ class Gvec
     {
         if (this != &src__) {
             vk_                    = src__.vk_;
+            Gmax_                  = src__.Gmax_;
             lattice_vectors_       = src__.lattice_vectors_;
+            comm_                  = src__.comm_;
+            comm_fft_              = src__.comm_fft_;
+            comm_ortho_fft_        = std::move(src__.comm_ortho_fft_);
             reduce_gvec_           = src__.reduce_gvec_;
             num_ranks_             = src__.num_ranks_;
             num_gvec_              = src__.num_gvec_;
@@ -532,6 +583,11 @@ class Gvec
     vector3d<double> const& vk() const
     {
         return vk_;
+    }
+
+    Communicator const& comm_ortho_fft() const
+    {
+        return comm_ortho_fft_;
     }
 };
 
