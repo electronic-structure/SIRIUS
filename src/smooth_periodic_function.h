@@ -226,7 +226,7 @@ Smooth_periodic_function<T> operator*(Smooth_periodic_function_gradient<T>& grad
 namespace experimental {
 
 /// Representation of a smooth (Fourier-transformable) periodic function.
-/** The class is designed to handle periodic functions such as density or potential, defined on a regular-space grid.
+/** The class is designed to handle periodic functions such as density or potential, defined on a regular FFT grid.
  *  The following functionality is expected:
  *    - access to real-space values
  *    - access to plane-wave coefficients
@@ -252,7 +252,7 @@ class Smooth_periodic_function
         
         /// Communicator which is orthogonal to FFT communicator.
         /** This communicator is used to collect G-vectors for the FFT driver. */ 
-        Communicator comm_local_;
+        Communicator const* comm_local_{nullptr};
         
         /// Function on the regular real-space grid.
         mdarray<T, 1> f_rg_;
@@ -274,13 +274,13 @@ class Smooth_periodic_function
         /// Gather plane-wave coefficients for the subsequent FFT call.
         inline void gather_f_pw_fft()
         {
-            int rank = fft_->comm().rank() * comm_local_.size() + comm_local_.rank();
+            int rank = fft_->comm().rank() * comm_local_->size() + comm_local_->rank();
             /* collect scattered PW coefficients */
-            comm_local_.allgather(f_pw_local_.at<CPU>(),
-                                  gvec_->gvec_count(rank),
-                                  f_pw_fft_.at<CPU>(),
-                                  gvec_fft_slab_.counts.data(), 
-                                  gvec_fft_slab_.offsets.data());
+            comm_local_->allgather(f_pw_local_.at<CPU>(),
+                                   gvec_->gvec_count(rank),
+                                   f_pw_fft_.at<CPU>(),
+                                   gvec_fft_slab_.counts.data(), 
+                                   gvec_fft_slab_.offsets.data());
         }
 
     public:
@@ -290,26 +290,31 @@ class Smooth_periodic_function
         {
         }
 
-        Smooth_periodic_function(FFT3D& fft__, Gvec const& gvec__, Communicator const& comm__)
+        Smooth_periodic_function(FFT3D& fft__, Gvec const& gvec__)
             : fft_(&fft__)
             , gvec_(&gvec__)
-            , comm_(&comm__)
-            , comm_local_(comm__.split(fft__.comm().rank()))
+            , comm_(&gvec__.comm())
+            , comm_local_(&gvec__.comm_ortho_fft())
         {
             f_rg_       = mdarray<T, 1>(fft_->local_size());
             f_pw_fft_   = mdarray<double_complex, 1>(gvec_->partition().gvec_count_fft());
             f_pw_local_ = mdarray<double_complex, 1>(gvec_->gvec_count(comm_->rank()));
 
-            int rank = fft_->comm().rank() * comm_local_.size() + comm_local_.rank();
-            if (rank != comm__.rank()) {
+            int rank = fft_->comm().rank() * comm_local_->size() + comm_local_->rank();
+            if (rank != comm_->rank()) {
                 TERMINATE("wrong order of MPI ranks");
             }
 
-            gvec_fft_slab_ = block_data_descriptor(comm_local_.size());
-            for (int i = 0; i < comm_local_.size(); i++) {
-                gvec_fft_slab_.counts[i] = gvec_->gvec_count(fft_->comm().rank() * comm_local_.size() + i);
+            gvec_fft_slab_ = block_data_descriptor(comm_local_->size());
+            for (int i = 0; i < comm_local_->size(); i++) {
+                gvec_fft_slab_.counts[i] = gvec_->gvec_count(fft_->comm().rank() * comm_local_->size() + i);
             }
             gvec_fft_slab_.calc_offsets();
+        }
+
+        inline void zero()
+        {
+            f_rg_.zero();
         }
 
         inline T& f_rg(int ir__)
@@ -366,8 +371,8 @@ class Smooth_periodic_function
                 case -1: {
                     fft_->input(f_rg_.template at<CPU>());
                     fft_->transform<-1>(gvec_->partition(), f_pw_fft_.at<CPU>());
-                    int count  = gvec_fft_slab_.counts[comm_local_.rank()];
-                    int offset = gvec_fft_slab_.offsets[comm_local_.rank()];
+                    int count  = gvec_fft_slab_.counts[comm_local_->rank()];
+                    int offset = gvec_fft_slab_.offsets[comm_local_->rank()];
                     std::memcpy(f_pw_local_.at<CPU>(), f_pw_fft_.at<CPU>(offset), count * sizeof(double_complex));
                     break;
                 }
