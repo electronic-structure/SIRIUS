@@ -133,8 +133,7 @@ class Periodic_function: public Smooth_periodic_function<T>
         /// allocated memory for plane wave expansion coefficients
         void allocate_pw()
         {
-            if (is_f_pw_allocated_)
-            {
+            if (is_f_pw_allocated_) {
                 return;
             }
 
