@@ -63,11 +63,10 @@ class Hloc_operator
         /** This is used internally to benchmark and profile the Hloc kernel */
         Hloc_operator(FFT3D& fft__,
                       Gvec_partition const& gkvec__,
-                      Communicator const& comm_col__,
                       std::vector<double> veff__)
-            : fft_(fft__),
-              gkvec_(gkvec__),
-              comm_col_(comm_col__)
+            : fft_(fft__)
+            , gkvec_(gkvec__)
+            , comm_col_(gkvec__.gvec().comm_ortho_fft())
         {
             pw_ekin_ = mdarray<double, 1>(gkvec_.gvec_count_fft(), memory_t::host, "pw_ekin_");
             pw_ekin_.zero();
@@ -95,24 +94,22 @@ class Hloc_operator
             #endif
         }
 
-        /** \param [in] fft FFT driver for the coarse grid used to apply effective field.
-         *  \param [in] gkvec Partitioning of G-vectors for the FFT.
-         *  \param [in] comm_col Column communicator to swap wave-functions.
-         *  \param [in] num_mag_dims Number of magnetic dimensions.
-         *  \param [in] gvec_coarse G-vectors of the coarse FFT grid.
-         *  \param [in] effective_potential \f$ V_{eff}({\bf r}) \f$ on the fine real-space mesh.
-         *  \param [in] effective_magnetic_field \f$ {\bf B}_{eff}({\bf r}) \f$ on the fine real-space mesh.
+        /** \param [in] fft                      FFT driver for the coarse grid used to apply effective field.
+         *  \param [in] gkvec                    Partitioning of G-vectors for the FFT.
+         *  \param [in] num_mag_dims             Number of magnetic dimensions.
+         *  \param [in] gvec_coarse              G-vectors of the coarse FFT grid.
+         *  \param [in] effective_potential      \f$ V_{eff}({\bf r}) \f$ on the fine real-space grid.
+         *  \param [in] effective_magnetic_field \f$ {\bf B}_{eff}({\bf r}) \f$ on the fine real-space grid.
          */
         Hloc_operator(FFT3D& fft__,
                       Gvec_partition const& gkvec__,
-                      Communicator const& comm_col__,
                       int num_mag_dims__,
                       Gvec const& gvec_coarse__,
                       Periodic_function<double>* effective_potential__,
                       Periodic_function<double>* effective_magnetic_field__[3]) 
-            : fft_(fft__),
-              gkvec_(gkvec__),
-              comm_col_(comm_col__)
+            : fft_(fft__)
+            , gkvec_(gkvec__)
+            , comm_col_(gkvec__.gvec().comm_ortho_fft())
         {
             PROFILE("sirius::Hloc_operator::Hloc_operator");
 
