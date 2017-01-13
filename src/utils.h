@@ -131,7 +131,9 @@ class Utils
         static inline double phi_by_sin_cos(double sinp, double cosp)
         {
             double phi = std::atan2(sinp, cosp);
-            if (phi < 0) phi += twopi;
+            if (phi < 0) {
+                phi += twopi;
+            }
             return phi;
         }
 
@@ -140,7 +142,9 @@ class Utils
             assert(n >= 0);
 
             long double result = 1.0L;
-            for (int i = 1; i <= n; i++) result *= i;
+            for (int i = 1; i <= n; i++) {
+                result *= i;
+            }
             return result;
         }
         
@@ -149,7 +153,9 @@ class Utils
         static uint64_t hash(void const* buff, size_t size, uint64_t h = 5381)
         {
             unsigned char const* p = static_cast<unsigned char const*>(buff);
-            for(size_t i = 0; i < size; i++) h = ((h << 5) + h) + p[i];
+            for(size_t i = 0; i < size; i++) {
+                h = ((h << 5) + h) + p[i];
+            }
             return h;
         }
 
@@ -333,19 +339,16 @@ class Utils
             double t = 1.0 - std::pow(r / R, 2);
             switch (dm)
             {
-                case 0:
-                {
+                case 0: {
                     return (std::pow(r, p1) * std::pow(t, p2));
                 }
-                case 2:
-                {
+                case 2: {
                     return (-4 * p1 * p2 * std::pow(r, p1) * std::pow(t, p2 - 1) / std::pow(R, 2) +
                             p1 * (p1 - 1) * std::pow(r, p1 - 2) * std::pow(t, p2) + 
                             std::pow(r, p1) * (4 * (p2 - 1) * p2 * std::pow(r, 2) * std::pow(t, p2 - 2) / std::pow(R, 4) - 
                                           2 * p2 * std::pow(t, p2 - 1) / std::pow(R, 2)));
                 }
-                default:
-                {
+                default: {
                     TERMINATE("wrong derivative order");
                     return 0.0;
                 }
@@ -354,86 +357,26 @@ class Utils
 
         static std::vector<int> l_by_lm(int lmax)
         {
-            std::vector<int> l_by_lm__(lmmax(lmax));
+            std::vector<int> v(lmmax(lmax));
             for (int l = 0; l <= lmax; l++) {
                 for (int m = -l; m <= l; m++) {
-                    l_by_lm__[lm_by_l_m(l, m)] = l;
+                    v[lm_by_l_m(l, m)] = l;
                 }
             }
-            return l_by_lm__;
+            return std::move(v);
         }
 
-        static std::pair<vector3d<double>, vector3d<int>> reduce_coordinates(vector3d<double> coord)
+        static std::vector<std::pair<int, int>> l_m_by_lm(int lmax)
         {
-            const double eps{1e-6};
-
-            std::pair<vector3d<double>, vector3d<int>> v; 
-            
-            v.first = coord;
-            for (int i = 0; i < 3; i++) {
-                v.second[i] = (int)floor(v.first[i]);
-                v.first[i] -= v.second[i];
-                if (v.first[i] < -eps || v.first[i] > 1.0 + eps) {
-                    std::stringstream s;
-                    s << "wrong fractional coordinates" << std::endl
-                      << v.first[0] << " " << v.first[1] << " " << v.first[2];
-                    TERMINATE(s);
-                }
-                if (v.first[i] < 0) {
-                    v.first[i] = 0;
-                }
-                if (v.first[i] >= (1 - eps)) {
-                    v.first[i] = 0;
-                    v.second[i] += 1;
-                }
-            }
-            for (int x: {0, 1, 2}) {
-                if (std::abs(coord[x] - (v.first[x] + v.second[x])) > eps) {
-                    std::stringstream s;
-                    s << "wrong coordinate reduction" << std::endl
-                      << "  original coord: " << coord << std::endl
-                      << "  reduced coord: " << v.first << std::endl
-                      << "  T: " << v.second;
-                    TERMINATE(s);
-                }
-            }
-            return v;
-        }
-        
-        /// Find supercell that circumscribes the sphere with a given radius.
-        /** Serach for the translation limits (N1, N2, N3) such that the resulting supercell with the lattice
-         *  vectors a1 * N1, a2 * N2, a3 * N3 fully contains the sphere with a given radius. This is done
-         *  by equating the expressions for the volume of the supercell:
-         *   Volume = |(A1 x A2) * A3| = N1 * N2 * N3 * |(a1 x a2) * a3 | 
-         *   Volume = h * S = 2 * R * |a_i x a_j| * N_i * N_j */
-        static std::array<int, 3> find_translations(double radius__, matrix3d<double> const& lattice_vectors__)
-        {
-            vector3d<double> a0(lattice_vectors__(0, 0), lattice_vectors__(1, 0), lattice_vectors__(2, 0));
-            vector3d<double> a1(lattice_vectors__(0, 1), lattice_vectors__(1, 1), lattice_vectors__(2, 1));
-            vector3d<double> a2(lattice_vectors__(0, 2), lattice_vectors__(1, 2), lattice_vectors__(2, 2));
-
-            double det = std::abs(lattice_vectors__.det());
-
-            vector3d<int> limits;
-
-            limits[0] = static_cast<int>(2 * radius__ * cross(a1, a2).length() / det) + 1;
-            limits[1] = static_cast<int>(2 * radius__ * cross(a0, a2).length() / det) + 1;
-            limits[2] = static_cast<int>(2 * radius__ * cross(a0, a1).length() / det) + 1;
-
-            return {limits[0], limits[1], limits[2]};
-        }
-
-        static std::vector< std::pair<int, int> > l_m_by_lm(int lmax)
-        {
-            std::vector< std::pair<int, int> > l_m(lmmax(lmax));
+            std::vector<std::pair<int, int>> v(lmmax(lmax));
             for (int l = 0; l <= lmax; l++) {
                 for (int m = -l; m <= l; m++) {
                     int lm = lm_by_l_m(l, m);
-                    l_m[lm].first = l;
-                    l_m[lm].second = m;
+                    v[lm].first = l;
+                    v[lm].second = m;
                 }
             }
-            return l_m;
+            return std::move(v);
         }
 
         inline static double round(double a__, int n__)
@@ -449,7 +392,7 @@ class Utils
             return (T(0) < val) - (val < T(0));
         }
 
-        static json serialize_timers()
+        static json serialize_timers() // TODO: here in wrong place; move somewhere else
         {
             json dict;
 
