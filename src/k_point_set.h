@@ -26,7 +26,7 @@
 #define __K_POINT_SET_H__
 
 #include "k_point.h"
-#include "vector3d.hpp"
+#include "geometry3d.hpp"
 
 namespace sirius {
 
@@ -303,7 +303,7 @@ class K_point_set
             for (int ik = 0; ik < num_kpoints(); ik++)
             {
                 // reduce k+q to first BZ: k+q=k"+K; k"=k+q-K
-                std::pair< vector3d<double>, vector3d<int> > vkqr = Utils::reduce_coordinates(kpoints_[ik]->vk() + vq);
+                std::pair< vector3d<double>, vector3d<int> > vkqr = reduce_coordinates(kpoints_[ik]->vk() + vq);
                 
                 if ((kpq[ik].jk = find_kpoint(vkqr.first)) == -1) 
                     TERMINATE("index of reduced k+q point is not found");
