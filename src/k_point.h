@@ -55,8 +55,6 @@ class K_point
         /// List of G-vectors with |G+k| < cutoff.
         Gvec gkvec_;
 
-        std::unique_ptr<Gvec_partition> gkvec_vloc_;
-
         /// First-variational eigen values
         std::vector<double> fv_eigen_values_;
 
@@ -161,13 +159,13 @@ class K_point
         K_point(Simulation_context& ctx__,
                 double* vk__,
                 double weight__)
-            : ctx_(ctx__),
-              unit_cell_(ctx_.unit_cell()),
-              weight_(weight__),
-              spinor_wave_functions_{nullptr, nullptr},
-              comm_(ctx_.blacs_grid().comm()),
-              comm_row_(ctx_.blacs_grid().comm_row()),
-              comm_col_(ctx_.blacs_grid().comm_col())
+            : ctx_(ctx__)
+            , unit_cell_(ctx_.unit_cell())
+            , weight_(weight__)
+            , spinor_wave_functions_{nullptr, nullptr}
+            , comm_(ctx_.blacs_grid().comm())
+            , comm_row_(ctx_.blacs_grid().comm_row())
+            , comm_col_(ctx_.blacs_grid().comm_col())
         {
             PROFILE("sirius::K_point::K_point");
 
@@ -531,11 +529,6 @@ class K_point
         inline Gvec const& gkvec() const
         {
             return gkvec_;
-        }
-
-        inline Gvec_partition const& gkvec_vloc() const
-        {
-            return *gkvec_vloc_;
         }
 
         inline Matching_coefficients const& alm_coeffs_row()
