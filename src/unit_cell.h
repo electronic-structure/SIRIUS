@@ -1142,45 +1142,39 @@ inline void Unit_cell::find_nearest_neighbours(double cluster_radius)
 {
     PROFILE("sirius::Unit_cell::find_nearest_neighbours");
 
-    auto max_frac_coord = Utils::find_translations(cluster_radius, lattice_vectors_);
+    auto max_frac_coord = find_translations(cluster_radius, lattice_vectors_);
    
     nearest_neighbours_.clear();
     nearest_neighbours_.resize(num_atoms());
 
     #pragma omp parallel for default(shared)
-    for (int ia = 0; ia < num_atoms(); ia++)
-    {
-        vector3d<double> iapos = get_cartesian_coordinates(atom(ia).position());
+    for (int ia = 0; ia < num_atoms(); ia++) {
+        auto iapos = get_cartesian_coordinates(atom(ia).position());
         
         std::vector<nearest_neighbour_descriptor> nn;
 
         std::vector< std::pair<double, int> > nn_sort;
 
-        for (int i0 = -max_frac_coord[0]; i0 <= max_frac_coord[0]; i0++)
-        {
-            for (int i1 = -max_frac_coord[1]; i1 <= max_frac_coord[1]; i1++)
-            {
-                for (int i2 = -max_frac_coord[2]; i2 <= max_frac_coord[2]; i2++)
-                {
+        for (int i0 = -max_frac_coord[0]; i0 <= max_frac_coord[0]; i0++) {
+            for (int i1 = -max_frac_coord[1]; i1 <= max_frac_coord[1]; i1++) {
+                for (int i2 = -max_frac_coord[2]; i2 <= max_frac_coord[2]; i2++) {
                     nearest_neighbour_descriptor nnd;
                     nnd.translation[0] = i0;
                     nnd.translation[1] = i1;
                     nnd.translation[2] = i2;
                     
-                    vector3d<double> vt = get_cartesian_coordinates<int>(nnd.translation);
+                    auto vt = get_cartesian_coordinates<int>(nnd.translation);
                     
-                    for (int ja = 0; ja < num_atoms(); ja++)
-                    {
+                    for (int ja = 0; ja < num_atoms(); ja++) {
                         nnd.atom_id = ja;
 
-                        vector3d<double> japos = get_cartesian_coordinates(atom(ja).position());
+                        auto japos = get_cartesian_coordinates(atom(ja).position());
 
                         vector3d<double> v = japos + vt - iapos;
 
                         nnd.distance = v.length();
                         
-                        if (nnd.distance <= cluster_radius)
-                        {
+                        if (nnd.distance <= cluster_radius) {
                             nn.push_back(nnd);
 
                             nn_sort.push_back(std::pair<double, int>(nnd.distance, (int)nn.size() - 1));
@@ -1193,7 +1187,9 @@ inline void Unit_cell::find_nearest_neighbours(double cluster_radius)
         
         std::sort(nn_sort.begin(), nn_sort.end());
         nearest_neighbours_[ia].resize(nn.size());
-        for (int i = 0; i < (int)nn.size(); i++) nearest_neighbours_[ia][i] = nn[nn_sort[i].second];
+        for (int i = 0; i < (int)nn.size(); i++) {
+            nearest_neighbours_[ia][i] = nn[nn_sort[i].second];
+        }
     }
 
     //== if (Platform::mpi_rank() == 0) // TODO: move to a separate task
@@ -1222,7 +1218,7 @@ inline void Unit_cell::find_nearest_neighbours(double cluster_radius)
 inline bool Unit_cell::is_point_in_mt(vector3d<double> vc, int& ja, int& jr, double& dr, double tp[2]) const
 {
     /* reduce coordinates to the primitive unit cell */
-    auto vr = Utils::reduce_coordinates(get_fractional_coordinates(vc));
+    auto vr = reduce_coordinates(get_fractional_coordinates(vc));
 
     for (int ia = 0; ia < num_atoms(); ia++)
     {
