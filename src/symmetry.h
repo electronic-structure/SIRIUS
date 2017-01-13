@@ -29,7 +29,7 @@ extern "C" {
 #include <spglib.h>
 }
 
-#include "matrix3d.hpp"
+#include "geometry3d.hpp"
 #include "constants.h"
 #include "utils.h"
 #include "gvec.hpp"
@@ -333,7 +333,7 @@ inline Symmetry::Symmetry(matrix3d<double>& lattice_vectors__,
             auto t = space_group_symmetry(isym).t;
             /* spatial transform */
             vector3d<double> pos(positions__(0, ia), positions__(1, ia), positions__(2, ia));
-            auto v = Utils::reduce_coordinates(R * pos + t);
+            auto v = reduce_coordinates(R * pos + t);
 
             int ja = -1;
             /* check for equivalent atom */
