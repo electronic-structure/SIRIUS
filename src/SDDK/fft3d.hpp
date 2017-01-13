@@ -26,7 +26,7 @@
 #define __FFT3D_HPP__
 
 #include <fftw3.h>
-#include "vector3d.hpp"
+#include "geometry3d.hpp"
 #include "fft3d_grid.hpp"
 #include "gvec.hpp"
 
