@@ -163,14 +163,25 @@ struct block_data_descriptor
 class Communicator
 {
   private:
+    /// Raw MPI communicator.
     MPI_Comm mpi_comm_{MPI_COMM_NULL};
+    /// True if this class instance is responsible for freeing raw MPI communicator.
     bool need_to_free_;
     /* copy is not allowed */
     Communicator(Communicator const& src__) = delete;
     /* assigment is not allowed */
     Communicator operator=(Communicator const& src__) = delete;
-    /* move assigment is not allowed */
-    Communicator& operator=(Communicator&& src__) = delete;
+    
+    /// Free communicator.
+    void free()
+    {
+        if (need_to_free_ && !(mpi_comm_ == MPI_COMM_NULL  ||
+                               mpi_comm_ == MPI_COMM_WORLD ||
+                               mpi_comm_ == MPI_COMM_SELF)) {
+            CALL_MPI(MPI_Comm_free, (&mpi_comm_));
+            mpi_comm_ = MPI_COMM_NULL;
+        }
+    }
 
   public:
     /// Default constructor.
@@ -186,22 +197,32 @@ class Communicator
     {
     }
 
+    /// Destructor.
     ~Communicator()
     {
-        if (need_to_free_ && !(mpi_comm_ == MPI_COMM_NULL || mpi_comm_ == MPI_COMM_WORLD || mpi_comm_ == MPI_COMM_SELF)) {
-            CALL_MPI(MPI_Comm_free, (&mpi_comm_));
-            mpi_comm_ = MPI_COMM_NULL;
-        }
+        free();
     }
     
     /// Move constructor.
     Communicator(Communicator&& src__)
     {
+        this->free();
         this->mpi_comm_ = src__.mpi_comm_;
         this->need_to_free_ = src__.need_to_free_;
         src__.need_to_free_ = false;
     }
 
+    /// Move assigment operator.
+    Communicator& operator=(Communicator&& src__)
+    {
+        this->free();
+        this->mpi_comm_ = src__.mpi_comm_;
+        this->need_to_free_ = src__.need_to_free_;
+        src__.need_to_free_ = false;
+        return *this;
+    }
+
+    /// MPI initialization.
     static void initialize()
     {
         int provided;
@@ -213,22 +234,26 @@ class Communicator
             printf("Warning! MPI_THREAD_FUNNELED level of thread support is not provided.\n");
         }
     }
-
+    
+    /// MPI shut down.
     static void finalize()
     {
         MPI_Finalize();
     }
-
+    
+    /// Return reference to raw MPI communicator.
     inline MPI_Comm& mpi_comm()
     {
         return mpi_comm_;
     }
 
+    /// Return const reference to raw MPI communicator.
     inline MPI_Comm const& mpi_comm() const
     {
         return mpi_comm_;
     }
-
+    
+    /// Rank of MPI process inside communicator.
     inline int rank() const
     {
         assert(mpi_comm_ != MPI_COMM_NULL);
@@ -237,7 +262,8 @@ class Communicator
         CALL_MPI(MPI_Comm_rank, (mpi_comm_, &r));
         return r;
     }
-
+    
+    /// Rank of MPI process inside communicator with associated Cartesian partitioning.
     inline int cart_rank(std::vector<int> const& coords__) const
     {
         if (mpi_comm_ == MPI_COMM_SELF) {
