@@ -70,15 +70,16 @@ void sddk_create_gvec(ftn_double* vk__,
         lat_vec(x, 1) = b2__[x];
         lat_vec(x, 2) = b3__[x];
     }
+    STOP();
 
-    *gvec_id__ = get_next_free_object_id();
-    sddk_objects[*gvec_id__] = new Gvec({vk__[0], vk__[1], vk__[2]},
-                                        lat_vec,
-                                        *gmax__, 
-                                        *reinterpret_cast<FFT3D_grid*>(sddk_objects[*fft_grid_id__]),
-                                        *num_ranks__,
-                                        comm,
-                                        reduce_gvec);
+    //*gvec_id__ = get_next_free_object_id();
+    //sddk_objects[*gvec_id__] = new Gvec({vk__[0], vk__[1], vk__[2]},
+    //                                    lat_vec,
+    //                                    *gmax__, 
+    //                                    *reinterpret_cast<FFT3D_grid*>(sddk_objects[*fft_grid_id__]),
+    //                                    *num_ranks__,
+    //                                    comm,
+    //                                    reduce_gvec);
 }
 
 /// Delete list of G-vectors.
