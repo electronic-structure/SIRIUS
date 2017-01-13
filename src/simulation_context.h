@@ -1,4 +1,4 @@
-// Copyright (c) 2013-2016 Anton Kozhevnikov, Thomas Schulthess
+// Copyright (c) 2013-2017 Anton Kozhevnikov, Thomas Schulthess
 // All rights reserved.
 // 
 // Redistribution and use in source and binary forms, with or without modification, are permitted provided that 
@@ -59,20 +59,16 @@ class Simulation_context: public Simulation_parameters
 
         /// MPI grid for this simulation.
         std::unique_ptr<MPI_grid> mpi_grid_;
-        
-        /// 2D MPI grid for the FFT driver.
-        std::unique_ptr<MPI_grid> mpi_grid_fft_;
-
-        /// 2D MPI grid for the FFT driver of the Hloc operation.
-        std::unique_ptr<MPI_grid> mpi_grid_fft_vloc_;
 
         /// 2D BLACS grid for distributed linear algebra operations.
         std::unique_ptr<BLACS_grid> blacs_grid_;
 
         /// Fine-grained FFT for density and potential.
+        /** This is the FFT driver to transform periodic functions such as density and potential on the fine-grained 
+         *  FFT grid. The transformation is parallel. */
         std::unique_ptr<FFT3D> fft_;
         
-        /// Coarse-grained FFT for application of Vloc and density summation.
+        /// Coarse-grained FFT for application of local potential and density summation.
         std::unique_ptr<FFT3D> fft_coarse_;
 
         /// Step function is used in full-potential methods.
@@ -204,16 +200,6 @@ class Simulation_context: public Simulation_parameters
             return gvec_coarse_;
         }
 
-        MPI_grid const& mpi_grid_fft() const
-        {
-            return *mpi_grid_fft_;
-        }
-
-        MPI_grid const& mpi_grid_fft_vloc() const
-        {
-            return *mpi_grid_fft_vloc_;
-        }
-
         BLACS_grid const& blacs_grid() const
         {
             return *blacs_grid_;
@@ -239,11 +225,21 @@ class Simulation_context: public Simulation_parameters
             return mpi_grid_->communicator(1 << 0 | 1 << 1);
         }
         
-        /// Communicator which is orthogonal to the FFT communicator.
-        /** This communicator is used to sum the density and parallelize the XC calculation on the regualar FFT grid. */
-        Communicator const& comm_ortho_fft() const
+        /// Communicator of the dense FFT grid.
+        Communicator const& comm_fft() const
         {
-            return mpi_grid_->communicator(1 << 1 | 1 << 2);
+            /* 1st dimension of MPI grid is used */
+            return mpi_grid_->communicator(1 << 0);
+        }
+
+        /// Communicator of the coarse FFT grid.
+        Communicator const& comm_fft_coarse() const
+        {
+            if (control_input_section_.fft_mode_ == "serial") {
+                return mpi_comm_self();
+            } else {
+                return comm_fft();
+            }
         }
 
         inline int num_fv_states() const
@@ -394,6 +390,7 @@ class Simulation_context: public Simulation_parameters
             return beta_radial_integrals_;
         }
 
+        /// Return pointer to already allocated temporary memory buffer.
         inline void* memory_buffer(size_t size__)
         {
             if (memory_buffer_.size() < size__) {
@@ -407,8 +404,6 @@ inline void Simulation_context::init_fft()
 {
     auto rlv = unit_cell_.reciprocal_lattice_vectors();
 
-    auto& comm = comm_band();
-
     int npr = control_input_section_.mpi_grid_dims_[0];
     int npc = control_input_section_.mpi_grid_dims_[1];
 
@@ -416,36 +411,20 @@ inline void Simulation_context::init_fft()
         TERMINATE("wrong FFT mode");
     }
 
-    mpi_grid_fft_ = std::unique_ptr<MPI_grid>(new MPI_grid({npr, npc}, comm));
-
-    if (control_input_section_.fft_mode_ == "serial") {
-        /* serial FFT in Hloc */
-        mpi_grid_fft_vloc_ = std::unique_ptr<MPI_grid>(new MPI_grid({1, comm.size()}, comm));
-    } else {
-        /* parallel FFT in Hloc */
-        mpi_grid_fft_vloc_ = std::unique_ptr<MPI_grid>(new MPI_grid({npr, npc}, comm));
-    }
-
     /* create FFT driver for dense mesh (density and potential) */
-    fft_ = std::unique_ptr<FFT3D>(new FFT3D(Utils::find_translations(pw_cutoff(), rlv),
-                                            mpi_grid_fft_->communicator(1 << 0),
-                                            processing_unit(), 0.9));
+    fft_ = std::unique_ptr<FFT3D>(new FFT3D(find_translations(pw_cutoff(), rlv), comm_fft(), processing_unit(), 0.9)); 
 
-    /* create a list of G-vectors for dense FFT grid */
-    /* G-vectors are divided between all available MPI ranks (comm_.size()) */
-    gvec_ = Gvec({0, 0, 0}, rlv, pw_cutoff(), fft_->grid(),
-                 comm_.size(), fft_->comm(), control_input_section_.reduce_gvec_);
+    /* create a list of G-vectors for dense FFT grid; G-vectors are divided between all available MPI ranks.*/
+    gvec_ = Gvec(rlv, pw_cutoff(), comm(), comm_fft(), control_input_section_.reduce_gvec_);
 
     //double gpu_workload = (mpi_grid_fft_vloc_->communicator(1 << 0).size() == 1) ? 1.0 : 0.9;
-    double gpu_workload = (mpi_grid_fft_vloc_->communicator().size() == 1) ? 1.0 : 0.9;
+    double gpu_workload = (comm_fft_coarse().size() == 1) ? 1.0 : 0.9;
     /* create FFT driver for coarse mesh */
-    fft_coarse_ = std::unique_ptr<FFT3D>(new FFT3D(Utils::find_translations(2 * gk_cutoff(), rlv),
-                                                   mpi_grid_fft_vloc_->communicator(1 << 0),
+    fft_coarse_ = std::unique_ptr<FFT3D>(new FFT3D(find_translations(2 * gk_cutoff(), rlv), comm_fft_coarse(),
                                                    processing_unit(), gpu_workload));
 
     /* create a list of G-vectors for corase FFT grid */
-    gvec_coarse_ = Gvec({0, 0, 0}, rlv, gk_cutoff() * 2, fft_coarse_->grid(),
-                        comm_.size(), fft_coarse_->comm(), control_input_section_.reduce_gvec_);
+    gvec_coarse_ = Gvec(rlv, gk_cutoff() * 2, comm(), comm_fft_coarse(), control_input_section_.reduce_gvec_);
 }
 
 inline void Simulation_context::initialize()
@@ -504,7 +483,7 @@ inline void Simulation_context::initialize()
     
     /* setup BLACS grid */
     blacs_grid_ = std::unique_ptr<BLACS_grid>(new BLACS_grid(comm_band(), npr, npc));
-    
+
     /* can't use reduced G-vectors in LAPW code */
     if (full_potential()) {
         control_input_section_.reduce_gvec_ = false;
@@ -538,12 +517,6 @@ inline void Simulation_context::initialize()
         MEMORY_USAGE_INFO();
     }
 
-    //if (comm_.rank() == 0)
-    //{
-    //    unit_cell_.write_cif();
-    //    unit_cell_.write_json();
-    //}
-
     if (unit_cell_.num_atoms() != 0) {
         unit_cell_.symmetry().check_gvec_symmetry(gvec_, comm_);
         if (!full_potential()) {
@@ -554,7 +527,7 @@ inline void Simulation_context::initialize()
     auto& fft_grid = fft().grid();
     std::pair<int, int> limits(0, 0);
     for (int x: {0, 1, 2}) {
-        limits.first = std::min(limits.first, fft_grid.limits(x).first); 
+        limits.first  = std::min(limits.first,  fft_grid.limits(x).first); 
         limits.second = std::max(limits.second, fft_grid.limits(x).second); 
     }
 
@@ -574,13 +547,6 @@ inline void Simulation_context::initialize()
         step_function_ = std::unique_ptr<Step_function>(new Step_function(unit_cell_, fft_.get(), gvec_, comm_));
     }
 
-    if (iterative_solver_input_section().real_space_prj_) {
-        STOP();
-        //real_space_prj_ = new Real_space_prj(unit_cell_, comm_, iterative_solver_input_section().R_mask_scale_,
-        //                                     iterative_solver_input_section().mask_alpha_,
-        //                                     gk_cutoff(), num_fft_streams(), num_fft_workers());
-    }
-
     /* take 10% of empty non-magnetic states */
     if (num_fv_states_ < 0) {
         num_fv_states_ = static_cast<int>(1e-8 + unit_cell_.num_valence_electrons() / 2.0) +
@@ -592,7 +558,8 @@ inline void Simulation_context::initialize()
         s << "not enough first-variational states : " << num_fv_states();
         TERMINATE(s);
     }
-
+    
+    /* setup the cyclic block size */
     if (cyclic_block_size() < 0) {
         double a = std::min(std::log2(double(num_fv_states_) / blacs_grid_->num_ranks_col()),
                             std::log2(double(num_fv_states_) / blacs_grid_->num_ranks_row()));
@@ -728,12 +695,11 @@ inline void Simulation_context::print_info()
     }
     printf("\n");
     printf("maximum number of OMP threads : %i\n", omp_get_max_threads());
-    printf("number of independent FFTs    : %i\n", mpi_grid_fft_->dimension_size(1));
-    printf("FFT comm size                 : %i\n", mpi_grid_fft_->dimension_size(0));
 
     printf("\n");
     printf("FFT context for density and potential\n");
     printf("=====================================\n");
+    printf("  comm size                             : %i\n", comm_fft().size());
     printf("  plane wave cutoff                     : %f\n", pw_cutoff());
     auto fft_grid = fft_->grid();
     printf("  grid size                             : %i %i %i   total : %i\n", fft_grid.size(0),
@@ -752,6 +718,7 @@ inline void Simulation_context::print_info()
     printf("\n");
     printf("FFT context for coarse grid\n");
     printf("===========================\n");
+    printf("  comm size                             : %i\n", comm_fft_coarse().size());
     printf("  plane wave cutoff                     : %f\n", 2 * gk_cutoff());
     fft_grid = fft_coarse_->grid();
     printf("  grid size                             : %i %i %i   total : %i\n", fft_grid.size(0),
