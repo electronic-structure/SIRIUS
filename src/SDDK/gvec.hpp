@@ -585,6 +585,11 @@ class Gvec
         return vk_;
     }
 
+    Communicator const& comm() const
+    {
+        return *comm_;
+    }
+
     Communicator const& comm_ortho_fft() const
     {
         return comm_ortho_fft_;
