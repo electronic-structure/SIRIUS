@@ -373,7 +373,7 @@ class Density
             rho_ = new Periodic_function<double>(ctx_, ctx_.lmmax_rho(), 1);
 
             rho_coarse_ = std::unique_ptr<experimental::Smooth_periodic_function<double>>(
-                new experimental::Smooth_periodic_function<double>(ctx_.fft_coarse(), ctx_.gvec_coarse(), ctx_.comm())
+                new experimental::Smooth_periodic_function<double>(ctx_.fft_coarse(), ctx_.gvec_coarse())
             );
 
             /* core density of the pseudopotential method */
