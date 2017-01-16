@@ -167,7 +167,10 @@ class K_point_set
         ~K_point_set()
         {
             PROFILE("sirius::K_point_set::~K_point_set");
-            clear();
+            for (size_t ik = 0; ik < kpoints_.size(); ik++) {
+                delete kpoints_[ik];
+            }
+            kpoints_.clear();
         }
         
         /// Initialize the k-point set
@@ -238,15 +241,6 @@ class K_point_set
             return kpoints_[i];
         }
 
-        void clear()
-        {
-            PROFILE("sirius::K_point_set::clear");
-            for (size_t ik = 0; ik < kpoints_.size(); ik++) {
-                delete kpoints_[ik];
-            }
-            kpoints_.clear();
-        }
-        
         inline int num_kpoints() const
         {
             return static_cast<int>(kpoints_.size());
@@ -288,31 +282,35 @@ class K_point_set
         }
 
         /// Find index of k-point.
-        inline int find_kpoint(vector3d<double> vk)
+        inline int find_kpoint(vector3d<double> vk__)
         {
-            for (int ik = 0; ik < num_kpoints(); ik++) 
-            {
-                if ((kpoints_[ik]->vk() - vk).length() < 1e-12) return ik;
+            for (int ik = 0; ik < num_kpoints(); ik++) {
+                if ((kpoints_[ik]->vk() - vk__).length() < 1e-12) {
+                    return ik;
+                }
             }
             return -1;
         }
 
-        void generate_Gq_matrix_elements(vector3d<double> vq)
+        //void generate_Gq_matrix_elements(vector3d<double> vq)
+        //{
+        //    std::vector<kq> kpq(num_kpoints());
+        //    for (int ik = 0; ik < num_kpoints(); ik++)
+        //    {
+        //        // reduce k+q to first BZ: k+q=k"+K; k"=k+q-K
+        //        std::pair< vector3d<double>, vector3d<int> > vkqr = reduce_coordinates(kpoints_[ik]->vk() + vq);
+        //        
+        //        if ((kpq[ik].jk = find_kpoint(vkqr.first)) == -1) 
+        //            TERMINATE("index of reduced k+q point is not found");
+
+        //        kpq[ik].K = vkqr.second;
+        //    }
+        //}
+
+        inline K_point* k_point(int ik)
         {
-            std::vector<kq> kpq(num_kpoints());
-            for (int ik = 0; ik < num_kpoints(); ik++)
-            {
-                // reduce k+q to first BZ: k+q=k"+K; k"=k+q-K
-                std::pair< vector3d<double>, vector3d<int> > vkqr = reduce_coordinates(kpoints_[ik]->vk() + vq);
-                
-                if ((kpq[ik].jk = find_kpoint(vkqr.first)) == -1) 
-                    TERMINATE("index of reduced k+q point is not found");
-
-                kpq[ik].K = vkqr.second;
-            }
+            return kpoints_[ik];
         }
-
-        inline K_point* k_point(int ik) {return kpoints_[ik];}
 
         inline Communicator const& comm() const
         {
