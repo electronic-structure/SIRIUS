@@ -715,7 +715,7 @@ void sirius_generate_initial_density()
 
 void sirius_generate_effective_potential()
 {
-    dft_ground_state->generate_effective_potential();
+    potential->generate(*density);
 }
 
 void sirius_initialize_subspace(ftn_int* kset_id__)
@@ -1582,10 +1582,8 @@ void sirius_generate_xc_potential(ftn_double* vxcmt__,
 void sirius_generate_coulomb_potential(ftn_double* vclmt__,
                                        ftn_double* vclit__)
 {
-    sim_ctx->fft().prepare(sim_ctx->gvec().partition());
     density->rho()->fft_transform(-1);
     potential->poisson(density->rho(), potential->hartree_potential());
-    sim_ctx->fft().dismiss();
     potential->hartree_potential()->copy_to_global_ptr(vclmt__, vclit__);
 }
 
@@ -2025,10 +2023,10 @@ void sirius_test_spinor_wave_functions(int32_t* kset_id)
     }
 }
 
-void sirius_generate_gq_matrix_elements(int32_t* kset_id, double* vq)
-{
-     kset_list[*kset_id]->generate_Gq_matrix_elements(vector3d<double>(vq[0], vq[1], vq[2]));
-}
+//void sirius_generate_gq_matrix_elements(int32_t* kset_id, double* vq)
+//{
+//     kset_list[*kset_id]->generate_Gq_matrix_elements(vector3d<double>(vq[0], vq[1], vq[2]));
+//}
 
 void sirius_density_mixer_initialize(void)
 {
@@ -2272,9 +2270,7 @@ void sirius_set_rho_pw(ftn_int*            num_gvec__,
     Communicator comm(MPI_Comm_f2c(*fcomm__));
     comm.allreduce(&density->rho()->f_pw(0), sim_ctx->gvec().num_gvec());
     
-    sim_ctx->fft().prepare(sim_ctx->gvec().partition());
     density->rho()->fft_transform(1);
-    sim_ctx->fft().dismiss();
 }
 
 void sirius_get_gvec_index(int32_t* gvec__, int32_t* ig__)
@@ -2891,7 +2887,7 @@ void sirius_reduce_coordinates(ftn_double* coord__,
                                ftn_int* T__)
 {
     vector3d<double> coord(coord__[0], coord__[1], coord__[2]);
-    auto result = Utils::reduce_coordinates(coord);
+    auto result = reduce_coordinates(coord);
     for (int x: {0, 1, 2}) {
         reduced_coord__[x] = result.first[x];
         T__[x] = result.second[x];
