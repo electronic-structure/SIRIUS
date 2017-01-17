@@ -417,6 +417,9 @@ inline void Simulation_context::init_fft()
     /* create a list of G-vectors for dense FFT grid; G-vectors are divided between all available MPI ranks.*/
     gvec_ = Gvec(rlv, pw_cutoff(), comm(), comm_fft(), control_input_section_.reduce_gvec_);
 
+    /* prepare fine-grained FFT driver for the entire simulation */
+    fft_->prepare(gvec_.partition());
+
     //double gpu_workload = (mpi_grid_fft_vloc_->communicator(1 << 0).size() == 1) ? 1.0 : 0.9;
     double gpu_workload = (comm_fft_coarse().size() == 1) ? 1.0 : 0.9;
     /* create FFT driver for coarse mesh */
