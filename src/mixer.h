@@ -423,8 +423,6 @@ class Broyden2: public Mixer<T>
             }
             this->comm_.allreduce(&this->rss_, 1);
 
-            std::cout<<"RSS  ---------- "<<this->rss_<<std::endl;
-
             /* exit if the vector has converged */
             if (this->rss_ < 1e-11) return 0.0;
 
