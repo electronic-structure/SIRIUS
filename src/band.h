@@ -1,4 +1,4 @@
-// Copyright (c) 2013-2016 Anton Kozhevnikov, Thomas Schulthess
+// Copyright (c) 2013-2017 Anton Kozhevnikov, Thomas Schulthess
 // All rights reserved.
 // 
 // Redistribution and use in source and binary forms, with or without modification, are permitted provided that 
@@ -26,12 +26,10 @@
 #define __BAND_H__
 
 #include "periodic_function.h"
-#include "k_point.h"
-#include "non_local_operator.h"
-#include "hloc_operator.h"
-#include "potential.h"
 #include "k_point_set.h"
-#include "interstitial_operator.h"
+#include "potential.h"
+#include "local_operator.h"
+#include "non_local_operator.h"
 
 namespace sirius
 {
@@ -62,6 +60,8 @@ class Band
 
         /// Interface to a generalized eigen-value solver.
         std::unique_ptr<Eigenproblem> gen_evp_solver_;
+
+        std::unique_ptr<Local_operator> local_op_;
 
         /// Apply effective magentic field to the first-variational state.
         /** Must be called first because hpsi is overwritten with B|fv_j>. */
@@ -115,27 +115,22 @@ class Band
         inline void diag_fv_full_potential_exact(K_point* kp__,
                                                  Potential const& potential__) const;
         
-        inline void diag_fv_full_potential_davidson(K_point* kp__,
-                                                    Periodic_function<double>* effective_potential__,
-                                                    Interstitial_operator& istl_op__) const;
+        inline void diag_fv_full_potential_davidson(K_point* kp__) const;
 
         inline void apply_fv_o(K_point* kp__,
                                bool apw_only__,
                                bool add_o1__,
-                               Interstitial_operator& istl_op__, 
                                int N__,
                                int n__,
                                wave_functions& phi__,
                                wave_functions& ophi__) const;
         
-        inline void get_singular_components(K_point* kp__,
-                                            Interstitial_operator& istl_op__) const;
+        inline void get_singular_components(K_point* kp__) const;
 
         /// Exact (not iterative) diagonalization of the Hamiltonian.
         template <typename T>
         inline void diag_pseudo_potential_exact(K_point* kp__,
                                                 int ispn__,
-                                                Hloc_operator& h_op__,
                                                 D_operator<T>& d_op__,
                                                 Q_operator<T>& q_op__) const;
 
@@ -143,21 +138,18 @@ class Band
         template <typename T>
         inline void diag_pseudo_potential_davidson(K_point* kp__,
                                                    int ispn__,
-                                                   Hloc_operator& h_op__,
                                                    D_operator<T>& d_op__,
                                                    Q_operator<T>& q_op__) const;
         /// RMM-DIIS diagonalization.
         template <typename T>
         inline void diag_pseudo_potential_rmm_diis(K_point* kp__,
                                                    int ispn__,
-                                                   Hloc_operator& h_op__,
                                                    D_operator<T>& d_op__,
                                                    Q_operator<T>& q_op__) const;
 
         template <typename T>
         inline void diag_pseudo_potential_chebyshev(K_point* kp__,
                                                     int ispn__,
-                                                    Hloc_operator& h_op__,
                                                     D_operator<T>& d_op__,
                                                     Q_operator<T>& q_op__,
                                                     P_operator<T>& p_op__) const;
@@ -169,7 +161,6 @@ class Band
                             int n__,
                             wave_functions& phi__,
                             wave_functions& hphi__,
-                            Hloc_operator &h_op,
                             D_operator<T>& d_op) const;
 
         template <typename T>
@@ -180,10 +171,10 @@ class Band
                        wave_functions& phi__,
                        wave_functions& hphi__,
                        wave_functions& ophi__,
-                       Hloc_operator &h_op,
                        D_operator<T>& d_op,
                        Q_operator<T>& q_op) const;
 
+        /// Auxiliary function used internally by residuals() function.
         inline mdarray<double,1> residuals_aux(K_point* kp__,
                                                int num_bands__,
                                                std::vector<double>& eval__,
@@ -193,6 +184,7 @@ class Band
                                                mdarray<double, 1>& h_diag__,
                                                mdarray<double, 1>& o_diag__) const;
         
+        /// Compute residuals.
         template <typename T>
         inline int residuals(K_point* kp__,
                              int ispn__,
@@ -291,10 +283,7 @@ class Band
             if (itso.type_ == "exact") {
                 diag_fv_full_potential_exact(kp__, potential__);
             } else if (itso.type_ == "davidson") {
-                Interstitial_operator istl_op(ctx_.fft_coarse(), ctx_.gvec_coarse(),
-                                              ctx_.mpi_grid_fft_vloc().communicator(1 << 1),
-                                              const_cast<Potential&>(potential__).effective_potential(), ctx_.step_function());
-                diag_fv_full_potential_davidson(kp__, const_cast<Potential&>(potential__).effective_potential(), istl_op);
+                diag_fv_full_potential_davidson(kp__);
             }
         }
 
@@ -306,9 +295,7 @@ class Band
         {
             PROFILE("sirius::Band::diag_pseudo_potential");
 
-            Hloc_operator hloc(ctx_.fft_coarse(), kp__->gkvec_vloc(), ctx_.mpi_grid_fft_vloc().communicator(1 << 1),
-                               ctx_.num_mag_dims(), ctx_.gvec_coarse(), effective_potential__, effective_magnetic_field__);
-            
+            local_op_->prepare(kp__->gkvec());
             ctx_.fft_coarse().prepare(kp__->gkvec().partition());
 
             D_operator<T> d_op(ctx_, kp__->beta_projectors());
@@ -318,7 +305,7 @@ class Band
             if (itso.type_ == "exact") {
                 if (ctx_.num_mag_dims() != 3) {
                     for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-                        diag_pseudo_potential_exact(kp__, ispn, hloc, d_op, q_op);
+                        diag_pseudo_potential_exact(kp__, ispn, d_op, q_op);
                     }
                 } else {
                     STOP();
@@ -326,7 +313,7 @@ class Band
             } else if (itso.type_ == "davidson") {
                 if (ctx_.num_mag_dims() != 3) {
                     for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-                        diag_pseudo_potential_davidson(kp__, ispn, hloc, d_op, q_op);
+                        diag_pseudo_potential_davidson(kp__, ispn, d_op, q_op);
                     }
                 } else {
                     STOP();
@@ -334,7 +321,7 @@ class Band
             } else if (itso.type_ == "rmm-diis") {
                 if (ctx_.num_mag_dims() != 3) {
                     for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-                        diag_pseudo_potential_rmm_diis(kp__, ispn, hloc, d_op, q_op);
+                        diag_pseudo_potential_rmm_diis(kp__, ispn, d_op, q_op);
                     }
                 } else {
                     STOP();
@@ -343,7 +330,7 @@ class Band
                 P_operator<T> p_op(ctx_, kp__->beta_projectors(), kp__->p_mtrx());
                 if (ctx_.num_mag_dims() != 3) {
                     for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-                        diag_pseudo_potential_chebyshev(kp__, ispn, hloc, d_op, q_op, p_op);
+                        diag_pseudo_potential_chebyshev(kp__, ispn, d_op, q_op, p_op);
 
                     }
                 } else {
@@ -360,9 +347,9 @@ class Band
         
         /// Constructor
         Band(Simulation_context& ctx__)
-            : ctx_(ctx__),
-              unit_cell_(ctx__.unit_cell()),
-              blacs_grid_(ctx__.blacs_grid())
+            : ctx_(ctx__)
+            , unit_cell_(ctx__.unit_cell())
+            , blacs_grid_(ctx__.blacs_grid())
         {
             PROFILE("sirius::Band::Band");
 
@@ -464,6 +451,8 @@ class Band
             if (!std_evp_solver_->parallel() && blacs_grid_.comm().size() > 1) {
                 TERMINATE("eigen-value solvers must be parallel");
             }
+
+            local_op_ = std::unique_ptr<Local_operator>(new Local_operator(ctx_.fft_coarse()));
         }
 
         /// Apply the muffin-tin part of the Hamiltonian to the apw basis functions of an atom.
@@ -725,7 +714,6 @@ class Band
          *  \f]
          */
         inline void apply_fv_h_o(K_point* kp__,
-                                 Interstitial_operator& istl_op__,
                                  int nlo,
                                  int N,
                                  int n,
@@ -733,14 +721,11 @@ class Band
                                  wave_functions& hphi__,
                                  wave_functions& ophi__) const;
 
-        /// Solve first-variational (non-magnetic) problem
-        inline void solve_fv(K_point* kp__,
-                             Potential const& potential__) const;
-
-        /// Solve second-variational problem
+        /// Solve second-variational problem.
         inline void solve_sv(K_point* kp,
                              Periodic_function<double>* effective_magnetic_field[3]) const;
-
+        
+        /// Diagonalization of the full Hamiltonian (without second variation).
         inline void solve_fd(K_point* kp,
                              Periodic_function<double>* effective_potential, 
                              Periodic_function<double>* effective_magnetic_field[3]) const;

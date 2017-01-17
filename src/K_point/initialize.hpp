@@ -129,7 +129,7 @@ inline void K_point::initialize()
         if (use_second_variation) {
             /* allocate fv eien vectors */
             fv_eigen_vectors_slab_ = std::unique_ptr<wave_functions>(
-                new wave_functions(ctx_.processing_unit(), comm(), gkvec(), unit_cell_.num_atoms(),
+                new wave_functions(ctx_.processing_unit(), gkvec(), unit_cell_.num_atoms(),
                     [this](int ia){return unit_cell_.atom(ia).mt_lo_basis_size();}, ctx_.num_fv_states()));
 
             fv_eigen_vectors_slab_->pw_coeffs().prime().zero();
@@ -157,7 +157,7 @@ inline void K_point::initialize()
                     ncomp = ctx_.num_fv_states();
                 }
 
-                singular_components_ = std::unique_ptr<wave_functions>(new wave_functions(ctx_.processing_unit(), comm(), gkvec(), ncomp));
+                singular_components_ = std::unique_ptr<wave_functions>(new wave_functions(ctx_.processing_unit(), gkvec(), ncomp));
                 singular_components_->pw_coeffs().prime().zero();
                 /* starting guess for wave-functions */
                 for (int i = 0; i < ncomp; i++) {
@@ -178,7 +178,6 @@ inline void K_point::initialize()
             }
 
             fv_states_ = std::unique_ptr<wave_functions>(new wave_functions(ctx_.processing_unit(),
-                                                                            comm(),
                                                                             gkvec(),
                                                                             unit_cell_.num_atoms(),
                                                                             [this](int ia)
@@ -189,7 +188,6 @@ inline void K_point::initialize()
 
             for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
                 spinor_wave_functions_[ispn] = std::unique_ptr<wave_functions>(new wave_functions(ctx_.processing_unit(),
-                                                                                                  comm(),
                                                                                                   gkvec(),
                                                                                                   unit_cell_.num_atoms(),
                                                                                                   [this](int ia)
@@ -205,7 +203,7 @@ inline void K_point::initialize()
         assert(ctx_.num_fv_states() < num_gkvec());
 
         for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-            spinor_wave_functions_[ispn] = std::unique_ptr<wave_functions>(new wave_functions(ctx_.processing_unit(), comm(), gkvec(), nst));
+            spinor_wave_functions_[ispn] = std::unique_ptr<wave_functions>(new wave_functions(ctx_.processing_unit(), gkvec(), nst));
         }
     }
 }

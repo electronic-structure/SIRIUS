@@ -168,27 +168,31 @@ class Density
         /** In the case of full-potential calculation this is the full (valence + core) electron charge density.
          *  In the case of pseudopotential this is the valence charge density. */ 
         Periodic_function<double>* rho_;
-
-        std::unique_ptr<experimental::Smooth_periodic_function<double>> rho_coarse_;
+        
+        /// Density and magnetization on the coarse FFT mesh.
+        /** Coarse FFT grid is enough to generate density and magnetization from the wave-functions. The components
+         *  of the <tt>rho_mag_coarse</tt> vector have the following order:
+         *  \f$ \{\rho({\bf r}), m_z({\bf r}), m_x({\bf r}), m_y({\bf r}) \} \f$. */
+        std::array<std::unique_ptr<experimental::Smooth_periodic_function<double>>, 4> rho_mag_coarse_;
 
         /// Pointer to pseudo core charge density
         /** In the case of pseudopotential we need to know the non-linear core correction to the 
          *  exchange-correlation energy which is introduced trough the pseudo core density: 
          *  \f$ E_{xc}[\rho_{val} + \rho_{core}] \f$. The 'pseudo' reflects the fact that 
          *  this density integrated does not reproduce the total number of core elctrons. */
-        Periodic_function<double>* rho_pseudo_core_;
+        Periodic_function<double>* rho_pseudo_core_{nullptr};
         
         Periodic_function<double>* magnetization_[3];
         
         /// Non-zero Gaunt coefficients.
-        std::unique_ptr< Gaunt_coefficients<double_complex> > gaunt_coefs_;
+        std::unique_ptr<Gaunt_coefficients<double_complex>> gaunt_coefs_{nullptr};
         
         /// Fast mapping between composite lm index and corresponding orbital quantum number.
         std::vector<int> l_by_lm_;
 
-        Mixer<double_complex>* high_freq_mixer_;
-        Mixer<double_complex>* low_freq_mixer_;
-        Mixer<double>* mixer_;
+        Mixer<double_complex>* high_freq_mixer_{nullptr};
+        Mixer<double_complex>* low_freq_mixer_{nullptr};
+        Mixer<double>* mixer_{nullptr};
 
         std::vector<int> lf_gvec_;
         std::vector<int> hf_gvec_;
@@ -327,7 +331,7 @@ class Density
         inline void add_k_point_contribution_rg(K_point* kp__);
 
         /// Generate valence density in the muffin-tins 
-        void generate_valence_density_mt(K_point_set& ks);
+        void generate_valence_mt(K_point_set& ks);
         
         /// Generate charge density of core states
         void generate_core_charge_density()
@@ -352,29 +356,22 @@ class Density
             rho_pseudo_core_radial_integrals_ = generate_rho_radial_integrals(2);
 
             std::vector<double_complex> v = unit_cell_.make_periodic_function(rho_pseudo_core_radial_integrals_, ctx_.gvec());
-            ctx_.fft().prepare(ctx_.gvec().partition());
             ctx_.fft().transform<1>(ctx_.gvec().partition(), &v[ctx_.gvec().partition().gvec_offset_fft()]);
             ctx_.fft().output(&rho_pseudo_core_->f_rg(0));
-            ctx_.fft().dismiss();
         }
 
     public:
 
         /// Constructor
         Density(Simulation_context& ctx__)
-            : ctx_(ctx__),
-              unit_cell_(ctx_.unit_cell()),
-              rho_pseudo_core_(nullptr),
-              gaunt_coefs_(nullptr),
-              high_freq_mixer_(nullptr),
-              low_freq_mixer_(nullptr),
-              mixer_(nullptr)
+            : ctx_(ctx__)
+            , unit_cell_(ctx_.unit_cell())
         {
             rho_ = new Periodic_function<double>(ctx_, ctx_.lmmax_rho(), 1);
 
-            rho_coarse_ = std::unique_ptr<experimental::Smooth_periodic_function<double>>(
-                new experimental::Smooth_periodic_function<double>(ctx_.fft_coarse(), ctx_.gvec_coarse())
-            );
+            for (int i = 0; i < ctx_.num_mag_dims() + 1; i++) {
+                rho_mag_coarse_[i] = std::unique_ptr<experimental::Smooth_periodic_function<double>>(new experimental::Smooth_periodic_function<double>(ctx_.fft_coarse(), ctx_.gvec_coarse()));
+            }
 
             /* core density of the pseudopotential method */
             if (!ctx_.full_potential()) {
@@ -384,8 +381,9 @@ class Density
                 generate_pseudo_core_charge_density();
             }
 
-            for (int i = 0; i < ctx_.num_mag_dims(); i++)
+            for (int i = 0; i < ctx_.num_mag_dims(); i++) {
                 magnetization_[i] = new Periodic_function<double>(ctx_, ctx_.lmmax_rho(), 1);
+            }
             
             using gc_z = Gaunt_coefficients<double_complex>;
 
@@ -608,19 +606,69 @@ class Density
 
         void initial_density_full_pot();
 
+        /// Check total density for the correct number of electrons.
+        inline void check_num_electrons()
+        {
+            double nel{0};
+            if (ctx_.full_potential()) {
+                std::vector<double> nel_mt;
+                double nel_it;
+                nel = rho_->integrate(nel_mt, nel_it);
+            } else {
+                nel = rho_->f_pw(0).real() * unit_cell_.omega();
+            }
+            
+            /* check the number of electrons */
+            if (std::abs(nel - unit_cell_.num_electrons()) > 1e-5) {
+                std::stringstream s;
+                s << "wrong number of electrons" << std::endl
+                  << "  obtained value : " << nel << std::endl 
+                  << "  target value : " << unit_cell_.num_electrons() << std::endl
+                  << "  difference : " << fabs(nel - unit_cell_.num_electrons()) << std::endl;
+                if (ctx_.full_potential()) {
+                    s << "  total core leakage : " << core_leakage();
+                    for (int ic = 0; ic < unit_cell_.num_atom_symmetry_classes(); ic++) {
+                        s << std::endl << "    atom class : " << ic << ", core leakage : " << core_leakage(ic);
+                    }
+                }
+                WARNING(s);
+            }
+        }
+
         /// Generate full charge density (valence + core) and magnetization from the wave functions.
         /** This function calls generate_valence() and then in case of full-potential LAPW method adds a core density
          *  to get the full charge density of the system. */
-        inline void generate(K_point_set& ks__);
+        inline void generate(K_point_set& ks__)
+        {
+            PROFILE("sirius::Density::generate");
+
+            generate_valence(ks__);
+
+            if (ctx_.full_potential()) {
+                /* find the core states */
+                generate_core_charge_density();
+                /* add core contribution */
+                for (int ialoc = 0; ialoc < (int)unit_cell_.spl_num_atoms().local_size(); ialoc++) {
+                    int ia = unit_cell_.spl_num_atoms(ialoc);
+                    for (int ir = 0; ir < unit_cell_.atom(ia).num_mt_points(); ir++) {
+                        rho_->f_mt<index_domain_t::local>(0, ir, ialoc) += unit_cell_.atom(ia).symmetry_class().core_charge_density(ir) / y00;
+                    }
+                }
+                /* synchronize muffin-tin part */
+                rho_->sync_mt();
+                for (int j = 0; j < ctx_.num_mag_dims(); j++) {
+                    magnetization_[j]->sync_mt();
+                }
+            }
+        }
 
         /// Generate valence charge density and magnetization from the wave functions.
-        /** In case of pseudopotential method the valence density is generated in the PW domain only. This is due to
-         *  the symmetrization and mixing, which are both done in the PW domain. Mixer will then transform the density
-         *  to the real space grid. In case of full-potential LAPW method density is genenerated both in real-space 
-         *  and PW domains. */
+        /** The interstitial density is generated on the coarse FFT grid and then transformed to the PW domain.
+         *  After symmetrization and mixing and before the generation of the XC potential density is transformted to the
+         *  real-space domain and checked for the number of electrons. */
         inline void generate_valence(K_point_set& ks__);
 
-        /// Add augmentation charge Q(r)
+        /// Add augmentation charge Q(r).
         /** Restore valence density by adding the Q-operator constribution.
          *  The following term is added to the valence density, generated by the pseudo wave-functions:
          *  \f[
@@ -883,6 +931,7 @@ class Density
             double rms;
 
             if (mixer_ != nullptr) {
+                STOP(); // TODO: redesign mixer
                 /* mix in real-space in case of FP-LAPW */
                 mixer_input();
                 rms = mixer_->mix();
@@ -895,12 +944,6 @@ class Density
                 rms = low_freq_mixer_->mix();
                 rms += high_freq_mixer_->mix();
                 mixer_output();
-                ctx_.fft().prepare(ctx_.gvec().partition());
-                rho_->fft_transform(1);
-                for (int j = 0; j < ctx_.num_mag_dims(); j++) {
-                    magnetization_[j]->fft_transform(1);
-                }
-                ctx_.fft().dismiss();
             }
 
             return rms;
@@ -920,15 +963,23 @@ class Density
         {
             return rho_pseudo_core_radial_integrals_;
         }
+
+        inline void fft_transform(int direction__)
+        {
+            rho_->fft_transform(direction__);
+            for (int j = 0; j < ctx_.num_mag_dims(); j++) {
+                magnetization_[j]->fft_transform(direction__);
+            }
+        }
 };
 
 #include "Density/initial_density.hpp"
 #include "Density/add_k_point_contribution_rg.hpp"
 #include "Density/add_k_point_contribution_dm.hpp"
-#include "Density/generate.hpp"
+#include "Density/generate_valence.hpp"
 #include "Density/generate_rho_aug.hpp"
 #include "Density/symmetrize_density_matrix.hpp"
-#include "Density/generate_valence_density_mt.hpp"
+#include "Density/generate_valence_mt.hpp"
 #include "Density/generate_rho_radial_integrals.hpp"
 #include "Density/check_density_continuity_at_mt.hpp"
 #include "Density/paw_density.hpp"

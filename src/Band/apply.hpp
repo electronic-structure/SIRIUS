@@ -8,7 +8,6 @@ void Band::apply_h(K_point* kp__,
                    int n__,
                    wave_functions& phi__,
                    wave_functions& hphi__,
-                   Hloc_operator& h_op,
                    D_operator<T>& d_op) const
 {
     PROFILE("sirius::Band::apply_h");
@@ -82,7 +81,6 @@ void Band::apply_h_o(K_point* kp__,
                      wave_functions& phi__,
                      wave_functions& hphi__,
                      wave_functions& ophi__,
-                     Hloc_operator& h_op,
                      D_operator<T>& d_op,
                      Q_operator<T>& q_op) const
 {
@@ -100,7 +98,7 @@ void Band::apply_h_o(K_point* kp__,
     }
     #endif
     /* apply local part of Hamiltonian */
-    h_op.apply(ispn__, hphi__, N__, n__);
+    local_op_->apply_h(ispn__, hphi__, N__, n__);
     #ifdef __GPU
     /* if we run on GPU, but the FFT driver is CPU-GPU hybrid, the result of h_op is stored on CPU
      * and has to be copied back to GPU */
@@ -152,51 +150,11 @@ void Band::apply_h_o(K_point* kp__,
         DUMP("checksum(ophi): %18.10f %18.10f", cs2.real(), cs2.imag());
     }
     #endif
-
-    //== if (!kp__->gkvec().reduced())
-    //== {
-    //==     // --== DEBUG ==--
-    //==     printf("check in apply_h_o\n");
-    //==     for (int i = N__; i < N__ + n__; i++)
-    //==     {
-    //==         bool f1 = false;
-    //==         bool f2 = false;
-    //==         bool f3 = false;
-    //==         double e1 = 0;
-    //==         double e2 = 0;
-    //==         double e3 = 0;
-    //==         for (int igk = 0; igk < kp__->num_gkvec(); igk++)
-    //==         {
-    //==             auto G = kp__->gkvec()[igk] * (-1);
-    //==             int igk1 = kp__->gkvec().index_by_gvec(G);
-    //==             if (std::abs(phi__(igk, i) - std::conj(phi__(igk1, i))) > 1e-12)
-    //==             {
-    //==                 f1 = true;
-    //==                 e1 = std::max(e1, std::abs(phi__(igk, i) - std::conj(phi__(igk1, i))));
-    //==             }
-    //==             if (std::abs(hphi__(igk, i) - std::conj(hphi__(igk1, i))) > 1e-12)
-    //==             {
-    //==                 f2 = true;
-    //==                 e2 = std::max(e2, std::abs(hphi__(igk, i) - std::conj(hphi__(igk1, i))));
-    //==             }
-    //==             if (std::abs(ophi__(igk, i) - std::conj(ophi__(igk1, i))) > 1e-12)
-    //==             {
-    //==                 f3 = true;
-    //==                 e3 = std::max(e3, std::abs(ophi__(igk, i) - std::conj(ophi__(igk1, i))));
-    //==             }
-    //==         }
-    //==         if (f1) printf("phi[%i] is not real, %20.16f\n", i, e1);
-    //==         if (f2) printf("hphi[%i] is not real, %20.16f\n", i, e2);
-    //==         if (f3) printf("ophi[%i] is not real, %20.16f\n", i, e3);
-    //==     }
-    //==     printf("done.\n");
-    //== }
 }
 
 inline void Band::apply_fv_o(K_point* kp__,
                              bool apw_only__,
                              bool add_o1__,
-                             Interstitial_operator& istl_op__, 
                              int N__,
                              int n__,
                              wave_functions& phi__,
@@ -214,7 +172,7 @@ inline void Band::apply_fv_o(K_point* kp__,
     }
 
     /* interstitial part */
-    istl_op__.apply_o(kp__->gkvec_vloc(), N__, n__, phi__, ophi__);
+    local_op_->apply_o(kp__->gkvec().partition(), N__, n__, phi__, ophi__);
 
     matrix<double_complex> alm(kp__->num_gkvec_loc(), unit_cell_.max_mt_aw_basis_size());
     matrix<double_complex> oalm(kp__->num_gkvec_loc(), unit_cell_.max_mt_aw_basis_size());
@@ -394,17 +352,9 @@ inline void Band::apply_fv_o(K_point* kp__,
         ophi__.mt_coeffs().copy_to_device(N__, n__);
     }
     #endif
-
-    //#ifdef __PRINT_OBJECT_CHECKSUM
-    //{
-    //    auto cs2 = ophi__.checksum(N__, n__);
-    //    DUMP("checksum(ophi): %18.10f %18.10f", cs2.real(), cs2.imag());
-    //}
-    //#endif
 }
 
 inline void Band::apply_fv_h_o(K_point* kp__,
-                               Interstitial_operator& istl_op__, 
                                int nlo__,
                                int N__,
                                int n__,
@@ -436,9 +386,9 @@ inline void Band::apply_fv_h_o(K_point* kp__,
     /* interstitial part */
     if (N__ == 0) {
         /* don't apply to the pure local orbital basis functions */
-        istl_op__.apply(kp__->gkvec_vloc(), nlo__, n__ - nlo__, phi__, hphi__, ophi__);
+        local_op_->apply_h_o(kp__->gkvec().partition(), nlo__, n__ - nlo__, phi__, hphi__, ophi__);
     } else {
-        istl_op__.apply(kp__->gkvec_vloc(), N__, n__, phi__, hphi__, ophi__);
+        local_op_->apply_h_o(kp__->gkvec().partition(), N__, n__, phi__, hphi__, ophi__);
     }
 
     #ifdef __PRINT_OBJECT_CHECKSUM
@@ -720,78 +670,7 @@ inline void Band::apply_magnetic_field(wave_functions& fv_states__,
 
     assert(hpsi__.size() == 2 || hpsi__.size() == 3);
 
-    fv_states__.pw_coeffs().remap_forward(gkvec__.partition().gvec_fft_slab(),
-                                          ctx_.mpi_grid_fft().communicator(1 << 1),
-                                          ctx_.num_fv_states());
-    
-    /* components of H|psi> to with H is applied */
-    std::vector<int> iv(1, 0);
-    if (hpsi__.size() == 3) {
-        iv.push_back(2);
-    }
-    for (int i: iv) {
-        hpsi__[i].pw_coeffs().set_num_extra(gkvec__.partition().gvec_count_fft(),
-                                            ctx_.mpi_grid_fft().communicator(1 << 1),
-                                            ctx_.num_fv_states());
-        assert(fv_states__.pw_coeffs().spl_num_col().local_size() == hpsi__[i].pw_coeffs().spl_num_col().local_size());
-    }
-
-    std::vector<double_complex> psi_r;
-    if (hpsi__.size() == 3) {
-        psi_r.resize(ctx_.fft().local_size());
-    }
-
-    ctx_.fft().prepare(gkvec__.partition());
-
-    for (int i = 0; i < fv_states__.pw_coeffs().spl_num_col().local_size(); i++) {
-        /* transform first-variational state to real space */
-        ctx_.fft().transform<1>(gkvec__.partition(), fv_states__.pw_coeffs().extra().at<CPU>(0, i));
-        /* save for a reuse */
-        if (hpsi__.size() == 3) {
-            STOP(); // fix output of fft driver
-            ctx_.fft().output(&psi_r[0]);
-        }
-        #ifdef __GPU
-        if (ctx_.fft().hybrid()) {
-            ctx_.fft().buffer().copy_to_host();
-        }
-        #endif
-
-        for (int ir = 0; ir < ctx_.fft().local_size(); ir++) {
-            /* hpsi(r) = psi(r) * B_z(r) * Theta(r) */
-            ctx_.fft().buffer(ir) *= (effective_magnetic_field__[0]->f_rg(ir) * ctx_.step_function().theta_r(ir));
-        }
-
-        #ifdef __GPU
-        if (ctx_.fft().hybrid()) {
-            ctx_.fft().buffer().copy_to_device();
-        }
-        #endif
-        ctx_.fft().transform<-1>(gkvec__.partition(), hpsi__[0].pw_coeffs().extra().at<CPU>(0, i));
-
-        if (hpsi__.size() == 3) {
-            for (int ir = 0; ir < ctx_.fft().local_size(); ir++) {
-                /* hpsi(r) = psi(r) * (B_x(r) - iB_y(r)) * Theta(r) */
-                ctx_.fft().buffer(ir) = psi_r[ir] * ctx_.step_function().theta_r(ir) * 
-                                        double_complex(effective_magnetic_field__[1]->f_rg(ir),
-                                                      -effective_magnetic_field__[2]->f_rg(ir));
-            }
-            #ifdef __GPU
-            if (ctx_.fft().hybrid()) {
-                ctx_.fft().buffer().copy_to_device();
-            }
-            #endif
-            ctx_.fft().transform<-1>(gkvec__.partition(), hpsi__[2].pw_coeffs().extra().at<CPU>(0, i));
-        }
-    }
-
-    ctx_.fft().dismiss();
-
-    for (int i: iv) {
-        hpsi__[i].pw_coeffs().remap_backward(gkvec__.partition().gvec_fft_slab(),
-                                             ctx_.mpi_grid_fft().communicator(1 << 1),
-                                             ctx_.num_fv_states());
-    }
+    local_op_->apply_b(gkvec__.partition(), 0, ctx_.num_fv_states(), fv_states__, hpsi__);
 
     mdarray<double_complex, 3> zm(unit_cell_.max_mt_basis_size(), unit_cell_.max_mt_basis_size(), ctx_.num_mag_dims());
 

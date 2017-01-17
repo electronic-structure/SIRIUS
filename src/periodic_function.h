@@ -104,13 +104,13 @@ class Periodic_function: public Smooth_periodic_function<T>
         Periodic_function(Simulation_context& ctx__,
                           int angular_domain_size__,
                           int allocate_pw__)
-            : Smooth_periodic_function<T>(ctx__.fft(), ctx__.gvec()),
-              parameters_(ctx__),
-              unit_cell_(ctx__.unit_cell()), 
-              step_function_(ctx__.step_function()),
-              comm_(ctx__.comm()),
-              gvec_(ctx__.gvec()),
-              angular_domain_size_(angular_domain_size__)
+            : Smooth_periodic_function<T>(ctx__.fft(), ctx__.gvec())
+            , parameters_(ctx__)
+            , unit_cell_(ctx__.unit_cell())
+            , step_function_(ctx__.step_function())
+            , comm_(ctx__.comm())
+            , gvec_(ctx__.gvec())
+            , angular_domain_size_(angular_domain_size__)
         {
             if (allocate_pw__) {
                 is_f_pw_allocated_ = true;
@@ -359,9 +359,7 @@ class Periodic_function: public Smooth_periodic_function<T>
             for (int ig = 0; ig < gvec_.num_gvec() * 2; ig++) {
                 pw[ig] = array__[n++];
             }
-            this->fft_->prepare(gvec_.partition());
             this->fft_transform(1);
-            this->fft_->dismiss();
             //for (int ir = 0; ir < this->fft_->local_size(); ir++) {
             //    this->f_rg_(ir) = array__[n++];
             //}

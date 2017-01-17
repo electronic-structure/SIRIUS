@@ -28,7 +28,6 @@
 #include "periodic_function.h"
 #include "spheric_function.h"
 #include "simulation_context.h"
-
 #include "density.h"
 
 namespace sirius {
@@ -685,12 +684,57 @@ class Potential
                 Periodic_function<double>* exc);
         
         /// Generate effective potential and magnetic field from charge density and magnetization.
-        inline void generate_effective_potential(Periodic_function<double>* rho,
-                                                 Periodic_function<double>* magnetization[3]);
-        
-        inline void generate_effective_potential(Periodic_function<double>* rho,
-                                                 Periodic_function<double>* rho_core, 
-                                                 Periodic_function<double>* magnetization[3]);
+        inline void generate(Density& density__)
+        {
+            PROFILE("sirius::Potential::generate");
+
+            /* zero effective potential and magnetic field */
+            zero();
+
+            /* solve Poisson equation */
+            poisson(density__.rho(), hartree_potential_);
+
+            /* add Hartree potential to the total potential */
+            effective_potential_->add(hartree_potential_);
+
+            if (ctx_.full_potential()) {
+                xc(density__.rho(), density__.magnetization(), xc_potential_, effective_magnetic_field_, xc_energy_density_);
+            } else {
+                /* add local ionic potential to the effective potential */
+                effective_potential_->add(local_potential_);
+                /* create temporary function for rho + rho_core */
+                Periodic_function<double> rhovc(ctx_, 0, 0);
+                rhovc.zero();
+                rhovc.add(density__.rho());
+                rhovc.add(density__.rho_pseudo_core());
+                /* construct XC potentials from rho + rho_core */
+                xc(&rhovc, density__.magnetization(), xc_potential_, effective_magnetic_field_, xc_energy_density_);
+            }
+            /* add XC potential to the effective potential */
+            effective_potential_->add(xc_potential_);
+    
+            if (ctx_.full_potential()) {
+                effective_potential_->sync_mt();
+                for (int j = 0; j < ctx_.num_mag_dims(); j++) {
+                    effective_magnetic_field_[j]->sync_mt();
+                }
+            }
+
+            /* get plane-wave coefficients of effective potential;
+             * they will be used in three places:
+             *  1) compute D-matrix
+             *  2) establish a mapping between fine and coarse FFT grid for the Hloc operator 
+             *  3) symmetrize effective potential */
+            effective_potential_->fft_transform(-1);
+            for (int j = 0; j < ctx_.num_mag_dims(); j++) {
+                effective_magnetic_field_[j]->fft_transform(-1);
+            }
+
+            if (!ctx_.full_potential()) {
+                generate_D_operator_matrix();
+                generate_PAW_effective_potential(density__);
+            }
+        }
 
         inline void save()
         {
@@ -751,7 +795,7 @@ class Potential
         template <device_t pu> 
         void add_mt_contribution_to_pw();
 
-        /// Generate plane-wave coefficients of the potential in the interstitial region
+        /// Generate plane-wave coefficients of the potential in the interstitial region.
         void generate_pw_coefs();
         
         /// Calculate D operator from potential and augmentation charge.
@@ -841,8 +885,6 @@ class Potential
 
         void check_potential_continuity_at_mt();
 
-        //void copy_to_global_ptr(double* fmt, double* fit, Periodic_function<double>* src);
-       
         /// Total size (number of elements) of the potential and effective magnetic field. 
         inline size_t size()
         {
@@ -978,12 +1020,19 @@ class Potential
         {
             return rm2_inv_pw_(ig__);
         }
+
+        inline void fft_transform(int direction__)
+        {
+            effective_potential_->fft_transform(direction__);
+            for (int j = 0; j < ctx_.num_mag_dims(); j++) {
+                effective_magnetic_field_[j]->fft_transform(direction__);
+            }
+        }
 };
 
 #include "Potential/init.hpp"
 #include "Potential/generate_d_operator_matrix.hpp"
 #include "Potential/generate_pw_coefs.hpp"
-#include "Potential/generate_effective_potential.hpp"
 #include "Potential/generate_local_potential.hpp"
 #include "Potential/xc.hpp"
 #include "Potential/poisson.hpp"

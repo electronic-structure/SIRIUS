@@ -68,15 +68,17 @@ class DFT_ground_state
                          Density& density__,
                          K_point_set& kset__,
                          int use_symmetry__)
-            : ctx_(ctx__),
-              unit_cell_(ctx__.unit_cell()),
-              potential_(potential__),
-              density_(density__),
-              kset_(kset__),
-              band_(ctx_),
-              use_symmetry_(use_symmetry__)
+            : ctx_(ctx__)
+            , unit_cell_(ctx__.unit_cell())
+            , potential_(potential__)
+            , density_(density__)
+            , kset_(kset__)
+            , band_(ctx_)
+            , use_symmetry_(use_symmetry__)
         {
-            if (!ctx_.full_potential()) ewald_energy_ = ewald_energy();
+            if (!ctx_.full_potential()) {
+                ewald_energy_ = ewald_energy();
+            }
 
             forces_ = std::unique_ptr<Forces_PS>(new Forces_PS(ctx_, density_, potential_, kset_));
         }
@@ -205,35 +207,13 @@ class DFT_ground_state
                 }
 
                 case electronic_structure_method_t::pseudopotential: {
-                    tot_en = (kset_.valence_eval_sum() - energy_veff() - potential_.PAW_one_elec_energy())
-                             + 0.5 * energy_vha() + energy_exc() + potential_.PAW_total_energy() +
-                             ewald_energy_ ;
+                    tot_en = (kset_.valence_eval_sum() - energy_veff() - potential_.PAW_one_elec_energy()) +
+                             0.5 * energy_vha() + energy_exc() + potential_.PAW_total_energy() + ewald_energy_;
                     break;
-                }
-
-                default: {
-                    STOP();
                 }
             }
 
             return tot_en;
-        }
-
-        void generate_effective_potential()
-        {
-            switch(ctx_.esm_type()) {
-                case electronic_structure_method_t::full_potential_lapwlo:
-                case electronic_structure_method_t::full_potential_pwlo: {
-                    potential_.generate_effective_potential(density_.rho(), density_.magnetization());
-                    break;
-                }
-
-                case electronic_structure_method_t::pseudopotential: {
-                    potential_.generate_effective_potential(density_.rho(), density_.rho_pseudo_core(), density_.magnetization());
-                    potential_.generate_PAW_effective_potential(density_);
-                    break;
-                }
-            }
         }
 
         void symmetrize(Periodic_function<double>* f__,
@@ -273,30 +253,6 @@ class DFT_ground_state
                     }
                 }
             }
-
-            if (ctx_.full_potential()) {
-                ctx_.fft().prepare(ctx_.gvec().partition());
-                f__->fft_transform(1);
-                switch (ctx_.num_mag_dims()) {
-                    case 3: {
-                        gx__->fft_transform(1);
-                        gy__->fft_transform(1);
-                    }
-                    case 1: {
-                        gz__->fft_transform(1);
-                    }
-                    case 0: {
-                        f__->fft_transform(1);
-                    }
-                }
-                ctx_.fft().dismiss();
-            }
-
-            #ifdef __PRINT_OBJECT_HASH
-            DUMP("hash(rhomt): %16llX", density_->rho()->f_mt().hash());
-            DUMP("hash(rhoit): %16llX", density_->rho()->f_it().hash());
-            DUMP("hash(rhopw): %16llX", density_->rho()->f_pw().hash());
-            #endif
         }
 
         Band const& band() const
@@ -497,8 +453,6 @@ inline int DFT_ground_state::find(double potential_tol, double energy_tol, int n
         kset_.find_band_occupancies();
         /* generate new density from the occupied wave-functions */
         density_.generate(kset_);
-        /* compute new total energy for a new density */
-        double etot = total_energy();
         /* symmetrize density and magnetization */
         if (use_symmetry_) {
             symmetrize(density_.rho(), density_.magnetization(0), density_.magnetization(1),
@@ -514,9 +468,13 @@ inline int DFT_ground_state::find(double potential_tol, double energy_tol, int n
             ctx_.set_iterative_solver_tolerance(std::min(ctx_.iterative_solver_tolerance(), tol));
         }
 
-        if (ctx_.esm_type() == electronic_structure_method_t::pseudopotential) {
+        if (!ctx_.full_potential()) {
             density_.generate_paw_loc_density();
         }
+        /* transform density to realspace after mixing and symmetrization */
+        density_.fft_transform(1);
+        /* check number of elctrons */
+        density_.check_num_electrons();
 
         //== if (ctx_.num_mag_dims())
         //== {
@@ -563,14 +521,19 @@ inline int DFT_ground_state::find(double potential_tol, double energy_tol, int n
         //== }
 
         /* compute new potential */
-        generate_effective_potential();
+        potential_.generate(density_);
 
         /* symmetrize potential and effective magnetic field */
         if (use_symmetry_) {
             symmetrize(potential_.effective_potential(), potential_.effective_magnetic_field(0),
                        potential_.effective_magnetic_field(1), potential_.effective_magnetic_field(2));
         }
+        /* transform potential to real space after symmetrization */
+        potential_.fft_transform(1);
 
+        /* compute new total energy for a new density */
+        double etot = total_energy();
+        
         if (ctx_.full_potential()) {
             rms = potential_.mix();
             double tol = std::max(1e-12, rms);

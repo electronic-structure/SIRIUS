@@ -101,11 +101,12 @@ class Local_operator
                 veff_vec_ = mdarray<double, 2>(fft_coarse_.local_size(), num_mag_dims__ + 1, memory_t::host, "Local_operator::veff_vec_");
             }
         
+            /* low-frequency part of PW coefficients */
+            std::vector<double_complex> v_pw_coarse(gvec_coarse__.partition().gvec_count_fft());
+            /* prepare FFT for transformation */
             fft_coarse_.prepare(gvec_coarse__.partition());
             /* map components of effective potential to a corase grid */
             for (int j = 0; j < num_mag_dims__ + 1; j++) {
-                /* low-frequency part of PW coefficients */
-                std::vector<double_complex> v_pw_coarse(gvec_coarse__.partition().gvec_count_fft());
                 /* loop over low-frequency G-vectors */
                 for (int ig = 0; ig < gvec_coarse__.partition().gvec_count_fft(); ig++) {
                     /* G-vector in fractional coordinates */
@@ -116,13 +117,6 @@ class Local_operator
                 fft_coarse_.transform<1>(gvec_coarse__.partition(), &v_pw_coarse[0]);
                 /* save V(r) */
                 fft_coarse_.output(&veff_vec_(0, j));
-                //#ifdef __PRINT_OBJECT_CHECKSUM
-                //{
-                //    auto cs2 = mdarray<double, 1>(&veff_vec_(0, j), fft_.local_size()).checksum();
-                //    fft_.comm().allreduce(&cs2, 1);
-                //    DUMP("checksum(v_rg_coarse): %18.10f", cs2);
-                //}
-                //#endif
             }
             fft_coarse_.dismiss();
 
@@ -166,20 +160,12 @@ class Local_operator
         {
             PROFILE("sirius::Local_operator::prepare");
 
-            auto& fft_dense = effective_potential__->fft();
-            auto& gvec_dense = effective_potential__->gvec();
-
-            for (int ir = 0; ir < fft_dense.local_size(); ir++) {
-                fft_dense.buffer(ir) = effective_potential__->f_rg(ir) * step_function__.theta_r(ir);
+            /* group effective fields into single vector */
+            std::vector<Periodic_function<double>*> veff_vec(num_mag_dims__ + 1);
+            veff_vec[0] = effective_potential__;
+            for (int j = 0; j < num_mag_dims__; j++) {
+                veff_vec[1 + j] = effective_magnetic_field__[j];
             }
-
-            mdarray<double_complex, 1> fpw(gvec_dense.num_gvec());
-            
-            fft_dense.prepare(gvec_dense.partition());
-            fft_dense.transform<-1>(gvec_dense.partition(), &fpw[gvec_dense.partition().gvec_offset_fft()]);
-            fft_dense.comm().allgather(&fpw[0], gvec_dense.partition().gvec_offset_fft(),
-                                       gvec_dense.partition().gvec_count_fft());
-            fft_dense.dismiss();
 
             /* allocate only once */
             if (!veff_vec_.size()) {
@@ -190,22 +176,47 @@ class Local_operator
                 theta_ = mdarray<double, 1>(fft_coarse_.local_size(), memory_t::host, "Local_operator::theta_");
             }
 
-            fft_coarse_.prepare(gvec_coarse__.partition());
+            auto& fft_dense = effective_potential__->fft();
+            auto& gvec_dense = effective_potential__->gvec();
+
+            mdarray<double_complex, 1> v_pw_fine(gvec_dense.num_gvec());
             /* low-frequency part of PW coefficients */
-            std::vector<double_complex> veff_pw_coarse(gvec_coarse__.partition().gvec_count_fft());
-            std::vector<double_complex> theta_pw_coarse(gvec_coarse__.partition().gvec_count_fft());
-            /* loop over low-frequency G-vectors */
+            std::vector<double_complex> v_pw_coarse(gvec_coarse__.partition().gvec_count_fft());
+            /* prepare coarse-grained FFT for transformation */
+            fft_coarse_.prepare(gvec_coarse__.partition());
+            /* map components of effective potential to a corase grid */
+            for (int j = 0; j < num_mag_dims__ + 1; j++) {
+                for (int ir = 0; ir < fft_dense.local_size(); ir++) {
+                    fft_dense.buffer(ir) = veff_vec[j]->f_rg(ir) * step_function__.theta_r(ir);
+                }
+                fft_dense.transform<-1>(gvec_dense.partition(), &v_pw_fine[gvec_dense.partition().gvec_offset_fft()]);
+                fft_dense.comm().allgather(&v_pw_fine[0], gvec_dense.partition().gvec_offset_fft(),
+                                           gvec_dense.partition().gvec_count_fft());
+                if (j == 0) {
+                    v0_[0] = v_pw_fine[0].real();
+                }
+                /* loop over low-frequency G-vectors */
+                for (int ig = 0; ig < gvec_coarse__.partition().gvec_count_fft(); ig++) {
+                    /* G-vector in fractional coordinates */
+                    auto G = gvec_coarse__.gvec(ig + gvec_coarse__.partition().gvec_offset_fft());
+                    v_pw_coarse[ig] = v_pw_fine[gvec_dense.index_by_gvec(G)];
+                }
+
+                fft_coarse_.transform<1>(gvec_coarse__.partition(), &v_pw_coarse[0]);
+                fft_coarse_.output(&veff_vec_(0, j));
+            }
+            
+            /* map unit-step function */
             for (int ig = 0; ig < gvec_coarse__.partition().gvec_count_fft(); ig++) {
                 /* G-vector in fractional coordinates */
                 auto G = gvec_coarse__.gvec(ig + gvec_coarse__.partition().gvec_offset_fft());
-                veff_pw_coarse[ig] = fpw[gvec_dense.index_by_gvec(G)];
-                theta_pw_coarse[ig] = step_function__.theta_pw(gvec_dense.index_by_gvec(G));
+                v_pw_coarse[ig] = step_function__.theta_pw(gvec_dense.index_by_gvec(G));
             }
-            fft_coarse_.transform<1>(gvec_coarse__.partition(), &veff_pw_coarse[0]);
-            fft_coarse_.output(&veff_vec_(0, 0));
-            fft_coarse_.transform<1>(gvec_coarse__.partition(), &theta_pw_coarse[0]);
+            fft_coarse_.transform<1>(gvec_coarse__.partition(), &v_pw_coarse[0]);
             fft_coarse_.output(&theta_(0));
+            /* release FFT driver */ 
             fft_coarse_.dismiss();
+
             if (!buf_rg_.size()) {
                 buf_rg_ = mdarray<double_complex, 1>(fft_coarse_.local_size(), memory_t::host, "Local_operator::buf_rg_");
             }
@@ -529,17 +540,18 @@ class Local_operator
                     }
                     /* phi(r) * Theta(r) -> ophi(G) */
                     fft_coarse_.transform<-1>(gkvec_par__, ophi__.pw_coeffs().extra().at<CPU>(0, j));
-                }
-                #ifdef __GPU
-                if (fft_coarse_.hybrid()) {
+                } else {
+                    #ifdef __GPU
                     /* phi(G) -> phi(r) */
                     fft_coarse_.transform<1>(gkvec_par__, phi__.pw_coeffs().extra().at<CPU>(0, j));
                     /* multiply by step function */
                     scale_matrix_rows_gpu(fft_coarse_.local_size(), 1, fft_coarse_.buffer<GPU>(), theta_.at<GPU>());
                     /* phi(r) * Theta(r) -> ophi(G) */
                     fft_coarse_.transform<-1>(gkvec_par__, ophi__.pw_coeffs().extra().at<CPU>(0, j));
+                    #else
+                    TERMINATE_NO_GPU
+                    #endif
                 }
-                #endif
             }
 
             ophi__.pw_coeffs().remap_backward(gkvec_par__.gvec_fft_slab(), comm_col, n__, N__);
@@ -558,6 +570,91 @@ class Local_operator
                 DUMP("checksum(ophi_istl): %18.10f %18.10f", cs2.real(), cs2.imag());
             }
             #endif
+        }
+        
+        /// Apply magnetic field to the wave-functions.
+        /** In case of collinear magnetism only Bz is applied to <tt>phi</tt> and stored in the first component of
+         *  <tt>bphi</tt>. In case of non-collinear magnetims Bx-iBy is also applied and stored in the third
+         *  component of <tt>bphi</tt>. The second componet of <tt>bphi</tt> is used to store -Bz|phi>. */
+        void apply_b(Gvec_partition const& gkvec_par__,
+                     int N__,
+                     int n__,
+                     wave_functions& phi__,
+                     std::vector<wave_functions>& bphi__)
+        {
+            PROFILE("sirius::Local_operator::apply_b");
+
+            auto& comm_col = gkvec_par__.gvec().comm_ortho_fft();
+
+            fft_coarse_.prepare(gkvec_par__);
+
+            #ifdef __GPU
+            if (fft_coarse_.hybrid()) {
+                phi__.pw_coeffs().copy_to_host(N__, n__);
+            }
+            #endif
+
+            /* components of H|psi> to which H is applied */
+            std::vector<int> iv(1, 0);
+            if (bphi__.size() == 3) {
+                iv.push_back(2);
+            }
+
+            phi__.pw_coeffs().remap_forward(gkvec_par__.gvec_fft_slab(), comm_col, n__, N__);
+            for (int i: iv) {
+                bphi__[i].pw_coeffs().set_num_extra(gkvec_par__.gvec_count_fft(), comm_col, n__, N__);
+            }
+
+            for (int j = 0; j < phi__.pw_coeffs().spl_num_col().local_size(); j++) {
+                if (!fft_coarse_.hybrid()) {
+                    /* phi(G) -> phi(r) */
+                    fft_coarse_.transform<1>(gkvec_par__, phi__.pw_coeffs().extra().at<CPU>(0, j));
+                    /* save phi(r) */
+                    if (bphi__.size() == 3) {
+                        fft_coarse_.output(buf_rg_.at<CPU>());
+                    }
+                    #pragma omp parallel for
+                    for (int ir = 0; ir < fft_coarse_.local_size(); ir++) {
+                        /* multiply by Bz */
+                        fft_coarse_.buffer(ir) *= veff_vec_(ir, 1);
+                    }
+                    /* phi(r) * Bz(r) -> bphi[0](G) */
+                    fft_coarse_.transform<-1>(gkvec_par__, bphi__[0].pw_coeffs().extra().at<CPU>(0, j));
+                    /* non-collinear case */
+                    if (bphi__.size() == 3) {
+                        #pragma omp parallel for
+                        for (int ir = 0; ir < fft_coarse_.local_size(); ir++) {
+                            /* multiply by Bx-iBy */
+                            fft_coarse_.buffer(ir) = buf_rg_[ir] * double_complex(veff_vec_(ir, 2), -veff_vec_(ir, 3));
+                        }
+                        /* phi(r) * (Bx(r)-iBy(r)) -> bphi[2](G) */
+                        fft_coarse_.transform<-1>(gkvec_par__, bphi__[2].pw_coeffs().extra().at<CPU>(0, j));
+                    }
+                } else {
+                    STOP();
+                    #ifdef __GPU
+                    /* phi(G) -> phi(r) */
+                    fft_coarse_.transform<1>(gkvec_par__, phi__.pw_coeffs().extra().at<CPU>(0, j));
+                    /* multiply by step function */
+                    scale_matrix_rows_gpu(fft_coarse_.local_size(), 1, fft_coarse_.buffer<GPU>(), theta_.at<GPU>());
+                    /* phi(r) * Theta(r) -> ophi(G) */
+                    fft_coarse_.transform<-1>(gkvec_par__, bphi__[0].pw_coeffs().extra().at<CPU>(0, j));
+                    #else
+                    TERMINATE_NO_GPU
+                    #endif
+                }
+            }
+
+            for (int i: iv) {
+                bphi__[i].pw_coeffs().remap_backward(gkvec_par__.gvec_fft_slab(), comm_col, n__, N__);
+                #ifdef __GPU
+                if (fft_coarse_.hybrid()) {
+                    bphi__[i].pw_coeffs().copy_to_device(N__, n__);
+                }
+                #endif
+            }
+
+            fft_coarse_.dismiss();
         }
 
         inline double v0(int ispn__) const

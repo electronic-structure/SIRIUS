@@ -96,9 +96,7 @@ void Forces_PS::calc_nlcc_forces(mdarray<double,2>& forces)
     }
 
     // transform from real space to reciprocal
-    xc_pot->fft().prepare(xc_pot->gvec().partition() );
     xc_pot->fft_transform(-1);
-    xc_pot->fft().dismiss( );
 
     const mdarray<double, 2>&  rho_core_radial_integrals = density_.rho_pseudo_core_radial_integrals();
 

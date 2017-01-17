@@ -28,6 +28,9 @@ inline void Density::generate_valence(K_point_set& ks__)
 
     /* zero density and magnetization */
     zero();
+    for (int i = 0; i < ctx_.num_mag_dims() + 1; i++) {
+        rho_mag_coarse_[i]->zero();
+    }
     
     /* start the main loop over k-points */
     for (int ikloc = 0; ikloc < ks__.spl_num_kpoints().local_size(); ikloc++) {
@@ -38,7 +41,7 @@ inline void Density::generate_valence(K_point_set& ks__)
         for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
             int nbnd = kp->num_occupied_bands(ispn);
             kp->spinor_wave_functions(ispn).pw_coeffs().remap_forward(kp->gkvec().partition().gvec_fft_slab(),
-                                                                      ctx_.mpi_grid_fft().communicator(1 << 1),
+                                                                      kp->gkvec().comm_ortho_fft(),
                                                                       nbnd);
 
             /* copy wave-functions to GPU */
@@ -80,17 +83,42 @@ inline void Density::generate_valence(K_point_set& ks__)
         ctx_.comm().allreduce(density_matrix_.at<CPU>(), static_cast<int>(density_matrix_.size()));
     }
 
-    /* reduce arrays; assume that each rank did its own fraction of the density */
-    auto& comm = ctx_.comm_ortho_fft();
-    comm.allreduce(&rho_->f_rg(0), ctx_.fft().local_size()); 
-    for (int j = 0; j < ctx_.num_mag_dims(); j++) {
-        comm.allreduce(&magnetization_[j]->f_rg(0), ctx_.fft().local_size()); 
+    ctx_.fft_coarse().prepare(ctx_.gvec_coarse().partition());
+    auto& comm = ctx_.gvec_coarse().comm_ortho_fft();
+    for (int j = 0; j < ctx_.num_mag_dims() + 1; j++) {
+        /* reduce arrays; assume that each rank did its own fraction of the density */
+        comm.allreduce(&rho_mag_coarse_[j]->f_rg(0), ctx_.fft_coarse().local_size()); 
+        /* transform to PW domain */
+        rho_mag_coarse_[j]->fft_transform(-1);
+        /* get the whole vector of PW coefficients */
+        auto fpw = rho_mag_coarse_[j]->gather_f_pw();
+        /* map to fine G-vector grid */
+        if (j == 0) {
+            for (int ig = 0; ig < ctx_.gvec_coarse().num_gvec(); ig++) {
+                auto G = ctx_.gvec_coarse().gvec(ig);
+                rho_->f_pw(G) = fpw[ig];
+            }
+        } else {
+            for (int ig = 0; ig < ctx_.gvec_coarse().num_gvec(); ig++) {
+                auto G = ctx_.gvec_coarse().gvec(ig);
+                magnetization_[j - 1]->f_pw(G) = fpw[ig];
+            }
+        }
+    }
+    ctx_.fft_coarse().dismiss();
+
+    if (!ctx_.full_potential()) {
+        augment(ks__);
+    }
+
+    if (ctx_.esm_type() == electronic_structure_method_t::pseudopotential) {
+        symmetrize_density_matrix();
     }
 
     /* for muffin-tin part */
     switch (ctx_.esm_type()) {
         case electronic_structure_method_t::full_potential_lapwlo: {
-            generate_valence_density_mt(ks__);
+            generate_valence_mt(ks__);
             break;
         }
         case electronic_structure_method_t::full_potential_pwlo: {
@@ -100,80 +128,5 @@ inline void Density::generate_valence(K_point_set& ks__)
             break;
         }
     }
-
-    ctx_.fft().prepare(ctx_.gvec().partition());
-    /* get rho(G) and mag(G)
-     * they are required to symmetrize density and magnetization */
-    rho_->fft_transform(-1);
-    for (int j = 0; j < ctx_.num_mag_dims(); j++) {
-        magnetization_[j]->fft_transform(-1);
-    }
-    ctx_.fft().dismiss();
-
-    //== printf("number of electrons: %f\n", rho_->f_pw(0).real() * unit_cell_.omega());
-    //== STOP();
-
-    if (!ctx_.full_potential()) {
-        augment(ks__);
-    }
-
-    if (ctx_.esm_type() == electronic_structure_method_t::pseudopotential) {
-        symmetrize_density_matrix();
-    }
-}
-
-inline void Density::generate(K_point_set& ks__)
-{
-    PROFILE("sirius::Density::generate");
-
-    generate_valence(ks__);
-
-    if (ctx_.full_potential()) {
-        /* find the core states */
-        generate_core_charge_density();
-        /* add core contribution */
-        for (int ialoc = 0; ialoc < (int)unit_cell_.spl_num_atoms().local_size(); ialoc++) {
-            int ia = unit_cell_.spl_num_atoms(ialoc);
-            for (int ir = 0; ir < unit_cell_.atom(ia).num_mt_points(); ir++) {
-                rho_->f_mt<index_domain_t::local>(0, ir, ialoc) += unit_cell_.atom(ia).symmetry_class().core_charge_density(ir) / y00;
-            }
-        }
-        /* synchronize muffin-tin part */
-        rho_->sync_mt();
-        for (int j = 0; j < ctx_.num_mag_dims(); j++) {
-            magnetization_[j]->sync_mt();
-        }
-    }
-    
-    double nel{0};
-    if (ctx_.full_potential()) {
-        std::vector<double> nel_mt;
-        double nel_it;
-        nel = rho_->integrate(nel_mt, nel_it);
-    } else {
-        nel = rho_->f_pw(0).real() * unit_cell_.omega();
-    }
-
-    if (std::abs(nel - unit_cell_.num_electrons()) > 1e-5) {
-        std::stringstream s;
-        s << "wrong charge density after k-point summation" << std::endl
-          << "obtained value : " << nel << std::endl 
-          << "target value : " << unit_cell_.num_electrons() << std::endl
-          << "difference : " << fabs(nel - unit_cell_.num_electrons()) << std::endl;
-        if (ctx_.full_potential()) {
-            s << "total core leakage : " << core_leakage();
-            for (int ic = 0; ic < unit_cell_.num_atom_symmetry_classes(); ic++) {
-                s << std::endl << "  atom class : " << ic << ", core leakage : " << core_leakage(ic);
-            }
-        }
-        WARNING(s);
-    }
-
-    #ifdef __PRINT_OBJECT_HASH
-    DUMP("hash(rhomt): %16llX", rho_->f_mt().hash());
-    DUMP("hash(rhoit): %16llX", rho_->f_it().hash());
-    #endif
-
-    //if (debug_level > 1) check_density_continuity_at_mt();
 }
 
