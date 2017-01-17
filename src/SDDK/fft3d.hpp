@@ -773,6 +773,8 @@ class FFT3D
         //    for (int i = 0; i < n__; i++) fftw_buffer_[map__[i]] = data__[i];
         //}
 
+        /// Load real-space values to the FFT buffer.
+        /** \param [in] data CPU pointer to the real-space data. */
         template <typename T>
         inline void input(T* data__)
         {
@@ -814,6 +816,7 @@ class FFT3D
             }
         }
         
+        /// Informational about the FFT grid.
         FFT3D_grid const& grid() const
         {
             return grid_;
