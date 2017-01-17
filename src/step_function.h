@@ -101,10 +101,8 @@ class Step_function
             }
             step_function_pw_[0] += 1.0;
             
-            fft__->prepare(gvec__.partition());
             fft__->transform<1>(gvec__.partition(), &step_function_pw_[gvec__.partition().gvec_offset_fft()]);
             fft__->output(&step_function_[0]);
-            fft__->dismiss();
             
             double vit = 0.0;
             for (int i = 0; i < fft__->local_size(); i++) {
