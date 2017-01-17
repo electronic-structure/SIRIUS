@@ -229,7 +229,7 @@ double ground_state(Simulation_context&       ctx,
         potential.load();
     } else {
         density.initial_density();
-        dft.generate_effective_potential();
+        potential.generate(density);
         if (!ctx.full_potential()) {
             dft.band().initialize_subspace(ks, potential);
         }
