@@ -88,11 +88,15 @@ class matrix_storage<T, matrix_storage_t::slab>
 
     /// Set the dimensions of the extra matrix storage.
     /** \param [in] num_rows Number of rows in the extra matrix storage.
-     *  \param [in] comm Communicator used to distribute columns of the matrix.
-     *  \param [in] n Number of columns to distribute.
-     *  \param [in] idx0 Starting column of the matrix.
+     *  \param [in] comm     Communicator used to distribute columns of the matrix.
+     *  \param [in] n        Number of columns to distribute.
+     *  \param [in] idx0     Starting column of the matrix.
      *
      *  \image html matrix_storage.png "Redistribution of wave-functions between MPI ranks"
+     *
+     *  In general, the extra storage is created in the CPU pointer. The only exception is when the data
+     *  distribution doesn't change (no swapping between comm_col ranks is performed) – then the extra
+     *  storage will mirror the prime storage (both on CPU and GPU).
      */
     inline void set_num_extra(int num_rows__, Communicator const& comm_col__, int n__, int idx0__ = 0)
     {
@@ -104,9 +108,9 @@ class matrix_storage<T, matrix_storage_t::slab>
             assert(num_rows_loc_ == num_rows__);
             if (pu_ == GPU && prime_.on_device()) {
                 extra_ = mdarray<T, 2>(prime_.template at<CPU>(0, idx0__), prime_.template at<GPU>(0, idx0__),
-                                       num_rows__, n__);
+                                       num_rows__, n__, "matrix_storage.extra_");
             } else {
-                extra_ = mdarray<T, 2>(prime_.template at<CPU>(0, idx0__), num_rows__, n__);
+                extra_ = mdarray<T, 2>(prime_.template at<CPU>(0, idx0__), num_rows__, n__, "matrix_storage.extra_");
             }
         } else {
             /* maximum local number of matrix columns */
@@ -121,14 +125,17 @@ class matrix_storage<T, matrix_storage_t::slab>
             extra_ = mdarray<T, 2>(extra_buf_.template at<CPU>(), num_rows__, max_n_loc, "matrix_storage.extra_");
         }
     }
-
+    
+    /// Remap data from prime to extra storage.
+    /** Prime storage is expected on the CPU (for the MPI a2a communication). If prime storage was also allocated on
+     *  the device, extra storage will be copied to device as well. */
     inline void remap_forward(block_data_descriptor const& row_distr__, Communicator const& comm_col__, int n__, int idx0__ = 0)
     {
         PROFILE("sddk::matrix_storage::remap_forward");
 
         set_num_extra(row_distr__.counts.back() + row_distr__.offsets.back(), comm_col__, n__, idx0__);
 
-        /* trivial case */
+        /* trivial case when extra storage mirrors the prime storage */
         if (comm_col__.size() == 1) {
             return;
         }
@@ -161,16 +168,32 @@ class matrix_storage<T, matrix_storage_t::slab>
                 }
             }
         }
+        /* if prime storage was on device, copy extra storage to the device as well */
+        #ifdef __GPU
+        if (pu_ == GPU && prime_.on_device()) {
+            extra_.allocate(memory_t::device);
+            extra_.copy_to_device();
+        }
+        #endif
     }
 
+    /// Remap data from extra to prime storage.
     inline void remap_backward(block_data_descriptor const& row_distr__, Communicator const& comm_col__, int n__,
                                int idx0__ = 0)
     {
         PROFILE("sddk::matrix_storage::remap_backward");
 
+        /* trivial case when extra storage mirrors the prime storage */
         if (comm_col__.size() == 1) {
             return;
         }
+        
+        /* move data to host to perfoem MPI a2a communication */
+        #ifdef __GPU
+        if (pu_ == GPU && prime_.on_device()) {
+            extra_.copy_to_host();
+        }
+        #endif
 
         assert(n__ == spl_num_col_.global_index_size());
 
@@ -202,6 +225,13 @@ class matrix_storage<T, matrix_storage_t::slab>
 
         comm_col__.alltoall(send_recv_buf_.template at<CPU>(), sd.counts.data(), sd.offsets.data(), recv_buf,
                             rd.counts.data(), rd.offsets.data());
+
+        /* move data back to device */
+        #ifdef __GPU
+        if (pu_ == GPU && prime_.on_device()) {
+            copy_to_device(idx0__, n__);
+        }
+        #endif
     }
 
     inline void remap_from(dmatrix<T> const& mtrx__, int irow0__)
@@ -343,16 +373,20 @@ class matrix_storage<T, matrix_storage_t::slab>
     }
 
     #ifdef __GPU
+    /// Allocate prime storage on device.
     void allocate_on_device()
     {
         prime_.allocate(memory_t::device);
     }
-
+    
+    /// Deallocate storage on device.
     void deallocate_on_device()
     {
         prime_.deallocate_on_device();
+        extra_.deallocate_on_device();
     }
-
+    
+    /// Copy prime storage to device memory.
     void copy_to_device(int i0__, int n__)
     {
         if (num_rows_loc()) {
@@ -360,6 +394,7 @@ class matrix_storage<T, matrix_storage_t::slab>
         }
     }
 
+    /// Copy prime storage to host memory.
     void copy_to_host(int i0__, int n__)
     {
         if (num_rows_loc()) {

@@ -92,6 +92,8 @@ extern "C" void cufft_batch_unload_gpu(int fft_size,
 
 //#define __CUFFT3D
 
+// TODO: GPU only or CPU only driver. The hybrid mode causes a lot of complications in the code.
+
 /// Implementation of FFT3D.
 /** FFT convention:
  *  \f[

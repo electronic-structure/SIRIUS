@@ -238,11 +238,9 @@ class Local_operator
 
             int ngv_fft = gkvec__.partition().gvec_count_fft();
             
-            bool realloc_pw_ekin{false};
             /* cache kinteic energy of plane-waves */
             if (static_cast<int>(pw_ekin_.size()) < ngv_fft) {
                 pw_ekin_ = mdarray<double, 1>(ngv_fft, memory_t::host, "Local_operator::pw_ekin");
-                realloc_pw_ekin = true;
             }
             for (int ig_loc = 0; ig_loc < ngv_fft; ig_loc++) {
                 /* global index of G-vector */
@@ -254,27 +252,21 @@ class Local_operator
 
             if (static_cast<int>(vphi1_.size()) < ngv_fft) {
                 vphi1_ = mdarray<double_complex, 1>(ngv_fft, memory_t::host, "Local_operator::vphi1");
-                #ifdef __GPU
-                if (fft_coarse_.gpu_only()) {
-                    vphi1_.allocate(memory_t::device);
-                }
-                #endif
             }
             if (gkvec__.reduced() && static_cast<int>(vphi2_.size()) < ngv_fft) {
                 vphi2_ = mdarray<double_complex, 1>(ngv_fft, memory_t::host, "Local_operator::vphi2");
-                #ifdef __GPU
-                if (fft_coarse_.gpu_only()) {
-                    vphi2_.allocate(memory_t::device);
-                }
-                #endif
             }
 
             #ifdef __GPU
             if (fft_coarse_.hybrid()) {
-                if (realloc_pw_ekin) {
-                    pw_ekin_.allocate(memory_t::device);
-                }
+                pw_ekin_.allocate(memory_t::device);
                 pw_ekin_.copy_to_device();
+                if (fft_coarse_.gpu_only()) {
+                    vphi1_.allocate(memory_t::device);
+                    if (gkvec__.reduced()) {
+                        vphi2_.allocate(memory_t::device);
+                    }
+                }
             }
             #endif
         }

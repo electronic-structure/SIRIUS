@@ -90,36 +90,24 @@ void Band::apply_h_o(K_point* kp__,
     /* set initial hphi */
     hphi__.copy_from(phi__, N__, n__);
 
-    #ifdef __GPU
-    /* if we run on GPU, but the FFT driver is hybrid (it expects a CPU pointer),
-     * copy wave-functions to CPU */
-    if (ctx_.processing_unit() == GPU && !ctx_.fft_coarse().gpu_only()) {
-        hphi__.pw_coeffs().copy_to_host(N__, n__);
-    }
-    #endif
+    /* copy data to CPU for data remapping */
+    hphi__.pw_coeffs().copy_to_host(N__, n__);
     /* apply local part of Hamiltonian */
     local_op_->apply_h(ispn__, hphi__, N__, n__);
-    #ifdef __GPU
-    /* if we run on GPU, but the FFT driver is CPU-GPU hybrid, the result of h_op is stored on CPU
-     * and has to be copied back to GPU */
-    if (ctx_.processing_unit() == GPU && !ctx_.fft_coarse().gpu_only()) {
-        hphi__.pw_coeffs().copy_to_device(N__, n__);
-    }
-    #endif
     t1 += omp_get_wtime();
 
     if (kp__->comm().rank() == 0 && ctx_.control().print_performance_) {
         DUMP("hloc performace: %12.6f bands/sec", n__ / t1);
     }
 
-    #ifdef __PRINT_OBJECT_CHECKSUM
-    {
+    if (ctx_.control().print_checksum_) {
         auto cs1 = phi__.checksum(N__, n__);
         auto cs2 = hphi__.checksum(N__, n__);
-        DUMP("checksum(phi): %18.10f %18.10f", cs1.real(), cs1.imag());
-        DUMP("checksum(hloc_phi): %18.10f %18.10f", cs2.real(), cs2.imag());
+        if (kp__->comm().rank() == 0) {
+            DUMP("checksum(phi): %18.10f %18.10f", cs1.real(), cs1.imag());
+            DUMP("checksum(hloc_phi): %18.10f %18.10f", cs2.real(), cs2.imag());
+        }
     }
-    #endif
 
     /* set intial ophi */
     ophi__.copy_from(phi__, N__, n__);
@@ -141,15 +129,15 @@ void Band::apply_h_o(K_point* kp__,
             //add_nl_h_o_rs(kp__, n__, phi, hphi, ophi, packed_mtrx_offset__, d_mtrx_packed__, q_mtrx_packed__, kappa__);
         }
     }
-
-    #ifdef __PRINT_OBJECT_CHECKSUM
-    {
+    
+    if (ctx_.control().print_checksum_) {
         auto cs1 = hphi__.checksum(N__, n__);
         auto cs2 = ophi__.checksum(N__, n__);
-        DUMP("checksum(hphi): %18.10f %18.10f", cs1.real(), cs1.imag());
-        DUMP("checksum(ophi): %18.10f %18.10f", cs2.real(), cs2.imag());
+        if (kp__->comm().rank() == 0) {
+            DUMP("checksum(hphi): %18.10f %18.10f", cs1.real(), cs1.imag());
+            DUMP("checksum(ophi): %18.10f %18.10f", cs2.real(), cs2.imag());
+        }
     }
-    #endif
 }
 
 inline void Band::apply_fv_o(K_point* kp__,

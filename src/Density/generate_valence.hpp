@@ -37,22 +37,20 @@ inline void Density::generate_valence(K_point_set& ks__)
         int ik = ks__.spl_num_kpoints(ikloc);
         auto kp = ks__[ik];
 
-        /* swap wave functions */
         for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
             int nbnd = kp->num_occupied_bands(ispn);
+            /* copy wave-functions to GPU */
+            #ifdef __GPU
+            if (ctx_.processing_unit() == GPU) {
+                kp->spinor_wave_functions(ispn).pw_coeffs().allocate_on_device();
+                kp->spinor_wave_functions(ispn).pw_coeffs().copy_to_device(0, nbnd);
+            }
+            #endif
+            /* swap wave functions */
             kp->spinor_wave_functions(ispn).pw_coeffs().remap_forward(kp->gkvec().partition().gvec_fft_slab(),
                                                                       kp->gkvec().comm_ortho_fft(),
                                                                       nbnd);
 
-            /* copy wave-functions to GPU */
-            if (!ctx_.full_potential()) {
-                #ifdef __GPU
-                if (ctx_.processing_unit() == GPU) {
-                    kp->spinor_wave_functions(ispn).pw_coeffs().allocate_on_device();
-                    kp->spinor_wave_functions(ispn).pw_coeffs().copy_to_device(0, nbnd);
-                }
-                #endif
-            }
         }
         
         if (ctx_.esm_type() == electronic_structure_method_t::full_potential_lapwlo) {

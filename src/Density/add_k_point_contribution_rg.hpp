@@ -10,7 +10,7 @@ inline void Density::add_k_point_contribution_rg(K_point* kp__)
     /* get preallocated memory */
     double* ptr = static_cast<double*>(ctx_.memory_buffer(fft.local_size() * (ctx_.num_mag_dims() + 1) * sizeof(double)));
 
-    mdarray<double, 2> density_rg(ptr, fft.local_size(), ctx_.num_mag_dims() + 1);
+    mdarray<double, 2> density_rg(ptr, fft.local_size(), ctx_.num_mag_dims() + 1, "density_rg");
     density_rg.zero();
 
     #ifdef __GPU
@@ -24,7 +24,9 @@ inline void Density::add_k_point_contribution_rg(K_point* kp__)
 
     /* non-magnetic or collinear case */
     if (ctx_.num_mag_dims() != 3) {
+        /* loop over pure spinor components */
         for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
+            /* trivial case */
             if (!kp__->spinor_wave_functions(ispn).pw_coeffs().spl_num_col().global_index_size()) {
                 continue;
             }
@@ -58,7 +60,7 @@ inline void Density::add_k_point_contribution_rg(K_point* kp__)
                 }
             }
         }
-    } else {
+    } else { /* non-collinear case */
         assert(kp__->spinor_wave_functions(0).pw_coeffs().spl_num_col().local_size() ==
                kp__->spinor_wave_functions(1).pw_coeffs().spl_num_col().local_size());
 
@@ -102,7 +104,9 @@ inline void Density::add_k_point_contribution_rg(K_point* kp__)
     }
 
     #ifdef __GPU
-    if (fft.hybrid()) density_rg.copy_to_host();
+    if (fft.hybrid()) {
+        density_rg.copy_to_host();
+    }
     #endif
     
     /* switch from real density matrix to density and magnetization */

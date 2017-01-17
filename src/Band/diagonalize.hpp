@@ -774,11 +774,6 @@ inline void Band::diag_pseudo_potential_davidson(K_point* kp__,
         /* increase size of the variation space */
         N += n;
 
-        //hmlt.make_real_diag(N);
-        //if (!itso.orthogonalize_) {
-        //    ovlp.make_real_diag(N);
-        //}
-
         eval_old = eval;
         
         sddk::timer t1("sirius::Band::diag_pseudo_potential_davidson|evp");
