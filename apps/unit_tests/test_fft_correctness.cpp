@@ -6,11 +6,9 @@ void test_fft(double cutoff__)
 {
     matrix3d<double> M = {{1, 0, 0}, {0, 1, 0}, {0, 0, 1}};
 
-    FFT3D_grid fft_grid(Utils::find_translations(cutoff__, M));
+    FFT3D fft(find_translations(cutoff__, M), mpi_comm_world(), CPU);
 
-    FFT3D fft(fft_grid, mpi_comm_world(), CPU);
-
-    Gvec gvec(vector3d<double>(0, 0, 0), M, cutoff__, fft_grid, mpi_comm_world().size(), mpi_comm_world(), false);
+    Gvec gvec(M, cutoff__, mpi_comm_world(), mpi_comm_world(), false);
 
     if (mpi_comm_world().rank() == 0)
     {
@@ -70,64 +68,6 @@ void test_fft(double cutoff__)
 
     fft.dismiss();
 }
-
-//void test2(vector3d<int> const& dims__, double cutoff__, std::vector<int> mpi_grid_dims__)
-//{
-//    Communicator comm(MPI_COMM_WORLD);
-//    MPI_grid mpi_grid(mpi_grid_dims__, comm);
-//
-//    matrix3d<double> M;
-//    M(0, 0) = M(1, 1) = M(2, 2) = 1.0;
-//
-//    FFT3D fft1(dims__, Platform::max_num_threads(), mpi_grid.communicator(1 << 1), CPU);
-//    auto dims2 = dims__;
-//    for (int i: {0, 1, 2}) dims2[i] *= 2;
-//    FFT3D fft2(dims2, Platform::max_num_threads(), mpi_grid.communicator(1 << 1), CPU);
-//
-//
-//    Gvec gvec1(vector3d<double>(0, 0, 0), M, cutoff__, fft1.grid(), fft1.comm(), mpi_grid.communicator(1 << 0).size(), false, false);
-//
-//    FFT3D* fft = &fft2;
-//
-//    mdarray<double_complex, 1> psi_tmp(gvec1.num_gvec());
-//    for (int ig = 0; ig < std::min(gvec1.num_gvec(), 100); ig++)
-//    {
-//        auto v = gvec1[ig];
-//        printf("ig: %i, gvec: %i %i %i\n", ig, v[0], v[1], v[2]);
-//        psi_tmp.zero();
-//        psi_tmp(ig) = 1.0;
-//        fft->transform<1>(gvec1, &psi_tmp(gvec1.offset_gvec_fft()));
-//
-//        double diff = 0;
-//        /* loop over 3D array (real space) */
-//        for (int j0 = 0; j0 < fft->grid().size(0); j0++)
-//        {
-//            for (int j1 = 0; j1 < fft->grid().size(1); j1++)
-//            {
-//                for (int j2 = 0; j2 < fft->local_size_z(); j2++)
-//                {
-//                    /* get real space fractional coordinate */
-//                    auto rl = vector3d<double>(double(j0) / fft->grid().size(0), 
-//                                               double(j1) / fft->grid().size(1), 
-//                                               double(fft->offset_z() + j2) / fft->grid().size(2));
-//                    int idx = fft->grid().index_by_coord(j0, j1, j2);
-//
-//                    diff += std::pow(std::abs(fft->buffer(idx) - std::exp(double_complex(0.0, twopi * (rl * v)))), 2);
-//                }
-//            }
-//        }
-//        diff = std::sqrt(diff / fft->size());
-//        printf("RMS difference : %18.10e", diff);
-//        if (diff < 1e-10)
-//        {
-//            printf("  OK\n");
-//        }
-//        else
-//        {
-//            printf("  Fail\n");
-//        }
-//    }
-//}
 
 //void test3(vector3d<int> const& dims__, double cutoff__)
 //{
