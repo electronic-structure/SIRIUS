@@ -10,10 +10,11 @@ void test_spf(std::vector<int> mpi_grid_dims__,
 
     matrix3d<double> M = {{1, 0, 0}, {0, 1, 0}, {0, 0, 1}};
 
-    //MPI_grid mpi_grid(mpi_grid_dims__, mpi_comm_world());
+    MPI_grid mpi_grid(mpi_grid_dims__, mpi_comm_world());
 
-    auto c1 = mpi_comm_world().split(mpi_comm_world().rank() / mpi_grid_dims__[0]);
-    auto c2 = mpi_comm_world().split(c1.rank());
+    //auto& c1 = mpi_grid.communicator(1 << 0 | 1 << 2); ////mpi_comm_world().split(mpi_comm_world().rank() / mpi_grid_dims__[0]);
+    //auto c2 = mpi_comm_world().split(c1.rank());
+    auto& c2 = mpi_grid.communicator(1 << 0);
     
     /* create FFT box */
     FFT3D_grid fft_box(Utils::find_translations(2.01 * cutoff__, M));
