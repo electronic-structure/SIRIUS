@@ -15,7 +15,7 @@ inline void Potential::generate_pw_coefs()
             }
             #ifdef __GPU
             if (ctx_.fft().hybrid()) {
-                ctx_.fft().copy_to_device();
+                ctx_.fft().buffer().copy_to_device();
             }
             #endif
             ctx_.fft().transform<-1>(ctx_.gvec().partition(), &rm2_inv_pw_[gv_offset]);
@@ -28,7 +28,7 @@ inline void Potential::generate_pw_coefs()
             }
             #ifdef __GPU
             if (ctx_.fft().hybrid()) {
-                ctx_.fft().copy_to_device();
+                ctx_.fft().buffer().copy_to_device();
             }
             #endif
             ctx_.fft().transform<-1>(ctx_.gvec().partition(), &rm_inv_pw_[gv_offset]);
@@ -40,7 +40,7 @@ inline void Potential::generate_pw_coefs()
             }
             #ifdef __GPU
             if (ctx_.fft().hybrid()) {
-                ctx_.fft().copy_to_device();
+                ctx_.fft().buffer().copy_to_device();
             }
             #endif
             ctx_.fft().transform<-1>(ctx_.gvec().partition(), &veff_pw_[gv_offset]);

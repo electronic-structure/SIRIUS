@@ -94,6 +94,11 @@ extern "C" void cufft_batch_unload_gpu(int fft_size,
 
 // TODO: GPU only or CPU only driver. The hybrid mode causes a lot of complications in the code.
 
+// TODO:  add += operation for (-1) transform, i.e. accumulate in the output buffer. This will allow to get rid of
+//        temporary vphi1, vphi2 buffers in Local_operator
+
+// TODO: get rid of hybrid() and gpu_only() helper functions. Replace by device() == GPU or device() == CPU checks.
+
 /// Implementation of FFT3D.
 /** FFT convention:
  *  \f[
@@ -1156,13 +1161,6 @@ class FFT3D
                 }   
             }
         }
-
-        #ifdef __GPU
-        void copy_to_device()
-        {
-            fft_buffer_.copy_to_device();
-        }
-        #endif
 };
 
 } // namespace sddk
