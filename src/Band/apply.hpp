@@ -91,7 +91,11 @@ void Band::apply_h_o(K_point* kp__,
     hphi__.copy_from(phi__, N__, n__);
 
     /* copy data to CPU for data remapping */
-    hphi__.pw_coeffs().copy_to_host(N__, n__);
+    #ifdef __GPU
+    if (ctx_.processing_unit() == GPU) {
+        hphi__.pw_coeffs().copy_to_host(N__, n__);
+    }
+    #endif
     /* apply local part of Hamiltonian */
     local_op_->apply_h(ispn__, hphi__, N__, n__);
     t1 += omp_get_wtime();
