@@ -71,6 +71,37 @@ class Local_operator
             : fft_coarse_(fft_coarse__)
         {
         }
+
+        /// This constructor is used internally in the debug and performance tests only.
+        Local_operator(FFT3D& fft_coarse__, Gvec const& gvec__)
+            : fft_coarse_(fft_coarse__)
+        {
+            veff_vec_ = mdarray<double, 2>(fft_coarse_.local_size(), 1, memory_t::host, "Local_operator::veff_vec_");
+            for (int ir = 0; ir < fft_coarse_.local_size(); ir++) {
+                veff_vec_(ir, 0) = 2.0;
+            }
+
+            int ngv_fft = gvec__.partition().gvec_count_fft();
+            
+            pw_ekin_ = mdarray<double, 1>(ngv_fft, memory_t::host, "Local_operator::pw_ekin");
+            pw_ekin_.zero();
+
+            vphi1_ = mdarray<double_complex, 1>(ngv_fft, memory_t::host, "Local_operator::vphi1");
+            vphi2_ = mdarray<double_complex, 1>(ngv_fft, memory_t::host, "Local_operator::vphi2");
+
+            #ifdef __GPU
+            if (fft_coarse_.hybrid()) {
+                veff_vec_.allocate(memory_t::device);
+                veff_vec_.copy_to_device();
+                pw_ekin_.allocate(memory_t::device);
+                pw_ekin_.copy_to_device();
+                if (fft_coarse_.gpu_only()) {
+                    vphi1_.allocate(memory_t::device);
+                    vphi2_.allocate(memory_t::device);
+                }
+            }
+            #endif
+        }
         
         /// Map effective potential and magnetic field to a coarse FFT mesh in case of PP-PW.
         /** \param [in] gvec_coarse              G-vectors of the coarse FFT grid.
