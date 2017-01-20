@@ -573,12 +573,24 @@ void sirius_get_num_gvec(int32_t* num_gvec__)
     *num_gvec__ = sim_ctx->gvec().num_gvec();
 }
 
-/// Get sizes of FFT grid
-void sirius_get_fft_grid_size(int32_t* grid_size__)
+void sirius_find_fft_grid_size(ftn_double* cutoff__,
+                               ftn_double* lat_vec__,
+                               ftn_int*    grid_size__)
 {
-    grid_size__[0] = sim_ctx->fft().grid().size(0);
-    grid_size__[1] = sim_ctx->fft().grid().size(1);
-    grid_size__[2] = sim_ctx->fft().grid().size(2);
+    FFT3D_grid grid(find_translations(*cutoff__, {{lat_vec__[0], lat_vec__[3], lat_vec__[6]},
+                                                  {lat_vec__[1], lat_vec__[4], lat_vec__[7]},
+                                                  {lat_vec__[2], lat_vec__[5], lat_vec__[8]}}));
+    for (int x: {0, 1, 2}) {
+        grid_size__[x] = grid.size(x);
+    }
+}
+
+/// Get sizes of FFT grid
+void sirius_get_fft_grid_size(ftn_int* grid_size__)
+{
+    for (int x: {0, 1, 2}) {
+        grid_size__[x] = sim_ctx->fft().grid().size(x);
+    }
 }
 
 /// Get lower and upper limits of the FFT grid dimension
@@ -2068,6 +2080,7 @@ void sirius_mix_density(double* rms)
     //*rms = mixer_rho->mix();
     //density->unpack(mixer_rho->output_buffer());
     *rms = density->mix();
+    density->fft_transform(1);
     sim_ctx->comm().bcast(rms, 1, 0);
 }
 
@@ -2260,11 +2273,12 @@ void sirius_set_rho_pw(ftn_int*            num_gvec__,
 
     density->rho()->zero();
 
-    for (int i = 0; i < *num_gvec__; i++)
-    {
+    for (int i = 0; i < *num_gvec__; i++) {
         vector3d<int> G(gvec(0, i), gvec(1, i), gvec(2, i));
         int ig = sim_ctx->gvec().index_by_gvec(G);
-        if (ig >= 0) density->rho()->f_pw(ig) = rho_pw__[i];
+        if (ig >= 0) {
+            density->rho()->f_pw(ig) = rho_pw__[i];
+        }
     }
 
     Communicator comm(MPI_Comm_f2c(*fcomm__));

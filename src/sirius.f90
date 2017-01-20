@@ -305,6 +305,13 @@ module sirius
             integer,                 intent(out) :: num_gvec
         end subroutine
 
+        subroutine sirius_find_fft_grid_size(cutoff, lat_vec, grid_size)&
+            &bind(C, name="sirius_find_fft_grid_size")
+            real(8),                 intent(in)  :: cutoff
+            real(8),                 intent(in)  :: lat_vec
+            integer,                 intent(out) :: grid_size
+        end subroutine
+
         subroutine sirius_get_num_fft_grid_points(num_grid_points)&
             &bind(C, name="sirius_get_num_fft_grid_points")
             integer,                 intent(out) :: num_grid_points
