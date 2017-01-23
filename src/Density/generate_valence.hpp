@@ -89,7 +89,7 @@ inline void Density::generate_valence(K_point_set& ks__)
         /* transform to PW domain */
         rho_mag_coarse_[j]->fft_transform(-1);
         /* get the whole vector of PW coefficients */
-        auto fpw = rho_mag_coarse_[j]->gather_f_pw();
+        auto fpw = rho_mag_coarse_[j]->gather_f_pw(); // TODO: reuse FFT G-vec arrays
         /* map to fine G-vector grid */
         if (j == 0) {
             for (int ig = 0; ig < ctx_.gvec_coarse().num_gvec(); ig++) {

@@ -70,7 +70,7 @@ void create_supercell(cmd_args& args__)
                         vector3d<double> vc = ctx.unit_cell().get_cartesian_coordinates(va + T);
                         vector3d<double> vf = ctx_sc.unit_cell().get_fractional_coordinates(vc);
 
-                        auto vr = Utils::reduce_coordinates(vf);
+                        auto vr = reduce_coordinates(vf);
                         bool add_atom = (ctx_sc.unit_cell().atom_id_by_position(vr.first) == -1);
                         //==if (add_atom && iat == 2)
                         //=={
@@ -87,7 +87,7 @@ void create_supercell(cmd_args& args__)
     printf("number of atoms in the supercell: %i\n", ctx_sc.unit_cell().num_atoms());
     
     ctx_sc.unit_cell().get_symmetry();
-    ctx_sc.unit_cell().print_info();
+    ctx_sc.unit_cell().print_info(4);
     ctx_sc.unit_cell().write_cif();
     json dict;
     dict["unit_cell"] = ctx_sc.unit_cell().serialize();

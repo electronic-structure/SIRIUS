@@ -14,7 +14,7 @@ def main():
 
     StructureData = DataFactory('structure')
 
-    scale = jin["unit_cell"]["lattice_vectors_scale"]
+    scale = jin["unit_cell"].get("lattice_vectors_scale", 1)
 
     L = jin["unit_cell"]["lattice_vectors"]
 
