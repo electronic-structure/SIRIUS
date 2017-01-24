@@ -113,8 +113,12 @@ private:
 
                         auto D_aug_mtrx = [&](int i, int j)
                         {
-                            return unit_cell.atom(ia).d_mtrx(i, j, ispn) - kpoint.band_energy(ibnd) *
-                                    ctx_.augmentation_op(iat).q_mtrx(i, j);
+                            if (unit_cell.atom(ia).type().pp_desc().augment) {
+                                return unit_cell.atom(ia).d_mtrx(i, j, ispn) - kpoint.band_energy(ibnd) *
+                                        ctx_.augmentation_op(iat).q_mtrx(i, j);
+                            } else {
+                                return unit_cell.atom(ia).d_mtrx(i, j, ispn) - kpoint.band_energy(ibnd);
+                            }
                         };
 
                         for(int ibf = 0; ibf < unit_cell.atom(ia).type().mt_lo_basis_size(); ibf++ )
@@ -230,11 +234,14 @@ private:
                         int ibnd = spl_nbnd[ibnd_loc];
 
                         auto D_aug_mtrx = [&](int i, int j)
-                                {
-
-                                    return unit_cell.atom(ia).d_mtrx(i, j, ispn) - kpoint.band_energy(ibnd) *
-                                            ctx_.augmentation_op(iat).q_mtrx(i, j);
-                                };
+                        {
+                            if (unit_cell.atom(ia).type().pp_desc().augment) {
+                                return unit_cell.atom(ia).d_mtrx(i, j, ispn) - kpoint.band_energy(ibnd) *
+                                        ctx_.augmentation_op(iat).q_mtrx(i, j);
+                            } else {
+                                return unit_cell.atom(ia).d_mtrx(i, j, ispn) - kpoint.band_energy(ibnd);
+                            }
+                        };
 
                         for(int ibf = 0; ibf < unit_cell.atom(ia).type().mt_lo_basis_size(); ibf++ )
                         {
@@ -259,14 +266,20 @@ private:
     void symmetrize_forces(mdarray<double,2>& unsym_forces, mdarray<double,2>& sym_forces );
 
 public:
-    Forces_PS(Simulation_context &ctx, Density& density, Potential& potential, K_point_set& kset)
-    : ctx_(ctx), density_(density), potential_(potential), kset_(kset)
+    Forces_PS(Simulation_context &ctx__,
+              Density& density__,
+              Potential& potential__,
+              K_point_set& kset__)
+        : ctx_(ctx__)
+        , density_(density__)
+        , potential_(potential__)
+        , kset_(kset__)
     {
-        local_forces_       = mdarray<double,2>(3, ctx_.unit_cell().num_atoms());
-        ultrasoft_forces_   = mdarray<double,2>(3, ctx_.unit_cell().num_atoms());
-        nonlocal_forces_    = mdarray<double,2>(3, ctx_.unit_cell().num_atoms());
-        nlcc_forces_        = mdarray<double,2>(3, ctx_.unit_cell().num_atoms());
-        ewald_forces_       = mdarray<double,2>(3, ctx_.unit_cell().num_atoms());
+        local_forces_     = mdarray<double,2>(3, ctx_.unit_cell().num_atoms());
+        ultrasoft_forces_ = mdarray<double,2>(3, ctx_.unit_cell().num_atoms());
+        nonlocal_forces_  = mdarray<double,2>(3, ctx_.unit_cell().num_atoms());
+        nlcc_forces_      = mdarray<double,2>(3, ctx_.unit_cell().num_atoms());
+        ewald_forces_     = mdarray<double,2>(3, ctx_.unit_cell().num_atoms());
     }
 
     void calc_local_forces(mdarray<double,2>& forces);
