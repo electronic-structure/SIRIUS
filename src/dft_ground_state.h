@@ -673,13 +673,13 @@ inline void DFT_ground_state::print_info()
         printf("<mag|B^{XC}>              : %18.8f\n", ebxc);
         printf("<rho|V^{H}>               : %18.8f\n", evha);
         if (!ctx_.full_potential()) {
-            printf("one-electron contribution : %18.8f\n", one_elec_en); // eband + deband in QE
+            printf("one-electron contribution : %18.8f (Ha), %18.8f (Ry)\n", one_elec_en, one_elec_en * 2); // eband + deband in QE
             printf("hartree contribution      : %18.8f\n", 0.5 * evha);
             printf("xc contribution           : %18.8f\n", eexc);
             printf("ewald contribution        : %18.8f\n", ewald_energy_);
             printf("PAW contribution          : %18.8f\n", potential_.PAW_total_energy());
         }
-        printf("Total energy              : %18.8f\n", etot);
+        printf("Total energy              : %18.8f (Ha), %18.8f (Ry)\n", etot, etot * 2);
 
         printf("\n");
         printf("band gap (eV) : %18.8f\n", gap);

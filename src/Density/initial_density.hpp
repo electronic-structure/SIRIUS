@@ -212,6 +212,10 @@ inline void Density::initial_density_pseudo()
     for (int j = 0; j < ctx_.num_mag_dims(); j++) {
         magnetization_[j]->fft_transform(-1);
     }
+    
+    /* renormalize charge */
+    charge = std::real(rho_->f_pw(0) * unit_cell_.omega());
+    rho_->f_pw(0) += (unit_cell_.num_valence_electrons() - charge) / unit_cell_.omega();
 
     #ifdef __PRINT_OBJECT_CHECKSUM
     double_complex cs = mdarray<double_complex, 1>(&rho_->f_pw(0), ctx_.gvec().num_gvec()).checksum();
@@ -246,11 +250,6 @@ inline void Density::initial_density_full_pot()
     
     #ifdef __PRINT_OBJECT_CHECKSUM
     DUMP("checksum(rho_rg): %18.10f", rho_->checksum_rg());
-    #endif
-    
-    #ifdef __PRINT_OBJECT_HASH
-    DUMP("hash(rhopw): %16llX", rho_->f_pw().hash());
-    DUMP("hash(rhoit): %16llX", rho_->f_it().hash());
     #endif
     
     /* remove possible negative noise */

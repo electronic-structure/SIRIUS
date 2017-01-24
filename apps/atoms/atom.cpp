@@ -443,7 +443,6 @@ void generate_atom_file(Free_atom& a,
     
     //mdarray<int, 2> nl_st(8, 4);
     //nl_st.zero();
-
     //FILE* fout = fopen((a.symbol() + "_wfs.dat").c_str(), "w");
     //for (int ist = 0; ist < a.num_atomic_levels(); ist++) {
     //    int n = a.atomic_level(ist).n;
@@ -458,6 +457,18 @@ void generate_atom_file(Free_atom& a,
     //    }
     //}
     //fclose(fout);
+
+    FILE* fout = fopen((a.symbol() + "_wfs.dat").c_str(), "w");
+    for (int ir = 0; ir < a.radial_grid().num_points(); ir++) {
+        double x = a.radial_grid(ir);
+        fprintf(fout, "%12.6f ", x);
+
+        for (int ist = 0; ist < a.num_atomic_levels(); ist++) {
+            fprintf(fout, "%12.6f ", a.free_atom_wave_function(ir, ist));
+        }
+        fprintf(fout, "\n");
+    }
+    fclose(fout);
     
     /* estimate effective infinity */
     std::vector<double> g;

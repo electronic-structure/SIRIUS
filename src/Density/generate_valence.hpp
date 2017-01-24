@@ -107,6 +107,17 @@ inline void Density::generate_valence(K_point_set& ks__)
 
     if (!ctx_.full_potential()) {
         augment(ks__);
+
+        double nel = rho_->f_pw(0).real() * unit_cell_.omega();
+        /* check the number of electrons */
+        if (std::abs(nel - unit_cell_.num_electrons()) > 1e-8) {
+            std::stringstream s;
+            s << "wrong unsymmetrized density" << std::endl
+              << "  obtained value : " << nel << std::endl 
+              << "  target value : " << unit_cell_.num_electrons() << std::endl
+              << "  difference : " << std::abs(nel - unit_cell_.num_electrons()) << std::endl;
+            WARNING(s);
+        }
     }
 
     if (ctx_.esm_type() == electronic_structure_method_t::pseudopotential) {

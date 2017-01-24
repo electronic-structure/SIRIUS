@@ -624,7 +624,7 @@ class Density
                 s << "wrong number of electrons" << std::endl
                   << "  obtained value : " << nel << std::endl 
                   << "  target value : " << unit_cell_.num_electrons() << std::endl
-                  << "  difference : " << fabs(nel - unit_cell_.num_electrons()) << std::endl;
+                  << "  difference : " << std::abs(nel - unit_cell_.num_electrons()) << std::endl;
                 if (ctx_.full_potential()) {
                     s << "  total core leakage : " << core_leakage();
                     for (int ic = 0; ic < unit_cell_.num_atom_symmetry_classes(); ic++) {

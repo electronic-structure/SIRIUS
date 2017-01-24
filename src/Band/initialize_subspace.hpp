@@ -7,10 +7,11 @@ inline void Band::initialize_subspace(K_point_set& kset__,
     /* interpolate I_{\alpha,n}(q) = <j_{l_n}(q*x) | wf_{n,l_n}(x) > with splines */
     std::vector<std::vector<Spline<double>>> rad_int(unit_cell_.num_atom_types());
 
-    int nq = static_cast<int>(ctx_.gk_cutoff() * 5);
+    int nq = static_cast<int>(ctx_.gk_cutoff() * 10);
     /* this is the regular grid in reciprocal space in the range [0, |G+k|_max ] */
     Radial_grid qgrid(linear_grid, nq, 0, ctx_.gk_cutoff());
 
+    std::vector<int> pref = {1, 2, 6, 24, 120};
     if (ctx_.iterative_solver_input_section().init_subspace_ == "lcao") {
         /* spherical Bessel functions jl(qx) for atom types */
         mdarray<Spherical_Bessel_functions, 2> jl(nq, unit_cell_.num_atom_types());
@@ -31,21 +32,25 @@ inline void Band::initialize_subspace(K_point_set& kset__,
                 //rad_int[iat][i] = Spline<double>(qgrid);
                 rad_int[iat][l] = Spline<double>(qgrid);
                 
-                /* interpolate atomic_pseudo_wfs(r) */
-                Spline<double> wf(atom_type.radial_grid());
-                for (int ir = 0; ir < atom_type.num_mt_points(); ir++) {
-                    //wf[ir] = atom_type.pp_desc().atomic_pseudo_wfs_[i].second[ir];
-                    double x = atom_type.radial_grid(ir);
-                    wf[ir] = std::exp(-atom_type.zn() * x) * std::pow(x, l);
-                }
-                wf.interpolate();
-                double norm = inner(wf, wf, 2);
-                
-                //int l = atom_type.pp_desc().atomic_pseudo_wfs_[i].first;
+                ///* interpolate atomic_pseudo_wfs(r) */
+                //Spline<double> wf(atom_type.radial_grid());
+                //for (int ir = 0; ir < atom_type.num_mt_points(); ir++) {
+                //    //wf[ir] = atom_type.pp_desc().atomic_pseudo_wfs_[i].second[ir];
+                //    double x = atom_type.radial_grid(ir);
+                //    wf[ir] = std::exp(-atom_type.zn() * x) * std::pow(x, l);
+                //}
+                //wf.interpolate();
+                //double norm = inner(wf, wf, 2);
+                //
+                ////int l = atom_type.pp_desc().atomic_pseudo_wfs_[i].first;
                 #pragma omp parallel for
                 for (int iq = 0; iq < nq; iq++) {
+                    double q = qgrid[iq];
                     //rad_int[iat][i][iq] = sirius::inner(jl(iq, iat)[l], wf, 1);
-                    rad_int[iat][l][iq] = inner(jl(iq, iat)[l], wf, 2) / std::sqrt(norm);
+                    //rad_int[iat][l][iq] = inner(jl(iq, iat)[l], wf, 2) / std::sqrt(norm);
+                    double q2 = std::pow(q, 2);
+                    /* integral of Exp[-2x]x^l with spherical bessel functions jl(qx) and standard x^2 weight */
+                    rad_int[iat][l][iq] = std::pow(2, 2 + l) * std::pow(q, l) * std::pow(1.0 / (4 + q2), 2 + l) * pref[l];
                 }
 
                 //rad_int[iat][i].interpolate();
@@ -163,6 +168,15 @@ inline void Band::initialize_subspace(K_point* kp__,
             }
             if (igk == i + 3) {
                 phi.pw_coeffs().prime(igk_loc, num_ao__ + i) = 0.25;
+            }
+        }
+    }
+    for (int i = 0; i < num_phi; i++) {
+        for (int igk_loc = 0; igk_loc < kp__->num_gkvec_loc(); igk_loc++) {
+            /* global index of G+k vector */
+            int igk = kp__->gkvec().gvec_offset(kp__->comm().rank()) + igk_loc;
+            if (igk) {
+                phi.pw_coeffs().prime(igk_loc, i) += type_wrapper<double_complex>::random() * 1e-5;
             }
         }
     }

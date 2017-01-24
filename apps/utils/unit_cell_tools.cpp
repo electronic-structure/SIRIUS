@@ -155,6 +155,42 @@ void find_primitive()
 
 }
 
+void create_qe_input()
+{
+    Simulation_context ctx("sirius.json", mpi_comm_self());
+
+    FILE* fout = fopen("pw.in", "w");
+    fprintf(fout, "&control\ncalculation=\'scf\',\nrestart_mode=\'from_scratch\',\npseudo_dir = \'./\',\noutdir=\'./\',\nprefix = \'scf_\'\n/\n");
+    fprintf(fout, "&system\nibrav=0, celldm(1)=1, ecutwfc=40, ecutrho = 300,\noccupations = \'smearing\', smearing = \'gauss\', degauss = 0.001,\n");
+    fprintf(fout, "nat=%i ntyp=%i\n/\n", ctx.unit_cell().num_atom_types(), ctx.unit_cell().num_atoms());
+    fprintf(fout, "&electrons\nconv_thr =  1.0d-11,\nmixing_beta = 0.7,\nelectron_maxstep = 100\n/\n");
+    fprintf(fout, "ATOMIC_SPECIES\n");
+    for (int iat = 0; iat < ctx.unit_cell().num_atom_types(); iat++) {
+        fprintf(fout, "%s 0.0 pp.UPF\n", ctx.unit_cell().atom_type(iat).label().c_str());
+    }
+
+    fprintf(fout,"CELL_PARAMETERS\n");
+    for (int i = 0; i < 3; i++) {
+        for (int x = 0; x < 3; x++) {
+            fprintf(fout, "%18.8f", ctx.unit_cell().lattice_vector(i)[x]);
+        }
+        fprintf(fout, "\n");
+    }
+    fprintf(fout, "ATOMIC_POSITIONS (crystal)\n");
+    for (int iat = 0; iat < ctx.unit_cell().num_atom_types(); iat++) {
+        for (int ia = 0; ia < ctx.unit_cell().atom_type(iat).num_atoms(); ia++) {
+            int id = ctx.unit_cell().atom_type(iat).atom_id(ia);
+            fprintf(fout, "%s  %18.8f %18.8f %18.8f\n", ctx.unit_cell().atom_type(iat).label().c_str(),
+                    ctx.unit_cell().atom(id).position()[0],
+                    ctx.unit_cell().atom(id).position()[1],
+                    ctx.unit_cell().atom(id).position()[2]);
+        }
+    }
+    fprintf(fout, "K_POINTS (automatic)\n2 2 2  0 0 0\n");
+
+    fclose(fout);
+}
+
 int main(int argn, char** argv)
 {
     cmd_args args;
@@ -176,55 +212,9 @@ int main(int argn, char** argv)
     if (args.exist("find_primitive")) {
         find_primitive();
     }
-
+    if (args.exist("qe")) {
+        create_qe_input();
+    }
 
     sirius::finalize();
-
-//==
-//==    if (args.exist("qe"))
-//==    {
-//==        int nat = 0;
-//==        for (int iat = 0; iat < (int)iip.unit_cell_input_section_.labels_.size(); iat++)
-//==            nat += (int)iip.unit_cell_input_section_.coordinates_[iat].size();
-//==
-//==        FILE* fout = fopen("pw.in", "w");
-//==        fprintf(fout, "&control\ncalculation=\'scf\',\nrestart_mode=\'from_scratch\',\npseudo_dir = \'./\',\noutdir=\'./\',\nprefix = \'scf_\'\n/\n");
-//==        fprintf(fout, "&system\nibrav=0, celldm(1)=1, ecutwfc=40, ecutrho = 300,\noccupations = \'smearing\', smearing = \'gauss\', degauss = 0.001,\n");
-//==        fprintf(fout, "nat=%i ntyp=%i\n/\n", nat, (int)iip.unit_cell_input_section_.labels_.size());
-//==        fprintf(fout, "&electrons\nconv_thr =  1.0d-11,\nmixing_beta = 0.7,\nelectron_maxstep = 100\n/\n");
-//==        fprintf(fout, "ATOMIC_SPECIES\n");
-//==        for (int iat = 0; iat < (int)iip.unit_cell_input_section_.labels_.size(); iat++)
-//==            fprintf(fout, "%s 0.0 pp.UPF\n", iip.unit_cell_input_section_.labels_[iat].c_str());
-//==
-//==        fprintf(fout,"CELL_PARAMETERS\n");
-//==        for (int i = 0; i < 3; i++)
-//==        {
-//==            for (int x = 0; x < 3; x++) fprintf(fout, "%18.8f", p.unit_cell()->lattice_vectors()(x, i));
-//==            fprintf(fout, "\n");
-//==        }
-//==        fprintf(fout, "ATOMIC_POSITIONS (crystal)\n");
-//==        for (int iat = 0; iat < (int)iip.unit_cell_input_section_.labels_.size(); iat++)
-//==        {
-//==            for (int ia = 0; ia < (int)iip.unit_cell_input_section_.coordinates_[iat].size(); ia++)
-//==            {
-//==                fprintf(fout, "%s  %18.8f %18.8f %18.8f\n", iip.unit_cell_input_section_.labels_[iat].c_str(),
-//==                        iip.unit_cell_input_section_.coordinates_[iat][ia][0],
-//==                        iip.unit_cell_input_section_.coordinates_[iat][ia][1],
-//==                        iip.unit_cell_input_section_.coordinates_[iat][ia][2]);
-//==            }
-//==        }
-//==        fprintf(fout, "K_POINTS (automatic)\n2 2 2  0 0 0\n");
-//==
-//==        fclose(fout);
-//==
-//==
-//==
-//==    }
-//==    }
-//==
-//==    //p.unit_cell()->get_symmetry();
-//==    //p.unit_cell()->print_info();
-//==
-//==    Platform::finalize();
-
 }

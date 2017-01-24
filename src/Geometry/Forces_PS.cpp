@@ -179,6 +179,9 @@ void Forces_PS::calc_ultrasoft_forces(mdarray<double,2>& forces)
         Atom &atom = unit_cell.atom(ia);
 
         int iat = atom.type_id();
+        if (!unit_cell.atom_type(iat).pp_desc().augment) {
+            continue;
+        }
 
         for (int igloc = 0; igloc < gvec_count; igloc++)
         {
@@ -212,9 +215,9 @@ void Forces_PS::calc_ultrasoft_forces(mdarray<double,2>& forces)
                             double_complex( aug_op.q_pw( iqij , 2*igloc ), aug_op.q_pw( iqij , 2*igloc + 1 ) );
 
                     // get force components multiplying by cartesian G-vector ( -image part goes from formula)
-                    forces(0, ia) -=  (gvec_cart[0] * z).imag();
-                    forces(1, ia) -=  (gvec_cart[1] * z).imag();
-                    forces(2, ia) -=  (gvec_cart[2] * z).imag();
+                    forces(0, ia) -= (gvec_cart[0] * z).imag();
+                    forces(1, ia) -= (gvec_cart[1] * z).imag();
+                    forces(2, ia) -= (gvec_cart[2] * z).imag();
                 }
             }
         }
