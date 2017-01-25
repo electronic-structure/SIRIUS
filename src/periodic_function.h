@@ -310,7 +310,7 @@ class Periodic_function: public Smooth_periodic_function<T>
             return size;
         }
 
-        size_t pack(size_t offset__, Mixer<double>* mixer__)
+        size_t pack(size_t offset__, Mixer<double>& mixer__)
         {
             PROFILE("sirius::Periodic_function::pack");
 
@@ -320,7 +320,7 @@ class Periodic_function: public Smooth_periodic_function<T>
                 for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
                     for (int i1 = 0; i1 < unit_cell_.atom(ia).num_mt_points(); i1++) {
                         for (int i0 = 0; i0 < angular_domain_size_; i0++) {
-                            mixer__->input(offset__ + n++, f_mt_(i0, i1, ia));
+                            mixer__.input(offset__ + n++, f_mt_(i0, i1, ia));
                         }
                     }
                 }
@@ -329,7 +329,7 @@ class Periodic_function: public Smooth_periodic_function<T>
             double* pw = reinterpret_cast<double*>(this->f_pw_.template at<CPU>());
 
             for (int ig = 0; ig < gvec_.num_gvec() * 2; ig++) {
-                mixer__->input(offset__ + n++, pw[ig]);
+                mixer__.input(offset__ + n++, pw[ig]);
             }
 
             //for (int ir = 0; ir < this->fft_->local_size(); ir++) {

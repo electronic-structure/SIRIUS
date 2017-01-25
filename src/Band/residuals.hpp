@@ -273,6 +273,13 @@ inline int Band::residuals(K_point* kp__,
         }
     }
 
+    /* prevent numerical noise */
+    if (std::is_same<T, double>::value) {
+        for (int i = 0; i < n; i++) {
+            res__.pw_coeffs().prime(0, i) = res__.pw_coeffs().prime(0, i).real();
+        }
+    }
+
     #ifdef __PRINT_OBJECT_CHECKSUM
     if (n != 0) {
         auto cs = res__.checksum(0, n);

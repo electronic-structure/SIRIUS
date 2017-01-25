@@ -2069,7 +2069,7 @@ void sirius_potential_mixer_initialize(void)
         mixer_pot = new sirius::Linear_mixer<double>(potential->size(), sim_ctx->mixer_input_section().beta_, sim_ctx->comm());
 
         /* initialize potential mixer */
-        potential->pack(mixer_pot);
+        potential->pack(*mixer_pot);
         mixer_pot->initialize();
     }
 }
@@ -2088,7 +2088,7 @@ void sirius_mix_potential(void)
 {
     if (mixer_pot)
     {
-        potential->pack(mixer_pot);
+        potential->pack(*mixer_pot);
         mixer_pot->mix();
         potential->unpack(mixer_pot->output_buffer());
     }
