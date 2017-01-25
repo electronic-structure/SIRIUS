@@ -190,8 +190,8 @@ class Density
         /// Fast mapping between composite lm index and corresponding orbital quantum number.
         std::vector<int> l_by_lm_;
 
-        Mixer<double_complex>* high_freq_mixer_{nullptr};
-        Mixer<double_complex>* low_freq_mixer_{nullptr};
+        std::unique_ptr<Mixer<double_complex>> high_freq_mixer_{nullptr};
+        std::unique_ptr<Mixer<double_complex>> low_freq_mixer_{nullptr};
         Mixer<double>* mixer_{nullptr};
 
         std::vector<int> lf_gvec_;
@@ -439,37 +439,15 @@ class Density
                     TERMINATE(s);
                 }
 
-                high_freq_mixer_ = new Linear_mixer<double_complex>(hf_gvec_.size() * (1 + ctx_.num_mag_dims()),
-                                                                    ctx_.mixer_input_section().beta_, ctx_.comm());
-
-                if (ctx_.mixer_input_section().type_ == "linear")
-                {
-                    low_freq_mixer_ = new Linear_mixer<double_complex>(lf_gvec_.size() * (1 + ctx_.num_mag_dims()),
-                                                                       ctx_.mixer_input_section().beta_, ctx_.comm());
-                }
-                else if (ctx_.mixer_input_section().type_ == "broyden1")
-                {
-
-                    low_freq_mixer_ = new Broyden1<double_complex>(lf_gvec_.size() * (1 + ctx_.num_mag_dims()) + density_matrix_.size(),
-                                                                   ctx_.mixer_input_section().max_history_,
-                                                                   ctx_.mixer_input_section().beta_,
-                                                                   weights,
-                                                                   ctx_.comm());
-                }
-                else if (ctx_.mixer_input_section().type_ == "broyden2")
-                {
-                    low_freq_mixer_ = new Broyden2<double_complex>(lf_gvec_.size() * (1 + ctx_.num_mag_dims()),
-                                                                   ctx_.mixer_input_section().max_history_,
-                                                                   ctx_.mixer_input_section().beta_,
-                                                                   ctx_.mixer_input_section().beta0_,
-                                                                   ctx_.mixer_input_section().linear_mix_rms_tol_,
-                                                                   weights,
-                                                                   ctx_.comm());
-                } 
-                else
-                {
-                    TERMINATE("wrong mixer type");
-                }
+                high_freq_mixer_ = Mixer_factory<double_complex>("linear",
+                                                                 hf_gvec_.size() * (1 + ctx_.num_mag_dims()),
+                                                                 ctx_.mixer_input_section(),
+                                                                 ctx_.comm());
+                low_freq_mixer_ = Mixer_factory<double_complex>(ctx_.mixer_input_section().type_,
+                                                                lf_gvec_.size() * (1 + ctx_.num_mag_dims()) + density_matrix_.size(),
+                                                                ctx_.mixer_input_section(),
+                                                                ctx_.comm(),
+                                                                weights);
             }
 
             if (ctx_.full_potential())
@@ -515,8 +493,6 @@ class Density
             for (int j = 0; j < ctx_.num_mag_dims(); j++) delete magnetization_[j];
 
             if (rho_pseudo_core_ != nullptr) delete rho_pseudo_core_;
-            if (low_freq_mixer_ != nullptr) delete low_freq_mixer_;
-            if (high_freq_mixer_ != nullptr) delete high_freq_mixer_;
             if (mixer_ != nullptr) delete mixer_;
         }
 

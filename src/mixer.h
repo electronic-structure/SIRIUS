@@ -510,6 +510,31 @@ class Broyden2: public Mixer<T>
         }
 };
 
+template <typename T>
+inline std::unique_ptr<Mixer<T>> Mixer_factory(std::string const& type__,
+                                               size_t size__,
+                                               Mixer_input_section mix_cfg__,
+                                               Communicator const& comm__,
+                                               std::vector<double> weights__ = std::vector<double>())
+{
+    std::unique_ptr<Mixer<T>> mixer;
+
+    if (type__ == "linear") {
+        mixer = std::unique_ptr<Mixer<T>>(new Linear_mixer<T>(size__, mix_cfg__.beta_, comm__));
+    } else if (type__ == "broyden1") {
+        mixer = std::unique_ptr<Mixer<T>>(new Broyden1<T>(size__, mix_cfg__.max_history_, mix_cfg__.beta_,
+                                                          weights__, comm__));
+    }
+    else if (type__ == "broyden2") {
+        mixer = std::unique_ptr<Mixer<T>>(new Broyden2<T>(size__, mix_cfg__.max_history_, mix_cfg__.beta_,
+                                                          mix_cfg__.beta0_, mix_cfg__.linear_mix_rms_tol_,
+                                                          weights__, comm__));
+    } else {
+        TERMINATE("wrong type of mixer");
+    }
+    return std::move(mixer);
+}
+
 }
 
 #endif // __MIXER_H__
