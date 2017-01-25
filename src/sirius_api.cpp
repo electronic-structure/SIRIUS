@@ -2936,6 +2936,22 @@ void sirius_fderiv(ftn_int* m__,
     }
 }
 
+void sirius_integrate_(ftn_int* m__,
+                      ftn_int* np__,
+                      ftn_double* x__,
+                      ftn_double* f__,
+                      ftn_double* result__)
+{
+    int np = *np__;
+    sirius::Radial_grid rgrid(np, x__);
+    sirius::Spline<double> s(rgrid);
+    for (int i = 0; i < np; i++) {
+        s[i] = f__[i];
+    }
+    s.interpolate();
+    *result__ = s.integrate(*m__);
+}
+
 
 void sirius_get_wave_functions(ftn_int* kset_id__,
                                ftn_int* ik__,
@@ -3063,6 +3079,11 @@ void sirius_calc_forces(double* forces__)
     mdarray<double,2> forces(forces__, 3, sim_ctx->unit_cell().num_atoms() );
 
     dft_ground_state->forces(forces);
+}
+
+void sirius_set_verbosity(ftn_int* level__)
+{
+    sim_ctx->set_verbosity(*level__);
 }
 
 } // extern "C"

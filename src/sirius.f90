@@ -815,6 +815,10 @@ module sirius
             type(C_PTR), value, intent(in) :: vfield
         end subroutine
 
+        subroutine sirius_set_verbosity(level)&
+            &bind(C, name="sirius_set_verbosity")
+            integer,            intent(in) :: level
+        end subroutine
 
         !-------------------------------------
         !---- PAW API ------------------------
@@ -1032,7 +1036,6 @@ contains
         call sirius_add_atom_aux(label_ptr, pos_ptr, vfield_ptr)
 
     end subroutine
-
 
     subroutine sirius_create_kset(num_kpoints, kpoints, kpoint_weights, init_kset, kset_id, nk_loc)
         integer,                                 intent(in)  :: num_kpoints
