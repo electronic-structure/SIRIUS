@@ -255,15 +255,16 @@ class Broyden1: public Mixer<T>
 
             /* compute residual square sum */
             this->rss_ = 0;
-            for (size_t i = 0; i < this->spl_size_.local_size(); i++) 
-            {
+            for (size_t i = 0; i < this->spl_size_.local_size(); i++) {
                 residuals_(i, ipos) = this->input_buffer_(i) - this->vectors_(i, ipos);
                 this->rss_ += std::pow(std::abs(residuals_(i, ipos)), 2) * w(this->spl_size_[i]);
             }
             this->comm_.allreduce(&this->rss_, 1);
 
             /* exit if the vector has converged */
-            if (this->rss_ < 1e-11) return 0.0;
+            if (this->rss_ < 1e-11) {
+                return 0.0;
+            }
 
             double rms = this->rms_deviation();
             
@@ -273,20 +274,16 @@ class Broyden1: public Mixer<T>
             /* new vector will be stored in the input buffer */
             this->input_buffer_.zero();
 
-            if (N > 0)
-            {
+            if (N > 0) {
                 mdarray<double, 2> S(N, N);
                 S.zero();
-                for (int j1 = 0; j1 < N; j1++)
-                {
+                for (int j1 = 0; j1 < N; j1++) {
                     int i1 = this->idx_hist(this->count_ - j1);
                     int i2 = this->idx_hist(this->count_ - j1 - 1);
-                    for (int j2 = 0; j2 <= j1; j2++)
-                    {
+                    for (int j2 = 0; j2 <= j1; j2++) {
                         int i3 = this->idx_hist(this->count_ - j2);
                         int i4 = this->idx_hist(this->count_ - j2 - 1);
-                        for (size_t i = 0; i < this->spl_size_.local_size(); i++) 
-                        {
+                        for (size_t i = 0; i < this->spl_size_.local_size(); i++) {
                             T dr1 = residuals_(i, i1) - residuals_(i, i2);
                             T dr2 = residuals_(i, i3) - residuals_(i, i4);
 
@@ -307,9 +304,10 @@ class Broyden1: public Mixer<T>
                 /* invert matrix */
                 linalg<CPU>::syinv(N, S);
                 /* restore lower triangular part */
-                for (int j1 = 0; j1 < N; j1++)
-                {
-                    for (int j2 = 0; j2 < j1; j2++) S(j1, j2) = S(j2, j1);
+                for (int j1 = 0; j1 < N; j1++) {
+                    for (int j2 = 0; j2 < j1; j2++) {
+                        S(j1, j2) = S(j2, j1);
+                    }
                 }
 
                 // printf("[mixer] S^{-1} matrix\n");
@@ -321,28 +319,26 @@ class Broyden1: public Mixer<T>
 
                 mdarray<double, 1> c(N);
                 c.zero();
-                for (int j = 0; j < N; j++)
-                {
+                for (int j = 0; j < N; j++) {
                     int i1 = this->idx_hist(this->count_ - j);
                     int i2 = this->idx_hist(this->count_ - j - 1);
-                    for (size_t i = 0; i < this->spl_size_.local_size(); i++) 
-                    {
+                    for (size_t i = 0; i < this->spl_size_.local_size(); i++) {
                         T dr = residuals_(i, i1) - residuals_(i, i2);
                         c(j) += type_wrapper<T>::real(type_wrapper<T>::conjugate(dr) * residuals_(i, ipos) * w(this->spl_size_[i]));
                     }
                 }
                 this->comm_.allreduce(c.at<CPU>(), (int)c.size());
 
-                for (int j = 0; j < N; j++)
-                {
+                for (int j = 0; j < N; j++) {
                     double gamma = 0;
-                    for (int i = 0; i < N; i++) gamma += c(i) * S(i, j);
+                    for (int i = 0; i < N; i++) {
+                        gamma += c(i) * S(i, j);
+                    }
 
                     int i1 = this->idx_hist(this->count_ - j);
                     int i2 = this->idx_hist(this->count_ - j - 1);
                 
-                    for (size_t i = 0; i < this->spl_size_.local_size(); i++)
-                    {
+                    for (size_t i = 0; i < this->spl_size_.local_size(); i++) {
                         T dr = residuals_(i, i1) - residuals_(i, i2);
                         T dv = this->vectors_(i, i1) - this->vectors_(i, i2);
 
@@ -352,8 +348,7 @@ class Broyden1: public Mixer<T>
             }
             int i1 = this->idx_hist(this->count_ + 1);
             /* linear part */
-            for (size_t i = 0; i < this->spl_size_.local_size(); i++)
-            {
+            for (size_t i = 0; i < this->spl_size_.local_size(); i++) {
                 this->vectors_(i, i1) = this->vectors_(i, ipos) + this->beta_ * residuals_(i, ipos) + this->input_buffer_(i);
             }
 
@@ -509,6 +504,31 @@ class Broyden2: public Mixer<T>
             return rms;
         }
 };
+
+template <typename T>
+inline std::unique_ptr<Mixer<T>> Mixer_factory(std::string const& type__,
+                                               size_t size__,
+                                               Mixer_input_section mix_cfg__,
+                                               Communicator const& comm__,
+                                               std::vector<double> weights__ = std::vector<double>())
+{
+    std::unique_ptr<Mixer<T>> mixer;
+
+    if (type__ == "linear") {
+        mixer = std::unique_ptr<Mixer<T>>(new Linear_mixer<T>(size__, mix_cfg__.beta_, comm__));
+    } else if (type__ == "broyden1") {
+        mixer = std::unique_ptr<Mixer<T>>(new Broyden1<T>(size__, mix_cfg__.max_history_, mix_cfg__.beta_,
+                                                          weights__, comm__));
+    }
+    else if (type__ == "broyden2") {
+        mixer = std::unique_ptr<Mixer<T>>(new Broyden2<T>(size__, mix_cfg__.max_history_, mix_cfg__.beta_,
+                                                          mix_cfg__.beta0_, mix_cfg__.linear_mix_rms_tol_,
+                                                          weights__, comm__));
+    } else {
+        TERMINATE("wrong type of mixer");
+    }
+    return std::move(mixer);
+}
 
 }
 

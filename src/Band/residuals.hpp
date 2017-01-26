@@ -273,16 +273,23 @@ inline int Band::residuals(K_point* kp__,
         }
     }
 
-    #ifdef __PRINT_OBJECT_CHECKSUM
-    if (n != 0) {
+    /* prevent numerical noise */
+    if (std::is_same<T, double>::value && kp__->comm().rank() == 0) {
+        for (int i = 0; i < n; i++) {
+            res__.pw_coeffs().prime(0, i) = res__.pw_coeffs().prime(0, i).real();
+        }
+    }
+
+    if (ctx_.control().print_checksum_ && n != 0) {
         auto cs = res__.checksum(0, n);
         auto cs1 = hpsi__.checksum(0, n);
         auto cs2 = opsi__.checksum(0, n);
-        DUMP("checksum(res): %18.10f %18.10f", cs.real(), cs.imag());
-        DUMP("checksum(hpsi): %18.10f %18.10f", cs1.real(), cs1.imag());
-        DUMP("checksum(opsi): %18.10f %18.10f", cs2.real(), cs2.imag());
+        if (kp__->comm().rank() == 0) {
+            DUMP("checksum(res): %18.10f %18.10f", cs.real(), cs.imag());
+            DUMP("checksum(hpsi): %18.10f %18.10f", cs1.real(), cs1.imag());
+            DUMP("checksum(opsi): %18.10f %18.10f", cs2.real(), cs2.imag());
+        }
     }
-    #endif
 
     return n;
 }

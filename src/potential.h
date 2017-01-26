@@ -83,7 +83,7 @@ class Potential
         /** Used to compute electron-nuclear contribution to the total energy */
         mdarray<double, 1> vh_el_;
 
-        Mixer<double>* mixer_{nullptr};
+        std::unique_ptr<Mixer<double>> mixer_{nullptr};
 
         std::vector<XC_functional> xc_func_;
 
@@ -408,9 +408,6 @@ class Potential
             delete xc_energy_density_;
             if (!ctx_.full_potential()) {
                 delete local_potential_;
-            }
-            if (mixer_ != nullptr) {
-                delete mixer_;
             }
         }
 
@@ -895,7 +892,7 @@ class Potential
             return s;
         }
 
-        inline void pack(Mixer<double>* mixer)
+        inline void pack(Mixer<double>& mixer)
         {
             size_t n = effective_potential_->pack(0, mixer);
             for (int i = 0; i < ctx_.num_mag_dims(); i++) {
@@ -971,36 +968,14 @@ class Potential
 
         void mixer_init()
         {
-            /* create mixer */
-            if (ctx_.mixer_input_section().type_ == "linear")
-            {
-                mixer_ = new Linear_mixer<double>(size(), ctx_.mixer_input_section().beta_, comm_);
-            } else if (ctx_.mixer_input_section().type_ == "broyden1") {
-                std::vector<double> weights;
-                mixer_ = new Broyden1<double>(size(),
-                                              ctx_.mixer_input_section().max_history_,
-                                              ctx_.mixer_input_section().beta_,
-                                              weights,
-                                              comm_);
-            } else if (ctx_.mixer_input_section().type_ == "broyden2") {
-                std::vector<double> weights;
-                mixer_ = new Broyden2<double>(size(),
-                                              ctx_.mixer_input_section().max_history_,
-                                              ctx_.mixer_input_section().beta_,
-                                              ctx_.mixer_input_section().beta0_,
-                                              ctx_.mixer_input_section().linear_mix_rms_tol_,
-                                              weights,
-                                              comm_);
-            } else {
-                TERMINATE("wrong mixer type");
-            }
-            pack(mixer_);
+            mixer_ = Mixer_factory<double>(ctx_.mixer_input_section().type_, size(), ctx_.mixer_input_section(), comm_);
+            pack(*mixer_);
             mixer_->initialize();
         }
 
         double mix()
         {
-            pack(mixer_);
+            pack(*mixer_);
             double rms = mixer_->mix();
             unpack(mixer_->output_buffer());
             return rms;

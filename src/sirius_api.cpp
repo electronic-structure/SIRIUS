@@ -2069,7 +2069,7 @@ void sirius_potential_mixer_initialize(void)
         mixer_pot = new sirius::Linear_mixer<double>(potential->size(), sim_ctx->mixer_input_section().beta_, sim_ctx->comm());
 
         /* initialize potential mixer */
-        potential->pack(mixer_pot);
+        potential->pack(*mixer_pot);
         mixer_pot->initialize();
     }
 }
@@ -2088,7 +2088,7 @@ void sirius_mix_potential(void)
 {
     if (mixer_pot)
     {
-        potential->pack(mixer_pot);
+        potential->pack(*mixer_pot);
         mixer_pot->mix();
         potential->unpack(mixer_pot->output_buffer());
     }
@@ -2936,6 +2936,22 @@ void sirius_fderiv(ftn_int* m__,
     }
 }
 
+void sirius_integrate_(ftn_int* m__,
+                      ftn_int* np__,
+                      ftn_double* x__,
+                      ftn_double* f__,
+                      ftn_double* result__)
+{
+    int np = *np__;
+    sirius::Radial_grid rgrid(np, x__);
+    sirius::Spline<double> s(rgrid);
+    for (int i = 0; i < np; i++) {
+        s[i] = f__[i];
+    }
+    s.interpolate();
+    *result__ = s.integrate(*m__);
+}
+
 
 void sirius_get_wave_functions(ftn_int* kset_id__,
                                ftn_int* ik__,
@@ -3063,6 +3079,11 @@ void sirius_calc_forces(double* forces__)
     mdarray<double,2> forces(forces__, 3, sim_ctx->unit_cell().num_atoms() );
 
     dft_ground_state->forces(forces);
+}
+
+void sirius_set_verbosity(ftn_int* level__)
+{
+    sim_ctx->set_verbosity(*level__);
 }
 
 } // extern "C"

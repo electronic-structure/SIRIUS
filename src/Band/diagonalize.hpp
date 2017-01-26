@@ -836,8 +836,7 @@ inline void Band::diag_pseudo_potential_davidson(K_point* kp__,
             /* exit the loop if the eigen-vectors are converged or this is a last iteration */
             if (n <= itso.min_num_res_ || k == (itso.num_steps_ - 1)) {
                 break;
-            }
-            else { /* otherwise, set Psi as a new trial basis */
+            } else { /* otherwise, set Psi as a new trial basis */
                 if (ctx_.control().verbosity_ > 2 && kp__->comm().rank() == 0) {
                     DUMP("subspace size limit reached");
                 }
