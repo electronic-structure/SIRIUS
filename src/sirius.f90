@@ -341,6 +341,10 @@ module sirius
             &bind(C, name="sirius_generate_effective_potential")
         end subroutine
 
+        subroutine sirius_generate_d_mtrx()&
+            &bind(C, name="sirius_generate_d_mtrx")
+        end subroutine
+
         subroutine sirius_initialize_subspace(kset_id)&
             &bind(C, name="sirius_initialize_subspace")
             integer,                 intent(in) :: kset_id
@@ -432,6 +436,14 @@ module sirius
             integer,                 intent(in)  :: num_gvec
             integer,                 intent(in)  :: gvec
             complex(8),              intent(out) :: rho_pw
+        end subroutine
+
+        subroutine sirius_set_veff_pw(num_gvec, gvec, veff_pw, comm)&
+            &bind(C, name="sirius_set_veff_pw")
+            integer,                 intent(in) :: num_gvec
+            integer,                 intent(in) :: gvec
+            complex(8),              intent(in) :: veff_pw
+            integer,                 intent(in) :: comm
         end subroutine
 
         subroutine sirius_get_veff_pw(num_gvec, gvec, veff_pw)&
