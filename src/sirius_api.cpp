@@ -2268,7 +2268,6 @@ void sirius_set_rho_pw(ftn_int*            num_gvec__,
                        ftn_int*            fcomm__)
 
 {
-
     mdarray<int, 2> gvec(gvec__, 3, *num_gvec__);
 
     density->rho()->zero();
@@ -2285,6 +2284,29 @@ void sirius_set_rho_pw(ftn_int*            num_gvec__,
     comm.allreduce(&density->rho()->f_pw(0), sim_ctx->gvec().num_gvec());
     
     density->rho()->fft_transform(1);
+}
+
+void sirius_set_veff_pw(ftn_int*            num_gvec__,
+                        ftn_int*            gvec__,
+                        ftn_double_complex* veff_pw__,
+                        ftn_int*            fcomm__)
+
+{
+    mdarray<int, 2> gvec(gvec__, 3, *num_gvec__);
+
+    potential->effective_potential()->zero();
+
+    for (int i = 0; i < *num_gvec__; i++) {
+        vector3d<int> G(gvec(0, i), gvec(1, i), gvec(2, i));
+        int ig = sim_ctx->gvec().index_by_gvec(G);
+        if (ig >= 0) {
+            potential->effective_potential()->f_pw(ig) = veff_pw__[i];
+        }
+    }
+
+    Communicator comm(MPI_Comm_f2c(*fcomm__));
+    comm.allreduce(&potential->effective_potential()->f_pw(0), sim_ctx->gvec().num_gvec());
+    potential->effective_potential()->fft_transform(1);
 }
 
 void sirius_get_gvec_index(int32_t* gvec__, int32_t* ig__)
@@ -2993,6 +3015,8 @@ void sirius_get_beta_projectors(ftn_int* kset_id__,
                                 ftn_int* ld__,
                                 ftn_int* nkb__)
 {
+    PROFILE("sirius_api::sirius_get_beta_projectors");
+
     if (*nkb__ != sim_ctx->unit_cell().mt_lo_basis_size()) {
         TERMINATE("wrong number of beta-projectors");
     }
@@ -3050,6 +3074,8 @@ void sirius_get_beta_projectors_by_kp(ftn_int* kset_id__,
                                       ftn_int* ld__,
                                       ftn_int* nkb__)
 {
+    PROFILE("sirius_api::sirius_get_beta_projectors_by_kp");
+
     vector3d<double> vk(vk__[0], vk__[1], vk__[2]);
 
     auto kset = kset_list[*kset_id__];
@@ -3084,6 +3110,11 @@ void sirius_calc_forces(double* forces__)
 void sirius_set_verbosity(ftn_int* level__)
 {
     sim_ctx->set_verbosity(*level__);
+}
+
+void sirius_generate_d_mtrx()
+{
+    potential->generate_D_operator_matrix();
 }
 
 } // extern "C"
