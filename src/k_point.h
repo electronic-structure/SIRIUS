@@ -573,6 +573,7 @@ class K_point
 
         Beta_projectors& beta_projectors()
         {
+            assert(beta_projectors_ != nullptr);
             return *beta_projectors_;
         }
 };
