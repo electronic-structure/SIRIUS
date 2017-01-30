@@ -48,4 +48,13 @@ inline void Potential::generate_local_potential()
     auto v = unit_cell_.make_periodic_function(vloc_radial_integrals_, ctx_.gvec());
     ctx_.fft().transform<1>(ctx_.gvec().partition(), &v[ctx_.gvec().partition().gvec_offset_fft()]);
     ctx_.fft().output(&local_potential_->f_rg(0));
+
+    //if (ctx_.control().print_checksum_) {
+    //    auto cs = local_potential_->checksum_pw();
+    //    auto cs1 = local_potential_->checksum_rg();
+    //    if (ctx_.comm().rank() == 0) {
+    //        DUMP("checksum(local_potential_pw): %18.10f %18.10f", cs.real(), cs.imag());
+    //        DUMP("checksum(local_potential_rg): %18.10f", cs1);
+    //    }
+    //}
 }
