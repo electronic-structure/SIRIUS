@@ -862,7 +862,9 @@ inline void Potential::xc(Periodic_function<double>* rho,
     if (ctx_.xc_functionals().size() == 0) {
         vxc->zero();
         exc->zero();
-        for (int i = 0; i < ctx_.num_mag_dims(); i++) bxc[i]->zero();
+        for (int i = 0; i < ctx_.num_mag_dims(); i++) {
+            bxc[i]->zero();
+        }
         return;
     }
 
