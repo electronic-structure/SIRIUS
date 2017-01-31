@@ -341,8 +341,8 @@ module sirius
             &bind(C, name="sirius_generate_effective_potential")
         end subroutine
 
-        subroutine sirius_generate_d_mtrx()&
-            &bind(C, name="sirius_generate_d_mtrx")
+        subroutine sirius_generate_d_operator_matrix()&
+            &bind(C, name="sirius_generate_d_operator_matrix")
         end subroutine
 
         subroutine sirius_initialize_subspace(kset_id)&
@@ -685,6 +685,11 @@ module sirius
             real(8),                 intent(out) :: val
         end subroutine
 
+        subroutine sirius_get_energy_vloc(val)&
+            &bind(C, name="sirius_get_energy_vloc")
+            real(8),                 intent(out) :: val
+        end subroutine
+
         subroutine sirius_get_energy_vha(val)&
             &bind(C, name="sirius_get_energy_vha")
             real(8),                 intent(out) :: val
@@ -928,29 +933,33 @@ module sirius
             integer,                  intent(in)  :: nkb
         end subroutine
 
-        subroutine sirius_get_d_mtrx(ia, d_mtrx, ld)&
-            &bind(C, name="sirius_get_d_mtrx")
+        subroutine sirius_get_d_operator_matrix(ia, d_mtrx, ld)&
+            &bind(C, name="sirius_get_d_operator_matrix")
             integer,                  intent(in)  :: ia
             real(8),                  intent(out) :: d_mtrx
             integer,                  intent(in)  :: ld
         end subroutine
 
-        subroutine sirius_get_q_mtrx(iat, q_mtrx, ld)&
-            &bind(C, name="sirius_get_q_mtrx")
+        subroutine sirius_set_d_operator_matrix(ia, d_mtrx, ld)&
+            &bind(C, name="sirius_set_d_operator_matrix")
+            integer,                  intent(in)  :: ia
+            real(8),                  intent(in)  :: d_mtrx
+            integer,                  intent(in)  :: ld
+        end subroutine
+
+        subroutine sirius_get_q_operator_matrix(iat, q_mtrx, ld)&
+            &bind(C, name="sirius_get_q_operator_matrix")
             integer,                  intent(in)  :: iat
             real(8),                  intent(out) :: q_mtrx
             integer,                  intent(in)  :: ld
         end subroutine
 
-        subroutine sirius_get_density_matrix(ih, jh, ia, dm)&
+        subroutine sirius_get_density_matrix(ia, dm, nhm)&
             &bind(C, name="sirius_get_density_matrix")
-            integer,                  intent(in)  :: ih
-            integer,                  intent(in)  :: jh
             integer,                  intent(in)  :: ia
-            real(8),                  intent(out) :: dm
+            complex(8),               intent(out) :: dm
+            integer,                  intent(in)  :: nhm
         end subroutine
-
-
 
         subroutine sirius_calc_forces(forces)&
             &bind(C, name="sirius_calc_forces")
