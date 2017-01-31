@@ -60,7 +60,7 @@ extern "C" {
     call sirius_initialize(0)
     \endcode
  */
-void sirius_initialize(int32_t* call_mpi_init__)
+void sirius_initialize(ftn_int* call_mpi_init__)
 {
     bool call_mpi_init = (*call_mpi_init__ != 0) ? true : false;
     sirius::initialize(call_mpi_init);
@@ -1541,6 +1541,11 @@ void sirius_get_energy_veff(double* energy_veff)
     *energy_veff = dft_ground_state->energy_veff();
 }
 
+void sirius_get_energy_vloc(ftn_double* energy_vloc__)
+{
+    *energy_vloc__ = dft_ground_state->energy_vloc();
+}
+
 void sirius_get_energy_vha(double* energy_vha)
 {
     *energy_vha = dft_ground_state->energy_vha();
@@ -2268,7 +2273,6 @@ void sirius_set_rho_pw(ftn_int*            num_gvec__,
                        ftn_int*            fcomm__)
 
 {
-
     mdarray<int, 2> gvec(gvec__, 3, *num_gvec__);
 
     density->rho()->zero();
@@ -2285,6 +2289,29 @@ void sirius_set_rho_pw(ftn_int*            num_gvec__,
     comm.allreduce(&density->rho()->f_pw(0), sim_ctx->gvec().num_gvec());
     
     density->rho()->fft_transform(1);
+}
+
+void sirius_set_veff_pw(ftn_int*            num_gvec__,
+                        ftn_int*            gvec__,
+                        ftn_double_complex* veff_pw__,
+                        ftn_int*            fcomm__)
+
+{
+    mdarray<int, 2> gvec(gvec__, 3, *num_gvec__);
+
+    potential->effective_potential()->zero();
+
+    for (int i = 0; i < *num_gvec__; i++) {
+        vector3d<int> G(gvec(0, i), gvec(1, i), gvec(2, i));
+        int ig = sim_ctx->gvec().index_by_gvec(G);
+        if (ig >= 0) {
+            potential->effective_potential()->f_pw(ig) = veff_pw__[i];
+        }
+    }
+
+    Communicator comm(MPI_Comm_f2c(*fcomm__));
+    comm.allreduce(&potential->effective_potential()->f_pw(0), sim_ctx->gvec().num_gvec());
+    potential->effective_potential()->fft_transform(1);
 }
 
 void sirius_get_gvec_index(int32_t* gvec__, int32_t* ig__)
@@ -2430,9 +2457,9 @@ void sirius_get_vloc_(int32_t* size__, double* vloc__)
     //for (int i = 0; i < fft_coarse->size(); i++) vloc__[i] *= 2; // convert to Ry
 }
 
-void sirius_get_q_mtrx(ftn_int* iat__,
-                       ftn_double* q_mtrx__,
-                       ftn_int* ld__)
+void sirius_get_q_operator_matrix(ftn_int*    iat__,
+                                  ftn_double* q_mtrx__,
+                                  ftn_int*    ld__)
 {
     mdarray<double, 2> q_mtrx(q_mtrx__, *ld__, *ld__);
 
@@ -2460,8 +2487,6 @@ void sirius_get_q_mtrx(ftn_int* iat__,
     if (atom_type.pp_desc().augment) {
         for (int xi1 = 0; xi1 < nbf; xi1++) {
             for (int xi2 = 0; xi2 < nbf; xi2++) {
-                //== double diff = std::abs(q_mtrx(xi1, xi2) - real(z1(xi1, xi2)));
-                //== printf("itype=%i, xi1,xi2=%i %i, q_diff=%18.12f\n", *itype__ - 1, xi1, xi2, diff);
                 q_mtrx(idx_map[xi1], idx_map[xi2]) = sim_ctx->augmentation_op(*iat__ - 1).q_mtrx(xi1, xi2);
             }
         }
@@ -2515,9 +2540,9 @@ void sirius_get_q_mtrx(ftn_int* iat__,
     //}
 }
 
-void sirius_get_d_mtrx(ftn_int* ia__,
-                       ftn_double* d_mtrx__,
-                       ftn_int* ld__)
+void sirius_get_d_operator_matrix(ftn_int*    ia__,
+                                  ftn_double* d_mtrx__,
+                                  ftn_int*    ld__)
 {
     mdarray<double, 2> d_mtrx(d_mtrx__, *ld__, *ld__);
 
@@ -2535,8 +2560,8 @@ void sirius_get_d_mtrx(ftn_int* ia__,
 
     std::vector<int> idx_map(nbf);
     for (int xi = 0; xi < nbf; xi++) {
-        int lm     = atom.type().indexb(xi).lm;
-        int idxrf  = atom.type().indexb(xi).idxrf;
+        int lm      = atom.type().indexb(xi).lm;
+        int idxrf   = atom.type().indexb(xi).idxrf;
         idx_map[xi] = atom.type().indexb().index_by_idxrf(idxrf) + idx_Rlm(lm);
     }
     
@@ -2544,12 +2569,7 @@ void sirius_get_d_mtrx(ftn_int* ia__,
 
     for (int xi1 = 0; xi1 < nbf; xi1++) {
         for (int xi2 = 0; xi2 < nbf; xi2++) {
-            //double diff = std::abs(d_mtrx(xi1, xi2) - real(z1(xi1, xi2) * 2.0));
-            //if (diff > 1e-8)
-            //{
-            //    printf("ia=%2i, xi1,xi2=%2i %2i, D(QE)=%18.12f D(S)=%18.12f\n", *ia__ - 1, xi1, xi2, d_mtrx(xi1, xi2), real(z1(xi1, xi2)) * 2);
-            //}
-            d_mtrx(idx_map[xi1], idx_map[xi2]) = std::real(atom.d_mtrx(xi1, xi2, 0));
+            d_mtrx(idx_map[xi1], idx_map[xi2]) = atom.d_mtrx(xi1, xi2, 0);
         }
     }
 
@@ -2599,6 +2619,38 @@ void sirius_get_d_mtrx(ftn_int* ia__,
     //        d_mtrx(xi1, xi2) = std::real(z1(xi1, xi2)) * 2; // convert to Ry
     //    }
     //}
+}
+
+void sirius_set_d_operator_matrix(ftn_int*    ia__,
+                                  ftn_double* d_mtrx__,
+                                  ftn_int*    ld__)
+{
+    mdarray<double, 2> d_mtrx(d_mtrx__, *ld__, *ld__);
+
+    auto& atom = sim_ctx->unit_cell().atom(*ia__ - 1);
+
+    int nbf = atom.mt_basis_size();
+
+    /* index of Rlm of QE */
+    auto idx_Rlm = [](int lm) // TODO: move duplicated code to a separate inline function
+    {
+        int l = static_cast<int>(std::sqrt(static_cast<double>(lm) + 1e-12));
+        int m = lm - l * l - l;
+        return (m > 0) ? 2 * m - 1 : -2 * m;
+    };
+
+    std::vector<int> idx_map(nbf);
+    for (int xi = 0; xi < nbf; xi++) {
+        int lm      = atom.type().indexb(xi).lm;
+        int idxrf   = atom.type().indexb(xi).idxrf;
+        idx_map[xi] = atom.type().indexb().index_by_idxrf(idxrf) + idx_Rlm(lm);
+    }
+    
+    for (int xi1 = 0; xi1 < nbf; xi1++) {
+        for (int xi2 = 0; xi2 < nbf; xi2++) {
+            atom.d_mtrx(xi1, xi2, 0) = d_mtrx(idx_map[xi1], idx_map[xi2]);
+        }
+    }
 }
 
 void sirius_get_h_o_diag_(int32_t* kset_id__, int32_t* ik__, double* h_diag__, double* o_diag__, int32_t* ngk__, int32_t* gvec_of_k__)
@@ -2993,6 +3045,8 @@ void sirius_get_beta_projectors(ftn_int* kset_id__,
                                 ftn_int* ld__,
                                 ftn_int* nkb__)
 {
+    PROFILE("sirius_api::sirius_get_beta_projectors");
+
     if (*nkb__ != sim_ctx->unit_cell().mt_lo_basis_size()) {
         TERMINATE("wrong number of beta-projectors");
     }
@@ -3050,6 +3104,8 @@ void sirius_get_beta_projectors_by_kp(ftn_int* kset_id__,
                                       ftn_int* ld__,
                                       ftn_int* nkb__)
 {
+    PROFILE("sirius_api::sirius_get_beta_projectors_by_kp");
+
     vector3d<double> vk(vk__[0], vk__[1], vk__[2]);
 
     auto kset = kset_list[*kset_id__];
@@ -3066,12 +3122,17 @@ void sirius_get_beta_projectors_by_kp(ftn_int* kset_id__,
     TERMINATE(s);
 }
 
-void sirius_get_density_matrix(ftn_int*    ih__,
-                               ftn_int*    jh__,
-                               ftn_int*    ia__,
-                               ftn_double* dm__)
+void sirius_get_density_matrix(ftn_int*            ia__,
+                               ftn_double_complex* dm__,
+                               ftn_int*            ld__)
 {
-    *dm__ = density->density_matrix()(*ih__ - 1, *jh__ - 1, 0, *ia__ - 1).real();
+    mdarray<double_complex, 2> dm(dm__, *ld__, *ld__);
+    int nbf = sim_ctx->unit_cell().atom(*ia__ - 1).mt_basis_size();
+    for (int i = 0; i < nbf; i++) {
+        for (int j = 0; j < nbf; j++) {
+            dm(i, j) = density->density_matrix()(i, j, 0, *ia__ - 1);
+        }
+    }
 }
 
 void sirius_calc_forces(double* forces__)
@@ -3084,6 +3145,11 @@ void sirius_calc_forces(double* forces__)
 void sirius_set_verbosity(ftn_int* level__)
 {
     sim_ctx->set_verbosity(*level__);
+}
+
+void sirius_generate_d_operator_matrix()
+{
+    potential->generate_D_operator_matrix();
 }
 
 } // extern "C"
