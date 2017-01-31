@@ -149,7 +149,13 @@ class DFT_ground_state
 
         double energy_veff()
         {
-            return energy_vha() + energy_vxc();
+            //return energy_vha() + energy_vxc();
+            return density_.rho()->inner(potential_.effective_potential());
+        }
+
+        double energy_vloc()
+        {
+            return density_.rho()->inner(&potential_.local_potential());
         }
 
         /// Full eigen-value sum (core + valence)
@@ -207,7 +213,7 @@ class DFT_ground_state
                 }
 
                 case electronic_structure_method_t::pseudopotential: {
-                    tot_en = (kset_.valence_eval_sum() - energy_veff() - potential_.PAW_one_elec_energy()) +
+                    tot_en = (kset_.valence_eval_sum() - energy_veff() + energy_vloc() - potential_.PAW_one_elec_energy()) +
                              0.5 * energy_vha() + energy_exc() + potential_.PAW_total_energy() + ewald_energy_;
                     break;
                 }
