@@ -55,7 +55,7 @@ class Potential
         Periodic_function<double>* xc_energy_density_;
 
         /// Local part of pseudopotential.
-        Periodic_function<double>* local_potential_;
+        std::unique_ptr<Periodic_function<double>> local_potential_;
 
         mdarray<double, 3> sbessel_mom_;
 
@@ -356,7 +356,7 @@ class Potential
             xc_energy_density_->allocate_mt(false);
 
             if (!ctx_.full_potential()) {
-                local_potential_ = new Periodic_function<double>(ctx_, 0, 0);
+                local_potential_ = std::unique_ptr<Periodic_function<double>>(new Periodic_function<double>(ctx_, 0, 0));
                 local_potential_->zero();
 
                 generate_local_potential();
@@ -406,9 +406,6 @@ class Potential
             delete hartree_potential_;
             delete xc_potential_;
             delete xc_energy_density_;
-            if (!ctx_.full_potential()) {
-                delete local_potential_;
-            }
         }
 
         inline void set_effective_potential_ptr(double* veffmt, double* veffit)
@@ -698,7 +695,7 @@ class Potential
                 xc(density__.rho(), density__.magnetization(), xc_potential_, effective_magnetic_field_, xc_energy_density_);
             } else {
                 /* add local ionic potential to the effective potential */
-                effective_potential_->add(local_potential_);
+                effective_potential_->add(local_potential_.get());
                 /* create temporary function for rho + rho_core */
                 Periodic_function<double> rhovc(ctx_, 0, 0);
                 rhovc.zero();
@@ -911,6 +908,11 @@ class Potential
         Periodic_function<double>* effective_potential()
         {
             return effective_potential_.get();
+        }
+
+        Periodic_function<double>& local_potential()
+        {
+            return *local_potential_;
         }
 
         Spheric_function<spectral, double> const& effective_potential_mt(int ialoc) const
