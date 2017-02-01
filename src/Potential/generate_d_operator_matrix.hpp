@@ -69,6 +69,14 @@ inline void Potential::generate_D_operator_matrix()
                     }
                 }
             }
+            #ifdef __GPU
+            if (ctx_.processing_unit() == GPU) {
+                acc::sync_stream(0);
+                if (iat + 1 != unit_cell_.num_atom_types()) {
+                    ctx_.augmentation_op(iat + 1).prepare(0);
+                }
+            }
+            #endif
             continue;
         }
         matrix<double> d_tmp(nbf * (nbf + 1) / 2, atom_type.num_atoms()); 

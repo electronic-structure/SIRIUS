@@ -19,6 +19,14 @@ inline void Density::generate_rho_aug(std::vector<Periodic_function<double>*> rh
     for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
         auto& atom_type = unit_cell_.atom_type(iat);
         if (!atom_type.pp_desc().augment) {
+            #ifdef __GPU
+            if (ctx_.processing_unit() == GPU) {
+                acc::sync_stream(0);
+                if (iat + 1 != unit_cell_.num_atom_types()) {
+                    ctx_.augmentation_op(iat + 1).prepare(0);
+                }
+            }
+            #endif
             continue;
         }
 
