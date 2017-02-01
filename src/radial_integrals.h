@@ -88,6 +88,10 @@ class Radial_integrals
         for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
             auto& atom_type = unit_cell_.atom_type(iat);
 
+            if (!atom_type.pp_desc().augment) {
+                continue;
+            }
+
             /* number of radial beta-functions */
             int nbrf = atom_type.mt_radial_basis_size();
             /* maximum l of beta-projectors */
