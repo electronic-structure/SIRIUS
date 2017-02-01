@@ -1,4 +1,4 @@
-// Copyright (c) 2013-2016 Anton Kozhevnikov, Thomas Schulthess
+// Copyright (c) 2013-2017 Anton Kozhevnikov, Thomas Schulthess
 // All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without modification, are permitted provided that 
@@ -25,7 +25,7 @@
 #ifndef __AUGMENTATION_OPERATOR_H__
 #define __AUGMENTATION_OPERATOR_H__
 
-#include "sbessel.h"
+#include "radial_integrals.h"
 
 namespace sirius {
 
@@ -43,73 +43,11 @@ class Augmentation_operator
 
         mdarray<double, 1> sym_weight_;
 
-        Radial_grid qgrid_;
-        
-        /// Get radial integrals of Q-operator with spherical Bessel functions.
-        mdarray<Spline<double>, 2> get_radial_integrals(Gvec const& gvec__)
-        {
-            PROFILE("sirius::Augmentation_operator::get_radial_integrals");
-
-            /* number of radial beta-functions */
-            int nbrf = atom_type_.mt_radial_basis_size();
-            /* maximum l of beta-projectors */
-            int lmax_beta = atom_type_.indexr().lmax();
-            /* interpolate Q-operator radial functions */
-            mdarray<Spline<double>, 2> qrf_spline(nbrf * (nbrf + 1) / 2, 2 * lmax_beta + 1);
-            #pragma omp parallel for
-            for (int idx = 0; idx < nbrf * (nbrf + 1) / 2; idx++) {
-                for (int l3 = 0; l3 <= 2 * lmax_beta; l3++) {
-                    qrf_spline(idx, l3) = Spline<double>(atom_type_.radial_grid());
-                    for (int ir = 0; ir < atom_type_.num_mt_points(); ir++) {
-                        qrf_spline(idx, l3)[ir] = atom_type_.pp_desc().q_radial_functions_l(ir, idx, l3);
-                    }
-                    qrf_spline(idx, l3).interpolate();
-                }
-            }
-
-            /* interpolate <j_{l_n}(q*x) | Q_{xi,xi'}^{l}(x) > with splines */
-            mdarray<Spline<double>, 2> rad_int(nbrf * (nbrf + 1) / 2, 2 * lmax_beta + 1);
-
-            for (int l = 0; l <= 2 * lmax_beta; l++) {
-                for (int idx = 0; idx < nbrf * (nbrf + 1) / 2; idx++) {
-                    rad_int(idx, l) = Spline<double>(qgrid_);
-                }
-            }
-            
-            #pragma omp parallel for
-            for (int iq = 0; iq < qgrid_.num_points(); iq++) {
-                Spherical_Bessel_functions jl(2 * lmax_beta, atom_type_.radial_grid(), qgrid_[iq]);
-
-                for (int l3 = 0; l3 <= 2 * lmax_beta; l3++) {
-                    for (int idxrf2 = 0; idxrf2 < nbrf; idxrf2++) {
-                        int l2 = atom_type_.indexr(idxrf2).l;
-                        for (int idxrf1 = 0; idxrf1 <= idxrf2; idxrf1++) {
-                            int l1 = atom_type_.indexr(idxrf1).l;
-
-                            int idx = idxrf2 * (idxrf2 + 1) / 2 + idxrf1;
-                            
-                            if (l3 >= std::abs(l1 - l2) && l3 <= (l1 + l2) && (l1 + l2 + l3) % 2 == 0) {
-                                rad_int(idx, l3)[iq] = inner(jl[l3], qrf_spline(idx, l3), 0, atom_type_.num_mt_points());
-                            }
-                        }
-                    }
-                }
-            }
-
-            for (int l = 0; l <= 2 * lmax_beta; l++) {
-                for (int idx = 0; idx < nbrf * (nbrf + 1) / 2; idx++) {
-                    rad_int(idx, l).interpolate();
-                }
-            }
-
-            return std::move(rad_int);
-        }
-
-        void generate_pw_coeffs(double omega__, Gvec const& gvec__)
+        void generate_pw_coeffs(double omega__, Gvec const& gvec__, Radial_integrals const& radial_integrals__)
         {
             PROFILE("sirius::Augmentation_operator::generate_pw_coeffs");
         
-            auto qri = get_radial_integrals(gvec__);
+            //auto qri = get_radial_integrals(gvec__);
 
             double fourpi_omega = fourpi / omega__;
 
@@ -154,11 +92,6 @@ class Augmentation_operator
                 int ig = gvec_offset + igloc;
                 double g = gvec__.gvec_len(ig);
                 
-                /* position in the linear grid of |G| values */
-                int iq = static_cast<int>((qgrid_.num_points() - 1) * g / atom_type_.parameters().pw_cutoff());
-                /* delta */
-                double dq = g - qgrid_[iq];
-
                 std::vector<double_complex> v(lmmax);
 
                 for (int xi2 = 0; xi2 < nbf; xi2++) {
@@ -175,7 +108,7 @@ class Augmentation_operator
                         int idxrf12 = idxrf2 * (idxrf2 + 1) / 2 + idxrf1;
                         
                         for (int lm3 = 0; lm3 < lmmax; lm3++) {
-                            v[lm3] = std::conj(zilm[lm3]) * gvec_rlm(lm3, igloc) * qri(idxrf12, l_by_lm[lm3])(iq, dq);
+                            v[lm3] = std::conj(zilm[lm3]) * gvec_rlm(lm3, igloc) * radial_integrals__.aug_radial_integral(idxrf12, l_by_lm[lm3], atom_type_.id(), g);
                         }
 
                         double_complex z = fourpi_omega * gaunt_coefs.sum_L3_gaunt(lm2, lm1, &v[0]);
@@ -218,15 +151,13 @@ class Augmentation_operator
         Augmentation_operator(Communicator const& comm__,
                               Atom_type const& atom_type__,
                               Gvec const& gvec__,
-                              double omega__)
-            : comm_(comm__),
-              atom_type_(atom_type__)
+                              double omega__,
+                              Radial_integrals const& radial_integrals__)
+            : comm_(comm__)
+            , atom_type_(atom_type__)
         {
             if (atom_type__.pp_desc().augment) {
-                int nq = static_cast<int>(atom_type_.parameters().pw_cutoff() * 12);
-                /* this is the regular grid in reciprocal space in the range [0, |G|_max ] */
-                qgrid_ = Radial_grid(linear_grid, nq, 0, atom_type_.parameters().pw_cutoff());
-                generate_pw_coeffs(omega__, gvec__);
+                generate_pw_coeffs(omega__, gvec__, radial_integrals__);
             }
         }
 

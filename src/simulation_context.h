@@ -628,7 +628,8 @@ inline void Simulation_context::initialize()
     if (esm_type() == electronic_structure_method_t::pseudopotential) {
         /* create augmentation operator Q_{xi,xi'}(G) here */
         for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
-            augmentation_op_.push_back(std::move(Augmentation_operator(comm_, unit_cell_.atom_type(iat), gvec_, unit_cell_.omega())));
+            augmentation_op_.push_back(std::move(Augmentation_operator(comm_, unit_cell_.atom_type(iat), gvec_,
+                                                                       unit_cell_.omega(), *radial_integrals_)));
         }
     }
     

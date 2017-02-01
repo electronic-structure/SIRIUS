@@ -670,8 +670,8 @@ inline void Unit_cell::initialize()
     
     /* find the charges */
     for (int i = 0; i < num_atoms(); i++) {
-        total_nuclear_charge_ += atom(i).zn();
-        num_core_electrons_ += atom(i).type().num_core_electrons();
+        total_nuclear_charge_  += atom(i).zn();
+        num_core_electrons_    += atom(i).type().num_core_electrons();
         num_valence_electrons_ += atom(i).type().num_valence_electrons();
     }
     num_electrons_ = num_core_electrons_ + num_valence_electrons_;
@@ -681,7 +681,7 @@ inline void Unit_cell::initialize()
         atom(ia).init(mt_aw_basis_size_, mt_lo_basis_size_, mt_basis_size_);
         mt_aw_basis_size_ += atom(ia).mt_aw_basis_size();
         mt_lo_basis_size_ += atom(ia).mt_lo_basis_size();
-        mt_basis_size_ += atom(ia).mt_basis_size();
+        mt_basis_size_    += atom(ia).mt_basis_size();
     }
 
     assert(mt_basis_size_ == mt_aw_basis_size_ + mt_lo_basis_size_);
