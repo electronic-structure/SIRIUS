@@ -258,9 +258,9 @@ inline void Band::initialize_subspace(K_point* kp__,
         set_subspace_mtrx<T>(0, num_phi, phi, hphi, hmlt, hmlt_old);
 
         /* solve generalized eigen-value problem with the size N */
-        if (std_evp_solver().solve(num_phi, num_bands, hmlt.template at<CPU>(), hmlt.ld(),
-                                   eval.data(), evec.template at<CPU>(), evec.ld(),
-                                   hmlt.num_rows_local(), hmlt.num_cols_local())) {
+        if (Eigenproblem_lapack().solve(num_phi, num_bands, hmlt.template at<CPU>(), hmlt.ld(),
+                                        eval.data(), evec.template at<CPU>(), evec.ld(),
+                                        hmlt.num_rows_local(), hmlt.num_cols_local())) {
             std::stringstream s;
             s << "error in diagonalziation";
             TERMINATE(s);

@@ -86,7 +86,7 @@ class Augmentation_operator
             q_mtrx_.zero();
 
             /* array of plane-wave coefficients */
-            q_pw_ = mdarray<double, 2>(nbf * (nbf + 1) / 2, 2 * gvec_count, memory_t::host_pinned);
+            q_pw_ = mdarray<double, 2>(nbf * (nbf + 1) / 2, 2 * gvec_count, memory_t::host_pinned, "q_pw_");
             #pragma omp parallel for
             for (int igloc = 0; igloc < gvec_count; igloc++) {
                 int ig = gvec_offset + igloc;
@@ -118,7 +118,7 @@ class Augmentation_operator
                 }
             }
 
-            sym_weight_ = mdarray<double, 1>(nbf * (nbf + 1) / 2, memory_t::host_pinned);
+            sym_weight_ = mdarray<double, 1>(nbf * (nbf + 1) / 2, memory_t::host_pinned, "sym_weight_");
             for (int xi2 = 0; xi2 < nbf; xi2++) {
                 for (int xi1 = 0; xi1 <= xi2; xi1++) {
                     /* packed orbital index */
@@ -164,7 +164,7 @@ class Augmentation_operator
         void prepare(int stream_id__) const
         {
             #ifdef __GPU
-            if (atom_type_.parameters().processing_unit() == GPU) {
+            if (atom_type_.parameters().processing_unit() == GPU && atom_type_.pp_desc().augment) {
                 sym_weight_.allocate(memory_t::device);
                 sym_weight_.async_copy_to_device(stream_id__);
 
@@ -177,7 +177,7 @@ class Augmentation_operator
         void dismiss() const
         {
             #ifdef __GPU
-            if (atom_type_.parameters().processing_unit() == GPU) {
+            if (atom_type_.parameters().processing_unit() == GPU && atom_type_.pp_desc().augment) {
                 q_pw_.deallocate_on_device();
                 sym_weight_.deallocate_on_device();
             }
