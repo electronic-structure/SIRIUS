@@ -2314,6 +2314,29 @@ void sirius_set_veff_pw(ftn_int*            num_gvec__,
     potential->effective_potential()->fft_transform(1);
 }
 
+void sirius_set_vxc_pw(ftn_int*            num_gvec__,
+                       ftn_int*            gvec__,
+                       ftn_double_complex* vxc_pw__,
+                       ftn_int*            fcomm__)
+
+{
+    mdarray<int, 2> gvec(gvec__, 3, *num_gvec__);
+
+    potential->xc_potential()->zero();
+
+    for (int i = 0; i < *num_gvec__; i++) {
+        vector3d<int> G(gvec(0, i), gvec(1, i), gvec(2, i));
+        int ig = sim_ctx->gvec().index_by_gvec(G);
+        if (ig >= 0) {
+            potential->xc_potential()->f_pw(ig) = vxc_pw__[i];
+        }
+    }
+
+    Communicator comm(MPI_Comm_f2c(*fcomm__));
+    comm.allreduce(&potential->xc_potential()->f_pw(0), sim_ctx->gvec().num_gvec());
+    potential->xc_potential()->fft_transform(1);
+}
+
 void sirius_get_gvec_index(int32_t* gvec__, int32_t* ig__)
 {
     vector3d<int> gv(gvec__[0], gvec__[1], gvec__[2]);

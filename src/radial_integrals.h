@@ -49,6 +49,33 @@ class Radial_integrals
     /// Beta-projector radial integrals.
     mdarray<Spline<double>, 2> beta_radial_integrals_;
 
+    mdarray<Spline<double>, 1> pseudo_core_radial_integrals_;
+
+    inline void generate_pseudo_core_radial_integrals()
+    {
+        PROFILE("sirius::Radial_integrals::generate_pseudo_core_radial_integrals");
+        pseudo_core_radial_integrals_ = mdarray<Spline<double>, 1>(unit_cell_.num_atom_types());
+
+        for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
+            auto& atom_type = unit_cell_.atom_type(iat);
+            pseudo_core_radial_integrals_(iat) = Spline<double>(grid_gmax_);
+
+            Spline<double> ps_core(atom_type.radial_grid());
+            for (int ir = 0; ir < atom_type.num_mt_points(); ir++) {
+                ps_core[ir] = atom_type.pp_desc().core_charge_density[ir];
+            }
+            ps_core.interpolate();
+
+            #pragma omp parallel for
+            for (int iq = 0; iq < grid_gmax_.num_points(); iq++) {
+                Spherical_Bessel_functions jl(0, atom_type.radial_grid(), grid_gmax_[iq]);
+
+                pseudo_core_radial_integrals_(iat)[iq] = sirius::inner(jl[0], ps_core, 2, atom_type.num_mt_points());
+            }
+            pseudo_core_radial_integrals_(iat).interpolate();
+        }
+    }
+
     inline void generate_aug_radial_integrals()
     {
         PROFILE("sirius::Radial_integrals::generate_aug_radial_integrals");
@@ -188,6 +215,7 @@ class Radial_integrals
         if (param_.esm_type() == electronic_structure_method_t::pseudopotential) {
             generate_beta_radial_integrals();
             generate_aug_radial_integrals();
+            generate_pseudo_core_radial_integrals();
         }
     }
 
@@ -201,6 +229,12 @@ class Radial_integrals
     {
         auto iqdq = iqdq_gmax(q__);
         return aug_radial_integrals_(idx__, l__, iat__)(iqdq.first, iqdq.second);
+    }
+
+    inline double pseudo_core_radial_integral(int iat__, double q__) const
+    {
+        auto iqdq = iqdq_gmax(q__);
+        return pseudo_core_radial_integrals_(iat__)(iqdq.first, iqdq.second);
     }
 };
 

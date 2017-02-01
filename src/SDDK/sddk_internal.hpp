@@ -179,11 +179,11 @@ class timer
         if (mpi_comm_world().rank() == 0) {
             printf("\n");
             printf("Timers\n");
-            for (int i = 0; i < 115; i++)
+            for (int i = 0; i < 120; i++)
                 printf("-");
             printf("\n");
-            printf("name                                                              count      total        min       max    average\n");
-            for (int i = 0; i < 115; i++) {
+            printf("name                                                                   count      total        min        max    average\n");
+            for (int i = 0; i < 120; i++) {
                 printf("-");
             }
             printf("\n");
@@ -191,7 +191,7 @@ class timer
             for (auto it = tstats.begin(); it != tstats.end(); it++) {
                 auto ts = it->second;
                 if (ts.total_value > min_total__) {
-                    printf("%-60s :    %5i %10.4f %10.4f %10.4f %10.4f\n", it->first.c_str(), ts.count, ts.total_value,
+                    printf("%-65s :    %5i %10.4f %10.4f %10.4f %10.4f\n", it->first.c_str(), ts.count, ts.total_value,
                            ts.min_value, ts.max_value, ts.average_value);
                 }
             }
