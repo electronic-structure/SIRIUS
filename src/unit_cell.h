@@ -345,7 +345,11 @@ class Unit_cell
 
         /// Make periodic function out of form factors.
         /** Return vector of plane-wave coefficients */
-        inline std::vector<double_complex> make_periodic_function(mdarray<double, 2>& form_factors__, Gvec const& gvec__) const;
+        inline std::vector<double_complex> make_periodic_function(mdarray<double, 2>& form_factors__,
+                                                                  Gvec const& gvec__) const;
+
+        inline std::vector<double_complex> make_periodic_function(std::function<double(int, double)> form_factors__,
+                                                                  Gvec const& gvec__) const;
 
         inline int atom_id_by_position(vector3d<double> position__)
         {
@@ -670,8 +674,8 @@ inline void Unit_cell::initialize()
     
     /* find the charges */
     for (int i = 0; i < num_atoms(); i++) {
-        total_nuclear_charge_ += atom(i).zn();
-        num_core_electrons_ += atom(i).type().num_core_electrons();
+        total_nuclear_charge_  += atom(i).zn();
+        num_core_electrons_    += atom(i).type().num_core_electrons();
         num_valence_electrons_ += atom(i).type().num_valence_electrons();
     }
     num_electrons_ = num_core_electrons_ + num_valence_electrons_;
@@ -681,7 +685,7 @@ inline void Unit_cell::initialize()
         atom(ia).init(mt_aw_basis_size_, mt_lo_basis_size_, mt_basis_size_);
         mt_aw_basis_size_ += atom(ia).mt_aw_basis_size();
         mt_lo_basis_size_ += atom(ia).mt_lo_basis_size();
-        mt_basis_size_ += atom(ia).mt_basis_size();
+        mt_basis_size_    += atom(ia).mt_basis_size();
     }
 
     assert(mt_basis_size_ == mt_aw_basis_size_ + mt_lo_basis_size_);
@@ -1376,6 +1380,34 @@ inline std::vector<double_complex> Unit_cell::make_periodic_function(mdarray<dou
             int iat = atom(ia).type_id();
             double_complex z = std::exp(double_complex(0.0, twopi * (gvec__.gvec(ig) * atom(ia).position())));
             f_pw[ig] += fourpi_omega * std::conj(z) * form_factors__(iat, igs);
+        }
+    }
+
+    comm_.allgather(&f_pw[0], spl_ngv.global_offset(), spl_ngv.local_size());
+
+    return std::move(f_pw);
+}
+
+inline std::vector<double_complex> Unit_cell::make_periodic_function(std::function<double(int, double)> form_factors__,
+                                                                     Gvec const& gvec__) const
+{
+    PROFILE("sirius::Unit_cell::make_periodic_function");
+
+    std::vector<double_complex> f_pw(gvec__.num_gvec(), double_complex(0, 0));
+
+    double fourpi_omega = fourpi / omega();
+
+    splindex<block> spl_ngv(gvec__.num_gvec(), comm_.size(), comm_.rank());
+
+    #pragma omp parallel for
+    for (int igloc = 0; igloc < spl_ngv.local_size(); igloc++) {
+        int ig = spl_ngv[igloc];
+        double g = gvec__.gvec_len(ig);
+
+        for (int ia = 0; ia < num_atoms(); ia++) {
+            int iat = atom(ia).type_id();
+            double_complex z = std::exp(double_complex(0.0, twopi * (gvec__.gvec(ig) * atom(ia).position())));
+            f_pw[ig] += fourpi_omega * std::conj(z) * form_factors__(iat, g);
         }
     }
 

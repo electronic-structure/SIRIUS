@@ -340,7 +340,6 @@ class Potential
 
             effective_potential_ = std::unique_ptr<Periodic_function<double>>(new Periodic_function<double>(ctx_, ctx_.lmmax_pot(), 1));
             
-            //int need_gvec = (ctx_.full_potential()) ? 0 : 1;
             int need_gvec{1};
             for (int j = 0; j < ctx_.num_mag_dims(); j++) {
                 effective_magnetic_field_[j] = new Periodic_function<double>(ctx_, ctx_.lmmax_pot(), need_gvec);
@@ -349,7 +348,7 @@ class Potential
             hartree_potential_ = new Periodic_function<double>(ctx_, ctx_.lmmax_pot(), 1);
             hartree_potential_->allocate_mt(false);
             
-            xc_potential_ = new Periodic_function<double>(ctx_, ctx_.lmmax_pot(), 0);
+            xc_potential_ = new Periodic_function<double>(ctx_, ctx_.lmmax_pot(), 1);
             xc_potential_->allocate_mt(false);
             
             xc_energy_density_ = new Periodic_function<double>(ctx_, ctx_.lmmax_pot(), 0);

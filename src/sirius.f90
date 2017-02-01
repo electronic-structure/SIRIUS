@@ -446,6 +446,14 @@ module sirius
             integer,                 intent(in) :: comm
         end subroutine
 
+        subroutine sirius_set_vxc_pw(num_gvec, gvec, vxc_pw, comm)&
+            &bind(C, name="sirius_set_vxc_pw")
+            integer,                 intent(in) :: num_gvec
+            integer,                 intent(in) :: gvec
+            complex(8),              intent(in) :: vxc_pw
+            integer,                 intent(in) :: comm
+        end subroutine
+
         subroutine sirius_get_veff_pw(num_gvec, gvec, veff_pw)&
             &bind(C, name="sirius_get_veff_pw")
             integer,                 intent(in)  :: num_gvec

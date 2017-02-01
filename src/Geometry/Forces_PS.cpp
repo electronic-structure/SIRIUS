@@ -32,8 +32,6 @@ void Forces_PS::calc_local_forces(mdarray<double,2>& forces)
     int gvec_count = gvecs.gvec_count(ctx_.comm().rank());
     int gvec_offset = gvecs.gvec_offset(ctx_.comm().rank());
 
-    //mdarray<double_complex, 2> vloc_G_comp(unit_cell.num_atoms(), spl_ngv.local_size() );
-
     if (forces.size(0) != 3 || (int)forces.size(1) != unit_cell.num_atoms()) {
         TERMINATE("forces array has wrong number of elements");
     }
@@ -86,19 +84,13 @@ void Forces_PS::calc_nlcc_forces(mdarray<double,2>& forces)
 {
     PROFILE("sirius::Forces_PS::calc_nlcc_force");
 
-    // get main arrays
-    Periodic_function<double>* xc_pot = potential_.xc_potential();
+    /* get main arrays */
+    auto xc_pot = potential_.xc_potential();
 
-    // check because it is not allocated in dft loop
-    if ( !xc_pot->is_f_pw_allocated() )
-    {
-        xc_pot->allocate_pw();
-    }
-
-    // transform from real space to reciprocal
+    /* transform from real space to reciprocal */
     xc_pot->fft_transform(-1);
 
-    const mdarray<double, 2>&  rho_core_radial_integrals = density_.rho_pseudo_core_radial_integrals();
+    //const mdarray<double, 2>&  rho_core_radial_integrals = density_.rho_pseudo_core_radial_integrals();
 
     Unit_cell &unit_cell = ctx_.unit_cell();
 
@@ -134,8 +126,8 @@ void Forces_PS::calc_nlcc_forces(mdarray<double,2>& forces)
             vector3d<double> gvec_cart = gvecs.gvec_cart(ig);
 
             // scalar part of a force without multipying by G-vector
-            double_complex z = fact * fourpi * rho_core_radial_integrals(iat, igs) * std::conj( xc_pot->f_pw(ig) ) *
-                    std::exp(double_complex(0.0, - twopi * (gvec * atom.position())));
+            double_complex z = fact * fourpi * ctx_.radial_integrals().pseudo_core_radial_integral(iat, gvecs.gvec_len(ig)) *
+                               std::conj(xc_pot->f_pw(ig)) * std::exp(double_complex(0.0, -twopi * (gvec * atom.position())));
 
             // get force components multiplying by cartesian G-vector ( -image part goes from formula)
             forces(0, ia) -= (gvec_cart[0] * z).imag();
