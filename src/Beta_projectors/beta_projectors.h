@@ -54,6 +54,11 @@ enum beta_desc_idx {
 class Beta_projectors_gradient;
 
 /// Stores <G+k | beta> expansion
+/** \todo Beta_projectors and Beta_projectors_gradient need some rethinking. Beta_projectors are used in two
+ *        places: in application of non-local potential and in generation of density matrix. Beta_projectors_gradient
+ *        are used in the calculation of forces. Both are split in chunks, both require an inner product with
+ *        wave-functions.
+ */
 class Beta_projectors
 {
     friend class Beta_projectors_gradient;

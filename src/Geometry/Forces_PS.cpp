@@ -22,7 +22,7 @@ void Forces_PS::calc_local_forces(mdarray<double,2>& forces)
     // get main arrays
     const Periodic_function<double>* valence_rho = density_.rho();
 
-    const mdarray<double, 2>& vloc_radial_integrals = potential_.get_vloc_radial_integrals();
+    //const mdarray<double, 2>& vloc_radial_integrals = potential_.get_vloc_radial_integrals();
 
     // other
     Unit_cell &unit_cell = ctx_.unit_cell();
@@ -63,7 +63,7 @@ void Forces_PS::calc_local_forces(mdarray<double,2>& forces)
             vector3d<double> gvec_cart = gvecs.gvec_cart(ig);
 
             // scalar part of a force without multipying by G-vector
-            double_complex z = fact * fourpi * vloc_radial_integrals(iat, igs) * std::conj( valence_rho->f_pw(ig) ) *
+            double_complex z = fact * fourpi * ctx_.radial_integrals().vloc_radial_integral(iat, gvecs.gvec_len(ig)) * std::conj(valence_rho->f_pw(ig)) *
                     std::exp(double_complex(0.0, - twopi * (gvec * atom.position())));
 
             // get force components multiplying by cartesian G-vector ( -image part goes from formula)
