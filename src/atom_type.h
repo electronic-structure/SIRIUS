@@ -28,7 +28,7 @@
 
 #include "atomic_conf.h"
 #include "descriptors.h"
-#include "vector3d.hpp"
+#include "geometry3d.hpp"
 #include "utils.h"
 #include "radial_grid.h"
 #include "radial_solver.h"

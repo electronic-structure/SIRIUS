@@ -150,7 +150,7 @@ struct nearest_neighbour_descriptor
     int atom_id;
 
     /// translation along each lattice vector
-    sddk::vector3d<int> translation;
+    geometry3d::vector3d<int> translation;
 
     /// distance from the central atom
     double distance;

@@ -265,6 +265,11 @@ class Simulation_parameters
             molecule_ = molecule__;
         }
 
+        inline void set_verbosity(int level__)
+        {
+            control_input_section_.verbosity_ = level__;
+        }
+
         inline int lmax_apw() const
         {
             return lmax_apw_;

@@ -39,17 +39,17 @@ class BLACS_grid
 
     std::unique_ptr<MPI_grid> mpi_grid_;
 
-    int num_ranks_row_;
+    int num_ranks_row_{-1};
 
-    int num_ranks_col_;
+    int num_ranks_col_{-1};
 
-    int rank_row_;
+    int rank_row_{-1};
 
-    int rank_col_;
+    int rank_col_{-1};
 
-    int blacs_handler_;
+    int blacs_handler_{-1};
 
-    int blacs_context_;
+    int blacs_context_{-1};
 
     /* forbid copy constructor */
     BLACS_grid(BLACS_grid const& src) = delete;
@@ -61,8 +61,6 @@ class BLACS_grid
         : comm_(comm__)
         , num_ranks_row_(num_ranks_row__)
         , num_ranks_col_(num_ranks_col__)
-        , blacs_handler_(-1)
-        , blacs_context_(-1)
     {
         PROFILE("sddk::BLACS_grid::BLACS_grid");
 

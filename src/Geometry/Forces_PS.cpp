@@ -8,6 +8,8 @@
 #include "Forces_PS.h"
 #include "../k_point_set.h"
 
+using namespace geometry3d;
+
 namespace sirius
 {
 
@@ -20,7 +22,7 @@ void Forces_PS::calc_local_forces(mdarray<double,2>& forces)
     // get main arrays
     const Periodic_function<double>* valence_rho = density_.rho();
 
-    const mdarray<double, 2>& vloc_radial_integrals = potential_.get_vloc_radial_integrals();
+    //const mdarray<double, 2>& vloc_radial_integrals = potential_.get_vloc_radial_integrals();
 
     // other
     Unit_cell &unit_cell = ctx_.unit_cell();
@@ -29,8 +31,6 @@ void Forces_PS::calc_local_forces(mdarray<double,2>& forces)
 
     int gvec_count = gvecs.gvec_count(ctx_.comm().rank());
     int gvec_offset = gvecs.gvec_offset(ctx_.comm().rank());
-
-    //mdarray<double_complex, 2> vloc_G_comp(unit_cell.num_atoms(), spl_ngv.local_size() );
 
     if (forces.size(0) != 3 || (int)forces.size(1) != unit_cell.num_atoms()) {
         TERMINATE("forces array has wrong number of elements");
@@ -57,13 +57,13 @@ void Forces_PS::calc_local_forces(mdarray<double,2>& forces)
 
             // fractional form for calculation of scalar product with atomic position
             // since atomic positions are stored in fractional coords
-            sddk::vector3d<int> gvec = gvecs.gvec(ig);
+            vector3d<int> gvec = gvecs.gvec(ig);
 
             // cartesian form for getting cartesian force components
-            sddk::vector3d<double> gvec_cart = gvecs.gvec_cart(ig);
+            vector3d<double> gvec_cart = gvecs.gvec_cart(ig);
 
             // scalar part of a force without multipying by G-vector
-            double_complex z = fact * fourpi * vloc_radial_integrals(iat, igs) * std::conj( valence_rho->f_pw(ig) ) *
+            double_complex z = fact * fourpi * ctx_.radial_integrals().vloc_radial_integral(iat, gvecs.gvec_len(ig)) * std::conj(valence_rho->f_pw(ig)) *
                     std::exp(double_complex(0.0, - twopi * (gvec * atom.position())));
 
             // get force components multiplying by cartesian G-vector ( -image part goes from formula)
@@ -84,21 +84,13 @@ void Forces_PS::calc_nlcc_forces(mdarray<double,2>& forces)
 {
     PROFILE("sirius::Forces_PS::calc_nlcc_force");
 
-    // get main arrays
-    Periodic_function<double>* xc_pot = potential_.xc_potential();
+    /* get main arrays */
+    auto xc_pot = potential_.xc_potential();
 
-    // check because it is not allocated in dft loop
-    if ( !xc_pot->is_f_pw_allocated() )
-    {
-        xc_pot->allocate_pw();
-    }
-
-    // transform from real space to reciprocal
-    xc_pot->fft().prepare(xc_pot->gvec().partition() );
+    /* transform from real space to reciprocal */
     xc_pot->fft_transform(-1);
-    xc_pot->fft().dismiss( );
 
-    const mdarray<double, 2>&  rho_core_radial_integrals = density_.rho_pseudo_core_radial_integrals();
+    //const mdarray<double, 2>&  rho_core_radial_integrals = density_.rho_pseudo_core_radial_integrals();
 
     Unit_cell &unit_cell = ctx_.unit_cell();
 
@@ -128,14 +120,14 @@ void Forces_PS::calc_nlcc_forces(mdarray<double,2>& forces)
 
             // fractional form for calculation of scalar product with atomic position
             // since atomic positions are stored in fractional coords
-            sddk::vector3d<int> gvec = gvecs.gvec(ig);
+            vector3d<int> gvec = gvecs.gvec(ig);
 
             // cartesian form for getting cartesian force components
-            sddk::vector3d<double> gvec_cart = gvecs.gvec_cart(ig);
+            vector3d<double> gvec_cart = gvecs.gvec_cart(ig);
 
             // scalar part of a force without multipying by G-vector
-            double_complex z = fact * fourpi * rho_core_radial_integrals(iat, igs) * std::conj( xc_pot->f_pw(ig) ) *
-                    std::exp(double_complex(0.0, - twopi * (gvec * atom.position())));
+            double_complex z = fact * fourpi * ctx_.radial_integrals().pseudo_core_radial_integral(iat, gvecs.gvec_len(ig)) *
+                               std::conj(xc_pot->f_pw(ig)) * std::exp(double_complex(0.0, -twopi * (gvec * atom.position())));
 
             // get force components multiplying by cartesian G-vector ( -image part goes from formula)
             forces(0, ia) -= (gvec_cart[0] * z).imag();
@@ -179,6 +171,9 @@ void Forces_PS::calc_ultrasoft_forces(mdarray<double,2>& forces)
         Atom &atom = unit_cell.atom(ia);
 
         int iat = atom.type_id();
+        if (!unit_cell.atom_type(iat).pp_desc().augment) {
+            continue;
+        }
 
         for (int igloc = 0; igloc < gvec_count; igloc++)
         {
@@ -186,10 +181,10 @@ void Forces_PS::calc_ultrasoft_forces(mdarray<double,2>& forces)
 
             // fractional form for calculation of scalar product with atomic position
             // since atomic positions are stored in fractional coords
-            sddk::vector3d<int> gvec = gvecs.gvec(ig);
+            vector3d<int> gvec = gvecs.gvec(ig);
 
             // cartesian form for getting cartesian force components
-            sddk::vector3d<double> gvec_cart = gvecs.gvec_cart(ig);
+            vector3d<double> gvec_cart = gvecs.gvec_cart(ig);
 
             // scalar part of a force without multipying by G-vector and Qij
             // omega * V_conj(G) * exp(-i G Rn)
@@ -212,9 +207,9 @@ void Forces_PS::calc_ultrasoft_forces(mdarray<double,2>& forces)
                             double_complex( aug_op.q_pw( iqij , 2*igloc ), aug_op.q_pw( iqij , 2*igloc + 1 ) );
 
                     // get force components multiplying by cartesian G-vector ( -image part goes from formula)
-                    forces(0, ia) -=  (gvec_cart[0] * z).imag();
-                    forces(1, ia) -=  (gvec_cart[1] * z).imag();
-                    forces(2, ia) -=  (gvec_cart[2] * z).imag();
+                    forces(0, ia) -= (gvec_cart[0] * z).imag();
+                    forces(1, ia) -= (gvec_cart[1] * z).imag();
+                    forces(2, ia) -= (gvec_cart[2] * z).imag();
                 }
             }
         }
@@ -302,7 +297,7 @@ void Forces_PS::calc_ewald_forces(mdarray<double,2>& forces)
         double g2 = std::pow(ctx_.gvec().shell_len(ctx_.gvec().shell(ig)), 2);
 
         // cartesian form for getting cartesian force components
-        sddk::vector3d<double> gvec_cart = ctx_.gvec().gvec_cart(ig);
+        vector3d<double> gvec_cart = ctx_.gvec().gvec_cart(ig);
 
         double_complex rho(0, 0);
 
@@ -341,7 +336,7 @@ void Forces_PS::calc_ewald_forces(mdarray<double,2>& forces)
 
             double d2 = d*d;
 
-            sddk::vector3d<double> t = unit_cell.lattice_vectors() * unit_cell.nearest_neighbour(i, ia).translation;
+            vector3d<double> t = unit_cell.lattice_vectors() * unit_cell.nearest_neighbour(i, ia).translation;
 
             double scalar_part = static_cast<double>(unit_cell.atom(ia).zn() * unit_cell.atom(ja).zn()) / d2 *
                           ( gsl_sf_erfc(std::sqrt(alpha) * d) / d  +  2.0 * std::sqrt(alpha * invpi ) * std::exp( - d2 * alpha ) );
@@ -360,17 +355,17 @@ void Forces_PS::calc_ewald_forces(mdarray<double,2>& forces)
 //---------------------------------------------------------------
 void Forces_PS::symmetrize_forces(mdarray<double,2>& unsym_forces, mdarray<double,2>& sym_forces )
 {
-    sddk::matrix3d<double> const& lattice_vectors = ctx_.unit_cell().symmetry().lattice_vectors();
-    sddk::matrix3d<double> const& inverse_lattice_vectors = ctx_.unit_cell().symmetry().inverse_lattice_vectors();
+    matrix3d<double> const& lattice_vectors = ctx_.unit_cell().symmetry().lattice_vectors();
+    matrix3d<double> const& inverse_lattice_vectors = ctx_.unit_cell().symmetry().inverse_lattice_vectors();
 
     sym_forces.zero();
 
     #pragma omp parallel for
     for(int ia = 0; ia < (int)unsym_forces.size(1); ia++)
     {
-        sddk::vector3d<double> cart_force(&unsym_forces(0,ia) );
+        vector3d<double> cart_force(&unsym_forces(0,ia) );
 
-        sddk::vector3d<double> lat_force = inverse_lattice_vectors * (cart_force / (double)ctx_.unit_cell().symmetry().num_mag_sym());
+        vector3d<double> lat_force = inverse_lattice_vectors * (cart_force / (double)ctx_.unit_cell().symmetry().num_mag_sym());
 
         for (int isym = 0; isym < ctx_.unit_cell().symmetry().num_mag_sym(); isym++)
         {
@@ -378,7 +373,7 @@ void Forces_PS::symmetrize_forces(mdarray<double,2>& unsym_forces, mdarray<doubl
 
             auto &R = ctx_.unit_cell().symmetry().magnetic_group_symmetry(isym).spg_op.R;
 
-            sddk::vector3d<double> rot_force = lattice_vectors * ( R * lat_force );
+            vector3d<double> rot_force = lattice_vectors * ( R * lat_force );
 
             #pragma omp atomic update
             sym_forces(0, ja) += rot_force[0];

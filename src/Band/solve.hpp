@@ -22,25 +22,6 @@
  *   \brief Contains interfaces to the sirius::Band solvers.
  */
 
-inline void Band::solve_fv(K_point* kp__,
-                           Potential const& potential__) const
-{
-    if (kp__->gklo_basis_size() < ctx_.num_fv_states()) {
-        TERMINATE("basis size is too small");
-    }
-
-    switch (ctx_.esm_type()) {
-        case electronic_structure_method_t::full_potential_pwlo:
-        case electronic_structure_method_t::full_potential_lapwlo: {
-            diag_fv_full_potential(kp__, potential__);
-            break;
-        }
-        default: {
-            TERMINATE_NOT_IMPLEMENTED
-        }
-    }
-}
-
 inline void Band::solve_fd(K_point* kp__,
                            Periodic_function<double>* effective_potential__, 
                            Periodic_function<double>* effective_magnetic_field__[3]) const
@@ -128,7 +109,6 @@ inline void Band::solve_sv(K_point* kp,
     std::vector<wave_functions> hpsi;
     for (int i = 0; i < ctx_.num_mag_comp(); i++) {
         hpsi.push_back(std::move(wave_functions(ctx_.processing_unit(),
-                                                kp->comm(),
                                                 kp->gkvec(),
                                                 unit_cell_.num_atoms(),
                                                 [this](int ia)
@@ -270,7 +250,13 @@ inline void Band::solve_for_kset(K_point_set& kset__,
         unit_cell_.generate_radial_integrals();
     }
 
-    // TODO: mapping to coarse effective potential is k-point independent
+    if (ctx_.full_potential()) {
+        local_op_->prepare(ctx_.gvec_coarse(), ctx_.num_mag_dims(), potential__.effective_potential(),
+                           potential__.effective_magnetic_field(), ctx_.step_function());
+    } else {
+        local_op_->prepare(ctx_.gvec_coarse(), ctx_.num_mag_dims(), potential__.effective_potential(),
+                           potential__.effective_magnetic_field());
+    }
 
     /* solve secular equation and generate wave functions */
     for (int ikloc = 0; ikloc < kset__.spl_num_kpoints().local_size(); ikloc++) {
@@ -278,7 +264,7 @@ inline void Band::solve_for_kset(K_point_set& kset__,
 
         if (use_second_variation && ctx_.full_potential()) {
             /* solve non-magnetic Hamiltonian (so-called first variation) */
-            solve_fv(kset__.k_point(ik), potential__);
+            diag_fv_full_potential(kset__.k_point(ik), potential__);
             /* generate first-variational states */
             kset__.k_point(ik)->generate_fv_states();
             /* solve magnetic Hamiltonian */
@@ -289,6 +275,8 @@ inline void Band::solve_for_kset(K_point_set& kset__,
             solve_fd(kset__.k_point(ik), potential__.effective_potential(), potential__.effective_magnetic_field());
         }
     }
+
+    local_op_->dismiss();
 
     /* synchronize eigen-values */
     kset__.sync_band_energies();

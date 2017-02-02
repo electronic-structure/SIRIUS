@@ -54,6 +54,11 @@ enum beta_desc_idx {
 class Beta_projectors_gradient;
 
 /// Stores <G+k | beta> expansion
+/** \todo Beta_projectors and Beta_projectors_gradient need some rethinking. Beta_projectors are used in two
+ *        places: in application of non-local potential and in generation of density matrix. Beta_projectors_gradient
+ *        are used in the calculation of forces. Both are split in chunks, both require an inner product with
+ *        wave-functions.
+ */
 class Beta_projectors
 {
     friend class Beta_projectors_gradient;
@@ -301,9 +306,6 @@ inline void Beta_projectors::generate_beta_gk_t(Simulation_context const& ctx__)
     /* allocate array */
     beta_gk_t_ = matrix<double_complex>(gkvec_.gvec_count(comm_.rank()), num_beta_t_);
     
-    auto& qgrid = ctx__.qgrid_gkmax();
-    auto& beta_radial_integrals = ctx__.beta_radial_integrals();
- 
     /* compute <G+k|beta> */
     #pragma omp parallel for
     for (int igkloc = 0; igkloc < gkvec_.gvec_count(comm_.rank()); igkloc++) {
@@ -314,10 +316,6 @@ inline void Beta_projectors::generate_beta_gk_t(Simulation_context const& ctx__)
         /* compute real spherical harmonics for G+k vector */
         std::vector<double> gkvec_rlm(Utils::lmmax(lmax_beta_));
         SHT::spherical_harmonics(lmax_beta_, vs[1], vs[2], &gkvec_rlm[0]);
-        /* position in the linear grid of |G| values */
-        int iq = static_cast<int>((qgrid.num_points() - 1) * gk / unit_cell_.parameters().gk_cutoff());
-        /* delta */
-        double dq = gk - qgrid[iq];
         for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
             auto& atom_type = unit_cell_.atom_type(iat);
             for (int xi = 0; xi < atom_type.mt_basis_size(); xi++) {
@@ -326,7 +324,7 @@ inline void Beta_projectors::generate_beta_gk_t(Simulation_context const& ctx__)
                 int idxrf = atom_type.indexb(xi).idxrf;
 
                 double_complex z = std::pow(double_complex(0, -1), l) * fourpi / std::sqrt(unit_cell_.omega());
-                beta_gk_t_(igkloc, atom_type.offset_lo() + xi) = z * gkvec_rlm[lm] * beta_radial_integrals(idxrf, iat)(iq, dq);
+                beta_gk_t_(igkloc, atom_type.offset_lo() + xi) = z * gkvec_rlm[lm] * ctx__.radial_integrals().beta_radial_integral(idxrf, iat, gk);
             }
         }
     }

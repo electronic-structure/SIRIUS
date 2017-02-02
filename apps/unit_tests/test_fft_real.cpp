@@ -9,14 +9,10 @@ void test1(vector3d<int> const& dims__, double cutoff__, device_t pu__)
     matrix3d<double> M;
     M(0, 0) = M(1, 1) = M(2, 2) = 1.0;
 
-    FFT3D_grid fft_grid(Utils::find_translations(cutoff__, M));
+    FFT3D fft(find_translations(cutoff__, M), mpi_comm_world(), pu__);
 
-    FFT3D fft(fft_grid, mpi_comm_world(), pu__);
-
-    Gvec gvec(vector3d<double>(0, 0, 0), M, cutoff__, fft.grid(), mpi_comm_world().size(), mpi_comm_world(), false);
-    Gvec gvec_r(vector3d<double>(0, 0, 0), M, cutoff__, fft.grid(), mpi_comm_world().size(), mpi_comm_world(), true);
-
-    //Gvec_FFT_distribution gvec_fft_distr(gvec, mpi_comm_world());
+    Gvec gvec(M, cutoff__, mpi_comm_world(), mpi_comm_world(), false);
+    Gvec gvec_r(M, cutoff__, mpi_comm_world(), mpi_comm_world(), true);
 
     if (gvec_r.num_gvec() != gvec.num_gvec() / 2 + 1)
     {
@@ -65,11 +61,9 @@ void test2(vector3d<int> const& dims__, double cutoff__, device_t pu__)
     matrix3d<double> M;
     M(0, 0) = M(1, 1) = M(2, 2) = 1.0;
 
-    FFT3D_grid fft_grid(Utils::find_translations(cutoff__, M));
+    FFT3D fft(find_translations(cutoff__, M), mpi_comm_world(), pu__);
 
-    FFT3D fft(fft_grid, mpi_comm_world(), pu__);
-
-    Gvec gvec_r(vector3d<double>(0, 0, 0), M, cutoff__, fft.grid(), mpi_comm_world().size(), mpi_comm_world(), true);
+    Gvec gvec_r(M, cutoff__, mpi_comm_world(), mpi_comm_world(), true);
 
     fft.prepare(gvec_r.partition());
 

@@ -345,7 +345,11 @@ class Unit_cell
 
         /// Make periodic function out of form factors.
         /** Return vector of plane-wave coefficients */
-        inline std::vector<double_complex> make_periodic_function(mdarray<double, 2>& form_factors__, Gvec const& gvec__) const;
+        inline std::vector<double_complex> make_periodic_function(mdarray<double, 2>& form_factors__,
+                                                                  Gvec const& gvec__) const;
+
+        inline std::vector<double_complex> make_periodic_function(std::function<double(int, double)> form_factors__,
+                                                                  Gvec const& gvec__) const;
 
         inline int atom_id_by_position(vector3d<double> position__)
         {
@@ -670,8 +674,8 @@ inline void Unit_cell::initialize()
     
     /* find the charges */
     for (int i = 0; i < num_atoms(); i++) {
-        total_nuclear_charge_ += atom(i).zn();
-        num_core_electrons_ += atom(i).type().num_core_electrons();
+        total_nuclear_charge_  += atom(i).zn();
+        num_core_electrons_    += atom(i).type().num_core_electrons();
         num_valence_electrons_ += atom(i).type().num_valence_electrons();
     }
     num_electrons_ = num_core_electrons_ + num_valence_electrons_;
@@ -681,7 +685,7 @@ inline void Unit_cell::initialize()
         atom(ia).init(mt_aw_basis_size_, mt_lo_basis_size_, mt_basis_size_);
         mt_aw_basis_size_ += atom(ia).mt_aw_basis_size();
         mt_lo_basis_size_ += atom(ia).mt_lo_basis_size();
-        mt_basis_size_ += atom(ia).mt_basis_size();
+        mt_basis_size_    += atom(ia).mt_basis_size();
     }
 
     assert(mt_basis_size_ == mt_aw_basis_size_ + mt_lo_basis_size_);
@@ -1142,45 +1146,39 @@ inline void Unit_cell::find_nearest_neighbours(double cluster_radius)
 {
     PROFILE("sirius::Unit_cell::find_nearest_neighbours");
 
-    auto max_frac_coord = Utils::find_translations(cluster_radius, lattice_vectors_);
+    auto max_frac_coord = find_translations(cluster_radius, lattice_vectors_);
    
     nearest_neighbours_.clear();
     nearest_neighbours_.resize(num_atoms());
 
     #pragma omp parallel for default(shared)
-    for (int ia = 0; ia < num_atoms(); ia++)
-    {
-        vector3d<double> iapos = get_cartesian_coordinates(atom(ia).position());
+    for (int ia = 0; ia < num_atoms(); ia++) {
+        auto iapos = get_cartesian_coordinates(atom(ia).position());
         
         std::vector<nearest_neighbour_descriptor> nn;
 
         std::vector< std::pair<double, int> > nn_sort;
 
-        for (int i0 = -max_frac_coord[0]; i0 <= max_frac_coord[0]; i0++)
-        {
-            for (int i1 = -max_frac_coord[1]; i1 <= max_frac_coord[1]; i1++)
-            {
-                for (int i2 = -max_frac_coord[2]; i2 <= max_frac_coord[2]; i2++)
-                {
+        for (int i0 = -max_frac_coord[0]; i0 <= max_frac_coord[0]; i0++) {
+            for (int i1 = -max_frac_coord[1]; i1 <= max_frac_coord[1]; i1++) {
+                for (int i2 = -max_frac_coord[2]; i2 <= max_frac_coord[2]; i2++) {
                     nearest_neighbour_descriptor nnd;
                     nnd.translation[0] = i0;
                     nnd.translation[1] = i1;
                     nnd.translation[2] = i2;
                     
-                    vector3d<double> vt = get_cartesian_coordinates<int>(nnd.translation);
+                    auto vt = get_cartesian_coordinates<int>(nnd.translation);
                     
-                    for (int ja = 0; ja < num_atoms(); ja++)
-                    {
+                    for (int ja = 0; ja < num_atoms(); ja++) {
                         nnd.atom_id = ja;
 
-                        vector3d<double> japos = get_cartesian_coordinates(atom(ja).position());
+                        auto japos = get_cartesian_coordinates(atom(ja).position());
 
                         vector3d<double> v = japos + vt - iapos;
 
                         nnd.distance = v.length();
                         
-                        if (nnd.distance <= cluster_radius)
-                        {
+                        if (nnd.distance <= cluster_radius) {
                             nn.push_back(nnd);
 
                             nn_sort.push_back(std::pair<double, int>(nnd.distance, (int)nn.size() - 1));
@@ -1193,7 +1191,9 @@ inline void Unit_cell::find_nearest_neighbours(double cluster_radius)
         
         std::sort(nn_sort.begin(), nn_sort.end());
         nearest_neighbours_[ia].resize(nn.size());
-        for (int i = 0; i < (int)nn.size(); i++) nearest_neighbours_[ia][i] = nn[nn_sort[i].second];
+        for (int i = 0; i < (int)nn.size(); i++) {
+            nearest_neighbours_[ia][i] = nn[nn_sort[i].second];
+        }
     }
 
     //== if (Platform::mpi_rank() == 0) // TODO: move to a separate task
@@ -1222,7 +1222,7 @@ inline void Unit_cell::find_nearest_neighbours(double cluster_radius)
 inline bool Unit_cell::is_point_in_mt(vector3d<double> vc, int& ja, int& jr, double& dr, double tp[2]) const
 {
     /* reduce coordinates to the primitive unit cell */
-    auto vr = Utils::reduce_coordinates(get_fractional_coordinates(vc));
+    auto vr = reduce_coordinates(get_fractional_coordinates(vc));
 
     for (int ia = 0; ia < num_atoms(); ia++)
     {
@@ -1380,6 +1380,34 @@ inline std::vector<double_complex> Unit_cell::make_periodic_function(mdarray<dou
             int iat = atom(ia).type_id();
             double_complex z = std::exp(double_complex(0.0, twopi * (gvec__.gvec(ig) * atom(ia).position())));
             f_pw[ig] += fourpi_omega * std::conj(z) * form_factors__(iat, igs);
+        }
+    }
+
+    comm_.allgather(&f_pw[0], spl_ngv.global_offset(), spl_ngv.local_size());
+
+    return std::move(f_pw);
+}
+
+inline std::vector<double_complex> Unit_cell::make_periodic_function(std::function<double(int, double)> form_factors__,
+                                                                     Gvec const& gvec__) const
+{
+    PROFILE("sirius::Unit_cell::make_periodic_function");
+
+    std::vector<double_complex> f_pw(gvec__.num_gvec(), double_complex(0, 0));
+
+    double fourpi_omega = fourpi / omega();
+
+    splindex<block> spl_ngv(gvec__.num_gvec(), comm_.size(), comm_.rank());
+
+    #pragma omp parallel for
+    for (int igloc = 0; igloc < spl_ngv.local_size(); igloc++) {
+        int ig = spl_ngv[igloc];
+        double g = gvec__.gvec_len(ig);
+
+        for (int ia = 0; ia < num_atoms(); ia++) {
+            int iat = atom(ia).type_id();
+            double_complex z = std::exp(double_complex(0.0, twopi * (gvec__.gvec(ig) * atom(ia).position())));
+            f_pw[ig] += fourpi_omega * std::conj(z) * form_factors__(iat, g);
         }
     }
 

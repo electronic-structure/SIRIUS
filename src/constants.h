@@ -1,4 +1,4 @@
-// Copyright (c) 2013-2015 Anton Kozhevnikov, Thomas Schulthess
+// Copyright (c) 2013-2017 Anton Kozhevnikov, Thomas Schulthess
 // All rights reserved.
 // 
 // Redistribution and use in source and binary forms, with or without modification, are permitted provided that 
@@ -25,8 +25,8 @@
 #ifndef __CONSTANTS_H__
 #define __CONSTANTS_H__
 
-const int major_version = 3;
-const int minor_version = 12;
+const int major_version = 4;
+const int minor_version = 2;
 
 /// NIST value for the inverse fine structure (http://physics.nist.gov/cuu/Constants/index.html)
 const double speed_of_light = 137.035999139; 
@@ -53,12 +53,6 @@ const double y00 = 0.28209479177387814347;
 const double ha2ev = 27.21138505;
 
 const char* const storage_file_name = "sirius.h5";
-
-const int _mpi_dim_k_ = 0;
-
-const int _mpi_dim_k_row_ = 1;
-
-const int _mpi_dim_k_col_ = 2;
 
 #endif // __CONSTANTS_H__
 

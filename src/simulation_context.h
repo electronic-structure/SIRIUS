@@ -1,4 +1,4 @@
-// Copyright (c) 2013-2016 Anton Kozhevnikov, Thomas Schulthess
+// Copyright (c) 2013-2017 Anton Kozhevnikov, Thomas Schulthess
 // All rights reserved.
 // 
 // Redistribution and use in source and binary forms, with or without modification, are permitted provided that 
@@ -31,6 +31,7 @@
 #include "real_space_prj.h"
 #include "version.h"
 #include "augmentation_operator.h"
+#include "radial_integrals.h"
 
 #ifdef __GPU
 extern "C" void generate_phase_factors_gpu(int num_gvec_loc__,
@@ -44,45 +45,40 @@ namespace sirius {
 
 /// Simulation context is a set of parameters and objects describing a single simulation. 
 /** The order of initialization of the simulation context is the following: first, the default parameter 
- *  values are set in set_defaults() method, then (optionally) import() method is called and the parameters are 
+ *  values are set in the constructor, then (optionally) import() method is called and the parameters are 
  *  overwritten with the those from the input file, and finally, the user sets the values with set_...() metods.
- *  Then the atom types and atoms can be added to the simulation and the context can be initialized with the 
- *  corresponding method. */
+ *  Then the unit cell can be populated and the context can be initialized. */
 class Simulation_context: public Simulation_parameters
 {
     private:
 
         /// Communicator for this simulation.
         Communicator const& comm_;
-
+        
         /// Unit cell of the simulation.
         Unit_cell unit_cell_;
 
         /// MPI grid for this simulation.
         std::unique_ptr<MPI_grid> mpi_grid_;
-        
-        /// 2D MPI grid for the FFT driver.
-        std::unique_ptr<MPI_grid> mpi_grid_fft_;
-
-        /// 2D MPI grid for the FFT driver of the Hloc operation.
-        std::unique_ptr<MPI_grid> mpi_grid_fft_vloc_;
 
         /// 2D BLACS grid for distributed linear algebra operations.
         std::unique_ptr<BLACS_grid> blacs_grid_;
 
-        /// 1D BLACS grid for a "slice" data distribution of full-potential wave-functions.
-        /** This grid is used to distribute band index and keep a whole wave-function */
-        std::unique_ptr<BLACS_grid> blacs_grid_slice_;
-
+        /// Fine-grained FFT for density and potential.
+        /** This is the FFT driver to transform periodic functions such as density and potential on the fine-grained 
+         *  FFT grid. The transformation is parallel. */
         std::unique_ptr<FFT3D> fft_;
-
+        
+        /// Coarse-grained FFT for application of local potential and density summation.
         std::unique_ptr<FFT3D> fft_coarse_;
 
         /// Step function is used in full-potential methods.
         std::unique_ptr<Step_function> step_function_;
-
+    
+        /// G-vectors within the Gmax cutoff.
         Gvec gvec_;
-
+        
+        /// G-vectors within the 2 * |Gmax^{WF}| cutoff.
         Gvec gvec_coarse_;
 
         std::vector<Augmentation_operator> augmentation_op_;
@@ -105,10 +101,7 @@ class Simulation_context: public Simulation_parameters
         std::vector<mdarray<double, 2>> atom_coord_;
         #endif
         
-        Radial_grid qgrid_gkmax_;
-        Radial_grid qgrid_gmax_;
-
-        mdarray<Spline<double>, 2> beta_radial_integrals_;
+        std::unique_ptr<Radial_integrals> radial_integrals_;
 
         mdarray<char, 1> memory_buffer_;
 
@@ -118,12 +111,10 @@ class Simulation_context: public Simulation_parameters
 
         void init_fft();
 
-        inline void generate_beta_radial_integrals();
-
         /* copy constructor is forbidden */
         Simulation_context(Simulation_context const&) = delete;
 
-        void init()
+        void start()
         {
             gettimeofday(&start_time_, NULL);
             
@@ -141,7 +132,7 @@ class Simulation_context: public Simulation_parameters
               unit_cell_(*this, comm_)
         {
             PROFILE("sirius::Simulation_context::Simulation_context");
-            init();
+            start();
             import(fname__);
             unit_cell_.import(unit_cell_input_section_);
         }
@@ -151,7 +142,7 @@ class Simulation_context: public Simulation_parameters
               unit_cell_(*this, comm_)
         {
             PROFILE("sirius::Simulation_context::Simulation_context");
-            init();
+            start();
         }
         
         ~Simulation_context()
@@ -205,34 +196,46 @@ class Simulation_context: public Simulation_parameters
             return gvec_coarse_;
         }
 
-        Communicator const& comm() const
-        {
-            return comm_;
-        }
-
-        MPI_grid const& mpi_grid() const
-        {
-            return *mpi_grid_;
-        }
-
-        MPI_grid const& mpi_grid_fft() const
-        {
-            return *mpi_grid_fft_;
-        }
-
-        MPI_grid const& mpi_grid_fft_vloc() const
-        {
-            return *mpi_grid_fft_vloc_;
-        }
-
         BLACS_grid const& blacs_grid() const
         {
             return *blacs_grid_;
         }
 
-        BLACS_grid const& blacs_grid_slice() const
+        /// Total communicator of the context.
+        Communicator const& comm() const
         {
-            return *blacs_grid_slice_;
+            return comm_;
+        }
+        
+        /// Communicator between k-points.
+        Communicator const& comm_k() const
+        {
+            /* 3rd dimension of the MPI grid is used for k-point distribution */
+            return mpi_grid_->communicator(1 << 2);
+        }
+        
+        /// Band and BLACS grid communicator.
+        Communicator const& comm_band() const
+        {
+            /* 1st and 2nd dimensions of the MPI grid are used for parallelization inside k-point */
+            return mpi_grid_->communicator(1 << 0 | 1 << 1);
+        }
+        
+        /// Communicator of the dense FFT grid.
+        Communicator const& comm_fft() const
+        {
+            /* 1st dimension of MPI grid is used */
+            return mpi_grid_->communicator(1 << 0);
+        }
+
+        /// Communicator of the coarse FFT grid.
+        Communicator const& comm_fft_coarse() const
+        {
+            if (control_input_section_.fft_mode_ == "serial") {
+                return mpi_comm_self();
+            } else {
+                return comm_fft();
+            }
         }
 
         inline int num_fv_states() const
@@ -368,21 +371,12 @@ class Simulation_context: public Simulation_parameters
             }
         }
 
-        inline Radial_grid const& qgrid_gmax() const
+        Radial_integrals const& radial_integrals() const
         {
-            return qgrid_gmax_;
+            return *radial_integrals_;
         }
 
-        inline Radial_grid const& qgrid_gkmax() const
-        {
-            return qgrid_gkmax_;
-        }
-
-        inline mdarray<Spline<double>, 2> const& beta_radial_integrals() const
-        {
-            return beta_radial_integrals_;
-        }
-
+        /// Return pointer to already allocated temporary memory buffer.
         inline void* memory_buffer(size_t size__)
         {
             if (memory_buffer_.size() < size__) {
@@ -396,44 +390,30 @@ inline void Simulation_context::init_fft()
 {
     auto rlv = unit_cell_.reciprocal_lattice_vectors();
 
-    auto& comm = mpi_grid_->communicator(1 << _mpi_dim_k_row_ | 1 << _mpi_dim_k_col_);
+    int npr = control_input_section_.mpi_grid_dims_[0];
+    int npc = control_input_section_.mpi_grid_dims_[1];
 
     if (!(control_input_section_.fft_mode_ == "serial" || control_input_section_.fft_mode_ == "parallel")) {
         TERMINATE("wrong FFT mode");
     }
 
-    mpi_grid_fft_ = std::unique_ptr<MPI_grid>(new MPI_grid({mpi_grid_->dimension_size(_mpi_dim_k_row_),
-                                                            mpi_grid_->dimension_size(_mpi_dim_k_col_)}, comm));
-
-    if (control_input_section_.fft_mode_ == "serial") {
-        /* serial FFT in Hloc */
-        mpi_grid_fft_vloc_ = std::unique_ptr<MPI_grid>(new MPI_grid({1, comm.size()}, comm));
-    } else {
-        /* parallel FFT in Hloc */
-        mpi_grid_fft_vloc_ = std::unique_ptr<MPI_grid>(new MPI_grid({mpi_grid_->dimension_size(_mpi_dim_k_row_),
-                                                                     mpi_grid_->dimension_size(_mpi_dim_k_col_)}, comm));
-    }
-
     /* create FFT driver for dense mesh (density and potential) */
-    fft_ = std::unique_ptr<FFT3D>(new FFT3D(Utils::find_translations(pw_cutoff(), rlv),
-                                            mpi_grid_fft_->communicator(1 << 0),
-                                            processing_unit(), 0.9));
+    fft_ = std::unique_ptr<FFT3D>(new FFT3D(find_translations(pw_cutoff(), rlv), comm_fft(), processing_unit(), 0.9)); 
 
-    /* create a list of G-vectors for dense FFT grid */
-    /* G-vectors are divided between all available MPI ranks (comm_.size()) */
-    gvec_ = Gvec({0, 0, 0}, rlv, pw_cutoff(), fft_->grid(),
-                 comm_.size(), fft_->comm(), control_input_section_.reduce_gvec_);
+    /* create a list of G-vectors for dense FFT grid; G-vectors are divided between all available MPI ranks.*/
+    gvec_ = Gvec(rlv, pw_cutoff(), comm(), comm_fft(), control_input_section_.reduce_gvec_);
+
+    /* prepare fine-grained FFT driver for the entire simulation */
+    fft_->prepare(gvec_.partition());
 
     //double gpu_workload = (mpi_grid_fft_vloc_->communicator(1 << 0).size() == 1) ? 1.0 : 0.9;
-    double gpu_workload = (mpi_grid_fft_vloc_->communicator().size() == 1) ? 1.0 : 0.9;
+    double gpu_workload = (comm_fft_coarse().size() == 1) ? 1.0 : 0.9;
     /* create FFT driver for coarse mesh */
-    fft_coarse_ = std::unique_ptr<FFT3D>(new FFT3D(Utils::find_translations(2 * gk_cutoff(), rlv),
-                                                   mpi_grid_fft_vloc_->communicator(1 << 0),
+    fft_coarse_ = std::unique_ptr<FFT3D>(new FFT3D(find_translations(2 * gk_cutoff(), rlv), comm_fft_coarse(),
                                                    processing_unit(), gpu_workload));
 
     /* create a list of G-vectors for corase FFT grid */
-    gvec_coarse_ = Gvec({0, 0, 0}, rlv, gk_cutoff() * 2, fft_coarse_->grid(),
-                        comm_.size(), fft_coarse_->comm(), control_input_section_.reduce_gvec_);
+    gvec_coarse_ = Gvec(rlv, gk_cutoff() * 2, comm(), comm_fft_coarse(), control_input_section_.reduce_gvec_);
 }
 
 inline void Simulation_context::initialize()
@@ -471,9 +451,28 @@ inline void Simulation_context::initialize()
     
     /* check MPI grid dimensions and set a default grid if needed */
     if (!control_input_section_.mpi_grid_dims_.size()) {
-        control_input_section_.mpi_grid_dims_ = {comm_.size()};
+        control_input_section_.mpi_grid_dims_ = {1, 1};
+    }
+    if (control_input_section_.mpi_grid_dims_.size() != 2) {
+        TERMINATE("wrong MPI grid");
     }
     
+    int npr = control_input_section_.mpi_grid_dims_[0];
+    int npc = control_input_section_.mpi_grid_dims_[1];
+    int npb = npr * npc;
+    int npk = comm_.size() / npb;
+    if (npk * npb != comm_.size()) {
+        std::stringstream s;
+        s << "Can't divide " << comm_.size() << " ranks into groups of size " << npb;
+        TERMINATE(s);
+    }
+
+    /* setup MPI grid */
+    mpi_grid_ = std::unique_ptr<MPI_grid>(new MPI_grid({npr, npc, npk}, comm_));
+    
+    /* setup BLACS grid */
+    blacs_grid_ = std::unique_ptr<BLACS_grid>(new BLACS_grid(comm_band(), npr, npc));
+
     /* can't use reduced G-vectors in LAPW code */
     if (full_potential()) {
         control_input_section_.reduce_gvec_ = false;
@@ -486,14 +485,6 @@ inline void Simulation_context::initialize()
             iterative_solver_input_section_.type_ = "davidson";
         }
     }
-
-    /* setup MPI grid */
-    mpi_grid_ = std::unique_ptr<MPI_grid>(new MPI_grid(control_input_section_.mpi_grid_dims_, comm_));
-
-    blacs_grid_ = std::unique_ptr<BLACS_grid>(new BLACS_grid(mpi_grid_->communicator(1 << _mpi_dim_k_row_ | 1 << _mpi_dim_k_col_), 
-                                                             mpi_grid_->dimension_size(_mpi_dim_k_row_), mpi_grid_->dimension_size(_mpi_dim_k_col_)));
-    
-    blacs_grid_slice_ = std::unique_ptr<BLACS_grid>(new BLACS_grid(blacs_grid_->comm(), 1, blacs_grid_->comm().size()));
 
     /* initialize variables, related to the unit cell */
     unit_cell_.initialize();
@@ -515,12 +506,6 @@ inline void Simulation_context::initialize()
         MEMORY_USAGE_INFO();
     }
 
-    //if (comm_.rank() == 0)
-    //{
-    //    unit_cell_.write_cif();
-    //    unit_cell_.write_json();
-    //}
-
     if (unit_cell_.num_atoms() != 0) {
         unit_cell_.symmetry().check_gvec_symmetry(gvec_, comm_);
         if (!full_potential()) {
@@ -531,7 +516,7 @@ inline void Simulation_context::initialize()
     auto& fft_grid = fft().grid();
     std::pair<int, int> limits(0, 0);
     for (int x: {0, 1, 2}) {
-        limits.first = std::min(limits.first, fft_grid.limits(x).first); 
+        limits.first  = std::min(limits.first,  fft_grid.limits(x).first); 
         limits.second = std::max(limits.second, fft_grid.limits(x).second); 
     }
 
@@ -551,13 +536,6 @@ inline void Simulation_context::initialize()
         step_function_ = std::unique_ptr<Step_function>(new Step_function(unit_cell_, fft_.get(), gvec_, comm_));
     }
 
-    if (iterative_solver_input_section().real_space_prj_) {
-        STOP();
-        //real_space_prj_ = new Real_space_prj(unit_cell_, comm_, iterative_solver_input_section().R_mask_scale_,
-        //                                     iterative_solver_input_section().mask_alpha_,
-        //                                     gk_cutoff(), num_fft_streams(), num_fft_workers());
-    }
-
     /* take 10% of empty non-magnetic states */
     if (num_fv_states_ < 0) {
         num_fv_states_ = static_cast<int>(1e-8 + unit_cell_.num_valence_electrons() / 2.0) +
@@ -569,7 +547,8 @@ inline void Simulation_context::initialize()
         s << "not enough first-variational states : " << num_fv_states();
         TERMINATE(s);
     }
-
+    
+    /* setup the cyclic block size */
     if (cyclic_block_size() < 0) {
         double a = std::min(std::log2(double(num_fv_states_) / blacs_grid_->num_ranks_col()),
                             std::log2(double(num_fv_states_) / blacs_grid_->num_ranks_row()));
@@ -582,7 +561,7 @@ inline void Simulation_context::initialize()
     
     std::string evsn[] = {std_evp_solver_name(), gen_evp_solver_name()};
 
-    if (mpi_grid_->size(1 << _mpi_dim_k_row_ | 1 << _mpi_dim_k_col_) == 1) {
+    if (comm_band().size() == 1) {
         if (evsn[0] == "") {
             #if defined(__GPU) && defined(__MAGMA)
             evsn[0] = "magma";
@@ -644,15 +623,14 @@ inline void Simulation_context::initialize()
         print_info();
     }
 
-    qgrid_gmax_  = Radial_grid(linear_grid, static_cast<int>(12 * pw_cutoff()), 0, pw_cutoff());
-    qgrid_gkmax_ = Radial_grid(linear_grid, static_cast<int>(12 * gk_cutoff()), 0, gk_cutoff());
+    radial_integrals_ = std::unique_ptr<Radial_integrals>(new Radial_integrals(*this, unit_cell()));
 
     if (esm_type() == electronic_structure_method_t::pseudopotential) {
         /* create augmentation operator Q_{xi,xi'}(G) here */
         for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
-            augmentation_op_.push_back(std::move(Augmentation_operator(comm_, unit_cell_.atom_type(iat), gvec_, unit_cell_.omega())));
+            augmentation_op_.push_back(std::move(Augmentation_operator(comm_, unit_cell_.atom_type(iat), gvec_,
+                                                                       unit_cell_.omega(), *radial_integrals_)));
         }
-        generate_beta_radial_integrals();
     }
     
     if (processing_unit() == GPU) {
@@ -705,12 +683,11 @@ inline void Simulation_context::print_info()
     }
     printf("\n");
     printf("maximum number of OMP threads : %i\n", omp_get_max_threads());
-    printf("number of independent FFTs    : %i\n", mpi_grid_fft_->dimension_size(1));
-    printf("FFT comm size                 : %i\n", mpi_grid_fft_->dimension_size(0));
 
     printf("\n");
     printf("FFT context for density and potential\n");
     printf("=====================================\n");
+    printf("  comm size                             : %i\n", comm_fft().size());
     printf("  plane wave cutoff                     : %f\n", pw_cutoff());
     auto fft_grid = fft_->grid();
     printf("  grid size                             : %i %i %i   total : %i\n", fft_grid.size(0),
@@ -729,6 +706,7 @@ inline void Simulation_context::print_info()
     printf("\n");
     printf("FFT context for coarse grid\n");
     printf("===========================\n");
+    printf("  comm size                             : %i\n", comm_fft_coarse().size());
     printf("  plane wave cutoff                     : %f\n", 2 * gk_cutoff());
     fft_grid = fft_coarse_->grid();
     printf("  grid size                             : %i %i %i   total : %i\n", fft_grid.size(0),
@@ -873,51 +851,6 @@ inline void Simulation_context::print_info()
         printf("%i) %s: %s\n", i, xc_label.c_str(), xc.name().c_str());
         printf("%s\n", xc.refs().c_str());
         i++;
-    }
-}
-
-inline void Simulation_context::generate_beta_radial_integrals()
-{
-    PROFILE("sirius::Simulation_context::generate_beta_radial_integrals");
-
-    /* create space for <j_l(qr)|beta> radial integrals */
-    beta_radial_integrals_ = mdarray<Spline<double>, 2>(unit_cell_.max_mt_radial_basis_size(), unit_cell_.num_atom_types());
-    for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
-        auto& atom_type = unit_cell_.atom_type(iat);
-        for (int idxrf = 0; idxrf < atom_type.mt_radial_basis_size(); idxrf++) {
-            beta_radial_integrals_(idxrf, iat) = Spline<double>(qgrid_gkmax_);
-        }
-    }
-    
-    for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
-        auto& atom_type = unit_cell_.atom_type(iat);
-        int nrb = atom_type.mt_radial_basis_size();
-
-        /* interpolate beta radial functions */
-        std::vector<Spline<double>> beta_rf(nrb);
-        for (int idxrf = 0; idxrf < nrb; idxrf++) {
-            beta_rf[idxrf] = Spline<double>(atom_type.radial_grid());
-            int nr = atom_type.pp_desc().num_beta_radial_points[idxrf];
-            for (int ir = 0; ir < nr; ir++) {
-                beta_rf[idxrf][ir] = atom_type.pp_desc().beta_radial_functions(ir, idxrf);
-            }
-            beta_rf[idxrf].interpolate();
-        }
-
-        #pragma omp parallel for
-        for (int iq = 0; iq < qgrid_gkmax_.num_points(); iq++) {
-            Spherical_Bessel_functions jl(unit_cell_.lmax(), atom_type.radial_grid(), qgrid_gkmax_[iq]);
-            for (int idxrf = 0; idxrf < atom_type.mt_radial_basis_size(); idxrf++) {
-                int l  = atom_type.indexr(idxrf).l;
-                int nr = atom_type.pp_desc().num_beta_radial_points[idxrf];
-                /* compute \int j_l(|G+k|r) beta_l(r) r dr */
-                /* remeber that beta(r) are defined as miltiplied by r */
-                beta_radial_integrals_(idxrf, iat)[iq] = sirius::inner(jl[l], beta_rf[idxrf], 1, nr);
-            }
-        }
-        for (int idxrf = 0; idxrf < atom_type.mt_radial_basis_size(); idxrf++) {
-            beta_radial_integrals_(idxrf, iat).interpolate();
-        }
     }
 }
 

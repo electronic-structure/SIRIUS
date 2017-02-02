@@ -26,7 +26,7 @@
 #define __FFT3D_HPP__
 
 #include <fftw3.h>
-#include "vector3d.hpp"
+#include "geometry3d.hpp"
 #include "fft3d_grid.hpp"
 #include "gvec.hpp"
 
@@ -91,6 +91,13 @@ extern "C" void cufft_batch_unload_gpu(int fft_size,
 #endif
 
 //#define __CUFFT3D
+
+// TODO: GPU only or CPU only driver. The hybrid mode causes a lot of complications in the code.
+
+// TODO:  add += operation for (-1) transform, i.e. accumulate in the output buffer. This will allow to get rid of
+//        temporary vphi1, vphi2 buffers in Local_operator
+
+// TODO: get rid of hybrid() and gpu_only() helper functions. Replace by device() == GPU or device() == CPU checks.
 
 /// Implementation of FFT3D.
 /** FFT convention:
@@ -766,13 +773,8 @@ class FFT3D
             #endif
         }
 
-        //template<typename T>
-        //inline void input(int n__, int const* map__, T const* data__)
-        //{
-        //    memset(fftw_buffer_, 0, local_size() * sizeof(double_complex));
-        //    for (int i = 0; i < n__; i++) fftw_buffer_[map__[i]] = data__[i];
-        //}
-
+        /// Load real-space values to the FFT buffer.
+        /** \param [in] data CPU pointer to the real-space data. */
         template <typename T>
         inline void input(T* data__)
         {
@@ -786,6 +788,8 @@ class FFT3D
             #endif
         }
         
+        /// Get real-space values from the FFT buffer.
+        /** \param [out] data CPU pointer to the real-space data. */
         inline void output(double* data__)
         {
             #ifdef __GPU
@@ -798,6 +802,8 @@ class FFT3D
             }
         }
         
+        /// Get real-space values from the FFT buffer.
+        /** \param [out] data CPU pointer to the real-space data. */
         inline void output(double_complex* data__)
         {
             switch (pu_) {
@@ -814,6 +820,7 @@ class FFT3D
             }
         }
         
+        /// Informational about the FFT grid.
         FFT3D_grid const& grid() const
         {
             return grid_;
@@ -824,7 +831,8 @@ class FFT3D
         {
             return grid_.size();
         }
-
+        
+        /// Size of the local part of FFT buffer.
         inline int local_size() const
         {
             return grid_.size(0) * grid_.size(1) * local_size_z_;
@@ -840,7 +848,7 @@ class FFT3D
             return offset_z_;
         }
 
-        /// Direct access to the fft buffer
+        /// Direct access to the FFT buffer
         inline double_complex& buffer(int idx__)
         {
             return fft_buffer_[idx__];
@@ -851,17 +859,20 @@ class FFT3D
         {
             return fft_buffer_.at<pu>();
         }
-
+        
+        /// FFT buffer.
         inline mdarray<double_complex, 1>& buffer()
         {
             return fft_buffer_;
         }
         
+        /// Communicator of the FFT transform.
         Communicator const& comm() const
         {
             return comm_;
         }
-
+        
+        /// True if this FFT transformation is parallel.
         inline bool parallel() const
         {
             return (comm_.size() != 1);
@@ -1150,13 +1161,6 @@ class FFT3D
                 }   
             }
         }
-
-        #ifdef __GPU
-        void copy_to_device()
-        {
-            fft_buffer_.copy_to_device();
-        }
-        #endif
 };
 
 } // namespace sddk

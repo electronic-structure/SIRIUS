@@ -26,7 +26,7 @@
 #define __K_POINT_SET_H__
 
 #include "k_point.h"
-#include "vector3d.hpp"
+#include "geometry3d.hpp"
 
 namespace sirius {
 
@@ -60,46 +60,38 @@ class K_point_set
 
     public:
 
-        K_point_set(Simulation_context& ctx__,
-              Communicator const& comm_k__)
-            : ctx_(ctx__)
-            , unit_cell_(ctx__.unit_cell())
-            , comm_k_(comm_k__)
+        K_point_set(Simulation_context& ctx__)
+                  : ctx_(ctx__)
+                  , unit_cell_(ctx__.unit_cell())
+                  , comm_k_(ctx__.comm_k())
         {
             PROFILE("sirius::K_point_set::K_point_set");
         }
 
         K_point_set(Simulation_context& ctx__,
-              Communicator const& comm_k__,
-              vector3d<int> k_grid__,
-              vector3d<int> k_shift__,
-              int use_symmetry__) 
-            : ctx_(ctx__)
-            , unit_cell_(ctx__.unit_cell())
-            , comm_k_(comm_k__)
+                    vector3d<int> k_grid__,
+                    vector3d<int> k_shift__,
+                    int use_symmetry__) 
+                  : ctx_(ctx__)
+                  , unit_cell_(ctx__.unit_cell())
+                  , comm_k_(ctx_.comm_k())
         {
             PROFILE("sirius::K_point_set::K_point_set");
 
             int nk;
             mdarray<double, 2> kp;
             std::vector<double> wk;
-            if (use_symmetry__)
-            {
+            if (use_symmetry__) {
                 nk = unit_cell_.symmetry().get_irreducible_reciprocal_mesh(k_grid__, k_shift__, kp, wk);
-            }
-            else
-            {
+            } else {
                 nk = k_grid__[0] * k_grid__[1] * k_grid__[2];
                 wk = std::vector<double>(nk, 1.0 / nk);
                 kp = mdarray<double, 2>(3, nk);
 
                 int ik = 0;
-                for (int i0 = 0; i0 < k_grid__[0]; i0++)
-                {
-                    for (int i1 = 0; i1 < k_grid__[1]; i1++)
-                    {
-                        for (int i2 = 0; i2 < k_grid__[2]; i2++)
-                        {
+                for (int i0 = 0; i0 < k_grid__[0]; i0++) {
+                    for (int i1 = 0; i1 < k_grid__[1]; i1++) {
+                        for (int i2 = 0; i2 < k_grid__[2]; i2++) {
                             kp(0, ik) = double(i0 + k_shift__[0] / 2.0) / k_grid__[0];
                             kp(1, ik) = double(i1 + k_shift__[1] / 2.0) / k_grid__[1];
                             kp(2, ik) = double(i2 + k_shift__[2] / 2.0) / k_grid__[2];
@@ -175,7 +167,10 @@ class K_point_set
         ~K_point_set()
         {
             PROFILE("sirius::K_point_set::~K_point_set");
-            clear();
+            for (size_t ik = 0; ik < kpoints_.size(); ik++) {
+                delete kpoints_[ik];
+            }
+            kpoints_.clear();
         }
         
         /// Initialize the k-point set
@@ -219,7 +214,7 @@ class K_point_set
                 auto ik = spl_num_kpoints_[ikloc];
                 max_num_gkvec = std::max(max_num_gkvec, kpoints_[ik]->num_gkvec());
             }
-            comm_k_.allreduce<int, mpi_op_t::op_max>(&max_num_gkvec, 1);
+            comm_k_.allreduce<int, mpi_op_t::max>(&max_num_gkvec, 1);
             return max_num_gkvec;
         }
 
@@ -246,15 +241,6 @@ class K_point_set
             return kpoints_[i];
         }
 
-        void clear()
-        {
-            PROFILE("sirius::K_point_set::clear");
-            for (size_t ik = 0; ik < kpoints_.size(); ik++) {
-                delete kpoints_[ik];
-            }
-            kpoints_.clear();
-        }
-        
         inline int num_kpoints() const
         {
             return static_cast<int>(kpoints_.size());
@@ -296,31 +282,35 @@ class K_point_set
         }
 
         /// Find index of k-point.
-        inline int find_kpoint(vector3d<double> vk)
+        inline int find_kpoint(vector3d<double> vk__)
         {
-            for (int ik = 0; ik < num_kpoints(); ik++) 
-            {
-                if ((kpoints_[ik]->vk() - vk).length() < 1e-12) return ik;
+            for (int ik = 0; ik < num_kpoints(); ik++) {
+                if ((kpoints_[ik]->vk() - vk__).length() < 1e-12) {
+                    return ik;
+                }
             }
             return -1;
         }
 
-        void generate_Gq_matrix_elements(vector3d<double> vq)
+        //void generate_Gq_matrix_elements(vector3d<double> vq)
+        //{
+        //    std::vector<kq> kpq(num_kpoints());
+        //    for (int ik = 0; ik < num_kpoints(); ik++)
+        //    {
+        //        // reduce k+q to first BZ: k+q=k"+K; k"=k+q-K
+        //        std::pair< vector3d<double>, vector3d<int> > vkqr = reduce_coordinates(kpoints_[ik]->vk() + vq);
+        //        
+        //        if ((kpq[ik].jk = find_kpoint(vkqr.first)) == -1) 
+        //            TERMINATE("index of reduced k+q point is not found");
+
+        //        kpq[ik].K = vkqr.second;
+        //    }
+        //}
+
+        inline K_point* k_point(int ik)
         {
-            std::vector<kq> kpq(num_kpoints());
-            for (int ik = 0; ik < num_kpoints(); ik++)
-            {
-                // reduce k+q to first BZ: k+q=k"+K; k"=k+q-K
-                std::pair< vector3d<double>, vector3d<int> > vkqr = Utils::reduce_coordinates(kpoints_[ik]->vk() + vq);
-                
-                if ((kpq[ik].jk = find_kpoint(vkqr.first)) == -1) 
-                    TERMINATE("index of reduced k+q point is not found");
-
-                kpq[ik].K = vkqr.second;
-            }
+            return kpoints_[ik];
         }
-
-        inline K_point* k_point(int ik) {return kpoints_[ik];}
 
         inline Communicator const& comm() const
         {

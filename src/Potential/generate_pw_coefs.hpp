@@ -2,8 +2,6 @@ inline void Potential::generate_pw_coefs()
 {
     PROFILE("sirius::Potential::generate_pw_coefs");
 
-    ctx_.fft().prepare(ctx_.gvec().partition());
-
     double sq_alpha_half = 0.5 * std::pow(speed_of_light, -2);
 
     int gv_count  = ctx_.gvec().partition().gvec_count_fft();
@@ -17,7 +15,7 @@ inline void Potential::generate_pw_coefs()
             }
             #ifdef __GPU
             if (ctx_.fft().hybrid()) {
-                ctx_.fft().copy_to_device();
+                ctx_.fft().buffer().copy_to_device();
             }
             #endif
             ctx_.fft().transform<-1>(ctx_.gvec().partition(), &rm2_inv_pw_[gv_offset]);
@@ -30,7 +28,7 @@ inline void Potential::generate_pw_coefs()
             }
             #ifdef __GPU
             if (ctx_.fft().hybrid()) {
-                ctx_.fft().copy_to_device();
+                ctx_.fft().buffer().copy_to_device();
             }
             #endif
             ctx_.fft().transform<-1>(ctx_.gvec().partition(), &rm_inv_pw_[gv_offset]);
@@ -42,7 +40,7 @@ inline void Potential::generate_pw_coefs()
             }
             #ifdef __GPU
             if (ctx_.fft().hybrid()) {
-                ctx_.fft().copy_to_device();
+                ctx_.fft().buffer().copy_to_device();
             }
             #endif
             ctx_.fft().transform<-1>(ctx_.gvec().partition(), &veff_pw_[gv_offset]);
@@ -97,6 +95,4 @@ inline void Potential::generate_pw_coefs()
     //            TERMINATE("wrong processing unit");
     //    }
     //}
-
-    ctx_.fft().dismiss();
 }

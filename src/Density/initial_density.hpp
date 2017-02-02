@@ -4,8 +4,6 @@ inline void Density::initial_density()
 
     zero();
 
-    ctx_.fft().prepare(ctx_.gvec().partition());
-
     if (ctx_.full_potential()) {
         initial_density_full_pot();
     } else {
@@ -17,8 +15,6 @@ inline void Density::initial_density()
 
         generate_paw_loc_density();
     }
-
-    ctx_.fft().dismiss();
 }
 
 inline void Density::initial_density_pseudo()
@@ -26,15 +22,10 @@ inline void Density::initial_density_pseudo()
     auto rho_radial_integrals = generate_rho_radial_integrals(1);
     auto v = unit_cell_.make_periodic_function(rho_radial_integrals, ctx_.gvec());
 
-    #ifdef __PRINT_OBJECT_HASH
-    DUMP("hash(rho_radial_integrals) : %16llX", rho_radial_integrals.hash());
-    DUMP("hash(rho(G)) : %16llX", Utils::hash(&v[0], ctx_.gvec().num_gvec() * sizeof(double_complex)));
-    #endif
-
-    #ifdef __PRINT_OBJECT_CHECKSUM
-    auto z1 = mdarray<double_complex, 1>(&v[0], ctx_.gvec().num_gvec()).checksum();
-    DUMP("checksum(rho_pw) : %18.10f %18.10f", z1.real(), z1.imag());
-    #endif
+    if (ctx_.control().print_checksum_ && ctx_.comm().rank() == 0) {
+        auto z1 = mdarray<double_complex, 1>(&v[0], ctx_.gvec().num_gvec()).checksum();
+        DUMP("checksum(rho_pw) : %18.10f %18.10f", z1.real(), z1.imag());
+    }
 
     std::memcpy(&rho_->f_pw(0), &v[0], ctx_.gvec().num_gvec() * sizeof(double_complex));
 
@@ -51,9 +42,6 @@ inline void Density::initial_density_pseudo()
     }
     rho_->fft_transform(1);
 
-    #ifdef __PRINT_OBJECT_HASH
-    DUMP("hash(rho(r)) : %16llX", Utils::hash(&rho_->f_it<global>(0), fft_->size() * sizeof(double)));
-    #endif
     #ifdef __PRINT_OBJECT_CHECKSUM
     DUMP("checksum(rho_rg) : %18.10f", rho_->checksum_rg());
     #endif
@@ -62,10 +50,6 @@ inline void Density::initial_density_pseudo()
     for (int ir = 0; ir < ctx_.fft().local_size(); ir++) {
         rho_->f_rg(ir) = std::max(rho_->f_rg(ir), 0.0);
     }
-
-    #ifdef __PRINT_OBJECT_HASH
-    DUMP("hash(rho) : %16llX", rho_->hash());
-    #endif
 
     //== FILE* fout = fopen("unit_cell.xsf", "w");
     //== fprintf(fout, "CRYSTAL\n");
@@ -228,6 +212,10 @@ inline void Density::initial_density_pseudo()
     for (int j = 0; j < ctx_.num_mag_dims(); j++) {
         magnetization_[j]->fft_transform(-1);
     }
+    
+    /* renormalize charge */
+    charge = std::real(rho_->f_pw(0) * unit_cell_.omega());
+    rho_->f_pw(0) += (unit_cell_.num_valence_electrons() - charge) / unit_cell_.omega();
 
     #ifdef __PRINT_OBJECT_CHECKSUM
     double_complex cs = mdarray<double_complex, 1>(&rho_->f_pw(0), ctx_.gvec().num_gvec()).checksum();
@@ -262,11 +250,6 @@ inline void Density::initial_density_full_pot()
     
     #ifdef __PRINT_OBJECT_CHECKSUM
     DUMP("checksum(rho_rg): %18.10f", rho_->checksum_rg());
-    #endif
-    
-    #ifdef __PRINT_OBJECT_HASH
-    DUMP("hash(rhopw): %16llX", rho_->f_pw().hash());
-    DUMP("hash(rhoit): %16llX", rho_->f_it().hash());
     #endif
     
     /* remove possible negative noise */

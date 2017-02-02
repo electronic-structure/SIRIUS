@@ -33,13 +33,10 @@ def parse_header(upf_dict, root):
     upf_dict['header']['core_correction'] = str2bool(node.attrib['core_correction'])
     upf_dict['header']['element'] = node.attrib['element'].strip()
     upf_dict['header']['pseudo_type'] = node.attrib['pseudo_type']
-    #upf_dict['header']['l_max'] = int(node.attrib['l_max'])
     upf_dict['header']['z_valence'] = float(node.attrib['z_valence'])
     upf_dict['header']['mesh_size'] = int(node.attrib['mesh_size'])
-
-    #if upf_dict['header']['pseudo_type'] == 'NC':
+    upf_dict['header']['is_ultrasoft'] = str2bool(node.attrib['is_ultrasoft'])
     upf_dict['header']['number_of_wfc'] = int(node.attrib['number_of_wfc'])
-
 
 def parse_radial_grid(upf_dict, root):
     # radial grid
@@ -84,7 +81,9 @@ def parse_non_local(upf_dict, root):
     dij = [float(e) for e in str.split(node.text)]
     upf_dict['D_ion'] = [float(e) / 2 for e in str.split(node.text)] #convert to hartree
 
-    if upf_dict['header']['pseudo_type'] == 'NC': return
+    #if upf_dict['header']['pseudo_type'] == 'NC': return
+
+    if not upf_dict['header']['is_ultrasoft']: return
 
     #------------------------------------
     #------- augmentation part: Qij  ----
@@ -95,10 +94,7 @@ def parse_non_local(upf_dict, root):
         print("Don't know how to parse this 'q_with_l != T'")
         sys.exit(0)
 
-
     upf_dict['augmentation'] = []
-
-
 
     nb = upf_dict['header']['number_of_proj']
 

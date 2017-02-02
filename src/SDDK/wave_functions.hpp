@@ -47,14 +47,18 @@ extern "C" void add_checksum_gpu(cuDoubleComplex* wf__,
 const int sddk_default_block_size = 256;
 
 /// Wave-functions representation.
+/** Wave-functions consist of two parts: plane-wave part and mufin-tin part. Both are the matrix_storage objects
+ *  with the slab distribution. */
 class wave_functions
 {
     private:
         
         device_t pu_;
 
+        /// Communicator which is used to distribute G+k vectors and MT spheres.
         Communicator const& comm_;
 
+        /// G+k vectors of the wave-function.
         Gvec const& gkvec_;
 
         splindex<block> spl_num_atoms_;
@@ -81,13 +85,12 @@ class wave_functions
         
         /// Constructor for PW wave-functions.
         wave_functions(device_t pu__,
-                       Communicator const& comm__,
                        Gvec const& gkvec__,
                        int num_wf__)
-            : pu_(pu__),
-              comm_(comm__),
-              gkvec_(gkvec__),
-              num_wf_(num_wf__)
+            : pu_(pu__)
+            , comm_(gkvec__.comm())
+            , gkvec_(gkvec__)
+            , num_wf_(num_wf__)
         {
             pw_coeffs_ = std::unique_ptr<matrix_storage<double_complex, matrix_storage_t::slab>>(
                 new matrix_storage<double_complex, matrix_storage_t::slab>(gkvec_.gvec_count(comm_.rank()), num_wf_, pu_));
@@ -96,13 +99,12 @@ class wave_functions
         /// Constructor for PW wave-functions.
         wave_functions(double_complex* ptr__,
                        device_t pu__,
-                       Communicator const& comm__,
                        Gvec const& gkvec__,
                        int num_wf__)
-            : pu_(pu__),
-              comm_(comm__),
-              gkvec_(gkvec__),
-              num_wf_(num_wf__)
+            : pu_(pu__)
+            , comm_(gkvec__.comm())
+            , gkvec_(gkvec__)
+            , num_wf_(num_wf__)
         {
             pw_coeffs_ = std::unique_ptr<matrix_storage<double_complex, matrix_storage_t::slab>>(
                 new matrix_storage<double_complex, matrix_storage_t::slab>(ptr__, gkvec_.gvec_count(comm_.rank()), num_wf_, pu_));
@@ -110,16 +112,15 @@ class wave_functions
 
         /// Constructor for LAPW wave-functions.
         wave_functions(device_t pu__,
-                       Communicator const& comm__,
                        Gvec const& gkvec__,
                        int num_atoms__,
                        std::function<int(int)> mt_size__,
                        int num_wf__)
-            : pu_(pu__),
-              comm_(comm__),
-              gkvec_(gkvec__),
-              num_wf_(num_wf__),
-              has_mt_(true)
+            : pu_(pu__)
+            , comm_(gkvec__.comm())
+            , gkvec_(gkvec__)
+            , num_wf_(num_wf__)
+            , has_mt_(true)
         {
             pw_coeffs_ = std::unique_ptr<matrix_storage<double_complex, matrix_storage_t::slab>>(
                 new matrix_storage<double_complex, matrix_storage_t::slab>(gkvec_.gvec_count(comm_.rank()), num_wf_, pu_));
@@ -328,6 +329,11 @@ class wave_functions
         device_t pu() const
         {
             return pu_;
+        }
+
+        Gvec const& gkvec() const
+        {
+            return gkvec_;
         }
 
         inline double_complex checksum(int i0__, int n__)

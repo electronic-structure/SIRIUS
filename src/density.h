@@ -161,34 +161,35 @@ class Density
 
         std::vector<paw_density_data_t> paw_density_data_;
 
-
-        /// core density radial integrals
-        mdarray<double, 2> rho_pseudo_core_radial_integrals_;
-
-
         /// Pointer to charge density.
         /** In the case of full-potential calculation this is the full (valence + core) electron charge density.
          *  In the case of pseudopotential this is the valence charge density. */ 
         Periodic_function<double>* rho_;
+        
+        /// Density and magnetization on the coarse FFT mesh.
+        /** Coarse FFT grid is enough to generate density and magnetization from the wave-functions. The components
+         *  of the <tt>rho_mag_coarse</tt> vector have the following order:
+         *  \f$ \{\rho({\bf r}), m_z({\bf r}), m_x({\bf r}), m_y({\bf r}) \} \f$. */
+        std::array<std::unique_ptr<experimental::Smooth_periodic_function<double>>, 4> rho_mag_coarse_;
 
         /// Pointer to pseudo core charge density
         /** In the case of pseudopotential we need to know the non-linear core correction to the 
          *  exchange-correlation energy which is introduced trough the pseudo core density: 
          *  \f$ E_{xc}[\rho_{val} + \rho_{core}] \f$. The 'pseudo' reflects the fact that 
          *  this density integrated does not reproduce the total number of core elctrons. */
-        Periodic_function<double>* rho_pseudo_core_;
+        Periodic_function<double>* rho_pseudo_core_{nullptr};
         
         Periodic_function<double>* magnetization_[3];
         
         /// Non-zero Gaunt coefficients.
-        std::unique_ptr< Gaunt_coefficients<double_complex> > gaunt_coefs_;
+        std::unique_ptr<Gaunt_coefficients<double_complex>> gaunt_coefs_{nullptr};
         
-        /// fast mapping between composite lm index and corresponding orbital quantum number
+        /// Fast mapping between composite lm index and corresponding orbital quantum number.
         std::vector<int> l_by_lm_;
 
-        Mixer<double_complex>* high_freq_mixer_;
-        Mixer<double_complex>* low_freq_mixer_;
-        Mixer<double>* mixer_;
+        std::unique_ptr<Mixer<double_complex>> high_freq_mixer_{nullptr};
+        std::unique_ptr<Mixer<double_complex>> low_freq_mixer_{nullptr};
+        std::unique_ptr<Mixer<double>> mixer_{nullptr};
 
         std::vector<int> lf_gvec_;
         std::vector<int> hf_gvec_;
@@ -327,7 +328,7 @@ class Density
         inline void add_k_point_contribution_rg(K_point* kp__);
 
         /// Generate valence density in the muffin-tins 
-        void generate_valence_density_mt(K_point_set& ks);
+        void generate_valence_mt(K_point_set& ks);
         
         /// Generate charge density of core states
         void generate_core_charge_density()
@@ -349,28 +350,27 @@ class Density
         {
             PROFILE("sirius::Density::generate_pseudo_core_charge_density");
 
-            rho_pseudo_core_radial_integrals_ = generate_rho_radial_integrals(2);
-
-            std::vector<double_complex> v = unit_cell_.make_periodic_function(rho_pseudo_core_radial_integrals_, ctx_.gvec());
-            ctx_.fft().prepare(ctx_.gvec().partition());
+            auto v = unit_cell_.make_periodic_function([this](int iat, double g)
+                                                       {
+                                                           return ctx_.radial_integrals().pseudo_core_radial_integral(iat, g);
+                                                       },
+                                                       ctx_.gvec());
             ctx_.fft().transform<1>(ctx_.gvec().partition(), &v[ctx_.gvec().partition().gvec_offset_fft()]);
             ctx_.fft().output(&rho_pseudo_core_->f_rg(0));
-            ctx_.fft().dismiss();
         }
 
     public:
 
         /// Constructor
         Density(Simulation_context& ctx__)
-            : ctx_(ctx__),
-              unit_cell_(ctx_.unit_cell()),
-              rho_pseudo_core_(nullptr),
-              gaunt_coefs_(nullptr),
-              high_freq_mixer_(nullptr),
-              low_freq_mixer_(nullptr),
-              mixer_(nullptr)
+            : ctx_(ctx__)
+            , unit_cell_(ctx_.unit_cell())
         {
             rho_ = new Periodic_function<double>(ctx_, ctx_.lmmax_rho(), 1);
+
+            for (int i = 0; i < ctx_.num_mag_dims() + 1; i++) {
+                rho_mag_coarse_[i] = std::unique_ptr<experimental::Smooth_periodic_function<double>>(new experimental::Smooth_periodic_function<double>(ctx_.fft_coarse(), ctx_.gvec_coarse()));
+            }
 
             /* core density of the pseudopotential method */
             if (!ctx_.full_potential()) {
@@ -380,8 +380,9 @@ class Density
                 generate_pseudo_core_charge_density();
             }
 
-            for (int i = 0; i < ctx_.num_mag_dims(); i++)
+            for (int i = 0; i < ctx_.num_mag_dims(); i++) {
                 magnetization_[i] = new Periodic_function<double>(ctx_, ctx_.lmmax_rho(), 1);
+            }
             
             using gc_z = Gaunt_coefficients<double_complex>;
 
@@ -437,72 +438,19 @@ class Density
                     TERMINATE(s);
                 }
 
-                high_freq_mixer_ = new Linear_mixer<double_complex>(hf_gvec_.size() * (1 + ctx_.num_mag_dims()),
-                                                                    ctx_.mixer_input_section().beta_, ctx_.comm());
-
-                if (ctx_.mixer_input_section().type_ == "linear")
-                {
-                    low_freq_mixer_ = new Linear_mixer<double_complex>(lf_gvec_.size() * (1 + ctx_.num_mag_dims()),
-                                                                       ctx_.mixer_input_section().beta_, ctx_.comm());
-                }
-                else if (ctx_.mixer_input_section().type_ == "broyden1")
-                {
-
-                    low_freq_mixer_ = new Broyden1<double_complex>(lf_gvec_.size() * (1 + ctx_.num_mag_dims()) + density_matrix_.size(),
-                                                                   ctx_.mixer_input_section().max_history_,
-                                                                   ctx_.mixer_input_section().beta_,
-                                                                   weights,
-                                                                   ctx_.comm());
-                }
-                else if (ctx_.mixer_input_section().type_ == "broyden2")
-                {
-                    low_freq_mixer_ = new Broyden2<double_complex>(lf_gvec_.size() * (1 + ctx_.num_mag_dims()),
-                                                                   ctx_.mixer_input_section().max_history_,
-                                                                   ctx_.mixer_input_section().beta_,
-                                                                   ctx_.mixer_input_section().beta0_,
-                                                                   ctx_.mixer_input_section().linear_mix_rms_tol_,
-                                                                   weights,
-                                                                   ctx_.comm());
-                } 
-                else
-                {
-                    TERMINATE("wrong mixer type");
-                }
+                high_freq_mixer_ = Mixer_factory<double_complex>("linear",
+                                                                 hf_gvec_.size() * (1 + ctx_.num_mag_dims()),
+                                                                 ctx_.mixer_input_section(),
+                                                                 ctx_.comm());
+                low_freq_mixer_ = Mixer_factory<double_complex>(ctx_.mixer_input_section().type_,
+                                                                lf_gvec_.size() * (1 + ctx_.num_mag_dims()) + density_matrix_.size(),
+                                                                ctx_.mixer_input_section(),
+                                                                ctx_.comm(),
+                                                                weights);
             }
 
-            if (ctx_.full_potential())
-            {
-                if (ctx_.mixer_input_section().type_ == "linear")
-                {
-                    mixer_ = new Linear_mixer<double>(size(),
-                                                      ctx_.mixer_input_section().beta_,
-                                                      ctx_.comm());
-                }
-                else if (ctx_.mixer_input_section().type_ == "broyden1")
-                {
-                    std::vector<double> weights;
-                    mixer_ = new Broyden1<double>(size(),
-                                                  ctx_.mixer_input_section().max_history_,
-                                                  ctx_.mixer_input_section().beta_,
-                                                  weights,
-                                                  ctx_.comm());
-                }
-                else if (ctx_.mixer_input_section().type_ == "broyden2")
-                {
-                    std::vector<double> weights;
-                    mixer_ = new Broyden2<double>(size(),
-                                                  ctx_.mixer_input_section().max_history_,
-                                                  ctx_.mixer_input_section().beta_,
-                                                  ctx_.mixer_input_section().beta0_,
-                                                  ctx_.mixer_input_section().linear_mix_rms_tol_,
-                                                  weights,
-                                                  ctx_.comm());
-
-                }
-                else
-                {
-                    TERMINATE("wrong mixer type");
-                }
+            if (ctx_.full_potential()) {
+                mixer_ = Mixer_factory<double>(ctx_.mixer_input_section().type_, size(), ctx_.mixer_input_section(), ctx_.comm());
             }
         }
         
@@ -510,12 +458,12 @@ class Density
         ~Density()
         {
             delete rho_;
-            for (int j = 0; j < ctx_.num_mag_dims(); j++) delete magnetization_[j];
-
-            if (rho_pseudo_core_ != nullptr) delete rho_pseudo_core_;
-            if (low_freq_mixer_ != nullptr) delete low_freq_mixer_;
-            if (high_freq_mixer_ != nullptr) delete high_freq_mixer_;
-            if (mixer_ != nullptr) delete mixer_;
+            for (int j = 0; j < ctx_.num_mag_dims(); j++) {
+                delete magnetization_[j];
+            }
+            if (rho_pseudo_core_ != nullptr) {
+                delete rho_pseudo_core_;
+            }
         }
 
         /// Set pointers to muffin-tin and interstitial charge density arrays
@@ -604,13 +552,69 @@ class Density
 
         void initial_density_full_pot();
 
+        /// Check total density for the correct number of electrons.
+        inline void check_num_electrons()
+        {
+            double nel{0};
+            if (ctx_.full_potential()) {
+                std::vector<double> nel_mt;
+                double nel_it;
+                nel = rho_->integrate(nel_mt, nel_it);
+            } else {
+                nel = rho_->f_pw(0).real() * unit_cell_.omega();
+            }
+            
+            /* check the number of electrons */
+            if (std::abs(nel - unit_cell_.num_electrons()) > 1e-5) {
+                std::stringstream s;
+                s << "wrong number of electrons" << std::endl
+                  << "  obtained value : " << nel << std::endl 
+                  << "  target value : " << unit_cell_.num_electrons() << std::endl
+                  << "  difference : " << std::abs(nel - unit_cell_.num_electrons()) << std::endl;
+                if (ctx_.full_potential()) {
+                    s << "  total core leakage : " << core_leakage();
+                    for (int ic = 0; ic < unit_cell_.num_atom_symmetry_classes(); ic++) {
+                        s << std::endl << "    atom class : " << ic << ", core leakage : " << core_leakage(ic);
+                    }
+                }
+                WARNING(s);
+            }
+        }
+
         /// Generate full charge density (valence + core) and magnetization from the wave functions.
-        inline void generate(K_point_set& ks__);
+        /** This function calls generate_valence() and then in case of full-potential LAPW method adds a core density
+         *  to get the full charge density of the system. */
+        inline void generate(K_point_set& ks__)
+        {
+            PROFILE("sirius::Density::generate");
+
+            generate_valence(ks__);
+
+            if (ctx_.full_potential()) {
+                /* find the core states */
+                generate_core_charge_density();
+                /* add core contribution */
+                for (int ialoc = 0; ialoc < (int)unit_cell_.spl_num_atoms().local_size(); ialoc++) {
+                    int ia = unit_cell_.spl_num_atoms(ialoc);
+                    for (int ir = 0; ir < unit_cell_.atom(ia).num_mt_points(); ir++) {
+                        rho_->f_mt<index_domain_t::local>(0, ir, ialoc) += unit_cell_.atom(ia).symmetry_class().core_charge_density(ir) / y00;
+                    }
+                }
+                /* synchronize muffin-tin part */
+                rho_->sync_mt();
+                for (int j = 0; j < ctx_.num_mag_dims(); j++) {
+                    magnetization_[j]->sync_mt();
+                }
+            }
+        }
 
         /// Generate valence charge density and magnetization from the wave functions.
+        /** The interstitial density is generated on the coarse FFT grid and then transformed to the PW domain.
+         *  After symmetrization and mixing and before the generation of the XC potential density is transformted to the
+         *  real-space domain and checked for the number of electrons. */
         inline void generate_valence(K_point_set& ks__);
-        
-        /// Add augmentation charge Q(r)
+
+        /// Add augmentation charge Q(r).
         /** Restore valence density by adding the Q-operator constribution.
          *  The following term is added to the valence density, generated by the pseudo wave-functions:
          *  \f[
@@ -633,9 +637,18 @@ class Density
          *      d_{\xi \xi'}^{A}({\bf G}) = \sum_{\alpha(A)} d_{\xi \xi'}^{\alpha(A)} e^{-i{\bf G}\tau_{\alpha(A)}} 
          *  \f]
          */
-        void augment(K_point_set& ks__) // TODO: skip when norm-conserving potential is used for all species
+        void augment(K_point_set& ks__)
         {
             PROFILE("sirius::Density::augment");
+
+            /*check if we need to augment charge density and magnetization */
+            bool need_to_augment{false};
+            for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
+                need_to_augment |= unit_cell_.atom_type(iat).pp_desc().augment;
+            }
+            if (!need_to_augment) {
+                return;
+            }
 
             /* collect density and magnetization into single array */
             std::vector<Periodic_function<double>*> rho_vec(ctx_.num_mag_dims() + 1);
@@ -644,21 +657,15 @@ class Density
                 rho_vec[1 + j] = magnetization_[j];
             }
 
-            #ifdef __PRINT_OBJECT_CHECKSUM
-            for (auto e: rho_vec) {
-                auto cs = e->checksum_pw();
-                DUMP("checksum(rho_vec_pw): %20.14f %20.14f", cs.real(), cs.imag());
+            if (ctx_.control().print_checksum_) {
+                for (auto e: rho_vec) {
+                    auto cs = e->checksum_pw();
+                    DUMP("checksum(rho_vec_pw): %20.14f %20.14f", cs.real(), cs.imag());
+                }
             }
-            #endif
-
-            mdarray<double_complex, 2> rho_aug(ctx_.gvec_count(), ctx_.num_mag_dims() + 1);
-
-            #ifdef __GPU
-            if (ctx_.processing_unit() == GPU) {
-                rho_aug.allocate(memory_t::device);
-            }
-            #endif
             
+            mdarray<double_complex, 2> rho_aug(ctx_.gvec_count(), ctx_.num_mag_dims() + 1, ctx_.dual_memory_t());
+
             switch (ctx_.processing_unit()) {
                 case CPU: {
                     generate_rho_aug<CPU>(rho_vec, rho_aug);
@@ -682,12 +689,10 @@ class Density
             for (auto e: rho_vec) {
                 ctx_.comm().allgather(&e->f_pw(0), ctx_.gvec_offset(), ctx_.gvec_count());
 
-                #ifdef __PRINT_OBJECT_CHECKSUM
-                {
+                if (ctx_.control().print_checksum_) {
                     auto cs = e->checksum_pw();
                     DUMP("checksum(rho_vec_pw): %20.14f %20.14f", cs.real(), cs.imag());
                 }
-                #endif
             }
             t5.stop();
         }
@@ -792,9 +797,9 @@ class Density
         void mixer_input()
         {
             if (mixer_ != nullptr) {
-                size_t n = rho_->pack(0, mixer_);
+                size_t n = rho_->pack(0, *mixer_);
                 for (int i = 0; i < ctx_.num_mag_dims(); i++) {
-                    n += magnetization_[i]->pack(n, mixer_);
+                    n += magnetization_[i]->pack(n, *mixer_);
                 }
             } else {
                 int k = 0;
@@ -872,6 +877,7 @@ class Density
             double rms;
 
             if (mixer_ != nullptr) {
+                STOP(); // TODO: redesign mixer
                 /* mix in real-space in case of FP-LAPW */
                 mixer_input();
                 rms = mixer_->mix();
@@ -884,12 +890,6 @@ class Density
                 rms = low_freq_mixer_->mix();
                 rms += high_freq_mixer_->mix();
                 mixer_output();
-                ctx_.fft().prepare(ctx_.gvec().partition());
-                rho_->fft_transform(1);
-                for (int j = 0; j < ctx_.num_mag_dims(); j++) {
-                    magnetization_[j]->fft_transform(1);
-                }
-                ctx_.fft().dismiss();
             }
 
             return rms;
@@ -905,19 +905,22 @@ class Density
             return density_matrix_;
         }
 
-        mdarray<double, 2> const& rho_pseudo_core_radial_integrals() const
+        inline void fft_transform(int direction__)
         {
-            return rho_pseudo_core_radial_integrals_;
+            rho_->fft_transform(direction__);
+            for (int j = 0; j < ctx_.num_mag_dims(); j++) {
+                magnetization_[j]->fft_transform(direction__);
+            }
         }
 };
 
 #include "Density/initial_density.hpp"
 #include "Density/add_k_point_contribution_rg.hpp"
 #include "Density/add_k_point_contribution_dm.hpp"
-#include "Density/generate.hpp"
+#include "Density/generate_valence.hpp"
 #include "Density/generate_rho_aug.hpp"
 #include "Density/symmetrize_density_matrix.hpp"
-#include "Density/generate_valence_density_mt.hpp"
+#include "Density/generate_valence_mt.hpp"
 #include "Density/generate_rho_radial_integrals.hpp"
 #include "Density/check_density_continuity_at_mt.hpp"
 #include "Density/paw_density.hpp"

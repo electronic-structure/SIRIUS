@@ -95,7 +95,7 @@ class Periodic_function: public Smooth_periodic_function<T>
             }
         }
         
-        /// is plane wave part allocated?
+        /// True if plane wave part is allocated.
         bool is_f_pw_allocated_{false};
 
     public:
@@ -104,19 +104,16 @@ class Periodic_function: public Smooth_periodic_function<T>
         Periodic_function(Simulation_context& ctx__,
                           int angular_domain_size__,
                           int allocate_pw__)
-            : Smooth_periodic_function<T>(ctx__.fft(), ctx__.gvec()),
-              parameters_(ctx__),
-              unit_cell_(ctx__.unit_cell()), 
-              step_function_(ctx__.step_function()),
-              comm_(ctx__.comm()),
-              gvec_(ctx__.gvec()),
-              angular_domain_size_(angular_domain_size__)
+            : Smooth_periodic_function<T>(ctx__.fft(), ctx__.gvec())
+            , parameters_(ctx__)
+            , unit_cell_(ctx__.unit_cell())
+            , step_function_(ctx__.step_function())
+            , comm_(ctx__.comm())
+            , gvec_(ctx__.gvec())
+            , angular_domain_size_(angular_domain_size__)
         {
             if (allocate_pw__) {
-                is_f_pw_allocated_ = true;
-                f_pw_ = mdarray<double_complex, 1>(gvec_.num_gvec());
-                this->f_pw_local_ = mdarray<double_complex, 1>(&f_pw_[this->gvec().partition().gvec_offset_fft()],
-                                                               this->fft_->local_size());
+                allocate_pw();
             }
 
             if (parameters_.full_potential()) {
@@ -124,24 +121,23 @@ class Periodic_function: public Smooth_periodic_function<T>
             }
         }
         
-        /// check wether pw is allocated
-        bool is_f_pw_allocated()
-        {
-            return is_f_pw_allocated_;
-        }
+        ///// Check if PW array is allocated.
+        //bool is_f_pw_allocated() const
+        //{
+        //    return is_f_pw_allocated_;
+        //}
 
-        /// allocated memory for plane wave expansion coefficients
+        /// Allocated memory for the plane-wave expansion coefficients.
         void allocate_pw()
         {
-            if (is_f_pw_allocated_)
-            {
+            if (is_f_pw_allocated_) {
                 return;
             }
 
-            is_f_pw_allocated_ = true;
             f_pw_ = mdarray<double_complex, 1>(gvec_.num_gvec());
             this->f_pw_local_ = mdarray<double_complex, 1>(&f_pw_[this->gvec().partition().gvec_offset_fft()],
                                                            this->fft_->local_size());
+            is_f_pw_allocated_ = true;
         }
 
         /// Allocate memory for muffin-tin part.
@@ -311,7 +307,7 @@ class Periodic_function: public Smooth_periodic_function<T>
             return size;
         }
 
-        size_t pack(size_t offset__, Mixer<double>* mixer__)
+        size_t pack(size_t offset__, Mixer<double>& mixer__)
         {
             PROFILE("sirius::Periodic_function::pack");
 
@@ -321,7 +317,7 @@ class Periodic_function: public Smooth_periodic_function<T>
                 for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
                     for (int i1 = 0; i1 < unit_cell_.atom(ia).num_mt_points(); i1++) {
                         for (int i0 = 0; i0 < angular_domain_size_; i0++) {
-                            mixer__->input(offset__ + n++, f_mt_(i0, i1, ia));
+                            mixer__.input(offset__ + n++, f_mt_(i0, i1, ia));
                         }
                     }
                 }
@@ -330,7 +326,7 @@ class Periodic_function: public Smooth_periodic_function<T>
             double* pw = reinterpret_cast<double*>(this->f_pw_.template at<CPU>());
 
             for (int ig = 0; ig < gvec_.num_gvec() * 2; ig++) {
-                mixer__->input(offset__ + n++, pw[ig]);
+                mixer__.input(offset__ + n++, pw[ig]);
             }
 
             //for (int ir = 0; ir < this->fft_->local_size(); ir++) {
@@ -360,9 +356,7 @@ class Periodic_function: public Smooth_periodic_function<T>
             for (int ig = 0; ig < gvec_.num_gvec() * 2; ig++) {
                 pw[ig] = array__[n++];
             }
-            this->fft_->prepare(gvec_.partition());
             this->fft_transform(1);
-            this->fft_->dismiss();
             //for (int ir = 0; ir < this->fft_->local_size(); ir++) {
             //    this->f_rg_(ir) = array__[n++];
             //}

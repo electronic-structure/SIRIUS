@@ -25,7 +25,7 @@
 #ifndef __INPUT_H__
 #define __INPUT_H__
 
-#include "matrix3d.hpp"
+#include "geometry3d.hpp"
 #include "runtime.h"
 #include "constants.h"
 #include "utils.h"
@@ -147,7 +147,7 @@ struct Unit_cell_input_section
                     }
                     if (units == "au" || units == "A") {
                         v1 = ilv * v1;
-                        auto rv1 = Utils::reduce_coordinates(v1);
+                        auto rv1 = reduce_coordinates(v1);
                         for (int x: {0, 1, 2}) {
                             v[x] = rv1.first[x];
                         }
