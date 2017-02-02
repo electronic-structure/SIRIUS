@@ -87,9 +87,6 @@ class Potential
 
         std::vector<XC_functional> xc_func_;
 
-        // Store form factors because it is needed by forces calculation
-        mdarray<double, 2> vloc_radial_integrals_;
- 
         /// Plane-wave coefficients of the effective potential weighted by the unit step-function.
         mdarray<double_complex, 1> veff_pw_;
 
@@ -267,8 +264,87 @@ class Potential
         
         /// Add contribution from the pseudocharge to the plane-wave expansion
         inline void poisson_add_pseudo_pw(mdarray<double_complex, 2>& qmt, mdarray<double_complex, 2>& qit, double_complex* rho_pw);
+        
+        /// Generate local part of pseudo potential.
+        /** Total local potential is a lattice sum:
+         * \f[
+         *    V({\bf r}) = \sum_{{\bf T},\alpha} V_{\alpha}({\bf r} - {\bf T} - {\bf \tau}_{\alpha})
+         * \f]
+         * We want to compute it's plane-wave expansion coefficients:
+         * \f[
+         *    V({\bf G}) = \frac{1}{V} \int e^{-i{\bf Gr}} V({\bf r}) d{\bf r} =
+         *      \frac{1}{V} \sum_{{\bf T},\alpha} \int e^{-i{\bf Gr}}V_{\alpha}({\bf r} - {\bf T} - {\bf \tau}_{\alpha})d{\bf r}
+         * \f]
+         * Standard change of variables: \f$ {\bf r}' = {\bf r} - {\bf T} - {\bf \tau}_{\alpha},\; {\bf r} = {\bf r}' + {\bf T} + {\bf \tau}_{\alpha} \f$ 
+         * leads to:
+         * \f[
+         *    V({\bf G}) = \frac{1}{V} \sum_{{\bf T},\alpha} \int e^{-i{\bf G}({\bf r}' + {\bf T} + {\bf \tau}_{\alpha})}V_{\alpha}({\bf r}')d{\bf r'} = 
+         *    \frac{N}{V} \sum_{\alpha} \int e^{-i{\bf G}({\bf r}' + {\bf \tau}_{\alpha})}V_{\alpha}({\bf r}')d{\bf r'} = 
+         *    \frac{1}{\Omega} \sum_{\alpha} e^{-i {\bf G} {\bf \tau}_{\alpha} } \int e^{-i{\bf G}{\bf r}}V_{\alpha}({\bf r})d{\bf r} 
+         * \f]
+         * Using the well-known expansion of a plane wave in terms of spherical Bessel functions:
+         * \f[
+         *   e^{i{\bf G}{\bf r}}=4\pi \sum_{\ell m} i^\ell j_{\ell}(Gr)Y_{\ell m}^{*}({\bf \hat G})Y_{\ell m}({\bf \hat r})
+         * \f]
+         * and remembering that for \f$ \ell = 0 \f$ (potential is sphericla) \f$ j_{0}(x) = \sin(x) / x \f$ we have:
+         * \f[
+         *   V_{\alpha}({\bf G}) =  \int V_{\alpha}(r) 4\pi \frac{\sin(Gr)}{Gr} Y^{*}_{00} Y_{00}  r^2 \sin(\theta) dr d \phi d\theta = 
+         *     4\pi \int V_{\alpha}(r) \frac{\sin(Gr)}{Gr} r^2 dr
+         * \f]
+         * The tricky part comes next: \f$ V_{\alpha}({\bf r}) \f$ is a long-range potential -- it decays slowly as 
+         * \f$ -Z_{\alpha}^{p}/r \f$ and the straightforward integration with sperical Bessel function is numerically 
+         * unstable. For \f$ {\bf G} = 0 \f$ an extra term \f$ Z_{\alpha}^p/r \f$, corresponding to the potential of 
+         * pseudo-ion, is added to and removed from the local part of the atomic pseudopotential \f$ V_{\alpha}({\bf r}) \f$:
+         * \f[
+         *    V_{\alpha}({\bf G} = 0) = \int V_{\alpha}({\bf r})d{\bf r} \Rightarrow 
+         *       4\pi \int \Big( V_{\alpha}(r) + \frac{Z_{\alpha}^p}{r} \Big) r^2 dr - 
+         *       4\pi \int \Big( \frac{Z_{\alpha}^p}{r} \Big) r^2 dr 
+         * \f]
+         * Second term corresponds to the average electrostatic potential of ions and it is ignored 
+         * (like the \f$ {\bf G} = 0 \f$ term in the Hartree potential of electrons). 
+         * For \f$ G \ne 0 \f$ the following trick is done: \f$ Z_{\alpha}^p {\rm erf}(r) / r \f$ is added to and
+         * removed from \f$ V_{\alpha}(r) \f$. The idea is to make potential decay quickly and then take the extra
+         * contribution analytically. We have: 
+         * \f[
+         *    V_{\alpha}({\bf G}) = 4\pi \int \Big(V_{\alpha}(r) + Z_{\alpha}^p \frac{{\rm erf}(r)} {r} - 
+         *       Z_{\alpha}^p \frac{{\rm erf}(r)}{r}\Big) \frac{\sin(Gr)}{Gr} r^2 dr
+         * \f]
+         * Analytical contribution from the error function is computed using the 1D Fourier transform in complex plane:
+         * \f[
+         *   \frac{1}{\sqrt{2 \pi}} \int_{-\infty}^{\infty} {\rm erf}(t) e^{i\omega t} dt = 
+         *     \frac{i e^{-\frac{\omega ^2}{4}} \sqrt{\frac{2}{\pi }}}{\omega }
+         * \f]
+         * from which we immediately get
+         * \f[
+         *   \int_{0}^{\infty} \frac{{\rm erf}(r)}{r} \frac{\sin(Gr)}{Gr} r^2 dr = \frac{e^{-\frac{G^2}{4}}}{G^2}
+         * \f] 
+         * The final expression for the local potential radial integrals for \f$ G \ne 0 \f$ take the following form:
+         * \f[
+         *   4\pi \int \Big(V_{\alpha}(r) r + Z_{\alpha}^p {\rm erf}(r) \Big) \frac{\sin(Gr)}{G} dr - \frac{e^{-\frac{G^2}{4}}}{G^2}
+         * \f]
+         */
+        inline void generate_local_potential()
+        {
+            PROFILE("sirius::Potential::generate_local_potential");
 
-        inline void generate_local_potential();
+            auto v = unit_cell_.make_periodic_function([this](int iat, double g)
+                                                       {
+                                                           return ctx_.radial_integrals().vloc_radial_integral(iat, g);
+                                                       },
+                                                       ctx_.gvec());
+
+            ctx_.fft().transform<1>(ctx_.gvec().partition(), &v[ctx_.gvec().partition().gvec_offset_fft()]);
+            ctx_.fft().output(&local_potential_->f_rg(0));
+
+            //if (ctx_.control().print_checksum_) {
+            //    auto cs = local_potential_->checksum_pw();
+            //    auto cs1 = local_potential_->checksum_rg();
+            //    if (ctx_.comm().rank() == 0) {
+            //        DUMP("checksum(local_potential_pw): %18.10f %18.10f", cs.real(), cs.imag());
+            //        DUMP("checksum(local_potential_rg): %18.10f", cs1);
+            //    }
+            //}
+        }
         
         inline void xc_mt_nonmagnetic(Radial_grid const& rgrid,
                                       std::vector<XC_functional>& xc_func,
@@ -871,11 +947,6 @@ class Potential
             return paw_one_elec_energy_;
         }
 
-        mdarray<double, 2> const& get_vloc_radial_integrals()
-        {
-            return vloc_radial_integrals_;
-        }
-
         void check_potential_continuity_at_mt();
 
         /// Total size (number of elements) of the potential and effective magnetic field. 
@@ -1009,7 +1080,6 @@ class Potential
 #include "Potential/init.hpp"
 #include "Potential/generate_d_operator_matrix.hpp"
 #include "Potential/generate_pw_coefs.hpp"
-#include "Potential/generate_local_potential.hpp"
 #include "Potential/xc.hpp"
 #include "Potential/poisson.hpp"
 #include "Potential/paw_potential.hpp"
