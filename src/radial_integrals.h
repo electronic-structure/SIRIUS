@@ -54,7 +54,35 @@ class Radial_integrals
 
     mdarray<Spline<double>, 1> pseudo_core_radial_integrals_;
 
+    mdarray<Spline<double>, 1> pseudo_rho_radial_integrals_;
+
     mdarray<Spline<double>, 1> vloc_radial_integrals_;
+
+    inline void generate_pseudo_rho_radial_integrals()
+    {
+        PROFILE("sirius::Radial_integrals::generate_pseudo_rho_radial_integrals");
+
+        pseudo_rho_radial_integrals_ = mdarray<Spline<double>, 1>(unit_cell_.num_atom_types());
+
+        for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
+            auto& atom_type = unit_cell_.atom_type(iat);
+            pseudo_rho_radial_integrals_(iat) = Spline<double>(grid_gmax_);
+
+            Spline<double> rho(atom_type.radial_grid());
+            for (int ir = 0; ir < atom_type.num_mt_points(); ir++) {
+                rho[ir] = atom_type.pp_desc().total_charge_density[ir];
+            }
+            rho.interpolate();
+
+            #pragma omp parallel for
+            for (int iq = 0; iq < grid_gmax_.num_points(); iq++) {
+                Spherical_Bessel_functions jl(0, atom_type.radial_grid(), grid_gmax_[iq]);
+
+                pseudo_rho_radial_integrals_(iat)[iq] = sirius::inner(jl[0], rho, 0, atom_type.num_mt_points()) / fourpi;
+            }
+            pseudo_rho_radial_integrals_(iat).interpolate();
+        }
+    }
     
     /// Generate radial integrals for local part of pseudopotential.
     /** See Potential::generate_local_potential() for more details. */
@@ -271,6 +299,7 @@ class Radial_integrals
             generate_beta_radial_integrals();
             generate_aug_radial_integrals();
             generate_pseudo_core_radial_integrals();
+            generate_pseudo_rho_radial_integrals();
             generate_vloc_radial_integrals();
         }
     }
@@ -291,6 +320,12 @@ class Radial_integrals
     {
         auto iqdq = iqdq_gmax(q__);
         return pseudo_core_radial_integrals_(iat__)(iqdq.first, iqdq.second);
+    }
+
+    inline double pseudo_rho_radial_integral(int iat__, double q__) const
+    {
+        auto iqdq = iqdq_gmax(q__);
+        return pseudo_rho_radial_integrals_(iat__)(iqdq.first, iqdq.second);
     }
 
     inline double vloc_radial_integral(int iat__, double q__) const
