@@ -668,7 +668,7 @@ class mdarray_base
         acc::copyin(raw_ptr_device_, raw_ptr_, size());
     }
 
-    void copy_to_device(int n__) const
+    void copy_to_device(size_t n__) const
     {
         mdarray_assert(raw_ptr_ != nullptr);
         mdarray_assert(raw_ptr_device_ != nullptr);
@@ -684,7 +684,7 @@ class mdarray_base
         acc::copyout(raw_ptr_, raw_ptr_device_, size());
     }
 
-    void copy_to_host(int n__)
+    void copy_to_host(size_t n__)
     {
         mdarray_assert(raw_ptr_ != nullptr);
         mdarray_assert(raw_ptr_device_ != nullptr);
