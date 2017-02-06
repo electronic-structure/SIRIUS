@@ -14,7 +14,7 @@ inline void Density::add_k_point_contribution_rg(K_point* kp__)
     density_rg.zero();
 
     #ifdef __GPU
-    if (fft.hybrid()) {
+    if (fft.pu() == GPU) {
         density_rg.allocate(memory_t::device);
         density_rg.zero_on_device();
     }
@@ -37,7 +37,7 @@ inline void Density::add_k_point_contribution_rg(K_point* kp__)
                 double w = kp__->band_occupancy(j + ispn * nfv) * kp__->weight() / omega;
 
                 /* transform to real space; in case of GPU wave-function stays in GPU memory */
-                if (fft.gpu_only()) {
+                if (fft.pu() == GPU) {
                     fft.transform<1>(kp__->gkvec().partition(),
                                      kp__->spinor_wave_functions(ispn).pw_coeffs().extra().template at<GPU>(0, i));
                 } else {
@@ -45,7 +45,7 @@ inline void Density::add_k_point_contribution_rg(K_point* kp__)
                                      kp__->spinor_wave_functions(ispn).pw_coeffs().extra().template at<CPU>(0, i));
                 }
 
-                if (fft.hybrid()) {
+                if (fft.pu() == GPU) {
                     #ifdef __GPU
                     update_density_rg_1_gpu(fft.local_size(), fft.buffer<GPU>(), w, density_rg.at<GPU>(0, ispn));
                     #else
@@ -78,7 +78,7 @@ inline void Density::add_k_point_contribution_rg(K_point* kp__)
             /* transform dn- component of spinor wave function */
             fft.transform<1>(kp__->gkvec().partition(), kp__->spinor_wave_functions(1).pw_coeffs().extra().template at<CPU>(0, i));
 
-            if (fft.hybrid()) {
+            if (fft.pu() == GPU) {
                 STOP();
                 //#ifdef __GPU
                 //update_it_density_matrix_1_gpu(ctx_.fft(thread_id)->local_size(), ispn, ctx_.fft(thread_id)->buffer<GPU>(), w,
@@ -104,7 +104,7 @@ inline void Density::add_k_point_contribution_rg(K_point* kp__)
     }
 
     #ifdef __GPU
-    if (fft.hybrid()) {
+    if (fft.pu() == GPU) {
         density_rg.copy_to_host();
     }
     #endif

@@ -14,7 +14,7 @@ inline void Potential::generate_pw_coefs()
                 ctx_.fft().buffer(ir) = ctx_.step_function().theta_r(ir) / std::pow(M, 2);
             }
             #ifdef __GPU
-            if (ctx_.fft().hybrid()) {
+            if (ctx_.fft().pu() == GPU) {
                 ctx_.fft().buffer().copy_to_device();
             }
             #endif
@@ -27,7 +27,7 @@ inline void Potential::generate_pw_coefs()
                 ctx_.fft().buffer(ir) = ctx_.step_function().theta_r(ir) / M;
             }
             #ifdef __GPU
-            if (ctx_.fft().hybrid()) {
+            if (ctx_.fft().pu() == GPU) {
                 ctx_.fft().buffer().copy_to_device();
             }
             #endif
@@ -39,7 +39,7 @@ inline void Potential::generate_pw_coefs()
                 ctx_.fft().buffer(ir) = effective_potential()->f_rg(ir) * ctx_.step_function().theta_r(ir);
             }
             #ifdef __GPU
-            if (ctx_.fft().hybrid()) {
+            if (ctx_.fft().pu() == GPU) {
                 ctx_.fft().buffer().copy_to_device();
             }
             #endif

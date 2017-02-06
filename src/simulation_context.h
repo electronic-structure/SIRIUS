@@ -398,7 +398,7 @@ inline void Simulation_context::init_fft()
     }
 
     /* create FFT driver for dense mesh (density and potential) */
-    fft_ = std::unique_ptr<FFT3D>(new FFT3D(find_translations(pw_cutoff(), rlv), comm_fft(), processing_unit(), 0.9)); 
+    fft_ = std::unique_ptr<FFT3D>(new FFT3D(find_translations(pw_cutoff(), rlv), comm_fft(), processing_unit())); 
 
     /* create a list of G-vectors for dense FFT grid; G-vectors are divided between all available MPI ranks.*/
     gvec_ = Gvec(rlv, pw_cutoff(), comm(), comm_fft(), control_input_section_.reduce_gvec_);
@@ -406,11 +406,9 @@ inline void Simulation_context::init_fft()
     /* prepare fine-grained FFT driver for the entire simulation */
     fft_->prepare(gvec_.partition());
 
-    //double gpu_workload = (mpi_grid_fft_vloc_->communicator(1 << 0).size() == 1) ? 1.0 : 0.9;
-    double gpu_workload = (comm_fft_coarse().size() == 1) ? 1.0 : 0.9;
     /* create FFT driver for coarse mesh */
     fft_coarse_ = std::unique_ptr<FFT3D>(new FFT3D(find_translations(2 * gk_cutoff(), rlv), comm_fft_coarse(),
-                                                   processing_unit(), gpu_workload));
+                                                   processing_unit()));
 
     /* create a list of G-vectors for corase FFT grid */
     gvec_coarse_ = Gvec(rlv, gk_cutoff() * 2, comm(), comm_fft_coarse(), control_input_section_.reduce_gvec_);
