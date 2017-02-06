@@ -653,6 +653,19 @@ class mdarray_base
         std::memcpy(dest__.raw_ptr_, raw_ptr_, size() * sizeof(T));
     }
 
+    inline void copy(memory_t from__, memory_t to__)
+    {
+        #ifdef __GPU
+        if ((from__ & memory_t::host) != memory_t::none && (to__ & memory_t::device) != memory_t::none) {
+            acc::copyin(raw_ptr_device_, raw_ptr_, size());
+        }
+
+        if ((from__ & memory_t::device) != memory_t::none && (to__ & memory_t::host) != memory_t::none) {
+            acc::copyout(raw_ptr_, raw_ptr_device_, size());
+        }
+        #endif
+    }
+
     #ifdef __GPU
     void deallocate_on_device() const
     {
