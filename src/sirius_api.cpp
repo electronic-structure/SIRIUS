@@ -45,6 +45,7 @@ sirius::Mixer<double>* mixer_rho = nullptr;
 /// Potential and magnetic field mixer
 sirius::Mixer<double>* mixer_pot = nullptr;
 
+/// List of timers created on the Fortran side.
 std::map<std::string, sddk::timer*> ftimers;
 
 extern "C" {
@@ -94,7 +95,6 @@ void sirius_clear(void)
 
     kset_list.clear();
 }
-
 
 void sirius_create_simulation_context(const char* config_file_name__)
 {
@@ -743,6 +743,8 @@ void sirius_generate_density(int32_t* kset_id__)
 void sirius_generate_valence_density(int32_t* kset_id__)
 {
     density->generate_valence(*kset_list[*kset_id__]);
+    /* only PW coeffs have been generated; transfrom them to real space */
+    density->fft_transform(1);
 }
 
 void sirius_augment_density(int32_t* kset_id__)
@@ -1947,9 +1949,10 @@ void sirius_generate_potential_pw_coefs()
     potential->generate_pw_coefs();
 }
 
-void sirius_set_effective_potential_pw_coeffs(double_complex* f_pw__)
+void sirius_set_effective_potential_pw_coeffs(double_complex* f_pw__) // TODO: merge with set_veff_pw()
 {
-    std::memcpy(&potential->effective_potential()->f_pw(0), f_pw__, sim_ctx->gvec().num_gvec() * sizeof(double_complex));
+    potential->set_veff_pw(f_pw__);
+    //std::memcpy(&potential->effective_potential()->f_pw(0), f_pw__, sim_ctx->gvec().num_gvec() * sizeof(double_complex));
 }
 
 void sirius_generate_density_pw_coefs()

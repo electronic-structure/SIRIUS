@@ -47,10 +47,20 @@ inline void Density::generate_valence(K_point_set& ks__)
             }
             #endif
             /* swap wave functions */
-            kp->spinor_wave_functions(ispn).pw_coeffs().remap_forward(kp->gkvec().partition().gvec_fft_slab(),
-                                                                      kp->gkvec().comm_ortho_fft(),
-                                                                      nbnd);
-
+            switch (ctx_.processing_unit()) {
+                case CPU: {
+                    kp->spinor_wave_functions(ispn).pw_coeffs().remap_forward(kp->gkvec().partition().gvec_fft_slab(),
+                                                                              kp->gkvec().comm_ortho_fft(),
+                                                                              nbnd);
+                    break;
+                }
+                case GPU: {
+                    kp->spinor_wave_functions(ispn).pw_coeffs().remap_forward<memory_t::host | memory_t::device>(kp->gkvec().partition().gvec_fft_slab(),
+                                                                                                                 kp->gkvec().comm_ortho_fft(),
+                                                                                                                 nbnd);
+                    break;
+                }
+            }
         }
         
         if (ctx_.esm_type() == electronic_structure_method_t::full_potential_lapwlo) {
