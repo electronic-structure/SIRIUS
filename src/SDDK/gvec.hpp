@@ -351,7 +351,7 @@ class Gvec
     {
         PROFILE("sddk::Gvec::init");
 
-        auto fft_grid = FFT3D_grid(find_translations(Gmax_, lattice_vectors_));
+        auto fft_grid = FFT3D_grid(find_translations(Gmax_, lattice_vectors_) + vector3d<int>({2, 2, 2}));
 
         find_z_columns(Gmax_, fft_grid);
 
