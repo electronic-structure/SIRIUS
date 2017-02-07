@@ -376,30 +376,36 @@ class mdarray_base
 
     /// Move constructor
     mdarray_base(mdarray_base<T, N>&& src)
-        : label_(src.label_),
-          unique_ptr_(std::move(src.unique_ptr_)),
-          raw_ptr_(src.raw_ptr_)
-          #ifdef __GPU
-          ,unique_ptr_device_(std::move(src.unique_ptr_device_)),
-          raw_ptr_device_(src.raw_ptr_device_)
-          #endif
+        : label_(src.label_)
+        , unique_ptr_(std::move(src.unique_ptr_))
+        , raw_ptr_(src.raw_ptr_)
+        #ifdef __GPU
+        , unique_ptr_device_(std::move(src.unique_ptr_device_))
+        , raw_ptr_device_(src.raw_ptr_device_)
+        #endif
     {
         for (int i = 0; i < N; i++) {
             dims_[i]    = src.dims_[i];
             offsets_[i] = src.offsets_[i];
         }
+        src.raw_ptr_ = nullptr;
+        #ifdef __GPU
+        src.raw_ptr_device_ = nullptr;
+        #endif
     }
 
     /// Move assigment operator
     inline mdarray_base<T, N>& operator=(mdarray_base<T, N>&& src)
     {
         if (this != &src) {
-            label_      = src.label_;
-            unique_ptr_ = std::move(src.unique_ptr_);
-            raw_ptr_    = src.raw_ptr_;
+            label_       = src.label_;
+            unique_ptr_  = std::move(src.unique_ptr_);
+            raw_ptr_     = src.raw_ptr_;
+            src.raw_ptr_ = nullptr;
             #ifdef __GPU
-            unique_ptr_device_ = std::move(src.unique_ptr_device_);
-            raw_ptr_device_    = src.raw_ptr_device_;
+            unique_ptr_device_  = std::move(src.unique_ptr_device_);
+            raw_ptr_device_     = src.raw_ptr_device_;
+            src.raw_ptr_device_ = nullptr;
             #endif
             for (int i = 0; i < N; i++) {
                 dims_[i]    = src.dims_[i];
@@ -652,18 +658,35 @@ class mdarray_base
         }
         std::memcpy(dest__.raw_ptr_, raw_ptr_, size() * sizeof(T));
     }
-
-    inline void copy(memory_t from__, memory_t to__)
+    
+    /// Copy n elements starting from idx0.
+    template <memory_t from__, memory_t to__>
+    inline void copy(size_t idx0__, size_t n__)
     {
         #ifdef __GPU
+        mdarray_assert(raw_ptr_ != nullptr);
+        mdarray_assert(raw_ptr_device_ != nullptr);
+
         if ((from__ & memory_t::host) != memory_t::none && (to__ & memory_t::device) != memory_t::none) {
-            acc::copyin(raw_ptr_device_, raw_ptr_, size());
+            acc::copyin(&raw_ptr_device_[idx0__], &raw_ptr_[idx0__], n__);
         }
 
         if ((from__ & memory_t::device) != memory_t::none && (to__ & memory_t::host) != memory_t::none) {
-            acc::copyout(raw_ptr_, raw_ptr_device_, size());
+            acc::copyout(&raw_ptr_[idx0__], &raw_ptr_device_[idx0__], n__);
         }
         #endif
+    }
+
+    template <memory_t from__, memory_t to__>
+    inline void copy(size_t n__)
+    {
+        copy<from__, to__>(0, n__);
+    }
+
+    template <memory_t from__, memory_t to__>
+    inline void copy()
+    {
+        copy<from__, to__>(0, size());
     }
 
     #ifdef __GPU
