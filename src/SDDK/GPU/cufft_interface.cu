@@ -163,6 +163,36 @@ extern "C" void cufft_batch_load_gpu(int fft_size,
     );
 }
 
+__global__ void cufft_load_x0y0_col_gpu_kernel(int z_col_size,
+                                               int const* map,
+                                               cuDoubleComplex const* data,
+                                               cuDoubleComplex* fft_buffer)
+
+{
+    int idx = blockDim.x * blockIdx.x + threadIdx.x;
+
+    if (idx < z_col_size) {
+        fft_buffer[map[idx]] = cuConj(data[idx]);
+    }
+}
+
+extern "C" void cufft_load_x0y0_col_gpu(int z_col_size,
+                                        int const* map,
+                                        cuDoubleComplex const* data,
+                                        cuDoubleComplex* fft_buffer)
+{
+    dim3 grid_t(64);
+    dim3 grid_b(num_blocks(z_col_size, grid_t.x));
+
+    cufft_load_x0y0_col_gpu_kernel <<<grid_b, grid_t>>>
+    (
+        z_col_size,
+        map,
+        data,
+        fft_buffer
+    );
+}
+
 __global__ void cufft_batch_unload_gpu_kernel
 (
     int fft_size, 

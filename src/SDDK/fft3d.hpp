@@ -76,7 +76,7 @@ extern "C" void cufft_batch_load_gpu(int fft_size,
                                      int num_pw_components, 
                                      int num_fft,
                                      int const* map, 
-                                     cuDoubleComplex* data, 
+                                     cuDoubleComplex const* data, 
                                      cuDoubleComplex* fft_buffer);
 
 extern "C" void cufft_batch_unload_gpu(int fft_size,
@@ -88,6 +88,10 @@ extern "C" void cufft_batch_unload_gpu(int fft_size,
                                        double alpha,
                                        double beta);
 
+extern "C" void cufft_load_x0y0_col_gpu(int z_col_size,
+                                        int const* map,
+                                        cuDoubleComplex const* data,
+                                        cuDoubleComplex* fft_buffer);
 #endif
 
 // TODO:  add += operation for (-1) transform, i.e. accumulate in the output buffer. This will allow to get rid of
@@ -190,6 +194,7 @@ class FFT3D
 
         /// Mapping of G-vectors of z-columns to the FFT buffer for batched 1D transform.
         mdarray<int, 1> map_zcol_to_fft_buffer_;
+        mdarray<int, 1> map_zcol_to_fft_buffer_x0y0_;
         #endif
 
         /// Position of z-columns inside 2D FFT buffer. 
@@ -202,7 +207,7 @@ class FFT3D
         template <int direction, device_t data_ptr_type>
         void transform_z_serial(Gvec_partition const& gvec__,
                                 double_complex* data__,
-                                mdarray<double_complex, 1>& fft_buffer_aux__)
+                                mdarray<double_complex, 1>& fft_buffer_aux__) // TODO: prepare data for mpi_a2a in case of gpu_ptr
         {
             PROFILE("sddk::FFT3D::transform_z_serial");
 
@@ -217,11 +222,17 @@ class FFT3D
                 switch (direction) {
                     case 1: {
                         /* load all columns into FFT buffer */
-                        cufft_batch_load_gpu(gvec__.zcol_count_fft() * grid_.size(2), gvec__.gvec_count_fft(), 1, 
-                                             map_zcol_to_fft_buffer_.at<GPU>(), data__, fft_buffer_aux__.at<GPU>());
-                        if (is_reduced) {
-                            STOP();
-                            /* add stuff */
+                        cufft_batch_load_gpu(gvec__.zcol_count_fft() * grid_.size(2),
+                                             gvec__.gvec_count_fft(),
+                                             1, 
+                                             map_zcol_to_fft_buffer_.at<GPU>(),
+                                             data__,
+                                             fft_buffer_aux__.at<GPU>());
+                        if (is_reduced && comm_.rank() == 0) {
+                            cufft_load_x0y0_col_gpu(static_cast<int>(gvec__.zcol(0).z.size()),
+                                                    map_zcol_to_fft_buffer_x0y0_.at<GPU>(),
+                                                    data__,
+                                                    fft_buffer_aux__.at<GPU>());
                         }
                         /* transform all columns */
                         cufft_backward_transform(cufft_plan_z_, fft_buffer_aux__.at<GPU>());
@@ -814,7 +825,7 @@ class FFT3D
             #ifdef __GPU
             if (pu_ == GPU) {
                 size_t work_size;
-                map_zcol_to_fft_buffer_ = mdarray<int, 1>(gvec__.gvec_count_fft(), memory_t::host | memory_t::device, "FFT3D.z_col_map_");
+                map_zcol_to_fft_buffer_ = mdarray<int, 1>(gvec__.gvec_count_fft(), memory_t::host | memory_t::device, "FFT3D.map_zcol_to_fft_buffer_");
                 /* loop over local set of columns */
                 #pragma omp parallel for
                 for (int i = 0; i < gvec__.zcol_count_fft(); i++) {
@@ -831,8 +842,17 @@ class FFT3D
                 }
                 map_zcol_to_fft_buffer_.copy_to_device();
                 
+                /* for the rank that stores {x=0,y=0} column we need to create a small second mapping */
+                if (gvec__.gvec().reduced() && comm_.rank() == 0) {
+                    map_zcol_to_fft_buffer_x0y0_ = mdarray<int, 1>(gvec__.zcol(0).z.size(), memory_t::host | memory_t::device, "FFT3D.map_zcol_to_fft_buffer_x0y0_");
+                    for (size_t j = 0; j < gvec__.zcol(0).z.size(); j++) {
+                        int z = grid().coord_by_gvec(-gvec__.zcol(0).z[j], 2);
+                        map_zcol_to_fft_buffer_x0y0_[j] = z;
+                    }
+                    map_zcol_to_fft_buffer_x0y0_.copy<memory_t::host, memory_t::device>();
+                }
+                
                 int dim_z[] = {grid_.size(2)};
-                //cufft_nbatch_z_ = gvec__.num_zcol();
                 cufft_create_batch_plan(cufft_plan_z_, 1, dim_z, dim_z, 1, grid_.size(2), gvec__.zcol_count_fft(), 0);
 
                 int dims_xy[] = {grid_.size(1), grid_.size(0)};
@@ -868,6 +888,8 @@ class FFT3D
                 z_col_pos_.deallocate_on_device();
                 fft_buffer_.deallocate_on_device();
                 cufft_work_buf_.deallocate_on_device();
+                map_zcol_to_fft_buffer_.deallocate_on_device();
+                map_zcol_to_fft_buffer_x0y0_.deallocate_on_device();
             }
             #endif
             prepared_ = false;
