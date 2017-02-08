@@ -889,6 +889,16 @@ class mdarray : public mdarray_base<T, N>
         this->raw_ptr_ = ptr__;
     }
 
+    mdarray<T, N>& operator=(std::function<T(int64_t)> f__)
+    {
+        assert(N == 1);
+
+        for (int64_t i0 = this->dims_[0].begin(); i0 <= this->dims_[0].end(); i0++) {
+            (*this)(i0) = f__(i0);
+        }
+        return *this;
+    }
+
     mdarray<T, N>& operator=(std::function<T(int64_t, int64_t)> f__)
     {
         assert(N == 2);
