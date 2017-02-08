@@ -1058,6 +1058,11 @@ class Potential
             return veff_pw_(ig__);
         }
 
+        inline void set_veff_pw(double_complex* veff_pw__)
+        {
+            std::copy(veff_pw__, veff_pw__ + ctx_.gvec().num_gvec(), veff_pw_.at<CPU>());
+        }
+
         double_complex const& rm_inv_pw(int ig__) const
         {
             return rm_inv_pw_(ig__);

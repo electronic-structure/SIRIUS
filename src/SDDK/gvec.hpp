@@ -57,11 +57,13 @@ struct z_column_descriptor
 /* forward declaration */
 class Gvec;
 
+/// Stores information about G-vector partitioning between MPI ranks for the FFT transformation.
 class Gvec_partition
 {
     friend class Gvec;
 
   private:
+    /// Pointer to the G-vector instance.
     Gvec const* gvec_{nullptr};
 
     /// Communicator for FFT.
@@ -76,6 +78,8 @@ class Gvec_partition
     /// Distribution of G-vectors inside FFT slab.
     block_data_descriptor gvec_fft_slab_;
 
+    /// Offset of the z-column in the local data buffer.
+    /** Global index of z-column is expected */
     mdarray<int, 1> zcol_offs_;
 
     inline void build_fft_distr();
@@ -103,6 +107,17 @@ class Gvec_partition
     inline int gvec_offset_fft() const
     {
         return gvec_distr_fft_.offsets[fft_comm_->rank()];
+    }
+
+    /// Return local number of z-columns.
+    inline int zcol_count_fft() const
+    {
+        return zcol_distr_fft_.counts[fft_comm_->rank()];
+    }
+
+    inline int zcol_offset_fft() const
+    {
+        return zcol_distr_fft_.offsets[fft_comm_->rank()];
     }
 
     inline block_data_descriptor const& zcol_distr_fft() const
@@ -336,7 +351,7 @@ class Gvec
     {
         PROFILE("sddk::Gvec::init");
 
-        auto fft_grid = FFT3D_grid(find_translations(Gmax_, lattice_vectors_));
+        auto fft_grid = FFT3D_grid(find_translations(Gmax_, lattice_vectors_) + vector3d<int>({2, 2, 2}));
 
         find_z_columns(Gmax_, fft_grid);
 

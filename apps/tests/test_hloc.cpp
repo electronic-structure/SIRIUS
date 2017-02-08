@@ -3,7 +3,7 @@
 using namespace sirius;
 
 void test_hloc(std::vector<int> mpi_grid_dims__, double cutoff__, int num_bands__,
-               int use_gpu__, double gpu_workload__)
+               int use_gpu__, int gpu_ptr__)
 {
     device_t pu = static_cast<device_t>(use_gpu__);
 
@@ -13,7 +13,7 @@ void test_hloc(std::vector<int> mpi_grid_dims__, double cutoff__, int num_bands_
 
     FFT3D_grid fft_box(find_translations(2.01 * cutoff__, M));
 
-    FFT3D fft(fft_box, mpi_grid.communicator(1 << 0), pu, gpu_workload__);
+    FFT3D fft(fft_box, mpi_grid.communicator(1 << 0), pu);
 
     Gvec gvec(M, cutoff__, mpi_comm_world(), mpi_grid.communicator(1 << 0), false);
 
@@ -27,7 +27,6 @@ void test_hloc(std::vector<int> mpi_grid_dims__, double cutoff__, int num_bands_
         printf("number of FFT groups: %i\n", mpi_grid.dimension_size(1));
         printf("MPI grid: %i %i\n", mpi_grid.dimension_size(0), mpi_grid.dimension_size(1));
         printf("number of z-columns: %i\n", gvec.num_zcol());
-        if (use_gpu__) printf("GPU workload: %f\n", gpu_workload__);
     }
 
     fft.prepare(gvec.partition());
@@ -55,17 +54,24 @@ void test_hloc(std::vector<int> mpi_grid_dims__, double cutoff__, int num_bands_
     for (int i = 0; i < 4; i++) {
         hphi.copy_from(phi, i * num_bands__, num_bands__);
         #ifdef __GPU
-        if (pu == GPU && !fft.gpu_only()) {
+        if (pu == GPU) {
             hphi.pw_coeffs().copy_to_host(i * num_bands__, num_bands__);
         }
         #endif
-        hloc.apply_h(0, hphi, i * num_bands__, num_bands__);
+        if (gpu_ptr__) {
+            #ifdef __GPU
+            hloc.apply_h<GPU>(0, hphi, i * num_bands__, num_bands__);
+            #endif
+        }
+        else {
+            hloc.apply_h<CPU>(0, hphi, i * num_bands__, num_bands__);
+        }
     }
     mpi_comm_world().barrier();
     t1.stop();
 
     #ifdef __GPU
-    if (pu == GPU && fft.gpu_only()) {
+    if (pu == GPU && gpu_ptr__) {
         hphi.pw_coeffs().copy_to_host(0, 4 * num_bands__);
     }
     #endif
@@ -94,7 +100,8 @@ int main(int argn, char** argv)
     args.register_key("--cutoff=", "{double} wave-functions cutoff");
     args.register_key("--num_bands=", "{int} number of bands");
     args.register_key("--use_gpu=", "{int} 0: CPU only, 1: hybrid CPU+GPU");
-    args.register_key("--gpu_workload=", "{double} worload of GPU");
+    args.register_key("--gpu_ptr=", "{int} 0: start from CPU, 1: start from GPU");
+    args.register_key("--repeat=", "{int} number of repetitions");
 
     args.parse_args(argn, argv);
     if (args.exist("help")) {
@@ -106,11 +113,12 @@ int main(int argn, char** argv)
     auto cutoff = args.value<double>("cutoff", 2.0);
     auto num_bands = args.value<int>("num_bands", 10);
     auto use_gpu = args.value<int>("use_gpu", 0);
-    auto gpu_workload = args.value<double>("gpu_workload", 0.8);
+    auto gpu_ptr = args.value<int>("gpu_ptr", 0);
+    auto repeat = args.value<int>("repeat", 3);
 
     sirius::initialize(1);
-    for (int i = 0; i < 10; i++) {
-        test_hloc(mpi_grid_dims, cutoff, num_bands, use_gpu, gpu_workload);
+    for (int i = 0; i < repeat; i++) {
+        test_hloc(mpi_grid_dims, cutoff, num_bands, use_gpu, gpu_ptr);
     }
     mpi_comm_world().barrier();
     sddk::timer::print();

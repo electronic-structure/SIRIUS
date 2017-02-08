@@ -19,8 +19,11 @@ inline void Density::initial_density()
 
 inline void Density::initial_density_pseudo()
 {
-    auto rho_radial_integrals = generate_rho_radial_integrals(1);
-    auto v = unit_cell_.make_periodic_function(rho_radial_integrals, ctx_.gvec());
+    auto v = unit_cell_.make_periodic_function([this](int iat, double g)
+                                               {
+                                                   return ctx_.radial_integrals().pseudo_rho_radial_integral(iat, g);
+                                               },
+                                               ctx_.gvec());
 
     if (ctx_.control().print_checksum_ && ctx_.comm().rank() == 0) {
         auto z1 = mdarray<double_complex, 1>(&v[0], ctx_.gvec().num_gvec()).checksum();
@@ -42,74 +45,45 @@ inline void Density::initial_density_pseudo()
     }
     rho_->fft_transform(1);
 
-    #ifdef __PRINT_OBJECT_CHECKSUM
-    DUMP("checksum(rho_rg) : %18.10f", rho_->checksum_rg());
-    #endif
+    if (ctx_.control().print_checksum_) {
+        auto cs = rho_->checksum_rg();
+        if (ctx_.comm().rank() == 0) {
+            DUMP("checksum(rho_rg) : %18.10f", cs);
+        }
+    }
 
     /* remove possible negative noise */
     for (int ir = 0; ir < ctx_.fft().local_size(); ir++) {
         rho_->f_rg(ir) = std::max(rho_->f_rg(ir), 0.0);
     }
 
-    //== FILE* fout = fopen("unit_cell.xsf", "w");
-    //== fprintf(fout, "CRYSTAL\n");
-    //== fprintf(fout, "PRIMVEC\n");
-    //== auto& lv = unit_cell_.lattice_vectors();
-    //== for (int i = 0; i < 3; i++)
-    //== {
-    //==     fprintf(fout, "%18.12f %18.12f %18.12f\n", lv(0, i), lv(1, i), lv(2, i));
-    //== }
-    //== fprintf(fout, "CONVVEC\n");
-    //== for (int i = 0; i < 3; i++)
-    //== {
-    //==     fprintf(fout, "%18.12f %18.12f %18.12f\n", lv(0, i), lv(1, i), lv(2, i));
-    //== }
-    //== fprintf(fout, "PRIMCOORD\n");
-    //== fprintf(fout, "%i 1\n", unit_cell_.num_atoms());
-    //== for (int ia = 0; ia < unit_cell_.num_atoms(); ia++)
-    //== {
-    //==     auto pos = unit_cell_.get_cartesian_coordinates(unit_cell_.atom(ia).position());
-    //==     fprintf(fout, "%i %18.12f %18.12f %18.12f\n", unit_cell_.atom(ia).zn(), pos[0], pos[1], pos[2]);
-    //== }
-    //== fclose(fout);
-
-
     /* initialize the magnetization */
-    if (ctx_.num_mag_dims())
-    {
-        for (int ia = 0; ia < unit_cell_.num_atoms(); ia++)
-        {
+    if (ctx_.num_mag_dims()) {
+        for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
+            /* vector field is in Cartesian coordinates */
             vector3d<double> v = unit_cell_.atom(ia).vector_field();
-            //double len = v.length();
 
-            for (int j0 = 0; j0 < ctx_.fft().grid().size(0); j0++)
-            {
-                for (int j1 = 0; j1 < ctx_.fft().grid().size(1); j1++)
-                {
-                    for (int j2 = 0; j2 < ctx_.fft().local_size_z(); j2++)
-                    {
+            for (int j0 = 0; j0 < ctx_.fft().grid().size(0); j0++) {
+                for (int j1 = 0; j1 < ctx_.fft().grid().size(1); j1++) {
+                    for (int j2 = 0; j2 < ctx_.fft().local_size_z(); j2++) {
                         /* get real space fractional coordinate */
-                        auto v0 = vector3d<double>(double(j0) / ctx_.fft().grid().size(0),
+                        auto r0 = vector3d<double>(double(j0) / ctx_.fft().grid().size(0),
                                                    double(j1) / ctx_.fft().grid().size(1),
                                                    double(ctx_.fft().offset_z() + j2) / ctx_.fft().grid().size(2));
                         /* index of real space point */
                         int ir = ctx_.fft().grid().index_by_coord(j0, j1, j2);
 
-                        for (int t0 = -1; t0 <= 1; t0++)
-                        {
-                            for (int t1 = -1; t1 <= 1; t1++)
-                            {
-                                for (int t2 = -1; t2 <= 1; t2++)
-                                {
-                                    vector3d<double> v1 = v0 - (unit_cell_.atom(ia).position() + vector3d<double>(t0, t1, t2));
-                                    auto r = unit_cell_.get_cartesian_coordinates(v1);
+                        for (int t0 = -1; t0 <= 1; t0++) {
+                            for (int t1 = -1; t1 <= 1; t1++) {
+                                for (int t2 = -1; t2 <= 1; t2++) {
+                                    vector3d<double> r1 = r0 - (unit_cell_.atom(ia).position() + vector3d<double>(t0, t1, t2));
+                                    auto r = unit_cell_.get_cartesian_coordinates(r1);
                                     auto a = r.length();
 
                                     const double R = 2.0;
                                     const double norm = pi * std::pow(R, 3) / 3.0;
 
-                                    if (a <= R)
-                                    {
+                                    if (a <= R) {
                                         magnetization_[0]->f_rg(ir) += v[2] * (1.0 - a / R) / norm;
                                     }
                                 }
@@ -121,93 +95,6 @@ inline void Density::initial_density_pseudo()
         }
     }
 
-
-    //== mdarray<double, 3> rho_grid(&rho_->f_it<global>(0), fft_->size(0), fft_->size(1), fft_->size(2));
-    //== mdarray<double, 4> pos_grid(3, fft_->size(0), fft_->size(1), fft_->size(2));
-
-    //== mdarray<double, 4> mag_grid(3, fft_->size(0), fft_->size(1), fft_->size(2));
-    //== mag_grid.zero();
-
-    //== // loop over 3D array (real space)
-    //== for (int j0 = 0; j0 < fft_->size(0); j0++)
-    //== {
-    //==     for (int j1 = 0; j1 < fft_->size(1); j1++)
-    //==     {
-    //==         for (int j2 = 0; j2 < fft_->size(2); j2++)
-    //==         {
-    //==             int ir = static_cast<int>(j0 + j1 * fft_->size(0) + j2 * fft_->size(0) * fft_->size(1));
-    //==             // get real space fractional coordinate
-    //==             double frv[] = {double(j0) / fft_->size(0),
-    //==                             double(j1) / fft_->size(1),
-    //==                             double(j2) / fft_->size(2)};
-    //==             vector3d<double> rv = ctx_.unit_cell()->get_cartesian_coordinates(vector3d<double>(frv));
-    //==             for (int x = 0; x < 3; x++) pos_grid(x, j0, j1, j2) = rv[x];
-    //==             if (ctx_.num_mag_dims() == 1) mag_grid(2, j0, j1, j2) = magnetization_[0]->f_it<global>(ir);
-    //==             if (ctx_.num_mag_dims() == 3)
-    //==             {
-    //==                 mag_grid(0, j0, j1, j2) = magnetization_[1]->f_it<global>(ir);
-    //==                 mag_grid(1, j0, j1, j2) = magnetization_[2]->f_it<global>(ir);
-    //==             }
-    //==         }
-    //==     }
-    //== }
-
-    //== HDF5_tree h5_rho("rho.hdf5", true);
-    //== h5_rho.write("rho", rho_grid);
-    //== h5_rho.write("pos", pos_grid);
-    //== h5_rho.write("mag", mag_grid);
-
-    //== FILE* fout = fopen("rho.xdmf", "w");
-    //== //== fprintf(fout, "<?xml version=\"1.0\" ?>\n"
-    //== //==               "<!DOCTYPE Xdmf SYSTEM \"Xdmf.dtd\">\n"
-    //== //==               "<Xdmf>\n"
-    //== //==               "  <Domain Name=\"name1\">\n"
-    //== //==               "    <Grid Name=\"fft_fine_grid\" Collection=\"Unknown\">\n"
-    //== //==               "      <Topology TopologyType=\"3DSMesh\" NumberOfElements=\" %i %i %i \"/>\n"
-    //== //==               "      <Geometry GeometryType=\"XYZ\">\n"
-    //== //==               "        <DataItem Dimensions=\"%i %i %i 3\" NumberType=\"Float\" Precision=\"8\" Format=\"HDF\">rho.hdf5:/pos</DataItem>\n"
-    //== //==               "      </Geometry>\n"
-    //== //==               "      <Attribute\n"
-    //== //==               "           AttributeType=\"Scalar\"\n"
-    //== //==               "           Center=\"Node\"\n"
-    //== //==               "           Name=\"rho\">\n"
-    //== //==               "          <DataItem\n"
-    //== //==               "             NumberType=\"Float\"\n"
-    //== //==               "             Precision=\"8\"\n"
-    //== //==               "             Dimensions=\"%i %i %i\"\n"
-    //== //==               "             Format=\"HDF\">\n"
-    //== //==               "             rho.hdf5:/rho\n"
-    //== //==               "          </DataItem>\n"
-    //== //==               "        </Attribute>\n"
-    //== //==               "    </Grid>\n"
-    //== //==               "  </Domain>\n"
-    //== //==               "</Xdmf>\n", fft_->size(0), fft_->size(1), fft_->size(2), fft_->size(0), fft_->size(1), fft_->size(2), fft_->size(0), fft_->size(1), fft_->size(2));
-    //== fprintf(fout, "<?xml version=\"1.0\" ?>\n"
-    //==               "<!DOCTYPE Xdmf SYSTEM \"Xdmf.dtd\">\n"
-    //==               "<Xdmf>\n"
-    //==               "  <Domain Name=\"name1\">\n"
-    //==               "    <Grid Name=\"fft_fine_grid\" Collection=\"Unknown\">\n"
-    //==               "      <Topology TopologyType=\"3DSMesh\" NumberOfElements=\" %i %i %i \"/>\n"
-    //==               "      <Geometry GeometryType=\"XYZ\">\n"
-    //==               "        <DataItem Dimensions=\"%i %i %i 3\" NumberType=\"Float\" Precision=\"8\" Format=\"HDF\">rho.hdf5:/pos</DataItem>\n"
-    //==               "      </Geometry>\n"
-    //==               "      <Attribute\n"
-    //==               "           AttributeType=\"Vector\"\n"
-    //==               "           Center=\"Node\"\n"
-    //==               "           Name=\"mag\">\n"
-    //==               "          <DataItem\n"
-    //==               "             NumberType=\"Float\"\n"
-    //==               "             Precision=\"8\"\n"
-    //==               "             Dimensions=\"%i %i %i 3\"\n"
-    //==               "             Format=\"HDF\">\n"
-    //==               "             rho.hdf5:/mag\n"
-    //==               "          </DataItem>\n"
-    //==               "        </Attribute>\n"
-    //==               "    </Grid>\n"
-    //==               "  </Domain>\n"
-    //==               "</Xdmf>\n", fft_->size(0), fft_->size(1), fft_->size(2), fft_->size(0), fft_->size(1), fft_->size(2), fft_->size(0), fft_->size(1), fft_->size(2));
-    //== fclose(fout);
-
     rho_->fft_transform(-1);
     for (int j = 0; j < ctx_.num_mag_dims(); j++) {
         magnetization_[j]->fft_transform(-1);
@@ -217,13 +104,11 @@ inline void Density::initial_density_pseudo()
     charge = std::real(rho_->f_pw(0) * unit_cell_.omega());
     rho_->f_pw(0) += (unit_cell_.num_valence_electrons() - charge) / unit_cell_.omega();
 
-    #ifdef __PRINT_OBJECT_CHECKSUM
-    double_complex cs = mdarray<double_complex, 1>(&rho_->f_pw(0), ctx_.gvec().num_gvec()).checksum();
-    DUMP("checksum(rho_pw): %20.14f %20.14f", std::real(cs), std::imag(cs));
-    #endif
+    if (ctx_.control().print_checksum_ && ctx_.comm().rank() == 0) {
+        double_complex cs = mdarray<double_complex, 1>(&rho_->f_pw(0), ctx_.gvec().num_gvec()).checksum();
+        DUMP("checksum(rho_pw): %20.14f %20.14f", std::real(cs), std::imag(cs));
+    }
 }
-
-
 
 inline void Density::initial_density_full_pot()
 {

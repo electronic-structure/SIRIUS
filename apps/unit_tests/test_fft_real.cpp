@@ -14,8 +14,7 @@ void test1(vector3d<int> const& dims__, double cutoff__, device_t pu__)
     Gvec gvec(M, cutoff__, mpi_comm_world(), mpi_comm_world(), false);
     Gvec gvec_r(M, cutoff__, mpi_comm_world(), mpi_comm_world(), true);
 
-    if (gvec_r.num_gvec() != gvec.num_gvec() / 2 + 1)
-    {
+    if (gvec_r.num_gvec() != gvec.num_gvec() / 2 + 1) {
         printf("wrong number of reduced G-vectors");
         exit(1);
     }
@@ -27,14 +26,19 @@ void test1(vector3d<int> const& dims__, double cutoff__, device_t pu__)
     printf("num_z_col: %i, num_z_col_reduced: %i\n", gvec.num_zcol(), gvec_r.num_zcol());
 
     mdarray<double_complex, 1> phi(gvec_r.partition().gvec_count_fft());
-    for (int i = 0; i < gvec_r.partition().gvec_count_fft(); i++) phi(i) = type_wrapper<double_complex>::random();
+    for (int i = 0; i < gvec_r.partition().gvec_count_fft(); i++) {
+        phi(i) = type_wrapper<double_complex>::random();
+    }
     phi(0) = 1.0;
     fft.transform<1>(gvec_r.partition(), &phi[0]);
+    #ifdef __GPU
+    if (pu__ == GPU) {
+        fft.buffer().copy_to_host();
+    }
+    #endif
 
-    for (int i = 0; i < fft.local_size(); i++)
-    {
-        if (fft.buffer(i).imag() > 1e-10)
-        {
+    for (int i = 0; i < fft.local_size(); i++) {
+        if (fft.buffer(i).imag() > 1e-10) {
             printf("function is not real at idx = %i, image value: %18.12f\n", i, fft.buffer(i).imag());
             exit(1);
         }
@@ -43,11 +47,12 @@ void test1(vector3d<int> const& dims__, double cutoff__, device_t pu__)
     fft.transform<-1>(gvec_r.partition(), &phi1[0]);
 
     double rms = 0;
-    for (int i = 0; i < gvec_r.partition().gvec_count_fft(); i++) rms += std::pow(std::abs(phi(i) - phi1(i)), 2);
+    for (int i = 0; i < gvec_r.partition().gvec_count_fft(); i++) {
+        rms += std::pow(std::abs(phi(i) - phi1(i)), 2);
+    }
     rms = std::sqrt(rms / gvec_r.partition().gvec_count_fft());
     printf("rms: %18.12f\n", rms);
-    if (rms > 1e-13)
-    {
+    if (rms > 1e-13) {
         printf("functions are different\n");
         exit(1);
     }
@@ -72,8 +77,7 @@ void test2(vector3d<int> const& dims__, double cutoff__, device_t pu__)
     mdarray<double, 1> phi1_rg(fft.local_size());
     mdarray<double, 1> phi2_rg(fft.local_size());
 
-    for (int i = 0; i < gvec_r.partition().gvec_count_fft(); i++)
-    {
+    for (int i = 0; i < gvec_r.partition().gvec_count_fft(); i++) {
         phi1(i) = type_wrapper<double_complex>::random();
         phi2(i) = type_wrapper<double_complex>::random();
     }
