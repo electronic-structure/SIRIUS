@@ -146,14 +146,17 @@ extern "C" void cufft_batch_load_gpu(int fft_size,
                                      int num_fft,
                                      int const* map, 
                                      cuDoubleComplex const* data, 
-                                     cuDoubleComplex* fft_buffer)
+                                     cuDoubleComplex* fft_buffer,
+                                     int stream_id)
 {
     dim3 grid_t(64);
     dim3 grid_b(num_blocks(num_pw_components, grid_t.x), num_fft);
-    
+
+    cudaStream_t stream = cuda_stream_by_id(stream_id);
+
     cuda_memset(fft_buffer, 0, fft_size * num_fft * sizeof(cuDoubleComplex));
 
-    cufft_batch_load_gpu_kernel <<<grid_b, grid_t>>>
+    cufft_batch_load_gpu_kernel <<<grid_b, grid_t, 0, stream>>>
     (
         fft_size,
         num_pw_components,
@@ -172,19 +175,22 @@ __global__ void cufft_load_x0y0_col_gpu_kernel(int z_col_size,
     int idx = blockDim.x * blockIdx.x + threadIdx.x;
 
     if (idx < z_col_size) {
-        fft_buffer[map[idx]] = cuConj(data[idx]);
+        fft_buffer[map[idx]] = make_cuDoubleComplex(data[idx].x, -data[idx].y);
     }
 }
 
 extern "C" void cufft_load_x0y0_col_gpu(int z_col_size,
                                         int const* map,
                                         cuDoubleComplex const* data,
-                                        cuDoubleComplex* fft_buffer)
+                                        cuDoubleComplex* fft_buffer,
+                                        int stream_id)
 {
     dim3 grid_t(64);
     dim3 grid_b(num_blocks(z_col_size, grid_t.x));
 
-    cufft_load_x0y0_col_gpu_kernel <<<grid_b, grid_t>>>
+    cudaStream_t stream = cuda_stream_by_id(stream_id);
+
+    cufft_load_x0y0_col_gpu_kernel <<<grid_b, grid_t, 0, stream>>>
     (
         z_col_size,
         map,
@@ -224,12 +230,15 @@ extern "C" void cufft_batch_unload_gpu(int fft_size,
                                        cuDoubleComplex const* fft_buffer, 
                                        cuDoubleComplex* data,
                                        double alpha,
-                                       double beta)
+                                       double beta,
+                                       int stream_id)
 {
     dim3 grid_t(64);
     dim3 grid_b(num_blocks(num_pw_components, grid_t.x), num_fft);
 
-    cufft_batch_unload_gpu_kernel <<<grid_b, grid_t>>>
+    cudaStream_t stream = cuda_stream_by_id(stream_id);
+    
+    cufft_batch_unload_gpu_kernel <<<grid_b, grid_t, 0, stream>>>
     (
         fft_size, 
         num_pw_components, 
