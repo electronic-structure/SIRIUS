@@ -78,7 +78,7 @@ class Local_operator
         {
             veff_vec_ = mdarray<double, 2>(fft_coarse_.local_size(), 1, memory_t::host, "Local_operator::veff_vec_");
             for (int ir = 0; ir < fft_coarse_.local_size(); ir++) {
-                veff_vec_(ir, 0) = 2.0;
+                veff_vec_(ir, 0) = 2.71828;
             }
 
             int ngv_fft = gvec__.partition().gvec_count_fft();
