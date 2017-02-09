@@ -77,7 +77,8 @@ extern "C" void cufft_batch_load_gpu(int fft_size,
                                      int num_fft,
                                      int const* map, 
                                      cuDoubleComplex const* data, 
-                                     cuDoubleComplex* fft_buffer);
+                                     cuDoubleComplex* fft_buffer,
+                                     int stream_id);
 
 extern "C" void cufft_batch_unload_gpu(int fft_size,
                                        int num_pw_components,
@@ -86,12 +87,18 @@ extern "C" void cufft_batch_unload_gpu(int fft_size,
                                        cuDoubleComplex const* fft_buffer, 
                                        cuDoubleComplex* data,
                                        double alpha,
-                                       double beta);
+                                       double beta,
+                                       int stream_id);
 
 extern "C" void cufft_load_x0y0_col_gpu(int z_col_size,
                                         int const* map,
                                         cuDoubleComplex const* data,
-                                        cuDoubleComplex* fft_buffer);
+                                        cuDoubleComplex* fft_buffer,
+                                        int stream_id);
+
+extern "C" void double_complex_checksum_gpu(cuDoubleComplex const* ptr__,
+                                            size_t size__,
+                                            cuDoubleComplex* result__);
 #endif
 
 // TODO:  add += operation for (-1) transform, i.e. accumulate in the output buffer. This will allow to get rid of
@@ -215,6 +222,8 @@ class FFT3D
             double norm = 1.0 / size();
             
             bool is_reduced = gvec__.reduced();
+
+            assert(static_cast<int>(fft_buffer_aux__.size()) >= gvec__.zcol_count_fft() * grid_.size(2));
             
             /* input/output data buffer is on GPU */
             if (data_ptr_type == GPU) {
@@ -227,12 +236,14 @@ class FFT3D
                                              1, 
                                              map_zcol_to_fft_buffer_.at<GPU>(),
                                              data__,
-                                             fft_buffer_aux__.at<GPU>());
+                                             fft_buffer_aux__.at<GPU>(),
+                                             0);
                         if (is_reduced && comm_.rank() == 0) {
                             cufft_load_x0y0_col_gpu(static_cast<int>(gvec__.zcol(0).z.size()),
                                                     map_zcol_to_fft_buffer_x0y0_.at<GPU>(),
                                                     data__,
-                                                    fft_buffer_aux__.at<GPU>());
+                                                    fft_buffer_aux__.at<GPU>(),
+                                                    0);
                         }
                         /* transform all columns */
                         cufft_backward_transform(cufft_plan_z_, fft_buffer_aux__.at<GPU>());
@@ -244,14 +255,14 @@ class FFT3D
                         acc::zero(data__, gvec__.gvec_count_fft()); // TODO: this should happen in cufft_batch_unload_gpu()
                         /* get all columns from FFT buffer */
                         cufft_batch_unload_gpu(gvec__.zcol_count_fft() * grid_.size(2), gvec__.gvec_count_fft(), 1, 
-                                               map_zcol_to_fft_buffer_.at<GPU>(), fft_buffer_aux__.at<GPU>(), data__, 0.0, norm);
+                                               map_zcol_to_fft_buffer_.at<GPU>(), fft_buffer_aux__.at<GPU>(), data__, 0.0, norm, 0);
                         break;
                     }
                     default: {
                         TERMINATE("wrong direction");
                     }
-                    acc::sync_stream(0);
                 }
+                acc::sync_stream(0);
                 #endif
             }
             
@@ -917,11 +928,9 @@ class FFT3D
             }
             if (sz_max > fft_buffer_aux1_.size()) {
                 fft_buffer_aux1_ = mdarray<double_complex, 1>(sz_max, memory_t::host_pinned, "fft_buffer_aux1_");
-                #ifdef __GPU
                 if (pu_ == GPU) {
                     fft_buffer_aux1_.allocate(memory_t::device);
                 }
-                #endif
             }
 
             switch (direction) {
@@ -968,21 +977,21 @@ class FFT3D
             
             if (sz_max > fft_buffer_aux1_.size()) {
                 fft_buffer_aux1_ = mdarray<double_complex, 1>(sz_max, memory_t::host_pinned, "fft_buffer_aux1_");
-                #ifdef __GPU
                 if (pu_ == GPU) {
                     fft_buffer_aux1_.allocate(memory_t::device);
                 }
-                #endif
             }
             if (sz_max > fft_buffer_aux2_.size()) {
-                fft_buffer_aux2_ = mdarray<double_complex, 1>(sz_max, memory_t::host_pinned, "fft_buffer_aux2_");
-                #ifdef __GPU
+                /* this is a correct size of fft_buffer_aux2_ */
+                //fft_buffer_aux2_ = mdarray<double_complex, 1>(sz_max, memory_t::host_pinned, "fft_buffer_aux2_");
+                /* this is wrong: size of fft_buffer_aux2_ is sz_max, however cufft crashes or produces incorrect results;
+                 * cuda-memcheck shows that fft_transfrom writes outside of memory boundaries; this is wrong, but the
+                 * larger memory allocation fixes the problem for now */
+                fft_buffer_aux2_ = mdarray<double_complex, 1>(fft_buffer_aux1_.size(), memory_t::host_pinned, "fft_buffer_aux2_");
                 if (pu_ == GPU) {
                     fft_buffer_aux2_.allocate(memory_t::device);
                 }
-                #endif
             }
-
             switch (direction) {
                 case 1: {
                     transform_z<direction, data_ptr_type>(gvec__, data1__, fft_buffer_aux1_);

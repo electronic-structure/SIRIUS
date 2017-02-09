@@ -13,6 +13,7 @@ ifneq (,$(findstring D__GPU,$(CXX_OPT)))
 	SDDK/GPU/cufft_interface.o \
 	SDDK/GPU/cublas_interface.o \
 	SDDK/GPU/pack_unpack_z_columns.o \
+	SDDK/GPU/checksum.o \
 	Kernels/cuda_uspp_kernels.o \
 	Kernels/scale_matrix.o \
 	Kernels/spline.o \
