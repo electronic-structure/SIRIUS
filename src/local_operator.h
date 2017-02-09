@@ -129,7 +129,7 @@ class Local_operator
             if (!veff_vec_.size()) {
                 veff_vec_ = mdarray<double, 2>(fft_coarse_.local_size(), num_mag_dims__ + 1, memory_t::host, "Local_operator::veff_vec_");
             }
-        
+
             /* low-frequency part of PW coefficients */
             std::vector<double_complex> v_pw_coarse(gvec_coarse__.partition().gvec_count_fft());
             /* prepare FFT for transformation */

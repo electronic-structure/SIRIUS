@@ -673,10 +673,6 @@ class FFT3D
                 cufft_create_batch_plan(cufft_plan_xy_, 2, dim_xy, dim_xy, 1, grid_.size(0) * grid_.size(1), local_size_z_, auto_alloc);
                 /* stream #0 will execute FFTs */
                 cufft_set_stream(cufft_plan_xy_, 0);
-                /* create the handle for z-transform; the actual plan is created in prepare() function 
-                 * when number of z-columsn is known */
-                cufft_create_plan_handle(&cufft_plan_z_);
-                cufft_set_stream(cufft_plan_z_, 0);
             }
             #endif
         }
@@ -684,6 +680,9 @@ class FFT3D
         /// Destructor.
         ~FFT3D()
         {
+            if (prepared_) {
+                dismiss();
+            }
             for (int i = 0; i < omp_get_max_threads(); i++) {
                 fftw_free(fftw_buffer_z_[i]);
                 fftw_free(fftw_buffer_xy_[i]);
@@ -696,7 +695,6 @@ class FFT3D
             #ifdef __GPU
             if (pu_ == GPU) {
                 cufft_destroy_plan_handle(cufft_plan_xy_);
-                cufft_destroy_plan_handle(cufft_plan_z_);
             }
             #endif
         }
@@ -825,10 +823,14 @@ class FFT3D
             for (int i = 0; i < gvec__.num_zcol(); i++) {
                 int x = grid().coord_by_gvec(gvec__.zcol(i).x, 0);
                 int y = grid().coord_by_gvec(gvec__.zcol(i).y, 1);
+                assert(x >= 0 && x < grid().size(0));
+                assert(y >= 0 && y < grid().size(1));
                 z_col_pos_(i, 0) = x + y * grid_.size(0);
                 if (gvec__.reduced()) {
                     x = grid().coord_by_gvec(-gvec__.zcol(i).x, 0);
                     y = grid().coord_by_gvec(-gvec__.zcol(i).y, 1);
+                    assert(x >= 0 && x < grid().size(0));
+                    assert(y >= 0 && y < grid().size(1));
                     z_col_pos_(i, 1) = x + y * grid_.size(0);
                 }
             }
@@ -848,6 +850,7 @@ class FFT3D
                         size_t ig = gvec__.zcol_offs(icol) + j;
                         /* coordinate inside FFT 1D bufer */
                         int z = grid().coord_by_gvec(gvec__.zcol(icol).z[j], 2);
+                        assert(z >= 0 && z < grid().size(2));
                         map_zcol_to_fft_buffer_[ig] = i * grid_.size(2) + z;
                     }
                 }
@@ -858,10 +861,14 @@ class FFT3D
                     map_zcol_to_fft_buffer_x0y0_ = mdarray<int, 1>(gvec__.zcol(0).z.size(), memory_t::host | memory_t::device, "FFT3D.map_zcol_to_fft_buffer_x0y0_");
                     for (size_t j = 0; j < gvec__.zcol(0).z.size(); j++) {
                         int z = grid().coord_by_gvec(-gvec__.zcol(0).z[j], 2);
+                        assert(z >= 0 && z < grid().size(2));
                         map_zcol_to_fft_buffer_x0y0_[j] = z;
                     }
                     map_zcol_to_fft_buffer_x0y0_.copy<memory_t::host, memory_t::device>();
                 }
+
+                cufft_create_plan_handle(&cufft_plan_z_);
+                cufft_set_stream(cufft_plan_z_, 0);
                 
                 int dim_z[] = {grid_.size(2)};
                 cufft_create_batch_plan(cufft_plan_z_, 1, dim_z, dim_z, 1, grid_.size(2), gvec__.zcol_count_fft(), 0);
@@ -901,6 +908,7 @@ class FFT3D
                 cufft_work_buf_.deallocate_on_device();
                 map_zcol_to_fft_buffer_.deallocate_on_device();
                 map_zcol_to_fft_buffer_x0y0_.deallocate_on_device();
+                cufft_destroy_plan_handle(cufft_plan_z_);
             }
             #endif
             prepared_ = false;
@@ -982,12 +990,7 @@ class FFT3D
                 }
             }
             if (sz_max > fft_buffer_aux2_.size()) {
-                /* this is a correct size of fft_buffer_aux2_ */
-                //fft_buffer_aux2_ = mdarray<double_complex, 1>(sz_max, memory_t::host_pinned, "fft_buffer_aux2_");
-                /* this is wrong: size of fft_buffer_aux2_ is sz_max, however cufft crashes or produces incorrect results;
-                 * cuda-memcheck shows that fft_transfrom writes outside of memory boundaries; this is wrong, but the
-                 * larger memory allocation fixes the problem for now */
-                fft_buffer_aux2_ = mdarray<double_complex, 1>(fft_buffer_aux1_.size(), memory_t::host_pinned, "fft_buffer_aux2_");
+                fft_buffer_aux2_ = mdarray<double_complex, 1>(sz_max, memory_t::host_pinned, "fft_buffer_aux2_");
                 if (pu_ == GPU) {
                     fft_buffer_aux2_.allocate(memory_t::device);
                 }
