@@ -116,6 +116,8 @@ void find_primitive()
         }
     }
 
+    printf("original number of atoms: %i\n", ctx.unit_cell().num_atoms());
+
     int nat_new = spg_find_primitive(lattice, (double(*)[3])&positions(0, 0), &types[0], ctx.unit_cell().num_atoms(), 1e-4);
     printf("new number of atoms: %i\n", nat_new);
 
