@@ -1068,9 +1068,19 @@ class Potential
             return rm_inv_pw_(ig__);
         }
 
+        inline void set_rm_inv_pw(double_complex* rm_inv_pw__)
+        {
+            std::copy(rm_inv_pw__, rm_inv_pw__ + ctx_.gvec().num_gvec(), rm_inv_pw_.at<CPU>());
+        }
+
         double_complex const& rm2_inv_pw(int ig__) const
         {
             return rm2_inv_pw_(ig__);
+        }
+
+        inline void set_rm2_inv_pw(double_complex* rm2_inv_pw__)
+        {
+            std::copy(rm2_inv_pw__, rm2_inv_pw__ + ctx_.gvec().num_gvec(), rm2_inv_pw_.at<CPU>());
         }
 
         inline void fft_transform(int direction__)

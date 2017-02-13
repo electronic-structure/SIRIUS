@@ -1949,11 +1949,11 @@ void sirius_generate_potential_pw_coefs()
     potential->generate_pw_coefs();
 }
 
-void sirius_set_effective_potential_pw_coeffs(double_complex* f_pw__) // TODO: merge with set_veff_pw()
-{
-    potential->set_veff_pw(f_pw__);
-    //std::memcpy(&potential->effective_potential()->f_pw(0), f_pw__, sim_ctx->gvec().num_gvec() * sizeof(double_complex));
-}
+//void sirius_set_effective_potential_pw_coeffs(double_complex* f_pw__) // TODO: merge with set_veff_pw()
+//{
+//    potential->set_veff_pw(f_pw__);
+//    //std::memcpy(&potential->effective_potential()->f_pw(0), f_pw__, sim_ctx->gvec().num_gvec() * sizeof(double_complex));
+//}
 
 void sirius_generate_density_pw_coefs()
 {
@@ -2270,75 +2270,75 @@ void sirius_get_veff_pw(ftn_int*            num_gvec__,
  *  \param [in] rho_pw plane-wave expansion coefficients of density
  *  \param [in] fcomm MPI communicator used in distribution of G-vectors
  */
-void sirius_set_rho_pw(ftn_int*            num_gvec__,
-                       ftn_int*            gvec__,
-                       ftn_double_complex* rho_pw__,
-                       ftn_int*            fcomm__)
+//void sirius_set_rho_pw(ftn_int*            num_gvec__,
+//                       ftn_int*            gvec__,
+//                       ftn_double_complex* rho_pw__,
+//                       ftn_int*            fcomm__)
+//
+//{
+//    mdarray<int, 2> gvec(gvec__, 3, *num_gvec__);
+//
+//    density->rho()->zero();
+//
+//    for (int i = 0; i < *num_gvec__; i++) {
+//        vector3d<int> G(gvec(0, i), gvec(1, i), gvec(2, i));
+//        int ig = sim_ctx->gvec().index_by_gvec(G);
+//        if (ig >= 0) {
+//            density->rho()->f_pw(ig) = rho_pw__[i];
+//        }
+//    }
+//
+//    Communicator comm(MPI_Comm_f2c(*fcomm__));
+//    comm.allreduce(&density->rho()->f_pw(0), sim_ctx->gvec().num_gvec());
+//    
+//    density->rho()->fft_transform(1);
+//}
 
-{
-    mdarray<int, 2> gvec(gvec__, 3, *num_gvec__);
-
-    density->rho()->zero();
-
-    for (int i = 0; i < *num_gvec__; i++) {
-        vector3d<int> G(gvec(0, i), gvec(1, i), gvec(2, i));
-        int ig = sim_ctx->gvec().index_by_gvec(G);
-        if (ig >= 0) {
-            density->rho()->f_pw(ig) = rho_pw__[i];
-        }
-    }
-
-    Communicator comm(MPI_Comm_f2c(*fcomm__));
-    comm.allreduce(&density->rho()->f_pw(0), sim_ctx->gvec().num_gvec());
-    
-    density->rho()->fft_transform(1);
-}
-
-void sirius_set_veff_pw(ftn_int*            num_gvec__,
-                        ftn_int*            gvec__,
-                        ftn_double_complex* veff_pw__,
-                        ftn_int*            fcomm__)
-
-{
-    mdarray<int, 2> gvec(gvec__, 3, *num_gvec__);
-
-    potential->effective_potential()->zero();
-
-    for (int i = 0; i < *num_gvec__; i++) {
-        vector3d<int> G(gvec(0, i), gvec(1, i), gvec(2, i));
-        int ig = sim_ctx->gvec().index_by_gvec(G);
-        if (ig >= 0) {
-            potential->effective_potential()->f_pw(ig) = veff_pw__[i];
-        }
-    }
-
-    Communicator comm(MPI_Comm_f2c(*fcomm__));
-    comm.allreduce(&potential->effective_potential()->f_pw(0), sim_ctx->gvec().num_gvec());
-    potential->effective_potential()->fft_transform(1);
-}
-
-void sirius_set_vxc_pw(ftn_int*            num_gvec__,
-                       ftn_int*            gvec__,
-                       ftn_double_complex* vxc_pw__,
-                       ftn_int*            fcomm__)
-
-{
-    mdarray<int, 2> gvec(gvec__, 3, *num_gvec__);
-
-    potential->xc_potential()->zero();
-
-    for (int i = 0; i < *num_gvec__; i++) {
-        vector3d<int> G(gvec(0, i), gvec(1, i), gvec(2, i));
-        int ig = sim_ctx->gvec().index_by_gvec(G);
-        if (ig >= 0) {
-            potential->xc_potential()->f_pw(ig) = vxc_pw__[i];
-        }
-    }
-
-    Communicator comm(MPI_Comm_f2c(*fcomm__));
-    comm.allreduce(&potential->xc_potential()->f_pw(0), sim_ctx->gvec().num_gvec());
-    potential->xc_potential()->fft_transform(1);
-}
+//void sirius_set_veff_pw(ftn_int*            num_gvec__,
+//                        ftn_int*            gvec__,
+//                        ftn_double_complex* veff_pw__,
+//                        ftn_int*            fcomm__)
+//
+//{
+//    mdarray<int, 2> gvec(gvec__, 3, *num_gvec__);
+//
+//    potential->effective_potential()->zero();
+//
+//    for (int i = 0; i < *num_gvec__; i++) {
+//        vector3d<int> G(gvec(0, i), gvec(1, i), gvec(2, i));
+//        int ig = sim_ctx->gvec().index_by_gvec(G);
+//        if (ig >= 0) {
+//            potential->effective_potential()->f_pw(ig) = veff_pw__[i];
+//        }
+//    }
+//
+//    Communicator comm(MPI_Comm_f2c(*fcomm__));
+//    comm.allreduce(&potential->effective_potential()->f_pw(0), sim_ctx->gvec().num_gvec());
+//    potential->effective_potential()->fft_transform(1);
+//}
+//
+//void sirius_set_vxc_pw(ftn_int*            num_gvec__,
+//                       ftn_int*            gvec__,
+//                       ftn_double_complex* vxc_pw__,
+//                       ftn_int*            fcomm__)
+//
+//{
+//    mdarray<int, 2> gvec(gvec__, 3, *num_gvec__);
+//
+//    potential->xc_potential()->zero();
+//
+//    for (int i = 0; i < *num_gvec__; i++) {
+//        vector3d<int> G(gvec(0, i), gvec(1, i), gvec(2, i));
+//        int ig = sim_ctx->gvec().index_by_gvec(G);
+//        if (ig >= 0) {
+//            potential->xc_potential()->f_pw(ig) = vxc_pw__[i];
+//        }
+//    }
+//
+//    Communicator comm(MPI_Comm_f2c(*fcomm__));
+//    comm.allreduce(&potential->xc_potential()->f_pw(0), sim_ctx->gvec().num_gvec());
+//    potential->xc_potential()->fft_transform(1);
+//}
 
 void sirius_get_gvec_index(int32_t* gvec__, int32_t* ig__)
 {
@@ -3176,6 +3176,68 @@ void sirius_set_verbosity(ftn_int* level__)
 void sirius_generate_d_operator_matrix()
 {
     potential->generate_D_operator_matrix();
+}
+
+void sirius_set_pw_coeffs(ftn_char label__,
+                          double_complex* pw_coeffs__,
+                          ftn_int* ngv__,
+                          ftn_int* gvl__, 
+                          ftn_int* comm__)
+{
+    std::string label(label__);
+
+    if (sim_ctx->full_potential()) {
+        if (label == "veff") {
+            potential->set_veff_pw(pw_coeffs__);
+        } else if (label == "rm_inv") {
+            potential->set_rm_inv_pw(pw_coeffs__);
+        } else if (label == "rm2_inv") {
+            potential->set_rm2_inv_pw(pw_coeffs__);
+        } else {
+            TERMINATE("wrong label");
+        }
+    } else {
+        Communicator comm(MPI_Comm_f2c(*comm__));
+        mdarray<int, 2> gvec(gvl__, 3, *ngv__);
+
+        if (label == "rho") {
+            density->rho()->zero();
+            for (int i = 0; i < *ngv__; i++) {
+                vector3d<int> G(gvec(0, i), gvec(1, i), gvec(2, i));
+                int ig = sim_ctx->gvec().index_by_gvec(G);
+                if (ig >= 0) {
+                    density->rho()->f_pw(ig) = pw_coeffs__[i];
+                }
+            }
+            comm.allreduce(&density->rho()->f_pw(0), sim_ctx->gvec().num_gvec());
+            density->rho()->fft_transform(1);
+        } else if (label == "veff") {
+            potential->effective_potential()->zero();
+            for (int i = 0; i < *ngv__; i++) {
+                vector3d<int> G(gvec(0, i), gvec(1, i), gvec(2, i));
+                int ig = sim_ctx->gvec().index_by_gvec(G);
+                if (ig >= 0) {
+                    potential->effective_potential()->f_pw(ig) = pw_coeffs__[i];
+                }
+            }
+            comm.allreduce(&potential->effective_potential()->f_pw(0), sim_ctx->gvec().num_gvec());
+            potential->effective_potential()->fft_transform(1);
+        } else if (label == "vxc") {
+            potential->xc_potential()->zero();
+            for (int i = 0; i < *ngv__; i++) {
+                vector3d<int> G(gvec(0, i), gvec(1, i), gvec(2, i));
+                int ig = sim_ctx->gvec().index_by_gvec(G);
+                if (ig >= 0) {
+                    potential->xc_potential()->f_pw(ig) = pw_coeffs__[i];
+                }
+            }
+        
+            comm.allreduce(&potential->xc_potential()->f_pw(0), sim_ctx->gvec().num_gvec());
+            potential->xc_potential()->fft_transform(1);
+        } else {
+            TERMINATE("wrong label");
+        }
+    }
 }
 
 } // extern "C"
