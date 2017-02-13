@@ -298,10 +298,35 @@ module sirius
             real(8),                intent(in) :: hlolo
         end subroutine
 
-        !subroutine sirius_set_effective_potential_pw_coeffs(f_pw)&
-        !    &bind(C, name="sirius_set_effective_potential_pw_coeffs")
-        !    complex(8),           intent(in) :: f_pw
-        !end subroutine
+        subroutine sirius_set_aw_aw_o1_radial_integral(ia, l, io1, io2, o1aa)&
+            &bind(C, name="sirius_set_aw_aw_o1_radial_integral")
+            integer,                intent(in) :: ia
+            integer,                intent(in) :: l
+            integer,                intent(in) :: io1
+            integer,                intent(in) :: io2
+            real(8),                intent(in) :: o1aa
+        end subroutine
+
+        subroutine sirius_set_aw_lo_o1_radial_integral(ia, io1, ilo2, o1alo)&
+            &bind(C, name="sirius_set_aw_lo_o1_radial_integral")
+            integer,                intent(in) :: ia
+            integer,                intent(in) :: io1
+            integer,                intent(in) :: ilo2
+            real(8),                intent(in) :: o1alo
+        end subroutine
+
+        subroutine sirius_set_lo_lo_o1_radial_integral(ia, ilo1, ilo2, o1lolo)&
+            &bind(C, name="sirius_set_lo_lo_o1_radial_integral")
+            integer,               intent(in) :: ia
+            integer,               intent(in) :: ilo1
+            integer,               intent(in) :: ilo2
+            real(8),               intent(in) :: o1lolo
+        end subroutine
+
+        subroutine sirius_set_effective_potential_pw_coeffs(f_pw)&
+            &bind(C, name="sirius_set_effective_potential_pw_coeffs")
+            complex(8),           intent(in) :: f_pw
+        end subroutine
 
         subroutine sirius_get_num_gvec(num_gvec)&
             &bind(C, name="sirius_get_num_gvec")
@@ -1112,6 +1137,8 @@ contains
 
         comm_ptr = C_NULL_PTR
         if (present(comm)) comm_ptr = C_LOC(comm)
+
+        call sirius_set_pw_coeffs_aux(label, pw_coeffs, ngv_ptr, gvl_ptr, comm_ptr)
 
     end subroutine
 
