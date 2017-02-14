@@ -1007,9 +1007,9 @@ module sirius
             use, intrinsic :: ISO_C_BINDING
             character, dimension(*), intent(in)  :: label
             complex(8),              intent(in)  :: pw_coeffs
-            type(C_PTR),             intent(in)  :: ngv
-            type(C_PTR),             intent(in)  :: gvl
-            type(C_PTR),             intent(in)  :: comm
+            type(C_PTR), value,      intent(in)  :: ngv
+            type(C_PTR), value,      intent(in)  :: gvl
+            type(C_PTR), value,      intent(in)  :: comm
         end subroutine
 
     end interface

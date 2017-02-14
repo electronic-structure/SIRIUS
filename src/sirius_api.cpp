@@ -2997,6 +2997,10 @@ void sirius_set_pw_coeffs(ftn_char label__,
             TERMINATE("wrong label");
         }
     } else {
+        assert(ngv__ != NULL);
+        assert(gvl__ != NULL);
+        assert(comm__ != NULL);
+
         Communicator comm(MPI_Comm_f2c(*comm__));
         mdarray<int, 2> gvec(gvl__, 3, *ngv__);
 
