@@ -351,6 +351,7 @@ inline void Band::apply_fv_o(K_point* kp__,
     #endif
 }
 
+/* first come the local orbitals, then the singular components, then the auxiliary basis functions */
 inline void Band::apply_fv_h_o(K_point* kp__,
                                int nlo__,
                                int N__,
@@ -364,21 +365,13 @@ inline void Band::apply_fv_h_o(K_point* kp__,
     assert(ophi__.mt_coeffs().num_rows_loc() == hphi__.mt_coeffs().num_rows_loc());
     
     if (N__ == 0) {
-        for (int ibnd = 0; ibnd < nlo__; ibnd++) {
-            for (int j = 0; j < hphi__.pw_coeffs().num_rows_loc(); j++) {
-                hphi__.pw_coeffs().prime(j, ibnd) = 0;
-                ophi__.pw_coeffs().prime(j, ibnd) = 0;
-            }
-        }
+        /* zero plane-wave part of pure local orbital basis functions */
+        hphi__.pw_coeffs().zero<memory_t::host | memory_t::device>(0, nlo__);
+        ophi__.pw_coeffs().zero<memory_t::host | memory_t::device>(0, nlo__);
     }
-
     /* zero the local-orbital part */
-    for (int ibnd = N__; ibnd < N__ + n__; ibnd++) {
-        for (int ilo = 0; ilo < hphi__.mt_coeffs().num_rows_loc(); ilo++) {
-            hphi__.mt_coeffs().prime(ilo, ibnd) = 0;
-            ophi__.mt_coeffs().prime(ilo, ibnd) = 0;
-        }
-    }
+    hphi__.mt_coeffs().zero<memory_t::host | memory_t::device>(N__, n__);
+    ophi__.mt_coeffs().zero<memory_t::host | memory_t::device>(N__, n__);
 
     /* interstitial part */
     if (N__ == 0) {
@@ -387,15 +380,15 @@ inline void Band::apply_fv_h_o(K_point* kp__,
     } else {
         local_op_->apply_h_o(kp__->gkvec().partition(), N__, n__, phi__, hphi__, ophi__);
     }
-
-    #ifdef __PRINT_OBJECT_CHECKSUM
-    {
-        auto cs1 = hphi__.checksum(N__, n__);
-        auto cs2 = ophi__.checksum(N__, n__);
-        DUMP("checksum(hphi_istl): %18.10f %18.10f", cs1.real(), cs1.imag());
-        DUMP("checksum(ophi_istl): %18.10f %18.10f", cs2.real(), cs2.imag());
+    
+    if (ctx_.control().print_checksum_) {
+        auto cs1 = hphi__.checksum_pw(N__, n__);
+        auto cs2 = ophi__.checksum_pw(N__, n__);
+        if (kp__->comm().rank() == 0) {
+            DUMP("checksum(hphi_istl): %18.10f %18.10f", cs1.real(), cs1.imag());
+            DUMP("checksum(ophi_istl): %18.10f %18.10f", cs2.real(), cs2.imag());
+        }
     }
-    #endif
 
     matrix<double_complex> alm(kp__->num_gkvec_loc(), unit_cell_.max_mt_aw_basis_size());
     matrix<double_complex> halm(kp__->num_gkvec_loc(), std::max(unit_cell_.max_mt_aw_basis_size(),
@@ -647,14 +640,14 @@ inline void Band::apply_fv_h_o(K_point* kp__,
     }
     #endif
 
-    #ifdef __PRINT_OBJECT_CHECKSUM
-    {
+    if (ctx_.control().print_checksum_) {
         auto cs1 = hphi__.checksum(N__, n__);
         auto cs2 = ophi__.checksum(N__, n__);
-        DUMP("checksum(hphi): %18.10f %18.10f", cs1.real(), cs1.imag());
-        DUMP("checksum(ophi): %18.10f %18.10f", cs2.real(), cs2.imag());
+        if (kp__->comm().rank() == 0) {
+            DUMP("checksum(hphi): %18.10f %18.10f", cs1.real(), cs1.imag());
+            DUMP("checksum(ophi): %18.10f %18.10f", cs2.real(), cs2.imag());
+        }
     }
-    #endif
 }
 
 //TODO: port to GPU
@@ -666,6 +659,14 @@ inline void Band::apply_magnetic_field(wave_functions& fv_states__,
     PROFILE("sirius::Band::apply_magnetic_field");
 
     assert(hpsi__.size() == 2 || hpsi__.size() == 3);
+
+    //#ifdef __GPU
+    //if (ctx_.processing_unit() == GPU) {
+    //    fv_states__.allocate_on_device();
+    //    fv_states__.copy_to_device(0, ctx_.num_fv_states());
+    //    for (auto& e: hpsi__) {
+    //        e.allocate_on_device();
+    //}
 
     local_op_->apply_b(gkvec__.partition(), 0, ctx_.num_fv_states(), fv_states__, hpsi__);
 

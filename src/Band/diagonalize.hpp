@@ -448,20 +448,9 @@ inline void Band::diag_fv_full_potential_davidson(K_point* kp) const
     dmatrix<double_complex> evec(num_phi, num_phi, ctx_.blacs_grid(), bs, bs);
     dmatrix<double_complex> hmlt_old(num_phi, num_phi, ctx_.blacs_grid(), bs, bs);
 
-    if (nlo != 0) {
-        for (int j = 0; j < nlo; j++) {
-            std::memset(phi.pw_coeffs().prime().at<CPU>(0, j),
-                        0,
-                        phi.pw_coeffs().num_rows_loc() * sizeof(double_complex));
-        }
-        /* zero MT part */
-        if (phi.mt_coeffs().num_rows_loc()) {
-            for (int j = 0; j < nlo; j++) {
-                std::memset(phi.mt_coeffs().prime().at<CPU>(0, j),
-                            0,
-                            phi.mt_coeffs().num_rows_loc() * sizeof(double_complex));
-            }
-        }
+    if (nlo) {
+        phi.pw_coeffs().zero<memory_t::host>(0, nlo);
+        phi.mt_coeffs().zero<memory_t::host>(0, nlo);
         for (int ialoc = 0; ialoc < phi.spl_num_atoms().local_size(); ialoc++) {
             int ia = phi.spl_num_atoms()[ialoc];
             for (int xi = 0; xi < unit_cell_.atom(ia).mt_lo_basis_size(); xi++) {
@@ -471,18 +460,11 @@ inline void Band::diag_fv_full_potential_davidson(K_point* kp) const
     }
 
     if (ncomp != 0) {
+        phi.mt_coeffs().zero<memory_t::host>(nlo, ncomp);
         for (int j = 0; j < ncomp; j++) {
             std::memcpy(phi.pw_coeffs().prime().at<CPU>(0, nlo + j),
                         kp->singular_components().pw_coeffs().prime().at<CPU>(0, j),
                         phi.pw_coeffs().num_rows_loc() * sizeof(double_complex));
-        }
-        /* zero MT part */
-        if (phi.mt_coeffs().num_rows_loc()) {
-            for (int j = 0; j < ncomp; j++) {
-                std::memset(phi.mt_coeffs().prime().at<CPU>(0, nlo + j),
-                            0,
-                            phi.mt_coeffs().num_rows_loc() * sizeof(double_complex));
-            }
         }
     }
 
@@ -518,15 +500,16 @@ inline void Band::diag_fv_full_potential_davidson(K_point* kp) const
 
     /* trial basis functions */
     phi.copy_from(psi, 0, num_bands, nlo + ncomp);
-    
-    #ifdef __PRINT_OBJECT_CHECKSUM
-    {
+
+    if (ctx_.control().print_checksum_) {
         auto cs1 = psi.checksum(0, num_bands);
         auto cs2 = phi.checksum(0, nlo + ncomp + num_bands);
-        DUMP("checksum(psi): %18.10f %18.10f", cs1.real(), cs1.imag());
-        DUMP("checksum(phi): %18.10f %18.10f", cs2.real(), cs2.imag());
+        if (kp->comm().rank() == 0) {
+            DUMP("checksum(psi): %18.10f %18.10f", cs1.real(), cs1.imag());
+            DUMP("checksum(phi): %18.10f %18.10f", cs2.real(), cs2.imag());
+        }
     }
-    #endif
+
     /* current subspace size */
     int N = 0;
 
@@ -537,13 +520,9 @@ inline void Band::diag_fv_full_potential_davidson(K_point* kp) const
         DUMP("iterative solver tolerance: %18.12f", ctx_.iterative_solver_tolerance());
     }
 
-    #ifdef __PRINT_MEMORY_USAGE
-    MEMORY_USAGE_INFO();
-    #ifdef __GPU
-    gpu_mem = cuda_get_free_mem() >> 20;
-    printf("[rank%04i at line %i of file %s] CUDA free memory: %i Mb\n", mpi_comm_world().rank(), __LINE__, __FILE__, gpu_mem);
-    #endif
-    #endif
+    if (ctx_.control().print_memory_usage_) {
+        MEMORY_USAGE_INFO();
+    }
     
     /* start iterative diagonalization */
     for (int k = 0; k < itso.num_steps_; k++) {
