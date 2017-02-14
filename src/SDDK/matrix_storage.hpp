@@ -376,6 +376,12 @@ class matrix_storage<T, matrix_storage_t::slab>
     {
         return extra_;
     }
+    
+    template <memory_t mem_type>
+    inline void zero(int i0__, int n__)
+    {
+        prime_.zero<mem_type>(i0__ * num_rows_loc(), n__ * num_rows_loc());
+    }
 
     /// Local number of rows in prime matrix.
     inline int num_rows_loc() const

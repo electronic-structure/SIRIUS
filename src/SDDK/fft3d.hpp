@@ -780,12 +780,6 @@ class FFT3D
             return fft_buffer_[idx__];
         }
         
-        template <device_t pu>
-        inline double_complex* buffer()
-        {
-            return fft_buffer_.at<pu>();
-        }
-        
         /// FFT buffer.
         inline mdarray<double_complex, 1>& buffer()
         {
