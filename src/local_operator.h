@@ -362,7 +362,7 @@ class Local_operator
                         TERMINATE_NO_GPU
                         #endif
                     } else {
-                        #pragma omp parallel for
+                        #pragma omp parallel for schedule(static)
                         for (int ir = 0; ir < fft_coarse_.local_size(); ir++) {
                             fft_coarse_.buffer(ir) *= veff_vec_(ir, ispn__);
                         }
@@ -373,7 +373,7 @@ class Local_operator
                     /* add kinetic energy */
                     switch (data_ptr_type) {
                         case CPU: {
-                            #pragma omp parallel for
+                            #pragma omp parallel for schedule(static)
                             for (int ig = 0; ig < gkp.gvec_count_fft(); ig++) {
                                 hphi__.pw_coeffs().extra()(ig, 2 * i)     = hphi__.pw_coeffs().extra()(ig, 2 * i)     * pw_ekin_[ig] + vphi1_[ig];
                                 hphi__.pw_coeffs().extra()(ig, 2 * i + 1) = hphi__.pw_coeffs().extra()(ig, 2 * i + 1) * pw_ekin_[ig] + vphi2_[ig];
@@ -407,7 +407,7 @@ class Local_operator
                 /* multiply by effective potential */
                 switch (fft_coarse_.pu()) {
                     case CPU: {
-                        #pragma omp parallel for
+                        #pragma omp parallel for schedule(static)
                         for (int ir = 0; ir < fft_coarse_.local_size(); ir++) {
                             fft_coarse_.buffer(ir) *= veff_vec_(ir, ispn__);
                         }
@@ -429,7 +429,7 @@ class Local_operator
                 /* add kinetic energy */
                 switch (data_ptr_type) {
                     case CPU: {
-                        #pragma omp parallel for
+                        #pragma omp parallel for schedule(static)
                         for (int ig = 0; ig < gkp.gvec_count_fft(); ig++) {
                             hphi__.pw_coeffs().extra()(ig, i) = hphi__.pw_coeffs().extra()(ig, i) * pw_ekin_[ig] + vphi1_[ig];
                         }
@@ -495,7 +495,7 @@ class Local_operator
                 if (fft_coarse_.pu() == CPU) {
                     /* phi(G) -> phi(r) */
                     fft_coarse_.transform<1>(gkvec_par__, phi__.pw_coeffs().extra().at<CPU>(0, j));
-                    #pragma omp parallel for
+                    #pragma omp parallel for schedule(static)
                     for (int ir = 0; ir < fft_coarse_.local_size(); ir++) {
                         /* save phi(r) */
                         buf_rg_[ir] = fft_coarse_.buffer(ir);
@@ -504,7 +504,7 @@ class Local_operator
                     }
                     /* phi(r) * Theta(r) -> ophi(G) */
                     fft_coarse_.transform<-1>(gkvec_par__, ophi__.pw_coeffs().extra().at<CPU>(0, j));
-                    #pragma omp parallel for
+                    #pragma omp parallel for schedule(static)
                     for (int ir = 0; ir < fft_coarse_.local_size(); ir++) {
                         /* multiply be effective potential, which itself was multiplied by the step function in constructor */
                         fft_coarse_.buffer(ir) = buf_rg_[ir] * veff_vec_(ir, 0);
@@ -543,7 +543,7 @@ class Local_operator
                     fft_coarse_.transform<1>(gkvec_par__, &buf_pw[0]);
                     switch (fft_coarse_.pu()) {
                         case CPU: {
-                            #pragma omp parallel for
+                            #pragma omp parallel for schedule(static)
                             for (int ir = 0; ir < fft_coarse_.local_size(); ir++) {
                                 /* multiply be step function */
                                 fft_coarse_.buffer(ir) *= theta_[ir];
@@ -618,7 +618,7 @@ class Local_operator
                 if (fft_coarse_.pu() == CPU) {
                     /* phi(G) -> phi(r) */
                     fft_coarse_.transform<1>(gkvec_par__, phi__.pw_coeffs().extra().at<CPU>(0, j));
-                    #pragma omp parallel for
+                    #pragma omp parallel for schedule(static)
                     for (int ir = 0; ir < fft_coarse_.local_size(); ir++) {
                         /* multiply by step function */
                         fft_coarse_.buffer(ir) *= theta_[ir];
@@ -696,7 +696,7 @@ class Local_operator
                     if (bphi__.size() == 3) {
                         fft_coarse_.output(buf_rg_.at<CPU>());
                     }
-                    #pragma omp parallel for
+                    #pragma omp parallel for schedule(static)
                     for (int ir = 0; ir < fft_coarse_.local_size(); ir++) {
                         /* multiply by Bz */
                         fft_coarse_.buffer(ir) *= veff_vec_(ir, 1);
@@ -705,7 +705,7 @@ class Local_operator
                     fft_coarse_.transform<-1>(gkvec_par__, bphi__[0].pw_coeffs().extra().at<CPU>(0, j));
                     /* non-collinear case */
                     if (bphi__.size() == 3) {
-                        #pragma omp parallel for
+                        #pragma omp parallel for schedule(static)
                         for (int ir = 0; ir < fft_coarse_.local_size(); ir++) {
                             /* multiply by Bx-iBy */
                             fft_coarse_.buffer(ir) = buf_rg_[ir] * double_complex(veff_vec_(ir, 2), -veff_vec_(ir, 3));
