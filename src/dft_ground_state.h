@@ -57,7 +57,7 @@ class DFT_ground_state
 
         int use_symmetry_;
 
-        double ewald_energy_;
+        double ewald_energy_{0};
 
         double ewald_energy();
 
