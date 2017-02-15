@@ -717,9 +717,9 @@ class Local_operator
                     #ifdef __GPU
                     /* phi(G) -> phi(r) */
                     fft_coarse_.transform<1>(gkvec_par__, phi__.pw_coeffs().extra().at<CPU>(0, j));
-                    /* multiply by step function */
-                    scale_matrix_rows_gpu(fft_coarse_.local_size(), 1, fft_coarse_.buffer().at<GPU>(), theta_.at<GPU>());
-                    /* phi(r) * Theta(r) -> ophi(G) */
+                    /* multiply by Bz */
+                    scale_matrix_rows_gpu(fft_coarse_.local_size(), 1, fft_coarse_.buffer().at<GPU>(), veff_vec_.at<GPU>(0, 1));
+                    /* phi(r) * Bz(r) -> bphi[0](G) */
                     fft_coarse_.transform<-1>(gkvec_par__, bphi__[0].pw_coeffs().extra().at<CPU>(0, j));
                     #else
                     TERMINATE_NO_GPU
