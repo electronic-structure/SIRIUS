@@ -760,3 +760,87 @@ inline void DFT_ground_state::print_info()
  *    \rho_{\alpha \beta}({\bf r}) = \frac{1}{2} \sum_{j}^{occ} \psi_{j}^{\beta *}({\bf r})\psi_{j}^{\alpha}({\bf r})
  *  \f]
  */
+
+/** 
+\page stress Stress tensor
+\section section1 Preliminary notes
+Derivative of the G-vector in Cartesian coordinates over the lattice vector components:
+\f[
+  \frac{\partial G_{\beta}}{\partial a_{\mu\nu}} + ({\bf a}^{-1})_{\nu \beta} G_{\mu} = 0
+\f]
+Mathematica proof script:
+\verbatim
+A = Table[Subscript[a, i, j], {i, 1, 3}, {j, 1, 3}];
+invA = Inverse[A];
+B = 2*Pi*Transpose[Inverse[A]];
+G = Table[Subscript[g, i], {i, 1, 3}];
+gvec = B.G;
+Do[
+  Print[FullSimplify[
+   D[gvec[[beta]], Subscript[a, mu, nu]] + invA[[nu]][[beta]]*gvec[[mu]]]],
+{beta, 1, 3}, {mu, 1, 3}, {nu, 1,3}]
+\endverbatim
+Another relation:
+\f[
+  \frac{\partial}{\partial a_{\mu \nu}} \frac{1}{\sqrt{\Omega}} + \frac{1}{2} \frac{1}{\sqrt{\Omega}} ({\bf a}^{-1})_{\nu \mu} = 0
+\f]
+Mathematica proof script:
+\verbatim
+A = Table[Subscript[a, i, j], {i, 1, 3}, {j, 1, 3}];
+invA = Inverse[A];
+Do[
+ Print[FullSimplify[
+   D[1/Sqrt[Det[A]], Subscript[a, mu, nu]] + (1/2)*(1/Sqrt[Det[A]]) * invA[[nu]][[mu]]
+   ]
+  ],
+{mu, 1, 3}, {nu, 1, 3}]
+\endverbatim
+
+Derivative of the G-vector real spherical harmonics over the lattice vector components:
+\f[
+  \frac{\partial R_{\ell m}(\theta, \phi)}{\partial a_{\mu \nu}} = 
+    \frac{\partial R_{\ell m}(\theta, \phi)}{\partial \theta} \frac{\partial \theta} {\partial a_{\mu \nu}} + 
+    \frac{\partial R_{\ell m}(\theta, \phi)}{\partial \phi} \frac{\partial \phi} {\partial a_{\mu \nu}}
+\f]
+Derivatives of the \f$ R_{\ell m} \f$ with respect to the \f$ \theta,\, \phi\f$ angles can be tabulated up to a given \f$ \ell_{max} \f$.
+The derivatives of angles are computed as following:
+\f[
+ \frac{\partial \theta} {\partial a_{\mu \nu}} = \sum_{\beta=1}^{3} \frac{\partial \theta}{\partial G_{\beta}} \frac{\partial G_{\beta}} {\partial a_{\mu \nu}}
+\f]
+\f[
+ \frac{\partial \phi} {\partial a_{\mu \nu}} = \sum_{\beta=1}^{3} \frac{\partial \phi}{\partial G_{\beta}} \frac{\partial G_{\beta}} {\partial a_{\mu \nu}}
+\f]
+where
+\f[
+   \frac{\partial \theta}{\partial G_{x}} = \frac{\cos(\phi) \cos(\theta)}{G} \\
+   \frac{\partial \theta}{\partial G_{y}} = \frac{\cos(\theta) \sin(\phi)}{G} \\
+   \frac{\partial \theta}{\partial G_{z}} = -\frac{\sin(\theta)}{G}
+\f]
+and
+\f[
+   \frac{\partial \phi}{\partial G_{x}} = -\frac{\sin(\phi)}{\sin(\theta) G} \\
+   \frac{\partial \phi}{\partial G_{y}} = \frac{\cos(\phi)}{\sin(\theta) G} \\
+   \frac{\partial \phi}{\partial G_{z}} = 0
+\f]
+The derivative of \f$ phi \f$ has discontinuities at \f$ \theta = 0, \theta=\pi \f$. This, however, is not a problem, because
+multiplication by the the derivative of \f$ R_{\ell m} \f$ removes it. The following functions have to be hardcoded:
+\f[
+  \frac{\partial R_{\ell m}(\theta, \phi)}{\partial \theta} \\
+  \frac{\partial R_{\ell m}(\theta, \phi)}{\partial \phi} \frac{1}{\sin(\theta)} 
+\f]
+
+Derivatives of the spherical Bessel functions are computed in the same fashion:
+\f[
+  \frac{\partial j_{\ell}(Gx)}{\partial a_{\mu \nu}} =
+  \frac{\partial j_{\ell}(Gx)}{\partial G} \frac{\partial G} {\partial a_{\mu \nu}} = 
+  \frac{\partial j_{\ell}(Gx)}{\partial G} \sum_{\beta=1}^{3}\frac{\partial G}{\partial G_{\beta}} \frac{\partial G_{\beta}} {\partial a_{\mu \nu}} 
+\f]
+The derivatives of \f$ G \f$ are:
+\f[
+  \frac{\partial G}{\partial G_{x}} = \sin(\theta)\cos(\phi) \\
+  \frac{\partial G}{\partial G_{y}} = \sin(\theta)\sin(\phi) \\
+  \frac{\partial G}{\partial G_{z}} = \cos(\theta)
+\f]
+
+
+ */
