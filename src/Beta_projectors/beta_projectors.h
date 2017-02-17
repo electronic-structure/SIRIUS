@@ -230,6 +230,112 @@ class Beta_projectors
             }
             #endif
         }
+
+        void generate_beta_gk_t_lat_deriv(Simulation_context const& ctx__)
+        {
+            PROFILE("sirius::Beta_projectors::generate_beta_gk_t_lat_deriv");
+
+            int mu = 0;
+            int nu = 0;
+
+            /* allocate array */
+            matrix<double_complex> beta_gk_t_lat_deriv(gkvec_.gvec_count(comm_.rank()), num_beta_t_);
+            
+            /* compute dG_tau / da_{mu,nu} */ 
+            auto dG_da = [this](vector3d<double>& gvc, int tau, int mu, int nu)
+            {
+                return -unit_cell_.inverse_lattice_vectors()(nu, tau) * gvc[mu];
+            };
+
+            /* compute derivative of theta angle with respect to lattice vectors d theta / da_{mu,nu} */
+            auto dtheta_da = [this, dG_da](vector3d<double>& gvc, vector3d<double>& gvs, int mu, int nu)
+            {
+                double g     = gvs[0];
+                double theta = gvs[1];
+                double phi   = gvs[2];
+
+                double result = std::cos(theta) * std::cos(phi) * dG_da(gvc, 0, mu, nu) +
+                                std::cos(theta) * std::sin(phi) * dG_da(gvc, 1, mu, nu) -
+                                std::sin(theta) * dG_da(gvc, 2, mu, nu);
+                return result / g;
+            };
+
+            auto dphi_da = [this, dG_da](vector3d<double>& gvc, vector3d<double>& gvs, int mu, int nu)
+            {
+                double g   = gvs[0];
+                double phi = gvs[2];
+
+                double result = -std::sin(phi) * dG_da(gvc, 0, mu, nu) + std::cos(phi) * dG_da(gvc, 0, mu, nu);
+                return result / g;
+            };
+
+            auto dRlm_da = [this, dtheta_da, dphi_da](int lm, vector3d<double>& gvc, vector3d<double>& gvs, int mu, int nu)
+            {
+                double theta = gvs[1];
+                double phi   = gvs[2];
+
+                return SHT::dRlm_dtheta(lm, theta, phi) * dtheta_da(gvc, gvs, mu, nu) +
+                       SHT::dRlm_dphi_sin_theta(lm, theta, phi) * dphi_da(gvc, gvs, mu, nu);
+            };
+
+            auto djl_da = [this, dG_da](vector3d<double>& gvc, vector3d<double>& gvs, int mu, int nu)
+            {
+                double theta = gvs[1];
+                double phi   = gvs[2];
+
+                return std::sin(theta) * std::cos(phi) * dG_da(gvc, 0, mu, nu) +
+                       std::sin(theta) * std::sin(phi) * dG_da(gvc, 1, mu, nu) +
+                       std::cos(theta) * dG_da(gvc, 2, mu, nu);
+            };
+            
+            /* compute d <G+k|beta> / a_{mu, nu} */
+            #pragma omp parallel for
+            for (int igkloc = 0; igkloc < gkvec_.gvec_count(comm_.rank()); igkloc++) {
+                int igk  = gkvec_.gvec_offset(comm_.rank()) + igkloc;
+                auto gvc = gkvec_.gkvec_cart(igk);
+                /* vs = {r, theta, phi} */
+                auto gvs = SHT::spherical_coordinates(gvc);
+
+
+                /* compute real spherical harmonics for G+k vector */
+                std::vector<double> gkvec_rlm(Utils::lmmax(lmax_beta_));
+                std::vector<double> gkvec_drlm(Utils::lmmax(lmax_beta_));
+
+                SHT::spherical_harmonics(lmax_beta_, gvs[1], gvs[2], &gkvec_rlm[0]);
+
+                for (int lm = 0; lm < Utils::lmmax(lmax_beta_); lm++) {
+                    gkvec_drlm[lm] = dRlm_da(lm, gvc, gvs, mu, nu);
+                }
+
+                for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
+                    auto& atom_type = unit_cell_.atom_type(iat);
+                    for (int xi = 0; xi < atom_type.mt_basis_size(); xi++) {
+                        int l     = atom_type.indexb(xi).l;
+                        int lm    = atom_type.indexb(xi).lm;
+                        int idxrf = atom_type.indexb(xi).idxrf;
+
+                        auto z = std::pow(double_complex(0, -1), l) * fourpi / std::sqrt(unit_cell_.omega());
+
+                        auto d1 = ctx__.radial_integrals().beta_radial_integral(idxrf, iat, gvs[0]) *
+                                  (gkvec_drlm[lm] - 0.5 * gkvec_rlm[lm] * unit_cell_.inverse_lattice_vectors()(nu, mu)); 
+
+                        auto d2 = gkvec_rlm[lm] * djl_da(gvc, gvs, mu, nu) * ctx__.radial_integrals().beta_djldq_radial_integral(idxrf, iat, gvs[0]);
+
+                        beta_gk_t_lat_deriv(igkloc, atom_type.offset_lo() + xi) = z * (d1 + d2);
+                    }
+                }
+            }
+
+            //if (unit_cell_.parameters().control().print_checksum_) {
+            //    auto c1 = beta_gk_t_.checksum();
+            //    comm_.allreduce(&c1, 1);
+            //    if (comm_.rank() == 0) {
+            //        DUMP("checksum(beta_gk_t) : %18.10f %18.10f", c1.real(), c1.imag())
+            //    }
+            //}
+
+
+        }
 };
 
 inline Beta_projectors::Beta_projectors(Simulation_context const& ctx__,
