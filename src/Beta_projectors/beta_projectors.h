@@ -296,6 +296,12 @@ class Beta_projectors
                 /* vs = {r, theta, phi} */
                 auto gvs = SHT::spherical_coordinates(gvc);
 
+                if (gvs[0] < 1e-10) {
+                    for (int i = 0; i < num_beta_t_; i++) {
+                         beta_gk_t_lat_deriv(igkloc, i) = 0;
+                    }
+                    continue;
+                }
 
                 /* compute real spherical harmonics for G+k vector */
                 std::vector<double> gkvec_rlm(Utils::lmmax(lmax_beta_));
@@ -333,8 +339,6 @@ class Beta_projectors
             //        DUMP("checksum(beta_gk_t) : %18.10f %18.10f", c1.real(), c1.imag())
             //    }
             //}
-
-
         }
 };
 
