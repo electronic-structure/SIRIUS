@@ -52,6 +52,8 @@ class Spherical_Bessel_functions
             , q_(q__)
             , rgrid_(&rgrid__)
         {
+            assert(q_ >= 0);
+
             sbessel_ = std::vector<Spline<double>>(lmax__ + 2);
             for (int l = 0; l <= lmax__ + 1; l++) {
                 sbessel_[l] = Spline<double>(rgrid__);
@@ -85,10 +87,18 @@ class Spherical_Bessel_functions
         Spline<double> deriv_q(int l__)
         {
             assert(l__ <= lmax_);
-            assert(q_ != 0);
+            assert(q_ >= 0);
             Spline<double> s(*rgrid_);
-            for (int ir = 0; ir < rgrid_->num_points(); ir++) {
-                s[ir] = (l__ / q_) * sbessel_[l__][ir] - (*rgrid_)[ir] * sbessel_[l__ + 1][ir];
+            if (q_ != 0) {
+                for (int ir = 0; ir < rgrid_->num_points(); ir++) {
+                    s[ir] = (l__ / q_) * sbessel_[l__][ir] - (*rgrid_)[ir] * sbessel_[l__ + 1][ir];
+                }
+            } else {
+                if (l__ == 1) {
+                    for (int ir = 0; ir < rgrid_->num_points(); ir++) {
+                        s[ir] = (*rgrid_)[ir] / 3;
+                    }
+                }
             }
             s.interpolate();
             return std::move(s);

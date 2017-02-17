@@ -1,4 +1,4 @@
-// Copyright (c) 2013-2016 Anton Kozhevnikov, Thomas Schulthess
+// Copyright (c) 2013-2017 Anton Kozhevnikov, Thomas Schulthess
 // All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without modification, are permitted provided that 
@@ -95,10 +95,8 @@ class Beta_projectors
         /** Store as double to handle both gamma- and general k-point cases */
         mdarray<double, 1> beta_phi_;
 
-        #ifdef __GPU
         /// Explicit GPU buffer for beta-projectors.
         matrix<double_complex> beta_gk_gpu_;
-        #endif
 
         struct beta_chunk_t
         {
@@ -217,12 +215,10 @@ class Beta_projectors
 
         void prepare()
         {
-            #ifdef __GPU
             if (pu_ == GPU) {
                 beta_gk_gpu_.allocate(memory_t::device);
                 beta_phi_.allocate(memory_t::device);
             }
-            #endif
         }
 
         void dismiss()
@@ -253,9 +249,8 @@ inline Beta_projectors::Beta_projectors(Simulation_context const& ctx__,
 
     generate_beta_gk_t(ctx__);
 
-    #ifdef __GPU
     if (pu_ == GPU) {
-        gkvec_coord_ = mdarray<double, 2>(3, num_gkvec_loc_, memory_t::host | memory_t::device);
+        gkvec_coord_ = mdarray<double, 2>(3, num_gkvec_loc_, ctx__.dual_memory_t());
         /* copy G+k vectors */
         for (int igk_loc = 0; igk_loc < num_gkvec_loc_; igk_loc++) {
             int igk  = gkvec_.gvec_offset(comm_.rank()) + igk_loc;
@@ -264,13 +259,12 @@ inline Beta_projectors::Beta_projectors(Simulation_context const& ctx__,
                 gkvec_coord_(x, igk_loc) = vgk[x];
             }
         }
-        gkvec_coord_.copy_to_device();
+        gkvec_coord_.copy<memory_t::host, memory_t::device>();
 
         beta_gk_t_.allocate(memory_t::device);
-        beta_gk_t_.copy_to_device();
+        beta_gk_t_.copy<memory_t::host, memory_t::device>();
     }
     beta_gk_gpu_ = matrix<double_complex>(num_gkvec_loc_, max_num_beta_, memory_t::none);
-    #endif
 
     beta_gk_a_ = matrix<double_complex>(num_gkvec_loc_, unit_cell_.mt_lo_basis_size());
 
@@ -323,7 +317,7 @@ inline void Beta_projectors::generate_beta_gk_t(Simulation_context const& ctx__)
                 int lm    = atom_type.indexb(xi).lm;
                 int idxrf = atom_type.indexb(xi).idxrf;
 
-                double_complex z = std::pow(double_complex(0, -1), l) * fourpi / std::sqrt(unit_cell_.omega());
+                auto z = std::pow(double_complex(0, -1), l) * fourpi / std::sqrt(unit_cell_.omega());
                 beta_gk_t_(igkloc, atom_type.offset_lo() + xi) = z * gkvec_rlm[lm] * ctx__.radial_integrals().beta_radial_integral(idxrf, iat, gk);
             }
         }
@@ -332,7 +326,9 @@ inline void Beta_projectors::generate_beta_gk_t(Simulation_context const& ctx__)
     if (unit_cell_.parameters().control().print_checksum_) {
         auto c1 = beta_gk_t_.checksum();
         comm_.allreduce(&c1, 1);
-        DUMP("checksum(beta_gk_t) : %18.10f %18.10f", c1.real(), c1.imag())
+        if (comm_.rank() == 0) {
+            DUMP("checksum(beta_gk_t) : %18.10f %18.10f", c1.real(), c1.imag())
+        }
     }
 }
 
@@ -381,15 +377,13 @@ inline void Beta_projectors::split_in_chunks()
         beta_chunks_(ib).offset_ = offset_in_beta_gk;
         offset_in_beta_gk += num_beta;
 
-        #ifdef __GPU
         if (pu_ == GPU) {
             beta_chunks_[ib].desc_.allocate(memory_t::device);
-            beta_chunks_[ib].desc_.copy_to_device();
+            beta_chunks_[ib].desc_.copy<memory_t::host, memory_t::device>();
 
             beta_chunks_[ib].atom_pos_.allocate(memory_t::device);
-            beta_chunks_[ib].atom_pos_.copy_to_device();
+            beta_chunks_[ib].atom_pos_.copy<memory_t::host, memory_t::device>();
         }
-        #endif
     }
 
     max_num_beta_ = 0;
@@ -444,11 +438,9 @@ inline void Beta_projectors::inner<double_complex>(int chunk__,
 
     if (static_cast<size_t>(nbeta * n__) > beta_phi.size()) {
         beta_phi = mdarray<double, 1>(2 * nbeta * n__);
-        #ifdef __GPU
         if (pu_ == GPU) {
             beta_phi.allocate(memory_t::device);
         }
-        #endif
     }
 
     switch (pu_) {
@@ -475,18 +467,16 @@ inline void Beta_projectors::inner<double_complex>(int chunk__,
 
     comm_.allreduce(beta_phi.at<CPU>(), 2 * nbeta * n__);
 
-    #ifdef __GPU
     if (pu_ == GPU) {
-        beta_phi.copy_to_device(2 * nbeta * n__);
+        beta_phi.copy<memory_t::host, memory_t::device>(2 * nbeta * n__);
     }
-    #endif
 
-    #ifdef __PRINT_OBJECT_CHECKSUM
-    {
+    if (unit_cell_.parameters().control().print_checksum_) {
         auto cs = mdarray<double, 1>(beta_phi.at<CPU>(), 2 * nbeta * n__).checksum();
-        DUMP("checksum(beta_phi) : %18.10f", cs);
+        if (comm_.rank() == 0) {
+            DUMP("checksum(beta_phi) : %18.10f", cs);
+        }
     }
-    #endif
 }
 
 template<>
