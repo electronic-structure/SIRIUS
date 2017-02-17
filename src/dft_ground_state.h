@@ -842,5 +842,14 @@ The derivatives of \f$ G \f$ are:
   \frac{\partial G}{\partial G_{z}} = \cos(\theta)
 \f]
 
+Let's write the full expression for the derivative of beta-projector matrix elements with respect to lattice vector 
+components:
+\f[
+  \frac{\partial \langle {\bf G+k}|\beta_{\ell m} \rangle} {\partial a_{\mu \nu}} = 
+    \frac{\partial} {\partial a_{\mu \nu}} \frac{4\pi}{\sqrt{\Omega}}(-i)^{\ell} R_{\ell m}(\theta_{G+k}, \phi_{G+k}) \int \beta_{\ell}(r) j_{\ell}(Gr) r^2 dr =\\
+    \frac{4\pi}{\sqrt{\Omega}} (-i)^{\ell} \Bigg[ \int \beta_{\ell}(r) j_{\ell}(Gr) r^2 dr 
+      \Big( \frac{\partial R_{\ell m}(\theta, \phi)}{\partial a_{\mu \nu}} - \frac{1}{2} R_{\ell m}(\theta, \phi) ({\bf a}^{-1})_{\nu \mu}  \Big) + 
+       R_{\ell m}(\theta, \phi) \int \beta_{\ell}(r) \frac{\partial j_{\ell}(Gr)}{\partial a_{\mu \nu}} r^2 dr  \Bigg]
+\f]
 
  */
