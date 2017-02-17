@@ -79,7 +79,7 @@ class Unit_cell
          */
         matrix3d<double> lattice_vectors_;
         
-        /// Inverse Bravais lattice vectors in column order.
+        /// Inverse matrix of Bravais lattice vectors.
         /** This matrix is used to find fractional coordinates by Cartesian coordinates:
          *  \f[
          *    \vec v_{f} = {\bf L}^{-1} \vec v_{C}
@@ -606,6 +606,11 @@ class Unit_cell
         inline matrix3d<double> const& lattice_vectors() const
         {
             return lattice_vectors_;
+        }
+
+        inline matrix3d<double> const& inverse_lattice_vectors() const
+        {
+            return inverse_lattice_vectors_;
         }
 
         inline matrix3d<double> const& reciprocal_lattice_vectors() const
