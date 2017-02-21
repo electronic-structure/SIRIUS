@@ -179,7 +179,6 @@ class DFT_ground_state
 
         /// Total energy of the electronic subsystem.
         /** From the definition of the density functional we have:
-         *  
          *  \f[
          *      E[\rho] = T[\rho] + E^{H}[\rho] + E^{XC}[\rho] + E^{ext}[\rho]
          *  \f]
@@ -199,6 +198,47 @@ class DFT_ground_state
          *      \frac{1}{2} \int \rho({\bf r}) V^{nuc}({\bf r}) d{\bf r} = 
          *      \frac{1}{2} \int \int \frac{\rho({\bf r})\rho^{nuc}({\bf r'}) d{\bf r} d{\bf r'}}{|{\bf r} - {\bf r'}|} = 
          *      \frac{1}{2} \int V^{H,el}({\bf r}) \rho^{nuc}({\bf r}) d{\bf r}
+         *  \f]
+         *
+         *  Total energy in PW-PP method has the following expression:
+         *  \f[
+         *    E_{tot} = \sum_{i} f_i \langle \psi_i | \Big( \hat T + \sum_{\xi \xi'} |\beta_{\xi} \rangle D_{\xi \xi'}^{ion} \langle \beta_{\xi'} |\Big) | \psi_i \rangle +
+         *     \int V^{ion}({\bf r})\rho({\bf r})d{\bf r} + \frac{1}{2} \int V^{H}({\bf r})\rho({\bf r})d{\bf r} + E^{XC}[\rho + \rho_{core}]
+         *  \f]
+         *  The following rearrangement is performed:
+         *  \f[
+         *     \int V^{ion}({\bf r})\rho({\bf r})d{\bf r} + \frac{1}{2} \int V^{H}({\bf r})\rho({\bf r})d{\bf r} = \\
+         *     \int V^{ion}({\bf r})\rho({\bf r})d{\bf r} + \int V^{H}({\bf r})\rho({\bf r})d{\bf r} + \int V^{XC}({\bf r})\rho({\bf r})d{\bf r} - 
+         *     \frac{1}{2} \int V^{H}({\bf r})\rho({\bf r})d{\bf r} - \int V^{XC}({\bf r})\rho({\bf r})d{\bf r}  = \\
+         *      \int V^{eff}({\bf r})\rho({\bf r})d{\bf r} - \frac{1}{2} \int V^{H}({\bf r})\rho({\bf r})d{\bf r} - \int V^{XC}({\bf r})\rho({\bf r})d{\bf r} = \\
+         *      \int V^{eff}({\bf r})\rho^{ps}({\bf r})d{\bf r} + \int V^{eff}({\bf r})\rho^{aug}({\bf r})d{\bf r} - \frac{1}{2} \int V^{H}({\bf r})\rho({\bf r})d{\bf r} - \int V^{XC}({\bf r})\rho({\bf r})d{\bf r}
+         *  \f]
+         *  Where
+         *  \f[
+         *    V^{eff}({\bf r}) = V^{H}({\bf r}) + V^{XC}({\bf r}) + V^{ion}({\bf r})
+         *  \f]
+         *  Next, we use the definition of \f$ \rho^{aug} \f$:
+         *  \f[
+         *    \int V^{eff}({\bf r})\rho^{aug}({\bf r})d{\bf r} = \int V^{eff}({\bf r}) \sum_{i}\sum_{\xi \xi'} f_i \langle \psi_i | \beta_{\xi} \rangle Q_{\xi \xi'}({\bf r}) \langle \beta_{\xi'} | \psi_i \rangle d{\bf r} = 
+         *     \sum_{i}\sum_{\xi \xi'} f_i \langle \psi_i | \beta_{\xi} \rangle D_{\xi \xi'}^{aug} \langle \beta_{\xi'} | \psi_i \rangle
+         *  \f]
+         *  Now we can rewrite the total energy expression:
+         *  \f[
+         *    E_{tot} = \sum_{i} f_i \langle \psi_i | \Big( \hat T + \sum_{\xi \xi'} |\beta_{\xi} \rangle D_{\xi \xi'}^{ion} + D_{\xi \xi'}^{aug} \langle \beta_{\xi'} |\Big) | \psi_i \rangle +
+         *      \int V^{eff}({\bf r})\rho^{ps}({\bf r})d{\bf r} - \frac{1}{2} \int V^{H}({\bf r})\rho({\bf r})d{\bf r} - \int V^{XC}({\bf r})\rho({\bf r}) d{\bf r} + E^{XC}[\rho + \rho_{core}]
+         *  \f]
+         *  From the Kohn-Sham equations
+         *  \f[
+         *    \Big( \hat T + \sum_{\xi \xi'} |\beta_{\xi} \rangle D_{\xi \xi'}^{ion} + D_{\xi \xi'}^{aug} \langle \beta_{\xi'}| + \hat V^{eff} \Big) | \psi_i \rangle = \varepsilon_i \Big( 1+\hat S \Big) |\psi_i \rangle 
+         *  \f]
+         *  we can extract the sum
+         *  \f[
+         *    \sum_{i} f_i \langle \psi_i | \Big( \hat T + \sum_{\xi \xi'} |\beta_{\xi} \rangle D_{\xi \xi'}^{ion} + D_{\xi \xi'}^{aug} \langle \beta_{\xi'} |\Big) | \psi_i \rangle  = 
+         *     \sum_{i} f_i \varepsilon_i - \int V^{eff}({\bf r}) \rho^{ps}({\bf r}) d{\bf r}
+         *  \f]
+         *  Combining all together we obtain the following expression for total energy:
+         *  \f[
+         *    E_{tot} = \sum_{i} f_i \varepsilon_i - \frac{1}{2} \int V^{H}({\bf r})\rho({\bf r})d{\bf r} - \int V^{XC}({\bf r})\rho({\bf r}) d{\bf r} + E^{XC}[\rho + \rho_{core}]
          *  \f]
          */
         double total_energy()
@@ -850,6 +890,21 @@ components:
     \frac{4\pi}{\sqrt{\Omega}} (-i)^{\ell} \Bigg[ \int \beta_{\ell}(r) j_{\ell}(Gr) r^2 dr 
       \Big( \frac{\partial R_{\ell m}(\theta, \phi)}{\partial a_{\mu \nu}} - \frac{1}{2} R_{\ell m}(\theta, \phi) ({\bf a}^{-1})_{\nu \mu}  \Big) + 
        R_{\ell m}(\theta, \phi) \int \beta_{\ell}(r) \frac{\partial j_{\ell}(Gr)}{\partial a_{\mu \nu}} r^2 dr  \Bigg]
+\f]
+
+Strain tensor describes the deformation of a crystal:
+\f[
+  \tilde r_{\mu} = \sum_{\nu} (\delta_{\mu \nu} + \varepsilon_{\mu \nu}) r_{\nu}
+\f]
+Strain derivative of general position vector:
+\f[
+  \frac{\partial \tilde r_{\mu}}{\partial \varepsilon_{\mu' \nu'}} = \delta_{\mu \mu'} r_{\nu'}
+\f]
+Stress tensor is a reaction to strain:
+\f[
+  \sigma_{\mu \nu} = \frac{1}{\Omega} \frac{\partial E_{tot}}{\partial \varepsilon_{\mu \nu}} =
+    \frac{1}{\Omega} \sum_{\mu' \nu'} \frac{\partial E_{tot}}{\partial a_{\mu' \nu'}} \frac{\partial a_{\mu' \nu'}}{\partial  \varepsilon_{\mu \nu}} = 
+    \frac{1}{\Omega} \sum_{\nu'} \frac{\partial E_{tot}}{\partial a_{\mu \nu'}} a_{\nu \nu'} 
 \f]
 
  */
