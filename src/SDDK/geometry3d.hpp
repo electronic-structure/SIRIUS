@@ -255,9 +255,10 @@ class matrix3d
     }
 
     /// Multiply two matrices.
-    inline matrix3d<T> operator*(matrix3d<T> const& b) const
+    template <typename U>
+    inline matrix3d<decltype(T{} * U{})> operator*(matrix3d<U> const& b) const
     {
-        matrix3d<T> c;
+        matrix3d<decltype(T{} * U{})> c;
         for (int i = 0; i < 3; i++) {
             for (int j = 0; j < 3; j++) {
                 for (int k = 0; k < 3; k++) {
@@ -296,9 +297,9 @@ class matrix3d
 
     /// Multiply matrix by a scalar number.
     template <typename U>
-    inline matrix3d<T> operator*(U p) const
+    inline matrix3d<decltype(T{} * U{})> operator*(U p) const
     {
-        matrix3d<T> c;
+        matrix3d<decltype(T{} * U{})> c;
         for (int i = 0; i < 3; i++) {
             for (int j = 0; j < 3; j++) {
                 c(i, j) = (*this)(i, j) * p;
