@@ -31,6 +31,7 @@
 #include "force.h"
 #include "json.hpp"
 #include "Geometry/Forces_PS.h"
+#include "Geometry/stress.h"
 
 using json = nlohmann::json;
 
