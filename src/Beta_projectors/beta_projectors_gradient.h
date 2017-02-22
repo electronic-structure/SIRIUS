@@ -17,7 +17,7 @@ namespace sirius
 /// Stores gradient components of beta over atomic positions d <G+k | Beta > / d Rn
 class Beta_projectors_gradient
 {
-protected:
+  protected:
 
     /// local array of gradient components. dimensions: 0 - gk, 1-orbitals
     std::array<matrix<double_complex>, 3> components_gk_a_;
@@ -31,28 +31,25 @@ protected:
     /// inner product store
     std::array<mdarray<double, 1>, 3> beta_phi_;
 
-    Beta_projectors *bp_;
+    Beta_projectors* bp_{nullptr};
 
-public:
+  public:
 
-    Beta_projectors_gradient(Beta_projectors* bp)
-    : bp_(bp)
+    Beta_projectors_gradient(Beta_projectors* bp__)
+        : bp_(bp__)
     {
-        for(int comp: {0,1,2})
-        {
-            components_gk_a_[comp] = matrix<double_complex>( bp_->beta_gk_a().size(0), bp_->beta_gk_a().size(1) );
+        for (int comp: {0, 1, 2}) {
+            components_gk_a_[comp] = matrix<double_complex>(bp_->beta_gk_a().size(0), bp_->beta_gk_a().size(1));
             calc_gradient(comp);
         }
 
         // on GPU we create arrays without allocation, it will before use
         #ifdef __GPU
-        for(int comp: {0,1,2})
-        {
-            chunk_comp_gk_a_gpu_[comp] = matrix<double_complex>( bp_->num_gkvec_loc() , bp_->max_num_beta() , memory_t::none);
+        for(int comp: {0, 1, 2}) {
+            chunk_comp_gk_a_gpu_[comp] = matrix<double_complex>(bp_->num_gkvec_loc(), bp_->max_num_beta(), memory_t::none);
         }
         #endif
     }
-
 
     void calc_gradient(int calc_component__)
     {
