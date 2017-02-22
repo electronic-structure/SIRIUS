@@ -58,7 +58,21 @@ class DFT_ground_state
         int use_symmetry_;
 
         double ewald_energy_{0};
-
+        
+        /// Compute the ion-ion electrostatic energy using Ewald method.
+        /** The following contribution (per unit cell) to the total energy has to be computed:
+         *  \f[
+         *    E_{ion-ion} = \frac{1}{N} \frac{1}{2} \sum_{i \neq j} \frac{Z_i Z_j}{|{\bf r}_i - {\bf r}_j|} = 
+         *      \sideset{}{'} \sum_{\alpha \beta {\bf T}} \frac{Z_{\alpha} Z_{\beta}}{|{\bf r}_{\alpha} - {\bf r}_{\beta} + {\bf T}|}
+         *  \f]
+         *  where \f$ N \f$ is the number of unit cells in the crystal.
+         *  Following the idea of Ewald the Coulomb interaction is split into two terms:
+         *  \f[
+         *     \frac{1}{|{\bf r}_{\alpha} - {\bf r}_{\beta} + {\bf T}|} = 
+         *       \frac{{\rm erf}(|{\bf r}_{\alpha} - {\bf r}_{\beta} + {\bf T}|)}{|{\bf r}_{\alpha} - {\bf r}_{\beta} + {\bf T}|} + 
+         *       \frac{{\rm erfc}(|{\bf r}_{\alpha} - {\bf r}_{\beta} + {\bf T}|)}{|{\bf r}_{\alpha} - {\bf r}_{\beta} + {\bf T}|}
+         *  \f]
+         */
         double ewald_energy();
 
     public:
@@ -149,7 +163,6 @@ class DFT_ground_state
 
         double energy_veff()
         {
-            //return energy_vha() + energy_vxc();
             return density_.rho()->inner(potential_.effective_potential());
         }
 
@@ -253,7 +266,9 @@ class DFT_ground_state
                 }
 
                 case electronic_structure_method_t::pseudopotential: {
-                    tot_en = (kset_.valence_eval_sum() - energy_veff() + energy_vloc() - potential_.PAW_one_elec_energy()) +
+                    //tot_en = (kset_.valence_eval_sum() - energy_veff() + energy_vloc() - potential_.PAW_one_elec_energy()) +
+                    //         0.5 * energy_vha() + energy_exc() + potential_.PAW_total_energy() + ewald_energy_;
+                    tot_en = (kset_.valence_eval_sum() - energy_vxc() - potential_.PAW_one_elec_energy()) -
                              0.5 * energy_vha() + energy_exc() + potential_.PAW_total_energy() + ewald_energy_;
                     break;
                 }
@@ -906,5 +921,22 @@ Stress tensor is a reaction to strain:
     \frac{1}{\Omega} \sum_{\mu' \nu'} \frac{\partial E_{tot}}{\partial a_{\mu' \nu'}} \frac{\partial a_{\mu' \nu'}}{\partial  \varepsilon_{\mu \nu}} = 
     \frac{1}{\Omega} \sum_{\nu'} \frac{\partial E_{tot}}{\partial a_{\mu \nu'}} a_{\nu \nu'} 
 \f]
+
+Kinetic contribution to stress tensor:
+\f[
+  E^{kin} = \sum_{{\bf k}} w_{\bf k} \sum_i f_i \frac{1}{2} |{\bf G+k}|^2 |\psi_i({\bf G + k})|^2
+\f]
+Derivative over lattice vectors
+\f[
+  \frac{\partial  E^{kin}}{\partial a_{\mu \nu}} =
+    \sum_{{\bf k}} w_{\bf k} \sum_i f_i \sum_{\tau} (G+k)_{\tau} (-{\bf a}^{-1})_{\nu \tau} (G+k)_{\mu}  |\psi_i({\bf G + k})|^2
+\f]
+Contribution to the stress tensor
+\f[
+  \sigma_{\mu \nu}^{kin} = \frac{1}{\Omega} \sum_{\nu'} \frac{\partial E^{kin}}{\partial a_{\mu \nu'}} a_{\nu \nu'} = 
+    \frac{1}{\Omega} \sum_{\nu'}  \sum_{{\bf k}} w_{\bf k} \sum_i f_i \sum_{\tau} (G+k)_{\tau} (-{\bf a}^{-1})_{\nu' \tau} (G+k)_{\mu}  |\psi_i({\bf G + k})|^2 a_{\nu \nu'}  = 
+    -\frac{1}{\Omega} \sum_{{\bf k}} w_{\bf k} \sum_i (G+k)_{\nu} (G+k)_{\mu} f_i |\psi_i({\bf G + k})|^2 
+\f]
+
 
  */
