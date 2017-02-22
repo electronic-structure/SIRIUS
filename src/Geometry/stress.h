@@ -41,6 +41,24 @@ class Stress {
         ctx_.comm().allreduce(&stress_kin_(0, 0), 9 * sizeof(double));
 
         stress_kin_ *= (-1.0 / ctx_.unit_cell().omega());
+
+        symmetrize(stress_kin_);
+    }
+
+    inline void symmetrize(matrix3d<double>& mtrx__)
+    {
+        if (!ctx_.use_symmetry()) {
+            return;
+        }
+
+        matrix3d<double> result;
+
+        for (int i = 0; i < ctx_.unit_cell().symmetry().num_mag_sym(); i++) {
+            auto R = ctx_.unit_cell().symmetry().magnetic_group_symmetry(i).spg_op.rotation;
+            result = result + transpose(R) * mtrx__ * R;
+        }
+
+        mtrx__ = result * (1.0 / ctx_.unit_cell().symmetry().num_mag_sym());
     }
 
   public:
@@ -56,8 +74,6 @@ class Stress {
             printf("%12.6f %12.6f %12.6f\n", stress_kin_(mu, 0), stress_kin_(mu, 1), stress_kin_(mu, 2));
         }
     }
-
-
 
 };
 
