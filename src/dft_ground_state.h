@@ -819,10 +819,10 @@ inline void DFT_ground_state::print_info()
 
 /** 
 \page stress Stress tensor
-\section section1 Preliminary notes
+\section stress_section1 Preliminary notes
 Derivative of the G-vector in Cartesian coordinates over the lattice vector components:
 \f[
-  \frac{\partial G_{\beta}}{\partial a_{\mu\nu}} + ({\bf a}^{-1})_{\nu \beta} G_{\mu} = 0
+  \frac{\partial G_{\tau}}{\partial a_{\mu\nu}} + ({\bf a}^{-1})_{\nu \tau} G_{\mu} = 0
 \f]
 Mathematica proof script:
 \verbatim
@@ -833,7 +833,7 @@ G = Table[Subscript[g, i], {i, 1, 3}];
 gvec = B.G;
 Do[
   Print[FullSimplify[
-   D[gvec[[beta]], Subscript[a, mu, nu]] + invA[[nu]][[beta]]*gvec[[mu]]]],
+   D[gvec[[tau]], Subscript[a, mu, nu]] + invA[[nu]][[tau]]*gvec[[mu]]]],
 {beta, 1, 3}, {mu, 1, 3}, {nu, 1,3}]
 \endverbatim
 Another relation:
@@ -851,6 +851,35 @@ Do[
   ],
 {mu, 1, 3}, {nu, 1, 3}]
 \endverbatim
+
+Strain tensor describes the deformation of a crystal:
+\f[
+  \tilde r_{\mu} = \sum_{\nu} (\delta_{\mu \nu} + \varepsilon_{\mu \nu}) r_{\nu}
+\f]
+Strain derivative of general position vector:
+\f[
+  \frac{\partial \tilde r_{\tau}}{\partial \varepsilon_{\mu \nu}} = \delta_{\tau \mu} r_{\nu}
+\f]
+Strain derivative of unit cell volume:
+\f[
+  \frac{\partial \Omega}{\partial \varepsilon_{\mu \nu}} = \delta_{\mu \nu} \Omega
+\f]
+Strain derivative of reciprocal vector:
+\f[
+  \frac{\partial G_{\tau}}{\partial \varepsilon_{\mu \nu}} = -\delta_{\tau \nu} G_{\mu}
+\f]
+Stress tensor is a reaction to strain:
+\f[
+  \sigma_{\mu \nu} = \frac{1}{\Omega} \frac{\partial E_{tot}}{\partial \varepsilon_{\mu \nu}} =
+    \frac{1}{\Omega} \sum_{\mu' \nu'} \frac{\partial E_{tot}}{\partial a_{\mu' \nu'}} \frac{\partial a_{\mu' \nu'}}{\partial  \varepsilon_{\mu \nu}} = 
+    \frac{1}{\Omega} \sum_{\nu'} \frac{\partial E_{tot}}{\partial a_{\mu \nu'}} a_{\nu \nu'} 
+\f]
+
+\section stress_section2 Derivative of beta-projectors.
+We need to compute derivative of beta-projectors
+\f[
+  \frac{\partial}{\partial a_{\mu \nu}} \langle {\bf G+k} | \beta_{\ell m} \rangle
+\f]
 
 Derivative of the G-vector real spherical harmonics over the lattice vector components:
 \f[
@@ -908,21 +937,7 @@ components:
        R_{\ell m}(\theta, \phi) \int \beta_{\ell}(r) \frac{\partial j_{\ell}(Gr)}{\partial a_{\mu \nu}} r^2 dr  \Bigg]
 \f]
 
-Strain tensor describes the deformation of a crystal:
-\f[
-  \tilde r_{\mu} = \sum_{\nu} (\delta_{\mu \nu} + \varepsilon_{\mu \nu}) r_{\nu}
-\f]
-Strain derivative of general position vector:
-\f[
-  \frac{\partial \tilde r_{\mu}}{\partial \varepsilon_{\mu' \nu'}} = \delta_{\mu \mu'} r_{\nu'}
-\f]
-Stress tensor is a reaction to strain:
-\f[
-  \sigma_{\mu \nu} = \frac{1}{\Omega} \frac{\partial E_{tot}}{\partial \varepsilon_{\mu \nu}} =
-    \frac{1}{\Omega} \sum_{\mu' \nu'} \frac{\partial E_{tot}}{\partial a_{\mu' \nu'}} \frac{\partial a_{\mu' \nu'}}{\partial  \varepsilon_{\mu \nu}} = 
-    \frac{1}{\Omega} \sum_{\nu'} \frac{\partial E_{tot}}{\partial a_{\mu \nu'}} a_{\nu \nu'} 
-\f]
-
+\section stress_section3 Kinetic energy contribution to stress.
 Kinetic contribution to stress tensor:
 \f[
   E^{kin} = \sum_{{\bf k}} w_{\bf k} \sum_i f_i \frac{1}{2} |{\bf G+k}|^2 |\psi_i({\bf G + k})|^2
@@ -937,6 +952,22 @@ Contribution to the stress tensor
   \sigma_{\mu \nu}^{kin} = \frac{1}{\Omega} \sum_{\nu'} \frac{\partial E^{kin}}{\partial a_{\mu \nu'}} a_{\nu \nu'} = 
     \frac{1}{\Omega} \sum_{\nu'}  \sum_{{\bf k}} w_{\bf k} \sum_i f_i \sum_{\tau} (G+k)_{\tau} (-{\bf a}^{-1})_{\nu' \tau} (G+k)_{\mu}  |\psi_i({\bf G + k})|^2 a_{\nu \nu'}  = 
     -\frac{1}{\Omega} \sum_{{\bf k}} w_{\bf k} \sum_i (G+k)_{\nu} (G+k)_{\mu} f_i |\psi_i({\bf G + k})|^2 
+\f]
+
+\section stress_section4 Hartree energy contribution to stress.
+Hartree energy:
+\f[
+  E^{H} = \frac{1}{2} \Omega \sum_{{\bf G}} \rho^{*}({\bf G}) V^{H}({\bf G})= 
+    2\pi \Omega \sum_{{\bf G}} \frac{|\rho({\bf G})|^2}{G^2}
+\f]
+Hartree energy contribution to stress tensor:
+\f[
+   \sigma_{\mu \nu}^{H} = \frac{1}{\Omega} \frac{\partial  E^{H}}{\partial \varepsilon_{\mu \nu}} = 
+      \frac{1}{\Omega} 2\pi \Big( \frac{\partial \Omega}{\partial \varepsilon_{\mu \nu}} \sum_{{\bf G}} \frac{|\rho({\bf G})|^2}{G^2} + 
+        \Omega \sum_{{\bf G}} |\rho({\bf G})|^2 \frac{\partial}{\partial \varepsilon_{\mu \nu}} \frac{1}{G^2} \Big) = \\
+   \frac{1}{\Omega} 2\pi \Big( \Omega \delta_{\mu \nu} \sum_{{\bf G}} \frac{|\rho({\bf G})|^2}{G^2} + 
+     \Omega \sum_{\bf G} |\rho({\bf G})|^2 \sum_{\tau} \frac{-2 G_{\tau}}{G^4} \frac{\partial G_{\tau}}{\partial \varepsilon_{\mu \nu}} \Big) = \\
+ \frac{1}{\Omega} 2\pi \Omega \sum_{\bf G} \frac{|\rho({\bf G})|^2}{G^2} \Big( \delta_{\mu \nu} + \frac{2}{G^2} G_{\nu} G_{\mu} \Big)
 \f]
 
 
