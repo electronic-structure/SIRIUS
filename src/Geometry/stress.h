@@ -9,7 +9,11 @@ class Stress {
     
     K_point_set& kset_;
 
+    Density& density_;
+
     matrix3d<double> stress_kin_;
+
+    matrix3d<double> stress_har_;
     
     inline void calc_stress_kin()
     {
@@ -45,6 +49,39 @@ class Stress {
         symmetrize(stress_kin_);
     }
 
+    inline void calc_stress_har()
+    {
+        for (int igloc = 0; igloc < ctx_.gvec_count(); igloc++) {
+            int ig = ctx_.gvec_offset() + igloc;
+            if (!ig) {
+                continue;
+            }
+
+            auto G = ctx_.gvec().gvec_cart(ig);
+            double g2 = std::pow(G.length(), 2);
+            auto z = density_.rho()->f_pw(ig);
+            double d = (std::pow(z.real(), 2) + std::pow(z.imag(), 2)) / g2;
+
+            for (int mu: {0, 1, 2}) {
+                for (int nu: {0, 1, 2}) {
+                    stress_har_(mu, nu) += d * 2 * G[mu] * G[nu] / g2;
+                }
+            }
+            for (int mu: {0, 1, 2}) {
+                stress_har_(mu, mu) -= d;
+            }
+        }
+
+        if (ctx_.gvec().reduced()) {
+            stress_har_ *= 2;
+        } 
+
+        ctx_.comm().allreduce(&stress_har_(0, 0), 9 * sizeof(double));
+        stress_har_ *= twopi;
+
+        symmetrize(stress_har_);
+    }
+
     inline void symmetrize(matrix3d<double>& mtrx__)
     {
         if (!ctx_.use_symmetry()) {
@@ -63,15 +100,22 @@ class Stress {
 
   public:
     Stress(Simulation_context& ctx__,
-           K_point_set& kset__)
+           K_point_set& kset__,
+           Density& density__)
         : ctx_(ctx__)
         , kset_(kset__)
+        , density_(density__)
     {
         calc_stress_kin();
+        calc_stress_har();
 
         printf("== stress_kin ==\n");
         for (int mu: {0, 1, 2}) {
             printf("%12.6f %12.6f %12.6f\n", stress_kin_(mu, 0), stress_kin_(mu, 1), stress_kin_(mu, 2));
+        }
+        printf("== stress_har ==\n");
+        for (int mu: {0, 1, 2}) {
+            printf("%12.6f %12.6f %12.6f\n", stress_har_(mu, 0), stress_har_(mu, 1), stress_har_(mu, 2));
         }
     }
 
