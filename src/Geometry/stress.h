@@ -26,7 +26,7 @@ class Stress {
                     double f = kp->band_occupancy(i);
                     if (f > 1e-12) {
                         auto z = kp->spinor_wave_functions(0).pw_coeffs().prime(igloc, i);
-                        d += std::pow(z.real(), 2) + std::pow(z.imag(), 2);
+                        d += f * (std::pow(z.real(), 2) + std::pow(z.imag(), 2));
                     }
                 }
                 d *= kp->weight();
