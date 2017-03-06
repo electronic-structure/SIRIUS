@@ -64,14 +64,52 @@ class DFT_ground_state
         /** The following contribution (per unit cell) to the total energy has to be computed:
          *  \f[
          *    E_{ion-ion} = \frac{1}{N} \frac{1}{2} \sum_{i \neq j} \frac{Z_i Z_j}{|{\bf r}_i - {\bf r}_j|} = 
-         *      \sideset{}{'} \sum_{\alpha \beta {\bf T}} \frac{Z_{\alpha} Z_{\beta}}{|{\bf r}_{\alpha} - {\bf r}_{\beta} + {\bf T}|}
+         *      \frac{1}{2} \sideset{}{'} \sum_{\alpha \beta {\bf T}} \frac{Z_{\alpha} Z_{\beta}}{|{\bf r}_{\alpha} - {\bf r}_{\beta} + {\bf T}|}
          *  \f]
          *  where \f$ N \f$ is the number of unit cells in the crystal.
          *  Following the idea of Ewald the Coulomb interaction is split into two terms:
          *  \f[
          *     \frac{1}{|{\bf r}_{\alpha} - {\bf r}_{\beta} + {\bf T}|} = 
-         *       \frac{{\rm erf}(|{\bf r}_{\alpha} - {\bf r}_{\beta} + {\bf T}|)}{|{\bf r}_{\alpha} - {\bf r}_{\beta} + {\bf T}|} + 
-         *       \frac{{\rm erfc}(|{\bf r}_{\alpha} - {\bf r}_{\beta} + {\bf T}|)}{|{\bf r}_{\alpha} - {\bf r}_{\beta} + {\bf T}|}
+         *       \frac{{\rm erf}(\sqrt{\nu} |{\bf r}_{\alpha} - {\bf r}_{\beta} + {\bf T}|)}{|{\bf r}_{\alpha} - {\bf r}_{\beta} + {\bf T}|} + 
+         *       \frac{{\rm erfc}(\sqrt{\nu} |{\bf r}_{\alpha} - {\bf r}_{\beta} + {\bf T}|)}{|{\bf r}_{\alpha} - {\bf r}_{\beta} + {\bf T}|}
+         *  \f]
+         *  Second term is computed directly. First term is computed in the reciprocal space. Remembering that
+         *  \f[
+         *    \frac{1}{\Omega} \sum_{\bf G} e^{i{\bf Gr}} = \sum_{\bf T} \delta({\bf r - T})
+         *  \f]
+         *  we rewrite the first term as
+         *  \f[
+         *    \frac{1}{2} \sideset{}{'} \sum_{\alpha \beta {\bf T}} Z_{\alpha} Z_{\beta} 
+         *      \frac{{\rm erf}(\sqrt{\nu} |{\bf r}_{\alpha} - {\bf r}_{\beta} + {\bf T}|)}{|{\bf r}_{\alpha} - {\bf r}_{\beta} + {\bf T}|} = 
+         *    \frac{1}{2} \sum_{\alpha \beta {\bf T}} Z_{\alpha} Z_{\beta}  \frac{{\rm erf}(\sqrt{\nu} |{\bf r}_{\alpha} - {\bf r}_{\beta} + {\bf T}|)}{|{\bf r}_{\alpha} - {\bf r}_{\beta} + {\bf T}|} -
+         *      \frac{1}{2} \sum_{\alpha} Z_{\alpha}^2 2 \sqrt{\frac{\nu}{\pi}} = \\
+         *    \frac{1}{2} \sum_{\alpha \beta} Z_{\alpha} Z_{\beta} \frac{1}{\Omega} \sum_{\bf G} \int e^{i{\bf Gr}} \frac{{\rm erf}(\sqrt{\nu} |{\bf r}_{\alpha\beta} + {\bf r}|)}{|{\bf r}_{\alpha\beta} + {\bf r}|} d{\bf r}  -
+         *      \sum_{\alpha} Z_{\alpha}^2  \sqrt{\frac{\nu}{\pi}}
+         *  \f]
+         *  The integral is computed using the \f$ \ell=0 \f$ term of the spherical expansion of the plane-wave:
+         *  \f[
+         *    \int e^{i{\bf Gr}} \frac{{\rm erf}(\sqrt{\nu} |{\bf r}_{\alpha\beta} + {\bf r}|)}{|{\bf r}_{\alpha\beta} + {\bf r}|} d{\bf r} = 
+         *      \int e^{-i{\bf r}_{\alpha \beta}{\bf G}} e^{i{\bf Gr}} \frac{{\rm erf}(\sqrt{\nu} |{\bf r}|)}{|{\bf r}|} d{\bf r} = 
+         *    e^{-i{\bf r}_{\alpha \beta}{\bf G}} 4 \pi \int_0^{\infty} \frac{\sin({G r})}{G} {\rm erf}(\sqrt{\nu} r ) dr 
+         *  \f]
+         *  We will split integral in two parts:
+         *  \f[
+         *    \int_0^{\infty} \sin({G r}) {\rm erf}(\sqrt{\nu} r ) dr = \int_0^{b} \sin({G r}) {\rm erf}(\sqrt{\nu} r ) dr + 
+         *      \int_b^{\infty} \sin({G r}) dr = \frac{1}{G} e^{-\frac{G^2}{4 \nu}}
+         *  \f]
+         *  where \f$ b \f$ is sufficiently large. To reproduce in Mathrmatica:
+            \verbatim
+            Limit[Limit[
+              Integrate[Sin[g*x]*Erf[Sqrt[nu] * x], {x, 0, b},
+                  Assumptions -> {nu > 0, g >= 0, b > 0}] +
+                     Integrate[Sin[g*(x + I*a)], {x, b, \[Infinity]},
+                         Assumptions -> {a > 0, nu > 0, g >= 0, b > 0}], a -> 0],
+                          b -> \[Infinity], Assumptions -> {nu > 0, g >= 0}]
+            \endverbatim
+         *  The first term of the Ewald sum thus becomes:
+         *  \f[
+         *    \frac{2 \pi}{\Omega} \sum_{{\bf G}} \frac{e^{-\frac{G^2}{4 \nu}}}{G^2} \Big| \sum_{\alpha} Z_{\alpha} e^{-i{\bf r}_{\alpha}{\bf G}} \Big|^2 -
+         *       \sum_{\alpha} Z_{\alpha}^2 \sqrt{\frac{\nu}{\pi}}
          *  \f]
          */
         double ewald_energy();
@@ -382,7 +420,7 @@ inline double DFT_ground_state::ewald_energy()
         for (int igloc = 0; igloc < ctx_.gvec_count(); igloc++) {
             int ig = ctx_.gvec_offset() + igloc;
 
-            double g2 = std::pow(ctx_.gvec().shell_len(ctx_.gvec().shell(ig)), 2);
+            double g2 = std::pow(ctx_.gvec().gvec_len(ig), 2);
 
             double_complex rho(0, 0);
 
