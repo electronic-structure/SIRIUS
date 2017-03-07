@@ -156,7 +156,7 @@ class Unit_cell
         int max_mt_lo_basis_size_{0};
 
         /// List of nearest neighbours for each atom.
-        std::vector< std::vector<nearest_neighbour_descriptor> > nearest_neighbours_;
+        std::vector<std::vector<nearest_neighbour_descriptor>> nearest_neighbours_;
 
         /// Minimum muffin-tin radius.
         double min_mt_radius_{0};
