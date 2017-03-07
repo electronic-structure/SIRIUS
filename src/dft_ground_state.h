@@ -63,15 +63,15 @@ class DFT_ground_state
         /// Compute the ion-ion electrostatic energy using Ewald method.
         /** The following contribution (per unit cell) to the total energy has to be computed:
          *  \f[
-         *    E_{ion-ion} = \frac{1}{N} \frac{1}{2} \sum_{i \neq j} \frac{Z_i Z_j}{|{\bf r}_i - {\bf r}_j|} = 
+         *    E^{ion-ion} = \frac{1}{N} \frac{1}{2} \sum_{i \neq j} \frac{Z_i Z_j}{|{\bf r}_i - {\bf r}_j|} = 
          *      \frac{1}{2} \sideset{}{'} \sum_{\alpha \beta {\bf T}} \frac{Z_{\alpha} Z_{\beta}}{|{\bf r}_{\alpha} - {\bf r}_{\beta} + {\bf T}|}
          *  \f]
          *  where \f$ N \f$ is the number of unit cells in the crystal.
          *  Following the idea of Ewald the Coulomb interaction is split into two terms:
          *  \f[
          *     \frac{1}{|{\bf r}_{\alpha} - {\bf r}_{\beta} + {\bf T}|} = 
-         *       \frac{{\rm erf}(\sqrt{\nu} |{\bf r}_{\alpha} - {\bf r}_{\beta} + {\bf T}|)}{|{\bf r}_{\alpha} - {\bf r}_{\beta} + {\bf T}|} + 
-         *       \frac{{\rm erfc}(\sqrt{\nu} |{\bf r}_{\alpha} - {\bf r}_{\beta} + {\bf T}|)}{|{\bf r}_{\alpha} - {\bf r}_{\beta} + {\bf T}|}
+         *       \frac{{\rm erf}(\sqrt{\lambda} |{\bf r}_{\alpha} - {\bf r}_{\beta} + {\bf T}|)}{|{\bf r}_{\alpha} - {\bf r}_{\beta} + {\bf T}|} + 
+         *       \frac{{\rm erfc}(\sqrt{\lambda} |{\bf r}_{\alpha} - {\bf r}_{\beta} + {\bf T}|)}{|{\bf r}_{\alpha} - {\bf r}_{\beta} + {\bf T}|}
          *  \f]
          *  Second term is computed directly. First term is computed in the reciprocal space. Remembering that
          *  \f[
@@ -80,22 +80,22 @@ class DFT_ground_state
          *  we rewrite the first term as
          *  \f[
          *    \frac{1}{2} \sideset{}{'} \sum_{\alpha \beta {\bf T}} Z_{\alpha} Z_{\beta} 
-         *      \frac{{\rm erf}(\sqrt{\nu} |{\bf r}_{\alpha} - {\bf r}_{\beta} + {\bf T}|)}{|{\bf r}_{\alpha} - {\bf r}_{\beta} + {\bf T}|} = 
-         *    \frac{1}{2} \sum_{\alpha \beta {\bf T}} Z_{\alpha} Z_{\beta}  \frac{{\rm erf}(\sqrt{\nu} |{\bf r}_{\alpha} - {\bf r}_{\beta} + {\bf T}|)}{|{\bf r}_{\alpha} - {\bf r}_{\beta} + {\bf T}|} -
-         *      \frac{1}{2} \sum_{\alpha} Z_{\alpha}^2 2 \sqrt{\frac{\nu}{\pi}} = \\
-         *    \frac{1}{2} \sum_{\alpha \beta} Z_{\alpha} Z_{\beta} \frac{1}{\Omega} \sum_{\bf G} \int e^{i{\bf Gr}} \frac{{\rm erf}(\sqrt{\nu} |{\bf r}_{\alpha\beta} + {\bf r}|)}{|{\bf r}_{\alpha\beta} + {\bf r}|} d{\bf r}  -
-         *      \sum_{\alpha} Z_{\alpha}^2  \sqrt{\frac{\nu}{\pi}}
+         *      \frac{{\rm erf}(\sqrt{\lambda} |{\bf r}_{\alpha} - {\bf r}_{\beta} + {\bf T}|)}{|{\bf r}_{\alpha} - {\bf r}_{\beta} + {\bf T}|} = 
+         *    \frac{1}{2} \sum_{\alpha \beta {\bf T}} Z_{\alpha} Z_{\beta}  \frac{{\rm erf}(\sqrt{\lambda} |{\bf r}_{\alpha} - {\bf r}_{\beta} + {\bf T}|)}{|{\bf r}_{\alpha} - {\bf r}_{\beta} + {\bf T}|} -
+         *      \frac{1}{2} \sum_{\alpha} Z_{\alpha}^2 2 \sqrt{\frac{\lambda}{\pi}} = \\
+         *    \frac{1}{2} \sum_{\alpha \beta} Z_{\alpha} Z_{\beta} \frac{1}{\Omega} \sum_{\bf G} \int e^{i{\bf Gr}} \frac{{\rm erf}(\sqrt{\lambda} |{\bf r}_{\alpha\beta} + {\bf r}|)}{|{\bf r}_{\alpha\beta} + {\bf r}|} d{\bf r}  -
+         *      \sum_{\alpha} Z_{\alpha}^2  \sqrt{\frac{\lambda}{\pi}}
          *  \f]
          *  The integral is computed using the \f$ \ell=0 \f$ term of the spherical expansion of the plane-wave:
          *  \f[
-         *    \int e^{i{\bf Gr}} \frac{{\rm erf}(\sqrt{\nu} |{\bf r}_{\alpha\beta} + {\bf r}|)}{|{\bf r}_{\alpha\beta} + {\bf r}|} d{\bf r} = 
-         *      \int e^{-i{\bf r}_{\alpha \beta}{\bf G}} e^{i{\bf Gr}} \frac{{\rm erf}(\sqrt{\nu} |{\bf r}|)}{|{\bf r}|} d{\bf r} = 
-         *    e^{-i{\bf r}_{\alpha \beta}{\bf G}} 4 \pi \int_0^{\infty} \frac{\sin({G r})}{G} {\rm erf}(\sqrt{\nu} r ) dr 
+         *    \int e^{i{\bf Gr}} \frac{{\rm erf}(\sqrt{\lambda} |{\bf r}_{\alpha\beta} + {\bf r}|)}{|{\bf r}_{\alpha\beta} + {\bf r}|} d{\bf r} = 
+         *      \int e^{-i{\bf r}_{\alpha \beta}{\bf G}} e^{i{\bf Gr}} \frac{{\rm erf}(\sqrt{\lambda} |{\bf r}|)}{|{\bf r}|} d{\bf r} = 
+         *    e^{-i{\bf r}_{\alpha \beta}{\bf G}} 4 \pi \int_0^{\infty} \frac{\sin({G r})}{G} {\rm erf}(\sqrt{\lambda} r ) dr 
          *  \f]
          *  We will split integral in two parts:
          *  \f[
-         *    \int_0^{\infty} \sin({G r}) {\rm erf}(\sqrt{\nu} r ) dr = \int_0^{b} \sin({G r}) {\rm erf}(\sqrt{\nu} r ) dr + 
-         *      \int_b^{\infty} \sin({G r}) dr = \frac{1}{G} e^{-\frac{G^2}{4 \nu}}
+         *    \int_0^{\infty} \sin({G r}) {\rm erf}(\sqrt{\lambda} r ) dr = \int_0^{b} \sin({G r}) {\rm erf}(\sqrt{\lambda} r ) dr + 
+         *      \int_b^{\infty} \sin({G r}) dr = \frac{1}{G} e^{-\frac{G^2}{4 \lambda}}
          *  \f]
          *  where \f$ b \f$ is sufficiently large. To reproduce in Mathrmatica:
             \verbatim
@@ -108,8 +108,24 @@ class DFT_ground_state
             \endverbatim
          *  The first term of the Ewald sum thus becomes:
          *  \f[
-         *    \frac{2 \pi}{\Omega} \sum_{{\bf G}} \frac{e^{-\frac{G^2}{4 \nu}}}{G^2} \Big| \sum_{\alpha} Z_{\alpha} e^{-i{\bf r}_{\alpha}{\bf G}} \Big|^2 -
-         *       \sum_{\alpha} Z_{\alpha}^2 \sqrt{\frac{\nu}{\pi}}
+         *    \frac{2 \pi}{\Omega} \sum_{{\bf G}} \frac{e^{-\frac{G^2}{4 \lambda}}}{G^2} \Big| \sum_{\alpha} Z_{\alpha} e^{-i{\bf r}_{\alpha}{\bf G}} \Big|^2 -
+         *       \sum_{\alpha} Z_{\alpha}^2 \sqrt{\frac{\lambda}{\pi}}
+         *  \f]
+         *  For \f$ G=0 \f$ the following is done:
+         *  \f[
+         *    \frac{e^{-\frac{G^2}{4 \lambda}}}{G^2} \approx \frac{1}{G^2}-\frac{1}{4 \lambda }
+         *  \f]
+         *  The term \f$ \frac{1}{G^2} \f$ is compensated together with the corresponding Hartree terms in electron-electron and
+         *  electron-ion interactions (cell should be neutral) and we are left with the following conribution:
+         *  \f[
+         *    -\frac{2\pi}{\Omega}\frac{N_{el}^2}{4 \lambda}
+         *  \f]
+         *  Final expression for the Ewald energy:
+         *  \f[
+         *    E^{ion-ion} = \frac{1}{2} \sideset{}{'} \sum_{\alpha \beta {\bf T}} Z_{\alpha} Z_{\beta} 
+         *      \frac{{\rm erfc}(\sqrt{\lambda} |{\bf r}_{\alpha} - {\bf r}_{\beta} + {\bf T}|)}{|{\bf r}_{\alpha} - {\bf r}_{\beta} + {\bf T}|} +
+         *      \frac{2 \pi}{\Omega} \sum_{{\bf G}\neq 0} \frac{e^{-\frac{G^2}{4 \lambda}}}{G^2} \Big| \sum_{\alpha} Z_{\alpha} e^{-i{\bf r}_{\alpha}{\bf G}} \Big|^2 -
+         *      \sum_{\alpha} Z_{\alpha}^2 \sqrt{\frac{\lambda}{\pi}} - \frac{2\pi}{\Omega}\frac{N_{el}^2}{4 \lambda}
          *  \f]
          */
         double ewald_energy();
@@ -419,6 +435,9 @@ inline double DFT_ground_state::ewald_energy()
         #pragma omp for
         for (int igloc = 0; igloc < ctx_.gvec_count(); igloc++) {
             int ig = ctx_.gvec_offset() + igloc;
+            if (!ig) {
+                continue;
+            }
 
             double g2 = std::pow(ctx_.gvec().gvec_len(ig), 2);
 
@@ -428,26 +447,18 @@ inline double DFT_ground_state::ewald_energy()
                 rho += ctx_.gvec_phase_factor(ig, ia) * static_cast<double>(unit_cell_.atom(ia).zn());
             }
 
-            if (ig) {
-                ewald_g_pt += std::pow(std::abs(rho), 2) * std::exp(-g2 / 4 / alpha) / g2;
-            } else {
-                ewald_g_pt -= std::pow(unit_cell_.num_electrons(), 2) / alpha / 4; // constant term in QE comments
-            }
-
-            if (ctx_.gvec().reduced() && ig) {
-                rho = 0;
-                for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
-                    rho += std::conj(ctx_.gvec_phase_factor(ig, ia)) * static_cast<double>(unit_cell_.atom(ia).zn());
-                }
-
-                ewald_g_pt += std::pow(std::abs(rho), 2) * std::exp(-g2 / 4 / alpha) / g2;
-            }
+            ewald_g_pt += std::pow(std::abs(rho), 2) * std::exp(-g2 / 4 / alpha) / g2;
         }
 
         #pragma omp critical
         ewald_g += ewald_g_pt;
     }
     ctx_.comm().allreduce(&ewald_g, 1);
+    if (ctx_.gvec().reduced()) {
+        ewald_g *= 2;
+    }
+    /* remaining G=0 contribution */
+    ewald_g -= std::pow(unit_cell_.num_electrons(), 2) / alpha / 4; 
     ewald_g *= (twopi / unit_cell_.omega());
 
     /* remove self-interaction */
@@ -855,158 +866,3 @@ inline void DFT_ground_state::print_info()
  *  \f]
  */
 
-/** 
-\page stress Stress tensor
-\section stress_section1 Preliminary notes
-Derivative of the G-vector in Cartesian coordinates over the lattice vector components:
-\f[
-  \frac{\partial G_{\tau}}{\partial a_{\mu\nu}} + ({\bf a}^{-1})_{\nu \tau} G_{\mu} = 0
-\f]
-Mathematica proof script:
-\verbatim
-A = Table[Subscript[a, i, j], {i, 1, 3}, {j, 1, 3}];
-invA = Inverse[A];
-B = 2*Pi*Transpose[Inverse[A]];
-G = Table[Subscript[g, i], {i, 1, 3}];
-gvec = B.G;
-Do[
-  Print[FullSimplify[
-   D[gvec[[tau]], Subscript[a, mu, nu]] + invA[[nu]][[tau]]*gvec[[mu]]]],
-{beta, 1, 3}, {mu, 1, 3}, {nu, 1,3}]
-\endverbatim
-Another relation:
-\f[
-  \frac{\partial}{\partial a_{\mu \nu}} \frac{1}{\sqrt{\Omega}} + \frac{1}{2} \frac{1}{\sqrt{\Omega}} ({\bf a}^{-1})_{\nu \mu} = 0
-\f]
-Mathematica proof script:
-\verbatim
-A = Table[Subscript[a, i, j], {i, 1, 3}, {j, 1, 3}];
-invA = Inverse[A];
-Do[
- Print[FullSimplify[
-   D[1/Sqrt[Det[A]], Subscript[a, mu, nu]] + (1/2)*(1/Sqrt[Det[A]]) * invA[[nu]][[mu]]
-   ]
-  ],
-{mu, 1, 3}, {nu, 1, 3}]
-\endverbatim
-
-Strain tensor describes the deformation of a crystal:
-\f[
-  \tilde r_{\mu} = \sum_{\nu} (\delta_{\mu \nu} + \varepsilon_{\mu \nu}) r_{\nu}
-\f]
-Strain derivative of general position vector:
-\f[
-  \frac{\partial \tilde r_{\tau}}{\partial \varepsilon_{\mu \nu}} = \delta_{\tau \mu} r_{\nu}
-\f]
-Strain derivative of unit cell volume:
-\f[
-  \frac{\partial \Omega}{\partial \varepsilon_{\mu \nu}} = \delta_{\mu \nu} \Omega
-\f]
-Strain derivative of reciprocal vector:
-\f[
-  \frac{\partial G_{\tau}}{\partial \varepsilon_{\mu \nu}} = -\delta_{\tau \nu} G_{\mu}
-\f]
-Stress tensor is a reaction to strain:
-\f[
-  \sigma_{\mu \nu} = \frac{1}{\Omega} \frac{\partial E_{tot}}{\partial \varepsilon_{\mu \nu}} =
-    \frac{1}{\Omega} \sum_{\mu' \nu'} \frac{\partial E_{tot}}{\partial a_{\mu' \nu'}} \frac{\partial a_{\mu' \nu'}}{\partial  \varepsilon_{\mu \nu}} = 
-    \frac{1}{\Omega} \sum_{\nu'} \frac{\partial E_{tot}}{\partial a_{\mu \nu'}} a_{\nu \nu'} 
-\f]
-
-\section stress_section2 Derivative of beta-projectors.
-We need to compute derivative of beta-projectors
-\f[
-  \frac{\partial}{\partial a_{\mu \nu}} \langle {\bf G+k} | \beta_{\ell m} \rangle
-\f]
-
-Derivative of the G-vector real spherical harmonics over the lattice vector components:
-\f[
-  \frac{\partial R_{\ell m}(\theta, \phi)}{\partial a_{\mu \nu}} = 
-    \frac{\partial R_{\ell m}(\theta, \phi)}{\partial \theta} \frac{\partial \theta} {\partial a_{\mu \nu}} + 
-    \frac{\partial R_{\ell m}(\theta, \phi)}{\partial \phi} \frac{\partial \phi} {\partial a_{\mu \nu}}
-\f]
-Derivatives of the \f$ R_{\ell m} \f$ with respect to the \f$ \theta,\, \phi\f$ angles can be tabulated up to a given \f$ \ell_{max} \f$.
-The derivatives of angles are computed as following:
-\f[
- \frac{\partial \theta} {\partial a_{\mu \nu}} = \sum_{\beta=1}^{3} \frac{\partial \theta}{\partial G_{\beta}} \frac{\partial G_{\beta}} {\partial a_{\mu \nu}}
-\f]
-\f[
- \frac{\partial \phi} {\partial a_{\mu \nu}} = \sum_{\beta=1}^{3} \frac{\partial \phi}{\partial G_{\beta}} \frac{\partial G_{\beta}} {\partial a_{\mu \nu}}
-\f]
-where
-\f[
-   \frac{\partial \theta}{\partial G_{x}} = \frac{\cos(\phi) \cos(\theta)}{G} \\
-   \frac{\partial \theta}{\partial G_{y}} = \frac{\cos(\theta) \sin(\phi)}{G} \\
-   \frac{\partial \theta}{\partial G_{z}} = -\frac{\sin(\theta)}{G}
-\f]
-and
-\f[
-   \frac{\partial \phi}{\partial G_{x}} = -\frac{\sin(\phi)}{\sin(\theta) G} \\
-   \frac{\partial \phi}{\partial G_{y}} = \frac{\cos(\phi)}{\sin(\theta) G} \\
-   \frac{\partial \phi}{\partial G_{z}} = 0
-\f]
-The derivative of \f$ phi \f$ has discontinuities at \f$ \theta = 0, \theta=\pi \f$. This, however, is not a problem, because
-multiplication by the the derivative of \f$ R_{\ell m} \f$ removes it. The following functions have to be hardcoded:
-\f[
-  \frac{\partial R_{\ell m}(\theta, \phi)}{\partial \theta} \\
-  \frac{\partial R_{\ell m}(\theta, \phi)}{\partial \phi} \frac{1}{\sin(\theta)} 
-\f]
-
-Derivatives of the spherical Bessel functions are computed in the same fashion:
-\f[
-  \frac{\partial j_{\ell}(Gx)}{\partial a_{\mu \nu}} =
-  \frac{\partial j_{\ell}(Gx)}{\partial G} \frac{\partial G} {\partial a_{\mu \nu}} = 
-  \frac{\partial j_{\ell}(Gx)}{\partial G} \sum_{\beta=1}^{3}\frac{\partial G}{\partial G_{\beta}} \frac{\partial G_{\beta}} {\partial a_{\mu \nu}} 
-\f]
-The derivatives of \f$ G \f$ are:
-\f[
-  \frac{\partial G}{\partial G_{x}} = \sin(\theta)\cos(\phi) \\
-  \frac{\partial G}{\partial G_{y}} = \sin(\theta)\sin(\phi) \\
-  \frac{\partial G}{\partial G_{z}} = \cos(\theta)
-\f]
-
-Let's write the full expression for the derivative of beta-projector matrix elements with respect to lattice vector 
-components:
-\f[
-  \frac{\partial \langle {\bf G+k}|\beta_{\ell m} \rangle} {\partial a_{\mu \nu}} = 
-    \frac{\partial} {\partial a_{\mu \nu}} \frac{4\pi}{\sqrt{\Omega}}(-i)^{\ell} R_{\ell m}(\theta_{G+k}, \phi_{G+k}) \int \beta_{\ell}(r) j_{\ell}(Gr) r^2 dr =\\
-    \frac{4\pi}{\sqrt{\Omega}} (-i)^{\ell} \Bigg[ \int \beta_{\ell}(r) j_{\ell}(Gr) r^2 dr 
-      \Big( \frac{\partial R_{\ell m}(\theta, \phi)}{\partial a_{\mu \nu}} - \frac{1}{2} R_{\ell m}(\theta, \phi) ({\bf a}^{-1})_{\nu \mu}  \Big) + 
-       R_{\ell m}(\theta, \phi) \int \beta_{\ell}(r) \frac{\partial j_{\ell}(Gr)}{\partial a_{\mu \nu}} r^2 dr  \Bigg]
-\f]
-
-\section stress_section3 Kinetic energy contribution to stress.
-Kinetic contribution to stress tensor:
-\f[
-  E^{kin} = \sum_{{\bf k}} w_{\bf k} \sum_i f_i \frac{1}{2} |{\bf G+k}|^2 |\psi_i({\bf G + k})|^2
-\f]
-Derivative over lattice vectors
-\f[
-  \frac{\partial  E^{kin}}{\partial a_{\mu \nu}} =
-    \sum_{{\bf k}} w_{\bf k} \sum_i f_i \sum_{\tau} (G+k)_{\tau} (-{\bf a}^{-1})_{\nu \tau} (G+k)_{\mu}  |\psi_i({\bf G + k})|^2
-\f]
-Contribution to the stress tensor
-\f[
-  \sigma_{\mu \nu}^{kin} = \frac{1}{\Omega} \sum_{\nu'} \frac{\partial E^{kin}}{\partial a_{\mu \nu'}} a_{\nu \nu'} = 
-    \frac{1}{\Omega} \sum_{\nu'}  \sum_{{\bf k}} w_{\bf k} \sum_i f_i \sum_{\tau} (G+k)_{\tau} (-{\bf a}^{-1})_{\nu' \tau} (G+k)_{\mu}  |\psi_i({\bf G + k})|^2 a_{\nu \nu'}  = 
-    -\frac{1}{\Omega} \sum_{{\bf k}} w_{\bf k} \sum_i (G+k)_{\nu} (G+k)_{\mu} f_i |\psi_i({\bf G + k})|^2 
-\f]
-
-\section stress_section4 Hartree energy contribution to stress.
-Hartree energy:
-\f[
-  E^{H} = \frac{1}{2} \Omega \sum_{{\bf G}} \rho^{*}({\bf G}) V^{H}({\bf G})= 
-    2\pi \Omega \sum_{{\bf G}} \frac{|\rho({\bf G})|^2}{G^2}
-\f]
-Hartree energy contribution to stress tensor:
-\f[
-   \sigma_{\mu \nu}^{H} = \frac{1}{\Omega} \frac{\partial  E^{H}}{\partial \varepsilon_{\mu \nu}} = 
-      \frac{1}{\Omega} 2\pi \Big( \frac{\partial \Omega}{\partial \varepsilon_{\mu \nu}} \sum_{{\bf G}} \frac{|\rho({\bf G})|^2}{G^2} + 
-        \Omega \sum_{{\bf G}} |\rho({\bf G})|^2 \frac{\partial}{\partial \varepsilon_{\mu \nu}} \frac{1}{G^2} \Big) = \\
-   \frac{1}{\Omega} 2\pi \Big( \Omega \delta_{\mu \nu} \sum_{{\bf G}} \frac{|\rho({\bf G})|^2}{G^2} + 
-     \Omega \sum_{\bf G} |\rho({\bf G})|^2 \sum_{\tau} \frac{-2 G_{\tau}}{G^4} \frac{\partial G_{\tau}}{\partial \varepsilon_{\mu \nu}} \Big) = \\
- \frac{1}{\Omega} 2\pi \Omega \sum_{\bf G} \frac{|\rho({\bf G})|^2}{G^2} \Big( \delta_{\mu \nu} + \frac{2}{G^2} G_{\nu} G_{\mu} \Big)
-\f]
-
-
- */
