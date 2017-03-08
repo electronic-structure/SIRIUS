@@ -185,6 +185,7 @@ std::unique_ptr<Simulation_context> create_sim_ctx(std::string                  
     ctx.set_valence_relativity(inp__.valence_relativity_);
     ctx.set_gamma_point(inp__.gamma_point_);
     ctx.set_molecule(inp__.molecule_);
+    ctx.set_use_symmetry(inp__.use_symmetry_);
 
     return std::move(std::unique_ptr<Simulation_context>(ctx_ptr));
 }
@@ -235,7 +236,12 @@ double ground_state(Simulation_context&       ctx,
         }
     }
     
+    /* launch the calculation */
     int result = dft.find(inp.potential_tol_, inp.energy_tol_, inp.num_dft_iter_, write_state);
+
+    if (true) {
+        Stress s(ctx, ks, density);
+    }
 
     if (ref_file.size() != 0) {
         json dict;

@@ -47,7 +47,7 @@ inline void Density::add_k_point_contribution_rg(K_point* kp__)
 
                 if (fft.pu() == GPU) {
                     #ifdef __GPU
-                    update_density_rg_1_gpu(fft.local_size(), fft.buffer<GPU>(), w, density_rg.at<GPU>(0, ispn));
+                    update_density_rg_1_gpu(fft.local_size(), fft.buffer().at<GPU>(), w, density_rg.at<GPU>(0, ispn));
                     #else
                     TERMINATE_NO_GPU
                     #endif

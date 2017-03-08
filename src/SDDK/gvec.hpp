@@ -320,6 +320,8 @@ class Gvec
 
     inline void find_gvec_shells()
     {
+        PROFILE("sddk::Gvec::find_gvec_shells");
+
         /* find G-shells */
         std::map<size_t, std::vector<int>> gsh;
         for (int ig = 0; ig < num_gvec_; ig++) {

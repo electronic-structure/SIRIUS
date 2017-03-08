@@ -470,7 +470,7 @@ class FFT3D
                 #pragma omp parallel
                 {
                     int tid = omp_get_thread_num();
-                    #pragma omp for
+                    #pragma omp for schedule(static)
                     for (int iz = 0; iz < local_size_z_; iz++) {
                         switch (direction) {
                             case 1: {
@@ -561,7 +561,7 @@ class FFT3D
                 #pragma omp parallel
                 {
                     int tid = omp_get_thread_num();
-                    #pragma omp for
+                    #pragma omp for schedule(static)
                     for (int iz = 0; iz < local_size_z_; iz++) {
                         switch (direction) {
                             case 1: {
@@ -780,12 +780,6 @@ class FFT3D
             return fft_buffer_[idx__];
         }
         
-        template <device_t pu>
-        inline double_complex* buffer()
-        {
-            return fft_buffer_.at<pu>();
-        }
-        
         /// FFT buffer.
         inline mdarray<double_complex, 1>& buffer()
         {
@@ -819,7 +813,7 @@ class FFT3D
             
             /* get positions of z-columns in xy plane */
             z_col_pos_ = mdarray<int, 2>(gvec__.num_zcol(), nc, memory_t::host, "FFT3D.z_col_pos_");
-            #pragma omp parallel for
+            #pragma omp parallel for schedule(static)
             for (int i = 0; i < gvec__.num_zcol(); i++) {
                 int x = grid().coord_by_gvec(gvec__.zcol(i).x, 0);
                 int y = grid().coord_by_gvec(gvec__.zcol(i).y, 1);
@@ -840,7 +834,7 @@ class FFT3D
                 size_t work_size;
                 map_zcol_to_fft_buffer_ = mdarray<int, 1>(gvec__.gvec_count_fft(), memory_t::host | memory_t::device, "FFT3D.map_zcol_to_fft_buffer_");
                 /* loop over local set of columns */
-                #pragma omp parallel for
+                #pragma omp parallel for schedule(static)
                 for (int i = 0; i < gvec__.zcol_count_fft(); i++) {
                     /* global index of z-column */
                     int icol = gvec__.zcol_offset_fft() + i;

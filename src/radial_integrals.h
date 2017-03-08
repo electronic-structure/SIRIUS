@@ -52,6 +52,8 @@ class Radial_integrals
     /// Beta-projector radial integrals.
     mdarray<Spline<double>, 2> beta_radial_integrals_;
 
+    mdarray<Spline<double>, 2> beta_djldq_radial_integrals_;
+
     mdarray<Spline<double>, 1> pseudo_core_radial_integrals_;
 
     mdarray<Spline<double>, 1> pseudo_rho_radial_integrals_;
@@ -246,13 +248,57 @@ class Radial_integrals
                 for (int idxrf = 0; idxrf < atom_type.mt_radial_basis_size(); idxrf++) {
                     int l  = atom_type.indexr(idxrf).l;
                     int nr = atom_type.pp_desc().num_beta_radial_points[idxrf];
-                    /* compute \int j_l(|G+k|r) beta_l(r) r^2 dr */
+                    /* compute \int j_l(q * r) beta_l(r) r^2 dr */
                     /* remeber that beta(r) are defined as miltiplied by r */
                     beta_radial_integrals_(idxrf, iat)[iq] = sirius::inner(jl[l], beta_rf[idxrf], 1, nr);
                 }
             }
             for (int idxrf = 0; idxrf < atom_type.mt_radial_basis_size(); idxrf++) {
                 beta_radial_integrals_(idxrf, iat).interpolate();
+            }
+        }
+    }
+
+    inline void generate_beta_djldq_radial_integrals()
+    {
+        PROFILE("sirius::Radial_integrals::generate_beta_djldq_radial_integrals");
+    
+        /* create space for <j_l(qr)|beta> radial integrals */
+        beta_djldq_radial_integrals_ = mdarray<Spline<double>, 2>(unit_cell_.max_mt_radial_basis_size(), unit_cell_.num_atom_types());
+        
+        for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
+            auto& atom_type = unit_cell_.atom_type(iat);
+            int nrb = atom_type.mt_radial_basis_size();
+
+            for (int idxrf = 0; idxrf < atom_type.mt_radial_basis_size(); idxrf++) {
+                beta_djldq_radial_integrals_(idxrf, iat) = Spline<double>(grid_gkmax_);
+            }
+    
+            /* interpolate beta radial functions */
+            std::vector<Spline<double>> beta_rf(nrb);
+            for (int idxrf = 0; idxrf < nrb; idxrf++) {
+                beta_rf[idxrf] = Spline<double>(atom_type.radial_grid());
+                int nr = atom_type.pp_desc().num_beta_radial_points[idxrf];
+                for (int ir = 0; ir < nr; ir++) {
+                    beta_rf[idxrf][ir] = atom_type.pp_desc().beta_radial_functions(ir, idxrf);
+                }
+                beta_rf[idxrf].interpolate();
+            }
+    
+            #pragma omp parallel for
+            for (int iq = 0; iq < grid_gkmax_.num_points(); iq++) {
+                Spherical_Bessel_functions jl(unit_cell_.lmax(), atom_type.radial_grid(), grid_gkmax_[iq]);
+                for (int idxrf = 0; idxrf < atom_type.mt_radial_basis_size(); idxrf++) {
+                    int l  = atom_type.indexr(idxrf).l;
+                    int nr = atom_type.pp_desc().num_beta_radial_points[idxrf];
+                    /* compute \int d (j_l(q*r) / dq) beta_l(r) r^2 dr */
+                    /* remeber that beta(r) are defined as miltiplied by r */
+                    auto s = jl.deriv_q(l);
+                    beta_djldq_radial_integrals_(idxrf, iat)[iq] = sirius::inner(s, beta_rf[idxrf], 1, nr);
+                }
+            }
+            for (int idxrf = 0; idxrf < atom_type.mt_radial_basis_size(); idxrf++) {
+                beta_djldq_radial_integrals_(idxrf, iat).interpolate();
             }
         }
     }
@@ -297,6 +343,7 @@ class Radial_integrals
 
         if (param_.esm_type() == electronic_structure_method_t::pseudopotential) {
             generate_beta_radial_integrals();
+            generate_beta_djldq_radial_integrals();
             generate_aug_radial_integrals();
             generate_pseudo_core_radial_integrals();
             generate_pseudo_rho_radial_integrals();
@@ -308,6 +355,12 @@ class Radial_integrals
     {
         auto iqdq = iqdq_gkmax(q__);
         return beta_radial_integrals_(idxrf__, iat__)(iqdq.first, iqdq.second);
+    }
+
+    inline double beta_djldq_radial_integral(int idxrf__, int iat__, double q__) const
+    {
+        auto iqdq = iqdq_gkmax(q__);
+        return beta_djldq_radial_integrals_(idxrf__, iat__)(iqdq.first, iqdq.second);
     }
 
     inline double aug_radial_integral(int idx__, int l__, int iat__, double q__) const

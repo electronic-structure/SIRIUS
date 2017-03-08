@@ -87,6 +87,8 @@ class Simulation_parameters
     
         /// Smearing function width.
         double smearing_width_{0.001};
+
+        bool use_symmetry_{true};
         
         /// List of XC functionals.
         std::vector<std::string> xc_functionals_;
@@ -488,6 +490,16 @@ class Simulation_parameters
                 return (memory_t::host | memory_t::device);
             }
             return memory_t::host;
+        }
+
+        inline bool use_symmetry() const
+        {
+            return use_symmetry_;
+        }
+
+        inline void set_use_symmetry(bool param__)
+        {
+            use_symmetry_ = param__;
         }
 };
 

@@ -203,7 +203,7 @@ class Periodic_function: public Smooth_periodic_function<T>
         {
             PROFILE("sirius::Periodic_function::add");
 
-            #pragma omp parallel for
+            #pragma omp parallel for schedule(static)
             for (int irloc = 0; irloc < this->fft_->local_size(); irloc++) {
                 this->f_rg_(irloc) += g->f_rg(irloc);
             }
@@ -225,7 +225,7 @@ class Periodic_function: public Smooth_periodic_function<T>
                 {
                     T it_val_t = 0;
                     
-                    #pragma omp for
+                    #pragma omp for schedule(static)
                     for (int irloc = 0; irloc < this->fft_->local_size(); irloc++) {
                         it_val_t += this->f_rg_(irloc);
                     }
@@ -477,7 +477,7 @@ class Periodic_function: public Smooth_periodic_function<T>
                 {
                     T rt{0};
                     
-                    #pragma omp for
+                    #pragma omp for schedule(static)
                     for (int irloc = 0; irloc < this->fft_->local_size(); irloc++) {
                         rt += type_wrapper<T>::conjugate(this->f_rg(irloc)) * g__->f_rg(irloc);
                     }

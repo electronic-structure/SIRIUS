@@ -1,4 +1,4 @@
-// Copyright (c) 2013-2014 Anton Kozhevnikov, Thomas Schulthess
+// Copyright (c) 2013-2017 Anton Kozhevnikov, Thomas Schulthess
 // All rights reserved.
 // 
 // Redistribution and use in source and binary forms, with or without modification, are permitted provided that 
@@ -290,8 +290,8 @@ class SHT // TODO: better name
         /** Mathematica code:
          *  \verbatim
          *  R[l_, m_, th_, ph_] := 
-         *   If[m > 0, Sqrt[2]*ComplexExpand[Re[SphericalHarmonicY[l, m, th, ph]]], 
-         *   If[m < 0, Sqrt[2]*ComplexExpand[Im[SphericalHarmonicY[l, m, th, ph]]], 
+         *   If[m > 0, std::sqrt[2]*ComplexExpand[Re[SphericalHarmonicY[l, m, th, ph]]], 
+         *   If[m < 0, std::sqrt[2]*ComplexExpand[Im[SphericalHarmonicY[l, m, th, ph]]], 
          *   If[m == 0, ComplexExpand[Re[SphericalHarmonicY[l, 0, th, ph]]]]]]
          *  \endverbatim
          */
@@ -318,10 +318,10 @@ class SHT // TODO: better name
          *    \verbatim
          *    b[m1_, m2_] := 
          *     If[m1 == 0, 1, 
-         *     If[m1 < 0 && m2 < 0, -I/Sqrt[2], 
-         *     If[m1 > 0 && m2 < 0, (-1)^m1*I/Sqrt[2], 
-         *     If[m1 < 0 && m2 > 0, (-1)^m2/Sqrt[2], 
-         *     If[m1 > 0 && m2 > 0, 1/Sqrt[2]]]]]]
+         *     If[m1 < 0 && m2 < 0, -I/std::sqrt[2], 
+         *     If[m1 > 0 && m2 < 0, (-1)^m1*I/std::sqrt[2], 
+         *     If[m1 < 0 && m2 > 0, (-1)^m2/std::sqrt[2], 
+         *     If[m1 > 0 && m2 > 0, 1/std::sqrt[2]]]]]]
          *    
          *    a[m1_, m2_] := If[Abs[m1] == Abs[m2], b[m1, m2], 0]
          *    
@@ -537,6 +537,128 @@ class SHT // TODO: better name
             {
                 rotation_matrix_l(l, euler_angles, proper_rotation, &rotm(l * l, l * l), rotm.ld());
             }
+        }
+
+        /// Compute derivative of real-spherical harmonic with respect to theta angle.
+        static double dRlm_dtheta(int lm, double theta, double phi)
+        {
+            switch (lm) {
+                case 0: return 0;
+                
+                case 1: return -(std::sqrt(3/pi)*std::cos(theta)*std::sin(phi))/2.;
+                
+                case 2: return -(std::sqrt(3/pi)*std::sin(theta))/2.;
+                
+                case 3: return -(std::sqrt(3/pi)*std::cos(phi)*std::cos(theta))/2.;
+                
+                case 4: return -(std::sqrt(15/pi)*std::cos(phi)*std::cos(theta)*std::sin(phi)*std::sin(theta));
+                
+                case 5: return -(std::sqrt(15/pi)*std::cos(2*theta)*std::sin(phi))/2.;
+                
+                case 6: return (-3*std::sqrt(5/pi)*std::cos(theta)*std::sin(theta))/2.;
+                
+                case 7: return -(std::sqrt(15/pi)*std::cos(phi)*std::cos(2*theta))/2.;
+                
+                case 8: return (std::sqrt(15/pi)*std::cos(2*phi)*std::sin(2*theta))/4.;
+                
+                case 9: return (-3*std::sqrt(35/(2.*pi))*std::cos(theta)*std::sin(3*phi)*std::pow(std::sin(theta),2))/4.;
+                
+                case 10: return (std::sqrt(105/pi)*std::sin(2*phi)*(std::sin(theta) - 3*std::sin(3*theta)))/16.;
+                
+                case 11: return (std::sqrt(21/(2.*pi))*std::cos(theta)*(7 - 15*std::cos(2*theta))*std::sin(phi))/8.;
+                
+                case 12: return (-3*std::sqrt(7/pi)*(3 + 5*std::cos(2*theta))*std::sin(theta))/8.;
+                
+                case 13: return (std::sqrt(21/(2.*pi))*std::cos(phi)*std::cos(theta)*(7 - 15*std::cos(2*theta)))/8.;
+                
+                case 14: return (std::sqrt(105/pi)*std::cos(2*phi)*(1 + 3*std::cos(2*theta))*std::sin(theta))/8.;
+                
+                case 15: return (-3*std::sqrt(35/(2.*pi))*std::cos(3*phi)*std::cos(theta)*std::pow(std::sin(theta),2))/4.;
+                
+                case 16: return (-3*std::sqrt(35/pi)*std::cos(theta)*std::sin(4*phi)*std::pow(std::sin(theta),3))/4.;
+                
+                case 17: return (-3*std::sqrt(35/(2.*pi))*(1 + 2*std::cos(2*theta))*std::sin(3*phi)*std::pow(std::sin(theta),2))/4.;
+                
+                case 18: return (3*std::sqrt(5/pi)*(1 - 7*std::cos(2*theta))*std::sin(2*phi)*std::sin(2*theta))/8.;
+                
+                case 19: return (-3*std::sqrt(5/(2.*pi))*(std::cos(2*theta) + 7*std::cos(4*theta))*std::sin(phi))/8.;
+                
+                case 20: return (15*std::cos(theta)*(3 - 7*std::pow(std::cos(theta),2))*std::sin(theta))/(4.*std::sqrt(pi));
+                
+                case 21: return (-3*std::sqrt(5/(2.*pi))*std::cos(phi)*(std::cos(2*theta) + 7*std::cos(4*theta)))/8.;
+                
+                case 22: return (3*std::sqrt(5/pi)*std::cos(2*phi)*(-2*std::sin(2*theta) + 7*std::sin(4*theta)))/16.;
+                
+                case 23: return (-3*std::sqrt(35/(2.*pi))*std::cos(3*phi)*(1 + 2*std::cos(2*theta))*std::pow(std::sin(theta),2))/4.;
+                
+                case 24: return (3*std::sqrt(35/pi)*std::cos(4*phi)*std::cos(theta)*std::pow(std::sin(theta),3))/4.;
+
+                default: {
+                    TERMINATE_NOT_IMPLEMENTED
+                }
+            }
+            return 0; // make compiler happy
+        }
+        
+        ///  Compute derivative of real-spherical harmonic with respect to phi angle and divide by sin(theta).
+        static double dRlm_dphi_sin_theta(int lm, double theta, double phi)
+        {
+            switch (lm) {
+                case 0: return 0;
+                
+                case 1: return -(std::sqrt(3/pi)*std::cos(phi))/2.;
+                
+                case 2: return 0;
+                
+                case 3: return (std::sqrt(3/pi)*std::sin(phi))/2.;
+                
+                case 4: return -(std::sqrt(15/pi)*std::cos(2*phi)*std::sin(theta))/2.;
+                
+                case 5: return -(std::sqrt(15/pi)*std::cos(phi)*std::cos(theta))/2.;
+                
+                case 6: return 0;
+                
+                case 7: return (std::sqrt(15/pi)*std::cos(theta)*std::sin(phi))/2.;
+                
+                case 8: return -(std::sqrt(15/pi)*std::cos(phi)*std::sin(phi)*std::sin(theta));
+                
+                case 9: return (-3*std::sqrt(35/(2.*pi))*std::cos(3*phi)*std::pow(std::sin(theta),2))/4.;
+                
+                case 10: return -(std::sqrt(105/pi)*std::cos(2*phi)*std::sin(2*theta))/4.;
+                
+                case 11: return -(std::sqrt(21/(2.*pi))*std::cos(phi)*(3 + 5*std::cos(2*theta)))/8.;
+                
+                case 12: return 0;
+                
+                case 13: return (std::sqrt(21/(2.*pi))*(3 + 5*std::cos(2*theta))*std::sin(phi))/8.;
+                
+                case 14: return -(std::sqrt(105/pi)*std::cos(phi)*std::cos(theta)*std::sin(phi)*std::sin(theta));
+                
+                case 15: return (3*std::sqrt(35/(2.*pi))*std::sin(3*phi)*std::pow(std::sin(theta),2))/4.;
+                
+                case 16: return (-3*std::sqrt(35/pi)*std::cos(4*phi)*std::pow(std::sin(theta),3))/4.;
+                
+                case 17: return (-9*std::sqrt(35/(2.*pi))*std::cos(3*phi)*std::cos(theta)*std::pow(std::sin(theta),2))/4.;
+                
+                case 18: return (-3*std::sqrt(5/pi)*std::cos(2*phi)*(3*std::sin(theta) + 7*std::sin(3*theta)))/16.;
+                
+                case 19: return (-3*std::sqrt(5/(2.*pi))*std::cos(phi)*(9*std::cos(theta) + 7*std::cos(3*theta)))/16.;
+                
+                case 20: return 0;
+                
+                case 21: return (3*std::sqrt(5/(2.*pi))*std::cos(theta)*(1 + 7*std::cos(2*theta))*std::sin(phi))/8.;
+                
+                case 22: return (-3*std::sqrt(5/pi)*std::sin(2*phi)*(3*std::sin(theta) + 7*std::sin(3*theta)))/16.;
+                
+                case 23: return (9*std::sqrt(35/(2.*pi))*std::cos(theta)*std::sin(3*phi)*std::pow(std::sin(theta),2))/4.;
+                
+                case 24: return (-3*std::sqrt(35/pi)*std::sin(4*phi)*std::pow(std::sin(theta),3))/4.;
+
+                default: {
+                    TERMINATE_NOT_IMPLEMENTED
+                }
+            }
+            return 0; // make compiler happy
         }
 };
 

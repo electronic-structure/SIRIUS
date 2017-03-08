@@ -199,11 +199,13 @@ inline void Potential::poisson(Periodic_function<double>* rho, Periodic_function
                            (1.0 - std::cos(ctx_.gvec().gvec_len(ig) * R_cut));
         }
     }
-
-    #ifdef __PRINT_OBJECT_CHECKSUM
-    double_complex z4 = mdarray<double_complex, 1>(&vh->f_pw(0), ctx_.gvec().num_gvec()).checksum();
-    DUMP("checksum(vh_pw): %20.14f %20.14f", std::real(z4), std::imag(z4));
-    #endif
+    
+    if (ctx_.control().print_checksum_) {
+        auto z4 = mdarray<double_complex, 1>(&vh->f_pw(0), ctx_.gvec().num_gvec()).checksum();
+        if (ctx_.comm().rank() == 0) {
+            DUMP("checksum(vh_pw): %20.14f %20.14f", z4.real(), z4.imag());
+        }
+    }
     
     /* boundary condition for muffin-tins */
     if (ctx_.full_potential()) {
@@ -254,9 +256,12 @@ inline void Potential::poisson(Periodic_function<double>* rho, Periodic_function
     /* transform Hartree potential to real space */
     vh->fft_transform(1);
 
-    #ifdef __PRINT_OBJECT_CHECKSUM
-    DUMP("checksum(vha_rg): %20.14f", vh->checksum_rg());
-    #endif
+    if (ctx_.control().print_checksum_) {
+        auto cs = vh->checksum_rg();
+        if (ctx_.comm().rank() == 0) {
+            DUMP("checksum(vha_rg): %20.14f", cs);
+        }
+    }
     
     /* compute contribution from the smooth part of Hartree potential */
     energy_vha_ = rho->inner(vh);

@@ -33,6 +33,7 @@
 #include <cstring>
 #include <initializer_list>
 #include <stdexcept>
+#include <sstream>
 
 namespace geometry3d {
 
@@ -254,9 +255,10 @@ class matrix3d
     }
 
     /// Multiply two matrices.
-    inline matrix3d<T> operator*(matrix3d<T> const& b) const
+    template <typename U>
+    inline matrix3d<decltype(T{} * U{})> operator*(matrix3d<U> const& b) const
     {
-        matrix3d<T> c;
+        matrix3d<decltype(T{} * U{})> c;
         for (int i = 0; i < 3; i++) {
             for (int j = 0; j < 3; j++) {
                 for (int k = 0; k < 3; k++) {
@@ -280,11 +282,24 @@ class matrix3d
         return a;
     }
 
+    /// Sum of two matrices.
+    template <typename U>
+    inline matrix3d<decltype(T{} + U{})> operator+(matrix3d<U> const& b) const
+    {
+        matrix3d<decltype(T{} + U{})> a;
+        for (int i = 0; i < 3; i++) {
+            for (int j = 0; j < 3; j++) {
+                a(i, j) = (*this)(i, j) + b(i, j);
+            }
+        }
+        return a;
+    }
+
     /// Multiply matrix by a scalar number.
     template <typename U>
-    inline matrix3d<T> operator*(U p) const
+    inline matrix3d<decltype(T{} * U{})> operator*(U p) const
     {
-        matrix3d<T> c;
+        matrix3d<decltype(T{} * U{})> c;
         for (int i = 0; i < 3; i++) {
             for (int j = 0; j < 3; j++) {
                 c(i, j) = (*this)(i, j) * p;
@@ -292,6 +307,19 @@ class matrix3d
         }
         return c;
     }
+
+    /// Multiply matrix by a scalar number.
+    template <typename U>
+    inline matrix3d<T>& operator*=(U p)
+    {
+        for (int i = 0; i < 3; i++) {
+            for (int j = 0; j < 3; j++) {
+                (*this)(i, j) *= p;
+            }
+        }
+        return *this;
+    }
+
 
     /// Return determinant of a matrix.
     inline T det() const
@@ -340,6 +368,28 @@ matrix3d<T> inverse(matrix3d<T> src)
     mtrx(2, 2) = t1 * (src(0, 0) * src(1, 1) - src(0, 1) * src(1, 0));
 
     return mtrx;
+}
+
+template <typename T>
+std::ostream& operator<<(std::ostream& out, matrix3d<T>& v)
+{
+    out << "{";
+    for (int i = 0; i < 3; i++) {
+        out << "{";
+        for (int j = 0; j < 3; j++) {
+            out << v(i, j);
+            if (j != 2) {
+                out << ", ";
+            }
+        }
+        out << "}";
+        if (i != 2) {
+            out <<",";
+        } else {
+            out << "}";
+        }
+    }
+    return out;
 }
 
 inline std::pair<vector3d<double>, vector3d<int>> reduce_coordinates(vector3d<double> coord)

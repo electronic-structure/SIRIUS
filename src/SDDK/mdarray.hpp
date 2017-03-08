@@ -689,6 +689,23 @@ class mdarray_base
         copy<from__, to__>(0, size());
     }
 
+    /// Zero n elements starting from idx0.
+    template <memory_t mem_type__>
+    inline void zero(size_t idx0__, size_t n__)
+    {
+        assert(idx0__ + n__ <= size());
+        if ((mem_type__ & memory_t::host) != memory_t::none && n__) {
+            mdarray_assert(raw_ptr_ != nullptr);
+            std::memset(&raw_ptr_[idx0__], 0, n__ * sizeof(T));
+        }
+        #ifdef __GPU
+        if ((mem_type__ & memory_t::device) != memory_t::none && on_device() && n__) {
+            acc::zero(&raw_ptr_device_[idx0__], n__);
+        }
+        #endif
+    }
+
+
     #ifdef __GPU
     void deallocate_on_device() const
     {
