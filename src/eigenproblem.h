@@ -1606,13 +1606,19 @@ class Eigenproblem_elpa2: public Eigenproblem_elpa
 };
 
 #ifdef __RS_GEN_EIG
-void my_gen_eig(char uplo, int n, int nev, double_complex* a, int ia, int ja, int* desca,
-                double_complex* b, int ib, int jb, int* descb, double* d,
-                double_complex* q, int iq, int jq, int* descq, int* info);
+void libevs_gen_eig(char uplo, int n, int nev,
+                    double_complex* a, int ia, int ja, int* desca,
+                    double_complex* b, int ib, int jb, int* descb,
+                    double* d,
+                    double_complex* q, int iq, int jq, int* descq,
+                    int* info);
 
-void my_gen_eig_cpu(char uplo, int n, int nev, double_complex* a, int ia, int ja, int* desca,
-                    double_complex* b, int ib, int jb, int* descb, double* d,
-                    double_complex* q, int iq, int jq, int* descq, int* info);
+void libevs_gen_eig_cpu(char uplo, int n, int nev,
+                        double_complex* a, int ia, int ja, int* desca,
+                        double_complex* b, int ib, int jb, int* descb,
+                        double* d,
+                        double_complex* q, int iq, int jq, int* descq,
+                        int* info);
 #endif
 
 class Eigenproblem_RS_CPU: public Eigenproblem
@@ -1667,10 +1673,10 @@ class Eigenproblem_RS_CPU: public Eigenproblem
             std::vector<double> eval_tmp(matrix_size);
 
             int info;
-            my_gen_eig_cpu('L', matrix_size, nevec, A, 1, 1, desca, B, 1, 1, descb, &eval_tmp[0], ztmp.at<CPU>(), 1, 1, descz, &info);
+            libevs_gen_eig_cpu('L', matrix_size, nevec, A, 1, 1, desca, B, 1, 1, descb, &eval_tmp[0], ztmp.at<CPU>(), 1, 1, descz, &info);
             if (info) {
                 std::stringstream s;
-                s << "my_gen_eig " << info; 
+                s << "libevs_gen_eig_cpu: info=" << info; 
                 TERMINATE(s);
             }
 
@@ -1747,10 +1753,10 @@ class Eigenproblem_RS_GPU: public Eigenproblem
             std::vector<double> eval_tmp(matrix_size);
 
             int info;
-            my_gen_eig('L', matrix_size, nevec, A, 1, 1, desca, B, 1, 1, descb, &eval_tmp[0], ztmp.at<CPU>(), 1, 1, descz, &info);
+            libevs_gen_eig('L', matrix_size, nevec, A, 1, 1, desca, B, 1, 1, descb, &eval_tmp[0], ztmp.at<CPU>(), 1, 1, descz, &info);
             if (info) {
                 std::stringstream s;
-                s << "my_gen_eig " << info; 
+                s << "libevs_gen_eig: info=" << info; 
                 TERMINATE(s);
             }
 
