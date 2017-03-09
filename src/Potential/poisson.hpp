@@ -85,32 +85,54 @@ inline void Potential::poisson_add_pseudo_pw(mdarray<double_complex, 2>& qmt,
     for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
         double R = unit_cell_.atom_type(iat).mt_radius();
 
+        mdarray<double_complex, 2> pf(ctx_.gvec_count(), unit_cell_.atom_type(iat).num_atoms());
+        mdarray<double_complex, 2> qa(ctx_.lmmax_rho(), unit_cell_.atom_type(iat).num_atoms());
+        mdarray<double_complex, 2> qapf(ctx_.lmmax_rho(), ctx_.gvec_count());
+
+        #pragma omp parallel for schedule(static)
+        for (int igloc = 0; igloc < ctx_.gvec_count(); igloc++) {
+            int ig = ctx_.gvec_offset() + igloc;
+            
+            if (ig) {
+                double gR = ctx_.gvec().gvec_len(ig) * R;
+                double gRn = std::pow(2.0 / gR, pseudo_density_order_ + 1);
+
+                for (int i = 0; i < unit_cell_.atom_type(iat).num_atoms(); i++) {
+                    int ia = unit_cell_.atom_type(iat).atom_id(i);
+                    double_complex z = ctx_.gvec_phase_factor(ig, ia);
+                    pf(igloc, i) = fourpi * std::conj(z) * gRn / unit_cell_.omega();
+                }
+            } else { 
+                for (int i = 0; i < unit_cell_.atom_type(iat).num_atoms(); i++) {
+                    pf(igloc, i) = 0;
+                }
+            }
+        }
+        for (int i = 0; i < unit_cell_.atom_type(iat).num_atoms(); i++) {
+            int ia = unit_cell_.atom_type(iat).atom_id(i);
+            for (int lm = 0; lm < ctx_.lmmax_rho(); lm++) {
+                qa(lm, i) = qmt(lm, ia) - qit(lm, ia);
+            }
+        }
+
+        linalg<CPU>::gemm(0, 1, ctx_.lmmax_rho(), ctx_.gvec_count(), unit_cell_.atom_type(iat).num_atoms(),
+                          qa, pf, qapf);
+                
         /* add pseudo_density to interstitial charge density so that rho(G) has the correct 
          * multipole moments in the muffin-tins */
         #pragma omp parallel for schedule(static)
         for (int igloc = 0; igloc < ctx_.gvec_count(); igloc++) {
             int ig = ctx_.gvec_offset() + igloc;
 
-            double gR = ctx_.gvec().gvec_len(ig) * R;
-
-            std::vector<double_complex> qa(ctx_.lmmax_rho(), double_complex(0, 0));
-            for (int i = 0; i < unit_cell_.atom_type(iat).num_atoms(); i++) {
-                int ia = unit_cell_.atom_type(iat).atom_id(i);
-                for (int lm = 0; lm < ctx_.lmmax_rho(); lm++) {
-                    qa[lm] += (qmt(lm, ia) - qit(lm, ia)) * fourpi * std::conj(ctx_.gvec_phase_factor(ig, ia)) / unit_cell_.omega();
-                }
-            }
-
             double_complex rho_G(0, 0);
             if (ig) { // G!=0
-                double gRn = std::pow(2.0 / gR, pseudo_density_order_ + 1);
                 /* loop over atoms of the same type */
                 for (int l = 0, lm = 0; l <= ctx_.lmax_rho(); l++) {
                     double_complex zt1(0, 0);
                     for (int m = -l; m <= l; m++, lm++) {
-                        zt1 += gvec_ylm_(lm, igloc) * qa[lm];
+                        zt1 += gvec_ylm_(lm, igloc) * qapf(lm, igloc);
                     }
-                    rho_G += std::conj(zil_[l]) * zt1 * gamma_factors_R_(l, iat) * gRn *
+                    rho_G += std::conj(zil_[l]) * zt1 * gamma_factors_R_(l, iat) * 
                              sbessel_mt_(l + pseudo_density_order_ + 1, iat, ctx_.gvec().shell(ig));
                 } // l
             } else { // G=0
