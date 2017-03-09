@@ -87,30 +87,28 @@ inline void Potential::poisson_add_pseudo_pw(mdarray<double_complex, 2>& qmt,
 
         /* add pseudo_density to interstitial charge density so that rho(G) has the correct 
          * multipole moments in the muffin-tins */
-        #pragma omp parallel for
+        #pragma omp parallel for schedule(static)
         for (int igloc = 0; igloc < ctx_.gvec_count(); igloc++) {
             int ig = ctx_.gvec_offset() + igloc;
 
             double gR = ctx_.gvec().gvec_len(ig) * R;
 
-            std::vector<double_complex> phase_f(unit_cell_.atom_type(iat).num_atoms());
+            std::vector<double_complex> qa(ctx_.lmmax_rho(), double_complex(0, 0));
             for (int i = 0; i < unit_cell_.atom_type(iat).num_atoms(); i++) {
                 int ia = unit_cell_.atom_type(iat).atom_id(i);
-                phase_f[i] = fourpi * std::conj(ctx_.gvec_phase_factor(ig, ia)) / unit_cell_.omega();
+                for (int lm = 0; lm < ctx_.lmmax_rho(); lm++) {
+                    qa[lm] += (qmt(lm, ia) - qit(lm, ia)) * fourpi * std::conj(ctx_.gvec_phase_factor(ig, ia)) / unit_cell_.omega();
+                }
             }
 
             double_complex rho_G(0, 0);
             if (ig) { // G!=0
                 double gRn = std::pow(2.0 / gR, pseudo_density_order_ + 1);
                 /* loop over atoms of the same type */
-                for (int l = 0; l <= ctx_.lmax_rho(); l++) {
+                for (int l = 0, lm = 0; l <= ctx_.lmax_rho(); l++) {
                     double_complex zt1(0, 0);
-                    for (int i = 0; i < unit_cell_.atom_type(iat).num_atoms(); i++) {
-                        int ia = unit_cell_.atom_type(iat).atom_id(i);
-                        for (int m = -l; m <= l; m++) {
-                            int lm = Utils::lm_by_l_m(l, m);
-                            zt1 += gvec_ylm_(lm, igloc) * (qmt(lm, ia) - qit(lm, ia)) * phase_f[i];
-                        }
+                    for (int m = -l; m <= l; m++, lm++) {
+                        zt1 += gvec_ylm_(lm, igloc) * qa[lm];
                     }
                     rho_G += std::conj(zil_[l]) * zt1 * gamma_factors_R_(l, iat) * gRn *
                              sbessel_mt_(l + pseudo_density_order_ + 1, iat, ctx_.gvec().shell(ig));
