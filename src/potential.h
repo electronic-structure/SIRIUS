@@ -440,9 +440,10 @@ class Potential
             vh_el_ = mdarray<double, 1>(unit_cell_.num_atoms());
 
             if (ctx_.full_potential()) {
-                gvec_ylm_ = mdarray<double_complex, 2>(ctx_.lmmax_pot(), ctx_.gvec().gvec_count(comm_.rank()));
-                for (int igloc = 0; igloc < ctx_.gvec().gvec_count(comm_.rank()); igloc++) {
-                    int ig = ctx_.gvec().gvec_offset(comm_.rank()) + igloc;
+                gvec_ylm_ = mdarray<double_complex, 2>(ctx_.lmmax_pot(), ctx_.gvec_count(), memory_t::host, "gvec_ylm_");
+                #pragma omp parallel for schedule(static)
+                for (int igloc = 0; igloc < ctx_.gvec_count(); igloc++) {
+                    int ig = ctx_.gvec_offset() + igloc;
                     auto rtp = SHT::spherical_coordinates(ctx_.gvec().gvec_cart(ig));
                     SHT::spherical_harmonics(ctx_.lmax_pot(), rtp[1], rtp[2], &gvec_ylm_(0, igloc));
                 }
