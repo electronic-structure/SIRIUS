@@ -89,7 +89,7 @@ class Stress {
             auto G = ctx_.gvec().gvec_cart(ig);
             double g2 = std::pow(G.length(), 2);
             auto z = density_.rho()->f_pw(ig);
-            double d = (std::pow(z.real(), 2) + std::pow(z.imag(), 2)) / g2;
+            double d = twopi * (std::pow(z.real(), 2) + std::pow(z.imag(), 2)) / g2;
 
             for (int mu: {0, 1, 2}) {
                 for (int nu: {0, 1, 2}) {
@@ -106,7 +106,6 @@ class Stress {
         } 
 
         ctx_.comm().allreduce(&stress_har_(0, 0), 9 * sizeof(double));
-        stress_har_ *= twopi;
 
         symmetrize(stress_har_);
     }
@@ -377,17 +376,28 @@ Contribution to the stress tensor
 \section stress_section4 Hartree energy contribution to stress.
 Hartree energy:
 \f[
-  E^{H} = \frac{1}{2} \Omega \sum_{{\bf G}} \rho^{*}({\bf G}) V^{H}({\bf G})= 
-    2\pi \Omega \sum_{{\bf G}} \frac{|\rho({\bf G})|^2}{G^2}
+  E^{H} = \frac{1}{2} \int_{\Omega} \rho({\bf r}) V^{H}({\bf r}) d{\bf r} = 
+    \frac{1}{2} \frac{1}{\Omega} \sum_{\bf G} \langle \rho | {\bf G} \rangle \langle {\bf G}| V^{H} \rangle = 
+    \frac{2 \pi}{\Omega} \sum_{\bf G} \frac{|\tilde \rho({\bf G})|^2}{G^2}
 \f]
+where 
+\f[
+  \langle {\bf G} | \rho \rangle = \int e^{-i{\bf Gr}}\rho({\bf r}) d {\bf r} = \tilde \rho({\bf G})
+\f]
+and
+\f[
+  \langle {\bf G} | V^{H} \rangle = \int e^{-i{\bf Gr}}V^{H}({\bf r}) d {\bf r} = \frac{4\pi}{G^2} \tilde \rho({\bf G})
+\f]
+
 Hartree energy contribution to stress tensor:
 \f[
    \sigma_{\mu \nu}^{H} = \frac{1}{\Omega} \frac{\partial  E^{H}}{\partial \varepsilon_{\mu \nu}} = 
-      \frac{1}{\Omega} 2\pi \Big( \frac{\partial \Omega}{\partial \varepsilon_{\mu \nu}} \sum_{{\bf G}} \frac{|\rho({\bf G})|^2}{G^2} + 
-        \Omega \sum_{{\bf G}} |\rho({\bf G})|^2 \frac{\partial}{\partial \varepsilon_{\mu \nu}} \frac{1}{G^2} \Big) = \\
-   \frac{1}{\Omega} 2\pi \Big( \Omega \delta_{\mu \nu} \sum_{{\bf G}} \frac{|\rho({\bf G})|^2}{G^2} + 
-     \Omega \sum_{\bf G} |\rho({\bf G})|^2 \sum_{\tau} \frac{-2 G_{\tau}}{G^4} \frac{\partial G_{\tau}}{\partial \varepsilon_{\mu \nu}} \Big) = \\
-   2\pi \sum_{\bf G} \frac{|\rho({\bf G})|^2}{G^2} \Big( \delta_{\mu \nu} + \frac{2}{G^2} G_{\nu} G_{\mu} \Big)
+      \frac{1}{\Omega} 2\pi \Big( \big( \frac{\partial}{\partial \varepsilon_{\mu \nu}} \frac{1}{\Omega} \big) 
+        \sum_{{\bf G}} \frac{|\tilde \rho({\bf G})|^2}{G^2} + 
+        \frac{1}{\Omega} \sum_{{\bf G}} |\tilde \rho({\bf G})|^2 \frac{\partial}{\partial \varepsilon_{\mu \nu}} \frac{1}{G^2} \Big) = \\
+   \frac{1}{\Omega} 2\pi \Big( -\frac{1}{\Omega} \delta_{\mu \nu} \sum_{{\bf G}} \frac{|\tilde \rho({\bf G})|^2}{G^2} + 
+     \frac{1}{\Omega} \sum_{\bf G} |\tilde \rho({\bf G})|^2 \sum_{\tau} \frac{-2 G_{\tau}}{G^4} \frac{\partial G_{\tau}}{\partial \varepsilon_{\mu \nu}} \Big) = \\
+   2\pi \sum_{\bf G} \frac{|\rho({\bf G})|^2}{G^2} \Big( -\delta_{\mu \nu} + \frac{2}{G^2} G_{\nu} G_{\mu} \Big)
 \f]
 
 \section stress_section5 Ewald energy contribution to stress.
@@ -425,6 +435,26 @@ Derivative of the fourth part:
 \f[
   -\frac{1}{\Omega}\frac{\partial}{\partial \varepsilon_{\mu \nu}} \frac{2\pi}{\Omega}\frac{N_{el}^2}{4 \lambda} = 
      \frac{2\pi}{\Omega^2}\frac{N_{el}^2}{4 \lambda} \delta_{\mu \nu}
+\f]
+
+\section stress_section6 Local potential contribution to stress.
+Energy contribution from the local part of pseudopotential:
+\f[
+  E^{loc} = \int \rho({\bf r}) V^{loc}({\bf r}) d{\bf r} = \frac{1}{\Omega} \sum_{\bf G} \langle \rho | {\bf G} \rangle \langle {\bf G}| V^{loc} \rangle = 
+    \frac{1}{\Omega} \sum_{\bf G} \tilde \rho^{*}({\bf G}) \tilde V^{loc}({\bf G})
+\f]
+where
+\f[
+  \tilde \rho({\bf G}) = \langle {\bf G} | \rho \rangle = \int e^{-i{\bf Gr}}\rho({\bf r}) d {\bf r}
+\f]
+and
+\f[
+  \tilde V^{loc}({\bf G}) = \langle {\bf G} | V^{loc} \rangle = \int e^{-i{\bf Gr}}V^{loc}({\bf r}) d {\bf r} 
+\f]
+Using the expression for \f$ \tilde V^{loc}({\bf G}) \f$, the local contribution to the total energy is rewritten as
+\f[
+  E^{loc} = \frac{1}{\Omega} \sum_{\bf G} \tilde \rho^{*}({\bf G}) \sum_{\alpha} e^{-{\bf G\tau}_{\alpha}} 4 \pi 
+    \int V_{\alpha}^{loc}(r)\frac{\sin(Gr)}{Gr} r^2 dr
 \f]
 
 
