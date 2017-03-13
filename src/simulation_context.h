@@ -78,6 +78,9 @@ class Simulation_context: public Simulation_parameters
         /// G-vectors within the Gmax cutoff.
         Gvec gvec_;
         
+        /// Offset of the local frction of G-vectors in the global index.
+        int gvec_offset_{0};
+        
         /// G-vectors within the 2 * |Gmax^{WF}| cutoff.
         Gvec gvec_coarse_;
 
@@ -329,7 +332,7 @@ class Simulation_context: public Simulation_parameters
 
         inline int gvec_offset() const
         {
-            return gvec_.gvec_offset(comm_.rank());
+            return gvec_offset_;
         }
 
         #ifdef __GPU
@@ -343,7 +346,8 @@ class Simulation_context: public Simulation_parameters
             return atom_coord_[iat__];
         }
         #endif
-
+        
+        /// Generate phase factors \f$ e^{i {\bf G} {\bf r}_{\alpha}} \f$ for all atoms of a given type.
         inline void generate_phase_factors(int iat__, mdarray<double_complex, 2>& phase_factors__) const
         {
             int na = unit_cell_.atom_type(iat__).num_atoms();
@@ -377,8 +381,10 @@ class Simulation_context: public Simulation_parameters
         }
 
         /// Return pointer to already allocated temporary memory buffer.
+        /** Buffer can only grow in size. The requested buffer length is in bytes. */
         inline void* memory_buffer(size_t size__)
         {
+            /* reallocate if needed */
             if (memory_buffer_.size() < size__) {
                 memory_buffer_ = mdarray<char, 1>(size__);
             }
@@ -402,6 +408,7 @@ inline void Simulation_context::init_fft()
 
     /* create a list of G-vectors for dense FFT grid; G-vectors are divided between all available MPI ranks.*/
     gvec_ = Gvec(rlv, pw_cutoff(), comm(), comm_fft(), control_input_section_.reduce_gvec_);
+    gvec_offset_ = gvec_.gvec_offset(comm_.rank());
 
     /* prepare fine-grained FFT driver for the entire simulation */
     fft_->prepare(gvec_.partition());
