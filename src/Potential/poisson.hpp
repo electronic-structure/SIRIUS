@@ -12,7 +12,7 @@ inline void Potential::poisson_sum_G(int lmmax__,
 
     int ngv_loc = ctx_.gvec_count();
 
-    int na_max = 0;
+    int na_max{0};
     for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
         na_max = std::max(na_max, unit_cell_.atom_type(iat).num_atoms());
     }
@@ -25,7 +25,7 @@ inline void Potential::poisson_sum_G(int lmmax__,
         double t = -omp_get_wtime();
         int na = unit_cell_.atom_type(iat).num_atoms();
         ctx_.generate_phase_factors(iat, phase_factors);
-        #pragma omp parallel for
+        #pragma omp parallel for schedule(static)
         for (int igloc = 0; igloc < ngv_loc; igloc++) {
             int ig = ctx_.gvec_offset() + igloc;
             for (int lm = 0; lm < lmmax__; lm++) {
@@ -36,14 +36,18 @@ inline void Potential::poisson_sum_G(int lmmax__,
         }
         switch (ctx_.processing_unit()) {
             case CPU: {
-                linalg<CPU>::gemm(0, 0, lmmax__, na, ngv_loc, zm.at<CPU>(), zm.ld(), phase_factors.at<CPU>(), phase_factors.ld(),
+                linalg<CPU>::gemm(0, 0, lmmax__, na, ngv_loc,
+                                  zm.at<CPU>(), zm.ld(),
+                                  phase_factors.at<CPU>(), phase_factors.ld(),
                                   tmp.at<CPU>(), tmp.ld());
                 break;
             }
             case GPU: {
                 #ifdef __GPU
                 zm.copy_to_device();
-                linalg<GPU>::gemm(0, 0, lmmax__, na, ngv_loc, zm.at<GPU>(), zm.ld(), phase_factors.at<GPU>(), phase_factors.ld(),
+                linalg<GPU>::gemm(0, 0, lmmax__, na, ngv_loc,
+                                  zm.at<GPU>(), zm.ld(),
+                                  phase_factors.at<GPU>(), phase_factors.ld(),
                                   tmp.at<GPU>(), tmp.ld());
                 tmp.copy_to_host();
                 #endif
