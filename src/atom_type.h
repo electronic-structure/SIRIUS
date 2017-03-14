@@ -781,14 +781,15 @@ class Atom_type
         inline void set_configuration(int n, int l, int k, double occupancy, bool core)
         {
             atomic_level_descriptor level;
-            level.n = n;
-            level.l = l;
-            level.k = k;
+            level.n         = n;
+            level.l         = l;
+            level.k         = k;
             level.occupancy = occupancy;
-            level.core = core;
+            level.core      = core;
             atomic_levels_.push_back(level);
         }
-
+        
+        /// Return number of atoms of a given type.
         inline int num_atoms() const
         {
             return static_cast<int>(atom_id_.size());
