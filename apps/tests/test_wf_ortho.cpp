@@ -15,20 +15,20 @@ void test_wf_ortho(std::vector<int> mpi_grid_dims__,
     matrix3d<double> M = {{1, 0, 0}, {0, 1, 0}, {0, 0, 1}};
     
     /* create FFT box */
-    FFT3D_grid fft_box(Utils::find_translations(2.01 * cutoff__, M));
+    //FFT3D_grid fft_box(find_translations(2.01 * cutoff__, M));
     /* create G-vectors */
-    Gvec gvec(vector3d<double>(0, 0, 0), M, cutoff__, fft_box, mpi_comm_world().size(), mpi_comm_world(), false);
+    Gvec gvec(M, cutoff__, mpi_comm_world(), mpi_comm_world(), false);
 
     if (mpi_comm_world().rank() == 0) {
         printf("total number of G-vectors: %i\n", gvec.num_gvec());
         printf("local number of G-vectors: %i\n", gvec.gvec_count(0));
-        printf("FFT grid size: %i %i %i\n", fft_box.size(0), fft_box.size(1), fft_box.size(2));
+        //printf("FFT grid size: %i %i %i\n", fft_box.size(0), fft_box.size(1), fft_box.size(2));
     }
 
-    wave_functions phi(pu, mpi_comm_world(), gvec, 2 * num_bands__);
-    wave_functions hphi(pu, mpi_comm_world(), gvec, 2 * num_bands__);
-    wave_functions ophi(pu, mpi_comm_world(), gvec, 2 * num_bands__);
-    wave_functions tmp(pu, mpi_comm_world(), gvec, 2 * num_bands__);
+    wave_functions phi(pu, gvec, 2 * num_bands__);
+    wave_functions hphi(pu, gvec, 2 * num_bands__);
+    wave_functions ophi(pu, gvec, 2 * num_bands__);
+    wave_functions tmp(pu, gvec, 2 * num_bands__);
     tmp.pw_coeffs().prime().zero();
 
     for (int i = 0; i < 2 * num_bands__; i++) {

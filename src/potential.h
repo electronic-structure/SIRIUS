@@ -320,7 +320,7 @@ class Potential
          * \f] 
          * The final expression for the local potential radial integrals for \f$ G \ne 0 \f$ take the following form:
          * \f[
-         *   4\pi \int \Big(V_{\alpha}(r) r + Z_{\alpha}^p {\rm erf}(r) \Big) \frac{\sin(Gr)}{G} dr - \frac{e^{-\frac{G^2}{4}}}{G^2}
+         *   4\pi \int \Big(V_{\alpha}(r) r + Z_{\alpha}^p {\rm erf}(r) \Big) \frac{\sin(Gr)}{G} dr -  Z_{\alpha}^p \frac{e^{-\frac{G^2}{4}}}{G^2}
          * \f]
          */
         inline void generate_local_potential()
@@ -440,9 +440,10 @@ class Potential
             vh_el_ = mdarray<double, 1>(unit_cell_.num_atoms());
 
             if (ctx_.full_potential()) {
-                gvec_ylm_ = mdarray<double_complex, 2>(ctx_.lmmax_pot(), ctx_.gvec().gvec_count(comm_.rank()));
-                for (int igloc = 0; igloc < ctx_.gvec().gvec_count(comm_.rank()); igloc++) {
-                    int ig = ctx_.gvec().gvec_offset(comm_.rank()) + igloc;
+                gvec_ylm_ = mdarray<double_complex, 2>(ctx_.lmmax_pot(), ctx_.gvec_count(), memory_t::host, "gvec_ylm_");
+                #pragma omp parallel for schedule(static)
+                for (int igloc = 0; igloc < ctx_.gvec_count(); igloc++) {
+                    int ig = ctx_.gvec_offset() + igloc;
                     auto rtp = SHT::spherical_coordinates(ctx_.gvec().gvec_cart(ig));
                     SHT::spherical_harmonics(ctx_.lmax_pot(), rtp[1], rtp[2], &gvec_ylm_(0, igloc));
                 }
@@ -638,7 +639,7 @@ class Potential
          *  \f[
          *       P^{\alpha}({\bf G}) = \frac{4\pi e^{-i{\bf G r}_{\alpha}}}{\Omega} \sum_{\ell m} (-i)^{\ell} Y_{\ell m}({\bf \hat G})  
          *          (q_{\ell m}^{\alpha} - q_{\ell m}^{I,\alpha}) \Big( \frac{2}{GR} \Big)^{n+1} 
-         *          \frac{ \Gamma(5/2 + n + \ell) } {R^{\ell} \Gamma(3/2+\ell)}
+         *          \frac{ \Gamma(5/2 + n + \ell) } {R^{\ell} \Gamma(3/2+\ell)} j_{n + \ell + 1}(GR)
          *  \f]
          *
          *  For \f$ G=0 \f$ only \f$ \ell = 0 \f$ contribution survives:
@@ -1058,14 +1059,29 @@ class Potential
             return veff_pw_(ig__);
         }
 
+        inline void set_veff_pw(double_complex* veff_pw__)
+        {
+            std::copy(veff_pw__, veff_pw__ + ctx_.gvec().num_gvec(), veff_pw_.at<CPU>());
+        }
+
         double_complex const& rm_inv_pw(int ig__) const
         {
             return rm_inv_pw_(ig__);
         }
 
+        inline void set_rm_inv_pw(double_complex* rm_inv_pw__)
+        {
+            std::copy(rm_inv_pw__, rm_inv_pw__ + ctx_.gvec().num_gvec(), rm_inv_pw_.at<CPU>());
+        }
+
         double_complex const& rm2_inv_pw(int ig__) const
         {
             return rm2_inv_pw_(ig__);
+        }
+
+        inline void set_rm2_inv_pw(double_complex* rm2_inv_pw__)
+        {
+            std::copy(rm2_inv_pw__, rm2_inv_pw__ + ctx_.gvec().num_gvec(), rm2_inv_pw_.at<CPU>());
         }
 
         inline void fft_transform(int direction__)

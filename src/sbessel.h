@@ -1,4 +1,4 @@
-// Copyright (c) 2013-2016 Anton Kozhevnikov, Thomas Schulthess
+// Copyright (c) 2013-2017 Anton Kozhevnikov, Thomas Schulthess
 // All rights reserved.
 // 
 // Redistribution and use in source and binary forms, with or without modification, are permitted provided that 
@@ -31,12 +31,15 @@
 namespace sirius
 {
 
-/// Spherical Bessel functions \f$ j_{\ell}(\nu x) \f$ up to lmax.
+/// Spherical Bessel functions \f$ j_{\ell}(q x) \f$ up to lmax.
 class Spherical_Bessel_functions
 {
     private:
+        int lmax_{-1};
+        double q_{0};
+        Radial_grid const* rgrid_{nullptr};
 
-        std::vector< Spline<double> > sbessel_;
+        std::vector<Spline<double>> sbessel_;
 
     public:
 
@@ -44,25 +47,61 @@ class Spherical_Bessel_functions
         {
         }
 
-        Spherical_Bessel_functions(int lmax__, Radial_grid const& rgrid__, double nu__)
+        Spherical_Bessel_functions(int lmax__, Radial_grid const& rgrid__, double q__)
+            : lmax_(lmax__)
+            , q_(q__)
+            , rgrid_(&rgrid__)
         {
-            sbessel_ = std::vector< Spline<double> >(lmax__ + 1);
-            for (int l = 0; l <= lmax__; l++) sbessel_[l] = Spline<double>(rgrid__);
+            assert(q_ >= 0);
 
-            std::vector<double> jl(lmax__ + 1);
-            for (int ir = 0; ir < rgrid__.num_points(); ir++)
-            {
-                double t = rgrid__[ir] * nu__;
-                gsl_sf_bessel_jl_array(lmax__, t, &jl[0]);
-                for (int l = 0; l <= lmax__; l++) sbessel_[l][ir] = jl[l];
+            sbessel_ = std::vector<Spline<double>>(lmax__ + 2);
+            for (int l = 0; l <= lmax__ + 1; l++) {
+                sbessel_[l] = Spline<double>(rgrid__);
+            }
+
+            std::vector<double> jl(lmax__ + 2);
+            for (int ir = 0; ir < rgrid__.num_points(); ir++) {
+                double t = rgrid__[ir] * q__;
+                gsl_sf_bessel_jl_array(lmax__ + 1, t, &jl[0]);
+                for (int l = 0; l <= lmax__ + 1; l++) {
+                    sbessel_[l][ir] = jl[l];
+                }
             }
             
-            for (int l = 0; l <= lmax__; l++) sbessel_[l].interpolate();
+            for (int l = 0; l <= lmax__ + 1; l++) {
+                sbessel_[l].interpolate();
+            }
         }
 
         Spline<double> const& operator[](int l__) const
         {
+            assert(l__ <= lmax_);
             return sbessel_[l__];
+        }
+        
+        /// Derivative of Bessel function with respect to q.
+        /** \f[
+         *    \frac{\partial j_{\ell}(q x)}{\partial q} = \frac{\ell}{q} j_{\ell}(q x) - x j_{\ell+1}(q x)
+         *  \f]
+         */
+        Spline<double> deriv_q(int l__)
+        {
+            assert(l__ <= lmax_);
+            assert(q_ >= 0);
+            Spline<double> s(*rgrid_);
+            if (q_ != 0) {
+                for (int ir = 0; ir < rgrid_->num_points(); ir++) {
+                    s[ir] = (l__ / q_) * sbessel_[l__][ir] - (*rgrid_)[ir] * sbessel_[l__ + 1][ir];
+                }
+            } else {
+                if (l__ == 1) {
+                    for (int ir = 0; ir < rgrid_->num_points(); ir++) {
+                        s[ir] = (*rgrid_)[ir] / 3;
+                    }
+                }
+            }
+            s.interpolate();
+            return std::move(s);
         }
 };
 

@@ -336,6 +336,31 @@ class wave_functions
             return gkvec_;
         }
 
+        inline double_complex checksum_pw(int i0__, int n__)
+        {
+            assert(n__ != 0);
+            double_complex cs(0, 0);
+            #ifdef __GPU
+            if (pu_ == GPU) {
+                mdarray<double_complex, 1> cs1(n__, memory_t::host | memory_t::device, "checksum");
+                cs1.zero_on_device();
+                add_checksum_gpu(pw_coeffs().prime().at<GPU>(0, i0__), pw_coeffs().num_rows_loc(), n__, cs1.at<GPU>());
+                cs1.copy_to_host();
+                cs = cs1.checksum();
+            }
+            #endif
+            if (pu_ == CPU) {
+                for (int i = 0; i < n__; i++) {
+                    for (int j = 0; j < pw_coeffs().num_rows_loc(); j++) {
+                        cs += pw_coeffs().prime(j, i0__ + i);
+                    }
+                }
+            }
+            comm_.allreduce(&cs, 1);
+            return cs;
+        }
+        
+        /// Compute the checksum for n wave-functions starting from i0.
         inline double_complex checksum(int i0__, int n__)
         {
             assert(n__ != 0);

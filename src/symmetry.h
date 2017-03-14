@@ -36,6 +36,7 @@ extern "C" {
 
 namespace sirius {
 
+/// Descriptor of the space group symmetry operation.
 struct space_group_symmetry_descriptor
 {
     /// Rotational part of symmetry operation (fractional coordinates).
@@ -50,13 +51,19 @@ struct space_group_symmetry_descriptor
     /// Proper rotation matrix in Cartesian coordinates.
     matrix3d<double> rotation;
 
+    /// Three Euler angles that generate the proper rotation matrix.
     vector3d<double> euler_angles;
 };
 
+/// Descriptor of the magnetic group symmetry operation.
 struct magnetic_group_symmetry_descriptor
 {
+    /// Element of space group symmetry.
     space_group_symmetry_descriptor spg_op;
-
+    
+    /// Index of the space group symmetry operation.
+    /** This index is used to search for the transfomation of atoms under the current space group operation
+     *  in the precomputed symmetry table. */
     int isym;
 
     /// Proper rotation matrix in Cartesian coordinates.
@@ -89,8 +96,10 @@ class Symmetry
          *  transforms under symmetry operation. */
         mdarray<int, 2> sym_table_;
         
+        /// List of all space group symmetry operations.
         std::vector<space_group_symmetry_descriptor> space_group_symmetry_;
 
+        /// List of all magnetic group symmetry operations.
         std::vector<magnetic_group_symmetry_descriptor> magnetic_group_symmetry_;
 
         /// Compute Euler angles corresponding to the proper rotation part of the given symmetry.

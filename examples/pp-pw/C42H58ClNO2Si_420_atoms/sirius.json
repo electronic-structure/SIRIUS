@@ -3,11 +3,12 @@
       "cyclic_block_size" : 32,
       "processing_unit" : "cpu",
       "std_evp_solver_type" : "elpa1",
-      "gen_evp_solver_type" : "elpa1"
+      "gen_evp_solver_type" : "elpa1",
+      "verbosity" : 1
   },
 
   "parameters" : {
-      "electronic_structure_method" : "paw_pseudopotential",
+      "electronic_structure_method" : "pseudopotential",
 
       "!num_fv_states" : 40,
 
@@ -28,8 +29,9 @@
       "num_dft_iter" : 100,
 
       "ngridk" : [1,1,1],
+      
+      "gamma_point" : 1
 
-      "reduce_gvec": 0
   },
 
     "iterative_solver" : {

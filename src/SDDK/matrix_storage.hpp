@@ -33,9 +33,12 @@ enum class matrix_storage_t
     block_cyclic
 };
 
+/// Class declaration.
 template <typename T, matrix_storage_t kind>
 class matrix_storage;
 
+/// Specialization of matrix storage class for slab data distribution.
+/** \tparam T data type */
 template <typename T>
 class matrix_storage<T, matrix_storage_t::slab>
 {
@@ -89,7 +92,7 @@ class matrix_storage<T, matrix_storage_t::slab>
     /// Set the dimensions of the extra matrix storage.
     /** \param [in] num_rows Number of rows in the extra matrix storage.
      *  \param [in] comm     Communicator used to distribute columns of the matrix.
-     *  \param [in] n        Number of columns to distribute.
+     *  \param [in] n        Number of matrix columns to distribute.
      *  \param [in] idx0     Starting column of the matrix.
      *
      *  \image html matrix_storage.png "Redistribution of wave-functions between MPI ranks"
@@ -128,8 +131,18 @@ class matrix_storage<T, matrix_storage_t::slab>
     
     /// Remap data from prime to extra storage.
     /** Prime storage is expected on the CPU (for the MPI a2a communication). If prime storage was also allocated on
-     *  the device, extra storage will be copied to device as well. */
-    inline void remap_forward(block_data_descriptor const& row_distr__, Communicator const& comm_col__, int n__, int idx0__ = 0)
+     *  the device, extra storage will be copied to device as well. 
+     *  \param [in] row_distr Distribution of rows of prime matrix in the extra matrix storage. 
+     *  \param [in] comm      Communicator used to distribute columns of the matrix.
+     *  \param [in] n         Number of matrix columns to distribute.
+     *  \param [in] idx0      Starting column of the matrix.
+     *  \tparam mem_type      Indicates which type of memory is remapped to exrta storage.
+     */
+    template <memory_t mem_type = memory_t::host>
+    inline void remap_forward(block_data_descriptor const& row_distr__,
+                              Communicator const& comm_col__,
+                              int n__,
+                              int idx0__ = 0)
     {
         PROFILE("sddk::matrix_storage::remap_forward");
 
@@ -169,16 +182,23 @@ class matrix_storage<T, matrix_storage_t::slab>
             }
         }
         /* if prime storage was on device, copy extra storage to the device as well */
-        #ifdef __GPU
-        if (pu_ == GPU && prime_.on_device()) {
+        if ((mem_type & memory_t::device) != memory_t::none) {
             extra_.allocate(memory_t::device);
-            extra_.copy_to_device();
+            extra_.template copy<memory_t::host, memory_t::device>();
         }
-        #endif
     }
 
     /// Remap data from extra to prime storage.
-    inline void remap_backward(block_data_descriptor const& row_distr__, Communicator const& comm_col__, int n__,
+    /** \param [in] row_distr Distribution of rows of prime matrix in the extra matrix storage. 
+     *  \param [in] comm      Communicator used to distribute columns of the matrix.
+     *  \param [in] n         Number of matrix columns to collect.
+     *  \param [in] idx0      Starting column of the matrix.
+     *  \tparam mem_type      Indicates which type of memory is remapped back to prime storage.
+     */
+    template <memory_t mem_type = memory_t::host>
+    inline void remap_backward(block_data_descriptor const& row_distr__,
+                               Communicator const& comm_col__,
+                               int n__,
                                int idx0__ = 0)
     {
         PROFILE("sddk::matrix_storage::remap_backward");
@@ -189,11 +209,9 @@ class matrix_storage<T, matrix_storage_t::slab>
         }
         
         /* move data to host to perfoem MPI a2a communication */
-        #ifdef __GPU
-        if (pu_ == GPU && prime_.on_device()) {
-            extra_.copy_to_host();
+        if ((mem_type & memory_t::device) != memory_t::none) {
+            extra_.template copy<memory_t::device, memory_t::host>();
         }
-        #endif
 
         assert(n__ == spl_num_col_.global_index_size());
 
@@ -227,11 +245,9 @@ class matrix_storage<T, matrix_storage_t::slab>
                             rd.counts.data(), rd.offsets.data());
 
         /* move data back to device */
-        #ifdef __GPU
-        if (pu_ == GPU && prime_.on_device()) {
-            copy_to_device(idx0__, n__);
+        if ((mem_type & memory_t::device) != memory_t::none && num_rows_loc()) {
+            prime_.template copy<memory_t::host, memory_t::device>(idx0__ * num_rows_loc(), n__ * num_rows_loc());
         }
-        #endif
     }
 
     inline void remap_from(dmatrix<T> const& mtrx__, int irow0__)
@@ -359,6 +375,12 @@ class matrix_storage<T, matrix_storage_t::slab>
     mdarray<T, 2> const& extra() const
     {
         return extra_;
+    }
+    
+    template <memory_t mem_type>
+    inline void zero(int i0__, int n__)
+    {
+        prime_.zero<mem_type>(i0__ * num_rows_loc(), n__ * num_rows_loc());
     }
 
     /// Local number of rows in prime matrix.

@@ -260,6 +260,11 @@ class Atom_symmetry_class
             return o1_radial_integrals_(xi1__, xi2__);
         }
 
+        inline void set_o1_radial_integral(int idxrf1__, int idxrf2__, double val__)
+        {
+            o1_radial_integrals_(idxrf1__, idxrf2__) = val__;
+        }
+
         inline double so_radial_integral(int l, int order1, int order2) const
         {
             return so_radial_integrals_(l, order1, order2);

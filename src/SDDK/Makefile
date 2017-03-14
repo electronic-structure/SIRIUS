@@ -11,7 +11,8 @@ ifneq (,$(findstring D__GPU,$(CXX_OPT)))
 	GPU/cuda_interface.o \
 	GPU/cufft_interface.o \
 	GPU/cublas_interface.o \
-	GPU/pack_unpack_z_columns.o
+	GPU/pack_unpack_z_columns.o \
+	GPU/checksum.o
 endif
 
 ifneq (,$(findstring D__MAGMA,$(CXX_OPT)))
@@ -38,4 +39,4 @@ all: $(OBJ)
 #	$(MPI_FC) $(MPI_FC_OPT) test.f90 -o test sddk_api.o sddk.o -lstdc++ /Users/antonk/src/github/toxa81/SIRIUS/libs/fftw-3.3.5/.libs/libfftw3.a
 	
 clean:
-	rm *.o *.mod
+	rm *.o *.mod GPU/*.o

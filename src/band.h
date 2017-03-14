@@ -452,7 +452,7 @@ class Band
                 TERMINATE("eigen-value solvers must be parallel");
             }
 
-            local_op_ = std::unique_ptr<Local_operator>(new Local_operator(ctx_.fft_coarse()));
+            local_op_ = std::unique_ptr<Local_operator>(new Local_operator(ctx_, ctx_.fft_coarse()));
         }
 
         /// Apply the muffin-tin part of the Hamiltonian to the apw basis functions of an atom.
