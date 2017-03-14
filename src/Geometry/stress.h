@@ -287,6 +287,11 @@ Strain derivative of reciprocal vector:
 \f[
   \frac{\partial G_{\tau}}{\partial \varepsilon_{\mu \nu}} = -\delta_{\tau \nu} G_{\mu}
 \f]
+Strain derivative of the length of reciprocal vector:
+\f[
+  \frac{\partial |{\bf G}|}{\partial \varepsilon_{\mu \nu}} = \sum_{\tau} \frac{\partial |{\bf G}|}{\partial G_{\tau}}
+    \frac{\partial G_{\tau}}{\partial \varepsilon_{\mu \nu}} = -\frac{1}{|{\bf G}|}G_{\nu}G_{\mu}
+\f]
 Stress tensor is a reaction to strain:
 \f[
   \sigma_{\mu \nu} = \frac{1}{\Omega} \frac{\partial E_{tot}}{\partial \varepsilon_{\mu \nu}} =
@@ -454,8 +459,10 @@ and
 Using the expression for \f$ \tilde V^{loc}({\bf G}) \f$, the local contribution to the total energy is rewritten as
 \f[
   E^{loc} = \frac{1}{\Omega} \sum_{\bf G} \tilde \rho^{*}({\bf G}) \sum_{\alpha} e^{-{\bf G\tau}_{\alpha}} 4 \pi 
-    \int V_{\alpha}^{loc}(r)\frac{\sin(Gr)}{Gr} r^2 dr
+    \int V_{\alpha}^{loc}(r)\frac{\sin(Gr)}{Gr} r^2 dr = 
+    \frac{4\pi}{\Omega}\sum_{\bf G}\tilde \rho^{*}({\bf G})\sum_{\alpha} e^{-{\bf G\tau}_{\alpha}} 
+    \Bigg( \int \Big(V_{\alpha}(r) r + Z_{\alpha}^p {\rm erf}(r) \Big) \frac{\sin(Gr)}{G} dr -  Z_{\alpha}^p \frac{e^{-\frac{G^2}{4}}}{G^2} \Bigg)
 \f]
-
+(see \link sirius::Potential::generate_local_potential \endlink for details).
 
  */
