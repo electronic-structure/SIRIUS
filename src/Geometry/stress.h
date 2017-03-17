@@ -35,6 +35,8 @@ class Stress {
 
     Density& density_;
 
+    Potential& potential_;
+
     matrix3d<double> stress_kin_;
 
     matrix3d<double> stress_har_;
@@ -203,6 +205,7 @@ class Stress {
 
         for (int igloc = 0; igloc < ctx_.gvec_count(); igloc++) {
             int ig = ctx_.gvec_offset() + igloc;
+            
             if (!ig) {
                 continue;
             }
@@ -214,15 +217,17 @@ class Stress {
                     stress_vloc_(mu, nu) += std::real(std::conj(density_.rho()->f_pw(ig)) * dv[igloc]) * G[mu] * G[nu];
                 }
             }
+
             sdiag += std::real(std::conj(density_.rho()->f_pw(ig)) * v[igloc]);
         }
-
+        
         if (ctx_.gvec().reduced()) {
             stress_vloc_ *= 2;
             sdiag *= 2;
         }
-
-        std::cout << "sdiag="<<sdiag<<std::endl;
+        if (ctx_.comm().rank() == 0) {
+            sdiag += std::real(std::conj(density_.rho()->f_pw(0)) * v[0]);
+        }
 
         for (int mu: {0, 1, 2}) {
             stress_vloc_(mu, mu) -= sdiag;
@@ -252,10 +257,12 @@ class Stress {
   public:
     Stress(Simulation_context& ctx__,
            K_point_set& kset__,
-           Density& density__)
+           Density& density__,
+           Potential& potential__)
         : ctx_(ctx__)
         , kset_(kset__)
         , density_(density__)
+        , potential_(potential__)
     {
         calc_stress_kin();
         calc_stress_har();
@@ -285,7 +292,6 @@ class Stress {
             printf("%12.6f %12.6f %12.6f\n", stress_vloc_(mu, 0), stress_vloc_(mu, 1), stress_vloc_(mu, 2));
         }
     }
-
 };
 
 }

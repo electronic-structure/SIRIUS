@@ -1,4 +1,4 @@
-// Copyright (c) 2013-2016 Anton Kozhevnikov, Thomas Schulthess
+// Copyright (c) 2013-2017 Anton Kozhevnikov, Thomas Schulthess
 // All rights reserved.
 // 
 // Redistribution and use in source and binary forms, with or without modification, are permitted provided that 
@@ -336,14 +336,14 @@ class Potential
             ctx_.fft().transform<1>(ctx_.gvec().partition(), &v[ctx_.gvec().partition().gvec_offset_fft()]);
             ctx_.fft().output(&local_potential_->f_rg(0));
 
-            //if (ctx_.control().print_checksum_) {
-            //    auto cs = local_potential_->checksum_pw();
-            //    auto cs1 = local_potential_->checksum_rg();
-            //    if (ctx_.comm().rank() == 0) {
-            //        DUMP("checksum(local_potential_pw): %18.10f %18.10f", cs.real(), cs.imag());
-            //        DUMP("checksum(local_potential_rg): %18.10f", cs1);
-            //    }
-            //}
+            if (ctx_.control().print_checksum_) {
+                auto cs = local_potential_->checksum_pw();
+                auto cs1 = local_potential_->checksum_rg();
+                if (ctx_.comm().rank() == 0) {
+                    DUMP("checksum(local_potential_pw): %18.10f %18.10f", cs.real(), cs.imag());
+                    DUMP("checksum(local_potential_rg): %18.10f", cs1);
+                }
+            }
         }
         
         inline void xc_mt_nonmagnetic(Radial_grid const& rgrid,
