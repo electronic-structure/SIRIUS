@@ -326,12 +326,12 @@ class Potential
         inline void generate_local_potential()
         {
             PROFILE("sirius::Potential::generate_local_potential");
-
-            auto v = unit_cell_.make_periodic_function([this](int iat, double g)
-                                                       {
-                                                           return ctx_.radial_integrals().vloc_radial_integral(iat, g);
-                                                       },
-                                                       ctx_.gvec());
+            
+            Radial_integrals_vloc ri(ctx_.unit_cell(), ctx_.pw_cutoff(), 100);
+            auto v = ctx_.make_periodic_function<index_domain_t::global>([&ri](int iat, double g)
+                                                                         {
+                                                                             return ri.value(iat, g);
+                                                                         });
 
             ctx_.fft().transform<1>(ctx_.gvec().partition(), &v[ctx_.gvec().partition().gvec_offset_fft()]);
             ctx_.fft().output(&local_potential_->f_rg(0));
@@ -1041,7 +1041,7 @@ class Potential
 
         void mixer_init()
         {
-            mixer_ = Mixer_factory<double>(ctx_.mixer_input_section().type_, size(), ctx_.mixer_input_section(), comm_);
+            mixer_ = Mixer_factory<double>(ctx_.mixer_input().type_, size(), ctx_.mixer_input(), comm_);
             pack(*mixer_);
             mixer_->initialize();
         }

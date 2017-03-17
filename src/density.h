@@ -350,11 +350,12 @@ class Density
         {
             PROFILE("sirius::Density::generate_pseudo_core_charge_density");
 
-            auto v = unit_cell_.make_periodic_function([this](int iat, double g)
-                                                       {
-                                                           return ctx_.radial_integrals().pseudo_core_radial_integral(iat, g);
-                                                       },
-                                                       ctx_.gvec());
+            auto ri = Radial_integrals_rho_pseudo(ctx_.unit_cell(), ctx_.pw_cutoff(), 20);
+
+            auto v = ctx_.make_periodic_function<index_domain_t::global>([&ri](int iat, double g)
+                                                                         {
+                                                                             return ri.value(iat, g);
+                                                                         });
             ctx_.fft().transform<1>(ctx_.gvec().partition(), &v[ctx_.gvec().partition().gvec_offset_fft()]);
             ctx_.fft().output(&rho_pseudo_core_->f_rg(0));
         }
@@ -384,20 +385,9 @@ class Density
                 magnetization_[i] = new Periodic_function<double>(ctx_, ctx_.lmmax_rho(), 1);
             }
             
-            using gc_z = Gaunt_coefficients<double_complex>;
-
-            switch (ctx_.esm_type()) {
-                case electronic_structure_method_t::full_potential_lapwlo: {
-                    gaunt_coefs_ = std::unique_ptr<gc_z>(new gc_z(ctx_.lmax_apw(), ctx_.lmax_rho(), ctx_.lmax_apw(), SHT::gaunt_hybrid));
-                    break;
-                }
-                case electronic_structure_method_t::full_potential_pwlo: {
-                    gaunt_coefs_ = std::unique_ptr<gc_z>(new gc_z(ctx_.lmax_pw(), ctx_.lmax_rho(), ctx_.lmax_pw(), SHT::gaunt_hybrid));
-                    break;
-                }
-                default : {
-                    break;
-                }
+            if (ctx_.full_potential()) {
+                using gc_z = Gaunt_coefficients<double_complex>;
+                gaunt_coefs_ = std::unique_ptr<gc_z>(new gc_z(ctx_.lmax_apw(), ctx_.lmax_rho(), ctx_.lmax_apw(), SHT::gaunt_hybrid));
             }
 
             l_by_lm_ = Utils::l_by_lm(ctx_.lmax_rho());
@@ -441,18 +431,18 @@ class Density
                 if (hf_gvec_.size()) {
                     high_freq_mixer_ = Mixer_factory<double_complex>("linear",
                                                                      hf_gvec_.size() * (1 + ctx_.num_mag_dims()),
-                                                                     ctx_.mixer_input_section(),
+                                                                     ctx_.mixer_input(),
                                                                      ctx_.comm());
                 }
-                low_freq_mixer_ = Mixer_factory<double_complex>(ctx_.mixer_input_section().type_,
+                low_freq_mixer_ = Mixer_factory<double_complex>(ctx_.mixer_input().type_,
                                                                 lf_gvec_.size() * (1 + ctx_.num_mag_dims()) + density_matrix_.size(),
-                                                                ctx_.mixer_input_section(),
+                                                                ctx_.mixer_input(),
                                                                 ctx_.comm(),
                                                                 weights);
             }
 
             if (ctx_.full_potential()) {
-                mixer_ = Mixer_factory<double>(ctx_.mixer_input_section().type_, size(), ctx_.mixer_input_section(), ctx_.comm());
+                mixer_ = Mixer_factory<double>(ctx_.mixer_input().type_, size(), ctx_.mixer_input(), ctx_.comm());
             }
         }
         
@@ -706,7 +696,7 @@ class Density
         /// Check density at MT boundary
         void check_density_continuity_at_mt();
 
-        mdarray<double, 2> generate_rho_radial_integrals(int type__);
+        //mdarray<double, 2> generate_rho_radial_integrals(int type__);
 
         void generate_pw_coefs()
         {
@@ -1045,7 +1035,6 @@ class Density
 #include "Density/generate_rho_aug.hpp"
 #include "Density/symmetrize_density_matrix.hpp"
 #include "Density/generate_valence_mt.hpp"
-#include "Density/generate_rho_radial_integrals.hpp"
 #include "Density/check_density_continuity_at_mt.hpp"
 #include "Density/paw_density.hpp"
 }

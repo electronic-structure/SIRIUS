@@ -1,4 +1,4 @@
-// Copyright (c) 2013-2014 Anton Kozhevnikov, Thomas Schulthess
+// Copyright (c) 2013-2017 Anton Kozhevnikov, Thomas Schulthess
 // All rights reserved.
 // 
 // Redistribution and use in source and binary forms, with or without modification, are permitted provided that 
@@ -180,6 +180,23 @@ class Stress {
         }
 
         symmetrize(stress_ewald_);
+    }
+
+    inline void calc_stress_vloc()
+    {
+        //auto v = ctx_.unit_cell_.make_periodic_function([this](int iat, double g)
+        //                                                {
+        //                                                    return ctx_.radial_integrals().vloc_radial_integral(iat, g);
+        //                                                },
+        //                                                ctx_.gvec());
+
+        //auto dv = ctx_.unit_cell_.make_periodic_function([this](int iat, double g)
+        //                                                 {
+        //                                                     return ctx_.radial_integrals().vloc_dj0dq_radial_integral(iat, g);
+        //                                                 },
+        //                                                 ctx_.gvec());
+
+
     }
 
     inline void symmetrize(matrix3d<double>& mtrx__)
@@ -464,5 +481,21 @@ Using the expression for \f$ \tilde V^{loc}({\bf G}) \f$, the local contribution
     \Bigg( \int \Big(V_{\alpha}(r) r + Z_{\alpha}^p {\rm erf}(r) \Big) \frac{\sin(Gr)}{G} dr -  Z_{\alpha}^p \frac{e^{-\frac{G^2}{4}}}{G^2} \Bigg)
 \f]
 (see \link sirius::Potential::generate_local_potential \endlink for details).
+
+Contribution to stress tensor:
+\f[
+   \sigma_{\mu \nu}^{loc} = \frac{1}{\Omega} \frac{\partial  E^{loc}}{\partial \varepsilon_{\mu \nu}} =
+     \frac{1}{\Omega} \frac{-1}{\Omega} \delta_{\mu \nu} \sum_{\bf G}\tilde \rho^{*}({\bf G}) \tilde V^{loc}({\bf G}) + 
+     \frac{4\pi}{\Omega^2} \sum_{\bf G}\tilde \rho^{*}({\bf G}) \sum_{\alpha} e^{-{\bf G\tau}_{\alpha}}
+     \Bigg( \int \Big(V_{\alpha}(r) r + Z_{\alpha}^p {\rm erf}(r) \Big) \Big( \frac{r \cos (G r)}{G}-\frac{\sin (G r)}{G^2} \Big)
+     \Big( -\frac{G_{\mu}G_{\nu}}{G} \Big) dr -  Z_{\alpha}^p \Big( -\frac{e^{-\frac{G^2}{4}}}{2 G}-\frac{2 e^{-\frac{G^2}{4}}}{G^3} \Big) 
+     \Big( -\frac{G_{\mu}G_{\nu}}{G} \Big)  \Bigg) = \\
+     -\delta_{\mu \nu} \sum_{\bf G}\rho^{*}({\bf G}) V^{loc}({\bf G}) + \sum_{\bf G} \rho^{*}({\bf G}) \Delta V^{loc}({\bf G}) G_{\mu}G_{\nu}
+\f]
+where \f$ \Delta V^{loc}({\bf G}) \f$ is built from the following radial integrals:
+\f[
+  \int \Big(V_{\alpha}(r) r + Z_{\alpha}^p {\rm erf}(r) \Big) \Big( \frac{\sin (G r)}{G^3} - \frac{r \cos (G r)}{G^2}\Big) dr - 
+    Z_{\alpha}^p \Big( \frac{e^{-\frac{G^2}{4}}}{2 G^2} + \frac{2 e^{-\frac{G^2}{4}}}{G^4} \Big)  
+\f]
 
  */

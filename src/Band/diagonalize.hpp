@@ -254,7 +254,7 @@ inline void Band::get_singular_components(K_point* kp__) const
         printf("number of singular components: %i\n", ncomp);
     }
 
-    auto& itso = ctx_.iterative_solver_input_section();
+    auto& itso = ctx_.iterative_solver_input();
 
     int num_phi = itso.subspace_size_ * ncomp;
 
@@ -406,7 +406,7 @@ inline void Band::diag_fv_full_potential_davidson(K_point* kp) const
     /* short notation for number of target wave-functions */
     int num_bands = ctx_.num_fv_states();
 
-    auto& itso = ctx_.iterative_solver_input_section();
+    auto& itso = ctx_.iterative_solver_input();
 
     /* short notation for target wave-functions */
     auto& psi = kp->fv_eigen_vectors_slab();
@@ -623,7 +623,7 @@ inline void Band::diag_pseudo_potential_davidson(K_point* kp__,
     /* short notation for number of target wave-functions */
     int num_bands = ctx_.num_fv_states();
 
-    auto& itso = ctx_.iterative_solver_input_section();
+    auto& itso = ctx_.iterative_solver_input();
 
     /* short notation for target wave-functions */
     auto& psi = kp__->spinor_wave_functions(ispn__);
@@ -1132,7 +1132,7 @@ inline void Band::diag_pseudo_potential_rmm_diis(K_point* kp__,
                                                  Q_operator<T>& q_op__) const
 
 {
-    auto& itso = ctx_.iterative_solver_input_section();
+    auto& itso = ctx_.iterative_solver_input();
     double tol = ctx_.iterative_solver_tolerance();
 
     if (tol > 1e-4) {

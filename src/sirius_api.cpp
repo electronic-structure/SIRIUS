@@ -2208,7 +2208,7 @@ void sirius_get_gvec_index(int32_t* gvec__, int32_t* ig__)
 
 void sirius_use_internal_mixer(int32_t* use_internal_mixer__)
 {
-    *use_internal_mixer__ = (sim_ctx->mixer_input_section().exist_) ? 1 : 0;
+    *use_internal_mixer__ = (sim_ctx->mixer_input().exist_) ? 1 : 0;
 }
 
 void sirius_set_iterative_solver_tolerance(double* tol__)

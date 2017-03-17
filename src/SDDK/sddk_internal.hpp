@@ -15,6 +15,9 @@
 #include <memory>
 #include <complex>
 #include "communicator.hpp"
+#ifdef __GPU
+#include "gpu.h"
+#endif
 
 namespace sddk {
 

@@ -314,8 +314,7 @@ class DFT_ground_state
             double tot_en{0};
 
             switch (ctx_.esm_type()) {
-                case electronic_structure_method_t::full_potential_lapwlo:
-                case electronic_structure_method_t::full_potential_pwlo: {
+                case electronic_structure_method_t::full_potential_lapwlo: {
                     tot_en = (energy_kin() + energy_exc() + 0.5 * energy_vha() + energy_enuc());
                     break;
                 }

@@ -30,7 +30,7 @@
 #include "unit_cell.h"
 #include "wave_functions.hpp"
 #include "sbessel.h"
-#include "simulation_context.h"
+#include "simulation_parameters.h"
 
 #ifdef __GPU
 extern "C" void create_beta_gk_gpu(int num_atoms,
@@ -65,6 +65,8 @@ class Beta_projectors
 
     protected:
 
+        Simulation_context_base const& ctx_;
+
         Communicator const& comm_;
 
         Unit_cell const& unit_cell_;
@@ -98,6 +100,8 @@ class Beta_projectors
         /// Explicit GPU buffer for beta-projectors.
         matrix<double_complex> beta_gk_gpu_;
 
+        std::unique_ptr<Radial_integrals_beta> beta_radial_integrals_;
+
         struct beta_chunk_t
         {
             int num_beta_;
@@ -112,7 +116,7 @@ class Beta_projectors
         int max_num_beta_;
 
         /// Generate plane-wave coefficients for beta-projectors of atom types.
-        void generate_beta_gk_t(Simulation_context const& ctx__);
+        void generate_beta_gk_t(Simulation_context_base const& ctx__);
                     
         void split_in_chunks();
 
@@ -127,7 +131,7 @@ class Beta_projectors
 
     public:
 
-        Beta_projectors(Simulation_context const& ctx__,
+        Beta_projectors(Simulation_context_base const& ctx__,
                         Communicator const& comm__,
                         Gvec const& gkvec__);
 
@@ -235,6 +239,8 @@ class Beta_projectors
         {
             PROFILE("sirius::Beta_projectors::generate_beta_gk_t_lat_deriv");
 
+            auto beta_dG_ri = Radial_integrals_beta_dg(unit_cell_, ctx_.gk_cutoff(), 20);
+
             int mu = 0;
             int nu = 0;
 
@@ -322,10 +328,10 @@ class Beta_projectors
 
                         auto z = std::pow(double_complex(0, -1), l) * fourpi / std::sqrt(unit_cell_.omega());
 
-                        auto d1 = ctx__.radial_integrals().beta_radial_integral(idxrf, iat, gvs[0]) *
+                        auto d1 = beta_radial_integrals_->value(idxrf, iat, gvs[0]) *
                                   (gkvec_drlm[lm] - 0.5 * gkvec_rlm[lm] * unit_cell_.inverse_lattice_vectors()(nu, mu)); 
 
-                        auto d2 = gkvec_rlm[lm] * djl_da(gvc, gvs, mu, nu) * ctx__.radial_integrals().beta_djldq_radial_integral(idxrf, iat, gvs[0]);
+                        auto d2 = gkvec_rlm[lm] * djl_da(gvc, gvs, mu, nu) * beta_dG_ri.value(idxrf, iat, gvs[0]);
 
                         beta_gk_t_lat_deriv(igkloc, atom_type.offset_lo() + xi) = z * (d1 + d2);
                     }
@@ -342,10 +348,11 @@ class Beta_projectors
         }
 };
 
-inline Beta_projectors::Beta_projectors(Simulation_context const& ctx__,
+inline Beta_projectors::Beta_projectors(Simulation_context_base const& ctx__,
                                         Communicator const& comm__,
                                         Gvec const& gkvec__)
-    : comm_(comm__)
+    : ctx_(ctx__)
+    , comm_(comm__)
     , unit_cell_(ctx__.unit_cell())
     , gkvec_(gkvec__)
     , lmax_beta_(unit_cell_.lmax())
@@ -355,9 +362,11 @@ inline Beta_projectors::Beta_projectors(Simulation_context const& ctx__,
 
     num_gkvec_loc_ = gkvec_.gvec_count(comm_.rank());
 
+    beta_radial_integrals_ = std::unique_ptr<Radial_integrals_beta>(new Radial_integrals_beta(unit_cell_, ctx_.gk_cutoff(), 20));
+
     split_in_chunks();
 
-    generate_beta_gk_t(ctx__);
+    generate_beta_gk_t(ctx_);
 
     if (pu_ == GPU) {
         gkvec_coord_ = mdarray<double, 2>(3, num_gkvec_loc_, ctx__.dual_memory_t());
@@ -399,7 +408,7 @@ inline Beta_projectors::Beta_projectors(Simulation_context const& ctx__,
     }
 }
 
-inline void Beta_projectors::generate_beta_gk_t(Simulation_context const& ctx__)
+inline void Beta_projectors::generate_beta_gk_t(Simulation_context_base const& ctx__)
 {
     PROFILE("sirius::Beta_projectors::generate_beta_gk_t");
 
@@ -428,7 +437,7 @@ inline void Beta_projectors::generate_beta_gk_t(Simulation_context const& ctx__)
                 int idxrf = atom_type.indexb(xi).idxrf;
 
                 auto z = std::pow(double_complex(0, -1), l) * fourpi / std::sqrt(unit_cell_.omega());
-                beta_gk_t_(igkloc, atom_type.offset_lo() + xi) = z * gkvec_rlm[lm] * ctx__.radial_integrals().beta_radial_integral(idxrf, iat, gk);
+                beta_gk_t_(igkloc, atom_type.offset_lo() + xi) = z * gkvec_rlm[lm] * beta_radial_integrals_->value(idxrf, iat, gk);
             }
         }
     }
