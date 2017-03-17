@@ -350,7 +350,7 @@ class Density
         {
             PROFILE("sirius::Density::generate_pseudo_core_charge_density");
 
-            auto ri = Radial_integrals_rho_pseudo(ctx_.unit_cell(), ctx_.pw_cutoff(), 20);
+            auto ri = Radial_integrals_rho_core_pseudo(ctx_.unit_cell(), ctx_.pw_cutoff(), 20);
 
             auto v = ctx_.make_periodic_function<index_domain_t::global>([&ri](int iat, double g)
                                                                          {

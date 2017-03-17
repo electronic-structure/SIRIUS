@@ -209,7 +209,7 @@ class Simulation_context_base: public Simulation_parameters
         /// Communicator of the coarse FFT grid.
         Communicator const& comm_fft_coarse() const
         {
-            if (control_input_.fft_mode_ == "serial") {
+            if (control().fft_mode_ == "serial") {
                 return mpi_comm_self();
             } else {
                 return comm_fft();
@@ -373,10 +373,10 @@ inline void Simulation_context_base::init_fft()
 {
     auto rlv = unit_cell_.reciprocal_lattice_vectors();
 
-    int npr = control_input_.mpi_grid_dims_[0];
-    int npc = control_input_.mpi_grid_dims_[1];
+    int npr = control().mpi_grid_dims_[0];
+    int npc = control().mpi_grid_dims_[1];
 
-    if (!(control_input_.fft_mode_ == "serial" || control_input_.fft_mode_ == "parallel")) {
+    if (!(control().fft_mode_ == "serial" || control().fft_mode_ == "parallel")) {
         TERMINATE("wrong FFT mode");
     }
 
@@ -384,7 +384,7 @@ inline void Simulation_context_base::init_fft()
     fft_ = std::unique_ptr<FFT3D>(new FFT3D(find_translations(pw_cutoff(), rlv), comm_fft(), processing_unit())); 
 
     /* create a list of G-vectors for dense FFT grid; G-vectors are divided between all available MPI ranks.*/
-    gvec_ = Gvec(rlv, pw_cutoff(), comm(), comm_fft(), control_input_.reduce_gvec_);
+    gvec_ = Gvec(rlv, pw_cutoff(), comm(), comm_fft(), control().reduce_gvec_);
     gvec_offset_ = gvec_.gvec_offset(comm_.rank());
 
     /* prepare fine-grained FFT driver for the entire simulation */
@@ -395,7 +395,7 @@ inline void Simulation_context_base::init_fft()
                                                    processing_unit()));
 
     /* create a list of G-vectors for corase FFT grid */
-    gvec_coarse_ = Gvec(rlv, gk_cutoff() * 2, comm(), comm_fft_coarse(), control_input_.reduce_gvec_);
+    gvec_coarse_ = Gvec(rlv, gk_cutoff() * 2, comm(), comm_fft_coarse(), control().reduce_gvec_);
 }
 
 inline void Simulation_context_base::initialize()
@@ -411,7 +411,7 @@ inline void Simulation_context_base::initialize()
     set_valence_relativity(parameters_input().valence_relativity_);
 
     /* get processing unit */
-    std::string pu = control_input_.processing_unit_;
+    std::string pu = control().processing_unit_;
     if (pu == "") {
         #ifdef __GPU
         pu = "gpu";
@@ -435,10 +435,10 @@ inline void Simulation_context_base::initialize()
     }
     
     /* check MPI grid dimensions and set a default grid if needed */
-    if (!control_input_.mpi_grid_dims_.size()) {
-        control_input_.mpi_grid_dims_ = {1, 1};
+    if (!control().mpi_grid_dims_.size()) {
+        set_mpi_grid_dims({1, 1});
     }
-    if (control_input_.mpi_grid_dims_.size() != 2) {
+    if (control().mpi_grid_dims_.size() != 2) {
         TERMINATE("wrong MPI grid");
     }
     
@@ -479,9 +479,10 @@ inline void Simulation_context_base::initialize()
         set_gk_cutoff(aw_cutoff() / unit_cell_.min_mt_radius());
     }
 
-    if (esm_type() == electronic_structure_method_t::pseudopotential) {
+    if (!full_potential()) {
         set_lmax_rho(unit_cell_.lmax() * 2);
         set_lmax_pot(unit_cell_.lmax() * 2);
+        set_lmax_apw(-1);
     }
 
     /* initialize FFT interface */

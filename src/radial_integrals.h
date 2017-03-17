@@ -495,6 +495,8 @@ class Radial_integrals_rho_free_atom: public Radial_integrals_base<1>
   private:
     void generate()
     {
+        PROFILE("sirius::Radial_integrals|rho_free_atom");
+
         for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
             auto& atom_type = unit_cell_.atom_type(iat);
             values_(iat) = Spline<double>(grid_q_);

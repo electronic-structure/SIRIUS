@@ -19,7 +19,7 @@ inline void Density::initial_density()
 
 inline void Density::initial_density_pseudo()
 {
-    Radial_integrals_rho_core_pseudo ri(unit_cell_, ctx_.pw_cutoff(), 20);
+    Radial_integrals_rho_pseudo ri(unit_cell_, ctx_.pw_cutoff(), 20);
     auto v = ctx_.make_periodic_function<index_domain_t::global>([&ri](int iat, double g)
                                                                  {
                                                                      return ri.value(iat, g);
@@ -55,6 +55,13 @@ inline void Density::initial_density_pseudo()
     /* remove possible negative noise */
     for (int ir = 0; ir < ctx_.fft().local_size(); ir++) {
         rho_->f_rg(ir) = std::max(rho_->f_rg(ir), 0.0);
+    }
+
+    if (ctx_.control().print_checksum_) {
+        auto cs = rho_->checksum_rg();
+        if (ctx_.comm().rank() == 0) {
+            DUMP("checksum(rho_rg) : %18.10f", cs);
+        }
     }
 
     /* initialize the magnetization */
