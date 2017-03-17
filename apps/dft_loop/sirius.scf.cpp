@@ -59,7 +59,9 @@ double ground_state(Simulation_context& ctx,
         MEMORY_USAGE_INFO();
     }
 
-    K_point_set ks(ctx, ctx.parameters_input().ngridk_, ctx.parameters_input().shiftk_, ctx.use_symmetry());
+    auto& inp = ctx.parameters_input();
+
+    K_point_set ks(ctx, inp.ngridk_, inp.shiftk_, ctx.use_symmetry());
     ks.initialize();
 
     if (ctx.comm().rank() == 0 && ctx.control().print_memory_usage_) {
@@ -86,8 +88,7 @@ double ground_state(Simulation_context& ctx,
     }
     
     /* launch the calculation */
-    int result = dft.find(ctx.parameters_input().potential_tol_, ctx.parameters_input().energy_tol_,
-                          ctx.parameters_input().num_dft_iter_, write_state);
+    int result = dft.find(inp.potential_tol_, inp.energy_tol_, inp.num_dft_iter_, write_state);
 
     if (ref_file.size() != 0) {
         json dict;
