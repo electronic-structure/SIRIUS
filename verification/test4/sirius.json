@@ -15,9 +15,9 @@
 
       "smearing_width" : 0.025,
 
-      "use_symmetry" : 1,
+      "use_symmetry" : true,
       
-      "gamma_point" : 1,
+      "gamma_point" : true,
 
       "num_mag_dims" : 0,
 

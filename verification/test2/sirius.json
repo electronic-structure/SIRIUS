@@ -15,7 +15,7 @@
         "aw_cutoff" : 8,
         "pw_cutoff" : 20.00,
         "auto_rmt" : 0,
-        "use_symmetry": 1,
+        "use_symmetry": true,
         "ngridk" : [1,1,1],
         "potential_tol" : 1e-7,
         "energy_tol" : 1e-7,
