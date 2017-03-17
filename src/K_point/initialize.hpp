@@ -68,16 +68,14 @@ inline void K_point::initialize()
     if (!ctx_.full_potential()) {
         /* compute |beta> projectors for atom types */
         beta_projectors_ = std::unique_ptr<Beta_projectors>(new Beta_projectors(ctx_, comm_, gkvec_));
-        
-        beta_projectors_->generate_beta_gk_t_lat_deriv(ctx_);
-        
+
         if (false) {
             p_mtrx_ = mdarray<double_complex, 3>(unit_cell_.max_mt_basis_size(), unit_cell_.max_mt_basis_size(), unit_cell_.num_atom_types());
             p_mtrx_.zero();
 
             for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
                 auto& atom_type = unit_cell_.atom_type(iat);
-                
+
                 if (!atom_type.pp_desc().augment) {
                     continue;
                 }

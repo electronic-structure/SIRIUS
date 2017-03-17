@@ -149,13 +149,10 @@ class Simulation_parameters
             parameters_input_.xc_functionals_.push_back(name__);
         }
 
-        //inline void set_esm_type(electronic_structure_method_t esm_type__)
-        //{
-        //    esm_type_ = esm_type__;
-        //}
-
         inline void set_esm_type(std::string name__)
         {
+            parameters_input_.esm_ = name__;
+
             std::map<std::string, electronic_structure_method_t> m;
 
             m["full_potential_lapwlo"] = electronic_structure_method_t::full_potential_lapwlo;
@@ -171,6 +168,8 @@ class Simulation_parameters
 
         inline void set_core_relativity(std::string name__)
         {
+            parameters_input_.core_relativity_ = name__;
+
             std::map<std::string, relativity_t> m;
 
             m["none"]  = relativity_t::none;
@@ -186,6 +185,8 @@ class Simulation_parameters
 
         inline void set_valence_relativity(std::string name__)
         {
+            parameters_input_.valence_relativity_ = name__;
+
             std::map<std::string, relativity_t> m;
 
             m["none"]            = relativity_t::none;

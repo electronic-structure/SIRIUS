@@ -467,7 +467,7 @@ class Radial_integrals_vloc_dg: public Radial_integrals_base<1>
                     s2[ir] = (x * atom_type.pp_desc().vloc[ir] + atom_type.zn() * gsl_sf_erf(x)) * std::cos(g * x);
                 }
                 values_(iat)[iq] = (s1.interpolate().integrate(0) / g - s2.interpolate().integrate(1)) / g2;
-                values_(iat)[iq] -= std::exp(-g2 / 4) * (4 + g2) / 2 / g2 / g2;
+                values_(iat)[iq] -= atom_type.zn() * std::exp(-g2 / 4) * (4 + g2) / 2 / g2 / g2;
             }
             /* V(0) is not used; this is done just to make the interpolation easy */
             values_(iat)[0] = values_(iat)[1];

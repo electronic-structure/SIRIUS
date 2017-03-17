@@ -40,6 +40,8 @@ class Stress {
     matrix3d<double> stress_har_;
 
     matrix3d<double> stress_ewald_;
+
+    matrix3d<double> stress_vloc_;
     
     inline void calc_stress_kin()
     {
@@ -184,19 +186,51 @@ class Stress {
 
     inline void calc_stress_vloc()
     {
-        //auto v = ctx_.unit_cell_.make_periodic_function([this](int iat, double g)
-        //                                                {
-        //                                                    return ctx_.radial_integrals().vloc_radial_integral(iat, g);
-        //                                                },
-        //                                                ctx_.gvec());
+        Radial_integrals_vloc ri_vloc(ctx_.unit_cell(), ctx_.pw_cutoff(), 100);
+        Radial_integrals_vloc_dg ri_vloc_dg(ctx_.unit_cell(), ctx_.pw_cutoff(), 100);
 
-        //auto dv = ctx_.unit_cell_.make_periodic_function([this](int iat, double g)
-        //                                                 {
-        //                                                     return ctx_.radial_integrals().vloc_dj0dq_radial_integral(iat, g);
-        //                                                 },
-        //                                                 ctx_.gvec());
+        auto v = ctx_.make_periodic_function<index_domain_t::local>([&ri_vloc](int iat, double g)
+                                                                    {
+                                                                        return ri_vloc.value(iat, g);
+                                                                    });
 
+        auto dv = ctx_.make_periodic_function<index_domain_t::local>([&ri_vloc_dg](int iat, double g)
+                                                                     {
+                                                                         return ri_vloc_dg.value(iat, g);
+                                                                     });
+        
+        double sdiag{0};
 
+        for (int igloc = 0; igloc < ctx_.gvec_count(); igloc++) {
+            int ig = ctx_.gvec_offset() + igloc;
+            if (!ig) {
+                continue;
+            }
+
+            auto G = ctx_.gvec().gvec_cart(ig);
+
+            for (int mu: {0, 1, 2}) {
+                for (int nu: {0, 1, 2}) {
+                    stress_vloc_(mu, nu) += std::real(std::conj(density_.rho()->f_pw(ig)) * dv[igloc]) * G[mu] * G[nu];
+                }
+            }
+            sdiag += std::real(std::conj(density_.rho()->f_pw(ig)) * v[igloc]);
+        }
+
+        if (ctx_.gvec().reduced()) {
+            stress_vloc_ *= 2;
+            sdiag *= 2;
+        }
+
+        std::cout << "sdiag="<<sdiag<<std::endl;
+
+        for (int mu: {0, 1, 2}) {
+            stress_vloc_(mu, mu) -= sdiag;
+        }
+
+        ctx_.comm().allreduce(&stress_vloc_(0, 0), 9 * sizeof(double));
+
+        symmetrize(stress_vloc_);
     }
 
     inline void symmetrize(matrix3d<double>& mtrx__)
@@ -226,6 +260,13 @@ class Stress {
         calc_stress_kin();
         calc_stress_har();
         calc_stress_ewald();
+        calc_stress_vloc();
+        
+        const double au2kbar = 2.94210119E5;
+        stress_kin_ *= au2kbar;
+        stress_har_ *= au2kbar;
+        stress_ewald_ *= au2kbar;
+        stress_vloc_ *= au2kbar;
 
         printf("== stress_kin ==\n");
         for (int mu: {0, 1, 2}) {
@@ -238,6 +279,10 @@ class Stress {
         printf("== stress_ewald ==\n");
         for (int mu: {0, 1, 2}) {
             printf("%12.6f %12.6f %12.6f\n", stress_ewald_(mu, 0), stress_ewald_(mu, 1), stress_ewald_(mu, 2));
+        }
+        printf("== stress_vloc ==\n");
+        for (int mu: {0, 1, 2}) {
+            printf("%12.6f %12.6f %12.6f\n", stress_vloc_(mu, 0), stress_vloc_(mu, 1), stress_vloc_(mu, 2));
         }
     }
 
