@@ -22,7 +22,7 @@ void Forces_PS::calc_local_forces(mdarray<double,2>& forces)
     // get main arrays
     const Periodic_function<double>* valence_rho = density_.rho();
 
-    //const mdarray<double, 2>& vloc_radial_integrals = potential_.get_vloc_radial_integrals();
+    Radial_integrals_vloc ri(ctx_.unit_cell(), ctx_.pw_cutoff(), 100);
 
     // other
     Unit_cell &unit_cell = ctx_.unit_cell();
@@ -63,7 +63,7 @@ void Forces_PS::calc_local_forces(mdarray<double,2>& forces)
             vector3d<double> gvec_cart = gvecs.gvec_cart(ig);
 
             // scalar part of a force without multipying by G-vector
-            double_complex z = fact * fourpi * ctx_.radial_integrals().vloc_radial_integral(iat, gvecs.gvec_len(ig)) * std::conj(valence_rho->f_pw(ig)) *
+            double_complex z = fact * fourpi * ri.value(iat, gvecs.gvec_len(ig)) * std::conj(valence_rho->f_pw(ig)) *
                     std::exp(double_complex(0.0, - twopi * (gvec * atom.position())));
 
             // get force components multiplying by cartesian G-vector ( -image part goes from formula)
@@ -90,8 +90,6 @@ void Forces_PS::calc_nlcc_forces(mdarray<double,2>& forces)
     /* transform from real space to reciprocal */
     xc_pot->fft_transform(-1);
 
-    //const mdarray<double, 2>&  rho_core_radial_integrals = density_.rho_pseudo_core_radial_integrals();
-
     Unit_cell &unit_cell = ctx_.unit_cell();
 
     Gvec const& gvecs = ctx_.gvec();
@@ -102,6 +100,8 @@ void Forces_PS::calc_nlcc_forces(mdarray<double,2>& forces)
     forces.zero();
 
     double fact = gvecs.reduced() ? 2.0 : 1.0 ;
+    
+    auto ri = Radial_integrals_rho_core_pseudo(ctx_.unit_cell(), ctx_.pw_cutoff(), 20);
 
     // here the calculations are in lattice vectors space
     #pragma omp parallel for
@@ -126,7 +126,7 @@ void Forces_PS::calc_nlcc_forces(mdarray<double,2>& forces)
             vector3d<double> gvec_cart = gvecs.gvec_cart(ig);
 
             // scalar part of a force without multipying by G-vector
-            double_complex z = fact * fourpi * ctx_.radial_integrals().pseudo_core_radial_integral(iat, gvecs.gvec_len(ig)) *
+            double_complex z = fact * fourpi * ri.value(iat, gvecs.gvec_len(ig)) *
                                std::conj(xc_pot->f_pw(ig)) * std::exp(double_complex(0.0, -twopi * (gvec * atom.position())));
 
             // get force components multiplying by cartesian G-vector ( -image part goes from formula)

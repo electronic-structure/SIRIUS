@@ -54,20 +54,8 @@ inline void K_point::initialize()
     /* build a list of basis functions */
     generate_gklo_basis();
 
-    if (ctx_.esm_type() == electronic_structure_method_t::full_potential_pwlo)
-    {
-        /** \todo Correct the memory leak */
-        STOP();
-        //== sbessel_.resize(num_gkvec_loc()); 
-        //== for (int igkloc = 0; igkloc < num_gkvec_loc(); igkloc++)
-        //== {
-        //==     sbessel_[igkloc] = new sbessel_pw<double>(ctx_.unit_cell(), ctx_.lmax_pw());
-        //==     sbessel_[igkloc]->interpolate(gkvec_len_[igkloc]);
-        //== }
-    }
-
     if (ctx_.esm_type() == electronic_structure_method_t::full_potential_lapwlo) {
-        if (ctx_.iterative_solver_input_section().type_ == "exact") {
+        if (ctx_.iterative_solver_input().type_ == "exact") {
             alm_coeffs_row_ = std::unique_ptr<Matching_coefficients>(
                 new Matching_coefficients(unit_cell_, ctx_.lmax_apw(), num_gkvec_row(), igk_row_, gkvec_));
             alm_coeffs_col_ = std::unique_ptr<Matching_coefficients>(
@@ -80,14 +68,14 @@ inline void K_point::initialize()
     if (!ctx_.full_potential()) {
         /* compute |beta> projectors for atom types */
         beta_projectors_ = std::unique_ptr<Beta_projectors>(new Beta_projectors(ctx_, comm_, gkvec_));
-        
+
         if (false) {
             p_mtrx_ = mdarray<double_complex, 3>(unit_cell_.max_mt_basis_size(), unit_cell_.max_mt_basis_size(), unit_cell_.num_atom_types());
             p_mtrx_.zero();
 
             for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
                 auto& atom_type = unit_cell_.atom_type(iat);
-                
+
                 if (!atom_type.pp_desc().augment) {
                     continue;
                 }
@@ -149,10 +137,10 @@ inline void K_point::initialize()
                     }
                 }
             }
-            if (ctx_.iterative_solver_input_section().type_ == "exact") {
+            if (ctx_.iterative_solver_input().type_ == "exact") {
                 fv_eigen_vectors_ = dmatrix<double_complex>(gklo_basis_size(), ctx_.num_fv_states(), ctx_.blacs_grid(), bs, bs, mem_type_gevp);
             } else {
-                int ncomp = ctx_.iterative_solver_input_section().num_singular_;
+                int ncomp = ctx_.iterative_solver_input().num_singular_;
                 if (ncomp < 0) {
                     ncomp = ctx_.num_fv_states();
                 }

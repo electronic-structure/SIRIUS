@@ -25,8 +25,7 @@
 #ifndef __STEP_FUNCTION_H__
 #define __STEP_FUNCTION_H__
 
-#include "unit_cell.h"
-#include "fft3d.hpp"
+#include "simulation_context_base.h"
 
 namespace sirius {
 
@@ -79,51 +78,56 @@ class Step_function
     public:
         
         /// Constructor
-        Step_function(Unit_cell const& unit_cell__, 
-                      FFT3D* fft__,
-                      Gvec const& gvec__,
-                      Communicator const& comm__)
+        Step_function(Simulation_context_base& ctx__)
         {
             PROFILE("sirius::Step_function::Step_function");
 
-            if (unit_cell__.num_atoms() == 0) {
+            if (ctx__.unit_cell().num_atoms() == 0) {
                 return;
             }
 
-            auto ffac = get_step_function_form_factors(gvec__.num_shells(), unit_cell__, gvec__, comm__);
+            //auto ffac = get_step_function_form_factors(gvec__.num_shells(), unit_cell__, gvec__, comm__);
 
-            step_function_pw_.resize(gvec__.num_gvec());
-            step_function_.resize(fft__->local_size());
-            
-            std::vector<double_complex> f_pw = unit_cell__.make_periodic_function(ffac, gvec__);
-            for (int ig = 0; ig < gvec__.num_gvec(); ig++) {
+            step_function_pw_.resize(ctx__.gvec().num_gvec());
+            step_function_.resize(ctx__.fft().local_size());
+
+            Radial_integrals_theta ri(ctx__.unit_cell(), ctx__.pw_cutoff(), 100);
+
+            auto f_pw = ctx__.make_periodic_function<index_domain_t::global>([&ri](int iat, double g)
+                                                                             {
+                                                                                 return ri.value(iat, g);
+                                                                             });
+
+            for (int ig = 0; ig < ctx__.gvec().num_gvec(); ig++) {
                 step_function_pw_[ig] = -f_pw[ig];
             }
             step_function_pw_[0] += 1.0;
             
-            fft__->transform<1>(gvec__.partition(), &step_function_pw_[gvec__.partition().gvec_offset_fft()]);
-            fft__->output(&step_function_[0]);
+            ctx__.fft().transform<1>(ctx__.gvec().partition(), &step_function_pw_[ctx__.gvec().partition().gvec_offset_fft()]);
+            ctx__.fft().output(&step_function_[0]);
             
-            double vit = 0.0;
-            for (int i = 0; i < fft__->local_size(); i++) {
+            double vit{0};
+            for (int i = 0; i < ctx__.fft().local_size(); i++) {
                 vit += step_function_[i];
             }
-            vit *= (unit_cell__.omega() / fft__->size());
-            fft__->comm().allreduce(&vit, 1);
+            vit *= (ctx__.unit_cell().omega() / ctx__.fft().size());
+            ctx__.fft().comm().allreduce(&vit, 1);
             
-            if (std::abs(vit - unit_cell__.volume_it()) > 1e-10) {
+            if (std::abs(vit - ctx__.unit_cell().volume_it()) > 1e-10) {
                 std::stringstream s;
                 s << "step function gives a wrong volume for IT region" << std::endl
-                  << "  difference with exact value : " << std::abs(vit - unit_cell__.volume_it());
+                  << "  difference with exact value : " << std::abs(vit - ctx__.unit_cell().volume_it());
                 WARNING(s);
             }
-            #ifdef __PRINT_OBJECT_CHECKSUM
-            //double_complex z1 = mdarray<double_complex, 1>(&step_function_pw_[0], fft__->local_size()).checksum();
-            double d1 = mdarray<double, 1>(&step_function_[0], fft__->local_size()).checksum();
-            comm__.allreduce(&d1, 1);
-            DUMP("checksum(step_function): %18.10f", d1);
-            //DUMP("checksum(step_function_pw): %18.10f %18.10f", std::real(z1), std::imag(z1));
-            #endif
+            if (ctx__.control().print_checksum_) {
+                double_complex z1 = mdarray<double_complex, 1>(&step_function_pw_[0], ctx__.gvec().num_gvec()).checksum();
+                double d1 = mdarray<double, 1>(&step_function_[0], ctx__.fft().local_size()).checksum();
+                ctx__.fft().comm().allreduce(&d1, 1);
+                if (ctx__.comm().rank() == 0) {
+                    DUMP("checksum(step_function): %18.10f", d1);
+                    DUMP("checksum(step_function_pw): %18.10f %18.10f", std::real(z1), std::imag(z1));
+                }
+            }
         }
 
         /// Get \f$ \Theta(\alpha, G) \f$ form factors of the step function.
@@ -134,35 +138,35 @@ class Step_function
          *          \Big( \sin(GR_{\alpha}) - GR_{\alpha}\cos(GR_{\alpha}) \Big) / G^3 & G \ne 0 \end{array} \right.
          *  \f]
          */
-        mdarray<double, 2> get_step_function_form_factors(int num_gsh,
-                                                          Unit_cell const& unit_cell__,
-                                                          Gvec const& gvec__,
-                                                          Communicator const& comm__) const
-        {
-            mdarray<double, 2> ffac(unit_cell__.num_atom_types(), num_gsh);
+        //mdarray<double, 2> get_step_function_form_factors(int num_gsh,
+        //                                                  Unit_cell const& unit_cell__,
+        //                                                  Gvec const& gvec__,
+        //                                                  Communicator const& comm__) const
+        //{
+        //    mdarray<double, 2> ffac(unit_cell__.num_atom_types(), num_gsh);
 
-            splindex<block> spl_num_gvec_shells(num_gsh, comm__.size(), comm__.rank());
+        //    splindex<block> spl_num_gvec_shells(num_gsh, comm__.size(), comm__.rank());
 
-            #pragma omp parallel for
-            for (int igsloc = 0; igsloc < spl_num_gvec_shells.local_size(); igsloc++)
-            {
-                int igs = spl_num_gvec_shells[igsloc];
-                double G = gvec__.shell_len(igs);
-                double g3inv = (igs) ? 1.0 / std::pow(G, 3) : 0.0;
+        //    #pragma omp parallel for
+        //    for (int igsloc = 0; igsloc < spl_num_gvec_shells.local_size(); igsloc++)
+        //    {
+        //        int igs = spl_num_gvec_shells[igsloc];
+        //        double G = gvec__.shell_len(igs);
+        //        double g3inv = (igs) ? 1.0 / std::pow(G, 3) : 0.0;
 
-                for (int iat = 0; iat < unit_cell__.num_atom_types(); iat++)
-                {
-                    double R = unit_cell__.atom_type(iat).mt_radius();
-                    double GR = G * R;
+        //        for (int iat = 0; iat < unit_cell__.num_atom_types(); iat++)
+        //        {
+        //            double R = unit_cell__.atom_type(iat).mt_radius();
+        //            double GR = G * R;
 
-                    ffac(iat, igs) = (igs) ? (std::sin(GR) - GR * std::cos(GR)) * g3inv : std::pow(R, 3) / 3.0;
-                }
-            }
+        //            ffac(iat, igs) = (igs) ? (std::sin(GR) - GR * std::cos(GR)) * g3inv : std::pow(R, 3) / 3.0;
+        //        }
+        //    }
 
-            int ld = unit_cell__.num_atom_types();
-            comm__.allgather(ffac.at<CPU>(), ld * spl_num_gvec_shells.global_offset(), ld * spl_num_gvec_shells.local_size());
-            return ffac;
-        }
+        //    int ld = unit_cell__.num_atom_types();
+        //    comm__.allgather(ffac.at<CPU>(), ld * spl_num_gvec_shells.global_offset(), ld * spl_num_gvec_shells.local_size());
+        //    return ffac;
+        //}
        
         /// Return plane-wave coefficient of the step function.
         inline double_complex const& theta_pw(int ig__) const

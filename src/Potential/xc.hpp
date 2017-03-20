@@ -472,17 +472,17 @@ inline void Potential::xc_it_nonmagnetic(Periodic_function<double>* rho__,
 
     /* split real-space points between available ranks */
     splindex<block> spl_np(num_points, comm.size(), comm.rank());
-    
+
     /* check for negative values */
     double rhomin = 0.0;
-    for (int irloc = 0; irloc < spl_np.local_size(); irloc++)
-    {
+    for (int irloc = 0; irloc < spl_np.local_size(); irloc++) {
         int ir = spl_np[irloc];
         rhomin = std::min(rhomin, rho__->f_rg(ir));
-        if (rho__->f_rg(ir) < 0.0)  rho__->f_rg(ir) = 0.0;
+        if (rho__->f_rg(ir) < 0.0) {
+            rho__->f_rg(ir) = 0.0;
+        }
     }
-    if (rhomin < 0.0)
-    {
+    if (rhomin < 0.0) {
         std::stringstream s;
         s << "Interstitial charge density has negative values" << std::endl
           << "most negatve value : " << rhomin;

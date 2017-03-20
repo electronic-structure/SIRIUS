@@ -61,7 +61,7 @@ class radial_functions_index
         int lmax_lo_;
 
         int lmax_;
-    
+
     public:
 
         void init(const std::vector<local_orbital_descriptor>& lo_descriptors__)
@@ -85,7 +85,7 @@ class radial_functions_index
 
             num_rf_ = std::vector<int>(lmax_ + 1, 0);
             num_lo_ = std::vector<int>(lmax_ + 1, 0);
-            
+
             max_num_rf_ = 0;
 
             radial_function_index_descriptors_.clear();
@@ -162,7 +162,7 @@ class radial_functions_index
             assert(l >= 0 && l < (int)num_lo_.size());
             return num_lo_[l];
         }
-        
+
         /// Maximum possible number of radial functions for an orbital quantum number.
         inline int max_num_rf() const
         {
@@ -173,7 +173,7 @@ class radial_functions_index
         {
             return lmax_;
         }
-        
+
         inline int lmax_lo() const
         {
             return lmax_lo_;
@@ -185,14 +185,14 @@ class basis_functions_index
     private:
 
         std::vector<basis_function_index_descriptor> basis_function_index_descriptors_; 
-       
+
         mdarray<int, 2> index_by_lm_order_;
 
         mdarray<int, 1> index_by_idxrf_;
-       
+
         /// number of augmented wave basis functions
         int size_aw_;
-       
+
         /// number of local orbital basis functions
         int size_lo_;
 
@@ -201,7 +201,7 @@ class basis_functions_index
         basis_functions_index() : size_aw_(0), size_lo_(0)
         {
         }
-        
+
         void init(radial_functions_index& indexr)
         {
             basis_function_index_descriptors_.clear();
@@ -227,7 +227,7 @@ class basis_functions_index
                 int lm = basis_function_index_descriptors_[i].lm;
                 int order = basis_function_index_descriptors_[i].order;
                 index_by_lm_order_(lm, order) = i;
-                
+
                 // get number of aw basis functions
                 if (basis_function_index_descriptors_[i].idxlo < 0) size_aw_ = i + 1;
             }
@@ -253,12 +253,12 @@ class basis_functions_index
         {
             return size_lo_;
         }
-        
+
         inline int index_by_l_m_order(int l, int m, int order) const
         {
             return index_by_lm_order_(Utils::lm_by_l_m(l, m), order);
         }
-        
+
         inline int index_by_lm_order(int lm, int order) const
         {
             return index_by_lm_order_(lm, order);
@@ -268,7 +268,7 @@ class basis_functions_index
         {
             return index_by_idxrf_(idxrf);
         }
-        
+
         inline basis_function_index_descriptor const& operator[](int i) const
         {
             assert(i >= 0 && i < (int)basis_function_index_descriptors_.size());
@@ -287,13 +287,13 @@ class Atom_type
 
         /// Unique string label for the atom type.
         std::string label_;
-    
+
         /// Chemical element symbol.
         std::string symbol_;
 
         /// Chemical element name.
         std::string name_;
-        
+
         /// Nucleus charge, treated as positive(!) integer.
         int zn_{0};
 
@@ -305,10 +305,10 @@ class Atom_type
 
         /// Number of muffin-tin points.
         int num_mt_points_{0};
-        
+
         /// Beginning of the radial grid.
         double radial_grid_origin_{0};
-        
+
         /// List of atomic levels.
         std::vector<atomic_level_descriptor> atomic_levels_;
 
@@ -317,19 +317,19 @@ class Atom_type
 
         /// Number of valence electrons.
         double num_valence_electrons_{0};
-        
+
         /// Default augmented wave configuration.
         radial_solution_descriptor_set aw_default_l_;
-        
+
         /// augmented wave configuration for specific l
         std::vector<radial_solution_descriptor_set> aw_specific_l_;
 
         /// list of radial descriptor sets used to construct augmented waves 
         std::vector<radial_solution_descriptor_set> aw_descriptors_;
-        
+
         /// list of radial descriptor sets used to construct local orbitals
         std::vector<local_orbital_descriptor> lo_descriptors_;
-        
+
         /// Maximum number of AW radial functions across angular momentums.
         int max_aw_order_{0};
 
@@ -781,14 +781,15 @@ class Atom_type
         inline void set_configuration(int n, int l, int k, double occupancy, bool core)
         {
             atomic_level_descriptor level;
-            level.n = n;
-            level.l = l;
-            level.k = k;
+            level.n         = n;
+            level.l         = l;
+            level.k         = k;
             level.occupancy = occupancy;
-            level.core = core;
+            level.core      = core;
             atomic_levels_.push_back(level);
         }
-
+        
+        /// Return number of atoms of a given type.
         inline int num_atoms() const
         {
             return static_cast<int>(atom_id_.size());

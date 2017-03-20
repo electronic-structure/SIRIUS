@@ -508,7 +508,7 @@ class Broyden2: public Mixer<T>
 template <typename T>
 inline std::unique_ptr<Mixer<T>> Mixer_factory(std::string const& type__,
                                                size_t size__,
-                                               Mixer_input_section mix_cfg__,
+                                               Mixer_input mix_cfg__,
                                                Communicator const& comm__,
                                                std::vector<double> weights__ = std::vector<double>())
 {

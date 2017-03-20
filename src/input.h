@@ -1,4 +1,4 @@
-// Copyright (c) 2013-2016 Anton Kozhevnikov, Thomas Schulthess
+// Copyright (c) 2013-2017 Anton Kozhevnikov, Thomas Schulthess
 // All rights reserved.
 // 
 // Redistribution and use in source and binary forms, with or without modification, are permitted provided that 
@@ -19,7 +19,7 @@
 
 /** \file input.h
  *   
- *  \brief Contains declarations and implementations of input parameters structures.
+ *  \brief Contains input parameters structures.
  */
 
 #ifndef __INPUT_H__
@@ -67,7 +67,7 @@ namespace sirius {
  *      }
  *  \endcode
  */
-struct Unit_cell_input_section
+struct Unit_cell_input
 {
     vector3d<double> a0_;
     vector3d<double> a1_;
@@ -75,7 +75,7 @@ struct Unit_cell_input_section
 
     std::vector<std::string> labels_;
     std::map<std::string, std::string> atom_files_;
-    std::vector< std::vector< std::vector<double> > > coordinates_;
+    std::vector<std::vector<std::vector<double>>> coordinates_;
 
     bool exist_{false};
 
@@ -160,7 +160,7 @@ struct Unit_cell_input_section
     }
 };
 
-struct Mixer_input_section
+struct Mixer_input
 {
     double beta_{0.7};
     double beta0_{0.15};
@@ -184,7 +184,7 @@ struct Mixer_input_section
 };
 
 /** \todo real-space projectors are not part of iterative solver */
-struct Iterative_solver_input_section
+struct Iterative_solver_input
 {
     /// Type of the iterative solver.
     std::string type_{""};
@@ -250,7 +250,7 @@ struct Iterative_solver_input_section
  *    }
  *  \endcode
  */
-struct Control_input_section
+struct Control_input
 {
     std::vector<int> mpi_grid_dims_;
     int cyclic_block_size_{-1};
@@ -301,30 +301,65 @@ struct Control_input_section
     }
 };
 
-struct Parameters_input_section
+struct Parameters_input
 {
+    /// Electronic structure method.
     std::string esm_{"none"};
+
     std::vector<std::string> xc_functionals_;
     std::string core_relativity_{"dirac"};
     std::string valence_relativity_{"zora"};
+    
+    /// Number of first-variational states.
     int num_fv_states_{-1};
+
+    /// Smearing function width.
     double smearing_width_{0.01}; // in Ha
+
+    /// Cutoff for plane-waves (for density and potential expansion).
     double pw_cutoff_{20.0}; // in a.u.^-1
+    
+    /// Cutoff for augmented-wave functions.
     double aw_cutoff_{7.0}; // this is R_{MT} * |G+k|_{max}
+
+    /// Cutoff for |G+k| plane-waves.
     double gk_cutoff_{6.0}; // in a.u.^-1
-    int lmax_apw_{10};
-    int lmax_rho_{10};
-    int lmax_pot_{10};
+    
+    /// Maximum l for APW functions.
+    int lmax_apw_{8};
+
+    /// Maximum l for density.
+    int lmax_rho_{8};
+
+    /// Maximum l for potential
+    int lmax_pot_{8};
+    
+    /// Number of dimensions of the magnetization and effective magnetic field (0, 1 or 3).
     int num_mag_dims_{0};
+
+    /// Scale muffin-tin radii automatically.
     int auto_rmt_{1};
-    int use_symmetry_{1};
-    int gamma_point_{0};
+    
     std::vector<int> ngridk_{1, 1, 1};
     std::vector<int> shiftk_{0, 0, 0};
     int num_dft_iter_{100};
     double energy_tol_{1e-5};
     double potential_tol_{1e-5};
+
+    /// True if this is a molecule calculation.
     bool molecule_{false};
+
+    /// True if gamma-point (real) version of the PW code is used.
+    bool gamma_point_{false};
+
+    /// True if spin-orbit correction is applied.
+    bool so_correction_{false};
+
+    /// True if UJ correction is applied.
+    bool uj_correction_{false};
+
+    /// True if symmetry is used.
+    bool use_symmetry_{true};
 
     void read(json const& parser)
     {

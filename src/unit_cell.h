@@ -1,4 +1,4 @@
-// Copyright (c) 2013-2016 Anton Kozhevnikov, Thomas Schulthess
+// Copyright (c) 2013-2017 Anton Kozhevnikov, Thomas Schulthess
 // All rights reserved.
 // 
 // Redistribution and use in source and binary forms, with or without modification, are permitted provided that 
@@ -32,7 +32,6 @@
 #include "atom.h"
 #include "mpi_grid.hpp"
 #include "symmetry.h"
-#include "input.h"
 #include "simulation_parameters.h"
 #include "json.hpp"
 
@@ -343,14 +342,6 @@ class Unit_cell
         
         inline std::string chemical_formula();
 
-        /// Make periodic function out of form factors.
-        /** Return vector of plane-wave coefficients */
-        inline std::vector<double_complex> make_periodic_function(mdarray<double, 2>& form_factors__,
-                                                                  Gvec const& gvec__) const;
-
-        inline std::vector<double_complex> make_periodic_function(std::function<double(int, double)> form_factors__,
-                                                                  Gvec const& gvec__) const;
-
         inline int atom_id_by_position(vector3d<double> position__)
         {
             for (int ia = 0; ia < num_atoms(); ia++) {
@@ -624,7 +615,7 @@ class Unit_cell
             return vector3d<double>(lattice_vectors_(0, idx__), lattice_vectors_(1, idx__), lattice_vectors_(2, idx__));
         }
 
-        inline void import(Unit_cell_input_section const& inp__)
+        inline void import(Unit_cell_input const& inp__)
         {
             PROFILE("sirius::Unit_cell::import");
  
@@ -1361,64 +1352,6 @@ inline std::string Unit_cell::chemical_formula()
     }
 
     return name;
-}
-
-inline std::vector<double_complex> Unit_cell::make_periodic_function(mdarray<double, 2>& form_factors__,
-                                                                     Gvec const& gvec__) const
-{
-    PROFILE("sirius::Unit_cell::make_periodic_function");
-
-    assert((int)form_factors__.size(0) == num_atom_types());
-
-    std::vector<double_complex> f_pw(gvec__.num_gvec(), double_complex(0, 0));
-
-    double fourpi_omega = fourpi / omega();
-
-    splindex<block> spl_ngv(gvec__.num_gvec(), comm_.size(), comm_.rank());
-
-    #pragma omp parallel for
-    for (int igloc = 0; igloc < spl_ngv.local_size(); igloc++) {
-        int ig = spl_ngv[igloc];
-        int igs = gvec__.shell(ig);
-
-        for (int ia = 0; ia < num_atoms(); ia++) {
-            int iat = atom(ia).type_id();
-            double_complex z = std::exp(double_complex(0.0, twopi * (gvec__.gvec(ig) * atom(ia).position())));
-            f_pw[ig] += fourpi_omega * std::conj(z) * form_factors__(iat, igs);
-        }
-    }
-
-    comm_.allgather(&f_pw[0], spl_ngv.global_offset(), spl_ngv.local_size());
-
-    return std::move(f_pw);
-}
-
-inline std::vector<double_complex> Unit_cell::make_periodic_function(std::function<double(int, double)> form_factors__,
-                                                                     Gvec const& gvec__) const
-{
-    PROFILE("sirius::Unit_cell::make_periodic_function");
-
-    std::vector<double_complex> f_pw(gvec__.num_gvec(), double_complex(0, 0));
-
-    double fourpi_omega = fourpi / omega();
-
-    splindex<block> spl_ngv(gvec__.num_gvec(), comm_.size(), comm_.rank());
-
-    #pragma omp parallel for
-    for (int igloc = 0; igloc < spl_ngv.local_size(); igloc++) {
-        int ig = spl_ngv[igloc];
-        double g = gvec__.gvec_len(ig);
-
-        for (int ia = 0; ia < num_atoms(); ia++) {
-            int iat = atom(ia).type_id();
-            double_complex z = std::exp(double_complex(0.0, twopi * (gvec__.gvec(ig) * atom(ia).position())));
-            f_pw[ig] += fourpi_omega * std::conj(z) * form_factors__(iat, g);
-        }
-    }
-
-    comm_.allgather(&f_pw[0], spl_ngv.global_offset(), spl_ngv.local_size());
-
-    return std::move(f_pw);
 }
 
 } // namespace

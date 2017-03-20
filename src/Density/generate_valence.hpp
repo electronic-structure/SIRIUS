@@ -135,17 +135,8 @@ inline void Density::generate_valence(K_point_set& ks__)
     }
 
     /* for muffin-tin part */
-    switch (ctx_.esm_type()) {
-        case electronic_structure_method_t::full_potential_lapwlo: {
-            generate_valence_mt(ks__);
-            break;
-        }
-        case electronic_structure_method_t::full_potential_pwlo: {
-            STOP();
-        }
-        default: {
-            break;
-        }
+    if (ctx_.full_potential()) {
+        generate_valence_mt(ks__);
     }
 }
 

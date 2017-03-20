@@ -1,4 +1,4 @@
-// Copyright (c) 2013-2016 Anton Kozhevnikov, Thomas Schulthess
+// Copyright (c) 2013-2017 Anton Kozhevnikov, Thomas Schulthess
 // All rights reserved.
 // 
 // Redistribution and use in source and binary forms, with or without modification, are permitted provided that 
@@ -320,30 +320,30 @@ class Potential
          * \f] 
          * The final expression for the local potential radial integrals for \f$ G \ne 0 \f$ take the following form:
          * \f[
-         *   4\pi \int \Big(V_{\alpha}(r) r + Z_{\alpha}^p {\rm erf}(r) \Big) \frac{\sin(Gr)}{G} dr - \frac{e^{-\frac{G^2}{4}}}{G^2}
+         *   4\pi \int \Big(V_{\alpha}(r) r + Z_{\alpha}^p {\rm erf}(r) \Big) \frac{\sin(Gr)}{G} dr -  Z_{\alpha}^p \frac{e^{-\frac{G^2}{4}}}{G^2}
          * \f]
          */
         inline void generate_local_potential()
         {
             PROFILE("sirius::Potential::generate_local_potential");
-
-            auto v = unit_cell_.make_periodic_function([this](int iat, double g)
-                                                       {
-                                                           return ctx_.radial_integrals().vloc_radial_integral(iat, g);
-                                                       },
-                                                       ctx_.gvec());
+            
+            Radial_integrals_vloc ri(ctx_.unit_cell(), ctx_.pw_cutoff(), 100);
+            auto v = ctx_.make_periodic_function<index_domain_t::global>([&ri](int iat, double g)
+                                                                         {
+                                                                             return ri.value(iat, g);
+                                                                         });
 
             ctx_.fft().transform<1>(ctx_.gvec().partition(), &v[ctx_.gvec().partition().gvec_offset_fft()]);
             ctx_.fft().output(&local_potential_->f_rg(0));
 
-            //if (ctx_.control().print_checksum_) {
-            //    auto cs = local_potential_->checksum_pw();
-            //    auto cs1 = local_potential_->checksum_rg();
-            //    if (ctx_.comm().rank() == 0) {
-            //        DUMP("checksum(local_potential_pw): %18.10f %18.10f", cs.real(), cs.imag());
-            //        DUMP("checksum(local_potential_rg): %18.10f", cs1);
-            //    }
-            //}
+            if (ctx_.control().print_checksum_) {
+                auto cs = local_potential_->checksum_pw();
+                auto cs1 = local_potential_->checksum_rg();
+                if (ctx_.comm().rank() == 0) {
+                    DUMP("checksum(local_potential_pw): %18.10f %18.10f", cs.real(), cs.imag());
+                    DUMP("checksum(local_potential_rg): %18.10f", cs1);
+                }
+            }
         }
         
         inline void xc_mt_nonmagnetic(Radial_grid const& rgrid,
@@ -639,7 +639,7 @@ class Potential
          *  \f[
          *       P^{\alpha}({\bf G}) = \frac{4\pi e^{-i{\bf G r}_{\alpha}}}{\Omega} \sum_{\ell m} (-i)^{\ell} Y_{\ell m}({\bf \hat G})  
          *          (q_{\ell m}^{\alpha} - q_{\ell m}^{I,\alpha}) \Big( \frac{2}{GR} \Big)^{n+1} 
-         *          \frac{ \Gamma(5/2 + n + \ell) } {R^{\ell} \Gamma(3/2+\ell)}
+         *          \frac{ \Gamma(5/2 + n + \ell) } {R^{\ell} \Gamma(3/2+\ell)} j_{n + \ell + 1}(GR)
          *  \f]
          *
          *  For \f$ G=0 \f$ only \f$ \ell = 0 \f$ contribution survives:
@@ -1041,7 +1041,7 @@ class Potential
 
         void mixer_init()
         {
-            mixer_ = Mixer_factory<double>(ctx_.mixer_input_section().type_, size(), ctx_.mixer_input_section(), comm_);
+            mixer_ = Mixer_factory<double>(ctx_.mixer_input().type_, size(), ctx_.mixer_input(), comm_);
             pack(*mixer_);
             mixer_->initialize();
         }

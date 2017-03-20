@@ -12,7 +12,7 @@ inline void Band::initialize_subspace(K_point_set& kset__,
     Radial_grid qgrid(linear_grid, nq, 0, ctx_.gk_cutoff());
 
     std::vector<int> pref = {1, 2, 6, 24, 120};
-    if (ctx_.iterative_solver_input_section().init_subspace_ == "lcao") {
+    if (ctx_.iterative_solver_input().init_subspace_ == "lcao") {
         /* spherical Bessel functions jl(qx) for atom types */
         mdarray<Spherical_Bessel_functions, 2> jl(nq, unit_cell_.num_atom_types());
 

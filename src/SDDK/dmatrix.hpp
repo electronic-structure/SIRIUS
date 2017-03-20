@@ -26,6 +26,7 @@
 #define __DMATRIX_HPP__
 
 #include "blacs_grid.hpp"
+#include "splindex.hpp"
 
 namespace sddk {
 

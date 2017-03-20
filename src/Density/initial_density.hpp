@@ -19,11 +19,11 @@ inline void Density::initial_density()
 
 inline void Density::initial_density_pseudo()
 {
-    auto v = unit_cell_.make_periodic_function([this](int iat, double g)
-                                               {
-                                                   return ctx_.radial_integrals().pseudo_rho_radial_integral(iat, g);
-                                               },
-                                               ctx_.gvec());
+    Radial_integrals_rho_pseudo ri(unit_cell_, ctx_.pw_cutoff(), 20);
+    auto v = ctx_.make_periodic_function<index_domain_t::global>([&ri](int iat, double g)
+                                                                 {
+                                                                     return ri.value(iat, g);
+                                                                 });
 
     if (ctx_.control().print_checksum_ && ctx_.comm().rank() == 0) {
         auto z1 = mdarray<double_complex, 1>(&v[0], ctx_.gvec().num_gvec()).checksum();
@@ -55,6 +55,13 @@ inline void Density::initial_density_pseudo()
     /* remove possible negative noise */
     for (int ir = 0; ir < ctx_.fft().local_size(); ir++) {
         rho_->f_rg(ir) = std::max(rho_->f_rg(ir), 0.0);
+    }
+
+    if (ctx_.control().print_checksum_) {
+        auto cs = rho_->checksum_rg();
+        if (ctx_.comm().rank() == 0) {
+            DUMP("checksum(rho_rg) : %18.10f", cs);
+        }
     }
 
     /* initialize the magnetization */
@@ -118,10 +125,13 @@ inline void Density::initial_density_full_pot()
     }
     
     /* compute radial integrals */
-    auto rho_radial_integrals = generate_rho_radial_integrals(0);
+    Radial_integrals_rho_free_atom ri(ctx_.unit_cell(), ctx_.pw_cutoff(), 20);
     
     /* compute contribution from free atoms to the interstitial density */
-    auto v = unit_cell_.make_periodic_function(rho_radial_integrals, ctx_.gvec());
+    auto v = ctx_.make_periodic_function<index_domain_t::global>([&ri](int iat, double g)
+                                                                 {
+                                                                     return ri.value(iat, g);
+                                                                 });
     
     #ifdef __PRINT_OBJECT_CHECKSUM
     double_complex z = mdarray<double_complex, 1>(&v[0], ctx_.gvec().num_gvec()).checksum();

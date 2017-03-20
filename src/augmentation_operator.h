@@ -43,12 +43,10 @@ class Augmentation_operator
 
         mdarray<double, 1> sym_weight_;
 
-        void generate_pw_coeffs(double omega__, Gvec const& gvec__, Radial_integrals const& radial_integrals__)
+        void generate_pw_coeffs(double omega__, Gvec const& gvec__, Radial_integrals_aug const& radial_integrals__)
         {
             PROFILE("sirius::Augmentation_operator::generate_pw_coeffs");
         
-            //auto qri = get_radial_integrals(gvec__);
-
             double fourpi_omega = fourpi / omega__;
 
             /* maximum l of beta-projectors */
@@ -108,7 +106,7 @@ class Augmentation_operator
                         int idxrf12 = idxrf2 * (idxrf2 + 1) / 2 + idxrf1;
                         
                         for (int lm3 = 0; lm3 < lmmax; lm3++) {
-                            v[lm3] = std::conj(zilm[lm3]) * gvec_rlm(lm3, igloc) * radial_integrals__.aug_radial_integral(idxrf12, l_by_lm[lm3], atom_type_.id(), g);
+                            v[lm3] = std::conj(zilm[lm3]) * gvec_rlm(lm3, igloc) * radial_integrals__.value(idxrf12, l_by_lm[lm3], atom_type_.id(), g);
                         }
 
                         double_complex z = fourpi_omega * gaunt_coefs.sum_L3_gaunt(lm2, lm1, &v[0]);
@@ -148,16 +146,14 @@ class Augmentation_operator
 
     public:
        
-        Augmentation_operator(Communicator const& comm__,
-                              Atom_type const& atom_type__,
-                              Gvec const& gvec__,
-                              double omega__,
-                              Radial_integrals const& radial_integrals__)
-            : comm_(comm__)
-            , atom_type_(atom_type__)
+        Augmentation_operator(Simulation_context_base& ctx__,
+                              int iat__,
+                              Radial_integrals_aug const& ri__)
+            : comm_(ctx__.comm())
+            , atom_type_(ctx__.unit_cell().atom_type(iat__))
         {
-            if (atom_type__.pp_desc().augment) {
-                generate_pw_coeffs(omega__, gvec__, radial_integrals__);
+            if (atom_type_.pp_desc().augment) {
+                generate_pw_coeffs(ctx__.unit_cell().omega(), ctx__.gvec(), ri__);
             }
         }
 
