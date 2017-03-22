@@ -47,6 +47,8 @@ class Stress {
     
     inline void calc_stress_kin()
     {
+        PROFILE("sirius::Stress|kin");
+
         for (int ikloc = 0; ikloc < kset_.spl_num_kpoints().local_size(); ikloc++) {
             int ik = kset_.spl_num_kpoints(ikloc);
             auto kp = kset_[ik];
@@ -84,6 +86,8 @@ class Stress {
 
     inline void calc_stress_har()
     {
+        PROFILE("sirius::Stress|har");
+
         for (int igloc = 0; igloc < ctx_.gvec_count(); igloc++) {
             int ig = ctx_.gvec_offset() + igloc;
             if (!ig) {
@@ -116,6 +120,8 @@ class Stress {
 
     inline void calc_stress_ewald()
     {
+        PROFILE("sirius::Stress|ewald");
+
         double lambda = 1.5;
 
         auto& uc = ctx_.unit_cell();
@@ -188,6 +194,8 @@ class Stress {
 
     inline void calc_stress_vloc()
     {
+        PROFILE("sirius::Stress|vloc");
+
         Radial_integrals_vloc ri_vloc(ctx_.unit_cell(), ctx_.pw_cutoff(), 100);
         Radial_integrals_vloc_dg ri_vloc_dg(ctx_.unit_cell(), ctx_.pw_cutoff(), 100);
 
@@ -547,6 +555,82 @@ where \f$ \Delta V^{loc}({\bf G}) \f$ is built from the following radial integra
 \f[
   \int \Big(V_{\alpha}(r) r + Z_{\alpha}^p {\rm erf}(r) \Big) \Big( \frac{\sin (G r)}{G^3} - \frac{r \cos (G r)}{G^2}\Big) dr - 
     Z_{\alpha}^p \Big( \frac{e^{-\frac{G^2}{4}}}{2 G^2} + \frac{2 e^{-\frac{G^2}{4}}}{G^4} \Big)  
+\f]
+
+\section stress_section7 Non-local contribution to stress.
+Energy contribution from the non-local part of pseudopotential:
+\f[
+  E^{nl} = \sum_{i{\bf k}} \sum_{\alpha}\sum_{\xi \xi'}P_{\xi}^{\alpha,i{\bf k}} D_{\xi\xi'}^{\alpha}P_{\xi'}^{\alpha,i{\bf k}*}
+\f]
+where
+\f[
+  P_{\xi}^{\alpha,i{\bf k}} = \langle \psi_{i{\bf k}} | \beta_{\xi}^{\alpha} \rangle =
+    \frac{1}{\Omega} \sum_{\bf G} \langle \psi_{i{\bf k}} | {\bf G+k} \rangle \langle {\bf G+k} | \beta_{\xi}^{\alpha} \rangle  = 
+    \frac{1}{\Omega} \sum_{\bf G} \tilde \psi_i^{*}({\bf G+k}) \tilde \beta_{\xi}^{\alpha}({\bf G+k}) 
+\f]
+We need to compute strain derivatives of \f$ P_{\xi}^{\alpha,i{\bf k}} \f$:
+\f[
+  \frac{\partial}{\partial \varepsilon_{\mu \nu}} P_{\xi}^{\alpha,i{\bf k}} = -\frac{1}{\Omega}\delta_{\mu \nu}
+    \sum_{\bf G} \tilde \psi_i^{*}({\bf G+k}) \tilde \beta_{\xi}^{\alpha}({\bf G+k})  + \frac{1}{\Omega}
+    \sum_{\bf G} \tilde \psi_i^{*}({\bf G+k}) \frac{\partial}{\partial \varepsilon_{\mu \nu}} \tilde \beta_{\xi}^{\alpha}({\bf G+k})  
+\f]
+\f[
+  \tilde \beta_{\xi}^{\alpha}({\bf G+k}) = 4\pi e^{-i{\bf G r_{\alpha}}}(-i)^{\ell} R_{\ell m}(\theta_{G+k}, \phi_{G+k})
+    \int \beta_{\ell}(r) j_{\ell}(|{\bf G+k}|r) r^2 dr
+\f]
+First way to take strain derivative of beta-projectors:
+\f[
+  \frac{\partial}{\partial \varepsilon_{\mu \nu}} \tilde \beta_{\xi}^{\alpha}({\bf G+k}) = 4\pi e^{-i{\bf G r_{\alpha}}}(-i)^{\ell} 
+  \Big( \frac{\partial R_{\ell m}(\theta_{G+k}, \phi_{G+k})}{\partial \varepsilon_{\mu \nu}} 
+    \int \beta_{\ell}(r) j_{\ell}(|{\bf G+k}|r) r^2 dr + R_{\ell m}(\theta_{G+k}, \phi_{G+k})
+    \int \beta_{\ell}(r)    \frac{\partial j_{\ell}(|{\bf G+k}|r) }{\partial \varepsilon_{\mu \nu}}  r^2 dr 
+  \Big)
+\f]
+
+Strain derivative of the real spherical harmonics (here and below \f$ {\bf G+k} = {\bf q} \f$):
+\f[
+  \frac{\partial R_{\ell m}(\theta, \phi)}{\partial \varepsilon_{\mu \nu}} = 
+    \frac{\partial R_{\ell m}(\theta, \phi)}{\partial \theta} \sum_{\tau} \frac{\partial \theta}{\partial q_{\tau}} \frac{\partial{q_{\tau}}}{\partial \varepsilon_{\mu \nu}} + 
+    \frac{\partial R_{\ell m}(\theta, \phi)}{\partial \phi} \sum_{\tau} \frac{\partial \phi}{\partial q_{\tau}}\frac{\partial q_{\tau}}{\partial \varepsilon_{\mu \nu}} = 
+    -q_{\mu} \Big(  \frac{\partial R_{\ell m}(\theta, \phi)}{\partial \theta} \frac{\partial \theta}{\partial q_{\nu}} + 
+            \frac{\partial R_{\ell m}(\theta, \phi)}{\partial \phi} \frac{\partial \phi}{\partial q_{\nu}}\Big)
+\f]
+
+The derivatives of angles are:
+\f[
+   \frac{\partial \theta}{\partial q_{x}} = \frac{\cos(\phi) \cos(\theta)}{q} \\
+   \frac{\partial \theta}{\partial q_{y}} = \frac{\cos(\theta) \sin(\phi)}{q} \\
+   \frac{\partial \theta}{\partial q_{z}} = -\frac{\sin(\theta)}{q}
+\f]
+and
+\f[
+   \frac{\partial \phi}{\partial q_{x}} = -\frac{\sin(\phi)}{\sin(\theta) q} \\
+   \frac{\partial \phi}{\partial q_{y}} = \frac{\cos(\phi)}{\sin(\theta) q} \\
+   \frac{\partial \phi}{\partial q_{z}} = 0
+\f]
+The derivative of \f$ \phi \f$ has discontinuities at \f$ \theta = 0, \theta=\pi \f$. This, however, is not a problem, because
+multiplication by the the derivative of \f$ R_{\ell m} \f$ removes it. The following functions have to be hardcoded:
+\f[
+  \frac{\partial R_{\ell m}(\theta, \phi)}{\partial \theta} \\
+  \frac{\partial R_{\ell m}(\theta, \phi)}{\partial \phi} \frac{1}{\sin(\theta)} 
+\f]
+
+Mathematica script for spherical harmonic derivatives:
+\verbatim
+Rlm[l_, m_, th_, ph_] := 
+ If[m > 0, Sqrt[2]*ComplexExpand[Re[SphericalHarmonicY[l, m, th, ph]]],
+   If[m < 0, Sqrt[2]*ComplexExpand[Im[SphericalHarmonicY[l, m, th, ph]]], 
+     If[m == 0, ComplexExpand[Re[SphericalHarmonicY[l, 0, th, ph]]]]
+   ]
+ ]
+Do[Print[FullSimplify[D[Rlm[l, m, theta, phi], theta]]], {l, 0, 4}, {m, -l, l}]
+Do[Print[FullSimplify[TrigExpand[D[Rlm[l, m, theta, phi], phi]/Sin[theta]]]], {l, 0, 4}, {m, -l, l}]
+\endverbatim
+
+Strain derivative of spherical Bessel function integral:
+\f[
+  \int \beta_{\ell}(r) \frac{\partial j_{\ell}(qr) }{\partial \varepsilon_{\mu \nu}}  r^2 dr = 
+   \int \beta_{\ell}(r) \frac{\partial j_{\ell}(qr) }{\partial q} \frac{-q_{\mu} q_{\nu}}{q} r^2 dr  
 \f]
 
  */
