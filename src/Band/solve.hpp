@@ -258,6 +258,10 @@ inline void Band::solve_for_kset(K_point_set& kset__,
                            potential__.effective_magnetic_field());
     }
 
+    if (ctx_.comm().rank() == 0 && ctx_.control().print_memory_usage_) {
+        MEMORY_USAGE_INFO();
+    }
+
     /* solve secular equation and generate wave functions */
     for (int ikloc = 0; ikloc < kset__.spl_num_kpoints().local_size(); ikloc++) {
         int ik = kset__.spl_num_kpoints(ikloc);

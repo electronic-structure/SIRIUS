@@ -186,6 +186,10 @@ inline void Band::set_fv_h_o<GPU, electronic_structure_method_t::full_potential_
     mdarray<double_complex, 3> halm_col(kp__->num_gkvec_col(), max_mt_aw, 2, memory_t::host_pinned | memory_t::device);
     t2.stop();
 
+    if (ctx_.comm().rank() == 0 && ctx_.control().print_memory_usage_) {
+        MEMORY_USAGE_INFO();
+    }
+
     sddk::timer t1("sirius::Band::set_fv_h_o|zgemm");
     for (int iblk = 0; iblk < nblk; iblk++) {
         int num_mt_aw = 0;
