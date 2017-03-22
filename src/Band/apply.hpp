@@ -166,8 +166,6 @@ inline void Band::apply_fv_o(K_point* kp__,
     matrix<double_complex> oalm(kp__->num_gkvec_loc(), unit_cell_.max_mt_aw_basis_size());
     matrix<double_complex> tmp(unit_cell_.max_mt_aw_basis_size(), n__);
 
-    //mdarray<double_complex, 1> v(n__);
-
     #ifdef __GPU
     if (ctx_.processing_unit() == GPU) {
         if (!apw_only__) {
