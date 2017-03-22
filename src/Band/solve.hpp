@@ -127,6 +127,10 @@ inline void Band::solve_sv(K_point* kp,
         hpsi[0].mt_coeffs().prime().zero();
     }
 
+    if (ctx_.comm().rank() == 0 && ctx_.control().print_memory_usage_) {
+        MEMORY_USAGE_INFO();
+    }
+
     //== if (ctx_.uj_correction())
     //== {
     //==     apply_uj_correction<uu>(kp->fv_states_col(), hpsi);
@@ -153,6 +157,10 @@ inline void Band::solve_sv(K_point* kp,
         }
     }
     #endif
+
+    if (ctx_.comm().rank() == 0 && ctx_.control().print_memory_usage_) {
+        MEMORY_USAGE_INFO();
+    }
 
     #ifdef __PRINT_OBJECT_CHECKSUM
     auto z1 = kp->fv_states().checksum(0, nfv);
