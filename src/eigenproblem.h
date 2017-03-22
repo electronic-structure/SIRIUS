@@ -1420,7 +1420,8 @@ class Eigenproblem_elpa1: public Eigenproblem_elpa
                   double_complex* B, int32_t ldb,
                   double* eval, 
                   double_complex* Z, int32_t ldz,
-                  int32_t num_rows_loc = 0, int32_t num_cols_loc = 0) const
+                  int32_t num_rows_loc,
+                  int32_t num_cols_loc) const
         {
             assert(nevec <= matrix_size);
 
@@ -1446,7 +1447,8 @@ class Eigenproblem_elpa1: public Eigenproblem_elpa
                   double* B, int32_t ldb,
                   double* eval, 
                   double* Z, int32_t ldz,
-                  int32_t num_rows_loc = 0, int32_t num_cols_loc = 0) const
+                  int32_t num_rows_loc,
+                  int32_t num_cols_loc) const
         {
             assert(nevec <= matrix_size);
 
@@ -1471,7 +1473,8 @@ class Eigenproblem_elpa1: public Eigenproblem_elpa
                   double* A, int32_t lda,
                   double* eval, 
                   double* Z, int32_t ldz,
-                  int32_t num_rows_loc, int32_t num_cols_loc) const
+                  int32_t num_rows_loc,
+                  int32_t num_cols_loc) const
         {
             assert(nevec <= matrix_size);
 

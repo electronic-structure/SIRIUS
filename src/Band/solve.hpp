@@ -192,8 +192,9 @@ inline void Band::solve_sv(K_point* kp,
             DUMP("checksum(h): %18.10f %18.10f", std::real(z1), std::imag(z1));
             #endif
             sddk::timer t1("sirius::Band::solve_sv|stdevp");
-            std_evp_solver().solve(nfv, h.at<CPU>(), h.ld(), &band_energies[ispn * nfv],
-                                   kp->sv_eigen_vectors(ispn).at<CPU>(), kp->sv_eigen_vectors(ispn).ld());
+            std_evp_solver().solve(nfv, nfv, h.at<CPU>(), h.ld(), &band_energies[ispn * nfv],
+                                   kp->sv_eigen_vectors(ispn).at<CPU>(), kp->sv_eigen_vectors(ispn).ld(),
+                                   h.num_rows_local(), h.num_cols_local());
         }
     } else {
         int nb = ctx_.num_bands();
@@ -229,8 +230,9 @@ inline void Band::solve_sv(K_point* kp,
         DUMP("checksum(h): %18.10f %18.10f", std::real(z1), std::imag(z1));
         #endif
         sddk::timer t1("sirius::Band::solve_sv|stdevp");
-        std_evp_solver().solve(nb, h.at<CPU>(), h.ld(), &band_energies[0],
-                               kp->sv_eigen_vectors(0).at<CPU>(), kp->sv_eigen_vectors(0).ld());
+        std_evp_solver().solve(nb, nb, h.at<CPU>(), h.ld(), &band_energies[0],
+                               kp->sv_eigen_vectors(0).at<CPU>(), kp->sv_eigen_vectors(0).ld(),
+                               h.num_rows_local(), h.num_cols_local());
     }
 
     #ifdef __GPU
