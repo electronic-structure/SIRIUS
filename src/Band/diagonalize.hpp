@@ -21,6 +21,10 @@ inline void Band::diag_fv_full_potential_exact(K_point* kp, Potential const& pot
     int bs = ctx_.cyclic_block_size();
     dmatrix<double_complex> h(ngklo, ngklo, ctx_.blacs_grid(), bs, bs, mem_type);
     dmatrix<double_complex> o(ngklo, ngklo, ctx_.blacs_grid(), bs, bs, mem_type);
+
+    if (ctx_.comm().rank() == 0 && ctx_.control().print_memory_usage_) {
+        MEMORY_USAGE_INFO();
+    }
     
     /* setup Hamiltonian and overlap */
     switch (ctx_.processing_unit()) {
