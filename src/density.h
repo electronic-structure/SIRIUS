@@ -140,10 +140,8 @@ class Density
         
         Unit_cell& unit_cell_;
 
-        /// Density matrix of the system.
-        /** In case of full-potential, matrix is stored for local fraction of atoms.
-         *  In case of pseudo-potential, full matrix for all atoms is stored. */
-        mdarray<double_complex, 4> density_matrix_;
+        /// Density matrix for all atoms.
+        mdarray<double_complex, 4> density_matrix_; // TODO: make it local for LAPW
 
         struct paw_density_data_t
         {
