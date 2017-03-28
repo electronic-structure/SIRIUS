@@ -6532,7 +6532,13 @@ class basic_json
                         return;
                     }
 
-                    if (pretty_print)
+                    bool is_primitive_array{true};
+                    for (auto i = val.m_value.array->cbegin(); i != val.m_value.array->cend(); ++i)
+                    {
+                        is_primitive_array = is_primitive_array & i->is_primitive();
+                    }
+
+                    if (!is_primitive_array) //pretty_print)
                     {
                         o.write("[\n", 2);
 
