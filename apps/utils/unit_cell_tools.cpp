@@ -86,7 +86,7 @@ void create_supercell(cmd_args& args__)
     }
     printf("number of atoms in the supercell: %i\n", ctx_sc.unit_cell().num_atoms());
     
-    ctx_sc.unit_cell().get_symmetry();
+    //ctx_sc.unit_cell().get_symmetry();
     ctx_sc.unit_cell().print_info(4);
     ctx_sc.unit_cell().write_cif();
     json dict;
