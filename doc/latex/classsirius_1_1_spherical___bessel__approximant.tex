@@ -1,0 +1,78 @@
+\hypertarget{classsirius_1_1_spherical___bessel__approximant}{}\section{sirius\+:\+:Spherical\+\_\+\+Bessel\+\_\+approximant Class Reference}
+\label{classsirius_1_1_spherical___bessel__approximant}\index{sirius\+::\+Spherical\+\_\+\+Bessel\+\_\+approximant@{sirius\+::\+Spherical\+\_\+\+Bessel\+\_\+approximant}}
+\subsection*{Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+\hypertarget{classsirius_1_1_spherical___bessel__approximant_a9792860090f2172ae04da940dee0414c}{}{\bfseries Spherical\+\_\+\+Bessel\+\_\+approximant} (int lmax\+\_\+\+\_\+, double R\+\_\+\+\_\+, double const qmin\+\_\+\+\_\+, double const qmax\+\_\+\+\_\+, double const eps\+\_\+\+\_\+)\label{classsirius_1_1_spherical___bessel__approximant_a9792860090f2172ae04da940dee0414c}
+
+\item 
+\hypertarget{classsirius_1_1_spherical___bessel__approximant_a500d2c1b159bd7797d1ed43036d4c7a3}{}std\+::vector$<$ double $>$ {\bfseries approximate} (int l\+\_\+\+\_\+, double nu\+\_\+\+\_\+)\label{classsirius_1_1_spherical___bessel__approximant_a500d2c1b159bd7797d1ed43036d4c7a3}
+
+\item 
+\hypertarget{classsirius_1_1_spherical___bessel__approximant_a2854129efd67b67d63a995b0598a76ae}{}void {\bfseries approximate} (std\+::vector$<$ double $>$ const \&q\+\_\+\+\_\+)\label{classsirius_1_1_spherical___bessel__approximant_a2854129efd67b67d63a995b0598a76ae}
+
+\item 
+\hypertarget{classsirius_1_1_spherical___bessel__approximant_af87c9088c329531e91443e8c1b0798a1}{}double {\bfseries qnu} (int const iq, int const l) const \label{classsirius_1_1_spherical___bessel__approximant_af87c9088c329531e91443e8c1b0798a1}
+
+\item 
+\hypertarget{classsirius_1_1_spherical___bessel__approximant_acdda2e83c62603da6a4bbad9e78c5501}{}int {\bfseries nqnu} (int const l) const \label{classsirius_1_1_spherical___bessel__approximant_acdda2e83c62603da6a4bbad9e78c5501}
+
+\item 
+\hypertarget{classsirius_1_1_spherical___bessel__approximant_a7c7607ddda37bd001c8589b7d57c3fa7}{}int {\bfseries nqnu\+\_\+max} () const \label{classsirius_1_1_spherical___bessel__approximant_a7c7607ddda37bd001c8589b7d57c3fa7}
+
+\item 
+\hypertarget{classsirius_1_1_spherical___bessel__approximant_ac4d44d8150b253743b6d740525502a34}{}std\+::vector$<$ double $>$ {\bfseries build\+\_\+approx\+\_\+freq} (double const qmin\+\_\+\+\_\+, double const qmax\+\_\+\+\_\+, int const l\+\_\+\+\_\+, double const R\+\_\+\+\_\+, double const eps\+\_\+\+\_\+)\label{classsirius_1_1_spherical___bessel__approximant_ac4d44d8150b253743b6d740525502a34}
+
+\end{DoxyCompactItemize}
+\subsection*{Static Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+\hypertarget{classsirius_1_1_spherical___bessel__approximant_ad33c7f39a2232301014e33a4d25c6a1c}{}static double {\bfseries overlap} (double nu1\+\_\+\+\_\+, double nu2\+\_\+\+\_\+, int l\+\_\+\+\_\+, double R\+\_\+\+\_\+)\label{classsirius_1_1_spherical___bessel__approximant_ad33c7f39a2232301014e33a4d25c6a1c}
+
+\end{DoxyCompactItemize}
+\subsection*{Static Private Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+\hypertarget{classsirius_1_1_spherical___bessel__approximant_afee7faecc7e535897085aa926f6b019b}{}static double {\bfseries sbessel\+\_\+l2norm} (double nu, int l, double R)\label{classsirius_1_1_spherical___bessel__approximant_afee7faecc7e535897085aa926f6b019b}
+
+\end{DoxyCompactItemize}
+\subsection*{Private Attributes}
+\begin{DoxyCompactItemize}
+\item 
+\hypertarget{classsirius_1_1_spherical___bessel__approximant_ae6ac2ef33d36b1fd8f8ea98ec1e9445a}{}int {\bfseries lmax\+\_\+}\label{classsirius_1_1_spherical___bessel__approximant_ae6ac2ef33d36b1fd8f8ea98ec1e9445a}
+
+\item 
+\hypertarget{classsirius_1_1_spherical___bessel__approximant_a1d1f56acecc433ec59ed53d3f6711142}{}double {\bfseries R\+\_\+}\label{classsirius_1_1_spherical___bessel__approximant_a1d1f56acecc433ec59ed53d3f6711142}
+
+\item 
+std\+::vector$<$ std\+::vector$<$ double $>$ $>$ \hyperlink{classsirius_1_1_spherical___bessel__approximant_a88c4834eb7bc83ed0a580a8108dc9aaf}{qnu\+\_\+}
+\begin{DoxyCompactList}\small\item\em List of Bessel function scaling factors for each angular momentum. \end{DoxyCompactList}\item 
+\hypertarget{classsirius_1_1_spherical___bessel__approximant_aa839bde70058381325fe087de0c259a4}{}int {\bfseries nqnu\+\_\+max\+\_\+}\label{classsirius_1_1_spherical___bessel__approximant_aa839bde70058381325fe087de0c259a4}
+
+\end{DoxyCompactItemize}
+
+
+\subsection{Detailed Description}
+
+
+Definition at line 309 of file sbessel.\+h.
+
+
+
+\subsection{Member Data Documentation}
+\hypertarget{classsirius_1_1_spherical___bessel__approximant_a88c4834eb7bc83ed0a580a8108dc9aaf}{}\index{sirius\+::\+Spherical\+\_\+\+Bessel\+\_\+approximant@{sirius\+::\+Spherical\+\_\+\+Bessel\+\_\+approximant}!qnu\+\_\+@{qnu\+\_\+}}
+\index{qnu\+\_\+@{qnu\+\_\+}!sirius\+::\+Spherical\+\_\+\+Bessel\+\_\+approximant@{sirius\+::\+Spherical\+\_\+\+Bessel\+\_\+approximant}}
+\subsubsection[{qnu\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}std\+::vector$<$ std\+::vector$<$double$>$ $>$ sirius\+::\+Spherical\+\_\+\+Bessel\+\_\+approximant\+::qnu\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classsirius_1_1_spherical___bessel__approximant_a88c4834eb7bc83ed0a580a8108dc9aaf}
+
+
+List of Bessel function scaling factors for each angular momentum. 
+
+
+
+Definition at line 318 of file sbessel.\+h.
+
+
+
+The documentation for this class was generated from the following file\+:\begin{DoxyCompactItemize}
+\item 
+\hyperlink{sbessel_8h}{sbessel.\+h}\end{DoxyCompactItemize}

@@ -1,0 +1,43 @@
+digraph "k_point_set.h"
+{
+ // INTERACTIVE_SVG=YES
+  edge [fontname="Helvetica",fontsize="10",labelfontname="Helvetica",labelfontsize="10"];
+  node [fontname="Helvetica",fontsize="10",shape=record];
+  Node1 [label="k_point_set.h",height=0.2,width=0.4,color="black", fillcolor="grey75", style="filled", fontcolor="black"];
+  Node1 -> Node2 [dir="back",color="midnightblue",fontsize="10",style="solid"];
+  Node2 [label="band.h",height=0.2,width=0.4,color="black", fillcolor="white", style="filled",URL="$band_8h.html",tooltip="Contains declaration and partial implementation of sirius::Band class. "];
+  Node2 -> Node3 [dir="back",color="midnightblue",fontsize="10",style="solid"];
+  Node3 [label="add_nl_h_o_rs.cpp",height=0.2,width=0.4,color="black", fillcolor="white", style="filled",URL="$add__nl__h__o__rs_8cpp_source.html"];
+  Node2 -> Node4 [dir="back",color="midnightblue",fontsize="10",style="solid"];
+  Node4 [label="force.h",height=0.2,width=0.4,color="black", fillcolor="white", style="filled",URL="$force_8h.html",tooltip="Contains definition of sirius::Force class. "];
+  Node4 -> Node5 [dir="back",color="midnightblue",fontsize="10",style="solid"];
+  Node5 [label="dft_ground_state.h",height=0.2,width=0.4,color="black", fillcolor="white", style="filled",URL="$dft__ground__state_8h.html",tooltip="Contains definition and partial implementation of sirius::DFT_ground_state class. ..."];
+  Node5 -> Node6 [dir="back",color="midnightblue",fontsize="10",style="solid"];
+  Node6 [label="sirius.h",height=0.2,width=0.4,color="black", fillcolor="white", style="filled",URL="$sirius_8h.html",tooltip="\"All-in-one\" include file. "];
+  Node6 -> Node7 [dir="back",color="midnightblue",fontsize="10",style="solid"];
+  Node7 [label="sirius_api.cpp",height=0.2,width=0.4,color="black", fillcolor="white", style="filled",URL="$sirius__api_8cpp.html",tooltip="Fortran API. "];
+  Node4 -> Node8 [dir="back",color="midnightblue",fontsize="10",style="solid"];
+  Node8 [label="force.cpp",height=0.2,width=0.4,color="black", fillcolor="white", style="filled",URL="$force_8cpp.html",tooltip="Contains implementation of sirius::Force class. "];
+  Node4 -> Node6 [dir="back",color="midnightblue",fontsize="10",style="solid"];
+  Node2 -> Node6 [dir="back",color="midnightblue",fontsize="10",style="solid"];
+  Node1 -> Node9 [dir="back",color="midnightblue",fontsize="10",style="solid"];
+  Node9 [label="density.h",height=0.2,width=0.4,color="black", fillcolor="white", style="filled",URL="$density_8h.html",tooltip="Contains definition and partial implementation of sirius::Density class. "];
+  Node9 -> Node10 [dir="back",color="midnightblue",fontsize="10",style="solid"];
+  Node10 [label="potential.h",height=0.2,width=0.4,color="black", fillcolor="white", style="filled",URL="$potential_8h.html",tooltip="Contains declaration and partial implementation of sirius::Potential class. "];
+  Node10 -> Node2 [dir="back",color="midnightblue",fontsize="10",style="solid"];
+  Node10 -> Node5 [dir="back",color="midnightblue",fontsize="10",style="solid"];
+  Node10 -> Node4 [dir="back",color="midnightblue",fontsize="10",style="solid"];
+  Node10 -> Node11 [dir="back",color="midnightblue",fontsize="10",style="solid"];
+  Node11 [label="Forces_PS.h",height=0.2,width=0.4,color="black", fillcolor="white", style="filled",URL="$_forces___p_s_8h_source.html"];
+  Node11 -> Node5 [dir="back",color="midnightblue",fontsize="10",style="solid"];
+  Node11 -> Node12 [dir="back",color="midnightblue",fontsize="10",style="solid"];
+  Node12 [label="Forces_PS.cpp",height=0.2,width=0.4,color="black", fillcolor="white", style="filled",URL="$_forces___p_s_8cpp_source.html"];
+  Node10 -> Node6 [dir="back",color="midnightblue",fontsize="10",style="solid"];
+  Node9 -> Node5 [dir="back",color="midnightblue",fontsize="10",style="solid"];
+  Node9 -> Node4 [dir="back",color="midnightblue",fontsize="10",style="solid"];
+  Node9 -> Node11 [dir="back",color="midnightblue",fontsize="10",style="solid"];
+  Node9 -> Node6 [dir="back",color="midnightblue",fontsize="10",style="solid"];
+  Node1 -> Node5 [dir="back",color="midnightblue",fontsize="10",style="solid"];
+  Node1 -> Node12 [dir="back",color="midnightblue",fontsize="10",style="solid"];
+  Node1 -> Node6 [dir="back",color="midnightblue",fontsize="10",style="solid"];
+}

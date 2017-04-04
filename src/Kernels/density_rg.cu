@@ -1,4 +1,4 @@
-#include "kernels_common.h"
+#include "../SDDK/GPU/cuda_common.h"
 
 __global__ void update_density_rg_1_gpu_kernel(int size__,
                                                cuDoubleComplex const* psi_rg__,
@@ -18,7 +18,7 @@ extern "C" void update_density_rg_1_gpu(int size__,
                                         double wt__, 
                                         double* density_rg__)
 {
-    CUDA_timer t("update_density_rg_1_gpu");
+    //CUDA_timer t("update_density_rg_1_gpu");
 
     dim3 grid_t(64);
     dim3 grid_b(num_blocks(size__, grid_t.x));

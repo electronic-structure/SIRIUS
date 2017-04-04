@@ -1,0 +1,369 @@
+\hypertarget{classsirius_1_1_radial__grid}{}\section{sirius\+:\+:Radial\+\_\+grid Class Reference}
+\label{classsirius_1_1_radial__grid}\index{sirius\+::\+Radial\+\_\+grid@{sirius\+::\+Radial\+\_\+grid}}
+
+
+Radial grid for a muffin-\/tin or an isolated atom.  
+
+
+
+
+Collaboration diagram for sirius\+:\+:Radial\+\_\+grid\+:
+% FIG 0
+\subsection*{Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+\hypertarget{classsirius_1_1_radial__grid_afad2f9d4527493bda8a2e71ecc0bfaa7}{}{\bfseries Radial\+\_\+grid} (\hyperlink{classsirius_1_1_radial__grid}{Radial\+\_\+grid} \&\&src\+\_\+\+\_\+)\label{classsirius_1_1_radial__grid_afad2f9d4527493bda8a2e71ecc0bfaa7}
+
+\item 
+\hypertarget{classsirius_1_1_radial__grid_a1b816295fd384b22c1428558f93a8c1d}{}\hyperlink{classsirius_1_1_radial__grid}{Radial\+\_\+grid} \& {\bfseries operator=} (\hyperlink{classsirius_1_1_radial__grid}{Radial\+\_\+grid} \&\&src\+\_\+\+\_\+)\label{classsirius_1_1_radial__grid_a1b816295fd384b22c1428558f93a8c1d}
+
+\item 
+\hyperlink{classsirius_1_1_radial__grid_ab8a33615324e5cc8b2426dbff0b07949}{Radial\+\_\+grid} ()
+\begin{DoxyCompactList}\small\item\em Constructor for an empty grid. \end{DoxyCompactList}\item 
+\hyperlink{classsirius_1_1_radial__grid_a726d50e7cb1b04543c82576fd421c2ba}{Radial\+\_\+grid} (std\+::vector$<$ double $>$ \&x\+\_\+\+\_\+)
+\begin{DoxyCompactList}\small\item\em Constructor for user provided radial grid. \end{DoxyCompactList}\item 
+\hyperlink{classsirius_1_1_radial__grid_ad95eb8181e1d7bed0b7c561ae82e426f}{Radial\+\_\+grid} (int num\+\_\+points\+\_\+\+\_\+, double const $\ast$x\+\_\+\+\_\+)
+\begin{DoxyCompactList}\small\item\em Constructor for user provided radial grid. \end{DoxyCompactList}\item 
+\hyperlink{classsirius_1_1_radial__grid_ae8c563c3381f4f4daa0b0af86a779058}{Radial\+\_\+grid} (\hyperlink{namespacesirius_a9c2875496b6736959baaf053c21dafb0}{radial\+\_\+grid\+\_\+t} grid\+\_\+type, int \hyperlink{classsirius_1_1_radial__grid_ae4775a4fff1a0852d934684d1939a824}{num\+\_\+points}, double rmin, double rmax)
+\begin{DoxyCompactList}\small\item\em Constructor for a specific radial grid. \end{DoxyCompactList}\item 
+double \hyperlink{classsirius_1_1_radial__grid_aa18251c2b1533c15ca0605bd0abd28a9}{operator\mbox{[}$\,$\mbox{]}} (const int i) const 
+\begin{DoxyCompactList}\small\item\em Return $ x_{i} $. \end{DoxyCompactList}\item 
+double \hyperlink{classsirius_1_1_radial__grid_ac43f80d43c1abc2892034e2e82d661ec}{dx} (const int i) const 
+\begin{DoxyCompactList}\small\item\em Return $ dx_{i} $. \end{DoxyCompactList}\item 
+double \hyperlink{classsirius_1_1_radial__grid_a33f818a3b5f561179542d85c8505998c}{x\+\_\+inv} (const int i) const 
+\begin{DoxyCompactList}\small\item\em Return $ x_{i}^{-1} $. \end{DoxyCompactList}\item 
+int \hyperlink{classsirius_1_1_radial__grid_ae4775a4fff1a0852d934684d1939a824}{num\+\_\+points} () const 
+\begin{DoxyCompactList}\small\item\em Number of grid points. \end{DoxyCompactList}\item 
+double \hyperlink{classsirius_1_1_radial__grid_a1eb178aac1d9d8f898d4d6a5e1d3b516}{first} () const 
+\begin{DoxyCompactList}\small\item\em First point of the grid. \end{DoxyCompactList}\item 
+double \hyperlink{classsirius_1_1_radial__grid_a70ac75d37d84830d7157b5d00bf3e852}{last} () const 
+\begin{DoxyCompactList}\small\item\em Last point of the grid. \end{DoxyCompactList}\item 
+std\+::string \hyperlink{classsirius_1_1_radial__grid_a4dc44821cca604d6bc6eadd4075fcda9}{grid\+\_\+type\+\_\+name} () const 
+\begin{DoxyCompactList}\small\item\em Return name of the grid type. \end{DoxyCompactList}\item 
+void \hyperlink{classsirius_1_1_radial__grid_affbaba8bbac301aa3908be8e11a99bdf}{set\+\_\+radial\+\_\+points} (int num\+\_\+points\+\_\+\+\_\+, double const $\ast$points\+\_\+\+\_\+)
+\begin{DoxyCompactList}\small\item\em Set new radial points. \end{DoxyCompactList}\item 
+\hypertarget{classsirius_1_1_radial__grid_a13d9002520bbb87a4ad16c695d231e36}{}uint64\+\_\+t {\bfseries hash} () const \label{classsirius_1_1_radial__grid_a13d9002520bbb87a4ad16c695d231e36}
+
+\item 
+\hypertarget{classsirius_1_1_radial__grid_a5bddf2f068d7f68a7092fb5ac8be2343}{}\hyperlink{classsirius_1_1_radial__grid}{Radial\+\_\+grid} {\bfseries segment} (int num\+\_\+points\+\_\+\+\_\+) const \label{classsirius_1_1_radial__grid_a5bddf2f068d7f68a7092fb5ac8be2343}
+
+\item 
+\hypertarget{classsirius_1_1_radial__grid_a5c801cc5c32e61b07feb9dc822096fae}{}void {\bfseries copy\+\_\+to\+\_\+device} ()\label{classsirius_1_1_radial__grid_a5c801cc5c32e61b07feb9dc822096fae}
+
+\item 
+\hypertarget{classsirius_1_1_radial__grid_abad0dd470b29afcb64b872e6846f431f}{}\hyperlink{classsddk_1_1mdarray}{mdarray}$<$ double, 1 $>$ const \& {\bfseries x} () const \label{classsirius_1_1_radial__grid_abad0dd470b29afcb64b872e6846f431f}
+
+\item 
+\hypertarget{classsirius_1_1_radial__grid_a8850ba5832b00d70fc1a9b130bbad49b}{}\hyperlink{classsddk_1_1mdarray}{mdarray}$<$ double, 1 $>$ const \& {\bfseries dx} () const \label{classsirius_1_1_radial__grid_a8850ba5832b00d70fc1a9b130bbad49b}
+
+\end{DoxyCompactItemize}
+\subsection*{Private Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+std\+::vector$<$ double $>$ \hyperlink{classsirius_1_1_radial__grid_a0b0694623d36d495796ceb5f393691ef}{create\+\_\+radial\+\_\+grid\+\_\+points} (\hyperlink{namespacesirius_a9c2875496b6736959baaf053c21dafb0}{radial\+\_\+grid\+\_\+t} grid\+\_\+type, int \hyperlink{classsirius_1_1_radial__grid_ae4775a4fff1a0852d934684d1939a824}{num\+\_\+points}, double rmin, double rmax)
+\begin{DoxyCompactList}\small\item\em Create array of radial grid points. \end{DoxyCompactList}\item 
+void \hyperlink{classsirius_1_1_radial__grid_a02aa9e9d953cdefe1a8c5f5e8d100dd7}{create} (\hyperlink{namespacesirius_a9c2875496b6736959baaf053c21dafb0}{radial\+\_\+grid\+\_\+t} grid\+\_\+type, int \hyperlink{classsirius_1_1_radial__grid_ae4775a4fff1a0852d934684d1939a824}{num\+\_\+points}, double rmin, double rmax)
+\begin{DoxyCompactList}\small\item\em Create the predefined grid. \end{DoxyCompactList}\item 
+\hypertarget{classsirius_1_1_radial__grid_a9c62b2f44c52990f1eb9ad827f9829bc}{}{\bfseries Radial\+\_\+grid} (\hyperlink{classsirius_1_1_radial__grid}{Radial\+\_\+grid} const \&src\+\_\+\+\_\+)=delete\label{classsirius_1_1_radial__grid_a9c62b2f44c52990f1eb9ad827f9829bc}
+
+\item 
+\hypertarget{classsirius_1_1_radial__grid_a08651b3aa6624ff7a8440e4842c56781}{}\hyperlink{classsirius_1_1_radial__grid}{Radial\+\_\+grid} \& {\bfseries operator=} (\hyperlink{classsirius_1_1_radial__grid}{Radial\+\_\+grid} const \&src\+\_\+\+\_\+)=delete\label{classsirius_1_1_radial__grid_a08651b3aa6624ff7a8440e4842c56781}
+
+\end{DoxyCompactItemize}
+\subsection*{Private Attributes}
+\begin{DoxyCompactItemize}
+\item 
+\hyperlink{classsddk_1_1mdarray}{mdarray}$<$ double, 1 $>$ \hyperlink{classsirius_1_1_radial__grid_a32a5426b40eb245b874fad4c94a2a854}{x\+\_\+}
+\begin{DoxyCompactList}\small\item\em Radial grid points. \end{DoxyCompactList}\item 
+\hyperlink{classsddk_1_1mdarray}{mdarray}$<$ double, 1 $>$ \hyperlink{classsirius_1_1_radial__grid_a0d2bf26a23dc0c96e3f5bf9a49e7f464}{x\+\_\+inv\+\_\+}
+\begin{DoxyCompactList}\small\item\em Inverse values of radial grid points. \end{DoxyCompactList}\item 
+\hyperlink{classsddk_1_1mdarray}{mdarray}$<$ double, 1 $>$ \hyperlink{classsirius_1_1_radial__grid_a45e025061de272a37ffcc756fe4bec19}{dx\+\_\+}
+\begin{DoxyCompactList}\small\item\em Radial grid points difference. \end{DoxyCompactList}\item 
+std\+::string \hyperlink{classsirius_1_1_radial__grid_a6a43795fd734611edaf54f02299c9784}{grid\+\_\+type\+\_\+name\+\_\+}
+\begin{DoxyCompactList}\small\item\em Name of the grid type. \end{DoxyCompactList}\end{DoxyCompactItemize}
+
+
+\subsection{Detailed Description}
+Radial grid for a muffin-\/tin or an isolated atom. 
+
+Definition at line 53 of file radial\+\_\+grid.\+h.
+
+
+
+\subsection{Constructor \& Destructor Documentation}
+\hypertarget{classsirius_1_1_radial__grid_ab8a33615324e5cc8b2426dbff0b07949}{}\index{sirius\+::\+Radial\+\_\+grid@{sirius\+::\+Radial\+\_\+grid}!Radial\+\_\+grid@{Radial\+\_\+grid}}
+\index{Radial\+\_\+grid@{Radial\+\_\+grid}!sirius\+::\+Radial\+\_\+grid@{sirius\+::\+Radial\+\_\+grid}}
+\subsubsection[{Radial\+\_\+grid()}]{\setlength{\rightskip}{0pt plus 5cm}sirius\+::\+Radial\+\_\+grid\+::\+Radial\+\_\+grid (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}}\label{classsirius_1_1_radial__grid_ab8a33615324e5cc8b2426dbff0b07949}
+
+
+Constructor for an empty grid. 
+
+
+
+Definition at line 260 of file radial\+\_\+grid.\+h.
+
+\hypertarget{classsirius_1_1_radial__grid_a726d50e7cb1b04543c82576fd421c2ba}{}\index{sirius\+::\+Radial\+\_\+grid@{sirius\+::\+Radial\+\_\+grid}!Radial\+\_\+grid@{Radial\+\_\+grid}}
+\index{Radial\+\_\+grid@{Radial\+\_\+grid}!sirius\+::\+Radial\+\_\+grid@{sirius\+::\+Radial\+\_\+grid}}
+\subsubsection[{Radial\+\_\+grid(std\+::vector$<$ double $>$ \&x\+\_\+\+\_\+)}]{\setlength{\rightskip}{0pt plus 5cm}sirius\+::\+Radial\+\_\+grid\+::\+Radial\+\_\+grid (
+\begin{DoxyParamCaption}
+\item[{std\+::vector$<$ double $>$ \&}]{x\+\_\+\+\_\+}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}}\label{classsirius_1_1_radial__grid_a726d50e7cb1b04543c82576fd421c2ba}
+
+
+Constructor for user provided radial grid. 
+
+
+
+Definition at line 265 of file radial\+\_\+grid.\+h.
+
+\hypertarget{classsirius_1_1_radial__grid_ad95eb8181e1d7bed0b7c561ae82e426f}{}\index{sirius\+::\+Radial\+\_\+grid@{sirius\+::\+Radial\+\_\+grid}!Radial\+\_\+grid@{Radial\+\_\+grid}}
+\index{Radial\+\_\+grid@{Radial\+\_\+grid}!sirius\+::\+Radial\+\_\+grid@{sirius\+::\+Radial\+\_\+grid}}
+\subsubsection[{Radial\+\_\+grid(int num\+\_\+points\+\_\+\+\_\+, double const $\ast$x\+\_\+\+\_\+)}]{\setlength{\rightskip}{0pt plus 5cm}sirius\+::\+Radial\+\_\+grid\+::\+Radial\+\_\+grid (
+\begin{DoxyParamCaption}
+\item[{int}]{num\+\_\+points\+\_\+\+\_\+, }
+\item[{double const $\ast$}]{x\+\_\+\+\_\+}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}}\label{classsirius_1_1_radial__grid_ad95eb8181e1d7bed0b7c561ae82e426f}
+
+
+Constructor for user provided radial grid. 
+
+
+
+Definition at line 271 of file radial\+\_\+grid.\+h.
+
+\hypertarget{classsirius_1_1_radial__grid_ae8c563c3381f4f4daa0b0af86a779058}{}\index{sirius\+::\+Radial\+\_\+grid@{sirius\+::\+Radial\+\_\+grid}!Radial\+\_\+grid@{Radial\+\_\+grid}}
+\index{Radial\+\_\+grid@{Radial\+\_\+grid}!sirius\+::\+Radial\+\_\+grid@{sirius\+::\+Radial\+\_\+grid}}
+\subsubsection[{Radial\+\_\+grid(radial\+\_\+grid\+\_\+t grid\+\_\+type, int num\+\_\+points, double rmin, double rmax)}]{\setlength{\rightskip}{0pt plus 5cm}sirius\+::\+Radial\+\_\+grid\+::\+Radial\+\_\+grid (
+\begin{DoxyParamCaption}
+\item[{{\bf radial\+\_\+grid\+\_\+t}}]{grid\+\_\+type, }
+\item[{int}]{num\+\_\+points, }
+\item[{double}]{rmin, }
+\item[{double}]{rmax}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}}\label{classsirius_1_1_radial__grid_ae8c563c3381f4f4daa0b0af86a779058}
+
+
+Constructor for a specific radial grid. 
+
+
+
+Definition at line 277 of file radial\+\_\+grid.\+h.
+
+
+
+\subsection{Member Function Documentation}
+\hypertarget{classsirius_1_1_radial__grid_a0b0694623d36d495796ceb5f393691ef}{}\index{sirius\+::\+Radial\+\_\+grid@{sirius\+::\+Radial\+\_\+grid}!create\+\_\+radial\+\_\+grid\+\_\+points@{create\+\_\+radial\+\_\+grid\+\_\+points}}
+\index{create\+\_\+radial\+\_\+grid\+\_\+points@{create\+\_\+radial\+\_\+grid\+\_\+points}!sirius\+::\+Radial\+\_\+grid@{sirius\+::\+Radial\+\_\+grid}}
+\subsubsection[{create\+\_\+radial\+\_\+grid\+\_\+points(radial\+\_\+grid\+\_\+t grid\+\_\+type, int num\+\_\+points, double rmin, double rmax)}]{\setlength{\rightskip}{0pt plus 5cm}std\+::vector$<$double$>$ sirius\+::\+Radial\+\_\+grid\+::create\+\_\+radial\+\_\+grid\+\_\+points (
+\begin{DoxyParamCaption}
+\item[{{\bf radial\+\_\+grid\+\_\+t}}]{grid\+\_\+type, }
+\item[{int}]{num\+\_\+points, }
+\item[{double}]{rmin, }
+\item[{double}]{rmax}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}, {\ttfamily [private]}}\label{classsirius_1_1_radial__grid_a0b0694623d36d495796ceb5f393691ef}
+
+
+Create array of radial grid points. 
+
+
+
+Definition at line 71 of file radial\+\_\+grid.\+h.
+
+\hypertarget{classsirius_1_1_radial__grid_a02aa9e9d953cdefe1a8c5f5e8d100dd7}{}\index{sirius\+::\+Radial\+\_\+grid@{sirius\+::\+Radial\+\_\+grid}!create@{create}}
+\index{create@{create}!sirius\+::\+Radial\+\_\+grid@{sirius\+::\+Radial\+\_\+grid}}
+\subsubsection[{create(radial\+\_\+grid\+\_\+t grid\+\_\+type, int num\+\_\+points, double rmin, double rmax)}]{\setlength{\rightskip}{0pt plus 5cm}void sirius\+::\+Radial\+\_\+grid\+::create (
+\begin{DoxyParamCaption}
+\item[{{\bf radial\+\_\+grid\+\_\+t}}]{grid\+\_\+type, }
+\item[{int}]{num\+\_\+points, }
+\item[{double}]{rmin, }
+\item[{double}]{rmax}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}, {\ttfamily [private]}}\label{classsirius_1_1_radial__grid_a02aa9e9d953cdefe1a8c5f5e8d100dd7}
+
+
+Create the predefined grid. 
+
+
+
+Definition at line 177 of file radial\+\_\+grid.\+h.
+
+\hypertarget{classsirius_1_1_radial__grid_aa18251c2b1533c15ca0605bd0abd28a9}{}\index{sirius\+::\+Radial\+\_\+grid@{sirius\+::\+Radial\+\_\+grid}!operator\mbox{[}$\,$\mbox{]}@{operator[]}}
+\index{operator\mbox{[}$\,$\mbox{]}@{operator[]}!sirius\+::\+Radial\+\_\+grid@{sirius\+::\+Radial\+\_\+grid}}
+\subsubsection[{operator[](const int i) const }]{\setlength{\rightskip}{0pt plus 5cm}double sirius\+::\+Radial\+\_\+grid\+::operator\mbox{[}$\,$\mbox{]} (
+\begin{DoxyParamCaption}
+\item[{const int}]{i}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [inline]}}\label{classsirius_1_1_radial__grid_aa18251c2b1533c15ca0605bd0abd28a9}
+
+
+Return $ x_{i} $. 
+
+
+
+Definition at line 283 of file radial\+\_\+grid.\+h.
+
+\hypertarget{classsirius_1_1_radial__grid_ac43f80d43c1abc2892034e2e82d661ec}{}\index{sirius\+::\+Radial\+\_\+grid@{sirius\+::\+Radial\+\_\+grid}!dx@{dx}}
+\index{dx@{dx}!sirius\+::\+Radial\+\_\+grid@{sirius\+::\+Radial\+\_\+grid}}
+\subsubsection[{dx(const int i) const }]{\setlength{\rightskip}{0pt plus 5cm}double sirius\+::\+Radial\+\_\+grid\+::dx (
+\begin{DoxyParamCaption}
+\item[{const int}]{i}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [inline]}}\label{classsirius_1_1_radial__grid_ac43f80d43c1abc2892034e2e82d661ec}
+
+
+Return $ dx_{i} $. 
+
+
+
+Definition at line 290 of file radial\+\_\+grid.\+h.
+
+\hypertarget{classsirius_1_1_radial__grid_a33f818a3b5f561179542d85c8505998c}{}\index{sirius\+::\+Radial\+\_\+grid@{sirius\+::\+Radial\+\_\+grid}!x\+\_\+inv@{x\+\_\+inv}}
+\index{x\+\_\+inv@{x\+\_\+inv}!sirius\+::\+Radial\+\_\+grid@{sirius\+::\+Radial\+\_\+grid}}
+\subsubsection[{x\+\_\+inv(const int i) const }]{\setlength{\rightskip}{0pt plus 5cm}double sirius\+::\+Radial\+\_\+grid\+::x\+\_\+inv (
+\begin{DoxyParamCaption}
+\item[{const int}]{i}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [inline]}}\label{classsirius_1_1_radial__grid_a33f818a3b5f561179542d85c8505998c}
+
+
+Return $ x_{i}^{-1} $. 
+
+
+
+Definition at line 297 of file radial\+\_\+grid.\+h.
+
+\hypertarget{classsirius_1_1_radial__grid_ae4775a4fff1a0852d934684d1939a824}{}\index{sirius\+::\+Radial\+\_\+grid@{sirius\+::\+Radial\+\_\+grid}!num\+\_\+points@{num\+\_\+points}}
+\index{num\+\_\+points@{num\+\_\+points}!sirius\+::\+Radial\+\_\+grid@{sirius\+::\+Radial\+\_\+grid}}
+\subsubsection[{num\+\_\+points() const }]{\setlength{\rightskip}{0pt plus 5cm}int sirius\+::\+Radial\+\_\+grid\+::num\+\_\+points (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [inline]}}\label{classsirius_1_1_radial__grid_ae4775a4fff1a0852d934684d1939a824}
+
+
+Number of grid points. 
+
+
+
+Definition at line 304 of file radial\+\_\+grid.\+h.
+
+\hypertarget{classsirius_1_1_radial__grid_a1eb178aac1d9d8f898d4d6a5e1d3b516}{}\index{sirius\+::\+Radial\+\_\+grid@{sirius\+::\+Radial\+\_\+grid}!first@{first}}
+\index{first@{first}!sirius\+::\+Radial\+\_\+grid@{sirius\+::\+Radial\+\_\+grid}}
+\subsubsection[{first() const }]{\setlength{\rightskip}{0pt plus 5cm}double sirius\+::\+Radial\+\_\+grid\+::first (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [inline]}}\label{classsirius_1_1_radial__grid_a1eb178aac1d9d8f898d4d6a5e1d3b516}
+
+
+First point of the grid. 
+
+
+
+Definition at line 310 of file radial\+\_\+grid.\+h.
+
+\hypertarget{classsirius_1_1_radial__grid_a70ac75d37d84830d7157b5d00bf3e852}{}\index{sirius\+::\+Radial\+\_\+grid@{sirius\+::\+Radial\+\_\+grid}!last@{last}}
+\index{last@{last}!sirius\+::\+Radial\+\_\+grid@{sirius\+::\+Radial\+\_\+grid}}
+\subsubsection[{last() const }]{\setlength{\rightskip}{0pt plus 5cm}double sirius\+::\+Radial\+\_\+grid\+::last (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [inline]}}\label{classsirius_1_1_radial__grid_a70ac75d37d84830d7157b5d00bf3e852}
+
+
+Last point of the grid. 
+
+
+
+Definition at line 316 of file radial\+\_\+grid.\+h.
+
+\hypertarget{classsirius_1_1_radial__grid_a4dc44821cca604d6bc6eadd4075fcda9}{}\index{sirius\+::\+Radial\+\_\+grid@{sirius\+::\+Radial\+\_\+grid}!grid\+\_\+type\+\_\+name@{grid\+\_\+type\+\_\+name}}
+\index{grid\+\_\+type\+\_\+name@{grid\+\_\+type\+\_\+name}!sirius\+::\+Radial\+\_\+grid@{sirius\+::\+Radial\+\_\+grid}}
+\subsubsection[{grid\+\_\+type\+\_\+name() const }]{\setlength{\rightskip}{0pt plus 5cm}std\+::string sirius\+::\+Radial\+\_\+grid\+::grid\+\_\+type\+\_\+name (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [inline]}}\label{classsirius_1_1_radial__grid_a4dc44821cca604d6bc6eadd4075fcda9}
+
+
+Return name of the grid type. 
+
+
+
+Definition at line 322 of file radial\+\_\+grid.\+h.
+
+\hypertarget{classsirius_1_1_radial__grid_affbaba8bbac301aa3908be8e11a99bdf}{}\index{sirius\+::\+Radial\+\_\+grid@{sirius\+::\+Radial\+\_\+grid}!set\+\_\+radial\+\_\+points@{set\+\_\+radial\+\_\+points}}
+\index{set\+\_\+radial\+\_\+points@{set\+\_\+radial\+\_\+points}!sirius\+::\+Radial\+\_\+grid@{sirius\+::\+Radial\+\_\+grid}}
+\subsubsection[{set\+\_\+radial\+\_\+points(int num\+\_\+points\+\_\+\+\_\+, double const $\ast$points\+\_\+\+\_\+)}]{\setlength{\rightskip}{0pt plus 5cm}void sirius\+::\+Radial\+\_\+grid\+::set\+\_\+radial\+\_\+points (
+\begin{DoxyParamCaption}
+\item[{int}]{num\+\_\+points\+\_\+\+\_\+, }
+\item[{double const $\ast$}]{points\+\_\+\+\_\+}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}}\label{classsirius_1_1_radial__grid_affbaba8bbac301aa3908be8e11a99bdf}
+
+
+Set new radial points. 
+
+
+
+Definition at line 328 of file radial\+\_\+grid.\+h.
+
+
+
+\subsection{Member Data Documentation}
+\hypertarget{classsirius_1_1_radial__grid_a32a5426b40eb245b874fad4c94a2a854}{}\index{sirius\+::\+Radial\+\_\+grid@{sirius\+::\+Radial\+\_\+grid}!x\+\_\+@{x\+\_\+}}
+\index{x\+\_\+@{x\+\_\+}!sirius\+::\+Radial\+\_\+grid@{sirius\+::\+Radial\+\_\+grid}}
+\subsubsection[{x\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}{\bf mdarray}$<$double, 1$>$ sirius\+::\+Radial\+\_\+grid\+::x\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classsirius_1_1_radial__grid_a32a5426b40eb245b874fad4c94a2a854}
+
+
+Radial grid points. 
+
+
+
+Definition at line 58 of file radial\+\_\+grid.\+h.
+
+\hypertarget{classsirius_1_1_radial__grid_a0d2bf26a23dc0c96e3f5bf9a49e7f464}{}\index{sirius\+::\+Radial\+\_\+grid@{sirius\+::\+Radial\+\_\+grid}!x\+\_\+inv\+\_\+@{x\+\_\+inv\+\_\+}}
+\index{x\+\_\+inv\+\_\+@{x\+\_\+inv\+\_\+}!sirius\+::\+Radial\+\_\+grid@{sirius\+::\+Radial\+\_\+grid}}
+\subsubsection[{x\+\_\+inv\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}{\bf mdarray}$<$double, 1$>$ sirius\+::\+Radial\+\_\+grid\+::x\+\_\+inv\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classsirius_1_1_radial__grid_a0d2bf26a23dc0c96e3f5bf9a49e7f464}
+
+
+Inverse values of radial grid points. 
+
+
+
+Definition at line 61 of file radial\+\_\+grid.\+h.
+
+\hypertarget{classsirius_1_1_radial__grid_a45e025061de272a37ffcc756fe4bec19}{}\index{sirius\+::\+Radial\+\_\+grid@{sirius\+::\+Radial\+\_\+grid}!dx\+\_\+@{dx\+\_\+}}
+\index{dx\+\_\+@{dx\+\_\+}!sirius\+::\+Radial\+\_\+grid@{sirius\+::\+Radial\+\_\+grid}}
+\subsubsection[{dx\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}{\bf mdarray}$<$double, 1$>$ sirius\+::\+Radial\+\_\+grid\+::dx\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classsirius_1_1_radial__grid_a45e025061de272a37ffcc756fe4bec19}
+
+
+Radial grid points difference. 
+
+$ dx_{i} = x_{i+1} - x_{i} $ 
+
+Definition at line 65 of file radial\+\_\+grid.\+h.
+
+\hypertarget{classsirius_1_1_radial__grid_a6a43795fd734611edaf54f02299c9784}{}\index{sirius\+::\+Radial\+\_\+grid@{sirius\+::\+Radial\+\_\+grid}!grid\+\_\+type\+\_\+name\+\_\+@{grid\+\_\+type\+\_\+name\+\_\+}}
+\index{grid\+\_\+type\+\_\+name\+\_\+@{grid\+\_\+type\+\_\+name\+\_\+}!sirius\+::\+Radial\+\_\+grid@{sirius\+::\+Radial\+\_\+grid}}
+\subsubsection[{grid\+\_\+type\+\_\+name\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}std\+::string sirius\+::\+Radial\+\_\+grid\+::grid\+\_\+type\+\_\+name\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classsirius_1_1_radial__grid_a6a43795fd734611edaf54f02299c9784}
+
+
+Name of the grid type. 
+
+
+
+Definition at line 68 of file radial\+\_\+grid.\+h.
+
+
+
+The documentation for this class was generated from the following file\+:\begin{DoxyCompactItemize}
+\item 
+\hyperlink{radial__grid_8h}{radial\+\_\+grid.\+h}\end{DoxyCompactItemize}

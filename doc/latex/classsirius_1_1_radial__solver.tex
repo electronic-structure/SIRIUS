@@ -1,0 +1,178 @@
+\hypertarget{classsirius_1_1_radial__solver}{}\section{sirius\+:\+:Radial\+\_\+solver Class Reference}
+\label{classsirius_1_1_radial__solver}\index{sirius\+::\+Radial\+\_\+solver@{sirius\+::\+Radial\+\_\+solver}}
+
+
+Finds a solution to radial Schrodinger, Koelling-\/\+Harmon or Dirac equation.  
+
+
+
+
+Inheritance diagram for sirius\+:\+:Radial\+\_\+solver\+:
+% FIG 0
+
+
+Collaboration diagram for sirius\+:\+:Radial\+\_\+solver\+:
+% FIG 1
+\subsection*{Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+\hypertarget{classsirius_1_1_radial__solver_af5843654667e4f7bef9501e53cea48ee}{}{\bfseries Radial\+\_\+solver} (int zn\+\_\+\+\_\+, std\+::vector$<$ double $>$ const \&v\+\_\+\+\_\+, \hyperlink{classsirius_1_1_radial__grid}{Radial\+\_\+grid} const \&radial\+\_\+grid\+\_\+\+\_\+)\label{classsirius_1_1_radial__solver_af5843654667e4f7bef9501e53cea48ee}
+
+\item 
+\hypertarget{classsirius_1_1_radial__solver_a728b0de30915e88d77ec8913ffe91113}{}std\+::tuple$<$ int, std\+::vector$<$ double $>$, std\+::vector$<$ double $>$, std\+::vector$<$ double $>$, std\+::vector$<$ double $>$ $>$ {\bfseries solve} (relativity\+\_\+t rel\+\_\+\+\_\+, int dme\+\_\+\+\_\+, int l\+\_\+\+\_\+, int k\+\_\+\+\_\+, double enu\+\_\+\+\_\+) const \label{classsirius_1_1_radial__solver_a728b0de30915e88d77ec8913ffe91113}
+
+\item 
+int \hyperlink{classsirius_1_1_radial__solver_ad21632dfb5686e2bad1379d60cb2789c}{solve} (relativity\+\_\+t rel\+\_\+\+\_\+, int dme\+\_\+\+\_\+, int l\+\_\+\+\_\+, double enu\+\_\+\+\_\+, std\+::vector$<$ double $>$ \&p\+\_\+\+\_\+, std\+::vector$<$ double $>$ \&rdudr\+\_\+\+\_\+, std\+::array$<$ double, 2 $>$ \&uderiv\+\_\+\+\_\+) const 
+\begin{DoxyCompactList}\small\item\em Integrates the radial equation for a given energy and finds the m-\/th energy derivative of the radial solution. \end{DoxyCompactList}\item 
+\hypertarget{classsirius_1_1_radial__solver_a3c12cab10fc2019329bf918e0a0c81a6}{}int {\bfseries num\+\_\+points} () const \label{classsirius_1_1_radial__solver_a3c12cab10fc2019329bf918e0a0c81a6}
+
+\item 
+\hypertarget{classsirius_1_1_radial__solver_ac41ef301a8b9fd9e6d89fa9f1f92e4c9}{}int {\bfseries zn} () const \label{classsirius_1_1_radial__solver_ac41ef301a8b9fd9e6d89fa9f1f92e4c9}
+
+\item 
+\hypertarget{classsirius_1_1_radial__solver_ab85a606271786ed34cd73b913a28747c}{}double {\bfseries radial\+\_\+grid} (int i\+\_\+\+\_\+) const \label{classsirius_1_1_radial__solver_ab85a606271786ed34cd73b913a28747c}
+
+\item 
+\hypertarget{classsirius_1_1_radial__solver_af77e1b2638fd6eea9528ea0a6d8dd4f4}{}\hyperlink{classsirius_1_1_radial__grid}{Radial\+\_\+grid} const \& {\bfseries radial\+\_\+grid} () const \label{classsirius_1_1_radial__solver_af77e1b2638fd6eea9528ea0a6d8dd4f4}
+
+\end{DoxyCompactItemize}
+\subsection*{Protected Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+{\footnotesize template$<$relativity\+\_\+t rel, bool prevent\+\_\+overflow$>$ }\\int \hyperlink{classsirius_1_1_radial__solver_a72eaf443ca2f81c7d416d0c4f04e7ebb}{integrate\+\_\+forward\+\_\+rk4} (double enu\+\_\+\+\_\+, int l\+\_\+\+\_\+, int k\+\_\+\+\_\+, \hyperlink{classsirius_1_1_spline}{Spline}$<$ double $>$ const \&chi\+\_\+p\+\_\+\+\_\+, \hyperlink{classsirius_1_1_spline}{Spline}$<$ double $>$ const \&chi\+\_\+q\+\_\+\+\_\+, std\+::vector$<$ double $>$ \&p\+\_\+\+\_\+, std\+::vector$<$ double $>$ \&dpdr\+\_\+\+\_\+, std\+::vector$<$ double $>$ \&q\+\_\+\+\_\+, std\+::vector$<$ double $>$ \&dqdr\+\_\+\+\_\+) const 
+\begin{DoxyCompactList}\small\item\em Integrate system of two first-\/order differential equations forward starting from the origin. \end{DoxyCompactList}\end{DoxyCompactItemize}
+\subsection*{Protected Attributes}
+\begin{DoxyCompactItemize}
+\item 
+int \hyperlink{classsirius_1_1_radial__solver_a7f03ef84b603fa56fa0ee2d263f48eed}{zn\+\_\+}
+\begin{DoxyCompactList}\small\item\em Positive charge of the nucleus. \end{DoxyCompactList}\item 
+\hyperlink{classsirius_1_1_radial__grid}{Radial\+\_\+grid} const \& \hyperlink{classsirius_1_1_radial__solver_a363ba1f94d4ae7194fb65119c4af455d}{radial\+\_\+grid\+\_\+}
+\begin{DoxyCompactList}\small\item\em Radial grid. \end{DoxyCompactList}\item 
+\hyperlink{classsirius_1_1_spline}{Spline}$<$ double $>$ \hyperlink{classsirius_1_1_radial__solver_a8766ca2d2e048ee1e4451940ceb7f0a7}{ve\+\_\+}
+\begin{DoxyCompactList}\small\item\em Electronic part of potential. \end{DoxyCompactList}\end{DoxyCompactItemize}
+
+
+\subsection{Detailed Description}
+Finds a solution to radial Schrodinger, Koelling-\/\+Harmon or Dirac equation. 
+
+Non-\/relativistic radial Schrodinger equation\+: \[ -\frac{1}{2}p''(r) + V_{eff}(r)p(r) = Ep(r) \] where $ V_{eff}(r) = V(r) + \frac{\ell (\ell+1)}{2r^2} $, $ p(r) = u(r)r $ and $ u(r) $ is the radial wave-\/function. Energy derivatives of radial solutions obey the slightly different equation\+: \[ -\frac{1}{2}\dot{p}''(r) + V_{eff}(r)\dot{p}(r) = E\dot{p}(r) + p(r) \] \[ -\frac{1}{2}\ddot{p}''(r) + V_{eff}(r)\ddot{p}(r) = E\ddot{p}(r) + 2\dot{p}(r) \] and so on. We can generalize the radial Schrodinger equation like this\+: \[ -\frac{1}{2}p''(r) + \big(V_{eff}(r) - E\big) p(r) = \chi(r) \] where now $ p(r) $ represents m-\/th energy derivative of the radial solution and $ \chi(r) = m \frac{\partial^{m-1} p(r)} {\partial^{m-1}E} $
+
+Let\textquotesingle{}s now decouple second-\/order differential equation into a system of two first-\/order euquations. From $ p(r) = u(r)r $ we have \[ p'(r) = u'(r)r + u''(r) = 2q(r) + \frac{p(r)}{r} \] where we have introduced a new variable $ q(r) = \frac{u'(r) r}{2} $. Differentiating $ p'(r) $ again we arrive to the following equation for $ q'(r) $\+: \[ p''(r) = 2q'(r) + \frac{p'(r)}{r} - \frac{p(r)}{r^2} = 2q'(r) + \frac{2q(r)}{r} + \frac{p(r)}{r^2} - \frac{p(r)}{r^2} \] \[ q'(r) = \frac{1}{2}p''(r) - \frac{q(r)}{r} = \big(V_{eff}(r) - E\big) p(r) - \frac{q(r)}{r} - \chi(r) \] Final expression for a linear system of differential equations for m-\/th energy derivative is\+: \begin{eqnarray*} p'(r) &=& 2q(r) + \frac{p(r)}{r} \\ q'(r) &=& \big(V_{eff}(r) - E\big) p(r) - \frac{q(r)}{r} - \chi(r) \end{eqnarray*} Scalar-\/relativistic equations look similar. For m = 0 (no energy derivative) we have\+: \begin{eqnarray*} p'(r) &=& 2Mq(r) + \frac{p(r)}{r} \\ q'(r) &=& \big(V(r) - E + \frac{\ell(\ell+1)}{2Mr^2}\big) p(r) - \frac{q(r)}{r} \end{eqnarray*} where $ M = 1 + \frac{\alpha^2}{2}\big(E-V(r)\big) $. Because M depends on energy, the m-\/th energy derivatives of the scalar-\/relativistic solution take a slighly different form. For m=1 we have\+: \begin{eqnarray*} \dot{p}'(r) &=& 2M\dot{q}(r) + \frac{\dot{p}(r)}{r} + \alpha^2 q(r) \\ \dot{q}'(r) &=& \big(V(r) - E + \frac{\ell(\ell+1)}{2Mr^2}\big) \dot{p}(r) - \frac{\dot{q}(r)}{r} - \big(1 + \frac{\ell(\ell+1)\alpha^2}{4M^2r^2}\big)p(r) \end{eqnarray*} For m=2\+: \begin{eqnarray*} \ddot{p}'(r) &=& 2M\ddot{q}(r) + \frac{\ddot{p}(r)}{r} + 2 \alpha^2 \dot{q}(r) \\ \ddot{q}'(r) &=& \big(V(r) - E + \frac{\ell(\ell+1)}{2Mr^2}\big) \ddot{p}(r) - \frac{\ddot{q}(r)}{r} - 2 \big(1 + \frac{\ell(\ell+1)\alpha^2}{4M^2r^2}\big)\dot{p}(r) + \frac{\ell(\ell+1)\alpha^4}{4M^3r^2} p(r) \end{eqnarray*}
+
+Derivation of I\+O\+R\+A.
+
+First thing to do is to expand the $ 1/M $ to the first order in $ E $\+: \[ \frac{1}{M} = \frac{1}{1-\frac{\alpha^2}{2} V(r)} - \frac{\alpha^2 E}{2 (1-\frac{\alpha^2}{2} V(r))^2} + O(E^2) = \frac{1}{M_0} - \frac{\alpha^2}{2} \frac{1}{M_0^2} E \] From this expansion we can derive the exression for $ M $\+: \[ M = \Big(\frac{1}{M}\Big)^{-1} = \frac{M_0}{1 - \frac{\alpha^2}{2}\frac{E}{M_0}} \] Now we insert this expressions into the scalar-\/relativistic equations\+: \[ \left\{ \begin{array}{ll} \displaystyle p'(r) = 2 \frac{M_0}{1 - \frac{\alpha^2}{2}\frac{E}{M_0}} q(r) + \frac{p(r)}{r} \\ \displaystyle q'(r) = \Big(V(r) - E + \frac{\ell(\ell+1)}{2r^2} \big(\frac{1}{M_0} - \frac{\alpha^2}{2} \frac{E}{M_0^2} \big) \Big) p(r) - \frac{q(r)}{r} = \Big(V(r) - E + \frac{\ell(\ell+1)}{2 M_0 r^2} - \frac{\alpha^2}{2} \frac{\ell(\ell+1) E}{2 M_0^2 r^2} \Big) p(r) - \frac{q(r)}{r} \end{array} \right. \] The first energy derivatives are then\+: \[ \left\{ \begin{array}{ll} \displaystyle \dot{p}'(r) = 2 \frac{M_0}{1 - \frac{\alpha^2}{2}\frac{E}{M_0}} \dot{q}(r) + \frac{\dot{p}(r)}{r} + \frac{\alpha^2}{(1 - \frac{\alpha^2 E}{2 M_0})^2} q(r) \\ \displaystyle \dot{q}'(r) = \Big(V(r) - E + \frac{\ell(\ell+1)}{2 M_0 r^2} - \frac{\alpha^2}{2} \frac{\ell(\ell+1)}{2 M_0^2 r^2} E \Big) \dot{p}(r) - \frac{\dot{q}(r)}{r} - \Big(1 + \frac{\alpha^2}{2} \frac{\ell(\ell+1)}{2 M_0^2 r^2} \Big) p(r) \end{array} \right. \] The second energy derivatives are\+: \[ \left\{ \begin{array}{ll} \displaystyle \ddot{p}'(r) = 2 \frac{M_0}{1 - \frac{\alpha^2}{2}\frac{E}{M_0}} \ddot{q}(r) + \frac{\ddot{p}(r)}{r} + \frac{2 \alpha^2}{(1 - \frac{\alpha^2 E}{2 M_0})^2} \dot{q}(r) + \frac{\alpha^4}{2 M_0 (1 - \frac{\alpha^2 E}{2 M_0})^3} q(r) \\ \displaystyle \ddot{q}'(r) = \Big(V(r) - E + \frac{\ell(\ell+1)}{2 M_0 r^2} - \frac{\alpha^2}{2} \frac{\ell(\ell+1)}{2 M_0^2 r^2} E \Big) \ddot{p}(r) - \frac{\ddot{q}(r)}{r} - 2 \Big(1 + \frac{\alpha^2}{2} \frac{\ell(\ell+1)}{2 M_0^2 r^2} \Big) \dot{p}(r) \end{array} \right. \] 
+
+Definition at line 139 of file radial\+\_\+solver.\+h.
+
+
+
+\subsection{Member Function Documentation}
+\hypertarget{classsirius_1_1_radial__solver_a72eaf443ca2f81c7d416d0c4f04e7ebb}{}\index{sirius\+::\+Radial\+\_\+solver@{sirius\+::\+Radial\+\_\+solver}!integrate\+\_\+forward\+\_\+rk4@{integrate\+\_\+forward\+\_\+rk4}}
+\index{integrate\+\_\+forward\+\_\+rk4@{integrate\+\_\+forward\+\_\+rk4}!sirius\+::\+Radial\+\_\+solver@{sirius\+::\+Radial\+\_\+solver}}
+\subsubsection[{integrate\+\_\+forward\+\_\+rk4(double enu\+\_\+\+\_\+, int l\+\_\+\+\_\+, int k\+\_\+\+\_\+, Spline$<$ double $>$ const \&chi\+\_\+p\+\_\+\+\_\+, Spline$<$ double $>$ const \&chi\+\_\+q\+\_\+\+\_\+, std\+::vector$<$ double $>$ \&p\+\_\+\+\_\+, std\+::vector$<$ double $>$ \&dpdr\+\_\+\+\_\+, std\+::vector$<$ double $>$ \&q\+\_\+\+\_\+, std\+::vector$<$ double $>$ \&dqdr\+\_\+\+\_\+) const }]{\setlength{\rightskip}{0pt plus 5cm}template$<$relativity\+\_\+t rel, bool prevent\+\_\+overflow$>$ int sirius\+::\+Radial\+\_\+solver\+::integrate\+\_\+forward\+\_\+rk4 (
+\begin{DoxyParamCaption}
+\item[{double}]{enu\+\_\+\+\_\+, }
+\item[{int}]{l\+\_\+\+\_\+, }
+\item[{int}]{k\+\_\+\+\_\+, }
+\item[{{\bf Spline}$<$ double $>$ const \&}]{chi\+\_\+p\+\_\+\+\_\+, }
+\item[{{\bf Spline}$<$ double $>$ const \&}]{chi\+\_\+q\+\_\+\+\_\+, }
+\item[{std\+::vector$<$ double $>$ \&}]{p\+\_\+\+\_\+, }
+\item[{std\+::vector$<$ double $>$ \&}]{dpdr\+\_\+\+\_\+, }
+\item[{std\+::vector$<$ double $>$ \&}]{q\+\_\+\+\_\+, }
+\item[{std\+::vector$<$ double $>$ \&}]{dqdr\+\_\+\+\_\+}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [inline]}, {\ttfamily [protected]}}\label{classsirius_1_1_radial__solver_a72eaf443ca2f81c7d416d0c4f04e7ebb}
+
+
+Integrate system of two first-\/order differential equations forward starting from the origin. 
+
+Use Runge-\/\+Kutta 4th order method 
+
+Definition at line 155 of file radial\+\_\+solver.\+h.
+
+\hypertarget{classsirius_1_1_radial__solver_ad21632dfb5686e2bad1379d60cb2789c}{}\index{sirius\+::\+Radial\+\_\+solver@{sirius\+::\+Radial\+\_\+solver}!solve@{solve}}
+\index{solve@{solve}!sirius\+::\+Radial\+\_\+solver@{sirius\+::\+Radial\+\_\+solver}}
+\subsubsection[{solve(relativity\+\_\+t rel\+\_\+\+\_\+, int dme\+\_\+\+\_\+, int l\+\_\+\+\_\+, double enu\+\_\+\+\_\+, std\+::vector$<$ double $>$ \&p\+\_\+\+\_\+, std\+::vector$<$ double $>$ \&rdudr\+\_\+\+\_\+, std\+::array$<$ double, 2 $>$ \&uderiv\+\_\+\+\_\+) const }]{\setlength{\rightskip}{0pt plus 5cm}int sirius\+::\+Radial\+\_\+solver\+::solve (
+\begin{DoxyParamCaption}
+\item[{relativity\+\_\+t}]{rel\+\_\+\+\_\+, }
+\item[{int}]{dme\+\_\+\+\_\+, }
+\item[{int}]{l\+\_\+\+\_\+, }
+\item[{double}]{enu\+\_\+\+\_\+, }
+\item[{std\+::vector$<$ double $>$ \&}]{p\+\_\+\+\_\+, }
+\item[{std\+::vector$<$ double $>$ \&}]{rdudr\+\_\+\+\_\+, }
+\item[{std\+::array$<$ double, 2 $>$ \&}]{uderiv\+\_\+\+\_\+}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [inline]}}\label{classsirius_1_1_radial__solver_ad21632dfb5686e2bad1379d60cb2789c}
+
+
+Integrates the radial equation for a given energy and finds the m-\/th energy derivative of the radial solution. 
+
+
+\begin{DoxyParams}[1]{Parameters}
+\mbox{\tt in}  & {\em rel} & Type of relativity \\
+\hline
+\mbox{\tt in}  & {\em dme} & Order of energy derivative. \\
+\hline
+\mbox{\tt in}  & {\em l} & Oribtal quantum number. \\
+\hline
+\mbox{\tt in}  & {\em enu} & Integration energy. \\
+\hline
+\mbox{\tt out}  & {\em p} & $ p(r) = ru(r) $ radial function. \\
+\hline
+\mbox{\tt out}  & {\em rdudr} & $ ru'(r) $. \\
+\hline
+\mbox{\tt out}  & {\em uderiv} & $ u'(R) $ and $ u''(R) $.\\
+\hline
+\end{DoxyParams}
+Returns $ p(r) = ru(r) $, $ ru'(r)$, $ u'(R) $ and $ u''(R) $.
+
+Surface derivatives\+:
+
+From \[ u(r) = \frac{p(r)}{r} \] we have \[ u'(r) = \frac{p'(r)}{r} - \frac{p(r)}{r^2} = \frac{1}{r}\big(p'(r) - \frac{p(r)}{r}\big) \]
+
+\[ u''(r) = \frac{p''(r)}{r} - \frac{p'(r)}{r^2} - \frac{p'(r)}{r^2} + 2 \frac{p(r)}{r^3} = \frac{1}{r}\big(p''(r) - 2 \frac{p'(r)}{r} + 2 \frac{p(r)}{r^2}\big) \] 
+
+Definition at line 770 of file radial\+\_\+solver.\+h.
+
+
+
+\subsection{Member Data Documentation}
+\hypertarget{classsirius_1_1_radial__solver_a7f03ef84b603fa56fa0ee2d263f48eed}{}\index{sirius\+::\+Radial\+\_\+solver@{sirius\+::\+Radial\+\_\+solver}!zn\+\_\+@{zn\+\_\+}}
+\index{zn\+\_\+@{zn\+\_\+}!sirius\+::\+Radial\+\_\+solver@{sirius\+::\+Radial\+\_\+solver}}
+\subsubsection[{zn\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}int sirius\+::\+Radial\+\_\+solver\+::zn\+\_\+\hspace{0.3cm}{\ttfamily [protected]}}\label{classsirius_1_1_radial__solver_a7f03ef84b603fa56fa0ee2d263f48eed}
+
+
+Positive charge of the nucleus. 
+
+
+
+Definition at line 144 of file radial\+\_\+solver.\+h.
+
+\hypertarget{classsirius_1_1_radial__solver_a363ba1f94d4ae7194fb65119c4af455d}{}\index{sirius\+::\+Radial\+\_\+solver@{sirius\+::\+Radial\+\_\+solver}!radial\+\_\+grid\+\_\+@{radial\+\_\+grid\+\_\+}}
+\index{radial\+\_\+grid\+\_\+@{radial\+\_\+grid\+\_\+}!sirius\+::\+Radial\+\_\+solver@{sirius\+::\+Radial\+\_\+solver}}
+\subsubsection[{radial\+\_\+grid\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}{\bf Radial\+\_\+grid} const\& sirius\+::\+Radial\+\_\+solver\+::radial\+\_\+grid\+\_\+\hspace{0.3cm}{\ttfamily [protected]}}\label{classsirius_1_1_radial__solver_a363ba1f94d4ae7194fb65119c4af455d}
+
+
+Radial grid. 
+
+
+
+Definition at line 147 of file radial\+\_\+solver.\+h.
+
+\hypertarget{classsirius_1_1_radial__solver_a8766ca2d2e048ee1e4451940ceb7f0a7}{}\index{sirius\+::\+Radial\+\_\+solver@{sirius\+::\+Radial\+\_\+solver}!ve\+\_\+@{ve\+\_\+}}
+\index{ve\+\_\+@{ve\+\_\+}!sirius\+::\+Radial\+\_\+solver@{sirius\+::\+Radial\+\_\+solver}}
+\subsubsection[{ve\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}{\bf Spline}$<$double$>$ sirius\+::\+Radial\+\_\+solver\+::ve\+\_\+\hspace{0.3cm}{\ttfamily [protected]}}\label{classsirius_1_1_radial__solver_a8766ca2d2e048ee1e4451940ceb7f0a7}
+
+
+Electronic part of potential. 
+
+
+
+Definition at line 150 of file radial\+\_\+solver.\+h.
+
+
+
+The documentation for this class was generated from the following file\+:\begin{DoxyCompactItemize}
+\item 
+\hyperlink{radial__solver_8h}{radial\+\_\+solver.\+h}\end{DoxyCompactItemize}

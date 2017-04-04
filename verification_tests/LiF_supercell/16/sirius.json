@@ -1,0 +1,167 @@
+{
+  "control" : {
+      "!mpi_grid_dims" : [2],
+      "cyclic_block_size" : 16,
+      "processing_unit" : "cpu",
+      "std_evp_solver_type" : "lapack",
+      "gen_evp_solver_type" : "lapack",
+      "verbosity" : 2
+  },
+
+  "parameters" : {
+      "electronic_structure_method" : "pseudopotential",
+
+      "num_fv_states" : 48,
+
+      "xc_functionals" : ["XC_LDA_X", "XC_LDA_C_PZ"],
+
+      "smearing_width" : 0.025,
+
+      "use_symmetry" : 1,
+
+      "num_mag_dims" : 0,
+
+      "gk_cutoff" : 6.0,
+      "pw_cutoff" : 25.00,
+
+      "energy_tol" : 1e-8,
+      "potential_tol" : 1e-8,
+
+      "num_dft_iter" : 100,
+
+      "ngridk" : [3,3,3],
+
+      "reduce_gvec": 0
+  },
+
+    "iterative_solver" : {
+        "energy_tolerance" : 1e-2,
+        "residual_tolerance" : 1e-6,
+        "num_steps" : 20,
+        "subspace_size" : 4,
+        "type" : "davidson",
+        "converge_by_energy" : 1
+    },
+
+
+    "unit_cell": {
+        "atom_files": {
+            "Li" : "Li.pz-s-kjpaw_psl.0.2.1.UPF.json",
+            "F"  : "F.pz-n-kjpaw_psl.0.1.UPF.json"
+        },
+        "atom_types": [
+            "Li",
+            "F"
+        ],
+        "atoms": {
+            "F": [
+                [
+                    0.25,
+                    0.25,
+                    0.25
+                ],
+                [
+                    0.25,
+                    0.25,
+                    0.749999999999998
+                ],
+                [
+                    0.25,
+                    0.749999999999998,
+                    0.250000000000001
+                ],
+                [
+                    0.249999999999998,
+                    0.75,
+                    0.750000000000001
+                ],
+                [
+                    0.749999999999998,
+                    0.25,
+                    0.250000000000001
+                ],
+                [
+                    0.75,
+                    0.249999999999998,
+                    0.750000000000001
+                ],
+                [
+                    0.75,
+                    0.75,
+                    0.249999999999998
+                ],
+                [
+                    0.75,
+                    0.75,
+                    0.75
+                ]
+            ],
+            "Li": [
+                [
+                    0.0,
+                    0.0,
+                    0.0
+                ],
+                [
+                    0.0,
+                    0.0,
+                    0.500000000000002
+                ],
+                [
+                    0.0,
+                    0.500000000000002,
+                    0.0
+                ],
+                [
+                    1.77635683940025e-15,
+                    0.5,
+                    0.499999999999999
+                ],
+                [
+                    0.500000000000002,
+                    0.0,
+                    0.0
+                ],
+                [
+                    0.5,
+                    1.77635683940025e-15,
+                    0.499999999999999
+                ],
+                [
+                    0.5,
+                    0.5,
+                    1.77635683940025e-15
+                ],
+                [
+                    0.5,
+                    0.5,
+                    0.5
+                ]
+            ]
+        },
+        "lattice_vectors": [
+            [
+                0.0,
+                7.60804,
+                7.60804
+            ],
+            [
+                7.60804,
+                0.0,
+                7.60804
+            ],
+            [
+                7.60804,
+                7.60804,
+                0.0
+            ]
+        ]
+    },
+
+    "mixer" : {
+        "beta" : 0.7,
+        "type" : "broyden1",
+        "max_history" : 8
+    }
+
+}

@@ -1,0 +1,8 @@
+digraph "Graphical Class Hierarchy"
+{
+ // INTERACTIVE_SVG=YES
+  edge [fontname="Helvetica",fontsize="10",labelfontname="Helvetica",labelfontsize="10"];
+  node [fontname="Helvetica",fontsize="10",shape=record];
+  rankdir="LR";
+  Node1 [label="sirius::gaunt_L1_L2\< T \>",height=0.2,width=0.4,color="black", fillcolor="white", style="filled",URL="$structsirius_1_1gaunt___l1___l2.html",tooltip="Used in the {lm1, lm2, coefficient} : {lm3} way of grouping non-zero Gaunt coefficients. "];
+}

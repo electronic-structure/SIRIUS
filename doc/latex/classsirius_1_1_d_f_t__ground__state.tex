@@ -1,0 +1,194 @@
+\hypertarget{classsirius_1_1_d_f_t__ground__state}{}\section{sirius\+:\+:D\+F\+T\+\_\+ground\+\_\+state Class Reference}
+\label{classsirius_1_1_d_f_t__ground__state}\index{sirius\+::\+D\+F\+T\+\_\+ground\+\_\+state@{sirius\+::\+D\+F\+T\+\_\+ground\+\_\+state}}
+
+
+Collaboration diagram for sirius\+:\+:D\+F\+T\+\_\+ground\+\_\+state\+:
+% FIG 0
+\subsection*{Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+\hypertarget{classsirius_1_1_d_f_t__ground__state_acaa39ea304fc6e3acb16fb7ebfbad85c}{}{\bfseries D\+F\+T\+\_\+ground\+\_\+state} (\hyperlink{classsirius_1_1_simulation__context}{Simulation\+\_\+context} \&ctx\+\_\+\+\_\+, \hyperlink{classsirius_1_1_potential}{Potential} \&potential\+\_\+\+\_\+, \hyperlink{classsirius_1_1_density}{Density} \&density\+\_\+\+\_\+, \hyperlink{classsirius_1_1_k__point__set}{K\+\_\+point\+\_\+set} \&kset\+\_\+\+\_\+, int use\+\_\+symmetry\+\_\+\+\_\+)\label{classsirius_1_1_d_f_t__ground__state_acaa39ea304fc6e3acb16fb7ebfbad85c}
+
+\item 
+\hypertarget{classsirius_1_1_d_f_t__ground__state_ade9908a37ed8b354187ff3e20377cca8}{}\hyperlink{classsddk_1_1mdarray}{mdarray}$<$ double, 2 $>$ {\bfseries forces} ()\label{classsirius_1_1_d_f_t__ground__state_ade9908a37ed8b354187ff3e20377cca8}
+
+\item 
+\hypertarget{classsirius_1_1_d_f_t__ground__state_a53c9ac60de388745aedc0438ffe374ae}{}void {\bfseries forces} (\hyperlink{classsddk_1_1mdarray}{mdarray}$<$ double, 2 $>$ \&inout\+\_\+forces)\label{classsirius_1_1_d_f_t__ground__state_a53c9ac60de388745aedc0438ffe374ae}
+
+\item 
+\hypertarget{classsirius_1_1_d_f_t__ground__state_af0e78c1359a003dec43505c6055fb03a}{}int {\bfseries find} (double potential\+\_\+tol, double energy\+\_\+tol, int num\+\_\+dft\+\_\+iter, bool write\+\_\+state)\label{classsirius_1_1_d_f_t__ground__state_af0e78c1359a003dec43505c6055fb03a}
+
+\item 
+\hypertarget{classsirius_1_1_d_f_t__ground__state_a774703bc2e2f52946ef6b68c0d1ca1b1}{}void {\bfseries print\+\_\+info} ()\label{classsirius_1_1_d_f_t__ground__state_a774703bc2e2f52946ef6b68c0d1ca1b1}
+
+\item 
+double \hyperlink{classsirius_1_1_d_f_t__ground__state_ad75a3d114cfb050be6651cb7f2ed0098}{energy\+\_\+enuc} () const 
+\begin{DoxyCompactList}\small\item\em Return nucleus energy in the electrostatic field. \end{DoxyCompactList}\item 
+double \hyperlink{classsirius_1_1_d_f_t__ground__state_aa1839e8c39152220e7b76057bbc00c8d}{core\+\_\+eval\+\_\+sum} () const 
+\begin{DoxyCompactList}\small\item\em Return eigen-\/value sum of core states. \end{DoxyCompactList}\item 
+\hypertarget{classsirius_1_1_d_f_t__ground__state_a4feb14055b2fdb3e0025416d7cdd9e4b}{}double {\bfseries energy\+\_\+vha} ()\label{classsirius_1_1_d_f_t__ground__state_a4feb14055b2fdb3e0025416d7cdd9e4b}
+
+\item 
+\hypertarget{classsirius_1_1_d_f_t__ground__state_ad35522c8a81d40a248f2371d68435b2e}{}double {\bfseries energy\+\_\+vxc} ()\label{classsirius_1_1_d_f_t__ground__state_ad35522c8a81d40a248f2371d68435b2e}
+
+\item 
+\hypertarget{classsirius_1_1_d_f_t__ground__state_ae5349cbdf23050716ea7c0f787cdd49c}{}double {\bfseries energy\+\_\+exc} ()\label{classsirius_1_1_d_f_t__ground__state_ae5349cbdf23050716ea7c0f787cdd49c}
+
+\item 
+\hypertarget{classsirius_1_1_d_f_t__ground__state_a603d9cafbbb3e5a1045943a9d93f1ddc}{}double {\bfseries energy\+\_\+bxc} ()\label{classsirius_1_1_d_f_t__ground__state_a603d9cafbbb3e5a1045943a9d93f1ddc}
+
+\item 
+\hypertarget{classsirius_1_1_d_f_t__ground__state_a4bad605a8dc9cefe7a42a5a236d4ac71}{}double {\bfseries energy\+\_\+veff} ()\label{classsirius_1_1_d_f_t__ground__state_a4bad605a8dc9cefe7a42a5a236d4ac71}
+
+\item 
+\hypertarget{classsirius_1_1_d_f_t__ground__state_abc9d07d038cf17cc17c345cb556e09d8}{}double {\bfseries energy\+\_\+vloc} ()\label{classsirius_1_1_d_f_t__ground__state_abc9d07d038cf17cc17c345cb556e09d8}
+
+\item 
+double \hyperlink{classsirius_1_1_d_f_t__ground__state_af9e351c9f78fbd60077d038633dc1f99}{eval\+\_\+sum} ()
+\begin{DoxyCompactList}\small\item\em Full eigen-\/value sum (core + valence) \end{DoxyCompactList}\item 
+double \hyperlink{classsirius_1_1_d_f_t__ground__state_ac3379420b4fd37ca015046cecc3c0cb4}{energy\+\_\+kin} ()
+\begin{DoxyCompactList}\small\item\em Kinetic energy. \end{DoxyCompactList}\item 
+\hypertarget{classsirius_1_1_d_f_t__ground__state_a5690233f752eebc77e4a3510db70ba7c}{}double {\bfseries energy\+\_\+ewald} () const \label{classsirius_1_1_d_f_t__ground__state_a5690233f752eebc77e4a3510db70ba7c}
+
+\item 
+double \hyperlink{classsirius_1_1_d_f_t__ground__state_a1fd5ab1031c3a59b9be06eb2b81a0ccb}{total\+\_\+energy} ()
+\begin{DoxyCompactList}\small\item\em Total energy of the electronic subsystem. \end{DoxyCompactList}\item 
+\hypertarget{classsirius_1_1_d_f_t__ground__state_a4ef796dbb76fbbe75ac5ca3b46474298}{}void {\bfseries symmetrize} (\hyperlink{classsirius_1_1_periodic__function}{Periodic\+\_\+function}$<$ double $>$ $\ast$f\+\_\+\+\_\+, \hyperlink{classsirius_1_1_periodic__function}{Periodic\+\_\+function}$<$ double $>$ $\ast$gz\+\_\+\+\_\+, \hyperlink{classsirius_1_1_periodic__function}{Periodic\+\_\+function}$<$ double $>$ $\ast$gx\+\_\+\+\_\+, \hyperlink{classsirius_1_1_periodic__function}{Periodic\+\_\+function}$<$ double $>$ $\ast$gy\+\_\+\+\_\+)\label{classsirius_1_1_d_f_t__ground__state_a4ef796dbb76fbbe75ac5ca3b46474298}
+
+\item 
+\hypertarget{classsirius_1_1_d_f_t__ground__state_af0857298eaecee57d0c0e48b5df8fcfa}{}\hyperlink{classsirius_1_1_band}{Band} const \& {\bfseries band} () const \label{classsirius_1_1_d_f_t__ground__state_af0857298eaecee57d0c0e48b5df8fcfa}
+
+\item 
+\hypertarget{classsirius_1_1_d_f_t__ground__state_a8641b311d59d04b60c43350a60843ca5}{}\hyperlink{classnlohmann_1_1basic__json}{json} {\bfseries serialize} ()\label{classsirius_1_1_d_f_t__ground__state_a8641b311d59d04b60c43350a60843ca5}
+
+\end{DoxyCompactItemize}
+\subsection*{Private Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+\hypertarget{classsirius_1_1_d_f_t__ground__state_af4ba0c4e7d2cae0611052e68e8f5bf93}{}double {\bfseries ewald\+\_\+energy} ()\label{classsirius_1_1_d_f_t__ground__state_af4ba0c4e7d2cae0611052e68e8f5bf93}
+
+\end{DoxyCompactItemize}
+\subsection*{Private Attributes}
+\begin{DoxyCompactItemize}
+\item 
+\hypertarget{classsirius_1_1_d_f_t__ground__state_a44876b51bc01d0992b92925d945cabe7}{}\hyperlink{classsirius_1_1_simulation__context}{Simulation\+\_\+context} \& {\bfseries ctx\+\_\+}\label{classsirius_1_1_d_f_t__ground__state_a44876b51bc01d0992b92925d945cabe7}
+
+\item 
+\hypertarget{classsirius_1_1_d_f_t__ground__state_ad79a6a76e8fd25e67b53d5e93e060637}{}\hyperlink{classsirius_1_1_unit__cell}{Unit\+\_\+cell} \& {\bfseries unit\+\_\+cell\+\_\+}\label{classsirius_1_1_d_f_t__ground__state_ad79a6a76e8fd25e67b53d5e93e060637}
+
+\item 
+\hypertarget{classsirius_1_1_d_f_t__ground__state_a969332931b32cf3487a486094437bac8}{}\hyperlink{classsirius_1_1_potential}{Potential} \& {\bfseries potential\+\_\+}\label{classsirius_1_1_d_f_t__ground__state_a969332931b32cf3487a486094437bac8}
+
+\item 
+\hypertarget{classsirius_1_1_d_f_t__ground__state_a2ffe2aef59e66e2c3fd64e7d80e39527}{}\hyperlink{classsirius_1_1_density}{Density} \& {\bfseries density\+\_\+}\label{classsirius_1_1_d_f_t__ground__state_a2ffe2aef59e66e2c3fd64e7d80e39527}
+
+\item 
+\hypertarget{classsirius_1_1_d_f_t__ground__state_a618ceb051aaf4a9b7b3a5bd184ee505d}{}\hyperlink{classsirius_1_1_k__point__set}{K\+\_\+point\+\_\+set} \& {\bfseries kset\+\_\+}\label{classsirius_1_1_d_f_t__ground__state_a618ceb051aaf4a9b7b3a5bd184ee505d}
+
+\item 
+\hypertarget{classsirius_1_1_d_f_t__ground__state_ac425fae262f0dbdebb83fdb820215d93}{}\hyperlink{classsirius_1_1_band}{Band} {\bfseries band\+\_\+}\label{classsirius_1_1_d_f_t__ground__state_ac425fae262f0dbdebb83fdb820215d93}
+
+\item 
+\hypertarget{classsirius_1_1_d_f_t__ground__state_a0ddcf191dc2629f8513a3b54a29b033f}{}std\+::unique\+\_\+ptr$<$ \hyperlink{classsirius_1_1_forces___p_s}{Forces\+\_\+\+P\+S} $>$ {\bfseries forces\+\_\+}\label{classsirius_1_1_d_f_t__ground__state_a0ddcf191dc2629f8513a3b54a29b033f}
+
+\item 
+\hypertarget{classsirius_1_1_d_f_t__ground__state_a05726eb27ceb2c9d4c36372182985ad0}{}int {\bfseries use\+\_\+symmetry\+\_\+}\label{classsirius_1_1_d_f_t__ground__state_a05726eb27ceb2c9d4c36372182985ad0}
+
+\item 
+\hypertarget{classsirius_1_1_d_f_t__ground__state_a793a203d657999b24f32b649f60de518}{}double {\bfseries ewald\+\_\+energy\+\_\+} \{0\}\label{classsirius_1_1_d_f_t__ground__state_a793a203d657999b24f32b649f60de518}
+
+\end{DoxyCompactItemize}
+
+
+\subsection{Detailed Description}
+
+
+Definition at line 40 of file dft\+\_\+ground\+\_\+state.\+h.
+
+
+
+\subsection{Member Function Documentation}
+\hypertarget{classsirius_1_1_d_f_t__ground__state_ad75a3d114cfb050be6651cb7f2ed0098}{}\index{sirius\+::\+D\+F\+T\+\_\+ground\+\_\+state@{sirius\+::\+D\+F\+T\+\_\+ground\+\_\+state}!energy\+\_\+enuc@{energy\+\_\+enuc}}
+\index{energy\+\_\+enuc@{energy\+\_\+enuc}!sirius\+::\+D\+F\+T\+\_\+ground\+\_\+state@{sirius\+::\+D\+F\+T\+\_\+ground\+\_\+state}}
+\subsubsection[{energy\+\_\+enuc() const }]{\setlength{\rightskip}{0pt plus 5cm}double sirius\+::\+D\+F\+T\+\_\+ground\+\_\+state\+::energy\+\_\+enuc (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [inline]}}\label{classsirius_1_1_d_f_t__ground__state_ad75a3d114cfb050be6651cb7f2ed0098}
+
+
+Return nucleus energy in the electrostatic field. 
+
+Compute energy of nucleus in the electrostatic potential generated by the total (electrons + nuclei) charge density. Diverging self-\/interaction term z$\ast$z/$\vert$r=0$\vert$ is excluded. 
+
+Definition at line 97 of file dft\+\_\+ground\+\_\+state.\+h.
+
+\hypertarget{classsirius_1_1_d_f_t__ground__state_aa1839e8c39152220e7b76057bbc00c8d}{}\index{sirius\+::\+D\+F\+T\+\_\+ground\+\_\+state@{sirius\+::\+D\+F\+T\+\_\+ground\+\_\+state}!core\+\_\+eval\+\_\+sum@{core\+\_\+eval\+\_\+sum}}
+\index{core\+\_\+eval\+\_\+sum@{core\+\_\+eval\+\_\+sum}!sirius\+::\+D\+F\+T\+\_\+ground\+\_\+state@{sirius\+::\+D\+F\+T\+\_\+ground\+\_\+state}}
+\subsubsection[{core\+\_\+eval\+\_\+sum() const }]{\setlength{\rightskip}{0pt plus 5cm}double sirius\+::\+D\+F\+T\+\_\+ground\+\_\+state\+::core\+\_\+eval\+\_\+sum (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [inline]}}\label{classsirius_1_1_d_f_t__ground__state_aa1839e8c39152220e7b76057bbc00c8d}
+
+
+Return eigen-\/value sum of core states. 
+
+
+
+Definition at line 112 of file dft\+\_\+ground\+\_\+state.\+h.
+
+\hypertarget{classsirius_1_1_d_f_t__ground__state_af9e351c9f78fbd60077d038633dc1f99}{}\index{sirius\+::\+D\+F\+T\+\_\+ground\+\_\+state@{sirius\+::\+D\+F\+T\+\_\+ground\+\_\+state}!eval\+\_\+sum@{eval\+\_\+sum}}
+\index{eval\+\_\+sum@{eval\+\_\+sum}!sirius\+::\+D\+F\+T\+\_\+ground\+\_\+state@{sirius\+::\+D\+F\+T\+\_\+ground\+\_\+state}}
+\subsubsection[{eval\+\_\+sum()}]{\setlength{\rightskip}{0pt plus 5cm}double sirius\+::\+D\+F\+T\+\_\+ground\+\_\+state\+::eval\+\_\+sum (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}}\label{classsirius_1_1_d_f_t__ground__state_af9e351c9f78fbd60077d038633dc1f99}
+
+
+Full eigen-\/value sum (core + valence) 
+
+
+
+Definition at line 162 of file dft\+\_\+ground\+\_\+state.\+h.
+
+\hypertarget{classsirius_1_1_d_f_t__ground__state_ac3379420b4fd37ca015046cecc3c0cb4}{}\index{sirius\+::\+D\+F\+T\+\_\+ground\+\_\+state@{sirius\+::\+D\+F\+T\+\_\+ground\+\_\+state}!energy\+\_\+kin@{energy\+\_\+kin}}
+\index{energy\+\_\+kin@{energy\+\_\+kin}!sirius\+::\+D\+F\+T\+\_\+ground\+\_\+state@{sirius\+::\+D\+F\+T\+\_\+ground\+\_\+state}}
+\subsubsection[{energy\+\_\+kin()}]{\setlength{\rightskip}{0pt plus 5cm}double sirius\+::\+D\+F\+T\+\_\+ground\+\_\+state\+::energy\+\_\+kin (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}}\label{classsirius_1_1_d_f_t__ground__state_ac3379420b4fd37ca015046cecc3c0cb4}
+
+
+Kinetic energy. 
+
+more doc here 
+
+Definition at line 170 of file dft\+\_\+ground\+\_\+state.\+h.
+
+\hypertarget{classsirius_1_1_d_f_t__ground__state_a1fd5ab1031c3a59b9be06eb2b81a0ccb}{}\index{sirius\+::\+D\+F\+T\+\_\+ground\+\_\+state@{sirius\+::\+D\+F\+T\+\_\+ground\+\_\+state}!total\+\_\+energy@{total\+\_\+energy}}
+\index{total\+\_\+energy@{total\+\_\+energy}!sirius\+::\+D\+F\+T\+\_\+ground\+\_\+state@{sirius\+::\+D\+F\+T\+\_\+ground\+\_\+state}}
+\subsubsection[{total\+\_\+energy()}]{\setlength{\rightskip}{0pt plus 5cm}double sirius\+::\+D\+F\+T\+\_\+ground\+\_\+state\+::total\+\_\+energy (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}}\label{classsirius_1_1_d_f_t__ground__state_a1fd5ab1031c3a59b9be06eb2b81a0ccb}
+
+
+Total energy of the electronic subsystem. 
+
+From the definition of the density functional we have\+:
+
+\[ E[\rho] = T[\rho] + E^{H}[\rho] + E^{XC}[\rho] + E^{ext}[\rho] \] where $ T[\rho] $ is the kinetic energy, $ E^{H}[\rho] $ -\/ electrostatic energy of electron-\/electron density interaction, $ E^{XC}[\rho] $ -\/ exchange-\/correlation energy and $ E^{ext}[\rho] $ -\/ energy in the external field of nuclei.
+
+Electrostatic and external field energies are grouped in the following way\+: \[ \frac{1}{2} \int \int \frac{\rho({\bf r})\rho({\bf r'}) d{\bf r} d{\bf r'}}{|{\bf r} - {\bf r'}|} + \int \rho({\bf r}) V^{nuc}({\bf r}) d{\bf r} = \frac{1}{2} \int V^{H}({\bf r})\rho({\bf r})d{\bf r} + \frac{1}{2} \int \rho({\bf r}) V^{nuc}({\bf r}) d{\bf r} \] Here $ V^{H}({\bf r}) $ is the total (electron + nuclei) electrostatic potential returned by the poisson solver. Next we transform the remaining term\+: \[ \frac{1}{2} \int \rho({\bf r}) V^{nuc}({\bf r}) d{\bf r} = \frac{1}{2} \int \int \frac{\rho({\bf r})\rho^{nuc}({\bf r'}) d{\bf r} d{\bf r'}}{|{\bf r} - {\bf r'}|} = \frac{1}{2} \int V^{H,el}({\bf r}) \rho^{nuc}({\bf r}) d{\bf r} \] 
+
+Definition at line 204 of file dft\+\_\+ground\+\_\+state.\+h.
+
+
+
+The documentation for this class was generated from the following file\+:\begin{DoxyCompactItemize}
+\item 
+\hyperlink{dft__ground__state_8h}{dft\+\_\+ground\+\_\+state.\+h}\end{DoxyCompactItemize}

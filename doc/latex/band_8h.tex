@@ -1,0 +1,56 @@
+\hypertarget{band_8h}{}\section{band.\+h File Reference}
+\label{band_8h}\index{band.\+h@{band.\+h}}
+
+
+Contains declaration and partial implementation of \hyperlink{classsirius_1_1_band}{sirius\+::\+Band} class.  
+
+
+Include dependency graph for band.\+h\+:
+% FIG 0
+This graph shows which files directly or indirectly include this file\+:
+% FIG 1
+\subsection*{Classes}
+\begin{DoxyCompactItemize}
+\item 
+class \hyperlink{classsirius_1_1_band}{sirius\+::\+Band}
+\begin{DoxyCompactList}\small\item\em Setup and solve the eigen value problem. \end{DoxyCompactList}\end{DoxyCompactItemize}
+\subsection*{Namespaces}
+\begin{DoxyCompactItemize}
+\item 
+ \hyperlink{namespacesirius}{sirius}
+\begin{DoxyCompactList}\small\item\em Namespace of the S\+I\+R\+I\+U\+S library. \end{DoxyCompactList}\end{DoxyCompactItemize}
+\subsection*{Functions}
+\begin{DoxyCompactItemize}
+\item 
+\hypertarget{namespacesirius_a0d07eff6dce992401b2217d6dbefce52}{}{\footnotesize template$<$$>$ }\\void {\bfseries sirius\+::\+Band\+::set\+\_\+fv\+\_\+h\+\_\+o$<$ C\+P\+U, electronic\+\_\+structure\+\_\+method\+\_\+t\+::full\+\_\+potential\+\_\+lapwlo $>$} (K\+\_\+point $\ast$kp\+\_\+\+\_\+, Potential const \&potential\+\_\+\+\_\+, \hyperlink{classsddk_1_1dmatrix}{dmatrix}$<$ double\+\_\+complex $>$ \&h\+\_\+\+\_\+, \hyperlink{classsddk_1_1dmatrix}{dmatrix}$<$ double\+\_\+complex $>$ \&o\+\_\+\+\_\+) const \label{namespacesirius_a0d07eff6dce992401b2217d6dbefce52}
+
+\item 
+\hypertarget{namespacesirius_adb13e13ade4471edd379bf67e51b4e4d}{}{\footnotesize template$<$$>$ }\\void {\bfseries sirius\+::\+Band\+::set\+\_\+fv\+\_\+h\+\_\+o$<$ G\+P\+U, electronic\+\_\+structure\+\_\+method\+\_\+t\+::full\+\_\+potential\+\_\+lapwlo $>$} (K\+\_\+point $\ast$kp\+\_\+\+\_\+, Potential const \&potential\+\_\+\+\_\+, \hyperlink{classsddk_1_1dmatrix}{dmatrix}$<$ double\+\_\+complex $>$ \&h\+\_\+\+\_\+, \hyperlink{classsddk_1_1dmatrix}{dmatrix}$<$ double\+\_\+complex $>$ \&o\+\_\+\+\_\+) const \label{namespacesirius_adb13e13ade4471edd379bf67e51b4e4d}
+
+\item 
+\hypertarget{namespacesirius_ab4bf5abc2403d4247352c2c74cc3c32b}{}void {\bfseries sirius\+::residuals\+\_\+aux\+\_\+gpu} (int num\+\_\+gvec\+\_\+loc\+\_\+\+\_\+, int num\+\_\+res\+\_\+local\+\_\+\+\_\+, int $\ast$res\+\_\+idx\+\_\+\+\_\+, double $\ast$eval\+\_\+\+\_\+, cu\+Double\+Complex const $\ast$hpsi\+\_\+\+\_\+, cu\+Double\+Complex const $\ast$opsi\+\_\+\+\_\+, double const $\ast$h\+\_\+diag\+\_\+\+\_\+, double const $\ast$o\+\_\+diag\+\_\+\+\_\+, cu\+Double\+Complex $\ast$res\+\_\+\+\_\+, double $\ast$res\+\_\+norm\+\_\+\+\_\+, double $\ast$p\+\_\+norm\+\_\+\+\_\+, int gkvec\+\_\+reduced\+\_\+\+\_\+, int mpi\+\_\+rank\+\_\+\+\_\+)\label{namespacesirius_ab4bf5abc2403d4247352c2c74cc3c32b}
+
+\item 
+\hypertarget{namespacesirius_af8f41d0709e5abc1c206ef63b3a16e15}{}void {\bfseries sirius\+::compute\+\_\+residuals\+\_\+gpu} (cu\+Double\+Complex $\ast$hpsi\+\_\+\+\_\+, cu\+Double\+Complex $\ast$opsi\+\_\+\+\_\+, cu\+Double\+Complex $\ast$res\+\_\+\+\_\+, int num\+\_\+gvec\+\_\+loc\+\_\+\+\_\+, int num\+\_\+bands\+\_\+\+\_\+, double $\ast$eval\+\_\+\+\_\+)\label{namespacesirius_af8f41d0709e5abc1c206ef63b3a16e15}
+
+\item 
+\hypertarget{namespacesirius_ab007a8fdf09de8b16f1886426f5b9c98}{}void {\bfseries sirius\+::apply\+\_\+preconditioner\+\_\+gpu} (cu\+Double\+Complex $\ast$res\+\_\+\+\_\+, int num\+\_\+rows\+\_\+loc\+\_\+\+\_\+, int num\+\_\+bands\+\_\+\+\_\+, double $\ast$eval\+\_\+\+\_\+, double $\ast$h\+\_\+diag\+\_\+\+\_\+, double $\ast$o\+\_\+diag\+\_\+\+\_\+)\label{namespacesirius_ab007a8fdf09de8b16f1886426f5b9c98}
+
+\item 
+\hypertarget{namespacesirius_a07e7f559c696b3f8f4ddc7715501978c}{}void {\bfseries sirius\+::compute\+\_\+chebyshev\+\_\+polynomial\+\_\+gpu} (int num\+\_\+gkvec, int n, double c, double r, cu\+Double\+Complex $\ast$phi0, cu\+Double\+Complex $\ast$phi1, cu\+Double\+Complex $\ast$phi2)\label{namespacesirius_a07e7f559c696b3f8f4ddc7715501978c}
+
+\item 
+\hypertarget{namespacesirius_adf82d8471133be345abd50d52bbbbb22}{}{\footnotesize template$<$typename T $>$ }\\T {\bfseries sirius\+::inner\+\_\+local} (K\+\_\+point $\ast$kp\+\_\+\+\_\+, \hyperlink{classsddk_1_1wave__functions}{wave\+\_\+functions} \&a, int ia, \hyperlink{classsddk_1_1wave__functions}{wave\+\_\+functions} \&b, int ib)\label{namespacesirius_adf82d8471133be345abd50d52bbbbb22}
+
+\item 
+\hypertarget{namespacesirius_abb6ec5c71e9d9e568a4e7dcd7f3eb0a8}{}{\footnotesize template$<$$>$ }\\double {\bfseries sirius\+::inner\+\_\+local$<$ double $>$} (K\+\_\+point $\ast$kp\+\_\+\+\_\+, \hyperlink{classsddk_1_1wave__functions}{wave\+\_\+functions} \&a, int ia, \hyperlink{classsddk_1_1wave__functions}{wave\+\_\+functions} \&b, int ib)\label{namespacesirius_abb6ec5c71e9d9e568a4e7dcd7f3eb0a8}
+
+\item 
+\hypertarget{namespacesirius_ab6667e0c3e706d9cec91b1505e0c7dd7}{}{\footnotesize template$<$$>$ }\\double\+\_\+complex {\bfseries sirius\+::inner\+\_\+local$<$ double\+\_\+complex $>$} (K\+\_\+point $\ast$kp\+\_\+\+\_\+, \hyperlink{classsddk_1_1wave__functions}{wave\+\_\+functions} \&a, int ia, \hyperlink{classsddk_1_1wave__functions}{wave\+\_\+functions} \&b, int ib)\label{namespacesirius_ab6667e0c3e706d9cec91b1505e0c7dd7}
+
+\end{DoxyCompactItemize}
+
+
+\subsection{Detailed Description}
+Contains declaration and partial implementation of \hyperlink{classsirius_1_1_band}{sirius\+::\+Band} class. 
+

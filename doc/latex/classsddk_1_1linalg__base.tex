@@ -1,0 +1,134 @@
+\hypertarget{classsddk_1_1linalg__base}{}\section{sddk\+:\+:linalg\+\_\+base Class Reference}
+\label{classsddk_1_1linalg__base}\index{sddk\+::linalg\+\_\+base@{sddk\+::linalg\+\_\+base}}
+
+
+Base class for linear algebra interface.  
+
+
+
+
+Inheritance diagram for sddk\+:\+:linalg\+\_\+base\+:
+% FIG 0
+\subsection*{Static Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+\hypertarget{classsddk_1_1linalg__base_a53888f8da1bca37ca5570904f1d30a88}{}static ftn\+\_\+int {\bfseries ilaenv} (ftn\+\_\+int ispec, std\+::string const \&name, std\+::string const \&opts, ftn\+\_\+int n1, ftn\+\_\+int n2, ftn\+\_\+int n3, ftn\+\_\+int n4)\label{classsddk_1_1linalg__base_a53888f8da1bca37ca5570904f1d30a88}
+
+\item 
+\hypertarget{classsddk_1_1linalg__base_a2f82143fa7c1a980b3116f39ce24439d}{}static ftn\+\_\+double {\bfseries dlamch} (char cmach)\label{classsddk_1_1linalg__base_a2f82143fa7c1a980b3116f39ce24439d}
+
+\item 
+\hypertarget{classsddk_1_1linalg__base_a730e721fbd92b23c6f96e5af9ff25be6}{}static ftn\+\_\+int {\bfseries numroc} (ftn\+\_\+int n, ftn\+\_\+int nb, ftn\+\_\+int iproc, ftn\+\_\+int isrcproc, ftn\+\_\+int nprocs)\label{classsddk_1_1linalg__base_a730e721fbd92b23c6f96e5af9ff25be6}
+
+\item 
+static int \hyperlink{classsddk_1_1linalg__base_a8166494efb19ac4d5f8fd0ac7660dc30}{create\+\_\+blacs\+\_\+handler} (M\+P\+I\+\_\+\+Comm comm)
+\begin{DoxyCompactList}\small\item\em Create B\+L\+A\+C\+S handler. \end{DoxyCompactList}\item 
+static void \hyperlink{classsddk_1_1linalg__base_aee91be9b979482febad882ea797c7db8}{free\+\_\+blacs\+\_\+handler} (int blacs\+\_\+handler)
+\begin{DoxyCompactList}\small\item\em Free B\+L\+A\+C\+S handler. \end{DoxyCompactList}\item 
+static void \hyperlink{classsddk_1_1linalg__base_a3ecb0334c753798746b93261105691b5}{gridmap} (int $\ast$blacs\+\_\+context, int $\ast$map, int ld, int nrow, int ncol)
+\begin{DoxyCompactList}\small\item\em Create B\+L\+A\+C\+S context for the grid of M\+P\+I ranks. \end{DoxyCompactList}\item 
+static void \hyperlink{classsddk_1_1linalg__base_a4f772dc60a67957b6f66fce9b6dbb053}{gridexit} (int blacs\+\_\+context)
+\begin{DoxyCompactList}\small\item\em Destroy B\+L\+A\+C\+S context. \end{DoxyCompactList}\item 
+\hypertarget{classsddk_1_1linalg__base_adf9fe59269a6033a8a69a35e9e938edf}{}static void {\bfseries gridinfo} (int blacs\+\_\+context, int $\ast$nrow, int $\ast$ncol, int $\ast$irow, int $\ast$icol)\label{classsddk_1_1linalg__base_adf9fe59269a6033a8a69a35e9e938edf}
+
+\item 
+\hypertarget{classsddk_1_1linalg__base_aca20fa278abf6b9502233626ebfa5132}{}static void {\bfseries descinit} (ftn\+\_\+int $\ast$desc, ftn\+\_\+int m, ftn\+\_\+int n, ftn\+\_\+int mb, ftn\+\_\+int nb, ftn\+\_\+int irsrc, ftn\+\_\+int icsrc, ftn\+\_\+int ictxt, ftn\+\_\+int lld)\label{classsddk_1_1linalg__base_aca20fa278abf6b9502233626ebfa5132}
+
+\item 
+\hypertarget{classsddk_1_1linalg__base_a0e0c6bc7e316122a8e7e39825b1466c7}{}static int {\bfseries pjlaenv} (int32\+\_\+t ictxt, int32\+\_\+t ispec, const std\+::string \&name, const std\+::string \&opts, int32\+\_\+t n1, int32\+\_\+t n2, int32\+\_\+t n3, int32\+\_\+t n4)\label{classsddk_1_1linalg__base_a0e0c6bc7e316122a8e7e39825b1466c7}
+
+\item 
+\hypertarget{classsddk_1_1linalg__base_a4e68ca7d21ca9f4d00252832c9153775}{}static int32\+\_\+t {\bfseries indxl2g} (int32\+\_\+t indxloc, int32\+\_\+t nb, int32\+\_\+t iproc, int32\+\_\+t isrcproc, int32\+\_\+t nprocs)\label{classsddk_1_1linalg__base_a4e68ca7d21ca9f4d00252832c9153775}
+
+\item 
+\hypertarget{classsddk_1_1linalg__base_a3b3423b1ac9ca593d8600b9cbef39e21}{}static int32\+\_\+t {\bfseries iceil} (int32\+\_\+t inum, int32\+\_\+t idenom)\label{classsddk_1_1linalg__base_a3b3423b1ac9ca593d8600b9cbef39e21}
+
+\item 
+\hypertarget{classsddk_1_1linalg__base_a454fbf1523317db51978475582a5f409}{}static void {\bfseries pztranc} (ftn\+\_\+int m, ftn\+\_\+int n, ftn\+\_\+double\+\_\+complex alpha, ftn\+\_\+double\+\_\+complex $\ast$A, ftn\+\_\+int ia, ftn\+\_\+int ja, ftn\+\_\+int const $\ast$desca, ftn\+\_\+double\+\_\+complex beta, ftn\+\_\+double\+\_\+complex $\ast$C, ftn\+\_\+int ic, ftn\+\_\+int jc, ftn\+\_\+int const $\ast$descc)\label{classsddk_1_1linalg__base_a454fbf1523317db51978475582a5f409}
+
+\item 
+\hypertarget{classsddk_1_1linalg__base_a22a0b501dc01fcdc8381e3a0dcf82ace}{}static void {\bfseries pztranu} (ftn\+\_\+int m, ftn\+\_\+int n, ftn\+\_\+double\+\_\+complex alpha, ftn\+\_\+double\+\_\+complex $\ast$A, ftn\+\_\+int ia, ftn\+\_\+int ja, ftn\+\_\+int const $\ast$desca, ftn\+\_\+double\+\_\+complex beta, ftn\+\_\+double\+\_\+complex $\ast$C, ftn\+\_\+int ic, ftn\+\_\+int jc, ftn\+\_\+int const $\ast$descc)\label{classsddk_1_1linalg__base_a22a0b501dc01fcdc8381e3a0dcf82ace}
+
+\item 
+\hypertarget{classsddk_1_1linalg__base_aa783d5466047f26d93e831c0144c9399}{}static void {\bfseries pdtran} (ftn\+\_\+int m, ftn\+\_\+int n, ftn\+\_\+double alpha, ftn\+\_\+double $\ast$A, ftn\+\_\+int ia, ftn\+\_\+int ja, ftn\+\_\+int const $\ast$desca, ftn\+\_\+double beta, ftn\+\_\+double $\ast$C, ftn\+\_\+int ic, ftn\+\_\+int jc, ftn\+\_\+int const $\ast$descc)\label{classsddk_1_1linalg__base_aa783d5466047f26d93e831c0144c9399}
+
+\end{DoxyCompactItemize}
+
+
+\subsection{Detailed Description}
+Base class for linear algebra interface. 
+
+Definition at line 122 of file linalg\+\_\+base.\+hpp.
+
+
+
+\subsection{Member Function Documentation}
+\hypertarget{classsddk_1_1linalg__base_a8166494efb19ac4d5f8fd0ac7660dc30}{}\index{sddk\+::linalg\+\_\+base@{sddk\+::linalg\+\_\+base}!create\+\_\+blacs\+\_\+handler@{create\+\_\+blacs\+\_\+handler}}
+\index{create\+\_\+blacs\+\_\+handler@{create\+\_\+blacs\+\_\+handler}!sddk\+::linalg\+\_\+base@{sddk\+::linalg\+\_\+base}}
+\subsubsection[{create\+\_\+blacs\+\_\+handler(\+M\+P\+I\+\_\+\+Comm comm)}]{\setlength{\rightskip}{0pt plus 5cm}static int sddk\+::linalg\+\_\+base\+::create\+\_\+blacs\+\_\+handler (
+\begin{DoxyParamCaption}
+\item[{M\+P\+I\+\_\+\+Comm}]{comm}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}, {\ttfamily [static]}}\label{classsddk_1_1linalg__base_a8166494efb19ac4d5f8fd0ac7660dc30}
+
+
+Create B\+L\+A\+C\+S handler. 
+
+
+
+Definition at line 144 of file linalg\+\_\+base.\+hpp.
+
+\hypertarget{classsddk_1_1linalg__base_aee91be9b979482febad882ea797c7db8}{}\index{sddk\+::linalg\+\_\+base@{sddk\+::linalg\+\_\+base}!free\+\_\+blacs\+\_\+handler@{free\+\_\+blacs\+\_\+handler}}
+\index{free\+\_\+blacs\+\_\+handler@{free\+\_\+blacs\+\_\+handler}!sddk\+::linalg\+\_\+base@{sddk\+::linalg\+\_\+base}}
+\subsubsection[{free\+\_\+blacs\+\_\+handler(int blacs\+\_\+handler)}]{\setlength{\rightskip}{0pt plus 5cm}static void sddk\+::linalg\+\_\+base\+::free\+\_\+blacs\+\_\+handler (
+\begin{DoxyParamCaption}
+\item[{int}]{blacs\+\_\+handler}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}, {\ttfamily [static]}}\label{classsddk_1_1linalg__base_aee91be9b979482febad882ea797c7db8}
+
+
+Free B\+L\+A\+C\+S handler. 
+
+
+
+Definition at line 150 of file linalg\+\_\+base.\+hpp.
+
+\hypertarget{classsddk_1_1linalg__base_a3ecb0334c753798746b93261105691b5}{}\index{sddk\+::linalg\+\_\+base@{sddk\+::linalg\+\_\+base}!gridmap@{gridmap}}
+\index{gridmap@{gridmap}!sddk\+::linalg\+\_\+base@{sddk\+::linalg\+\_\+base}}
+\subsubsection[{gridmap(int $\ast$blacs\+\_\+context, int $\ast$map, int ld, int nrow, int ncol)}]{\setlength{\rightskip}{0pt plus 5cm}static void sddk\+::linalg\+\_\+base\+::gridmap (
+\begin{DoxyParamCaption}
+\item[{int $\ast$}]{blacs\+\_\+context, }
+\item[{int $\ast$}]{map, }
+\item[{int}]{ld, }
+\item[{int}]{nrow, }
+\item[{int}]{ncol}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}, {\ttfamily [static]}}\label{classsddk_1_1linalg__base_a3ecb0334c753798746b93261105691b5}
+
+
+Create B\+L\+A\+C\+S context for the grid of M\+P\+I ranks. 
+
+
+
+Definition at line 156 of file linalg\+\_\+base.\+hpp.
+
+\hypertarget{classsddk_1_1linalg__base_a4f772dc60a67957b6f66fce9b6dbb053}{}\index{sddk\+::linalg\+\_\+base@{sddk\+::linalg\+\_\+base}!gridexit@{gridexit}}
+\index{gridexit@{gridexit}!sddk\+::linalg\+\_\+base@{sddk\+::linalg\+\_\+base}}
+\subsubsection[{gridexit(int blacs\+\_\+context)}]{\setlength{\rightskip}{0pt plus 5cm}static void sddk\+::linalg\+\_\+base\+::gridexit (
+\begin{DoxyParamCaption}
+\item[{int}]{blacs\+\_\+context}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}, {\ttfamily [static]}}\label{classsddk_1_1linalg__base_a4f772dc60a67957b6f66fce9b6dbb053}
+
+
+Destroy B\+L\+A\+C\+S context. 
+
+
+
+Definition at line 162 of file linalg\+\_\+base.\+hpp.
+
+
+
+The documentation for this class was generated from the following file\+:\begin{DoxyCompactItemize}
+\item 
+\hyperlink{linalg__base_8hpp}{linalg\+\_\+base.\+hpp}\end{DoxyCompactItemize}

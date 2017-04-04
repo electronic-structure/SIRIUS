@@ -1,0 +1,26 @@
+digraph "Eigenproblem"
+{
+ // INTERACTIVE_SVG=YES
+  edge [fontname="Helvetica",fontsize="10",labelfontname="Helvetica",labelfontsize="10"];
+  node [fontname="Helvetica",fontsize="10",shape=record];
+  rankdir="LR";
+  Node1 [label="Eigenproblem",height=0.2,width=0.4,color="black", fillcolor="grey75", style="filled", fontcolor="black"];
+  Node1 -> Node2 [dir="back",color="midnightblue",fontsize="10",style="solid"];
+  Node2 [label="Eigenproblem_elpa",height=0.2,width=0.4,color="black", fillcolor="white", style="filled",URL="$class_eigenproblem__elpa.html"];
+  Node2 -> Node3 [dir="back",color="midnightblue",fontsize="10",style="solid"];
+  Node3 [label="Eigenproblem_elpa1",height=0.2,width=0.4,color="black", fillcolor="white", style="filled",URL="$class_eigenproblem__elpa1.html"];
+  Node2 -> Node4 [dir="back",color="midnightblue",fontsize="10",style="solid"];
+  Node4 [label="Eigenproblem_elpa2",height=0.2,width=0.4,color="black", fillcolor="white", style="filled",URL="$class_eigenproblem__elpa2.html"];
+  Node1 -> Node5 [dir="back",color="midnightblue",fontsize="10",style="solid"];
+  Node5 [label="Eigenproblem_lapack",height=0.2,width=0.4,color="black", fillcolor="white", style="filled",URL="$class_eigenproblem__lapack.html",tooltip="Interface for LAPACK eigen-value solvers. "];
+  Node1 -> Node6 [dir="back",color="midnightblue",fontsize="10",style="solid"];
+  Node6 [label="Eigenproblem_magma",height=0.2,width=0.4,color="black", fillcolor="white", style="filled",URL="$class_eigenproblem__magma.html",tooltip="Interface for MAGMA eigen-value solvers. "];
+  Node1 -> Node7 [dir="back",color="midnightblue",fontsize="10",style="solid"];
+  Node7 [label="Eigenproblem_plasma",height=0.2,width=0.4,color="black", fillcolor="white", style="filled",URL="$class_eigenproblem__plasma.html",tooltip="Interface for PLASMA eigen-value solvers. "];
+  Node1 -> Node8 [dir="back",color="midnightblue",fontsize="10",style="solid"];
+  Node8 [label="Eigenproblem_RS_CPU",height=0.2,width=0.4,color="black", fillcolor="white", style="filled",URL="$class_eigenproblem___r_s___c_p_u.html"];
+  Node1 -> Node9 [dir="back",color="midnightblue",fontsize="10",style="solid"];
+  Node9 [label="Eigenproblem_RS_GPU",height=0.2,width=0.4,color="black", fillcolor="white", style="filled",URL="$class_eigenproblem___r_s___g_p_u.html"];
+  Node1 -> Node10 [dir="back",color="midnightblue",fontsize="10",style="solid"];
+  Node10 [label="Eigenproblem_scalapack",height=0.2,width=0.4,color="black", fillcolor="white", style="filled",URL="$class_eigenproblem__scalapack.html",tooltip="Interface for ScaLAPACK eigen-value solvers. "];
+}

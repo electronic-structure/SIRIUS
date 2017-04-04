@@ -1,0 +1,8 @@
+digraph "Graphical Class Hierarchy"
+{
+ // INTERACTIVE_SVG=YES
+  edge [fontname="Helvetica",fontsize="10",labelfontname="Helvetica",labelfontsize="10"];
+  node [fontname="Helvetica",fontsize="10",shape=record];
+  rankdir="LR";
+  Node1 [label="sirius::Step_function",height=0.2,width=0.4,color="black", fillcolor="white", style="filled",URL="$classsirius_1_1_step__function.html",tooltip="Unit step function is defined to be 1 in the interstitial and 0 inside muffin-tins. "];
+}

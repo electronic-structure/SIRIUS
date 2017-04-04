@@ -1,0 +1,440 @@
+\hypertarget{classsddk_1_1_communicator}{}\section{sddk\+:\+:Communicator Class Reference}
+\label{classsddk_1_1_communicator}\index{sddk\+::\+Communicator@{sddk\+::\+Communicator}}
+
+
+M\+P\+I communicator wrapper.  
+
+
+\subsection*{Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+\hyperlink{classsddk_1_1_communicator_a1a6949d5b0ab726398e2e72f01a4eeed}{Communicator} ()
+\begin{DoxyCompactList}\small\item\em Default constructor. \end{DoxyCompactList}\item 
+\hyperlink{classsddk_1_1_communicator_a74d08c2e24699de2e253407e73e7c1f9}{Communicator} (M\+P\+I\+\_\+\+Comm mpi\+\_\+comm\+\_\+\+\_\+)
+\begin{DoxyCompactList}\small\item\em Constructor for existing communicator. \end{DoxyCompactList}\item 
+\hyperlink{classsddk_1_1_communicator_a0db11d624a1e15a3311fc135cbf2a5b4}{$\sim$\+Communicator} ()
+\begin{DoxyCompactList}\small\item\em Destructor. \end{DoxyCompactList}\item 
+\hyperlink{classsddk_1_1_communicator_abb956271307484b94b358a56c44dcd51}{Communicator} (\hyperlink{classsddk_1_1_communicator}{Communicator} \&\&src\+\_\+\+\_\+)
+\begin{DoxyCompactList}\small\item\em Move constructor. \end{DoxyCompactList}\item 
+\hyperlink{classsddk_1_1_communicator}{Communicator} \& \hyperlink{classsddk_1_1_communicator_a4befc1018975809550ad68e8374a1df6}{operator=} (\hyperlink{classsddk_1_1_communicator}{Communicator} \&\&src\+\_\+\+\_\+)
+\begin{DoxyCompactList}\small\item\em Move assigment operator. \end{DoxyCompactList}\item 
+M\+P\+I\+\_\+\+Comm \& \hyperlink{classsddk_1_1_communicator_a7e698b55afcbb987e494a831f76d8b68}{mpi\+\_\+comm} ()
+\begin{DoxyCompactList}\small\item\em Return reference to raw M\+P\+I communicator. \end{DoxyCompactList}\item 
+M\+P\+I\+\_\+\+Comm const \& \hyperlink{classsddk_1_1_communicator_a112575fbbdb412c7f44275105e8f33bc}{mpi\+\_\+comm} () const 
+\begin{DoxyCompactList}\small\item\em Return const reference to raw M\+P\+I communicator. \end{DoxyCompactList}\item 
+int \hyperlink{classsddk_1_1_communicator_ad74faba0835ab4db65c1041e2c8e3d44}{rank} () const 
+\begin{DoxyCompactList}\small\item\em Rank of M\+P\+I process inside communicator. \end{DoxyCompactList}\item 
+int \hyperlink{classsddk_1_1_communicator_ae4acf45099468ce141f5b21a9ce24386}{cart\+\_\+rank} (std\+::vector$<$ int $>$ const \&coords\+\_\+\+\_\+) const 
+\begin{DoxyCompactList}\small\item\em Rank of M\+P\+I process inside communicator with associated Cartesian partitioning. \end{DoxyCompactList}\item 
+\hypertarget{classsddk_1_1_communicator_a9527b11483609b4c74839f534401f207}{}int {\bfseries size} () const \label{classsddk_1_1_communicator_a9527b11483609b4c74839f534401f207}
+
+\item 
+\hypertarget{classsddk_1_1_communicator_a4ba503d3fc81a8674dbfc53076fba198}{}void {\bfseries barrier} () const \label{classsddk_1_1_communicator_a4ba503d3fc81a8674dbfc53076fba198}
+
+\item 
+\hypertarget{classsddk_1_1_communicator_aa9631a9cd3081dcaa486b68f6b7bf9f1}{}{\footnotesize template$<$typename T , mpi\+\_\+op\+\_\+t mpi\+\_\+op\+\_\+\+\_\+ = mpi\+\_\+op\+\_\+t\+::sum$>$ }\\void {\bfseries reduce} (T $\ast$buffer\+\_\+\+\_\+, int count\+\_\+\+\_\+, int root\+\_\+\+\_\+) const \label{classsddk_1_1_communicator_aa9631a9cd3081dcaa486b68f6b7bf9f1}
+
+\item 
+\hypertarget{classsddk_1_1_communicator_a86fd6a51b1b557638ffda24510b06569}{}{\footnotesize template$<$typename T , mpi\+\_\+op\+\_\+t mpi\+\_\+op\+\_\+\+\_\+ = mpi\+\_\+op\+\_\+t\+::sum$>$ }\\void {\bfseries reduce} (T $\ast$buffer\+\_\+\+\_\+, int count\+\_\+\+\_\+, int root\+\_\+\+\_\+, M\+P\+I\+\_\+\+Request $\ast$req\+\_\+\+\_\+) const \label{classsddk_1_1_communicator_a86fd6a51b1b557638ffda24510b06569}
+
+\item 
+\hypertarget{classsddk_1_1_communicator_aabb450021af6bdcfd139f34f2acd25f1}{}{\footnotesize template$<$typename T , mpi\+\_\+op\+\_\+t mpi\+\_\+op\+\_\+\+\_\+ = mpi\+\_\+op\+\_\+t\+::sum$>$ }\\void {\bfseries reduce} (T const $\ast$sendbuf\+\_\+\+\_\+, T $\ast$recvbuf\+\_\+\+\_\+, int count\+\_\+\+\_\+, int root\+\_\+\+\_\+) const \label{classsddk_1_1_communicator_aabb450021af6bdcfd139f34f2acd25f1}
+
+\item 
+\hypertarget{classsddk_1_1_communicator_a353f80d1ac11b703e48b8100782982af}{}{\footnotesize template$<$typename T , mpi\+\_\+op\+\_\+t mpi\+\_\+op\+\_\+\+\_\+ = mpi\+\_\+op\+\_\+t\+::sum$>$ }\\void {\bfseries reduce} (T const $\ast$sendbuf\+\_\+\+\_\+, T $\ast$recvbuf\+\_\+\+\_\+, int count\+\_\+\+\_\+, int root\+\_\+\+\_\+, M\+P\+I\+\_\+\+Request $\ast$req\+\_\+\+\_\+) const \label{classsddk_1_1_communicator_a353f80d1ac11b703e48b8100782982af}
+
+\item 
+{\footnotesize template$<$typename T , mpi\+\_\+op\+\_\+t mpi\+\_\+op\+\_\+\+\_\+ = mpi\+\_\+op\+\_\+t\+::sum$>$ }\\void \hyperlink{classsddk_1_1_communicator_a1300606fc1ca6d6feba65a9a6d81e2f7}{allreduce} (T $\ast$buffer\+\_\+\+\_\+, int count\+\_\+\+\_\+) const 
+\begin{DoxyCompactList}\small\item\em Perform the in-\/place (the output buffer is used as the input buffer) all-\/to-\/all reduction. \end{DoxyCompactList}\item 
+{\footnotesize template$<$typename T , mpi\+\_\+op\+\_\+t op\+\_\+\+\_\+ = mpi\+\_\+op\+\_\+t\+::sum$>$ }\\void \hyperlink{classsddk_1_1_communicator_a4416faf4f98a33416b01caa5206cb551}{allreduce} (std\+::vector$<$ T $>$ \&buffer\+\_\+\+\_\+) const 
+\begin{DoxyCompactList}\small\item\em Perform the in-\/place (the output buffer is used as the input buffer) all-\/to-\/all reduction. \end{DoxyCompactList}\item 
+\hypertarget{classsddk_1_1_communicator_a2631ce6eac19260e297a83c44eece278}{}{\footnotesize template$<$typename T , mpi\+\_\+op\+\_\+t mpi\+\_\+op\+\_\+\+\_\+ = mpi\+\_\+op\+\_\+t\+::sum$>$ }\\void {\bfseries iallreduce} (T $\ast$buffer\+\_\+\+\_\+, int count\+\_\+\+\_\+, M\+P\+I\+\_\+\+Request $\ast$req\+\_\+\+\_\+) const \label{classsddk_1_1_communicator_a2631ce6eac19260e297a83c44eece278}
+
+\item 
+{\footnotesize template$<$typename T $>$ }\\void \hyperlink{classsddk_1_1_communicator_afc6c3a41d5b4b4b183157f88272eea76}{bcast} (T $\ast$buffer\+\_\+\+\_\+, int count\+\_\+\+\_\+, int root\+\_\+\+\_\+) const 
+\begin{DoxyCompactList}\small\item\em Perform buffer broadcast. \end{DoxyCompactList}\item 
+\hypertarget{classsddk_1_1_communicator_a093f3fd7b328d2e2d007d913b8295797}{}void {\bfseries bcast} (std\+::string \&str\+\_\+\+\_\+, int root\+\_\+\+\_\+) const \label{classsddk_1_1_communicator_a093f3fd7b328d2e2d007d913b8295797}
+
+\item 
+{\footnotesize template$<$typename T $>$ }\\void \hyperlink{classsddk_1_1_communicator_a4c99b71f6148a3eb1a8cef348381b8a0}{allgather} (T $\ast$buffer\+\_\+\+\_\+, int const $\ast$recvcounts\+\_\+\+\_\+, int const $\ast$displs\+\_\+\+\_\+) const 
+\begin{DoxyCompactList}\small\item\em In-\/place M\+P\+I\+\_\+\+Allgatherv. \end{DoxyCompactList}\item 
+{\footnotesize template$<$typename T $>$ }\\void \hyperlink{classsddk_1_1_communicator_aacae5f952656a7ab4c6080d3a78221b3}{allgather} (T $\ast$const sendbuf\+\_\+\+\_\+, int sendcount\+\_\+\+\_\+, T $\ast$recvbuf\+\_\+\+\_\+, int const $\ast$recvcounts\+\_\+\+\_\+, int const $\ast$displs\+\_\+\+\_\+) const 
+\begin{DoxyCompactList}\small\item\em Out-\/of-\/place M\+P\+I\+\_\+\+Allgatherv. \end{DoxyCompactList}\item 
+\hypertarget{classsddk_1_1_communicator_a4bda7ba6195f52c55532195142442e56}{}{\footnotesize template$<$typename T $>$ }\\void {\bfseries allgather} (T const $\ast$sendbuf\+\_\+\+\_\+, T $\ast$recvbuf\+\_\+\+\_\+, int offset\+\_\+\+\_\+, int count\+\_\+\+\_\+) const \label{classsddk_1_1_communicator_a4bda7ba6195f52c55532195142442e56}
+
+\item 
+{\footnotesize template$<$typename T $>$ }\\void \hyperlink{classsddk_1_1_communicator_a6de3e1e867bdbbbeda3a447ed2fe5ef8}{allgather} (T $\ast$buffer\+\_\+\+\_\+, int offset\+\_\+\+\_\+, int count\+\_\+\+\_\+) const 
+\begin{DoxyCompactList}\small\item\em In-\/place M\+P\+I\+\_\+\+Allgatherv. \end{DoxyCompactList}\item 
+\hypertarget{classsddk_1_1_communicator_a21f92a62a3cc4ef4c2d740a6e152b09e}{}{\footnotesize template$<$typename T $>$ }\\void {\bfseries isend} (T const $\ast$buffer\+\_\+\+\_\+, int count\+\_\+\+\_\+, int dest\+\_\+\+\_\+, int tag\+\_\+\+\_\+) const \label{classsddk_1_1_communicator_a21f92a62a3cc4ef4c2d740a6e152b09e}
+
+\item 
+\hypertarget{classsddk_1_1_communicator_af417ac53239b8fb4cf6d3bc0d3901d56}{}{\footnotesize template$<$typename T $>$ }\\void {\bfseries recv} (T $\ast$buffer\+\_\+\+\_\+, int count\+\_\+\+\_\+, int source\+\_\+\+\_\+, int tag\+\_\+\+\_\+) const \label{classsddk_1_1_communicator_af417ac53239b8fb4cf6d3bc0d3901d56}
+
+\item 
+\hypertarget{classsddk_1_1_communicator_ae98fc39d660193f191ae41fe033d422e}{}{\footnotesize template$<$typename T $>$ }\\void {\bfseries irecv} (T $\ast$buffer\+\_\+\+\_\+, int count\+\_\+\+\_\+, int source\+\_\+\+\_\+, int tag\+\_\+\+\_\+, M\+P\+I\+\_\+\+Request $\ast$request\+\_\+\+\_\+) const \label{classsddk_1_1_communicator_ae98fc39d660193f191ae41fe033d422e}
+
+\item 
+\hypertarget{classsddk_1_1_communicator_a2e7e248dfd73e8387bc2006552cc9c3b}{}{\footnotesize template$<$typename T $>$ }\\void {\bfseries gather} (T const $\ast$sendbuf\+\_\+\+\_\+, T $\ast$recvbuf\+\_\+\+\_\+, int const $\ast$recvcounts\+\_\+\+\_\+, int const $\ast$displs\+\_\+\+\_\+, int root\+\_\+\+\_\+) const \label{classsddk_1_1_communicator_a2e7e248dfd73e8387bc2006552cc9c3b}
+
+\item 
+\hypertarget{classsddk_1_1_communicator_aba847923e7f05ae42bdcb839b84ad6a6}{}{\footnotesize template$<$typename T $>$ }\\void {\bfseries scatter} (T const $\ast$sendbuf\+\_\+\+\_\+, T $\ast$recvbuf\+\_\+\+\_\+, int const $\ast$sendcounts\+\_\+\+\_\+, int const $\ast$displs\+\_\+\+\_\+, int root\+\_\+\+\_\+) const \label{classsddk_1_1_communicator_aba847923e7f05ae42bdcb839b84ad6a6}
+
+\item 
+\hypertarget{classsddk_1_1_communicator_a0d4efbb6ac40a3b5b1a72c9e038e4a26}{}{\footnotesize template$<$typename T $>$ }\\void {\bfseries alltoall} (T const $\ast$sendbuf\+\_\+\+\_\+, int sendcounts\+\_\+\+\_\+, T $\ast$recvbuf\+\_\+\+\_\+, int recvcounts\+\_\+\+\_\+) const \label{classsddk_1_1_communicator_a0d4efbb6ac40a3b5b1a72c9e038e4a26}
+
+\item 
+\hypertarget{classsddk_1_1_communicator_af2f2527e6267bb24c2bf460ffbb6f500}{}{\footnotesize template$<$typename T $>$ }\\void {\bfseries alltoall} (T const $\ast$sendbuf\+\_\+\+\_\+, int const $\ast$sendcounts\+\_\+\+\_\+, int const $\ast$sdispls\+\_\+\+\_\+, T $\ast$recvbuf\+\_\+\+\_\+, int const $\ast$recvcounts\+\_\+\+\_\+, int const $\ast$rdispls\+\_\+\+\_\+) const \label{classsddk_1_1_communicator_af2f2527e6267bb24c2bf460ffbb6f500}
+
+\item 
+\hypertarget{classsddk_1_1_communicator_aafa74b3637cf5ac965f9ba4b720074a4}{}\hyperlink{classsddk_1_1_communicator}{Communicator} {\bfseries split} (int color\+\_\+\+\_\+) const \label{classsddk_1_1_communicator_aafa74b3637cf5ac965f9ba4b720074a4}
+
+\end{DoxyCompactItemize}
+\subsection*{Static Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+static void \hyperlink{classsddk_1_1_communicator_a7cc822e3047f6c5cb940749e12c4c987}{initialize} ()
+\begin{DoxyCompactList}\small\item\em M\+P\+I initialization. \end{DoxyCompactList}\item 
+static void \hyperlink{classsddk_1_1_communicator_a6af0cc5c1713f6bebe0d1426fc1cf503}{finalize} ()
+\begin{DoxyCompactList}\small\item\em M\+P\+I shut down. \end{DoxyCompactList}\end{DoxyCompactItemize}
+\subsection*{Private Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+\hypertarget{classsddk_1_1_communicator_ab02bbdd3a86d82942c66686a3ff59df2}{}{\bfseries Communicator} (\hyperlink{classsddk_1_1_communicator}{Communicator} const \&src\+\_\+\+\_\+)=delete\label{classsddk_1_1_communicator_ab02bbdd3a86d82942c66686a3ff59df2}
+
+\item 
+\hypertarget{classsddk_1_1_communicator_afc50c903a81987f17ff89dc46b6a3772}{}\hyperlink{classsddk_1_1_communicator}{Communicator} {\bfseries operator=} (\hyperlink{classsddk_1_1_communicator}{Communicator} const \&src\+\_\+\+\_\+)=delete\label{classsddk_1_1_communicator_afc50c903a81987f17ff89dc46b6a3772}
+
+\item 
+void \hyperlink{classsddk_1_1_communicator_a4c8797749f799a434ff59571e59e7d44}{free} ()
+\begin{DoxyCompactList}\small\item\em Free communicator. \end{DoxyCompactList}\end{DoxyCompactItemize}
+\subsection*{Private Attributes}
+\begin{DoxyCompactItemize}
+\item 
+M\+P\+I\+\_\+\+Comm \hyperlink{classsddk_1_1_communicator_a33aeacc7ce79d5910f6c31988d07735b}{mpi\+\_\+comm\+\_\+} \{M\+P\+I\+\_\+\+C\+O\+M\+M\+\_\+\+N\+U\+L\+L\}
+\begin{DoxyCompactList}\small\item\em Raw M\+P\+I communicator. \end{DoxyCompactList}\item 
+bool \hyperlink{classsddk_1_1_communicator_a7dfce793f7d5571fb69dcfac81814403}{need\+\_\+to\+\_\+free\+\_\+}
+\begin{DoxyCompactList}\small\item\em True if this class instance is responsible for freeing raw M\+P\+I communicator. \end{DoxyCompactList}\end{DoxyCompactItemize}
+
+
+\subsection{Detailed Description}
+M\+P\+I communicator wrapper. 
+
+Definition at line 163 of file communicator.\+hpp.
+
+
+
+\subsection{Constructor \& Destructor Documentation}
+\hypertarget{classsddk_1_1_communicator_a1a6949d5b0ab726398e2e72f01a4eeed}{}\index{sddk\+::\+Communicator@{sddk\+::\+Communicator}!Communicator@{Communicator}}
+\index{Communicator@{Communicator}!sddk\+::\+Communicator@{sddk\+::\+Communicator}}
+\subsubsection[{Communicator()}]{\setlength{\rightskip}{0pt plus 5cm}sddk\+::\+Communicator\+::\+Communicator (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}}\label{classsddk_1_1_communicator_a1a6949d5b0ab726398e2e72f01a4eeed}
+
+
+Default constructor. 
+
+
+
+Definition at line 188 of file communicator.\+hpp.
+
+\hypertarget{classsddk_1_1_communicator_a74d08c2e24699de2e253407e73e7c1f9}{}\index{sddk\+::\+Communicator@{sddk\+::\+Communicator}!Communicator@{Communicator}}
+\index{Communicator@{Communicator}!sddk\+::\+Communicator@{sddk\+::\+Communicator}}
+\subsubsection[{Communicator(\+M\+P\+I\+\_\+\+Comm mpi\+\_\+comm\+\_\+\+\_\+)}]{\setlength{\rightskip}{0pt plus 5cm}sddk\+::\+Communicator\+::\+Communicator (
+\begin{DoxyParamCaption}
+\item[{M\+P\+I\+\_\+\+Comm}]{mpi\+\_\+comm\+\_\+\+\_\+}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}}\label{classsddk_1_1_communicator_a74d08c2e24699de2e253407e73e7c1f9}
+
+
+Constructor for existing communicator. 
+
+
+
+Definition at line 194 of file communicator.\+hpp.
+
+\hypertarget{classsddk_1_1_communicator_a0db11d624a1e15a3311fc135cbf2a5b4}{}\index{sddk\+::\+Communicator@{sddk\+::\+Communicator}!````~Communicator@{$\sim$\+Communicator}}
+\index{````~Communicator@{$\sim$\+Communicator}!sddk\+::\+Communicator@{sddk\+::\+Communicator}}
+\subsubsection[{$\sim$\+Communicator()}]{\setlength{\rightskip}{0pt plus 5cm}sddk\+::\+Communicator\+::$\sim$\+Communicator (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}}\label{classsddk_1_1_communicator_a0db11d624a1e15a3311fc135cbf2a5b4}
+
+
+Destructor. 
+
+
+
+Definition at line 201 of file communicator.\+hpp.
+
+\hypertarget{classsddk_1_1_communicator_abb956271307484b94b358a56c44dcd51}{}\index{sddk\+::\+Communicator@{sddk\+::\+Communicator}!Communicator@{Communicator}}
+\index{Communicator@{Communicator}!sddk\+::\+Communicator@{sddk\+::\+Communicator}}
+\subsubsection[{Communicator(\+Communicator \&\&src\+\_\+\+\_\+)}]{\setlength{\rightskip}{0pt plus 5cm}sddk\+::\+Communicator\+::\+Communicator (
+\begin{DoxyParamCaption}
+\item[{{\bf Communicator} \&\&}]{src\+\_\+\+\_\+}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}}\label{classsddk_1_1_communicator_abb956271307484b94b358a56c44dcd51}
+
+
+Move constructor. 
+
+
+
+Definition at line 207 of file communicator.\+hpp.
+
+
+
+\subsection{Member Function Documentation}
+\hypertarget{classsddk_1_1_communicator_a4c8797749f799a434ff59571e59e7d44}{}\index{sddk\+::\+Communicator@{sddk\+::\+Communicator}!free@{free}}
+\index{free@{free}!sddk\+::\+Communicator@{sddk\+::\+Communicator}}
+\subsubsection[{free()}]{\setlength{\rightskip}{0pt plus 5cm}void sddk\+::\+Communicator\+::free (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}, {\ttfamily [private]}}\label{classsddk_1_1_communicator_a4c8797749f799a434ff59571e59e7d44}
+
+
+Free communicator. 
+
+
+
+Definition at line 176 of file communicator.\+hpp.
+
+\hypertarget{classsddk_1_1_communicator_a4befc1018975809550ad68e8374a1df6}{}\index{sddk\+::\+Communicator@{sddk\+::\+Communicator}!operator=@{operator=}}
+\index{operator=@{operator=}!sddk\+::\+Communicator@{sddk\+::\+Communicator}}
+\subsubsection[{operator=(\+Communicator \&\&src\+\_\+\+\_\+)}]{\setlength{\rightskip}{0pt plus 5cm}{\bf Communicator}\& sddk\+::\+Communicator\+::operator= (
+\begin{DoxyParamCaption}
+\item[{{\bf Communicator} \&\&}]{src\+\_\+\+\_\+}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}}\label{classsddk_1_1_communicator_a4befc1018975809550ad68e8374a1df6}
+
+
+Move assigment operator. 
+
+
+
+Definition at line 216 of file communicator.\+hpp.
+
+\hypertarget{classsddk_1_1_communicator_a7cc822e3047f6c5cb940749e12c4c987}{}\index{sddk\+::\+Communicator@{sddk\+::\+Communicator}!initialize@{initialize}}
+\index{initialize@{initialize}!sddk\+::\+Communicator@{sddk\+::\+Communicator}}
+\subsubsection[{initialize()}]{\setlength{\rightskip}{0pt plus 5cm}static void sddk\+::\+Communicator\+::initialize (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}, {\ttfamily [static]}}\label{classsddk_1_1_communicator_a7cc822e3047f6c5cb940749e12c4c987}
+
+
+M\+P\+I initialization. 
+
+
+
+Definition at line 226 of file communicator.\+hpp.
+
+\hypertarget{classsddk_1_1_communicator_a6af0cc5c1713f6bebe0d1426fc1cf503}{}\index{sddk\+::\+Communicator@{sddk\+::\+Communicator}!finalize@{finalize}}
+\index{finalize@{finalize}!sddk\+::\+Communicator@{sddk\+::\+Communicator}}
+\subsubsection[{finalize()}]{\setlength{\rightskip}{0pt plus 5cm}static void sddk\+::\+Communicator\+::finalize (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}, {\ttfamily [static]}}\label{classsddk_1_1_communicator_a6af0cc5c1713f6bebe0d1426fc1cf503}
+
+
+M\+P\+I shut down. 
+
+
+
+Definition at line 239 of file communicator.\+hpp.
+
+\hypertarget{classsddk_1_1_communicator_a7e698b55afcbb987e494a831f76d8b68}{}\index{sddk\+::\+Communicator@{sddk\+::\+Communicator}!mpi\+\_\+comm@{mpi\+\_\+comm}}
+\index{mpi\+\_\+comm@{mpi\+\_\+comm}!sddk\+::\+Communicator@{sddk\+::\+Communicator}}
+\subsubsection[{mpi\+\_\+comm()}]{\setlength{\rightskip}{0pt plus 5cm}M\+P\+I\+\_\+\+Comm\& sddk\+::\+Communicator\+::mpi\+\_\+comm (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}}\label{classsddk_1_1_communicator_a7e698b55afcbb987e494a831f76d8b68}
+
+
+Return reference to raw M\+P\+I communicator. 
+
+
+
+Definition at line 245 of file communicator.\+hpp.
+
+\hypertarget{classsddk_1_1_communicator_a112575fbbdb412c7f44275105e8f33bc}{}\index{sddk\+::\+Communicator@{sddk\+::\+Communicator}!mpi\+\_\+comm@{mpi\+\_\+comm}}
+\index{mpi\+\_\+comm@{mpi\+\_\+comm}!sddk\+::\+Communicator@{sddk\+::\+Communicator}}
+\subsubsection[{mpi\+\_\+comm() const }]{\setlength{\rightskip}{0pt plus 5cm}M\+P\+I\+\_\+\+Comm const\& sddk\+::\+Communicator\+::mpi\+\_\+comm (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [inline]}}\label{classsddk_1_1_communicator_a112575fbbdb412c7f44275105e8f33bc}
+
+
+Return const reference to raw M\+P\+I communicator. 
+
+
+
+Definition at line 251 of file communicator.\+hpp.
+
+\hypertarget{classsddk_1_1_communicator_ad74faba0835ab4db65c1041e2c8e3d44}{}\index{sddk\+::\+Communicator@{sddk\+::\+Communicator}!rank@{rank}}
+\index{rank@{rank}!sddk\+::\+Communicator@{sddk\+::\+Communicator}}
+\subsubsection[{rank() const }]{\setlength{\rightskip}{0pt plus 5cm}int sddk\+::\+Communicator\+::rank (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [inline]}}\label{classsddk_1_1_communicator_ad74faba0835ab4db65c1041e2c8e3d44}
+
+
+Rank of M\+P\+I process inside communicator. 
+
+
+
+Definition at line 257 of file communicator.\+hpp.
+
+\hypertarget{classsddk_1_1_communicator_ae4acf45099468ce141f5b21a9ce24386}{}\index{sddk\+::\+Communicator@{sddk\+::\+Communicator}!cart\+\_\+rank@{cart\+\_\+rank}}
+\index{cart\+\_\+rank@{cart\+\_\+rank}!sddk\+::\+Communicator@{sddk\+::\+Communicator}}
+\subsubsection[{cart\+\_\+rank(std\+::vector$<$ int $>$ const \&coords\+\_\+\+\_\+) const }]{\setlength{\rightskip}{0pt plus 5cm}int sddk\+::\+Communicator\+::cart\+\_\+rank (
+\begin{DoxyParamCaption}
+\item[{std\+::vector$<$ int $>$ const \&}]{coords\+\_\+\+\_\+}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [inline]}}\label{classsddk_1_1_communicator_ae4acf45099468ce141f5b21a9ce24386}
+
+
+Rank of M\+P\+I process inside communicator with associated Cartesian partitioning. 
+
+
+
+Definition at line 267 of file communicator.\+hpp.
+
+\hypertarget{classsddk_1_1_communicator_a1300606fc1ca6d6feba65a9a6d81e2f7}{}\index{sddk\+::\+Communicator@{sddk\+::\+Communicator}!allreduce@{allreduce}}
+\index{allreduce@{allreduce}!sddk\+::\+Communicator@{sddk\+::\+Communicator}}
+\subsubsection[{allreduce(\+T $\ast$buffer\+\_\+\+\_\+, int count\+\_\+\+\_\+) const }]{\setlength{\rightskip}{0pt plus 5cm}template$<$typename T , mpi\+\_\+op\+\_\+t mpi\+\_\+op\+\_\+\+\_\+ = mpi\+\_\+op\+\_\+t\+::sum$>$ void sddk\+::\+Communicator\+::allreduce (
+\begin{DoxyParamCaption}
+\item[{T $\ast$}]{buffer\+\_\+\+\_\+, }
+\item[{int}]{count\+\_\+\+\_\+}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [inline]}}\label{classsddk_1_1_communicator_a1300606fc1ca6d6feba65a9a6d81e2f7}
+
+
+Perform the in-\/place (the output buffer is used as the input buffer) all-\/to-\/all reduction. 
+
+
+
+Definition at line 333 of file communicator.\+hpp.
+
+\hypertarget{classsddk_1_1_communicator_a4416faf4f98a33416b01caa5206cb551}{}\index{sddk\+::\+Communicator@{sddk\+::\+Communicator}!allreduce@{allreduce}}
+\index{allreduce@{allreduce}!sddk\+::\+Communicator@{sddk\+::\+Communicator}}
+\subsubsection[{allreduce(std\+::vector$<$ T $>$ \&buffer\+\_\+\+\_\+) const }]{\setlength{\rightskip}{0pt plus 5cm}template$<$typename T , mpi\+\_\+op\+\_\+t op\+\_\+\+\_\+ = mpi\+\_\+op\+\_\+t\+::sum$>$ void sddk\+::\+Communicator\+::allreduce (
+\begin{DoxyParamCaption}
+\item[{std\+::vector$<$ T $>$ \&}]{buffer\+\_\+\+\_\+}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [inline]}}\label{classsddk_1_1_communicator_a4416faf4f98a33416b01caa5206cb551}
+
+
+Perform the in-\/place (the output buffer is used as the input buffer) all-\/to-\/all reduction. 
+
+
+
+Definition at line 341 of file communicator.\+hpp.
+
+\hypertarget{classsddk_1_1_communicator_afc6c3a41d5b4b4b183157f88272eea76}{}\index{sddk\+::\+Communicator@{sddk\+::\+Communicator}!bcast@{bcast}}
+\index{bcast@{bcast}!sddk\+::\+Communicator@{sddk\+::\+Communicator}}
+\subsubsection[{bcast(\+T $\ast$buffer\+\_\+\+\_\+, int count\+\_\+\+\_\+, int root\+\_\+\+\_\+) const }]{\setlength{\rightskip}{0pt plus 5cm}template$<$typename T $>$ void sddk\+::\+Communicator\+::bcast (
+\begin{DoxyParamCaption}
+\item[{T $\ast$}]{buffer\+\_\+\+\_\+, }
+\item[{int}]{count\+\_\+\+\_\+, }
+\item[{int}]{root\+\_\+\+\_\+}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [inline]}}\label{classsddk_1_1_communicator_afc6c3a41d5b4b4b183157f88272eea76}
+
+
+Perform buffer broadcast. 
+
+
+
+Definition at line 355 of file communicator.\+hpp.
+
+\hypertarget{classsddk_1_1_communicator_a4c99b71f6148a3eb1a8cef348381b8a0}{}\index{sddk\+::\+Communicator@{sddk\+::\+Communicator}!allgather@{allgather}}
+\index{allgather@{allgather}!sddk\+::\+Communicator@{sddk\+::\+Communicator}}
+\subsubsection[{allgather(\+T $\ast$buffer\+\_\+\+\_\+, int const $\ast$recvcounts\+\_\+\+\_\+, int const $\ast$displs\+\_\+\+\_\+) const }]{\setlength{\rightskip}{0pt plus 5cm}template$<$typename T $>$ void sddk\+::\+Communicator\+::allgather (
+\begin{DoxyParamCaption}
+\item[{T $\ast$}]{buffer\+\_\+\+\_\+, }
+\item[{int const $\ast$}]{recvcounts\+\_\+\+\_\+, }
+\item[{int const $\ast$}]{displs\+\_\+\+\_\+}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [inline]}}\label{classsddk_1_1_communicator_a4c99b71f6148a3eb1a8cef348381b8a0}
+
+
+In-\/place M\+P\+I\+\_\+\+Allgatherv. 
+
+
+
+Definition at line 378 of file communicator.\+hpp.
+
+\hypertarget{classsddk_1_1_communicator_aacae5f952656a7ab4c6080d3a78221b3}{}\index{sddk\+::\+Communicator@{sddk\+::\+Communicator}!allgather@{allgather}}
+\index{allgather@{allgather}!sddk\+::\+Communicator@{sddk\+::\+Communicator}}
+\subsubsection[{allgather(\+T $\ast$const sendbuf\+\_\+\+\_\+, int sendcount\+\_\+\+\_\+, T $\ast$recvbuf\+\_\+\+\_\+, int const $\ast$recvcounts\+\_\+\+\_\+, int const $\ast$displs\+\_\+\+\_\+) const }]{\setlength{\rightskip}{0pt plus 5cm}template$<$typename T $>$ void sddk\+::\+Communicator\+::allgather (
+\begin{DoxyParamCaption}
+\item[{T $\ast$const}]{sendbuf\+\_\+\+\_\+, }
+\item[{int}]{sendcount\+\_\+\+\_\+, }
+\item[{T $\ast$}]{recvbuf\+\_\+\+\_\+, }
+\item[{int const $\ast$}]{recvcounts\+\_\+\+\_\+, }
+\item[{int const $\ast$}]{displs\+\_\+\+\_\+}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [inline]}}\label{classsddk_1_1_communicator_aacae5f952656a7ab4c6080d3a78221b3}
+
+
+Out-\/of-\/place M\+P\+I\+\_\+\+Allgatherv. 
+
+
+
+Definition at line 386 of file communicator.\+hpp.
+
+\hypertarget{classsddk_1_1_communicator_a6de3e1e867bdbbbeda3a447ed2fe5ef8}{}\index{sddk\+::\+Communicator@{sddk\+::\+Communicator}!allgather@{allgather}}
+\index{allgather@{allgather}!sddk\+::\+Communicator@{sddk\+::\+Communicator}}
+\subsubsection[{allgather(\+T $\ast$buffer\+\_\+\+\_\+, int offset\+\_\+\+\_\+, int count\+\_\+\+\_\+) const }]{\setlength{\rightskip}{0pt plus 5cm}template$<$typename T $>$ void sddk\+::\+Communicator\+::allgather (
+\begin{DoxyParamCaption}
+\item[{T $\ast$}]{buffer\+\_\+\+\_\+, }
+\item[{int}]{offset\+\_\+\+\_\+, }
+\item[{int}]{count\+\_\+\+\_\+}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [inline]}}\label{classsddk_1_1_communicator_a6de3e1e867bdbbbeda3a447ed2fe5ef8}
+
+
+In-\/place M\+P\+I\+\_\+\+Allgatherv. 
+
+
+
+Definition at line 418 of file communicator.\+hpp.
+
+
+
+\subsection{Member Data Documentation}
+\hypertarget{classsddk_1_1_communicator_a33aeacc7ce79d5910f6c31988d07735b}{}\index{sddk\+::\+Communicator@{sddk\+::\+Communicator}!mpi\+\_\+comm\+\_\+@{mpi\+\_\+comm\+\_\+}}
+\index{mpi\+\_\+comm\+\_\+@{mpi\+\_\+comm\+\_\+}!sddk\+::\+Communicator@{sddk\+::\+Communicator}}
+\subsubsection[{mpi\+\_\+comm\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}M\+P\+I\+\_\+\+Comm sddk\+::\+Communicator\+::mpi\+\_\+comm\+\_\+ \{M\+P\+I\+\_\+\+C\+O\+M\+M\+\_\+\+N\+U\+L\+L\}\hspace{0.3cm}{\ttfamily [private]}}\label{classsddk_1_1_communicator_a33aeacc7ce79d5910f6c31988d07735b}
+
+
+Raw M\+P\+I communicator. 
+
+
+
+Definition at line 167 of file communicator.\+hpp.
+
+\hypertarget{classsddk_1_1_communicator_a7dfce793f7d5571fb69dcfac81814403}{}\index{sddk\+::\+Communicator@{sddk\+::\+Communicator}!need\+\_\+to\+\_\+free\+\_\+@{need\+\_\+to\+\_\+free\+\_\+}}
+\index{need\+\_\+to\+\_\+free\+\_\+@{need\+\_\+to\+\_\+free\+\_\+}!sddk\+::\+Communicator@{sddk\+::\+Communicator}}
+\subsubsection[{need\+\_\+to\+\_\+free\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}bool sddk\+::\+Communicator\+::need\+\_\+to\+\_\+free\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classsddk_1_1_communicator_a7dfce793f7d5571fb69dcfac81814403}
+
+
+True if this class instance is responsible for freeing raw M\+P\+I communicator. 
+
+
+
+Definition at line 169 of file communicator.\+hpp.
+
+
+
+The documentation for this class was generated from the following file\+:\begin{DoxyCompactItemize}
+\item 
+\hyperlink{communicator_8hpp}{communicator.\+hpp}\end{DoxyCompactItemize}

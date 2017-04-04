@@ -1,0 +1,118 @@
+\hypertarget{eigenproblem_8h}{}\section{eigenproblem.\+h File Reference}
+\label{eigenproblem_8h}\index{eigenproblem.\+h@{eigenproblem.\+h}}
+
+
+Contains definition and implementaiton of various eigenvalue solver interfaces.  
+
+
+Include dependency graph for eigenproblem.\+h\+:
+% FIG 0
+This graph shows which files directly or indirectly include this file\+:
+% FIG 1
+\subsection*{Classes}
+\begin{DoxyCompactItemize}
+\item 
+class \hyperlink{class_eigenproblem}{Eigenproblem}
+\begin{DoxyCompactList}\small\item\em Base class for eigen-\/value problems. \end{DoxyCompactList}\item 
+class \hyperlink{class_eigenproblem__lapack}{Eigenproblem\+\_\+lapack}
+\begin{DoxyCompactList}\small\item\em Interface for L\+A\+P\+A\+C\+K eigen-\/value solvers. \end{DoxyCompactList}\item 
+class \hyperlink{class_eigenproblem__plasma}{Eigenproblem\+\_\+plasma}
+\begin{DoxyCompactList}\small\item\em Interface for P\+L\+A\+S\+M\+A eigen-\/value solvers. \end{DoxyCompactList}\item 
+class \hyperlink{class_eigenproblem__magma}{Eigenproblem\+\_\+magma}
+\begin{DoxyCompactList}\small\item\em Interface for M\+A\+G\+M\+A eigen-\/value solvers. \end{DoxyCompactList}\item 
+class \hyperlink{class_eigenproblem__scalapack}{Eigenproblem\+\_\+scalapack}
+\begin{DoxyCompactList}\small\item\em Interface for Sca\+L\+A\+P\+A\+C\+K eigen-\/value solvers. \end{DoxyCompactList}\item 
+class \hyperlink{class_eigenproblem__elpa}{Eigenproblem\+\_\+elpa}
+\item 
+class \hyperlink{class_eigenproblem__elpa1}{Eigenproblem\+\_\+elpa1}
+\item 
+class \hyperlink{class_eigenproblem__elpa2}{Eigenproblem\+\_\+elpa2}
+\item 
+class \hyperlink{class_eigenproblem___r_s___c_p_u}{Eigenproblem\+\_\+\+R\+S\+\_\+\+C\+P\+U}
+\item 
+class \hyperlink{class_eigenproblem___r_s___g_p_u}{Eigenproblem\+\_\+\+R\+S\+\_\+\+G\+P\+U}
+\end{DoxyCompactItemize}
+\subsection*{Enumerations}
+\begin{DoxyCompactItemize}
+\item 
+enum \hyperlink{eigenproblem_8h_a203f2c57422a6e64834e6e9ab85982bf}{ev\+\_\+solver\+\_\+t} \{ \\*
+\hyperlink{eigenproblem_8h_a203f2c57422a6e64834e6e9ab85982bfa91bc01f4f5388e756efb07f0b12dd070}{ev\+\_\+lapack}, 
+\hyperlink{eigenproblem_8h_a203f2c57422a6e64834e6e9ab85982bfaf071b98d350afbc11e9744cda18bbdbd}{ev\+\_\+scalapack}, 
+\hyperlink{eigenproblem_8h_a203f2c57422a6e64834e6e9ab85982bfa624459b6e0afaaa88c8f8ee5b69eb5ed}{ev\+\_\+elpa1}, 
+\hyperlink{eigenproblem_8h_a203f2c57422a6e64834e6e9ab85982bfa0a1ceaebea041c4b679eb37f68620567}{ev\+\_\+elpa2}, 
+\\*
+\hyperlink{eigenproblem_8h_a203f2c57422a6e64834e6e9ab85982bfa2a5f4e78b8d57e3c5f630885bc11c80e}{ev\+\_\+magma}, 
+\hyperlink{eigenproblem_8h_a203f2c57422a6e64834e6e9ab85982bfa962186d05608cea708ca7e46f6c1b119}{ev\+\_\+plasma}, 
+{\bfseries ev\+\_\+rs\+\_\+gpu}, 
+{\bfseries ev\+\_\+rs\+\_\+cpu}
+ \}\begin{DoxyCompactList}\small\item\em Type of the solver to use for the standard or generalized eigen-\/value problem. \end{DoxyCompactList}
+\end{DoxyCompactItemize}
+\subsection*{Functions}
+\begin{DoxyCompactItemize}
+\item 
+\hypertarget{eigenproblem_8h_a0df3772e5c29f45124276e1d3632cc92}{}void F\+O\+R\+T\+R\+A\+N() {\bfseries elpa\+\_\+cholesky\+\_\+complex\+\_\+wrapper} (ftn\+\_\+int const $\ast$na, ftn\+\_\+double\+\_\+complex $\ast$a, ftn\+\_\+int const $\ast$lda, ftn\+\_\+int const $\ast$nblk, ftn\+\_\+int const $\ast$matrix\+Cols, ftn\+\_\+int const $\ast$mpi\+\_\+comm\+\_\+rows, ftn\+\_\+int const $\ast$mpi\+\_\+comm\+\_\+cols)\label{eigenproblem_8h_a0df3772e5c29f45124276e1d3632cc92}
+
+\item 
+\hypertarget{eigenproblem_8h_adeae43b0c3341032ffd89ca73f4f6a16}{}void F\+O\+R\+T\+R\+A\+N() {\bfseries elpa\+\_\+cholesky\+\_\+real\+\_\+wrapper} (ftn\+\_\+int const $\ast$na, ftn\+\_\+double $\ast$a, ftn\+\_\+int const $\ast$lda, ftn\+\_\+int const $\ast$nblk, ftn\+\_\+int const $\ast$matrix\+Cols, ftn\+\_\+int const $\ast$mpi\+\_\+comm\+\_\+rows, ftn\+\_\+int const $\ast$mpi\+\_\+comm\+\_\+cols)\label{eigenproblem_8h_adeae43b0c3341032ffd89ca73f4f6a16}
+
+\item 
+\hypertarget{eigenproblem_8h_a7fa9b71fc500558ea42b16a7823f9ab5}{}void F\+O\+R\+T\+R\+A\+N() {\bfseries elpa\+\_\+invert\+\_\+trm\+\_\+complex\+\_\+wrapper} (ftn\+\_\+int const $\ast$na, ftn\+\_\+double\+\_\+complex $\ast$a, ftn\+\_\+int const $\ast$lda, ftn\+\_\+int const $\ast$nblk, ftn\+\_\+int const $\ast$matrix\+Cols, ftn\+\_\+int const $\ast$mpi\+\_\+comm\+\_\+rows, ftn\+\_\+int const $\ast$mpi\+\_\+comm\+\_\+cols)\label{eigenproblem_8h_a7fa9b71fc500558ea42b16a7823f9ab5}
+
+\item 
+\hypertarget{eigenproblem_8h_ab65461ec11a40945b18f585e6e42c024}{}void F\+O\+R\+T\+R\+A\+N() {\bfseries elpa\+\_\+invert\+\_\+trm\+\_\+real\+\_\+wrapper} (ftn\+\_\+int const $\ast$na, ftn\+\_\+double $\ast$a, ftn\+\_\+int const $\ast$lda, ftn\+\_\+int const $\ast$nblk, ftn\+\_\+int const $\ast$matrix\+Cols, ftn\+\_\+int const $\ast$mpi\+\_\+comm\+\_\+rows, ftn\+\_\+int const $\ast$mpi\+\_\+comm\+\_\+cols)\label{eigenproblem_8h_ab65461ec11a40945b18f585e6e42c024}
+
+\item 
+\hypertarget{eigenproblem_8h_a8376af006951218c5db316566e5e8d4d}{}void F\+O\+R\+T\+R\+A\+N() {\bfseries elpa\+\_\+mult\+\_\+ah\+\_\+b\+\_\+complex\+\_\+wrapper} (ftn\+\_\+char uplo\+\_\+a, ftn\+\_\+char uplo\+\_\+c, ftn\+\_\+int const $\ast$na, ftn\+\_\+int const $\ast$ncb, ftn\+\_\+double\+\_\+complex $\ast$a, ftn\+\_\+int const $\ast$lda, ftn\+\_\+double\+\_\+complex $\ast$b, ftn\+\_\+int const $\ast$ldb, ftn\+\_\+int const $\ast$nblk, ftn\+\_\+int const $\ast$mpi\+\_\+comm\+\_\+rows, ftn\+\_\+int const $\ast$mpi\+\_\+comm\+\_\+cols, ftn\+\_\+double\+\_\+complex $\ast$c, ftn\+\_\+int const $\ast$ldc, ftn\+\_\+len uplo\+\_\+a\+\_\+len, ftn\+\_\+len uplo\+\_\+c\+\_\+len)\label{eigenproblem_8h_a8376af006951218c5db316566e5e8d4d}
+
+\item 
+\hypertarget{eigenproblem_8h_a0a4a9361b9158d97d31c5f0a5260d283}{}void F\+O\+R\+T\+R\+A\+N() {\bfseries elpa\+\_\+mult\+\_\+at\+\_\+b\+\_\+real\+\_\+wrapper} (ftn\+\_\+char uplo\+\_\+a, ftn\+\_\+char uplo\+\_\+c, ftn\+\_\+int const $\ast$na, ftn\+\_\+int const $\ast$ncb, ftn\+\_\+double $\ast$a, ftn\+\_\+int const $\ast$lda, ftn\+\_\+double $\ast$b, ftn\+\_\+int const $\ast$ldb, ftn\+\_\+int const $\ast$nblk, ftn\+\_\+int const $\ast$mpi\+\_\+comm\+\_\+rows, ftn\+\_\+int const $\ast$mpi\+\_\+comm\+\_\+cols, ftn\+\_\+double $\ast$c, ftn\+\_\+int const $\ast$ldc, ftn\+\_\+len uplo\+\_\+a\+\_\+len, ftn\+\_\+len uplo\+\_\+c\+\_\+len)\label{eigenproblem_8h_a0a4a9361b9158d97d31c5f0a5260d283}
+
+\item 
+\hypertarget{eigenproblem_8h_a56c785b6d722fcec1c066a36748e79ca}{}void F\+O\+R\+T\+R\+A\+N() {\bfseries elpa\+\_\+solve\+\_\+evp\+\_\+complex} (ftn\+\_\+int const $\ast$na, ftn\+\_\+int const $\ast$nev, ftn\+\_\+double\+\_\+complex $\ast$a, ftn\+\_\+int const $\ast$lda, ftn\+\_\+double $\ast$ev, ftn\+\_\+double\+\_\+complex $\ast$q, ftn\+\_\+int const $\ast$ldq, ftn\+\_\+int const $\ast$nblk, ftn\+\_\+int const $\ast$matrix\+Cols, ftn\+\_\+int const $\ast$mpi\+\_\+comm\+\_\+rows, ftn\+\_\+int const $\ast$mpi\+\_\+comm\+\_\+cols)\label{eigenproblem_8h_a56c785b6d722fcec1c066a36748e79ca}
+
+\item 
+\hypertarget{eigenproblem_8h_a4a1e1433213025c3758f98d08d714a2f}{}void F\+O\+R\+T\+R\+A\+N() {\bfseries elpa\+\_\+solve\+\_\+evp\+\_\+real} (ftn\+\_\+int const $\ast$na, ftn\+\_\+int const $\ast$nev, ftn\+\_\+double $\ast$a, ftn\+\_\+int const $\ast$lda, ftn\+\_\+double $\ast$ev, ftn\+\_\+double $\ast$q, ftn\+\_\+int const $\ast$ldq, ftn\+\_\+int const $\ast$nblk, ftn\+\_\+int const $\ast$matrix\+Cols, ftn\+\_\+int const $\ast$mpi\+\_\+comm\+\_\+rows, ftn\+\_\+int const $\ast$mpi\+\_\+comm\+\_\+cols)\label{eigenproblem_8h_a4a1e1433213025c3758f98d08d714a2f}
+
+\item 
+\hypertarget{eigenproblem_8h_a6610579d06709ac8b616bc0be7be02a1}{}void F\+O\+R\+T\+R\+A\+N() {\bfseries elpa\+\_\+solve\+\_\+evp\+\_\+complex\+\_\+2stage} (ftn\+\_\+int const $\ast$na, ftn\+\_\+int const $\ast$nev, ftn\+\_\+double\+\_\+complex $\ast$a, ftn\+\_\+int const $\ast$lda, ftn\+\_\+double $\ast$ev, ftn\+\_\+double\+\_\+complex $\ast$q, ftn\+\_\+int const $\ast$ldq, ftn\+\_\+int const $\ast$nblk, ftn\+\_\+int const $\ast$matrix\+Cols, ftn\+\_\+int const $\ast$mpi\+\_\+comm\+\_\+rows, ftn\+\_\+int const $\ast$mpi\+\_\+comm\+\_\+cols, ftn\+\_\+int const $\ast$mpi\+\_\+comm\+\_\+all)\label{eigenproblem_8h_a6610579d06709ac8b616bc0be7be02a1}
+
+\item 
+\hypertarget{eigenproblem_8h_a036cf49dec9f67ee2076c3275972d5e5}{}void F\+O\+R\+T\+R\+A\+N() {\bfseries elpa\+\_\+solve\+\_\+evp\+\_\+real\+\_\+2stage} (ftn\+\_\+int const $\ast$na, ftn\+\_\+int const $\ast$nev, ftn\+\_\+double $\ast$a, ftn\+\_\+int const $\ast$lda, ftn\+\_\+double $\ast$ev, ftn\+\_\+double $\ast$q, ftn\+\_\+int const $\ast$ldq, ftn\+\_\+int const $\ast$nblk, ftn\+\_\+int const $\ast$matrix\+Cols, ftn\+\_\+int const $\ast$mpi\+\_\+comm\+\_\+rows, ftn\+\_\+int const $\ast$mpi\+\_\+comm\+\_\+cols, ftn\+\_\+int const $\ast$mpi\+\_\+comm\+\_\+all)\label{eigenproblem_8h_a036cf49dec9f67ee2076c3275972d5e5}
+
+\end{DoxyCompactItemize}
+
+
+\subsection{Detailed Description}
+Contains definition and implementaiton of various eigenvalue solver interfaces. 
+
+
+
+\subsection{Enumeration Type Documentation}
+\hypertarget{eigenproblem_8h_a203f2c57422a6e64834e6e9ab85982bf}{}\index{eigenproblem.\+h@{eigenproblem.\+h}!ev\+\_\+solver\+\_\+t@{ev\+\_\+solver\+\_\+t}}
+\index{ev\+\_\+solver\+\_\+t@{ev\+\_\+solver\+\_\+t}!eigenproblem.\+h@{eigenproblem.\+h}}
+\subsubsection[{ev\+\_\+solver\+\_\+t}]{\setlength{\rightskip}{0pt plus 5cm}enum {\bf ev\+\_\+solver\+\_\+t}}\label{eigenproblem_8h_a203f2c57422a6e64834e6e9ab85982bf}
+
+
+Type of the solver to use for the standard or generalized eigen-\/value problem. 
+
+\begin{Desc}
+\item[Enumerator]\par
+\begin{description}
+\index{ev\+\_\+lapack@{ev\+\_\+lapack}!eigenproblem.\+h@{eigenproblem.\+h}}\index{eigenproblem.\+h@{eigenproblem.\+h}!ev\+\_\+lapack@{ev\+\_\+lapack}}\item[{\em 
+\hypertarget{eigenproblem_8h_a203f2c57422a6e64834e6e9ab85982bfa91bc01f4f5388e756efb07f0b12dd070}{}ev\+\_\+lapack\label{eigenproblem_8h_a203f2c57422a6e64834e6e9ab85982bfa91bc01f4f5388e756efb07f0b12dd070}
+}]use L\+A\+P\+A\+C\+K \index{ev\+\_\+scalapack@{ev\+\_\+scalapack}!eigenproblem.\+h@{eigenproblem.\+h}}\index{eigenproblem.\+h@{eigenproblem.\+h}!ev\+\_\+scalapack@{ev\+\_\+scalapack}}\item[{\em 
+\hypertarget{eigenproblem_8h_a203f2c57422a6e64834e6e9ab85982bfaf071b98d350afbc11e9744cda18bbdbd}{}ev\+\_\+scalapack\label{eigenproblem_8h_a203f2c57422a6e64834e6e9ab85982bfaf071b98d350afbc11e9744cda18bbdbd}
+}]use Sca\+L\+A\+P\+A\+C\+K \index{ev\+\_\+elpa1@{ev\+\_\+elpa1}!eigenproblem.\+h@{eigenproblem.\+h}}\index{eigenproblem.\+h@{eigenproblem.\+h}!ev\+\_\+elpa1@{ev\+\_\+elpa1}}\item[{\em 
+\hypertarget{eigenproblem_8h_a203f2c57422a6e64834e6e9ab85982bfa624459b6e0afaaa88c8f8ee5b69eb5ed}{}ev\+\_\+elpa1\label{eigenproblem_8h_a203f2c57422a6e64834e6e9ab85982bfa624459b6e0afaaa88c8f8ee5b69eb5ed}
+}]use E\+L\+P\+A1 solver \index{ev\+\_\+elpa2@{ev\+\_\+elpa2}!eigenproblem.\+h@{eigenproblem.\+h}}\index{eigenproblem.\+h@{eigenproblem.\+h}!ev\+\_\+elpa2@{ev\+\_\+elpa2}}\item[{\em 
+\hypertarget{eigenproblem_8h_a203f2c57422a6e64834e6e9ab85982bfa0a1ceaebea041c4b679eb37f68620567}{}ev\+\_\+elpa2\label{eigenproblem_8h_a203f2c57422a6e64834e6e9ab85982bfa0a1ceaebea041c4b679eb37f68620567}
+}]use E\+L\+P\+A2 (2-\/stage) solver \index{ev\+\_\+magma@{ev\+\_\+magma}!eigenproblem.\+h@{eigenproblem.\+h}}\index{eigenproblem.\+h@{eigenproblem.\+h}!ev\+\_\+magma@{ev\+\_\+magma}}\item[{\em 
+\hypertarget{eigenproblem_8h_a203f2c57422a6e64834e6e9ab85982bfa2a5f4e78b8d57e3c5f630885bc11c80e}{}ev\+\_\+magma\label{eigenproblem_8h_a203f2c57422a6e64834e6e9ab85982bfa2a5f4e78b8d57e3c5f630885bc11c80e}
+}]use M\+A\+G\+M\+A \index{ev\+\_\+plasma@{ev\+\_\+plasma}!eigenproblem.\+h@{eigenproblem.\+h}}\index{eigenproblem.\+h@{eigenproblem.\+h}!ev\+\_\+plasma@{ev\+\_\+plasma}}\item[{\em 
+\hypertarget{eigenproblem_8h_a203f2c57422a6e64834e6e9ab85982bfa962186d05608cea708ca7e46f6c1b119}{}ev\+\_\+plasma\label{eigenproblem_8h_a203f2c57422a6e64834e6e9ab85982bfa962186d05608cea708ca7e46f6c1b119}
+}]use P\+L\+A\+S\+M\+A \end{description}
+\end{Desc}
+
+
+Definition at line 32 of file eigenproblem.\+h.
+

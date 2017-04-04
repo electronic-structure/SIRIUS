@@ -1,0 +1,180 @@
+\hypertarget{classsirius_1_1_x_c__functional}{}\section{sirius\+:\+:X\+C\+\_\+functional Class Reference}
+\label{classsirius_1_1_x_c__functional}\index{sirius\+::\+X\+C\+\_\+functional@{sirius\+::\+X\+C\+\_\+functional}}
+
+
+Interface class to Libxc.  
+
+
+\subsection*{Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+\hypertarget{classsirius_1_1_x_c__functional_a5991547e3246ee76a9cb3b9aedeaa5b1}{}{\bfseries X\+C\+\_\+functional} (const std\+::string libxc\+\_\+name\+\_\+\+\_\+, int num\+\_\+spins\+\_\+\+\_\+)\label{classsirius_1_1_x_c__functional_a5991547e3246ee76a9cb3b9aedeaa5b1}
+
+\item 
+\hypertarget{classsirius_1_1_x_c__functional_a20e1726ae9e53e1226166821b1c94632}{}{\bfseries X\+C\+\_\+functional} (\hyperlink{classsirius_1_1_x_c__functional}{X\+C\+\_\+functional} \&\&src\+\_\+\+\_\+)\label{classsirius_1_1_x_c__functional_a20e1726ae9e53e1226166821b1c94632}
+
+\item 
+\hypertarget{classsirius_1_1_x_c__functional_a94455ec6dbd3cbefc73892c2b2944bf5}{}const std\+::string {\bfseries name} () const \label{classsirius_1_1_x_c__functional_a94455ec6dbd3cbefc73892c2b2944bf5}
+
+\item 
+\hypertarget{classsirius_1_1_x_c__functional_aadb2770535a57029cd0b5bf9a373e9ab}{}const std\+::string {\bfseries refs} () const \label{classsirius_1_1_x_c__functional_aadb2770535a57029cd0b5bf9a373e9ab}
+
+\item 
+\hypertarget{classsirius_1_1_x_c__functional_acabbf185ee020a835838b19b64a56239}{}int {\bfseries family} () const \label{classsirius_1_1_x_c__functional_acabbf185ee020a835838b19b64a56239}
+
+\item 
+\hypertarget{classsirius_1_1_x_c__functional_a48248ca9f2c901717bbd4c1f1bdb8731}{}bool {\bfseries is\+\_\+lda} () const \label{classsirius_1_1_x_c__functional_a48248ca9f2c901717bbd4c1f1bdb8731}
+
+\item 
+\hypertarget{classsirius_1_1_x_c__functional_af6bd0c12e65fbe9641eec40b4c7494e5}{}bool {\bfseries is\+\_\+gga} () const \label{classsirius_1_1_x_c__functional_af6bd0c12e65fbe9641eec40b4c7494e5}
+
+\item 
+\hypertarget{classsirius_1_1_x_c__functional_aca3bf7b2497c7e0612223f4f7d6c0082}{}int {\bfseries kind} () const \label{classsirius_1_1_x_c__functional_aca3bf7b2497c7e0612223f4f7d6c0082}
+
+\item 
+\hypertarget{classsirius_1_1_x_c__functional_a2cdd88346f105de16288323767189782}{}bool {\bfseries is\+\_\+exchange} () const \label{classsirius_1_1_x_c__functional_a2cdd88346f105de16288323767189782}
+
+\item 
+\hypertarget{classsirius_1_1_x_c__functional_aad70a85b653ed9f89d3173a707112688}{}bool {\bfseries is\+\_\+correlation} () const \label{classsirius_1_1_x_c__functional_aad70a85b653ed9f89d3173a707112688}
+
+\item 
+\hypertarget{classsirius_1_1_x_c__functional_a734b7d0c0ae5d4717cfee0eefbbbc8c2}{}bool {\bfseries is\+\_\+exchange\+\_\+correlation} () const \label{classsirius_1_1_x_c__functional_a734b7d0c0ae5d4717cfee0eefbbbc8c2}
+
+\item 
+\hypertarget{classsirius_1_1_x_c__functional_ab984282343d1313b7b5e77aa8a9cd2bf}{}void {\bfseries set\+\_\+relativistic} (bool enabled\+\_\+\+\_\+)\label{classsirius_1_1_x_c__functional_ab984282343d1313b7b5e77aa8a9cd2bf}
+
+\item 
+void \hyperlink{classsirius_1_1_x_c__functional_a7325a187310b50380c96c3a411116c0e}{get\+\_\+lda} (const int size, const double $\ast$rho, double $\ast$v, double $\ast$e)
+\begin{DoxyCompactList}\small\item\em Get L\+D\+A contribution. \end{DoxyCompactList}\item 
+void \hyperlink{classsirius_1_1_x_c__functional_ac8d443686f62962be10c1595a9580ffe}{get\+\_\+lda} (const int size, const double $\ast$rho\+\_\+up, const double $\ast$rho\+\_\+dn, double $\ast$v\+\_\+up, double $\ast$v\+\_\+dn, double $\ast$e)
+\begin{DoxyCompactList}\small\item\em Get L\+S\+D\+A contribution. \end{DoxyCompactList}\item 
+\hypertarget{classsirius_1_1_x_c__functional_a7288b07ad9546312c09a38e9666f40fb}{}void {\bfseries add\+\_\+lda} (const int size, const double $\ast$rho\+\_\+up, const double $\ast$rho\+\_\+dn, double $\ast$v\+\_\+up, double $\ast$v\+\_\+dn, double $\ast$e)\label{classsirius_1_1_x_c__functional_a7288b07ad9546312c09a38e9666f40fb}
+
+\item 
+void \hyperlink{classsirius_1_1_x_c__functional_ad4945196b8d6859f989e00a88f57e5b1}{get\+\_\+gga} (const int size, const double $\ast$rho, const double $\ast$sigma, double $\ast$vrho, double $\ast$vsigma, double $\ast$e)
+\begin{DoxyCompactList}\small\item\em Get G\+G\+A contribution. \end{DoxyCompactList}\item 
+void \hyperlink{classsirius_1_1_x_c__functional_ad0e21ef4e2cba8653c17bfe797dcafb9}{get\+\_\+gga} (const int size, const double $\ast$rho\+\_\+up, const double $\ast$rho\+\_\+dn, const double $\ast$sigma\+\_\+uu, const double $\ast$sigma\+\_\+ud, const double $\ast$sigma\+\_\+dd, double $\ast$vrho\+\_\+up, double $\ast$vrho\+\_\+dn, double $\ast$vsigma\+\_\+uu, double $\ast$vsigma\+\_\+ud, double $\ast$vsigma\+\_\+dd, double $\ast$e)
+\begin{DoxyCompactList}\small\item\em Get spin-\/resolved G\+G\+A contribution. \end{DoxyCompactList}\end{DoxyCompactItemize}
+\subsection*{Private Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+\hypertarget{classsirius_1_1_x_c__functional_a55ba3b8bd39d6c666f66c4e1ebf1b950}{}{\bfseries X\+C\+\_\+functional} (const \hyperlink{classsirius_1_1_x_c__functional}{X\+C\+\_\+functional} \&src)=delete\label{classsirius_1_1_x_c__functional_a55ba3b8bd39d6c666f66c4e1ebf1b950}
+
+\item 
+\hypertarget{classsirius_1_1_x_c__functional_a75a54ff1e0cefd762b4ee73e9284e878}{}\hyperlink{classsirius_1_1_x_c__functional}{X\+C\+\_\+functional} \& {\bfseries operator=} (const \hyperlink{classsirius_1_1_x_c__functional}{X\+C\+\_\+functional} \&src)=delete\label{classsirius_1_1_x_c__functional_a75a54ff1e0cefd762b4ee73e9284e878}
+
+\end{DoxyCompactItemize}
+\subsection*{Private Attributes}
+\begin{DoxyCompactItemize}
+\item 
+\hypertarget{classsirius_1_1_x_c__functional_aec924165d196118c5b7571a941d5736b}{}std\+::string {\bfseries libxc\+\_\+name\+\_\+}\label{classsirius_1_1_x_c__functional_aec924165d196118c5b7571a941d5736b}
+
+\item 
+\hypertarget{classsirius_1_1_x_c__functional_a80ff93726e2207181ec8e385aa4fb038}{}int {\bfseries num\+\_\+spins\+\_\+}\label{classsirius_1_1_x_c__functional_a80ff93726e2207181ec8e385aa4fb038}
+
+\item 
+\hypertarget{classsirius_1_1_x_c__functional_a69304a357dcac46e24013acc7f60596f}{}xc\+\_\+func\+\_\+type {\bfseries handler\+\_\+}\label{classsirius_1_1_x_c__functional_a69304a357dcac46e24013acc7f60596f}
+
+\item 
+\hypertarget{classsirius_1_1_x_c__functional_abc5e907f43d6f6f58aed448822fc7373}{}bool {\bfseries initialized\+\_\+} \{false\}\label{classsirius_1_1_x_c__functional_abc5e907f43d6f6f58aed448822fc7373}
+
+\end{DoxyCompactItemize}
+
+
+\subsection{Detailed Description}
+Interface class to Libxc. 
+
+Definition at line 400 of file xc\+\_\+functional.\+h.
+
+
+
+\subsection{Member Function Documentation}
+\hypertarget{classsirius_1_1_x_c__functional_a7325a187310b50380c96c3a411116c0e}{}\index{sirius\+::\+X\+C\+\_\+functional@{sirius\+::\+X\+C\+\_\+functional}!get\+\_\+lda@{get\+\_\+lda}}
+\index{get\+\_\+lda@{get\+\_\+lda}!sirius\+::\+X\+C\+\_\+functional@{sirius\+::\+X\+C\+\_\+functional}}
+\subsubsection[{get\+\_\+lda(const int size, const double $\ast$rho, double $\ast$v, double $\ast$e)}]{\setlength{\rightskip}{0pt plus 5cm}void sirius\+::\+X\+C\+\_\+functional\+::get\+\_\+lda (
+\begin{DoxyParamCaption}
+\item[{const int}]{size, }
+\item[{const double $\ast$}]{rho, }
+\item[{double $\ast$}]{v, }
+\item[{double $\ast$}]{e}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}}\label{classsirius_1_1_x_c__functional_a7325a187310b50380c96c3a411116c0e}
+
+
+Get L\+D\+A contribution. 
+
+
+
+Definition at line 524 of file xc\+\_\+functional.\+h.
+
+\hypertarget{classsirius_1_1_x_c__functional_ac8d443686f62962be10c1595a9580ffe}{}\index{sirius\+::\+X\+C\+\_\+functional@{sirius\+::\+X\+C\+\_\+functional}!get\+\_\+lda@{get\+\_\+lda}}
+\index{get\+\_\+lda@{get\+\_\+lda}!sirius\+::\+X\+C\+\_\+functional@{sirius\+::\+X\+C\+\_\+functional}}
+\subsubsection[{get\+\_\+lda(const int size, const double $\ast$rho\+\_\+up, const double $\ast$rho\+\_\+dn, double $\ast$v\+\_\+up, double $\ast$v\+\_\+dn, double $\ast$e)}]{\setlength{\rightskip}{0pt plus 5cm}void sirius\+::\+X\+C\+\_\+functional\+::get\+\_\+lda (
+\begin{DoxyParamCaption}
+\item[{const int}]{size, }
+\item[{const double $\ast$}]{rho\+\_\+up, }
+\item[{const double $\ast$}]{rho\+\_\+dn, }
+\item[{double $\ast$}]{v\+\_\+up, }
+\item[{double $\ast$}]{v\+\_\+dn, }
+\item[{double $\ast$}]{e}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}}\label{classsirius_1_1_x_c__functional_ac8d443686f62962be10c1595a9580ffe}
+
+
+Get L\+S\+D\+A contribution. 
+
+
+
+Definition at line 546 of file xc\+\_\+functional.\+h.
+
+\hypertarget{classsirius_1_1_x_c__functional_ad4945196b8d6859f989e00a88f57e5b1}{}\index{sirius\+::\+X\+C\+\_\+functional@{sirius\+::\+X\+C\+\_\+functional}!get\+\_\+gga@{get\+\_\+gga}}
+\index{get\+\_\+gga@{get\+\_\+gga}!sirius\+::\+X\+C\+\_\+functional@{sirius\+::\+X\+C\+\_\+functional}}
+\subsubsection[{get\+\_\+gga(const int size, const double $\ast$rho, const double $\ast$sigma, double $\ast$vrho, double $\ast$vsigma, double $\ast$e)}]{\setlength{\rightskip}{0pt plus 5cm}void sirius\+::\+X\+C\+\_\+functional\+::get\+\_\+gga (
+\begin{DoxyParamCaption}
+\item[{const int}]{size, }
+\item[{const double $\ast$}]{rho, }
+\item[{const double $\ast$}]{sigma, }
+\item[{double $\ast$}]{vrho, }
+\item[{double $\ast$}]{vsigma, }
+\item[{double $\ast$}]{e}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}}\label{classsirius_1_1_x_c__functional_ad4945196b8d6859f989e00a88f57e5b1}
+
+
+Get G\+G\+A contribution. 
+
+
+
+Definition at line 621 of file xc\+\_\+functional.\+h.
+
+\hypertarget{classsirius_1_1_x_c__functional_ad0e21ef4e2cba8653c17bfe797dcafb9}{}\index{sirius\+::\+X\+C\+\_\+functional@{sirius\+::\+X\+C\+\_\+functional}!get\+\_\+gga@{get\+\_\+gga}}
+\index{get\+\_\+gga@{get\+\_\+gga}!sirius\+::\+X\+C\+\_\+functional@{sirius\+::\+X\+C\+\_\+functional}}
+\subsubsection[{get\+\_\+gga(const int size, const double $\ast$rho\+\_\+up, const double $\ast$rho\+\_\+dn, const double $\ast$sigma\+\_\+uu, const double $\ast$sigma\+\_\+ud, const double $\ast$sigma\+\_\+dd, double $\ast$vrho\+\_\+up, double $\ast$vrho\+\_\+dn, double $\ast$vsigma\+\_\+uu, double $\ast$vsigma\+\_\+ud, double $\ast$vsigma\+\_\+dd, double $\ast$e)}]{\setlength{\rightskip}{0pt plus 5cm}void sirius\+::\+X\+C\+\_\+functional\+::get\+\_\+gga (
+\begin{DoxyParamCaption}
+\item[{const int}]{size, }
+\item[{const double $\ast$}]{rho\+\_\+up, }
+\item[{const double $\ast$}]{rho\+\_\+dn, }
+\item[{const double $\ast$}]{sigma\+\_\+uu, }
+\item[{const double $\ast$}]{sigma\+\_\+ud, }
+\item[{const double $\ast$}]{sigma\+\_\+dd, }
+\item[{double $\ast$}]{vrho\+\_\+up, }
+\item[{double $\ast$}]{vrho\+\_\+dn, }
+\item[{double $\ast$}]{vsigma\+\_\+uu, }
+\item[{double $\ast$}]{vsigma\+\_\+ud, }
+\item[{double $\ast$}]{vsigma\+\_\+dd, }
+\item[{double $\ast$}]{e}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}}\label{classsirius_1_1_x_c__functional_ad0e21ef4e2cba8653c17bfe797dcafb9}
+
+
+Get spin-\/resolved G\+G\+A contribution. 
+
+
+
+Definition at line 645 of file xc\+\_\+functional.\+h.
+
+
+
+The documentation for this class was generated from the following file\+:\begin{DoxyCompactItemize}
+\item 
+\hyperlink{xc__functional_8h}{xc\+\_\+functional.\+h}\end{DoxyCompactItemize}

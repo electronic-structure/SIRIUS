@@ -1,0 +1,13 @@
+digraph "sirius::Spheric_function_gradient&lt; domain_t, T &gt;"
+{
+ // INTERACTIVE_SVG=YES
+  edge [fontname="Helvetica",fontsize="10",labelfontname="Helvetica",labelfontsize="10"];
+  node [fontname="Helvetica",fontsize="10",shape=record];
+  Node1 [label="sirius::Spheric_function\l_gradient\< domain_t, T \>",height=0.2,width=0.4,color="black", fillcolor="grey75", style="filled", fontcolor="black"];
+  Node2 -> Node1 [dir="back",color="darkorchid3",fontsize="10",style="dashed",label=" radial_grid_" ];
+  Node2 [label="sirius::Radial_grid",height=0.2,width=0.4,color="black", fillcolor="white", style="filled",URL="$classsirius_1_1_radial__grid.html",tooltip="Radial grid for a muffin-tin or an isolated atom. "];
+  Node3 -> Node2 [dir="back",color="darkorchid3",fontsize="10",style="dashed",label=" dx_\nx_inv_\nx_" ];
+  Node3 [label="sddk::mdarray\< double, 1 \>",height=0.2,width=0.4,color="black", fillcolor="white", style="filled",URL="$classsddk_1_1mdarray.html"];
+  Node4 -> Node3 [dir="back",color="midnightblue",fontsize="10",style="solid"];
+  Node4 [label="sddk::mdarray_base\l\< double, N \>",height=0.2,width=0.4,color="black", fillcolor="white", style="filled",URL="$classsddk_1_1mdarray__base.html"];
+}

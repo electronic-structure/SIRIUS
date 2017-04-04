@@ -6,15 +6,15 @@ import json
 
 packages = {
     "fftw" : {
-        "url"     : "http://www.fftw.org/fftw-3.3.4.tar.gz",
+        "url"     : "http://www.fftw.org/fftw-3.3.5.tar.gz",
         "options" : []
     },
     "gsl" : {
-        "url"     : "ftp://ftp.gnu.org/gnu/gsl/gsl-2.1.tar.gz",
+        "url"     : "ftp://ftp.gnu.org/gnu/gsl/gsl-2.2.1.tar.gz",
         "options" : ["--disable-shared"]
     },
     "hdf5" : {
-        "url"     : "http://www.hdfgroup.org/ftp/HDF5/current/src/hdf5-1.8.17.tar.gz",
+        "url"     : "https://support.hdfgroup.org/ftp/HDF5/releases/hdf5-1.10/hdf5-1.10.0-patch1/src/hdf5-1.10.0-patch1.tar.gz",
         "options" : ["--enable-fortran",
                      "--disable-shared",
                      "--enable-static=yes",
@@ -29,7 +29,7 @@ packages = {
         "options" : []
     },
     "spg"  : {
-        "url"     : "http://downloads.sourceforge.net/project/spglib/spglib/spglib-1.9/spglib-1.9.4.tar.gz",
+        "url"     : "http://downloads.sourceforge.net/project/spglib/spglib/spglib-1.9/spglib-1.9.7.tar.gz",
         "options" : []
     }
 }
@@ -161,6 +161,7 @@ def main():
     clean_packages = []
 
     makeinc.write("CXX_OPT := $(CXX_OPT) -I" + os.getcwd() + "/src\n")
+    makeinc.write("CXX_OPT := $(CXX_OPT) -I" + os.getcwd() + "/src/SDDK\n")
 
     if "install" in platform:
         for name in platform["install"]:
@@ -175,8 +176,6 @@ def main():
         build_elpa = True
         makeinc.write("LIBS := $(LIBS) " + os.getcwd() + "/libs/elpa/latest/libelpa.a\n")
 
-    makeinc.write("CXX_OPT := $(CXX_OPT) -I" + os.getcwd() + "/libs/libjson\n")
-    makeinc.write("LIBS := $(LIBS) " + os.getcwd() + "/libs/libjson/libjson.a\n")
     makeinc.write("LIBS := $(LIBS) " + platform["SYSTEM_LIBS"] + "\n")
 
     dbg_conf = False
@@ -194,8 +193,6 @@ def main():
             for name in platform["install"]:
                 opts = configure_package(name, platform)
                 makeinc.write("CXX_OPT_DBG := $(CXX_OPT_DBG) " + opts[0] + "\n")
-
-        makeinc.write("CXX_OPT_DBG := $(CXX_OPT_DBG) -I" + os.getcwd() + "/libs/libjson\n")
 
     makeinc.close()
 
@@ -215,13 +212,11 @@ def main():
     makef.write("packages:\n")
     for i in range(len(make_packages)):
         makef.write(make_packages[i])
-    makef.write("\tcd ./libs/libjson; make\n")
     if build_elpa: makef.write("\tcd ./libs/elpa/latest; make\n")
 
     makef.write("cleanall:\n")
     for i in range(len(clean_packages)):
         makef.write(clean_packages[i])
-    makef.write("\tcd ./libs/libjson; make clean\n")
     if build_elpa: makef.write("\tcd ./libs/elpa/latest; make clean\n")
 
     makef.write("\n")

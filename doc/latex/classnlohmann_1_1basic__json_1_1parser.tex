@@ -1,0 +1,209 @@
+\hypertarget{classnlohmann_1_1basic__json_1_1parser}{}\section{nlohmann\+:\+:basic\+\_\+json$<$ Object\+Type, Array\+Type, String\+Type, Boolean\+Type, Number\+Integer\+Type, Number\+Unsigned\+Type, Number\+Float\+Type, Allocator\+Type $>$\+:\+:parser Class Reference}
+\label{classnlohmann_1_1basic__json_1_1parser}\index{nlohmann\+::basic\+\_\+json$<$ Object\+Type, Array\+Type, String\+Type, Boolean\+Type, Number\+Integer\+Type, Number\+Unsigned\+Type, Number\+Float\+Type, Allocator\+Type $>$\+::parser@{nlohmann\+::basic\+\_\+json$<$ Object\+Type, Array\+Type, String\+Type, Boolean\+Type, Number\+Integer\+Type, Number\+Unsigned\+Type, Number\+Float\+Type, Allocator\+Type $>$\+::parser}}
+
+
+syntax analysis  
+
+
+
+
+Collaboration diagram for nlohmann\+:\+:basic\+\_\+json$<$ Object\+Type, Array\+Type, String\+Type, Boolean\+Type, Number\+Integer\+Type, Number\+Unsigned\+Type, Number\+Float\+Type, Allocator\+Type $>$\+:\+:parser\+:
+% FIG 0
+\subsection*{Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+\hyperlink{classnlohmann_1_1basic__json_1_1parser_a12ebdb011909ac2665c07db9c8a337fa}{parser} (const char $\ast$buff, const \hyperlink{classnlohmann_1_1basic__json_a9e35475e2027520a78e09f460dbe048a}{parser\+\_\+callback\+\_\+t} cb=nullptr)
+\begin{DoxyCompactList}\small\item\em a parser reading from a string literal \end{DoxyCompactList}\item 
+\hyperlink{classnlohmann_1_1basic__json_1_1parser_a6724bcd1644a92ce2d7131ce91bda89a}{parser} (std\+::istream \&is, const \hyperlink{classnlohmann_1_1basic__json_a9e35475e2027520a78e09f460dbe048a}{parser\+\_\+callback\+\_\+t} cb=nullptr)
+\begin{DoxyCompactList}\small\item\em a parser reading from an input stream \end{DoxyCompactList}\item 
+{\footnotesize template$<$class Iterator\+Type , typename std\+::enable\+\_\+if$<$                                                                              std\+::is\+\_\+same$<$ typename std\+::iterator\+\_\+traits$<$ Iterator\+Type $>$\+::iterator\+\_\+category, std\+::random\+\_\+access\+\_\+iterator\+\_\+tag $>$\+::value                                                                           , int $>$\+::type  = 0$>$ }\\\hyperlink{classnlohmann_1_1basic__json_1_1parser_a8ca2f37f8e97bcf5b851bbb473a8cc29}{parser} (Iterator\+Type first, Iterator\+Type last, const \hyperlink{classnlohmann_1_1basic__json_a9e35475e2027520a78e09f460dbe048a}{parser\+\_\+callback\+\_\+t} cb=nullptr)
+\begin{DoxyCompactList}\small\item\em a parser reading from an iterator range with contiguous storage \end{DoxyCompactList}\item 
+\hyperlink{classnlohmann_1_1basic__json}{basic\+\_\+json} \hyperlink{classnlohmann_1_1basic__json_1_1parser_a04063124efe4a97b1330525ab653da3c}{parse} ()
+\begin{DoxyCompactList}\small\item\em public parser interface \end{DoxyCompactList}\end{DoxyCompactItemize}
+\subsection*{Private Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+\hyperlink{classnlohmann_1_1basic__json}{basic\+\_\+json} \hyperlink{classnlohmann_1_1basic__json_1_1parser_a2c3d3e70491f1ab4ec1697ea12be5df3}{parse\+\_\+internal} (bool keep)
+\begin{DoxyCompactList}\small\item\em the actual parser \end{DoxyCompactList}\item 
+\hyperlink{classnlohmann_1_1basic__json_1_1lexer_a96887d6cd131e3d3a85a9d71fbdbcdf7}{lexer\+::token\+\_\+type} \hyperlink{classnlohmann_1_1basic__json_1_1parser_a08a66112d6e23b7a66a0a3a0a4dd5fed}{get\+\_\+token} ()
+\begin{DoxyCompactList}\small\item\em get next token from lexer \end{DoxyCompactList}\item 
+\hypertarget{classnlohmann_1_1basic__json_1_1parser_a272f32f161b2637fabe9932453e699c7}{}void {\bfseries expect} (typename \hyperlink{classnlohmann_1_1basic__json_1_1lexer_a96887d6cd131e3d3a85a9d71fbdbcdf7}{lexer\+::token\+\_\+type} t) const \label{classnlohmann_1_1basic__json_1_1parser_a272f32f161b2637fabe9932453e699c7}
+
+\item 
+\hypertarget{classnlohmann_1_1basic__json_1_1parser_a6d3870ee78ced4ff6c5b8b89a207a356}{}void {\bfseries unexpect} (typename \hyperlink{classnlohmann_1_1basic__json_1_1lexer_a96887d6cd131e3d3a85a9d71fbdbcdf7}{lexer\+::token\+\_\+type} t) const \label{classnlohmann_1_1basic__json_1_1parser_a6d3870ee78ced4ff6c5b8b89a207a356}
+
+\end{DoxyCompactItemize}
+\subsection*{Private Attributes}
+\begin{DoxyCompactItemize}
+\item 
+int \hyperlink{classnlohmann_1_1basic__json_1_1parser_a8380d4d5ce79ab1ec9435c843fd40b07}{depth} = 0
+\begin{DoxyCompactList}\small\item\em current level of recursion \end{DoxyCompactList}\item 
+const \hyperlink{classnlohmann_1_1basic__json_a9e35475e2027520a78e09f460dbe048a}{parser\+\_\+callback\+\_\+t} \hyperlink{classnlohmann_1_1basic__json_1_1parser_a1ddac33be60094b071f95a1010382654}{callback} = nullptr
+\begin{DoxyCompactList}\small\item\em callback function \end{DoxyCompactList}\item 
+\hyperlink{classnlohmann_1_1basic__json_1_1lexer_a96887d6cd131e3d3a85a9d71fbdbcdf7}{lexer\+::token\+\_\+type} \hyperlink{classnlohmann_1_1basic__json_1_1parser_adfb1017b95ae14e52c585e1296e8faac}{last\+\_\+token} = \hyperlink{classnlohmann_1_1basic__json_1_1lexer_a96887d6cd131e3d3a85a9d71fbdbcdf7a42dd1a73d072bb6bf3f494f22b15db8e}{lexer\+::token\+\_\+type\+::uninitialized}
+\begin{DoxyCompactList}\small\item\em the type of the last read token \end{DoxyCompactList}\item 
+\hyperlink{classnlohmann_1_1basic__json_1_1lexer}{lexer} \hyperlink{classnlohmann_1_1basic__json_1_1parser_ae07b3100692718072e199c6e2a8e1e1b}{m\+\_\+lexer}
+\begin{DoxyCompactList}\small\item\em the lexer \end{DoxyCompactList}\end{DoxyCompactItemize}
+
+
+\subsection{Detailed Description}
+\subsubsection*{template$<$template$<$ typename U, typename V, typename...\+Args $>$ class Object\+Type = std\+::map, template$<$ typename U, typename...\+Args $>$ class Array\+Type = std\+::vector, class String\+Type = std\+::string, class Boolean\+Type = bool, class Number\+Integer\+Type = std\+::int64\+\_\+t, class Number\+Unsigned\+Type = std\+::uint64\+\_\+t, class Number\+Float\+Type = double, template$<$ typename U $>$ class Allocator\+Type = std\+::allocator$>$class nlohmann\+::basic\+\_\+json$<$ Object\+Type, Array\+Type, String\+Type, Boolean\+Type, Number\+Integer\+Type, Number\+Unsigned\+Type, Number\+Float\+Type, Allocator\+Type $>$\+::parser}
+
+syntax analysis 
+
+This class implements a recursive decent parser. 
+
+Definition at line 10657 of file json.\+hpp.
+
+
+
+\subsection{Constructor \& Destructor Documentation}
+\hypertarget{classnlohmann_1_1basic__json_1_1parser_a12ebdb011909ac2665c07db9c8a337fa}{}\index{nlohmann\+::basic\+\_\+json\+::parser@{nlohmann\+::basic\+\_\+json\+::parser}!parser@{parser}}
+\index{parser@{parser}!nlohmann\+::basic\+\_\+json\+::parser@{nlohmann\+::basic\+\_\+json\+::parser}}
+\subsubsection[{parser(const char $\ast$buff, const parser\+\_\+callback\+\_\+t cb=nullptr)}]{\setlength{\rightskip}{0pt plus 5cm}template$<$template$<$ typename U, typename V, typename...\+Args $>$ class Object\+Type = std\+::map, template$<$ typename U, typename...\+Args $>$ class Array\+Type = std\+::vector, class String\+Type  = std\+::string, class Boolean\+Type  = bool, class Number\+Integer\+Type  = std\+::int64\+\_\+t, class Number\+Unsigned\+Type  = std\+::uint64\+\_\+t, class Number\+Float\+Type  = double, template$<$ typename U $>$ class Allocator\+Type = std\+::allocator$>$ {\bf nlohmann\+::basic\+\_\+json}$<$ Object\+Type, Array\+Type, String\+Type, Boolean\+Type, Number\+Integer\+Type, Number\+Unsigned\+Type, Number\+Float\+Type, Allocator\+Type $>$\+::parser\+::parser (
+\begin{DoxyParamCaption}
+\item[{const char $\ast$}]{buff, }
+\item[{const {\bf parser\+\_\+callback\+\_\+t}}]{cb = {\ttfamily nullptr}}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}}\label{classnlohmann_1_1basic__json_1_1parser_a12ebdb011909ac2665c07db9c8a337fa}
+
+
+a parser reading from a string literal 
+
+
+
+Definition at line 10661 of file json.\+hpp.
+
+\hypertarget{classnlohmann_1_1basic__json_1_1parser_a6724bcd1644a92ce2d7131ce91bda89a}{}\index{nlohmann\+::basic\+\_\+json\+::parser@{nlohmann\+::basic\+\_\+json\+::parser}!parser@{parser}}
+\index{parser@{parser}!nlohmann\+::basic\+\_\+json\+::parser@{nlohmann\+::basic\+\_\+json\+::parser}}
+\subsubsection[{parser(std\+::istream \&is, const parser\+\_\+callback\+\_\+t cb=nullptr)}]{\setlength{\rightskip}{0pt plus 5cm}template$<$template$<$ typename U, typename V, typename...\+Args $>$ class Object\+Type = std\+::map, template$<$ typename U, typename...\+Args $>$ class Array\+Type = std\+::vector, class String\+Type  = std\+::string, class Boolean\+Type  = bool, class Number\+Integer\+Type  = std\+::int64\+\_\+t, class Number\+Unsigned\+Type  = std\+::uint64\+\_\+t, class Number\+Float\+Type  = double, template$<$ typename U $>$ class Allocator\+Type = std\+::allocator$>$ {\bf nlohmann\+::basic\+\_\+json}$<$ Object\+Type, Array\+Type, String\+Type, Boolean\+Type, Number\+Integer\+Type, Number\+Unsigned\+Type, Number\+Float\+Type, Allocator\+Type $>$\+::parser\+::parser (
+\begin{DoxyParamCaption}
+\item[{std\+::istream \&}]{is, }
+\item[{const {\bf parser\+\_\+callback\+\_\+t}}]{cb = {\ttfamily nullptr}}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}}\label{classnlohmann_1_1basic__json_1_1parser_a6724bcd1644a92ce2d7131ce91bda89a}
+
+
+a parser reading from an input stream 
+
+
+
+Definition at line 10667 of file json.\+hpp.
+
+\hypertarget{classnlohmann_1_1basic__json_1_1parser_a8ca2f37f8e97bcf5b851bbb473a8cc29}{}\index{nlohmann\+::basic\+\_\+json\+::parser@{nlohmann\+::basic\+\_\+json\+::parser}!parser@{parser}}
+\index{parser@{parser}!nlohmann\+::basic\+\_\+json\+::parser@{nlohmann\+::basic\+\_\+json\+::parser}}
+\subsubsection[{parser(\+Iterator\+Type first, Iterator\+Type last, const parser\+\_\+callback\+\_\+t cb=nullptr)}]{\setlength{\rightskip}{0pt plus 5cm}template$<$template$<$ typename U, typename V, typename...\+Args $>$ class Object\+Type = std\+::map, template$<$ typename U, typename...\+Args $>$ class Array\+Type = std\+::vector, class String\+Type  = std\+::string, class Boolean\+Type  = bool, class Number\+Integer\+Type  = std\+::int64\+\_\+t, class Number\+Unsigned\+Type  = std\+::uint64\+\_\+t, class Number\+Float\+Type  = double, template$<$ typename U $>$ class Allocator\+Type = std\+::allocator$>$ template$<$class Iterator\+Type , typename std\+::enable\+\_\+if$<$                                                                              std\+::is\+\_\+same$<$ typename std\+::iterator\+\_\+traits$<$ Iterator\+Type $>$\+::iterator\+\_\+category, std\+::random\+\_\+access\+\_\+iterator\+\_\+tag $>$\+::value                                                                           , int $>$\+::type  = 0$>$ {\bf nlohmann\+::basic\+\_\+json}$<$ Object\+Type, Array\+Type, String\+Type, Boolean\+Type, Number\+Integer\+Type, Number\+Unsigned\+Type, Number\+Float\+Type, Allocator\+Type $>$\+::parser\+::parser (
+\begin{DoxyParamCaption}
+\item[{Iterator\+Type}]{first, }
+\item[{Iterator\+Type}]{last, }
+\item[{const {\bf parser\+\_\+callback\+\_\+t}}]{cb = {\ttfamily nullptr}}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}}\label{classnlohmann_1_1basic__json_1_1parser_a8ca2f37f8e97bcf5b851bbb473a8cc29}
+
+
+a parser reading from an iterator range with contiguous storage 
+
+
+
+Definition at line 10676 of file json.\+hpp.
+
+
+
+\subsection{Member Function Documentation}
+\hypertarget{classnlohmann_1_1basic__json_1_1parser_a04063124efe4a97b1330525ab653da3c}{}\index{nlohmann\+::basic\+\_\+json\+::parser@{nlohmann\+::basic\+\_\+json\+::parser}!parse@{parse}}
+\index{parse@{parse}!nlohmann\+::basic\+\_\+json\+::parser@{nlohmann\+::basic\+\_\+json\+::parser}}
+\subsubsection[{parse()}]{\setlength{\rightskip}{0pt plus 5cm}template$<$template$<$ typename U, typename V, typename...\+Args $>$ class Object\+Type = std\+::map, template$<$ typename U, typename...\+Args $>$ class Array\+Type = std\+::vector, class String\+Type  = std\+::string, class Boolean\+Type  = bool, class Number\+Integer\+Type  = std\+::int64\+\_\+t, class Number\+Unsigned\+Type  = std\+::uint64\+\_\+t, class Number\+Float\+Type  = double, template$<$ typename U $>$ class Allocator\+Type = std\+::allocator$>$ {\bf basic\+\_\+json} {\bf nlohmann\+::basic\+\_\+json}$<$ Object\+Type, Array\+Type, String\+Type, Boolean\+Type, Number\+Integer\+Type, Number\+Unsigned\+Type, Number\+Float\+Type, Allocator\+Type $>$\+::parser\+::parse (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}}\label{classnlohmann_1_1basic__json_1_1parser_a04063124efe4a97b1330525ab653da3c}
+
+
+public parser interface 
+
+
+
+Definition at line 10683 of file json.\+hpp.
+
+\hypertarget{classnlohmann_1_1basic__json_1_1parser_a2c3d3e70491f1ab4ec1697ea12be5df3}{}\index{nlohmann\+::basic\+\_\+json\+::parser@{nlohmann\+::basic\+\_\+json\+::parser}!parse\+\_\+internal@{parse\+\_\+internal}}
+\index{parse\+\_\+internal@{parse\+\_\+internal}!nlohmann\+::basic\+\_\+json\+::parser@{nlohmann\+::basic\+\_\+json\+::parser}}
+\subsubsection[{parse\+\_\+internal(bool keep)}]{\setlength{\rightskip}{0pt plus 5cm}template$<$template$<$ typename U, typename V, typename...\+Args $>$ class Object\+Type = std\+::map, template$<$ typename U, typename...\+Args $>$ class Array\+Type = std\+::vector, class String\+Type  = std\+::string, class Boolean\+Type  = bool, class Number\+Integer\+Type  = std\+::int64\+\_\+t, class Number\+Unsigned\+Type  = std\+::uint64\+\_\+t, class Number\+Float\+Type  = double, template$<$ typename U $>$ class Allocator\+Type = std\+::allocator$>$ {\bf basic\+\_\+json} {\bf nlohmann\+::basic\+\_\+json}$<$ Object\+Type, Array\+Type, String\+Type, Boolean\+Type, Number\+Integer\+Type, Number\+Unsigned\+Type, Number\+Float\+Type, Allocator\+Type $>$\+::parser\+::parse\+\_\+internal (
+\begin{DoxyParamCaption}
+\item[{bool}]{keep}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}, {\ttfamily [private]}}\label{classnlohmann_1_1basic__json_1_1parser_a2c3d3e70491f1ab4ec1697ea12be5df3}
+
+
+the actual parser 
+
+
+
+Definition at line 10700 of file json.\+hpp.
+
+\hypertarget{classnlohmann_1_1basic__json_1_1parser_a08a66112d6e23b7a66a0a3a0a4dd5fed}{}\index{nlohmann\+::basic\+\_\+json\+::parser@{nlohmann\+::basic\+\_\+json\+::parser}!get\+\_\+token@{get\+\_\+token}}
+\index{get\+\_\+token@{get\+\_\+token}!nlohmann\+::basic\+\_\+json\+::parser@{nlohmann\+::basic\+\_\+json\+::parser}}
+\subsubsection[{get\+\_\+token()}]{\setlength{\rightskip}{0pt plus 5cm}template$<$template$<$ typename U, typename V, typename...\+Args $>$ class Object\+Type = std\+::map, template$<$ typename U, typename...\+Args $>$ class Array\+Type = std\+::vector, class String\+Type  = std\+::string, class Boolean\+Type  = bool, class Number\+Integer\+Type  = std\+::int64\+\_\+t, class Number\+Unsigned\+Type  = std\+::uint64\+\_\+t, class Number\+Float\+Type  = double, template$<$ typename U $>$ class Allocator\+Type = std\+::allocator$>$ {\bf lexer\+::token\+\_\+type} {\bf nlohmann\+::basic\+\_\+json}$<$ Object\+Type, Array\+Type, String\+Type, Boolean\+Type, Number\+Integer\+Type, Number\+Unsigned\+Type, Number\+Float\+Type, Allocator\+Type $>$\+::parser\+::get\+\_\+token (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}, {\ttfamily [private]}}\label{classnlohmann_1_1basic__json_1_1parser_a08a66112d6e23b7a66a0a3a0a4dd5fed}
+
+
+get next token from lexer 
+
+
+
+Definition at line 10894 of file json.\+hpp.
+
+
+
+\subsection{Member Data Documentation}
+\hypertarget{classnlohmann_1_1basic__json_1_1parser_a8380d4d5ce79ab1ec9435c843fd40b07}{}\index{nlohmann\+::basic\+\_\+json\+::parser@{nlohmann\+::basic\+\_\+json\+::parser}!depth@{depth}}
+\index{depth@{depth}!nlohmann\+::basic\+\_\+json\+::parser@{nlohmann\+::basic\+\_\+json\+::parser}}
+\subsubsection[{depth}]{\setlength{\rightskip}{0pt plus 5cm}template$<$template$<$ typename U, typename V, typename...\+Args $>$ class Object\+Type = std\+::map, template$<$ typename U, typename...\+Args $>$ class Array\+Type = std\+::vector, class String\+Type  = std\+::string, class Boolean\+Type  = bool, class Number\+Integer\+Type  = std\+::int64\+\_\+t, class Number\+Unsigned\+Type  = std\+::uint64\+\_\+t, class Number\+Float\+Type  = double, template$<$ typename U $>$ class Allocator\+Type = std\+::allocator$>$ int {\bf nlohmann\+::basic\+\_\+json}$<$ Object\+Type, Array\+Type, String\+Type, Boolean\+Type, Number\+Integer\+Type, Number\+Unsigned\+Type, Number\+Float\+Type, Allocator\+Type $>$\+::parser\+::depth = 0\hspace{0.3cm}{\ttfamily [private]}}\label{classnlohmann_1_1basic__json_1_1parser_a8380d4d5ce79ab1ec9435c843fd40b07}
+
+
+current level of recursion 
+
+
+
+Definition at line 10927 of file json.\+hpp.
+
+\hypertarget{classnlohmann_1_1basic__json_1_1parser_a1ddac33be60094b071f95a1010382654}{}\index{nlohmann\+::basic\+\_\+json\+::parser@{nlohmann\+::basic\+\_\+json\+::parser}!callback@{callback}}
+\index{callback@{callback}!nlohmann\+::basic\+\_\+json\+::parser@{nlohmann\+::basic\+\_\+json\+::parser}}
+\subsubsection[{callback}]{\setlength{\rightskip}{0pt plus 5cm}template$<$template$<$ typename U, typename V, typename...\+Args $>$ class Object\+Type = std\+::map, template$<$ typename U, typename...\+Args $>$ class Array\+Type = std\+::vector, class String\+Type  = std\+::string, class Boolean\+Type  = bool, class Number\+Integer\+Type  = std\+::int64\+\_\+t, class Number\+Unsigned\+Type  = std\+::uint64\+\_\+t, class Number\+Float\+Type  = double, template$<$ typename U $>$ class Allocator\+Type = std\+::allocator$>$ const {\bf parser\+\_\+callback\+\_\+t} {\bf nlohmann\+::basic\+\_\+json}$<$ Object\+Type, Array\+Type, String\+Type, Boolean\+Type, Number\+Integer\+Type, Number\+Unsigned\+Type, Number\+Float\+Type, Allocator\+Type $>$\+::parser\+::callback = nullptr\hspace{0.3cm}{\ttfamily [private]}}\label{classnlohmann_1_1basic__json_1_1parser_a1ddac33be60094b071f95a1010382654}
+
+
+callback function 
+
+
+
+Definition at line 10929 of file json.\+hpp.
+
+\hypertarget{classnlohmann_1_1basic__json_1_1parser_adfb1017b95ae14e52c585e1296e8faac}{}\index{nlohmann\+::basic\+\_\+json\+::parser@{nlohmann\+::basic\+\_\+json\+::parser}!last\+\_\+token@{last\+\_\+token}}
+\index{last\+\_\+token@{last\+\_\+token}!nlohmann\+::basic\+\_\+json\+::parser@{nlohmann\+::basic\+\_\+json\+::parser}}
+\subsubsection[{last\+\_\+token}]{\setlength{\rightskip}{0pt plus 5cm}template$<$template$<$ typename U, typename V, typename...\+Args $>$ class Object\+Type = std\+::map, template$<$ typename U, typename...\+Args $>$ class Array\+Type = std\+::vector, class String\+Type  = std\+::string, class Boolean\+Type  = bool, class Number\+Integer\+Type  = std\+::int64\+\_\+t, class Number\+Unsigned\+Type  = std\+::uint64\+\_\+t, class Number\+Float\+Type  = double, template$<$ typename U $>$ class Allocator\+Type = std\+::allocator$>$ {\bf lexer\+::token\+\_\+type} {\bf nlohmann\+::basic\+\_\+json}$<$ Object\+Type, Array\+Type, String\+Type, Boolean\+Type, Number\+Integer\+Type, Number\+Unsigned\+Type, Number\+Float\+Type, Allocator\+Type $>$\+::parser\+::last\+\_\+token = {\bf lexer\+::token\+\_\+type\+::uninitialized}\hspace{0.3cm}{\ttfamily [private]}}\label{classnlohmann_1_1basic__json_1_1parser_adfb1017b95ae14e52c585e1296e8faac}
+
+
+the type of the last read token 
+
+
+
+Definition at line 10931 of file json.\+hpp.
+
+\hypertarget{classnlohmann_1_1basic__json_1_1parser_ae07b3100692718072e199c6e2a8e1e1b}{}\index{nlohmann\+::basic\+\_\+json\+::parser@{nlohmann\+::basic\+\_\+json\+::parser}!m\+\_\+lexer@{m\+\_\+lexer}}
+\index{m\+\_\+lexer@{m\+\_\+lexer}!nlohmann\+::basic\+\_\+json\+::parser@{nlohmann\+::basic\+\_\+json\+::parser}}
+\subsubsection[{m\+\_\+lexer}]{\setlength{\rightskip}{0pt plus 5cm}template$<$template$<$ typename U, typename V, typename...\+Args $>$ class Object\+Type = std\+::map, template$<$ typename U, typename...\+Args $>$ class Array\+Type = std\+::vector, class String\+Type  = std\+::string, class Boolean\+Type  = bool, class Number\+Integer\+Type  = std\+::int64\+\_\+t, class Number\+Unsigned\+Type  = std\+::uint64\+\_\+t, class Number\+Float\+Type  = double, template$<$ typename U $>$ class Allocator\+Type = std\+::allocator$>$ {\bf lexer} {\bf nlohmann\+::basic\+\_\+json}$<$ Object\+Type, Array\+Type, String\+Type, Boolean\+Type, Number\+Integer\+Type, Number\+Unsigned\+Type, Number\+Float\+Type, Allocator\+Type $>$\+::parser\+::m\+\_\+lexer\hspace{0.3cm}{\ttfamily [private]}}\label{classnlohmann_1_1basic__json_1_1parser_ae07b3100692718072e199c6e2a8e1e1b}
+
+
+the lexer 
+
+
+
+Definition at line 10933 of file json.\+hpp.
+
+
+
+The documentation for this class was generated from the following file\+:\begin{DoxyCompactItemize}
+\item 
+json.\+hpp\end{DoxyCompactItemize}

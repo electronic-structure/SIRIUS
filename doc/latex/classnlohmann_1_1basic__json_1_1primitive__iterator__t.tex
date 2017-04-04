@@ -1,0 +1,159 @@
+\hypertarget{classnlohmann_1_1basic__json_1_1primitive__iterator__t}{}\section{nlohmann\+:\+:basic\+\_\+json$<$ Object\+Type, Array\+Type, String\+Type, Boolean\+Type, Number\+Integer\+Type, Number\+Unsigned\+Type, Number\+Float\+Type, Allocator\+Type $>$\+:\+:primitive\+\_\+iterator\+\_\+t Class Reference}
+\label{classnlohmann_1_1basic__json_1_1primitive__iterator__t}\index{nlohmann\+::basic\+\_\+json$<$ Object\+Type, Array\+Type, String\+Type, Boolean\+Type, Number\+Integer\+Type, Number\+Unsigned\+Type, Number\+Float\+Type, Allocator\+Type $>$\+::primitive\+\_\+iterator\+\_\+t@{nlohmann\+::basic\+\_\+json$<$ Object\+Type, Array\+Type, String\+Type, Boolean\+Type, Number\+Integer\+Type, Number\+Unsigned\+Type, Number\+Float\+Type, Allocator\+Type $>$\+::primitive\+\_\+iterator\+\_\+t}}
+
+
+an iterator for primitive J\+S\+O\+N types  
+
+
+\subsection*{Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+void \hyperlink{classnlohmann_1_1basic__json_1_1primitive__iterator__t_ae16ee263bfa2d496540cc8c4a5bb69c0}{set\+\_\+begin} () noexcept
+\begin{DoxyCompactList}\small\item\em set iterator to a defined beginning \end{DoxyCompactList}\item 
+void \hyperlink{classnlohmann_1_1basic__json_1_1primitive__iterator__t_a34d8093b7d566a21857a6f8dd4ada5d5}{set\+\_\+end} () noexcept
+\begin{DoxyCompactList}\small\item\em set iterator to a defined past the end \end{DoxyCompactList}\item 
+constexpr bool \hyperlink{classnlohmann_1_1basic__json_1_1primitive__iterator__t_a5714094a2157c5d28623eb1069217567}{is\+\_\+begin} () const  noexcept
+\begin{DoxyCompactList}\small\item\em return whether the iterator can be dereferenced \end{DoxyCompactList}\item 
+constexpr bool \hyperlink{classnlohmann_1_1basic__json_1_1primitive__iterator__t_a5e4dffe5a61ca210888d6f867652e2df}{is\+\_\+end} () const  noexcept
+\begin{DoxyCompactList}\small\item\em return whether the iterator is at end \end{DoxyCompactList}\item 
+\hyperlink{classnlohmann_1_1basic__json_1_1primitive__iterator__t_a451051247c47a686224c3600e28d6d11}{operator difference\+\_\+type \&} () noexcept
+\begin{DoxyCompactList}\small\item\em return reference to the value to change and compare \end{DoxyCompactList}\item 
+constexpr \hyperlink{classnlohmann_1_1basic__json_1_1primitive__iterator__t_a451091a7648b837a7b2049de06ac335f}{operator difference\+\_\+type} () const  noexcept
+\begin{DoxyCompactList}\small\item\em return value to compare \end{DoxyCompactList}\end{DoxyCompactItemize}
+\subsection*{Private Attributes}
+\begin{DoxyCompactItemize}
+\item 
+\hyperlink{classnlohmann_1_1basic__json_aec316934a555dd1acdd3600e5d4a4cdf}{difference\+\_\+type} \hyperlink{classnlohmann_1_1basic__json_1_1primitive__iterator__t_aed1a94e17ea6a32cc75baa55e239b002}{m\+\_\+it} = std\+::numeric\+\_\+limits$<$std\+::ptrdiff\+\_\+t$>$\+::denorm\+\_\+min()
+\begin{DoxyCompactList}\small\item\em iterator as signed integer type \end{DoxyCompactList}\end{DoxyCompactItemize}
+\subsection*{Static Private Attributes}
+\begin{DoxyCompactItemize}
+\item 
+\hypertarget{classnlohmann_1_1basic__json_1_1primitive__iterator__t_ae79dfabea850815bbf51e9e9a4841e5c}{}static constexpr \hyperlink{classnlohmann_1_1basic__json_aec316934a555dd1acdd3600e5d4a4cdf}{difference\+\_\+type} {\bfseries begin\+\_\+value} = 0\label{classnlohmann_1_1basic__json_1_1primitive__iterator__t_ae79dfabea850815bbf51e9e9a4841e5c}
+
+\item 
+\hypertarget{classnlohmann_1_1basic__json_1_1primitive__iterator__t_ac36f28f0a0d90ce02d086b5b05e5c7f3}{}static constexpr \hyperlink{classnlohmann_1_1basic__json_aec316934a555dd1acdd3600e5d4a4cdf}{difference\+\_\+type} {\bfseries end\+\_\+value} = begin\+\_\+value + 1\label{classnlohmann_1_1basic__json_1_1primitive__iterator__t_ac36f28f0a0d90ce02d086b5b05e5c7f3}
+
+\end{DoxyCompactItemize}
+
+
+\subsection{Detailed Description}
+\subsubsection*{template$<$template$<$ typename U, typename V, typename...\+Args $>$ class Object\+Type = std\+::map, template$<$ typename U, typename...\+Args $>$ class Array\+Type = std\+::vector, class String\+Type = std\+::string, class Boolean\+Type = bool, class Number\+Integer\+Type = std\+::int64\+\_\+t, class Number\+Unsigned\+Type = std\+::uint64\+\_\+t, class Number\+Float\+Type = double, template$<$ typename U $>$ class Allocator\+Type = std\+::allocator$>$class nlohmann\+::basic\+\_\+json$<$ Object\+Type, Array\+Type, String\+Type, Boolean\+Type, Number\+Integer\+Type, Number\+Unsigned\+Type, Number\+Float\+Type, Allocator\+Type $>$\+::primitive\+\_\+iterator\+\_\+t}
+
+an iterator for primitive J\+S\+O\+N types 
+
+This class models an iterator for primitive J\+S\+O\+N types (boolean, number, string). It\textquotesingle{}s only purpose is to allow the iterator/const\+\_\+iterator classes to \char`\"{}iterate\char`\"{} over primitive values. Internally, the iterator is modeled by a {\ttfamily difference\+\_\+type} variable. Value begin\+\_\+value ({\ttfamily 0}) models the begin, end\+\_\+value ({\ttfamily 1}) models past the end. 
+
+Definition at line 8136 of file json.\+hpp.
+
+
+
+\subsection{Member Function Documentation}
+\hypertarget{classnlohmann_1_1basic__json_1_1primitive__iterator__t_ae16ee263bfa2d496540cc8c4a5bb69c0}{}\index{nlohmann\+::basic\+\_\+json\+::primitive\+\_\+iterator\+\_\+t@{nlohmann\+::basic\+\_\+json\+::primitive\+\_\+iterator\+\_\+t}!set\+\_\+begin@{set\+\_\+begin}}
+\index{set\+\_\+begin@{set\+\_\+begin}!nlohmann\+::basic\+\_\+json\+::primitive\+\_\+iterator\+\_\+t@{nlohmann\+::basic\+\_\+json\+::primitive\+\_\+iterator\+\_\+t}}
+\subsubsection[{set\+\_\+begin() noexcept}]{\setlength{\rightskip}{0pt plus 5cm}template$<$template$<$ typename U, typename V, typename...\+Args $>$ class Object\+Type = std\+::map, template$<$ typename U, typename...\+Args $>$ class Array\+Type = std\+::vector, class String\+Type  = std\+::string, class Boolean\+Type  = bool, class Number\+Integer\+Type  = std\+::int64\+\_\+t, class Number\+Unsigned\+Type  = std\+::uint64\+\_\+t, class Number\+Float\+Type  = double, template$<$ typename U $>$ class Allocator\+Type = std\+::allocator$>$ void {\bf nlohmann\+::basic\+\_\+json}$<$ Object\+Type, Array\+Type, String\+Type, Boolean\+Type, Number\+Integer\+Type, Number\+Unsigned\+Type, Number\+Float\+Type, Allocator\+Type $>$\+::primitive\+\_\+iterator\+\_\+t\+::set\+\_\+begin (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}, {\ttfamily [noexcept]}}\label{classnlohmann_1_1basic__json_1_1primitive__iterator__t_ae16ee263bfa2d496540cc8c4a5bb69c0}
+
+
+set iterator to a defined beginning 
+
+
+
+Definition at line 8140 of file json.\+hpp.
+
+\hypertarget{classnlohmann_1_1basic__json_1_1primitive__iterator__t_a34d8093b7d566a21857a6f8dd4ada5d5}{}\index{nlohmann\+::basic\+\_\+json\+::primitive\+\_\+iterator\+\_\+t@{nlohmann\+::basic\+\_\+json\+::primitive\+\_\+iterator\+\_\+t}!set\+\_\+end@{set\+\_\+end}}
+\index{set\+\_\+end@{set\+\_\+end}!nlohmann\+::basic\+\_\+json\+::primitive\+\_\+iterator\+\_\+t@{nlohmann\+::basic\+\_\+json\+::primitive\+\_\+iterator\+\_\+t}}
+\subsubsection[{set\+\_\+end() noexcept}]{\setlength{\rightskip}{0pt plus 5cm}template$<$template$<$ typename U, typename V, typename...\+Args $>$ class Object\+Type = std\+::map, template$<$ typename U, typename...\+Args $>$ class Array\+Type = std\+::vector, class String\+Type  = std\+::string, class Boolean\+Type  = bool, class Number\+Integer\+Type  = std\+::int64\+\_\+t, class Number\+Unsigned\+Type  = std\+::uint64\+\_\+t, class Number\+Float\+Type  = double, template$<$ typename U $>$ class Allocator\+Type = std\+::allocator$>$ void {\bf nlohmann\+::basic\+\_\+json}$<$ Object\+Type, Array\+Type, String\+Type, Boolean\+Type, Number\+Integer\+Type, Number\+Unsigned\+Type, Number\+Float\+Type, Allocator\+Type $>$\+::primitive\+\_\+iterator\+\_\+t\+::set\+\_\+end (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}, {\ttfamily [noexcept]}}\label{classnlohmann_1_1basic__json_1_1primitive__iterator__t_a34d8093b7d566a21857a6f8dd4ada5d5}
+
+
+set iterator to a defined past the end 
+
+
+
+Definition at line 8146 of file json.\+hpp.
+
+\hypertarget{classnlohmann_1_1basic__json_1_1primitive__iterator__t_a5714094a2157c5d28623eb1069217567}{}\index{nlohmann\+::basic\+\_\+json\+::primitive\+\_\+iterator\+\_\+t@{nlohmann\+::basic\+\_\+json\+::primitive\+\_\+iterator\+\_\+t}!is\+\_\+begin@{is\+\_\+begin}}
+\index{is\+\_\+begin@{is\+\_\+begin}!nlohmann\+::basic\+\_\+json\+::primitive\+\_\+iterator\+\_\+t@{nlohmann\+::basic\+\_\+json\+::primitive\+\_\+iterator\+\_\+t}}
+\subsubsection[{is\+\_\+begin() const  noexcept}]{\setlength{\rightskip}{0pt plus 5cm}template$<$template$<$ typename U, typename V, typename...\+Args $>$ class Object\+Type = std\+::map, template$<$ typename U, typename...\+Args $>$ class Array\+Type = std\+::vector, class String\+Type  = std\+::string, class Boolean\+Type  = bool, class Number\+Integer\+Type  = std\+::int64\+\_\+t, class Number\+Unsigned\+Type  = std\+::uint64\+\_\+t, class Number\+Float\+Type  = double, template$<$ typename U $>$ class Allocator\+Type = std\+::allocator$>$ constexpr bool {\bf nlohmann\+::basic\+\_\+json}$<$ Object\+Type, Array\+Type, String\+Type, Boolean\+Type, Number\+Integer\+Type, Number\+Unsigned\+Type, Number\+Float\+Type, Allocator\+Type $>$\+::primitive\+\_\+iterator\+\_\+t\+::is\+\_\+begin (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [inline]}, {\ttfamily [noexcept]}}\label{classnlohmann_1_1basic__json_1_1primitive__iterator__t_a5714094a2157c5d28623eb1069217567}
+
+
+return whether the iterator can be dereferenced 
+
+
+
+Definition at line 8152 of file json.\+hpp.
+
+\hypertarget{classnlohmann_1_1basic__json_1_1primitive__iterator__t_a5e4dffe5a61ca210888d6f867652e2df}{}\index{nlohmann\+::basic\+\_\+json\+::primitive\+\_\+iterator\+\_\+t@{nlohmann\+::basic\+\_\+json\+::primitive\+\_\+iterator\+\_\+t}!is\+\_\+end@{is\+\_\+end}}
+\index{is\+\_\+end@{is\+\_\+end}!nlohmann\+::basic\+\_\+json\+::primitive\+\_\+iterator\+\_\+t@{nlohmann\+::basic\+\_\+json\+::primitive\+\_\+iterator\+\_\+t}}
+\subsubsection[{is\+\_\+end() const  noexcept}]{\setlength{\rightskip}{0pt plus 5cm}template$<$template$<$ typename U, typename V, typename...\+Args $>$ class Object\+Type = std\+::map, template$<$ typename U, typename...\+Args $>$ class Array\+Type = std\+::vector, class String\+Type  = std\+::string, class Boolean\+Type  = bool, class Number\+Integer\+Type  = std\+::int64\+\_\+t, class Number\+Unsigned\+Type  = std\+::uint64\+\_\+t, class Number\+Float\+Type  = double, template$<$ typename U $>$ class Allocator\+Type = std\+::allocator$>$ constexpr bool {\bf nlohmann\+::basic\+\_\+json}$<$ Object\+Type, Array\+Type, String\+Type, Boolean\+Type, Number\+Integer\+Type, Number\+Unsigned\+Type, Number\+Float\+Type, Allocator\+Type $>$\+::primitive\+\_\+iterator\+\_\+t\+::is\+\_\+end (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [inline]}, {\ttfamily [noexcept]}}\label{classnlohmann_1_1basic__json_1_1primitive__iterator__t_a5e4dffe5a61ca210888d6f867652e2df}
+
+
+return whether the iterator is at end 
+
+
+
+Definition at line 8158 of file json.\+hpp.
+
+\hypertarget{classnlohmann_1_1basic__json_1_1primitive__iterator__t_a451051247c47a686224c3600e28d6d11}{}\index{nlohmann\+::basic\+\_\+json\+::primitive\+\_\+iterator\+\_\+t@{nlohmann\+::basic\+\_\+json\+::primitive\+\_\+iterator\+\_\+t}!operator difference\+\_\+type \&@{operator difference\+\_\+type \&}}
+\index{operator difference\+\_\+type \&@{operator difference\+\_\+type \&}!nlohmann\+::basic\+\_\+json\+::primitive\+\_\+iterator\+\_\+t@{nlohmann\+::basic\+\_\+json\+::primitive\+\_\+iterator\+\_\+t}}
+\subsubsection[{operator difference\+\_\+type \&() noexcept}]{\setlength{\rightskip}{0pt plus 5cm}template$<$template$<$ typename U, typename V, typename...\+Args $>$ class Object\+Type = std\+::map, template$<$ typename U, typename...\+Args $>$ class Array\+Type = std\+::vector, class String\+Type  = std\+::string, class Boolean\+Type  = bool, class Number\+Integer\+Type  = std\+::int64\+\_\+t, class Number\+Unsigned\+Type  = std\+::uint64\+\_\+t, class Number\+Float\+Type  = double, template$<$ typename U $>$ class Allocator\+Type = std\+::allocator$>$ {\bf nlohmann\+::basic\+\_\+json}$<$ Object\+Type, Array\+Type, String\+Type, Boolean\+Type, Number\+Integer\+Type, Number\+Unsigned\+Type, Number\+Float\+Type, Allocator\+Type $>$\+::primitive\+\_\+iterator\+\_\+t\+::operator {\bf difference\+\_\+type} \& (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}, {\ttfamily [noexcept]}}\label{classnlohmann_1_1basic__json_1_1primitive__iterator__t_a451051247c47a686224c3600e28d6d11}
+
+
+return reference to the value to change and compare 
+
+
+
+Definition at line 8164 of file json.\+hpp.
+
+\hypertarget{classnlohmann_1_1basic__json_1_1primitive__iterator__t_a451091a7648b837a7b2049de06ac335f}{}\index{nlohmann\+::basic\+\_\+json\+::primitive\+\_\+iterator\+\_\+t@{nlohmann\+::basic\+\_\+json\+::primitive\+\_\+iterator\+\_\+t}!operator difference\+\_\+type@{operator difference\+\_\+type}}
+\index{operator difference\+\_\+type@{operator difference\+\_\+type}!nlohmann\+::basic\+\_\+json\+::primitive\+\_\+iterator\+\_\+t@{nlohmann\+::basic\+\_\+json\+::primitive\+\_\+iterator\+\_\+t}}
+\subsubsection[{operator difference\+\_\+type() const  noexcept}]{\setlength{\rightskip}{0pt plus 5cm}template$<$template$<$ typename U, typename V, typename...\+Args $>$ class Object\+Type = std\+::map, template$<$ typename U, typename...\+Args $>$ class Array\+Type = std\+::vector, class String\+Type  = std\+::string, class Boolean\+Type  = bool, class Number\+Integer\+Type  = std\+::int64\+\_\+t, class Number\+Unsigned\+Type  = std\+::uint64\+\_\+t, class Number\+Float\+Type  = double, template$<$ typename U $>$ class Allocator\+Type = std\+::allocator$>$ constexpr {\bf nlohmann\+::basic\+\_\+json}$<$ Object\+Type, Array\+Type, String\+Type, Boolean\+Type, Number\+Integer\+Type, Number\+Unsigned\+Type, Number\+Float\+Type, Allocator\+Type $>$\+::primitive\+\_\+iterator\+\_\+t\+::operator {\bf difference\+\_\+type} (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [inline]}, {\ttfamily [noexcept]}}\label{classnlohmann_1_1basic__json_1_1primitive__iterator__t_a451091a7648b837a7b2049de06ac335f}
+
+
+return value to compare 
+
+
+
+Definition at line 8170 of file json.\+hpp.
+
+
+
+\subsection{Member Data Documentation}
+\hypertarget{classnlohmann_1_1basic__json_1_1primitive__iterator__t_aed1a94e17ea6a32cc75baa55e239b002}{}\index{nlohmann\+::basic\+\_\+json\+::primitive\+\_\+iterator\+\_\+t@{nlohmann\+::basic\+\_\+json\+::primitive\+\_\+iterator\+\_\+t}!m\+\_\+it@{m\+\_\+it}}
+\index{m\+\_\+it@{m\+\_\+it}!nlohmann\+::basic\+\_\+json\+::primitive\+\_\+iterator\+\_\+t@{nlohmann\+::basic\+\_\+json\+::primitive\+\_\+iterator\+\_\+t}}
+\subsubsection[{m\+\_\+it}]{\setlength{\rightskip}{0pt plus 5cm}template$<$template$<$ typename U, typename V, typename...\+Args $>$ class Object\+Type = std\+::map, template$<$ typename U, typename...\+Args $>$ class Array\+Type = std\+::vector, class String\+Type  = std\+::string, class Boolean\+Type  = bool, class Number\+Integer\+Type  = std\+::int64\+\_\+t, class Number\+Unsigned\+Type  = std\+::uint64\+\_\+t, class Number\+Float\+Type  = double, template$<$ typename U $>$ class Allocator\+Type = std\+::allocator$>$ {\bf difference\+\_\+type} {\bf nlohmann\+::basic\+\_\+json}$<$ Object\+Type, Array\+Type, String\+Type, Boolean\+Type, Number\+Integer\+Type, Number\+Unsigned\+Type, Number\+Float\+Type, Allocator\+Type $>$\+::primitive\+\_\+iterator\+\_\+t\+::m\+\_\+it = std\+::numeric\+\_\+limits$<$std\+::ptrdiff\+\_\+t$>$\+::denorm\+\_\+min()\hspace{0.3cm}{\ttfamily [private]}}\label{classnlohmann_1_1basic__json_1_1primitive__iterator__t_aed1a94e17ea6a32cc75baa55e239b002}
+
+
+iterator as signed integer type 
+
+
+
+Definition at line 8180 of file json.\+hpp.
+
+
+
+The documentation for this class was generated from the following file\+:\begin{DoxyCompactItemize}
+\item 
+json.\+hpp\end{DoxyCompactItemize}

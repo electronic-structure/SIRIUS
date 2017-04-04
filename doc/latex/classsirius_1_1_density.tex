@@ -1,0 +1,662 @@
+\hypertarget{classsirius_1_1_density}{}\section{sirius\+:\+:Density Class Reference}
+\label{classsirius_1_1_density}\index{sirius\+::\+Density@{sirius\+::\+Density}}
+
+
+Generate charge density and magnetization from occupied spinor wave-\/functions.  
+
+
+
+
+Collaboration diagram for sirius\+:\+:Density\+:
+% FIG 0
+\subsection*{Classes}
+\begin{DoxyCompactItemize}
+\item 
+struct \hyperlink{structsirius_1_1_density_1_1paw__density__data__t}{paw\+\_\+density\+\_\+data\+\_\+t}
+\end{DoxyCompactItemize}
+\subsection*{Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+\hyperlink{classsirius_1_1_density_a7dca6937cc2b1e865f1d77edfc575906}{Density} (\hyperlink{classsirius_1_1_simulation__context}{Simulation\+\_\+context} \&ctx\+\_\+\+\_\+)
+\begin{DoxyCompactList}\small\item\em Constructor. \end{DoxyCompactList}\item 
+\hyperlink{classsirius_1_1_density_af35aa41caf09e4d41664f9551c424665}{$\sim$\+Density} ()
+\begin{DoxyCompactList}\small\item\em Destructor. \end{DoxyCompactList}\item 
+void \hyperlink{classsirius_1_1_density_acd0d1956e9bf3bfb28f62ae042a656fa}{set\+\_\+charge\+\_\+density\+\_\+ptr} (double $\ast$rhomt, double $\ast$rhorg)
+\begin{DoxyCompactList}\small\item\em Set pointers to muffin-\/tin and interstitial charge density arrays. \end{DoxyCompactList}\item 
+void \hyperlink{classsirius_1_1_density_aff03f6627c37979fbcfb24cdc6437fba}{set\+\_\+magnetization\+\_\+ptr} (double $\ast$magmt, double $\ast$magir)
+\begin{DoxyCompactList}\small\item\em Set pointers to muffin-\/tin and interstitial magnetization arrays. \end{DoxyCompactList}\item 
+void \hyperlink{classsirius_1_1_density_a2ffbfda23993b179d5994ef963db8602}{zero} ()
+\begin{DoxyCompactList}\small\item\em Zero density and magnetization. \end{DoxyCompactList}\item 
+double \hyperlink{classsirius_1_1_density_a34e844177d1e5a116dc27e5886ca1f58}{core\+\_\+leakage} ()
+\begin{DoxyCompactList}\small\item\em Find the total leakage of the core states out of the muffin-\/tins. \end{DoxyCompactList}\item 
+double \hyperlink{classsirius_1_1_density_a83815f2fca3c06cfad1fc1f3e1a3db73}{core\+\_\+leakage} (int ic)
+\begin{DoxyCompactList}\small\item\em Return core leakage for a specific atom symmetry class. \end{DoxyCompactList}\item 
+void \hyperlink{classsirius_1_1_density_abea8fcd04749747c5abba5185420f413}{initial\+\_\+density} ()
+\begin{DoxyCompactList}\small\item\em Generate initial charge density and magnetization. \end{DoxyCompactList}\item 
+\hypertarget{classsirius_1_1_density_ae45356dcd88effd130b03724827ba427}{}void {\bfseries initial\+\_\+density\+\_\+pseudo} ()\label{classsirius_1_1_density_ae45356dcd88effd130b03724827ba427}
+
+\item 
+\hypertarget{classsirius_1_1_density_a2df9c61b1173bd89987926b3d249b94e}{}void {\bfseries initial\+\_\+density\+\_\+full\+\_\+pot} ()\label{classsirius_1_1_density_a2df9c61b1173bd89987926b3d249b94e}
+
+\item 
+void \hyperlink{classsirius_1_1_density_a08873d1e06c8e075733bcea760e83eef}{check\+\_\+num\+\_\+electrons} ()
+\begin{DoxyCompactList}\small\item\em Check total density for the correct number of electrons. \end{DoxyCompactList}\item 
+void \hyperlink{classsirius_1_1_density_a60a7e07923f2ddd22d64f49b787ceb40}{generate} (\hyperlink{classsirius_1_1_k__point__set}{K\+\_\+point\+\_\+set} \&ks\+\_\+\+\_\+)
+\begin{DoxyCompactList}\small\item\em Generate full charge density (valence + core) and magnetization from the wave functions. \end{DoxyCompactList}\item 
+void \hyperlink{classsirius_1_1_density_aba34655a6e88da666ae30c6c464e5034}{generate\+\_\+valence} (\hyperlink{classsirius_1_1_k__point__set}{K\+\_\+point\+\_\+set} \&ks\+\_\+\+\_\+)
+\begin{DoxyCompactList}\small\item\em Generate valence charge density and magnetization from the wave functions. \end{DoxyCompactList}\item 
+void \hyperlink{classsirius_1_1_density_ab24421e0c72f7eb03c9ccd4006673e9f}{augment} (\hyperlink{classsirius_1_1_k__point__set}{K\+\_\+point\+\_\+set} \&ks\+\_\+\+\_\+)
+\begin{DoxyCompactList}\small\item\em Add augmentation charge Q(r). \end{DoxyCompactList}\item 
+\hypertarget{classsirius_1_1_density_a4b9e362da740a726f5772f85c273345d}{}{\footnotesize template$<$device\+\_\+t pu$>$ }\\void {\bfseries generate\+\_\+rho\+\_\+aug} (std\+::vector$<$ \hyperlink{classsirius_1_1_periodic__function}{Periodic\+\_\+function}$<$ double $>$ $\ast$ $>$ rho\+\_\+\+\_\+, \hyperlink{classsddk_1_1mdarray}{mdarray}$<$ double\+\_\+complex, 2 $>$ \&rho\+\_\+aug\+\_\+\+\_\+)\label{classsirius_1_1_density_a4b9e362da740a726f5772f85c273345d}
+
+\item 
+void \hyperlink{classsirius_1_1_density_aba49bccd299f66e8673c5930c46f2972}{check\+\_\+density\+\_\+continuity\+\_\+at\+\_\+mt} ()
+\begin{DoxyCompactList}\small\item\em Check density at M\+T boundary. \end{DoxyCompactList}\item 
+mdarray$<$ double, 2 $>$ \hyperlink{classsirius_1_1_density_a9ee8dd1f86a1e710556b80bed374f928}{generate\+\_\+rho\+\_\+radial\+\_\+integrals} (int type\+\_\+\+\_\+)
+\item 
+\hypertarget{classsirius_1_1_density_a5608b9fede80d568ec809d40052a98f7}{}void {\bfseries generate\+\_\+pw\+\_\+coefs} ()\label{classsirius_1_1_density_a5608b9fede80d568ec809d40052a98f7}
+
+\item 
+\hypertarget{classsirius_1_1_density_a349e10ada5b6fbb5e8b9d5206aba765c}{}void {\bfseries save} ()\label{classsirius_1_1_density_a349e10ada5b6fbb5e8b9d5206aba765c}
+
+\item 
+\hypertarget{classsirius_1_1_density_a78ed4dc5b87a927570fe2e7552c548e1}{}void {\bfseries load} ()\label{classsirius_1_1_density_a78ed4dc5b87a927570fe2e7552c548e1}
+
+\item 
+\hypertarget{classsirius_1_1_density_a5cea378baf2b5fab91d738d88d07842e}{}void {\bfseries save\+\_\+to\+\_\+xsf} ()\label{classsirius_1_1_density_a5cea378baf2b5fab91d738d88d07842e}
+
+\item 
+\hypertarget{classsirius_1_1_density_af2b76bcacc2db613be601b1484d078bd}{}void {\bfseries save\+\_\+to\+\_\+xdmf} ()\label{classsirius_1_1_density_af2b76bcacc2db613be601b1484d078bd}
+
+\item 
+\hypertarget{classsirius_1_1_density_ad9bd68366e88827316be5d813d06cd0c}{}size\+\_\+t {\bfseries size} ()\label{classsirius_1_1_density_ad9bd68366e88827316be5d813d06cd0c}
+
+\item 
+\hypertarget{classsirius_1_1_density_a56603ef790c6321f19147e7c7fc413fc}{}\hyperlink{classsirius_1_1_periodic__function}{Periodic\+\_\+function}$<$ double $>$ $\ast$ {\bfseries rho} ()\label{classsirius_1_1_density_a56603ef790c6321f19147e7c7fc413fc}
+
+\item 
+\hypertarget{classsirius_1_1_density_add5393ad5f5fc30bab6744f3cfb9a1d0}{}\hyperlink{classsirius_1_1_periodic__function}{Periodic\+\_\+function}$<$ double $>$ $\ast$ {\bfseries rho\+\_\+pseudo\+\_\+core} ()\label{classsirius_1_1_density_add5393ad5f5fc30bab6744f3cfb9a1d0}
+
+\item 
+\hypertarget{classsirius_1_1_density_a81e1c48f8abda0a2225601a036b8b519}{}\hyperlink{classsirius_1_1_periodic__function}{Periodic\+\_\+function}$<$ double $>$ $\ast$$\ast$ {\bfseries magnetization} ()\label{classsirius_1_1_density_a81e1c48f8abda0a2225601a036b8b519}
+
+\item 
+\hypertarget{classsirius_1_1_density_aab9a15b9ad84afd873449c9f63b7423d}{}\hyperlink{classsirius_1_1_periodic__function}{Periodic\+\_\+function}$<$ double $>$ $\ast$ {\bfseries magnetization} (int i)\label{classsirius_1_1_density_aab9a15b9ad84afd873449c9f63b7423d}
+
+\item 
+\hypertarget{classsirius_1_1_density_aabf84b2f2f591ce324f4cdef860aff87}{}\hyperlink{classsirius_1_1_spheric__function}{Spheric\+\_\+function}$<$ spectral, double $>$ const \& {\bfseries density\+\_\+mt} (int ialoc) const \label{classsirius_1_1_density_aabf84b2f2f591ce324f4cdef860aff87}
+
+\item 
+void \hyperlink{classsirius_1_1_density_af7904609f7a2d6f197ad1cb8cdef119a}{generate\+\_\+paw\+\_\+loc\+\_\+density} ()
+\begin{DoxyCompactList}\small\item\em generate n\+\_\+1 and \{n\}\+\_\+1 in lm components \end{DoxyCompactList}\item 
+\hypertarget{classsirius_1_1_density_afbe5677ecf2c45f13e8541476acb7335}{}\hyperlink{classsddk_1_1mdarray}{mdarray}$<$ double, 2 $>$ const \& {\bfseries ae\+\_\+paw\+\_\+atom\+\_\+density} (int spl\+\_\+paw\+\_\+ind) const \label{classsirius_1_1_density_afbe5677ecf2c45f13e8541476acb7335}
+
+\item 
+\hypertarget{classsirius_1_1_density_a68ee66d5d605b0ee42a3127b6c2592fc}{}\hyperlink{classsddk_1_1mdarray}{mdarray}$<$ double, 2 $>$ const \& {\bfseries ps\+\_\+paw\+\_\+atom\+\_\+density} (int spl\+\_\+paw\+\_\+ind) const \label{classsirius_1_1_density_a68ee66d5d605b0ee42a3127b6c2592fc}
+
+\item 
+\hypertarget{classsirius_1_1_density_aa680b172d0b1fe1d5baa1b9c384641b2}{}\hyperlink{classsddk_1_1mdarray}{mdarray}$<$ double, 3 $>$ const \& {\bfseries ae\+\_\+paw\+\_\+atom\+\_\+magn} (int spl\+\_\+paw\+\_\+ind) const \label{classsirius_1_1_density_aa680b172d0b1fe1d5baa1b9c384641b2}
+
+\item 
+\hypertarget{classsirius_1_1_density_a8932888049ef7b42f101e021770f5aa4}{}\hyperlink{classsddk_1_1mdarray}{mdarray}$<$ double, 3 $>$ const \& {\bfseries ps\+\_\+paw\+\_\+atom\+\_\+magn} (int spl\+\_\+paw\+\_\+ind) const \label{classsirius_1_1_density_a8932888049ef7b42f101e021770f5aa4}
+
+\item 
+\hypertarget{classsirius_1_1_density_a35de82206d34dd89f4fde19cb9b114f4}{}void {\bfseries allocate} ()\label{classsirius_1_1_density_a35de82206d34dd89f4fde19cb9b114f4}
+
+\item 
+\hypertarget{classsirius_1_1_density_ac49bc0be91cfc0e1c6de821959ed2211}{}void {\bfseries mixer\+\_\+input} ()\label{classsirius_1_1_density_ac49bc0be91cfc0e1c6de821959ed2211}
+
+\item 
+\hypertarget{classsirius_1_1_density_aa98f530b6ca5ce2cff733bffb22d589d}{}void {\bfseries mixer\+\_\+output} ()\label{classsirius_1_1_density_aa98f530b6ca5ce2cff733bffb22d589d}
+
+\item 
+\hypertarget{classsirius_1_1_density_a3571e02abf5a8bed85dd5d1afa355106}{}void {\bfseries mixer\+\_\+init} ()\label{classsirius_1_1_density_a3571e02abf5a8bed85dd5d1afa355106}
+
+\item 
+\hypertarget{classsirius_1_1_density_a856614b00a6343e0d977e2b4e449f07f}{}double {\bfseries mix} ()\label{classsirius_1_1_density_a856614b00a6343e0d977e2b4e449f07f}
+
+\item 
+\hypertarget{classsirius_1_1_density_aa148a0b62dc9649f7da79fb4ef361f99}{}double {\bfseries dr2} ()\label{classsirius_1_1_density_aa148a0b62dc9649f7da79fb4ef361f99}
+
+\item 
+\hypertarget{classsirius_1_1_density_a7f90caac4b64f48dd126605b0034b0df}{}\hyperlink{classsddk_1_1mdarray}{mdarray}$<$ double\+\_\+complex, 4 $>$ const \& {\bfseries density\+\_\+matrix} () const \label{classsirius_1_1_density_a7f90caac4b64f48dd126605b0034b0df}
+
+\item 
+\hypertarget{classsirius_1_1_density_a7d390abb5be73da91637dde8d0f2e550}{}void {\bfseries fft\+\_\+transform} (int direction\+\_\+\+\_\+)\label{classsirius_1_1_density_a7d390abb5be73da91637dde8d0f2e550}
+
+\item 
+\hypertarget{classsirius_1_1_density_a196bae7e30dffa1e83db9976ef8e0109}{}{\footnotesize template$<$typename T $>$ }\\void {\bfseries add\+\_\+k\+\_\+point\+\_\+contribution\+\_\+dm} (\hyperlink{classsirius_1_1_k__point}{K\+\_\+point} $\ast$kp\+\_\+\+\_\+, mdarray$<$ double\+\_\+complex, 4 $>$ \&density\+\_\+matrix\+\_\+\+\_\+)\label{classsirius_1_1_density_a196bae7e30dffa1e83db9976ef8e0109}
+
+\item 
+\hypertarget{classsirius_1_1_density_a4b9e362da740a726f5772f85c273345d}{}{\footnotesize template$<$device\+\_\+t pu$>$ }\\void {\bfseries generate\+\_\+rho\+\_\+aug} (std\+::vector$<$ \hyperlink{classsirius_1_1_periodic__function}{Periodic\+\_\+function}$<$ double $>$ $\ast$ $>$ rho\+\_\+\+\_\+, mdarray$<$ double\+\_\+complex, 2 $>$ \&rho\+\_\+aug\+\_\+\+\_\+)\label{classsirius_1_1_density_a4b9e362da740a726f5772f85c273345d}
+
+\end{DoxyCompactItemize}
+\subsection*{Private Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+void \hyperlink{classsirius_1_1_density_a67328cc11d444a56f5557a6c05ef4aab}{init\+\_\+paw} ()
+\begin{DoxyCompactList}\small\item\em Allocate P\+A\+W data. \end{DoxyCompactList}\item 
+\hypertarget{classsirius_1_1_density_a83cf34e3ebef152492c5c1527379a7ad}{}void {\bfseries generate\+\_\+paw\+\_\+atom\+\_\+density} (\hyperlink{structsirius_1_1_density_1_1paw__density__data__t}{paw\+\_\+density\+\_\+data\+\_\+t} \&pdd)\label{classsirius_1_1_density_a83cf34e3ebef152492c5c1527379a7ad}
+
+\item 
+void \hyperlink{classsirius_1_1_density_af399d9d8dce9410e3a3fd2881f53a7fe}{init\+\_\+density\+\_\+matrix\+\_\+for\+\_\+paw} ()
+\begin{DoxyCompactList}\small\item\em Initialize \{ij\} -\/ density matrix, occupation on basis of beta-\/projectors (used for P\+A\+W). \end{DoxyCompactList}\item 
+void \hyperlink{classsirius_1_1_density_a5aa2c64b50733841e1508208a242ee87}{symmetrize\+\_\+density\+\_\+matrix} ()
+\begin{DoxyCompactList}\small\item\em Symmetrize density matrix. \end{DoxyCompactList}\item 
+{\footnotesize template$<$int num\+\_\+mag\+\_\+dims, typename T $>$ }\\void \hyperlink{classsirius_1_1_density_afb79baac042b44ac8513cad372eb8dc5}{reduce\+\_\+density\+\_\+matrix} (\hyperlink{classsirius_1_1_atom__type}{Atom\+\_\+type} const \&atom\+\_\+type\+\_\+\+\_\+, int ia\+\_\+\+\_\+, \hyperlink{classsddk_1_1mdarray}{mdarray}$<$ double\+\_\+complex, 4 $>$ const \&zdens\+\_\+\+\_\+, \hyperlink{classsirius_1_1_gaunt__coefficients}{Gaunt\+\_\+coefficients}$<$ T $>$ const \&gaunt\+\_\+coeffs\+\_\+\+\_\+, \hyperlink{classsddk_1_1mdarray}{mdarray}$<$ double, 3 $>$ \&mt\+\_\+density\+\_\+matrix\+\_\+\+\_\+)
+\begin{DoxyCompactList}\small\item\em Reduce complex density matrix over magnetic quantum numbers. \end{DoxyCompactList}\item 
+{\footnotesize template$<$typename T $>$ }\\void \hyperlink{classsirius_1_1_density_a196bae7e30dffa1e83db9976ef8e0109}{add\+\_\+k\+\_\+point\+\_\+contribution\+\_\+dm} (\hyperlink{classsirius_1_1_k__point}{K\+\_\+point} $\ast$kp\+\_\+\+\_\+, \hyperlink{classsddk_1_1mdarray}{mdarray}$<$ double\+\_\+complex, 4 $>$ \&density\+\_\+matrix\+\_\+\+\_\+)
+\begin{DoxyCompactList}\small\item\em Add k-\/point contribution to the auxiliary density matrix. \end{DoxyCompactList}\item 
+void \hyperlink{classsirius_1_1_density_a7494a6071dc9a5ace4d812abb3eedfdd}{add\+\_\+k\+\_\+point\+\_\+contribution\+\_\+rg} (\hyperlink{classsirius_1_1_k__point}{K\+\_\+point} $\ast$kp\+\_\+\+\_\+)
+\begin{DoxyCompactList}\small\item\em Add k-\/point contribution to the density and magnetization defined on the regular F\+F\+T grid. \end{DoxyCompactList}\item 
+void \hyperlink{classsirius_1_1_density_a2310d34270eef4ea835a4e1ac642f1e1}{generate\+\_\+valence\+\_\+mt} (\hyperlink{classsirius_1_1_k__point__set}{K\+\_\+point\+\_\+set} \&ks)
+\begin{DoxyCompactList}\small\item\em Generate valence density in the muffin-\/tins. \end{DoxyCompactList}\item 
+void \hyperlink{classsirius_1_1_density_a4e9f97560b07fd662011b3f623025b26}{generate\+\_\+core\+\_\+charge\+\_\+density} ()
+\begin{DoxyCompactList}\small\item\em Generate charge density of core states. \end{DoxyCompactList}\item 
+\hypertarget{classsirius_1_1_density_a8ece62d577aecebbfd881af0ab33e6eb}{}void {\bfseries generate\+\_\+pseudo\+\_\+core\+\_\+charge\+\_\+density} ()\label{classsirius_1_1_density_a8ece62d577aecebbfd881af0ab33e6eb}
+
+\end{DoxyCompactItemize}
+\subsection*{Private Attributes}
+\begin{DoxyCompactItemize}
+\item 
+\hypertarget{classsirius_1_1_density_a212af02a98fc061951f927bdf4a7d5f4}{}\hyperlink{classsirius_1_1_simulation__context}{Simulation\+\_\+context} \& {\bfseries ctx\+\_\+}\label{classsirius_1_1_density_a212af02a98fc061951f927bdf4a7d5f4}
+
+\item 
+\hypertarget{classsirius_1_1_density_a3211e17c9026accf293bdef96b96edcb}{}\hyperlink{classsirius_1_1_unit__cell}{Unit\+\_\+cell} \& {\bfseries unit\+\_\+cell\+\_\+}\label{classsirius_1_1_density_a3211e17c9026accf293bdef96b96edcb}
+
+\item 
+\hyperlink{classsddk_1_1mdarray}{mdarray}$<$ double\+\_\+complex, 4 $>$ \hyperlink{classsirius_1_1_density_aae98b9da0334e70ab463a59ed0afe75d}{density\+\_\+matrix\+\_\+}
+\begin{DoxyCompactList}\small\item\em \hyperlink{classsirius_1_1_density}{Density} matrix of the system. \end{DoxyCompactList}\item 
+\hypertarget{classsirius_1_1_density_a34b9631d36848183f8cf280544449dd1}{}std\+::vector$<$ \hyperlink{structsirius_1_1_density_1_1paw__density__data__t}{paw\+\_\+density\+\_\+data\+\_\+t} $>$ {\bfseries paw\+\_\+density\+\_\+data\+\_\+}\label{classsirius_1_1_density_a34b9631d36848183f8cf280544449dd1}
+
+\item 
+\hyperlink{classsirius_1_1_periodic__function}{Periodic\+\_\+function}$<$ double $>$ $\ast$ \hyperlink{classsirius_1_1_density_abc158fb9460608eb1d4c07775e0726f0}{rho\+\_\+}
+\begin{DoxyCompactList}\small\item\em Pointer to charge density. \end{DoxyCompactList}\item 
+std\+::array$<$ std\+::unique\+\_\+ptr$<$ \hyperlink{classsirius_1_1experimental_1_1_smooth__periodic__function}{experimental\+::\+Smooth\+\_\+periodic\+\_\+function}$<$ double $>$ $>$, 4 $>$ \hyperlink{classsirius_1_1_density_af4aa8524e5c20a5dcac6f178daa368aa}{rho\+\_\+mag\+\_\+coarse\+\_\+}
+\begin{DoxyCompactList}\small\item\em \hyperlink{classsirius_1_1_density}{Density} and magnetization on the coarse F\+F\+T mesh. \end{DoxyCompactList}\item 
+\hyperlink{classsirius_1_1_periodic__function}{Periodic\+\_\+function}$<$ double $>$ $\ast$rho\+\_\+pseudo\+\_\+core\+\_\+ \hyperlink{classsirius_1_1_density_af12e5c3f7ce7767fa506e0bbd169ade3}{nullptr}
+\begin{DoxyCompactList}\small\item\em Pointer to pseudo core charge density. \end{DoxyCompactList}\item 
+\hypertarget{classsirius_1_1_density_a6f112457e595438482ef91ad589017e1}{}\hyperlink{classsirius_1_1_periodic__function}{Periodic\+\_\+function}$<$ double $>$ $\ast$ {\bfseries magnetization\+\_\+} \mbox{[}3\mbox{]}\label{classsirius_1_1_density_a6f112457e595438482ef91ad589017e1}
+
+\item 
+std\+::unique\+\_\+ptr$<$ \hyperlink{classsirius_1_1_gaunt__coefficients}{Gaunt\+\_\+coefficients}$<$ double\+\_\+complex $>$ $>$ \hyperlink{classsirius_1_1_density_acee7a0147e974ac60cedc82d903f70d4}{gaunt\+\_\+coefs\+\_\+} \{\hyperlink{classsirius_1_1_density_af12e5c3f7ce7767fa506e0bbd169ade3}{nullptr}\}
+\begin{DoxyCompactList}\small\item\em Non-\/zero Gaunt coefficients. \end{DoxyCompactList}\item 
+std\+::vector$<$ int $>$ \hyperlink{classsirius_1_1_density_ade06e0d3019316f0cf544a5bc2303776}{l\+\_\+by\+\_\+lm\+\_\+}
+\begin{DoxyCompactList}\small\item\em Fast mapping between composite lm index and corresponding orbital quantum number. \end{DoxyCompactList}\item 
+\hypertarget{classsirius_1_1_density_a64370cd7cb88f19313105ed56cc04699}{}std\+::unique\+\_\+ptr$<$ \hyperlink{classsirius_1_1_mixer}{Mixer}$<$ double\+\_\+complex $>$ $>$ {\bfseries high\+\_\+freq\+\_\+mixer\+\_\+} \{\hyperlink{classsirius_1_1_density_af12e5c3f7ce7767fa506e0bbd169ade3}{nullptr}\}\label{classsirius_1_1_density_a64370cd7cb88f19313105ed56cc04699}
+
+\item 
+\hypertarget{classsirius_1_1_density_ac3315f3e94017647c28070cec9ff3eab}{}std\+::unique\+\_\+ptr$<$ \hyperlink{classsirius_1_1_mixer}{Mixer}$<$ double\+\_\+complex $>$ $>$ {\bfseries low\+\_\+freq\+\_\+mixer\+\_\+} \{\hyperlink{classsirius_1_1_density_af12e5c3f7ce7767fa506e0bbd169ade3}{nullptr}\}\label{classsirius_1_1_density_ac3315f3e94017647c28070cec9ff3eab}
+
+\item 
+\hypertarget{classsirius_1_1_density_ad3d892477f485ee54e50d10f176260a4}{}std\+::unique\+\_\+ptr$<$ \hyperlink{classsirius_1_1_mixer}{Mixer}$<$ double $>$ $>$ {\bfseries mixer\+\_\+} \{\hyperlink{classsirius_1_1_density_af12e5c3f7ce7767fa506e0bbd169ade3}{nullptr}\}\label{classsirius_1_1_density_ad3d892477f485ee54e50d10f176260a4}
+
+\item 
+\hypertarget{classsirius_1_1_density_ad8ad5280a2c27d7ad5ce738bb887d96b}{}std\+::vector$<$ int $>$ {\bfseries lf\+\_\+gvec\+\_\+}\label{classsirius_1_1_density_ad8ad5280a2c27d7ad5ce738bb887d96b}
+
+\item 
+\hypertarget{classsirius_1_1_density_af08397a050d1912650aeedad758bc444}{}std\+::vector$<$ int $>$ {\bfseries hf\+\_\+gvec\+\_\+}\label{classsirius_1_1_density_af08397a050d1912650aeedad758bc444}
+
+\end{DoxyCompactItemize}
+
+
+\subsection{Detailed Description}
+Generate charge density and magnetization from occupied spinor wave-\/functions. 
+
+Let\textquotesingle{}s start from the definition of the complex density matrix\+: \[ \rho_{\sigma' \sigma}({\bf r}) = \sum_{j{\bf k}} n_{j{\bf k}} \Psi_{j{\bf k}}^{\sigma*}({\bf r}) \Psi_{j{\bf k}}^{\sigma'}({\bf r}) = \frac{1}{2} \left( \begin{array}{cc} \rho({\bf r})+m_z({\bf r}) & m_x({\bf r})-im_y({\bf r}) \\ m_x({\bf r})+im_y({\bf r}) & \rho({\bf r})-m_z({\bf r}) \end{array} \right) \] We notice that the diagonal components of the density matrix are actually real and the off-\/diagonal components are expressed trough two independent functions $ m_x({\bf r}) $ and $ m_y({\bf r}) $. Having this in mind we will work with a slightly different object, namely a real density matrix, defined as a 1-\/, 2-\/ or 4-\/dimensional (depending on the number of magnetic components) vector with the following elements\+:
+\begin{DoxyItemize}
+\item $ [ \rho({\bf r}) ] $ in case of non-\/magnetic configuration
+\item $ [ \rho_{\uparrow \uparrow}({\bf r}), \rho_{\downarrow \downarrow}({\bf r}) ] = [ \frac{\rho({\bf r})+m_z({\bf r})}{2}, \frac{\rho({\bf r})-m_z({\bf r})}{2} ] $ in case of collinear magnetic configuration
+\item $ [ \rho_{\uparrow \uparrow}({\bf r}), \rho_{\downarrow \downarrow}({\bf r}), 2 \Re \rho_{\uparrow \downarrow}({\bf r}), -2 \Im \rho_{\uparrow \downarrow}({\bf r}) ] = [ \frac{\rho({\bf r})+m_z({\bf r})}{2}, \frac{\rho({\bf r})-m_z({\bf r})}{2}, m_x({\bf r}), m_y({\bf r}) ] $ in the general case of non-\/collinear magnetic configuration
+\end{DoxyItemize}
+
+At this point it is straightforward to compute the density and magnetization in the interstitial (see \hyperlink{classsirius_1_1_density_a7494a6071dc9a5ace4d812abb3eedfdd}{add\+\_\+k\+\_\+point\+\_\+contribution\+\_\+rg()}). The muffin-\/tin part of the density and magnetization is obtained in a slighlty more complicated way. Recall the expansion of spinor wave-\/functions inside the muffin-\/tin $ \alpha $ \[ \Psi_{j{\bf k}}^{\sigma}({\bf r}) = \sum_{\xi}^{N_{\xi}^{\alpha}} {S_{\xi}^{\sigma j {\bf k},\alpha}} f_{\ell_{\xi} \lambda_{\xi}}^{\alpha}(r)Y_{\ell_{\xi}m_{\xi}}(\hat {\bf r}) \] which we insert into expression for the complex density matrix\+: \[ \rho_{\sigma' \sigma}({\bf r}) = \sum_{j{\bf k}} n_{j{\bf k}} \sum_{\xi}^{N_{\xi}^{\alpha}} S_{\xi}^{\sigma j {\bf k},\alpha*} f_{\ell_{\xi} \lambda_{\xi}}^{\alpha}(r) Y_{\ell_{\xi}m_{\xi}}^{*}(\hat {\bf r}) \sum_{\xi'}^{N_{\xi'}^{\alpha}} S_{\xi'}^{\sigma' j{\bf k},\alpha} f_{\ell_{\xi'} \lambda_{\xi'}}^{\alpha}(r)Y_{\ell_{\xi'}m_{\xi'}}(\hat {\bf r}) \] First, we eliminate a sum over bands and k-\/points by forming an auxiliary density tensor\+: \[ D_{\xi \sigma, \xi' \sigma'}^{\alpha} = \sum_{j{\bf k}} n_{j{\bf k}} S_{\xi}^{\sigma j {\bf k},\alpha*} S_{\xi'}^{\sigma' j {\bf k},\alpha} \] The expression for complex density matrix simplifies to\+: \[ \rho_{\sigma' \sigma}({\bf r}) = \sum_{\xi \xi'} D_{\xi \sigma, \xi' \sigma'}^{\alpha} f_{\ell_{\xi} \lambda_{\xi}}^{\alpha}(r)Y_{\ell_{\xi}m_{\xi}}^{*}(\hat {\bf r}) f_{\ell_{\xi'} \lambda_{\xi'}}^{\alpha}(r)Y_{\ell_{\xi'}m_{\xi'}}(\hat {\bf r}) \] Now we can switch to the real density matrix and write its\textquotesingle{} expansion in real spherical harmonics. Let\textquotesingle{}s take non-\/magnetic case as an example\+: \[ \rho({\bf r}) = \sum_{\xi \xi'} D_{\xi \xi'}^{\alpha} f_{\ell_{\xi} \lambda_{\xi}}^{\alpha}(r)Y_{\ell_{\xi}m_{\xi}}^{*}(\hat {\bf r}) f_{\ell_{\xi'} \lambda_{\xi'}}^{\alpha}(r)Y_{\ell_{\xi'}m_{\xi'}}(\hat {\bf r}) = \sum_{\ell_3 m_3} \rho_{\ell_3 m_3}^{\alpha}(r) R_{\ell_3 m_3}(\hat {\bf r}) \] where \[ \rho_{\ell_3 m_3}^{\alpha}(r) = \sum_{\xi \xi'} D_{\xi \xi'}^{\alpha} f_{\ell_{\xi} \lambda_{\xi}}^{\alpha}(r) f_{\ell_{\xi'} \lambda_{\xi'}}^{\alpha}(r) \langle Y_{\ell_{\xi}m_{\xi}} | R_{\ell_3 m_3} | Y_{\ell_{\xi'}m_{\xi'}} \rangle \] We are almost done. Now it is time to switch to the full index notation $ \xi \rightarrow \{ \ell \lambda m \} $ and sum over {\itshape m} and {\itshape m\textquotesingle{}} indices\+: \[ \rho_{\ell_3 m_3}^{\alpha}(r) = \sum_{\ell \lambda, \ell' \lambda'} f_{\ell \lambda}^{\alpha}(r) f_{\ell' \lambda'}^{\alpha}(r) d_{\ell \lambda, \ell' \lambda', \ell_3 m_3}^{\alpha} \] where \[ d_{\ell \lambda, \ell' \lambda', \ell_3 m_3}^{\alpha} = \sum_{mm'} D_{\ell \lambda m, \ell' \lambda' m'}^{\alpha} \langle Y_{\ell m} | R_{\ell_3 m_3} | Y_{\ell' m'} \rangle \] This is our final answer\+: radial components of density and magnetization are expressed as a linear combination of quadratic forms in radial functions.
+
+\begin{DoxyNote}{Note}
+density and potential are allocated as global function because it\textquotesingle{}s easier to load and save them. 
+\end{DoxyNote}
+
+
+Definition at line 135 of file density.\+h.
+
+
+
+\subsection{Constructor \& Destructor Documentation}
+\hypertarget{classsirius_1_1_density_a7dca6937cc2b1e865f1d77edfc575906}{}\index{sirius\+::\+Density@{sirius\+::\+Density}!Density@{Density}}
+\index{Density@{Density}!sirius\+::\+Density@{sirius\+::\+Density}}
+\subsubsection[{Density(\+Simulation\+\_\+context \&ctx\+\_\+\+\_\+)}]{\setlength{\rightskip}{0pt plus 5cm}sirius\+::\+Density\+::\+Density (
+\begin{DoxyParamCaption}
+\item[{{\bf Simulation\+\_\+context} \&}]{ctx\+\_\+\+\_\+}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}}\label{classsirius_1_1_density_a7dca6937cc2b1e865f1d77edfc575906}
+
+
+Constructor. 
+
+
+
+Definition at line 365 of file density.\+h.
+
+\hypertarget{classsirius_1_1_density_af35aa41caf09e4d41664f9551c424665}{}\index{sirius\+::\+Density@{sirius\+::\+Density}!````~Density@{$\sim$\+Density}}
+\index{````~Density@{$\sim$\+Density}!sirius\+::\+Density@{sirius\+::\+Density}}
+\subsubsection[{$\sim$\+Density()}]{\setlength{\rightskip}{0pt plus 5cm}sirius\+::\+Density\+::$\sim$\+Density (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}}\label{classsirius_1_1_density_af35aa41caf09e4d41664f9551c424665}
+
+
+Destructor. 
+
+
+
+Definition at line 460 of file density.\+h.
+
+
+
+\subsection{Member Function Documentation}
+\hypertarget{classsirius_1_1_density_a67328cc11d444a56f5557a6c05ef4aab}{}\index{sirius\+::\+Density@{sirius\+::\+Density}!init\+\_\+paw@{init\+\_\+paw}}
+\index{init\+\_\+paw@{init\+\_\+paw}!sirius\+::\+Density@{sirius\+::\+Density}}
+\subsubsection[{init\+\_\+paw()}]{\setlength{\rightskip}{0pt plus 5cm}void sirius\+::\+Density\+::init\+\_\+paw (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}, {\ttfamily [private]}}\label{classsirius_1_1_density_a67328cc11d444a56f5557a6c05ef4aab}
+
+
+Allocate P\+A\+W data. 
+
+
+
+Definition at line 8 of file paw\+\_\+density.\+hpp.
+
+\hypertarget{classsirius_1_1_density_af399d9d8dce9410e3a3fd2881f53a7fe}{}\index{sirius\+::\+Density@{sirius\+::\+Density}!init\+\_\+density\+\_\+matrix\+\_\+for\+\_\+paw@{init\+\_\+density\+\_\+matrix\+\_\+for\+\_\+paw}}
+\index{init\+\_\+density\+\_\+matrix\+\_\+for\+\_\+paw@{init\+\_\+density\+\_\+matrix\+\_\+for\+\_\+paw}!sirius\+::\+Density@{sirius\+::\+Density}}
+\subsubsection[{init\+\_\+density\+\_\+matrix\+\_\+for\+\_\+paw()}]{\setlength{\rightskip}{0pt plus 5cm}void sirius\+::\+Density\+::init\+\_\+density\+\_\+matrix\+\_\+for\+\_\+paw (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}, {\ttfamily [private]}}\label{classsirius_1_1_density_af399d9d8dce9410e3a3fd2881f53a7fe}
+
+
+Initialize \{ij\} -\/ density matrix, occupation on basis of beta-\/projectors (used for P\+A\+W). 
+
+
+
+Definition at line 51 of file paw\+\_\+density.\+hpp.
+
+\hypertarget{classsirius_1_1_density_a5aa2c64b50733841e1508208a242ee87}{}\index{sirius\+::\+Density@{sirius\+::\+Density}!symmetrize\+\_\+density\+\_\+matrix@{symmetrize\+\_\+density\+\_\+matrix}}
+\index{symmetrize\+\_\+density\+\_\+matrix@{symmetrize\+\_\+density\+\_\+matrix}!sirius\+::\+Density@{sirius\+::\+Density}}
+\subsubsection[{symmetrize\+\_\+density\+\_\+matrix()}]{\setlength{\rightskip}{0pt plus 5cm}void sirius\+::\+Density\+::symmetrize\+\_\+density\+\_\+matrix (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}, {\ttfamily [private]}}\label{classsirius_1_1_density_a5aa2c64b50733841e1508208a242ee87}
+
+
+Symmetrize density matrix. 
+
+Initially, density matrix is obtained with summation over irreducible B\+Z\+: \[ \tilde n_{\ell \lambda m \sigma, \ell' \lambda' m' \sigma'}^{\alpha} = \sum_{j} \sum_{{\bf k}}^{IBZ} \langle Y_{\ell m} u_{\ell \lambda}^{\alpha}| \Psi_{j{\bf k}}^{\sigma} \rangle w_{\bf k} n_{j{\bf k}} \langle \Psi_{j{\bf k}}^{\sigma'} | u_{\ell' \lambda'}^{\alpha} Y_{\ell' m'} \rangle \] In order to symmetrize it, the following operation is performed\+: \[ n_{\ell \lambda m \sigma, \ell' \lambda' m' \sigma'}^{\alpha} = \sum_{{\bf P}} \sum_{j} \sum_{\bf k}^{IBZ} \langle Y_{\ell m} u_{\ell \lambda}^{\alpha}| \Psi_{j{\bf P}{\bf k}}^{\sigma} \rangle w_{\bf k} n_{j{\bf k}} \langle \Psi_{j{\bf P}{\bf k}}^{\sigma'} | u_{\ell' \lambda'}^{\alpha} Y_{\ell' m'} \rangle \] where $ {\bf P} $ is the space-\/group symmetry operation. The inner product between wave-\/function and local orbital is transformed as\+: \[ \langle \Psi_{j{\bf P}{\bf k}}^{\sigma} | u_{\ell \lambda}^{\alpha} Y_{\ell m} \rangle = \int \Psi_{j{\bf P}{\bf k}}^{\sigma *}({\bf r}) u_{\ell \lambda}^{\alpha}(r) Y_{\ell m}(\hat {\bf r}) dr = \int \Psi_{j{\bf k}}^{\sigma *}({\bf P}^{-1}{\bf r}) u_{\ell \lambda}^{\alpha}(r) Y_{\ell m}(\hat {\bf r}) dr = \int \Psi_{j{\bf k}}^{\sigma *}({\bf r}) u_{\ell \lambda}^{{\bf P}\alpha}(r) Y_{\ell m}({\bf P} \hat{\bf r}) dr \] Under rotation the spherical harmonic is transformed as\+: \[ Y_{\ell m}({\bf P} \hat{\bf r}) = {\bf P}^{-1}Y_{\ell m}(\hat {\bf r}) = \sum_{m'} D_{m'm}^{\ell}({\bf P}^{-1}) Y_{\ell m'}(\hat {\bf r}) = \sum_{m'} D_{mm'}^{\ell}({\bf P}) Y_{\ell m'}(\hat {\bf r}) \] The inner-\/product integral is then rewritten as\+: \[ \langle \Psi_{j{\bf P}{\bf k}}^{\sigma} | u_{\ell \lambda}^{\alpha} Y_{\ell m} \rangle = \sum_{m'} D_{mm'}^{\ell}({\bf P}) \langle \Psi_{j{\bf k}}^{\sigma} | u_{\ell \lambda}^{{\bf P}\alpha} Y_{\ell m} \rangle \] and the final expression for density matrix gets the following form\+: \[ n_{\ell \lambda m \sigma, \ell' \lambda' m' \sigma'}^{\alpha} = \sum_{{\bf P}} \sum_{j} \sum_{\bf k}^{IBZ} \sum_{m_1 m_2} D_{mm_1}^{\ell *}({\bf P}) D_{m'm_2}^{\ell'}({\bf P}) \langle Y_{\ell m_1} u_{\ell \lambda}^{{\bf P} \alpha}| \Psi_{j{\bf k}}^{\sigma} \rangle w_{\bf k} n_{j{\bf k}} \langle \Psi_{j{\bf k}}^{\sigma'} | u_{\ell' \lambda'}^{{\bf P}\alpha} Y_{\ell' m_2} \rangle = \sum_{{\bf P}} \sum_{m_1 m_2} D_{mm_1}^{\ell *}({\bf P}) D_{m'm_2}^{\ell'}({\bf P}) \tilde n_{\ell \lambda m_1 \sigma, \ell' \lambda' m_2 \sigma'}^{{\bf P}\alpha} \] 
+
+Definition at line 1 of file symmetrize\+\_\+density\+\_\+matrix.\+hpp.
+
+\hypertarget{classsirius_1_1_density_afb79baac042b44ac8513cad372eb8dc5}{}\index{sirius\+::\+Density@{sirius\+::\+Density}!reduce\+\_\+density\+\_\+matrix@{reduce\+\_\+density\+\_\+matrix}}
+\index{reduce\+\_\+density\+\_\+matrix@{reduce\+\_\+density\+\_\+matrix}!sirius\+::\+Density@{sirius\+::\+Density}}
+\subsubsection[{reduce\+\_\+density\+\_\+matrix(\+Atom\+\_\+type const \&atom\+\_\+type\+\_\+\+\_\+, int ia\+\_\+\+\_\+, mdarray$<$ double\+\_\+complex, 4 $>$ const \&zdens\+\_\+\+\_\+, Gaunt\+\_\+coefficients$<$ T $>$ const \&gaunt\+\_\+coeffs\+\_\+\+\_\+, mdarray$<$ double, 3 $>$ \&mt\+\_\+density\+\_\+matrix\+\_\+\+\_\+)}]{\setlength{\rightskip}{0pt plus 5cm}template$<$int num\+\_\+mag\+\_\+dims, typename T $>$ void sirius\+::\+Density\+::reduce\+\_\+density\+\_\+matrix (
+\begin{DoxyParamCaption}
+\item[{{\bf Atom\+\_\+type} const \&}]{atom\+\_\+type\+\_\+\+\_\+, }
+\item[{int}]{ia\+\_\+\+\_\+, }
+\item[{{\bf mdarray}$<$ double\+\_\+complex, 4 $>$ const \&}]{zdens\+\_\+\+\_\+, }
+\item[{{\bf Gaunt\+\_\+coefficients}$<$ T $>$ const \&}]{gaunt\+\_\+coeffs\+\_\+\+\_\+, }
+\item[{{\bf mdarray}$<$ double, 3 $>$ \&}]{mt\+\_\+density\+\_\+matrix\+\_\+\+\_\+}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}, {\ttfamily [private]}}\label{classsirius_1_1_density_afb79baac042b44ac8513cad372eb8dc5}
+
+
+Reduce complex density matrix over magnetic quantum numbers. 
+
+The following operation is performed\+: \[ d_{\ell \lambda, \ell' \lambda', \ell_3 m_3}^{\alpha} = \sum_{mm'} D_{\ell \lambda m, \ell' \lambda' m'}^{\alpha} \langle Y_{\ell m} | R_{\ell_3 m_3} | Y_{\ell' m'} \rangle \] 
+
+Definition at line 258 of file density.\+h.
+
+\hypertarget{classsirius_1_1_density_a196bae7e30dffa1e83db9976ef8e0109}{}\index{sirius\+::\+Density@{sirius\+::\+Density}!add\+\_\+k\+\_\+point\+\_\+contribution\+\_\+dm@{add\+\_\+k\+\_\+point\+\_\+contribution\+\_\+dm}}
+\index{add\+\_\+k\+\_\+point\+\_\+contribution\+\_\+dm@{add\+\_\+k\+\_\+point\+\_\+contribution\+\_\+dm}!sirius\+::\+Density@{sirius\+::\+Density}}
+\subsubsection[{add\+\_\+k\+\_\+point\+\_\+contribution\+\_\+dm(\+K\+\_\+point $\ast$kp\+\_\+\+\_\+, mdarray$<$ double\+\_\+complex, 4 $>$ \&density\+\_\+matrix\+\_\+\+\_\+)}]{\setlength{\rightskip}{0pt plus 5cm}template$<$typename T $>$ void sirius\+::\+Density\+::add\+\_\+k\+\_\+point\+\_\+contribution\+\_\+dm (
+\begin{DoxyParamCaption}
+\item[{{\bf K\+\_\+point} $\ast$}]{kp\+\_\+\+\_\+, }
+\item[{{\bf mdarray}$<$ double\+\_\+complex, 4 $>$ \&}]{density\+\_\+matrix\+\_\+\+\_\+}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}, {\ttfamily [private]}}\label{classsirius_1_1_density_a196bae7e30dffa1e83db9976ef8e0109}
+
+
+Add k-\/point contribution to the auxiliary density matrix. 
+
+In case of full-\/potential L\+A\+P\+W complex density matrix has the following expression\+: \[ d_{\xi \sigma, \xi' \sigma'}^{\alpha} = \sum_{j{\bf k}} n_{j{\bf k}} S_{\xi}^{\sigma j {\bf k},\alpha*} S_{\xi'}^{\sigma' j {\bf k},\alpha} \]
+
+where $ S_{\xi}^{\sigma j {\bf k},\alpha} $ are the expansion coefficients of spinor wave functions inside muffin-\/tin spheres.
+
+In case of L\+D\+A+\+U the occupation matrix is also computed. It has the following expression\+: \[ n_{\ell,mm'}^{\sigma \sigma'} = \sum_{i {\bf k}}^{occ} \int_{0}^{R_{MT}} r^2 dr \Psi_{\ell m}^{i{\bf k}\sigma *}({\bf r}) \Psi_{\ell m'}^{i{\bf k}\sigma'}({\bf r}) \]
+
+In case of ultrasoft pseudopotential the following density matrix has to be computed for each atom\+: \[ d_{\xi \xi'}^{\alpha} = \langle \beta_{\xi}^{\alpha} | \hat N | \beta_{\xi'}^{\alpha} \rangle = \sum_{j {\bf k}} \langle \beta_{\xi}^{\alpha} | \Psi_{j{\bf k}} \rangle n_{j{\bf k}} \langle \Psi_{j{\bf k}} | \beta_{\xi'}^{\alpha} \rangle \] Here $ \hat N = \sum_{j{\bf k}} | \Psi_{j{\bf k}} \rangle n_{j{\bf k}} \langle \Psi_{j{\bf k}} | $ is the occupancy operator written in spectral representation. 
+
+Definition at line 3 of file density.\+h.
+
+\hypertarget{classsirius_1_1_density_a7494a6071dc9a5ace4d812abb3eedfdd}{}\index{sirius\+::\+Density@{sirius\+::\+Density}!add\+\_\+k\+\_\+point\+\_\+contribution\+\_\+rg@{add\+\_\+k\+\_\+point\+\_\+contribution\+\_\+rg}}
+\index{add\+\_\+k\+\_\+point\+\_\+contribution\+\_\+rg@{add\+\_\+k\+\_\+point\+\_\+contribution\+\_\+rg}!sirius\+::\+Density@{sirius\+::\+Density}}
+\subsubsection[{add\+\_\+k\+\_\+point\+\_\+contribution\+\_\+rg(\+K\+\_\+point $\ast$kp\+\_\+\+\_\+)}]{\setlength{\rightskip}{0pt plus 5cm}void sirius\+::\+Density\+::add\+\_\+k\+\_\+point\+\_\+contribution\+\_\+rg (
+\begin{DoxyParamCaption}
+\item[{{\bf K\+\_\+point} $\ast$}]{kp\+\_\+\+\_\+}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}, {\ttfamily [private]}}\label{classsirius_1_1_density_a7494a6071dc9a5ace4d812abb3eedfdd}
+
+
+Add k-\/point contribution to the density and magnetization defined on the regular F\+F\+T grid. 
+
+
+
+Definition at line 1 of file add\+\_\+k\+\_\+point\+\_\+contribution\+\_\+rg.\+hpp.
+
+\hypertarget{classsirius_1_1_density_a2310d34270eef4ea835a4e1ac642f1e1}{}\index{sirius\+::\+Density@{sirius\+::\+Density}!generate\+\_\+valence\+\_\+mt@{generate\+\_\+valence\+\_\+mt}}
+\index{generate\+\_\+valence\+\_\+mt@{generate\+\_\+valence\+\_\+mt}!sirius\+::\+Density@{sirius\+::\+Density}}
+\subsubsection[{generate\+\_\+valence\+\_\+mt(\+K\+\_\+point\+\_\+set \&ks)}]{\setlength{\rightskip}{0pt plus 5cm}void sirius\+::\+Density\+::generate\+\_\+valence\+\_\+mt (
+\begin{DoxyParamCaption}
+\item[{{\bf K\+\_\+point\+\_\+set} \&}]{ks}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}, {\ttfamily [private]}}\label{classsirius_1_1_density_a2310d34270eef4ea835a4e1ac642f1e1}
+
+
+Generate valence density in the muffin-\/tins. 
+
+
+
+Definition at line 1 of file generate\+\_\+valence\+\_\+mt.\+hpp.
+
+\hypertarget{classsirius_1_1_density_a4e9f97560b07fd662011b3f623025b26}{}\index{sirius\+::\+Density@{sirius\+::\+Density}!generate\+\_\+core\+\_\+charge\+\_\+density@{generate\+\_\+core\+\_\+charge\+\_\+density}}
+\index{generate\+\_\+core\+\_\+charge\+\_\+density@{generate\+\_\+core\+\_\+charge\+\_\+density}!sirius\+::\+Density@{sirius\+::\+Density}}
+\subsubsection[{generate\+\_\+core\+\_\+charge\+\_\+density()}]{\setlength{\rightskip}{0pt plus 5cm}void sirius\+::\+Density\+::generate\+\_\+core\+\_\+charge\+\_\+density (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}, {\ttfamily [private]}}\label{classsirius_1_1_density_a4e9f97560b07fd662011b3f623025b26}
+
+
+Generate charge density of core states. 
+
+
+
+Definition at line 334 of file density.\+h.
+
+\hypertarget{classsirius_1_1_density_acd0d1956e9bf3bfb28f62ae042a656fa}{}\index{sirius\+::\+Density@{sirius\+::\+Density}!set\+\_\+charge\+\_\+density\+\_\+ptr@{set\+\_\+charge\+\_\+density\+\_\+ptr}}
+\index{set\+\_\+charge\+\_\+density\+\_\+ptr@{set\+\_\+charge\+\_\+density\+\_\+ptr}!sirius\+::\+Density@{sirius\+::\+Density}}
+\subsubsection[{set\+\_\+charge\+\_\+density\+\_\+ptr(double $\ast$rhomt, double $\ast$rhorg)}]{\setlength{\rightskip}{0pt plus 5cm}void sirius\+::\+Density\+::set\+\_\+charge\+\_\+density\+\_\+ptr (
+\begin{DoxyParamCaption}
+\item[{double $\ast$}]{rhomt, }
+\item[{double $\ast$}]{rhorg}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}}\label{classsirius_1_1_density_acd0d1956e9bf3bfb28f62ae042a656fa}
+
+
+Set pointers to muffin-\/tin and interstitial charge density arrays. 
+
+
+
+Definition at line 472 of file density.\+h.
+
+\hypertarget{classsirius_1_1_density_aff03f6627c37979fbcfb24cdc6437fba}{}\index{sirius\+::\+Density@{sirius\+::\+Density}!set\+\_\+magnetization\+\_\+ptr@{set\+\_\+magnetization\+\_\+ptr}}
+\index{set\+\_\+magnetization\+\_\+ptr@{set\+\_\+magnetization\+\_\+ptr}!sirius\+::\+Density@{sirius\+::\+Density}}
+\subsubsection[{set\+\_\+magnetization\+\_\+ptr(double $\ast$magmt, double $\ast$magir)}]{\setlength{\rightskip}{0pt plus 5cm}void sirius\+::\+Density\+::set\+\_\+magnetization\+\_\+ptr (
+\begin{DoxyParamCaption}
+\item[{double $\ast$}]{magmt, }
+\item[{double $\ast$}]{magir}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}}\label{classsirius_1_1_density_aff03f6627c37979fbcfb24cdc6437fba}
+
+
+Set pointers to muffin-\/tin and interstitial magnetization arrays. 
+
+
+
+Definition at line 483 of file density.\+h.
+
+\hypertarget{classsirius_1_1_density_a2ffbfda23993b179d5994ef963db8602}{}\index{sirius\+::\+Density@{sirius\+::\+Density}!zero@{zero}}
+\index{zero@{zero}!sirius\+::\+Density@{sirius\+::\+Density}}
+\subsubsection[{zero()}]{\setlength{\rightskip}{0pt plus 5cm}void sirius\+::\+Density\+::zero (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}}\label{classsirius_1_1_density_a2ffbfda23993b179d5994ef963db8602}
+
+
+Zero density and magnetization. 
+
+
+
+Definition at line 526 of file density.\+h.
+
+\hypertarget{classsirius_1_1_density_a34e844177d1e5a116dc27e5886ca1f58}{}\index{sirius\+::\+Density@{sirius\+::\+Density}!core\+\_\+leakage@{core\+\_\+leakage}}
+\index{core\+\_\+leakage@{core\+\_\+leakage}!sirius\+::\+Density@{sirius\+::\+Density}}
+\subsubsection[{core\+\_\+leakage()}]{\setlength{\rightskip}{0pt plus 5cm}double sirius\+::\+Density\+::core\+\_\+leakage (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}}\label{classsirius_1_1_density_a34e844177d1e5a116dc27e5886ca1f58}
+
+
+Find the total leakage of the core states out of the muffin-\/tins. 
+
+
+
+Definition at line 535 of file density.\+h.
+
+\hypertarget{classsirius_1_1_density_a83815f2fca3c06cfad1fc1f3e1a3db73}{}\index{sirius\+::\+Density@{sirius\+::\+Density}!core\+\_\+leakage@{core\+\_\+leakage}}
+\index{core\+\_\+leakage@{core\+\_\+leakage}!sirius\+::\+Density@{sirius\+::\+Density}}
+\subsubsection[{core\+\_\+leakage(int ic)}]{\setlength{\rightskip}{0pt plus 5cm}double sirius\+::\+Density\+::core\+\_\+leakage (
+\begin{DoxyParamCaption}
+\item[{int}]{ic}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}}\label{classsirius_1_1_density_a83815f2fca3c06cfad1fc1f3e1a3db73}
+
+
+Return core leakage for a specific atom symmetry class. 
+
+
+
+Definition at line 545 of file density.\+h.
+
+\hypertarget{classsirius_1_1_density_abea8fcd04749747c5abba5185420f413}{}\index{sirius\+::\+Density@{sirius\+::\+Density}!initial\+\_\+density@{initial\+\_\+density}}
+\index{initial\+\_\+density@{initial\+\_\+density}!sirius\+::\+Density@{sirius\+::\+Density}}
+\subsubsection[{initial\+\_\+density()}]{\setlength{\rightskip}{0pt plus 5cm}void sirius\+::\+Density\+::initial\+\_\+density (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}}\label{classsirius_1_1_density_abea8fcd04749747c5abba5185420f413}
+
+
+Generate initial charge density and magnetization. 
+
+
+
+Definition at line 1 of file initial\+\_\+density.\+hpp.
+
+\hypertarget{classsirius_1_1_density_a08873d1e06c8e075733bcea760e83eef}{}\index{sirius\+::\+Density@{sirius\+::\+Density}!check\+\_\+num\+\_\+electrons@{check\+\_\+num\+\_\+electrons}}
+\index{check\+\_\+num\+\_\+electrons@{check\+\_\+num\+\_\+electrons}!sirius\+::\+Density@{sirius\+::\+Density}}
+\subsubsection[{check\+\_\+num\+\_\+electrons()}]{\setlength{\rightskip}{0pt plus 5cm}void sirius\+::\+Density\+::check\+\_\+num\+\_\+electrons (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}}\label{classsirius_1_1_density_a08873d1e06c8e075733bcea760e83eef}
+
+
+Check total density for the correct number of electrons. 
+
+
+
+Definition at line 558 of file density.\+h.
+
+\hypertarget{classsirius_1_1_density_a60a7e07923f2ddd22d64f49b787ceb40}{}\index{sirius\+::\+Density@{sirius\+::\+Density}!generate@{generate}}
+\index{generate@{generate}!sirius\+::\+Density@{sirius\+::\+Density}}
+\subsubsection[{generate(\+K\+\_\+point\+\_\+set \&ks\+\_\+\+\_\+)}]{\setlength{\rightskip}{0pt plus 5cm}void sirius\+::\+Density\+::generate (
+\begin{DoxyParamCaption}
+\item[{{\bf K\+\_\+point\+\_\+set} \&}]{ks\+\_\+\+\_\+}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}}\label{classsirius_1_1_density_a60a7e07923f2ddd22d64f49b787ceb40}
+
+
+Generate full charge density (valence + core) and magnetization from the wave functions. 
+
+This function calls \hyperlink{classsirius_1_1_density_aba34655a6e88da666ae30c6c464e5034}{generate\+\_\+valence()} and then in case of full-\/potential L\+A\+P\+W method adds a core density to get the full charge density of the system. 
+
+Definition at line 589 of file density.\+h.
+
+\hypertarget{classsirius_1_1_density_aba34655a6e88da666ae30c6c464e5034}{}\index{sirius\+::\+Density@{sirius\+::\+Density}!generate\+\_\+valence@{generate\+\_\+valence}}
+\index{generate\+\_\+valence@{generate\+\_\+valence}!sirius\+::\+Density@{sirius\+::\+Density}}
+\subsubsection[{generate\+\_\+valence(\+K\+\_\+point\+\_\+set \&ks\+\_\+\+\_\+)}]{\setlength{\rightskip}{0pt plus 5cm}void sirius\+::\+Density\+::generate\+\_\+valence (
+\begin{DoxyParamCaption}
+\item[{{\bf K\+\_\+point\+\_\+set} \&}]{ks\+\_\+\+\_\+}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}}\label{classsirius_1_1_density_aba34655a6e88da666ae30c6c464e5034}
+
+
+Generate valence charge density and magnetization from the wave functions. 
+
+The interstitial density is generated on the coarse F\+F\+T grid and then transformed to the P\+W domain. After symmetrization and mixing and before the generation of the X\+C potential density is transformted to the real-\/space domain and checked for the number of electrons. 
+
+Definition at line 1 of file generate\+\_\+valence.\+hpp.
+
+\hypertarget{classsirius_1_1_density_ab24421e0c72f7eb03c9ccd4006673e9f}{}\index{sirius\+::\+Density@{sirius\+::\+Density}!augment@{augment}}
+\index{augment@{augment}!sirius\+::\+Density@{sirius\+::\+Density}}
+\subsubsection[{augment(\+K\+\_\+point\+\_\+set \&ks\+\_\+\+\_\+)}]{\setlength{\rightskip}{0pt plus 5cm}void sirius\+::\+Density\+::augment (
+\begin{DoxyParamCaption}
+\item[{{\bf K\+\_\+point\+\_\+set} \&}]{ks\+\_\+\+\_\+}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}}\label{classsirius_1_1_density_ab24421e0c72f7eb03c9ccd4006673e9f}
+
+
+Add augmentation charge Q(r). 
+
+Restore valence density by adding the Q-\/operator constribution. The following term is added to the valence density, generated by the pseudo wave-\/functions\+: \[ \tilde \rho({\bf G}) = \sum_{\alpha} \sum_{\xi \xi'} d_{\xi \xi'}^{\alpha} Q_{\xi' \xi}^{\alpha}({\bf G}) \] Plane-\/wave coefficients of the Q-\/operator for a given atom $ \alpha $ can be obtained from the corresponding coefficients of the Q-\/operator for a given atom {\itshape type} A\+: \[ Q_{\xi' \xi}^{\alpha(A)}({\bf G}) = e^{-i{\bf G}\tau_{\alpha(A)}} Q_{\xi' \xi}^{A}({\bf G}) \] We use this property to split the sum over atoms into sum over atom types and inner sum over atoms of the same type\+: \[ \tilde \rho({\bf G}) = \sum_{A} \sum_{\xi \xi'} Q_{\xi' \xi}^{A}({\bf G}) \sum_{\alpha(A)} d_{\xi \xi'}^{\alpha(A)} e^{-i{\bf G}\tau_{\alpha(A)}} = \sum_{A} \sum_{\xi \xi'} Q_{\xi' \xi}^{A}({\bf G}) d_{\xi \xi'}^{A}({\bf G}) \] where \[ d_{\xi \xi'}^{A}({\bf G}) = \sum_{\alpha(A)} d_{\xi \xi'}^{\alpha(A)} e^{-i{\bf G}\tau_{\alpha(A)}} \] 
+
+Definition at line 642 of file density.\+h.
+
+\hypertarget{classsirius_1_1_density_aba49bccd299f66e8673c5930c46f2972}{}\index{sirius\+::\+Density@{sirius\+::\+Density}!check\+\_\+density\+\_\+continuity\+\_\+at\+\_\+mt@{check\+\_\+density\+\_\+continuity\+\_\+at\+\_\+mt}}
+\index{check\+\_\+density\+\_\+continuity\+\_\+at\+\_\+mt@{check\+\_\+density\+\_\+continuity\+\_\+at\+\_\+mt}!sirius\+::\+Density@{sirius\+::\+Density}}
+\subsubsection[{check\+\_\+density\+\_\+continuity\+\_\+at\+\_\+mt()}]{\setlength{\rightskip}{0pt plus 5cm}void sirius\+::\+Density\+::check\+\_\+density\+\_\+continuity\+\_\+at\+\_\+mt (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+)}\label{classsirius_1_1_density_aba49bccd299f66e8673c5930c46f2972}
+
+
+Check density at M\+T boundary. 
+
+\hypertarget{classsirius_1_1_density_a9ee8dd1f86a1e710556b80bed374f928}{}\index{sirius\+::\+Density@{sirius\+::\+Density}!generate\+\_\+rho\+\_\+radial\+\_\+integrals@{generate\+\_\+rho\+\_\+radial\+\_\+integrals}}
+\index{generate\+\_\+rho\+\_\+radial\+\_\+integrals@{generate\+\_\+rho\+\_\+radial\+\_\+integrals}!sirius\+::\+Density@{sirius\+::\+Density}}
+\subsubsection[{generate\+\_\+rho\+\_\+radial\+\_\+integrals(int type\+\_\+\+\_\+)}]{\setlength{\rightskip}{0pt plus 5cm}mdarray$<$ double, 2 $>$ sirius\+::\+Density\+::generate\+\_\+rho\+\_\+radial\+\_\+integrals (
+\begin{DoxyParamCaption}
+\item[{int}]{type\+\_\+\+\_\+}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}}\label{classsirius_1_1_density_a9ee8dd1f86a1e710556b80bed374f928}
+type = 0\+: full-\/potential radial integrals ~\newline
+type = 1\+: pseudopotential valence density integrals ~\newline
+type = 2\+: pseudopotential code density integrals 
+
+Definition at line 5 of file generate\+\_\+rho\+\_\+radial\+\_\+integrals.\+hpp.
+
+\hypertarget{classsirius_1_1_density_af7904609f7a2d6f197ad1cb8cdef119a}{}\index{sirius\+::\+Density@{sirius\+::\+Density}!generate\+\_\+paw\+\_\+loc\+\_\+density@{generate\+\_\+paw\+\_\+loc\+\_\+density}}
+\index{generate\+\_\+paw\+\_\+loc\+\_\+density@{generate\+\_\+paw\+\_\+loc\+\_\+density}!sirius\+::\+Density@{sirius\+::\+Density}}
+\subsubsection[{generate\+\_\+paw\+\_\+loc\+\_\+density()}]{\setlength{\rightskip}{0pt plus 5cm}void sirius\+::\+Density\+::generate\+\_\+paw\+\_\+loc\+\_\+density (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}}\label{classsirius_1_1_density_af7904609f7a2d6f197ad1cb8cdef119a}
+
+
+generate n\+\_\+1 and \{n\}\+\_\+1 in lm components 
+
+
+
+Definition at line 204 of file paw\+\_\+density.\+hpp.
+
+
+
+\subsection{Member Data Documentation}
+\hypertarget{classsirius_1_1_density_aae98b9da0334e70ab463a59ed0afe75d}{}\index{sirius\+::\+Density@{sirius\+::\+Density}!density\+\_\+matrix\+\_\+@{density\+\_\+matrix\+\_\+}}
+\index{density\+\_\+matrix\+\_\+@{density\+\_\+matrix\+\_\+}!sirius\+::\+Density@{sirius\+::\+Density}}
+\subsubsection[{density\+\_\+matrix\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}{\bf mdarray}$<$double\+\_\+complex, 4$>$ sirius\+::\+Density\+::density\+\_\+matrix\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classsirius_1_1_density_aae98b9da0334e70ab463a59ed0afe75d}
+
+
+\hyperlink{classsirius_1_1_density}{Density} matrix of the system. 
+
+In case of full-\/potential, matrix is stored for local fraction of atoms. In case of pseudo-\/potential, full matrix for all atoms is stored. 
+
+Definition at line 146 of file density.\+h.
+
+\hypertarget{classsirius_1_1_density_abc158fb9460608eb1d4c07775e0726f0}{}\index{sirius\+::\+Density@{sirius\+::\+Density}!rho\+\_\+@{rho\+\_\+}}
+\index{rho\+\_\+@{rho\+\_\+}!sirius\+::\+Density@{sirius\+::\+Density}}
+\subsubsection[{rho\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}{\bf Periodic\+\_\+function}$<$double$>$$\ast$ sirius\+::\+Density\+::rho\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classsirius_1_1_density_abc158fb9460608eb1d4c07775e0726f0}
+
+
+Pointer to charge density. 
+
+In the case of full-\/potential calculation this is the full (valence + core) electron charge density. In the case of pseudopotential this is the valence charge density. 
+
+Definition at line 167 of file density.\+h.
+
+\hypertarget{classsirius_1_1_density_af4aa8524e5c20a5dcac6f178daa368aa}{}\index{sirius\+::\+Density@{sirius\+::\+Density}!rho\+\_\+mag\+\_\+coarse\+\_\+@{rho\+\_\+mag\+\_\+coarse\+\_\+}}
+\index{rho\+\_\+mag\+\_\+coarse\+\_\+@{rho\+\_\+mag\+\_\+coarse\+\_\+}!sirius\+::\+Density@{sirius\+::\+Density}}
+\subsubsection[{rho\+\_\+mag\+\_\+coarse\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}std\+::array$<$std\+::unique\+\_\+ptr$<${\bf experimental\+::\+Smooth\+\_\+periodic\+\_\+function}$<$double$>$ $>$, 4$>$ sirius\+::\+Density\+::rho\+\_\+mag\+\_\+coarse\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classsirius_1_1_density_af4aa8524e5c20a5dcac6f178daa368aa}
+
+
+\hyperlink{classsirius_1_1_density}{Density} and magnetization on the coarse F\+F\+T mesh. 
+
+Coarse F\+F\+T grid is enough to generate density and magnetization from the wave-\/functions. The components of the {\ttfamily rho\+\_\+mag\+\_\+coarse} vector have the following order\+: $ \{\rho({\bf r}), m_z({\bf r}), m_x({\bf r}), m_y({\bf r}) \} $. 
+
+Definition at line 173 of file density.\+h.
+
+\hypertarget{classsirius_1_1_density_af12e5c3f7ce7767fa506e0bbd169ade3}{}\index{sirius\+::\+Density@{sirius\+::\+Density}!nullptr@{nullptr}}
+\index{nullptr@{nullptr}!sirius\+::\+Density@{sirius\+::\+Density}}
+\subsubsection[{nullptr}]{\setlength{\rightskip}{0pt plus 5cm}{\bf Periodic\+\_\+function}$<$double$>$$\ast$ rho\+\_\+pseudo\+\_\+core\+\_\+ sirius\+::\+Density\+::nullptr\hspace{0.3cm}{\ttfamily [private]}}\label{classsirius_1_1_density_af12e5c3f7ce7767fa506e0bbd169ade3}
+
+
+Pointer to pseudo core charge density. 
+
+In the case of pseudopotential we need to know the non-\/linear core correction to the exchange-\/correlation energy which is introduced trough the pseudo core density\+: $ E_{xc}[\rho_{val} + \rho_{core}] $. The \textquotesingle{}pseudo\textquotesingle{} reflects the fact that this density integrated does not reproduce the total number of core elctrons. 
+
+Definition at line 180 of file density.\+h.
+
+\hypertarget{classsirius_1_1_density_acee7a0147e974ac60cedc82d903f70d4}{}\index{sirius\+::\+Density@{sirius\+::\+Density}!gaunt\+\_\+coefs\+\_\+@{gaunt\+\_\+coefs\+\_\+}}
+\index{gaunt\+\_\+coefs\+\_\+@{gaunt\+\_\+coefs\+\_\+}!sirius\+::\+Density@{sirius\+::\+Density}}
+\subsubsection[{gaunt\+\_\+coefs\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}std\+::unique\+\_\+ptr$<${\bf Gaunt\+\_\+coefficients}$<$double\+\_\+complex$>$ $>$ sirius\+::\+Density\+::gaunt\+\_\+coefs\+\_\+ \{{\bf nullptr}\}\hspace{0.3cm}{\ttfamily [private]}}\label{classsirius_1_1_density_acee7a0147e974ac60cedc82d903f70d4}
+
+
+Non-\/zero Gaunt coefficients. 
+
+
+
+Definition at line 185 of file density.\+h.
+
+\hypertarget{classsirius_1_1_density_ade06e0d3019316f0cf544a5bc2303776}{}\index{sirius\+::\+Density@{sirius\+::\+Density}!l\+\_\+by\+\_\+lm\+\_\+@{l\+\_\+by\+\_\+lm\+\_\+}}
+\index{l\+\_\+by\+\_\+lm\+\_\+@{l\+\_\+by\+\_\+lm\+\_\+}!sirius\+::\+Density@{sirius\+::\+Density}}
+\subsubsection[{l\+\_\+by\+\_\+lm\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}std\+::vector$<$int$>$ sirius\+::\+Density\+::l\+\_\+by\+\_\+lm\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classsirius_1_1_density_ade06e0d3019316f0cf544a5bc2303776}
+
+
+Fast mapping between composite lm index and corresponding orbital quantum number. 
+
+
+
+Definition at line 188 of file density.\+h.
+
+
+
+The documentation for this class was generated from the following files\+:\begin{DoxyCompactItemize}
+\item 
+\hyperlink{density_8h}{density.\+h}\item 
+add\+\_\+k\+\_\+point\+\_\+contribution\+\_\+dm.\+hpp\item 
+add\+\_\+k\+\_\+point\+\_\+contribution\+\_\+rg.\+hpp\item 
+generate\+\_\+rho\+\_\+aug.\+hpp\item 
+generate\+\_\+rho\+\_\+radial\+\_\+integrals.\+hpp\item 
+generate\+\_\+valence.\+hpp\item 
+generate\+\_\+valence\+\_\+mt.\+hpp\item 
+initial\+\_\+density.\+hpp\item 
+paw\+\_\+density.\+hpp\item 
+symmetrize\+\_\+density\+\_\+matrix.\+hpp\end{DoxyCompactItemize}

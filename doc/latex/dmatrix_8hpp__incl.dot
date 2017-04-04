@@ -1,0 +1,47 @@
+digraph "dmatrix.hpp"
+{
+ // INTERACTIVE_SVG=YES
+  edge [fontname="Helvetica",fontsize="10",labelfontname="Helvetica",labelfontsize="10"];
+  node [fontname="Helvetica",fontsize="10",shape=record];
+  Node1 [label="dmatrix.hpp",height=0.2,width=0.4,color="black", fillcolor="grey75", style="filled", fontcolor="black"];
+  Node1 -> Node2 [color="midnightblue",fontsize="10",style="solid"];
+  Node2 [label="blacs_grid.hpp",height=0.2,width=0.4,color="black", fillcolor="white", style="filled",URL="$blacs__grid_8hpp.html",tooltip="Contains declaration and implementation of BLACS_grid class. "];
+  Node2 -> Node3 [color="midnightblue",fontsize="10",style="solid"];
+  Node3 [label="memory",height=0.2,width=0.4,color="grey75", fillcolor="white", style="filled"];
+  Node2 -> Node4 [color="midnightblue",fontsize="10",style="solid"];
+  Node4 [label="mpi_grid.hpp",height=0.2,width=0.4,color="black", fillcolor="white", style="filled",URL="$mpi__grid_8hpp.html",tooltip="Contains declaration and implementation of MPI_grid class. "];
+  Node4 -> Node5 [color="midnightblue",fontsize="10",style="solid"];
+  Node5 [label="sddk_internal.hpp",height=0.2,width=0.4,color="black", fillcolor="white", style="filled",URL="$sddk__internal_8hpp_source.html"];
+  Node5 -> Node6 [color="midnightblue",fontsize="10",style="solid"];
+  Node6 [label="omp.h",height=0.2,width=0.4,color="grey75", fillcolor="white", style="filled"];
+  Node5 -> Node7 [color="midnightblue",fontsize="10",style="solid"];
+  Node7 [label="string",height=0.2,width=0.4,color="grey75", fillcolor="white", style="filled"];
+  Node5 -> Node8 [color="midnightblue",fontsize="10",style="solid"];
+  Node8 [label="sstream",height=0.2,width=0.4,color="grey75", fillcolor="white", style="filled"];
+  Node5 -> Node9 [color="midnightblue",fontsize="10",style="solid"];
+  Node9 [label="chrono",height=0.2,width=0.4,color="grey75", fillcolor="white", style="filled"];
+  Node5 -> Node10 [color="midnightblue",fontsize="10",style="solid"];
+  Node10 [label="map",height=0.2,width=0.4,color="grey75", fillcolor="white", style="filled"];
+  Node5 -> Node11 [color="midnightblue",fontsize="10",style="solid"];
+  Node11 [label="vector",height=0.2,width=0.4,color="grey75", fillcolor="white", style="filled"];
+  Node5 -> Node3 [color="midnightblue",fontsize="10",style="solid"];
+  Node5 -> Node12 [color="midnightblue",fontsize="10",style="solid"];
+  Node12 [label="complex",height=0.2,width=0.4,color="grey75", fillcolor="white", style="filled"];
+  Node5 -> Node13 [color="midnightblue",fontsize="10",style="solid"];
+  Node13 [label="communicator.hpp",height=0.2,width=0.4,color="black", fillcolor="white", style="filled",URL="$communicator_8hpp.html",tooltip="Contains declaration and implementation of Communicator class. "];
+  Node13 -> Node14 [color="midnightblue",fontsize="10",style="solid"];
+  Node14 [label="mpi.h",height=0.2,width=0.4,color="grey75", fillcolor="white", style="filled"];
+  Node13 -> Node15 [color="midnightblue",fontsize="10",style="solid"];
+  Node15 [label="cassert",height=0.2,width=0.4,color="grey75", fillcolor="white", style="filled"];
+  Node13 -> Node11 [color="midnightblue",fontsize="10",style="solid"];
+  Node13 -> Node12 [color="midnightblue",fontsize="10",style="solid"];
+  Node4 -> Node13 [color="midnightblue",fontsize="10",style="solid"];
+  Node2 -> Node16 [color="midnightblue",fontsize="10",style="solid"];
+  Node16 [label="linalg_base.hpp",height=0.2,width=0.4,color="black", fillcolor="white", style="filled",URL="$linalg__base_8hpp.html",tooltip="Basic interface to linear algebra functions. "];
+  Node16 -> Node17 [color="midnightblue",fontsize="10",style="solid"];
+  Node17 [label="blas_lapack.h",height=0.2,width=0.4,color="black", fillcolor="white", style="filled",URL="$blas__lapack_8h_source.html"];
+  Node17 -> Node12 [color="midnightblue",fontsize="10",style="solid"];
+  Node16 -> Node18 [color="midnightblue",fontsize="10",style="solid"];
+  Node18 [label="scalapack.h",height=0.2,width=0.4,color="black", fillcolor="white", style="filled",URL="$scalapack_8h_source.html"];
+  Node18 -> Node17 [color="midnightblue",fontsize="10",style="solid"];
+}

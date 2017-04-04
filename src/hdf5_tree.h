@@ -26,7 +26,7 @@
 #define __HDF5_TREE_H__
 
 #include <hdf5.h>
-#include "mdarray.h"
+#include "mdarray.hpp"
 #include "utils.h"
 
 namespace sirius

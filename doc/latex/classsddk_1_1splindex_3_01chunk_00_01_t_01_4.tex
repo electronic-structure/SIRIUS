@@ -1,0 +1,103 @@
+\hypertarget{classsddk_1_1splindex_3_01chunk_00_01_t_01_4}{}\section{sddk\+:\+:splindex$<$ chunk, T $>$ Class Template Reference}
+\label{classsddk_1_1splindex_3_01chunk_00_01_t_01_4}\index{sddk\+::splindex$<$ chunk, T $>$@{sddk\+::splindex$<$ chunk, T $>$}}
+
+
+Specialization for the block distribution.  
+
+
+
+
+Inheritance diagram for sddk\+:\+:splindex$<$ chunk, T $>$\+:
+% FIG 0
+
+
+Collaboration diagram for sddk\+:\+:splindex$<$ chunk, T $>$\+:
+% FIG 1
+\subsection*{Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+\hyperlink{classsddk_1_1splindex_3_01chunk_00_01_t_01_4_a0199e0d128437a900c9fb86b6fab400c}{splindex} ()
+\begin{DoxyCompactList}\small\item\em Default constructor. \end{DoxyCompactList}\item 
+\hyperlink{classsddk_1_1splindex_3_01chunk_00_01_t_01_4_a89062e8d9e1659f2a33e1ea54b435ebc}{splindex} (T global\+\_\+index\+\_\+size\+\_\+\+\_\+, int num\+\_\+ranks\+\_\+\+\_\+, int rank\+\_\+\+\_\+, std\+::vector$<$ T $>$ const \&counts\+\_\+\+\_\+)
+\begin{DoxyCompactList}\small\item\em Constructor with specific partitioning. \end{DoxyCompactList}\item 
+\hypertarget{classsddk_1_1splindex_3_01chunk_00_01_t_01_4_aafde2f4b443aa26772c68ffaf3ff62ad}{}T {\bfseries local\+\_\+size} (int rank\+\_\+\+\_\+) const \label{classsddk_1_1splindex_3_01chunk_00_01_t_01_4_aafde2f4b443aa26772c68ffaf3ff62ad}
+
+\item 
+\hypertarget{classsddk_1_1splindex_3_01chunk_00_01_t_01_4_a7f6ffde0467cc3b7c8a46ef01b495594}{}T {\bfseries local\+\_\+size} () const \label{classsddk_1_1splindex_3_01chunk_00_01_t_01_4_a7f6ffde0467cc3b7c8a46ef01b495594}
+
+\item 
+\hypertarget{classsddk_1_1splindex_3_01chunk_00_01_t_01_4_a575eabc24f808d9ed19e5b50b4ba99b8}{}int {\bfseries local\+\_\+rank} (T idxglob\+\_\+\+\_\+) const \label{classsddk_1_1splindex_3_01chunk_00_01_t_01_4_a575eabc24f808d9ed19e5b50b4ba99b8}
+
+\item 
+\hypertarget{classsddk_1_1splindex_3_01chunk_00_01_t_01_4_a1c5b5d4109c526a89ab4c7236a7c710c}{}T {\bfseries local\+\_\+index} (T idxglob\+\_\+\+\_\+) const \label{classsddk_1_1splindex_3_01chunk_00_01_t_01_4_a1c5b5d4109c526a89ab4c7236a7c710c}
+
+\item 
+\hypertarget{classsddk_1_1splindex_3_01chunk_00_01_t_01_4_a1e15214217408c49d4083d37a98ac6ca}{}T {\bfseries global\+\_\+index} (T idxloc\+\_\+\+\_\+, int rank\+\_\+\+\_\+) const \label{classsddk_1_1splindex_3_01chunk_00_01_t_01_4_a1e15214217408c49d4083d37a98ac6ca}
+
+\item 
+\hypertarget{classsddk_1_1splindex_3_01chunk_00_01_t_01_4_a1ba3bc9a450c68925cbe1606c0e65965}{}T {\bfseries operator\mbox{[}$\,$\mbox{]}} (T idxloc\+\_\+\+\_\+) const \label{classsddk_1_1splindex_3_01chunk_00_01_t_01_4_a1ba3bc9a450c68925cbe1606c0e65965}
+
+\item 
+\hypertarget{classsddk_1_1splindex_3_01chunk_00_01_t_01_4_ae344d1b55806d75cfb4903e856d6e80d}{}T {\bfseries global\+\_\+offset} () const \label{classsddk_1_1splindex_3_01chunk_00_01_t_01_4_ae344d1b55806d75cfb4903e856d6e80d}
+
+\end{DoxyCompactItemize}
+\subsection*{Private Attributes}
+\begin{DoxyCompactItemize}
+\item 
+\hypertarget{classsddk_1_1splindex_3_01chunk_00_01_t_01_4_ada647af285e1e02296d30832410cff6c}{}std\+::vector$<$ std\+::vector$<$ T $>$ $>$ {\bfseries global\+\_\+index\+\_\+}\label{classsddk_1_1splindex_3_01chunk_00_01_t_01_4_ada647af285e1e02296d30832410cff6c}
+
+\item 
+\hypertarget{classsddk_1_1splindex_3_01chunk_00_01_t_01_4_a2efeb39b5f42bc7839d170d308d04d14}{}std\+::vector$<$ typename \hyperlink{classsddk_1_1splindex__base}{splindex\+\_\+base}$<$ T $>$\+::location\+\_\+t $>$ {\bfseries locations\+\_\+}\label{classsddk_1_1splindex_3_01chunk_00_01_t_01_4_a2efeb39b5f42bc7839d170d308d04d14}
+
+\end{DoxyCompactItemize}
+\subsection*{Additional Inherited Members}
+
+
+\subsection{Detailed Description}
+\subsubsection*{template$<$typename T$>$class sddk\+::splindex$<$ chunk, T $>$}
+
+Specialization for the block distribution. 
+
+Definition at line 352 of file splindex.\+hpp.
+
+
+
+\subsection{Constructor \& Destructor Documentation}
+\hypertarget{classsddk_1_1splindex_3_01chunk_00_01_t_01_4_a0199e0d128437a900c9fb86b6fab400c}{}\index{sddk\+::splindex$<$ chunk, T $>$@{sddk\+::splindex$<$ chunk, T $>$}!splindex@{splindex}}
+\index{splindex@{splindex}!sddk\+::splindex$<$ chunk, T $>$@{sddk\+::splindex$<$ chunk, T $>$}}
+\subsubsection[{splindex()}]{\setlength{\rightskip}{0pt plus 5cm}template$<$typename T $>$ {\bf sddk\+::splindex}$<$ chunk, T $>$\+::{\bf splindex} (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}}\label{classsddk_1_1splindex_3_01chunk_00_01_t_01_4_a0199e0d128437a900c9fb86b6fab400c}
+
+
+Default constructor. 
+
+
+
+Definition at line 360 of file splindex.\+hpp.
+
+\hypertarget{classsddk_1_1splindex_3_01chunk_00_01_t_01_4_a89062e8d9e1659f2a33e1ea54b435ebc}{}\index{sddk\+::splindex$<$ chunk, T $>$@{sddk\+::splindex$<$ chunk, T $>$}!splindex@{splindex}}
+\index{splindex@{splindex}!sddk\+::splindex$<$ chunk, T $>$@{sddk\+::splindex$<$ chunk, T $>$}}
+\subsubsection[{splindex(\+T global\+\_\+index\+\_\+size\+\_\+\+\_\+, int num\+\_\+ranks\+\_\+\+\_\+, int rank\+\_\+\+\_\+, std\+::vector$<$ T $>$ const \&counts\+\_\+\+\_\+)}]{\setlength{\rightskip}{0pt plus 5cm}template$<$typename T $>$ {\bf sddk\+::splindex}$<$ chunk, T $>$\+::{\bf splindex} (
+\begin{DoxyParamCaption}
+\item[{T}]{global\+\_\+index\+\_\+size\+\_\+\+\_\+, }
+\item[{int}]{num\+\_\+ranks\+\_\+\+\_\+, }
+\item[{int}]{rank\+\_\+\+\_\+, }
+\item[{std\+::vector$<$ T $>$ const \&}]{counts\+\_\+\+\_\+}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}}\label{classsddk_1_1splindex_3_01chunk_00_01_t_01_4_a89062e8d9e1659f2a33e1ea54b435ebc}
+
+
+Constructor with specific partitioning. 
+
+
+
+Definition at line 365 of file splindex.\+hpp.
+
+
+
+The documentation for this class was generated from the following file\+:\begin{DoxyCompactItemize}
+\item 
+\hyperlink{splindex_8hpp}{splindex.\+hpp}\end{DoxyCompactItemize}

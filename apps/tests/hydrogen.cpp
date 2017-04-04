@@ -64,7 +64,7 @@ int main(int argn, char** argv)
 
     std::vector<double> err(levels.size());
     
-    runtime::Timer t("all_states");
+    sddk::timer t("all_states");
     #pragma omp parallel for
     for (int j = 0; j < (int)levels.size(); j++)
     {

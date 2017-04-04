@@ -27,8 +27,8 @@
 
 #include <cstdarg>
 #include "hdf5_tree.h"
-#include "mdarray.h"
-#include "communicator.h"
+#include "mdarray.hpp"
+#include "communicator.hpp"
 
 namespace sirius
 {

@@ -1,0 +1,72 @@
+\hypertarget{classsirius_1_1sbessel__approx}{}\section{sirius\+:\+:sbessel\+\_\+approx Class Reference}
+\label{classsirius_1_1sbessel__approx}\index{sirius\+::sbessel\+\_\+approx@{sirius\+::sbessel\+\_\+approx}}
+
+
+Collaboration diagram for sirius\+:\+:sbessel\+\_\+approx\+:
+% FIG 0
+\subsection*{Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+\hypertarget{classsirius_1_1sbessel__approx_af763fcff957f25b77fc6e202e1757891}{}{\bfseries sbessel\+\_\+approx} (\hyperlink{classsirius_1_1_unit__cell}{Unit\+\_\+cell} const \&unit\+\_\+cell\+\_\+\+\_\+, int lmax\+\_\+\+\_\+, double const qmin\+\_\+\+\_\+, double const qmax\+\_\+\+\_\+, double const eps\+\_\+\+\_\+)\label{classsirius_1_1sbessel__approx_af763fcff957f25b77fc6e202e1757891}
+
+\item 
+\hypertarget{classsirius_1_1sbessel__approx_ac702d5bbe0fc44cc158fe3f7fb9efce5}{}void {\bfseries approximate} (std\+::vector$<$ double $>$ const \&q\+\_\+\+\_\+)\label{classsirius_1_1sbessel__approx_ac702d5bbe0fc44cc158fe3f7fb9efce5}
+
+\item 
+\hypertarget{classsirius_1_1sbessel__approx_a8fa1777942e65a4cfa9f716d1a16747c}{}double {\bfseries qnu} (int const iq, int const l, int const iat)\label{classsirius_1_1sbessel__approx_a8fa1777942e65a4cfa9f716d1a16747c}
+
+\item 
+\hypertarget{classsirius_1_1sbessel__approx_a4173b4b424f5ff95b738cdddc25f171b}{}int {\bfseries nqnu} (int const l, int const iat)\label{classsirius_1_1sbessel__approx_a4173b4b424f5ff95b738cdddc25f171b}
+
+\item 
+\hypertarget{classsirius_1_1sbessel__approx_a5920295fb1569f18cb9bbc20bbb79035}{}int {\bfseries nqnu\+\_\+max} ()\label{classsirius_1_1sbessel__approx_a5920295fb1569f18cb9bbc20bbb79035}
+
+\item 
+\hypertarget{classsirius_1_1sbessel__approx_abb1cf2a03f179e11d5a2bd9be277575a}{}double {\bfseries coeff} (int const iq, int const j, int const l, int const iat)\label{classsirius_1_1sbessel__approx_abb1cf2a03f179e11d5a2bd9be277575a}
+
+\item 
+\hypertarget{classsirius_1_1sbessel__approx_a782847fbb44cd5dbc282f74420713e83}{}std\+::vector$<$ double $>$ {\bfseries build\+\_\+approx\+\_\+freq} (double const qmin\+\_\+\+\_\+, double const qmax\+\_\+\+\_\+, int const l\+\_\+\+\_\+, double const R\+\_\+\+\_\+, double const eps\+\_\+\+\_\+)\label{classsirius_1_1sbessel__approx_a782847fbb44cd5dbc282f74420713e83}
+
+\end{DoxyCompactItemize}
+\subsection*{Static Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+\hypertarget{classsirius_1_1sbessel__approx_a5f0a96dcaab8607b8a2ee343480e4c55}{}static double {\bfseries overlap} (double nu1\+\_\+\+\_\+, double nu2\+\_\+\+\_\+, int l\+\_\+\+\_\+, double R\+\_\+\+\_\+)\label{classsirius_1_1sbessel__approx_a5f0a96dcaab8607b8a2ee343480e4c55}
+
+\end{DoxyCompactItemize}
+\subsection*{Static Private Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+\hypertarget{classsirius_1_1sbessel__approx_a1b64770f4476bc377ecb692a5173d567}{}static double {\bfseries sbessel\+\_\+l2norm} (double nu, int l, double R)\label{classsirius_1_1sbessel__approx_a1b64770f4476bc377ecb692a5173d567}
+
+\end{DoxyCompactItemize}
+\subsection*{Private Attributes}
+\begin{DoxyCompactItemize}
+\item 
+\hypertarget{classsirius_1_1sbessel__approx_af504ada4b294644ecb962e4414bc1dc9}{}\hyperlink{classsirius_1_1_unit__cell}{Unit\+\_\+cell} const \& {\bfseries unit\+\_\+cell\+\_\+}\label{classsirius_1_1sbessel__approx_af504ada4b294644ecb962e4414bc1dc9}
+
+\item 
+\hypertarget{classsirius_1_1sbessel__approx_a5e64b49c618586d5753106bf8db99a78}{}int {\bfseries lmax\+\_\+}\label{classsirius_1_1sbessel__approx_a5e64b49c618586d5753106bf8db99a78}
+
+\item 
+\hypertarget{classsirius_1_1sbessel__approx_a19f4f9b86cfc5c5616225f91d640d072}{}\hyperlink{classsddk_1_1mdarray}{mdarray}$<$ std\+::vector$<$ double $>$, 2 $>$ {\bfseries qnu\+\_\+}\label{classsirius_1_1sbessel__approx_a19f4f9b86cfc5c5616225f91d640d072}
+
+\item 
+\hypertarget{classsirius_1_1sbessel__approx_a333a901f348c9e55c6283fa118c1f465}{}\hyperlink{classsddk_1_1mdarray}{mdarray}$<$ double, 4 $>$ {\bfseries coeffs\+\_\+}\label{classsirius_1_1sbessel__approx_a333a901f348c9e55c6283fa118c1f465}
+
+\item 
+\hypertarget{classsirius_1_1sbessel__approx_a0f3c49044c9a319233444092006876ba}{}int {\bfseries nqnu\+\_\+max\+\_\+}\label{classsirius_1_1sbessel__approx_a0f3c49044c9a319233444092006876ba}
+
+\end{DoxyCompactItemize}
+
+
+\subsection{Detailed Description}
+
+
+Definition at line 108 of file sbessel.\+h.
+
+
+
+The documentation for this class was generated from the following file\+:\begin{DoxyCompactItemize}
+\item 
+\hyperlink{sbessel_8h}{sbessel.\+h}\end{DoxyCompactItemize}

@@ -1,0 +1,197 @@
+\hypertarget{classgeometry3d_1_1vector3d}{}\section{geometry3d\+:\+:vector3d$<$ T $>$ Class Template Reference}
+\label{classgeometry3d_1_1vector3d}\index{geometry3d\+::vector3d$<$ T $>$@{geometry3d\+::vector3d$<$ T $>$}}
+
+
+Simple implementation of 3d vector.  
+
+
+
+
+Inheritance diagram for geometry3d\+:\+:vector3d$<$ T $>$\+:
+% FIG 0
+
+
+Collaboration diagram for geometry3d\+:\+:vector3d$<$ T $>$\+:
+% FIG 1
+\subsection*{Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+\hyperlink{classgeometry3d_1_1vector3d_a9066bd5e757225eda554ab7ee1c63e6c}{vector3d} ()
+\begin{DoxyCompactList}\small\item\em Create zero vector. \end{DoxyCompactList}\item 
+\hyperlink{classgeometry3d_1_1vector3d_a5291e7f9a99e135d2dcc756d1c699a7c}{vector3d} (T x, T y, T z)
+\begin{DoxyCompactList}\small\item\em Create arbitrary vector. \end{DoxyCompactList}\item 
+\hyperlink{classgeometry3d_1_1vector3d_ac9e84834ec8a95c7b2f06b9a7ad47fa3}{vector3d} (std\+::initializer\+\_\+list$<$ T $>$ v\+\_\+\+\_\+)
+\begin{DoxyCompactList}\small\item\em Create from std\+::initializer\+\_\+list. \end{DoxyCompactList}\item 
+\hyperlink{classgeometry3d_1_1vector3d_a433f619f594ff165cf6f8a1abaf3b330}{vector3d} (std\+::vector$<$ T $>$ v\+\_\+\+\_\+)
+\begin{DoxyCompactList}\small\item\em Create from std\+::vector. \end{DoxyCompactList}\item 
+\hyperlink{classgeometry3d_1_1vector3d_af93fe90a8262cb92067b1004183df4c4}{vector3d} (T $\ast$ptr\+\_\+\+\_\+)
+\begin{DoxyCompactList}\small\item\em Create from raw pointer. \end{DoxyCompactList}\item 
+{\footnotesize template$<$typename U $>$ }\\\hyperlink{classgeometry3d_1_1vector3d_ac6cc1abded31795fa5ba6e4489af930f}{vector3d} (\hyperlink{classgeometry3d_1_1vector3d}{vector3d}$<$ U $>$ const \&src\+\_\+\+\_\+)
+\begin{DoxyCompactList}\small\item\em Create from another vector. \end{DoxyCompactList}\item 
+T \hyperlink{classgeometry3d_1_1vector3d_a4dcf4598e2ec23ac289be7d621660071}{l1norm} () const 
+\begin{DoxyCompactList}\small\item\em Return L1 norm of the vector. \end{DoxyCompactList}\item 
+double \hyperlink{classgeometry3d_1_1vector3d_aacdba0ec1e2b089555c7328c54b715e2}{length} () const 
+\begin{DoxyCompactList}\small\item\em Return vector length. \end{DoxyCompactList}\item 
+\hypertarget{classgeometry3d_1_1vector3d_a4d815473123def0d2138fe0fd9ba1cca}{}{\footnotesize template$<$typename U $>$ }\\\hyperlink{classgeometry3d_1_1vector3d}{vector3d}$<$ decltype(T\{\}+U\{\})$>$ {\bfseries operator+} (\hyperlink{classgeometry3d_1_1vector3d}{vector3d}$<$ U $>$ const \&b) const \label{classgeometry3d_1_1vector3d_a4d815473123def0d2138fe0fd9ba1cca}
+
+\item 
+\hypertarget{classgeometry3d_1_1vector3d_adc166af2aac8b884de8d3fb2972e5b38}{}{\footnotesize template$<$typename U $>$ }\\\hyperlink{classgeometry3d_1_1vector3d}{vector3d}$<$ decltype(T\{\}-\/U\{\})$>$ {\bfseries operator-\/} (\hyperlink{classgeometry3d_1_1vector3d}{vector3d}$<$ U $>$ const \&b) const \label{classgeometry3d_1_1vector3d_adc166af2aac8b884de8d3fb2972e5b38}
+
+\item 
+\hypertarget{classgeometry3d_1_1vector3d_a58d57f2221d819082feaafc986ff45a5}{}\hyperlink{classgeometry3d_1_1vector3d}{vector3d}$<$ T $>$ \& {\bfseries operator+=} (\hyperlink{classgeometry3d_1_1vector3d}{vector3d}$<$ T $>$ const \&b)\label{classgeometry3d_1_1vector3d_a58d57f2221d819082feaafc986ff45a5}
+
+\item 
+\hypertarget{classgeometry3d_1_1vector3d_a0840f5c67242ab2527d8dee7a29f2ec3}{}\hyperlink{classgeometry3d_1_1vector3d}{vector3d}$<$ T $>$ \& {\bfseries operator-\/=} (\hyperlink{classgeometry3d_1_1vector3d}{vector3d}$<$ T $>$ const \&b)\label{classgeometry3d_1_1vector3d_a0840f5c67242ab2527d8dee7a29f2ec3}
+
+\item 
+\hypertarget{classgeometry3d_1_1vector3d_a4920c2aadd7e2af7bfdb65684686fef1}{}{\footnotesize template$<$typename U $>$ }\\\hyperlink{classgeometry3d_1_1vector3d}{vector3d}$<$ T $>$ {\bfseries operator$\ast$} (U p)\label{classgeometry3d_1_1vector3d_a4920c2aadd7e2af7bfdb65684686fef1}
+
+\item 
+\hypertarget{classgeometry3d_1_1vector3d_ab7c110d622148fc7ea8ab413e6306bfc}{}{\footnotesize template$<$typename U $>$ }\\\hyperlink{classgeometry3d_1_1vector3d}{vector3d}$<$ T $>$ {\bfseries operator/} (U p)\label{classgeometry3d_1_1vector3d_ab7c110d622148fc7ea8ab413e6306bfc}
+
+\item 
+\hypertarget{classgeometry3d_1_1vector3d_aab7ec69ba05966ea25d98610b4facf01}{}{\footnotesize template$<$typename U $>$ }\\\hyperlink{classgeometry3d_1_1vector3d}{vector3d}$<$ T $>$ \& {\bfseries operator/=} (U p)\label{classgeometry3d_1_1vector3d_aab7ec69ba05966ea25d98610b4facf01}
+
+\end{DoxyCompactItemize}
+
+
+\subsection{Detailed Description}
+\subsubsection*{template$<$typename T$>$class geometry3d\+::vector3d$<$ T $>$}
+
+Simple implementation of 3d vector. 
+
+Definition at line 41 of file geometry3d.\+hpp.
+
+
+
+\subsection{Constructor \& Destructor Documentation}
+\hypertarget{classgeometry3d_1_1vector3d_a9066bd5e757225eda554ab7ee1c63e6c}{}\index{geometry3d\+::vector3d@{geometry3d\+::vector3d}!vector3d@{vector3d}}
+\index{vector3d@{vector3d}!geometry3d\+::vector3d@{geometry3d\+::vector3d}}
+\subsubsection[{vector3d()}]{\setlength{\rightskip}{0pt plus 5cm}template$<$typename T$>$ {\bf geometry3d\+::vector3d}$<$ T $>$\+::{\bf vector3d} (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}}\label{classgeometry3d_1_1vector3d_a9066bd5e757225eda554ab7ee1c63e6c}
+
+
+Create zero vector. 
+
+
+
+Definition at line 45 of file geometry3d.\+hpp.
+
+\hypertarget{classgeometry3d_1_1vector3d_a5291e7f9a99e135d2dcc756d1c699a7c}{}\index{geometry3d\+::vector3d@{geometry3d\+::vector3d}!vector3d@{vector3d}}
+\index{vector3d@{vector3d}!geometry3d\+::vector3d@{geometry3d\+::vector3d}}
+\subsubsection[{vector3d(\+T x, T y, T z)}]{\setlength{\rightskip}{0pt plus 5cm}template$<$typename T$>$ {\bf geometry3d\+::vector3d}$<$ T $>$\+::{\bf vector3d} (
+\begin{DoxyParamCaption}
+\item[{T}]{x, }
+\item[{T}]{y, }
+\item[{T}]{z}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}}\label{classgeometry3d_1_1vector3d_a5291e7f9a99e135d2dcc756d1c699a7c}
+
+
+Create arbitrary vector. 
+
+
+
+Definition at line 51 of file geometry3d.\+hpp.
+
+\hypertarget{classgeometry3d_1_1vector3d_ac9e84834ec8a95c7b2f06b9a7ad47fa3}{}\index{geometry3d\+::vector3d@{geometry3d\+::vector3d}!vector3d@{vector3d}}
+\index{vector3d@{vector3d}!geometry3d\+::vector3d@{geometry3d\+::vector3d}}
+\subsubsection[{vector3d(std\+::initializer\+\_\+list$<$ T $>$ v\+\_\+\+\_\+)}]{\setlength{\rightskip}{0pt plus 5cm}template$<$typename T$>$ {\bf geometry3d\+::vector3d}$<$ T $>$\+::{\bf vector3d} (
+\begin{DoxyParamCaption}
+\item[{std\+::initializer\+\_\+list$<$ T $>$}]{v\+\_\+\+\_\+}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}}\label{classgeometry3d_1_1vector3d_ac9e84834ec8a95c7b2f06b9a7ad47fa3}
+
+
+Create from std\+::initializer\+\_\+list. 
+
+
+
+Definition at line 57 of file geometry3d.\+hpp.
+
+\hypertarget{classgeometry3d_1_1vector3d_a433f619f594ff165cf6f8a1abaf3b330}{}\index{geometry3d\+::vector3d@{geometry3d\+::vector3d}!vector3d@{vector3d}}
+\index{vector3d@{vector3d}!geometry3d\+::vector3d@{geometry3d\+::vector3d}}
+\subsubsection[{vector3d(std\+::vector$<$ T $>$ v\+\_\+\+\_\+)}]{\setlength{\rightskip}{0pt plus 5cm}template$<$typename T$>$ {\bf geometry3d\+::vector3d}$<$ T $>$\+::{\bf vector3d} (
+\begin{DoxyParamCaption}
+\item[{std\+::vector$<$ T $>$}]{v\+\_\+\+\_\+}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}}\label{classgeometry3d_1_1vector3d_a433f619f594ff165cf6f8a1abaf3b330}
+
+
+Create from std\+::vector. 
+
+
+
+Definition at line 66 of file geometry3d.\+hpp.
+
+\hypertarget{classgeometry3d_1_1vector3d_af93fe90a8262cb92067b1004183df4c4}{}\index{geometry3d\+::vector3d@{geometry3d\+::vector3d}!vector3d@{vector3d}}
+\index{vector3d@{vector3d}!geometry3d\+::vector3d@{geometry3d\+::vector3d}}
+\subsubsection[{vector3d(\+T $\ast$ptr\+\_\+\+\_\+)}]{\setlength{\rightskip}{0pt plus 5cm}template$<$typename T$>$ {\bf geometry3d\+::vector3d}$<$ T $>$\+::{\bf vector3d} (
+\begin{DoxyParamCaption}
+\item[{T $\ast$}]{ptr\+\_\+\+\_\+}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}}\label{classgeometry3d_1_1vector3d_af93fe90a8262cb92067b1004183df4c4}
+
+
+Create from raw pointer. 
+
+
+
+Definition at line 75 of file geometry3d.\+hpp.
+
+\hypertarget{classgeometry3d_1_1vector3d_ac6cc1abded31795fa5ba6e4489af930f}{}\index{geometry3d\+::vector3d@{geometry3d\+::vector3d}!vector3d@{vector3d}}
+\index{vector3d@{vector3d}!geometry3d\+::vector3d@{geometry3d\+::vector3d}}
+\subsubsection[{vector3d(vector3d$<$ U $>$ const \&src\+\_\+\+\_\+)}]{\setlength{\rightskip}{0pt plus 5cm}template$<$typename T$>$ template$<$typename U $>$ {\bf geometry3d\+::vector3d}$<$ T $>$\+::{\bf vector3d} (
+\begin{DoxyParamCaption}
+\item[{{\bf vector3d}$<$ U $>$ const \&}]{src\+\_\+\+\_\+}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}}\label{classgeometry3d_1_1vector3d_ac6cc1abded31795fa5ba6e4489af930f}
+
+
+Create from another vector. 
+
+
+
+Definition at line 84 of file geometry3d.\+hpp.
+
+
+
+\subsection{Member Function Documentation}
+\hypertarget{classgeometry3d_1_1vector3d_a4dcf4598e2ec23ac289be7d621660071}{}\index{geometry3d\+::vector3d@{geometry3d\+::vector3d}!l1norm@{l1norm}}
+\index{l1norm@{l1norm}!geometry3d\+::vector3d@{geometry3d\+::vector3d}}
+\subsubsection[{l1norm() const }]{\setlength{\rightskip}{0pt plus 5cm}template$<$typename T$>$ T {\bf geometry3d\+::vector3d}$<$ T $>$\+::l1norm (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [inline]}}\label{classgeometry3d_1_1vector3d_a4dcf4598e2ec23ac289be7d621660071}
+
+
+Return L1 norm of the vector. 
+
+
+
+Definition at line 92 of file geometry3d.\+hpp.
+
+\hypertarget{classgeometry3d_1_1vector3d_aacdba0ec1e2b089555c7328c54b715e2}{}\index{geometry3d\+::vector3d@{geometry3d\+::vector3d}!length@{length}}
+\index{length@{length}!geometry3d\+::vector3d@{geometry3d\+::vector3d}}
+\subsubsection[{length() const }]{\setlength{\rightskip}{0pt plus 5cm}template$<$typename T$>$ double {\bf geometry3d\+::vector3d}$<$ T $>$\+::length (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [inline]}}\label{classgeometry3d_1_1vector3d_aacdba0ec1e2b089555c7328c54b715e2}
+
+
+Return vector length. 
+
+
+
+Definition at line 98 of file geometry3d.\+hpp.
+
+
+
+The documentation for this class was generated from the following file\+:\begin{DoxyCompactItemize}
+\item 
+\hyperlink{geometry3d_8hpp}{geometry3d.\+hpp}\end{DoxyCompactItemize}

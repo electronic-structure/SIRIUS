@@ -1,0 +1,23 @@
+digraph "src" {
+  compound=true
+  node [ fontsize="10", fontname="Helvetica"];
+  edge [ labelfontsize="10", labelfontname="Helvetica"];
+  subgraph clusterdir_68267d1309a1af8e8297ef4c3efbcdba {
+    graph [ bgcolor="#eeeeff", pencolor="black", label="" URL="dir_68267d1309a1af8e8297ef4c3efbcdba.html"];
+    dir_68267d1309a1af8e8297ef4c3efbcdba [shape=plaintext label="src"];
+    dir_f1d0bf0df465a329272870e055a679a2 [shape=box label="Atom" color="black" fillcolor="white" style="filled" URL="dir_f1d0bf0df465a329272870e055a679a2.html"];
+    dir_db2e99b2dcb80f9bc81e53202ac97970 [shape=box label="Band" color="black" fillcolor="white" style="filled" URL="dir_db2e99b2dcb80f9bc81e53202ac97970.html"];
+    dir_efab0974afde82118c2e07e0e822e0df [shape=box label="Beta_projectors" color="black" fillcolor="white" style="filled" URL="dir_efab0974afde82118c2e07e0e822e0df.html"];
+    dir_12e3654d01254f18fc1e8b660f88b6c8 [shape=box label="Density" color="black" fillcolor="white" style="filled" URL="dir_12e3654d01254f18fc1e8b660f88b6c8.html"];
+    dir_cae27912e177176a90175eee3a6288a5 [shape=box label="Geometry" color="black" fillcolor="white" style="filled" URL="dir_cae27912e177176a90175eee3a6288a5.html"];
+    dir_fdbccf8a388b80005fb5a3667c0ea6ee [shape=box label="K_point" color="black" fillcolor="white" style="filled" URL="dir_fdbccf8a388b80005fb5a3667c0ea6ee.html"];
+    dir_30e30dfda52a44dc4bfb754909daccf3 [shape=box label="Kernels" color="black" fillcolor="white" style="filled" URL="dir_30e30dfda52a44dc4bfb754909daccf3.html"];
+    dir_bf0a7b34cf1ef49fc97fa1d2273321e2 [shape=box label="Potential" color="black" fillcolor="white" style="filled" URL="dir_bf0a7b34cf1ef49fc97fa1d2273321e2.html"];
+    dir_f599252a6ed79d26501e6b7d925f2ed5 [shape=box label="SDDK" color="red" fillcolor="white" style="filled" URL="dir_f599252a6ed79d26501e6b7d925f2ed5.html"];
+  }
+  dir_cae27912e177176a90175eee3a6288a5->dir_efab0974afde82118c2e07e0e822e0df [headlabel="1", labeldistance=1.5 headhref="dir_000007_000004.html"];
+  dir_68267d1309a1af8e8297ef4c3efbcdba->dir_fdbccf8a388b80005fb5a3667c0ea6ee [headlabel="1", labeldistance=1.5 headhref="dir_000000_000009.html"];
+  dir_68267d1309a1af8e8297ef4c3efbcdba->dir_bf0a7b34cf1ef49fc97fa1d2273321e2 [headlabel="1", labeldistance=1.5 headhref="dir_000000_000008.html"];
+  dir_68267d1309a1af8e8297ef4c3efbcdba->dir_db2e99b2dcb80f9bc81e53202ac97970 [headlabel="2", labeldistance=1.5 headhref="dir_000000_000002.html"];
+  dir_efab0974afde82118c2e07e0e822e0df->dir_f599252a6ed79d26501e6b7d925f2ed5 [headlabel="3", labeldistance=1.5 headhref="dir_000004_000005.html"];
+}

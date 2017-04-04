@@ -1,0 +1,259 @@
+\hypertarget{classsirius_1_1_beta__projectors}{}\section{sirius\+:\+:Beta\+\_\+projectors Class Reference}
+\label{classsirius_1_1_beta__projectors}\index{sirius\+::\+Beta\+\_\+projectors@{sirius\+::\+Beta\+\_\+projectors}}
+
+
+Stores $<$G+k $\vert$ beta$>$ expansion.  
+
+
+
+
+Collaboration diagram for sirius\+:\+:Beta\+\_\+projectors\+:
+% FIG 0
+\subsection*{Classes}
+\begin{DoxyCompactItemize}
+\item 
+struct \hyperlink{structsirius_1_1_beta__projectors_1_1beta__chunk__t}{beta\+\_\+chunk\+\_\+t}
+\end{DoxyCompactItemize}
+\subsection*{Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+\hypertarget{classsirius_1_1_beta__projectors_a209d524ed59adffbe7cbfb04d5418fa4}{}{\bfseries Beta\+\_\+projectors} (\hyperlink{classsirius_1_1_simulation__context}{Simulation\+\_\+context} const \&ctx\+\_\+\+\_\+, \hyperlink{classsddk_1_1_communicator}{Communicator} const \&comm\+\_\+\+\_\+, \hyperlink{classsddk_1_1_gvec}{Gvec} const \&gkvec\+\_\+\+\_\+)\label{classsirius_1_1_beta__projectors_a209d524ed59adffbe7cbfb04d5418fa4}
+
+\item 
+\hypertarget{classsirius_1_1_beta__projectors_a876776a789409556c7dc06d04092bf65}{}\hyperlink{classsddk_1_1mdarray}{matrix}$<$ double\+\_\+complex $>$ \& {\bfseries beta\+\_\+gk\+\_\+t} ()\label{classsirius_1_1_beta__projectors_a876776a789409556c7dc06d04092bf65}
+
+\item 
+\hypertarget{classsirius_1_1_beta__projectors_a1a76c3324184762a7a7cd78530ea31b9}{}\hyperlink{classsddk_1_1mdarray}{matrix}$<$ double\+\_\+complex $>$ const \& {\bfseries beta\+\_\+gk\+\_\+a} ()\label{classsirius_1_1_beta__projectors_a1a76c3324184762a7a7cd78530ea31b9}
+
+\item 
+\hypertarget{classsirius_1_1_beta__projectors_a07e9849545c744d058f3ceda50907486}{}\hyperlink{classsddk_1_1mdarray}{matrix}$<$ double\+\_\+complex $>$ const \& {\bfseries beta\+\_\+gk} () const \label{classsirius_1_1_beta__projectors_a07e9849545c744d058f3ceda50907486}
+
+\item 
+\hypertarget{classsirius_1_1_beta__projectors_a2359c0c1067ba6dd52c09851e2f0b477}{}{\footnotesize template$<$typename T $>$ }\\\hyperlink{classsddk_1_1mdarray}{matrix}$<$ T $>$ {\bfseries beta\+\_\+phi} (int chunk\+\_\+\+\_\+, int n\+\_\+\+\_\+)\label{classsirius_1_1_beta__projectors_a2359c0c1067ba6dd52c09851e2f0b477}
+
+\item 
+\hypertarget{classsirius_1_1_beta__projectors_a828c2f91ea365eec81edd93d76f3af46}{}\hyperlink{classsirius_1_1_unit__cell}{Unit\+\_\+cell} const \& {\bfseries unit\+\_\+cell} () const \label{classsirius_1_1_beta__projectors_a828c2f91ea365eec81edd93d76f3af46}
+
+\item 
+\hypertarget{classsirius_1_1_beta__projectors_a91ff5122a3aaf5c6ccd63a8934d74640}{}\hyperlink{classsddk_1_1_communicator}{Communicator} const \& {\bfseries comm} () const \label{classsirius_1_1_beta__projectors_a91ff5122a3aaf5c6ccd63a8934d74640}
+
+\item 
+\hypertarget{classsirius_1_1_beta__projectors_a9ea70bbb773b5d5bc27a92270745d96b}{}\hyperlink{classsddk_1_1_gvec}{Gvec} const \& {\bfseries gk\+\_\+vectors} () const \label{classsirius_1_1_beta__projectors_a9ea70bbb773b5d5bc27a92270745d96b}
+
+\item 
+\hypertarget{classsirius_1_1_beta__projectors_ada77c14813b24c06946b4f926371f14d}{}device\+\_\+t {\bfseries proc\+\_\+unit} () const \label{classsirius_1_1_beta__projectors_ada77c14813b24c06946b4f926371f14d}
+
+\item 
+\hypertarget{classsirius_1_1_beta__projectors_a59edc3d21c78a59ff521d9cb2f39de09}{}int {\bfseries lmax\+\_\+beta} () const \label{classsirius_1_1_beta__projectors_a59edc3d21c78a59ff521d9cb2f39de09}
+
+\item 
+\hypertarget{classsirius_1_1_beta__projectors_a30c4e5198a288e47b34e4b331590dcea}{}int {\bfseries num\+\_\+beta\+\_\+chunks} () const \label{classsirius_1_1_beta__projectors_a30c4e5198a288e47b34e4b331590dcea}
+
+\item 
+\hypertarget{classsirius_1_1_beta__projectors_ad514b9995e9fcd73677274d6e271f856}{}\hyperlink{structsirius_1_1_beta__projectors_1_1beta__chunk__t}{beta\+\_\+chunk\+\_\+t} const \& {\bfseries beta\+\_\+chunk} (int idx\+\_\+\+\_\+) const \label{classsirius_1_1_beta__projectors_ad514b9995e9fcd73677274d6e271f856}
+
+\item 
+\hypertarget{classsirius_1_1_beta__projectors_a7aa9f586aece723de56560a41b6386d9}{}int {\bfseries num\+\_\+gkvec\+\_\+loc} () const \label{classsirius_1_1_beta__projectors_a7aa9f586aece723de56560a41b6386d9}
+
+\item 
+\hypertarget{classsirius_1_1_beta__projectors_a3fb0a62ab424982d69056dcb54cf4374}{}void {\bfseries generate} (int chunk\+\_\+\+\_\+)\label{classsirius_1_1_beta__projectors_a3fb0a62ab424982d69056dcb54cf4374}
+
+\item 
+\hypertarget{classsirius_1_1_beta__projectors_a654ca8760dd2190f8a3bb31715e8ac94}{}{\footnotesize template$<$typename T $>$ }\\void {\bfseries inner} (int chunk\+\_\+\+\_\+, \hyperlink{classsddk_1_1wave__functions}{wave\+\_\+functions} \&phi\+\_\+\+\_\+, int idx0\+\_\+\+\_\+, int n\+\_\+\+\_\+)\label{classsirius_1_1_beta__projectors_a654ca8760dd2190f8a3bb31715e8ac94}
+
+\item 
+\hypertarget{classsirius_1_1_beta__projectors_ad4a68db01c2fdad8a288f4c5578766c5}{}int {\bfseries max\+\_\+num\+\_\+beta} ()\label{classsirius_1_1_beta__projectors_ad4a68db01c2fdad8a288f4c5578766c5}
+
+\item 
+\hypertarget{classsirius_1_1_beta__projectors_a4896c8b509a799149c696e643d2cee42}{}void {\bfseries prepare} ()\label{classsirius_1_1_beta__projectors_a4896c8b509a799149c696e643d2cee42}
+
+\item 
+\hypertarget{classsirius_1_1_beta__projectors_ad8a6e3992b6a0f1a64d2d09c5a949c4a}{}void {\bfseries dismiss} ()\label{classsirius_1_1_beta__projectors_ad8a6e3992b6a0f1a64d2d09c5a949c4a}
+
+\item 
+\hypertarget{classsirius_1_1_beta__projectors_a71e71c7d25477396a018c46cd51743a6}{}void {\bfseries generate\+\_\+beta\+\_\+gk\+\_\+t\+\_\+lat\+\_\+deriv} (\hyperlink{classsirius_1_1_simulation__context}{Simulation\+\_\+context} const \&ctx\+\_\+\+\_\+)\label{classsirius_1_1_beta__projectors_a71e71c7d25477396a018c46cd51743a6}
+
+\end{DoxyCompactItemize}
+\subsection*{Protected Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+void \hyperlink{classsirius_1_1_beta__projectors_a93230d7b8932ab6f6b809f7d6cbc6737}{generate\+\_\+beta\+\_\+gk\+\_\+t} (\hyperlink{classsirius_1_1_simulation__context}{Simulation\+\_\+context} const \&ctx\+\_\+\+\_\+)
+\begin{DoxyCompactList}\small\item\em Generate plane-\/wave coefficients for beta-\/projectors of atom types. \end{DoxyCompactList}\item 
+\hypertarget{classsirius_1_1_beta__projectors_a1adfb42b33853acb7d5e759e49be5a90}{}void {\bfseries split\+\_\+in\+\_\+chunks} ()\label{classsirius_1_1_beta__projectors_a1adfb42b33853acb7d5e759e49be5a90}
+
+\item 
+{\footnotesize template$<$typename T $>$ }\\void \hyperlink{classsirius_1_1_beta__projectors_a04266413d357bc006c86d29e13d07676}{inner} (int chunk\+\_\+\+\_\+, \hyperlink{classsddk_1_1wave__functions}{wave\+\_\+functions} \&phi\+\_\+\+\_\+, int idx0\+\_\+\+\_\+, int n\+\_\+\+\_\+, \hyperlink{classsddk_1_1mdarray}{mdarray}$<$ double\+\_\+complex, 2 $>$ \&beta\+\_\+gk\+\_\+\+\_\+, \hyperlink{classsddk_1_1mdarray}{mdarray}$<$ double, 1 $>$ \&beta\+\_\+phi\+\_\+\+\_\+)
+\begin{DoxyCompactList}\small\item\em calculates $<$ Beta $\vert$ Psi $>$ inner product \end{DoxyCompactList}\item 
+\hypertarget{classsirius_1_1_beta__projectors_ad9be10ec4a5a4dd7b09a80edd43265ea}{}{\footnotesize template$<$$>$ }\\void {\bfseries inner} (int chunk\+\_\+\+\_\+, \hyperlink{classsddk_1_1wave__functions}{wave\+\_\+functions} \&phi\+\_\+\+\_\+, int idx0\+\_\+\+\_\+, int n\+\_\+\+\_\+, \hyperlink{classsddk_1_1mdarray}{mdarray}$<$ double\+\_\+complex, 2 $>$ \&beta\+\_\+gk, \hyperlink{classsddk_1_1mdarray}{mdarray}$<$ double, 1 $>$ \&beta\+\_\+phi)\label{classsirius_1_1_beta__projectors_ad9be10ec4a5a4dd7b09a80edd43265ea}
+
+\item 
+\hypertarget{classsirius_1_1_beta__projectors_ad9be10ec4a5a4dd7b09a80edd43265ea}{}{\footnotesize template$<$$>$ }\\void {\bfseries inner} (int chunk\+\_\+\+\_\+, \hyperlink{classsddk_1_1wave__functions}{wave\+\_\+functions} \&phi\+\_\+\+\_\+, int idx0\+\_\+\+\_\+, int n\+\_\+\+\_\+, \hyperlink{classsddk_1_1mdarray}{mdarray}$<$ double\+\_\+complex, 2 $>$ \&beta\+\_\+gk, \hyperlink{classsddk_1_1mdarray}{mdarray}$<$ double, 1 $>$ \&beta\+\_\+phi)\label{classsirius_1_1_beta__projectors_ad9be10ec4a5a4dd7b09a80edd43265ea}
+
+\end{DoxyCompactItemize}
+\subsection*{Protected Attributes}
+\begin{DoxyCompactItemize}
+\item 
+\hypertarget{classsirius_1_1_beta__projectors_a9da8181752f4f6e7be9806f035a96b8b}{}\hyperlink{classsddk_1_1_communicator}{Communicator} const \& {\bfseries comm\+\_\+}\label{classsirius_1_1_beta__projectors_a9da8181752f4f6e7be9806f035a96b8b}
+
+\item 
+\hypertarget{classsirius_1_1_beta__projectors_a7fbb125e69ca61b33880568fd28124b7}{}\hyperlink{classsirius_1_1_unit__cell}{Unit\+\_\+cell} const \& {\bfseries unit\+\_\+cell\+\_\+}\label{classsirius_1_1_beta__projectors_a7fbb125e69ca61b33880568fd28124b7}
+
+\item 
+\hypertarget{classsirius_1_1_beta__projectors_ad1b3c32e1e6ad4096af8ffe5133f3007}{}\hyperlink{classsddk_1_1_gvec}{Gvec} const \& {\bfseries gkvec\+\_\+}\label{classsirius_1_1_beta__projectors_ad1b3c32e1e6ad4096af8ffe5133f3007}
+
+\item 
+\hypertarget{classsirius_1_1_beta__projectors_aaf3ab5cbf0093a569503b9d88efac6ec}{}\hyperlink{classsddk_1_1mdarray}{mdarray}$<$ double, 2 $>$ {\bfseries gkvec\+\_\+coord\+\_\+}\label{classsirius_1_1_beta__projectors_aaf3ab5cbf0093a569503b9d88efac6ec}
+
+\item 
+\hypertarget{classsirius_1_1_beta__projectors_ae60661e1a615fcd3ed7e94cd845c14fd}{}int {\bfseries lmax\+\_\+beta\+\_\+}\label{classsirius_1_1_beta__projectors_ae60661e1a615fcd3ed7e94cd845c14fd}
+
+\item 
+\hypertarget{classsirius_1_1_beta__projectors_a98d4d881ce63c37c05505081ae9cf298}{}device\+\_\+t {\bfseries pu\+\_\+}\label{classsirius_1_1_beta__projectors_a98d4d881ce63c37c05505081ae9cf298}
+
+\item 
+\hypertarget{classsirius_1_1_beta__projectors_a4753a4e2a1d6fd9c964e148d0947c5e3}{}int {\bfseries num\+\_\+gkvec\+\_\+loc\+\_\+}\label{classsirius_1_1_beta__projectors_a4753a4e2a1d6fd9c964e148d0947c5e3}
+
+\item 
+int \hyperlink{classsirius_1_1_beta__projectors_a176c878a0f274fb8090ed0f7ec45c4e9}{num\+\_\+beta\+\_\+t\+\_\+}
+\begin{DoxyCompactList}\small\item\em Total number of beta-\/projectors among atom types. \end{DoxyCompactList}\item 
+\hyperlink{classsddk_1_1mdarray}{matrix}$<$ double\+\_\+complex $>$ \hyperlink{classsirius_1_1_beta__projectors_ae6909d7464080150d4bc804b23c87c82}{beta\+\_\+gk\+\_\+t\+\_\+}
+\begin{DoxyCompactList}\small\item\em Phase-\/factor independent plane-\/wave coefficients of $\vert$beta$>$ functions for atom types. \end{DoxyCompactList}\item 
+\hyperlink{classsddk_1_1mdarray}{matrix}$<$ double\+\_\+complex $>$ \hyperlink{classsirius_1_1_beta__projectors_a9503b0e8abcbc76361db077f9cd69927}{beta\+\_\+gk\+\_\+a\+\_\+}
+\begin{DoxyCompactList}\small\item\em Plane-\/wave coefficients of $\vert$beta$>$ functions for all atoms. \end{DoxyCompactList}\item 
+\hyperlink{classsddk_1_1mdarray}{matrix}$<$ double\+\_\+complex $>$ \hyperlink{classsirius_1_1_beta__projectors_a9fff826234ee6a2fb6104bc6edcdb6e3}{beta\+\_\+gk\+\_\+}
+\begin{DoxyCompactList}\small\item\em Plane-\/wave coefficients of $\vert$beta$>$ functions for a chunk of atoms. \end{DoxyCompactList}\item 
+\hyperlink{classsddk_1_1mdarray}{mdarray}$<$ double, 1 $>$ \hyperlink{classsirius_1_1_beta__projectors_a47cc90705d37315cb5b319249693e091}{beta\+\_\+phi\+\_\+}
+\begin{DoxyCompactList}\small\item\em Inner product between beta-\/projectors and wave-\/functions. \end{DoxyCompactList}\item 
+\hyperlink{classsddk_1_1mdarray}{matrix}$<$ double\+\_\+complex $>$ \hyperlink{classsirius_1_1_beta__projectors_aaf7e217e59a9d8388d6b9921a9264775}{beta\+\_\+gk\+\_\+gpu\+\_\+}
+\begin{DoxyCompactList}\small\item\em Explicit G\+P\+U buffer for beta-\/projectors. \end{DoxyCompactList}\item 
+\hypertarget{classsirius_1_1_beta__projectors_afe773b0501d04358080ed6b66957f08b}{}\hyperlink{classsddk_1_1mdarray}{mdarray}$<$ \hyperlink{structsirius_1_1_beta__projectors_1_1beta__chunk__t}{beta\+\_\+chunk\+\_\+t}, 1 $>$ {\bfseries beta\+\_\+chunks\+\_\+}\label{classsirius_1_1_beta__projectors_afe773b0501d04358080ed6b66957f08b}
+
+\item 
+\hypertarget{classsirius_1_1_beta__projectors_a6040c03c977b0b573f3aa63321ae55c5}{}int {\bfseries max\+\_\+num\+\_\+beta\+\_\+}\label{classsirius_1_1_beta__projectors_a6040c03c977b0b573f3aa63321ae55c5}
+
+\end{DoxyCompactItemize}
+\subsection*{Friends}
+\begin{DoxyCompactItemize}
+\item 
+\hypertarget{classsirius_1_1_beta__projectors_ab98c40b88de07267e5459a7e04a8f7fd}{}class {\bfseries Beta\+\_\+projectors\+\_\+gradient}\label{classsirius_1_1_beta__projectors_ab98c40b88de07267e5459a7e04a8f7fd}
+
+\end{DoxyCompactItemize}
+
+
+\subsection{Detailed Description}
+Stores $<$G+k $\vert$ beta$>$ expansion. 
+
+\begin{DoxyRefDesc}{Todo}
+\item[\hyperlink{todo__todo000001}{Todo}]\hyperlink{classsirius_1_1_beta__projectors}{Beta\+\_\+projectors} and \hyperlink{classsirius_1_1_beta__projectors__gradient}{Beta\+\_\+projectors\+\_\+gradient} need some rethinking. \hyperlink{classsirius_1_1_beta__projectors}{Beta\+\_\+projectors} are used in two places\+: in application of non-\/local potential and in generation of density matrix. \hyperlink{classsirius_1_1_beta__projectors__gradient}{Beta\+\_\+projectors\+\_\+gradient} are used in the calculation of forces. Both are split in chunks, both require an inner product with wave-\/functions. \end{DoxyRefDesc}
+
+
+Definition at line 62 of file beta\+\_\+projectors.\+h.
+
+
+
+\subsection{Member Function Documentation}
+\hypertarget{classsirius_1_1_beta__projectors_a93230d7b8932ab6f6b809f7d6cbc6737}{}\index{sirius\+::\+Beta\+\_\+projectors@{sirius\+::\+Beta\+\_\+projectors}!generate\+\_\+beta\+\_\+gk\+\_\+t@{generate\+\_\+beta\+\_\+gk\+\_\+t}}
+\index{generate\+\_\+beta\+\_\+gk\+\_\+t@{generate\+\_\+beta\+\_\+gk\+\_\+t}!sirius\+::\+Beta\+\_\+projectors@{sirius\+::\+Beta\+\_\+projectors}}
+\subsubsection[{generate\+\_\+beta\+\_\+gk\+\_\+t(\+Simulation\+\_\+context const \&ctx\+\_\+\+\_\+)}]{\setlength{\rightskip}{0pt plus 5cm}void sirius\+::\+Beta\+\_\+projectors\+::generate\+\_\+beta\+\_\+gk\+\_\+t (
+\begin{DoxyParamCaption}
+\item[{{\bf Simulation\+\_\+context} const \&}]{ctx\+\_\+\+\_\+}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}, {\ttfamily [protected]}}\label{classsirius_1_1_beta__projectors_a93230d7b8932ab6f6b809f7d6cbc6737}
+
+
+Generate plane-\/wave coefficients for beta-\/projectors of atom types. 
+
+
+
+Definition at line 402 of file beta\+\_\+projectors.\+h.
+
+\hypertarget{classsirius_1_1_beta__projectors_a04266413d357bc006c86d29e13d07676}{}\index{sirius\+::\+Beta\+\_\+projectors@{sirius\+::\+Beta\+\_\+projectors}!inner@{inner}}
+\index{inner@{inner}!sirius\+::\+Beta\+\_\+projectors@{sirius\+::\+Beta\+\_\+projectors}}
+\subsubsection[{inner(int chunk\+\_\+\+\_\+, wave\+\_\+functions \&phi\+\_\+\+\_\+, int idx0\+\_\+\+\_\+, int n\+\_\+\+\_\+, mdarray$<$ double\+\_\+complex, 2 $>$ \&beta\+\_\+gk\+\_\+\+\_\+, mdarray$<$ double, 1 $>$ \&beta\+\_\+phi\+\_\+\+\_\+)}]{\setlength{\rightskip}{0pt plus 5cm}template$<$typename T $>$ void sirius\+::\+Beta\+\_\+projectors\+::inner (
+\begin{DoxyParamCaption}
+\item[{int}]{chunk\+\_\+\+\_\+, }
+\item[{{\bf wave\+\_\+functions} \&}]{phi\+\_\+\+\_\+, }
+\item[{int}]{idx0\+\_\+\+\_\+, }
+\item[{int}]{n\+\_\+\+\_\+, }
+\item[{{\bf mdarray}$<$ double\+\_\+complex, 2 $>$ \&}]{beta\+\_\+gk\+\_\+\+\_\+, }
+\item[{{\bf mdarray}$<$ double, 1 $>$ \&}]{beta\+\_\+phi\+\_\+\+\_\+}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [protected]}}\label{classsirius_1_1_beta__projectors_a04266413d357bc006c86d29e13d07676}
+
+
+calculates $<$ Beta $\vert$ Psi $>$ inner product 
+
+
+
+\subsection{Member Data Documentation}
+\hypertarget{classsirius_1_1_beta__projectors_a176c878a0f274fb8090ed0f7ec45c4e9}{}\index{sirius\+::\+Beta\+\_\+projectors@{sirius\+::\+Beta\+\_\+projectors}!num\+\_\+beta\+\_\+t\+\_\+@{num\+\_\+beta\+\_\+t\+\_\+}}
+\index{num\+\_\+beta\+\_\+t\+\_\+@{num\+\_\+beta\+\_\+t\+\_\+}!sirius\+::\+Beta\+\_\+projectors@{sirius\+::\+Beta\+\_\+projectors}}
+\subsubsection[{num\+\_\+beta\+\_\+t\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}int sirius\+::\+Beta\+\_\+projectors\+::num\+\_\+beta\+\_\+t\+\_\+\hspace{0.3cm}{\ttfamily [protected]}}\label{classsirius_1_1_beta__projectors_a176c878a0f274fb8090ed0f7ec45c4e9}
+
+
+Total number of beta-\/projectors among atom types. 
+
+
+
+Definition at line 83 of file beta\+\_\+projectors.\+h.
+
+\hypertarget{classsirius_1_1_beta__projectors_ae6909d7464080150d4bc804b23c87c82}{}\index{sirius\+::\+Beta\+\_\+projectors@{sirius\+::\+Beta\+\_\+projectors}!beta\+\_\+gk\+\_\+t\+\_\+@{beta\+\_\+gk\+\_\+t\+\_\+}}
+\index{beta\+\_\+gk\+\_\+t\+\_\+@{beta\+\_\+gk\+\_\+t\+\_\+}!sirius\+::\+Beta\+\_\+projectors@{sirius\+::\+Beta\+\_\+projectors}}
+\subsubsection[{beta\+\_\+gk\+\_\+t\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}{\bf matrix}$<$double\+\_\+complex$>$ sirius\+::\+Beta\+\_\+projectors\+::beta\+\_\+gk\+\_\+t\+\_\+\hspace{0.3cm}{\ttfamily [protected]}}\label{classsirius_1_1_beta__projectors_ae6909d7464080150d4bc804b23c87c82}
+
+
+Phase-\/factor independent plane-\/wave coefficients of $\vert$beta$>$ functions for atom types. 
+
+
+
+Definition at line 86 of file beta\+\_\+projectors.\+h.
+
+\hypertarget{classsirius_1_1_beta__projectors_a9503b0e8abcbc76361db077f9cd69927}{}\index{sirius\+::\+Beta\+\_\+projectors@{sirius\+::\+Beta\+\_\+projectors}!beta\+\_\+gk\+\_\+a\+\_\+@{beta\+\_\+gk\+\_\+a\+\_\+}}
+\index{beta\+\_\+gk\+\_\+a\+\_\+@{beta\+\_\+gk\+\_\+a\+\_\+}!sirius\+::\+Beta\+\_\+projectors@{sirius\+::\+Beta\+\_\+projectors}}
+\subsubsection[{beta\+\_\+gk\+\_\+a\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}{\bf matrix}$<$double\+\_\+complex$>$ sirius\+::\+Beta\+\_\+projectors\+::beta\+\_\+gk\+\_\+a\+\_\+\hspace{0.3cm}{\ttfamily [protected]}}\label{classsirius_1_1_beta__projectors_a9503b0e8abcbc76361db077f9cd69927}
+
+
+Plane-\/wave coefficients of $\vert$beta$>$ functions for all atoms. 
+
+
+
+Definition at line 89 of file beta\+\_\+projectors.\+h.
+
+\hypertarget{classsirius_1_1_beta__projectors_a9fff826234ee6a2fb6104bc6edcdb6e3}{}\index{sirius\+::\+Beta\+\_\+projectors@{sirius\+::\+Beta\+\_\+projectors}!beta\+\_\+gk\+\_\+@{beta\+\_\+gk\+\_\+}}
+\index{beta\+\_\+gk\+\_\+@{beta\+\_\+gk\+\_\+}!sirius\+::\+Beta\+\_\+projectors@{sirius\+::\+Beta\+\_\+projectors}}
+\subsubsection[{beta\+\_\+gk\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}{\bf matrix}$<$double\+\_\+complex$>$ sirius\+::\+Beta\+\_\+projectors\+::beta\+\_\+gk\+\_\+\hspace{0.3cm}{\ttfamily [protected]}}\label{classsirius_1_1_beta__projectors_a9fff826234ee6a2fb6104bc6edcdb6e3}
+
+
+Plane-\/wave coefficients of $\vert$beta$>$ functions for a chunk of atoms. 
+
+
+
+Definition at line 92 of file beta\+\_\+projectors.\+h.
+
+\hypertarget{classsirius_1_1_beta__projectors_a47cc90705d37315cb5b319249693e091}{}\index{sirius\+::\+Beta\+\_\+projectors@{sirius\+::\+Beta\+\_\+projectors}!beta\+\_\+phi\+\_\+@{beta\+\_\+phi\+\_\+}}
+\index{beta\+\_\+phi\+\_\+@{beta\+\_\+phi\+\_\+}!sirius\+::\+Beta\+\_\+projectors@{sirius\+::\+Beta\+\_\+projectors}}
+\subsubsection[{beta\+\_\+phi\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}{\bf mdarray}$<$double, 1$>$ sirius\+::\+Beta\+\_\+projectors\+::beta\+\_\+phi\+\_\+\hspace{0.3cm}{\ttfamily [protected]}}\label{classsirius_1_1_beta__projectors_a47cc90705d37315cb5b319249693e091}
+
+
+Inner product between beta-\/projectors and wave-\/functions. 
+
+Store as double to handle both gamma-\/ and general k-\/point cases 
+
+Definition at line 96 of file beta\+\_\+projectors.\+h.
+
+\hypertarget{classsirius_1_1_beta__projectors_aaf7e217e59a9d8388d6b9921a9264775}{}\index{sirius\+::\+Beta\+\_\+projectors@{sirius\+::\+Beta\+\_\+projectors}!beta\+\_\+gk\+\_\+gpu\+\_\+@{beta\+\_\+gk\+\_\+gpu\+\_\+}}
+\index{beta\+\_\+gk\+\_\+gpu\+\_\+@{beta\+\_\+gk\+\_\+gpu\+\_\+}!sirius\+::\+Beta\+\_\+projectors@{sirius\+::\+Beta\+\_\+projectors}}
+\subsubsection[{beta\+\_\+gk\+\_\+gpu\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}{\bf matrix}$<$double\+\_\+complex$>$ sirius\+::\+Beta\+\_\+projectors\+::beta\+\_\+gk\+\_\+gpu\+\_\+\hspace{0.3cm}{\ttfamily [protected]}}\label{classsirius_1_1_beta__projectors_aaf7e217e59a9d8388d6b9921a9264775}
+
+
+Explicit G\+P\+U buffer for beta-\/projectors. 
+
+
+
+Definition at line 99 of file beta\+\_\+projectors.\+h.
+
+
+
+The documentation for this class was generated from the following file\+:\begin{DoxyCompactItemize}
+\item 
+\hyperlink{beta__projectors_8h}{beta\+\_\+projectors.\+h}\end{DoxyCompactItemize}

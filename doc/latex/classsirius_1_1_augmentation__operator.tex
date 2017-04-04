@@ -1,0 +1,86 @@
+\hypertarget{classsirius_1_1_augmentation__operator}{}\section{sirius\+:\+:Augmentation\+\_\+operator Class Reference}
+\label{classsirius_1_1_augmentation__operator}\index{sirius\+::\+Augmentation\+\_\+operator@{sirius\+::\+Augmentation\+\_\+operator}}
+
+
+Collaboration diagram for sirius\+:\+:Augmentation\+\_\+operator\+:
+% FIG 0
+\subsection*{Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+\hypertarget{classsirius_1_1_augmentation__operator_aef63edb6fda364c2f7c3200d96a62e29}{}{\bfseries Augmentation\+\_\+operator} (\hyperlink{classsddk_1_1_communicator}{Communicator} const \&comm\+\_\+\+\_\+, \hyperlink{classsirius_1_1_atom__type}{Atom\+\_\+type} const \&atom\+\_\+type\+\_\+\+\_\+, \hyperlink{classsddk_1_1_gvec}{Gvec} const \&gvec\+\_\+\+\_\+, double omega\+\_\+\+\_\+, \hyperlink{classsirius_1_1_radial__integrals}{Radial\+\_\+integrals} const \&radial\+\_\+integrals\+\_\+\+\_\+)\label{classsirius_1_1_augmentation__operator_aef63edb6fda364c2f7c3200d96a62e29}
+
+\item 
+\hypertarget{classsirius_1_1_augmentation__operator_a352a0b5aee5b7f5679b62c85c8d86020}{}void {\bfseries prepare} (int stream\+\_\+id\+\_\+\+\_\+) const \label{classsirius_1_1_augmentation__operator_a352a0b5aee5b7f5679b62c85c8d86020}
+
+\item 
+\hypertarget{classsirius_1_1_augmentation__operator_af5c3435ec80a2d03ca85cf945828a169}{}void {\bfseries dismiss} () const \label{classsirius_1_1_augmentation__operator_af5c3435ec80a2d03ca85cf945828a169}
+
+\item 
+\hypertarget{classsirius_1_1_augmentation__operator_a31b77781b462d27669fa01d1f929847c}{}\hyperlink{classsddk_1_1mdarray}{mdarray}$<$ double, 2 $>$ const \& {\bfseries q\+\_\+pw} () const \label{classsirius_1_1_augmentation__operator_a31b77781b462d27669fa01d1f929847c}
+
+\item 
+\hypertarget{classsirius_1_1_augmentation__operator_a3865ec63ff4d57442821946c8de9c468}{}double {\bfseries q\+\_\+pw} (int i\+\_\+\+\_\+, int ig\+\_\+\+\_\+) const \label{classsirius_1_1_augmentation__operator_a3865ec63ff4d57442821946c8de9c468}
+
+\item 
+\hypertarget{classsirius_1_1_augmentation__operator_aefcfcbcf831204ca78025ee753e3ce24}{}double const \& {\bfseries q\+\_\+mtrx} (int xi1\+\_\+\+\_\+, int xi2\+\_\+\+\_\+) const \label{classsirius_1_1_augmentation__operator_aefcfcbcf831204ca78025ee753e3ce24}
+
+\item 
+\hypertarget{classsirius_1_1_augmentation__operator_ae9f20bb75f8ae920df11a9feb1b94603}{}\hyperlink{classsddk_1_1mdarray}{mdarray}$<$ double, 1 $>$ const \& {\bfseries sym\+\_\+weight} () const \label{classsirius_1_1_augmentation__operator_ae9f20bb75f8ae920df11a9feb1b94603}
+
+\item 
+double \hyperlink{classsirius_1_1_augmentation__operator_ae3648dda8a0fc0089279e91abfb32c1e}{sym\+\_\+weight} (int idx\+\_\+\+\_\+) const 
+\begin{DoxyCompactList}\small\item\em Weight of Q\+\_\+\{,\textquotesingle{}\}. \end{DoxyCompactList}\end{DoxyCompactItemize}
+\subsection*{Private Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+\hypertarget{classsirius_1_1_augmentation__operator_a013ebfe021e3b6de59fe0ca96541bbfc}{}void {\bfseries generate\+\_\+pw\+\_\+coeffs} (double omega\+\_\+\+\_\+, \hyperlink{classsddk_1_1_gvec}{Gvec} const \&gvec\+\_\+\+\_\+, \hyperlink{classsirius_1_1_radial__integrals}{Radial\+\_\+integrals} const \&radial\+\_\+integrals\+\_\+\+\_\+)\label{classsirius_1_1_augmentation__operator_a013ebfe021e3b6de59fe0ca96541bbfc}
+
+\end{DoxyCompactItemize}
+\subsection*{Private Attributes}
+\begin{DoxyCompactItemize}
+\item 
+\hypertarget{classsirius_1_1_augmentation__operator_a8843838b1bbeee6f260267829d7ed8f1}{}\hyperlink{classsddk_1_1_communicator}{Communicator} const \& {\bfseries comm\+\_\+}\label{classsirius_1_1_augmentation__operator_a8843838b1bbeee6f260267829d7ed8f1}
+
+\item 
+\hypertarget{classsirius_1_1_augmentation__operator_ae2187c12ffe7b56bccfac80eb1b57b5f}{}\hyperlink{classsirius_1_1_atom__type}{Atom\+\_\+type} const \& {\bfseries atom\+\_\+type\+\_\+}\label{classsirius_1_1_augmentation__operator_ae2187c12ffe7b56bccfac80eb1b57b5f}
+
+\item 
+\hypertarget{classsirius_1_1_augmentation__operator_a19983d1b92bfbfd550042d057c4f983a}{}\hyperlink{classsddk_1_1mdarray}{mdarray}$<$ double, 2 $>$ {\bfseries q\+\_\+mtrx\+\_\+}\label{classsirius_1_1_augmentation__operator_a19983d1b92bfbfd550042d057c4f983a}
+
+\item 
+\hypertarget{classsirius_1_1_augmentation__operator_a72a51e71c31bf1934fb936e45262a7c7}{}\hyperlink{classsddk_1_1mdarray}{mdarray}$<$ double, 2 $>$ {\bfseries q\+\_\+pw\+\_\+}\label{classsirius_1_1_augmentation__operator_a72a51e71c31bf1934fb936e45262a7c7}
+
+\item 
+\hypertarget{classsirius_1_1_augmentation__operator_abb5b3a04da6ebb5f5c47b6401d2378fa}{}\hyperlink{classsddk_1_1mdarray}{mdarray}$<$ double, 1 $>$ {\bfseries sym\+\_\+weight\+\_\+}\label{classsirius_1_1_augmentation__operator_abb5b3a04da6ebb5f5c47b6401d2378fa}
+
+\end{DoxyCompactItemize}
+
+
+\subsection{Detailed Description}
+
+
+Definition at line 32 of file augmentation\+\_\+operator.\+h.
+
+
+
+\subsection{Member Function Documentation}
+\hypertarget{classsirius_1_1_augmentation__operator_ae3648dda8a0fc0089279e91abfb32c1e}{}\index{sirius\+::\+Augmentation\+\_\+operator@{sirius\+::\+Augmentation\+\_\+operator}!sym\+\_\+weight@{sym\+\_\+weight}}
+\index{sym\+\_\+weight@{sym\+\_\+weight}!sirius\+::\+Augmentation\+\_\+operator@{sirius\+::\+Augmentation\+\_\+operator}}
+\subsubsection[{sym\+\_\+weight(int idx\+\_\+\+\_\+) const }]{\setlength{\rightskip}{0pt plus 5cm}double sirius\+::\+Augmentation\+\_\+operator\+::sym\+\_\+weight (
+\begin{DoxyParamCaption}
+\item[{int}]{idx\+\_\+\+\_\+}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [inline]}}\label{classsirius_1_1_augmentation__operator_ae3648dda8a0fc0089279e91abfb32c1e}
+
+
+Weight of Q\+\_\+\{,\textquotesingle{}\}. 
+
+2 if off-\/diagonal (xi != xi\textquotesingle{}), 1 if diagonal (xi=xi\textquotesingle{}) 
+
+Definition at line 209 of file augmentation\+\_\+operator.\+h.
+
+
+
+The documentation for this class was generated from the following file\+:\begin{DoxyCompactItemize}
+\item 
+\hyperlink{augmentation__operator_8h}{augmentation\+\_\+operator.\+h}\end{DoxyCompactItemize}

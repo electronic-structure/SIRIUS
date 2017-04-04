@@ -1,0 +1,196 @@
+\hypertarget{classsirius_1_1_k__point__set}{}\section{sirius\+:\+:K\+\_\+point\+\_\+set Class Reference}
+\label{classsirius_1_1_k__point__set}\index{sirius\+::\+K\+\_\+point\+\_\+set@{sirius\+::\+K\+\_\+point\+\_\+set}}
+
+
+Set of k-\/points.  
+
+
+
+
+Collaboration diagram for sirius\+:\+:K\+\_\+point\+\_\+set\+:
+% FIG 0
+\subsection*{Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+\hypertarget{classsirius_1_1_k__point__set_a7d5eefbac413dd2e39cf8d1742cf435a}{}{\bfseries K\+\_\+point\+\_\+set} (\hyperlink{classsirius_1_1_simulation__context}{Simulation\+\_\+context} \&ctx\+\_\+\+\_\+)\label{classsirius_1_1_k__point__set_a7d5eefbac413dd2e39cf8d1742cf435a}
+
+\item 
+\hypertarget{classsirius_1_1_k__point__set_a0317eadcd4e671c8bcbefc6101e760e2}{}{\bfseries K\+\_\+point\+\_\+set} (\hyperlink{classsirius_1_1_simulation__context}{Simulation\+\_\+context} \&ctx\+\_\+\+\_\+, \hyperlink{classgeometry3d_1_1vector3d}{vector3d}$<$ int $>$ k\+\_\+grid\+\_\+\+\_\+, \hyperlink{classgeometry3d_1_1vector3d}{vector3d}$<$ int $>$ k\+\_\+shift\+\_\+\+\_\+, int use\+\_\+symmetry\+\_\+\+\_\+)\label{classsirius_1_1_k__point__set_a0317eadcd4e671c8bcbefc6101e760e2}
+
+\item 
+void \hyperlink{classsirius_1_1_k__point__set_a403308ec76ef56c066de002f9b5714ae}{initialize} (std\+::vector$<$ int $>$ counts=std\+::vector$<$ int $>$())
+\begin{DoxyCompactList}\small\item\em Initialize the k-\/point set. \end{DoxyCompactList}\item 
+void \hyperlink{classsirius_1_1_k__point__set_aab8d5e8b8a27bdcbbdf27ac6a31cb230}{find\+\_\+band\+\_\+occupancies} ()
+\begin{DoxyCompactList}\small\item\em Find Fermi energy and band occupation numbers. \end{DoxyCompactList}\item 
+double \hyperlink{classsirius_1_1_k__point__set_af80698a4a83168d356b81c89f92ca17a}{valence\+\_\+eval\+\_\+sum} ()
+\begin{DoxyCompactList}\small\item\em Return sum of valence eigen-\/values. \end{DoxyCompactList}\item 
+\hypertarget{classsirius_1_1_k__point__set_ac82770177af2e494fc194f784b5d5414}{}void {\bfseries print\+\_\+info} ()\label{classsirius_1_1_k__point__set_ac82770177af2e494fc194f784b5d5414}
+
+\item 
+\hypertarget{classsirius_1_1_k__point__set_a084765c90a079784b8ea292fbc694a1b}{}void {\bfseries sync\+\_\+band\+\_\+energies} ()\label{classsirius_1_1_k__point__set_a084765c90a079784b8ea292fbc694a1b}
+
+\item 
+\hypertarget{classsirius_1_1_k__point__set_aff0d069bd3cae9ed7ff759a73faba411}{}void {\bfseries save} ()\label{classsirius_1_1_k__point__set_aff0d069bd3cae9ed7ff759a73faba411}
+
+\item 
+void \hyperlink{classsirius_1_1_k__point__set_afcfce565bf318b680684ba144456a4a4}{load} ()
+\item 
+\hypertarget{classsirius_1_1_k__point__set_a633cdee2ff4f9f9d1fcb0ca42df627fe}{}int {\bfseries max\+\_\+num\+\_\+gkvec} ()\label{classsirius_1_1_k__point__set_a633cdee2ff4f9f9d1fcb0ca42df627fe}
+
+\item 
+\hypertarget{classsirius_1_1_k__point__set_a7935c90c81bca65ed02191c735008ef4}{}void {\bfseries force} (\hyperlink{classsddk_1_1mdarray}{mdarray}$<$ double, 2 $>$ \&forcek)\label{classsirius_1_1_k__point__set_a7935c90c81bca65ed02191c735008ef4}
+
+\item 
+\hypertarget{classsirius_1_1_k__point__set_a2e98e9e088d6f23efc874274d67ecc59}{}void {\bfseries add\+\_\+kpoint} (double $\ast$vk\+\_\+\+\_\+, double weight\+\_\+\+\_\+)\label{classsirius_1_1_k__point__set_a2e98e9e088d6f23efc874274d67ecc59}
+
+\item 
+\hypertarget{classsirius_1_1_k__point__set_a76a242f7ac9476b0f601bb7643501d99}{}void {\bfseries add\+\_\+kpoints} (\hyperlink{classsddk_1_1mdarray}{mdarray}$<$ double, 2 $>$ \&kpoints\+\_\+\+\_\+, double $\ast$weights\+\_\+\+\_\+)\label{classsirius_1_1_k__point__set_a76a242f7ac9476b0f601bb7643501d99}
+
+\item 
+\hypertarget{classsirius_1_1_k__point__set_ac5aa173ed5001c68ccf87d0938f82239}{}\hyperlink{classsirius_1_1_k__point}{K\+\_\+point} $\ast$ {\bfseries operator\mbox{[}$\,$\mbox{]}} (int i)\label{classsirius_1_1_k__point__set_ac5aa173ed5001c68ccf87d0938f82239}
+
+\item 
+\hypertarget{classsirius_1_1_k__point__set_a44d78218480e1078ed21131e831f3fcb}{}int {\bfseries num\+\_\+kpoints} () const \label{classsirius_1_1_k__point__set_a44d78218480e1078ed21131e831f3fcb}
+
+\item 
+\hypertarget{classsirius_1_1_k__point__set_abe1d3e8dc73b161494ce1ebfad353c81}{}\hyperlink{classsddk_1_1splindex}{splindex}$<$ chunk $>$ const \& {\bfseries spl\+\_\+num\+\_\+kpoints} () const \label{classsirius_1_1_k__point__set_abe1d3e8dc73b161494ce1ebfad353c81}
+
+\item 
+\hypertarget{classsirius_1_1_k__point__set_ae0809331d406d6754d7d571e19663452}{}int {\bfseries spl\+\_\+num\+\_\+kpoints} (int ikloc) const \label{classsirius_1_1_k__point__set_ae0809331d406d6754d7d571e19663452}
+
+\item 
+\hypertarget{classsirius_1_1_k__point__set_adb77fa34b1f4d28c1ea9d8dc74edbe21}{}void {\bfseries set\+\_\+band\+\_\+occupancies} (int ik, double $\ast$band\+\_\+occupancies)\label{classsirius_1_1_k__point__set_adb77fa34b1f4d28c1ea9d8dc74edbe21}
+
+\item 
+\hypertarget{classsirius_1_1_k__point__set_a4ab5d098ef495cd015aaff50190ef266}{}void {\bfseries get\+\_\+band\+\_\+occupancies} (int ik, double $\ast$band\+\_\+occupancies)\label{classsirius_1_1_k__point__set_a4ab5d098ef495cd015aaff50190ef266}
+
+\item 
+\hypertarget{classsirius_1_1_k__point__set_a106dbadfb0dc6ff7507177d1fb8ea824}{}void {\bfseries get\+\_\+band\+\_\+energies} (int ik, double $\ast$band\+\_\+energies)\label{classsirius_1_1_k__point__set_a106dbadfb0dc6ff7507177d1fb8ea824}
+
+\item 
+\hypertarget{classsirius_1_1_k__point__set_aae3f844a087b3b63d456288152720338}{}double {\bfseries energy\+\_\+fermi} () const \label{classsirius_1_1_k__point__set_aae3f844a087b3b63d456288152720338}
+
+\item 
+\hypertarget{classsirius_1_1_k__point__set_a67dd58853c1d99aefae52d8764a73916}{}double {\bfseries band\+\_\+gap} () const \label{classsirius_1_1_k__point__set_a67dd58853c1d99aefae52d8764a73916}
+
+\item 
+int \hyperlink{classsirius_1_1_k__point__set_ae1c57ca979c9b9f863446af50ee09cb2}{find\+\_\+kpoint} (\hyperlink{classgeometry3d_1_1vector3d}{vector3d}$<$ double $>$ vk\+\_\+\+\_\+)
+\begin{DoxyCompactList}\small\item\em Find index of k-\/point. \end{DoxyCompactList}\item 
+\hypertarget{classsirius_1_1_k__point__set_a8b2eeae8d9a3392a09edc9d9bb815c6b}{}\hyperlink{classsirius_1_1_k__point}{K\+\_\+point} $\ast$ {\bfseries k\+\_\+point} (int ik)\label{classsirius_1_1_k__point__set_a8b2eeae8d9a3392a09edc9d9bb815c6b}
+
+\item 
+\hypertarget{classsirius_1_1_k__point__set_a704ac03ad43a18ddcad9722c0512a477}{}\hyperlink{classsddk_1_1_communicator}{Communicator} const \& {\bfseries comm} () const \label{classsirius_1_1_k__point__set_a704ac03ad43a18ddcad9722c0512a477}
+
+\end{DoxyCompactItemize}
+\subsection*{Private Attributes}
+\begin{DoxyCompactItemize}
+\item 
+\hypertarget{classsirius_1_1_k__point__set_aa38d3463aa2ee307ec899e3ad5e716b1}{}\hyperlink{classsirius_1_1_simulation__context}{Simulation\+\_\+context} \& {\bfseries ctx\+\_\+}\label{classsirius_1_1_k__point__set_aa38d3463aa2ee307ec899e3ad5e716b1}
+
+\item 
+\hypertarget{classsirius_1_1_k__point__set_a0c8ff279eeca613e6ecf175044e1b302}{}std\+::vector$<$ \hyperlink{classsirius_1_1_k__point}{K\+\_\+point} $\ast$ $>$ {\bfseries kpoints\+\_\+}\label{classsirius_1_1_k__point__set_a0c8ff279eeca613e6ecf175044e1b302}
+
+\item 
+\hypertarget{classsirius_1_1_k__point__set_a12a30147a9df930203250cbfe1ecabd0}{}\hyperlink{classsddk_1_1splindex}{splindex}$<$ chunk $>$ {\bfseries spl\+\_\+num\+\_\+kpoints\+\_\+}\label{classsirius_1_1_k__point__set_a12a30147a9df930203250cbfe1ecabd0}
+
+\item 
+\hypertarget{classsirius_1_1_k__point__set_a1db0a6a6c873cc089e9c871940b4221a}{}double {\bfseries energy\+\_\+fermi\+\_\+} \{0\}\label{classsirius_1_1_k__point__set_a1db0a6a6c873cc089e9c871940b4221a}
+
+\item 
+\hypertarget{classsirius_1_1_k__point__set_adc07972a44349d63718f953e1dfa1484}{}double {\bfseries band\+\_\+gap\+\_\+} \{0\}\label{classsirius_1_1_k__point__set_adc07972a44349d63718f953e1dfa1484}
+
+\item 
+\hypertarget{classsirius_1_1_k__point__set_ad9c424bb8871bccf4c48ee37d7aae73a}{}\hyperlink{classsirius_1_1_unit__cell}{Unit\+\_\+cell} \& {\bfseries unit\+\_\+cell\+\_\+}\label{classsirius_1_1_k__point__set_ad9c424bb8871bccf4c48ee37d7aae73a}
+
+\item 
+\hypertarget{classsirius_1_1_k__point__set_a955e4c58046f64adaec8b8c4c1a9a35d}{}\hyperlink{classsddk_1_1_communicator}{Communicator} const \& {\bfseries comm\+\_\+k\+\_\+}\label{classsirius_1_1_k__point__set_a955e4c58046f64adaec8b8c4c1a9a35d}
+
+\end{DoxyCompactItemize}
+
+
+\subsection{Detailed Description}
+Set of k-\/points. 
+
+Definition at line 43 of file k\+\_\+point\+\_\+set.\+h.
+
+
+
+\subsection{Member Function Documentation}
+\hypertarget{classsirius_1_1_k__point__set_a403308ec76ef56c066de002f9b5714ae}{}\index{sirius\+::\+K\+\_\+point\+\_\+set@{sirius\+::\+K\+\_\+point\+\_\+set}!initialize@{initialize}}
+\index{initialize@{initialize}!sirius\+::\+K\+\_\+point\+\_\+set@{sirius\+::\+K\+\_\+point\+\_\+set}}
+\subsubsection[{initialize(std\+::vector$<$ int $>$ counts=std\+::vector$<$ int $>$())}]{\setlength{\rightskip}{0pt plus 5cm}void sirius\+::\+K\+\_\+point\+\_\+set\+::initialize (
+\begin{DoxyParamCaption}
+\item[{std\+::vector$<$ int $>$}]{counts = {\ttfamily std\+:\+:vector$<$int$>$()}}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}}\label{classsirius_1_1_k__point__set_a403308ec76ef56c066de002f9b5714ae}
+
+
+Initialize the k-\/point set. 
+
+
+
+Definition at line 177 of file k\+\_\+point\+\_\+set.\+h.
+
+\hypertarget{classsirius_1_1_k__point__set_aab8d5e8b8a27bdcbbdf27ac6a31cb230}{}\index{sirius\+::\+K\+\_\+point\+\_\+set@{sirius\+::\+K\+\_\+point\+\_\+set}!find\+\_\+band\+\_\+occupancies@{find\+\_\+band\+\_\+occupancies}}
+\index{find\+\_\+band\+\_\+occupancies@{find\+\_\+band\+\_\+occupancies}!sirius\+::\+K\+\_\+point\+\_\+set@{sirius\+::\+K\+\_\+point\+\_\+set}}
+\subsubsection[{find\+\_\+band\+\_\+occupancies()}]{\setlength{\rightskip}{0pt plus 5cm}void sirius\+::\+K\+\_\+point\+\_\+set\+::find\+\_\+band\+\_\+occupancies (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}}\label{classsirius_1_1_k__point__set_aab8d5e8b8a27bdcbbdf27ac6a31cb230}
+
+
+Find Fermi energy and band occupation numbers. 
+
+
+
+Definition at line 354 of file k\+\_\+point\+\_\+set.\+h.
+
+\hypertarget{classsirius_1_1_k__point__set_af80698a4a83168d356b81c89f92ca17a}{}\index{sirius\+::\+K\+\_\+point\+\_\+set@{sirius\+::\+K\+\_\+point\+\_\+set}!valence\+\_\+eval\+\_\+sum@{valence\+\_\+eval\+\_\+sum}}
+\index{valence\+\_\+eval\+\_\+sum@{valence\+\_\+eval\+\_\+sum}!sirius\+::\+K\+\_\+point\+\_\+set@{sirius\+::\+K\+\_\+point\+\_\+set}}
+\subsubsection[{valence\+\_\+eval\+\_\+sum()}]{\setlength{\rightskip}{0pt plus 5cm}double sirius\+::\+K\+\_\+point\+\_\+set\+::valence\+\_\+eval\+\_\+sum (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}}\label{classsirius_1_1_k__point__set_af80698a4a83168d356b81c89f92ca17a}
+
+
+Return sum of valence eigen-\/values. 
+
+
+
+Definition at line 340 of file k\+\_\+point\+\_\+set.\+h.
+
+\hypertarget{classsirius_1_1_k__point__set_afcfce565bf318b680684ba144456a4a4}{}\index{sirius\+::\+K\+\_\+point\+\_\+set@{sirius\+::\+K\+\_\+point\+\_\+set}!load@{load}}
+\index{load@{load}!sirius\+::\+K\+\_\+point\+\_\+set@{sirius\+::\+K\+\_\+point\+\_\+set}}
+\subsubsection[{load()}]{\setlength{\rightskip}{0pt plus 5cm}void sirius\+::\+K\+\_\+point\+\_\+set\+::load (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}}\label{classsirius_1_1_k__point__set_afcfce565bf318b680684ba144456a4a4}
+\begin{DoxyRefDesc}{Todo}
+\item[\hyperlink{todo__todo000005}{Todo}]check parameters of saved data in a separate function \end{DoxyRefDesc}
+
+
+Definition at line 512 of file k\+\_\+point\+\_\+set.\+h.
+
+\hypertarget{classsirius_1_1_k__point__set_ae1c57ca979c9b9f863446af50ee09cb2}{}\index{sirius\+::\+K\+\_\+point\+\_\+set@{sirius\+::\+K\+\_\+point\+\_\+set}!find\+\_\+kpoint@{find\+\_\+kpoint}}
+\index{find\+\_\+kpoint@{find\+\_\+kpoint}!sirius\+::\+K\+\_\+point\+\_\+set@{sirius\+::\+K\+\_\+point\+\_\+set}}
+\subsubsection[{find\+\_\+kpoint(vector3d$<$ double $>$ vk\+\_\+\+\_\+)}]{\setlength{\rightskip}{0pt plus 5cm}int sirius\+::\+K\+\_\+point\+\_\+set\+::find\+\_\+kpoint (
+\begin{DoxyParamCaption}
+\item[{{\bf vector3d}$<$ double $>$}]{vk\+\_\+\+\_\+}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}}\label{classsirius_1_1_k__point__set_ae1c57ca979c9b9f863446af50ee09cb2}
+
+
+Find index of k-\/point. 
+
+
+
+Definition at line 285 of file k\+\_\+point\+\_\+set.\+h.
+
+
+
+The documentation for this class was generated from the following file\+:\begin{DoxyCompactItemize}
+\item 
+\hyperlink{k__point__set_8h}{k\+\_\+point\+\_\+set.\+h}\end{DoxyCompactItemize}

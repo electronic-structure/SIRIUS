@@ -1,0 +1,441 @@
+\hypertarget{classsirius_1_1_simulation__context}{}\section{sirius\+:\+:Simulation\+\_\+context Class Reference}
+\label{classsirius_1_1_simulation__context}\index{sirius\+::\+Simulation\+\_\+context@{sirius\+::\+Simulation\+\_\+context}}
+
+
+Simulation context is a set of parameters and objects describing a single simulation.  
+
+
+
+
+Inheritance diagram for sirius\+:\+:Simulation\+\_\+context\+:
+% FIG 0
+
+
+Collaboration diagram for sirius\+:\+:Simulation\+\_\+context\+:
+% FIG 1
+\subsection*{Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+\hypertarget{classsirius_1_1_simulation__context_a87145c36b1d091ead81338afd1790fa8}{}{\bfseries Simulation\+\_\+context} (std\+::string const \&fname\+\_\+\+\_\+, \hyperlink{classsddk_1_1_communicator}{Communicator} const \&comm\+\_\+\+\_\+)\label{classsirius_1_1_simulation__context_a87145c36b1d091ead81338afd1790fa8}
+
+\item 
+\hypertarget{classsirius_1_1_simulation__context_a846934eec96d611f5bcf8d4cd2053338}{}{\bfseries Simulation\+\_\+context} (\hyperlink{classsddk_1_1_communicator}{Communicator} const \&comm\+\_\+\+\_\+)\label{classsirius_1_1_simulation__context_a846934eec96d611f5bcf8d4cd2053338}
+
+\item 
+void \hyperlink{classsirius_1_1_simulation__context_a74685952fb7ac3d4ec644e41f040945b}{initialize} ()
+\begin{DoxyCompactList}\small\item\em Initialize the similation (can only be called once). \end{DoxyCompactList}\item 
+\hypertarget{classsirius_1_1_simulation__context_ade1dfea086e74e03304298a4a1944974}{}void {\bfseries print\+\_\+info} ()\label{classsirius_1_1_simulation__context_ade1dfea086e74e03304298a4a1944974}
+
+\item 
+\hypertarget{classsirius_1_1_simulation__context_abceb609509e1b82c98d3d86281ee6a13}{}\hyperlink{classsirius_1_1_unit__cell}{Unit\+\_\+cell} \& {\bfseries unit\+\_\+cell} ()\label{classsirius_1_1_simulation__context_abceb609509e1b82c98d3d86281ee6a13}
+
+\item 
+\hypertarget{classsirius_1_1_simulation__context_a63dc6470588435cc73a7269ef20d5d91}{}\hyperlink{classsirius_1_1_unit__cell}{Unit\+\_\+cell} const \& {\bfseries unit\+\_\+cell} () const \label{classsirius_1_1_simulation__context_a63dc6470588435cc73a7269ef20d5d91}
+
+\item 
+\hypertarget{classsirius_1_1_simulation__context_aacb423b245c3c11644653f4889cf5a5e}{}\hyperlink{classsirius_1_1_step__function}{Step\+\_\+function} const \& {\bfseries step\+\_\+function} () const \label{classsirius_1_1_simulation__context_aacb423b245c3c11644653f4889cf5a5e}
+
+\item 
+\hypertarget{classsirius_1_1_simulation__context_aa8f5ffed5ccbeafde7c780aa70dddc90}{}\hyperlink{classsddk_1_1_f_f_t3_d}{F\+F\+T3\+D} \& {\bfseries fft} () const \label{classsirius_1_1_simulation__context_aa8f5ffed5ccbeafde7c780aa70dddc90}
+
+\item 
+\hypertarget{classsirius_1_1_simulation__context_a07de735216ceb2cfb6a248f83720ab76}{}\hyperlink{classsddk_1_1_f_f_t3_d}{F\+F\+T3\+D} \& {\bfseries fft\+\_\+coarse} () const \label{classsirius_1_1_simulation__context_a07de735216ceb2cfb6a248f83720ab76}
+
+\item 
+\hypertarget{classsirius_1_1_simulation__context_a06e5b4b667cd2abbda5b7b91a38087e7}{}\hyperlink{classsddk_1_1_gvec}{Gvec} const \& {\bfseries gvec} () const \label{classsirius_1_1_simulation__context_a06e5b4b667cd2abbda5b7b91a38087e7}
+
+\item 
+\hypertarget{classsirius_1_1_simulation__context_ac5c0c51e04061c331dafd9cae1191b8c}{}\hyperlink{classsddk_1_1_gvec}{Gvec} const \& {\bfseries gvec\+\_\+coarse} () const \label{classsirius_1_1_simulation__context_ac5c0c51e04061c331dafd9cae1191b8c}
+
+\item 
+\hypertarget{classsirius_1_1_simulation__context_acb8f42bd6f04d38d62d07d3f1526f15f}{}\hyperlink{classsddk_1_1_b_l_a_c_s__grid}{B\+L\+A\+C\+S\+\_\+grid} const \& {\bfseries blacs\+\_\+grid} () const \label{classsirius_1_1_simulation__context_acb8f42bd6f04d38d62d07d3f1526f15f}
+
+\item 
+\hyperlink{classsddk_1_1_communicator}{Communicator} const \& \hyperlink{classsirius_1_1_simulation__context_ae55de04ae8ebd7489b70dc2e2b8ff862}{comm} () const 
+\begin{DoxyCompactList}\small\item\em Total communicator of the context. \end{DoxyCompactList}\item 
+\hyperlink{classsddk_1_1_communicator}{Communicator} const \& \hyperlink{classsirius_1_1_simulation__context_a1449cab4c657410b971ebf347396ec8d}{comm\+\_\+k} () const 
+\begin{DoxyCompactList}\small\item\em Communicator between k-\/points. \end{DoxyCompactList}\item 
+\hyperlink{classsddk_1_1_communicator}{Communicator} const \& \hyperlink{classsirius_1_1_simulation__context_ae74e0befa4b0dd0fc62ad132704609c2}{comm\+\_\+band} () const 
+\begin{DoxyCompactList}\small\item\em \hyperlink{classsirius_1_1_band}{Band} and B\+L\+A\+C\+S grid communicator. \end{DoxyCompactList}\item 
+\hyperlink{classsddk_1_1_communicator}{Communicator} const \& \hyperlink{classsirius_1_1_simulation__context_a060c92669da9cdadeb27a3f60e8d3900}{comm\+\_\+fft} () const 
+\begin{DoxyCompactList}\small\item\em Communicator of the dense F\+F\+T grid. \end{DoxyCompactList}\item 
+\hyperlink{classsddk_1_1_communicator}{Communicator} const \& \hyperlink{classsirius_1_1_simulation__context_ad5ce370b8b7574510be4963e7523d56a}{comm\+\_\+fft\+\_\+coarse} () const 
+\begin{DoxyCompactList}\small\item\em Communicator of the coarse F\+F\+T grid. \end{DoxyCompactList}\item 
+\hypertarget{classsirius_1_1_simulation__context_a3cc2980eab85a6582c4811cb79c5fe40}{}int {\bfseries num\+\_\+fv\+\_\+states} () const \label{classsirius_1_1_simulation__context_a3cc2980eab85a6582c4811cb79c5fe40}
+
+\item 
+\hypertarget{classsirius_1_1_simulation__context_ac0c4513831dd5c62941770e4ae2e53ef}{}int {\bfseries num\+\_\+bands} () const \label{classsirius_1_1_simulation__context_ac0c4513831dd5c62941770e4ae2e53ef}
+
+\item 
+\hypertarget{classsirius_1_1_simulation__context_a61ecdd5eae60b0b213d6c9ca95218bce}{}void {\bfseries create\+\_\+storage\+\_\+file} () const \label{classsirius_1_1_simulation__context_a61ecdd5eae60b0b213d6c9ca95218bce}
+
+\item 
+\hypertarget{classsirius_1_1_simulation__context_aeec6fe93912cbecd5c318cd3d00aa6b8}{}\hyperlink{classsirius_1_1_real__space__prj}{Real\+\_\+space\+\_\+prj} \& {\bfseries real\+\_\+space\+\_\+prj} () const \label{classsirius_1_1_simulation__context_aeec6fe93912cbecd5c318cd3d00aa6b8}
+
+\item 
+\hypertarget{classsirius_1_1_simulation__context_a76eefe6f28881152e2406340c73662a9}{}std\+::string const \& {\bfseries start\+\_\+time\+\_\+tag} () const \label{classsirius_1_1_simulation__context_a76eefe6f28881152e2406340c73662a9}
+
+\item 
+\hypertarget{classsirius_1_1_simulation__context_a28d1a35e1fea2921d498fb2a7510501b}{}void {\bfseries set\+\_\+iterative\+\_\+solver\+\_\+tolerance} (double tolerance\+\_\+\+\_\+)\label{classsirius_1_1_simulation__context_a28d1a35e1fea2921d498fb2a7510501b}
+
+\item 
+\hypertarget{classsirius_1_1_simulation__context_a978ba28b12e2e62c34e9adef0bb0bac3}{}double {\bfseries iterative\+\_\+solver\+\_\+tolerance} () const \label{classsirius_1_1_simulation__context_a978ba28b12e2e62c34e9adef0bb0bac3}
+
+\item 
+\hypertarget{classsirius_1_1_simulation__context_a136956341cfc80f77e3ec4a2b67757cd}{}\hyperlink{eigenproblem_8h_a203f2c57422a6e64834e6e9ab85982bf}{ev\+\_\+solver\+\_\+t} {\bfseries std\+\_\+evp\+\_\+solver\+\_\+type} () const \label{classsirius_1_1_simulation__context_a136956341cfc80f77e3ec4a2b67757cd}
+
+\item 
+\hypertarget{classsirius_1_1_simulation__context_a2403806b7725eaf863a2578628a9a2ac}{}\hyperlink{eigenproblem_8h_a203f2c57422a6e64834e6e9ab85982bf}{ev\+\_\+solver\+\_\+t} {\bfseries gen\+\_\+evp\+\_\+solver\+\_\+type} () const \label{classsirius_1_1_simulation__context_a2403806b7725eaf863a2578628a9a2ac}
+
+\item 
+\hypertarget{classsirius_1_1_simulation__context_a4844ab537db9c525ef14c8ef207b3590}{}\hyperlink{classsirius_1_1_augmentation__operator}{Augmentation\+\_\+operator} const \& {\bfseries augmentation\+\_\+op} (int iat\+\_\+\+\_\+) const \label{classsirius_1_1_simulation__context_a4844ab537db9c525ef14c8ef207b3590}
+
+\item 
+\hypertarget{classsirius_1_1_simulation__context_a577960ee4a0b4eda502dc5a1a0438b4a}{}double\+\_\+complex {\bfseries gvec\+\_\+phase\+\_\+factor} (\hyperlink{classgeometry3d_1_1vector3d}{vector3d}$<$ int $>$ G\+\_\+\+\_\+, int ia\+\_\+\+\_\+) const \label{classsirius_1_1_simulation__context_a577960ee4a0b4eda502dc5a1a0438b4a}
+
+\item 
+double\+\_\+complex \hyperlink{classsirius_1_1_simulation__context_a144edd7af13fbf0ba11097e1983f0206}{gvec\+\_\+phase\+\_\+factor} (int ig\+\_\+\+\_\+, int ia\+\_\+\+\_\+) const 
+\begin{DoxyCompactList}\small\item\em Phase factors $ e^{i {\bf G} {\bf r}_{\alpha}} $. \end{DoxyCompactList}\item 
+\hypertarget{classsirius_1_1_simulation__context_a363313ea8721fccddebaf4a24b9e2f38}{}int {\bfseries gvec\+\_\+count} () const \label{classsirius_1_1_simulation__context_a363313ea8721fccddebaf4a24b9e2f38}
+
+\item 
+\hypertarget{classsirius_1_1_simulation__context_ad13757fe8fc6a26652ff50ad8635524f}{}int {\bfseries gvec\+\_\+offset} () const \label{classsirius_1_1_simulation__context_ad13757fe8fc6a26652ff50ad8635524f}
+
+\item 
+\hypertarget{classsirius_1_1_simulation__context_a2c531460df77616f9ab7583344b275fe}{}\hyperlink{classsddk_1_1mdarray}{mdarray}$<$ int, 2 $>$ const \& {\bfseries gvec\+\_\+coord} () const \label{classsirius_1_1_simulation__context_a2c531460df77616f9ab7583344b275fe}
+
+\item 
+\hypertarget{classsirius_1_1_simulation__context_a3c8d53ca8759f9d591d84034523f75a0}{}\hyperlink{classsddk_1_1mdarray}{mdarray}$<$ double, 2 $>$ const \& {\bfseries atom\+\_\+coord} (int iat\+\_\+\+\_\+) const \label{classsirius_1_1_simulation__context_a3c8d53ca8759f9d591d84034523f75a0}
+
+\item 
+\hypertarget{classsirius_1_1_simulation__context_a705636bd7c3b5458bd0d9c9420771172}{}void {\bfseries generate\+\_\+phase\+\_\+factors} (int iat\+\_\+\+\_\+, \hyperlink{classsddk_1_1mdarray}{mdarray}$<$ double\+\_\+complex, 2 $>$ \&phase\+\_\+factors\+\_\+\+\_\+) const \label{classsirius_1_1_simulation__context_a705636bd7c3b5458bd0d9c9420771172}
+
+\item 
+\hypertarget{classsirius_1_1_simulation__context_a87a2ce072d144f882041d4c2c4c03081}{}\hyperlink{classsirius_1_1_radial__integrals}{Radial\+\_\+integrals} const \& {\bfseries radial\+\_\+integrals} () const \label{classsirius_1_1_simulation__context_a87a2ce072d144f882041d4c2c4c03081}
+
+\item 
+void $\ast$ \hyperlink{classsirius_1_1_simulation__context_a89851f2e8c84b17689504e5ed3d850ee}{memory\+\_\+buffer} (size\+\_\+t size\+\_\+\+\_\+)
+\begin{DoxyCompactList}\small\item\em Return pointer to already allocated temporary memory buffer. \end{DoxyCompactList}\end{DoxyCompactItemize}
+\subsection*{Private Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+\hypertarget{classsirius_1_1_simulation__context_a8e24146627210b780a6e61581174349d}{}void {\bfseries init\+\_\+fft} ()\label{classsirius_1_1_simulation__context_a8e24146627210b780a6e61581174349d}
+
+\item 
+\hypertarget{classsirius_1_1_simulation__context_ad57209758dc2e9c813a91e03da08ae68}{}{\bfseries Simulation\+\_\+context} (\hyperlink{classsirius_1_1_simulation__context}{Simulation\+\_\+context} const \&)=delete\label{classsirius_1_1_simulation__context_ad57209758dc2e9c813a91e03da08ae68}
+
+\item 
+\hypertarget{classsirius_1_1_simulation__context_a0d6536173005e08f917af37942e043da}{}void {\bfseries start} ()\label{classsirius_1_1_simulation__context_a0d6536173005e08f917af37942e043da}
+
+\end{DoxyCompactItemize}
+\subsection*{Private Attributes}
+\begin{DoxyCompactItemize}
+\item 
+\hyperlink{classsddk_1_1_communicator}{Communicator} const \& \hyperlink{classsirius_1_1_simulation__context_aaa69d34673366ac3c0b9ce68755d3876}{comm\+\_\+}
+\begin{DoxyCompactList}\small\item\em Communicator for this simulation. \end{DoxyCompactList}\item 
+\hyperlink{classsirius_1_1_unit__cell}{Unit\+\_\+cell} \hyperlink{classsirius_1_1_simulation__context_a5d0442d2307a97f467360ad68705decb}{unit\+\_\+cell\+\_\+}
+\begin{DoxyCompactList}\small\item\em Unit cell of the simulation. \end{DoxyCompactList}\item 
+std\+::unique\+\_\+ptr$<$ \hyperlink{classsddk_1_1_m_p_i__grid}{M\+P\+I\+\_\+grid} $>$ \hyperlink{classsirius_1_1_simulation__context_aa39fe9cd213f9eaa7999bb95346de9b1}{mpi\+\_\+grid\+\_\+}
+\begin{DoxyCompactList}\small\item\em M\+P\+I grid for this simulation. \end{DoxyCompactList}\item 
+std\+::unique\+\_\+ptr$<$ \hyperlink{classsddk_1_1_b_l_a_c_s__grid}{B\+L\+A\+C\+S\+\_\+grid} $>$ \hyperlink{classsirius_1_1_simulation__context_a9d27b4b363bf0572e54ba140b7ac0855}{blacs\+\_\+grid\+\_\+}
+\begin{DoxyCompactList}\small\item\em 2\+D B\+L\+A\+C\+S grid for distributed linear algebra operations. \end{DoxyCompactList}\item 
+std\+::unique\+\_\+ptr$<$ \hyperlink{classsddk_1_1_f_f_t3_d}{F\+F\+T3\+D} $>$ \hyperlink{classsirius_1_1_simulation__context_a54c14f3c86f05cc4c125c89b0ee940cf}{fft\+\_\+}
+\begin{DoxyCompactList}\small\item\em Fine-\/grained F\+F\+T for density and potential. \end{DoxyCompactList}\item 
+std\+::unique\+\_\+ptr$<$ \hyperlink{classsddk_1_1_f_f_t3_d}{F\+F\+T3\+D} $>$ \hyperlink{classsirius_1_1_simulation__context_a4ff2eb943ab88c0e9f3971176c03d626}{fft\+\_\+coarse\+\_\+}
+\begin{DoxyCompactList}\small\item\em Coarse-\/grained F\+F\+T for application of local potential and density summation. \end{DoxyCompactList}\item 
+std\+::unique\+\_\+ptr$<$ \hyperlink{classsirius_1_1_step__function}{Step\+\_\+function} $>$ \hyperlink{classsirius_1_1_simulation__context_a0a1057d06e126cf048247071de680c4f}{step\+\_\+function\+\_\+}
+\begin{DoxyCompactList}\small\item\em Step function is used in full-\/potential methods. \end{DoxyCompactList}\item 
+\hyperlink{classsddk_1_1_gvec}{Gvec} \hyperlink{classsirius_1_1_simulation__context_aa6a79b4d6a9b7db89180187f8fb2243f}{gvec\+\_\+}
+\begin{DoxyCompactList}\small\item\em G-\/vectors within the Gmax cutoff. \end{DoxyCompactList}\item 
+\hyperlink{classsddk_1_1_gvec}{Gvec} \hyperlink{classsirius_1_1_simulation__context_a0aac68674184d2aefc6abdf0b2ff46a8}{gvec\+\_\+coarse\+\_\+}
+\begin{DoxyCompactList}\small\item\em G-\/vectors within the 2 $\ast$ $\vert$\+Gmax$^\wedge$\{W\+F\}$\vert$ cutoff. \end{DoxyCompactList}\item 
+\hypertarget{classsirius_1_1_simulation__context_a22603ae9f8d43cf8c08e95a143599251}{}std\+::vector$<$ \hyperlink{classsirius_1_1_augmentation__operator}{Augmentation\+\_\+operator}$>$ {\bfseries augmentation\+\_\+op\+\_\+}\label{classsirius_1_1_simulation__context_a22603ae9f8d43cf8c08e95a143599251}
+
+\item 
+\hypertarget{classsirius_1_1_simulation__context_a6298cd7e4b61c87ecee26047fd5ee4d4}{}std\+::unique\+\_\+ptr$<$ \hyperlink{classsirius_1_1_real__space__prj}{Real\+\_\+space\+\_\+prj} $>$ {\bfseries real\+\_\+space\+\_\+prj\+\_\+}\label{classsirius_1_1_simulation__context_a6298cd7e4b61c87ecee26047fd5ee4d4}
+
+\item 
+timeval \hyperlink{classsirius_1_1_simulation__context_a1f1edc57f044cacf58dd0c2ece553b51}{start\+\_\+time\+\_\+}
+\begin{DoxyCompactList}\small\item\em Creation time of the context. \end{DoxyCompactList}\item 
+\hypertarget{classsirius_1_1_simulation__context_a1fce6bd9e1b9caf20ab969871d4da83b}{}std\+::string {\bfseries start\+\_\+time\+\_\+tag\+\_\+}\label{classsirius_1_1_simulation__context_a1fce6bd9e1b9caf20ab969871d4da83b}
+
+\item 
+\hypertarget{classsirius_1_1_simulation__context_a534216a3c23a1dba73d622802dba4a60}{}\hyperlink{eigenproblem_8h_a203f2c57422a6e64834e6e9ab85982bf}{ev\+\_\+solver\+\_\+t} std\+\_\+evp\+\_\+solver\+\_\+type\+\_\+ {\bfseries ev\+\_\+lapack}\label{classsirius_1_1_simulation__context_a534216a3c23a1dba73d622802dba4a60}
+
+\item 
+\hypertarget{classsirius_1_1_simulation__context_aa8f788bcf148aff4f9bd8d9bdfd83101}{}\hyperlink{eigenproblem_8h_a203f2c57422a6e64834e6e9ab85982bf}{ev\+\_\+solver\+\_\+t} {\bfseries gen\+\_\+evp\+\_\+solver\+\_\+type\+\_\+} \{ev\+\_\+lapack\}\label{classsirius_1_1_simulation__context_aa8f788bcf148aff4f9bd8d9bdfd83101}
+
+\item 
+\hypertarget{classsirius_1_1_simulation__context_a7e41ea21833be1a12f8d46f12c8864d8}{}\hyperlink{classsddk_1_1mdarray}{mdarray}$<$ double\+\_\+complex, 3 $>$ {\bfseries phase\+\_\+factors\+\_\+}\label{classsirius_1_1_simulation__context_a7e41ea21833be1a12f8d46f12c8864d8}
+
+\item 
+\hypertarget{classsirius_1_1_simulation__context_a11341c22975f11d9c9e1eff7d3fbed2c}{}\hyperlink{classsddk_1_1mdarray}{mdarray}$<$ int, 2 $>$ {\bfseries gvec\+\_\+coord\+\_\+}\label{classsirius_1_1_simulation__context_a11341c22975f11d9c9e1eff7d3fbed2c}
+
+\item 
+\hypertarget{classsirius_1_1_simulation__context_a5a9ef8e5d93b64cda0e4ea2013c7435a}{}std\+::vector$<$ \hyperlink{classsddk_1_1mdarray}{mdarray}$<$ double, 2 $>$ $>$ {\bfseries atom\+\_\+coord\+\_\+}\label{classsirius_1_1_simulation__context_a5a9ef8e5d93b64cda0e4ea2013c7435a}
+
+\item 
+\hypertarget{classsirius_1_1_simulation__context_ac5d989567913835e3edf7a60be9331a9}{}std\+::unique\+\_\+ptr$<$ \hyperlink{classsirius_1_1_radial__integrals}{Radial\+\_\+integrals} $>$ {\bfseries radial\+\_\+integrals\+\_\+}\label{classsirius_1_1_simulation__context_ac5d989567913835e3edf7a60be9331a9}
+
+\item 
+\hypertarget{classsirius_1_1_simulation__context_a8a2c276c0a2c636b7ef0ce6e32437a42}{}\hyperlink{classsddk_1_1mdarray}{mdarray}$<$ char, 1 $>$ {\bfseries memory\+\_\+buffer\+\_\+}\label{classsirius_1_1_simulation__context_a8a2c276c0a2c636b7ef0ce6e32437a42}
+
+\item 
+\hypertarget{classsirius_1_1_simulation__context_a64382a3d70111aa2cf9ea8124fecffe3}{}double {\bfseries time\+\_\+active\+\_\+}\label{classsirius_1_1_simulation__context_a64382a3d70111aa2cf9ea8124fecffe3}
+
+\item 
+\hypertarget{classsirius_1_1_simulation__context_ae3e30fc4cabec30bf47aaf4864fe447b}{}bool {\bfseries initialized\+\_\+} \{false\}\label{classsirius_1_1_simulation__context_ae3e30fc4cabec30bf47aaf4864fe447b}
+
+\end{DoxyCompactItemize}
+\subsection*{Additional Inherited Members}
+
+
+\subsection{Detailed Description}
+Simulation context is a set of parameters and objects describing a single simulation. 
+
+The order of initialization of the simulation context is the following\+: first, the default parameter values are set in the constructor, then (optionally) \hyperlink{classsirius_1_1_simulation__parameters_af3e24a47d7bf3bfbb14ae113ec10d95a}{import()} method is called and the parameters are overwritten with the those from the input file, and finally, the user sets the values with set\+\_\+...() metods. Then the unit cell can be populated and the context can be initialized. 
+
+Definition at line 51 of file simulation\+\_\+context.\+h.
+
+
+
+\subsection{Member Function Documentation}
+\hypertarget{classsirius_1_1_simulation__context_a74685952fb7ac3d4ec644e41f040945b}{}\index{sirius\+::\+Simulation\+\_\+context@{sirius\+::\+Simulation\+\_\+context}!initialize@{initialize}}
+\index{initialize@{initialize}!sirius\+::\+Simulation\+\_\+context@{sirius\+::\+Simulation\+\_\+context}}
+\subsubsection[{initialize()}]{\setlength{\rightskip}{0pt plus 5cm}void sirius\+::\+Simulation\+\_\+context\+::initialize (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}}\label{classsirius_1_1_simulation__context_a74685952fb7ac3d4ec644e41f040945b}
+
+
+Initialize the similation (can only be called once). 
+
+
+
+Definition at line 417 of file simulation\+\_\+context.\+h.
+
+\hypertarget{classsirius_1_1_simulation__context_ae55de04ae8ebd7489b70dc2e2b8ff862}{}\index{sirius\+::\+Simulation\+\_\+context@{sirius\+::\+Simulation\+\_\+context}!comm@{comm}}
+\index{comm@{comm}!sirius\+::\+Simulation\+\_\+context@{sirius\+::\+Simulation\+\_\+context}}
+\subsubsection[{comm() const }]{\setlength{\rightskip}{0pt plus 5cm}{\bf Communicator} const\& sirius\+::\+Simulation\+\_\+context\+::comm (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [inline]}}\label{classsirius_1_1_simulation__context_ae55de04ae8ebd7489b70dc2e2b8ff862}
+
+
+Total communicator of the context. 
+
+
+
+Definition at line 205 of file simulation\+\_\+context.\+h.
+
+\hypertarget{classsirius_1_1_simulation__context_a1449cab4c657410b971ebf347396ec8d}{}\index{sirius\+::\+Simulation\+\_\+context@{sirius\+::\+Simulation\+\_\+context}!comm\+\_\+k@{comm\+\_\+k}}
+\index{comm\+\_\+k@{comm\+\_\+k}!sirius\+::\+Simulation\+\_\+context@{sirius\+::\+Simulation\+\_\+context}}
+\subsubsection[{comm\+\_\+k() const }]{\setlength{\rightskip}{0pt plus 5cm}{\bf Communicator} const\& sirius\+::\+Simulation\+\_\+context\+::comm\+\_\+k (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [inline]}}\label{classsirius_1_1_simulation__context_a1449cab4c657410b971ebf347396ec8d}
+
+
+Communicator between k-\/points. 
+
+
+
+Definition at line 211 of file simulation\+\_\+context.\+h.
+
+\hypertarget{classsirius_1_1_simulation__context_ae74e0befa4b0dd0fc62ad132704609c2}{}\index{sirius\+::\+Simulation\+\_\+context@{sirius\+::\+Simulation\+\_\+context}!comm\+\_\+band@{comm\+\_\+band}}
+\index{comm\+\_\+band@{comm\+\_\+band}!sirius\+::\+Simulation\+\_\+context@{sirius\+::\+Simulation\+\_\+context}}
+\subsubsection[{comm\+\_\+band() const }]{\setlength{\rightskip}{0pt plus 5cm}{\bf Communicator} const\& sirius\+::\+Simulation\+\_\+context\+::comm\+\_\+band (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [inline]}}\label{classsirius_1_1_simulation__context_ae74e0befa4b0dd0fc62ad132704609c2}
+
+
+\hyperlink{classsirius_1_1_band}{Band} and B\+L\+A\+C\+S grid communicator. 
+
+
+
+Definition at line 218 of file simulation\+\_\+context.\+h.
+
+\hypertarget{classsirius_1_1_simulation__context_a060c92669da9cdadeb27a3f60e8d3900}{}\index{sirius\+::\+Simulation\+\_\+context@{sirius\+::\+Simulation\+\_\+context}!comm\+\_\+fft@{comm\+\_\+fft}}
+\index{comm\+\_\+fft@{comm\+\_\+fft}!sirius\+::\+Simulation\+\_\+context@{sirius\+::\+Simulation\+\_\+context}}
+\subsubsection[{comm\+\_\+fft() const }]{\setlength{\rightskip}{0pt plus 5cm}{\bf Communicator} const\& sirius\+::\+Simulation\+\_\+context\+::comm\+\_\+fft (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [inline]}}\label{classsirius_1_1_simulation__context_a060c92669da9cdadeb27a3f60e8d3900}
+
+
+Communicator of the dense F\+F\+T grid. 
+
+
+
+Definition at line 225 of file simulation\+\_\+context.\+h.
+
+\hypertarget{classsirius_1_1_simulation__context_ad5ce370b8b7574510be4963e7523d56a}{}\index{sirius\+::\+Simulation\+\_\+context@{sirius\+::\+Simulation\+\_\+context}!comm\+\_\+fft\+\_\+coarse@{comm\+\_\+fft\+\_\+coarse}}
+\index{comm\+\_\+fft\+\_\+coarse@{comm\+\_\+fft\+\_\+coarse}!sirius\+::\+Simulation\+\_\+context@{sirius\+::\+Simulation\+\_\+context}}
+\subsubsection[{comm\+\_\+fft\+\_\+coarse() const }]{\setlength{\rightskip}{0pt plus 5cm}{\bf Communicator} const\& sirius\+::\+Simulation\+\_\+context\+::comm\+\_\+fft\+\_\+coarse (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [inline]}}\label{classsirius_1_1_simulation__context_ad5ce370b8b7574510be4963e7523d56a}
+
+
+Communicator of the coarse F\+F\+T grid. 
+
+
+
+Definition at line 232 of file simulation\+\_\+context.\+h.
+
+\hypertarget{classsirius_1_1_simulation__context_a144edd7af13fbf0ba11097e1983f0206}{}\index{sirius\+::\+Simulation\+\_\+context@{sirius\+::\+Simulation\+\_\+context}!gvec\+\_\+phase\+\_\+factor@{gvec\+\_\+phase\+\_\+factor}}
+\index{gvec\+\_\+phase\+\_\+factor@{gvec\+\_\+phase\+\_\+factor}!sirius\+::\+Simulation\+\_\+context@{sirius\+::\+Simulation\+\_\+context}}
+\subsubsection[{gvec\+\_\+phase\+\_\+factor(int ig\+\_\+\+\_\+, int ia\+\_\+\+\_\+) const }]{\setlength{\rightskip}{0pt plus 5cm}double\+\_\+complex sirius\+::\+Simulation\+\_\+context\+::gvec\+\_\+phase\+\_\+factor (
+\begin{DoxyParamCaption}
+\item[{int}]{ig\+\_\+\+\_\+, }
+\item[{int}]{ia\+\_\+\+\_\+}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [inline]}}\label{classsirius_1_1_simulation__context_a144edd7af13fbf0ba11097e1983f0206}
+
+
+Phase factors $ e^{i {\bf G} {\bf r}_{\alpha}} $. 
+
+
+
+Definition at line 320 of file simulation\+\_\+context.\+h.
+
+\hypertarget{classsirius_1_1_simulation__context_a89851f2e8c84b17689504e5ed3d850ee}{}\index{sirius\+::\+Simulation\+\_\+context@{sirius\+::\+Simulation\+\_\+context}!memory\+\_\+buffer@{memory\+\_\+buffer}}
+\index{memory\+\_\+buffer@{memory\+\_\+buffer}!sirius\+::\+Simulation\+\_\+context@{sirius\+::\+Simulation\+\_\+context}}
+\subsubsection[{memory\+\_\+buffer(size\+\_\+t size\+\_\+\+\_\+)}]{\setlength{\rightskip}{0pt plus 5cm}void$\ast$ sirius\+::\+Simulation\+\_\+context\+::memory\+\_\+buffer (
+\begin{DoxyParamCaption}
+\item[{size\+\_\+t}]{size\+\_\+\+\_\+}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}}\label{classsirius_1_1_simulation__context_a89851f2e8c84b17689504e5ed3d850ee}
+
+
+Return pointer to already allocated temporary memory buffer. 
+
+
+
+Definition at line 380 of file simulation\+\_\+context.\+h.
+
+
+
+\subsection{Member Data Documentation}
+\hypertarget{classsirius_1_1_simulation__context_aaa69d34673366ac3c0b9ce68755d3876}{}\index{sirius\+::\+Simulation\+\_\+context@{sirius\+::\+Simulation\+\_\+context}!comm\+\_\+@{comm\+\_\+}}
+\index{comm\+\_\+@{comm\+\_\+}!sirius\+::\+Simulation\+\_\+context@{sirius\+::\+Simulation\+\_\+context}}
+\subsubsection[{comm\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}{\bf Communicator} const\& sirius\+::\+Simulation\+\_\+context\+::comm\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classsirius_1_1_simulation__context_aaa69d34673366ac3c0b9ce68755d3876}
+
+
+Communicator for this simulation. 
+
+
+
+Definition at line 56 of file simulation\+\_\+context.\+h.
+
+\hypertarget{classsirius_1_1_simulation__context_a5d0442d2307a97f467360ad68705decb}{}\index{sirius\+::\+Simulation\+\_\+context@{sirius\+::\+Simulation\+\_\+context}!unit\+\_\+cell\+\_\+@{unit\+\_\+cell\+\_\+}}
+\index{unit\+\_\+cell\+\_\+@{unit\+\_\+cell\+\_\+}!sirius\+::\+Simulation\+\_\+context@{sirius\+::\+Simulation\+\_\+context}}
+\subsubsection[{unit\+\_\+cell\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}{\bf Unit\+\_\+cell} sirius\+::\+Simulation\+\_\+context\+::unit\+\_\+cell\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classsirius_1_1_simulation__context_a5d0442d2307a97f467360ad68705decb}
+
+
+Unit cell of the simulation. 
+
+
+
+Definition at line 59 of file simulation\+\_\+context.\+h.
+
+\hypertarget{classsirius_1_1_simulation__context_aa39fe9cd213f9eaa7999bb95346de9b1}{}\index{sirius\+::\+Simulation\+\_\+context@{sirius\+::\+Simulation\+\_\+context}!mpi\+\_\+grid\+\_\+@{mpi\+\_\+grid\+\_\+}}
+\index{mpi\+\_\+grid\+\_\+@{mpi\+\_\+grid\+\_\+}!sirius\+::\+Simulation\+\_\+context@{sirius\+::\+Simulation\+\_\+context}}
+\subsubsection[{mpi\+\_\+grid\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}std\+::unique\+\_\+ptr$<${\bf M\+P\+I\+\_\+grid}$>$ sirius\+::\+Simulation\+\_\+context\+::mpi\+\_\+grid\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classsirius_1_1_simulation__context_aa39fe9cd213f9eaa7999bb95346de9b1}
+
+
+M\+P\+I grid for this simulation. 
+
+
+
+Definition at line 62 of file simulation\+\_\+context.\+h.
+
+\hypertarget{classsirius_1_1_simulation__context_a9d27b4b363bf0572e54ba140b7ac0855}{}\index{sirius\+::\+Simulation\+\_\+context@{sirius\+::\+Simulation\+\_\+context}!blacs\+\_\+grid\+\_\+@{blacs\+\_\+grid\+\_\+}}
+\index{blacs\+\_\+grid\+\_\+@{blacs\+\_\+grid\+\_\+}!sirius\+::\+Simulation\+\_\+context@{sirius\+::\+Simulation\+\_\+context}}
+\subsubsection[{blacs\+\_\+grid\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}std\+::unique\+\_\+ptr$<${\bf B\+L\+A\+C\+S\+\_\+grid}$>$ sirius\+::\+Simulation\+\_\+context\+::blacs\+\_\+grid\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classsirius_1_1_simulation__context_a9d27b4b363bf0572e54ba140b7ac0855}
+
+
+2\+D B\+L\+A\+C\+S grid for distributed linear algebra operations. 
+
+
+
+Definition at line 65 of file simulation\+\_\+context.\+h.
+
+\hypertarget{classsirius_1_1_simulation__context_a54c14f3c86f05cc4c125c89b0ee940cf}{}\index{sirius\+::\+Simulation\+\_\+context@{sirius\+::\+Simulation\+\_\+context}!fft\+\_\+@{fft\+\_\+}}
+\index{fft\+\_\+@{fft\+\_\+}!sirius\+::\+Simulation\+\_\+context@{sirius\+::\+Simulation\+\_\+context}}
+\subsubsection[{fft\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}std\+::unique\+\_\+ptr$<${\bf F\+F\+T3\+D}$>$ sirius\+::\+Simulation\+\_\+context\+::fft\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classsirius_1_1_simulation__context_a54c14f3c86f05cc4c125c89b0ee940cf}
+
+
+Fine-\/grained F\+F\+T for density and potential. 
+
+This is the F\+F\+T driver to transform periodic functions such as density and potential on the fine-\/grained F\+F\+T grid. The transformation is parallel. 
+
+Definition at line 70 of file simulation\+\_\+context.\+h.
+
+\hypertarget{classsirius_1_1_simulation__context_a4ff2eb943ab88c0e9f3971176c03d626}{}\index{sirius\+::\+Simulation\+\_\+context@{sirius\+::\+Simulation\+\_\+context}!fft\+\_\+coarse\+\_\+@{fft\+\_\+coarse\+\_\+}}
+\index{fft\+\_\+coarse\+\_\+@{fft\+\_\+coarse\+\_\+}!sirius\+::\+Simulation\+\_\+context@{sirius\+::\+Simulation\+\_\+context}}
+\subsubsection[{fft\+\_\+coarse\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}std\+::unique\+\_\+ptr$<${\bf F\+F\+T3\+D}$>$ sirius\+::\+Simulation\+\_\+context\+::fft\+\_\+coarse\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classsirius_1_1_simulation__context_a4ff2eb943ab88c0e9f3971176c03d626}
+
+
+Coarse-\/grained F\+F\+T for application of local potential and density summation. 
+
+
+
+Definition at line 73 of file simulation\+\_\+context.\+h.
+
+\hypertarget{classsirius_1_1_simulation__context_a0a1057d06e126cf048247071de680c4f}{}\index{sirius\+::\+Simulation\+\_\+context@{sirius\+::\+Simulation\+\_\+context}!step\+\_\+function\+\_\+@{step\+\_\+function\+\_\+}}
+\index{step\+\_\+function\+\_\+@{step\+\_\+function\+\_\+}!sirius\+::\+Simulation\+\_\+context@{sirius\+::\+Simulation\+\_\+context}}
+\subsubsection[{step\+\_\+function\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}std\+::unique\+\_\+ptr$<${\bf Step\+\_\+function}$>$ sirius\+::\+Simulation\+\_\+context\+::step\+\_\+function\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classsirius_1_1_simulation__context_a0a1057d06e126cf048247071de680c4f}
+
+
+Step function is used in full-\/potential methods. 
+
+
+
+Definition at line 76 of file simulation\+\_\+context.\+h.
+
+\hypertarget{classsirius_1_1_simulation__context_aa6a79b4d6a9b7db89180187f8fb2243f}{}\index{sirius\+::\+Simulation\+\_\+context@{sirius\+::\+Simulation\+\_\+context}!gvec\+\_\+@{gvec\+\_\+}}
+\index{gvec\+\_\+@{gvec\+\_\+}!sirius\+::\+Simulation\+\_\+context@{sirius\+::\+Simulation\+\_\+context}}
+\subsubsection[{gvec\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}{\bf Gvec} sirius\+::\+Simulation\+\_\+context\+::gvec\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classsirius_1_1_simulation__context_aa6a79b4d6a9b7db89180187f8fb2243f}
+
+
+G-\/vectors within the Gmax cutoff. 
+
+
+
+Definition at line 79 of file simulation\+\_\+context.\+h.
+
+\hypertarget{classsirius_1_1_simulation__context_a0aac68674184d2aefc6abdf0b2ff46a8}{}\index{sirius\+::\+Simulation\+\_\+context@{sirius\+::\+Simulation\+\_\+context}!gvec\+\_\+coarse\+\_\+@{gvec\+\_\+coarse\+\_\+}}
+\index{gvec\+\_\+coarse\+\_\+@{gvec\+\_\+coarse\+\_\+}!sirius\+::\+Simulation\+\_\+context@{sirius\+::\+Simulation\+\_\+context}}
+\subsubsection[{gvec\+\_\+coarse\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}{\bf Gvec} sirius\+::\+Simulation\+\_\+context\+::gvec\+\_\+coarse\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classsirius_1_1_simulation__context_a0aac68674184d2aefc6abdf0b2ff46a8}
+
+
+G-\/vectors within the 2 $\ast$ $\vert$\+Gmax$^\wedge$\{W\+F\}$\vert$ cutoff. 
+
+
+
+Definition at line 82 of file simulation\+\_\+context.\+h.
+
+\hypertarget{classsirius_1_1_simulation__context_a1f1edc57f044cacf58dd0c2ece553b51}{}\index{sirius\+::\+Simulation\+\_\+context@{sirius\+::\+Simulation\+\_\+context}!start\+\_\+time\+\_\+@{start\+\_\+time\+\_\+}}
+\index{start\+\_\+time\+\_\+@{start\+\_\+time\+\_\+}!sirius\+::\+Simulation\+\_\+context@{sirius\+::\+Simulation\+\_\+context}}
+\subsubsection[{start\+\_\+time\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}timeval sirius\+::\+Simulation\+\_\+context\+::start\+\_\+time\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classsirius_1_1_simulation__context_a1f1edc57f044cacf58dd0c2ece553b51}
+
+
+Creation time of the context. 
+
+
+
+Definition at line 89 of file simulation\+\_\+context.\+h.
+
+
+
+The documentation for this class was generated from the following file\+:\begin{DoxyCompactItemize}
+\item 
+\hyperlink{simulation__context_8h}{simulation\+\_\+context.\+h}\end{DoxyCompactItemize}

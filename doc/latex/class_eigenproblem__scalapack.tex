@@ -1,0 +1,209 @@
+\hypertarget{class_eigenproblem__scalapack}{}\section{Eigenproblem\+\_\+scalapack Class Reference}
+\label{class_eigenproblem__scalapack}\index{Eigenproblem\+\_\+scalapack@{Eigenproblem\+\_\+scalapack}}
+
+
+Interface for Sca\+L\+A\+P\+A\+C\+K eigen-\/value solvers.  
+
+
+
+
+Inheritance diagram for Eigenproblem\+\_\+scalapack\+:
+% FIG 0
+
+
+Collaboration diagram for Eigenproblem\+\_\+scalapack\+:
+% FIG 1
+\subsection*{Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+\hypertarget{class_eigenproblem__scalapack_a968579623009618af1dc5620054eec81}{}{\bfseries Eigenproblem\+\_\+scalapack} (B\+L\+A\+C\+S\+\_\+grid const \&blacs\+\_\+grid\+\_\+\+\_\+, int32\+\_\+t bs\+\_\+row\+\_\+\+\_\+, int32\+\_\+t bs\+\_\+col\+\_\+\+\_\+, double abstol\+\_\+\+\_\+=1e-\/12)\label{class_eigenproblem__scalapack_a968579623009618af1dc5620054eec81}
+
+\item 
+int \hyperlink{class_eigenproblem__scalapack_ac8d647129c61f4eb167e05967aee7fbd}{solve} (int32\+\_\+t matrix\+\_\+size, double\+\_\+complex $\ast$A, int32\+\_\+t lda, double $\ast$eval, double\+\_\+complex $\ast$Z, int32\+\_\+t ldz) const 
+\begin{DoxyCompactList}\small\item\em Complex standard Hermitian-\/definite eigenproblem with all eigen-\/vectors. \end{DoxyCompactList}\item 
+int \hyperlink{class_eigenproblem__scalapack_ac9087b19c1e71903325ae44f616a2af2}{solve} (int32\+\_\+t matrix\+\_\+size, int32\+\_\+t nevec, double\+\_\+complex $\ast$A, int32\+\_\+t lda, double\+\_\+complex $\ast$B, int32\+\_\+t ldb, double $\ast$eval, double\+\_\+complex $\ast$Z, int32\+\_\+t ldz, int32\+\_\+t num\+\_\+rows\+\_\+loc=0, int32\+\_\+t num\+\_\+cols\+\_\+loc=0) const 
+\begin{DoxyCompactList}\small\item\em Complex generalized Hermitian-\/definite eigenproblem. \end{DoxyCompactList}\item 
+int \hyperlink{class_eigenproblem__scalapack_ab5913b0094853eafa35101301e33e175}{solve} (int32\+\_\+t matrix\+\_\+size, int32\+\_\+t nevec, double $\ast$A, int32\+\_\+t lda, double $\ast$B, int32\+\_\+t ldb, double $\ast$eval, double $\ast$Z, int32\+\_\+t ldz, int32\+\_\+t num\+\_\+rows\+\_\+loc=0, int32\+\_\+t num\+\_\+cols\+\_\+loc=0) const 
+\begin{DoxyCompactList}\small\item\em Real generalized symmetric-\/definite eigenproblem. \end{DoxyCompactList}\item 
+int \hyperlink{class_eigenproblem__scalapack_a12b54984209f8f32beb3d287aaae3ac9}{solve} (int32\+\_\+t matrix\+\_\+size, int32\+\_\+t nevec, double $\ast$A, int32\+\_\+t lda, double $\ast$eval, double $\ast$Z, int32\+\_\+t ldz, int32\+\_\+t num\+\_\+rows\+\_\+loc=0, int32\+\_\+t num\+\_\+cols\+\_\+loc=0) const 
+\begin{DoxyCompactList}\small\item\em Real standard symmetric-\/definite eigenproblem with N lowest eigen-\/vectors. \end{DoxyCompactList}\item 
+int \hyperlink{class_eigenproblem__scalapack_a632f03be9a50f73459d597d4683cf91e}{solve} (int32\+\_\+t matrix\+\_\+size, int32\+\_\+t nevec, double\+\_\+complex $\ast$A, int32\+\_\+t lda, double $\ast$eval, double\+\_\+complex $\ast$Z, int32\+\_\+t ldz, int32\+\_\+t num\+\_\+rows\+\_\+loc=0, int32\+\_\+t num\+\_\+cols\+\_\+loc=0) const 
+\begin{DoxyCompactList}\small\item\em Complex standard Hermitian-\/definite eigenproblem with with N lowest eigen-\/vectors. \end{DoxyCompactList}\item 
+\hypertarget{class_eigenproblem__scalapack_a6a26893ea8b9fe41761b6c691f8c6fa6}{}bool {\bfseries parallel} () const \label{class_eigenproblem__scalapack_a6a26893ea8b9fe41761b6c691f8c6fa6}
+
+\item 
+\hypertarget{class_eigenproblem__scalapack_ae8fe13ebb5d4d8809cf5d9da2900379c}{}\hyperlink{eigenproblem_8h_a203f2c57422a6e64834e6e9ab85982bf}{ev\+\_\+solver\+\_\+t} {\bfseries type} () const \label{class_eigenproblem__scalapack_ae8fe13ebb5d4d8809cf5d9da2900379c}
+
+\end{DoxyCompactItemize}
+\subsection*{Private Attributes}
+\begin{DoxyCompactItemize}
+\item 
+\hypertarget{class_eigenproblem__scalapack_afd39a9432cecd17c5aeff9aac844094c}{}int32\+\_\+t {\bfseries bs\+\_\+row\+\_\+}\label{class_eigenproblem__scalapack_afd39a9432cecd17c5aeff9aac844094c}
+
+\item 
+\hypertarget{class_eigenproblem__scalapack_a164403fc08953e69bd7463711e4988bc}{}int32\+\_\+t {\bfseries bs\+\_\+col\+\_\+}\label{class_eigenproblem__scalapack_a164403fc08953e69bd7463711e4988bc}
+
+\item 
+\hypertarget{class_eigenproblem__scalapack_a2c7b3f41e0eef84c398606488ac75f2b}{}int {\bfseries num\+\_\+ranks\+\_\+row\+\_\+}\label{class_eigenproblem__scalapack_a2c7b3f41e0eef84c398606488ac75f2b}
+
+\item 
+\hypertarget{class_eigenproblem__scalapack_abce1085360c557ce1fd4e3b92bb595aa}{}int {\bfseries num\+\_\+ranks\+\_\+col\+\_\+}\label{class_eigenproblem__scalapack_abce1085360c557ce1fd4e3b92bb595aa}
+
+\item 
+\hypertarget{class_eigenproblem__scalapack_aa5f945fd3e8bd65cced45228f3abd2f9}{}int {\bfseries blacs\+\_\+context\+\_\+}\label{class_eigenproblem__scalapack_aa5f945fd3e8bd65cced45228f3abd2f9}
+
+\item 
+\hypertarget{class_eigenproblem__scalapack_a05fc23dbc625dde11957d86e1ced2d19}{}double {\bfseries abstol\+\_\+}\label{class_eigenproblem__scalapack_a05fc23dbc625dde11957d86e1ced2d19}
+
+\end{DoxyCompactItemize}
+
+
+\subsection{Detailed Description}
+Interface for Sca\+L\+A\+P\+A\+C\+K eigen-\/value solvers. 
+
+Definition at line 625 of file eigenproblem.\+h.
+
+
+
+\subsection{Member Function Documentation}
+\hypertarget{class_eigenproblem__scalapack_ac8d647129c61f4eb167e05967aee7fbd}{}\index{Eigenproblem\+\_\+scalapack@{Eigenproblem\+\_\+scalapack}!solve@{solve}}
+\index{solve@{solve}!Eigenproblem\+\_\+scalapack@{Eigenproblem\+\_\+scalapack}}
+\subsubsection[{solve(int32\+\_\+t matrix\+\_\+size, double\+\_\+complex $\ast$\+A, int32\+\_\+t lda, double $\ast$eval, double\+\_\+complex $\ast$\+Z, int32\+\_\+t ldz) const }]{\setlength{\rightskip}{0pt plus 5cm}int Eigenproblem\+\_\+scalapack\+::solve (
+\begin{DoxyParamCaption}
+\item[{int32\+\_\+t}]{matrix\+\_\+size, }
+\item[{double\+\_\+complex $\ast$}]{A, }
+\item[{int32\+\_\+t}]{lda, }
+\item[{double $\ast$}]{eval, }
+\item[{double\+\_\+complex $\ast$}]{Z, }
+\item[{int32\+\_\+t}]{ldz}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [inline]}, {\ttfamily [virtual]}}\label{class_eigenproblem__scalapack_ac8d647129c61f4eb167e05967aee7fbd}
+
+
+Complex standard Hermitian-\/definite eigenproblem with all eigen-\/vectors. 
+
+
+
+Reimplemented from \hyperlink{class_eigenproblem_ae93b1502e109105a05b39a1e15003850}{Eigenproblem}.
+
+
+
+Definition at line 705 of file eigenproblem.\+h.
+
+\hypertarget{class_eigenproblem__scalapack_ac9087b19c1e71903325ae44f616a2af2}{}\index{Eigenproblem\+\_\+scalapack@{Eigenproblem\+\_\+scalapack}!solve@{solve}}
+\index{solve@{solve}!Eigenproblem\+\_\+scalapack@{Eigenproblem\+\_\+scalapack}}
+\subsubsection[{solve(int32\+\_\+t matrix\+\_\+size, int32\+\_\+t nevec, double\+\_\+complex $\ast$\+A, int32\+\_\+t lda, double\+\_\+complex $\ast$\+B, int32\+\_\+t ldb, double $\ast$eval, double\+\_\+complex $\ast$\+Z, int32\+\_\+t ldz, int32\+\_\+t num\+\_\+rows\+\_\+loc=0, int32\+\_\+t num\+\_\+cols\+\_\+loc=0) const }]{\setlength{\rightskip}{0pt plus 5cm}int Eigenproblem\+\_\+scalapack\+::solve (
+\begin{DoxyParamCaption}
+\item[{int32\+\_\+t}]{matrix\+\_\+size, }
+\item[{int32\+\_\+t}]{nevec, }
+\item[{double\+\_\+complex $\ast$}]{A, }
+\item[{int32\+\_\+t}]{lda, }
+\item[{double\+\_\+complex $\ast$}]{B, }
+\item[{int32\+\_\+t}]{ldb, }
+\item[{double $\ast$}]{eval, }
+\item[{double\+\_\+complex $\ast$}]{Z, }
+\item[{int32\+\_\+t}]{ldz, }
+\item[{int32\+\_\+t}]{num\+\_\+rows\+\_\+loc = {\ttfamily 0}, }
+\item[{int32\+\_\+t}]{num\+\_\+cols\+\_\+loc = {\ttfamily 0}}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [inline]}, {\ttfamily [virtual]}}\label{class_eigenproblem__scalapack_ac9087b19c1e71903325ae44f616a2af2}
+
+
+Complex generalized Hermitian-\/definite eigenproblem. 
+
+
+
+Reimplemented from \hyperlink{class_eigenproblem_ac21f076d0d055610bbf8b26db34fb055}{Eigenproblem}.
+
+
+
+Definition at line 755 of file eigenproblem.\+h.
+
+\hypertarget{class_eigenproblem__scalapack_ab5913b0094853eafa35101301e33e175}{}\index{Eigenproblem\+\_\+scalapack@{Eigenproblem\+\_\+scalapack}!solve@{solve}}
+\index{solve@{solve}!Eigenproblem\+\_\+scalapack@{Eigenproblem\+\_\+scalapack}}
+\subsubsection[{solve(int32\+\_\+t matrix\+\_\+size, int32\+\_\+t nevec, double $\ast$\+A, int32\+\_\+t lda, double $\ast$\+B, int32\+\_\+t ldb, double $\ast$eval, double $\ast$\+Z, int32\+\_\+t ldz, int32\+\_\+t num\+\_\+rows\+\_\+loc=0, int32\+\_\+t num\+\_\+cols\+\_\+loc=0) const }]{\setlength{\rightskip}{0pt plus 5cm}int Eigenproblem\+\_\+scalapack\+::solve (
+\begin{DoxyParamCaption}
+\item[{int32\+\_\+t}]{matrix\+\_\+size, }
+\item[{int32\+\_\+t}]{nevec, }
+\item[{double $\ast$}]{A, }
+\item[{int32\+\_\+t}]{lda, }
+\item[{double $\ast$}]{B, }
+\item[{int32\+\_\+t}]{ldb, }
+\item[{double $\ast$}]{eval, }
+\item[{double $\ast$}]{Z, }
+\item[{int32\+\_\+t}]{ldz, }
+\item[{int32\+\_\+t}]{num\+\_\+rows\+\_\+loc = {\ttfamily 0}, }
+\item[{int32\+\_\+t}]{num\+\_\+cols\+\_\+loc = {\ttfamily 0}}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [inline]}, {\ttfamily [virtual]}}\label{class_eigenproblem__scalapack_ab5913b0094853eafa35101301e33e175}
+
+
+Real generalized symmetric-\/definite eigenproblem. 
+
+
+
+Reimplemented from \hyperlink{class_eigenproblem_ad09807942eeec6c4c6db801a561332ce}{Eigenproblem}.
+
+
+
+Definition at line 850 of file eigenproblem.\+h.
+
+\hypertarget{class_eigenproblem__scalapack_a12b54984209f8f32beb3d287aaae3ac9}{}\index{Eigenproblem\+\_\+scalapack@{Eigenproblem\+\_\+scalapack}!solve@{solve}}
+\index{solve@{solve}!Eigenproblem\+\_\+scalapack@{Eigenproblem\+\_\+scalapack}}
+\subsubsection[{solve(int32\+\_\+t matrix\+\_\+size, int32\+\_\+t nevec, double $\ast$\+A, int32\+\_\+t lda, double $\ast$eval, double $\ast$\+Z, int32\+\_\+t ldz, int32\+\_\+t num\+\_\+rows\+\_\+loc=0, int32\+\_\+t num\+\_\+cols\+\_\+loc=0) const }]{\setlength{\rightskip}{0pt plus 5cm}int Eigenproblem\+\_\+scalapack\+::solve (
+\begin{DoxyParamCaption}
+\item[{int32\+\_\+t}]{matrix\+\_\+size, }
+\item[{int32\+\_\+t}]{nevec, }
+\item[{double $\ast$}]{A, }
+\item[{int32\+\_\+t}]{lda, }
+\item[{double $\ast$}]{eval, }
+\item[{double $\ast$}]{Z, }
+\item[{int32\+\_\+t}]{ldz, }
+\item[{int32\+\_\+t}]{num\+\_\+rows\+\_\+loc = {\ttfamily 0}, }
+\item[{int32\+\_\+t}]{num\+\_\+cols\+\_\+loc = {\ttfamily 0}}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [inline]}, {\ttfamily [virtual]}}\label{class_eigenproblem__scalapack_a12b54984209f8f32beb3d287aaae3ac9}
+
+
+Real standard symmetric-\/definite eigenproblem with N lowest eigen-\/vectors. 
+
+
+
+Reimplemented from \hyperlink{class_eigenproblem_a7fe0494ecbc2ad567bac5c3d599b1c4c}{Eigenproblem}.
+
+
+
+Definition at line 937 of file eigenproblem.\+h.
+
+\hypertarget{class_eigenproblem__scalapack_a632f03be9a50f73459d597d4683cf91e}{}\index{Eigenproblem\+\_\+scalapack@{Eigenproblem\+\_\+scalapack}!solve@{solve}}
+\index{solve@{solve}!Eigenproblem\+\_\+scalapack@{Eigenproblem\+\_\+scalapack}}
+\subsubsection[{solve(int32\+\_\+t matrix\+\_\+size, int32\+\_\+t nevec, double\+\_\+complex $\ast$\+A, int32\+\_\+t lda, double $\ast$eval, double\+\_\+complex $\ast$\+Z, int32\+\_\+t ldz, int32\+\_\+t num\+\_\+rows\+\_\+loc=0, int32\+\_\+t num\+\_\+cols\+\_\+loc=0) const }]{\setlength{\rightskip}{0pt plus 5cm}int Eigenproblem\+\_\+scalapack\+::solve (
+\begin{DoxyParamCaption}
+\item[{int32\+\_\+t}]{matrix\+\_\+size, }
+\item[{int32\+\_\+t}]{nevec, }
+\item[{double\+\_\+complex $\ast$}]{A, }
+\item[{int32\+\_\+t}]{lda, }
+\item[{double $\ast$}]{eval, }
+\item[{double\+\_\+complex $\ast$}]{Z, }
+\item[{int32\+\_\+t}]{ldz, }
+\item[{int32\+\_\+t}]{num\+\_\+rows\+\_\+loc = {\ttfamily 0}, }
+\item[{int32\+\_\+t}]{num\+\_\+cols\+\_\+loc = {\ttfamily 0}}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [inline]}, {\ttfamily [virtual]}}\label{class_eigenproblem__scalapack_a632f03be9a50f73459d597d4683cf91e}
+
+
+Complex standard Hermitian-\/definite eigenproblem with with N lowest eigen-\/vectors. 
+
+
+
+Reimplemented from \hyperlink{class_eigenproblem_a08bbface2f39311674aa0fbee42610be}{Eigenproblem}.
+
+
+
+Definition at line 1024 of file eigenproblem.\+h.
+
+
+
+The documentation for this class was generated from the following file\+:\begin{DoxyCompactItemize}
+\item 
+\hyperlink{eigenproblem_8h}{eigenproblem.\+h}\end{DoxyCompactItemize}

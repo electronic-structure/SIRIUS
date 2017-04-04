@@ -1,0 +1,15 @@
+digraph "sirius::Linear_mixer&lt; T &gt;"
+{
+ // INTERACTIVE_SVG=YES
+  edge [fontname="Helvetica",fontsize="10",labelfontname="Helvetica",labelfontsize="10"];
+  node [fontname="Helvetica",fontsize="10",shape=record];
+  Node1 [label="sirius::Linear_mixer\< T \>",height=0.2,width=0.4,color="black", fillcolor="grey75", style="filled", fontcolor="black"];
+  Node2 -> Node1 [dir="back",color="midnightblue",fontsize="10",style="solid",fontname="Helvetica"];
+  Node2 [label="sirius::Mixer\< T \>",height=0.2,width=0.4,color="black", fillcolor="white", style="filled",URL="$classsirius_1_1_mixer.html",tooltip="Abstract mixer. "];
+  Node3 -> Node2 [dir="back",color="darkorchid3",fontsize="10",style="dashed",label=" vectors_" ,fontname="Helvetica"];
+  Node3 [label="sddk::mdarray\< T, 2 \>",height=0.2,width=0.4,color="black", fillcolor="white", style="filled",URL="$classsddk_1_1mdarray.html"];
+  Node4 -> Node3 [dir="back",color="midnightblue",fontsize="10",style="solid",fontname="Helvetica"];
+  Node4 [label="sddk::mdarray_base\l\< T, N \>",height=0.2,width=0.4,color="black", fillcolor="white", style="filled",URL="$classsddk_1_1mdarray__base.html",tooltip="Base class of multidimensional array. "];
+  Node5 -> Node4 [dir="back",color="darkorchid3",fontsize="10",style="dashed",label=" raw_ptr_device_\nraw_ptr_" ,fontname="Helvetica"];
+  Node5 [label="T",height=0.2,width=0.4,color="grey75", fillcolor="white", style="filled"];
+}

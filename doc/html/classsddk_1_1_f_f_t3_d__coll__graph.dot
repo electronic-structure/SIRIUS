@@ -1,0 +1,31 @@
+digraph "sddk::FFT3D"
+{
+ // INTERACTIVE_SVG=YES
+  edge [fontname="Helvetica",fontsize="10",labelfontname="Helvetica",labelfontsize="10"];
+  node [fontname="Helvetica",fontsize="10",shape=record];
+  rankdir="LR";
+  Node1 [label="sddk::FFT3D",height=0.2,width=0.4,color="black", fillcolor="grey75", style="filled", fontcolor="black"];
+  Node2 -> Node1 [dir="back",color="darkorchid3",fontsize="10",style="dashed",label=" z_col_pos_" ,fontname="Helvetica"];
+  Node2 [label="sddk::mdarray\< int, 2 \>",height=0.2,width=0.4,color="black", fillcolor="white", style="filled",URL="$classsddk_1_1mdarray.html"];
+  Node3 -> Node2 [dir="back",color="midnightblue",fontsize="10",style="solid",fontname="Helvetica"];
+  Node3 [label="sddk::mdarray_base\l\< int, N \>",height=0.2,width=0.4,color="black", fillcolor="white", style="filled",URL="$classsddk_1_1mdarray__base.html"];
+  Node4 -> Node1 [dir="back",color="darkorchid3",fontsize="10",style="dashed",label=" fft_buffer_aux2_\nfft_buffer_aux1_\nfft_buffer_" ,fontname="Helvetica"];
+  Node4 [label="sddk::mdarray\< double\l_complex, 1 \>",height=0.2,width=0.4,color="black", fillcolor="white", style="filled",URL="$classsddk_1_1mdarray.html"];
+  Node5 -> Node4 [dir="back",color="midnightblue",fontsize="10",style="solid",fontname="Helvetica"];
+  Node5 [label="sddk::mdarray_base\l\< double_complex, N \>",height=0.2,width=0.4,color="black", fillcolor="white", style="filled",URL="$classsddk_1_1mdarray__base.html"];
+  Node6 -> Node1 [dir="back",color="darkorchid3",fontsize="10",style="dashed",label=" map_zcol_to_fft_buffer\l_x0y0_\nmap_zcol_to_fft_buffer_" ,fontname="Helvetica"];
+  Node6 [label="sddk::mdarray\< int, 1 \>",height=0.2,width=0.4,color="black", fillcolor="white", style="filled",URL="$classsddk_1_1mdarray.html"];
+  Node3 -> Node6 [dir="back",color="midnightblue",fontsize="10",style="solid",fontname="Helvetica"];
+  Node7 -> Node1 [dir="back",color="darkorchid3",fontsize="10",style="dashed",label=" spl_z_" ,fontname="Helvetica"];
+  Node7 [label="sddk::splindex\< block \>",height=0.2,width=0.4,color="black", fillcolor="white", style="filled",URL="$classsddk_1_1splindex.html"];
+  Node8 -> Node7 [dir="back",color="midnightblue",fontsize="10",style="solid",fontname="Helvetica"];
+  Node8 [label="sddk::splindex_base\l\< int \>",height=0.2,width=0.4,color="black", fillcolor="white", style="filled",URL="$classsddk_1_1splindex__base.html"];
+  Node9 -> Node1 [dir="back",color="darkorchid3",fontsize="10",style="dashed",label=" cufft_work_buf_" ,fontname="Helvetica"];
+  Node9 [label="sddk::mdarray\< char, 1 \>",height=0.2,width=0.4,color="black", fillcolor="white", style="filled",URL="$classsddk_1_1mdarray.html"];
+  Node10 -> Node9 [dir="back",color="midnightblue",fontsize="10",style="solid",fontname="Helvetica"];
+  Node10 [label="sddk::mdarray_base\l\< char, N \>",height=0.2,width=0.4,color="black", fillcolor="white", style="filled",URL="$classsddk_1_1mdarray__base.html"];
+  Node11 -> Node1 [dir="back",color="darkorchid3",fontsize="10",style="dashed",label=" comm_" ,fontname="Helvetica"];
+  Node11 [label="sddk::Communicator",height=0.2,width=0.4,color="black", fillcolor="white", style="filled",URL="$classsddk_1_1_communicator.html",tooltip="MPI communicator wrapper. "];
+  Node12 -> Node1 [dir="back",color="darkorchid3",fontsize="10",style="dashed",label=" grid_" ,fontname="Helvetica"];
+  Node12 [label="sddk::FFT3D_grid",height=0.2,width=0.4,color="black", fillcolor="white", style="filled",URL="$classsddk_1_1_f_f_t3_d__grid.html",tooltip="Handling of FFT grids. "];
+}

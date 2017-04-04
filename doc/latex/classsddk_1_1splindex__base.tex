@@ -1,0 +1,120 @@
+\hypertarget{classsddk_1_1splindex__base}{}\section{sddk\+:\+:splindex\+\_\+base$<$ T $>$ Class Template Reference}
+\label{classsddk_1_1splindex__base}\index{sddk\+::splindex\+\_\+base$<$ T $>$@{sddk\+::splindex\+\_\+base$<$ T $>$}}
+
+
+Base class for split index.  
+
+
+
+
+Inheritance diagram for sddk\+:\+:splindex\+\_\+base$<$ T $>$\+:
+% FIG 0
+
+
+Collaboration diagram for sddk\+:\+:splindex\+\_\+base$<$ T $>$\+:
+% FIG 1
+\subsection*{Classes}
+\begin{DoxyCompactItemize}
+\item 
+struct \hyperlink{structsddk_1_1splindex__base_1_1location__t}{location\+\_\+t}
+\end{DoxyCompactItemize}
+\subsection*{Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+\hypertarget{classsddk_1_1splindex__base_ad4cbc2c4cc3e044db8fdfde565c36b8c}{}int {\bfseries rank} () const \label{classsddk_1_1splindex__base_ad4cbc2c4cc3e044db8fdfde565c36b8c}
+
+\item 
+\hypertarget{classsddk_1_1splindex__base_ae00076b27a8f84ffa3b091e2ab99a827}{}int {\bfseries num\+\_\+ranks} () const \label{classsddk_1_1splindex__base_ae00076b27a8f84ffa3b091e2ab99a827}
+
+\item 
+\hypertarget{classsddk_1_1splindex__base_a9ef40b922da52ebadb0717268e707475}{}T {\bfseries global\+\_\+index\+\_\+size} () const \label{classsddk_1_1splindex__base_a9ef40b922da52ebadb0717268e707475}
+
+\end{DoxyCompactItemize}
+\subsection*{Static Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+\hypertarget{classsddk_1_1splindex__base_a7a3d2d9afbde2cfc95e0e1bfb20b3134}{}static T {\bfseries block\+\_\+size} (T size\+\_\+\+\_\+, int num\+\_\+ranks\+\_\+\+\_\+)\label{classsddk_1_1splindex__base_a7a3d2d9afbde2cfc95e0e1bfb20b3134}
+
+\end{DoxyCompactItemize}
+\subsection*{Protected Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+\hyperlink{classsddk_1_1splindex__base_a3391f02acb0022c9e55f6f4bd41321e0}{splindex\+\_\+base} ()
+\begin{DoxyCompactList}\small\item\em Default constructor. \end{DoxyCompactList}\end{DoxyCompactItemize}
+\subsection*{Protected Attributes}
+\begin{DoxyCompactItemize}
+\item 
+int \hyperlink{classsddk_1_1splindex__base_a45e276f586192f4e0ec227ea87d02885}{rank\+\_\+} \{-\/1\}
+\begin{DoxyCompactList}\small\item\em Rank of the block with local fraction of the global index. \end{DoxyCompactList}\item 
+int \hyperlink{classsddk_1_1splindex__base_a51bad9a1920fcca16c5fa6d4b27a315d}{num\+\_\+ranks\+\_\+} \{-\/1\}
+\begin{DoxyCompactList}\small\item\em Number of ranks over which the global index is distributed. \end{DoxyCompactList}\item 
+T \hyperlink{classsddk_1_1splindex__base_a39cf25f14bf77e1bbde2d3eedb729868}{global\+\_\+index\+\_\+size\+\_\+}
+\begin{DoxyCompactList}\small\item\em size of the global index \end{DoxyCompactList}\end{DoxyCompactItemize}
+
+
+\subsection{Detailed Description}
+\subsubsection*{template$<$typename T$>$class sddk\+::splindex\+\_\+base$<$ T $>$}
+
+Base class for split index. 
+
+Definition at line 44 of file splindex.\+hpp.
+
+
+
+\subsection{Constructor \& Destructor Documentation}
+\hypertarget{classsddk_1_1splindex__base_a3391f02acb0022c9e55f6f4bd41321e0}{}\index{sddk\+::splindex\+\_\+base@{sddk\+::splindex\+\_\+base}!splindex\+\_\+base@{splindex\+\_\+base}}
+\index{splindex\+\_\+base@{splindex\+\_\+base}!sddk\+::splindex\+\_\+base@{sddk\+::splindex\+\_\+base}}
+\subsubsection[{splindex\+\_\+base()}]{\setlength{\rightskip}{0pt plus 5cm}template$<$typename T$>$ {\bf sddk\+::splindex\+\_\+base}$<$ T $>$\+::{\bf splindex\+\_\+base} (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}, {\ttfamily [protected]}}\label{classsddk_1_1splindex__base_a3391f02acb0022c9e55f6f4bd41321e0}
+
+
+Default constructor. 
+
+
+
+Definition at line 57 of file splindex.\+hpp.
+
+
+
+\subsection{Member Data Documentation}
+\hypertarget{classsddk_1_1splindex__base_a45e276f586192f4e0ec227ea87d02885}{}\index{sddk\+::splindex\+\_\+base@{sddk\+::splindex\+\_\+base}!rank\+\_\+@{rank\+\_\+}}
+\index{rank\+\_\+@{rank\+\_\+}!sddk\+::splindex\+\_\+base@{sddk\+::splindex\+\_\+base}}
+\subsubsection[{rank\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}template$<$typename T$>$ int {\bf sddk\+::splindex\+\_\+base}$<$ T $>$\+::rank\+\_\+ \{-\/1\}\hspace{0.3cm}{\ttfamily [protected]}}\label{classsddk_1_1splindex__base_a45e276f586192f4e0ec227ea87d02885}
+
+
+Rank of the block with local fraction of the global index. 
+
+
+
+Definition at line 48 of file splindex.\+hpp.
+
+\hypertarget{classsddk_1_1splindex__base_a51bad9a1920fcca16c5fa6d4b27a315d}{}\index{sddk\+::splindex\+\_\+base@{sddk\+::splindex\+\_\+base}!num\+\_\+ranks\+\_\+@{num\+\_\+ranks\+\_\+}}
+\index{num\+\_\+ranks\+\_\+@{num\+\_\+ranks\+\_\+}!sddk\+::splindex\+\_\+base@{sddk\+::splindex\+\_\+base}}
+\subsubsection[{num\+\_\+ranks\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}template$<$typename T$>$ int {\bf sddk\+::splindex\+\_\+base}$<$ T $>$\+::num\+\_\+ranks\+\_\+ \{-\/1\}\hspace{0.3cm}{\ttfamily [protected]}}\label{classsddk_1_1splindex__base_a51bad9a1920fcca16c5fa6d4b27a315d}
+
+
+Number of ranks over which the global index is distributed. 
+
+
+
+Definition at line 51 of file splindex.\+hpp.
+
+\hypertarget{classsddk_1_1splindex__base_a39cf25f14bf77e1bbde2d3eedb729868}{}\index{sddk\+::splindex\+\_\+base@{sddk\+::splindex\+\_\+base}!global\+\_\+index\+\_\+size\+\_\+@{global\+\_\+index\+\_\+size\+\_\+}}
+\index{global\+\_\+index\+\_\+size\+\_\+@{global\+\_\+index\+\_\+size\+\_\+}!sddk\+::splindex\+\_\+base@{sddk\+::splindex\+\_\+base}}
+\subsubsection[{global\+\_\+index\+\_\+size\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}template$<$typename T$>$ T {\bf sddk\+::splindex\+\_\+base}$<$ T $>$\+::global\+\_\+index\+\_\+size\+\_\+\hspace{0.3cm}{\ttfamily [protected]}}\label{classsddk_1_1splindex__base_a39cf25f14bf77e1bbde2d3eedb729868}
+
+
+size of the global index 
+
+
+
+Definition at line 54 of file splindex.\+hpp.
+
+
+
+The documentation for this class was generated from the following file\+:\begin{DoxyCompactItemize}
+\item 
+\hyperlink{splindex_8hpp}{splindex.\+hpp}\end{DoxyCompactItemize}

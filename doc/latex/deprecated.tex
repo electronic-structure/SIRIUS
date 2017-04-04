@@ -1,0 +1,6 @@
+
+\begin{DoxyRefList}
+\item[\label{deprecated__deprecated000001}%
+\hypertarget{deprecated__deprecated000001}{}%
+Member \hyperlink{classnlohmann_1_1basic__json_a32350263eb105764844c5a85e156a255}{nlohmann\+:\+:basic\+\_\+json$<$ Object\+Type, Array\+Type, String\+Type, Boolean\+Type, Number\+Integer\+Type, Number\+Unsigned\+Type, Number\+Float\+Type, Allocator\+Type $>$\+:\+:basic\+\_\+json} (std\+::istream \&i, const parser\+\_\+callback\+\_\+t cb=nullptr)]This constructor is deprecated and will be removed in version 3.\+0.\+0 to unify the interface of the library. Deserialization will be done by stream operators or by calling one of the {\ttfamily parse} functions, e.\+g. \hyperlink{classnlohmann_1_1basic__json_a0923f9749409345a21f8cb15ee95fc0d}{parse(std\+::istream\&, const parser\+\_\+callback\+\_\+t)}. That is, calls like {\ttfamily json j(i);} for an input stream {\itshape i} need to be replaced by {\ttfamily json j = json\+::parse(i);}. See the example below.
+\end{DoxyRefList}

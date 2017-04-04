@@ -1,0 +1,443 @@
+\hypertarget{classnlohmann_1_1basic__json_1_1json__pointer}{}\section{nlohmann\+:\+:basic\+\_\+json$<$ Object\+Type, Array\+Type, String\+Type, Boolean\+Type, Number\+Integer\+Type, Number\+Unsigned\+Type, Number\+Float\+Type, Allocator\+Type $>$\+:\+:json\+\_\+pointer Class Reference}
+\label{classnlohmann_1_1basic__json_1_1json__pointer}\index{nlohmann\+::basic\+\_\+json$<$ Object\+Type, Array\+Type, String\+Type, Boolean\+Type, Number\+Integer\+Type, Number\+Unsigned\+Type, Number\+Float\+Type, Allocator\+Type $>$\+::json\+\_\+pointer@{nlohmann\+::basic\+\_\+json$<$ Object\+Type, Array\+Type, String\+Type, Boolean\+Type, Number\+Integer\+Type, Number\+Unsigned\+Type, Number\+Float\+Type, Allocator\+Type $>$\+::json\+\_\+pointer}}
+
+
+J\+S\+O\+N Pointer.  
+
+
+\subsection*{Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+\hyperlink{classnlohmann_1_1basic__json_1_1json__pointer_ae12db117a2742d826465080979d7c835}{json\+\_\+pointer} (const std\+::string \&s=\char`\"{}\char`\"{})
+\begin{DoxyCompactList}\small\item\em create J\+S\+O\+N pointer \end{DoxyCompactList}\item 
+std\+::string \hyperlink{classnlohmann_1_1basic__json_1_1json__pointer_a14fda25789660bdc3f2de652fec35f61}{to\+\_\+string} () const  noexcept
+\begin{DoxyCompactList}\small\item\em return a string representation of the J\+S\+O\+N pointer \end{DoxyCompactList}\item 
+\hyperlink{classnlohmann_1_1basic__json_1_1json__pointer_a344b49c70c83ff591be767072c87336e}{operator std\+::string} () const 
+\begin{DoxyCompactList}\small\item\em return a string representation of the J\+S\+O\+N pointer \end{DoxyCompactList}\end{DoxyCompactItemize}
+\subsection*{Private Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+std\+::string \hyperlink{classnlohmann_1_1basic__json_1_1json__pointer_a1f2a9e13d44824b29f0019ecdebf9775}{pop\+\_\+back} ()
+\begin{DoxyCompactList}\small\item\em remove and return last reference pointer \end{DoxyCompactList}\item 
+bool \hyperlink{classnlohmann_1_1basic__json_1_1json__pointer_aeb09cbb35ee44e7970ff7ec7657f1c5d}{is\+\_\+root} () const 
+\begin{DoxyCompactList}\small\item\em return whether pointer points to the root document \end{DoxyCompactList}\item 
+\hypertarget{classnlohmann_1_1basic__json_1_1json__pointer_aefec301ce04240455cb8aadf653275c6}{}\hyperlink{classnlohmann_1_1basic__json_1_1json__pointer}{json\+\_\+pointer} {\bfseries top} () const \label{classnlohmann_1_1basic__json_1_1json__pointer_aefec301ce04240455cb8aadf653275c6}
+
+\item 
+\hyperlink{classnlohmann_1_1basic__json_a3ec8e17be8732fe436e9d6733f52b7a3}{reference} \hyperlink{classnlohmann_1_1basic__json_1_1json__pointer_a130e3040d2947d8743bf481c6d7cd9e7}{get\+\_\+and\+\_\+create} (\hyperlink{classnlohmann_1_1basic__json_a3ec8e17be8732fe436e9d6733f52b7a3}{reference} j) const 
+\begin{DoxyCompactList}\small\item\em create and return a reference to the pointed to value \end{DoxyCompactList}\item 
+\hyperlink{classnlohmann_1_1basic__json_a3ec8e17be8732fe436e9d6733f52b7a3}{reference} \hyperlink{classnlohmann_1_1basic__json_1_1json__pointer_aa152cc2c3f77a7cd0bc2c3e54430dfe4}{get\+\_\+unchecked} (\hyperlink{classnlohmann_1_1basic__json_a9d1b58099dc64695fcf2847ab0b2a7c7}{pointer} ptr) const 
+\begin{DoxyCompactList}\small\item\em return a reference to the pointed to value \end{DoxyCompactList}\item 
+\hypertarget{classnlohmann_1_1basic__json_1_1json__pointer_ac6ef3554aba4abd282ee9e4aca77f43e}{}\hyperlink{classnlohmann_1_1basic__json_a3ec8e17be8732fe436e9d6733f52b7a3}{reference} {\bfseries get\+\_\+checked} (\hyperlink{classnlohmann_1_1basic__json_a9d1b58099dc64695fcf2847ab0b2a7c7}{pointer} ptr) const \label{classnlohmann_1_1basic__json_1_1json__pointer_ac6ef3554aba4abd282ee9e4aca77f43e}
+
+\item 
+\hyperlink{classnlohmann_1_1basic__json_af677a29b0e66edc9f66e5167e4667071}{const\+\_\+reference} \hyperlink{classnlohmann_1_1basic__json_1_1json__pointer_a92f45279b154a94080b09d61dfa51ccd}{get\+\_\+unchecked} (\hyperlink{classnlohmann_1_1basic__json_a06efb200b69942eacd1ea22d0f6ccebb}{const\+\_\+pointer} ptr) const 
+\begin{DoxyCompactList}\small\item\em return a const reference to the pointed to value \end{DoxyCompactList}\item 
+\hypertarget{classnlohmann_1_1basic__json_1_1json__pointer_af568cb570bbb0b941fcafa6d33526b4f}{}\hyperlink{classnlohmann_1_1basic__json_af677a29b0e66edc9f66e5167e4667071}{const\+\_\+reference} {\bfseries get\+\_\+checked} (\hyperlink{classnlohmann_1_1basic__json_a06efb200b69942eacd1ea22d0f6ccebb}{const\+\_\+pointer} ptr) const \label{classnlohmann_1_1basic__json_1_1json__pointer_af568cb570bbb0b941fcafa6d33526b4f}
+
+\end{DoxyCompactItemize}
+\subsection*{Static Private Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+static std\+::vector$<$ std\+::string $>$ \hyperlink{classnlohmann_1_1basic__json_1_1json__pointer_a87258899fbf7b9d8b4effe28e4d88e04}{split} (const std\+::string \&reference\+\_\+string)
+\begin{DoxyCompactList}\small\item\em split the string input to reference tokens \end{DoxyCompactList}\item 
+static void \hyperlink{classnlohmann_1_1basic__json_1_1json__pointer_a414bce1ecc972c4f036f6edd021c70cf}{replace\+\_\+substring} (std\+::string \&s, const std\+::string \&f, const std\+::string \&t)
+\begin{DoxyCompactList}\small\item\em replace all occurrences of a substring by another string \end{DoxyCompactList}\item 
+static std\+::string \hyperlink{classnlohmann_1_1basic__json_1_1json__pointer_aaa37857c1f355ad1f67ffe76215897ed}{escape} (std\+::string s)
+\begin{DoxyCompactList}\small\item\em escape tilde and slash \end{DoxyCompactList}\item 
+static void \hyperlink{classnlohmann_1_1basic__json_1_1json__pointer_adfdb6c0cd2a62ff0ee108f2c09d3598b}{unescape} (std\+::string \&s)
+\begin{DoxyCompactList}\small\item\em unescape tilde and slash \end{DoxyCompactList}\item 
+static void \hyperlink{classnlohmann_1_1basic__json_1_1json__pointer_a1c1baaa26120bac0a5d553eac1dae507}{flatten} (const std\+::string \&reference\+\_\+string, const \hyperlink{classnlohmann_1_1basic__json}{basic\+\_\+json} \&\hyperlink{classnlohmann_1_1basic__json_a0a2cbbd95862a623e7dc5c37e67dead0}{value}, \hyperlink{classnlohmann_1_1basic__json}{basic\+\_\+json} \&result)
+\item 
+static \hyperlink{classnlohmann_1_1basic__json}{basic\+\_\+json} \hyperlink{classnlohmann_1_1basic__json_1_1json__pointer_a16cb91da82183ec5e87d90b4599591b2}{unflatten} (const \hyperlink{classnlohmann_1_1basic__json}{basic\+\_\+json} \&\hyperlink{classnlohmann_1_1basic__json_a0a2cbbd95862a623e7dc5c37e67dead0}{value})
+\end{DoxyCompactItemize}
+\subsection*{Private Attributes}
+\begin{DoxyCompactItemize}
+\item 
+std\+::vector$<$ std\+::string $>$ \hyperlink{classnlohmann_1_1basic__json_1_1json__pointer_a9c89f0314ddb85e5f40b1189bc3f1616}{reference\+\_\+tokens} \{\}
+\begin{DoxyCompactList}\small\item\em the reference tokens \end{DoxyCompactList}\end{DoxyCompactItemize}
+\subsection*{Friends}
+\begin{DoxyCompactItemize}
+\item 
+class \hyperlink{classnlohmann_1_1basic__json_1_1json__pointer_ada3100cdb8700566051828f1355fa745}{basic\+\_\+json}
+\begin{DoxyCompactList}\small\item\em allow \hyperlink{classnlohmann_1_1basic__json}{basic\+\_\+json} to access private members \end{DoxyCompactList}\end{DoxyCompactItemize}
+
+
+\subsection{Detailed Description}
+\subsubsection*{template$<$template$<$ typename U, typename V, typename...\+Args $>$ class Object\+Type = std\+::map, template$<$ typename U, typename...\+Args $>$ class Array\+Type = std\+::vector, class String\+Type = std\+::string, class Boolean\+Type = bool, class Number\+Integer\+Type = std\+::int64\+\_\+t, class Number\+Unsigned\+Type = std\+::uint64\+\_\+t, class Number\+Float\+Type = double, template$<$ typename U $>$ class Allocator\+Type = std\+::allocator$>$class nlohmann\+::basic\+\_\+json$<$ Object\+Type, Array\+Type, String\+Type, Boolean\+Type, Number\+Integer\+Type, Number\+Unsigned\+Type, Number\+Float\+Type, Allocator\+Type $>$\+::json\+\_\+pointer}
+
+J\+S\+O\+N Pointer. 
+
+A J\+S\+O\+N pointer defines a string syntax for identifying a specific value within a J\+S\+O\+N document. It can be used with functions {\ttfamily at} and {\ttfamily operator\mbox{[}\mbox{]}}. Furthermore, J\+S\+O\+N pointers are the base for J\+S\+O\+N patches.
+
+\begin{DoxySeeAlso}{See also}
+\href{https://tools.ietf.org/html/rfc6901}{\tt R\+F\+C 6901}
+\end{DoxySeeAlso}
+\begin{DoxySince}{Since}
+version 2.\+0.\+0 
+\end{DoxySince}
+
+
+Definition at line 10948 of file json.\+hpp.
+
+
+
+\subsection{Constructor \& Destructor Documentation}
+\hypertarget{classnlohmann_1_1basic__json_1_1json__pointer_ae12db117a2742d826465080979d7c835}{}\index{nlohmann\+::basic\+\_\+json\+::json\+\_\+pointer@{nlohmann\+::basic\+\_\+json\+::json\+\_\+pointer}!json\+\_\+pointer@{json\+\_\+pointer}}
+\index{json\+\_\+pointer@{json\+\_\+pointer}!nlohmann\+::basic\+\_\+json\+::json\+\_\+pointer@{nlohmann\+::basic\+\_\+json\+::json\+\_\+pointer}}
+\subsubsection[{json\+\_\+pointer(const std\+::string \&s="""")}]{\setlength{\rightskip}{0pt plus 5cm}template$<$template$<$ typename U, typename V, typename...\+Args $>$ class Object\+Type = std\+::map, template$<$ typename U, typename...\+Args $>$ class Array\+Type = std\+::vector, class String\+Type  = std\+::string, class Boolean\+Type  = bool, class Number\+Integer\+Type  = std\+::int64\+\_\+t, class Number\+Unsigned\+Type  = std\+::uint64\+\_\+t, class Number\+Float\+Type  = double, template$<$ typename U $>$ class Allocator\+Type = std\+::allocator$>$ {\bf nlohmann\+::basic\+\_\+json}$<$ Object\+Type, Array\+Type, String\+Type, Boolean\+Type, Number\+Integer\+Type, Number\+Unsigned\+Type, Number\+Float\+Type, Allocator\+Type $>$\+::json\+\_\+pointer\+::json\+\_\+pointer (
+\begin{DoxyParamCaption}
+\item[{const std\+::string \&}]{s = {\ttfamily \char`\"{}\char`\"{}}}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}, {\ttfamily [explicit]}}\label{classnlohmann_1_1basic__json_1_1json__pointer_ae12db117a2742d826465080979d7c835}
+
+
+create J\+S\+O\+N pointer 
+
+Create a J\+S\+O\+N pointer according to the syntax described in \href{https://tools.ietf.org/html/rfc6901#section-3}{\tt Section 3 of R\+F\+C6901}.
+
+
+\begin{DoxyParams}[1]{Parameters}
+\mbox{\tt in}  & {\em s} & string representing the J\+S\+O\+N pointer; if omitted, the empty string is assumed which references the whole J\+S\+O\+N value\\
+\hline
+\end{DoxyParams}
+
+\begin{DoxyExceptions}{Exceptions}
+{\em std\+::domain\+\_\+error} & if reference token is nonempty and does not begin with a slash ({\ttfamily /}); example\+: {\ttfamily \char`\"{}\+J\+S\+O\+N pointer must be empty or
+begin with /\char`\"{}} \\
+\hline
+{\em std\+::domain\+\_\+error} & if a tilde ({\ttfamily $\sim$}) is not followed by {\ttfamily 0} (representing {\ttfamily $\sim$}) or {\ttfamily 1} (representing {\ttfamily /}); example\+: {\ttfamily \char`\"{}escape error\+:
+$\sim$ must be followed with 0 or 1\char`\"{}}\\
+\hline
+\end{DoxyExceptions}
+\{The example shows the construction several valid J\+S\+O\+N pointers as well as the exceptional behavior.,\hyperlink{classnlohmann_1_1basic__json_1_1json__pointer}{json\+\_\+pointer}\}
+
+\begin{DoxySince}{Since}
+version 2.\+0.\+0 
+\end{DoxySince}
+
+
+Definition at line 10976 of file json.\+hpp.
+
+
+
+\subsection{Member Function Documentation}
+\hypertarget{classnlohmann_1_1basic__json_1_1json__pointer_a14fda25789660bdc3f2de652fec35f61}{}\index{nlohmann\+::basic\+\_\+json\+::json\+\_\+pointer@{nlohmann\+::basic\+\_\+json\+::json\+\_\+pointer}!to\+\_\+string@{to\+\_\+string}}
+\index{to\+\_\+string@{to\+\_\+string}!nlohmann\+::basic\+\_\+json\+::json\+\_\+pointer@{nlohmann\+::basic\+\_\+json\+::json\+\_\+pointer}}
+\subsubsection[{to\+\_\+string() const  noexcept}]{\setlength{\rightskip}{0pt plus 5cm}template$<$template$<$ typename U, typename V, typename...\+Args $>$ class Object\+Type = std\+::map, template$<$ typename U, typename...\+Args $>$ class Array\+Type = std\+::vector, class String\+Type  = std\+::string, class Boolean\+Type  = bool, class Number\+Integer\+Type  = std\+::int64\+\_\+t, class Number\+Unsigned\+Type  = std\+::uint64\+\_\+t, class Number\+Float\+Type  = double, template$<$ typename U $>$ class Allocator\+Type = std\+::allocator$>$ std\+::string {\bf nlohmann\+::basic\+\_\+json}$<$ Object\+Type, Array\+Type, String\+Type, Boolean\+Type, Number\+Integer\+Type, Number\+Unsigned\+Type, Number\+Float\+Type, Allocator\+Type $>$\+::json\+\_\+pointer\+::to\+\_\+string (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [inline]}, {\ttfamily [noexcept]}}\label{classnlohmann_1_1basic__json_1_1json__pointer_a14fda25789660bdc3f2de652fec35f61}
+
+
+return a string representation of the J\+S\+O\+N pointer 
+
+\begin{DoxyInvariant}{Invariant}
+For each J\+S\+O\+N pointer {\ttfamily ptr}, it holds\+: 
+\begin{DoxyCode}
+ptr == \hyperlink{classnlohmann_1_1basic__json_1_1json__pointer_ae12db117a2742d826465080979d7c835}{json\_pointer}(ptr.to\_string());
+\end{DoxyCode}
+
+\end{DoxyInvariant}
+\begin{DoxyReturn}{Returns}
+a string representation of the J\+S\+O\+N pointer
+\end{DoxyReturn}
+\{The example shows the result of {\ttfamily to\+\_\+string}., json\+\_\+pointer\+\_\+\+\_\+to\+\_\+string\}
+
+\begin{DoxySince}{Since}
+version 2.\+0.\+0 
+\end{DoxySince}
+
+
+Definition at line 10995 of file json.\+hpp.
+
+\hypertarget{classnlohmann_1_1basic__json_1_1json__pointer_a344b49c70c83ff591be767072c87336e}{}\index{nlohmann\+::basic\+\_\+json\+::json\+\_\+pointer@{nlohmann\+::basic\+\_\+json\+::json\+\_\+pointer}!operator std\+::string@{operator std\+::string}}
+\index{operator std\+::string@{operator std\+::string}!nlohmann\+::basic\+\_\+json\+::json\+\_\+pointer@{nlohmann\+::basic\+\_\+json\+::json\+\_\+pointer}}
+\subsubsection[{operator std\+::string() const }]{\setlength{\rightskip}{0pt plus 5cm}template$<$template$<$ typename U, typename V, typename...\+Args $>$ class Object\+Type = std\+::map, template$<$ typename U, typename...\+Args $>$ class Array\+Type = std\+::vector, class String\+Type  = std\+::string, class Boolean\+Type  = bool, class Number\+Integer\+Type  = std\+::int64\+\_\+t, class Number\+Unsigned\+Type  = std\+::uint64\+\_\+t, class Number\+Float\+Type  = double, template$<$ typename U $>$ class Allocator\+Type = std\+::allocator$>$ {\bf nlohmann\+::basic\+\_\+json}$<$ Object\+Type, Array\+Type, String\+Type, Boolean\+Type, Number\+Integer\+Type, Number\+Unsigned\+Type, Number\+Float\+Type, Allocator\+Type $>$\+::json\+\_\+pointer\+::operator std\+::string (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [inline]}}\label{classnlohmann_1_1basic__json_1_1json__pointer_a344b49c70c83ff591be767072c87336e}
+
+
+return a string representation of the J\+S\+O\+N pointer 
+
+\begin{DoxyInvariant}{Invariant}
+For each J\+S\+O\+N pointer {\ttfamily ptr}, it holds\+: 
+\begin{DoxyCode}
+ptr == \hyperlink{classnlohmann_1_1basic__json_1_1json__pointer_ae12db117a2742d826465080979d7c835}{json\_pointer}(ptr.to\_string());
+\end{DoxyCode}
+
+\end{DoxyInvariant}
+\begin{DoxyReturn}{Returns}
+a string representation of the J\+S\+O\+N pointer
+\end{DoxyReturn}
+\{The example shows the result of {\ttfamily to\+\_\+string}., json\+\_\+pointer\+\_\+\+\_\+to\+\_\+string\}
+
+\begin{DoxySince}{Since}
+version 2.\+0.\+0 
+\end{DoxySince}
+
+
+Definition at line 11006 of file json.\+hpp.
+
+\hypertarget{classnlohmann_1_1basic__json_1_1json__pointer_a1f2a9e13d44824b29f0019ecdebf9775}{}\index{nlohmann\+::basic\+\_\+json\+::json\+\_\+pointer@{nlohmann\+::basic\+\_\+json\+::json\+\_\+pointer}!pop\+\_\+back@{pop\+\_\+back}}
+\index{pop\+\_\+back@{pop\+\_\+back}!nlohmann\+::basic\+\_\+json\+::json\+\_\+pointer@{nlohmann\+::basic\+\_\+json\+::json\+\_\+pointer}}
+\subsubsection[{pop\+\_\+back()}]{\setlength{\rightskip}{0pt plus 5cm}template$<$template$<$ typename U, typename V, typename...\+Args $>$ class Object\+Type = std\+::map, template$<$ typename U, typename...\+Args $>$ class Array\+Type = std\+::vector, class String\+Type  = std\+::string, class Boolean\+Type  = bool, class Number\+Integer\+Type  = std\+::int64\+\_\+t, class Number\+Unsigned\+Type  = std\+::uint64\+\_\+t, class Number\+Float\+Type  = double, template$<$ typename U $>$ class Allocator\+Type = std\+::allocator$>$ std\+::string {\bf nlohmann\+::basic\+\_\+json}$<$ Object\+Type, Array\+Type, String\+Type, Boolean\+Type, Number\+Integer\+Type, Number\+Unsigned\+Type, Number\+Float\+Type, Allocator\+Type $>$\+::json\+\_\+pointer\+::pop\+\_\+back (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}, {\ttfamily [private]}}\label{classnlohmann_1_1basic__json_1_1json__pointer_a1f2a9e13d44824b29f0019ecdebf9775}
+
+
+remove and return last reference pointer 
+
+
+
+Definition at line 11013 of file json.\+hpp.
+
+\hypertarget{classnlohmann_1_1basic__json_1_1json__pointer_aeb09cbb35ee44e7970ff7ec7657f1c5d}{}\index{nlohmann\+::basic\+\_\+json\+::json\+\_\+pointer@{nlohmann\+::basic\+\_\+json\+::json\+\_\+pointer}!is\+\_\+root@{is\+\_\+root}}
+\index{is\+\_\+root@{is\+\_\+root}!nlohmann\+::basic\+\_\+json\+::json\+\_\+pointer@{nlohmann\+::basic\+\_\+json\+::json\+\_\+pointer}}
+\subsubsection[{is\+\_\+root() const }]{\setlength{\rightskip}{0pt plus 5cm}template$<$template$<$ typename U, typename V, typename...\+Args $>$ class Object\+Type = std\+::map, template$<$ typename U, typename...\+Args $>$ class Array\+Type = std\+::vector, class String\+Type  = std\+::string, class Boolean\+Type  = bool, class Number\+Integer\+Type  = std\+::int64\+\_\+t, class Number\+Unsigned\+Type  = std\+::uint64\+\_\+t, class Number\+Float\+Type  = double, template$<$ typename U $>$ class Allocator\+Type = std\+::allocator$>$ bool {\bf nlohmann\+::basic\+\_\+json}$<$ Object\+Type, Array\+Type, String\+Type, Boolean\+Type, Number\+Integer\+Type, Number\+Unsigned\+Type, Number\+Float\+Type, Allocator\+Type $>$\+::json\+\_\+pointer\+::is\+\_\+root (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [inline]}, {\ttfamily [private]}}\label{classnlohmann_1_1basic__json_1_1json__pointer_aeb09cbb35ee44e7970ff7ec7657f1c5d}
+
+
+return whether pointer points to the root document 
+
+
+
+Definition at line 11026 of file json.\+hpp.
+
+\hypertarget{classnlohmann_1_1basic__json_1_1json__pointer_a130e3040d2947d8743bf481c6d7cd9e7}{}\index{nlohmann\+::basic\+\_\+json\+::json\+\_\+pointer@{nlohmann\+::basic\+\_\+json\+::json\+\_\+pointer}!get\+\_\+and\+\_\+create@{get\+\_\+and\+\_\+create}}
+\index{get\+\_\+and\+\_\+create@{get\+\_\+and\+\_\+create}!nlohmann\+::basic\+\_\+json\+::json\+\_\+pointer@{nlohmann\+::basic\+\_\+json\+::json\+\_\+pointer}}
+\subsubsection[{get\+\_\+and\+\_\+create(reference j) const }]{\setlength{\rightskip}{0pt plus 5cm}template$<$template$<$ typename U, typename V, typename...\+Args $>$ class Object\+Type = std\+::map, template$<$ typename U, typename...\+Args $>$ class Array\+Type = std\+::vector, class String\+Type  = std\+::string, class Boolean\+Type  = bool, class Number\+Integer\+Type  = std\+::int64\+\_\+t, class Number\+Unsigned\+Type  = std\+::uint64\+\_\+t, class Number\+Float\+Type  = double, template$<$ typename U $>$ class Allocator\+Type = std\+::allocator$>$ {\bf reference} {\bf nlohmann\+::basic\+\_\+json}$<$ Object\+Type, Array\+Type, String\+Type, Boolean\+Type, Number\+Integer\+Type, Number\+Unsigned\+Type, Number\+Float\+Type, Allocator\+Type $>$\+::json\+\_\+pointer\+::get\+\_\+and\+\_\+create (
+\begin{DoxyParamCaption}
+\item[{{\bf reference}}]{j}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [inline]}, {\ttfamily [private]}}\label{classnlohmann_1_1basic__json_1_1json__pointer_a130e3040d2947d8743bf481c6d7cd9e7}
+
+
+create and return a reference to the pointed to value 
+
+Linear in the number of reference tokens. 
+
+Definition at line 11048 of file json.\+hpp.
+
+\hypertarget{classnlohmann_1_1basic__json_1_1json__pointer_aa152cc2c3f77a7cd0bc2c3e54430dfe4}{}\index{nlohmann\+::basic\+\_\+json\+::json\+\_\+pointer@{nlohmann\+::basic\+\_\+json\+::json\+\_\+pointer}!get\+\_\+unchecked@{get\+\_\+unchecked}}
+\index{get\+\_\+unchecked@{get\+\_\+unchecked}!nlohmann\+::basic\+\_\+json\+::json\+\_\+pointer@{nlohmann\+::basic\+\_\+json\+::json\+\_\+pointer}}
+\subsubsection[{get\+\_\+unchecked(pointer ptr) const }]{\setlength{\rightskip}{0pt plus 5cm}template$<$template$<$ typename U, typename V, typename...\+Args $>$ class Object\+Type = std\+::map, template$<$ typename U, typename...\+Args $>$ class Array\+Type = std\+::vector, class String\+Type  = std\+::string, class Boolean\+Type  = bool, class Number\+Integer\+Type  = std\+::int64\+\_\+t, class Number\+Unsigned\+Type  = std\+::uint64\+\_\+t, class Number\+Float\+Type  = double, template$<$ typename U $>$ class Allocator\+Type = std\+::allocator$>$ {\bf reference} {\bf nlohmann\+::basic\+\_\+json}$<$ Object\+Type, Array\+Type, String\+Type, Boolean\+Type, Number\+Integer\+Type, Number\+Unsigned\+Type, Number\+Float\+Type, Allocator\+Type $>$\+::json\+\_\+pointer\+::get\+\_\+unchecked (
+\begin{DoxyParamCaption}
+\item[{{\bf pointer}}]{ptr}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [inline]}, {\ttfamily [private]}}\label{classnlohmann_1_1basic__json_1_1json__pointer_aa152cc2c3f77a7cd0bc2c3e54430dfe4}
+
+
+return a reference to the pointed to value 
+
+\begin{DoxyNote}{Note}
+This version does not throw if a value is not present, but tries to create nested values instead. For instance, calling this function with pointer {\ttfamily \char`\"{}/this/that\char`\"{}} on a null value is equivalent to calling {\ttfamily operator\mbox{[}\mbox{]}(\char`\"{}this\char`\"{}).operator\mbox{[}\mbox{]}(\char`\"{}that\char`\"{})} on that value, effectively changing the null value to an object.
+\end{DoxyNote}
+
+\begin{DoxyParams}[1]{Parameters}
+\mbox{\tt in}  & {\em ptr} & a J\+S\+O\+N value\\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+reference to the J\+S\+O\+N value pointed to by the J\+S\+O\+N pointer
+\end{DoxyReturn}
+Linear in the length of the J\+S\+O\+N pointer.
+
+
+\begin{DoxyExceptions}{Exceptions}
+{\em std\+::out\+\_\+of\+\_\+range} & if the J\+S\+O\+N pointer can not be resolved \\
+\hline
+{\em std\+::domain\+\_\+error} & if an array index begins with \textquotesingle{}0\textquotesingle{} \\
+\hline
+{\em std\+::invalid\+\_\+argument} & if an array index was not a number \\
+\hline
+\end{DoxyExceptions}
+
+
+Definition at line 11123 of file json.\+hpp.
+
+\hypertarget{classnlohmann_1_1basic__json_1_1json__pointer_a92f45279b154a94080b09d61dfa51ccd}{}\index{nlohmann\+::basic\+\_\+json\+::json\+\_\+pointer@{nlohmann\+::basic\+\_\+json\+::json\+\_\+pointer}!get\+\_\+unchecked@{get\+\_\+unchecked}}
+\index{get\+\_\+unchecked@{get\+\_\+unchecked}!nlohmann\+::basic\+\_\+json\+::json\+\_\+pointer@{nlohmann\+::basic\+\_\+json\+::json\+\_\+pointer}}
+\subsubsection[{get\+\_\+unchecked(const\+\_\+pointer ptr) const }]{\setlength{\rightskip}{0pt plus 5cm}template$<$template$<$ typename U, typename V, typename...\+Args $>$ class Object\+Type = std\+::map, template$<$ typename U, typename...\+Args $>$ class Array\+Type = std\+::vector, class String\+Type  = std\+::string, class Boolean\+Type  = bool, class Number\+Integer\+Type  = std\+::int64\+\_\+t, class Number\+Unsigned\+Type  = std\+::uint64\+\_\+t, class Number\+Float\+Type  = double, template$<$ typename U $>$ class Allocator\+Type = std\+::allocator$>$ {\bf const\+\_\+reference} {\bf nlohmann\+::basic\+\_\+json}$<$ Object\+Type, Array\+Type, String\+Type, Boolean\+Type, Number\+Integer\+Type, Number\+Unsigned\+Type, Number\+Float\+Type, Allocator\+Type $>$\+::json\+\_\+pointer\+::get\+\_\+unchecked (
+\begin{DoxyParamCaption}
+\item[{{\bf const\+\_\+pointer}}]{ptr}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [inline]}, {\ttfamily [private]}}\label{classnlohmann_1_1basic__json_1_1json__pointer_a92f45279b154a94080b09d61dfa51ccd}
+
+
+return a const reference to the pointed to value 
+
+
+\begin{DoxyParams}[1]{Parameters}
+\mbox{\tt in}  & {\em ptr} & a J\+S\+O\+N value\\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+const reference to the J\+S\+O\+N value pointed to by the J\+S\+O\+N pointer 
+\end{DoxyReturn}
+
+
+Definition at line 11242 of file json.\+hpp.
+
+\hypertarget{classnlohmann_1_1basic__json_1_1json__pointer_a87258899fbf7b9d8b4effe28e4d88e04}{}\index{nlohmann\+::basic\+\_\+json\+::json\+\_\+pointer@{nlohmann\+::basic\+\_\+json\+::json\+\_\+pointer}!split@{split}}
+\index{split@{split}!nlohmann\+::basic\+\_\+json\+::json\+\_\+pointer@{nlohmann\+::basic\+\_\+json\+::json\+\_\+pointer}}
+\subsubsection[{split(const std\+::string \&reference\+\_\+string)}]{\setlength{\rightskip}{0pt plus 5cm}template$<$template$<$ typename U, typename V, typename...\+Args $>$ class Object\+Type = std\+::map, template$<$ typename U, typename...\+Args $>$ class Array\+Type = std\+::vector, class String\+Type  = std\+::string, class Boolean\+Type  = bool, class Number\+Integer\+Type  = std\+::int64\+\_\+t, class Number\+Unsigned\+Type  = std\+::uint64\+\_\+t, class Number\+Float\+Type  = double, template$<$ typename U $>$ class Allocator\+Type = std\+::allocator$>$ static std\+::vector$<$std\+::string$>$ {\bf nlohmann\+::basic\+\_\+json}$<$ Object\+Type, Array\+Type, String\+Type, Boolean\+Type, Number\+Integer\+Type, Number\+Unsigned\+Type, Number\+Float\+Type, Allocator\+Type $>$\+::json\+\_\+pointer\+::split (
+\begin{DoxyParamCaption}
+\item[{const std\+::string \&}]{reference\+\_\+string}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}, {\ttfamily [static]}, {\ttfamily [private]}}\label{classnlohmann_1_1basic__json_1_1json__pointer_a87258899fbf7b9d8b4effe28e4d88e04}
+
+
+split the string input to reference tokens 
+
+
+
+Definition at line 11331 of file json.\+hpp.
+
+\hypertarget{classnlohmann_1_1basic__json_1_1json__pointer_a414bce1ecc972c4f036f6edd021c70cf}{}\index{nlohmann\+::basic\+\_\+json\+::json\+\_\+pointer@{nlohmann\+::basic\+\_\+json\+::json\+\_\+pointer}!replace\+\_\+substring@{replace\+\_\+substring}}
+\index{replace\+\_\+substring@{replace\+\_\+substring}!nlohmann\+::basic\+\_\+json\+::json\+\_\+pointer@{nlohmann\+::basic\+\_\+json\+::json\+\_\+pointer}}
+\subsubsection[{replace\+\_\+substring(std\+::string \&s, const std\+::string \&f, const std\+::string \&t)}]{\setlength{\rightskip}{0pt plus 5cm}template$<$template$<$ typename U, typename V, typename...\+Args $>$ class Object\+Type = std\+::map, template$<$ typename U, typename...\+Args $>$ class Array\+Type = std\+::vector, class String\+Type  = std\+::string, class Boolean\+Type  = bool, class Number\+Integer\+Type  = std\+::int64\+\_\+t, class Number\+Unsigned\+Type  = std\+::uint64\+\_\+t, class Number\+Float\+Type  = double, template$<$ typename U $>$ class Allocator\+Type = std\+::allocator$>$ static void {\bf nlohmann\+::basic\+\_\+json}$<$ Object\+Type, Array\+Type, String\+Type, Boolean\+Type, Number\+Integer\+Type, Number\+Unsigned\+Type, Number\+Float\+Type, Allocator\+Type $>$\+::json\+\_\+pointer\+::replace\+\_\+substring (
+\begin{DoxyParamCaption}
+\item[{std\+::string \&}]{s, }
+\item[{const std\+::string \&}]{f, }
+\item[{const std\+::string \&}]{t}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}, {\ttfamily [static]}, {\ttfamily [private]}}\label{classnlohmann_1_1basic__json_1_1json__pointer_a414bce1ecc972c4f036f6edd021c70cf}
+
+
+replace all occurrences of a substring by another string 
+
+
+\begin{DoxyParams}[1]{Parameters}
+\mbox{\tt in,out}  & {\em s} & the string to manipulate; changed so that all occurrences of {\itshape f} are replaced with {\itshape t} \\
+\hline
+\mbox{\tt in}  & {\em f} & the substring to replace with {\itshape t} \\
+\hline
+\mbox{\tt in}  & {\em t} & the string to replace {\itshape f} \\
+\hline
+\end{DoxyParams}
+\begin{DoxyPrecond}{Precondition}
+The search string {\itshape f} must not be empty.
+\end{DoxyPrecond}
+\begin{DoxySince}{Since}
+version 2.\+0.\+0 
+\end{DoxySince}
+
+
+Definition at line 11404 of file json.\+hpp.
+
+\hypertarget{classnlohmann_1_1basic__json_1_1json__pointer_aaa37857c1f355ad1f67ffe76215897ed}{}\index{nlohmann\+::basic\+\_\+json\+::json\+\_\+pointer@{nlohmann\+::basic\+\_\+json\+::json\+\_\+pointer}!escape@{escape}}
+\index{escape@{escape}!nlohmann\+::basic\+\_\+json\+::json\+\_\+pointer@{nlohmann\+::basic\+\_\+json\+::json\+\_\+pointer}}
+\subsubsection[{escape(std\+::string s)}]{\setlength{\rightskip}{0pt plus 5cm}template$<$template$<$ typename U, typename V, typename...\+Args $>$ class Object\+Type = std\+::map, template$<$ typename U, typename...\+Args $>$ class Array\+Type = std\+::vector, class String\+Type  = std\+::string, class Boolean\+Type  = bool, class Number\+Integer\+Type  = std\+::int64\+\_\+t, class Number\+Unsigned\+Type  = std\+::uint64\+\_\+t, class Number\+Float\+Type  = double, template$<$ typename U $>$ class Allocator\+Type = std\+::allocator$>$ static std\+::string {\bf nlohmann\+::basic\+\_\+json}$<$ Object\+Type, Array\+Type, String\+Type, Boolean\+Type, Number\+Integer\+Type, Number\+Unsigned\+Type, Number\+Float\+Type, Allocator\+Type $>$\+::json\+\_\+pointer\+::escape (
+\begin{DoxyParamCaption}
+\item[{std\+::string}]{s}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}, {\ttfamily [static]}, {\ttfamily [private]}}\label{classnlohmann_1_1basic__json_1_1json__pointer_aaa37857c1f355ad1f67ffe76215897ed}
+
+
+escape tilde and slash 
+
+
+
+Definition at line 11419 of file json.\+hpp.
+
+\hypertarget{classnlohmann_1_1basic__json_1_1json__pointer_adfdb6c0cd2a62ff0ee108f2c09d3598b}{}\index{nlohmann\+::basic\+\_\+json\+::json\+\_\+pointer@{nlohmann\+::basic\+\_\+json\+::json\+\_\+pointer}!unescape@{unescape}}
+\index{unescape@{unescape}!nlohmann\+::basic\+\_\+json\+::json\+\_\+pointer@{nlohmann\+::basic\+\_\+json\+::json\+\_\+pointer}}
+\subsubsection[{unescape(std\+::string \&s)}]{\setlength{\rightskip}{0pt plus 5cm}template$<$template$<$ typename U, typename V, typename...\+Args $>$ class Object\+Type = std\+::map, template$<$ typename U, typename...\+Args $>$ class Array\+Type = std\+::vector, class String\+Type  = std\+::string, class Boolean\+Type  = bool, class Number\+Integer\+Type  = std\+::int64\+\_\+t, class Number\+Unsigned\+Type  = std\+::uint64\+\_\+t, class Number\+Float\+Type  = double, template$<$ typename U $>$ class Allocator\+Type = std\+::allocator$>$ static void {\bf nlohmann\+::basic\+\_\+json}$<$ Object\+Type, Array\+Type, String\+Type, Boolean\+Type, Number\+Integer\+Type, Number\+Unsigned\+Type, Number\+Float\+Type, Allocator\+Type $>$\+::json\+\_\+pointer\+::unescape (
+\begin{DoxyParamCaption}
+\item[{std\+::string \&}]{s}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}, {\ttfamily [static]}, {\ttfamily [private]}}\label{classnlohmann_1_1basic__json_1_1json__pointer_adfdb6c0cd2a62ff0ee108f2c09d3598b}
+
+
+unescape tilde and slash 
+
+
+
+Definition at line 11428 of file json.\+hpp.
+
+\hypertarget{classnlohmann_1_1basic__json_1_1json__pointer_a1c1baaa26120bac0a5d553eac1dae507}{}\index{nlohmann\+::basic\+\_\+json\+::json\+\_\+pointer@{nlohmann\+::basic\+\_\+json\+::json\+\_\+pointer}!flatten@{flatten}}
+\index{flatten@{flatten}!nlohmann\+::basic\+\_\+json\+::json\+\_\+pointer@{nlohmann\+::basic\+\_\+json\+::json\+\_\+pointer}}
+\subsubsection[{flatten(const std\+::string \&reference\+\_\+string, const basic\+\_\+json \&value, basic\+\_\+json \&result)}]{\setlength{\rightskip}{0pt plus 5cm}template$<$template$<$ typename U, typename V, typename...\+Args $>$ class Object\+Type = std\+::map, template$<$ typename U, typename...\+Args $>$ class Array\+Type = std\+::vector, class String\+Type  = std\+::string, class Boolean\+Type  = bool, class Number\+Integer\+Type  = std\+::int64\+\_\+t, class Number\+Unsigned\+Type  = std\+::uint64\+\_\+t, class Number\+Float\+Type  = double, template$<$ typename U $>$ class Allocator\+Type = std\+::allocator$>$ static void {\bf nlohmann\+::basic\+\_\+json}$<$ Object\+Type, Array\+Type, String\+Type, Boolean\+Type, Number\+Integer\+Type, Number\+Unsigned\+Type, Number\+Float\+Type, Allocator\+Type $>$\+::json\+\_\+pointer\+::flatten (
+\begin{DoxyParamCaption}
+\item[{const std\+::string \&}]{reference\+\_\+string, }
+\item[{const {\bf basic\+\_\+json} \&}]{value, }
+\item[{{\bf basic\+\_\+json} \&}]{result}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}, {\ttfamily [static]}, {\ttfamily [private]}}\label{classnlohmann_1_1basic__json_1_1json__pointer_a1c1baaa26120bac0a5d553eac1dae507}
+
+\begin{DoxyParams}[1]{Parameters}
+\mbox{\tt in}  & {\em reference\+\_\+string} & the reference string to the current value \\
+\hline
+\mbox{\tt in}  & {\em value} & the value to consider \\
+\hline
+\mbox{\tt in,out}  & {\em result} & the result object to insert values to\\
+\hline
+\end{DoxyParams}
+\begin{DoxyNote}{Note}
+Empty objects or arrays are flattened to {\ttfamily null}. 
+\end{DoxyNote}
+
+
+Definition at line 11443 of file json.\+hpp.
+
+\hypertarget{classnlohmann_1_1basic__json_1_1json__pointer_a16cb91da82183ec5e87d90b4599591b2}{}\index{nlohmann\+::basic\+\_\+json\+::json\+\_\+pointer@{nlohmann\+::basic\+\_\+json\+::json\+\_\+pointer}!unflatten@{unflatten}}
+\index{unflatten@{unflatten}!nlohmann\+::basic\+\_\+json\+::json\+\_\+pointer@{nlohmann\+::basic\+\_\+json\+::json\+\_\+pointer}}
+\subsubsection[{unflatten(const basic\+\_\+json \&value)}]{\setlength{\rightskip}{0pt plus 5cm}template$<$template$<$ typename U, typename V, typename...\+Args $>$ class Object\+Type = std\+::map, template$<$ typename U, typename...\+Args $>$ class Array\+Type = std\+::vector, class String\+Type  = std\+::string, class Boolean\+Type  = bool, class Number\+Integer\+Type  = std\+::int64\+\_\+t, class Number\+Unsigned\+Type  = std\+::uint64\+\_\+t, class Number\+Float\+Type  = double, template$<$ typename U $>$ class Allocator\+Type = std\+::allocator$>$ static {\bf basic\+\_\+json} {\bf nlohmann\+::basic\+\_\+json}$<$ Object\+Type, Array\+Type, String\+Type, Boolean\+Type, Number\+Integer\+Type, Number\+Unsigned\+Type, Number\+Float\+Type, Allocator\+Type $>$\+::json\+\_\+pointer\+::unflatten (
+\begin{DoxyParamCaption}
+\item[{const {\bf basic\+\_\+json} \&}]{value}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}, {\ttfamily [static]}, {\ttfamily [private]}}\label{classnlohmann_1_1basic__json_1_1json__pointer_a16cb91da82183ec5e87d90b4599591b2}
+
+\begin{DoxyParams}[1]{Parameters}
+\mbox{\tt in}  & {\em value} & flattened J\+S\+O\+N\\
+\hline
+\end{DoxyParams}
+\begin{DoxyReturn}{Returns}
+unflattened J\+S\+O\+N 
+\end{DoxyReturn}
+
+
+Definition at line 11501 of file json.\+hpp.
+
+
+
+\subsection{Friends And Related Function Documentation}
+\hypertarget{classnlohmann_1_1basic__json_1_1json__pointer_ada3100cdb8700566051828f1355fa745}{}\index{nlohmann\+::basic\+\_\+json\+::json\+\_\+pointer@{nlohmann\+::basic\+\_\+json\+::json\+\_\+pointer}!basic\+\_\+json@{basic\+\_\+json}}
+\index{basic\+\_\+json@{basic\+\_\+json}!nlohmann\+::basic\+\_\+json\+::json\+\_\+pointer@{nlohmann\+::basic\+\_\+json\+::json\+\_\+pointer}}
+\subsubsection[{basic\+\_\+json}]{\setlength{\rightskip}{0pt plus 5cm}template$<$template$<$ typename U, typename V, typename...\+Args $>$ class Object\+Type = std\+::map, template$<$ typename U, typename...\+Args $>$ class Array\+Type = std\+::vector, class String\+Type  = std\+::string, class Boolean\+Type  = bool, class Number\+Integer\+Type  = std\+::int64\+\_\+t, class Number\+Unsigned\+Type  = std\+::uint64\+\_\+t, class Number\+Float\+Type  = double, template$<$ typename U $>$ class Allocator\+Type = std\+::allocator$>$ friend class {\bf basic\+\_\+json}\hspace{0.3cm}{\ttfamily [friend]}}\label{classnlohmann_1_1basic__json_1_1json__pointer_ada3100cdb8700566051828f1355fa745}
+
+
+allow \hyperlink{classnlohmann_1_1basic__json}{basic\+\_\+json} to access private members 
+
+
+
+Definition at line 10951 of file json.\+hpp.
+
+
+
+\subsection{Member Data Documentation}
+\hypertarget{classnlohmann_1_1basic__json_1_1json__pointer_a9c89f0314ddb85e5f40b1189bc3f1616}{}\index{nlohmann\+::basic\+\_\+json\+::json\+\_\+pointer@{nlohmann\+::basic\+\_\+json\+::json\+\_\+pointer}!reference\+\_\+tokens@{reference\+\_\+tokens}}
+\index{reference\+\_\+tokens@{reference\+\_\+tokens}!nlohmann\+::basic\+\_\+json\+::json\+\_\+pointer@{nlohmann\+::basic\+\_\+json\+::json\+\_\+pointer}}
+\subsubsection[{reference\+\_\+tokens}]{\setlength{\rightskip}{0pt plus 5cm}template$<$template$<$ typename U, typename V, typename...\+Args $>$ class Object\+Type = std\+::map, template$<$ typename U, typename...\+Args $>$ class Array\+Type = std\+::vector, class String\+Type  = std\+::string, class Boolean\+Type  = bool, class Number\+Integer\+Type  = std\+::int64\+\_\+t, class Number\+Unsigned\+Type  = std\+::uint64\+\_\+t, class Number\+Float\+Type  = double, template$<$ typename U $>$ class Allocator\+Type = std\+::allocator$>$ std\+::vector$<$std\+::string$>$ {\bf nlohmann\+::basic\+\_\+json}$<$ Object\+Type, Array\+Type, String\+Type, Boolean\+Type, Number\+Integer\+Type, Number\+Unsigned\+Type, Number\+Float\+Type, Allocator\+Type $>$\+::json\+\_\+pointer\+::reference\+\_\+tokens \{\}\hspace{0.3cm}{\ttfamily [private]}}\label{classnlohmann_1_1basic__json_1_1json__pointer_a9c89f0314ddb85e5f40b1189bc3f1616}
+
+
+the reference tokens 
+
+
+
+Definition at line 11531 of file json.\+hpp.
+
+
+
+The documentation for this class was generated from the following file\+:\begin{DoxyCompactItemize}
+\item 
+json.\+hpp\end{DoxyCompactItemize}

@@ -1,4 +1,4 @@
-// Copyright (c) 2013-2015 Anton Kozhevnikov, Thomas Schulthess
+// Copyright (c) 2013-2017 Anton Kozhevnikov, Thomas Schulthess
 // All rights reserved.
 // 
 // Redistribution and use in source and binary forms, with or without modification, are permitted provided that 
@@ -28,7 +28,7 @@
 #include "gaunt.h"
 #include "atom_type.h"
 #include "atom_symmetry_class.h"
-#include "splindex.h"
+#include "sddk.hpp"
 #include "spheric_function.h"
 
 namespace sirius {
@@ -62,9 +62,6 @@ class Atom
         /// Radial integrals of the effective magnetic field.
         mdarray<double, 4> b_radial_integrals_;
 
-        /// Number of magnetic dimensions.
-        int num_mag_dims_;
-        
         /// Maximum l for potential and magnetic field.
         int lmax_pot_{-1};
 
@@ -75,7 +72,7 @@ class Atom
         int offset_lo_{-1}; // TODO: better name for this
 
         /// Offset in the wave-function array.
-        int offset_wf_{-1}; // TODO: better name for this
+        int offset_mt_coeffs_{-1};
 
         /// Unsymmetrized (sampled over IBZ) occupation matrix of the L(S)DA+U method.
         mdarray<double_complex, 4> occupation_matrix_;
@@ -89,16 +86,21 @@ class Atom
         /// Orbital quantum number for UJ correction.
         int uj_correction_l_{-1};
 
-        /// D_{ij} matrix of the pseudo-potential method.
-        mdarray<double_complex, 3> d_mtrx_;
+        /// Auxiliary form of the D_{ij} operator matrix of the pseudo-potential method.
+        /** The matrix is calculated for the scalar and vector effective fields (thus, it is real and symmetric).
+         *  \f[
+         *      D_{\xi \xi'}^{\alpha} = \int V({\bf r}) Q_{\xi \xi'}^{\alpha}({\bf r}) d{\bf r}
+         *  \f]
+         */
+        mdarray<double, 3> d_mtrx_;
 
     public:
     
         /// Constructor.
         Atom(Atom_type const& type__, vector3d<double> position__, vector3d<double> vector_field__)
-            : type_(type__),
-              position_(position__),
-              vector_field_(vector_field__)
+            : type_(type__)
+            , position_(position__)
+            , vector_field_(vector_field__)
         {
             for (int x: {0, 1, 2}) {
                 if (position_[x] < 0 || position_[x] >= 1) {
@@ -110,7 +112,7 @@ class Atom
         }
 
         /// Initialize atom.
-        void init(int offset_aw__, int offset_lo__, int offset_wf__);
+        inline void init(int offset_aw__, int offset_lo__, int offset_mt_coeffs__);
 
         /// Generate radial Hamiltonian and effective magnetic field integrals
         /** Hamiltonian operator has the following representation inside muffin-tins:
@@ -126,7 +128,7 @@ class Atom
          *        V_{\ell m}(r) & \ell > 0 \end{array} \right.
          *  \f]
          */
-        void generate_radial_integrals(processing_unit_t pu__, Communicator const& comm__);
+        inline void generate_radial_integrals(device_t pu__, Communicator const& comm__);
         
         /// Return pointer to corresponding atom type class.
         inline Atom_type const& type() const
@@ -173,14 +175,10 @@ class Atom
         /// Return id of the symmetry class.
         inline int symmetry_class_id() const
         {
-            if (symmetry_class_ != nullptr) 
-            {
+            if (symmetry_class_ != nullptr) {
                 return symmetry_class_->id();
             }
-            else
-            {
-                return -1;
-            }
+            return -1;
         }
 
         /// Set symmetry class of the atom.
@@ -190,20 +188,23 @@ class Atom
         }
         
         /// Set muffin-tin potential and magnetic field.
-        void set_nonspherical_potential(double* veff__, double* beff__[3])
+        inline void set_nonspherical_potential(double* veff__, double* beff__[3])
         {
             veff_ = mdarray<double, 2>(veff__, Utils::lmmax(lmax_pot_), type().num_mt_points());
-            for (int j = 0; j < 3; j++) 
+            for (int j = 0; j < 3; j++) {
                 beff_[j] = mdarray<double, 2>(beff__[j], Utils::lmmax(lmax_pot_), type().num_mt_points());
+            }
         }
 
-        void sync_radial_integrals(Communicator const& comm__, int const rank__)
+        inline void sync_radial_integrals(Communicator const& comm__, int const rank__)
         {
             comm__.bcast(h_radial_integrals_.at<CPU>(), (int)h_radial_integrals_.size(), rank__);
-            if (num_mag_dims_) comm__.bcast(b_radial_integrals_.at<CPU>(), (int)b_radial_integrals_.size(), rank__);
+            if (type().parameters().num_mag_dims()) {
+                comm__.bcast(b_radial_integrals_.at<CPU>(), (int)b_radial_integrals_.size(), rank__);
+            }
         }
 
-        void sync_occupation_matrix(Communicator const& comm__, int const rank__)
+        inline void sync_occupation_matrix(Communicator const& comm__, int const rank__)
         {
             comm__.bcast(occupation_matrix_.at<CPU>(), (int)occupation_matrix_.size(), rank__);
         }
@@ -220,62 +221,73 @@ class Atom
             return offset_lo_;  
         }
         
-        inline int offset_wf() const
+        inline int offset_mt_coeffs() const
         {
-            assert(offset_wf_ >= 0);
-            return offset_wf_;  
+            assert(offset_mt_coeffs_ >= 0);
+            return offset_mt_coeffs_;  
         }
 
         inline double const* h_radial_integrals(int idxrf1, int idxrf2) const
         {
             return &h_radial_integrals_(0, idxrf1, idxrf2);
         }
-        
+
+        inline double* h_radial_integrals(int idxrf1, int idxrf2)
+        {
+            return &h_radial_integrals_(0, idxrf1, idxrf2);
+        }
+
         inline double const* b_radial_integrals(int idxrf1, int idxrf2, int x) const
         {
             return &b_radial_integrals_(0, idxrf1, idxrf2, x);
         }
-        
+
+        /** Compute the following kinds of sums for different spin-blocks of the Hamiltonian:
+         *  \f[
+         *      \sum_{L_3} \langle Y_{L_1} u_{\ell_1 \nu_1} | R_{L_3} h_{L_3} | Y_{L_2} u_{\ell_2 \nu_2} \rangle = 
+         *      \sum_{L_3} \langle u_{\ell_1 \nu_1} | h_{L_3} | u_{\ell_2 \nu_2} \rangle
+         *                 \langle Y_{L_1} | R_{L_3} | Y_{L_2} \rangle 
+         *  \f]
+         */
         template <spin_block_t sblock>
-        inline double_complex hb_radial_integrals_sum_L3(int idxrf1, int idxrf2, std::vector<gaunt_L3<double_complex> > const& gnt) const
+        inline double_complex radial_integrals_sum_L3(int idxrf1__,
+                                                      int idxrf2__,
+                                                      std::vector<gaunt_L3<double_complex> > const& gnt__) const
         {
             double_complex zsum(0, 0);
 
-            for (int i = 0; i < (int)gnt.size(); i++)
-            {
-                switch (sblock)
-                {
-                    case spin_block_t::nm:
-                    {
-                        zsum += gnt[i].coef * h_radial_integrals_(gnt[i].lm3, idxrf1, idxrf2);
+            for (size_t i = 0; i < gnt__.size(); i++) {
+                switch (sblock) {
+                    case spin_block_t::nm: {
+                        /* just the Hamiltonian */
+                        zsum += gnt__[i].coef * h_radial_integrals_(gnt__[i].lm3, idxrf1__, idxrf2__);
                         break;
                     }
-                    case spin_block_t::uu:
-                    {
-                        zsum += gnt[i].coef * (h_radial_integrals_(gnt[i].lm3, idxrf1, idxrf2) + 
-                                               b_radial_integrals_(gnt[i].lm3, idxrf1, idxrf2, 0));
+                    case spin_block_t::uu: {
+                        /* h + Bz */
+                        zsum += gnt__[i].coef * (h_radial_integrals_(gnt__[i].lm3, idxrf1__, idxrf2__) + 
+                                                 b_radial_integrals_(gnt__[i].lm3, idxrf1__, idxrf2__, 0));
                         break;
                     }
-                    case spin_block_t::dd:
-                    {
-                        zsum += gnt[i].coef * (h_radial_integrals_(gnt[i].lm3, idxrf1, idxrf2) -
-                                               b_radial_integrals_(gnt[i].lm3, idxrf1, idxrf2, 0));
+                    case spin_block_t::dd: {
+                        /* h - Bz */
+                        zsum += gnt__[i].coef * (h_radial_integrals_(gnt__[i].lm3, idxrf1__, idxrf2__) -
+                                                 b_radial_integrals_(gnt__[i].lm3, idxrf1__, idxrf2__, 0));
                         break;
                     }
-                    case spin_block_t::ud:
-                    {
-                        zsum += gnt[i].coef * double_complex(b_radial_integrals_(gnt[i].lm3, idxrf1, idxrf2, 1), 
-                                                            -b_radial_integrals_(gnt[i].lm3, idxrf1, idxrf2, 2));
+                    case spin_block_t::ud: {
+                        /* Bx - i By */
+                        zsum += gnt__[i].coef * double_complex(b_radial_integrals_(gnt__[i].lm3, idxrf1__, idxrf2__, 1), 
+                                                              -b_radial_integrals_(gnt__[i].lm3, idxrf1__, idxrf2__, 2));
                         break;
                     }
-                    case spin_block_t::du:
-                    {
-                        zsum += gnt[i].coef * double_complex(b_radial_integrals_(gnt[i].lm3, idxrf1, idxrf2, 1), 
-                                                             b_radial_integrals_(gnt[i].lm3, idxrf1, idxrf2, 2));
+                    case spin_block_t::du: {
+                        /* Bx + i By */
+                        zsum += gnt__[i].coef * double_complex(b_radial_integrals_(gnt__[i].lm3, idxrf1__, idxrf2__, 1), 
+                                                               b_radial_integrals_(gnt__[i].lm3, idxrf1__, idxrf2__, 2));
                         break;
                     }
                 }
-
             }
             return zsum;
         }
@@ -353,17 +365,20 @@ class Atom
              return uj_correction_matrix_(lm1, lm2, ispn1, ispn2);
         }
 
-        inline double_complex& d_mtrx(int xi1, int xi2, int iv)
+        inline double& d_mtrx(int xi1, int xi2, int iv)
         {
             return d_mtrx_(xi1, xi2, iv);
         }
 
-        inline double_complex const& d_mtrx(int xi1, int xi2, int iv) const
+        inline double const& d_mtrx(int xi1, int xi2, int iv) const
         {
             return d_mtrx_(xi1, xi2, iv);
         }
 };
 
-};
+#include "Atom/init.hpp"
+#include "Atom/generate_radial_integrals.hpp"
+
+} // namespace
 
 #endif // __ATOM_H__

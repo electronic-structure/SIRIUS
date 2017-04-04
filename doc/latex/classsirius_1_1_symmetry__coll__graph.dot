@@ -1,0 +1,15 @@
+digraph "sirius::Symmetry"
+{
+ // INTERACTIVE_SVG=YES
+  edge [fontname="Helvetica",fontsize="10",labelfontname="Helvetica",labelfontsize="10"];
+  node [fontname="Helvetica",fontsize="10",shape=record];
+  Node1 [label="sirius::Symmetry",height=0.2,width=0.4,color="black", fillcolor="grey75", style="filled", fontcolor="black"];
+  Node2 -> Node1 [dir="back",color="darkorchid3",fontsize="10",style="dashed",label=" sym_table_" ];
+  Node2 [label="sddk::mdarray\< int, 2 \>",height=0.2,width=0.4,color="black", fillcolor="white", style="filled",URL="$classsddk_1_1mdarray.html"];
+  Node3 -> Node2 [dir="back",color="midnightblue",fontsize="10",style="solid"];
+  Node3 [label="sddk::mdarray_base\l\< int, N \>",height=0.2,width=0.4,color="black", fillcolor="white", style="filled",URL="$classsddk_1_1mdarray__base.html"];
+  Node4 -> Node1 [dir="back",color="darkorchid3",fontsize="10",style="dashed",label=" positions_" ];
+  Node4 [label="sddk::mdarray\< double, 2 \>",height=0.2,width=0.4,color="black", fillcolor="white", style="filled",URL="$classsddk_1_1mdarray.html"];
+  Node5 -> Node4 [dir="back",color="midnightblue",fontsize="10",style="solid"];
+  Node5 [label="sddk::mdarray_base\l\< double, N \>",height=0.2,width=0.4,color="black", fillcolor="white", style="filled",URL="$classsddk_1_1mdarray__base.html"];
+}

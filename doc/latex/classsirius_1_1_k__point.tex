@@ -1,0 +1,980 @@
+\hypertarget{classsirius_1_1_k__point}{}\section{sirius\+:\+:K\+\_\+point Class Reference}
+\label{classsirius_1_1_k__point}\index{sirius\+::\+K\+\_\+point@{sirius\+::\+K\+\_\+point}}
+
+
+K-\/point related variables and methods.  
+
+
+
+
+Collaboration diagram for sirius\+:\+:K\+\_\+point\+:
+% FIG 0
+\subsection*{Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+\hyperlink{classsirius_1_1_k__point_a0374ed7edcb5177b7e8a03f2722c6090}{K\+\_\+point} (\hyperlink{classsirius_1_1_simulation__context}{Simulation\+\_\+context} \&ctx\+\_\+\+\_\+, double $\ast$vk\+\_\+\+\_\+, double weight\+\_\+\+\_\+)
+\begin{DoxyCompactList}\small\item\em Constructor. \end{DoxyCompactList}\item 
+void \hyperlink{classsirius_1_1_k__point_a6b81e097804738feac48d2a33c4b4aa7}{initialize} ()
+\begin{DoxyCompactList}\small\item\em Initialize the k-\/point related arrays and data. \end{DoxyCompactList}\item 
+void \hyperlink{classsirius_1_1_k__point_a3b0c4ae54e8c7f8da88701e5015ab16c}{generate\+\_\+gkvec} (double gk\+\_\+cutoff\+\_\+\+\_\+)
+\begin{DoxyCompactList}\small\item\em Find G+k vectors within the cutoff. \end{DoxyCompactList}\item 
+void \hyperlink{classsirius_1_1_k__point_a021e78d67ecff5256537c1b4e03e1c3d}{generate\+\_\+fv\+\_\+states} ()
+\begin{DoxyCompactList}\small\item\em Generate first-\/variational states from eigen-\/vectors. \end{DoxyCompactList}\item 
+\hypertarget{classsirius_1_1_k__point_a1e4dc00e38bd012ae2f2f9af70fdb62e}{}void {\bfseries generate\+\_\+fv\+\_\+states\+\_\+aw\+\_\+mt\+\_\+gpu} ()\label{classsirius_1_1_k__point_a1e4dc00e38bd012ae2f2f9af70fdb62e}
+
+\item 
+void \hyperlink{classsirius_1_1_k__point_a36a79c489df101418b195e4c3ae4eaec}{generate\+\_\+spinor\+\_\+wave\+\_\+functions} ()
+\begin{DoxyCompactList}\small\item\em Generate two-\/component spinor wave functions. \end{DoxyCompactList}\item 
+\hypertarget{classsirius_1_1_k__point_ae27a544f307eb8ffee92f136508f3e61}{}\hyperlink{classsirius_1_1_periodic__function}{Periodic\+\_\+function}$<$ double\+\_\+complex $>$ $\ast$ {\bfseries spinor\+\_\+wave\+\_\+function\+\_\+component} (int lmax, int ispn, int j)\label{classsirius_1_1_k__point_ae27a544f307eb8ffee92f136508f3e61}
+
+\item 
+\hypertarget{classsirius_1_1_k__point_ace212955b62fd77b8907ac1b95042de2}{}void {\bfseries save} (int id)\label{classsirius_1_1_k__point_ace212955b62fd77b8907ac1b95042de2}
+
+\item 
+\hypertarget{classsirius_1_1_k__point_a09d169ed1bd2c79b16205eed05ee7718}{}void {\bfseries load} (\hyperlink{classsirius_1_1_h_d_f5__tree}{H\+D\+F5\+\_\+tree} h5in, int id)\label{classsirius_1_1_k__point_a09d169ed1bd2c79b16205eed05ee7718}
+
+\item 
+\hypertarget{classsirius_1_1_k__point_af53b23b454504e7a02cf3e1e514dfac7}{}void {\bfseries get\+\_\+fv\+\_\+eigen\+\_\+vectors} (mdarray$<$ double\+\_\+complex, 2 $>$ \&fv\+\_\+evec)\label{classsirius_1_1_k__point_af53b23b454504e7a02cf3e1e514dfac7}
+
+\item 
+\hypertarget{classsirius_1_1_k__point_a6bbfd4d62eebd914a9c572f644eeec81}{}void {\bfseries get\+\_\+sv\+\_\+eigen\+\_\+vectors} (mdarray$<$ double\+\_\+complex, 2 $>$ \&sv\+\_\+evec)\label{classsirius_1_1_k__point_a6bbfd4d62eebd914a9c572f644eeec81}
+
+\item 
+void \hyperlink{classsirius_1_1_k__point_a66c57595d6fe6527fc46911118aae4be}{test\+\_\+spinor\+\_\+wave\+\_\+functions} (int use\+\_\+fft)
+\begin{DoxyCompactList}\small\item\em Test orthonormalization of spinor wave-\/functions. \end{DoxyCompactList}\item 
+int \hyperlink{classsirius_1_1_k__point_a96cb8a5ecb6def0d01b451dd426feee3}{num\+\_\+occupied\+\_\+bands} (int ispn\+\_\+\+\_\+=-\/1)
+\begin{DoxyCompactList}\small\item\em Get the number of occupied bands for each spin channel. \end{DoxyCompactList}\item 
+int \hyperlink{classsirius_1_1_k__point_a938e93b58344f86808911fa7eeb34c69}{num\+\_\+gkvec} () const 
+\begin{DoxyCompactList}\small\item\em Total number of G+k vectors within the cutoff distance. \end{DoxyCompactList}\item 
+void \hyperlink{classsirius_1_1_k__point_aa0bace30028bc0153dd10758e3266b22}{get\+\_\+band\+\_\+occupancies} (double $\ast$band\+\_\+occupancies) const 
+\begin{DoxyCompactList}\small\item\em Total number of muffin-\/tin and plane-\/wave expansion coefficients for the wave-\/functions. \end{DoxyCompactList}\item 
+\hypertarget{classsirius_1_1_k__point_ace6adc86c210d2dc51cf2d867417750a}{}void {\bfseries set\+\_\+band\+\_\+occupancies} (double $\ast$band\+\_\+occupancies)\label{classsirius_1_1_k__point_ace6adc86c210d2dc51cf2d867417750a}
+
+\item 
+\hypertarget{classsirius_1_1_k__point_a5f24692ae4559abe084bcb21b8f43163}{}void {\bfseries get\+\_\+band\+\_\+energies} (double $\ast$band\+\_\+energies) const \label{classsirius_1_1_k__point_a5f24692ae4559abe084bcb21b8f43163}
+
+\item 
+\hypertarget{classsirius_1_1_k__point_aaa2bb3467c7d102a9b827775de6e889b}{}void {\bfseries set\+\_\+band\+\_\+energies} (double $\ast$band\+\_\+energies)\label{classsirius_1_1_k__point_aaa2bb3467c7d102a9b827775de6e889b}
+
+\item 
+\hypertarget{classsirius_1_1_k__point_a3b31410964e4962f198194b1673ffe3c}{}double {\bfseries band\+\_\+occupancy} (int j) const \label{classsirius_1_1_k__point_a3b31410964e4962f198194b1673ffe3c}
+
+\item 
+\hypertarget{classsirius_1_1_k__point_a571119d579d461de06b5373198b9de3b}{}double \& {\bfseries band\+\_\+occupancy} (int j)\label{classsirius_1_1_k__point_a571119d579d461de06b5373198b9de3b}
+
+\item 
+\hypertarget{classsirius_1_1_k__point_a953d414efb18e284b1599be4b09b289c}{}double {\bfseries band\+\_\+energy} (int j) const \label{classsirius_1_1_k__point_a953d414efb18e284b1599be4b09b289c}
+
+\item 
+\hypertarget{classsirius_1_1_k__point_abb7e0e18142d7a19b83e00e38a375951}{}double \& {\bfseries band\+\_\+energy} (int j\+\_\+\+\_\+)\label{classsirius_1_1_k__point_abb7e0e18142d7a19b83e00e38a375951}
+
+\item 
+\hypertarget{classsirius_1_1_k__point_abcd5a4d547e5b9e7ab48dd61ef40e6e4}{}double {\bfseries fv\+\_\+eigen\+\_\+value} (int i) const \label{classsirius_1_1_k__point_abcd5a4d547e5b9e7ab48dd61ef40e6e4}
+
+\item 
+\hypertarget{classsirius_1_1_k__point_a5516f6f3366357e97f93e9b75466b995}{}void {\bfseries set\+\_\+fv\+\_\+eigen\+\_\+values} (double $\ast$eval)\label{classsirius_1_1_k__point_a5516f6f3366357e97f93e9b75466b995}
+
+\item 
+\hypertarget{classsirius_1_1_k__point_a4ad1629f529787c05f994915e5fd529b}{}double {\bfseries weight} () const \label{classsirius_1_1_k__point_a4ad1629f529787c05f994915e5fd529b}
+
+\item 
+\hypertarget{classsirius_1_1_k__point_ae1da719fc03aea9a97f36fb114b82eaf}{}\hyperlink{classsddk_1_1wave__functions}{wave\+\_\+functions} \& {\bfseries fv\+\_\+states} ()\label{classsirius_1_1_k__point_ae1da719fc03aea9a97f36fb114b82eaf}
+
+\item 
+\hypertarget{classsirius_1_1_k__point_adb775314400a0a6c2e9b5a31464569fb}{}\hyperlink{classsddk_1_1wave__functions}{wave\+\_\+functions} \& {\bfseries spinor\+\_\+wave\+\_\+functions} (int ispn\+\_\+\+\_\+)\label{classsirius_1_1_k__point_adb775314400a0a6c2e9b5a31464569fb}
+
+\item 
+\hypertarget{classsirius_1_1_k__point_a52580025aaa58b59984e5a665e76285b}{}\hyperlink{classsddk_1_1wave__functions}{wave\+\_\+functions} \& {\bfseries singular\+\_\+components} ()\label{classsirius_1_1_k__point_a52580025aaa58b59984e5a665e76285b}
+
+\item 
+\hypertarget{classsirius_1_1_k__point_a06ebbbcfeeca2f7914506725ca78cef0}{}\hyperlink{classgeometry3d_1_1vector3d}{vector3d}$<$ double $>$ {\bfseries vk} () const \label{classsirius_1_1_k__point_a06ebbbcfeeca2f7914506725ca78cef0}
+
+\item 
+int \hyperlink{classsirius_1_1_k__point_ad82e2eea8928aae92e96dc68cb4dccbb}{gklo\+\_\+basis\+\_\+size} () const 
+\begin{DoxyCompactList}\small\item\em Basis size of L\+A\+P\+W+lo method. \end{DoxyCompactList}\item 
+int \hyperlink{classsirius_1_1_k__point_a64d42eb643d2381fd385de74404c4a24}{num\+\_\+gkvec\+\_\+loc} () const 
+\begin{DoxyCompactList}\small\item\em Local number of G+k vectors in case of flat distributon. \end{DoxyCompactList}\item 
+int \hyperlink{classsirius_1_1_k__point_a3115b04da9afda02b55a6c201cd426a2}{num\+\_\+gkvec\+\_\+row} () const 
+\begin{DoxyCompactList}\small\item\em Local number of G+k vectors for each M\+P\+I rank in the row of the 2\+D M\+P\+I grid. \end{DoxyCompactList}\item 
+int \hyperlink{classsirius_1_1_k__point_adbc51ce58775b0891c3ab278daa8e619}{num\+\_\+lo\+\_\+row} () const 
+\begin{DoxyCompactList}\small\item\em Local number of local orbitals for each M\+P\+I rank in the row of the 2\+D M\+P\+I grid. \end{DoxyCompactList}\item 
+int \hyperlink{classsirius_1_1_k__point_abee4610e47f9d93833d3b6be9979b471}{gklo\+\_\+basis\+\_\+size\+\_\+row} () const 
+\begin{DoxyCompactList}\small\item\em Local number of basis functions for each M\+P\+I rank in the row of the 2\+D M\+P\+I grid. \end{DoxyCompactList}\item 
+int \hyperlink{classsirius_1_1_k__point_a3b92c98917894c13930e04f9f7683bd2}{num\+\_\+gkvec\+\_\+col} () const 
+\begin{DoxyCompactList}\small\item\em Local number of G+k vectors for each M\+P\+I rank in the column of the 2\+D M\+P\+I grid. \end{DoxyCompactList}\item 
+int \hyperlink{classsirius_1_1_k__point_a6e2369b7fe0fc403890ebeb1571b007b}{num\+\_\+lo\+\_\+col} () const 
+\begin{DoxyCompactList}\small\item\em Local number of local orbitals for each M\+P\+I rank in the column of the 2\+D M\+P\+I grid. \end{DoxyCompactList}\item 
+int \hyperlink{classsirius_1_1_k__point_a1dbbda46f45a174bfb303c15815c6f95}{gklo\+\_\+basis\+\_\+size\+\_\+col} () const 
+\begin{DoxyCompactList}\small\item\em Local number of basis functions for each M\+P\+I rank in the column of the 2\+D M\+P\+I grid. \end{DoxyCompactList}\item 
+\hypertarget{classsirius_1_1_k__point_aa25c40f48b5d7482bba31592705d8fce}{}\hyperlink{structlo__basis__descriptor}{lo\+\_\+basis\+\_\+descriptor} const \& {\bfseries lo\+\_\+basis\+\_\+descriptor\+\_\+col} (int idx) const \label{classsirius_1_1_k__point_aa25c40f48b5d7482bba31592705d8fce}
+
+\item 
+\hypertarget{classsirius_1_1_k__point_aa06a919334e3bbc3817f80e6a9271117}{}\hyperlink{structlo__basis__descriptor}{lo\+\_\+basis\+\_\+descriptor} const \& {\bfseries lo\+\_\+basis\+\_\+descriptor\+\_\+row} (int idx) const \label{classsirius_1_1_k__point_aa06a919334e3bbc3817f80e6a9271117}
+
+\item 
+\hypertarget{classsirius_1_1_k__point_a2394e20f3437cae52619b4a6bd88cca6}{}int {\bfseries igk\+\_\+loc} (int idx\+\_\+\+\_\+) const \label{classsirius_1_1_k__point_a2394e20f3437cae52619b4a6bd88cca6}
+
+\item 
+\hypertarget{classsirius_1_1_k__point_a47806e23dcf0863bee9062b738a14ba2}{}int {\bfseries igk\+\_\+row} (int idx\+\_\+\+\_\+) const \label{classsirius_1_1_k__point_a47806e23dcf0863bee9062b738a14ba2}
+
+\item 
+\hypertarget{classsirius_1_1_k__point_a28ccc8ac51ffc8cc19fe1e5d2929aed8}{}int {\bfseries igk\+\_\+col} (int idx\+\_\+\+\_\+) const \label{classsirius_1_1_k__point_a28ccc8ac51ffc8cc19fe1e5d2929aed8}
+
+\item 
+\hypertarget{classsirius_1_1_k__point_a5aca46864fbd5afec4cb3cc3c539aeb1}{}int {\bfseries num\+\_\+ranks\+\_\+row} () const \label{classsirius_1_1_k__point_a5aca46864fbd5afec4cb3cc3c539aeb1}
+
+\item 
+\hypertarget{classsirius_1_1_k__point_ac92beddfa6a00eecf29413334283e72b}{}int {\bfseries rank\+\_\+row} () const \label{classsirius_1_1_k__point_ac92beddfa6a00eecf29413334283e72b}
+
+\item 
+\hypertarget{classsirius_1_1_k__point_aa64d1d8f8b2c463b7d6e546f28f8047c}{}int {\bfseries num\+\_\+ranks\+\_\+col} () const \label{classsirius_1_1_k__point_aa64d1d8f8b2c463b7d6e546f28f8047c}
+
+\item 
+\hypertarget{classsirius_1_1_k__point_afc6efdbdcf85cf84f4c3c0cad2157d44}{}int {\bfseries rank\+\_\+col} () const \label{classsirius_1_1_k__point_afc6efdbdcf85cf84f4c3c0cad2157d44}
+
+\item 
+int \hyperlink{classsirius_1_1_k__point_a4fe79c4766bfbe1a6282b6d4943e83df}{num\+\_\+ranks} () const 
+\begin{DoxyCompactList}\small\item\em Number of M\+P\+I ranks for a given k-\/point. \end{DoxyCompactList}\item 
+\hypertarget{classsirius_1_1_k__point_ae05188775f6136f5c51c8e19bbbe5a26}{}int {\bfseries rank} () const \label{classsirius_1_1_k__point_ae05188775f6136f5c51c8e19bbbe5a26}
+
+\item 
+int \hyperlink{classsirius_1_1_k__point_a9f2adf5a1e4ad095b6947f5e4de36f1e}{num\+\_\+atom\+\_\+lo\+\_\+cols} (int ia) const 
+\begin{DoxyCompactList}\small\item\em Return number of lo columns for a given atom. \end{DoxyCompactList}\item 
+int \hyperlink{classsirius_1_1_k__point_a51e21e08366f7e900c1993f6e380f8d2}{lo\+\_\+col} (int ia, int i) const 
+\begin{DoxyCompactList}\small\item\em Return local index (for the current M\+P\+I rank) of a column for a given atom and column index within an atom. \end{DoxyCompactList}\item 
+int \hyperlink{classsirius_1_1_k__point_ac0b0b2f513c6e834bf2ff18b5c8df1ab}{num\+\_\+atom\+\_\+lo\+\_\+rows} (int ia) const 
+\begin{DoxyCompactList}\small\item\em Return number of lo rows for a given atom. \end{DoxyCompactList}\item 
+int \hyperlink{classsirius_1_1_k__point_a26fe92a8fcccef0432cc2f57d3dbfc52}{lo\+\_\+row} (int ia, int i) const 
+\begin{DoxyCompactList}\small\item\em Return local index (for the current M\+P\+I rank) of a row for a given atom and row index within an atom. \end{DoxyCompactList}\item 
+\hypertarget{classsirius_1_1_k__point_a1728909cb2cfe62adbbfa55c9bbe87f3}{}\hyperlink{classsddk_1_1dmatrix}{dmatrix}$<$ double\+\_\+complex $>$ \& {\bfseries fv\+\_\+eigen\+\_\+vectors} ()\label{classsirius_1_1_k__point_a1728909cb2cfe62adbbfa55c9bbe87f3}
+
+\item 
+\hypertarget{classsirius_1_1_k__point_a2300400850bc3ff315f959ed0d2cc384}{}\hyperlink{classsddk_1_1wave__functions}{wave\+\_\+functions} \& {\bfseries fv\+\_\+eigen\+\_\+vectors\+\_\+slab} ()\label{classsirius_1_1_k__point_a2300400850bc3ff315f959ed0d2cc384}
+
+\item 
+\hypertarget{classsirius_1_1_k__point_a76132dd0ee3da3e0b7d9c69815dee9b8}{}\hyperlink{classsddk_1_1dmatrix}{dmatrix}$<$ double\+\_\+complex $>$ \& {\bfseries sv\+\_\+eigen\+\_\+vectors} (int ispn)\label{classsirius_1_1_k__point_a76132dd0ee3da3e0b7d9c69815dee9b8}
+
+\item 
+\hypertarget{classsirius_1_1_k__point_a92e3c63d0a3717cc9f81120a9643a1d1}{}\hyperlink{classsddk_1_1mdarray}{mdarray}$<$ double\+\_\+complex, 2 $>$ \& {\bfseries fd\+\_\+eigen\+\_\+vectors} ()\label{classsirius_1_1_k__point_a92e3c63d0a3717cc9f81120a9643a1d1}
+
+\item 
+\hypertarget{classsirius_1_1_k__point_a7cc1f60876b6e419b5096807fd656dbe}{}void {\bfseries bypass\+\_\+sv} ()\label{classsirius_1_1_k__point_a7cc1f60876b6e419b5096807fd656dbe}
+
+\item 
+\hypertarget{classsirius_1_1_k__point_a0b4f0c4bcf810ad3ea616acd382b7001}{}\hyperlink{classsddk_1_1_gvec}{Gvec} const \& {\bfseries gkvec} () const \label{classsirius_1_1_k__point_a0b4f0c4bcf810ad3ea616acd382b7001}
+
+\item 
+\hypertarget{classsirius_1_1_k__point_a5dd01da21c1b9242f391edda94067958}{}\hyperlink{classsirius_1_1_matching__coefficients}{Matching\+\_\+coefficients} const \& {\bfseries alm\+\_\+coeffs\+\_\+row} ()\label{classsirius_1_1_k__point_a5dd01da21c1b9242f391edda94067958}
+
+\item 
+\hypertarget{classsirius_1_1_k__point_a2e7ef5e190d39efcd8a95ee08454384a}{}\hyperlink{classsirius_1_1_matching__coefficients}{Matching\+\_\+coefficients} const \& {\bfseries alm\+\_\+coeffs\+\_\+col} ()\label{classsirius_1_1_k__point_a2e7ef5e190d39efcd8a95ee08454384a}
+
+\item 
+\hypertarget{classsirius_1_1_k__point_a68f2ee1e2b12b5b21ca4aa86c66f78cf}{}\hyperlink{classsirius_1_1_matching__coefficients}{Matching\+\_\+coefficients} const \& {\bfseries alm\+\_\+coeffs\+\_\+loc} () const \label{classsirius_1_1_k__point_a68f2ee1e2b12b5b21ca4aa86c66f78cf}
+
+\item 
+\hypertarget{classsirius_1_1_k__point_ac5349ccf36b289e04548a35ca3ae8336}{}\hyperlink{classsddk_1_1_communicator}{Communicator} const \& {\bfseries comm} () const \label{classsirius_1_1_k__point_ac5349ccf36b289e04548a35ca3ae8336}
+
+\item 
+\hypertarget{classsirius_1_1_k__point_a34269007d957fc824bf3f8098f958b6a}{}\hyperlink{classsddk_1_1_communicator}{Communicator} const \& {\bfseries comm\+\_\+row} () const \label{classsirius_1_1_k__point_a34269007d957fc824bf3f8098f958b6a}
+
+\item 
+\hypertarget{classsirius_1_1_k__point_ab037b2f1d1af97f5eefa212b010b8bf1}{}\hyperlink{classsddk_1_1_communicator}{Communicator} const \& {\bfseries comm\+\_\+col} () const \label{classsirius_1_1_k__point_ab037b2f1d1af97f5eefa212b010b8bf1}
+
+\item 
+\hypertarget{classsirius_1_1_k__point_aeb501b6b7961d4502c72b9e6ef5d84d3}{}double\+\_\+complex {\bfseries p\+\_\+mtrx} (int xi1, int xi2, int iat) const \label{classsirius_1_1_k__point_aeb501b6b7961d4502c72b9e6ef5d84d3}
+
+\item 
+\hypertarget{classsirius_1_1_k__point_a4ee5a09fb3ecc4e8131f31051e3e6853}{}\hyperlink{classsddk_1_1mdarray}{mdarray}$<$ double\+\_\+complex, 3 $>$ \& {\bfseries p\+\_\+mtrx} ()\label{classsirius_1_1_k__point_a4ee5a09fb3ecc4e8131f31051e3e6853}
+
+\item 
+\hypertarget{classsirius_1_1_k__point_a321a3149829b0cac934e41c4297ba915}{}\hyperlink{classsirius_1_1_beta__projectors}{Beta\+\_\+projectors} \& {\bfseries beta\+\_\+projectors} ()\label{classsirius_1_1_k__point_a321a3149829b0cac934e41c4297ba915}
+
+\end{DoxyCompactItemize}
+\subsection*{Private Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+\hypertarget{classsirius_1_1_k__point_a2ced090b24eaa4ac4a6644e53e7ff383}{}void {\bfseries generate\+\_\+gklo\+\_\+basis} ()\label{classsirius_1_1_k__point_a2ced090b24eaa4ac4a6644e53e7ff383}
+
+\item 
+void \hyperlink{classsirius_1_1_k__point_a74f1994d6b60aededa1ccb7aad3b8815}{test\+\_\+fv\+\_\+states} ()
+\begin{DoxyCompactList}\small\item\em Test orthonormalization of first-\/variational states. \end{DoxyCompactList}\end{DoxyCompactItemize}
+\subsection*{Private Attributes}
+\begin{DoxyCompactItemize}
+\item 
+\hyperlink{classsirius_1_1_simulation__context}{Simulation\+\_\+context} \& \hyperlink{classsirius_1_1_k__point_a27a93d5256b4cc87a63431d3ed765573}{ctx\+\_\+}
+\begin{DoxyCompactList}\small\item\em Simulation context. \end{DoxyCompactList}\item 
+\hyperlink{classsirius_1_1_unit__cell}{Unit\+\_\+cell} const \& \hyperlink{classsirius_1_1_k__point_aa67d12ebc672e0b301abe37761beb732}{unit\+\_\+cell\+\_\+}
+\begin{DoxyCompactList}\small\item\em Unit cell object. \end{DoxyCompactList}\item 
+double \hyperlink{classsirius_1_1_k__point_ab3965c7b91f584168bf92d4d59dd0fc4}{weight\+\_\+}
+\begin{DoxyCompactList}\small\item\em Weight of k-\/point. \end{DoxyCompactList}\item 
+\hyperlink{classgeometry3d_1_1vector3d}{vector3d}$<$ double $>$ \hyperlink{classsirius_1_1_k__point_a7d2852ebbede1528de4b8464f9ab1a7a}{vk\+\_\+}
+\begin{DoxyCompactList}\small\item\em Fractional k-\/point coordinates. \end{DoxyCompactList}\item 
+\hyperlink{classsddk_1_1_gvec}{Gvec} \hyperlink{classsirius_1_1_k__point_aa35c8c7b4c50603dcdd68267a0f5214f}{gkvec\+\_\+}
+\begin{DoxyCompactList}\small\item\em List of G-\/vectors with $\vert$\+G+k$\vert$ $<$ cutoff. \end{DoxyCompactList}\item 
+std\+::vector$<$ double $>$ \hyperlink{classsirius_1_1_k__point_a14dcb7159c34100962ccbe6f56a5a195}{fv\+\_\+eigen\+\_\+values\+\_\+}
+\begin{DoxyCompactList}\small\item\em First-\/variational eigen values. \end{DoxyCompactList}\item 
+\hyperlink{classsddk_1_1dmatrix}{dmatrix}$<$ double\+\_\+complex $>$ \hyperlink{classsirius_1_1_k__point_a4dce601feff0bf4382d7089ee88cf9ea}{fv\+\_\+eigen\+\_\+vectors\+\_\+}
+\begin{DoxyCompactList}\small\item\em First-\/variational eigen vectors, distributed over 2\+D B\+L\+A\+C\+S grid. \end{DoxyCompactList}\item 
+std\+::unique\+\_\+ptr$<$ \hyperlink{classsddk_1_1wave__functions}{wave\+\_\+functions} $>$ \hyperlink{classsirius_1_1_k__point_a0fcc8ce86cb2b8fa713b1101fadd8098}{fv\+\_\+eigen\+\_\+vectors\+\_\+slab\+\_\+}
+\begin{DoxyCompactList}\small\item\em First-\/variational eigen vectors, distributed in slabs. \end{DoxyCompactList}\item 
+\hypertarget{classsirius_1_1_k__point_a009f9a44017f407b8bbc5ae0c50099ec}{}std\+::unique\+\_\+ptr$<$ \hyperlink{classsddk_1_1wave__functions}{wave\+\_\+functions} $>$ {\bfseries singular\+\_\+components\+\_\+}\label{classsirius_1_1_k__point_a009f9a44017f407b8bbc5ae0c50099ec}
+
+\item 
+\hyperlink{classsddk_1_1dmatrix}{dmatrix}$<$ double\+\_\+complex $>$ \hyperlink{classsirius_1_1_k__point_afb5d65a6fb66c2532aefe946a0513eea}{sv\+\_\+eigen\+\_\+vectors\+\_\+} \mbox{[}2\mbox{]}
+\begin{DoxyCompactList}\small\item\em Second-\/variational eigen vectors. \end{DoxyCompactList}\item 
+\hyperlink{classsddk_1_1mdarray}{mdarray}$<$ double\+\_\+complex, 2 $>$ \hyperlink{classsirius_1_1_k__point_a48ae51c27177ebd8fdd019a127ef74f9}{fd\+\_\+eigen\+\_\+vectors\+\_\+}
+\begin{DoxyCompactList}\small\item\em Full-\/diagonalization eigen vectors. \end{DoxyCompactList}\item 
+std\+::unique\+\_\+ptr$<$ \hyperlink{classsddk_1_1wave__functions}{wave\+\_\+functions} $>$ \hyperlink{classsirius_1_1_k__point_aca363c2385edb532f9e266c1956dbb5f}{fv\+\_\+states\+\_\+} \{nullptr\}
+\begin{DoxyCompactList}\small\item\em First-\/variational states. \end{DoxyCompactList}\item 
+std\+::unique\+\_\+ptr$<$ \hyperlink{classsddk_1_1wave__functions}{wave\+\_\+functions} $>$ \hyperlink{classsirius_1_1_k__point_a9c1d2d51e282f776c034d80a698885a9}{spinor\+\_\+wave\+\_\+functions\+\_\+} \mbox{[}2\mbox{]} = \{nullptr, nullptr\}
+\begin{DoxyCompactList}\small\item\em Two-\/component (spinor) wave functions describing the bands. \end{DoxyCompactList}\item 
+std\+::vector$<$ double $>$ \hyperlink{classsirius_1_1_k__point_afe99a469c933f236459d322eef90af16}{band\+\_\+occupancies\+\_\+}
+\begin{DoxyCompactList}\small\item\em \hyperlink{classsirius_1_1_band}{Band} occupation numbers. \end{DoxyCompactList}\item 
+std\+::vector$<$ double $>$ \hyperlink{classsirius_1_1_k__point_ad1212379cf77eb9c948336b60c06622f}{band\+\_\+energies\+\_\+}
+\begin{DoxyCompactList}\small\item\em \hyperlink{classsirius_1_1_band}{Band} energies. \end{DoxyCompactList}\item 
+\hypertarget{classsirius_1_1_k__point_a5cee5478e7682507c3084639d9b5b17d}{}std\+::unique\+\_\+ptr$<$ \hyperlink{classsirius_1_1_matching__coefficients}{Matching\+\_\+coefficients} $>$ {\bfseries alm\+\_\+coeffs\+\_\+row\+\_\+} \{nullptr\}\label{classsirius_1_1_k__point_a5cee5478e7682507c3084639d9b5b17d}
+
+\item 
+\hypertarget{classsirius_1_1_k__point_a5db081226b04df5a367c73e83220ab76}{}std\+::unique\+\_\+ptr$<$ \hyperlink{classsirius_1_1_matching__coefficients}{Matching\+\_\+coefficients} $>$ {\bfseries alm\+\_\+coeffs\+\_\+col\+\_\+} \{nullptr\}\label{classsirius_1_1_k__point_a5db081226b04df5a367c73e83220ab76}
+
+\item 
+\hypertarget{classsirius_1_1_k__point_adf90ee98b541e4b90acc9898c4a529e4}{}std\+::unique\+\_\+ptr$<$ \hyperlink{classsirius_1_1_matching__coefficients}{Matching\+\_\+coefficients} $>$ {\bfseries alm\+\_\+coeffs\+\_\+loc\+\_\+} \{nullptr\}\label{classsirius_1_1_k__point_adf90ee98b541e4b90acc9898c4a529e4}
+
+\item 
+\hypertarget{classsirius_1_1_k__point_a28715b2ca94b300b0e9c31f4adc09509}{}std\+::vector$<$ int $>$ {\bfseries igk\+\_\+row\+\_\+}\label{classsirius_1_1_k__point_a28715b2ca94b300b0e9c31f4adc09509}
+
+\item 
+\hypertarget{classsirius_1_1_k__point_ae68852b4bbf0a196a2060c2e867f32ee}{}std\+::vector$<$ int $>$ {\bfseries igk\+\_\+col\+\_\+}\label{classsirius_1_1_k__point_ae68852b4bbf0a196a2060c2e867f32ee}
+
+\item 
+\hypertarget{classsirius_1_1_k__point_aefa8a6ed74a91dcbafa2ed40b5ee762c}{}std\+::vector$<$ int $>$ {\bfseries igk\+\_\+loc\+\_\+}\label{classsirius_1_1_k__point_aefa8a6ed74a91dcbafa2ed40b5ee762c}
+
+\item 
+int \hyperlink{classsirius_1_1_k__point_a5d6c36943d1096bf7e27e0a81ac834e3}{num\+\_\+gkvec\+\_\+row\+\_\+} \{0\}
+\begin{DoxyCompactList}\small\item\em Number of G+k vectors distributed along rows of M\+P\+I grid. \end{DoxyCompactList}\item 
+int \hyperlink{classsirius_1_1_k__point_ac3074a84beb6d7df14aff1d8e1402d07}{num\+\_\+gkvec\+\_\+col\+\_\+} \{0\}
+\begin{DoxyCompactList}\small\item\em Number of G+k vectors distributed along columns of M\+P\+I grid. \end{DoxyCompactList}\item 
+std\+::vector$<$ \hyperlink{structlo__basis__descriptor}{lo\+\_\+basis\+\_\+descriptor} $>$ \hyperlink{classsirius_1_1_k__point_a7dfee55675c203957134694bfedca21a}{lo\+\_\+basis\+\_\+descriptors\+\_\+row\+\_\+}
+\begin{DoxyCompactList}\small\item\em Basis descriptors distributed between rows of the 2\+D M\+P\+I grid. \end{DoxyCompactList}\item 
+std\+::vector$<$ \hyperlink{structlo__basis__descriptor}{lo\+\_\+basis\+\_\+descriptor} $>$ \hyperlink{classsirius_1_1_k__point_a6483b599581ba095c971ee04c2d61b06}{lo\+\_\+basis\+\_\+descriptors\+\_\+col\+\_\+}
+\begin{DoxyCompactList}\small\item\em Basis descriptors distributed between columns of the 2\+D M\+P\+I grid. \end{DoxyCompactList}\item 
+std\+::vector$<$ std\+::vector$<$ int $>$ $>$ \hyperlink{classsirius_1_1_k__point_a60c93116b6de3660cd0375f4e268e1ae}{atom\+\_\+lo\+\_\+cols\+\_\+}
+\begin{DoxyCompactList}\small\item\em List of columns of the Hamiltonian and overlap matrix lo block (local index) for a given atom. \end{DoxyCompactList}\item 
+std\+::vector$<$ std\+::vector$<$ int $>$ $>$ \hyperlink{classsirius_1_1_k__point_adf2c9c65bb23f1ce9a7451d5d4553195}{atom\+\_\+lo\+\_\+rows\+\_\+}
+\begin{DoxyCompactList}\small\item\em list of rows of the Hamiltonian and overlap matrix lo block (local index) for a given atom \end{DoxyCompactList}\item 
+std\+::vector$<$ double\+\_\+complex $>$ \hyperlink{classsirius_1_1_k__point_a63bb5c2fb436b8292cfc9215f488b44a}{zil\+\_\+}
+\begin{DoxyCompactList}\small\item\em imaginary unit to the power of l \end{DoxyCompactList}\item 
+std\+::vector$<$ int $>$ \hyperlink{classsirius_1_1_k__point_afcd70ca076b5714dfbc9ceb8503299b6}{l\+\_\+by\+\_\+lm\+\_\+}
+\begin{DoxyCompactList}\small\item\em mapping between lm and l \end{DoxyCompactList}\item 
+int \hyperlink{classsirius_1_1_k__point_aa10c7539cc86b6a36c2b17b593fc6ad3}{rank\+\_\+col\+\_\+}
+\begin{DoxyCompactList}\small\item\em column rank of the processors of Sca\+L\+A\+P\+A\+C\+K/\+E\+L\+P\+A diagonalization grid \end{DoxyCompactList}\item 
+int \hyperlink{classsirius_1_1_k__point_ab03535344a72df246d0832000093ad2e}{num\+\_\+ranks\+\_\+col\+\_\+}
+\begin{DoxyCompactList}\small\item\em number of processors along columns of the diagonalization grid \end{DoxyCompactList}\item 
+\hypertarget{classsirius_1_1_k__point_a80db0ddb16002fa90181cc0c9e3c3d6d}{}int {\bfseries rank\+\_\+row\+\_\+}\label{classsirius_1_1_k__point_a80db0ddb16002fa90181cc0c9e3c3d6d}
+
+\item 
+\hypertarget{classsirius_1_1_k__point_a6d22d73298126cecf5853a03da603f09}{}int {\bfseries num\+\_\+ranks\+\_\+row\+\_\+}\label{classsirius_1_1_k__point_a6d22d73298126cecf5853a03da603f09}
+
+\item 
+\hypertarget{classsirius_1_1_k__point_abb6dba38892449f97e915ec6a15892ed}{}std\+::unique\+\_\+ptr$<$ \hyperlink{classsirius_1_1_beta__projectors}{Beta\+\_\+projectors} $>$ {\bfseries beta\+\_\+projectors\+\_\+} \{nullptr\}\label{classsirius_1_1_k__point_abb6dba38892449f97e915ec6a15892ed}
+
+\item 
+\hyperlink{classsddk_1_1mdarray}{mdarray}$<$ double\+\_\+complex, 3 $>$ \hyperlink{classsirius_1_1_k__point_a2efb48aea899a01b6f2fd7ae295bb556}{p\+\_\+mtrx\+\_\+}
+\begin{DoxyCompactList}\small\item\em Preconditioner matrix for Chebyshev solver. \end{DoxyCompactList}\item 
+\hypertarget{classsirius_1_1_k__point_ac8af73845774dc69c34d8feeb36fb27b}{}\hyperlink{classsddk_1_1_communicator}{Communicator} const \& {\bfseries comm\+\_\+}\label{classsirius_1_1_k__point_ac8af73845774dc69c34d8feeb36fb27b}
+
+\item 
+\hyperlink{classsddk_1_1_communicator}{Communicator} const \& \hyperlink{classsirius_1_1_k__point_a5445c11b9bf1b002c60e6f20bec22c20}{comm\+\_\+row\+\_\+}
+\begin{DoxyCompactList}\small\item\em Communicator between(!!) rows. \end{DoxyCompactList}\item 
+\hyperlink{classsddk_1_1_communicator}{Communicator} const \& \hyperlink{classsirius_1_1_k__point_a1b3082dec0fd4c73b6d4518e4bdcc2b6}{comm\+\_\+col\+\_\+}
+\begin{DoxyCompactList}\small\item\em Communicator between(!!) columns. \end{DoxyCompactList}\end{DoxyCompactItemize}
+
+
+\subsection{Detailed Description}
+K-\/point related variables and methods. 
+
+ 
+
+Definition at line 39 of file k\+\_\+point.\+h.
+
+
+
+\subsection{Constructor \& Destructor Documentation}
+\hypertarget{classsirius_1_1_k__point_a0374ed7edcb5177b7e8a03f2722c6090}{}\index{sirius\+::\+K\+\_\+point@{sirius\+::\+K\+\_\+point}!K\+\_\+point@{K\+\_\+point}}
+\index{K\+\_\+point@{K\+\_\+point}!sirius\+::\+K\+\_\+point@{sirius\+::\+K\+\_\+point}}
+\subsubsection[{K\+\_\+point(\+Simulation\+\_\+context \&ctx\+\_\+\+\_\+, double $\ast$vk\+\_\+\+\_\+, double weight\+\_\+\+\_\+)}]{\setlength{\rightskip}{0pt plus 5cm}sirius\+::\+K\+\_\+point\+::\+K\+\_\+point (
+\begin{DoxyParamCaption}
+\item[{{\bf Simulation\+\_\+context} \&}]{ctx\+\_\+\+\_\+, }
+\item[{double $\ast$}]{vk\+\_\+\+\_\+, }
+\item[{double}]{weight\+\_\+\+\_\+}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}}\label{classsirius_1_1_k__point_a0374ed7edcb5177b7e8a03f2722c6090}
+
+
+Constructor. 
+
+
+
+Definition at line 159 of file k\+\_\+point.\+h.
+
+
+
+\subsection{Member Function Documentation}
+\hypertarget{classsirius_1_1_k__point_a74f1994d6b60aededa1ccb7aad3b8815}{}\index{sirius\+::\+K\+\_\+point@{sirius\+::\+K\+\_\+point}!test\+\_\+fv\+\_\+states@{test\+\_\+fv\+\_\+states}}
+\index{test\+\_\+fv\+\_\+states@{test\+\_\+fv\+\_\+states}!sirius\+::\+K\+\_\+point@{sirius\+::\+K\+\_\+point}}
+\subsubsection[{test\+\_\+fv\+\_\+states()}]{\setlength{\rightskip}{0pt plus 5cm}void sirius\+::\+K\+\_\+point\+::test\+\_\+fv\+\_\+states (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}, {\ttfamily [private]}}\label{classsirius_1_1_k__point_a74f1994d6b60aededa1ccb7aad3b8815}
+
+
+Test orthonormalization of first-\/variational states. 
+
+
+
+Definition at line 1 of file test\+\_\+fv\+\_\+states.\+hpp.
+
+\hypertarget{classsirius_1_1_k__point_a6b81e097804738feac48d2a33c4b4aa7}{}\index{sirius\+::\+K\+\_\+point@{sirius\+::\+K\+\_\+point}!initialize@{initialize}}
+\index{initialize@{initialize}!sirius\+::\+K\+\_\+point@{sirius\+::\+K\+\_\+point}}
+\subsubsection[{initialize()}]{\setlength{\rightskip}{0pt plus 5cm}void sirius\+::\+K\+\_\+point\+::initialize (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}}\label{classsirius_1_1_k__point_a6b81e097804738feac48d2a33c4b4aa7}
+
+
+Initialize the k-\/point related arrays and data. 
+
+\begin{DoxyRefDesc}{Todo}
+\item[\hyperlink{todo__todo000003}{Todo}]Correct the memory leak \end{DoxyRefDesc}
+
+
+\begin{DoxyRefDesc}{Todo}
+\item[\hyperlink{todo__todo000004}{Todo}]Correct the memory leak \end{DoxyRefDesc}
+
+
+Definition at line 1 of file initialize.\+hpp.
+
+\hypertarget{classsirius_1_1_k__point_a3b0c4ae54e8c7f8da88701e5015ab16c}{}\index{sirius\+::\+K\+\_\+point@{sirius\+::\+K\+\_\+point}!generate\+\_\+gkvec@{generate\+\_\+gkvec}}
+\index{generate\+\_\+gkvec@{generate\+\_\+gkvec}!sirius\+::\+K\+\_\+point@{sirius\+::\+K\+\_\+point}}
+\subsubsection[{generate\+\_\+gkvec(double gk\+\_\+cutoff\+\_\+\+\_\+)}]{\setlength{\rightskip}{0pt plus 5cm}void sirius\+::\+K\+\_\+point\+::generate\+\_\+gkvec (
+\begin{DoxyParamCaption}
+\item[{double}]{gk\+\_\+cutoff\+\_\+\+\_\+}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}}\label{classsirius_1_1_k__point_a3b0c4ae54e8c7f8da88701e5015ab16c}
+
+
+Find G+k vectors within the cutoff. 
+
+
+
+Definition at line 1 of file generate\+\_\+gkvec.\+hpp.
+
+\hypertarget{classsirius_1_1_k__point_a021e78d67ecff5256537c1b4e03e1c3d}{}\index{sirius\+::\+K\+\_\+point@{sirius\+::\+K\+\_\+point}!generate\+\_\+fv\+\_\+states@{generate\+\_\+fv\+\_\+states}}
+\index{generate\+\_\+fv\+\_\+states@{generate\+\_\+fv\+\_\+states}!sirius\+::\+K\+\_\+point@{sirius\+::\+K\+\_\+point}}
+\subsubsection[{generate\+\_\+fv\+\_\+states()}]{\setlength{\rightskip}{0pt plus 5cm}void sirius\+::\+K\+\_\+point\+::generate\+\_\+fv\+\_\+states (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}}\label{classsirius_1_1_k__point_a021e78d67ecff5256537c1b4e03e1c3d}
+
+
+Generate first-\/variational states from eigen-\/vectors. 
+
+First-\/variational states are obtained from the first-\/variational eigen-\/vectors and L\+A\+P\+W matching coefficients. ~\newline
+ A\+P\+W part\+: \[ \psi_{\xi j}^{\bf k} = \sum_{{\bf G}} Z_{{\bf G} j}^{\bf k} * A_{\xi}({\bf G+k}) \] 
+
+Definition at line 25 of file generate\+\_\+fv\+\_\+states.\+hpp.
+
+\hypertarget{classsirius_1_1_k__point_a36a79c489df101418b195e4c3ae4eaec}{}\index{sirius\+::\+K\+\_\+point@{sirius\+::\+K\+\_\+point}!generate\+\_\+spinor\+\_\+wave\+\_\+functions@{generate\+\_\+spinor\+\_\+wave\+\_\+functions}}
+\index{generate\+\_\+spinor\+\_\+wave\+\_\+functions@{generate\+\_\+spinor\+\_\+wave\+\_\+functions}!sirius\+::\+K\+\_\+point@{sirius\+::\+K\+\_\+point}}
+\subsubsection[{generate\+\_\+spinor\+\_\+wave\+\_\+functions()}]{\setlength{\rightskip}{0pt plus 5cm}void sirius\+::\+K\+\_\+point\+::generate\+\_\+spinor\+\_\+wave\+\_\+functions (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}}\label{classsirius_1_1_k__point_a36a79c489df101418b195e4c3ae4eaec}
+
+
+Generate two-\/component spinor wave functions. 
+
+
+
+Definition at line 1 of file generate\+\_\+spinor\+\_\+wave\+\_\+functions.\+hpp.
+
+\hypertarget{classsirius_1_1_k__point_a66c57595d6fe6527fc46911118aae4be}{}\index{sirius\+::\+K\+\_\+point@{sirius\+::\+K\+\_\+point}!test\+\_\+spinor\+\_\+wave\+\_\+functions@{test\+\_\+spinor\+\_\+wave\+\_\+functions}}
+\index{test\+\_\+spinor\+\_\+wave\+\_\+functions@{test\+\_\+spinor\+\_\+wave\+\_\+functions}!sirius\+::\+K\+\_\+point@{sirius\+::\+K\+\_\+point}}
+\subsubsection[{test\+\_\+spinor\+\_\+wave\+\_\+functions(int use\+\_\+fft)}]{\setlength{\rightskip}{0pt plus 5cm}void sirius\+::\+K\+\_\+point\+::test\+\_\+spinor\+\_\+wave\+\_\+functions (
+\begin{DoxyParamCaption}
+\item[{int}]{use\+\_\+fft}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}}\label{classsirius_1_1_k__point_a66c57595d6fe6527fc46911118aae4be}
+
+
+Test orthonormalization of spinor wave-\/functions. 
+
+
+
+Definition at line 215 of file k\+\_\+point.\+hpp.
+
+\hypertarget{classsirius_1_1_k__point_a96cb8a5ecb6def0d01b451dd426feee3}{}\index{sirius\+::\+K\+\_\+point@{sirius\+::\+K\+\_\+point}!num\+\_\+occupied\+\_\+bands@{num\+\_\+occupied\+\_\+bands}}
+\index{num\+\_\+occupied\+\_\+bands@{num\+\_\+occupied\+\_\+bands}!sirius\+::\+K\+\_\+point@{sirius\+::\+K\+\_\+point}}
+\subsubsection[{num\+\_\+occupied\+\_\+bands(int ispn\+\_\+\+\_\+=-\/1)}]{\setlength{\rightskip}{0pt plus 5cm}int sirius\+::\+K\+\_\+point\+::num\+\_\+occupied\+\_\+bands (
+\begin{DoxyParamCaption}
+\item[{int}]{ispn\+\_\+\+\_\+ = {\ttfamily -\/1}}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}}\label{classsirius_1_1_k__point_a96cb8a5ecb6def0d01b451dd426feee3}
+
+
+Get the number of occupied bands for each spin channel. 
+
+
+
+Definition at line 232 of file k\+\_\+point.\+h.
+
+\hypertarget{classsirius_1_1_k__point_a938e93b58344f86808911fa7eeb34c69}{}\index{sirius\+::\+K\+\_\+point@{sirius\+::\+K\+\_\+point}!num\+\_\+gkvec@{num\+\_\+gkvec}}
+\index{num\+\_\+gkvec@{num\+\_\+gkvec}!sirius\+::\+K\+\_\+point@{sirius\+::\+K\+\_\+point}}
+\subsubsection[{num\+\_\+gkvec() const }]{\setlength{\rightskip}{0pt plus 5cm}int sirius\+::\+K\+\_\+point\+::num\+\_\+gkvec (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [inline]}}\label{classsirius_1_1_k__point_a938e93b58344f86808911fa7eeb34c69}
+
+
+Total number of G+k vectors within the cutoff distance. 
+
+
+
+Definition at line 259 of file k\+\_\+point.\+h.
+
+\hypertarget{classsirius_1_1_k__point_aa0bace30028bc0153dd10758e3266b22}{}\index{sirius\+::\+K\+\_\+point@{sirius\+::\+K\+\_\+point}!get\+\_\+band\+\_\+occupancies@{get\+\_\+band\+\_\+occupancies}}
+\index{get\+\_\+band\+\_\+occupancies@{get\+\_\+band\+\_\+occupancies}!sirius\+::\+K\+\_\+point@{sirius\+::\+K\+\_\+point}}
+\subsubsection[{get\+\_\+band\+\_\+occupancies(double $\ast$band\+\_\+occupancies) const }]{\setlength{\rightskip}{0pt plus 5cm}void sirius\+::\+K\+\_\+point\+::get\+\_\+band\+\_\+occupancies (
+\begin{DoxyParamCaption}
+\item[{double $\ast$}]{band\+\_\+occupancies}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [inline]}}\label{classsirius_1_1_k__point_aa0bace30028bc0153dd10758e3266b22}
+
+
+Total number of muffin-\/tin and plane-\/wave expansion coefficients for the wave-\/functions. 
+
+A\+P\+W+lo basis $ \varphi_{\mu {\bf k}}({\bf r}) = \{ \varphi_{\bf G+k}({\bf r}), \varphi_{j{\bf k}}({\bf r}) \} $ is used to expand first-\/variational wave-\/functions\+:
+
+\[ \psi_{i{\bf k}}({\bf r}) = \sum_{\mu} c_{\mu i}^{\bf k} \varphi_{\mu \bf k}({\bf r}) = \sum_{{\bf G}}c_{{\bf G} i}^{\bf k} \varphi_{\bf G+k}({\bf r}) + \sum_{j}c_{j i}^{\bf k}\varphi_{j{\bf k}}({\bf r}) \]
+
+Inside muffin-\/tins the expansion is converted into the following form\+: \[ \psi_{i {\bf k}}({\bf r})= \begin{array}{ll} \displaystyle \sum_{L} \sum_{\lambda=1}^{N_{\ell}^{\alpha}} F_{L \lambda}^{i {\bf k},\alpha}f_{\ell \lambda}^{\alpha}(r) Y_{\ell m}(\hat {\bf r}) & {\bf r} \in MT_{\alpha} \end{array} \]
+
+Thus, the total number of coefficients representing a wave-\/funstion is equal to the number of muffin-\/tin basis functions of the form $ f_{\ell \lambda}^{\alpha}(r) Y_{\ell m}(\hat {\bf r}) $ plust the number of G+k plane waves. 
+
+Definition at line 294 of file k\+\_\+point.\+h.
+
+\hypertarget{classsirius_1_1_k__point_ad82e2eea8928aae92e96dc68cb4dccbb}{}\index{sirius\+::\+K\+\_\+point@{sirius\+::\+K\+\_\+point}!gklo\+\_\+basis\+\_\+size@{gklo\+\_\+basis\+\_\+size}}
+\index{gklo\+\_\+basis\+\_\+size@{gklo\+\_\+basis\+\_\+size}!sirius\+::\+K\+\_\+point@{sirius\+::\+K\+\_\+point}}
+\subsubsection[{gklo\+\_\+basis\+\_\+size() const }]{\setlength{\rightskip}{0pt plus 5cm}int sirius\+::\+K\+\_\+point\+::gklo\+\_\+basis\+\_\+size (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [inline]}}\label{classsirius_1_1_k__point_ad82e2eea8928aae92e96dc68cb4dccbb}
+
+
+Basis size of L\+A\+P\+W+lo method. 
+
+
+
+Definition at line 375 of file k\+\_\+point.\+h.
+
+\hypertarget{classsirius_1_1_k__point_a64d42eb643d2381fd385de74404c4a24}{}\index{sirius\+::\+K\+\_\+point@{sirius\+::\+K\+\_\+point}!num\+\_\+gkvec\+\_\+loc@{num\+\_\+gkvec\+\_\+loc}}
+\index{num\+\_\+gkvec\+\_\+loc@{num\+\_\+gkvec\+\_\+loc}!sirius\+::\+K\+\_\+point@{sirius\+::\+K\+\_\+point}}
+\subsubsection[{num\+\_\+gkvec\+\_\+loc() const }]{\setlength{\rightskip}{0pt plus 5cm}int sirius\+::\+K\+\_\+point\+::num\+\_\+gkvec\+\_\+loc (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [inline]}}\label{classsirius_1_1_k__point_a64d42eb643d2381fd385de74404c4a24}
+
+
+Local number of G+k vectors in case of flat distributon. 
+
+
+
+Definition at line 381 of file k\+\_\+point.\+h.
+
+\hypertarget{classsirius_1_1_k__point_a3115b04da9afda02b55a6c201cd426a2}{}\index{sirius\+::\+K\+\_\+point@{sirius\+::\+K\+\_\+point}!num\+\_\+gkvec\+\_\+row@{num\+\_\+gkvec\+\_\+row}}
+\index{num\+\_\+gkvec\+\_\+row@{num\+\_\+gkvec\+\_\+row}!sirius\+::\+K\+\_\+point@{sirius\+::\+K\+\_\+point}}
+\subsubsection[{num\+\_\+gkvec\+\_\+row() const }]{\setlength{\rightskip}{0pt plus 5cm}int sirius\+::\+K\+\_\+point\+::num\+\_\+gkvec\+\_\+row (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [inline]}}\label{classsirius_1_1_k__point_a3115b04da9afda02b55a6c201cd426a2}
+
+
+Local number of G+k vectors for each M\+P\+I rank in the row of the 2\+D M\+P\+I grid. 
+
+
+
+Definition at line 387 of file k\+\_\+point.\+h.
+
+\hypertarget{classsirius_1_1_k__point_adbc51ce58775b0891c3ab278daa8e619}{}\index{sirius\+::\+K\+\_\+point@{sirius\+::\+K\+\_\+point}!num\+\_\+lo\+\_\+row@{num\+\_\+lo\+\_\+row}}
+\index{num\+\_\+lo\+\_\+row@{num\+\_\+lo\+\_\+row}!sirius\+::\+K\+\_\+point@{sirius\+::\+K\+\_\+point}}
+\subsubsection[{num\+\_\+lo\+\_\+row() const }]{\setlength{\rightskip}{0pt plus 5cm}int sirius\+::\+K\+\_\+point\+::num\+\_\+lo\+\_\+row (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [inline]}}\label{classsirius_1_1_k__point_adbc51ce58775b0891c3ab278daa8e619}
+
+
+Local number of local orbitals for each M\+P\+I rank in the row of the 2\+D M\+P\+I grid. 
+
+
+
+Definition at line 393 of file k\+\_\+point.\+h.
+
+\hypertarget{classsirius_1_1_k__point_abee4610e47f9d93833d3b6be9979b471}{}\index{sirius\+::\+K\+\_\+point@{sirius\+::\+K\+\_\+point}!gklo\+\_\+basis\+\_\+size\+\_\+row@{gklo\+\_\+basis\+\_\+size\+\_\+row}}
+\index{gklo\+\_\+basis\+\_\+size\+\_\+row@{gklo\+\_\+basis\+\_\+size\+\_\+row}!sirius\+::\+K\+\_\+point@{sirius\+::\+K\+\_\+point}}
+\subsubsection[{gklo\+\_\+basis\+\_\+size\+\_\+row() const }]{\setlength{\rightskip}{0pt plus 5cm}int sirius\+::\+K\+\_\+point\+::gklo\+\_\+basis\+\_\+size\+\_\+row (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [inline]}}\label{classsirius_1_1_k__point_abee4610e47f9d93833d3b6be9979b471}
+
+
+Local number of basis functions for each M\+P\+I rank in the row of the 2\+D M\+P\+I grid. 
+
+
+
+Definition at line 399 of file k\+\_\+point.\+h.
+
+\hypertarget{classsirius_1_1_k__point_a3b92c98917894c13930e04f9f7683bd2}{}\index{sirius\+::\+K\+\_\+point@{sirius\+::\+K\+\_\+point}!num\+\_\+gkvec\+\_\+col@{num\+\_\+gkvec\+\_\+col}}
+\index{num\+\_\+gkvec\+\_\+col@{num\+\_\+gkvec\+\_\+col}!sirius\+::\+K\+\_\+point@{sirius\+::\+K\+\_\+point}}
+\subsubsection[{num\+\_\+gkvec\+\_\+col() const }]{\setlength{\rightskip}{0pt plus 5cm}int sirius\+::\+K\+\_\+point\+::num\+\_\+gkvec\+\_\+col (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [inline]}}\label{classsirius_1_1_k__point_a3b92c98917894c13930e04f9f7683bd2}
+
+
+Local number of G+k vectors for each M\+P\+I rank in the column of the 2\+D M\+P\+I grid. 
+
+
+
+Definition at line 405 of file k\+\_\+point.\+h.
+
+\hypertarget{classsirius_1_1_k__point_a6e2369b7fe0fc403890ebeb1571b007b}{}\index{sirius\+::\+K\+\_\+point@{sirius\+::\+K\+\_\+point}!num\+\_\+lo\+\_\+col@{num\+\_\+lo\+\_\+col}}
+\index{num\+\_\+lo\+\_\+col@{num\+\_\+lo\+\_\+col}!sirius\+::\+K\+\_\+point@{sirius\+::\+K\+\_\+point}}
+\subsubsection[{num\+\_\+lo\+\_\+col() const }]{\setlength{\rightskip}{0pt plus 5cm}int sirius\+::\+K\+\_\+point\+::num\+\_\+lo\+\_\+col (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [inline]}}\label{classsirius_1_1_k__point_a6e2369b7fe0fc403890ebeb1571b007b}
+
+
+Local number of local orbitals for each M\+P\+I rank in the column of the 2\+D M\+P\+I grid. 
+
+
+
+Definition at line 411 of file k\+\_\+point.\+h.
+
+\hypertarget{classsirius_1_1_k__point_a1dbbda46f45a174bfb303c15815c6f95}{}\index{sirius\+::\+K\+\_\+point@{sirius\+::\+K\+\_\+point}!gklo\+\_\+basis\+\_\+size\+\_\+col@{gklo\+\_\+basis\+\_\+size\+\_\+col}}
+\index{gklo\+\_\+basis\+\_\+size\+\_\+col@{gklo\+\_\+basis\+\_\+size\+\_\+col}!sirius\+::\+K\+\_\+point@{sirius\+::\+K\+\_\+point}}
+\subsubsection[{gklo\+\_\+basis\+\_\+size\+\_\+col() const }]{\setlength{\rightskip}{0pt plus 5cm}int sirius\+::\+K\+\_\+point\+::gklo\+\_\+basis\+\_\+size\+\_\+col (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [inline]}}\label{classsirius_1_1_k__point_a1dbbda46f45a174bfb303c15815c6f95}
+
+
+Local number of basis functions for each M\+P\+I rank in the column of the 2\+D M\+P\+I grid. 
+
+
+
+Definition at line 417 of file k\+\_\+point.\+h.
+
+\hypertarget{classsirius_1_1_k__point_a4fe79c4766bfbe1a6282b6d4943e83df}{}\index{sirius\+::\+K\+\_\+point@{sirius\+::\+K\+\_\+point}!num\+\_\+ranks@{num\+\_\+ranks}}
+\index{num\+\_\+ranks@{num\+\_\+ranks}!sirius\+::\+K\+\_\+point@{sirius\+::\+K\+\_\+point}}
+\subsubsection[{num\+\_\+ranks() const }]{\setlength{\rightskip}{0pt plus 5cm}int sirius\+::\+K\+\_\+point\+::num\+\_\+ranks (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [inline]}}\label{classsirius_1_1_k__point_a4fe79c4766bfbe1a6282b6d4943e83df}
+
+
+Number of M\+P\+I ranks for a given k-\/point. 
+
+
+
+Definition at line 470 of file k\+\_\+point.\+h.
+
+\hypertarget{classsirius_1_1_k__point_a9f2adf5a1e4ad095b6947f5e4de36f1e}{}\index{sirius\+::\+K\+\_\+point@{sirius\+::\+K\+\_\+point}!num\+\_\+atom\+\_\+lo\+\_\+cols@{num\+\_\+atom\+\_\+lo\+\_\+cols}}
+\index{num\+\_\+atom\+\_\+lo\+\_\+cols@{num\+\_\+atom\+\_\+lo\+\_\+cols}!sirius\+::\+K\+\_\+point@{sirius\+::\+K\+\_\+point}}
+\subsubsection[{num\+\_\+atom\+\_\+lo\+\_\+cols(int ia) const }]{\setlength{\rightskip}{0pt plus 5cm}int sirius\+::\+K\+\_\+point\+::num\+\_\+atom\+\_\+lo\+\_\+cols (
+\begin{DoxyParamCaption}
+\item[{int}]{ia}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [inline]}}\label{classsirius_1_1_k__point_a9f2adf5a1e4ad095b6947f5e4de36f1e}
+
+
+Return number of lo columns for a given atom. 
+
+
+
+Definition at line 481 of file k\+\_\+point.\+h.
+
+\hypertarget{classsirius_1_1_k__point_a51e21e08366f7e900c1993f6e380f8d2}{}\index{sirius\+::\+K\+\_\+point@{sirius\+::\+K\+\_\+point}!lo\+\_\+col@{lo\+\_\+col}}
+\index{lo\+\_\+col@{lo\+\_\+col}!sirius\+::\+K\+\_\+point@{sirius\+::\+K\+\_\+point}}
+\subsubsection[{lo\+\_\+col(int ia, int i) const }]{\setlength{\rightskip}{0pt plus 5cm}int sirius\+::\+K\+\_\+point\+::lo\+\_\+col (
+\begin{DoxyParamCaption}
+\item[{int}]{ia, }
+\item[{int}]{i}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [inline]}}\label{classsirius_1_1_k__point_a51e21e08366f7e900c1993f6e380f8d2}
+
+
+Return local index (for the current M\+P\+I rank) of a column for a given atom and column index within an atom. 
+
+
+
+Definition at line 487 of file k\+\_\+point.\+h.
+
+\hypertarget{classsirius_1_1_k__point_ac0b0b2f513c6e834bf2ff18b5c8df1ab}{}\index{sirius\+::\+K\+\_\+point@{sirius\+::\+K\+\_\+point}!num\+\_\+atom\+\_\+lo\+\_\+rows@{num\+\_\+atom\+\_\+lo\+\_\+rows}}
+\index{num\+\_\+atom\+\_\+lo\+\_\+rows@{num\+\_\+atom\+\_\+lo\+\_\+rows}!sirius\+::\+K\+\_\+point@{sirius\+::\+K\+\_\+point}}
+\subsubsection[{num\+\_\+atom\+\_\+lo\+\_\+rows(int ia) const }]{\setlength{\rightskip}{0pt plus 5cm}int sirius\+::\+K\+\_\+point\+::num\+\_\+atom\+\_\+lo\+\_\+rows (
+\begin{DoxyParamCaption}
+\item[{int}]{ia}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [inline]}}\label{classsirius_1_1_k__point_ac0b0b2f513c6e834bf2ff18b5c8df1ab}
+
+
+Return number of lo rows for a given atom. 
+
+
+
+Definition at line 493 of file k\+\_\+point.\+h.
+
+\hypertarget{classsirius_1_1_k__point_a26fe92a8fcccef0432cc2f57d3dbfc52}{}\index{sirius\+::\+K\+\_\+point@{sirius\+::\+K\+\_\+point}!lo\+\_\+row@{lo\+\_\+row}}
+\index{lo\+\_\+row@{lo\+\_\+row}!sirius\+::\+K\+\_\+point@{sirius\+::\+K\+\_\+point}}
+\subsubsection[{lo\+\_\+row(int ia, int i) const }]{\setlength{\rightskip}{0pt plus 5cm}int sirius\+::\+K\+\_\+point\+::lo\+\_\+row (
+\begin{DoxyParamCaption}
+\item[{int}]{ia, }
+\item[{int}]{i}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [inline]}}\label{classsirius_1_1_k__point_a26fe92a8fcccef0432cc2f57d3dbfc52}
+
+
+Return local index (for the current M\+P\+I rank) of a row for a given atom and row index within an atom. 
+
+
+
+Definition at line 499 of file k\+\_\+point.\+h.
+
+
+
+\subsection{Member Data Documentation}
+\hypertarget{classsirius_1_1_k__point_a27a93d5256b4cc87a63431d3ed765573}{}\index{sirius\+::\+K\+\_\+point@{sirius\+::\+K\+\_\+point}!ctx\+\_\+@{ctx\+\_\+}}
+\index{ctx\+\_\+@{ctx\+\_\+}!sirius\+::\+K\+\_\+point@{sirius\+::\+K\+\_\+point}}
+\subsubsection[{ctx\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}{\bf Simulation\+\_\+context}\& sirius\+::\+K\+\_\+point\+::ctx\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classsirius_1_1_k__point_a27a93d5256b4cc87a63431d3ed765573}
+
+
+Simulation context. 
+
+
+
+Definition at line 44 of file k\+\_\+point.\+h.
+
+\hypertarget{classsirius_1_1_k__point_aa67d12ebc672e0b301abe37761beb732}{}\index{sirius\+::\+K\+\_\+point@{sirius\+::\+K\+\_\+point}!unit\+\_\+cell\+\_\+@{unit\+\_\+cell\+\_\+}}
+\index{unit\+\_\+cell\+\_\+@{unit\+\_\+cell\+\_\+}!sirius\+::\+K\+\_\+point@{sirius\+::\+K\+\_\+point}}
+\subsubsection[{unit\+\_\+cell\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}{\bf Unit\+\_\+cell} const\& sirius\+::\+K\+\_\+point\+::unit\+\_\+cell\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classsirius_1_1_k__point_aa67d12ebc672e0b301abe37761beb732}
+
+
+Unit cell object. 
+
+
+
+Definition at line 47 of file k\+\_\+point.\+h.
+
+\hypertarget{classsirius_1_1_k__point_ab3965c7b91f584168bf92d4d59dd0fc4}{}\index{sirius\+::\+K\+\_\+point@{sirius\+::\+K\+\_\+point}!weight\+\_\+@{weight\+\_\+}}
+\index{weight\+\_\+@{weight\+\_\+}!sirius\+::\+K\+\_\+point@{sirius\+::\+K\+\_\+point}}
+\subsubsection[{weight\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}double sirius\+::\+K\+\_\+point\+::weight\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classsirius_1_1_k__point_ab3965c7b91f584168bf92d4d59dd0fc4}
+
+
+Weight of k-\/point. 
+
+
+
+Definition at line 50 of file k\+\_\+point.\+h.
+
+\hypertarget{classsirius_1_1_k__point_a7d2852ebbede1528de4b8464f9ab1a7a}{}\index{sirius\+::\+K\+\_\+point@{sirius\+::\+K\+\_\+point}!vk\+\_\+@{vk\+\_\+}}
+\index{vk\+\_\+@{vk\+\_\+}!sirius\+::\+K\+\_\+point@{sirius\+::\+K\+\_\+point}}
+\subsubsection[{vk\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}{\bf vector3d}$<$double$>$ sirius\+::\+K\+\_\+point\+::vk\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classsirius_1_1_k__point_a7d2852ebbede1528de4b8464f9ab1a7a}
+
+
+Fractional k-\/point coordinates. 
+
+
+
+Definition at line 53 of file k\+\_\+point.\+h.
+
+\hypertarget{classsirius_1_1_k__point_aa35c8c7b4c50603dcdd68267a0f5214f}{}\index{sirius\+::\+K\+\_\+point@{sirius\+::\+K\+\_\+point}!gkvec\+\_\+@{gkvec\+\_\+}}
+\index{gkvec\+\_\+@{gkvec\+\_\+}!sirius\+::\+K\+\_\+point@{sirius\+::\+K\+\_\+point}}
+\subsubsection[{gkvec\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}{\bf Gvec} sirius\+::\+K\+\_\+point\+::gkvec\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classsirius_1_1_k__point_aa35c8c7b4c50603dcdd68267a0f5214f}
+
+
+List of G-\/vectors with $\vert$\+G+k$\vert$ $<$ cutoff. 
+
+
+
+Definition at line 56 of file k\+\_\+point.\+h.
+
+\hypertarget{classsirius_1_1_k__point_a14dcb7159c34100962ccbe6f56a5a195}{}\index{sirius\+::\+K\+\_\+point@{sirius\+::\+K\+\_\+point}!fv\+\_\+eigen\+\_\+values\+\_\+@{fv\+\_\+eigen\+\_\+values\+\_\+}}
+\index{fv\+\_\+eigen\+\_\+values\+\_\+@{fv\+\_\+eigen\+\_\+values\+\_\+}!sirius\+::\+K\+\_\+point@{sirius\+::\+K\+\_\+point}}
+\subsubsection[{fv\+\_\+eigen\+\_\+values\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}std\+::vector$<$double$>$ sirius\+::\+K\+\_\+point\+::fv\+\_\+eigen\+\_\+values\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classsirius_1_1_k__point_a14dcb7159c34100962ccbe6f56a5a195}
+
+
+First-\/variational eigen values. 
+
+
+
+Definition at line 59 of file k\+\_\+point.\+h.
+
+\hypertarget{classsirius_1_1_k__point_a4dce601feff0bf4382d7089ee88cf9ea}{}\index{sirius\+::\+K\+\_\+point@{sirius\+::\+K\+\_\+point}!fv\+\_\+eigen\+\_\+vectors\+\_\+@{fv\+\_\+eigen\+\_\+vectors\+\_\+}}
+\index{fv\+\_\+eigen\+\_\+vectors\+\_\+@{fv\+\_\+eigen\+\_\+vectors\+\_\+}!sirius\+::\+K\+\_\+point@{sirius\+::\+K\+\_\+point}}
+\subsubsection[{fv\+\_\+eigen\+\_\+vectors\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}{\bf dmatrix}$<$double\+\_\+complex$>$ sirius\+::\+K\+\_\+point\+::fv\+\_\+eigen\+\_\+vectors\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classsirius_1_1_k__point_a4dce601feff0bf4382d7089ee88cf9ea}
+
+
+First-\/variational eigen vectors, distributed over 2\+D B\+L\+A\+C\+S grid. 
+
+
+
+Definition at line 62 of file k\+\_\+point.\+h.
+
+\hypertarget{classsirius_1_1_k__point_a0fcc8ce86cb2b8fa713b1101fadd8098}{}\index{sirius\+::\+K\+\_\+point@{sirius\+::\+K\+\_\+point}!fv\+\_\+eigen\+\_\+vectors\+\_\+slab\+\_\+@{fv\+\_\+eigen\+\_\+vectors\+\_\+slab\+\_\+}}
+\index{fv\+\_\+eigen\+\_\+vectors\+\_\+slab\+\_\+@{fv\+\_\+eigen\+\_\+vectors\+\_\+slab\+\_\+}!sirius\+::\+K\+\_\+point@{sirius\+::\+K\+\_\+point}}
+\subsubsection[{fv\+\_\+eigen\+\_\+vectors\+\_\+slab\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}std\+::unique\+\_\+ptr$<${\bf wave\+\_\+functions}$>$ sirius\+::\+K\+\_\+point\+::fv\+\_\+eigen\+\_\+vectors\+\_\+slab\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classsirius_1_1_k__point_a0fcc8ce86cb2b8fa713b1101fadd8098}
+
+
+First-\/variational eigen vectors, distributed in slabs. 
+
+
+
+Definition at line 65 of file k\+\_\+point.\+h.
+
+\hypertarget{classsirius_1_1_k__point_afb5d65a6fb66c2532aefe946a0513eea}{}\index{sirius\+::\+K\+\_\+point@{sirius\+::\+K\+\_\+point}!sv\+\_\+eigen\+\_\+vectors\+\_\+@{sv\+\_\+eigen\+\_\+vectors\+\_\+}}
+\index{sv\+\_\+eigen\+\_\+vectors\+\_\+@{sv\+\_\+eigen\+\_\+vectors\+\_\+}!sirius\+::\+K\+\_\+point@{sirius\+::\+K\+\_\+point}}
+\subsubsection[{sv\+\_\+eigen\+\_\+vectors\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}{\bf dmatrix}$<$double\+\_\+complex$>$ sirius\+::\+K\+\_\+point\+::sv\+\_\+eigen\+\_\+vectors\+\_\+\mbox{[}2\mbox{]}\hspace{0.3cm}{\ttfamily [private]}}\label{classsirius_1_1_k__point_afb5d65a6fb66c2532aefe946a0513eea}
+
+
+Second-\/variational eigen vectors. 
+
+Second-\/variational eigen-\/vectors are stored as one or two $ N_{fv} \times N_{fv} $ matrices in case of non-\/magnetic or collinear magnetic case or as a single $ 2 N_{fv} \times 2 N_{fv} $ matrix in case of general non-\/collinear magnetism. 
+
+Definition at line 73 of file k\+\_\+point.\+h.
+
+\hypertarget{classsirius_1_1_k__point_a48ae51c27177ebd8fdd019a127ef74f9}{}\index{sirius\+::\+K\+\_\+point@{sirius\+::\+K\+\_\+point}!fd\+\_\+eigen\+\_\+vectors\+\_\+@{fd\+\_\+eigen\+\_\+vectors\+\_\+}}
+\index{fd\+\_\+eigen\+\_\+vectors\+\_\+@{fd\+\_\+eigen\+\_\+vectors\+\_\+}!sirius\+::\+K\+\_\+point@{sirius\+::\+K\+\_\+point}}
+\subsubsection[{fd\+\_\+eigen\+\_\+vectors\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}{\bf mdarray}$<$double\+\_\+complex, 2$>$ sirius\+::\+K\+\_\+point\+::fd\+\_\+eigen\+\_\+vectors\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classsirius_1_1_k__point_a48ae51c27177ebd8fdd019a127ef74f9}
+
+
+Full-\/diagonalization eigen vectors. 
+
+
+
+Definition at line 76 of file k\+\_\+point.\+h.
+
+\hypertarget{classsirius_1_1_k__point_aca363c2385edb532f9e266c1956dbb5f}{}\index{sirius\+::\+K\+\_\+point@{sirius\+::\+K\+\_\+point}!fv\+\_\+states\+\_\+@{fv\+\_\+states\+\_\+}}
+\index{fv\+\_\+states\+\_\+@{fv\+\_\+states\+\_\+}!sirius\+::\+K\+\_\+point@{sirius\+::\+K\+\_\+point}}
+\subsubsection[{fv\+\_\+states\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}std\+::unique\+\_\+ptr$<${\bf wave\+\_\+functions}$>$ sirius\+::\+K\+\_\+point\+::fv\+\_\+states\+\_\+ \{nullptr\}\hspace{0.3cm}{\ttfamily [private]}}\label{classsirius_1_1_k__point_aca363c2385edb532f9e266c1956dbb5f}
+
+
+First-\/variational states. 
+
+
+
+Definition at line 79 of file k\+\_\+point.\+h.
+
+\hypertarget{classsirius_1_1_k__point_a9c1d2d51e282f776c034d80a698885a9}{}\index{sirius\+::\+K\+\_\+point@{sirius\+::\+K\+\_\+point}!spinor\+\_\+wave\+\_\+functions\+\_\+@{spinor\+\_\+wave\+\_\+functions\+\_\+}}
+\index{spinor\+\_\+wave\+\_\+functions\+\_\+@{spinor\+\_\+wave\+\_\+functions\+\_\+}!sirius\+::\+K\+\_\+point@{sirius\+::\+K\+\_\+point}}
+\subsubsection[{spinor\+\_\+wave\+\_\+functions\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}std\+::unique\+\_\+ptr$<${\bf wave\+\_\+functions}$>$ sirius\+::\+K\+\_\+point\+::spinor\+\_\+wave\+\_\+functions\+\_\+\mbox{[}2\mbox{]} = \{nullptr, nullptr\}\hspace{0.3cm}{\ttfamily [private]}}\label{classsirius_1_1_k__point_a9c1d2d51e282f776c034d80a698885a9}
+
+
+Two-\/component (spinor) wave functions describing the bands. 
+
+
+
+Definition at line 82 of file k\+\_\+point.\+h.
+
+\hypertarget{classsirius_1_1_k__point_afe99a469c933f236459d322eef90af16}{}\index{sirius\+::\+K\+\_\+point@{sirius\+::\+K\+\_\+point}!band\+\_\+occupancies\+\_\+@{band\+\_\+occupancies\+\_\+}}
+\index{band\+\_\+occupancies\+\_\+@{band\+\_\+occupancies\+\_\+}!sirius\+::\+K\+\_\+point@{sirius\+::\+K\+\_\+point}}
+\subsubsection[{band\+\_\+occupancies\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}std\+::vector$<$double$>$ sirius\+::\+K\+\_\+point\+::band\+\_\+occupancies\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classsirius_1_1_k__point_afe99a469c933f236459d322eef90af16}
+
+
+\hyperlink{classsirius_1_1_band}{Band} occupation numbers. 
+
+
+
+Definition at line 85 of file k\+\_\+point.\+h.
+
+\hypertarget{classsirius_1_1_k__point_ad1212379cf77eb9c948336b60c06622f}{}\index{sirius\+::\+K\+\_\+point@{sirius\+::\+K\+\_\+point}!band\+\_\+energies\+\_\+@{band\+\_\+energies\+\_\+}}
+\index{band\+\_\+energies\+\_\+@{band\+\_\+energies\+\_\+}!sirius\+::\+K\+\_\+point@{sirius\+::\+K\+\_\+point}}
+\subsubsection[{band\+\_\+energies\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}std\+::vector$<$double$>$ sirius\+::\+K\+\_\+point\+::band\+\_\+energies\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classsirius_1_1_k__point_ad1212379cf77eb9c948336b60c06622f}
+
+
+\hyperlink{classsirius_1_1_band}{Band} energies. 
+
+
+
+Definition at line 88 of file k\+\_\+point.\+h.
+
+\hypertarget{classsirius_1_1_k__point_a5d6c36943d1096bf7e27e0a81ac834e3}{}\index{sirius\+::\+K\+\_\+point@{sirius\+::\+K\+\_\+point}!num\+\_\+gkvec\+\_\+row\+\_\+@{num\+\_\+gkvec\+\_\+row\+\_\+}}
+\index{num\+\_\+gkvec\+\_\+row\+\_\+@{num\+\_\+gkvec\+\_\+row\+\_\+}!sirius\+::\+K\+\_\+point@{sirius\+::\+K\+\_\+point}}
+\subsubsection[{num\+\_\+gkvec\+\_\+row\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}int sirius\+::\+K\+\_\+point\+::num\+\_\+gkvec\+\_\+row\+\_\+ \{0\}\hspace{0.3cm}{\ttfamily [private]}}\label{classsirius_1_1_k__point_a5d6c36943d1096bf7e27e0a81ac834e3}
+
+
+Number of G+k vectors distributed along rows of M\+P\+I grid. 
+
+
+
+Definition at line 103 of file k\+\_\+point.\+h.
+
+\hypertarget{classsirius_1_1_k__point_ac3074a84beb6d7df14aff1d8e1402d07}{}\index{sirius\+::\+K\+\_\+point@{sirius\+::\+K\+\_\+point}!num\+\_\+gkvec\+\_\+col\+\_\+@{num\+\_\+gkvec\+\_\+col\+\_\+}}
+\index{num\+\_\+gkvec\+\_\+col\+\_\+@{num\+\_\+gkvec\+\_\+col\+\_\+}!sirius\+::\+K\+\_\+point@{sirius\+::\+K\+\_\+point}}
+\subsubsection[{num\+\_\+gkvec\+\_\+col\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}int sirius\+::\+K\+\_\+point\+::num\+\_\+gkvec\+\_\+col\+\_\+ \{0\}\hspace{0.3cm}{\ttfamily [private]}}\label{classsirius_1_1_k__point_ac3074a84beb6d7df14aff1d8e1402d07}
+
+
+Number of G+k vectors distributed along columns of M\+P\+I grid. 
+
+
+
+Definition at line 106 of file k\+\_\+point.\+h.
+
+\hypertarget{classsirius_1_1_k__point_a7dfee55675c203957134694bfedca21a}{}\index{sirius\+::\+K\+\_\+point@{sirius\+::\+K\+\_\+point}!lo\+\_\+basis\+\_\+descriptors\+\_\+row\+\_\+@{lo\+\_\+basis\+\_\+descriptors\+\_\+row\+\_\+}}
+\index{lo\+\_\+basis\+\_\+descriptors\+\_\+row\+\_\+@{lo\+\_\+basis\+\_\+descriptors\+\_\+row\+\_\+}!sirius\+::\+K\+\_\+point@{sirius\+::\+K\+\_\+point}}
+\subsubsection[{lo\+\_\+basis\+\_\+descriptors\+\_\+row\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}std\+::vector$<${\bf lo\+\_\+basis\+\_\+descriptor}$>$ sirius\+::\+K\+\_\+point\+::lo\+\_\+basis\+\_\+descriptors\+\_\+row\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classsirius_1_1_k__point_a7dfee55675c203957134694bfedca21a}
+
+
+Basis descriptors distributed between rows of the 2\+D M\+P\+I grid. 
+
+This is a local array. Only M\+P\+I ranks belonging to the same column have identical copies of this array. 
+
+Definition at line 110 of file k\+\_\+point.\+h.
+
+\hypertarget{classsirius_1_1_k__point_a6483b599581ba095c971ee04c2d61b06}{}\index{sirius\+::\+K\+\_\+point@{sirius\+::\+K\+\_\+point}!lo\+\_\+basis\+\_\+descriptors\+\_\+col\+\_\+@{lo\+\_\+basis\+\_\+descriptors\+\_\+col\+\_\+}}
+\index{lo\+\_\+basis\+\_\+descriptors\+\_\+col\+\_\+@{lo\+\_\+basis\+\_\+descriptors\+\_\+col\+\_\+}!sirius\+::\+K\+\_\+point@{sirius\+::\+K\+\_\+point}}
+\subsubsection[{lo\+\_\+basis\+\_\+descriptors\+\_\+col\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}std\+::vector$<${\bf lo\+\_\+basis\+\_\+descriptor}$>$ sirius\+::\+K\+\_\+point\+::lo\+\_\+basis\+\_\+descriptors\+\_\+col\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classsirius_1_1_k__point_a6483b599581ba095c971ee04c2d61b06}
+
+
+Basis descriptors distributed between columns of the 2\+D M\+P\+I grid. 
+
+This is a local array. Only M\+P\+I ranks belonging to the same row have identical copies of this array. 
+
+Definition at line 114 of file k\+\_\+point.\+h.
+
+\hypertarget{classsirius_1_1_k__point_a60c93116b6de3660cd0375f4e268e1ae}{}\index{sirius\+::\+K\+\_\+point@{sirius\+::\+K\+\_\+point}!atom\+\_\+lo\+\_\+cols\+\_\+@{atom\+\_\+lo\+\_\+cols\+\_\+}}
+\index{atom\+\_\+lo\+\_\+cols\+\_\+@{atom\+\_\+lo\+\_\+cols\+\_\+}!sirius\+::\+K\+\_\+point@{sirius\+::\+K\+\_\+point}}
+\subsubsection[{atom\+\_\+lo\+\_\+cols\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}std\+::vector$<$std\+::vector$<$int$>$ $>$ sirius\+::\+K\+\_\+point\+::atom\+\_\+lo\+\_\+cols\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classsirius_1_1_k__point_a60c93116b6de3660cd0375f4e268e1ae}
+
+
+List of columns of the Hamiltonian and overlap matrix lo block (local index) for a given atom. 
+
+
+
+Definition at line 117 of file k\+\_\+point.\+h.
+
+\hypertarget{classsirius_1_1_k__point_adf2c9c65bb23f1ce9a7451d5d4553195}{}\index{sirius\+::\+K\+\_\+point@{sirius\+::\+K\+\_\+point}!atom\+\_\+lo\+\_\+rows\+\_\+@{atom\+\_\+lo\+\_\+rows\+\_\+}}
+\index{atom\+\_\+lo\+\_\+rows\+\_\+@{atom\+\_\+lo\+\_\+rows\+\_\+}!sirius\+::\+K\+\_\+point@{sirius\+::\+K\+\_\+point}}
+\subsubsection[{atom\+\_\+lo\+\_\+rows\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}std\+::vector$<$std\+::vector$<$int$>$ $>$ sirius\+::\+K\+\_\+point\+::atom\+\_\+lo\+\_\+rows\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classsirius_1_1_k__point_adf2c9c65bb23f1ce9a7451d5d4553195}
+
+
+list of rows of the Hamiltonian and overlap matrix lo block (local index) for a given atom 
+
+
+
+Definition at line 120 of file k\+\_\+point.\+h.
+
+\hypertarget{classsirius_1_1_k__point_a63bb5c2fb436b8292cfc9215f488b44a}{}\index{sirius\+::\+K\+\_\+point@{sirius\+::\+K\+\_\+point}!zil\+\_\+@{zil\+\_\+}}
+\index{zil\+\_\+@{zil\+\_\+}!sirius\+::\+K\+\_\+point@{sirius\+::\+K\+\_\+point}}
+\subsubsection[{zil\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}std\+::vector$<$double\+\_\+complex$>$ sirius\+::\+K\+\_\+point\+::zil\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classsirius_1_1_k__point_a63bb5c2fb436b8292cfc9215f488b44a}
+
+
+imaginary unit to the power of l 
+
+
+
+Definition at line 123 of file k\+\_\+point.\+h.
+
+\hypertarget{classsirius_1_1_k__point_afcd70ca076b5714dfbc9ceb8503299b6}{}\index{sirius\+::\+K\+\_\+point@{sirius\+::\+K\+\_\+point}!l\+\_\+by\+\_\+lm\+\_\+@{l\+\_\+by\+\_\+lm\+\_\+}}
+\index{l\+\_\+by\+\_\+lm\+\_\+@{l\+\_\+by\+\_\+lm\+\_\+}!sirius\+::\+K\+\_\+point@{sirius\+::\+K\+\_\+point}}
+\subsubsection[{l\+\_\+by\+\_\+lm\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}std\+::vector$<$int$>$ sirius\+::\+K\+\_\+point\+::l\+\_\+by\+\_\+lm\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classsirius_1_1_k__point_afcd70ca076b5714dfbc9ceb8503299b6}
+
+
+mapping between lm and l 
+
+
+
+Definition at line 126 of file k\+\_\+point.\+h.
+
+\hypertarget{classsirius_1_1_k__point_aa10c7539cc86b6a36c2b17b593fc6ad3}{}\index{sirius\+::\+K\+\_\+point@{sirius\+::\+K\+\_\+point}!rank\+\_\+col\+\_\+@{rank\+\_\+col\+\_\+}}
+\index{rank\+\_\+col\+\_\+@{rank\+\_\+col\+\_\+}!sirius\+::\+K\+\_\+point@{sirius\+::\+K\+\_\+point}}
+\subsubsection[{rank\+\_\+col\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}int sirius\+::\+K\+\_\+point\+::rank\+\_\+col\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classsirius_1_1_k__point_aa10c7539cc86b6a36c2b17b593fc6ad3}
+
+
+column rank of the processors of Sca\+L\+A\+P\+A\+C\+K/\+E\+L\+P\+A diagonalization grid 
+
+
+
+Definition at line 129 of file k\+\_\+point.\+h.
+
+\hypertarget{classsirius_1_1_k__point_ab03535344a72df246d0832000093ad2e}{}\index{sirius\+::\+K\+\_\+point@{sirius\+::\+K\+\_\+point}!num\+\_\+ranks\+\_\+col\+\_\+@{num\+\_\+ranks\+\_\+col\+\_\+}}
+\index{num\+\_\+ranks\+\_\+col\+\_\+@{num\+\_\+ranks\+\_\+col\+\_\+}!sirius\+::\+K\+\_\+point@{sirius\+::\+K\+\_\+point}}
+\subsubsection[{num\+\_\+ranks\+\_\+col\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}int sirius\+::\+K\+\_\+point\+::num\+\_\+ranks\+\_\+col\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classsirius_1_1_k__point_ab03535344a72df246d0832000093ad2e}
+
+
+number of processors along columns of the diagonalization grid 
+
+
+
+Definition at line 132 of file k\+\_\+point.\+h.
+
+\hypertarget{classsirius_1_1_k__point_a2efb48aea899a01b6f2fd7ae295bb556}{}\index{sirius\+::\+K\+\_\+point@{sirius\+::\+K\+\_\+point}!p\+\_\+mtrx\+\_\+@{p\+\_\+mtrx\+\_\+}}
+\index{p\+\_\+mtrx\+\_\+@{p\+\_\+mtrx\+\_\+}!sirius\+::\+K\+\_\+point@{sirius\+::\+K\+\_\+point}}
+\subsubsection[{p\+\_\+mtrx\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}{\bf mdarray}$<$double\+\_\+complex, 3$>$ sirius\+::\+K\+\_\+point\+::p\+\_\+mtrx\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classsirius_1_1_k__point_a2efb48aea899a01b6f2fd7ae295bb556}
+
+
+Preconditioner matrix for Chebyshev solver. 
+
+
+
+Definition at line 141 of file k\+\_\+point.\+h.
+
+\hypertarget{classsirius_1_1_k__point_a5445c11b9bf1b002c60e6f20bec22c20}{}\index{sirius\+::\+K\+\_\+point@{sirius\+::\+K\+\_\+point}!comm\+\_\+row\+\_\+@{comm\+\_\+row\+\_\+}}
+\index{comm\+\_\+row\+\_\+@{comm\+\_\+row\+\_\+}!sirius\+::\+K\+\_\+point@{sirius\+::\+K\+\_\+point}}
+\subsubsection[{comm\+\_\+row\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}{\bf Communicator} const\& sirius\+::\+K\+\_\+point\+::comm\+\_\+row\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classsirius_1_1_k__point_a5445c11b9bf1b002c60e6f20bec22c20}
+
+
+Communicator between(!!) rows. 
+
+
+
+Definition at line 146 of file k\+\_\+point.\+h.
+
+\hypertarget{classsirius_1_1_k__point_a1b3082dec0fd4c73b6d4518e4bdcc2b6}{}\index{sirius\+::\+K\+\_\+point@{sirius\+::\+K\+\_\+point}!comm\+\_\+col\+\_\+@{comm\+\_\+col\+\_\+}}
+\index{comm\+\_\+col\+\_\+@{comm\+\_\+col\+\_\+}!sirius\+::\+K\+\_\+point@{sirius\+::\+K\+\_\+point}}
+\subsubsection[{comm\+\_\+col\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}{\bf Communicator} const\& sirius\+::\+K\+\_\+point\+::comm\+\_\+col\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classsirius_1_1_k__point_a1b3082dec0fd4c73b6d4518e4bdcc2b6}
+
+
+Communicator between(!!) columns. 
+
+
+
+Definition at line 149 of file k\+\_\+point.\+h.
+
+
+
+The documentation for this class was generated from the following files\+:\begin{DoxyCompactItemize}
+\item 
+\hyperlink{k__point_8h}{k\+\_\+point.\+h}\item 
+\hyperlink{generate__fv__states_8hpp}{generate\+\_\+fv\+\_\+states.\+hpp}\item 
+generate\+\_\+gklo\+\_\+basis.\+hpp\item 
+generate\+\_\+gkvec.\+hpp\item 
+generate\+\_\+spinor\+\_\+wave\+\_\+functions.\+hpp\item 
+initialize.\+hpp\item 
+k\+\_\+point.\+hpp\item 
+test\+\_\+fv\+\_\+states.\+hpp\end{DoxyCompactItemize}

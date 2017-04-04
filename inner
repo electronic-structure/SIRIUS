@@ -1,0 +1,37 @@
+doc/html/_forces___p_s_8cpp_source.html:<div class="line"><a name="l00041"></a><span class="lineno">   41</span>&#160;    <span class="keywordtype">double</span> fact = valence_rho-&gt;gvec().reduced() ? 2.0 : 1.0 ;</div>
+doc/html/_forces___p_s_8cpp_source.html:<div class="line"><a name="l00066"></a><span class="lineno">   66</span>&#160;            double_complex z = fact * <a class="code" href="constants_8h.html#ad02fb7d54474c8ba26f6c27adf1686dd">fourpi</a> * ctx_.radial_integrals().vloc_radial_integral(iat, gvecs.gvec_len(ig)) * std::conj(valence_rho-&gt;f_pw(ig)) *</div>
+doc/html/interfacesirius_1_1sirius__set__lmax__rho.html:<a href="interfacesirius_1_1sirius__set__lmax__rho-members.html">List of all members</a>  </div>
+doc/html/poisson_8hpp_source.html:<div class="line"><a name="l00152"></a><span class="lineno">  152</span>&#160;        poisson_sum_G(ctx_.lmmax_rho(), &amp;rho-&gt;f_pw(0), sbessel_mom_, qit);</div>
+doc/html/poisson_8hpp_source.html:<div class="line"><a name="l00167"></a><span class="lineno">  167</span>&#160;        poisson_add_pseudo_pw(qmt, qit, &amp;rho-&gt;f_pw(0));</div>
+doc/html/poisson_8hpp_source.html:<div class="line"><a name="l00170"></a><span class="lineno">  170</span>&#160;        double_complex z3 = mdarray&lt;double_complex, 1&gt;(&amp;rho-&gt;f_pw(0), ctx_.gvec().num_gvec()).checksum();</div>
+doc/html/poisson_8hpp_source.html:<div class="line"><a name="l00175"></a><span class="lineno">  175</span>&#160;            poisson_sum_G(ctx_.lmmax_rho(), &amp;rho-&gt;f_pw(0), sbessel_mom_, qit);</div>
+doc/html/poisson_8hpp_source.html:<div class="line"><a name="l00192"></a><span class="lineno">  192</span>&#160;            vh-&gt;f_pw(ig) = (<a class="code" href="constants_8h.html#ad02fb7d54474c8ba26f6c27adf1686dd">fourpi</a> * rho-&gt;f_pw(ig) / std::pow(ctx_.gvec().gvec_len(ig), 2));</div>
+doc/html/poisson_8hpp_source.html:<div class="line"><a name="l00198"></a><span class="lineno">  198</span>&#160;            vh-&gt;f_pw(ig) = (<a class="code" href="constants_8h.html#ad02fb7d54474c8ba26f6c27adf1686dd">fourpi</a> * rho-&gt;f_pw(ig) / std::pow(ctx_.gvec().gvec_len(ig), 2)) *</div>
+doc/html/poisson_8hpp_source.html:<div class="line"><a name="l00267"></a><span class="lineno">  267</span>&#160;    energy_vha_ = rho-&gt;<a class="code" href="classsirius_1_1_periodic__function.html#aa4db4aaaf637a4e6d225e66389034980">inner</a>(vh);</div>
+doc/html/poisson_8hpp_source.html:<div class="line"><a name="l00279"></a><span class="lineno">  279</span>&#160;                srho[ir] = rho-&gt;f_mt&lt;index_domain_t::local&gt;(0, ir, ialoc);</div>
+doc/html/xc_8hpp_source.html:<div class="line"><a name="l00319"></a><span class="lineno">  319</span>&#160;        <span class="keyword">auto</span> rho_tp = transform(sht_.get(), rho-&gt;f_mt(ialoc));</div>
+doc/html/xc_8hpp_source.html:<div class="line"><a name="l00400"></a><span class="lineno">  400</span>&#160;            xc_mt_nonmagnetic(rgrid, xc_func, rho-&gt;f_mt(ialoc), rho_tp, vxc_tp, exc_tp);</div>
+doc/html/xc_8hpp_source.html:<div class="line"><a name="l00650"></a><span class="lineno">  650</span>&#160;        mag = std::min(mag, rho-&gt;f_rg(ir));</div>
+doc/html/xc_8hpp_source.html:<div class="line"><a name="l00652"></a><span class="lineno">  652</span>&#160;        rhomin = std::min(rhomin, rho-&gt;f_rg(ir));</div>
+doc/html/xc_8hpp_source.html:<div class="line"><a name="l00653"></a><span class="lineno">  653</span>&#160;        <span class="keywordflow">if</span> (rho-&gt;f_rg(ir) &lt; 0.0) {</div>
+doc/html/xc_8hpp_source.html:<div class="line"><a name="l00654"></a><span class="lineno">  654</span>&#160;            rho-&gt;f_rg(ir) = 0.0;</div>
+doc/html/xc_8hpp_source.html:<div class="line"><a name="l00658"></a><span class="lineno">  658</span>&#160;        rho_up.f_rg(ir) = 0.5 * (rho-&gt;f_rg(ir) + mag);</div>
+doc/html/xc_8hpp_source.html:<div class="line"><a name="l00659"></a><span class="lineno">  659</span>&#160;        rho_dn.f_rg(ir) = 0.5 * (rho-&gt;f_rg(ir) - mag);</div>
+src/Geometry/Forces_PS.cpp:    double fact = valence_rho->gvec().reduced() ? 2.0 : 1.0 ;
+src/Geometry/Forces_PS.cpp:            double_complex z = fact * fourpi * ctx_.radial_integrals().vloc_radial_integral(iat, gvecs.gvec_len(ig)) * std::conj(valence_rho->f_pw(ig)) *
+src/Potential/poisson.hpp:        poisson_sum_G(ctx_.lmmax_rho(), &rho->f_pw(0), sbessel_mom_, qit);
+src/Potential/poisson.hpp:        poisson_add_pseudo_pw(qmt, qit, &rho->f_pw(0));
+src/Potential/poisson.hpp:        double_complex z3 = mdarray<double_complex, 1>(&rho->f_pw(0), ctx_.gvec().num_gvec()).checksum();
+src/Potential/poisson.hpp:            poisson_sum_G(ctx_.lmmax_rho(), &rho->f_pw(0), sbessel_mom_, qit);
+src/Potential/poisson.hpp:            vh->f_pw(ig) = (fourpi * rho->f_pw(ig) / std::pow(ctx_.gvec().gvec_len(ig), 2));
+src/Potential/poisson.hpp:            vh->f_pw(ig) = (fourpi * rho->f_pw(ig) / std::pow(ctx_.gvec().gvec_len(ig), 2)) *
+src/Potential/poisson.hpp:    energy_vha_ = rho->inner(vh);
+src/Potential/poisson.hpp:                srho[ir] = rho->f_mt<index_domain_t::local>(0, ir, ialoc);
+src/Potential/xc.hpp:        auto rho_tp = transform(sht_.get(), rho->f_mt(ialoc));
+src/Potential/xc.hpp:            xc_mt_nonmagnetic(rgrid, xc_func, rho->f_mt(ialoc), rho_tp, vxc_tp, exc_tp);
+src/Potential/xc.hpp:        mag = std::min(mag, rho->f_rg(ir));
+src/Potential/xc.hpp:        rhomin = std::min(rhomin, rho->f_rg(ir));
+src/Potential/xc.hpp:        if (rho->f_rg(ir) < 0.0) {
+src/Potential/xc.hpp:            rho->f_rg(ir) = 0.0;
+src/Potential/xc.hpp:        rho_up.f_rg(ir) = 0.5 * (rho->f_rg(ir) + mag);
+src/Potential/xc.hpp:        rho_dn.f_rg(ir) = 0.5 * (rho->f_rg(ir) - mag);

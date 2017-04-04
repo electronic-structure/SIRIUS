@@ -1,0 +1,57 @@
+\hypertarget{classsirius_1_1_broyden2}{}\section{sirius\+:\+:Broyden2$<$ T $>$ Class Template Reference}
+\label{classsirius_1_1_broyden2}\index{sirius\+::\+Broyden2$<$ T $>$@{sirius\+::\+Broyden2$<$ T $>$}}
+
+
+Broyden mixer.  
+
+
+
+
+Inheritance diagram for sirius\+:\+:Broyden2$<$ T $>$\+:
+% FIG 0
+
+
+Collaboration diagram for sirius\+:\+:Broyden2$<$ T $>$\+:
+% FIG 1
+\subsection*{Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+\hypertarget{classsirius_1_1_broyden2_a2d0af3f47dc13d4a346595a4bba8a378}{}{\bfseries Broyden2} (size\+\_\+t size\+\_\+\+\_\+, int max\+\_\+history\+\_\+\+\_\+, double beta\+\_\+\+\_\+, double beta0\+\_\+\+\_\+, double linear\+\_\+mix\+\_\+rms\+\_\+tol\+\_\+\+\_\+, std\+::vector$<$ double $>$ \&weights\+\_\+\+\_\+, Communicator const \&comm\+\_\+\+\_\+)\label{classsirius_1_1_broyden2_a2d0af3f47dc13d4a346595a4bba8a378}
+
+\item 
+\hypertarget{classsirius_1_1_broyden2_ab7c3ac02d67444d06115de55dc856ad9}{}double {\bfseries mix} ()\label{classsirius_1_1_broyden2_ab7c3ac02d67444d06115de55dc856ad9}
+
+\end{DoxyCompactItemize}
+\subsection*{Private Attributes}
+\begin{DoxyCompactItemize}
+\item 
+\hypertarget{classsirius_1_1_broyden2_ae6456ebe346e83aefdd09b0e8ae48b3d}{}double {\bfseries beta0\+\_\+}\label{classsirius_1_1_broyden2_ae6456ebe346e83aefdd09b0e8ae48b3d}
+
+\item 
+\hypertarget{classsirius_1_1_broyden2_a0c1a4fe0b16b92a619f5af6f3a58e726}{}double {\bfseries linear\+\_\+mix\+\_\+rms\+\_\+tol\+\_\+}\label{classsirius_1_1_broyden2_a0c1a4fe0b16b92a619f5af6f3a58e726}
+
+\item 
+\hypertarget{classsirius_1_1_broyden2_af87ec75627458402a4c89d3714b43d48}{}std\+::vector$<$ double $>$ {\bfseries weights\+\_\+}\label{classsirius_1_1_broyden2_af87ec75627458402a4c89d3714b43d48}
+
+\item 
+\hypertarget{classsirius_1_1_broyden2_aad08602602bffea81253e7eba381bb4f}{}mdarray$<$ T, 2 $>$ {\bfseries residuals\+\_\+}\label{classsirius_1_1_broyden2_aad08602602bffea81253e7eba381bb4f}
+
+\end{DoxyCompactItemize}
+\subsection*{Additional Inherited Members}
+
+
+\subsection{Detailed Description}
+\subsubsection*{template$<$typename T$>$class sirius\+::\+Broyden2$<$ T $>$}
+
+Broyden mixer. 
+
+Second version of the Broyden mixer, which doesn\textquotesingle{}t requre inversion of the Jacobian matrix. Reference paper\+: \char`\"{}\+Robust acceleration of self consistent field calculations for 
+density functional theory\char`\"{}, Baarman K, Eirola T, Havu V., J Chem Phys. 134, 134109 (2011) 
+
+Definition at line 370 of file mixer.\+h.
+
+
+
+The documentation for this class was generated from the following file\+:\begin{DoxyCompactItemize}
+\item 
+\hyperlink{mixer_8h}{mixer.\+h}\end{DoxyCompactItemize}

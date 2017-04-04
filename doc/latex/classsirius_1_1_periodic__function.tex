@@ -1,0 +1,393 @@
+\hypertarget{classsirius_1_1_periodic__function}{}\section{sirius\+:\+:Periodic\+\_\+function$<$ T $>$ Class Template Reference}
+\label{classsirius_1_1_periodic__function}\index{sirius\+::\+Periodic\+\_\+function$<$ T $>$@{sirius\+::\+Periodic\+\_\+function$<$ T $>$}}
+
+
+Representation of the periodical function on the muffin-\/tin geometry.  
+
+
+
+
+Inheritance diagram for sirius\+:\+:Periodic\+\_\+function$<$ T $>$\+:
+% FIG 0
+
+
+Collaboration diagram for sirius\+:\+:Periodic\+\_\+function$<$ T $>$\+:
+% FIG 1
+\subsection*{Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+\hyperlink{classsirius_1_1_periodic__function_a4e94eb2f28bd9a136f597397fc87bf0a}{Periodic\+\_\+function} (\hyperlink{classsirius_1_1_simulation__context}{Simulation\+\_\+context} \&ctx\+\_\+\+\_\+, int angular\+\_\+domain\+\_\+size\+\_\+\+\_\+, int allocate\+\_\+pw\+\_\+\+\_\+)
+\begin{DoxyCompactList}\small\item\em Constructor. \end{DoxyCompactList}\item 
+void \hyperlink{classsirius_1_1_periodic__function_aae2151654d31f5985af2b9cee88e4cb2}{allocate\+\_\+pw} ()
+\begin{DoxyCompactList}\small\item\em Allocated memory for the plane-\/wave expansion coefficients. \end{DoxyCompactList}\item 
+void \hyperlink{classsirius_1_1_periodic__function_a7d05cae35bbee9ab1c825ad28520b415}{allocate\+\_\+mt} (bool allocate\+\_\+global\+\_\+\+\_\+)
+\begin{DoxyCompactList}\small\item\em Allocate memory for muffin-\/tin part. \end{DoxyCompactList}\item 
+void \hyperlink{classsirius_1_1_periodic__function_a2f20ff1fcb7fb4177dd1bda999c3af91}{sync\+\_\+mt} ()
+\begin{DoxyCompactList}\small\item\em Syncronize global muffin-\/tin array. \end{DoxyCompactList}\item 
+void \hyperlink{classsirius_1_1_periodic__function_a96f5eb8ba8a0fc5f2166ab3554185221}{zero} ()
+\begin{DoxyCompactList}\small\item\em Zero the function. \end{DoxyCompactList}\item 
+\hypertarget{classsirius_1_1_periodic__function_ac6c7686a09744a200b91349d63bcf9f0}{}void {\bfseries copy\+\_\+to\+\_\+global\+\_\+ptr} (T $\ast$f\+\_\+mt\+\_\+\+\_\+, T $\ast$f\+\_\+it\+\_\+\+\_\+) const \label{classsirius_1_1_periodic__function_ac6c7686a09744a200b91349d63bcf9f0}
+
+\item 
+void \hyperlink{classsirius_1_1_periodic__function_a39e334ef18345209c9b1f439aa8c2e86}{add} (\hyperlink{classsirius_1_1_periodic__function}{Periodic\+\_\+function}$<$ T $>$ $\ast$g)
+\begin{DoxyCompactList}\small\item\em Add the function. \end{DoxyCompactList}\item 
+\hypertarget{classsirius_1_1_periodic__function_a986bbcd26bf61bbc9259727bd291466d}{}T {\bfseries integrate} (std\+::vector$<$ T $>$ \&mt\+\_\+val, T \&it\+\_\+val)\label{classsirius_1_1_periodic__function_a986bbcd26bf61bbc9259727bd291466d}
+
+\item 
+\hypertarget{classsirius_1_1_periodic__function_ac1fdbd883bb6f4ea5109dfa6cd576d9a}{}{\footnotesize template$<$index\+\_\+domain\+\_\+t index\+\_\+domain$>$ }\\T \& {\bfseries f\+\_\+mt} (int idx0, int ir, int ia)\label{classsirius_1_1_periodic__function_ac1fdbd883bb6f4ea5109dfa6cd576d9a}
+
+\item 
+void \hyperlink{classsirius_1_1_periodic__function_a2193726e9413497c58533954e2bcdc0c}{hdf5\+\_\+write} (\hyperlink{classsirius_1_1_h_d_f5__tree}{H\+D\+F5\+\_\+tree} h5f)
+\item 
+\hypertarget{classsirius_1_1_periodic__function_a24aa1f6099d08660c3f39f5d75369b58}{}void {\bfseries hdf5\+\_\+read} (\hyperlink{classsirius_1_1_h_d_f5__tree}{H\+D\+F5\+\_\+tree} h5f)\label{classsirius_1_1_periodic__function_a24aa1f6099d08660c3f39f5d75369b58}
+
+\item 
+\hypertarget{classsirius_1_1_periodic__function_a2fee969b2be683ff02caafeea95f8042}{}size\+\_\+t {\bfseries size} () const \label{classsirius_1_1_periodic__function_a2fee969b2be683ff02caafeea95f8042}
+
+\item 
+\hypertarget{classsirius_1_1_periodic__function_a945842407c27b3dd951255f16e5d8402}{}size\+\_\+t {\bfseries pack} (size\+\_\+t offset\+\_\+\+\_\+, \hyperlink{classsirius_1_1_mixer}{Mixer}$<$ double $>$ \&mixer\+\_\+\+\_\+)\label{classsirius_1_1_periodic__function_a945842407c27b3dd951255f16e5d8402}
+
+\item 
+\hypertarget{classsirius_1_1_periodic__function_a2fd70c6806fb3db88141c0a8afed6d26}{}size\+\_\+t {\bfseries unpack} (T const $\ast$array\+\_\+\+\_\+)\label{classsirius_1_1_periodic__function_a2fd70c6806fb3db88141c0a8afed6d26}
+
+\item 
+void \hyperlink{classsirius_1_1_periodic__function_ad4db1af9664290e53c922b13317173a0}{set\+\_\+mt\+\_\+ptr} (T $\ast$mt\+\_\+ptr\+\_\+\+\_\+)
+\begin{DoxyCompactList}\small\item\em Set the global pointer to the muffin-\/tin part. \end{DoxyCompactList}\item 
+void \hyperlink{classsirius_1_1_periodic__function_a53e2d6564d16b85b67f46c5e498bea4b}{set\+\_\+rg\+\_\+ptr} (T $\ast$rg\+\_\+ptr\+\_\+\+\_\+)
+\begin{DoxyCompactList}\small\item\em Set the pointer to the interstitial part. \end{DoxyCompactList}\item 
+\hypertarget{classsirius_1_1_periodic__function_a77737585b40fde00ae73ed29b4de748e}{}\hyperlink{classsirius_1_1_spheric__function}{Spheric\+\_\+function}$<$ spectral, T $>$ const \& {\bfseries f\+\_\+mt} (int ialoc\+\_\+\+\_\+) const \label{classsirius_1_1_periodic__function_a77737585b40fde00ae73ed29b4de748e}
+
+\item 
+\hypertarget{classsirius_1_1_periodic__function_a59dc1076032327e473bdb797f94fedb8}{}\hyperlink{classsirius_1_1_periodic__function_ab8dd7265e22b9321a85d3d63c3874918}{complex\+\_\+t} \& {\bfseries f\+\_\+pw} (int ig\+\_\+\+\_\+)\label{classsirius_1_1_periodic__function_a59dc1076032327e473bdb797f94fedb8}
+
+\item 
+\hypertarget{classsirius_1_1_periodic__function_a723f29986f9d6eed8a5e13fd1720a130}{}\hyperlink{classsirius_1_1_periodic__function_ab8dd7265e22b9321a85d3d63c3874918}{complex\+\_\+t} const \& {\bfseries f\+\_\+pw} (int ig\+\_\+\+\_\+) const \label{classsirius_1_1_periodic__function_a723f29986f9d6eed8a5e13fd1720a130}
+
+\item 
+\hypertarget{classsirius_1_1_periodic__function_adc7b2f75b11d4f884476926afd946e30}{}\hyperlink{classsirius_1_1_periodic__function_ab8dd7265e22b9321a85d3d63c3874918}{complex\+\_\+t} \& {\bfseries f\+\_\+pw} (\hyperlink{classgeometry3d_1_1vector3d}{vector3d}$<$ int $>$ const \&G\+\_\+\+\_\+)\label{classsirius_1_1_periodic__function_adc7b2f75b11d4f884476926afd946e30}
+
+\item 
+\hypertarget{classsirius_1_1_periodic__function_a3a58ec3b548c32a369f8208b880d4b2c}{}double {\bfseries value} (\hyperlink{classgeometry3d_1_1vector3d}{vector3d}$<$ double $>$ \&vc)\label{classsirius_1_1_periodic__function_a3a58ec3b548c32a369f8208b880d4b2c}
+
+\item 
+\hypertarget{classsirius_1_1_periodic__function_a3ba7c549abfb0d346e058e0bfc65c75f}{}T {\bfseries checksum\+\_\+rg} () const \label{classsirius_1_1_periodic__function_a3ba7c549abfb0d346e058e0bfc65c75f}
+
+\item 
+\hypertarget{classsirius_1_1_periodic__function_ac956e364fbf443d77a22433ea2e8e0ef}{}\hyperlink{classsirius_1_1_periodic__function_ab8dd7265e22b9321a85d3d63c3874918}{complex\+\_\+t} {\bfseries checksum\+\_\+pw} () const \label{classsirius_1_1_periodic__function_ac956e364fbf443d77a22433ea2e8e0ef}
+
+\item 
+\hypertarget{classsirius_1_1_periodic__function_aff7c25250928f6a8b1a758f438816a0d}{}void {\bfseries fft\+\_\+transform} (int direction\+\_\+\+\_\+)\label{classsirius_1_1_periodic__function_aff7c25250928f6a8b1a758f438816a0d}
+
+\item 
+\hypertarget{classsirius_1_1_periodic__function_af21c7b81d2cd0194b8db57b3ab9f0c76}{}\hyperlink{classsddk_1_1mdarray}{mdarray}$<$ T, 3 $>$ \& {\bfseries f\+\_\+mt} ()\label{classsirius_1_1_periodic__function_af21c7b81d2cd0194b8db57b3ab9f0c76}
+
+\item 
+T \hyperlink{classsirius_1_1_periodic__function_aa4db4aaaf637a4e6d225e66389034980}{inner} (\hyperlink{classsirius_1_1_periodic__function}{Periodic\+\_\+function}$<$ T $>$ const $\ast$g\+\_\+\+\_\+) const 
+\begin{DoxyCompactList}\small\item\em Compute inner product $<$f$\vert$g$>$ \end{DoxyCompactList}\end{DoxyCompactItemize}
+\subsection*{Protected Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+\hypertarget{classsirius_1_1_periodic__function_a65fafecaa0ce89b8be29c028a7cbdfcd}{}{\bfseries Periodic\+\_\+function} (const \hyperlink{classsirius_1_1_periodic__function}{Periodic\+\_\+function}$<$ T $>$ \&src)=delete\label{classsirius_1_1_periodic__function_a65fafecaa0ce89b8be29c028a7cbdfcd}
+
+\item 
+\hypertarget{classsirius_1_1_periodic__function_a40de62db6e9cfa3efaadb4355ff3b5d4}{}\hyperlink{classsirius_1_1_periodic__function}{Periodic\+\_\+function}$<$ T $>$ \& {\bfseries operator=} (const \hyperlink{classsirius_1_1_periodic__function}{Periodic\+\_\+function}$<$ T $>$ \&src)=delete\label{classsirius_1_1_periodic__function_a40de62db6e9cfa3efaadb4355ff3b5d4}
+
+\end{DoxyCompactItemize}
+\subsection*{Private Types}
+\begin{DoxyCompactItemize}
+\item 
+typedef \hyperlink{classtype__wrapper}{type\+\_\+wrapper}$<$ T $>$\+::\hyperlink{classsirius_1_1_periodic__function_ab8dd7265e22b9321a85d3d63c3874918}{complex\+\_\+t} \hyperlink{classsirius_1_1_periodic__function_ab8dd7265e22b9321a85d3d63c3874918}{complex\+\_\+t}
+\begin{DoxyCompactList}\small\item\em Complex counterpart for a given type T. \end{DoxyCompactList}\end{DoxyCompactItemize}
+\subsection*{Private Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+void \hyperlink{classsirius_1_1_periodic__function_ab81901dff93665a114a6d936fe1f5941}{set\+\_\+local\+\_\+mt\+\_\+ptr} ()
+\begin{DoxyCompactList}\small\item\em Set pointer to local part of muffin-\/tin functions. \end{DoxyCompactList}\end{DoxyCompactItemize}
+\subsection*{Private Attributes}
+\begin{DoxyCompactItemize}
+\item 
+\hypertarget{classsirius_1_1_periodic__function_a21d72139136aaa74229b38cf5c6b6c32}{}\hyperlink{classsirius_1_1_simulation__parameters}{Simulation\+\_\+parameters} const \& {\bfseries parameters\+\_\+}\label{classsirius_1_1_periodic__function_a21d72139136aaa74229b38cf5c6b6c32}
+
+\item 
+\hypertarget{classsirius_1_1_periodic__function_aa79dbabf05d0763c2402d4901f132f32}{}\hyperlink{classsirius_1_1_unit__cell}{Unit\+\_\+cell} const \& {\bfseries unit\+\_\+cell\+\_\+}\label{classsirius_1_1_periodic__function_aa79dbabf05d0763c2402d4901f132f32}
+
+\item 
+\hypertarget{classsirius_1_1_periodic__function_a1dd6de650fd4b8b35c20d7a4a38c7883}{}\hyperlink{classsirius_1_1_step__function}{Step\+\_\+function} const \& {\bfseries step\+\_\+function\+\_\+}\label{classsirius_1_1_periodic__function_a1dd6de650fd4b8b35c20d7a4a38c7883}
+
+\item 
+\hypertarget{classsirius_1_1_periodic__function_a8a54d4ed18c555d0e71c967753debd88}{}\hyperlink{classsddk_1_1_communicator}{Communicator} const \& {\bfseries comm\+\_\+}\label{classsirius_1_1_periodic__function_a8a54d4ed18c555d0e71c967753debd88}
+
+\item 
+\hyperlink{classsddk_1_1mdarray}{mdarray}$<$ \hyperlink{classsirius_1_1_spheric__function}{Spheric\+\_\+function}$<$ spectral, T $>$, 1 $>$ \hyperlink{classsirius_1_1_periodic__function_afcea2d8d52eadb829c6208e6701b9c11}{f\+\_\+mt\+\_\+local\+\_\+}
+\begin{DoxyCompactList}\small\item\em Local part of muffin-\/tin functions. \end{DoxyCompactList}\item 
+\hyperlink{classsddk_1_1mdarray}{mdarray}$<$ T, 3 $>$ \hyperlink{classsirius_1_1_periodic__function_ad94fec4be54aabdb4d803d2864c71da3}{f\+\_\+mt\+\_\+}
+\begin{DoxyCompactList}\small\item\em Global muffin-\/tin array. \end{DoxyCompactList}\item 
+\hypertarget{classsirius_1_1_periodic__function_a51f78ed960b90f5726356098d295ae0b}{}\hyperlink{classsddk_1_1_gvec}{Gvec} const \& {\bfseries gvec\+\_\+}\label{classsirius_1_1_periodic__function_a51f78ed960b90f5726356098d295ae0b}
+
+\item 
+\hyperlink{classsddk_1_1mdarray}{mdarray}$<$ \hyperlink{classsirius_1_1_periodic__function_ab8dd7265e22b9321a85d3d63c3874918}{complex\+\_\+t}, 1 $>$ \hyperlink{classsirius_1_1_periodic__function_a3ba5873e5d97bf83597353435218da22}{f\+\_\+pw\+\_\+}
+\begin{DoxyCompactList}\small\item\em Plane-\/wave expansion coefficients. \end{DoxyCompactList}\item 
+int \hyperlink{classsirius_1_1_periodic__function_ad81954b5a43ca99654a19c0437579f82}{angular\+\_\+domain\+\_\+size\+\_\+}
+\begin{DoxyCompactList}\small\item\em Angular domain size. \end{DoxyCompactList}\item 
+bool \hyperlink{classsirius_1_1_periodic__function_aa7ee96ee3db228d74823a3c2f8b0dfe0}{is\+\_\+f\+\_\+pw\+\_\+allocated\+\_\+} \{false\}
+\begin{DoxyCompactList}\small\item\em True if plane wave part is allocated. \end{DoxyCompactList}\end{DoxyCompactItemize}
+\subsection*{Additional Inherited Members}
+
+
+\subsection{Detailed Description}
+\subsubsection*{template$<$typename T$>$class sirius\+::\+Periodic\+\_\+function$<$ T $>$}
+
+Representation of the periodical function on the muffin-\/tin geometry. 
+
+Inside each muffin-\/tin the spherical expansion is used\+: \[ f({\bf r}) = \sum_{\ell m} f_{\ell m}(r) Y_{\ell m}(\hat {\bf r}) \] or \[ f({\bf r}) = \sum_{\ell m} f_{\ell m}(r) R_{\ell m}(\hat {\bf r}) \] In the interstitial region function is stored on the real-\/space grid or as a Fourier series\+: \[ f({\bf r}) = \sum_{{\bf G}} f({\bf G}) e^{i{\bf G}{\bf r}} \] 
+
+Definition at line 51 of file periodic\+\_\+function.\+h.
+
+
+
+\subsection{Member Typedef Documentation}
+\hypertarget{classsirius_1_1_periodic__function_ab8dd7265e22b9321a85d3d63c3874918}{}\index{sirius\+::\+Periodic\+\_\+function@{sirius\+::\+Periodic\+\_\+function}!complex\+\_\+t@{complex\+\_\+t}}
+\index{complex\+\_\+t@{complex\+\_\+t}!sirius\+::\+Periodic\+\_\+function@{sirius\+::\+Periodic\+\_\+function}}
+\subsubsection[{complex\+\_\+t}]{\setlength{\rightskip}{0pt plus 5cm}template$<$typename T$>$ typedef {\bf type\+\_\+wrapper}$<$T$>$\+::{\bf complex\+\_\+t} {\bf sirius\+::\+Periodic\+\_\+function}$<$ T $>$\+::{\bf complex\+\_\+t}\hspace{0.3cm}{\ttfamily [private]}}\label{classsirius_1_1_periodic__function_ab8dd7265e22b9321a85d3d63c3874918}
+
+
+Complex counterpart for a given type T. 
+
+
+
+Definition at line 64 of file periodic\+\_\+function.\+h.
+
+
+
+\subsection{Constructor \& Destructor Documentation}
+\hypertarget{classsirius_1_1_periodic__function_a4e94eb2f28bd9a136f597397fc87bf0a}{}\index{sirius\+::\+Periodic\+\_\+function@{sirius\+::\+Periodic\+\_\+function}!Periodic\+\_\+function@{Periodic\+\_\+function}}
+\index{Periodic\+\_\+function@{Periodic\+\_\+function}!sirius\+::\+Periodic\+\_\+function@{sirius\+::\+Periodic\+\_\+function}}
+\subsubsection[{Periodic\+\_\+function(\+Simulation\+\_\+context \&ctx\+\_\+\+\_\+, int angular\+\_\+domain\+\_\+size\+\_\+\+\_\+, int allocate\+\_\+pw\+\_\+\+\_\+)}]{\setlength{\rightskip}{0pt plus 5cm}template$<$typename T$>$ {\bf sirius\+::\+Periodic\+\_\+function}$<$ T $>$\+::{\bf Periodic\+\_\+function} (
+\begin{DoxyParamCaption}
+\item[{{\bf Simulation\+\_\+context} \&}]{ctx\+\_\+\+\_\+, }
+\item[{int}]{angular\+\_\+domain\+\_\+size\+\_\+\+\_\+, }
+\item[{int}]{allocate\+\_\+pw\+\_\+\+\_\+}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}}\label{classsirius_1_1_periodic__function_a4e94eb2f28bd9a136f597397fc87bf0a}
+
+
+Constructor. 
+
+
+
+Definition at line 104 of file periodic\+\_\+function.\+h.
+
+
+
+\subsection{Member Function Documentation}
+\hypertarget{classsirius_1_1_periodic__function_ab81901dff93665a114a6d936fe1f5941}{}\index{sirius\+::\+Periodic\+\_\+function@{sirius\+::\+Periodic\+\_\+function}!set\+\_\+local\+\_\+mt\+\_\+ptr@{set\+\_\+local\+\_\+mt\+\_\+ptr}}
+\index{set\+\_\+local\+\_\+mt\+\_\+ptr@{set\+\_\+local\+\_\+mt\+\_\+ptr}!sirius\+::\+Periodic\+\_\+function@{sirius\+::\+Periodic\+\_\+function}}
+\subsubsection[{set\+\_\+local\+\_\+mt\+\_\+ptr()}]{\setlength{\rightskip}{0pt plus 5cm}template$<$typename T$>$ void {\bf sirius\+::\+Periodic\+\_\+function}$<$ T $>$\+::set\+\_\+local\+\_\+mt\+\_\+ptr (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}, {\ttfamily [private]}}\label{classsirius_1_1_periodic__function_ab81901dff93665a114a6d936fe1f5941}
+
+
+Set pointer to local part of muffin-\/tin functions. 
+
+
+
+Definition at line 89 of file periodic\+\_\+function.\+h.
+
+\hypertarget{classsirius_1_1_periodic__function_aae2151654d31f5985af2b9cee88e4cb2}{}\index{sirius\+::\+Periodic\+\_\+function@{sirius\+::\+Periodic\+\_\+function}!allocate\+\_\+pw@{allocate\+\_\+pw}}
+\index{allocate\+\_\+pw@{allocate\+\_\+pw}!sirius\+::\+Periodic\+\_\+function@{sirius\+::\+Periodic\+\_\+function}}
+\subsubsection[{allocate\+\_\+pw()}]{\setlength{\rightskip}{0pt plus 5cm}template$<$typename T$>$ void {\bf sirius\+::\+Periodic\+\_\+function}$<$ T $>$\+::allocate\+\_\+pw (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}}\label{classsirius_1_1_periodic__function_aae2151654d31f5985af2b9cee88e4cb2}
+
+
+Allocated memory for the plane-\/wave expansion coefficients. 
+
+
+
+Definition at line 131 of file periodic\+\_\+function.\+h.
+
+\hypertarget{classsirius_1_1_periodic__function_a7d05cae35bbee9ab1c825ad28520b415}{}\index{sirius\+::\+Periodic\+\_\+function@{sirius\+::\+Periodic\+\_\+function}!allocate\+\_\+mt@{allocate\+\_\+mt}}
+\index{allocate\+\_\+mt@{allocate\+\_\+mt}!sirius\+::\+Periodic\+\_\+function@{sirius\+::\+Periodic\+\_\+function}}
+\subsubsection[{allocate\+\_\+mt(bool allocate\+\_\+global\+\_\+\+\_\+)}]{\setlength{\rightskip}{0pt plus 5cm}template$<$typename T$>$ void {\bf sirius\+::\+Periodic\+\_\+function}$<$ T $>$\+::allocate\+\_\+mt (
+\begin{DoxyParamCaption}
+\item[{bool}]{allocate\+\_\+global\+\_\+\+\_\+}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}}\label{classsirius_1_1_periodic__function_a7d05cae35bbee9ab1c825ad28520b415}
+
+
+Allocate memory for muffin-\/tin part. 
+
+
+
+Definition at line 144 of file periodic\+\_\+function.\+h.
+
+\hypertarget{classsirius_1_1_periodic__function_a2f20ff1fcb7fb4177dd1bda999c3af91}{}\index{sirius\+::\+Periodic\+\_\+function@{sirius\+::\+Periodic\+\_\+function}!sync\+\_\+mt@{sync\+\_\+mt}}
+\index{sync\+\_\+mt@{sync\+\_\+mt}!sirius\+::\+Periodic\+\_\+function@{sirius\+::\+Periodic\+\_\+function}}
+\subsubsection[{sync\+\_\+mt()}]{\setlength{\rightskip}{0pt plus 5cm}template$<$typename T$>$ void {\bf sirius\+::\+Periodic\+\_\+function}$<$ T $>$\+::sync\+\_\+mt (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}}\label{classsirius_1_1_periodic__function_a2f20ff1fcb7fb4177dd1bda999c3af91}
+
+
+Syncronize global muffin-\/tin array. 
+
+
+
+Definition at line 160 of file periodic\+\_\+function.\+h.
+
+\hypertarget{classsirius_1_1_periodic__function_a96f5eb8ba8a0fc5f2166ab3554185221}{}\index{sirius\+::\+Periodic\+\_\+function@{sirius\+::\+Periodic\+\_\+function}!zero@{zero}}
+\index{zero@{zero}!sirius\+::\+Periodic\+\_\+function@{sirius\+::\+Periodic\+\_\+function}}
+\subsubsection[{zero()}]{\setlength{\rightskip}{0pt plus 5cm}template$<$typename T$>$ void {\bf sirius\+::\+Periodic\+\_\+function}$<$ T $>$\+::zero (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}}\label{classsirius_1_1_periodic__function_a96f5eb8ba8a0fc5f2166ab3554185221}
+
+
+Zero the function. 
+
+
+
+Definition at line 172 of file periodic\+\_\+function.\+h.
+
+\hypertarget{classsirius_1_1_periodic__function_a39e334ef18345209c9b1f439aa8c2e86}{}\index{sirius\+::\+Periodic\+\_\+function@{sirius\+::\+Periodic\+\_\+function}!add@{add}}
+\index{add@{add}!sirius\+::\+Periodic\+\_\+function@{sirius\+::\+Periodic\+\_\+function}}
+\subsubsection[{add(\+Periodic\+\_\+function$<$ T $>$ $\ast$g)}]{\setlength{\rightskip}{0pt plus 5cm}template$<$typename T$>$ void {\bf sirius\+::\+Periodic\+\_\+function}$<$ T $>$\+::add (
+\begin{DoxyParamCaption}
+\item[{{\bf Periodic\+\_\+function}$<$ T $>$ $\ast$}]{g}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}}\label{classsirius_1_1_periodic__function_a39e334ef18345209c9b1f439aa8c2e86}
+
+
+Add the function. 
+
+
+
+Definition at line 202 of file periodic\+\_\+function.\+h.
+
+\hypertarget{classsirius_1_1_periodic__function_a2193726e9413497c58533954e2bcdc0c}{}\index{sirius\+::\+Periodic\+\_\+function@{sirius\+::\+Periodic\+\_\+function}!hdf5\+\_\+write@{hdf5\+\_\+write}}
+\index{hdf5\+\_\+write@{hdf5\+\_\+write}!sirius\+::\+Periodic\+\_\+function@{sirius\+::\+Periodic\+\_\+function}}
+\subsubsection[{hdf5\+\_\+write(\+H\+D\+F5\+\_\+tree h5f)}]{\setlength{\rightskip}{0pt plus 5cm}template$<$typename T$>$ void {\bf sirius\+::\+Periodic\+\_\+function}$<$ T $>$\+::hdf5\+\_\+write (
+\begin{DoxyParamCaption}
+\item[{{\bf H\+D\+F5\+\_\+tree}}]{h5f}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}}\label{classsirius_1_1_periodic__function_a2193726e9413497c58533954e2bcdc0c}
+\begin{DoxyRefDesc}{Todo}
+\item[\hyperlink{todo__todo000006}{Todo}]write and read distributed functions \end{DoxyRefDesc}
+
+
+Definition at line 279 of file periodic\+\_\+function.\+h.
+
+\hypertarget{classsirius_1_1_periodic__function_ad4db1af9664290e53c922b13317173a0}{}\index{sirius\+::\+Periodic\+\_\+function@{sirius\+::\+Periodic\+\_\+function}!set\+\_\+mt\+\_\+ptr@{set\+\_\+mt\+\_\+ptr}}
+\index{set\+\_\+mt\+\_\+ptr@{set\+\_\+mt\+\_\+ptr}!sirius\+::\+Periodic\+\_\+function@{sirius\+::\+Periodic\+\_\+function}}
+\subsubsection[{set\+\_\+mt\+\_\+ptr(\+T $\ast$mt\+\_\+ptr\+\_\+\+\_\+)}]{\setlength{\rightskip}{0pt plus 5cm}template$<$typename T$>$ void {\bf sirius\+::\+Periodic\+\_\+function}$<$ T $>$\+::set\+\_\+mt\+\_\+ptr (
+\begin{DoxyParamCaption}
+\item[{T $\ast$}]{mt\+\_\+ptr\+\_\+\+\_\+}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}}\label{classsirius_1_1_periodic__function_ad4db1af9664290e53c922b13317173a0}
+
+
+Set the global pointer to the muffin-\/tin part. 
+
+
+
+Definition at line 368 of file periodic\+\_\+function.\+h.
+
+\hypertarget{classsirius_1_1_periodic__function_a53e2d6564d16b85b67f46c5e498bea4b}{}\index{sirius\+::\+Periodic\+\_\+function@{sirius\+::\+Periodic\+\_\+function}!set\+\_\+rg\+\_\+ptr@{set\+\_\+rg\+\_\+ptr}}
+\index{set\+\_\+rg\+\_\+ptr@{set\+\_\+rg\+\_\+ptr}!sirius\+::\+Periodic\+\_\+function@{sirius\+::\+Periodic\+\_\+function}}
+\subsubsection[{set\+\_\+rg\+\_\+ptr(\+T $\ast$rg\+\_\+ptr\+\_\+\+\_\+)}]{\setlength{\rightskip}{0pt plus 5cm}template$<$typename T$>$ void {\bf sirius\+::\+Periodic\+\_\+function}$<$ T $>$\+::set\+\_\+rg\+\_\+ptr (
+\begin{DoxyParamCaption}
+\item[{T $\ast$}]{rg\+\_\+ptr\+\_\+\+\_\+}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}}\label{classsirius_1_1_periodic__function_a53e2d6564d16b85b67f46c5e498bea4b}
+
+
+Set the pointer to the interstitial part. 
+
+
+
+Definition at line 375 of file periodic\+\_\+function.\+h.
+
+\hypertarget{classsirius_1_1_periodic__function_aa4db4aaaf637a4e6d225e66389034980}{}\index{sirius\+::\+Periodic\+\_\+function@{sirius\+::\+Periodic\+\_\+function}!inner@{inner}}
+\index{inner@{inner}!sirius\+::\+Periodic\+\_\+function@{sirius\+::\+Periodic\+\_\+function}}
+\subsubsection[{inner(\+Periodic\+\_\+function$<$ T $>$ const $\ast$g\+\_\+\+\_\+) const }]{\setlength{\rightskip}{0pt plus 5cm}template$<$typename T$>$ T {\bf sirius\+::\+Periodic\+\_\+function}$<$ T $>$\+::inner (
+\begin{DoxyParamCaption}
+\item[{{\bf Periodic\+\_\+function}$<$ T $>$ const $\ast$}]{g\+\_\+\+\_\+}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [inline]}}\label{classsirius_1_1_periodic__function_aa4db4aaaf637a4e6d225e66389034980}
+
+
+Compute inner product $<$f$\vert$g$>$ 
+
+
+
+Definition at line 464 of file periodic\+\_\+function.\+h.
+
+
+
+\subsection{Member Data Documentation}
+\hypertarget{classsirius_1_1_periodic__function_afcea2d8d52eadb829c6208e6701b9c11}{}\index{sirius\+::\+Periodic\+\_\+function@{sirius\+::\+Periodic\+\_\+function}!f\+\_\+mt\+\_\+local\+\_\+@{f\+\_\+mt\+\_\+local\+\_\+}}
+\index{f\+\_\+mt\+\_\+local\+\_\+@{f\+\_\+mt\+\_\+local\+\_\+}!sirius\+::\+Periodic\+\_\+function@{sirius\+::\+Periodic\+\_\+function}}
+\subsubsection[{f\+\_\+mt\+\_\+local\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}template$<$typename T$>$ {\bf mdarray}$<${\bf Spheric\+\_\+function}$<$spectral, T$>$, 1$>$ {\bf sirius\+::\+Periodic\+\_\+function}$<$ T $>$\+::f\+\_\+mt\+\_\+local\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classsirius_1_1_periodic__function_afcea2d8d52eadb829c6208e6701b9c11}
+
+
+Local part of muffin-\/tin functions. 
+
+
+
+Definition at line 75 of file periodic\+\_\+function.\+h.
+
+\hypertarget{classsirius_1_1_periodic__function_ad94fec4be54aabdb4d803d2864c71da3}{}\index{sirius\+::\+Periodic\+\_\+function@{sirius\+::\+Periodic\+\_\+function}!f\+\_\+mt\+\_\+@{f\+\_\+mt\+\_\+}}
+\index{f\+\_\+mt\+\_\+@{f\+\_\+mt\+\_\+}!sirius\+::\+Periodic\+\_\+function@{sirius\+::\+Periodic\+\_\+function}}
+\subsubsection[{f\+\_\+mt\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}template$<$typename T$>$ {\bf mdarray}$<$T, 3$>$ {\bf sirius\+::\+Periodic\+\_\+function}$<$ T $>$\+::f\+\_\+mt\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classsirius_1_1_periodic__function_ad94fec4be54aabdb4d803d2864c71da3}
+
+
+Global muffin-\/tin array. 
+
+
+
+Definition at line 78 of file periodic\+\_\+function.\+h.
+
+\hypertarget{classsirius_1_1_periodic__function_a3ba5873e5d97bf83597353435218da22}{}\index{sirius\+::\+Periodic\+\_\+function@{sirius\+::\+Periodic\+\_\+function}!f\+\_\+pw\+\_\+@{f\+\_\+pw\+\_\+}}
+\index{f\+\_\+pw\+\_\+@{f\+\_\+pw\+\_\+}!sirius\+::\+Periodic\+\_\+function@{sirius\+::\+Periodic\+\_\+function}}
+\subsubsection[{f\+\_\+pw\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}template$<$typename T$>$ {\bf mdarray}$<${\bf complex\+\_\+t}, 1$>$ {\bf sirius\+::\+Periodic\+\_\+function}$<$ T $>$\+::f\+\_\+pw\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classsirius_1_1_periodic__function_a3ba5873e5d97bf83597353435218da22}
+
+
+Plane-\/wave expansion coefficients. 
+
+
+
+Definition at line 83 of file periodic\+\_\+function.\+h.
+
+\hypertarget{classsirius_1_1_periodic__function_ad81954b5a43ca99654a19c0437579f82}{}\index{sirius\+::\+Periodic\+\_\+function@{sirius\+::\+Periodic\+\_\+function}!angular\+\_\+domain\+\_\+size\+\_\+@{angular\+\_\+domain\+\_\+size\+\_\+}}
+\index{angular\+\_\+domain\+\_\+size\+\_\+@{angular\+\_\+domain\+\_\+size\+\_\+}!sirius\+::\+Periodic\+\_\+function@{sirius\+::\+Periodic\+\_\+function}}
+\subsubsection[{angular\+\_\+domain\+\_\+size\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}template$<$typename T$>$ int {\bf sirius\+::\+Periodic\+\_\+function}$<$ T $>$\+::angular\+\_\+domain\+\_\+size\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classsirius_1_1_periodic__function_ad81954b5a43ca99654a19c0437579f82}
+
+
+Angular domain size. 
+
+
+
+Definition at line 86 of file periodic\+\_\+function.\+h.
+
+\hypertarget{classsirius_1_1_periodic__function_aa7ee96ee3db228d74823a3c2f8b0dfe0}{}\index{sirius\+::\+Periodic\+\_\+function@{sirius\+::\+Periodic\+\_\+function}!is\+\_\+f\+\_\+pw\+\_\+allocated\+\_\+@{is\+\_\+f\+\_\+pw\+\_\+allocated\+\_\+}}
+\index{is\+\_\+f\+\_\+pw\+\_\+allocated\+\_\+@{is\+\_\+f\+\_\+pw\+\_\+allocated\+\_\+}!sirius\+::\+Periodic\+\_\+function@{sirius\+::\+Periodic\+\_\+function}}
+\subsubsection[{is\+\_\+f\+\_\+pw\+\_\+allocated\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}template$<$typename T$>$ bool {\bf sirius\+::\+Periodic\+\_\+function}$<$ T $>$\+::is\+\_\+f\+\_\+pw\+\_\+allocated\+\_\+ \{false\}\hspace{0.3cm}{\ttfamily [private]}}\label{classsirius_1_1_periodic__function_aa7ee96ee3db228d74823a3c2f8b0dfe0}
+
+
+True if plane wave part is allocated. 
+
+
+
+Definition at line 99 of file periodic\+\_\+function.\+h.
+
+
+
+The documentation for this class was generated from the following file\+:\begin{DoxyCompactItemize}
+\item 
+\hyperlink{periodic__function_8h}{periodic\+\_\+function.\+h}\end{DoxyCompactItemize}

@@ -1,0 +1,276 @@
+\hypertarget{classsirius_1_1_spline}{}\section{sirius\+:\+:Spline$<$ T $>$ Class Template Reference}
+\label{classsirius_1_1_spline}\index{sirius\+::\+Spline$<$ T $>$@{sirius\+::\+Spline$<$ T $>$}}
+
+
+Cubic spline with a not-\/a-\/knot boundary conditions.  
+
+
+
+
+Collaboration diagram for sirius\+:\+:Spline$<$ T $>$\+:
+% FIG 0
+\subsection*{Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+\hyperlink{classsirius_1_1_spline_ad9e03e4372425fcf3d1285e8e89cac53}{Spline} ()
+\begin{DoxyCompactList}\small\item\em Default constructor. \end{DoxyCompactList}\item 
+\hyperlink{classsirius_1_1_spline_a7102780850d068acbd971db0d17106c8}{Spline} (\hyperlink{classsirius_1_1_radial__grid}{Radial\+\_\+grid} const \&radial\+\_\+grid\+\_\+\+\_\+)
+\begin{DoxyCompactList}\small\item\em Constructor of a new empty spline. \end{DoxyCompactList}\item 
+\hyperlink{classsirius_1_1_spline_a345756a1c4328cb66609cec2ca542db9}{Spline} (\hyperlink{classsirius_1_1_radial__grid}{Radial\+\_\+grid} const \&radial\+\_\+grid\+\_\+\+\_\+, std\+::function$<$ T(double)$>$ f\+\_\+\+\_\+)
+\begin{DoxyCompactList}\small\item\em Constructor of a spline from a function. \end{DoxyCompactList}\item 
+\hyperlink{classsirius_1_1_spline_a9946ba895c7c5ea8bcfc4e85abb21237}{Spline} (\hyperlink{classsirius_1_1_radial__grid}{Radial\+\_\+grid} const \&radial\+\_\+grid\+\_\+\+\_\+, std\+::vector$<$ T $>$ const \&y\+\_\+\+\_\+)
+\begin{DoxyCompactList}\small\item\em Constructor of a spline from a list of values. \end{DoxyCompactList}\item 
+\hyperlink{classsirius_1_1_spline_ae8be147707663b2ede7a1b602ad2365c}{Spline} (\hyperlink{classsirius_1_1_spline}{Spline}$<$ T $>$ \&\&src\+\_\+\+\_\+)
+\begin{DoxyCompactList}\small\item\em Move constructor. \end{DoxyCompactList}\item 
+\hyperlink{classsirius_1_1_spline}{Spline}$<$ T $>$ \& \hyperlink{classsirius_1_1_spline_a4dce663daa9b59f8815b5b6ddac88924}{operator=} (\hyperlink{classsirius_1_1_spline}{Spline}$<$ T $>$ \&\&src\+\_\+\+\_\+)
+\begin{DoxyCompactList}\small\item\em Move assigment operator. \end{DoxyCompactList}\item 
+\hypertarget{classsirius_1_1_spline_a6f3ac72d492cd4f70d3f5f451a9fde5c}{}\hyperlink{classsirius_1_1_spline}{Spline}$<$ T $>$ \& {\bfseries operator=} (std\+::function$<$ T(double)$>$ f\+\_\+\+\_\+)\label{classsirius_1_1_spline_a6f3ac72d492cd4f70d3f5f451a9fde5c}
+
+\item 
+T \hyperlink{classsirius_1_1_spline_ae8e0622e9a51c7dce4adfc6a264ab554}{integrate} (int m\+\_\+\+\_\+) const 
+\begin{DoxyCompactList}\small\item\em Integrate with r$^\wedge$m weight. \end{DoxyCompactList}\item 
+\hypertarget{classsirius_1_1_spline_aa9971503a0955d09e8c5dc9457bbbd1e}{}std\+::vector$<$ T $>$ {\bfseries values} () const \label{classsirius_1_1_spline_aa9971503a0955d09e8c5dc9457bbbd1e}
+
+\item 
+int \hyperlink{classsirius_1_1_spline_a6dc38416e9d36e2c93c329550758fa87}{num\+\_\+points} () const 
+\begin{DoxyCompactList}\small\item\em Return number of spline points. \end{DoxyCompactList}\item 
+\hypertarget{classsirius_1_1_spline_a6d2022f340ce5d2aa93547a0d6b7dc29}{}std\+::array$<$ T, 4 $>$ {\bfseries coeffs} (int i\+\_\+\+\_\+) const \label{classsirius_1_1_spline_a6d2022f340ce5d2aa93547a0d6b7dc29}
+
+\item 
+\hypertarget{classsirius_1_1_spline_a039d8f4773421c5e58678e831644d382}{}mdarray$<$ T, 2 $>$ const \& {\bfseries coeffs} () const \label{classsirius_1_1_spline_a039d8f4773421c5e58678e831644d382}
+
+\item 
+\hypertarget{classsirius_1_1_spline_a795f6dc988ea4796b72f657a323792c9}{}double {\bfseries x} (int i\+\_\+\+\_\+) const \label{classsirius_1_1_spline_a795f6dc988ea4796b72f657a323792c9}
+
+\item 
+\hypertarget{classsirius_1_1_spline_a18453fe5c4c72e2bc40408aa94e36bd1}{}double {\bfseries dx} (int i\+\_\+\+\_\+) const \label{classsirius_1_1_spline_a18453fe5c4c72e2bc40408aa94e36bd1}
+
+\item 
+\hypertarget{classsirius_1_1_spline_a6a225d33a946ec846661b678ad315001}{}T {\bfseries operator()} (double x) const \label{classsirius_1_1_spline_a6a225d33a946ec846661b678ad315001}
+
+\item 
+T \& \hyperlink{classsirius_1_1_spline_a0d6773307bef5f0e6015f7f00ec09835}{operator\mbox{[}$\,$\mbox{]}} (const int i)
+\begin{DoxyCompactList}\small\item\em Return value at $ x_i $. \end{DoxyCompactList}\item 
+\hypertarget{classsirius_1_1_spline_aefbf732ef6a645ad3afadfed5a2cc3f1}{}T {\bfseries operator\mbox{[}$\,$\mbox{]}} (const int i) const \label{classsirius_1_1_spline_aefbf732ef6a645ad3afadfed5a2cc3f1}
+
+\item 
+\hypertarget{classsirius_1_1_spline_a4f50afc43a6253dcbe927087cc8ea879}{}T {\bfseries operator()} (const int i, double dx) const \label{classsirius_1_1_spline_a4f50afc43a6253dcbe927087cc8ea879}
+
+\item 
+\hypertarget{classsirius_1_1_spline_a1be58b7a6d09c9377c17f0e3e2642da8}{}T {\bfseries deriv} (const int dm, const int i, const double dx) const \label{classsirius_1_1_spline_a1be58b7a6d09c9377c17f0e3e2642da8}
+
+\item 
+\hypertarget{classsirius_1_1_spline_a362c30d54bd84f4ff20aeab0d4b5148f}{}T {\bfseries deriv} (int dm, int i) const \label{classsirius_1_1_spline_a362c30d54bd84f4ff20aeab0d4b5148f}
+
+\item 
+\hypertarget{classsirius_1_1_spline_a75e15604a018849f2be93fbbbe71cb33}{}\hyperlink{classsirius_1_1_radial__grid}{Radial\+\_\+grid} const \& {\bfseries radial\+\_\+grid} () const \label{classsirius_1_1_spline_a75e15604a018849f2be93fbbbe71cb33}
+
+\item 
+\hypertarget{classsirius_1_1_spline_a144385d9a82ad3560bf7c1a1319bd57a}{}\hyperlink{classsirius_1_1_spline}{Spline}$<$ T $>$ \& {\bfseries interpolate} ()\label{classsirius_1_1_spline_a144385d9a82ad3560bf7c1a1319bd57a}
+
+\item 
+\hypertarget{classsirius_1_1_spline_addc42e573cd1d88088d70534e1a32a7a}{}void {\bfseries scale} (double a\+\_\+\+\_\+)\label{classsirius_1_1_spline_addc42e573cd1d88088d70534e1a32a7a}
+
+\item 
+\hypertarget{classsirius_1_1_spline_ae114bc54b7917af78fa5fd42ef0702f3}{}T {\bfseries integrate} (std\+::vector$<$ T $>$ \&g\+\_\+\+\_\+, int m\+\_\+\+\_\+) const \label{classsirius_1_1_spline_ae114bc54b7917af78fa5fd42ef0702f3}
+
+\item 
+\hypertarget{classsirius_1_1_spline_aceb36b8863947a31a0b13305a9fc811c}{}uint64\+\_\+t {\bfseries hash} () const \label{classsirius_1_1_spline_aceb36b8863947a31a0b13305a9fc811c}
+
+\item 
+\hypertarget{classsirius_1_1_spline_a746ce74977369bdb0a0166cbb38ed278}{}void {\bfseries copy\+\_\+to\+\_\+device} ()\label{classsirius_1_1_spline_a746ce74977369bdb0a0166cbb38ed278}
+
+\item 
+\hypertarget{classsirius_1_1_spline_a02a0a578bac913ab252ec07634c63e17}{}void {\bfseries async\+\_\+copy\+\_\+to\+\_\+device} (int thread\+\_\+id\+\_\+\+\_\+)\label{classsirius_1_1_spline_a02a0a578bac913ab252ec07634c63e17}
+
+\end{DoxyCompactItemize}
+\subsection*{Private Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+\hypertarget{classsirius_1_1_spline_a5ae5a9173faf45a28478c95840a216fa}{}{\bfseries Spline} (\hyperlink{classsirius_1_1_spline}{Spline}$<$ T $>$ const \&src\+\_\+\+\_\+)=delete\label{classsirius_1_1_spline_a5ae5a9173faf45a28478c95840a216fa}
+
+\item 
+\hypertarget{classsirius_1_1_spline_a8a97c4d94803f08314a67ba62f6b161b}{}\hyperlink{classsirius_1_1_spline}{Spline}$<$ T $>$ \& {\bfseries operator=} (\hyperlink{classsirius_1_1_spline}{Spline}$<$ T $>$ const \&src\+\_\+\+\_\+)=delete\label{classsirius_1_1_spline_a8a97c4d94803f08314a67ba62f6b161b}
+
+\end{DoxyCompactItemize}
+\subsection*{Private Attributes}
+\begin{DoxyCompactItemize}
+\item 
+\hyperlink{classsirius_1_1_radial__grid}{Radial\+\_\+grid} const $\ast$radial\+\_\+grid\+\_\+ \hyperlink{classsirius_1_1_spline_aa4c162f220f68682f63b074e217218ab}{nullptr}
+\begin{DoxyCompactList}\small\item\em Radial grid. \end{DoxyCompactList}\item 
+\hypertarget{classsirius_1_1_spline_a01fe3fd538acf537f7d38473e5a012f2}{}mdarray$<$ T, 2 $>$ {\bfseries coeffs\+\_\+}\label{classsirius_1_1_spline_a01fe3fd538acf537f7d38473e5a012f2}
+
+\end{DoxyCompactItemize}
+
+
+\subsection{Detailed Description}
+\subsubsection*{template$<$typename T$>$class sirius\+::\+Spline$<$ T $>$}
+
+Cubic spline with a not-\/a-\/knot boundary conditions. 
+
+The following convention for spline coefficients is used\+: between points $ x_i $ and $ x_{i+1} $ the value of the spline is equal to $ a_i + b_i(x_{i+1} - x_i) + c_i(x_{i+1}-x_i)^2 + d_i(x_{i+1}-x_i)^3 $. 
+
+Definition at line 42 of file spline.\+h.
+
+
+
+\subsection{Constructor \& Destructor Documentation}
+\hypertarget{classsirius_1_1_spline_ad9e03e4372425fcf3d1285e8e89cac53}{}\index{sirius\+::\+Spline@{sirius\+::\+Spline}!Spline@{Spline}}
+\index{Spline@{Spline}!sirius\+::\+Spline@{sirius\+::\+Spline}}
+\subsubsection[{Spline()}]{\setlength{\rightskip}{0pt plus 5cm}template$<$typename T$>$ {\bf sirius\+::\+Spline}$<$ T $>$\+::{\bf Spline} (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}}\label{classsirius_1_1_spline_ad9e03e4372425fcf3d1285e8e89cac53}
+
+
+Default constructor. 
+
+
+
+Definition at line 59 of file spline.\+h.
+
+\hypertarget{classsirius_1_1_spline_a7102780850d068acbd971db0d17106c8}{}\index{sirius\+::\+Spline@{sirius\+::\+Spline}!Spline@{Spline}}
+\index{Spline@{Spline}!sirius\+::\+Spline@{sirius\+::\+Spline}}
+\subsubsection[{Spline(\+Radial\+\_\+grid const \&radial\+\_\+grid\+\_\+\+\_\+)}]{\setlength{\rightskip}{0pt plus 5cm}template$<$typename T$>$ {\bf sirius\+::\+Spline}$<$ T $>$\+::{\bf Spline} (
+\begin{DoxyParamCaption}
+\item[{{\bf Radial\+\_\+grid} const \&}]{radial\+\_\+grid\+\_\+\+\_\+}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}}\label{classsirius_1_1_spline_a7102780850d068acbd971db0d17106c8}
+
+
+Constructor of a new empty spline. 
+
+
+
+Definition at line 64 of file spline.\+h.
+
+\hypertarget{classsirius_1_1_spline_a345756a1c4328cb66609cec2ca542db9}{}\index{sirius\+::\+Spline@{sirius\+::\+Spline}!Spline@{Spline}}
+\index{Spline@{Spline}!sirius\+::\+Spline@{sirius\+::\+Spline}}
+\subsubsection[{Spline(\+Radial\+\_\+grid const \&radial\+\_\+grid\+\_\+\+\_\+, std\+::function$<$ T(double)$>$ f\+\_\+\+\_\+)}]{\setlength{\rightskip}{0pt plus 5cm}template$<$typename T$>$ {\bf sirius\+::\+Spline}$<$ T $>$\+::{\bf Spline} (
+\begin{DoxyParamCaption}
+\item[{{\bf Radial\+\_\+grid} const \&}]{radial\+\_\+grid\+\_\+\+\_\+, }
+\item[{std\+::function$<$ T(double)$>$}]{f\+\_\+\+\_\+}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}}\label{classsirius_1_1_spline_a345756a1c4328cb66609cec2ca542db9}
+
+
+Constructor of a spline from a function. 
+
+
+
+Definition at line 71 of file spline.\+h.
+
+\hypertarget{classsirius_1_1_spline_a9946ba895c7c5ea8bcfc4e85abb21237}{}\index{sirius\+::\+Spline@{sirius\+::\+Spline}!Spline@{Spline}}
+\index{Spline@{Spline}!sirius\+::\+Spline@{sirius\+::\+Spline}}
+\subsubsection[{Spline(\+Radial\+\_\+grid const \&radial\+\_\+grid\+\_\+\+\_\+, std\+::vector$<$ T $>$ const \&y\+\_\+\+\_\+)}]{\setlength{\rightskip}{0pt plus 5cm}template$<$typename T$>$ {\bf sirius\+::\+Spline}$<$ T $>$\+::{\bf Spline} (
+\begin{DoxyParamCaption}
+\item[{{\bf Radial\+\_\+grid} const \&}]{radial\+\_\+grid\+\_\+\+\_\+, }
+\item[{std\+::vector$<$ T $>$ const \&}]{y\+\_\+\+\_\+}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}}\label{classsirius_1_1_spline_a9946ba895c7c5ea8bcfc4e85abb21237}
+
+
+Constructor of a spline from a list of values. 
+
+
+
+Definition at line 82 of file spline.\+h.
+
+\hypertarget{classsirius_1_1_spline_ae8be147707663b2ede7a1b602ad2365c}{}\index{sirius\+::\+Spline@{sirius\+::\+Spline}!Spline@{Spline}}
+\index{Spline@{Spline}!sirius\+::\+Spline@{sirius\+::\+Spline}}
+\subsubsection[{Spline(\+Spline$<$ T $>$ \&\&src\+\_\+\+\_\+)}]{\setlength{\rightskip}{0pt plus 5cm}template$<$typename T$>$ {\bf sirius\+::\+Spline}$<$ T $>$\+::{\bf Spline} (
+\begin{DoxyParamCaption}
+\item[{{\bf Spline}$<$ T $>$ \&\&}]{src\+\_\+\+\_\+}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}}\label{classsirius_1_1_spline_ae8be147707663b2ede7a1b602ad2365c}
+
+
+Move constructor. 
+
+
+
+Definition at line 93 of file spline.\+h.
+
+
+
+\subsection{Member Function Documentation}
+\hypertarget{classsirius_1_1_spline_a4dce663daa9b59f8815b5b6ddac88924}{}\index{sirius\+::\+Spline@{sirius\+::\+Spline}!operator=@{operator=}}
+\index{operator=@{operator=}!sirius\+::\+Spline@{sirius\+::\+Spline}}
+\subsubsection[{operator=(\+Spline$<$ T $>$ \&\&src\+\_\+\+\_\+)}]{\setlength{\rightskip}{0pt plus 5cm}template$<$typename T$>$ {\bf Spline}$<$T$>$\& {\bf sirius\+::\+Spline}$<$ T $>$\+::operator= (
+\begin{DoxyParamCaption}
+\item[{{\bf Spline}$<$ T $>$ \&\&}]{src\+\_\+\+\_\+}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}}\label{classsirius_1_1_spline_a4dce663daa9b59f8815b5b6ddac88924}
+
+
+Move assigment operator. 
+
+
+
+Definition at line 100 of file spline.\+h.
+
+\hypertarget{classsirius_1_1_spline_ae8e0622e9a51c7dce4adfc6a264ab554}{}\index{sirius\+::\+Spline@{sirius\+::\+Spline}!integrate@{integrate}}
+\index{integrate@{integrate}!sirius\+::\+Spline@{sirius\+::\+Spline}}
+\subsubsection[{integrate(int m\+\_\+\+\_\+) const }]{\setlength{\rightskip}{0pt plus 5cm}template$<$typename T$>$ T {\bf sirius\+::\+Spline}$<$ T $>$\+::integrate (
+\begin{DoxyParamCaption}
+\item[{int}]{m\+\_\+\+\_\+}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [inline]}}\label{classsirius_1_1_spline_ae8e0622e9a51c7dce4adfc6a264ab554}
+
+
+Integrate with r$^\wedge$m weight. 
+
+
+
+Definition at line 121 of file spline.\+h.
+
+\hypertarget{classsirius_1_1_spline_a6dc38416e9d36e2c93c329550758fa87}{}\index{sirius\+::\+Spline@{sirius\+::\+Spline}!num\+\_\+points@{num\+\_\+points}}
+\index{num\+\_\+points@{num\+\_\+points}!sirius\+::\+Spline@{sirius\+::\+Spline}}
+\subsubsection[{num\+\_\+points() const }]{\setlength{\rightskip}{0pt plus 5cm}template$<$typename T$>$ int {\bf sirius\+::\+Spline}$<$ T $>$\+::num\+\_\+points (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [inline]}}\label{classsirius_1_1_spline_a6dc38416e9d36e2c93c329550758fa87}
+
+
+Return number of spline points. 
+
+
+
+Definition at line 137 of file spline.\+h.
+
+\hypertarget{classsirius_1_1_spline_a0d6773307bef5f0e6015f7f00ec09835}{}\index{sirius\+::\+Spline@{sirius\+::\+Spline}!operator\mbox{[}$\,$\mbox{]}@{operator[]}}
+\index{operator\mbox{[}$\,$\mbox{]}@{operator[]}!sirius\+::\+Spline@{sirius\+::\+Spline}}
+\subsubsection[{operator[](const int i)}]{\setlength{\rightskip}{0pt plus 5cm}template$<$typename T$>$ T\& {\bf sirius\+::\+Spline}$<$ T $>$\+::operator\mbox{[}$\,$\mbox{]} (
+\begin{DoxyParamCaption}
+\item[{const int}]{i}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}}\label{classsirius_1_1_spline_a0d6773307bef5f0e6015f7f00ec09835}
+
+
+Return value at $ x_i $. 
+
+
+
+Definition at line 197 of file spline.\+h.
+
+
+
+\subsection{Member Data Documentation}
+\hypertarget{classsirius_1_1_spline_aa4c162f220f68682f63b074e217218ab}{}\index{sirius\+::\+Spline@{sirius\+::\+Spline}!nullptr@{nullptr}}
+\index{nullptr@{nullptr}!sirius\+::\+Spline@{sirius\+::\+Spline}}
+\subsubsection[{nullptr}]{\setlength{\rightskip}{0pt plus 5cm}template$<$typename T$>$ {\bf Radial\+\_\+grid} const$\ast$ radial\+\_\+grid\+\_\+ {\bf sirius\+::\+Spline}$<$ T $>$\+::nullptr\hspace{0.3cm}{\ttfamily [private]}}\label{classsirius_1_1_spline_aa4c162f220f68682f63b074e217218ab}
+
+
+Radial grid. 
+
+
+
+Definition at line 47 of file spline.\+h.
+
+
+
+The documentation for this class was generated from the following file\+:\begin{DoxyCompactItemize}
+\item 
+\hyperlink{spline_8h}{spline.\+h}\end{DoxyCompactItemize}

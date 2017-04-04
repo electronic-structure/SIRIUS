@@ -29,7 +29,7 @@
 #include "band.h"
 #include "potential.h"
 #include "density.h"
-#include "mdarray.h"
+#include "mdarray.hpp"
 
 namespace sirius
 {
@@ -66,7 +66,7 @@ class Force
         static void total_force(Simulation_context& ctx__,
                                 Potential* potential__,
                                 Density* density__,
-                                K_set* ks__,
+                                K_point_set* ks__,
                                 mdarray<double, 2>& force__);
 };
 

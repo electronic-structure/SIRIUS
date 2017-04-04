@@ -1,0 +1,57 @@
+\hypertarget{wave__functions_8hpp}{}\section{wave\+\_\+functions.\+hpp File Reference}
+\label{wave__functions_8hpp}\index{wave\+\_\+functions.\+hpp@{wave\+\_\+functions.\+hpp}}
+
+
+Contains declaration and implementation of wave\+\_\+functions class.  
+
+
+Include dependency graph for wave\+\_\+functions.\+hpp\+:
+% FIG 0
+This graph shows which files directly or indirectly include this file\+:
+% FIG 1
+\subsection*{Classes}
+\begin{DoxyCompactItemize}
+\item 
+class \hyperlink{classsddk_1_1wave__functions}{sddk\+::wave\+\_\+functions}
+\begin{DoxyCompactList}\small\item\em Wave-\/functions representation. \end{DoxyCompactList}\end{DoxyCompactItemize}
+\subsection*{Functions}
+\begin{DoxyCompactItemize}
+\item 
+\hypertarget{namespacesddk_afd4891d44c46ff7bfab92006a9677bf9}{}void {\bfseries sddk\+::add\+\_\+square\+\_\+sum\+\_\+gpu} (cu\+Double\+Complex const $\ast$wf\+\_\+\+\_\+, int num\+\_\+rows\+\_\+loc\+\_\+\+\_\+, int nwf\+\_\+\+\_\+, int reduced\+\_\+\+\_\+, int mpi\+\_\+rank\+\_\+\+\_\+, double $\ast$result\+\_\+\+\_\+)\label{namespacesddk_afd4891d44c46ff7bfab92006a9677bf9}
+
+\item 
+\hypertarget{namespacesddk_afe6dc26b520a901abd49912ea229f990}{}void {\bfseries sddk\+::add\+\_\+checksum\+\_\+gpu} (cu\+Double\+Complex $\ast$wf\+\_\+\+\_\+, int num\+\_\+rows\+\_\+loc\+\_\+\+\_\+, int nwf\+\_\+\+\_\+, cu\+Double\+Complex $\ast$result\+\_\+\+\_\+)\label{namespacesddk_afe6dc26b520a901abd49912ea229f990}
+
+\item 
+{\footnotesize template$<$typename T $>$ }\\void {\bfseries sddk\+::transform} (double alpha\+\_\+\+\_\+, std\+::vector$<$ wave\+\_\+functions $\ast$ $>$ wf\+\_\+in\+\_\+\+\_\+, int i0\+\_\+\+\_\+, int m\+\_\+\+\_\+, dmatrix$<$ T $>$ \&mtrx\+\_\+\+\_\+, int irow0\+\_\+\+\_\+, int jcol0\+\_\+\+\_\+, double beta\+\_\+\+\_\+, std\+::vector$<$ wave\+\_\+functions $\ast$ $>$ wf\+\_\+out\+\_\+\+\_\+, int j0\+\_\+\+\_\+, int n\+\_\+\+\_\+)
+\begin{DoxyCompactList}\small\item\em Linear transformation of the wave-\/functions. \end{DoxyCompactList}\item 
+\hypertarget{namespacesddk_a8cd7c16298539a524bf5a5c9750f76dd}{}{\footnotesize template$<$typename T $>$ }\\void {\bfseries sddk\+::transform} (std\+::vector$<$ wave\+\_\+functions $\ast$ $>$ wf\+\_\+in\+\_\+\+\_\+, int i0\+\_\+\+\_\+, int m\+\_\+\+\_\+, dmatrix$<$ T $>$ \&mtrx\+\_\+\+\_\+, int irow0\+\_\+\+\_\+, int jcol0\+\_\+\+\_\+, std\+::vector$<$ wave\+\_\+functions $\ast$ $>$ wf\+\_\+out\+\_\+\+\_\+, int j0\+\_\+\+\_\+, int n\+\_\+\+\_\+)\label{namespacesddk_a8cd7c16298539a524bf5a5c9750f76dd}
+
+\item 
+{\footnotesize template$<$typename T $>$ }\\void {\bfseries sddk\+::transform} (double alpha\+\_\+\+\_\+, wave\+\_\+functions \&wf\+\_\+in\+\_\+\+\_\+, int i0\+\_\+\+\_\+, int m\+\_\+\+\_\+, dmatrix$<$ T $>$ \&mtrx\+\_\+\+\_\+, int irow0\+\_\+\+\_\+, int jcol0\+\_\+\+\_\+, double beta\+\_\+\+\_\+, wave\+\_\+functions \&wf\+\_\+out\+\_\+\+\_\+, int j0\+\_\+\+\_\+, int n\+\_\+\+\_\+)
+\begin{DoxyCompactList}\small\item\em Linear transformation of wave-\/functions. \end{DoxyCompactList}\item 
+\hypertarget{namespacesddk_a537e8ff7eb234ab40b6e5ab50e907758}{}{\footnotesize template$<$typename T $>$ }\\void {\bfseries sddk\+::transform} (wave\+\_\+functions \&wf\+\_\+in\+\_\+\+\_\+, int i0\+\_\+\+\_\+, int m\+\_\+\+\_\+, dmatrix$<$ T $>$ \&mtrx\+\_\+\+\_\+, int irow0\+\_\+\+\_\+, int jcol0\+\_\+\+\_\+, wave\+\_\+functions \&wf\+\_\+out\+\_\+\+\_\+, int j0\+\_\+\+\_\+, int n\+\_\+\+\_\+)\label{namespacesddk_a537e8ff7eb234ab40b6e5ab50e907758}
+
+\item 
+{\footnotesize template$<$typename T $>$ }\\void {\bfseries sddk\+::inner} (wave\+\_\+functions \&bra\+\_\+\+\_\+, int i0\+\_\+\+\_\+, int m\+\_\+\+\_\+, wave\+\_\+functions \&ket\+\_\+\+\_\+, int j0\+\_\+\+\_\+, int n\+\_\+\+\_\+, dmatrix$<$ T $>$ \&result\+\_\+\+\_\+, int irow0\+\_\+\+\_\+, int jcol0\+\_\+\+\_\+)
+\begin{DoxyCompactList}\small\item\em Inner product between wave-\/functions. \end{DoxyCompactList}\item 
+\hypertarget{namespacesddk_a03b1ecf98d322f202203482e9bbeaf79}{}{\footnotesize template$<$typename T $>$ }\\void {\bfseries sddk\+::orthogonalize} (int N\+\_\+\+\_\+, int n\+\_\+\+\_\+, std\+::vector$<$ wave\+\_\+functions $\ast$ $>$ wfs\+\_\+\+\_\+, int idx\+\_\+bra\+\_\+\+\_\+, int idx\+\_\+ket\+\_\+\+\_\+, dmatrix$<$ T $>$ \&o\+\_\+\+\_\+, wave\+\_\+functions \&tmp\+\_\+\+\_\+)\label{namespacesddk_a03b1ecf98d322f202203482e9bbeaf79}
+
+\item 
+\hypertarget{namespacesddk_a1880e2200109d8cccde49fcbdf327152}{}{\footnotesize template$<$typename T $>$ }\\void {\bfseries sddk\+::orthogonalize} (int N\+\_\+\+\_\+, int n\+\_\+\+\_\+, wave\+\_\+functions \&phi\+\_\+\+\_\+, wave\+\_\+functions \&hphi\+\_\+\+\_\+, wave\+\_\+functions \&ophi\+\_\+\+\_\+, dmatrix$<$ T $>$ \&o\+\_\+\+\_\+, wave\+\_\+functions \&tmp\+\_\+\+\_\+)\label{namespacesddk_a1880e2200109d8cccde49fcbdf327152}
+
+\item 
+\hypertarget{namespacesddk_a6b48b858d62a1a9ce8f72f995153f9f6}{}{\footnotesize template$<$typename T $>$ }\\void {\bfseries sddk\+::orthogonalize} (int N\+\_\+\+\_\+, int n\+\_\+\+\_\+, wave\+\_\+functions \&phi\+\_\+\+\_\+, wave\+\_\+functions \&hphi\+\_\+\+\_\+, dmatrix$<$ T $>$ \&o\+\_\+\+\_\+, wave\+\_\+functions \&tmp\+\_\+\+\_\+)\label{namespacesddk_a6b48b858d62a1a9ce8f72f995153f9f6}
+
+\end{DoxyCompactItemize}
+\subsection*{Variables}
+\begin{DoxyCompactItemize}
+\item 
+\hypertarget{namespacesddk_a3044fe439a78c6e66247caed07533ae7}{}const int {\bfseries sddk\+::sddk\+\_\+default\+\_\+block\+\_\+size} = 256\label{namespacesddk_a3044fe439a78c6e66247caed07533ae7}
+
+\end{DoxyCompactItemize}
+
+
+\subsection{Detailed Description}
+Contains declaration and implementation of wave\+\_\+functions class. 
+

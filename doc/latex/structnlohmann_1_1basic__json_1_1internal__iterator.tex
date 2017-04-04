@@ -1,0 +1,98 @@
+\hypertarget{structnlohmann_1_1basic__json_1_1internal__iterator}{}\section{nlohmann\+:\+:basic\+\_\+json$<$ Object\+Type, Array\+Type, String\+Type, Boolean\+Type, Number\+Integer\+Type, Number\+Unsigned\+Type, Number\+Float\+Type, Allocator\+Type $>$\+:\+:internal\+\_\+iterator Struct Reference}
+\label{structnlohmann_1_1basic__json_1_1internal__iterator}\index{nlohmann\+::basic\+\_\+json$<$ Object\+Type, Array\+Type, String\+Type, Boolean\+Type, Number\+Integer\+Type, Number\+Unsigned\+Type, Number\+Float\+Type, Allocator\+Type $>$\+::internal\+\_\+iterator@{nlohmann\+::basic\+\_\+json$<$ Object\+Type, Array\+Type, String\+Type, Boolean\+Type, Number\+Integer\+Type, Number\+Unsigned\+Type, Number\+Float\+Type, Allocator\+Type $>$\+::internal\+\_\+iterator}}
+
+
+an iterator value  
+
+
+
+
+Collaboration diagram for nlohmann\+:\+:basic\+\_\+json$<$ Object\+Type, Array\+Type, String\+Type, Boolean\+Type, Number\+Integer\+Type, Number\+Unsigned\+Type, Number\+Float\+Type, Allocator\+Type $>$\+:\+:internal\+\_\+iterator\+:
+% FIG 0
+\subsection*{Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+\hyperlink{structnlohmann_1_1basic__json_1_1internal__iterator_af7975e4fd91cdfc156e81df7c3c40b2b}{internal\+\_\+iterator} () noexcept
+\begin{DoxyCompactList}\small\item\em create an uninitialized \hyperlink{structnlohmann_1_1basic__json_1_1internal__iterator}{internal\+\_\+iterator} \end{DoxyCompactList}\end{DoxyCompactItemize}
+\subsection*{Public Attributes}
+\begin{DoxyCompactItemize}
+\item 
+object\+\_\+t\+::iterator \hyperlink{structnlohmann_1_1basic__json_1_1internal__iterator_abad8000f0a29137d6f88e8cc61ef42f9}{object\+\_\+iterator}
+\begin{DoxyCompactList}\small\item\em iterator for J\+S\+O\+N objects \end{DoxyCompactList}\item 
+array\+\_\+t\+::iterator \hyperlink{structnlohmann_1_1basic__json_1_1internal__iterator_af92f51f4d6c715e46b1e1f8dface2be9}{array\+\_\+iterator}
+\begin{DoxyCompactList}\small\item\em iterator for J\+S\+O\+N arrays \end{DoxyCompactList}\item 
+\hyperlink{classnlohmann_1_1basic__json_1_1primitive__iterator__t}{primitive\+\_\+iterator\+\_\+t} \hyperlink{structnlohmann_1_1basic__json_1_1internal__iterator_ac7eab7e31d99f301ba366ee274769771}{primitive\+\_\+iterator}
+\begin{DoxyCompactList}\small\item\em generic iterator for all other types \end{DoxyCompactList}\end{DoxyCompactItemize}
+
+
+\subsection{Detailed Description}
+\subsubsection*{template$<$template$<$ typename U, typename V, typename...\+Args $>$ class Object\+Type = std\+::map, template$<$ typename U, typename...\+Args $>$ class Array\+Type = std\+::vector, class String\+Type = std\+::string, class Boolean\+Type = bool, class Number\+Integer\+Type = std\+::int64\+\_\+t, class Number\+Unsigned\+Type = std\+::uint64\+\_\+t, class Number\+Float\+Type = double, template$<$ typename U $>$ class Allocator\+Type = std\+::allocator$>$struct nlohmann\+::basic\+\_\+json$<$ Object\+Type, Array\+Type, String\+Type, Boolean\+Type, Number\+Integer\+Type, Number\+Unsigned\+Type, Number\+Float\+Type, Allocator\+Type $>$\+::internal\+\_\+iterator}
+
+an iterator value 
+
+\begin{DoxyNote}{Note}
+This structure could easily be a union, but M\+S\+V\+C currently does not allow unions members with complex constructors, see \href{https://github.com/nlohmann/json/pull/105}{\tt https\+://github.\+com/nlohmann/json/pull/105}. 
+\end{DoxyNote}
+
+
+Definition at line 8190 of file json.\+hpp.
+
+
+
+\subsection{Constructor \& Destructor Documentation}
+\hypertarget{structnlohmann_1_1basic__json_1_1internal__iterator_af7975e4fd91cdfc156e81df7c3c40b2b}{}\index{nlohmann\+::basic\+\_\+json\+::internal\+\_\+iterator@{nlohmann\+::basic\+\_\+json\+::internal\+\_\+iterator}!internal\+\_\+iterator@{internal\+\_\+iterator}}
+\index{internal\+\_\+iterator@{internal\+\_\+iterator}!nlohmann\+::basic\+\_\+json\+::internal\+\_\+iterator@{nlohmann\+::basic\+\_\+json\+::internal\+\_\+iterator}}
+\subsubsection[{internal\+\_\+iterator() noexcept}]{\setlength{\rightskip}{0pt plus 5cm}template$<$template$<$ typename U, typename V, typename...\+Args $>$ class Object\+Type = std\+::map, template$<$ typename U, typename...\+Args $>$ class Array\+Type = std\+::vector, class String\+Type  = std\+::string, class Boolean\+Type  = bool, class Number\+Integer\+Type  = std\+::int64\+\_\+t, class Number\+Unsigned\+Type  = std\+::uint64\+\_\+t, class Number\+Float\+Type  = double, template$<$ typename U $>$ class Allocator\+Type = std\+::allocator$>$ {\bf nlohmann\+::basic\+\_\+json}$<$ Object\+Type, Array\+Type, String\+Type, Boolean\+Type, Number\+Integer\+Type, Number\+Unsigned\+Type, Number\+Float\+Type, Allocator\+Type $>$\+::internal\+\_\+iterator\+::internal\+\_\+iterator (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}, {\ttfamily [noexcept]}}\label{structnlohmann_1_1basic__json_1_1internal__iterator_af7975e4fd91cdfc156e81df7c3c40b2b}
+
+
+create an uninitialized \hyperlink{structnlohmann_1_1basic__json_1_1internal__iterator}{internal\+\_\+iterator} 
+
+
+
+Definition at line 8200 of file json.\+hpp.
+
+
+
+\subsection{Member Data Documentation}
+\hypertarget{structnlohmann_1_1basic__json_1_1internal__iterator_abad8000f0a29137d6f88e8cc61ef42f9}{}\index{nlohmann\+::basic\+\_\+json\+::internal\+\_\+iterator@{nlohmann\+::basic\+\_\+json\+::internal\+\_\+iterator}!object\+\_\+iterator@{object\+\_\+iterator}}
+\index{object\+\_\+iterator@{object\+\_\+iterator}!nlohmann\+::basic\+\_\+json\+::internal\+\_\+iterator@{nlohmann\+::basic\+\_\+json\+::internal\+\_\+iterator}}
+\subsubsection[{object\+\_\+iterator}]{\setlength{\rightskip}{0pt plus 5cm}template$<$template$<$ typename U, typename V, typename...\+Args $>$ class Object\+Type = std\+::map, template$<$ typename U, typename...\+Args $>$ class Array\+Type = std\+::vector, class String\+Type  = std\+::string, class Boolean\+Type  = bool, class Number\+Integer\+Type  = std\+::int64\+\_\+t, class Number\+Unsigned\+Type  = std\+::uint64\+\_\+t, class Number\+Float\+Type  = double, template$<$ typename U $>$ class Allocator\+Type = std\+::allocator$>$ object\+\_\+t\+::iterator {\bf nlohmann\+::basic\+\_\+json}$<$ Object\+Type, Array\+Type, String\+Type, Boolean\+Type, Number\+Integer\+Type, Number\+Unsigned\+Type, Number\+Float\+Type, Allocator\+Type $>$\+::internal\+\_\+iterator\+::object\+\_\+iterator}\label{structnlohmann_1_1basic__json_1_1internal__iterator_abad8000f0a29137d6f88e8cc61ef42f9}
+
+
+iterator for J\+S\+O\+N objects 
+
+
+
+Definition at line 8193 of file json.\+hpp.
+
+\hypertarget{structnlohmann_1_1basic__json_1_1internal__iterator_af92f51f4d6c715e46b1e1f8dface2be9}{}\index{nlohmann\+::basic\+\_\+json\+::internal\+\_\+iterator@{nlohmann\+::basic\+\_\+json\+::internal\+\_\+iterator}!array\+\_\+iterator@{array\+\_\+iterator}}
+\index{array\+\_\+iterator@{array\+\_\+iterator}!nlohmann\+::basic\+\_\+json\+::internal\+\_\+iterator@{nlohmann\+::basic\+\_\+json\+::internal\+\_\+iterator}}
+\subsubsection[{array\+\_\+iterator}]{\setlength{\rightskip}{0pt plus 5cm}template$<$template$<$ typename U, typename V, typename...\+Args $>$ class Object\+Type = std\+::map, template$<$ typename U, typename...\+Args $>$ class Array\+Type = std\+::vector, class String\+Type  = std\+::string, class Boolean\+Type  = bool, class Number\+Integer\+Type  = std\+::int64\+\_\+t, class Number\+Unsigned\+Type  = std\+::uint64\+\_\+t, class Number\+Float\+Type  = double, template$<$ typename U $>$ class Allocator\+Type = std\+::allocator$>$ array\+\_\+t\+::iterator {\bf nlohmann\+::basic\+\_\+json}$<$ Object\+Type, Array\+Type, String\+Type, Boolean\+Type, Number\+Integer\+Type, Number\+Unsigned\+Type, Number\+Float\+Type, Allocator\+Type $>$\+::internal\+\_\+iterator\+::array\+\_\+iterator}\label{structnlohmann_1_1basic__json_1_1internal__iterator_af92f51f4d6c715e46b1e1f8dface2be9}
+
+
+iterator for J\+S\+O\+N arrays 
+
+
+
+Definition at line 8195 of file json.\+hpp.
+
+\hypertarget{structnlohmann_1_1basic__json_1_1internal__iterator_ac7eab7e31d99f301ba366ee274769771}{}\index{nlohmann\+::basic\+\_\+json\+::internal\+\_\+iterator@{nlohmann\+::basic\+\_\+json\+::internal\+\_\+iterator}!primitive\+\_\+iterator@{primitive\+\_\+iterator}}
+\index{primitive\+\_\+iterator@{primitive\+\_\+iterator}!nlohmann\+::basic\+\_\+json\+::internal\+\_\+iterator@{nlohmann\+::basic\+\_\+json\+::internal\+\_\+iterator}}
+\subsubsection[{primitive\+\_\+iterator}]{\setlength{\rightskip}{0pt plus 5cm}template$<$template$<$ typename U, typename V, typename...\+Args $>$ class Object\+Type = std\+::map, template$<$ typename U, typename...\+Args $>$ class Array\+Type = std\+::vector, class String\+Type  = std\+::string, class Boolean\+Type  = bool, class Number\+Integer\+Type  = std\+::int64\+\_\+t, class Number\+Unsigned\+Type  = std\+::uint64\+\_\+t, class Number\+Float\+Type  = double, template$<$ typename U $>$ class Allocator\+Type = std\+::allocator$>$ {\bf primitive\+\_\+iterator\+\_\+t} {\bf nlohmann\+::basic\+\_\+json}$<$ Object\+Type, Array\+Type, String\+Type, Boolean\+Type, Number\+Integer\+Type, Number\+Unsigned\+Type, Number\+Float\+Type, Allocator\+Type $>$\+::internal\+\_\+iterator\+::primitive\+\_\+iterator}\label{structnlohmann_1_1basic__json_1_1internal__iterator_ac7eab7e31d99f301ba366ee274769771}
+
+
+generic iterator for all other types 
+
+
+
+Definition at line 8197 of file json.\+hpp.
+
+
+
+The documentation for this struct was generated from the following file\+:\begin{DoxyCompactItemize}
+\item 
+json.\+hpp\end{DoxyCompactItemize}

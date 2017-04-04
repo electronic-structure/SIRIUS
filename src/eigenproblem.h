@@ -26,8 +26,7 @@
 #define __EIGENPROBLEM_H__
 
 #include "constants.h"
-#include "blacs_grid.h"
-#include "linalg.h"
+#include "linalg.hpp"
 
 /// Type of the solver to use for the standard or generalized eigen-value problem
 enum ev_solver_t 
@@ -65,49 +64,88 @@ class Eigenproblem
         }
         
         /// Complex generalized Hermitian-definite eigenproblem.
-        virtual int solve(int32_t matrix_size, int32_t nevec,
-                          double_complex* A, int32_t lda,
-                          double_complex* B, int32_t ldb,
-                          double* eval,
-                          double_complex* Z, int32_t ldz,
-                          int32_t num_rows_loc = 0, int32_t num_cols_loc = 0) const
+        virtual int solve(int32_t         matrix_size,
+                          int32_t         nevec,
+                          double_complex* A,
+                          int32_t         lda,
+                          double_complex* B,
+                          int32_t         ldb,
+                          double*         eval,
+                          double_complex* Z,
+                          int32_t         ldz,
+                          int32_t         num_rows_loc = 0,
+                          int32_t         num_cols_loc = 0) const
         {
             TERMINATE("solver is not implemented");
             return -1;
         }
 
         /// Real generalized symmetric-definite eigenproblem.
-        virtual int solve(int32_t matrix_size, int32_t nevec,
-                          double* A, int32_t lda,
-                          double* B, int32_t ldb,
+        virtual int solve(int32_t matrix_size,
+                          int32_t nevec,
+                          double* A,
+                          int32_t lda,
+                          double* B,
+                          int32_t ldb,
                           double* eval,
-                          double* Z, int32_t ldz,
-                          int32_t num_rows_loc = 0, int32_t num_cols_loc = 0) const
+                          double* Z,
+                          int32_t ldz,
+                          int32_t num_rows_loc = 0,
+                          int32_t num_cols_loc = 0) const
         {
             TERMINATE("solver is not implemented");
             return -1;
         }
 
-        /// Real standard symmetric-definite eigenproblem.
-        virtual int solve(int32_t matrix_size, int32_t nevec,
-                          double* A, int32_t lda,
+        /// Complex standard Hermitian-definite eigenproblem with with N lowest eigen-vectors.
+        virtual int solve(int32_t         matrix_size,
+                          int32_t         nevec,
+                          double_complex* A,
+                          int32_t         lda,
+                          double*         eval,
+                          double_complex* Z,
+                          int32_t         ldz,
+                          int32_t         num_rows_loc = 0,
+                          int32_t         num_cols_loc = 0) const
+        {
+            TERMINATE("solver is not implemented");
+            return -1;
+        }
+
+        /// Real standard symmetric-definite eigenproblem with N lowest eigen-vectors.
+        virtual int solve(int32_t matrix_size,
+                          int32_t nevec,
+                          double* A,
+                          int32_t lda,
                           double* eval,
-                          double* Z, int32_t ldz,
-                          int32_t num_rows_loc = 0, int32_t num_cols_loc = 0) const
+                          double* Z,
+                          int32_t ldz,
+                          int32_t num_rows_loc = 0,
+                          int32_t num_cols_loc = 0) const
         {
             TERMINATE("solver is not implemented");
             return -1;
         }
         
-        /// Complex standard Hermitian-definite eigenproblem.
-        virtual int solve(int32_t matrix_size, double_complex* A, int32_t lda, double* eval, double_complex* Z, int32_t ldz) const
+        /// Complex standard Hermitian-definite eigenproblem with all eigen-vectors.
+        virtual int solve(int32_t         matrix_size,
+                          double_complex* A,
+                          int32_t         lda,
+                          double*         eval,
+                          double_complex* Z,
+                          int32_t         ldz) const
         {
             TERMINATE("standard eigen-value solver is not configured");
             return -1;
         }
 
-        /// Real standard symmetric-definite eigenproblem.
-        virtual int solve(int32_t matrix_size, double* A, int32_t lda, double* eval, double* Z, int32_t ldz) const
+        /// Real standard symmetric-definite eigenproblem with all eigen-vectors.
+        virtual int solve(int32_t matrix_size,
+                          double* A,
+                          int32_t lda,
+                          double* eval,
+                          double* Z,
+                          int32_t ldz) const
         {
             TERMINATE("standard eigen-value solver is not configured");
             return -1;
@@ -166,7 +204,7 @@ class Eigenproblem_lapack: public Eigenproblem
             int32_t info;
        
             int32_t ione = 1;
-            FORTRAN(zhegvx)(&ione, "V", "I", "U", &matrix_size, A, &lda, B, &ldb, &vl, &vu, &ione, &nevec, &abstol_, &m, 
+            FORTRAN(zhegvx)(&ione, "V", "I", "U", &matrix_size, A, &lda, B, &ldb, &vl, &vu, &ione, &nevec, const_cast<double*>(&abstol_), &m, 
                             &w[0], Z, &ldz, &work[0], &lwork, &rwork[0], &iwork[0], &ifail[0], &info, (int32_t)1, 
                             (int32_t)1, (int32_t)1);
 
@@ -175,7 +213,8 @@ class Eigenproblem_lapack: public Eigenproblem
                 std::stringstream s;
                 s << "not all eigen-values are found" << std::endl
                   << "target number of eign-values: " << nevec << std::endl
-                  << "number of eign-values found: " << m;
+                  << "number of eign-values found: " << m << std::endl
+                  << "matrix size: " << matrix_size;
                 WARNING(s);
                 return 1;
             }
@@ -202,7 +241,7 @@ class Eigenproblem_lapack: public Eigenproblem
             assert(nevec <= matrix_size);
 
             int nb = linalg_base::ilaenv(1, "DSYTRD", "U", matrix_size, 0, 0, 0);
-            int lwork = (nb + 3) * matrix_size;
+            int lwork = (nb + 3) * matrix_size + 1024;
             int liwork = 5 * matrix_size;
             
             std::vector<double> work(lwork);
@@ -215,17 +254,17 @@ class Eigenproblem_lapack: public Eigenproblem
             int32_t info;
        
             int32_t ione = 1;
-            FORTRAN(dsygvx)(&ione, "V", "I", "U", &matrix_size, A, &lda, B, &ldb, &vl, &vu, &ione, &nevec, &abstol_, &m, 
+            FORTRAN(dsygvx)(&ione, "V", "I", "U", &matrix_size, A, &lda, B, &ldb, &vl, &vu, &ione, &nevec, const_cast<double*>(&abstol_), &m, 
                             &w[0], Z, &ldz, &work[0], &lwork, &iwork[0], &ifail[0], &info, (int32_t)1, 
                             (int32_t)1, (int32_t)1);
 
             if (m != nevec)
             {
-                std::stringstream s;
-                s << "not all eigen-values are found" << std::endl
-                  << "target number of eign-values: " << nevec << std::endl
-                  << "number of eign-values found: " << m;
-                WARNING(s);
+                //== std::stringstream s;
+                //== s << "not all eigen-values are found" << std::endl
+                //==   << "target number of eign-values: " << nevec << std::endl
+                //==   << "number of eign-values found: " << m;
+                //== WARNING(s);
                 return 1;
             }
 
@@ -311,13 +350,13 @@ class Eigenproblem_lapack: public Eigenproblem
             il = 1;
             iu = nevec;
 
-            FORTRAN(dsyevx)("V", "I", "U", &matrix_size, A, &lda, &vl, &vu, &il, &iu, &abstol_, &m, 
+            FORTRAN(dsyevx)("V", "I", "U", &matrix_size, A, &lda, &vl, &vu, &il, &iu, const_cast<double*>(&abstol_), &m, 
                             &w[0], Z, &ldz, &lwork1, &lwork, &iwork[0], &ifail[0], &info, (int32_t)1, (int32_t)1, (int32_t)1);
 
             lwork = static_cast<int32_t>(lwork1 + 1);
             std::vector<double> work(lwork);
 
-            FORTRAN(dsyevx)("V", "I", "U", &matrix_size, A, &lda, &vl, &vu, &il, &iu, &abstol_, &m, 
+            FORTRAN(dsyevx)("V", "I", "U", &matrix_size, A, &lda, &vl, &vu, &il, &iu, const_cast<double*>(&abstol_), &m, 
                             &w[0], Z, &ldz, &work[0], &lwork, &iwork[0], &ifail[0], &info, (int32_t)1, (int32_t)1, (int32_t)1);
             
             if (m != nevec)
@@ -332,6 +371,59 @@ class Eigenproblem_lapack: public Eigenproblem
 
             if (info)
             {
+                std::stringstream s;
+                s << "dsyevx returned " << info; 
+                TERMINATE(s);
+            }
+
+            std::memcpy(eval, &w[0], nevec * sizeof(double));
+            
+            return 0;
+        }
+
+        int solve(int32_t         matrix_size,
+                  int             nevec,
+                  double_complex* A,
+                  int32_t         lda,
+                  double*         eval,
+                  double_complex* Z,
+                  int32_t         ldz,
+                  int32_t         num_rows_loc = 0,
+                  int32_t         num_cols_loc = 0) const
+        {
+            int32_t lwork = -1;
+            double vl, vu;
+            int32_t il, iu, m, info;
+            std::vector<double> w(matrix_size);
+            std::vector<int32_t> iwork(5 * matrix_size);
+            std::vector<int32_t> ifail(matrix_size);
+            std::vector<double> rwork(7 * matrix_size);
+            std::vector<double_complex> work(3);
+
+            il = 1;
+            iu = nevec;
+
+            FORTRAN(zheevx)("V", "I", "U", &matrix_size, A, &lda, &vl, &vu, &il, &iu, const_cast<double*>(&abstol_), &m, 
+                            &w[0], Z, &ldz, &work[0], &lwork, &rwork[0], &iwork[0], &ifail[0], &info,
+                            (int32_t)1, (int32_t)1, (int32_t)1);
+
+            lwork = static_cast<int32_t>(work[0].real()) + 1;
+            work.resize(lwork);
+
+            FORTRAN(zheevx)("V", "I", "U", &matrix_size, A, &lda, &vl, &vu, &il, &iu, const_cast<double*>(&abstol_), &m, 
+                            &w[0], Z, &ldz, &work[0], &lwork, &rwork[0], &iwork[0], &ifail[0], &info,
+                            (int32_t)1, (int32_t)1, (int32_t)1);
+            
+            if (m != nevec) {
+                std::stringstream s;
+                s << "not all eigen-values are found" << std::endl
+                  << "target number of eign-values: " << nevec << std::endl
+                  << "number of eign-values found: " << m;
+                WARNING(s);
+                return 1;
+            }
+
+            if (info) {
                 std::stringstream s;
                 s << "dsyevx returned " << info; 
                 TERMINATE(s);
@@ -399,6 +491,10 @@ extern "C" void magma_dsygvdx_2stage_wrapper(int32_t matrix_size, int32_t nv, vo
                                              int32_t ldb, double* eval);
 
 extern "C" void magma_dsyevdx_wrapper(int32_t matrix_size, int32_t nv, double* a, int32_t lda, double* eval);
+
+extern "C" int magma_zheevdx_wrapper(int32_t matrix_size, int32_t nv, double_complex* a, int32_t lda, double* eval);
+
+extern "C" int magma_zheevdx_2stage_wrapper(int32_t matrix_size, int32_t nv, cuDoubleComplex* a, int32_t lda, double* eval);
 #endif
 
 /// Interface for MAGMA eigen-value solvers.
@@ -424,12 +520,14 @@ class Eigenproblem_magma: public Eigenproblem
             
             magma_zhegvdx_2stage_wrapper(matrix_size, nevec, A, lda, B, ldb, eval);
 
-            if (nt != omp_get_max_threads())
-            {
+            if (nt != omp_get_max_threads()) {
                 TERMINATE("magma has changed the number of threads");
             }
             
-            for (int i = 0; i < nevec; i++) std::memcpy(&Z[ldz * i], &A[lda * i], matrix_size * sizeof(double_complex));
+            #pragma omp parallel for
+            for (int i = 0; i < nevec; i++) {
+                std::memcpy(&Z[ldz * i], &A[lda * i], matrix_size * sizeof(double_complex));
+            }
 
             return 0;
         }
@@ -447,12 +545,14 @@ class Eigenproblem_magma: public Eigenproblem
             
             magma_dsygvdx_2stage_wrapper(matrix_size, nevec, A, lda, B, ldb, eval);
 
-            if (nt != omp_get_max_threads())
-            {
+            if (nt != omp_get_max_threads()) {
                 TERMINATE("magma has changed the number of threads");
             }
-            
-            for (int i = 0; i < nevec; i++) std::memcpy(&Z[ldz * i], &A[lda * i], matrix_size * sizeof(double));
+
+            #pragma omp parallel for
+            for (int i = 0; i < nevec; i++) {
+                std::memcpy(&Z[ldz * i], &A[lda * i], matrix_size * sizeof(double));
+            }
 
             return 0;
         }
@@ -469,14 +569,44 @@ class Eigenproblem_magma: public Eigenproblem
             
             magma_dsyevdx_wrapper(matrix_size, nevec, A, lda, eval);
 
-            if (nt != omp_get_max_threads())
-            {
+            if (nt != omp_get_max_threads()) {
                 TERMINATE("magma has changed the number of threads");
             }
             
-            for (int i = 0; i < nevec; i++) std::memcpy(&Z[ldz * i], &A[lda * i], matrix_size * sizeof(double));
+            #pragma omp parallel for
+            for (int i = 0; i < nevec; i++) {
+                std::memcpy(&Z[ldz * i], &A[lda * i], matrix_size * sizeof(double));
+            }
 
             return 0;
+        }
+
+        int solve(int32_t matrix_size, int32_t nevec, 
+                  double_complex* A, int32_t lda,
+                  double* eval, 
+                  double_complex* Z, int32_t ldz,
+                  int32_t num_rows_loc = 0, int32_t num_cols_loc = 0) const
+        {
+            assert(nevec <= matrix_size);
+
+            int nt = omp_get_max_threads();
+            
+            //int result = magma_zheevdx_2stage_wrapper(matrix_size, nevec, A, lda, eval);
+            int result = magma_zheevdx_wrapper(matrix_size, nevec, A, lda, eval);
+
+            if (nt != omp_get_max_threads()) {
+                TERMINATE("magma has changed the number of threads");
+            }
+            
+            if (result == 0) {
+                #pragma omp parallel for
+                for (int i = 0; i < nevec; i++) {
+                    std::memcpy(&Z[ldz * i], &A[lda * i], matrix_size * sizeof(double_complex));
+                }
+                return 0;
+            }
+
+            return 1;
         }
         #endif
 
@@ -572,9 +702,13 @@ class Eigenproblem_scalapack: public Eigenproblem
         }
 
         #ifdef __SCALAPACK
-        int solve(int32_t matrix_size, double_complex* A, int32_t lda, double* eval, double_complex* Z, int32_t ldz) const
+        int solve(int32_t         matrix_size,
+                  double_complex* A,
+                  int32_t         lda,
+                  double*         eval,
+                  double_complex* Z,
+                  int32_t         ldz) const
         {
-
             int desca[9];
             linalg_base::descinit(desca, matrix_size, matrix_size, bs_row_, bs_col_, 0, 0, blacs_context_, lda);
             
@@ -661,19 +795,19 @@ class Eigenproblem_scalapack: public Eigenproblem
             std::vector<int32_t> iwork(1);
             /* work size query */
             FORTRAN(pzhegvx)(&ione, "V", "I", "U", &matrix_size, A, &ione, &ione, desca, B, &ione, &ione, descb, &d1, &d1, 
-                             &ione, &nevec, &abstol_, &m, &nz, &w[0], &orfac, Z, &ione, &ione, descz, &work[0], &lwork, 
+                             &ione, &nevec, const_cast<double*>(&abstol_), &m, &nz, &w[0], &orfac, Z, &ione, &ione, descz, &work[0], &lwork, 
                              &rwork[0], &lrwork, &iwork[0], &liwork, &ifail[0], &iclustr[0], &gap[0], &info, 
                              (int32_t)1, (int32_t)1, (int32_t)1); 
-            lwork = static_cast<int32_t>(work[0].real()) + 1;
-            lrwork = static_cast<int32_t>(rwork[0]) + 1;
-            liwork = iwork[0];
+            lwork = static_cast<int32_t>(work[0].real()) + 4096;
+            lrwork = static_cast<int32_t>(rwork[0]) + 4096;
+            liwork = iwork[0] + 4096;
 
             work = std::vector<double_complex>(lwork);
             rwork = std::vector<double>(lrwork);
             iwork = std::vector<int32_t>(liwork);
             
             FORTRAN(pzhegvx)(&ione, "V", "I", "U", &matrix_size, A, &ione, &ione, desca, B, &ione, &ione, descb, &d1, &d1, 
-                             &ione, &nevec, &abstol_, &m, &nz, &w[0], &orfac, Z, &ione, &ione, descz, &work[0], &lwork, 
+                             &ione, &nevec, const_cast<double*>(&abstol_), &m, &nz, &w[0], &orfac, Z, &ione, &ione, descz, &work[0], &lwork, 
                              &rwork[0], &lrwork, &iwork[0], &liwork, &ifail[0], &iclustr[0], &gap[0], &info, 
                              (int32_t)1, (int32_t)1, (int32_t)1); 
 
@@ -751,7 +885,7 @@ class Eigenproblem_scalapack: public Eigenproblem
             
             /* work size query */
             FORTRAN(pdsygvx)(&ione, "V", "I", "U", &matrix_size, A, &ione, &ione, desca, B, &ione, &ione, descb, &d1, &d1, 
-                             &ione, &nevec, &abstol_, &m, &nz, &w[0], &orfac, Z, &ione, &ione, descz, &work1, &lwork, 
+                             &ione, &nevec, const_cast<double*>(&abstol_), &m, &nz, &w[0], &orfac, Z, &ione, &ione, descz, &work1, &lwork, 
                              &liwork, &lwork, &ifail[0], &iclustr[0], &gap[0], &info, (int32_t)1, (int32_t)1, (int32_t)1); 
             
             lwork = static_cast<int32_t>(work1) + 4 * (1 << 20);
@@ -760,7 +894,7 @@ class Eigenproblem_scalapack: public Eigenproblem
             std::vector<int32_t> iwork(liwork);
             
             FORTRAN(pdsygvx)(&ione, "V", "I", "U", &matrix_size, A, &ione, &ione, desca, B, &ione, &ione, descb, &d1, &d1, 
-                             &ione, &nevec, &abstol_, &m, &nz, &w[0], &orfac, Z, &ione, &ione, descz, &work[0], &lwork, 
+                             &ione, &nevec, const_cast<double*>(&abstol_), &m, &nz, &w[0], &orfac, Z, &ione, &ione, descz, &work[0], &lwork, 
                              &iwork[0], &liwork, &ifail[0], &iclustr[0], &gap[0], &info, 
                              (int32_t)1, (int32_t)1, (int32_t)1); 
 
@@ -800,11 +934,15 @@ class Eigenproblem_scalapack: public Eigenproblem
             return 0;
         }
 
-        int solve(int32_t matrix_size,  int32_t nevec, 
-                  double* A, int32_t lda,
+        int solve(int32_t matrix_size,
+                  int32_t nevec, 
+                  double* A,
+                  int32_t lda,
                   double* eval, 
-                  double* Z, int32_t ldz,
-                  int32_t num_rows_loc = 0, int32_t num_cols_loc = 0) const
+                  double* Z,
+                  int32_t ldz,
+                  int32_t num_rows_loc = 0,
+                  int32_t num_cols_loc = 0) const
         {
             assert(nevec <= matrix_size);
             
@@ -833,7 +971,7 @@ class Eigenproblem_scalapack: public Eigenproblem
             int32_t lwork = -1;
             int32_t liwork = -1;
             FORTRAN(pdsyevx)("V", "I", "U", &matrix_size, A, &ione, &ione, desca, &d1, &d1, 
-                             &ione, &nevec, &abstol_, &m, &nz, &w[0], &orfac, Z, &ione, &ione, descz, &work[0], &lwork, 
+                             &ione, &nevec, const_cast<double*>(&abstol_), &m, &nz, &w[0], &orfac, Z, &ione, &ione, descz, &work[0], &lwork, 
                              &iwork[0], &liwork, &ifail[0], &iclustr[0], &gap[0], &info, (int32_t)1, (int32_t)1, (int32_t)1); 
             
             lwork = static_cast<int32_t>(work[0]) + 4 * (1 << 20);
@@ -843,7 +981,7 @@ class Eigenproblem_scalapack: public Eigenproblem
             iwork = std::vector<int32_t>(liwork);
 
             FORTRAN(pdsyevx)("V", "I", "U", &matrix_size, A, &ione, &ione, desca, &d1, &d1, 
-                             &ione, &nevec, &abstol_, &m, &nz, &w[0], &orfac, Z, &ione, &ione, descz, &work[0], &lwork, 
+                             &ione, &nevec, const_cast<double*>(&abstol_), &m, &nz, &w[0], &orfac, Z, &ione, &ione, descz, &work[0], &lwork, 
                              &iwork[0], &liwork, &ifail[0], &iclustr[0], &gap[0], &info, 
                              (int32_t)1, (int32_t)1, (int32_t)1); 
 
@@ -872,6 +1010,98 @@ class Eigenproblem_scalapack: public Eigenproblem
 
                 std::stringstream s;
                 s << "pdsyevx returned " << info; 
+                TERMINATE(s);
+            }
+
+            if ((m != nevec) || (nz != nevec))
+                TERMINATE("Not all eigen-vectors or eigen-values are found.");
+
+            std::memcpy(eval, &w[0], nevec * sizeof(double));
+
+            return 0;
+        }
+
+        int solve(int32_t         matrix_size,
+                  int32_t         nevec, 
+                  double_complex* A,
+                  int32_t         lda,
+                  double*         eval, 
+                  double_complex* Z,
+                  int32_t         ldz,
+                  int32_t         num_rows_loc = 0,
+                  int32_t         num_cols_loc = 0) const
+        {
+            assert(nevec <= matrix_size);
+            
+            int32_t desca[9];
+            linalg_base::descinit(desca, matrix_size, matrix_size, bs_row_, bs_col_, 0, 0, blacs_context_, lda);
+
+            int32_t descz[9];
+            linalg_base::descinit(descz, matrix_size, matrix_size, bs_row_, bs_col_, 0, 0, blacs_context_, ldz);
+            
+            double orfac = 1e-6;
+            int32_t ione = 1;
+            
+            int32_t m;
+            int32_t nz;
+            double d1;
+            int32_t info;
+
+            std::vector<int32_t> ifail(matrix_size);
+            std::vector<int32_t> iclustr(2 * num_ranks_row_ * num_ranks_col_);
+            std::vector<double> gap(num_ranks_row_ * num_ranks_col_);
+            std::vector<double> w(matrix_size);
+
+            /* work size query */
+            std::vector<double_complex> work(3);
+            std::vector<double> rwork(3);
+            std::vector<int32_t> iwork(1);
+            int32_t lwork = -1;
+            int32_t lrwork = -1;
+            int32_t liwork = -1;
+            FORTRAN(pzheevx)("V", "I", "U", &matrix_size, A, &ione, &ione, desca, &d1, &d1, 
+                             &ione, &nevec, const_cast<double*>(&abstol_), &m, &nz, &w[0], &orfac, Z, &ione, &ione, descz, &work[0], &lwork,
+                             &rwork[0], &lrwork, &iwork[0], &liwork, &ifail[0], &iclustr[0], &gap[0], &info, 
+                             (int32_t)1, (int32_t)1, (int32_t)1); 
+            
+            lwork = static_cast<int32_t>(work[0].real()) + (1 << 16);
+            lrwork = static_cast<int32_t>(rwork[0]) + (1 << 16);
+            liwork = iwork[0];
+
+            work = std::vector<double_complex>(lwork);
+            rwork = std::vector<double>(lrwork);
+            iwork = std::vector<int32_t>(liwork);
+
+            FORTRAN(pzheevx)("V", "I", "U", &matrix_size, A, &ione, &ione, desca, &d1, &d1, 
+                             &ione, &nevec, const_cast<double*>(&abstol_), &m, &nz, &w[0], &orfac, Z, &ione, &ione, descz, &work[0], &lwork,
+                             &rwork[0], &lrwork, &iwork[0], &liwork, &ifail[0], &iclustr[0], &gap[0], &info, 
+                             (int32_t)1, (int32_t)1, (int32_t)1); 
+
+            if (info)
+            {
+                if ((info / 2) % 2)
+                {
+                    std::stringstream s;
+                    s << "eigenvectors corresponding to one or more clusters of eigenvalues" << std::endl  
+                      << "could not be reorthogonalized because of insufficient workspace" << std::endl;
+
+                    int k = num_ranks_row_ * num_ranks_col_;
+                    for (int i = 0; i < num_ranks_row_ * num_ranks_col_ - 1; i++)
+                    {
+                        if ((iclustr[2 * i + 1] != 0) && (iclustr[2 * (i + 1)] == 0))
+                        {
+                            k = i + 1;
+                            break;
+                        }
+                    }
+                   
+                    s << "number of eigenvalue clusters : " << k << std::endl;
+                    for (int i = 0; i < k; i++) s << iclustr[2 * i] << " : " << iclustr[2 * i + 1] << std::endl; 
+                    TERMINATE(s);
+                }
+
+                std::stringstream s;
+                s << "pzheevx returned " << info; 
                 TERMINATE(s);
             }
 
@@ -1055,7 +1285,7 @@ class Eigenproblem_elpa: public Eigenproblem
                                    matrix<double_complex>& tmp1__,
                                    matrix<double_complex>& tmp2__) const
         {
-            TIMER("Eigenproblem_elpa:transform_to_standard");
+            PROFILE("Eigenproblem_elpa:transform_to_standard");
             
             /* compute Cholesky decomposition of B: B=L*L^H; overwrite B with L */
             FORTRAN(elpa_cholesky_complex_wrapper)(&matrix_size__, B__, &ldb__, &block_size_, &num_cols_loc__, &mpi_comm_rows_, &mpi_comm_cols_);
@@ -1069,14 +1299,14 @@ class Eigenproblem_elpa: public Eigenproblem
             int32_t descc[9];
             linalg_base::descinit(descc, matrix_size__, matrix_size__, block_size_, block_size_, 0, 0, blacs_context_, lda__);
             
-            linalg_base::pztranc(matrix_size__, matrix_size__, complex_one, tmp1__.at<CPU>(), 1, 1, descc, 
-                                 complex_zero, tmp2__.at<CPU>(), 1, 1, descc);
+            linalg_base::pztranc(matrix_size__, matrix_size__, linalg_const<double_complex>::one(), tmp1__.at<CPU>(), 1, 1, descc, 
+                                 linalg_const<double_complex>::zero(), tmp2__.at<CPU>(), 1, 1, descc);
 
             FORTRAN(elpa_mult_ah_b_complex_wrapper)("U", "U", &matrix_size__, &matrix_size__, B__, &ldb__, tmp2__.at<CPU>(), &num_rows_loc__, 
                                                     &block_size_, &mpi_comm_rows_, &mpi_comm_cols_, A__, &lda__, (int32_t)1, 
                                                     (int32_t)1);
 
-            linalg_base::pztranc(matrix_size__, matrix_size__, complex_one, A__, 1, 1, descc, complex_zero, 
+            linalg_base::pztranc(matrix_size__, matrix_size__, linalg_const<double_complex>::one(), A__, 1, 1, descc, linalg_const<double_complex>::zero(), 
                                  tmp1__.at<CPU>(), 1, 1, descc);
 
             for (int i = 0; i < num_cols_loc__; i++)
@@ -1097,7 +1327,7 @@ class Eigenproblem_elpa: public Eigenproblem
                                    matrix<double>& tmp1__,
                                    matrix<double>& tmp2__) const
         {
-            TIMER("Eigenproblem_elpa:transform_to_standard");
+            PROFILE("Eigenproblem_elpa:transform_to_standard");
             
             /* compute Cholesky decomposition of B: B=L*L^H; overwrite B with L */
             FORTRAN(elpa_cholesky_real_wrapper)(&matrix_size__, B__, &ldb__, &block_size_, &num_cols_loc__, &mpi_comm_rows_, &mpi_comm_cols_);
@@ -1138,12 +1368,12 @@ class Eigenproblem_elpa: public Eigenproblem
                             matrix<double_complex>& tmp1__,
                             matrix<double_complex>& tmp2__) const
         {
-            TIMER("Eigenproblem_elpa:transform_back");
+            PROFILE("Eigenproblem_elpa:transform_back");
 
             int32_t descb[9];
             linalg_base::descinit(descb, matrix_size__, matrix_size__, block_size_, block_size_, 0, 0, blacs_context_, ldb__);
 
-            linalg_base::pztranc(matrix_size__, matrix_size__, complex_one, B__, 1, 1, descb, complex_zero, 
+            linalg_base::pztranc(matrix_size__, matrix_size__, linalg_const<double_complex>::one(), B__, 1, 1, descb, linalg_const<double_complex>::zero(), 
                                  tmp2__.at<CPU>(), 1, 1, descb);
 
             FORTRAN(elpa_mult_ah_b_complex_wrapper)("L", "N", &matrix_size__, &nevec__, tmp2__.at<CPU>(), &num_rows_loc__, tmp1__.at<CPU>(), 
@@ -1158,7 +1388,7 @@ class Eigenproblem_elpa: public Eigenproblem
                             matrix<double>& tmp1__,
                             matrix<double>& tmp2__) const
         {
-            TIMER("Eigenproblem_elpa:transform_back");
+            PROFILE("Eigenproblem_elpa:transform_back");
 
             int32_t descb[9];
             linalg_base::descinit(descb, matrix_size__, matrix_size__, block_size_, block_size_, 0, 0, blacs_context_, ldb__);
@@ -1198,7 +1428,7 @@ class Eigenproblem_elpa1: public Eigenproblem_elpa
             transform_to_standard(matrix_size, A, lda, B, ldb, num_rows_loc, num_cols_loc, tmp1, tmp2);
 
             std::vector<double> w(matrix_size);
-            runtime::Timer t("Eigenproblem_elpa1|diag");
+            sddk::timer t("Eigenproblem_elpa1|diag");
             FORTRAN(elpa_solve_evp_complex)(&matrix_size, &nevec, A, &lda, &w[0], tmp1.at<CPU>(), &num_rows_loc, 
                                             &block_size_, &num_cols_loc, &mpi_comm_rows_, &mpi_comm_cols_);
             t.stop();
@@ -1224,7 +1454,7 @@ class Eigenproblem_elpa1: public Eigenproblem_elpa
             transform_to_standard(matrix_size, A, lda, B, ldb, num_rows_loc, num_cols_loc, tmp1, tmp2);
 
             std::vector<double> w(matrix_size);
-            runtime::Timer t("Eigenproblem_elpa1|diag");
+            sddk::timer t("Eigenproblem_elpa1|diag");
             FORTRAN(elpa_solve_evp_real)(&matrix_size, &nevec, A, &lda, &w[0], tmp1.at<CPU>(), &num_rows_loc, 
                                          &block_size_, &num_cols_loc, &mpi_comm_rows_, &mpi_comm_cols_);
             t.stop();
@@ -1244,9 +1474,27 @@ class Eigenproblem_elpa1: public Eigenproblem_elpa
             assert(nevec <= matrix_size);
 
             std::vector<double> w(matrix_size);
-            runtime::Timer t("Eigenproblem_elpa1|diag");
+            sddk::timer t("Eigenproblem_elpa1|diag");
             FORTRAN(elpa_solve_evp_real)(&matrix_size, &nevec, A, &lda, &w[0], Z, &ldz, 
                                          &block_size_, &num_cols_loc, &mpi_comm_rows_, &mpi_comm_cols_);
+            t.stop();
+            std::memcpy(eval, &w[0], nevec * sizeof(double));
+            
+            return 0;
+        }
+
+        int solve(int32_t matrix_size, int32_t nevec, 
+                  double_complex* A, int32_t lda,
+                  double* eval, 
+                  double_complex* Z, int32_t ldz,
+                  int32_t num_rows_loc, int32_t num_cols_loc) const
+        {
+            assert(nevec <= matrix_size);
+
+            std::vector<double> w(matrix_size);
+            sddk::timer t("Eigenproblem_elpa1|diag");
+            FORTRAN(elpa_solve_evp_complex)(&matrix_size, &nevec, A, &lda, &w[0], Z, &ldz, 
+                                            &block_size_, &num_cols_loc, &mpi_comm_rows_, &mpi_comm_cols_);
             t.stop();
             std::memcpy(eval, &w[0], nevec * sizeof(double));
             
@@ -1290,7 +1538,7 @@ class Eigenproblem_elpa2: public Eigenproblem_elpa
             transform_to_standard(matrix_size, A, lda, B, ldb, num_rows_loc, num_cols_loc, tmp1, tmp2);
 
             std::vector<double> w(matrix_size);
-            runtime::Timer t("Eigenproblem_elpa2|diag");
+            sddk::timer t("Eigenproblem_elpa2|diag");
             FORTRAN(elpa_solve_evp_complex_2stage)(&matrix_size, &nevec, A, &lda, &w[0], tmp1.at<CPU>(), &num_rows_loc, 
                                                    &block_size_, &num_cols_loc, &mpi_comm_rows_, &mpi_comm_cols_, &mpi_comm_all_);
             t.stop();
@@ -1316,7 +1564,7 @@ class Eigenproblem_elpa2: public Eigenproblem_elpa
             transform_to_standard(matrix_size, A, lda, B, ldb, num_rows_loc, num_cols_loc, tmp1, tmp2);
 
             std::vector<double> w(matrix_size);
-            runtime::Timer t("Eigenproblem_elpa2|diag");
+            sddk::timer t("Eigenproblem_elpa2|diag");
             FORTRAN(elpa_solve_evp_real_2stage)(&matrix_size, &nevec, A, &lda, &w[0], tmp1.at<CPU>(), &num_rows_loc, 
                                                 &block_size_, &num_cols_loc, &mpi_comm_rows_, &mpi_comm_cols_, &mpi_comm_all_);
             t.stop();
@@ -1336,7 +1584,7 @@ class Eigenproblem_elpa2: public Eigenproblem_elpa
             assert(nevec <= matrix_size);
 
             std::vector<double> w(matrix_size);
-            runtime::Timer t("Eigenproblem_elpa2|diag");
+            sddk::timer t("Eigenproblem_elpa2|diag");
             FORTRAN(elpa_solve_evp_real_2stage)(&matrix_size, &nevec, A, &lda, &w[0], Z, &ldz, 
                                                 &block_size_, &num_cols_loc, &mpi_comm_rows_, &mpi_comm_cols_, &mpi_comm_all_);
             t.stop();

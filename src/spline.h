@@ -1,4 +1,4 @@
-// Copyright (c) 2013-2015 Anton Kozhevnikov, Thomas Schulthess
+// Copyright (c) 2013-2016 Anton Kozhevnikov, Thomas Schulthess
 // All rights reserved.
 // 
 // Redistribution and use in source and binary forms, with or without modification, are permitted provided that 
@@ -25,9 +25,11 @@
 #ifndef __SPLINE_H__
 #define __SPLINE_H__
 
-#include "linalg.h"
+#include "linalg.hpp"
 
 // TODO: add back() method like in std::vector
+
+// TODO: [?] store radial grid, not the pointer to the grid.
 
 namespace sirius {
 
@@ -73,7 +75,7 @@ class Spline
                 double x = (*radial_grid_)[i];
                 coeffs_(i, 0) = f__(x);
             }
-            interpolate();
+            xinterpolate();
         }
 
         /// Constructor of a spline from a list of values.
@@ -84,7 +86,7 @@ class Spline
             for (int i = 0; i < num_points(); i++) {
                 coeffs_(i, 0) = y__[i];
             }
-            interpolate();
+            xinterpolate();
         }
 
         /// Move constructor.
@@ -112,7 +114,7 @@ class Spline
                 double x = (*radial_grid_)[ir];
                 coeffs_(ir, 0) = f__(x);
             }
-            return this->interpolate();
+            return this->xinterpolate();
         }
         
         /// Integrate with r^m weight.
@@ -206,6 +208,7 @@ class Spline
         {
             assert(i >= 0);
             assert(i < num_points() - 1);
+            assert(dx >= 0);
             return coeffs_(i, 0) + dx * (coeffs_(i, 1) + dx * (coeffs_(i, 2) + dx * coeffs_(i, 3)));
         }
         
@@ -213,36 +216,32 @@ class Spline
         {
             assert(i >= 0);
             assert(i < num_points() - 1);
-
-            switch (dm)
-            {
-                case 0:
-                {
-                    return coeffs_(i, 0) + dx * (coeffs_(i, 1) + dx * (coeffs_(i, 2) + dx * coeffs_(i, 3)));
+            assert(dx >= 0);
+            
+            T result = 0;
+            switch (dm) {
+                case 0: {
+                    result = coeffs_(i, 0) + dx * (coeffs_(i, 1) + dx * (coeffs_(i, 2) + dx * coeffs_(i, 3)));
                     break;
                 }
-                case 1:
-                {
-                    return coeffs_(i, 1) + (coeffs_(i, 2) * 2.0 + coeffs_(i, 3) * dx * 3.0) * dx;
+                case 1: {
+                    result = coeffs_(i, 1) + (coeffs_(i, 2) * 2.0 + coeffs_(i, 3) * dx * 3.0) * dx;
                     break;
                 }
-                case 2:
-                {
-                    return coeffs_(i, 2) * 2.0 + coeffs_(i, 3) * dx * 6.0;
+                case 2: {
+                    result = coeffs_(i, 2) * 2.0 + coeffs_(i, 3) * dx * 6.0;
                     break;
                 }
-                case 3:
-                {
-                    return coeffs_(i, 3) * 6.0;
+                case 3: {
+                    result = coeffs_(i, 3) * 6.0;
                     break;
                 }
-                default:
-                {
+                default: {
                     TERMINATE("wrong order of derivative");
-                    return 0.0; // make compiler happy
                     break;
                 }
             }
+            return result;
         }
 
         inline T deriv(int dm, int i) const
@@ -262,6 +261,229 @@ class Spline
         {
             return *radial_grid_;
         }
+
+        Spline<T>& xinterpolate()
+        {
+            int np = num_points();
+
+            std::vector<T> w(np - 1);
+
+            std::vector<T> a(np);
+
+            std::vector<T> b(np);
+
+            std::vector<T> c(np);
+
+            /// automatic arrays
+            for (int i = 0; i < np - 1; i++) {
+                w[i] = 1.0 / ((*radial_grid_)[i + 1] - (*radial_grid_)[i]);
+                a[i] = w[i] * (coeffs_(i + 1, 0) - coeffs_(i, 0));
+                }
+
+            b[0] = 1.0;
+
+            /// estimate second derivative at the first point
+            c[0] = (a[1] - a[0]) / ((*radial_grid_)[2] - (*radial_grid_)[0]);
+
+            /// use Gaussian elimination to solve tridiagonal system
+            double t1 = ((*radial_grid_)[1] - (*radial_grid_)[0]) * w [1];
+            double t2 = t1 * b[0];
+            double t3 = 1.0 / (2.0 * (t1 + 1.0));
+            b[1] = t3;
+            double t4 = 3.0 * (a[1] - a[0]) * w[1] - t2 * c[0];
+            c[1] = t4;
+
+            for (int i = 2; i < np - 1; i++) {
+                t1 = ((*radial_grid_)[i] - (*radial_grid_)[i - 1]) * w[i];
+                t2 = t1 * t3;
+                t3 = 1.0 / (2.0 * t1 + 2.0 - t2);
+                b[i] = t3;
+                t4 = 3.0 * (a[i] - a[i-1]) * w[i] - t2 * t4;
+                c[i] = t4;
+            }
+
+            b[np - 1] = 1.0;
+
+            /// estimate second derivative at the last point
+            t1 = (a[np - 2] - a[np - 3]) / ((*radial_grid_)[np - 1] - (*radial_grid_)[np - 3]);
+            c[np - 1] = t1;
+            for (int i = np - 2; i >= 1; i--) {
+                t1 = c [i] - t1 * b [i + 1];
+                c[i] = t1;
+            }
+
+            /// compute coefficients
+            for (int i = 0; i < np; i++) {
+                coeffs_(i, 2) = b[i] * c[i];
+            }
+            for (int i = 0; i < np - 1; i++) {
+                t1 = (coeffs_(i + 1, 2) - coeffs_(i, 2)) * w [i] / 3.0;
+                coeffs_(i, 3) = t1;
+                t2 = (*radial_grid_)[i + 1] - (*radial_grid_)[i];
+                coeffs_(i, 1) = a[i] - (coeffs_(i, 2) + t1 * t2) * t2;
+            }
+
+            /// determine end-point coefficients
+            t1 = (*radial_grid_)[np - 1] - (*radial_grid_)[np - 2];
+            coeffs_(np - 1, 1) = coeffs_(np - 2, 1) + (2.0 * coeffs_(np - 2, 2) + 3.0 * coeffs_(np - 2, 3) * t1) * t1;
+            coeffs_(np - 1, 3) = coeffs_(np - 2, 3);
+
+            return *this;
+        }
+
+        Spline<T>& linterpolate()
+        {
+            int np = num_points();
+
+            /* lower diagonal */
+            std::vector<T> a(np - 1);
+            /* main diagonal */
+            std::vector<T> b(np);
+            /* upper diagonal */
+            std::vector<T> c(np - 1);
+
+            std::vector<T> d(np);
+            std::vector<T> dy(np - 1);
+
+            /* derivative of y */
+            for (int i = 0; i < np - 1; i++) dy[i] = (coeffs_(i + 1, 0) - coeffs_(i, 0)) / radial_grid_->dx(i);
+
+            /* setup "B" vector of AX=B equation */
+            for (int i = 0; i < np - 2; i++) d[i + 1] = (dy[i + 1] - dy[i]) * 6.0;
+
+            d[0] = -d[1];
+            d[np - 1] = -d[np - 2];
+
+            /* main diagonal of "A" matrix */
+            for (int i = 0; i < np - 2; i++) b[i + 1] = 2 * (radial_grid_->dx(i) + radial_grid_->dx(i + 1));
+            double h0 = radial_grid_->dx(0);
+            double h1 = radial_grid_->dx(1);
+            double h2 = radial_grid_->dx(np - 2);
+            double h3 = radial_grid_->dx(np - 3);
+            b[0] = (h1 / h0) * h1 - h0;
+            b[np - 1] = (h3 / h2) * h3 - h2;
+
+            /* subdiagonals of "A" matrix */
+            for (int i = 0; i < np - 1; i++)
+            {
+                c[i] = radial_grid_->dx(i);
+                a[i] = radial_grid_->dx(i);
+            }
+            c[0] = -(h1 * (1 + h1 / h0) + b[1]);
+            a[np - 2] = -(h3 * (1 + h3 / h2) + b[np - 2]);
+
+            /* solve tridiagonal system */
+///xpx            int info = linalg<CPU>::gtsv(np, 1, &a[0], &b[0], &c[0], &d[0], np);
+///xpx            if (info)
+///xpx            {
+///xpx                std::stringstream s;
+///xpx                s << "gtsv returned " << info;
+///xpx                TERMINATE(s);
+///xpx            }
+
+            /* lower diagonal */
+            std::vector<long double> dl0(np - 1);
+            /* main diagonal */
+            std::vector<long double> d0(np);
+            /* upper diagonal */
+            std::vector<long double> du0(np - 1);
+
+            std::vector<long double> b0(np);
+
+            for (int i = 0; i < np - 1; i++)  dl0[i] = static_cast<long double>(a[i]);
+            for (int i = 0; i < np; i++)  d0[i] = static_cast<long double>(b[i]);
+            for (int i = 0; i < np - 1; i++)  du0[i] = static_cast<long double>(c[i]);
+            for (int i = 0; i < np; i++)  b0[i] = static_cast<long double>(d[i]);
+
+            for (int i = 0; i < np - 2; i++ ) {
+                if (std::abs(d0[i]) >= std::abs(dl0[i]) ) {
+                    if (d0[i] != 0.0L) {
+                      long double fact = dl0[i] / d0[i];
+                      d0[i + 1] = d0[i + 1] - fact * du0[i];
+                      b0[i + 1] = b0[i + 1] - fact * b0[i];
+                    }
+                    else {
+                        int info = i;
+                        std::stringstream s;
+                        s << "linterpolate row interchange returned " << info;
+                        TERMINATE(s);
+                    }
+                   dl0[i] = 0.0L;
+                }
+                else {
+                     long double fact = d0[i] /dl0[i];
+                     d0[i] = dl0[i];
+                     long double temp = d0[i + 1];
+                     d0[i + 1] = du0[i] - fact * temp;
+                     dl0 [i] = du0[i + 1];
+                     du0[i + 1] = -fact * dl0[i];
+                     du0 [i] = temp;
+                     temp = b0 [i];
+                     b0[i] = b0[i + 1];
+                     b0[i + 1] = temp - fact * b0[i + 1];
+                }
+            }
+
+            if (np > 1) {
+               int i = np -2;
+               if ( std::abs(d0[i]) >= std::abs(dl0[i])) {
+                   if (d0[i] != 0.0L) {
+                      long double fact = dl0[i] / d0[i];
+                      d0[i + 1] = d0[i + 1] - fact * du0[i];
+                      b0[i + 1] = b0[i + 1] - fact * b0[i];
+                   }
+                   else {
+                       int info = i;
+                       std::stringstream s;
+                       s << "linterpolate row interchange returned " << info;
+                       TERMINATE(s);
+                   }
+               }
+               else {
+                     long double fact = d0[i] /dl0[i];
+                     d0[i] = dl0[i];
+                     long double temp = d0[i + 1];
+                     d0[i + 1] = du0[i] - fact * temp;
+                     du0 [i] = temp;
+                     temp = b0 [i];
+                     b0[i] = b0[i + 1];
+                     b0[i + 1] = temp - fact * b0[i + 1];
+               }
+            }
+            if (d0[np - 1] == 0.0L) {
+            int info = np;
+                std::stringstream s;
+                s << "linterpolate row interchange returned " << info;
+                TERMINATE(s);
+            }
+
+            int j = 1;
+            b0[np - 1] = b0[np - 1] / d0[np - 1];
+            if (np > 1) {
+                b0[np - 2] = (b0[np - 2] - du0[np - 2] * b0[np - 1]) / d0[np - 2];
+            }
+            for (int i = np - 3; i >= 0; i--) {
+                b0[i] = (b0[i] - du0[i] * b0[i + 1] - dl0[i] * b0[i + 2]) / d0[i];
+            }
+
+
+            std::vector<double> x(np);
+            for (int i = 0; i < np; i++)  x[i] = static_cast<double>(d0[i]);
+
+            for (int i = 0; i < np - 1; i++)
+            {
+                coeffs_(i, 2) = x[i] / 2.0;
+                T t = (x[i + 1] - x[i]) / 6.0;
+                coeffs_(i, 1) = dy[i] - (coeffs_(i, 2) + t) * radial_grid_->dx(i);
+                coeffs_(i, 3) = t / radial_grid_->dx(i);
+            }
+            coeffs_(np - 1, 1) = 0;
+            coeffs_(np - 1, 2) = 0;
+            coeffs_(np - 1, 3) = 0;
+
+            return *this;
+        }
+
 
         Spline<T>& interpolate()
         {

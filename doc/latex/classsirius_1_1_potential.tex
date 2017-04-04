@@ -1,0 +1,666 @@
+\hypertarget{classsirius_1_1_potential}{}\section{sirius\+:\+:Potential Class Reference}
+\label{classsirius_1_1_potential}\index{sirius\+::\+Potential@{sirius\+::\+Potential}}
+
+
+Generate effective potential from charge density and magnetization.  
+
+
+
+
+Collaboration diagram for sirius\+:\+:Potential\+:
+% FIG 0
+\subsection*{Classes}
+\begin{DoxyCompactItemize}
+\item 
+struct \hyperlink{structsirius_1_1_potential_1_1paw__potential__data__t}{paw\+\_\+potential\+\_\+data\+\_\+t}
+\end{DoxyCompactItemize}
+\subsection*{Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+\hyperlink{classsirius_1_1_potential_a8d779e124012d2eb74e622b91774c2ea}{Potential} (\hyperlink{classsirius_1_1_simulation__context}{Simulation\+\_\+context} \&ctx\+\_\+\+\_\+)
+\begin{DoxyCompactList}\small\item\em Constructor. \end{DoxyCompactList}\item 
+\hypertarget{classsirius_1_1_potential_aeb014b9a7c5ecc5f79ba84bb99e9abc1}{}void {\bfseries set\+\_\+effective\+\_\+potential\+\_\+ptr} (double $\ast$veffmt, double $\ast$veffit)\label{classsirius_1_1_potential_aeb014b9a7c5ecc5f79ba84bb99e9abc1}
+
+\item 
+\hypertarget{classsirius_1_1_potential_ae936ac0b1e58bc928671b147aea2cf8a}{}void {\bfseries set\+\_\+effective\+\_\+magnetic\+\_\+field\+\_\+ptr} (double $\ast$beffmt, double $\ast$beffit)\label{classsirius_1_1_potential_ae936ac0b1e58bc928671b147aea2cf8a}
+
+\item 
+void \hyperlink{classsirius_1_1_potential_a45701c46c8961f2ea5c089286802cf47}{zero} ()
+\begin{DoxyCompactList}\small\item\em Zero effective potential and magnetic field. \end{DoxyCompactList}\item 
+void \hyperlink{classsirius_1_1_potential_ada6c62c577c4e91e06490423345e833a}{poisson} (\hyperlink{classsirius_1_1_periodic__function}{Periodic\+\_\+function}$<$ double $>$ $\ast$rho, \hyperlink{classsirius_1_1_periodic__function}{Periodic\+\_\+function}$<$ double $>$ $\ast$vh)
+\begin{DoxyCompactList}\small\item\em Poisson solver. \end{DoxyCompactList}\item 
+void \hyperlink{classsirius_1_1_potential_a1abe0a0486f01331b8baf7a359523ae6}{xc} (\hyperlink{classsirius_1_1_periodic__function}{Periodic\+\_\+function}$<$ double $>$ $\ast$rho, \hyperlink{classsirius_1_1_periodic__function}{Periodic\+\_\+function}$<$ double $>$ $\ast$magnetization\mbox{[}3\mbox{]}, \hyperlink{classsirius_1_1_periodic__function}{Periodic\+\_\+function}$<$ double $>$ $\ast$vxc, \hyperlink{classsirius_1_1_periodic__function}{Periodic\+\_\+function}$<$ double $>$ $\ast$bxc\mbox{[}3\mbox{]}, \hyperlink{classsirius_1_1_periodic__function}{Periodic\+\_\+function}$<$ double $>$ $\ast$exc)
+\begin{DoxyCompactList}\small\item\em Generate X\+C potential and energy density. \end{DoxyCompactList}\item 
+void \hyperlink{classsirius_1_1_potential_abddbb842b28ba0f62653393aca53b4e7}{generate} (\hyperlink{classsirius_1_1_density}{Density} \&density\+\_\+\+\_\+)
+\begin{DoxyCompactList}\small\item\em Generate effective potential and magnetic field from charge density and magnetization. \end{DoxyCompactList}\item 
+\hypertarget{classsirius_1_1_potential_a476007fa356fb79d01cf829a69b26430}{}void {\bfseries save} ()\label{classsirius_1_1_potential_a476007fa356fb79d01cf829a69b26430}
+
+\item 
+\hypertarget{classsirius_1_1_potential_a4531df46202e7c0495ff7a389351486d}{}void {\bfseries load} ()\label{classsirius_1_1_potential_a4531df46202e7c0495ff7a389351486d}
+
+\item 
+\hypertarget{classsirius_1_1_potential_a57df8029903153c8c6e4f8c71347334e}{}void {\bfseries update\+\_\+atomic\+\_\+potential} ()\label{classsirius_1_1_potential_a57df8029903153c8c6e4f8c71347334e}
+
+\item 
+\hypertarget{classsirius_1_1_potential_aa15c3084148757dd135180fe287e4497}{}{\footnotesize template$<$device\+\_\+t pu$>$ }\\void {\bfseries add\+\_\+mt\+\_\+contribution\+\_\+to\+\_\+pw} ()\label{classsirius_1_1_potential_aa15c3084148757dd135180fe287e4497}
+
+\item 
+void \hyperlink{classsirius_1_1_potential_aef421db1d4ce4ece0be0cea7e0f0b12c}{generate\+\_\+pw\+\_\+coefs} ()
+\begin{DoxyCompactList}\small\item\em Generate plane-\/wave coefficients of the potential in the interstitial region. \end{DoxyCompactList}\item 
+void \hyperlink{classsirius_1_1_potential_ac53f9c549fb2e2a5e02992a823e792e7}{generate\+\_\+\+D\+\_\+operator\+\_\+matrix} ()
+\begin{DoxyCompactList}\small\item\em Calculate D operator from potential and augmentation charge. \end{DoxyCompactList}\item 
+\hypertarget{classsirius_1_1_potential_a7bdec7be7e6c4e71866dda172c4545b5}{}void {\bfseries generate\+\_\+\+P\+A\+W\+\_\+effective\+\_\+potential} (\hyperlink{classsirius_1_1_density}{Density} \&\hyperlink{sirius__api_8cpp_a27c9852fd9c283b3432aaea8d778ab45}{density})\label{classsirius_1_1_potential_a7bdec7be7e6c4e71866dda172c4545b5}
+
+\item 
+\hypertarget{classsirius_1_1_potential_a6c5bd2a5f8c04ba5543520be68a4bcec}{}std\+::vector$<$ double $>$ const \& {\bfseries P\+A\+W\+\_\+hartree\+\_\+energies} () const \label{classsirius_1_1_potential_a6c5bd2a5f8c04ba5543520be68a4bcec}
+
+\item 
+\hypertarget{classsirius_1_1_potential_a6b24e1e07b6eb8a037142fb4baf2e3d0}{}std\+::vector$<$ double $>$ const \& {\bfseries P\+A\+W\+\_\+xc\+\_\+energies} () const \label{classsirius_1_1_potential_a6b24e1e07b6eb8a037142fb4baf2e3d0}
+
+\item 
+\hypertarget{classsirius_1_1_potential_a2b9815edd04a4b62b2e945e629d5bda1}{}std\+::vector$<$ double $>$ const \& {\bfseries P\+A\+W\+\_\+core\+\_\+energies} () const \label{classsirius_1_1_potential_a2b9815edd04a4b62b2e945e629d5bda1}
+
+\item 
+\hypertarget{classsirius_1_1_potential_a1af2a4f2ca781f0c842fe22c8bcc0ec9}{}std\+::vector$<$ double $>$ const \& {\bfseries P\+A\+W\+\_\+one\+\_\+elec\+\_\+energies} ()\label{classsirius_1_1_potential_a1af2a4f2ca781f0c842fe22c8bcc0ec9}
+
+\item 
+\hypertarget{classsirius_1_1_potential_ae50b9ec60146386653585ec486a596ef}{}double {\bfseries P\+A\+W\+\_\+hartree\+\_\+total\+\_\+energy} () const \label{classsirius_1_1_potential_ae50b9ec60146386653585ec486a596ef}
+
+\item 
+\hypertarget{classsirius_1_1_potential_a6b05b8c5036288a410dcbd3194bb74dd}{}double {\bfseries P\+A\+W\+\_\+xc\+\_\+total\+\_\+energy} () const \label{classsirius_1_1_potential_a6b05b8c5036288a410dcbd3194bb74dd}
+
+\item 
+\hypertarget{classsirius_1_1_potential_a4bdf7caa8cf160a2e12a5bd4861d158b}{}double {\bfseries P\+A\+W\+\_\+total\+\_\+core\+\_\+energy} () const \label{classsirius_1_1_potential_a4bdf7caa8cf160a2e12a5bd4861d158b}
+
+\item 
+\hypertarget{classsirius_1_1_potential_a59352b8aeb4d6f99ea3989a8ac0b8a80}{}double {\bfseries P\+A\+W\+\_\+total\+\_\+energy} ()\label{classsirius_1_1_potential_a59352b8aeb4d6f99ea3989a8ac0b8a80}
+
+\item 
+\hypertarget{classsirius_1_1_potential_a8d2b0a795b5cf57f24180ca17f705237}{}double {\bfseries P\+A\+W\+\_\+one\+\_\+elec\+\_\+energy} ()\label{classsirius_1_1_potential_a8d2b0a795b5cf57f24180ca17f705237}
+
+\item 
+\hypertarget{classsirius_1_1_potential_a70e4eb1dbbe61223cfa9ec8e21f90252}{}void {\bfseries check\+\_\+potential\+\_\+continuity\+\_\+at\+\_\+mt} ()\label{classsirius_1_1_potential_a70e4eb1dbbe61223cfa9ec8e21f90252}
+
+\item 
+size\+\_\+t \hyperlink{classsirius_1_1_potential_ac44993cfb63ba04c3c9f4cc472652852}{size} ()
+\begin{DoxyCompactList}\small\item\em Total size (number of elements) of the potential and effective magnetic field. \end{DoxyCompactList}\item 
+\hypertarget{classsirius_1_1_potential_ab22e33a6cda1b03e1e5edeaa822c100b}{}void {\bfseries pack} (\hyperlink{classsirius_1_1_mixer}{Mixer}$<$ double $>$ \&mixer)\label{classsirius_1_1_potential_ab22e33a6cda1b03e1e5edeaa822c100b}
+
+\item 
+\hypertarget{classsirius_1_1_potential_adcc8dc4110691d5f463615e4136cbcab}{}void {\bfseries unpack} (double const $\ast$buffer)\label{classsirius_1_1_potential_adcc8dc4110691d5f463615e4136cbcab}
+
+\item 
+\hypertarget{classsirius_1_1_potential_a443f5d205079f20dce528b54578366e0}{}\hyperlink{classsirius_1_1_periodic__function}{Periodic\+\_\+function}$<$ double $>$ $\ast$ {\bfseries effective\+\_\+potential} ()\label{classsirius_1_1_potential_a443f5d205079f20dce528b54578366e0}
+
+\item 
+\hypertarget{classsirius_1_1_potential_a168c22ea67abc3e469df4edbcd014329}{}\hyperlink{classsirius_1_1_periodic__function}{Periodic\+\_\+function}$<$ double $>$ \& {\bfseries local\+\_\+potential} ()\label{classsirius_1_1_potential_a168c22ea67abc3e469df4edbcd014329}
+
+\item 
+\hypertarget{classsirius_1_1_potential_a07b930da44036d4e39309178206b2d5a}{}\hyperlink{classsirius_1_1_spheric__function}{Spheric\+\_\+function}$<$ spectral, double $>$ const \& {\bfseries effective\+\_\+potential\+\_\+mt} (int ialoc) const \label{classsirius_1_1_potential_a07b930da44036d4e39309178206b2d5a}
+
+\item 
+\hypertarget{classsirius_1_1_potential_af844022ac55fcc4d585a18eba63f2392}{}\hyperlink{classsirius_1_1_periodic__function}{Periodic\+\_\+function}$<$ double $>$ $\ast$$\ast$ {\bfseries effective\+\_\+magnetic\+\_\+field} ()\label{classsirius_1_1_potential_af844022ac55fcc4d585a18eba63f2392}
+
+\item 
+\hypertarget{classsirius_1_1_potential_a45f621d622fd4504da2034cc1095ee21}{}\hyperlink{classsirius_1_1_periodic__function}{Periodic\+\_\+function}$<$ double $>$ $\ast$ {\bfseries effective\+\_\+magnetic\+\_\+field} (int i)\label{classsirius_1_1_potential_a45f621d622fd4504da2034cc1095ee21}
+
+\item 
+\hypertarget{classsirius_1_1_potential_ab1a2076417d10b35cf5c60d58c3c34c7}{}\hyperlink{classsirius_1_1_periodic__function}{Periodic\+\_\+function}$<$ double $>$ $\ast$ {\bfseries hartree\+\_\+potential} ()\label{classsirius_1_1_potential_ab1a2076417d10b35cf5c60d58c3c34c7}
+
+\item 
+\hypertarget{classsirius_1_1_potential_a1db6a3e2ad5caa83cf42abb7db07b076}{}\hyperlink{classsirius_1_1_spheric__function}{Spheric\+\_\+function}$<$ spectral, double $>$ const \& {\bfseries hartree\+\_\+potential\+\_\+mt} (int ialoc) const \label{classsirius_1_1_potential_a1db6a3e2ad5caa83cf42abb7db07b076}
+
+\item 
+\hypertarget{classsirius_1_1_potential_a74e9cc35a382cbc46e3a6785510116c7}{}\hyperlink{classsirius_1_1_periodic__function}{Periodic\+\_\+function}$<$ double $>$ $\ast$ {\bfseries xc\+\_\+potential} ()\label{classsirius_1_1_potential_a74e9cc35a382cbc46e3a6785510116c7}
+
+\item 
+\hypertarget{classsirius_1_1_potential_ac536b306a32fe14ebdbb90bfe62684dc}{}\hyperlink{classsirius_1_1_periodic__function}{Periodic\+\_\+function}$<$ double $>$ $\ast$ {\bfseries xc\+\_\+energy\+\_\+density} ()\label{classsirius_1_1_potential_ac536b306a32fe14ebdbb90bfe62684dc}
+
+\item 
+\hypertarget{classsirius_1_1_potential_a777819dae8634b13a2fb428d9591a72a}{}void {\bfseries allocate} ()\label{classsirius_1_1_potential_a777819dae8634b13a2fb428d9591a72a}
+
+\item 
+\hypertarget{classsirius_1_1_potential_ab873eb099e9c93512827085e851f5108}{}double {\bfseries vh\+\_\+el} (int ia)\label{classsirius_1_1_potential_ab873eb099e9c93512827085e851f5108}
+
+\item 
+\hypertarget{classsirius_1_1_potential_a578e355eab53f1d5ff56cffbd01a14b6}{}double {\bfseries energy\+\_\+vha} ()\label{classsirius_1_1_potential_a578e355eab53f1d5ff56cffbd01a14b6}
+
+\item 
+\hypertarget{classsirius_1_1_potential_a482cc560311a0348c2e9bfd8a82d19a1}{}void {\bfseries mixer\+\_\+init} ()\label{classsirius_1_1_potential_a482cc560311a0348c2e9bfd8a82d19a1}
+
+\item 
+\hypertarget{classsirius_1_1_potential_a0f1e857853010be663c403737ff9fbb1}{}double {\bfseries mix} ()\label{classsirius_1_1_potential_a0f1e857853010be663c403737ff9fbb1}
+
+\item 
+\hypertarget{classsirius_1_1_potential_af81314dcc38d837764cec2d41aaf0cab}{}double\+\_\+complex const \& {\bfseries veff\+\_\+pw} (int ig\+\_\+\+\_\+) const \label{classsirius_1_1_potential_af81314dcc38d837764cec2d41aaf0cab}
+
+\item 
+\hypertarget{classsirius_1_1_potential_a6a2a2223620919200acdcd849d0dce3b}{}void {\bfseries set\+\_\+veff\+\_\+pw} (double\+\_\+complex $\ast$veff\+\_\+pw\+\_\+\+\_\+)\label{classsirius_1_1_potential_a6a2a2223620919200acdcd849d0dce3b}
+
+\item 
+\hypertarget{classsirius_1_1_potential_a88797e14b5485d569ca62a9b7df70208}{}double\+\_\+complex const \& {\bfseries rm\+\_\+inv\+\_\+pw} (int ig\+\_\+\+\_\+) const \label{classsirius_1_1_potential_a88797e14b5485d569ca62a9b7df70208}
+
+\item 
+\hypertarget{classsirius_1_1_potential_aa1757190f305d595265737af57fd66f5}{}void {\bfseries set\+\_\+rm\+\_\+inv\+\_\+pw} (double\+\_\+complex $\ast$rm\+\_\+inv\+\_\+pw\+\_\+\+\_\+)\label{classsirius_1_1_potential_aa1757190f305d595265737af57fd66f5}
+
+\item 
+\hypertarget{classsirius_1_1_potential_a1b67ac853bafec92e0aa5de2201431fe}{}double\+\_\+complex const \& {\bfseries rm2\+\_\+inv\+\_\+pw} (int ig\+\_\+\+\_\+) const \label{classsirius_1_1_potential_a1b67ac853bafec92e0aa5de2201431fe}
+
+\item 
+\hypertarget{classsirius_1_1_potential_a05a695c7951b7b6fdb04e9af5bcb5b31}{}void {\bfseries set\+\_\+rm2\+\_\+inv\+\_\+pw} (double\+\_\+complex $\ast$rm2\+\_\+inv\+\_\+pw\+\_\+\+\_\+)\label{classsirius_1_1_potential_a05a695c7951b7b6fdb04e9af5bcb5b31}
+
+\item 
+\hypertarget{classsirius_1_1_potential_af3d19f763090fa0ee612e35d3e1dabe2}{}void {\bfseries fft\+\_\+transform} (int direction\+\_\+\+\_\+)\label{classsirius_1_1_potential_af3d19f763090fa0ee612e35d3e1dabe2}
+
+\end{DoxyCompactItemize}
+\subsection*{Private Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+\hypertarget{classsirius_1_1_potential_a3c711c33b95fff9172c892d7dcc680fc}{}void {\bfseries init\+\_\+\+P\+A\+W} ()\label{classsirius_1_1_potential_a3c711c33b95fff9172c892d7dcc680fc}
+
+\item 
+\hypertarget{classsirius_1_1_potential_a9037f4eb265f5115b23e53b8ee3c6998}{}double {\bfseries xc\+\_\+mt\+\_\+\+P\+A\+W\+\_\+nonmagnetic} (\hyperlink{classsirius_1_1_radial__grid}{Radial\+\_\+grid} const \&rgrid, mdarray$<$ double, 3 $>$ \&out\+\_\+atom\+\_\+pot, mdarray$<$ double, 2 $>$ const \&full\+\_\+rho\+\_\+lm, std\+::vector$<$ double $>$ const \&rho\+\_\+core)\label{classsirius_1_1_potential_a9037f4eb265f5115b23e53b8ee3c6998}
+
+\item 
+\hypertarget{classsirius_1_1_potential_a795a3b0d958beaa647dc365314fbe87a}{}double {\bfseries xc\+\_\+mt\+\_\+\+P\+A\+W\+\_\+collinear} (\hyperlink{classsirius_1_1_radial__grid}{Radial\+\_\+grid} const \&rgrid, mdarray$<$ double, 3 $>$ \&out\+\_\+atom\+\_\+pot, mdarray$<$ double, 2 $>$ const \&full\+\_\+rho\+\_\+lm, mdarray$<$ double, 3 $>$ const \&magnetization\+\_\+lm, std\+::vector$<$ double $>$ const \&rho\+\_\+core)\label{classsirius_1_1_potential_a795a3b0d958beaa647dc365314fbe87a}
+
+\item 
+\hypertarget{classsirius_1_1_potential_a3620732074493dcebffd964f0584a355}{}void {\bfseries xc\+\_\+mt\+\_\+\+P\+A\+W\+\_\+noncollinear} ()\label{classsirius_1_1_potential_a3620732074493dcebffd964f0584a355}
+
+\item 
+\hypertarget{classsirius_1_1_potential_ab874e1a6d0498f8919647ddddb844596}{}void {\bfseries calc\+\_\+\+P\+A\+W\+\_\+local\+\_\+potential} (\hyperlink{structsirius_1_1_potential_1_1paw__potential__data__t}{paw\+\_\+potential\+\_\+data\+\_\+t} \&pdd, mdarray$<$ double, 2 $>$ const \&ae\+\_\+full\+\_\+density, mdarray$<$ double, 2 $>$ const \&ps\+\_\+full\+\_\+density, mdarray$<$ double, 3 $>$ const \&ae\+\_\+local\+\_\+magnetization, mdarray$<$ double, 3 $>$ const \&ps\+\_\+local\+\_\+magnetization)\label{classsirius_1_1_potential_ab874e1a6d0498f8919647ddddb844596}
+
+\item 
+\hypertarget{classsirius_1_1_potential_ae73d329c542ec894dd371ad3d4130aaf}{}void {\bfseries calc\+\_\+\+P\+A\+W\+\_\+local\+\_\+\+Dij} (\hyperlink{structsirius_1_1_potential_1_1paw__potential__data__t}{paw\+\_\+potential\+\_\+data\+\_\+t} \&pdd, mdarray$<$ double\+\_\+complex, 4 $>$ \&paw\+\_\+dij)\label{classsirius_1_1_potential_ae73d329c542ec894dd371ad3d4130aaf}
+
+\item 
+\hypertarget{classsirius_1_1_potential_ab290caf9c8ed3816f869d71efec279d3}{}double {\bfseries calc\+\_\+\+P\+A\+W\+\_\+hartree\+\_\+potential} (\hyperlink{classsirius_1_1_atom}{Atom} \&atom, const \hyperlink{classsirius_1_1_radial__grid}{Radial\+\_\+grid} \&grid, mdarray$<$ double, 2 $>$ const \&full\+\_\+density, mdarray$<$ double, 3 $>$ \&out\+\_\+atom\+\_\+pot)\label{classsirius_1_1_potential_ab290caf9c8ed3816f869d71efec279d3}
+
+\item 
+\hypertarget{classsirius_1_1_potential_a04c326ca240c84f7728375646da16e94}{}double {\bfseries calc\+\_\+\+P\+A\+W\+\_\+one\+\_\+elec\+\_\+energy} (\hyperlink{structsirius_1_1_potential_1_1paw__potential__data__t}{paw\+\_\+potential\+\_\+data\+\_\+t} \&pdd, const mdarray$<$ double\+\_\+complex, 4 $>$ \&density\+\_\+matrix, const mdarray$<$ double\+\_\+complex, 4 $>$ \&paw\+\_\+dij)\label{classsirius_1_1_potential_a04c326ca240c84f7728375646da16e94}
+
+\item 
+\hypertarget{classsirius_1_1_potential_af3bc1de5a8c117611d0dc0e7dba408a9}{}void {\bfseries add\+\_\+paw\+\_\+\+Dij\+\_\+to\+\_\+atom\+\_\+\+Dmtrx} ()\label{classsirius_1_1_potential_af3bc1de5a8c117611d0dc0e7dba408a9}
+
+\item 
+{\footnotesize template$<$bool free\+\_\+atom$>$ }\\std\+::vector$<$ double $>$ \hyperlink{classsirius_1_1_potential_a1df196fb2d0109666c57be81b7d39197}{poisson\+\_\+vmt} (\hyperlink{classsirius_1_1_atom}{Atom} const \&atom\+\_\+\+\_\+, \hyperlink{classsirius_1_1_spheric__function}{Spheric\+\_\+function}$<$ function\+\_\+domain\+\_\+t\+::spectral, double $>$ const \&rho\+\_\+mt\+\_\+\+\_\+, \hyperlink{classsirius_1_1_spheric__function}{Spheric\+\_\+function}$<$ function\+\_\+domain\+\_\+t\+::spectral, double $>$ \&vha\+\_\+mt\+\_\+\+\_\+) const 
+\begin{DoxyCompactList}\small\item\em Solve Poisson equation for a single atom. \end{DoxyCompactList}\item 
+void \hyperlink{classsirius_1_1_potential_a1c8a0fb353b7544f6f114417a8627586}{poisson\+\_\+vmt} (\hyperlink{classsirius_1_1_periodic__function}{Periodic\+\_\+function}$<$ double $>$ $\ast$rho\+\_\+\+\_\+, \hyperlink{classsirius_1_1_periodic__function}{Periodic\+\_\+function}$<$ double $>$ $\ast$vh\+\_\+\+\_\+, \hyperlink{classsddk_1_1mdarray}{mdarray}$<$ double\+\_\+complex, 2 $>$ \&qmt\+\_\+\+\_\+)
+\begin{DoxyCompactList}\small\item\em Compute M\+T part of the potential and M\+T multipole moments. \end{DoxyCompactList}\item 
+void \hyperlink{classsirius_1_1_potential_a50dd31a86f55c9fee5b7264397bcb586}{poisson\+\_\+sum\+\_\+\+G} (int lmmax\+\_\+\+\_\+, double\+\_\+complex $\ast$fpw\+\_\+\+\_\+, mdarray$<$ double, 3 $>$ \&fl\+\_\+\+\_\+, mdarray$<$ double\+\_\+complex, 2 $>$ \&flm\+\_\+\+\_\+)
+\begin{DoxyCompactList}\small\item\em Perform a G-\/vector summation of plane-\/wave coefficiens multiplied by radial integrals. \end{DoxyCompactList}\item 
+void \hyperlink{classsirius_1_1_potential_ac1e5381fc52a6d366849c48daf4fdc32}{poisson\+\_\+add\+\_\+pseudo\+\_\+pw} (mdarray$<$ double\+\_\+complex, 2 $>$ \&qmt, mdarray$<$ double\+\_\+complex, 2 $>$ \&qit, double\+\_\+complex $\ast$rho\+\_\+pw)
+\begin{DoxyCompactList}\small\item\em Add contribution from the pseudocharge to the plane-\/wave expansion. \end{DoxyCompactList}\item 
+void \hyperlink{classsirius_1_1_potential_ab4383d38a605d0b6367da339035e0130}{generate\+\_\+local\+\_\+potential} ()
+\begin{DoxyCompactList}\small\item\em Generate local part of pseudo potential. \end{DoxyCompactList}\item 
+\hypertarget{classsirius_1_1_potential_a7ca95ee1cfa05528bab436c0fdda5a34}{}void {\bfseries xc\+\_\+mt\+\_\+nonmagnetic} (\hyperlink{classsirius_1_1_radial__grid}{Radial\+\_\+grid} const \&rgrid, std\+::vector$<$ \hyperlink{classsirius_1_1_x_c__functional}{X\+C\+\_\+functional} $>$ \&xc\+\_\+func, \hyperlink{classsirius_1_1_spheric__function}{Spheric\+\_\+function}$<$ spectral, double $>$ const \&rho\+\_\+lm, \hyperlink{classsirius_1_1_spheric__function}{Spheric\+\_\+function}$<$ spatial, double $>$ \&rho\+\_\+tp, \hyperlink{classsirius_1_1_spheric__function}{Spheric\+\_\+function}$<$ spatial, double $>$ \&vxc\+\_\+tp, \hyperlink{classsirius_1_1_spheric__function}{Spheric\+\_\+function}$<$ spatial, double $>$ \&exc\+\_\+tp)\label{classsirius_1_1_potential_a7ca95ee1cfa05528bab436c0fdda5a34}
+
+\item 
+\hypertarget{classsirius_1_1_potential_ad2e7e5c77b137dc93c47787c4b6c36a3}{}void {\bfseries xc\+\_\+mt\+\_\+magnetic} (\hyperlink{classsirius_1_1_radial__grid}{Radial\+\_\+grid} const \&rgrid, std\+::vector$<$ \hyperlink{classsirius_1_1_x_c__functional}{X\+C\+\_\+functional} $>$ \&xc\+\_\+func, \hyperlink{classsirius_1_1_spheric__function}{Spheric\+\_\+function}$<$ spectral, double $>$ \&rho\+\_\+up\+\_\+lm, \hyperlink{classsirius_1_1_spheric__function}{Spheric\+\_\+function}$<$ spatial, double $>$ \&rho\+\_\+up\+\_\+tp, \hyperlink{classsirius_1_1_spheric__function}{Spheric\+\_\+function}$<$ spectral, double $>$ \&rho\+\_\+dn\+\_\+lm, \hyperlink{classsirius_1_1_spheric__function}{Spheric\+\_\+function}$<$ spatial, double $>$ \&rho\+\_\+dn\+\_\+tp, \hyperlink{classsirius_1_1_spheric__function}{Spheric\+\_\+function}$<$ spatial, double $>$ \&vxc\+\_\+up\+\_\+tp, \hyperlink{classsirius_1_1_spheric__function}{Spheric\+\_\+function}$<$ spatial, double $>$ \&vxc\+\_\+dn\+\_\+tp, \hyperlink{classsirius_1_1_spheric__function}{Spheric\+\_\+function}$<$ spatial, double $>$ \&exc\+\_\+tp)\label{classsirius_1_1_potential_ad2e7e5c77b137dc93c47787c4b6c36a3}
+
+\item 
+\hypertarget{classsirius_1_1_potential_a9dd2d9a79897292706a4ca8a78cd0271}{}void {\bfseries xc\+\_\+mt} (\hyperlink{classsirius_1_1_periodic__function}{Periodic\+\_\+function}$<$ double $>$ $\ast$rho, \hyperlink{classsirius_1_1_periodic__function}{Periodic\+\_\+function}$<$ double $>$ $\ast$magnetization\mbox{[}3\mbox{]}, std\+::vector$<$ \hyperlink{classsirius_1_1_x_c__functional}{X\+C\+\_\+functional} $>$ \&xc\+\_\+func, \hyperlink{classsirius_1_1_periodic__function}{Periodic\+\_\+function}$<$ double $>$ $\ast$vxc, \hyperlink{classsirius_1_1_periodic__function}{Periodic\+\_\+function}$<$ double $>$ $\ast$bxc\mbox{[}3\mbox{]}, \hyperlink{classsirius_1_1_periodic__function}{Periodic\+\_\+function}$<$ double $>$ $\ast$exc)\label{classsirius_1_1_potential_a9dd2d9a79897292706a4ca8a78cd0271}
+
+\item 
+\hypertarget{classsirius_1_1_potential_a599c0a7539faf2afab6df28fe71d3e13}{}void {\bfseries xc\+\_\+it\+\_\+nonmagnetic} (\hyperlink{classsirius_1_1_periodic__function}{Periodic\+\_\+function}$<$ double $>$ $\ast$rho, std\+::vector$<$ \hyperlink{classsirius_1_1_x_c__functional}{X\+C\+\_\+functional} $>$ \&xc\+\_\+func, \hyperlink{classsirius_1_1_periodic__function}{Periodic\+\_\+function}$<$ double $>$ $\ast$vxc, \hyperlink{classsirius_1_1_periodic__function}{Periodic\+\_\+function}$<$ double $>$ $\ast$exc)\label{classsirius_1_1_potential_a599c0a7539faf2afab6df28fe71d3e13}
+
+\item 
+\hypertarget{classsirius_1_1_potential_a0356021fa84663766fa310670f081828}{}void {\bfseries xc\+\_\+it\+\_\+magnetic} (\hyperlink{classsirius_1_1_periodic__function}{Periodic\+\_\+function}$<$ double $>$ $\ast$rho, \hyperlink{classsirius_1_1_periodic__function}{Periodic\+\_\+function}$<$ double $>$ $\ast$magnetization\mbox{[}3\mbox{]}, std\+::vector$<$ \hyperlink{classsirius_1_1_x_c__functional}{X\+C\+\_\+functional} $>$ \&xc\+\_\+func, \hyperlink{classsirius_1_1_periodic__function}{Periodic\+\_\+function}$<$ double $>$ $\ast$vxc, \hyperlink{classsirius_1_1_periodic__function}{Periodic\+\_\+function}$<$ double $>$ $\ast$bxc\mbox{[}3\mbox{]}, \hyperlink{classsirius_1_1_periodic__function}{Periodic\+\_\+function}$<$ double $>$ $\ast$exc)\label{classsirius_1_1_potential_a0356021fa84663766fa310670f081828}
+
+\item 
+\hypertarget{classsirius_1_1_potential_a8b987c41157fb2d5da2d435548aad410}{}void {\bfseries init} ()\label{classsirius_1_1_potential_a8b987c41157fb2d5da2d435548aad410}
+
+\end{DoxyCompactItemize}
+\subsection*{Private Attributes}
+\begin{DoxyCompactItemize}
+\item 
+\hypertarget{classsirius_1_1_potential_a107236a8e284b239b9a888587aa5bd53}{}\hyperlink{classsirius_1_1_simulation__context}{Simulation\+\_\+context} \& {\bfseries ctx\+\_\+}\label{classsirius_1_1_potential_a107236a8e284b239b9a888587aa5bd53}
+
+\item 
+\hypertarget{classsirius_1_1_potential_aa94f0458ddf8c127759e0b73de16acc6}{}\hyperlink{classsirius_1_1_unit__cell}{Unit\+\_\+cell} \& {\bfseries unit\+\_\+cell\+\_\+}\label{classsirius_1_1_potential_aa94f0458ddf8c127759e0b73de16acc6}
+
+\item 
+\hypertarget{classsirius_1_1_potential_a1aa716bb6ae5c3b5ca6ae44b262fac94}{}\hyperlink{classsddk_1_1_communicator}{Communicator} const \& {\bfseries comm\+\_\+}\label{classsirius_1_1_potential_a1aa716bb6ae5c3b5ca6ae44b262fac94}
+
+\item 
+\hypertarget{classsirius_1_1_potential_a425f6b348a9f68d5c1d0111db8cba503}{}std\+::unique\+\_\+ptr$<$ \hyperlink{classsirius_1_1_periodic__function}{Periodic\+\_\+function}$<$ double $>$ $>$ {\bfseries effective\+\_\+potential\+\_\+}\label{classsirius_1_1_potential_a425f6b348a9f68d5c1d0111db8cba503}
+
+\item 
+\hypertarget{classsirius_1_1_potential_a1e7f3670059c6058606df29b3de45bd6}{}\hyperlink{classsirius_1_1_periodic__function}{Periodic\+\_\+function}$<$ double $>$ $\ast$ {\bfseries effective\+\_\+magnetic\+\_\+field\+\_\+} \mbox{[}3\mbox{]}\label{classsirius_1_1_potential_a1e7f3670059c6058606df29b3de45bd6}
+
+\item 
+\hypertarget{classsirius_1_1_potential_a284e8ab6cc17f161da074086e1f081e1}{}\hyperlink{classsirius_1_1_periodic__function}{Periodic\+\_\+function}$<$ double $>$ $\ast$ {\bfseries hartree\+\_\+potential\+\_\+}\label{classsirius_1_1_potential_a284e8ab6cc17f161da074086e1f081e1}
+
+\item 
+\hypertarget{classsirius_1_1_potential_a20dca9a8eaedcc61f700cdeb3ffb44bd}{}\hyperlink{classsirius_1_1_periodic__function}{Periodic\+\_\+function}$<$ double $>$ $\ast$ {\bfseries xc\+\_\+potential\+\_\+}\label{classsirius_1_1_potential_a20dca9a8eaedcc61f700cdeb3ffb44bd}
+
+\item 
+\hypertarget{classsirius_1_1_potential_ad1f6f7b2c1c85b230c34ba39e9fd9318}{}\hyperlink{classsirius_1_1_periodic__function}{Periodic\+\_\+function}$<$ double $>$ $\ast$ {\bfseries xc\+\_\+energy\+\_\+density\+\_\+}\label{classsirius_1_1_potential_ad1f6f7b2c1c85b230c34ba39e9fd9318}
+
+\item 
+std\+::unique\+\_\+ptr$<$ \hyperlink{classsirius_1_1_periodic__function}{Periodic\+\_\+function}$<$ double $>$ $>$ \hyperlink{classsirius_1_1_potential_a4071c9c5b14fd52005538e4de6e7943d}{local\+\_\+potential\+\_\+}
+\begin{DoxyCompactList}\small\item\em Local part of pseudopotential. \end{DoxyCompactList}\item 
+\hypertarget{classsirius_1_1_potential_ae1dc9c74958d3e7d11bbfbb1aa0bbb4b}{}\hyperlink{classsddk_1_1mdarray}{mdarray}$<$ double, 3 $>$ {\bfseries sbessel\+\_\+mom\+\_\+}\label{classsirius_1_1_potential_ae1dc9c74958d3e7d11bbfbb1aa0bbb4b}
+
+\item 
+\hypertarget{classsirius_1_1_potential_ab2d7e1a92fa0ce8754648315bb4acce3}{}\hyperlink{classsddk_1_1mdarray}{mdarray}$<$ double, 3 $>$ {\bfseries sbessel\+\_\+mt\+\_\+}\label{classsirius_1_1_potential_ab2d7e1a92fa0ce8754648315bb4acce3}
+
+\item 
+\hypertarget{classsirius_1_1_potential_a6095f630f2f5b843d901538a0f37f04e}{}\hyperlink{classsddk_1_1mdarray}{mdarray}$<$ double, 2 $>$ {\bfseries gamma\+\_\+factors\+\_\+\+R\+\_\+}\label{classsirius_1_1_potential_a6095f630f2f5b843d901538a0f37f04e}
+
+\item 
+\hypertarget{classsirius_1_1_potential_a7648173e3f1d0edc91d221c934b8e736}{}int {\bfseries lmax\+\_\+}\label{classsirius_1_1_potential_a7648173e3f1d0edc91d221c934b8e736}
+
+\item 
+\hypertarget{classsirius_1_1_potential_a75a43cb1413d564463a2895d691a959d}{}std\+::unique\+\_\+ptr$<$ \hyperlink{classsirius_1_1_s_h_t}{S\+H\+T} $>$ {\bfseries sht\+\_\+}\label{classsirius_1_1_potential_a75a43cb1413d564463a2895d691a959d}
+
+\item 
+\hypertarget{classsirius_1_1_potential_a781473e76bf903a5822000662c3b4414}{}int {\bfseries pseudo\+\_\+density\+\_\+order\+\_\+}\label{classsirius_1_1_potential_a781473e76bf903a5822000662c3b4414}
+
+\item 
+\hypertarget{classsirius_1_1_potential_a1010a62cf2d65377fb1a8c0020849b24}{}std\+::vector$<$ double\+\_\+complex $>$ {\bfseries zil\+\_\+}\label{classsirius_1_1_potential_a1010a62cf2d65377fb1a8c0020849b24}
+
+\item 
+\hypertarget{classsirius_1_1_potential_ab01d0a3fd83573cf6b6b34e3d1ef6ce7}{}std\+::vector$<$ double\+\_\+complex $>$ {\bfseries zilm\+\_\+}\label{classsirius_1_1_potential_ab01d0a3fd83573cf6b6b34e3d1ef6ce7}
+
+\item 
+\hypertarget{classsirius_1_1_potential_ae2a1abca8860b91354ab61c141b76a4f}{}std\+::vector$<$ int $>$ {\bfseries l\+\_\+by\+\_\+lm\+\_\+}\label{classsirius_1_1_potential_ae2a1abca8860b91354ab61c141b76a4f}
+
+\item 
+\hypertarget{classsirius_1_1_potential_ae474479d1266ed12f5196d887f9b88e1}{}\hyperlink{classsddk_1_1mdarray}{mdarray}$<$ double\+\_\+complex, 2 $>$ {\bfseries gvec\+\_\+ylm\+\_\+}\label{classsirius_1_1_potential_ae474479d1266ed12f5196d887f9b88e1}
+
+\item 
+\hypertarget{classsirius_1_1_potential_a1b3cee2d4ec5d7c841bb401729a1960a}{}double {\bfseries energy\+\_\+vha\+\_\+}\label{classsirius_1_1_potential_a1b3cee2d4ec5d7c841bb401729a1960a}
+
+\item 
+\hyperlink{classsddk_1_1mdarray}{mdarray}$<$ double, 1 $>$ \hyperlink{classsirius_1_1_potential_a0126d2afa48714b359eede273905a64c}{vh\+\_\+el\+\_\+}
+\begin{DoxyCompactList}\small\item\em Electronic part of Hartree potential. \end{DoxyCompactList}\item 
+\hypertarget{classsirius_1_1_potential_abd62ab6e7ac9e9995722e8caebbf0478}{}std\+::unique\+\_\+ptr$<$ \hyperlink{classsirius_1_1_mixer}{Mixer}$<$ double $>$ $>$ {\bfseries mixer\+\_\+} \{nullptr\}\label{classsirius_1_1_potential_abd62ab6e7ac9e9995722e8caebbf0478}
+
+\item 
+\hypertarget{classsirius_1_1_potential_aab013e57ad7b7e10dcb6526379b768eb}{}std\+::vector$<$ \hyperlink{classsirius_1_1_x_c__functional}{X\+C\+\_\+functional} $>$ {\bfseries xc\+\_\+func\+\_\+}\label{classsirius_1_1_potential_aab013e57ad7b7e10dcb6526379b768eb}
+
+\item 
+\hyperlink{classsddk_1_1mdarray}{mdarray}$<$ double\+\_\+complex, 1 $>$ \hyperlink{classsirius_1_1_potential_adf213a65c122ebe4ed46b02560174da8}{veff\+\_\+pw\+\_\+}
+\begin{DoxyCompactList}\small\item\em Plane-\/wave coefficients of the effective potential weighted by the unit step-\/function. \end{DoxyCompactList}\item 
+\hyperlink{classsddk_1_1mdarray}{mdarray}$<$ double\+\_\+complex, 1 $>$ \hyperlink{classsirius_1_1_potential_a681931c08f11ddea4b3709280d7b309d}{rm\+\_\+inv\+\_\+pw\+\_\+}
+\begin{DoxyCompactList}\small\item\em Plane-\/wave coefficients of the inverse relativistic mass weighted by the unit step-\/function. \end{DoxyCompactList}\item 
+\hyperlink{classsddk_1_1mdarray}{mdarray}$<$ double\+\_\+complex, 1 $>$ \hyperlink{classsirius_1_1_potential_a71c1a995bc68a97d48e004999cd2b8a0}{rm2\+\_\+inv\+\_\+pw\+\_\+}
+\begin{DoxyCompactList}\small\item\em Plane-\/wave coefficients of the squared inverse relativistic mass weighted by the unit step-\/function. \end{DoxyCompactList}\item 
+\hypertarget{classsirius_1_1_potential_a444caac8abc61a7b0c7b1cf1685ab67d}{}std\+::vector$<$ double $>$ {\bfseries paw\+\_\+hartree\+\_\+energies\+\_\+}\label{classsirius_1_1_potential_a444caac8abc61a7b0c7b1cf1685ab67d}
+
+\item 
+\hypertarget{classsirius_1_1_potential_acb48c608fe5fdc14b200ec50a21bca12}{}std\+::vector$<$ double $>$ {\bfseries paw\+\_\+xc\+\_\+energies\+\_\+}\label{classsirius_1_1_potential_acb48c608fe5fdc14b200ec50a21bca12}
+
+\item 
+\hypertarget{classsirius_1_1_potential_a4fa98d38946a062e90e717375fa5a66a}{}std\+::vector$<$ double $>$ {\bfseries paw\+\_\+core\+\_\+energies\+\_\+}\label{classsirius_1_1_potential_a4fa98d38946a062e90e717375fa5a66a}
+
+\item 
+\hypertarget{classsirius_1_1_potential_a543259d27f0e07764ce7347c7adf3018}{}std\+::vector$<$ double $>$ {\bfseries paw\+\_\+one\+\_\+elec\+\_\+energies\+\_\+}\label{classsirius_1_1_potential_a543259d27f0e07764ce7347c7adf3018}
+
+\item 
+\hypertarget{classsirius_1_1_potential_a6ecb8ae450a712a26dc1b91ad8348e28}{}double {\bfseries paw\+\_\+hartree\+\_\+total\+\_\+energy\+\_\+} \{0.\+0\}\label{classsirius_1_1_potential_a6ecb8ae450a712a26dc1b91ad8348e28}
+
+\item 
+\hypertarget{classsirius_1_1_potential_a0b07d2b2ee776efdb34a64b4041ecb87}{}double {\bfseries paw\+\_\+xc\+\_\+total\+\_\+energy\+\_\+} \{0.\+0\}\label{classsirius_1_1_potential_a0b07d2b2ee776efdb34a64b4041ecb87}
+
+\item 
+\hypertarget{classsirius_1_1_potential_a51b0a21e62d33305653555820c8e656a}{}double {\bfseries paw\+\_\+total\+\_\+core\+\_\+energy\+\_\+} \{0.\+0\}\label{classsirius_1_1_potential_a51b0a21e62d33305653555820c8e656a}
+
+\item 
+\hypertarget{classsirius_1_1_potential_af1328b6bfd09912ade6b156476cd2752}{}double {\bfseries paw\+\_\+one\+\_\+elec\+\_\+energy\+\_\+} \{0.\+0\}\label{classsirius_1_1_potential_af1328b6bfd09912ade6b156476cd2752}
+
+\item 
+\hypertarget{classsirius_1_1_potential_a190a0617e74f0cce2aed286680c74a17}{}std\+::vector$<$ \hyperlink{structsirius_1_1_potential_1_1paw__potential__data__t}{paw\+\_\+potential\+\_\+data\+\_\+t} $>$ {\bfseries paw\+\_\+potential\+\_\+data\+\_\+}\label{classsirius_1_1_potential_a190a0617e74f0cce2aed286680c74a17}
+
+\item 
+\hypertarget{classsirius_1_1_potential_a39bd1b7cb3db41258aa286c2ee0af3a3}{}\hyperlink{classsddk_1_1mdarray}{mdarray}$<$ double\+\_\+complex, 4 $>$ {\bfseries paw\+\_\+dij\+\_\+}\label{classsirius_1_1_potential_a39bd1b7cb3db41258aa286c2ee0af3a3}
+
+\item 
+\hypertarget{classsirius_1_1_potential_a4a556afd6462fb98e93aa0293651273a}{}int {\bfseries max\+\_\+paw\+\_\+basis\+\_\+size\+\_\+} \{0\}\label{classsirius_1_1_potential_a4a556afd6462fb98e93aa0293651273a}
+
+\end{DoxyCompactItemize}
+
+
+\subsection{Detailed Description}
+Generate effective potential from charge density and magnetization. 
+
+\begin{DoxyNote}{Note}
+At some point we need to update the atomic potential with the new M\+T potential. This is simple if the effective potential is a global function. Otherwise we need to pass the effective potential between M\+P\+I ranks. This is also simple, but requires some time. It is also easier to mix the global functions. 
+\end{DoxyNote}
+
+
+Definition at line 39 of file potential.\+h.
+
+
+
+\subsection{Constructor \& Destructor Documentation}
+\hypertarget{classsirius_1_1_potential_a8d779e124012d2eb74e622b91774c2ea}{}\index{sirius\+::\+Potential@{sirius\+::\+Potential}!Potential@{Potential}}
+\index{Potential@{Potential}!sirius\+::\+Potential@{sirius\+::\+Potential}}
+\subsubsection[{Potential(\+Simulation\+\_\+context \&ctx\+\_\+\+\_\+)}]{\setlength{\rightskip}{0pt plus 5cm}sirius\+::\+Potential\+::\+Potential (
+\begin{DoxyParamCaption}
+\item[{{\bf Simulation\+\_\+context} \&}]{ctx\+\_\+\+\_\+}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}}\label{classsirius_1_1_potential_a8d779e124012d2eb74e622b91774c2ea}
+
+
+Constructor. 
+
+
+
+Definition at line 390 of file potential.\+h.
+
+
+
+\subsection{Member Function Documentation}
+\hypertarget{classsirius_1_1_potential_a1df196fb2d0109666c57be81b7d39197}{}\index{sirius\+::\+Potential@{sirius\+::\+Potential}!poisson\+\_\+vmt@{poisson\+\_\+vmt}}
+\index{poisson\+\_\+vmt@{poisson\+\_\+vmt}!sirius\+::\+Potential@{sirius\+::\+Potential}}
+\subsubsection[{poisson\+\_\+vmt(\+Atom const \&atom\+\_\+\+\_\+, Spheric\+\_\+function$<$ function\+\_\+domain\+\_\+t\+::spectral, double $>$ const \&rho\+\_\+mt\+\_\+\+\_\+, Spheric\+\_\+function$<$ function\+\_\+domain\+\_\+t\+::spectral, double $>$ \&vha\+\_\+mt\+\_\+\+\_\+) const }]{\setlength{\rightskip}{0pt plus 5cm}template$<$bool free\+\_\+atom$>$ std\+::vector$<$double$>$ sirius\+::\+Potential\+::poisson\+\_\+vmt (
+\begin{DoxyParamCaption}
+\item[{{\bf Atom} const \&}]{atom\+\_\+\+\_\+, }
+\item[{{\bf Spheric\+\_\+function}$<$ function\+\_\+domain\+\_\+t\+::spectral, double $>$ const \&}]{rho\+\_\+mt\+\_\+\+\_\+, }
+\item[{{\bf Spheric\+\_\+function}$<$ function\+\_\+domain\+\_\+t\+::spectral, double $>$ \&}]{vha\+\_\+mt\+\_\+\+\_\+}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [inline]}, {\ttfamily [private]}}\label{classsirius_1_1_potential_a1df196fb2d0109666c57be81b7d39197}
+
+
+Solve Poisson equation for a single atom. 
+
+
+
+Definition at line 171 of file potential.\+h.
+
+\hypertarget{classsirius_1_1_potential_a1c8a0fb353b7544f6f114417a8627586}{}\index{sirius\+::\+Potential@{sirius\+::\+Potential}!poisson\+\_\+vmt@{poisson\+\_\+vmt}}
+\index{poisson\+\_\+vmt@{poisson\+\_\+vmt}!sirius\+::\+Potential@{sirius\+::\+Potential}}
+\subsubsection[{poisson\+\_\+vmt(\+Periodic\+\_\+function$<$ double $>$ $\ast$rho\+\_\+\+\_\+, Periodic\+\_\+function$<$ double $>$ $\ast$vh\+\_\+\+\_\+, mdarray$<$ double\+\_\+complex, 2 $>$ \&qmt\+\_\+\+\_\+)}]{\setlength{\rightskip}{0pt plus 5cm}void sirius\+::\+Potential\+::poisson\+\_\+vmt (
+\begin{DoxyParamCaption}
+\item[{{\bf Periodic\+\_\+function}$<$ double $>$ $\ast$}]{rho\+\_\+\+\_\+, }
+\item[{{\bf Periodic\+\_\+function}$<$ double $>$ $\ast$}]{vh\+\_\+\+\_\+, }
+\item[{{\bf mdarray}$<$ double\+\_\+complex, 2 $>$ \&}]{qmt\+\_\+\+\_\+}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}, {\ttfamily [private]}}\label{classsirius_1_1_potential_a1c8a0fb353b7544f6f114417a8627586}
+
+
+Compute M\+T part of the potential and M\+T multipole moments. 
+
+
+
+Definition at line 239 of file potential.\+h.
+
+\hypertarget{classsirius_1_1_potential_a50dd31a86f55c9fee5b7264397bcb586}{}\index{sirius\+::\+Potential@{sirius\+::\+Potential}!poisson\+\_\+sum\+\_\+\+G@{poisson\+\_\+sum\+\_\+\+G}}
+\index{poisson\+\_\+sum\+\_\+\+G@{poisson\+\_\+sum\+\_\+\+G}!sirius\+::\+Potential@{sirius\+::\+Potential}}
+\subsubsection[{poisson\+\_\+sum\+\_\+\+G(int lmmax\+\_\+\+\_\+, double\+\_\+complex $\ast$fpw\+\_\+\+\_\+, mdarray$<$ double, 3 $>$ \&fl\+\_\+\+\_\+, mdarray$<$ double\+\_\+complex, 2 $>$ \&flm\+\_\+\+\_\+)}]{\setlength{\rightskip}{0pt plus 5cm}void sirius\+::\+Potential\+::poisson\+\_\+sum\+\_\+\+G (
+\begin{DoxyParamCaption}
+\item[{int}]{lmmax\+\_\+\+\_\+, }
+\item[{double\+\_\+complex $\ast$}]{fpw\+\_\+\+\_\+, }
+\item[{mdarray$<$ double, 3 $>$ \&}]{fl\+\_\+\+\_\+, }
+\item[{mdarray$<$ double\+\_\+complex, 2 $>$ \&}]{flm\+\_\+\+\_\+}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}, {\ttfamily [private]}}\label{classsirius_1_1_potential_a50dd31a86f55c9fee5b7264397bcb586}
+
+
+Perform a G-\/vector summation of plane-\/wave coefficiens multiplied by radial integrals. 
+
+The following operation is performed\+: \[ q_{\ell m}^{\alpha} = \sum_{\bf G} 4\pi \rho({\bf G}) e^{i{\bf G}{\bf r}_{\alpha}}i^{\ell}f_{\ell}^{\alpha}(G) Y_{\ell m}^{*}(\hat{\bf G}) \] 
+
+Definition at line 6 of file poisson.\+hpp.
+
+\hypertarget{classsirius_1_1_potential_ac1e5381fc52a6d366849c48daf4fdc32}{}\index{sirius\+::\+Potential@{sirius\+::\+Potential}!poisson\+\_\+add\+\_\+pseudo\+\_\+pw@{poisson\+\_\+add\+\_\+pseudo\+\_\+pw}}
+\index{poisson\+\_\+add\+\_\+pseudo\+\_\+pw@{poisson\+\_\+add\+\_\+pseudo\+\_\+pw}!sirius\+::\+Potential@{sirius\+::\+Potential}}
+\subsubsection[{poisson\+\_\+add\+\_\+pseudo\+\_\+pw(mdarray$<$ double\+\_\+complex, 2 $>$ \&qmt, mdarray$<$ double\+\_\+complex, 2 $>$ \&qit, double\+\_\+complex $\ast$rho\+\_\+pw)}]{\setlength{\rightskip}{0pt plus 5cm}void sirius\+::\+Potential\+::poisson\+\_\+add\+\_\+pseudo\+\_\+pw (
+\begin{DoxyParamCaption}
+\item[{mdarray$<$ double\+\_\+complex, 2 $>$ \&}]{qmt, }
+\item[{mdarray$<$ double\+\_\+complex, 2 $>$ \&}]{qit, }
+\item[{double\+\_\+complex $\ast$}]{rho\+\_\+pw}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}, {\ttfamily [private]}}\label{classsirius_1_1_potential_ac1e5381fc52a6d366849c48daf4fdc32}
+
+
+Add contribution from the pseudocharge to the plane-\/wave expansion. 
+
+
+
+Definition at line 72 of file poisson.\+hpp.
+
+\hypertarget{classsirius_1_1_potential_ab4383d38a605d0b6367da339035e0130}{}\index{sirius\+::\+Potential@{sirius\+::\+Potential}!generate\+\_\+local\+\_\+potential@{generate\+\_\+local\+\_\+potential}}
+\index{generate\+\_\+local\+\_\+potential@{generate\+\_\+local\+\_\+potential}!sirius\+::\+Potential@{sirius\+::\+Potential}}
+\subsubsection[{generate\+\_\+local\+\_\+potential()}]{\setlength{\rightskip}{0pt plus 5cm}void sirius\+::\+Potential\+::generate\+\_\+local\+\_\+potential (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}, {\ttfamily [private]}}\label{classsirius_1_1_potential_ab4383d38a605d0b6367da339035e0130}
+
+
+Generate local part of pseudo potential. 
+
+Total local potential is a lattice sum\+: \[ V({\bf r}) = \sum_{{\bf T},\alpha} V_{\alpha}({\bf r} - {\bf T} - {\bf \tau}_{\alpha}) \] We want to compute it\textquotesingle{}s plane-\/wave expansion coefficients\+: \[ V({\bf G}) = \frac{1}{V} \int e^{-i{\bf Gr}} V({\bf r}) d{\bf r} = \frac{1}{V} \sum_{{\bf T},\alpha} \int e^{-i{\bf Gr}}V_{\alpha}({\bf r} - {\bf T} - {\bf \tau}_{\alpha})d{\bf r} \] Standard change of variables\+: $ {\bf r}' = {\bf r} - {\bf T} - {\bf \tau}_{\alpha},\; {\bf r} = {\bf r}' + {\bf T} + {\bf \tau}_{\alpha} $ leads to\+: \[ V({\bf G}) = \frac{1}{V} \sum_{{\bf T},\alpha} \int e^{-i{\bf G}({\bf r}' + {\bf T} + {\bf \tau}_{\alpha})}V_{\alpha}({\bf r}')d{\bf r'} = \frac{N}{V} \sum_{\alpha} \int e^{-i{\bf G}({\bf r}' + {\bf \tau}_{\alpha})}V_{\alpha}({\bf r}')d{\bf r'} = \frac{1}{\Omega} \sum_{\alpha} e^{-i {\bf G} {\bf \tau}_{\alpha} } \int e^{-i{\bf G}{\bf r}}V_{\alpha}({\bf r})d{\bf r} \] Using the well-\/known expansion of a plane wave in terms of spherical Bessel functions\+: \[ e^{i{\bf G}{\bf r}}=4\pi \sum_{\ell m} i^\ell j_{\ell}(Gr)Y_{\ell m}^{*}({\bf \hat G})Y_{\ell m}({\bf \hat r}) \] and remembering that for $ \ell = 0 $ (potential is sphericla) $ j_{0}(x) = \sin(x) / x $ we have\+: \[ V_{\alpha}({\bf G}) = \int V_{\alpha}(r) 4\pi \frac{\sin(Gr)}{Gr} Y^{*}_{00} Y_{00} r^2 \sin(\theta) dr d \phi d\theta = 4\pi \int V_{\alpha}(r) \frac{\sin(Gr)}{Gr} r^2 dr \] The tricky part comes next\+: $ V_{\alpha}({\bf r}) $ is a long-\/range potential -- it decays slowly as $ -Z_{\alpha}^{p}/r $ and the straightforward integration with sperical Bessel function is numerically unstable. For $ {\bf G} = 0 $ an extra term $ Z_{\alpha}^p/r $, corresponding to the potential of pseudo-\/ion, is added to and removed from the local part of the atomic pseudopotential $ V_{\alpha}({\bf r}) $\+: \[ V_{\alpha}({\bf G} = 0) = \int V_{\alpha}({\bf r})d{\bf r} \Rightarrow 4\pi \int \Big( V_{\alpha}(r) + \frac{Z_{\alpha}^p}{r} \Big) r^2 dr - 4\pi \int \Big( \frac{Z_{\alpha}^p}{r} \Big) r^2 dr \] Second term corresponds to the average electrostatic potential of ions and it is ignored (like the $ {\bf G} = 0 $ term in the Hartree potential of electrons). For $ G \ne 0 $ the following trick is done\+: $ Z_{\alpha}^p {\rm erf}(r) / r $ is added to and removed from $ V_{\alpha}(r) $. The idea is to make potential decay quickly and then take the extra contribution analytically. We have\+: \[ V_{\alpha}({\bf G}) = 4\pi \int \Big(V_{\alpha}(r) + Z_{\alpha}^p \frac{{\rm erf}(r)} {r} - Z_{\alpha}^p \frac{{\rm erf}(r)}{r}\Big) \frac{\sin(Gr)}{Gr} r^2 dr \] Analytical contribution from the error function is computed using the 1\+D Fourier transform in complex plane\+: \[ \frac{1}{\sqrt{2 \pi}} \int_{-\infty}^{\infty} {\rm erf}(t) e^{i\omega t} dt = \frac{i e^{-\frac{\omega ^2}{4}} \sqrt{\frac{2}{\pi }}}{\omega } \] from which we immediately get \[ \int_{0}^{\infty} \frac{{\rm erf}(r)}{r} \frac{\sin(Gr)}{Gr} r^2 dr = \frac{e^{-\frac{G^2}{4}}}{G^2} \] The final expression for the local potential radial integrals for $ G \ne 0 $ take the following form\+: \[ 4\pi \int \Big(V_{\alpha}(r) r + Z_{\alpha}^p {\rm erf}(r) \Big) \frac{\sin(Gr)}{G} dr - \frac{e^{-\frac{G^2}{4}}}{G^2} \] 
+
+Definition at line 326 of file potential.\+h.
+
+\hypertarget{classsirius_1_1_potential_a45701c46c8961f2ea5c089286802cf47}{}\index{sirius\+::\+Potential@{sirius\+::\+Potential}!zero@{zero}}
+\index{zero@{zero}!sirius\+::\+Potential@{sirius\+::\+Potential}}
+\subsubsection[{zero()}]{\setlength{\rightskip}{0pt plus 5cm}void sirius\+::\+Potential\+::zero (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}}\label{classsirius_1_1_potential_a45701c46c8961f2ea5c089286802cf47}
+
+
+Zero effective potential and magnetic field. 
+
+
+
+Definition at line 539 of file potential.\+h.
+
+\hypertarget{classsirius_1_1_potential_ada6c62c577c4e91e06490423345e833a}{}\index{sirius\+::\+Potential@{sirius\+::\+Potential}!poisson@{poisson}}
+\index{poisson@{poisson}!sirius\+::\+Potential@{sirius\+::\+Potential}}
+\subsubsection[{poisson(\+Periodic\+\_\+function$<$ double $>$ $\ast$rho, Periodic\+\_\+function$<$ double $>$ $\ast$vh)}]{\setlength{\rightskip}{0pt plus 5cm}void sirius\+::\+Potential\+::poisson (
+\begin{DoxyParamCaption}
+\item[{{\bf Periodic\+\_\+function}$<$ double $>$ $\ast$}]{rho, }
+\item[{{\bf Periodic\+\_\+function}$<$ double $>$ $\ast$}]{vh}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}}\label{classsirius_1_1_potential_ada6c62c577c4e91e06490423345e833a}
+
+
+Poisson solver. 
+
+Detailed explanation is available in\+:
+\begin{DoxyItemize}
+\item Weinert, M. (1981). Solution of Poisson\textquotesingle{}s equation\+: beyond Ewald-\/type methods. Journal of Mathematical Physics, 22(11), 2433–2439. doi\+:10.\+1063/1.524800
+\item Classical Electrodynamics Third Edition by J. D. Jackson.
+\end{DoxyItemize}
+
+Solution of Poisson\textquotesingle{}s equation for the muffin-\/tin geometry is carried out in several steps\+:
+\begin{DoxyItemize}
+\item True multipole moments $ q_{\ell m}^{\alpha} $ of the muffin-\/tin charge density are computed.
+\item Pseudocharge density is introduced. Pseudocharge density coincides with the true charge density in the interstitial region and it\textquotesingle{}s multipole moments inside muffin-\/tin spheres coincide with the true multipole moments.
+\item Poisson\textquotesingle{}s equation for the pseudocharge density is solved in the plane-\/wave domain. It gives the correct interstitial potential and correct muffin-\/tin boundary values.
+\item Finally, muffin-\/tin part of potential is found by solving Poisson\textquotesingle{}s equation in spherical coordinates with Dirichlet boundary conditions.
+\end{DoxyItemize}
+
+We start by computing true multipole moments of the charge density inside the muffin-\/tin spheres\+: \[ q_{\ell m}^{\alpha} = \int Y_{\ell m}^{*}(\hat {\bf r}) r^{\ell} \rho({\bf r}) d {\bf r} = \int \rho_{\ell m}^{\alpha}(r) r^{\ell + 2} dr \] and for the nucleus with charge density $ \rho(r, \theta, \phi) = -\frac{Z \delta(r)}{4 \pi r^2} $\+: \[ q_{00}^{\alpha} = \int Y_{0 0} \frac{-Z_{\alpha} \delta(r)}{4 \pi r^2} r^2 \sin \theta dr d\phi d\theta = -Z_{\alpha} Y_{00} \]
+
+Now we need to get the multipole moments of the interstitial charge density $ \rho^{I}({\bf r}) $ inside muffin-\/tin spheres. We need this in order to estimate the amount of pseudocharge to be added to $ \rho^{I}({\bf r}) $ to get the pseudocharge multipole moments equal to the true multipole moments. We want to compute \[ q_{\ell m}^{I,\alpha} = \int Y_{\ell m}^{*}(\hat {\bf r}) r^{\ell} \rho^{I}({\bf r}) d {\bf r} \] where \[ \rho^{I}({\bf r}) = \sum_{\bf G}e^{i{\bf Gr}} \rho({\bf G}) \]
+
+Recall the spherical plane wave expansion\+: \[ e^{i{\bf G r}}=4\pi e^{i{\bf G r}_{\alpha}} \sum_{\ell m} i^\ell j_{\ell}(G|{\bf r}-{\bf r}_{\alpha}|) Y_{\ell m}^{*}({\bf \hat G}) Y_{\ell m}(\widehat{{\bf r}-{\bf r}_{\alpha}}) \] Multipole moments of each plane-\/wave are computed as\+: \[ q_{\ell m}^{\alpha}({\bf G}) = 4 \pi e^{i{\bf G r}_{\alpha}} Y_{\ell m}^{*}({\bf \hat G}) i^{\ell} \int_{0}^{R} j_{\ell}(Gr) r^{\ell + 2} dr = 4 \pi e^{i{\bf G r}_{\alpha}} Y_{\ell m}^{*}({\bf \hat G}) i^{\ell} \left\{\begin{array}{ll} \frac{R^{\ell + 2} j_{\ell + 1}(GR)}{G} & G \ne 0 \\ \frac{R^3}{3} \delta_{\ell 0} & G = 0 \end{array} \right. \]
+
+Final expression for the muffin-\/tin multipole moments of the interstitial charge denisty\+: \[ q_{\ell m}^{I,\alpha} = \sum_{\bf G}\rho({\bf G}) q_{\ell m}^{\alpha}({\bf G}) \]
+
+Now we are going to modify interstitial charge density inside the muffin-\/tin region in order to get the true multipole moments. We will add a pseudodensity of the form\+: \[ P({\bf r}) = \sum_{\ell m} p_{\ell m}^{\alpha} Y_{\ell m}(\hat {\bf r}) r^{\ell} \left(1-\frac{r^2}{R^2}\right)^n \] Radial functions of the pseudodensity are chosen in a special way. First, they produce a confined and smooth functions inside muffin-\/tins and second (most important) plane-\/wave coefficients of the pseudodensity can be computed analytically. Let\textquotesingle{}s find the relation between $ p_{\ell m}^{\alpha} $ coefficients and true and interstitial multipole moments first. We are searching for the pseudodensity which restores the true multipole moments\+: \[ \int Y_{\ell m}^{*}(\hat {\bf r}) r^{\ell} \Big(\rho^{I}({\bf r}) + P({\bf r})\Big) d {\bf r} = q_{\ell m}^{\alpha} \] Then \[ p_{\ell m}^{\alpha} = \frac{q_{\ell m}^{\alpha} - q_{\ell m}^{I,\alpha}} {\int r^{2 \ell + 2} \left(1-\frac{r^2}{R^2}\right)^n dr} = (q_{\ell m}^{\alpha} - q_{\ell m}^{I,\alpha}) \frac{2 \Gamma(5/2 + \ell + n)}{R^{2\ell + 3}\Gamma(3/2 + \ell) \Gamma(n + 1)} \]
+
+Now let\textquotesingle{}s find the plane-\/wave coefficients of $ P({\bf r}) $ inside each muffin-\/tin\+: \[ P^{\alpha}({\bf G}) = \frac{4\pi e^{-i{\bf G r}_{\alpha}}}{\Omega} \sum_{\ell m} (-i)^{\ell} Y_{\ell m}({\bf \hat G}) p_{\ell m}^{\alpha} \int_{0}^{R} j_{\ell}(G r) r^{\ell} \left(1-\frac{r^2}{R^2}\right)^n r^2 dr \]
+
+Integral of the spherical Bessel function with the radial pseudodensity component is taken analytically\+: \[ \int_{0}^{R} j_{\ell}(G r) r^{\ell} \left(1-\frac{r^2}{R^2}\right)^n r^2 dr = 2^n R^{\ell + 3} (GR)^{-n - 1} \Gamma(n + 1) j_{n + \ell + 1}(GR) \]
+
+The final expression for the pseudodensity plane-\/wave component is\+: \[ P^{\alpha}({\bf G}) = \frac{4\pi e^{-i{\bf G r}_{\alpha}}}{\Omega} \sum_{\ell m} (-i)^{\ell} Y_{\ell m}({\bf \hat G}) (q_{\ell m}^{\alpha} - q_{\ell m}^{I,\alpha}) \Big( \frac{2}{GR} \Big)^{n+1} \frac{ \Gamma(5/2 + n + \ell) } {R^{\ell} \Gamma(3/2+\ell)} \]
+
+For $ G=0 $ only $ \ell = 0 $ contribution survives\+: \[ P^{\alpha}({\bf G}=0) = \frac{4\pi}{\Omega} Y_{00} (q_{00}^{\alpha} - q_{00}^{I,\alpha}) \]
+
+We can now sum the contributions from all muffin-\/tin spheres and obtain a modified charge density, which is equal to the exact charge density in the interstitial region and which has correct multipole moments inside muffin-\/tin spheres\+: \[ \tilde \rho({\bf G}) = \rho({\bf G}) + \sum_{\alpha} P^{\alpha}({\bf G}) \] This density is used to solve the Poisson\textquotesingle{}s equation in the plane-\/wave domain\+: \[ V_{H}({\bf G}) = \frac{4 \pi \tilde \rho({\bf G})}{G^2} \] The potential is correct in the interstitial region and also on the muffin-\/tin surface. We will use it to find the boundary conditions for the potential inside the muffin-\/tins. Using spherical plane-\/wave expansion we get\+: \[ V^{\alpha}_{\ell m}(R) = \sum_{\bf G} V_{H}({\bf G}) 4\pi e^{i{\bf G r}_{\alpha}} i^\ell j_{\ell}^{\alpha}(GR) Y_{\ell m}^{*}({\bf \hat G}) \]
+
+As soon as the muffin-\/tin boundary conditions for the potential are known, we can find the potential inside spheres using Dirichlet Green\textquotesingle{}s function\+: \[ V({\bf x}) = \int \rho({\bf x'})G_D({\bf x},{\bf x'}) d{\bf x'} - \frac{1}{4 \pi} \int_{S} V({\bf x'}) \frac{\partial G_D}{\partial n'} d{\bf S'} \] where Dirichlet Green\textquotesingle{}s function for the sphere is defined as\+: \[ G_D({\bf x},{\bf x'}) = 4\pi \sum_{\ell m} \frac{Y_{\ell m}^{*}({\bf \hat x'}) Y_{\ell m}(\hat {\bf x})}{2\ell + 1} \frac{r_{<}^{\ell}}{r_{>}^{\ell+1}}\Biggl(1 - \Big( \frac{r_{>}}{R} \Big)^{2\ell + 1} \Biggr) \] and it\textquotesingle{}s normal derivative at the surface is equal to\+: \[ \frac{\partial G_D}{\partial n'} = -\frac{4 \pi}{R^2} \sum_{\ell m} \Big( \frac{r}{R} \Big)^{\ell} Y_{\ell m}^{*}({\bf \hat x'}) Y_{\ell m}(\hat {\bf x}) \] 
+
+Definition at line 127 of file poisson.\+hpp.
+
+\hypertarget{classsirius_1_1_potential_a1abe0a0486f01331b8baf7a359523ae6}{}\index{sirius\+::\+Potential@{sirius\+::\+Potential}!xc@{xc}}
+\index{xc@{xc}!sirius\+::\+Potential@{sirius\+::\+Potential}}
+\subsubsection[{xc(\+Periodic\+\_\+function$<$ double $>$ $\ast$rho, Periodic\+\_\+function$<$ double $>$ $\ast$magnetization[3], Periodic\+\_\+function$<$ double $>$ $\ast$vxc, Periodic\+\_\+function$<$ double $>$ $\ast$bxc[3], Periodic\+\_\+function$<$ double $>$ $\ast$exc)}]{\setlength{\rightskip}{0pt plus 5cm}void sirius\+::\+Potential\+::xc (
+\begin{DoxyParamCaption}
+\item[{{\bf Periodic\+\_\+function}$<$ double $>$ $\ast$}]{rho, }
+\item[{{\bf Periodic\+\_\+function}$<$ double $>$ $\ast$}]{magnetization\mbox{[}3\mbox{]}, }
+\item[{{\bf Periodic\+\_\+function}$<$ double $>$ $\ast$}]{vxc, }
+\item[{{\bf Periodic\+\_\+function}$<$ double $>$ $\ast$}]{bxc\mbox{[}3\mbox{]}, }
+\item[{{\bf Periodic\+\_\+function}$<$ double $>$ $\ast$}]{exc}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}}\label{classsirius_1_1_potential_a1abe0a0486f01331b8baf7a359523ae6}
+
+
+Generate X\+C potential and energy density. 
+
+In case of spin-\/unpolarized G\+G\+A the X\+C potential has the following expression\+: \[ V_{XC}({\bf r}) = \frac{\partial}{\partial \rho} \varepsilon_{xc}(\rho, \nabla \rho) - \nabla \frac{\partial}{\partial (\nabla \rho)} \varepsilon_{xc}(\rho, \nabla \rho) \] Lib\+X\+C packs the gradient information into the so-\/called {\itshape sigma} array\+: \[ \sigma = \nabla \rho \nabla \rho \] Changing variables in $ V_{XC} $ expression gives\+: \begin{eqnarray*} V_{XC}({\bf r}) &=& \frac{\partial}{\partial \rho} \varepsilon_{xc}(\rho, \sigma) - \nabla \frac{\partial \varepsilon_{xc}(\rho, \sigma)}{\partial \sigma} \frac{\partial \sigma}{ \partial (\nabla \rho)} \\ &=& \frac{\partial}{\partial \rho} \varepsilon_{xc}(\rho, \sigma) - 2 \nabla \frac{\partial \varepsilon_{xc}(\rho, \sigma)}{\partial \sigma} \nabla \rho - 2 \frac{\partial \varepsilon_{xc}(\rho, \sigma)}{\partial \sigma} \nabla^2 \rho \end{eqnarray*} The following sequence of functions must be computed\+:
+\begin{DoxyItemize}
+\item density on the real space grid
+\item gradient of density (in spectral representation)
+\item gradient of density on the real space grid
+\item laplacian of density (in spectral representation)
+\item laplacian of density on the real space grid
+\item {\itshape sigma} array
+\item a call to Libxc must be performed {\itshape sigma} derivatives must be obtained
+\item $ \frac{\partial \varepsilon_{xc}(\rho, \sigma)}{\partial \sigma} $ in spectral representation
+\item gradient of $ \frac{\partial \varepsilon_{xc}(\rho, \sigma)}{\partial \sigma} $ in spectral representation
+\item gradient of $ \frac{\partial \varepsilon_{xc}(\rho, \sigma)}{\partial \sigma} $ on the real space grid
+\end{DoxyItemize}
+
+Expression for spin-\/polarized potential has a bit more complicated form\+: \begin{eqnarray*} V_{XC}^{\gamma} &=& \frac{\partial \varepsilon_{xc}}{\partial \rho_{\gamma}} - \nabla \Big( 2 \frac{\partial \varepsilon_{xc}}{\partial \sigma_{\gamma \gamma}} \nabla \rho_{\gamma} + \frac{\partial \varepsilon_{xc}}{\partial \sigma_{\gamma \delta}} \nabla \rho_{\delta} \Big) \\ &=& \frac{\partial \varepsilon_{xc}}{\partial \rho_{\gamma}} -2 \nabla \frac{\partial \varepsilon_{xc}}{\partial \sigma_{\gamma \gamma}} \nabla \rho_{\gamma} -2 \frac{\partial \varepsilon_{xc}}{\partial \sigma_{\gamma \gamma}} \nabla^2 \rho_{\gamma} - \nabla \frac{\partial \varepsilon_{xc}}{\partial \sigma_{\gamma \delta}} \nabla \rho_{\delta} - \frac{\partial \varepsilon_{xc}}{\partial \sigma_{\gamma \delta}} \nabla^2 \rho_{\delta} \end{eqnarray*} In magnetic case the \char`\"{}up\char`\"{} and \char`\"{}dn\char`\"{} density and potential decomposition is used. Using the fact that the effective magnetic field is parallel to magnetization at each point in space, we can write the coupling of density and magnetization with X\+C potential and X\+C magentic field as\+: \[ V_{xc}({\bf r}) \rho({\bf r}) + {\bf B}_{xc}({\bf r}){\bf m}({\bf r}) = V_{xc}({\bf r}) \rho({\bf r}) + {\rm B}_{xc}({\bf r}) {\rm m}({\bf r}) = V^{\uparrow}({\bf r})\rho^{\uparrow}({\bf r}) + V^{\downarrow}({\bf r})\rho^{\downarrow}({\bf r}) \] where \begin{eqnarray*} \rho^{\uparrow}({\bf r}) &=& \frac{1}{2}\Big( \rho({\bf r}) + {\rm m}({\bf r}) \Big) \\ \rho^{\downarrow}({\bf r}) &=& \frac{1}{2}\Big( \rho({\bf r}) - {\rm m}({\bf r}) \Big) \end{eqnarray*} and \begin{eqnarray*} V^{\uparrow}({\bf r}) &=& V_{xc}({\bf r}) + {\rm B}_{xc}({\bf r}) \\ V^{\downarrow}({\bf r}) &=& V_{xc}({\bf r}) - {\rm B}_{xc}({\bf r}) \end{eqnarray*} 
+
+Definition at line 854 of file xc.\+hpp.
+
+\hypertarget{classsirius_1_1_potential_abddbb842b28ba0f62653393aca53b4e7}{}\index{sirius\+::\+Potential@{sirius\+::\+Potential}!generate@{generate}}
+\index{generate@{generate}!sirius\+::\+Potential@{sirius\+::\+Potential}}
+\subsubsection[{generate(\+Density \&density\+\_\+\+\_\+)}]{\setlength{\rightskip}{0pt plus 5cm}void sirius\+::\+Potential\+::generate (
+\begin{DoxyParamCaption}
+\item[{{\bf Density} \&}]{density\+\_\+\+\_\+}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}}\label{classsirius_1_1_potential_abddbb842b28ba0f62653393aca53b4e7}
+
+
+Generate effective potential and magnetic field from charge density and magnetization. 
+
+
+
+Definition at line 756 of file potential.\+h.
+
+\hypertarget{classsirius_1_1_potential_aef421db1d4ce4ece0be0cea7e0f0b12c}{}\index{sirius\+::\+Potential@{sirius\+::\+Potential}!generate\+\_\+pw\+\_\+coefs@{generate\+\_\+pw\+\_\+coefs}}
+\index{generate\+\_\+pw\+\_\+coefs@{generate\+\_\+pw\+\_\+coefs}!sirius\+::\+Potential@{sirius\+::\+Potential}}
+\subsubsection[{generate\+\_\+pw\+\_\+coefs()}]{\setlength{\rightskip}{0pt plus 5cm}void sirius\+::\+Potential\+::generate\+\_\+pw\+\_\+coefs (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}}\label{classsirius_1_1_potential_aef421db1d4ce4ece0be0cea7e0f0b12c}
+
+
+Generate plane-\/wave coefficients of the potential in the interstitial region. 
+
+
+
+Definition at line 1 of file generate\+\_\+pw\+\_\+coefs.\+hpp.
+
+\hypertarget{classsirius_1_1_potential_ac53f9c549fb2e2a5e02992a823e792e7}{}\index{sirius\+::\+Potential@{sirius\+::\+Potential}!generate\+\_\+\+D\+\_\+operator\+\_\+matrix@{generate\+\_\+\+D\+\_\+operator\+\_\+matrix}}
+\index{generate\+\_\+\+D\+\_\+operator\+\_\+matrix@{generate\+\_\+\+D\+\_\+operator\+\_\+matrix}!sirius\+::\+Potential@{sirius\+::\+Potential}}
+\subsubsection[{generate\+\_\+\+D\+\_\+operator\+\_\+matrix()}]{\setlength{\rightskip}{0pt plus 5cm}void sirius\+::\+Potential\+::generate\+\_\+\+D\+\_\+operator\+\_\+matrix (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}}\label{classsirius_1_1_potential_ac53f9c549fb2e2a5e02992a823e792e7}
+
+
+Calculate D operator from potential and augmentation charge. 
+
+The following real symmetric matrix is computed\+: \[ D_{\xi \xi'}^{\alpha} = \int V({\bf r}) Q_{\xi \xi'}^{\alpha}({\bf r}) d{\bf r} \] In the plane-\/wave domain this integrals transform into sum over Fourier components\+: \[ D_{\xi \xi'}^{\alpha} = \sum_{\bf G} \langle V |{\bf G}\rangle \langle{\bf G}|Q_{\xi \xi'}^{\alpha} \rangle = \sum_{\bf G} V^{*}({\bf G}) e^{-i{\bf r}_{\alpha}{\bf G}} Q_{\xi \xi'}^{A}({\bf G}) = \sum_{\bf G} Q_{\xi \xi'}^{A}({\bf G}) \tilde V_{\alpha}^{*}({\bf G}) \] where $ \alpha $ is the atom, $ A $ is the atom type and \[ \tilde V_{\alpha}({\bf G}) = e^{i{\bf r}_{\alpha}{\bf G}} V({\bf G}) \] Both $ V({\bf r}) $ and $ Q({\bf r}) $ functions are real and the following condition is fulfilled\+: \[ \tilde V_{\alpha}({\bf G}) = \tilde V_{\alpha}^{*}(-{\bf G}) \] \[ Q_{\xi \xi'}({\bf G}) = Q_{\xi \xi'}^{*}(-{\bf G}) \] In the sum over plane-\/wave coefficients the $ {\bf G} $ and $ -{\bf G} $ contributions will give\+: \[ Q_{\xi \xi'}^{A}({\bf G}) \tilde V_{\alpha}^{*}({\bf G}) + Q_{\xi \xi'}^{A}(-{\bf G}) \tilde V_{\alpha}^{*}(-{\bf G}) = 2 \Re \Big( Q_{\xi \xi'}^{A}({\bf G}) \Big) \Re \Big( \tilde V_{\alpha}^{*}({\bf G}) \Big) + 2 \Im \Big( Q_{\xi \xi'}^{A}({\bf G}) \Big) \Im \Big( \tilde V_{\alpha}^{*}({\bf G}) \Big) \] This allows the use of a {\bfseries dgemm} instead of a {\bfseries zgemm} when $ D_{\xi \xi'}^{\alpha} $ matrix is calculated for all atoms of the same type. 
+
+Definition at line 35 of file generate\+\_\+d\+\_\+operator\+\_\+matrix.\+hpp.
+
+\hypertarget{classsirius_1_1_potential_ac44993cfb63ba04c3c9f4cc472652852}{}\index{sirius\+::\+Potential@{sirius\+::\+Potential}!size@{size}}
+\index{size@{size}!sirius\+::\+Potential@{sirius\+::\+Potential}}
+\subsubsection[{size()}]{\setlength{\rightskip}{0pt plus 5cm}size\+\_\+t sirius\+::\+Potential\+::size (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}}\label{classsirius_1_1_potential_ac44993cfb63ba04c3c9f4cc472652852}
+
+
+Total size (number of elements) of the potential and effective magnetic field. 
+
+
+
+Definition at line 953 of file potential.\+h.
+
+
+
+\subsection{Member Data Documentation}
+\hypertarget{classsirius_1_1_potential_a4071c9c5b14fd52005538e4de6e7943d}{}\index{sirius\+::\+Potential@{sirius\+::\+Potential}!local\+\_\+potential\+\_\+@{local\+\_\+potential\+\_\+}}
+\index{local\+\_\+potential\+\_\+@{local\+\_\+potential\+\_\+}!sirius\+::\+Potential@{sirius\+::\+Potential}}
+\subsubsection[{local\+\_\+potential\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}std\+::unique\+\_\+ptr$<${\bf Periodic\+\_\+function}$<$double$>$ $>$ sirius\+::\+Potential\+::local\+\_\+potential\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classsirius_1_1_potential_a4071c9c5b14fd52005538e4de6e7943d}
+
+
+Local part of pseudopotential. 
+
+
+
+Definition at line 58 of file potential.\+h.
+
+\hypertarget{classsirius_1_1_potential_a0126d2afa48714b359eede273905a64c}{}\index{sirius\+::\+Potential@{sirius\+::\+Potential}!vh\+\_\+el\+\_\+@{vh\+\_\+el\+\_\+}}
+\index{vh\+\_\+el\+\_\+@{vh\+\_\+el\+\_\+}!sirius\+::\+Potential@{sirius\+::\+Potential}}
+\subsubsection[{vh\+\_\+el\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}{\bf mdarray}$<$double, 1$>$ sirius\+::\+Potential\+::vh\+\_\+el\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classsirius_1_1_potential_a0126d2afa48714b359eede273905a64c}
+
+
+Electronic part of Hartree potential. 
+
+Used to compute electron-\/nuclear contribution to the total energy 
+
+Definition at line 84 of file potential.\+h.
+
+\hypertarget{classsirius_1_1_potential_adf213a65c122ebe4ed46b02560174da8}{}\index{sirius\+::\+Potential@{sirius\+::\+Potential}!veff\+\_\+pw\+\_\+@{veff\+\_\+pw\+\_\+}}
+\index{veff\+\_\+pw\+\_\+@{veff\+\_\+pw\+\_\+}!sirius\+::\+Potential@{sirius\+::\+Potential}}
+\subsubsection[{veff\+\_\+pw\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}{\bf mdarray}$<$double\+\_\+complex, 1$>$ sirius\+::\+Potential\+::veff\+\_\+pw\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classsirius_1_1_potential_adf213a65c122ebe4ed46b02560174da8}
+
+
+Plane-\/wave coefficients of the effective potential weighted by the unit step-\/function. 
+
+
+
+Definition at line 91 of file potential.\+h.
+
+\hypertarget{classsirius_1_1_potential_a681931c08f11ddea4b3709280d7b309d}{}\index{sirius\+::\+Potential@{sirius\+::\+Potential}!rm\+\_\+inv\+\_\+pw\+\_\+@{rm\+\_\+inv\+\_\+pw\+\_\+}}
+\index{rm\+\_\+inv\+\_\+pw\+\_\+@{rm\+\_\+inv\+\_\+pw\+\_\+}!sirius\+::\+Potential@{sirius\+::\+Potential}}
+\subsubsection[{rm\+\_\+inv\+\_\+pw\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}{\bf mdarray}$<$double\+\_\+complex, 1$>$ sirius\+::\+Potential\+::rm\+\_\+inv\+\_\+pw\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classsirius_1_1_potential_a681931c08f11ddea4b3709280d7b309d}
+
+
+Plane-\/wave coefficients of the inverse relativistic mass weighted by the unit step-\/function. 
+
+
+
+Definition at line 94 of file potential.\+h.
+
+\hypertarget{classsirius_1_1_potential_a71c1a995bc68a97d48e004999cd2b8a0}{}\index{sirius\+::\+Potential@{sirius\+::\+Potential}!rm2\+\_\+inv\+\_\+pw\+\_\+@{rm2\+\_\+inv\+\_\+pw\+\_\+}}
+\index{rm2\+\_\+inv\+\_\+pw\+\_\+@{rm2\+\_\+inv\+\_\+pw\+\_\+}!sirius\+::\+Potential@{sirius\+::\+Potential}}
+\subsubsection[{rm2\+\_\+inv\+\_\+pw\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}{\bf mdarray}$<$double\+\_\+complex, 1$>$ sirius\+::\+Potential\+::rm2\+\_\+inv\+\_\+pw\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classsirius_1_1_potential_a71c1a995bc68a97d48e004999cd2b8a0}
+
+
+Plane-\/wave coefficients of the squared inverse relativistic mass weighted by the unit step-\/function. 
+
+
+
+Definition at line 97 of file potential.\+h.
+
+
+
+The documentation for this class was generated from the following files\+:\begin{DoxyCompactItemize}
+\item 
+\hyperlink{potential_8h}{potential.\+h}\item 
+\hyperlink{generate__d__operator__matrix_8hpp}{generate\+\_\+d\+\_\+operator\+\_\+matrix.\+hpp}\item 
+generate\+\_\+pw\+\_\+coefs.\+hpp\item 
+Potential/init.\+hpp\item 
+paw\+\_\+potential.\+hpp\item 
+poisson.\+hpp\item 
+xc.\+hpp\end{DoxyCompactItemize}

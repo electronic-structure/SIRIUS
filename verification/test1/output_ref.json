@@ -1,0 +1,431 @@
+{
+    "build_date": "Fri, 18 Nov 2016 11:36:56",
+    "comm_world_size": 1,
+    "git_hash": "be6a1b6759c6193ea55d53b15e52b72885d9b17b",
+    "ground_state": {
+        "aw_cutoff": 7,
+        "band_gap": 0.0,
+        "chemical_formula": "SrVO3",
+        "core_leakage": 0.0,
+        "efermi": 0.414103992018876,
+        "energy": {
+            "bxc": 0.0,
+            "core_eval_sum": 0.0,
+            "enuc": 0.0,
+            "eval_sum": -8.41759166288618,
+            "ewald": -114.223034717681,
+            "exc": -29.6498223133617,
+            "kin": -47.8296570957628,
+            "total": -156.371553146089,
+            "veff": 39.4120654328766,
+            "vha": 70.6619219614321,
+            "vxc": -31.2498565285555
+        },
+        "fft_coarse_grid": [
+            30,
+            30,
+            30
+        ],
+        "fft_grid": [
+            48,
+            48,
+            48
+        ],
+        "mpi_grid": [
+            1
+        ],
+        "num_atoms": 5,
+        "num_bands": 40,
+        "num_fv_states": 40,
+        "omega": 382.708923702537,
+        "pw_cutoff": 20
+    },
+    "task": 0,
+    "threads_per_rank": 8,
+    "timers": {
+        "Eigenproblem_lapack|AZ=eZ": [
+            0.427826,
+            0.00237681111111111,
+            0.00089,
+            0.011374
+        ],
+        "sirius::Augmentation_operator::generate_pw_coeffs": [
+            1.872054,
+            0.624018,
+            0.561483,
+            0.661739
+        ],
+        "sirius::Augmentation_operator::get_radial_integrals": [
+            1.312596,
+            0.437532,
+            0.39772,
+            0.464708
+        ],
+        "sirius::Band::apply_h_o": [
+            5.750624,
+            0.0319479111111111,
+            0.001589,
+            0.085387
+        ],
+        "sirius::Band::diag_pseudo_potential": [
+            9.877933,
+            0.176391660714286,
+            0.073197,
+            0.699961
+        ],
+        "sirius::Band::diag_pseudo_potential_davidson": [
+            9.816564,
+            0.175295785714286,
+            0.072181,
+            0.698721
+        ],
+        "sirius::Band::diag_pseudo_potential_davidson|update_phi": [
+            0.464818,
+            0.00774696666666666,
+            0.003136,
+            0.040347
+        ],
+        "sirius::Band::get_h_diag": [
+            0.142211,
+            0.00253948214285714,
+            0.002018,
+            0.003899
+        ],
+        "sirius::Band::get_o_diag": [
+            0.137421,
+            0.00245394642857143,
+            0.002061,
+            0.003715
+        ],
+        "sirius::Band::initialize_subspace": [
+            0.398579,
+            0.09964475,
+            0.083354,
+            0.10969
+        ],
+        "sirius::Band::residuals": [
+            0.653051,
+            0.00371051704545455,
+            0.0,
+            0.024789
+        ],
+        "sirius::Band::residuals_aux": [
+            0.083198,
+            0.000665584,
+            0.000386,
+            0.001126
+        ],
+        "sirius::Band::set_subspace_mtrx": [
+            0.626267,
+            0.00347926111111111,
+            0.000289,
+            0.014968
+        ],
+        "sirius::Band::solve_for_kset": [
+            9.878717,
+            0.705622642857143,
+            0.297398,
+            2.758294
+        ],
+        "sirius::Beta_projectors::generate": [
+            0.000225,
+            9.53389830508473e-07,
+            0.0,
+            2e-06
+        ],
+        "sirius::Beta_projectors::inner": [
+            0.945521,
+            0.00400644491525424,
+            0.00016,
+            0.009077
+        ],
+        "sirius::Broyden1::mix": [
+            0.017662,
+            0.00126157142857143,
+            5.9e-05,
+            0.00228
+        ],
+        "sirius::DFT_ground_state::ewald_energy": [
+            0.001294,
+            0.001294,
+            0.001294,
+            0.001294
+        ],
+        "sirius::DFT_ground_state::initialize_subspace": [
+            0.419155,
+            0.419155,
+            0.419155,
+            0.419155
+        ],
+        "sirius::DFT_ground_state::scf_loop": [
+            13.342864,
+            13.342864,
+            13.342864,
+            13.342864
+        ],
+        "sirius::DFT_ground_state::scf_loop|iteration": [
+            13.335982,
+            0.952570142857143,
+            0.531376,
+            3.026069
+        ],
+        "sirius::Density::add_k_point_contribution_dm": [
+            0.237618,
+            0.00424317857142857,
+            0.003935,
+            0.00479
+        ],
+        "sirius::Density::add_k_point_contribution_rg": [
+            1.107799,
+            0.019782125,
+            0.016502,
+            0.036015
+        ],
+        "sirius::Density::augment": [
+            1.117459,
+            0.0798185,
+            0.074917,
+            0.102702
+        ],
+        "sirius::Density::augment|mpi": [
+            6.9e-05,
+            4.92857142857143e-06,
+            4e-06,
+            6e-06
+        ],
+        "sirius::Density::generate": [
+            2.477872,
+            0.176990857142857,
+            0.166443,
+            0.199958
+        ],
+        "sirius::Density::generate_pseudo_core_charge_density": [
+            0.034706,
+            0.034706,
+            0.034706,
+            0.034706
+        ],
+        "sirius::Density::generate_rho_aug": [
+            1.113866,
+            0.0795618571428571,
+            0.074664,
+            0.102284
+        ],
+        "sirius::Density::generate_rho_aug|gemm": [
+            0.536252,
+            0.0127679047619048,
+            0.010108,
+            0.039488
+        ],
+        "sirius::Density::generate_rho_aug|phase_fac": [
+            0.012445,
+            0.000296309523809524,
+            0.000181,
+            0.000698
+        ],
+        "sirius::Density::generate_rho_aug|sum": [
+            0.21609,
+            0.005145,
+            0.00276,
+            0.007594
+        ],
+        "sirius::Density::generate_rho_radial_integrals": [
+            0.063296,
+            0.031648,
+            0.03093,
+            0.032366
+        ],
+        "sirius::Density::generate_valence": [
+            2.477827,
+            0.176987642857143,
+            0.166432,
+            0.199953
+        ],
+        "sirius::Density::initial_density": [
+            0.03512,
+            0.03512,
+            0.03512,
+            0.03512
+        ],
+        "sirius::FFT3D::prepare": [
+            0.022085,
+            9.9481981981982e-05,
+            3.3e-05,
+            0.000852
+        ],
+        "sirius::FFT3D::transform": [
+            4.17359399999999,
+            0.000404496414033727,
+            0.00027,
+            0.008942
+        ],
+        "sirius::FFT3D::transform_xy": [
+            2.71081100000002,
+            0.000262726400465208,
+            0.00016,
+            0.001708
+        ],
+        "sirius::FFT3D::transform_z_serial": [
+            1.40739499999999,
+            0.000136401918976545,
+            9.1e-05,
+            0.007637
+        ],
+        "sirius::Hloc_operator::apply": [
+            3.630784,
+            0.0201710222222222,
+            0.000965,
+            0.064046
+        ],
+        "sirius::K_point::initialize": [
+            0.479111,
+            0.11977775,
+            0.106442,
+            0.12902
+        ],
+        "sirius::K_set::find_band_occupancies": [
+            0.010889,
+            0.000777785714285714,
+            0.000587,
+            0.000903
+        ],
+        "sirius::Non_local_operator::apply": [
+            1.373357,
+            0.00381488055555556,
+            0.000182,
+            0.009032
+        ],
+        "sirius::Periodic_function::add": [
+            0.009369,
+            0.00012492,
+            8.5e-05,
+            0.00018
+        ],
+        "sirius::Periodic_function::fft_transform|comm": [
+            0.000108,
+            3.6e-06,
+            3e-06,
+            4e-06
+        ],
+        "sirius::Periodic_function::inner": [
+            0.036598,
+            0.000224527607361963,
+            0.000141,
+            0.000416
+        ],
+        "sirius::Periodic_function::integrate": [
+            0.002497,
+            0.000178357142857143,
+            0.000138,
+            0.000271
+        ],
+        "sirius::Potential::Potential": [
+            0.057774,
+            0.057774,
+            0.057774,
+            0.057774
+        ],
+        "sirius::Potential::generate_D_operator_matrix": [
+            0.442051,
+            0.0294700666666667,
+            0.028626,
+            0.030782
+        ],
+        "sirius::Potential::generate_effective_potential": [
+            0.555931,
+            0.0370620666666667,
+            0.035319,
+            0.04068
+        ],
+        "sirius::Potential::generate_local_potential": [
+            0.056384,
+            0.056384,
+            0.056384,
+            0.056384
+        ],
+        "sirius::Potential::poisson": [
+            0.023777,
+            0.00158513333333333,
+            0.001415,
+            0.001927
+        ],
+        "sirius::Potential::xc": [
+            0.056877,
+            0.0037918,
+            0.003159,
+            0.005675
+        ],
+        "sirius::Potential::xc_it_nonmagnetic": [
+            0.056822,
+            0.00378813333333333,
+            0.003155,
+            0.00567
+        ],
+        "sirius::Smooth_periodic_function::fft_transform": [
+            0.067246,
+            0.00112076666666667,
+            0.00084,
+            0.001549
+        ],
+        "sirius::Symmetry::symmetrize_function_pw": [
+            0.370407,
+            0.0132288214285714,
+            0.011877,
+            0.016506
+        ],
+        "sirius::Unit_cell::find_nearest_neighbours": [
+            0.000321,
+            0.000321,
+            0.000321,
+            0.000321
+        ],
+        "sirius::Unit_cell::get_symmetry": [
+            0.003861,
+            0.003861,
+            0.003861,
+            0.003861
+        ],
+        "sirius::Unit_cell::make_periodic_function": [
+            0.003272,
+            0.00109066666666667,
+            0.000968,
+            0.001181
+        ],
+        "sirius::matrix_storage::remap_backward": [
+            0.000136,
+            7.55555555555554e-07,
+            0.0,
+            2e-06
+        ],
+        "sirius::matrix_storage::remap_forward": [
+            0.000474000000000001,
+            2.00847457627119e-06,
+            1e-06,
+            1.3e-05
+        ],
+        "sirius::wave_functions::inner": [
+            1.15954,
+            0.00241570833333334,
+            2e-06,
+            0.01455
+        ],
+        "sirius::wave_functions::orthogonalize": [
+            1.785637,
+            0.00992020555555555,
+            0.000491,
+            0.0475
+        ],
+        "sirius::wave_functions::transform": [
+            1.727759,
+            0.00551999680511182,
+            0.000221,
+            0.029245
+        ],
+        "sirius::wave_functions::transform|init": [
+            0.014596,
+            4.66325878594249e-05,
+            0.0,
+            0.000209
+        ]
+    }
+}

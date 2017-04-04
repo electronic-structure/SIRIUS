@@ -1,0 +1,90 @@
+\hypertarget{classsirius_1_1_bound__state}{}\section{sirius\+:\+:Bound\+\_\+state Class Reference}
+\label{classsirius_1_1_bound__state}\index{sirius\+::\+Bound\+\_\+state@{sirius\+::\+Bound\+\_\+state}}
+
+
+Inheritance diagram for sirius\+:\+:Bound\+\_\+state\+:
+% FIG 0
+
+
+Collaboration diagram for sirius\+:\+:Bound\+\_\+state\+:
+% FIG 1
+\subsection*{Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+\hypertarget{classsirius_1_1_bound__state_a9742261ae76db95850bf46a832e11a67}{}{\bfseries Bound\+\_\+state} (relativity\+\_\+t rel\+\_\+\+\_\+, int zn\+\_\+\+\_\+, int n\+\_\+\+\_\+, int l\+\_\+\+\_\+, int k\+\_\+\+\_\+, \hyperlink{classsirius_1_1_radial__grid}{Radial\+\_\+grid} const \&radial\+\_\+grid\+\_\+\+\_\+, std\+::vector$<$ double $>$ const \&v\+\_\+\+\_\+, double enu\+\_\+start\+\_\+\+\_\+)\label{classsirius_1_1_bound__state_a9742261ae76db95850bf46a832e11a67}
+
+\item 
+\hypertarget{classsirius_1_1_bound__state_aabf9b3579f0c4d6eac854abfe25bc8e1}{}double {\bfseries enu} () const \label{classsirius_1_1_bound__state_aabf9b3579f0c4d6eac854abfe25bc8e1}
+
+\item 
+\hypertarget{classsirius_1_1_bound__state_a31d2f51fda45d42b2d0164aa41dc6ed7}{}\hyperlink{classsirius_1_1_spline}{Spline}$<$ double $>$ const \& {\bfseries rho} () const \label{classsirius_1_1_bound__state_a31d2f51fda45d42b2d0164aa41dc6ed7}
+
+\item 
+\hypertarget{classsirius_1_1_bound__state_a643be412c8dd8df41ae8687f25ec08f0}{}\hyperlink{classsirius_1_1_spline}{Spline}$<$ double $>$ const \& {\bfseries u} () const \label{classsirius_1_1_bound__state_a643be412c8dd8df41ae8687f25ec08f0}
+
+\end{DoxyCompactItemize}
+\subsection*{Private Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+\hypertarget{classsirius_1_1_bound__state_ab9b34819c7ba09528a67b844f6582a98}{}void {\bfseries solve} (relativity\+\_\+t rel\+\_\+\+\_\+, double enu\+\_\+start\+\_\+\+\_\+)\label{classsirius_1_1_bound__state_ab9b34819c7ba09528a67b844f6582a98}
+
+\end{DoxyCompactItemize}
+\subsection*{Private Attributes}
+\begin{DoxyCompactItemize}
+\item 
+\hypertarget{classsirius_1_1_bound__state_a3816a4d925261c311c2e2f10d8d786b4}{}int {\bfseries n\+\_\+}\label{classsirius_1_1_bound__state_a3816a4d925261c311c2e2f10d8d786b4}
+
+\item 
+\hypertarget{classsirius_1_1_bound__state_a093ab93abdfbd1182711f2a8cb2de260}{}int {\bfseries l\+\_\+}\label{classsirius_1_1_bound__state_a093ab93abdfbd1182711f2a8cb2de260}
+
+\item 
+\hypertarget{classsirius_1_1_bound__state_ae0bc2b04f50225464ef156256229a4a8}{}int {\bfseries k\+\_\+}\label{classsirius_1_1_bound__state_ae0bc2b04f50225464ef156256229a4a8}
+
+\item 
+double \hyperlink{classsirius_1_1_bound__state_ab77aa89bd55cf2acd87c03514c47e4d5}{enu\+\_\+tolerance\+\_\+}
+\begin{DoxyCompactList}\small\item\em Tolerance of bound state energy. \end{DoxyCompactList}\item 
+\hypertarget{classsirius_1_1_bound__state_aca1f011045c21dc04d66483eea5a20fc}{}double {\bfseries enu\+\_\+}\label{classsirius_1_1_bound__state_aca1f011045c21dc04d66483eea5a20fc}
+
+\item 
+\hypertarget{classsirius_1_1_bound__state_ad7e92e231a67d3b088a2d7d534bc3383}{}\hyperlink{classsirius_1_1_spline}{Spline}$<$ double $>$ {\bfseries p\+\_\+}\label{classsirius_1_1_bound__state_ad7e92e231a67d3b088a2d7d534bc3383}
+
+\item 
+\hypertarget{classsirius_1_1_bound__state_abd2318c6b4bb8bef25ee1dd27ad96dc9}{}\hyperlink{classsirius_1_1_spline}{Spline}$<$ double $>$ {\bfseries q\+\_\+}\label{classsirius_1_1_bound__state_abd2318c6b4bb8bef25ee1dd27ad96dc9}
+
+\item 
+\hypertarget{classsirius_1_1_bound__state_a1e04ad7008a814ef0dce24ab6e81ed15}{}\hyperlink{classsirius_1_1_spline}{Spline}$<$ double $>$ {\bfseries u\+\_\+}\label{classsirius_1_1_bound__state_a1e04ad7008a814ef0dce24ab6e81ed15}
+
+\item 
+\hypertarget{classsirius_1_1_bound__state_a269eac37a9b8ed98b8776f16abeeaa12}{}\hyperlink{classsirius_1_1_spline}{Spline}$<$ double $>$ {\bfseries rdudr\+\_\+}\label{classsirius_1_1_bound__state_a269eac37a9b8ed98b8776f16abeeaa12}
+
+\item 
+\hypertarget{classsirius_1_1_bound__state_acb5eeed8f662b5832081d0fae4d23590}{}\hyperlink{classsirius_1_1_spline}{Spline}$<$ double $>$ {\bfseries rho\+\_\+}\label{classsirius_1_1_bound__state_acb5eeed8f662b5832081d0fae4d23590}
+
+\end{DoxyCompactItemize}
+\subsection*{Additional Inherited Members}
+
+
+\subsection{Detailed Description}
+
+
+Definition at line 827 of file radial\+\_\+solver.\+h.
+
+
+
+\subsection{Member Data Documentation}
+\hypertarget{classsirius_1_1_bound__state_ab77aa89bd55cf2acd87c03514c47e4d5}{}\index{sirius\+::\+Bound\+\_\+state@{sirius\+::\+Bound\+\_\+state}!enu\+\_\+tolerance\+\_\+@{enu\+\_\+tolerance\+\_\+}}
+\index{enu\+\_\+tolerance\+\_\+@{enu\+\_\+tolerance\+\_\+}!sirius\+::\+Bound\+\_\+state@{sirius\+::\+Bound\+\_\+state}}
+\subsubsection[{enu\+\_\+tolerance\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}double sirius\+::\+Bound\+\_\+state\+::enu\+\_\+tolerance\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classsirius_1_1_bound__state_ab77aa89bd55cf2acd87c03514c47e4d5}
+
+
+Tolerance of bound state energy. 
+
+
+
+Definition at line 838 of file radial\+\_\+solver.\+h.
+
+
+
+The documentation for this class was generated from the following file\+:\begin{DoxyCompactItemize}
+\item 
+\hyperlink{radial__solver_8h}{radial\+\_\+solver.\+h}\end{DoxyCompactItemize}

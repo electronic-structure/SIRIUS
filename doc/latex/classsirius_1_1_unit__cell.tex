@@ -1,0 +1,1290 @@
+\hypertarget{classsirius_1_1_unit__cell}{}\section{sirius\+:\+:Unit\+\_\+cell Class Reference}
+\label{classsirius_1_1_unit__cell}\index{sirius\+::\+Unit\+\_\+cell@{sirius\+::\+Unit\+\_\+cell}}
+
+
+Collaboration diagram for sirius\+:\+:Unit\+\_\+cell\+:
+% FIG 0
+\subsection*{Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+\hypertarget{classsirius_1_1_unit__cell_ab4b233c421f332b0b21a6186eeae6391}{}{\bfseries Unit\+\_\+cell} (\hyperlink{classsirius_1_1_simulation__parameters}{Simulation\+\_\+parameters} const \&parameters\+\_\+\+\_\+, \hyperlink{classsddk_1_1_communicator}{Communicator} const \&comm\+\_\+\+\_\+)\label{classsirius_1_1_unit__cell_ab4b233c421f332b0b21a6186eeae6391}
+
+\item 
+void \hyperlink{classsirius_1_1_unit__cell_a3ade5edcc57d81eb8036157f68112a56}{initialize} ()
+\begin{DoxyCompactList}\small\item\em Initialize the unit cell data. \end{DoxyCompactList}\item 
+void \hyperlink{classsirius_1_1_unit__cell_a7072576dc55a0c768a4aa1e6bbbbf0a5}{add\+\_\+atom\+\_\+type} (const std\+::string label, const std\+::string file\+\_\+name)
+\begin{DoxyCompactList}\small\item\em Add new atom type to the list of atom types and read necessary data from the .json file. \end{DoxyCompactList}\item 
+void \hyperlink{classsirius_1_1_unit__cell_a6370b1dd71c63be44228efabaf0d0293}{add\+\_\+atom} (const std\+::string label, \hyperlink{classgeometry3d_1_1vector3d}{vector3d}$<$ double $>$ position, \hyperlink{classgeometry3d_1_1vector3d}{vector3d}$<$ double $>$ vector\+\_\+field)
+\begin{DoxyCompactList}\small\item\em Add new atom to the list of atom types. \end{DoxyCompactList}\item 
+void \hyperlink{classsirius_1_1_unit__cell_a3c6cdebd28fa00730179967a74254c25}{init\+\_\+paw} ()
+\begin{DoxyCompactList}\small\item\em Add P\+A\+W atoms. \end{DoxyCompactList}\item 
+int \hyperlink{classsirius_1_1_unit__cell_a06a98ddd98edfe770be18172a76a9c3f}{num\+\_\+paw\+\_\+atoms} () const 
+\begin{DoxyCompactList}\small\item\em Return number of P\+A\+W atoms. \end{DoxyCompactList}\item 
+\hyperlink{classsddk_1_1splindex}{splindex}$<$ block $>$ \hyperlink{classsirius_1_1_unit__cell_a22bb0e85d29350c1238e4ea05cd11a06}{spl\+\_\+num\+\_\+paw\+\_\+atoms} () const 
+\begin{DoxyCompactList}\small\item\em Get split index of P\+A\+W atoms. \end{DoxyCompactList}\item 
+\hypertarget{classsirius_1_1_unit__cell_a6c912a364af893f74a82f4f90c87644e}{}int {\bfseries spl\+\_\+num\+\_\+paw\+\_\+atoms} (int idx\+\_\+\+\_\+) const \label{classsirius_1_1_unit__cell_a6c912a364af893f74a82f4f90c87644e}
+
+\item 
+\hypertarget{classsirius_1_1_unit__cell_aa495aac96812c19266e0787c219f66ee}{}int {\bfseries paw\+\_\+atom\+\_\+index} (int ipaw\+\_\+\+\_\+) const \label{classsirius_1_1_unit__cell_aa495aac96812c19266e0787c219f66ee}
+
+\item 
+void \hyperlink{classsirius_1_1_unit__cell_a89843c24de69f8968140a9cfff4bdd0f}{add\+\_\+atom} (const std\+::string label, \hyperlink{classgeometry3d_1_1vector3d}{vector3d}$<$ double $>$ position)
+\begin{DoxyCompactList}\small\item\em Add new atom without vector field to the list of atom types. \end{DoxyCompactList}\item 
+void \hyperlink{classsirius_1_1_unit__cell_aaa8632b9f2d62183100a46e7dd0790ba}{print\+\_\+info} (int verbosity\+\_\+)
+\begin{DoxyCompactList}\small\item\em Print basic info. \end{DoxyCompactList}\item 
+\hypertarget{classsirius_1_1_unit__cell_a0ea2da7e903ad8b8e8fb4fe7be33ac57}{}\hyperlink{structunit__cell__parameters__descriptor}{unit\+\_\+cell\+\_\+parameters\+\_\+descriptor} {\bfseries unit\+\_\+cell\+\_\+parameters} ()\label{classsirius_1_1_unit__cell_a0ea2da7e903ad8b8e8fb4fe7be33ac57}
+
+\item 
+void \hyperlink{classsirius_1_1_unit__cell_ac25877583212c7e6aac3c4f97d62fa9d}{get\+\_\+symmetry} ()
+\begin{DoxyCompactList}\small\item\em Get crystal symmetries and equivalent atoms. \end{DoxyCompactList}\item 
+void \hyperlink{classsirius_1_1_unit__cell_a948f43cc5840cb1021494c45628043d4}{write\+\_\+cif} ()
+\begin{DoxyCompactList}\small\item\em Write structure to C\+I\+F file. \end{DoxyCompactList}\item 
+\hyperlink{classnlohmann_1_1basic__json}{json} \hyperlink{classsirius_1_1_unit__cell_af1e86a5c3ac96c6ad7733939dad2eb40}{serialize} ()
+\begin{DoxyCompactList}\small\item\em Write structure to J\+S\+O\+N file. \end{DoxyCompactList}\item 
+\hypertarget{classsirius_1_1_unit__cell_acd012acfb8e7777227e7d54e1d542e7e}{}void {\bfseries set\+\_\+lattice\+\_\+vectors} (matrix3d$<$ double $>$ lattice\+\_\+vectors\+\_\+\+\_\+)\label{classsirius_1_1_unit__cell_acd012acfb8e7777227e7d54e1d542e7e}
+
+\item 
+void \hyperlink{classsirius_1_1_unit__cell_a73aed1e2042e5c0006e7182fed1ca375}{set\+\_\+lattice\+\_\+vectors} (\hyperlink{classgeometry3d_1_1vector3d}{vector3d}$<$ double $>$ a0\+\_\+\+\_\+, \hyperlink{classgeometry3d_1_1vector3d}{vector3d}$<$ double $>$ a1\+\_\+\+\_\+, \hyperlink{classgeometry3d_1_1vector3d}{vector3d}$<$ double $>$ a2\+\_\+\+\_\+)
+\begin{DoxyCompactList}\small\item\em Set lattice vectors. \end{DoxyCompactList}\item 
+void \hyperlink{classsirius_1_1_unit__cell_ad6a3cbb8556869f65df124ee7907e5ef}{find\+\_\+nearest\+\_\+neighbours} (double cluster\+\_\+radius)
+\begin{DoxyCompactList}\small\item\em Find the cluster of nearest neighbours around each atom. \end{DoxyCompactList}\item 
+\hypertarget{classsirius_1_1_unit__cell_aadcda3e927dbdb4a7f297c1502b35531}{}bool {\bfseries is\+\_\+point\+\_\+in\+\_\+mt} (\hyperlink{classgeometry3d_1_1vector3d}{vector3d}$<$ double $>$ vc, int \&ja, int \&jr, double \&dr, double tp\mbox{[}2\mbox{]}) const \label{classsirius_1_1_unit__cell_aadcda3e927dbdb4a7f297c1502b35531}
+
+\item 
+\hypertarget{classsirius_1_1_unit__cell_ae01e1b8ae1dd2fb74b573da8df4ee3b7}{}void {\bfseries generate\+\_\+radial\+\_\+functions} ()\label{classsirius_1_1_unit__cell_ae01e1b8ae1dd2fb74b573da8df4ee3b7}
+
+\item 
+\hypertarget{classsirius_1_1_unit__cell_a8c18f41c0761159c4677e0f043d0d5ea}{}void {\bfseries generate\+\_\+radial\+\_\+integrals} ()\label{classsirius_1_1_unit__cell_a8c18f41c0761159c4677e0f043d0d5ea}
+
+\item 
+\hypertarget{classsirius_1_1_unit__cell_a323a2ee3576dd296c735ea3c04a46a42}{}std\+::string {\bfseries chemical\+\_\+formula} ()\label{classsirius_1_1_unit__cell_a323a2ee3576dd296c735ea3c04a46a42}
+
+\item 
+std\+::vector$<$ double\+\_\+complex $>$ \hyperlink{classsirius_1_1_unit__cell_a63c74c5c32762fcefaec4ca537d20dbc}{make\+\_\+periodic\+\_\+function} (\hyperlink{classsddk_1_1mdarray}{mdarray}$<$ double, 2 $>$ \&form\+\_\+factors\+\_\+\+\_\+, \hyperlink{classsddk_1_1_gvec}{Gvec} const \&gvec\+\_\+\+\_\+) const 
+\begin{DoxyCompactList}\small\item\em Make periodic function out of form factors. \end{DoxyCompactList}\item 
+\hypertarget{classsirius_1_1_unit__cell_aae716d5335bd27469d2dcfbedc0567e6}{}std\+::vector$<$ double\+\_\+complex $>$ {\bfseries make\+\_\+periodic\+\_\+function} (std\+::function$<$ double(int, double)$>$ form\+\_\+factors\+\_\+\+\_\+, \hyperlink{classsddk_1_1_gvec}{Gvec} const \&gvec\+\_\+\+\_\+) const \label{classsirius_1_1_unit__cell_aae716d5335bd27469d2dcfbedc0567e6}
+
+\item 
+\hypertarget{classsirius_1_1_unit__cell_acb3c2e7ce19e1ad8f333698ea6133348}{}int {\bfseries atom\+\_\+id\+\_\+by\+\_\+position} (\hyperlink{classgeometry3d_1_1vector3d}{vector3d}$<$ double $>$ position\+\_\+\+\_\+)\label{classsirius_1_1_unit__cell_acb3c2e7ce19e1ad8f333698ea6133348}
+
+\item 
+\hypertarget{classsirius_1_1_unit__cell_ad0e1f0623e546487f4c6497a673c0818}{}{\footnotesize template$<$typename T $>$ }\\\hyperlink{classgeometry3d_1_1vector3d}{vector3d}$<$ double $>$ {\bfseries get\+\_\+cartesian\+\_\+coordinates} (\hyperlink{classgeometry3d_1_1vector3d}{vector3d}$<$ T $>$ a\+\_\+\+\_\+) const \label{classsirius_1_1_unit__cell_ad0e1f0623e546487f4c6497a673c0818}
+
+\item 
+\hypertarget{classsirius_1_1_unit__cell_a09fdd698713316ea80eededa7ae6a03b}{}\hyperlink{classgeometry3d_1_1vector3d}{vector3d}$<$ double $>$ {\bfseries get\+\_\+fractional\+\_\+coordinates} (\hyperlink{classgeometry3d_1_1vector3d}{vector3d}$<$ double $>$ a) const \label{classsirius_1_1_unit__cell_a09fdd698713316ea80eededa7ae6a03b}
+
+\item 
+double \hyperlink{classsirius_1_1_unit__cell_a4e3d00a7a45cfd2f7645588f525439b8}{omega} () const 
+\begin{DoxyCompactList}\small\item\em Unit cell volume. \end{DoxyCompactList}\item 
+int \hyperlink{classsirius_1_1_unit__cell_a0021ece9db70bed0575c656b5e58d65d}{num\+\_\+atom\+\_\+types} () const 
+\begin{DoxyCompactList}\small\item\em Number of atom types. \end{DoxyCompactList}\item 
+\hyperlink{classsirius_1_1_atom__type}{Atom\+\_\+type} \& \hyperlink{classsirius_1_1_unit__cell_a1ea078d2bead28d4b1ad5fb695b9c57f}{atom\+\_\+type} (int id\+\_\+\+\_\+)
+\begin{DoxyCompactList}\small\item\em Return atom type instance by id. \end{DoxyCompactList}\item 
+\hyperlink{classsirius_1_1_atom__type}{Atom\+\_\+type} const \& \hyperlink{classsirius_1_1_unit__cell_a9a6e6367689da13971da3a4dab37609c}{atom\+\_\+type} (int id\+\_\+\+\_\+) const 
+\begin{DoxyCompactList}\small\item\em Return const atom type instance by id. \end{DoxyCompactList}\item 
+\hyperlink{classsirius_1_1_atom__type}{Atom\+\_\+type} \& \hyperlink{classsirius_1_1_unit__cell_a9cb64348513a41da01eab5eb93e3eb34}{atom\+\_\+type} (std\+::string const label\+\_\+\+\_\+)
+\begin{DoxyCompactList}\small\item\em Return atom type instance by label. \end{DoxyCompactList}\item 
+\hyperlink{classsirius_1_1_atom__type}{Atom\+\_\+type} const \& \hyperlink{classsirius_1_1_unit__cell_a3c66ad4bb6a05861205c642df60b2a47}{atom\+\_\+type} (std\+::string const label\+\_\+\+\_\+) const 
+\begin{DoxyCompactList}\small\item\em Return const atom type instance by label. \end{DoxyCompactList}\item 
+int \hyperlink{classsirius_1_1_unit__cell_a8b2fe31247fbd07fcfbd4723b769c8f6}{num\+\_\+atom\+\_\+symmetry\+\_\+classes} () const 
+\begin{DoxyCompactList}\small\item\em Number of atom symmetry classes. \end{DoxyCompactList}\item 
+\hyperlink{classsirius_1_1_atom__symmetry__class}{Atom\+\_\+symmetry\+\_\+class} const \& \hyperlink{classsirius_1_1_unit__cell_ade4630721f7d72741777943dfc6ab8fe}{atom\+\_\+symmetry\+\_\+class} (int id\+\_\+\+\_\+) const 
+\begin{DoxyCompactList}\small\item\em Return const symmetry class instance by class id. \end{DoxyCompactList}\item 
+\hyperlink{classsirius_1_1_atom__symmetry__class}{Atom\+\_\+symmetry\+\_\+class} \& \hyperlink{classsirius_1_1_unit__cell_aa01128897145c1c846e64b68aa81e60d}{atom\+\_\+symmetry\+\_\+class} (int id\+\_\+\+\_\+)
+\begin{DoxyCompactList}\small\item\em Return symmetry class instance by class id. \end{DoxyCompactList}\item 
+int \hyperlink{classsirius_1_1_unit__cell_a1439a1d0fa7aa06fda4601581ae30a19}{num\+\_\+atoms} () const 
+\begin{DoxyCompactList}\small\item\em Number of atoms in the unit cell. \end{DoxyCompactList}\item 
+\hyperlink{classsirius_1_1_atom}{Atom} const \& \hyperlink{classsirius_1_1_unit__cell_ae0d938b64f0dc6ba19376a6db1968d20}{atom} (int id\+\_\+\+\_\+) const 
+\begin{DoxyCompactList}\small\item\em Return const atom instance by id. \end{DoxyCompactList}\item 
+\hyperlink{classsirius_1_1_atom}{Atom} \& \hyperlink{classsirius_1_1_unit__cell_a1789ffb7c2f0b695f264cb35bd850eec}{atom} (int id\+\_\+\+\_\+)
+\begin{DoxyCompactList}\small\item\em Return atom instance by id. \end{DoxyCompactList}\item 
+\hypertarget{classsirius_1_1_unit__cell_a1a6fb5979ec3f1dc7aae831ccacff591}{}int {\bfseries total\+\_\+nuclear\+\_\+charge} () const \label{classsirius_1_1_unit__cell_a1a6fb5979ec3f1dc7aae831ccacff591}
+
+\item 
+double \hyperlink{classsirius_1_1_unit__cell_af773aee1295a5be6c706b29959ff4592}{num\+\_\+electrons} () const 
+\begin{DoxyCompactList}\small\item\em Total number of electrons (core + valence). \end{DoxyCompactList}\item 
+double \hyperlink{classsirius_1_1_unit__cell_a3d0dc243ec23f8fed279c78f67da015a}{num\+\_\+valence\+\_\+electrons} () const 
+\begin{DoxyCompactList}\small\item\em Number of valence electrons. \end{DoxyCompactList}\item 
+double \hyperlink{classsirius_1_1_unit__cell_ae418b2e1ec7145fecc823dea73589b1a}{num\+\_\+core\+\_\+electrons} () const 
+\begin{DoxyCompactList}\small\item\em Number of core electrons. \end{DoxyCompactList}\item 
+int \hyperlink{classsirius_1_1_unit__cell_a6a1a396053eb4992139576d887c66662}{max\+\_\+num\+\_\+mt\+\_\+points} () const 
+\begin{DoxyCompactList}\small\item\em Maximum number of muffin-\/tin points among all atom types. \end{DoxyCompactList}\item 
+int \hyperlink{classsirius_1_1_unit__cell_a163d3e6e7306ffaf6f51eb20e8d8228d}{mt\+\_\+aw\+\_\+basis\+\_\+size} () const 
+\begin{DoxyCompactList}\small\item\em Total number of the augmented wave basis functions over all atoms. \end{DoxyCompactList}\item 
+int \hyperlink{classsirius_1_1_unit__cell_a5ebddaa856d8f93893d7c041251afb35}{mt\+\_\+lo\+\_\+basis\+\_\+size} () const 
+\begin{DoxyCompactList}\small\item\em Total number of local orbital basis functions over all atoms. \end{DoxyCompactList}\item 
+int \hyperlink{classsirius_1_1_unit__cell_a5ed10c6520923550e73175c91f08d1e4}{mt\+\_\+basis\+\_\+size} () const 
+\begin{DoxyCompactList}\small\item\em Total number of the muffin-\/tin basis functions. \end{DoxyCompactList}\item 
+int \hyperlink{classsirius_1_1_unit__cell_a22a732322dd61dda3120337e058047e0}{max\+\_\+mt\+\_\+basis\+\_\+size} () const 
+\begin{DoxyCompactList}\small\item\em Maximum number of basis functions among all atom types. \end{DoxyCompactList}\item 
+int \hyperlink{classsirius_1_1_unit__cell_a8f80f526f0dd59e15daef8439af0b577}{max\+\_\+mt\+\_\+radial\+\_\+basis\+\_\+size} () const 
+\begin{DoxyCompactList}\small\item\em Maximum number of radial functions among all atom types. \end{DoxyCompactList}\item 
+double \hyperlink{classsirius_1_1_unit__cell_a60ff58a73dd2989afdafc9b37fbd68df}{min\+\_\+mt\+\_\+radius} () const 
+\begin{DoxyCompactList}\small\item\em Minimum muffin-\/tin radius. \end{DoxyCompactList}\item 
+double \hyperlink{classsirius_1_1_unit__cell_ae4e421483e55a809f781fb9f197078c6}{max\+\_\+mt\+\_\+radius} () const 
+\begin{DoxyCompactList}\small\item\em Maximum muffin-\/tin radius. \end{DoxyCompactList}\item 
+int \hyperlink{classsirius_1_1_unit__cell_ae45e48832c8b50a4f514de66c4245cd3}{max\+\_\+mt\+\_\+aw\+\_\+basis\+\_\+size} () const 
+\begin{DoxyCompactList}\small\item\em Maximum number of A\+W basis functions among all atom types. \end{DoxyCompactList}\item 
+\hypertarget{classsirius_1_1_unit__cell_a6da1be0a9b9b366aa731d847448e3fd5}{}int {\bfseries max\+\_\+mt\+\_\+lo\+\_\+basis\+\_\+size} () const \label{classsirius_1_1_unit__cell_a6da1be0a9b9b366aa731d847448e3fd5}
+
+\item 
+\hypertarget{classsirius_1_1_unit__cell_abd52c0691717c6b4d3b68e20cdf3cbea}{}void {\bfseries set\+\_\+equivalent\+\_\+atoms} (int const $\ast$equivalent\+\_\+atoms\+\_\+\+\_\+)\label{classsirius_1_1_unit__cell_abd52c0691717c6b4d3b68e20cdf3cbea}
+
+\item 
+\hypertarget{classsirius_1_1_unit__cell_aad6b5529e2162032bc9afc4246ef015a}{}\hyperlink{classsddk_1_1splindex}{splindex}$<$ block $>$ const \& {\bfseries spl\+\_\+num\+\_\+atoms} () const \label{classsirius_1_1_unit__cell_aad6b5529e2162032bc9afc4246ef015a}
+
+\item 
+\hypertarget{classsirius_1_1_unit__cell_ae0b1bf7939ad2e809bff3e47cbc7154a}{}int {\bfseries spl\+\_\+num\+\_\+atoms} (int i) const \label{classsirius_1_1_unit__cell_ae0b1bf7939ad2e809bff3e47cbc7154a}
+
+\item 
+\hypertarget{classsirius_1_1_unit__cell_acb139cc2a3d03408d569cf1e4ae684ca}{}\hyperlink{classsddk_1_1splindex}{splindex}$<$ block $>$ const \& {\bfseries spl\+\_\+num\+\_\+atom\+\_\+symmetry\+\_\+classes} () const \label{classsirius_1_1_unit__cell_acb139cc2a3d03408d569cf1e4ae684ca}
+
+\item 
+\hypertarget{classsirius_1_1_unit__cell_abf0ab6560ebd473cf9b56ec99b6c44e3}{}int {\bfseries spl\+\_\+num\+\_\+atom\+\_\+symmetry\+\_\+classes} (int i) const \label{classsirius_1_1_unit__cell_abf0ab6560ebd473cf9b56ec99b6c44e3}
+
+\item 
+\hypertarget{classsirius_1_1_unit__cell_a77a2c25fafbb1d815255b7f9140e0f16}{}double {\bfseries volume\+\_\+mt} () const \label{classsirius_1_1_unit__cell_a77a2c25fafbb1d815255b7f9140e0f16}
+
+\item 
+\hypertarget{classsirius_1_1_unit__cell_a39fd72b44aaaee8c9206de970d929515}{}double {\bfseries volume\+\_\+it} () const \label{classsirius_1_1_unit__cell_a39fd72b44aaaee8c9206de970d929515}
+
+\item 
+\hypertarget{classsirius_1_1_unit__cell_a3b428a2703900fa03b7fb226d5137144}{}int {\bfseries lmax} () const \label{classsirius_1_1_unit__cell_a3b428a2703900fa03b7fb226d5137144}
+
+\item 
+\hypertarget{classsirius_1_1_unit__cell_a38fcdfbd4c0e7a186fe1781c44ab49e3}{}int {\bfseries num\+\_\+nearest\+\_\+neighbours} (int ia) const \label{classsirius_1_1_unit__cell_a38fcdfbd4c0e7a186fe1781c44ab49e3}
+
+\item 
+\hypertarget{classsirius_1_1_unit__cell_add3ce169342c0b202da24bb749111c3c}{}\hyperlink{structnearest__neighbour__descriptor}{nearest\+\_\+neighbour\+\_\+descriptor} const \& {\bfseries nearest\+\_\+neighbour} (int i, int ia) const \label{classsirius_1_1_unit__cell_add3ce169342c0b202da24bb749111c3c}
+
+\item 
+\hypertarget{classsirius_1_1_unit__cell_ae973f4581ba094690c282bf365bc68d2}{}\hyperlink{structmt__basis__descriptor}{mt\+\_\+basis\+\_\+descriptor} const \& {\bfseries mt\+\_\+aw\+\_\+basis\+\_\+descriptor} (int idx) const \label{classsirius_1_1_unit__cell_ae973f4581ba094690c282bf365bc68d2}
+
+\item 
+\hypertarget{classsirius_1_1_unit__cell_a70d01faceb362695b6bae75e0d54028c}{}\hyperlink{structmt__basis__descriptor}{mt\+\_\+basis\+\_\+descriptor} const \& {\bfseries mt\+\_\+lo\+\_\+basis\+\_\+descriptor} (int idx) const \label{classsirius_1_1_unit__cell_a70d01faceb362695b6bae75e0d54028c}
+
+\item 
+\hypertarget{classsirius_1_1_unit__cell_a0f6f4bf2a8528e3dfbd308d77280727f}{}\hyperlink{classsirius_1_1_symmetry}{Symmetry} const \& {\bfseries symmetry} () const \label{classsirius_1_1_unit__cell_a0f6f4bf2a8528e3dfbd308d77280727f}
+
+\item 
+\hypertarget{classsirius_1_1_unit__cell_ad9fa0c4c075f6956dfaf28b7dc224977}{}matrix3d$<$ double $>$ const \& {\bfseries lattice\+\_\+vectors} () const \label{classsirius_1_1_unit__cell_ad9fa0c4c075f6956dfaf28b7dc224977}
+
+\item 
+\hypertarget{classsirius_1_1_unit__cell_a5e9e6fe91f2c2f53931461cf38d174de}{}matrix3d$<$ double $>$ const \& {\bfseries inverse\+\_\+lattice\+\_\+vectors} () const \label{classsirius_1_1_unit__cell_a5e9e6fe91f2c2f53931461cf38d174de}
+
+\item 
+\hypertarget{classsirius_1_1_unit__cell_a0bae03235deb7e9e5e5547feddded4c9}{}matrix3d$<$ double $>$ const \& {\bfseries reciprocal\+\_\+lattice\+\_\+vectors} () const \label{classsirius_1_1_unit__cell_a0bae03235deb7e9e5e5547feddded4c9}
+
+\item 
+\hyperlink{classgeometry3d_1_1vector3d}{vector3d}$<$ double $>$ \hyperlink{classsirius_1_1_unit__cell_a089cf19886c5eeeb6e51e9fdca735bfb}{lattice\+\_\+vector} (int idx\+\_\+\+\_\+) const 
+\begin{DoxyCompactList}\small\item\em Return a single lattice vector. \end{DoxyCompactList}\item 
+\hypertarget{classsirius_1_1_unit__cell_a2b84cad00aa92d04393a3a38de1b3133}{}void {\bfseries import} (\hyperlink{structsirius_1_1_unit__cell__input__section}{Unit\+\_\+cell\+\_\+input\+\_\+section} const \&inp\+\_\+\+\_\+)\label{classsirius_1_1_unit__cell_a2b84cad00aa92d04393a3a38de1b3133}
+
+\item 
+\hypertarget{classsirius_1_1_unit__cell_aec9f876ce00030c1e877f9e8c356b900}{}\hyperlink{classsirius_1_1_simulation__parameters}{Simulation\+\_\+parameters} const \& {\bfseries parameters} () const \label{classsirius_1_1_unit__cell_aec9f876ce00030c1e877f9e8c356b900}
+
+\end{DoxyCompactItemize}
+\subsection*{Private Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+std\+::vector$<$ double $>$ \hyperlink{classsirius_1_1_unit__cell_a3d9c47a289473ff6f62b7190f1d752fe}{find\+\_\+mt\+\_\+radii} ()
+\begin{DoxyCompactList}\small\item\em Automatically determine new muffin-\/tin radii as a half distance between neighbor atoms. \end{DoxyCompactList}\item 
+bool \hyperlink{classsirius_1_1_unit__cell_af25aedf64bb12785e06333e2a58de315}{check\+\_\+mt\+\_\+overlap} (int \&ia\+\_\+\+\_\+, int \&ja\+\_\+\+\_\+)
+\begin{DoxyCompactList}\small\item\em Check if M\+T spheres overlap. \end{DoxyCompactList}\item 
+\hypertarget{classsirius_1_1_unit__cell_a84186f2ada194dc11b2313a260d2201c}{}int {\bfseries next\+\_\+atom\+\_\+type\+\_\+id} (std\+::string label\+\_\+\+\_\+)\label{classsirius_1_1_unit__cell_a84186f2ada194dc11b2313a260d2201c}
+
+\end{DoxyCompactItemize}
+\subsection*{Private Attributes}
+\begin{DoxyCompactItemize}
+\item 
+\hyperlink{classsirius_1_1_simulation__parameters}{Simulation\+\_\+parameters} const \& \hyperlink{classsirius_1_1_unit__cell_aa6ab9c74c7627f62ce1073eba5a47eb3}{parameters\+\_\+}
+\begin{DoxyCompactList}\small\item\em Basic parameters of the simulation. \end{DoxyCompactList}\item 
+std\+::map$<$ std\+::string, int $>$ \hyperlink{classsirius_1_1_unit__cell_a30a032f0eef70ee7833dfc428f139abb}{atom\+\_\+type\+\_\+id\+\_\+map\+\_\+}
+\begin{DoxyCompactList}\small\item\em Mapping between atom type label and an ordered internal id in the range \mbox{[}0, $ N_{types} $). \end{DoxyCompactList}\item 
+std\+::vector$<$ \hyperlink{classsirius_1_1_atom__type}{Atom\+\_\+type} $>$ \hyperlink{classsirius_1_1_unit__cell_a632c9f18c76754036b15c319781a3a11}{atom\+\_\+types\+\_\+}
+\begin{DoxyCompactList}\small\item\em List of atom types. \end{DoxyCompactList}\item 
+std\+::vector$<$ \hyperlink{classsirius_1_1_atom__symmetry__class}{Atom\+\_\+symmetry\+\_\+class} $>$ \hyperlink{classsirius_1_1_unit__cell_a3e78840bc6c66018adaf378969a9dca5}{atom\+\_\+symmetry\+\_\+classes\+\_\+}
+\begin{DoxyCompactList}\small\item\em List of atom classes. \end{DoxyCompactList}\item 
+std\+::vector$<$ \hyperlink{classsirius_1_1_atom}{Atom} $>$ \hyperlink{classsirius_1_1_unit__cell_a352195243de155d84e9768cb9dd42a53}{atoms\+\_\+}
+\begin{DoxyCompactList}\small\item\em List of atoms. \end{DoxyCompactList}\item 
+\hyperlink{classsddk_1_1splindex}{splindex}$<$ block $>$ \hyperlink{classsirius_1_1_unit__cell_a384eb0052909c0ed468eed0685aef448}{spl\+\_\+num\+\_\+atoms\+\_\+}
+\begin{DoxyCompactList}\small\item\em Split index of atoms. \end{DoxyCompactList}\item 
+std\+::vector$<$ int $>$ \hyperlink{classsirius_1_1_unit__cell_a1019f35aa919205614783576d4949c7d}{paw\+\_\+atom\+\_\+index\+\_\+}
+\begin{DoxyCompactList}\small\item\em Global index of atom by index of P\+A\+W atom. \end{DoxyCompactList}\item 
+\hyperlink{classsddk_1_1splindex}{splindex}$<$ block $>$ \hyperlink{classsirius_1_1_unit__cell_af4f208a0c389a4c7c694be67005bd5b0}{spl\+\_\+num\+\_\+paw\+\_\+atoms\+\_\+}
+\begin{DoxyCompactList}\small\item\em Split index of P\+A\+W atoms. \end{DoxyCompactList}\item 
+\hyperlink{classsddk_1_1splindex}{splindex}$<$ block $>$ \hyperlink{classsirius_1_1_unit__cell_a0f687f85fea7ba773bd6b219716da314}{spl\+\_\+num\+\_\+atom\+\_\+symmetry\+\_\+classes\+\_\+}
+\begin{DoxyCompactList}\small\item\em Split index of atom symmetry classes. \end{DoxyCompactList}\item 
+matrix3d$<$ double $>$ \hyperlink{classsirius_1_1_unit__cell_acb1fbcd9964cb8415d38c2e23c77c076}{lattice\+\_\+vectors\+\_\+}
+\begin{DoxyCompactList}\small\item\em Bravais lattice vectors in column order. \end{DoxyCompactList}\item 
+matrix3d$<$ double $>$ \hyperlink{classsirius_1_1_unit__cell_a1b06a6e1dabc61b9bb30fe6aa879e804}{inverse\+\_\+lattice\+\_\+vectors\+\_\+}
+\begin{DoxyCompactList}\small\item\em Inverse matrix of Bravais lattice vectors. \end{DoxyCompactList}\item 
+matrix3d$<$ double $>$ \hyperlink{classsirius_1_1_unit__cell_af85417314eb39d09ad90de1414fc5bea}{reciprocal\+\_\+lattice\+\_\+vectors\+\_\+}
+\begin{DoxyCompactList}\small\item\em Reciprocal lattice vectors in column order. \end{DoxyCompactList}\item 
+double \hyperlink{classsirius_1_1_unit__cell_ac587c752016025de36db5ac4312112b4}{omega\+\_\+}
+\begin{DoxyCompactList}\small\item\em Volume $ \Omega $ of the unit cell. Volume of Brillouin zone is then $ (2\Pi)^3 / \Omega $. \end{DoxyCompactList}\item 
+double \hyperlink{classsirius_1_1_unit__cell_abc60aef6ddce77ee141f793d241a7954}{volume\+\_\+mt\+\_\+} \{0\}
+\begin{DoxyCompactList}\small\item\em Total volume of the muffin-\/tin spheres. \end{DoxyCompactList}\item 
+double \hyperlink{classsirius_1_1_unit__cell_ad9356b5d033e2cf0d02cc31d78db3561}{volume\+\_\+it\+\_\+} \{0\}
+\begin{DoxyCompactList}\small\item\em Volume of the interstitial region. \end{DoxyCompactList}\item 
+int \hyperlink{classsirius_1_1_unit__cell_a72e8437b162d6e934e2e7763d9f76e11}{total\+\_\+nuclear\+\_\+charge\+\_\+} \{0\}
+\begin{DoxyCompactList}\small\item\em Total nuclear charge. \end{DoxyCompactList}\item 
+double \hyperlink{classsirius_1_1_unit__cell_ac618473d45a36ccca6be2b6bfd27a5de}{num\+\_\+core\+\_\+electrons\+\_\+} \{0\}
+\begin{DoxyCompactList}\small\item\em Total number of core electrons. \end{DoxyCompactList}\item 
+double \hyperlink{classsirius_1_1_unit__cell_abd38f81cdedf2bad43dd2746bb866e0e}{num\+\_\+valence\+\_\+electrons\+\_\+} \{0\}
+\begin{DoxyCompactList}\small\item\em Total number of valence electrons. \end{DoxyCompactList}\item 
+double \hyperlink{classsirius_1_1_unit__cell_acf4750818ca4a8f1bae847a34879d16e}{num\+\_\+electrons\+\_\+} \{0\}
+\begin{DoxyCompactList}\small\item\em Total number of electrons. \end{DoxyCompactList}\item 
+std\+::vector$<$ int $>$ \hyperlink{classsirius_1_1_unit__cell_a2c9eea8e1e25c25a75851e8cdafff370}{equivalent\+\_\+atoms\+\_\+}
+\begin{DoxyCompactList}\small\item\em List of equivalent atoms, provided externally. \end{DoxyCompactList}\item 
+int \hyperlink{classsirius_1_1_unit__cell_af8042706572062065441da33fa8cc575}{max\+\_\+num\+\_\+mt\+\_\+points\+\_\+} \{0\}
+\begin{DoxyCompactList}\small\item\em Maximum number of muffin-\/tin points among all atom types. \end{DoxyCompactList}\item 
+int \hyperlink{classsirius_1_1_unit__cell_a2e7703e76b4f7e69f58d1678d1f94a01}{mt\+\_\+basis\+\_\+size\+\_\+} \{0\}
+\begin{DoxyCompactList}\small\item\em Total number of M\+T basis functions. \end{DoxyCompactList}\item 
+int \hyperlink{classsirius_1_1_unit__cell_ac57f42d865230924812b53f425f627b8}{max\+\_\+mt\+\_\+basis\+\_\+size\+\_\+} \{0\}
+\begin{DoxyCompactList}\small\item\em Maximum number of M\+T basis functions among all atoms. \end{DoxyCompactList}\item 
+int \hyperlink{classsirius_1_1_unit__cell_aeb3c8a1990a2121ffc9feabf9793d1f0}{max\+\_\+mt\+\_\+radial\+\_\+basis\+\_\+size\+\_\+} \{0\}
+\begin{DoxyCompactList}\small\item\em Maximum number of M\+T radial basis functions among all atoms. \end{DoxyCompactList}\item 
+int \hyperlink{classsirius_1_1_unit__cell_a5b4e200542b2d648832108478296d9f3}{mt\+\_\+aw\+\_\+basis\+\_\+size\+\_\+} \{0\}
+\begin{DoxyCompactList}\small\item\em Total number of augmented wave basis functions in the muffin-\/tins. \end{DoxyCompactList}\item 
+std\+::vector$<$ \hyperlink{structmt__basis__descriptor}{mt\+\_\+basis\+\_\+descriptor} $>$ \hyperlink{classsirius_1_1_unit__cell_af2ca4393c20299bf86b38d7a23c1fcab}{mt\+\_\+aw\+\_\+basis\+\_\+descriptors\+\_\+}
+\begin{DoxyCompactList}\small\item\em List of augmented wave basis descriptors. \end{DoxyCompactList}\item 
+\hypertarget{classsirius_1_1_unit__cell_a412e3813abb2216b0c061c23f3d42488}{}std\+::vector$<$ \hyperlink{structmt__basis__descriptor}{mt\+\_\+basis\+\_\+descriptor} $>$ {\bfseries mt\+\_\+lo\+\_\+basis\+\_\+descriptors\+\_\+}\label{classsirius_1_1_unit__cell_a412e3813abb2216b0c061c23f3d42488}
+
+\item 
+int \hyperlink{classsirius_1_1_unit__cell_a64b9370ff27b0fdf91a035e61f025456}{mt\+\_\+lo\+\_\+basis\+\_\+size\+\_\+} \{0\}
+\begin{DoxyCompactList}\small\item\em Total number of local orbital basis functions. \end{DoxyCompactList}\item 
+int \hyperlink{classsirius_1_1_unit__cell_adfdf46843e5d5cb6eeb94b4e681f75ed}{max\+\_\+mt\+\_\+aw\+\_\+basis\+\_\+size\+\_\+} \{0\}
+\begin{DoxyCompactList}\small\item\em Maximum A\+W basis size among all atoms. \end{DoxyCompactList}\item 
+int \hyperlink{classsirius_1_1_unit__cell_af2da7ed61a428e6d5fdd239103ce9dc1}{max\+\_\+mt\+\_\+lo\+\_\+basis\+\_\+size\+\_\+} \{0\}
+\begin{DoxyCompactList}\small\item\em Maximum local orbital basis size among all atoms. \end{DoxyCompactList}\item 
+std\+::vector$<$ std\+::vector$<$ \hyperlink{structnearest__neighbour__descriptor}{nearest\+\_\+neighbour\+\_\+descriptor} $>$ $>$ \hyperlink{classsirius_1_1_unit__cell_a1d4fd34e939aac3561937c6307361ca3}{nearest\+\_\+neighbours\+\_\+}
+\begin{DoxyCompactList}\small\item\em List of nearest neighbours for each atom. \end{DoxyCompactList}\item 
+double \hyperlink{classsirius_1_1_unit__cell_a811f4365eb0377e75c2846c472e122df}{min\+\_\+mt\+\_\+radius\+\_\+} \{0\}
+\begin{DoxyCompactList}\small\item\em Minimum muffin-\/tin radius. \end{DoxyCompactList}\item 
+double \hyperlink{classsirius_1_1_unit__cell_a1f7acd5822d56a04d70fc56730e8959a}{max\+\_\+mt\+\_\+radius\+\_\+} \{0\}
+\begin{DoxyCompactList}\small\item\em Maximum muffin-\/tin radius. \end{DoxyCompactList}\item 
+int \hyperlink{classsirius_1_1_unit__cell_a622aa1eeb5b646e665194cbc6d7dc08c}{lmax\+\_\+} \{-\/1\}
+\begin{DoxyCompactList}\small\item\em Maximum orbital quantum number of radial functions between all atom types. \end{DoxyCompactList}\item 
+\hypertarget{classsirius_1_1_unit__cell_ae4414aa1fe26e48f75990baaf3403f32}{}\hyperlink{classsddk_1_1_communicator__bundle}{Communicator\+\_\+bundle} {\bfseries comm\+\_\+bundle\+\_\+atoms\+\_\+}\label{classsirius_1_1_unit__cell_ae4414aa1fe26e48f75990baaf3403f32}
+
+\item 
+\hypertarget{classsirius_1_1_unit__cell_a7542f464983d1b2ef92a65655d32f7aa}{}std\+::unique\+\_\+ptr$<$ \hyperlink{classsirius_1_1_symmetry}{Symmetry} $>$ {\bfseries symmetry\+\_\+}\label{classsirius_1_1_unit__cell_a7542f464983d1b2ef92a65655d32f7aa}
+
+\item 
+\hypertarget{classsirius_1_1_unit__cell_a987364e7ff44d3a0844a96ed773f3a20}{}\hyperlink{classsddk_1_1_communicator}{Communicator} const \& {\bfseries comm\+\_\+}\label{classsirius_1_1_unit__cell_a987364e7ff44d3a0844a96ed773f3a20}
+
+\end{DoxyCompactItemize}
+
+
+\subsection{Detailed Description}
+
+
+Definition at line 43 of file unit\+\_\+cell.\+h.
+
+
+
+\subsection{Member Function Documentation}
+\hypertarget{classsirius_1_1_unit__cell_a3d9c47a289473ff6f62b7190f1d752fe}{}\index{sirius\+::\+Unit\+\_\+cell@{sirius\+::\+Unit\+\_\+cell}!find\+\_\+mt\+\_\+radii@{find\+\_\+mt\+\_\+radii}}
+\index{find\+\_\+mt\+\_\+radii@{find\+\_\+mt\+\_\+radii}!sirius\+::\+Unit\+\_\+cell@{sirius\+::\+Unit\+\_\+cell}}
+\subsubsection[{find\+\_\+mt\+\_\+radii()}]{\setlength{\rightskip}{0pt plus 5cm}std\+::vector$<$ double $>$ sirius\+::\+Unit\+\_\+cell\+::find\+\_\+mt\+\_\+radii (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}, {\ttfamily [private]}}\label{classsirius_1_1_unit__cell_a3d9c47a289473ff6f62b7190f1d752fe}
+
+
+Automatically determine new muffin-\/tin radii as a half distance between neighbor atoms. 
+
+In order to guarantee a unique solution muffin-\/tin radii are dermined as a half distance bethween nearest atoms. Initial values of the muffin-\/tin radii are ignored. 
+
+Definition at line 833 of file unit\+\_\+cell.\+h.
+
+\hypertarget{classsirius_1_1_unit__cell_af25aedf64bb12785e06333e2a58de315}{}\index{sirius\+::\+Unit\+\_\+cell@{sirius\+::\+Unit\+\_\+cell}!check\+\_\+mt\+\_\+overlap@{check\+\_\+mt\+\_\+overlap}}
+\index{check\+\_\+mt\+\_\+overlap@{check\+\_\+mt\+\_\+overlap}!sirius\+::\+Unit\+\_\+cell@{sirius\+::\+Unit\+\_\+cell}}
+\subsubsection[{check\+\_\+mt\+\_\+overlap(int \&ia\+\_\+\+\_\+, int \&ja\+\_\+\+\_\+)}]{\setlength{\rightskip}{0pt plus 5cm}bool sirius\+::\+Unit\+\_\+cell\+::check\+\_\+mt\+\_\+overlap (
+\begin{DoxyParamCaption}
+\item[{int \&}]{ia\+\_\+\+\_\+, }
+\item[{int \&}]{ja\+\_\+\+\_\+}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}, {\ttfamily [private]}}\label{classsirius_1_1_unit__cell_af25aedf64bb12785e06333e2a58de315}
+
+
+Check if M\+T spheres overlap. 
+
+
+
+Definition at line 927 of file unit\+\_\+cell.\+h.
+
+\hypertarget{classsirius_1_1_unit__cell_a3ade5edcc57d81eb8036157f68112a56}{}\index{sirius\+::\+Unit\+\_\+cell@{sirius\+::\+Unit\+\_\+cell}!initialize@{initialize}}
+\index{initialize@{initialize}!sirius\+::\+Unit\+\_\+cell@{sirius\+::\+Unit\+\_\+cell}}
+\subsubsection[{initialize()}]{\setlength{\rightskip}{0pt plus 5cm}void sirius\+::\+Unit\+\_\+cell\+::initialize (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}}\label{classsirius_1_1_unit__cell_a3ade5edcc57d81eb8036157f68112a56}
+
+
+Initialize the unit cell data. 
+
+Several things must be done during this phase\+:
+\begin{DoxyEnumerate}
+\item Compute number of electrons
+\item Compute M\+T basis function indices
+\item \mbox{[}if needed\mbox{]} Scale M\+T radii
+\item Check M\+T overlap
+\item Create radial grid for each atom type
+\item Find symmetry and assign symmetry class to each atom
+\item Create split indices for atoms and atom classes 
+\end{DoxyEnumerate}
+
+Definition at line 660 of file unit\+\_\+cell.\+h.
+
+\hypertarget{classsirius_1_1_unit__cell_a7072576dc55a0c768a4aa1e6bbbbf0a5}{}\index{sirius\+::\+Unit\+\_\+cell@{sirius\+::\+Unit\+\_\+cell}!add\+\_\+atom\+\_\+type@{add\+\_\+atom\+\_\+type}}
+\index{add\+\_\+atom\+\_\+type@{add\+\_\+atom\+\_\+type}!sirius\+::\+Unit\+\_\+cell@{sirius\+::\+Unit\+\_\+cell}}
+\subsubsection[{add\+\_\+atom\+\_\+type(const std\+::string label, const std\+::string file\+\_\+name)}]{\setlength{\rightskip}{0pt plus 5cm}void sirius\+::\+Unit\+\_\+cell\+::add\+\_\+atom\+\_\+type (
+\begin{DoxyParamCaption}
+\item[{const std\+::string}]{label, }
+\item[{const std\+::string}]{file\+\_\+name}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}}\label{classsirius_1_1_unit__cell_a7072576dc55a0c768a4aa1e6bbbbf0a5}
+
+
+Add new atom type to the list of atom types and read necessary data from the .json file. 
+
+
+
+Definition at line 218 of file unit\+\_\+cell.\+h.
+
+\hypertarget{classsirius_1_1_unit__cell_a6370b1dd71c63be44228efabaf0d0293}{}\index{sirius\+::\+Unit\+\_\+cell@{sirius\+::\+Unit\+\_\+cell}!add\+\_\+atom@{add\+\_\+atom}}
+\index{add\+\_\+atom@{add\+\_\+atom}!sirius\+::\+Unit\+\_\+cell@{sirius\+::\+Unit\+\_\+cell}}
+\subsubsection[{add\+\_\+atom(const std\+::string label, vector3d$<$ double $>$ position, vector3d$<$ double $>$ vector\+\_\+field)}]{\setlength{\rightskip}{0pt plus 5cm}void sirius\+::\+Unit\+\_\+cell\+::add\+\_\+atom (
+\begin{DoxyParamCaption}
+\item[{const std\+::string}]{label, }
+\item[{{\bf vector3d}$<$ double $>$}]{position, }
+\item[{{\bf vector3d}$<$ double $>$}]{vector\+\_\+field}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}}\label{classsirius_1_1_unit__cell_a6370b1dd71c63be44228efabaf0d0293}
+
+
+Add new atom to the list of atom types. 
+
+
+
+Definition at line 231 of file unit\+\_\+cell.\+h.
+
+\hypertarget{classsirius_1_1_unit__cell_a3c6cdebd28fa00730179967a74254c25}{}\index{sirius\+::\+Unit\+\_\+cell@{sirius\+::\+Unit\+\_\+cell}!init\+\_\+paw@{init\+\_\+paw}}
+\index{init\+\_\+paw@{init\+\_\+paw}!sirius\+::\+Unit\+\_\+cell@{sirius\+::\+Unit\+\_\+cell}}
+\subsubsection[{init\+\_\+paw()}]{\setlength{\rightskip}{0pt plus 5cm}void sirius\+::\+Unit\+\_\+cell\+::init\+\_\+paw (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}}\label{classsirius_1_1_unit__cell_a3c6cdebd28fa00730179967a74254c25}
+
+
+Add P\+A\+W atoms. 
+
+
+
+Definition at line 254 of file unit\+\_\+cell.\+h.
+
+\hypertarget{classsirius_1_1_unit__cell_a06a98ddd98edfe770be18172a76a9c3f}{}\index{sirius\+::\+Unit\+\_\+cell@{sirius\+::\+Unit\+\_\+cell}!num\+\_\+paw\+\_\+atoms@{num\+\_\+paw\+\_\+atoms}}
+\index{num\+\_\+paw\+\_\+atoms@{num\+\_\+paw\+\_\+atoms}!sirius\+::\+Unit\+\_\+cell@{sirius\+::\+Unit\+\_\+cell}}
+\subsubsection[{num\+\_\+paw\+\_\+atoms() const }]{\setlength{\rightskip}{0pt plus 5cm}int sirius\+::\+Unit\+\_\+cell\+::num\+\_\+paw\+\_\+atoms (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [inline]}}\label{classsirius_1_1_unit__cell_a06a98ddd98edfe770be18172a76a9c3f}
+
+
+Return number of P\+A\+W atoms. 
+
+
+
+Definition at line 266 of file unit\+\_\+cell.\+h.
+
+\hypertarget{classsirius_1_1_unit__cell_a22bb0e85d29350c1238e4ea05cd11a06}{}\index{sirius\+::\+Unit\+\_\+cell@{sirius\+::\+Unit\+\_\+cell}!spl\+\_\+num\+\_\+paw\+\_\+atoms@{spl\+\_\+num\+\_\+paw\+\_\+atoms}}
+\index{spl\+\_\+num\+\_\+paw\+\_\+atoms@{spl\+\_\+num\+\_\+paw\+\_\+atoms}!sirius\+::\+Unit\+\_\+cell@{sirius\+::\+Unit\+\_\+cell}}
+\subsubsection[{spl\+\_\+num\+\_\+paw\+\_\+atoms() const }]{\setlength{\rightskip}{0pt plus 5cm}{\bf splindex}$<$block$>$ sirius\+::\+Unit\+\_\+cell\+::spl\+\_\+num\+\_\+paw\+\_\+atoms (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [inline]}}\label{classsirius_1_1_unit__cell_a22bb0e85d29350c1238e4ea05cd11a06}
+
+
+Get split index of P\+A\+W atoms. 
+
+
+
+Definition at line 272 of file unit\+\_\+cell.\+h.
+
+\hypertarget{classsirius_1_1_unit__cell_a89843c24de69f8968140a9cfff4bdd0f}{}\index{sirius\+::\+Unit\+\_\+cell@{sirius\+::\+Unit\+\_\+cell}!add\+\_\+atom@{add\+\_\+atom}}
+\index{add\+\_\+atom@{add\+\_\+atom}!sirius\+::\+Unit\+\_\+cell@{sirius\+::\+Unit\+\_\+cell}}
+\subsubsection[{add\+\_\+atom(const std\+::string label, vector3d$<$ double $>$ position)}]{\setlength{\rightskip}{0pt plus 5cm}void sirius\+::\+Unit\+\_\+cell\+::add\+\_\+atom (
+\begin{DoxyParamCaption}
+\item[{const std\+::string}]{label, }
+\item[{{\bf vector3d}$<$ double $>$}]{position}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}}\label{classsirius_1_1_unit__cell_a89843c24de69f8968140a9cfff4bdd0f}
+
+
+Add new atom without vector field to the list of atom types. 
+
+
+
+Definition at line 288 of file unit\+\_\+cell.\+h.
+
+\hypertarget{classsirius_1_1_unit__cell_aaa8632b9f2d62183100a46e7dd0790ba}{}\index{sirius\+::\+Unit\+\_\+cell@{sirius\+::\+Unit\+\_\+cell}!print\+\_\+info@{print\+\_\+info}}
+\index{print\+\_\+info@{print\+\_\+info}!sirius\+::\+Unit\+\_\+cell@{sirius\+::\+Unit\+\_\+cell}}
+\subsubsection[{print\+\_\+info(int verbosity\+\_\+)}]{\setlength{\rightskip}{0pt plus 5cm}void sirius\+::\+Unit\+\_\+cell\+::print\+\_\+info (
+\begin{DoxyParamCaption}
+\item[{int}]{verbosity\+\_\+}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}}\label{classsirius_1_1_unit__cell_aaa8632b9f2d62183100a46e7dd0790ba}
+
+
+Print basic info. 
+
+
+
+Definition at line 955 of file unit\+\_\+cell.\+h.
+
+\hypertarget{classsirius_1_1_unit__cell_ac25877583212c7e6aac3c4f97d62fa9d}{}\index{sirius\+::\+Unit\+\_\+cell@{sirius\+::\+Unit\+\_\+cell}!get\+\_\+symmetry@{get\+\_\+symmetry}}
+\index{get\+\_\+symmetry@{get\+\_\+symmetry}!sirius\+::\+Unit\+\_\+cell@{sirius\+::\+Unit\+\_\+cell}}
+\subsubsection[{get\+\_\+symmetry()}]{\setlength{\rightskip}{0pt plus 5cm}void sirius\+::\+Unit\+\_\+cell\+::get\+\_\+symmetry (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}}\label{classsirius_1_1_unit__cell_ac25877583212c7e6aac3c4f97d62fa9d}
+
+
+Get crystal symmetries and equivalent atoms. 
+
+Makes a call to spglib providing the basic unit cell information\+: lattice vectors and atomic types and positions. Gets back symmetry operations and a table of equivalent atoms. The table of equivalent atoms is then used to make a list of atom symmetry classes and related data. 
+
+Definition at line 766 of file unit\+\_\+cell.\+h.
+
+\hypertarget{classsirius_1_1_unit__cell_a948f43cc5840cb1021494c45628043d4}{}\index{sirius\+::\+Unit\+\_\+cell@{sirius\+::\+Unit\+\_\+cell}!write\+\_\+cif@{write\+\_\+cif}}
+\index{write\+\_\+cif@{write\+\_\+cif}!sirius\+::\+Unit\+\_\+cell@{sirius\+::\+Unit\+\_\+cell}}
+\subsubsection[{write\+\_\+cif()}]{\setlength{\rightskip}{0pt plus 5cm}void sirius\+::\+Unit\+\_\+cell\+::write\+\_\+cif (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}}\label{classsirius_1_1_unit__cell_a948f43cc5840cb1021494c45628043d4}
+
+
+Write structure to C\+I\+F file. 
+
+
+
+Definition at line 1090 of file unit\+\_\+cell.\+h.
+
+\hypertarget{classsirius_1_1_unit__cell_af1e86a5c3ac96c6ad7733939dad2eb40}{}\index{sirius\+::\+Unit\+\_\+cell@{sirius\+::\+Unit\+\_\+cell}!serialize@{serialize}}
+\index{serialize@{serialize}!sirius\+::\+Unit\+\_\+cell@{sirius\+::\+Unit\+\_\+cell}}
+\subsubsection[{serialize()}]{\setlength{\rightskip}{0pt plus 5cm}{\bf json} sirius\+::\+Unit\+\_\+cell\+::serialize (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}}\label{classsirius_1_1_unit__cell_af1e86a5c3ac96c6ad7733939dad2eb40}
+
+
+Write structure to J\+S\+O\+N file. 
+
+
+
+Definition at line 1123 of file unit\+\_\+cell.\+h.
+
+\hypertarget{classsirius_1_1_unit__cell_a73aed1e2042e5c0006e7182fed1ca375}{}\index{sirius\+::\+Unit\+\_\+cell@{sirius\+::\+Unit\+\_\+cell}!set\+\_\+lattice\+\_\+vectors@{set\+\_\+lattice\+\_\+vectors}}
+\index{set\+\_\+lattice\+\_\+vectors@{set\+\_\+lattice\+\_\+vectors}!sirius\+::\+Unit\+\_\+cell@{sirius\+::\+Unit\+\_\+cell}}
+\subsubsection[{set\+\_\+lattice\+\_\+vectors(vector3d$<$ double $>$ a0\+\_\+\+\_\+, vector3d$<$ double $>$ a1\+\_\+\+\_\+, vector3d$<$ double $>$ a2\+\_\+\+\_\+)}]{\setlength{\rightskip}{0pt plus 5cm}void sirius\+::\+Unit\+\_\+cell\+::set\+\_\+lattice\+\_\+vectors (
+\begin{DoxyParamCaption}
+\item[{{\bf vector3d}$<$ double $>$}]{a0\+\_\+\+\_\+, }
+\item[{{\bf vector3d}$<$ double $>$}]{a1\+\_\+\+\_\+, }
+\item[{{\bf vector3d}$<$ double $>$}]{a2\+\_\+\+\_\+}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}}\label{classsirius_1_1_unit__cell_a73aed1e2042e5c0006e7182fed1ca375}
+
+
+Set lattice vectors. 
+
+Initializes lattice vectors, inverse lattice vector matrix, reciprocal lattice vectors and the unit cell volume. 
+
+Definition at line 322 of file unit\+\_\+cell.\+h.
+
+\hypertarget{classsirius_1_1_unit__cell_ad6a3cbb8556869f65df124ee7907e5ef}{}\index{sirius\+::\+Unit\+\_\+cell@{sirius\+::\+Unit\+\_\+cell}!find\+\_\+nearest\+\_\+neighbours@{find\+\_\+nearest\+\_\+neighbours}}
+\index{find\+\_\+nearest\+\_\+neighbours@{find\+\_\+nearest\+\_\+neighbours}!sirius\+::\+Unit\+\_\+cell@{sirius\+::\+Unit\+\_\+cell}}
+\subsubsection[{find\+\_\+nearest\+\_\+neighbours(double cluster\+\_\+radius)}]{\setlength{\rightskip}{0pt plus 5cm}void sirius\+::\+Unit\+\_\+cell\+::find\+\_\+nearest\+\_\+neighbours (
+\begin{DoxyParamCaption}
+\item[{double}]{cluster\+\_\+radius}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}}\label{classsirius_1_1_unit__cell_ad6a3cbb8556869f65df124ee7907e5ef}
+
+
+Find the cluster of nearest neighbours around each atom. 
+
+
+
+Definition at line 1150 of file unit\+\_\+cell.\+h.
+
+\hypertarget{classsirius_1_1_unit__cell_a63c74c5c32762fcefaec4ca537d20dbc}{}\index{sirius\+::\+Unit\+\_\+cell@{sirius\+::\+Unit\+\_\+cell}!make\+\_\+periodic\+\_\+function@{make\+\_\+periodic\+\_\+function}}
+\index{make\+\_\+periodic\+\_\+function@{make\+\_\+periodic\+\_\+function}!sirius\+::\+Unit\+\_\+cell@{sirius\+::\+Unit\+\_\+cell}}
+\subsubsection[{make\+\_\+periodic\+\_\+function(mdarray$<$ double, 2 $>$ \&form\+\_\+factors\+\_\+\+\_\+, Gvec const \&gvec\+\_\+\+\_\+) const }]{\setlength{\rightskip}{0pt plus 5cm}std\+::vector$<$ double\+\_\+complex $>$ sirius\+::\+Unit\+\_\+cell\+::make\+\_\+periodic\+\_\+function (
+\begin{DoxyParamCaption}
+\item[{{\bf mdarray}$<$ double, 2 $>$ \&}]{form\+\_\+factors\+\_\+\+\_\+, }
+\item[{{\bf Gvec} const \&}]{gvec\+\_\+\+\_\+}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [inline]}}\label{classsirius_1_1_unit__cell_a63c74c5c32762fcefaec4ca537d20dbc}
+
+
+Make periodic function out of form factors. 
+
+Return vector of plane-\/wave coefficients 
+
+Definition at line 1366 of file unit\+\_\+cell.\+h.
+
+\hypertarget{classsirius_1_1_unit__cell_a4e3d00a7a45cfd2f7645588f525439b8}{}\index{sirius\+::\+Unit\+\_\+cell@{sirius\+::\+Unit\+\_\+cell}!omega@{omega}}
+\index{omega@{omega}!sirius\+::\+Unit\+\_\+cell@{sirius\+::\+Unit\+\_\+cell}}
+\subsubsection[{omega() const }]{\setlength{\rightskip}{0pt plus 5cm}double sirius\+::\+Unit\+\_\+cell\+::omega (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [inline]}}\label{classsirius_1_1_unit__cell_a4e3d00a7a45cfd2f7645588f525439b8}
+
+
+Unit cell volume. 
+
+
+
+Definition at line 377 of file unit\+\_\+cell.\+h.
+
+\hypertarget{classsirius_1_1_unit__cell_a0021ece9db70bed0575c656b5e58d65d}{}\index{sirius\+::\+Unit\+\_\+cell@{sirius\+::\+Unit\+\_\+cell}!num\+\_\+atom\+\_\+types@{num\+\_\+atom\+\_\+types}}
+\index{num\+\_\+atom\+\_\+types@{num\+\_\+atom\+\_\+types}!sirius\+::\+Unit\+\_\+cell@{sirius\+::\+Unit\+\_\+cell}}
+\subsubsection[{num\+\_\+atom\+\_\+types() const }]{\setlength{\rightskip}{0pt plus 5cm}int sirius\+::\+Unit\+\_\+cell\+::num\+\_\+atom\+\_\+types (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [inline]}}\label{classsirius_1_1_unit__cell_a0021ece9db70bed0575c656b5e58d65d}
+
+
+Number of atom types. 
+
+
+
+Definition at line 383 of file unit\+\_\+cell.\+h.
+
+\hypertarget{classsirius_1_1_unit__cell_a1ea078d2bead28d4b1ad5fb695b9c57f}{}\index{sirius\+::\+Unit\+\_\+cell@{sirius\+::\+Unit\+\_\+cell}!atom\+\_\+type@{atom\+\_\+type}}
+\index{atom\+\_\+type@{atom\+\_\+type}!sirius\+::\+Unit\+\_\+cell@{sirius\+::\+Unit\+\_\+cell}}
+\subsubsection[{atom\+\_\+type(int id\+\_\+\+\_\+)}]{\setlength{\rightskip}{0pt plus 5cm}{\bf Atom\+\_\+type}\& sirius\+::\+Unit\+\_\+cell\+::atom\+\_\+type (
+\begin{DoxyParamCaption}
+\item[{int}]{id\+\_\+\+\_\+}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}}\label{classsirius_1_1_unit__cell_a1ea078d2bead28d4b1ad5fb695b9c57f}
+
+
+Return atom type instance by id. 
+
+
+
+Definition at line 390 of file unit\+\_\+cell.\+h.
+
+\hypertarget{classsirius_1_1_unit__cell_a9a6e6367689da13971da3a4dab37609c}{}\index{sirius\+::\+Unit\+\_\+cell@{sirius\+::\+Unit\+\_\+cell}!atom\+\_\+type@{atom\+\_\+type}}
+\index{atom\+\_\+type@{atom\+\_\+type}!sirius\+::\+Unit\+\_\+cell@{sirius\+::\+Unit\+\_\+cell}}
+\subsubsection[{atom\+\_\+type(int id\+\_\+\+\_\+) const }]{\setlength{\rightskip}{0pt plus 5cm}{\bf Atom\+\_\+type} const\& sirius\+::\+Unit\+\_\+cell\+::atom\+\_\+type (
+\begin{DoxyParamCaption}
+\item[{int}]{id\+\_\+\+\_\+}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [inline]}}\label{classsirius_1_1_unit__cell_a9a6e6367689da13971da3a4dab37609c}
+
+
+Return const atom type instance by id. 
+
+
+
+Definition at line 397 of file unit\+\_\+cell.\+h.
+
+\hypertarget{classsirius_1_1_unit__cell_a9cb64348513a41da01eab5eb93e3eb34}{}\index{sirius\+::\+Unit\+\_\+cell@{sirius\+::\+Unit\+\_\+cell}!atom\+\_\+type@{atom\+\_\+type}}
+\index{atom\+\_\+type@{atom\+\_\+type}!sirius\+::\+Unit\+\_\+cell@{sirius\+::\+Unit\+\_\+cell}}
+\subsubsection[{atom\+\_\+type(std\+::string const label\+\_\+\+\_\+)}]{\setlength{\rightskip}{0pt plus 5cm}{\bf Atom\+\_\+type}\& sirius\+::\+Unit\+\_\+cell\+::atom\+\_\+type (
+\begin{DoxyParamCaption}
+\item[{std\+::string const}]{label\+\_\+\+\_\+}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}}\label{classsirius_1_1_unit__cell_a9cb64348513a41da01eab5eb93e3eb34}
+
+
+Return atom type instance by label. 
+
+
+
+Definition at line 404 of file unit\+\_\+cell.\+h.
+
+\hypertarget{classsirius_1_1_unit__cell_a3c66ad4bb6a05861205c642df60b2a47}{}\index{sirius\+::\+Unit\+\_\+cell@{sirius\+::\+Unit\+\_\+cell}!atom\+\_\+type@{atom\+\_\+type}}
+\index{atom\+\_\+type@{atom\+\_\+type}!sirius\+::\+Unit\+\_\+cell@{sirius\+::\+Unit\+\_\+cell}}
+\subsubsection[{atom\+\_\+type(std\+::string const label\+\_\+\+\_\+) const }]{\setlength{\rightskip}{0pt plus 5cm}{\bf Atom\+\_\+type} const\& sirius\+::\+Unit\+\_\+cell\+::atom\+\_\+type (
+\begin{DoxyParamCaption}
+\item[{std\+::string const}]{label\+\_\+\+\_\+}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [inline]}}\label{classsirius_1_1_unit__cell_a3c66ad4bb6a05861205c642df60b2a47}
+
+
+Return const atom type instance by label. 
+
+
+
+Definition at line 411 of file unit\+\_\+cell.\+h.
+
+\hypertarget{classsirius_1_1_unit__cell_a8b2fe31247fbd07fcfbd4723b769c8f6}{}\index{sirius\+::\+Unit\+\_\+cell@{sirius\+::\+Unit\+\_\+cell}!num\+\_\+atom\+\_\+symmetry\+\_\+classes@{num\+\_\+atom\+\_\+symmetry\+\_\+classes}}
+\index{num\+\_\+atom\+\_\+symmetry\+\_\+classes@{num\+\_\+atom\+\_\+symmetry\+\_\+classes}!sirius\+::\+Unit\+\_\+cell@{sirius\+::\+Unit\+\_\+cell}}
+\subsubsection[{num\+\_\+atom\+\_\+symmetry\+\_\+classes() const }]{\setlength{\rightskip}{0pt plus 5cm}int sirius\+::\+Unit\+\_\+cell\+::num\+\_\+atom\+\_\+symmetry\+\_\+classes (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [inline]}}\label{classsirius_1_1_unit__cell_a8b2fe31247fbd07fcfbd4723b769c8f6}
+
+
+Number of atom symmetry classes. 
+
+
+
+Definition at line 418 of file unit\+\_\+cell.\+h.
+
+\hypertarget{classsirius_1_1_unit__cell_ade4630721f7d72741777943dfc6ab8fe}{}\index{sirius\+::\+Unit\+\_\+cell@{sirius\+::\+Unit\+\_\+cell}!atom\+\_\+symmetry\+\_\+class@{atom\+\_\+symmetry\+\_\+class}}
+\index{atom\+\_\+symmetry\+\_\+class@{atom\+\_\+symmetry\+\_\+class}!sirius\+::\+Unit\+\_\+cell@{sirius\+::\+Unit\+\_\+cell}}
+\subsubsection[{atom\+\_\+symmetry\+\_\+class(int id\+\_\+\+\_\+) const }]{\setlength{\rightskip}{0pt plus 5cm}{\bf Atom\+\_\+symmetry\+\_\+class} const\& sirius\+::\+Unit\+\_\+cell\+::atom\+\_\+symmetry\+\_\+class (
+\begin{DoxyParamCaption}
+\item[{int}]{id\+\_\+\+\_\+}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [inline]}}\label{classsirius_1_1_unit__cell_ade4630721f7d72741777943dfc6ab8fe}
+
+
+Return const symmetry class instance by class id. 
+
+
+
+Definition at line 424 of file unit\+\_\+cell.\+h.
+
+\hypertarget{classsirius_1_1_unit__cell_aa01128897145c1c846e64b68aa81e60d}{}\index{sirius\+::\+Unit\+\_\+cell@{sirius\+::\+Unit\+\_\+cell}!atom\+\_\+symmetry\+\_\+class@{atom\+\_\+symmetry\+\_\+class}}
+\index{atom\+\_\+symmetry\+\_\+class@{atom\+\_\+symmetry\+\_\+class}!sirius\+::\+Unit\+\_\+cell@{sirius\+::\+Unit\+\_\+cell}}
+\subsubsection[{atom\+\_\+symmetry\+\_\+class(int id\+\_\+\+\_\+)}]{\setlength{\rightskip}{0pt plus 5cm}{\bf Atom\+\_\+symmetry\+\_\+class}\& sirius\+::\+Unit\+\_\+cell\+::atom\+\_\+symmetry\+\_\+class (
+\begin{DoxyParamCaption}
+\item[{int}]{id\+\_\+\+\_\+}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}}\label{classsirius_1_1_unit__cell_aa01128897145c1c846e64b68aa81e60d}
+
+
+Return symmetry class instance by class id. 
+
+
+
+Definition at line 430 of file unit\+\_\+cell.\+h.
+
+\hypertarget{classsirius_1_1_unit__cell_a1439a1d0fa7aa06fda4601581ae30a19}{}\index{sirius\+::\+Unit\+\_\+cell@{sirius\+::\+Unit\+\_\+cell}!num\+\_\+atoms@{num\+\_\+atoms}}
+\index{num\+\_\+atoms@{num\+\_\+atoms}!sirius\+::\+Unit\+\_\+cell@{sirius\+::\+Unit\+\_\+cell}}
+\subsubsection[{num\+\_\+atoms() const }]{\setlength{\rightskip}{0pt plus 5cm}int sirius\+::\+Unit\+\_\+cell\+::num\+\_\+atoms (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [inline]}}\label{classsirius_1_1_unit__cell_a1439a1d0fa7aa06fda4601581ae30a19}
+
+
+Number of atoms in the unit cell. 
+
+
+
+Definition at line 436 of file unit\+\_\+cell.\+h.
+
+\hypertarget{classsirius_1_1_unit__cell_ae0d938b64f0dc6ba19376a6db1968d20}{}\index{sirius\+::\+Unit\+\_\+cell@{sirius\+::\+Unit\+\_\+cell}!atom@{atom}}
+\index{atom@{atom}!sirius\+::\+Unit\+\_\+cell@{sirius\+::\+Unit\+\_\+cell}}
+\subsubsection[{atom(int id\+\_\+\+\_\+) const }]{\setlength{\rightskip}{0pt plus 5cm}{\bf Atom} const\& sirius\+::\+Unit\+\_\+cell\+::atom (
+\begin{DoxyParamCaption}
+\item[{int}]{id\+\_\+\+\_\+}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [inline]}}\label{classsirius_1_1_unit__cell_ae0d938b64f0dc6ba19376a6db1968d20}
+
+
+Return const atom instance by id. 
+
+
+
+Definition at line 442 of file unit\+\_\+cell.\+h.
+
+\hypertarget{classsirius_1_1_unit__cell_a1789ffb7c2f0b695f264cb35bd850eec}{}\index{sirius\+::\+Unit\+\_\+cell@{sirius\+::\+Unit\+\_\+cell}!atom@{atom}}
+\index{atom@{atom}!sirius\+::\+Unit\+\_\+cell@{sirius\+::\+Unit\+\_\+cell}}
+\subsubsection[{atom(int id\+\_\+\+\_\+)}]{\setlength{\rightskip}{0pt plus 5cm}{\bf Atom}\& sirius\+::\+Unit\+\_\+cell\+::atom (
+\begin{DoxyParamCaption}
+\item[{int}]{id\+\_\+\+\_\+}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}}\label{classsirius_1_1_unit__cell_a1789ffb7c2f0b695f264cb35bd850eec}
+
+
+Return atom instance by id. 
+
+
+
+Definition at line 449 of file unit\+\_\+cell.\+h.
+
+\hypertarget{classsirius_1_1_unit__cell_af773aee1295a5be6c706b29959ff4592}{}\index{sirius\+::\+Unit\+\_\+cell@{sirius\+::\+Unit\+\_\+cell}!num\+\_\+electrons@{num\+\_\+electrons}}
+\index{num\+\_\+electrons@{num\+\_\+electrons}!sirius\+::\+Unit\+\_\+cell@{sirius\+::\+Unit\+\_\+cell}}
+\subsubsection[{num\+\_\+electrons() const }]{\setlength{\rightskip}{0pt plus 5cm}double sirius\+::\+Unit\+\_\+cell\+::num\+\_\+electrons (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [inline]}}\label{classsirius_1_1_unit__cell_af773aee1295a5be6c706b29959ff4592}
+
+
+Total number of electrons (core + valence). 
+
+
+
+Definition at line 461 of file unit\+\_\+cell.\+h.
+
+\hypertarget{classsirius_1_1_unit__cell_a3d0dc243ec23f8fed279c78f67da015a}{}\index{sirius\+::\+Unit\+\_\+cell@{sirius\+::\+Unit\+\_\+cell}!num\+\_\+valence\+\_\+electrons@{num\+\_\+valence\+\_\+electrons}}
+\index{num\+\_\+valence\+\_\+electrons@{num\+\_\+valence\+\_\+electrons}!sirius\+::\+Unit\+\_\+cell@{sirius\+::\+Unit\+\_\+cell}}
+\subsubsection[{num\+\_\+valence\+\_\+electrons() const }]{\setlength{\rightskip}{0pt plus 5cm}double sirius\+::\+Unit\+\_\+cell\+::num\+\_\+valence\+\_\+electrons (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [inline]}}\label{classsirius_1_1_unit__cell_a3d0dc243ec23f8fed279c78f67da015a}
+
+
+Number of valence electrons. 
+
+
+
+Definition at line 467 of file unit\+\_\+cell.\+h.
+
+\hypertarget{classsirius_1_1_unit__cell_ae418b2e1ec7145fecc823dea73589b1a}{}\index{sirius\+::\+Unit\+\_\+cell@{sirius\+::\+Unit\+\_\+cell}!num\+\_\+core\+\_\+electrons@{num\+\_\+core\+\_\+electrons}}
+\index{num\+\_\+core\+\_\+electrons@{num\+\_\+core\+\_\+electrons}!sirius\+::\+Unit\+\_\+cell@{sirius\+::\+Unit\+\_\+cell}}
+\subsubsection[{num\+\_\+core\+\_\+electrons() const }]{\setlength{\rightskip}{0pt plus 5cm}double sirius\+::\+Unit\+\_\+cell\+::num\+\_\+core\+\_\+electrons (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [inline]}}\label{classsirius_1_1_unit__cell_ae418b2e1ec7145fecc823dea73589b1a}
+
+
+Number of core electrons. 
+
+
+
+Definition at line 473 of file unit\+\_\+cell.\+h.
+
+\hypertarget{classsirius_1_1_unit__cell_a6a1a396053eb4992139576d887c66662}{}\index{sirius\+::\+Unit\+\_\+cell@{sirius\+::\+Unit\+\_\+cell}!max\+\_\+num\+\_\+mt\+\_\+points@{max\+\_\+num\+\_\+mt\+\_\+points}}
+\index{max\+\_\+num\+\_\+mt\+\_\+points@{max\+\_\+num\+\_\+mt\+\_\+points}!sirius\+::\+Unit\+\_\+cell@{sirius\+::\+Unit\+\_\+cell}}
+\subsubsection[{max\+\_\+num\+\_\+mt\+\_\+points() const }]{\setlength{\rightskip}{0pt plus 5cm}int sirius\+::\+Unit\+\_\+cell\+::max\+\_\+num\+\_\+mt\+\_\+points (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [inline]}}\label{classsirius_1_1_unit__cell_a6a1a396053eb4992139576d887c66662}
+
+
+Maximum number of muffin-\/tin points among all atom types. 
+
+
+
+Definition at line 479 of file unit\+\_\+cell.\+h.
+
+\hypertarget{classsirius_1_1_unit__cell_a163d3e6e7306ffaf6f51eb20e8d8228d}{}\index{sirius\+::\+Unit\+\_\+cell@{sirius\+::\+Unit\+\_\+cell}!mt\+\_\+aw\+\_\+basis\+\_\+size@{mt\+\_\+aw\+\_\+basis\+\_\+size}}
+\index{mt\+\_\+aw\+\_\+basis\+\_\+size@{mt\+\_\+aw\+\_\+basis\+\_\+size}!sirius\+::\+Unit\+\_\+cell@{sirius\+::\+Unit\+\_\+cell}}
+\subsubsection[{mt\+\_\+aw\+\_\+basis\+\_\+size() const }]{\setlength{\rightskip}{0pt plus 5cm}int sirius\+::\+Unit\+\_\+cell\+::mt\+\_\+aw\+\_\+basis\+\_\+size (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [inline]}}\label{classsirius_1_1_unit__cell_a163d3e6e7306ffaf6f51eb20e8d8228d}
+
+
+Total number of the augmented wave basis functions over all atoms. 
+
+
+
+Definition at line 485 of file unit\+\_\+cell.\+h.
+
+\hypertarget{classsirius_1_1_unit__cell_a5ebddaa856d8f93893d7c041251afb35}{}\index{sirius\+::\+Unit\+\_\+cell@{sirius\+::\+Unit\+\_\+cell}!mt\+\_\+lo\+\_\+basis\+\_\+size@{mt\+\_\+lo\+\_\+basis\+\_\+size}}
+\index{mt\+\_\+lo\+\_\+basis\+\_\+size@{mt\+\_\+lo\+\_\+basis\+\_\+size}!sirius\+::\+Unit\+\_\+cell@{sirius\+::\+Unit\+\_\+cell}}
+\subsubsection[{mt\+\_\+lo\+\_\+basis\+\_\+size() const }]{\setlength{\rightskip}{0pt plus 5cm}int sirius\+::\+Unit\+\_\+cell\+::mt\+\_\+lo\+\_\+basis\+\_\+size (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [inline]}}\label{classsirius_1_1_unit__cell_a5ebddaa856d8f93893d7c041251afb35}
+
+
+Total number of local orbital basis functions over all atoms. 
+
+
+
+Definition at line 491 of file unit\+\_\+cell.\+h.
+
+\hypertarget{classsirius_1_1_unit__cell_a5ed10c6520923550e73175c91f08d1e4}{}\index{sirius\+::\+Unit\+\_\+cell@{sirius\+::\+Unit\+\_\+cell}!mt\+\_\+basis\+\_\+size@{mt\+\_\+basis\+\_\+size}}
+\index{mt\+\_\+basis\+\_\+size@{mt\+\_\+basis\+\_\+size}!sirius\+::\+Unit\+\_\+cell@{sirius\+::\+Unit\+\_\+cell}}
+\subsubsection[{mt\+\_\+basis\+\_\+size() const }]{\setlength{\rightskip}{0pt plus 5cm}int sirius\+::\+Unit\+\_\+cell\+::mt\+\_\+basis\+\_\+size (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [inline]}}\label{classsirius_1_1_unit__cell_a5ed10c6520923550e73175c91f08d1e4}
+
+
+Total number of the muffin-\/tin basis functions. 
+
+Total number of M\+T basis functions equals to the sum of the total number of augmented wave basis functions and the total number of local orbital basis functions among all atoms. It controls the size of the muffin-\/tin part of the first-\/variational states and second-\/variational wave functions. 
+
+Definition at line 500 of file unit\+\_\+cell.\+h.
+
+\hypertarget{classsirius_1_1_unit__cell_a22a732322dd61dda3120337e058047e0}{}\index{sirius\+::\+Unit\+\_\+cell@{sirius\+::\+Unit\+\_\+cell}!max\+\_\+mt\+\_\+basis\+\_\+size@{max\+\_\+mt\+\_\+basis\+\_\+size}}
+\index{max\+\_\+mt\+\_\+basis\+\_\+size@{max\+\_\+mt\+\_\+basis\+\_\+size}!sirius\+::\+Unit\+\_\+cell@{sirius\+::\+Unit\+\_\+cell}}
+\subsubsection[{max\+\_\+mt\+\_\+basis\+\_\+size() const }]{\setlength{\rightskip}{0pt plus 5cm}int sirius\+::\+Unit\+\_\+cell\+::max\+\_\+mt\+\_\+basis\+\_\+size (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [inline]}}\label{classsirius_1_1_unit__cell_a22a732322dd61dda3120337e058047e0}
+
+
+Maximum number of basis functions among all atom types. 
+
+
+
+Definition at line 506 of file unit\+\_\+cell.\+h.
+
+\hypertarget{classsirius_1_1_unit__cell_a8f80f526f0dd59e15daef8439af0b577}{}\index{sirius\+::\+Unit\+\_\+cell@{sirius\+::\+Unit\+\_\+cell}!max\+\_\+mt\+\_\+radial\+\_\+basis\+\_\+size@{max\+\_\+mt\+\_\+radial\+\_\+basis\+\_\+size}}
+\index{max\+\_\+mt\+\_\+radial\+\_\+basis\+\_\+size@{max\+\_\+mt\+\_\+radial\+\_\+basis\+\_\+size}!sirius\+::\+Unit\+\_\+cell@{sirius\+::\+Unit\+\_\+cell}}
+\subsubsection[{max\+\_\+mt\+\_\+radial\+\_\+basis\+\_\+size() const }]{\setlength{\rightskip}{0pt plus 5cm}int sirius\+::\+Unit\+\_\+cell\+::max\+\_\+mt\+\_\+radial\+\_\+basis\+\_\+size (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [inline]}}\label{classsirius_1_1_unit__cell_a8f80f526f0dd59e15daef8439af0b577}
+
+
+Maximum number of radial functions among all atom types. 
+
+
+
+Definition at line 512 of file unit\+\_\+cell.\+h.
+
+\hypertarget{classsirius_1_1_unit__cell_a60ff58a73dd2989afdafc9b37fbd68df}{}\index{sirius\+::\+Unit\+\_\+cell@{sirius\+::\+Unit\+\_\+cell}!min\+\_\+mt\+\_\+radius@{min\+\_\+mt\+\_\+radius}}
+\index{min\+\_\+mt\+\_\+radius@{min\+\_\+mt\+\_\+radius}!sirius\+::\+Unit\+\_\+cell@{sirius\+::\+Unit\+\_\+cell}}
+\subsubsection[{min\+\_\+mt\+\_\+radius() const }]{\setlength{\rightskip}{0pt plus 5cm}double sirius\+::\+Unit\+\_\+cell\+::min\+\_\+mt\+\_\+radius (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [inline]}}\label{classsirius_1_1_unit__cell_a60ff58a73dd2989afdafc9b37fbd68df}
+
+
+Minimum muffin-\/tin radius. 
+
+
+
+Definition at line 518 of file unit\+\_\+cell.\+h.
+
+\hypertarget{classsirius_1_1_unit__cell_ae4e421483e55a809f781fb9f197078c6}{}\index{sirius\+::\+Unit\+\_\+cell@{sirius\+::\+Unit\+\_\+cell}!max\+\_\+mt\+\_\+radius@{max\+\_\+mt\+\_\+radius}}
+\index{max\+\_\+mt\+\_\+radius@{max\+\_\+mt\+\_\+radius}!sirius\+::\+Unit\+\_\+cell@{sirius\+::\+Unit\+\_\+cell}}
+\subsubsection[{max\+\_\+mt\+\_\+radius() const }]{\setlength{\rightskip}{0pt plus 5cm}double sirius\+::\+Unit\+\_\+cell\+::max\+\_\+mt\+\_\+radius (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [inline]}}\label{classsirius_1_1_unit__cell_ae4e421483e55a809f781fb9f197078c6}
+
+
+Maximum muffin-\/tin radius. 
+
+
+
+Definition at line 524 of file unit\+\_\+cell.\+h.
+
+\hypertarget{classsirius_1_1_unit__cell_ae45e48832c8b50a4f514de66c4245cd3}{}\index{sirius\+::\+Unit\+\_\+cell@{sirius\+::\+Unit\+\_\+cell}!max\+\_\+mt\+\_\+aw\+\_\+basis\+\_\+size@{max\+\_\+mt\+\_\+aw\+\_\+basis\+\_\+size}}
+\index{max\+\_\+mt\+\_\+aw\+\_\+basis\+\_\+size@{max\+\_\+mt\+\_\+aw\+\_\+basis\+\_\+size}!sirius\+::\+Unit\+\_\+cell@{sirius\+::\+Unit\+\_\+cell}}
+\subsubsection[{max\+\_\+mt\+\_\+aw\+\_\+basis\+\_\+size() const }]{\setlength{\rightskip}{0pt plus 5cm}int sirius\+::\+Unit\+\_\+cell\+::max\+\_\+mt\+\_\+aw\+\_\+basis\+\_\+size (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [inline]}}\label{classsirius_1_1_unit__cell_ae45e48832c8b50a4f514de66c4245cd3}
+
+
+Maximum number of A\+W basis functions among all atom types. 
+
+
+
+Definition at line 530 of file unit\+\_\+cell.\+h.
+
+\hypertarget{classsirius_1_1_unit__cell_a089cf19886c5eeeb6e51e9fdca735bfb}{}\index{sirius\+::\+Unit\+\_\+cell@{sirius\+::\+Unit\+\_\+cell}!lattice\+\_\+vector@{lattice\+\_\+vector}}
+\index{lattice\+\_\+vector@{lattice\+\_\+vector}!sirius\+::\+Unit\+\_\+cell@{sirius\+::\+Unit\+\_\+cell}}
+\subsubsection[{lattice\+\_\+vector(int idx\+\_\+\+\_\+) const }]{\setlength{\rightskip}{0pt plus 5cm}{\bf vector3d}$<$double$>$ sirius\+::\+Unit\+\_\+cell\+::lattice\+\_\+vector (
+\begin{DoxyParamCaption}
+\item[{int}]{idx\+\_\+\+\_\+}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [inline]}}\label{classsirius_1_1_unit__cell_a089cf19886c5eeeb6e51e9fdca735bfb}
+
+
+Return a single lattice vector. 
+
+
+
+Definition at line 622 of file unit\+\_\+cell.\+h.
+
+
+
+\subsection{Member Data Documentation}
+\hypertarget{classsirius_1_1_unit__cell_aa6ab9c74c7627f62ce1073eba5a47eb3}{}\index{sirius\+::\+Unit\+\_\+cell@{sirius\+::\+Unit\+\_\+cell}!parameters\+\_\+@{parameters\+\_\+}}
+\index{parameters\+\_\+@{parameters\+\_\+}!sirius\+::\+Unit\+\_\+cell@{sirius\+::\+Unit\+\_\+cell}}
+\subsubsection[{parameters\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}{\bf Simulation\+\_\+parameters} const\& sirius\+::\+Unit\+\_\+cell\+::parameters\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classsirius_1_1_unit__cell_aa6ab9c74c7627f62ce1073eba5a47eb3}
+
+
+Basic parameters of the simulation. 
+
+
+
+Definition at line 48 of file unit\+\_\+cell.\+h.
+
+\hypertarget{classsirius_1_1_unit__cell_a30a032f0eef70ee7833dfc428f139abb}{}\index{sirius\+::\+Unit\+\_\+cell@{sirius\+::\+Unit\+\_\+cell}!atom\+\_\+type\+\_\+id\+\_\+map\+\_\+@{atom\+\_\+type\+\_\+id\+\_\+map\+\_\+}}
+\index{atom\+\_\+type\+\_\+id\+\_\+map\+\_\+@{atom\+\_\+type\+\_\+id\+\_\+map\+\_\+}!sirius\+::\+Unit\+\_\+cell@{sirius\+::\+Unit\+\_\+cell}}
+\subsubsection[{atom\+\_\+type\+\_\+id\+\_\+map\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}std\+::map$<$std\+::string, int$>$ sirius\+::\+Unit\+\_\+cell\+::atom\+\_\+type\+\_\+id\+\_\+map\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classsirius_1_1_unit__cell_a30a032f0eef70ee7833dfc428f139abb}
+
+
+Mapping between atom type label and an ordered internal id in the range \mbox{[}0, $ N_{types} $). 
+
+
+
+Definition at line 51 of file unit\+\_\+cell.\+h.
+
+\hypertarget{classsirius_1_1_unit__cell_a632c9f18c76754036b15c319781a3a11}{}\index{sirius\+::\+Unit\+\_\+cell@{sirius\+::\+Unit\+\_\+cell}!atom\+\_\+types\+\_\+@{atom\+\_\+types\+\_\+}}
+\index{atom\+\_\+types\+\_\+@{atom\+\_\+types\+\_\+}!sirius\+::\+Unit\+\_\+cell@{sirius\+::\+Unit\+\_\+cell}}
+\subsubsection[{atom\+\_\+types\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}std\+::vector$<${\bf Atom\+\_\+type}$>$ sirius\+::\+Unit\+\_\+cell\+::atom\+\_\+types\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classsirius_1_1_unit__cell_a632c9f18c76754036b15c319781a3a11}
+
+
+List of atom types. 
+
+
+
+Definition at line 54 of file unit\+\_\+cell.\+h.
+
+\hypertarget{classsirius_1_1_unit__cell_a3e78840bc6c66018adaf378969a9dca5}{}\index{sirius\+::\+Unit\+\_\+cell@{sirius\+::\+Unit\+\_\+cell}!atom\+\_\+symmetry\+\_\+classes\+\_\+@{atom\+\_\+symmetry\+\_\+classes\+\_\+}}
+\index{atom\+\_\+symmetry\+\_\+classes\+\_\+@{atom\+\_\+symmetry\+\_\+classes\+\_\+}!sirius\+::\+Unit\+\_\+cell@{sirius\+::\+Unit\+\_\+cell}}
+\subsubsection[{atom\+\_\+symmetry\+\_\+classes\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}std\+::vector$<${\bf Atom\+\_\+symmetry\+\_\+class}$>$ sirius\+::\+Unit\+\_\+cell\+::atom\+\_\+symmetry\+\_\+classes\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classsirius_1_1_unit__cell_a3e78840bc6c66018adaf378969a9dca5}
+
+
+List of atom classes. 
+
+
+
+Definition at line 57 of file unit\+\_\+cell.\+h.
+
+\hypertarget{classsirius_1_1_unit__cell_a352195243de155d84e9768cb9dd42a53}{}\index{sirius\+::\+Unit\+\_\+cell@{sirius\+::\+Unit\+\_\+cell}!atoms\+\_\+@{atoms\+\_\+}}
+\index{atoms\+\_\+@{atoms\+\_\+}!sirius\+::\+Unit\+\_\+cell@{sirius\+::\+Unit\+\_\+cell}}
+\subsubsection[{atoms\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}std\+::vector$<${\bf Atom}$>$ sirius\+::\+Unit\+\_\+cell\+::atoms\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classsirius_1_1_unit__cell_a352195243de155d84e9768cb9dd42a53}
+
+
+List of atoms. 
+
+
+
+Definition at line 60 of file unit\+\_\+cell.\+h.
+
+\hypertarget{classsirius_1_1_unit__cell_a384eb0052909c0ed468eed0685aef448}{}\index{sirius\+::\+Unit\+\_\+cell@{sirius\+::\+Unit\+\_\+cell}!spl\+\_\+num\+\_\+atoms\+\_\+@{spl\+\_\+num\+\_\+atoms\+\_\+}}
+\index{spl\+\_\+num\+\_\+atoms\+\_\+@{spl\+\_\+num\+\_\+atoms\+\_\+}!sirius\+::\+Unit\+\_\+cell@{sirius\+::\+Unit\+\_\+cell}}
+\subsubsection[{spl\+\_\+num\+\_\+atoms\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}{\bf splindex}$<$block$>$ sirius\+::\+Unit\+\_\+cell\+::spl\+\_\+num\+\_\+atoms\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classsirius_1_1_unit__cell_a384eb0052909c0ed468eed0685aef448}
+
+
+Split index of atoms. 
+
+
+
+Definition at line 63 of file unit\+\_\+cell.\+h.
+
+\hypertarget{classsirius_1_1_unit__cell_a1019f35aa919205614783576d4949c7d}{}\index{sirius\+::\+Unit\+\_\+cell@{sirius\+::\+Unit\+\_\+cell}!paw\+\_\+atom\+\_\+index\+\_\+@{paw\+\_\+atom\+\_\+index\+\_\+}}
+\index{paw\+\_\+atom\+\_\+index\+\_\+@{paw\+\_\+atom\+\_\+index\+\_\+}!sirius\+::\+Unit\+\_\+cell@{sirius\+::\+Unit\+\_\+cell}}
+\subsubsection[{paw\+\_\+atom\+\_\+index\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}std\+::vector$<$int$>$ sirius\+::\+Unit\+\_\+cell\+::paw\+\_\+atom\+\_\+index\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classsirius_1_1_unit__cell_a1019f35aa919205614783576d4949c7d}
+
+
+Global index of atom by index of P\+A\+W atom. 
+
+
+
+Definition at line 66 of file unit\+\_\+cell.\+h.
+
+\hypertarget{classsirius_1_1_unit__cell_af4f208a0c389a4c7c694be67005bd5b0}{}\index{sirius\+::\+Unit\+\_\+cell@{sirius\+::\+Unit\+\_\+cell}!spl\+\_\+num\+\_\+paw\+\_\+atoms\+\_\+@{spl\+\_\+num\+\_\+paw\+\_\+atoms\+\_\+}}
+\index{spl\+\_\+num\+\_\+paw\+\_\+atoms\+\_\+@{spl\+\_\+num\+\_\+paw\+\_\+atoms\+\_\+}!sirius\+::\+Unit\+\_\+cell@{sirius\+::\+Unit\+\_\+cell}}
+\subsubsection[{spl\+\_\+num\+\_\+paw\+\_\+atoms\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}{\bf splindex}$<$block$>$ sirius\+::\+Unit\+\_\+cell\+::spl\+\_\+num\+\_\+paw\+\_\+atoms\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classsirius_1_1_unit__cell_af4f208a0c389a4c7c694be67005bd5b0}
+
+
+Split index of P\+A\+W atoms. 
+
+
+
+Definition at line 69 of file unit\+\_\+cell.\+h.
+
+\hypertarget{classsirius_1_1_unit__cell_a0f687f85fea7ba773bd6b219716da314}{}\index{sirius\+::\+Unit\+\_\+cell@{sirius\+::\+Unit\+\_\+cell}!spl\+\_\+num\+\_\+atom\+\_\+symmetry\+\_\+classes\+\_\+@{spl\+\_\+num\+\_\+atom\+\_\+symmetry\+\_\+classes\+\_\+}}
+\index{spl\+\_\+num\+\_\+atom\+\_\+symmetry\+\_\+classes\+\_\+@{spl\+\_\+num\+\_\+atom\+\_\+symmetry\+\_\+classes\+\_\+}!sirius\+::\+Unit\+\_\+cell@{sirius\+::\+Unit\+\_\+cell}}
+\subsubsection[{spl\+\_\+num\+\_\+atom\+\_\+symmetry\+\_\+classes\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}{\bf splindex}$<$block$>$ sirius\+::\+Unit\+\_\+cell\+::spl\+\_\+num\+\_\+atom\+\_\+symmetry\+\_\+classes\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classsirius_1_1_unit__cell_a0f687f85fea7ba773bd6b219716da314}
+
+
+Split index of atom symmetry classes. 
+
+
+
+Definition at line 72 of file unit\+\_\+cell.\+h.
+
+\hypertarget{classsirius_1_1_unit__cell_acb1fbcd9964cb8415d38c2e23c77c076}{}\index{sirius\+::\+Unit\+\_\+cell@{sirius\+::\+Unit\+\_\+cell}!lattice\+\_\+vectors\+\_\+@{lattice\+\_\+vectors\+\_\+}}
+\index{lattice\+\_\+vectors\+\_\+@{lattice\+\_\+vectors\+\_\+}!sirius\+::\+Unit\+\_\+cell@{sirius\+::\+Unit\+\_\+cell}}
+\subsubsection[{lattice\+\_\+vectors\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}matrix3d$<$double$>$ sirius\+::\+Unit\+\_\+cell\+::lattice\+\_\+vectors\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classsirius_1_1_unit__cell_acb1fbcd9964cb8415d38c2e23c77c076}
+
+
+Bravais lattice vectors in column order. 
+
+The following convention is used to transform fractional coordinates to Cartesian\+: \[ \vec v_{C} = {\bf L} \vec v_{f} \] 
+
+Definition at line 80 of file unit\+\_\+cell.\+h.
+
+\hypertarget{classsirius_1_1_unit__cell_a1b06a6e1dabc61b9bb30fe6aa879e804}{}\index{sirius\+::\+Unit\+\_\+cell@{sirius\+::\+Unit\+\_\+cell}!inverse\+\_\+lattice\+\_\+vectors\+\_\+@{inverse\+\_\+lattice\+\_\+vectors\+\_\+}}
+\index{inverse\+\_\+lattice\+\_\+vectors\+\_\+@{inverse\+\_\+lattice\+\_\+vectors\+\_\+}!sirius\+::\+Unit\+\_\+cell@{sirius\+::\+Unit\+\_\+cell}}
+\subsubsection[{inverse\+\_\+lattice\+\_\+vectors\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}matrix3d$<$double$>$ sirius\+::\+Unit\+\_\+cell\+::inverse\+\_\+lattice\+\_\+vectors\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classsirius_1_1_unit__cell_a1b06a6e1dabc61b9bb30fe6aa879e804}
+
+
+Inverse matrix of Bravais lattice vectors. 
+
+This matrix is used to find fractional coordinates by Cartesian coordinates\+: \[ \vec v_{f} = {\bf L}^{-1} \vec v_{C} \] 
+
+Definition at line 88 of file unit\+\_\+cell.\+h.
+
+\hypertarget{classsirius_1_1_unit__cell_af85417314eb39d09ad90de1414fc5bea}{}\index{sirius\+::\+Unit\+\_\+cell@{sirius\+::\+Unit\+\_\+cell}!reciprocal\+\_\+lattice\+\_\+vectors\+\_\+@{reciprocal\+\_\+lattice\+\_\+vectors\+\_\+}}
+\index{reciprocal\+\_\+lattice\+\_\+vectors\+\_\+@{reciprocal\+\_\+lattice\+\_\+vectors\+\_\+}!sirius\+::\+Unit\+\_\+cell@{sirius\+::\+Unit\+\_\+cell}}
+\subsubsection[{reciprocal\+\_\+lattice\+\_\+vectors\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}matrix3d$<$double$>$ sirius\+::\+Unit\+\_\+cell\+::reciprocal\+\_\+lattice\+\_\+vectors\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classsirius_1_1_unit__cell_af85417314eb39d09ad90de1414fc5bea}
+
+
+Reciprocal lattice vectors in column order. 
+
+The following convention is used\+: \[ \vec a_{i} \vec b_{j} = 2 \pi \delta_{ij} \] or in matrix notation \[ {\bf A} {\bf B}^{T} = 2 \pi {\bf I} \] 
+
+Definition at line 100 of file unit\+\_\+cell.\+h.
+
+\hypertarget{classsirius_1_1_unit__cell_ac587c752016025de36db5ac4312112b4}{}\index{sirius\+::\+Unit\+\_\+cell@{sirius\+::\+Unit\+\_\+cell}!omega\+\_\+@{omega\+\_\+}}
+\index{omega\+\_\+@{omega\+\_\+}!sirius\+::\+Unit\+\_\+cell@{sirius\+::\+Unit\+\_\+cell}}
+\subsubsection[{omega\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}double sirius\+::\+Unit\+\_\+cell\+::omega\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classsirius_1_1_unit__cell_ac587c752016025de36db5ac4312112b4}
+
+
+Volume $ \Omega $ of the unit cell. Volume of Brillouin zone is then $ (2\Pi)^3 / \Omega $. 
+
+
+
+Definition at line 103 of file unit\+\_\+cell.\+h.
+
+\hypertarget{classsirius_1_1_unit__cell_abc60aef6ddce77ee141f793d241a7954}{}\index{sirius\+::\+Unit\+\_\+cell@{sirius\+::\+Unit\+\_\+cell}!volume\+\_\+mt\+\_\+@{volume\+\_\+mt\+\_\+}}
+\index{volume\+\_\+mt\+\_\+@{volume\+\_\+mt\+\_\+}!sirius\+::\+Unit\+\_\+cell@{sirius\+::\+Unit\+\_\+cell}}
+\subsubsection[{volume\+\_\+mt\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}double sirius\+::\+Unit\+\_\+cell\+::volume\+\_\+mt\+\_\+ \{0\}\hspace{0.3cm}{\ttfamily [private]}}\label{classsirius_1_1_unit__cell_abc60aef6ddce77ee141f793d241a7954}
+
+
+Total volume of the muffin-\/tin spheres. 
+
+
+
+Definition at line 106 of file unit\+\_\+cell.\+h.
+
+\hypertarget{classsirius_1_1_unit__cell_ad9356b5d033e2cf0d02cc31d78db3561}{}\index{sirius\+::\+Unit\+\_\+cell@{sirius\+::\+Unit\+\_\+cell}!volume\+\_\+it\+\_\+@{volume\+\_\+it\+\_\+}}
+\index{volume\+\_\+it\+\_\+@{volume\+\_\+it\+\_\+}!sirius\+::\+Unit\+\_\+cell@{sirius\+::\+Unit\+\_\+cell}}
+\subsubsection[{volume\+\_\+it\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}double sirius\+::\+Unit\+\_\+cell\+::volume\+\_\+it\+\_\+ \{0\}\hspace{0.3cm}{\ttfamily [private]}}\label{classsirius_1_1_unit__cell_ad9356b5d033e2cf0d02cc31d78db3561}
+
+
+Volume of the interstitial region. 
+
+
+
+Definition at line 109 of file unit\+\_\+cell.\+h.
+
+\hypertarget{classsirius_1_1_unit__cell_a72e8437b162d6e934e2e7763d9f76e11}{}\index{sirius\+::\+Unit\+\_\+cell@{sirius\+::\+Unit\+\_\+cell}!total\+\_\+nuclear\+\_\+charge\+\_\+@{total\+\_\+nuclear\+\_\+charge\+\_\+}}
+\index{total\+\_\+nuclear\+\_\+charge\+\_\+@{total\+\_\+nuclear\+\_\+charge\+\_\+}!sirius\+::\+Unit\+\_\+cell@{sirius\+::\+Unit\+\_\+cell}}
+\subsubsection[{total\+\_\+nuclear\+\_\+charge\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}int sirius\+::\+Unit\+\_\+cell\+::total\+\_\+nuclear\+\_\+charge\+\_\+ \{0\}\hspace{0.3cm}{\ttfamily [private]}}\label{classsirius_1_1_unit__cell_a72e8437b162d6e934e2e7763d9f76e11}
+
+
+Total nuclear charge. 
+
+
+
+Definition at line 112 of file unit\+\_\+cell.\+h.
+
+\hypertarget{classsirius_1_1_unit__cell_ac618473d45a36ccca6be2b6bfd27a5de}{}\index{sirius\+::\+Unit\+\_\+cell@{sirius\+::\+Unit\+\_\+cell}!num\+\_\+core\+\_\+electrons\+\_\+@{num\+\_\+core\+\_\+electrons\+\_\+}}
+\index{num\+\_\+core\+\_\+electrons\+\_\+@{num\+\_\+core\+\_\+electrons\+\_\+}!sirius\+::\+Unit\+\_\+cell@{sirius\+::\+Unit\+\_\+cell}}
+\subsubsection[{num\+\_\+core\+\_\+electrons\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}double sirius\+::\+Unit\+\_\+cell\+::num\+\_\+core\+\_\+electrons\+\_\+ \{0\}\hspace{0.3cm}{\ttfamily [private]}}\label{classsirius_1_1_unit__cell_ac618473d45a36ccca6be2b6bfd27a5de}
+
+
+Total number of core electrons. 
+
+
+
+Definition at line 115 of file unit\+\_\+cell.\+h.
+
+\hypertarget{classsirius_1_1_unit__cell_abd38f81cdedf2bad43dd2746bb866e0e}{}\index{sirius\+::\+Unit\+\_\+cell@{sirius\+::\+Unit\+\_\+cell}!num\+\_\+valence\+\_\+electrons\+\_\+@{num\+\_\+valence\+\_\+electrons\+\_\+}}
+\index{num\+\_\+valence\+\_\+electrons\+\_\+@{num\+\_\+valence\+\_\+electrons\+\_\+}!sirius\+::\+Unit\+\_\+cell@{sirius\+::\+Unit\+\_\+cell}}
+\subsubsection[{num\+\_\+valence\+\_\+electrons\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}double sirius\+::\+Unit\+\_\+cell\+::num\+\_\+valence\+\_\+electrons\+\_\+ \{0\}\hspace{0.3cm}{\ttfamily [private]}}\label{classsirius_1_1_unit__cell_abd38f81cdedf2bad43dd2746bb866e0e}
+
+
+Total number of valence electrons. 
+
+
+
+Definition at line 118 of file unit\+\_\+cell.\+h.
+
+\hypertarget{classsirius_1_1_unit__cell_acf4750818ca4a8f1bae847a34879d16e}{}\index{sirius\+::\+Unit\+\_\+cell@{sirius\+::\+Unit\+\_\+cell}!num\+\_\+electrons\+\_\+@{num\+\_\+electrons\+\_\+}}
+\index{num\+\_\+electrons\+\_\+@{num\+\_\+electrons\+\_\+}!sirius\+::\+Unit\+\_\+cell@{sirius\+::\+Unit\+\_\+cell}}
+\subsubsection[{num\+\_\+electrons\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}double sirius\+::\+Unit\+\_\+cell\+::num\+\_\+electrons\+\_\+ \{0\}\hspace{0.3cm}{\ttfamily [private]}}\label{classsirius_1_1_unit__cell_acf4750818ca4a8f1bae847a34879d16e}
+
+
+Total number of electrons. 
+
+
+
+Definition at line 121 of file unit\+\_\+cell.\+h.
+
+\hypertarget{classsirius_1_1_unit__cell_a2c9eea8e1e25c25a75851e8cdafff370}{}\index{sirius\+::\+Unit\+\_\+cell@{sirius\+::\+Unit\+\_\+cell}!equivalent\+\_\+atoms\+\_\+@{equivalent\+\_\+atoms\+\_\+}}
+\index{equivalent\+\_\+atoms\+\_\+@{equivalent\+\_\+atoms\+\_\+}!sirius\+::\+Unit\+\_\+cell@{sirius\+::\+Unit\+\_\+cell}}
+\subsubsection[{equivalent\+\_\+atoms\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}std\+::vector$<$int$>$ sirius\+::\+Unit\+\_\+cell\+::equivalent\+\_\+atoms\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classsirius_1_1_unit__cell_a2c9eea8e1e25c25a75851e8cdafff370}
+
+
+List of equivalent atoms, provided externally. 
+
+
+
+Definition at line 124 of file unit\+\_\+cell.\+h.
+
+\hypertarget{classsirius_1_1_unit__cell_af8042706572062065441da33fa8cc575}{}\index{sirius\+::\+Unit\+\_\+cell@{sirius\+::\+Unit\+\_\+cell}!max\+\_\+num\+\_\+mt\+\_\+points\+\_\+@{max\+\_\+num\+\_\+mt\+\_\+points\+\_\+}}
+\index{max\+\_\+num\+\_\+mt\+\_\+points\+\_\+@{max\+\_\+num\+\_\+mt\+\_\+points\+\_\+}!sirius\+::\+Unit\+\_\+cell@{sirius\+::\+Unit\+\_\+cell}}
+\subsubsection[{max\+\_\+num\+\_\+mt\+\_\+points\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}int sirius\+::\+Unit\+\_\+cell\+::max\+\_\+num\+\_\+mt\+\_\+points\+\_\+ \{0\}\hspace{0.3cm}{\ttfamily [private]}}\label{classsirius_1_1_unit__cell_af8042706572062065441da33fa8cc575}
+
+
+Maximum number of muffin-\/tin points among all atom types. 
+
+
+
+Definition at line 127 of file unit\+\_\+cell.\+h.
+
+\hypertarget{classsirius_1_1_unit__cell_a2e7703e76b4f7e69f58d1678d1f94a01}{}\index{sirius\+::\+Unit\+\_\+cell@{sirius\+::\+Unit\+\_\+cell}!mt\+\_\+basis\+\_\+size\+\_\+@{mt\+\_\+basis\+\_\+size\+\_\+}}
+\index{mt\+\_\+basis\+\_\+size\+\_\+@{mt\+\_\+basis\+\_\+size\+\_\+}!sirius\+::\+Unit\+\_\+cell@{sirius\+::\+Unit\+\_\+cell}}
+\subsubsection[{mt\+\_\+basis\+\_\+size\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}int sirius\+::\+Unit\+\_\+cell\+::mt\+\_\+basis\+\_\+size\+\_\+ \{0\}\hspace{0.3cm}{\ttfamily [private]}}\label{classsirius_1_1_unit__cell_a2e7703e76b4f7e69f58d1678d1f94a01}
+
+
+Total number of M\+T basis functions. 
+
+
+
+Definition at line 130 of file unit\+\_\+cell.\+h.
+
+\hypertarget{classsirius_1_1_unit__cell_ac57f42d865230924812b53f425f627b8}{}\index{sirius\+::\+Unit\+\_\+cell@{sirius\+::\+Unit\+\_\+cell}!max\+\_\+mt\+\_\+basis\+\_\+size\+\_\+@{max\+\_\+mt\+\_\+basis\+\_\+size\+\_\+}}
+\index{max\+\_\+mt\+\_\+basis\+\_\+size\+\_\+@{max\+\_\+mt\+\_\+basis\+\_\+size\+\_\+}!sirius\+::\+Unit\+\_\+cell@{sirius\+::\+Unit\+\_\+cell}}
+\subsubsection[{max\+\_\+mt\+\_\+basis\+\_\+size\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}int sirius\+::\+Unit\+\_\+cell\+::max\+\_\+mt\+\_\+basis\+\_\+size\+\_\+ \{0\}\hspace{0.3cm}{\ttfamily [private]}}\label{classsirius_1_1_unit__cell_ac57f42d865230924812b53f425f627b8}
+
+
+Maximum number of M\+T basis functions among all atoms. 
+
+
+
+Definition at line 133 of file unit\+\_\+cell.\+h.
+
+\hypertarget{classsirius_1_1_unit__cell_aeb3c8a1990a2121ffc9feabf9793d1f0}{}\index{sirius\+::\+Unit\+\_\+cell@{sirius\+::\+Unit\+\_\+cell}!max\+\_\+mt\+\_\+radial\+\_\+basis\+\_\+size\+\_\+@{max\+\_\+mt\+\_\+radial\+\_\+basis\+\_\+size\+\_\+}}
+\index{max\+\_\+mt\+\_\+radial\+\_\+basis\+\_\+size\+\_\+@{max\+\_\+mt\+\_\+radial\+\_\+basis\+\_\+size\+\_\+}!sirius\+::\+Unit\+\_\+cell@{sirius\+::\+Unit\+\_\+cell}}
+\subsubsection[{max\+\_\+mt\+\_\+radial\+\_\+basis\+\_\+size\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}int sirius\+::\+Unit\+\_\+cell\+::max\+\_\+mt\+\_\+radial\+\_\+basis\+\_\+size\+\_\+ \{0\}\hspace{0.3cm}{\ttfamily [private]}}\label{classsirius_1_1_unit__cell_aeb3c8a1990a2121ffc9feabf9793d1f0}
+
+
+Maximum number of M\+T radial basis functions among all atoms. 
+
+
+
+Definition at line 136 of file unit\+\_\+cell.\+h.
+
+\hypertarget{classsirius_1_1_unit__cell_a5b4e200542b2d648832108478296d9f3}{}\index{sirius\+::\+Unit\+\_\+cell@{sirius\+::\+Unit\+\_\+cell}!mt\+\_\+aw\+\_\+basis\+\_\+size\+\_\+@{mt\+\_\+aw\+\_\+basis\+\_\+size\+\_\+}}
+\index{mt\+\_\+aw\+\_\+basis\+\_\+size\+\_\+@{mt\+\_\+aw\+\_\+basis\+\_\+size\+\_\+}!sirius\+::\+Unit\+\_\+cell@{sirius\+::\+Unit\+\_\+cell}}
+\subsubsection[{mt\+\_\+aw\+\_\+basis\+\_\+size\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}int sirius\+::\+Unit\+\_\+cell\+::mt\+\_\+aw\+\_\+basis\+\_\+size\+\_\+ \{0\}\hspace{0.3cm}{\ttfamily [private]}}\label{classsirius_1_1_unit__cell_a5b4e200542b2d648832108478296d9f3}
+
+
+Total number of augmented wave basis functions in the muffin-\/tins. 
+
+This is equal to the total number of matching coefficients for each plane-\/wave. 
+
+Definition at line 140 of file unit\+\_\+cell.\+h.
+
+\hypertarget{classsirius_1_1_unit__cell_af2ca4393c20299bf86b38d7a23c1fcab}{}\index{sirius\+::\+Unit\+\_\+cell@{sirius\+::\+Unit\+\_\+cell}!mt\+\_\+aw\+\_\+basis\+\_\+descriptors\+\_\+@{mt\+\_\+aw\+\_\+basis\+\_\+descriptors\+\_\+}}
+\index{mt\+\_\+aw\+\_\+basis\+\_\+descriptors\+\_\+@{mt\+\_\+aw\+\_\+basis\+\_\+descriptors\+\_\+}!sirius\+::\+Unit\+\_\+cell@{sirius\+::\+Unit\+\_\+cell}}
+\subsubsection[{mt\+\_\+aw\+\_\+basis\+\_\+descriptors\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}std\+::vector$<${\bf mt\+\_\+basis\+\_\+descriptor}$>$ sirius\+::\+Unit\+\_\+cell\+::mt\+\_\+aw\+\_\+basis\+\_\+descriptors\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classsirius_1_1_unit__cell_af2ca4393c20299bf86b38d7a23c1fcab}
+
+
+List of augmented wave basis descriptors. 
+
+Establishes mapping between global index in the range \mbox{[}0, mt\+\_\+aw\+\_\+basis\+\_\+size\+\_\+) and corresponding atom and local index $ \xi $ 
+
+Definition at line 145 of file unit\+\_\+cell.\+h.
+
+\hypertarget{classsirius_1_1_unit__cell_a64b9370ff27b0fdf91a035e61f025456}{}\index{sirius\+::\+Unit\+\_\+cell@{sirius\+::\+Unit\+\_\+cell}!mt\+\_\+lo\+\_\+basis\+\_\+size\+\_\+@{mt\+\_\+lo\+\_\+basis\+\_\+size\+\_\+}}
+\index{mt\+\_\+lo\+\_\+basis\+\_\+size\+\_\+@{mt\+\_\+lo\+\_\+basis\+\_\+size\+\_\+}!sirius\+::\+Unit\+\_\+cell@{sirius\+::\+Unit\+\_\+cell}}
+\subsubsection[{mt\+\_\+lo\+\_\+basis\+\_\+size\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}int sirius\+::\+Unit\+\_\+cell\+::mt\+\_\+lo\+\_\+basis\+\_\+size\+\_\+ \{0\}\hspace{0.3cm}{\ttfamily [private]}}\label{classsirius_1_1_unit__cell_a64b9370ff27b0fdf91a035e61f025456}
+
+
+Total number of local orbital basis functions. 
+
+
+
+Definition at line 150 of file unit\+\_\+cell.\+h.
+
+\hypertarget{classsirius_1_1_unit__cell_adfdf46843e5d5cb6eeb94b4e681f75ed}{}\index{sirius\+::\+Unit\+\_\+cell@{sirius\+::\+Unit\+\_\+cell}!max\+\_\+mt\+\_\+aw\+\_\+basis\+\_\+size\+\_\+@{max\+\_\+mt\+\_\+aw\+\_\+basis\+\_\+size\+\_\+}}
+\index{max\+\_\+mt\+\_\+aw\+\_\+basis\+\_\+size\+\_\+@{max\+\_\+mt\+\_\+aw\+\_\+basis\+\_\+size\+\_\+}!sirius\+::\+Unit\+\_\+cell@{sirius\+::\+Unit\+\_\+cell}}
+\subsubsection[{max\+\_\+mt\+\_\+aw\+\_\+basis\+\_\+size\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}int sirius\+::\+Unit\+\_\+cell\+::max\+\_\+mt\+\_\+aw\+\_\+basis\+\_\+size\+\_\+ \{0\}\hspace{0.3cm}{\ttfamily [private]}}\label{classsirius_1_1_unit__cell_adfdf46843e5d5cb6eeb94b4e681f75ed}
+
+
+Maximum A\+W basis size among all atoms. 
+
+
+
+Definition at line 153 of file unit\+\_\+cell.\+h.
+
+\hypertarget{classsirius_1_1_unit__cell_af2da7ed61a428e6d5fdd239103ce9dc1}{}\index{sirius\+::\+Unit\+\_\+cell@{sirius\+::\+Unit\+\_\+cell}!max\+\_\+mt\+\_\+lo\+\_\+basis\+\_\+size\+\_\+@{max\+\_\+mt\+\_\+lo\+\_\+basis\+\_\+size\+\_\+}}
+\index{max\+\_\+mt\+\_\+lo\+\_\+basis\+\_\+size\+\_\+@{max\+\_\+mt\+\_\+lo\+\_\+basis\+\_\+size\+\_\+}!sirius\+::\+Unit\+\_\+cell@{sirius\+::\+Unit\+\_\+cell}}
+\subsubsection[{max\+\_\+mt\+\_\+lo\+\_\+basis\+\_\+size\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}int sirius\+::\+Unit\+\_\+cell\+::max\+\_\+mt\+\_\+lo\+\_\+basis\+\_\+size\+\_\+ \{0\}\hspace{0.3cm}{\ttfamily [private]}}\label{classsirius_1_1_unit__cell_af2da7ed61a428e6d5fdd239103ce9dc1}
+
+
+Maximum local orbital basis size among all atoms. 
+
+
+
+Definition at line 156 of file unit\+\_\+cell.\+h.
+
+\hypertarget{classsirius_1_1_unit__cell_a1d4fd34e939aac3561937c6307361ca3}{}\index{sirius\+::\+Unit\+\_\+cell@{sirius\+::\+Unit\+\_\+cell}!nearest\+\_\+neighbours\+\_\+@{nearest\+\_\+neighbours\+\_\+}}
+\index{nearest\+\_\+neighbours\+\_\+@{nearest\+\_\+neighbours\+\_\+}!sirius\+::\+Unit\+\_\+cell@{sirius\+::\+Unit\+\_\+cell}}
+\subsubsection[{nearest\+\_\+neighbours\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}std\+::vector$<$ std\+::vector$<${\bf nearest\+\_\+neighbour\+\_\+descriptor}$>$ $>$ sirius\+::\+Unit\+\_\+cell\+::nearest\+\_\+neighbours\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classsirius_1_1_unit__cell_a1d4fd34e939aac3561937c6307361ca3}
+
+
+List of nearest neighbours for each atom. 
+
+
+
+Definition at line 159 of file unit\+\_\+cell.\+h.
+
+\hypertarget{classsirius_1_1_unit__cell_a811f4365eb0377e75c2846c472e122df}{}\index{sirius\+::\+Unit\+\_\+cell@{sirius\+::\+Unit\+\_\+cell}!min\+\_\+mt\+\_\+radius\+\_\+@{min\+\_\+mt\+\_\+radius\+\_\+}}
+\index{min\+\_\+mt\+\_\+radius\+\_\+@{min\+\_\+mt\+\_\+radius\+\_\+}!sirius\+::\+Unit\+\_\+cell@{sirius\+::\+Unit\+\_\+cell}}
+\subsubsection[{min\+\_\+mt\+\_\+radius\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}double sirius\+::\+Unit\+\_\+cell\+::min\+\_\+mt\+\_\+radius\+\_\+ \{0\}\hspace{0.3cm}{\ttfamily [private]}}\label{classsirius_1_1_unit__cell_a811f4365eb0377e75c2846c472e122df}
+
+
+Minimum muffin-\/tin radius. 
+
+
+
+Definition at line 162 of file unit\+\_\+cell.\+h.
+
+\hypertarget{classsirius_1_1_unit__cell_a1f7acd5822d56a04d70fc56730e8959a}{}\index{sirius\+::\+Unit\+\_\+cell@{sirius\+::\+Unit\+\_\+cell}!max\+\_\+mt\+\_\+radius\+\_\+@{max\+\_\+mt\+\_\+radius\+\_\+}}
+\index{max\+\_\+mt\+\_\+radius\+\_\+@{max\+\_\+mt\+\_\+radius\+\_\+}!sirius\+::\+Unit\+\_\+cell@{sirius\+::\+Unit\+\_\+cell}}
+\subsubsection[{max\+\_\+mt\+\_\+radius\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}double sirius\+::\+Unit\+\_\+cell\+::max\+\_\+mt\+\_\+radius\+\_\+ \{0\}\hspace{0.3cm}{\ttfamily [private]}}\label{classsirius_1_1_unit__cell_a1f7acd5822d56a04d70fc56730e8959a}
+
+
+Maximum muffin-\/tin radius. 
+
+
+
+Definition at line 165 of file unit\+\_\+cell.\+h.
+
+\hypertarget{classsirius_1_1_unit__cell_a622aa1eeb5b646e665194cbc6d7dc08c}{}\index{sirius\+::\+Unit\+\_\+cell@{sirius\+::\+Unit\+\_\+cell}!lmax\+\_\+@{lmax\+\_\+}}
+\index{lmax\+\_\+@{lmax\+\_\+}!sirius\+::\+Unit\+\_\+cell@{sirius\+::\+Unit\+\_\+cell}}
+\subsubsection[{lmax\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}int sirius\+::\+Unit\+\_\+cell\+::lmax\+\_\+ \{-\/1\}\hspace{0.3cm}{\ttfamily [private]}}\label{classsirius_1_1_unit__cell_a622aa1eeb5b646e665194cbc6d7dc08c}
+
+
+Maximum orbital quantum number of radial functions between all atom types. 
+
+
+
+Definition at line 168 of file unit\+\_\+cell.\+h.
+
+
+
+The documentation for this class was generated from the following file\+:\begin{DoxyCompactItemize}
+\item 
+\hyperlink{unit__cell_8h}{unit\+\_\+cell.\+h}\end{DoxyCompactItemize}

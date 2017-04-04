@@ -1,0 +1,88 @@
+\hypertarget{structsirius_1_1_unit__cell__input__section}{}\section{sirius\+:\+:Unit\+\_\+cell\+\_\+input\+\_\+section Struct Reference}
+\label{structsirius_1_1_unit__cell__input__section}\index{sirius\+::\+Unit\+\_\+cell\+\_\+input\+\_\+section@{sirius\+::\+Unit\+\_\+cell\+\_\+input\+\_\+section}}
+
+
+Parse unit cell input section.  
+
+
+
+
+Collaboration diagram for sirius\+:\+:Unit\+\_\+cell\+\_\+input\+\_\+section\+:
+% FIG 0
+\subsection*{Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+\hypertarget{structsirius_1_1_unit__cell__input__section_a040d05ceeac53e931b7c1f6e12b10fcf}{}void {\bfseries read} (\hyperlink{classnlohmann_1_1basic__json}{json} const \&parser)\label{structsirius_1_1_unit__cell__input__section_a040d05ceeac53e931b7c1f6e12b10fcf}
+
+\end{DoxyCompactItemize}
+\subsection*{Public Attributes}
+\begin{DoxyCompactItemize}
+\item 
+\hypertarget{structsirius_1_1_unit__cell__input__section_a3ad3f2c01624befc33dc2af6782476df}{}\hyperlink{classgeometry3d_1_1vector3d}{vector3d}$<$ double $>$ {\bfseries a0\+\_\+}\label{structsirius_1_1_unit__cell__input__section_a3ad3f2c01624befc33dc2af6782476df}
+
+\item 
+\hypertarget{structsirius_1_1_unit__cell__input__section_af64fce8cb19c82b94bf55564001cfa8e}{}\hyperlink{classgeometry3d_1_1vector3d}{vector3d}$<$ double $>$ {\bfseries a1\+\_\+}\label{structsirius_1_1_unit__cell__input__section_af64fce8cb19c82b94bf55564001cfa8e}
+
+\item 
+\hypertarget{structsirius_1_1_unit__cell__input__section_aba2d9d67c6d15976fadd8b56c45c2f6b}{}\hyperlink{classgeometry3d_1_1vector3d}{vector3d}$<$ double $>$ {\bfseries a2\+\_\+}\label{structsirius_1_1_unit__cell__input__section_aba2d9d67c6d15976fadd8b56c45c2f6b}
+
+\item 
+\hypertarget{structsirius_1_1_unit__cell__input__section_af113b17436040bad03f7a9572a6e93ab}{}std\+::vector$<$ std\+::string $>$ {\bfseries labels\+\_\+}\label{structsirius_1_1_unit__cell__input__section_af113b17436040bad03f7a9572a6e93ab}
+
+\item 
+\hypertarget{structsirius_1_1_unit__cell__input__section_ac2f46276b225819106cf688e1e55784a}{}std\+::map$<$ std\+::string, std\+::string $>$ {\bfseries atom\+\_\+files\+\_\+}\label{structsirius_1_1_unit__cell__input__section_ac2f46276b225819106cf688e1e55784a}
+
+\item 
+\hypertarget{structsirius_1_1_unit__cell__input__section_a7b4d83fbf6001844382a17b8b16947b4}{}std\+::vector$<$ std\+::vector$<$ std\+::vector$<$ double $>$ $>$ $>$ {\bfseries coordinates\+\_\+}\label{structsirius_1_1_unit__cell__input__section_a7b4d83fbf6001844382a17b8b16947b4}
+
+\item 
+\hypertarget{structsirius_1_1_unit__cell__input__section_a2018488775ec322599bd2048b4772cdc}{}bool exist\+\_\+ {\bfseries false}\label{structsirius_1_1_unit__cell__input__section_a2018488775ec322599bd2048b4772cdc}
+
+\end{DoxyCompactItemize}
+
+
+\subsection{Detailed Description}
+Parse unit cell input section. 
+
+The following part of the input file is parsed\+: 
+\begin{DoxyCode}
+1 "unit\_cell" : \{
+2     "lattice\_vectors" : [
+3         [a1\_x, a1\_y, a1\_z],
+4         [a2\_x, a2\_y, a2\_z],
+5         [a3\_x, a3\_y, a3\_z]
+6     ],
+7 
+8     "lattice\_vectors\_scale" : scale,
+9 
+10     "atom\_types" : [label\_A, label\_B, ...],
+11 
+12     "atom\_files" : \{
+13         label\_A : file\_A, 
+14         label\_B : file\_B,
+15         ...
+16     \},
+17 
+18     "atoms" : \{
+19         label\_A: [
+20             coordinates\_A\_1, 
+21             coordinates\_A\_2,
+22             ...
+23         ],
+24         label\_B : [
+25             coordinates\_B\_1,
+26             coordinates\_B\_2,
+27             ...
+28         ]
+29     \}
+30 \}
+\end{DoxyCode}
+ 
+
+Definition at line 70 of file input.\+h.
+
+
+
+The documentation for this struct was generated from the following file\+:\begin{DoxyCompactItemize}
+\item 
+\hyperlink{input_8h}{input.\+h}\end{DoxyCompactItemize}

@@ -1,0 +1,11 @@
+digraph "Beta_projectors" {
+  compound=true
+  node [ fontsize="10", fontname="Helvetica"];
+  edge [ labelfontsize="10", labelfontname="Helvetica"];
+  subgraph clusterdir_68267d1309a1af8e8297ef4c3efbcdba {
+    graph [ bgcolor="#ddddee", pencolor="black", label="src" fontname="Helvetica", fontsize="10", URL="dir_68267d1309a1af8e8297ef4c3efbcdba.html"]
+  dir_efab0974afde82118c2e07e0e822e0df [shape=box, label="Beta_projectors", style="filled", fillcolor="#eeeeff", pencolor="black", URL="dir_efab0974afde82118c2e07e0e822e0df.html"];
+  }
+  dir_f599252a6ed79d26501e6b7d925f2ed5 [shape=box label="SDDK" fillcolor="white" style="filled" color="red" URL="dir_f599252a6ed79d26501e6b7d925f2ed5.html"];
+  dir_efab0974afde82118c2e07e0e822e0df->dir_f599252a6ed79d26501e6b7d925f2ed5 [headlabel="3", labeldistance=1.5 headhref="dir_000004_000005.html"];
+}

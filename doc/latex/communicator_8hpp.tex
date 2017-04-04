@@ -1,0 +1,91 @@
+\hypertarget{communicator_8hpp}{}\section{communicator.\+hpp File Reference}
+\label{communicator_8hpp}\index{communicator.\+hpp@{communicator.\+hpp}}
+
+
+Contains declaration and implementation of Communicator class.  
+
+
+Include dependency graph for communicator.\+hpp\+:
+% FIG 0
+This graph shows which files directly or indirectly include this file\+:
+% FIG 1
+\subsection*{Classes}
+\begin{DoxyCompactItemize}
+\item 
+struct \hyperlink{structsddk_1_1mpi__op__wrapper}{sddk\+::mpi\+\_\+op\+\_\+wrapper$<$ op $>$}
+\item 
+struct \hyperlink{structsddk_1_1mpi__op__wrapper_3_01mpi__op__t_1_1sum_01_4}{sddk\+::mpi\+\_\+op\+\_\+wrapper$<$ mpi\+\_\+op\+\_\+t\+::sum $>$}
+\item 
+struct \hyperlink{structsddk_1_1mpi__op__wrapper_3_01mpi__op__t_1_1max_01_4}{sddk\+::mpi\+\_\+op\+\_\+wrapper$<$ mpi\+\_\+op\+\_\+t\+::max $>$}
+\item 
+struct \hyperlink{structsddk_1_1mpi__type__wrapper}{sddk\+::mpi\+\_\+type\+\_\+wrapper$<$ T $>$}
+\item 
+struct \hyperlink{structsddk_1_1mpi__type__wrapper_3_01double_01_4}{sddk\+::mpi\+\_\+type\+\_\+wrapper$<$ double $>$}
+\item 
+struct \hyperlink{structsddk_1_1mpi__type__wrapper_3_01long_01double_01_4}{sddk\+::mpi\+\_\+type\+\_\+wrapper$<$ long double $>$}
+\item 
+struct \hyperlink{structsddk_1_1mpi__type__wrapper_3_01std_1_1complex_3_01double_01_4_01_4}{sddk\+::mpi\+\_\+type\+\_\+wrapper$<$ std\+::complex$<$ double $>$ $>$}
+\item 
+struct \hyperlink{structsddk_1_1mpi__type__wrapper_3_01int_01_4}{sddk\+::mpi\+\_\+type\+\_\+wrapper$<$ int $>$}
+\item 
+struct \hyperlink{structsddk_1_1mpi__type__wrapper_3_01int16__t_01_4}{sddk\+::mpi\+\_\+type\+\_\+wrapper$<$ int16\+\_\+t $>$}
+\item 
+struct \hyperlink{structsddk_1_1mpi__type__wrapper_3_01char_01_4}{sddk\+::mpi\+\_\+type\+\_\+wrapper$<$ char $>$}
+\item 
+struct \hyperlink{structsddk_1_1alltoall__descriptor}{sddk\+::alltoall\+\_\+descriptor}
+\item 
+struct \hyperlink{structsddk_1_1block__data__descriptor}{sddk\+::block\+\_\+data\+\_\+descriptor}
+\item 
+class \hyperlink{classsddk_1_1_communicator}{sddk\+::\+Communicator}
+\begin{DoxyCompactList}\small\item\em M\+P\+I communicator wrapper. \end{DoxyCompactList}\end{DoxyCompactItemize}
+\subsection*{Macros}
+\begin{DoxyCompactItemize}
+\item 
+\#define {\bfseries C\+A\+L\+L\+\_\+\+M\+P\+I}(func\+\_\+\+\_\+,  args\+\_\+\+\_\+)                                                                                                    
+\end{DoxyCompactItemize}
+\subsection*{Enumerations}
+\begin{DoxyCompactItemize}
+\item 
+\hypertarget{namespacesddk_ab2383741825010aeab8292a77eaa8068}{}enum {\bfseries mpi\+\_\+op\+\_\+t} \{ {\bfseries sum}, 
+{\bfseries max}
+ \}\label{namespacesddk_ab2383741825010aeab8292a77eaa8068}
+
+\end{DoxyCompactItemize}
+\subsection*{Functions}
+\begin{DoxyCompactItemize}
+\item 
+\hypertarget{namespacesddk_a0baaf8dca7e88daa7f8e830e1e0aa011}{}Communicator const \& {\bfseries sddk\+::mpi\+\_\+comm\+\_\+self} ()\label{namespacesddk_a0baaf8dca7e88daa7f8e830e1e0aa011}
+
+\item 
+\hypertarget{namespacesddk_a34733dd12ee94b2c9427638a01482b99}{}Communicator const \& {\bfseries sddk\+::mpi\+\_\+comm\+\_\+world} ()\label{namespacesddk_a34733dd12ee94b2c9427638a01482b99}
+
+\end{DoxyCompactItemize}
+
+
+\subsection{Detailed Description}
+Contains declaration and implementation of Communicator class. 
+
+
+
+\subsection{Macro Definition Documentation}
+\hypertarget{communicator_8hpp_ac8307756881a5504ca7015a3952f88ff}{}\index{communicator.\+hpp@{communicator.\+hpp}!C\+A\+L\+L\+\_\+\+M\+P\+I@{C\+A\+L\+L\+\_\+\+M\+P\+I}}
+\index{C\+A\+L\+L\+\_\+\+M\+P\+I@{C\+A\+L\+L\+\_\+\+M\+P\+I}!communicator.\+hpp@{communicator.\+hpp}}
+\subsubsection[{C\+A\+L\+L\+\_\+\+M\+P\+I}]{\setlength{\rightskip}{0pt plus 5cm}\#define C\+A\+L\+L\+\_\+\+M\+P\+I(
+\begin{DoxyParamCaption}
+\item[{}]{func\+\_\+\+\_\+, }
+\item[{}]{args\+\_\+\+\_\+}
+\end{DoxyParamCaption}
+)}\label{communicator_8hpp_ac8307756881a5504ca7015a3952f88ff}
+{\bfseries Value\+:}
+\begin{DoxyCode}
+\{                                                                                   \(\backslash\)
+    if (func\_\_ args\_\_ != MPI\_SUCCESS) \{                                             \(\backslash\)
+        printf(\textcolor{stringliteral}{"error in %s at line %i of file %s\(\backslash\)n"}, #func\_\_, \_\_LINE\_\_, \_\_FILE\_\_); \(\backslash\)
+        MPI\_Abort(MPI\_COMM\_WORLD, -1);                                              \(\backslash\)
+    \}                                                                               \(\backslash\)
+\}
+\end{DoxyCode}
+
+
+Definition at line 35 of file communicator.\+hpp.
+

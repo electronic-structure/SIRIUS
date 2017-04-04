@@ -1,0 +1,192 @@
+\hypertarget{classsddk_1_1splindex_3_01block__cyclic_00_01_t_01_4}{}\section{sddk\+:\+:splindex$<$ block\+\_\+cyclic, T $>$ Class Template Reference}
+\label{classsddk_1_1splindex_3_01block__cyclic_00_01_t_01_4}\index{sddk\+::splindex$<$ block\+\_\+cyclic, T $>$@{sddk\+::splindex$<$ block\+\_\+cyclic, T $>$}}
+
+
+Specialization for the block-\/cyclic distribution.  
+
+
+
+
+Inheritance diagram for sddk\+:\+:splindex$<$ block\+\_\+cyclic, T $>$\+:
+% FIG 0
+
+
+Collaboration diagram for sddk\+:\+:splindex$<$ block\+\_\+cyclic, T $>$\+:
+% FIG 1
+\subsection*{Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+\hyperlink{classsddk_1_1splindex_3_01block__cyclic_00_01_t_01_4_a859976665bf4329207eba8005671cc7e}{splindex} ()
+\begin{DoxyCompactList}\small\item\em Default constructor. \end{DoxyCompactList}\item 
+\hyperlink{classsddk_1_1splindex_3_01block__cyclic_00_01_t_01_4_a876bbbb3a8f500922a94b3e287704ae0}{splindex} (T global\+\_\+index\+\_\+size\+\_\+\+\_\+, int num\+\_\+ranks\+\_\+\+\_\+, int rank\+\_\+\+\_\+, int bs\+\_\+\+\_\+)
+\begin{DoxyCompactList}\small\item\em Constructor with implicit cyclic block size. \end{DoxyCompactList}\item 
+\hyperlink{classsddk_1_1splindex__base}{splindex\+\_\+base}$<$ T $>$\+::\hyperlink{structsddk_1_1splindex__base_1_1location__t}{location\+\_\+t} \hyperlink{classsddk_1_1splindex_3_01block__cyclic_00_01_t_01_4_aa22799f8dae197acf3a132c97421a3d3}{location} (T idxglob\+\_\+\+\_\+) const 
+\begin{DoxyCompactList}\small\item\em Return \char`\"{}local index, rank\char`\"{} pair for a global index. \end{DoxyCompactList}\item 
+T \hyperlink{classsddk_1_1splindex_3_01block__cyclic_00_01_t_01_4_a7d97a8738db927b0140470e124722b56}{local\+\_\+size} (int rank\+\_\+\+\_\+) const 
+\begin{DoxyCompactList}\small\item\em Return local size of the split index for an arbitrary rank. \end{DoxyCompactList}\item 
+T \hyperlink{classsddk_1_1splindex_3_01block__cyclic_00_01_t_01_4_a556e6a2d2a09e2b5763f815406023052}{local\+\_\+size} () const 
+\begin{DoxyCompactList}\small\item\em Return local size of the split index for a current rank. \end{DoxyCompactList}\item 
+int \hyperlink{classsddk_1_1splindex_3_01block__cyclic_00_01_t_01_4_ad7b1b50ee952f4e855bf3b300b82fb0f}{local\+\_\+rank} (T idxglob\+\_\+\+\_\+) const 
+\begin{DoxyCompactList}\small\item\em Return rank which holds the element with the given global index. \end{DoxyCompactList}\item 
+T \hyperlink{classsddk_1_1splindex_3_01block__cyclic_00_01_t_01_4_a41a013d37c85a5fca2291dd4a4f303a1}{local\+\_\+index} (T idxglob\+\_\+\+\_\+) const 
+\begin{DoxyCompactList}\small\item\em Return local index of the element for the rank which handles the given global index. \end{DoxyCompactList}\item 
+\hypertarget{classsddk_1_1splindex_3_01block__cyclic_00_01_t_01_4_a7d895e9d73c4a4a5cd0de090362c0af7}{}T {\bfseries global\+\_\+index} (T idxloc\+\_\+\+\_\+, int rank\+\_\+\+\_\+) const \label{classsddk_1_1splindex_3_01block__cyclic_00_01_t_01_4_a7d895e9d73c4a4a5cd0de090362c0af7}
+
+\item 
+\hypertarget{classsddk_1_1splindex_3_01block__cyclic_00_01_t_01_4_aab28c3139c25d1640f68ebc74a4079e0}{}T {\bfseries operator\mbox{[}$\,$\mbox{]}} (T idxloc\+\_\+\+\_\+) const \label{classsddk_1_1splindex_3_01block__cyclic_00_01_t_01_4_aab28c3139c25d1640f68ebc74a4079e0}
+
+\end{DoxyCompactItemize}
+\subsection*{Private Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+\hypertarget{classsddk_1_1splindex_3_01block__cyclic_00_01_t_01_4_a1dba2c9d9b09c937cdf70b180eed6719}{}void {\bfseries init} (T global\+\_\+index\+\_\+size\+\_\+\+\_\+, int num\+\_\+ranks\+\_\+\+\_\+, int rank\+\_\+\+\_\+, int block\+\_\+size\+\_\+\+\_\+)\label{classsddk_1_1splindex_3_01block__cyclic_00_01_t_01_4_a1dba2c9d9b09c937cdf70b180eed6719}
+
+\end{DoxyCompactItemize}
+\subsection*{Private Attributes}
+\begin{DoxyCompactItemize}
+\item 
+int \hyperlink{classsddk_1_1splindex_3_01block__cyclic_00_01_t_01_4_ac32a632137604b0e84304c053618fe36}{block\+\_\+size\+\_\+} \{-\/1\}
+\begin{DoxyCompactList}\small\item\em cyclic block size of the distribution \end{DoxyCompactList}\end{DoxyCompactItemize}
+\subsection*{Additional Inherited Members}
+
+
+\subsection{Detailed Description}
+\subsubsection*{template$<$typename T$>$class sddk\+::splindex$<$ block\+\_\+cyclic, T $>$}
+
+Specialization for the block-\/cyclic distribution. 
+
+Definition at line 234 of file splindex.\+hpp.
+
+
+
+\subsection{Constructor \& Destructor Documentation}
+\hypertarget{classsddk_1_1splindex_3_01block__cyclic_00_01_t_01_4_a859976665bf4329207eba8005671cc7e}{}\index{sddk\+::splindex$<$ block\+\_\+cyclic, T $>$@{sddk\+::splindex$<$ block\+\_\+cyclic, T $>$}!splindex@{splindex}}
+\index{splindex@{splindex}!sddk\+::splindex$<$ block\+\_\+cyclic, T $>$@{sddk\+::splindex$<$ block\+\_\+cyclic, T $>$}}
+\subsubsection[{splindex()}]{\setlength{\rightskip}{0pt plus 5cm}template$<$typename T $>$ {\bf sddk\+::splindex}$<$ block\+\_\+cyclic, T $>$\+::{\bf splindex} (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}}\label{classsddk_1_1splindex_3_01block__cyclic_00_01_t_01_4_a859976665bf4329207eba8005671cc7e}
+
+
+Default constructor. 
+
+
+
+Definition at line 269 of file splindex.\+hpp.
+
+\hypertarget{classsddk_1_1splindex_3_01block__cyclic_00_01_t_01_4_a876bbbb3a8f500922a94b3e287704ae0}{}\index{sddk\+::splindex$<$ block\+\_\+cyclic, T $>$@{sddk\+::splindex$<$ block\+\_\+cyclic, T $>$}!splindex@{splindex}}
+\index{splindex@{splindex}!sddk\+::splindex$<$ block\+\_\+cyclic, T $>$@{sddk\+::splindex$<$ block\+\_\+cyclic, T $>$}}
+\subsubsection[{splindex(\+T global\+\_\+index\+\_\+size\+\_\+\+\_\+, int num\+\_\+ranks\+\_\+\+\_\+, int rank\+\_\+\+\_\+, int bs\+\_\+\+\_\+)}]{\setlength{\rightskip}{0pt plus 5cm}template$<$typename T $>$ {\bf sddk\+::splindex}$<$ block\+\_\+cyclic, T $>$\+::{\bf splindex} (
+\begin{DoxyParamCaption}
+\item[{T}]{global\+\_\+index\+\_\+size\+\_\+\+\_\+, }
+\item[{int}]{num\+\_\+ranks\+\_\+\+\_\+, }
+\item[{int}]{rank\+\_\+\+\_\+, }
+\item[{int}]{bs\+\_\+\+\_\+}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}}\label{classsddk_1_1splindex_3_01block__cyclic_00_01_t_01_4_a876bbbb3a8f500922a94b3e287704ae0}
+
+
+Constructor with implicit cyclic block size. 
+
+
+
+Definition at line 274 of file splindex.\+hpp.
+
+
+
+\subsection{Member Function Documentation}
+\hypertarget{classsddk_1_1splindex_3_01block__cyclic_00_01_t_01_4_aa22799f8dae197acf3a132c97421a3d3}{}\index{sddk\+::splindex$<$ block\+\_\+cyclic, T $>$@{sddk\+::splindex$<$ block\+\_\+cyclic, T $>$}!location@{location}}
+\index{location@{location}!sddk\+::splindex$<$ block\+\_\+cyclic, T $>$@{sddk\+::splindex$<$ block\+\_\+cyclic, T $>$}}
+\subsubsection[{location(\+T idxglob\+\_\+\+\_\+) const }]{\setlength{\rightskip}{0pt plus 5cm}template$<$typename T $>$ {\bf splindex\+\_\+base}$<$T$>$\+::{\bf location\+\_\+t} {\bf sddk\+::splindex}$<$ block\+\_\+cyclic, T $>$\+::location (
+\begin{DoxyParamCaption}
+\item[{T}]{idxglob\+\_\+\+\_\+}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [inline]}}\label{classsddk_1_1splindex_3_01block__cyclic_00_01_t_01_4_aa22799f8dae197acf3a132c97421a3d3}
+
+
+Return \char`\"{}local index, rank\char`\"{} pair for a global index. 
+
+
+
+Definition at line 280 of file splindex.\+hpp.
+
+\hypertarget{classsddk_1_1splindex_3_01block__cyclic_00_01_t_01_4_a7d97a8738db927b0140470e124722b56}{}\index{sddk\+::splindex$<$ block\+\_\+cyclic, T $>$@{sddk\+::splindex$<$ block\+\_\+cyclic, T $>$}!local\+\_\+size@{local\+\_\+size}}
+\index{local\+\_\+size@{local\+\_\+size}!sddk\+::splindex$<$ block\+\_\+cyclic, T $>$@{sddk\+::splindex$<$ block\+\_\+cyclic, T $>$}}
+\subsubsection[{local\+\_\+size(int rank\+\_\+\+\_\+) const }]{\setlength{\rightskip}{0pt plus 5cm}template$<$typename T $>$ T {\bf sddk\+::splindex}$<$ block\+\_\+cyclic, T $>$\+::local\+\_\+size (
+\begin{DoxyParamCaption}
+\item[{int}]{rank\+\_\+\+\_\+}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [inline]}}\label{classsddk_1_1splindex_3_01block__cyclic_00_01_t_01_4_a7d97a8738db927b0140470e124722b56}
+
+
+Return local size of the split index for an arbitrary rank. 
+
+
+
+Definition at line 297 of file splindex.\+hpp.
+
+\hypertarget{classsddk_1_1splindex_3_01block__cyclic_00_01_t_01_4_a556e6a2d2a09e2b5763f815406023052}{}\index{sddk\+::splindex$<$ block\+\_\+cyclic, T $>$@{sddk\+::splindex$<$ block\+\_\+cyclic, T $>$}!local\+\_\+size@{local\+\_\+size}}
+\index{local\+\_\+size@{local\+\_\+size}!sddk\+::splindex$<$ block\+\_\+cyclic, T $>$@{sddk\+::splindex$<$ block\+\_\+cyclic, T $>$}}
+\subsubsection[{local\+\_\+size() const }]{\setlength{\rightskip}{0pt plus 5cm}template$<$typename T $>$ T {\bf sddk\+::splindex}$<$ block\+\_\+cyclic, T $>$\+::local\+\_\+size (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [inline]}}\label{classsddk_1_1splindex_3_01block__cyclic_00_01_t_01_4_a556e6a2d2a09e2b5763f815406023052}
+
+
+Return local size of the split index for a current rank. 
+
+
+
+Definition at line 317 of file splindex.\+hpp.
+
+\hypertarget{classsddk_1_1splindex_3_01block__cyclic_00_01_t_01_4_ad7b1b50ee952f4e855bf3b300b82fb0f}{}\index{sddk\+::splindex$<$ block\+\_\+cyclic, T $>$@{sddk\+::splindex$<$ block\+\_\+cyclic, T $>$}!local\+\_\+rank@{local\+\_\+rank}}
+\index{local\+\_\+rank@{local\+\_\+rank}!sddk\+::splindex$<$ block\+\_\+cyclic, T $>$@{sddk\+::splindex$<$ block\+\_\+cyclic, T $>$}}
+\subsubsection[{local\+\_\+rank(\+T idxglob\+\_\+\+\_\+) const }]{\setlength{\rightskip}{0pt plus 5cm}template$<$typename T $>$ int {\bf sddk\+::splindex}$<$ block\+\_\+cyclic, T $>$\+::local\+\_\+rank (
+\begin{DoxyParamCaption}
+\item[{T}]{idxglob\+\_\+\+\_\+}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [inline]}}\label{classsddk_1_1splindex_3_01block__cyclic_00_01_t_01_4_ad7b1b50ee952f4e855bf3b300b82fb0f}
+
+
+Return rank which holds the element with the given global index. 
+
+
+
+Definition at line 323 of file splindex.\+hpp.
+
+\hypertarget{classsddk_1_1splindex_3_01block__cyclic_00_01_t_01_4_a41a013d37c85a5fca2291dd4a4f303a1}{}\index{sddk\+::splindex$<$ block\+\_\+cyclic, T $>$@{sddk\+::splindex$<$ block\+\_\+cyclic, T $>$}!local\+\_\+index@{local\+\_\+index}}
+\index{local\+\_\+index@{local\+\_\+index}!sddk\+::splindex$<$ block\+\_\+cyclic, T $>$@{sddk\+::splindex$<$ block\+\_\+cyclic, T $>$}}
+\subsubsection[{local\+\_\+index(\+T idxglob\+\_\+\+\_\+) const }]{\setlength{\rightskip}{0pt plus 5cm}template$<$typename T $>$ T {\bf sddk\+::splindex}$<$ block\+\_\+cyclic, T $>$\+::local\+\_\+index (
+\begin{DoxyParamCaption}
+\item[{T}]{idxglob\+\_\+\+\_\+}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [inline]}}\label{classsddk_1_1splindex_3_01block__cyclic_00_01_t_01_4_a41a013d37c85a5fca2291dd4a4f303a1}
+
+
+Return local index of the element for the rank which handles the given global index. 
+
+
+
+Definition at line 329 of file splindex.\+hpp.
+
+
+
+\subsection{Member Data Documentation}
+\hypertarget{classsddk_1_1splindex_3_01block__cyclic_00_01_t_01_4_ac32a632137604b0e84304c053618fe36}{}\index{sddk\+::splindex$<$ block\+\_\+cyclic, T $>$@{sddk\+::splindex$<$ block\+\_\+cyclic, T $>$}!block\+\_\+size\+\_\+@{block\+\_\+size\+\_\+}}
+\index{block\+\_\+size\+\_\+@{block\+\_\+size\+\_\+}!sddk\+::splindex$<$ block\+\_\+cyclic, T $>$@{sddk\+::splindex$<$ block\+\_\+cyclic, T $>$}}
+\subsubsection[{block\+\_\+size\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}template$<$typename T $>$ int {\bf sddk\+::splindex}$<$ block\+\_\+cyclic, T $>$\+::block\+\_\+size\+\_\+ \{-\/1\}\hspace{0.3cm}{\ttfamily [private]}}\label{classsddk_1_1splindex_3_01block__cyclic_00_01_t_01_4_ac32a632137604b0e84304c053618fe36}
+
+
+cyclic block size of the distribution 
+
+
+
+Definition at line 238 of file splindex.\+hpp.
+
+
+
+The documentation for this class was generated from the following file\+:\begin{DoxyCompactItemize}
+\item 
+\hyperlink{splindex_8hpp}{splindex.\+hpp}\end{DoxyCompactItemize}

@@ -1,0 +1,371 @@
+\hypertarget{classsddk_1_1matrix__storage_3_01_t_00_01matrix__storage__t_1_1slab_01_4}{}\section{sddk\+:\+:matrix\+\_\+storage$<$ T, matrix\+\_\+storage\+\_\+t\+:\+:slab $>$ Class Template Reference}
+\label{classsddk_1_1matrix__storage_3_01_t_00_01matrix__storage__t_1_1slab_01_4}\index{sddk\+::matrix\+\_\+storage$<$ T, matrix\+\_\+storage\+\_\+t\+::slab $>$@{sddk\+::matrix\+\_\+storage$<$ T, matrix\+\_\+storage\+\_\+t\+::slab $>$}}
+
+
+Specialization of matrix storage class for slab data distribution.  
+
+
+
+
+Collaboration diagram for sddk\+:\+:matrix\+\_\+storage$<$ T, matrix\+\_\+storage\+\_\+t\+:\+:slab $>$\+:
+% FIG 0
+\subsection*{Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+\hypertarget{classsddk_1_1matrix__storage_3_01_t_00_01matrix__storage__t_1_1slab_01_4_a0d4762b795865c1c3efd92c2fa5cc23a}{}{\bfseries matrix\+\_\+storage} (int num\+\_\+rows\+\_\+loc\+\_\+\+\_\+, int num\+\_\+cols\+\_\+\+\_\+, device\+\_\+t pu\+\_\+\+\_\+)\label{classsddk_1_1matrix__storage_3_01_t_00_01matrix__storage__t_1_1slab_01_4_a0d4762b795865c1c3efd92c2fa5cc23a}
+
+\item 
+\hypertarget{classsddk_1_1matrix__storage_3_01_t_00_01matrix__storage__t_1_1slab_01_4_a1a89b4b455ca9693c3aee8b098ed851d}{}{\bfseries matrix\+\_\+storage} (T $\ast$ptr\+\_\+\+\_\+, int num\+\_\+rows\+\_\+loc\+\_\+\+\_\+, int num\+\_\+cols\+\_\+\+\_\+, device\+\_\+t pu\+\_\+\+\_\+)\label{classsddk_1_1matrix__storage_3_01_t_00_01matrix__storage__t_1_1slab_01_4_a1a89b4b455ca9693c3aee8b098ed851d}
+
+\item 
+void \hyperlink{classsddk_1_1matrix__storage_3_01_t_00_01matrix__storage__t_1_1slab_01_4_a51477b707dbf4ee6c8ebf3ff3bda2ad9}{set\+\_\+num\+\_\+extra} (int num\+\_\+rows\+\_\+\+\_\+, \hyperlink{classsddk_1_1_communicator}{Communicator} const \&comm\+\_\+col\+\_\+\+\_\+, int n\+\_\+\+\_\+, int idx0\+\_\+\+\_\+=0)
+\begin{DoxyCompactList}\small\item\em Set the dimensions of the extra matrix storage. \end{DoxyCompactList}\item 
+{\footnotesize template$<$memory\+\_\+t mem\+\_\+type = memory\+\_\+t\+::host$>$ }\\void \hyperlink{classsddk_1_1matrix__storage_3_01_t_00_01matrix__storage__t_1_1slab_01_4_ad130040b7ae7b5096b8a6b5f9d2ba1b3}{remap\+\_\+forward} (\hyperlink{structsddk_1_1block__data__descriptor}{block\+\_\+data\+\_\+descriptor} const \&row\+\_\+distr\+\_\+\+\_\+, \hyperlink{classsddk_1_1_communicator}{Communicator} const \&comm\+\_\+col\+\_\+\+\_\+, int n\+\_\+\+\_\+, int idx0\+\_\+\+\_\+=0)
+\begin{DoxyCompactList}\small\item\em Remap data from prime to extra storage. \end{DoxyCompactList}\item 
+{\footnotesize template$<$memory\+\_\+t mem\+\_\+type = memory\+\_\+t\+::host$>$ }\\void \hyperlink{classsddk_1_1matrix__storage_3_01_t_00_01matrix__storage__t_1_1slab_01_4_aefa313e26c0e9c4f10829cc8400bcafc}{remap\+\_\+backward} (\hyperlink{structsddk_1_1block__data__descriptor}{block\+\_\+data\+\_\+descriptor} const \&row\+\_\+distr\+\_\+\+\_\+, \hyperlink{classsddk_1_1_communicator}{Communicator} const \&comm\+\_\+col\+\_\+\+\_\+, int n\+\_\+\+\_\+, int idx0\+\_\+\+\_\+=0)
+\begin{DoxyCompactList}\small\item\em Remap data from extra to prime storage. \end{DoxyCompactList}\item 
+\hypertarget{classsddk_1_1matrix__storage_3_01_t_00_01matrix__storage__t_1_1slab_01_4_a345ca6f9e5fad1658aab5c54c23de2f3}{}void {\bfseries remap\+\_\+from} (\hyperlink{classsddk_1_1dmatrix}{dmatrix}$<$ T $>$ const \&mtrx\+\_\+\+\_\+, int irow0\+\_\+\+\_\+)\label{classsddk_1_1matrix__storage_3_01_t_00_01matrix__storage__t_1_1slab_01_4_a345ca6f9e5fad1658aab5c54c23de2f3}
+
+\item 
+\hypertarget{classsddk_1_1matrix__storage_3_01_t_00_01matrix__storage__t_1_1slab_01_4_a49435aec43058ecae4a7437204f4e439}{}T \& {\bfseries prime} (int irow\+\_\+\+\_\+, int jcol\+\_\+\+\_\+)\label{classsddk_1_1matrix__storage_3_01_t_00_01matrix__storage__t_1_1slab_01_4_a49435aec43058ecae4a7437204f4e439}
+
+\item 
+\hypertarget{classsddk_1_1matrix__storage_3_01_t_00_01matrix__storage__t_1_1slab_01_4_a3c565c3709459bcdd21b22edcd322ea0}{}T const \& {\bfseries prime} (int irow\+\_\+\+\_\+, int jcol\+\_\+\+\_\+) const \label{classsddk_1_1matrix__storage_3_01_t_00_01matrix__storage__t_1_1slab_01_4_a3c565c3709459bcdd21b22edcd322ea0}
+
+\item 
+\hypertarget{classsddk_1_1matrix__storage_3_01_t_00_01matrix__storage__t_1_1slab_01_4_ac8091cf34ef4645a184eb494852adc35}{}\hyperlink{classsddk_1_1mdarray}{mdarray}$<$ T, 2 $>$ \& {\bfseries prime} ()\label{classsddk_1_1matrix__storage_3_01_t_00_01matrix__storage__t_1_1slab_01_4_ac8091cf34ef4645a184eb494852adc35}
+
+\item 
+\hypertarget{classsddk_1_1matrix__storage_3_01_t_00_01matrix__storage__t_1_1slab_01_4_ab69febbb046127360980d75d8c6c0354}{}\hyperlink{classsddk_1_1mdarray}{mdarray}$<$ T, 2 $>$ const \& {\bfseries prime} () const \label{classsddk_1_1matrix__storage_3_01_t_00_01matrix__storage__t_1_1slab_01_4_ab69febbb046127360980d75d8c6c0354}
+
+\item 
+\hypertarget{classsddk_1_1matrix__storage_3_01_t_00_01matrix__storage__t_1_1slab_01_4_a032653f0f1c2fac8d69934f7f18878c1}{}\hyperlink{classsddk_1_1mdarray}{mdarray}$<$ T, 2 $>$ \& {\bfseries extra} ()\label{classsddk_1_1matrix__storage_3_01_t_00_01matrix__storage__t_1_1slab_01_4_a032653f0f1c2fac8d69934f7f18878c1}
+
+\item 
+\hypertarget{classsddk_1_1matrix__storage_3_01_t_00_01matrix__storage__t_1_1slab_01_4_afba57ba891b0a30fc5cd4bbde62c58b4}{}\hyperlink{classsddk_1_1mdarray}{mdarray}$<$ T, 2 $>$ const \& {\bfseries extra} () const \label{classsddk_1_1matrix__storage_3_01_t_00_01matrix__storage__t_1_1slab_01_4_afba57ba891b0a30fc5cd4bbde62c58b4}
+
+\item 
+\hypertarget{classsddk_1_1matrix__storage_3_01_t_00_01matrix__storage__t_1_1slab_01_4_a4c4e2862c8ee2e7eb1806cab12e04cf6}{}{\footnotesize template$<$memory\+\_\+t mem\+\_\+type$>$ }\\void {\bfseries zero} (int i0\+\_\+\+\_\+, int n\+\_\+\+\_\+)\label{classsddk_1_1matrix__storage_3_01_t_00_01matrix__storage__t_1_1slab_01_4_a4c4e2862c8ee2e7eb1806cab12e04cf6}
+
+\item 
+int \hyperlink{classsddk_1_1matrix__storage_3_01_t_00_01matrix__storage__t_1_1slab_01_4_a3235170fcd95e1c7c156df98c186913e}{num\+\_\+rows\+\_\+loc} () const 
+\begin{DoxyCompactList}\small\item\em Local number of rows in prime matrix. \end{DoxyCompactList}\item 
+\hypertarget{classsddk_1_1matrix__storage_3_01_t_00_01matrix__storage__t_1_1slab_01_4_ab7394cf4cb1548d87c8f5957217540e1}{}\hyperlink{classsddk_1_1splindex}{splindex}$<$ block $>$ const \& {\bfseries spl\+\_\+num\+\_\+col} () const \label{classsddk_1_1matrix__storage_3_01_t_00_01matrix__storage__t_1_1slab_01_4_ab7394cf4cb1548d87c8f5957217540e1}
+
+\item 
+void \hyperlink{classsddk_1_1matrix__storage_3_01_t_00_01matrix__storage__t_1_1slab_01_4_aff411a242bc539feafcfe671ddeb48be}{allocate\+\_\+on\+\_\+device} ()
+\begin{DoxyCompactList}\small\item\em Allocate prime storage on device. \end{DoxyCompactList}\item 
+void \hyperlink{classsddk_1_1matrix__storage_3_01_t_00_01matrix__storage__t_1_1slab_01_4_a58002f75caaf549cb71abb2781a24dd6}{deallocate\+\_\+on\+\_\+device} ()
+\begin{DoxyCompactList}\small\item\em Deallocate storage on device. \end{DoxyCompactList}\item 
+void \hyperlink{classsddk_1_1matrix__storage_3_01_t_00_01matrix__storage__t_1_1slab_01_4_ab0b9780965976605138101bd29cc9eeb}{copy\+\_\+to\+\_\+device} (int i0\+\_\+\+\_\+, int n\+\_\+\+\_\+)
+\begin{DoxyCompactList}\small\item\em Copy prime storage to device memory. \end{DoxyCompactList}\item 
+void \hyperlink{classsddk_1_1matrix__storage_3_01_t_00_01matrix__storage__t_1_1slab_01_4_ad88e4399b66de4dfbf522dc96cd53136}{copy\+\_\+to\+\_\+host} (int i0\+\_\+\+\_\+, int n\+\_\+\+\_\+)
+\begin{DoxyCompactList}\small\item\em Copy prime storage to host memory. \end{DoxyCompactList}\end{DoxyCompactItemize}
+\subsection*{Private Attributes}
+\begin{DoxyCompactItemize}
+\item 
+device\+\_\+t \hyperlink{classsddk_1_1matrix__storage_3_01_t_00_01matrix__storage__t_1_1slab_01_4_a9e03c4fc4eb8e8d4a49983dddba39014}{pu\+\_\+}
+\begin{DoxyCompactList}\small\item\em Type of processing unit used. \end{DoxyCompactList}\item 
+int \hyperlink{classsddk_1_1matrix__storage_3_01_t_00_01matrix__storage__t_1_1slab_01_4_aed403722d47dae87a9a721b94c8a3ead}{num\+\_\+rows\+\_\+loc\+\_\+}
+\begin{DoxyCompactList}\small\item\em Local number of rows. \end{DoxyCompactList}\item 
+int \hyperlink{classsddk_1_1matrix__storage_3_01_t_00_01matrix__storage__t_1_1slab_01_4_aea07eddfd0f46bb0649933617389a2d1}{num\+\_\+cols\+\_\+}
+\begin{DoxyCompactList}\small\item\em Total number of columns. \end{DoxyCompactList}\item 
+\hyperlink{classsddk_1_1mdarray}{mdarray}$<$ T, 2 $>$ \hyperlink{classsddk_1_1matrix__storage_3_01_t_00_01matrix__storage__t_1_1slab_01_4_a36fd50a540cca9842230ae29ba05b8bc}{prime\+\_\+}
+\begin{DoxyCompactList}\small\item\em Primary storage of matrix. \end{DoxyCompactList}\item 
+\hyperlink{classsddk_1_1mdarray}{mdarray}$<$ T, 2 $>$ \hyperlink{classsddk_1_1matrix__storage_3_01_t_00_01matrix__storage__t_1_1slab_01_4_abf951b4fd1c7be54bbb5e01876db40b5}{extra\+\_\+}
+\begin{DoxyCompactList}\small\item\em Auxiliary matrix storage. \end{DoxyCompactList}\item 
+\hyperlink{classsddk_1_1mdarray}{mdarray}$<$ T, 1 $>$ \hyperlink{classsddk_1_1matrix__storage_3_01_t_00_01matrix__storage__t_1_1slab_01_4_afe3cc19ad8eb86b00642e4a72d355176}{extra\+\_\+buf\+\_\+}
+\begin{DoxyCompactList}\small\item\em Raw buffer for the extra storage. \end{DoxyCompactList}\item 
+\hyperlink{classsddk_1_1mdarray}{mdarray}$<$ T, 1 $>$ \hyperlink{classsddk_1_1matrix__storage_3_01_t_00_01matrix__storage__t_1_1slab_01_4_a9437d5b26bc924ac2d002eb490c5fad8}{send\+\_\+recv\+\_\+buf\+\_\+}
+\begin{DoxyCompactList}\small\item\em Raw send-\/recieve buffer. \end{DoxyCompactList}\item 
+\hyperlink{classsddk_1_1splindex}{splindex}$<$ block $>$ \hyperlink{classsddk_1_1matrix__storage_3_01_t_00_01matrix__storage__t_1_1slab_01_4_abcb07402371c615777ed73f1d0811e00}{spl\+\_\+num\+\_\+col\+\_\+}
+\begin{DoxyCompactList}\small\item\em Column distribution in auxiliary matrix. \end{DoxyCompactList}\end{DoxyCompactItemize}
+
+
+\subsection{Detailed Description}
+\subsubsection*{template$<$typename T$>$class sddk\+::matrix\+\_\+storage$<$ T, matrix\+\_\+storage\+\_\+t\+::slab $>$}
+
+Specialization of matrix storage class for slab data distribution. 
+
+
+\begin{DoxyTemplParams}{Template Parameters}
+{\em T} & data type \\
+\hline
+\end{DoxyTemplParams}
+
+
+Definition at line 43 of file matrix\+\_\+storage.\+hpp.
+
+
+
+\subsection{Member Function Documentation}
+\hypertarget{classsddk_1_1matrix__storage_3_01_t_00_01matrix__storage__t_1_1slab_01_4_a51477b707dbf4ee6c8ebf3ff3bda2ad9}{}\index{sddk\+::matrix\+\_\+storage$<$ T, matrix\+\_\+storage\+\_\+t\+::slab $>$@{sddk\+::matrix\+\_\+storage$<$ T, matrix\+\_\+storage\+\_\+t\+::slab $>$}!set\+\_\+num\+\_\+extra@{set\+\_\+num\+\_\+extra}}
+\index{set\+\_\+num\+\_\+extra@{set\+\_\+num\+\_\+extra}!sddk\+::matrix\+\_\+storage$<$ T, matrix\+\_\+storage\+\_\+t\+::slab $>$@{sddk\+::matrix\+\_\+storage$<$ T, matrix\+\_\+storage\+\_\+t\+::slab $>$}}
+\subsubsection[{set\+\_\+num\+\_\+extra(int num\+\_\+rows\+\_\+\+\_\+, Communicator const \&comm\+\_\+col\+\_\+\+\_\+, int n\+\_\+\+\_\+, int idx0\+\_\+\+\_\+=0)}]{\setlength{\rightskip}{0pt plus 5cm}template$<$typename T $>$ void {\bf sddk\+::matrix\+\_\+storage}$<$ T, matrix\+\_\+storage\+\_\+t\+::slab $>$\+::set\+\_\+num\+\_\+extra (
+\begin{DoxyParamCaption}
+\item[{int}]{num\+\_\+rows\+\_\+\+\_\+, }
+\item[{{\bf Communicator} const \&}]{comm\+\_\+col\+\_\+\+\_\+, }
+\item[{int}]{n\+\_\+\+\_\+, }
+\item[{int}]{idx0\+\_\+\+\_\+ = {\ttfamily 0}}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}}\label{classsddk_1_1matrix__storage_3_01_t_00_01matrix__storage__t_1_1slab_01_4_a51477b707dbf4ee6c8ebf3ff3bda2ad9}
+
+
+Set the dimensions of the extra matrix storage. 
+
+
+\begin{DoxyParams}[1]{Parameters}
+\mbox{\tt in}  & {\em num\+\_\+rows} & Number of rows in the extra matrix storage. \\
+\hline
+\mbox{\tt in}  & {\em comm} & \hyperlink{classsddk_1_1_communicator}{Communicator} used to distribute columns of the matrix. \\
+\hline
+\mbox{\tt in}  & {\em n} & Number of matrix columns to distribute. \\
+\hline
+\mbox{\tt in}  & {\em idx0} & Starting column of the matrix.\\
+\hline
+\end{DoxyParams}
+ In general, the extra storage is created in the C\+P\+U pointer. The only exception is when the data distribution doesn\textquotesingle{}t change (no swapping between comm\+\_\+col ranks is performed) – then the extra storage will mirror the prime storage (both on C\+P\+U and G\+P\+U). 
+
+Definition at line 104 of file matrix\+\_\+storage.\+hpp.
+
+\hypertarget{classsddk_1_1matrix__storage_3_01_t_00_01matrix__storage__t_1_1slab_01_4_ad130040b7ae7b5096b8a6b5f9d2ba1b3}{}\index{sddk\+::matrix\+\_\+storage$<$ T, matrix\+\_\+storage\+\_\+t\+::slab $>$@{sddk\+::matrix\+\_\+storage$<$ T, matrix\+\_\+storage\+\_\+t\+::slab $>$}!remap\+\_\+forward@{remap\+\_\+forward}}
+\index{remap\+\_\+forward@{remap\+\_\+forward}!sddk\+::matrix\+\_\+storage$<$ T, matrix\+\_\+storage\+\_\+t\+::slab $>$@{sddk\+::matrix\+\_\+storage$<$ T, matrix\+\_\+storage\+\_\+t\+::slab $>$}}
+\subsubsection[{remap\+\_\+forward(block\+\_\+data\+\_\+descriptor const \&row\+\_\+distr\+\_\+\+\_\+, Communicator const \&comm\+\_\+col\+\_\+\+\_\+, int n\+\_\+\+\_\+, int idx0\+\_\+\+\_\+=0)}]{\setlength{\rightskip}{0pt plus 5cm}template$<$typename T $>$ template$<$memory\+\_\+t mem\+\_\+type = memory\+\_\+t\+::host$>$ void {\bf sddk\+::matrix\+\_\+storage}$<$ T, matrix\+\_\+storage\+\_\+t\+::slab $>$\+::remap\+\_\+forward (
+\begin{DoxyParamCaption}
+\item[{{\bf block\+\_\+data\+\_\+descriptor} const \&}]{row\+\_\+distr\+\_\+\+\_\+, }
+\item[{{\bf Communicator} const \&}]{comm\+\_\+col\+\_\+\+\_\+, }
+\item[{int}]{n\+\_\+\+\_\+, }
+\item[{int}]{idx0\+\_\+\+\_\+ = {\ttfamily 0}}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}}\label{classsddk_1_1matrix__storage_3_01_t_00_01matrix__storage__t_1_1slab_01_4_ad130040b7ae7b5096b8a6b5f9d2ba1b3}
+
+
+Remap data from prime to extra storage. 
+
+Prime storage is expected on the C\+P\+U (for the M\+P\+I a2a communication). If prime storage was also allocated on the device, extra storage will be copied to device as well. 
+\begin{DoxyParams}[1]{Parameters}
+\mbox{\tt in}  & {\em row\+\_\+distr} & Distribution of rows of prime matrix in the extra matrix storage. \\
+\hline
+\mbox{\tt in}  & {\em comm} & \hyperlink{classsddk_1_1_communicator}{Communicator} used to distribute columns of the matrix. \\
+\hline
+\mbox{\tt in}  & {\em n} & Number of matrix columns to distribute. \\
+\hline
+\mbox{\tt in}  & {\em idx0} & Starting column of the matrix. \\
+\hline
+\end{DoxyParams}
+
+\begin{DoxyTemplParams}{Template Parameters}
+{\em mem\+\_\+type} & Indicates which type of memory is remapped to exrta storage. \\
+\hline
+\end{DoxyTemplParams}
+
+
+Definition at line 142 of file matrix\+\_\+storage.\+hpp.
+
+\hypertarget{classsddk_1_1matrix__storage_3_01_t_00_01matrix__storage__t_1_1slab_01_4_aefa313e26c0e9c4f10829cc8400bcafc}{}\index{sddk\+::matrix\+\_\+storage$<$ T, matrix\+\_\+storage\+\_\+t\+::slab $>$@{sddk\+::matrix\+\_\+storage$<$ T, matrix\+\_\+storage\+\_\+t\+::slab $>$}!remap\+\_\+backward@{remap\+\_\+backward}}
+\index{remap\+\_\+backward@{remap\+\_\+backward}!sddk\+::matrix\+\_\+storage$<$ T, matrix\+\_\+storage\+\_\+t\+::slab $>$@{sddk\+::matrix\+\_\+storage$<$ T, matrix\+\_\+storage\+\_\+t\+::slab $>$}}
+\subsubsection[{remap\+\_\+backward(block\+\_\+data\+\_\+descriptor const \&row\+\_\+distr\+\_\+\+\_\+, Communicator const \&comm\+\_\+col\+\_\+\+\_\+, int n\+\_\+\+\_\+, int idx0\+\_\+\+\_\+=0)}]{\setlength{\rightskip}{0pt plus 5cm}template$<$typename T $>$ template$<$memory\+\_\+t mem\+\_\+type = memory\+\_\+t\+::host$>$ void {\bf sddk\+::matrix\+\_\+storage}$<$ T, matrix\+\_\+storage\+\_\+t\+::slab $>$\+::remap\+\_\+backward (
+\begin{DoxyParamCaption}
+\item[{{\bf block\+\_\+data\+\_\+descriptor} const \&}]{row\+\_\+distr\+\_\+\+\_\+, }
+\item[{{\bf Communicator} const \&}]{comm\+\_\+col\+\_\+\+\_\+, }
+\item[{int}]{n\+\_\+\+\_\+, }
+\item[{int}]{idx0\+\_\+\+\_\+ = {\ttfamily 0}}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}}\label{classsddk_1_1matrix__storage_3_01_t_00_01matrix__storage__t_1_1slab_01_4_aefa313e26c0e9c4f10829cc8400bcafc}
+
+
+Remap data from extra to prime storage. 
+
+
+\begin{DoxyParams}[1]{Parameters}
+\mbox{\tt in}  & {\em row\+\_\+distr} & Distribution of rows of prime matrix in the extra matrix storage. \\
+\hline
+\mbox{\tt in}  & {\em comm} & \hyperlink{classsddk_1_1_communicator}{Communicator} used to distribute columns of the matrix. \\
+\hline
+\mbox{\tt in}  & {\em n} & Number of matrix columns to collect. \\
+\hline
+\mbox{\tt in}  & {\em idx0} & Starting column of the matrix. \\
+\hline
+\end{DoxyParams}
+
+\begin{DoxyTemplParams}{Template Parameters}
+{\em mem\+\_\+type} & Indicates which type of memory is remapped back to prime storage. \\
+\hline
+\end{DoxyTemplParams}
+
+
+Definition at line 199 of file matrix\+\_\+storage.\+hpp.
+
+\hypertarget{classsddk_1_1matrix__storage_3_01_t_00_01matrix__storage__t_1_1slab_01_4_a3235170fcd95e1c7c156df98c186913e}{}\index{sddk\+::matrix\+\_\+storage$<$ T, matrix\+\_\+storage\+\_\+t\+::slab $>$@{sddk\+::matrix\+\_\+storage$<$ T, matrix\+\_\+storage\+\_\+t\+::slab $>$}!num\+\_\+rows\+\_\+loc@{num\+\_\+rows\+\_\+loc}}
+\index{num\+\_\+rows\+\_\+loc@{num\+\_\+rows\+\_\+loc}!sddk\+::matrix\+\_\+storage$<$ T, matrix\+\_\+storage\+\_\+t\+::slab $>$@{sddk\+::matrix\+\_\+storage$<$ T, matrix\+\_\+storage\+\_\+t\+::slab $>$}}
+\subsubsection[{num\+\_\+rows\+\_\+loc() const }]{\setlength{\rightskip}{0pt plus 5cm}template$<$typename T $>$ int {\bf sddk\+::matrix\+\_\+storage}$<$ T, matrix\+\_\+storage\+\_\+t\+::slab $>$\+::num\+\_\+rows\+\_\+loc (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [inline]}}\label{classsddk_1_1matrix__storage_3_01_t_00_01matrix__storage__t_1_1slab_01_4_a3235170fcd95e1c7c156df98c186913e}
+
+
+Local number of rows in prime matrix. 
+
+
+
+Definition at line 387 of file matrix\+\_\+storage.\+hpp.
+
+\hypertarget{classsddk_1_1matrix__storage_3_01_t_00_01matrix__storage__t_1_1slab_01_4_aff411a242bc539feafcfe671ddeb48be}{}\index{sddk\+::matrix\+\_\+storage$<$ T, matrix\+\_\+storage\+\_\+t\+::slab $>$@{sddk\+::matrix\+\_\+storage$<$ T, matrix\+\_\+storage\+\_\+t\+::slab $>$}!allocate\+\_\+on\+\_\+device@{allocate\+\_\+on\+\_\+device}}
+\index{allocate\+\_\+on\+\_\+device@{allocate\+\_\+on\+\_\+device}!sddk\+::matrix\+\_\+storage$<$ T, matrix\+\_\+storage\+\_\+t\+::slab $>$@{sddk\+::matrix\+\_\+storage$<$ T, matrix\+\_\+storage\+\_\+t\+::slab $>$}}
+\subsubsection[{allocate\+\_\+on\+\_\+device()}]{\setlength{\rightskip}{0pt plus 5cm}template$<$typename T $>$ void {\bf sddk\+::matrix\+\_\+storage}$<$ T, matrix\+\_\+storage\+\_\+t\+::slab $>$\+::allocate\+\_\+on\+\_\+device (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}}\label{classsddk_1_1matrix__storage_3_01_t_00_01matrix__storage__t_1_1slab_01_4_aff411a242bc539feafcfe671ddeb48be}
+
+
+Allocate prime storage on device. 
+
+
+
+Definition at line 399 of file matrix\+\_\+storage.\+hpp.
+
+\hypertarget{classsddk_1_1matrix__storage_3_01_t_00_01matrix__storage__t_1_1slab_01_4_a58002f75caaf549cb71abb2781a24dd6}{}\index{sddk\+::matrix\+\_\+storage$<$ T, matrix\+\_\+storage\+\_\+t\+::slab $>$@{sddk\+::matrix\+\_\+storage$<$ T, matrix\+\_\+storage\+\_\+t\+::slab $>$}!deallocate\+\_\+on\+\_\+device@{deallocate\+\_\+on\+\_\+device}}
+\index{deallocate\+\_\+on\+\_\+device@{deallocate\+\_\+on\+\_\+device}!sddk\+::matrix\+\_\+storage$<$ T, matrix\+\_\+storage\+\_\+t\+::slab $>$@{sddk\+::matrix\+\_\+storage$<$ T, matrix\+\_\+storage\+\_\+t\+::slab $>$}}
+\subsubsection[{deallocate\+\_\+on\+\_\+device()}]{\setlength{\rightskip}{0pt plus 5cm}template$<$typename T $>$ void {\bf sddk\+::matrix\+\_\+storage}$<$ T, matrix\+\_\+storage\+\_\+t\+::slab $>$\+::deallocate\+\_\+on\+\_\+device (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}}\label{classsddk_1_1matrix__storage_3_01_t_00_01matrix__storage__t_1_1slab_01_4_a58002f75caaf549cb71abb2781a24dd6}
+
+
+Deallocate storage on device. 
+
+
+
+Definition at line 405 of file matrix\+\_\+storage.\+hpp.
+
+\hypertarget{classsddk_1_1matrix__storage_3_01_t_00_01matrix__storage__t_1_1slab_01_4_ab0b9780965976605138101bd29cc9eeb}{}\index{sddk\+::matrix\+\_\+storage$<$ T, matrix\+\_\+storage\+\_\+t\+::slab $>$@{sddk\+::matrix\+\_\+storage$<$ T, matrix\+\_\+storage\+\_\+t\+::slab $>$}!copy\+\_\+to\+\_\+device@{copy\+\_\+to\+\_\+device}}
+\index{copy\+\_\+to\+\_\+device@{copy\+\_\+to\+\_\+device}!sddk\+::matrix\+\_\+storage$<$ T, matrix\+\_\+storage\+\_\+t\+::slab $>$@{sddk\+::matrix\+\_\+storage$<$ T, matrix\+\_\+storage\+\_\+t\+::slab $>$}}
+\subsubsection[{copy\+\_\+to\+\_\+device(int i0\+\_\+\+\_\+, int n\+\_\+\+\_\+)}]{\setlength{\rightskip}{0pt plus 5cm}template$<$typename T $>$ void {\bf sddk\+::matrix\+\_\+storage}$<$ T, matrix\+\_\+storage\+\_\+t\+::slab $>$\+::copy\+\_\+to\+\_\+device (
+\begin{DoxyParamCaption}
+\item[{int}]{i0\+\_\+\+\_\+, }
+\item[{int}]{n\+\_\+\+\_\+}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}}\label{classsddk_1_1matrix__storage_3_01_t_00_01matrix__storage__t_1_1slab_01_4_ab0b9780965976605138101bd29cc9eeb}
+
+
+Copy prime storage to device memory. 
+
+
+
+Definition at line 412 of file matrix\+\_\+storage.\+hpp.
+
+\hypertarget{classsddk_1_1matrix__storage_3_01_t_00_01matrix__storage__t_1_1slab_01_4_ad88e4399b66de4dfbf522dc96cd53136}{}\index{sddk\+::matrix\+\_\+storage$<$ T, matrix\+\_\+storage\+\_\+t\+::slab $>$@{sddk\+::matrix\+\_\+storage$<$ T, matrix\+\_\+storage\+\_\+t\+::slab $>$}!copy\+\_\+to\+\_\+host@{copy\+\_\+to\+\_\+host}}
+\index{copy\+\_\+to\+\_\+host@{copy\+\_\+to\+\_\+host}!sddk\+::matrix\+\_\+storage$<$ T, matrix\+\_\+storage\+\_\+t\+::slab $>$@{sddk\+::matrix\+\_\+storage$<$ T, matrix\+\_\+storage\+\_\+t\+::slab $>$}}
+\subsubsection[{copy\+\_\+to\+\_\+host(int i0\+\_\+\+\_\+, int n\+\_\+\+\_\+)}]{\setlength{\rightskip}{0pt plus 5cm}template$<$typename T $>$ void {\bf sddk\+::matrix\+\_\+storage}$<$ T, matrix\+\_\+storage\+\_\+t\+::slab $>$\+::copy\+\_\+to\+\_\+host (
+\begin{DoxyParamCaption}
+\item[{int}]{i0\+\_\+\+\_\+, }
+\item[{int}]{n\+\_\+\+\_\+}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}}\label{classsddk_1_1matrix__storage_3_01_t_00_01matrix__storage__t_1_1slab_01_4_ad88e4399b66de4dfbf522dc96cd53136}
+
+
+Copy prime storage to host memory. 
+
+
+
+Definition at line 420 of file matrix\+\_\+storage.\+hpp.
+
+
+
+\subsection{Member Data Documentation}
+\hypertarget{classsddk_1_1matrix__storage_3_01_t_00_01matrix__storage__t_1_1slab_01_4_a9e03c4fc4eb8e8d4a49983dddba39014}{}\index{sddk\+::matrix\+\_\+storage$<$ T, matrix\+\_\+storage\+\_\+t\+::slab $>$@{sddk\+::matrix\+\_\+storage$<$ T, matrix\+\_\+storage\+\_\+t\+::slab $>$}!pu\+\_\+@{pu\+\_\+}}
+\index{pu\+\_\+@{pu\+\_\+}!sddk\+::matrix\+\_\+storage$<$ T, matrix\+\_\+storage\+\_\+t\+::slab $>$@{sddk\+::matrix\+\_\+storage$<$ T, matrix\+\_\+storage\+\_\+t\+::slab $>$}}
+\subsubsection[{pu\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}template$<$typename T $>$ device\+\_\+t {\bf sddk\+::matrix\+\_\+storage}$<$ T, matrix\+\_\+storage\+\_\+t\+::slab $>$\+::pu\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classsddk_1_1matrix__storage_3_01_t_00_01matrix__storage__t_1_1slab_01_4_a9e03c4fc4eb8e8d4a49983dddba39014}
+
+
+Type of processing unit used. 
+
+
+
+Definition at line 47 of file matrix\+\_\+storage.\+hpp.
+
+\hypertarget{classsddk_1_1matrix__storage_3_01_t_00_01matrix__storage__t_1_1slab_01_4_aed403722d47dae87a9a721b94c8a3ead}{}\index{sddk\+::matrix\+\_\+storage$<$ T, matrix\+\_\+storage\+\_\+t\+::slab $>$@{sddk\+::matrix\+\_\+storage$<$ T, matrix\+\_\+storage\+\_\+t\+::slab $>$}!num\+\_\+rows\+\_\+loc\+\_\+@{num\+\_\+rows\+\_\+loc\+\_\+}}
+\index{num\+\_\+rows\+\_\+loc\+\_\+@{num\+\_\+rows\+\_\+loc\+\_\+}!sddk\+::matrix\+\_\+storage$<$ T, matrix\+\_\+storage\+\_\+t\+::slab $>$@{sddk\+::matrix\+\_\+storage$<$ T, matrix\+\_\+storage\+\_\+t\+::slab $>$}}
+\subsubsection[{num\+\_\+rows\+\_\+loc\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}template$<$typename T $>$ int {\bf sddk\+::matrix\+\_\+storage}$<$ T, matrix\+\_\+storage\+\_\+t\+::slab $>$\+::num\+\_\+rows\+\_\+loc\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classsddk_1_1matrix__storage_3_01_t_00_01matrix__storage__t_1_1slab_01_4_aed403722d47dae87a9a721b94c8a3ead}
+
+
+Local number of rows. 
+
+
+
+Definition at line 50 of file matrix\+\_\+storage.\+hpp.
+
+\hypertarget{classsddk_1_1matrix__storage_3_01_t_00_01matrix__storage__t_1_1slab_01_4_aea07eddfd0f46bb0649933617389a2d1}{}\index{sddk\+::matrix\+\_\+storage$<$ T, matrix\+\_\+storage\+\_\+t\+::slab $>$@{sddk\+::matrix\+\_\+storage$<$ T, matrix\+\_\+storage\+\_\+t\+::slab $>$}!num\+\_\+cols\+\_\+@{num\+\_\+cols\+\_\+}}
+\index{num\+\_\+cols\+\_\+@{num\+\_\+cols\+\_\+}!sddk\+::matrix\+\_\+storage$<$ T, matrix\+\_\+storage\+\_\+t\+::slab $>$@{sddk\+::matrix\+\_\+storage$<$ T, matrix\+\_\+storage\+\_\+t\+::slab $>$}}
+\subsubsection[{num\+\_\+cols\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}template$<$typename T $>$ int {\bf sddk\+::matrix\+\_\+storage}$<$ T, matrix\+\_\+storage\+\_\+t\+::slab $>$\+::num\+\_\+cols\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classsddk_1_1matrix__storage_3_01_t_00_01matrix__storage__t_1_1slab_01_4_aea07eddfd0f46bb0649933617389a2d1}
+
+
+Total number of columns. 
+
+
+
+Definition at line 53 of file matrix\+\_\+storage.\+hpp.
+
+\hypertarget{classsddk_1_1matrix__storage_3_01_t_00_01matrix__storage__t_1_1slab_01_4_a36fd50a540cca9842230ae29ba05b8bc}{}\index{sddk\+::matrix\+\_\+storage$<$ T, matrix\+\_\+storage\+\_\+t\+::slab $>$@{sddk\+::matrix\+\_\+storage$<$ T, matrix\+\_\+storage\+\_\+t\+::slab $>$}!prime\+\_\+@{prime\+\_\+}}
+\index{prime\+\_\+@{prime\+\_\+}!sddk\+::matrix\+\_\+storage$<$ T, matrix\+\_\+storage\+\_\+t\+::slab $>$@{sddk\+::matrix\+\_\+storage$<$ T, matrix\+\_\+storage\+\_\+t\+::slab $>$}}
+\subsubsection[{prime\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}template$<$typename T $>$ {\bf mdarray}$<$T, 2$>$ {\bf sddk\+::matrix\+\_\+storage}$<$ T, matrix\+\_\+storage\+\_\+t\+::slab $>$\+::prime\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classsddk_1_1matrix__storage_3_01_t_00_01matrix__storage__t_1_1slab_01_4_a36fd50a540cca9842230ae29ba05b8bc}
+
+
+Primary storage of matrix. 
+
+
+
+Definition at line 56 of file matrix\+\_\+storage.\+hpp.
+
+\hypertarget{classsddk_1_1matrix__storage_3_01_t_00_01matrix__storage__t_1_1slab_01_4_abf951b4fd1c7be54bbb5e01876db40b5}{}\index{sddk\+::matrix\+\_\+storage$<$ T, matrix\+\_\+storage\+\_\+t\+::slab $>$@{sddk\+::matrix\+\_\+storage$<$ T, matrix\+\_\+storage\+\_\+t\+::slab $>$}!extra\+\_\+@{extra\+\_\+}}
+\index{extra\+\_\+@{extra\+\_\+}!sddk\+::matrix\+\_\+storage$<$ T, matrix\+\_\+storage\+\_\+t\+::slab $>$@{sddk\+::matrix\+\_\+storage$<$ T, matrix\+\_\+storage\+\_\+t\+::slab $>$}}
+\subsubsection[{extra\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}template$<$typename T $>$ {\bf mdarray}$<$T, 2$>$ {\bf sddk\+::matrix\+\_\+storage}$<$ T, matrix\+\_\+storage\+\_\+t\+::slab $>$\+::extra\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classsddk_1_1matrix__storage_3_01_t_00_01matrix__storage__t_1_1slab_01_4_abf951b4fd1c7be54bbb5e01876db40b5}
+
+
+Auxiliary matrix storage. 
+
+This distribution is used by the F\+F\+T driver 
+
+Definition at line 60 of file matrix\+\_\+storage.\+hpp.
+
+\hypertarget{classsddk_1_1matrix__storage_3_01_t_00_01matrix__storage__t_1_1slab_01_4_afe3cc19ad8eb86b00642e4a72d355176}{}\index{sddk\+::matrix\+\_\+storage$<$ T, matrix\+\_\+storage\+\_\+t\+::slab $>$@{sddk\+::matrix\+\_\+storage$<$ T, matrix\+\_\+storage\+\_\+t\+::slab $>$}!extra\+\_\+buf\+\_\+@{extra\+\_\+buf\+\_\+}}
+\index{extra\+\_\+buf\+\_\+@{extra\+\_\+buf\+\_\+}!sddk\+::matrix\+\_\+storage$<$ T, matrix\+\_\+storage\+\_\+t\+::slab $>$@{sddk\+::matrix\+\_\+storage$<$ T, matrix\+\_\+storage\+\_\+t\+::slab $>$}}
+\subsubsection[{extra\+\_\+buf\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}template$<$typename T $>$ {\bf mdarray}$<$T, 1$>$ {\bf sddk\+::matrix\+\_\+storage}$<$ T, matrix\+\_\+storage\+\_\+t\+::slab $>$\+::extra\+\_\+buf\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classsddk_1_1matrix__storage_3_01_t_00_01matrix__storage__t_1_1slab_01_4_afe3cc19ad8eb86b00642e4a72d355176}
+
+
+Raw buffer for the extra storage. 
+
+
+
+Definition at line 63 of file matrix\+\_\+storage.\+hpp.
+
+\hypertarget{classsddk_1_1matrix__storage_3_01_t_00_01matrix__storage__t_1_1slab_01_4_a9437d5b26bc924ac2d002eb490c5fad8}{}\index{sddk\+::matrix\+\_\+storage$<$ T, matrix\+\_\+storage\+\_\+t\+::slab $>$@{sddk\+::matrix\+\_\+storage$<$ T, matrix\+\_\+storage\+\_\+t\+::slab $>$}!send\+\_\+recv\+\_\+buf\+\_\+@{send\+\_\+recv\+\_\+buf\+\_\+}}
+\index{send\+\_\+recv\+\_\+buf\+\_\+@{send\+\_\+recv\+\_\+buf\+\_\+}!sddk\+::matrix\+\_\+storage$<$ T, matrix\+\_\+storage\+\_\+t\+::slab $>$@{sddk\+::matrix\+\_\+storage$<$ T, matrix\+\_\+storage\+\_\+t\+::slab $>$}}
+\subsubsection[{send\+\_\+recv\+\_\+buf\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}template$<$typename T $>$ {\bf mdarray}$<$T, 1$>$ {\bf sddk\+::matrix\+\_\+storage}$<$ T, matrix\+\_\+storage\+\_\+t\+::slab $>$\+::send\+\_\+recv\+\_\+buf\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classsddk_1_1matrix__storage_3_01_t_00_01matrix__storage__t_1_1slab_01_4_a9437d5b26bc924ac2d002eb490c5fad8}
+
+
+Raw send-\/recieve buffer. 
+
+
+
+Definition at line 66 of file matrix\+\_\+storage.\+hpp.
+
+\hypertarget{classsddk_1_1matrix__storage_3_01_t_00_01matrix__storage__t_1_1slab_01_4_abcb07402371c615777ed73f1d0811e00}{}\index{sddk\+::matrix\+\_\+storage$<$ T, matrix\+\_\+storage\+\_\+t\+::slab $>$@{sddk\+::matrix\+\_\+storage$<$ T, matrix\+\_\+storage\+\_\+t\+::slab $>$}!spl\+\_\+num\+\_\+col\+\_\+@{spl\+\_\+num\+\_\+col\+\_\+}}
+\index{spl\+\_\+num\+\_\+col\+\_\+@{spl\+\_\+num\+\_\+col\+\_\+}!sddk\+::matrix\+\_\+storage$<$ T, matrix\+\_\+storage\+\_\+t\+::slab $>$@{sddk\+::matrix\+\_\+storage$<$ T, matrix\+\_\+storage\+\_\+t\+::slab $>$}}
+\subsubsection[{spl\+\_\+num\+\_\+col\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}template$<$typename T $>$ {\bf splindex}$<$block$>$ {\bf sddk\+::matrix\+\_\+storage}$<$ T, matrix\+\_\+storage\+\_\+t\+::slab $>$\+::spl\+\_\+num\+\_\+col\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classsddk_1_1matrix__storage_3_01_t_00_01matrix__storage__t_1_1slab_01_4_abcb07402371c615777ed73f1d0811e00}
+
+
+Column distribution in auxiliary matrix. 
+
+
+
+Definition at line 69 of file matrix\+\_\+storage.\+hpp.
+
+
+
+The documentation for this class was generated from the following file\+:\begin{DoxyCompactItemize}
+\item 
+\hyperlink{matrix__storage_8hpp}{matrix\+\_\+storage.\+hpp}\end{DoxyCompactItemize}

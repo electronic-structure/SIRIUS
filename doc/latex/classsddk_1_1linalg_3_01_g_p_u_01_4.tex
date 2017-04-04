@@ -1,0 +1,120 @@
+\hypertarget{classsddk_1_1linalg_3_01_g_p_u_01_4}{}\section{sddk\+:\+:linalg$<$ G\+P\+U $>$ Class Template Reference}
+\label{classsddk_1_1linalg_3_01_g_p_u_01_4}\index{sddk\+::linalg$<$ G\+P\+U $>$@{sddk\+::linalg$<$ G\+P\+U $>$}}
+
+
+Inheritance diagram for sddk\+:\+:linalg$<$ G\+P\+U $>$\+:
+% FIG 0
+
+
+Collaboration diagram for sddk\+:\+:linalg$<$ G\+P\+U $>$\+:
+% FIG 1
+\subsection*{Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+\hypertarget{classsddk_1_1linalg_3_01_g_p_u_01_4_a046785f3cf9d00241b6733f97ae8b2d1}{}{\footnotesize template$<$$>$ }\\void {\bfseries gemv} (int trans, ftn\+\_\+int m, ftn\+\_\+int n, ftn\+\_\+double\+\_\+complex $\ast$alpha, ftn\+\_\+double\+\_\+complex $\ast$A, ftn\+\_\+int lda, ftn\+\_\+double\+\_\+complex $\ast$x, ftn\+\_\+int incx, ftn\+\_\+double\+\_\+complex $\ast$beta, ftn\+\_\+double\+\_\+complex $\ast$y, ftn\+\_\+int incy, int stream\+\_\+id)\label{classsddk_1_1linalg_3_01_g_p_u_01_4_a046785f3cf9d00241b6733f97ae8b2d1}
+
+\item 
+\hypertarget{classsddk_1_1linalg_3_01_g_p_u_01_4_ae525302a04b94e413398febc55b89d17}{}{\footnotesize template$<$$>$ }\\void {\bfseries gemm} (int transa, int transb, ftn\+\_\+int m, ftn\+\_\+int n, ftn\+\_\+int k, ftn\+\_\+double\+\_\+complex const $\ast$alpha, ftn\+\_\+double\+\_\+complex const $\ast$A, ftn\+\_\+int lda, ftn\+\_\+double\+\_\+complex const $\ast$B, ftn\+\_\+int ldb, ftn\+\_\+double\+\_\+complex const $\ast$beta, ftn\+\_\+double\+\_\+complex $\ast$C, ftn\+\_\+int ldc, int stream\+\_\+id)\label{classsddk_1_1linalg_3_01_g_p_u_01_4_ae525302a04b94e413398febc55b89d17}
+
+\item 
+\hypertarget{classsddk_1_1linalg_3_01_g_p_u_01_4_a52ba471574704bd433986aa4db347586}{}{\footnotesize template$<$$>$ }\\void {\bfseries gemm} (int transa, int transb, ftn\+\_\+int m, ftn\+\_\+int n, ftn\+\_\+int k, ftn\+\_\+double const $\ast$alpha, ftn\+\_\+double const $\ast$A, ftn\+\_\+int lda, ftn\+\_\+double const $\ast$B, ftn\+\_\+int ldb, ftn\+\_\+double const $\ast$beta, ftn\+\_\+double $\ast$C, ftn\+\_\+int ldc, int stream\+\_\+id)\label{classsddk_1_1linalg_3_01_g_p_u_01_4_a52ba471574704bd433986aa4db347586}
+
+\item 
+\hypertarget{classsddk_1_1linalg_3_01_g_p_u_01_4_a2daffabf3c214eca5c33c9617a8c946c}{}{\footnotesize template$<$$>$ }\\ftn\+\_\+int {\bfseries potrf} (ftn\+\_\+int n, ftn\+\_\+double $\ast$A, ftn\+\_\+int lda)\label{classsddk_1_1linalg_3_01_g_p_u_01_4_a2daffabf3c214eca5c33c9617a8c946c}
+
+\item 
+\hypertarget{classsddk_1_1linalg_3_01_g_p_u_01_4_af2f73104cc2fb6480f695522e3fdea03}{}{\footnotesize template$<$$>$ }\\ftn\+\_\+int {\bfseries potrf} (ftn\+\_\+int n, ftn\+\_\+double\+\_\+complex $\ast$A, ftn\+\_\+int lda)\label{classsddk_1_1linalg_3_01_g_p_u_01_4_af2f73104cc2fb6480f695522e3fdea03}
+
+\item 
+\hypertarget{classsddk_1_1linalg_3_01_g_p_u_01_4_aca596e3883f019c2f4d3de47817fd4c1}{}{\footnotesize template$<$$>$ }\\ftn\+\_\+int {\bfseries trtri} (ftn\+\_\+int n, ftn\+\_\+double $\ast$A, ftn\+\_\+int lda)\label{classsddk_1_1linalg_3_01_g_p_u_01_4_aca596e3883f019c2f4d3de47817fd4c1}
+
+\item 
+\hypertarget{classsddk_1_1linalg_3_01_g_p_u_01_4_aa31d61b49f67830e5123f4e6e0402306}{}{\footnotesize template$<$$>$ }\\ftn\+\_\+int {\bfseries trtri} (ftn\+\_\+int n, ftn\+\_\+double\+\_\+complex $\ast$A, ftn\+\_\+int lda)\label{classsddk_1_1linalg_3_01_g_p_u_01_4_aa31d61b49f67830e5123f4e6e0402306}
+
+\item 
+\hypertarget{classsddk_1_1linalg_3_01_g_p_u_01_4_a5cb0aa62e221d24404e5cea9926b05e5}{}{\footnotesize template$<$$>$ }\\void {\bfseries trmm} (char side, char uplo, char transa, ftn\+\_\+int m, ftn\+\_\+int n, ftn\+\_\+double $\ast$alpha, ftn\+\_\+double $\ast$A, ftn\+\_\+int lda, ftn\+\_\+double $\ast$B, ftn\+\_\+int ldb)\label{classsddk_1_1linalg_3_01_g_p_u_01_4_a5cb0aa62e221d24404e5cea9926b05e5}
+
+\item 
+\hypertarget{classsddk_1_1linalg_3_01_g_p_u_01_4_a901911984f3114c682e801a3e3ae3d26}{}{\footnotesize template$<$$>$ }\\void {\bfseries trmm} (char side, char uplo, char transa, ftn\+\_\+int m, ftn\+\_\+int n, ftn\+\_\+double\+\_\+complex $\ast$alpha, ftn\+\_\+double\+\_\+complex $\ast$A, ftn\+\_\+int lda, ftn\+\_\+double\+\_\+complex $\ast$B, ftn\+\_\+int ldb)\label{classsddk_1_1linalg_3_01_g_p_u_01_4_a901911984f3114c682e801a3e3ae3d26}
+
+\item 
+\hypertarget{classsddk_1_1linalg_3_01_g_p_u_01_4_a21a925c87985fed578b73d6c807fa67f}{}{\footnotesize template$<$$>$ }\\void {\bfseries ger} (ftn\+\_\+int m, ftn\+\_\+int n, ftn\+\_\+double const $\ast$alpha, ftn\+\_\+double $\ast$x, ftn\+\_\+int incx, ftn\+\_\+double $\ast$y, ftn\+\_\+int incy, ftn\+\_\+double $\ast$A, ftn\+\_\+int lda, int stream\+\_\+id)\label{classsddk_1_1linalg_3_01_g_p_u_01_4_a21a925c87985fed578b73d6c807fa67f}
+
+\item 
+\hypertarget{classsddk_1_1linalg_3_01_g_p_u_01_4_a0ff04649e861af89aaba1d2db236ac19}{}{\footnotesize template$<$$>$ }\\void {\bfseries ger} (ftn\+\_\+int m, ftn\+\_\+int n, ftn\+\_\+double\+\_\+complex const $\ast$alpha, ftn\+\_\+double\+\_\+complex $\ast$x, ftn\+\_\+int incx, ftn\+\_\+double\+\_\+complex $\ast$y, ftn\+\_\+int incy, ftn\+\_\+double\+\_\+complex $\ast$A, ftn\+\_\+int lda, int stream\+\_\+id)\label{classsddk_1_1linalg_3_01_g_p_u_01_4_a0ff04649e861af89aaba1d2db236ac19}
+
+\item 
+\hypertarget{classsddk_1_1linalg_3_01_g_p_u_01_4_abba634fea13a40bb6ad4855e8b2a66b4}{}{\footnotesize template$<$$>$ }\\void {\bfseries axpy} (ftn\+\_\+int n\+\_\+\+\_\+, ftn\+\_\+double\+\_\+complex const $\ast$alpha\+\_\+\+\_\+, ftn\+\_\+double\+\_\+complex const $\ast$x\+\_\+\+\_\+, ftn\+\_\+int incx\+\_\+\+\_\+, ftn\+\_\+double\+\_\+complex $\ast$y\+\_\+\+\_\+, ftn\+\_\+int incy\+\_\+\+\_\+)\label{classsddk_1_1linalg_3_01_g_p_u_01_4_abba634fea13a40bb6ad4855e8b2a66b4}
+
+\end{DoxyCompactItemize}
+\subsection*{Static Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+\hypertarget{classsddk_1_1linalg_3_01_g_p_u_01_4_a8c47450c1b8d490dcd77200854dff231}{}{\footnotesize template$<$typename T $>$ }\\static void {\bfseries gemv} (int trans, ftn\+\_\+int m, ftn\+\_\+int n, T $\ast$alpha, T $\ast$A, ftn\+\_\+int lda, T $\ast$x, ftn\+\_\+int incx, T $\ast$beta, T $\ast$y, ftn\+\_\+int incy, int stream\+\_\+id)\label{classsddk_1_1linalg_3_01_g_p_u_01_4_a8c47450c1b8d490dcd77200854dff231}
+
+\item 
+\hypertarget{classsddk_1_1linalg_3_01_g_p_u_01_4_a197b85f4ea5beb726cd557d076caae33}{}{\footnotesize template$<$typename T $>$ }\\static void {\bfseries gemm} (int transa, int transb, ftn\+\_\+int m, ftn\+\_\+int n, ftn\+\_\+int k, T const $\ast$alpha, T const $\ast$A, ftn\+\_\+int lda, T const $\ast$B, ftn\+\_\+int ldb, T const $\ast$beta, T $\ast$C, ftn\+\_\+int ldc, int stream\+\_\+id=-\/1)\label{classsddk_1_1linalg_3_01_g_p_u_01_4_a197b85f4ea5beb726cd557d076caae33}
+
+\item 
+\hypertarget{classsddk_1_1linalg_3_01_g_p_u_01_4_ae4fd03e4c07c38d25fbeef322f0b56f6}{}{\footnotesize template$<$typename T $>$ }\\static void {\bfseries gemm} (int transa, int transb, ftn\+\_\+int m, ftn\+\_\+int n, ftn\+\_\+int k, T const $\ast$A, ftn\+\_\+int lda, T const $\ast$B, ftn\+\_\+int ldb, T $\ast$C, ftn\+\_\+int ldc, int stream\+\_\+id=-\/1)\label{classsddk_1_1linalg_3_01_g_p_u_01_4_ae4fd03e4c07c38d25fbeef322f0b56f6}
+
+\item 
+\hypertarget{classsddk_1_1linalg_3_01_g_p_u_01_4_a2e89448a1aacdfa7694bc72e7a56310c}{}{\footnotesize template$<$typename T $>$ }\\static void {\bfseries gemm} (int transa, int transb, ftn\+\_\+int m, ftn\+\_\+int n, ftn\+\_\+int k, \hyperlink{classsddk_1_1mdarray}{matrix}$<$ T $>$ const \&A, \hyperlink{classsddk_1_1mdarray}{matrix}$<$ T $>$ const \&B, \hyperlink{classsddk_1_1mdarray}{matrix}$<$ T $>$ \&C, int stream\+\_\+id=-\/1)\label{classsddk_1_1linalg_3_01_g_p_u_01_4_a2e89448a1aacdfa7694bc72e7a56310c}
+
+\item 
+{\footnotesize template$<$typename T $>$ }\\static ftn\+\_\+int \hyperlink{classsddk_1_1linalg_3_01_g_p_u_01_4_abfe72c25212cac9572262cfafbe7e3de}{potrf} (ftn\+\_\+int n, T $\ast$A, ftn\+\_\+int lda)
+\begin{DoxyCompactList}\small\item\em Cholesky factorization. \end{DoxyCompactList}\item 
+{\footnotesize template$<$typename T $>$ }\\static ftn\+\_\+int \hyperlink{classsddk_1_1linalg_3_01_g_p_u_01_4_ac9d8a936c08a5873dba375ae856ed0d0}{trtri} (ftn\+\_\+int n, T $\ast$A, ftn\+\_\+int lda)
+\begin{DoxyCompactList}\small\item\em Inversion of triangular matrix. \end{DoxyCompactList}\item 
+\hypertarget{classsddk_1_1linalg_3_01_g_p_u_01_4_af27112d5c86ccd5ef4821b7f87b846e2}{}{\footnotesize template$<$typename T $>$ }\\static void {\bfseries trmm} (char side, char uplo, char transa, ftn\+\_\+int m, ftn\+\_\+int n, T $\ast$aplha, T $\ast$A, ftn\+\_\+int lda, T $\ast$B, ftn\+\_\+int ldb)\label{classsddk_1_1linalg_3_01_g_p_u_01_4_af27112d5c86ccd5ef4821b7f87b846e2}
+
+\item 
+\hypertarget{classsddk_1_1linalg_3_01_g_p_u_01_4_addae0f8600ff1eed543dfe105bfcc562}{}{\footnotesize template$<$typename T $>$ }\\static void {\bfseries ger} (ftn\+\_\+int m, ftn\+\_\+int n, T const $\ast$alpha, T $\ast$x, ftn\+\_\+int incx, T $\ast$y, ftn\+\_\+int incy, T $\ast$A, ftn\+\_\+int lda, int stream\+\_\+id=-\/1)\label{classsddk_1_1linalg_3_01_g_p_u_01_4_addae0f8600ff1eed543dfe105bfcc562}
+
+\item 
+\hypertarget{classsddk_1_1linalg_3_01_g_p_u_01_4_a03ae9ba65443a390c5f7a1086cfe785a}{}{\footnotesize template$<$typename T $>$ }\\static void {\bfseries axpy} (int n\+\_\+\+\_\+, T const $\ast$alpha\+\_\+\+\_\+, T const $\ast$x\+\_\+\+\_\+, int incx\+\_\+\+\_\+, T $\ast$y\+\_\+\+\_\+, int incy\+\_\+\+\_\+)\label{classsddk_1_1linalg_3_01_g_p_u_01_4_a03ae9ba65443a390c5f7a1086cfe785a}
+
+\end{DoxyCompactItemize}
+
+
+\subsection{Detailed Description}
+\subsubsection*{template$<$$>$class sddk\+::linalg$<$ G\+P\+U $>$}
+
+
+
+Definition at line 200 of file linalg.\+hpp.
+
+
+
+\subsection{Member Function Documentation}
+\hypertarget{classsddk_1_1linalg_3_01_g_p_u_01_4_abfe72c25212cac9572262cfafbe7e3de}{}\index{sddk\+::linalg$<$ G\+P\+U $>$@{sddk\+::linalg$<$ G\+P\+U $>$}!potrf@{potrf}}
+\index{potrf@{potrf}!sddk\+::linalg$<$ G\+P\+U $>$@{sddk\+::linalg$<$ G\+P\+U $>$}}
+\subsubsection[{potrf(ftn\+\_\+int n, T $\ast$\+A, ftn\+\_\+int lda)}]{\setlength{\rightskip}{0pt plus 5cm}template$<$typename T $>$ static ftn\+\_\+int {\bf sddk\+::linalg}$<$ G\+P\+U $>$\+::potrf (
+\begin{DoxyParamCaption}
+\item[{ftn\+\_\+int}]{n, }
+\item[{T $\ast$}]{A, }
+\item[{ftn\+\_\+int}]{lda}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [static]}}\label{classsddk_1_1linalg_3_01_g_p_u_01_4_abfe72c25212cac9572262cfafbe7e3de}
+
+
+Cholesky factorization. 
+
+\hypertarget{classsddk_1_1linalg_3_01_g_p_u_01_4_ac9d8a936c08a5873dba375ae856ed0d0}{}\index{sddk\+::linalg$<$ G\+P\+U $>$@{sddk\+::linalg$<$ G\+P\+U $>$}!trtri@{trtri}}
+\index{trtri@{trtri}!sddk\+::linalg$<$ G\+P\+U $>$@{sddk\+::linalg$<$ G\+P\+U $>$}}
+\subsubsection[{trtri(ftn\+\_\+int n, T $\ast$\+A, ftn\+\_\+int lda)}]{\setlength{\rightskip}{0pt plus 5cm}template$<$typename T $>$ static ftn\+\_\+int {\bf sddk\+::linalg}$<$ G\+P\+U $>$\+::trtri (
+\begin{DoxyParamCaption}
+\item[{ftn\+\_\+int}]{n, }
+\item[{T $\ast$}]{A, }
+\item[{ftn\+\_\+int}]{lda}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [static]}}\label{classsddk_1_1linalg_3_01_g_p_u_01_4_ac9d8a936c08a5873dba375ae856ed0d0}
+
+
+Inversion of triangular matrix. 
+
+
+
+The documentation for this class was generated from the following file\+:\begin{DoxyCompactItemize}
+\item 
+\hyperlink{linalg_8hpp}{linalg.\+hpp}\end{DoxyCompactItemize}

@@ -1,0 +1,14 @@
+digraph "pseudopotential_descriptor"
+{
+ // INTERACTIVE_SVG=YES
+  edge [fontname="Helvetica",fontsize="10",labelfontname="Helvetica",labelfontsize="10"];
+  node [fontname="Helvetica",fontsize="10",shape=record];
+  Node1 [label="pseudopotential_descriptor",height=0.2,width=0.4,color="black", fillcolor="grey75", style="filled", fontcolor="black"];
+  Node2 -> Node1 [dir="back",color="darkorchid3",fontsize="10",style="dashed",label=" all_elec_wfc\nbeta_radial_functions\nd_mtrx_ion\npseudo_wfc" ,fontname="Helvetica"];
+  Node2 [label="sddk::mdarray\< double, 2 \>",height=0.2,width=0.4,color="black", fillcolor="white", style="filled",URL="$classsddk_1_1mdarray.html"];
+  Node3 -> Node2 [dir="back",color="midnightblue",fontsize="10",style="solid",fontname="Helvetica"];
+  Node3 [label="sddk::mdarray_base\l\< double, N \>",height=0.2,width=0.4,color="black", fillcolor="white", style="filled",URL="$classsddk_1_1mdarray__base.html"];
+  Node4 -> Node1 [dir="back",color="darkorchid3",fontsize="10",style="dashed",label=" q_radial_functions_l" ,fontname="Helvetica"];
+  Node4 [label="sddk::mdarray\< double, 3 \>",height=0.2,width=0.4,color="black", fillcolor="white", style="filled",URL="$classsddk_1_1mdarray.html"];
+  Node3 -> Node4 [dir="back",color="midnightblue",fontsize="10",style="solid",fontname="Helvetica"];
+}

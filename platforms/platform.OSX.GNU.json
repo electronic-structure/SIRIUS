@@ -1,0 +1,20 @@
+{
+    "MPI_CXX"     : "/opt/mpich-gnu/bin/mpic++",
+    "MPI_CXX_OPT" : "-std=c++11 -g -O3 -Wall -Wconversion -fopenmp -DNDEBUG -D__SCALAPACK -D__ELPA",
+    "MPI_FC"      : "/opt/mpich-gnu/bin/mpif90",
+    "MPI_FC_OPT"  : "-O3 -fopenmp -cpp",
+    
+    "CC"          : "gcc-mp-5",
+    "CXX"         : "c++-mp-5",
+    "FC"          : "gfortran-mp-5",
+    "FCCPP"       : "cpp-mp-5",
+
+    "NVCC"        : "/Developer/NVIDIA/CUDA-7.5/bin/nvcc",
+    "NVCC_OPT"    : "-ccbin=clang++-mp-3.6 -arch=sm_30 -m64 -DNDEBUG",
+
+    "SYSTEM_LIBS" : "~/libs/scalapck/scalapack-2.0.2/libscalapack.a ~/libs/lapack/lapack-3.6.1/liblapack.a ~/libs/lapack/lapack-3.6.1/librefblas.a ~/local/lib/libmpi_mpifh.a -L/opt/local/lib -lz -lgfortran -lstdc++ -lc++",
+
+    "install"     : ["gsl", "fftw", "xc", "spg", "hdf5"]
+}
+
+

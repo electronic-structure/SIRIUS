@@ -1,0 +1,86 @@
+\hypertarget{linalg__base_8hpp}{}\section{linalg\+\_\+base.\+hpp File Reference}
+\label{linalg__base_8hpp}\index{linalg\+\_\+base.\+hpp@{linalg\+\_\+base.\+hpp}}
+
+
+Basic interface to linear algebra functions.  
+
+
+Include dependency graph for linalg\+\_\+base.\+hpp\+:
+% FIG 0
+This graph shows which files directly or indirectly include this file\+:
+% FIG 1
+\subsection*{Classes}
+\begin{DoxyCompactItemize}
+\item 
+struct \hyperlink{structsddk_1_1linalg__const}{sddk\+::linalg\+\_\+const$<$ T $>$}
+\item 
+class \hyperlink{classsddk_1_1linalg__base}{sddk\+::linalg\+\_\+base}
+\begin{DoxyCompactList}\small\item\em Base class for linear algebra interface. \end{DoxyCompactList}\end{DoxyCompactItemize}
+\subsection*{Functions}
+\begin{DoxyCompactItemize}
+\item 
+\hypertarget{namespacesddk_aa2d659f318461d9760b2704be43c7d94}{}ftn\+\_\+int F\+O\+R\+T\+R\+A\+N() {\bfseries sddk\+::ilaenv} (ftn\+\_\+int $\ast$ispec, ftn\+\_\+char name, ftn\+\_\+char opts, ftn\+\_\+int $\ast$n1, ftn\+\_\+int $\ast$n2, ftn\+\_\+int $\ast$n3, ftn\+\_\+int $\ast$n4, ftn\+\_\+len name\+\_\+len, ftn\+\_\+len opts\+\_\+len)\label{namespacesddk_aa2d659f318461d9760b2704be43c7d94}
+
+\item 
+\hypertarget{namespacesddk_a88c73e86481a136143bd489cba3c7608}{}ftn\+\_\+double F\+O\+R\+T\+R\+A\+N() {\bfseries sddk\+::dlamch} (ftn\+\_\+char cmach, ftn\+\_\+len cmach\+\_\+len)\label{namespacesddk_a88c73e86481a136143bd489cba3c7608}
+
+\item 
+\hypertarget{namespacesddk_a4928682518f84dff2aa563165c6810d1}{}int {\bfseries sddk\+::\+Csys2blacs\+\_\+handle} (M\+P\+I\+\_\+\+Comm Sys\+Ctxt)\label{namespacesddk_a4928682518f84dff2aa563165c6810d1}
+
+\item 
+\hypertarget{namespacesddk_af5cc1be5a7c8ebb1ddb053cfb1f00a10}{}M\+P\+I\+\_\+\+Comm {\bfseries sddk\+::\+Cblacs2sys\+\_\+handle} (int Blacs\+Ctxt)\label{namespacesddk_af5cc1be5a7c8ebb1ddb053cfb1f00a10}
+
+\item 
+\hypertarget{namespacesddk_ad02f6f76b1484c203d86c7244a2bd199}{}void {\bfseries sddk\+::\+Cblacs\+\_\+gridinit} (int $\ast$Con\+Txt, const char $\ast$order, int nprow, int npcol)\label{namespacesddk_ad02f6f76b1484c203d86c7244a2bd199}
+
+\item 
+\hypertarget{namespacesddk_a9d9d9093e1a0385a6937b353964e5b7a}{}void {\bfseries sddk\+::\+Cblacs\+\_\+gridmap} (int $\ast$Con\+Txt, int $\ast$usermap, int ldup, int nprow0, int npcol0)\label{namespacesddk_a9d9d9093e1a0385a6937b353964e5b7a}
+
+\item 
+\hypertarget{namespacesddk_a0bc08a5307a6cf677b9622372dd07e32}{}void {\bfseries sddk\+::\+Cblacs\+\_\+gridinfo} (int Con\+Txt, int $\ast$nprow, int $\ast$npcol, int $\ast$myrow, int $\ast$mycol)\label{namespacesddk_a0bc08a5307a6cf677b9622372dd07e32}
+
+\item 
+\hypertarget{namespacesddk_a9910f9c7520fa9deca7547bc8df5002a}{}void {\bfseries sddk\+::\+Cfree\+\_\+blacs\+\_\+system\+\_\+handle} (int I\+Sys\+Ctxt)\label{namespacesddk_a9910f9c7520fa9deca7547bc8df5002a}
+
+\item 
+\hypertarget{namespacesddk_ac9d775f4497236f44770c1de1400d603}{}void {\bfseries sddk\+::\+Cblacs\+\_\+barrier} (int Con\+Txt, const char $\ast$scope)\label{namespacesddk_ac9d775f4497236f44770c1de1400d603}
+
+\item 
+\hypertarget{namespacesddk_ac6b00fdec6ebac913a155cd45aa2271a}{}void {\bfseries sddk\+::\+Cblacs\+\_\+gridexit} (int Con\+Txt)\label{namespacesddk_ac6b00fdec6ebac913a155cd45aa2271a}
+
+\item 
+\hypertarget{namespacesddk_ab2f9bcca7fe6f293ef22a4a9470ea822}{}void F\+O\+R\+T\+R\+A\+N() {\bfseries sddk\+::pdgemm} (ftn\+\_\+char transa, ftn\+\_\+char transb, ftn\+\_\+int $\ast$m, ftn\+\_\+int $\ast$n, ftn\+\_\+int $\ast$k, ftn\+\_\+double $\ast$aplha, ftn\+\_\+double $\ast$A, ftn\+\_\+int $\ast$ia, ftn\+\_\+int $\ast$ja, ftn\+\_\+int const $\ast$desca, ftn\+\_\+double $\ast$B, ftn\+\_\+int $\ast$ib, ftn\+\_\+int $\ast$jb, ftn\+\_\+int const $\ast$descb, ftn\+\_\+double $\ast$beta, ftn\+\_\+double $\ast$C, ftn\+\_\+int $\ast$ic, ftn\+\_\+int $\ast$jc, ftn\+\_\+int const $\ast$descc, ftn\+\_\+len transa\+\_\+len, ftn\+\_\+len transb\+\_\+len)\label{namespacesddk_ab2f9bcca7fe6f293ef22a4a9470ea822}
+
+\item 
+\hypertarget{namespacesddk_af48c8a3a712cf0555c0e69bbda4efe3b}{}void F\+O\+R\+T\+R\+A\+N() {\bfseries sddk\+::pzgemm} (ftn\+\_\+char transa, ftn\+\_\+char transb, ftn\+\_\+int $\ast$m, ftn\+\_\+int $\ast$n, ftn\+\_\+int $\ast$k, ftn\+\_\+double\+\_\+complex $\ast$aplha, ftn\+\_\+double\+\_\+complex $\ast$A, ftn\+\_\+int $\ast$ia, ftn\+\_\+int $\ast$ja, ftn\+\_\+int const $\ast$desca, ftn\+\_\+double\+\_\+complex $\ast$B, ftn\+\_\+int $\ast$ib, ftn\+\_\+int $\ast$jb, ftn\+\_\+int const $\ast$descb, ftn\+\_\+double\+\_\+complex $\ast$beta, ftn\+\_\+double\+\_\+complex $\ast$C, ftn\+\_\+int $\ast$ic, ftn\+\_\+int $\ast$jc, ftn\+\_\+int const $\ast$descc, ftn\+\_\+len transa\+\_\+len, ftn\+\_\+len transb\+\_\+len)\label{namespacesddk_af48c8a3a712cf0555c0e69bbda4efe3b}
+
+\item 
+\hypertarget{namespacesddk_a6f0aca73e27d058d41ddc8aca27844d8}{}void F\+O\+R\+T\+R\+A\+N() {\bfseries sddk\+::descinit} (ftn\+\_\+int const $\ast$desc, ftn\+\_\+int $\ast$m, ftn\+\_\+int $\ast$n, ftn\+\_\+int $\ast$mb, ftn\+\_\+int $\ast$nb, ftn\+\_\+int $\ast$irsrc, ftn\+\_\+int $\ast$icsrc, ftn\+\_\+int $\ast$ictxt, ftn\+\_\+int $\ast$lld, ftn\+\_\+int $\ast$info)\label{namespacesddk_a6f0aca73e27d058d41ddc8aca27844d8}
+
+\item 
+\hypertarget{namespacesddk_a60d6d5ef0027e19bf1118947ccb19c7e}{}void F\+O\+R\+T\+R\+A\+N() {\bfseries sddk\+::pztranc} (ftn\+\_\+int $\ast$m, ftn\+\_\+int $\ast$n, ftn\+\_\+double\+\_\+complex $\ast$alpha, ftn\+\_\+double\+\_\+complex $\ast$a, ftn\+\_\+int $\ast$ia, ftn\+\_\+int $\ast$ja, ftn\+\_\+int const $\ast$desca, ftn\+\_\+double\+\_\+complex $\ast$beta, ftn\+\_\+double\+\_\+complex $\ast$c, ftn\+\_\+int $\ast$ic, ftn\+\_\+int $\ast$jc, ftn\+\_\+int const $\ast$descc)\label{namespacesddk_a60d6d5ef0027e19bf1118947ccb19c7e}
+
+\item 
+\hypertarget{namespacesddk_a869bd2a51287506a09a5bd231f2e49c4}{}void F\+O\+R\+T\+R\+A\+N() {\bfseries sddk\+::pztranu} (ftn\+\_\+int $\ast$m, ftn\+\_\+int $\ast$n, ftn\+\_\+double\+\_\+complex $\ast$alpha, ftn\+\_\+double\+\_\+complex $\ast$a, ftn\+\_\+int $\ast$ia, ftn\+\_\+int $\ast$ja, ftn\+\_\+int const $\ast$desca, ftn\+\_\+double\+\_\+complex $\ast$beta, ftn\+\_\+double\+\_\+complex $\ast$c, ftn\+\_\+int $\ast$ic, ftn\+\_\+int $\ast$jc, ftn\+\_\+int const $\ast$descc)\label{namespacesddk_a869bd2a51287506a09a5bd231f2e49c4}
+
+\item 
+\hypertarget{namespacesddk_a47770da3bb3952aba34e2d97a20c5e02}{}void F\+O\+R\+T\+R\+A\+N() {\bfseries sddk\+::pdtran} (ftn\+\_\+int $\ast$m, ftn\+\_\+int $\ast$n, ftn\+\_\+double $\ast$alpha, ftn\+\_\+double $\ast$a, ftn\+\_\+int $\ast$ia, ftn\+\_\+int $\ast$ja, ftn\+\_\+int const $\ast$desca, ftn\+\_\+double $\ast$beta, ftn\+\_\+double $\ast$c, ftn\+\_\+int $\ast$ic, ftn\+\_\+int $\ast$jc, ftn\+\_\+int const $\ast$descc)\label{namespacesddk_a47770da3bb3952aba34e2d97a20c5e02}
+
+\item 
+\hypertarget{namespacesddk_a89decb4e8b3e17a2afb83a05a143fd0a}{}ftn\+\_\+int F\+O\+R\+T\+R\+A\+N() {\bfseries sddk\+::numroc} (ftn\+\_\+int $\ast$n, ftn\+\_\+int $\ast$nb, ftn\+\_\+int $\ast$iproc, ftn\+\_\+int $\ast$isrcproc, ftn\+\_\+int $\ast$nprocs)\label{namespacesddk_a89decb4e8b3e17a2afb83a05a143fd0a}
+
+\item 
+\hypertarget{namespacesddk_a995bd6ecedf9b727676fc94998a18617}{}ftn\+\_\+int F\+O\+R\+T\+R\+A\+N() {\bfseries sddk\+::indxl2g} (ftn\+\_\+int $\ast$indxloc, ftn\+\_\+int $\ast$nb, ftn\+\_\+int $\ast$iproc, ftn\+\_\+int $\ast$isrcproc, ftn\+\_\+int $\ast$nprocs)\label{namespacesddk_a995bd6ecedf9b727676fc94998a18617}
+
+\item 
+\hypertarget{namespacesddk_af2ebb814d9a9ffa574184c3f9d0e61bd}{}ftn\+\_\+len F\+O\+R\+T\+R\+A\+N() {\bfseries sddk\+::iceil} (ftn\+\_\+int $\ast$inum, ftn\+\_\+int $\ast$idenom)\label{namespacesddk_af2ebb814d9a9ffa574184c3f9d0e61bd}
+
+\item 
+\hypertarget{namespacesddk_a8ca8cca35f025cbe6db359bd5636c130}{}void F\+O\+R\+T\+R\+A\+N() {\bfseries sddk\+::pzgemr2d} (ftn\+\_\+int $\ast$m, ftn\+\_\+int $\ast$n, ftn\+\_\+double\+\_\+complex $\ast$a, ftn\+\_\+int $\ast$ia, ftn\+\_\+int $\ast$ja, ftn\+\_\+int const $\ast$desca, ftn\+\_\+double\+\_\+complex $\ast$b, ftn\+\_\+int $\ast$ib, ftn\+\_\+int $\ast$jb, ftn\+\_\+int const $\ast$descb, ftn\+\_\+int $\ast$gcontext)\label{namespacesddk_a8ca8cca35f025cbe6db359bd5636c130}
+
+\end{DoxyCompactItemize}
+
+
+\subsection{Detailed Description}
+Basic interface to linear algebra functions. 
+

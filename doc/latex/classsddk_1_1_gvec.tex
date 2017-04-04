@@ -1,0 +1,556 @@
+\hypertarget{classsddk_1_1_gvec}{}\section{sddk\+:\+:Gvec Class Reference}
+\label{classsddk_1_1_gvec}\index{sddk\+::\+Gvec@{sddk\+::\+Gvec}}
+
+
+Store list of G-\/vectors for F\+F\+Ts and G+k basis functions.  
+
+
+
+
+Collaboration diagram for sddk\+:\+:Gvec\+:
+% FIG 0
+\subsection*{Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+\hyperlink{classsddk_1_1_gvec_ade8f1a8a554e5cbbb73bb4cfcd9c49cf}{Gvec} ()
+\begin{DoxyCompactList}\small\item\em Default constructor. \end{DoxyCompactList}\item 
+\hyperlink{classsddk_1_1_gvec_a34d640a5f7fb7d5ca0e5e18de94b32c1}{Gvec} (\hyperlink{classgeometry3d_1_1vector3d}{vector3d}$<$ double $>$ vk\+\_\+\+\_\+, matrix3d$<$ double $>$ M\+\_\+\+\_\+, double Gmax\+\_\+\+\_\+, \hyperlink{classsddk_1_1_communicator}{Communicator} const \&comm\+\_\+\+\_\+, \hyperlink{classsddk_1_1_communicator}{Communicator} const \&comm\+\_\+fft\+\_\+\+\_\+, bool reduce\+\_\+gvec\+\_\+\+\_\+)
+\begin{DoxyCompactList}\small\item\em Constructor for G+k vectors. \end{DoxyCompactList}\item 
+\hyperlink{classsddk_1_1_gvec_a072408f26c727e83db69c3a56e1a2627}{Gvec} (matrix3d$<$ double $>$ M\+\_\+\+\_\+, double Gmax\+\_\+\+\_\+, \hyperlink{classsddk_1_1_communicator}{Communicator} const \&comm\+\_\+\+\_\+, \hyperlink{classsddk_1_1_communicator}{Communicator} const \&comm\+\_\+fft\+\_\+\+\_\+, bool reduce\+\_\+gvec\+\_\+\+\_\+)
+\begin{DoxyCompactList}\small\item\em Constructor for G-\/vectors. \end{DoxyCompactList}\item 
+\hyperlink{classsddk_1_1_gvec}{Gvec} \& \hyperlink{classsddk_1_1_gvec_a507447501d2707d86c5316d8fbda5b26}{operator=} (\hyperlink{classsddk_1_1_gvec}{Gvec} \&\&src\+\_\+\+\_\+)
+\begin{DoxyCompactList}\small\item\em Move assigment operator. \end{DoxyCompactList}\item 
+int \hyperlink{classsddk_1_1_gvec_aefe301dc5eeb4db682b760d61a4f5ac3}{num\+\_\+gvec} () const 
+\begin{DoxyCompactList}\small\item\em Return the total number of G-\/vectors within the cutoff. \end{DoxyCompactList}\item 
+int \hyperlink{classsddk_1_1_gvec_a74f50870731ddee098904f54d85a3865}{gvec\+\_\+count} (int rank\+\_\+\+\_\+) const 
+\begin{DoxyCompactList}\small\item\em Number of G-\/vectors for a fine-\/grained distribution. \end{DoxyCompactList}\item 
+int \hyperlink{classsddk_1_1_gvec_a138f923bee02db11e9bb6e85457835e9}{gvec\+\_\+offset} (int rank\+\_\+\+\_\+) const 
+\begin{DoxyCompactList}\small\item\em Offset (in the global index) of G-\/vectors for a fine-\/grained distribution. \end{DoxyCompactList}\item 
+int \hyperlink{classsddk_1_1_gvec_ac9e3cb03d19f07388a3f14fcea811ace}{num\+\_\+shells} () const 
+\begin{DoxyCompactList}\small\item\em Return number of G-\/vector shells. \end{DoxyCompactList}\item 
+\hyperlink{classgeometry3d_1_1vector3d}{vector3d}$<$ int $>$ \hyperlink{classsddk_1_1_gvec_a9c2c82147743329138872c39e5abd7c4}{gvec} (int ig\+\_\+\+\_\+) const 
+\begin{DoxyCompactList}\small\item\em Return G vector in fractional coordinates. \end{DoxyCompactList}\item 
+\hyperlink{classgeometry3d_1_1vector3d}{vector3d}$<$ double $>$ \hyperlink{classsddk_1_1_gvec_a846c80a978fe4a152f0b798b22818f7d}{gkvec} (int ig\+\_\+\+\_\+) const 
+\begin{DoxyCompactList}\small\item\em Return G+k vector in fractional coordinates. \end{DoxyCompactList}\item 
+\hyperlink{classgeometry3d_1_1vector3d}{vector3d}$<$ double $>$ \hyperlink{classsddk_1_1_gvec_a6feee2cf2bb69c332da123b998d676b1}{gvec\+\_\+cart} (int ig\+\_\+\+\_\+) const 
+\begin{DoxyCompactList}\small\item\em Return G vector in Cartesian coordinates. \end{DoxyCompactList}\item 
+\hyperlink{classgeometry3d_1_1vector3d}{vector3d}$<$ double $>$ \hyperlink{classsddk_1_1_gvec_a554db08f50c3aa36248bb903a84cd0df}{gkvec\+\_\+cart} (int ig\+\_\+\+\_\+) const 
+\begin{DoxyCompactList}\small\item\em Return G+k vector in Cartesian coordinates. \end{DoxyCompactList}\item 
+\hypertarget{classsddk_1_1_gvec_a2dc83610ddefc0035bdabf07bc55f906}{}int {\bfseries shell} (int ig\+\_\+\+\_\+) const \label{classsddk_1_1_gvec_a2dc83610ddefc0035bdabf07bc55f906}
+
+\item 
+\hypertarget{classsddk_1_1_gvec_afae1b3adb0b413b3dc50ec282563cc5f}{}double {\bfseries shell\+\_\+len} (int igs\+\_\+\+\_\+) const \label{classsddk_1_1_gvec_afae1b3adb0b413b3dc50ec282563cc5f}
+
+\item 
+\hypertarget{classsddk_1_1_gvec_ac127b0edcf125c98814d257f2a584f75}{}double {\bfseries gvec\+\_\+len} (int ig\+\_\+\+\_\+) const \label{classsddk_1_1_gvec_ac127b0edcf125c98814d257f2a584f75}
+
+\item 
+\hypertarget{classsddk_1_1_gvec_a7db4c052b6d03c52862fddef3b18be2c}{}int {\bfseries index\+\_\+g12} (\hyperlink{classgeometry3d_1_1vector3d}{vector3d}$<$ int $>$ const \&g1\+\_\+\+\_\+, \hyperlink{classgeometry3d_1_1vector3d}{vector3d}$<$ int $>$ const \&g2\+\_\+\+\_\+) const \label{classsddk_1_1_gvec_a7db4c052b6d03c52862fddef3b18be2c}
+
+\item 
+\hypertarget{classsddk_1_1_gvec_a04b03e506a21aa933769b84225824556}{}int {\bfseries index\+\_\+g12\+\_\+safe} (int ig1\+\_\+\+\_\+, int ig2\+\_\+\+\_\+) const \label{classsddk_1_1_gvec_a04b03e506a21aa933769b84225824556}
+
+\item 
+\hypertarget{classsddk_1_1_gvec_af2ce06b5c36d67987c9555a2d9f5f2ec}{}int {\bfseries index\+\_\+by\+\_\+gvec} (\hyperlink{classgeometry3d_1_1vector3d}{vector3d}$<$ int $>$ const \&G\+\_\+\+\_\+) const \label{classsddk_1_1_gvec_af2ce06b5c36d67987c9555a2d9f5f2ec}
+
+\item 
+\hypertarget{classsddk_1_1_gvec_a048cdcce9b4da07aa596975efbb40df4}{}bool {\bfseries reduced} () const \label{classsddk_1_1_gvec_a048cdcce9b4da07aa596975efbb40df4}
+
+\item 
+\hypertarget{classsddk_1_1_gvec_a6f97e7fe1de66856ebd718dbd453721f}{}int {\bfseries num\+\_\+zcol} () const \label{classsddk_1_1_gvec_a6f97e7fe1de66856ebd718dbd453721f}
+
+\item 
+\hypertarget{classsddk_1_1_gvec_a9350abf87e5f9da02f6b349df9ed9162}{}\hyperlink{structsddk_1_1z__column__descriptor}{z\+\_\+column\+\_\+descriptor} const \& {\bfseries zcol} (size\+\_\+t idx\+\_\+\+\_\+) const \label{classsddk_1_1_gvec_a9350abf87e5f9da02f6b349df9ed9162}
+
+\item 
+\hypertarget{classsddk_1_1_gvec_a6f48bfe39697d681ce2f3ee7cc72386c}{}\hyperlink{classsddk_1_1_gvec__partition}{Gvec\+\_\+partition} const \& {\bfseries partition} () const \label{classsddk_1_1_gvec_a6f48bfe39697d681ce2f3ee7cc72386c}
+
+\item 
+\hypertarget{classsddk_1_1_gvec_aabaf193d8c550e1d29e94e0d2389bb4d}{}\hyperlink{classgeometry3d_1_1vector3d}{vector3d}$<$ double $>$ const \& {\bfseries vk} () const \label{classsddk_1_1_gvec_aabaf193d8c550e1d29e94e0d2389bb4d}
+
+\item 
+\hypertarget{classsddk_1_1_gvec_a74fd52c1b5172156a8baa7223935a79a}{}\hyperlink{classsddk_1_1_communicator}{Communicator} const \& {\bfseries comm} () const \label{classsddk_1_1_gvec_a74fd52c1b5172156a8baa7223935a79a}
+
+\item 
+\hypertarget{classsddk_1_1_gvec_a7faf78fbd24241ce903f8cd88fdbc5ec}{}\hyperlink{classsddk_1_1_communicator}{Communicator} const \& {\bfseries comm\+\_\+ortho\+\_\+fft} () const \label{classsddk_1_1_gvec_a7faf78fbd24241ce903f8cd88fdbc5ec}
+
+\end{DoxyCompactItemize}
+\subsection*{Private Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+\hypertarget{classsddk_1_1_gvec_af88a7c6d2c6948818a75b292afbbbadf}{}{\bfseries Gvec} (\hyperlink{classsddk_1_1_gvec}{Gvec} const \&src\+\_\+\+\_\+)=delete\label{classsddk_1_1_gvec_af88a7c6d2c6948818a75b292afbbbadf}
+
+\item 
+\hypertarget{classsddk_1_1_gvec_a3b0e820b6bf61de840ae72d48def0a91}{}\hyperlink{classsddk_1_1_gvec}{Gvec} \& {\bfseries operator=} (\hyperlink{classsddk_1_1_gvec}{Gvec} const \&src\+\_\+\+\_\+)=delete\label{classsddk_1_1_gvec_a3b0e820b6bf61de840ae72d48def0a91}
+
+\item 
+\hypertarget{classsddk_1_1_gvec_ad467e64e22b92ab548d43ab705ddf378}{}{\bfseries Gvec} (\hyperlink{classsddk_1_1_gvec}{Gvec} \&\&src\+\_\+\+\_\+)=delete\label{classsddk_1_1_gvec_ad467e64e22b92ab548d43ab705ddf378}
+
+\item 
+\hyperlink{classgeometry3d_1_1vector3d}{vector3d}$<$ int $>$ \hyperlink{classsddk_1_1_gvec_a15b26e9d2a8c7eeef909dc15eaeedd5d}{gvec\+\_\+by\+\_\+full\+\_\+index} (int idx\+\_\+\+\_\+) const 
+\begin{DoxyCompactList}\small\item\em Return corresponding G-\/vector for an index in the range \mbox{[}0, num\+\_\+gvec). \end{DoxyCompactList}\item 
+\hypertarget{classsddk_1_1_gvec_a05b943a6f44e627d205bb81d23c997df}{}void {\bfseries find\+\_\+z\+\_\+columns} (double Gmax\+\_\+\+\_\+, \hyperlink{classsddk_1_1_f_f_t3_d__grid}{F\+F\+T3\+D\+\_\+grid} const \&fft\+\_\+box\+\_\+\+\_\+)\label{classsddk_1_1_gvec_a05b943a6f44e627d205bb81d23c997df}
+
+\item 
+\hypertarget{classsddk_1_1_gvec_a774a4e2d37d31b7eec8e36c05fb98093}{}void {\bfseries distribute\+\_\+z\+\_\+columns} ()\label{classsddk_1_1_gvec_a774a4e2d37d31b7eec8e36c05fb98093}
+
+\item 
+\hypertarget{classsddk_1_1_gvec_a77c68e942ce1b8328171b022dccc74bf}{}void {\bfseries find\+\_\+gvec\+\_\+shells} ()\label{classsddk_1_1_gvec_a77c68e942ce1b8328171b022dccc74bf}
+
+\item 
+\hypertarget{classsddk_1_1_gvec_a142b9ff82ee6debb8f618dfebb022bfc}{}void {\bfseries init} ()\label{classsddk_1_1_gvec_a142b9ff82ee6debb8f618dfebb022bfc}
+
+\end{DoxyCompactItemize}
+\subsection*{Private Attributes}
+\begin{DoxyCompactItemize}
+\item 
+\hyperlink{classgeometry3d_1_1vector3d}{vector3d}$<$ double $>$ \hyperlink{classsddk_1_1_gvec_a551efdd55a49e52f00682180671a8560}{vk\+\_\+}
+\begin{DoxyCompactList}\small\item\em k-\/vector of G+k. \end{DoxyCompactList}\item 
+double \hyperlink{classsddk_1_1_gvec_ac13f6091f0f60497c438add42b5e52e0}{Gmax\+\_\+}
+\begin{DoxyCompactList}\small\item\em Cutoff for $\vert$\+G+k$\vert$ vectors. \end{DoxyCompactList}\item 
+matrix3d$<$ double $>$ \hyperlink{classsddk_1_1_gvec_ad07aec291ebc9cd3012add1cf5ebcd21}{lattice\+\_\+vectors\+\_\+}
+\begin{DoxyCompactList}\small\item\em Reciprocal lattice vectors. \end{DoxyCompactList}\item 
+\hyperlink{classsddk_1_1_communicator}{Communicator} const $\ast$ \hyperlink{classsddk_1_1_gvec_af8b6dd15077c6c925d16d57fbd5a54a1}{comm\+\_\+} \{nullptr\}
+\begin{DoxyCompactList}\small\item\em Total communicator which is used to distribute G or G+k vectors. \end{DoxyCompactList}\item 
+\hyperlink{classsddk_1_1_communicator}{Communicator} const $\ast$ \hyperlink{classsddk_1_1_gvec_a14f019949de6fd1fa0f1b6c688984787}{comm\+\_\+fft\+\_\+} \{nullptr\}
+\begin{DoxyCompactList}\small\item\em \hyperlink{classsddk_1_1_communicator}{Communicator} of F\+F\+T driver. \end{DoxyCompactList}\item 
+\hyperlink{classsddk_1_1_communicator}{Communicator} \hyperlink{classsddk_1_1_gvec_aa8bf9350f829ce50c9b6036fff8a5609}{comm\+\_\+ortho\+\_\+fft\+\_\+}
+\begin{DoxyCompactList}\small\item\em \hyperlink{classsddk_1_1_communicator}{Communicator} which is orthogonal to F\+F\+T communicator. \end{DoxyCompactList}\item 
+bool \hyperlink{classsddk_1_1_gvec_aba6399c3e2408cde1168fb5e72e82b15}{reduce\+\_\+gvec\+\_\+}
+\begin{DoxyCompactList}\small\item\em Indicates that G-\/vectors are reduced by inversion symmetry. \end{DoxyCompactList}\item 
+int \hyperlink{classsddk_1_1_gvec_a54ae64b74a7dcfe6f82f9516be4fbc64}{num\+\_\+ranks\+\_\+}
+\begin{DoxyCompactList}\small\item\em Number of ranks for fine-\/grained distribution. \end{DoxyCompactList}\item 
+int \hyperlink{classsddk_1_1_gvec_ad376b1d40e9241a3bdfd227b8ce487fa}{num\+\_\+gvec\+\_\+}
+\begin{DoxyCompactList}\small\item\em Total number of G-\/vectors. \end{DoxyCompactList}\item 
+\hyperlink{classsddk_1_1mdarray}{mdarray}$<$ int, 1 $>$ \hyperlink{classsddk_1_1_gvec_a27b03be0abec2f40aadeb0400ebfbfa4}{gvec\+\_\+full\+\_\+index\+\_\+}
+\begin{DoxyCompactList}\small\item\em Mapping between G-\/vector index \mbox{[}0\+:num\+\_\+gvec\+\_\+) and a full index. \end{DoxyCompactList}\item 
+\hyperlink{classsddk_1_1mdarray}{mdarray}$<$ int, 1 $>$ \hyperlink{classsddk_1_1_gvec_adc60dc3bc088745caaa64fe58996e155}{gvec\+\_\+shell\+\_\+}
+\begin{DoxyCompactList}\small\item\em Index of the shell to which the given G-\/vector belongs. \end{DoxyCompactList}\item 
+\hypertarget{classsddk_1_1_gvec_ac9ea9f17ce196efec8dc38e912e0ce14}{}int {\bfseries num\+\_\+gvec\+\_\+shells\+\_\+}\label{classsddk_1_1_gvec_ac9ea9f17ce196efec8dc38e912e0ce14}
+
+\item 
+\hypertarget{classsddk_1_1_gvec_a4cda9b7e0f55b99d64aa7f1c33900620}{}\hyperlink{classsddk_1_1mdarray}{mdarray}$<$ double, 1 $>$ {\bfseries gvec\+\_\+shell\+\_\+len\+\_\+}\label{classsddk_1_1_gvec_a4cda9b7e0f55b99d64aa7f1c33900620}
+
+\item 
+\hypertarget{classsddk_1_1_gvec_a4f9ee2d49b26642fe5e92b5ff3199fef}{}\hyperlink{classsddk_1_1mdarray}{mdarray}$<$ int, 3 $>$ {\bfseries gvec\+\_\+index\+\_\+by\+\_\+xy\+\_\+}\label{classsddk_1_1_gvec_a4f9ee2d49b26642fe5e92b5ff3199fef}
+
+\item 
+std\+::vector$<$ \hyperlink{structsddk_1_1z__column__descriptor}{z\+\_\+column\+\_\+descriptor} $>$ \hyperlink{classsddk_1_1_gvec_afb61de598ed208a265d52656af86ab7d}{z\+\_\+columns\+\_\+}
+\begin{DoxyCompactList}\small\item\em Global list of non-\/zero z-\/columns. \end{DoxyCompactList}\item 
+\hyperlink{structsddk_1_1block__data__descriptor}{block\+\_\+data\+\_\+descriptor} \hyperlink{classsddk_1_1_gvec_a8f926d0894f62ca49404456d796c8d75}{gvec\+\_\+distr\+\_\+}
+\begin{DoxyCompactList}\small\item\em Fine-\/grained distribution of G-\/vectors. \end{DoxyCompactList}\item 
+\hyperlink{structsddk_1_1block__data__descriptor}{block\+\_\+data\+\_\+descriptor} \hyperlink{classsddk_1_1_gvec_a6f815b24a297f72ef7b974b046b2ec24}{zcol\+\_\+distr\+\_\+}
+\begin{DoxyCompactList}\small\item\em Fine-\/grained distribution of z-\/columns. \end{DoxyCompactList}\item 
+std\+::unique\+\_\+ptr$<$ \hyperlink{classsddk_1_1_gvec__partition}{Gvec\+\_\+partition} $>$ \hyperlink{classsddk_1_1_gvec_ae3f8dc02f9cc4f86bb3f92b145e31384}{gvec\+\_\+partition\+\_\+}
+\begin{DoxyCompactList}\small\item\em Default G-\/vector partitioning. \end{DoxyCompactList}\end{DoxyCompactItemize}
+\subsection*{Friends}
+\begin{DoxyCompactItemize}
+\item 
+\hypertarget{classsddk_1_1_gvec_ab2d80f8720deb08791fc3db626e6d991}{}class {\bfseries Gvec\+\_\+partition}\label{classsddk_1_1_gvec_ab2d80f8720deb08791fc3db626e6d991}
+
+\end{DoxyCompactItemize}
+
+
+\subsection{Detailed Description}
+Store list of G-\/vectors for F\+F\+Ts and G+k basis functions. 
+
+Definition at line 153 of file gvec.\+hpp.
+
+
+
+\subsection{Constructor \& Destructor Documentation}
+\hypertarget{classsddk_1_1_gvec_ade8f1a8a554e5cbbb73bb4cfcd9c49cf}{}\index{sddk\+::\+Gvec@{sddk\+::\+Gvec}!Gvec@{Gvec}}
+\index{Gvec@{Gvec}!sddk\+::\+Gvec@{sddk\+::\+Gvec}}
+\subsubsection[{Gvec()}]{\setlength{\rightskip}{0pt plus 5cm}sddk\+::\+Gvec\+::\+Gvec (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}}\label{classsddk_1_1_gvec_ade8f1a8a554e5cbbb73bb4cfcd9c49cf}
+
+
+Default constructor. 
+
+
+
+Definition at line 403 of file gvec.\+hpp.
+
+\hypertarget{classsddk_1_1_gvec_a34d640a5f7fb7d5ca0e5e18de94b32c1}{}\index{sddk\+::\+Gvec@{sddk\+::\+Gvec}!Gvec@{Gvec}}
+\index{Gvec@{Gvec}!sddk\+::\+Gvec@{sddk\+::\+Gvec}}
+\subsubsection[{Gvec(vector3d$<$ double $>$ vk\+\_\+\+\_\+, matrix3d$<$ double $>$ M\+\_\+\+\_\+, double Gmax\+\_\+\+\_\+, Communicator const \&comm\+\_\+\+\_\+, Communicator const \&comm\+\_\+fft\+\_\+\+\_\+, bool reduce\+\_\+gvec\+\_\+\+\_\+)}]{\setlength{\rightskip}{0pt plus 5cm}sddk\+::\+Gvec\+::\+Gvec (
+\begin{DoxyParamCaption}
+\item[{{\bf vector3d}$<$ double $>$}]{vk\+\_\+\+\_\+, }
+\item[{matrix3d$<$ double $>$}]{M\+\_\+\+\_\+, }
+\item[{double}]{Gmax\+\_\+\+\_\+, }
+\item[{{\bf Communicator} const \&}]{comm\+\_\+\+\_\+, }
+\item[{{\bf Communicator} const \&}]{comm\+\_\+fft\+\_\+\+\_\+, }
+\item[{bool}]{reduce\+\_\+gvec\+\_\+\+\_\+}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}}\label{classsddk_1_1_gvec_a34d640a5f7fb7d5ca0e5e18de94b32c1}
+
+
+Constructor for G+k vectors. 
+
+
+\begin{DoxyParams}[1]{Parameters}
+\mbox{\tt in}  & {\em vk} & K-\/point vector of G+k \\
+\hline
+\mbox{\tt in}  & {\em M} & Reciprocal lattice vecotors in comumn order \\
+\hline
+\mbox{\tt in}  & {\em Gmax} & Cutoff for G+k vectors \\
+\hline
+\mbox{\tt in}  & {\em comm} & Total communicator which is used to distribute G-\/vectors \\
+\hline
+\mbox{\tt in}  & {\em comm\+\_\+fft} & F\+F\+T communicator \\
+\hline
+\mbox{\tt in}  & {\em reduce\+\_\+gvec} & True if G-\/vectors need to be reduced by inversion symmetry. \\
+\hline
+\end{DoxyParams}
+
+
+Definition at line 415 of file gvec.\+hpp.
+
+\hypertarget{classsddk_1_1_gvec_a072408f26c727e83db69c3a56e1a2627}{}\index{sddk\+::\+Gvec@{sddk\+::\+Gvec}!Gvec@{Gvec}}
+\index{Gvec@{Gvec}!sddk\+::\+Gvec@{sddk\+::\+Gvec}}
+\subsubsection[{Gvec(matrix3d$<$ double $>$ M\+\_\+\+\_\+, double Gmax\+\_\+\+\_\+, Communicator const \&comm\+\_\+\+\_\+, Communicator const \&comm\+\_\+fft\+\_\+\+\_\+, bool reduce\+\_\+gvec\+\_\+\+\_\+)}]{\setlength{\rightskip}{0pt plus 5cm}sddk\+::\+Gvec\+::\+Gvec (
+\begin{DoxyParamCaption}
+\item[{matrix3d$<$ double $>$}]{M\+\_\+\+\_\+, }
+\item[{double}]{Gmax\+\_\+\+\_\+, }
+\item[{{\bf Communicator} const \&}]{comm\+\_\+\+\_\+, }
+\item[{{\bf Communicator} const \&}]{comm\+\_\+fft\+\_\+\+\_\+, }
+\item[{bool}]{reduce\+\_\+gvec\+\_\+\+\_\+}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}}\label{classsddk_1_1_gvec_a072408f26c727e83db69c3a56e1a2627}
+
+
+Constructor for G-\/vectors. 
+
+
+
+Definition at line 434 of file gvec.\+hpp.
+
+
+
+\subsection{Member Function Documentation}
+\hypertarget{classsddk_1_1_gvec_a15b26e9d2a8c7eeef909dc15eaeedd5d}{}\index{sddk\+::\+Gvec@{sddk\+::\+Gvec}!gvec\+\_\+by\+\_\+full\+\_\+index@{gvec\+\_\+by\+\_\+full\+\_\+index}}
+\index{gvec\+\_\+by\+\_\+full\+\_\+index@{gvec\+\_\+by\+\_\+full\+\_\+index}!sddk\+::\+Gvec@{sddk\+::\+Gvec}}
+\subsubsection[{gvec\+\_\+by\+\_\+full\+\_\+index(int idx\+\_\+\+\_\+) const }]{\setlength{\rightskip}{0pt plus 5cm}{\bf vector3d}$<$int$>$ sddk\+::\+Gvec\+::gvec\+\_\+by\+\_\+full\+\_\+index (
+\begin{DoxyParamCaption}
+\item[{int}]{idx\+\_\+\+\_\+}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [inline]}, {\ttfamily [private]}}\label{classsddk_1_1_gvec_a15b26e9d2a8c7eeef909dc15eaeedd5d}
+
+
+Return corresponding G-\/vector for an index in the range \mbox{[}0, num\+\_\+gvec). 
+
+
+
+Definition at line 218 of file gvec.\+hpp.
+
+\hypertarget{classsddk_1_1_gvec_a507447501d2707d86c5316d8fbda5b26}{}\index{sddk\+::\+Gvec@{sddk\+::\+Gvec}!operator=@{operator=}}
+\index{operator=@{operator=}!sddk\+::\+Gvec@{sddk\+::\+Gvec}}
+\subsubsection[{operator=(\+Gvec \&\&src\+\_\+\+\_\+)}]{\setlength{\rightskip}{0pt plus 5cm}{\bf Gvec}\& sddk\+::\+Gvec\+::operator= (
+\begin{DoxyParamCaption}
+\item[{{\bf Gvec} \&\&}]{src\+\_\+\+\_\+}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}}\label{classsddk_1_1_gvec_a507447501d2707d86c5316d8fbda5b26}
+
+
+Move assigment operator. 
+
+
+
+Definition at line 452 of file gvec.\+hpp.
+
+\hypertarget{classsddk_1_1_gvec_aefe301dc5eeb4db682b760d61a4f5ac3}{}\index{sddk\+::\+Gvec@{sddk\+::\+Gvec}!num\+\_\+gvec@{num\+\_\+gvec}}
+\index{num\+\_\+gvec@{num\+\_\+gvec}!sddk\+::\+Gvec@{sddk\+::\+Gvec}}
+\subsubsection[{num\+\_\+gvec() const }]{\setlength{\rightskip}{0pt plus 5cm}int sddk\+::\+Gvec\+::num\+\_\+gvec (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [inline]}}\label{classsddk_1_1_gvec_aefe301dc5eeb4db682b760d61a4f5ac3}
+
+
+Return the total number of G-\/vectors within the cutoff. 
+
+
+
+Definition at line 479 of file gvec.\+hpp.
+
+\hypertarget{classsddk_1_1_gvec_a74f50870731ddee098904f54d85a3865}{}\index{sddk\+::\+Gvec@{sddk\+::\+Gvec}!gvec\+\_\+count@{gvec\+\_\+count}}
+\index{gvec\+\_\+count@{gvec\+\_\+count}!sddk\+::\+Gvec@{sddk\+::\+Gvec}}
+\subsubsection[{gvec\+\_\+count(int rank\+\_\+\+\_\+) const }]{\setlength{\rightskip}{0pt plus 5cm}int sddk\+::\+Gvec\+::gvec\+\_\+count (
+\begin{DoxyParamCaption}
+\item[{int}]{rank\+\_\+\+\_\+}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [inline]}}\label{classsddk_1_1_gvec_a74f50870731ddee098904f54d85a3865}
+
+
+Number of G-\/vectors for a fine-\/grained distribution. 
+
+
+
+Definition at line 485 of file gvec.\+hpp.
+
+\hypertarget{classsddk_1_1_gvec_a138f923bee02db11e9bb6e85457835e9}{}\index{sddk\+::\+Gvec@{sddk\+::\+Gvec}!gvec\+\_\+offset@{gvec\+\_\+offset}}
+\index{gvec\+\_\+offset@{gvec\+\_\+offset}!sddk\+::\+Gvec@{sddk\+::\+Gvec}}
+\subsubsection[{gvec\+\_\+offset(int rank\+\_\+\+\_\+) const }]{\setlength{\rightskip}{0pt plus 5cm}int sddk\+::\+Gvec\+::gvec\+\_\+offset (
+\begin{DoxyParamCaption}
+\item[{int}]{rank\+\_\+\+\_\+}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [inline]}}\label{classsddk_1_1_gvec_a138f923bee02db11e9bb6e85457835e9}
+
+
+Offset (in the global index) of G-\/vectors for a fine-\/grained distribution. 
+
+
+
+Definition at line 492 of file gvec.\+hpp.
+
+\hypertarget{classsddk_1_1_gvec_ac9e3cb03d19f07388a3f14fcea811ace}{}\index{sddk\+::\+Gvec@{sddk\+::\+Gvec}!num\+\_\+shells@{num\+\_\+shells}}
+\index{num\+\_\+shells@{num\+\_\+shells}!sddk\+::\+Gvec@{sddk\+::\+Gvec}}
+\subsubsection[{num\+\_\+shells() const }]{\setlength{\rightskip}{0pt plus 5cm}int sddk\+::\+Gvec\+::num\+\_\+shells (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [inline]}}\label{classsddk_1_1_gvec_ac9e3cb03d19f07388a3f14fcea811ace}
+
+
+Return number of G-\/vector shells. 
+
+
+
+Definition at line 499 of file gvec.\+hpp.
+
+\hypertarget{classsddk_1_1_gvec_a9c2c82147743329138872c39e5abd7c4}{}\index{sddk\+::\+Gvec@{sddk\+::\+Gvec}!gvec@{gvec}}
+\index{gvec@{gvec}!sddk\+::\+Gvec@{sddk\+::\+Gvec}}
+\subsubsection[{gvec(int ig\+\_\+\+\_\+) const }]{\setlength{\rightskip}{0pt plus 5cm}{\bf vector3d}$<$int$>$ sddk\+::\+Gvec\+::gvec (
+\begin{DoxyParamCaption}
+\item[{int}]{ig\+\_\+\+\_\+}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [inline]}}\label{classsddk_1_1_gvec_a9c2c82147743329138872c39e5abd7c4}
+
+
+Return G vector in fractional coordinates. 
+
+
+
+Definition at line 505 of file gvec.\+hpp.
+
+\hypertarget{classsddk_1_1_gvec_a846c80a978fe4a152f0b798b22818f7d}{}\index{sddk\+::\+Gvec@{sddk\+::\+Gvec}!gkvec@{gkvec}}
+\index{gkvec@{gkvec}!sddk\+::\+Gvec@{sddk\+::\+Gvec}}
+\subsubsection[{gkvec(int ig\+\_\+\+\_\+) const }]{\setlength{\rightskip}{0pt plus 5cm}{\bf vector3d}$<$double$>$ sddk\+::\+Gvec\+::gkvec (
+\begin{DoxyParamCaption}
+\item[{int}]{ig\+\_\+\+\_\+}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [inline]}}\label{classsddk_1_1_gvec_a846c80a978fe4a152f0b798b22818f7d}
+
+
+Return G+k vector in fractional coordinates. 
+
+
+
+Definition at line 511 of file gvec.\+hpp.
+
+\hypertarget{classsddk_1_1_gvec_a6feee2cf2bb69c332da123b998d676b1}{}\index{sddk\+::\+Gvec@{sddk\+::\+Gvec}!gvec\+\_\+cart@{gvec\+\_\+cart}}
+\index{gvec\+\_\+cart@{gvec\+\_\+cart}!sddk\+::\+Gvec@{sddk\+::\+Gvec}}
+\subsubsection[{gvec\+\_\+cart(int ig\+\_\+\+\_\+) const }]{\setlength{\rightskip}{0pt plus 5cm}{\bf vector3d}$<$double$>$ sddk\+::\+Gvec\+::gvec\+\_\+cart (
+\begin{DoxyParamCaption}
+\item[{int}]{ig\+\_\+\+\_\+}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [inline]}}\label{classsddk_1_1_gvec_a6feee2cf2bb69c332da123b998d676b1}
+
+
+Return G vector in Cartesian coordinates. 
+
+
+
+Definition at line 518 of file gvec.\+hpp.
+
+\hypertarget{classsddk_1_1_gvec_a554db08f50c3aa36248bb903a84cd0df}{}\index{sddk\+::\+Gvec@{sddk\+::\+Gvec}!gkvec\+\_\+cart@{gkvec\+\_\+cart}}
+\index{gkvec\+\_\+cart@{gkvec\+\_\+cart}!sddk\+::\+Gvec@{sddk\+::\+Gvec}}
+\subsubsection[{gkvec\+\_\+cart(int ig\+\_\+\+\_\+) const }]{\setlength{\rightskip}{0pt plus 5cm}{\bf vector3d}$<$double$>$ sddk\+::\+Gvec\+::gkvec\+\_\+cart (
+\begin{DoxyParamCaption}
+\item[{int}]{ig\+\_\+\+\_\+}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [inline]}}\label{classsddk_1_1_gvec_a554db08f50c3aa36248bb903a84cd0df}
+
+
+Return G+k vector in Cartesian coordinates. 
+
+
+
+Definition at line 525 of file gvec.\+hpp.
+
+
+
+\subsection{Member Data Documentation}
+\hypertarget{classsddk_1_1_gvec_a551efdd55a49e52f00682180671a8560}{}\index{sddk\+::\+Gvec@{sddk\+::\+Gvec}!vk\+\_\+@{vk\+\_\+}}
+\index{vk\+\_\+@{vk\+\_\+}!sddk\+::\+Gvec@{sddk\+::\+Gvec}}
+\subsubsection[{vk\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}{\bf vector3d}$<$double$>$ sddk\+::\+Gvec\+::vk\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classsddk_1_1_gvec_a551efdd55a49e52f00682180671a8560}
+
+
+k-\/vector of G+k. 
+
+
+
+Definition at line 159 of file gvec.\+hpp.
+
+\hypertarget{classsddk_1_1_gvec_ac13f6091f0f60497c438add42b5e52e0}{}\index{sddk\+::\+Gvec@{sddk\+::\+Gvec}!Gmax\+\_\+@{Gmax\+\_\+}}
+\index{Gmax\+\_\+@{Gmax\+\_\+}!sddk\+::\+Gvec@{sddk\+::\+Gvec}}
+\subsubsection[{Gmax\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}double sddk\+::\+Gvec\+::\+Gmax\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classsddk_1_1_gvec_ac13f6091f0f60497c438add42b5e52e0}
+
+
+Cutoff for $\vert$\+G+k$\vert$ vectors. 
+
+
+
+Definition at line 162 of file gvec.\+hpp.
+
+\hypertarget{classsddk_1_1_gvec_ad07aec291ebc9cd3012add1cf5ebcd21}{}\index{sddk\+::\+Gvec@{sddk\+::\+Gvec}!lattice\+\_\+vectors\+\_\+@{lattice\+\_\+vectors\+\_\+}}
+\index{lattice\+\_\+vectors\+\_\+@{lattice\+\_\+vectors\+\_\+}!sddk\+::\+Gvec@{sddk\+::\+Gvec}}
+\subsubsection[{lattice\+\_\+vectors\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}matrix3d$<$double$>$ sddk\+::\+Gvec\+::lattice\+\_\+vectors\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classsddk_1_1_gvec_ad07aec291ebc9cd3012add1cf5ebcd21}
+
+
+Reciprocal lattice vectors. 
+
+
+
+Definition at line 165 of file gvec.\+hpp.
+
+\hypertarget{classsddk_1_1_gvec_af8b6dd15077c6c925d16d57fbd5a54a1}{}\index{sddk\+::\+Gvec@{sddk\+::\+Gvec}!comm\+\_\+@{comm\+\_\+}}
+\index{comm\+\_\+@{comm\+\_\+}!sddk\+::\+Gvec@{sddk\+::\+Gvec}}
+\subsubsection[{comm\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}{\bf Communicator} const$\ast$ sddk\+::\+Gvec\+::comm\+\_\+ \{nullptr\}\hspace{0.3cm}{\ttfamily [private]}}\label{classsddk_1_1_gvec_af8b6dd15077c6c925d16d57fbd5a54a1}
+
+
+Total communicator which is used to distribute G or G+k vectors. 
+
+
+
+Definition at line 168 of file gvec.\+hpp.
+
+\hypertarget{classsddk_1_1_gvec_a14f019949de6fd1fa0f1b6c688984787}{}\index{sddk\+::\+Gvec@{sddk\+::\+Gvec}!comm\+\_\+fft\+\_\+@{comm\+\_\+fft\+\_\+}}
+\index{comm\+\_\+fft\+\_\+@{comm\+\_\+fft\+\_\+}!sddk\+::\+Gvec@{sddk\+::\+Gvec}}
+\subsubsection[{comm\+\_\+fft\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}{\bf Communicator} const$\ast$ sddk\+::\+Gvec\+::comm\+\_\+fft\+\_\+ \{nullptr\}\hspace{0.3cm}{\ttfamily [private]}}\label{classsddk_1_1_gvec_a14f019949de6fd1fa0f1b6c688984787}
+
+
+\hyperlink{classsddk_1_1_communicator}{Communicator} of F\+F\+T driver. 
+
+
+
+Definition at line 171 of file gvec.\+hpp.
+
+\hypertarget{classsddk_1_1_gvec_aa8bf9350f829ce50c9b6036fff8a5609}{}\index{sddk\+::\+Gvec@{sddk\+::\+Gvec}!comm\+\_\+ortho\+\_\+fft\+\_\+@{comm\+\_\+ortho\+\_\+fft\+\_\+}}
+\index{comm\+\_\+ortho\+\_\+fft\+\_\+@{comm\+\_\+ortho\+\_\+fft\+\_\+}!sddk\+::\+Gvec@{sddk\+::\+Gvec}}
+\subsubsection[{comm\+\_\+ortho\+\_\+fft\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}{\bf Communicator} sddk\+::\+Gvec\+::comm\+\_\+ortho\+\_\+fft\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classsddk_1_1_gvec_aa8bf9350f829ce50c9b6036fff8a5609}
+
+
+\hyperlink{classsddk_1_1_communicator}{Communicator} which is orthogonal to F\+F\+T communicator. 
+
+
+
+Definition at line 174 of file gvec.\+hpp.
+
+\hypertarget{classsddk_1_1_gvec_aba6399c3e2408cde1168fb5e72e82b15}{}\index{sddk\+::\+Gvec@{sddk\+::\+Gvec}!reduce\+\_\+gvec\+\_\+@{reduce\+\_\+gvec\+\_\+}}
+\index{reduce\+\_\+gvec\+\_\+@{reduce\+\_\+gvec\+\_\+}!sddk\+::\+Gvec@{sddk\+::\+Gvec}}
+\subsubsection[{reduce\+\_\+gvec\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}bool sddk\+::\+Gvec\+::reduce\+\_\+gvec\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classsddk_1_1_gvec_aba6399c3e2408cde1168fb5e72e82b15}
+
+
+Indicates that G-\/vectors are reduced by inversion symmetry. 
+
+
+
+Definition at line 177 of file gvec.\+hpp.
+
+\hypertarget{classsddk_1_1_gvec_a54ae64b74a7dcfe6f82f9516be4fbc64}{}\index{sddk\+::\+Gvec@{sddk\+::\+Gvec}!num\+\_\+ranks\+\_\+@{num\+\_\+ranks\+\_\+}}
+\index{num\+\_\+ranks\+\_\+@{num\+\_\+ranks\+\_\+}!sddk\+::\+Gvec@{sddk\+::\+Gvec}}
+\subsubsection[{num\+\_\+ranks\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}int sddk\+::\+Gvec\+::num\+\_\+ranks\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classsddk_1_1_gvec_a54ae64b74a7dcfe6f82f9516be4fbc64}
+
+
+Number of ranks for fine-\/grained distribution. 
+
+
+
+Definition at line 180 of file gvec.\+hpp.
+
+\hypertarget{classsddk_1_1_gvec_ad376b1d40e9241a3bdfd227b8ce487fa}{}\index{sddk\+::\+Gvec@{sddk\+::\+Gvec}!num\+\_\+gvec\+\_\+@{num\+\_\+gvec\+\_\+}}
+\index{num\+\_\+gvec\+\_\+@{num\+\_\+gvec\+\_\+}!sddk\+::\+Gvec@{sddk\+::\+Gvec}}
+\subsubsection[{num\+\_\+gvec\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}int sddk\+::\+Gvec\+::num\+\_\+gvec\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classsddk_1_1_gvec_ad376b1d40e9241a3bdfd227b8ce487fa}
+
+
+Total number of G-\/vectors. 
+
+
+
+Definition at line 183 of file gvec.\+hpp.
+
+\hypertarget{classsddk_1_1_gvec_a27b03be0abec2f40aadeb0400ebfbfa4}{}\index{sddk\+::\+Gvec@{sddk\+::\+Gvec}!gvec\+\_\+full\+\_\+index\+\_\+@{gvec\+\_\+full\+\_\+index\+\_\+}}
+\index{gvec\+\_\+full\+\_\+index\+\_\+@{gvec\+\_\+full\+\_\+index\+\_\+}!sddk\+::\+Gvec@{sddk\+::\+Gvec}}
+\subsubsection[{gvec\+\_\+full\+\_\+index\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}{\bf mdarray}$<$int, 1$>$ sddk\+::\+Gvec\+::gvec\+\_\+full\+\_\+index\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classsddk_1_1_gvec_a27b03be0abec2f40aadeb0400ebfbfa4}
+
+
+Mapping between G-\/vector index \mbox{[}0\+:num\+\_\+gvec\+\_\+) and a full index. 
+
+Full index is used to store x,y,z coordinates in a packed form in a single integer number. 
+
+Definition at line 187 of file gvec.\+hpp.
+
+\hypertarget{classsddk_1_1_gvec_adc60dc3bc088745caaa64fe58996e155}{}\index{sddk\+::\+Gvec@{sddk\+::\+Gvec}!gvec\+\_\+shell\+\_\+@{gvec\+\_\+shell\+\_\+}}
+\index{gvec\+\_\+shell\+\_\+@{gvec\+\_\+shell\+\_\+}!sddk\+::\+Gvec@{sddk\+::\+Gvec}}
+\subsubsection[{gvec\+\_\+shell\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}{\bf mdarray}$<$int, 1$>$ sddk\+::\+Gvec\+::gvec\+\_\+shell\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classsddk_1_1_gvec_adc60dc3bc088745caaa64fe58996e155}
+
+
+Index of the shell to which the given G-\/vector belongs. 
+
+
+
+Definition at line 190 of file gvec.\+hpp.
+
+\hypertarget{classsddk_1_1_gvec_afb61de598ed208a265d52656af86ab7d}{}\index{sddk\+::\+Gvec@{sddk\+::\+Gvec}!z\+\_\+columns\+\_\+@{z\+\_\+columns\+\_\+}}
+\index{z\+\_\+columns\+\_\+@{z\+\_\+columns\+\_\+}!sddk\+::\+Gvec@{sddk\+::\+Gvec}}
+\subsubsection[{z\+\_\+columns\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}std\+::vector$<${\bf z\+\_\+column\+\_\+descriptor}$>$ sddk\+::\+Gvec\+::z\+\_\+columns\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classsddk_1_1_gvec_afb61de598ed208a265d52656af86ab7d}
+
+
+Global list of non-\/zero z-\/columns. 
+
+
+
+Definition at line 199 of file gvec.\+hpp.
+
+\hypertarget{classsddk_1_1_gvec_a8f926d0894f62ca49404456d796c8d75}{}\index{sddk\+::\+Gvec@{sddk\+::\+Gvec}!gvec\+\_\+distr\+\_\+@{gvec\+\_\+distr\+\_\+}}
+\index{gvec\+\_\+distr\+\_\+@{gvec\+\_\+distr\+\_\+}!sddk\+::\+Gvec@{sddk\+::\+Gvec}}
+\subsubsection[{gvec\+\_\+distr\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}{\bf block\+\_\+data\+\_\+descriptor} sddk\+::\+Gvec\+::gvec\+\_\+distr\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classsddk_1_1_gvec_a8f926d0894f62ca49404456d796c8d75}
+
+
+Fine-\/grained distribution of G-\/vectors. 
+
+
+
+Definition at line 202 of file gvec.\+hpp.
+
+\hypertarget{classsddk_1_1_gvec_a6f815b24a297f72ef7b974b046b2ec24}{}\index{sddk\+::\+Gvec@{sddk\+::\+Gvec}!zcol\+\_\+distr\+\_\+@{zcol\+\_\+distr\+\_\+}}
+\index{zcol\+\_\+distr\+\_\+@{zcol\+\_\+distr\+\_\+}!sddk\+::\+Gvec@{sddk\+::\+Gvec}}
+\subsubsection[{zcol\+\_\+distr\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}{\bf block\+\_\+data\+\_\+descriptor} sddk\+::\+Gvec\+::zcol\+\_\+distr\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classsddk_1_1_gvec_a6f815b24a297f72ef7b974b046b2ec24}
+
+
+Fine-\/grained distribution of z-\/columns. 
+
+
+
+Definition at line 205 of file gvec.\+hpp.
+
+\hypertarget{classsddk_1_1_gvec_ae3f8dc02f9cc4f86bb3f92b145e31384}{}\index{sddk\+::\+Gvec@{sddk\+::\+Gvec}!gvec\+\_\+partition\+\_\+@{gvec\+\_\+partition\+\_\+}}
+\index{gvec\+\_\+partition\+\_\+@{gvec\+\_\+partition\+\_\+}!sddk\+::\+Gvec@{sddk\+::\+Gvec}}
+\subsubsection[{gvec\+\_\+partition\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}std\+::unique\+\_\+ptr$<${\bf Gvec\+\_\+partition}$>$ sddk\+::\+Gvec\+::gvec\+\_\+partition\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classsddk_1_1_gvec_ae3f8dc02f9cc4f86bb3f92b145e31384}
+
+
+Default G-\/vector partitioning. 
+
+
+
+Definition at line 208 of file gvec.\+hpp.
+
+
+
+The documentation for this class was generated from the following file\+:\begin{DoxyCompactItemize}
+\item 
+\hyperlink{gvec_8hpp}{gvec.\+hpp}\end{DoxyCompactItemize}

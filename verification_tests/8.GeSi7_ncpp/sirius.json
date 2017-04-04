@@ -5,7 +5,7 @@
         "std_evp_solver_type" : "lapack",
         "gen_evp_solver_type" : "lapack",
         "fft_mode" : "serial",
-        "reduce_gvec" : 1
+        "reduce_gvec" : true
     },
 
     "parameters" : {
@@ -14,7 +14,7 @@
         
         "xc_functionals" : ["XC_LDA_X", "XC_LDA_C_PZ"],
 
-        "num_fv_states" : 37,
+        "num_fv_states" : 32,
         
         "smearing_width" : 0.025,
         
@@ -67,8 +67,8 @@
             "Ge"
         ], 
         "atom_files": {
-            "Si": "Si.pz-n-nc.UPF.json",
-            "Ge": "Ge.pz-n-nc.UPF.json"
+            "Si": "Si.pz-vbc.UPF.json",
+            "Ge": "Ge.pz-hgh.UPF.json"
         }, 
         "atoms": {
             "Ge": [

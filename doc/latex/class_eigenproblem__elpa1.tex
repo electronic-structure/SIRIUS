@@ -1,0 +1,158 @@
+\hypertarget{class_eigenproblem__elpa1}{}\section{Eigenproblem\+\_\+elpa1 Class Reference}
+\label{class_eigenproblem__elpa1}\index{Eigenproblem\+\_\+elpa1@{Eigenproblem\+\_\+elpa1}}
+
+
+Inheritance diagram for Eigenproblem\+\_\+elpa1\+:
+% FIG 0
+
+
+Collaboration diagram for Eigenproblem\+\_\+elpa1\+:
+% FIG 1
+\subsection*{Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+\hypertarget{class_eigenproblem__elpa1_a977ccbd93f0decfd216b469c74ad5ea2}{}{\bfseries Eigenproblem\+\_\+elpa1} (B\+L\+A\+C\+S\+\_\+grid const \&blacs\+\_\+grid\+\_\+\+\_\+, int32\+\_\+t block\+\_\+size\+\_\+\+\_\+)\label{class_eigenproblem__elpa1_a977ccbd93f0decfd216b469c74ad5ea2}
+
+\item 
+int \hyperlink{class_eigenproblem__elpa1_a9c4d7a9954031c8d5d9fd96d5ecb8c72}{solve} (int32\+\_\+t matrix\+\_\+size, int32\+\_\+t nevec, double\+\_\+complex $\ast$A, int32\+\_\+t lda, double\+\_\+complex $\ast$B, int32\+\_\+t ldb, double $\ast$eval, double\+\_\+complex $\ast$Z, int32\+\_\+t ldz, int32\+\_\+t num\+\_\+rows\+\_\+loc=0, int32\+\_\+t num\+\_\+cols\+\_\+loc=0) const 
+\begin{DoxyCompactList}\small\item\em Complex generalized Hermitian-\/definite eigenproblem. \end{DoxyCompactList}\item 
+int \hyperlink{class_eigenproblem__elpa1_a81947ff14335579c6774d2ef26cdd22a}{solve} (int32\+\_\+t matrix\+\_\+size, int32\+\_\+t nevec, double $\ast$A, int32\+\_\+t lda, double $\ast$B, int32\+\_\+t ldb, double $\ast$eval, double $\ast$Z, int32\+\_\+t ldz, int32\+\_\+t num\+\_\+rows\+\_\+loc=0, int32\+\_\+t num\+\_\+cols\+\_\+loc=0) const 
+\begin{DoxyCompactList}\small\item\em Real generalized symmetric-\/definite eigenproblem. \end{DoxyCompactList}\item 
+int \hyperlink{class_eigenproblem__elpa1_a8ce3f612a3cc4eddc96923a3484489fd}{solve} (int32\+\_\+t matrix\+\_\+size, int32\+\_\+t nevec, double $\ast$A, int32\+\_\+t lda, double $\ast$eval, double $\ast$Z, int32\+\_\+t ldz, int32\+\_\+t num\+\_\+rows\+\_\+loc, int32\+\_\+t num\+\_\+cols\+\_\+loc) const 
+\begin{DoxyCompactList}\small\item\em Real standard symmetric-\/definite eigenproblem with N lowest eigen-\/vectors. \end{DoxyCompactList}\item 
+int \hyperlink{class_eigenproblem__elpa1_aa7d78314867a58639f127f141499f26f}{solve} (int32\+\_\+t matrix\+\_\+size, int32\+\_\+t nevec, double\+\_\+complex $\ast$A, int32\+\_\+t lda, double $\ast$eval, double\+\_\+complex $\ast$Z, int32\+\_\+t ldz, int32\+\_\+t num\+\_\+rows\+\_\+loc, int32\+\_\+t num\+\_\+cols\+\_\+loc) const 
+\begin{DoxyCompactList}\small\item\em Complex standard Hermitian-\/definite eigenproblem with with N lowest eigen-\/vectors. \end{DoxyCompactList}\item 
+\hypertarget{class_eigenproblem__elpa1_ae7db7048a876855e6f91e66b3d04d72f}{}bool {\bfseries parallel} () const \label{class_eigenproblem__elpa1_ae7db7048a876855e6f91e66b3d04d72f}
+
+\item 
+\hypertarget{class_eigenproblem__elpa1_a4798835ca632054a6c1ee0c66c880da8}{}\hyperlink{eigenproblem_8h_a203f2c57422a6e64834e6e9ab85982bf}{ev\+\_\+solver\+\_\+t} {\bfseries type} () const \label{class_eigenproblem__elpa1_a4798835ca632054a6c1ee0c66c880da8}
+
+\end{DoxyCompactItemize}
+\subsection*{Additional Inherited Members}
+
+
+\subsection{Detailed Description}
+
+
+Definition at line 1406 of file eigenproblem.\+h.
+
+
+
+\subsection{Member Function Documentation}
+\hypertarget{class_eigenproblem__elpa1_a9c4d7a9954031c8d5d9fd96d5ecb8c72}{}\index{Eigenproblem\+\_\+elpa1@{Eigenproblem\+\_\+elpa1}!solve@{solve}}
+\index{solve@{solve}!Eigenproblem\+\_\+elpa1@{Eigenproblem\+\_\+elpa1}}
+\subsubsection[{solve(int32\+\_\+t matrix\+\_\+size, int32\+\_\+t nevec, double\+\_\+complex $\ast$\+A, int32\+\_\+t lda, double\+\_\+complex $\ast$\+B, int32\+\_\+t ldb, double $\ast$eval, double\+\_\+complex $\ast$\+Z, int32\+\_\+t ldz, int32\+\_\+t num\+\_\+rows\+\_\+loc=0, int32\+\_\+t num\+\_\+cols\+\_\+loc=0) const }]{\setlength{\rightskip}{0pt plus 5cm}int Eigenproblem\+\_\+elpa1\+::solve (
+\begin{DoxyParamCaption}
+\item[{int32\+\_\+t}]{matrix\+\_\+size, }
+\item[{int32\+\_\+t}]{nevec, }
+\item[{double\+\_\+complex $\ast$}]{A, }
+\item[{int32\+\_\+t}]{lda, }
+\item[{double\+\_\+complex $\ast$}]{B, }
+\item[{int32\+\_\+t}]{ldb, }
+\item[{double $\ast$}]{eval, }
+\item[{double\+\_\+complex $\ast$}]{Z, }
+\item[{int32\+\_\+t}]{ldz, }
+\item[{int32\+\_\+t}]{num\+\_\+rows\+\_\+loc = {\ttfamily 0}, }
+\item[{int32\+\_\+t}]{num\+\_\+cols\+\_\+loc = {\ttfamily 0}}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [inline]}, {\ttfamily [virtual]}}\label{class_eigenproblem__elpa1_a9c4d7a9954031c8d5d9fd96d5ecb8c72}
+
+
+Complex generalized Hermitian-\/definite eigenproblem. 
+
+
+
+Reimplemented from \hyperlink{class_eigenproblem_ac21f076d0d055610bbf8b26db34fb055}{Eigenproblem}.
+
+
+
+Definition at line 1416 of file eigenproblem.\+h.
+
+\hypertarget{class_eigenproblem__elpa1_a81947ff14335579c6774d2ef26cdd22a}{}\index{Eigenproblem\+\_\+elpa1@{Eigenproblem\+\_\+elpa1}!solve@{solve}}
+\index{solve@{solve}!Eigenproblem\+\_\+elpa1@{Eigenproblem\+\_\+elpa1}}
+\subsubsection[{solve(int32\+\_\+t matrix\+\_\+size, int32\+\_\+t nevec, double $\ast$\+A, int32\+\_\+t lda, double $\ast$\+B, int32\+\_\+t ldb, double $\ast$eval, double $\ast$\+Z, int32\+\_\+t ldz, int32\+\_\+t num\+\_\+rows\+\_\+loc=0, int32\+\_\+t num\+\_\+cols\+\_\+loc=0) const }]{\setlength{\rightskip}{0pt plus 5cm}int Eigenproblem\+\_\+elpa1\+::solve (
+\begin{DoxyParamCaption}
+\item[{int32\+\_\+t}]{matrix\+\_\+size, }
+\item[{int32\+\_\+t}]{nevec, }
+\item[{double $\ast$}]{A, }
+\item[{int32\+\_\+t}]{lda, }
+\item[{double $\ast$}]{B, }
+\item[{int32\+\_\+t}]{ldb, }
+\item[{double $\ast$}]{eval, }
+\item[{double $\ast$}]{Z, }
+\item[{int32\+\_\+t}]{ldz, }
+\item[{int32\+\_\+t}]{num\+\_\+rows\+\_\+loc = {\ttfamily 0}, }
+\item[{int32\+\_\+t}]{num\+\_\+cols\+\_\+loc = {\ttfamily 0}}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [inline]}, {\ttfamily [virtual]}}\label{class_eigenproblem__elpa1_a81947ff14335579c6774d2ef26cdd22a}
+
+
+Real generalized symmetric-\/definite eigenproblem. 
+
+
+
+Reimplemented from \hyperlink{class_eigenproblem_ad09807942eeec6c4c6db801a561332ce}{Eigenproblem}.
+
+
+
+Definition at line 1442 of file eigenproblem.\+h.
+
+\hypertarget{class_eigenproblem__elpa1_a8ce3f612a3cc4eddc96923a3484489fd}{}\index{Eigenproblem\+\_\+elpa1@{Eigenproblem\+\_\+elpa1}!solve@{solve}}
+\index{solve@{solve}!Eigenproblem\+\_\+elpa1@{Eigenproblem\+\_\+elpa1}}
+\subsubsection[{solve(int32\+\_\+t matrix\+\_\+size, int32\+\_\+t nevec, double $\ast$\+A, int32\+\_\+t lda, double $\ast$eval, double $\ast$\+Z, int32\+\_\+t ldz, int32\+\_\+t num\+\_\+rows\+\_\+loc, int32\+\_\+t num\+\_\+cols\+\_\+loc) const }]{\setlength{\rightskip}{0pt plus 5cm}int Eigenproblem\+\_\+elpa1\+::solve (
+\begin{DoxyParamCaption}
+\item[{int32\+\_\+t}]{matrix\+\_\+size, }
+\item[{int32\+\_\+t}]{nevec, }
+\item[{double $\ast$}]{A, }
+\item[{int32\+\_\+t}]{lda, }
+\item[{double $\ast$}]{eval, }
+\item[{double $\ast$}]{Z, }
+\item[{int32\+\_\+t}]{ldz, }
+\item[{int32\+\_\+t}]{num\+\_\+rows\+\_\+loc, }
+\item[{int32\+\_\+t}]{num\+\_\+cols\+\_\+loc}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [inline]}, {\ttfamily [virtual]}}\label{class_eigenproblem__elpa1_a8ce3f612a3cc4eddc96923a3484489fd}
+
+
+Real standard symmetric-\/definite eigenproblem with N lowest eigen-\/vectors. 
+
+
+
+Reimplemented from \hyperlink{class_eigenproblem_a7fe0494ecbc2ad567bac5c3d599b1c4c}{Eigenproblem}.
+
+
+
+Definition at line 1468 of file eigenproblem.\+h.
+
+\hypertarget{class_eigenproblem__elpa1_aa7d78314867a58639f127f141499f26f}{}\index{Eigenproblem\+\_\+elpa1@{Eigenproblem\+\_\+elpa1}!solve@{solve}}
+\index{solve@{solve}!Eigenproblem\+\_\+elpa1@{Eigenproblem\+\_\+elpa1}}
+\subsubsection[{solve(int32\+\_\+t matrix\+\_\+size, int32\+\_\+t nevec, double\+\_\+complex $\ast$\+A, int32\+\_\+t lda, double $\ast$eval, double\+\_\+complex $\ast$\+Z, int32\+\_\+t ldz, int32\+\_\+t num\+\_\+rows\+\_\+loc, int32\+\_\+t num\+\_\+cols\+\_\+loc) const }]{\setlength{\rightskip}{0pt plus 5cm}int Eigenproblem\+\_\+elpa1\+::solve (
+\begin{DoxyParamCaption}
+\item[{int32\+\_\+t}]{matrix\+\_\+size, }
+\item[{int32\+\_\+t}]{nevec, }
+\item[{double\+\_\+complex $\ast$}]{A, }
+\item[{int32\+\_\+t}]{lda, }
+\item[{double $\ast$}]{eval, }
+\item[{double\+\_\+complex $\ast$}]{Z, }
+\item[{int32\+\_\+t}]{ldz, }
+\item[{int32\+\_\+t}]{num\+\_\+rows\+\_\+loc, }
+\item[{int32\+\_\+t}]{num\+\_\+cols\+\_\+loc}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [inline]}, {\ttfamily [virtual]}}\label{class_eigenproblem__elpa1_aa7d78314867a58639f127f141499f26f}
+
+
+Complex standard Hermitian-\/definite eigenproblem with with N lowest eigen-\/vectors. 
+
+
+
+Reimplemented from \hyperlink{class_eigenproblem_a08bbface2f39311674aa0fbee42610be}{Eigenproblem}.
+
+
+
+Definition at line 1486 of file eigenproblem.\+h.
+
+
+
+The documentation for this class was generated from the following file\+:\begin{DoxyCompactItemize}
+\item 
+\hyperlink{eigenproblem_8h}{eigenproblem.\+h}\end{DoxyCompactItemize}

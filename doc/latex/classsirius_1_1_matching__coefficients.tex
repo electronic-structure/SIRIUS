@@ -1,0 +1,156 @@
+\hypertarget{classsirius_1_1_matching__coefficients}{}\section{sirius\+:\+:Matching\+\_\+coefficients Class Reference}
+\label{classsirius_1_1_matching__coefficients}\index{sirius\+::\+Matching\+\_\+coefficients@{sirius\+::\+Matching\+\_\+coefficients}}
+
+
+Collaboration diagram for sirius\+:\+:Matching\+\_\+coefficients\+:
+% FIG 0
+\subsection*{Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+\hyperlink{classsirius_1_1_matching__coefficients_a624fedd2d619135cb119b9a720365739}{Matching\+\_\+coefficients} (\hyperlink{classsirius_1_1_unit__cell}{Unit\+\_\+cell} const \&unit\+\_\+cell\+\_\+\+\_\+, int lmax\+\_\+apw\+\_\+\+\_\+, int num\+\_\+gkvec\+\_\+\+\_\+, std\+::vector$<$ int $>$ \&igk\+\_\+\+\_\+, Gvec const \&gkvec\+\_\+\+\_\+)
+\begin{DoxyCompactList}\small\item\em Constructor. \end{DoxyCompactList}\item 
+void \hyperlink{classsirius_1_1_matching__coefficients_abf94081b974ce514b1469f3204f97c78}{generate} (int ia, mdarray$<$ double\+\_\+complex, 2 $>$ \&alm) const 
+\begin{DoxyCompactList}\small\item\em Generate plane-\/wave matching coefficents for the radial solutions of a given atom. \end{DoxyCompactList}\end{DoxyCompactItemize}
+\subsection*{Private Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+{\footnotesize template$<$int N$>$ }\\void \hyperlink{classsirius_1_1_matching__coefficients_aa36f0271db29770ef968541cc4cc2cb5}{generate} (int ngk, std\+::vector$<$ double\+\_\+complex $>$ const \&phase\+\_\+factors\+\_\+\+\_\+, int iat, int l, int lm, int nu, matrix3d$<$ double $>$ \&A, double\+\_\+complex $\ast$alm) const 
+\begin{DoxyCompactList}\small\item\em Generate matching coefficients for a specific $ \ell $ and order. \end{DoxyCompactList}\end{DoxyCompactItemize}
+\subsection*{Private Attributes}
+\begin{DoxyCompactItemize}
+\item 
+\hypertarget{classsirius_1_1_matching__coefficients_a1007742253adc344acf7a37700dbece5}{}\hyperlink{classsirius_1_1_unit__cell}{Unit\+\_\+cell} const \& {\bfseries unit\+\_\+cell\+\_\+}\label{classsirius_1_1_matching__coefficients_a1007742253adc344acf7a37700dbece5}
+
+\item 
+\hypertarget{classsirius_1_1_matching__coefficients_a50a941d9e624eb4b5c9ea68488d856a1}{}int {\bfseries num\+\_\+gkvec\+\_\+}\label{classsirius_1_1_matching__coefficients_a50a941d9e624eb4b5c9ea68488d856a1}
+
+\item 
+\hypertarget{classsirius_1_1_matching__coefficients_acf9a7d3bd8153db936e9fb5645d98f05}{}std\+::vector$<$ int $>$ \& {\bfseries igk\+\_\+}\label{classsirius_1_1_matching__coefficients_acf9a7d3bd8153db936e9fb5645d98f05}
+
+\item 
+\hypertarget{classsirius_1_1_matching__coefficients_a10f18f5d19ccfd0c192b4233487d0e41}{}Gvec const \& {\bfseries gkvec\+\_\+}\label{classsirius_1_1_matching__coefficients_a10f18f5d19ccfd0c192b4233487d0e41}
+
+\item 
+\hypertarget{classsirius_1_1_matching__coefficients_ab75a0cbe7e02bc2f17a44dbbf7979df4}{}mdarray$<$ double\+\_\+complex, 2 $>$ {\bfseries gkvec\+\_\+ylm\+\_\+}\label{classsirius_1_1_matching__coefficients_ab75a0cbe7e02bc2f17a44dbbf7979df4}
+
+\item 
+\hypertarget{classsirius_1_1_matching__coefficients_a02bebe3cad838762323d7b7e9222fcf0}{}std\+::vector$<$ double $>$ {\bfseries gkvec\+\_\+len\+\_\+}\label{classsirius_1_1_matching__coefficients_a02bebe3cad838762323d7b7e9222fcf0}
+
+\item 
+mdarray$<$ double\+\_\+complex, 4 $>$ \hyperlink{classsirius_1_1_matching__coefficients_a2cf6962661c56f014c2d6280fde9c99a}{alm\+\_\+b\+\_\+}
+\begin{DoxyCompactList}\small\item\em Precomputed values for the linear equations for matching coefficients. \end{DoxyCompactList}\end{DoxyCompactItemize}
+
+
+\subsection{Detailed Description}
+The following matching conditions must be fulfilled\+: \[ \frac{\partial^j}{\partial r^j} \sum_{L \nu} A_{L \nu}^{\bf k}({\bf G})u_{\ell \nu}(r) Y_{L}(\hat {\bf r}) \bigg|_{R^{MT}} = \frac{\partial^j}{\partial r^j} \frac{4 \pi}{\sqrt \Omega} e^{i{\bf (G+k)\tau}} \sum_{L}i^{\ell} j_{\ell}(|{\bf G+k}|r) Y_{L}^{*}(\widehat {\bf G+k}) Y_{L}(\hat {\bf r}) \bigg|_{R^{MT}} \] where $ L = \{ \ell, m \} $. Dropping sum over L we arrive to the following system of linear equations\+: \[ \sum_{\nu} \frac{\partial^j u_{\ell \nu}(r)}{\partial r^j} \bigg|_{R^{MT}} A_{L \nu}^{\bf k}({\bf G}) = \frac{4 \pi}{\sqrt \Omega} e^{i{\bf (G+k)\tau}} i^{\ell} \frac{\partial^j j_{\ell}(|{\bf G+k}|r)}{\partial r^j} \bigg|_{R^{MT}} Y_{L}^{*}(\widehat {\bf G+k}) \] The matching coefficients are then equal to\+: \[ A_{L \nu}^{\bf k}({\bf G}) = \sum_{j} \bigg[ \frac{\partial^j u_{\ell \nu}(r)}{\partial r^j} \bigg|_{R^{MT}} \bigg]_{\nu j}^{-1} \frac{\partial^j j_{\ell}(|{\bf G+k}|r)}{\partial r^j} \bigg|_{R^{MT}} \frac{4 \pi}{\sqrt \Omega} i^{\ell} e^{i{\bf (G+k)\tau}} Y_{L}^{*}(\widehat {\bf G+k}) \] 
+
+Definition at line 49 of file matching\+\_\+coefficients.\+h.
+
+
+
+\subsection{Constructor \& Destructor Documentation}
+\hypertarget{classsirius_1_1_matching__coefficients_a624fedd2d619135cb119b9a720365739}{}\index{sirius\+::\+Matching\+\_\+coefficients@{sirius\+::\+Matching\+\_\+coefficients}!Matching\+\_\+coefficients@{Matching\+\_\+coefficients}}
+\index{Matching\+\_\+coefficients@{Matching\+\_\+coefficients}!sirius\+::\+Matching\+\_\+coefficients@{sirius\+::\+Matching\+\_\+coefficients}}
+\subsubsection[{Matching\+\_\+coefficients(\+Unit\+\_\+cell const \&unit\+\_\+cell\+\_\+\+\_\+, int lmax\+\_\+apw\+\_\+\+\_\+, int num\+\_\+gkvec\+\_\+\+\_\+, std\+::vector$<$ int $>$ \&igk\+\_\+\+\_\+, Gvec const \&gkvec\+\_\+\+\_\+)}]{\setlength{\rightskip}{0pt plus 5cm}sirius\+::\+Matching\+\_\+coefficients\+::\+Matching\+\_\+coefficients (
+\begin{DoxyParamCaption}
+\item[{{\bf Unit\+\_\+cell} const \&}]{unit\+\_\+cell\+\_\+\+\_\+, }
+\item[{int}]{lmax\+\_\+apw\+\_\+\+\_\+, }
+\item[{int}]{num\+\_\+gkvec\+\_\+\+\_\+, }
+\item[{std\+::vector$<$ int $>$ \&}]{igk\+\_\+\+\_\+, }
+\item[{Gvec const \&}]{gkvec\+\_\+\+\_\+}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}}\label{classsirius_1_1_matching__coefficients_a624fedd2d619135cb119b9a720365739}
+
+
+Constructor. 
+
+
+
+Definition at line 156 of file matching\+\_\+coefficients.\+h.
+
+
+
+\subsection{Member Function Documentation}
+\hypertarget{classsirius_1_1_matching__coefficients_aa36f0271db29770ef968541cc4cc2cb5}{}\index{sirius\+::\+Matching\+\_\+coefficients@{sirius\+::\+Matching\+\_\+coefficients}!generate@{generate}}
+\index{generate@{generate}!sirius\+::\+Matching\+\_\+coefficients@{sirius\+::\+Matching\+\_\+coefficients}}
+\subsubsection[{generate(int ngk, std\+::vector$<$ double\+\_\+complex $>$ const \&phase\+\_\+factors\+\_\+\+\_\+, int iat, int l, int lm, int nu, matrix3d$<$ double $>$ \&\+A, double\+\_\+complex $\ast$alm) const }]{\setlength{\rightskip}{0pt plus 5cm}template$<$int N$>$ void sirius\+::\+Matching\+\_\+coefficients\+::generate (
+\begin{DoxyParamCaption}
+\item[{int}]{ngk, }
+\item[{std\+::vector$<$ double\+\_\+complex $>$ const \&}]{phase\+\_\+factors\+\_\+\+\_\+, }
+\item[{int}]{iat, }
+\item[{int}]{l, }
+\item[{int}]{lm, }
+\item[{int}]{nu, }
+\item[{matrix3d$<$ double $>$ \&}]{A, }
+\item[{double\+\_\+complex $\ast$}]{alm}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [inline]}, {\ttfamily [private]}}\label{classsirius_1_1_matching__coefficients_aa36f0271db29770ef968541cc4cc2cb5}
+
+
+Generate matching coefficients for a specific $ \ell $ and order. 
+
+
+\begin{DoxyParams}[1]{Parameters}
+\mbox{\tt in}  & {\em ngk} & Number of G+k vectors. \\
+\hline
+\mbox{\tt in}  & {\em ia} & Index of atom. \\
+\hline
+\mbox{\tt in}  & {\em iat} & Index of atom type. \\
+\hline
+\mbox{\tt in}  & {\em l} & Orbital quantum nuber. \\
+\hline
+\mbox{\tt in}  & {\em lm} & Composite l,m index. \\
+\hline
+\mbox{\tt in}  & {\em nu} & Order of radial function $ u_{\ell \nu}(r) $ for which coefficients are generated. \\
+\hline
+\mbox{\tt in,out}  & {\em A} & Matrix of radial derivatives. \\
+\hline
+\mbox{\tt out}  & {\em alm} & Pointer to alm coefficients. \\
+\hline
+\end{DoxyParams}
+
+
+Definition at line 80 of file matching\+\_\+coefficients.\+h.
+
+\hypertarget{classsirius_1_1_matching__coefficients_abf94081b974ce514b1469f3204f97c78}{}\index{sirius\+::\+Matching\+\_\+coefficients@{sirius\+::\+Matching\+\_\+coefficients}!generate@{generate}}
+\index{generate@{generate}!sirius\+::\+Matching\+\_\+coefficients@{sirius\+::\+Matching\+\_\+coefficients}}
+\subsubsection[{generate(int ia, mdarray$<$ double\+\_\+complex, 2 $>$ \&alm) const }]{\setlength{\rightskip}{0pt plus 5cm}void sirius\+::\+Matching\+\_\+coefficients\+::generate (
+\begin{DoxyParamCaption}
+\item[{int}]{ia, }
+\item[{mdarray$<$ double\+\_\+complex, 2 $>$ \&}]{alm}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [inline]}}\label{classsirius_1_1_matching__coefficients_abf94081b974ce514b1469f3204f97c78}
+
+
+Generate plane-\/wave matching coefficents for the radial solutions of a given atom. 
+
+
+\begin{DoxyParams}[1]{Parameters}
+\mbox{\tt in}  & {\em ia} & Index of atom. \\
+\hline
+\mbox{\tt out}  & {\em alm} & Array of matching coefficients with dimension indices $ ({\bf G+k}, \xi) $. \\
+\hline
+\end{DoxyParams}
+
+
+Definition at line 237 of file matching\+\_\+coefficients.\+h.
+
+
+
+\subsection{Member Data Documentation}
+\hypertarget{classsirius_1_1_matching__coefficients_a2cf6962661c56f014c2d6280fde9c99a}{}\index{sirius\+::\+Matching\+\_\+coefficients@{sirius\+::\+Matching\+\_\+coefficients}!alm\+\_\+b\+\_\+@{alm\+\_\+b\+\_\+}}
+\index{alm\+\_\+b\+\_\+@{alm\+\_\+b\+\_\+}!sirius\+::\+Matching\+\_\+coefficients@{sirius\+::\+Matching\+\_\+coefficients}}
+\subsubsection[{alm\+\_\+b\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}mdarray$<$double\+\_\+complex, 4$>$ sirius\+::\+Matching\+\_\+coefficients\+::alm\+\_\+b\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classsirius_1_1_matching__coefficients_a2cf6962661c56f014c2d6280fde9c99a}
+
+
+Precomputed values for the linear equations for matching coefficients. 
+
+
+
+Definition at line 67 of file matching\+\_\+coefficients.\+h.
+
+
+
+The documentation for this class was generated from the following file\+:\begin{DoxyCompactItemize}
+\item 
+\hyperlink{matching__coefficients_8h}{matching\+\_\+coefficients.\+h}\end{DoxyCompactItemize}

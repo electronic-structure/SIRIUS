@@ -52,9 +52,12 @@ class Matching_coefficients
 
         Unit_cell const& unit_cell_;
 
-        std::vector<gklo_basis_descriptor> const& gklo_basis_descriptors_;
-
         int num_gkvec_;
+
+        //std::vector<gklo_basis_descriptor> const& gklo_basis_descriptors_;
+        std::vector<int>& igk_;
+
+        Gvec const& gkvec_;
 
         mdarray<double_complex, 2> gkvec_ylm_;
 
@@ -84,10 +87,8 @@ class Matching_coefficients
                              double_complex* alm) const
         {
             /* invert matrix of radial derivatives */
-            switch (N)
-            {
-                case 1:
-                {
+            switch (N) {
+                case 1: {
                     #if (__VERIFICATION > 0)
                     if (std::abs(A(0, 0)) < 1.0 / std::sqrt(unit_cell_.omega())) {   
                         std::stringstream s;
@@ -100,8 +101,7 @@ class Matching_coefficients
                     A(0, 0) = 1.0 / A(0, 0);
                     break;
                 }
-                case 2:
-                {
+                case 2: {
                     double det = A(0, 0) * A(1, 1) - A(0, 1) * A(1, 0);
                     
                     #if (__VERIFICATION > 0)
@@ -120,8 +120,7 @@ class Matching_coefficients
                     A(1, 0) = -A(1, 0) / det;
                     break;
                 }
-                case 3:
-                {
+                case 3: {
                     A = inverse(A);
                     break;
                 }
@@ -129,23 +128,18 @@ class Matching_coefficients
             
             double_complex zt;
 
-            for (int igk = 0; igk < ngk; igk++)
-            {
-                switch (N)
-                {
-                    case 1:
-                    {
+            for (int igk = 0; igk < ngk; igk++) {
+                switch (N) {
+                    case 1: {
                         zt = alm_b_(0, igk, l, iat) * A(0, 0);
                         break;
                     }
-                    case 2:
-                    {
+                    case 2: {
                         zt = alm_b_(0, igk, l, iat) * A(nu, 0) + 
                              alm_b_(1, igk, l, iat) * A(nu, 1);
                         break;
                     }
-                    case 3:
-                    {
+                    case 3: {
                         zt = alm_b_(0, igk, l, iat) * A(nu, 0) + 
                              alm_b_(1, igk, l, iat) * A(nu, 1) + 
                              alm_b_(2, igk, l, iat) * A(nu, 2);
@@ -157,14 +151,17 @@ class Matching_coefficients
         }
 
     public:
-
+        
+        /// Constructor
         Matching_coefficients(Unit_cell const& unit_cell__,
                               int lmax_apw__,
                               int num_gkvec__, 
-                              std::vector<gklo_basis_descriptor>& gklo_basis_descriptors__)
+                              std::vector<int>& igk__,
+                              Gvec const& gkvec__)
             : unit_cell_(unit_cell__),
-              gklo_basis_descriptors_(gklo_basis_descriptors__),
-              num_gkvec_(num_gkvec__)
+              num_gkvec_(num_gkvec__),
+              igk_(igk__),
+              gkvec_(gkvec__)
         {
             int lmmax_apw = Utils::lmmax(lmax_apw__);
 
@@ -178,17 +175,18 @@ class Matching_coefficients
                 std::vector<double_complex> ylm(lmmax_apw);
 
                 #pragma omp for
-                for (int igk = 0; igk < num_gkvec_; igk++)
-                {
-                    auto gkvec_cart = unit_cell__.reciprocal_lattice_vectors() * gklo_basis_descriptors_[igk].gkvec;
+                for (int i = 0; i < num_gkvec_; i++) {
+                    auto gkvec_cart = gkvec_.gkvec_cart(igk_[i]);
                     /* get r, theta, phi */
                     auto vs = SHT::spherical_coordinates(gkvec_cart);
 
                     /* get spherical harmonics */
                     SHT::spherical_harmonics(lmax_apw__, vs[1], vs[2], &ylm[0]);
-                    gkvec_len_[igk] = vs[0];
+                    gkvec_len_[i] = vs[0];
 
-                    for (int lm = 0; lm < lmmax_apw; lm++) gkvec_ylm_(igk, lm) = ylm[lm];
+                    for (int lm = 0; lm < lmmax_apw; lm++) {
+                        gkvec_ylm_(i, lm) = ylm[lm];
+                    }
                 }
             }
             
@@ -198,10 +196,8 @@ class Matching_coefficients
             /* value and first two derivatives of spherical Bessel functions */
             mdarray<double, 2> sbessel_mt(lmax_apw__ + 2, 3);
 
-            for (int igk = 0; igk < num_gkvec_; igk++)
-            {
-                for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++)
-                {
+            for (int igk = 0; igk < num_gkvec_; igk++) {
+                for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
                     double R = unit_cell_.atom_type(iat).mt_radius();
 
                     double RGk = R * gkvec_len_[igk];
@@ -217,16 +213,14 @@ class Matching_coefficients
                      * In[]:= FullSimplify[D[SphericalBesselJ[n,a*x],{x,2}]]
                      * Out[]= (((-1+n) n-a^2 x^2) SphericalBesselJ[n,a x]+2 a x SphericalBesselJ[1+n,a x])/x^2
                      */
-                    for (int l = 0; l <= lmax_apw__; l++)
-                    {
+                    for (int l = 0; l <= lmax_apw__; l++) {
                         sbessel_mt(l, 1) = -sbessel_mt(l + 1, 0) * gkvec_len_[igk] + (l / R) * sbessel_mt(l, 0);
                         sbessel_mt(l, 2) = 2 * gkvec_len_[igk] * sbessel_mt(l + 1, 0) / R + 
                                            ((l - 1) * l - std::pow(RGk, 2)) * sbessel_mt(l, 0) / std::pow(R, 2);
                     }
                     
-                    for (int l = 0; l <= lmax_apw__; l++)
-                    {
-                        double_complex z = std::pow(complex_i, l);
+                    for (int l = 0; l <= lmax_apw__; l++) {
+                        double_complex z = std::pow(double_complex(0, 1), l);
                         double f = fourpi / std::sqrt(unit_cell_.omega());
                         alm_b_(0, igk, l, iat) = z * f * sbessel_mt(l, 0); 
                         alm_b_(1, igk, l, iat) = z * f * sbessel_mt(l, 1);
@@ -249,18 +243,15 @@ class Matching_coefficients
 
             int iat = type.id();
                 
-            matrix3d<double> A;
-
             std::vector<double_complex> phase_factors(num_gkvec_);
-            for (int igk = 0; igk < num_gkvec_; igk++)
-            {
-                double phase = twopi * (gklo_basis_descriptors_[igk].gkvec * unit_cell_.atom(ia).position());
-                phase_factors[igk] = std::exp(double_complex(0, phase));
+            for (int i = 0; i < num_gkvec_; i++) {
+                double phase = twopi * (gkvec_.gkvec(igk_[i]) * unit_cell_.atom(ia).position());
+                phase_factors[i] = std::exp(double_complex(0, phase));
             }
-
-            for (int xi = 0; xi < type.mt_aw_basis_size(); xi++)
-            {
-                int l = type.indexb(xi).l;
+            
+            matrix3d<double> A;
+            for (int xi = 0; xi < type.mt_aw_basis_size(); xi++) {
+                int l  = type.indexb(xi).l;
                 int lm = type.indexb(xi).lm;
                 int nu = type.indexb(xi).order; 
 
@@ -268,33 +259,29 @@ class Matching_coefficients
                 int num_aw = static_cast<int>(type.aw_descriptor(l).size());
                 
                 /* create matrix of radial derivatives */
-                for (int order = 0; order < num_aw; order++)
-                {
-                    for (int dm = 0; dm < num_aw; dm++) A(dm, order) = atom.symmetry_class().aw_surface_dm(l, order, dm);
+                for (int order = 0; order < num_aw; order++) {
+                    for (int dm = 0; dm < num_aw; dm++) {
+                        A(dm, order) = atom.symmetry_class().aw_surface_dm(l, order, dm);
+                    }
                 }
 
-                switch (num_aw)
-                {
+                switch (num_aw) {
                     /* APW */
-                    case 1:
-                    {
+                    case 1: {
                         generate<1>(num_gkvec_, phase_factors, iat, l, lm, nu, A, &alm(0, xi));
                         break;
                     }
                     /* LAPW */
-                    case 2:
-                    {
+                    case 2: {
                         generate<2>(num_gkvec_, phase_factors, iat, l, lm, nu, A, &alm(0, xi));
                         break;
                     }
                     /* Super LAPW */
-                    case 3:
-                    {
+                    case 3: {
                         generate<3>(num_gkvec_, phase_factors, iat, l, lm, nu, A, &alm(0, xi));
                         break;
                     }
-                    default:
-                    {
+                    default: {
                         TERMINATE("wrong order of augmented wave");
                     }
                 }

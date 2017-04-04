@@ -1,0 +1,884 @@
+\hypertarget{classsirius_1_1_band}{}\section{sirius\+:\+:Band Class Reference}
+\label{classsirius_1_1_band}\index{sirius\+::\+Band@{sirius\+::\+Band}}
+
+
+Setup and solve the eigen value problem.  
+
+
+
+
+Collaboration diagram for sirius\+:\+:Band\+:
+% FIG 0
+\subsection*{Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+\hyperlink{classsirius_1_1_band_aae455fe48d72e332450a03b4e999f3ba}{Band} (\hyperlink{classsirius_1_1_simulation__context}{Simulation\+\_\+context} \&ctx\+\_\+\+\_\+)
+\begin{DoxyCompactList}\small\item\em Constructor. \end{DoxyCompactList}\item 
+{\footnotesize template$<$spin\+\_\+block\+\_\+t sblock$>$ }\\void \hyperlink{classsirius_1_1_band_ab39910f680e4c969a2b2bc14053b3c0a}{apply\+\_\+hmt\+\_\+to\+\_\+apw} (\hyperlink{classsirius_1_1_atom}{Atom} const \&atom\+\_\+\+\_\+, int num\+\_\+gkvec\+\_\+\+\_\+, \hyperlink{classsddk_1_1mdarray}{mdarray}$<$ double\+\_\+complex, 2 $>$ \&alm\+\_\+\+\_\+, \hyperlink{classsddk_1_1mdarray}{mdarray}$<$ double\+\_\+complex, 2 $>$ \&halm\+\_\+\+\_\+) const 
+\begin{DoxyCompactList}\small\item\em Apply the muffin-\/tin part of the Hamiltonian to the apw basis functions of an atom. \end{DoxyCompactList}\item 
+\hypertarget{classsirius_1_1_band_a0ed8e926aae488a73a839730265c240e}{}void {\bfseries apply\+\_\+o1mt\+\_\+to\+\_\+apw} (\hyperlink{classsirius_1_1_atom}{Atom} const \&atom\+\_\+\+\_\+, int num\+\_\+gkvec\+\_\+\+\_\+, \hyperlink{classsddk_1_1mdarray}{mdarray}$<$ double\+\_\+complex, 2 $>$ \&alm\+\_\+\+\_\+, \hyperlink{classsddk_1_1mdarray}{mdarray}$<$ double\+\_\+complex, 2 $>$ \&oalm\+\_\+\+\_\+) const \label{classsirius_1_1_band_a0ed8e926aae488a73a839730265c240e}
+
+\item 
+void \hyperlink{classsirius_1_1_band_ad74e640cc61cf64984a300dd2c44ee04}{set\+\_\+fv\+\_\+h\+\_\+o\+\_\+apw\+\_\+lo} (\hyperlink{classsirius_1_1_k__point}{K\+\_\+point} $\ast$kp, \hyperlink{classsirius_1_1_atom__type}{Atom\+\_\+type} const \&type, \hyperlink{classsirius_1_1_atom}{Atom} const \&atom, int ia, mdarray$<$ double\+\_\+complex, 2 $>$ \&alm\+\_\+row, mdarray$<$ double\+\_\+complex, 2 $>$ \&alm\+\_\+col, mdarray$<$ double\+\_\+complex, 2 $>$ \&h, mdarray$<$ double\+\_\+complex, 2 $>$ \&o) const 
+\begin{DoxyCompactList}\small\item\em Setup apw-\/lo and lo-\/apw blocs of Hamiltonian and overlap matrices. \end{DoxyCompactList}\item 
+\hypertarget{classsirius_1_1_band_a9bfab0f46ad6fb77af05733cdac49f15}{}{\footnotesize template$<$spin\+\_\+block\+\_\+t sblock$>$ }\\void {\bfseries set\+\_\+h\+\_\+apw\+\_\+lo} (\hyperlink{classsirius_1_1_k__point}{K\+\_\+point} $\ast$kp, \hyperlink{classsirius_1_1_atom__type}{Atom\+\_\+type} $\ast$type, \hyperlink{classsirius_1_1_atom}{Atom} $\ast$atom, int ia, \hyperlink{classsddk_1_1mdarray}{mdarray}$<$ double\+\_\+complex, 2 $>$ \&alm, \hyperlink{classsddk_1_1mdarray}{mdarray}$<$ double\+\_\+complex, 2 $>$ \&h)\label{classsirius_1_1_band_a9bfab0f46ad6fb77af05733cdac49f15}
+
+\item 
+void \hyperlink{classsirius_1_1_band_a9ba2b7a8ab8c0de9287a7a70a5cf8b6a}{set\+\_\+o\+\_\+apw\+\_\+lo} (\hyperlink{classsirius_1_1_k__point}{K\+\_\+point} $\ast$kp, \hyperlink{classsirius_1_1_atom__type}{Atom\+\_\+type} $\ast$type, \hyperlink{classsirius_1_1_atom}{Atom} $\ast$atom, int ia, \hyperlink{classsddk_1_1mdarray}{mdarray}$<$ double\+\_\+complex, 2 $>$ \&alm, \hyperlink{classsddk_1_1mdarray}{mdarray}$<$ double\+\_\+complex, 2 $>$ \&o)
+\begin{DoxyCompactList}\small\item\em Set A\+P\+W-\/lo and lo-\/\+A\+P\+W blocks of the overlap matrix. \end{DoxyCompactList}\item 
+{\footnotesize template$<$device\+\_\+t pu, electronic\+\_\+structure\+\_\+method\+\_\+t basis$>$ }\\void \hyperlink{classsirius_1_1_band_abc15ad786624f84a6472d4677e7d2e43}{set\+\_\+fv\+\_\+h\+\_\+o} (\hyperlink{classsirius_1_1_k__point}{K\+\_\+point} $\ast$kp, \hyperlink{classsirius_1_1_potential}{Potential} const \&potential\+\_\+\+\_\+, \hyperlink{classsddk_1_1dmatrix}{dmatrix}$<$ double\+\_\+complex $>$ \&h, \hyperlink{classsddk_1_1dmatrix}{dmatrix}$<$ double\+\_\+complex $>$ \&o) const 
+\begin{DoxyCompactList}\small\item\em Setup the Hamiltonian and overlap matrices in A\+P\+W+lo basis. \end{DoxyCompactList}\item 
+void \hyperlink{classsirius_1_1_band_ab4cfe30dfeba7b682d664529055b6242}{apply\+\_\+fv\+\_\+h\+\_\+o} (\hyperlink{classsirius_1_1_k__point}{K\+\_\+point} $\ast$kp\+\_\+\+\_\+, int nlo, int N, int n, wave\+\_\+functions \&phi\+\_\+\+\_\+, wave\+\_\+functions \&hphi\+\_\+\+\_\+, wave\+\_\+functions \&ophi\+\_\+\+\_\+) const 
+\begin{DoxyCompactList}\small\item\em Apply L\+A\+P\+W Hamiltonain and overlap to the trial wave-\/functions. \end{DoxyCompactList}\item 
+void \hyperlink{classsirius_1_1_band_a24364a5a4842ce8fdb202d3d38cfed44}{solve\+\_\+sv} (\hyperlink{classsirius_1_1_k__point}{K\+\_\+point} $\ast$kp, \hyperlink{classsirius_1_1_periodic__function}{Periodic\+\_\+function}$<$ double $>$ $\ast$effective\+\_\+magnetic\+\_\+field\mbox{[}3\mbox{]}) const 
+\begin{DoxyCompactList}\small\item\em Solve second-\/variational problem. \end{DoxyCompactList}\item 
+void \hyperlink{classsirius_1_1_band_a7a1451542ba6a78e082bd79b68aee540}{solve\+\_\+fd} (\hyperlink{classsirius_1_1_k__point}{K\+\_\+point} $\ast$kp, \hyperlink{classsirius_1_1_periodic__function}{Periodic\+\_\+function}$<$ double $>$ $\ast$effective\+\_\+potential, \hyperlink{classsirius_1_1_periodic__function}{Periodic\+\_\+function}$<$ double $>$ $\ast$effective\+\_\+magnetic\+\_\+field\mbox{[}3\mbox{]}) const 
+\begin{DoxyCompactList}\small\item\em Diagonalization of the full Hamiltonian (without second variation). \end{DoxyCompactList}\item 
+void \hyperlink{classsirius_1_1_band_a4d39e6e67825eef410af2015d72c06bd}{solve\+\_\+for\+\_\+kset} (\hyperlink{classsirius_1_1_k__point__set}{K\+\_\+point\+\_\+set} \&kset\+\_\+\+\_\+, \hyperlink{classsirius_1_1_potential}{Potential} \&potential\+\_\+\+\_\+, bool precompute\+\_\+\+\_\+) const 
+\begin{DoxyCompactList}\small\item\em Solve $ \hat H \psi = E \psi $ and find eigen-\/states of the Hamiltonian. \end{DoxyCompactList}\item 
+\hypertarget{classsirius_1_1_band_a8277d3fdd27e399161bd754330f03673}{}\hyperlink{class_eigenproblem}{Eigenproblem} const \& {\bfseries std\+\_\+evp\+\_\+solver} () const \label{classsirius_1_1_band_a8277d3fdd27e399161bd754330f03673}
+
+\item 
+\hypertarget{classsirius_1_1_band_a52e40227b78790481482776a3736cecf}{}\hyperlink{class_eigenproblem}{Eigenproblem} const \& {\bfseries gen\+\_\+evp\+\_\+solver} () const \label{classsirius_1_1_band_a52e40227b78790481482776a3736cecf}
+
+\item 
+\hyperlink{classsddk_1_1mdarray}{mdarray}$<$ double, 1 $>$ \hyperlink{classsirius_1_1_band_a1ff476fcf47f57f5603e0acfa4011c6f}{get\+\_\+h\+\_\+diag} (\hyperlink{classsirius_1_1_k__point}{K\+\_\+point} $\ast$kp\+\_\+\+\_\+, double v0\+\_\+\+\_\+, double theta0\+\_\+\+\_\+) const 
+\begin{DoxyCompactList}\small\item\em Get diagonal elements of L\+A\+P\+W Hamiltonian. \end{DoxyCompactList}\item 
+\hyperlink{classsddk_1_1mdarray}{mdarray}$<$ double, 1 $>$ \hyperlink{classsirius_1_1_band_abb9d26ea7d7bcb182b31f0fc36859c32}{get\+\_\+o\+\_\+diag} (\hyperlink{classsirius_1_1_k__point}{K\+\_\+point} $\ast$kp\+\_\+\+\_\+, double theta0\+\_\+\+\_\+) const 
+\begin{DoxyCompactList}\small\item\em Get diagonal elements of L\+A\+P\+W overlap. \end{DoxyCompactList}\item 
+{\footnotesize template$<$typename T $>$ }\\\hyperlink{classsddk_1_1mdarray}{mdarray}$<$ double, 1 $>$ \hyperlink{classsirius_1_1_band_a64bf53215f72886a4f543aae001166f1}{get\+\_\+h\+\_\+diag} (\hyperlink{classsirius_1_1_k__point}{K\+\_\+point} $\ast$kp\+\_\+\+\_\+, int ispn\+\_\+\+\_\+, double v0\+\_\+\+\_\+, \hyperlink{classsirius_1_1_d__operator}{D\+\_\+operator}$<$T $>$ \&d\+\_\+op\+\_\+\+\_\+) const 
+\begin{DoxyCompactList}\small\item\em Get diagonal elements of pseudopotential Hamiltonian. \end{DoxyCompactList}\item 
+{\footnotesize template$<$typename T $>$ }\\\hyperlink{classsddk_1_1mdarray}{mdarray}$<$ double, 1 $>$ \hyperlink{classsirius_1_1_band_a332ce79500aad8f0329ee73067ebe14d}{get\+\_\+o\+\_\+diag} (\hyperlink{classsirius_1_1_k__point}{K\+\_\+point} $\ast$kp\+\_\+\+\_\+, \hyperlink{classsirius_1_1_q__operator}{Q\+\_\+operator}$<$T $>$ \&q\+\_\+op\+\_\+\+\_\+) const 
+\begin{DoxyCompactList}\small\item\em Get diagonal elements of pseudopotential overlap matrix. \end{DoxyCompactList}\item 
+void \hyperlink{classsirius_1_1_band_abe2e5832a35777c26bc5faba0e22e9eb}{initialize\+\_\+subspace} (\hyperlink{classsirius_1_1_k__point__set}{K\+\_\+point\+\_\+set} \&kset\+\_\+\+\_\+, \hyperlink{classsirius_1_1_potential}{Potential} \&potential\+\_\+\+\_\+) const 
+\item 
+{\footnotesize template$<$typename T $>$ }\\void \hyperlink{classsirius_1_1_band_a249d17383e8d8f822c5b2bbc251c0bb6}{initialize\+\_\+subspace} (\hyperlink{classsirius_1_1_k__point}{K\+\_\+point} $\ast$kp\+\_\+\+\_\+, \hyperlink{classsirius_1_1_periodic__function}{Periodic\+\_\+function}$<$ double $>$ $\ast$effective\+\_\+potential\+\_\+\+\_\+, \hyperlink{classsirius_1_1_periodic__function}{Periodic\+\_\+function}$<$ double $>$ $\ast$effective\+\_\+magnetic\+\_\+field\mbox{[}3\mbox{]}, int num\+\_\+ao\+\_\+\+\_\+, std\+::vector$<$ std\+::vector$<$ \hyperlink{classsirius_1_1_spline}{Spline}$<$ double $>$$>$$>$ const \&rad\+\_\+int\+\_\+\+\_\+) const 
+\begin{DoxyCompactList}\small\item\em Initialize the wave-\/functions subspace. \end{DoxyCompactList}\item 
+{\footnotesize template$<$typename T $>$ }\\void \hyperlink{classsirius_1_1_band_a3aa9361ef432d4cca5e0047b8bee8e19}{apply\+\_\+h} (\hyperlink{classsirius_1_1_k__point}{K\+\_\+point} $\ast$kp\+\_\+\+\_\+, int ispn\+\_\+\+\_\+, int N\+\_\+\+\_\+, int n\+\_\+\+\_\+, wave\+\_\+functions \&phi\+\_\+\+\_\+, wave\+\_\+functions \&hphi\+\_\+\+\_\+, \hyperlink{classsirius_1_1_d__operator}{D\+\_\+operator}$<$T $>$ \&d\+\_\+op) const 
+\item 
+{\footnotesize template$<$typename T $>$ }\\void \hyperlink{classsirius_1_1_band_ac3d1880e4a89fea7c75d6f2ebb8a0edb}{apply\+\_\+h\+\_\+o} (\hyperlink{classsirius_1_1_k__point}{K\+\_\+point} $\ast$kp\+\_\+\+\_\+, int ispn\+\_\+\+\_\+, int N\+\_\+\+\_\+, int n\+\_\+\+\_\+, wave\+\_\+functions \&phi\+\_\+\+\_\+, wave\+\_\+functions \&hphi\+\_\+\+\_\+, wave\+\_\+functions \&ophi\+\_\+\+\_\+, \hyperlink{classsirius_1_1_d__operator}{D\+\_\+operator}$<$T $>$ \&d\+\_\+op, \hyperlink{classsirius_1_1_q__operator}{Q\+\_\+operator}$<$T $>$ \&q\+\_\+op) const 
+\item 
+\hypertarget{classsirius_1_1_band_aeeef6350cde82c79b7ac3e3e7343a103}{}{\footnotesize template$<$typename T $>$ }\\void {\bfseries diag\+\_\+pseudo\+\_\+potential\+\_\+exact} (\hyperlink{classsirius_1_1_k__point}{K\+\_\+point} $\ast$kp\+\_\+\+\_\+, int ispn\+\_\+\+\_\+, \hyperlink{classsirius_1_1_d__operator}{D\+\_\+operator}$<$T $>$ \&d\+\_\+op\+\_\+\+\_\+, \hyperlink{classsirius_1_1_q__operator}{Q\+\_\+operator}$<$T $>$ \&q\+\_\+op\+\_\+\+\_\+) const \label{classsirius_1_1_band_aeeef6350cde82c79b7ac3e3e7343a103}
+
+\item 
+\hypertarget{classsirius_1_1_band_a6def3c3503a012beffdb603f42ac40ef}{}{\footnotesize template$<$typename T $>$ }\\void {\bfseries diag\+\_\+pseudo\+\_\+potential\+\_\+davidson} (\hyperlink{classsirius_1_1_k__point}{K\+\_\+point} $\ast$kp\+\_\+\+\_\+, int ispn\+\_\+\+\_\+, \hyperlink{classsirius_1_1_d__operator}{D\+\_\+operator}$<$T $>$ \&d\+\_\+op\+\_\+\+\_\+, \hyperlink{classsirius_1_1_q__operator}{Q\+\_\+operator}$<$T $>$ \&q\+\_\+op\+\_\+\+\_\+) const \label{classsirius_1_1_band_a6def3c3503a012beffdb603f42ac40ef}
+
+\item 
+\hypertarget{classsirius_1_1_band_a6c3038b6cccb24d8d4437a15b115cca4}{}{\footnotesize template$<$typename T $>$ }\\void {\bfseries diag\+\_\+pseudo\+\_\+potential\+\_\+chebyshev} (\hyperlink{classsirius_1_1_k__point}{K\+\_\+point} $\ast$kp\+\_\+\+\_\+, int ispn\+\_\+\+\_\+, \hyperlink{classsirius_1_1_d__operator}{D\+\_\+operator}$<$T $>$ \&d\+\_\+op\+\_\+\+\_\+, \hyperlink{classsirius_1_1_q__operator}{Q\+\_\+operator}$<$T $>$ \&q\+\_\+op\+\_\+\+\_\+, \hyperlink{classsirius_1_1_p__operator}{P\+\_\+operator}$<$T $>$ \&p\+\_\+op\+\_\+\+\_\+) const \label{classsirius_1_1_band_a6c3038b6cccb24d8d4437a15b115cca4}
+
+\item 
+\hypertarget{classsirius_1_1_band_af3271dc285f20a4445587b9c031fbdb5}{}{\footnotesize template$<$typename T $>$ }\\void {\bfseries diag\+\_\+pseudo\+\_\+potential\+\_\+rmm\+\_\+diis} (\hyperlink{classsirius_1_1_k__point}{K\+\_\+point} $\ast$kp\+\_\+\+\_\+, int ispn\+\_\+\+\_\+, \hyperlink{classsirius_1_1_d__operator}{D\+\_\+operator}$<$T $>$ \&d\+\_\+op\+\_\+\+\_\+, \hyperlink{classsirius_1_1_q__operator}{Q\+\_\+operator}$<$T $>$ \&q\+\_\+op\+\_\+\+\_\+) const \label{classsirius_1_1_band_af3271dc285f20a4445587b9c031fbdb5}
+
+\item 
+\hypertarget{classsirius_1_1_band_ac568f5ad27fb61324743b13585aedc7e}{}{\footnotesize template$<$typename T $>$ }\\mdarray$<$ double, 1 $>$ {\bfseries get\+\_\+h\+\_\+diag} (\hyperlink{classsirius_1_1_k__point}{K\+\_\+point} $\ast$kp\+\_\+\+\_\+, int ispn\+\_\+\+\_\+, double v0\+\_\+\+\_\+, \hyperlink{classsirius_1_1_d__operator}{D\+\_\+operator}$<$T $>$ \&d\+\_\+op\+\_\+\+\_\+) const \label{classsirius_1_1_band_ac568f5ad27fb61324743b13585aedc7e}
+
+\item 
+\hypertarget{classsirius_1_1_band_aad43c84b16d916b90d247a97004343bf}{}{\footnotesize template$<$typename T $>$ }\\mdarray$<$ double, 1 $>$ {\bfseries get\+\_\+o\+\_\+diag} (\hyperlink{classsirius_1_1_k__point}{K\+\_\+point} $\ast$kp\+\_\+\+\_\+, \hyperlink{classsirius_1_1_q__operator}{Q\+\_\+operator}$<$T $>$ \&q\+\_\+op\+\_\+\+\_\+) const \label{classsirius_1_1_band_aad43c84b16d916b90d247a97004343bf}
+
+\item 
+\hypertarget{classsirius_1_1_band_ac0d14aee6cec32436ab9c5a7678f2e1e}{}{\footnotesize template$<$typename T $>$ }\\void {\bfseries initialize\+\_\+subspace} (\hyperlink{classsirius_1_1_k__point}{K\+\_\+point} $\ast$kp\+\_\+\+\_\+, \hyperlink{classsirius_1_1_periodic__function}{Periodic\+\_\+function}$<$ double $>$ $\ast$effective\+\_\+potential\+\_\+\+\_\+, \hyperlink{classsirius_1_1_periodic__function}{Periodic\+\_\+function}$<$ double $>$ $\ast$effective\+\_\+magnetic\+\_\+field\+\_\+\+\_\+\mbox{[}3\mbox{]}, int num\+\_\+ao\+\_\+\+\_\+, std\+::vector$<$ std\+::vector$<$ \hyperlink{classsirius_1_1_spline}{Spline}$<$ double $>$$>$$>$ const \&rad\+\_\+int\+\_\+\+\_\+) const \label{classsirius_1_1_band_ac0d14aee6cec32436ab9c5a7678f2e1e}
+
+\item 
+\hypertarget{classsirius_1_1_band_a67420feea6fe0b7ddfa9bef5652a6d6c}{}{\footnotesize template$<$typename T $>$ }\\int {\bfseries residuals} (\hyperlink{classsirius_1_1_k__point}{K\+\_\+point} $\ast$kp\+\_\+\+\_\+, int ispn\+\_\+\+\_\+, int N\+\_\+\+\_\+, int num\+\_\+bands\+\_\+\+\_\+, std\+::vector$<$ double $>$ \&eval\+\_\+\+\_\+, std\+::vector$<$ double $>$ \&eval\+\_\+old\+\_\+\+\_\+, dmatrix$<$ T $>$ \&evec\+\_\+\+\_\+, wave\+\_\+functions \&hphi\+\_\+\+\_\+, wave\+\_\+functions \&ophi\+\_\+\+\_\+, wave\+\_\+functions \&hpsi\+\_\+\+\_\+, wave\+\_\+functions \&opsi\+\_\+\+\_\+, wave\+\_\+functions \&res\+\_\+\+\_\+, mdarray$<$ double, 1 $>$ \&h\+\_\+diag\+\_\+\+\_\+, mdarray$<$ double, 1 $>$ \&o\+\_\+diag\+\_\+\+\_\+) const \label{classsirius_1_1_band_a67420feea6fe0b7ddfa9bef5652a6d6c}
+
+\item 
+\hypertarget{classsirius_1_1_band_add04335abe6ac70f46aa6c58842bb6de}{}{\footnotesize template$<$spin\+\_\+block\+\_\+t sblock$>$ }\\void {\bfseries set\+\_\+h\+\_\+it} (\hyperlink{classsirius_1_1_k__point}{K\+\_\+point} $\ast$kp, \hyperlink{classsirius_1_1_periodic__function}{Periodic\+\_\+function}$<$ double $>$ $\ast$effective\+\_\+potential, \hyperlink{classsirius_1_1_periodic__function}{Periodic\+\_\+function}$<$ double $>$ $\ast$effective\+\_\+magnetic\+\_\+field\mbox{[}3\mbox{]}, mdarray$<$ double\+\_\+complex, 2 $>$ \&h) const \label{classsirius_1_1_band_add04335abe6ac70f46aa6c58842bb6de}
+
+\item 
+\hypertarget{classsirius_1_1_band_a9712fabdb24cd5b4357d164dc91787b1}{}{\footnotesize template$<$spin\+\_\+block\+\_\+t sblock$>$ }\\void {\bfseries set\+\_\+h\+\_\+lo\+\_\+lo} (\hyperlink{classsirius_1_1_k__point}{K\+\_\+point} $\ast$kp, mdarray$<$ double\+\_\+complex, 2 $>$ \&h) const \label{classsirius_1_1_band_a9712fabdb24cd5b4357d164dc91787b1}
+
+\item 
+\hypertarget{classsirius_1_1_band_add04335abe6ac70f46aa6c58842bb6de}{}{\footnotesize template$<$spin\+\_\+block\+\_\+t sblock$>$ }\\void {\bfseries set\+\_\+h\+\_\+it} (\hyperlink{classsirius_1_1_k__point}{K\+\_\+point} $\ast$kp, \hyperlink{classsirius_1_1_periodic__function}{Periodic\+\_\+function}$<$ double $>$ $\ast$effective\+\_\+potential, \hyperlink{classsirius_1_1_periodic__function}{Periodic\+\_\+function}$<$ double $>$ $\ast$effective\+\_\+magnetic\+\_\+field\mbox{[}3\mbox{]}, \hyperlink{classsddk_1_1mdarray}{mdarray}$<$ double\+\_\+complex, 2 $>$ \&h) const \label{classsirius_1_1_band_add04335abe6ac70f46aa6c58842bb6de}
+
+\end{DoxyCompactItemize}
+\subsection*{Private Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+void \hyperlink{classsirius_1_1_band_abf2df1e8c97986110eed557241ffe09f}{apply\+\_\+magnetic\+\_\+field} (wave\+\_\+functions \&fv\+\_\+states\+\_\+\+\_\+, Gvec const \&gkvec\+\_\+\+\_\+, \hyperlink{classsirius_1_1_periodic__function}{Periodic\+\_\+function}$<$ double $>$ $\ast$effective\+\_\+magnetic\+\_\+field\+\_\+\+\_\+\mbox{[}3\mbox{]}, std\+::vector$<$ wave\+\_\+functions $>$ \&hpsi\+\_\+\+\_\+) const 
+\begin{DoxyCompactList}\small\item\em Apply effective magentic field to the first-\/variational state. \end{DoxyCompactList}\item 
+void \hyperlink{classsirius_1_1_band_a8465650f5a337f7473c499a11092efb7}{apply\+\_\+so\+\_\+correction} (\hyperlink{classsddk_1_1mdarray}{mdarray}$<$ double\+\_\+complex, 2 $>$ \&fv\+\_\+states, \hyperlink{classsddk_1_1mdarray}{mdarray}$<$ double\+\_\+complex, 3 $>$ \&hpsi)
+\begin{DoxyCompactList}\small\item\em Apply S\+O correction to the first-\/variational states. \end{DoxyCompactList}\item 
+{\footnotesize template$<$spin\+\_\+block\+\_\+t sblock$>$ }\\void \hyperlink{classsirius_1_1_band_abe0170064dcfd89b4073fa04772a41b2}{apply\+\_\+uj\+\_\+correction} (\hyperlink{classsddk_1_1mdarray}{mdarray}$<$ double\+\_\+complex, 2 $>$ \&fv\+\_\+states, \hyperlink{classsddk_1_1mdarray}{mdarray}$<$ double\+\_\+complex, 3 $>$ \&hpsi)
+\begin{DoxyCompactList}\small\item\em Apply U\+J correction to scalar wave functions. \end{DoxyCompactList}\item 
+void \hyperlink{classsirius_1_1_band_a383b6f157ed167d5f338c189b299810b}{set\+\_\+fv\+\_\+h\+\_\+o\+\_\+it} (\hyperlink{classsirius_1_1_k__point}{K\+\_\+point} $\ast$kp\+\_\+\+\_\+, \hyperlink{classsirius_1_1_potential}{Potential} const \&potential\+\_\+\+\_\+, matrix$<$ double\+\_\+complex $>$ \&h\+\_\+\+\_\+, matrix$<$ double\+\_\+complex $>$ \&o\+\_\+\+\_\+) const 
+\begin{DoxyCompactList}\small\item\em Add interstitial contribution to apw-\/apw block of Hamiltonian and overlap. \end{DoxyCompactList}\item 
+\hypertarget{classsirius_1_1_band_a599e89becda7a83ecc341e27c869969f}{}void {\bfseries set\+\_\+o\+\_\+it} (\hyperlink{classsirius_1_1_k__point}{K\+\_\+point} $\ast$kp, mdarray$<$ double\+\_\+complex, 2 $>$ \&o) const \label{classsirius_1_1_band_a599e89becda7a83ecc341e27c869969f}
+
+\item 
+\hypertarget{classsirius_1_1_band_adf665e41910ee47dd124acf43f4a315a}{}{\footnotesize template$<$spin\+\_\+block\+\_\+t sblock$>$ }\\void {\bfseries set\+\_\+h\+\_\+it} (\hyperlink{classsirius_1_1_k__point}{K\+\_\+point} $\ast$kp, \hyperlink{classsirius_1_1_periodic__function}{Periodic\+\_\+function}$<$ double $>$ $\ast$effective\+\_\+potential, \hyperlink{classsirius_1_1_periodic__function}{Periodic\+\_\+function}$<$ double $>$ $\ast$effective\+\_\+magnetic\+\_\+field\mbox{[}3\mbox{]}, \hyperlink{classsddk_1_1mdarray}{matrix}$<$ double\+\_\+complex $>$ \&h) const \label{classsirius_1_1_band_adf665e41910ee47dd124acf43f4a315a}
+
+\item 
+void \hyperlink{classsirius_1_1_band_a4a697e19033a0e64dc64baa231965ea0}{set\+\_\+fv\+\_\+h\+\_\+o\+\_\+lo\+\_\+lo} (\hyperlink{classsirius_1_1_k__point}{K\+\_\+point} $\ast$kp, mdarray$<$ double\+\_\+complex, 2 $>$ \&h, mdarray$<$ double\+\_\+complex, 2 $>$ \&o) const 
+\begin{DoxyCompactList}\small\item\em Setup lo-\/lo block of Hamiltonian and overlap matrices. \end{DoxyCompactList}\item 
+\hypertarget{classsirius_1_1_band_a9712fabdb24cd5b4357d164dc91787b1}{}{\footnotesize template$<$spin\+\_\+block\+\_\+t sblock$>$ }\\void {\bfseries set\+\_\+h\+\_\+lo\+\_\+lo} (\hyperlink{classsirius_1_1_k__point}{K\+\_\+point} $\ast$kp, \hyperlink{classsddk_1_1mdarray}{mdarray}$<$ double\+\_\+complex, 2 $>$ \&h) const \label{classsirius_1_1_band_a9712fabdb24cd5b4357d164dc91787b1}
+
+\item 
+\hypertarget{classsirius_1_1_band_a512e019410d231eb1a74bafe5adad48c}{}void {\bfseries set\+\_\+o\+\_\+lo\+\_\+lo} (\hyperlink{classsirius_1_1_k__point}{K\+\_\+point} $\ast$kp, mdarray$<$ double\+\_\+complex, 2 $>$ \&o) const \label{classsirius_1_1_band_a512e019410d231eb1a74bafe5adad48c}
+
+\item 
+\hypertarget{classsirius_1_1_band_aa197b236bf3ac146c55ce9a5b2e07e5b}{}void {\bfseries set\+\_\+o} (\hyperlink{classsirius_1_1_k__point}{K\+\_\+point} $\ast$kp, \hyperlink{classsddk_1_1mdarray}{mdarray}$<$ double\+\_\+complex, 2 $>$ \&o)\label{classsirius_1_1_band_aa197b236bf3ac146c55ce9a5b2e07e5b}
+
+\item 
+\hypertarget{classsirius_1_1_band_afdab745312743d79fbd65536cc0464c3}{}{\footnotesize template$<$spin\+\_\+block\+\_\+t sblock$>$ }\\void {\bfseries set\+\_\+h} (\hyperlink{classsirius_1_1_k__point}{K\+\_\+point} $\ast$kp, \hyperlink{classsirius_1_1_periodic__function}{Periodic\+\_\+function}$<$ double $>$ $\ast$effective\+\_\+potential, \hyperlink{classsirius_1_1_periodic__function}{Periodic\+\_\+function}$<$ double $>$ $\ast$effective\+\_\+magnetic\+\_\+field\mbox{[}3\mbox{]}, \hyperlink{classsddk_1_1mdarray}{mdarray}$<$ double\+\_\+complex, 2 $>$ \&h)\label{classsirius_1_1_band_afdab745312743d79fbd65536cc0464c3}
+
+\item 
+\hypertarget{classsirius_1_1_band_ac40cf723a2b465fe5a38f9351b56c6a0}{}void {\bfseries diag\+\_\+fv\+\_\+full\+\_\+potential\+\_\+exact} (\hyperlink{classsirius_1_1_k__point}{K\+\_\+point} $\ast$kp\+\_\+\+\_\+, \hyperlink{classsirius_1_1_potential}{Potential} const \&potential\+\_\+\+\_\+) const \label{classsirius_1_1_band_ac40cf723a2b465fe5a38f9351b56c6a0}
+
+\item 
+\hypertarget{classsirius_1_1_band_a5ee9cb3f4354926d3f391ad0b72599fc}{}void {\bfseries diag\+\_\+fv\+\_\+full\+\_\+potential\+\_\+davidson} (\hyperlink{classsirius_1_1_k__point}{K\+\_\+point} $\ast$kp\+\_\+\+\_\+) const \label{classsirius_1_1_band_a5ee9cb3f4354926d3f391ad0b72599fc}
+
+\item 
+\hypertarget{classsirius_1_1_band_a1c92f82ee4f3031e8ba98348cd9b304e}{}void {\bfseries apply\+\_\+fv\+\_\+o} (\hyperlink{classsirius_1_1_k__point}{K\+\_\+point} $\ast$kp\+\_\+\+\_\+, bool apw\+\_\+only\+\_\+\+\_\+, bool add\+\_\+o1\+\_\+\+\_\+, int N\+\_\+\+\_\+, int n\+\_\+\+\_\+, wave\+\_\+functions \&phi\+\_\+\+\_\+, wave\+\_\+functions \&ophi\+\_\+\+\_\+) const \label{classsirius_1_1_band_a1c92f82ee4f3031e8ba98348cd9b304e}
+
+\item 
+\hypertarget{classsirius_1_1_band_a295e3191e6b16233f9ce289aadc3df27}{}void {\bfseries get\+\_\+singular\+\_\+components} (\hyperlink{classsirius_1_1_k__point}{K\+\_\+point} $\ast$kp\+\_\+\+\_\+) const \label{classsirius_1_1_band_a295e3191e6b16233f9ce289aadc3df27}
+
+\item 
+{\footnotesize template$<$typename T $>$ }\\void \hyperlink{classsirius_1_1_band_aeeef6350cde82c79b7ac3e3e7343a103}{diag\+\_\+pseudo\+\_\+potential\+\_\+exact} (\hyperlink{classsirius_1_1_k__point}{K\+\_\+point} $\ast$kp\+\_\+\+\_\+, int ispn\+\_\+\+\_\+, \hyperlink{classsirius_1_1_d__operator}{D\+\_\+operator}$<$T $>$ \&d\+\_\+op\+\_\+\+\_\+, \hyperlink{classsirius_1_1_q__operator}{Q\+\_\+operator}$<$T $>$ \&q\+\_\+op\+\_\+\+\_\+) const 
+\begin{DoxyCompactList}\small\item\em Exact (not iterative) diagonalization of the Hamiltonian. \end{DoxyCompactList}\item 
+{\footnotesize template$<$typename T $>$ }\\void \hyperlink{classsirius_1_1_band_a6def3c3503a012beffdb603f42ac40ef}{diag\+\_\+pseudo\+\_\+potential\+\_\+davidson} (\hyperlink{classsirius_1_1_k__point}{K\+\_\+point} $\ast$kp\+\_\+\+\_\+, int ispn\+\_\+\+\_\+, \hyperlink{classsirius_1_1_d__operator}{D\+\_\+operator}$<$T $>$ \&d\+\_\+op\+\_\+\+\_\+, \hyperlink{classsirius_1_1_q__operator}{Q\+\_\+operator}$<$T $>$ \&q\+\_\+op\+\_\+\+\_\+) const 
+\begin{DoxyCompactList}\small\item\em Iterative Davidson diagonalization. \end{DoxyCompactList}\item 
+{\footnotesize template$<$typename T $>$ }\\void \hyperlink{classsirius_1_1_band_af3271dc285f20a4445587b9c031fbdb5}{diag\+\_\+pseudo\+\_\+potential\+\_\+rmm\+\_\+diis} (\hyperlink{classsirius_1_1_k__point}{K\+\_\+point} $\ast$kp\+\_\+\+\_\+, int ispn\+\_\+\+\_\+, \hyperlink{classsirius_1_1_d__operator}{D\+\_\+operator}$<$T $>$ \&d\+\_\+op\+\_\+\+\_\+, \hyperlink{classsirius_1_1_q__operator}{Q\+\_\+operator}$<$T $>$ \&q\+\_\+op\+\_\+\+\_\+) const 
+\begin{DoxyCompactList}\small\item\em R\+M\+M-\/\+D\+I\+I\+S diagonalization. \end{DoxyCompactList}\item 
+\hypertarget{classsirius_1_1_band_a6c3038b6cccb24d8d4437a15b115cca4}{}{\footnotesize template$<$typename T $>$ }\\void {\bfseries diag\+\_\+pseudo\+\_\+potential\+\_\+chebyshev} (\hyperlink{classsirius_1_1_k__point}{K\+\_\+point} $\ast$kp\+\_\+\+\_\+, int ispn\+\_\+\+\_\+, \hyperlink{classsirius_1_1_d__operator}{D\+\_\+operator}$<$T $>$ \&d\+\_\+op\+\_\+\+\_\+, \hyperlink{classsirius_1_1_q__operator}{Q\+\_\+operator}$<$T $>$ \&q\+\_\+op\+\_\+\+\_\+, \hyperlink{classsirius_1_1_p__operator}{P\+\_\+operator}$<$T $>$ \&p\+\_\+op\+\_\+\+\_\+) const \label{classsirius_1_1_band_a6c3038b6cccb24d8d4437a15b115cca4}
+
+\item 
+{\footnotesize template$<$typename T $>$ }\\void \hyperlink{classsirius_1_1_band_a3aa9361ef432d4cca5e0047b8bee8e19}{apply\+\_\+h} (\hyperlink{classsirius_1_1_k__point}{K\+\_\+point} $\ast$kp\+\_\+\+\_\+, int ispn\+\_\+\+\_\+, int N\+\_\+\+\_\+, int n\+\_\+\+\_\+, \hyperlink{classsddk_1_1wave__functions}{wave\+\_\+functions} \&phi\+\_\+\+\_\+, \hyperlink{classsddk_1_1wave__functions}{wave\+\_\+functions} \&hphi\+\_\+\+\_\+, \hyperlink{classsirius_1_1_d__operator}{D\+\_\+operator}$<$T $>$ \&d\+\_\+op) const 
+\item 
+{\footnotesize template$<$typename T $>$ }\\void \hyperlink{classsirius_1_1_band_ac3d1880e4a89fea7c75d6f2ebb8a0edb}{apply\+\_\+h\+\_\+o} (\hyperlink{classsirius_1_1_k__point}{K\+\_\+point} $\ast$kp\+\_\+\+\_\+, int ispn\+\_\+\+\_\+, int N\+\_\+\+\_\+, int n\+\_\+\+\_\+, \hyperlink{classsddk_1_1wave__functions}{wave\+\_\+functions} \&phi\+\_\+\+\_\+, \hyperlink{classsddk_1_1wave__functions}{wave\+\_\+functions} \&hphi\+\_\+\+\_\+, \hyperlink{classsddk_1_1wave__functions}{wave\+\_\+functions} \&ophi\+\_\+\+\_\+, \hyperlink{classsirius_1_1_d__operator}{D\+\_\+operator}$<$T $>$ \&d\+\_\+op, \hyperlink{classsirius_1_1_q__operator}{Q\+\_\+operator}$<$T $>$ \&q\+\_\+op) const 
+\item 
+mdarray$<$ double, 1 $>$ \hyperlink{classsirius_1_1_band_a21d9bc5434bad3eb35346c6cb37c69eb}{residuals\+\_\+aux} (\hyperlink{classsirius_1_1_k__point}{K\+\_\+point} $\ast$kp\+\_\+\+\_\+, int num\+\_\+bands\+\_\+\+\_\+, std\+::vector$<$ double $>$ \&eval\+\_\+\+\_\+, wave\+\_\+functions \&hpsi\+\_\+\+\_\+, wave\+\_\+functions \&opsi\+\_\+\+\_\+, wave\+\_\+functions \&res\+\_\+\+\_\+, mdarray$<$ double, 1 $>$ \&h\+\_\+diag\+\_\+\+\_\+, mdarray$<$ double, 1 $>$ \&o\+\_\+diag\+\_\+\+\_\+) const 
+\begin{DoxyCompactList}\small\item\em Auxiliary function used internally by \hyperlink{classsirius_1_1_band_a67420feea6fe0b7ddfa9bef5652a6d6c}{residuals()} function. \end{DoxyCompactList}\item 
+{\footnotesize template$<$typename T $>$ }\\int \hyperlink{classsirius_1_1_band_a67420feea6fe0b7ddfa9bef5652a6d6c}{residuals} (\hyperlink{classsirius_1_1_k__point}{K\+\_\+point} $\ast$kp\+\_\+\+\_\+, int ispn\+\_\+\+\_\+, int N\+\_\+\+\_\+, int num\+\_\+bands\+\_\+\+\_\+, std\+::vector$<$ double $>$ \&eval\+\_\+\+\_\+, std\+::vector$<$ double $>$ \&eval\+\_\+old\+\_\+\+\_\+, \hyperlink{classsddk_1_1dmatrix}{dmatrix}$<$ T $>$ \&evec\+\_\+\+\_\+, \hyperlink{classsddk_1_1wave__functions}{wave\+\_\+functions} \&hphi\+\_\+\+\_\+, \hyperlink{classsddk_1_1wave__functions}{wave\+\_\+functions} \&ophi\+\_\+\+\_\+, \hyperlink{classsddk_1_1wave__functions}{wave\+\_\+functions} \&hpsi\+\_\+\+\_\+, \hyperlink{classsddk_1_1wave__functions}{wave\+\_\+functions} \&opsi\+\_\+\+\_\+, \hyperlink{classsddk_1_1wave__functions}{wave\+\_\+functions} \&res\+\_\+\+\_\+, \hyperlink{classsddk_1_1mdarray}{mdarray}$<$ double, 1 $>$ \&h\+\_\+diag\+\_\+\+\_\+, \hyperlink{classsddk_1_1mdarray}{mdarray}$<$ double, 1 $>$ \&o\+\_\+diag\+\_\+\+\_\+) const 
+\begin{DoxyCompactList}\small\item\em Compute residuals. \end{DoxyCompactList}\item 
+{\footnotesize template$<$typename T $>$ }\\void \hyperlink{classsirius_1_1_band_a8577610940fce37a4d7827fd32e51b51}{set\+\_\+subspace\+\_\+mtrx} (int N\+\_\+\+\_\+, int n\+\_\+\+\_\+, \hyperlink{classsddk_1_1wave__functions}{wave\+\_\+functions} \&phi\+\_\+\+\_\+, \hyperlink{classsddk_1_1wave__functions}{wave\+\_\+functions} \&op\+\_\+phi\+\_\+\+\_\+, \hyperlink{classsddk_1_1dmatrix}{dmatrix}$<$ T $>$ \&mtrx\+\_\+\+\_\+, \hyperlink{classsddk_1_1dmatrix}{dmatrix}$<$ T $>$ \&mtrx\+\_\+old\+\_\+\+\_\+) const 
+\begin{DoxyCompactList}\small\item\em Setup the Hermitian subspace matrix. \end{DoxyCompactList}\item 
+void \hyperlink{classsirius_1_1_band_a415d6ffa282be7b91720adae3a33250c}{diag\+\_\+fv\+\_\+full\+\_\+potential} (\hyperlink{classsirius_1_1_k__point}{K\+\_\+point} $\ast$kp\+\_\+\+\_\+, \hyperlink{classsirius_1_1_potential}{Potential} const \&potential\+\_\+\+\_\+) const 
+\begin{DoxyCompactList}\small\item\em Diagonalize a full-\/potential Hamiltonian. \end{DoxyCompactList}\item 
+{\footnotesize template$<$typename T $>$ }\\void \hyperlink{classsirius_1_1_band_a5a0cd8e4ed5eaa76c886ea3f9c62865e}{diag\+\_\+pseudo\+\_\+potential} (\hyperlink{classsirius_1_1_k__point}{K\+\_\+point} $\ast$kp\+\_\+\+\_\+, \hyperlink{classsirius_1_1_periodic__function}{Periodic\+\_\+function}$<$ double $>$ $\ast$effective\+\_\+potential\+\_\+\+\_\+, \hyperlink{classsirius_1_1_periodic__function}{Periodic\+\_\+function}$<$ double $>$ $\ast$effective\+\_\+magnetic\+\_\+field\+\_\+\+\_\+\mbox{[}3\mbox{]}) const 
+\begin{DoxyCompactList}\small\item\em Diagonalize a pseudo-\/potential Hamiltonian. \end{DoxyCompactList}\end{DoxyCompactItemize}
+\subsection*{Private Attributes}
+\begin{DoxyCompactItemize}
+\item 
+\hyperlink{classsirius_1_1_simulation__context}{Simulation\+\_\+context} \& \hyperlink{classsirius_1_1_band_a355ecbcf2139f3a5ae0ff33aa2409d58}{ctx\+\_\+}
+\begin{DoxyCompactList}\small\item\em Simulation context. \end{DoxyCompactList}\item 
+\hyperlink{classsirius_1_1_unit__cell}{Unit\+\_\+cell} \& \hyperlink{classsirius_1_1_band_a8776f7df889f8bca82ff5a9a24331205}{unit\+\_\+cell\+\_\+}
+\begin{DoxyCompactList}\small\item\em Alias for the unit cell. \end{DoxyCompactList}\item 
+\hyperlink{classsddk_1_1_b_l_a_c_s__grid}{B\+L\+A\+C\+S\+\_\+grid} const \& \hyperlink{classsirius_1_1_band_a621c3610318f8b26c0f4167c3a0dca76}{blacs\+\_\+grid\+\_\+}
+\begin{DoxyCompactList}\small\item\em B\+L\+A\+C\+S grid for distributed linear algebra operations. \end{DoxyCompactList}\item 
+std\+::unique\+\_\+ptr$<$ \hyperlink{classsirius_1_1_gaunt__coefficients}{Gaunt\+\_\+coefficients}$<$ double\+\_\+complex $>$ $>$ \hyperlink{classsirius_1_1_band_a20c18e018c120ad6f901d046720decce}{gaunt\+\_\+coefs\+\_\+}
+\begin{DoxyCompactList}\small\item\em Non-\/zero Gaunt coefficients. \end{DoxyCompactList}\item 
+std\+::unique\+\_\+ptr$<$ \hyperlink{class_eigenproblem}{Eigenproblem} $>$ \hyperlink{classsirius_1_1_band_aa8e787f36f24f395d19bf617f3165398}{std\+\_\+evp\+\_\+solver\+\_\+}
+\begin{DoxyCompactList}\small\item\em Interface to a standard eigen-\/value solver. \end{DoxyCompactList}\item 
+std\+::unique\+\_\+ptr$<$ \hyperlink{class_eigenproblem}{Eigenproblem} $>$ \hyperlink{classsirius_1_1_band_a65ee266c73c0f8da01fc25db867ad119}{gen\+\_\+evp\+\_\+solver\+\_\+}
+\begin{DoxyCompactList}\small\item\em Interface to a generalized eigen-\/value solver. \end{DoxyCompactList}\item 
+\hypertarget{classsirius_1_1_band_ac40372d294214f83f0c149ff0968d19c}{}std\+::unique\+\_\+ptr$<$ \hyperlink{classsirius_1_1_local__operator}{Local\+\_\+operator}$>$ {\bfseries local\+\_\+op\+\_\+}\label{classsirius_1_1_band_ac40372d294214f83f0c149ff0968d19c}
+
+\end{DoxyCompactItemize}
+
+
+\subsection{Detailed Description}
+Setup and solve the eigen value problem. 
+
+Definition at line 42 of file band.\+h.
+
+
+
+\subsection{Constructor \& Destructor Documentation}
+\hypertarget{classsirius_1_1_band_aae455fe48d72e332450a03b4e999f3ba}{}\index{sirius\+::\+Band@{sirius\+::\+Band}!Band@{Band}}
+\index{Band@{Band}!sirius\+::\+Band@{sirius\+::\+Band}}
+\subsubsection[{Band(\+Simulation\+\_\+context \&ctx\+\_\+\+\_\+)}]{\setlength{\rightskip}{0pt plus 5cm}sirius\+::\+Band\+::\+Band (
+\begin{DoxyParamCaption}
+\item[{{\bf Simulation\+\_\+context} \&}]{ctx\+\_\+\+\_\+}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}}\label{classsirius_1_1_band_aae455fe48d72e332450a03b4e999f3ba}
+
+
+Constructor. 
+
+
+
+Definition at line 349 of file band.\+h.
+
+
+
+\subsection{Member Function Documentation}
+\hypertarget{classsirius_1_1_band_abf2df1e8c97986110eed557241ffe09f}{}\index{sirius\+::\+Band@{sirius\+::\+Band}!apply\+\_\+magnetic\+\_\+field@{apply\+\_\+magnetic\+\_\+field}}
+\index{apply\+\_\+magnetic\+\_\+field@{apply\+\_\+magnetic\+\_\+field}!sirius\+::\+Band@{sirius\+::\+Band}}
+\subsubsection[{apply\+\_\+magnetic\+\_\+field(wave\+\_\+functions \&fv\+\_\+states\+\_\+\+\_\+, Gvec const \&gkvec\+\_\+\+\_\+, Periodic\+\_\+function$<$ double $>$ $\ast$effective\+\_\+magnetic\+\_\+field\+\_\+\+\_\+[3], std\+::vector$<$ wave\+\_\+functions $>$ \&hpsi\+\_\+\+\_\+) const }]{\setlength{\rightskip}{0pt plus 5cm}void sirius\+::\+Band\+::apply\+\_\+magnetic\+\_\+field (
+\begin{DoxyParamCaption}
+\item[{wave\+\_\+functions \&}]{fv\+\_\+states\+\_\+\+\_\+, }
+\item[{Gvec const \&}]{gkvec\+\_\+\+\_\+, }
+\item[{{\bf Periodic\+\_\+function}$<$ double $>$ $\ast$}]{effective\+\_\+magnetic\+\_\+field\+\_\+\+\_\+\mbox{[}3\mbox{]}, }
+\item[{std\+::vector$<$ wave\+\_\+functions $>$ \&}]{hpsi\+\_\+\+\_\+}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [inline]}, {\ttfamily [private]}}\label{classsirius_1_1_band_abf2df1e8c97986110eed557241ffe09f}
+
+
+Apply effective magentic field to the first-\/variational state. 
+
+Must be called first because hpsi is overwritten with B$\vert$fv\+\_\+j$>$. 
+
+Definition at line 697 of file apply.\+hpp.
+
+\hypertarget{classsirius_1_1_band_a8465650f5a337f7473c499a11092efb7}{}\index{sirius\+::\+Band@{sirius\+::\+Band}!apply\+\_\+so\+\_\+correction@{apply\+\_\+so\+\_\+correction}}
+\index{apply\+\_\+so\+\_\+correction@{apply\+\_\+so\+\_\+correction}!sirius\+::\+Band@{sirius\+::\+Band}}
+\subsubsection[{apply\+\_\+so\+\_\+correction(mdarray$<$ double\+\_\+complex, 2 $>$ \&fv\+\_\+states, mdarray$<$ double\+\_\+complex, 3 $>$ \&hpsi)}]{\setlength{\rightskip}{0pt plus 5cm}void sirius\+::\+Band\+::apply\+\_\+so\+\_\+correction (
+\begin{DoxyParamCaption}
+\item[{{\bf mdarray}$<$ double\+\_\+complex, 2 $>$ \&}]{fv\+\_\+states, }
+\item[{{\bf mdarray}$<$ double\+\_\+complex, 3 $>$ \&}]{hpsi}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [private]}}\label{classsirius_1_1_band_a8465650f5a337f7473c499a11092efb7}
+
+
+Apply S\+O correction to the first-\/variational states. 
+
+Raising and lowering operators\+: \[ L_{\pm} Y_{\ell m}= (L_x \pm i L_y) Y_{\ell m} = \sqrt{\ell(\ell+1) - m(m \pm 1)} Y_{\ell m \pm 1} \] \hypertarget{classsirius_1_1_band_abe0170064dcfd89b4073fa04772a41b2}{}\index{sirius\+::\+Band@{sirius\+::\+Band}!apply\+\_\+uj\+\_\+correction@{apply\+\_\+uj\+\_\+correction}}
+\index{apply\+\_\+uj\+\_\+correction@{apply\+\_\+uj\+\_\+correction}!sirius\+::\+Band@{sirius\+::\+Band}}
+\subsubsection[{apply\+\_\+uj\+\_\+correction(mdarray$<$ double\+\_\+complex, 2 $>$ \&fv\+\_\+states, mdarray$<$ double\+\_\+complex, 3 $>$ \&hpsi)}]{\setlength{\rightskip}{0pt plus 5cm}template$<$spin\+\_\+block\+\_\+t sblock$>$ void sirius\+::\+Band\+::apply\+\_\+uj\+\_\+correction (
+\begin{DoxyParamCaption}
+\item[{{\bf mdarray}$<$ double\+\_\+complex, 2 $>$ \&}]{fv\+\_\+states, }
+\item[{{\bf mdarray}$<$ double\+\_\+complex, 3 $>$ \&}]{hpsi}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [private]}}\label{classsirius_1_1_band_abe0170064dcfd89b4073fa04772a41b2}
+
+
+Apply U\+J correction to scalar wave functions. 
+
+\hypertarget{classsirius_1_1_band_a383b6f157ed167d5f338c189b299810b}{}\index{sirius\+::\+Band@{sirius\+::\+Band}!set\+\_\+fv\+\_\+h\+\_\+o\+\_\+it@{set\+\_\+fv\+\_\+h\+\_\+o\+\_\+it}}
+\index{set\+\_\+fv\+\_\+h\+\_\+o\+\_\+it@{set\+\_\+fv\+\_\+h\+\_\+o\+\_\+it}!sirius\+::\+Band@{sirius\+::\+Band}}
+\subsubsection[{set\+\_\+fv\+\_\+h\+\_\+o\+\_\+it(\+K\+\_\+point $\ast$kp\+\_\+\+\_\+, Potential const \&potential\+\_\+\+\_\+, matrix$<$ double\+\_\+complex $>$ \&h\+\_\+\+\_\+, matrix$<$ double\+\_\+complex $>$ \&o\+\_\+\+\_\+) const }]{\setlength{\rightskip}{0pt plus 5cm}void sirius\+::\+Band\+::set\+\_\+fv\+\_\+h\+\_\+o\+\_\+it (
+\begin{DoxyParamCaption}
+\item[{{\bf K\+\_\+point} $\ast$}]{kp\+\_\+\+\_\+, }
+\item[{{\bf Potential} const \&}]{potential\+\_\+\+\_\+, }
+\item[{matrix$<$ double\+\_\+complex $>$ \&}]{h\+\_\+\+\_\+, }
+\item[{matrix$<$ double\+\_\+complex $>$ \&}]{o\+\_\+\+\_\+}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [inline]}, {\ttfamily [private]}}\label{classsirius_1_1_band_a383b6f157ed167d5f338c189b299810b}
+
+
+Add interstitial contribution to apw-\/apw block of Hamiltonian and overlap. 
+
+
+
+Definition at line 367 of file set\+\_\+lapw\+\_\+h\+\_\+o.\+hpp.
+
+\hypertarget{classsirius_1_1_band_a4a697e19033a0e64dc64baa231965ea0}{}\index{sirius\+::\+Band@{sirius\+::\+Band}!set\+\_\+fv\+\_\+h\+\_\+o\+\_\+lo\+\_\+lo@{set\+\_\+fv\+\_\+h\+\_\+o\+\_\+lo\+\_\+lo}}
+\index{set\+\_\+fv\+\_\+h\+\_\+o\+\_\+lo\+\_\+lo@{set\+\_\+fv\+\_\+h\+\_\+o\+\_\+lo\+\_\+lo}!sirius\+::\+Band@{sirius\+::\+Band}}
+\subsubsection[{set\+\_\+fv\+\_\+h\+\_\+o\+\_\+lo\+\_\+lo(\+K\+\_\+point $\ast$kp, mdarray$<$ double\+\_\+complex, 2 $>$ \&h, mdarray$<$ double\+\_\+complex, 2 $>$ \&o) const }]{\setlength{\rightskip}{0pt plus 5cm}void sirius\+::\+Band\+::set\+\_\+fv\+\_\+h\+\_\+o\+\_\+lo\+\_\+lo (
+\begin{DoxyParamCaption}
+\item[{{\bf K\+\_\+point} $\ast$}]{kp, }
+\item[{mdarray$<$ double\+\_\+complex, 2 $>$ \&}]{h, }
+\item[{mdarray$<$ double\+\_\+complex, 2 $>$ \&}]{o}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [inline]}, {\ttfamily [private]}}\label{classsirius_1_1_band_a4a697e19033a0e64dc64baa231965ea0}
+
+
+Setup lo-\/lo block of Hamiltonian and overlap matrices. 
+
+
+
+Definition at line 409 of file set\+\_\+lapw\+\_\+h\+\_\+o.\+hpp.
+
+\hypertarget{classsirius_1_1_band_aeeef6350cde82c79b7ac3e3e7343a103}{}\index{sirius\+::\+Band@{sirius\+::\+Band}!diag\+\_\+pseudo\+\_\+potential\+\_\+exact@{diag\+\_\+pseudo\+\_\+potential\+\_\+exact}}
+\index{diag\+\_\+pseudo\+\_\+potential\+\_\+exact@{diag\+\_\+pseudo\+\_\+potential\+\_\+exact}!sirius\+::\+Band@{sirius\+::\+Band}}
+\subsubsection[{diag\+\_\+pseudo\+\_\+potential\+\_\+exact(\+K\+\_\+point $\ast$kp\+\_\+\+\_\+, int ispn\+\_\+\+\_\+, D\+\_\+operator$<$\+T $>$ \&d\+\_\+op\+\_\+\+\_\+, Q\+\_\+operator$<$\+T $>$ \&q\+\_\+op\+\_\+\+\_\+) const }]{\setlength{\rightskip}{0pt plus 5cm}template$<$typename T $>$ void sirius\+::\+Band\+::diag\+\_\+pseudo\+\_\+potential\+\_\+exact (
+\begin{DoxyParamCaption}
+\item[{{\bf K\+\_\+point} $\ast$}]{kp\+\_\+\+\_\+, }
+\item[{int}]{ispn\+\_\+\+\_\+, }
+\item[{{\bf D\+\_\+operator}$<$T $>$ \&}]{d\+\_\+op\+\_\+\+\_\+, }
+\item[{{\bf Q\+\_\+operator}$<$T $>$ \&}]{q\+\_\+op\+\_\+\+\_\+}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [inline]}, {\ttfamily [private]}}\label{classsirius_1_1_band_aeeef6350cde82c79b7ac3e3e7343a103}
+
+
+Exact (not iterative) diagonalization of the Hamiltonian. 
+
+
+
+Definition at line 174 of file band.\+h.
+
+\hypertarget{classsirius_1_1_band_a6def3c3503a012beffdb603f42ac40ef}{}\index{sirius\+::\+Band@{sirius\+::\+Band}!diag\+\_\+pseudo\+\_\+potential\+\_\+davidson@{diag\+\_\+pseudo\+\_\+potential\+\_\+davidson}}
+\index{diag\+\_\+pseudo\+\_\+potential\+\_\+davidson@{diag\+\_\+pseudo\+\_\+potential\+\_\+davidson}!sirius\+::\+Band@{sirius\+::\+Band}}
+\subsubsection[{diag\+\_\+pseudo\+\_\+potential\+\_\+davidson(\+K\+\_\+point $\ast$kp\+\_\+\+\_\+, int ispn\+\_\+\+\_\+, D\+\_\+operator$<$\+T $>$ \&d\+\_\+op\+\_\+\+\_\+, Q\+\_\+operator$<$\+T $>$ \&q\+\_\+op\+\_\+\+\_\+) const }]{\setlength{\rightskip}{0pt plus 5cm}template$<$typename T $>$ void sirius\+::\+Band\+::diag\+\_\+pseudo\+\_\+potential\+\_\+davidson (
+\begin{DoxyParamCaption}
+\item[{{\bf K\+\_\+point} $\ast$}]{kp\+\_\+\+\_\+, }
+\item[{int}]{ispn\+\_\+\+\_\+, }
+\item[{{\bf D\+\_\+operator}$<$T $>$ \&}]{d\+\_\+op\+\_\+\+\_\+, }
+\item[{{\bf Q\+\_\+operator}$<$T $>$ \&}]{q\+\_\+op\+\_\+\+\_\+}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [inline]}, {\ttfamily [private]}}\label{classsirius_1_1_band_a6def3c3503a012beffdb603f42ac40ef}
+
+
+Iterative Davidson diagonalization. 
+
+
+
+Definition at line 608 of file band.\+h.
+
+\hypertarget{classsirius_1_1_band_af3271dc285f20a4445587b9c031fbdb5}{}\index{sirius\+::\+Band@{sirius\+::\+Band}!diag\+\_\+pseudo\+\_\+potential\+\_\+rmm\+\_\+diis@{diag\+\_\+pseudo\+\_\+potential\+\_\+rmm\+\_\+diis}}
+\index{diag\+\_\+pseudo\+\_\+potential\+\_\+rmm\+\_\+diis@{diag\+\_\+pseudo\+\_\+potential\+\_\+rmm\+\_\+diis}!sirius\+::\+Band@{sirius\+::\+Band}}
+\subsubsection[{diag\+\_\+pseudo\+\_\+potential\+\_\+rmm\+\_\+diis(\+K\+\_\+point $\ast$kp\+\_\+\+\_\+, int ispn\+\_\+\+\_\+, D\+\_\+operator$<$\+T $>$ \&d\+\_\+op\+\_\+\+\_\+, Q\+\_\+operator$<$\+T $>$ \&q\+\_\+op\+\_\+\+\_\+) const }]{\setlength{\rightskip}{0pt plus 5cm}template$<$typename T $>$ void sirius\+::\+Band\+::diag\+\_\+pseudo\+\_\+potential\+\_\+rmm\+\_\+diis (
+\begin{DoxyParamCaption}
+\item[{{\bf K\+\_\+point} $\ast$}]{kp\+\_\+\+\_\+, }
+\item[{int}]{ispn\+\_\+\+\_\+, }
+\item[{{\bf D\+\_\+operator}$<$T $>$ \&}]{d\+\_\+op\+\_\+\+\_\+, }
+\item[{{\bf Q\+\_\+operator}$<$T $>$ \&}]{q\+\_\+op\+\_\+\+\_\+}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [inline]}, {\ttfamily [private]}}\label{classsirius_1_1_band_af3271dc285f20a4445587b9c031fbdb5}
+
+
+R\+M\+M-\/\+D\+I\+I\+S diagonalization. 
+
+
+
+Definition at line 1130 of file band.\+h.
+
+\hypertarget{classsirius_1_1_band_a3aa9361ef432d4cca5e0047b8bee8e19}{}\index{sirius\+::\+Band@{sirius\+::\+Band}!apply\+\_\+h@{apply\+\_\+h}}
+\index{apply\+\_\+h@{apply\+\_\+h}!sirius\+::\+Band@{sirius\+::\+Band}}
+\subsubsection[{apply\+\_\+h(\+K\+\_\+point $\ast$kp\+\_\+\+\_\+, int ispn\+\_\+\+\_\+, int N\+\_\+\+\_\+, int n\+\_\+\+\_\+, wave\+\_\+functions \&phi\+\_\+\+\_\+, wave\+\_\+functions \&hphi\+\_\+\+\_\+, D\+\_\+operator$<$\+T $>$ \&d\+\_\+op) const }]{\setlength{\rightskip}{0pt plus 5cm}template$<$typename T $>$ void sirius\+::\+Band\+::apply\+\_\+h (
+\begin{DoxyParamCaption}
+\item[{{\bf K\+\_\+point} $\ast$}]{kp\+\_\+\+\_\+, }
+\item[{int}]{ispn\+\_\+\+\_\+, }
+\item[{int}]{N\+\_\+\+\_\+, }
+\item[{int}]{n\+\_\+\+\_\+, }
+\item[{{\bf wave\+\_\+functions} \&}]{phi\+\_\+\+\_\+, }
+\item[{{\bf wave\+\_\+functions} \&}]{hphi\+\_\+\+\_\+, }
+\item[{{\bf D\+\_\+operator}$<$T $>$ \&}]{d\+\_\+op}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [inline]}, {\ttfamily [private]}}\label{classsirius_1_1_band_a3aa9361ef432d4cca5e0047b8bee8e19}
+
+\begin{DoxyParams}[1]{Parameters}
+\mbox{\tt in}  & {\em phi} & Input wave-\/functions \mbox{[}storage\+: C\+P\+U \&\& G\+P\+U\mbox{]}. \\
+\hline
+\mbox{\tt out}  & {\em hphi} & Hamiltonian, applied to wave-\/functions \mbox{[}storage\+: C\+P\+U $\vert$$\vert$ G\+P\+U\mbox{]}. \\
+\hline
+\end{DoxyParams}
+
+
+Definition at line 6 of file band.\+h.
+
+\hypertarget{classsirius_1_1_band_ac3d1880e4a89fea7c75d6f2ebb8a0edb}{}\index{sirius\+::\+Band@{sirius\+::\+Band}!apply\+\_\+h\+\_\+o@{apply\+\_\+h\+\_\+o}}
+\index{apply\+\_\+h\+\_\+o@{apply\+\_\+h\+\_\+o}!sirius\+::\+Band@{sirius\+::\+Band}}
+\subsubsection[{apply\+\_\+h\+\_\+o(\+K\+\_\+point $\ast$kp\+\_\+\+\_\+, int ispn\+\_\+\+\_\+, int N\+\_\+\+\_\+, int n\+\_\+\+\_\+, wave\+\_\+functions \&phi\+\_\+\+\_\+, wave\+\_\+functions \&hphi\+\_\+\+\_\+, wave\+\_\+functions \&ophi\+\_\+\+\_\+, D\+\_\+operator$<$\+T $>$ \&d\+\_\+op, Q\+\_\+operator$<$\+T $>$ \&q\+\_\+op) const }]{\setlength{\rightskip}{0pt plus 5cm}template$<$typename T $>$ void sirius\+::\+Band\+::apply\+\_\+h\+\_\+o (
+\begin{DoxyParamCaption}
+\item[{{\bf K\+\_\+point} $\ast$}]{kp\+\_\+\+\_\+, }
+\item[{int}]{ispn\+\_\+\+\_\+, }
+\item[{int}]{N\+\_\+\+\_\+, }
+\item[{int}]{n\+\_\+\+\_\+, }
+\item[{{\bf wave\+\_\+functions} \&}]{phi\+\_\+\+\_\+, }
+\item[{{\bf wave\+\_\+functions} \&}]{hphi\+\_\+\+\_\+, }
+\item[{{\bf wave\+\_\+functions} \&}]{ophi\+\_\+\+\_\+, }
+\item[{{\bf D\+\_\+operator}$<$T $>$ \&}]{d\+\_\+op, }
+\item[{{\bf Q\+\_\+operator}$<$T $>$ \&}]{q\+\_\+op}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [private]}}\label{classsirius_1_1_band_ac3d1880e4a89fea7c75d6f2ebb8a0edb}
+
+\begin{DoxyParams}[1]{Parameters}
+\mbox{\tt in}  & {\em phi} & Input wave-\/functions \mbox{[}storage\+: C\+P\+U \&\& G\+P\+U\mbox{]}. \\
+\hline
+\mbox{\tt out}  & {\em hphi} & Hamiltonian, applied to wave-\/functions \mbox{[}storage\+: C\+P\+U $\vert$$\vert$ G\+P\+U\mbox{]}. \\
+\hline
+\mbox{\tt out}  & {\em ophi} & Overlap operator, applied to wave-\/functions \mbox{[}storage\+: C\+P\+U $\vert$$\vert$ G\+P\+U\mbox{]}. \\
+\hline
+\end{DoxyParams}
+
+
+Definition at line 78 of file band.\+h.
+
+\hypertarget{classsirius_1_1_band_a21d9bc5434bad3eb35346c6cb37c69eb}{}\index{sirius\+::\+Band@{sirius\+::\+Band}!residuals\+\_\+aux@{residuals\+\_\+aux}}
+\index{residuals\+\_\+aux@{residuals\+\_\+aux}!sirius\+::\+Band@{sirius\+::\+Band}}
+\subsubsection[{residuals\+\_\+aux(\+K\+\_\+point $\ast$kp\+\_\+\+\_\+, int num\+\_\+bands\+\_\+\+\_\+, std\+::vector$<$ double $>$ \&eval\+\_\+\+\_\+, wave\+\_\+functions \&hpsi\+\_\+\+\_\+, wave\+\_\+functions \&opsi\+\_\+\+\_\+, wave\+\_\+functions \&res\+\_\+\+\_\+, mdarray$<$ double, 1 $>$ \&h\+\_\+diag\+\_\+\+\_\+, mdarray$<$ double, 1 $>$ \&o\+\_\+diag\+\_\+\+\_\+) const }]{\setlength{\rightskip}{0pt plus 5cm}mdarray$<$ double, 1 $>$ sirius\+::\+Band\+::residuals\+\_\+aux (
+\begin{DoxyParamCaption}
+\item[{{\bf K\+\_\+point} $\ast$}]{kp\+\_\+\+\_\+, }
+\item[{int}]{num\+\_\+bands\+\_\+\+\_\+, }
+\item[{std\+::vector$<$ double $>$ \&}]{eval\+\_\+\+\_\+, }
+\item[{wave\+\_\+functions \&}]{hpsi\+\_\+\+\_\+, }
+\item[{wave\+\_\+functions \&}]{opsi\+\_\+\+\_\+, }
+\item[{wave\+\_\+functions \&}]{res\+\_\+\+\_\+, }
+\item[{mdarray$<$ double, 1 $>$ \&}]{h\+\_\+diag\+\_\+\+\_\+, }
+\item[{mdarray$<$ double, 1 $>$ \&}]{o\+\_\+diag\+\_\+\+\_\+}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [inline]}, {\ttfamily [private]}}\label{classsirius_1_1_band_a21d9bc5434bad3eb35346c6cb37c69eb}
+
+
+Auxiliary function used internally by \hyperlink{classsirius_1_1_band_a67420feea6fe0b7ddfa9bef5652a6d6c}{residuals()} function. 
+
+
+
+Definition at line 32 of file residuals.\+hpp.
+
+\hypertarget{classsirius_1_1_band_a67420feea6fe0b7ddfa9bef5652a6d6c}{}\index{sirius\+::\+Band@{sirius\+::\+Band}!residuals@{residuals}}
+\index{residuals@{residuals}!sirius\+::\+Band@{sirius\+::\+Band}}
+\subsubsection[{residuals(\+K\+\_\+point $\ast$kp\+\_\+\+\_\+, int ispn\+\_\+\+\_\+, int N\+\_\+\+\_\+, int num\+\_\+bands\+\_\+\+\_\+, std\+::vector$<$ double $>$ \&eval\+\_\+\+\_\+, std\+::vector$<$ double $>$ \&eval\+\_\+old\+\_\+\+\_\+, dmatrix$<$ T $>$ \&evec\+\_\+\+\_\+, wave\+\_\+functions \&hphi\+\_\+\+\_\+, wave\+\_\+functions \&ophi\+\_\+\+\_\+, wave\+\_\+functions \&hpsi\+\_\+\+\_\+, wave\+\_\+functions \&opsi\+\_\+\+\_\+, wave\+\_\+functions \&res\+\_\+\+\_\+, mdarray$<$ double, 1 $>$ \&h\+\_\+diag\+\_\+\+\_\+, mdarray$<$ double, 1 $>$ \&o\+\_\+diag\+\_\+\+\_\+) const }]{\setlength{\rightskip}{0pt plus 5cm}template$<$typename T $>$ int sirius\+::\+Band\+::residuals (
+\begin{DoxyParamCaption}
+\item[{{\bf K\+\_\+point} $\ast$}]{kp\+\_\+\+\_\+, }
+\item[{int}]{ispn\+\_\+\+\_\+, }
+\item[{int}]{N\+\_\+\+\_\+, }
+\item[{int}]{num\+\_\+bands\+\_\+\+\_\+, }
+\item[{std\+::vector$<$ double $>$ \&}]{eval\+\_\+\+\_\+, }
+\item[{std\+::vector$<$ double $>$ \&}]{eval\+\_\+old\+\_\+\+\_\+, }
+\item[{{\bf dmatrix}$<$ T $>$ \&}]{evec\+\_\+\+\_\+, }
+\item[{{\bf wave\+\_\+functions} \&}]{hphi\+\_\+\+\_\+, }
+\item[{{\bf wave\+\_\+functions} \&}]{ophi\+\_\+\+\_\+, }
+\item[{{\bf wave\+\_\+functions} \&}]{hpsi\+\_\+\+\_\+, }
+\item[{{\bf wave\+\_\+functions} \&}]{opsi\+\_\+\+\_\+, }
+\item[{{\bf wave\+\_\+functions} \&}]{res\+\_\+\+\_\+, }
+\item[{{\bf mdarray}$<$ double, 1 $>$ \&}]{h\+\_\+diag\+\_\+\+\_\+, }
+\item[{{\bf mdarray}$<$ double, 1 $>$ \&}]{o\+\_\+diag\+\_\+\+\_\+}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [inline]}, {\ttfamily [private]}}\label{classsirius_1_1_band_a67420feea6fe0b7ddfa9bef5652a6d6c}
+
+
+Compute residuals. 
+
+
+
+Definition at line 179 of file band.\+h.
+
+\hypertarget{classsirius_1_1_band_a8577610940fce37a4d7827fd32e51b51}{}\index{sirius\+::\+Band@{sirius\+::\+Band}!set\+\_\+subspace\+\_\+mtrx@{set\+\_\+subspace\+\_\+mtrx}}
+\index{set\+\_\+subspace\+\_\+mtrx@{set\+\_\+subspace\+\_\+mtrx}!sirius\+::\+Band@{sirius\+::\+Band}}
+\subsubsection[{set\+\_\+subspace\+\_\+mtrx(int N\+\_\+\+\_\+, int n\+\_\+\+\_\+, wave\+\_\+functions \&phi\+\_\+\+\_\+, wave\+\_\+functions \&op\+\_\+phi\+\_\+\+\_\+, dmatrix$<$ T $>$ \&mtrx\+\_\+\+\_\+, dmatrix$<$ T $>$ \&mtrx\+\_\+old\+\_\+\+\_\+) const }]{\setlength{\rightskip}{0pt plus 5cm}template$<$typename T $>$ void sirius\+::\+Band\+::set\+\_\+subspace\+\_\+mtrx (
+\begin{DoxyParamCaption}
+\item[{int}]{N\+\_\+\+\_\+, }
+\item[{int}]{n\+\_\+\+\_\+, }
+\item[{{\bf wave\+\_\+functions} \&}]{phi\+\_\+\+\_\+, }
+\item[{{\bf wave\+\_\+functions} \&}]{op\+\_\+phi\+\_\+\+\_\+, }
+\item[{{\bf dmatrix}$<$ T $>$ \&}]{mtrx\+\_\+\+\_\+, }
+\item[{{\bf dmatrix}$<$ T $>$ \&}]{mtrx\+\_\+old\+\_\+\+\_\+}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [inline]}, {\ttfamily [private]}}\label{classsirius_1_1_band_a8577610940fce37a4d7827fd32e51b51}
+
+
+Setup the Hermitian subspace matrix. 
+
+Compute $ O_{ii'} = \langle \phi_i | \hat O | \phi_{i'} \rangle $ operator matrix for the subspace spanned by the wave-\/functions $ \phi_i $. The matrix is always returned in the C\+P\+U pointer because most of the standard math libraries start from the C\+P\+U. 
+
+Definition at line 209 of file band.\+h.
+
+\hypertarget{classsirius_1_1_band_a415d6ffa282be7b91720adae3a33250c}{}\index{sirius\+::\+Band@{sirius\+::\+Band}!diag\+\_\+fv\+\_\+full\+\_\+potential@{diag\+\_\+fv\+\_\+full\+\_\+potential}}
+\index{diag\+\_\+fv\+\_\+full\+\_\+potential@{diag\+\_\+fv\+\_\+full\+\_\+potential}!sirius\+::\+Band@{sirius\+::\+Band}}
+\subsubsection[{diag\+\_\+fv\+\_\+full\+\_\+potential(\+K\+\_\+point $\ast$kp\+\_\+\+\_\+, Potential const \&potential\+\_\+\+\_\+) const }]{\setlength{\rightskip}{0pt plus 5cm}void sirius\+::\+Band\+::diag\+\_\+fv\+\_\+full\+\_\+potential (
+\begin{DoxyParamCaption}
+\item[{{\bf K\+\_\+point} $\ast$}]{kp\+\_\+\+\_\+, }
+\item[{{\bf Potential} const \&}]{potential\+\_\+\+\_\+}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [inline]}, {\ttfamily [private]}}\label{classsirius_1_1_band_a415d6ffa282be7b91720adae3a33250c}
+
+
+Diagonalize a full-\/potential Hamiltonian. 
+
+
+
+Definition at line 279 of file band.\+h.
+
+\hypertarget{classsirius_1_1_band_a5a0cd8e4ed5eaa76c886ea3f9c62865e}{}\index{sirius\+::\+Band@{sirius\+::\+Band}!diag\+\_\+pseudo\+\_\+potential@{diag\+\_\+pseudo\+\_\+potential}}
+\index{diag\+\_\+pseudo\+\_\+potential@{diag\+\_\+pseudo\+\_\+potential}!sirius\+::\+Band@{sirius\+::\+Band}}
+\subsubsection[{diag\+\_\+pseudo\+\_\+potential(\+K\+\_\+point $\ast$kp\+\_\+\+\_\+, Periodic\+\_\+function$<$ double $>$ $\ast$effective\+\_\+potential\+\_\+\+\_\+, Periodic\+\_\+function$<$ double $>$ $\ast$effective\+\_\+magnetic\+\_\+field\+\_\+\+\_\+[3]) const }]{\setlength{\rightskip}{0pt plus 5cm}template$<$typename T $>$ void sirius\+::\+Band\+::diag\+\_\+pseudo\+\_\+potential (
+\begin{DoxyParamCaption}
+\item[{{\bf K\+\_\+point} $\ast$}]{kp\+\_\+\+\_\+, }
+\item[{{\bf Periodic\+\_\+function}$<$ double $>$ $\ast$}]{effective\+\_\+potential\+\_\+\+\_\+, }
+\item[{{\bf Periodic\+\_\+function}$<$ double $>$ $\ast$}]{effective\+\_\+magnetic\+\_\+field\+\_\+\+\_\+\mbox{[}3\mbox{]}}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [inline]}, {\ttfamily [private]}}\label{classsirius_1_1_band_a5a0cd8e4ed5eaa76c886ea3f9c62865e}
+
+
+Diagonalize a pseudo-\/potential Hamiltonian. 
+
+
+
+Definition at line 292 of file band.\+h.
+
+\hypertarget{classsirius_1_1_band_ab39910f680e4c969a2b2bc14053b3c0a}{}\index{sirius\+::\+Band@{sirius\+::\+Band}!apply\+\_\+hmt\+\_\+to\+\_\+apw@{apply\+\_\+hmt\+\_\+to\+\_\+apw}}
+\index{apply\+\_\+hmt\+\_\+to\+\_\+apw@{apply\+\_\+hmt\+\_\+to\+\_\+apw}!sirius\+::\+Band@{sirius\+::\+Band}}
+\subsubsection[{apply\+\_\+hmt\+\_\+to\+\_\+apw(\+Atom const \&atom\+\_\+\+\_\+, int num\+\_\+gkvec\+\_\+\+\_\+, mdarray$<$ double\+\_\+complex, 2 $>$ \&alm\+\_\+\+\_\+, mdarray$<$ double\+\_\+complex, 2 $>$ \&halm\+\_\+\+\_\+) const }]{\setlength{\rightskip}{0pt plus 5cm}template$<$spin\+\_\+block\+\_\+t sblock$>$ void sirius\+::\+Band\+::apply\+\_\+hmt\+\_\+to\+\_\+apw (
+\begin{DoxyParamCaption}
+\item[{{\bf Atom} const \&}]{atom\+\_\+\+\_\+, }
+\item[{int}]{num\+\_\+gkvec\+\_\+\+\_\+, }
+\item[{{\bf mdarray}$<$ double\+\_\+complex, 2 $>$ \&}]{alm\+\_\+\+\_\+, }
+\item[{{\bf mdarray}$<$ double\+\_\+complex, 2 $>$ \&}]{halm\+\_\+\+\_\+}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [inline]}}\label{classsirius_1_1_band_ab39910f680e4c969a2b2bc14053b3c0a}
+
+
+Apply the muffin-\/tin part of the Hamiltonian to the apw basis functions of an atom. 
+
+The following matrix is computed\+: \[ b_{L_2 \nu_2}^{\alpha}({\bf G'}) = \sum_{L_1 \nu_1} \sum_{L_3} a_{L_1\nu_1}^{\alpha}({\bf G'}) \langle u_{\ell_1\nu_1}^{\alpha} | h_{L3}^{\alpha} | u_{\ell_2\nu_2}^{\alpha} \rangle \langle Y_{L_1} | R_{L_3} | Y_{L_2} \rangle \] 
+
+Definition at line 468 of file band.\+h.
+
+\hypertarget{classsirius_1_1_band_ad74e640cc61cf64984a300dd2c44ee04}{}\index{sirius\+::\+Band@{sirius\+::\+Band}!set\+\_\+fv\+\_\+h\+\_\+o\+\_\+apw\+\_\+lo@{set\+\_\+fv\+\_\+h\+\_\+o\+\_\+apw\+\_\+lo}}
+\index{set\+\_\+fv\+\_\+h\+\_\+o\+\_\+apw\+\_\+lo@{set\+\_\+fv\+\_\+h\+\_\+o\+\_\+apw\+\_\+lo}!sirius\+::\+Band@{sirius\+::\+Band}}
+\subsubsection[{set\+\_\+fv\+\_\+h\+\_\+o\+\_\+apw\+\_\+lo(\+K\+\_\+point $\ast$kp, Atom\+\_\+type const \&type, Atom const \&atom, int ia, mdarray$<$ double\+\_\+complex, 2 $>$ \&alm\+\_\+row, mdarray$<$ double\+\_\+complex, 2 $>$ \&alm\+\_\+col, mdarray$<$ double\+\_\+complex, 2 $>$ \&h, mdarray$<$ double\+\_\+complex, 2 $>$ \&o) const }]{\setlength{\rightskip}{0pt plus 5cm}void sirius\+::\+Band\+::set\+\_\+fv\+\_\+h\+\_\+o\+\_\+apw\+\_\+lo (
+\begin{DoxyParamCaption}
+\item[{{\bf K\+\_\+point} $\ast$}]{kp, }
+\item[{{\bf Atom\+\_\+type} const \&}]{type, }
+\item[{{\bf Atom} const \&}]{atom, }
+\item[{int}]{ia, }
+\item[{mdarray$<$ double\+\_\+complex, 2 $>$ \&}]{alm\+\_\+row, }
+\item[{mdarray$<$ double\+\_\+complex, 2 $>$ \&}]{alm\+\_\+col, }
+\item[{mdarray$<$ double\+\_\+complex, 2 $>$ \&}]{h, }
+\item[{mdarray$<$ double\+\_\+complex, 2 $>$ \&}]{o}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [inline]}}\label{classsirius_1_1_band_ad74e640cc61cf64984a300dd2c44ee04}
+
+
+Setup apw-\/lo and lo-\/apw blocs of Hamiltonian and overlap matrices. 
+
+
+
+Definition at line 274 of file set\+\_\+lapw\+\_\+h\+\_\+o.\+hpp.
+
+\hypertarget{classsirius_1_1_band_a9ba2b7a8ab8c0de9287a7a70a5cf8b6a}{}\index{sirius\+::\+Band@{sirius\+::\+Band}!set\+\_\+o\+\_\+apw\+\_\+lo@{set\+\_\+o\+\_\+apw\+\_\+lo}}
+\index{set\+\_\+o\+\_\+apw\+\_\+lo@{set\+\_\+o\+\_\+apw\+\_\+lo}!sirius\+::\+Band@{sirius\+::\+Band}}
+\subsubsection[{set\+\_\+o\+\_\+apw\+\_\+lo(\+K\+\_\+point $\ast$kp, Atom\+\_\+type $\ast$type, Atom $\ast$atom, int ia, mdarray$<$ double\+\_\+complex, 2 $>$ \&alm, mdarray$<$ double\+\_\+complex, 2 $>$ \&o)}]{\setlength{\rightskip}{0pt plus 5cm}void sirius\+::\+Band\+::set\+\_\+o\+\_\+apw\+\_\+lo (
+\begin{DoxyParamCaption}
+\item[{{\bf K\+\_\+point} $\ast$}]{kp, }
+\item[{{\bf Atom\+\_\+type} $\ast$}]{type, }
+\item[{{\bf Atom} $\ast$}]{atom, }
+\item[{int}]{ia, }
+\item[{{\bf mdarray}$<$ double\+\_\+complex, 2 $>$ \&}]{alm, }
+\item[{{\bf mdarray}$<$ double\+\_\+complex, 2 $>$ \&}]{o}
+\end{DoxyParamCaption}
+)}\label{classsirius_1_1_band_a9ba2b7a8ab8c0de9287a7a70a5cf8b6a}
+
+
+Set A\+P\+W-\/lo and lo-\/\+A\+P\+W blocks of the overlap matrix. 
+
+\hypertarget{classsirius_1_1_band_abc15ad786624f84a6472d4677e7d2e43}{}\index{sirius\+::\+Band@{sirius\+::\+Band}!set\+\_\+fv\+\_\+h\+\_\+o@{set\+\_\+fv\+\_\+h\+\_\+o}}
+\index{set\+\_\+fv\+\_\+h\+\_\+o@{set\+\_\+fv\+\_\+h\+\_\+o}!sirius\+::\+Band@{sirius\+::\+Band}}
+\subsubsection[{set\+\_\+fv\+\_\+h\+\_\+o(\+K\+\_\+point $\ast$kp, Potential const \&potential\+\_\+\+\_\+, dmatrix$<$ double\+\_\+complex $>$ \&h, dmatrix$<$ double\+\_\+complex $>$ \&o) const }]{\setlength{\rightskip}{0pt plus 5cm}template$<$device\+\_\+t pu, electronic\+\_\+structure\+\_\+method\+\_\+t basis$>$ void sirius\+::\+Band\+::set\+\_\+fv\+\_\+h\+\_\+o (
+\begin{DoxyParamCaption}
+\item[{{\bf K\+\_\+point} $\ast$}]{kp, }
+\item[{{\bf Potential} const \&}]{potential\+\_\+\+\_\+, }
+\item[{{\bf dmatrix}$<$ double\+\_\+complex $>$ \&}]{h, }
+\item[{{\bf dmatrix}$<$ double\+\_\+complex $>$ \&}]{o}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [inline]}}\label{classsirius_1_1_band_abc15ad786624f84a6472d4677e7d2e43}
+
+
+Setup the Hamiltonian and overlap matrices in A\+P\+W+lo basis. 
+
+The Hamiltonian matrix has the following expression\+: \[ H_{\mu' \mu}=\langle \varphi_{\mu' } | \hat H | \varphi_{\mu } \rangle = \left( \begin{array}{cc} H_{\bf G'G} & H_{{\bf G'}j} \\ H_{j'{\bf G}} & H_{j'j} \end{array} \right) \] A\+P\+W-\/\+A\+P\+W block\+: \begin{eqnarray*} H_{{\bf G'} {\bf G}}^{\bf k} &=& \sum_{\alpha} \sum_{L'\nu', L\nu} a_{L'\nu'}^{\alpha *}({\bf G'+k}) \langle u_{\ell' \nu'}^{\alpha}Y_{\ell' m'}|\hat h^{\alpha} | u_{\ell \nu}^{\alpha}Y_{\ell m} \rangle a_{L\nu}^{\alpha}({\bf G+k}) + \frac{1}{2}{\bf G'} {\bf G} \cdot \Theta({\bf G - G'}) + \tilde V_{eff}({\bf G - G'}) \\ &=& \sum_{\alpha} \sum_{\xi' } a_{\xi'}^{\alpha *}({\bf G'+k}) b_{\xi'}^{\alpha}({\bf G+k}) + \frac{1}{2}{\bf G'} {\bf G} \cdot \Theta({\bf G - G'}) + \tilde V_{eff}({\bf G - G'}) \end{eqnarray*} A\+P\+W-\/lo block\+: \[ H_{{\bf G'} j}^{\bf k} = \sum_{L'\nu'} a_{L'\nu'}^{\alpha_j *}({\bf G'+k}) \langle u_{\ell' \nu'}^{\alpha_j}Y_{\ell' m'}|\hat h^{\alpha_j} | \phi_{\ell_j}^{\zeta_j \alpha_j} Y_{\ell_j m_j} \rangle \] lo-\/\+A\+P\+W block\+: \[ H_{j' {\bf G}}^{\bf k} = \sum_{L\nu} \langle \phi_{\ell_{j'}}^{\zeta_{j'} \alpha_{j'}} Y_{\ell_{j'} m_{j'}} |\hat h^{\alpha_{j'}} | u_{\ell \nu}^{\alpha_{j'}}Y_{\ell m} \rangle a_{L\nu}^{\alpha_{j'}}({\bf G+k}) \] lo-\/lo block\+: \[ H_{j' j}^{\bf k} = \langle \phi_{\ell_{j'}}^{\zeta_{j'} \alpha_{j'}} Y_{\ell_{j'} m_{j'}} |\hat h^{\alpha_{j}} | \phi_{\ell_j}^{\zeta_j \alpha_j} Y_{\ell_j m_j} \rangle \delta_{\alpha_j \alpha_{j'}} \]
+
+The overlap matrix has the following expression\+: \[ O_{\mu' \mu} = \langle \varphi_{\mu'} | \varphi_{\mu} \rangle \] A\+P\+W-\/\+A\+P\+W block\+: \[ O_{{\bf G'} {\bf G}}^{\bf k} = \sum_{\alpha} \sum_{L\nu} a_{L\nu}^{\alpha *}({\bf G'+k}) a_{L\nu}^{\alpha}({\bf G+k}) + \Theta({\bf G-G'}) \]
+
+A\+P\+W-\/lo block\+: \[ O_{{\bf G'} j}^{\bf k} = \sum_{\nu'} a_{\ell_j m_j \nu'}^{\alpha_j *}({\bf G'+k}) \langle u_{\ell_j \nu'}^{\alpha_j} | \phi_{\ell_j}^{\zeta_j \alpha_j} \rangle \]
+
+lo-\/\+A\+P\+W block\+: \[ O_{j' {\bf G}}^{\bf k} = \sum_{\nu'} \langle \phi_{\ell_{j'}}^{\zeta_{j'} \alpha_{j'}} | u_{\ell_{j'} \nu'}^{\alpha_{j'}} \rangle a_{\ell_{j'} m_{j'} \nu'}^{\alpha_{j'}}({\bf G+k}) \]
+
+lo-\/lo block\+: \[ O_{j' j}^{\bf k} = \langle \phi_{\ell_{j'}}^{\zeta_{j'} \alpha_{j'}} | \phi_{\ell_{j}}^{\zeta_{j} \alpha_{j}} \rangle \delta_{\alpha_{j'} \alpha_j} \delta_{\ell_{j'} \ell_j} \delta_{m_{j'} m_j} \] \hypertarget{classsirius_1_1_band_ab4cfe30dfeba7b682d664529055b6242}{}\index{sirius\+::\+Band@{sirius\+::\+Band}!apply\+\_\+fv\+\_\+h\+\_\+o@{apply\+\_\+fv\+\_\+h\+\_\+o}}
+\index{apply\+\_\+fv\+\_\+h\+\_\+o@{apply\+\_\+fv\+\_\+h\+\_\+o}!sirius\+::\+Band@{sirius\+::\+Band}}
+\subsubsection[{apply\+\_\+fv\+\_\+h\+\_\+o(\+K\+\_\+point $\ast$kp\+\_\+\+\_\+, int nlo, int N, int n, wave\+\_\+functions \&phi\+\_\+\+\_\+, wave\+\_\+functions \&hphi\+\_\+\+\_\+, wave\+\_\+functions \&ophi\+\_\+\+\_\+) const }]{\setlength{\rightskip}{0pt plus 5cm}void sirius\+::\+Band\+::apply\+\_\+fv\+\_\+h\+\_\+o (
+\begin{DoxyParamCaption}
+\item[{{\bf K\+\_\+point} $\ast$}]{kp\+\_\+\+\_\+, }
+\item[{int}]{nlo, }
+\item[{int}]{N, }
+\item[{int}]{n, }
+\item[{wave\+\_\+functions \&}]{phi\+\_\+\+\_\+, }
+\item[{wave\+\_\+functions \&}]{hphi\+\_\+\+\_\+, }
+\item[{wave\+\_\+functions \&}]{ophi\+\_\+\+\_\+}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [inline]}}\label{classsirius_1_1_band_ab4cfe30dfeba7b682d664529055b6242}
+
+
+Apply L\+A\+P\+W Hamiltonain and overlap to the trial wave-\/functions. 
+
+Check the documentation of \hyperlink{classsirius_1_1_band_abc15ad786624f84a6472d4677e7d2e43}{Band\+::set\+\_\+fv\+\_\+h\+\_\+o()} for the expressions of Hamiltonian and overlap matrices and \hyperlink{basis}{Basis functions for Kohn-\/\+Sham wave-\/functions expansion} for the definition of the L\+A\+P\+W+lo basis.
+
+For the set of wave-\/functions expanded in L\+A\+P\+W+lo basis (k-\/point index is dropped for simplicity) \[ \psi_{i} = \sum_{\mu} \phi_{\mu} C_{\mu i} \] where $ \mu = \{ {\bf G}, j \} $ is a combined index of L\+A\+P\+W and local orbitals we want to contrusct a subspace Hamiltonian and overlap matrices\+: \[ H_{i' i} = \langle \psi_{i'} | \hat H | \psi_i \rangle = \sum_{\mu' \mu} C_{\mu' i'}^{*} \langle \phi_{\mu'} | \hat H | \phi_{\mu} \rangle C_{\mu i} = \sum_{\mu'} C_{\mu' i'}^{*} h_{\mu' i}(\psi) \] \[ O_{i' i} = \langle \psi_{i'} | \psi_i \rangle = \sum_{\mu' \mu} C_{\mu' i'}^{*} \langle \phi_{\mu'} | \phi_{\mu} \rangle C_{\mu i} = \sum_{\mu'} C_{\mu' i'}^{*} o_{\mu' i}(\psi) \] where \[ h_{\mu' i}(\psi) = \sum_{\mu} \langle \phi_{\mu'} | \hat H | \phi_{\mu} \rangle C_{\mu i} \] and \[ o_{\mu' i}(\psi) = \sum_{\mu} \langle \phi_{\mu'} | \phi_{\mu} \rangle C_{\mu i} \] For the A\+P\+W block of $ h_{\mu' i}(\psi) $ and $ o_{\mu' i}(\psi) $ we have\+: \[ h_{{\bf G'} i}(\psi) = \sum_{{\bf G}} \langle \phi_{\bf G'} | \hat H | \phi_{\bf G} \rangle C_{{\bf G} i} + \sum_{j} \langle \phi_{\bf G'} | \hat H | \phi_{j} \rangle C_{j i} \] \[ o_{{\bf G'} i}(\psi) = \sum_{{\bf G}} \langle \phi_{\bf G'} | \phi_{\bf G} \rangle C_{{\bf G} i} + \sum_{j} \langle \phi_{\bf G'} | \phi_{j} \rangle C_{j i} \] and for the lo block\+: \[ h_{j' i}(\psi) = \sum_{{\bf G}} \langle \phi_{j'} | \hat H | \phi_{\bf G} \rangle C_{{\bf G} i} + \sum_{j} \langle \phi_{j'} | \hat H | \phi_{j} \rangle C_{j i} \] \[ o_{j' i}(\psi) = \sum_{{\bf G}} \langle \phi_{j'} | \phi_{\bf G} \rangle C_{{\bf G} i} + \sum_{j} \langle \phi_{j'} | \phi_{j} \rangle C_{j i} \]
+
+A\+P\+W-\/\+A\+P\+W contribution, muffin-\/tin part\+: \[ h_{{\bf G'} i}(\psi) = \sum_{{\bf G}} \langle \phi_{\bf G'} | \hat H | \phi_{\bf G} \rangle C_{{\bf G} i} = \sum_{{\bf G}} \sum_{\alpha} \sum_{\xi'} a_{\xi'}^{\alpha *}({\bf G'}) b_{\xi'}^{\alpha}({\bf G}) C_{{\bf G} i} \] \[ o_{{\bf G'} i}(\psi) = \sum_{{\bf G}} \langle \phi_{\bf G'} | \phi_{\bf G} \rangle C_{{\bf G} i} = \sum_{{\bf G}} \sum_{\alpha} \sum_{\xi'} a_{\xi'}^{\alpha *}({\bf G'}) a_{\xi'}^{\alpha}({\bf G}) C_{{\bf G} i} \] A\+P\+W-\/\+A\+P\+W contribution, interstitial effective potential part\+: \[ h_{{\bf G'} i}(\psi) = \int \Theta({\bf r}) e^{-i{\bf G'}{\bf r}} V({\bf r}) \psi_{i}({\bf r}) d{\bf r} \] This is done by transforming $ \psi_i({\bf G}) $ to the real space, multiplying by effectvive potential and step function and transforming the result back to the $ {\bf G} $ domain.
+
+A\+P\+W-\/\+A\+P\+W contribution, interstitial kinetic energy part\+: \[ h_{{\bf G'} i}(\psi) = \int \Theta({\bf r}) e^{-i{\bf G'}{\bf r}} \Big( -\frac{1}{2} \nabla \Big) \Big( \nabla \psi_{i}({\bf r}) \Big) d{\bf r} \] and the gradient of the wave-\/function is computed with F\+F\+T as\+: \[ \Big( \nabla \psi_{i}({\bf r}) \Big) = \sum_{\bf G} i{\bf G}e^{i{\bf G}{\bf r}}\psi_i({\bf G}) \]
+
+A\+P\+W-\/\+A\+P\+W contribution, interstitial overlap\+: \[ o_{{\bf G'} i}(\psi) = \int \Theta({\bf r}) e^{-i{\bf G'}{\bf r}} \psi_{i}({\bf r}) d{\bf r} \]
+
+A\+P\+W-\/lo contribution\+: \[ h_{{\bf G'} i}(\psi) = \sum_{j} \langle \phi_{\bf G'} | \hat H | \phi_{j} \rangle C_{j i} = \sum_{j} C_{j i} \sum_{L'\nu'} a_{L'\nu'}^{\alpha_j *}({\bf G'}) \langle u_{\ell' \nu'}^{\alpha_j}Y_{\ell' m'}|\hat h^{\alpha_j} | \phi_{\ell_j}^{\zeta_j \alpha_j} Y_{\ell_j m_j} \rangle = \sum_{j} C_{j i} \sum_{\xi'} a_{\xi'}^{\alpha_j *}({\bf G'}) h_{\xi' \xi_j}^{\alpha_j} \] \[ o_{{\bf G'} i}(\psi) = \sum_{j} \langle \phi_{\bf G'} | \phi_{j} \rangle C_{j i} = \sum_{j} C_{j i} \sum_{L'\nu'} a_{L'\nu'}^{\alpha_j *}({\bf G'}) \langle u_{\ell' \nu'}^{\alpha_j}Y_{\ell' m'}| \phi_{\ell_j}^{\zeta_j \alpha_j} Y_{\ell_j m_j} \rangle = \sum_{j} C_{j i} \sum_{\nu'} a_{\ell_j m_j \nu'}^{\alpha_j *}({\bf G'}) o_{\nu' \zeta_j \ell_j}^{\alpha_j} \] lo-\/\+A\+P\+W contribution\+: \[ h_{j' i}(\psi) = \sum_{\bf G} \langle \phi_{j'} | \hat H | \phi_{\bf G} \rangle C_{{\bf G} i} = \sum_{\bf G} C_{{\bf G} i} \sum_{L\nu} \langle \phi_{\ell_{j'}}^{\zeta_{j'} \alpha_{j'}} Y_{\ell_{j'} m_{j'}} |\hat h^{\alpha_{j'}} | u_{\ell \nu}^{\alpha_{j'}}Y_{\ell m} \rangle a_{L\nu}^{\alpha_{j'}}({\bf G}) = \sum_{\bf G} C_{{\bf G} i} \sum_{\xi} h_{\xi_{j'} \xi}^{\alpha_{j'}} a_{\xi}^{\alpha_{j'}}({\bf G}) \] \[ o_{j' i}(\psi) = \sum_{\bf G} \langle \phi_{j'} | \phi_{\bf G} \rangle C_{{\bf G} i} = \sum_{\bf G} C_{{\bf G} i} \sum_{L\nu} \langle \phi_{\ell_{j'}}^{\zeta_{j'} \alpha_{j'}} Y_{\ell_{j'} m_{j'}} | u_{\ell \nu}^{\alpha_{j'}}Y_{\ell m} \rangle a_{L\nu}^{\alpha_{j'}}({\bf G}) = \sum_{\bf G} C_{{\bf G} i} \sum_{\nu} o_{\zeta_{j'} \nu \ell_{j'}}^{\alpha_{j'}} a_{\ell_{j'} m_{j'} \nu}^{\alpha_{j'}}({\bf G}) \] lo-\/lo contribution\+: \[ h_{j' i}(\psi) = \sum_{j} \langle \phi_{j'} | \hat H | \phi_{j} \rangle C_{j i} = \sum_{j} C_{j i} h_{\xi_{j'} \xi_j}^{\alpha_j} \delta_{\alpha_j \alpha_{j'}} \] \[ o_{j' i}(\psi) = \sum_{j} \langle \phi_{j'} | \phi_{j} \rangle C_{j i} = \sum_{j} C_{j i} o_{\zeta_{j'} \zeta_{j} \ell_j}^{\alpha_j} \delta_{\alpha_j \alpha_{j'}} \delta_{\ell_j \ell_{j'}} \delta_{m_j m_{j'}} \] 
+
+Definition at line 351 of file apply.\+hpp.
+
+\hypertarget{classsirius_1_1_band_a24364a5a4842ce8fdb202d3d38cfed44}{}\index{sirius\+::\+Band@{sirius\+::\+Band}!solve\+\_\+sv@{solve\+\_\+sv}}
+\index{solve\+\_\+sv@{solve\+\_\+sv}!sirius\+::\+Band@{sirius\+::\+Band}}
+\subsubsection[{solve\+\_\+sv(\+K\+\_\+point $\ast$kp, Periodic\+\_\+function$<$ double $>$ $\ast$effective\+\_\+magnetic\+\_\+field[3]) const }]{\setlength{\rightskip}{0pt plus 5cm}void sirius\+::\+Band\+::solve\+\_\+sv (
+\begin{DoxyParamCaption}
+\item[{{\bf K\+\_\+point} $\ast$}]{kp, }
+\item[{{\bf Periodic\+\_\+function}$<$ double $>$ $\ast$}]{effective\+\_\+magnetic\+\_\+field\mbox{[}3\mbox{]}}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [inline]}}\label{classsirius_1_1_band_a24364a5a4842ce8fdb202d3d38cfed44}
+
+
+Solve second-\/variational problem. 
+
+
+
+Definition at line 92 of file solve.\+hpp.
+
+\hypertarget{classsirius_1_1_band_a7a1451542ba6a78e082bd79b68aee540}{}\index{sirius\+::\+Band@{sirius\+::\+Band}!solve\+\_\+fd@{solve\+\_\+fd}}
+\index{solve\+\_\+fd@{solve\+\_\+fd}!sirius\+::\+Band@{sirius\+::\+Band}}
+\subsubsection[{solve\+\_\+fd(\+K\+\_\+point $\ast$kp, Periodic\+\_\+function$<$ double $>$ $\ast$effective\+\_\+potential, Periodic\+\_\+function$<$ double $>$ $\ast$effective\+\_\+magnetic\+\_\+field[3]) const }]{\setlength{\rightskip}{0pt plus 5cm}void sirius\+::\+Band\+::solve\+\_\+fd (
+\begin{DoxyParamCaption}
+\item[{{\bf K\+\_\+point} $\ast$}]{kp, }
+\item[{{\bf Periodic\+\_\+function}$<$ double $>$ $\ast$}]{effective\+\_\+potential, }
+\item[{{\bf Periodic\+\_\+function}$<$ double $>$ $\ast$}]{effective\+\_\+magnetic\+\_\+field\mbox{[}3\mbox{]}}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [inline]}}\label{classsirius_1_1_band_a7a1451542ba6a78e082bd79b68aee540}
+
+
+Diagonalization of the full Hamiltonian (without second variation). 
+
+
+
+Definition at line 25 of file solve.\+hpp.
+
+\hypertarget{classsirius_1_1_band_a4d39e6e67825eef410af2015d72c06bd}{}\index{sirius\+::\+Band@{sirius\+::\+Band}!solve\+\_\+for\+\_\+kset@{solve\+\_\+for\+\_\+kset}}
+\index{solve\+\_\+for\+\_\+kset@{solve\+\_\+for\+\_\+kset}!sirius\+::\+Band@{sirius\+::\+Band}}
+\subsubsection[{solve\+\_\+for\+\_\+kset(\+K\+\_\+point\+\_\+set \&kset\+\_\+\+\_\+, Potential \&potential\+\_\+\+\_\+, bool precompute\+\_\+\+\_\+) const }]{\setlength{\rightskip}{0pt plus 5cm}void sirius\+::\+Band\+::solve\+\_\+for\+\_\+kset (
+\begin{DoxyParamCaption}
+\item[{{\bf K\+\_\+point\+\_\+set} \&}]{kset\+\_\+\+\_\+, }
+\item[{{\bf Potential} \&}]{potential\+\_\+\+\_\+, }
+\item[{bool}]{precompute\+\_\+\+\_\+}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [inline]}}\label{classsirius_1_1_band_a4d39e6e67825eef410af2015d72c06bd}
+
+
+Solve $ \hat H \psi = E \psi $ and find eigen-\/states of the Hamiltonian. 
+
+
+
+Definition at line 240 of file solve.\+hpp.
+
+\hypertarget{classsirius_1_1_band_a1ff476fcf47f57f5603e0acfa4011c6f}{}\index{sirius\+::\+Band@{sirius\+::\+Band}!get\+\_\+h\+\_\+diag@{get\+\_\+h\+\_\+diag}}
+\index{get\+\_\+h\+\_\+diag@{get\+\_\+h\+\_\+diag}!sirius\+::\+Band@{sirius\+::\+Band}}
+\subsubsection[{get\+\_\+h\+\_\+diag(\+K\+\_\+point $\ast$kp\+\_\+\+\_\+, double v0\+\_\+\+\_\+, double theta0\+\_\+\+\_\+) const }]{\setlength{\rightskip}{0pt plus 5cm}{\bf mdarray}$<$ double, 1 $>$ sirius\+::\+Band\+::get\+\_\+h\+\_\+diag (
+\begin{DoxyParamCaption}
+\item[{{\bf K\+\_\+point} $\ast$}]{kp\+\_\+\+\_\+, }
+\item[{double}]{v0\+\_\+\+\_\+, }
+\item[{double}]{theta0\+\_\+\+\_\+}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [inline]}}\label{classsirius_1_1_band_a1ff476fcf47f57f5603e0acfa4011c6f}
+
+
+Get diagonal elements of L\+A\+P\+W Hamiltonian. 
+
+
+
+Definition at line 3 of file band.\+h.
+
+\hypertarget{classsirius_1_1_band_abb9d26ea7d7bcb182b31f0fc36859c32}{}\index{sirius\+::\+Band@{sirius\+::\+Band}!get\+\_\+o\+\_\+diag@{get\+\_\+o\+\_\+diag}}
+\index{get\+\_\+o\+\_\+diag@{get\+\_\+o\+\_\+diag}!sirius\+::\+Band@{sirius\+::\+Band}}
+\subsubsection[{get\+\_\+o\+\_\+diag(\+K\+\_\+point $\ast$kp\+\_\+\+\_\+, double theta0\+\_\+\+\_\+) const }]{\setlength{\rightskip}{0pt plus 5cm}{\bf mdarray}$<$ double, 1 $>$ sirius\+::\+Band\+::get\+\_\+o\+\_\+diag (
+\begin{DoxyParamCaption}
+\item[{{\bf K\+\_\+point} $\ast$}]{kp\+\_\+\+\_\+, }
+\item[{double}]{theta0\+\_\+\+\_\+}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [inline]}}\label{classsirius_1_1_band_abb9d26ea7d7bcb182b31f0fc36859c32}
+
+
+Get diagonal elements of L\+A\+P\+W overlap. 
+
+
+
+Definition at line 65 of file band.\+h.
+
+\hypertarget{classsirius_1_1_band_a64bf53215f72886a4f543aae001166f1}{}\index{sirius\+::\+Band@{sirius\+::\+Band}!get\+\_\+h\+\_\+diag@{get\+\_\+h\+\_\+diag}}
+\index{get\+\_\+h\+\_\+diag@{get\+\_\+h\+\_\+diag}!sirius\+::\+Band@{sirius\+::\+Band}}
+\subsubsection[{get\+\_\+h\+\_\+diag(\+K\+\_\+point $\ast$kp\+\_\+\+\_\+, int ispn\+\_\+\+\_\+, double v0\+\_\+\+\_\+, D\+\_\+operator$<$\+T $>$ \&d\+\_\+op\+\_\+\+\_\+) const }]{\setlength{\rightskip}{0pt plus 5cm}template$<$typename T $>$ {\bf mdarray}$<$ double, 1 $>$ sirius\+::\+Band\+::get\+\_\+h\+\_\+diag (
+\begin{DoxyParamCaption}
+\item[{{\bf K\+\_\+point} $\ast$}]{kp\+\_\+\+\_\+, }
+\item[{int}]{ispn\+\_\+\+\_\+, }
+\item[{double}]{v0\+\_\+\+\_\+, }
+\item[{{\bf D\+\_\+operator}$<$T $>$ \&}]{d\+\_\+op\+\_\+\+\_\+}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [inline]}}\label{classsirius_1_1_band_a64bf53215f72886a4f543aae001166f1}
+
+
+Get diagonal elements of pseudopotential Hamiltonian. 
+
+
+
+Definition at line 108 of file band.\+h.
+
+\hypertarget{classsirius_1_1_band_a332ce79500aad8f0329ee73067ebe14d}{}\index{sirius\+::\+Band@{sirius\+::\+Band}!get\+\_\+o\+\_\+diag@{get\+\_\+o\+\_\+diag}}
+\index{get\+\_\+o\+\_\+diag@{get\+\_\+o\+\_\+diag}!sirius\+::\+Band@{sirius\+::\+Band}}
+\subsubsection[{get\+\_\+o\+\_\+diag(\+K\+\_\+point $\ast$kp\+\_\+\+\_\+, Q\+\_\+operator$<$\+T $>$ \&q\+\_\+op\+\_\+\+\_\+) const }]{\setlength{\rightskip}{0pt plus 5cm}template$<$typename T $>$ {\bf mdarray}$<$ double, 1 $>$ sirius\+::\+Band\+::get\+\_\+o\+\_\+diag (
+\begin{DoxyParamCaption}
+\item[{{\bf K\+\_\+point} $\ast$}]{kp\+\_\+\+\_\+, }
+\item[{{\bf Q\+\_\+operator}$<$T $>$ \&}]{q\+\_\+op\+\_\+\+\_\+}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [inline]}}\label{classsirius_1_1_band_a332ce79500aad8f0329ee73067ebe14d}
+
+
+Get diagonal elements of pseudopotential overlap matrix. 
+
+
+
+Definition at line 173 of file band.\+h.
+
+\hypertarget{classsirius_1_1_band_abe2e5832a35777c26bc5faba0e22e9eb}{}\index{sirius\+::\+Band@{sirius\+::\+Band}!initialize\+\_\+subspace@{initialize\+\_\+subspace}}
+\index{initialize\+\_\+subspace@{initialize\+\_\+subspace}!sirius\+::\+Band@{sirius\+::\+Band}}
+\subsubsection[{initialize\+\_\+subspace(\+K\+\_\+point\+\_\+set \&kset\+\_\+\+\_\+, Potential \&potential\+\_\+\+\_\+) const }]{\setlength{\rightskip}{0pt plus 5cm}void sirius\+::\+Band\+::initialize\+\_\+subspace (
+\begin{DoxyParamCaption}
+\item[{{\bf K\+\_\+point\+\_\+set} \&}]{kset\+\_\+\+\_\+, }
+\item[{{\bf Potential} \&}]{potential\+\_\+\+\_\+}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [inline]}}\label{classsirius_1_1_band_abe2e5832a35777c26bc5faba0e22e9eb}
+
+\begin{DoxyItemize}
+\item interpolate atomic\+\_\+pseudo\+\_\+wfs(r) $\ast$/ 
+\end{DoxyItemize}
+
+Definition at line 2 of file band.\+h.
+
+\hypertarget{classsirius_1_1_band_a249d17383e8d8f822c5b2bbc251c0bb6}{}\index{sirius\+::\+Band@{sirius\+::\+Band}!initialize\+\_\+subspace@{initialize\+\_\+subspace}}
+\index{initialize\+\_\+subspace@{initialize\+\_\+subspace}!sirius\+::\+Band@{sirius\+::\+Band}}
+\subsubsection[{initialize\+\_\+subspace(\+K\+\_\+point $\ast$kp\+\_\+\+\_\+, Periodic\+\_\+function$<$ double $>$ $\ast$effective\+\_\+potential\+\_\+\+\_\+, Periodic\+\_\+function$<$ double $>$ $\ast$effective\+\_\+magnetic\+\_\+field[3], int num\+\_\+ao\+\_\+\+\_\+, std\+::vector$<$ std\+::vector$<$ Spline$<$ double $>$$>$$>$ const \&rad\+\_\+int\+\_\+\+\_\+) const }]{\setlength{\rightskip}{0pt plus 5cm}template$<$typename T $>$ void sirius\+::\+Band\+::initialize\+\_\+subspace (
+\begin{DoxyParamCaption}
+\item[{{\bf K\+\_\+point} $\ast$}]{kp\+\_\+\+\_\+, }
+\item[{{\bf Periodic\+\_\+function}$<$ double $>$ $\ast$}]{effective\+\_\+potential\+\_\+\+\_\+, }
+\item[{{\bf Periodic\+\_\+function}$<$ double $>$ $\ast$}]{effective\+\_\+magnetic\+\_\+field\mbox{[}3\mbox{]}, }
+\item[{int}]{num\+\_\+ao\+\_\+\+\_\+, }
+\item[{std\+::vector$<$ std\+::vector$<$ {\bf Spline}$<$ double $>$$>$$>$ const \&}]{rad\+\_\+int\+\_\+\+\_\+}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [inline]}}\label{classsirius_1_1_band_a249d17383e8d8f822c5b2bbc251c0bb6}
+
+
+Initialize the wave-\/functions subspace. 
+
+
+
+Definition at line 105 of file band.\+h.
+
+\hypertarget{classsirius_1_1_band_a3aa9361ef432d4cca5e0047b8bee8e19}{}\index{sirius\+::\+Band@{sirius\+::\+Band}!apply\+\_\+h@{apply\+\_\+h}}
+\index{apply\+\_\+h@{apply\+\_\+h}!sirius\+::\+Band@{sirius\+::\+Band}}
+\subsubsection[{apply\+\_\+h(\+K\+\_\+point $\ast$kp\+\_\+\+\_\+, int ispn\+\_\+\+\_\+, int N\+\_\+\+\_\+, int n\+\_\+\+\_\+, wave\+\_\+functions \&phi\+\_\+\+\_\+, wave\+\_\+functions \&hphi\+\_\+\+\_\+, D\+\_\+operator$<$\+T $>$ \&d\+\_\+op) const }]{\setlength{\rightskip}{0pt plus 5cm}template$<$typename T $>$ void sirius\+::\+Band\+::apply\+\_\+h (
+\begin{DoxyParamCaption}
+\item[{{\bf K\+\_\+point} $\ast$}]{kp\+\_\+\+\_\+, }
+\item[{int}]{ispn\+\_\+\+\_\+, }
+\item[{int}]{N\+\_\+\+\_\+, }
+\item[{int}]{n\+\_\+\+\_\+, }
+\item[{wave\+\_\+functions \&}]{phi\+\_\+\+\_\+, }
+\item[{wave\+\_\+functions \&}]{hphi\+\_\+\+\_\+, }
+\item[{{\bf D\+\_\+operator}$<$T $>$ \&}]{d\+\_\+op}
+\end{DoxyParamCaption}
+) const}\label{classsirius_1_1_band_a3aa9361ef432d4cca5e0047b8bee8e19}
+
+\begin{DoxyParams}[1]{Parameters}
+\mbox{\tt in}  & {\em phi} & Input wave-\/functions \mbox{[}storage\+: C\+P\+U \&\& G\+P\+U\mbox{]}. \\
+\hline
+\mbox{\tt out}  & {\em hphi} & Hamiltonian, applied to wave-\/functions \mbox{[}storage\+: C\+P\+U $\vert$$\vert$ G\+P\+U\mbox{]}. \\
+\hline
+\end{DoxyParams}
+
+
+Definition at line 5 of file apply.\+hpp.
+
+\hypertarget{classsirius_1_1_band_ac3d1880e4a89fea7c75d6f2ebb8a0edb}{}\index{sirius\+::\+Band@{sirius\+::\+Band}!apply\+\_\+h\+\_\+o@{apply\+\_\+h\+\_\+o}}
+\index{apply\+\_\+h\+\_\+o@{apply\+\_\+h\+\_\+o}!sirius\+::\+Band@{sirius\+::\+Band}}
+\subsubsection[{apply\+\_\+h\+\_\+o(\+K\+\_\+point $\ast$kp\+\_\+\+\_\+, int ispn\+\_\+\+\_\+, int N\+\_\+\+\_\+, int n\+\_\+\+\_\+, wave\+\_\+functions \&phi\+\_\+\+\_\+, wave\+\_\+functions \&hphi\+\_\+\+\_\+, wave\+\_\+functions \&ophi\+\_\+\+\_\+, D\+\_\+operator$<$\+T $>$ \&d\+\_\+op, Q\+\_\+operator$<$\+T $>$ \&q\+\_\+op) const }]{\setlength{\rightskip}{0pt plus 5cm}template$<$typename T $>$ void sirius\+::\+Band\+::apply\+\_\+h\+\_\+o (
+\begin{DoxyParamCaption}
+\item[{{\bf K\+\_\+point} $\ast$}]{kp\+\_\+\+\_\+, }
+\item[{int}]{ispn\+\_\+\+\_\+, }
+\item[{int}]{N\+\_\+\+\_\+, }
+\item[{int}]{n\+\_\+\+\_\+, }
+\item[{wave\+\_\+functions \&}]{phi\+\_\+\+\_\+, }
+\item[{wave\+\_\+functions \&}]{hphi\+\_\+\+\_\+, }
+\item[{wave\+\_\+functions \&}]{ophi\+\_\+\+\_\+, }
+\item[{{\bf D\+\_\+operator}$<$T $>$ \&}]{d\+\_\+op, }
+\item[{{\bf Q\+\_\+operator}$<$T $>$ \&}]{q\+\_\+op}
+\end{DoxyParamCaption}
+) const}\label{classsirius_1_1_band_ac3d1880e4a89fea7c75d6f2ebb8a0edb}
+
+\begin{DoxyParams}[1]{Parameters}
+\mbox{\tt in}  & {\em phi} & Input wave-\/functions \mbox{[}storage\+: C\+P\+U \&\& G\+P\+U\mbox{]}. \\
+\hline
+\mbox{\tt out}  & {\em hphi} & Hamiltonian, applied to wave-\/functions \mbox{[}storage\+: C\+P\+U $\vert$$\vert$ G\+P\+U\mbox{]}. \\
+\hline
+\mbox{\tt out}  & {\em ophi} & Overlap operator, applied to wave-\/functions \mbox{[}storage\+: C\+P\+U $\vert$$\vert$ G\+P\+U\mbox{]}. \\
+\hline
+\end{DoxyParams}
+
+
+Definition at line 77 of file apply.\+hpp.
+
+
+
+\subsection{Member Data Documentation}
+\hypertarget{classsirius_1_1_band_a355ecbcf2139f3a5ae0ff33aa2409d58}{}\index{sirius\+::\+Band@{sirius\+::\+Band}!ctx\+\_\+@{ctx\+\_\+}}
+\index{ctx\+\_\+@{ctx\+\_\+}!sirius\+::\+Band@{sirius\+::\+Band}}
+\subsubsection[{ctx\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}{\bf Simulation\+\_\+context}\& sirius\+::\+Band\+::ctx\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classsirius_1_1_band_a355ecbcf2139f3a5ae0ff33aa2409d58}
+
+
+Simulation context. 
+
+
+
+Definition at line 47 of file band.\+h.
+
+\hypertarget{classsirius_1_1_band_a8776f7df889f8bca82ff5a9a24331205}{}\index{sirius\+::\+Band@{sirius\+::\+Band}!unit\+\_\+cell\+\_\+@{unit\+\_\+cell\+\_\+}}
+\index{unit\+\_\+cell\+\_\+@{unit\+\_\+cell\+\_\+}!sirius\+::\+Band@{sirius\+::\+Band}}
+\subsubsection[{unit\+\_\+cell\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}{\bf Unit\+\_\+cell}\& sirius\+::\+Band\+::unit\+\_\+cell\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classsirius_1_1_band_a8776f7df889f8bca82ff5a9a24331205}
+
+
+Alias for the unit cell. 
+
+
+
+Definition at line 50 of file band.\+h.
+
+\hypertarget{classsirius_1_1_band_a621c3610318f8b26c0f4167c3a0dca76}{}\index{sirius\+::\+Band@{sirius\+::\+Band}!blacs\+\_\+grid\+\_\+@{blacs\+\_\+grid\+\_\+}}
+\index{blacs\+\_\+grid\+\_\+@{blacs\+\_\+grid\+\_\+}!sirius\+::\+Band@{sirius\+::\+Band}}
+\subsubsection[{blacs\+\_\+grid\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}{\bf B\+L\+A\+C\+S\+\_\+grid} const\& sirius\+::\+Band\+::blacs\+\_\+grid\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classsirius_1_1_band_a621c3610318f8b26c0f4167c3a0dca76}
+
+
+B\+L\+A\+C\+S grid for distributed linear algebra operations. 
+
+
+
+Definition at line 53 of file band.\+h.
+
+\hypertarget{classsirius_1_1_band_a20c18e018c120ad6f901d046720decce}{}\index{sirius\+::\+Band@{sirius\+::\+Band}!gaunt\+\_\+coefs\+\_\+@{gaunt\+\_\+coefs\+\_\+}}
+\index{gaunt\+\_\+coefs\+\_\+@{gaunt\+\_\+coefs\+\_\+}!sirius\+::\+Band@{sirius\+::\+Band}}
+\subsubsection[{gaunt\+\_\+coefs\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}std\+::unique\+\_\+ptr$<${\bf Gaunt\+\_\+coefficients}$<$double\+\_\+complex$>$ $>$ sirius\+::\+Band\+::gaunt\+\_\+coefs\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classsirius_1_1_band_a20c18e018c120ad6f901d046720decce}
+
+
+Non-\/zero Gaunt coefficients. 
+
+
+
+Definition at line 56 of file band.\+h.
+
+\hypertarget{classsirius_1_1_band_aa8e787f36f24f395d19bf617f3165398}{}\index{sirius\+::\+Band@{sirius\+::\+Band}!std\+\_\+evp\+\_\+solver\+\_\+@{std\+\_\+evp\+\_\+solver\+\_\+}}
+\index{std\+\_\+evp\+\_\+solver\+\_\+@{std\+\_\+evp\+\_\+solver\+\_\+}!sirius\+::\+Band@{sirius\+::\+Band}}
+\subsubsection[{std\+\_\+evp\+\_\+solver\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}std\+::unique\+\_\+ptr$<${\bf Eigenproblem}$>$ sirius\+::\+Band\+::std\+\_\+evp\+\_\+solver\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classsirius_1_1_band_aa8e787f36f24f395d19bf617f3165398}
+
+
+Interface to a standard eigen-\/value solver. 
+
+
+
+Definition at line 59 of file band.\+h.
+
+\hypertarget{classsirius_1_1_band_a65ee266c73c0f8da01fc25db867ad119}{}\index{sirius\+::\+Band@{sirius\+::\+Band}!gen\+\_\+evp\+\_\+solver\+\_\+@{gen\+\_\+evp\+\_\+solver\+\_\+}}
+\index{gen\+\_\+evp\+\_\+solver\+\_\+@{gen\+\_\+evp\+\_\+solver\+\_\+}!sirius\+::\+Band@{sirius\+::\+Band}}
+\subsubsection[{gen\+\_\+evp\+\_\+solver\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}std\+::unique\+\_\+ptr$<${\bf Eigenproblem}$>$ sirius\+::\+Band\+::gen\+\_\+evp\+\_\+solver\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classsirius_1_1_band_a65ee266c73c0f8da01fc25db867ad119}
+
+
+Interface to a generalized eigen-\/value solver. 
+
+
+
+Definition at line 62 of file band.\+h.
+
+
+
+The documentation for this class was generated from the following files\+:\begin{DoxyCompactItemize}
+\item 
+\hyperlink{band_8h}{band.\+h}\item 
+apply.\+hpp\item 
+diagonalize.\+hpp\item 
+get\+\_\+h\+\_\+o\+\_\+diag.\+hpp\item 
+initialize\+\_\+subspace.\+hpp\item 
+residuals.\+hpp\item 
+\hyperlink{set__lapw__h__o_8hpp}{set\+\_\+lapw\+\_\+h\+\_\+o.\+hpp}\item 
+\hyperlink{solve_8hpp}{solve.\+hpp}\end{DoxyCompactItemize}

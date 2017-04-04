@@ -1,0 +1,42 @@
+\hypertarget{geometry3d_8hpp}{}\section{geometry3d.\+hpp File Reference}
+\label{geometry3d_8hpp}\index{geometry3d.\+hpp@{geometry3d.\+hpp}}
+
+
+Simple classes and functions to work with the 3\+D vectors and matrices of the crystal lattice.  
+
+
+Include dependency graph for geometry3d.\+hpp\+:
+% FIG 0
+This graph shows which files directly or indirectly include this file\+:
+% FIG 1
+\subsection*{Classes}
+\begin{DoxyCompactItemize}
+\item 
+class \hyperlink{classgeometry3d_1_1vector3d}{geometry3d\+::vector3d$<$ T $>$}
+\begin{DoxyCompactList}\small\item\em Simple implementation of 3d vector. \end{DoxyCompactList}\end{DoxyCompactItemize}
+\subsection*{Functions}
+\begin{DoxyCompactItemize}
+\item 
+\hypertarget{namespacegeometry3d_ac3dffb974f7c8a42a461c188156600af}{}{\footnotesize template$<$typename T , typename U $>$ }\\auto {\bfseries geometry3d\+::operator$\ast$} (vector3d$<$ T $>$ const a, vector3d$<$ U $>$ const b) -\/$>$ decltype(T\label{namespacegeometry3d_ac3dffb974f7c8a42a461c188156600af}
+
+\item 
+{\footnotesize template$<$typename T $>$ }\\matrix3d$<$ T $>$ {\bfseries geometry3d\+::transpose} (matrix3d$<$ T $>$ src)
+\begin{DoxyCompactList}\small\item\em Return transpose of the matrix. \end{DoxyCompactList}\item 
+{\footnotesize template$<$typename T $>$ }\\matrix3d$<$ T $>$ {\bfseries geometry3d\+::inverse} (matrix3d$<$ T $>$ src)
+\begin{DoxyCompactList}\small\item\em Return inverse of the matrix. \end{DoxyCompactList}\item 
+\hypertarget{namespacegeometry3d_a20ef510dee28998c5a54924d8d45dbc8}{}std\+::pair$<$ vector3d$<$ double $>$, vector3d$<$ int $>$ $>$ {\bfseries geometry3d\+::reduce\+\_\+coordinates} (vector3d$<$ double $>$ coord)\label{namespacegeometry3d_a20ef510dee28998c5a54924d8d45dbc8}
+
+\item 
+vector3d$<$ int $>$ {\bfseries geometry3d\+::find\+\_\+translations} (double radius\+\_\+\+\_\+, matrix3d$<$ double $>$ const \&lattice\+\_\+vectors\+\_\+\+\_\+)
+\begin{DoxyCompactList}\small\item\em Find supercell that circumscribes the sphere with a given radius. \end{DoxyCompactList}\end{DoxyCompactItemize}
+\subsection*{Variables}
+\begin{DoxyCompactItemize}
+\item 
+\hypertarget{namespacegeometry3d_a6dab3768b018787c710fa07203a2fd05}{}$\ast$ {\bfseries geometry3d\+::\+U}\label{namespacegeometry3d_a6dab3768b018787c710fa07203a2fd05}
+
+\end{DoxyCompactItemize}
+
+
+\subsection{Detailed Description}
+Simple classes and functions to work with the 3\+D vectors and matrices of the crystal lattice. 
+

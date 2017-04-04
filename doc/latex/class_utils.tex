@@ -1,0 +1,121 @@
+\hypertarget{class_utils}{}\section{Utils Class Reference}
+\label{class_utils}\index{Utils@{Utils}}
+
+
+Utility class.  
+
+
+\subsection*{Static Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+static int \hyperlink{class_utils_a4c251a2107c4705d5cbd34204b0c8f43}{lmmax} (int lmax)
+\begin{DoxyCompactList}\small\item\em Maximum number of $ \ell, m $ combinations for a given $ \ell_{max} $. \end{DoxyCompactList}\item 
+\hypertarget{class_utils_a76563c31ab6d07447504d9f80e627d4f}{}static int {\bfseries lm\+\_\+by\+\_\+l\+\_\+m} (int l, int m)\label{class_utils_a76563c31ab6d07447504d9f80e627d4f}
+
+\item 
+\hypertarget{class_utils_acd96ebc7a29a7e833d7612b92db529d6}{}static int {\bfseries lmax\+\_\+by\+\_\+lmmax} (int lmmax\+\_\+\+\_\+)\label{class_utils_acd96ebc7a29a7e833d7612b92db529d6}
+
+\item 
+\hypertarget{class_utils_ab07b906a008493758a5181809763a796}{}static bool {\bfseries file\+\_\+exists} (const std\+::string file\+\_\+name)\label{class_utils_ab07b906a008493758a5181809763a796}
+
+\item 
+\hypertarget{class_utils_ab1b11c654bbd8f5b88e9ce21b6764e2a}{}static double {\bfseries fermi\+\_\+dirac\+\_\+distribution} (double e)\label{class_utils_ab1b11c654bbd8f5b88e9ce21b6764e2a}
+
+\item 
+\hypertarget{class_utils_a78f8129433092f0ff898f0393c9ff4b9}{}static double {\bfseries gaussian\+\_\+smearing} (double e, double delta)\label{class_utils_a78f8129433092f0ff898f0393c9ff4b9}
+
+\item 
+\hypertarget{class_utils_ac609670d145db57e02eec4bfe074937a}{}static double {\bfseries cold\+\_\+smearing} (double e)\label{class_utils_ac609670d145db57e02eec4bfe074937a}
+
+\item 
+\hypertarget{class_utils_ab4453211da2d1b6dfe29caea87b115cf}{}static std\+::string {\bfseries double\+\_\+to\+\_\+string} (double val, int precision=-\/1)\label{class_utils_ab4453211da2d1b6dfe29caea87b115cf}
+
+\item 
+\hypertarget{class_utils_a71f891b3befb16ab1439750184f7f9a4}{}static double {\bfseries phi\+\_\+by\+\_\+sin\+\_\+cos} (double sinp, double cosp)\label{class_utils_a71f891b3befb16ab1439750184f7f9a4}
+
+\item 
+\hypertarget{class_utils_aa8f301a730e8d4479f0055fc030d00c8}{}static long double {\bfseries factorial} (int n)\label{class_utils_aa8f301a730e8d4479f0055fc030d00c8}
+
+\item 
+static uint64\+\_\+t \hyperlink{class_utils_a76720df890bf8b5efe363e0f1fe9303d}{hash} (void const $\ast$buff, size\+\_\+t size, uint64\+\_\+t h=5381)
+\begin{DoxyCompactList}\small\item\em Simple hash function. \end{DoxyCompactList}\item 
+\hypertarget{class_utils_a9348a74851e5f7795bf823976523a319}{}static void {\bfseries write\+\_\+matrix} (const std\+::string \&fname, \hyperlink{classsddk_1_1mdarray}{mdarray}$<$ double\+\_\+complex, 2 $>$ \&\hyperlink{classsddk_1_1mdarray}{matrix}, int nrow, int ncol, bool write\+\_\+upper\+\_\+only=true, bool write\+\_\+abs\+\_\+only=false, std\+::string fmt=\char`\"{}\%18.\+12f\char`\"{})\label{class_utils_a9348a74851e5f7795bf823976523a319}
+
+\item 
+\hypertarget{class_utils_a3616e4ffb0b5a867cf6eb43555cf1176}{}static void {\bfseries write\+\_\+matrix} (std\+::string const \&fname, bool write\+\_\+all, \hyperlink{classsddk_1_1mdarray}{mdarray}$<$ double, 2 $>$ \&\hyperlink{classsddk_1_1mdarray}{matrix})\label{class_utils_a3616e4ffb0b5a867cf6eb43555cf1176}
+
+\item 
+\hypertarget{class_utils_a878bdc04bcb9270597799fc1b864e2c6}{}static void {\bfseries write\+\_\+matrix} (std\+::string const \&fname, bool write\+\_\+all, \hyperlink{classsddk_1_1mdarray}{matrix}$<$ double\+\_\+complex $>$ const \&mtrx)\label{class_utils_a878bdc04bcb9270597799fc1b864e2c6}
+
+\item 
+\hypertarget{class_utils_ab942f68d97deeeacca67d8fe37e0b334}{}{\footnotesize template$<$typename T $>$ }\\static void {\bfseries check\+\_\+hermitian} (const std\+::string \&name, \hyperlink{classsddk_1_1mdarray}{matrix}$<$ T $>$ const \&mtrx, int n=-\/1)\label{class_utils_ab942f68d97deeeacca67d8fe37e0b334}
+
+\item 
+\hypertarget{class_utils_a8261b53bc696bd2bd93ab04a34c23202}{}{\footnotesize template$<$typename T $>$ }\\static double {\bfseries check\+\_\+hermitian} (\hyperlink{classsddk_1_1dmatrix}{dmatrix}$<$ T $>$ \&mtrx\+\_\+\+\_\+, int n\+\_\+\+\_\+)\label{class_utils_a8261b53bc696bd2bd93ab04a34c23202}
+
+\item 
+\hypertarget{class_utils_a871e6ff5dfe1e73a771e9841b8dfc196}{}static double {\bfseries confined\+\_\+polynomial} (double r, double R, int p1, int p2, int dm)\label{class_utils_a871e6ff5dfe1e73a771e9841b8dfc196}
+
+\item 
+\hypertarget{class_utils_a0a25d39730bcb1e785e152bc96b31806}{}static std\+::vector$<$ int $>$ {\bfseries l\+\_\+by\+\_\+lm} (int lmax)\label{class_utils_a0a25d39730bcb1e785e152bc96b31806}
+
+\item 
+\hypertarget{class_utils_a3a267e3038fa81e55c48c6ff889a803e}{}static std\+::vector$<$ std\+::pair$<$ int, int $>$ $>$ {\bfseries l\+\_\+m\+\_\+by\+\_\+lm} (int lmax)\label{class_utils_a3a267e3038fa81e55c48c6ff889a803e}
+
+\item 
+\hypertarget{class_utils_ad95c1e1d6ccf5f6e7ef8dd97ddbe5d34}{}static double {\bfseries round} (double a\+\_\+\+\_\+, int n\+\_\+\+\_\+)\label{class_utils_ad95c1e1d6ccf5f6e7ef8dd97ddbe5d34}
+
+\item 
+\hypertarget{class_utils_afbcb4fc26bf47c3d9f6abdb8e7fab1ed}{}{\footnotesize template$<$typename T $>$ }\\static int {\bfseries sign} (T val)\label{class_utils_afbcb4fc26bf47c3d9f6abdb8e7fab1ed}
+
+\item 
+\hypertarget{class_utils_ad2242d3f0bb93a018620aba711349e27}{}static \hyperlink{classnlohmann_1_1basic__json}{json} {\bfseries serialize\+\_\+timers} ()\label{class_utils_ad2242d3f0bb93a018620aba711349e27}
+
+\end{DoxyCompactItemize}
+
+
+\subsection{Detailed Description}
+Utility class. 
+
+Definition at line 38 of file utils.\+h.
+
+
+
+\subsection{Member Function Documentation}
+\hypertarget{class_utils_a4c251a2107c4705d5cbd34204b0c8f43}{}\index{Utils@{Utils}!lmmax@{lmmax}}
+\index{lmmax@{lmmax}!Utils@{Utils}}
+\subsubsection[{lmmax(int lmax)}]{\setlength{\rightskip}{0pt plus 5cm}static int Utils\+::lmmax (
+\begin{DoxyParamCaption}
+\item[{int}]{lmax}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}, {\ttfamily [static]}}\label{class_utils_a4c251a2107c4705d5cbd34204b0c8f43}
+
+
+Maximum number of $ \ell, m $ combinations for a given $ \ell_{max} $. 
+
+
+
+Definition at line 43 of file utils.\+h.
+
+\hypertarget{class_utils_a76720df890bf8b5efe363e0f1fe9303d}{}\index{Utils@{Utils}!hash@{hash}}
+\index{hash@{hash}!Utils@{Utils}}
+\subsubsection[{hash(void const $\ast$buff, size\+\_\+t size, uint64\+\_\+t h=5381)}]{\setlength{\rightskip}{0pt plus 5cm}static uint64\+\_\+t Utils\+::hash (
+\begin{DoxyParamCaption}
+\item[{void const $\ast$}]{buff, }
+\item[{size\+\_\+t}]{size, }
+\item[{uint64\+\_\+t}]{h = {\ttfamily 5381}}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}, {\ttfamily [static]}}\label{class_utils_a76720df890bf8b5efe363e0f1fe9303d}
+
+
+Simple hash function. 
+
+Example\+: printf(\char`\"{}hash\+: \%16ll\+X\textbackslash{}n\char`\"{}, \hyperlink{class_utils_a76720df890bf8b5efe363e0f1fe9303d}{hash()}); 
+
+Definition at line 153 of file utils.\+h.
+
+
+
+The documentation for this class was generated from the following file\+:\begin{DoxyCompactItemize}
+\item 
+\hyperlink{utils_8h}{utils.\+h}\end{DoxyCompactItemize}

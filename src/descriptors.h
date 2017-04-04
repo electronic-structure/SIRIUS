@@ -1,4 +1,4 @@
-// Copyright (c) 2013-2015 Anton Kozhevnikov, Thomas Schulthess
+// Copyright (c) 2013-2016 Anton Kozhevnikov, Thomas Schulthess
 // All rights reserved.
 // 
 // Redistribution and use in source and binary forms, with or without modification, are permitted provided that 
@@ -25,8 +25,7 @@
 #ifndef __DESCRIPTORS_H__
 #define __DESCRIPTORS_H__
 
-#include "mdarray.h"
-#include "vector3d.h"
+#include "mdarray.hpp"
 #include "utils.h"
 
 /// Describes single atomic level.
@@ -76,13 +75,16 @@ struct local_orbital_descriptor
     int l;
 
     radial_solution_descriptor_set rsd_set;
-
-    int p1;
-    int p2;
 };
 
-struct uspp_descriptor
+struct pseudopotential_descriptor
 {
+    /// True if the pseudopotential is soft and charge augmentation is required.
+    bool augment{false};
+    
+    /// True if the pseudopotential is used for PAW.
+    bool is_paw{false};
+
     /// Radial mesh.
     std::vector<double> r;
 
@@ -107,26 +109,39 @@ struct uspp_descriptor
     /// Radial functions of Q-operator.
     mdarray<double, 3> q_radial_functions_l;
 
-    bool augmentation_{false};
-
     std::vector<double> core_charge_density;
 
     std::vector<double> total_charge_density;
 
     mdarray<double, 2> d_mtrx_ion;
 
-    mdarray<double, 2> wf_pseudo_;
-
-    std::vector<int> l_wf_pseudo_;
-
     /// Atomic wave-functions used to setup the initial subspace.
     /** This are the chi wave-function in the USPP file. Pairs of [l, chi_l(r)] are stored. */
-    std::vector< std::pair<int, std::vector<double> > > atomic_pseudo_wfs_;
+    std::vector<std::pair<int, std::vector<double>>> atomic_pseudo_wfs_;
     
-    /// occupation of starting wave functions
-    std::vector< double > atomic_pseudo_wfs_occ_;
+    /// Occupation of starting wave functions
+    //std::vector<double> atomic_pseudo_wfs_occ_;
 
-    bool is_initialized{false};
+    /// All electron basis wave functions, have the same dimensionality as uspp.beta_radial_functions.
+    mdarray<double, 2> all_elec_wfc;
+
+    /// pseudo basis wave functions, have the same dimensionality as uspp.beta_radial_functions
+    mdarray<double, 2> pseudo_wfc;
+
+    /// Core energy of PAW.
+    double core_energy; // TODO: proper desciption comment
+
+    /// Occubations of atomic states. 
+    /** Length of vector is the same as the number of beta projectors and all_elec_wfc and pseudo_wfc */
+    std::vector<double> occupations;
+
+    /// density of core electron contribution to all electron charge density
+    std::vector<double> all_elec_core_charge;
+
+    /// electrostatic potential of all electron core charge
+    std::vector<double> all_elec_loc_potential;
+
+    int cutoff_radius_index;
 };
 
 struct nearest_neighbour_descriptor
@@ -135,7 +150,7 @@ struct nearest_neighbour_descriptor
     int atom_id;
 
     /// translation along each lattice vector
-    vector3d<int> translation;
+    geometry3d::vector3d<int> translation;
 
     /// distance from the central atom
     double distance;
@@ -199,22 +214,10 @@ struct unit_cell_parameters_descriptor
     double gamma;
 };
 
-/// Descriptor of the G+k or local-orbital basis function.
-/** This data structure describes one of the following basis sets:
- *      - LAPW+lo basis, which consists of G+k labeled augmented plane-waves and of local orbitals
- *      - PW+lo basis, which consists of G+k plane-waves and of local orbitals
- *      - pure G+k plane-wave basis */
-struct gklo_basis_descriptor
+/// Descriptor of the local-orbital part of the LAPW+lo basis. 
+struct lo_basis_descriptor
 {
-    vector3d<int> gvec;
-
-    /// G+k vector in fractional coordinates.
-    vector3d<double> gkvec;
-
-    /// Global index of the G vector for the corresponding G+k vector.
-    int ig;
-
-    /// Index of atom if this is a local orbital descriptor.
+    /// Index of atom.
     uint16_t ia;
 
     /// Index of orbital quantum number \f$ \ell \f$.
@@ -236,43 +239,6 @@ struct mt_basis_descriptor
 {
     int ia;
     int xi;
-};
-
-struct block_data_descriptor
-{
-    int num_ranks;
-    std::vector<int> counts;
-    std::vector<int> offsets;
-
-    block_data_descriptor() : num_ranks(-1)
-    {
-    }
-
-    block_data_descriptor(int num_ranks__) : num_ranks(num_ranks__)
-    {
-        counts = std::vector<int>(num_ranks, 0);
-        offsets = std::vector<int>(num_ranks, 0);
-    }
-
-    void calc_offsets()
-    {
-        for (int i = 1; i < num_ranks; i++) offsets[i] = offsets[i - 1] + counts[i - 1];
-    }
-};
-
-struct z_column_descriptor
-{
-    int x;
-    int y;
-    std::vector<int> z;
-
-    z_column_descriptor()
-    {
-    }
-
-    z_column_descriptor(int x__, int y__, std::vector<int> z__) : x(x__), y(y__), z(z__)
-    {
-    }
 };
 
 #endif

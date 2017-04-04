@@ -1,0 +1,220 @@
+\hypertarget{classsddk_1_1dmatrix}{}\section{sddk\+:\+:dmatrix$<$ T $>$ Class Template Reference}
+\label{classsddk_1_1dmatrix}\index{sddk\+::dmatrix$<$ T $>$@{sddk\+::dmatrix$<$ T $>$}}
+
+
+Distributed matrix.  
+
+
+
+
+Inheritance diagram for sddk\+:\+:dmatrix$<$ T $>$\+:
+% FIG 0
+
+
+Collaboration diagram for sddk\+:\+:dmatrix$<$ T $>$\+:
+% FIG 1
+\subsection*{Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+\hypertarget{classsddk_1_1dmatrix_a490c611c433eaa3a095e78abbe394ed5}{}{\bfseries dmatrix} (int num\+\_\+rows\+\_\+\+\_\+, int num\+\_\+cols\+\_\+\+\_\+, \hyperlink{classsddk_1_1_b_l_a_c_s__grid}{B\+L\+A\+C\+S\+\_\+grid} const \&blacs\+\_\+grid\+\_\+\+\_\+, int bs\+\_\+row\+\_\+\+\_\+, int bs\+\_\+col\+\_\+\+\_\+, memory\+\_\+t mem\+\_\+type\+\_\+\+\_\+=memory\+\_\+t\+::host)\label{classsddk_1_1dmatrix_a490c611c433eaa3a095e78abbe394ed5}
+
+\item 
+\hypertarget{classsddk_1_1dmatrix_ac05e803248867da48a635691b51fe292}{}{\bfseries dmatrix} (T $\ast$ptr\+\_\+\+\_\+, int num\+\_\+rows\+\_\+\+\_\+, int num\+\_\+cols\+\_\+\+\_\+, \hyperlink{classsddk_1_1_b_l_a_c_s__grid}{B\+L\+A\+C\+S\+\_\+grid} const \&blacs\+\_\+grid\+\_\+\+\_\+, int bs\+\_\+row\+\_\+\+\_\+, int bs\+\_\+col\+\_\+\+\_\+)\label{classsddk_1_1dmatrix_ac05e803248867da48a635691b51fe292}
+
+\item 
+\hypertarget{classsddk_1_1dmatrix_a56d15659a04bd167cae8796c1150f6c8}{}{\bfseries dmatrix} (\hyperlink{classsddk_1_1dmatrix}{dmatrix}$<$ T $>$ \&\&src)=default\label{classsddk_1_1dmatrix_a56d15659a04bd167cae8796c1150f6c8}
+
+\item 
+\hypertarget{classsddk_1_1dmatrix_ac413daf8adeade2cf43975aed0b6aa38}{}\hyperlink{classsddk_1_1dmatrix}{dmatrix}$<$ T $>$ \& {\bfseries operator=} (\hyperlink{classsddk_1_1dmatrix}{dmatrix}$<$ T $>$ \&\&src)=default\label{classsddk_1_1dmatrix_ac413daf8adeade2cf43975aed0b6aa38}
+
+\item 
+\hypertarget{classsddk_1_1dmatrix_a17dfeca88ea7b54b0fd596571ce5ee09}{}int {\bfseries num\+\_\+rows} () const \label{classsddk_1_1dmatrix_a17dfeca88ea7b54b0fd596571ce5ee09}
+
+\item 
+\hypertarget{classsddk_1_1dmatrix_af0a18f1eb70428372ad0f15be00c3eec}{}int {\bfseries num\+\_\+rows\+\_\+local} () const \label{classsddk_1_1dmatrix_af0a18f1eb70428372ad0f15be00c3eec}
+
+\item 
+\hypertarget{classsddk_1_1dmatrix_ab310a8aede96537492a68c1d6ed50d6b}{}int {\bfseries num\+\_\+rows\+\_\+local} (int rank) const \label{classsddk_1_1dmatrix_ab310a8aede96537492a68c1d6ed50d6b}
+
+\item 
+\hypertarget{classsddk_1_1dmatrix_a196179a75951526ffe100d584464223a}{}int {\bfseries irow} (int irow\+\_\+loc) const \label{classsddk_1_1dmatrix_a196179a75951526ffe100d584464223a}
+
+\item 
+\hypertarget{classsddk_1_1dmatrix_a0713ede16570f7051826182f78126b38}{}int {\bfseries num\+\_\+cols} () const \label{classsddk_1_1dmatrix_a0713ede16570f7051826182f78126b38}
+
+\item 
+int \hyperlink{classsddk_1_1dmatrix_a73a71bba8a42d6b9db4e1ce3627fd3b2}{num\+\_\+cols\+\_\+local} () const 
+\begin{DoxyCompactList}\small\item\em Local number of columns. \end{DoxyCompactList}\item 
+\hypertarget{classsddk_1_1dmatrix_afa65655a3301ebcc9afa2fcc93d1c13b}{}int {\bfseries num\+\_\+cols\+\_\+local} (int rank) const \label{classsddk_1_1dmatrix_afa65655a3301ebcc9afa2fcc93d1c13b}
+
+\item 
+int \hyperlink{classsddk_1_1dmatrix_a6b4465a226fe4a0074a6a8f042bdde63}{icol} (int icol\+\_\+loc) const 
+\begin{DoxyCompactList}\small\item\em Inindex of column in global matrix. \end{DoxyCompactList}\item 
+\hypertarget{classsddk_1_1dmatrix_a67e037237068177c63d032c725841c80}{}int const $\ast$ {\bfseries descriptor} () const \label{classsddk_1_1dmatrix_a67e037237068177c63d032c725841c80}
+
+\item 
+\hypertarget{classsddk_1_1dmatrix_afc7fe5e8d018e998c57c315d1ed456a6}{}void {\bfseries set} (const int irow\+\_\+glob, const int icol\+\_\+glob, T val)\label{classsddk_1_1dmatrix_afc7fe5e8d018e998c57c315d1ed456a6}
+
+\item 
+\hypertarget{classsddk_1_1dmatrix_a3d7bc2d6971cc09951d9d691515de505}{}void {\bfseries add} (const int irow\+\_\+glob, const int icol\+\_\+glob, T val)\label{classsddk_1_1dmatrix_a3d7bc2d6971cc09951d9d691515de505}
+
+\item 
+\hypertarget{classsddk_1_1dmatrix_ae4285b17e0f7644830ff2ebca1a52185}{}void {\bfseries make\+\_\+real\+\_\+diag} (int n\+\_\+\+\_\+)\label{classsddk_1_1dmatrix_ae4285b17e0f7644830ff2ebca1a52185}
+
+\item 
+\hypertarget{classsddk_1_1dmatrix_a25f11dc2be3e5d260069fcc0af3eebda}{}\hyperlink{classsddk_1_1splindex}{splindex}$<$ block\+\_\+cyclic $>$ const \& {\bfseries spl\+\_\+col} () const \label{classsddk_1_1dmatrix_a25f11dc2be3e5d260069fcc0af3eebda}
+
+\item 
+\hypertarget{classsddk_1_1dmatrix_a9cc950876832ccef66e63727d36aaddd}{}\hyperlink{classsddk_1_1splindex}{splindex}$<$ block\+\_\+cyclic $>$ const \& {\bfseries spl\+\_\+row} () const \label{classsddk_1_1dmatrix_a9cc950876832ccef66e63727d36aaddd}
+
+\item 
+\hypertarget{classsddk_1_1dmatrix_a89d9203004e6b7090480992797c09b63}{}int {\bfseries rank\+\_\+row} () const \label{classsddk_1_1dmatrix_a89d9203004e6b7090480992797c09b63}
+
+\item 
+\hypertarget{classsddk_1_1dmatrix_ae79b5b590ecc7e72e6be36a4db9119e3}{}int {\bfseries num\+\_\+ranks\+\_\+row} () const \label{classsddk_1_1dmatrix_ae79b5b590ecc7e72e6be36a4db9119e3}
+
+\item 
+\hypertarget{classsddk_1_1dmatrix_a0718281a5056728cfe63c7933f7cd994}{}int {\bfseries rank\+\_\+col} () const \label{classsddk_1_1dmatrix_a0718281a5056728cfe63c7933f7cd994}
+
+\item 
+\hypertarget{classsddk_1_1dmatrix_ae7f2788f8161a67b9646a722df497948}{}int {\bfseries num\+\_\+ranks\+\_\+col} () const \label{classsddk_1_1dmatrix_ae7f2788f8161a67b9646a722df497948}
+
+\item 
+\hypertarget{classsddk_1_1dmatrix_af40a2cb79dc2cab8bbe2144c1c782dec}{}int {\bfseries bs\+\_\+row} () const \label{classsddk_1_1dmatrix_af40a2cb79dc2cab8bbe2144c1c782dec}
+
+\item 
+\hypertarget{classsddk_1_1dmatrix_a5f0bc9c077070af233691e95e575580e}{}int {\bfseries bs\+\_\+col} () const \label{classsddk_1_1dmatrix_a5f0bc9c077070af233691e95e575580e}
+
+\item 
+\hypertarget{classsddk_1_1dmatrix_a4f081f64edb03c8d1a7371bed86921b8}{}\hyperlink{classsddk_1_1_b_l_a_c_s__grid}{B\+L\+A\+C\+S\+\_\+grid} const \& {\bfseries blacs\+\_\+grid} () const \label{classsddk_1_1dmatrix_a4f081f64edb03c8d1a7371bed86921b8}
+
+\item 
+\hypertarget{classsddk_1_1dmatrix_a89058b8ec1e185ac53543a99dedd0a58}{}void {\bfseries serialize} (std\+::string name\+\_\+\+\_\+, int n\+\_\+\+\_\+) const \label{classsddk_1_1dmatrix_a89058b8ec1e185ac53543a99dedd0a58}
+
+\item 
+\hypertarget{classsddk_1_1dmatrix_ac6e3e007833101fd479ec8c620c251be}{}{\footnotesize template$<$$>$ }\\void {\bfseries serialize} (std\+::string name\+\_\+\+\_\+, int n\+\_\+\+\_\+) const\label{classsddk_1_1dmatrix_ac6e3e007833101fd479ec8c620c251be}
+
+\item 
+\hypertarget{classsddk_1_1dmatrix_ab9bef0b2de721281b56602a6bd49aa5f}{}{\footnotesize template$<$$>$ }\\void {\bfseries serialize} (std\+::string name\+\_\+\+\_\+, int n\+\_\+\+\_\+) const\label{classsddk_1_1dmatrix_ab9bef0b2de721281b56602a6bd49aa5f}
+
+\end{DoxyCompactItemize}
+\subsection*{Private Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+\hypertarget{classsddk_1_1dmatrix_a2699eaa0d5b724dcf6861e0d5584281c}{}void {\bfseries init} ()\label{classsddk_1_1dmatrix_a2699eaa0d5b724dcf6861e0d5584281c}
+
+\item 
+\hypertarget{classsddk_1_1dmatrix_a9d46ba8ced231d1af7a37b96e1cdfa73}{}{\bfseries dmatrix} (\hyperlink{classsddk_1_1dmatrix}{dmatrix}$<$ T $>$ const \&src)=delete\label{classsddk_1_1dmatrix_a9d46ba8ced231d1af7a37b96e1cdfa73}
+
+\item 
+\hypertarget{classsddk_1_1dmatrix_a265988b4d7c64be61cd4478840aa7367}{}\hyperlink{classsddk_1_1dmatrix}{dmatrix}$<$ T $>$ \& {\bfseries operator=} (\hyperlink{classsddk_1_1dmatrix}{dmatrix}$<$ T $>$ const \&src)=delete\label{classsddk_1_1dmatrix_a265988b4d7c64be61cd4478840aa7367}
+
+\end{DoxyCompactItemize}
+\subsection*{Private Attributes}
+\begin{DoxyCompactItemize}
+\item 
+int \hyperlink{classsddk_1_1dmatrix_ada5ad5c79203f9db5863ff8a94785968}{num\+\_\+rows\+\_\+} \{0\}
+\begin{DoxyCompactList}\small\item\em Global number of matrix rows. \end{DoxyCompactList}\item 
+int \hyperlink{classsddk_1_1dmatrix_a6b7c813717810ff63c246504c67e1ab5}{num\+\_\+cols\+\_\+} \{0\}
+\begin{DoxyCompactList}\small\item\em Global number of matrix columns. \end{DoxyCompactList}\item 
+\hypertarget{classsddk_1_1dmatrix_ad20a8c65fc2588b20506e00f98fba4d7}{}int {\bfseries bs\+\_\+row\+\_\+} \{0\}\label{classsddk_1_1dmatrix_ad20a8c65fc2588b20506e00f98fba4d7}
+
+\item 
+\hypertarget{classsddk_1_1dmatrix_aa46167a494f383ca8511e3b5ae4643c9}{}int {\bfseries bs\+\_\+col\+\_\+} \{0\}\label{classsddk_1_1dmatrix_aa46167a494f383ca8511e3b5ae4643c9}
+
+\item 
+\hypertarget{classsddk_1_1dmatrix_a90356b2f4ae42e31c9d081c53f1f37e1}{}\hyperlink{classsddk_1_1_b_l_a_c_s__grid}{B\+L\+A\+C\+S\+\_\+grid} const $\ast$ {\bfseries blacs\+\_\+grid\+\_\+} \{nullptr\}\label{classsddk_1_1dmatrix_a90356b2f4ae42e31c9d081c53f1f37e1}
+
+\item 
+\hypertarget{classsddk_1_1dmatrix_a15c80ec492bbe71a5805332ef899a46a}{}\hyperlink{classsddk_1_1splindex}{splindex}$<$ block\+\_\+cyclic $>$ {\bfseries spl\+\_\+row\+\_\+}\label{classsddk_1_1dmatrix_a15c80ec492bbe71a5805332ef899a46a}
+
+\item 
+\hypertarget{classsddk_1_1dmatrix_a904fce2ba509ae0013500705341ec4b9}{}\hyperlink{classsddk_1_1splindex}{splindex}$<$ block\+\_\+cyclic $>$ {\bfseries spl\+\_\+col\+\_\+}\label{classsddk_1_1dmatrix_a904fce2ba509ae0013500705341ec4b9}
+
+\item 
+ftn\+\_\+int \hyperlink{classsddk_1_1dmatrix_a8461e9f58455228fcda1403a3a945b85}{descriptor\+\_\+} \mbox{[}9\mbox{]}
+\begin{DoxyCompactList}\small\item\em Matrix descriptor. \end{DoxyCompactList}\end{DoxyCompactItemize}
+\subsection*{Additional Inherited Members}
+
+
+\subsection{Detailed Description}
+\subsubsection*{template$<$typename T$>$class sddk\+::dmatrix$<$ T $>$}
+
+Distributed matrix. 
+
+Definition at line 34 of file dmatrix.\+hpp.
+
+
+
+\subsection{Member Function Documentation}
+\hypertarget{classsddk_1_1dmatrix_a73a71bba8a42d6b9db4e1ce3627fd3b2}{}\index{sddk\+::dmatrix@{sddk\+::dmatrix}!num\+\_\+cols\+\_\+local@{num\+\_\+cols\+\_\+local}}
+\index{num\+\_\+cols\+\_\+local@{num\+\_\+cols\+\_\+local}!sddk\+::dmatrix@{sddk\+::dmatrix}}
+\subsubsection[{num\+\_\+cols\+\_\+local() const }]{\setlength{\rightskip}{0pt plus 5cm}template$<$typename T$>$ int {\bf sddk\+::dmatrix}$<$ T $>$\+::num\+\_\+cols\+\_\+local (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [inline]}}\label{classsddk_1_1dmatrix_a73a71bba8a42d6b9db4e1ce3627fd3b2}
+
+
+Local number of columns. 
+
+
+
+Definition at line 130 of file dmatrix.\+hpp.
+
+\hypertarget{classsddk_1_1dmatrix_a6b4465a226fe4a0074a6a8f042bdde63}{}\index{sddk\+::dmatrix@{sddk\+::dmatrix}!icol@{icol}}
+\index{icol@{icol}!sddk\+::dmatrix@{sddk\+::dmatrix}}
+\subsubsection[{icol(int icol\+\_\+loc) const }]{\setlength{\rightskip}{0pt plus 5cm}template$<$typename T$>$ int {\bf sddk\+::dmatrix}$<$ T $>$\+::icol (
+\begin{DoxyParamCaption}
+\item[{int}]{icol\+\_\+loc}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [inline]}}\label{classsddk_1_1dmatrix_a6b4465a226fe4a0074a6a8f042bdde63}
+
+
+Inindex of column in global matrix. 
+
+
+
+Definition at line 141 of file dmatrix.\+hpp.
+
+
+
+\subsection{Member Data Documentation}
+\hypertarget{classsddk_1_1dmatrix_ada5ad5c79203f9db5863ff8a94785968}{}\index{sddk\+::dmatrix@{sddk\+::dmatrix}!num\+\_\+rows\+\_\+@{num\+\_\+rows\+\_\+}}
+\index{num\+\_\+rows\+\_\+@{num\+\_\+rows\+\_\+}!sddk\+::dmatrix@{sddk\+::dmatrix}}
+\subsubsection[{num\+\_\+rows\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}template$<$typename T$>$ int {\bf sddk\+::dmatrix}$<$ T $>$\+::num\+\_\+rows\+\_\+ \{0\}\hspace{0.3cm}{\ttfamily [private]}}\label{classsddk_1_1dmatrix_ada5ad5c79203f9db5863ff8a94785968}
+
+
+Global number of matrix rows. 
+
+
+
+Definition at line 38 of file dmatrix.\+hpp.
+
+\hypertarget{classsddk_1_1dmatrix_a6b7c813717810ff63c246504c67e1ab5}{}\index{sddk\+::dmatrix@{sddk\+::dmatrix}!num\+\_\+cols\+\_\+@{num\+\_\+cols\+\_\+}}
+\index{num\+\_\+cols\+\_\+@{num\+\_\+cols\+\_\+}!sddk\+::dmatrix@{sddk\+::dmatrix}}
+\subsubsection[{num\+\_\+cols\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}template$<$typename T$>$ int {\bf sddk\+::dmatrix}$<$ T $>$\+::num\+\_\+cols\+\_\+ \{0\}\hspace{0.3cm}{\ttfamily [private]}}\label{classsddk_1_1dmatrix_a6b7c813717810ff63c246504c67e1ab5}
+
+
+Global number of matrix columns. 
+
+
+
+Definition at line 41 of file dmatrix.\+hpp.
+
+\hypertarget{classsddk_1_1dmatrix_a8461e9f58455228fcda1403a3a945b85}{}\index{sddk\+::dmatrix@{sddk\+::dmatrix}!descriptor\+\_\+@{descriptor\+\_\+}}
+\index{descriptor\+\_\+@{descriptor\+\_\+}!sddk\+::dmatrix@{sddk\+::dmatrix}}
+\subsubsection[{descriptor\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}template$<$typename T$>$ ftn\+\_\+int {\bf sddk\+::dmatrix}$<$ T $>$\+::descriptor\+\_\+\mbox{[}9\mbox{]}\hspace{0.3cm}{\ttfamily [private]}}\label{classsddk_1_1dmatrix_a8461e9f58455228fcda1403a3a945b85}
+
+
+Matrix descriptor. 
+
+
+
+Definition at line 54 of file dmatrix.\+hpp.
+
+
+
+The documentation for this class was generated from the following file\+:\begin{DoxyCompactItemize}
+\item 
+\hyperlink{dmatrix_8hpp}{dmatrix.\+hpp}\end{DoxyCompactItemize}

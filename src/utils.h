@@ -32,9 +32,7 @@
 #include "sirius_internal.h"
 #include "typedefs.h"
 #include "constants.h"
-#include "mdarray.h"
-#include "vector3d.h"
-#include "matrix3d.h"
+#include "sddk.hpp"
 
 /// Utility class.
 class Utils
@@ -55,15 +53,16 @@ class Utils
         static inline int lmax_by_lmmax(int lmmax__)
         {
             int lmax = int(std::sqrt(double(lmmax__)) + 1e-8) - 1;
-            if (lmmax(lmax) != lmmax__) TERMINATE("wrong lmmax");
+            if (lmmax(lmax) != lmmax__) {
+                TERMINATE("wrong lmmax");
+            }
             return lmax;
         }
 
         static inline bool file_exists(const std::string file_name)
         {
             std::ifstream ifs(file_name.c_str());
-            if (ifs.is_open()) return true;
-            return false;
+            return ifs.is_open();
         }
 
         static inline double fermi_dirac_distribution(double e)
@@ -132,7 +131,9 @@ class Utils
         static inline double phi_by_sin_cos(double sinp, double cosp)
         {
             double phi = std::atan2(sinp, cosp);
-            if (phi < 0) phi += twopi;
+            if (phi < 0) {
+                phi += twopi;
+            }
             return phi;
         }
 
@@ -141,7 +142,9 @@ class Utils
             assert(n >= 0);
 
             long double result = 1.0L;
-            for (int i = 1; i <= n; i++) result *= i;
+            for (int i = 1; i <= n; i++) {
+                result *= i;
+            }
             return result;
         }
         
@@ -150,40 +153,230 @@ class Utils
         static uint64_t hash(void const* buff, size_t size, uint64_t h = 5381)
         {
             unsigned char const* p = static_cast<unsigned char const*>(buff);
-            for(size_t i = 0; i < size; i++) h = ((h << 5) + h) + p[i];
+            for(size_t i = 0; i < size; i++) {
+                h = ((h << 5) + h) + p[i];
+            }
             return h;
         }
 
-        static void write_matrix(const std::string& fname, mdarray<double_complex, 2>& matrix, int nrow, int ncol,
-                                 bool write_upper_only = true, bool write_abs_only = false, std::string fmt = "%18.12f");
-        
-        static void write_matrix(std::string const& fname, bool write_all, mdarray<double, 2>& matrix);
-
-        static void write_matrix(std::string const& fname, bool write_all, matrix<double_complex> const& mtrx);
-
-        static void check_hermitian(const std::string& name, mdarray<double_complex, 2>& mtrx, int n = -1);
-
-        static double confined_polynomial(double r, double R, int p1, int p2, int dm);
-
-        static std::vector<int> l_by_lm(int lmax);
-
-        static std::pair< vector3d<double>, vector3d<int> > reduce_coordinates(vector3d<double> coord);
-
-        static vector3d<int> find_translations(double radius__, matrix3d<double> const& lattice_vectors__);
-
-        static std::vector< std::pair<int, int> > l_m_by_lm(int lmax)
+        static void write_matrix(const std::string& fname,
+                                 mdarray<double_complex, 2>& matrix,
+                                 int nrow,
+                                 int ncol,
+                                 bool write_upper_only = true,
+                                 bool write_abs_only = false,
+                                 std::string fmt = "%18.12f")
         {
-            std::vector< std::pair<int, int> > l_m(lmmax(lmax));
-            for (int l = 0; l <= lmax; l++)
+            static int icount = 0;
+
+            if (nrow < 0 || nrow > (int)matrix.size(0) || ncol < 0 || ncol > (int)matrix.size(1))
+                TERMINATE("wrong number of rows or columns");
+
+            icount++;
+            std::stringstream s;
+            s << icount;
+            std::string full_name = s.str() + "_" + fname;
+
+            FILE* fout = fopen(full_name.c_str(), "w");
+
+            for (int icol = 0; icol < ncol; icol++)
             {
-                for (int m = -l; m <= l; m++)
+                fprintf(fout, "column : %4i\n", icol);
+                for (int i = 0; i < 80; i++) fprintf(fout, "-");
+                fprintf(fout, "\n");
+                if (write_abs_only)
                 {
-                    int lm = lm_by_l_m(l, m);
-                    l_m[lm].first = l;
-                    l_m[lm].second = m;
+                    fprintf(fout, " row, absolute value\n");
+                }
+                else
+                {
+                    fprintf(fout, " row, real part, imaginary part, absolute value\n");
+                }
+                for (int i = 0; i < 80; i++) fprintf(fout, "-");
+                fprintf(fout, "\n");
+                
+                int max_row = (write_upper_only) ? std::min(icol, nrow - 1) : (nrow - 1);
+                for (int j = 0; j <= max_row; j++)
+                {
+                    if (write_abs_only)
+                    {
+                        std::string s = "%4i  " + fmt + "\n";
+                        fprintf(fout, s.c_str(), j, abs(matrix(j, icol)));
+                    }
+                    else
+                    {
+                        fprintf(fout, "%4i  %18.12f %18.12f %18.12f\n", j, real(matrix(j, icol)), imag(matrix(j, icol)), 
+                                                                        abs(matrix(j, icol)));
+                    }
+                }
+                fprintf(fout,"\n");
+            }
+
+            fclose(fout);
+        }
+
+        
+        static void write_matrix(std::string const& fname,
+                                 bool write_all,
+                                 mdarray<double, 2>& matrix)
+        {
+            static int icount = 0;
+
+            icount++;
+            std::stringstream s;
+            s << icount;
+            std::string full_name = s.str() + "_" + fname;
+
+            FILE* fout = fopen(full_name.c_str(), "w");
+
+            for (int icol = 0; icol < (int)matrix.size(1); icol++)
+            {
+                fprintf(fout, "column : %4i\n", icol);
+                for (int i = 0; i < 80; i++) fprintf(fout, "-");
+                fprintf(fout, "\n");
+                fprintf(fout, " row\n");
+                for (int i = 0; i < 80; i++) fprintf(fout, "-");
+                fprintf(fout, "\n");
+                
+                int max_row = (write_all) ? ((int)matrix.size(0) - 1) : std::min(icol, (int)matrix.size(0) - 1);
+                for (int j = 0; j <= max_row; j++)
+                {
+                    fprintf(fout, "%4i  %18.12f\n", j, matrix(j, icol));
+                }
+                fprintf(fout,"\n");
+            }
+
+            fclose(fout);
+        }
+
+        static void write_matrix(std::string const& fname,
+                                 bool write_all,
+                                 matrix<double_complex> const& mtrx)
+        {
+            static int icount = 0;
+
+            icount++;
+            std::stringstream s;
+            s << icount;
+            std::string full_name = s.str() + "_" + fname;
+
+            FILE* fout = fopen(full_name.c_str(), "w");
+
+            for (int icol = 0; icol < (int)mtrx.size(1); icol++)
+            {
+                fprintf(fout, "column : %4i\n", icol);
+                for (int i = 0; i < 80; i++) fprintf(fout, "-");
+                fprintf(fout, "\n");
+                fprintf(fout, " row\n");
+                for (int i = 0; i < 80; i++) fprintf(fout, "-");
+                fprintf(fout, "\n");
+                
+                int max_row = (write_all) ? ((int)mtrx.size(0) - 1) : std::min(icol, (int)mtrx.size(0) - 1);
+                for (int j = 0; j <= max_row; j++)
+                {
+                    fprintf(fout, "%4i  %18.12f %18.12f\n", j, real(mtrx(j, icol)), imag(mtrx(j, icol)));
+                }
+                fprintf(fout,"\n");
+            }
+
+            fclose(fout);
+        }
+
+        template <typename T>
+        static void check_hermitian(const std::string& name, matrix<T> const& mtrx, int n = -1)
+        {
+            assert(mtrx.size(0) == mtrx.size(1));
+
+            double maxdiff = 0.0;
+            int i0 = -1;
+            int j0 = -1;
+
+            if (n == -1) {
+                n = static_cast<int>(mtrx.size(0));
+            }
+
+            for (int i = 0; i < n; i++) {
+                for (int j = 0; j < n; j++) {
+                    double diff = std::abs(mtrx(i, j) - type_wrapper<T>::conjugate(mtrx(j, i)));
+                    if (diff > maxdiff) {
+                        maxdiff = diff;
+                        i0 = i;
+                        j0 = j;
+                    }
                 }
             }
-            return l_m;
+
+            if (maxdiff > 1e-10) {
+                std::stringstream s;
+                s << name << " is not a symmetric or hermitian matrix" << std::endl
+                  << "  maximum error: i, j : " << i0 << " " << j0 << " diff : " << maxdiff;
+
+                WARNING(s);
+            }
+        }
+        
+        template <typename T>
+        static inline double check_hermitian(dmatrix<T>& mtrx__, int n__)
+        {
+            dmatrix<T> tmp(n__, n__, mtrx__.blacs_grid(), mtrx__.bs_row(), mtrx__.bs_col());
+            linalg<CPU>::tranc(n__, n__, mtrx__, 0, 0, tmp, 0, 0);
+
+            splindex<block_cyclic> spl_r(n__, mtrx__.blacs_grid().num_ranks_row(), mtrx__.blacs_grid().rank_row(), mtrx__.bs_row());
+            splindex<block_cyclic> spl_c(n__, mtrx__.blacs_grid().num_ranks_col(), mtrx__.blacs_grid().rank_col(), mtrx__.bs_col());
+            
+            double max_diff{0};
+            for (int i = 0; i < spl_c.local_size(); i++) {
+                for (int j = 0; j < spl_r.local_size(); j++) {
+                    max_diff = std::max(max_diff, std::abs(mtrx__(j, i) - tmp(j, i)));
+                }
+            }
+            mtrx__.blacs_grid().comm().template allreduce<double, mpi_op_t::max>(&max_diff, 1);
+            return max_diff;
+        }
+
+        static double confined_polynomial(double r, double R, int p1, int p2, int dm)
+        {
+            double t = 1.0 - std::pow(r / R, 2);
+            switch (dm)
+            {
+                case 0: {
+                    return (std::pow(r, p1) * std::pow(t, p2));
+                }
+                case 2: {
+                    return (-4 * p1 * p2 * std::pow(r, p1) * std::pow(t, p2 - 1) / std::pow(R, 2) +
+                            p1 * (p1 - 1) * std::pow(r, p1 - 2) * std::pow(t, p2) + 
+                            std::pow(r, p1) * (4 * (p2 - 1) * p2 * std::pow(r, 2) * std::pow(t, p2 - 2) / std::pow(R, 4) - 
+                                          2 * p2 * std::pow(t, p2 - 1) / std::pow(R, 2)));
+                }
+                default: {
+                    TERMINATE("wrong derivative order");
+                    return 0.0;
+                }
+            }
+        }
+
+        static std::vector<int> l_by_lm(int lmax)
+        {
+            std::vector<int> v(lmmax(lmax));
+            for (int l = 0; l <= lmax; l++) {
+                for (int m = -l; m <= l; m++) {
+                    v[lm_by_l_m(l, m)] = l;
+                }
+            }
+            return std::move(v);
+        }
+
+        static std::vector<std::pair<int, int>> l_m_by_lm(int lmax)
+        {
+            std::vector<std::pair<int, int>> v(lmmax(lmax));
+            for (int l = 0; l <= lmax; l++) {
+                for (int m = -l; m <= l; m++) {
+                    int lm = lm_by_l_m(l, m);
+                    v[lm].first = l;
+                    v[lm].second = m;
+                }
+            }
+            return std::move(v);
         }
 
         inline static double round(double a__, int n__)
@@ -198,6 +391,34 @@ class Utils
         {
             return (T(0) < val) - (val < T(0));
         }
+
+        static json serialize_timers() // TODO: here in wrong place; move somewhere else
+        {
+            json dict;
+
+            /* collect local timers */
+            for (auto& it: sddk::timer::timers()) {
+                sddk::timer::timer_stats ts;
+
+                ts.count = static_cast<int>(it.second.size());
+                ts.total_value = 0.0;
+                ts.min_value = 1e100;
+                ts.max_value = 0.0;
+                for (int i = 0; i < ts.count; i++) {
+                    ts.total_value += it.second[i];
+                    ts.min_value = std::min(ts.min_value, it.second[i]);
+                    ts.max_value = std::max(ts.max_value, it.second[i]);
+                }
+                ts.average_value = (ts.count == 0) ? 0.0 : ts.total_value / ts.count;
+                if (ts.count == 0) {
+                    ts.min_value = 0.0;
+                }
+
+                dict[it.first] = {ts.total_value, ts.average_value, ts.min_value, ts.max_value};
+            }
+            return std::move(dict);
+        }
+
 };
 
 #endif

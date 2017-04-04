@@ -28,9 +28,49 @@ void test_xc()
     }
 }
 
+void test_xc2()
+{
+    //XC_functional Ex("XC_GGA_X_PBE", 1);
+    //XC_functional Ec("XC_GGA_C_PBE", 1);
+    //XC_functional Ex("XC_LDA_X", 1);
+    //XC_functional Ec("XC_LDA_C_PZ", 1);
+    XC_functional Ex("XC_GGA_X_PW91", 1);
+    XC_functional Ec("XC_GGA_C_PW91", 1);
+    
+    std::vector<double> sigma(101);
+    std::vector<double> vrho(101);
+    std::vector<double> vsigma(101);
+    std::vector<double> e(101);
+
+    auto fout = fopen("xc_libxc.dat", "w+");
+    for (int i = 0; i <= 50; i++) {
+        std::vector<double> rho(101, i * 0.2);
+        for (int j = 0; j <= 100; j++) {
+            sigma[j] = j * 0.1;
+        }
+        std::vector<double> result(101, 0);
+        Ex.get_gga(101, rho.data(), sigma.data(), vrho.data(), vsigma.data(), e.data());
+        //Ex.get_lda(101, rho.data(), vrho.data(), e.data());
+        for (int i = 0; i <= 100; i++) {
+            result[i] += e[i];
+        }
+        Ec.get_gga(101, rho.data(), sigma.data(), vrho.data(), vsigma.data(), e.data());
+        //Ec.get_lda(101, rho.data(), vrho.data(), e.data());
+        for (int i = 0; i <= 100; i++) {
+            result[i] += e[i];
+        }
+        for (int i = 0; i <= 100; i++) {
+            fprintf(fout, "%18.10f", result[i]);
+        }
+        fprintf(fout, "\n");
+    }
+    fclose(fout);
+}
+
 int main(int argn, char** argv)
 {
     sirius::initialize(1);
     test_xc();
+    test_xc2();
     sirius::finalize();
 }

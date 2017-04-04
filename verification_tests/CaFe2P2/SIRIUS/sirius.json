@@ -1,0 +1,102 @@
+{
+    "control" : {
+        "cyclic_block_size" : 16,
+        "processing_unit" : "cpu",
+        "std_evp_solver_type" : "lapack",
+        "gen_evp_solver_type" : "lapack",
+        "reduce_gvec" : true
+    },
+
+    "parameters" : {
+        "electronic_structure_method" : "ultrasoft_pseudopotential",
+
+        "!num_fv_states" : 40,
+
+        "xc_functionals" : ["XC_LDA_X", "XC_LDA_C_PZ"],
+
+        "smearing_width" : 0.025,
+
+        "use_symmetry" : 1,
+
+        "num_mag_dims" : 0,
+        
+        "gk_cutoff" : 6.0,
+        "pw_cutoff" : 16.00,
+
+        "energy_tol" : 1e-8,
+        "potential_tol" : 1e-8,
+
+        "num_dft_iter" : 100,
+
+        "ngridk" : [2,2,2]
+    },
+
+
+    "iterative_solver" : {
+        "energy_tolerance" : 1e-2,
+        "residual_tolerance" : 1e-6,
+        "num_steps" : 12,
+        "subspace_size" : 4,
+        "type" : "davidson",
+        "converge_by_energy" : 1
+    },
+
+    "mixer" : {
+        "beta" : 0.95,
+        "type" : "broyden1",
+        "max_history" : 8
+    },
+    
+    "unit_cell": {
+        "atom_files": {
+            "Ca": "ca_lda_v1.uspp.F.UPF.json",
+            "Fe": "fe_lda_v1.5.uspp.F.UPF.json",
+            "P": "p_lda_v1.5.uspp.F.UPF.json"
+        },
+        "atom_types": [
+            "P",
+            "Ca",
+            "Fe"
+        ],
+        "atoms": {
+            "Ca": [
+                [
+                    0.0,
+                    0.0,
+                    0.0
+                ]
+            ],
+            "Fe": [
+                [
+                    0.75,
+                    0.25,
+                    0.5
+                ],
+                [
+                    0.25,
+                    0.75,
+                    0.5
+                ]
+            ],
+            "P": [
+                [
+                    0.3643,
+                    0.3643,
+                    0.0
+                ],
+                [
+                    0.6357,
+                    0.6357,
+                    0.0
+                ]
+            ]
+        },
+        "lattice_vectors_scale" : 1.889725988579,
+        "lattice_vectors": [
+            [-1.9275000000,      1.9275000000,       4.9925000000],
+            [ 1.9275000000,     -1.9275000000,       4.9925000000],
+            [ 1.9275000000,      1.9275000000,      -4.9925000000]
+        ]
+    }
+}
+

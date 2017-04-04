@@ -1,0 +1,38 @@
+&control
+    calculation='scf',
+    restart_mode='from_scratch',
+    pseudo_dir = './',
+    outdir='./',
+    prefix = 'SrVO3_',
+    verbosity = 'low',
+    disk_io = 'none' 
+/
+ &system
+    ibrav=0, celldm(1)=7.260327248, nat=5, ntyp=3,
+    ecutwfc=36.0, ecutrho = 400,
+    occupations = 'smearing', smearing = 'gauss', degauss = 0.05
+ /
+ &electrons
+    conv_thr =  1.0d-11,
+    mixing_beta = 0.8,
+    mixing_ndim = 8,
+    electron_maxstep = 100,
+    diago_david_ndim = 4
+ /
+ATOMIC_SPECIES
+ Sr 87.62   sr_lda_v1.uspp.F.UPF
+ V  50.9415 v_lda_v1.4.uspp.F.UPF
+ O  15.9994 o_lda_v1.2.uspp.F.UPF
+CELL_PARAMETERS (alat= 7.260327248)
+   1.000000000   0.000000000   0.000000000
+   0.000000000   1.000000000   0.000000000
+   0.000000000   0.000000000   1.000000000
+ATOMIC_POSITIONS (alat)
+Sr       0.5           0.5           0.5
+V        0.0           0.0           0.0
+O        0.5           0.0           0.0
+O        0.0           0.5           0.0
+O        0.0           0.0           0.5
+K_POINTS (automatic)
+2 2 2 0 0 0
+

@@ -1,0 +1,603 @@
+\hypertarget{classsirius_1_1_atom__symmetry__class}{}\section{sirius\+:\+:Atom\+\_\+symmetry\+\_\+class Class Reference}
+\label{classsirius_1_1_atom__symmetry__class}\index{sirius\+::\+Atom\+\_\+symmetry\+\_\+class@{sirius\+::\+Atom\+\_\+symmetry\+\_\+class}}
+
+
+Data and methods specific to the symmetry class of the atom.  
+
+
+
+
+Collaboration diagram for sirius\+:\+:Atom\+\_\+symmetry\+\_\+class\+:
+% FIG 0
+\subsection*{Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+\hyperlink{classsirius_1_1_atom__symmetry__class_a08eaf2331397fd9b3ef83d44ea77e57c}{Atom\+\_\+symmetry\+\_\+class} (int \hyperlink{classsirius_1_1_atom__symmetry__class_aa4c86581251ec529aed2437f1a370b30}{id\+\_\+}, \hyperlink{classsirius_1_1_atom__type}{Atom\+\_\+type} const \&\hyperlink{classsirius_1_1_atom__symmetry__class_a2668fe2a989f893e02a0bc1e5424e4ea}{atom\+\_\+type\+\_\+})
+\begin{DoxyCompactList}\small\item\em Constructor. \end{DoxyCompactList}\item 
+void \hyperlink{classsirius_1_1_atom__symmetry__class_a12117e8c6bca5886de9277fb2f94bfd2}{set\+\_\+spherical\+\_\+potential} (std\+::vector$<$ double $>$ const \&vs\+\_\+\+\_\+)
+\begin{DoxyCompactList}\small\item\em Set the spherical component of the potential. \end{DoxyCompactList}\item 
+\hypertarget{classsirius_1_1_atom__symmetry__class_a0720b11a330c18fbb110183d537044d1}{}void {\bfseries generate\+\_\+radial\+\_\+functions} (relativity\+\_\+t rel\+\_\+\+\_\+)\label{classsirius_1_1_atom__symmetry__class_a0720b11a330c18fbb110183d537044d1}
+
+\item 
+\hypertarget{classsirius_1_1_atom__symmetry__class_ac81d67adcd9da2015c6b29517d006168}{}void {\bfseries sync\+\_\+radial\+\_\+functions} (\hyperlink{classsddk_1_1_communicator}{Communicator} const \&comm\+\_\+\+\_\+, int const rank\+\_\+\+\_\+)\label{classsirius_1_1_atom__symmetry__class_ac81d67adcd9da2015c6b29517d006168}
+
+\item 
+\hypertarget{classsirius_1_1_atom__symmetry__class_a42dae3d52686f26f5e36a4b048382568}{}void {\bfseries sync\+\_\+radial\+\_\+integrals} (\hyperlink{classsddk_1_1_communicator}{Communicator} const \&comm\+\_\+\+\_\+, int const rank\+\_\+\+\_\+)\label{classsirius_1_1_atom__symmetry__class_a42dae3d52686f26f5e36a4b048382568}
+
+\item 
+\hypertarget{classsirius_1_1_atom__symmetry__class_ae5c5f365f42a8a75a06c7bcfa2466e3c}{}void {\bfseries sync\+\_\+core\+\_\+charge\+\_\+density} (\hyperlink{classsddk_1_1_communicator}{Communicator} const \&comm\+\_\+\+\_\+, int const rank\+\_\+\+\_\+)\label{classsirius_1_1_atom__symmetry__class_ae5c5f365f42a8a75a06c7bcfa2466e3c}
+
+\item 
+std\+::vector$<$ int $>$ \hyperlink{classsirius_1_1_atom__symmetry__class_aff6a257253ffda866c1dc0b43aa5f711}{check\+\_\+lo\+\_\+linear\+\_\+independence} (double etol\+\_\+\+\_\+)
+\begin{DoxyCompactList}\small\item\em Check if local orbitals are linearly independent. \end{DoxyCompactList}\item 
+void \hyperlink{classsirius_1_1_atom__symmetry__class_a1e0425a9395f4cf8cb5bf9e7ab4c2715}{dump\+\_\+lo} ()
+\begin{DoxyCompactList}\small\item\em Dump local orbitals to the file for debug purposes. \end{DoxyCompactList}\item 
+void \hyperlink{classsirius_1_1_atom__symmetry__class_a310cc6236763404b713e590f5d8cb4eb}{generate\+\_\+core\+\_\+charge\+\_\+density} (relativity\+\_\+t core\+\_\+rel\+\_\+\+\_\+)
+\begin{DoxyCompactList}\small\item\em Find core states and generate core density. \end{DoxyCompactList}\item 
+\hypertarget{classsirius_1_1_atom__symmetry__class_a9424f05dd381c4ecc0513241883eaee2}{}void {\bfseries find\+\_\+enu} (relativity\+\_\+t rel\+\_\+\+\_\+)\label{classsirius_1_1_atom__symmetry__class_a9424f05dd381c4ecc0513241883eaee2}
+
+\item 
+\hypertarget{classsirius_1_1_atom__symmetry__class_aa686b4e8a837309eb43159609ffe3e61}{}void {\bfseries write\+\_\+enu} (\hyperlink{classruntime_1_1pstdout}{runtime\+::pstdout} \&pout) const \label{classsirius_1_1_atom__symmetry__class_aa686b4e8a837309eb43159609ffe3e61}
+
+\item 
+void \hyperlink{classsirius_1_1_atom__symmetry__class_adbc3da5557dd7d08b3c8eeb80c92785f}{generate\+\_\+radial\+\_\+integrals} (relativity\+\_\+t rel\+\_\+\+\_\+)
+\begin{DoxyCompactList}\small\item\em Generate radial overlap and S\+O integrals. \end{DoxyCompactList}\item 
+double \hyperlink{classsirius_1_1_atom__symmetry__class_a3becc8c8883e2094c732c2f8bf2748e5}{aw\+\_\+surface\+\_\+dm} (int l, int order, int dm) const 
+\begin{DoxyCompactList}\small\item\em Compute m-\/th order radial derivative at the M\+T surface. \end{DoxyCompactList}\item 
+\hypertarget{classsirius_1_1_atom__symmetry__class_a7d1134018dcfb903e3d5f4ebc365cb4c}{}void {\bfseries set\+\_\+aw\+\_\+surface\+\_\+deriv} (int l, int order, int dm, double deriv)\label{classsirius_1_1_atom__symmetry__class_a7d1134018dcfb903e3d5f4ebc365cb4c}
+
+\item 
+int \hyperlink{classsirius_1_1_atom__symmetry__class_aa0d970d5de55b7e2f9e35c352dd7ee3a}{id} () const 
+\begin{DoxyCompactList}\small\item\em Return symmetry class id. \end{DoxyCompactList}\item 
+void \hyperlink{classsirius_1_1_atom__symmetry__class_a5931a51adda0182cf5a4048f8650dc3b}{add\+\_\+atom\+\_\+id} (int atom\+\_\+id\+\_\+\+\_\+)
+\begin{DoxyCompactList}\small\item\em Add atom id to the current class. \end{DoxyCompactList}\item 
+int \hyperlink{classsirius_1_1_atom__symmetry__class_a8d7b49eb4a24eb4bc9323d6eef6fd30b}{num\+\_\+atoms} () const 
+\begin{DoxyCompactList}\small\item\em Return number of atoms belonging to the current symmetry class. \end{DoxyCompactList}\item 
+\hypertarget{classsirius_1_1_atom__symmetry__class_a4b657e28f0e6acdace35fddc94c1238d}{}int {\bfseries atom\+\_\+id} (int idx) const \label{classsirius_1_1_atom__symmetry__class_a4b657e28f0e6acdace35fddc94c1238d}
+
+\item 
+double \hyperlink{classsirius_1_1_atom__symmetry__class_a85b7df31edd8709d31c0ccbafc2a8d43}{radial\+\_\+function} (int ir, int idx) const 
+\begin{DoxyCompactList}\small\item\em Get a value of the radial functions. \end{DoxyCompactList}\item 
+double \& \hyperlink{classsirius_1_1_atom__symmetry__class_a94987d73d4276d23d10bd7c355d0cb74}{radial\+\_\+function} (int ir, int idx)
+\begin{DoxyCompactList}\small\item\em Get a reference to the value of the radial function. \end{DoxyCompactList}\item 
+double \hyperlink{classsirius_1_1_atom__symmetry__class_abba151fe781e19fc3c805dd7a11613df}{radial\+\_\+function\+\_\+derivative} (int ir, int idx) const 
+\begin{DoxyCompactList}\small\item\em Get a value of the radial function derivative. \end{DoxyCompactList}\item 
+double \& \hyperlink{classsirius_1_1_atom__symmetry__class_a6f823482bda27391dd6a5ef53f98be64}{radial\+\_\+function\+\_\+derivative} (int ir, int idx)
+\begin{DoxyCompactList}\small\item\em Get a reference to the value of the radial function derivative. \end{DoxyCompactList}\item 
+\hypertarget{classsirius_1_1_atom__symmetry__class_a96f5b0e78b5fb44b72486318a75459f0}{}double {\bfseries h\+\_\+spherical\+\_\+integral} (int i1, int i2) const \label{classsirius_1_1_atom__symmetry__class_a96f5b0e78b5fb44b72486318a75459f0}
+
+\item 
+\hypertarget{classsirius_1_1_atom__symmetry__class_a16057216e003acdcc23511219b3dcdf8}{}double const \& {\bfseries o\+\_\+radial\+\_\+integral} (int l, int order1, int order2) const \label{classsirius_1_1_atom__symmetry__class_a16057216e003acdcc23511219b3dcdf8}
+
+\item 
+\hypertarget{classsirius_1_1_atom__symmetry__class_a461d115d5a23c582fc5964240be7605b}{}void {\bfseries set\+\_\+o\+\_\+radial\+\_\+integral} (int l, int order1, int order2, double oint\+\_\+\+\_\+)\label{classsirius_1_1_atom__symmetry__class_a461d115d5a23c582fc5964240be7605b}
+
+\item 
+\hypertarget{classsirius_1_1_atom__symmetry__class_a66c67e212b40f1519297317c2354f746}{}double const \& {\bfseries o1\+\_\+radial\+\_\+integral} (int xi1\+\_\+\+\_\+, int xi2\+\_\+\+\_\+) const \label{classsirius_1_1_atom__symmetry__class_a66c67e212b40f1519297317c2354f746}
+
+\item 
+\hypertarget{classsirius_1_1_atom__symmetry__class_aa3a240a45b6016f2d3663b6fa41a207c}{}void {\bfseries set\+\_\+o1\+\_\+radial\+\_\+integral} (int idxrf1\+\_\+\+\_\+, int idxrf2\+\_\+\+\_\+, double val\+\_\+\+\_\+)\label{classsirius_1_1_atom__symmetry__class_aa3a240a45b6016f2d3663b6fa41a207c}
+
+\item 
+\hypertarget{classsirius_1_1_atom__symmetry__class_a6876180883d6b02c7a4c124da9a8d294}{}double {\bfseries so\+\_\+radial\+\_\+integral} (int l, int order1, int order2) const \label{classsirius_1_1_atom__symmetry__class_a6876180883d6b02c7a4c124da9a8d294}
+
+\item 
+\hypertarget{classsirius_1_1_atom__symmetry__class_a9b67de9349731a6f1d02d7983080933a}{}double {\bfseries core\+\_\+charge\+\_\+density} (int ir) const \label{classsirius_1_1_atom__symmetry__class_a9b67de9349731a6f1d02d7983080933a}
+
+\item 
+\hypertarget{classsirius_1_1_atom__symmetry__class_ae9dec8d0a8e6027e417d98c01cb9ac2b}{}\hyperlink{classsirius_1_1_atom__type}{Atom\+\_\+type} const \& {\bfseries atom\+\_\+type} () const \label{classsirius_1_1_atom__symmetry__class_ae9dec8d0a8e6027e417d98c01cb9ac2b}
+
+\item 
+\hypertarget{classsirius_1_1_atom__symmetry__class_a067940be836b27b06cbfa29f51179dff}{}double {\bfseries core\+\_\+eval\+\_\+sum} () const \label{classsirius_1_1_atom__symmetry__class_a067940be836b27b06cbfa29f51179dff}
+
+\item 
+\hypertarget{classsirius_1_1_atom__symmetry__class_a74e798b9f0842f55fc7b121829110005}{}double {\bfseries core\+\_\+leakage} () const \label{classsirius_1_1_atom__symmetry__class_a74e798b9f0842f55fc7b121829110005}
+
+\item 
+\hypertarget{classsirius_1_1_atom__symmetry__class_aaae366eb73fdfca21c4cbc3c92b4e8a1}{}int {\bfseries num\+\_\+aw\+\_\+descriptors} () const \label{classsirius_1_1_atom__symmetry__class_aaae366eb73fdfca21c4cbc3c92b4e8a1}
+
+\item 
+\hypertarget{classsirius_1_1_atom__symmetry__class_acabbb4ddd23092fcefe19d32f8976900}{}\hyperlink{descriptors_8h_aec4b6e691d842d5c6b06552800a478b3}{radial\+\_\+solution\+\_\+descriptor\+\_\+set} \& {\bfseries aw\+\_\+descriptor} (int idx\+\_\+\+\_\+) const \label{classsirius_1_1_atom__symmetry__class_acabbb4ddd23092fcefe19d32f8976900}
+
+\item 
+\hypertarget{classsirius_1_1_atom__symmetry__class_aa91d65ec9fdc8f8b601fa1ff2332d2f2}{}int {\bfseries num\+\_\+lo\+\_\+descriptors} () const \label{classsirius_1_1_atom__symmetry__class_aa91d65ec9fdc8f8b601fa1ff2332d2f2}
+
+\item 
+\hypertarget{classsirius_1_1_atom__symmetry__class_ac64e8ab314a97e34b0b3a84b6550c298}{}\hyperlink{structlocal__orbital__descriptor}{local\+\_\+orbital\+\_\+descriptor} \& {\bfseries lo\+\_\+descriptor} (int idx\+\_\+\+\_\+) const \label{classsirius_1_1_atom__symmetry__class_ac64e8ab314a97e34b0b3a84b6550c298}
+
+\item 
+\hypertarget{classsirius_1_1_atom__symmetry__class_ac3d381672789f0aabc618dfe72936a8a}{}void {\bfseries set\+\_\+aw\+\_\+enu} (int l, int order, double enu)\label{classsirius_1_1_atom__symmetry__class_ac3d381672789f0aabc618dfe72936a8a}
+
+\item 
+\hypertarget{classsirius_1_1_atom__symmetry__class_afb83e01bafb4185182174a0cca786a35}{}double {\bfseries get\+\_\+aw\+\_\+enu} (int l, int order) const \label{classsirius_1_1_atom__symmetry__class_afb83e01bafb4185182174a0cca786a35}
+
+\item 
+\hypertarget{classsirius_1_1_atom__symmetry__class_a3565f0b8f021e490738342b0ea286a5a}{}void {\bfseries set\+\_\+lo\+\_\+enu} (int idxlo, int order, double enu)\label{classsirius_1_1_atom__symmetry__class_a3565f0b8f021e490738342b0ea286a5a}
+
+\item 
+\hypertarget{classsirius_1_1_atom__symmetry__class_a2f07ad3159025333e903a1421160e521}{}double {\bfseries get\+\_\+lo\+\_\+enu} (int idxlo, int order) const \label{classsirius_1_1_atom__symmetry__class_a2f07ad3159025333e903a1421160e521}
+
+\end{DoxyCompactItemize}
+\subsection*{Private Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+void \hyperlink{classsirius_1_1_atom__symmetry__class_a0021449cbbcc76df9aca1072125bdcae}{generate\+\_\+aw\+\_\+radial\+\_\+functions} (relativity\+\_\+t rel\+\_\+\+\_\+)
+\begin{DoxyCompactList}\small\item\em Generate radial functions for augmented waves. \end{DoxyCompactList}\item 
+void \hyperlink{classsirius_1_1_atom__symmetry__class_a1ad404f1acabf28700a55dfd6db9d8aa}{generate\+\_\+lo\+\_\+radial\+\_\+functions} (relativity\+\_\+t rel\+\_\+\+\_\+)
+\begin{DoxyCompactList}\small\item\em Generate local orbital raidal functions. \end{DoxyCompactList}\end{DoxyCompactItemize}
+\subsection*{Private Attributes}
+\begin{DoxyCompactItemize}
+\item 
+int \hyperlink{classsirius_1_1_atom__symmetry__class_aa4c86581251ec529aed2437f1a370b30}{id\+\_\+}
+\begin{DoxyCompactList}\small\item\em \hyperlink{classsirius_1_1_symmetry}{Symmetry} class id in the range \mbox{[}0, N\+\_\+class). \end{DoxyCompactList}\item 
+std\+::vector$<$ int $>$ \hyperlink{classsirius_1_1_atom__symmetry__class_a1a554889233bd3be37d1ae94071e6fed}{atom\+\_\+id\+\_\+}
+\begin{DoxyCompactList}\small\item\em List of atoms of this class. \end{DoxyCompactList}\item 
+\hyperlink{classsirius_1_1_atom__type}{Atom\+\_\+type} const \& \hyperlink{classsirius_1_1_atom__symmetry__class_a2668fe2a989f893e02a0bc1e5424e4ea}{atom\+\_\+type\+\_\+}
+\begin{DoxyCompactList}\small\item\em Pointer to atom type. \end{DoxyCompactList}\item 
+std\+::vector$<$ double $>$ \hyperlink{classsirius_1_1_atom__symmetry__class_a4393b778a7ad833fc5cf834e04ce529c}{spherical\+\_\+potential\+\_\+}
+\begin{DoxyCompactList}\small\item\em Spherical part of the effective potential. \end{DoxyCompactList}\item 
+\hyperlink{classsddk_1_1mdarray}{mdarray}$<$ double, 3 $>$ \hyperlink{classsirius_1_1_atom__symmetry__class_a386343d0b45a21cdccecd10e71c7c3f4}{radial\+\_\+functions\+\_\+}
+\begin{DoxyCompactList}\small\item\em List of radial functions for the L\+A\+P\+W basis. \end{DoxyCompactList}\item 
+\hyperlink{classsddk_1_1mdarray}{mdarray}$<$ double, 3 $>$ \hyperlink{classsirius_1_1_atom__symmetry__class_a5166789d0468f3b5ef13cabe4fd81d85}{aw\+\_\+surface\+\_\+derivatives\+\_\+}
+\begin{DoxyCompactList}\small\item\em Surface derivatives of A\+W radial functions. \end{DoxyCompactList}\item 
+\hyperlink{classsddk_1_1mdarray}{mdarray}$<$ double, 2 $>$ \hyperlink{classsirius_1_1_atom__symmetry__class_a67ce6c9408276241634a0108beb18ce1}{h\+\_\+spherical\+\_\+integrals\+\_\+}
+\begin{DoxyCompactList}\small\item\em Spherical part of radial integral. \end{DoxyCompactList}\item 
+\hyperlink{classsddk_1_1mdarray}{mdarray}$<$ double, 3 $>$ \hyperlink{classsirius_1_1_atom__symmetry__class_aee287b3e0ec23fb68ecb742490ca1fdb}{o\+\_\+radial\+\_\+integrals\+\_\+}
+\begin{DoxyCompactList}\small\item\em Overlap integrals. \end{DoxyCompactList}\item 
+\hyperlink{classsddk_1_1mdarray}{mdarray}$<$ double, 2 $>$ \hyperlink{classsirius_1_1_atom__symmetry__class_a5b103e070ac0676a0ce627a8ce654b75}{o1\+\_\+radial\+\_\+integrals\+\_\+}
+\begin{DoxyCompactList}\small\item\em Overlap integrals for I\+O\+R\+A relativistic treatment. \end{DoxyCompactList}\item 
+\hyperlink{classsddk_1_1mdarray}{mdarray}$<$ double, 3 $>$ \hyperlink{classsirius_1_1_atom__symmetry__class_a3320c301ad81367c8a6ce0492150b8c1}{so\+\_\+radial\+\_\+integrals\+\_\+}
+\begin{DoxyCompactList}\small\item\em Spin-\/orbit interaction integrals. \end{DoxyCompactList}\item 
+std\+::vector$<$ double $>$ \hyperlink{classsirius_1_1_atom__symmetry__class_ab22e12fabcf60d92a06b5899e6897ba0}{core\+\_\+charge\+\_\+density\+\_\+}
+\begin{DoxyCompactList}\small\item\em Core charge density. \end{DoxyCompactList}\item 
+double \hyperlink{classsirius_1_1_atom__symmetry__class_a1a83d41a210d9c10ee27ac15ae6dd945}{core\+\_\+eval\+\_\+sum\+\_\+} \{0\}
+\begin{DoxyCompactList}\small\item\em Core eigen-\/value sum. \end{DoxyCompactList}\item 
+double \hyperlink{classsirius_1_1_atom__symmetry__class_a511011ad2a11f0ff95ba77c7801bcdac}{core\+\_\+leakage\+\_\+} \{0\}
+\begin{DoxyCompactList}\small\item\em Core leakage. \end{DoxyCompactList}\item 
+std\+::vector$<$ \hyperlink{descriptors_8h_aec4b6e691d842d5c6b06552800a478b3}{radial\+\_\+solution\+\_\+descriptor\+\_\+set} $>$ \hyperlink{classsirius_1_1_atom__symmetry__class_abfda6d0f0e8fdf62ace1b2d398b22e74}{aw\+\_\+descriptors\+\_\+}
+\begin{DoxyCompactList}\small\item\em list of radial descriptor sets used to construct augmented waves \end{DoxyCompactList}\item 
+std\+::vector$<$ \hyperlink{structlocal__orbital__descriptor}{local\+\_\+orbital\+\_\+descriptor} $>$ \hyperlink{classsirius_1_1_atom__symmetry__class_a28d09903836c52e4b0fc322776b3aab8}{lo\+\_\+descriptors\+\_\+}
+\begin{DoxyCompactList}\small\item\em list of radial descriptor sets used to construct local orbitals \end{DoxyCompactList}\end{DoxyCompactItemize}
+
+
+\subsection{Detailed Description}
+Data and methods specific to the symmetry class of the atom. 
+
+Atoms transforming into each other under symmetry opeartions belong to the same symmetry class. They have the same spherical part of the on-\/site potential and, as a consequence, the same radial functions. 
+
+Definition at line 39 of file atom\+\_\+symmetry\+\_\+class.\+h.
+
+
+
+\subsection{Constructor \& Destructor Documentation}
+\hypertarget{classsirius_1_1_atom__symmetry__class_a08eaf2331397fd9b3ef83d44ea77e57c}{}\index{sirius\+::\+Atom\+\_\+symmetry\+\_\+class@{sirius\+::\+Atom\+\_\+symmetry\+\_\+class}!Atom\+\_\+symmetry\+\_\+class@{Atom\+\_\+symmetry\+\_\+class}}
+\index{Atom\+\_\+symmetry\+\_\+class@{Atom\+\_\+symmetry\+\_\+class}!sirius\+::\+Atom\+\_\+symmetry\+\_\+class@{sirius\+::\+Atom\+\_\+symmetry\+\_\+class}}
+\subsubsection[{Atom\+\_\+symmetry\+\_\+class(int id\+\_\+, Atom\+\_\+type const \&atom\+\_\+type\+\_\+)}]{\setlength{\rightskip}{0pt plus 5cm}sirius\+::\+Atom\+\_\+symmetry\+\_\+class\+::\+Atom\+\_\+symmetry\+\_\+class (
+\begin{DoxyParamCaption}
+\item[{int}]{id\+\_\+, }
+\item[{{\bf Atom\+\_\+type} const \&}]{atom\+\_\+type\+\_\+}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}}\label{classsirius_1_1_atom__symmetry__class_a08eaf2331397fd9b3ef83d44ea77e57c}
+
+
+Constructor. 
+
+
+
+Definition at line 102 of file atom\+\_\+symmetry\+\_\+class.\+h.
+
+
+
+\subsection{Member Function Documentation}
+\hypertarget{classsirius_1_1_atom__symmetry__class_a0021449cbbcc76df9aca1072125bdcae}{}\index{sirius\+::\+Atom\+\_\+symmetry\+\_\+class@{sirius\+::\+Atom\+\_\+symmetry\+\_\+class}!generate\+\_\+aw\+\_\+radial\+\_\+functions@{generate\+\_\+aw\+\_\+radial\+\_\+functions}}
+\index{generate\+\_\+aw\+\_\+radial\+\_\+functions@{generate\+\_\+aw\+\_\+radial\+\_\+functions}!sirius\+::\+Atom\+\_\+symmetry\+\_\+class@{sirius\+::\+Atom\+\_\+symmetry\+\_\+class}}
+\subsubsection[{generate\+\_\+aw\+\_\+radial\+\_\+functions(relativity\+\_\+t rel\+\_\+\+\_\+)}]{\setlength{\rightskip}{0pt plus 5cm}void sirius\+::\+Atom\+\_\+symmetry\+\_\+class\+::generate\+\_\+aw\+\_\+radial\+\_\+functions (
+\begin{DoxyParamCaption}
+\item[{relativity\+\_\+t}]{rel\+\_\+\+\_\+}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}, {\ttfamily [private]}}\label{classsirius_1_1_atom__symmetry__class_a0021449cbbcc76df9aca1072125bdcae}
+
+
+Generate radial functions for augmented waves. 
+
+
+
+Definition at line 336 of file atom\+\_\+symmetry\+\_\+class.\+h.
+
+\hypertarget{classsirius_1_1_atom__symmetry__class_a1ad404f1acabf28700a55dfd6db9d8aa}{}\index{sirius\+::\+Atom\+\_\+symmetry\+\_\+class@{sirius\+::\+Atom\+\_\+symmetry\+\_\+class}!generate\+\_\+lo\+\_\+radial\+\_\+functions@{generate\+\_\+lo\+\_\+radial\+\_\+functions}}
+\index{generate\+\_\+lo\+\_\+radial\+\_\+functions@{generate\+\_\+lo\+\_\+radial\+\_\+functions}!sirius\+::\+Atom\+\_\+symmetry\+\_\+class@{sirius\+::\+Atom\+\_\+symmetry\+\_\+class}}
+\subsubsection[{generate\+\_\+lo\+\_\+radial\+\_\+functions(relativity\+\_\+t rel\+\_\+\+\_\+)}]{\setlength{\rightskip}{0pt plus 5cm}void sirius\+::\+Atom\+\_\+symmetry\+\_\+class\+::generate\+\_\+lo\+\_\+radial\+\_\+functions (
+\begin{DoxyParamCaption}
+\item[{relativity\+\_\+t}]{rel\+\_\+\+\_\+}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}, {\ttfamily [private]}}\label{classsirius_1_1_atom__symmetry__class_a1ad404f1acabf28700a55dfd6db9d8aa}
+
+
+Generate local orbital raidal functions. 
+
+
+
+Definition at line 425 of file atom\+\_\+symmetry\+\_\+class.\+h.
+
+\hypertarget{classsirius_1_1_atom__symmetry__class_a12117e8c6bca5886de9277fb2f94bfd2}{}\index{sirius\+::\+Atom\+\_\+symmetry\+\_\+class@{sirius\+::\+Atom\+\_\+symmetry\+\_\+class}!set\+\_\+spherical\+\_\+potential@{set\+\_\+spherical\+\_\+potential}}
+\index{set\+\_\+spherical\+\_\+potential@{set\+\_\+spherical\+\_\+potential}!sirius\+::\+Atom\+\_\+symmetry\+\_\+class@{sirius\+::\+Atom\+\_\+symmetry\+\_\+class}}
+\subsubsection[{set\+\_\+spherical\+\_\+potential(std\+::vector$<$ double $>$ const \&vs\+\_\+\+\_\+)}]{\setlength{\rightskip}{0pt plus 5cm}void sirius\+::\+Atom\+\_\+symmetry\+\_\+class\+::set\+\_\+spherical\+\_\+potential (
+\begin{DoxyParamCaption}
+\item[{std\+::vector$<$ double $>$ const \&}]{vs\+\_\+\+\_\+}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}}\label{classsirius_1_1_atom__symmetry__class_a12117e8c6bca5886de9277fb2f94bfd2}
+
+
+Set the spherical component of the potential. 
+
+Atoms belonging to the same symmetry class have the same spherical potential. 
+\begin{DoxyItemize}
+\item write spherical potential $\ast$/ 
+\end{DoxyItemize}
+
+Definition at line 654 of file atom\+\_\+symmetry\+\_\+class.\+h.
+
+\hypertarget{classsirius_1_1_atom__symmetry__class_aff6a257253ffda866c1dc0b43aa5f711}{}\index{sirius\+::\+Atom\+\_\+symmetry\+\_\+class@{sirius\+::\+Atom\+\_\+symmetry\+\_\+class}!check\+\_\+lo\+\_\+linear\+\_\+independence@{check\+\_\+lo\+\_\+linear\+\_\+independence}}
+\index{check\+\_\+lo\+\_\+linear\+\_\+independence@{check\+\_\+lo\+\_\+linear\+\_\+independence}!sirius\+::\+Atom\+\_\+symmetry\+\_\+class@{sirius\+::\+Atom\+\_\+symmetry\+\_\+class}}
+\subsubsection[{check\+\_\+lo\+\_\+linear\+\_\+independence(double etol\+\_\+\+\_\+)}]{\setlength{\rightskip}{0pt plus 5cm}std\+::vector$<$ int $>$ sirius\+::\+Atom\+\_\+symmetry\+\_\+class\+::check\+\_\+lo\+\_\+linear\+\_\+independence (
+\begin{DoxyParamCaption}
+\item[{double}]{etol\+\_\+\+\_\+}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}}\label{classsirius_1_1_atom__symmetry__class_aff6a257253ffda866c1dc0b43aa5f711}
+
+
+Check if local orbitals are linearly independent. 
+
+
+
+Definition at line 537 of file atom\+\_\+symmetry\+\_\+class.\+h.
+
+\hypertarget{classsirius_1_1_atom__symmetry__class_a1e0425a9395f4cf8cb5bf9e7ab4c2715}{}\index{sirius\+::\+Atom\+\_\+symmetry\+\_\+class@{sirius\+::\+Atom\+\_\+symmetry\+\_\+class}!dump\+\_\+lo@{dump\+\_\+lo}}
+\index{dump\+\_\+lo@{dump\+\_\+lo}!sirius\+::\+Atom\+\_\+symmetry\+\_\+class@{sirius\+::\+Atom\+\_\+symmetry\+\_\+class}}
+\subsubsection[{dump\+\_\+lo()}]{\setlength{\rightskip}{0pt plus 5cm}void sirius\+::\+Atom\+\_\+symmetry\+\_\+class\+::dump\+\_\+lo (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}}\label{classsirius_1_1_atom__symmetry__class_a1e0425a9395f4cf8cb5bf9e7ab4c2715}
+
+
+Dump local orbitals to the file for debug purposes. 
+
+
+
+Definition at line 623 of file atom\+\_\+symmetry\+\_\+class.\+h.
+
+\hypertarget{classsirius_1_1_atom__symmetry__class_a310cc6236763404b713e590f5d8cb4eb}{}\index{sirius\+::\+Atom\+\_\+symmetry\+\_\+class@{sirius\+::\+Atom\+\_\+symmetry\+\_\+class}!generate\+\_\+core\+\_\+charge\+\_\+density@{generate\+\_\+core\+\_\+charge\+\_\+density}}
+\index{generate\+\_\+core\+\_\+charge\+\_\+density@{generate\+\_\+core\+\_\+charge\+\_\+density}!sirius\+::\+Atom\+\_\+symmetry\+\_\+class@{sirius\+::\+Atom\+\_\+symmetry\+\_\+class}}
+\subsubsection[{generate\+\_\+core\+\_\+charge\+\_\+density(relativity\+\_\+t core\+\_\+rel\+\_\+\+\_\+)}]{\setlength{\rightskip}{0pt plus 5cm}void sirius\+::\+Atom\+\_\+symmetry\+\_\+class\+::generate\+\_\+core\+\_\+charge\+\_\+density (
+\begin{DoxyParamCaption}
+\item[{relativity\+\_\+t}]{core\+\_\+rel\+\_\+\+\_\+}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}}\label{classsirius_1_1_atom__symmetry__class_a310cc6236763404b713e590f5d8cb4eb}
+
+
+Find core states and generate core density. 
+
+
+
+Definition at line 932 of file atom\+\_\+symmetry\+\_\+class.\+h.
+
+\hypertarget{classsirius_1_1_atom__symmetry__class_adbc3da5557dd7d08b3c8eeb80c92785f}{}\index{sirius\+::\+Atom\+\_\+symmetry\+\_\+class@{sirius\+::\+Atom\+\_\+symmetry\+\_\+class}!generate\+\_\+radial\+\_\+integrals@{generate\+\_\+radial\+\_\+integrals}}
+\index{generate\+\_\+radial\+\_\+integrals@{generate\+\_\+radial\+\_\+integrals}!sirius\+::\+Atom\+\_\+symmetry\+\_\+class@{sirius\+::\+Atom\+\_\+symmetry\+\_\+class}}
+\subsubsection[{generate\+\_\+radial\+\_\+integrals(relativity\+\_\+t rel\+\_\+\+\_\+)}]{\setlength{\rightskip}{0pt plus 5cm}void sirius\+::\+Atom\+\_\+symmetry\+\_\+class\+::generate\+\_\+radial\+\_\+integrals (
+\begin{DoxyParamCaption}
+\item[{relativity\+\_\+t}]{rel\+\_\+\+\_\+}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}}\label{classsirius_1_1_atom__symmetry__class_adbc3da5557dd7d08b3c8eeb80c92785f}
+
+
+Generate radial overlap and S\+O integrals. 
+
+In the case of spin-\/orbit interaction the following integrals are computed\+: \[ \int f_{p}(r) \Big( \frac{1}{(2 M c)^2} \frac{1}{r} \frac{d V}{d r} \Big) f_{p'}(r) r^2 dr \]
+
+Relativistic mass M is defined as \[ M = 1 - \frac{1}{2 c^2} V \] 
+
+Definition at line 778 of file atom\+\_\+symmetry\+\_\+class.\+h.
+
+\hypertarget{classsirius_1_1_atom__symmetry__class_a3becc8c8883e2094c732c2f8bf2748e5}{}\index{sirius\+::\+Atom\+\_\+symmetry\+\_\+class@{sirius\+::\+Atom\+\_\+symmetry\+\_\+class}!aw\+\_\+surface\+\_\+dm@{aw\+\_\+surface\+\_\+dm}}
+\index{aw\+\_\+surface\+\_\+dm@{aw\+\_\+surface\+\_\+dm}!sirius\+::\+Atom\+\_\+symmetry\+\_\+class@{sirius\+::\+Atom\+\_\+symmetry\+\_\+class}}
+\subsubsection[{aw\+\_\+surface\+\_\+dm(int l, int order, int dm) const }]{\setlength{\rightskip}{0pt plus 5cm}double sirius\+::\+Atom\+\_\+symmetry\+\_\+class\+::aw\+\_\+surface\+\_\+dm (
+\begin{DoxyParamCaption}
+\item[{int}]{l, }
+\item[{int}]{order, }
+\item[{int}]{dm}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [inline]}}\label{classsirius_1_1_atom__symmetry__class_a3becc8c8883e2094c732c2f8bf2748e5}
+
+
+Compute m-\/th order radial derivative at the M\+T surface. 
+
+
+
+Definition at line 184 of file atom\+\_\+symmetry\+\_\+class.\+h.
+
+\hypertarget{classsirius_1_1_atom__symmetry__class_aa0d970d5de55b7e2f9e35c352dd7ee3a}{}\index{sirius\+::\+Atom\+\_\+symmetry\+\_\+class@{sirius\+::\+Atom\+\_\+symmetry\+\_\+class}!id@{id}}
+\index{id@{id}!sirius\+::\+Atom\+\_\+symmetry\+\_\+class@{sirius\+::\+Atom\+\_\+symmetry\+\_\+class}}
+\subsubsection[{id() const }]{\setlength{\rightskip}{0pt plus 5cm}int sirius\+::\+Atom\+\_\+symmetry\+\_\+class\+::id (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [inline]}}\label{classsirius_1_1_atom__symmetry__class_aa0d970d5de55b7e2f9e35c352dd7ee3a}
+
+
+Return symmetry class id. 
+
+
+
+Definition at line 197 of file atom\+\_\+symmetry\+\_\+class.\+h.
+
+\hypertarget{classsirius_1_1_atom__symmetry__class_a5931a51adda0182cf5a4048f8650dc3b}{}\index{sirius\+::\+Atom\+\_\+symmetry\+\_\+class@{sirius\+::\+Atom\+\_\+symmetry\+\_\+class}!add\+\_\+atom\+\_\+id@{add\+\_\+atom\+\_\+id}}
+\index{add\+\_\+atom\+\_\+id@{add\+\_\+atom\+\_\+id}!sirius\+::\+Atom\+\_\+symmetry\+\_\+class@{sirius\+::\+Atom\+\_\+symmetry\+\_\+class}}
+\subsubsection[{add\+\_\+atom\+\_\+id(int atom\+\_\+id\+\_\+\+\_\+)}]{\setlength{\rightskip}{0pt plus 5cm}void sirius\+::\+Atom\+\_\+symmetry\+\_\+class\+::add\+\_\+atom\+\_\+id (
+\begin{DoxyParamCaption}
+\item[{int}]{atom\+\_\+id\+\_\+\+\_\+}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}}\label{classsirius_1_1_atom__symmetry__class_a5931a51adda0182cf5a4048f8650dc3b}
+
+
+Add atom id to the current class. 
+
+
+
+Definition at line 203 of file atom\+\_\+symmetry\+\_\+class.\+h.
+
+\hypertarget{classsirius_1_1_atom__symmetry__class_a8d7b49eb4a24eb4bc9323d6eef6fd30b}{}\index{sirius\+::\+Atom\+\_\+symmetry\+\_\+class@{sirius\+::\+Atom\+\_\+symmetry\+\_\+class}!num\+\_\+atoms@{num\+\_\+atoms}}
+\index{num\+\_\+atoms@{num\+\_\+atoms}!sirius\+::\+Atom\+\_\+symmetry\+\_\+class@{sirius\+::\+Atom\+\_\+symmetry\+\_\+class}}
+\subsubsection[{num\+\_\+atoms() const }]{\setlength{\rightskip}{0pt plus 5cm}int sirius\+::\+Atom\+\_\+symmetry\+\_\+class\+::num\+\_\+atoms (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [inline]}}\label{classsirius_1_1_atom__symmetry__class_a8d7b49eb4a24eb4bc9323d6eef6fd30b}
+
+
+Return number of atoms belonging to the current symmetry class. 
+
+
+
+Definition at line 209 of file atom\+\_\+symmetry\+\_\+class.\+h.
+
+\hypertarget{classsirius_1_1_atom__symmetry__class_a85b7df31edd8709d31c0ccbafc2a8d43}{}\index{sirius\+::\+Atom\+\_\+symmetry\+\_\+class@{sirius\+::\+Atom\+\_\+symmetry\+\_\+class}!radial\+\_\+function@{radial\+\_\+function}}
+\index{radial\+\_\+function@{radial\+\_\+function}!sirius\+::\+Atom\+\_\+symmetry\+\_\+class@{sirius\+::\+Atom\+\_\+symmetry\+\_\+class}}
+\subsubsection[{radial\+\_\+function(int ir, int idx) const }]{\setlength{\rightskip}{0pt plus 5cm}double sirius\+::\+Atom\+\_\+symmetry\+\_\+class\+::radial\+\_\+function (
+\begin{DoxyParamCaption}
+\item[{int}]{ir, }
+\item[{int}]{idx}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [inline]}}\label{classsirius_1_1_atom__symmetry__class_a85b7df31edd8709d31c0ccbafc2a8d43}
+
+
+Get a value of the radial functions. 
+
+
+
+Definition at line 220 of file atom\+\_\+symmetry\+\_\+class.\+h.
+
+\hypertarget{classsirius_1_1_atom__symmetry__class_a94987d73d4276d23d10bd7c355d0cb74}{}\index{sirius\+::\+Atom\+\_\+symmetry\+\_\+class@{sirius\+::\+Atom\+\_\+symmetry\+\_\+class}!radial\+\_\+function@{radial\+\_\+function}}
+\index{radial\+\_\+function@{radial\+\_\+function}!sirius\+::\+Atom\+\_\+symmetry\+\_\+class@{sirius\+::\+Atom\+\_\+symmetry\+\_\+class}}
+\subsubsection[{radial\+\_\+function(int ir, int idx)}]{\setlength{\rightskip}{0pt plus 5cm}double\& sirius\+::\+Atom\+\_\+symmetry\+\_\+class\+::radial\+\_\+function (
+\begin{DoxyParamCaption}
+\item[{int}]{ir, }
+\item[{int}]{idx}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}}\label{classsirius_1_1_atom__symmetry__class_a94987d73d4276d23d10bd7c355d0cb74}
+
+
+Get a reference to the value of the radial function. 
+
+
+
+Definition at line 226 of file atom\+\_\+symmetry\+\_\+class.\+h.
+
+\hypertarget{classsirius_1_1_atom__symmetry__class_abba151fe781e19fc3c805dd7a11613df}{}\index{sirius\+::\+Atom\+\_\+symmetry\+\_\+class@{sirius\+::\+Atom\+\_\+symmetry\+\_\+class}!radial\+\_\+function\+\_\+derivative@{radial\+\_\+function\+\_\+derivative}}
+\index{radial\+\_\+function\+\_\+derivative@{radial\+\_\+function\+\_\+derivative}!sirius\+::\+Atom\+\_\+symmetry\+\_\+class@{sirius\+::\+Atom\+\_\+symmetry\+\_\+class}}
+\subsubsection[{radial\+\_\+function\+\_\+derivative(int ir, int idx) const }]{\setlength{\rightskip}{0pt plus 5cm}double sirius\+::\+Atom\+\_\+symmetry\+\_\+class\+::radial\+\_\+function\+\_\+derivative (
+\begin{DoxyParamCaption}
+\item[{int}]{ir, }
+\item[{int}]{idx}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [inline]}}\label{classsirius_1_1_atom__symmetry__class_abba151fe781e19fc3c805dd7a11613df}
+
+
+Get a value of the radial function derivative. 
+
+
+
+Definition at line 232 of file atom\+\_\+symmetry\+\_\+class.\+h.
+
+\hypertarget{classsirius_1_1_atom__symmetry__class_a6f823482bda27391dd6a5ef53f98be64}{}\index{sirius\+::\+Atom\+\_\+symmetry\+\_\+class@{sirius\+::\+Atom\+\_\+symmetry\+\_\+class}!radial\+\_\+function\+\_\+derivative@{radial\+\_\+function\+\_\+derivative}}
+\index{radial\+\_\+function\+\_\+derivative@{radial\+\_\+function\+\_\+derivative}!sirius\+::\+Atom\+\_\+symmetry\+\_\+class@{sirius\+::\+Atom\+\_\+symmetry\+\_\+class}}
+\subsubsection[{radial\+\_\+function\+\_\+derivative(int ir, int idx)}]{\setlength{\rightskip}{0pt plus 5cm}double\& sirius\+::\+Atom\+\_\+symmetry\+\_\+class\+::radial\+\_\+function\+\_\+derivative (
+\begin{DoxyParamCaption}
+\item[{int}]{ir, }
+\item[{int}]{idx}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}}\label{classsirius_1_1_atom__symmetry__class_a6f823482bda27391dd6a5ef53f98be64}
+
+
+Get a reference to the value of the radial function derivative. 
+
+
+
+Definition at line 238 of file atom\+\_\+symmetry\+\_\+class.\+h.
+
+
+
+\subsection{Member Data Documentation}
+\hypertarget{classsirius_1_1_atom__symmetry__class_aa4c86581251ec529aed2437f1a370b30}{}\index{sirius\+::\+Atom\+\_\+symmetry\+\_\+class@{sirius\+::\+Atom\+\_\+symmetry\+\_\+class}!id\+\_\+@{id\+\_\+}}
+\index{id\+\_\+@{id\+\_\+}!sirius\+::\+Atom\+\_\+symmetry\+\_\+class@{sirius\+::\+Atom\+\_\+symmetry\+\_\+class}}
+\subsubsection[{id\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}int sirius\+::\+Atom\+\_\+symmetry\+\_\+class\+::id\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classsirius_1_1_atom__symmetry__class_aa4c86581251ec529aed2437f1a370b30}
+
+
+\hyperlink{classsirius_1_1_symmetry}{Symmetry} class id in the range \mbox{[}0, N\+\_\+class). 
+
+
+
+Definition at line 44 of file atom\+\_\+symmetry\+\_\+class.\+h.
+
+\hypertarget{classsirius_1_1_atom__symmetry__class_a1a554889233bd3be37d1ae94071e6fed}{}\index{sirius\+::\+Atom\+\_\+symmetry\+\_\+class@{sirius\+::\+Atom\+\_\+symmetry\+\_\+class}!atom\+\_\+id\+\_\+@{atom\+\_\+id\+\_\+}}
+\index{atom\+\_\+id\+\_\+@{atom\+\_\+id\+\_\+}!sirius\+::\+Atom\+\_\+symmetry\+\_\+class@{sirius\+::\+Atom\+\_\+symmetry\+\_\+class}}
+\subsubsection[{atom\+\_\+id\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}std\+::vector$<$int$>$ sirius\+::\+Atom\+\_\+symmetry\+\_\+class\+::atom\+\_\+id\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classsirius_1_1_atom__symmetry__class_a1a554889233bd3be37d1ae94071e6fed}
+
+
+List of atoms of this class. 
+
+
+
+Definition at line 47 of file atom\+\_\+symmetry\+\_\+class.\+h.
+
+\hypertarget{classsirius_1_1_atom__symmetry__class_a2668fe2a989f893e02a0bc1e5424e4ea}{}\index{sirius\+::\+Atom\+\_\+symmetry\+\_\+class@{sirius\+::\+Atom\+\_\+symmetry\+\_\+class}!atom\+\_\+type\+\_\+@{atom\+\_\+type\+\_\+}}
+\index{atom\+\_\+type\+\_\+@{atom\+\_\+type\+\_\+}!sirius\+::\+Atom\+\_\+symmetry\+\_\+class@{sirius\+::\+Atom\+\_\+symmetry\+\_\+class}}
+\subsubsection[{atom\+\_\+type\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}{\bf Atom\+\_\+type} const\& sirius\+::\+Atom\+\_\+symmetry\+\_\+class\+::atom\+\_\+type\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classsirius_1_1_atom__symmetry__class_a2668fe2a989f893e02a0bc1e5424e4ea}
+
+
+Pointer to atom type. 
+
+
+
+Definition at line 50 of file atom\+\_\+symmetry\+\_\+class.\+h.
+
+\hypertarget{classsirius_1_1_atom__symmetry__class_a4393b778a7ad833fc5cf834e04ce529c}{}\index{sirius\+::\+Atom\+\_\+symmetry\+\_\+class@{sirius\+::\+Atom\+\_\+symmetry\+\_\+class}!spherical\+\_\+potential\+\_\+@{spherical\+\_\+potential\+\_\+}}
+\index{spherical\+\_\+potential\+\_\+@{spherical\+\_\+potential\+\_\+}!sirius\+::\+Atom\+\_\+symmetry\+\_\+class@{sirius\+::\+Atom\+\_\+symmetry\+\_\+class}}
+\subsubsection[{spherical\+\_\+potential\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}std\+::vector$<$double$>$ sirius\+::\+Atom\+\_\+symmetry\+\_\+class\+::spherical\+\_\+potential\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classsirius_1_1_atom__symmetry__class_a4393b778a7ad833fc5cf834e04ce529c}
+
+
+Spherical part of the effective potential. 
+
+
+
+Definition at line 53 of file atom\+\_\+symmetry\+\_\+class.\+h.
+
+\hypertarget{classsirius_1_1_atom__symmetry__class_a386343d0b45a21cdccecd10e71c7c3f4}{}\index{sirius\+::\+Atom\+\_\+symmetry\+\_\+class@{sirius\+::\+Atom\+\_\+symmetry\+\_\+class}!radial\+\_\+functions\+\_\+@{radial\+\_\+functions\+\_\+}}
+\index{radial\+\_\+functions\+\_\+@{radial\+\_\+functions\+\_\+}!sirius\+::\+Atom\+\_\+symmetry\+\_\+class@{sirius\+::\+Atom\+\_\+symmetry\+\_\+class}}
+\subsubsection[{radial\+\_\+functions\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}{\bf mdarray}$<$double, 3$>$ sirius\+::\+Atom\+\_\+symmetry\+\_\+class\+::radial\+\_\+functions\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classsirius_1_1_atom__symmetry__class_a386343d0b45a21cdccecd10e71c7c3f4}
+
+
+List of radial functions for the L\+A\+P\+W basis. 
+
+This array stores all the radial functions (A\+W and L\+O) and their derivatives. Radial derivatives of functions are multiplied by $ x $.~\newline
+1-\/st dimension\+: index of radial point ~\newline
+2-\/nd dimension\+: index of radial function ~\newline
+3-\/nd dimension\+: 0 -\/ function itself, 1 -\/ radial derivative 
+
+Definition at line 61 of file atom\+\_\+symmetry\+\_\+class.\+h.
+
+\hypertarget{classsirius_1_1_atom__symmetry__class_a5166789d0468f3b5ef13cabe4fd81d85}{}\index{sirius\+::\+Atom\+\_\+symmetry\+\_\+class@{sirius\+::\+Atom\+\_\+symmetry\+\_\+class}!aw\+\_\+surface\+\_\+derivatives\+\_\+@{aw\+\_\+surface\+\_\+derivatives\+\_\+}}
+\index{aw\+\_\+surface\+\_\+derivatives\+\_\+@{aw\+\_\+surface\+\_\+derivatives\+\_\+}!sirius\+::\+Atom\+\_\+symmetry\+\_\+class@{sirius\+::\+Atom\+\_\+symmetry\+\_\+class}}
+\subsubsection[{aw\+\_\+surface\+\_\+derivatives\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}{\bf mdarray}$<$double, 3$>$ sirius\+::\+Atom\+\_\+symmetry\+\_\+class\+::aw\+\_\+surface\+\_\+derivatives\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classsirius_1_1_atom__symmetry__class_a5166789d0468f3b5ef13cabe4fd81d85}
+
+
+Surface derivatives of A\+W radial functions. 
+
+
+
+Definition at line 64 of file atom\+\_\+symmetry\+\_\+class.\+h.
+
+\hypertarget{classsirius_1_1_atom__symmetry__class_a67ce6c9408276241634a0108beb18ce1}{}\index{sirius\+::\+Atom\+\_\+symmetry\+\_\+class@{sirius\+::\+Atom\+\_\+symmetry\+\_\+class}!h\+\_\+spherical\+\_\+integrals\+\_\+@{h\+\_\+spherical\+\_\+integrals\+\_\+}}
+\index{h\+\_\+spherical\+\_\+integrals\+\_\+@{h\+\_\+spherical\+\_\+integrals\+\_\+}!sirius\+::\+Atom\+\_\+symmetry\+\_\+class@{sirius\+::\+Atom\+\_\+symmetry\+\_\+class}}
+\subsubsection[{h\+\_\+spherical\+\_\+integrals\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}{\bf mdarray}$<$double, 2$>$ sirius\+::\+Atom\+\_\+symmetry\+\_\+class\+::h\+\_\+spherical\+\_\+integrals\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classsirius_1_1_atom__symmetry__class_a67ce6c9408276241634a0108beb18ce1}
+
+
+Spherical part of radial integral. 
+
+
+
+Definition at line 67 of file atom\+\_\+symmetry\+\_\+class.\+h.
+
+\hypertarget{classsirius_1_1_atom__symmetry__class_aee287b3e0ec23fb68ecb742490ca1fdb}{}\index{sirius\+::\+Atom\+\_\+symmetry\+\_\+class@{sirius\+::\+Atom\+\_\+symmetry\+\_\+class}!o\+\_\+radial\+\_\+integrals\+\_\+@{o\+\_\+radial\+\_\+integrals\+\_\+}}
+\index{o\+\_\+radial\+\_\+integrals\+\_\+@{o\+\_\+radial\+\_\+integrals\+\_\+}!sirius\+::\+Atom\+\_\+symmetry\+\_\+class@{sirius\+::\+Atom\+\_\+symmetry\+\_\+class}}
+\subsubsection[{o\+\_\+radial\+\_\+integrals\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}{\bf mdarray}$<$double, 3$>$ sirius\+::\+Atom\+\_\+symmetry\+\_\+class\+::o\+\_\+radial\+\_\+integrals\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classsirius_1_1_atom__symmetry__class_aee287b3e0ec23fb68ecb742490ca1fdb}
+
+
+Overlap integrals. 
+
+
+
+Definition at line 70 of file atom\+\_\+symmetry\+\_\+class.\+h.
+
+\hypertarget{classsirius_1_1_atom__symmetry__class_a5b103e070ac0676a0ce627a8ce654b75}{}\index{sirius\+::\+Atom\+\_\+symmetry\+\_\+class@{sirius\+::\+Atom\+\_\+symmetry\+\_\+class}!o1\+\_\+radial\+\_\+integrals\+\_\+@{o1\+\_\+radial\+\_\+integrals\+\_\+}}
+\index{o1\+\_\+radial\+\_\+integrals\+\_\+@{o1\+\_\+radial\+\_\+integrals\+\_\+}!sirius\+::\+Atom\+\_\+symmetry\+\_\+class@{sirius\+::\+Atom\+\_\+symmetry\+\_\+class}}
+\subsubsection[{o1\+\_\+radial\+\_\+integrals\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}{\bf mdarray}$<$double, 2$>$ sirius\+::\+Atom\+\_\+symmetry\+\_\+class\+::o1\+\_\+radial\+\_\+integrals\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classsirius_1_1_atom__symmetry__class_a5b103e070ac0676a0ce627a8ce654b75}
+
+
+Overlap integrals for I\+O\+R\+A relativistic treatment. 
+
+
+
+Definition at line 73 of file atom\+\_\+symmetry\+\_\+class.\+h.
+
+\hypertarget{classsirius_1_1_atom__symmetry__class_a3320c301ad81367c8a6ce0492150b8c1}{}\index{sirius\+::\+Atom\+\_\+symmetry\+\_\+class@{sirius\+::\+Atom\+\_\+symmetry\+\_\+class}!so\+\_\+radial\+\_\+integrals\+\_\+@{so\+\_\+radial\+\_\+integrals\+\_\+}}
+\index{so\+\_\+radial\+\_\+integrals\+\_\+@{so\+\_\+radial\+\_\+integrals\+\_\+}!sirius\+::\+Atom\+\_\+symmetry\+\_\+class@{sirius\+::\+Atom\+\_\+symmetry\+\_\+class}}
+\subsubsection[{so\+\_\+radial\+\_\+integrals\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}{\bf mdarray}$<$double, 3$>$ sirius\+::\+Atom\+\_\+symmetry\+\_\+class\+::so\+\_\+radial\+\_\+integrals\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classsirius_1_1_atom__symmetry__class_a3320c301ad81367c8a6ce0492150b8c1}
+
+
+Spin-\/orbit interaction integrals. 
+
+
+
+Definition at line 76 of file atom\+\_\+symmetry\+\_\+class.\+h.
+
+\hypertarget{classsirius_1_1_atom__symmetry__class_ab22e12fabcf60d92a06b5899e6897ba0}{}\index{sirius\+::\+Atom\+\_\+symmetry\+\_\+class@{sirius\+::\+Atom\+\_\+symmetry\+\_\+class}!core\+\_\+charge\+\_\+density\+\_\+@{core\+\_\+charge\+\_\+density\+\_\+}}
+\index{core\+\_\+charge\+\_\+density\+\_\+@{core\+\_\+charge\+\_\+density\+\_\+}!sirius\+::\+Atom\+\_\+symmetry\+\_\+class@{sirius\+::\+Atom\+\_\+symmetry\+\_\+class}}
+\subsubsection[{core\+\_\+charge\+\_\+density\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}std\+::vector$<$double$>$ sirius\+::\+Atom\+\_\+symmetry\+\_\+class\+::core\+\_\+charge\+\_\+density\+\_\+\hspace{0.3cm}{\ttfamily [private]}}\label{classsirius_1_1_atom__symmetry__class_ab22e12fabcf60d92a06b5899e6897ba0}
+
+
+Core charge density. 
+
+
+
+Definition at line 79 of file atom\+\_\+symmetry\+\_\+class.\+h.
+
+\hypertarget{classsirius_1_1_atom__symmetry__class_a1a83d41a210d9c10ee27ac15ae6dd945}{}\index{sirius\+::\+Atom\+\_\+symmetry\+\_\+class@{sirius\+::\+Atom\+\_\+symmetry\+\_\+class}!core\+\_\+eval\+\_\+sum\+\_\+@{core\+\_\+eval\+\_\+sum\+\_\+}}
+\index{core\+\_\+eval\+\_\+sum\+\_\+@{core\+\_\+eval\+\_\+sum\+\_\+}!sirius\+::\+Atom\+\_\+symmetry\+\_\+class@{sirius\+::\+Atom\+\_\+symmetry\+\_\+class}}
+\subsubsection[{core\+\_\+eval\+\_\+sum\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}double sirius\+::\+Atom\+\_\+symmetry\+\_\+class\+::core\+\_\+eval\+\_\+sum\+\_\+ \{0\}\hspace{0.3cm}{\ttfamily [private]}}\label{classsirius_1_1_atom__symmetry__class_a1a83d41a210d9c10ee27ac15ae6dd945}
+
+
+Core eigen-\/value sum. 
+
+
+
+Definition at line 82 of file atom\+\_\+symmetry\+\_\+class.\+h.
+
+\hypertarget{classsirius_1_1_atom__symmetry__class_a511011ad2a11f0ff95ba77c7801bcdac}{}\index{sirius\+::\+Atom\+\_\+symmetry\+\_\+class@{sirius\+::\+Atom\+\_\+symmetry\+\_\+class}!core\+\_\+leakage\+\_\+@{core\+\_\+leakage\+\_\+}}
+\index{core\+\_\+leakage\+\_\+@{core\+\_\+leakage\+\_\+}!sirius\+::\+Atom\+\_\+symmetry\+\_\+class@{sirius\+::\+Atom\+\_\+symmetry\+\_\+class}}
+\subsubsection[{core\+\_\+leakage\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}double sirius\+::\+Atom\+\_\+symmetry\+\_\+class\+::core\+\_\+leakage\+\_\+ \{0\}\hspace{0.3cm}{\ttfamily [private]}}\label{classsirius_1_1_atom__symmetry__class_a511011ad2a11f0ff95ba77c7801bcdac}
+
+
+Core leakage. 
+
+
+
+Definition at line 85 of file atom\+\_\+symmetry\+\_\+class.\+h.
+
+\hypertarget{classsirius_1_1_atom__symmetry__class_abfda6d0f0e8fdf62ace1b2d398b22e74}{}\index{sirius\+::\+Atom\+\_\+symmetry\+\_\+class@{sirius\+::\+Atom\+\_\+symmetry\+\_\+class}!aw\+\_\+descriptors\+\_\+@{aw\+\_\+descriptors\+\_\+}}
+\index{aw\+\_\+descriptors\+\_\+@{aw\+\_\+descriptors\+\_\+}!sirius\+::\+Atom\+\_\+symmetry\+\_\+class@{sirius\+::\+Atom\+\_\+symmetry\+\_\+class}}
+\subsubsection[{aw\+\_\+descriptors\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}std\+::vector$<${\bf radial\+\_\+solution\+\_\+descriptor\+\_\+set}$>$ sirius\+::\+Atom\+\_\+symmetry\+\_\+class\+::aw\+\_\+descriptors\+\_\+\hspace{0.3cm}{\ttfamily [mutable]}, {\ttfamily [private]}}\label{classsirius_1_1_atom__symmetry__class_abfda6d0f0e8fdf62ace1b2d398b22e74}
+
+
+list of radial descriptor sets used to construct augmented waves 
+
+
+
+Definition at line 88 of file atom\+\_\+symmetry\+\_\+class.\+h.
+
+\hypertarget{classsirius_1_1_atom__symmetry__class_a28d09903836c52e4b0fc322776b3aab8}{}\index{sirius\+::\+Atom\+\_\+symmetry\+\_\+class@{sirius\+::\+Atom\+\_\+symmetry\+\_\+class}!lo\+\_\+descriptors\+\_\+@{lo\+\_\+descriptors\+\_\+}}
+\index{lo\+\_\+descriptors\+\_\+@{lo\+\_\+descriptors\+\_\+}!sirius\+::\+Atom\+\_\+symmetry\+\_\+class@{sirius\+::\+Atom\+\_\+symmetry\+\_\+class}}
+\subsubsection[{lo\+\_\+descriptors\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}std\+::vector$<${\bf local\+\_\+orbital\+\_\+descriptor}$>$ sirius\+::\+Atom\+\_\+symmetry\+\_\+class\+::lo\+\_\+descriptors\+\_\+\hspace{0.3cm}{\ttfamily [mutable]}, {\ttfamily [private]}}\label{classsirius_1_1_atom__symmetry__class_a28d09903836c52e4b0fc322776b3aab8}
+
+
+list of radial descriptor sets used to construct local orbitals 
+
+
+
+Definition at line 91 of file atom\+\_\+symmetry\+\_\+class.\+h.
+
+
+
+The documentation for this class was generated from the following file\+:\begin{DoxyCompactItemize}
+\item 
+\hyperlink{atom__symmetry__class_8h}{atom\+\_\+symmetry\+\_\+class.\+h}\end{DoxyCompactItemize}

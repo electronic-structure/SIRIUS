@@ -1,0 +1,184 @@
+\hypertarget{classsddk_1_1_f_f_t3_d__grid}{}\section{sddk\+:\+:F\+F\+T3\+D\+\_\+grid Class Reference}
+\label{classsddk_1_1_f_f_t3_d__grid}\index{sddk\+::\+F\+F\+T3\+D\+\_\+grid@{sddk\+::\+F\+F\+T3\+D\+\_\+grid}}
+
+
+Handling of F\+F\+T grids.  
+
+
+\subsection*{Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+\hypertarget{classsddk_1_1_f_f_t3_d__grid_a3514e62914f358e77416ee3026db224d}{}{\bfseries F\+F\+T3\+D\+\_\+grid} (std\+::array$<$ int, 3 $>$ initial\+\_\+dims\+\_\+\+\_\+)\label{classsddk_1_1_f_f_t3_d__grid_a3514e62914f358e77416ee3026db224d}
+
+\item 
+const std\+::pair$<$ int, int $>$ \& \hyperlink{classsddk_1_1_f_f_t3_d__grid_a9f0e5f2d7e6aeac1704d08e7211306ec}{limits} (int idim\+\_\+\+\_\+) const 
+\begin{DoxyCompactList}\small\item\em Limits of a given dimension. \end{DoxyCompactList}\item 
+int \hyperlink{classsddk_1_1_f_f_t3_d__grid_a82d573aedf2570700518897978008a48}{size} (int idim\+\_\+\+\_\+) const 
+\begin{DoxyCompactList}\small\item\em Size of a given dimension. \end{DoxyCompactList}\item 
+int \hyperlink{classsddk_1_1_f_f_t3_d__grid_a6f1dc12129ff8afa69387a25dbc1d92d}{size} () const 
+\begin{DoxyCompactList}\small\item\em Total size of the F\+F\+T grid. \end{DoxyCompactList}\item 
+\hypertarget{classsddk_1_1_f_f_t3_d__grid_a1a65d3d3e00c39bb8c42095ebfa7abfd}{}std\+::array$<$ int, 3 $>$ {\bfseries coord\+\_\+by\+\_\+gvec} (int i0\+\_\+\+\_\+, int i1\+\_\+\+\_\+, int i2\+\_\+\+\_\+) const \label{classsddk_1_1_f_f_t3_d__grid_a1a65d3d3e00c39bb8c42095ebfa7abfd}
+
+\item 
+\hypertarget{classsddk_1_1_f_f_t3_d__grid_a45bed375f9900a5895ef59c456f35656}{}int {\bfseries coord\+\_\+by\+\_\+gvec} (int i\+\_\+\+\_\+, int idim\+\_\+\+\_\+) const \label{classsddk_1_1_f_f_t3_d__grid_a45bed375f9900a5895ef59c456f35656}
+
+\item 
+\hypertarget{classsddk_1_1_f_f_t3_d__grid_ad056a54852483308d0045ac1fdd2363f}{}std\+::array$<$ int, 3 $>$ {\bfseries gvec\+\_\+by\+\_\+coord} (int x\+\_\+\+\_\+, int y\+\_\+\+\_\+, int z\+\_\+\+\_\+) const \label{classsddk_1_1_f_f_t3_d__grid_ad056a54852483308d0045ac1fdd2363f}
+
+\item 
+\hypertarget{classsddk_1_1_f_f_t3_d__grid_a4ac2cedb46e0b09dd49b42a493bb4041}{}int {\bfseries gvec\+\_\+by\+\_\+coord} (int x\+\_\+\+\_\+, int idim\+\_\+\+\_\+) const \label{classsddk_1_1_f_f_t3_d__grid_a4ac2cedb46e0b09dd49b42a493bb4041}
+
+\item 
+int \hyperlink{classsddk_1_1_f_f_t3_d__grid_a3ef57611bec87b32f2705b3f6926adf3}{index\+\_\+by\+\_\+coord} (int x\+\_\+\+\_\+, int y\+\_\+\+\_\+, int z\+\_\+\+\_\+) const 
+\begin{DoxyCompactList}\small\item\em Linear index inside F\+F\+T buffer by grid coordinates. \end{DoxyCompactList}\item 
+int \hyperlink{classsddk_1_1_f_f_t3_d__grid_a507fc482f1aa4a71b1d95b7f5fdfc769}{index\+\_\+by\+\_\+gvec} (int i0\+\_\+\+\_\+, int i1\+\_\+\+\_\+, int i2\+\_\+\+\_\+) const 
+\begin{DoxyCompactList}\small\item\em Return linear index of a plane-\/wave harmonic with fractional coordinates (i0, i1, i2) inside F\+F\+T buffer. \end{DoxyCompactList}\end{DoxyCompactItemize}
+\subsection*{Private Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+int \hyperlink{classsddk_1_1_f_f_t3_d__grid_ace2e6d322b46c111839602d52ab6d371}{find\+\_\+grid\+\_\+size} (int n)
+\begin{DoxyCompactList}\small\item\em Find smallest optimal grid size starting from n. \end{DoxyCompactList}\item 
+\hypertarget{classsddk_1_1_f_f_t3_d__grid_a0591d5c0a6cf98c8515fa545555f72db}{}void {\bfseries find\+\_\+grid\+\_\+size} (std\+::array$<$ int, 3 $>$ initial\+\_\+dims\+\_\+\+\_\+)\label{classsddk_1_1_f_f_t3_d__grid_a0591d5c0a6cf98c8515fa545555f72db}
+
+\end{DoxyCompactItemize}
+\subsection*{Private Attributes}
+\begin{DoxyCompactItemize}
+\item 
+int \hyperlink{classsddk_1_1_f_f_t3_d__grid_ad6cd37e6540f58635a561d81a1bcf8a7}{grid\+\_\+size\+\_\+} \mbox{[}3\mbox{]}
+\begin{DoxyCompactList}\small\item\em Size of each dimension. \end{DoxyCompactList}\item 
+std\+::pair$<$ int, int $>$ \hyperlink{classsddk_1_1_f_f_t3_d__grid_a41c9d4dfef43df42e0aa18597f5d83a2}{grid\+\_\+limits\+\_\+} \mbox{[}3\mbox{]}
+\begin{DoxyCompactList}\small\item\em Reciprocal space range. \end{DoxyCompactList}\end{DoxyCompactItemize}
+
+
+\subsection{Detailed Description}
+Handling of F\+F\+T grids. 
+
+Definition at line 31 of file fft3d\+\_\+grid.\+hpp.
+
+
+
+\subsection{Member Function Documentation}
+\hypertarget{classsddk_1_1_f_f_t3_d__grid_ace2e6d322b46c111839602d52ab6d371}{}\index{sddk\+::\+F\+F\+T3\+D\+\_\+grid@{sddk\+::\+F\+F\+T3\+D\+\_\+grid}!find\+\_\+grid\+\_\+size@{find\+\_\+grid\+\_\+size}}
+\index{find\+\_\+grid\+\_\+size@{find\+\_\+grid\+\_\+size}!sddk\+::\+F\+F\+T3\+D\+\_\+grid@{sddk\+::\+F\+F\+T3\+D\+\_\+grid}}
+\subsubsection[{find\+\_\+grid\+\_\+size(int n)}]{\setlength{\rightskip}{0pt plus 5cm}int sddk\+::\+F\+F\+T3\+D\+\_\+grid\+::find\+\_\+grid\+\_\+size (
+\begin{DoxyParamCaption}
+\item[{int}]{n}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}, {\ttfamily [private]}}\label{classsddk_1_1_f_f_t3_d__grid_ace2e6d322b46c111839602d52ab6d371}
+
+
+Find smallest optimal grid size starting from n. 
+
+
+
+Definition at line 41 of file fft3d\+\_\+grid.\+hpp.
+
+\hypertarget{classsddk_1_1_f_f_t3_d__grid_a9f0e5f2d7e6aeac1704d08e7211306ec}{}\index{sddk\+::\+F\+F\+T3\+D\+\_\+grid@{sddk\+::\+F\+F\+T3\+D\+\_\+grid}!limits@{limits}}
+\index{limits@{limits}!sddk\+::\+F\+F\+T3\+D\+\_\+grid@{sddk\+::\+F\+F\+T3\+D\+\_\+grid}}
+\subsubsection[{limits(int idim\+\_\+\+\_\+) const }]{\setlength{\rightskip}{0pt plus 5cm}const std\+::pair$<$int, int$>$\& sddk\+::\+F\+F\+T3\+D\+\_\+grid\+::limits (
+\begin{DoxyParamCaption}
+\item[{int}]{idim\+\_\+\+\_\+}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [inline]}}\label{classsddk_1_1_f_f_t3_d__grid_a9f0e5f2d7e6aeac1704d08e7211306ec}
+
+
+Limits of a given dimension. 
+
+
+
+Definition at line 87 of file fft3d\+\_\+grid.\+hpp.
+
+\hypertarget{classsddk_1_1_f_f_t3_d__grid_a82d573aedf2570700518897978008a48}{}\index{sddk\+::\+F\+F\+T3\+D\+\_\+grid@{sddk\+::\+F\+F\+T3\+D\+\_\+grid}!size@{size}}
+\index{size@{size}!sddk\+::\+F\+F\+T3\+D\+\_\+grid@{sddk\+::\+F\+F\+T3\+D\+\_\+grid}}
+\subsubsection[{size(int idim\+\_\+\+\_\+) const }]{\setlength{\rightskip}{0pt plus 5cm}int sddk\+::\+F\+F\+T3\+D\+\_\+grid\+::size (
+\begin{DoxyParamCaption}
+\item[{int}]{idim\+\_\+\+\_\+}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [inline]}}\label{classsddk_1_1_f_f_t3_d__grid_a82d573aedf2570700518897978008a48}
+
+
+Size of a given dimension. 
+
+
+
+Definition at line 94 of file fft3d\+\_\+grid.\+hpp.
+
+\hypertarget{classsddk_1_1_f_f_t3_d__grid_a6f1dc12129ff8afa69387a25dbc1d92d}{}\index{sddk\+::\+F\+F\+T3\+D\+\_\+grid@{sddk\+::\+F\+F\+T3\+D\+\_\+grid}!size@{size}}
+\index{size@{size}!sddk\+::\+F\+F\+T3\+D\+\_\+grid@{sddk\+::\+F\+F\+T3\+D\+\_\+grid}}
+\subsubsection[{size() const }]{\setlength{\rightskip}{0pt plus 5cm}int sddk\+::\+F\+F\+T3\+D\+\_\+grid\+::size (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [inline]}}\label{classsddk_1_1_f_f_t3_d__grid_a6f1dc12129ff8afa69387a25dbc1d92d}
+
+
+Total size of the F\+F\+T grid. 
+
+
+
+Definition at line 101 of file fft3d\+\_\+grid.\+hpp.
+
+\hypertarget{classsddk_1_1_f_f_t3_d__grid_a3ef57611bec87b32f2705b3f6926adf3}{}\index{sddk\+::\+F\+F\+T3\+D\+\_\+grid@{sddk\+::\+F\+F\+T3\+D\+\_\+grid}!index\+\_\+by\+\_\+coord@{index\+\_\+by\+\_\+coord}}
+\index{index\+\_\+by\+\_\+coord@{index\+\_\+by\+\_\+coord}!sddk\+::\+F\+F\+T3\+D\+\_\+grid@{sddk\+::\+F\+F\+T3\+D\+\_\+grid}}
+\subsubsection[{index\+\_\+by\+\_\+coord(int x\+\_\+\+\_\+, int y\+\_\+\+\_\+, int z\+\_\+\+\_\+) const }]{\setlength{\rightskip}{0pt plus 5cm}int sddk\+::\+F\+F\+T3\+D\+\_\+grid\+::index\+\_\+by\+\_\+coord (
+\begin{DoxyParamCaption}
+\item[{int}]{x\+\_\+\+\_\+, }
+\item[{int}]{y\+\_\+\+\_\+, }
+\item[{int}]{z\+\_\+\+\_\+}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [inline]}}\label{classsddk_1_1_f_f_t3_d__grid_a3ef57611bec87b32f2705b3f6926adf3}
+
+
+Linear index inside F\+F\+T buffer by grid coordinates. 
+
+
+
+Definition at line 153 of file fft3d\+\_\+grid.\+hpp.
+
+\hypertarget{classsddk_1_1_f_f_t3_d__grid_a507fc482f1aa4a71b1d95b7f5fdfc769}{}\index{sddk\+::\+F\+F\+T3\+D\+\_\+grid@{sddk\+::\+F\+F\+T3\+D\+\_\+grid}!index\+\_\+by\+\_\+gvec@{index\+\_\+by\+\_\+gvec}}
+\index{index\+\_\+by\+\_\+gvec@{index\+\_\+by\+\_\+gvec}!sddk\+::\+F\+F\+T3\+D\+\_\+grid@{sddk\+::\+F\+F\+T3\+D\+\_\+grid}}
+\subsubsection[{index\+\_\+by\+\_\+gvec(int i0\+\_\+\+\_\+, int i1\+\_\+\+\_\+, int i2\+\_\+\+\_\+) const }]{\setlength{\rightskip}{0pt plus 5cm}int sddk\+::\+F\+F\+T3\+D\+\_\+grid\+::index\+\_\+by\+\_\+gvec (
+\begin{DoxyParamCaption}
+\item[{int}]{i0\+\_\+\+\_\+, }
+\item[{int}]{i1\+\_\+\+\_\+, }
+\item[{int}]{i2\+\_\+\+\_\+}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [inline]}}\label{classsddk_1_1_f_f_t3_d__grid_a507fc482f1aa4a71b1d95b7f5fdfc769}
+
+
+Return linear index of a plane-\/wave harmonic with fractional coordinates (i0, i1, i2) inside F\+F\+T buffer. 
+
+
+
+Definition at line 159 of file fft3d\+\_\+grid.\+hpp.
+
+
+
+\subsection{Member Data Documentation}
+\hypertarget{classsddk_1_1_f_f_t3_d__grid_ad6cd37e6540f58635a561d81a1bcf8a7}{}\index{sddk\+::\+F\+F\+T3\+D\+\_\+grid@{sddk\+::\+F\+F\+T3\+D\+\_\+grid}!grid\+\_\+size\+\_\+@{grid\+\_\+size\+\_\+}}
+\index{grid\+\_\+size\+\_\+@{grid\+\_\+size\+\_\+}!sddk\+::\+F\+F\+T3\+D\+\_\+grid@{sddk\+::\+F\+F\+T3\+D\+\_\+grid}}
+\subsubsection[{grid\+\_\+size\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}int sddk\+::\+F\+F\+T3\+D\+\_\+grid\+::grid\+\_\+size\+\_\+\mbox{[}3\mbox{]}\hspace{0.3cm}{\ttfamily [private]}}\label{classsddk_1_1_f_f_t3_d__grid_ad6cd37e6540f58635a561d81a1bcf8a7}
+
+
+Size of each dimension. 
+
+
+
+Definition at line 35 of file fft3d\+\_\+grid.\+hpp.
+
+\hypertarget{classsddk_1_1_f_f_t3_d__grid_a41c9d4dfef43df42e0aa18597f5d83a2}{}\index{sddk\+::\+F\+F\+T3\+D\+\_\+grid@{sddk\+::\+F\+F\+T3\+D\+\_\+grid}!grid\+\_\+limits\+\_\+@{grid\+\_\+limits\+\_\+}}
+\index{grid\+\_\+limits\+\_\+@{grid\+\_\+limits\+\_\+}!sddk\+::\+F\+F\+T3\+D\+\_\+grid@{sddk\+::\+F\+F\+T3\+D\+\_\+grid}}
+\subsubsection[{grid\+\_\+limits\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}std\+::pair$<$int, int$>$ sddk\+::\+F\+F\+T3\+D\+\_\+grid\+::grid\+\_\+limits\+\_\+\mbox{[}3\mbox{]}\hspace{0.3cm}{\ttfamily [private]}}\label{classsddk_1_1_f_f_t3_d__grid_a41c9d4dfef43df42e0aa18597f5d83a2}
+
+
+Reciprocal space range. 
+
+
+
+Definition at line 38 of file fft3d\+\_\+grid.\+hpp.
+
+
+
+The documentation for this class was generated from the following file\+:\begin{DoxyCompactItemize}
+\item 
+\hyperlink{fft3d__grid_8hpp}{fft3d\+\_\+grid.\+hpp}\end{DoxyCompactItemize}

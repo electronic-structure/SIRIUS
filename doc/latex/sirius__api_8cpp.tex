@@ -1,0 +1,1573 @@
+\hypertarget{sirius__api_8cpp}{}\section{sirius\+\_\+api.\+cpp File Reference}
+\label{sirius__api_8cpp}\index{sirius\+\_\+api.\+cpp@{sirius\+\_\+api.\+cpp}}
+
+
+Fortran A\+P\+I.  
+
+
+Include dependency graph for sirius\+\_\+api.\+cpp\+:
+% FIG 0
+\subsection*{Functions}
+\begin{DoxyCompactItemize}
+\item 
+void \hyperlink{sirius__api_8cpp_abe2849b0122a55c5428f42dfb04d666c}{sirius\+\_\+initialize} (ftn\+\_\+int $\ast$call\+\_\+mpi\+\_\+init\+\_\+\+\_\+)
+\begin{DoxyCompactList}\small\item\em Initialize the library. \end{DoxyCompactList}\item 
+void \hyperlink{sirius__api_8cpp_a181a1afd75e34e9db1854840c44f2c5f}{sirius\+\_\+clear} (void)
+\begin{DoxyCompactList}\small\item\em Clear global variables and destroy all objects. \end{DoxyCompactList}\item 
+\hypertarget{sirius__api_8cpp_ad22d22199e738652eea909c6dfe5451b}{}void {\bfseries sirius\+\_\+create\+\_\+simulation\+\_\+context} (const char $\ast$config\+\_\+file\+\_\+name\+\_\+\+\_\+)\label{sirius__api_8cpp_ad22d22199e738652eea909c6dfe5451b}
+
+\item 
+void \hyperlink{sirius__api_8cpp_a48f1ae00b6992e22a2f966ec0a532588}{sirius\+\_\+initialize\+\_\+simulation\+\_\+context} ()
+\begin{DoxyCompactList}\small\item\em Initialize the global variables. \end{DoxyCompactList}\item 
+\hypertarget{sirius__api_8cpp_ad4b6c8de115e29dfc8612079338a8275}{}void {\bfseries sirius\+\_\+delete\+\_\+simulation\+\_\+context} ()\label{sirius__api_8cpp_ad4b6c8de115e29dfc8612079338a8275}
+
+\item 
+void \hyperlink{sirius__api_8cpp_a0eab8f314918ee38334d1f902748dd57}{sirius\+\_\+create\+\_\+potential} (double $\ast$veffit\+\_\+\+\_\+, double $\ast$veffmt\+\_\+\+\_\+, double $\ast$beffit\+\_\+\+\_\+, double $\ast$beffmt\+\_\+\+\_\+)
+\begin{DoxyCompactList}\small\item\em Initialize the Potential object. \end{DoxyCompactList}\item 
+\hypertarget{sirius__api_8cpp_ad89f422b8ad8734a235919f603fa69a9}{}void {\bfseries sirius\+\_\+delete\+\_\+potential} ()\label{sirius__api_8cpp_ad89f422b8ad8734a235919f603fa69a9}
+
+\item 
+void \hyperlink{sirius__api_8cpp_a0f825c0f904141c185da368e6b50969f}{sirius\+\_\+create\+\_\+density} (double $\ast$rhoit\+\_\+\+\_\+, double $\ast$rhomt\+\_\+\+\_\+, double $\ast$magit\+\_\+\+\_\+, double $\ast$magmt\+\_\+\+\_\+)
+\begin{DoxyCompactList}\small\item\em Initialize the Density object. \end{DoxyCompactList}\item 
+\hypertarget{sirius__api_8cpp_a91d703598c39974af3857d5967ce8468}{}void {\bfseries sirius\+\_\+delete\+\_\+density} ()\label{sirius__api_8cpp_a91d703598c39974af3857d5967ce8468}
+
+\item 
+void \hyperlink{sirius__api_8cpp_a7b25454c8f56e16d91ae53d03343cb59}{sirius\+\_\+create\+\_\+kset} (ftn\+\_\+int $\ast$num\+\_\+kpoints\+\_\+\+\_\+, ftn\+\_\+double $\ast$kpoints\+\_\+\+\_\+, ftn\+\_\+double $\ast$kpoint\+\_\+weights\+\_\+\+\_\+, ftn\+\_\+int $\ast$init\+\_\+kset\+\_\+\+\_\+, ftn\+\_\+int $\ast$kset\+\_\+id\+\_\+\+\_\+, ftn\+\_\+int $\ast$nk\+\_\+loc\+\_\+\+\_\+)
+\begin{DoxyCompactList}\small\item\em Create the k-\/point set from the list of k-\/points and return it\textquotesingle{}s id. \end{DoxyCompactList}\item 
+\hypertarget{sirius__api_8cpp_a15ac371f02c6de9814998fc0b3020998}{}void {\bfseries sirius\+\_\+create\+\_\+irreducible\+\_\+kset\+\_\+} (int32\+\_\+t $\ast$mesh\+\_\+\+\_\+, int32\+\_\+t $\ast$is\+\_\+shift\+\_\+\+\_\+, int32\+\_\+t $\ast$use\+\_\+sym\+\_\+\+\_\+, int32\+\_\+t $\ast$kset\+\_\+id\+\_\+\+\_\+)\label{sirius__api_8cpp_a15ac371f02c6de9814998fc0b3020998}
+
+\item 
+\hypertarget{sirius__api_8cpp_a0c806364e9cf4817eda916ea536e1d85}{}void {\bfseries sirius\+\_\+delete\+\_\+kset} (int32\+\_\+t $\ast$kset\+\_\+id\+\_\+\+\_\+)\label{sirius__api_8cpp_a0c806364e9cf4817eda916ea536e1d85}
+
+\item 
+\hypertarget{sirius__api_8cpp_a656b9b7fe99f6fdfd6d2dfc166176678}{}void {\bfseries sirius\+\_\+create\+\_\+ground\+\_\+state} (int32\+\_\+t $\ast$kset\+\_\+id\+\_\+\+\_\+)\label{sirius__api_8cpp_a656b9b7fe99f6fdfd6d2dfc166176678}
+
+\item 
+\hypertarget{sirius__api_8cpp_a324393a2b362d372088011a708fda020}{}void {\bfseries sirius\+\_\+delete\+\_\+ground\+\_\+state} ()\label{sirius__api_8cpp_a324393a2b362d372088011a708fda020}
+
+\item 
+\hypertarget{sirius__api_8cpp_aca13ab06de1c0a601b0881d199aaf105}{}void {\bfseries sirius\+\_\+set\+\_\+lmax\+\_\+apw} (int32\+\_\+t $\ast$lmax\+\_\+apw\+\_\+\+\_\+)\label{sirius__api_8cpp_aca13ab06de1c0a601b0881d199aaf105}
+
+\item 
+\hypertarget{sirius__api_8cpp_ab90dceccb5d478010f5d9ff906bc0cce}{}void {\bfseries sirius\+\_\+set\+\_\+lmax\+\_\+pot} (int32\+\_\+t $\ast$lmax\+\_\+pot\+\_\+\+\_\+)\label{sirius__api_8cpp_ab90dceccb5d478010f5d9ff906bc0cce}
+
+\item 
+\hypertarget{sirius__api_8cpp_aedc786ee2b77fb065ad76190be5772b6}{}void {\bfseries sirius\+\_\+set\+\_\+lmax\+\_\+rho} (int32\+\_\+t $\ast$lmax\+\_\+rho\+\_\+\+\_\+)\label{sirius__api_8cpp_aedc786ee2b77fb065ad76190be5772b6}
+
+\item 
+\hypertarget{sirius__api_8cpp_ae6bb99f9e19c449cea61d79ee9022708}{}void {\bfseries sirius\+\_\+set\+\_\+num\+\_\+mag\+\_\+dims} (int32\+\_\+t $\ast$num\+\_\+mag\+\_\+dims\+\_\+\+\_\+)\label{sirius__api_8cpp_ae6bb99f9e19c449cea61d79ee9022708}
+
+\item 
+void \hyperlink{sirius__api_8cpp_ad984aa55668b7ddfcf08a317eebe1971}{sirius\+\_\+set\+\_\+lattice\+\_\+vectors} (double $\ast$a1\+\_\+\+\_\+, double $\ast$a2\+\_\+\+\_\+, double $\ast$a3\+\_\+\+\_\+)
+\begin{DoxyCompactList}\small\item\em Set lattice vectors. \end{DoxyCompactList}\item 
+void \hyperlink{sirius__api_8cpp_a9ce1233b791dc2d315946467e4b85282}{sirius\+\_\+set\+\_\+pw\+\_\+cutoff} (double $\ast$pw\+\_\+cutoff\+\_\+\+\_\+)
+\begin{DoxyCompactList}\small\item\em Set plane-\/wave cutoff for F\+F\+T grid. \end{DoxyCompactList}\item 
+\hypertarget{sirius__api_8cpp_a940423b60ef6c898fc2fa8b92b5bf72f}{}void {\bfseries sirius\+\_\+set\+\_\+gk\+\_\+cutoff} (double $\ast$gk\+\_\+cutoff\+\_\+\+\_\+)\label{sirius__api_8cpp_a940423b60ef6c898fc2fa8b92b5bf72f}
+
+\item 
+void \hyperlink{sirius__api_8cpp_abacf05b849b3c42f8395b431d2defd63}{sirius\+\_\+set\+\_\+auto\+\_\+rmt} (int32\+\_\+t $\ast$auto\+\_\+rmt\+\_\+\+\_\+)
+\begin{DoxyCompactList}\small\item\em Turn on or off the automatic scaling of muffin-\/tin spheres. \end{DoxyCompactList}\item 
+void \hyperlink{sirius__api_8cpp_af74dfeb271c21835108154b26ad865a8}{sirius\+\_\+add\+\_\+atom\+\_\+type} (ftn\+\_\+char label\+\_\+\+\_\+, ftn\+\_\+char fname\+\_\+\+\_\+)
+\begin{DoxyCompactList}\small\item\em Add atom type to the unit cell. \end{DoxyCompactList}\item 
+void \hyperlink{sirius__api_8cpp_a9a8113dd5d71148b90a13aac466b4656}{sirius\+\_\+set\+\_\+atom\+\_\+type\+\_\+properties} (char const $\ast$label\+\_\+\+\_\+, char const $\ast$symbol\+\_\+\+\_\+, int32\+\_\+t $\ast$zn\+\_\+\+\_\+, double $\ast$mass\+\_\+\+\_\+, double $\ast$mt\+\_\+radius\+\_\+\+\_\+, int32\+\_\+t $\ast$num\+\_\+mt\+\_\+points\+\_\+\+\_\+)
+\begin{DoxyCompactList}\small\item\em Set basic properties of the atom type. \end{DoxyCompactList}\item 
+void \hyperlink{sirius__api_8cpp_a7a0ce1a56c36251b14a13a4280a0915a}{sirius\+\_\+set\+\_\+atom\+\_\+type\+\_\+radial\+\_\+grid} (char const $\ast$label\+\_\+\+\_\+, int32\+\_\+t const $\ast$num\+\_\+radial\+\_\+points\+\_\+\+\_\+, double const $\ast$radial\+\_\+points\+\_\+\+\_\+)
+\begin{DoxyCompactList}\small\item\em Set the radial grid of atom type. \end{DoxyCompactList}\item 
+\hypertarget{sirius__api_8cpp_a89de04af2efc98aed1d943f506c1ce9e}{}void {\bfseries sirius\+\_\+set\+\_\+free\+\_\+atom\+\_\+density} (char const $\ast$label\+\_\+\+\_\+, int32\+\_\+t const $\ast$num\+\_\+points\+\_\+\+\_\+, double const $\ast$dens\+\_\+\+\_\+)\label{sirius__api_8cpp_a89de04af2efc98aed1d943f506c1ce9e}
+
+\item 
+void \hyperlink{sirius__api_8cpp_ae2aa17e4413b352457e362b0fdf74378}{sirius\+\_\+set\+\_\+atom\+\_\+type\+\_\+configuration} (char $\ast$label\+\_\+\+\_\+, int32\+\_\+t $\ast$n\+\_\+\+\_\+, int32\+\_\+t $\ast$l\+\_\+\+\_\+, int32\+\_\+t $\ast$k\+\_\+\+\_\+, double $\ast$occupancy\+\_\+\+\_\+, int32\+\_\+t $\ast$core\+\_\+\+\_\+)
+\begin{DoxyCompactList}\small\item\em Set the atomic level configuration of the atom type. \end{DoxyCompactList}\item 
+void \hyperlink{sirius__api_8cpp_a20dc3b201ac712e174d03a770e25945b}{sirius\+\_\+add\+\_\+atom} (char $\ast$label\+\_\+\+\_\+, double $\ast$position\+\_\+\+\_\+, double $\ast$vector\+\_\+field\+\_\+\+\_\+)
+\begin{DoxyCompactList}\small\item\em Add atom to the unit cell. \end{DoxyCompactList}\item 
+void \hyperlink{sirius__api_8cpp_a5160a4a1c57c4a1c81a91d015506ea77}{sirius\+\_\+set\+\_\+equivalent\+\_\+atoms} (int32\+\_\+t $\ast$equivalent\+\_\+atoms\+\_\+\+\_\+)
+\begin{DoxyCompactList}\small\item\em Set the table of equivalent atoms. \end{DoxyCompactList}\item 
+void \hyperlink{sirius__api_8cpp_a65cf84eec816d260cc48de46c111c2b1}{sirius\+\_\+set\+\_\+aw\+\_\+cutoff} (double $\ast$aw\+\_\+cutoff\+\_\+\+\_\+)
+\begin{DoxyCompactList}\small\item\em Set augmented-\/wave cutoff. \end{DoxyCompactList}\item 
+\hypertarget{sirius__api_8cpp_a1abdf983a40c83b7a430540560053f83}{}void {\bfseries sirius\+\_\+add\+\_\+xc\+\_\+functional} (char const $\ast$name\+\_\+\+\_\+)\label{sirius__api_8cpp_a1abdf983a40c83b7a430540560053f83}
+
+\item 
+\hypertarget{sirius__api_8cpp_ab670616204148093345ba1057a0ff821}{}void {\bfseries sirius\+\_\+set\+\_\+esm\+\_\+type} (char const $\ast$name\+\_\+\+\_\+)\label{sirius__api_8cpp_ab670616204148093345ba1057a0ff821}
+
+\item 
+\hypertarget{sirius__api_8cpp_a0703a8370a206da9a746ebb488e94b15}{}void {\bfseries sirius\+\_\+set\+\_\+gamma\+\_\+point} (ftn\+\_\+int $\ast$gamma\+\_\+point\+\_\+\+\_\+)\label{sirius__api_8cpp_a0703a8370a206da9a746ebb488e94b15}
+
+\item 
+\hypertarget{sirius__api_8cpp_a75febb2335d42956592726e7fef3ebab}{}void {\bfseries sirius\+\_\+set\+\_\+valence\+\_\+relativity} (ftn\+\_\+char str\+\_\+\+\_\+)\label{sirius__api_8cpp_a75febb2335d42956592726e7fef3ebab}
+
+\item 
+\hypertarget{sirius__api_8cpp_a99218ad5f149569c0187b35e891e9de5}{}void {\bfseries sirius\+\_\+set\+\_\+core\+\_\+relativity} (ftn\+\_\+char str\+\_\+\+\_\+)\label{sirius__api_8cpp_a99218ad5f149569c0187b35e891e9de5}
+
+\item 
+void \hyperlink{sirius__api_8cpp_a923254f912ea21cebbffb24d27df0c45}{sirius\+\_\+get\+\_\+max\+\_\+num\+\_\+mt\+\_\+points} (ftn\+\_\+int $\ast$max\+\_\+num\+\_\+mt\+\_\+points\+\_\+\+\_\+)
+\begin{DoxyCompactList}\small\item\em Get maximum number of muffin-\/tin radial points. \end{DoxyCompactList}\item 
+void \hyperlink{sirius__api_8cpp_a9344f00279a5220c7c03ef065e9f92bd}{sirius\+\_\+get\+\_\+num\+\_\+mt\+\_\+points} (ftn\+\_\+char label\+\_\+\+\_\+, ftn\+\_\+int $\ast$num\+\_\+mt\+\_\+points\+\_\+\+\_\+)
+\begin{DoxyCompactList}\small\item\em Get number of muffin-\/tin radial points for a specific atom type. \end{DoxyCompactList}\item 
+\hypertarget{sirius__api_8cpp_a259c9b6f3bbb0ead2f6b47fe1b80914d}{}void {\bfseries sirius\+\_\+get\+\_\+mt\+\_\+points} (ftn\+\_\+char label\+\_\+\+\_\+, ftn\+\_\+double $\ast$mt\+\_\+points\+\_\+\+\_\+)\label{sirius__api_8cpp_a259c9b6f3bbb0ead2f6b47fe1b80914d}
+
+\item 
+\hypertarget{sirius__api_8cpp_a9dc4af636eae88846ae0a52a33c362d7}{}void {\bfseries sirius\+\_\+get\+\_\+num\+\_\+fft\+\_\+grid\+\_\+points} (int32\+\_\+t $\ast$num\+\_\+grid\+\_\+points\+\_\+\+\_\+)\label{sirius__api_8cpp_a9dc4af636eae88846ae0a52a33c362d7}
+
+\item 
+\hypertarget{sirius__api_8cpp_af70bd1477656c6d1917c472fc432f5b7}{}void {\bfseries sirius\+\_\+get\+\_\+num\+\_\+bands} (int32\+\_\+t $\ast$num\+\_\+bands)\label{sirius__api_8cpp_af70bd1477656c6d1917c472fc432f5b7}
+
+\item 
+void \hyperlink{sirius__api_8cpp_af781db27a02bbbacebb5c450699fc8f4}{sirius\+\_\+get\+\_\+num\+\_\+gvec} (int32\+\_\+t $\ast$num\+\_\+gvec\+\_\+\+\_\+)
+\begin{DoxyCompactList}\small\item\em Get number of G-\/vectors within the plane-\/wave cutoff. \end{DoxyCompactList}\item 
+\hypertarget{sirius__api_8cpp_aa8eddf4b81ad592b61c2021a844c0aa4}{}void {\bfseries sirius\+\_\+find\+\_\+fft\+\_\+grid\+\_\+size} (ftn\+\_\+double $\ast$cutoff\+\_\+\+\_\+, ftn\+\_\+double $\ast$lat\+\_\+vec\+\_\+\+\_\+, ftn\+\_\+int $\ast$grid\+\_\+size\+\_\+\+\_\+)\label{sirius__api_8cpp_aa8eddf4b81ad592b61c2021a844c0aa4}
+
+\item 
+void \hyperlink{sirius__api_8cpp_a4507d0c1b65cec455defcf0b9413870c}{sirius\+\_\+get\+\_\+fft\+\_\+grid\+\_\+size} (ftn\+\_\+int $\ast$grid\+\_\+size\+\_\+\+\_\+)
+\begin{DoxyCompactList}\small\item\em Get sizes of F\+F\+T grid. \end{DoxyCompactList}\item 
+void \hyperlink{sirius__api_8cpp_ac4f06a4ad69164b31391853bc173a423}{sirius\+\_\+get\+\_\+fft\+\_\+grid\+\_\+limits} (int32\+\_\+t const $\ast$d, int32\+\_\+t $\ast$lower, int32\+\_\+t $\ast$upper)
+\begin{DoxyCompactList}\small\item\em Get lower and upper limits of the F\+F\+T grid dimension. \end{DoxyCompactList}\item 
+void \hyperlink{sirius__api_8cpp_a1c9c927ed757ff93eec532a869f8d32a}{sirius\+\_\+get\+\_\+fft\+\_\+index} (int32\+\_\+t $\ast$fft\+\_\+index\+\_\+\+\_\+)
+\begin{DoxyCompactList}\small\item\em Get mapping between G-\/vector index and F\+F\+T index. \end{DoxyCompactList}\item 
+void \hyperlink{sirius__api_8cpp_ad7bd022f3ec46d2bff3a8c65c5d4b659}{sirius\+\_\+get\+\_\+gvec} (int32\+\_\+t $\ast$gvec\+\_\+\+\_\+)
+\begin{DoxyCompactList}\small\item\em Get list of G-\/vectors in fractional corrdinates. \end{DoxyCompactList}\item 
+void \hyperlink{sirius__api_8cpp_a64fa2574194bf24cd2175aa4b010d9f4}{sirius\+\_\+get\+\_\+gvec\+\_\+cart} (double $\ast$gvec\+\_\+cart\+\_\+\+\_\+)
+\begin{DoxyCompactList}\small\item\em Get list of G-\/vectors in Cartesian coordinates. \end{DoxyCompactList}\item 
+void \hyperlink{sirius__api_8cpp_a0527b986e980c5ec702f0e6fd643f8e0}{sirius\+\_\+get\+\_\+gvec\+\_\+len} (double $\ast$gvec\+\_\+len\+\_\+\+\_\+)
+\begin{DoxyCompactList}\small\item\em Get lengh of G-\/vectors. \end{DoxyCompactList}\item 
+\hypertarget{sirius__api_8cpp_a1fb664bc0a544f3dfde5938dddb20f22}{}void {\bfseries sirius\+\_\+get\+\_\+index\+\_\+by\+\_\+gvec} (int32\+\_\+t $\ast$index\+\_\+by\+\_\+gvec\+\_\+\+\_\+)\label{sirius__api_8cpp_a1fb664bc0a544f3dfde5938dddb20f22}
+
+\item 
+void \hyperlink{sirius__api_8cpp_a8bf763121c21f26284f1ac2489a3398f}{sirius\+\_\+get\+\_\+gvec\+\_\+ylm} (double\+\_\+complex $\ast$gvec\+\_\+ylm\+\_\+\+\_\+, int $\ast$ld\+\_\+\+\_\+, int $\ast$lmax\+\_\+\+\_\+)
+\begin{DoxyCompactList}\small\item\em Get Ylm spherical harmonics of G-\/vectors. \end{DoxyCompactList}\item 
+\hypertarget{sirius__api_8cpp_a432592d31bec3838b061e7f0235a0616}{}void {\bfseries sirius\+\_\+get\+\_\+gvec\+\_\+phase\+\_\+factors} (double\+\_\+complex $\ast$sfacg\+\_\+\+\_\+)\label{sirius__api_8cpp_a432592d31bec3838b061e7f0235a0616}
+
+\item 
+\hypertarget{sirius__api_8cpp_adaddf26b80f9565e33f8cf6910771599}{}void {\bfseries sirius\+\_\+get\+\_\+step\+\_\+function} (double\+\_\+complex $\ast$cfunig\+\_\+\+\_\+, double $\ast$cfunir\+\_\+\+\_\+)\label{sirius__api_8cpp_adaddf26b80f9565e33f8cf6910771599}
+
+\item 
+void \hyperlink{sirius__api_8cpp_a6f4d5976a47821ec391f99d5aa38a1d3}{sirius\+\_\+get\+\_\+num\+\_\+electrons} (double $\ast$num\+\_\+electrons\+\_\+\+\_\+)
+\begin{DoxyCompactList}\small\item\em Get the total number of electrons. \end{DoxyCompactList}\item 
+void \hyperlink{sirius__api_8cpp_a27ae9060ed87b99ad47c28145f43bc2f}{sirius\+\_\+get\+\_\+num\+\_\+valence\+\_\+electrons} (double $\ast$num\+\_\+valence\+\_\+electrons\+\_\+\+\_\+)
+\begin{DoxyCompactList}\small\item\em Get the number of valence electrons. \end{DoxyCompactList}\item 
+void \hyperlink{sirius__api_8cpp_ad425cb62ec8eb705cf558fffde1da7b0}{sirius\+\_\+get\+\_\+num\+\_\+core\+\_\+electrons} (double $\ast$num\+\_\+core\+\_\+electrons\+\_\+\+\_\+)
+\begin{DoxyCompactList}\small\item\em Get the number of core electrons. \end{DoxyCompactList}\item 
+\hypertarget{sirius__api_8cpp_a18a1bdacb059951905b5d3961e6d4ee8}{}void {\bfseries sirius\+\_\+generate\+\_\+initial\+\_\+density} ()\label{sirius__api_8cpp_a18a1bdacb059951905b5d3961e6d4ee8}
+
+\item 
+\hypertarget{sirius__api_8cpp_ab6ef9a302028a2c8fc824b5c86bb63bc}{}void {\bfseries sirius\+\_\+generate\+\_\+effective\+\_\+potential} ()\label{sirius__api_8cpp_ab6ef9a302028a2c8fc824b5c86bb63bc}
+
+\item 
+\hypertarget{sirius__api_8cpp_a2b0b1f1170f936166c2dc16f5cb7bb79}{}void {\bfseries sirius\+\_\+initialize\+\_\+subspace} (ftn\+\_\+int $\ast$kset\+\_\+id\+\_\+\+\_\+)\label{sirius__api_8cpp_a2b0b1f1170f936166c2dc16f5cb7bb79}
+
+\item 
+\hypertarget{sirius__api_8cpp_a47d2ea03c2220678aca171dbabf70148}{}void {\bfseries sirius\+\_\+generate\+\_\+density} (int32\+\_\+t $\ast$kset\+\_\+id\+\_\+\+\_\+)\label{sirius__api_8cpp_a47d2ea03c2220678aca171dbabf70148}
+
+\item 
+\hypertarget{sirius__api_8cpp_ac86e561c2b798c736aa3f6f36667a11a}{}void {\bfseries sirius\+\_\+generate\+\_\+valence\+\_\+density} (int32\+\_\+t $\ast$kset\+\_\+id\+\_\+\+\_\+)\label{sirius__api_8cpp_ac86e561c2b798c736aa3f6f36667a11a}
+
+\item 
+\hypertarget{sirius__api_8cpp_adbcdc0acb2948f2d63104604cfc43f97}{}void {\bfseries sirius\+\_\+augment\+\_\+density} (int32\+\_\+t $\ast$kset\+\_\+id\+\_\+\+\_\+)\label{sirius__api_8cpp_adbcdc0acb2948f2d63104604cfc43f97}
+
+\item 
+void \hyperlink{sirius__api_8cpp_a908f15a32075292e1d731f04bd7dc1de}{sirius\+\_\+find\+\_\+eigen\+\_\+states} (int32\+\_\+t $\ast$kset\+\_\+id\+\_\+\+\_\+, int32\+\_\+t $\ast$precompute\+\_\+\+\_\+)
+\begin{DoxyCompactList}\small\item\em Find eigen-\/states of the k-\/point set. \end{DoxyCompactList}\item 
+\hypertarget{sirius__api_8cpp_abe3b876ab18a397158fbcd6e0c1b0292}{}void {\bfseries sirius\+\_\+find\+\_\+band\+\_\+occupancies} (int32\+\_\+t $\ast$kset\+\_\+id\+\_\+\+\_\+)\label{sirius__api_8cpp_abe3b876ab18a397158fbcd6e0c1b0292}
+
+\item 
+\hypertarget{sirius__api_8cpp_a3ab2dd7cd60cf35e3577cc61dab53427}{}void {\bfseries sirius\+\_\+get\+\_\+energy\+\_\+fermi} (int32\+\_\+t $\ast$kset\+\_\+id\+\_\+\+\_\+, double $\ast$efermi\+\_\+\+\_\+)\label{sirius__api_8cpp_a3ab2dd7cd60cf35e3577cc61dab53427}
+
+\item 
+\hypertarget{sirius__api_8cpp_a51375bbbd27b8d2590c8694011070775}{}void {\bfseries sirius\+\_\+set\+\_\+band\+\_\+occupancies} (int32\+\_\+t $\ast$kset\+\_\+id\+\_\+\+\_\+, int32\+\_\+t $\ast$ik\+\_\+\+\_\+, double $\ast$band\+\_\+occupancies\+\_\+\+\_\+)\label{sirius__api_8cpp_a51375bbbd27b8d2590c8694011070775}
+
+\item 
+\hypertarget{sirius__api_8cpp_a6e789bc61364fb5ead6d7b405ddfdaf5}{}void {\bfseries sirius\+\_\+get\+\_\+band\+\_\+energies} (int32\+\_\+t $\ast$kset\+\_\+id\+\_\+\+\_\+, int32\+\_\+t $\ast$ik\+\_\+\+\_\+, double $\ast$band\+\_\+energies\+\_\+\+\_\+)\label{sirius__api_8cpp_a6e789bc61364fb5ead6d7b405ddfdaf5}
+
+\item 
+\hypertarget{sirius__api_8cpp_aaf1d042a4d86c19abdcb0028a6857333}{}void {\bfseries sirius\+\_\+get\+\_\+band\+\_\+occupancies} (int32\+\_\+t $\ast$kset\+\_\+id, int32\+\_\+t $\ast$ik\+\_\+, double $\ast$band\+\_\+occupancies)\label{sirius__api_8cpp_aaf1d042a4d86c19abdcb0028a6857333}
+
+\item 
+\hypertarget{sirius__api_8cpp_a2e89383f8ec7349b9865e12de6988502}{}void {\bfseries sirius\+\_\+print\+\_\+timers} (void)\label{sirius__api_8cpp_a2e89383f8ec7349b9865e12de6988502}
+
+\item 
+\hypertarget{sirius__api_8cpp_ace3cd1a608416a4c8500ed19ad17e91e}{}void {\bfseries sirius\+\_\+start\+\_\+timer} (char const $\ast$name\+\_\+\+\_\+)\label{sirius__api_8cpp_ace3cd1a608416a4c8500ed19ad17e91e}
+
+\item 
+\hypertarget{sirius__api_8cpp_a69a3e8ea08c8c92ce8c5414364722f51}{}void {\bfseries sirius\+\_\+stop\+\_\+timer} (char const $\ast$name\+\_\+\+\_\+)\label{sirius__api_8cpp_a69a3e8ea08c8c92ce8c5414364722f51}
+
+\item 
+\hypertarget{sirius__api_8cpp_a969b1a21826759e29379716e0fc21b69}{}void {\bfseries sirius\+\_\+save\+\_\+potential} (void)\label{sirius__api_8cpp_a969b1a21826759e29379716e0fc21b69}
+
+\item 
+\hypertarget{sirius__api_8cpp_a70564231ff7d4ffaf905190ca89f75cb}{}void {\bfseries sirius\+\_\+save\+\_\+density} (void)\label{sirius__api_8cpp_a70564231ff7d4ffaf905190ca89f75cb}
+
+\item 
+\hypertarget{sirius__api_8cpp_a634a2d01a66a99de18b5d2c3c3d90883}{}void {\bfseries sirius\+\_\+load\+\_\+potential} (void)\label{sirius__api_8cpp_a634a2d01a66a99de18b5d2c3c3d90883}
+
+\item 
+\hypertarget{sirius__api_8cpp_adf434928585b35c945d6cef6cdc29d75}{}void {\bfseries sirius\+\_\+save\+\_\+kset} (int32\+\_\+t $\ast$kset\+\_\+id)\label{sirius__api_8cpp_adf434928585b35c945d6cef6cdc29d75}
+
+\item 
+\hypertarget{sirius__api_8cpp_a1f12880d5f8db23e08adf1c0920a0505}{}void {\bfseries sirius\+\_\+load\+\_\+kset} (int32\+\_\+t $\ast$kset\+\_\+id)\label{sirius__api_8cpp_a1f12880d5f8db23e08adf1c0920a0505}
+
+\item 
+\hypertarget{sirius__api_8cpp_ab640d4d7cd5f9c6971ef2773e9c1195c}{}void F\+O\+R\+T\+R\+A\+N() {\bfseries sirius\+\_\+plot\+\_\+potential} (void)\label{sirius__api_8cpp_ab640d4d7cd5f9c6971ef2773e9c1195c}
+
+\item 
+\hypertarget{sirius__api_8cpp_a24d07f5cd7a14521c1d37778905c9d01}{}void {\bfseries sirius\+\_\+write\+\_\+json\+\_\+output} (void)\label{sirius__api_8cpp_a24d07f5cd7a14521c1d37778905c9d01}
+
+\item 
+\hypertarget{sirius__api_8cpp_a73b7b9454566e6a6717bae7dc4cfdeff}{}void F\+O\+R\+T\+R\+A\+N() {\bfseries sirius\+\_\+get\+\_\+occupation\+\_\+matrix} (int32\+\_\+t $\ast$atom\+\_\+id, double\+\_\+complex $\ast$occupation\+\_\+matrix)\label{sirius__api_8cpp_a73b7b9454566e6a6717bae7dc4cfdeff}
+
+\item 
+\hypertarget{sirius__api_8cpp_a88c3b7571e5847b5d43f711b5d0e5a1b}{}void F\+O\+R\+T\+R\+A\+N() {\bfseries sirius\+\_\+set\+\_\+uj\+\_\+correction\+\_\+matrix} (int32\+\_\+t $\ast$atom\+\_\+id, int32\+\_\+t $\ast$l, double\+\_\+complex $\ast$uj\+\_\+correction\+\_\+matrix)\label{sirius__api_8cpp_a88c3b7571e5847b5d43f711b5d0e5a1b}
+
+\item 
+\hypertarget{sirius__api_8cpp_a14cc1ff8439fe7090a49b46b8ccded8f}{}void F\+O\+R\+T\+R\+A\+N() {\bfseries sirius\+\_\+set\+\_\+so\+\_\+correction} (int32\+\_\+t $\ast$so\+\_\+correction)\label{sirius__api_8cpp_a14cc1ff8439fe7090a49b46b8ccded8f}
+
+\item 
+\hypertarget{sirius__api_8cpp_abb5221b6a7b8e354e5fead0a11b61e91}{}void F\+O\+R\+T\+R\+A\+N() {\bfseries sirius\+\_\+set\+\_\+uj\+\_\+correction} (int32\+\_\+t $\ast$uj\+\_\+correction)\label{sirius__api_8cpp_abb5221b6a7b8e354e5fead0a11b61e91}
+
+\item 
+\hypertarget{sirius__api_8cpp_a51d5e78e5ba9f73b26b8dd25defaffd9}{}void {\bfseries sirius\+\_\+get\+\_\+energy\+\_\+tot} (double $\ast$total\+\_\+energy\+\_\+\+\_\+)\label{sirius__api_8cpp_a51d5e78e5ba9f73b26b8dd25defaffd9}
+
+\item 
+\hypertarget{sirius__api_8cpp_ae624efa992448b931ba484bc1bc0b876}{}void {\bfseries sirius\+\_\+get\+\_\+energy\+\_\+ewald} (double $\ast$ewald\+\_\+energy\+\_\+\+\_\+)\label{sirius__api_8cpp_ae624efa992448b931ba484bc1bc0b876}
+
+\item 
+\hypertarget{sirius__api_8cpp_a063d73ac5524a83ff0545bff64ae6937}{}void {\bfseries sirius\+\_\+add\+\_\+atom\+\_\+type\+\_\+aw\+\_\+descriptor} (char const $\ast$label\+\_\+\+\_\+, int32\+\_\+t const $\ast$n\+\_\+\+\_\+, int32\+\_\+t const $\ast$l\+\_\+\+\_\+, double const $\ast$enu\+\_\+\+\_\+, int32\+\_\+t const $\ast$dme\+\_\+\+\_\+, int32\+\_\+t const $\ast$auto\+\_\+enu\+\_\+\+\_\+)\label{sirius__api_8cpp_a063d73ac5524a83ff0545bff64ae6937}
+
+\item 
+\hypertarget{sirius__api_8cpp_a80c0fd4020d3336c97d2300204c1ab25}{}void {\bfseries sirius\+\_\+add\+\_\+atom\+\_\+type\+\_\+lo\+\_\+descriptor} (char const $\ast$label\+\_\+\+\_\+, int32\+\_\+t const $\ast$ilo\+\_\+\+\_\+, int32\+\_\+t const $\ast$n\+\_\+\+\_\+, int32\+\_\+t const $\ast$l\+\_\+\+\_\+, double const $\ast$enu\+\_\+\+\_\+, int32\+\_\+t const $\ast$dme\+\_\+\+\_\+, int32\+\_\+t $\ast$auto\+\_\+enu\+\_\+\+\_\+)\label{sirius__api_8cpp_a80c0fd4020d3336c97d2300204c1ab25}
+
+\item 
+\hypertarget{sirius__api_8cpp_af96edb8e811510314fb03f7932f0a641}{}void {\bfseries sirius\+\_\+set\+\_\+aw\+\_\+enu} (int32\+\_\+t const $\ast$ia\+\_\+\+\_\+, int32\+\_\+t const $\ast$l\+\_\+\+\_\+, int32\+\_\+t const $\ast$order\+\_\+\+\_\+, double const $\ast$enu\+\_\+\+\_\+)\label{sirius__api_8cpp_af96edb8e811510314fb03f7932f0a641}
+
+\item 
+\hypertarget{sirius__api_8cpp_a6dd10ad86fea9e435716e20f161ef5b6}{}void {\bfseries sirius\+\_\+get\+\_\+aw\+\_\+enu} (int32\+\_\+t const $\ast$ia\+\_\+\+\_\+, int32\+\_\+t const $\ast$l\+\_\+\+\_\+, int32\+\_\+t const $\ast$order\+\_\+\+\_\+, double $\ast$enu\+\_\+\+\_\+)\label{sirius__api_8cpp_a6dd10ad86fea9e435716e20f161ef5b6}
+
+\item 
+\hypertarget{sirius__api_8cpp_a22dadf5b41289a35f44d6074b4103223}{}void {\bfseries sirius\+\_\+set\+\_\+lo\+\_\+enu} (int32\+\_\+t const $\ast$ia\+\_\+\+\_\+, int32\+\_\+t const $\ast$idxlo\+\_\+\+\_\+, int32\+\_\+t const $\ast$order\+\_\+\+\_\+, double const $\ast$enu\+\_\+\+\_\+)\label{sirius__api_8cpp_a22dadf5b41289a35f44d6074b4103223}
+
+\item 
+\hypertarget{sirius__api_8cpp_a5c5574ab8365709c1a6bf3767e12de46}{}void {\bfseries sirius\+\_\+get\+\_\+lo\+\_\+enu} (int32\+\_\+t const $\ast$ia\+\_\+\+\_\+, int32\+\_\+t const $\ast$idxlo\+\_\+\+\_\+, int32\+\_\+t const $\ast$order\+\_\+\+\_\+, double $\ast$enu\+\_\+\+\_\+)\label{sirius__api_8cpp_a5c5574ab8365709c1a6bf3767e12de46}
+
+\item 
+\hypertarget{sirius__api_8cpp_a8289321b7cb8246ecc230168bab84ea2}{}void {\bfseries sirius\+\_\+get\+\_\+local\+\_\+num\+\_\+kpoints} (int32\+\_\+t $\ast$kset\+\_\+id, int32\+\_\+t $\ast$nkpt\+\_\+loc)\label{sirius__api_8cpp_a8289321b7cb8246ecc230168bab84ea2}
+
+\item 
+\hypertarget{sirius__api_8cpp_a9bed7085239a8e5e05506992cbb46356}{}void {\bfseries sirius\+\_\+get\+\_\+local\+\_\+kpoint\+\_\+rank\+\_\+and\+\_\+offset} (int32\+\_\+t $\ast$kset\+\_\+id, int32\+\_\+t $\ast$ik, int32\+\_\+t $\ast$rank, int32\+\_\+t $\ast$ikloc)\label{sirius__api_8cpp_a9bed7085239a8e5e05506992cbb46356}
+
+\item 
+\hypertarget{sirius__api_8cpp_aac141eb0a0544f09b696a6740da855ed}{}void {\bfseries sirius\+\_\+get\+\_\+global\+\_\+kpoint\+\_\+index} (int32\+\_\+t $\ast$kset\+\_\+id, int32\+\_\+t $\ast$ikloc, int32\+\_\+t $\ast$ik)\label{sirius__api_8cpp_aac141eb0a0544f09b696a6740da855ed}
+
+\item 
+void \hyperlink{sirius__api_8cpp_afb79d6ddac46b42c5bbf3a238014ac82}{sirius\+\_\+generate\+\_\+radial\+\_\+functions} ()
+\begin{DoxyCompactList}\small\item\em Generate radial functions (both aw and lo) \end{DoxyCompactList}\item 
+void \hyperlink{sirius__api_8cpp_acd64e4745e7101401fc79ee91ddc2937}{sirius\+\_\+generate\+\_\+radial\+\_\+integrals} ()
+\begin{DoxyCompactList}\small\item\em Generate radial integrals. \end{DoxyCompactList}\item 
+\hypertarget{sirius__api_8cpp_aa4da2b5a326d2d1aac3b0471725a974e}{}void {\bfseries sirius\+\_\+get\+\_\+symmetry\+\_\+classes} (int32\+\_\+t $\ast$ncls, int32\+\_\+t $\ast$icls\+\_\+by\+\_\+ia)\label{sirius__api_8cpp_aa4da2b5a326d2d1aac3b0471725a974e}
+
+\item 
+\hypertarget{sirius__api_8cpp_addd9794dc115f4d14cfe84f40d81ba8e}{}void {\bfseries sirius\+\_\+get\+\_\+max\+\_\+mt\+\_\+radial\+\_\+basis\+\_\+size} (int32\+\_\+t $\ast$max\+\_\+mt\+\_\+radial\+\_\+basis\+\_\+size)\label{sirius__api_8cpp_addd9794dc115f4d14cfe84f40d81ba8e}
+
+\item 
+\hypertarget{sirius__api_8cpp_a1e8a8a0b7310a02b8c4b1e16a4cb12ac}{}void {\bfseries sirius\+\_\+get\+\_\+radial\+\_\+functions} (double $\ast$radial\+\_\+functions\+\_\+\+\_\+)\label{sirius__api_8cpp_a1e8a8a0b7310a02b8c4b1e16a4cb12ac}
+
+\item 
+\hypertarget{sirius__api_8cpp_a4e26964f781483c84e21ed6793eb2f2b}{}void {\bfseries sirius\+\_\+get\+\_\+max\+\_\+mt\+\_\+basis\+\_\+size} (int32\+\_\+t $\ast$max\+\_\+mt\+\_\+basis\+\_\+size)\label{sirius__api_8cpp_a4e26964f781483c84e21ed6793eb2f2b}
+
+\item 
+\hypertarget{sirius__api_8cpp_af9ba827adbb92d4466fdbb6130d14906}{}void {\bfseries sirius\+\_\+get\+\_\+basis\+\_\+functions\+\_\+index} (int32\+\_\+t $\ast$mt\+\_\+basis\+\_\+size, int32\+\_\+t $\ast$offset\+\_\+wf, int32\+\_\+t $\ast$indexb\+\_\+\+\_\+)\label{sirius__api_8cpp_af9ba827adbb92d4466fdbb6130d14906}
+
+\item 
+void \hyperlink{sirius__api_8cpp_a60269b3939fe7e732147ac515a78eb9a}{sirius\+\_\+get\+\_\+num\+\_\+gkvec} (ftn\+\_\+int $\ast$kset\+\_\+id\+\_\+\+\_\+, ftn\+\_\+int $\ast$ik\+\_\+\+\_\+, ftn\+\_\+int $\ast$num\+\_\+gkvec\+\_\+\+\_\+)
+\begin{DoxyCompactList}\small\item\em Get number of G+k vectors for a given k-\/point in the set. \end{DoxyCompactList}\item 
+void \hyperlink{sirius__api_8cpp_a30b58a3f6eb4009901a9d2229faea08a}{sirius\+\_\+get\+\_\+max\+\_\+num\+\_\+gkvec} (ftn\+\_\+int $\ast$kset\+\_\+id\+\_\+\+\_\+, ftn\+\_\+int $\ast$max\+\_\+num\+\_\+gkvec\+\_\+\+\_\+)
+\begin{DoxyCompactList}\small\item\em Get maximum number of G+k vectors across all k-\/points in the set. \end{DoxyCompactList}\item 
+void \hyperlink{sirius__api_8cpp_a450eb5ce164277d16ae162bf40b8f0d6}{sirius\+\_\+get\+\_\+gkvec\+\_\+arrays} (ftn\+\_\+int $\ast$kset\+\_\+id\+\_\+\+\_\+, ftn\+\_\+int $\ast$ik\+\_\+\+\_\+, ftn\+\_\+int $\ast$num\+\_\+gkvec\+\_\+\+\_\+, ftn\+\_\+int $\ast$gvec\+\_\+index\+\_\+\+\_\+, ftn\+\_\+double $\ast$gkvec\+\_\+\+\_\+, ftn\+\_\+double $\ast$gkvec\+\_\+cart\+\_\+\+\_\+, ftn\+\_\+double $\ast$gkvec\+\_\+len, ftn\+\_\+double $\ast$gkvec\+\_\+tp\+\_\+\+\_\+)
+\begin{DoxyCompactList}\small\item\em Get all G+k vector related arrays. \end{DoxyCompactList}\item 
+\hypertarget{sirius__api_8cpp_a951bc9e416697295f508d10f1fb45b38}{}void {\bfseries sirius\+\_\+get\+\_\+matching\+\_\+coefficients} (int32\+\_\+t const $\ast$kset\+\_\+id\+\_\+\+\_\+, int32\+\_\+t const $\ast$ik\+\_\+\+\_\+, double\+\_\+complex $\ast$apwalm\+\_\+\+\_\+, int32\+\_\+t const $\ast$ngkmax\+\_\+\+\_\+, int32\+\_\+t const $\ast$apwordmax\+\_\+\+\_\+)\label{sirius__api_8cpp_a951bc9e416697295f508d10f1fb45b38}
+
+\item 
+void \hyperlink{sirius__api_8cpp_a3a610f71b595ec0b00ae3d8380096479}{sirius\+\_\+get\+\_\+spinor\+\_\+wave\+\_\+functions} (int32\+\_\+t $\ast$kset\+\_\+id, int32\+\_\+t $\ast$ik, double\+\_\+complex $\ast$spinor\+\_\+wave\+\_\+functions\+\_\+\+\_\+)
+\item 
+void \hyperlink{sirius__api_8cpp_a25ad4f01903dd98e98d17495161a8e1a}{sirius\+\_\+get\+\_\+gkvec\+\_\+cart} (int32\+\_\+t $\ast$kset\+\_\+id, int32\+\_\+t $\ast$ik, double $\ast$gkvec\+\_\+cart\+\_\+\+\_\+)
+\begin{DoxyCompactList}\small\item\em Get Cartesian coordinates of G+k vectors. \end{DoxyCompactList}\item 
+\hypertarget{sirius__api_8cpp_a3a9761dac73343c3972c34d25acd129f}{}void {\bfseries sirius\+\_\+get\+\_\+evalsum} (double $\ast$evalsum)\label{sirius__api_8cpp_a3a9761dac73343c3972c34d25acd129f}
+
+\item 
+\hypertarget{sirius__api_8cpp_aed08b6eced0fb1bb058f2e1be92852ac}{}void {\bfseries sirius\+\_\+get\+\_\+energy\+\_\+exc} (double $\ast$energy\+\_\+exc)\label{sirius__api_8cpp_aed08b6eced0fb1bb058f2e1be92852ac}
+
+\item 
+\hypertarget{sirius__api_8cpp_a3ec56760082584ef673d6ff50f2c5532}{}void {\bfseries sirius\+\_\+get\+\_\+energy\+\_\+vxc} (double $\ast$energy\+\_\+vxc)\label{sirius__api_8cpp_a3ec56760082584ef673d6ff50f2c5532}
+
+\item 
+\hypertarget{sirius__api_8cpp_af35f4a536f8822568b7c61f828e991dc}{}void {\bfseries sirius\+\_\+get\+\_\+energy\+\_\+bxc} (double $\ast$energy\+\_\+bxc)\label{sirius__api_8cpp_af35f4a536f8822568b7c61f828e991dc}
+
+\item 
+\hypertarget{sirius__api_8cpp_a6c65c566e8c3e1716aa7608ae21eb1ba}{}void {\bfseries sirius\+\_\+get\+\_\+energy\+\_\+veff} (double $\ast$energy\+\_\+veff)\label{sirius__api_8cpp_a6c65c566e8c3e1716aa7608ae21eb1ba}
+
+\item 
+\hypertarget{sirius__api_8cpp_af728bf9ff2b401cc53207bd22d3b556e}{}void {\bfseries sirius\+\_\+get\+\_\+energy\+\_\+vloc} (ftn\+\_\+double $\ast$energy\+\_\+vloc\+\_\+\+\_\+)\label{sirius__api_8cpp_af728bf9ff2b401cc53207bd22d3b556e}
+
+\item 
+\hypertarget{sirius__api_8cpp_a09b6579b71e92e0317c30ac27f59a0b2}{}void {\bfseries sirius\+\_\+get\+\_\+energy\+\_\+vha} (double $\ast$energy\+\_\+vha)\label{sirius__api_8cpp_a09b6579b71e92e0317c30ac27f59a0b2}
+
+\item 
+\hypertarget{sirius__api_8cpp_ab4854c8f665e0b65a508620481b2765d}{}void {\bfseries sirius\+\_\+get\+\_\+energy\+\_\+enuc} (double $\ast$energy\+\_\+enuc)\label{sirius__api_8cpp_ab4854c8f665e0b65a508620481b2765d}
+
+\item 
+\hypertarget{sirius__api_8cpp_ad820974bc20d438d316c811a8e09880c}{}void {\bfseries sirius\+\_\+get\+\_\+energy\+\_\+kin} (double $\ast$energy\+\_\+kin)\label{sirius__api_8cpp_ad820974bc20d438d316c811a8e09880c}
+
+\item 
+void \hyperlink{sirius__api_8cpp_af8410b67b23cb8273001ea64b9dbc438}{sirius\+\_\+generate\+\_\+xc\+\_\+potential} (ftn\+\_\+double $\ast$vxcmt\+\_\+\+\_\+, ftn\+\_\+double $\ast$vxcit\+\_\+\+\_\+, ftn\+\_\+double $\ast$bxcmt\+\_\+\+\_\+, ftn\+\_\+double $\ast$bxcit\+\_\+\+\_\+)
+\begin{DoxyCompactList}\small\item\em Generate X\+C potential and magnetic field. \end{DoxyCompactList}\item 
+\hypertarget{sirius__api_8cpp_a2e894697e13074a6cfba871f2be38ce6}{}void {\bfseries sirius\+\_\+generate\+\_\+coulomb\+\_\+potential} (ftn\+\_\+double $\ast$vclmt\+\_\+\+\_\+, ftn\+\_\+double $\ast$vclit\+\_\+\+\_\+)\label{sirius__api_8cpp_a2e894697e13074a6cfba871f2be38ce6}
+
+\item 
+\hypertarget{sirius__api_8cpp_ae979b9e5c084c7fcae51495345fa0905}{}void {\bfseries sirius\+\_\+update\+\_\+atomic\+\_\+potential} ()\label{sirius__api_8cpp_ae979b9e5c084c7fcae51495345fa0905}
+
+\item 
+\hypertarget{sirius__api_8cpp_aac50cab90245c30c81091d02e81af914}{}void {\bfseries sirius\+\_\+radial\+\_\+solver} (ftn\+\_\+char type\+\_\+\+\_\+, ftn\+\_\+int $\ast$zn\+\_\+\+\_\+, ftn\+\_\+int $\ast$dme\+\_\+\+\_\+, ftn\+\_\+int $\ast$l\+\_\+\+\_\+, ftn\+\_\+int $\ast$k\+\_\+\+\_\+, ftn\+\_\+double $\ast$enu\+\_\+\+\_\+, ftn\+\_\+int $\ast$nr\+\_\+\+\_\+, ftn\+\_\+double $\ast$r\+\_\+\+\_\+, ftn\+\_\+double $\ast$v\+\_\+\+\_\+, ftn\+\_\+int $\ast$nn\+\_\+\+\_\+, ftn\+\_\+double $\ast$p0\+\_\+\+\_\+, ftn\+\_\+double $\ast$p1\+\_\+\+\_\+, ftn\+\_\+double $\ast$q0\+\_\+\+\_\+, ftn\+\_\+double $\ast$q1\+\_\+\+\_\+, ftn\+\_\+int type\+\_\+len\+\_\+\+\_\+)\label{sirius__api_8cpp_aac50cab90245c30c81091d02e81af914}
+
+\item 
+\hypertarget{sirius__api_8cpp_a4d9ac3b4c02b8338413f73746bcadff1}{}void {\bfseries sirius\+\_\+get\+\_\+aw\+\_\+radial\+\_\+function} (ftn\+\_\+int $\ast$ia\+\_\+\+\_\+, ftn\+\_\+int $\ast$l\+\_\+\+\_\+, ftn\+\_\+int $\ast$io\+\_\+\+\_\+, ftn\+\_\+double $\ast$f\+\_\+\+\_\+)\label{sirius__api_8cpp_a4d9ac3b4c02b8338413f73746bcadff1}
+
+\item 
+\hypertarget{sirius__api_8cpp_a6adcbd3e1ac31e42f55e17ed5035905d}{}void {\bfseries sirius\+\_\+set\+\_\+aw\+\_\+radial\+\_\+function} (ftn\+\_\+int $\ast$ia\+\_\+\+\_\+, ftn\+\_\+int $\ast$l\+\_\+\+\_\+, ftn\+\_\+int $\ast$io\+\_\+\+\_\+, ftn\+\_\+double $\ast$f\+\_\+\+\_\+)\label{sirius__api_8cpp_a6adcbd3e1ac31e42f55e17ed5035905d}
+
+\item 
+\hypertarget{sirius__api_8cpp_a3d8ffeca0d195cc87ab2e84fd5effda5}{}void {\bfseries sirius\+\_\+set\+\_\+aw\+\_\+radial\+\_\+function\+\_\+derivative} (ftn\+\_\+int $\ast$ia\+\_\+\+\_\+, ftn\+\_\+int $\ast$l\+\_\+\+\_\+, ftn\+\_\+int $\ast$io\+\_\+\+\_\+, ftn\+\_\+double $\ast$f\+\_\+\+\_\+)\label{sirius__api_8cpp_a3d8ffeca0d195cc87ab2e84fd5effda5}
+
+\item 
+\hypertarget{sirius__api_8cpp_a7b07676802a416cfa9d2d64a05b1e14f}{}void {\bfseries sirius\+\_\+get\+\_\+aw\+\_\+surface\+\_\+derivative} (ftn\+\_\+int $\ast$ia\+\_\+\+\_\+, ftn\+\_\+int $\ast$l\+\_\+\+\_\+, ftn\+\_\+int $\ast$io\+\_\+\+\_\+, ftn\+\_\+int $\ast$dm\+\_\+\+\_\+, ftn\+\_\+double $\ast$deriv\+\_\+\+\_\+)\label{sirius__api_8cpp_a7b07676802a416cfa9d2d64a05b1e14f}
+
+\item 
+\hypertarget{sirius__api_8cpp_a9720dcf8f76bb4b6b976129f7f61e69b}{}void {\bfseries sirius\+\_\+set\+\_\+aw\+\_\+surface\+\_\+derivative} (ftn\+\_\+int $\ast$ia\+\_\+\+\_\+, ftn\+\_\+int $\ast$l\+\_\+\+\_\+, ftn\+\_\+int $\ast$io\+\_\+\+\_\+, ftn\+\_\+int $\ast$dm\+\_\+\+\_\+, ftn\+\_\+double $\ast$deriv\+\_\+\+\_\+)\label{sirius__api_8cpp_a9720dcf8f76bb4b6b976129f7f61e69b}
+
+\item 
+\hypertarget{sirius__api_8cpp_af35a765bf040cc785a01b589d300d7a5}{}void {\bfseries sirius\+\_\+get\+\_\+lo\+\_\+radial\+\_\+function} (ftn\+\_\+int $\ast$ia\+\_\+\+\_\+, ftn\+\_\+int $\ast$idxlo\+\_\+\+\_\+, ftn\+\_\+double $\ast$f\+\_\+\+\_\+)\label{sirius__api_8cpp_af35a765bf040cc785a01b589d300d7a5}
+
+\item 
+\hypertarget{sirius__api_8cpp_a6476f798c0ce0257a2fc7563ea758d91}{}void {\bfseries sirius\+\_\+set\+\_\+lo\+\_\+radial\+\_\+function} (ftn\+\_\+int $\ast$ia\+\_\+\+\_\+, ftn\+\_\+int $\ast$idxlo\+\_\+\+\_\+, ftn\+\_\+double $\ast$f\+\_\+\+\_\+)\label{sirius__api_8cpp_a6476f798c0ce0257a2fc7563ea758d91}
+
+\item 
+\hypertarget{sirius__api_8cpp_ae662f23de78f42c05eb26b7616f06596}{}void {\bfseries sirius\+\_\+set\+\_\+lo\+\_\+radial\+\_\+function\+\_\+derivative} (ftn\+\_\+int $\ast$ia\+\_\+\+\_\+, ftn\+\_\+int $\ast$idxlo\+\_\+\+\_\+, ftn\+\_\+double $\ast$f\+\_\+\+\_\+)\label{sirius__api_8cpp_ae662f23de78f42c05eb26b7616f06596}
+
+\item 
+\hypertarget{sirius__api_8cpp_a7b0dbeedb95cbed04456e10aa8619c87}{}void {\bfseries sirius\+\_\+get\+\_\+aw\+\_\+lo\+\_\+o\+\_\+radial\+\_\+integral} (int32\+\_\+t $\ast$ia\+\_\+\+\_\+, int32\+\_\+t $\ast$l, int32\+\_\+t $\ast$io1, int32\+\_\+t $\ast$ilo2, double $\ast$oalo)\label{sirius__api_8cpp_a7b0dbeedb95cbed04456e10aa8619c87}
+
+\item 
+\hypertarget{sirius__api_8cpp_a35145fc697691eae86066cbf14980663}{}void {\bfseries sirius\+\_\+set\+\_\+aw\+\_\+lo\+\_\+o\+\_\+radial\+\_\+integral} (int32\+\_\+t $\ast$ia\+\_\+\+\_\+, int32\+\_\+t $\ast$l\+\_\+\+\_\+, int32\+\_\+t $\ast$io1\+\_\+\+\_\+, int32\+\_\+t $\ast$ilo2\+\_\+\+\_\+, double $\ast$oalo\+\_\+\+\_\+)\label{sirius__api_8cpp_a35145fc697691eae86066cbf14980663}
+
+\item 
+\hypertarget{sirius__api_8cpp_a9a806f2b67a4ef7b9808ad581a0cd914}{}void {\bfseries sirius\+\_\+get\+\_\+lo\+\_\+lo\+\_\+o\+\_\+radial\+\_\+integral} (int32\+\_\+t $\ast$ia\+\_\+\+\_\+, int32\+\_\+t $\ast$l, int32\+\_\+t $\ast$ilo1, int32\+\_\+t $\ast$ilo2, double $\ast$ololo)\label{sirius__api_8cpp_a9a806f2b67a4ef7b9808ad581a0cd914}
+
+\item 
+\hypertarget{sirius__api_8cpp_acbce7e143c3a23a377dc2378f593a267}{}void {\bfseries sirius\+\_\+set\+\_\+lo\+\_\+lo\+\_\+o\+\_\+radial\+\_\+integral} (int32\+\_\+t $\ast$ia\+\_\+\+\_\+, int32\+\_\+t $\ast$l\+\_\+\+\_\+, int32\+\_\+t $\ast$ilo1\+\_\+\+\_\+, int32\+\_\+t $\ast$ilo2\+\_\+\+\_\+, double $\ast$ololo\+\_\+\+\_\+)\label{sirius__api_8cpp_acbce7e143c3a23a377dc2378f593a267}
+
+\item 
+\hypertarget{sirius__api_8cpp_a6de806aa5d8033017c803e5196230f14}{}void {\bfseries sirius\+\_\+get\+\_\+aw\+\_\+aw\+\_\+h\+\_\+radial\+\_\+integral} (int32\+\_\+t $\ast$ia\+\_\+\+\_\+, int32\+\_\+t $\ast$l1, int32\+\_\+t $\ast$io1, int32\+\_\+t $\ast$l2, int32\+\_\+t $\ast$io2, int32\+\_\+t $\ast$lm3, double $\ast$haa)\label{sirius__api_8cpp_a6de806aa5d8033017c803e5196230f14}
+
+\item 
+\hypertarget{sirius__api_8cpp_a50c350280189f70b3f1de51c1dbc7dea}{}void {\bfseries sirius\+\_\+set\+\_\+aw\+\_\+aw\+\_\+h\+\_\+radial\+\_\+integral} (int32\+\_\+t $\ast$ia\+\_\+\+\_\+, int32\+\_\+t $\ast$l1\+\_\+\+\_\+, int32\+\_\+t $\ast$io1\+\_\+\+\_\+, int32\+\_\+t $\ast$l2\+\_\+\+\_\+, int32\+\_\+t $\ast$io2\+\_\+\+\_\+, int32\+\_\+t $\ast$lm3\+\_\+\+\_\+, double $\ast$haa\+\_\+\+\_\+)\label{sirius__api_8cpp_a50c350280189f70b3f1de51c1dbc7dea}
+
+\item 
+\hypertarget{sirius__api_8cpp_a6eb4d793ee76ccc79994e9f19773f086}{}void {\bfseries sirius\+\_\+get\+\_\+lo\+\_\+aw\+\_\+h\+\_\+radial\+\_\+integral} (int32\+\_\+t $\ast$ia\+\_\+\+\_\+, int32\+\_\+t $\ast$ilo1, int32\+\_\+t $\ast$l2, int32\+\_\+t $\ast$io2, int32\+\_\+t $\ast$lm3, double $\ast$hloa)\label{sirius__api_8cpp_a6eb4d793ee76ccc79994e9f19773f086}
+
+\item 
+\hypertarget{sirius__api_8cpp_a6542f6f61d9db6a9ccbc604915dba934}{}void {\bfseries sirius\+\_\+set\+\_\+lo\+\_\+aw\+\_\+h\+\_\+radial\+\_\+integral} (int32\+\_\+t $\ast$ia\+\_\+\+\_\+, int32\+\_\+t $\ast$ilo1\+\_\+\+\_\+, int32\+\_\+t $\ast$l2\+\_\+\+\_\+, int32\+\_\+t $\ast$io2\+\_\+\+\_\+, int32\+\_\+t $\ast$lm3\+\_\+\+\_\+, double $\ast$hloa\+\_\+\+\_\+)\label{sirius__api_8cpp_a6542f6f61d9db6a9ccbc604915dba934}
+
+\item 
+\hypertarget{sirius__api_8cpp_affd3e53396af4e1eeaebba88641a59d0}{}void {\bfseries sirius\+\_\+get\+\_\+lo\+\_\+lo\+\_\+h\+\_\+radial\+\_\+integral} (int32\+\_\+t $\ast$ia\+\_\+\+\_\+, int32\+\_\+t $\ast$ilo1, int32\+\_\+t $\ast$ilo2, int32\+\_\+t $\ast$lm3, double $\ast$hlolo)\label{sirius__api_8cpp_affd3e53396af4e1eeaebba88641a59d0}
+
+\item 
+\hypertarget{sirius__api_8cpp_aa6b3c3f2ae367b1e4ddf48d61c4e3593}{}void {\bfseries sirius\+\_\+set\+\_\+lo\+\_\+lo\+\_\+h\+\_\+radial\+\_\+integral} (int32\+\_\+t $\ast$ia\+\_\+\+\_\+, int32\+\_\+t $\ast$ilo1\+\_\+\+\_\+, int32\+\_\+t $\ast$ilo2\+\_\+\+\_\+, int32\+\_\+t $\ast$lm3\+\_\+\+\_\+, double $\ast$hlolo\+\_\+\+\_\+)\label{sirius__api_8cpp_aa6b3c3f2ae367b1e4ddf48d61c4e3593}
+
+\item 
+\hypertarget{sirius__api_8cpp_a68532173976a10d68301a7e79628d6e5}{}void {\bfseries sirius\+\_\+set\+\_\+aw\+\_\+aw\+\_\+o1\+\_\+radial\+\_\+integral} (ftn\+\_\+int $\ast$ia\+\_\+\+\_\+, ftn\+\_\+int $\ast$l\+\_\+\+\_\+, ftn\+\_\+int $\ast$io1\+\_\+\+\_\+, ftn\+\_\+int $\ast$io2\+\_\+\+\_\+, ftn\+\_\+double $\ast$o1aa\+\_\+\+\_\+)\label{sirius__api_8cpp_a68532173976a10d68301a7e79628d6e5}
+
+\item 
+\hypertarget{sirius__api_8cpp_aa836a61cafd0caa59da941cf9673a382}{}void {\bfseries sirius\+\_\+set\+\_\+aw\+\_\+lo\+\_\+o1\+\_\+radial\+\_\+integral} (ftn\+\_\+int $\ast$ia\+\_\+\+\_\+, ftn\+\_\+int $\ast$io1\+\_\+\+\_\+, ftn\+\_\+int $\ast$ilo2\+\_\+\+\_\+, ftn\+\_\+double $\ast$o1alo\+\_\+\+\_\+)\label{sirius__api_8cpp_aa836a61cafd0caa59da941cf9673a382}
+
+\item 
+\hypertarget{sirius__api_8cpp_ad783818715032814f6808f87949274b8}{}void {\bfseries sirius\+\_\+set\+\_\+lo\+\_\+lo\+\_\+o1\+\_\+radial\+\_\+integral} (ftn\+\_\+int $\ast$ia\+\_\+\+\_\+, ftn\+\_\+int $\ast$ilo1\+\_\+\+\_\+, ftn\+\_\+int $\ast$ilo2\+\_\+\+\_\+, ftn\+\_\+double $\ast$o1lolo\+\_\+\+\_\+)\label{sirius__api_8cpp_ad783818715032814f6808f87949274b8}
+
+\item 
+\hypertarget{sirius__api_8cpp_a00249ba76e576109171f20bc00e322e3}{}void {\bfseries sirius\+\_\+generate\+\_\+potential\+\_\+pw\+\_\+coefs} ()\label{sirius__api_8cpp_a00249ba76e576109171f20bc00e322e3}
+
+\item 
+\hypertarget{sirius__api_8cpp_aff8023fc32aba9f7d8393d479a95e023}{}void {\bfseries sirius\+\_\+generate\+\_\+density\+\_\+pw\+\_\+coefs} ()\label{sirius__api_8cpp_aff8023fc32aba9f7d8393d479a95e023}
+
+\item 
+void \hyperlink{sirius__api_8cpp_a9f349ac48fe1bb3d97b68e02cabe741b}{sirius\+\_\+get\+\_\+fv\+\_\+eigen\+\_\+vectors} (int32\+\_\+t $\ast$kset\+\_\+id\+\_\+\+\_\+, int32\+\_\+t $\ast$ik\+\_\+\+\_\+, double\+\_\+complex $\ast$fv\+\_\+evec\+\_\+\+\_\+, int32\+\_\+t $\ast$ld\+\_\+\+\_\+, int32\+\_\+t $\ast$num\+\_\+fv\+\_\+evec\+\_\+\+\_\+)
+\begin{DoxyCompactList}\small\item\em Get first-\/variational eigen-\/vectors. \end{DoxyCompactList}\item 
+void \hyperlink{sirius__api_8cpp_a988b31c6615f0636635800524a454bfb}{sirius\+\_\+get\+\_\+sv\+\_\+eigen\+\_\+vectors} (int32\+\_\+t $\ast$kset\+\_\+id, int32\+\_\+t $\ast$ik, double\+\_\+complex $\ast$sv\+\_\+evec\+\_\+\+\_\+, int32\+\_\+t $\ast$size)
+\begin{DoxyCompactList}\small\item\em Get second-\/variational eigen-\/vectors. \end{DoxyCompactList}\item 
+\hypertarget{sirius__api_8cpp_a5a1028e627b0d6b6472de5657aabb29a}{}void {\bfseries sirius\+\_\+get\+\_\+num\+\_\+fv\+\_\+states} (int32\+\_\+t $\ast$num\+\_\+fv\+\_\+states\+\_\+\+\_\+)\label{sirius__api_8cpp_a5a1028e627b0d6b6472de5657aabb29a}
+
+\item 
+\hypertarget{sirius__api_8cpp_a94a31a87e36903fe1120d189b3625592}{}void {\bfseries sirius\+\_\+set\+\_\+num\+\_\+fv\+\_\+states} (int32\+\_\+t $\ast$num\+\_\+fv\+\_\+states\+\_\+\+\_\+)\label{sirius__api_8cpp_a94a31a87e36903fe1120d189b3625592}
+
+\item 
+\hypertarget{sirius__api_8cpp_a2845b7603f0dfb8c0a90118ad87d7a09}{}void {\bfseries sirius\+\_\+get\+\_\+fft\+\_\+comm} (int32\+\_\+t $\ast$fcomm\+\_\+\+\_\+)\label{sirius__api_8cpp_a2845b7603f0dfb8c0a90118ad87d7a09}
+
+\item 
+\hypertarget{sirius__api_8cpp_afa98a8dd978b880f6794e9a86e57d836}{}void {\bfseries sirius\+\_\+get\+\_\+kpoint\+\_\+inner\+\_\+comm} (int32\+\_\+t $\ast$fcomm\+\_\+\+\_\+)\label{sirius__api_8cpp_afa98a8dd978b880f6794e9a86e57d836}
+
+\item 
+\hypertarget{sirius__api_8cpp_abda646c603ea5b25e1110caa6c669949}{}void {\bfseries sirius\+\_\+get\+\_\+all\+\_\+kpoints\+\_\+comm} (int32\+\_\+t $\ast$fcomm\+\_\+\+\_\+)\label{sirius__api_8cpp_abda646c603ea5b25e1110caa6c669949}
+
+\item 
+\hypertarget{sirius__api_8cpp_a2c05fd9c348b0155cd7a7bb1433c200d}{}void {\bfseries sirius\+\_\+forces} (double $\ast$forces\+\_\+\+\_\+)\label{sirius__api_8cpp_a2c05fd9c348b0155cd7a7bb1433c200d}
+
+\item 
+\hypertarget{sirius__api_8cpp_acf2e1216f69168f35e67f3df71349a87}{}void {\bfseries sirius\+\_\+set\+\_\+atom\+\_\+pos} (int32\+\_\+t $\ast$atom\+\_\+id, double $\ast$pos)\label{sirius__api_8cpp_acf2e1216f69168f35e67f3df71349a87}
+
+\item 
+\hypertarget{sirius__api_8cpp_ab732523cf2f3376e68c73ea008279a8f}{}void {\bfseries sirius\+\_\+core\+\_\+leakage} (double $\ast$core\+\_\+leakage)\label{sirius__api_8cpp_ab732523cf2f3376e68c73ea008279a8f}
+
+\item 
+\hypertarget{sirius__api_8cpp_a3b0741b96224f1df172963693b7b5708}{}void {\bfseries sirius\+\_\+ground\+\_\+state\+\_\+print\+\_\+info} ()\label{sirius__api_8cpp_a3b0741b96224f1df172963693b7b5708}
+
+\item 
+\hypertarget{sirius__api_8cpp_aefa869a0f1bc81ea0532ff59b8692bdc}{}void {\bfseries sirius\+\_\+create\+\_\+storage\+\_\+file} ()\label{sirius__api_8cpp_aefa869a0f1bc81ea0532ff59b8692bdc}
+
+\item 
+\hypertarget{sirius__api_8cpp_a1037cd941848bdea54884a02848b37a5}{}void {\bfseries sirius\+\_\+test\+\_\+spinor\+\_\+wave\+\_\+functions} (int32\+\_\+t $\ast$kset\+\_\+id)\label{sirius__api_8cpp_a1037cd941848bdea54884a02848b37a5}
+
+\item 
+\hypertarget{sirius__api_8cpp_a326098ff89bc77f167917a3638a34598}{}void {\bfseries sirius\+\_\+density\+\_\+mixer\+\_\+initialize} (void)\label{sirius__api_8cpp_a326098ff89bc77f167917a3638a34598}
+
+\item 
+\hypertarget{sirius__api_8cpp_a0cc83261c9324092dd7aac573cff6fc6}{}void {\bfseries sirius\+\_\+mix\+\_\+density} (double $\ast$rms)\label{sirius__api_8cpp_a0cc83261c9324092dd7aac573cff6fc6}
+
+\item 
+\hypertarget{sirius__api_8cpp_a245d9ab9d3849b2d132100762b4af52d}{}void {\bfseries sirius\+\_\+set\+\_\+atom\+\_\+type\+\_\+dion} (char $\ast$label\+\_\+\+\_\+, int32\+\_\+t $\ast$num\+\_\+beta\+\_\+\+\_\+, double $\ast$dion\+\_\+\+\_\+)\label{sirius__api_8cpp_a245d9ab9d3849b2d132100762b4af52d}
+
+\item 
+\hypertarget{sirius__api_8cpp_aec945a970d2d834fc144d2033c8b3de6}{}void {\bfseries sirius\+\_\+set\+\_\+atom\+\_\+type\+\_\+beta\+\_\+rf} (char $\ast$label\+\_\+\+\_\+, int32\+\_\+t $\ast$num\+\_\+beta\+\_\+\+\_\+, int32\+\_\+t $\ast$beta\+\_\+l\+\_\+\+\_\+, int32\+\_\+t $\ast$num\+\_\+mesh\+\_\+points\+\_\+\+\_\+, double $\ast$beta\+\_\+rf\+\_\+\+\_\+, int32\+\_\+t $\ast$ld\+\_\+\+\_\+)\label{sirius__api_8cpp_aec945a970d2d834fc144d2033c8b3de6}
+
+\item 
+\hypertarget{sirius__api_8cpp_aba5e89ea150d623ddfebfccf92674ad1}{}void {\bfseries sirius\+\_\+set\+\_\+atom\+\_\+type\+\_\+q\+\_\+rf} (char $\ast$label\+\_\+\+\_\+, double $\ast$q\+\_\+rf\+\_\+\+\_\+, int32\+\_\+t $\ast$lmax\+\_\+\+\_\+)\label{sirius__api_8cpp_aba5e89ea150d623ddfebfccf92674ad1}
+
+\item 
+\hypertarget{sirius__api_8cpp_ae8e9abf80fa6e91be9d0e0cac0dcb817}{}void {\bfseries sirius\+\_\+set\+\_\+atom\+\_\+type\+\_\+rho\+\_\+core} (char const $\ast$label\+\_\+\+\_\+, int32\+\_\+t $\ast$num\+\_\+points\+\_\+\+\_\+, double $\ast$rho\+\_\+core\+\_\+\+\_\+)\label{sirius__api_8cpp_ae8e9abf80fa6e91be9d0e0cac0dcb817}
+
+\item 
+\hypertarget{sirius__api_8cpp_ab3912497a6123558777afeafdb867f73}{}void {\bfseries sirius\+\_\+set\+\_\+atom\+\_\+type\+\_\+rho\+\_\+tot} (char const $\ast$label\+\_\+\+\_\+, int32\+\_\+t $\ast$num\+\_\+points\+\_\+\+\_\+, double $\ast$rho\+\_\+tot\+\_\+\+\_\+)\label{sirius__api_8cpp_ab3912497a6123558777afeafdb867f73}
+
+\item 
+\hypertarget{sirius__api_8cpp_a6ac6f22147aeaceef892193da058777e}{}void {\bfseries sirius\+\_\+set\+\_\+atom\+\_\+type\+\_\+vloc} (char const $\ast$label\+\_\+\+\_\+, int32\+\_\+t $\ast$num\+\_\+points\+\_\+\+\_\+, double $\ast$vloc\+\_\+\+\_\+)\label{sirius__api_8cpp_a6ac6f22147aeaceef892193da058777e}
+
+\item 
+\hypertarget{sirius__api_8cpp_a08a5fc686909aecd2f4016a080f481bc}{}void {\bfseries sirius\+\_\+symmetrize\+\_\+density} ()\label{sirius__api_8cpp_a08a5fc686909aecd2f4016a080f481bc}
+
+\item 
+\hypertarget{sirius__api_8cpp_a5027da60fb8090982c39e015bd79713e}{}void {\bfseries sirius\+\_\+get\+\_\+rho\+\_\+pw} (ftn\+\_\+int $\ast$num\+\_\+gvec\+\_\+\+\_\+, ftn\+\_\+int $\ast$gvec\+\_\+\+\_\+, ftn\+\_\+double\+\_\+complex $\ast$rho\+\_\+pw\+\_\+\+\_\+)\label{sirius__api_8cpp_a5027da60fb8090982c39e015bd79713e}
+
+\item 
+\hypertarget{sirius__api_8cpp_ad46a79934dcdd5f050fb23fa447e83b9}{}void {\bfseries sirius\+\_\+get\+\_\+veff\+\_\+pw} (ftn\+\_\+int $\ast$num\+\_\+gvec\+\_\+\+\_\+, ftn\+\_\+int $\ast$gvec\+\_\+\+\_\+, ftn\+\_\+double\+\_\+complex $\ast$veff\+\_\+pw\+\_\+\+\_\+)\label{sirius__api_8cpp_ad46a79934dcdd5f050fb23fa447e83b9}
+
+\item 
+\hypertarget{sirius__api_8cpp_a500a71b9c3f557a0e15cf11d533a39da}{}void {\bfseries sirius\+\_\+get\+\_\+gvec\+\_\+index} (int32\+\_\+t $\ast$gvec\+\_\+\+\_\+, int32\+\_\+t $\ast$ig\+\_\+\+\_\+)\label{sirius__api_8cpp_a500a71b9c3f557a0e15cf11d533a39da}
+
+\item 
+\hypertarget{sirius__api_8cpp_aa655259c9748bec3d288d2fee01135d7}{}void {\bfseries sirius\+\_\+use\+\_\+internal\+\_\+mixer} (int32\+\_\+t $\ast$use\+\_\+internal\+\_\+mixer\+\_\+\+\_\+)\label{sirius__api_8cpp_aa655259c9748bec3d288d2fee01135d7}
+
+\item 
+\hypertarget{sirius__api_8cpp_a4fbc0fb3455fe4a17d440dc47bf1aa24}{}void {\bfseries sirius\+\_\+set\+\_\+iterative\+\_\+solver\+\_\+tolerance} (double $\ast$tol\+\_\+\+\_\+)\label{sirius__api_8cpp_a4fbc0fb3455fe4a17d440dc47bf1aa24}
+
+\item 
+\hypertarget{sirius__api_8cpp_afed0cb604a442a55a6fc40ae4b659182}{}void {\bfseries sirius\+\_\+get\+\_\+density\+\_\+dr2} (double $\ast$dr2\+\_\+\+\_\+)\label{sirius__api_8cpp_afed0cb604a442a55a6fc40ae4b659182}
+
+\item 
+\hypertarget{sirius__api_8cpp_aa684036388b06e8ac1801b48890a97d4}{}void {\bfseries sirius\+\_\+real\+\_\+gaunt\+\_\+coeff\+\_\+} (int32\+\_\+t $\ast$lm1\+\_\+\+\_\+, int32\+\_\+t $\ast$lm2\+\_\+\+\_\+, int32\+\_\+t $\ast$lm3\+\_\+\+\_\+, double $\ast$coeff\+\_\+\+\_\+)\label{sirius__api_8cpp_aa684036388b06e8ac1801b48890a97d4}
+
+\item 
+\hypertarget{sirius__api_8cpp_aa055b5d9c439accd34839206c3cf7ca7}{}void {\bfseries sirius\+\_\+ylmr2\+\_\+} (int32\+\_\+t $\ast$lmmax\+\_\+\+\_\+, int32\+\_\+t $\ast$nr\+\_\+\+\_\+, double $\ast$vr\+\_\+\+\_\+, double $\ast$rlm\+\_\+\+\_\+)\label{sirius__api_8cpp_aa055b5d9c439accd34839206c3cf7ca7}
+
+\item 
+\hypertarget{sirius__api_8cpp_af840e281db2223de1bfe8d4b7fb0b451}{}void {\bfseries sirius\+\_\+get\+\_\+q\+\_\+operator\+\_\+matrix} (ftn\+\_\+int $\ast$iat\+\_\+\+\_\+, ftn\+\_\+double $\ast$q\+\_\+mtrx\+\_\+\+\_\+, ftn\+\_\+int $\ast$ld\+\_\+\+\_\+)\label{sirius__api_8cpp_af840e281db2223de1bfe8d4b7fb0b451}
+
+\item 
+\hypertarget{sirius__api_8cpp_a809c78ac5861ccb2eb945bd532ef4cf6}{}void {\bfseries sirius\+\_\+get\+\_\+d\+\_\+operator\+\_\+matrix} (ftn\+\_\+int $\ast$ia\+\_\+\+\_\+, ftn\+\_\+double $\ast$d\+\_\+mtrx\+\_\+\+\_\+, ftn\+\_\+int $\ast$ld\+\_\+\+\_\+)\label{sirius__api_8cpp_a809c78ac5861ccb2eb945bd532ef4cf6}
+
+\item 
+\hypertarget{sirius__api_8cpp_a82555562d05e7ed595bea45e947d7504}{}void {\bfseries sirius\+\_\+set\+\_\+d\+\_\+operator\+\_\+matrix} (ftn\+\_\+int $\ast$ia\+\_\+\+\_\+, ftn\+\_\+double $\ast$d\+\_\+mtrx\+\_\+\+\_\+, ftn\+\_\+int $\ast$ld\+\_\+\+\_\+)\label{sirius__api_8cpp_a82555562d05e7ed595bea45e947d7504}
+
+\item 
+\hypertarget{sirius__api_8cpp_a9b3ab0c21215be17c8c81fb90b3d3b5a}{}void {\bfseries sirius\+\_\+get\+\_\+q\+\_\+pw\+\_\+} (int32\+\_\+t $\ast$iat\+\_\+\+\_\+, int32\+\_\+t $\ast$num\+\_\+gvec\+\_\+\+\_\+, double\+\_\+complex $\ast$q\+\_\+pw\+\_\+\+\_\+)\label{sirius__api_8cpp_a9b3ab0c21215be17c8c81fb90b3d3b5a}
+
+\item 
+\hypertarget{sirius__api_8cpp_adf218187a174b216e575328da6dee9f0}{}void {\bfseries sirius\+\_\+get\+\_\+fv\+\_\+states\+\_\+} (int32\+\_\+t $\ast$kset\+\_\+id\+\_\+\+\_\+, int32\+\_\+t $\ast$ik\+\_\+\+\_\+, int32\+\_\+t $\ast$nfv\+\_\+\+\_\+, int32\+\_\+t $\ast$ngk\+\_\+\+\_\+, int32\+\_\+t $\ast$gvec\+\_\+of\+\_\+k\+\_\+\+\_\+, double\+\_\+complex $\ast$fv\+\_\+states\+\_\+\+\_\+, int32\+\_\+t $\ast$ld\+\_\+\+\_\+)\label{sirius__api_8cpp_adf218187a174b216e575328da6dee9f0}
+
+\item 
+\hypertarget{sirius__api_8cpp_a3f11ebd217adab1aab771f4cf381c1c9}{}void {\bfseries sirius\+\_\+set\+\_\+mpi\+\_\+grid\+\_\+dims} (int $\ast$ndims\+\_\+\+\_\+, int $\ast$dims\+\_\+\+\_\+)\label{sirius__api_8cpp_a3f11ebd217adab1aab771f4cf381c1c9}
+
+\item 
+\hypertarget{sirius__api_8cpp_a476f95685047bfa8e2b147b2f4455c5b}{}void {\bfseries sirius\+\_\+set\+\_\+atom\+\_\+type\+\_\+paw\+\_\+data} (char $\ast$label\+\_\+\+\_\+, double $\ast$ae\+\_\+wfc\+\_\+rf\+\_\+\+\_\+, double $\ast$ps\+\_\+wfc\+\_\+rf\+\_\+\+\_\+, int32\+\_\+t $\ast$num\+\_\+wfc\+\_\+\+\_\+, int32\+\_\+t $\ast$ld\+\_\+\+\_\+, int32\+\_\+t $\ast$cutoff\+\_\+radius\+\_\+index\+\_\+\+\_\+, double $\ast$core\+\_\+energy\+\_\+\+\_\+, double $\ast$ae\+\_\+core\+\_\+charge\+\_\+\+\_\+, int32\+\_\+t $\ast$num\+\_\+ae\+\_\+core\+\_\+charge\+\_\+\+\_\+, double $\ast$occupations\+\_\+\+\_\+, int32\+\_\+t $\ast$num\+\_\+occ\+\_\+\+\_\+)\label{sirius__api_8cpp_a476f95685047bfa8e2b147b2f4455c5b}
+
+\item 
+\hypertarget{sirius__api_8cpp_a70cec7b192cd5e356753e6507a1b3cb6}{}void {\bfseries sirius\+\_\+get\+\_\+paw\+\_\+total\+\_\+energy} (double $\ast$tot\+\_\+en\+\_\+\+\_\+)\label{sirius__api_8cpp_a70cec7b192cd5e356753e6507a1b3cb6}
+
+\item 
+\hypertarget{sirius__api_8cpp_a35668fcc3f1cffe4654580b744c0ea14}{}void {\bfseries sirius\+\_\+get\+\_\+paw\+\_\+one\+\_\+elec\+\_\+energy} (double $\ast$one\+\_\+elec\+\_\+en\+\_\+\+\_\+)\label{sirius__api_8cpp_a35668fcc3f1cffe4654580b744c0ea14}
+
+\item 
+\hypertarget{sirius__api_8cpp_a082710fd62d1da7d9d655a85c659f0e3}{}void {\bfseries sirius\+\_\+reduce\+\_\+coordinates} (ftn\+\_\+double $\ast$coord\+\_\+\+\_\+, ftn\+\_\+double $\ast$reduced\+\_\+coord\+\_\+\+\_\+, ftn\+\_\+int $\ast$T\+\_\+\+\_\+)\label{sirius__api_8cpp_a082710fd62d1da7d9d655a85c659f0e3}
+
+\item 
+\hypertarget{sirius__api_8cpp_ad6393a97751f46fed67687c09b5b81a1}{}void {\bfseries sirius\+\_\+fderiv} (ftn\+\_\+int $\ast$m\+\_\+\+\_\+, ftn\+\_\+int $\ast$np\+\_\+\+\_\+, ftn\+\_\+double $\ast$x\+\_\+\+\_\+, ftn\+\_\+double $\ast$f\+\_\+\+\_\+, ftn\+\_\+double $\ast$g\+\_\+\+\_\+)\label{sirius__api_8cpp_ad6393a97751f46fed67687c09b5b81a1}
+
+\item 
+\hypertarget{sirius__api_8cpp_a317b2ae7b50c72e187ae6d3b62d2f7f8}{}void {\bfseries sirius\+\_\+integrate\+\_\+} (ftn\+\_\+int $\ast$m\+\_\+\+\_\+, ftn\+\_\+int $\ast$np\+\_\+\+\_\+, ftn\+\_\+double $\ast$x\+\_\+\+\_\+, ftn\+\_\+double $\ast$f\+\_\+\+\_\+, ftn\+\_\+double $\ast$result\+\_\+\+\_\+)\label{sirius__api_8cpp_a317b2ae7b50c72e187ae6d3b62d2f7f8}
+
+\item 
+\hypertarget{sirius__api_8cpp_a179531d4511fffd962bb0895bfa16c19}{}void {\bfseries sirius\+\_\+get\+\_\+wave\+\_\+functions} (ftn\+\_\+int $\ast$kset\+\_\+id\+\_\+\+\_\+, ftn\+\_\+int $\ast$ik\+\_\+\+\_\+, ftn\+\_\+int $\ast$npw\+\_\+\+\_\+, ftn\+\_\+int $\ast$gvec\+\_\+k\+\_\+\+\_\+, ftn\+\_\+double\+\_\+complex $\ast$evc\+\_\+\+\_\+, ftn\+\_\+int $\ast$ld\+\_\+\+\_\+)\label{sirius__api_8cpp_a179531d4511fffd962bb0895bfa16c19}
+
+\item 
+\hypertarget{sirius__api_8cpp_a7f8afa8f788336b7ea2f42d4333eb4e7}{}void {\bfseries sirius\+\_\+get\+\_\+beta\+\_\+projectors} (ftn\+\_\+int $\ast$kset\+\_\+id\+\_\+\+\_\+, ftn\+\_\+int $\ast$ik\+\_\+\+\_\+, ftn\+\_\+int $\ast$npw\+\_\+\+\_\+, ftn\+\_\+int $\ast$gvec\+\_\+k\+\_\+\+\_\+, ftn\+\_\+double\+\_\+complex $\ast$vkb\+\_\+\+\_\+, ftn\+\_\+int $\ast$ld\+\_\+\+\_\+, ftn\+\_\+int $\ast$nkb\+\_\+\+\_\+)\label{sirius__api_8cpp_a7f8afa8f788336b7ea2f42d4333eb4e7}
+
+\item 
+\hypertarget{sirius__api_8cpp_abc53a30d90d9b1074596cf60f946c45b}{}void {\bfseries sirius\+\_\+get\+\_\+beta\+\_\+projectors\+\_\+by\+\_\+kp} (ftn\+\_\+int $\ast$kset\+\_\+id\+\_\+\+\_\+, ftn\+\_\+double $\ast$vk\+\_\+\+\_\+, ftn\+\_\+int $\ast$npw\+\_\+\+\_\+, ftn\+\_\+int $\ast$gvec\+\_\+k\+\_\+\+\_\+, ftn\+\_\+double\+\_\+complex $\ast$vkb\+\_\+\+\_\+, ftn\+\_\+int $\ast$ld\+\_\+\+\_\+, ftn\+\_\+int $\ast$nkb\+\_\+\+\_\+)\label{sirius__api_8cpp_abc53a30d90d9b1074596cf60f946c45b}
+
+\item 
+\hypertarget{sirius__api_8cpp_a83c757ab4a0e18f4f3cf52abb3ad277e}{}void {\bfseries sirius\+\_\+get\+\_\+density\+\_\+matrix} (ftn\+\_\+int $\ast$ia\+\_\+\+\_\+, ftn\+\_\+double\+\_\+complex $\ast$dm\+\_\+\+\_\+, ftn\+\_\+int $\ast$ld\+\_\+\+\_\+)\label{sirius__api_8cpp_a83c757ab4a0e18f4f3cf52abb3ad277e}
+
+\item 
+\hypertarget{sirius__api_8cpp_a00d0ef1c27e79cbb94f57dd095e434c5}{}void {\bfseries sirius\+\_\+calc\+\_\+forces} (double $\ast$forces\+\_\+\+\_\+)\label{sirius__api_8cpp_a00d0ef1c27e79cbb94f57dd095e434c5}
+
+\item 
+\hypertarget{sirius__api_8cpp_aa29d6c01e0e0451c73f59026aacace8e}{}void {\bfseries sirius\+\_\+set\+\_\+verbosity} (ftn\+\_\+int $\ast$level\+\_\+\+\_\+)\label{sirius__api_8cpp_aa29d6c01e0e0451c73f59026aacace8e}
+
+\item 
+\hypertarget{sirius__api_8cpp_aa82115810c7f85c6cd5a006bf0729ced}{}void {\bfseries sirius\+\_\+generate\+\_\+d\+\_\+operator\+\_\+matrix} ()\label{sirius__api_8cpp_aa82115810c7f85c6cd5a006bf0729ced}
+
+\item 
+void \hyperlink{sirius__api_8cpp_a77db413e668d93cb975311321058744a}{sirius\+\_\+set\+\_\+pw\+\_\+coeffs} (ftn\+\_\+char label\+\_\+\+\_\+, double\+\_\+complex $\ast$pw\+\_\+coeffs\+\_\+\+\_\+, ftn\+\_\+int $\ast$ngv\+\_\+\+\_\+, ftn\+\_\+int $\ast$gvl\+\_\+\+\_\+, ftn\+\_\+int $\ast$comm\+\_\+\+\_\+)
+\begin{DoxyCompactList}\small\item\em Set the plane-\/wave expansion coefficients of a particular function. \end{DoxyCompactList}\end{DoxyCompactItemize}
+\subsection*{Variables}
+\begin{DoxyCompactItemize}
+\item 
+\hyperlink{classsirius_1_1_simulation__context}{sirius\+::\+Simulation\+\_\+context} $\ast$ \hyperlink{sirius__api_8cpp_a8576937eef5b30c52bf23c97aaf615fd}{sim\+\_\+ctx} = nullptr
+\begin{DoxyCompactList}\small\item\em Simulation context. \end{DoxyCompactList}\item 
+\hyperlink{classsirius_1_1_density}{sirius\+::\+Density} $\ast$ \hyperlink{sirius__api_8cpp_a27c9852fd9c283b3432aaea8d778ab45}{density} = nullptr
+\begin{DoxyCompactList}\small\item\em Pointer to Density class, implicitly used by Fortran side. \end{DoxyCompactList}\item 
+\hyperlink{classsirius_1_1_potential}{sirius\+::\+Potential} $\ast$ \hyperlink{sirius__api_8cpp_a65d08a5ad51414bcc2f4a0660014442f}{potential} = nullptr
+\begin{DoxyCompactList}\small\item\em Pointer to Potential class, implicitly used by Fortran side. \end{DoxyCompactList}\item 
+std\+::vector$<$ \hyperlink{classsirius_1_1_k__point__set}{sirius\+::\+K\+\_\+point\+\_\+set} $\ast$ $>$ \hyperlink{sirius__api_8cpp_a804cdf407c18370916fe2603b6727b5a}{kset\+\_\+list}
+\begin{DoxyCompactList}\small\item\em List of pointers to the sets of k-\/points. \end{DoxyCompactList}\item 
+\hyperlink{classsirius_1_1_d_f_t__ground__state}{sirius\+::\+D\+F\+T\+\_\+ground\+\_\+state} $\ast$ \hyperlink{sirius__api_8cpp_a2241fb592bd4f724096c446cc4bfb5de}{dft\+\_\+ground\+\_\+state} = nullptr
+\begin{DoxyCompactList}\small\item\em D\+F\+T ground state wrapper. \end{DoxyCompactList}\item 
+std\+::map$<$ std\+::string, \hyperlink{classsddk_1_1timer}{sddk\+::timer} $\ast$ $>$ \hyperlink{sirius__api_8cpp_af5d1c49525684e8f93f8fa39b3d111a3}{ftimers}
+\begin{DoxyCompactList}\small\item\em List of timers created on the Fortran side. \end{DoxyCompactList}\end{DoxyCompactItemize}
+
+
+\subsection{Detailed Description}
+Fortran A\+P\+I. 
+
+
+
+\subsection{Function Documentation}
+\hypertarget{sirius__api_8cpp_abe2849b0122a55c5428f42dfb04d666c}{}\index{sirius\+\_\+api.\+cpp@{sirius\+\_\+api.\+cpp}!sirius\+\_\+initialize@{sirius\+\_\+initialize}}
+\index{sirius\+\_\+initialize@{sirius\+\_\+initialize}!sirius\+\_\+api.\+cpp@{sirius\+\_\+api.\+cpp}}
+\subsubsection[{sirius\+\_\+initialize(ftn\+\_\+int $\ast$call\+\_\+mpi\+\_\+init\+\_\+\+\_\+)}]{\setlength{\rightskip}{0pt plus 5cm}void sirius\+\_\+initialize (
+\begin{DoxyParamCaption}
+\item[{ftn\+\_\+int $\ast$}]{call\+\_\+mpi\+\_\+init\+\_\+\+\_\+}
+\end{DoxyParamCaption}
+)}\label{sirius__api_8cpp_abe2849b0122a55c5428f42dfb04d666c}
+
+
+Initialize the library. 
+
+
+\begin{DoxyParams}[1]{Parameters}
+\mbox{\tt in}  & {\em call\+\_\+mpi\+\_\+init} & .true. if the library needs to call M\+P\+I\+\_\+\+Init()\\
+\hline
+\end{DoxyParams}
+Example\+: 
+\begin{DoxyCode}
+\textcolor{keywordtype}{integer} ierr
+\textcolor{keyword}{call }mpi\_init(ierr)
+\textcolor{comment}{! initialize low-level stuff and don't call MPI\_Init() from SIRIUS}
+\textcolor{keyword}{call }\hyperlink{interfacesirius_1_1sirius__initialize}{sirius\_initialize}(0)
+\end{DoxyCode}
+ 
+
+Definition at line 58 of file sirius\+\_\+api.\+cpp.
+
+\hypertarget{sirius__api_8cpp_a181a1afd75e34e9db1854840c44f2c5f}{}\index{sirius\+\_\+api.\+cpp@{sirius\+\_\+api.\+cpp}!sirius\+\_\+clear@{sirius\+\_\+clear}}
+\index{sirius\+\_\+clear@{sirius\+\_\+clear}!sirius\+\_\+api.\+cpp@{sirius\+\_\+api.\+cpp}}
+\subsubsection[{sirius\+\_\+clear(void)}]{\setlength{\rightskip}{0pt plus 5cm}void sirius\+\_\+clear (
+\begin{DoxyParamCaption}
+\item[{void}]{}
+\end{DoxyParamCaption}
+)}\label{sirius__api_8cpp_a181a1afd75e34e9db1854840c44f2c5f}
+
+
+Clear global variables and destroy all objects. 
+
+
+
+Definition at line 65 of file sirius\+\_\+api.\+cpp.
+
+\hypertarget{sirius__api_8cpp_a48f1ae00b6992e22a2f966ec0a532588}{}\index{sirius\+\_\+api.\+cpp@{sirius\+\_\+api.\+cpp}!sirius\+\_\+initialize\+\_\+simulation\+\_\+context@{sirius\+\_\+initialize\+\_\+simulation\+\_\+context}}
+\index{sirius\+\_\+initialize\+\_\+simulation\+\_\+context@{sirius\+\_\+initialize\+\_\+simulation\+\_\+context}!sirius\+\_\+api.\+cpp@{sirius\+\_\+api.\+cpp}}
+\subsubsection[{sirius\+\_\+initialize\+\_\+simulation\+\_\+context()}]{\setlength{\rightskip}{0pt plus 5cm}void sirius\+\_\+initialize\+\_\+simulation\+\_\+context (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+)}\label{sirius__api_8cpp_a48f1ae00b6992e22a2f966ec0a532588}
+
+
+Initialize the global variables. 
+
+The function must be called after setting up the lattice vectors, plane wave-\/cutoff, autormt flag and loading atom types and atoms into the unit cell. 
+
+Definition at line 107 of file sirius\+\_\+api.\+cpp.
+
+\hypertarget{sirius__api_8cpp_a0eab8f314918ee38334d1f902748dd57}{}\index{sirius\+\_\+api.\+cpp@{sirius\+\_\+api.\+cpp}!sirius\+\_\+create\+\_\+potential@{sirius\+\_\+create\+\_\+potential}}
+\index{sirius\+\_\+create\+\_\+potential@{sirius\+\_\+create\+\_\+potential}!sirius\+\_\+api.\+cpp@{sirius\+\_\+api.\+cpp}}
+\subsubsection[{sirius\+\_\+create\+\_\+potential(double $\ast$veffit\+\_\+\+\_\+, double $\ast$veffmt\+\_\+\+\_\+, double $\ast$beffit\+\_\+\+\_\+, double $\ast$beffmt\+\_\+\+\_\+)}]{\setlength{\rightskip}{0pt plus 5cm}void sirius\+\_\+create\+\_\+potential (
+\begin{DoxyParamCaption}
+\item[{double $\ast$}]{veffit\+\_\+\+\_\+, }
+\item[{double $\ast$}]{veffmt\+\_\+\+\_\+, }
+\item[{double $\ast$}]{beffit\+\_\+\+\_\+, }
+\item[{double $\ast$}]{beffmt\+\_\+\+\_\+}
+\end{DoxyParamCaption}
+)}\label{sirius__api_8cpp_a0eab8f314918ee38334d1f902748dd57}
+
+
+Initialize the Potential object. 
+
+
+\begin{DoxyParams}[1]{Parameters}
+\mbox{\tt in}  & {\em veffmt} & pointer to the muffin-\/tin part of the effective potential \\
+\hline
+\mbox{\tt in}  & {\em veffit} & pointer to the interstitial part of the effective potential \\
+\hline
+\mbox{\tt in}  & {\em beffmt} & pointer to the muffin-\/tin part of effective magnetic field \\
+\hline
+\mbox{\tt in}  & {\em beffit} & pointer to the interstitial part of the effective magnetic field \\
+\hline
+\end{DoxyParams}
+
+
+Definition at line 126 of file sirius\+\_\+api.\+cpp.
+
+\hypertarget{sirius__api_8cpp_a0f825c0f904141c185da368e6b50969f}{}\index{sirius\+\_\+api.\+cpp@{sirius\+\_\+api.\+cpp}!sirius\+\_\+create\+\_\+density@{sirius\+\_\+create\+\_\+density}}
+\index{sirius\+\_\+create\+\_\+density@{sirius\+\_\+create\+\_\+density}!sirius\+\_\+api.\+cpp@{sirius\+\_\+api.\+cpp}}
+\subsubsection[{sirius\+\_\+create\+\_\+density(double $\ast$rhoit\+\_\+\+\_\+, double $\ast$rhomt\+\_\+\+\_\+, double $\ast$magit\+\_\+\+\_\+, double $\ast$magmt\+\_\+\+\_\+)}]{\setlength{\rightskip}{0pt plus 5cm}void sirius\+\_\+create\+\_\+density (
+\begin{DoxyParamCaption}
+\item[{double $\ast$}]{rhoit\+\_\+\+\_\+, }
+\item[{double $\ast$}]{rhomt\+\_\+\+\_\+, }
+\item[{double $\ast$}]{magit\+\_\+\+\_\+, }
+\item[{double $\ast$}]{magmt\+\_\+\+\_\+}
+\end{DoxyParamCaption}
+)}\label{sirius__api_8cpp_a0f825c0f904141c185da368e6b50969f}
+
+
+Initialize the Density object. 
+
+
+\begin{DoxyParams}[1]{Parameters}
+\mbox{\tt in}  & {\em rhomt} & pointer to the muffin-\/tin part of the density \\
+\hline
+\mbox{\tt in}  & {\em rhoit} & pointer to the interstitial part of the denssity \\
+\hline
+\mbox{\tt in}  & {\em magmt} & pointer to the muffin-\/tin part of the magnetization \\
+\hline
+\mbox{\tt in}  & {\em magit} & pointer to the interstitial part of the magnetization \\
+\hline
+\end{DoxyParams}
+
+
+Definition at line 150 of file sirius\+\_\+api.\+cpp.
+
+\hypertarget{sirius__api_8cpp_a7b25454c8f56e16d91ae53d03343cb59}{}\index{sirius\+\_\+api.\+cpp@{sirius\+\_\+api.\+cpp}!sirius\+\_\+create\+\_\+kset@{sirius\+\_\+create\+\_\+kset}}
+\index{sirius\+\_\+create\+\_\+kset@{sirius\+\_\+create\+\_\+kset}!sirius\+\_\+api.\+cpp@{sirius\+\_\+api.\+cpp}}
+\subsubsection[{sirius\+\_\+create\+\_\+kset(ftn\+\_\+int $\ast$num\+\_\+kpoints\+\_\+\+\_\+, ftn\+\_\+double $\ast$kpoints\+\_\+\+\_\+, ftn\+\_\+double $\ast$kpoint\+\_\+weights\+\_\+\+\_\+, ftn\+\_\+int $\ast$init\+\_\+kset\+\_\+\+\_\+, ftn\+\_\+int $\ast$kset\+\_\+id\+\_\+\+\_\+, ftn\+\_\+int $\ast$nk\+\_\+loc\+\_\+\+\_\+)}]{\setlength{\rightskip}{0pt plus 5cm}void sirius\+\_\+create\+\_\+kset (
+\begin{DoxyParamCaption}
+\item[{ftn\+\_\+int $\ast$}]{num\+\_\+kpoints\+\_\+\+\_\+, }
+\item[{ftn\+\_\+double $\ast$}]{kpoints\+\_\+\+\_\+, }
+\item[{ftn\+\_\+double $\ast$}]{kpoint\+\_\+weights\+\_\+\+\_\+, }
+\item[{ftn\+\_\+int $\ast$}]{init\+\_\+kset\+\_\+\+\_\+, }
+\item[{ftn\+\_\+int $\ast$}]{kset\+\_\+id\+\_\+\+\_\+, }
+\item[{ftn\+\_\+int $\ast$}]{nk\+\_\+loc\+\_\+\+\_\+}
+\end{DoxyParamCaption}
+)}\label{sirius__api_8cpp_a7b25454c8f56e16d91ae53d03343cb59}
+
+
+Create the k-\/point set from the list of k-\/points and return it\textquotesingle{}s id. 
+
+
+
+Definition at line 169 of file sirius\+\_\+api.\+cpp.
+
+\hypertarget{sirius__api_8cpp_ad984aa55668b7ddfcf08a317eebe1971}{}\index{sirius\+\_\+api.\+cpp@{sirius\+\_\+api.\+cpp}!sirius\+\_\+set\+\_\+lattice\+\_\+vectors@{sirius\+\_\+set\+\_\+lattice\+\_\+vectors}}
+\index{sirius\+\_\+set\+\_\+lattice\+\_\+vectors@{sirius\+\_\+set\+\_\+lattice\+\_\+vectors}!sirius\+\_\+api.\+cpp@{sirius\+\_\+api.\+cpp}}
+\subsubsection[{sirius\+\_\+set\+\_\+lattice\+\_\+vectors(double $\ast$a1\+\_\+\+\_\+, double $\ast$a2\+\_\+\+\_\+, double $\ast$a3\+\_\+\+\_\+)}]{\setlength{\rightskip}{0pt plus 5cm}void sirius\+\_\+set\+\_\+lattice\+\_\+vectors (
+\begin{DoxyParamCaption}
+\item[{double $\ast$}]{a1\+\_\+\+\_\+, }
+\item[{double $\ast$}]{a2\+\_\+\+\_\+, }
+\item[{double $\ast$}]{a3\+\_\+\+\_\+}
+\end{DoxyParamCaption}
+)}\label{sirius__api_8cpp_ad984aa55668b7ddfcf08a317eebe1971}
+
+
+Set lattice vectors. 
+
+
+\begin{DoxyParams}[1]{Parameters}
+\mbox{\tt in}  & {\em a1} & 1st lattice vector \\
+\hline
+\mbox{\tt in}  & {\em a2} & 2nd lattice vector \\
+\hline
+\mbox{\tt in}  & {\em a3} & 3rd lattice vector\\
+\hline
+\end{DoxyParams}
+Example\+: 
+\begin{DoxyCode}
+\textcolor{keywordtype}{real(8)} a1(3),a2(3),a3(3)
+a1(:) = (/5.d0, 0.d0, 0.d0/)
+a2(:) = (/0.d0, 5.d0, 0.d0/)
+a3(:) = (/0.d0, 0.d0, 5.d0/)
+\textcolor{keyword}{call }\hyperlink{interfacesirius_1_1sirius__set__lattice__vectors}{sirius\_set\_lattice\_vectors}(a1, a2, a3)
+\end{DoxyCode}
+ 
+
+Definition at line 272 of file sirius\+\_\+api.\+cpp.
+
+\hypertarget{sirius__api_8cpp_a9ce1233b791dc2d315946467e4b85282}{}\index{sirius\+\_\+api.\+cpp@{sirius\+\_\+api.\+cpp}!sirius\+\_\+set\+\_\+pw\+\_\+cutoff@{sirius\+\_\+set\+\_\+pw\+\_\+cutoff}}
+\index{sirius\+\_\+set\+\_\+pw\+\_\+cutoff@{sirius\+\_\+set\+\_\+pw\+\_\+cutoff}!sirius\+\_\+api.\+cpp@{sirius\+\_\+api.\+cpp}}
+\subsubsection[{sirius\+\_\+set\+\_\+pw\+\_\+cutoff(double $\ast$pw\+\_\+cutoff\+\_\+\+\_\+)}]{\setlength{\rightskip}{0pt plus 5cm}void sirius\+\_\+set\+\_\+pw\+\_\+cutoff (
+\begin{DoxyParamCaption}
+\item[{double $\ast$}]{pw\+\_\+cutoff\+\_\+\+\_\+}
+\end{DoxyParamCaption}
+)}\label{sirius__api_8cpp_a9ce1233b791dc2d315946467e4b85282}
+
+
+Set plane-\/wave cutoff for F\+F\+T grid. 
+
+
+\begin{DoxyParams}[1]{Parameters}
+\mbox{\tt in}  & {\em gmaxvr} & maximum G-\/vector length\\
+\hline
+\end{DoxyParams}
+Example\+: 
+\begin{DoxyCode}
+\textcolor{keywordtype}{real(8)} gmaxvr
+gmaxvr = 20.0
+\textcolor{keyword}{call }\hyperlink{interfacesirius_1_1sirius__set__pw__cutoff}{sirius\_set\_pw\_cutoff}(gmaxvr)
+\end{DoxyCode}
+ 
+
+Definition at line 291 of file sirius\+\_\+api.\+cpp.
+
+\hypertarget{sirius__api_8cpp_abacf05b849b3c42f8395b431d2defd63}{}\index{sirius\+\_\+api.\+cpp@{sirius\+\_\+api.\+cpp}!sirius\+\_\+set\+\_\+auto\+\_\+rmt@{sirius\+\_\+set\+\_\+auto\+\_\+rmt}}
+\index{sirius\+\_\+set\+\_\+auto\+\_\+rmt@{sirius\+\_\+set\+\_\+auto\+\_\+rmt}!sirius\+\_\+api.\+cpp@{sirius\+\_\+api.\+cpp}}
+\subsubsection[{sirius\+\_\+set\+\_\+auto\+\_\+rmt(int32\+\_\+t $\ast$auto\+\_\+rmt\+\_\+\+\_\+)}]{\setlength{\rightskip}{0pt plus 5cm}void sirius\+\_\+set\+\_\+auto\+\_\+rmt (
+\begin{DoxyParamCaption}
+\item[{int32\+\_\+t $\ast$}]{auto\+\_\+rmt\+\_\+\+\_\+}
+\end{DoxyParamCaption}
+)}\label{sirius__api_8cpp_abacf05b849b3c42f8395b431d2defd63}
+
+
+Turn on or off the automatic scaling of muffin-\/tin spheres. 
+
+
+\begin{DoxyParams}[1]{Parameters}
+\mbox{\tt in}  & {\em auto\+\_\+rmt} & .true. if muffin-\/tin spheres must be resized to the maximally allowed radii\\
+\hline
+\end{DoxyParams}
+The auto\+\_\+rmt flag tells the library how to proceed with the muffin-\/tin spheres in the case when library takes the full control over the muffin-\/tin geometry.
+
+Example\+: 
+\begin{DoxyCode}
+\textcolor{keywordtype}{logical} autormt
+autormt = .true.
+\textcolor{keyword}{call }\hyperlink{interfacesirius_1_1sirius__set__auto__rmt}{sirius\_set\_auto\_rmt}(autormt)
+\end{DoxyCode}
+ 
+
+Definition at line 314 of file sirius\+\_\+api.\+cpp.
+
+\hypertarget{sirius__api_8cpp_af74dfeb271c21835108154b26ad865a8}{}\index{sirius\+\_\+api.\+cpp@{sirius\+\_\+api.\+cpp}!sirius\+\_\+add\+\_\+atom\+\_\+type@{sirius\+\_\+add\+\_\+atom\+\_\+type}}
+\index{sirius\+\_\+add\+\_\+atom\+\_\+type@{sirius\+\_\+add\+\_\+atom\+\_\+type}!sirius\+\_\+api.\+cpp@{sirius\+\_\+api.\+cpp}}
+\subsubsection[{sirius\+\_\+add\+\_\+atom\+\_\+type(ftn\+\_\+char label\+\_\+\+\_\+, ftn\+\_\+char fname\+\_\+\+\_\+)}]{\setlength{\rightskip}{0pt plus 5cm}void sirius\+\_\+add\+\_\+atom\+\_\+type (
+\begin{DoxyParamCaption}
+\item[{ftn\+\_\+char}]{label\+\_\+\+\_\+, }
+\item[{ftn\+\_\+char}]{fname\+\_\+\+\_\+}
+\end{DoxyParamCaption}
+)}\label{sirius__api_8cpp_af74dfeb271c21835108154b26ad865a8}
+
+
+Add atom type to the unit cell. 
+
+
+\begin{DoxyParams}[1]{Parameters}
+\mbox{\tt in}  & {\em label} & unique label of atom type \\
+\hline
+\mbox{\tt in}  & {\em fname} & name of .json atomic file\\
+\hline
+\end{DoxyParams}
+Atom type (species in the terminology of Exciting/\+Elk) is a class which holds information common to the atoms of the same element\+: charge, number of core and valence electrons, muffin-\/tin radius, radial grid etc. See \hyperlink{classsirius_1_1_atom__type}{sirius\+::\+Atom\+\_\+type} class for details.
+
+Example\+: 
+\begin{DoxyCode}
+\textcolor{keywordflow}{do} is = 1, nspecies
+  \textcolor{comment}{!====================================================}
+  \textcolor{comment}{! add atom type with label equal to the file name and}
+  \textcolor{comment}{! read the .json file}
+  \textcolor{comment}{!====================================================}
+  \textcolor{keyword}{call }\hyperlink{sirius__api_8cpp_af74dfeb271c21835108154b26ad865a8}{sirius\_add\_atom\_type}(trim(spfname(is)), trim(spfname(is))
+enddo
+\end{DoxyCode}
+ 
+
+Definition at line 338 of file sirius\+\_\+api.\+cpp.
+
+\hypertarget{sirius__api_8cpp_a9a8113dd5d71148b90a13aac466b4656}{}\index{sirius\+\_\+api.\+cpp@{sirius\+\_\+api.\+cpp}!sirius\+\_\+set\+\_\+atom\+\_\+type\+\_\+properties@{sirius\+\_\+set\+\_\+atom\+\_\+type\+\_\+properties}}
+\index{sirius\+\_\+set\+\_\+atom\+\_\+type\+\_\+properties@{sirius\+\_\+set\+\_\+atom\+\_\+type\+\_\+properties}!sirius\+\_\+api.\+cpp@{sirius\+\_\+api.\+cpp}}
+\subsubsection[{sirius\+\_\+set\+\_\+atom\+\_\+type\+\_\+properties(char const $\ast$label\+\_\+\+\_\+, char const $\ast$symbol\+\_\+\+\_\+, int32\+\_\+t $\ast$zn\+\_\+\+\_\+, double $\ast$mass\+\_\+\+\_\+, double $\ast$mt\+\_\+radius\+\_\+\+\_\+, int32\+\_\+t $\ast$num\+\_\+mt\+\_\+points\+\_\+\+\_\+)}]{\setlength{\rightskip}{0pt plus 5cm}void sirius\+\_\+set\+\_\+atom\+\_\+type\+\_\+properties (
+\begin{DoxyParamCaption}
+\item[{char const $\ast$}]{label\+\_\+\+\_\+, }
+\item[{char const $\ast$}]{symbol\+\_\+\+\_\+, }
+\item[{int32\+\_\+t $\ast$}]{zn\+\_\+\+\_\+, }
+\item[{double $\ast$}]{mass\+\_\+\+\_\+, }
+\item[{double $\ast$}]{mt\+\_\+radius\+\_\+\+\_\+, }
+\item[{int32\+\_\+t $\ast$}]{num\+\_\+mt\+\_\+points\+\_\+\+\_\+}
+\end{DoxyParamCaption}
+)}\label{sirius__api_8cpp_a9a8113dd5d71148b90a13aac466b4656}
+
+
+Set basic properties of the atom type. 
+
+
+\begin{DoxyParams}[1]{Parameters}
+\mbox{\tt in}  & {\em label} & unique label of the atom type \\
+\hline
+\mbox{\tt in}  & {\em symbol} & symbol of the element \\
+\hline
+\mbox{\tt in}  & {\em zn} & positive integer charge \\
+\hline
+\mbox{\tt in}  & {\em mass} & atomic mass \\
+\hline
+\mbox{\tt in}  & {\em mt\+\_\+radius} & muffin-\/tin radius \\
+\hline
+\mbox{\tt in}  & {\em num\+\_\+mt\+\_\+points} & number of muffin-\/tin points \\
+\hline
+\mbox{\tt in}  & {\em radial\+\_\+grid\+\_\+origin} & origin of radial grid \\
+\hline
+\mbox{\tt in}  & {\em radial\+\_\+grid\+\_\+infinity} & effective infinity\\
+\hline
+\end{DoxyParams}
+Example\+: 
+\begin{DoxyCode}
+\textcolor{keywordflow}{do} is=1,nspecies
+  \textcolor{keyword}{call }\hyperlink{interfacesirius_1_1sirius__set__atom__type__properties}{sirius\_set\_atom\_type\_properties}(trim(spfname(is)), trim(spsymb(is)), 
+       &
+                                      &nint(-spzn(is)), spmass(is), rmt(is), &
+                                      &nrmt(is), sprmin(is), sprmax(is))
+enddo
+\end{DoxyCode}
+ 
+
+Definition at line 364 of file sirius\+\_\+api.\+cpp.
+
+\hypertarget{sirius__api_8cpp_a7a0ce1a56c36251b14a13a4280a0915a}{}\index{sirius\+\_\+api.\+cpp@{sirius\+\_\+api.\+cpp}!sirius\+\_\+set\+\_\+atom\+\_\+type\+\_\+radial\+\_\+grid@{sirius\+\_\+set\+\_\+atom\+\_\+type\+\_\+radial\+\_\+grid}}
+\index{sirius\+\_\+set\+\_\+atom\+\_\+type\+\_\+radial\+\_\+grid@{sirius\+\_\+set\+\_\+atom\+\_\+type\+\_\+radial\+\_\+grid}!sirius\+\_\+api.\+cpp@{sirius\+\_\+api.\+cpp}}
+\subsubsection[{sirius\+\_\+set\+\_\+atom\+\_\+type\+\_\+radial\+\_\+grid(char const $\ast$label\+\_\+\+\_\+, int32\+\_\+t const $\ast$num\+\_\+radial\+\_\+points\+\_\+\+\_\+, double const $\ast$radial\+\_\+points\+\_\+\+\_\+)}]{\setlength{\rightskip}{0pt plus 5cm}void sirius\+\_\+set\+\_\+atom\+\_\+type\+\_\+radial\+\_\+grid (
+\begin{DoxyParamCaption}
+\item[{char const $\ast$}]{label\+\_\+\+\_\+, }
+\item[{int32\+\_\+t const $\ast$}]{num\+\_\+radial\+\_\+points\+\_\+\+\_\+, }
+\item[{double const $\ast$}]{radial\+\_\+points\+\_\+\+\_\+}
+\end{DoxyParamCaption}
+)}\label{sirius__api_8cpp_a7a0ce1a56c36251b14a13a4280a0915a}
+
+
+Set the radial grid of atom type. 
+
+
+\begin{DoxyParams}[1]{Parameters}
+\mbox{\tt in}  & {\em label} & unique label of the atom type \\
+\hline
+\mbox{\tt in}  & {\em num\+\_\+radial\+\_\+points} & number of radial points \\
+\hline
+\mbox{\tt in}  & {\em radial\+\_\+points} & radial points\\
+\hline
+\end{DoxyParams}
+Example\+: 
+\begin{DoxyCode}
+\textcolor{keywordflow}{do} is=1,nspecies
+  \textcolor{keyword}{call }\hyperlink{interfacesirius_1_1sirius__set__atom__type__radial__grid}{sirius\_set\_atom\_type\_radial\_grid}(trim(spfname(is)), spnr(is), spr(1,
+       is))
+enddo
+\end{DoxyCode}
+ 
+
+Definition at line 391 of file sirius\+\_\+api.\+cpp.
+
+\hypertarget{sirius__api_8cpp_ae2aa17e4413b352457e362b0fdf74378}{}\index{sirius\+\_\+api.\+cpp@{sirius\+\_\+api.\+cpp}!sirius\+\_\+set\+\_\+atom\+\_\+type\+\_\+configuration@{sirius\+\_\+set\+\_\+atom\+\_\+type\+\_\+configuration}}
+\index{sirius\+\_\+set\+\_\+atom\+\_\+type\+\_\+configuration@{sirius\+\_\+set\+\_\+atom\+\_\+type\+\_\+configuration}!sirius\+\_\+api.\+cpp@{sirius\+\_\+api.\+cpp}}
+\subsubsection[{sirius\+\_\+set\+\_\+atom\+\_\+type\+\_\+configuration(char $\ast$label\+\_\+\+\_\+, int32\+\_\+t $\ast$n\+\_\+\+\_\+, int32\+\_\+t $\ast$l\+\_\+\+\_\+, int32\+\_\+t $\ast$k\+\_\+\+\_\+, double $\ast$occupancy\+\_\+\+\_\+, int32\+\_\+t $\ast$core\+\_\+\+\_\+)}]{\setlength{\rightskip}{0pt plus 5cm}void sirius\+\_\+set\+\_\+atom\+\_\+type\+\_\+configuration (
+\begin{DoxyParamCaption}
+\item[{char $\ast$}]{label\+\_\+\+\_\+, }
+\item[{int32\+\_\+t $\ast$}]{n\+\_\+\+\_\+, }
+\item[{int32\+\_\+t $\ast$}]{l\+\_\+\+\_\+, }
+\item[{int32\+\_\+t $\ast$}]{k\+\_\+\+\_\+, }
+\item[{double $\ast$}]{occupancy\+\_\+\+\_\+, }
+\item[{int32\+\_\+t $\ast$}]{core\+\_\+\+\_\+}
+\end{DoxyParamCaption}
+)}\label{sirius__api_8cpp_ae2aa17e4413b352457e362b0fdf74378}
+
+
+Set the atomic level configuration of the atom type. 
+
+With each call to the function new atomic level is added to the list of atomic levels of the atom type.
+
+
+\begin{DoxyParams}[1]{Parameters}
+\mbox{\tt in}  & {\em label} & unique label of the atom type \\
+\hline
+\mbox{\tt in}  & {\em n} & principal quantum number of the atomic level \\
+\hline
+\mbox{\tt in}  & {\em l} & angular quantum number of the atomic level \\
+\hline
+\mbox{\tt in}  & {\em k} & kappa quantum number of the atomic level \\
+\hline
+\mbox{\tt in}  & {\em occupancy} & occupancy of the atomic level \\
+\hline
+\mbox{\tt in}  & {\em core} & .true. if the atomic level belongs to the core\\
+\hline
+\end{DoxyParams}
+Example 
+\begin{DoxyCode}
+\textcolor{keywordflow}{do} is=1,nspecies
+  \textcolor{keywordflow}{do} ist=1,spnst(is)
+    \textcolor{keyword}{call }\hyperlink{interfacesirius_1_1sirius__set__atom__type__configuration}{sirius\_set\_atom\_type\_configuration}(trim(spfname(is)), spn(ist, 
+      is), spl(ist, is),&
+                                           &spk(ist, is), spocc(ist, is),&
+                                           &spcore(ist, is))
+\textcolor{keywordflow}{  enddo}
+enddo
+\end{DoxyCode}
+ 
+
+Definition at line 429 of file sirius\+\_\+api.\+cpp.
+
+\hypertarget{sirius__api_8cpp_a20dc3b201ac712e174d03a770e25945b}{}\index{sirius\+\_\+api.\+cpp@{sirius\+\_\+api.\+cpp}!sirius\+\_\+add\+\_\+atom@{sirius\+\_\+add\+\_\+atom}}
+\index{sirius\+\_\+add\+\_\+atom@{sirius\+\_\+add\+\_\+atom}!sirius\+\_\+api.\+cpp@{sirius\+\_\+api.\+cpp}}
+\subsubsection[{sirius\+\_\+add\+\_\+atom(char $\ast$label\+\_\+\+\_\+, double $\ast$position\+\_\+\+\_\+, double $\ast$vector\+\_\+field\+\_\+\+\_\+)}]{\setlength{\rightskip}{0pt plus 5cm}void sirius\+\_\+add\+\_\+atom (
+\begin{DoxyParamCaption}
+\item[{char $\ast$}]{label\+\_\+\+\_\+, }
+\item[{double $\ast$}]{position\+\_\+\+\_\+, }
+\item[{double $\ast$}]{vector\+\_\+field\+\_\+\+\_\+}
+\end{DoxyParamCaption}
+)}\label{sirius__api_8cpp_a20dc3b201ac712e174d03a770e25945b}
+
+
+Add atom to the unit cell. 
+
+
+\begin{DoxyParams}[1]{Parameters}
+\mbox{\tt in}  & {\em label} & unique label of the atom type \\
+\hline
+\mbox{\tt in}  & {\em position} & atom position in fractional coordinates \\
+\hline
+\mbox{\tt in}  & {\em vector\+\_\+field} & vector field associated with the given atom\\
+\hline
+\end{DoxyParams}
+Example\+: 
+\begin{DoxyCode}
+\textcolor{keywordflow}{do} is = 1, nspecies
+  \textcolor{keywordflow}{do} ia = 1, natoms(is)
+    \textcolor{keyword}{call }\hyperlink{sirius__api_8cpp_a20dc3b201ac712e174d03a770e25945b}{sirius\_add\_atom}(trim(spfname(is)), atposl(:, ia, is), bfcmt(:, ia, is))
+\textcolor{keywordflow}{  enddo}
+enddo
+\end{DoxyCode}
+ 
+
+Definition at line 455 of file sirius\+\_\+api.\+cpp.
+
+\hypertarget{sirius__api_8cpp_a5160a4a1c57c4a1c81a91d015506ea77}{}\index{sirius\+\_\+api.\+cpp@{sirius\+\_\+api.\+cpp}!sirius\+\_\+set\+\_\+equivalent\+\_\+atoms@{sirius\+\_\+set\+\_\+equivalent\+\_\+atoms}}
+\index{sirius\+\_\+set\+\_\+equivalent\+\_\+atoms@{sirius\+\_\+set\+\_\+equivalent\+\_\+atoms}!sirius\+\_\+api.\+cpp@{sirius\+\_\+api.\+cpp}}
+\subsubsection[{sirius\+\_\+set\+\_\+equivalent\+\_\+atoms(int32\+\_\+t $\ast$equivalent\+\_\+atoms\+\_\+\+\_\+)}]{\setlength{\rightskip}{0pt plus 5cm}void sirius\+\_\+set\+\_\+equivalent\+\_\+atoms (
+\begin{DoxyParamCaption}
+\item[{int32\+\_\+t $\ast$}]{equivalent\+\_\+atoms\+\_\+\+\_\+}
+\end{DoxyParamCaption}
+)}\label{sirius__api_8cpp_a5160a4a1c57c4a1c81a91d015506ea77}
+
+
+Set the table of equivalent atoms. 
+
+
+\begin{DoxyParams}[1]{Parameters}
+\mbox{\tt in}  & {\em equivalent\+\_\+atoms} & table of equivalent atoms\\
+\hline
+\end{DoxyParams}
+Equivalent atoms are symmetry related and belong to the same atom symmetry class. If equivalence table is not provided by user, {\itshape spglib} is called. In case of magnetic symmetry {\itshape spglib} is of no use and euivalence table must be provided. 
+
+Definition at line 476 of file sirius\+\_\+api.\+cpp.
+
+\hypertarget{sirius__api_8cpp_a65cf84eec816d260cc48de46c111c2b1}{}\index{sirius\+\_\+api.\+cpp@{sirius\+\_\+api.\+cpp}!sirius\+\_\+set\+\_\+aw\+\_\+cutoff@{sirius\+\_\+set\+\_\+aw\+\_\+cutoff}}
+\index{sirius\+\_\+set\+\_\+aw\+\_\+cutoff@{sirius\+\_\+set\+\_\+aw\+\_\+cutoff}!sirius\+\_\+api.\+cpp@{sirius\+\_\+api.\+cpp}}
+\subsubsection[{sirius\+\_\+set\+\_\+aw\+\_\+cutoff(double $\ast$aw\+\_\+cutoff\+\_\+\+\_\+)}]{\setlength{\rightskip}{0pt plus 5cm}void sirius\+\_\+set\+\_\+aw\+\_\+cutoff (
+\begin{DoxyParamCaption}
+\item[{double $\ast$}]{aw\+\_\+cutoff\+\_\+\+\_\+}
+\end{DoxyParamCaption}
+)}\label{sirius__api_8cpp_a65cf84eec816d260cc48de46c111c2b1}
+
+
+Set augmented-\/wave cutoff. 
+
+
+\begin{DoxyParams}[1]{Parameters}
+\mbox{\tt in}  & {\em aw\+\_\+cutoff} & augmented-\/wave cutoff\\
+\hline
+\end{DoxyParams}
+Augmented wave cutoff is used to setup the $\vert$\+G+k$\vert$ cutoff which controls the size of the (L)A\+P\+W basis. The following simple relation is used\+: \[ |\mathbf{G}+\mathbf{k}| R^{MT}_{min} \leq \textrm{AW cutoff} \]
+
+Example\+: 
+\begin{DoxyCode}
+\textcolor{keywordtype}{real(8)} rgkmax
+rgkmax = 10.0
+\textcolor{keyword}{call }\hyperlink{interfacesirius_1_1sirius__set__aw__cutoff}{sirius\_set\_aw\_cutoff}(rgkmax)
+\end{DoxyCode}
+ 
+
+Definition at line 497 of file sirius\+\_\+api.\+cpp.
+
+\hypertarget{sirius__api_8cpp_a923254f912ea21cebbffb24d27df0c45}{}\index{sirius\+\_\+api.\+cpp@{sirius\+\_\+api.\+cpp}!sirius\+\_\+get\+\_\+max\+\_\+num\+\_\+mt\+\_\+points@{sirius\+\_\+get\+\_\+max\+\_\+num\+\_\+mt\+\_\+points}}
+\index{sirius\+\_\+get\+\_\+max\+\_\+num\+\_\+mt\+\_\+points@{sirius\+\_\+get\+\_\+max\+\_\+num\+\_\+mt\+\_\+points}!sirius\+\_\+api.\+cpp@{sirius\+\_\+api.\+cpp}}
+\subsubsection[{sirius\+\_\+get\+\_\+max\+\_\+num\+\_\+mt\+\_\+points(ftn\+\_\+int $\ast$max\+\_\+num\+\_\+mt\+\_\+points\+\_\+\+\_\+)}]{\setlength{\rightskip}{0pt plus 5cm}void sirius\+\_\+get\+\_\+max\+\_\+num\+\_\+mt\+\_\+points (
+\begin{DoxyParamCaption}
+\item[{ftn\+\_\+int $\ast$}]{max\+\_\+num\+\_\+mt\+\_\+points\+\_\+\+\_\+}
+\end{DoxyParamCaption}
+)}\label{sirius__api_8cpp_a923254f912ea21cebbffb24d27df0c45}
+
+
+Get maximum number of muffin-\/tin radial points. 
+
+
+\begin{DoxyParams}[1]{Parameters}
+\mbox{\tt out}  & {\em max\+\_\+num\+\_\+mt\+\_\+points} & maximum number of muffin-\/tin points \\
+\hline
+\end{DoxyParams}
+
+
+Definition at line 531 of file sirius\+\_\+api.\+cpp.
+
+\hypertarget{sirius__api_8cpp_a9344f00279a5220c7c03ef065e9f92bd}{}\index{sirius\+\_\+api.\+cpp@{sirius\+\_\+api.\+cpp}!sirius\+\_\+get\+\_\+num\+\_\+mt\+\_\+points@{sirius\+\_\+get\+\_\+num\+\_\+mt\+\_\+points}}
+\index{sirius\+\_\+get\+\_\+num\+\_\+mt\+\_\+points@{sirius\+\_\+get\+\_\+num\+\_\+mt\+\_\+points}!sirius\+\_\+api.\+cpp@{sirius\+\_\+api.\+cpp}}
+\subsubsection[{sirius\+\_\+get\+\_\+num\+\_\+mt\+\_\+points(ftn\+\_\+char label\+\_\+\+\_\+, ftn\+\_\+int $\ast$num\+\_\+mt\+\_\+points\+\_\+\+\_\+)}]{\setlength{\rightskip}{0pt plus 5cm}void sirius\+\_\+get\+\_\+num\+\_\+mt\+\_\+points (
+\begin{DoxyParamCaption}
+\item[{ftn\+\_\+char}]{label\+\_\+\+\_\+, }
+\item[{ftn\+\_\+int $\ast$}]{num\+\_\+mt\+\_\+points\+\_\+\+\_\+}
+\end{DoxyParamCaption}
+)}\label{sirius__api_8cpp_a9344f00279a5220c7c03ef065e9f92bd}
+
+
+Get number of muffin-\/tin radial points for a specific atom type. 
+
+
+\begin{DoxyParams}[1]{Parameters}
+\mbox{\tt in}  & {\em label} & unique label of atom type \\
+\hline
+\mbox{\tt out}  & {\em num\+\_\+mt\+\_\+points} & number of muffin-\/tin points \\
+\hline
+\end{DoxyParams}
+
+
+Definition at line 540 of file sirius\+\_\+api.\+cpp.
+
+\hypertarget{sirius__api_8cpp_af781db27a02bbbacebb5c450699fc8f4}{}\index{sirius\+\_\+api.\+cpp@{sirius\+\_\+api.\+cpp}!sirius\+\_\+get\+\_\+num\+\_\+gvec@{sirius\+\_\+get\+\_\+num\+\_\+gvec}}
+\index{sirius\+\_\+get\+\_\+num\+\_\+gvec@{sirius\+\_\+get\+\_\+num\+\_\+gvec}!sirius\+\_\+api.\+cpp@{sirius\+\_\+api.\+cpp}}
+\subsubsection[{sirius\+\_\+get\+\_\+num\+\_\+gvec(int32\+\_\+t $\ast$num\+\_\+gvec\+\_\+\+\_\+)}]{\setlength{\rightskip}{0pt plus 5cm}void sirius\+\_\+get\+\_\+num\+\_\+gvec (
+\begin{DoxyParamCaption}
+\item[{int32\+\_\+t $\ast$}]{num\+\_\+gvec\+\_\+\+\_\+}
+\end{DoxyParamCaption}
+)}\label{sirius__api_8cpp_af781db27a02bbbacebb5c450699fc8f4}
+
+
+Get number of G-\/vectors within the plane-\/wave cutoff. 
+
+
+
+Definition at line 564 of file sirius\+\_\+api.\+cpp.
+
+\hypertarget{sirius__api_8cpp_a4507d0c1b65cec455defcf0b9413870c}{}\index{sirius\+\_\+api.\+cpp@{sirius\+\_\+api.\+cpp}!sirius\+\_\+get\+\_\+fft\+\_\+grid\+\_\+size@{sirius\+\_\+get\+\_\+fft\+\_\+grid\+\_\+size}}
+\index{sirius\+\_\+get\+\_\+fft\+\_\+grid\+\_\+size@{sirius\+\_\+get\+\_\+fft\+\_\+grid\+\_\+size}!sirius\+\_\+api.\+cpp@{sirius\+\_\+api.\+cpp}}
+\subsubsection[{sirius\+\_\+get\+\_\+fft\+\_\+grid\+\_\+size(ftn\+\_\+int $\ast$grid\+\_\+size\+\_\+\+\_\+)}]{\setlength{\rightskip}{0pt plus 5cm}void sirius\+\_\+get\+\_\+fft\+\_\+grid\+\_\+size (
+\begin{DoxyParamCaption}
+\item[{ftn\+\_\+int $\ast$}]{grid\+\_\+size\+\_\+\+\_\+}
+\end{DoxyParamCaption}
+)}\label{sirius__api_8cpp_a4507d0c1b65cec455defcf0b9413870c}
+
+
+Get sizes of F\+F\+T grid. 
+
+
+
+Definition at line 582 of file sirius\+\_\+api.\+cpp.
+
+\hypertarget{sirius__api_8cpp_ac4f06a4ad69164b31391853bc173a423}{}\index{sirius\+\_\+api.\+cpp@{sirius\+\_\+api.\+cpp}!sirius\+\_\+get\+\_\+fft\+\_\+grid\+\_\+limits@{sirius\+\_\+get\+\_\+fft\+\_\+grid\+\_\+limits}}
+\index{sirius\+\_\+get\+\_\+fft\+\_\+grid\+\_\+limits@{sirius\+\_\+get\+\_\+fft\+\_\+grid\+\_\+limits}!sirius\+\_\+api.\+cpp@{sirius\+\_\+api.\+cpp}}
+\subsubsection[{sirius\+\_\+get\+\_\+fft\+\_\+grid\+\_\+limits(int32\+\_\+t const $\ast$d, int32\+\_\+t $\ast$lower, int32\+\_\+t $\ast$upper)}]{\setlength{\rightskip}{0pt plus 5cm}void sirius\+\_\+get\+\_\+fft\+\_\+grid\+\_\+limits (
+\begin{DoxyParamCaption}
+\item[{int32\+\_\+t const $\ast$}]{d, }
+\item[{int32\+\_\+t $\ast$}]{lower, }
+\item[{int32\+\_\+t $\ast$}]{upper}
+\end{DoxyParamCaption}
+)}\label{sirius__api_8cpp_ac4f06a4ad69164b31391853bc173a423}
+
+
+Get lower and upper limits of the F\+F\+T grid dimension. 
+
+
+\begin{DoxyParams}[1]{Parameters}
+\mbox{\tt in}  & {\em d} & index of dimension (1,2, or 3) \\
+\hline
+\mbox{\tt out}  & {\em lower} & lower (most negative) value \\
+\hline
+\mbox{\tt out}  & {\em upper} & upper (most positive) value\\
+\hline
+\end{DoxyParams}
+Example\+: 
+\begin{DoxyCode}
+\textcolor{keywordflow}{do} i=1,3
+  \textcolor{keyword}{call }\hyperlink{interfacesirius_1_1sirius__get__fft__grid__limits}{sirius\_get\_fft\_grid\_limits}(i,intgv(i,1),intgv(i,2))
+enddo
+\end{DoxyCode}
+ 
+
+Definition at line 601 of file sirius\+\_\+api.\+cpp.
+
+\hypertarget{sirius__api_8cpp_a1c9c927ed757ff93eec532a869f8d32a}{}\index{sirius\+\_\+api.\+cpp@{sirius\+\_\+api.\+cpp}!sirius\+\_\+get\+\_\+fft\+\_\+index@{sirius\+\_\+get\+\_\+fft\+\_\+index}}
+\index{sirius\+\_\+get\+\_\+fft\+\_\+index@{sirius\+\_\+get\+\_\+fft\+\_\+index}!sirius\+\_\+api.\+cpp@{sirius\+\_\+api.\+cpp}}
+\subsubsection[{sirius\+\_\+get\+\_\+fft\+\_\+index(int32\+\_\+t $\ast$fft\+\_\+index\+\_\+\+\_\+)}]{\setlength{\rightskip}{0pt plus 5cm}void sirius\+\_\+get\+\_\+fft\+\_\+index (
+\begin{DoxyParamCaption}
+\item[{int32\+\_\+t $\ast$}]{fft\+\_\+index\+\_\+\+\_\+}
+\end{DoxyParamCaption}
+)}\label{sirius__api_8cpp_a1c9c927ed757ff93eec532a869f8d32a}
+
+
+Get mapping between G-\/vector index and F\+F\+T index. 
+
+
+
+Definition at line 609 of file sirius\+\_\+api.\+cpp.
+
+\hypertarget{sirius__api_8cpp_ad7bd022f3ec46d2bff3a8c65c5d4b659}{}\index{sirius\+\_\+api.\+cpp@{sirius\+\_\+api.\+cpp}!sirius\+\_\+get\+\_\+gvec@{sirius\+\_\+get\+\_\+gvec}}
+\index{sirius\+\_\+get\+\_\+gvec@{sirius\+\_\+get\+\_\+gvec}!sirius\+\_\+api.\+cpp@{sirius\+\_\+api.\+cpp}}
+\subsubsection[{sirius\+\_\+get\+\_\+gvec(int32\+\_\+t $\ast$gvec\+\_\+\+\_\+)}]{\setlength{\rightskip}{0pt plus 5cm}void sirius\+\_\+get\+\_\+gvec (
+\begin{DoxyParamCaption}
+\item[{int32\+\_\+t $\ast$}]{gvec\+\_\+\+\_\+}
+\end{DoxyParamCaption}
+)}\label{sirius__api_8cpp_ad7bd022f3ec46d2bff3a8c65c5d4b659}
+
+
+Get list of G-\/vectors in fractional corrdinates. 
+
+
+
+Definition at line 618 of file sirius\+\_\+api.\+cpp.
+
+\hypertarget{sirius__api_8cpp_a64fa2574194bf24cd2175aa4b010d9f4}{}\index{sirius\+\_\+api.\+cpp@{sirius\+\_\+api.\+cpp}!sirius\+\_\+get\+\_\+gvec\+\_\+cart@{sirius\+\_\+get\+\_\+gvec\+\_\+cart}}
+\index{sirius\+\_\+get\+\_\+gvec\+\_\+cart@{sirius\+\_\+get\+\_\+gvec\+\_\+cart}!sirius\+\_\+api.\+cpp@{sirius\+\_\+api.\+cpp}}
+\subsubsection[{sirius\+\_\+get\+\_\+gvec\+\_\+cart(double $\ast$gvec\+\_\+cart\+\_\+\+\_\+)}]{\setlength{\rightskip}{0pt plus 5cm}void sirius\+\_\+get\+\_\+gvec\+\_\+cart (
+\begin{DoxyParamCaption}
+\item[{double $\ast$}]{gvec\+\_\+cart\+\_\+\+\_\+}
+\end{DoxyParamCaption}
+)}\label{sirius__api_8cpp_a64fa2574194bf24cd2175aa4b010d9f4}
+
+
+Get list of G-\/vectors in Cartesian coordinates. 
+
+
+
+Definition at line 630 of file sirius\+\_\+api.\+cpp.
+
+\hypertarget{sirius__api_8cpp_a0527b986e980c5ec702f0e6fd643f8e0}{}\index{sirius\+\_\+api.\+cpp@{sirius\+\_\+api.\+cpp}!sirius\+\_\+get\+\_\+gvec\+\_\+len@{sirius\+\_\+get\+\_\+gvec\+\_\+len}}
+\index{sirius\+\_\+get\+\_\+gvec\+\_\+len@{sirius\+\_\+get\+\_\+gvec\+\_\+len}!sirius\+\_\+api.\+cpp@{sirius\+\_\+api.\+cpp}}
+\subsubsection[{sirius\+\_\+get\+\_\+gvec\+\_\+len(double $\ast$gvec\+\_\+len\+\_\+\+\_\+)}]{\setlength{\rightskip}{0pt plus 5cm}void sirius\+\_\+get\+\_\+gvec\+\_\+len (
+\begin{DoxyParamCaption}
+\item[{double $\ast$}]{gvec\+\_\+len\+\_\+\+\_\+}
+\end{DoxyParamCaption}
+)}\label{sirius__api_8cpp_a0527b986e980c5ec702f0e6fd643f8e0}
+
+
+Get lengh of G-\/vectors. 
+
+
+
+Definition at line 642 of file sirius\+\_\+api.\+cpp.
+
+\hypertarget{sirius__api_8cpp_a8bf763121c21f26284f1ac2489a3398f}{}\index{sirius\+\_\+api.\+cpp@{sirius\+\_\+api.\+cpp}!sirius\+\_\+get\+\_\+gvec\+\_\+ylm@{sirius\+\_\+get\+\_\+gvec\+\_\+ylm}}
+\index{sirius\+\_\+get\+\_\+gvec\+\_\+ylm@{sirius\+\_\+get\+\_\+gvec\+\_\+ylm}!sirius\+\_\+api.\+cpp@{sirius\+\_\+api.\+cpp}}
+\subsubsection[{sirius\+\_\+get\+\_\+gvec\+\_\+ylm(double\+\_\+complex $\ast$gvec\+\_\+ylm\+\_\+\+\_\+, int $\ast$ld\+\_\+\+\_\+, int $\ast$lmax\+\_\+\+\_\+)}]{\setlength{\rightskip}{0pt plus 5cm}void sirius\+\_\+get\+\_\+gvec\+\_\+ylm (
+\begin{DoxyParamCaption}
+\item[{double\+\_\+complex $\ast$}]{gvec\+\_\+ylm\+\_\+\+\_\+, }
+\item[{int $\ast$}]{ld\+\_\+\+\_\+, }
+\item[{int $\ast$}]{lmax\+\_\+\+\_\+}
+\end{DoxyParamCaption}
+)}\label{sirius__api_8cpp_a8bf763121c21f26284f1ac2489a3398f}
+
+
+Get Ylm spherical harmonics of G-\/vectors. 
+
+
+
+Definition at line 665 of file sirius\+\_\+api.\+cpp.
+
+\hypertarget{sirius__api_8cpp_a6f4d5976a47821ec391f99d5aa38a1d3}{}\index{sirius\+\_\+api.\+cpp@{sirius\+\_\+api.\+cpp}!sirius\+\_\+get\+\_\+num\+\_\+electrons@{sirius\+\_\+get\+\_\+num\+\_\+electrons}}
+\index{sirius\+\_\+get\+\_\+num\+\_\+electrons@{sirius\+\_\+get\+\_\+num\+\_\+electrons}!sirius\+\_\+api.\+cpp@{sirius\+\_\+api.\+cpp}}
+\subsubsection[{sirius\+\_\+get\+\_\+num\+\_\+electrons(double $\ast$num\+\_\+electrons\+\_\+\+\_\+)}]{\setlength{\rightskip}{0pt plus 5cm}void sirius\+\_\+get\+\_\+num\+\_\+electrons (
+\begin{DoxyParamCaption}
+\item[{double $\ast$}]{num\+\_\+electrons\+\_\+\+\_\+}
+\end{DoxyParamCaption}
+)}\label{sirius__api_8cpp_a6f4d5976a47821ec391f99d5aa38a1d3}
+
+
+Get the total number of electrons. 
+
+
+
+Definition at line 699 of file sirius\+\_\+api.\+cpp.
+
+\hypertarget{sirius__api_8cpp_a27ae9060ed87b99ad47c28145f43bc2f}{}\index{sirius\+\_\+api.\+cpp@{sirius\+\_\+api.\+cpp}!sirius\+\_\+get\+\_\+num\+\_\+valence\+\_\+electrons@{sirius\+\_\+get\+\_\+num\+\_\+valence\+\_\+electrons}}
+\index{sirius\+\_\+get\+\_\+num\+\_\+valence\+\_\+electrons@{sirius\+\_\+get\+\_\+num\+\_\+valence\+\_\+electrons}!sirius\+\_\+api.\+cpp@{sirius\+\_\+api.\+cpp}}
+\subsubsection[{sirius\+\_\+get\+\_\+num\+\_\+valence\+\_\+electrons(double $\ast$num\+\_\+valence\+\_\+electrons\+\_\+\+\_\+)}]{\setlength{\rightskip}{0pt plus 5cm}void sirius\+\_\+get\+\_\+num\+\_\+valence\+\_\+electrons (
+\begin{DoxyParamCaption}
+\item[{double $\ast$}]{num\+\_\+valence\+\_\+electrons\+\_\+\+\_\+}
+\end{DoxyParamCaption}
+)}\label{sirius__api_8cpp_a27ae9060ed87b99ad47c28145f43bc2f}
+
+
+Get the number of valence electrons. 
+
+
+
+Definition at line 705 of file sirius\+\_\+api.\+cpp.
+
+\hypertarget{sirius__api_8cpp_ad425cb62ec8eb705cf558fffde1da7b0}{}\index{sirius\+\_\+api.\+cpp@{sirius\+\_\+api.\+cpp}!sirius\+\_\+get\+\_\+num\+\_\+core\+\_\+electrons@{sirius\+\_\+get\+\_\+num\+\_\+core\+\_\+electrons}}
+\index{sirius\+\_\+get\+\_\+num\+\_\+core\+\_\+electrons@{sirius\+\_\+get\+\_\+num\+\_\+core\+\_\+electrons}!sirius\+\_\+api.\+cpp@{sirius\+\_\+api.\+cpp}}
+\subsubsection[{sirius\+\_\+get\+\_\+num\+\_\+core\+\_\+electrons(double $\ast$num\+\_\+core\+\_\+electrons\+\_\+\+\_\+)}]{\setlength{\rightskip}{0pt plus 5cm}void sirius\+\_\+get\+\_\+num\+\_\+core\+\_\+electrons (
+\begin{DoxyParamCaption}
+\item[{double $\ast$}]{num\+\_\+core\+\_\+electrons\+\_\+\+\_\+}
+\end{DoxyParamCaption}
+)}\label{sirius__api_8cpp_ad425cb62ec8eb705cf558fffde1da7b0}
+
+
+Get the number of core electrons. 
+
+
+
+Definition at line 711 of file sirius\+\_\+api.\+cpp.
+
+\hypertarget{sirius__api_8cpp_a908f15a32075292e1d731f04bd7dc1de}{}\index{sirius\+\_\+api.\+cpp@{sirius\+\_\+api.\+cpp}!sirius\+\_\+find\+\_\+eigen\+\_\+states@{sirius\+\_\+find\+\_\+eigen\+\_\+states}}
+\index{sirius\+\_\+find\+\_\+eigen\+\_\+states@{sirius\+\_\+find\+\_\+eigen\+\_\+states}!sirius\+\_\+api.\+cpp@{sirius\+\_\+api.\+cpp}}
+\subsubsection[{sirius\+\_\+find\+\_\+eigen\+\_\+states(int32\+\_\+t $\ast$kset\+\_\+id\+\_\+\+\_\+, int32\+\_\+t $\ast$precompute\+\_\+\+\_\+)}]{\setlength{\rightskip}{0pt plus 5cm}void sirius\+\_\+find\+\_\+eigen\+\_\+states (
+\begin{DoxyParamCaption}
+\item[{int32\+\_\+t $\ast$}]{kset\+\_\+id\+\_\+\+\_\+, }
+\item[{int32\+\_\+t $\ast$}]{precompute\+\_\+\+\_\+}
+\end{DoxyParamCaption}
+)}\label{sirius__api_8cpp_a908f15a32075292e1d731f04bd7dc1de}
+
+
+Find eigen-\/states of the k-\/point set. 
+
+
+\begin{DoxyParams}[1]{Parameters}
+\mbox{\tt in}  & {\em kset\+\_\+id} & k-\/point set id \\
+\hline
+\mbox{\tt in}  & {\em precompute} & .true. if the radial integrals and plane-\/wave coefficients of the interstitial potential must be precomputed\\
+\hline
+\end{DoxyParams}
+Example\+: 
+\begin{DoxyCode}
+\textcolor{comment}{! precompute the necessary data on the Fortran side}
+  \textcolor{keyword}{call }\hyperlink{interfacesirius_1_1sirius__update__atomic__potential}{sirius\_update\_atomic\_potential}
+  \textcolor{keyword}{call }\hyperlink{interfacesirius_1_1sirius__generate__radial__functions}{sirius\_generate\_radial\_functions}
+  \textcolor{keyword}{call }\hyperlink{interfacesirius_1_1sirius__generate__radial__integrals}{sirius\_generate\_radial\_integrals}
+  \textcolor{keyword}{call }\hyperlink{interfacesirius_1_1sirius__generate__potential__pw__coefs}{sirius\_generate\_potential\_pw\_coefs}
+  \textcolor{keyword}{call }\hyperlink{interfacesirius_1_1sirius__find__eigen__states}{sirius\_find\_eigen\_states}(kset\_id, 0)
+  .
+  .
+\textcolor{comment}{! or}
+  .
+  .
+\textcolor{comment}{! ask the library to precompute the necessary data}
+  \textcolor{keyword}{call }\hyperlink{interfacesirius_1_1sirius__find__eigen__states}{sirius\_find\_eigen\_states}(kset\_id, 1)
+\end{DoxyCode}
+ 
+
+Definition at line 770 of file sirius\+\_\+api.\+cpp.
+
+\hypertarget{sirius__api_8cpp_afb79d6ddac46b42c5bbf3a238014ac82}{}\index{sirius\+\_\+api.\+cpp@{sirius\+\_\+api.\+cpp}!sirius\+\_\+generate\+\_\+radial\+\_\+functions@{sirius\+\_\+generate\+\_\+radial\+\_\+functions}}
+\index{sirius\+\_\+generate\+\_\+radial\+\_\+functions@{sirius\+\_\+generate\+\_\+radial\+\_\+functions}!sirius\+\_\+api.\+cpp@{sirius\+\_\+api.\+cpp}}
+\subsubsection[{sirius\+\_\+generate\+\_\+radial\+\_\+functions()}]{\setlength{\rightskip}{0pt plus 5cm}void sirius\+\_\+generate\+\_\+radial\+\_\+functions (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+)}\label{sirius__api_8cpp_afb79d6ddac46b42c5bbf3a238014ac82}
+
+
+Generate radial functions (both aw and lo) 
+
+
+
+Definition at line 1175 of file sirius\+\_\+api.\+cpp.
+
+\hypertarget{sirius__api_8cpp_acd64e4745e7101401fc79ee91ddc2937}{}\index{sirius\+\_\+api.\+cpp@{sirius\+\_\+api.\+cpp}!sirius\+\_\+generate\+\_\+radial\+\_\+integrals@{sirius\+\_\+generate\+\_\+radial\+\_\+integrals}}
+\index{sirius\+\_\+generate\+\_\+radial\+\_\+integrals@{sirius\+\_\+generate\+\_\+radial\+\_\+integrals}!sirius\+\_\+api.\+cpp@{sirius\+\_\+api.\+cpp}}
+\subsubsection[{sirius\+\_\+generate\+\_\+radial\+\_\+integrals()}]{\setlength{\rightskip}{0pt plus 5cm}void sirius\+\_\+generate\+\_\+radial\+\_\+integrals (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+)}\label{sirius__api_8cpp_acd64e4745e7101401fc79ee91ddc2937}
+
+
+Generate radial integrals. 
+
+
+
+Definition at line 1181 of file sirius\+\_\+api.\+cpp.
+
+\hypertarget{sirius__api_8cpp_a60269b3939fe7e732147ac515a78eb9a}{}\index{sirius\+\_\+api.\+cpp@{sirius\+\_\+api.\+cpp}!sirius\+\_\+get\+\_\+num\+\_\+gkvec@{sirius\+\_\+get\+\_\+num\+\_\+gkvec}}
+\index{sirius\+\_\+get\+\_\+num\+\_\+gkvec@{sirius\+\_\+get\+\_\+num\+\_\+gkvec}!sirius\+\_\+api.\+cpp@{sirius\+\_\+api.\+cpp}}
+\subsubsection[{sirius\+\_\+get\+\_\+num\+\_\+gkvec(ftn\+\_\+int $\ast$kset\+\_\+id\+\_\+\+\_\+, ftn\+\_\+int $\ast$ik\+\_\+\+\_\+, ftn\+\_\+int $\ast$num\+\_\+gkvec\+\_\+\+\_\+)}]{\setlength{\rightskip}{0pt plus 5cm}void sirius\+\_\+get\+\_\+num\+\_\+gkvec (
+\begin{DoxyParamCaption}
+\item[{ftn\+\_\+int $\ast$}]{kset\+\_\+id\+\_\+\+\_\+, }
+\item[{ftn\+\_\+int $\ast$}]{ik\+\_\+\+\_\+, }
+\item[{ftn\+\_\+int $\ast$}]{num\+\_\+gkvec\+\_\+\+\_\+}
+\end{DoxyParamCaption}
+)}\label{sirius__api_8cpp_a60269b3939fe7e732147ac515a78eb9a}
+
+
+Get number of G+k vectors for a given k-\/point in the set. 
+
+
+
+Definition at line 1244 of file sirius\+\_\+api.\+cpp.
+
+\hypertarget{sirius__api_8cpp_a30b58a3f6eb4009901a9d2229faea08a}{}\index{sirius\+\_\+api.\+cpp@{sirius\+\_\+api.\+cpp}!sirius\+\_\+get\+\_\+max\+\_\+num\+\_\+gkvec@{sirius\+\_\+get\+\_\+max\+\_\+num\+\_\+gkvec}}
+\index{sirius\+\_\+get\+\_\+max\+\_\+num\+\_\+gkvec@{sirius\+\_\+get\+\_\+max\+\_\+num\+\_\+gkvec}!sirius\+\_\+api.\+cpp@{sirius\+\_\+api.\+cpp}}
+\subsubsection[{sirius\+\_\+get\+\_\+max\+\_\+num\+\_\+gkvec(ftn\+\_\+int $\ast$kset\+\_\+id\+\_\+\+\_\+, ftn\+\_\+int $\ast$max\+\_\+num\+\_\+gkvec\+\_\+\+\_\+)}]{\setlength{\rightskip}{0pt plus 5cm}void sirius\+\_\+get\+\_\+max\+\_\+num\+\_\+gkvec (
+\begin{DoxyParamCaption}
+\item[{ftn\+\_\+int $\ast$}]{kset\+\_\+id\+\_\+\+\_\+, }
+\item[{ftn\+\_\+int $\ast$}]{max\+\_\+num\+\_\+gkvec\+\_\+\+\_\+}
+\end{DoxyParamCaption}
+)}\label{sirius__api_8cpp_a30b58a3f6eb4009901a9d2229faea08a}
+
+
+Get maximum number of G+k vectors across all k-\/points in the set. 
+
+
+
+Definition at line 1260 of file sirius\+\_\+api.\+cpp.
+
+\hypertarget{sirius__api_8cpp_a450eb5ce164277d16ae162bf40b8f0d6}{}\index{sirius\+\_\+api.\+cpp@{sirius\+\_\+api.\+cpp}!sirius\+\_\+get\+\_\+gkvec\+\_\+arrays@{sirius\+\_\+get\+\_\+gkvec\+\_\+arrays}}
+\index{sirius\+\_\+get\+\_\+gkvec\+\_\+arrays@{sirius\+\_\+get\+\_\+gkvec\+\_\+arrays}!sirius\+\_\+api.\+cpp@{sirius\+\_\+api.\+cpp}}
+\subsubsection[{sirius\+\_\+get\+\_\+gkvec\+\_\+arrays(ftn\+\_\+int $\ast$kset\+\_\+id\+\_\+\+\_\+, ftn\+\_\+int $\ast$ik\+\_\+\+\_\+, ftn\+\_\+int $\ast$num\+\_\+gkvec\+\_\+\+\_\+, ftn\+\_\+int $\ast$gvec\+\_\+index\+\_\+\+\_\+, ftn\+\_\+double $\ast$gkvec\+\_\+\+\_\+, ftn\+\_\+double $\ast$gkvec\+\_\+cart\+\_\+\+\_\+, ftn\+\_\+double $\ast$gkvec\+\_\+len, ftn\+\_\+double $\ast$gkvec\+\_\+tp\+\_\+\+\_\+)}]{\setlength{\rightskip}{0pt plus 5cm}void sirius\+\_\+get\+\_\+gkvec\+\_\+arrays (
+\begin{DoxyParamCaption}
+\item[{ftn\+\_\+int $\ast$}]{kset\+\_\+id\+\_\+\+\_\+, }
+\item[{ftn\+\_\+int $\ast$}]{ik\+\_\+\+\_\+, }
+\item[{ftn\+\_\+int $\ast$}]{num\+\_\+gkvec\+\_\+\+\_\+, }
+\item[{ftn\+\_\+int $\ast$}]{gvec\+\_\+index\+\_\+\+\_\+, }
+\item[{ftn\+\_\+double $\ast$}]{gkvec\+\_\+\+\_\+, }
+\item[{ftn\+\_\+double $\ast$}]{gkvec\+\_\+cart\+\_\+\+\_\+, }
+\item[{ftn\+\_\+double $\ast$}]{gkvec\+\_\+len, }
+\item[{ftn\+\_\+double $\ast$}]{gkvec\+\_\+tp\+\_\+\+\_\+}
+\end{DoxyParamCaption}
+)}\label{sirius__api_8cpp_a450eb5ce164277d16ae162bf40b8f0d6}
+
+
+Get all G+k vector related arrays. 
+
+
+
+Definition at line 1267 of file sirius\+\_\+api.\+cpp.
+
+\hypertarget{sirius__api_8cpp_a3a610f71b595ec0b00ae3d8380096479}{}\index{sirius\+\_\+api.\+cpp@{sirius\+\_\+api.\+cpp}!sirius\+\_\+get\+\_\+spinor\+\_\+wave\+\_\+functions@{sirius\+\_\+get\+\_\+spinor\+\_\+wave\+\_\+functions}}
+\index{sirius\+\_\+get\+\_\+spinor\+\_\+wave\+\_\+functions@{sirius\+\_\+get\+\_\+spinor\+\_\+wave\+\_\+functions}!sirius\+\_\+api.\+cpp@{sirius\+\_\+api.\+cpp}}
+\subsubsection[{sirius\+\_\+get\+\_\+spinor\+\_\+wave\+\_\+functions(int32\+\_\+t $\ast$kset\+\_\+id, int32\+\_\+t $\ast$ik, double\+\_\+complex $\ast$spinor\+\_\+wave\+\_\+functions\+\_\+\+\_\+)}]{\setlength{\rightskip}{0pt plus 5cm}void sirius\+\_\+get\+\_\+spinor\+\_\+wave\+\_\+functions (
+\begin{DoxyParamCaption}
+\item[{int32\+\_\+t $\ast$}]{kset\+\_\+id, }
+\item[{int32\+\_\+t $\ast$}]{ik, }
+\item[{double\+\_\+complex $\ast$}]{spinor\+\_\+wave\+\_\+functions\+\_\+\+\_\+}
+\end{DoxyParamCaption}
+)}\label{sirius__api_8cpp_a3a610f71b595ec0b00ae3d8380096479}
+Get first-\/variational matrices of Hamiltonian and overlap $\ast$$\ast$ Radial integrals and plane-\/wave coefficients of the interstitial potential must be calculated prior to 
+
+Definition at line 1419 of file sirius\+\_\+api.\+cpp.
+
+\hypertarget{sirius__api_8cpp_a25ad4f01903dd98e98d17495161a8e1a}{}\index{sirius\+\_\+api.\+cpp@{sirius\+\_\+api.\+cpp}!sirius\+\_\+get\+\_\+gkvec\+\_\+cart@{sirius\+\_\+get\+\_\+gkvec\+\_\+cart}}
+\index{sirius\+\_\+get\+\_\+gkvec\+\_\+cart@{sirius\+\_\+get\+\_\+gkvec\+\_\+cart}!sirius\+\_\+api.\+cpp@{sirius\+\_\+api.\+cpp}}
+\subsubsection[{sirius\+\_\+get\+\_\+gkvec\+\_\+cart(int32\+\_\+t $\ast$kset\+\_\+id, int32\+\_\+t $\ast$ik, double $\ast$gkvec\+\_\+cart\+\_\+\+\_\+)}]{\setlength{\rightskip}{0pt plus 5cm}void sirius\+\_\+get\+\_\+gkvec\+\_\+cart (
+\begin{DoxyParamCaption}
+\item[{int32\+\_\+t $\ast$}]{kset\+\_\+id, }
+\item[{int32\+\_\+t $\ast$}]{ik, }
+\item[{double $\ast$}]{gkvec\+\_\+cart\+\_\+\+\_\+}
+\end{DoxyParamCaption}
+)}\label{sirius__api_8cpp_a25ad4f01903dd98e98d17495161a8e1a}
+
+
+Get Cartesian coordinates of G+k vectors. 
+
+
+
+Definition at line 1453 of file sirius\+\_\+api.\+cpp.
+
+\hypertarget{sirius__api_8cpp_af8410b67b23cb8273001ea64b9dbc438}{}\index{sirius\+\_\+api.\+cpp@{sirius\+\_\+api.\+cpp}!sirius\+\_\+generate\+\_\+xc\+\_\+potential@{sirius\+\_\+generate\+\_\+xc\+\_\+potential}}
+\index{sirius\+\_\+generate\+\_\+xc\+\_\+potential@{sirius\+\_\+generate\+\_\+xc\+\_\+potential}!sirius\+\_\+api.\+cpp@{sirius\+\_\+api.\+cpp}}
+\subsubsection[{sirius\+\_\+generate\+\_\+xc\+\_\+potential(ftn\+\_\+double $\ast$vxcmt\+\_\+\+\_\+, ftn\+\_\+double $\ast$vxcit\+\_\+\+\_\+, ftn\+\_\+double $\ast$bxcmt\+\_\+\+\_\+, ftn\+\_\+double $\ast$bxcit\+\_\+\+\_\+)}]{\setlength{\rightskip}{0pt plus 5cm}void sirius\+\_\+generate\+\_\+xc\+\_\+potential (
+\begin{DoxyParamCaption}
+\item[{ftn\+\_\+double $\ast$}]{vxcmt\+\_\+\+\_\+, }
+\item[{ftn\+\_\+double $\ast$}]{vxcit\+\_\+\+\_\+, }
+\item[{ftn\+\_\+double $\ast$}]{bxcmt\+\_\+\+\_\+, }
+\item[{ftn\+\_\+double $\ast$}]{bxcit\+\_\+\+\_\+}
+\end{DoxyParamCaption}
+)}\label{sirius__api_8cpp_af8410b67b23cb8273001ea64b9dbc438}
+
+
+Generate X\+C potential and magnetic field. 
+
+
+
+Definition at line 1510 of file sirius\+\_\+api.\+cpp.
+
+\hypertarget{sirius__api_8cpp_a9f349ac48fe1bb3d97b68e02cabe741b}{}\index{sirius\+\_\+api.\+cpp@{sirius\+\_\+api.\+cpp}!sirius\+\_\+get\+\_\+fv\+\_\+eigen\+\_\+vectors@{sirius\+\_\+get\+\_\+fv\+\_\+eigen\+\_\+vectors}}
+\index{sirius\+\_\+get\+\_\+fv\+\_\+eigen\+\_\+vectors@{sirius\+\_\+get\+\_\+fv\+\_\+eigen\+\_\+vectors}!sirius\+\_\+api.\+cpp@{sirius\+\_\+api.\+cpp}}
+\subsubsection[{sirius\+\_\+get\+\_\+fv\+\_\+eigen\+\_\+vectors(int32\+\_\+t $\ast$kset\+\_\+id\+\_\+\+\_\+, int32\+\_\+t $\ast$ik\+\_\+\+\_\+, double\+\_\+complex $\ast$fv\+\_\+evec\+\_\+\+\_\+, int32\+\_\+t $\ast$ld\+\_\+\+\_\+, int32\+\_\+t $\ast$num\+\_\+fv\+\_\+evec\+\_\+\+\_\+)}]{\setlength{\rightskip}{0pt plus 5cm}void sirius\+\_\+get\+\_\+fv\+\_\+eigen\+\_\+vectors (
+\begin{DoxyParamCaption}
+\item[{int32\+\_\+t $\ast$}]{kset\+\_\+id\+\_\+\+\_\+, }
+\item[{int32\+\_\+t $\ast$}]{ik\+\_\+\+\_\+, }
+\item[{double\+\_\+complex $\ast$}]{fv\+\_\+evec\+\_\+\+\_\+, }
+\item[{int32\+\_\+t $\ast$}]{ld\+\_\+\+\_\+, }
+\item[{int32\+\_\+t $\ast$}]{num\+\_\+fv\+\_\+evec\+\_\+\+\_\+}
+\end{DoxyParamCaption}
+)}\label{sirius__api_8cpp_a9f349ac48fe1bb3d97b68e02cabe741b}
+
+
+Get first-\/variational eigen-\/vectors. 
+
+Assume that the Fortran side holds the whole array 
+
+Definition at line 1943 of file sirius\+\_\+api.\+cpp.
+
+\hypertarget{sirius__api_8cpp_a988b31c6615f0636635800524a454bfb}{}\index{sirius\+\_\+api.\+cpp@{sirius\+\_\+api.\+cpp}!sirius\+\_\+get\+\_\+sv\+\_\+eigen\+\_\+vectors@{sirius\+\_\+get\+\_\+sv\+\_\+eigen\+\_\+vectors}}
+\index{sirius\+\_\+get\+\_\+sv\+\_\+eigen\+\_\+vectors@{sirius\+\_\+get\+\_\+sv\+\_\+eigen\+\_\+vectors}!sirius\+\_\+api.\+cpp@{sirius\+\_\+api.\+cpp}}
+\subsubsection[{sirius\+\_\+get\+\_\+sv\+\_\+eigen\+\_\+vectors(int32\+\_\+t $\ast$kset\+\_\+id, int32\+\_\+t $\ast$ik, double\+\_\+complex $\ast$sv\+\_\+evec\+\_\+\+\_\+, int32\+\_\+t $\ast$size)}]{\setlength{\rightskip}{0pt plus 5cm}void sirius\+\_\+get\+\_\+sv\+\_\+eigen\+\_\+vectors (
+\begin{DoxyParamCaption}
+\item[{int32\+\_\+t $\ast$}]{kset\+\_\+id, }
+\item[{int32\+\_\+t $\ast$}]{ik, }
+\item[{double\+\_\+complex $\ast$}]{sv\+\_\+evec\+\_\+\+\_\+, }
+\item[{int32\+\_\+t $\ast$}]{size}
+\end{DoxyParamCaption}
+)}\label{sirius__api_8cpp_a988b31c6615f0636635800524a454bfb}
+
+
+Get second-\/variational eigen-\/vectors. 
+
+Assume that the Fortran side holds the whole array 
+
+Definition at line 1952 of file sirius\+\_\+api.\+cpp.
+
+\hypertarget{sirius__api_8cpp_a77db413e668d93cb975311321058744a}{}\index{sirius\+\_\+api.\+cpp@{sirius\+\_\+api.\+cpp}!sirius\+\_\+set\+\_\+pw\+\_\+coeffs@{sirius\+\_\+set\+\_\+pw\+\_\+coeffs}}
+\index{sirius\+\_\+set\+\_\+pw\+\_\+coeffs@{sirius\+\_\+set\+\_\+pw\+\_\+coeffs}!sirius\+\_\+api.\+cpp@{sirius\+\_\+api.\+cpp}}
+\subsubsection[{sirius\+\_\+set\+\_\+pw\+\_\+coeffs(ftn\+\_\+char label\+\_\+\+\_\+, double\+\_\+complex $\ast$pw\+\_\+coeffs\+\_\+\+\_\+, ftn\+\_\+int $\ast$ngv\+\_\+\+\_\+, ftn\+\_\+int $\ast$gvl\+\_\+\+\_\+, ftn\+\_\+int $\ast$comm\+\_\+\+\_\+)}]{\setlength{\rightskip}{0pt plus 5cm}void sirius\+\_\+set\+\_\+pw\+\_\+coeffs (
+\begin{DoxyParamCaption}
+\item[{ftn\+\_\+char}]{label\+\_\+\+\_\+, }
+\item[{double\+\_\+complex $\ast$}]{pw\+\_\+coeffs\+\_\+\+\_\+, }
+\item[{ftn\+\_\+int $\ast$}]{ngv\+\_\+\+\_\+, }
+\item[{ftn\+\_\+int $\ast$}]{gvl\+\_\+\+\_\+, }
+\item[{ftn\+\_\+int $\ast$}]{comm\+\_\+\+\_\+}
+\end{DoxyParamCaption}
+)}\label{sirius__api_8cpp_a77db413e668d93cb975311321058744a}
+
+
+Set the plane-\/wave expansion coefficients of a particular function. 
+
+
+\begin{DoxyParams}[1]{Parameters}
+\mbox{\tt in}  & {\em label} & label of the target function \\
+\hline
+\mbox{\tt in}  & {\em pw\+\_\+coeffs} & array of plane-\/wave coefficients \\
+\hline
+\mbox{\tt in}  & {\em ngv} & number of G-\/vectors \\
+\hline
+\mbox{\tt in}  & {\em gvl} & G-\/vectors in lattice coordinates (Miller indices) \\
+\hline
+\mbox{\tt in}  & {\em comm} & M\+P\+I communicator used in distribution of G-\/vectors \\
+\hline
+\end{DoxyParams}
+
+
+Definition at line 2981 of file sirius\+\_\+api.\+cpp.
+
+
+
+\subsection{Variable Documentation}
+\hypertarget{sirius__api_8cpp_a8576937eef5b30c52bf23c97aaf615fd}{}\index{sirius\+\_\+api.\+cpp@{sirius\+\_\+api.\+cpp}!sim\+\_\+ctx@{sim\+\_\+ctx}}
+\index{sim\+\_\+ctx@{sim\+\_\+ctx}!sirius\+\_\+api.\+cpp@{sirius\+\_\+api.\+cpp}}
+\subsubsection[{sim\+\_\+ctx}]{\setlength{\rightskip}{0pt plus 5cm}{\bf sirius\+::\+Simulation\+\_\+context}$\ast$ sim\+\_\+ctx = nullptr}\label{sirius__api_8cpp_a8576937eef5b30c52bf23c97aaf615fd}
+
+
+Simulation context. 
+
+
+
+Definition at line 28 of file sirius\+\_\+api.\+cpp.
+
+\hypertarget{sirius__api_8cpp_a27c9852fd9c283b3432aaea8d778ab45}{}\index{sirius\+\_\+api.\+cpp@{sirius\+\_\+api.\+cpp}!density@{density}}
+\index{density@{density}!sirius\+\_\+api.\+cpp@{sirius\+\_\+api.\+cpp}}
+\subsubsection[{density}]{\setlength{\rightskip}{0pt plus 5cm}{\bf sirius\+::\+Density}$\ast$ density = nullptr}\label{sirius__api_8cpp_a27c9852fd9c283b3432aaea8d778ab45}
+
+
+Pointer to Density class, implicitly used by Fortran side. 
+
+
+
+Definition at line 31 of file sirius\+\_\+api.\+cpp.
+
+\hypertarget{sirius__api_8cpp_a65d08a5ad51414bcc2f4a0660014442f}{}\index{sirius\+\_\+api.\+cpp@{sirius\+\_\+api.\+cpp}!potential@{potential}}
+\index{potential@{potential}!sirius\+\_\+api.\+cpp@{sirius\+\_\+api.\+cpp}}
+\subsubsection[{potential}]{\setlength{\rightskip}{0pt plus 5cm}{\bf sirius\+::\+Potential}$\ast$ potential = nullptr}\label{sirius__api_8cpp_a65d08a5ad51414bcc2f4a0660014442f}
+
+
+Pointer to Potential class, implicitly used by Fortran side. 
+
+
+
+Definition at line 34 of file sirius\+\_\+api.\+cpp.
+
+\hypertarget{sirius__api_8cpp_a804cdf407c18370916fe2603b6727b5a}{}\index{sirius\+\_\+api.\+cpp@{sirius\+\_\+api.\+cpp}!kset\+\_\+list@{kset\+\_\+list}}
+\index{kset\+\_\+list@{kset\+\_\+list}!sirius\+\_\+api.\+cpp@{sirius\+\_\+api.\+cpp}}
+\subsubsection[{kset\+\_\+list}]{\setlength{\rightskip}{0pt plus 5cm}std\+::vector$<${\bf sirius\+::\+K\+\_\+point\+\_\+set}$\ast$$>$ kset\+\_\+list}\label{sirius__api_8cpp_a804cdf407c18370916fe2603b6727b5a}
+
+
+List of pointers to the sets of k-\/points. 
+
+
+
+Definition at line 37 of file sirius\+\_\+api.\+cpp.
+
+\hypertarget{sirius__api_8cpp_a2241fb592bd4f724096c446cc4bfb5de}{}\index{sirius\+\_\+api.\+cpp@{sirius\+\_\+api.\+cpp}!dft\+\_\+ground\+\_\+state@{dft\+\_\+ground\+\_\+state}}
+\index{dft\+\_\+ground\+\_\+state@{dft\+\_\+ground\+\_\+state}!sirius\+\_\+api.\+cpp@{sirius\+\_\+api.\+cpp}}
+\subsubsection[{dft\+\_\+ground\+\_\+state}]{\setlength{\rightskip}{0pt plus 5cm}{\bf sirius\+::\+D\+F\+T\+\_\+ground\+\_\+state}$\ast$ dft\+\_\+ground\+\_\+state = nullptr}\label{sirius__api_8cpp_a2241fb592bd4f724096c446cc4bfb5de}
+
+
+D\+F\+T ground state wrapper. 
+
+
+
+Definition at line 40 of file sirius\+\_\+api.\+cpp.
+
+\hypertarget{sirius__api_8cpp_af5d1c49525684e8f93f8fa39b3d111a3}{}\index{sirius\+\_\+api.\+cpp@{sirius\+\_\+api.\+cpp}!ftimers@{ftimers}}
+\index{ftimers@{ftimers}!sirius\+\_\+api.\+cpp@{sirius\+\_\+api.\+cpp}}
+\subsubsection[{ftimers}]{\setlength{\rightskip}{0pt plus 5cm}std\+::map$<$std\+::string, {\bf sddk\+::timer}$\ast$$>$ ftimers}\label{sirius__api_8cpp_af5d1c49525684e8f93f8fa39b3d111a3}
+
+
+List of timers created on the Fortran side. 
+
+
+
+Definition at line 43 of file sirius\+\_\+api.\+cpp.
+

@@ -1,0 +1,257 @@
+\hypertarget{structpseudopotential__descriptor}{}\section{pseudopotential\+\_\+descriptor Struct Reference}
+\label{structpseudopotential__descriptor}\index{pseudopotential\+\_\+descriptor@{pseudopotential\+\_\+descriptor}}
+
+
+Collaboration diagram for pseudopotential\+\_\+descriptor\+:
+% FIG 0
+\subsection*{Public Attributes}
+\begin{DoxyCompactItemize}
+\item 
+bool \hyperlink{structpseudopotential__descriptor_a924706ceb283fbae59e46fb0ff947054}{augment} \{false\}
+\begin{DoxyCompactList}\small\item\em True if the pseudopotential is soft and charge augmentation is required. \end{DoxyCompactList}\item 
+bool \hyperlink{structpseudopotential__descriptor_a4f218335e6684e55cffb46f33d6ff472}{is\+\_\+paw} \{false\}
+\begin{DoxyCompactList}\small\item\em True if the pseudopotential is used for P\+A\+W. \end{DoxyCompactList}\item 
+std\+::vector$<$ double $>$ \hyperlink{structpseudopotential__descriptor_a87d69029e9864672d1a5e45ecc3fc5b2}{r}
+\begin{DoxyCompactList}\small\item\em Radial mesh. \end{DoxyCompactList}\item 
+std\+::vector$<$ double $>$ \hyperlink{structpseudopotential__descriptor_a32f0a72237d6c04f33b63b5811352892}{vloc}
+\begin{DoxyCompactList}\small\item\em Local part of potential. \end{DoxyCompactList}\item 
+int \hyperlink{structpseudopotential__descriptor_ae4237a6921e6d375f23aedf4c8d523bd}{lmax\+\_\+beta\+\_\+}
+\begin{DoxyCompactList}\small\item\em Maximum angular momentum for $\vert$beta$>$ projectors. \end{DoxyCompactList}\item 
+int \hyperlink{structpseudopotential__descriptor_a742d7a1e24c47a67de4c39872fdc42da}{num\+\_\+beta\+\_\+radial\+\_\+functions}
+\begin{DoxyCompactList}\small\item\em Number of radial functions for $\vert$beta$>$ projectors. \end{DoxyCompactList}\item 
+std\+::vector$<$ int $>$ \hyperlink{structpseudopotential__descriptor_ae86b630c65e7b9633d0162d3e1448190}{beta\+\_\+l}
+\begin{DoxyCompactList}\small\item\em Orbital quantum numbers of each beta radial function. \end{DoxyCompactList}\item 
+std\+::vector$<$ int $>$ \hyperlink{structpseudopotential__descriptor_abb989ec455c493c88f4d115afba25afd}{num\+\_\+beta\+\_\+radial\+\_\+points}
+\begin{DoxyCompactList}\small\item\em Number of radial grid points for each beta radial function. \end{DoxyCompactList}\item 
+\hyperlink{classsddk_1_1mdarray}{mdarray}$<$ double, 2 $>$ \hyperlink{structpseudopotential__descriptor_adc359985f0583a7ac7a118cea93a9b30}{beta\+\_\+radial\+\_\+functions}
+\begin{DoxyCompactList}\small\item\em Radial functions of beta-\/projectors. \end{DoxyCompactList}\item 
+\hyperlink{classsddk_1_1mdarray}{mdarray}$<$ double, 3 $>$ \hyperlink{structpseudopotential__descriptor_aba718fec7abb8fd022c1dde98b0b7fee}{q\+\_\+radial\+\_\+functions\+\_\+l}
+\begin{DoxyCompactList}\small\item\em Radial functions of Q-\/operator. \end{DoxyCompactList}\item 
+\hypertarget{structpseudopotential__descriptor_a5fe9db7b79ac829676c24928f522d708}{}std\+::vector$<$ double $>$ {\bfseries core\+\_\+charge\+\_\+density}\label{structpseudopotential__descriptor_a5fe9db7b79ac829676c24928f522d708}
+
+\item 
+\hypertarget{structpseudopotential__descriptor_a69319c80261834800258be0f50e5fccd}{}std\+::vector$<$ double $>$ {\bfseries total\+\_\+charge\+\_\+density}\label{structpseudopotential__descriptor_a69319c80261834800258be0f50e5fccd}
+
+\item 
+\hypertarget{structpseudopotential__descriptor_aad669129d92f069f28c034bcac27410a}{}\hyperlink{classsddk_1_1mdarray}{mdarray}$<$ double, 2 $>$ {\bfseries d\+\_\+mtrx\+\_\+ion}\label{structpseudopotential__descriptor_aad669129d92f069f28c034bcac27410a}
+
+\item 
+std\+::vector$<$ std\+::pair$<$ int, std\+::vector$<$ double $>$ $>$ $>$ \hyperlink{structpseudopotential__descriptor_a6b1810865747a5458d1b0f4aab49193e}{atomic\+\_\+pseudo\+\_\+wfs\+\_\+}
+\begin{DoxyCompactList}\small\item\em Atomic wave-\/functions used to setup the initial subspace. \end{DoxyCompactList}\item 
+\hyperlink{classsddk_1_1mdarray}{mdarray}$<$ double, 2 $>$ \hyperlink{structpseudopotential__descriptor_abd17ce96ffb443283187144e61750776}{all\+\_\+elec\+\_\+wfc}
+\begin{DoxyCompactList}\small\item\em Occupation of starting wave functions. \end{DoxyCompactList}\item 
+\hyperlink{classsddk_1_1mdarray}{mdarray}$<$ double, 2 $>$ \hyperlink{structpseudopotential__descriptor_a6a1450bee7e75c41ce208b83942e490e}{pseudo\+\_\+wfc}
+\begin{DoxyCompactList}\small\item\em pseudo basis wave functions, have the same dimensionality as uspp.\+beta\+\_\+radial\+\_\+functions \end{DoxyCompactList}\item 
+double \hyperlink{structpseudopotential__descriptor_a455e05af3c31216aa1a27e57b9bdca35}{core\+\_\+energy}
+\begin{DoxyCompactList}\small\item\em Core energy of P\+A\+W. \end{DoxyCompactList}\item 
+std\+::vector$<$ double $>$ \hyperlink{structpseudopotential__descriptor_aaed84abbeec2fd1b036b4eeadf05559c}{occupations}
+\begin{DoxyCompactList}\small\item\em Occubations of atomic states. \end{DoxyCompactList}\item 
+std\+::vector$<$ double $>$ \hyperlink{structpseudopotential__descriptor_a885a4c05a931acf8346f074f64914698}{all\+\_\+elec\+\_\+core\+\_\+charge}
+\begin{DoxyCompactList}\small\item\em density of core electron contribution to all electron charge density \end{DoxyCompactList}\item 
+std\+::vector$<$ double $>$ \hyperlink{structpseudopotential__descriptor_a7dc4249e8f3d2c4a6a4c518edc3ca7f5}{all\+\_\+elec\+\_\+loc\+\_\+potential}
+\begin{DoxyCompactList}\small\item\em electrostatic potential of all electron core charge \end{DoxyCompactList}\item 
+\hypertarget{structpseudopotential__descriptor_a839d8de924a5ce7caae537b9734dcbf7}{}int {\bfseries cutoff\+\_\+radius\+\_\+index}\label{structpseudopotential__descriptor_a839d8de924a5ce7caae537b9734dcbf7}
+
+\end{DoxyCompactItemize}
+
+
+\subsection{Detailed Description}
+
+
+Definition at line 80 of file descriptors.\+h.
+
+
+
+\subsection{Member Data Documentation}
+\hypertarget{structpseudopotential__descriptor_a924706ceb283fbae59e46fb0ff947054}{}\index{pseudopotential\+\_\+descriptor@{pseudopotential\+\_\+descriptor}!augment@{augment}}
+\index{augment@{augment}!pseudopotential\+\_\+descriptor@{pseudopotential\+\_\+descriptor}}
+\subsubsection[{augment}]{\setlength{\rightskip}{0pt plus 5cm}bool pseudopotential\+\_\+descriptor\+::augment \{false\}}\label{structpseudopotential__descriptor_a924706ceb283fbae59e46fb0ff947054}
+
+
+True if the pseudopotential is soft and charge augmentation is required. 
+
+
+
+Definition at line 83 of file descriptors.\+h.
+
+\hypertarget{structpseudopotential__descriptor_a4f218335e6684e55cffb46f33d6ff472}{}\index{pseudopotential\+\_\+descriptor@{pseudopotential\+\_\+descriptor}!is\+\_\+paw@{is\+\_\+paw}}
+\index{is\+\_\+paw@{is\+\_\+paw}!pseudopotential\+\_\+descriptor@{pseudopotential\+\_\+descriptor}}
+\subsubsection[{is\+\_\+paw}]{\setlength{\rightskip}{0pt plus 5cm}bool pseudopotential\+\_\+descriptor\+::is\+\_\+paw \{false\}}\label{structpseudopotential__descriptor_a4f218335e6684e55cffb46f33d6ff472}
+
+
+True if the pseudopotential is used for P\+A\+W. 
+
+
+
+Definition at line 86 of file descriptors.\+h.
+
+\hypertarget{structpseudopotential__descriptor_a87d69029e9864672d1a5e45ecc3fc5b2}{}\index{pseudopotential\+\_\+descriptor@{pseudopotential\+\_\+descriptor}!r@{r}}
+\index{r@{r}!pseudopotential\+\_\+descriptor@{pseudopotential\+\_\+descriptor}}
+\subsubsection[{r}]{\setlength{\rightskip}{0pt plus 5cm}std\+::vector$<$double$>$ pseudopotential\+\_\+descriptor\+::r}\label{structpseudopotential__descriptor_a87d69029e9864672d1a5e45ecc3fc5b2}
+
+
+Radial mesh. 
+
+
+
+Definition at line 89 of file descriptors.\+h.
+
+\hypertarget{structpseudopotential__descriptor_a32f0a72237d6c04f33b63b5811352892}{}\index{pseudopotential\+\_\+descriptor@{pseudopotential\+\_\+descriptor}!vloc@{vloc}}
+\index{vloc@{vloc}!pseudopotential\+\_\+descriptor@{pseudopotential\+\_\+descriptor}}
+\subsubsection[{vloc}]{\setlength{\rightskip}{0pt plus 5cm}std\+::vector$<$double$>$ pseudopotential\+\_\+descriptor\+::vloc}\label{structpseudopotential__descriptor_a32f0a72237d6c04f33b63b5811352892}
+
+
+Local part of potential. 
+
+
+
+Definition at line 92 of file descriptors.\+h.
+
+\hypertarget{structpseudopotential__descriptor_ae4237a6921e6d375f23aedf4c8d523bd}{}\index{pseudopotential\+\_\+descriptor@{pseudopotential\+\_\+descriptor}!lmax\+\_\+beta\+\_\+@{lmax\+\_\+beta\+\_\+}}
+\index{lmax\+\_\+beta\+\_\+@{lmax\+\_\+beta\+\_\+}!pseudopotential\+\_\+descriptor@{pseudopotential\+\_\+descriptor}}
+\subsubsection[{lmax\+\_\+beta\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}int pseudopotential\+\_\+descriptor\+::lmax\+\_\+beta\+\_\+}\label{structpseudopotential__descriptor_ae4237a6921e6d375f23aedf4c8d523bd}
+
+
+Maximum angular momentum for $\vert$beta$>$ projectors. 
+
+
+
+Definition at line 95 of file descriptors.\+h.
+
+\hypertarget{structpseudopotential__descriptor_a742d7a1e24c47a67de4c39872fdc42da}{}\index{pseudopotential\+\_\+descriptor@{pseudopotential\+\_\+descriptor}!num\+\_\+beta\+\_\+radial\+\_\+functions@{num\+\_\+beta\+\_\+radial\+\_\+functions}}
+\index{num\+\_\+beta\+\_\+radial\+\_\+functions@{num\+\_\+beta\+\_\+radial\+\_\+functions}!pseudopotential\+\_\+descriptor@{pseudopotential\+\_\+descriptor}}
+\subsubsection[{num\+\_\+beta\+\_\+radial\+\_\+functions}]{\setlength{\rightskip}{0pt plus 5cm}int pseudopotential\+\_\+descriptor\+::num\+\_\+beta\+\_\+radial\+\_\+functions}\label{structpseudopotential__descriptor_a742d7a1e24c47a67de4c39872fdc42da}
+
+
+Number of radial functions for $\vert$beta$>$ projectors. 
+
+
+
+Definition at line 98 of file descriptors.\+h.
+
+\hypertarget{structpseudopotential__descriptor_ae86b630c65e7b9633d0162d3e1448190}{}\index{pseudopotential\+\_\+descriptor@{pseudopotential\+\_\+descriptor}!beta\+\_\+l@{beta\+\_\+l}}
+\index{beta\+\_\+l@{beta\+\_\+l}!pseudopotential\+\_\+descriptor@{pseudopotential\+\_\+descriptor}}
+\subsubsection[{beta\+\_\+l}]{\setlength{\rightskip}{0pt plus 5cm}std\+::vector$<$int$>$ pseudopotential\+\_\+descriptor\+::beta\+\_\+l}\label{structpseudopotential__descriptor_ae86b630c65e7b9633d0162d3e1448190}
+
+
+Orbital quantum numbers of each beta radial function. 
+
+
+
+Definition at line 101 of file descriptors.\+h.
+
+\hypertarget{structpseudopotential__descriptor_abb989ec455c493c88f4d115afba25afd}{}\index{pseudopotential\+\_\+descriptor@{pseudopotential\+\_\+descriptor}!num\+\_\+beta\+\_\+radial\+\_\+points@{num\+\_\+beta\+\_\+radial\+\_\+points}}
+\index{num\+\_\+beta\+\_\+radial\+\_\+points@{num\+\_\+beta\+\_\+radial\+\_\+points}!pseudopotential\+\_\+descriptor@{pseudopotential\+\_\+descriptor}}
+\subsubsection[{num\+\_\+beta\+\_\+radial\+\_\+points}]{\setlength{\rightskip}{0pt plus 5cm}std\+::vector$<$int$>$ pseudopotential\+\_\+descriptor\+::num\+\_\+beta\+\_\+radial\+\_\+points}\label{structpseudopotential__descriptor_abb989ec455c493c88f4d115afba25afd}
+
+
+Number of radial grid points for each beta radial function. 
+
+
+
+Definition at line 104 of file descriptors.\+h.
+
+\hypertarget{structpseudopotential__descriptor_adc359985f0583a7ac7a118cea93a9b30}{}\index{pseudopotential\+\_\+descriptor@{pseudopotential\+\_\+descriptor}!beta\+\_\+radial\+\_\+functions@{beta\+\_\+radial\+\_\+functions}}
+\index{beta\+\_\+radial\+\_\+functions@{beta\+\_\+radial\+\_\+functions}!pseudopotential\+\_\+descriptor@{pseudopotential\+\_\+descriptor}}
+\subsubsection[{beta\+\_\+radial\+\_\+functions}]{\setlength{\rightskip}{0pt plus 5cm}{\bf mdarray}$<$double, 2$>$ pseudopotential\+\_\+descriptor\+::beta\+\_\+radial\+\_\+functions}\label{structpseudopotential__descriptor_adc359985f0583a7ac7a118cea93a9b30}
+
+
+Radial functions of beta-\/projectors. 
+
+
+
+Definition at line 107 of file descriptors.\+h.
+
+\hypertarget{structpseudopotential__descriptor_aba718fec7abb8fd022c1dde98b0b7fee}{}\index{pseudopotential\+\_\+descriptor@{pseudopotential\+\_\+descriptor}!q\+\_\+radial\+\_\+functions\+\_\+l@{q\+\_\+radial\+\_\+functions\+\_\+l}}
+\index{q\+\_\+radial\+\_\+functions\+\_\+l@{q\+\_\+radial\+\_\+functions\+\_\+l}!pseudopotential\+\_\+descriptor@{pseudopotential\+\_\+descriptor}}
+\subsubsection[{q\+\_\+radial\+\_\+functions\+\_\+l}]{\setlength{\rightskip}{0pt plus 5cm}{\bf mdarray}$<$double, 3$>$ pseudopotential\+\_\+descriptor\+::q\+\_\+radial\+\_\+functions\+\_\+l}\label{structpseudopotential__descriptor_aba718fec7abb8fd022c1dde98b0b7fee}
+
+
+Radial functions of Q-\/operator. 
+
+
+
+Definition at line 110 of file descriptors.\+h.
+
+\hypertarget{structpseudopotential__descriptor_a6b1810865747a5458d1b0f4aab49193e}{}\index{pseudopotential\+\_\+descriptor@{pseudopotential\+\_\+descriptor}!atomic\+\_\+pseudo\+\_\+wfs\+\_\+@{atomic\+\_\+pseudo\+\_\+wfs\+\_\+}}
+\index{atomic\+\_\+pseudo\+\_\+wfs\+\_\+@{atomic\+\_\+pseudo\+\_\+wfs\+\_\+}!pseudopotential\+\_\+descriptor@{pseudopotential\+\_\+descriptor}}
+\subsubsection[{atomic\+\_\+pseudo\+\_\+wfs\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}std\+::vector$<$std\+::pair$<$int, std\+::vector$<$double$>$ $>$ $>$ pseudopotential\+\_\+descriptor\+::atomic\+\_\+pseudo\+\_\+wfs\+\_\+}\label{structpseudopotential__descriptor_a6b1810865747a5458d1b0f4aab49193e}
+
+
+Atomic wave-\/functions used to setup the initial subspace. 
+
+This are the chi wave-\/function in the U\+S\+P\+P file. Pairs of \mbox{[}l, chi\+\_\+l(r)\mbox{]} are stored. 
+
+Definition at line 120 of file descriptors.\+h.
+
+\hypertarget{structpseudopotential__descriptor_abd17ce96ffb443283187144e61750776}{}\index{pseudopotential\+\_\+descriptor@{pseudopotential\+\_\+descriptor}!all\+\_\+elec\+\_\+wfc@{all\+\_\+elec\+\_\+wfc}}
+\index{all\+\_\+elec\+\_\+wfc@{all\+\_\+elec\+\_\+wfc}!pseudopotential\+\_\+descriptor@{pseudopotential\+\_\+descriptor}}
+\subsubsection[{all\+\_\+elec\+\_\+wfc}]{\setlength{\rightskip}{0pt plus 5cm}{\bf mdarray}$<$double, 2$>$ pseudopotential\+\_\+descriptor\+::all\+\_\+elec\+\_\+wfc}\label{structpseudopotential__descriptor_abd17ce96ffb443283187144e61750776}
+
+
+Occupation of starting wave functions. 
+
+All electron basis wave functions, have the same dimensionality as uspp.\+beta\+\_\+radial\+\_\+functions. 
+
+Definition at line 126 of file descriptors.\+h.
+
+\hypertarget{structpseudopotential__descriptor_a6a1450bee7e75c41ce208b83942e490e}{}\index{pseudopotential\+\_\+descriptor@{pseudopotential\+\_\+descriptor}!pseudo\+\_\+wfc@{pseudo\+\_\+wfc}}
+\index{pseudo\+\_\+wfc@{pseudo\+\_\+wfc}!pseudopotential\+\_\+descriptor@{pseudopotential\+\_\+descriptor}}
+\subsubsection[{pseudo\+\_\+wfc}]{\setlength{\rightskip}{0pt plus 5cm}{\bf mdarray}$<$double, 2$>$ pseudopotential\+\_\+descriptor\+::pseudo\+\_\+wfc}\label{structpseudopotential__descriptor_a6a1450bee7e75c41ce208b83942e490e}
+
+
+pseudo basis wave functions, have the same dimensionality as uspp.\+beta\+\_\+radial\+\_\+functions 
+
+
+
+Definition at line 129 of file descriptors.\+h.
+
+\hypertarget{structpseudopotential__descriptor_a455e05af3c31216aa1a27e57b9bdca35}{}\index{pseudopotential\+\_\+descriptor@{pseudopotential\+\_\+descriptor}!core\+\_\+energy@{core\+\_\+energy}}
+\index{core\+\_\+energy@{core\+\_\+energy}!pseudopotential\+\_\+descriptor@{pseudopotential\+\_\+descriptor}}
+\subsubsection[{core\+\_\+energy}]{\setlength{\rightskip}{0pt plus 5cm}double pseudopotential\+\_\+descriptor\+::core\+\_\+energy}\label{structpseudopotential__descriptor_a455e05af3c31216aa1a27e57b9bdca35}
+
+
+Core energy of P\+A\+W. 
+
+
+
+Definition at line 132 of file descriptors.\+h.
+
+\hypertarget{structpseudopotential__descriptor_aaed84abbeec2fd1b036b4eeadf05559c}{}\index{pseudopotential\+\_\+descriptor@{pseudopotential\+\_\+descriptor}!occupations@{occupations}}
+\index{occupations@{occupations}!pseudopotential\+\_\+descriptor@{pseudopotential\+\_\+descriptor}}
+\subsubsection[{occupations}]{\setlength{\rightskip}{0pt plus 5cm}std\+::vector$<$double$>$ pseudopotential\+\_\+descriptor\+::occupations}\label{structpseudopotential__descriptor_aaed84abbeec2fd1b036b4eeadf05559c}
+
+
+Occubations of atomic states. 
+
+Length of vector is the same as the number of beta projectors and all\+\_\+elec\+\_\+wfc and pseudo\+\_\+wfc 
+
+Definition at line 136 of file descriptors.\+h.
+
+\hypertarget{structpseudopotential__descriptor_a885a4c05a931acf8346f074f64914698}{}\index{pseudopotential\+\_\+descriptor@{pseudopotential\+\_\+descriptor}!all\+\_\+elec\+\_\+core\+\_\+charge@{all\+\_\+elec\+\_\+core\+\_\+charge}}
+\index{all\+\_\+elec\+\_\+core\+\_\+charge@{all\+\_\+elec\+\_\+core\+\_\+charge}!pseudopotential\+\_\+descriptor@{pseudopotential\+\_\+descriptor}}
+\subsubsection[{all\+\_\+elec\+\_\+core\+\_\+charge}]{\setlength{\rightskip}{0pt plus 5cm}std\+::vector$<$double$>$ pseudopotential\+\_\+descriptor\+::all\+\_\+elec\+\_\+core\+\_\+charge}\label{structpseudopotential__descriptor_a885a4c05a931acf8346f074f64914698}
+
+
+density of core electron contribution to all electron charge density 
+
+
+
+Definition at line 139 of file descriptors.\+h.
+
+\hypertarget{structpseudopotential__descriptor_a7dc4249e8f3d2c4a6a4c518edc3ca7f5}{}\index{pseudopotential\+\_\+descriptor@{pseudopotential\+\_\+descriptor}!all\+\_\+elec\+\_\+loc\+\_\+potential@{all\+\_\+elec\+\_\+loc\+\_\+potential}}
+\index{all\+\_\+elec\+\_\+loc\+\_\+potential@{all\+\_\+elec\+\_\+loc\+\_\+potential}!pseudopotential\+\_\+descriptor@{pseudopotential\+\_\+descriptor}}
+\subsubsection[{all\+\_\+elec\+\_\+loc\+\_\+potential}]{\setlength{\rightskip}{0pt plus 5cm}std\+::vector$<$double$>$ pseudopotential\+\_\+descriptor\+::all\+\_\+elec\+\_\+loc\+\_\+potential}\label{structpseudopotential__descriptor_a7dc4249e8f3d2c4a6a4c518edc3ca7f5}
+
+
+electrostatic potential of all electron core charge 
+
+
+
+Definition at line 142 of file descriptors.\+h.
+
+
+
+The documentation for this struct was generated from the following file\+:\begin{DoxyCompactItemize}
+\item 
+\hyperlink{descriptors_8h}{descriptors.\+h}\end{DoxyCompactItemize}

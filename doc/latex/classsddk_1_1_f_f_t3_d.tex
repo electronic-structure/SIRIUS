@@ -1,0 +1,666 @@
+\hypertarget{classsddk_1_1_f_f_t3_d}{}\section{sddk\+:\+:F\+F\+T3\+D Class Reference}
+\label{classsddk_1_1_f_f_t3_d}\index{sddk\+::\+F\+F\+T3\+D@{sddk\+::\+F\+F\+T3\+D}}
+
+
+Implementation of \hyperlink{classsddk_1_1_f_f_t3_d}{F\+F\+T3\+D}.  
+
+
+
+
+Collaboration diagram for sddk\+:\+:F\+F\+T3\+D\+:
+% FIG 0
+\subsection*{Public Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+\hyperlink{classsddk_1_1_f_f_t3_d_ac8d7287758804ef388c88f92667d2701}{F\+F\+T3\+D} (\hyperlink{classsddk_1_1_f_f_t3_d__grid}{F\+F\+T3\+D\+\_\+grid} grid\+\_\+\+\_\+, \hyperlink{classsddk_1_1_communicator}{Communicator} const \&comm\+\_\+\+\_\+, device\+\_\+t pu\+\_\+\+\_\+)
+\begin{DoxyCompactList}\small\item\em Constructor. \end{DoxyCompactList}\item 
+\hyperlink{classsddk_1_1_f_f_t3_d_a99148c7bef387d11955222c369a14d11}{$\sim$\+F\+F\+T3\+D} ()
+\begin{DoxyCompactList}\small\item\em Destructor. \end{DoxyCompactList}\item 
+{\footnotesize template$<$typename T $>$ }\\void \hyperlink{classsddk_1_1_f_f_t3_d_ad21e23460b01e6db30c68190fa805f24}{input} (T $\ast$data\+\_\+\+\_\+)
+\begin{DoxyCompactList}\small\item\em Load real-\/space values to the F\+F\+T buffer. \end{DoxyCompactList}\item 
+void \hyperlink{classsddk_1_1_f_f_t3_d_adb2b7a3c5bb4a7b0bfe07681f4ee249f}{output} (double $\ast$data\+\_\+\+\_\+)
+\begin{DoxyCompactList}\small\item\em Get real-\/space values from the F\+F\+T buffer. \end{DoxyCompactList}\item 
+void \hyperlink{classsddk_1_1_f_f_t3_d_a2f0629ac5f4003896e4dec63f12adda4}{output} (double\+\_\+complex $\ast$data\+\_\+\+\_\+)
+\begin{DoxyCompactList}\small\item\em Get real-\/space values from the F\+F\+T buffer. \end{DoxyCompactList}\item 
+\hyperlink{classsddk_1_1_f_f_t3_d__grid}{F\+F\+T3\+D\+\_\+grid} const \& \hyperlink{classsddk_1_1_f_f_t3_d_aafa864d225eb5284f5b0a53946018f65}{grid} () const 
+\begin{DoxyCompactList}\small\item\em Informational about the F\+F\+T grid. \end{DoxyCompactList}\item 
+int \hyperlink{classsddk_1_1_f_f_t3_d_a76862dd8ff5e94aece9e8c9f23201d25}{size} () const 
+\begin{DoxyCompactList}\small\item\em Total size of the F\+F\+T grid. \end{DoxyCompactList}\item 
+int \hyperlink{classsddk_1_1_f_f_t3_d_aecd9956c7995684814095671e9c4da90}{local\+\_\+size} () const 
+\begin{DoxyCompactList}\small\item\em Size of the local part of F\+F\+T buffer. \end{DoxyCompactList}\item 
+\hypertarget{classsddk_1_1_f_f_t3_d_af3acc4fd77a6ac884680b8beaa794d08}{}int {\bfseries local\+\_\+size\+\_\+z} () const \label{classsddk_1_1_f_f_t3_d_af3acc4fd77a6ac884680b8beaa794d08}
+
+\item 
+\hypertarget{classsddk_1_1_f_f_t3_d_a59b230d9f788dd2e33951654935e5672}{}int {\bfseries offset\+\_\+z} () const \label{classsddk_1_1_f_f_t3_d_a59b230d9f788dd2e33951654935e5672}
+
+\item 
+double\+\_\+complex \& \hyperlink{classsddk_1_1_f_f_t3_d_a6fcc8e6de80d011effc708fb4f9e41a8}{buffer} (int idx\+\_\+\+\_\+)
+\begin{DoxyCompactList}\small\item\em Direct access to the F\+F\+T buffer. \end{DoxyCompactList}\item 
+\hyperlink{classsddk_1_1mdarray}{mdarray}$<$ double\+\_\+complex, 1 $>$ \& \hyperlink{classsddk_1_1_f_f_t3_d_a45c53658d65dd6bce3b2b82e4b2edb03}{buffer} ()
+\begin{DoxyCompactList}\small\item\em F\+F\+T buffer. \end{DoxyCompactList}\item 
+\hyperlink{classsddk_1_1_communicator}{Communicator} const \& \hyperlink{classsddk_1_1_f_f_t3_d_a1d336f98ce2ff1516103da2736f56222}{comm} () const 
+\begin{DoxyCompactList}\small\item\em \hyperlink{classsddk_1_1_communicator}{Communicator} of the F\+F\+T transform. \end{DoxyCompactList}\item 
+bool \hyperlink{classsddk_1_1_f_f_t3_d_a361579fac1e83630c3b778ab8fbc1173}{parallel} () const 
+\begin{DoxyCompactList}\small\item\em True if this F\+F\+T transformation is parallel. \end{DoxyCompactList}\item 
+device\+\_\+t \hyperlink{classsddk_1_1_f_f_t3_d_ade9ad391b52ebdff75e1a1ad451c0f96}{pu} () const 
+\begin{DoxyCompactList}\small\item\em Return the type of processing unit. \end{DoxyCompactList}\item 
+void \hyperlink{classsddk_1_1_f_f_t3_d_a44cbb8b992f4a7ff3a1a3f7423f6449f}{prepare} (\hyperlink{classsddk_1_1_gvec__partition}{Gvec\+\_\+partition} const \&gvec\+\_\+\+\_\+)
+\begin{DoxyCompactList}\small\item\em Prepare F\+F\+T driver to transfrom functions with gvec\+\_\+fft\+\_\+distr. \end{DoxyCompactList}\item 
+\hypertarget{classsddk_1_1_f_f_t3_d_a718a8fa98b535c672b508b24fc7345b3}{}void {\bfseries dismiss} ()\label{classsddk_1_1_f_f_t3_d_a718a8fa98b535c672b508b24fc7345b3}
+
+\item 
+{\footnotesize template$<$int direction, device\+\_\+t data\+\_\+ptr\+\_\+type = C\+P\+U$>$ }\\void \hyperlink{classsddk_1_1_f_f_t3_d_aa26088197ba6556766da73b1d122c1cc}{transform} (\hyperlink{classsddk_1_1_gvec__partition}{Gvec\+\_\+partition} const \&gvec\+\_\+\+\_\+, double\+\_\+complex $\ast$data\+\_\+\+\_\+)
+\begin{DoxyCompactList}\small\item\em Transform a single functions. \end{DoxyCompactList}\item 
+{\footnotesize template$<$int direction, device\+\_\+t data\+\_\+ptr\+\_\+type = C\+P\+U$>$ }\\void \hyperlink{classsddk_1_1_f_f_t3_d_ae69f2b082376f2d12eff7ca3b1ae1717}{transform} (\hyperlink{classsddk_1_1_gvec__partition}{Gvec\+\_\+partition} const \&gvec\+\_\+\+\_\+, double\+\_\+complex $\ast$data1\+\_\+\+\_\+, double\+\_\+complex $\ast$data2\+\_\+\+\_\+)
+\begin{DoxyCompactList}\small\item\em Transform two real functions. \end{DoxyCompactList}\end{DoxyCompactItemize}
+\subsection*{Protected Member Functions}
+\begin{DoxyCompactItemize}
+\item 
+{\footnotesize template$<$int direction, device\+\_\+t data\+\_\+ptr\+\_\+type$>$ }\\void \hyperlink{classsddk_1_1_f_f_t3_d_a4494521f39d1119acecf75fec13f2e17}{transform\+\_\+z\+\_\+serial} (\hyperlink{classsddk_1_1_gvec__partition}{Gvec\+\_\+partition} const \&gvec\+\_\+\+\_\+, double\+\_\+complex $\ast$data\+\_\+\+\_\+, \hyperlink{classsddk_1_1mdarray}{mdarray}$<$ double\+\_\+complex, 1 $>$ \&fft\+\_\+buffer\+\_\+aux\+\_\+\+\_\+)
+\begin{DoxyCompactList}\small\item\em Serial part of 1\+D transformation of columns. \end{DoxyCompactList}\item 
+{\footnotesize template$<$int direction, device\+\_\+t data\+\_\+ptr\+\_\+type$>$ }\\void \hyperlink{classsddk_1_1_f_f_t3_d_a6e72f6780e3b2cc3d534b2fdb9a70134}{transform\+\_\+z} (\hyperlink{classsddk_1_1_gvec__partition}{Gvec\+\_\+partition} const \&gvec\+\_\+\+\_\+, double\+\_\+complex $\ast$data\+\_\+\+\_\+, \hyperlink{classsddk_1_1mdarray}{mdarray}$<$ double\+\_\+complex, 1 $>$ \&fft\+\_\+buffer\+\_\+aux\+\_\+\+\_\+)
+\begin{DoxyCompactList}\small\item\em Transformation of z-\/columns. \end{DoxyCompactList}\item 
+{\footnotesize template$<$int direction$>$ }\\void \hyperlink{classsddk_1_1_f_f_t3_d_ab28706d0d5bc527ae307b1b00e2ad9bc}{transform\+\_\+xy} (\hyperlink{classsddk_1_1_gvec__partition}{Gvec\+\_\+partition} const \&gvec\+\_\+\+\_\+, \hyperlink{classsddk_1_1mdarray}{mdarray}$<$ double\+\_\+complex, 1 $>$ \&fft\+\_\+buffer\+\_\+aux\+\_\+\+\_\+)
+\begin{DoxyCompactList}\small\item\em Apply 2\+D F\+F\+T transformation to z-\/columns of one complex function. \end{DoxyCompactList}\item 
+{\footnotesize template$<$int direction$>$ }\\void \hyperlink{classsddk_1_1_f_f_t3_d_a2e2569de250cec0cfd2e556f8d0f3905}{transform\+\_\+xy} (\hyperlink{classsddk_1_1_gvec__partition}{Gvec\+\_\+partition} const \&gvec\+\_\+\+\_\+, \hyperlink{classsddk_1_1mdarray}{mdarray}$<$ double\+\_\+complex, 1 $>$ \&fft\+\_\+buffer\+\_\+aux1\+\_\+\+\_\+, \hyperlink{classsddk_1_1mdarray}{mdarray}$<$ double\+\_\+complex, 1 $>$ \&fft\+\_\+buffer\+\_\+aux2\+\_\+\+\_\+)
+\begin{DoxyCompactList}\small\item\em Apply 2\+D F\+F\+T transformation to z-\/columns of two real functions. \end{DoxyCompactList}\end{DoxyCompactItemize}
+\subsection*{Protected Attributes}
+\begin{DoxyCompactItemize}
+\item 
+\hyperlink{classsddk_1_1_communicator}{Communicator} const \& \hyperlink{classsddk_1_1_f_f_t3_d_a1002c79cdd90213b476d9b768fb7a94a}{comm\+\_\+}
+\begin{DoxyCompactList}\small\item\em \hyperlink{classsddk_1_1_communicator}{Communicator} for the parallel F\+F\+T. \end{DoxyCompactList}\item 
+device\+\_\+t \hyperlink{classsddk_1_1_f_f_t3_d_abfb4de99fbcab38632fb4870200f1a66}{pu\+\_\+}
+\begin{DoxyCompactList}\small\item\em Main processing unit of this F\+F\+T. \end{DoxyCompactList}\item 
+\hyperlink{classsddk_1_1splindex}{splindex}$<$ block $>$ \hyperlink{classsddk_1_1_f_f_t3_d_a2b8697edcd2c0f1bf81129611c84088d}{spl\+\_\+z\+\_\+}
+\begin{DoxyCompactList}\small\item\em Split z-\/direction. \end{DoxyCompactList}\item 
+\hyperlink{classsddk_1_1_f_f_t3_d__grid}{F\+F\+T3\+D\+\_\+grid} \hyperlink{classsddk_1_1_f_f_t3_d_a27a753a25185a7cadbf0f036f5fb1c98}{grid\+\_\+}
+\begin{DoxyCompactList}\small\item\em Definition of the F\+F\+T grid. \end{DoxyCompactList}\item 
+int \hyperlink{classsddk_1_1_f_f_t3_d_a999766ae41a3fbe1d8c2643eba850ba6}{local\+\_\+size\+\_\+z\+\_\+}
+\begin{DoxyCompactList}\small\item\em Local size of z-\/dimension of F\+F\+T buffer. \end{DoxyCompactList}\item 
+int \hyperlink{classsddk_1_1_f_f_t3_d_a57e693bd91fbce44258bbcaa1a7991ea}{offset\+\_\+z\+\_\+}
+\begin{DoxyCompactList}\small\item\em Offset in the global z-\/dimension. \end{DoxyCompactList}\item 
+\hyperlink{classsddk_1_1mdarray}{mdarray}$<$ double\+\_\+complex, 1 $>$ \hyperlink{classsddk_1_1_f_f_t3_d_a6483ea5038aceb6cd74c9ca94a37eaac}{fft\+\_\+buffer\+\_\+}
+\begin{DoxyCompactList}\small\item\em Main input/output buffer. \end{DoxyCompactList}\item 
+\hyperlink{classsddk_1_1mdarray}{mdarray}$<$ double\+\_\+complex, 1 $>$ \hyperlink{classsddk_1_1_f_f_t3_d_af73e16ad5cfd2ee76bcc013ee2f26f90}{fft\+\_\+buffer\+\_\+aux1\+\_\+}
+\begin{DoxyCompactList}\small\item\em Auxiliary array to store z-\/sticks for all-\/to-\/all or G\+P\+U. \end{DoxyCompactList}\item 
+\hyperlink{classsddk_1_1mdarray}{mdarray}$<$ double\+\_\+complex, 1 $>$ \hyperlink{classsddk_1_1_f_f_t3_d_a4a96ae513eb919b71eb42ca74be980cb}{fft\+\_\+buffer\+\_\+aux2\+\_\+}
+\begin{DoxyCompactList}\small\item\em Auxiliary array in case of simultaneous transformation of two wave-\/functions. \end{DoxyCompactList}\item 
+std\+::vector$<$ double\+\_\+complex $\ast$ $>$ \hyperlink{classsddk_1_1_f_f_t3_d_a9f1235d01cc4e2e2f0f4dd2af50644bb}{fftw\+\_\+buffer\+\_\+z\+\_\+}
+\begin{DoxyCompactList}\small\item\em Internal buffer for independent z-\/transforms. \end{DoxyCompactList}\item 
+std\+::vector$<$ double\+\_\+complex $\ast$ $>$ \hyperlink{classsddk_1_1_f_f_t3_d_abd9baeb5d472ee92e8f08f95587a257a}{fftw\+\_\+buffer\+\_\+xy\+\_\+}
+\begin{DoxyCompactList}\small\item\em Internal buffer for independent \{xy\}-\/transforms. \end{DoxyCompactList}\item 
+\hypertarget{classsddk_1_1_f_f_t3_d_a5911f28fbb7f73686d26b19f4887db19}{}std\+::vector$<$ fftw\+\_\+plan $>$ {\bfseries plan\+\_\+backward\+\_\+z\+\_\+}\label{classsddk_1_1_f_f_t3_d_a5911f28fbb7f73686d26b19f4887db19}
+
+\item 
+\hypertarget{classsddk_1_1_f_f_t3_d_a24a8f36715a5cb611317e64308f22334}{}std\+::vector$<$ fftw\+\_\+plan $>$ {\bfseries plan\+\_\+backward\+\_\+xy\+\_\+}\label{classsddk_1_1_f_f_t3_d_a24a8f36715a5cb611317e64308f22334}
+
+\item 
+\hypertarget{classsddk_1_1_f_f_t3_d_a181e2020b9cbd3a0fccf53824de3c1d0}{}std\+::vector$<$ fftw\+\_\+plan $>$ {\bfseries plan\+\_\+forward\+\_\+z\+\_\+}\label{classsddk_1_1_f_f_t3_d_a181e2020b9cbd3a0fccf53824de3c1d0}
+
+\item 
+\hypertarget{classsddk_1_1_f_f_t3_d_a8ffdabeeb00c5e968e666b34cb366afe}{}std\+::vector$<$ fftw\+\_\+plan $>$ {\bfseries plan\+\_\+forward\+\_\+xy\+\_\+}\label{classsddk_1_1_f_f_t3_d_a8ffdabeeb00c5e968e666b34cb366afe}
+
+\item 
+cufft\+Handle \hyperlink{classsddk_1_1_f_f_t3_d_a7819df1c1ea576622c94a078bf34bdbf}{cufft\+\_\+plan\+\_\+xy\+\_\+}
+\begin{DoxyCompactList}\small\item\em Handler for xy-\/transform cu\+F\+F\+T plan. \end{DoxyCompactList}\item 
+cufft\+Handle \hyperlink{classsddk_1_1_f_f_t3_d_a62151c9726c5dc0ea56f3da721506ac5}{cufft\+\_\+plan\+\_\+z\+\_\+}
+\begin{DoxyCompactList}\small\item\em Handler for z-\/transform cu\+F\+F\+T plan. \end{DoxyCompactList}\item 
+\hyperlink{classsddk_1_1mdarray}{mdarray}$<$ char, 1 $>$ \hyperlink{classsddk_1_1_f_f_t3_d_ab808ebb702ad2ccb83c1c90afa7e9a1e}{cufft\+\_\+work\+\_\+buf\+\_\+}
+\begin{DoxyCompactList}\small\item\em Work buffer, required by cu\+F\+F\+T. \end{DoxyCompactList}\item 
+\hyperlink{classsddk_1_1mdarray}{mdarray}$<$ int, 1 $>$ \hyperlink{classsddk_1_1_f_f_t3_d_aa9363e6990496fc3cae2c15c3d930172}{map\+\_\+zcol\+\_\+to\+\_\+fft\+\_\+buffer\+\_\+}
+\begin{DoxyCompactList}\small\item\em Mapping of G-\/vectors of z-\/columns to the F\+F\+T buffer for batched 1\+D transform. \end{DoxyCompactList}\item 
+\hypertarget{classsddk_1_1_f_f_t3_d_a444be5c1bfdea51e107531874f2d0db4}{}\hyperlink{classsddk_1_1mdarray}{mdarray}$<$ int, 1 $>$ {\bfseries map\+\_\+zcol\+\_\+to\+\_\+fft\+\_\+buffer\+\_\+x0y0\+\_\+}\label{classsddk_1_1_f_f_t3_d_a444be5c1bfdea51e107531874f2d0db4}
+
+\item 
+\hyperlink{classsddk_1_1mdarray}{mdarray}$<$ int, 2 $>$ \hyperlink{classsddk_1_1_f_f_t3_d_aa62fe8604ebdf4b5759f945673076b39}{z\+\_\+col\+\_\+pos\+\_\+}
+\begin{DoxyCompactList}\small\item\em Position of z-\/columns inside 2\+D F\+F\+T buffer. \end{DoxyCompactList}\item 
+bool prepared\+\_\+ \hyperlink{classsddk_1_1_f_f_t3_d_a03b624e27a337aa492f000b58b905ca9}{false}
+\begin{DoxyCompactList}\small\item\em True if F\+F\+T driver is prepared for the transformation. \end{DoxyCompactList}\end{DoxyCompactItemize}
+
+
+\subsection{Detailed Description}
+Implementation of \hyperlink{classsddk_1_1_f_f_t3_d}{F\+F\+T3\+D}. 
+
+F\+F\+T convention\+: \[ f({\bf r}) = \sum_{{\bf G}} e^{i{\bf G}{\bf r}} f({\bf G}) \] is a {\itshape backward} transformation from a set of pw coefficients to a function.
+
+\[ f({\bf G}) = \frac{1}{\Omega} \int e^{-i{\bf G}{\bf r}} f({\bf r}) d {\bf r} = \frac{1}{N} \sum_{{\bf r}_j} e^{-i{\bf G}{\bf r}_j} f({\bf r}_j) \] is a {\itshape forward} transformation from a function to a set of coefficients.
+
+The following cases are handeled by the F\+F\+T driver\+:
+\begin{DoxyItemize}
+\item transformation of a single real / complex function (serial / parallel, cpu / gpu)
+\item transformation of two real functions (serial / parallel, cpu / gpu)
+\item input / ouput data buffer pointer (cpu / gpu)
+\end{DoxyItemize}
+
+The transformation of two real functions is done as one transformation of complex function\+: \[ \Psi({\bf r}) = \psi_1({\bf r}) + i \psi_2({\bf r}) \] For each of the real wave functions the following condition is fulfilled\+: \[ \psi_{1,2}({\bf r}) = \psi_{1,2}^{*}({\bf r}) \] from which it follows that \[ \psi_{1,2}({\bf G}) = \psi_{1,2}^{*}(-{\bf G}) \] When z-\/direction is transformed \[ \psi_{1,2}(G_x, G_y, z) = \sum_{G_z} e^{izG_z} \psi_{1,2}(G_x, G_y, G_z) \] it leads to the following symmetry \[ \psi_{1,2}^{*}(G_x, G_y, z) = \sum_{G_z} e^{-izG_z} \psi_{1,2}^{*}(G_x, G_y, G_z) = \sum_{G_z} e^{-izG_z} \psi_{1,2}(-G_x, -G_y, -G_z) = \psi_{1,2}(-G_x, -G_y, z) \] 
+
+Definition at line 147 of file fft3d.\+hpp.
+
+
+
+\subsection{Constructor \& Destructor Documentation}
+\hypertarget{classsddk_1_1_f_f_t3_d_ac8d7287758804ef388c88f92667d2701}{}\index{sddk\+::\+F\+F\+T3\+D@{sddk\+::\+F\+F\+T3\+D}!F\+F\+T3\+D@{F\+F\+T3\+D}}
+\index{F\+F\+T3\+D@{F\+F\+T3\+D}!sddk\+::\+F\+F\+T3\+D@{sddk\+::\+F\+F\+T3\+D}}
+\subsubsection[{F\+F\+T3\+D(\+F\+F\+T3\+D\+\_\+grid grid\+\_\+\+\_\+, Communicator const \&comm\+\_\+\+\_\+, device\+\_\+t pu\+\_\+\+\_\+)}]{\setlength{\rightskip}{0pt plus 5cm}sddk\+::\+F\+F\+T3\+D\+::\+F\+F\+T3\+D (
+\begin{DoxyParamCaption}
+\item[{{\bf F\+F\+T3\+D\+\_\+grid}}]{grid\+\_\+\+\_\+, }
+\item[{{\bf Communicator} const \&}]{comm\+\_\+\+\_\+, }
+\item[{device\+\_\+t}]{pu\+\_\+\+\_\+}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}}\label{classsddk_1_1_f_f_t3_d_ac8d7287758804ef388c88f92667d2701}
+
+
+Constructor. 
+
+
+
+Definition at line 624 of file fft3d.\+hpp.
+
+\hypertarget{classsddk_1_1_f_f_t3_d_a99148c7bef387d11955222c369a14d11}{}\index{sddk\+::\+F\+F\+T3\+D@{sddk\+::\+F\+F\+T3\+D}!````~F\+F\+T3\+D@{$\sim$\+F\+F\+T3\+D}}
+\index{````~F\+F\+T3\+D@{$\sim$\+F\+F\+T3\+D}!sddk\+::\+F\+F\+T3\+D@{sddk\+::\+F\+F\+T3\+D}}
+\subsubsection[{$\sim$\+F\+F\+T3\+D()}]{\setlength{\rightskip}{0pt plus 5cm}sddk\+::\+F\+F\+T3\+D\+::$\sim$\+F\+F\+T3\+D (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}}\label{classsddk_1_1_f_f_t3_d_a99148c7bef387d11955222c369a14d11}
+
+
+Destructor. 
+
+
+
+Definition at line 681 of file fft3d.\+hpp.
+
+
+
+\subsection{Member Function Documentation}
+\hypertarget{classsddk_1_1_f_f_t3_d_a4494521f39d1119acecf75fec13f2e17}{}\index{sddk\+::\+F\+F\+T3\+D@{sddk\+::\+F\+F\+T3\+D}!transform\+\_\+z\+\_\+serial@{transform\+\_\+z\+\_\+serial}}
+\index{transform\+\_\+z\+\_\+serial@{transform\+\_\+z\+\_\+serial}!sddk\+::\+F\+F\+T3\+D@{sddk\+::\+F\+F\+T3\+D}}
+\subsubsection[{transform\+\_\+z\+\_\+serial(\+Gvec\+\_\+partition const \&gvec\+\_\+\+\_\+, double\+\_\+complex $\ast$data\+\_\+\+\_\+, mdarray$<$ double\+\_\+complex, 1 $>$ \&fft\+\_\+buffer\+\_\+aux\+\_\+\+\_\+)}]{\setlength{\rightskip}{0pt plus 5cm}template$<$int direction, device\+\_\+t data\+\_\+ptr\+\_\+type$>$ void sddk\+::\+F\+F\+T3\+D\+::transform\+\_\+z\+\_\+serial (
+\begin{DoxyParamCaption}
+\item[{{\bf Gvec\+\_\+partition} const \&}]{gvec\+\_\+\+\_\+, }
+\item[{double\+\_\+complex $\ast$}]{data\+\_\+\+\_\+, }
+\item[{{\bf mdarray}$<$ double\+\_\+complex, 1 $>$ \&}]{fft\+\_\+buffer\+\_\+aux\+\_\+\+\_\+}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}, {\ttfamily [protected]}}\label{classsddk_1_1_f_f_t3_d_a4494521f39d1119acecf75fec13f2e17}
+
+
+Serial part of 1\+D transformation of columns. 
+
+
+
+Definition at line 215 of file fft3d.\+hpp.
+
+\hypertarget{classsddk_1_1_f_f_t3_d_a6e72f6780e3b2cc3d534b2fdb9a70134}{}\index{sddk\+::\+F\+F\+T3\+D@{sddk\+::\+F\+F\+T3\+D}!transform\+\_\+z@{transform\+\_\+z}}
+\index{transform\+\_\+z@{transform\+\_\+z}!sddk\+::\+F\+F\+T3\+D@{sddk\+::\+F\+F\+T3\+D}}
+\subsubsection[{transform\+\_\+z(\+Gvec\+\_\+partition const \&gvec\+\_\+\+\_\+, double\+\_\+complex $\ast$data\+\_\+\+\_\+, mdarray$<$ double\+\_\+complex, 1 $>$ \&fft\+\_\+buffer\+\_\+aux\+\_\+\+\_\+)}]{\setlength{\rightskip}{0pt plus 5cm}template$<$int direction, device\+\_\+t data\+\_\+ptr\+\_\+type$>$ void sddk\+::\+F\+F\+T3\+D\+::transform\+\_\+z (
+\begin{DoxyParamCaption}
+\item[{{\bf Gvec\+\_\+partition} const \&}]{gvec\+\_\+\+\_\+, }
+\item[{double\+\_\+complex $\ast$}]{data\+\_\+\+\_\+, }
+\item[{{\bf mdarray}$<$ double\+\_\+complex, 1 $>$ \&}]{fft\+\_\+buffer\+\_\+aux\+\_\+\+\_\+}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}, {\ttfamily [protected]}}\label{classsddk_1_1_f_f_t3_d_a6e72f6780e3b2cc3d534b2fdb9a70134}
+
+
+Transformation of z-\/columns. 
+
+
+
+Definition at line 349 of file fft3d.\+hpp.
+
+\hypertarget{classsddk_1_1_f_f_t3_d_ab28706d0d5bc527ae307b1b00e2ad9bc}{}\index{sddk\+::\+F\+F\+T3\+D@{sddk\+::\+F\+F\+T3\+D}!transform\+\_\+xy@{transform\+\_\+xy}}
+\index{transform\+\_\+xy@{transform\+\_\+xy}!sddk\+::\+F\+F\+T3\+D@{sddk\+::\+F\+F\+T3\+D}}
+\subsubsection[{transform\+\_\+xy(\+Gvec\+\_\+partition const \&gvec\+\_\+\+\_\+, mdarray$<$ double\+\_\+complex, 1 $>$ \&fft\+\_\+buffer\+\_\+aux\+\_\+\+\_\+)}]{\setlength{\rightskip}{0pt plus 5cm}template$<$int direction$>$ void sddk\+::\+F\+F\+T3\+D\+::transform\+\_\+xy (
+\begin{DoxyParamCaption}
+\item[{{\bf Gvec\+\_\+partition} const \&}]{gvec\+\_\+\+\_\+, }
+\item[{{\bf mdarray}$<$ double\+\_\+complex, 1 $>$ \&}]{fft\+\_\+buffer\+\_\+aux\+\_\+\+\_\+}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}, {\ttfamily [protected]}}\label{classsddk_1_1_f_f_t3_d_ab28706d0d5bc527ae307b1b00e2ad9bc}
+
+
+Apply 2\+D F\+F\+T transformation to z-\/columns of one complex function. 
+
+
+
+Definition at line 435 of file fft3d.\+hpp.
+
+\hypertarget{classsddk_1_1_f_f_t3_d_a2e2569de250cec0cfd2e556f8d0f3905}{}\index{sddk\+::\+F\+F\+T3\+D@{sddk\+::\+F\+F\+T3\+D}!transform\+\_\+xy@{transform\+\_\+xy}}
+\index{transform\+\_\+xy@{transform\+\_\+xy}!sddk\+::\+F\+F\+T3\+D@{sddk\+::\+F\+F\+T3\+D}}
+\subsubsection[{transform\+\_\+xy(\+Gvec\+\_\+partition const \&gvec\+\_\+\+\_\+, mdarray$<$ double\+\_\+complex, 1 $>$ \&fft\+\_\+buffer\+\_\+aux1\+\_\+\+\_\+, mdarray$<$ double\+\_\+complex, 1 $>$ \&fft\+\_\+buffer\+\_\+aux2\+\_\+\+\_\+)}]{\setlength{\rightskip}{0pt plus 5cm}template$<$int direction$>$ void sddk\+::\+F\+F\+T3\+D\+::transform\+\_\+xy (
+\begin{DoxyParamCaption}
+\item[{{\bf Gvec\+\_\+partition} const \&}]{gvec\+\_\+\+\_\+, }
+\item[{{\bf mdarray}$<$ double\+\_\+complex, 1 $>$ \&}]{fft\+\_\+buffer\+\_\+aux1\+\_\+\+\_\+, }
+\item[{{\bf mdarray}$<$ double\+\_\+complex, 1 $>$ \&}]{fft\+\_\+buffer\+\_\+aux2\+\_\+\+\_\+}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}, {\ttfamily [protected]}}\label{classsddk_1_1_f_f_t3_d_a2e2569de250cec0cfd2e556f8d0f3905}
+
+
+Apply 2\+D F\+F\+T transformation to z-\/columns of two real functions. 
+
+
+
+Definition at line 521 of file fft3d.\+hpp.
+
+\hypertarget{classsddk_1_1_f_f_t3_d_ad21e23460b01e6db30c68190fa805f24}{}\index{sddk\+::\+F\+F\+T3\+D@{sddk\+::\+F\+F\+T3\+D}!input@{input}}
+\index{input@{input}!sddk\+::\+F\+F\+T3\+D@{sddk\+::\+F\+F\+T3\+D}}
+\subsubsection[{input(\+T $\ast$data\+\_\+\+\_\+)}]{\setlength{\rightskip}{0pt plus 5cm}template$<$typename T $>$ void sddk\+::\+F\+F\+T3\+D\+::input (
+\begin{DoxyParamCaption}
+\item[{T $\ast$}]{data\+\_\+\+\_\+}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}}\label{classsddk_1_1_f_f_t3_d_ad21e23460b01e6db30c68190fa805f24}
+
+
+Load real-\/space values to the F\+F\+T buffer. 
+
+
+\begin{DoxyParams}[1]{Parameters}
+\mbox{\tt in}  & {\em data} & C\+P\+U pointer to the real-\/space data. \\
+\hline
+\end{DoxyParams}
+
+
+Definition at line 705 of file fft3d.\+hpp.
+
+\hypertarget{classsddk_1_1_f_f_t3_d_adb2b7a3c5bb4a7b0bfe07681f4ee249f}{}\index{sddk\+::\+F\+F\+T3\+D@{sddk\+::\+F\+F\+T3\+D}!output@{output}}
+\index{output@{output}!sddk\+::\+F\+F\+T3\+D@{sddk\+::\+F\+F\+T3\+D}}
+\subsubsection[{output(double $\ast$data\+\_\+\+\_\+)}]{\setlength{\rightskip}{0pt plus 5cm}void sddk\+::\+F\+F\+T3\+D\+::output (
+\begin{DoxyParamCaption}
+\item[{double $\ast$}]{data\+\_\+\+\_\+}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}}\label{classsddk_1_1_f_f_t3_d_adb2b7a3c5bb4a7b0bfe07681f4ee249f}
+
+
+Get real-\/space values from the F\+F\+T buffer. 
+
+
+\begin{DoxyParams}[1]{Parameters}
+\mbox{\tt out}  & {\em data} & C\+P\+U pointer to the real-\/space data. \\
+\hline
+\end{DoxyParams}
+
+
+Definition at line 719 of file fft3d.\+hpp.
+
+\hypertarget{classsddk_1_1_f_f_t3_d_a2f0629ac5f4003896e4dec63f12adda4}{}\index{sddk\+::\+F\+F\+T3\+D@{sddk\+::\+F\+F\+T3\+D}!output@{output}}
+\index{output@{output}!sddk\+::\+F\+F\+T3\+D@{sddk\+::\+F\+F\+T3\+D}}
+\subsubsection[{output(double\+\_\+complex $\ast$data\+\_\+\+\_\+)}]{\setlength{\rightskip}{0pt plus 5cm}void sddk\+::\+F\+F\+T3\+D\+::output (
+\begin{DoxyParamCaption}
+\item[{double\+\_\+complex $\ast$}]{data\+\_\+\+\_\+}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}}\label{classsddk_1_1_f_f_t3_d_a2f0629ac5f4003896e4dec63f12adda4}
+
+
+Get real-\/space values from the F\+F\+T buffer. 
+
+
+\begin{DoxyParams}[1]{Parameters}
+\mbox{\tt out}  & {\em data} & C\+P\+U pointer to the real-\/space data. \\
+\hline
+\end{DoxyParams}
+
+
+Definition at line 733 of file fft3d.\+hpp.
+
+\hypertarget{classsddk_1_1_f_f_t3_d_aafa864d225eb5284f5b0a53946018f65}{}\index{sddk\+::\+F\+F\+T3\+D@{sddk\+::\+F\+F\+T3\+D}!grid@{grid}}
+\index{grid@{grid}!sddk\+::\+F\+F\+T3\+D@{sddk\+::\+F\+F\+T3\+D}}
+\subsubsection[{grid() const }]{\setlength{\rightskip}{0pt plus 5cm}{\bf F\+F\+T3\+D\+\_\+grid} const\& sddk\+::\+F\+F\+T3\+D\+::grid (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [inline]}}\label{classsddk_1_1_f_f_t3_d_aafa864d225eb5284f5b0a53946018f65}
+
+
+Informational about the F\+F\+T grid. 
+
+
+
+Definition at line 750 of file fft3d.\+hpp.
+
+\hypertarget{classsddk_1_1_f_f_t3_d_a76862dd8ff5e94aece9e8c9f23201d25}{}\index{sddk\+::\+F\+F\+T3\+D@{sddk\+::\+F\+F\+T3\+D}!size@{size}}
+\index{size@{size}!sddk\+::\+F\+F\+T3\+D@{sddk\+::\+F\+F\+T3\+D}}
+\subsubsection[{size() const }]{\setlength{\rightskip}{0pt plus 5cm}int sddk\+::\+F\+F\+T3\+D\+::size (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [inline]}}\label{classsddk_1_1_f_f_t3_d_a76862dd8ff5e94aece9e8c9f23201d25}
+
+
+Total size of the F\+F\+T grid. 
+
+
+
+Definition at line 756 of file fft3d.\+hpp.
+
+\hypertarget{classsddk_1_1_f_f_t3_d_aecd9956c7995684814095671e9c4da90}{}\index{sddk\+::\+F\+F\+T3\+D@{sddk\+::\+F\+F\+T3\+D}!local\+\_\+size@{local\+\_\+size}}
+\index{local\+\_\+size@{local\+\_\+size}!sddk\+::\+F\+F\+T3\+D@{sddk\+::\+F\+F\+T3\+D}}
+\subsubsection[{local\+\_\+size() const }]{\setlength{\rightskip}{0pt plus 5cm}int sddk\+::\+F\+F\+T3\+D\+::local\+\_\+size (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [inline]}}\label{classsddk_1_1_f_f_t3_d_aecd9956c7995684814095671e9c4da90}
+
+
+Size of the local part of F\+F\+T buffer. 
+
+
+
+Definition at line 762 of file fft3d.\+hpp.
+
+\hypertarget{classsddk_1_1_f_f_t3_d_a6fcc8e6de80d011effc708fb4f9e41a8}{}\index{sddk\+::\+F\+F\+T3\+D@{sddk\+::\+F\+F\+T3\+D}!buffer@{buffer}}
+\index{buffer@{buffer}!sddk\+::\+F\+F\+T3\+D@{sddk\+::\+F\+F\+T3\+D}}
+\subsubsection[{buffer(int idx\+\_\+\+\_\+)}]{\setlength{\rightskip}{0pt plus 5cm}double\+\_\+complex\& sddk\+::\+F\+F\+T3\+D\+::buffer (
+\begin{DoxyParamCaption}
+\item[{int}]{idx\+\_\+\+\_\+}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}}\label{classsddk_1_1_f_f_t3_d_a6fcc8e6de80d011effc708fb4f9e41a8}
+
+
+Direct access to the F\+F\+T buffer. 
+
+
+
+Definition at line 778 of file fft3d.\+hpp.
+
+\hypertarget{classsddk_1_1_f_f_t3_d_a45c53658d65dd6bce3b2b82e4b2edb03}{}\index{sddk\+::\+F\+F\+T3\+D@{sddk\+::\+F\+F\+T3\+D}!buffer@{buffer}}
+\index{buffer@{buffer}!sddk\+::\+F\+F\+T3\+D@{sddk\+::\+F\+F\+T3\+D}}
+\subsubsection[{buffer()}]{\setlength{\rightskip}{0pt plus 5cm}{\bf mdarray}$<$double\+\_\+complex, 1$>$\& sddk\+::\+F\+F\+T3\+D\+::buffer (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}}\label{classsddk_1_1_f_f_t3_d_a45c53658d65dd6bce3b2b82e4b2edb03}
+
+
+F\+F\+T buffer. 
+
+
+
+Definition at line 784 of file fft3d.\+hpp.
+
+\hypertarget{classsddk_1_1_f_f_t3_d_a1d336f98ce2ff1516103da2736f56222}{}\index{sddk\+::\+F\+F\+T3\+D@{sddk\+::\+F\+F\+T3\+D}!comm@{comm}}
+\index{comm@{comm}!sddk\+::\+F\+F\+T3\+D@{sddk\+::\+F\+F\+T3\+D}}
+\subsubsection[{comm() const }]{\setlength{\rightskip}{0pt plus 5cm}{\bf Communicator} const\& sddk\+::\+F\+F\+T3\+D\+::comm (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [inline]}}\label{classsddk_1_1_f_f_t3_d_a1d336f98ce2ff1516103da2736f56222}
+
+
+\hyperlink{classsddk_1_1_communicator}{Communicator} of the F\+F\+T transform. 
+
+
+
+Definition at line 790 of file fft3d.\+hpp.
+
+\hypertarget{classsddk_1_1_f_f_t3_d_a361579fac1e83630c3b778ab8fbc1173}{}\index{sddk\+::\+F\+F\+T3\+D@{sddk\+::\+F\+F\+T3\+D}!parallel@{parallel}}
+\index{parallel@{parallel}!sddk\+::\+F\+F\+T3\+D@{sddk\+::\+F\+F\+T3\+D}}
+\subsubsection[{parallel() const }]{\setlength{\rightskip}{0pt plus 5cm}bool sddk\+::\+F\+F\+T3\+D\+::parallel (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [inline]}}\label{classsddk_1_1_f_f_t3_d_a361579fac1e83630c3b778ab8fbc1173}
+
+
+True if this F\+F\+T transformation is parallel. 
+
+
+
+Definition at line 796 of file fft3d.\+hpp.
+
+\hypertarget{classsddk_1_1_f_f_t3_d_ade9ad391b52ebdff75e1a1ad451c0f96}{}\index{sddk\+::\+F\+F\+T3\+D@{sddk\+::\+F\+F\+T3\+D}!pu@{pu}}
+\index{pu@{pu}!sddk\+::\+F\+F\+T3\+D@{sddk\+::\+F\+F\+T3\+D}}
+\subsubsection[{pu() const }]{\setlength{\rightskip}{0pt plus 5cm}device\+\_\+t sddk\+::\+F\+F\+T3\+D\+::pu (
+\begin{DoxyParamCaption}
+{}
+\end{DoxyParamCaption}
+) const\hspace{0.3cm}{\ttfamily [inline]}}\label{classsddk_1_1_f_f_t3_d_ade9ad391b52ebdff75e1a1ad451c0f96}
+
+
+Return the type of processing unit. 
+
+
+
+Definition at line 802 of file fft3d.\+hpp.
+
+\hypertarget{classsddk_1_1_f_f_t3_d_a44cbb8b992f4a7ff3a1a3f7423f6449f}{}\index{sddk\+::\+F\+F\+T3\+D@{sddk\+::\+F\+F\+T3\+D}!prepare@{prepare}}
+\index{prepare@{prepare}!sddk\+::\+F\+F\+T3\+D@{sddk\+::\+F\+F\+T3\+D}}
+\subsubsection[{prepare(\+Gvec\+\_\+partition const \&gvec\+\_\+\+\_\+)}]{\setlength{\rightskip}{0pt plus 5cm}void sddk\+::\+F\+F\+T3\+D\+::prepare (
+\begin{DoxyParamCaption}
+\item[{{\bf Gvec\+\_\+partition} const \&}]{gvec\+\_\+\+\_\+}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}}\label{classsddk_1_1_f_f_t3_d_a44cbb8b992f4a7ff3a1a3f7423f6449f}
+
+
+Prepare F\+F\+T driver to transfrom functions with gvec\+\_\+fft\+\_\+distr. 
+
+
+
+Definition at line 808 of file fft3d.\+hpp.
+
+\hypertarget{classsddk_1_1_f_f_t3_d_aa26088197ba6556766da73b1d122c1cc}{}\index{sddk\+::\+F\+F\+T3\+D@{sddk\+::\+F\+F\+T3\+D}!transform@{transform}}
+\index{transform@{transform}!sddk\+::\+F\+F\+T3\+D@{sddk\+::\+F\+F\+T3\+D}}
+\subsubsection[{transform(\+Gvec\+\_\+partition const \&gvec\+\_\+\+\_\+, double\+\_\+complex $\ast$data\+\_\+\+\_\+)}]{\setlength{\rightskip}{0pt plus 5cm}template$<$int direction, device\+\_\+t data\+\_\+ptr\+\_\+type = C\+P\+U$>$ void sddk\+::\+F\+F\+T3\+D\+::transform (
+\begin{DoxyParamCaption}
+\item[{{\bf Gvec\+\_\+partition} const \&}]{gvec\+\_\+\+\_\+, }
+\item[{double\+\_\+complex $\ast$}]{data\+\_\+\+\_\+}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}}\label{classsddk_1_1_f_f_t3_d_aa26088197ba6556766da73b1d122c1cc}
+
+
+Transform a single functions. 
+
+
+
+Definition at line 913 of file fft3d.\+hpp.
+
+\hypertarget{classsddk_1_1_f_f_t3_d_ae69f2b082376f2d12eff7ca3b1ae1717}{}\index{sddk\+::\+F\+F\+T3\+D@{sddk\+::\+F\+F\+T3\+D}!transform@{transform}}
+\index{transform@{transform}!sddk\+::\+F\+F\+T3\+D@{sddk\+::\+F\+F\+T3\+D}}
+\subsubsection[{transform(\+Gvec\+\_\+partition const \&gvec\+\_\+\+\_\+, double\+\_\+complex $\ast$data1\+\_\+\+\_\+, double\+\_\+complex $\ast$data2\+\_\+\+\_\+)}]{\setlength{\rightskip}{0pt plus 5cm}template$<$int direction, device\+\_\+t data\+\_\+ptr\+\_\+type = C\+P\+U$>$ void sddk\+::\+F\+F\+T3\+D\+::transform (
+\begin{DoxyParamCaption}
+\item[{{\bf Gvec\+\_\+partition} const \&}]{gvec\+\_\+\+\_\+, }
+\item[{double\+\_\+complex $\ast$}]{data1\+\_\+\+\_\+, }
+\item[{double\+\_\+complex $\ast$}]{data2\+\_\+\+\_\+}
+\end{DoxyParamCaption}
+)\hspace{0.3cm}{\ttfamily [inline]}}\label{classsddk_1_1_f_f_t3_d_ae69f2b082376f2d12eff7ca3b1ae1717}
+
+
+Transform two real functions. 
+
+
+
+Definition at line 957 of file fft3d.\+hpp.
+
+
+
+\subsection{Member Data Documentation}
+\hypertarget{classsddk_1_1_f_f_t3_d_a1002c79cdd90213b476d9b768fb7a94a}{}\index{sddk\+::\+F\+F\+T3\+D@{sddk\+::\+F\+F\+T3\+D}!comm\+\_\+@{comm\+\_\+}}
+\index{comm\+\_\+@{comm\+\_\+}!sddk\+::\+F\+F\+T3\+D@{sddk\+::\+F\+F\+T3\+D}}
+\subsubsection[{comm\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}{\bf Communicator} const\& sddk\+::\+F\+F\+T3\+D\+::comm\+\_\+\hspace{0.3cm}{\ttfamily [protected]}}\label{classsddk_1_1_f_f_t3_d_a1002c79cdd90213b476d9b768fb7a94a}
+
+
+\hyperlink{classsddk_1_1_communicator}{Communicator} for the parallel F\+F\+T. 
+
+
+
+Definition at line 152 of file fft3d.\+hpp.
+
+\hypertarget{classsddk_1_1_f_f_t3_d_abfb4de99fbcab38632fb4870200f1a66}{}\index{sddk\+::\+F\+F\+T3\+D@{sddk\+::\+F\+F\+T3\+D}!pu\+\_\+@{pu\+\_\+}}
+\index{pu\+\_\+@{pu\+\_\+}!sddk\+::\+F\+F\+T3\+D@{sddk\+::\+F\+F\+T3\+D}}
+\subsubsection[{pu\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}device\+\_\+t sddk\+::\+F\+F\+T3\+D\+::pu\+\_\+\hspace{0.3cm}{\ttfamily [protected]}}\label{classsddk_1_1_f_f_t3_d_abfb4de99fbcab38632fb4870200f1a66}
+
+
+Main processing unit of this F\+F\+T. 
+
+
+
+Definition at line 155 of file fft3d.\+hpp.
+
+\hypertarget{classsddk_1_1_f_f_t3_d_a2b8697edcd2c0f1bf81129611c84088d}{}\index{sddk\+::\+F\+F\+T3\+D@{sddk\+::\+F\+F\+T3\+D}!spl\+\_\+z\+\_\+@{spl\+\_\+z\+\_\+}}
+\index{spl\+\_\+z\+\_\+@{spl\+\_\+z\+\_\+}!sddk\+::\+F\+F\+T3\+D@{sddk\+::\+F\+F\+T3\+D}}
+\subsubsection[{spl\+\_\+z\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}{\bf splindex}$<$block$>$ sddk\+::\+F\+F\+T3\+D\+::spl\+\_\+z\+\_\+\hspace{0.3cm}{\ttfamily [protected]}}\label{classsddk_1_1_f_f_t3_d_a2b8697edcd2c0f1bf81129611c84088d}
+
+
+Split z-\/direction. 
+
+
+
+Definition at line 158 of file fft3d.\+hpp.
+
+\hypertarget{classsddk_1_1_f_f_t3_d_a27a753a25185a7cadbf0f036f5fb1c98}{}\index{sddk\+::\+F\+F\+T3\+D@{sddk\+::\+F\+F\+T3\+D}!grid\+\_\+@{grid\+\_\+}}
+\index{grid\+\_\+@{grid\+\_\+}!sddk\+::\+F\+F\+T3\+D@{sddk\+::\+F\+F\+T3\+D}}
+\subsubsection[{grid\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}{\bf F\+F\+T3\+D\+\_\+grid} sddk\+::\+F\+F\+T3\+D\+::grid\+\_\+\hspace{0.3cm}{\ttfamily [protected]}}\label{classsddk_1_1_f_f_t3_d_a27a753a25185a7cadbf0f036f5fb1c98}
+
+
+Definition of the F\+F\+T grid. 
+
+
+
+Definition at line 161 of file fft3d.\+hpp.
+
+\hypertarget{classsddk_1_1_f_f_t3_d_a999766ae41a3fbe1d8c2643eba850ba6}{}\index{sddk\+::\+F\+F\+T3\+D@{sddk\+::\+F\+F\+T3\+D}!local\+\_\+size\+\_\+z\+\_\+@{local\+\_\+size\+\_\+z\+\_\+}}
+\index{local\+\_\+size\+\_\+z\+\_\+@{local\+\_\+size\+\_\+z\+\_\+}!sddk\+::\+F\+F\+T3\+D@{sddk\+::\+F\+F\+T3\+D}}
+\subsubsection[{local\+\_\+size\+\_\+z\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}int sddk\+::\+F\+F\+T3\+D\+::local\+\_\+size\+\_\+z\+\_\+\hspace{0.3cm}{\ttfamily [protected]}}\label{classsddk_1_1_f_f_t3_d_a999766ae41a3fbe1d8c2643eba850ba6}
+
+
+Local size of z-\/dimension of F\+F\+T buffer. 
+
+
+
+Definition at line 164 of file fft3d.\+hpp.
+
+\hypertarget{classsddk_1_1_f_f_t3_d_a57e693bd91fbce44258bbcaa1a7991ea}{}\index{sddk\+::\+F\+F\+T3\+D@{sddk\+::\+F\+F\+T3\+D}!offset\+\_\+z\+\_\+@{offset\+\_\+z\+\_\+}}
+\index{offset\+\_\+z\+\_\+@{offset\+\_\+z\+\_\+}!sddk\+::\+F\+F\+T3\+D@{sddk\+::\+F\+F\+T3\+D}}
+\subsubsection[{offset\+\_\+z\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}int sddk\+::\+F\+F\+T3\+D\+::offset\+\_\+z\+\_\+\hspace{0.3cm}{\ttfamily [protected]}}\label{classsddk_1_1_f_f_t3_d_a57e693bd91fbce44258bbcaa1a7991ea}
+
+
+Offset in the global z-\/dimension. 
+
+
+
+Definition at line 167 of file fft3d.\+hpp.
+
+\hypertarget{classsddk_1_1_f_f_t3_d_a6483ea5038aceb6cd74c9ca94a37eaac}{}\index{sddk\+::\+F\+F\+T3\+D@{sddk\+::\+F\+F\+T3\+D}!fft\+\_\+buffer\+\_\+@{fft\+\_\+buffer\+\_\+}}
+\index{fft\+\_\+buffer\+\_\+@{fft\+\_\+buffer\+\_\+}!sddk\+::\+F\+F\+T3\+D@{sddk\+::\+F\+F\+T3\+D}}
+\subsubsection[{fft\+\_\+buffer\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}{\bf mdarray}$<$double\+\_\+complex, 1$>$ sddk\+::\+F\+F\+T3\+D\+::fft\+\_\+buffer\+\_\+\hspace{0.3cm}{\ttfamily [protected]}}\label{classsddk_1_1_f_f_t3_d_a6483ea5038aceb6cd74c9ca94a37eaac}
+
+
+Main input/output buffer. 
+
+
+
+Definition at line 170 of file fft3d.\+hpp.
+
+\hypertarget{classsddk_1_1_f_f_t3_d_af73e16ad5cfd2ee76bcc013ee2f26f90}{}\index{sddk\+::\+F\+F\+T3\+D@{sddk\+::\+F\+F\+T3\+D}!fft\+\_\+buffer\+\_\+aux1\+\_\+@{fft\+\_\+buffer\+\_\+aux1\+\_\+}}
+\index{fft\+\_\+buffer\+\_\+aux1\+\_\+@{fft\+\_\+buffer\+\_\+aux1\+\_\+}!sddk\+::\+F\+F\+T3\+D@{sddk\+::\+F\+F\+T3\+D}}
+\subsubsection[{fft\+\_\+buffer\+\_\+aux1\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}{\bf mdarray}$<$double\+\_\+complex, 1$>$ sddk\+::\+F\+F\+T3\+D\+::fft\+\_\+buffer\+\_\+aux1\+\_\+\hspace{0.3cm}{\ttfamily [protected]}}\label{classsddk_1_1_f_f_t3_d_af73e16ad5cfd2ee76bcc013ee2f26f90}
+
+
+Auxiliary array to store z-\/sticks for all-\/to-\/all or G\+P\+U. 
+
+
+
+Definition at line 173 of file fft3d.\+hpp.
+
+\hypertarget{classsddk_1_1_f_f_t3_d_a4a96ae513eb919b71eb42ca74be980cb}{}\index{sddk\+::\+F\+F\+T3\+D@{sddk\+::\+F\+F\+T3\+D}!fft\+\_\+buffer\+\_\+aux2\+\_\+@{fft\+\_\+buffer\+\_\+aux2\+\_\+}}
+\index{fft\+\_\+buffer\+\_\+aux2\+\_\+@{fft\+\_\+buffer\+\_\+aux2\+\_\+}!sddk\+::\+F\+F\+T3\+D@{sddk\+::\+F\+F\+T3\+D}}
+\subsubsection[{fft\+\_\+buffer\+\_\+aux2\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}{\bf mdarray}$<$double\+\_\+complex, 1$>$ sddk\+::\+F\+F\+T3\+D\+::fft\+\_\+buffer\+\_\+aux2\+\_\+\hspace{0.3cm}{\ttfamily [protected]}}\label{classsddk_1_1_f_f_t3_d_a4a96ae513eb919b71eb42ca74be980cb}
+
+
+Auxiliary array in case of simultaneous transformation of two wave-\/functions. 
+
+
+
+Definition at line 176 of file fft3d.\+hpp.
+
+\hypertarget{classsddk_1_1_f_f_t3_d_a9f1235d01cc4e2e2f0f4dd2af50644bb}{}\index{sddk\+::\+F\+F\+T3\+D@{sddk\+::\+F\+F\+T3\+D}!fftw\+\_\+buffer\+\_\+z\+\_\+@{fftw\+\_\+buffer\+\_\+z\+\_\+}}
+\index{fftw\+\_\+buffer\+\_\+z\+\_\+@{fftw\+\_\+buffer\+\_\+z\+\_\+}!sddk\+::\+F\+F\+T3\+D@{sddk\+::\+F\+F\+T3\+D}}
+\subsubsection[{fftw\+\_\+buffer\+\_\+z\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}std\+::vector$<$double\+\_\+complex$\ast$$>$ sddk\+::\+F\+F\+T3\+D\+::fftw\+\_\+buffer\+\_\+z\+\_\+\hspace{0.3cm}{\ttfamily [protected]}}\label{classsddk_1_1_f_f_t3_d_a9f1235d01cc4e2e2f0f4dd2af50644bb}
+
+
+Internal buffer for independent z-\/transforms. 
+
+
+
+Definition at line 179 of file fft3d.\+hpp.
+
+\hypertarget{classsddk_1_1_f_f_t3_d_abd9baeb5d472ee92e8f08f95587a257a}{}\index{sddk\+::\+F\+F\+T3\+D@{sddk\+::\+F\+F\+T3\+D}!fftw\+\_\+buffer\+\_\+xy\+\_\+@{fftw\+\_\+buffer\+\_\+xy\+\_\+}}
+\index{fftw\+\_\+buffer\+\_\+xy\+\_\+@{fftw\+\_\+buffer\+\_\+xy\+\_\+}!sddk\+::\+F\+F\+T3\+D@{sddk\+::\+F\+F\+T3\+D}}
+\subsubsection[{fftw\+\_\+buffer\+\_\+xy\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}std\+::vector$<$double\+\_\+complex$\ast$$>$ sddk\+::\+F\+F\+T3\+D\+::fftw\+\_\+buffer\+\_\+xy\+\_\+\hspace{0.3cm}{\ttfamily [protected]}}\label{classsddk_1_1_f_f_t3_d_abd9baeb5d472ee92e8f08f95587a257a}
+
+
+Internal buffer for independent \{xy\}-\/transforms. 
+
+
+
+Definition at line 182 of file fft3d.\+hpp.
+
+\hypertarget{classsddk_1_1_f_f_t3_d_a7819df1c1ea576622c94a078bf34bdbf}{}\index{sddk\+::\+F\+F\+T3\+D@{sddk\+::\+F\+F\+T3\+D}!cufft\+\_\+plan\+\_\+xy\+\_\+@{cufft\+\_\+plan\+\_\+xy\+\_\+}}
+\index{cufft\+\_\+plan\+\_\+xy\+\_\+@{cufft\+\_\+plan\+\_\+xy\+\_\+}!sddk\+::\+F\+F\+T3\+D@{sddk\+::\+F\+F\+T3\+D}}
+\subsubsection[{cufft\+\_\+plan\+\_\+xy\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}cufft\+Handle sddk\+::\+F\+F\+T3\+D\+::cufft\+\_\+plan\+\_\+xy\+\_\+\hspace{0.3cm}{\ttfamily [protected]}}\label{classsddk_1_1_f_f_t3_d_a7819df1c1ea576622c94a078bf34bdbf}
+
+
+Handler for xy-\/transform cu\+F\+F\+T plan. 
+
+
+
+Definition at line 194 of file fft3d.\+hpp.
+
+\hypertarget{classsddk_1_1_f_f_t3_d_a62151c9726c5dc0ea56f3da721506ac5}{}\index{sddk\+::\+F\+F\+T3\+D@{sddk\+::\+F\+F\+T3\+D}!cufft\+\_\+plan\+\_\+z\+\_\+@{cufft\+\_\+plan\+\_\+z\+\_\+}}
+\index{cufft\+\_\+plan\+\_\+z\+\_\+@{cufft\+\_\+plan\+\_\+z\+\_\+}!sddk\+::\+F\+F\+T3\+D@{sddk\+::\+F\+F\+T3\+D}}
+\subsubsection[{cufft\+\_\+plan\+\_\+z\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}cufft\+Handle sddk\+::\+F\+F\+T3\+D\+::cufft\+\_\+plan\+\_\+z\+\_\+\hspace{0.3cm}{\ttfamily [protected]}}\label{classsddk_1_1_f_f_t3_d_a62151c9726c5dc0ea56f3da721506ac5}
+
+
+Handler for z-\/transform cu\+F\+F\+T plan. 
+
+
+
+Definition at line 197 of file fft3d.\+hpp.
+
+\hypertarget{classsddk_1_1_f_f_t3_d_ab808ebb702ad2ccb83c1c90afa7e9a1e}{}\index{sddk\+::\+F\+F\+T3\+D@{sddk\+::\+F\+F\+T3\+D}!cufft\+\_\+work\+\_\+buf\+\_\+@{cufft\+\_\+work\+\_\+buf\+\_\+}}
+\index{cufft\+\_\+work\+\_\+buf\+\_\+@{cufft\+\_\+work\+\_\+buf\+\_\+}!sddk\+::\+F\+F\+T3\+D@{sddk\+::\+F\+F\+T3\+D}}
+\subsubsection[{cufft\+\_\+work\+\_\+buf\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}{\bf mdarray}$<$char, 1$>$ sddk\+::\+F\+F\+T3\+D\+::cufft\+\_\+work\+\_\+buf\+\_\+\hspace{0.3cm}{\ttfamily [protected]}}\label{classsddk_1_1_f_f_t3_d_ab808ebb702ad2ccb83c1c90afa7e9a1e}
+
+
+Work buffer, required by cu\+F\+F\+T. 
+
+
+
+Definition at line 200 of file fft3d.\+hpp.
+
+\hypertarget{classsddk_1_1_f_f_t3_d_aa9363e6990496fc3cae2c15c3d930172}{}\index{sddk\+::\+F\+F\+T3\+D@{sddk\+::\+F\+F\+T3\+D}!map\+\_\+zcol\+\_\+to\+\_\+fft\+\_\+buffer\+\_\+@{map\+\_\+zcol\+\_\+to\+\_\+fft\+\_\+buffer\+\_\+}}
+\index{map\+\_\+zcol\+\_\+to\+\_\+fft\+\_\+buffer\+\_\+@{map\+\_\+zcol\+\_\+to\+\_\+fft\+\_\+buffer\+\_\+}!sddk\+::\+F\+F\+T3\+D@{sddk\+::\+F\+F\+T3\+D}}
+\subsubsection[{map\+\_\+zcol\+\_\+to\+\_\+fft\+\_\+buffer\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}{\bf mdarray}$<$int, 1$>$ sddk\+::\+F\+F\+T3\+D\+::map\+\_\+zcol\+\_\+to\+\_\+fft\+\_\+buffer\+\_\+\hspace{0.3cm}{\ttfamily [protected]}}\label{classsddk_1_1_f_f_t3_d_aa9363e6990496fc3cae2c15c3d930172}
+
+
+Mapping of G-\/vectors of z-\/columns to the F\+F\+T buffer for batched 1\+D transform. 
+
+
+
+Definition at line 203 of file fft3d.\+hpp.
+
+\hypertarget{classsddk_1_1_f_f_t3_d_aa62fe8604ebdf4b5759f945673076b39}{}\index{sddk\+::\+F\+F\+T3\+D@{sddk\+::\+F\+F\+T3\+D}!z\+\_\+col\+\_\+pos\+\_\+@{z\+\_\+col\+\_\+pos\+\_\+}}
+\index{z\+\_\+col\+\_\+pos\+\_\+@{z\+\_\+col\+\_\+pos\+\_\+}!sddk\+::\+F\+F\+T3\+D@{sddk\+::\+F\+F\+T3\+D}}
+\subsubsection[{z\+\_\+col\+\_\+pos\+\_\+}]{\setlength{\rightskip}{0pt plus 5cm}{\bf mdarray}$<$int, 2$>$ sddk\+::\+F\+F\+T3\+D\+::z\+\_\+col\+\_\+pos\+\_\+\hspace{0.3cm}{\ttfamily [protected]}}\label{classsddk_1_1_f_f_t3_d_aa62fe8604ebdf4b5759f945673076b39}
+
+
+Position of z-\/columns inside 2\+D F\+F\+T buffer. 
+
+
+
+Definition at line 208 of file fft3d.\+hpp.
+
+\hypertarget{classsddk_1_1_f_f_t3_d_a03b624e27a337aa492f000b58b905ca9}{}\index{sddk\+::\+F\+F\+T3\+D@{sddk\+::\+F\+F\+T3\+D}!false@{false}}
+\index{false@{false}!sddk\+::\+F\+F\+T3\+D@{sddk\+::\+F\+F\+T3\+D}}
+\subsubsection[{false}]{\setlength{\rightskip}{0pt plus 5cm}bool prepared\+\_\+ sddk\+::\+F\+F\+T3\+D\+::false\hspace{0.3cm}{\ttfamily [protected]}}\label{classsddk_1_1_f_f_t3_d_a03b624e27a337aa492f000b58b905ca9}
+
+
+True if F\+F\+T driver is prepared for the transformation. 
+
+
+
+Definition at line 211 of file fft3d.\+hpp.
+
+
+
+The documentation for this class was generated from the following file\+:\begin{DoxyCompactItemize}
+\item 
+\hyperlink{fft3d_8hpp}{fft3d.\+hpp}\end{DoxyCompactItemize}
