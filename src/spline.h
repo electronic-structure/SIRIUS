@@ -75,7 +75,7 @@ class Spline
                 double x = (*radial_grid_)[i];
                 coeffs_(i, 0) = f__(x);
             }
-            xinterpolate();
+            interpolate();
         }
 
         /// Constructor of a spline from a list of values.
@@ -86,7 +86,7 @@ class Spline
             for (int i = 0; i < num_points(); i++) {
                 coeffs_(i, 0) = y__[i];
             }
-            xinterpolate();
+            interpolate();
         }
 
         /// Move constructor.
@@ -114,7 +114,7 @@ class Spline
                 double x = (*radial_grid_)[ir];
                 coeffs_(ir, 0) = f__(x);
             }
-            return this->xinterpolate();
+            return this->interpolate();
         }
         
         /// Integrate with r^m weight.
@@ -260,6 +260,75 @@ class Spline
         inline Radial_grid const& radial_grid() const
         {
             return *radial_grid_;
+        }
+
+        Spline<T>& lxinterpolate()
+        {
+            int np = num_points();
+
+            std::vector<long double> w(np - 1);
+
+            std::vector<long double> a(np);
+
+            std::vector<long double> b(np);
+
+            std::vector<long double> c(np);
+
+            /// automatic arrays
+            for (int i = 0; i < np - 1; i++) {
+                w[i] = 1.0L / static_cast<long double>((*radial_grid_)[i + 1] - (*radial_grid_)[i]);
+                a[i] = w[i] * static_cast<long double>(coeffs_(i + 1, 0) - coeffs_(i, 0));
+                }
+
+            b[0] = 1.0L;
+
+            /// estimate second derivative at the first point
+            c[0] = (a[1] - a[0]) / static_cast<long double>((*radial_grid_)[2] - (*radial_grid_)[0]);
+
+            /// use Gaussian elimination to solve tridiagonal system
+            long double t1 = static_cast<long double>((*radial_grid_)[1] - (*radial_grid_)[0]) * w [1];
+            long double t2 = t1 * b[0];
+            long double t3 = 1.0 / (2.0L * (t1 + 1.0L));
+            b[1] = t3;
+            long double t4 = 3.0L * (a[1] - a[0]) * w[1] - t2 * c[0];
+            c[1] = t4;
+
+            for (int i = 2; i < np - 1; i++) {
+                t1 = static_cast<long double>((*radial_grid_)[i] - (*radial_grid_)[i - 1]) * w[i];
+                t2 = t1 * t3;
+                t3 = 1.0L / (2.0L * t1 + 2.0L - t2);
+                b[i] = t3;
+                t4 = 3.0L * (a[i] - a[i - 1]) * w[i] - t2 * t4;
+                c[i] = t4;
+            }
+
+            b[np - 1] = 1.0L;
+
+            /// estimate second derivative at the last point
+            t1 = (a[np - 2] - a[np - 3]) / static_cast<long double>((*radial_grid_)[np - 1] - (*radial_grid_)[np - 3]);
+            c[np - 1] = t1;
+            for (int i = np - 2; i >= 1; i--) {
+                t1 = c [i] - t1 * b [i + 1];
+                c[i] = t1;
+            }
+
+            /// compute coefficients
+            for (int i = 0; i < np; i++) {
+                coeffs_(i, 2) = b[i] * c[i];
+            }
+            for (int i = 0; i < np - 1; i++) {
+                t1 = (coeffs_(i + 1, 2) - coeffs_(i, 2)) * w [i] / 3.0L;
+                coeffs_(i, 3) = t1;
+                t2 = static_cast<long double>((*radial_grid_)[i + 1] - (*radial_grid_)[i]);
+                coeffs_(i, 1) = a[i] - (coeffs_(i, 2) + t1 * t2) * t2;
+            }
+
+            /// determine end-point coefficients
+            t1 = static_cast<long double>((*radial_grid_)[np - 1] - (*radial_grid_)[np - 2]);
+            coeffs_(np - 1, 1) = coeffs_(np - 2, 1) + (2.0L * coeffs_(np - 2, 2) + 3.0L * coeffs_(np - 2, 3) * t1) * t1;
+            coeffs_(np - 1, 3) = coeffs_(np - 2, 3);
+
+            return *this;
         }
 
         Spline<T>& xinterpolate()
