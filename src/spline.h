@@ -53,6 +53,48 @@ class Spline
         /* forbid assigment operator */
         Spline<T>& operator=(Spline<T> const& src__) = delete;
 
+        int solve(T* dl, T* d, T* du, T* b, int n)
+        {
+            for (int i = 0; i < n - 1; i++) {
+                if (std::abs(dl[i]) == 0) {
+                    if (std::abs(d[i]) == 0) {
+                        return i + 1;
+                    }
+                } else if (std::abs(d[i]) >= std::abs(dl[i])) {
+                    T mult = dl[i] / d[i];
+                    d[i + 1] -= mult * du[i];
+                    b[i + 1] -= mult * b[i];
+                    if (i < n - 2) {
+                        dl[i] = 0;
+                    }
+                } else {
+                    T mult = d[i] / dl[i];
+                    d[i] = dl[i];
+                    T tmp = d[i + 1];
+                    d[i + 1] = du[i] - mult * tmp;
+                    if (i < n - 2) {
+                        dl[i] = du[i + 1];
+                        du[i + 1] = -mult * dl[i];
+                    }
+                    du[i] = tmp;
+                    tmp = b[i];
+                    b[i] = b[i + 1];
+                    b[i + 1] = tmp - mult * b[i + 1];
+                }
+            }
+            if (std::abs(d[n - 1]) == 0) {
+                return n;
+            }
+            b[n - 1] /= d[n - 1];
+            if (n > 1) {
+                b[n - 2] = (b[n - 2] - du[n - 2] * b[n - 1]) / d[n - 2];
+            }
+            for (int i = n - 3; i >= 0; i--) {
+                b[i] = (b[i] - du[i] * b[i + 1] - dl[i] * b[i + 2]) / d[i];
+            }
+            return 0;
+        }
+
     public:
 
         /// Default constructor.
@@ -99,8 +141,7 @@ class Spline
         /// Move assigment operator.
         Spline<T>& operator=(Spline<T>&& src__)
         {
-            if (this != &src__)
-            {
+            if (this != &src__) {
                 radial_grid_ = src__.radial_grid_;
                 coeffs_ = std::move(src__.coeffs_);
             }
@@ -109,8 +150,7 @@ class Spline
 
         Spline<T>& operator=(std::function<T(double)> f__)
         {
-            for (int ir = 0; ir < radial_grid_->num_points(); ir++)
-            {
+            for (int ir = 0; ir < radial_grid_->num_points(); ir++) {
                 double x = (*radial_grid_)[ir];
                 coeffs_(ir, 0) = f__(x);
             }
@@ -267,55 +307,61 @@ class Spline
             int np = num_points();
 
             /* lower diagonal */
-            std::vector<T> a(np - 1);
+            std::vector<T> dl(np - 1);
             /* main diagonal */
-            std::vector<T> b(np);
-            /* upper diagonal */
-            std::vector<T> c(np - 1);
-
             std::vector<T> d(np);
+            /* upper diagonal */
+            std::vector<T> du(np - 1);
+
+            std::vector<T> x(np);
             std::vector<T> dy(np - 1);
             
             /* derivative of y */
-            for (int i = 0; i < np - 1; i++) dy[i] = (coeffs_(i + 1, 0) - coeffs_(i, 0)) / radial_grid_->dx(i);
+            for (int i = 0; i < np - 1; i++) {
+                dy[i] = (coeffs_(i + 1, 0) - coeffs_(i, 0)) / radial_grid_->dx(i);
+            }
             
             /* setup "B" vector of AX=B equation */
-            for (int i = 0; i < np - 2; i++) d[i + 1] = (dy[i + 1] - dy[i]) * 6.0;
+            for (int i = 0; i < np - 2; i++) {
+                x[i + 1] = (dy[i + 1] - dy[i]) * 6.0;
+            }
             
-            d[0] = -d[1];
-            d[np - 1] = -d[np - 2];
+            x[0] = -x[1];
+            x[np - 1] = -x[np - 2];
             
             /* main diagonal of "A" matrix */
-            for (int i = 0; i < np - 2; i++) b[i + 1] = 2 * (radial_grid_->dx(i) + radial_grid_->dx(i + 1));
-            double h0 = radial_grid_->dx(0);
-            double h1 = radial_grid_->dx(1);
-            double h2 = radial_grid_->dx(np - 2);
-            double h3 = radial_grid_->dx(np - 3);
-            b[0] = (h1 / h0) * h1 - h0;
-            b[np - 1] = (h3 / h2) * h3 - h2;
+            for (int i = 0; i < np - 2; i++) {
+                d[i + 1] = static_cast<T>(2) * (static_cast<T>(radial_grid_->dx(i)) + static_cast<T>(radial_grid_->dx(i + 1)));
+            }
+            T h0 = static_cast<T>(radial_grid_->dx(0));
+            T h1 = static_cast<T>(radial_grid_->dx(1));
+            T h2 = static_cast<T>(radial_grid_->dx(np - 2));
+            T h3 = static_cast<T>(radial_grid_->dx(np - 3));
+            d[0] = (h1 / h0) * h1 - h0;
+            d[np - 1] = (h3 / h2) * h3 - h2;
 
             /* subdiagonals of "A" matrix */
-            for (int i = 0; i < np - 1; i++)
-            {
-                c[i] = radial_grid_->dx(i);
-                a[i] = radial_grid_->dx(i);
+            for (int i = 0; i < np - 1; i++) {
+                du[i] = static_cast<T>(radial_grid_->dx(i));
+                dl[i] = static_cast<T>(radial_grid_->dx(i));
             }
-            c[0] = -(h1 * (1 + h1 / h0) + b[1]);
-            a[np - 2] = -(h3 * (1 + h3 / h2) + b[np - 2]); 
+            du[0] = -(h1 * (static_cast<T>(1) + h1 / h0) + d[1]);
+            dl[np - 2] = -(h3 * (static_cast<T>(1) + h3 / h2) + d[np - 2]); 
 
             /* solve tridiagonal system */
-            int info = linalg<CPU>::gtsv(np, 1, &a[0], &b[0], &c[0], &d[0], np);
-            auto x = d;
+            //solve(a.data(), b.data(), c.data(), d.data(), np);
+            //auto& x = d;
+            //int info = linalg<CPU>::gtsv(np, 1, &a[0], &b[0], &c[0], &d[0], np);
             
-            if (info)
-            {
+            int info = solve(&dl[0], &d[0], &du[0], &x[0], np);
+            
+            if (info) {
                 std::stringstream s;
-                s << "gtsv returned " << info;
+                s << "error in tridiagonal solver: " << info;
                 TERMINATE(s);
             }
             
-            for (int i = 0; i < np - 1; i++)
-            {
+            for (int i = 0; i < np - 1; i++) {
                 coeffs_(i, 2) = x[i] / 2.0;
                 T t = (x[i + 1] - x[i]) / 6.0;
                 coeffs_(i, 1) = dy[i] - (coeffs_(i, 2) + t) * radial_grid_->dx(i);
@@ -330,8 +376,7 @@ class Spline
 
         inline void scale(double a__)
         {
-            for (int i = 0; i < num_points(); i++)
-            {
+            for (int i = 0; i < num_points(); i++) {
                 coeffs_(i, 0) *= a__;
                 coeffs_(i, 1) *= a__;
                 coeffs_(i, 2) *= a__;
@@ -345,34 +390,29 @@ class Spline
 
             g__[0] = 0.0;
 
-            switch (m__)
-            {
-                case 0:
-                {
-                    double t = 1.0 / 3.0;
-                    for (int i = 0; i < num_points() - 1; i++)
-                    {
-                        double dx = radial_grid_->dx(i);
+            switch (m__) {
+                case 0: {
+                    T t = 1.0 / 3.0;
+                    for (int i = 0; i < num_points() - 1; i++) {
+                        T dx = radial_grid_->dx(i);
                         g__[i + 1] = g__[i] + (((coeffs_(i, 3) * dx * 0.25 + coeffs_(i, 2) * t) * dx + coeffs_(i, 1) * 0.5) * dx + coeffs_(i, 0)) * dx;
                     }
                     break;
                 }
-                case 2:
-                {
-                    for (int i = 0; i < num_points() - 1; i++)
-                    {
-                        double x0 = (*radial_grid_)[i];
-                        double x1 = (*radial_grid_)[i + 1];
-                        double dx = radial_grid_->dx(i);
+                case 2: {
+                    for (int i = 0; i < num_points() - 1; i++) {
+                        T x0 = (*radial_grid_)[i];
+                        T x1 = (*radial_grid_)[i + 1];
+                        T dx = radial_grid_->dx(i);
                         T a0 = coeffs_(i, 0);
                         T a1 = coeffs_(i, 1);
                         T a2 = coeffs_(i, 2);
                         T a3 = coeffs_(i, 3);
 
-                        double x0_2 = x0 * x0;
-                        double x0_3 = x0_2 * x0;
-                        double x1_2 = x1 * x1;
-                        double x1_3 = x1_2 * x1;
+                        T x0_2 = x0 * x0;
+                        T x0_3 = x0_2 * x0;
+                        T x1_2 = x1 * x1;
+                        T x1_3 = x1_2 * x1;
 
                         g__[i + 1] = g__[i] + (20.0 * a0 * (x1_3 - x0_3) + 5.0 * a1 * (x0 * x0_3 + x1_3 * (3.0 * dx - x0)) - 
                                      dx * dx * dx * (-2.0 * a2 * (x0_2 + 3.0 * x0 * x1 + 6.0 * x1_2) - 
