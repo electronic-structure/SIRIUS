@@ -1,4 +1,4 @@
-// Copyright (c) 2013-2016 Anton Kozhevnikov, Thomas Schulthess
+// Copyright (c) 2013-2017 Anton Kozhevnikov, Thomas Schulthess
 // All rights reserved.
 // 
 // Redistribution and use in source and binary forms, with or without modification, are permitted provided that 
@@ -27,6 +27,7 @@
 
 #include "utils.h"
 
+
 namespace sirius {
 
 /// Types of radial grid.
@@ -48,6 +49,188 @@ enum radial_grid_t
 
     //incremental_grid
 };
+
+namespace experimental {
+
+template <typename T>
+class Radial_grid
+{
+  protected:
+    /// Radial grid points.
+    mdarray<T, 1> x_;
+
+    /// Inverse values of radial grid points.
+    mdarray<T, 1> x_inv_;
+    
+    /// Radial grid points difference.
+    /** \f$ dx_{i} = x_{i+1} - x_{i} \f$ */
+    mdarray<T, 1> dx_;
+
+    /// Name of the grid type.
+    std::string name_;
+
+    void init(int num_points__)
+    {
+        /* set x^{-1} */
+        for (int i = 0; i < num_points__; i++) {
+            x_inv_(i) = (x_(i) == 0) ? 0 : 1.0 / x_(i);
+        }
+        
+        /* set dx */
+        for (int i = 0; i < num_points__ - 1; i++) {
+            dx_(i) = x_(i + 1) - x_(i);
+        }
+    }
+
+  public:
+    Radial_grid(int num_points__)
+    {
+        x_     = mdarray<T, 1>(num_points__);
+        x_inv_ = mdarray<T, 1>(num_points__);
+        dx_    = mdarray<T, 1>(num_points__ - 1);
+    }
+
+    int index_of(double x__) const
+    {
+        if (x__ < first() || x__ > last()) {
+            return -1;
+        }
+        int i0 = 0;
+        int i1 = num_points() - 1;
+
+        while (i1 - i0 > 1) {
+            int i = (i1 + i0) >> 1;
+            if (x__ >= x_[i0] && x__ < x_[i]) {
+                i1 = i;
+            } else {
+                i0 = i;
+            }
+        }
+        return i0;
+    }
+
+    /// Number of grid points.
+    inline int num_points() const
+    {
+        return static_cast<int>(x_.size());
+    }
+
+    /// First point of the grid.
+    inline double first() const
+    {
+        return x_(0);
+    }
+
+    /// Last point of the grid.
+    inline double last() const
+    {
+        return x_(num_points() - 1);
+    }
+
+    /// Return \f$ x_{i} \f$.
+    inline double operator[](const int i) const
+    {
+        assert(i < (int)x_.size());
+        return x_(i);
+    }
+    
+    /// Return \f$ dx_{i} \f$.
+    inline double dx(const int i) const
+    {
+        assert(i < (int)dx_.size());
+        return dx_(i);
+    }
+    
+    /// Return \f$ x_{i}^{-1} \f$.
+    inline double x_inv(const int i) const
+    {
+        assert(i < (int)x_inv_.size());
+        return x_inv_(i);
+    }
+
+    inline std::string& name() const
+    {
+        return name_;
+    }
+};
+
+template<typename T>
+class Radial_grid_pow: public Radial_grid<T>
+{
+  public:
+    Radial_grid_pow(int num_points__, T rmin__, T rmax__, int p__)
+        : Radial_grid<T>(num_points__)
+    {
+        for (int i = 0; i < num_points__; i++) {
+            T t = static_cast<T>(i) / (num_points__ - 1);
+            this->x_[i] = rmin__ + (rmax__ - rmin__) * std::pow(t, p__);
+        }
+        this->init(num_points__);
+    }
+};
+
+template<typename T>
+class Radial_grid_lin: public Radial_grid_pow<T>
+{
+    Radial_grid_lin(int num_points__, T rmin__, T rmax__)
+        : Radial_grid_pow<T>(num_points__, rmin__, rmax__, 1)
+    {
+    }
+};
+
+template<typename T = double>
+class Radial_grid_exp: public Radial_grid<T>
+{
+  public:
+    Radial_grid_exp(int num_points__, T rmin__, T rmax__)
+        : Radial_grid<T>(num_points__)
+    {
+        /* x_i = x_min * (x_max/x_min) ^ (i / (N - 1)) */
+        for (int i = 0; i < num_points__; i++) {
+            T t = static_cast<T>(i) / (num_points__ - 1);
+            this->x_[i] = rmin__ * std::pow(rmax__ / rmin__, t);
+        }
+        this->init(num_points__);
+    }
+};
+
+template<typename T>
+class Radial_grid_lin_exp: public Radial_grid<T>
+{
+  public:
+    Radial_grid_lin_exp(int num_points__, T rmin__, T rmax__)
+        : Radial_grid<T>(num_points__)
+    {
+        /* x_i = x_min + (x_max - x_min) * A(t)
+         * A(0) = 0; A(1) = 1
+         * A(t) ~ b * t + Exp[t^a] - 1 */
+        T alpha{6.0};
+        T beta = 1e-6 * num_points__ / (rmax__ - rmin__);
+        T A = 1.0 / (std::exp(static_cast<T>(1)) + beta - static_cast<T>(1));
+        for (int i = 0; i < num_points__; i++) {
+            T t = static_cast<T>(i) / (num_points__ - 1);
+            this->x_[i] = rmin__ + (rmax__ - rmin__) * (beta * t + std::exp(std::pow(t, alpha)) - static_cast<T>(1)) * A;
+        }
+        this->init();
+    }
+};
+
+/// External radial grid provided as a list of points.
+template<typename T>
+class Radial_grid_ext: public Radial_grid<T>
+{
+  public:
+    Radial_grid_ext(int num_points__, T* data__)
+        : Radial_grid<T>(num_points__)
+    {
+        for (int i = 0; i < num_points__; i++) {
+            this->x_[i] = data__[i];
+        }
+        this->init();
+    }
+};
+
+}
 
 /// Radial grid for a muffin-tin or an isolated atom.
 class Radial_grid // TODO: rewrite: base class + virtual methods
@@ -246,8 +429,7 @@ class Radial_grid // TODO: rewrite: base class + virtual methods
 
         Radial_grid& operator=(Radial_grid&& src__)
         {
-            if (this != &src__)
-            {
+            if (this != &src__) {
                 x_ = std::move(src__.x_);
                 dx_ = std::move(src__.dx_);
                 x_inv_ = std::move(src__.x_inv_);
@@ -333,9 +515,9 @@ class Radial_grid // TODO: rewrite: base class + virtual methods
             x_ = mdarray<double, 1>(num_points__);
             std::memcpy(&x_(0), points__, num_points__ * sizeof(double));
 
-            for (int i = 0; i < num_points__; i++) {
-                x_(i) = Utils::round(x_(i), 13);
-            }
+            //for (int i = 0; i < num_points__; i++) {
+            //    x_(i) = Utils::round(x_(i), 13);
+            //}
             
             /* set x^{-1} */
             x_inv_ = mdarray<double, 1>(num_points__);
