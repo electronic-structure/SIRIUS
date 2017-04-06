@@ -25,9 +25,6 @@
 #ifndef __RADIAL_GRID_H__
 #define __RADIAL_GRID_H__
 
-#include "utils.h"
-
-
 namespace sirius {
 
 /// Types of radial grid.
@@ -44,14 +41,9 @@ enum radial_grid_t
     scaled_pow_grid = 4,
 
     lin_exp_grid = 5
-
-    //hyperbolic_grid,
-
-    //incremental_grid
 };
 
-namespace experimental {
-
+/// Base class for radial grids.
 template <typename T>
 class Radial_grid
 {
@@ -82,7 +74,16 @@ class Radial_grid
         }
     }
 
+    Radial_grid(Radial_grid<T> const& src__) = delete;
+
+    Radial_grid& operator=(Radial_grid<T> const& src__) = delete;
+
   public:
+
+    Radial_grid()
+    {
+    }
+
     Radial_grid(int num_points__)
     {
         x_     = mdarray<T, 1>(num_points__);
@@ -90,7 +91,26 @@ class Radial_grid
         dx_    = mdarray<T, 1>(num_points__ - 1);
     }
 
-    int index_of(double x__) const
+    Radial_grid(Radial_grid<T>&& src__)
+    {
+        x_     = std::move(src__.x_);
+        dx_    = std::move(src__.dx_);
+        x_inv_ = std::move(src__.x_inv_);
+        name_  = src__.name_;
+    }
+
+    Radial_grid<T>& operator=(Radial_grid<T>&& src__)
+    {
+        if (this != &src__) {
+            x_     = std::move(src__.x_);
+            dx_    = std::move(src__.dx_);
+            x_inv_ = std::move(src__.x_inv_);
+            name_  = src__.name_;
+        }
+        return *this;
+    }
+
+    int index_of(T x__) const
     {
         if (x__ < first() || x__ > last()) {
             return -1;
@@ -116,49 +136,91 @@ class Radial_grid
     }
 
     /// First point of the grid.
-    inline double first() const
+    inline T first() const
     {
         return x_(0);
     }
 
     /// Last point of the grid.
-    inline double last() const
+    inline T last() const
     {
         return x_(num_points() - 1);
     }
 
     /// Return \f$ x_{i} \f$.
-    inline double operator[](const int i) const
+    inline T operator[](const int i) const
     {
         assert(i < (int)x_.size());
         return x_(i);
     }
     
     /// Return \f$ dx_{i} \f$.
-    inline double dx(const int i) const
+    inline T dx(const int i) const
     {
         assert(i < (int)dx_.size());
         return dx_(i);
     }
     
     /// Return \f$ x_{i}^{-1} \f$.
-    inline double x_inv(const int i) const
+    inline T x_inv(const int i) const
     {
         assert(i < (int)x_inv_.size());
         return x_inv_(i);
     }
 
-    inline std::string& name() const
+    inline std::string const& name() const
     {
         return name_;
     }
+
+    void copy_to_device()
+    {
+        x_.allocate(memory_t::device);
+        x_.template copy<memory_t::host, memory_t::device>();
+        dx_.allocate(memory_t::device);
+        dx_.template copy<memory_t::host, memory_t::device>();
+    }
+
+    mdarray<T, 1> const& x() const
+    {
+        return x_;
+    }
+
+    mdarray<T, 1> const& dx() const
+    {
+        return dx_;
+    }
+
+    Radial_grid<T> segment(int num_points__) const
+    {
+        assert(num_points__ >= 0 && num_points__ <= (int)x_.size());
+        Radial_grid<T> r;
+        r.name_  = name_ + " (segment)";
+        r.x_     = mdarray<T, 1>(num_points__);
+        r.dx_    = mdarray<T, 1>(num_points__ - 1);
+        r.x_inv_ = mdarray<T, 1>(num_points__);
+
+        std::memcpy(&r.x_(0), &x_(0), num_points__ * sizeof(T));
+        std::memcpy(&r.dx_(0), &dx_(0), (num_points__ - 1) * sizeof(T));
+        std::memcpy(&r.x_inv_(0), &x_inv_(0), num_points__ * sizeof(T));
+
+        return std::move(r);
+    }
+
+    //uint64_t hash() const
+    //{
+    //    uint64_t h = Utils::hash(&x_(0), x_.size() * sizeof(double));
+    //    h += Utils::hash(&dx_(0), dx_.size() * sizeof(double), h);
+    //    h += Utils::hash(&x_inv_(0), x_inv_.size() * sizeof(double), h);
+    //    return h;
+    //}
 };
 
 template<typename T>
 class Radial_grid_pow: public Radial_grid<T>
 {
   public:
-    Radial_grid_pow(int num_points__, T rmin__, T rmax__, int p__)
+    Radial_grid_pow(int num_points__, T rmin__, T rmax__, double p__)
         : Radial_grid<T>(num_points__)
     {
         for (int i = 0; i < num_points__; i++) {
@@ -166,31 +228,37 @@ class Radial_grid_pow: public Radial_grid<T>
             this->x_[i] = rmin__ + (rmax__ - rmin__) * std::pow(t, p__);
         }
         this->init(num_points__);
+        std::stringstream s;
+        s << p__;
+        this->name_ = "power" + s.str();
     }
 };
 
 template<typename T>
 class Radial_grid_lin: public Radial_grid_pow<T>
 {
+  public:
     Radial_grid_lin(int num_points__, T rmin__, T rmax__)
-        : Radial_grid_pow<T>(num_points__, rmin__, rmax__, 1)
+        : Radial_grid_pow<T>(num_points__, rmin__, rmax__, 1.0)
     {
+        this->name_ = "linear";
     }
 };
 
-template<typename T = double>
+template<typename T>
 class Radial_grid_exp: public Radial_grid<T>
 {
   public:
-    Radial_grid_exp(int num_points__, T rmin__, T rmax__)
+    Radial_grid_exp(int num_points__, T rmin__, T rmax__, double p__ = 1.0)
         : Radial_grid<T>(num_points__)
     {
         /* x_i = x_min * (x_max/x_min) ^ (i / (N - 1)) */
         for (int i = 0; i < num_points__; i++) {
             T t = static_cast<T>(i) / (num_points__ - 1);
-            this->x_[i] = rmin__ * std::pow(rmax__ / rmin__, t);
+            this->x_[i] = rmin__ * std::pow(rmax__ / rmin__, std::pow(t, p__));
         }
         this->init(num_points__);
+        this->name_ = "exponential";
     }
 };
 
@@ -211,7 +279,8 @@ class Radial_grid_lin_exp: public Radial_grid<T>
             T t = static_cast<T>(i) / (num_points__ - 1);
             this->x_[i] = rmin__ + (rmax__ - rmin__) * (beta * t + std::exp(std::pow(t, alpha)) - static_cast<T>(1)) * A;
         }
-        this->init();
+        this->init(num_points__);
+        this->name_ = "linear_exponential";
     }
 };
 
@@ -220,370 +289,54 @@ template<typename T>
 class Radial_grid_ext: public Radial_grid<T>
 {
   public:
-    Radial_grid_ext(int num_points__, T* data__)
+    Radial_grid_ext(int num_points__, T const* data__)
         : Radial_grid<T>(num_points__)
     {
         for (int i = 0; i < num_points__; i++) {
             this->x_[i] = data__[i];
         }
-        this->init();
+        this->init(num_points__);
+        this->name_ = "external";
     }
 };
 
-}
-
-/// Radial grid for a muffin-tin or an isolated atom.
-class Radial_grid // TODO: rewrite: base class + virtual methods
+template<typename T>
+Radial_grid<T> Radial_grid_factory(radial_grid_t grid_type__,
+                                   int           num_points__,
+                                   T             rmin__,
+                                   T             rmax__,
+                                   double        p__ = 1.0)
 {
-    private:
-        
-        /// Radial grid points.
-        mdarray<double, 1> x_;
-        
-        /// Inverse values of radial grid points.
-        mdarray<double, 1> x_inv_;
-        
-        /// Radial grid points difference.
-        /** \f$ dx_{i} = x_{i+1} - x_{i} \f$ */
-        mdarray<double, 1> dx_;
-        
-        /// Name of the grid type.
-        std::string grid_type_name_;
-        
-        /// Create array of radial grid points.
-        std::vector<double> create_radial_grid_points(radial_grid_t grid_type, int num_points, double rmin, double rmax)
-        {
-            std::vector<double> grid_points(num_points);
+    Radial_grid<T> rgrid;
 
-            switch (grid_type) {
-                case linear_grid: {
-                    for (int i = 0; i < num_points; i++) {
-                        grid_points[i] = rmin + (rmax - rmin) * double(i) / (num_points - 1);
-                    }
-                    break;
-                }
-                case exponential_grid: {
-                    /* x_i = x_min * (x_max/x_min) ^ (i / (N - 1)) */
-                    for (int i = 0; i < num_points; i++) {
-                        grid_points[i] = rmin * std::pow(rmax / rmin, double(i) / (num_points - 1));
-                    }
-                    break;
-                }
-                case lin_exp_grid: {
-                    /* x_i = x_min + (x_max - x_min) * A(t)
-                     * A(t) ~ b * t + Exp[t^a] - 1 */
-                    double alpha{6.0};
-                    double beta = 1e-6 * num_points / (rmax - rmin);
-                    double A = 1.0 / (std::exp(1) + beta - 1);
-
-                    for (int i = 0; i < num_points; i++) {
-                        double t = double(i) / (num_points - 1);
-                        grid_points[i] = rmin + (rmax - rmin) * (beta * t + std::exp(std::pow(t, alpha)) - 1) * A;
-                    }
-                    break;
-                }
-                case pow2_grid: {
-                    /* x_i = x_min + (x_max - x_min) * (i / N - 1)^2 */
-                    for (int i = 0; i < num_points; i++) {
-                        grid_points[i] = rmin + (rmax - rmin) * std::pow(double(i) / (num_points - 1), 2);
-                    }
-                    break; 
-                }
-                case pow3_grid: {
-                    for (int i = 0; i < num_points; i++) {
-                        grid_points[i] = rmin + (rmax - rmin) * std::pow(double(i) / (num_points - 1), 3);
-                    }
-                    break; 
-                }
-                case scaled_pow_grid: {
-                    /* ratio of last and first dx */
-                    double S = rmax * 1000;
-                    double alpha = std::pow(S, 1.0 / (num_points - 2));
-                    double x = rmin;
-                    for (int i = 0; i < num_points; i++)
-                    {
-                        grid_points[i] = x;
-                        x += (rmax - rmin) * (alpha - 1) * std::pow(S, double(i) / (num_points - 2)) / (S * alpha - 1);
-                    }
-                    break;
-                }
-                default: {
-                    TERMINATE_NOT_IMPLEMENTED
-                }
-
-                //== case hyperbolic_grid:
-                //== {
-                //==     double x = origin;
-                //==     int i = 1;
-                //==     
-                //==     while (x <= infinity + tol)
-                //==     {
-                //==         grid_points.push_back(x);
-                //==         double t = double(i++) / double(num_mt_points - 1);
-                //==         x = origin + 2.0 * (mt_radius - origin) * t / (t + 1);
-                //==     }
-                //==     break;
-                //== }
-                //== case incremental_grid:
-                //== {
-                //==     double D = mt_radius - origin;
-                //==     double S = 1000.0;
-                //==     double dx0 = 2 * D / (2 * (num_mt_points - 1) + (num_mt_points - 1) * (S - 1));
-                //==     double alpha = (S - 1) * dx0 / (num_mt_points - 2);
-
-                //==     int i = 0;
-                //==     double x = origin;
-                //==     while (x <= infinity + tol)
-                //==     {
-                //==         grid_points.push_back(x);
-                //==         x = origin + (dx0 + dx0 + i * alpha) * (i + 1) / 2.0;
-                //==         i++;
-                //==     }
-                //==     break;
-                //== }
-            }
-   
-            /* trivial check */
-            if (std::abs(rmax - grid_points[num_points - 1]) > 1e-10) {
-                std::stringstream s;
-                s << "Wrong radial grid" << std::endl
-                  << "  num_points      : " << num_points << std::endl
-                  << "  rmax            : " << Utils::double_to_string(rmax, 12) << std::endl
-                  << "  last grid point : " << Utils::double_to_string(grid_points[num_points - 1], 12); 
-                TERMINATE(s);
-            }
-
-            return grid_points;
+    switch (grid_type__) {
+        case linear_grid: {
+            rgrid = Radial_grid_lin<T>(num_points__, rmin__, rmax__);
+            break;
         }
-
-        /// Create the predefined grid.
-        void create(radial_grid_t grid_type,
-                    int num_points,
-                    double rmin,
-                    double rmax)
-        {
-            assert(rmin >= 0);
-            assert(rmax > 0);
-
-            auto grid_points = create_radial_grid_points(grid_type, num_points, rmin, rmax);
-            set_radial_points((int)grid_points.size(), &grid_points[0]);
-
-            switch (grid_type)
-            {
-                case linear_grid:
-                {
-                    grid_type_name_ = "linear";
-                    break;
-                }
-                case exponential_grid:
-                {
-                    grid_type_name_ = "exponential";
-                    break;
-                }
-                case lin_exp_grid:
-                {
-                    grid_type_name_ = "linear_exponential";
-                    break;
-                }
-                case scaled_pow_grid:
-                {
-                    grid_type_name_ = "scaled_power_grid";
-                    break;
-                }
-                case pow2_grid:
-                {
-                    grid_type_name_ = "power2";
-                    break;
-                }
-                case pow3_grid:
-                {
-                    grid_type_name_ = "power3";
-                    break;
-                }
-                //case hyperbolic_grid:
-                //{
-                //    grid_type_name_ = "hyperbolic";
-                //    break;
-                //}
-                //case incremental_grid:
-                //{
-                //    grid_type_name_ = "incremental";
-                //    break;
-                //}
-            }
+        case exponential_grid: {
+            rgrid = Radial_grid_exp<T>(num_points__, rmin__, rmax__, p__);
+            break;
         }
-
-        Radial_grid(Radial_grid const& src__) = delete;
-
-        Radial_grid& operator=(Radial_grid const& src__) = delete;
-
-    public:
-
-        Radial_grid(Radial_grid&& src__)
-        {
-            x_ = std::move(src__.x_);
-            dx_ = std::move(src__.dx_);
-            x_inv_ = std::move(src__.x_inv_);
-            grid_type_name_ = src__.grid_type_name_;
+        case pow2_grid: {
+            rgrid = Radial_grid_pow<T>(num_points__, rmin__, rmax__, 2.0);
+            break;
         }
-
-        Radial_grid& operator=(Radial_grid&& src__)
-        {
-            if (this != &src__) {
-                x_ = std::move(src__.x_);
-                dx_ = std::move(src__.dx_);
-                x_inv_ = std::move(src__.x_inv_);
-                grid_type_name_ = src__.grid_type_name_;
-            }
-            return *this;
+        case pow3_grid: {
+            rgrid = Radial_grid_pow<T>(num_points__, rmin__, rmax__, 3.0);
+            break;
         }
-        
-        /// Constructor for an empty grid.
-        Radial_grid()
-        {
+        case lin_exp_grid: {
+            rgrid = Radial_grid_lin_exp<T>(num_points__, rmin__, rmax__);
+            break;
         }
-        
-        /// Constructor for user provided radial grid.
-        Radial_grid(std::vector<double>& x__) : grid_type_name_("custom")
-        {
-            set_radial_points((int)x__.size(), &x__[0]);
+        default: {
+            TERMINATE("wrong radial grid type");
         }
-
-        /// Constructor for user provided radial grid.
-        Radial_grid(int num_points__, double const* x__) : grid_type_name_("custom")
-        {
-            set_radial_points(num_points__, x__);
-        }
-
-        /// Constructor for a specific radial grid.
-        Radial_grid(radial_grid_t grid_type, int num_points, double rmin, double rmax) : grid_type_name_("")
-        {
-            create(grid_type, num_points, rmin, rmax);
-        }
-        
-        /// Return \f$ x_{i} \f$.
-        inline double operator[](const int i) const
-        {
-            assert(i < (int)x_.size());
-            return x_(i);
-        }
-        
-        /// Return \f$ dx_{i} \f$.
-        inline double dx(const int i) const
-        {
-            assert(i < (int)dx_.size());
-            return dx_(i);
-        }
-        
-        /// Return \f$ x_{i}^{-1} \f$.
-        inline double x_inv(const int i) const
-        {
-            assert(i < (int)x_inv_.size());
-            return x_inv_(i);
-        }
-       
-        /// Number of grid points.
-        inline int num_points() const
-        {
-            return static_cast<int>(x_.size());
-        }
-
-        /// First point of the grid.
-        inline double first() const
-        {
-            return x_(0);
-        }
-
-        /// Last point of the grid.
-        inline double last() const
-        {
-            return x_(num_points() - 1);
-        }
-               
-        /// Return name of the grid type.
-        inline std::string grid_type_name() const
-        {
-            return grid_type_name_;
-        }
-
-        /// Set new radial points.
-        void set_radial_points(int num_points__, double const* points__)
-        {
-            assert(num_points__ > 0);
-            
-            /* set points */
-            x_ = mdarray<double, 1>(num_points__);
-            std::memcpy(&x_(0), points__, num_points__ * sizeof(double));
-
-            //for (int i = 0; i < num_points__; i++) {
-            //    x_(i) = Utils::round(x_(i), 13);
-            //}
-            
-            /* set x^{-1} */
-            x_inv_ = mdarray<double, 1>(num_points__);
-            for (int i = 0; i < num_points__; i++) {
-                x_inv_(i) = (x_(i) == 0) ? 0 : 1.0 / x_(i);
-            }
-            
-            /* set dx */
-            dx_ = mdarray<double, 1>(num_points__ - 1);
-            for (int i = 0; i < num_points__ - 1; i++) {
-                dx_(i) = x_(i + 1) - x_(i);
-            }
-            
-            //== if (dx_(0) < 1e-7)
-            //== {
-            //==     std::stringstream s;
-            //==     s << "dx step near origin is small : " << Utils::double_to_string(dx_(0));
-            //==     warning_global(__FILE__, __LINE__, s);
-            //== }
-        }
-
-        uint64_t hash() const
-        {
-            uint64_t h = Utils::hash(&x_(0), x_.size() * sizeof(double));
-            h += Utils::hash(&dx_(0), dx_.size() * sizeof(double), h);
-            h += Utils::hash(&x_inv_(0), x_inv_.size() * sizeof(double), h);
-            return h;
-        }
-
-        Radial_grid segment(int num_points__) const
-        {
-            assert(num_points__ >= 0 && num_points__ <= (int)x_.size());
-            Radial_grid r;
-            r.grid_type_name_ = grid_type_name_ + " (segment)";
-            r.x_ = mdarray<double, 1>(num_points__);
-            r.dx_ = mdarray<double, 1>(num_points__ - 1);
-            r.x_inv_ = mdarray<double, 1>(num_points__);
-
-            memcpy(&r.x_(0), &x_(0), num_points__ * sizeof(double));
-            memcpy(&r.dx_(0), &dx_(0), (num_points__ - 1) * sizeof(double));
-            memcpy(&r.x_inv_(0), &x_inv_(0), num_points__ * sizeof(double));
-
-            return std::move(r);
-        }
-
-        #ifdef __GPU
-        void copy_to_device()
-        {
-            x_.allocate(memory_t::device);
-            x_.copy_to_device();
-            dx_.allocate(memory_t::device);
-            dx_.copy_to_device();
-        }
-        #endif
-
-        mdarray<double, 1> const& x() const
-        {
-            return x_;
-        }
-
-        mdarray<double, 1> const& dx() const
-        {
-            return dx_;
-        }
+    }
+    return std::move(rgrid);
 };
 
-};
+}
 
 #endif // __RADIAL_GRID_H__
