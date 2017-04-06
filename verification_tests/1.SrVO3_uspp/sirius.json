@@ -5,7 +5,7 @@
         "std_evp_solver_type" : "lapack",
         "gen_evp_solver_type" : "lapack",
         "verbosity" : 1,
-        "verification" : 1,
+        "verification" : 0,
         "print_memory_usage" : false,
         "print_checksum" : false
     },
@@ -19,7 +19,7 @@
 
         "smearing_width" : 0.025,
 
-        "use_symmetry" : 1,
+        "use_symmetry" : true,
 
         "num_mag_dims" : 0,
         
@@ -32,7 +32,7 @@
         "num_dft_iter" : 100,
 
         "ngridk" : [2,2,2],
-        "gamma_point" : 0
+        "gamma_point" : false
     },
 
 
