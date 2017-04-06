@@ -44,7 +44,7 @@ class Free_atom: public sirius::Atom_type
               NIST_LDA_Etot(0),
               NIST_ScRLDA_Etot(0)
         {
-            radial_grid_ = sirius::Radial_grid(sirius::scaled_pow_grid, 2000 + 150 * zn, 1e-7, 20.0 + 0.25 * zn); 
+            radial_grid_ = sirius::Radial_grid_exp<double>(2000 + 150 * zn, 1e-7, 20.0 + 0.25 * zn); 
         }
 
         double ground_state(double solver_tol, double energy_tol, double charge_tol, std::vector<double>& enu, bool rel)
@@ -230,7 +230,7 @@ class Free_atom: public sirius::Atom_type
             printf("\n");
             printf("Radial gird\n");
             printf("-----------\n");
-            printf("type             : %s\n", radial_grid().grid_type_name().c_str());
+            printf("type             : %s\n", radial_grid().name().c_str());
             printf("number of points : %i\n", np);
             printf("origin           : %20.12f\n", radial_grid(0));
             printf("infinity         : %20.12f\n", radial_grid(np - 1));
@@ -612,7 +612,7 @@ void generate_atom_file(Free_atom& a,
         fa_r[i] = a.radial_grid(i);
     }
 
-    auto rg = sirius::Radial_grid(sirius::lin_exp_grid, 1500, 1e-7, 2.0);
+    sirius::Radial_grid_lin_exp<double> rg(1500, 1e-7, 2.0);
     std::vector<double> x;
     std::vector<double> veff;
     for (int ir = 0; ir < rg.num_points(); ir++) {
