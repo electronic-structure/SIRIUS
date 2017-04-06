@@ -85,10 +85,8 @@ class Simulation_context_base: public Simulation_parameters
 
         mdarray<double_complex, 3> phase_factors_;
         
-        #ifdef __GPU
         mdarray<int, 2> gvec_coord_;
         std::vector<mdarray<double, 2>> atom_coord_;
-        #endif
         
         mdarray<char, 1> memory_buffer_;
 
@@ -283,7 +281,6 @@ class Simulation_context_base: public Simulation_parameters
             return gvec_offset_;
         }
 
-        #ifdef __GPU
         inline mdarray<int, 2> const& gvec_coord() const
         {
             return gvec_coord_;
@@ -293,7 +290,6 @@ class Simulation_context_base: public Simulation_parameters
         {
             return atom_coord_[iat__];
         }
-        #endif
 
         /// Generate phase factors \f$ e^{i {\bf G} {\bf r}_{\alpha}} \f$ for all atoms of a given type.
         inline void generate_phase_factors(int iat__, mdarray<double_complex, 2>& phase_factors__) const

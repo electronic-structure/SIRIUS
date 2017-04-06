@@ -39,7 +39,7 @@ class Radial_integrals_base
     Unit_cell const& unit_cell_;
     
     /// Linear grid of q-points on which the interpolation of radial integrals is done.
-    Radial_grid grid_q_;
+    Radial_grid<double> grid_q_;
    
     /// Array with integrals.
     mdarray<Spline<double>, N> values_;
@@ -49,7 +49,7 @@ class Radial_integrals_base
     Radial_integrals_base(Unit_cell const& unit_cell__, double qmax__, int np__)
         : unit_cell_(unit_cell__)
     {
-        grid_q_ = Radial_grid(linear_grid, static_cast<int>(np__ * qmax__), 0, qmax__);
+        grid_q_ = Radial_grid_lin<double>(static_cast<int>(np__ * qmax__), 0, qmax__);
     }
     
     inline std::pair<int, double> iqdq(double q__) const

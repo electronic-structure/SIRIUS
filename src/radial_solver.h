@@ -144,7 +144,7 @@ class Radial_solver
         int zn_;
 
         /// Radial grid.
-        Radial_grid const& radial_grid_;
+        Radial_grid<double> const& radial_grid_;
 
         /// Electronic part of potential.
         Spline<double> ve_;
@@ -641,7 +641,7 @@ class Radial_solver
     
     public:
         
-        Radial_solver(int zn__, std::vector<double> const& v__, Radial_grid const& radial_grid__)
+        Radial_solver(int zn__, std::vector<double> const& v__, Radial_grid<double> const& radial_grid__)
             : zn_(zn__),
               radial_grid_(radial_grid__)
         {
@@ -818,7 +818,7 @@ class Radial_solver
             return radial_grid_[i__];
         }
 
-        inline Radial_grid const& radial_grid() const
+        inline Radial_grid<double> const& radial_grid() const
         {
             return radial_grid_;
         }
@@ -1000,7 +1000,7 @@ class Bound_state: public Radial_solver
                     int n__,
                     int l__,
                     int k__,
-                    Radial_grid const& radial_grid__,
+                    Radial_grid<double> const& radial_grid__,
                     std::vector<double> const& v__,
                     double enu_start__)
             : Radial_solver(zn__, v__, radial_grid__),
@@ -1242,7 +1242,7 @@ class Enu_finder: public Radial_solver
                    int zn__,
                    int n__,
                    int l__,
-                   Radial_grid const& radial_grid__,
+                   Radial_grid<double> const& radial_grid__,
                    std::vector<double> const& v__,
                    double enu_start__)
             : Radial_solver(zn__, v__, radial_grid__),

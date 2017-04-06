@@ -953,7 +953,7 @@ inline void Atom_symmetry_class::generate_core_charge_density(relativity_t core_
         free_atom_grid.push_back(x);
         dx *= 1.025;
     }
-    Radial_grid rgrid(free_atom_grid);
+    Radial_grid_ext<double> rgrid(static_cast<int>(free_atom_grid.size()), free_atom_grid.data());
 
     /* interpolate spherical potential inside muffin-tin */
     Spline<double> svmt(atom_type_.radial_grid());

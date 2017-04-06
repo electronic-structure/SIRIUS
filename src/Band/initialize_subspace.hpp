@@ -9,7 +9,7 @@ inline void Band::initialize_subspace(K_point_set& kset__,
 
     int nq = static_cast<int>(ctx_.gk_cutoff() * 10);
     /* this is the regular grid in reciprocal space in the range [0, |G+k|_max ] */
-    Radial_grid qgrid(linear_grid, nq, 0, ctx_.gk_cutoff());
+    Radial_grid_lin<double> qgrid(nq, 0, ctx_.gk_cutoff());
 
     std::vector<int> pref = {1, 2, 6, 24, 120};
     if (ctx_.iterative_solver_input().init_subspace_ == "lcao") {
