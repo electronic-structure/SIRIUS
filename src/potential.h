@@ -131,13 +131,13 @@ class Potential
 
         void init_PAW();
 
-        double xc_mt_PAW_nonmagnetic(Radial_grid const& rgrid,
+        double xc_mt_PAW_nonmagnetic(Radial_grid<double> const& rgrid,
                                      mdarray<double, 3>& out_atom_pot,
                                      mdarray<double, 2> const& full_rho_lm,
                                      std::vector<double> const& rho_core);
 
 
-        double xc_mt_PAW_collinear(Radial_grid const& rgrid,
+        double xc_mt_PAW_collinear(Radial_grid<double> const& rgrid,
                                    mdarray<double,3> &out_atom_pot,
                                    mdarray<double,2> const& full_rho_lm,
                                    mdarray<double,3> const& magnetization_lm,
@@ -154,7 +154,7 @@ class Potential
 
         void calc_PAW_local_Dij(paw_potential_data_t &pdd, mdarray<double_complex, 4>& paw_dij);
 
-        double calc_PAW_hartree_potential(Atom& atom, const Radial_grid& grid,
+        double calc_PAW_hartree_potential(Atom& atom, const Radial_grid<double>& grid,
                                           mdarray<double, 2> const& full_density,
                                           mdarray<double, 3>& out_atom_pot);
 
@@ -226,7 +226,12 @@ class Potential
             if (!free_atom) {
                 /* constant part of nuclear potential -z*(1/r - 1/R) */
                 for (int ir = 0; ir < nmtp; ir++) {
+                    #ifdef __VHA_AUX
+                    double r = atom__.radial_grid(ir);
+                    vha_mt__(0, ir) += atom__.zn() * (1 / R - 1 / r) / y00;
+                    #else
                     vha_mt__(0, ir) += atom__.zn() / R / y00;
+                    #endif
                 }
             }
             /* nuclear multipole moment */
@@ -346,14 +351,14 @@ class Potential
             }
         }
         
-        inline void xc_mt_nonmagnetic(Radial_grid const& rgrid,
+        inline void xc_mt_nonmagnetic(Radial_grid<double> const& rgrid,
                                       std::vector<XC_functional>& xc_func,
                                       Spheric_function<spectral, double> const& rho_lm,
                                       Spheric_function<spatial, double>& rho_tp,
                                       Spheric_function<spatial, double>& vxc_tp, 
                                       Spheric_function<spatial, double>& exc_tp);
 
-        inline void xc_mt_magnetic(Radial_grid const& rgrid, 
+        inline void xc_mt_magnetic(Radial_grid<double> const& rgrid, 
                                    std::vector<XC_functional>& xc_func,
                                    Spheric_function<spectral, double>& rho_up_lm, 
                                    Spheric_function<spatial, double>& rho_up_tp, 

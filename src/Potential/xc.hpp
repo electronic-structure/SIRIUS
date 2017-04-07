@@ -1,4 +1,4 @@
-inline void Potential::xc_mt_nonmagnetic(Radial_grid const& rgrid,
+inline void Potential::xc_mt_nonmagnetic(Radial_grid<double> const& rgrid,
                                          std::vector<XC_functional>& xc_func,
                                          Spheric_function<spectral, double> const& rho_lm, 
                                          Spheric_function<spatial, double>& rho_tp, 
@@ -117,7 +117,7 @@ inline void Potential::xc_mt_nonmagnetic(Radial_grid const& rgrid,
     }
 }
 
-inline void Potential::xc_mt_magnetic(Radial_grid const& rgrid,
+inline void Potential::xc_mt_magnetic(Radial_grid<double> const& rgrid,
                                       std::vector<XC_functional>& xc_func,
                                       Spheric_function<spectral, double>& rho_up_lm, 
                                       Spheric_function<spatial, double>& rho_up_tp, 
@@ -146,7 +146,7 @@ inline void Potential::xc_mt_magnetic(Radial_grid const& rgrid,
     Spheric_function<spatial, double> grad_rho_dn_grad_rho_dn_tp;
     Spheric_function<spatial, double> grad_rho_up_grad_rho_dn_tp;
 
-    assert(rho_up_lm.radial_grid().hash() == rho_dn_lm.radial_grid().hash());
+    //assert(rho_up_lm.radial_grid().hash() == rho_dn_lm.radial_grid().hash());
 
     vxc_up_tp.zero();
     vxc_dn_tp.zero();

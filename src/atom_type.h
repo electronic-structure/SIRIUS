@@ -402,7 +402,7 @@ class Atom_type
     protected:
 
         /// Radial grid.
-        Radial_grid radial_grid_;
+        Radial_grid<double> radial_grid_;
 
         /// Density of a free atom.
         Spline<double> free_atom_density_spline_;
@@ -410,7 +410,7 @@ class Atom_type
         std::vector<double> free_atom_density_;
 
         /// Radial grid of a free atom.
-        Radial_grid free_atom_radial_grid_;
+        Radial_grid<double> free_atom_radial_grid_;
 
     public:
         
@@ -430,7 +430,7 @@ class Atom_type
             , num_mt_points_(2000 + zn__ * 50)
             , atomic_levels_(levels__)
         {
-            radial_grid_ = Radial_grid(grid_type__, num_mt_points_, 1e-6 / zn_, 20.0 + 0.25 * zn_); 
+            radial_grid_ = Radial_grid_factory<double>(grid_type__, num_mt_points_, 1e-6 / zn_, 20.0 + 0.25 * zn_);
         }
  
         Atom_type(Simulation_parameters const& parameters__,
@@ -455,10 +455,10 @@ class Atom_type
             }
             if (num_points__ < 0 && points__ == nullptr) {
                 /* create default exponential grid */
-                radial_grid_ = Radial_grid(lin_exp_grid, num_mt_points_, radial_grid_origin_, mt_radius_); 
+                radial_grid_ = Radial_grid_exp<double>(num_mt_points_, radial_grid_origin_, mt_radius_); 
             } else {
                 assert(num_points__ == num_mt_points_);
-                radial_grid_ = Radial_grid(num_points__, points__);
+                radial_grid_ = Radial_grid_ext<double>(num_points__, points__);
             }
             if (parameters_.processing_unit() == GPU) {
                 #ifdef __GPU
@@ -581,14 +581,14 @@ class Atom_type
             return num_mt_points_;
         }
 
-        inline Radial_grid const& radial_grid() const
+        inline Radial_grid<double> const& radial_grid() const
         {
             assert(num_mt_points_ > 0);
             assert(radial_grid_.num_points() > 0);
             return radial_grid_;
         }
 
-        inline Radial_grid const& free_atom_radial_grid() const
+        inline Radial_grid<double> const& free_atom_radial_grid() const
         {
             return free_atom_radial_grid_;
         }
@@ -854,8 +854,10 @@ class Atom_type
 
         inline void set_free_atom_radial_grid(int num_points__, double const* points__)
         {
-            if (num_points__ <= 0) TERMINATE("wrong number of radial points");
-            free_atom_radial_grid_ = Radial_grid(num_points__, points__);
+            if (num_points__ <= 0) {
+                TERMINATE("wrong number of radial points");
+            }
+            free_atom_radial_grid_ = Radial_grid_ext<double>(num_points__, points__);
         }
 
         inline void set_free_atom_density(int num_points__, double const* dens__)
@@ -1093,7 +1095,7 @@ inline void Atom_type::print_info() const
     printf("mt_radius      : %f\n", mt_radius_);
     printf("num_mt_points  : %i\n", num_mt_points_);
     printf("grid_origin    : %f\n", radial_grid_[0]);
-    printf("grid_name      : %s\n", radial_grid_.grid_type_name().c_str());
+    printf("grid_name      : %s\n", radial_grid_.name().c_str());
     printf("\n");
     printf("number of core electrons    : %f\n", num_core_electrons_);
     printf("number of valence electrons : %f\n", num_valence_electrons_);
@@ -1481,7 +1483,7 @@ inline void Atom_type::read_input(const std::string& fname)
 
         /* create free atom radial grid */
         auto fa_r = parser["free_atom"]["radial_grid"].get<std::vector<double>>();
-        free_atom_radial_grid_ = Radial_grid(fa_r);
+        free_atom_radial_grid_ = Radial_grid_ext<double>(static_cast<int>(fa_r.size()), fa_r.data());
         /* read density */
         free_atom_density_ = parser["free_atom"]["density"].get<std::vector<double>>();
     }

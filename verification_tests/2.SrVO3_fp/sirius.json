@@ -2,8 +2,8 @@
     "control" : {
         "cyclic_block_size" : 16,
         "processing_unit" : "cpu",
-        "std_evp_solver_type" : "lapack",
-        "gen_evp_solver_type" : "lapack",
+        "std_evp_solver_type" : "scalapack",
+        "gen_evp_solver_type" : "scalapack",
         "verbosity" : 2
     },
 
@@ -11,13 +11,13 @@
         "electronic_structure_method" : "full_potential_lapwlo",
         "xc_functionals" : ["XC_LDA_X", "XC_LDA_C_PZ"],
         "smearing_width" : 0.05,
-        "valence_relativity" : "iora",
+        "!valence_relativity" : "none",
         "!core_relativity" : "none",
         "!num_fv_states" : 50,
         "aw_cutoff" : 7.0,
         "pw_cutoff" : 20.00,
         "auto_rmt" : 0,
-        "use_symmetry": 1,
+        "use_symmetry": true,
         "ngridk" : [2, 2, 2],
         "potential_tol" : 1e-5,
         "energy_tol" : 1e-8,

@@ -1578,7 +1578,7 @@ void sirius_radial_solver(ftn_char    type__,
 
     relativity_t rel = relativity_t::none;
 
-    sirius::Radial_grid rgrid(*nr__, r__);
+    sirius::Radial_grid_ext<double> rgrid(*nr__, r__);
     std::vector<double> v(v__, v__ + rgrid.num_points());
     sirius::Radial_solver solver(*zn__, v, rgrid);
 
@@ -2786,7 +2786,7 @@ void sirius_fderiv(ftn_int* m__,
                    ftn_double* g__)
 {
     int np = *np__;
-    sirius::Radial_grid rgrid(np, x__);
+    sirius::Radial_grid_ext<double> rgrid(np, x__);
     sirius::Spline<double> s(rgrid);
     for (int i = 0; i < np; i++) {
         s[i] = f__[i];
@@ -2814,7 +2814,7 @@ void sirius_integrate_(ftn_int* m__,
                       ftn_double* result__)
 {
     int np = *np__;
-    sirius::Radial_grid rgrid(np, x__);
+    sirius::Radial_grid_ext<double> rgrid(np, x__);
     sirius::Spline<double> s(rgrid);
     for (int i = 0; i < np; i++) {
         s[i] = f__[i];

@@ -170,7 +170,7 @@ class DFT_ground_state
                 for (int ialoc = 0; ialoc < unit_cell_.spl_num_atoms().local_size(); ialoc++) {
                     int ia = unit_cell_.spl_num_atoms(ialoc);
                     int zn = unit_cell_.atom(ia).zn();
-                    enuc -= 0.5 * zn * potential_.vh_el(ia) * y00;
+                    enuc -= 0.5 * zn * potential_.vh_el(ia); // * y00;
                 }
                 ctx_.comm().allreduce(&enuc, 1);
             }

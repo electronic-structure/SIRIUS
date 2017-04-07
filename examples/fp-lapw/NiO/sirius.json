@@ -23,7 +23,7 @@
 
         "ngridk" : [2,2,2],
     
-        "use_symmetry" : 1,
+        "use_symmetry" : true,
 
         "pw_cutoff" : 20,
 

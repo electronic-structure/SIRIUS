@@ -301,8 +301,12 @@ inline void Potential::poisson(Periodic_function<double>* rho, Periodic_function
                     vh->f_mt<index_domain_t::local>(lm, ir, ialoc) += vlm[lm] * rRl(ir, l);
                 }
             }
-            /* save electronic part of potential at point of origin */
-            vh_el_(ia) = vh->f_mt<index_domain_t::local>(0, 0, ialoc);
+            /* save electronic part of the potential at the point of origin */
+            #ifdef __VHA_AUX
+            vh_el_(ia) = y00 * vh->f_mt<index_domain_t::local>(0, 0, ialoc) + unit_cell_.atom(ia).zn() / unit_cell_.atom(ia).radial_grid(0);
+            #else
+            vh_el_(ia) = y00 * vh->f_mt<index_domain_t::local>(0, 0, ialoc);
+            #endif
         }
         ctx_.comm().allgather(vh_el_.at<CPU>(), unit_cell_.spl_num_atoms().global_offset(),
                               unit_cell_.spl_num_atoms().local_size());
@@ -321,6 +325,7 @@ inline void Potential::poisson(Periodic_function<double>* rho, Periodic_function
     /* compute contribution from the smooth part of Hartree potential */
     energy_vha_ = rho->inner(vh);
         
+    #ifndef __VHA_AUX
     /* add nucleus potential and contribution to Hartree energy */
     if (ctx_.full_potential()) {
         double evha_nuc{0};
@@ -338,4 +343,5 @@ inline void Potential::poisson(Periodic_function<double>* rho, Periodic_function
         ctx_.comm().allreduce(&evha_nuc, 1);
         energy_vha_ += evha_nuc;
     }
+    #endif
 }
