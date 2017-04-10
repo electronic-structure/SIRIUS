@@ -1012,6 +1012,21 @@ module sirius
             type(C_PTR), value,      intent(in)  :: comm
         end subroutine
 
+        subroutine sirius_generate_rho_multipole_moments(lmmax, qmt)&
+            &bind(C, name="sirius_generate_rho_multipole_moments")
+            integer,                 intent(in)  :: lmmax
+            complex(8),              intent(out) :: qmt
+        end subroutine
+
+        subroutine sirius_generate_coulomb_potential_mt(ia,lmmax_rho,rho,lmmax_pot,pot)&
+            &bind(C, name="sirius_generate_coulomb_potential_mt")
+            integer,                 intent(in)  :: ia
+            integer,                 intent(in)  :: lmmax_rho
+            complex(8),              intent(in)  :: rho
+            integer,                 intent(in)  :: lmmax_pot
+            complex(8),              intent(out) :: pot
+        end subroutine
+
     end interface
 
 contains
