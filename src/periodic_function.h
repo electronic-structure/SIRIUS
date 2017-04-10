@@ -134,9 +134,9 @@ class Periodic_function: public Smooth_periodic_function<T>
                 return;
             }
 
-            f_pw_ = mdarray<double_complex, 1>(gvec_.num_gvec());
+            f_pw_ = mdarray<double_complex, 1>(gvec_.num_gvec(), memory_t::host, "f_pw_");
             this->f_pw_local_ = mdarray<double_complex, 1>(&f_pw_[this->gvec().partition().gvec_offset_fft()],
-                                                           this->fft_->local_size());
+                                                           this->fft_->local_size(), "f_pw_local_");
             is_f_pw_allocated_ = true;
         }
 
@@ -145,7 +145,7 @@ class Periodic_function: public Smooth_periodic_function<T>
         {
             if (ctx_.full_potential()) {
                 if (allocate_global__) {
-                    f_mt_ = mdarray<T, 3>(angular_domain_size_, unit_cell_.max_num_mt_points(), unit_cell_.num_atoms());
+                    f_mt_ = mdarray<T, 3>(angular_domain_size_, unit_cell_.max_num_mt_points(), unit_cell_.num_atoms(), memory_t::host, "f_mt_");
                     set_local_mt_ptr();
                 } else {
                     for (int ialoc = 0; ialoc < unit_cell_.spl_num_atoms().local_size(); ialoc++) {
@@ -367,7 +367,7 @@ class Periodic_function: public Smooth_periodic_function<T>
         /// Set the global pointer to the muffin-tin part
         void set_mt_ptr(T* mt_ptr__)
         {
-            f_mt_ = mdarray<T, 3>(mt_ptr__, angular_domain_size_, unit_cell_.max_num_mt_points(), unit_cell_.num_atoms());
+            f_mt_ = mdarray<T, 3>(mt_ptr__, angular_domain_size_, unit_cell_.max_num_mt_points(), unit_cell_.num_atoms(), "f_mt_");
             set_local_mt_ptr();
         }
 
@@ -399,14 +399,14 @@ class Periodic_function: public Smooth_periodic_function<T>
 
         double value(vector3d<double>& vc)
         {
-            int ja, jr;
-            double dr, tp[2];
+            int ja{-1}, jr{-1};
+            double dr{0}, tp[2];
         
             if (unit_cell_.is_point_in_mt(vc, ja, jr, dr, tp)) {
                 int lmax = Utils::lmax_by_lmmax(angular_domain_size_);
                 std::vector<double> rlm(angular_domain_size_);
                 SHT::spherical_harmonics(lmax, tp[0], tp[1], &rlm[0]);
-                double p = 0.0;
+                double p{0};
                 for (int lm = 0; lm < angular_domain_size_; lm++) {
                     double d = (f_mt_(lm, jr + 1, ja) - f_mt_(lm, jr, ja)) / unit_cell_.atom(ja).type().radial_grid().dx(jr);
         
@@ -414,7 +414,7 @@ class Periodic_function: public Smooth_periodic_function<T>
                 }
                 return p;
             } else {
-                double p = 0.0;
+                double p{0};
                 for (int ig = 0; ig < gvec_.num_gvec(); ig++) {
                     vector3d<double> vgc = gvec_.gvec_cart(ig);
                     p += std::real(f_pw_(ig) * std::exp(double_complex(0.0, vc * vgc)));
