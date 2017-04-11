@@ -51,6 +51,270 @@ enum beta_desc_idx {
     ia       = 3
 };
 
+/// Base class for beta projectors.
+class Beta_projectors_base
+{
+  protected:
+
+    Simulation_context_base const& ctx_;
+
+    Unit_cell const& unit_cell_;
+
+    Gvec const& gkvec_;
+
+    int lmax_beta_;
+
+    device_t pu_;
+
+    struct beta_chunk_t
+    {
+        int num_beta_;
+        int num_atoms_;
+        int offset_;
+        mdarray<int, 2> desc_;
+        mdarray<double, 2> atom_pos_;
+    };
+
+    std::vector<beta_chunk_t> beta_chunks_;
+
+    int max_num_beta_;
+
+    /// Total number of beta-projectors among atom types.
+    int num_beta_t_;
+
+    int num_gkvec_loc_;
+    
+    /// Split beta-projectors into chunks.
+    void split_in_chunks()
+    {   
+        /* initial chunk size */
+        int chunk_size = (gkvec_.comm().size() == 1) ? unit_cell_.num_atoms() : std::min(unit_cell_.num_atoms(), 256);
+        /* maximum number of chunks */
+        int num_chunks = unit_cell_.num_atoms() / chunk_size + std::min(1, unit_cell_.num_atoms() % chunk_size);
+        /* final maximum chunk size */
+        chunk_size = unit_cell_.num_atoms() / num_chunks + std::min(1, unit_cell_.num_atoms() % num_chunks);
+
+        int offset_in_beta_gk{0};
+
+        for (int ib = 0; ib < num_chunks; ib++) {
+            /* number of atoms in this chunk */
+            int na = std::min(unit_cell_.num_atoms(), (ib + 1) * chunk_size) - ib * chunk_size;
+            beta_chunks_.push_back(beta_chunk_t());
+            beta_chunks_.back().num_atoms_ = na;
+            beta_chunks_.back().desc_      = mdarray<int, 2>(4, na);
+            beta_chunks_.back().atom_pos_  = mdarray<double, 2>(3, na);
+
+            int num_beta{0};
+            for (int i = 0; i < na; i++) {
+                /* global index of atom by local index and chunk */
+                int ia     = ib * chunk_size + i;
+                auto pos   = unit_cell_.atom(ia).position();
+                auto& type = unit_cell_.atom(ia).type();
+                /* atom fractional coordinates */
+                for (int x: {0, 1, 2}) {
+                    beta_chunks_.back().atom_pos_(x, i) = pos[x];
+                }
+                /* number of beta functions for atom */
+                beta_chunks_.back().desc_(beta_desc_idx::nbf, i) = type.mt_basis_size();
+                /* offset in beta_gk*/
+                beta_chunks_.back().desc_(beta_desc_idx::offset, i) = num_beta;
+                /* offset in beta_gk_t */
+                beta_chunks_.back().desc_(beta_desc_idx::offset_t, i) = type.offset_lo();
+                /* global index of atom */
+                beta_chunks_.back().desc_(beta_desc_idx::ia, i) = ia;
+
+                num_beta += type.mt_basis_size();
+            }
+            /* number of beta-projectors in this chunk */
+            beta_chunks_.back().num_beta_ = num_beta;
+            beta_chunks_.back().offset_ = offset_in_beta_gk;
+            offset_in_beta_gk += num_beta;
+
+            if (pu_ == GPU) {
+                beta_chunks_.back().desc_.allocate(memory_t::device);
+                beta_chunks_.back().desc_.copy<memory_t::host, memory_t::device>();
+
+                beta_chunks_.back().atom_pos_.allocate(memory_t::device);
+                beta_chunks_.back().atom_pos_.copy<memory_t::host, memory_t::device>();
+            }
+        }
+
+        max_num_beta_ = 0;
+        for (auto& e: beta_chunks_) {
+            max_num_beta_ = std::max(max_num_beta_, e.num_beta_);
+        }
+
+        num_beta_t_ = 0;
+        for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
+            num_beta_t_ += unit_cell_.atom_type(iat).mt_lo_basis_size();
+        }
+
+    }
+  public:
+
+    Beta_projectors_base(Simulation_context_base const& ctx__,
+                         Gvec                    const& gkvec__)
+        : ctx_(ctx__)
+        , unit_cell_(ctx__.unit_cell())
+        , gkvec_(gkvec__)
+        , lmax_beta_(unit_cell_.lmax())
+        , pu_(ctx__.processing_unit())
+    {
+        split_in_chunks();
+        num_gkvec_loc_ = gkvec_.gvec_count(gkvec_.comm().rank());
+    }
+
+    inline int num_chunks() const
+    {
+        return static_cast<int>(beta_chunks_.size());
+    }
+
+    inline beta_chunk_t const& chunk(int idx__) const
+    {
+        return beta_chunks_[idx__];
+    }
+
+    inline int num_gkvec_loc() const
+    {
+        return num_gkvec_loc_;
+    }
+};
+
+class Beta_projectors_strain_deriv : public Beta_projectors_base
+{
+  private:
+    /// Phase-factor independent strain derivatives of plane-wave coefficients of |beta> functions for atom types.
+    std::array<matrix<double_complex>, 9> pw_coeffs_t_;
+
+    std::array<matrix<double_complex>, 9> pw_coeffs_a_;
+
+    void generate_pw_coefs_t()
+    {
+        Radial_integrals_beta beta_ri0(unit_cell_, ctx_.gk_cutoff(), 20);
+        Radial_integrals_beta_dg beta_ri1(unit_cell_, ctx_.gk_cutoff(), 20);
+
+        auto& comm = gkvec_.comm();
+
+        /* allocate array */
+        for (int i = 0; i < 9; i++) {
+            pw_coeffs_t_[i] = matrix<double_complex>(num_gkvec_loc(), num_beta_t_);
+        }
+
+        auto dRlm_deps = [this](int lm, vector3d<double>& gvs, int mu, int nu)
+        {
+            double theta = gvs[1];
+            double phi   = gvs[2];
+
+            vector3d<double> q({std::sin(theta) * std::cos(phi), std::sin(theta) * std::sin(phi), std::cos(theta)});
+            vector3d<double> dtheta_dq({std::cos(phi) * std::cos(theta), std::cos(theta) * std::sin(phi), -std::sin(theta)});
+            vector3d<double> dphi_dq({-std::sin(phi), std::cos(phi), 0.0});
+
+            return -q[mu] * (SHT::dRlm_dtheta(lm, theta, phi) * dtheta_dq[nu] +
+                             SHT::dRlm_dphi_sin_theta(lm, theta, phi) * dphi_dq[nu]);
+        };
+
+        /* compute d <G+k|beta> / d epsilon_{mu, nu} */
+        #pragma omp parallel for
+        for (int igkloc = 0; igkloc < num_gkvec_loc(); igkloc++) {
+            int igk  = gkvec_.gvec_offset(comm.rank()) + igkloc;
+            auto gvc = gkvec_.gkvec_cart(igk);
+            /* vs = {r, theta, phi} */
+            auto gvs = SHT::spherical_coordinates(gvc);
+
+            if (gvs[0] < 1e-10) {
+                for (int nu = 0; nu < 3; nu++) {
+                    for (int mu = 0; mu < 3; mu++) {
+                        for (int i = 0; i < num_beta_t_; i++) {
+                            pw_coeffs_t_[mu +nu * 3](igkloc, i) = 0;
+                        }
+                    }
+                }
+                continue;
+            }
+
+            for (int nu = 0; nu < 3; nu++) {
+                for (int mu = 0; mu < 3; mu++) {
+                    /* compute real spherical harmonics for G+k vector */
+                    std::vector<double> gkvec_rlm(Utils::lmmax(lmax_beta_));
+                    std::vector<double> gkvec_drlm(Utils::lmmax(lmax_beta_));
+
+                    SHT::spherical_harmonics(lmax_beta_, gvs[1], gvs[2], &gkvec_rlm[0]);
+
+                    for (int lm = 0; lm < Utils::lmmax(lmax_beta_); lm++) {
+                        gkvec_drlm[lm] = dRlm_deps(lm, gvs, mu, nu);
+                    }
+
+                    for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
+                        auto& atom_type = unit_cell_.atom_type(iat);
+                        for (int xi = 0; xi < atom_type.mt_basis_size(); xi++) {
+                            int l     = atom_type.indexb(xi).l;
+                            int lm    = atom_type.indexb(xi).lm;
+                            int idxrf = atom_type.indexb(xi).idxrf;
+
+                            auto z = std::pow(double_complex(0, -1), l) * fourpi / std::sqrt(unit_cell_.omega());
+
+                            auto d1 = beta_ri0.value(idxrf, iat, gvs[0]) * gkvec_drlm[lm];
+
+                            auto d2 = beta_ri1.value(idxrf, iat, gvs[0]) * gkvec_rlm[lm];
+
+                            pw_coeffs_t_[mu + nu * 3](igkloc, atom_type.offset_lo() + xi) = z * (d1 - d2 * gvc[mu] * gvc[nu] / gvs[0]);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+  public:
+    Beta_projectors_strain_deriv(Simulation_context_base const& ctx__,
+                                 Gvec                    const& gkvec__)
+        : Beta_projectors_base(ctx__, gkvec__)
+    {
+        generate_pw_coefs_t();
+    }
+
+    void generate(int ichunk__)
+    {
+        int num_beta = chunk(ichunk__).num_beta_;
+
+        auto& comm = gkvec_.comm();
+
+        /* allocate array */
+        for (int i = 0; i < 9; i++) {
+            pw_coeffs_a_[i] = matrix<double_complex>(num_gkvec_loc(), num_beta);
+        }
+
+
+        #pragma omp for
+        for (int i = 0; i < chunk(ichunk__).num_atoms_; i++) {
+            int ia = chunk(ichunk__).desc_(beta_desc_idx::ia, i);
+
+            double phase = twopi * (gkvec_.vk() * unit_cell_.atom(ia).position());
+            double_complex phase_k = std::exp(double_complex(0.0, phase));
+
+            std::vector<double_complex> phase_gk(num_gkvec_loc());
+            for (int igk_loc = 0; igk_loc < num_gkvec_loc_; igk_loc++) {
+                int igk = gkvec_.gvec_offset(comm.rank()) + igk_loc;
+                auto G = gkvec_.gvec(igk);
+                phase_gk[igk_loc] = std::conj(ctx_.gvec_phase_factor(G, ia) * phase_k);
+            }
+
+            for (int nu = 0; nu < 3; nu++) {
+                for (int mu = 0; mu < 3; mu++) {
+
+                    for (int xi = 0; xi < chunk(ichunk__).desc_(beta_desc_idx::nbf, i); xi++) {
+                        for (int igk_loc = 0; igk_loc < num_gkvec_loc(); igk_loc++) {
+                            pw_coeffs_a_[mu +nu * 3](igk_loc, chunk(ichunk__).desc_(beta_desc_idx::offset, i) + xi) = 
+                                pw_coeffs_t_[mu + nu * 3](igk_loc, chunk(ichunk__).desc_(beta_desc_idx::offset_t, i) + xi) * phase_gk[igk_loc];
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+};
+
 class Beta_projectors_gradient;
 
 /// Stores <G+k | beta> expansion
@@ -235,117 +499,117 @@ class Beta_projectors
             #endif
         }
 
-        void generate_beta_gk_t_lat_deriv(Simulation_context const& ctx__)
-        {
-            PROFILE("sirius::Beta_projectors::generate_beta_gk_t_lat_deriv");
+        //void generate_beta_gk_t_lat_deriv(Simulation_context const& ctx__)
+        //{
+        //    PROFILE("sirius::Beta_projectors::generate_beta_gk_t_lat_deriv");
 
-            auto beta_dG_ri = Radial_integrals_beta_dg(unit_cell_, ctx_.gk_cutoff(), 20);
+        //    auto beta_dG_ri = Radial_integrals_beta_dg(unit_cell_, ctx_.gk_cutoff(), 20);
 
-            int mu = 0;
-            int nu = 0;
+        //    int mu = 0;
+        //    int nu = 0;
 
-            /* allocate array */
-            matrix<double_complex> beta_gk_t_lat_deriv(gkvec_.gvec_count(comm_.rank()), num_beta_t_);
-            
-            /* compute dG_tau / da_{mu,nu} */ 
-            auto dG_da = [this](vector3d<double>& gvc, int tau, int mu, int nu)
-            {
-                return -unit_cell_.inverse_lattice_vectors()(nu, tau) * gvc[mu];
-            };
+        //    /* allocate array */
+        //    matrix<double_complex> beta_gk_t_lat_deriv(gkvec_.gvec_count(comm_.rank()), num_beta_t_);
+        //    
+        //    /* compute dG_tau / da_{mu,nu} */ 
+        //    auto dG_da = [this](vector3d<double>& gvc, int tau, int mu, int nu)
+        //    {
+        //        return -unit_cell_.inverse_lattice_vectors()(nu, tau) * gvc[mu];
+        //    };
 
-            /* compute derivative of theta angle with respect to lattice vectors d theta / da_{mu,nu} */
-            auto dtheta_da = [this, dG_da](vector3d<double>& gvc, vector3d<double>& gvs, int mu, int nu)
-            {
-                double g     = gvs[0];
-                double theta = gvs[1];
-                double phi   = gvs[2];
+        //    /* compute derivative of theta angle with respect to lattice vectors d theta / da_{mu,nu} */
+        //    auto dtheta_da = [this, dG_da](vector3d<double>& gvc, vector3d<double>& gvs, int mu, int nu)
+        //    {
+        //        double g     = gvs[0];
+        //        double theta = gvs[1];
+        //        double phi   = gvs[2];
 
-                double result = std::cos(theta) * std::cos(phi) * dG_da(gvc, 0, mu, nu) +
-                                std::cos(theta) * std::sin(phi) * dG_da(gvc, 1, mu, nu) -
-                                std::sin(theta) * dG_da(gvc, 2, mu, nu);
-                return result / g;
-            };
+        //        double result = std::cos(theta) * std::cos(phi) * dG_da(gvc, 0, mu, nu) +
+        //                        std::cos(theta) * std::sin(phi) * dG_da(gvc, 1, mu, nu) -
+        //                        std::sin(theta) * dG_da(gvc, 2, mu, nu);
+        //        return result / g;
+        //    };
 
-            auto dphi_da = [this, dG_da](vector3d<double>& gvc, vector3d<double>& gvs, int mu, int nu)
-            {
-                double g   = gvs[0];
-                double phi = gvs[2];
+        //    auto dphi_da = [this, dG_da](vector3d<double>& gvc, vector3d<double>& gvs, int mu, int nu)
+        //    {
+        //        double g   = gvs[0];
+        //        double phi = gvs[2];
 
-                double result = -std::sin(phi) * dG_da(gvc, 0, mu, nu) + std::cos(phi) * dG_da(gvc, 0, mu, nu);
-                return result / g;
-            };
+        //        double result = -std::sin(phi) * dG_da(gvc, 0, mu, nu) + std::cos(phi) * dG_da(gvc, 0, mu, nu);
+        //        return result / g;
+        //    };
 
-            auto dRlm_da = [this, dtheta_da, dphi_da](int lm, vector3d<double>& gvc, vector3d<double>& gvs, int mu, int nu)
-            {
-                double theta = gvs[1];
-                double phi   = gvs[2];
+        //    auto dRlm_da = [this, dtheta_da, dphi_da](int lm, vector3d<double>& gvc, vector3d<double>& gvs, int mu, int nu)
+        //    {
+        //        double theta = gvs[1];
+        //        double phi   = gvs[2];
 
-                return SHT::dRlm_dtheta(lm, theta, phi) * dtheta_da(gvc, gvs, mu, nu) +
-                       SHT::dRlm_dphi_sin_theta(lm, theta, phi) * dphi_da(gvc, gvs, mu, nu);
-            };
+        //        return SHT::dRlm_dtheta(lm, theta, phi) * dtheta_da(gvc, gvs, mu, nu) +
+        //               SHT::dRlm_dphi_sin_theta(lm, theta, phi) * dphi_da(gvc, gvs, mu, nu);
+        //    };
 
-            auto djl_da = [this, dG_da](vector3d<double>& gvc, vector3d<double>& gvs, int mu, int nu)
-            {
-                double theta = gvs[1];
-                double phi   = gvs[2];
+        //    auto djl_da = [this, dG_da](vector3d<double>& gvc, vector3d<double>& gvs, int mu, int nu)
+        //    {
+        //        double theta = gvs[1];
+        //        double phi   = gvs[2];
 
-                return std::sin(theta) * std::cos(phi) * dG_da(gvc, 0, mu, nu) +
-                       std::sin(theta) * std::sin(phi) * dG_da(gvc, 1, mu, nu) +
-                       std::cos(theta) * dG_da(gvc, 2, mu, nu);
-            };
-            
-            /* compute d <G+k|beta> / a_{mu, nu} */
-            #pragma omp parallel for
-            for (int igkloc = 0; igkloc < gkvec_.gvec_count(comm_.rank()); igkloc++) {
-                int igk  = gkvec_.gvec_offset(comm_.rank()) + igkloc;
-                auto gvc = gkvec_.gkvec_cart(igk);
-                /* vs = {r, theta, phi} */
-                auto gvs = SHT::spherical_coordinates(gvc);
+        //        return std::sin(theta) * std::cos(phi) * dG_da(gvc, 0, mu, nu) +
+        //               std::sin(theta) * std::sin(phi) * dG_da(gvc, 1, mu, nu) +
+        //               std::cos(theta) * dG_da(gvc, 2, mu, nu);
+        //    };
+        //    
+        //    /* compute d <G+k|beta> / a_{mu, nu} */
+        //    #pragma omp parallel for
+        //    for (int igkloc = 0; igkloc < gkvec_.gvec_count(comm_.rank()); igkloc++) {
+        //        int igk  = gkvec_.gvec_offset(comm_.rank()) + igkloc;
+        //        auto gvc = gkvec_.gkvec_cart(igk);
+        //        /* vs = {r, theta, phi} */
+        //        auto gvs = SHT::spherical_coordinates(gvc);
 
-                if (gvs[0] < 1e-10) {
-                    for (int i = 0; i < num_beta_t_; i++) {
-                         beta_gk_t_lat_deriv(igkloc, i) = 0;
-                    }
-                    continue;
-                }
+        //        if (gvs[0] < 1e-10) {
+        //            for (int i = 0; i < num_beta_t_; i++) {
+        //                 beta_gk_t_lat_deriv(igkloc, i) = 0;
+        //            }
+        //            continue;
+        //        }
 
-                /* compute real spherical harmonics for G+k vector */
-                std::vector<double> gkvec_rlm(Utils::lmmax(lmax_beta_));
-                std::vector<double> gkvec_drlm(Utils::lmmax(lmax_beta_));
+        //        /* compute real spherical harmonics for G+k vector */
+        //        std::vector<double> gkvec_rlm(Utils::lmmax(lmax_beta_));
+        //        std::vector<double> gkvec_drlm(Utils::lmmax(lmax_beta_));
 
-                SHT::spherical_harmonics(lmax_beta_, gvs[1], gvs[2], &gkvec_rlm[0]);
+        //        SHT::spherical_harmonics(lmax_beta_, gvs[1], gvs[2], &gkvec_rlm[0]);
 
-                for (int lm = 0; lm < Utils::lmmax(lmax_beta_); lm++) {
-                    gkvec_drlm[lm] = dRlm_da(lm, gvc, gvs, mu, nu);
-                }
+        //        for (int lm = 0; lm < Utils::lmmax(lmax_beta_); lm++) {
+        //            gkvec_drlm[lm] = dRlm_da(lm, gvc, gvs, mu, nu);
+        //        }
 
-                for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
-                    auto& atom_type = unit_cell_.atom_type(iat);
-                    for (int xi = 0; xi < atom_type.mt_basis_size(); xi++) {
-                        int l     = atom_type.indexb(xi).l;
-                        int lm    = atom_type.indexb(xi).lm;
-                        int idxrf = atom_type.indexb(xi).idxrf;
+        //        for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
+        //            auto& atom_type = unit_cell_.atom_type(iat);
+        //            for (int xi = 0; xi < atom_type.mt_basis_size(); xi++) {
+        //                int l     = atom_type.indexb(xi).l;
+        //                int lm    = atom_type.indexb(xi).lm;
+        //                int idxrf = atom_type.indexb(xi).idxrf;
 
-                        auto z = std::pow(double_complex(0, -1), l) * fourpi / std::sqrt(unit_cell_.omega());
+        //                auto z = std::pow(double_complex(0, -1), l) * fourpi / std::sqrt(unit_cell_.omega());
 
-                        auto d1 = beta_radial_integrals_->value(idxrf, iat, gvs[0]) *
-                                  (gkvec_drlm[lm] - 0.5 * gkvec_rlm[lm] * unit_cell_.inverse_lattice_vectors()(nu, mu)); 
+        //                auto d1 = beta_radial_integrals_->value(idxrf, iat, gvs[0]) *
+        //                          (gkvec_drlm[lm] - 0.5 * gkvec_rlm[lm] * unit_cell_.inverse_lattice_vectors()(nu, mu)); 
 
-                        auto d2 = gkvec_rlm[lm] * djl_da(gvc, gvs, mu, nu) * beta_dG_ri.value(idxrf, iat, gvs[0]);
+        //                auto d2 = gkvec_rlm[lm] * djl_da(gvc, gvs, mu, nu) * beta_dG_ri.value(idxrf, iat, gvs[0]);
 
-                        beta_gk_t_lat_deriv(igkloc, atom_type.offset_lo() + xi) = z * (d1 + d2);
-                    }
-                }
-            }
+        //                beta_gk_t_lat_deriv(igkloc, atom_type.offset_lo() + xi) = z * (d1 + d2);
+        //            }
+        //        }
+        //    }
 
-            //if (unit_cell_.parameters().control().print_checksum_) {
-            //    auto c1 = beta_gk_t_.checksum();
-            //    comm_.allreduce(&c1, 1);
-            //    if (comm_.rank() == 0) {
-            //        DUMP("checksum(beta_gk_t) : %18.10f %18.10f", c1.real(), c1.imag())
-            //    }
-            //}
-        }
+        //    //if (unit_cell_.parameters().control().print_checksum_) {
+        //    //    auto c1 = beta_gk_t_.checksum();
+        //    //    comm_.allreduce(&c1, 1);
+        //    //    if (comm_.rank() == 0) {
+        //    //        DUMP("checksum(beta_gk_t) : %18.10f %18.10f", c1.real(), c1.imag())
+        //    //    }
+        //    //}
+        //}
 };
 
 inline Beta_projectors::Beta_projectors(Simulation_context_base const& ctx__,
