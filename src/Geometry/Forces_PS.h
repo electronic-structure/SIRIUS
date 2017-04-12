@@ -43,6 +43,8 @@ private:
 
         Beta_projectors_gradient bp_grad(&bp);
 
+        auto& bp_chunks = bp.beta_projector_chunks();
+
         // from formula
         double main_two_factor = -2.0;
 
@@ -61,7 +63,7 @@ private:
         bp_grad.prepare();
         bp.prepare();
 
-        for (int icnk = 0; icnk < bp.num_beta_chunks(); icnk++)
+        for (int icnk = 0; icnk < bp_chunks.num_chunks(); icnk++)
         {
             // generate chunk for inner product of beta gradient
             bp_grad.generate(icnk);
@@ -81,10 +83,10 @@ private:
                 std::array<matrix<T>, 3> bp_grad_phi_chunk = bp_grad.beta_phi<T>(icnk, nbnd);
 
                 // inner product of beta and WF
-                bp.inner<T>(icnk, kpoint.spinor_wave_functions(ispn), 0, nbnd);
+                auto bp_phi_chunk = bp.inner<T>(icnk, kpoint.spinor_wave_functions(ispn), 0, nbnd);
 
                 // get inner product
-                matrix<T> bp_phi_chunk = bp.beta_phi<T>(icnk, nbnd);
+                ///matrix<T> bp_phi_chunk = bp.beta_phi<T>(icnk, nbnd);
 
                 splindex<block> spl_nbnd(nbnd, kpoint.comm().size(), kpoint.comm().rank());
 
@@ -93,12 +95,12 @@ private:
                 int bnd_offset = spl_nbnd.global_offset();
 
                 #pragma omp parallel for
-                for(int ia_chunk = 0; ia_chunk < bp.beta_chunk(icnk).num_atoms_; ia_chunk++)
+                for(int ia_chunk = 0; ia_chunk < bp_chunks(icnk).num_atoms_; ia_chunk++)
                 {
-                    int ia = bp.beta_chunk(icnk).desc_(3, ia_chunk);
-                    int offs = bp.beta_chunk(icnk).desc_(1, ia_chunk);
-                    int nbf = bp.beta_chunk(icnk).desc_(0, ia_chunk);
-                    int iat = unit_cell.atom(ia).type_id();
+                    int ia   = bp_chunks(icnk).desc_(3, ia_chunk);
+                    int offs = bp_chunks(icnk).desc_(1, ia_chunk);
+                    int nbf  = bp_chunks(icnk).desc_(0, ia_chunk);
+                    int iat  = unit_cell.atom(ia).type_id();
 
 //                    linalg<CPU>::gemm(0, 0, nbf, n__, nbf,
 //                                      op_.at<CPU>(packed_mtrx_offset_(ia), ispn__), nbf,
@@ -117,7 +119,7 @@ private:
                                 return unit_cell.atom(ia).d_mtrx(i, j, ispn) - kpoint.band_energy(ibnd) *
                                         ctx_.augmentation_op(iat).q_mtrx(i, j);
                             } else {
-                                return unit_cell.atom(ia).d_mtrx(i, j, ispn) - kpoint.band_energy(ibnd);
+                                return unit_cell.atom(ia).d_mtrx(i, j, ispn);
                             }
                         };
 
@@ -167,8 +169,10 @@ private:
 
         // from formula
         double main_two_factor = -2.0;
+        
+        auto& bp_chunks = bp.beta_projector_chunks();
 
-        for (int icnk = 0; icnk < bp.num_beta_chunks(); icnk++)
+        for (int icnk = 0; icnk < bp_chunks.num_chunks(); icnk++)
         {
             // generate chunk for inner product of beta gradient
             bp_grad.generate(icnk);
@@ -202,11 +206,11 @@ private:
 
                 printf("nl1\n");
                 // inner product of beta and WF
-                bp.inner<T>(icnk, kpoint.spinor_wave_functions(ispn), bnd_offset, nbnd_loc);
+                auto bp_phi_chunk = bp.inner<T>(icnk, kpoint.spinor_wave_functions(ispn), bnd_offset, nbnd_loc);
 
                 printf("nl2\n");
                 // get inner product
-                matrix<T> bp_phi_chunk = bp.beta_phi<T>(icnk, nbnd_loc);
+                //matrix<T> bp_phi_chunk = bp.beta_phi<T>(icnk, nbnd_loc);
 
                 printf("nl3\n");
                 // inner product of beta gradient and WF
@@ -219,13 +223,11 @@ private:
 
 
                 #pragma omp parallel for
-                for(int ia_chunk = 0; ia_chunk < bp.beta_chunk(icnk).num_atoms_; ia_chunk++)
+                for(int ia_chunk = 0; ia_chunk < bp_chunks(icnk).num_atoms_; ia_chunk++)
                 {
-                    int ia = bp.beta_chunk(icnk).desc_(3, ia_chunk);
-                    int offs = bp.beta_chunk(icnk).desc_(1, ia_chunk);
-                    int iat = unit_cell.atom(ia).type_id();
-
-
+                    int ia   = bp_chunks(icnk).desc_(3, ia_chunk);
+                    int offs = bp_chunks(icnk).desc_(1, ia_chunk);
+                    int iat  = unit_cell.atom(ia).type_id();
 
                     // mpi
                     // TODO make in smart way with matrix multiplication
@@ -239,7 +241,7 @@ private:
                                 return unit_cell.atom(ia).d_mtrx(i, j, ispn) - kpoint.band_energy(ibnd) *
                                         ctx_.augmentation_op(iat).q_mtrx(i, j);
                             } else {
-                                return unit_cell.atom(ia).d_mtrx(i, j, ispn) - kpoint.band_energy(ibnd);
+                                return unit_cell.atom(ia).d_mtrx(i, j, ispn);
                             }
                         };
 

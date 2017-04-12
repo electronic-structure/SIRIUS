@@ -82,7 +82,7 @@ class Non_local_operator
         {
         }
         
-        inline void apply(int chunk__, int ispn__, wave_functions& op_phi__, int idx0__, int n__);
+        inline void apply(int chunk__, int ispn__, wave_functions& op_phi__, int idx0__, int n__, matrix<T>& beta_phi__);
 
         inline T operator()(int xi1__, int xi2__, int ia__)
         {
@@ -101,7 +101,8 @@ inline void Non_local_operator<double_complex>::apply(int chunk__,
                                                       int ispn__,
                                                       wave_functions& op_phi__,
                                                       int idx0__,
-                                                      int n__)
+                                                      int n__,
+                                                      matrix<double_complex>& beta_phi__)
 {
     PROFILE("sirius::Non_local_operator::apply");
 
@@ -109,10 +110,11 @@ inline void Non_local_operator<double_complex>::apply(int chunk__,
 
     assert(op_phi__.pw_coeffs().num_rows_loc() == beta_.num_gkvec_loc());
 
-    auto beta_phi = beta_.beta_phi<double_complex>(chunk__, n__);
+    //auto beta_phi = beta_.beta_phi<double_complex>(chunk__, n__);
     auto& beta_gk = beta_.beta_gk();
     int num_gkvec_loc = beta_.num_gkvec_loc();
-    int nbeta = beta_.beta_chunk(chunk__).num_beta_;
+    auto& bp_chunks = beta_.beta_projector_chunks();
+    int nbeta = bp_chunks(chunk__).num_beta_;
 
     if (static_cast<size_t>(nbeta * n__) > work_.size())
     {
@@ -125,17 +127,17 @@ inline void Non_local_operator<double_complex>::apply(int chunk__,
     if (pu_ == CPU)
     {
         #pragma omp parallel for
-        for (int i = 0; i < beta_.beta_chunk(chunk__).num_atoms_; i++)
+        for (int i = 0; i < bp_chunks(chunk__).num_atoms_; i++)
         {
             /* number of beta functions for a given atom */
-            int nbf = beta_.beta_chunk(chunk__).desc_(0, i);
-            int offs = beta_.beta_chunk(chunk__).desc_(1, i);
-            int ia = beta_.beta_chunk(chunk__).desc_(3, i);
+            int nbf  = bp_chunks(chunk__).desc_(0, i);
+            int offs = bp_chunks(chunk__).desc_(1, i);
+            int ia   = bp_chunks(chunk__).desc_(3, i);
 
             /* compute O * <beta|phi> */
             linalg<CPU>::gemm(0, 0, nbf, n__, nbf,
                               op_.at<CPU>(packed_mtrx_offset_(ia), ispn__), nbf,
-                              beta_phi.at<CPU>(offs, 0), nbeta,
+                              beta_phi__.at<CPU>(offs, 0), nbeta,
                               work_.at<CPU>(offs), nbeta);
         }
         
@@ -181,7 +183,8 @@ inline void Non_local_operator<double>::apply(int chunk__,
                                               int ispn__,
                                               wave_functions& op_phi__,
                                               int idx0__,
-                                              int n__)
+                                              int n__,
+                                              matrix<double>& beta_phi__)
 {
     PROFILE("sirius::Non_local_operator::apply");
 
@@ -189,10 +192,11 @@ inline void Non_local_operator<double>::apply(int chunk__,
 
     assert(op_phi__.pw_coeffs().num_rows_loc() == beta_.num_gkvec_loc());
 
-    auto beta_phi = beta_.beta_phi<double>(chunk__, n__);
+    //auto beta_phi = beta_.beta_phi<double>(chunk__, n__);
     auto& beta_gk = beta_.beta_gk();
     int num_gkvec_loc = beta_.num_gkvec_loc();
-    int nbeta = beta_.beta_chunk(chunk__).num_beta_;
+    auto& bp_chunks = beta_.beta_projector_chunks();
+    int nbeta = bp_chunks(chunk__).num_beta_;
 
     if (static_cast<size_t>(nbeta * n__) > work_.size())
     {
@@ -205,17 +209,17 @@ inline void Non_local_operator<double>::apply(int chunk__,
     if (pu_ == CPU)
     {
         #pragma omp parallel for
-        for (int i = 0; i < beta_.beta_chunk(chunk__).num_atoms_; i++)
+        for (int i = 0; i < bp_chunks(chunk__).num_atoms_; i++)
         {
             /* number of beta functions for a given atom */
-            int nbf = beta_.beta_chunk(chunk__).desc_(0, i);
-            int offs = beta_.beta_chunk(chunk__).desc_(1, i);
-            int ia = beta_.beta_chunk(chunk__).desc_(3, i);
+            int nbf  = bp_chunks(chunk__).desc_(0, i);
+            int offs = bp_chunks(chunk__).desc_(1, i);
+            int ia   = bp_chunks(chunk__).desc_(3, i);
 
             /* compute O * <beta|phi> */
             linalg<CPU>::gemm(0, 0, nbf, n__, nbf,
                               op_.at<CPU>(packed_mtrx_offset_(ia), ispn__), nbf,
-                              beta_phi.at<CPU>(offs, 0), nbeta,
+                              beta_phi__.at<CPU>(offs, 0), nbeta,
                               work_.at<CPU>(offs), nbeta);
         }
         

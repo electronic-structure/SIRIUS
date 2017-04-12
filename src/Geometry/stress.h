@@ -44,6 +44,8 @@ class Stress {
     matrix3d<double> stress_ewald_;
 
     matrix3d<double> stress_vloc_;
+
+    matrix3d<double> stress_nonloc_;
     
     inline void calc_stress_kin()
     {
@@ -246,6 +248,74 @@ class Stress {
         symmetrize(stress_vloc_);
     }
 
+    template <typename T>
+    inline void calc_stress_nonloc()
+    {
+        PROFILE("sirius::Stress|nonloc");
+
+        auto& bchunk = ctx_.beta_projector_chunks();
+
+        for (int ikloc = 0; ikloc < kset_.spl_num_kpoints().local_size(); ikloc++) {
+            int ik = kset_.spl_num_kpoints(ikloc);
+            auto kp = kset_[ik];
+            if (kp->gkvec().reduced()) {
+                TERMINATE("fix this");
+            }
+
+            auto d_mtrx = [&](Atom& atom, int ibnd, int i, int j)
+            {
+                if (atom.type().pp_desc().augment) {
+                    return atom.d_mtrx(i, j, 0) - kp->band_energy(ibnd) * ctx_.augmentation_op(atom.type_id()).q_mtrx(i, j);
+                } else {
+                    return atom.d_mtrx(i, j, 0);
+                }
+            };
+
+            Beta_projectors_strain_deriv bp_strain_deriv(ctx_, kp->gkvec());
+
+            for (int ichunk = 0; ichunk < bchunk.num_chunks(); ichunk++) {
+                kp->beta_projectors().generate(ichunk);
+                bp_strain_deriv.generate(ichunk);
+
+                int nbnd = kp->num_occupied_bands(0);
+                /* compute <beta|psi> */
+                auto beta_psi = kp->beta_projectors().inner<T>(ichunk, kp->spinor_wave_functions(0), 0, nbnd);
+
+                for (int mu = 0; mu < 3; mu++) {
+                    for (int nu = 0; nu < 3; nu++) {
+                        auto dbeta_psi = bp_strain_deriv.inner<T>(ichunk, kp->spinor_wave_functions(0), 0, nbnd, mu + nu * 3);
+
+                        for (int i = 0; i < bchunk(ichunk).num_atoms_; i++) {
+                            int ia   = bchunk(ichunk).desc_(beta_desc_idx::ia, i);
+                            int offs = bchunk(ichunk).desc_(beta_desc_idx::offset, i);
+                            int nbf  = bchunk(ichunk).desc_(beta_desc_idx::nbf, i);
+
+                            auto& atom = ctx_.unit_cell().atom(ia);
+
+                            for (int ibnd = 0; ibnd < nbnd; ibnd++) {
+                                double w = kp->weight() * kp->band_occupancy(ibnd);
+
+                                for (int xi1 = 0; xi1 < nbf; xi1++) {
+                                    for (int xi2 = 0; xi2 < nbf; xi2++) {
+                                        stress_nonloc_(mu, nu) += w * std::real(
+                                            std::conj(dbeta_psi(offs + xi1, ibnd)) * d_mtrx(atom, ibnd, xi1, xi2) * beta_psi(offs + xi2, ibnd) +
+                                            std::conj(beta_psi(offs + xi1, ibnd)) * d_mtrx(atom, ibnd, xi1, xi2) * dbeta_psi(offs + xi2, ibnd)
+                                        );
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        ctx_.comm().allreduce(&stress_nonloc_(0, 0), 9 * sizeof(double));
+
+        stress_nonloc_ *= (1.0 / ctx_.unit_cell().omega());
+
+        symmetrize(stress_nonloc_);
+    }
+
     inline void symmetrize(matrix3d<double>& mtrx__)
     {
         if (!ctx_.use_symmetry()) {
@@ -276,12 +346,18 @@ class Stress {
         calc_stress_har();
         calc_stress_ewald();
         calc_stress_vloc();
+        if (ctx_.gamma_point()) {
+            calc_stress_nonloc<double>();
+        } else {
+            calc_stress_nonloc<double_complex>();
+        }
         
         const double au2kbar = 2.94210119E5;
         stress_kin_ *= au2kbar;
         stress_har_ *= au2kbar;
         stress_ewald_ *= au2kbar;
         stress_vloc_ *= au2kbar;
+        stress_nonloc_ *= au2kbar;
 
         printf("== stress_kin ==\n");
         for (int mu: {0, 1, 2}) {
@@ -298,6 +374,10 @@ class Stress {
         printf("== stress_vloc ==\n");
         for (int mu: {0, 1, 2}) {
             printf("%12.6f %12.6f %12.6f\n", stress_vloc_(mu, 0), stress_vloc_(mu, 1), stress_vloc_(mu, 2));
+        }
+        printf("== stress_nonloc ==\n");
+        for (int mu: {0, 1, 2}) {
+            printf("%12.6f %12.6f %12.6f\n", stress_nonloc_(mu, 0), stress_nonloc_(mu, 1), stress_nonloc_(mu, 2));
         }
     }
 };
