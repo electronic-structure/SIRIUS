@@ -73,11 +73,12 @@ class Beta_projectors_gradient
 
     void generate(int chunk__, int calc_component__)
     {
+        auto& bp_chunks = bp_->beta_projector_chunks();
         if (bp_->proc_unit() == CPU)
         {
-            chunk_comp_gk_a_[calc_component__] = mdarray<double_complex, 2>(&components_gk_a_[calc_component__](0, bp_->beta_chunk(chunk__).offset_),
+            chunk_comp_gk_a_[calc_component__] = mdarray<double_complex, 2>(&components_gk_a_[calc_component__](0, bp_chunks(chunk__).offset_),
                                                                             bp_->num_gkvec_loc(),
-                                                                            bp_->beta_chunk(chunk__).num_beta_);
+                                                                            bp_chunks(chunk__).num_beta_);
         }
 
         #ifdef __GPU
@@ -117,7 +118,7 @@ class Beta_projectors_gradient
     template <typename T>
     matrix<T> beta_phi(int chunk__, int n__, int calc_component__)
     {
-        int nbeta = bp_->beta_chunk(chunk__).num_beta_;
+        int nbeta = bp_->beta_projector_chunks()(chunk__).num_beta_;
 
         if (bp_->proc_unit() == GPU) {
             return std::move(matrix<T>(reinterpret_cast<T*>(beta_phi_[calc_component__].at<CPU>()),
