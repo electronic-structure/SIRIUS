@@ -37,6 +37,7 @@ template <typename T>
 struct gaunt_L3
 {
     int lm3;
+    int l3;
     T coef;
 };
 
@@ -122,6 +123,7 @@ class Gaunt_coefficients
                                         gaunt_packed_L1_L2_[lm3].push_back(g12);
 
                                         g3.lm3 = lm3;
+                                        g3.l3 = l3;
                                         g3.coef = gc;
                                         gaunt_packed_L3_(lm1, lm2).push_back(g3);
                                     }
