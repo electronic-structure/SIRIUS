@@ -25,6 +25,8 @@
 #ifndef __STRESS_H__
 #define __STRESS_H__
 
+#include "../Beta_projectors/beta_projectors_strain_deriv.h"
+
 namespace sirius {
 
 class Stress {
@@ -279,7 +281,7 @@ class Stress {
 
                 int nbnd = kp->num_occupied_bands(0);
                 /* compute <beta|psi> */
-                auto beta_psi = kp->beta_projectors().inner<T>(ichunk, kp->spinor_wave_functions(0), 0, nbnd);
+                auto beta_psi = kp->beta_projectors().inner<T>(ichunk, kp->spinor_wave_functions(0), 0, nbnd, 0);
 
                 for (int mu = 0; mu < 3; mu++) {
                     for (int nu = 0; nu < 3; nu++) {
