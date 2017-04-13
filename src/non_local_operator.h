@@ -110,8 +110,7 @@ inline void Non_local_operator<double_complex>::apply(int chunk__,
 
     assert(op_phi__.pw_coeffs().num_rows_loc() == beta_.num_gkvec_loc());
 
-    //auto beta_phi = beta_.beta_phi<double_complex>(chunk__, n__);
-    auto& beta_gk = beta_.beta_gk();
+    auto& beta_gk = beta_.pw_coeffs_a(0);
     int num_gkvec_loc = beta_.num_gkvec_loc();
     auto& bp_chunks = beta_.beta_projector_chunks();
     int nbeta = bp_chunks(chunk__).num_beta_;
@@ -193,7 +192,7 @@ inline void Non_local_operator<double>::apply(int chunk__,
     assert(op_phi__.pw_coeffs().num_rows_loc() == beta_.num_gkvec_loc());
 
     //auto beta_phi = beta_.beta_phi<double>(chunk__, n__);
-    auto& beta_gk = beta_.beta_gk();
+    auto& beta_gk = beta_.pw_coeffs_a(0);
     int num_gkvec_loc = beta_.num_gkvec_loc();
     auto& bp_chunks = beta_.beta_projector_chunks();
     int nbeta = bp_chunks(chunk__).num_beta_;
