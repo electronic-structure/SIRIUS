@@ -354,6 +354,75 @@ class Radial_integrals_beta_dg: public Radial_integrals_base<2>
     }
 };
 
+class Radial_integrals_beta_jl: public Radial_integrals_base<3>
+{
+  private:
+    int lmax_;
+
+    void generate()
+    {
+        PROFILE("sirius::Radial_integrals|beta");
+    
+        for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
+            auto& atom_type = unit_cell_.atom_type(iat);
+            int nrb = atom_type.mt_radial_basis_size();
+
+            for (int idxrf = 0; idxrf < atom_type.mt_radial_basis_size(); idxrf++) {
+                for (int l1 = 0; l1 <= lmax_; l1++) {
+                    values_(idxrf, l1, iat) = Spline<double>(grid_q_);
+                }
+            }
+    
+            /* interpolate beta radial functions */
+            std::vector<Spline<double>> beta_rf(nrb);
+            for (int idxrf = 0; idxrf < nrb; idxrf++) {
+                beta_rf[idxrf] = Spline<double>(atom_type.radial_grid());
+                int nr = atom_type.pp_desc().num_beta_radial_points[idxrf];
+                for (int ir = 0; ir < nr; ir++) {
+                    beta_rf[idxrf][ir] = atom_type.pp_desc().beta_radial_functions(ir, idxrf);
+                }
+                beta_rf[idxrf].interpolate();
+            }
+    
+            #pragma omp parallel for
+            for (int iq = 0; iq < grid_q_.num_points(); iq++) {
+                Spherical_Bessel_functions jl(lmax_, atom_type.radial_grid(), grid_q_[iq]);
+                for (int idxrf = 0; idxrf < atom_type.mt_radial_basis_size(); idxrf++) {
+                    int l  = atom_type.indexr(idxrf).l;
+                    int nr = atom_type.pp_desc().num_beta_radial_points[idxrf];
+                    for (int l1 = 0; l1 <= lmax_; l1++) {
+                        /* compute \int j_{l'}(q * r) beta_l(r) r^2 * r * dr */
+                        /* remeber that beta(r) are defined as miltiplied by r */
+                        values_(idxrf, l1, iat)[iq] = sirius::inner(jl[l1], beta_rf[idxrf], 2, nr);
+                    }
+                }
+            }
+            for (int idxrf = 0; idxrf < atom_type.mt_radial_basis_size(); idxrf++) {
+                for (int l1 = 0; l1 <= lmax_; l1++) {
+                    values_(idxrf, l1, iat).interpolate();
+                }
+            }
+        }
+    }
+
+  public:
+    Radial_integrals_beta_jl(Unit_cell const& unit_cell__, double qmax__, int np__)
+        : Radial_integrals_base<3>(unit_cell__, qmax__, np__)
+    {
+        lmax_ = unit_cell__.lmax() + 2;
+        /* create space for <j_l(qr)|beta> radial integrals */
+        values_ = mdarray<Spline<double>, 3>(unit_cell_.max_mt_radial_basis_size(), lmax_ + 1, unit_cell_.num_atom_types());
+        generate();
+    }
+
+    inline double value(int idxrf__, int l__, int iat__, double q__) const
+    {
+        auto idx = iqdq(q__);
+        return values_(idxrf__, l__, iat__)(idx.first, idx.second);
+    }
+};
+
+
 class Radial_integrals_theta: public Radial_integrals_base<1>
 {
   private:
