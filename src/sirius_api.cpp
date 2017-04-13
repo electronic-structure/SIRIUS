@@ -2896,7 +2896,7 @@ void sirius_get_beta_projectors(ftn_int* kset_id__,
 
     auto kset = kset_list[*kset_id__];
     auto kp = (*kset)[*ik__ - 1];
-    auto& beta_gk = kp->beta_projectors().beta_gk();
+    auto& beta_gk = kp->beta_projectors().beta_gk_total();
 
     mdarray<int, 2> gvec_k(gvec_k__, 3, *npw__);
     mdarray<double_complex, 2> vkb(vkb__, *ld__, *nkb__);
