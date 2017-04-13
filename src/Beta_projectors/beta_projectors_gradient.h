@@ -5,14 +5,42 @@
  *      Author: isivkov
  */
 
-#ifndef SRC_BETA_PROJECTORS_BETA_PROJECTORS_GRADIENT_H_
-#define SRC_BETA_PROJECTORS_BETA_PROJECTORS_GRADIENT_H_
+#ifndef __BETA_PROJECTORS_GRADIENT_H__
+#define __BETA_PROJECTORS_GRADIENT_H__
 
-
+#include "beta_projectors_base.h"
 #include "beta_projectors.h"
 
-namespace sirius
+namespace sirius {
+
+class Beta_projectors_gradient: public Beta_projectors_base<3>
 {
+  private:
+    void generate_pw_coefs_t()
+    {
+        auto& bchunk = ctx_.beta_projector_chunks();
+
+        if (!bchunk.num_beta_t()) {
+            return;
+        }
+        
+        auto& comm = gkvec_.comm();
+
+        for (int i = 0; i < 3; i++) {
+            pw_coeffs_t_[i] = matrix<double_complex>(num_gkvec_loc(), bchunk.num_beta_t());
+        }
+
+    }
+
+  public:
+    Beta_projectors_gradient(Simulation_context& ctx__,
+                             Gvec const&         gkvec__,
+                             Beta_projectors&    beta__)
+        : Beta_projectors_base<3>(ctx__, gkvec__)
+    {
+        generate_pw_coefs_t();
+    }
+};
 
 ///// Stores gradient components of beta over atomic positions d <G+k | Beta > / d Rn
 //class Beta_projectors_gradient
@@ -171,4 +199,4 @@ namespace sirius
 
 }
 
-#endif /* SRC_BETA_PROJECTORS_BETA_PROJECTORS_GRADIENT_H_ */
+#endif // __BETA_PROJECTORS_GRADIENT_H__
