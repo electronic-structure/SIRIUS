@@ -21,11 +21,6 @@ class Beta_projectors_strain_deriv : public Beta_projectors_base<9>
 
         auto& comm = gkvec_.comm();
 
-        /* allocate array */
-        for (int i = 0; i < 9; i++) {
-            pw_coeffs_t_[i] = matrix<double_complex>(num_gkvec_loc(), bchunk.num_beta_t());
-        }
-
         auto dRlm_deps = [this](int lm, vector3d<double>& gvs, int mu, int nu)
         {
             double theta = gvs[1];
@@ -161,9 +156,8 @@ class Beta_projectors_strain_deriv : public Beta_projectors_base<9>
 
         auto& comm = gkvec_.comm();
 
-        /* allocate array */
+        /* zero array */
         for (int i = 0; i < 9; i++) {
-            pw_coeffs_t_[i] = matrix<double_complex>(num_gkvec_loc(), bchunk.num_beta_t());
             pw_coeffs_t_[i].zero();
         }
 
@@ -231,47 +225,6 @@ class Beta_projectors_strain_deriv : public Beta_projectors_base<9>
     {
         //generate_pw_coefs_t();
         generate_pw_coefs_t_v2();
-    }
-    
-    /// Generate strain derivatives of beta-projectors for a chunk of atoms.
-    void generate(int ichunk__)
-    {
-        auto& bchunk = ctx_.beta_projector_chunks();
-
-        int num_beta = bchunk(ichunk__).num_beta_;
-
-        auto& comm = gkvec_.comm();
-
-        /* allocate array */
-        for (int i = 0; i < 9; i++) {
-            pw_coeffs_a_[i] = matrix<double_complex>(num_gkvec_loc(), num_beta);
-        }
-
-        #pragma omp for
-        for (int i = 0; i < bchunk(ichunk__).num_atoms_; i++) {
-            int ia = bchunk(ichunk__).desc_(beta_desc_idx::ia, i);
-
-            double phase = twopi * (gkvec_.vk() * ctx_.unit_cell().atom(ia).position());
-            double_complex phase_k = std::exp(double_complex(0.0, phase));
-
-            std::vector<double_complex> phase_gk(num_gkvec_loc());
-            for (int igk_loc = 0; igk_loc < num_gkvec_loc_; igk_loc++) {
-                int igk = gkvec_.gvec_offset(comm.rank()) + igk_loc;
-                auto G = gkvec_.gvec(igk);
-                phase_gk[igk_loc] = std::conj(ctx_.gvec_phase_factor(G, ia) * phase_k);
-            }
-
-            for (int nu = 0; nu < 3; nu++) {
-                for (int mu = 0; mu < 3; mu++) {
-                    for (int xi = 0; xi < bchunk(ichunk__).desc_(beta_desc_idx::nbf, i); xi++) {
-                        for (int igk_loc = 0; igk_loc < num_gkvec_loc(); igk_loc++) {
-                            pw_coeffs_a_[mu + nu * 3](igk_loc, bchunk(ichunk__).desc_(beta_desc_idx::offset, i) + xi) = 
-                                pw_coeffs_t_[mu + nu * 3](igk_loc, bchunk(ichunk__).desc_(beta_desc_idx::offset_t, i) + xi) * phase_gk[igk_loc];
-                        }
-                    }
-                }
-            }
-        }
     }
 };
 
