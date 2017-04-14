@@ -128,7 +128,7 @@ void Band::apply_h_o(K_point* kp__,
     for (int i = 0; i < ctx_.beta_projector_chunks().num_chunks(); i++) {
         kp__->beta_projectors().generate(i);
 
-        auto beta_phi = kp__->beta_projectors().inner<T>(i, phi__, N__, n__, 0);
+        auto beta_phi = kp__->beta_projectors().inner<T>(i, phi__, N__, n__);
 
         d_op.apply(i, ispn__, hphi__, N__, n__, beta_phi);
         q_op.apply(i, 0, ophi__, N__, n__, beta_phi);

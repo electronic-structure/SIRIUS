@@ -277,15 +277,15 @@ class Stress {
 
             for (int ichunk = 0; ichunk < bchunk.num_chunks(); ichunk++) {
                 kp->beta_projectors().generate(ichunk);
-                bp_strain_deriv.generate(ichunk);
 
                 int nbnd = kp->num_occupied_bands(0);
                 /* compute <beta|psi> */
-                auto beta_psi = kp->beta_projectors().inner<T>(ichunk, kp->spinor_wave_functions(0), 0, nbnd, 0);
+                auto beta_psi = kp->beta_projectors().inner<T>(ichunk, kp->spinor_wave_functions(0), 0, nbnd);
 
                 for (int mu = 0; mu < 3; mu++) {
                     for (int nu = 0; nu < 3; nu++) {
-                        auto dbeta_psi = bp_strain_deriv.inner<T>(ichunk, kp->spinor_wave_functions(0), 0, nbnd, mu + nu * 3);
+                        bp_strain_deriv.generate(ichunk, mu + nu * 3);
+                        auto dbeta_psi = bp_strain_deriv.inner<T>(ichunk, kp->spinor_wave_functions(0), 0, nbnd);
 
                         for (int i = 0; i < bchunk(ichunk).num_atoms_; i++) {
                             int ia   = bchunk(ichunk).desc_(beta_desc_idx::ia, i);

@@ -85,7 +85,7 @@ inline void Density::add_k_point_contribution_dm(K_point* kp__,
                     /* total number of occupied bands for this spin */
                     int nbnd = kp__->num_occupied_bands(ispn);
                     /* compute <beta|psi> */
-                    auto beta_psi = kp__->beta_projectors().inner<T>(chunk, kp__->spinor_wave_functions(ispn), 0, nbnd, 0);
+                    auto beta_psi = kp__->beta_projectors().inner<T>(chunk, kp__->spinor_wave_functions(ispn), 0, nbnd);
 
                     /* number of beta projectors */
                     int nbeta = bp_chunks(chunk).num_beta_;
