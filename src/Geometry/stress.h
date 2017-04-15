@@ -275,6 +275,9 @@ class Stress {
 
             Beta_projectors_strain_deriv bp_strain_deriv(ctx_, kp->gkvec());
 
+            kp->beta_projectors().prepare();
+            bp_strain_deriv.prepare();
+
             for (int ichunk = 0; ichunk < bchunk.num_chunks(); ichunk++) {
                 kp->beta_projectors().generate(ichunk);
 
@@ -310,6 +313,7 @@ class Stress {
                     }
                 }
             }
+            kp->beta_projectors().dismiss();
         }
         ctx_.comm().allreduce(&stress_nonloc_(0, 0), 9 * sizeof(double));
 

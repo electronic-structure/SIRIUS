@@ -53,7 +53,6 @@ class Forces_PS
         for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
             if (ctx_.processing_unit() == GPU) {
                 int nbnd = kpoint.num_occupied_bands(ispn);
-                kpoint.spinor_wave_functions(ispn).allocate_on_device();
                 kpoint.spinor_wave_functions(ispn).copy_to_device(0, nbnd);
             }
         }
@@ -132,14 +131,6 @@ class Forces_PS
 
         bp.dismiss();
         bp_grad.dismiss();
-
-        #ifdef __GPU
-        for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-            if (ctx_.processing_unit() == GPU ) {
-                kpoint.spinor_wave_functions(ispn).deallocate_on_device();
-            }
-        }
-        #endif
     }
 
     //---------------------------------------------------------------
