@@ -169,8 +169,8 @@ class Beta_projectors_base
                     linalg<GPU>::gemm(2, 0, nbeta, n__, num_gkvec_loc_,
                                       pw_coeffs_a_.at<GPU>(), num_gkvec_loc_,
                                       phi__.pw_coeffs().prime().at<GPU>(0, idx0__), phi__.pw_coeffs().prime().ld(),
-                                      reinterpret_cast<double_complex*>(beta_phi.at<GPU>()), nbeta);
-                    beta_phi.copy<memory_t::device, memory_t::host>();
+                                      reinterpret_cast<double_complex*>(beta_phi.template at<GPU>()), nbeta);
+                    beta_phi.template copy<memory_t::device, memory_t::host>();
                     #else
                     TERMINATE_NO_GPU
                     #endif
@@ -209,16 +209,16 @@ class Beta_projectors_base
                                       reinterpret_cast<double*>(pw_coeffs_a_.at<GPU>()), 2 * num_gkvec_loc_,
                                       reinterpret_cast<double*>(phi__.pw_coeffs().prime().at<GPU>(0, idx0__)), 2 * phi__.pw_coeffs().prime().ld(),
                                       &b,
-                                      reinterpret_cast<double*>(beta_phi.at<GPU>()), nbeta);
+                                      reinterpret_cast<double*>(beta_phi.template at<GPU>()), nbeta);
 
-                    if (comm_.rank() == 0) {
+                    if (gkvec_.comm().rank() == 0) {
                         /* subtract one extra G=0 contribution */
                         linalg<GPU>::ger(nbeta, n__, &a1, 
                                          reinterpret_cast<double*>(pw_coeffs_a_.at<GPU>()), 2 * num_gkvec_loc_,
                                          reinterpret_cast<double*>(phi__.pw_coeffs().prime().at<GPU>(0, idx0__)), 2 * phi__.pw_coeffs().prime().ld(),
-                                         reinterpret_cast<double*>(beta_phi.at<CPU>()), nbeta);
+                                         reinterpret_cast<double*>(beta_phi.template at<CPU>()), nbeta);
                     }
-                    beta_phi.copy<memory_t::device, memory_t::host>();
+                    beta_phi.template copy<memory_t::device, memory_t::host>();
                     #else
                     TERMINATE_NO_GPU
                     #endif
@@ -267,13 +267,13 @@ class Beta_projectors_base
             }
             case GPU: {
                 #ifdef __GPU
-                auto& desc = bchunk(chunk__).desc_;
-                create_beta_gk_gpu(bchunk(chunk__).num_atoms_,
+                auto& desc = bchunk(ichunk__).desc_;
+                create_beta_gk_gpu(bchunk(ichunk__).num_atoms_,
                                    num_gkvec_loc_,
                                    desc.at<GPU>(),
-                                   pw_coeffs_t_[j__].at<GPU>(),
+                                   pw_coeffs_t_[j__].template at<GPU>(),
                                    gkvec_coord_.at<GPU>(),
-                                   bchunk(chunk__).atom_pos_.at<GPU>(),
+                                   bchunk(ichunk__).atom_pos_.at<GPU>(),
                                    pw_coeffs_a_.at<GPU>());
                 #endif
                 break;
@@ -291,7 +291,7 @@ class Beta_projectors_base
     void dismiss()
     {
         #ifdef __GPU
-        if (pu_ == GPU) {
+        if (ctx_.processing_unit() == GPU) {
             beta_phi_.deallocate_on_device();
         }
         #endif

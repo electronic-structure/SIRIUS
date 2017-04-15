@@ -21,16 +21,19 @@ namespace sirius {
 class Forces_PS
 {
   private:
-    Simulation_context &ctx_;
-    Density &density_;
-    Potential &potential_;
+    Simulation_context& ctx_;
+
+    Density& density_;
+
+    Potential& potential_;
+
     K_point_set& kset_;
 
-    mdarray<double,2> local_forces_;
-    mdarray<double,2> ultrasoft_forces_;
-    mdarray<double,2> nonlocal_forces_;
-    mdarray<double,2> nlcc_forces_;
-    mdarray<double,2> ewald_forces_;
+    mdarray<double, 2> local_forces_;
+    mdarray<double, 2> ultrasoft_forces_;
+    mdarray<double, 2> nonlocal_forces_;
+    mdarray<double, 2> nlcc_forces_;
+    mdarray<double, 2> ewald_forces_;
 
     template<typename T>
     void add_k_point_contribution_to_nonlocal2(K_point& kpoint, mdarray<double,2>& forces)
@@ -48,7 +51,7 @@ class Forces_PS
 
         #ifdef __GPU
         for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-            if (bp.proc_unit() == GPU) {
+            if (ctx_.processing_unit() == GPU) {
                 int nbnd = kpoint.num_occupied_bands(ispn);
                 kpoint.spinor_wave_functions(ispn).allocate_on_device();
                 kpoint.spinor_wave_functions(ispn).copy_to_device(0, nbnd);
@@ -131,10 +134,8 @@ class Forces_PS
         bp_grad.dismiss();
 
         #ifdef __GPU
-        for (int ispn = 0; ispn < ctx_.num_spins(); ispn++)
-        {
-            if( bp.proc_unit() == GPU )
-            {
+        for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
+            if (ctx_.processing_unit() == GPU ) {
                 kpoint.spinor_wave_functions(ispn).deallocate_on_device();
             }
         }

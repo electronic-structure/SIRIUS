@@ -106,7 +106,9 @@ inline void Non_local_operator<double_complex>::apply(int chunk__,
 {
     PROFILE("sirius::Non_local_operator::apply");
 
-    if (is_null_) return;
+    if (is_null_) {
+        return;
+    }
 
     assert(op_phi__.pw_coeffs().num_rows_loc() == beta_.num_gkvec_loc());
 
@@ -115,19 +117,16 @@ inline void Non_local_operator<double_complex>::apply(int chunk__,
     auto& bp_chunks = beta_.beta_projector_chunks();
     int nbeta = bp_chunks(chunk__).num_beta_;
 
-    if (static_cast<size_t>(nbeta * n__) > work_.size())
-    {
+    if (static_cast<size_t>(nbeta * n__) > work_.size()) {
         work_ = mdarray<double_complex, 1>(nbeta * n__);
-        #ifdef __GPU
-        if (pu_ == GPU) work_.allocate(memory_t::device);
-        #endif
+        if (pu_ == GPU) {
+            work_.allocate(memory_t::device);
+        }
     }
 
-    if (pu_ == CPU)
-    {
+    if (pu_ == CPU) {
         #pragma omp parallel for
-        for (int i = 0; i < bp_chunks(chunk__).num_atoms_; i++)
-        {
+        for (int i = 0; i < bp_chunks(chunk__).num_atoms_; i++) {
             /* number of beta functions for a given atom */
             int nbf  = bp_chunks(chunk__).desc_(0, i);
             int offs = bp_chunks(chunk__).desc_(1, i);
@@ -146,20 +145,18 @@ inline void Non_local_operator<double_complex>::apply(int chunk__,
                           op_phi__.pw_coeffs().prime().at<CPU>(0, idx0__), op_phi__.pw_coeffs().prime().ld());
     }
     #ifdef __GPU
-    if (pu_ == GPU)
-    {
+    if (pu_ == GPU) {
         #pragma omp parallel for
-        for (int i = 0; i < beta_.beta_chunk(chunk__).num_atoms_; i++)
-        {
+        for (int i = 0; i < bp_chunks(chunk__).num_atoms_; i++) {
             /* number of beta functions for a given atom */
-            int nbf = beta_.beta_chunk(chunk__).desc_(0, i);
-            int offs = beta_.beta_chunk(chunk__).desc_(1, i);
-            int ia = beta_.beta_chunk(chunk__).desc_(3, i);
+            int nbf  = bp_chunks(chunk__).desc_(0, i);
+            int offs = bp_chunks(chunk__).desc_(1, i);
+            int ia   = bp_chunks(chunk__).desc_(3, i);
 
             /* compute O * <beta|phi> */
             linalg<GPU>::gemm(0, 0, nbf, n__, nbf,
                               op_.at<GPU>(packed_mtrx_offset_(ia), ispn__), nbf, 
-                              beta_phi.at<GPU>(offs, 0), nbeta,
+                              beta_phi__.at<GPU>(offs, 0), nbeta,
                               work_.at<GPU>(offs), nbeta,
                               omp_get_thread_num());
 
@@ -205,11 +202,9 @@ inline void Non_local_operator<double>::apply(int chunk__,
         #endif
     }
 
-    if (pu_ == CPU)
-    {
+    if (pu_ == CPU) {
         #pragma omp parallel for
-        for (int i = 0; i < bp_chunks(chunk__).num_atoms_; i++)
-        {
+        for (int i = 0; i < bp_chunks(chunk__).num_atoms_; i++) {
             /* number of beta functions for a given atom */
             int nbf  = bp_chunks(chunk__).desc_(0, i);
             int offs = bp_chunks(chunk__).desc_(1, i);
@@ -228,20 +223,18 @@ inline void Non_local_operator<double>::apply(int chunk__,
                           (double*)op_phi__.pw_coeffs().prime().at<CPU>(0, idx0__), 2 * op_phi__.pw_coeffs().prime().ld());
     }
     #ifdef __GPU
-    if (pu_ == GPU)
-    {
+    if (pu_ == GPU) {
         #pragma omp parallel for
-        for (int i = 0; i < beta_.beta_chunk(chunk__).num_atoms_; i++)
-        {
+        for (int i = 0; i < bp_chunks(chunk__).num_atoms_; i++) {
             /* number of beta functions for a given atom */
-            int nbf = beta_.beta_chunk(chunk__).desc_(0, i);
-            int offs = beta_.beta_chunk(chunk__).desc_(1, i);
-            int ia = beta_.beta_chunk(chunk__).desc_(3, i);
+            int nbf  = bp_chunks(chunk__).desc_(0, i);
+            int offs = bp_chunks(chunk__).desc_(1, i);
+            int ia   = bp_chunks(chunk__).desc_(3, i);
 
             /* compute O * <beta|phi> */
             linalg<GPU>::gemm(0, 0, nbf, n__, nbf,
                               op_.at<GPU>(packed_mtrx_offset_(ia), ispn__), nbf, 
-                              beta_phi.at<GPU>(offs, 0), nbeta,
+                              beta_phi__.at<GPU>(offs, 0), nbeta,
                               work_.at<GPU>(offs), nbeta,
                               omp_get_thread_num());
 
