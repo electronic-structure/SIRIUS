@@ -282,6 +282,8 @@ class Stress {
                 kp->beta_projectors().generate(ichunk);
 
                 int nbnd = kp->num_occupied_bands(0);
+                splindex<block> spl_nbnd(nbnd, kp->comm().size(), kp->comm().rank());
+
                 /* compute <beta|psi> */
                 auto beta_psi = kp->beta_projectors().inner<T>(ichunk, kp->spinor_wave_functions(0), 0, nbnd);
 
@@ -297,7 +299,8 @@ class Stress {
 
                             auto& atom = ctx_.unit_cell().atom(ia);
 
-                            for (int ibnd = 0; ibnd < nbnd; ibnd++) {
+                            for (int ibnd_loc = 0; ibnd_loc < spl_nbnd.local_size(); ibnd_loc++) {
+                                int ibnd = spl_nbnd[ibnd_loc];
                                 double w = kp->weight() * kp->band_occupancy(ibnd);
 
                                 for (int xi1 = 0; xi1 < nbf; xi1++) {
