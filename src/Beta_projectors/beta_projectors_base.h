@@ -140,10 +140,7 @@ class Beta_projectors_base
         int tsz = std::is_same<T, double_complex>::value ? 2 : 1;
 
         if (static_cast<size_t>(tsz * nbeta * n__) > beta_phi_.size()) {
-            beta_phi_ = mdarray<double, 1>(nbeta * n__ * tsz);
-            if (ctx_.processing_unit() == GPU) {
-                beta_phi_.allocate(memory_t::device);
-            }
+            beta_phi_ = mdarray<double, 1>(nbeta * n__ * tsz, ctx_.dual_memory_t());
         }
 
         matrix<T> beta_phi;
@@ -225,6 +222,12 @@ class Beta_projectors_base
                     break;
                 }
             }
+        }
+        
+        gkvec_.comm().allreduce(beta_phi.template at<CPU>(), static_cast<int>(beta_phi.size()));
+
+        if (ctx_.processing_unit() == GPU) {
+            beta_phi.template copy<memory_t::host, memory_t::device>();
         }
 
         return std::move(beta_phi);
