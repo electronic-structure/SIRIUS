@@ -58,7 +58,7 @@ class Beta_projectors: public Beta_projectors_base<1>
             
             auto& comm = gkvec_.comm();
 
-            Radial_integrals_beta beta_radial_integrals(ctx_.unit_cell(), ctx_.gk_cutoff(), 20);
+            Radial_integrals_beta<false> beta_radial_integrals(ctx_.unit_cell(), ctx_.gk_cutoff(), 20);
 
             /* compute <G+k|beta> */
             #pragma omp parallel for

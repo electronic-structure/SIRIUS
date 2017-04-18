@@ -16,8 +16,8 @@ class Beta_projectors_strain_deriv : public Beta_projectors_base<9>
             return;
         }
 
-        Radial_integrals_beta beta_ri0(ctx_.unit_cell(), ctx_.gk_cutoff(), 20);
-        Radial_integrals_beta_dg beta_ri1(ctx_.unit_cell(), ctx_.gk_cutoff(), 20);
+        Radial_integrals_beta<false> beta_ri0(ctx_.unit_cell(), ctx_.gk_cutoff(), 20);
+        Radial_integrals_beta<true> beta_ri1(ctx_.unit_cell(), ctx_.gk_cutoff(), 20);
 
         auto& comm = gkvec_.comm();
 
@@ -148,7 +148,7 @@ class Beta_projectors_strain_deriv : public Beta_projectors_base<9>
             return;
         }
 
-        Radial_integrals_beta beta_ri0(ctx_.unit_cell(), ctx_.gk_cutoff(), 20);
+        Radial_integrals_beta<false> beta_ri0(ctx_.unit_cell(), ctx_.gk_cutoff(), 20);
         Radial_integrals_beta_jl beta_ri1(ctx_.unit_cell(), ctx_.gk_cutoff(), 20);
 
         vector3d<int> r_m({1, -1, 0});
