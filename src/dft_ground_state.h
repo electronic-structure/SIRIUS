@@ -552,8 +552,6 @@ inline int DFT_ground_state::find(double potential_tol, double energy_tol, int n
 
     int result{-1};
 
-//    tbb::task_scheduler_init tbb_init(omp_get_num_threads());
-
     for (int iter = 0; iter < num_dft_iter; iter++) {
         sddk::timer t1("sirius::DFT_ground_state::scf_loop|iteration");
 
@@ -673,8 +671,6 @@ inline int DFT_ground_state::find(double potential_tol, double energy_tol, int n
         potential_.save();
         density_.save();
     }
-
-//    tbb_init.terminate();
 
     return result;
 }
