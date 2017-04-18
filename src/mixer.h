@@ -1,4 +1,4 @@
-// Copyright (c) 2013-2014 Anton Kozhevnikov, Thomas Schulthess
+// Copyright (c) 2013-2017 Anton Kozhevnikov, Thomas Schulthess
 // All rights reserved.
 // 
 // Redistribution and use in source and binary forms, with or without modification, are permitted provided that 
@@ -26,20 +26,30 @@
 #ifndef __MIXER_H__
 #define __MIXER_H__
 
-namespace sirius
-{
+namespace sirius {
 
 /// Abstract mixer
 template <typename T>
 class Mixer
 {
     protected:
+
+        /// Size of the vector which is global to (in other words, shared between) all MPI ranks.
+        int shared_vector_size_;
         
-        /// Size of the mixed vectors.
-        size_t size_;
+        /// Size of the vector which is local to MPI rank.
+        int local_vector_size_;
+
+        /// Split shared vector size beteen all MPI ranks.
+        splindex<block, int> spl_shared_size_;
+
+        /// Local number of vector elements.
+        /** The local number of elements is a sum of local vector size and local size of shared vector. */
+        int local_size_;
         
-        /// Split size of the vectors beteen all MPI ranks.
-        splindex<block, size_t> spl_size_;
+        /// Total number of vector elements.
+        /** The total number of vector elements is the sum of shared vector size and all local vector sizes. */
+        size_t total_size_;
         
         /// Maximum number of stored vectors.
         int max_history_;
@@ -75,17 +85,15 @@ class Mixer
         /// Compute RMS deviation between current vector and input vector.
         double rms_deviation() const
         {
-            double rms = 0.0;
-            if (size_ != 0)
-            {
-                int ipos = idx_hist(count_); 
+            double rms{0};
+            int ipos = idx_hist(count_); 
 
-                for (size_t i = 0; i < spl_size_.local_size(); i++)
-                    rms += std::pow(std::abs(vectors_(i, ipos) - input_buffer_(i)), 2);
-
-                comm_.allreduce(&rms, 1);
-                rms = std::sqrt(rms / double(size_));
+            for (int i = 0; i < local_size_; i++) {
+                rms += std::pow(std::abs(vectors_(i, ipos) - input_buffer_(i)), 2);
             }
+
+            comm_.allreduce(&rms, 1);
+            rms = std::sqrt(rms / double(total_size_));
             return rms;
         }
         
@@ -95,41 +103,61 @@ class Mixer
             int i1 = idx_hist(count_); 
             int i2 = idx_hist(count_ - 1); 
 
-            for (size_t i = 0; i < spl_size_.local_size(); i++)
+            for (int i = 0; i < local_size_; i++) {
                 vectors_(i, i1) = beta__ * input_buffer_(i) + (1 - beta__) * vectors_(i, i2);
+            }
 
-            comm_.allgather(&vectors_(0, i1), output_buffer_.template at<CPU>(), (int)spl_size_.global_offset(), 
-                            (int)spl_size_.local_size());
+            comm_.allgather(&vectors_(0, i1), output_buffer_.template at<CPU>(), spl_shared_size_.global_offset(), 
+                            spl_shared_size_.local_size());
         }
 
     public:
 
-        Mixer(size_t size__, int max_history__, double beta__, Communicator const& comm__)
-            : size_(size__), 
-              max_history_(max_history__), 
-              beta_(beta__), 
-              comm_(comm__)
+        Mixer(int                 shared_vector_size__,
+              int                 local_vector_size__,
+              int                 max_history__,
+              double              beta__,
+              Communicator const& comm__)
+            : shared_vector_size_(shared_vector_size__)
+            , local_vector_size_(local_vector_size__)
+            , max_history_(max_history__)
+            , beta_(beta__)
+            , comm_(comm__)
         {
-            spl_size_ = splindex<block, size_t>(size_, comm_.size(), comm_.rank());
-            /* allocate input buffer (local size) */
-            input_buffer_ = mdarray<T, 1>(spl_size_.local_size());
-            /* allocate output bffer (global size) */
-            output_buffer_ = mdarray<T, 1>(size_);
-            /* allocate storage for previous vectors (local size) */
-            vectors_ = mdarray<T, 2>(spl_size_.local_size(), max_history_);
+            unsigned long long u = local_vector_size__;
+            comm_.allreduce(&u, 1);
+            total_size_ = u + shared_vector_size_;
+
+            spl_shared_size_ = splindex<block>(shared_vector_size_, comm_.size(), comm_.rank());
+            local_size_ = spl_shared_size_.local_size() + local_vector_size_;
+
+            /* allocate input buffer */
+            input_buffer_ = mdarray<T, 1>(local_size_, memory_t::host, "Mixer::input_buffer_");
+            /* allocate output bffer */
+            output_buffer_ = mdarray<T, 1>(shared_vector_size_ + local_vector_size_, memory_t::host, "Mixer::output_buffer_");
+            /* allocate storage for previous vectors */
+            vectors_ = mdarray<T, 2>(local_size_, max_history_, memory_t::host, "Mixer::vectors_");
         }
 
         virtual ~Mixer()
         {
         }
 
-        void input(size_t idx, T value)
+        void input_shared(int idx, T value)
         {
-            assert(idx < size_t(1 << 31));
-            assert(idx >= 0 && idx < size_);
+            assert(idx >= 0 && idx < shared_vector_size_);
 
-            auto offs_and_rank = spl_size_.location(idx);
-            if (offs_and_rank.rank == comm_.rank()) input_buffer_(offs_and_rank.local_index) = value;
+            auto offs_and_rank = spl_shared_size_.location(idx);
+            if (offs_and_rank.rank == comm_.rank()) {
+                input_buffer_(offs_and_rank.local_index) = value;
+            }
+        }
+
+        void input_local(int idx, T value)
+        {
+            assert(idx >= 0 && idx < local_vector_size_);
+
+            input_buffer_(spl_shared_size_.local_size() + idx) = value;
         }
 
         inline T const* output_buffer() const
@@ -146,7 +174,7 @@ class Mixer
         /** Copy content of the input buffer into first vector of the mixing history. */
         inline void initialize()
         {
-            std::memcpy(&vectors_(0, 0), &input_buffer_(0), spl_size_.local_size() * sizeof(T));
+            std::memcpy(&vectors_(0, 0), &input_buffer_(0), local_size_ * sizeof(T));
         }
 
         inline double beta() const
