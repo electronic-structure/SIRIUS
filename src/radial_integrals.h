@@ -64,6 +64,7 @@ class Radial_integrals_base
 };
 
 /// Radial integrals of the augmentation operator.
+template <bool jl_deriv>
 class Radial_integrals_aug: public Radial_integrals_base<3>
 {
   private:
@@ -116,8 +117,14 @@ class Radial_integrals_aug: public Radial_integrals_base<3>
                             int idx = idxrf2 * (idxrf2 + 1) / 2 + idxrf1;
                             
                             if (l3 >= std::abs(l1 - l2) && l3 <= (l1 + l2) && (l1 + l2 + l3) % 2 == 0) {
-                                values_(idx, l3, iat)[iq] = sirius::inner(jl[l3], qrf_spline(idx, l3), 0,
-                                                                          atom_type.num_mt_points());
+                                if (jl_deriv) {
+                                    auto s = jl.deriv_q(l3);
+                                    values_(idx, l3, iat)[iq] = sirius::inner(s, qrf_spline(idx, l3), 0,
+                                                                              atom_type.num_mt_points());
+                                } else {
+                                    values_(idx, l3, iat)[iq] = sirius::inner(jl[l3], qrf_spline(idx, l3), 0,
+                                                                              atom_type.num_mt_points());
+                                }
                             }
                         }
                     }

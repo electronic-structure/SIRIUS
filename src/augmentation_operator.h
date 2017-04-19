@@ -43,7 +43,7 @@ class Augmentation_operator
 
         mdarray<double, 1> sym_weight_;
 
-        void generate_pw_coeffs(double omega__, Gvec const& gvec__, Radial_integrals_aug const& radial_integrals__)
+        void generate_pw_coeffs(double omega__, Gvec const& gvec__, Radial_integrals_aug<false> const& radial_integrals__)
         {
             PROFILE("sirius::Augmentation_operator::generate_pw_coeffs");
         
@@ -148,7 +148,7 @@ class Augmentation_operator
        
         Augmentation_operator(Simulation_context_base& ctx__,
                               int iat__,
-                              Radial_integrals_aug const& ri__)
+                              Radial_integrals_aug<false> const& ri__)
             : comm_(ctx__.comm())
             , atom_type_(ctx__.unit_cell().atom_type(iat__))
         {

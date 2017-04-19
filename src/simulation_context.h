@@ -90,7 +90,7 @@ class Simulation_context: public Simulation_context_base
             }
 
             if (!full_potential()) {
-                Radial_integrals_aug ri(unit_cell(), pw_cutoff(), 20);
+                Radial_integrals_aug<false> ri(unit_cell(), pw_cutoff(), 20);
 
                 /* create augmentation operator Q_{xi,xi'}(G) here */
                 for (int iat = 0; iat < unit_cell().num_atom_types(); iat++) {
