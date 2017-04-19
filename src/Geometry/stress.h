@@ -48,6 +48,8 @@ class Stress {
     matrix3d<double> stress_vloc_;
 
     matrix3d<double> stress_nonloc_;
+
+    matrix3d<double> stress_us_;
     
     inline void calc_stress_kin()
     {
@@ -323,6 +325,102 @@ class Stress {
         stress_nonloc_ *= (1.0 / ctx_.unit_cell().omega());
 
         symmetrize(stress_nonloc_);
+    }
+
+    inline void calc_stress_us()
+    {
+        PROFILE("sirius::Stress|us");
+
+        potential_.effective_potential()->fft_transform(-1);
+
+        Radial_integrals_aug<false> ri(ctx_.unit_cell(), ctx_.pw_cutoff(), 20);
+        Radial_integrals_aug<true> ri_dq(ctx_.unit_cell(), ctx_.pw_cutoff(), 20);
+
+        for (int iat = 0; iat < ctx_.unit_cell().num_atom_types(); iat++) {
+            auto& atom_type = ctx_.unit_cell().atom_type(iat);
+
+            int nbf = atom_type.mt_basis_size();
+            
+            /* convert to real matrix */ // TODO: this code is replicated in generate_rho_aug()
+            mdarray<double, 3> dm(nbf * (nbf + 1) / 2, atom_type.num_atoms(), ctx_.num_mag_dims() + 1);
+            #pragma omp parallel for
+            for (int i = 0; i < atom_type.num_atoms(); i++) {
+                int ia = atom_type.atom_id(i);
+
+                for (int xi2 = 0; xi2 < nbf; xi2++) {
+                    for (int xi1 = 0; xi1 <= xi2; xi1++) {
+                        int idx12 = xi2 * (xi2 + 1) / 2 + xi1;
+                        switch (ctx_.num_mag_dims()) {
+                            case 0: {
+                                dm(idx12, i, 0) = density_.density_matrix()(xi2, xi1, 0, ia).real();
+                                break;
+                            }
+                            case 1: {
+                                dm(idx12, i, 0) = std::real(density_.density_matrix()(xi2, xi1, 0, ia) + density_.density_matrix()(xi2, xi1, 1, ia));
+                                dm(idx12, i, 1) = std::real(density_.density_matrix()(xi2, xi1, 0, ia) - density_.density_matrix()(xi2, xi1, 1, ia));
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+
+            /* treat phase factors as real array with x2 size */
+            mdarray<double, 2> phase_factors(atom_type.num_atoms(), ctx_.gvec_count() * 2);
+
+            #pragma omp parallel for schedule(static)
+            for (int igloc = 0; igloc < ctx_.gvec_count(); igloc++) {
+                int ig = ctx_.gvec_offset() + igloc;
+                for (int i = 0; i < atom_type.num_atoms(); i++) {
+                    int ia = atom_type.atom_id(i);
+                    double_complex z = std::conj(ctx_.gvec_phase_factor(ig, ia));
+                    phase_factors(i, 2 * igloc)     = z.real();
+                    phase_factors(i, 2 * igloc + 1) = z.imag();
+                }
+            }
+
+            /* treat auxiliary array as double with x2 size */
+            mdarray<double, 2> dm_pw(nbf * (nbf + 1) / 2, ctx_.gvec_count() * 2);
+
+            for (int iv = 0; iv < ctx_.num_mag_dims() + 1; iv++) {
+                linalg<CPU>::gemm(0, 0, nbf * (nbf + 1) / 2, 2 * ctx_.gvec_count(), atom_type.num_atoms(), 
+                                  &dm(0, 0, iv), dm.ld(),
+                                  &phase_factors(0, 0), phase_factors.ld(), 
+                                  &dm_pw(0, 0), dm_pw.ld());
+
+                for (int nu = 0; nu < 3; nu++) {
+                    Augmentation_operator_gvec_deriv q_deriv(ctx_, iat, ri, ri_dq, nu);
+
+                    for (int igloc = 0; igloc < ctx_.gvec_count(); igloc++) {
+                        int ig = ctx_.gvec_offset() + igloc;
+                        if (ig == 0) {
+                            continue;
+                        }
+                        auto gvc = ctx_.gvec().gvec_cart(ig);
+
+                        double_complex zsum(0, 0);
+                        /* get contribution from non-diagonal terms */
+                        for (int i = 0; i < nbf * (nbf + 1) / 2; i++) {
+                            double_complex z1 = double_complex(q_deriv.q_pw(i, 2 * igloc),
+                                                               q_deriv.q_pw(i, 2 * igloc + 1));
+                            double_complex z2(dm_pw(i, 2 * igloc), dm_pw(i, 2 * igloc + 1));
+
+                            zsum += z1 * z2 * q_deriv.sym_weight(i) * std::conj(potential_.effective_potential()->f_pw(ig));
+                        }
+                        double g = gvc.length();
+                        for (int mu = 0; mu < 3; mu++) {
+                            stress_us_(mu, nu) += std::real(zsum) * gvc[mu] / g;
+                        }
+                    }
+                }
+            }
+        }
+
+        ctx_.comm().allreduce(&stress_us_(0, 0), 9 * sizeof(double));
+
+        stress_us_ *= (1.0 / ctx_.unit_cell().omega());
+
+        symmetrize(stress_us_);
     }
 
     inline void symmetrize(matrix3d<double>& mtrx__)
