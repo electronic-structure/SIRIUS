@@ -3072,18 +3072,22 @@ void sirius_set_pw_coeffs(ftn_char label__,
     }
 }
 
-void sirius_calculate_stress(ftn_int* kset_id__)
+void sirius_calculate_stress_tensor(ftn_int* kset_id__)
 {
     auto kset = *kset_list[*kset_id__];
     stress_tensor = std::unique_ptr<sirius::Stress>(new sirius::Stress(*sim_ctx, kset, *density, *potential));
 }
 
-void sirius_get_stress_vloc(ftn_double* stress_vloc__)
+void sirius_get_stress_tensor(ftn_char label__, ftn_double* stress_tensor__)
 {
-    auto& s = stress_tensor->stress_vloc();
+    std::string label(label__);
+    matrix3d<double> s;
+    if (label == "vloc") {
+        s = stress_tensor->stress_vloc();
+    }
     for (int mu = 0; mu < 3; mu++) {
         for (int nu = 0; nu < 3; nu++) {
-            stress_vloc__[nu + mu * 3] = s(mu, nu);
+            stress_tensor__[nu + mu * 3] = s(mu, nu);
         }
     }
 }

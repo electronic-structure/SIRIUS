@@ -1024,13 +1024,14 @@ module sirius
             complex(8),              intent(out) :: pot
         end subroutine
 
-        subroutine sirius_calculate_stress(kset_id)&
-            &bind(C, name="sirius_calculate_stress")
+        subroutine sirius_calculate_stress_tensor(kset_id)&
+            &bind(C, name="sirius_calculate_stress_tensor")
             integer,                 intent(in)  :: kset_id
         end subroutine
 
-        subroutine sirius_get_stress_vloc(s)&
-            &bind(C, name="sirius_get_stress_vloc")
+        subroutine sirius_get_stress_tensor(label, s)&
+            &bind(C, name="sirius_get_stress_tensor")
+            character, dimension(*), intent(in)  :: label
             real(8),                 intent(out) :: s
         end subroutine
 

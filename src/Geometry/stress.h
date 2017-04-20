@@ -521,7 +521,7 @@ class Stress {
         //}
     }
 
-    inline matrix3d<double> const& stress_vloc() const
+    inline matrix3d<double> stress_vloc() const
     {
         return stress_vloc_;
     }
