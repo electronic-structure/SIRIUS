@@ -252,17 +252,19 @@ class Simulation_parameters
             return parameters_input_.aw_cutoff_;
         }
     
-        /// Return plane-wave cutoff for G-vectors.
+        /// Plane-wave cutoff for G-vectors (in 1/[a.u.]).
         inline double pw_cutoff() const
         {
             return parameters_input_.pw_cutoff_;
         }
-    
+        
+        /// Cutoff for G+k vectors (in 1/[a.u.]).
         inline double gk_cutoff() const
         {
             return parameters_input_.gk_cutoff_;
         }
-    
+            
+        /// Number of dimensions in the magnetization vector.
         inline int num_mag_dims() const
         {
             assert(parameters_input_.num_mag_dims_ == 0 ||
@@ -272,6 +274,7 @@ class Simulation_parameters
             return parameters_input_.num_mag_dims_;
         }
         
+        /// Number of spin components.
         inline int num_spins() const
         {
             return (num_mag_dims() == 0) ? 1 : 2;
@@ -283,12 +286,14 @@ class Simulation_parameters
         {
             return (num_mag_dims() == 3) ? 3 : num_spins();
         }
-
+        
+        /// Number of first-variational states.
         inline int num_fv_states() const
         {
             return parameters_input_.num_fv_states_;
         }
-
+        
+        /// Total number of bands.
         inline int num_bands() const
         {
             return num_spins() * num_fv_states();

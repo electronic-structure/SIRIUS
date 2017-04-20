@@ -341,31 +341,10 @@ class Stress {
 
             int nbf = atom_type.mt_basis_size();
             
-            /* convert to real matrix */ // TODO: this code is replicated in generate_rho_aug()
-            mdarray<double, 3> dm(nbf * (nbf + 1) / 2, atom_type.num_atoms(), ctx_.num_mag_dims() + 1);
-            #pragma omp parallel for
-            for (int i = 0; i < atom_type.num_atoms(); i++) {
-                int ia = atom_type.atom_id(i);
+            /* get auxiliary density matrix */
+            auto dm = density_.density_matrix_aux(iat);
 
-                for (int xi2 = 0; xi2 < nbf; xi2++) {
-                    for (int xi1 = 0; xi1 <= xi2; xi1++) {
-                        int idx12 = xi2 * (xi2 + 1) / 2 + xi1;
-                        switch (ctx_.num_mag_dims()) {
-                            case 0: {
-                                dm(idx12, i, 0) = density_.density_matrix()(xi2, xi1, 0, ia).real();
-                                break;
-                            }
-                            case 1: {
-                                dm(idx12, i, 0) = std::real(density_.density_matrix()(xi2, xi1, 0, ia) + density_.density_matrix()(xi2, xi1, 1, ia));
-                                dm(idx12, i, 1) = std::real(density_.density_matrix()(xi2, xi1, 0, ia) - density_.density_matrix()(xi2, xi1, 1, ia));
-                                break;
-                            }
-                        }
-                    }
-                }
-            }
-
-            /* treat phase factors as real array with x2 size */
+            /* treat phase factors as real array with 2x size */
             mdarray<double, 2> phase_factors(atom_type.num_atoms(), ctx_.gvec_count() * 2);
 
             #pragma omp parallel for schedule(static)

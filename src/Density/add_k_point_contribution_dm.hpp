@@ -4,7 +4,7 @@ inline void Density::add_k_point_contribution_dm(K_point* kp__,
 {
     PROFILE("sirius::Density::add_k_point_contribution_dm");
     
-    if (ctx_.esm_type() == electronic_structure_method_t::full_potential_lapwlo) {
+    if (ctx_.full_potential()) {
         /* non-magnetic or spin-collinear case */
         if (ctx_.num_mag_dims() != 3) {
             for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
@@ -67,9 +67,7 @@ inline void Density::add_k_point_contribution_dm(K_point* kp__,
                                   density_matrix__.at<CPU>(0, 0, 2, ia), density_matrix__.ld());
             }
         }
-    }
-
-    if (ctx_.esm_type() == electronic_structure_method_t::pseudopotential) {
+    } else { /* pseudopotential */
         if (!ctx_.unit_cell().mt_lo_basis_size()) {
             return;
         }

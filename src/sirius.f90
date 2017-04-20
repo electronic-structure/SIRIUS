@@ -1,9 +1,6 @@
 module sirius
     use, intrinsic :: ISO_C_BINDING
 
-    private :: sirius_set_pw_coeffs_aux, sirius_create_kset_aux, sirius_create_density_aux, &
-               sirius_create_potential_aux, sirius_add_atom_type_aux, sirius_add_atom_aux
-
     interface
 
         subroutine sirius_initialize(call_mpi_init)&
@@ -415,16 +412,16 @@ module sirius
             &bind(C, name="sirius_symmetrize_density")
         end subroutine
 
-        subroutine sirius_create_kset_aux(num_kpoints, kpoints, kpoint_weights, init_kset, kset_id, nk_loc_ptr)&
-            &bind(C, name="sirius_create_kset")
-            use, intrinsic :: ISO_C_BINDING
-            integer,                 intent(in)  :: num_kpoints
-            real(8),                 intent(in)  :: kpoints
-            real(8),                 intent(in)  :: kpoint_weights
-            integer,                 intent(in)  :: init_kset
-            integer,                 intent(out) :: kset_id
-            type(C_PTR), value,      intent(in)  :: nk_loc_ptr
-        end subroutine
+        !subroutine sirius_create_kset_aux(num_kpoints, kpoints, kpoint_weights, init_kset, kset_id, nk_loc_ptr)&
+        !    &bind(C, name="sirius_create_kset")
+        !    use, intrinsic :: ISO_C_BINDING
+        !    integer,                 intent(in)  :: num_kpoints
+        !    real(8),                 intent(in)  :: kpoints
+        !    real(8),                 intent(in)  :: kpoint_weights
+        !    integer,                 intent(in)  :: init_kset
+        !    integer,                 intent(out) :: kset_id
+        !    type(C_PTR), value,      intent(in)  :: nk_loc_ptr
+        !end subroutine
 
         subroutine sirius_delete_kset(kset_id)&
             &bind(C, name="sirius_delete_kset")
@@ -825,48 +822,48 @@ module sirius
             &bind(C, name="sirius_ground_state_print_info")
         end subroutine
 
-        subroutine sirius_create_density_aux(rhoit, rhomt, magit, magmt)&
-            &bind(C, name="sirius_create_density")
-            use, intrinsic :: ISO_C_BINDING
-            type(C_PTR), value, intent(in) :: rhoit
-            type(C_PTR), value, intent(in) :: rhomt
-            type(C_PTR), value, intent(in) :: magit
-            type(C_PTR), value, intent(in) :: magmt
-        end subroutine
+        !subroutine sirius_create_density_aux(rhoit, rhomt, magit, magmt)&
+        !    &bind(C, name="sirius_create_density")
+        !    use, intrinsic :: ISO_C_BINDING
+        !    type(C_PTR), value, intent(in) :: rhoit
+        !    type(C_PTR), value, intent(in) :: rhomt
+        !    type(C_PTR), value, intent(in) :: magit
+        !    type(C_PTR), value, intent(in) :: magmt
+        !end subroutine
 
         subroutine sirius_delete_density()&
             &bind(C, name="sirius_delete_density")
             use, intrinsic :: ISO_C_BINDING
         end subroutine
 
-        subroutine sirius_create_potential_aux(veffit, veffmt, beffit, beffmt)&
-            &bind(C, name="sirius_create_potential")
-            use, intrinsic :: ISO_C_BINDING
-            type(C_PTR), value, intent(in) :: veffit
-            type(C_PTR), value, intent(in) :: veffmt
-            type(C_PTR), value, intent(in) :: beffit
-            type(C_PTR), value, intent(in) :: beffmt
-        end subroutine
+        !subroutine sirius_create_potential_aux(veffit, veffmt, beffit, beffmt)&
+        !    &bind(C, name="sirius_create_potential")
+        !    use, intrinsic :: ISO_C_BINDING
+        !    type(C_PTR), value, intent(in) :: veffit
+        !    type(C_PTR), value, intent(in) :: veffmt
+        !    type(C_PTR), value, intent(in) :: beffit
+        !    type(C_PTR), value, intent(in) :: beffmt
+        !end subroutine
 
         subroutine sirius_delete_potential()&
             &bind(C, name="sirius_delete_potential")
             use, intrinsic :: ISO_C_BINDING
         end subroutine
 
-        subroutine sirius_add_atom_type_aux(label, fname)&
-            &bind(C, name="sirius_add_atom_type")
-            use, intrinsic :: ISO_C_BINDING
-            type(C_PTR), value, intent(in) :: label
-            type(C_PTR), value, intent(in) :: fname
-        end subroutine
+        !subroutine sirius_add_atom_type_aux(label, fname)&
+        !    &bind(C, name="sirius_add_atom_type")
+        !    use, intrinsic :: ISO_C_BINDING
+        !    type(C_PTR), value, intent(in) :: label
+        !    type(C_PTR), value, intent(in) :: fname
+        !end subroutine
 
-        subroutine sirius_add_atom_aux(label, pos, vfield)&
-            &bind(C, name="sirius_add_atom")
-            use, intrinsic :: ISO_C_BINDING
-            type(C_PTR), value, intent(in) :: label
-            type(C_PTR), value, intent(in) :: pos
-            type(C_PTR), value, intent(in) :: vfield
-        end subroutine
+        !subroutine sirius_add_atom_aux(label, pos, vfield)&
+        !    &bind(C, name="sirius_add_atom")
+        !    use, intrinsic :: ISO_C_BINDING
+        !    type(C_PTR), value, intent(in) :: label
+        !    type(C_PTR), value, intent(in) :: pos
+        !    type(C_PTR), value, intent(in) :: vfield
+        !end subroutine
 
         subroutine sirius_set_verbosity(level)&
             &bind(C, name="sirius_set_verbosity")
@@ -1002,15 +999,15 @@ module sirius
             real(8),                 intent(out) :: forces
         end subroutine
 
-        subroutine sirius_set_pw_coeffs_aux(label, pw_coeffs, ngv, gvl, comm)&
-            &bind(C, name="sirius_set_pw_coeffs")
-            use, intrinsic :: ISO_C_BINDING
-            character, dimension(*), intent(in)  :: label
-            complex(8),              intent(in)  :: pw_coeffs
-            type(C_PTR), value,      intent(in)  :: ngv
-            type(C_PTR), value,      intent(in)  :: gvl
-            type(C_PTR), value,      intent(in)  :: comm
-        end subroutine
+        !subroutine sirius_set_pw_coeffs_aux(label, pw_coeffs, ngv, gvl, comm)&
+        !    &bind(C, name="sirius_set_pw_coeffs")
+        !    use, intrinsic :: ISO_C_BINDING
+        !    character, dimension(*), intent(in)  :: label
+        !    complex(8),              intent(in)  :: pw_coeffs
+        !    type(C_PTR), value,      intent(in)  :: ngv
+        !    type(C_PTR), value,      intent(in)  :: gvl
+        !    type(C_PTR), value,      intent(in)  :: comm
+        !end subroutine
 
         subroutine sirius_generate_rho_multipole_moments(lmmax, qmt)&
             &bind(C, name="sirius_generate_rho_multipole_moments")
@@ -1049,6 +1046,16 @@ contains
         real(8), optional, target, intent(in) :: rhomt
         real(8), optional, target, intent(in) :: magmt
         type(C_PTR) rhoit_ptr, rhomt_ptr, magit_ptr, magmt_ptr
+        interface
+            subroutine sirius_create_density_aux(rhoit, rhomt, magit, magmt)&
+                &bind(C, name="sirius_create_density")
+                use, intrinsic :: ISO_C_BINDING
+                type(C_PTR), value, intent(in) :: rhoit
+                type(C_PTR), value, intent(in) :: rhomt
+                type(C_PTR), value, intent(in) :: magit
+                type(C_PTR), value, intent(in) :: magmt
+            end subroutine
+        end interface
 
         rhoit_ptr = C_NULL_PTR
         if (present(rhoit)) rhoit_ptr = C_LOC(rhoit)
@@ -1073,6 +1080,16 @@ contains
         real(8), optional, target, intent(in) :: veffmt
         real(8), optional, target, intent(in) :: beffmt
         type(C_PTR) veffit_ptr, veffmt_ptr, beffit_ptr, beffmt_ptr
+        interface
+            subroutine sirius_create_potential_aux(veffit, veffmt, beffit, beffmt)&
+                &bind(C, name="sirius_create_potential")
+                use, intrinsic :: ISO_C_BINDING
+                type(C_PTR), value, intent(in) :: veffit
+                type(C_PTR), value, intent(in) :: veffmt
+                type(C_PTR), value, intent(in) :: beffit
+                type(C_PTR), value, intent(in) :: beffmt
+            end subroutine
+        end interface
 
         veffit_ptr = C_NULL_PTR
         if (present(veffit)) veffit_ptr = C_LOC(veffit)
@@ -1095,7 +1112,14 @@ contains
         character,           target, dimension(*), intent(in) :: label
         character, optional, target, dimension(*), intent(in) :: fname
         type(C_PTR) label_ptr, fname_ptr
-
+        interface
+            subroutine sirius_add_atom_type_aux(label, fname)&
+                &bind(C, name="sirius_add_atom_type")
+                use, intrinsic :: ISO_C_BINDING
+                type(C_PTR), value, intent(in) :: label
+                type(C_PTR), value, intent(in) :: fname
+            end subroutine
+        end interface
         label_ptr = C_LOC(label(1))
         fname_ptr = C_NULL_PTR
 
@@ -1109,7 +1133,15 @@ contains
         real(8),           target,               intent(in) :: pos
         real(8), optional, target,               intent(in) :: vfield
         type(C_PTR) label_ptr, pos_ptr, vfield_ptr
-        
+        interface
+            subroutine sirius_add_atom_aux(label, pos, vfield)&
+                &bind(C, name="sirius_add_atom")
+                use, intrinsic :: ISO_C_BINDING
+                type(C_PTR), value, intent(in) :: label
+                type(C_PTR), value, intent(in) :: pos
+                type(C_PTR), value, intent(in) :: vfield
+            end subroutine
+        end interface
         label_ptr = C_LOC(label(1))
         pos_ptr = C_LOC(pos)
         vfield_ptr = C_NULL_PTR
@@ -1127,6 +1159,18 @@ contains
         integer,                                 intent(out) :: kset_id
         integer, optional, target,               intent(in)  :: nk_loc
         type(C_PTR) nk_loc_ptr
+        interface
+            subroutine sirius_create_kset_aux(num_kpoints, kpoints, kpoint_weights, init_kset, kset_id, nk_loc_ptr)&
+                &bind(C, name="sirius_create_kset")
+                use, intrinsic :: ISO_C_BINDING
+                integer,                 intent(in)  :: num_kpoints
+                real(8),                 intent(in)  :: kpoints
+                real(8),                 intent(in)  :: kpoint_weights
+                integer,                 intent(in)  :: init_kset
+                integer,                 intent(out) :: kset_id
+                type(C_PTR), value,      intent(in)  :: nk_loc_ptr
+            end subroutine
+        end interface
 
         nk_loc_ptr = C_NULL_PTR
         if (present(nk_loc)) nk_loc_ptr = C_LOC(nk_loc)
@@ -1141,8 +1185,18 @@ contains
         integer, optional, target,               intent(in)  :: ngv
         integer, optional, target,               intent(in)  :: gvl
         integer, optional, target,               intent(in)  :: comm
-        
         type(C_PTR) ngv_ptr, gvl_ptr, comm_ptr
+        interface
+            subroutine sirius_set_pw_coeffs_aux(label, pw_coeffs, ngv, gvl, comm)&
+                &bind(C, name="sirius_set_pw_coeffs")
+                use, intrinsic :: ISO_C_BINDING
+                character, dimension(*), intent(in)  :: label
+                complex(8),              intent(in)  :: pw_coeffs
+                type(C_PTR), value,      intent(in)  :: ngv
+                type(C_PTR), value,      intent(in)  :: gvl
+                type(C_PTR), value,      intent(in)  :: comm
+            end subroutine
+        end interface
 
         ngv_ptr = C_NULL_PTR
         if (present(ngv)) ngv_ptr = C_LOC(ngv)
