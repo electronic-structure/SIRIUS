@@ -286,6 +286,7 @@ class Augmentation_operator_gvec_deriv
             for (int igloc = 0; igloc < gvec_count; igloc++) {
                 int ig = gvec_offset + igloc;
                 double g = gvec__.gvec_len(ig);
+                auto gvc = gvec__.gvec_cart(ig);
                 if (ig == 0) {
                     continue;
                 }
@@ -307,7 +308,7 @@ class Augmentation_operator_gvec_deriv
                         
                         for (int lm3 = 0; lm3 < lmmax; lm3++) {
                             v[lm3] = std::conj(zilm[lm3]) * (rlm_dg(lm3, igloc) * ri__.value(idxrf12, l_by_lm[lm3], atom_type_.id(), g) +
-                                                             rlm_g(lm3, igloc) * ri_dq__.value(idxrf12, l_by_lm[lm3], atom_type_.id(), g));
+                                                             rlm_g(lm3, igloc) * ri_dq__.value(idxrf12, l_by_lm[lm3], atom_type_.id(), g) * gvc[nu__]);
                         }
 
                         double_complex z = fourpi * gaunt_coefs.sum_L3_gaunt(lm2, lm1, &v[0]);

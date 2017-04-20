@@ -409,7 +409,7 @@ class Stress {
                         }
                         double g = gvc.length();
                         for (int mu = 0; mu < 3; mu++) {
-                            stress_us_(mu, nu) += std::real(zsum) * gvc[mu] / g;
+                            stress_us_(mu, nu) -= std::real(zsum) * gvc[mu] / g;
                         }
                     }
                 }
@@ -417,6 +417,9 @@ class Stress {
         }
 
         ctx_.comm().allreduce(&stress_us_(0, 0), 9 * sizeof(double));
+        if (ctx_.gvec().reduced()) {
+            stress_us_ *= 2;
+        }
 
         stress_us_ *= (1.0 / ctx_.unit_cell().omega());
 
@@ -458,6 +461,7 @@ class Stress {
         } else {
             calc_stress_nonloc<double_complex>();
         }
+        calc_stress_us();
         
         const double au2kbar = 2.94210119E5;
         stress_kin_ *= au2kbar;
@@ -465,6 +469,7 @@ class Stress {
         stress_ewald_ *= au2kbar;
         stress_vloc_ *= au2kbar;
         stress_nonloc_ *= au2kbar;
+        stress_us_ *= au2kbar;
 
         printf("== stress_kin ==\n");
         for (int mu: {0, 1, 2}) {
@@ -485,6 +490,15 @@ class Stress {
         printf("== stress_nonloc ==\n");
         for (int mu: {0, 1, 2}) {
             printf("%12.6f %12.6f %12.6f\n", stress_nonloc_(mu, 0), stress_nonloc_(mu, 1), stress_nonloc_(mu, 2));
+        }
+        printf("== stress_us ==\n");
+        for (int mu: {0, 1, 2}) {
+            printf("%12.6f %12.6f %12.6f\n", stress_us_(mu, 0), stress_us_(mu, 1), stress_us_(mu, 2));
+        }
+        stress_us_ = stress_us_ + stress_nonloc_;
+        printf("== stress_us_tot ==\n");
+        for (int mu: {0, 1, 2}) {
+            printf("%12.6f %12.6f %12.6f\n", stress_us_(mu, 0), stress_us_(mu, 1), stress_us_(mu, 2));
         }
     }
 };
