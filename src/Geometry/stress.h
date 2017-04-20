@@ -347,6 +347,7 @@ class Stress {
             /* treat phase factors as real array with 2x size */
             mdarray<double, 2> phase_factors(atom_type.num_atoms(), ctx_.gvec_count() * 2);
 
+            sddk::timer t0("sirius::Stress|us|phase_fac");
             #pragma omp parallel for schedule(static)
             for (int igloc = 0; igloc < ctx_.gvec_count(); igloc++) {
                 int ig = ctx_.gvec_offset() + igloc;
@@ -357,42 +358,81 @@ class Stress {
                     phase_factors(i, 2 * igloc + 1) = z.imag();
                 }
             }
+            t0.stop();
+            mdarray<double, 2> q_tmp(nbf * (nbf + 1) / 2, ctx_.gvec_count() * 2);
+            for (int nu = 0; nu < 3; nu++) {
+                Augmentation_operator_gvec_deriv q_deriv(ctx_, iat, ri, ri_dq, nu);
 
-            /* treat auxiliary array as double with x2 size */
-            mdarray<double, 2> dm_pw(nbf * (nbf + 1) / 2, ctx_.gvec_count() * 2);
-
-            for (int iv = 0; iv < ctx_.num_mag_dims() + 1; iv++) {
-                linalg<CPU>::gemm(0, 0, nbf * (nbf + 1) / 2, 2 * ctx_.gvec_count(), atom_type.num_atoms(), 
-                                  &dm(0, 0, iv), dm.ld(),
-                                  &phase_factors(0, 0), phase_factors.ld(), 
-                                  &dm_pw(0, 0), dm_pw.ld());
-
-                for (int nu = 0; nu < 3; nu++) {
-                    Augmentation_operator_gvec_deriv q_deriv(ctx_, iat, ri, ri_dq, nu);
-
+                for (int mu = 0; mu < 3; mu++) {
+                    sddk::timer t2("sirius::Stress|us|q_tmp");
+                    #pragma omp parallel for schedule(static)
                     for (int igloc = 0; igloc < ctx_.gvec_count(); igloc++) {
                         int ig = ctx_.gvec_offset() + igloc;
-                        if (ig == 0) {
-                            continue;
-                        }
                         auto gvc = ctx_.gvec().gvec_cart(ig);
-
-                        double_complex zsum(0, 0);
-                        /* get contribution from non-diagonal terms */
-                        for (int i = 0; i < nbf * (nbf + 1) / 2; i++) {
-                            double_complex z1 = double_complex(q_deriv.q_pw(i, 2 * igloc),
-                                                               q_deriv.q_pw(i, 2 * igloc + 1));
-                            double_complex z2(dm_pw(i, 2 * igloc), dm_pw(i, 2 * igloc + 1));
-
-                            zsum += z1 * z2 * q_deriv.sym_weight(i) * std::conj(potential_.effective_potential()->f_pw(ig));
-                        }
                         double g = gvc.length();
-                        for (int mu = 0; mu < 3; mu++) {
-                            stress_us_(mu, nu) -= std::real(zsum) * gvc[mu] / g;
+                        if (ig == 0) {
+                            for (int i = 0; i < nbf * (nbf + 1) / 2; i++) {
+                                q_tmp(i, 0) = q_tmp(i, 1) = 0;
+                            }
+                        } else {
+                            for (int i = 0; i < nbf * (nbf + 1) / 2; i++) {
+                                auto z = double_complex(q_deriv.q_pw(i, 2 * igloc), q_deriv.q_pw(i, 2 * igloc + 1)) *
+                                         std::conj(potential_.effective_potential()->f_pw(ig)) * (-gvc[mu] / g);
+                                q_tmp(i, 2 * igloc)     = z.real();
+                                q_tmp(i, 2 * igloc + 1) = z.imag();
+                            }
+                        }
+                    }
+                    t2.stop();
+                    
+                    sddk::timer t1("sirius::Stress|us|gemm");
+                    mdarray<double, 2> tmp(nbf * (nbf + 1) / 2, atom_type.num_atoms());
+                    linalg<CPU>::gemm(0, 1, nbf * (nbf + 1) / 2, atom_type.num_atoms(), 2 * ctx_.gvec_count(),
+                                      q_tmp, phase_factors, tmp);
+                    t1.stop();
+                    for (int ia = 0; ia < atom_type.num_atoms(); ia++) {
+                        for (int i = 0; i < nbf * (nbf + 1) / 2; i++) {
+                            stress_us_(mu, nu) += tmp(i, ia) * dm(i, ia, 0) * q_deriv.sym_weight(i);
                         }
                     }
                 }
             }
+                    
+            ///* treat auxiliary array as double with x2 size */
+            //mdarray<double, 2> dm_pw(nbf * (nbf + 1) / 2, ctx_.gvec_count() * 2);
+
+            //for (int iv = 0; iv < ctx_.num_mag_dims() + 1; iv++) {
+            //    linalg<CPU>::gemm(0, 0, nbf * (nbf + 1) / 2, 2 * ctx_.gvec_count(), atom_type.num_atoms(), 
+            //                      &dm(0, 0, iv), dm.ld(),
+            //                      &phase_factors(0, 0), phase_factors.ld(), 
+            //                      &dm_pw(0, 0), dm_pw.ld());
+
+            //    for (int nu = 0; nu < 3; nu++) {
+            //        Augmentation_operator_gvec_deriv q_deriv(ctx_, iat, ri, ri_dq, nu);
+
+            //        for (int igloc = 0; igloc < ctx_.gvec_count(); igloc++) {
+            //            int ig = ctx_.gvec_offset() + igloc;
+            //            if (ig == 0) {
+            //                continue;
+            //            }
+            //            auto gvc = ctx_.gvec().gvec_cart(ig);
+
+            //            double_complex zsum(0, 0);
+            //            /* get contribution from non-diagonal terms */
+            //            for (int i = 0; i < nbf * (nbf + 1) / 2; i++) {
+            //                double_complex z1 = double_complex(q_deriv.q_pw(i, 2 * igloc),
+            //                                                   q_deriv.q_pw(i, 2 * igloc + 1));
+            //                double_complex z2(dm_pw(i, 2 * igloc), dm_pw(i, 2 * igloc + 1));
+
+            //                zsum += z1 * z2 * q_deriv.sym_weight(i) * std::conj(potential_.effective_potential()->f_pw(ig));
+            //            }
+            //            double g = gvc.length();
+            //            for (int mu = 0; mu < 3; mu++) {
+            //                stress_us_(mu, nu) -= std::real(zsum) * gvc[mu] / g;
+            //            }
+            //        }
+            //    }
+            //}
         }
 
         ctx_.comm().allreduce(&stress_us_(0, 0), 9 * sizeof(double));
