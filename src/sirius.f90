@@ -1024,6 +1024,16 @@ module sirius
             complex(8),              intent(out) :: pot
         end subroutine
 
+        subroutine sirius_calculate_stress(kset_id)&
+            &bind(C, name="sirius_calculate_stress")
+            integer,                 intent(in)  :: kset_id
+        end subroutine
+
+        subroutine sirius_get_stress_vloc(s)&
+            &bind(C, name="sirius_get_stress_vloc")
+            real(8),                 intent(out) :: s
+        end subroutine
+
     end interface
 
 contains

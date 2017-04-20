@@ -42,6 +42,8 @@ sirius::DFT_ground_state* dft_ground_state = nullptr;
 /// List of timers created on the Fortran side.
 std::map<std::string, sddk::timer*> ftimers;
 
+std::unique_ptr<sirius::Stress> stress_tensor{nullptr};
+
 extern "C" {
 
 /// Initialize the library.
@@ -3066,6 +3068,22 @@ void sirius_set_pw_coeffs(ftn_char label__,
             potential->xc_potential()->fft_transform(1);
         } else {
             TERMINATE("wrong label");
+        }
+    }
+}
+
+void sirius_calculate_stress(ftn_int* kset_id__)
+{
+    auto kset = *kset_list[*kset_id__];
+    stress_tensor = std::unique_ptr<sirius::Stress>(new sirius::Stress(*sim_ctx, kset, *density, *potential));
+}
+
+void sirius_get_stress_vloc(ftn_double* stress_vloc__)
+{
+    auto& s = stress_tensor->stress_vloc();
+    for (int mu = 0; mu < 3; mu++) {
+        for (int nu = 0; nu < 3; nu++) {
+            stress_vloc__[nu + mu * 3] = s(mu, nu);
         }
     }
 }

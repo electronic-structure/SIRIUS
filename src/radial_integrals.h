@@ -131,6 +131,7 @@ class Radial_integrals_aug: public Radial_integrals_base<3>
                 }
             }
 
+            #pragma omp parallel for
             for (int l = 0; l <= 2 * lmax_beta; l++) {
                 for (int idx = 0; idx < nbrf * (nbrf + 1) / 2; idx++) {
                     values_(idx, l, iat).interpolate();
