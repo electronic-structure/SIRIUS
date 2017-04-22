@@ -91,19 +91,6 @@ class Radial_integrals_aug: public Radial_integrals_base<3>
                 }
             }
 
-            /* interpolate Q-operator radial functions */
-            mdarray<Spline<double>, 2> qrf_spline(nbrf * (nbrf + 1) / 2, 2 * lmax_beta + 1);
-            #pragma omp parallel for
-            for (int idx = 0; idx < nbrf * (nbrf + 1) / 2; idx++) {
-                for (int l3 = 0; l3 <= 2 * lmax_beta; l3++) {
-                    qrf_spline(idx, l3) = Spline<double>(atom_type.radial_grid());
-                    for (int ir = 0; ir < atom_type.num_mt_points(); ir++) {
-                        qrf_spline(idx, l3)[ir] = atom_type.pp_desc().q_radial_functions_l(ir, idx, l3);
-                    }
-                    qrf_spline(idx, l3).interpolate();
-                }
-            }
-            
             #pragma omp parallel for
             for (int iq = 0; iq < grid_q_.num_points(); iq++) {
                 Spherical_Bessel_functions jl(2 * lmax_beta, atom_type.radial_grid(), grid_q_[iq]);
@@ -119,10 +106,10 @@ class Radial_integrals_aug: public Radial_integrals_base<3>
                             if (l3 >= std::abs(l1 - l2) && l3 <= (l1 + l2) && (l1 + l2 + l3) % 2 == 0) {
                                 if (jl_deriv) {
                                     auto s = jl.deriv_q(l3);
-                                    values_(idx, l3, iat)[iq] = sirius::inner(s, qrf_spline(idx, l3), 0,
+                                    values_(idx, l3, iat)[iq] = sirius::inner(s, atom_type.q_rf(idx, l3), 0,
                                                                               atom_type.num_mt_points());
                                 } else {
-                                    values_(idx, l3, iat)[iq] = sirius::inner(jl[l3], qrf_spline(idx, l3), 0,
+                                    values_(idx, l3, iat)[iq] = sirius::inner(jl[l3], atom_type.q_rf(idx, l3), 0,
                                                                               atom_type.num_mt_points());
                                 }
                             }
@@ -139,7 +126,6 @@ class Radial_integrals_aug: public Radial_integrals_base<3>
             }
         }
     }
-
 
   public:
     Radial_integrals_aug(Unit_cell const& unit_cell__, double qmax__, int np__)
@@ -260,17 +246,6 @@ class Radial_integrals_beta: public Radial_integrals_base<2>
                 values_(idxrf, iat) = Spline<double>(grid_q_);
             }
     
-            /* interpolate beta radial functions */
-            std::vector<Spline<double>> beta_rf(nrb);
-            for (int idxrf = 0; idxrf < nrb; idxrf++) {
-                beta_rf[idxrf] = Spline<double>(atom_type.radial_grid());
-                int nr = atom_type.pp_desc().num_beta_radial_points[idxrf];
-                for (int ir = 0; ir < nr; ir++) {
-                    beta_rf[idxrf][ir] = atom_type.pp_desc().beta_radial_functions(ir, idxrf);
-                }
-                beta_rf[idxrf].interpolate();
-            }
-    
             #pragma omp parallel for
             for (int iq = 0; iq < grid_q_.num_points(); iq++) {
                 Spherical_Bessel_functions jl(unit_cell_.lmax(), atom_type.radial_grid(), grid_q_[iq]);
@@ -281,12 +256,13 @@ class Radial_integrals_beta: public Radial_integrals_base<2>
                     /* remeber that beta(r) are defined as miltiplied by r */
                     if (jl_deriv) {
                         auto s = jl.deriv_q(l);
-                        sirius::inner(s, beta_rf[idxrf], 1, nr);
+                        sirius::inner(s, atom_type.beta_rf(idxrf), 1, nr);
                     } else {
-                        values_(idxrf, iat)[iq] = sirius::inner(jl[l], beta_rf[idxrf], 1, nr);
+                        values_(idxrf, iat)[iq] = sirius::inner(jl[l], atom_type.beta_rf(idxrf), 1, nr);
                     }
                 }
             }
+
             for (int idxrf = 0; idxrf < atom_type.mt_radial_basis_size(); idxrf++) {
                 values_(idxrf, iat).interpolate();
             }
@@ -327,18 +303,7 @@ class Radial_integrals_beta_jl: public Radial_integrals_base<3>
                     values_(idxrf, l1, iat) = Spline<double>(grid_q_);
                 }
             }
-    
-            /* interpolate beta radial functions */
-            std::vector<Spline<double>> beta_rf(nrb);
-            for (int idxrf = 0; idxrf < nrb; idxrf++) {
-                beta_rf[idxrf] = Spline<double>(atom_type.radial_grid());
-                int nr = atom_type.pp_desc().num_beta_radial_points[idxrf];
-                for (int ir = 0; ir < nr; ir++) {
-                    beta_rf[idxrf][ir] = atom_type.pp_desc().beta_radial_functions(ir, idxrf);
-                }
-                beta_rf[idxrf].interpolate();
-            }
-    
+
             #pragma omp parallel for
             for (int iq = 0; iq < grid_q_.num_points(); iq++) {
                 Spherical_Bessel_functions jl(lmax_, atom_type.radial_grid(), grid_q_[iq]);
@@ -348,10 +313,11 @@ class Radial_integrals_beta_jl: public Radial_integrals_base<3>
                     for (int l1 = 0; l1 <= lmax_; l1++) {
                         /* compute \int j_{l'}(q * r) beta_l(r) r^2 * r * dr */
                         /* remeber that beta(r) are defined as miltiplied by r */
-                        values_(idxrf, l1, iat)[iq] = sirius::inner(jl[l1], beta_rf[idxrf], 2, nr);
+                        values_(idxrf, l1, iat)[iq] = sirius::inner(jl[l1], atom_type.beta_rf(idxrf), 2, nr);
                     }
                 }
             }
+
             for (int idxrf = 0; idxrf < atom_type.mt_radial_basis_size(); idxrf++) {
                 for (int l1 = 0; l1 <= lmax_; l1++) {
                     values_(idxrf, l1, iat).interpolate();
