@@ -481,49 +481,54 @@ class Stress {
             calc_stress_nonloc<double_complex>();
         }
         calc_stress_us();
-        
-        //const double au2kbar = 2.94210119E5;
-        //stress_kin_ *= au2kbar;
-        //stress_har_ *= au2kbar;
-        //stress_ewald_ *= au2kbar;
-        //stress_vloc_ *= au2kbar;
-        //stress_nonloc_ *= au2kbar;
-        //stress_us_ *= au2kbar;
-
-        //printf("== stress_kin ==\n");
-        //for (int mu: {0, 1, 2}) {
-        //    printf("%12.6f %12.6f %12.6f\n", stress_kin_(mu, 0), stress_kin_(mu, 1), stress_kin_(mu, 2));
-        //}
-        //printf("== stress_har ==\n");
-        //for (int mu: {0, 1, 2}) {
-        //    printf("%12.6f %12.6f %12.6f\n", stress_har_(mu, 0), stress_har_(mu, 1), stress_har_(mu, 2));
-        //}
-        //printf("== stress_ewald ==\n");
-        //for (int mu: {0, 1, 2}) {
-        //    printf("%12.6f %12.6f %12.6f\n", stress_ewald_(mu, 0), stress_ewald_(mu, 1), stress_ewald_(mu, 2));
-        //}
-        //printf("== stress_vloc ==\n");
-        //for (int mu: {0, 1, 2}) {
-        //    printf("%12.6f %12.6f %12.6f\n", stress_vloc_(mu, 0), stress_vloc_(mu, 1), stress_vloc_(mu, 2));
-        //}
-        //printf("== stress_nonloc ==\n");
-        //for (int mu: {0, 1, 2}) {
-        //    printf("%12.6f %12.6f %12.6f\n", stress_nonloc_(mu, 0), stress_nonloc_(mu, 1), stress_nonloc_(mu, 2));
-        //}
-        //printf("== stress_us ==\n");
-        //for (int mu: {0, 1, 2}) {
-        //    printf("%12.6f %12.6f %12.6f\n", stress_us_(mu, 0), stress_us_(mu, 1), stress_us_(mu, 2));
-        //}
-        //stress_us_ = stress_us_ + stress_nonloc_;
-        //printf("== stress_us_tot ==\n");
-        //for (int mu: {0, 1, 2}) {
-        //    printf("%12.6f %12.6f %12.6f\n", stress_us_(mu, 0), stress_us_(mu, 1), stress_us_(mu, 2));
-        //}
     }
 
     inline matrix3d<double> stress_vloc() const
     {
         return stress_vloc_;
+    }
+
+    inline void print_info() const
+    {
+        if (ctx_.comm().rank() == 0) {
+            const double au2kbar = 2.94210119E5;
+            auto stress_kin    = stress_kin_ * au2kbar;
+            auto stress_har    = stress_har_ * au2kbar;
+            auto stress_ewald  = stress_ewald_ * au2kbar;
+            auto stress_vloc   = stress_vloc_ * au2kbar;
+            auto stress_nonloc = stress_nonloc_ * au2kbar;
+            auto stress_us     = stress_us_ * au2kbar;
+
+            printf("== stress_kin ==\n");
+            for (int mu: {0, 1, 2}) {
+                printf("%12.6f %12.6f %12.6f\n", stress_kin(mu, 0), stress_kin(mu, 1), stress_kin(mu, 2));
+            }
+            printf("== stress_har ==\n");
+            for (int mu: {0, 1, 2}) {
+                printf("%12.6f %12.6f %12.6f\n", stress_har(mu, 0), stress_har(mu, 1), stress_har(mu, 2));
+            }
+            printf("== stress_ewald ==\n");
+            for (int mu: {0, 1, 2}) {
+                printf("%12.6f %12.6f %12.6f\n", stress_ewald(mu, 0), stress_ewald(mu, 1), stress_ewald(mu, 2));
+            }
+            printf("== stress_vloc ==\n");
+            for (int mu: {0, 1, 2}) {
+                printf("%12.6f %12.6f %12.6f\n", stress_vloc(mu, 0), stress_vloc(mu, 1), stress_vloc(mu, 2));
+            }
+            printf("== stress_nonloc ==\n");
+            for (int mu: {0, 1, 2}) {
+                printf("%12.6f %12.6f %12.6f\n", stress_nonloc(mu, 0), stress_nonloc(mu, 1), stress_nonloc(mu, 2));
+            }
+            printf("== stress_us ==\n");
+            for (int mu: {0, 1, 2}) {
+                printf("%12.6f %12.6f %12.6f\n", stress_us(mu, 0), stress_us(mu, 1), stress_us(mu, 2));
+            }
+            stress_us = stress_us + stress_nonloc;
+            printf("== stress_us_tot ==\n");
+            for (int mu: {0, 1, 2}) {
+                printf("%12.6f %12.6f %12.6f\n", stress_us(mu, 0), stress_us(mu, 1), stress_us(mu, 2));
+            }
+        }
     }
 };
 
