@@ -273,6 +273,7 @@ struct Control_input
     bool print_memory_usage_{false};
     bool print_checksum_{false};
     int num_bands_to_print_{10};
+    bool print_stress_{false};
 
     void read(json const& parser)
     {
@@ -292,6 +293,7 @@ struct Control_input
             print_memory_usage_  = parser["control"].value("print_memory_usage", print_memory_usage_);
             print_checksum_      = parser["control"].value("print_checksum", print_checksum_);
             num_bands_to_print_  = parser["control"].value("num_bands_to_print", num_bands_to_print_);
+            print_stress_        = parser["control"].value("print_stress", print_stress_);
 
             auto strings = {&std_evp_solver_name_, &gen_evp_solver_name_, &fft_mode_, &processing_unit_};
             for (auto s: strings) {
