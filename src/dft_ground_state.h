@@ -35,8 +35,7 @@
 
 using json = nlohmann::json;
 
-namespace sirius
-{
+namespace sirius {
 
 class DFT_ground_state
 {
