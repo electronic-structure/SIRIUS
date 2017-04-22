@@ -1,4 +1,5 @@
 module sirius
+
     use, intrinsic :: ISO_C_BINDING
 
     interface
@@ -822,48 +823,15 @@ module sirius
             &bind(C, name="sirius_ground_state_print_info")
         end subroutine
 
-        !subroutine sirius_create_density_aux(rhoit, rhomt, magit, magmt)&
-        !    &bind(C, name="sirius_create_density")
-        !    use, intrinsic :: ISO_C_BINDING
-        !    type(C_PTR), value, intent(in) :: rhoit
-        !    type(C_PTR), value, intent(in) :: rhomt
-        !    type(C_PTR), value, intent(in) :: magit
-        !    type(C_PTR), value, intent(in) :: magmt
-        !end subroutine
-
         subroutine sirius_delete_density()&
             &bind(C, name="sirius_delete_density")
             use, intrinsic :: ISO_C_BINDING
         end subroutine
 
-        !subroutine sirius_create_potential_aux(veffit, veffmt, beffit, beffmt)&
-        !    &bind(C, name="sirius_create_potential")
-        !    use, intrinsic :: ISO_C_BINDING
-        !    type(C_PTR), value, intent(in) :: veffit
-        !    type(C_PTR), value, intent(in) :: veffmt
-        !    type(C_PTR), value, intent(in) :: beffit
-        !    type(C_PTR), value, intent(in) :: beffmt
-        !end subroutine
-
         subroutine sirius_delete_potential()&
             &bind(C, name="sirius_delete_potential")
             use, intrinsic :: ISO_C_BINDING
         end subroutine
-
-        !subroutine sirius_add_atom_type_aux(label, fname)&
-        !    &bind(C, name="sirius_add_atom_type")
-        !    use, intrinsic :: ISO_C_BINDING
-        !    type(C_PTR), value, intent(in) :: label
-        !    type(C_PTR), value, intent(in) :: fname
-        !end subroutine
-
-        !subroutine sirius_add_atom_aux(label, pos, vfield)&
-        !    &bind(C, name="sirius_add_atom")
-        !    use, intrinsic :: ISO_C_BINDING
-        !    type(C_PTR), value, intent(in) :: label
-        !    type(C_PTR), value, intent(in) :: pos
-        !    type(C_PTR), value, intent(in) :: vfield
-        !end subroutine
 
         subroutine sirius_set_verbosity(level)&
             &bind(C, name="sirius_set_verbosity")
