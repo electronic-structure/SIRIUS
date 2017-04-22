@@ -64,20 +64,19 @@ class radial_functions_index
 
     public:
 
-        void init(const std::vector<local_orbital_descriptor>& lo_descriptors__)
+        void init(std::vector<local_orbital_descriptor> const& lo_descriptors__)
         {
             std::vector<radial_solution_descriptor_set> aw_descriptors;
             init(aw_descriptors, lo_descriptors__);
         }
 
-        void init(const std::vector<radial_solution_descriptor_set>& aw_descriptors, 
-                  const std::vector<local_orbital_descriptor>& lo_descriptors)
+        void init(std::vector<radial_solution_descriptor_set> const& aw_descriptors, 
+                  std::vector<local_orbital_descriptor>       const& lo_descriptors)
         {
             lmax_aw_ = static_cast<int>(aw_descriptors.size()) - 1;
             lmax_lo_ = -1;
-            for (size_t idxlo = 0; idxlo < lo_descriptors.size(); idxlo++)
-            {
-                int l = lo_descriptors[idxlo].l;
+            for (size_t idxlo = 0; idxlo < lo_descriptors.size(); idxlo++) {
+                int l    = lo_descriptors[idxlo].l;
                 lmax_lo_ = std::max(lmax_lo_, l);
             }
 
@@ -90,36 +89,33 @@ class radial_functions_index
 
             radial_function_index_descriptors_.clear();
 
-            for (int l = 0; l <= lmax_aw_; l++)
-            {
+            for (int l = 0; l <= lmax_aw_; l++) {
                 assert(aw_descriptors[l].size() <= 3);
 
-                for (size_t order = 0; order < aw_descriptors[l].size(); order++)
-                {
+                for (size_t order = 0; order < aw_descriptors[l].size(); order++) {
                     radial_function_index_descriptors_.push_back(radial_function_index_descriptor(l, num_rf_[l]));
                     num_rf_[l]++;
                 }
             }
 
-            for (int idxlo = 0; idxlo < (int)lo_descriptors.size(); idxlo++)
-            {
+            for (int idxlo = 0; idxlo < static_cast<int>(lo_descriptors.size()); idxlo++) {
                 int l = lo_descriptors[idxlo].l;
                 radial_function_index_descriptors_.push_back(radial_function_index_descriptor(l, num_rf_[l], idxlo));
                 num_rf_[l]++;
                 num_lo_[l]++;
             }
 
-            for (int l = 0; l <= lmax_; l++) max_num_rf_ = std::max(max_num_rf_, num_rf_[l]);
+            for (int l = 0; l <= lmax_; l++) {
+                max_num_rf_ = std::max(max_num_rf_, num_rf_[l]);
+            }
 
             index_by_l_order_ = mdarray<int, 2>(lmax_ + 1, max_num_rf_);
 
-            if (lo_descriptors.size())
-            {
+            if (lo_descriptors.size()) {
                 index_by_idxlo_ = mdarray<int, 1>(lo_descriptors.size());
             }
 
-            for (int i = 0; i < (int)radial_function_index_descriptors_.size(); i++)
-            {
+            for (int i = 0; i < (int)radial_function_index_descriptors_.size(); i++) {
                 int l = radial_function_index_descriptors_[i].l;
                 int order = radial_function_index_descriptors_[i].order;
                 int idxlo = radial_function_index_descriptors_[i].idxlo;
@@ -353,6 +349,9 @@ class Atom_type
 
         mutable mdarray<double, 3> rf_coef_;
         mutable mdarray<double, 3> vrf_coef_;
+
+        std::vector<Spline<double>> beta_rf_;
+        mdarray<Spline<double>, 2> q_rf_;
 
         bool initialized_{false};
        
@@ -865,6 +864,16 @@ class Atom_type
             free_atom_density_.resize(num_points__);
             std::memcpy(free_atom_density_.data(), dens__, num_points__ * sizeof(double));
         }
+
+        inline Spline<double> const& beta_rf(int idxrf__) const
+        {
+            return beta_rf_[idxrf__];
+        }
+
+        inline Spline<double> const& q_rf(int idx__, int l__) const
+        {
+            return q_rf_(idx__, l__);
+        }
 };
 
 inline void Atom_type::init(int offset_lo__)
@@ -887,6 +896,11 @@ inline void Atom_type::init(int offset_lo__)
         } else {
             read_input(file_name_);
         }
+    }
+
+    /* check the nuclear charge */
+    if (zn_ == 0) {
+        TERMINATE("zero atom charge");
     }
 
     /* add valence levels to the list of core levels */
@@ -913,22 +927,20 @@ inline void Atom_type::init(int offset_lo__)
                 }
             }
         }
+        /* get the number of core electrons */
+        for (auto& e: atomic_levels_) {
+            if (e.core) {
+                num_core_electrons_ += e.occupancy;
+            }
+        }
     }
     
-    /* check the nuclear charge */
-    if (zn_ == 0) {
-        TERMINATE("zero atom charge");
-    }
-
     /* set default radial grid if it was not done by user */
     if (radial_grid_.num_points() == 0) {
         set_radial_grid();
     }
     
-    if (parameters_.esm_type() == electronic_structure_method_t::full_potential_lapwlo) {
-        /* initialize free atom density and potential */
-        //== init_free_atom(false);
-
+    if (parameters_.full_potential()) {
         /* initialize aw descriptors if they were not set manually */
         if (aw_descriptors_.size() == 0) {
             init_aw_descriptors(parameters_.lmax_apw());
@@ -963,12 +975,31 @@ inline void Atom_type::init(int offset_lo__)
     /* initialize index of muffin-tin basis functions */
     indexb_.init(indexr_);
     
-    /* get the number of core electrons */
-    num_core_electrons_ = 0;
-    if (parameters_.full_potential()) {
-        for (size_t i = 0; i < atomic_levels_.size(); i++) {
-            if (atomic_levels_[i].core) {
-                num_core_electrons_ += atomic_levels_[i].occupancy;
+    if (!parameters_.full_potential()) {
+        /* number of radial beta-functions */
+        int nbrf = mt_radial_basis_size();
+        /* maximum l of beta-projectors */
+        int lmax_beta = indexr().lmax();
+        /* interpolate beta radial functions */
+        beta_rf_ = std::vector<Spline<double>>(mt_radial_basis_size());
+        for (int idxrf = 0; idxrf < nbrf; idxrf++) {
+            beta_rf_[idxrf] = Spline<double>(radial_grid());
+            int nr = pp_desc().num_beta_radial_points[idxrf];
+            for (int ir = 0; ir < nr; ir++) {
+                beta_rf_[idxrf][ir] = pp_desc().beta_radial_functions(ir, idxrf);
+            }
+            beta_rf_[idxrf].interpolate();
+        }
+        /* interpolate Q-operator radial functions */
+        q_rf_ = mdarray<Spline<double>, 2>(nbrf * (nbrf + 1) / 2, 2 * lmax_beta + 1);
+        #pragma omp parallel for
+        for (int idx = 0; idx < nbrf * (nbrf + 1) / 2; idx++) {
+            for (int l = 0; l <= 2 * lmax_beta; l++) {
+                q_rf_(idx, l) = Spline<double>(radial_grid());
+                for (int ir = 0; ir < num_mt_points(); ir++) {
+                    q_rf_(idx, l)[ir] = pp_desc().q_radial_functions_l(ir, idx, l);
+                }
+                q_rf_(idx, l).interpolate();
             }
         }
     }
@@ -977,43 +1008,40 @@ inline void Atom_type::init(int offset_lo__)
     num_valence_electrons_ = zn_ - num_core_electrons_;
 
     int lmmax_pot = Utils::lmmax(parameters_.lmax_pot());
-    auto l_by_lm = Utils::l_by_lm(parameters_.lmax_pot());
 
-    /* index the non-zero radial integrals */
-    std::vector< std::pair<int, int> > non_zero_elements;
+    if (parameters_.full_potential()) {
+        auto l_by_lm = Utils::l_by_lm(parameters_.lmax_pot());
 
-    for (int lm = 0; lm < lmmax_pot; lm++)
-    {
-        int l = l_by_lm[lm];
+        /* index the non-zero radial integrals */
+        std::vector<std::pair<int, int>> non_zero_elements;
 
-        for (int i2 = 0; i2 < indexr().size(); i2++)
-        {
-            int l2 = indexr(i2).l;
-            
-            for (int i1 = 0; i1 <= i2; i1++)
-            {
-                int l1 = indexr(i1).l;
-                if ((l + l1 + l2) % 2 == 0)
-                {
-                    if (lm) non_zero_elements.push_back(std::pair<int, int>(i2, lm + lmmax_pot * i1));
-                    for (int j = 0; j < parameters_.num_mag_dims(); j++)
-                    {
-                        int offs = (j + 1) * lmmax_pot * indexr().size();
-                        non_zero_elements.push_back(std::pair<int, int>(i2, lm + lmmax_pot * i1 + offs));
+        for (int lm = 0; lm < lmmax_pot; lm++) {
+            int l = l_by_lm[lm];
+
+            for (int i2 = 0; i2 < indexr().size(); i2++) {
+                int l2 = indexr(i2).l; 
+                for (int i1 = 0; i1 <= i2; i1++) {
+                    int l1 = indexr(i1).l;
+                    if ((l + l1 + l2) % 2 == 0) {
+                        if (lm) {
+                            non_zero_elements.push_back(std::pair<int, int>(i2, lm + lmmax_pot * i1));
+                        }
+                        for (int j = 0; j < parameters_.num_mag_dims(); j++) {
+                            int offs = (j + 1) * lmmax_pot * indexr().size();
+                            non_zero_elements.push_back(std::pair<int, int>(i2, lm + lmmax_pot * i1 + offs));
+                        }
                     }
                 }
             }
         }
-    }
-    idx_radial_integrals_ = mdarray<int, 2>(2, non_zero_elements.size());
-    for (size_t j = 0; j < non_zero_elements.size(); j++)
-    {
-        idx_radial_integrals_(0, j) = non_zero_elements[j].first;
-        idx_radial_integrals_(1, j) = non_zero_elements[j].second;
+        idx_radial_integrals_ = mdarray<int, 2>(2, non_zero_elements.size());
+        for (size_t j = 0; j < non_zero_elements.size(); j++) {
+            idx_radial_integrals_(0, j) = non_zero_elements[j].first;
+            idx_radial_integrals_(1, j) = non_zero_elements[j].second;
+        }
     }
 
-    if (parameters_.processing_unit() == GPU && parameters_.full_potential())
-    {
+    if (parameters_.processing_unit() == GPU && parameters_.full_potential()) {
         #ifdef __GPU
         idx_radial_integrals_.allocate(memory_t::device);
         idx_radial_integrals_.copy_to_device();
@@ -1282,31 +1310,29 @@ inline void Atom_type::read_pseudo_uspp(json const& parser)
     zp  = parser["pseudo_potential"]["header"]["z_valence"];
     zn_ = int(zp + 1e-10);
 
-    int nmesh;
-    nmesh = parser["pseudo_potential"]["header"]["mesh_size"];
+    num_mt_points_ = parser["pseudo_potential"]["header"]["mesh_size"];
 
-    pp_desc_.r = parser["pseudo_potential"]["radial_grid"].get<std::vector<double>>();
+    auto rgrid = parser["pseudo_potential"]["radial_grid"].get<std::vector<double>>();
+    if (static_cast<int>(rgrid.size()) != num_mt_points_) {
+        TERMINATE("wrong mesh size");
+    }
 
     pp_desc_.vloc = parser["pseudo_potential"]["local_potential"].get<std::vector<double>>();
 
-    pp_desc_.core_charge_density = parser["pseudo_potential"].value("core_charge_density", std::vector<double>(nmesh, 0));
+    pp_desc_.core_charge_density = parser["pseudo_potential"].value("core_charge_density", std::vector<double>(rgrid.size(), 0));
 
     pp_desc_.total_charge_density = parser["pseudo_potential"]["total_charge_density"].get<std::vector<double>>();
 
-    if ((int)pp_desc_.r.size() != nmesh) {
-        TERMINATE("wrong mesh size");
-    }
-    if ((int)pp_desc_.vloc.size() != nmesh ||
-        (int)pp_desc_.core_charge_density.size() != nmesh ||
-        (int)pp_desc_.total_charge_density.size() != nmesh) {
+    if (pp_desc_.vloc.size() != rgrid.size() ||
+        pp_desc_.core_charge_density.size() != rgrid.size() ||
+        pp_desc_.total_charge_density.size() != rgrid.size()) {
         std::cout << pp_desc_.vloc.size() << " " << pp_desc_.core_charge_density.size() << " " << pp_desc_.total_charge_density.size() << std::endl;
         TERMINATE("wrong array size");
     }
 
-    num_mt_points_ = nmesh;
-    mt_radius_     = pp_desc_.r[nmesh - 1];
+    mt_radius_ = rgrid.back();
 
-    set_radial_grid(nmesh, &pp_desc_.r[0]);
+    set_radial_grid(num_mt_points_, rgrid.data());
 
     pp_desc_.num_beta_radial_functions = parser["pseudo_potential"]["header"]["number_of_proj"];
 
