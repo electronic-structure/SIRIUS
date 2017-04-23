@@ -11,7 +11,7 @@
         "smearing_width" : 0.05,
         "valence_relativity" : "none",
         "core_relativity" : "none",
-        "num_fv_states" : 4,
+        "num_fv_states" : 10,
         "aw_cutoff" : 8,
         "pw_cutoff" : 20.00,
         "auto_rmt" : 0,
