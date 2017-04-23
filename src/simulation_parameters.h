@@ -379,9 +379,19 @@ class Simulation_parameters
             return control_input_.std_evp_solver_name_;
         }
 
+        inline void set_std_evp_solver_name(std::string name__)
+        {
+            control_input_.std_evp_solver_name_ = name__;
+        }
+
         inline std::string const& gen_evp_solver_name() const
         {
             return control_input_.gen_evp_solver_name_;
+        }
+
+        inline void set_gen_evp_solver_name(std::string name__)
+        {
+            control_input_.gen_evp_solver_name_ = name__;
         }
 
         inline relativity_t valence_relativity() const
