@@ -248,41 +248,44 @@ class Augmentation_operator_gvec_deriv
             int gvec_count = gvec__.gvec_count(comm_.rank());
             int gvec_offset = gvec__.gvec_offset(comm_.rank());
 
-            auto dRlm_dg = [this](int lm, vector3d<double>& gvs, int nu)
-            {
-                double theta = gvs[1];
-                double phi   = gvs[2];
-                
-                if (lm == 0) {
-                    return 0.0;
-                }
-
-                vector3d<double> dtheta_dq({std::cos(phi) * std::cos(theta), std::cos(theta) * std::sin(phi), -std::sin(theta)});
-                vector3d<double> dphi_dq({-std::sin(phi), std::cos(phi), 0.0});
-
-                return (SHT::dRlm_dtheta(lm, theta, phi) * dtheta_dq[nu] +
-                        SHT::dRlm_dphi_sin_theta(lm, theta, phi) * dphi_dq[nu]);
-            };
-            
-            /* array of real spherical harmonics for each G-vector */
             mdarray<double, 2> rlm_g(lmmax, gvec_count);
-            mdarray<double, 2> rlm_dg(lmmax, gvec_count);
+            mdarray<double, 3> rlm_dg(lmmax, 3, gvec_count);
+
+            /* array of real spherical harmonics and derivatives for each G-vector */
+            sddk::timer t1("sirius::Augmentation_operator_gvec_deriv::generate_pw_coeffs|drlm");
+            #pragma omp parallel for
             for (int igloc = 0; igloc < gvec_count; igloc++) {
                 int ig = gvec_offset + igloc;
                 auto rtp = SHT::spherical_coordinates(gvec__.gvec_cart(ig));
-                SHT::spherical_harmonics(2 * lmax_beta, rtp[1], rtp[2], &rlm_g(0, igloc));
-                for (int lm = 0; lm < lmmax; lm++) {
-                    rlm_dg[lm] = dRlm_dg(lm, rtp, nu__);
+
+                double theta = rtp[1];
+                double phi   = rtp[2];
+                vector3d<double> dtheta_dq({std::cos(phi) * std::cos(theta), std::cos(theta) * std::sin(phi), -std::sin(theta)});
+                vector3d<double> dphi_dq({-std::sin(phi), std::cos(phi), 0.0});
+
+                SHT::spherical_harmonics(2 * lmax_beta, theta, phi, &rlm_g(0, igloc));
+
+                std::vector<double> dRlm_dtheta(lmmax);
+                std::vector<double> dRlm_dphi_sin_theta(lmmax);
+
+                SHT::dRlm_dtheta(2 * lmax_beta, theta, phi, &dRlm_dtheta[0]);
+                SHT::dRlm_dphi_sin_theta(2 * lmax_beta, theta, phi, &dRlm_dphi_sin_theta[0]);
+                for (int nu = 0; nu < 3; nu++) {
+                    for (int lm = 0; lm < lmmax; lm++) {
+                        rlm_dg(lm, nu, igloc) = dRlm_dtheta[lm] * dtheta_dq[nu] + dRlm_dphi_sin_theta[lm] * dphi_dq[nu];
+                    }
                 }
             }
-        
+            t1.stop();
+
             /* number of beta-projectors */
             int nbf = atom_type_.mt_basis_size();
             
             /* array of plane-wave coefficients */
             q_pw_ = mdarray<double, 2>(nbf * (nbf + 1) / 2, 2 * gvec_count, memory_t::host_pinned, "q_pw_dg_");
             q_pw_.zero();
-            #pragma omp parallel for
+            sddk::timer t2("sirius::Augmentation_operator_gvec_deriv::generate_pw_coeffs|qpw");
+            #pragma omp parallel for schedule(static)
             for (int igloc = 0; igloc < gvec_count; igloc++) {
                 int ig = gvec_offset + igloc;
                 double g = gvec__.gvec_len(ig);
@@ -292,6 +295,8 @@ class Augmentation_operator_gvec_deriv
                 }
                 
                 std::vector<double_complex> v(lmmax);
+                auto ri = ri__.values(atom_type_.id(), g);
+                auto ri_dg = ri_dq__.values(atom_type_.id(), g);
 
                 for (int xi2 = 0; xi2 < nbf; xi2++) {
                     int lm2 = atom_type_.indexb(xi2).lm;
@@ -307,8 +312,8 @@ class Augmentation_operator_gvec_deriv
                         int idxrf12 = idxrf2 * (idxrf2 + 1) / 2 + idxrf1;
                         
                         for (int lm3 = 0; lm3 < lmmax; lm3++) {
-                            v[lm3] = std::conj(zilm[lm3]) * (rlm_dg(lm3, igloc) * ri__.value(idxrf12, l_by_lm[lm3], atom_type_.id(), g) +
-                                                             rlm_g(lm3, igloc) * ri_dq__.value(idxrf12, l_by_lm[lm3], atom_type_.id(), g) * gvc[nu__]);
+                            v[lm3] = std::conj(zilm[lm3]) * (rlm_dg(lm3, nu__, igloc) * ri(idxrf12, l_by_lm[lm3]) +
+                                                             rlm_g(lm3, igloc) * ri_dg(idxrf12, l_by_lm[lm3]) * gvc[nu__]);
                         }
 
                         double_complex z = fourpi * gaunt_coefs.sum_L3_gaunt(lm2, lm1, &v[0]);
@@ -317,6 +322,7 @@ class Augmentation_operator_gvec_deriv
                     }
                 }
             }
+            t2.stop();
 
             sym_weight_ = mdarray<double, 1>(nbf * (nbf + 1) / 2, memory_t::host_pinned, "sym_weight_");
             for (int xi2 = 0; xi2 < nbf; xi2++) {
@@ -375,11 +381,6 @@ class Augmentation_operator_gvec_deriv
         {
             return q_pw_(i__, ig__);
         }
-
-        //double const& q_mtrx(int xi1__, int xi2__) const
-        //{
-        //    return q_mtrx_(xi1__, xi2__);
-        //}
 
         //inline mdarray<double, 1> const& sym_weight() const
         //{
