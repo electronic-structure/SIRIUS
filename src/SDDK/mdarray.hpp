@@ -666,6 +666,7 @@ class mdarray_base
         #ifdef __GPU
         mdarray_assert(raw_ptr_ != nullptr);
         mdarray_assert(raw_ptr_device_ != nullptr);
+        mdarray_assert(idx0__ + n__ <= size());
 
         if ((from__ & memory_t::host) != memory_t::none && (to__ & memory_t::device) != memory_t::none) {
             acc::copyin(&raw_ptr_device_[idx0__], &raw_ptr_[idx0__], n__);

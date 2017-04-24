@@ -145,10 +145,15 @@ class Beta_projectors_base
 
         matrix<T> beta_phi;
 
-        if (ctx_.processing_unit() == GPU) {
-            beta_phi = matrix<T>(reinterpret_cast<T*>(beta_phi_.at<CPU>()), reinterpret_cast<T*>(beta_phi_.at<GPU>()), nbeta, n__);
-        } else {
-            beta_phi = matrix<T>(reinterpret_cast<T*>(beta_phi_.at<CPU>()), nbeta, n__);
+        switch (ctx_.processing_unit()) {
+            case CPU: {
+                beta_phi = matrix<T>(reinterpret_cast<T*>(beta_phi_.at<CPU>()), nbeta, n__);
+                break;
+            }
+            case GPU: {
+                beta_phi = matrix<T>(reinterpret_cast<T*>(beta_phi_.at<CPU>()), reinterpret_cast<T*>(beta_phi_.at<GPU>()), nbeta, n__);
+                break;
+            }
         }
 
         if (std::is_same<T, double_complex>::value) {
@@ -213,7 +218,7 @@ class Beta_projectors_base
                         linalg<GPU>::ger(nbeta, n__, &a1, 
                                          reinterpret_cast<double*>(pw_coeffs_a_.at<GPU>()), 2 * num_gkvec_loc_,
                                          reinterpret_cast<double*>(phi__.pw_coeffs().prime().at<GPU>(0, idx0__)), 2 * phi__.pw_coeffs().prime().ld(),
-                                         reinterpret_cast<double*>(beta_phi.template at<CPU>()), nbeta);
+                                         reinterpret_cast<double*>(beta_phi.template at<GPU>()), nbeta);
                     }
                     beta_phi.template copy<memory_t::device, memory_t::host>();
                     #else
