@@ -299,18 +299,15 @@ void test2()
     int lmax = 10;
     std::vector<double_complex> ylm((lmax + 1) * (lmax + 1));
 
-    for (int k = 0; k < num_points; k++)
-    {
+    for (int k = 0; k < num_points; k++) {
         double theta = tp(0, k);
         double phi = tp(1, k);
         SHT::spherical_harmonics(lmax, theta, phi, &ylm[0]);
 
         double_complex val;
         double diff = 0;
-        for (int l = 0; l <= lmax; l++)
-        {
-            for (int m = -l; m <= l; m++)
-            {
+        for (int l = 0; l <= lmax; l++) {
+            for (int m = -l; m <= l; m++) {
                 SphericalHarmonicY_(&l, &m, &theta, &phi, &val);
                 diff += std::abs(val - ylm[Utils::lm_by_l_m(l, m)]);
             }
@@ -320,11 +317,34 @@ void test2()
     }
 }
 
+void test3()
+{
+    int n{10};
+
+    for (int i = 0; i < 20; i++) {
+        double phi = type_wrapper<double>::random() * fourpi;
+        printf("phi=%f\n", phi);
+        auto cosxn = SHT::cosxn(n, phi);
+        auto sinxn = SHT::sinxn(n, phi);
+        for (int l = 0; l < n; l++) {
+            if (std::abs(cosxn[l] - std::cos((l + 1) * phi)) > 1e-12) {
+                printf("wrong cosxn");
+                exit(1);
+            }
+            if (std::abs(sinxn[l] - std::sin((l + 1) * phi)) > 1e-12) {
+                printf("wrong sinxn");
+                exit(1);
+            }
+        }
+    }
+}
+
 int main(int argn, char** argv)
 {
     sirius::initialize(1);
     //test1();
     test2();
+    test3();
     sirius::finalize();
     return 0;
 }
