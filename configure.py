@@ -5,12 +5,16 @@ import subprocess
 import json
 
 packages = {
+    "spg"  : {
+        "url"     : "https://github.com/atztogo/spglib/archive/v1.9.9.tar.gz",
+        "options" : []
+    },
     "fftw" : {
         "url"     : "http://www.fftw.org/fftw-3.3.5.tar.gz",
         "options" : []
     },
     "gsl" : {
-        "url"     : "ftp://ftp.gnu.org/gnu/gsl/gsl-2.2.1.tar.gz",
+        "url"     : "ftp://ftp.gnu.org/gnu/gsl/gsl-2.3.tar.gz",
         "options" : ["--disable-shared"]
     },
     "hdf5" : {
@@ -27,10 +31,6 @@ packages = {
     "xc"   : {
         "url"     : "http://www.tddft.org/programs/octopus/down.php?file=libxc/libxc-3.0.0.tar.gz",
         "options" : []
-    },
-    "spg"  : {
-        "url"     : "http://downloads.sourceforge.net/project/spglib/spglib/spglib-1.9/spglib-1.9.7.tar.gz",
-        "options" : []
     }
 }
 
@@ -43,6 +43,10 @@ def configure_package(package_name, platform):
     local_file_name = os.path.split(file_url)[1]
 
     package_dir = os.path.splitext(os.path.splitext(local_file_name)[0])[0]
+
+    # spglib requires a special care
+    if package_name == 'spg':
+        package_dir = "spglib-" + package_dir[1:]
 
     cwdlibs = os.getcwd() + "/libs/"
 
@@ -76,6 +80,25 @@ def configure_package(package_name, platform):
     new_env["FC"] = platform["FC"]
     new_env["F77"] = platform["FC"]
     new_env["FCCPP"] = platform["FCCPP"]
+
+    # spglib requires a special care
+    if package_name == 'spg':
+        p = subprocess.Popen(["aclocal"], cwd = "./libs/" + package_dir, env = new_env)
+        p.wait()
+        p = subprocess.Popen(["autoheader"], cwd = "./libs/" + package_dir, env = new_env)
+        p.wait()
+        if sys.platform == 'darwin':
+            p = subprocess.Popen(["glibtoolize"], cwd = "./libs/" + package_dir, env = new_env)
+        else:
+            p = subprocess.Popen(["libtoolize"], cwd = "./libs/" + package_dir, env = new_env)
+        p.wait()
+        p = subprocess.Popen(["touch", "INSTALL", "NEWS", "README", "AUTHORS"], cwd = "./libs/" + package_dir, env = new_env)
+        p.wait()
+        p = subprocess.Popen(["automake", "-acf"], cwd = "./libs/" + package_dir, env = new_env)
+        p.wait()
+        p = subprocess.Popen(["autoconf"], cwd = "./libs/" + package_dir, env = new_env)
+        p.wait()
+            
 
     p = subprocess.Popen(["./configure"] + package["options"], cwd = "./libs/" + package_dir, env = new_env)
     p.wait()
