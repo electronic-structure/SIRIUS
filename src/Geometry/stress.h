@@ -338,6 +338,9 @@ class Stress {
 
         for (int iat = 0; iat < ctx_.unit_cell().num_atom_types(); iat++) {
             auto& atom_type = ctx_.unit_cell().atom_type(iat);
+            if (!atom_type.pp_desc().augment) {
+                continue;
+            }
 
             int nbf = atom_type.mt_basis_size();
             
@@ -486,6 +489,26 @@ class Stress {
     inline matrix3d<double> stress_vloc() const
     {
         return stress_vloc_;
+    }
+
+    inline matrix3d<double> stress_har() const
+    {
+        return stress_har_;
+    }
+
+    inline matrix3d<double> stress_ewald() const
+    {
+        return stress_ewald_;
+    }
+
+    inline matrix3d<double> stress_kin() const
+    {
+        return stress_kin_;
+    }
+
+    inline matrix3d<double> stress_nl() const
+    {
+        return stress_nonloc_ + stress_us_;
     }
 
     inline void print_info() const
