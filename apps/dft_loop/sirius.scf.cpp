@@ -42,6 +42,9 @@ std::unique_ptr<Simulation_context> create_sim_ctx(std::string     fname__,
     auto gen_evp_solver_name = args__.value<std::string>("gen_evp_solver_name", ctx.control().gen_evp_solver_name_);
     ctx.set_gen_evp_solver_name(gen_evp_solver_name);
 
+    auto pu = args__.value<std::string>("processing_unit", ctx.control().processing_unit_);
+    ctx.set_processing_unit(pu);
+
     return std::move(ctx_ptr);
 }
 
@@ -190,6 +193,7 @@ int main(int argn, char** argv)
     args.register_key("--test_against=", "{string} json file with reference values");
     args.register_key("--std_evp_solver_name=", "{string} standard eigen-value solver");
     args.register_key("--gen_evp_solver_name=", "{string} generalized eigen-value solver");
+    args.register_key("--processing_unit=", "{string} type of the processing unit");
 
     args.parse_args(argn, argv);
 

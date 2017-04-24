@@ -202,10 +202,18 @@ class Simulation_parameters
             valence_relativity_ = m[name__];
         }
 
-        //inline void set_processing_unit(device_t pu__)
-        //{
-        //    processing_unit_ = pu__;
-        //}
+        inline void set_processing_unit(std::string name__)
+        {
+            std::transform(name__.begin(), name__.end(), name__.begin(), ::tolower);
+            control_input_.processing_unit_ = name__;
+            if (name__ == "cpu") {
+                processing_unit_ = CPU;
+            } else if (name__ == "gpu") {
+                processing_unit_ = GPU;
+            } else {
+                TERMINATE("wrong processing unit");
+            }
+        }
 
         inline void set_molecule(bool molecule__)
         {
