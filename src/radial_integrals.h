@@ -144,6 +144,23 @@ class Radial_integrals_aug: public Radial_integrals_base<3>
         auto idx = iqdq(q__);
         return values_(idx__, l__, iat__)(idx.first, idx.second);
     }
+
+    inline mdarray<double, 2> values(int iat__, double q__) const
+    {
+        auto idx = iqdq(q__);
+
+        auto& atom_type = unit_cell_.atom_type(iat__);
+        int lmax = atom_type.indexr().lmax();
+        int nbrf = atom_type.mt_radial_basis_size();
+
+        mdarray<double, 2> val(nbrf * (nbrf + 1) / 2, 2 * lmax + 1);
+        for (int l = 0; l <= 2 * lmax; l++) {
+            for (int i = 0; i < nbrf * (nbrf + 1) / 2; i++) {
+                val(i, l) = values_(i, l, iat__)(idx.first, idx.second);
+            }
+        }
+        return std::move(val);
+    }
 };
 
 class Radial_integrals_rho_pseudo: public Radial_integrals_base<1>
