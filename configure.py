@@ -139,17 +139,22 @@ def main():
     fin.close()
 
     makeinc = open("make.inc", "w")
+
+    makeinc.write('''debug = false
+BASIC_CXX_OPT = -O3 -DNDEBUG
+ifeq ($(debug), true)
+  BASIC_CXX_OPT = -O1 -g -ggdb
+endif'''+"\n")
+
     if "MPI_CXX" in platform:
         makeinc.write("CXX = " + platform["MPI_CXX"] + "\n")
     else:
         makeinc.write("CXX = " + platform["CXX"] + "\n")
 
     if "MPI_CXX_OPT" in platform:
-        makeinc.write("CXX_OPT = " + platform["MPI_CXX_OPT"] + "\n")
+        makeinc.write("CXX_OPT = $(BASIC_CXX_OPT) " + platform["MPI_CXX_OPT"] + "\n")
     else:
-        makeinc.write("CXX_OPT = " + platform["CXX_OPT"] + "\n")
-
-
+        makeinc.write("CXX_OPT = $(BASIC_CXX_OPT) " + platform["CXX_OPT"] + "\n")
 
     if "NVCC" in platform: makeinc.write("NVCC = " + platform["NVCC"] + "\n")
     if "NVCC_OPT" in platform: makeinc.write("NVCC_OPT = " + platform["NVCC_OPT"] + "\n")
