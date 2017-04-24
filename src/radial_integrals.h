@@ -25,7 +25,7 @@
 #ifndef __RADIAL_INTEGRALS_H__
 #define __RADIAL_INTEGRALS_H__
 
-#include "unit_cell.h"
+#include "Unit_cell/unit_cell.h"
 #include "sbessel.h"
 
 namespace sirius {

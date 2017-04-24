@@ -112,7 +112,49 @@ class Atom
         }
 
         /// Initialize atom.
-        inline void init(int offset_aw__, int offset_lo__, int offset_mt_coeffs__);
+        inline void init(int offset_aw__, int offset_lo__, int offset_mt_coeffs__)
+        {
+            assert(offset_aw__ >= 0);
+
+            offset_aw_        = offset_aw__;
+            offset_lo_        = offset_lo__;
+            offset_mt_coeffs_ = offset_mt_coeffs__;
+
+            lmax_pot_ = type().parameters().lmax_pot();
+
+            if (type().parameters().full_potential()) {
+                int lmmax = Utils::lmmax(lmax_pot_);
+                int nrf   = type().indexr().size();
+
+                h_radial_integrals_ = mdarray<double, 3>(lmmax, nrf, nrf);
+                h_radial_integrals_.zero();
+
+                b_radial_integrals_ = mdarray<double, 4>(lmmax, nrf, nrf, type().parameters().num_mag_dims());
+                b_radial_integrals_.zero();
+
+                occupation_matrix_ = mdarray<double_complex, 4>(16, 16, 2, 2);
+
+                uj_correction_matrix_ = mdarray<double_complex, 4>(16, 16, 2, 2);
+            }
+
+            if (!type().parameters().full_potential()) {
+                int nbf = type().mt_lo_basis_size();
+                d_mtrx_ = mdarray<double, 3>(nbf, nbf, type().parameters().num_mag_dims() + 1);
+                d_mtrx_.zero();
+
+                for (int xi2 = 0; xi2 < nbf; xi2++) {
+                    int lm2    = type().indexb(xi2).lm;
+                    int idxrf2 = type().indexb(xi2).idxrf;
+                    for (int xi1 = 0; xi1 < nbf; xi1++) {
+                        int lm1    = type().indexb(xi1).lm;
+                        int idxrf1 = type().indexb(xi1).idxrf;
+                        if (lm1 == lm2) {
+                            d_mtrx_(xi1, xi2, 0) = type().pp_desc().d_mtrx_ion(idxrf1, idxrf2);
+                        }
+                    }
+                }
+            }
+        }
 
         /// Generate radial Hamiltonian and effective magnetic field integrals
         /** Hamiltonian operator has the following representation inside muffin-tins:
@@ -128,7 +170,177 @@ class Atom
          *        V_{\ell m}(r) & \ell > 0 \end{array} \right.
          *  \f]
          */
-        inline void generate_radial_integrals(device_t pu__, Communicator const& comm__);
+        inline void generate_radial_integrals(device_t pu__, Communicator const& comm__)
+        {
+            PROFILE("sirius::Atom::generate_radial_integrals");
+            
+            int lmmax        = Utils::lmmax(lmax_pot_);
+            int nmtp         = type().num_mt_points();
+            int nrf          = type().indexr().size();
+            int num_mag_dims = type().parameters().num_mag_dims();
+
+            if (comm__.size() != 1) {
+                TERMINATE("not yet mpi parallel");
+            }
+
+            splindex<block> spl_lm(lmmax, comm__.size(), comm__.rank());
+
+            std::vector<int> l_by_lm = Utils::l_by_lm(lmax_pot_);
+
+            h_radial_integrals_.zero();
+            if (num_mag_dims) {
+                b_radial_integrals_.zero();
+            }
+            
+            /* copy radial functions to spline objects */
+            std::vector< Spline<double> > rf_spline(nrf);
+            #pragma omp parallel for
+            for (int i = 0; i < nrf; i++) {
+                rf_spline[i] = Spline<double>(type().radial_grid());
+                for (int ir = 0; ir < nmtp; ir++) {
+                    rf_spline[i][ir] = symmetry_class().radial_function(ir, i);
+                }
+            }
+
+            /* copy effective potential components to spline objects */
+            std::vector<Spline<double>> v_spline(lmmax * (1 + num_mag_dims));
+            #pragma omp parallel for
+            for (int lm = 0; lm < lmmax; lm++) {
+                v_spline[lm] = Spline<double>(type().radial_grid());
+                for (int ir = 0; ir < nmtp; ir++) {
+                    v_spline[lm][ir] = veff_(lm, ir);
+                }
+
+                for (int j = 0; j < num_mag_dims; j++) {
+                    v_spline[lm + (j + 1) * lmmax] = Spline<double>(type().radial_grid());
+                    for (int ir = 0; ir < nmtp; ir++) {
+                        v_spline[lm + (j + 1) * lmmax][ir] = beff_[j](lm, ir);
+                    }
+                }
+            }
+
+            /* interpolate potential multiplied by a radial function */
+            std::vector<Spline<double>> vrf_spline(lmmax * nrf * (1 + num_mag_dims));
+
+            auto& idx_ri = type().idx_radial_integrals();
+
+            mdarray<double, 1> result(idx_ri.size(1));
+
+            if (pu__ == GPU) {
+                #ifdef __GPU
+                auto& rgrid    = type().radial_grid();
+                auto& rf_coef  = type().rf_coef();
+                auto& vrf_coef = type().vrf_coef();
+
+                sddk::timer t1("sirius::Atom::generate_radial_integrals|interp");
+                #pragma omp parallel
+                {
+                    //int tid = Platform::thread_id();
+                    #pragma omp for
+                    for (int i = 0; i < nrf; i++) {
+                        rf_spline[i].interpolate();
+                        std::memcpy(rf_coef.at<CPU>(0, 0, i), rf_spline[i].coeffs().at<CPU>(), nmtp * 4 * sizeof(double));
+                        //cuda_async_copy_to_device(rf_coef.at<GPU>(0, 0, i), rf_coef.at<CPU>(0, 0, i), nmtp * 4 * sizeof(double), tid);
+                    }
+                    #pragma omp for
+                    for (int i = 0; i < lmmax * (1 + num_mag_dims); i++) {
+                        v_spline[i].interpolate();
+                    }
+                }
+                rf_coef.async_copy_to_device();
+
+                #pragma omp parallel for
+                for (int lm = 0; lm < lmmax; lm++) {
+                    for (int i = 0; i < nrf; i++) {
+                        for (int j = 0; j < num_mag_dims + 1; j++) {
+                            int idx = lm + lmmax * i + lmmax * nrf * j;
+                            vrf_spline[idx] = rf_spline[i] * v_spline[lm + j * lmmax];
+                            std::memcpy(vrf_coef.at<CPU>(0, 0, idx), vrf_spline[idx].coeffs().at<CPU>(), nmtp * 4 * sizeof(double));
+                            //cuda_async_copy_to_device(vrf_coef.at<GPU>(0, 0, idx), vrf_coef.at<CPU>(0, 0, idx), nmtp * 4 *sizeof(double), tid);
+                        }
+                    }
+                }
+                vrf_coef.copy_to_device();
+                t1.stop();
+
+                result.allocate(memory_t::device);
+                sddk::timer t2("sirius::Atom::generate_radial_integrals|inner");
+                spline_inner_product_gpu_v3(idx_ri.at<GPU>(), (int)idx_ri.size(1), nmtp, rgrid.x().at<GPU>(), rgrid.dx().at<GPU>(),
+                                            rf_coef.at<GPU>(), vrf_coef.at<GPU>(), result.at<GPU>());
+                cuda_device_synchronize();
+                if (type().parameters().control().print_performance_) {
+                    double tval = t2.stop();
+                    DUMP("spline GPU integration performance: %12.6f GFlops", 1e-9 * double(idx_ri.size(1)) * nmtp * 85 / tval);
+                }
+                result.copy_to_host();
+                result.deallocate_on_device();
+                #else
+                TERMINATE_NO_GPU
+                #endif
+            }
+            if (pu__ == CPU) {
+                sddk::timer t1("sirius::Atom::generate_radial_integrals|interp");
+                #pragma omp parallel
+                {
+                    #pragma omp for
+                    for (int i = 0; i < nrf; i++) {
+                        rf_spline[i].interpolate();
+                    }
+                    #pragma omp for
+                    for (int i = 0; i < lmmax * (1 + num_mag_dims); i++) {
+                        v_spline[i].interpolate();
+                    }
+                    
+                    #pragma omp for
+                    for (int lm = 0; lm < lmmax; lm++) {
+                        for (int i = 0; i < nrf; i++) {
+                            for (int j = 0; j < num_mag_dims + 1; j++) {
+                                vrf_spline[lm + lmmax * i + lmmax * nrf * j] = rf_spline[i] * v_spline[lm + j * lmmax];
+                            }
+                        }
+                    }
+                }
+                t1.stop();
+
+                sddk::timer t2("sirius::Atom::generate_radial_integrals|inner");
+                #pragma omp parallel for
+                for (int j = 0; j < (int)idx_ri.size(1); j++) {
+                    result(j) = inner(rf_spline[idx_ri(0, j)], vrf_spline[idx_ri(1, j)], 2);
+                }
+                if (type().parameters().control().print_performance_) {
+                    double tval = t2.stop();
+                    DUMP("spline CPU integration performance: %12.6f GFlops", 1e-9 * double(idx_ri.size(1)) * nmtp * 85 / tval);
+                }
+            }
+            
+            int n{0};
+            for (int lm = 0; lm < lmmax; lm++) {
+                int l = l_by_lm[lm];
+
+                for (int i2 = 0; i2 < type().indexr().size(); i2++) {
+                    int l2 = type().indexr(i2).l;
+                    
+                    for (int i1 = 0; i1 <= i2; i1++) {
+                        int l1 = type().indexr(i1).l;
+                        if ((l + l1 + l2) % 2 == 0) {
+                            if (lm) {
+                                h_radial_integrals_(lm, i1, i2) = h_radial_integrals_(lm, i2, i1) = result(n++);
+                            } else {
+                                h_radial_integrals_(0, i1, i2) = symmetry_class().h_spherical_integral(i1, i2);
+                                h_radial_integrals_(0, i2, i1) = symmetry_class().h_spherical_integral(i2, i1);
+                            }
+                            for (int j = 0; j < num_mag_dims; j++) {
+                                b_radial_integrals_(lm, i1, i2, j) = b_radial_integrals_(lm, i2, i1, j) = result(n++);
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (type().parameters().control().print_checksum_) {
+                DUMP("checksum(h_radial_integrals): %18.10f", h_radial_integrals_.checksum());
+            }
+        }
         
         /// Return pointer to corresponding atom type class.
         inline Atom_type const& type() const
@@ -375,9 +587,6 @@ class Atom
             return d_mtrx_(xi1, xi2, iv);
         }
 };
-
-#include "Atom/init.hpp"
-#include "Atom/generate_radial_integrals.hpp"
 
 } // namespace
 

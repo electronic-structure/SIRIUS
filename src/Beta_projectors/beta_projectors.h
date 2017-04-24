@@ -27,7 +27,7 @@
 
 #include "gpu.h"
 #include "communicator.hpp"
-#include "unit_cell.h"
+#include "Unit_cell/unit_cell.h"
 #include "wave_functions.hpp"
 #include "sbessel.h"
 #include "simulation_context.h"
