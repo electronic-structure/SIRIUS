@@ -1,9 +1,9 @@
 {
     "control" : {
+        "cyclic_block_size" : 16,
         "processing_unit" : "cpu",
         "std_evp_solver_type" : "lapack",
-        "gen_evp_solver_type" : "lapack",
-        "verbosity" : 2
+        "gen_evp_solver_type" : "lapack"
     },
 
     "parameters" : {
@@ -12,30 +12,30 @@
         "num_fv_states" : 40,
 
         "xc_functionals" : ["XC_LDA_X", "XC_LDA_C_PZ"],
-
         "smearing_width" : 0.025,
 
         "use_symmetry" : true,
 
         "num_mag_dims" : 0,
-        
+
         "gk_cutoff" : 6.0,
         "pw_cutoff" : 20.00,
 
-        "energy_tol" : 1e-8,
-        "potential_tol" : 1e-8,
+        "energy_tol" : 1e-10,
 
         "num_dft_iter" : 100,
 
         "ngridk" : [2,2,2]
     },
 
-
     "iterative_solver" : {
+        "energy_tolerance" : 1e-2,
+        "residual_tolerance" : 1e-6,
+        "num_steps" : 12,
+        "subspace_size" : 4,
         "type" : "davidson",
-        "min_occupancy" : 1e-5
+        "converge_by_energy" : 1
     },
-
 
     "unit_cell" : {
 
@@ -48,9 +48,9 @@
         "atom_types" : ["Sr", "V", "O"],
 
         "atom_files" : {
-            "Sr" : "sr_lda_v1.uspp.F.UPF.json",
-            "V"  : "v_lda_v1.4.uspp.F.UPF.json",
-            "O"  : "o_lda_v1.2.uspp.F.UPF.json"
+            "Sr" : "Sr.pz-spn-kjpaw_psl.0.2.3.UPF.json",
+            "V"  : "V.pz-spn-kjpaw_psl.0.2.3.UPF.json",
+            "O"  : "O.pz-n-kjpaw_psl.0.1.UPF.json"
         },
 
         "atoms" : {

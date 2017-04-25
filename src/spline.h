@@ -401,6 +401,7 @@ class Spline
                     {
                         U x0 = (*radial_grid_)[i];
                         U x1 = (*radial_grid_)[i + 1];
+                        U dx = radial_grid_->dx(i);
                         T a0 = coeffs_(i, 0);
                         T a1 = coeffs_(i, 1);
                         T a2 = coeffs_(i, 2);
@@ -409,9 +410,8 @@ class Spline
                         // obtained with the following Mathematica code:
                         //   FullSimplify[Integrate[x^(-1)*(a0+a1*(x-x0)+a2*(x-x0)^2+a3*(x-x0)^3),{x,x0,x1}],
                         //                          Assumptions->{Element[{x0,x1},Reals],x1>x0>0}]
-                        g__[i + 1] = g__[i] + (-((x0 - x1) * (6.0 * a1 - 9.0 * a2 * x0 + 11.0 * a3 * std::pow(x0, 2) + 
-                                     3.0 * a2 * x1 - 7.0 * a3 * x0 * x1 + 2.0 * a3 * std::pow(x1, 2))) / 6.0 + 
-                                     (-a0 + x0 * (a1 - a2 * x0 + a3 * std::pow(x0, 2))) * std::log(x0 / x1));
+                        g__[i + 1] = g__[i] + (dx / 6.0) * (6.0 * a1 + x0 * (-9.0 * a2  + 11.0 * a3 * x0) + x1 * (3.0 * a2 - 7.0 * a3 * x0 + 2.0 * a3 * x1)) + 
+                                     (-a0 + x0 * (a1 + x0 * (-a2 + a3 * x0))) * std::log(x0 / x1);
                     }
                     break;
                 }
@@ -421,6 +421,7 @@ class Spline
                     {
                         U x0 = (*radial_grid_)[i];
                         U x1 = (*radial_grid_)[i + 1];
+                        U dx = radial_grid_->dx(i);
                         T a0 = coeffs_(i, 0);
                         T a1 = coeffs_(i, 1);
                         T a2 = coeffs_(i, 2);
@@ -429,10 +430,13 @@ class Spline
                         // obtained with the following Mathematica code:
                         //   FullSimplify[Integrate[x^(-2)*(a0+a1*(x-x0)+a2*(x-x0)^2+a3*(x-x0)^3),{x,x0,x1}],
                         //                          Assumptions->{Element[{x0,x1},Reals],x1>x0>0}]
-                        g__[i + 1] = g__[i] + (((x0 - x1) * (-2.0 * a0 + x0 * (2.0 * a1 - 2.0 * a2 * (x0 + x1) + 
-                                     a3 * (2.0 * std::pow(x0, 2) + 5.0 * x0 * x1 - std::pow(x1, 2)))) + 
-                                     2.0 * x0 * (a1 + x0 * (-2.0 * a2 + 3.0 * a3 * x0)) * x1 * std::log(x1 / x0)) / 
-                                     (2.0 * x0 * x1));
+                        //g__[i + 1] = g__[i] + (((x0 - x1) * (-2.0 * a0 + x0 * (2.0 * a1 - 2.0 * a2 * (x0 + x1) + 
+                        //             a3 * (2.0 * std::pow(x0, 2) + 5.0 * x0 * x1 - std::pow(x1, 2)))) + 
+                        //             2.0 * x0 * (a1 + x0 * (-2.0 * a2 + 3.0 * a3 * x0)) * x1 * std::log(x1 / x0)) / 
+                        //             (2.0 * x0 * x1));
+                        g__[i + 1] = g__[i] + (a2 * dx - 5.0 * a3 * x0 * dx / 2.0 - a1 * (dx / x1) + a0 * (dx / x0 / x1)  + 
+                                              (x0 / x1) * dx * (a2 - a3 * x0) + a3 * x1 * dx / 2.0) + 
+                                              (a1 + x0 * (-2.0 * a2 + 3.0 * a3 * x0)) * std::log(x1 / x0);
                     }
                     break;
                 }
@@ -442,6 +446,7 @@ class Spline
                     {
                         U x0 = (*radial_grid_)[i];
                         U x1 = (*radial_grid_)[i + 1];
+                        U dx = radial_grid_->dx(i);
                         T a0 = coeffs_(i, 0);
                         T a1 = coeffs_(i, 1);
                         T a2 = coeffs_(i, 2);
@@ -450,10 +455,14 @@ class Spline
                         // obtained with the following Mathematica code:
                         //   FullSimplify[Integrate[x^(-3)*(a0+a1*(x-x0)+a2*(x-x0)^2+a3*(x-x0)^3),{x,x0,x1}],
                         //                          Assumptions->{Element[{x0,x1},Reals],x1>x0>0}]
-                        g__[i + 1] = g__[i] + (-((x0 - x1) * (a0 * (x0 + x1) + x0 * (a1 * (-x0 + x1) + 
+                        //g__[i + 1] = g__[i] + (-((x0 - x1) * (a0 * (x0 + x1) + x0 * (a1 * (-x0 + x1) + 
+                        //             x0 * (a2 * x0 - a3 * std::pow(x0, 2) - 3.0 * a2 * x1 + 5.0 * a3 * x0 * x1 + 
+                        //             2.0 * a3 * std::pow(x1, 2)))) + 2.0 * std::pow(x0, 2) * (a2 - 3.0 * a3 * x0) * std::pow(x1, 2) * 
+                        //             std::log(x0 / x1)) / (2.0 * std::pow(x0, 2) * std::pow(x1, 2)));
+                        g__[i + 1] = g__[i] + dx * (a0 * (x0 + x1) + x0 * (a1 * dx + 
                                      x0 * (a2 * x0 - a3 * std::pow(x0, 2) - 3.0 * a2 * x1 + 5.0 * a3 * x0 * x1 + 
-                                     2.0 * a3 * std::pow(x1, 2)))) + 2.0 * std::pow(x0, 2) * (a2 - 3.0 * a3 * x0) * std::pow(x1, 2) * 
-                                     std::log(x0 / x1)) / (2.0 * std::pow(x0, 2) * std::pow(x1, 2)));
+                                     2.0 * a3 * std::pow(x1, 2)))) / std::pow(x0 * x1, 2) / 2.0 + 
+                                     (-a2 + 3.0 * a3 * x0) * std::log(x0 / x1);
                     }
                     break;
                 }
@@ -463,6 +472,7 @@ class Spline
                     {
                         U x0 = (*radial_grid_)[i];
                         U x1 = (*radial_grid_)[i + 1];
+                        U dx = radial_grid_->dx(i);
                         T a0 = coeffs_(i, 0);
                         T a1 = coeffs_(i, 1);
                         T a2 = coeffs_(i, 2);
@@ -471,11 +481,16 @@ class Spline
                         // obtained with the following Mathematica code:
                         //   FullSimplify[Integrate[x^(-4)*(a0+a1*(x-x0)+a2*(x-x0)^2+a3*(x-x0)^3),{x,x0,x1}],
                         //                          Assumptions->{Element[{x0,x1},Reals],x1>x0>0}]
-                        g__[i + 1] = g__[i] + ((2.0 * a0 * (-std::pow(x0, 3) + std::pow(x1, 3)) + 
-                                     x0 * (x0 - x1) * (a1 * (x0 - x1) * (2.0 * x0 + x1) + 
-                                     x0 * (-2.0 * a2 * std::pow(x0 - x1, 2) + a3 * x0 * (2.0 * std::pow(x0, 2) - 7.0 * x0 * x1 + 
-                                     11.0 * std::pow(x1, 2)))) + 6.0 * a3 * std::pow(x0 * x1, 3) * std::log(x1 / x0)) / 
-                                     (6.0 * std::pow(x0 * x1, 3)));
+                        //g__[i + 1] = g__[i] + ((2.0 * a0 * (-std::pow(x0, 3) + std::pow(x1, 3)) + 
+                        //             x0 * (x0 - x1) * (a1 * (x0 - x1) * (2.0 * x0 + x1) + 
+                        //             x0 * (-2.0 * a2 * std::pow(x0 - x1, 2) + a3 * x0 * (2.0 * std::pow(x0, 2) - 7.0 * x0 * x1 + 
+                        //             11.0 * std::pow(x1, 2)))) + 6.0 * a3 * std::pow(x0 * x1, 3) * std::log(x1 / x0)) / 
+                        //             (6.0 * std::pow(x0 * x1, 3)));
+                        g__[i + 1] = g__[i] + (2.0 * a0 * (-std::pow(x0, 3) + std::pow(x1, 3)) -
+                                     x0 * dx * (-a1 * dx * (2.0 * x0 + x1) + 
+                                     x0 * (-2.0 * a2 * std::pow(dx, 2) + a3 * x0 * (2.0 * std::pow(x0, 2) - 7.0 * x0 * x1 + 
+                                     11.0 * std::pow(x1, 2))))) / std::pow(x0 * x1, 3) / 6.0 + 
+                                     a3 * std::log(x1 / x0);
                     }
                     break;
                 }
@@ -548,8 +563,25 @@ inline Spline<T> operator*(Spline<T> const& a__, Spline<T> const& b__)
     return std::move(s12);
 }
 
-extern "C" double spline_inner_product_gpu_v2(int size__, double const* x__, double const* dx__, double const* f__, 
-                                              double const* g__, double* d_buf__, double* h_buf__, int stream_id__);
+#ifdef __GPU
+extern "C" double spline_inner_product_gpu_v2(int           size__,
+                                              double const* x__,
+                                              double const* dx__,
+                                              double const* f__,
+                                              double const* g__,
+                                              double*       d_buf__,
+                                              double*       h_buf__,
+                                              int           stream_id__);
+
+extern "C" void spline_inner_product_gpu_v3(int const*    idx_ri__,
+                                            int           num_ri__,
+                                            int           num_points__,
+                                            double const* x__,
+                                            double const* dx__,
+                                            double const* f__, 
+                                            double const* g__,
+                                            double*       result__);
+#endif
 
 template<typename T>
 T inner(Spline<T> const& f__, Spline<T> const& g__, int m__, int num_points__)

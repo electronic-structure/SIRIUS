@@ -4,7 +4,7 @@ inline void Density::add_k_point_contribution_dm(K_point* kp__,
 {
     PROFILE("sirius::Density::add_k_point_contribution_dm");
     
-    if (ctx_.esm_type() == electronic_structure_method_t::full_potential_lapwlo) {
+    if (ctx_.full_potential()) {
         /* non-magnetic or spin-collinear case */
         if (ctx_.num_mag_dims() != 3) {
             for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
@@ -67,29 +67,26 @@ inline void Density::add_k_point_contribution_dm(K_point* kp__,
                                   density_matrix__.at<CPU>(0, 0, 2, ia), density_matrix__.ld());
             }
         }
-    }
-
-    if (ctx_.esm_type() == electronic_structure_method_t::pseudopotential) {
+    } else { /* pseudopotential */
         if (!ctx_.unit_cell().mt_lo_basis_size()) {
             return;
         }
 
         kp__->beta_projectors().prepare();
+        auto& bp_chunks = ctx_.beta_projector_chunks();
 
         if (ctx_.num_mag_dims() != 3) {
-            for (int chunk = 0; chunk < kp__->beta_projectors().num_beta_chunks(); chunk++) {
+            for (int chunk = 0; chunk < bp_chunks.num_chunks(); chunk++) {
                 kp__->beta_projectors().generate(chunk);
 
                 for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
                     /* total number of occupied bands for this spin */
                     int nbnd = kp__->num_occupied_bands(ispn);
                     /* compute <beta|psi> */
-                    kp__->beta_projectors().inner<T>(chunk, kp__->spinor_wave_functions(ispn), 0, nbnd);
+                    auto beta_psi = kp__->beta_projectors().inner<T>(chunk, kp__->spinor_wave_functions(ispn), 0, nbnd);
 
                     /* number of beta projectors */
-                    int nbeta = kp__->beta_projectors().beta_chunk(chunk).num_beta_;
-
-                    auto beta_psi = kp__->beta_projectors().beta_phi<T>(chunk, nbnd);
+                    int nbeta = bp_chunks(chunk).num_beta_;
 
                     splindex<block> spl_nbnd(nbnd, kp__->comm().size(), kp__->comm().rank());
 
@@ -101,10 +98,10 @@ inline void Density::add_k_point_contribution_dm(K_point* kp__,
                             mdarray<double_complex, 2> bp1(nbeta, nbnd_loc);
                             mdarray<double_complex, 2> bp2(nbeta, nbnd_loc);
                             #pragma omp for
-                            for (int ia = 0; ia < kp__->beta_projectors().beta_chunk(chunk).num_atoms_; ia++) {
-                                int nbf = kp__->beta_projectors().beta_chunk(chunk).desc_(0, ia);
-                                int offs = kp__->beta_projectors().beta_chunk(chunk).desc_(1, ia);
-                                int ja = kp__->beta_projectors().beta_chunk(chunk).desc_(3, ia);
+                            for (int ia = 0; ia < bp_chunks(chunk).num_atoms_; ia++) {
+                                int nbf  = bp_chunks(chunk).desc_(0, ia);
+                                int offs = bp_chunks(chunk).desc_(1, ia);
+                                int ja   = bp_chunks(chunk).desc_(3, ia);
 
                                 for (int i = 0; i < nbnd_loc; i++) {
                                     int j = spl_nbnd[i];

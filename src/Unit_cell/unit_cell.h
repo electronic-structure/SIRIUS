@@ -307,17 +307,18 @@ class Unit_cell
         /// Write structure to JSON file.
         inline json serialize();
 
+        /// Set matrix of lattice vectors.
+        /** Initializes lattice vectors, inverse lattice vector matrix, reciprocal lattice vectors and the
+         *  unit cell volume. */
         inline void set_lattice_vectors(matrix3d<double> lattice_vectors__)
         {
-            lattice_vectors_ = lattice_vectors__;
-            inverse_lattice_vectors_ = inverse(lattice_vectors_);
-            omega_ = std::abs(lattice_vectors_.det());
+            lattice_vectors_            = lattice_vectors__;
+            inverse_lattice_vectors_    = inverse(lattice_vectors_);
+            omega_                      = std::abs(lattice_vectors_.det());
             reciprocal_lattice_vectors_ = transpose(inverse(lattice_vectors_)) * twopi;
         }
         
         /// Set lattice vectors.
-        /** Initializes lattice vectors, inverse lattice vector matrix, reciprocal lattice vectors and the
-         *  unit cell volume. */
         inline void set_lattice_vectors(vector3d<double> a0__,
                                         vector3d<double> a1__,
                                         vector3d<double> a2__)

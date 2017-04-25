@@ -10,11 +10,8 @@
 
 using namespace geometry3d;
 
-namespace sirius
-{
+namespace sirius {
 
-//---------------------------------------------------------------
-//---------------------------------------------------------------
 void Forces_PS::calc_local_forces(mdarray<double,2>& forces)
 {
     PROFILE("sirius::Forces_PS::calc_local_forces");
@@ -76,10 +73,6 @@ void Forces_PS::calc_local_forces(mdarray<double,2>& forces)
     ctx_.comm().allreduce(&forces(0,0), static_cast<int>(forces.size()));
 }
 
-
-
-//---------------------------------------------------------------
-//---------------------------------------------------------------
 void Forces_PS::calc_nlcc_forces(mdarray<double,2>& forces)
 {
     PROFILE("sirius::Forces_PS::calc_nlcc_force");

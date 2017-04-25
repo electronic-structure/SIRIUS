@@ -696,7 +696,6 @@ inline void Band::diag_pseudo_potential_davidson(K_point* kp__,
 
     #ifdef __GPU
     if (ctx_.processing_unit() == GPU) {
-        psi.pw_coeffs().allocate_on_device();
         psi.pw_coeffs().copy_to_device(0, num_bands);
 
         phi.pw_coeffs().allocate_on_device();
@@ -883,7 +882,6 @@ inline void Band::diag_pseudo_potential_davidson(K_point* kp__,
     #ifdef __GPU
     if (ctx_.processing_unit() == GPU) {
         psi.pw_coeffs().copy_to_host(0, num_bands);
-        psi.pw_coeffs().deallocate_on_device();
     }
     #endif
     kp__->comm().barrier();

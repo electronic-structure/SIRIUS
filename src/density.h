@@ -150,7 +150,7 @@ class Density
             int ia{-1};
 
             /// ae and ps local densities
-            mdarray<double, 2> ae_density_; // TODO: -> Spheric_function
+            mdarray<double, 2> ae_density_; // TODO: use Spheric_function
             mdarray<double, 2> ps_density_;
 
             mdarray<double, 3> ae_magnetization_;
@@ -247,17 +247,17 @@ class Density
         /// Reduce complex density matrix over magnetic quantum numbers
         /** The following operation is performed:
          *  \f[
-         *      d_{\ell \lambda, \ell' \lambda', \ell_3 m_3}^{\alpha} = 
+         *      n_{\ell \lambda, \ell' \lambda', \ell_3 m_3}^{\alpha} = 
          *          \sum_{mm'} D_{\ell \lambda m, \ell' \lambda' m'}^{\alpha} 
          *          \langle Y_{\ell m} | R_{\ell_3 m_3} | Y_{\ell' m'} \rangle
          *  \f] 
          */
         template <int num_mag_dims, typename T>
-        void reduce_density_matrix(Atom_type const& atom_type__,
-                                   int ia__,
+        void reduce_density_matrix(Atom_type                  const& atom_type__,
+                                   int                               ia__,
                                    mdarray<double_complex, 4> const& zdens__,
-                                   Gaunt_coefficients<T> const& gaunt_coeffs__,
-                                   mdarray<double, 3>& mt_density_matrix__)
+                                   Gaunt_coefficients<T>      const& gaunt_coeffs__,
+                                   mdarray<double, 3>&               mt_density_matrix__)
         {
             mt_density_matrix__.zero();
             
@@ -294,7 +294,7 @@ class Density
             }
         }
 
-        /// Add k-point contribution to the auxiliary density matrix.
+        /// Add k-point contribution to the density matrix in the canonical form.
         /** In case of full-potential LAPW complex density matrix has the following expression:
          *  \f[
          *      d_{\xi \sigma, \xi' \sigma'}^{\alpha} = \sum_{j{\bf k}} n_{j{\bf k}}
@@ -1024,6 +1024,39 @@ class Density
                 magnetization_[j]->fft_transform(direction__);
             }
         }
+
+        /// Return density matrix in auxiliary form.
+        inline mdarray<double, 3> density_matrix_aux(int iat__)
+        {
+            auto& atom_type = unit_cell_.atom_type(iat__);
+            int nbf = atom_type.mt_basis_size();
+
+            /* convert to real matrix */
+            mdarray<double, 3> dm(nbf * (nbf + 1) / 2, atom_type.num_atoms(), ctx_.num_mag_dims() + 1);
+            #pragma omp parallel for
+            for (int i = 0; i < atom_type.num_atoms(); i++) {
+                int ia = atom_type.atom_id(i);
+
+                for (int xi2 = 0; xi2 < nbf; xi2++) {
+                    for (int xi1 = 0; xi1 <= xi2; xi1++) {
+                        int idx12 = xi2 * (xi2 + 1) / 2 + xi1;
+                        switch (ctx_.num_mag_dims()) {
+                            case 0: {
+                                dm(idx12, i, 0) = density_matrix_(xi2, xi1, 0, ia).real();
+                                break;
+                            }
+                            case 1: {
+                                dm(idx12, i, 0) = std::real(density_matrix_(xi2, xi1, 0, ia) + density_matrix_(xi2, xi1, 1, ia));
+                                dm(idx12, i, 1) = std::real(density_matrix_(xi2, xi1, 0, ia) - density_matrix_(xi2, xi1, 1, ia));
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+            return std::move(dm);
+        }
+
 };
 
 #include "Density/initial_density.hpp"

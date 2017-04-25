@@ -165,81 +165,6 @@ class Potential
 
         void add_paw_Dij_to_atom_Dmtrx();
         
-        /// Solve Poisson equation for a single atom.
-        template <bool free_atom>
-        inline std::vector<double>
-        poisson_vmt(Atom const& atom__,
-                    Spheric_function<function_domain_t::spectral, double> const& rho_mt__,
-                    Spheric_function<function_domain_t::spectral, double>& vha_mt__) const
-        {
-            int lmmax_rho = rho_mt__.angular_domain_size();
-            int lmmax_pot = vha_mt__.angular_domain_size();
-            assert((int)l_by_lm_.size() >= lmmax_rho);
-            if (lmmax_rho > ctx_.lmmax_rho()) {
-                std::stringstream s;
-                s << "wrong angular size of rho_mt for atom of " << atom__.type().symbol() << std::endl
-                  << "  lmmax_rho: " << lmmax_rho << std::endl
-                  << "  ctx.lmmax_rho(): " << ctx_.lmmax_rho();
-                TERMINATE(s);
-            }
-            std::vector<double> qmt(ctx_.lmmax_rho(), 0);
-
-            double R = atom__.mt_radius();
-            int nmtp = atom__.num_mt_points();
-
-            #pragma omp parallel
-            {
-                std::vector<double> g1;
-                std::vector<double> g2;
-
-                #pragma omp for
-                for (int lm = 0; lm < lmmax_rho; lm++) {
-                    int l = l_by_lm_[lm];
-
-                    auto rholm = rho_mt__.component(lm);
-
-                    /* save multipole moment */
-                    qmt[lm] = rholm.integrate(g1, l + 2);
-                    
-                    if (lm < lmmax_pot) {
-
-                        rholm.integrate(g2, 1 - l);
-
-                        double d2 = fourpi / double(2 * l + 1); 
-                        double vlm;
-
-                        for (int ir = 0; ir < nmtp; ir++) {
-                            double r = atom__.radial_grid(ir);
-
-                            if (free_atom) {
-                                vlm = g1[ir] / std::pow(r, l + 1) + (g2.back() - g2[ir]) * std::pow(r, l);
-                            } else {
-                                double d1 = 1.0 / std::pow(R, 2 * l + 1); 
-                                vlm = (1.0 - std::pow(r / R, 2 * l + 1)) * g1[ir] / std::pow(r, l + 1) +
-                                      (g2.back() - g2[ir]) * std::pow(r, l) - (g1.back() - g1[ir]) * std::pow(r, l) * d1;
-                            }
-                            vha_mt__(lm, ir) = vlm * d2;
-                        }
-                    }
-                }
-            }
-            if (!free_atom) {
-                /* constant part of nuclear potential -z*(1/r - 1/R) */
-                for (int ir = 0; ir < nmtp; ir++) {
-                    #ifdef __VHA_AUX
-                    double r = atom__.radial_grid(ir);
-                    vha_mt__(0, ir) += atom__.zn() * (1 / R - 1 / r) / y00;
-                    #else
-                    vha_mt__(0, ir) += atom__.zn() / R / y00;
-                    #endif
-                }
-            }
-            /* nuclear multipole moment */
-            qmt[0] -= atom__.zn() * y00;
-
-            return std::move(qmt);
-        }
-
         /// Compute MT part of the potential and MT multipole moments
         inline void poisson_vmt(Periodic_function<double>* rho__, 
                                 Periodic_function<double>* vh__,
@@ -548,6 +473,100 @@ class Potential
             for (int j = 0; j < ctx_.num_mag_dims(); j++) {
                 effective_magnetic_field_[j]->zero();
             }
+        }
+
+        /// Solve Poisson equation for a single atom.
+        template <bool free_atom, typename T>
+        inline std::vector<T>
+        poisson_vmt(Atom const& atom__,
+                    Spheric_function<function_domain_t::spectral, T> const& rho_mt__,
+                    Spheric_function<function_domain_t::spectral, T>& vha_mt__) const
+        {
+            const bool use_r_prefact{false};
+
+            int lmmax_rho = rho_mt__.angular_domain_size();
+            int lmmax_pot = vha_mt__.angular_domain_size();
+            assert((int)l_by_lm_.size() >= lmmax_rho);
+            if (lmmax_rho > ctx_.lmmax_rho()) {
+                std::stringstream s;
+                s << "wrong angular size of rho_mt for atom of " << atom__.type().symbol() << std::endl
+                  << "  lmmax_rho: " << lmmax_rho << std::endl
+                  << "  ctx.lmmax_rho(): " << ctx_.lmmax_rho();
+                TERMINATE(s);
+            }
+            std::vector<T> qmt(ctx_.lmmax_rho(), 0);
+
+            double R = atom__.mt_radius();
+            int nmtp = atom__.num_mt_points();
+
+            #pragma omp parallel
+            {
+                std::vector<T> g1;
+                std::vector<T> g2;
+
+                #pragma omp for
+                for (int lm = 0; lm < lmmax_rho; lm++) {
+                    int l = l_by_lm_[lm];
+
+                    auto rholm = rho_mt__.component(lm);
+
+                    if (use_r_prefact) {
+                        /* save multipole moment */
+                        qmt[lm] = rholm.integrate(g1, l + 2);
+                    } else {
+                        for (int ir = 0; ir < nmtp; ir++) {
+                            double r = atom__.radial_grid(ir);
+                            rholm[ir] *= std::pow(r, l + 2);
+                        }
+                        qmt[lm] = rholm.interpolate().integrate(g1, 0);
+                    }
+                    
+                    if (lm < lmmax_pot) {
+
+                        if (use_r_prefact) {
+                            rholm.integrate(g2, 1 - l);
+                        } else {
+                            rholm = rho_mt__.component(lm);
+                            for (int ir = 0; ir < nmtp; ir++) {
+                                double r = atom__.radial_grid(ir);
+                                rholm[ir] *= std::pow(r, 1 - l);
+                            }
+                            rholm.interpolate().integrate(g2, 0);
+                        }
+
+                        double fact = fourpi / double(2 * l + 1); 
+                        T vlm;
+
+                        for (int ir = 0; ir < nmtp; ir++) {
+                            double r = atom__.radial_grid(ir);
+
+                            if (free_atom) {
+                                vlm = g1[ir] / std::pow(r, l + 1) + (g2.back() - g2[ir]) * std::pow(r, l);
+                            } else {
+                                double d1 = 1.0 / std::pow(R, 2 * l + 1); 
+                                vlm = (1.0 - std::pow(r / R, 2 * l + 1)) * g1[ir] / std::pow(r, l + 1) +
+                                      (g2.back() - g2[ir]) * std::pow(r, l) - (g1.back() - g1[ir]) * std::pow(r, l) * d1;
+                            }
+                            vha_mt__(lm, ir) = vlm * fact;
+                        }
+                    }
+                }
+            }
+            if (!free_atom) {
+                /* constant part of nuclear potential -z*(1/r - 1/R) */
+                for (int ir = 0; ir < nmtp; ir++) {
+                    #ifdef __VHA_AUX
+                    double r = atom__.radial_grid(ir);
+                    vha_mt__(0, ir) += atom__.zn() * (1 / R - 1 / r) / y00;
+                    #else
+                    vha_mt__(0, ir) += atom__.zn() / R / y00;
+                    #endif
+                }
+            }
+            /* nuclear multipole moment */
+            qmt[0] -= atom__.zn() * y00;
+
+            return std::move(qmt);
         }
 
         /// Poisson solver.

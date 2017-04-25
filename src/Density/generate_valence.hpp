@@ -42,7 +42,6 @@ inline void Density::generate_valence(K_point_set& ks__)
             /* copy wave-functions to GPU */
             #ifdef __GPU
             if (ctx_.processing_unit() == GPU) {
-                kp->spinor_wave_functions(ispn).pw_coeffs().allocate_on_device();
                 kp->spinor_wave_functions(ispn).pw_coeffs().copy_to_device(0, nbnd);
             }
             #endif
@@ -77,14 +76,6 @@ inline void Density::generate_valence(K_point_set& ks__)
 
         /* add contribution from regular space grid */
         add_k_point_contribution_rg(kp);
-
-        for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-            #ifdef __GPU
-            if (ctx_.processing_unit() == GPU) {
-                kp->spinor_wave_functions(ispn).pw_coeffs().deallocate_on_device();
-            }
-            #endif
-        }
     }
 
     if (density_matrix_.size()) {

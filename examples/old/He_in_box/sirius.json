@@ -1,8 +1,10 @@
 {
     "control" : {
-        "processing_unit" : "cpu",
+        "cyclic_block_size" : 2,
+        "processing_unit" : "gpu",
         "std_evp_solver_type" : "lapack",
-        "gen_evp_solver_type" : "lapack"
+        "gen_evp_solver_type" : "lapack",
+        "verbosity" : 2
     },
 
     "parameters" : {
@@ -11,18 +13,18 @@
         "smearing_width" : 0.05,
         "valence_relativity" : "none",
         "core_relativity" : "none",
-        "num_fv_states" : 10,
-        "aw_cutoff" : 8,
-        "pw_cutoff" : 20.00,
-        "auto_rmt" : 0,
-        "use_symmetry": true,
+        "num_fv_states" : 4,
+        "aw_cutoff" : 4,
+        "pw_cutoff" : 10.00,
+        "auto_rmt" : 1,
+        "use_symmetry": 1,
         "ngridk" : [1,1,1],
         "potential_tol" : 1e-7,
         "energy_tol" : 1e-7,
         "num_dft_iter" : 20,
-        "lmax_apw"     : 8,
-        "lmax_pot"     : 8,
-        "lmax_rho"     : 8,
+        "lmax_apw"     : 7,
+        "lmax_pot"     : 7,
+        "lmax_rho"     : 7,
         "molecule"     : true
     },
 
@@ -33,7 +35,7 @@
         "subspace_size" : 8,
         "type" : "davidson",
         "converge_by_energy" : 0,
-        "min_occupancy" : 0
+        "converge_occupied" : 0
     },
 
     "unit_cell" : {
@@ -42,7 +44,7 @@
                               [0, 1, 0], 
                               [0, 0, 1]
                             ],
-        "lattice_vectors_scale" : 10,
+        "lattice_vectors_scale" : 12,
 
         "atom_types" : ["He"],
 

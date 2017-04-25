@@ -285,12 +285,6 @@ inline void Band::initialize_subspace(K_point* kp__,
         
         /* compute wave-functions */
         /* \Psi_{i} = \sum_{mu} \phi_{mu} * Z_{mu, i} */
-        #ifdef __GPU
-        if (ctx_.processing_unit() == GPU) {
-            kp__->spinor_wave_functions(ispn).pw_coeffs().allocate_on_device();
-        }
-        #endif
-
         transform<T>(phi, 0, num_phi, evec, 0, 0, kp__->spinor_wave_functions(ispn), 0, num_bands);
 
         if (ctx_.control().print_checksum_) {
@@ -301,7 +295,6 @@ inline void Band::initialize_subspace(K_point* kp__,
         #ifdef __GPU
         if (ctx_.processing_unit() == GPU) {
             kp__->spinor_wave_functions(ispn).pw_coeffs().copy_to_host(0, num_bands);
-            kp__->spinor_wave_functions(ispn).pw_coeffs().deallocate_on_device();
         }
         #endif
 
