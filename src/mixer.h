@@ -113,8 +113,13 @@ class Mixer
                 vectors_(i, ipos) = beta__ * input_buffer_(i) + (1 - beta__) * vectors_(i, ipos1);
             }
 
+            /* collect shared data */
             comm_.allgather(&vectors_(0, ipos), output_buffer_.template at<CPU>(), spl_shared_size_.global_offset(), 
                             spl_shared_size_.local_size());
+            /* copy local data */
+            for (int i = 0; i < local_vector_size_; i++) {
+                output_buffer_[shared_vector_size_ + i] = vectors_(spl_shared_local_size_ + i, ipos);
+            }
         }
 
     public:
@@ -266,37 +271,6 @@ class Broyden1: public Mixer<T>
         double mix()
         {
             PROFILE("sirius::Broyden1::mix");
-            
-            ////== /* weights as a functor */
-            ////== struct w_functor
-            ////== {
-            ////==     std::vector<double> const& weights_;
-            ////==     typedef double (w_functor::*fptr_t)(size_t);
-            ////==     fptr_t fptr_;
-            ////==     w_functor(std::vector<double> const& weights__) : weights_(weights__)
-            ////==     {
-            ////==         fptr_ = (weights_.size()) ? (&w_functor::f1) : (&w_functor::f2);
-            ////==     }
-            ////==     inline double f1(size_t idx__)
-            ////==     {
-            ////==         return weights_[idx__];
-            ////==     }
-            ////==     inline double f2(size_t idx__)
-            ////==     {
-            ////==         return 1.0;
-            ////==     }
-            ////==     inline double operator()(size_t idx__)
-            ////==     {
-            ////==         return (this->*fptr_)(idx__);
-            ////==     }
-            ////== };
-            ////== w_functor w(weights_);
-            //
-            ///* weights as a lambda function */
-            //auto w = [this](size_t idx)
-            //{
-            //    return (this->weights_.size()) ? weights_[idx] : 1.0;
-            //};
 
             /* current position in history */
             int ipos = this->idx_hist(this->count_);
@@ -404,6 +378,9 @@ class Broyden1: public Mixer<T>
             this->comm_.allgather(&this->vectors_(0, i1), this->output_buffer_.template at<CPU>(),
                                   this->spl_shared_size_.global_offset(), this->spl_shared_size_.local_size());
             
+            for (int i = 0; i < this->local_vector_size_; i++) {
+                this->output_buffer_[this->shared_vector_size_ + i] = this->vectors_(this->spl_shared_local_size_ + i, i1);
+            }
             /* increment the history step */
             this->count_++;
 

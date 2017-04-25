@@ -1039,7 +1039,7 @@ class Density // TODO: return rho_vec
         {
             double rms;
 
-            if (mixer_ != nullptr) {
+            if (ctx_.full_potential()) {
                 STOP(); // TODO: redesign mixer
                 /* mix in real-space in case of FP-LAPW */
                 mixer_input();
