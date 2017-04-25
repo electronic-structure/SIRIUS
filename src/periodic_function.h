@@ -307,62 +307,62 @@ class Periodic_function: public Smooth_periodic_function<T>
             return size;
         }
 
-        size_t pack(size_t offset__, Mixer<double>& mixer__)
-        {
-            PROFILE("sirius::Periodic_function::pack");
+        //size_t pack(size_t offset__, Mixer<double>& mixer__)
+        //{
+        //    PROFILE("sirius::Periodic_function::pack");
 
-            size_t n = 0;
-            
-            if (ctx_.full_potential()) {
-                for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
-                    for (int i1 = 0; i1 < unit_cell_.atom(ia).num_mt_points(); i1++) {
-                        for (int i0 = 0; i0 < angular_domain_size_; i0++) {
-                            mixer__.input(offset__ + n++, f_mt_(i0, i1, ia));
-                        }
-                    }
-                }
-            }
-            
-            double* pw = reinterpret_cast<double*>(this->f_pw_.template at<CPU>());
+        //    size_t n = 0;
+        //    
+        //    if (ctx_.full_potential()) {
+        //        for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
+        //            for (int i1 = 0; i1 < unit_cell_.atom(ia).num_mt_points(); i1++) {
+        //                for (int i0 = 0; i0 < angular_domain_size_; i0++) {
+        //                    mixer__.input(offset__ + n++, f_mt_(i0, i1, ia));
+        //                }
+        //            }
+        //        }
+        //    }
+        //    
+        //    double* pw = reinterpret_cast<double*>(this->f_pw_.template at<CPU>());
 
-            for (int ig = 0; ig < gvec_.num_gvec() * 2; ig++) {
-                mixer__.input(offset__ + n++, pw[ig]);
-            }
+        //    for (int ig = 0; ig < gvec_.num_gvec() * 2; ig++) {
+        //        mixer__.input(offset__ + n++, pw[ig]);
+        //    }
 
-            //for (int ir = 0; ir < this->fft_->local_size(); ir++) {
-            //    mixer__->input(offset__ + n++, this->f_rg_(ir));
-            //}
+        //    //for (int ir = 0; ir < this->fft_->local_size(); ir++) {
+        //    //    mixer__->input(offset__ + n++, this->f_rg_(ir));
+        //    //}
 
-            return n;
-        }
-        
-        size_t unpack(T const* array__)
-        {
-            PROFILE("sirius::Periodic_function::unpack");
+        //    return n;
+        //}
+        //
+        //size_t unpack(T const* array__)
+        //{
+        //    PROFILE("sirius::Periodic_function::unpack");
 
-            size_t n = 0;
+        //    size_t n = 0;
 
-            if (ctx_.full_potential()) {
-                for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
-                    for (int i1 = 0; i1 < unit_cell_.atom(ia).num_mt_points(); i1++) {
-                        for (int i0 = 0; i0 < angular_domain_size_; i0++) {
-                            f_mt_(i0, i1, ia) = array__[n++];
-                        }
-                    }
-                }
-            }
+        //    if (ctx_.full_potential()) {
+        //        for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
+        //            for (int i1 = 0; i1 < unit_cell_.atom(ia).num_mt_points(); i1++) {
+        //                for (int i0 = 0; i0 < angular_domain_size_; i0++) {
+        //                    f_mt_(i0, i1, ia) = array__[n++];
+        //                }
+        //            }
+        //        }
+        //    }
 
-            double* pw = reinterpret_cast<double*>(this->f_pw_.template at<CPU>());
-            for (int ig = 0; ig < gvec_.num_gvec() * 2; ig++) {
-                pw[ig] = array__[n++];
-            }
-            this->fft_transform(1);
-            //for (int ir = 0; ir < this->fft_->local_size(); ir++) {
-            //    this->f_rg_(ir) = array__[n++];
-            //}
+        //    double* pw = reinterpret_cast<double*>(this->f_pw_.template at<CPU>());
+        //    for (int ig = 0; ig < gvec_.num_gvec() * 2; ig++) {
+        //        pw[ig] = array__[n++];
+        //    }
+        //    this->fft_transform(1);
+        //    //for (int ir = 0; ir < this->fft_->local_size(); ir++) {
+        //    //    this->f_rg_(ir) = array__[n++];
+        //    //}
 
-            return n;
-        }
+        //    return n;
+        //}
        
         /// Set the global pointer to the muffin-tin part
         void set_mt_ptr(T* mt_ptr__)

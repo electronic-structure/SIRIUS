@@ -986,18 +986,21 @@ class Potential
 
         inline void pack(Mixer<double>& mixer)
         {
-            size_t n = effective_potential_->pack(0, mixer);
-            for (int i = 0; i < ctx_.num_mag_dims(); i++) {
-                n += effective_magnetic_field_[i]->pack(n, mixer);
-            }
+            STOP();
+            //size_t n = effective_potential_->pack(0, mixer);
+            //for (int i = 0; i < ctx_.num_mag_dims(); i++) {
+            //    n += effective_magnetic_field_[i]->pack(n, mixer);
+            //}
         }
 
         inline void unpack(double const* buffer)
         {
-            size_t n = effective_potential_->unpack(buffer);
-            for (int i = 0; i < ctx_.num_mag_dims(); i++) {
-                n += effective_magnetic_field_[i]->unpack(&buffer[n]);
-            }
+            STOP();
+
+            //size_t n = effective_potential_->unpack(buffer);
+            //for (int i = 0; i < ctx_.num_mag_dims(); i++) {
+            //    n += effective_magnetic_field_[i]->unpack(&buffer[n]);
+            //}
         }
 
         Periodic_function<double>* effective_potential()
@@ -1065,16 +1068,19 @@ class Potential
 
         void mixer_init()
         {
-            mixer_ = Mixer_factory<double>(ctx_.mixer_input().type_, size(), ctx_.mixer_input(), comm_);
-            pack(*mixer_);
-            mixer_->initialize();
+            STOP();
+
+            //mixer_ = Mixer_factory<double>(ctx_.mixer_input().type_, size(), ctx_.mixer_input(), comm_);
+            //pack(*mixer_);
+            //mixer_->initialize();
         }
 
         double mix()
         {
+            STOP();
             pack(*mixer_);
             double rms = mixer_->mix();
-            unpack(mixer_->output_buffer());
+            //unpack(mixer_->output_buffer());
             return rms;
         }
 
