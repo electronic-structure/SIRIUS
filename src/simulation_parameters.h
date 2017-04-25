@@ -202,10 +202,18 @@ class Simulation_parameters
             valence_relativity_ = m[name__];
         }
 
-        //inline void set_processing_unit(device_t pu__)
-        //{
-        //    processing_unit_ = pu__;
-        //}
+        inline void set_processing_unit(std::string name__)
+        {
+            std::transform(name__.begin(), name__.end(), name__.begin(), ::tolower);
+            control_input_.processing_unit_ = name__;
+            if (name__ == "cpu") {
+                processing_unit_ = CPU;
+            } else if (name__ == "gpu") {
+                processing_unit_ = GPU;
+            } else {
+                TERMINATE("wrong processing unit");
+            }
+        }
 
         inline void set_molecule(bool molecule__)
         {
@@ -252,17 +260,19 @@ class Simulation_parameters
             return parameters_input_.aw_cutoff_;
         }
     
-        /// Return plane-wave cutoff for G-vectors.
+        /// Plane-wave cutoff for G-vectors (in 1/[a.u.]).
         inline double pw_cutoff() const
         {
             return parameters_input_.pw_cutoff_;
         }
-    
+        
+        /// Cutoff for G+k vectors (in 1/[a.u.]).
         inline double gk_cutoff() const
         {
             return parameters_input_.gk_cutoff_;
         }
-    
+            
+        /// Number of dimensions in the magnetization vector.
         inline int num_mag_dims() const
         {
             assert(parameters_input_.num_mag_dims_ == 0 ||
@@ -272,6 +282,7 @@ class Simulation_parameters
             return parameters_input_.num_mag_dims_;
         }
         
+        /// Number of spin components.
         inline int num_spins() const
         {
             return (num_mag_dims() == 0) ? 1 : 2;
@@ -283,12 +294,14 @@ class Simulation_parameters
         {
             return (num_mag_dims() == 3) ? 3 : num_spins();
         }
-
+        
+        /// Number of first-variational states.
         inline int num_fv_states() const
         {
             return parameters_input_.num_fv_states_;
         }
-
+        
+        /// Total number of bands.
         inline int num_bands() const
         {
             return num_spins() * num_fv_states();
@@ -374,9 +387,19 @@ class Simulation_parameters
             return control_input_.std_evp_solver_name_;
         }
 
+        inline void set_std_evp_solver_name(std::string name__)
+        {
+            control_input_.std_evp_solver_name_ = name__;
+        }
+
         inline std::string const& gen_evp_solver_name() const
         {
             return control_input_.gen_evp_solver_name_;
+        }
+
+        inline void set_gen_evp_solver_name(std::string name__)
+        {
+            control_input_.gen_evp_solver_name_ = name__;
         }
 
         inline relativity_t valence_relativity() const

@@ -563,8 +563,25 @@ inline Spline<T> operator*(Spline<T> const& a__, Spline<T> const& b__)
     return std::move(s12);
 }
 
-extern "C" double spline_inner_product_gpu_v2(int size__, double const* x__, double const* dx__, double const* f__, 
-                                              double const* g__, double* d_buf__, double* h_buf__, int stream_id__);
+#ifdef __GPU
+extern "C" double spline_inner_product_gpu_v2(int           size__,
+                                              double const* x__,
+                                              double const* dx__,
+                                              double const* f__,
+                                              double const* g__,
+                                              double*       d_buf__,
+                                              double*       h_buf__,
+                                              int           stream_id__);
+
+extern "C" void spline_inner_product_gpu_v3(int const*    idx_ri__,
+                                            int           num_ri__,
+                                            int           num_points__,
+                                            double const* x__,
+                                            double const* dx__,
+                                            double const* f__, 
+                                            double const* g__,
+                                            double*       result__);
+#endif
 
 template<typename T>
 T inner(Spline<T> const& f__, Spline<T> const& g__, int m__, int num_points__)

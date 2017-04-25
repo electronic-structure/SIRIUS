@@ -25,7 +25,7 @@
 #include "sirius.h"
 
 /// Simulation context.
-sirius::Simulation_context* sim_ctx = nullptr;
+std::unique_ptr<sirius::Simulation_context> sim_ctx{nullptr};
 
 /// Pointer to Density class, implicitly used by Fortran side.
 sirius::Density* density = nullptr;
@@ -41,6 +41,8 @@ sirius::DFT_ground_state* dft_ground_state = nullptr;
 
 /// List of timers created on the Fortran side.
 std::map<std::string, sddk::timer*> ftimers;
+
+std::unique_ptr<sirius::Stress> stress_tensor{nullptr};
 
 extern "C" {
 
@@ -82,10 +84,7 @@ void sirius_clear(void)
             kset_list[i] = nullptr;
         }
     }
-    if (sim_ctx != nullptr) {
-        delete sim_ctx;
-        sim_ctx = nullptr;
-    }
+    sim_ctx = nullptr;
 
     kset_list.clear();
 }
@@ -94,9 +93,9 @@ void sirius_create_simulation_context(const char* config_file_name__)
 {
     std::string config_file_name(config_file_name__);
     if (config_file_name.length() == 0) {
-        sim_ctx = new sirius::Simulation_context(mpi_comm_world());
+        sim_ctx = std::unique_ptr<sirius::Simulation_context>(new sirius::Simulation_context(mpi_comm_world()));
     } else {
-        sim_ctx = new sirius::Simulation_context(config_file_name, mpi_comm_world());
+        sim_ctx = std::unique_ptr<sirius::Simulation_context>(new sirius::Simulation_context(config_file_name, mpi_comm_world()));
     }
 }
 
@@ -111,9 +110,6 @@ void sirius_initialize_simulation_context()
 
 void sirius_delete_simulation_context()
 {
-    if (sim_ctx != nullptr) {
-        delete sim_ctx;
-    }
     sim_ctx = nullptr;
 }
 
@@ -808,7 +804,7 @@ void sirius_get_band_occupancies(int32_t* kset_id, int32_t* ik_, double* band_oc
 
 void sirius_print_timers(void)
 {
-    sddk::timer::print();
+    sddk::timer::print(0);
 }
 
 void sirius_start_timer(char const* name__)
@@ -3066,6 +3062,36 @@ void sirius_set_pw_coeffs(ftn_char label__,
             potential->xc_potential()->fft_transform(1);
         } else {
             TERMINATE("wrong label");
+        }
+    }
+}
+
+void sirius_calculate_stress_tensor(ftn_int* kset_id__)
+{
+    auto& kset = *kset_list[*kset_id__];
+    stress_tensor = std::unique_ptr<sirius::Stress>(new sirius::Stress(*sim_ctx, kset, *density, *potential));
+}
+
+void sirius_get_stress_tensor(ftn_char label__, ftn_double* stress_tensor__)
+{
+    std::string label(label__);
+    matrix3d<double> s;
+    if (label == "vloc") {
+        s = stress_tensor->stress_vloc();
+    } else if (label == "har") {
+        s = stress_tensor->stress_har();
+    } else if (label == "ewald") {
+        s = stress_tensor->stress_ewald();
+    } else if (label == "kin") {
+        s = stress_tensor->stress_kin();
+    } else if (label == "nl") {
+        s = stress_tensor->stress_nl();
+    } else {
+        TERMINATE("wrong label");
+    }
+    for (int mu = 0; mu < 3; mu++) {
+        for (int nu = 0; nu < 3; nu++) {
+            stress_tensor__[nu + mu * 3] = s(mu, nu);
         }
     }
 }

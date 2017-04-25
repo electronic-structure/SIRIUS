@@ -26,7 +26,7 @@
 #define __SBESSEL_PW_H__
 
 #include "eigenproblem.h"
-#include "unit_cell.h"
+#include "Unit_cell/unit_cell.h"
 
 namespace sirius
 {

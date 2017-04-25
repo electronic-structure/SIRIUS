@@ -7,40 +7,26 @@
     },
 
     "parameters" : {
-        "electronic_structure_method" : "pseudopotential",
-
-        "num_fv_states" : 40,
-
+        "electronic_structure_method" : "full_potential_lapwlo",
         "xc_functionals" : ["XC_LDA_X", "XC_LDA_C_PZ"],
-        "smearing_width" : 0.025,
-
-        "use_symmetry" : 1,
-
-        "num_mag_dims" : 0,
-
-        "gk_cutoff" : 6.0,
+        "smearing_width" : 0.05,
+        "valence_relativity" : "none",
+        "core_relativity" : "none",
+        "!num_fv_states" : 50,
+        "aw_cutoff" : 9.45,
         "pw_cutoff" : 20.00,
-
-        "energy_tol" : 1e-10,
-
-        "num_dft_iter" : 100,
-
-        "ngridk" : [2,2,2]
-    },
-
-    "iterative_solver" : {
-        "energy_tolerance" : 1e-2,
-        "residual_tolerance" : 1e-6,
-        "num_steps" : 12,
-        "subspace_size" : 4,
-        "type" : "davidson",
-        "converge_by_energy" : 1
+        "auto_rmt" : 0,
+        "use_symmetry": 1,
+        "ngridk" : [1, 1, 1],
+        "potential_tol" : 1e-5,
+        "energy_tol" : 1e-8,
+        "num_dft_iter" : 1
     },
 
     "unit_cell" : {
 
-        "lattice_vectors" : [ [1, 0, 0],
-                              [0, 1, 0],
+        "lattice_vectors" : [ [1, 0, 0], 
+                              [0, 1, 0], 
                               [0, 0, 1]
                             ],
         "lattice_vectors_scale" : 7.260327248,
@@ -48,9 +34,9 @@
         "atom_types" : ["Sr", "V", "O"],
 
         "atom_files" : {
-            "Sr" : "Sr.pz-spn-kjpaw_psl.0.2.3.UPF.json",
-            "V"  : "V.pz-spn-kjpaw_psl.0.2.3.UPF.json",
-            "O"  : "O.pz-n-kjpaw_psl.0.1.UPF.json"
+            "Sr" : "Sr.json",
+            "V"  : "V.json",
+            "O"  : "O.json"
         },
 
         "atoms" : {
@@ -58,16 +44,16 @@
                 [0.5, 0.5, 0.5]
             ],
             "V" : [
-                [0, 0, 0, 0, 0, 4]
+                [0, 0, 0]
             ],
-            "O" : [
+            "O" : [ 
                 [0.5, 0.0, 0.0],
                 [0.0, 0.5, 0.0],
                 [0.0, 0.0, 0.5]
             ]
         }
     },
-
+    
     "mixer" : {
         "beta" : 0.95,
         "type" : "broyden1",

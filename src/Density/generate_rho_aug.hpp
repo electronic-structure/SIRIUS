@@ -31,31 +31,10 @@ inline void Density::generate_rho_aug(std::vector<Periodic_function<double>*> rh
         }
 
         int nbf = atom_type.mt_basis_size();
-        
+
         /* convert to real matrix */
-        mdarray<double, 3> dm(nbf * (nbf + 1) / 2, atom_type.num_atoms(), ctx_.num_mag_dims() + 1);
-        #pragma omp parallel for
-        for (int i = 0; i < atom_type.num_atoms(); i++) {
-            int ia = atom_type.atom_id(i);
-
-            for (int xi2 = 0; xi2 < nbf; xi2++) {
-                for (int xi1 = 0; xi1 <= xi2; xi1++) {
-                    int idx12 = xi2 * (xi2 + 1) / 2 + xi1;
-                    switch (ctx_.num_mag_dims()) {
-                        case 0: {
-                            dm(idx12, i, 0) = density_matrix_(xi2, xi1, 0, ia).real();
-                            break;
-                        }
-                        case 1: {
-                            dm(idx12, i, 0) = std::real(density_matrix_(xi2, xi1, 0, ia) + density_matrix_(xi2, xi1, 1, ia));
-                            dm(idx12, i, 1) = std::real(density_matrix_(xi2, xi1, 0, ia) - density_matrix_(xi2, xi1, 1, ia));
-                            break;
-                        }
-                    }
-                }
-            }
-        }
-
+        auto dm = density_matrix_aux(iat);
+        
         if (pu == CPU) {
             sddk::timer t2("sirius::Density::generate_rho_aug|phase_fac");
             /* treat phase factors as real array with x2 size */
