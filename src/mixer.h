@@ -43,6 +43,7 @@ class Mixer
         /// Split shared vector size beteen all MPI ranks.
         splindex<block, int> spl_shared_size_;
 
+        /// Local size of shared vector.
         int spl_shared_local_size_;
 
         /// Local number of vector elements.
@@ -66,13 +67,13 @@ class Mixer
         /** Weights are used in Broyden-type mixers when the inner product of residuals is computed */
         mdarray<double, 1> weights_;
         
-        /// Temporary storage for the input data.
+        /// Storage for the input (unmixed) data.
         mdarray<T, 1> input_buffer_;
         
         /// History of previous vectors.
         mdarray<T, 2> vectors_;
 
-        /// Output buffer for the whole vector.
+        /// Output buffer for the shared (global) part of the vector.
         mdarray<T, 1> output_buffer_;
         
         /// Base communicator.
@@ -116,10 +117,6 @@ class Mixer
             /* collect shared data */
             comm_.allgather(&vectors_(0, ipos), output_buffer_.template at<CPU>(), spl_shared_size_.global_offset(), 
                             spl_shared_size_.local_size());
-            /* copy local data */
-            for (int i = 0; i < local_vector_size_; i++) {
-                output_buffer_[shared_vector_size_ + i] = vectors_(spl_shared_local_size_ + i, ipos);
-            }
         }
 
     public:
@@ -148,7 +145,7 @@ class Mixer
             /* allocate input buffer */
             input_buffer_ = mdarray<T, 1>(local_size_, memory_t::host, "Mixer::input_buffer_");
             /* allocate output bffer */
-            output_buffer_ = mdarray<T, 1>(shared_vector_size_ + local_vector_size_, memory_t::host, "Mixer::output_buffer_");
+            output_buffer_ = mdarray<T, 1>(shared_vector_size_, memory_t::host, "Mixer::output_buffer_");
             /* allocate storage for previous vectors */
             vectors_ = mdarray<T, 2>(local_size_, max_history_, memory_t::host, "Mixer::vectors_");
             /* allocate weights */
@@ -177,22 +174,17 @@ class Mixer
 
             input_buffer_(spl_shared_local_size_ + idx__) = value__;
             weights_(spl_shared_local_size_ + idx__) = w__;
-
         }
 
-        //inline T const* output_buffer() const
-        //{
-        //    return output_buffer_.template at<CPU>();
-        //}
-
-        inline T output_buffer(int idx) const
+        inline T output_shared(int idx) const
         {
             return output_buffer_(idx);
         }
 
-        inline T output_buffer_local(int idx) const
+        inline T output_local(int idx) const
         {
-            return output_buffer_(shared_vector_size_ + idx);
+            int ipos = idx_hist(count_);
+            return vectors_(spl_shared_local_size_ + idx, ipos);
         }
         
         /// Initialize the mixer.
@@ -368,7 +360,7 @@ class Broyden1: public Mixer<T>
                     }
                 }
             }
-            // TODO: call mix_linear() properly.
+
             int i1 = this->idx_hist(this->count_ + 1);
             /* linear part */
             for (int i = 0; i < this->local_size_; i++) {
@@ -378,9 +370,6 @@ class Broyden1: public Mixer<T>
             this->comm_.allgather(&this->vectors_(0, i1), this->output_buffer_.template at<CPU>(),
                                   this->spl_shared_size_.global_offset(), this->spl_shared_size_.local_size());
             
-            for (int i = 0; i < this->local_vector_size_; i++) {
-                this->output_buffer_[this->shared_vector_size_ + i] = this->vectors_(this->spl_shared_local_size_ + i, i1);
-            }
             /* increment the history step */
             this->count_++;
 
