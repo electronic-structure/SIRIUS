@@ -974,35 +974,6 @@ class Potential
 
         void check_potential_continuity_at_mt();
 
-        /// Total size (number of elements) of the potential and effective magnetic field. 
-        inline size_t size()
-        {
-            size_t s = effective_potential_->size();
-            for (int i = 0; i < ctx_.num_mag_dims(); i++) {
-                s += effective_magnetic_field_[i]->size();
-            }
-            return s;
-        }
-
-        inline void pack(Mixer<double>& mixer)
-        {
-            STOP();
-            //size_t n = effective_potential_->pack(0, mixer);
-            //for (int i = 0; i < ctx_.num_mag_dims(); i++) {
-            //    n += effective_magnetic_field_[i]->pack(n, mixer);
-            //}
-        }
-
-        inline void unpack(double const* buffer)
-        {
-            STOP();
-
-            //size_t n = effective_potential_->unpack(buffer);
-            //for (int i = 0; i < ctx_.num_mag_dims(); i++) {
-            //    n += effective_magnetic_field_[i]->unpack(&buffer[n]);
-            //}
-        }
-
         Periodic_function<double>* effective_potential()
         {
             return effective_potential_.get();
@@ -1066,21 +1037,74 @@ class Potential
             return energy_vha_;
         }
 
+        void mixer_input()
+        {
+            /* collect density and magnetization into single array */
+            std::vector<Periodic_function<double>*> veff_vec(ctx_.num_mag_dims() + 1);
+            veff_vec[0] = effective_potential_.get();
+            for (int j = 0; j < ctx_.num_mag_dims(); j++) {
+                veff_vec[1 + j] = effective_magnetic_field_[j];
+            }
+            
+            int k{0};
+            
+            for (int j = 0; j < ctx_.num_mag_dims() + 1; j++) {
+                for (int ialoc = 0; ialoc < ctx_.unit_cell().spl_num_atoms().local_size(); ialoc++) {
+                    for (int i = 0; i < static_cast<int>(veff_vec[j]->f_mt(ialoc).size()); i++) {
+                        mixer_->input_local(k++, veff_vec[j]->f_mt(ialoc)[i]);
+                    }
+                }
+                for (int i = 0; i < ctx_.fft().local_size(); i++) {
+                    mixer_->input_local(k++, veff_vec[j]->f_rg(i));
+                }
+            }
+        }
+
+        void mixer_output()
+        {
+            /* collect density and magnetization into single array */
+            std::vector<Periodic_function<double>*> veff_vec(ctx_.num_mag_dims() + 1);
+            veff_vec[0] = effective_potential_.get();
+            for (int j = 0; j < ctx_.num_mag_dims(); j++) {
+                veff_vec[1 + j] = effective_magnetic_field_[j];
+            }
+            
+            int k{0};
+            
+            for (int j = 0; j < ctx_.num_mag_dims() + 1; j++) {
+                for (int ialoc = 0; ialoc < ctx_.unit_cell().spl_num_atoms().local_size(); ialoc++) {
+                    auto& f_mt = const_cast<Spheric_function<spectral, double>&>(veff_vec[j]->f_mt(ialoc));
+                    for (int i = 0; i < static_cast<int>(veff_vec[j]->f_mt(ialoc).size()); i++) {
+                        f_mt[i] = mixer_->output_local(k++);
+                    }
+                }
+                for (int i = 0; i < ctx_.fft().local_size(); i++) {
+                    veff_vec[j]->f_rg(i) = mixer_->output_local(k++);
+                }
+            }
+            for (auto e: veff_vec) {
+                e->sync_mt();
+            }
+        }
+
         void mixer_init()
         {
-            STOP();
+            int sz{0};
+            for (int ialoc = 0; ialoc < ctx_.unit_cell().spl_num_atoms().local_size(); ialoc++) {
+                sz += static_cast<int>(effective_potential_->f_mt(ialoc).size());
+            }
+            sz += ctx_.fft().local_size();
 
-            //mixer_ = Mixer_factory<double>(ctx_.mixer_input().type_, size(), ctx_.mixer_input(), comm_);
-            //pack(*mixer_);
-            //mixer_->initialize();
+            mixer_ = Mixer_factory<double>(ctx_.mixer_input().type_, 0, (ctx_.num_mag_dims() + 1) * sz, ctx_.mixer_input(), comm_);
+            mixer_input();
+            mixer_->initialize();
         }
 
         double mix()
         {
-            STOP();
-            pack(*mixer_);
+            mixer_input();
             double rms = mixer_->mix();
-            //unpack(mixer_->output_buffer());
+            mixer_output();
             return rms;
         }
 

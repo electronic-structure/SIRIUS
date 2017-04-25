@@ -1,4 +1,4 @@
-// Copyright (c) 2013-2016 Anton Kozhevnikov, Thomas Schulthess
+// Copyright (c) 2013-2017 Anton Kozhevnikov, Thomas Schulthess
 // All rights reserved.
 // 
 // Redistribution and use in source and binary forms, with or without modification, are permitted provided that 
@@ -397,86 +397,6 @@ class Density // TODO: return rho_vec
 
             density_matrix_ = mdarray<double_complex, 4>(unit_cell_.max_mt_basis_size(), unit_cell_.max_mt_basis_size(), 
                                                          ctx_.num_mag_comp(), unit_cell_.num_atoms());
-
-            if (!ctx_.full_potential()) {
-                /* split local G-vectors to low-frequency and high-frequency */
-                for (int igloc = 0; igloc < ctx_.gvec_count(); igloc++) {
-                    int ig = ctx_.gvec_offset() + igloc;
-                    auto gv = ctx_.gvec().gvec_cart(ig);
-                    if (gv.length() <= 2 * ctx_.gk_cutoff()) {
-                        lf_gvec_.push_back(igloc);
-                        if (ig) {
-                            lf_gvec_weights_.push_back(fourpi * unit_cell_.omega() / std::pow(gv.length(), 2));
-                        } else {
-                            lf_gvec_weights_.push_back(0);
-                        }
-                    } else {
-                        hf_gvec_.push_back(igloc);
-                    }
-                }
-                hf_mixer_ = Mixer_factory<double_complex>("linear",
-                                                          0,
-                                                          static_cast<int>(hf_gvec_.size() * (1 + ctx_.num_mag_dims())),
-                                                          ctx_.mixer_input(),
-                                                          ctx_.comm());
-
-                lf_mixer_ = Mixer_factory<double_complex>(ctx_.mixer_input().type_,
-                                                          static_cast<int>(density_matrix_.size()),
-                                                          static_cast<int>(lf_gvec_.size() * (1 + ctx_.num_mag_dims())),
-                                                          ctx_.mixer_input(),
-                                                          ctx_.comm());
-
-
-
-                //lf_gvec_ = std::vector<int>(ctx_.gvec_coarse().num_gvec());
-                //std::vector<double> weights(ctx_.gvec_coarse().num_gvec() * (1 + ctx_.num_mag_dims()), 1.0);
-                //for (size_t i = 0; i < density_matrix_.size(); i++) {
-                //    weights.push_back(0);
-                //}
-
-                //weights[0] = 0;
-                //lf_gvec_[0] = 0;
-
-                //for (int ig = 1; ig < ctx_.gvec_coarse().num_gvec(); ig++) {
-                //    auto G = ctx_.gvec_coarse().gvec(ig);
-                //    /* save index of low-frequency G-vector */
-                //    lf_gvec_[ig] = ctx_.gvec().index_by_gvec(G);
-                //    weights[ig] = fourpi * unit_cell_.omega() / std::pow(ctx_.gvec_coarse().gvec_len(ig), 2);
-                //}
-
-                ///* find high-frequency G-vectors */
-                //for (int ig = 0; ig < ctx_.gvec().num_gvec(); ig++) {
-                //    if (ctx_.gvec().gvec_len(ig) > 2 * ctx_.gk_cutoff()) {
-                //        hf_gvec_.push_back(ig);
-                //    }
-                //}
-
-                //if (static_cast<int>(hf_gvec_.size()) != ctx_.gvec().num_gvec() - ctx_.gvec_coarse().num_gvec()) {
-                //    std::stringstream s;
-                //    s << "Wrong count of high-frequency G-vectors" << std::endl
-                //      << "number of found high-frequency G-vectors: " << hf_gvec_.size() << std::endl
-                //      << "expected number of high-frequency G-vectors: " << ctx_.gvec().num_gvec() - ctx_.gvec_coarse().num_gvec() << std::endl
-                //      << "G-vector cutoff: " <<  ctx_.gk_cutoff();
-                //    TERMINATE(s);
-                //}
-                
-                //if (hf_gvec_.size()) {
-                //    high_freq_mixer_ = Mixer_factory<double_complex>("linear",
-                //                                                     hf_gvec_.size() * (1 + ctx_.num_mag_dims()), 0,
-                //                                                     ctx_.mixer_input(),
-                //                                                     ctx_.comm());
-                //}
-                //low_freq_mixer_ = Mixer_factory<double_complex>(ctx_.mixer_input().type_,
-                //                                                lf_gvec_.size() * (1 + ctx_.num_mag_dims()) + density_matrix_.size(),
-                //                                                ctx_.mixer_input(),
-                //                                                ctx_.comm(),
-                //                                                weights);
-            }
-
-            if (ctx_.full_potential()) {
-                STOP();
-                //mixer_ = Mixer_factory<double>(ctx_.mixer_input().type_, size(), ctx_.mixer_input(), ctx_.comm());
-            }
         }
         
         /// Destructor
@@ -870,14 +790,14 @@ class Density // TODO: return rho_vec
             //== fclose(fout);
         }
 
-        inline size_t size()
-        {
-            size_t s = rho_->size();
-            for (int i = 0; i < ctx_.num_mag_dims(); i++) {
-                s += magnetization_[i]->size();
-            }
-            return s;
-        }
+        //inline size_t size()
+        //{
+        //    size_t s = rho_->size();
+        //    for (int i = 0; i < ctx_.num_mag_dims(); i++) {
+        //        s += magnetization_[i]->size();
+        //    }
+        //    return s;
+        //}
 
         Periodic_function<double>* rho()
         {
@@ -998,7 +918,7 @@ class Density // TODO: return rho_vec
                     for (int i = 0; i < static_cast<int>(hf_gvec_.size()); i++) {
                         int igloc = hf_gvec_[i];
                         int ig = ctx_.gvec_offset() + igloc;
-                        rho_vec[j]->f_pw(ig) = hf_mixer_->output_buffer_local(i + j * ld);
+                        rho_vec[j]->f_pw(ig) = hf_mixer_->output_local(i + j * ld);
                     }
                 }
 
@@ -1008,12 +928,12 @@ class Density // TODO: return rho_vec
                     for (int i = 0; i < static_cast<int>(lf_gvec_.size()); i++) {
                         int igloc = lf_gvec_[i];
                         int ig = ctx_.gvec_offset() + igloc;
-                        rho_vec[j]->f_pw(ig) = lf_mixer_->output_buffer_local(i + j * ld);
+                        rho_vec[j]->f_pw(ig) = lf_mixer_->output_local(i + j * ld);
                     }
                 }
 
                 for (int i = 0; i < static_cast<int>(density_matrix_.size()); i++) {
-                    density_matrix_[i] = lf_mixer_->output_buffer(i);
+                    density_matrix_[i] = lf_mixer_->output_shared(i);
                 }
                 for (auto e: rho_vec) {
                     ctx_.comm().allgather(&e->f_pw(0), ctx_.gvec_offset(), ctx_.gvec_count());
@@ -1023,6 +943,37 @@ class Density // TODO: return rho_vec
 
         void mixer_init()
         {
+            if (!ctx_.full_potential()) {
+                /* split local G-vectors to low-frequency and high-frequency */
+                for (int igloc = 0; igloc < ctx_.gvec_count(); igloc++) {
+                    int ig = ctx_.gvec_offset() + igloc;
+                    auto gv = ctx_.gvec().gvec_cart(ig);
+                    if (gv.length() <= 2 * ctx_.gk_cutoff()) {
+                        lf_gvec_.push_back(igloc);
+                        if (ig) {
+                            lf_gvec_weights_.push_back(fourpi * unit_cell_.omega() / std::pow(gv.length(), 2));
+                        } else {
+                            lf_gvec_weights_.push_back(0);
+                        }
+                    } else {
+                        hf_gvec_.push_back(igloc);
+                    }
+                }
+                hf_mixer_ = Mixer_factory<double_complex>("linear",
+                                                          0,
+                                                          static_cast<int>(hf_gvec_.size() * (1 + ctx_.num_mag_dims())),
+                                                          ctx_.mixer_input(),
+                                                          ctx_.comm());
+
+                lf_mixer_ = Mixer_factory<double_complex>(ctx_.mixer_input().type_,
+                                                          static_cast<int>(density_matrix_.size()),
+                                                          static_cast<int>(lf_gvec_.size() * (1 + ctx_.num_mag_dims())),
+                                                          ctx_.mixer_input(),
+                                                          ctx_.comm());
+            } else {
+                //mixer_ = Mixer_factory<double>(ctx_.mixer_input().type_, size(), ctx_.mixer_input(), ctx_.comm());
+            }
+
             mixer_input();
 
             if (ctx_.full_potential()) {
@@ -1040,7 +991,7 @@ class Density // TODO: return rho_vec
             double rms;
 
             if (ctx_.full_potential()) {
-                STOP(); // TODO: redesign mixer
+                STOP();
                 /* mix in real-space in case of FP-LAPW */
                 mixer_input();
                 rms = mixer_->mix();

@@ -50,14 +50,6 @@ namespace sirius
 template<typename T> 
 class Periodic_function: public Smooth_periodic_function<T>
 { 
-    protected:
-
-        /* forbid copy constructor */
-        Periodic_function(const Periodic_function<T>& src) = delete;
-        
-        /* forbid assigment operator */
-        Periodic_function<T>& operator=(const Periodic_function<T>& src) = delete;
-
     private:
        
         /// Complex counterpart for a given type T.
@@ -98,6 +90,12 @@ class Periodic_function: public Smooth_periodic_function<T>
         /// True if plane wave part is allocated.
         bool is_f_pw_allocated_{false};
 
+        /* forbid copy constructor */
+        Periodic_function(const Periodic_function<T>& src) = delete;
+        
+        /* forbid assigment operator */
+        Periodic_function<T>& operator=(const Periodic_function<T>& src) = delete;
+
     public:
 
         /// Constructor
@@ -121,12 +119,6 @@ class Periodic_function: public Smooth_periodic_function<T>
             }
         }
         
-        ///// Check if PW array is allocated.
-        //bool is_f_pw_allocated() const
-        //{
-        //    return is_f_pw_allocated_;
-        //}
-
         /// Allocated memory for the plane-wave expansion coefficients.
         void allocate_pw()
         {
@@ -136,7 +128,7 @@ class Periodic_function: public Smooth_periodic_function<T>
 
             f_pw_ = mdarray<double_complex, 1>(gvec_.num_gvec(), memory_t::host, "f_pw_");
             this->f_pw_local_ = mdarray<double_complex, 1>(&f_pw_[this->gvec().partition().gvec_offset_fft()],
-                                                           this->fft_->local_size(), "f_pw_local_");
+                                                           this->gvec().partition().gvec_count_fft(), "f_pw_local_");
             is_f_pw_allocated_ = true;
         }
 
@@ -262,14 +254,11 @@ class Periodic_function: public Smooth_periodic_function<T>
         template <index_domain_t index_domain>
         inline T& f_mt(int idx0, int ir, int ia)
         {
-            switch (index_domain)
-            {
-                case index_domain_t::local:
-                {
+            switch (index_domain) {
+                case index_domain_t::local: {
                     return f_mt_local_(ia)(idx0, ir);
                 }
-                case index_domain_t::global:
-                {
+                case index_domain_t::global: {
                     return f_mt_(idx0, ir, ia);
                 }
             }
@@ -294,76 +283,6 @@ class Periodic_function: public Smooth_periodic_function<T>
             //h5f.read_mdarray("f_rg", this->f_rg_);
         }
 
-        size_t size() const
-        {
-            //size_t size = this->fft_->local_size();
-            size_t size = gvec_.num_gvec() * 2;
-            if (ctx_.full_potential()) {
-                for (int ic = 0; ic < unit_cell_.num_atom_symmetry_classes(); ic++) {
-                    size += angular_domain_size_ * unit_cell_.atom_symmetry_class(ic).atom_type().num_mt_points() * 
-                            unit_cell_.atom_symmetry_class(ic).num_atoms();
-                }
-            }
-            return size;
-        }
-
-        //size_t pack(size_t offset__, Mixer<double>& mixer__)
-        //{
-        //    PROFILE("sirius::Periodic_function::pack");
-
-        //    size_t n = 0;
-        //    
-        //    if (ctx_.full_potential()) {
-        //        for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
-        //            for (int i1 = 0; i1 < unit_cell_.atom(ia).num_mt_points(); i1++) {
-        //                for (int i0 = 0; i0 < angular_domain_size_; i0++) {
-        //                    mixer__.input(offset__ + n++, f_mt_(i0, i1, ia));
-        //                }
-        //            }
-        //        }
-        //    }
-        //    
-        //    double* pw = reinterpret_cast<double*>(this->f_pw_.template at<CPU>());
-
-        //    for (int ig = 0; ig < gvec_.num_gvec() * 2; ig++) {
-        //        mixer__.input(offset__ + n++, pw[ig]);
-        //    }
-
-        //    //for (int ir = 0; ir < this->fft_->local_size(); ir++) {
-        //    //    mixer__->input(offset__ + n++, this->f_rg_(ir));
-        //    //}
-
-        //    return n;
-        //}
-        //
-        //size_t unpack(T const* array__)
-        //{
-        //    PROFILE("sirius::Periodic_function::unpack");
-
-        //    size_t n = 0;
-
-        //    if (ctx_.full_potential()) {
-        //        for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
-        //            for (int i1 = 0; i1 < unit_cell_.atom(ia).num_mt_points(); i1++) {
-        //                for (int i0 = 0; i0 < angular_domain_size_; i0++) {
-        //                    f_mt_(i0, i1, ia) = array__[n++];
-        //                }
-        //            }
-        //        }
-        //    }
-
-        //    double* pw = reinterpret_cast<double*>(this->f_pw_.template at<CPU>());
-        //    for (int ig = 0; ig < gvec_.num_gvec() * 2; ig++) {
-        //        pw[ig] = array__[n++];
-        //    }
-        //    this->fft_transform(1);
-        //    //for (int ir = 0; ir < this->fft_->local_size(); ir++) {
-        //    //    this->f_rg_(ir) = array__[n++];
-        //    //}
-
-        //    return n;
-        //}
-       
         /// Set the global pointer to the muffin-tin part
         void set_mt_ptr(T* mt_ptr__)
         {

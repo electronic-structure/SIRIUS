@@ -44,7 +44,7 @@ class Mixer
         splindex<block, int> spl_shared_size_;
 
         /// Local size of shared vector.
-        int spl_shared_local_size_;
+        int spl_shared_local_size_{0};
 
         /// Local number of vector elements.
         /** The local number of elements is a sum of local vector size and local size of shared vector. */
@@ -132,6 +132,9 @@ class Mixer
             , beta_(beta__)
             , comm_(comm__)
         {
+            assert(shared_vector_size__ >= 0);
+            assert(local_vector_size__ >= 0);
+
             unsigned long long n = local_vector_size__;
             comm_.allreduce(&n, 1);
             total_size_ = n + shared_vector_size_;
