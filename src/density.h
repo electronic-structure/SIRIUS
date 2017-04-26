@@ -28,6 +28,7 @@
 #include "periodic_function.h"
 #include "k_point_set.h"
 #include "simulation_context.h"
+#include "mixer.h"
 
 #ifdef __GPU
 extern "C" void generate_dm_pw_gpu(int num_atoms__,
