@@ -94,8 +94,8 @@ class Stress {
     {
         PROFILE("sirius::Stress|har");
 
-        for (int igloc = 0; igloc < ctx_.gvec_count(); igloc++) {
-            int ig = ctx_.gvec_offset() + igloc;
+        for (int igloc = 0; igloc < ctx_.gvec().count(); igloc++) {
+            int ig = ctx_.gvec().offset() + igloc;
             if (!ig) {
                 continue;
             }
@@ -132,8 +132,8 @@ class Stress {
 
         auto& uc = ctx_.unit_cell();
 
-        for (int igloc = 0; igloc < ctx_.gvec_count(); igloc++) {
-            int ig = ctx_.gvec_offset() + igloc;
+        for (int igloc = 0; igloc < ctx_.gvec().count(); igloc++) {
+            int ig = ctx_.gvec().offset() + igloc;
             if (!ig) {
                 continue;
             }
@@ -217,8 +217,8 @@ class Stress {
         
         double sdiag{0};
 
-        for (int igloc = 0; igloc < ctx_.gvec_count(); igloc++) {
-            int ig = ctx_.gvec_offset() + igloc;
+        for (int igloc = 0; igloc < ctx_.gvec().count(); igloc++) {
+            int ig = ctx_.gvec().offset() + igloc;
             
             if (!ig) {
                 continue;
@@ -348,12 +348,12 @@ class Stress {
             auto dm = density_.density_matrix_aux(iat);
 
             /* treat phase factors as real array with 2x size */
-            mdarray<double, 2> phase_factors(atom_type.num_atoms(), ctx_.gvec_count() * 2);
+            mdarray<double, 2> phase_factors(atom_type.num_atoms(), ctx_.gvec().count() * 2);
 
             sddk::timer t0("sirius::Stress|us|phase_fac");
             #pragma omp parallel for schedule(static)
-            for (int igloc = 0; igloc < ctx_.gvec_count(); igloc++) {
-                int ig = ctx_.gvec_offset() + igloc;
+            for (int igloc = 0; igloc < ctx_.gvec().count(); igloc++) {
+                int ig = ctx_.gvec().offset() + igloc;
                 for (int i = 0; i < atom_type.num_atoms(); i++) {
                     int ia = atom_type.atom_id(i);
                     double_complex z = std::conj(ctx_.gvec_phase_factor(ig, ia));
@@ -362,15 +362,15 @@ class Stress {
                 }
             }
             t0.stop();
-            mdarray<double, 2> q_tmp(nbf * (nbf + 1) / 2, ctx_.gvec_count() * 2);
+            mdarray<double, 2> q_tmp(nbf * (nbf + 1) / 2, ctx_.gvec().count() * 2);
             for (int nu = 0; nu < 3; nu++) {
                 Augmentation_operator_gvec_deriv q_deriv(ctx_, iat, ri, ri_dq, nu);
 
                 for (int mu = 0; mu < 3; mu++) {
                     sddk::timer t2("sirius::Stress|us|q_tmp");
                     #pragma omp parallel for schedule(static)
-                    for (int igloc = 0; igloc < ctx_.gvec_count(); igloc++) {
-                        int ig = ctx_.gvec_offset() + igloc;
+                    for (int igloc = 0; igloc < ctx_.gvec().count(); igloc++) {
+                        int ig = ctx_.gvec().offset() + igloc;
                         auto gvc = ctx_.gvec().gvec_cart(ig);
                         double g = gvc.length();
                         if (ig == 0) {
@@ -390,7 +390,7 @@ class Stress {
                     
                     sddk::timer t1("sirius::Stress|us|gemm");
                     mdarray<double, 2> tmp(nbf * (nbf + 1) / 2, atom_type.num_atoms());
-                    linalg<CPU>::gemm(0, 1, nbf * (nbf + 1) / 2, atom_type.num_atoms(), 2 * ctx_.gvec_count(),
+                    linalg<CPU>::gemm(0, 1, nbf * (nbf + 1) / 2, atom_type.num_atoms(), 2 * ctx_.gvec().count(),
                                       q_tmp, phase_factors, tmp);
                     t1.stop();
                     for (int ia = 0; ia < atom_type.num_atoms(); ia++) {

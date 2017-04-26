@@ -10,7 +10,7 @@ inline void Potential::poisson_sum_G(int lmmax__,
 {
     PROFILE("sirius::Potential::poisson_sum_G");
 
-    int ngv_loc = ctx_.gvec_count();
+    int ngv_loc = ctx_.gvec().count();
 
     int na_max{0};
     for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
@@ -27,7 +27,7 @@ inline void Potential::poisson_sum_G(int lmmax__,
         ctx_.generate_phase_factors(iat, phase_factors);
         #pragma omp parallel for schedule(static)
         for (int igloc = 0; igloc < ngv_loc; igloc++) {
-            int ig = ctx_.gvec_offset() + igloc;
+            int ig = ctx_.gvec().offset() + igloc;
             for (int lm = 0; lm < lmmax__; lm++) {
                 int l = l_by_lm_[lm];
                 zm(lm, igloc) = fourpi * fpw__[ig] * zilm_[lm] *
@@ -80,7 +80,7 @@ inline void Potential::poisson_add_pseudo_pw(mdarray<double_complex, 2>& qmt,
     PROFILE("sirius::Potential::poisson_add_pseudo_pw");
 
     int lmmax = ctx_.lmmax_rho();
-    int ngv = ctx_.gvec_count();
+    int ngv = ctx_.gvec().count();
     
     /* The following term is added to the plane-wave coefficients of the charge density:
      * Integrate[SphericalBesselJ[l,a*x]*p[x,R]*x^2,{x,0,R},Assumptions->{l>=0,n>=0,R>0,a>0}] / 
@@ -129,14 +129,14 @@ inline void Potential::poisson_add_pseudo_pw(mdarray<double_complex, 2>& qmt,
 
         switch (ctx_.processing_unit()) {
             case CPU: {
-                linalg<CPU>::gemm(0, 2, ctx_.lmmax_rho(), ctx_.gvec_count(), unit_cell_.atom_type(iat).num_atoms(),
+                linalg<CPU>::gemm(0, 2, ctx_.lmmax_rho(), ctx_.gvec().count(), unit_cell_.atom_type(iat).num_atoms(),
                                   qa, pf, qapf);
                 break;
             }
             case GPU: {
                 #ifdef __GPU
                 qa.copy_to_device();
-                linalg<GPU>::gemm(0, 2, ctx_.lmmax_rho(), ctx_.gvec_count(), unit_cell_.atom_type(iat).num_atoms(),
+                linalg<GPU>::gemm(0, 2, ctx_.lmmax_rho(), ctx_.gvec().count(), unit_cell_.atom_type(iat).num_atoms(),
                                   qa.at<GPU>(), qa.ld(),
                                   pf.at<GPU>(), pf.ld(),
                                   qapf.at<GPU>(), qapf.ld());
@@ -149,8 +149,8 @@ inline void Potential::poisson_add_pseudo_pw(mdarray<double_complex, 2>& qmt,
         /* add pseudo_density to interstitial charge density so that rho(G) has the correct 
          * multipole moments in the muffin-tins */
         #pragma omp parallel for schedule(static)
-        for (int igloc = 0; igloc < ctx_.gvec_count(); igloc++) {
-            int ig = ctx_.gvec_offset() + igloc;
+        for (int igloc = 0; igloc < ctx_.gvec().count(); igloc++) {
+            int ig = ctx_.gvec().offset() + igloc;
 
             double gR = ctx_.gvec().gvec_len(ig) * R;
             double gRn = std::pow(2.0 / gR, pseudo_density_order_ + 1);
@@ -176,7 +176,7 @@ inline void Potential::poisson_add_pseudo_pw(mdarray<double_complex, 2>& qmt,
         }
     }
 
-    ctx_.comm().allgather(&rho_pw[0], ctx_.gvec_offset(), ctx_.gvec_count());
+    ctx_.comm().allgather(&rho_pw[0], ctx_.gvec().offset(), ctx_.gvec().count());
 }
 
 inline void Potential::poisson(Periodic_function<double>* rho, Periodic_function<double>* vh)

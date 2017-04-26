@@ -431,8 +431,8 @@ inline double DFT_ground_state::ewald_energy()
         double ewald_g_pt = 0;
 
         #pragma omp for
-        for (int igloc = 0; igloc < ctx_.gvec_count(); igloc++) {
-            int ig = ctx_.gvec_offset() + igloc;
+        for (int igloc = 0; igloc < ctx_.gvec().count(); igloc++) {
+            int ig = ctx_.gvec().offset() + igloc;
             if (!ig) {
                 continue;
             }

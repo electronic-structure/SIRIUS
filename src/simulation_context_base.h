@@ -69,7 +69,7 @@ class Simulation_context_base: public Simulation_parameters
         Gvec gvec_;
         
         /// Offset of the local frction of G-vectors in the global index.
-        int gvec_offset_{0};
+        //int gvec_offset_{0};
         
         /// G-vectors within the 2 * |Gmax^{WF}| cutoff.
         Gvec gvec_coarse_;
@@ -269,18 +269,6 @@ class Simulation_context_base: public Simulation_parameters
             return gvec_phase_factor(gvec_.gvec(ig__), ia__);
         }
 
-        /// Return local number of G-vectors.
-        inline int gvec_count() const
-        {
-            return gvec_.gvec_count(comm_.rank());
-        }
-
-        /// Return offset of the local number of G-vectors in the global index.
-        inline int gvec_offset() const
-        {
-            return gvec_offset_;
-        }
-
         inline mdarray<int, 2> const& gvec_coord() const
         {
             return gvec_coord_;
@@ -300,8 +288,8 @@ class Simulation_context_base: public Simulation_parameters
             switch (processing_unit_) {
                 case CPU: {
                     #pragma omp parallel for
-                    for (int igloc = 0; igloc < gvec_count(); igloc++) {
-                        int ig = gvec_offset() + igloc;
+                    for (int igloc = 0; igloc < gvec_.count(); igloc++) {
+                        int ig = gvec_.offset() + igloc;
                         for (int i = 0; i < na; i++) {
                             int ia = unit_cell_.atom_type(iat__).atom_id(i);
                             phase_factors__(igloc, i) = gvec_phase_factor(ig, ia);
@@ -311,7 +299,7 @@ class Simulation_context_base: public Simulation_parameters
                 }
                 case GPU: {
                     #ifdef __GPU
-                    generate_phase_factors_gpu(gvec_count(), na, gvec_coord().at<GPU>(), atom_coord(iat__).at<GPU>(),
+                    generate_phase_factors_gpu(gvec_.count(), na, gvec_coord().at<GPU>(), atom_coord(iat__).at<GPU>(),
                                                phase_factors__.at<GPU>());
                     #else
                     TERMINATE_NO_GPU
@@ -330,13 +318,13 @@ class Simulation_context_base: public Simulation_parameters
 
             double fourpi_omega = fourpi / unit_cell_.omega();
 
-            int ngv = (index_domain == index_domain_t::local) ? gvec_count() : gvec().num_gvec();
+            int ngv = (index_domain == index_domain_t::local) ? gvec_.count() : gvec().num_gvec();
             std::vector<double_complex> f_pw(ngv, double_complex(0, 0));
 
             #pragma omp parallel for schedule(static)
-            for (int igloc = 0; igloc < gvec_count(); igloc++) {
+            for (int igloc = 0; igloc < gvec_.count(); igloc++) {
                 /* global index of G-vector */
-                int ig = gvec_offset() + igloc;
+                int ig = gvec_.offset() + igloc;
                 double g = gvec().gvec_len(ig);
 
                 int j = (index_domain == index_domain_t::local) ? igloc : ig;
@@ -347,7 +335,7 @@ class Simulation_context_base: public Simulation_parameters
             }
 
             if (index_domain == index_domain_t::global) {
-                comm_.allgather(&f_pw[0], gvec_offset(), gvec_count());
+                comm_.allgather(&f_pw[0], gvec_.offset(), gvec_.count());
             }
 
             return std::move(f_pw);
@@ -381,7 +369,6 @@ inline void Simulation_context_base::init_fft()
 
     /* create a list of G-vectors for dense FFT grid; G-vectors are divided between all available MPI ranks.*/
     gvec_ = Gvec(rlv, pw_cutoff(), comm(), comm_fft(), control().reduce_gvec_);
-    gvec_offset_ = gvec_.gvec_offset(comm_.rank());
 
     /* prepare fine-grained FFT driver for the entire simulation */
     fft_->prepare(gvec_.partition());
@@ -592,9 +579,9 @@ inline void Simulation_context_base::initialize()
     }
 
     if (processing_unit() == GPU) {
-        gvec_coord_ = mdarray<int, 2>(gvec_count(), 3, memory_t::host | memory_t::device, "gvec_coord_");
-        for (int igloc = 0; igloc < gvec_count(); igloc++) {
-            int ig = gvec_offset() + igloc;
+        gvec_coord_ = mdarray<int, 2>(gvec_.count(), 3, memory_t::host | memory_t::device, "gvec_coord_");
+        for (int igloc = 0; igloc < gvec_.count(); igloc++) {
+            int ig = gvec_.offset() + igloc;
             auto G = gvec_.gvec(ig);
             for (int x: {0, 1, 2}) {
                 gvec_coord_(igloc, x) = G[x];

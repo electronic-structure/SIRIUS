@@ -609,7 +609,7 @@ class Density // TODO: return rho_vec
                 }
             }
             
-            mdarray<double_complex, 2> rho_aug(ctx_.gvec_count(), ctx_.num_mag_dims() + 1, ctx_.dual_memory_t());
+            mdarray<double_complex, 2> rho_aug(ctx_.gvec().count(), ctx_.num_mag_dims() + 1, ctx_.dual_memory_t());
 
             switch (ctx_.processing_unit()) {
                 case CPU: {
@@ -624,15 +624,15 @@ class Density // TODO: return rho_vec
 
             for (int iv = 0; iv < ctx_.num_mag_dims() + 1; iv++) {
                 #pragma omp parallel for
-                for (int igloc = 0; igloc < ctx_.gvec_count(); igloc++) {
-                    int ig = ctx_.gvec_offset() + igloc;
+                for (int igloc = 0; igloc < ctx_.gvec().count(); igloc++) {
+                    int ig = ctx_.gvec().offset() + igloc;
                     rho_vec[iv]->f_pw(ig) += rho_aug(igloc, iv);
                 }
             }
 
             sddk::timer t5("sirius::Density::augment|mpi");
             for (auto e: rho_vec) {
-                ctx_.comm().allgather(&e->f_pw(0), ctx_.gvec_offset(), ctx_.gvec_count());
+                ctx_.comm().allgather(&e->f_pw(0), ctx_.gvec().offset(), ctx_.gvec().count());
 
                 if (ctx_.control().print_checksum_) {
                     auto cs = e->checksum_pw();
@@ -872,7 +872,7 @@ class Density // TODO: return rho_vec
                 for (int j = 0; j < ctx_.num_mag_dims() + 1; j++) {
                     for (int i = 0; i < static_cast<int>(hf_gvec_.size()); i++) {
                         int igloc = hf_gvec_[i];
-                        int ig = ctx_.gvec_offset() + igloc;
+                        int ig = ctx_.gvec().offset() + igloc;
                         hf_mixer_->input_local(i + j * ld, rho_vec[j]->f_pw(ig));
                     }
                 }
@@ -882,13 +882,13 @@ class Density // TODO: return rho_vec
                     if (j == 0) {
                         for (int i = 0; i < static_cast<int>(lf_gvec_.size()); i++) {
                             int igloc = lf_gvec_[i];
-                            int ig = ctx_.gvec_offset() + igloc;
+                            int ig = ctx_.gvec().offset() + igloc;
                             lf_mixer_->input_local(i + j * ld, rho_vec[j]->f_pw(ig), lf_gvec_weights_[i]);
                         }
                     } else {
                         for (int i = 0; i < static_cast<int>(lf_gvec_.size()); i++) {
                             int igloc = lf_gvec_[i];
-                            int ig = ctx_.gvec_offset() + igloc;
+                            int ig = ctx_.gvec().offset() + igloc;
                             lf_mixer_->input_local(i + j * ld, rho_vec[j]->f_pw(ig));
                         }
                     }
@@ -917,7 +917,7 @@ class Density // TODO: return rho_vec
                 for (int j = 0; j < ctx_.num_mag_dims() + 1; j++) {
                     for (int i = 0; i < static_cast<int>(hf_gvec_.size()); i++) {
                         int igloc = hf_gvec_[i];
-                        int ig = ctx_.gvec_offset() + igloc;
+                        int ig = ctx_.gvec().offset() + igloc;
                         rho_vec[j]->f_pw(ig) = hf_mixer_->output_local(i + j * ld);
                     }
                 }
@@ -927,7 +927,7 @@ class Density // TODO: return rho_vec
                 for (int j = 0; j < ctx_.num_mag_dims() + 1; j++) {
                     for (int i = 0; i < static_cast<int>(lf_gvec_.size()); i++) {
                         int igloc = lf_gvec_[i];
-                        int ig = ctx_.gvec_offset() + igloc;
+                        int ig = ctx_.gvec().offset() + igloc;
                         rho_vec[j]->f_pw(ig) = lf_mixer_->output_local(i + j * ld);
                     }
                 }
@@ -936,7 +936,7 @@ class Density // TODO: return rho_vec
                     density_matrix_[i] = lf_mixer_->output_shared(i);
                 }
                 for (auto e: rho_vec) {
-                    ctx_.comm().allgather(&e->f_pw(0), ctx_.gvec_offset(), ctx_.gvec_count());
+                    ctx_.comm().allgather(&e->f_pw(0), ctx_.gvec().offset(), ctx_.gvec().count());
                 }
             }
         }
@@ -945,8 +945,8 @@ class Density // TODO: return rho_vec
         {
             if (!ctx_.full_potential()) {
                 /* split local G-vectors to low-frequency and high-frequency */
-                for (int igloc = 0; igloc < ctx_.gvec_count(); igloc++) {
-                    int ig = ctx_.gvec_offset() + igloc;
+                for (int igloc = 0; igloc < ctx_.gvec().count(); igloc++) {
+                    int ig = ctx_.gvec().offset() + igloc;
                     auto gv = ctx_.gvec().gvec_cart(ig);
                     if (gv.length() <= 2 * ctx_.gk_cutoff()) {
                         lf_gvec_.push_back(igloc);

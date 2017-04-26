@@ -157,9 +157,9 @@ inline void Density::initial_density_full_pot()
     /* mapping between G-shell (global index) and a list of G-vectors (local index) */
     std::map<int, std::vector<int> > gsh_map;
     
-    for (int igloc = 0; igloc < ctx_.gvec_count(); igloc++) {
+    for (int igloc = 0; igloc < ctx_.gvec().count(); igloc++) {
         /* global index of the G-vector */
-        int ig = ctx_.gvec_offset() + igloc;
+        int ig = ctx_.gvec().offset() + igloc;
         /* index of the G-vector shell */
         int igsh = ctx_.gvec().shell(ig);
         if (gsh_map.count(igsh) == 0) gsh_map[igsh] = std::vector<int>();
@@ -193,9 +193,9 @@ inline void Density::initial_density_full_pot()
     mdarray<double_complex, 3> znulm(sba.nqnu_max(), lmmax, unit_cell_.num_atoms());
     znulm.zero();
     
-    auto gvec_ylm = mdarray<double_complex, 2>(lmmax, ctx_.gvec_count());
-    for (int igloc = 0; igloc < ctx_.gvec_count(); igloc++) {
-        int ig = ctx_.gvec_offset() + igloc;
+    auto gvec_ylm = mdarray<double_complex, 2>(lmmax, ctx_.gvec().count());
+    for (int igloc = 0; igloc < ctx_.gvec().count(); igloc++) {
+        int ig = ctx_.gvec().offset() + igloc;
         auto rtp = SHT::spherical_coordinates(ctx_.gvec().gvec_cart(ig));
         SHT::spherical_harmonics(lmax, rtp[1], rtp[2], &gvec_ylm(0, igloc));
     }
@@ -211,7 +211,7 @@ inline void Density::initial_density_full_pot()
             /* loop over G-vectors */
             for (int igloc: gv) {
                 /* global index of the G-vector */
-                int ig = ctx_.gvec_offset() + igloc;
+                int ig = ctx_.gvec().offset() + igloc;
                 
                 auto z1 = ctx_.gvec_phase_factor(ig, ia) * v[ig] * fourpi;
                 
