@@ -83,6 +83,7 @@ class Simulation_context_base: public Simulation_parameters
         mdarray<double_complex, 3> phase_factors_;
         
         mdarray<int, 2> gvec_coord_;
+
         std::vector<mdarray<double, 2>> atom_coord_;
         
         mdarray<char, 1> memory_buffer_;
