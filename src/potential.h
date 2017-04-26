@@ -258,19 +258,20 @@ class Potential
             PROFILE("sirius::Potential::generate_local_potential");
             
             Radial_integrals_vloc ri(ctx_.unit_cell(), ctx_.pw_cutoff(), 100);
-            auto v = ctx_.make_periodic_function<index_domain_t::global>([&ri](int iat, double g)
-                                                                         {
-                                                                             return ri.value(iat, g);
-                                                                         });
-
-            ctx_.fft().transform<1>(ctx_.gvec().partition(), &v[ctx_.gvec().partition().gvec_offset_fft()]);
-            ctx_.fft().output(&local_potential_->f_rg(0));
+            auto v = ctx_.make_periodic_function<index_domain_t::local>([&ri](int iat, double g)
+                                                                        {
+                                                                            return ri.value(iat, g);
+                                                                        });
+            for (int igloc = 0; igloc < ctx_.gvec().count(); igloc++) {
+                local_potential_->f_pw_local(igloc) = v[igloc];
+            }
+            local_potential_->fft_transform(1);
 
             if (ctx_.control().print_checksum_) {
-                auto cs = local_potential_->checksum_pw();
+                //auto cs = local_potential_->checksum_pw();
                 auto cs1 = local_potential_->checksum_rg();
                 if (ctx_.comm().rank() == 0) {
-                    DUMP("checksum(local_potential_pw): %18.10f %18.10f", cs.real(), cs.imag());
+                    //DUMP("checksum(local_potential_pw): %18.10f %18.10f", cs.real(), cs.imag());
                     DUMP("checksum(local_potential_rg): %18.10f", cs1);
                 }
             }
@@ -344,24 +345,23 @@ class Potential
                 }
             }
 
-            effective_potential_ = std::unique_ptr<Periodic_function<double>>(new Periodic_function<double>(ctx_, ctx_.lmmax_pot(), 1));
+            effective_potential_ = std::unique_ptr<Periodic_function<double>>(new Periodic_function<double>(ctx_, ctx_.lmmax_pot()));
             
-            int need_gvec{1};
             for (int j = 0; j < ctx_.num_mag_dims(); j++) {
-                effective_magnetic_field_[j] = new Periodic_function<double>(ctx_, ctx_.lmmax_pot(), need_gvec);
+                effective_magnetic_field_[j] = new Periodic_function<double>(ctx_, ctx_.lmmax_pot());
             }
             
-            hartree_potential_ = new Periodic_function<double>(ctx_, ctx_.lmmax_pot(), 1);
+            hartree_potential_ = new Periodic_function<double>(ctx_, ctx_.lmmax_pot());
             hartree_potential_->allocate_mt(false);
             
-            xc_potential_ = new Periodic_function<double>(ctx_, ctx_.lmmax_pot(), 1);
+            xc_potential_ = new Periodic_function<double>(ctx_, ctx_.lmmax_pot());
             xc_potential_->allocate_mt(false);
             
-            xc_energy_density_ = new Periodic_function<double>(ctx_, ctx_.lmmax_pot(), 0);
+            xc_energy_density_ = new Periodic_function<double>(ctx_, ctx_.lmmax_pot());
             xc_energy_density_->allocate_mt(false);
 
             if (!ctx_.full_potential()) {
-                local_potential_ = std::unique_ptr<Periodic_function<double>>(new Periodic_function<double>(ctx_, 0, 0));
+                local_potential_ = std::unique_ptr<Periodic_function<double>>(new Periodic_function<double>(ctx_, 0));
                 local_potential_->zero();
 
                 generate_local_potential();
@@ -797,7 +797,7 @@ class Potential
                 /* add local ionic potential to the effective potential */
                 effective_potential_->add(local_potential_.get());
                 /* create temporary function for rho + rho_core */
-                Periodic_function<double> rhovc(ctx_, 0, 0);
+                Periodic_function<double> rhovc(ctx_, 0);
                 rhovc.zero();
                 rhovc.add(density__.rho());
                 rhovc.add(density__.rho_pseudo_core());
