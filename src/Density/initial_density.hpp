@@ -191,7 +191,9 @@ inline void Density::initial_density_full_pot()
     auto l_by_lm = Utils::l_by_lm(lmax);
     
     std::vector<double_complex> zil(lmax + 1);
-    for (int l = 0; l <= lmax; l++) zil[l] = std::pow(double_complex(0, 1), l);
+    for (int l = 0; l <= lmax; l++) {
+        zil[l] = std::pow(double_complex(0, 1), l);
+    }
     
     sddk::timer t3("sirius::Density::initial_density|znulm");
     
@@ -218,7 +220,7 @@ inline void Density::initial_density_full_pot()
                 /* global index of the G-vector */
                 int ig = ctx_.gvec().offset() + igloc;
                 
-                auto z1 = ctx_.gvec_phase_factor(ig, ia) * v[ig] * fourpi;
+                auto z1 = ctx_.gvec_phase_factor(ig, ia) * v[igloc] * fourpi;
                 
                 for (int lm = 0; lm < lmmax; lm++) {
                     int l = l_by_lm[lm];
