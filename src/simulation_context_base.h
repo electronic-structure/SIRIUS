@@ -68,9 +68,6 @@ class Simulation_context_base: public Simulation_parameters
         /// G-vectors within the Gmax cutoff.
         Gvec gvec_;
         
-        /// Offset of the local frction of G-vectors in the global index.
-        //int gvec_offset_{0};
-        
         /// G-vectors within the 2 * |Gmax^{WF}| cutoff.
         Gvec gvec_coarse_;
 
