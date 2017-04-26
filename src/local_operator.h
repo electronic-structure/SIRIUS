@@ -140,11 +140,12 @@ class Local_operator
             fft_coarse_.prepare(gvec_coarse__.partition());
             /* map components of effective potential to a corase grid */
             for (int j = 0; j < num_mag_dims__ + 1; j++) {
+                auto v = veff_vec[j]->gather_f_pw();
                 /* loop over low-frequency G-vectors */
                 for (int ig = 0; ig < gvec_coarse__.partition().gvec_count_fft(); ig++) {
                     /* G-vector in fractional coordinates */
                     auto G = gvec_coarse__.gvec(ig + gvec_coarse__.partition().gvec_offset_fft());
-                    v_pw_coarse[ig] = veff_vec[j]->f_pw(G);
+                    v_pw_coarse[ig] = v[veff_vec[j]->gvec().index_by_gvec(G)];
                 }
                 /* transform to real space */
                 fft_coarse_.transform<1>(gvec_coarse__.partition(), &v_pw_coarse[0]);
@@ -161,21 +162,19 @@ class Local_operator
                     veff_vec_(ir, 1) = v0 - v1; // v - Bz
                 }
             }
-
+            
             if (num_mag_dims__ == 0) {
-                v0_[0] = veff_vec[0]->f_pw(0).real();
+                v0_[0] = veff_vec[0]->f_0().real();
             } else {
-                v0_[0] = veff_vec[0]->f_pw(0).real() + veff_vec[1]->f_pw(0).real();
-                v0_[1] = veff_vec[0]->f_pw(0).real() - veff_vec[1]->f_pw(0).real();
+                v0_[0] = veff_vec[0]->f_0().real() + veff_vec[1]->f_0().real();
+                v0_[1] = veff_vec[0]->f_0().real() - veff_vec[1]->f_0().real();
             }
             
             /* copy veff to device */
-            #ifdef __GPU
             if (fft_coarse_.pu() == GPU) {
                 veff_vec_.allocate(memory_t::device);
-                veff_vec_.copy_to_device();
+                veff_vec_.copy<memory_t::host, memory_t::device>();
             }
-            #endif
         }
 
         /// Map effective potential and magnetic field to a coarse FFT mesh in case of FP-LAPW.
