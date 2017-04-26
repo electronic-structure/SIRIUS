@@ -28,10 +28,8 @@
 #include "simulation_context.h"
 #include "spheric_function.h"
 #include "smooth_periodic_function.h"
-#include "mixer.h"
 
-namespace sirius
-{
+namespace sirius {
 
 /// Representation of the periodical function on the muffin-tin geometry.
 /** Inside each muffin-tin the spherical expansion is used:
@@ -71,10 +69,7 @@ class Periodic_function: public Smooth_periodic_function<T>
 
         Gvec const& gvec_;
 
-        /// Plane-wave expansion coefficients
-        mdarray<complex_t, 1> f_pw_;
-
-        /// Angular domain size.
+        /// Size of the muffin-tin functions angular domain size.
         int angular_domain_size_;
         
         /// Set pointer to local part of muffin-tin functions
@@ -87,9 +82,6 @@ class Periodic_function: public Smooth_periodic_function<T>
             }
         }
         
-        /// True if plane wave part is allocated.
-        bool is_f_pw_allocated_{false};
-
         /* forbid copy constructor */
         Periodic_function(const Periodic_function<T>& src) = delete;
         
@@ -100,8 +92,7 @@ class Periodic_function: public Smooth_periodic_function<T>
 
         /// Constructor
         Periodic_function(Simulation_context& ctx__,
-                          int angular_domain_size__,
-                          int allocate_pw__)
+                          int angular_domain_size__)
             : Smooth_periodic_function<T>(ctx__.fft(), ctx__.gvec())
             , ctx_(ctx__)
             , unit_cell_(ctx__.unit_cell())
@@ -110,28 +101,11 @@ class Periodic_function: public Smooth_periodic_function<T>
             , gvec_(ctx__.gvec())
             , angular_domain_size_(angular_domain_size__)
         {
-            if (allocate_pw__) {
-                allocate_pw();
-            }
-
             if (ctx_.full_potential()) {
                 f_mt_local_ = mdarray<Spheric_function<spectral, T>, 1>(unit_cell_.spl_num_atoms().local_size());
             }
         }
         
-        /// Allocated memory for the plane-wave expansion coefficients.
-        void allocate_pw()
-        {
-            if (is_f_pw_allocated_) {
-                return;
-            }
-
-            f_pw_ = mdarray<double_complex, 1>(gvec_.num_gvec(), memory_t::host, "f_pw_");
-            this->f_pw_local_ = mdarray<double_complex, 1>(&f_pw_[this->gvec().partition().gvec_offset_fft()],
-                                                           this->gvec().partition().gvec_count_fft(), "f_pw_local_");
-            is_f_pw_allocated_ = true;
-        }
-
         /// Allocate memory for muffin-tin part.
         void allocate_mt(bool allocate_global__)
         {
@@ -165,7 +139,7 @@ class Periodic_function: public Smooth_periodic_function<T>
         {
             f_mt_.zero();
             this->f_rg_.zero();
-            f_pw_.zero();
+            this->f_pw_local_.zero();
             if (ctx_.full_potential()) {
                 for (int ialoc = 0; ialoc < unit_cell_.spl_num_atoms().local_size(); ialoc++) {
                     f_mt_local_(ialoc).zero();
@@ -267,19 +241,20 @@ class Periodic_function: public Smooth_periodic_function<T>
         /** \todo write and read distributed functions */
         void hdf5_write(HDF5_tree h5f)
         {
-            if (ctx_.full_potential()) {
-                h5f.write("f_mt", f_mt_);
-            }
-            h5f.write("f_pw", f_pw_);
+            //STOP();
+            //if (ctx_.full_potential()) {
+            //    h5f.write("f_mt", f_mt_);
+            //}
+            //h5f.write("f_pw", f_pw_);
             //h5f.write("f_rg", this->f_rg_);
         }
 
         void hdf5_read(HDF5_tree h5f)
         {
-            if (ctx_.full_potential()) {
-                h5f.read("f_mt", f_mt_);
-            }
-            h5f.read("f_pw", f_pw_);
+            //if (ctx_.full_potential()) {
+            //    h5f.read("f_mt", f_mt_);
+            //}
+            //h5f.read("f_pw", f_pw_);
             //h5f.read_mdarray("f_rg", this->f_rg_);
         }
 
@@ -301,21 +276,6 @@ class Periodic_function: public Smooth_periodic_function<T>
             return f_mt_local_(ialoc__);
         }
 
-        inline complex_t& f_pw(int ig__)
-        {
-            return f_pw_(ig__);
-        }
-
-        inline complex_t const& f_pw(int ig__) const
-        {
-            return f_pw_(ig__);
-        }
-
-        inline complex_t& f_pw(vector3d<int> const& G__)
-        {
-            return f_pw_(this->gvec().index_by_gvec(G__));
-        }
-
         double value(vector3d<double>& vc)
         {
             int ja{-1}, jr{-1};
@@ -333,11 +293,12 @@ class Periodic_function: public Smooth_periodic_function<T>
                 }
                 return p;
             } else {
+                STOP();
                 double p{0};
-                for (int ig = 0; ig < gvec_.num_gvec(); ig++) {
-                    vector3d<double> vgc = gvec_.gvec_cart(ig);
-                    p += std::real(f_pw_(ig) * std::exp(double_complex(0.0, vc * vgc)));
-                }
+                //for (int ig = 0; ig < gvec_.num_gvec(); ig++) {
+                //    vector3d<double> vgc = gvec_.gvec_cart(ig);
+                //    p += std::real(f_pw_(ig) * std::exp(double_complex(0.0, vc * vgc)));
+                //}
                 return p;
             }
         }
@@ -349,31 +310,6 @@ class Periodic_function: public Smooth_periodic_function<T>
             return cs;
         }
 
-        inline complex_t checksum_pw() const
-        {
-            return f_pw_.checksum();
-        }
-
-        //int64_t hash()
-        //{
-        //    STOP();
-        //    int64_t h = this->f_rg_.hash();
-        //    h += f_pw_.hash();
-        //    return h;
-        //}
-
-        void fft_transform(int direction__)
-        {
-            Smooth_periodic_function<T>::fft_transform(direction__);
-            
-            /* collect all PW coefficients */
-            if (direction__ == -1) {
-                sddk::timer t("sirius::Periodic_function::fft_transform|comm");
-                this->fft_->comm().allgather(&f_pw_(0), this->gvec().partition().gvec_offset_fft(),
-                                             this->gvec().partition().gvec_count_fft());
-            }
-        }
-        
         mdarray<T, 3>& f_mt()
         {
             return f_mt_;
@@ -427,7 +363,7 @@ class Periodic_function: public Smooth_periodic_function<T>
         }
 };
 
-};
+}
 
 #endif // __PERIODIC_FUNCTION_H__
 
