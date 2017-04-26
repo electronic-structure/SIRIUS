@@ -449,44 +449,6 @@ module sirius
             real(8),                 intent(in) :: band_occupancies
         end subroutine
 
-        !subroutine sirius_set_rho_pw(num_gvec, gvec, rho_pw, comm)&
-        !    &bind(C, name="sirius_set_rho_pw")
-        !    integer,                 intent(in) :: num_gvec
-        !    integer,                 intent(in) :: gvec
-        !    complex(8),              intent(in) :: rho_pw
-        !    integer,                 intent(in) :: comm
-        !end subroutine
-
-        subroutine sirius_get_rho_pw(num_gvec, gvec, rho_pw)&
-            &bind(C, name="sirius_get_rho_pw")
-            integer,                 intent(in)  :: num_gvec
-            integer,                 intent(in)  :: gvec
-            complex(8),              intent(out) :: rho_pw
-        end subroutine
-
-        !subroutine sirius_set_veff_pw(num_gvec, gvec, veff_pw, comm)&
-        !    &bind(C, name="sirius_set_veff_pw")
-        !    integer,                 intent(in) :: num_gvec
-        !    integer,                 intent(in) :: gvec
-        !    complex(8),              intent(in) :: veff_pw
-        !    integer,                 intent(in) :: comm
-        !end subroutine
-
-        !subroutine sirius_set_vxc_pw(num_gvec, gvec, vxc_pw, comm)&
-        !    &bind(C, name="sirius_set_vxc_pw")
-        !    integer,                 intent(in) :: num_gvec
-        !    integer,                 intent(in) :: gvec
-        !    complex(8),              intent(in) :: vxc_pw
-        !    integer,                 intent(in) :: comm
-        !end subroutine
-
-        subroutine sirius_get_veff_pw(num_gvec, gvec, veff_pw)&
-            &bind(C, name="sirius_get_veff_pw")
-            integer,                 intent(in)  :: num_gvec
-            integer,                 intent(in)  :: gvec
-            complex(8),              intent(out) :: veff_pw
-        end subroutine
-
         subroutine sirius_get_gvec_index(gvec, ig)&
             &bind(C, name="sirius_get_gvec_index")
             integer,                  intent(in)  :: gvec(3)
@@ -967,16 +929,6 @@ module sirius
             real(8),                 intent(out) :: forces
         end subroutine
 
-        !subroutine sirius_set_pw_coeffs_aux(label, pw_coeffs, ngv, gvl, comm)&
-        !    &bind(C, name="sirius_set_pw_coeffs")
-        !    use, intrinsic :: ISO_C_BINDING
-        !    character, dimension(*), intent(in)  :: label
-        !    complex(8),              intent(in)  :: pw_coeffs
-        !    type(C_PTR), value,      intent(in)  :: ngv
-        !    type(C_PTR), value,      intent(in)  :: gvl
-        !    type(C_PTR), value,      intent(in)  :: comm
-        !end subroutine
-
         subroutine sirius_generate_rho_multipole_moments(lmmax, qmt)&
             &bind(C, name="sirius_generate_rho_multipole_moments")
             integer,                 intent(in)  :: lmmax
@@ -1187,6 +1139,38 @@ contains
         if (present(comm)) comm_ptr = C_LOC(comm)
 
         call sirius_set_pw_coeffs_aux(label, pw_coeffs, ngv_ptr, gvl_ptr, comm_ptr)
+
+    end subroutine
+
+    subroutine sirius_get_pw_coeffs(label, pw_coeffs, ngv, gvl, comm)
+        character,         target, dimension(*), intent(in)  :: label
+        complex(8),                              intent(out) :: pw_coeffs
+        integer, optional, target,               intent(in)  :: ngv
+        integer, optional, target,               intent(in)  :: gvl
+        integer, optional, target,               intent(in)  :: comm
+        type(C_PTR) ngv_ptr, gvl_ptr, comm_ptr
+        interface
+            subroutine sirius_get_pw_coeffs_aux(label, pw_coeffs, ngv, gvl, comm)&
+                &bind(C, name="sirius_get_pw_coeffs")
+                use, intrinsic :: ISO_C_BINDING
+                character, dimension(*), intent(in)  :: label
+                complex(8),              intent(out) :: pw_coeffs
+                type(C_PTR), value,      intent(in)  :: ngv
+                type(C_PTR), value,      intent(in)  :: gvl
+                type(C_PTR), value,      intent(in)  :: comm
+            end subroutine
+        end interface
+
+        ngv_ptr = C_NULL_PTR
+        if (present(ngv)) ngv_ptr = C_LOC(ngv)
+
+        gvl_ptr = C_NULL_PTR
+        if (present(gvl)) gvl_ptr = C_LOC(gvl)
+
+        comm_ptr = C_NULL_PTR
+        if (present(comm)) comm_ptr = C_LOC(comm)
+
+        call sirius_get_pw_coeffs_aux(label, pw_coeffs, ngv_ptr, gvl_ptr, comm_ptr)
 
     end subroutine
 
