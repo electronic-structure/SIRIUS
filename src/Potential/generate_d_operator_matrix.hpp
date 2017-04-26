@@ -91,7 +91,7 @@ inline void Potential::generate_D_operator_matrix()
                     for (int igloc = 0; igloc < ctx_.gvec().count(); igloc++) {
                         int ig = ctx_.gvec().offset() + igloc;
                         /* conjugate V(G) * exp(i * G * r_{alpha}) */
-                        auto z = std::conj(veff_vec[iv]->f_pw(ig) * ctx_.gvec_phase_factor(ig, ia));
+                        auto z = std::conj(veff_vec[iv]->f_pw_local(igloc) * ctx_.gvec_phase_factor(ig, ia));
                         veff_a(2 * igloc,     i) = z.real();
                         veff_a(2 * igloc + 1, i) = z.imag();
                     }
@@ -106,7 +106,7 @@ inline void Potential::generate_D_operator_matrix()
             mdarray<double_complex, 1> veff;
             if (ctx_.processing_unit() == GPU) {
 
-                veff = mdarray<double_complex, 1>(&veff_vec[iv]->f_pw(ctx_.gvec().offset()), veff_tmp.at<GPU>(),
+                veff = mdarray<double_complex, 1>(&veff_vec[iv]->f_pw_local(0), veff_tmp.at<GPU>(),
                                                   ctx_.gvec().count());
                 veff.copy_to_device();
 
@@ -138,7 +138,7 @@ inline void Potential::generate_D_operator_matrix()
                 if (comm_.rank() == 0) {
                     for (int i = 0; i < atom_type.num_atoms(); i++) {
                         for (int j = 0; j < nbf * (nbf + 1) / 2; j++) {
-                            d_tmp(j, i) = 2 * d_tmp(j, i) - veff_vec[iv]->f_pw(0).real() * ctx_.augmentation_op(iat).q_pw(j, 0);
+                            d_tmp(j, i) = 2 * d_tmp(j, i) - veff_vec[iv]->f_pw_local(0).real() * ctx_.augmentation_op(iat).q_pw(j, 0);
                         }
                     }
                 } else {
