@@ -1,4 +1,4 @@
-// Copyright (c) 2013-2016 Anton Kozhevnikov, Thomas Schulthess
+// Copyright (c) 2013-2017 Anton Kozhevnikov, Thomas Schulthess
 // All rights reserved.
 // 
 // Redistribution and use in source and binary forms, with or without modification, are permitted provided that 
@@ -86,8 +86,6 @@ class Step_function
                 return;
             }
 
-            //auto ffac = get_step_function_form_factors(gvec__.num_shells(), unit_cell__, gvec__, comm__);
-
             step_function_pw_.resize(ctx__.gvec().num_gvec());
             step_function_.resize(ctx__.fft().local_size());
 
@@ -129,44 +127,6 @@ class Step_function
                 }
             }
         }
-
-        /// Get \f$ \Theta(\alpha, G) \f$ form factors of the step function.
-        /**
-         *  \f[
-         *      \Theta(\alpha, G) = \int_{0}^{R_{\alpha}} \frac{\sin(Gr)}{Gr} r^2 dr = 
-         *          \left\{ \begin{array}{ll} \displaystyle R_{\alpha}^3 / 3 & G=0 \\
-         *          \Big( \sin(GR_{\alpha}) - GR_{\alpha}\cos(GR_{\alpha}) \Big) / G^3 & G \ne 0 \end{array} \right.
-         *  \f]
-         */
-        //mdarray<double, 2> get_step_function_form_factors(int num_gsh,
-        //                                                  Unit_cell const& unit_cell__,
-        //                                                  Gvec const& gvec__,
-        //                                                  Communicator const& comm__) const
-        //{
-        //    mdarray<double, 2> ffac(unit_cell__.num_atom_types(), num_gsh);
-
-        //    splindex<block> spl_num_gvec_shells(num_gsh, comm__.size(), comm__.rank());
-
-        //    #pragma omp parallel for
-        //    for (int igsloc = 0; igsloc < spl_num_gvec_shells.local_size(); igsloc++)
-        //    {
-        //        int igs = spl_num_gvec_shells[igsloc];
-        //        double G = gvec__.shell_len(igs);
-        //        double g3inv = (igs) ? 1.0 / std::pow(G, 3) : 0.0;
-
-        //        for (int iat = 0; iat < unit_cell__.num_atom_types(); iat++)
-        //        {
-        //            double R = unit_cell__.atom_type(iat).mt_radius();
-        //            double GR = G * R;
-
-        //            ffac(iat, igs) = (igs) ? (std::sin(GR) - GR * std::cos(GR)) * g3inv : std::pow(R, 3) / 3.0;
-        //        }
-        //    }
-
-        //    int ld = unit_cell__.num_atom_types();
-        //    comm__.allgather(ffac.at<CPU>(), ld * spl_num_gvec_shells.global_offset(), ld * spl_num_gvec_shells.local_size());
-        //    return ffac;
-        //}
        
         /// Return plane-wave coefficient of the step function.
         inline double_complex const& theta_pw(int ig__) const
