@@ -30,7 +30,7 @@ inline void Potential::poisson_sum_G(int lmmax__,
             int ig = ctx_.gvec().offset() + igloc;
             for (int lm = 0; lm < lmmax__; lm++) {
                 int l = l_by_lm_[lm];
-                zm(lm, igloc) = fourpi * fpw__[ig] * zilm_[lm] *
+                zm(lm, igloc) = fourpi * fpw__[igloc] * zilm_[lm] *
                                 fl__(l, iat, ctx_.gvec().shell(ig)) * std::conj(gvec_ylm_(lm, igloc));
             }
         }
@@ -73,9 +73,9 @@ inline void Potential::poisson_sum_G(int lmmax__,
     ctx_.comm().allreduce(&flm__(0, 0), (int)flm__.size());
 }
 
-inline void Potential::poisson_add_pseudo_pw(mdarray<double_complex, 2>& qmt,
-                                             mdarray<double_complex, 2>& qit,
-                                             double_complex* rho_pw)
+inline void Potential::poisson_add_pseudo_pw(mdarray<double_complex, 2>& qmt__,
+                                             mdarray<double_complex, 2>& qit__,
+                                             double_complex* rho_pw__)
 {
     PROFILE("sirius::Potential::poisson_add_pseudo_pw");
 
@@ -123,7 +123,7 @@ inline void Potential::poisson_add_pseudo_pw(mdarray<double_complex, 2>& qmt,
         for (int i = 0; i < unit_cell_.atom_type(iat).num_atoms(); i++) {
             int ia = unit_cell_.atom_type(iat).atom_id(i);
             for (int lm = 0; lm < ctx_.lmmax_rho(); lm++) {
-                qa(lm, i) = qmt(lm, ia) - qit(lm, ia);
+                qa(lm, i) = qmt__(lm, ia) - qit__(lm, ia);
             }
         }
 
@@ -169,14 +169,12 @@ inline void Potential::poisson_add_pseudo_pw(mdarray<double_complex, 2>& qmt,
             } else { // G=0
                 for (int i = 0; i < unit_cell_.atom_type(iat).num_atoms(); i++) {
                     int ia = unit_cell_.atom_type(iat).atom_id(i);
-                    rho_G += (fourpi / unit_cell_.omega()) * y00 * (qmt(0, ia) - qit(0, ia));
+                    rho_G += (fourpi / unit_cell_.omega()) * y00 * (qmt__(0, ia) - qit__(0, ia));
                 }
             }
-            rho_pw[ig] += rho_G;
+            rho_pw__[igloc] += rho_G;
         }
     }
-
-    ctx_.comm().allgather(&rho_pw[0], ctx_.gvec().offset(), ctx_.gvec().count());
 }
 
 inline void Potential::poisson(Periodic_function<double>* rho, Periodic_function<double>* vh)
@@ -204,7 +202,7 @@ inline void Potential::poisson(Periodic_function<double>* rho, Periodic_function
 
         /* compute multipoles of interstitial density in MT region */
         mdarray<double_complex, 2> qit(ctx_.lmmax_rho(), unit_cell_.num_atoms());
-        poisson_sum_G(ctx_.lmmax_rho(), &rho->f_pw(0), sbessel_mom_, qit);
+        poisson_sum_G(ctx_.lmmax_rho(), &rho->f_pw_local(0), sbessel_mom_, qit);
 
         //== for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
         //==     for (int lm = 0; lm < ctx_.lmmax_rho(); lm++) {
@@ -219,7 +217,7 @@ inline void Potential::poisson(Periodic_function<double>* rho, Periodic_function
         #endif
 
         /* add contribution from the pseudo-charge */
-        poisson_add_pseudo_pw(qmt, qit, &rho->f_pw(0));
+        poisson_add_pseudo_pw(qmt, qit, &rho->f_pw_local(0));
         
         #ifdef __PRINT_OBJECT_CHECKSUM
         double_complex z3 = mdarray<double_complex, 1>(&rho->f_pw(0), ctx_.gvec().num_gvec()).checksum();
@@ -227,7 +225,7 @@ inline void Potential::poisson(Periodic_function<double>* rho, Periodic_function
         #endif
 
         if (check_pseudo_charge) {
-            poisson_sum_G(ctx_.lmmax_rho(), &rho->f_pw(0), sbessel_mom_, qit);
+            poisson_sum_G(ctx_.lmmax_rho(), &rho->f_pw_local(0), sbessel_mom_, qit);
 
             double d = 0.0;
             for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
@@ -240,33 +238,39 @@ inline void Potential::poisson(Periodic_function<double>* rho, Periodic_function
     }
 
     /* compute pw coefficients of Hartree potential */
-    vh->f_pw(0) = 0.0;
+    int ig0{0};
+    if (ctx_.gvec().comm().rank() == 0) {
+        vh->f_pw_local(0) = 0.0;
+        ig0 = 1;
+    }
     if (!ctx_.molecule()) {
         #pragma omp parallel for
-        for (int ig = 1; ig < ctx_.gvec().num_gvec(); ig++) {
-            vh->f_pw(ig) = (fourpi * rho->f_pw(ig) / std::pow(ctx_.gvec().gvec_len(ig), 2));
+        for (int igloc = ig0; igloc < ctx_.gvec().count(); igloc++) {
+            int ig = ctx_.gvec().offset() + igloc;
+            vh->f_pw_local(igloc) = (fourpi * rho->f_pw_local(igloc) / std::pow(ctx_.gvec().gvec_len(ig), 2));
         }
     } else {
         double R_cut = 0.5 * std::pow(unit_cell_.omega(), 1.0 / 3);
         #pragma omp parallel for
-        for (int ig = 1; ig < ctx_.gvec().num_gvec(); ig++) {
-            vh->f_pw(ig) = (fourpi * rho->f_pw(ig) / std::pow(ctx_.gvec().gvec_len(ig), 2)) *
-                           (1.0 - std::cos(ctx_.gvec().gvec_len(ig) * R_cut));
+        for (int igloc = ig0; igloc < ctx_.gvec().count(); igloc++) {
+            int ig = ctx_.gvec().offset() + igloc;
+            vh->f_pw_local(igloc) = (fourpi * rho->f_pw_local(igloc) / std::pow(ctx_.gvec().gvec_len(ig), 2)) *
+                                    (1.0 - std::cos(ctx_.gvec().gvec_len(ig) * R_cut));
         }
     }
     
-    if (ctx_.control().print_checksum_) {
-        auto z4 = mdarray<double_complex, 1>(&vh->f_pw(0), ctx_.gvec().num_gvec()).checksum();
-        if (ctx_.comm().rank() == 0) {
-            DUMP("checksum(vh_pw): %20.14f %20.14f", z4.real(), z4.imag());
-        }
-    }
+    //if (ctx_.control().print_checksum_) {
+    //    auto z4 = mdarray<double_complex, 1>(&vh->f_pw(0), ctx_.gvec().num_gvec()).checksum();
+    //    if (ctx_.comm().rank() == 0) {
+    //        DUMP("checksum(vh_pw): %20.14f %20.14f", z4.real(), z4.imag());
+    //    }
+    //}
     
     /* boundary condition for muffin-tins */
     if (ctx_.full_potential()) {
         /* compute V_lm at the MT boundary */
         mdarray<double_complex, 2> vmtlm(ctx_.lmmax_pot(), unit_cell_.num_atoms());
-        poisson_sum_G(ctx_.lmmax_pot(), &vh->f_pw(0), sbessel_mt_, vmtlm);
+        poisson_sum_G(ctx_.lmmax_pot(), &vh->f_pw_local(0), sbessel_mt_, vmtlm);
         
         /* add boundary condition and convert to Rlm */
         sddk::timer t1("sirius::Potential::poisson|bc");
