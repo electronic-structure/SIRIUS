@@ -385,8 +385,8 @@ void test9_pow3(double r0, double r1, int N)
     double integrate1 = s1.interpolate().integrate(1) * 82.0 / y00;
     double integratex0 = s0.xinterpolate().integrate(0) * 82.0 /y00;
     double integratex1 = s1.xinterpolate().integrate(1) * 82.0 /y00;
-    double integratel0 = s0.linterpolate().integrate(0) * 82.0 /y00;
-    double integratel1 = s1.linterpolate().integrate(1) * 82.0 /y00;
+    double integratel0 = s0.lxinterpolate().integrate(0) * 82.0 /y00;
+    double integratel1 = s1.lxinterpolate().integrate(1) * 82.0 /y00;
 
     printf("error of interpolate with integrate0: %20.16f \n", std::abs(integrate0 - true_value));
     printf("error of interpolate with integrate1: %20.16f \n", std::abs(integrate1 - true_value));
@@ -420,8 +420,8 @@ void test9_linexp(double r0, double r1, int N)
     double integrate1 = s1.interpolate().integrate(1) * 82.0 / y00;
     double integratex0 = s0.xinterpolate().integrate(0) * 82.0 /y00;
     double integratex1 = s1.xinterpolate().integrate(1) * 82.0 /y00;
-    double integratel0 = s0.linterpolate().integrate(0) * 82.0 /y00;
-    double integratel1 = s1.linterpolate().integrate(1) * 82.0 /y00;
+    double integratel0 = s0.lxinterpolate().integrate(0) * 82.0 /y00;
+    double integratel1 = s1.lxinterpolate().integrate(1) * 82.0 /y00;
 
     printf("error of interpolate with integrate0: %20.16f \n", std::abs(integrate0 - true_value));
     printf("error of interpolate with integrate1: %20.16f \n", std::abs(integrate1 - true_value));
@@ -455,8 +455,8 @@ void test9_scaledpow(double r0, double r1, int N)
     double integrate1 = s1.interpolate().integrate(1) * 82.0 / y00;
     double integratex0 = s0.xinterpolate().integrate(0) * 82.0 /y00;
     double integratex1 = s1.xinterpolate().integrate(1) * 82.0 /y00;
-    double integratel0 = s0.linterpolate().integrate(0) * 82.0 /y00;
-    double integratel1 = s1.linterpolate().integrate(1) * 82.0 /y00;
+    double integratel0 = s0.lxinterpolate().integrate(0) * 82.0 /y00;
+    double integratel1 = s1.lxinterpolate().integrate(1) * 82.0 /y00;
 
     printf("error of interpolate with integrate0: %20.16f \n", std::abs(integrate0 - true_value));
     printf("error of interpolate with integrate1: %20.16f \n", std::abs(integrate1 - true_value));
@@ -490,8 +490,8 @@ void test9_exp(double r0, double r1, int N)
     double integrate1 = s1.interpolate().integrate(1) * 82.0 / y00;
     double integratex0 = s0.xinterpolate().integrate(0) * 82.0 /y00;
     double integratex1 = s1.xinterpolate().integrate(1) * 82.0 /y00;
-    double integratel0 = s0.linterpolate().integrate(0) * 82.0 /y00;
-    double integratel1 = s1.linterpolate().integrate(1) * 82.0 /y00;
+    double integratel0 = s0.lxinterpolate().integrate(0) * 82.0 /y00;
+    double integratel1 = s1.lxinterpolate().integrate(1) * 82.0 /y00;
 
     printf("error of interpolate with integrate0: %20.16f \n", std::abs(integrate0 - true_value));
     printf("error of interpolate with integrate1: %20.16f \n", std::abs(integrate1 - true_value));
