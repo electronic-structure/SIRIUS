@@ -370,7 +370,7 @@ class Density // TODO: return rho_vec
             : ctx_(ctx__)
             , unit_cell_(ctx_.unit_cell())
         {
-            rho_ = new Periodic_function<double>(ctx_, ctx_.lmmax_rho(), 1);
+            rho_ = new Periodic_function<double>(ctx_, ctx_.lmmax_rho());
 
             for (int i = 0; i < ctx_.num_mag_dims() + 1; i++) {
                 rho_mag_coarse_[i] = std::unique_ptr<Smooth_periodic_function<double>>(new Smooth_periodic_function<double>(ctx_.fft_coarse(), ctx_.gvec_coarse()));
@@ -378,14 +378,14 @@ class Density // TODO: return rho_vec
 
             /* core density of the pseudopotential method */
             if (!ctx_.full_potential()) {
-                rho_pseudo_core_ = new Periodic_function<double>(ctx_, 0, false);
+                rho_pseudo_core_ = new Periodic_function<double>(ctx_, 0);
                 rho_pseudo_core_->zero();
 
                 generate_pseudo_core_charge_density();
             }
 
             for (int i = 0; i < ctx_.num_mag_dims(); i++) {
-                magnetization_[i] = new Periodic_function<double>(ctx_, ctx_.lmmax_rho(), 1);
+                magnetization_[i] = new Periodic_function<double>(ctx_, ctx_.lmmax_rho());
             }
             
             if (ctx_.full_potential()) {
@@ -397,6 +397,22 @@ class Density // TODO: return rho_vec
 
             density_matrix_ = mdarray<double_complex, 4>(unit_cell_.max_mt_basis_size(), unit_cell_.max_mt_basis_size(), 
                                                          ctx_.num_mag_comp(), unit_cell_.num_atoms());
+
+            /* split local G-vectors to low-frequency and high-frequency */
+            for (int igloc = 0; igloc < ctx_.gvec().count(); igloc++) {
+                int ig = ctx_.gvec().offset() + igloc;
+                auto gv = ctx_.gvec().gvec_cart(ig);
+                if (gv.length() <= 2 * ctx_.gk_cutoff()) {
+                    lf_gvec_.push_back(igloc);
+                    if (ig) {
+                        lf_gvec_weights_.push_back(fourpi * unit_cell_.omega() / std::pow(gv.length(), 2));
+                    } else {
+                        lf_gvec_weights_.push_back(0);
+                    }
+                } else {
+                    hf_gvec_.push_back(igloc);
+                }
+            }
         }
         
         /// Destructor
@@ -506,7 +522,7 @@ class Density // TODO: return rho_vec
                 double nel_it;
                 nel = rho_->integrate(nel_mt, nel_it);
             } else {
-                nel = rho_->f_pw(0).real() * unit_cell_.omega();
+                nel = rho_->f_0().real() * unit_cell_.omega();
             }
             
             /* check the number of electrons */
@@ -602,12 +618,12 @@ class Density // TODO: return rho_vec
                 rho_vec[1 + j] = magnetization_[j];
             }
 
-            if (ctx_.control().print_checksum_) {
-                for (auto e: rho_vec) {
-                    auto cs = e->checksum_pw();
-                    DUMP("checksum(rho_vec_pw): %20.14f %20.14f", cs.real(), cs.imag());
-                }
-            }
+            //if (ctx_.control().print_checksum_) {
+            //    for (auto e: rho_vec) {
+            //        auto cs = e->checksum_pw();
+            //        DUMP("checksum(rho_vec_pw): %20.14f %20.14f", cs.real(), cs.imag());
+            //    }
+            //}
             
             mdarray<double_complex, 2> rho_aug(ctx_.gvec().count(), ctx_.num_mag_dims() + 1, ctx_.dual_memory_t());
 
@@ -625,21 +641,9 @@ class Density // TODO: return rho_vec
             for (int iv = 0; iv < ctx_.num_mag_dims() + 1; iv++) {
                 #pragma omp parallel for
                 for (int igloc = 0; igloc < ctx_.gvec().count(); igloc++) {
-                    int ig = ctx_.gvec().offset() + igloc;
-                    rho_vec[iv]->f_pw(ig) += rho_aug(igloc, iv);
+                    rho_vec[iv]->f_pw_local(igloc) += rho_aug(igloc, iv);
                 }
             }
-
-            sddk::timer t5("sirius::Density::augment|mpi");
-            for (auto e: rho_vec) {
-                ctx_.comm().allgather(&e->f_pw(0), ctx_.gvec().offset(), ctx_.gvec().count());
-
-                if (ctx_.control().print_checksum_) {
-                    auto cs = e->checksum_pw();
-                    DUMP("checksum(rho_vec_pw): %20.14f %20.14f", cs.real(), cs.imag());
-                }
-            }
-            t5.stop();
         }
 
         template <device_t pu>
@@ -790,15 +794,6 @@ class Density // TODO: return rho_vec
             //== fclose(fout);
         }
 
-        //inline size_t size()
-        //{
-        //    size_t s = rho_->size();
-        //    for (int i = 0; i < ctx_.num_mag_dims(); i++) {
-        //        s += magnetization_[i]->size();
-        //    }
-        //    return s;
-        //}
-
         Periodic_function<double>* rho()
         {
             return rho_;
@@ -872,8 +867,7 @@ class Density // TODO: return rho_vec
                 for (int j = 0; j < ctx_.num_mag_dims() + 1; j++) {
                     for (int i = 0; i < static_cast<int>(hf_gvec_.size()); i++) {
                         int igloc = hf_gvec_[i];
-                        int ig = ctx_.gvec().offset() + igloc;
-                        hf_mixer_->input_local(i + j * ld, rho_vec[j]->f_pw(ig));
+                        hf_mixer_->input_local(i + j * ld, rho_vec[j]->f_pw_local(igloc));
                     }
                 }
                 ld = static_cast<int>(lf_gvec_.size());
@@ -882,14 +876,12 @@ class Density // TODO: return rho_vec
                     if (j == 0) {
                         for (int i = 0; i < static_cast<int>(lf_gvec_.size()); i++) {
                             int igloc = lf_gvec_[i];
-                            int ig = ctx_.gvec().offset() + igloc;
-                            lf_mixer_->input_local(i + j * ld, rho_vec[j]->f_pw(ig), lf_gvec_weights_[i]);
+                            lf_mixer_->input_local(i + j * ld, rho_vec[j]->f_pw_local(igloc), lf_gvec_weights_[i]);
                         }
                     } else {
                         for (int i = 0; i < static_cast<int>(lf_gvec_.size()); i++) {
                             int igloc = lf_gvec_[i];
-                            int ig = ctx_.gvec().offset() + igloc;
-                            lf_mixer_->input_local(i + j * ld, rho_vec[j]->f_pw(ig));
+                            lf_mixer_->input_local(i + j * ld, rho_vec[j]->f_pw_local(igloc));
                         }
                     }
                 }
@@ -917,8 +909,7 @@ class Density // TODO: return rho_vec
                 for (int j = 0; j < ctx_.num_mag_dims() + 1; j++) {
                     for (int i = 0; i < static_cast<int>(hf_gvec_.size()); i++) {
                         int igloc = hf_gvec_[i];
-                        int ig = ctx_.gvec().offset() + igloc;
-                        rho_vec[j]->f_pw(ig) = hf_mixer_->output_local(i + j * ld);
+                        rho_vec[j]->f_pw_local(igloc) = hf_mixer_->output_local(i + j * ld);
                     }
                 }
 
@@ -927,16 +918,12 @@ class Density // TODO: return rho_vec
                 for (int j = 0; j < ctx_.num_mag_dims() + 1; j++) {
                     for (int i = 0; i < static_cast<int>(lf_gvec_.size()); i++) {
                         int igloc = lf_gvec_[i];
-                        int ig = ctx_.gvec().offset() + igloc;
-                        rho_vec[j]->f_pw(ig) = lf_mixer_->output_local(i + j * ld);
+                        rho_vec[j]->f_pw_local(igloc) = lf_mixer_->output_local(i + j * ld);
                     }
                 }
 
                 for (int i = 0; i < static_cast<int>(density_matrix_.size()); i++) {
                     density_matrix_[i] = lf_mixer_->output_shared(i);
-                }
-                for (auto e: rho_vec) {
-                    ctx_.comm().allgather(&e->f_pw(0), ctx_.gvec().offset(), ctx_.gvec().count());
                 }
             }
         }
@@ -944,21 +931,6 @@ class Density // TODO: return rho_vec
         void mixer_init()
         {
             if (!ctx_.full_potential()) {
-                /* split local G-vectors to low-frequency and high-frequency */
-                for (int igloc = 0; igloc < ctx_.gvec().count(); igloc++) {
-                    int ig = ctx_.gvec().offset() + igloc;
-                    auto gv = ctx_.gvec().gvec_cart(ig);
-                    if (gv.length() <= 2 * ctx_.gk_cutoff()) {
-                        lf_gvec_.push_back(igloc);
-                        if (ig) {
-                            lf_gvec_weights_.push_back(fourpi * unit_cell_.omega() / std::pow(gv.length(), 2));
-                        } else {
-                            lf_gvec_weights_.push_back(0);
-                        }
-                    } else {
-                        hf_gvec_.push_back(igloc);
-                    }
-                }
                 hf_mixer_ = Mixer_factory<double_complex>("linear",
                                                           0,
                                                           static_cast<int>(hf_gvec_.size() * (1 + ctx_.num_mag_dims())),
