@@ -167,7 +167,7 @@ class Density // TODO: return rho_vec
         /** Coarse FFT grid is enough to generate density and magnetization from the wave-functions. The components
          *  of the <tt>rho_mag_coarse</tt> vector have the following order:
          *  \f$ \{\rho({\bf r}), m_z({\bf r}), m_x({\bf r}), m_y({\bf r}) \} \f$. */
-        std::array<std::unique_ptr<experimental::Smooth_periodic_function<double>>, 4> rho_mag_coarse_;
+        std::array<std::unique_ptr<Smooth_periodic_function<double>>, 4> rho_mag_coarse_;
 
         /// Pointer to pseudo core charge density
         /** In the case of pseudopotential we need to know the non-linear core correction to the 
@@ -373,7 +373,7 @@ class Density // TODO: return rho_vec
             rho_ = new Periodic_function<double>(ctx_, ctx_.lmmax_rho(), 1);
 
             for (int i = 0; i < ctx_.num_mag_dims() + 1; i++) {
-                rho_mag_coarse_[i] = std::unique_ptr<experimental::Smooth_periodic_function<double>>(new experimental::Smooth_periodic_function<double>(ctx_.fft_coarse(), ctx_.gvec_coarse()));
+                rho_mag_coarse_[i] = std::unique_ptr<Smooth_periodic_function<double>>(new Smooth_periodic_function<double>(ctx_.fft_coarse(), ctx_.gvec_coarse()));
             }
 
             /* core density of the pseudopotential method */

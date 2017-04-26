@@ -282,9 +282,9 @@ void Forces_PS::calc_ewald_forces(mdarray<double,2>& forces)
 
     //mpi
     #pragma omp parallel for reduction( + : forces )
-    for (int igloc = 0; igloc < ctx_.gvec_count(); igloc++)
+    for (int igloc = 0; igloc < ctx_.gvec().count(); igloc++)
     {
-        int ig = ctx_.gvec_offset() + igloc;
+        int ig = ctx_.gvec().offset() + igloc;
 
         if( ig == 0 )
         {
