@@ -102,7 +102,7 @@ class Stress {
 
             auto G = ctx_.gvec().gvec_cart(ig);
             double g2 = std::pow(G.length(), 2);
-            auto z = density_.rho()->f_pw(ig);
+            auto z = density_.rho()->f_pw_local(igloc);
             double d = twopi * (std::pow(z.real(), 2) + std::pow(z.imag(), 2)) / g2;
 
             for (int mu: {0, 1, 2}) {
@@ -228,11 +228,11 @@ class Stress {
 
             for (int mu: {0, 1, 2}) {
                 for (int nu: {0, 1, 2}) {
-                    stress_vloc_(mu, nu) += std::real(std::conj(density_.rho()->f_pw(ig)) * dv[igloc]) * G[mu] * G[nu];
+                    stress_vloc_(mu, nu) += std::real(std::conj(density_.rho()->f_pw_local(igloc)) * dv[igloc]) * G[mu] * G[nu];
                 }
             }
 
-            sdiag += std::real(std::conj(density_.rho()->f_pw(ig)) * v[igloc]);
+            sdiag += std::real(std::conj(density_.rho()->f_pw_local(igloc)) * v[igloc]);
         }
         
         if (ctx_.gvec().reduced()) {
@@ -240,7 +240,7 @@ class Stress {
             sdiag *= 2;
         }
         if (ctx_.comm().rank() == 0) {
-            sdiag += std::real(std::conj(density_.rho()->f_pw(0)) * v[0]);
+            sdiag += std::real(std::conj(density_.rho()->f_pw_local(0)) * v[0]);
         }
 
         for (int mu: {0, 1, 2}) {
@@ -380,7 +380,7 @@ class Stress {
                         } else {
                             for (int i = 0; i < nbf * (nbf + 1) / 2; i++) {
                                 auto z = double_complex(q_deriv.q_pw(i, 2 * igloc), q_deriv.q_pw(i, 2 * igloc + 1)) *
-                                         std::conj(potential_.effective_potential()->f_pw(ig)) * (-gvc[mu] / g);
+                                         std::conj(potential_.effective_potential()->f_pw_local(igloc)) * (-gvc[mu] / g);
                                 q_tmp(i, 2 * igloc)     = z.real();
                                 q_tmp(i, 2 * igloc + 1) = z.imag();
                             }
