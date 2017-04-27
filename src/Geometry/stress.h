@@ -51,9 +51,11 @@ class Stress {
 
     matrix3d<double> stress_us_;
     
-    inline void calc_stress_kin()
+    inline matrix3d<double> calc_stress_kin() const
     {
         PROFILE("sirius::Stress|kin");
+
+        matrix3d<double> s;
 
         for (int ikloc = 0; ikloc < kset_.spl_num_kpoints().local_size(); ikloc++) {
             int ik = kset_.spl_num_kpoints(ikloc);
@@ -77,17 +79,19 @@ class Stress {
                 d *= kp->weight();
                 for (int mu: {0, 1, 2}) {
                     for (int nu: {0, 1, 2}) {
-                        stress_kin_(mu, nu) += Gk[mu] * Gk[nu] * d;
+                        s(mu, nu) += Gk[mu] * Gk[nu] * d;
                     }
                 }
             } // igloc
         } // ikloc
 
-        ctx_.comm().allreduce(&stress_kin_(0, 0), 9 * sizeof(double));
+        ctx_.comm().allreduce(&s(0, 0), 9);
 
-        stress_kin_ *= (-1.0 / ctx_.unit_cell().omega());
+        s *= (-1.0 / ctx_.unit_cell().omega());
 
-        symmetrize(stress_kin_);
+        symmetrize(s);
+
+        return s;
     }
 
     inline void calc_stress_har()
@@ -119,7 +123,7 @@ class Stress {
             stress_har_ *= 2;
         } 
 
-        ctx_.comm().allreduce(&stress_har_(0, 0), 9 * sizeof(double));
+        ctx_.comm().allreduce(&stress_har_(0, 0), 9);
 
         symmetrize(stress_har_);
     }
@@ -165,7 +169,7 @@ class Stress {
             stress_ewald_ *= 2;
         } 
 
-        ctx_.comm().allreduce(&stress_ewald_(0, 0), 9 * sizeof(double));
+        ctx_.comm().allreduce(&stress_ewald_(0, 0), 9);
         
         for (int mu: {0, 1, 2}) {
             stress_ewald_(mu, mu) += twopi * std::pow(uc.num_electrons() / uc.omega(), 2) / 4 / lambda;
@@ -247,7 +251,7 @@ class Stress {
             stress_vloc_(mu, mu) -= sdiag;
         }
 
-        ctx_.comm().allreduce(&stress_vloc_(0, 0), 9 * sizeof(double));
+        ctx_.comm().allreduce(&stress_vloc_(0, 0), 9);
 
         symmetrize(stress_vloc_);
     }
@@ -320,7 +324,7 @@ class Stress {
             }
             kp->beta_projectors().dismiss();
         }
-        ctx_.comm().allreduce(&stress_nonloc_(0, 0), 9 * sizeof(double));
+        ctx_.comm().allreduce(&stress_nonloc_(0, 0), 9);
 
         stress_nonloc_ *= (1.0 / ctx_.unit_cell().omega());
 
@@ -400,45 +404,9 @@ class Stress {
                     }
                 }
             }
-                    
-            ///* treat auxiliary array as double with x2 size */
-            //mdarray<double, 2> dm_pw(nbf * (nbf + 1) / 2, ctx_.gvec_count() * 2);
-
-            //for (int iv = 0; iv < ctx_.num_mag_dims() + 1; iv++) {
-            //    linalg<CPU>::gemm(0, 0, nbf * (nbf + 1) / 2, 2 * ctx_.gvec_count(), atom_type.num_atoms(), 
-            //                      &dm(0, 0, iv), dm.ld(),
-            //                      &phase_factors(0, 0), phase_factors.ld(), 
-            //                      &dm_pw(0, 0), dm_pw.ld());
-
-            //    for (int nu = 0; nu < 3; nu++) {
-            //        Augmentation_operator_gvec_deriv q_deriv(ctx_, iat, ri, ri_dq, nu);
-
-            //        for (int igloc = 0; igloc < ctx_.gvec_count(); igloc++) {
-            //            int ig = ctx_.gvec_offset() + igloc;
-            //            if (ig == 0) {
-            //                continue;
-            //            }
-            //            auto gvc = ctx_.gvec().gvec_cart(ig);
-
-            //            double_complex zsum(0, 0);
-            //            /* get contribution from non-diagonal terms */
-            //            for (int i = 0; i < nbf * (nbf + 1) / 2; i++) {
-            //                double_complex z1 = double_complex(q_deriv.q_pw(i, 2 * igloc),
-            //                                                   q_deriv.q_pw(i, 2 * igloc + 1));
-            //                double_complex z2(dm_pw(i, 2 * igloc), dm_pw(i, 2 * igloc + 1));
-
-            //                zsum += z1 * z2 * q_deriv.sym_weight(i) * std::conj(potential_.effective_potential()->f_pw(ig));
-            //            }
-            //            double g = gvc.length();
-            //            for (int mu = 0; mu < 3; mu++) {
-            //                stress_us_(mu, nu) -= std::real(zsum) * gvc[mu] / g;
-            //            }
-            //        }
-            //    }
-            //}
         }
 
-        ctx_.comm().allreduce(&stress_us_(0, 0), 9 * sizeof(double));
+        ctx_.comm().allreduce(&stress_us_(0, 0), 9);
         if (ctx_.gvec().reduced()) {
             stress_us_ *= 2;
         }
@@ -448,7 +416,7 @@ class Stress {
         symmetrize(stress_us_);
     }
 
-    inline void symmetrize(matrix3d<double>& mtrx__)
+    inline void symmetrize(matrix3d<double>& mtrx__) const
     {
         if (!ctx_.use_symmetry()) {
             return;
@@ -474,7 +442,7 @@ class Stress {
         , density_(density__)
         , potential_(potential__)
     {
-        calc_stress_kin();
+        stress_kin_ = calc_stress_kin();
         calc_stress_har();
         calc_stress_ewald();
         calc_stress_vloc();
