@@ -107,7 +107,7 @@ inline void Density::generate_paw_atom_density(paw_density_data_t &pdd)
 
     auto& pp_desc = atom_type.pp_desc();
 
-    std::vector<int> l_by_lm = Utils::l_by_lm( 2 * atom_type.indexr().lmax_lo() );
+    auto l_by_lm = Utils::l_by_lm(2 * atom_type.indexr().lmax_lo());
 
     //TODO calculate not for every atom but for every atom type
     Gaunt_coefficients<double> GC(atom_type.indexr().lmax_lo(),

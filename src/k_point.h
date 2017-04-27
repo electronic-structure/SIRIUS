@@ -122,11 +122,11 @@ class K_point
         /// list of rows of the Hamiltonian and overlap matrix lo block (local index) for a given atom
         std::vector<std::vector<int>> atom_lo_rows_;
 
-        /// imaginary unit to the power of l
+        /// Imaginary unit to the power of l.
         std::vector<double_complex> zil_;
 
-        /// mapping between lm and l
-        std::vector<int> l_by_lm_;
+        /// Mapping between lm and l.
+        mdarray<int, 1> l_by_lm_;
 
         /// column rank of the processors of ScaLAPACK/ELPA diagonalization grid
         int rank_col_;

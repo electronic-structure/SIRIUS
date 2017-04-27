@@ -153,6 +153,10 @@ class splindex<block, T> : public splindex_base<T>
     {
         assert(rank__ >= 0 && rank__ < this->num_ranks_);
 
+        if (this->global_index_size_ == 0) {
+            return 0;
+        }
+
         int n = static_cast<int>(this->global_index_size_ / block_size_);
         if (rank__ < n) {
             return block_size_;
