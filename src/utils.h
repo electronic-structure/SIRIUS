@@ -355,9 +355,9 @@ class Utils
             }
         }
 
-        static std::vector<int> l_by_lm(int lmax)
+        static mdarray<int, 1> l_by_lm(int lmax)
         {
-            std::vector<int> v(lmmax(lmax));
+            mdarray<int, 1> v(lmmax(lmax));
             for (int l = 0; l <= lmax; l++) {
                 for (int m = -l; m <= l; m++) {
                     v[lm_by_l_m(l, m)] = l;

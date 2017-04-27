@@ -183,7 +183,7 @@ class Density // TODO: return rho_vec
         std::unique_ptr<Gaunt_coefficients<double_complex>> gaunt_coefs_{nullptr};
         
         /// Fast mapping between composite lm index and corresponding orbital quantum number.
-        std::vector<int> l_by_lm_;
+        mdarray<int, 1> l_by_lm_;
 
         /// High-frequency mixer for the pseudopotential density mixing.
         std::unique_ptr<Mixer<double_complex>> hf_mixer_{nullptr};

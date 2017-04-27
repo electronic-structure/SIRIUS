@@ -248,7 +248,7 @@ inline double Potential::calc_PAW_hartree_potential(Atom& atom,
     //---------------------
     //--- calc energy ---
     //---------------------
-    std::vector<int> l_by_lm = Utils::l_by_lm( Utils::lmax_by_lmmax(lmsize_rho) );
+    auto l_by_lm = Utils::l_by_lm( Utils::lmax_by_lmmax(lmsize_rho) );
 
     // create array for integration
     std::vector<double> intdata(grid.num_points(),0);
@@ -355,7 +355,7 @@ inline void Potential::calc_PAW_local_Dij(paw_potential_data_t &pdd, mdarray<dou
     int lmax = atom_type.indexr().lmax_lo();
     int lmsize_rho = Utils::lmmax(2 * lmax);
 
-    std::vector<int> l_by_lm = Utils::l_by_lm(2 * lmax);
+    auto l_by_lm = Utils::l_by_lm(2 * lmax);
 
     // TODO: calculate not for every atom but for every atom type
     Gaunt_coefficients<double> GC(lmax, 2 * lmax, lmax, SHT::gaunt_rlm);

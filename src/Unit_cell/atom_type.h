@@ -350,7 +350,7 @@ class Atom_type
         mutable mdarray<double, 3> rf_coef_;
         mutable mdarray<double, 3> vrf_coef_;
 
-        std::vector<Spline<double>> beta_rf_;
+        mdarray<Spline<double>, 1> beta_rf_;
         mdarray<Spline<double>, 2> q_rf_;
 
         bool initialized_{false};
@@ -981,7 +981,7 @@ inline void Atom_type::init(int offset_lo__)
         /* maximum l of beta-projectors */
         int lmax_beta = indexr().lmax();
         /* interpolate beta radial functions */
-        beta_rf_ = std::vector<Spline<double>>(mt_radial_basis_size());
+        beta_rf_ = mdarray<Spline<double>, 1>(mt_radial_basis_size());
         for (int idxrf = 0; idxrf < nbrf; idxrf++) {
             beta_rf_[idxrf] = Spline<double>(radial_grid());
             int nr = pp_desc().num_beta_radial_points[idxrf];

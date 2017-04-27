@@ -73,7 +73,7 @@ class Potential
 
         std::vector<double_complex> zilm_;
 
-        std::vector<int> l_by_lm_;
+        mdarray<int, 1> l_by_lm_;
 
         mdarray<double_complex, 2> gvec_ylm_;
 
