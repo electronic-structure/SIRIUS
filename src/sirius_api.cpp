@@ -43,6 +43,7 @@ sirius::DFT_ground_state* dft_ground_state = nullptr;
 std::map<std::string, sddk::timer*> ftimers;
 
 std::unique_ptr<sirius::Stress> stress_tensor{nullptr};
+std::unique_ptr<sirius::Forces_PS> forces{nullptr};
 
 extern "C" {
 
@@ -2976,11 +2977,40 @@ void sirius_get_density_matrix(ftn_int*            ia__,
     }
 }
 
-void sirius_calc_forces(double* forces__)
+void sirius_calc_forces(ftn_int* kset_id__)
 {
-    mdarray<double,2> forces(forces__, 3, sim_ctx->unit_cell().num_atoms() );
+    auto& kset = *kset_list[*kset_id__];
+    forces = std::unique_ptr<sirius::Forces_PS>(new sirius::Forces_PS(*sim_ctx, *density, *potential, kset));
+}
 
-    dft_ground_state->forces(forces);
+void sirius_get_forces(ftn_char label__, ftn_double* forces__)
+{
+    std::string label(label__);
+
+    auto get_forces = [&](const mdarray<double,2>& sirius_forces__)
+        {
+            #pragma omp parallel for
+            for(size_t i = 0; i < sirius_forces__.size(); i++)
+            {
+                forces__[i] = sirius_forces__[i];
+            }
+        };
+
+    if (label == "vloc") {
+        get_forces( forces->local_forces() );
+    } else if (label == "nlcc") {
+        get_forces( forces->nlcc_forces() );
+    } else if (label == "ewald") {
+        get_forces( forces->ewald_forces() );
+    } else if (label == "nl") {
+        get_forces( forces->nonlocal_forces() );
+    } else if (label == "us") {
+        get_forces( forces->ultrasoft_forces() );
+    } else if (label == "tot") {
+        get_forces( forces->total_forces() );
+    } else {
+        TERMINATE("wrong label");
+    }
 }
 
 void sirius_set_verbosity(ftn_int* level__)
