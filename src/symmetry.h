@@ -595,6 +595,7 @@ inline void Symmetry::symmetrize_function(double_complex* f_pw__,
     
     double* ptr = (double*)&sym_f_pw(0);
 
+    sddk::timer t1("sirius::Symmetry::symmetrize_function_pw|local");
     #pragma omp parallel for
     for (int i = 0; i < num_mag_sym(); i++) {
         /* full space-group symmetry operation is {R|t} */
@@ -638,7 +639,11 @@ inline void Symmetry::symmetrize_function(double_complex* f_pw__,
             }
         }
     }
+    t1.stop();
+
+    sddk::timer t2("sirius::Symmetry::symmetrize_function_pw|mpi");
     comm__.allreduce(&sym_f_pw(0), gvec__.num_gvec());
+    t2.stop();
     
     double nrm = 1 / double(num_mag_sym());
     #pragma omp parallel for
