@@ -185,7 +185,7 @@ class Atom
 
             splindex<block> spl_lm(lmmax, comm__.size(), comm__.rank());
 
-            std::vector<int> l_by_lm = Utils::l_by_lm(lmax_pot_);
+            auto l_by_lm = Utils::l_by_lm(lmax_pot_);
 
             h_radial_integrals_.zero();
             if (num_mag_dims) {

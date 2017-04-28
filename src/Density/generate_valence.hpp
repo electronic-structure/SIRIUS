@@ -82,6 +82,12 @@ inline void Density::generate_valence(K_point_set& ks__)
         ctx_.comm().allreduce(density_matrix_.at<CPU>(), static_cast<int>(density_matrix_.size()));
     }
 
+    std::vector<Periodic_function<double>*> rho_vec(ctx_.num_mag_dims() + 1);
+    rho_vec[0] = rho_;
+    for (int j = 0; j < ctx_.num_mag_dims(); j++) {
+        rho_vec[1 + j] = magnetization_[j];
+    }
+
     ctx_.fft_coarse().prepare(ctx_.gvec_coarse().partition());
     auto& comm = ctx_.gvec_coarse().comm_ortho_fft();
     for (int j = 0; j < ctx_.num_mag_dims() + 1; j++) {
@@ -92,16 +98,10 @@ inline void Density::generate_valence(K_point_set& ks__)
         /* get the whole vector of PW coefficients */
         auto fpw = rho_mag_coarse_[j]->gather_f_pw(); // TODO: reuse FFT G-vec arrays
         /* map to fine G-vector grid */
-        if (j == 0) {
-            for (int ig = 0; ig < ctx_.gvec_coarse().num_gvec(); ig++) {
-                auto G = ctx_.gvec_coarse().gvec(ig);
-                rho_->f_pw(G) = fpw[ig];
-            }
-        } else {
-            for (int ig = 0; ig < ctx_.gvec_coarse().num_gvec(); ig++) {
-                auto G = ctx_.gvec_coarse().gvec(ig);
-                magnetization_[j - 1]->f_pw(G) = fpw[ig];
-            }
+        for (int i = 0; i < static_cast<int>(lf_gvec_.size()); i++) {
+            int igloc = lf_gvec_[i];
+            int ig = ctx_.gvec_coarse().index_by_gvec(ctx_.gvec().gvec(ctx_.gvec().offset() + igloc));
+            rho_vec[j]->f_pw_local(igloc) = fpw[ig];
         }
     }
     ctx_.fft_coarse().dismiss();
@@ -109,7 +109,7 @@ inline void Density::generate_valence(K_point_set& ks__)
     if (!ctx_.full_potential()) {
         augment(ks__);
 
-        double nel = rho_->f_pw(0).real() * unit_cell_.omega();
+        double nel = rho_->f_0().real() * unit_cell_.omega();
         /* check the number of electrons */
         if (std::abs(nel - unit_cell_.num_electrons()) > 1e-8) {
             std::stringstream s;

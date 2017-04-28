@@ -360,7 +360,14 @@ class Radial_integrals_beta_jl: public Radial_integrals_base<3>
     }
 };
 
-
+/// Radial integrals for the step function of the LAPW method.
+/** Radial integrals have the following expression:
+ *  \f[
+ *      \Theta(\alpha, G) = \int_{0}^{R_{\alpha}} \frac{\sin(Gr)}{Gr} r^2 dr = 
+ *          \left\{ \begin{array}{ll} \displaystyle R_{\alpha}^3 / 3 & G=0 \\
+ *          \Big( \sin(GR_{\alpha}) - GR_{\alpha}\cos(GR_{\alpha}) \Big) / G^3 & G \ne 0 \end{array} \right.
+ *  \f]
+ */
 class Radial_integrals_theta: public Radial_integrals_base<1>
 {
   private:

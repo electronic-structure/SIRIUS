@@ -2160,67 +2160,6 @@ void sirius_symmetrize_density()
     dft_ground_state->symmetrize(density->rho(), density->magnetization(0), density->magnetization(1), density->magnetization(2));
 }
 
-void sirius_get_rho_pw(ftn_int*            num_gvec__,
-                       ftn_int*            gvec__,
-                       ftn_double_complex* rho_pw__) // TODO: unify all get_pw() methods in a single function
-{
-
-    mdarray<int, 2> gvec(gvec__, 3, *num_gvec__);
-
-    for (int i = 0; i < *num_gvec__; i++) {
-        bool is_inverse{false};
-        vector3d<int> G(gvec(0, i), gvec(1, i), gvec(2, i));
-        int ig = sim_ctx->gvec().index_by_gvec(G);
-        if (ig == -1 && sim_ctx->gvec().reduced()) {
-            ig = sim_ctx->gvec().index_by_gvec(G * (-1));
-            is_inverse = true;
-        }
-        if (ig == -1) {
-            std::stringstream s;
-            auto gvc = sim_ctx->unit_cell().reciprocal_lattice_vectors() * vector3d<double>(G[0], G[1], G[2]);
-            s << "wrong index of G-vector" << std::endl
-              << "input G-vector: " << G << " (length: " << gvc.length() << " [a.u.^-1])" << std::endl;
-            TERMINATE(s);
-        }
-        //if (ig == -1 ) {
-        //    rho_pw__[i] = 0;
-        //    continue;
-        //}
-        if (is_inverse) {
-            rho_pw__[i] = std::conj(density->rho()->f_pw(ig));
-        } else {
-            rho_pw__[i] = density->rho()->f_pw(ig);
-        }
-    }
-}
-
-void sirius_get_veff_pw(ftn_int*            num_gvec__,
-                        ftn_int*            gvec__,
-                        ftn_double_complex* veff_pw__)
-{
-
-    mdarray<int, 2> gvec(gvec__, 3, *num_gvec__);
-
-    for (int i = 0; i < *num_gvec__; i++)
-    {
-        vector3d<int> G(gvec(0, i), gvec(1, i), gvec(2, i));
-        int ig = sim_ctx->gvec().index_by_gvec(G);
-        if (ig == -1) {
-            if (sim_ctx->gvec().reduced()) {
-                int ig1 = sim_ctx->gvec().index_by_gvec(G * (-1));
-                if (ig1 == -1) {
-                    TERMINATE("wrong index of G-vector");
-                }
-                veff_pw__[i] = std::conj(potential->effective_potential()->f_pw(ig1));
-            } else {
-                TERMINATE("wrong index of G-vector");
-            }
-        } else {
-            veff_pw__[i] = potential->effective_potential()->f_pw(ig);
-        }
-    }
-}
-
 void sirius_get_gvec_index(int32_t* gvec__, int32_t* ig__)
 {
     vector3d<int> gv(gvec__[0], gvec__[1], gvec__[2]);
@@ -3056,42 +2995,79 @@ void sirius_set_pw_coeffs(ftn_char label__,
         Communicator comm(MPI_Comm_f2c(*comm__));
         mdarray<int, 2> gvec(gvl__, 3, *ngv__);
 
-        if (label == "rho") {
-            density->rho()->zero();
-            for (int i = 0; i < *ngv__; i++) {
-                vector3d<int> G(gvec(0, i), gvec(1, i), gvec(2, i));
-                int ig = sim_ctx->gvec().index_by_gvec(G);
-                if (ig >= 0) {
-                    density->rho()->f_pw(ig) = pw_coeffs__[i];
-                }
+        std::vector<double_complex> v(sim_ctx->gvec().num_gvec(), 0);
+        for (int i = 0; i < *ngv__; i++) {
+            vector3d<int> G(gvec(0, i), gvec(1, i), gvec(2, i));
+            int ig = sim_ctx->gvec().index_by_gvec(G);
+            if (ig >= 0) {
+                v[ig] = pw_coeffs__[i];
             }
-            comm.allreduce(&density->rho()->f_pw(0), sim_ctx->gvec().num_gvec());
+        }
+        comm.allreduce(v.data(), sim_ctx->gvec().num_gvec());
+
+        if (label == "rho") {
+            density->rho()->scatter_f_pw(v);
             density->rho()->fft_transform(1);
         } else if (label == "veff") {
-            potential->effective_potential()->zero();
-            for (int i = 0; i < *ngv__; i++) {
-                vector3d<int> G(gvec(0, i), gvec(1, i), gvec(2, i));
-                int ig = sim_ctx->gvec().index_by_gvec(G);
-                if (ig >= 0) {
-                    potential->effective_potential()->f_pw(ig) = pw_coeffs__[i];
-                }
-            }
-            comm.allreduce(&potential->effective_potential()->f_pw(0), sim_ctx->gvec().num_gvec());
+            potential->effective_potential()->scatter_f_pw(v);
             potential->effective_potential()->fft_transform(1);
         } else if (label == "vxc") {
-            potential->xc_potential()->zero();
-            for (int i = 0; i < *ngv__; i++) {
-                vector3d<int> G(gvec(0, i), gvec(1, i), gvec(2, i));
-                int ig = sim_ctx->gvec().index_by_gvec(G);
-                if (ig >= 0) {
-                    potential->xc_potential()->f_pw(ig) = pw_coeffs__[i];
-                }
-            }
-        
-            comm.allreduce(&potential->xc_potential()->f_pw(0), sim_ctx->gvec().num_gvec());
+            potential->xc_potential()->scatter_f_pw(v);
             potential->xc_potential()->fft_transform(1);
         } else {
             TERMINATE("wrong label");
+        }
+    }
+}
+
+void sirius_get_pw_coeffs(ftn_char label__,
+                          double_complex* pw_coeffs__,
+                          ftn_int* ngv__,
+                          ftn_int* gvl__, 
+                          ftn_int* comm__)
+{
+    std::string label(label__);
+    if (sim_ctx->full_potential()) {
+        STOP();
+    } else {
+        assert(ngv__ != NULL);
+        assert(gvl__ != NULL);
+        assert(comm__ != NULL);
+
+        Communicator comm(MPI_Comm_f2c(*comm__));
+        mdarray<int, 2> gvec(gvl__, 3, *ngv__);
+
+        std::vector<double_complex> v;
+
+        if (label == "rho") {
+            v = density->rho()->gather_f_pw();
+        } else if (label == "veff") {
+            v = potential->effective_potential()->gather_f_pw();
+        } else {
+            TERMINATE("wrong label");
+        }
+
+        for (int i = 0; i < *ngv__; i++) {
+            vector3d<int> G(gvec(0, i), gvec(1, i), gvec(2, i));
+            
+            bool is_inverse{false};
+            int ig = sim_ctx->gvec().index_by_gvec(G);
+            if (ig == -1 && sim_ctx->gvec().reduced()) {
+                ig = sim_ctx->gvec().index_by_gvec(G * (-1));
+                is_inverse = true;
+            }
+            if (ig == -1) {
+                std::stringstream s;
+                auto gvc = sim_ctx->unit_cell().reciprocal_lattice_vectors() * vector3d<double>(G[0], G[1], G[2]);
+                s << "wrong index of G-vector" << std::endl
+                  << "input G-vector: " << G << " (length: " << gvc.length() << " [a.u.^-1])" << std::endl;
+                TERMINATE(s);
+            }
+            if (is_inverse) {
+                pw_coeffs__[i] = std::conj(v[ig]);
+            } else {
+                pw_coeffs__[i] = v[ig];
+            }
         }
     }
 }

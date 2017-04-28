@@ -673,7 +673,7 @@ class SHT // TODO: better name
             }
         }
 
-        static void dRlm_dtheta(int lmax, double theta, double phi, double* data)
+        static void dRlm_dtheta(int lmax, double theta, double phi, mdarray<double, 1>& data)
         {
             assert(lmax <= 8);
 
@@ -861,7 +861,7 @@ class SHT // TODO: better name
             data[80]=(3*std::sqrt(12155/pi)*cos_phi[7]*cos_theta[0]*std::pow(sin_theta[0],7))/32.;
         }
 
-        static void dRlm_dphi_sin_theta(int lmax, double theta, double phi, double* data)
+        static void dRlm_dphi_sin_theta(int lmax, double theta, double phi, mdarray<double, 1>& data)
         {
             assert(lmax <= 8);
 
@@ -1173,10 +1173,10 @@ class SHT // TODO: better name
             return 0; // make compiler happy
         }
 
-        static std::vector<double> cosxn(int n__, double x__)
+        static mdarray<double, 1> cosxn(int n__, double x__)
         {
             assert(n__ > 0);
-            std::vector<double> data(n__);
+            mdarray<double, 1> data(n__);
             data[0] = std::cos(x__);
             if (n__ > 1) {
                 data[1] = std::cos(2 * x__);
@@ -1187,10 +1187,10 @@ class SHT // TODO: better name
             return std::move(data);
         }
 
-        static std::vector<double> sinxn(int n__, double x__)
+        static mdarray<double, 1> sinxn(int n__, double x__)
         {
             assert(n__ > 0);
-            std::vector<double> data(n__);
+            mdarray<double, 1> data(n__);
             auto cosx = std::cos(x__);
             data[0] = std::sin(x__);
             if (n__ > 1) {

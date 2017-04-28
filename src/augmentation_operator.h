@@ -53,7 +53,7 @@ class Augmentation_operator
             int lmax_beta = atom_type_.indexr().lmax();
             int lmmax = Utils::lmmax(2 * lmax_beta);
 
-            std::vector<int> l_by_lm = Utils::l_by_lm(2 * lmax_beta);
+            auto l_by_lm = Utils::l_by_lm(2 * lmax_beta);
         
             std::vector<double_complex> zilm(lmmax);
             for (int l = 0, lm = 0; l <= 2 * lmax_beta; l++) {
@@ -146,7 +146,7 @@ class Augmentation_operator
 
     public:
        
-        Augmentation_operator(Simulation_context_base& ctx__,
+        Augmentation_operator(Simulation_context_base const& ctx__,
                               int iat__,
                               Radial_integrals_aug<false> const& ri__)
             : comm_(ctx__.comm())
@@ -232,7 +232,7 @@ class Augmentation_operator_gvec_deriv
             int lmax_beta = atom_type_.indexr().lmax();
             int lmmax = Utils::lmmax(2 * lmax_beta);
 
-            std::vector<int> l_by_lm = Utils::l_by_lm(2 * lmax_beta);
+            auto l_by_lm = Utils::l_by_lm(2 * lmax_beta);
         
             std::vector<double_complex> zilm(lmmax);
             for (int l = 0, lm = 0; l <= 2 * lmax_beta; l++) {
@@ -265,11 +265,11 @@ class Augmentation_operator_gvec_deriv
 
                 SHT::spherical_harmonics(2 * lmax_beta, theta, phi, &rlm_g(0, igloc));
 
-                std::vector<double> dRlm_dtheta(lmmax);
-                std::vector<double> dRlm_dphi_sin_theta(lmmax);
+                mdarray<double, 1> dRlm_dtheta(lmmax);
+                mdarray<double, 1> dRlm_dphi_sin_theta(lmmax);
 
-                SHT::dRlm_dtheta(2 * lmax_beta, theta, phi, &dRlm_dtheta[0]);
-                SHT::dRlm_dphi_sin_theta(2 * lmax_beta, theta, phi, &dRlm_dphi_sin_theta[0]);
+                SHT::dRlm_dtheta(2 * lmax_beta, theta, phi, dRlm_dtheta);
+                SHT::dRlm_dphi_sin_theta(2 * lmax_beta, theta, phi, dRlm_dphi_sin_theta);
                 for (int nu = 0; nu < 3; nu++) {
                     for (int lm = 0; lm < lmmax; lm++) {
                         rlm_dg(lm, nu, igloc) = dRlm_dtheta[lm] * dtheta_dq[nu] + dRlm_dphi_sin_theta[lm] * dphi_dq[nu];
@@ -336,7 +336,7 @@ class Augmentation_operator_gvec_deriv
 
     public:
        
-        Augmentation_operator_gvec_deriv(Simulation_context_base& ctx__,
+        Augmentation_operator_gvec_deriv(Simulation_context_base const& ctx__,
                                          int iat__,
                                          Radial_integrals_aug<false> const& ri__,
                                          Radial_integrals_aug<true> const& ri_dq__,

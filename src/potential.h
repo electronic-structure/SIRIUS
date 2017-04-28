@@ -73,7 +73,7 @@ class Potential
 
         std::vector<double_complex> zilm_;
 
-        std::vector<int> l_by_lm_;
+        mdarray<int, 1> l_by_lm_;
 
         mdarray<double_complex, 2> gvec_ylm_;
 
@@ -258,19 +258,20 @@ class Potential
             PROFILE("sirius::Potential::generate_local_potential");
             
             Radial_integrals_vloc ri(ctx_.unit_cell(), ctx_.pw_cutoff(), 100);
-            auto v = ctx_.make_periodic_function<index_domain_t::global>([&ri](int iat, double g)
-                                                                         {
-                                                                             return ri.value(iat, g);
-                                                                         });
-
-            ctx_.fft().transform<1>(ctx_.gvec().partition(), &v[ctx_.gvec().partition().gvec_offset_fft()]);
-            ctx_.fft().output(&local_potential_->f_rg(0));
+            auto v = ctx_.make_periodic_function<index_domain_t::local>([&ri](int iat, double g)
+                                                                        {
+                                                                            return ri.value(iat, g);
+                                                                        });
+            for (int igloc = 0; igloc < ctx_.gvec().count(); igloc++) {
+                local_potential_->f_pw_local(igloc) = v[igloc];
+            }
+            local_potential_->fft_transform(1);
 
             if (ctx_.control().print_checksum_) {
-                auto cs = local_potential_->checksum_pw();
+                //auto cs = local_potential_->checksum_pw();
                 auto cs1 = local_potential_->checksum_rg();
                 if (ctx_.comm().rank() == 0) {
-                    DUMP("checksum(local_potential_pw): %18.10f %18.10f", cs.real(), cs.imag());
+                    //DUMP("checksum(local_potential_pw): %18.10f %18.10f", cs.real(), cs.imag());
                     DUMP("checksum(local_potential_rg): %18.10f", cs1);
                 }
             }
@@ -344,24 +345,23 @@ class Potential
                 }
             }
 
-            effective_potential_ = std::unique_ptr<Periodic_function<double>>(new Periodic_function<double>(ctx_, ctx_.lmmax_pot(), 1));
+            effective_potential_ = std::unique_ptr<Periodic_function<double>>(new Periodic_function<double>(ctx_, ctx_.lmmax_pot()));
             
-            int need_gvec{1};
             for (int j = 0; j < ctx_.num_mag_dims(); j++) {
-                effective_magnetic_field_[j] = new Periodic_function<double>(ctx_, ctx_.lmmax_pot(), need_gvec);
+                effective_magnetic_field_[j] = new Periodic_function<double>(ctx_, ctx_.lmmax_pot());
             }
             
-            hartree_potential_ = new Periodic_function<double>(ctx_, ctx_.lmmax_pot(), 1);
+            hartree_potential_ = new Periodic_function<double>(ctx_, ctx_.lmmax_pot());
             hartree_potential_->allocate_mt(false);
             
-            xc_potential_ = new Periodic_function<double>(ctx_, ctx_.lmmax_pot(), 1);
+            xc_potential_ = new Periodic_function<double>(ctx_, ctx_.lmmax_pot());
             xc_potential_->allocate_mt(false);
             
-            xc_energy_density_ = new Periodic_function<double>(ctx_, ctx_.lmmax_pot(), 0);
+            xc_energy_density_ = new Periodic_function<double>(ctx_, ctx_.lmmax_pot());
             xc_energy_density_->allocate_mt(false);
 
             if (!ctx_.full_potential()) {
-                local_potential_ = std::unique_ptr<Periodic_function<double>>(new Periodic_function<double>(ctx_, 0, 0));
+                local_potential_ = std::unique_ptr<Periodic_function<double>>(new Periodic_function<double>(ctx_, 0));
                 local_potential_->zero();
 
                 generate_local_potential();
@@ -370,10 +370,10 @@ class Potential
             vh_el_ = mdarray<double, 1>(unit_cell_.num_atoms());
 
             if (ctx_.full_potential()) {
-                gvec_ylm_ = mdarray<double_complex, 2>(ctx_.lmmax_pot(), ctx_.gvec_count(), memory_t::host, "gvec_ylm_");
+                gvec_ylm_ = mdarray<double_complex, 2>(ctx_.lmmax_pot(), ctx_.gvec().count(), memory_t::host, "gvec_ylm_");
                 #pragma omp parallel for schedule(static)
-                for (int igloc = 0; igloc < ctx_.gvec_count(); igloc++) {
-                    int ig = ctx_.gvec_offset() + igloc;
+                for (int igloc = 0; igloc < ctx_.gvec().count(); igloc++) {
+                    int ig = ctx_.gvec().offset() + igloc;
                     auto rtp = SHT::spherical_coordinates(ctx_.gvec().gvec_cart(ig));
                     SHT::spherical_harmonics(ctx_.lmax_pot(), rtp[1], rtp[2], &gvec_ylm_(0, igloc));
                 }
@@ -797,7 +797,7 @@ class Potential
                 /* add local ionic potential to the effective potential */
                 effective_potential_->add(local_potential_.get());
                 /* create temporary function for rho + rho_core */
-                Periodic_function<double> rhovc(ctx_, 0, 0);
+                Periodic_function<double> rhovc(ctx_, 0);
                 rhovc.zero();
                 rhovc.add(density__.rho());
                 rhovc.add(density__.rho_pseudo_core());
@@ -974,32 +974,6 @@ class Potential
 
         void check_potential_continuity_at_mt();
 
-        /// Total size (number of elements) of the potential and effective magnetic field. 
-        inline size_t size()
-        {
-            size_t s = effective_potential_->size();
-            for (int i = 0; i < ctx_.num_mag_dims(); i++) {
-                s += effective_magnetic_field_[i]->size();
-            }
-            return s;
-        }
-
-        inline void pack(Mixer<double>& mixer)
-        {
-            size_t n = effective_potential_->pack(0, mixer);
-            for (int i = 0; i < ctx_.num_mag_dims(); i++) {
-                n += effective_magnetic_field_[i]->pack(n, mixer);
-            }
-        }
-
-        inline void unpack(double const* buffer)
-        {
-            size_t n = effective_potential_->unpack(buffer);
-            for (int i = 0; i < ctx_.num_mag_dims(); i++) {
-                n += effective_magnetic_field_[i]->unpack(&buffer[n]);
-            }
-        }
-
         Periodic_function<double>* effective_potential()
         {
             return effective_potential_.get();
@@ -1063,18 +1037,74 @@ class Potential
             return energy_vha_;
         }
 
+        void mixer_input()
+        {
+            /* collect density and magnetization into single array */
+            std::vector<Periodic_function<double>*> veff_vec(ctx_.num_mag_dims() + 1);
+            veff_vec[0] = effective_potential_.get();
+            for (int j = 0; j < ctx_.num_mag_dims(); j++) {
+                veff_vec[1 + j] = effective_magnetic_field_[j];
+            }
+            
+            int k{0};
+            
+            for (int j = 0; j < ctx_.num_mag_dims() + 1; j++) {
+                for (int ialoc = 0; ialoc < ctx_.unit_cell().spl_num_atoms().local_size(); ialoc++) {
+                    for (int i = 0; i < static_cast<int>(veff_vec[j]->f_mt(ialoc).size()); i++) {
+                        mixer_->input_local(k++, veff_vec[j]->f_mt(ialoc)[i]);
+                    }
+                }
+                for (int i = 0; i < ctx_.fft().local_size(); i++) {
+                    mixer_->input_local(k++, veff_vec[j]->f_rg(i));
+                }
+            }
+        }
+
+        void mixer_output()
+        {
+            /* collect density and magnetization into single array */
+            std::vector<Periodic_function<double>*> veff_vec(ctx_.num_mag_dims() + 1);
+            veff_vec[0] = effective_potential_.get();
+            for (int j = 0; j < ctx_.num_mag_dims(); j++) {
+                veff_vec[1 + j] = effective_magnetic_field_[j];
+            }
+            
+            int k{0};
+            
+            for (int j = 0; j < ctx_.num_mag_dims() + 1; j++) {
+                for (int ialoc = 0; ialoc < ctx_.unit_cell().spl_num_atoms().local_size(); ialoc++) {
+                    auto& f_mt = const_cast<Spheric_function<spectral, double>&>(veff_vec[j]->f_mt(ialoc));
+                    for (int i = 0; i < static_cast<int>(veff_vec[j]->f_mt(ialoc).size()); i++) {
+                        f_mt[i] = mixer_->output_local(k++);
+                    }
+                }
+                for (int i = 0; i < ctx_.fft().local_size(); i++) {
+                    veff_vec[j]->f_rg(i) = mixer_->output_local(k++);
+                }
+            }
+            for (auto e: veff_vec) {
+                e->sync_mt();
+            }
+        }
+
         void mixer_init()
         {
-            mixer_ = Mixer_factory<double>(ctx_.mixer_input().type_, size(), ctx_.mixer_input(), comm_);
-            pack(*mixer_);
+            int sz{0};
+            for (int ialoc = 0; ialoc < ctx_.unit_cell().spl_num_atoms().local_size(); ialoc++) {
+                sz += static_cast<int>(effective_potential_->f_mt(ialoc).size());
+            }
+            sz += ctx_.fft().local_size();
+
+            mixer_ = Mixer_factory<double>(ctx_.mixer_input().type_, 0, (ctx_.num_mag_dims() + 1) * sz, ctx_.mixer_input(), comm_);
+            mixer_input();
             mixer_->initialize();
         }
 
         double mix()
         {
-            pack(*mixer_);
+            mixer_input();
             double rms = mixer_->mix();
-            unpack(mixer_->output_buffer());
+            mixer_output();
             return rms;
         }
 

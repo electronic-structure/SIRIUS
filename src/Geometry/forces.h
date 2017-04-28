@@ -260,7 +260,7 @@ public:
                 vector3d<double> gvec_cart = gvecs.gvec_cart(ig);
 
                 // scalar part of a force without multipying by G-vector
-                double_complex z = fact * fourpi * ri.value(iat, gvecs.gvec_len(ig)) * std::conj(valence_rho->f_pw(ig)) *
+                double_complex z = fact * fourpi * ri.value(iat, gvecs.gvec_len(ig)) * std::conj(valence_rho->f_pw_local(igloc)) *
                         std::exp(double_complex(0.0, - twopi * (gvec * atom.position())));
 
                 // get force components multiplying by cartesian G-vector ( -image part goes from formula)
@@ -318,7 +318,7 @@ public:
 
                 // scalar part of a force without multipying by G-vector and Qij
                 // omega * V_conj(G) * exp(-i G Rn)
-                double_complex g_atom_part =  reduce_g_fact * ctx_.unit_cell().omega() * std::conj(veff_full->f_pw(ig)) *
+                double_complex g_atom_part =  reduce_g_fact * ctx_.unit_cell().omega() * std::conj(veff_full->f_pw_local(igloc)) *
                         std::exp(double_complex(0.0, - twopi * (gvec * atom.position())));
 
                 const Augmentation_operator &aug_op = ctx_.augmentation_op(iat);
@@ -389,8 +389,8 @@ public:
 
         Gvec const& gvecs = ctx_.gvec();
 
-        int gvec_count = gvecs.gvec_count(ctx_.comm().rank());
-        int gvec_offset = gvecs.gvec_offset(ctx_.comm().rank());
+        int gvec_count = gvecs.count();
+        int gvec_offset = gvecs.offset();
 
         forces.zero();
 
@@ -422,7 +422,7 @@ public:
 
                 // scalar part of a force without multipying by G-vector
                 double_complex z = fact * fourpi * ri.value(iat, gvecs.gvec_len(ig)) *
-                                   std::conj(xc_pot->f_pw(ig)) * std::exp(double_complex(0.0, -twopi * (gvec * atom.position())));
+                                   std::conj(xc_pot->f_pw_local(igloc)) * std::exp(double_complex(0.0, -twopi * (gvec * atom.position())));
 
                 // get force components multiplying by cartesian G-vector ( -image part goes from formula)
                 forces(0, ia) -= (gvec_cart[0] * z).imag();
@@ -453,9 +453,9 @@ public:
 
         //mpi
         #pragma omp parallel for reduction( + : forces )
-        for (int igloc = 0; igloc < ctx_.gvec_count(); igloc++)
+        for (int igloc = 0; igloc < ctx_.gvec().count(); igloc++)
         {
-            int ig = ctx_.gvec_offset() + igloc;
+            int ig = ctx_.gvec().offset() + igloc;
 
             if( ig == 0 )
             {

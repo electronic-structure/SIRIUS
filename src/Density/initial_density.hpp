@@ -20,7 +20,7 @@ inline void Density::initial_density()
 inline void Density::initial_density_pseudo()
 {
     Radial_integrals_rho_pseudo ri(unit_cell_, ctx_.pw_cutoff(), 20);
-    auto v = ctx_.make_periodic_function<index_domain_t::global>([&ri](int iat, double g)
+    auto v = ctx_.make_periodic_function<index_domain_t::local>([&ri](int iat, double g)
                                                                  {
                                                                      return ri.value(iat, g);
                                                                  });
@@ -30,18 +30,21 @@ inline void Density::initial_density_pseudo()
         DUMP("checksum(rho_pw) : %18.10f %18.10f", z1.real(), z1.imag());
     }
 
-    std::memcpy(&rho_->f_pw(0), &v[0], ctx_.gvec().num_gvec() * sizeof(double_complex));
+    std::memcpy(&rho_->f_pw_local(0), &v[0], ctx_.gvec().count() * sizeof(double_complex));
+    
+    double charge = rho_->f_0().real() * unit_cell_.omega();
 
-    double charge = std::real(rho_->f_pw(0) * unit_cell_.omega());
     if (std::abs(charge - unit_cell_.num_valence_electrons()) > 1e-6) {
         std::stringstream s;
         s << "wrong initial charge density" << std::endl
-          << "  integral of the density : " << std::real(rho_->f_pw(0) * unit_cell_.omega()) << std::endl
+          << "  integral of the density : " << charge << std::endl
           << "  target number of electrons : " << unit_cell_.num_valence_electrons();
         if (ctx_.comm().rank() == 0) {
             WARNING(s);
         }
-        rho_->f_pw(0) += (unit_cell_.num_valence_electrons() - charge) / unit_cell_.omega();
+        if (ctx_.gvec().comm().rank() == 0) {
+            rho_->f_pw_local(0) += (unit_cell_.num_valence_electrons() - charge) / unit_cell_.omega();
+        }
     }
     rho_->fft_transform(1);
 
@@ -108,13 +111,15 @@ inline void Density::initial_density_pseudo()
     }
     
     /* renormalize charge */
-    charge = std::real(rho_->f_pw(0) * unit_cell_.omega());
-    rho_->f_pw(0) += (unit_cell_.num_valence_electrons() - charge) / unit_cell_.omega();
-
-    if (ctx_.control().print_checksum_ && ctx_.comm().rank() == 0) {
-        double_complex cs = mdarray<double_complex, 1>(&rho_->f_pw(0), ctx_.gvec().num_gvec()).checksum();
-        DUMP("checksum(rho_pw): %20.14f %20.14f", std::real(cs), std::imag(cs));
+    charge = rho_->f_0().real() * unit_cell_.omega();
+    if (ctx_.gvec().comm().rank() == 0) {
+        rho_->f_pw_local(0) += (unit_cell_.num_valence_electrons() - charge) / unit_cell_.omega();
     }
+
+    //if (ctx_.control().print_checksum_ && ctx_.comm().rank() == 0) {
+    //    double_complex cs = mdarray<double_complex, 1>(&rho_->f_pw(0), ctx_.gvec().num_gvec()).checksum();
+    //    DUMP("checksum(rho_pw): %20.14f %20.14f", std::real(cs), std::imag(cs));
+    //}
 }
 
 inline void Density::initial_density_full_pot()
@@ -128,7 +133,7 @@ inline void Density::initial_density_full_pot()
     Radial_integrals_rho_free_atom ri(ctx_.unit_cell(), ctx_.pw_cutoff(), 20);
     
     /* compute contribution from free atoms to the interstitial density */
-    auto v = ctx_.make_periodic_function<index_domain_t::global>([&ri](int iat, double g)
+    auto v = ctx_.make_periodic_function<index_domain_t::local>([&ri](int iat, double g)
                                                                  {
                                                                      return ri.value(iat, g);
                                                                  });
@@ -139,7 +144,7 @@ inline void Density::initial_density_full_pot()
     #endif
     
     /* set plane-wave coefficients of the charge density */
-    std::memcpy(&rho_->f_pw(0), &v[0], ctx_.gvec().num_gvec() * sizeof(double_complex));
+    std::memcpy(&rho_->f_pw_local(0), &v[0], ctx_.gvec().count() * sizeof(double_complex));
     /* convert charge deisnty to real space mesh */
     rho_->fft_transform(1);
     
@@ -157,9 +162,9 @@ inline void Density::initial_density_full_pot()
     /* mapping between G-shell (global index) and a list of G-vectors (local index) */
     std::map<int, std::vector<int> > gsh_map;
     
-    for (int igloc = 0; igloc < ctx_.gvec_count(); igloc++) {
+    for (int igloc = 0; igloc < ctx_.gvec().count(); igloc++) {
         /* global index of the G-vector */
-        int ig = ctx_.gvec_offset() + igloc;
+        int ig = ctx_.gvec().offset() + igloc;
         /* index of the G-vector shell */
         int igsh = ctx_.gvec().shell(ig);
         if (gsh_map.count(igsh) == 0) gsh_map[igsh] = std::vector<int>();
@@ -186,16 +191,18 @@ inline void Density::initial_density_full_pot()
     auto l_by_lm = Utils::l_by_lm(lmax);
     
     std::vector<double_complex> zil(lmax + 1);
-    for (int l = 0; l <= lmax; l++) zil[l] = std::pow(double_complex(0, 1), l);
+    for (int l = 0; l <= lmax; l++) {
+        zil[l] = std::pow(double_complex(0, 1), l);
+    }
     
     sddk::timer t3("sirius::Density::initial_density|znulm");
     
     mdarray<double_complex, 3> znulm(sba.nqnu_max(), lmmax, unit_cell_.num_atoms());
     znulm.zero();
     
-    auto gvec_ylm = mdarray<double_complex, 2>(lmmax, ctx_.gvec_count());
-    for (int igloc = 0; igloc < ctx_.gvec_count(); igloc++) {
-        int ig = ctx_.gvec_offset() + igloc;
+    auto gvec_ylm = mdarray<double_complex, 2>(lmmax, ctx_.gvec().count());
+    for (int igloc = 0; igloc < ctx_.gvec().count(); igloc++) {
+        int ig = ctx_.gvec().offset() + igloc;
         auto rtp = SHT::spherical_coordinates(ctx_.gvec().gvec_cart(ig));
         SHT::spherical_harmonics(lmax, rtp[1], rtp[2], &gvec_ylm(0, igloc));
     }
@@ -211,9 +218,9 @@ inline void Density::initial_density_full_pot()
             /* loop over G-vectors */
             for (int igloc: gv) {
                 /* global index of the G-vector */
-                int ig = ctx_.gvec_offset() + igloc;
+                int ig = ctx_.gvec().offset() + igloc;
                 
-                auto z1 = ctx_.gvec_phase_factor(ig, ia) * v[ig] * fourpi;
+                auto z1 = ctx_.gvec_phase_factor(ig, ia) * v[igloc] * fourpi;
                 
                 for (int lm = 0; lm < lmmax; lm++) {
                     int l = l_by_lm[lm];

@@ -340,15 +340,24 @@ class DFT_ground_state
             auto& comm = ctx_.comm();
 
             /* symmetrize PW components */
-            unit_cell_.symmetry().symmetrize_function(&f__->f_pw(0), ctx_.gvec(), comm);
+            auto v = f__->gather_f_pw();
+            unit_cell_.symmetry().symmetrize_function(&v[0], ctx_.gvec(), comm);
+            f__->scatter_f_pw(v);
             switch (ctx_.num_mag_dims()) {
                 case 1: {
-                    unit_cell_.symmetry().symmetrize_vector_function(&gz__->f_pw(0), ctx_.gvec(), comm);
+                    auto vz = gz__->gather_f_pw();
+                    unit_cell_.symmetry().symmetrize_vector_function(&vz[0], ctx_.gvec(), comm);
+                    gz__->scatter_f_pw(vz);
                     break;
                 }
                 case 3: {
-                    unit_cell_.symmetry().symmetrize_vector_function(&gx__->f_pw(0), &gy__->f_pw(0), &gz__->f_pw(0),
-                                                                     ctx_.gvec(), comm);
+                    auto vx = gx__->gather_f_pw();
+                    auto vy = gy__->gather_f_pw();
+                    auto vz = gz__->gather_f_pw();
+                    unit_cell_.symmetry().symmetrize_vector_function(&vx[0], &vy[0], &vz[0], ctx_.gvec(), comm);
+                    gx__->scatter_f_pw(vx);
+                    gy__->scatter_f_pw(vy);
+                    gz__->scatter_f_pw(vz);
                     break;
                 }
             }
@@ -431,8 +440,8 @@ inline double DFT_ground_state::ewald_energy()
         double ewald_g_pt = 0;
 
         #pragma omp for
-        for (int igloc = 0; igloc < ctx_.gvec_count(); igloc++) {
-            int ig = ctx_.gvec_offset() + igloc;
+        for (int igloc = 0; igloc < ctx_.gvec().count(); igloc++) {
+            int ig = ctx_.gvec().offset() + igloc;
             if (!ig) {
                 continue;
             }
