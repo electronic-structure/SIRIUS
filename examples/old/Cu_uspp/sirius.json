@@ -1,0 +1,70 @@
+{
+  "control" : {
+      "cyclic_block_size" : 16,
+      "processing_unit" : "cpu",
+      "std_evp_solver_type" : "lapack",
+      "gen_evp_solver_type" : "lapack",
+      "verbosity": 2
+  },
+
+  "parameters" : {
+
+    "electronic_structure_method" : "pseudopotential",
+
+    "xc_functionals" : ["XC_LDA_X", "XC_LDA_C_PZ"],
+
+    "smearing_width" : 0.02,
+
+    "use_symmetry" : true,
+
+    "num_mag_dims" : 0,
+
+    "gk_cutoff" : 6.0,
+    "pw_cutoff" : 25.00,
+
+    "energy_tol" : 1e-8,
+
+    "num_dft_iter" : 100,
+
+    "ngridk" : [8,8,8],
+
+    "reduce_gvec": 0
+  },
+
+  "iterative_solver" : {
+      "energy_tolerance" : 1e-2,
+      "residual_tolerance" : 1e-6,
+      "num_steps" : 20,
+      "subspace_size" : 4,
+      "type" : "davidson",
+      "converge_by_energy" : 1
+  },
+
+    "unit_cell" : {
+
+        "lattice_vectors" : [ [0, 0.5, 0.5],
+                              [0.5, 0, 0.5],
+                              [0.5, 0.5, 0]
+                            ],
+        "lattice_vectors_scale" : 6.73,
+
+        "atom_types" : ["Cu"],
+
+        "atom_files" : {
+            "Cu" : "Cu.pz-dn-rrkjus_psl.0.2.UPF.json"
+        },
+
+        "atoms" : {
+            "Cu" : [
+                [0.0, 0.0, 0.0]
+            ]
+        }
+    },
+
+    "mixer" : {
+        "beta" : 0.9,
+        "type" : "broyden1",
+        "max_history" : 8
+    }
+
+}

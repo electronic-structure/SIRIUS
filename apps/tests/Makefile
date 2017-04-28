@@ -9,7 +9,7 @@ LIB_SIRIUS_DBG = ../../src/libsirius.dbg.a
 .cpp.o:
 	$(CXX) $(CXX_OPT) -I$(INCLUDE) $< $(LIB_SIRIUS) $(LIBS) -o $@
 
-all: test_hdf5 test_allgather mt_function mt_kinetic splindex hydrogen read_atom \
+all: test_hdf5 test_allgather mt_function splindex hydrogen read_atom \
      test_mdarray test_xc test_hloc test_mpi_grid test_mixer test_enu test_gemm
 
 %: %.cpp $(LIB_SIRIUS)

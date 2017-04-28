@@ -194,7 +194,7 @@ inline int Band::residuals(K_point* kp__,
 
     assert(N__ != 0);
 
-    auto& itso = ctx_.iterative_solver_input_section();
+    auto& itso = ctx_.iterative_solver_input();
     bool converge_by_energy = (itso.converge_by_energy_ == 1);
 
     int n{0};

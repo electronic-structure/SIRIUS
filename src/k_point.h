@@ -104,6 +104,9 @@ class K_point
         
         /// Number of G+k vectors distributed along columns of MPI grid
         int num_gkvec_col_{0};
+        
+        /// Offset of the local fraction of G+k vectors in the global index.
+        int gkvec_offset_{0};
 
         /// Basis descriptors distributed between rows of the 2D MPI grid.
         /** This is a local array. Only MPI ranks belonging to the same column have identical copies of this array. */
@@ -119,11 +122,11 @@ class K_point
         /// list of rows of the Hamiltonian and overlap matrix lo block (local index) for a given atom
         std::vector<std::vector<int>> atom_lo_rows_;
 
-        /// imaginary unit to the power of l
+        /// Imaginary unit to the power of l.
         std::vector<double_complex> zil_;
 
-        /// mapping between lm and l
-        std::vector<int> l_by_lm_;
+        /// Mapping between lm and l.
+        mdarray<int, 1> l_by_lm_;
 
         /// column rank of the processors of ScaLAPACK/ELPA diagonalization grid
         int rank_col_;
@@ -189,15 +192,43 @@ class K_point
             #endif
         }
 
-        /// Initialize the k-point related arrays and data
+        /// Find G+k vectors within the cutoff.
+        inline void generate_gkvec(double gk_cutoff__)
+        {
+            PROFILE("sirius::K_point::generate_gkvec");
+
+            if (ctx_.full_potential() && (gk_cutoff__ * unit_cell_.max_mt_radius() > ctx_.lmax_apw())) {
+                std::stringstream s;
+                s << "G+k cutoff (" << gk_cutoff__ << ") is too large for a given lmax (" 
+                  << ctx_.lmax_apw() << ") and a maximum MT radius (" << unit_cell_.max_mt_radius() << ")" << std::endl
+                  << "suggested minimum value for lmax : " << int(gk_cutoff__ * unit_cell_.max_mt_radius()) + 1;
+                WARNING(s);
+            }
+
+            if (gk_cutoff__ * 2 > ctx_.pw_cutoff()) {
+                std::stringstream s;
+                s << "G+k cutoff is too large for a given plane-wave cutoff" << std::endl
+                  << "  pw cutoff : " << ctx_.pw_cutoff() << std::endl
+                  << "  doubled G+k cutoff : " << gk_cutoff__ * 2;
+                TERMINATE(s);
+            }
+
+            /* create G+k vectors; communicator of the coarse FFT grid is used because wave-functions will be transformed 
+             * only on the coarse grid; G+k-vectors will be distributed between MPI ranks assigned to the k-point */
+            gkvec_ = Gvec(vk_, ctx_.unit_cell().reciprocal_lattice_vectors(), gk_cutoff__, comm(), ctx_.comm_fft_coarse(),
+                          ctx_.gamma_point());
+            
+            gkvec_offset_ = gkvec_.gvec_offset(comm_.rank());
+        }
+
+        /// Initialize the k-point related arrays and data.
         inline void initialize();
 
-        /// Find G+k vectors within the cutoff
-        inline void generate_gkvec(double gk_cutoff__);
-
-        /// Generate first-variational states from eigen-vectors
+        /// Generate first-variational states from eigen-vectors.
         /** First-variational states are obtained from the first-variational eigen-vectors and 
-         *  LAPW matching coefficients. \n APW part:
+         *  LAPW matching coefficients.
+         *
+         *  APW part:
          *  \f[
          *      \psi_{\xi j}^{\bf k} = \sum_{{\bf G}} Z_{{\bf G} j}^{\bf k} * A_{\xi}({\bf G+k})
          *  \f]
@@ -377,10 +408,16 @@ class K_point
             return static_cast<int>(num_gkvec() + unit_cell_.mt_lo_basis_size());
         }
 
-        /// Local number of G+k vectors in case of flat distributon.
+        /// Local number of G+k vectors in case of flat distribution.
         inline int num_gkvec_loc() const
         {
             return gkvec_.gvec_count(comm_.rank());
+        }
+
+        /// Return global index of G+k vector.
+        inline int idxgk(int igkloc__) const
+        {
+            return gkvec_offset_ + igkloc__;
         }
         
         /// Local number of G+k vectors for each MPI rank in the row of the 2D MPI grid.
@@ -580,7 +617,6 @@ class K_point
 
 #include "K_point/generate_fv_states.hpp"
 #include "K_point/generate_spinor_wave_functions.hpp"
-#include "K_point/generate_gkvec.hpp"
 #include "K_point/generate_gklo_basis.hpp"
 #include "K_point/initialize.hpp"
 #include "K_point/k_point.hpp"

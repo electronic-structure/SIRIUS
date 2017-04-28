@@ -1,9 +1,0 @@
-digraph "Band" {
-  compound=true
-  node [ fontsize="10", fontname="Helvetica"];
-  edge [ labelfontsize="10", labelfontname="Helvetica"];
-  subgraph clusterdir_68267d1309a1af8e8297ef4c3efbcdba {
-    graph [ bgcolor="#ddddee", pencolor="black", label="src" fontname="Helvetica", fontsize="10", URL="dir_68267d1309a1af8e8297ef4c3efbcdba.html"]
-  dir_db2e99b2dcb80f9bc81e53202ac97970 [shape=box, label="Band", style="filled", fillcolor="#eeeeff", pencolor="black", URL="dir_db2e99b2dcb80f9bc81e53202ac97970.html"];
-  }
-}

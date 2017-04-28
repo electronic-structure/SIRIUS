@@ -55,7 +55,7 @@ class Force
                                  K_point* kp__,
                                  dmatrix<double_complex>& dm__);
 
-        static void ibs_force(Simulation_context& ctx__,
+        static void ibs_force(Simulation_context_base& ctx__,
                               Band* band__,
                               K_point* kp__,
                               mdarray<double, 2>& ffac__,
@@ -63,7 +63,7 @@ class Force
 
     public:
 
-        static void total_force(Simulation_context& ctx__,
+        static void total_force(Simulation_context_base& ctx__,
                                 Potential* potential__,
                                 Density* density__,
                                 K_point_set* ks__,

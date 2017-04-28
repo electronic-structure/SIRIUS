@@ -46,7 +46,7 @@ class K_point_set
     
         Simulation_context& ctx_;
 
-        std::vector<K_point*> kpoints_;
+        std::vector<std::unique_ptr<K_point>> kpoints_;
 
         splindex<chunk> spl_num_kpoints_;
 
@@ -57,6 +57,8 @@ class K_point_set
         Unit_cell& unit_cell_;
 
         Communicator const& comm_k_;
+
+        K_point_set(K_point_set& src) = delete;
 
     public:
 
@@ -164,15 +166,6 @@ class K_point_set
             }
         }
 
-        ~K_point_set()
-        {
-            PROFILE("sirius::K_point_set::~K_point_set");
-            for (size_t ik = 0; ik < kpoints_.size(); ik++) {
-                delete kpoints_[ik];
-            }
-            kpoints_.clear();
-        }
-        
         /// Initialize the k-point set
         void initialize(std::vector<int> counts = std::vector<int>())
         {
@@ -197,7 +190,19 @@ class K_point_set
         void find_band_occupancies();
 
         /// Return sum of valence eigen-values
-        double valence_eval_sum();
+        double valence_eval_sum()
+        {
+            double eval_sum{0};
+
+            for (int ik = 0; ik < num_kpoints(); ik++) {
+                double wk = kpoints_[ik]->weight();
+                for (int j = 0; j < ctx_.num_bands(); j++) {
+                    eval_sum += wk * kpoints_[ik]->band_energy(j) * kpoints_[ik]->band_occupancy(j);
+                }
+            }
+
+            return eval_sum;
+        }
 
         void print_info();
 
@@ -223,7 +228,7 @@ class K_point_set
         void add_kpoint(double* vk__, double weight__)
         {
             PROFILE("sirius::K_point_set::add_kpoint");
-            kpoints_.push_back(new K_point(ctx_, vk__, weight__));
+            kpoints_.push_back(std::unique_ptr<K_point>(new K_point(ctx_, vk__, weight__)));
         }
 
         void add_kpoints(mdarray<double, 2>& kpoints__, double* weights__)
@@ -238,7 +243,7 @@ class K_point_set
         {
             assert(i >= 0 && i < (int)kpoints_.size());
             
-            return kpoints_[i];
+            return kpoints_[i].get();
         }
 
         inline int num_kpoints() const
@@ -309,7 +314,7 @@ class K_point_set
 
         inline K_point* k_point(int ik)
         {
-            return kpoints_[ik];
+            return kpoints_[ik].get();
         }
 
         inline Communicator const& comm() const
@@ -335,20 +340,6 @@ inline void K_point_set::sync_band_energies()
     for (int ik = 0; ik < num_kpoints(); ik++) {
         kpoints_[ik]->set_band_energies(&band_energies(0, ik));
     }
-}
-
-inline double K_point_set::valence_eval_sum()
-{
-    double eval_sum = 0.0;
-
-    for (int ik = 0; ik < num_kpoints(); ik++)
-    {
-        double wk = kpoints_[ik]->weight();
-        for (int j = 0; j < ctx_.num_bands(); j++)
-            eval_sum += wk * kpoints_[ik]->band_energy(j) * kpoints_[ik]->band_occupancy(j);
-    }
-
-    return eval_sum;
 }
 
 inline void K_point_set::find_band_occupancies()

@@ -85,9 +85,6 @@ struct pseudopotential_descriptor
     /// True if the pseudopotential is used for PAW.
     bool is_paw{false};
 
-    /// Radial mesh.
-    std::vector<double> r;
-
     /// Local part of potential.
     std::vector<double> vloc;
 

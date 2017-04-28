@@ -21,6 +21,10 @@ inline void Band::diag_fv_full_potential_exact(K_point* kp, Potential const& pot
     int bs = ctx_.cyclic_block_size();
     dmatrix<double_complex> h(ngklo, ngklo, ctx_.blacs_grid(), bs, bs, mem_type);
     dmatrix<double_complex> o(ngklo, ngklo, ctx_.blacs_grid(), bs, bs, mem_type);
+
+    if (ctx_.comm().rank() == 0 && ctx_.control().print_memory_usage_) {
+        MEMORY_USAGE_INFO();
+    }
     
     /* setup Hamiltonian and overlap */
     switch (ctx_.processing_unit()) {
@@ -103,7 +107,22 @@ inline void Band::diag_fv_full_potential_exact(K_point* kp, Potential const& pot
     if (ctx_.valence_relativity() == relativity_t::iora) {
         wave_functions ofv(ctx_.processing_unit(), kp->gkvec(), unit_cell_.num_atoms(),
                            [this](int ia){return unit_cell_.atom(ia).mt_lo_basis_size();}, ctx_.num_fv_states());
+        #ifdef __GPU
+        if (ctx_.processing_unit() == GPU) {
+            kp->fv_eigen_vectors_slab().allocate_on_device();
+            kp->fv_eigen_vectors_slab().copy_to_device(0, ctx_.num_fv_states());
+            ofv.allocate_on_device();
+        }
+        #endif
+
         apply_fv_o(kp, false, false, 0, ctx_.num_fv_states(), kp->fv_eigen_vectors_slab(), ofv);
+
+        #ifdef __GPU
+        if (ctx_.processing_unit() == GPU) {
+            kp->fv_eigen_vectors_slab().deallocate_on_device();
+            ofv.deallocate_on_device();
+        }
+        #endif
 
         std::vector<double> norm(ctx_.num_fv_states(), 0);
         for (int i = 0; i < ctx_.num_fv_states(); i++) {
@@ -254,7 +273,7 @@ inline void Band::get_singular_components(K_point* kp__) const
         printf("number of singular components: %i\n", ncomp);
     }
 
-    auto& itso = ctx_.iterative_solver_input_section();
+    auto& itso = ctx_.iterative_solver_input();
 
     int num_phi = itso.subspace_size_ * ncomp;
 
@@ -406,7 +425,7 @@ inline void Band::diag_fv_full_potential_davidson(K_point* kp) const
     /* short notation for number of target wave-functions */
     int num_bands = ctx_.num_fv_states();
 
-    auto& itso = ctx_.iterative_solver_input_section();
+    auto& itso = ctx_.iterative_solver_input();
 
     /* short notation for target wave-functions */
     auto& psi = kp->fv_eigen_vectors_slab();
@@ -623,7 +642,7 @@ inline void Band::diag_pseudo_potential_davidson(K_point* kp__,
     /* short notation for number of target wave-functions */
     int num_bands = ctx_.num_fv_states();
 
-    auto& itso = ctx_.iterative_solver_input_section();
+    auto& itso = ctx_.iterative_solver_input();
 
     /* short notation for target wave-functions */
     auto& psi = kp__->spinor_wave_functions(ispn__);
@@ -677,7 +696,6 @@ inline void Band::diag_pseudo_potential_davidson(K_point* kp__,
 
     #ifdef __GPU
     if (ctx_.processing_unit() == GPU) {
-        psi.pw_coeffs().allocate_on_device();
         psi.pw_coeffs().copy_to_device(0, num_bands);
 
         phi.pw_coeffs().allocate_on_device();
@@ -864,7 +882,6 @@ inline void Band::diag_pseudo_potential_davidson(K_point* kp__,
     #ifdef __GPU
     if (ctx_.processing_unit() == GPU) {
         psi.pw_coeffs().copy_to_host(0, num_bands);
-        psi.pw_coeffs().deallocate_on_device();
     }
     #endif
     kp__->comm().barrier();
@@ -1132,7 +1149,7 @@ inline void Band::diag_pseudo_potential_rmm_diis(K_point* kp__,
                                                  Q_operator<T>& q_op__) const
 
 {
-    auto& itso = ctx_.iterative_solver_input_section();
+    auto& itso = ctx_.iterative_solver_input();
     double tol = ctx_.iterative_solver_tolerance();
 
     if (tol > 1e-4) {

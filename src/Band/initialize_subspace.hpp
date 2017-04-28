@@ -9,10 +9,10 @@ inline void Band::initialize_subspace(K_point_set& kset__,
 
     int nq = static_cast<int>(ctx_.gk_cutoff() * 10);
     /* this is the regular grid in reciprocal space in the range [0, |G+k|_max ] */
-    Radial_grid qgrid(linear_grid, nq, 0, ctx_.gk_cutoff());
+    Radial_grid_lin<double> qgrid(nq, 0, ctx_.gk_cutoff());
 
     std::vector<int> pref = {1, 2, 6, 24, 120};
-    if (ctx_.iterative_solver_input_section().init_subspace_ == "lcao") {
+    if (ctx_.iterative_solver_input().init_subspace_ == "lcao") {
         /* spherical Bessel functions jl(qx) for atom types */
         mdarray<Spherical_Bessel_functions, 2> jl(nq, unit_cell_.num_atom_types());
 
@@ -285,12 +285,6 @@ inline void Band::initialize_subspace(K_point* kp__,
         
         /* compute wave-functions */
         /* \Psi_{i} = \sum_{mu} \phi_{mu} * Z_{mu, i} */
-        #ifdef __GPU
-        if (ctx_.processing_unit() == GPU) {
-            kp__->spinor_wave_functions(ispn).pw_coeffs().allocate_on_device();
-        }
-        #endif
-
         transform<T>(phi, 0, num_phi, evec, 0, 0, kp__->spinor_wave_functions(ispn), 0, num_bands);
 
         if (ctx_.control().print_checksum_) {
@@ -301,7 +295,6 @@ inline void Band::initialize_subspace(K_point* kp__,
         #ifdef __GPU
         if (ctx_.processing_unit() == GPU) {
             kp__->spinor_wave_functions(ispn).pw_coeffs().copy_to_host(0, num_bands);
-            kp__->spinor_wave_functions(ispn).pw_coeffs().deallocate_on_device();
         }
         #endif
 

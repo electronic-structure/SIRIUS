@@ -6,142 +6,10 @@ using json = nlohmann::json;
 
 const std::string aiida_output_file = "output_aiida.json";
 
-class lattice3d
-{
-    private:
-
-        /// Bravais lattice vectors in column order.
-        /** The following convention is used to transform fractional coordinates to Cartesian:  
-         *  \f[
-         *    \vec v_{C} = {\bf L} \vec v_{f}
-         *  \f]
-         */
-        matrix3d<double> lattice_vectors_;
-
-    public:
-        
-        lattice3d(vector3d<double> a0__,
-                  vector3d<double> a1__,
-                  vector3d<double> a2__)
-        {
-            for (int x: {0, 1, 2}) {
-                lattice_vectors_(x, 0) = a0__[x];
-                lattice_vectors_(x, 1) = a1__[x];
-                lattice_vectors_(x, 2) = a2__[x];
-            }
-        }
-
-        lattice3d(double a__,
-                  double b__,
-                  double c__,
-                  double alpha__,
-                  double beta__,
-                  double gamma__)
-        {
-            lattice_vectors_(0, 0) = a__;
-            lattice_vectors_(1, 0) = 0.0;
-            lattice_vectors_(2, 0) = 0.0;
-
-            lattice_vectors_(0, 1) = b__ * std::cos(gamma__);
-            lattice_vectors_(1, 1) = b__ * std::sin(gamma__);
-            lattice_vectors_(2, 1) = 0.0;
-
-            lattice_vectors_(0, 2) = c__ * std::cos(beta__);
-            lattice_vectors_(1, 2) = c__ * (std::cos(alpha__) - std::cos(gamma__) * std::cos(beta__)) / std::sin(gamma__);
-            lattice_vectors_(2, 2) = std::sqrt(c__ * c__ - std::pow(lattice_vectors_(0, 2), 2) - std::pow(lattice_vectors_(1, 2), 2));
-        }
-
-        unit_cell_parameters_descriptor parameters()
-        {
-            unit_cell_parameters_descriptor d;
-        
-            vector3d<double> v0(lattice_vectors_(0, 0), lattice_vectors_(1, 0), lattice_vectors_(2, 0));
-            vector3d<double> v1(lattice_vectors_(0, 1), lattice_vectors_(1, 1), lattice_vectors_(2, 1));
-            vector3d<double> v2(lattice_vectors_(0, 2), lattice_vectors_(1, 2), lattice_vectors_(2, 2));
-        
-            d.a = v0.length();
-            d.b = v1.length();
-            d.c = v2.length();
-        
-            d.alpha = std::acos((v1 * v2) / d.b / d.c);
-            d.beta  = std::acos((v0 * v2) / d.a / d.c);
-            d.gamma = std::acos((v0 * v1) / d.a / d.b);
-        
-            return d;
-        }
-};
-
-class Parameter_optimization
-{
-    private:
-
-        double step_;
-
-        bool can_increase_step_{true};
-
-        std::vector<double> x_;
-
-        std::vector<double> f_;
-
-        std::vector<double> df_;
-
-        std::vector<int> df_sign_change_;
-
-    public:
-
-        Parameter_optimization(double step__)
-            : step_(step__)
-        {
-        }
-        
-        void add_point(double x__, double f__, double df__)
-        {
-            if (df_.size() > 0) {
-                if (df_.back() * df__ > 0) {
-                    if (can_increase_step_) {
-                        step_ *= 1.5;
-                    }
-                } else {
-                    step_ *= 0.25;
-                    can_increase_step_ = false;
-                    df_sign_change_.push_back(static_cast<int>(df_.size()));
-                }
-            }
-            
-            x_.push_back(x__);
-            f_.push_back(f__);
-            df_.push_back(df__);
-        }
-
-        double next_x()
-        {
-            return x_.back() - Utils::sign(df_.back()) * step_;
-        }
-
-        void estimate_x0()
-        {
-            //for (int i = *(df_sign_change_.end() - 4); i < df_.size(); i++) {
-            for (int i = df_sign_change_[0]; i < (int)df_.size(); i++) {
-                printf("%18.10f %18.10f\n", x_[i], df_[i]);
-            }
-        }
-
-        double step() const
-        {
-            return step_;
-        }
-
-};
-
 enum class task_t
 {
     ground_state_new = 0,
     ground_state_restart = 1,
-    relaxation_new = 2,
-    relaxation_restart = 3,
-    lattice_relaxation_new = 4,
-    volume_relaxation_new = 5,
-    volume_relaxation_descent = 6
 };
 
 const double au2angs = 0.5291772108;
@@ -154,46 +22,36 @@ void json_output_common(json& dict__)
     dict__["threads_per_rank"] = omp_get_max_threads();
 }
 
-std::unique_ptr<Simulation_context> create_sim_ctx(std::string                     fname__,
-                                                   cmd_args const&                 args__,
-                                                   Parameters_input_section const& inp__)
+std::unique_ptr<Simulation_context> create_sim_ctx(std::string     fname__,
+                                                   cmd_args const& args__)
 {
-    Simulation_context* ctx_ptr = new Simulation_context(fname__, mpi_comm_world());
+    auto ctx_ptr = std::unique_ptr<Simulation_context>(new Simulation_context(fname__, mpi_comm_world()));
     Simulation_context& ctx = *ctx_ptr;
+    
+    auto& inp = ctx.parameters_input();
+    if (inp.gamma_point_ && !(inp.ngridk_[0] * inp.ngridk_[1] * inp.ngridk_[2] == 1)) {
+        TERMINATE("this is not a Gamma-point calculation")
+    }
 
-    std::vector<int> mpi_grid_dims = ctx.mpi_grid_dims();
-    mpi_grid_dims = args__.value<std::vector<int>>("mpi_grid", mpi_grid_dims);
+    auto mpi_grid_dims = args__.value<std::vector<int>>("mpi_grid", ctx.mpi_grid_dims());
     ctx.set_mpi_grid_dims(mpi_grid_dims);
 
-    ctx.set_esm_type(inp__.esm_);
-    ctx.set_num_fv_states(inp__.num_fv_states_);
-    ctx.set_smearing_width(inp__.smearing_width_);
-    for (auto& s: inp__.xc_functionals_) {
-        ctx.add_xc_functional(s);
-    }
-    ctx.set_pw_cutoff(inp__.pw_cutoff_);
-    ctx.set_aw_cutoff(inp__.aw_cutoff_);
-    ctx.set_gk_cutoff(inp__.gk_cutoff_);
-    if (ctx.esm_type() == electronic_structure_method_t::full_potential_lapwlo) {
-        ctx.set_lmax_apw(inp__.lmax_apw_);
-        ctx.set_lmax_pot(inp__.lmax_pot_);
-        ctx.set_lmax_rho(inp__.lmax_rho_);
-    }
-    ctx.set_num_mag_dims(inp__.num_mag_dims_);
-    ctx.set_auto_rmt(inp__.auto_rmt_);
-    ctx.set_core_relativity(inp__.core_relativity_);
-    ctx.set_valence_relativity(inp__.valence_relativity_);
-    ctx.set_gamma_point(inp__.gamma_point_);
-    ctx.set_molecule(inp__.molecule_);
+    auto std_evp_solver_name = args__.value<std::string>("std_evp_solver_name", ctx.control().std_evp_solver_name_);
+    ctx.set_std_evp_solver_name(std_evp_solver_name);
 
-    return std::move(std::unique_ptr<Simulation_context>(ctx_ptr));
+    auto gen_evp_solver_name = args__.value<std::string>("gen_evp_solver_name", ctx.control().gen_evp_solver_name_);
+    ctx.set_gen_evp_solver_name(gen_evp_solver_name);
+
+    auto pu = args__.value<std::string>("processing_unit", ctx.control().processing_unit_);
+    ctx.set_processing_unit(pu);
+
+    return std::move(ctx_ptr);
 }
 
-double ground_state(Simulation_context&       ctx,
-                    task_t                    task,
-                    cmd_args const&           args,
-                    Parameters_input_section& inp,
-                    int                       write_output)
+double ground_state(Simulation_context& ctx,
+                    task_t              task,
+                    cmd_args const&     args,
+                    int                 write_output)
 {
     if (ctx.comm().rank() == 0 && ctx.control().print_memory_usage_) {
         MEMORY_USAGE_INFO();
@@ -209,7 +67,9 @@ double ground_state(Simulation_context&       ctx,
         MEMORY_USAGE_INFO();
     }
 
-    K_point_set ks(ctx, inp.ngridk_, inp.shiftk_, inp.use_symmetry_);
+    auto& inp = ctx.parameters_input();
+
+    K_point_set ks(ctx, inp.ngridk_, inp.shiftk_, ctx.use_symmetry());
     ks.initialize();
 
     if (ctx.comm().rank() == 0 && ctx.control().print_memory_usage_) {
@@ -219,7 +79,7 @@ double ground_state(Simulation_context&       ctx,
     std::string ref_file = args.value<std::string>("test_against", "");
     bool write_state = (ref_file.size() == 0);
     
-    DFT_ground_state dft(ctx, potential, density, ks, inp.use_symmetry_);
+    DFT_ground_state dft(ctx, potential, density, ks, ctx.use_symmetry());
 
     if (task == task_t::ground_state_restart) {
         if (!Utils::file_exists(storage_file_name)) {
@@ -235,6 +95,7 @@ double ground_state(Simulation_context&       ctx,
         }
     }
     
+    /* launch the calculation */
     int result = dft.find(inp.potential_tol_, inp.energy_tol_, inp.num_dft_iter_, write_state);
 
     if (ref_file.size() != 0) {
@@ -255,7 +116,11 @@ double ground_state(Simulation_context&       ctx,
     }
     
     if (!ctx.full_potential()) {
-        dft.forces();
+        //dft.forces();
+        if (ctx.control().print_stress_) {
+            Stress s(ctx, ks, density, potential);
+            s.print_info();
+        }
     }
 
     if (write_output) {
@@ -301,194 +166,6 @@ double ground_state(Simulation_context&       ctx,
     return dft.total_energy();
 }
 
-double Etot_fake(vector3d<double> a0__, vector3d<double> a1__, vector3d<double> a2__)
-{
-    vector3d<double> a0{0, 5, 5};
-    vector3d<double> a1{5, 0, 5};
-    vector3d<double> a2{5, 5, 0};
-
-    return std::pow((a0 - a0__).length(), 2) + std::pow((a1 - a1__).length(), 2) + std::pow((a2 - a2__).length(), 2);
-}
-
-double Etot_fake(double a__, double b__, double c__, double alpha__, double beta__, double gamma__)
-{
-    vector3d<double> a0{0, 5, 5};
-    vector3d<double> a1{5, 0, 5};
-    vector3d<double> a2{5, 5, 0};
-
-    lattice3d ref_lat(a0, a1, a2);
-
-    auto ref_lat_param = ref_lat.parameters();
-
-    return std::pow(a__ - ref_lat_param.a, 2) +
-           std::pow(b__ - ref_lat_param.b, 2) +
-           std::pow(c__ - ref_lat_param.c, 2) + 
-           std::pow(std::abs(alpha__ - ref_lat_param.alpha), 2) +
-           std::pow(std::abs(beta__ - ref_lat_param.beta), 2) +
-           std::pow(std::abs(gamma__ - ref_lat_param.gamma), 2);
-}
-
-void lattice_relaxation(task_t task, cmd_args args, Parameters_input_section& inp)
-{
-    /* get the input file name */
-    std::string fname = args.value<std::string>("input", "sirius.json");
-
-    std::unique_ptr<Simulation_context> ctx0(create_sim_ctx(fname, args, inp));
-
-    auto a0 = ctx0->unit_cell().lattice_vector(0);
-    auto a1 = ctx0->unit_cell().lattice_vector(1);
-    auto a2 = ctx0->unit_cell().lattice_vector(2);
-
-    auto lat_param = lattice3d(a0, a1, a2).parameters();
-
-    std::vector<double> params({lat_param.a,
-                                lat_param.b,
-                                lat_param.c,
-                                lat_param.alpha,
-                                lat_param.beta,
-                                lat_param.gamma});
-
-    std::vector<Parameter_optimization> param_opt({Parameter_optimization(0.25),
-                                                   Parameter_optimization(0.25),
-                                                   Parameter_optimization(0.25),
-                                                   Parameter_optimization(0.1),
-                                                   Parameter_optimization(0.1),
-                                                   Parameter_optimization(0.1)});
-
-
-    for (int iter = 0; iter < 100; iter++) {
-        std::vector<double> p0 = params;
-        double e0 = Etot_fake(p0[0], p0[1], p0[2], p0[3], p0[4], p0[5]);
-
-        for (int i = 0; i < 6; i++) {
-            double step = 1e-5;
-            std::vector<double> p1 = params;
-            p1[i] += step;
-            double e1 = Etot_fake(p1[0], p1[1], p1[2], p1[3], p1[4], p1[5]);
-            param_opt[i].add_point(p0[i], e0, (e1 - e0) / step);
-        }
-        for (int i = 0; i < 6; i++) {
-            params[i] = param_opt[i].next_x();
-        }
-
-        double d{0};
-        for (int i = 0; i < 6; i++) {
-            d += std::abs(param_opt[i].step());
-        }
-        std::cout << "diff in step=" << d << std::endl;
-        if (d < 1e-5) {
-            printf("Done in %i iterations!\n", iter);
-            break;
-        }
-    }
-    param_opt[0].estimate_x0();
-    param_opt[3].estimate_x0();
-}
-
-void volume_relaxation(task_t task, cmd_args args, Parameters_input_section& inp)
-{
-    /* get the input file name */
-    std::string fname = args.value<std::string>("input", "sirius.json");
-
-    std::map<double, double> etot;
-
-    auto run_gs = [&etot, &fname, &args, &inp](double s) {
-        auto ctx0 = create_sim_ctx(fname, args, inp);
-        auto lv = ctx0->unit_cell().lattice_vectors();
-        ctx0->unit_cell().set_lattice_vectors(lv * s);
-        ctx0->initialize();
-
-        double e = ground_state(*ctx0, task_t::ground_state_new, args, inp, 0);
-        
-        //double e = Etot_fake(ctx0->unit_cell().lattice_vector(0),
-        //                     ctx0->unit_cell().lattice_vector(1),
-        //                     ctx0->unit_cell().lattice_vector(2));
-        etot[s] = e;
-
-        return e;
-    };
-
-    json dict;
-    json_output_common(dict);
-    dict["task"] = static_cast<int>(task);
-
-    double scale{1};
-    double step{0.05};
-    double e1 = run_gs(scale);
-    double de{0}, de_prev;
-    int sgn{1};
-    int num_sign_changes{0};
-    
-    for (int iter = 0; iter < 100; iter++) {
-        double e0 = e1;
-        e1 = run_gs(scale + sgn * step);
-        de_prev = de;
-        de = sgn * (e1 - e0) / step;
-        
-        scale = scale + sgn * step;
-
-        if (iter > 0) {
-            if (de_prev * de < 0) {
-                step *= 0.55;
-                num_sign_changes++;
-            } else {
-                step *= 1.25;
-            }
-        }
-        sgn = -Utils::sign(de);
-
-        if (etot.size() > 4 && num_sign_changes > 0) {
-            printf("converged in %i iterations\n", iter);
-            break;
-        }
-    }
-    std::vector<double> x, y;
-
-    for (auto it: etot) {
-        x.push_back(it.first);
-        y.push_back(it.second);
-    }
-    Radial_grid scale_steps(x);
-    Spline<double> e(scale_steps, y);
-    
-    double e0{1e100};
-    double scale0{0};
-    for (int i = 0; i < scale_steps.num_points() - 1; i++) {
-        double dx = scale_steps.dx(i) / 1000.0;
-        for (int j = 0; j < 1000; j++) {
-            if (e(i, dx * j) < e0) {
-                e0 = e(i, dx * j);
-                scale0 = scale_steps[i] + dx * j;
-            }
-        }
-    }
-
-    dict["etot"] = json::object();
-    dict["etot"]["x"] = x;
-    dict["etot"]["y"] = y;
-    dict["etot"]["scale0"] = scale0;
-
-    if (true) {
-        auto ctx0 = create_sim_ctx(fname, args, inp);
-        auto lv = ctx0->unit_cell().lattice_vectors();
-        ctx0->unit_cell().set_lattice_vectors(lv * scale0);
-        dict["unit_cell"] = ctx0->unit_cell().serialize();
-        dict["task_status"] = "success";
-    } else {
-        dict["task_status"] = "failure";
-    }
-
-    if (mpi_comm_world().rank() == 0) {
-        std::ofstream ofs("relaxed_unit_cell.json", std::ofstream::out | std::ofstream::trunc);
-        ofs << dict.dump(4);
-
-        if (args.exist("aiida_output")) {
-            std::ofstream ofs(aiida_output_file, std::ofstream::out | std::ofstream::trunc);
-            ofs << dict.dump(4);
-        }
-    }
-}
-
 void run_tasks(cmd_args const& args)
 {
     /* get the task id */
@@ -498,31 +175,12 @@ void run_tasks(cmd_args const& args)
     if (!Utils::file_exists(fname)) {
         TERMINATE("input file does not exist");
     }
-    /* read json file */
-    json dict;
-    std::ifstream(fname) >> dict;
-    /* read input section */
-    Parameters_input_section inp;
-    inp.read(dict);
-
-    if (inp.gamma_point_ && !(inp.ngridk_[0] * inp.ngridk_[1] * inp.ngridk_[2] == 1)) {
-        TERMINATE("this is not a Gamma-point calculation")
-    }
 
     if (task == task_t::ground_state_new || task == task_t::ground_state_restart) {
-        auto ctx = create_sim_ctx(fname, args, inp);
+        auto ctx = create_sim_ctx(fname, args);
         ctx->initialize();
-        ground_state(*ctx, task, args, inp, 1);
+        ground_state(*ctx, task, args, 1);
     }
-
-    if (task == task_t::lattice_relaxation_new) {
-        lattice_relaxation(task, args, inp);
-    }
-
-    if (task == task_t::volume_relaxation_new || task == task_t::volume_relaxation_descent) {
-        volume_relaxation(task, args, inp);
-    }
-
 }
 
 int main(int argn, char** argv)
@@ -533,6 +191,9 @@ int main(int argn, char** argv)
     args.register_key("--mpi_grid=", "{vector int} MPI grid dimensions");
     args.register_key("--aiida_output", "write output for AiiDA");
     args.register_key("--test_against=", "{string} json file with reference values");
+    args.register_key("--std_evp_solver_name=", "{string} standard eigen-value solver");
+    args.register_key("--gen_evp_solver_name=", "{string} generalized eigen-value solver");
+    args.register_key("--processing_unit=", "{string} type of the processing unit");
 
     args.parse_args(argn, argv);
 

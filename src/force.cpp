@@ -84,7 +84,7 @@ void Force::compute_dmat(Simulation_parameters const& parameters__,
     //}
 }
 
-void Force::ibs_force(Simulation_context& ctx__,
+void Force::ibs_force(Simulation_context_base& ctx__,
                       Band* band__,
                       K_point* kp__,
                       mdarray<double, 2>& ffac__,
@@ -239,7 +239,7 @@ void Force::ibs_force(Simulation_context& ctx__,
     } //ia
 }
 
-void Force::total_force(Simulation_context& ctx__,
+void Force::total_force(Simulation_context_base& ctx__,
                         Potential* potential__,
                         Density* density__,
                         K_point_set* ks__,
@@ -249,7 +249,8 @@ void Force::total_force(Simulation_context& ctx__,
 
     auto& uc = ctx__.unit_cell();
 
-    auto ffac = ctx__.step_function().get_step_function_form_factors(ctx__.gvec().num_shells(), ctx__.unit_cell(), ctx__.gvec(), ctx__.comm());
+    //auto ffac = ctx__.step_function().get_step_function_form_factors(ctx__.gvec().num_shells(), ctx__.unit_cell(), ctx__.gvec(), ctx__.comm());
+    STOP();
 
     force__.zero();
 

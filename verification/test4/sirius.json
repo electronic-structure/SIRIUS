@@ -1,6 +1,6 @@
 {
   "control" : {
-      "cyclic_block_size" : 16,
+      "cyclic_block_size" : 2,
       "processing_unit" : "cpu",
       "std_evp_solver_type" : "lapack",
       "gen_evp_solver_type" : "lapack"
@@ -15,9 +15,9 @@
 
       "smearing_width" : 0.025,
 
-      "use_symmetry" : 1,
+      "use_symmetry" : true,
       
-      "gamma_point" : 1,
+      "gamma_point" : true,
 
       "num_mag_dims" : 0,
 
@@ -34,7 +34,7 @@
 
     "iterative_solver" : {
         "energy_tolerance" : 1e-2,
-        "residual_tolerance" : 1e-6,
+        "residual_tolerance" : 1e-4,
         "num_steps" : 20,
         "subspace_size" : 4,
         "type" : "davidson",

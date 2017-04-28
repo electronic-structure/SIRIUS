@@ -31,11 +31,11 @@
 #include "force.h"
 #include "json.hpp"
 #include "Geometry/Forces_PS.h"
+#include "Geometry/stress.h"
 
 using json = nlohmann::json;
 
-namespace sirius
-{
+namespace sirius {
 
 class DFT_ground_state
 {
@@ -58,7 +58,75 @@ class DFT_ground_state
         int use_symmetry_;
 
         double ewald_energy_{0};
-
+        
+        /// Compute the ion-ion electrostatic energy using Ewald method.
+        /** The following contribution (per unit cell) to the total energy has to be computed:
+         *  \f[
+         *    E^{ion-ion} = \frac{1}{N} \frac{1}{2} \sum_{i \neq j} \frac{Z_i Z_j}{|{\bf r}_i - {\bf r}_j|} = 
+         *      \frac{1}{2} \sideset{}{'} \sum_{\alpha \beta {\bf T}} \frac{Z_{\alpha} Z_{\beta}}{|{\bf r}_{\alpha} - {\bf r}_{\beta} + {\bf T}|}
+         *  \f]
+         *  where \f$ N \f$ is the number of unit cells in the crystal.
+         *  Following the idea of Ewald the Coulomb interaction is split into two terms:
+         *  \f[
+         *     \frac{1}{|{\bf r}_{\alpha} - {\bf r}_{\beta} + {\bf T}|} = 
+         *       \frac{{\rm erf}(\sqrt{\lambda} |{\bf r}_{\alpha} - {\bf r}_{\beta} + {\bf T}|)}{|{\bf r}_{\alpha} - {\bf r}_{\beta} + {\bf T}|} + 
+         *       \frac{{\rm erfc}(\sqrt{\lambda} |{\bf r}_{\alpha} - {\bf r}_{\beta} + {\bf T}|)}{|{\bf r}_{\alpha} - {\bf r}_{\beta} + {\bf T}|}
+         *  \f]
+         *  Second term is computed directly. First term is computed in the reciprocal space. Remembering that
+         *  \f[
+         *    \frac{1}{\Omega} \sum_{\bf G} e^{i{\bf Gr}} = \sum_{\bf T} \delta({\bf r - T})
+         *  \f]
+         *  we rewrite the first term as
+         *  \f[
+         *    \frac{1}{2} \sideset{}{'} \sum_{\alpha \beta {\bf T}} Z_{\alpha} Z_{\beta} 
+         *      \frac{{\rm erf}(\sqrt{\lambda} |{\bf r}_{\alpha} - {\bf r}_{\beta} + {\bf T}|)}{|{\bf r}_{\alpha} - {\bf r}_{\beta} + {\bf T}|} = 
+         *    \frac{1}{2} \sum_{\alpha \beta {\bf T}} Z_{\alpha} Z_{\beta}  \frac{{\rm erf}(\sqrt{\lambda} |{\bf r}_{\alpha} - {\bf r}_{\beta} + {\bf T}|)}{|{\bf r}_{\alpha} - {\bf r}_{\beta} + {\bf T}|} -
+         *      \frac{1}{2} \sum_{\alpha} Z_{\alpha}^2 2 \sqrt{\frac{\lambda}{\pi}} = \\
+         *    \frac{1}{2} \sum_{\alpha \beta} Z_{\alpha} Z_{\beta} \frac{1}{\Omega} \sum_{\bf G} \int e^{i{\bf Gr}} \frac{{\rm erf}(\sqrt{\lambda} |{\bf r}_{\alpha\beta} + {\bf r}|)}{|{\bf r}_{\alpha\beta} + {\bf r}|} d{\bf r}  -
+         *      \sum_{\alpha} Z_{\alpha}^2  \sqrt{\frac{\lambda}{\pi}}
+         *  \f]
+         *  The integral is computed using the \f$ \ell=0 \f$ term of the spherical expansion of the plane-wave:
+         *  \f[
+         *    \int e^{i{\bf Gr}} \frac{{\rm erf}(\sqrt{\lambda} |{\bf r}_{\alpha\beta} + {\bf r}|)}{|{\bf r}_{\alpha\beta} + {\bf r}|} d{\bf r} = 
+         *      \int e^{-i{\bf r}_{\alpha \beta}{\bf G}} e^{i{\bf Gr}} \frac{{\rm erf}(\sqrt{\lambda} |{\bf r}|)}{|{\bf r}|} d{\bf r} = 
+         *    e^{-i{\bf r}_{\alpha \beta}{\bf G}} 4 \pi \int_0^{\infty} \frac{\sin({G r})}{G} {\rm erf}(\sqrt{\lambda} r ) dr 
+         *  \f]
+         *  We will split integral in two parts:
+         *  \f[
+         *    \int_0^{\infty} \sin({G r}) {\rm erf}(\sqrt{\lambda} r ) dr = \int_0^{b} \sin({G r}) {\rm erf}(\sqrt{\lambda} r ) dr + 
+         *      \int_b^{\infty} \sin({G r}) dr = \frac{1}{G} e^{-\frac{G^2}{4 \lambda}}
+         *  \f]
+         *  where \f$ b \f$ is sufficiently large. To reproduce in Mathrmatica:
+            \verbatim
+            Limit[Limit[
+              Integrate[Sin[g*x]*Erf[Sqrt[nu] * x], {x, 0, b},
+                  Assumptions -> {nu > 0, g >= 0, b > 0}] +
+                     Integrate[Sin[g*(x + I*a)], {x, b, \[Infinity]},
+                         Assumptions -> {a > 0, nu > 0, g >= 0, b > 0}], a -> 0],
+                          b -> \[Infinity], Assumptions -> {nu > 0, g >= 0}]
+            \endverbatim
+         *  The first term of the Ewald sum thus becomes:
+         *  \f[
+         *    \frac{2 \pi}{\Omega} \sum_{{\bf G}} \frac{e^{-\frac{G^2}{4 \lambda}}}{G^2} \Big| \sum_{\alpha} Z_{\alpha} e^{-i{\bf r}_{\alpha}{\bf G}} \Big|^2 -
+         *       \sum_{\alpha} Z_{\alpha}^2 \sqrt{\frac{\lambda}{\pi}}
+         *  \f]
+         *  For \f$ G=0 \f$ the following is done:
+         *  \f[
+         *    \frac{e^{-\frac{G^2}{4 \lambda}}}{G^2} \approx \frac{1}{G^2}-\frac{1}{4 \lambda }
+         *  \f]
+         *  The term \f$ \frac{1}{G^2} \f$ is compensated together with the corresponding Hartree terms in electron-electron and
+         *  electron-ion interactions (cell should be neutral) and we are left with the following conribution:
+         *  \f[
+         *    -\frac{2\pi}{\Omega}\frac{N_{el}^2}{4 \lambda}
+         *  \f]
+         *  Final expression for the Ewald energy:
+         *  \f[
+         *    E^{ion-ion} = \frac{1}{2} \sideset{}{'} \sum_{\alpha \beta {\bf T}} Z_{\alpha} Z_{\beta} 
+         *      \frac{{\rm erfc}(\sqrt{\lambda} |{\bf r}_{\alpha} - {\bf r}_{\beta} + {\bf T}|)}{|{\bf r}_{\alpha} - {\bf r}_{\beta} + {\bf T}|} +
+         *      \frac{2 \pi}{\Omega} \sum_{{\bf G}\neq 0} \frac{e^{-\frac{G^2}{4 \lambda}}}{G^2} \Big| \sum_{\alpha} Z_{\alpha} e^{-i{\bf r}_{\alpha}{\bf G}} \Big|^2 -
+         *      \sum_{\alpha} Z_{\alpha}^2 \sqrt{\frac{\lambda}{\pi}} - \frac{2\pi}{\Omega}\frac{N_{el}^2}{4 \lambda}
+         *  \f]
+         */
         double ewald_energy();
 
     public:
@@ -101,8 +169,7 @@ class DFT_ground_state
                 for (int ialoc = 0; ialoc < unit_cell_.spl_num_atoms().local_size(); ialoc++) {
                     int ia = unit_cell_.spl_num_atoms(ialoc);
                     int zn = unit_cell_.atom(ia).zn();
-                    enuc -= 0.5 * zn * potential_.vh_el(ia) * y00;
-                    printf("madelung from SRIUS %16.8f \n", potential_.vh_el(ia) * y00);
+                    enuc -= 0.5 * zn * potential_.vh_el(ia); // * y00;
                 }
                 ctx_.comm().allreduce(&enuc, 1);
             }
@@ -150,7 +217,6 @@ class DFT_ground_state
 
         double energy_veff()
         {
-            //return energy_vha() + energy_vxc();
             return density_.rho()->inner(potential_.effective_potential());
         }
 
@@ -180,7 +246,6 @@ class DFT_ground_state
 
         /// Total energy of the electronic subsystem.
         /** From the definition of the density functional we have:
-         *  
          *  \f[
          *      E[\rho] = T[\rho] + E^{H}[\rho] + E^{XC}[\rho] + E^{ext}[\rho]
          *  \f]
@@ -201,20 +266,62 @@ class DFT_ground_state
          *      \frac{1}{2} \int \int \frac{\rho({\bf r})\rho^{nuc}({\bf r'}) d{\bf r} d{\bf r'}}{|{\bf r} - {\bf r'}|} = 
          *      \frac{1}{2} \int V^{H,el}({\bf r}) \rho^{nuc}({\bf r}) d{\bf r}
          *  \f]
+         *
+         *  Total energy in PW-PP method has the following expression:
+         *  \f[
+         *    E_{tot} = \sum_{i} f_i \langle \psi_i | \Big( \hat T + \sum_{\xi \xi'} |\beta_{\xi} \rangle D_{\xi \xi'}^{ion} \langle \beta_{\xi'} |\Big) | \psi_i \rangle +
+         *     \int V^{ion}({\bf r})\rho({\bf r})d{\bf r} + \frac{1}{2} \int V^{H}({\bf r})\rho({\bf r})d{\bf r} + E^{XC}[\rho + \rho_{core}]
+         *  \f]
+         *  The following rearrangement is performed:
+         *  \f[
+         *     \int V^{ion}({\bf r})\rho({\bf r})d{\bf r} + \frac{1}{2} \int V^{H}({\bf r})\rho({\bf r})d{\bf r} = \\
+         *     \int V^{ion}({\bf r})\rho({\bf r})d{\bf r} + \int V^{H}({\bf r})\rho({\bf r})d{\bf r} + \int V^{XC}({\bf r})\rho({\bf r})d{\bf r} - 
+         *     \frac{1}{2} \int V^{H}({\bf r})\rho({\bf r})d{\bf r} - \int V^{XC}({\bf r})\rho({\bf r})d{\bf r}  = \\
+         *      \int V^{eff}({\bf r})\rho({\bf r})d{\bf r} - \frac{1}{2} \int V^{H}({\bf r})\rho({\bf r})d{\bf r} - \int V^{XC}({\bf r})\rho({\bf r})d{\bf r} = \\
+         *      \int V^{eff}({\bf r})\rho^{ps}({\bf r})d{\bf r} + \int V^{eff}({\bf r})\rho^{aug}({\bf r})d{\bf r} - \frac{1}{2} \int V^{H}({\bf r})\rho({\bf r})d{\bf r} - \int V^{XC}({\bf r})\rho({\bf r})d{\bf r}
+         *  \f]
+         *  Where
+         *  \f[
+         *    V^{eff}({\bf r}) = V^{H}({\bf r}) + V^{XC}({\bf r}) + V^{ion}({\bf r})
+         *  \f]
+         *  Next, we use the definition of \f$ \rho^{aug} \f$:
+         *  \f[
+         *    \int V^{eff}({\bf r})\rho^{aug}({\bf r})d{\bf r} = \int V^{eff}({\bf r}) \sum_{i}\sum_{\xi \xi'} f_i \langle \psi_i | \beta_{\xi} \rangle Q_{\xi \xi'}({\bf r}) \langle \beta_{\xi'} | \psi_i \rangle d{\bf r} = 
+         *     \sum_{i}\sum_{\xi \xi'} f_i \langle \psi_i | \beta_{\xi} \rangle D_{\xi \xi'}^{aug} \langle \beta_{\xi'} | \psi_i \rangle
+         *  \f]
+         *  Now we can rewrite the total energy expression:
+         *  \f[
+         *    E_{tot} = \sum_{i} f_i \langle \psi_i | \Big( \hat T + \sum_{\xi \xi'} |\beta_{\xi} \rangle D_{\xi \xi'}^{ion} + D_{\xi \xi'}^{aug} \langle \beta_{\xi'} |\Big) | \psi_i \rangle +
+         *      \int V^{eff}({\bf r})\rho^{ps}({\bf r})d{\bf r} - \frac{1}{2} \int V^{H}({\bf r})\rho({\bf r})d{\bf r} - \int V^{XC}({\bf r})\rho({\bf r}) d{\bf r} + E^{XC}[\rho + \rho_{core}]
+         *  \f]
+         *  From the Kohn-Sham equations
+         *  \f[
+         *    \Big( \hat T + \sum_{\xi \xi'} |\beta_{\xi} \rangle D_{\xi \xi'}^{ion} + D_{\xi \xi'}^{aug} \langle \beta_{\xi'}| + \hat V^{eff} \Big) | \psi_i \rangle = \varepsilon_i \Big( 1+\hat S \Big) |\psi_i \rangle 
+         *  \f]
+         *  we can extract the sum
+         *  \f[
+         *    \sum_{i} f_i \langle \psi_i | \Big( \hat T + \sum_{\xi \xi'} |\beta_{\xi} \rangle D_{\xi \xi'}^{ion} + D_{\xi \xi'}^{aug} \langle \beta_{\xi'} |\Big) | \psi_i \rangle  = 
+         *     \sum_{i} f_i \varepsilon_i - \int V^{eff}({\bf r}) \rho^{ps}({\bf r}) d{\bf r}
+         *  \f]
+         *  Combining all together we obtain the following expression for total energy:
+         *  \f[
+         *    E_{tot} = \sum_{i} f_i \varepsilon_i - \frac{1}{2} \int V^{H}({\bf r})\rho({\bf r})d{\bf r} - \int V^{XC}({\bf r})\rho({\bf r}) d{\bf r} + E^{XC}[\rho + \rho_{core}]
+         *  \f]
          */
         double total_energy()
         {
             double tot_en{0};
 
             switch (ctx_.esm_type()) {
-                case electronic_structure_method_t::full_potential_lapwlo:
-                case electronic_structure_method_t::full_potential_pwlo: {
+                case electronic_structure_method_t::full_potential_lapwlo: {
                     tot_en = (energy_kin() + energy_exc() + 0.5 * energy_vha() + energy_enuc());
                     break;
                 }
 
                 case electronic_structure_method_t::pseudopotential: {
-                    tot_en = (kset_.valence_eval_sum() - energy_veff() + energy_vloc() - potential_.PAW_one_elec_energy()) +
+                    //tot_en = (kset_.valence_eval_sum() - energy_veff() + energy_vloc() - potential_.PAW_one_elec_energy()) +
+                    //         0.5 * energy_vha() + energy_exc() + potential_.PAW_total_energy() + ewald_energy_;
+                    tot_en = (kset_.valence_eval_sum() - energy_vxc() - potential_.PAW_one_elec_energy()) -
                              0.5 * energy_vha() + energy_exc() + potential_.PAW_total_energy() + ewald_energy_;
                     break;
                 }
@@ -233,15 +340,24 @@ class DFT_ground_state
             auto& comm = ctx_.comm();
 
             /* symmetrize PW components */
-            unit_cell_.symmetry().symmetrize_function(&f__->f_pw(0), ctx_.gvec(), comm);
+            auto v = f__->gather_f_pw();
+            unit_cell_.symmetry().symmetrize_function(&v[0], ctx_.gvec(), comm);
+            f__->scatter_f_pw(v);
             switch (ctx_.num_mag_dims()) {
                 case 1: {
-                    unit_cell_.symmetry().symmetrize_vector_function(&gz__->f_pw(0), ctx_.gvec(), comm);
+                    auto vz = gz__->gather_f_pw();
+                    unit_cell_.symmetry().symmetrize_vector_function(&vz[0], ctx_.gvec(), comm);
+                    gz__->scatter_f_pw(vz);
                     break;
                 }
                 case 3: {
-                    unit_cell_.symmetry().symmetrize_vector_function(&gx__->f_pw(0), &gy__->f_pw(0), &gz__->f_pw(0),
-                                                                     ctx_.gvec(), comm);
+                    auto vx = gx__->gather_f_pw();
+                    auto vy = gy__->gather_f_pw();
+                    auto vz = gz__->gather_f_pw();
+                    unit_cell_.symmetry().symmetrize_vector_function(&vx[0], &vy[0], &vz[0], ctx_.gvec(), comm);
+                    gx__->scatter_f_pw(vx);
+                    gy__->scatter_f_pw(vy);
+                    gz__->scatter_f_pw(vz);
                     break;
                 }
             }
@@ -324,10 +440,13 @@ inline double DFT_ground_state::ewald_energy()
         double ewald_g_pt = 0;
 
         #pragma omp for
-        for (int igloc = 0; igloc < ctx_.gvec_count(); igloc++) {
-            int ig = ctx_.gvec_offset() + igloc;
+        for (int igloc = 0; igloc < ctx_.gvec().count(); igloc++) {
+            int ig = ctx_.gvec().offset() + igloc;
+            if (!ig) {
+                continue;
+            }
 
-            double g2 = std::pow(ctx_.gvec().shell_len(ctx_.gvec().shell(ig)), 2);
+            double g2 = std::pow(ctx_.gvec().gvec_len(ig), 2);
 
             double_complex rho(0, 0);
 
@@ -335,26 +454,18 @@ inline double DFT_ground_state::ewald_energy()
                 rho += ctx_.gvec_phase_factor(ig, ia) * static_cast<double>(unit_cell_.atom(ia).zn());
             }
 
-            if (ig) {
-                ewald_g_pt += std::pow(std::abs(rho), 2) * std::exp(-g2 / 4 / alpha) / g2;
-            } else {
-                ewald_g_pt -= std::pow(unit_cell_.num_electrons(), 2) / alpha / 4; // constant term in QE comments
-            }
-
-            if (ctx_.gvec().reduced() && ig) {
-                rho = 0;
-                for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
-                    rho += std::conj(ctx_.gvec_phase_factor(ig, ia)) * static_cast<double>(unit_cell_.atom(ia).zn());
-                }
-
-                ewald_g_pt += std::pow(std::abs(rho), 2) * std::exp(-g2 / 4 / alpha) / g2;
-            }
+            ewald_g_pt += std::pow(std::abs(rho), 2) * std::exp(-g2 / 4 / alpha) / g2;
         }
 
         #pragma omp critical
         ewald_g += ewald_g_pt;
     }
     ctx_.comm().allreduce(&ewald_g, 1);
+    if (ctx_.gvec().reduced()) {
+        ewald_g *= 2;
+    }
+    /* remaining G=0 contribution */
+    ewald_g -= std::pow(unit_cell_.num_electrons(), 2) / alpha / 4; 
     ewald_g *= (twopi / unit_cell_.omega());
 
     /* remove self-interaction */
@@ -448,8 +559,6 @@ inline int DFT_ground_state::find(double potential_tol, double energy_tol, int n
     }
 
     int result{-1};
-
-//    tbb::task_scheduler_init tbb_init(omp_get_num_threads());
 
     for (int iter = 0; iter < num_dft_iter; iter++) {
         sddk::timer t1("sirius::DFT_ground_state::scf_loop|iteration");
@@ -570,8 +679,6 @@ inline int DFT_ground_state::find(double potential_tol, double energy_tol, int n
         potential_.save();
         density_.save();
     }
-
-//    tbb_init.terminate();
 
     return result;
 }
@@ -762,95 +869,3 @@ inline void DFT_ground_state::print_info()
  *  \f]
  */
 
-/** 
-\page stress Stress tensor
-\section section1 Preliminary notes
-Derivative of the G-vector in Cartesian coordinates over the lattice vector components:
-\f[
-  \frac{\partial G_{\beta}}{\partial a_{\mu\nu}} + ({\bf a}^{-1})_{\nu \beta} G_{\mu} = 0
-\f]
-Mathematica proof script:
-\verbatim
-A = Table[Subscript[a, i, j], {i, 1, 3}, {j, 1, 3}];
-invA = Inverse[A];
-B = 2*Pi*Transpose[Inverse[A]];
-G = Table[Subscript[g, i], {i, 1, 3}];
-gvec = B.G;
-Do[
-  Print[FullSimplify[
-   D[gvec[[beta]], Subscript[a, mu, nu]] + invA[[nu]][[beta]]*gvec[[mu]]]],
-{beta, 1, 3}, {mu, 1, 3}, {nu, 1,3}]
-\endverbatim
-Another relation:
-\f[
-  \frac{\partial}{\partial a_{\mu \nu}} \frac{1}{\sqrt{\Omega}} + \frac{1}{2} \frac{1}{\sqrt{\Omega}} ({\bf a}^{-1})_{\nu \mu} = 0
-\f]
-Mathematica proof script:
-\verbatim
-A = Table[Subscript[a, i, j], {i, 1, 3}, {j, 1, 3}];
-invA = Inverse[A];
-Do[
- Print[FullSimplify[
-   D[1/Sqrt[Det[A]], Subscript[a, mu, nu]] + (1/2)*(1/Sqrt[Det[A]]) * invA[[nu]][[mu]]
-   ]
-  ],
-{mu, 1, 3}, {nu, 1, 3}]
-\endverbatim
-
-Derivative of the G-vector real spherical harmonics over the lattice vector components:
-\f[
-  \frac{\partial R_{\ell m}(\theta, \phi)}{\partial a_{\mu \nu}} = 
-    \frac{\partial R_{\ell m}(\theta, \phi)}{\partial \theta} \frac{\partial \theta} {\partial a_{\mu \nu}} + 
-    \frac{\partial R_{\ell m}(\theta, \phi)}{\partial \phi} \frac{\partial \phi} {\partial a_{\mu \nu}}
-\f]
-Derivatives of the \f$ R_{\ell m} \f$ with respect to the \f$ \theta,\, \phi\f$ angles can be tabulated up to a given \f$ \ell_{max} \f$.
-The derivatives of angles are computed as following:
-\f[
- \frac{\partial \theta} {\partial a_{\mu \nu}} = \sum_{\beta=1}^{3} \frac{\partial \theta}{\partial G_{\beta}} \frac{\partial G_{\beta}} {\partial a_{\mu \nu}}
-\f]
-\f[
- \frac{\partial \phi} {\partial a_{\mu \nu}} = \sum_{\beta=1}^{3} \frac{\partial \phi}{\partial G_{\beta}} \frac{\partial G_{\beta}} {\partial a_{\mu \nu}}
-\f]
-where
-\f[
-   \frac{\partial \theta}{\partial G_{x}} = \frac{\cos(\phi) \cos(\theta)}{G} \\
-   \frac{\partial \theta}{\partial G_{y}} = \frac{\cos(\theta) \sin(\phi)}{G} \\
-   \frac{\partial \theta}{\partial G_{z}} = -\frac{\sin(\theta)}{G}
-\f]
-and
-\f[
-   \frac{\partial \phi}{\partial G_{x}} = -\frac{\sin(\phi)}{\sin(\theta) G} \\
-   \frac{\partial \phi}{\partial G_{y}} = \frac{\cos(\phi)}{\sin(\theta) G} \\
-   \frac{\partial \phi}{\partial G_{z}} = 0
-\f]
-The derivative of \f$ phi \f$ has discontinuities at \f$ \theta = 0, \theta=\pi \f$. This, however, is not a problem, because
-multiplication by the the derivative of \f$ R_{\ell m} \f$ removes it. The following functions have to be hardcoded:
-\f[
-  \frac{\partial R_{\ell m}(\theta, \phi)}{\partial \theta} \\
-  \frac{\partial R_{\ell m}(\theta, \phi)}{\partial \phi} \frac{1}{\sin(\theta)} 
-\f]
-
-Derivatives of the spherical Bessel functions are computed in the same fashion:
-\f[
-  \frac{\partial j_{\ell}(Gx)}{\partial a_{\mu \nu}} =
-  \frac{\partial j_{\ell}(Gx)}{\partial G} \frac{\partial G} {\partial a_{\mu \nu}} = 
-  \frac{\partial j_{\ell}(Gx)}{\partial G} \sum_{\beta=1}^{3}\frac{\partial G}{\partial G_{\beta}} \frac{\partial G_{\beta}} {\partial a_{\mu \nu}} 
-\f]
-The derivatives of \f$ G \f$ are:
-\f[
-  \frac{\partial G}{\partial G_{x}} = \sin(\theta)\cos(\phi) \\
-  \frac{\partial G}{\partial G_{y}} = \sin(\theta)\sin(\phi) \\
-  \frac{\partial G}{\partial G_{z}} = \cos(\theta)
-\f]
-
-Let's write the full expression for the derivative of beta-projector matrix elements with respect to lattice vector 
-components:
-\f[
-  \frac{\partial \langle {\bf G+k}|\beta_{\ell m} \rangle} {\partial a_{\mu \nu}} = 
-    \frac{\partial} {\partial a_{\mu \nu}} \frac{4\pi}{\sqrt{\Omega}}(-i)^{\ell} R_{\ell m}(\theta_{G+k}, \phi_{G+k}) \int \beta_{\ell}(r) j_{\ell}(Gr) r^2 dr =\\
-    \frac{4\pi}{\sqrt{\Omega}} (-i)^{\ell} \Bigg[ \int \beta_{\ell}(r) j_{\ell}(Gr) r^2 dr 
-      \Big( \frac{\partial R_{\ell m}(\theta, \phi)}{\partial a_{\mu \nu}} - \frac{1}{2} R_{\ell m}(\theta, \phi) ({\bf a}^{-1})_{\nu \mu}  \Big) + 
-       R_{\ell m}(\theta, \phi) \int \beta_{\ell}(r) \frac{\partial j_{\ell}(Gr)}{\partial a_{\mu \nu}} r^2 dr  \Bigg]
-\f]
-
- */

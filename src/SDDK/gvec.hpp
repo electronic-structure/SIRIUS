@@ -166,7 +166,7 @@ class Gvec
 
     /// Total communicator which is used to distribute G or G+k vectors.
     Communicator const* comm_{nullptr};
-
+    
     /// Communicator of FFT driver.
     Communicator const* comm_fft_{nullptr};
 
@@ -175,6 +175,9 @@ class Gvec
 
     /// Indicates that G-vectors are reduced by inversion symmetry.
     bool reduce_gvec_;
+
+    /// Rank of current process.
+    int rank_;
 
     /// Number of ranks for fine-grained distribution.
     int num_ranks_;
@@ -320,6 +323,8 @@ class Gvec
 
     inline void find_gvec_shells()
     {
+        PROFILE("sddk::Gvec::find_gvec_shells");
+
         /* find G-shells */
         std::map<size_t, std::vector<int>> gsh;
         for (int ig = 0; ig < num_gvec_; ig++) {
@@ -425,6 +430,7 @@ class Gvec
         , comm_fft_(&comm_fft__)
         , comm_ortho_fft_(comm__.split(comm_fft__.rank()))
         , reduce_gvec_(reduce_gvec__)
+        , rank_(comm__.rank())
         , num_ranks_(comm__.size())
     {
         init();
@@ -443,6 +449,7 @@ class Gvec
         , comm_fft_(&comm_fft__)
         , comm_ortho_fft_(comm__.split(comm_fft__.rank()))
         , reduce_gvec_(reduce_gvec__)
+        , rank_(comm__.rank())
         , num_ranks_(comm__.size())
     {
         init();
@@ -459,6 +466,7 @@ class Gvec
             comm_fft_              = src__.comm_fft_;
             comm_ortho_fft_        = std::move(src__.comm_ortho_fft_);
             reduce_gvec_           = src__.reduce_gvec_;
+            rank_                  = src__.rank_;
             num_ranks_             = src__.num_ranks_;
             num_gvec_              = src__.num_gvec_;
             gvec_full_index_       = std::move(src__.gvec_full_index_);
@@ -488,11 +496,25 @@ class Gvec
         return gvec_distr_.counts[rank__];
     }
 
+    /// Number of G-vectors for a fine-grained distribution for the current MPI rank.
+    /** The \em count and \em offset are borrowed from the MPI terminology for data distribution. */
+    inline int count() const
+    {
+        return gvec_distr_.counts[rank_];
+    }
+
     /// Offset (in the global index) of G-vectors for a fine-grained distribution.
     inline int gvec_offset(int rank__) const
     {
         assert(rank__ < num_ranks_);
         return gvec_distr_.offsets[rank__];
+    }
+
+    /// Offset (in the global index) of G-vectors for a fine-grained distribution for a current MPI rank.
+    /** The \em count and \em offset are borrowed from the MPI terminology for data distribution. */
+    inline int offset() const
+    {
+        return gvec_distr_.offsets[rank_];
     }
 
     /// Return number of G-vector shells.

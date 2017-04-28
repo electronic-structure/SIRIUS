@@ -26,6 +26,9 @@
 #define __LINALG_HPP__
 
 #include <stdint.h>
+#include "blas_lapack.h"
+#include "mdarray.hpp"
+#include "dmatrix.hpp"
 
 namespace sddk {
 

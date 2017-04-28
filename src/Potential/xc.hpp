@@ -1,4 +1,4 @@
-inline void Potential::xc_mt_nonmagnetic(Radial_grid const& rgrid,
+inline void Potential::xc_mt_nonmagnetic(Radial_grid<double> const& rgrid,
                                          std::vector<XC_functional>& xc_func,
                                          Spheric_function<spectral, double> const& rho_lm, 
                                          Spheric_function<spatial, double>& rho_tp, 
@@ -117,7 +117,7 @@ inline void Potential::xc_mt_nonmagnetic(Radial_grid const& rgrid,
     }
 }
 
-inline void Potential::xc_mt_magnetic(Radial_grid const& rgrid,
+inline void Potential::xc_mt_magnetic(Radial_grid<double> const& rgrid,
                                       std::vector<XC_functional>& xc_func,
                                       Spheric_function<spectral, double>& rho_up_lm, 
                                       Spheric_function<spatial, double>& rho_up_tp, 
@@ -146,7 +146,7 @@ inline void Potential::xc_mt_magnetic(Radial_grid const& rgrid,
     Spheric_function<spatial, double> grad_rho_dn_grad_rho_dn_tp;
     Spheric_function<spatial, double> grad_rho_up_grad_rho_dn_tp;
 
-    assert(rho_up_lm.radial_grid().hash() == rho_dn_lm.radial_grid().hash());
+    //assert(rho_up_lm.radial_grid().hash() == rho_dn_lm.radial_grid().hash());
 
     vxc_up_tp.zero();
     vxc_dn_tp.zero();
@@ -472,17 +472,17 @@ inline void Potential::xc_it_nonmagnetic(Periodic_function<double>* rho__,
 
     /* split real-space points between available ranks */
     splindex<block> spl_np(num_points, comm.size(), comm.rank());
-    
+
     /* check for negative values */
     double rhomin = 0.0;
-    for (int irloc = 0; irloc < spl_np.local_size(); irloc++)
-    {
+    for (int irloc = 0; irloc < spl_np.local_size(); irloc++) {
         int ir = spl_np[irloc];
         rhomin = std::min(rhomin, rho__->f_rg(ir));
-        if (rho__->f_rg(ir) < 0.0)  rho__->f_rg(ir) = 0.0;
+        if (rho__->f_rg(ir) < 0.0) {
+            rho__->f_rg(ir) = 0.0;
+        }
     }
-    if (rhomin < 0.0)
-    {
+    if (rhomin < 0.0) {
         std::stringstream s;
         s << "Interstitial charge density has negative values" << std::endl
           << "most negatve value : " << rhomin;

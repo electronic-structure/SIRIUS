@@ -127,6 +127,10 @@ inline void Band::solve_sv(K_point* kp,
         hpsi[0].mt_coeffs().prime().zero();
     }
 
+    if (ctx_.comm().rank() == 0 && ctx_.control().print_memory_usage_) {
+        MEMORY_USAGE_INFO();
+    }
+
     //== if (ctx_.uj_correction())
     //== {
     //==     apply_uj_correction<uu>(kp->fv_states_col(), hpsi);
@@ -153,6 +157,10 @@ inline void Band::solve_sv(K_point* kp,
         }
     }
     #endif
+
+    if (ctx_.comm().rank() == 0 && ctx_.control().print_memory_usage_) {
+        MEMORY_USAGE_INFO();
+    }
 
     #ifdef __PRINT_OBJECT_CHECKSUM
     auto z1 = kp->fv_states().checksum(0, nfv);
@@ -184,8 +192,9 @@ inline void Band::solve_sv(K_point* kp,
             DUMP("checksum(h): %18.10f %18.10f", std::real(z1), std::imag(z1));
             #endif
             sddk::timer t1("sirius::Band::solve_sv|stdevp");
-            std_evp_solver().solve(nfv, h.at<CPU>(), h.ld(), &band_energies[ispn * nfv],
-                                   kp->sv_eigen_vectors(ispn).at<CPU>(), kp->sv_eigen_vectors(ispn).ld());
+            std_evp_solver().solve(nfv, nfv, h.at<CPU>(), h.ld(), &band_energies[ispn * nfv],
+                                   kp->sv_eigen_vectors(ispn).at<CPU>(), kp->sv_eigen_vectors(ispn).ld(),
+                                   h.num_rows_local(), h.num_cols_local());
         }
     } else {
         int nb = ctx_.num_bands();
@@ -221,8 +230,9 @@ inline void Band::solve_sv(K_point* kp,
         DUMP("checksum(h): %18.10f %18.10f", std::real(z1), std::imag(z1));
         #endif
         sddk::timer t1("sirius::Band::solve_sv|stdevp");
-        std_evp_solver().solve(nb, h.at<CPU>(), h.ld(), &band_energies[0],
-                               kp->sv_eigen_vectors(0).at<CPU>(), kp->sv_eigen_vectors(0).ld());
+        std_evp_solver().solve(nb, nb, h.at<CPU>(), h.ld(), &band_energies[0],
+                               kp->sv_eigen_vectors(0).at<CPU>(), kp->sv_eigen_vectors(0).ld(),
+                               h.num_rows_local(), h.num_cols_local());
     }
 
     #ifdef __GPU
@@ -256,6 +266,10 @@ inline void Band::solve_for_kset(K_point_set& kset__,
     } else {
         local_op_->prepare(ctx_.gvec_coarse(), ctx_.num_mag_dims(), potential__.effective_potential(),
                            potential__.effective_magnetic_field());
+    }
+
+    if (ctx_.comm().rank() == 0 && ctx_.control().print_memory_usage_) {
+        MEMORY_USAGE_INFO();
     }
 
     /* solve secular equation and generate wave functions */

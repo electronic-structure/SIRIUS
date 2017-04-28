@@ -1,4 +1,4 @@
-// Copyright (c) 2013-2016 Anton Kozhevnikov, Thomas Schulthess
+// Copyright (c) 2013-2017 Anton Kozhevnikov, Thomas Schulthess
 // All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without modification, are permitted provided that
@@ -666,6 +666,7 @@ class mdarray_base
         #ifdef __GPU
         mdarray_assert(raw_ptr_ != nullptr);
         mdarray_assert(raw_ptr_device_ != nullptr);
+        mdarray_assert(idx0__ + n__ <= size());
 
         if ((from__ & memory_t::host) != memory_t::none && (to__ & memory_t::device) != memory_t::none) {
             acc::copyin(&raw_ptr_device_[idx0__], &raw_ptr_[idx0__], n__);
@@ -933,14 +934,15 @@ class mdarray : public mdarray_base<T, N>
 template <typename T>
 using matrix = mdarray<T, 2>;
 
+/// Serialize to std::ostream
 template <typename T, int N>
 std::ostream& operator<<(std::ostream& out, mdarray<T, N>& v)
 {
-    for (size_t i = 0; i < v.size(); i++) {
-        if (i) {
-            out << std::string(" ");
+    if (v.size()) {
+        out << v[0];
+        for (size_t i = 1; i < v.size(); i++) {
+            out << std::string(" ") << v[i];
         }
-        out << v[i];
     }
     return out;
 }

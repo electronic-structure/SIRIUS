@@ -26,7 +26,7 @@
 #define __SBESSEL_PW_H__
 
 #include "eigenproblem.h"
-#include "unit_cell.h"
+#include "Unit_cell/unit_cell.h"
 
 namespace sirius
 {
@@ -37,7 +37,7 @@ class Spherical_Bessel_functions
     private:
         int lmax_{-1};
         double q_{0};
-        Radial_grid const* rgrid_{nullptr};
+        Radial_grid<double> const* rgrid_{nullptr};
 
         std::vector<Spline<double>> sbessel_;
 
@@ -47,7 +47,7 @@ class Spherical_Bessel_functions
         {
         }
 
-        Spherical_Bessel_functions(int lmax__, Radial_grid const& rgrid__, double q__)
+        Spherical_Bessel_functions(int lmax__, Radial_grid<double> const& rgrid__, double q__)
             : lmax_(lmax__)
             , q_(q__)
             , rgrid_(&rgrid__)

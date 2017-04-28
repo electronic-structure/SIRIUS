@@ -279,7 +279,7 @@ class Band
         void diag_fv_full_potential(K_point* kp__,
                                     Potential const& potential__) const
         {
-            auto& itso = ctx_.iterative_solver_input_section();
+            auto& itso = ctx_.iterative_solver_input();
             if (itso.type_ == "exact") {
                 diag_fv_full_potential_exact(kp__, potential__);
             } else if (itso.type_ == "davidson") {
@@ -301,7 +301,7 @@ class Band
             D_operator<T> d_op(ctx_, kp__->beta_projectors());
             Q_operator<T> q_op(ctx_, kp__->beta_projectors());
 
-            auto& itso = ctx_.iterative_solver_input_section();
+            auto& itso = ctx_.iterative_solver_input();
             if (itso.type_ == "exact") {
                 if (ctx_.num_mag_dims() != 3) {
                     for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {

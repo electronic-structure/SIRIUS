@@ -42,10 +42,10 @@ using json = nlohmann::json;
 #include "sirius_io.h"
 #include "descriptors.h"
 #include "mixer.h"
-#include "atom_type.h"
-#include "atom_symmetry_class.h"
-#include "atom.h"
-#include "unit_cell.h"
+#include "Unit_cell/atom_type.h"
+#include "Unit_cell/atom_symmetry_class.h"
+#include "Unit_cell/atom.h"
+#include "Unit_cell/unit_cell.h"
 #include "step_function.h"
 #include "periodic_function.h"
 #include "k_point.h"
@@ -55,8 +55,5 @@ using json = nlohmann::json;
 #include "density.h"
 #include "force.h"
 #include "dft_ground_state.h"
-#include "simulation_context.h"
-#include "simulation_parameters.h"
-
 
 #endif // __SIRIUS_H__

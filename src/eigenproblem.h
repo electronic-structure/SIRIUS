@@ -1277,7 +1277,8 @@ class Eigenproblem_elpa: public Eigenproblem
             mpi_comm_cols_ = MPI_Comm_c2f(comm_col_.mpi_comm());
             mpi_comm_all_  = MPI_Comm_c2f(comm_all_.mpi_comm());
         }
-
+        
+        #ifdef __ELPA
         void transform_to_standard(int32_t matrix_size__,
                                    double_complex* A__, int32_t lda__,
                                    double_complex* B__, int32_t ldb__,
@@ -1399,6 +1400,7 @@ class Eigenproblem_elpa: public Eigenproblem
                                                  &num_rows_loc__, &block_size_, &mpi_comm_rows_, &mpi_comm_cols_, Z__, &ldz__, 
                                                  (int32_t)1, (int32_t)1);
         }
+        #endif
 
 };
 
@@ -1418,7 +1420,8 @@ class Eigenproblem_elpa1: public Eigenproblem_elpa
                   double_complex* B, int32_t ldb,
                   double* eval, 
                   double_complex* Z, int32_t ldz,
-                  int32_t num_rows_loc = 0, int32_t num_cols_loc = 0) const
+                  int32_t num_rows_loc,
+                  int32_t num_cols_loc) const
         {
             assert(nevec <= matrix_size);
 
@@ -1444,7 +1447,8 @@ class Eigenproblem_elpa1: public Eigenproblem_elpa
                   double* B, int32_t ldb,
                   double* eval, 
                   double* Z, int32_t ldz,
-                  int32_t num_rows_loc = 0, int32_t num_cols_loc = 0) const
+                  int32_t num_rows_loc,
+                  int32_t num_cols_loc) const
         {
             assert(nevec <= matrix_size);
 
@@ -1469,7 +1473,8 @@ class Eigenproblem_elpa1: public Eigenproblem_elpa
                   double* A, int32_t lda,
                   double* eval, 
                   double* Z, int32_t ldz,
-                  int32_t num_rows_loc, int32_t num_cols_loc) const
+                  int32_t num_rows_loc,
+                  int32_t num_cols_loc) const
         {
             assert(nevec <= matrix_size);
 
@@ -1606,13 +1611,19 @@ class Eigenproblem_elpa2: public Eigenproblem_elpa
 };
 
 #ifdef __RS_GEN_EIG
-void my_gen_eig(char uplo, int n, int nev, double_complex* a, int ia, int ja, int* desca,
-                double_complex* b, int ib, int jb, int* descb, double* d,
-                double_complex* q, int iq, int jq, int* descq, int* info);
+void libevs_gen_eig(char uplo, int n, int nev,
+                    double_complex* a, int ia, int ja, int* desca,
+                    double_complex* b, int ib, int jb, int* descb,
+                    double* d,
+                    double_complex* q, int iq, int jq, int* descq,
+                    int* info);
 
-void my_gen_eig_cpu(char uplo, int n, int nev, double_complex* a, int ia, int ja, int* desca,
-                    double_complex* b, int ib, int jb, int* descb, double* d,
-                    double_complex* q, int iq, int jq, int* descq, int* info);
+void libevs_gen_eig_cpu(char uplo, int n, int nev,
+                        double_complex* a, int ia, int ja, int* desca,
+                        double_complex* b, int ib, int jb, int* descb,
+                        double* d,
+                        double_complex* q, int iq, int jq, int* descq,
+                        int* info);
 #endif
 
 class Eigenproblem_RS_CPU: public Eigenproblem
@@ -1652,33 +1663,33 @@ class Eigenproblem_RS_CPU: public Eigenproblem
             assert(nevec <= matrix_size);
             
             int32_t desca[9];
-            lin_alg<scalapack>::descinit(desca, matrix_size, matrix_size, block_size_, block_size_, 0, 0, 
-                                        blacs_context_, lda);
+            linalg_base::descinit(desca, matrix_size, matrix_size, bs_row_, bs_col_, 0, 0, 
+                                  blacs_context_, lda);
 
             int32_t descb[9];
-            lin_alg<scalapack>::descinit(descb, matrix_size, matrix_size, block_size_, block_size_, 0, 0, 
-                                        blacs_context_, ldb); 
+            linalg_base::descinit(descb, matrix_size, matrix_size, bs_row_, bs_col_, 0, 0, 
+                                  blacs_context_, ldb); 
 
             mdarray<double_complex, 2> ztmp(num_rows_loc, num_cols_loc);
             int32_t descz[9];
-            lin_alg<scalapack>::descinit(descz, matrix_size, matrix_size, block_size_, block_size_, 0, 0, 
+            linalg_base::descinit(descz, matrix_size, matrix_size, bs_row_, bs_col_, 0, 0, 
                                         blacs_context_, num_rows_loc); 
             
             std::vector<double> eval_tmp(matrix_size);
 
             int info;
-            my_gen_eig_cpu('L', matrix_size, nevec, a, 1, 1, desca, b, 1, 1, descb, &eval_tmp[0], ztmp.ptr(), 1, 1, descz, &info);
-            if (info)
-            {
+            libevs_gen_eig_cpu('L', matrix_size, nevec, A, 1, 1, desca, B, 1, 1, descb, &eval_tmp[0], ztmp.at<CPU>(), 1, 1, descz, &info);
+            if (info) {
                 std::stringstream s;
-                s << "my_gen_eig " << info; 
+                s << "libevs_gen_eig_cpu: info=" << info; 
                 TERMINATE(s);
             }
 
-            for (int i = 0; i < lin_alg<scalapack>::numroc(nevec, block_size_, rank_col_, 0, num_ranks_col_); i++)
-                memcpy(&z[ldz * i], &ztmp(0, i), num_rows_loc * sizeof(double_complex));
+            for (int i = 0; i < linalg_base::numroc(nevec, bs_col_, rank_col_, 0, num_ranks_col_); i++) {
+                std::memcpy(&Z[ldz * i], &ztmp(0, i), num_rows_loc * sizeof(double_complex));
+            }
 
-            memcpy(eval, &eval_tmp[0], nevec * sizeof(double));
+            std::memcpy(eval, &eval_tmp[0], nevec * sizeof(double));
 
             return 0;
         }
@@ -1732,32 +1743,31 @@ class Eigenproblem_RS_GPU: public Eigenproblem
             assert(nevec <= matrix_size);
             
             int32_t desca[9];
-            lin_alg<scalapack>::descinit(desca, matrix_size, matrix_size, block_size_, block_size_, 0, 0, 
-                                        blacs_context_, lda);
+            linalg_base::descinit(desca, matrix_size, matrix_size, bs_row_, bs_col_, 0, 0, 
+                                  blacs_context_, lda);
 
             int32_t descb[9];
-            lin_alg<scalapack>::descinit(descb, matrix_size, matrix_size, block_size_, block_size_, 0, 0, 
-                                        blacs_context_, ldb); 
+            linalg_base::descinit(descb, matrix_size, matrix_size, bs_row_, bs_col_, 0, 0, 
+                                  blacs_context_, ldb); 
 
-            mdarray<double_complex, 2> ztmp(nullptr, num_rows_loc, num_cols_loc);
-            ztmp.allocate(1);
+            mdarray<double_complex, 2> ztmp(num_rows_loc, num_cols_loc, memory_t::host_pinned);
             int32_t descz[9];
-            lin_alg<scalapack>::descinit(descz, matrix_size, matrix_size, block_size_, block_size_, 0, 0, 
-                                        blacs_context_, num_rows_loc); 
+            linalg_base::descinit(descz, matrix_size, matrix_size, bs_row_, bs_col_, 0, 0, 
+                                  blacs_context_, num_rows_loc); 
             
             std::vector<double> eval_tmp(matrix_size);
 
             int info;
-            my_gen_eig('L', matrix_size, nevec, a, 1, 1, desca, b, 1, 1, descb, &eval_tmp[0], ztmp.ptr(), 1, 1, descz, &info);
-            if (info)
-            {
+            libevs_gen_eig('L', matrix_size, nevec, A, 1, 1, desca, B, 1, 1, descb, &eval_tmp[0], ztmp.at<CPU>(), 1, 1, descz, &info);
+            if (info) {
                 std::stringstream s;
-                s << "my_gen_eig " << info; 
+                s << "libevs_gen_eig: info=" << info; 
                 TERMINATE(s);
             }
 
-            for (int i = 0; i < lin_alg<scalapack>::numroc(nevec, block_size_, rank_col_, 0, num_ranks_col_); i++)
+            for (int i = 0; i < linalg_base::numroc(nevec, bs_col_, rank_col_, 0, num_ranks_col_); i++) {
                 std::memcpy(&Z[ldz * i], &ztmp(0, i), num_rows_loc * sizeof(double_complex));
+            }
 
             std::memcpy(eval, &eval_tmp[0], nevec * sizeof(double));
 

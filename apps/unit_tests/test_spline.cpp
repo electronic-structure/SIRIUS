@@ -4,7 +4,7 @@ using namespace sirius;
 
 void check_spline(Spline<double> const& s__, std::function<double(double)> f__, double x0, double x1)
 {
-    Radial_grid rgrid(linear_grid, 10000, x0, x1);
+    Radial_grid_lin<double> rgrid(10000, x0, x1);
     for (int ir = 0; ir < 10000; ir++)
     {
         double x = rgrid[ir];
@@ -24,7 +24,7 @@ void test_spline_1a()
     double x0 = 1e-7;
     double x1 = 2.0;
     
-    Radial_grid rgrid(lin_exp_grid, 2000, 1e-7, 2);
+    Radial_grid_lin_exp<double> rgrid(2000, 1e-7, 2);
     Spline<double> s(rgrid, f);
 
     check_spline(s, f, x0, x1);
@@ -44,7 +44,7 @@ void test_spline_1b()
     double x0 = 1e-7;
     double x1 = 2.0;
     
-    Radial_grid rgrid(lin_exp_grid, 2000, 1e-7, 2);
+    Radial_grid_lin_exp<double> rgrid(2000, 1e-7, 2);
     Spline<double> s(rgrid, f);
 
     check_spline(s, f, x0, x1);
@@ -70,7 +70,7 @@ void test_spline_2()
     double x0 = 1e-7;
     double x1 = 2.0;
 
-    Radial_grid rgrid(exponential_grid, 2000, 1e-7, 2);
+    Radial_grid_exp<double> rgrid(2000, 1e-7, 2);
     std::vector< Spline<double> > s(10);
 
     for (int k = 0; k < 10; k++) s[k] = Spline<double>(rgrid, f);
@@ -80,7 +80,7 @@ void test_spline_2()
 // Test product of splines.
 void test_spline_4()
 {
-    Radial_grid rgrid(lin_exp_grid, 2000, 1e-7, 4);
+    Radial_grid_lin_exp<double> rgrid(2000, 1e-7, 4);
     Spline<double> s1(rgrid);
     Spline<double> s2(rgrid);
     Spline<double> s3(rgrid);
@@ -97,7 +97,7 @@ void test_spline_4()
 
     Spline<double> s12 = s1 * s2;
 
-    Radial_grid rlin(linear_grid, 20000, 1e-7, 4);
+    Radial_grid_lin<double> rlin(20000, 1e-7, 4);
     double d = 0;
     for (int ir = 0; ir < rlin.num_points(); ir++)
     {
@@ -129,11 +129,10 @@ void test_spline_5()
     int N = 6000;
     int n = 256;
 
-    Radial_grid rgrid(exponential_grid, N, 1e-7, 4);
-    std::vector< Spline<double> > s1(n);
-    std::vector< Spline<double> > s2(n);
-    for (int i = 0; i < n; i++)
-    {
+    Radial_grid_exp<double> rgrid(N, 1e-7, 4);
+    std::vector<Spline<double>> s1(n);
+    std::vector<Spline<double>> s2(n);
+    for (int i = 0; i < n; i++) {
         s1[i] = Spline<double>(rgrid);
         s2[i] = Spline<double>(rgrid);
         for (int ir = 0; ir < N; ir++)
@@ -162,7 +161,7 @@ void test_spline_5()
 void test_spline_6()
 {
     mdarray<Spline<double>, 1> array(20);
-    Radial_grid rgrid(exponential_grid, 300, 1e-7, 4);
+    Radial_grid_exp<double> rgrid(300, 1e-7, 4);
 
     for (int i = 0; i < 20; i++)
     {
@@ -177,7 +176,7 @@ void test1(double x0, double x1, int m, double exact_result)
     printf("\n");
     printf("test1: integrate sin(x) * x^{%i} and compare with exact result\n", m);
     printf("       lower and upper boundaries: %f %f\n", x0, x1);
-    Radial_grid r(exponential_grid, 5000, x0, x1);
+    Radial_grid_exp<double> r(5000, x0, x1);
     Spline<double> s(r);
     
     for (int i = 0; i < 5000; i++) s[i] = std::sin(r[i]);
@@ -197,32 +196,32 @@ void test1(double x0, double x1, int m, double exact_result)
     }
 }
 
-void test2(radial_grid_t grid_type, double x0, double x1)
-{
-    printf("\n");
-    printf("test2: value and derivatives of exp(x)\n");
-
-    int N = 5000;
-    Radial_grid r(grid_type, N, x0, x1);
-    Spline<double> s(r, [](double x){return std::exp(x);});
-    
-    printf("grid type : %s\n", r.grid_type_name().c_str());
-
-    //== std::string fname = "grid_" + r.grid_type_name() + ".txt";
-    //== FILE* fout = fopen(fname.c_str(), "w");
-    //== for (int i = 0; i < r.num_points(); i++) fprintf(fout,"%i %16.12e\n", i, r[i]);
-    //== fclose(fout);
-    
-    printf("x = %f, true exp(x) = %f, exp(x) = %f, exp'(x)= %f, exp''(x) = %f\n", x0, s[0], s.deriv(0, 0), s.deriv(1, 0), s.deriv(2, 0));
-    printf("x = %f, true exp(x) = %f, exp(x) = %f, exp'(x)= %f, exp''(x) = %f\n", x1, s[N - 1], s.deriv(0, N - 1), s.deriv(1, N - 1), s.deriv(2, N - 1));
-}
+//void test2(radial_grid_t grid_type, double x0, double x1)
+//{
+//    printf("\n");
+//    printf("test2: value and derivatives of exp(x)\n");
+//
+//    int N = 5000;
+//    Radial_grid r(grid_type, N, x0, x1);
+//    Spline<double> s(r, [](double x){return std::exp(x);});
+//    
+//    printf("grid type : %s\n", r.grid_type_name().c_str());
+//
+//    //== std::string fname = "grid_" + r.grid_type_name() + ".txt";
+//    //== FILE* fout = fopen(fname.c_str(), "w");
+//    //== for (int i = 0; i < r.num_points(); i++) fprintf(fout,"%i %16.12e\n", i, r[i]);
+//    //== fclose(fout);
+//    
+//    printf("x = %f, true exp(x) = %f, exp(x) = %f, exp'(x)= %f, exp''(x) = %f\n", x0, s[0], s.deriv(0, 0), s.deriv(1, 0), s.deriv(2, 0));
+//    printf("x = %f, true exp(x) = %f, exp(x) = %f, exp'(x)= %f, exp''(x) = %f\n", x1, s[N - 1], s.deriv(0, N - 1), s.deriv(1, N - 1), s.deriv(2, N - 1));
+//}
 
 void test3(int m, double x0, double x1, double exact_val)
 {
     printf("\n");
     printf("test3\n");
     
-    Radial_grid r(exponential_grid, 2000, x0, x1);
+    Radial_grid_exp<double> r(2000, x0, x1);
     Spline<double> s1(r);
     Spline<double> s2(r);
     Spline<double> s3(r);
@@ -258,7 +257,7 @@ void test5()
     printf("test5: high-order integration\n");
 
     int N = 2000;
-    Radial_grid r(exponential_grid, N, 1e-8, 0.9);
+    Radial_grid_exp<double> r(N, 1e-8, 0.9);
     Spline<double> s(r, [](double x){return std::log(x);});
     double true_value = -0.012395331058672921;
     if (std::abs(s.integrate(7) - true_value) > 1e-10)
@@ -277,7 +276,7 @@ void test6()
     printf("\n");
     printf("test6: 4 points interpolation\n");
     std::vector<double> x = {0, 1, 2, 3};
-    Radial_grid r(x);
+    Radial_grid_ext<double> r(4, x.data());
     Spline<double> s(r);
     s[0] = 0;
     s[1] = 1;
@@ -308,7 +307,7 @@ void test7()
 {
 
     int N = 2000;
-    Radial_grid r(exponential_grid, N, 1e-7, 2.0);
+    Radial_grid_exp<double> r(N, 1e-7, 2.0);
     Spline<double> s(r, [](double x){return std::sin(8 * x) / (x + 0.1);});
 
     Spline<double> s1(r);
@@ -330,188 +329,100 @@ void test7()
 
 }
 
-void test8()
-{
-    int N = 400;
-    double r0 = 1e-6;
-    double r1 = 3.0;
-    
-    Radial_grid r(pow3_grid, N, r0, r1);
+//template <typename T>
+//void test8(int rgrid_t)
+//{
+//    int N = 400;
+//    double r0 = 1e-6;
+//    double r1 = 3.0;
+//    
+//    Radial_grid r(static_cast<radial_grid_t>(rgrid_t), N, r0, r1);
+//
+//    auto int_s0 = [](double x, T a1, T a2) {
+//        return (2*a2 + 2*a1*a2*x + std::pow(a1,2)*(-1 + a2*std::pow(x,2)))/(std::pow(a1,3)*std::exp(a1*x));
+//    };
+//    auto int_s2 = [](double x, T a1, T a2) {
+//        return (24*a2 + 24*a1*a2*x + std::pow(a1,4)*std::pow(x,2)*(-1 + a2*std::pow(x,2)) + 
+//               2*std::pow(a1,2)*(-1 + 6*a2*std::pow(x,2)) + std::pow(a1,3)*(-2*x + 4*a2*std::pow(x,3)))/
+//               (std::pow(a1,5)*std::exp(a1*x));
+//    };
+//    for (int i1 = 1; i1 < 5; i1++) {
+//        for (int i2 = 1; i2 < 5; i2++) {
+//            T a1 = i1;
+//            T a2 = i2;
+//            Spline<T> s(r, [a1, a2](double x){return std::exp(-a1 * x) * (1 - a2 * x * x);});
+//            
+//            if (std::is_same<T, long double>::value) {
+//                printf("test8: diff: %18.12Lf\n", std::abs(s.integrate(0) - (int_s0(r1, a1, a2) - int_s0(r0, a1, a2))));
+//                printf("test8: diff: %18.12Lf\n", std::abs(s.integrate(2) - (int_s2(r1, a1, a2) - int_s2(r0, a1, a2))));
+//            }
+//            if (std::is_same<T, double>::value) {
+//                printf("test8: diff: %18.12f\n", std::abs(s.integrate(0) - (int_s0(r1, a1, a2) - int_s0(r0, a1, a2))));
+//                printf("test8: diff: %18.12f\n", std::abs(s.integrate(2) - (int_s2(r1, a1, a2) - int_s2(r0, a1, a2))));
+//            }
+//        }
+//    }
+//}
 
-    auto int_s0 = [](double x, double a1, double a2) {
-        return (2*a2 + 2*a1*a2*x + std::pow(a1,2)*(-1 + a2*std::pow(x,2)))/(std::pow(a1,3)*std::exp(a1*x));
-    };
-    auto int_s2 = [](double x, double a1, double a2) {
-        return (24*a2 + 24*a1*a2*x + std::pow(a1,4)*std::pow(x,2)*(-1 + a2*std::pow(x,2)) + 
-               2*std::pow(a1,2)*(-1 + 6*a2*std::pow(x,2)) + std::pow(a1,3)*(-2*x + 4*a2*std::pow(x,3)))/
-               (std::pow(a1,5)*std::exp(a1*x));
-    };
-    for (int i1 = 1; i1 < 5; i1++) {
-        for (int i2 = 1; i2 < 5; i2++) {
-            double a1 = i1;
-            double a2 = i2;
-            Spline<double> s(r, [a1, a2](double x){return std::exp(-a1 * x) * (1 - a2 * x * x);});
-
-            printf("test8: diff: %18.12f\n", std::abs(s.integrate(0) - (int_s0(r1, a1, a2) - int_s0(r0, a1, a2))));
-            printf("test8: diff: %18.12f\n", std::abs(s.integrate(2) - (int_s2(r1, a1, a2) - int_s2(r0, a1, a2))));
-        }
-    }
-
-
-
-}
-
-void test9_pow3(double r0, double r1, int N)
-{
-    ///int N = 300;
-    ///double x0 = 1e-7;
-    ///double x1 = 1.8;
-
-    Radial_grid r(pow3_grid, N, r0, r1);
-    Spline<double> s0(r);
-    Spline<double> s1(r);
-
-    double y00 = 0.28209479177387814347;
-    double true_value = 82.0 / y00 * (r1 - r0); 
-
-    printf("true_value: %20.16f \n", true_value);
-
-    for (int i = 0; i < N; i++) {
-        s0[i] = 1.0 ;
-        s1[i] = 1.0 / r[i];
-    }
-
-    double integrate0 = s0.interpolate().integrate(0) * 82.0 / y00;
-    double integrate1 = s1.interpolate().integrate(1) * 82.0 / y00;
-    double integratex0 = s0.xinterpolate().integrate(0) * 82.0 /y00;
-    double integratex1 = s1.xinterpolate().integrate(1) * 82.0 /y00;
-    double integratel0 = s0.lxinterpolate().integrate(0) * 82.0 /y00;
-    double integratel1 = s1.lxinterpolate().integrate(1) * 82.0 /y00;
-
-    printf("error of interpolate with integrate0: %20.16f \n", std::abs(integrate0 - true_value));
-    printf("error of interpolate with integrate1: %20.16f \n", std::abs(integrate1 - true_value));
-    printf("error of xinterpolate with integrate0: %20.16f \n", std::abs(integratex0 - true_value));
-    printf("error of xinterpolate with integrate1: %20.16f \n", std::abs(integratex1 - true_value));
-    printf("error of linterpolate with integrate0: %20.16f \n", std::abs(integratel0 - true_value));
-    printf("error of linterpolate with integrate1: %20.16f \n", std::abs(integratel1 - true_value));
-}
-
-void test9_linexp(double r0, double r1, int N)
-{
-    ///int N = 300;
-    ///double x0 = 1e-7;
-    ///double x1 = 1.8;
-
-    Radial_grid r(lin_exp_grid, N, r0, r1);
-    Spline<double> s0(r);
-    Spline<double> s1(r);
-
-    double y00 = 0.28209479177387814347;
-    double true_value = 82.0 / y00 * (r1 - r0);
-
-    printf("true_value: %20.16f \n", true_value);
-
-    for (int i = 0; i < N; i++) {
-        s0[i] = 1.0 ;
-        s1[i] = 1.0 / r[i];
-    }
-
-    double integrate0 = s0.interpolate().integrate(0) * 82.0 / y00;
-    double integrate1 = s1.interpolate().integrate(1) * 82.0 / y00;
-    double integratex0 = s0.xinterpolate().integrate(0) * 82.0 /y00;
-    double integratex1 = s1.xinterpolate().integrate(1) * 82.0 /y00;
-    double integratel0 = s0.lxinterpolate().integrate(0) * 82.0 /y00;
-    double integratel1 = s1.lxinterpolate().integrate(1) * 82.0 /y00;
-
-    printf("error of interpolate with integrate0: %20.16f \n", std::abs(integrate0 - true_value));
-    printf("error of interpolate with integrate1: %20.16f \n", std::abs(integrate1 - true_value));
-    printf("error of xinterpolate with integrate0: %20.16f \n", std::abs(integratex0 - true_value));
-    printf("error of xinterpolate with integrate1: %20.16f \n", std::abs(integratex1 - true_value));
-    printf("error of linterpolate with integrate0: %20.16f \n", std::abs(integratel0 - true_value));
-    printf("error of linterpolate with integrate1: %20.16f \n", std::abs(integratel1 - true_value));
-}
-
-void test9_scaledpow(double r0, double r1, int N)
-{
-    ///int N = 300;
-    ///double x0 = 1e-7;
-    ///double x1 = 1.8;
-
-    Radial_grid r(scaled_pow_grid, N, r0, r1);
-    Spline<double> s0(r);
-    Spline<double> s1(r);
-
-    double y00 = 0.28209479177387814347;
-    double true_value = 82.0 / y00 * (r1 - r0);
-
-    printf("true_value: %20.16f \n", true_value);
-
-    for (int i = 0; i < N; i++) {
-        s0[i] = 1.0 ;
-        s1[i] = 1.0 / r[i];
-    }
-
-    double integrate0 = s0.interpolate().integrate(0) * 82.0 / y00;
-    double integrate1 = s1.interpolate().integrate(1) * 82.0 / y00;
-    double integratex0 = s0.xinterpolate().integrate(0) * 82.0 /y00;
-    double integratex1 = s1.xinterpolate().integrate(1) * 82.0 /y00;
-    double integratel0 = s0.lxinterpolate().integrate(0) * 82.0 /y00;
-    double integratel1 = s1.lxinterpolate().integrate(1) * 82.0 /y00;
-
-    printf("error of interpolate with integrate0: %20.16f \n", std::abs(integrate0 - true_value));
-    printf("error of interpolate with integrate1: %20.16f \n", std::abs(integrate1 - true_value));
-    printf("error of xinterpolate with integrate0: %20.16f \n", std::abs(integratex0 - true_value));
-    printf("error of xinterpolate with integrate1: %20.16f \n", std::abs(integratex1 - true_value));
-    printf("error of linterpolate with integrate0: %20.16f \n", std::abs(integratel0 - true_value));
-    printf("error of linterpolate with integrate1: %20.16f \n", std::abs(integratel1 - true_value));
-}
-
-void test9_exp(double r0, double r1, int N)
-{
-    ///int N = 300;
-    ///double x0 = 1e-7;
-    ///double x1 = 1.8;
-
-    Radial_grid r(exponential_grid, N, r0, r1);
-    Spline<double> s0(r);
-    Spline<double> s1(r);
-
-    double y00 = 0.28209479177387814347;
-    double true_value = 82.0 / y00 * (r1 - r0);
-
-    printf("true_value: %20.16f \n", true_value);
-
-    for (int i = 0; i < N; i++) {
-        s0[i] = 1.0 ;
-        s1[i] = 1.0 / r[i];
-    }
-
-    double integrate0 = s0.interpolate().integrate(0) * 82.0 / y00;
-    double integrate1 = s1.interpolate().integrate(1) * 82.0 / y00;
-    double integratex0 = s0.xinterpolate().integrate(0) * 82.0 /y00;
-    double integratex1 = s1.xinterpolate().integrate(1) * 82.0 /y00;
-    double integratel0 = s0.lxinterpolate().integrate(0) * 82.0 /y00;
-    double integratel1 = s1.lxinterpolate().integrate(1) * 82.0 /y00;
-
-    printf("error of interpolate with integrate0: %20.16f \n", std::abs(integrate0 - true_value));
-    printf("error of interpolate with integrate1: %20.16f \n", std::abs(integrate1 - true_value));
-    printf("error of xinterpolate with integrate0: %20.16f \n", std::abs(integratex0 - true_value));
-    printf("error of xinterpolate with integrate1: %20.16f \n", std::abs(integratex1 - true_value));
-    printf("error of linterpolate with integrate0: %20.16f \n", std::abs(integratel0 - true_value));
-    printf("error of linterpolate with integrate1: %20.16f \n", std::abs(integratel1 - true_value));
-}
-
+//template <typename T>
+//void test9(int rgrid_t)
+//{
+//    int N = 2000;
+//    double r0 = 1e-7;
+//    double r1 = 3.0;
+//    
+//    Radial_grid r(static_cast<radial_grid_t>(rgrid_t), N, r0, r1);
+//    printf("dx(0) = %18.12f\n", r.dx(0));
+//    
+//    auto f = [](double x){return 1.0 / std::pow(static_cast<T>(x), 2);};
+//
+//    Spline<T> s(r, f);
+//    
+//    if (rgrid_t == 1) {
+//        check_spline(s, f, r0, r1);
+//    }
+//
+//    if (std::is_same<T, double>::value) {
+//        printf("test9: diff: %18.12f\n", std::abs(s.integrate(2) - (r1 - r0))); 
+//    }
+//    if (std::is_same<T, long double>::value) {
+//        printf("test9: diff: %18.12Lf\n", std::abs(s.integrate(2) - (r1 - r0))); 
+//    }
+//}
+//template <typename T>
+//void check_spline_1(sirius::experimental::Spline<T, T> const& s__, std::function<T(T)> f__, T x0, T x1)
+//{
+//    sirius::experimental::Radial_grid_lin<T> rgrid(10000, x0, x1);
+//    for (int ir = 0; ir < 10000; ir++) {
+//        T x = rgrid[ir];
+//        if (std::abs(s__(x) - f__(x)) > 1e-10) {
+//            printf("wrong spline interpolation at x = %18.12f\n", x);
+//            printf("true value: %18.12f, spline value: %18.12f\n", f__(x), s__(x));
+//            exit(1);
+//        }
+//    }
+//}
+//
+//template <typename T>
+//void test10()
+//{
+//    int N = 4000;
+//    T r0 = 1e-7;
+//    T r1 = 3.0;
+//    
+//    sirius::experimental::Radial_grid_exp<T> rgrid(N, r0, r1);
+//    //auto f = [](T x){return 1.0 / std::pow(static_cast<T>(x), 1);};
+//    auto f = [](T x){return std::exp(-x);};
+//
+//    sirius::experimental::Spline<T, T> s(rgrid, f);
+//    
+//    check_spline_1<T>(s, f, r0, r1);
+//}
 
 int main(int argn, char** argv)
 {
     sirius::initialize(1);
 
-/*    test_spline_1a();
-    test_spline_1b();
-    test_spline_2();
-    test_spline_4();
-    test_spline_5();
-    test_spline_6();
 
     test1(0.1, 7.13, 0, 0.3326313127230704);
     test1(0.1, 7.13, 1, -3.973877090504168);
@@ -524,12 +435,19 @@ int main(int argn, char** argv)
     test1(0.1, 7.13, -4, 49.40653515725798);
     test1(0.1, 7.13, -5, 331.7312413927384);
 
-    double x0 = 0.00001;
-    test2(linear_grid, x0, 2.0);
-    test2(exponential_grid, x0, 2.0);
-    test2(scaled_pow_grid, x0, 2.0);
-    test2(pow2_grid, x0, 2.0);
-    test2(pow3_grid, x0, 2.0);
+    test_spline_1a();
+    test_spline_1b();
+    test_spline_2();
+    test_spline_4();
+    test_spline_5();
+    test_spline_6();
+
+    //double x0 = 0.00001;
+    //test2(linear_grid, x0, 2.0);
+    //test2(exponential_grid, x0, 2.0);
+    //test2(scaled_pow_grid, x0, 2.0);
+    //test2(pow2_grid, x0, 2.0);
+    //test2(pow3_grid, x0, 2.0);
 
     test3(1, 0.0001, 2.0, 0.7029943796175838);
     test3(2, 0.0001, 2.0, 1.0365460153117974);
@@ -539,32 +457,22 @@ int main(int argn, char** argv)
     test6();
 
     test7();
+    
+    //for (int i = 0; i < 5; i++) {
+    //    printf("grid type: %i\n", i);
+    //    printf("testing in double\n");
+    //    test8<double>(i);
+    //    printf("testing in long double\n");
+    //    test8<long double>(i);
+    //}
 
-    test8();
-*/
-    test9_pow3(1e-7, 1.8, 300);
-    test9_pow3(1e-7, 1.8, 500);
-    test9_pow3(1e-7, 1.8, 800);
-    test9_pow3(1e-7, 1.8, 1000);
-    test9_pow3(1e-7, 1.8, 2000);
-
-    test9_linexp(1e-7, 1.8, 300);
-    test9_linexp(1e-7, 1.8, 500);
-    test9_linexp(1e-7, 1.8, 800);
-    test9_linexp(1e-7, 1.8, 1000);
-    test9_linexp(1e-7, 1.8, 2000);
-
-    test9_scaledpow(1e-7, 1.8, 300);
-    test9_scaledpow(1e-7, 1.8, 500);
-    test9_scaledpow(1e-7, 1.8, 800);
-    test9_scaledpow(1e-7, 1.8, 1000);
-    test9_scaledpow(1e-7, 1.8, 2000);
-
-    test9_exp(1e-7, 1.8, 300);
-    test9_exp(1e-7, 1.8, 500);
-    test9_exp(1e-7, 1.8, 800);
-    test9_exp(1e-7, 1.8, 1000);
-    test9_exp(1e-7, 1.8, 2000);
+    //for (int i = 0; i < 5; i++) {
+    //    printf("grid type: %i\n", i);
+    //    printf("testing in double\n");
+    //    test9<double>(i);
+    //    //printf("testing in long double\n");
+    //    //test9<long double>(i);
+    //}
 
     sirius::finalize();
     

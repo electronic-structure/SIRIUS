@@ -10,11 +10,8 @@
 
 using namespace geometry3d;
 
-namespace sirius
-{
+namespace sirius {
 
-//---------------------------------------------------------------
-//---------------------------------------------------------------
 void Forces_PS::calc_local_forces(mdarray<double,2>& forces)
 {
     PROFILE("sirius::Forces_PS::calc_local_forces");
@@ -22,7 +19,7 @@ void Forces_PS::calc_local_forces(mdarray<double,2>& forces)
     // get main arrays
     const Periodic_function<double>* valence_rho = density_.rho();
 
-    //const mdarray<double, 2>& vloc_radial_integrals = potential_.get_vloc_radial_integrals();
+    Radial_integrals_vloc ri(ctx_.unit_cell(), ctx_.pw_cutoff(), 100);
 
     // other
     Unit_cell &unit_cell = ctx_.unit_cell();
@@ -63,7 +60,7 @@ void Forces_PS::calc_local_forces(mdarray<double,2>& forces)
             vector3d<double> gvec_cart = gvecs.gvec_cart(ig);
 
             // scalar part of a force without multipying by G-vector
-            double_complex z = fact * fourpi * ctx_.radial_integrals().vloc_radial_integral(iat, gvecs.gvec_len(ig)) * std::conj(valence_rho->f_pw(ig)) *
+            double_complex z = fact * fourpi * ri.value(iat, gvecs.gvec_len(ig)) * std::conj(valence_rho->f_pw_local(igloc)) *
                     std::exp(double_complex(0.0, - twopi * (gvec * atom.position())));
 
             // get force components multiplying by cartesian G-vector ( -image part goes from formula)
@@ -76,10 +73,6 @@ void Forces_PS::calc_local_forces(mdarray<double,2>& forces)
     ctx_.comm().allreduce(&forces(0,0), static_cast<int>(forces.size()));
 }
 
-
-
-//---------------------------------------------------------------
-//---------------------------------------------------------------
 void Forces_PS::calc_nlcc_forces(mdarray<double,2>& forces)
 {
     PROFILE("sirius::Forces_PS::calc_nlcc_force");
@@ -90,18 +83,18 @@ void Forces_PS::calc_nlcc_forces(mdarray<double,2>& forces)
     /* transform from real space to reciprocal */
     xc_pot->fft_transform(-1);
 
-    //const mdarray<double, 2>&  rho_core_radial_integrals = density_.rho_pseudo_core_radial_integrals();
-
     Unit_cell &unit_cell = ctx_.unit_cell();
 
     Gvec const& gvecs = ctx_.gvec();
 
-    int gvec_count = gvecs.gvec_count(ctx_.comm().rank());
-    int gvec_offset = gvecs.gvec_offset(ctx_.comm().rank());
+    int gvec_count = gvecs.count();
+    int gvec_offset = gvecs.offset();
 
     forces.zero();
 
     double fact = gvecs.reduced() ? 2.0 : 1.0 ;
+    
+    auto ri = Radial_integrals_rho_core_pseudo(ctx_.unit_cell(), ctx_.pw_cutoff(), 20);
 
     // here the calculations are in lattice vectors space
     #pragma omp parallel for
@@ -126,8 +119,8 @@ void Forces_PS::calc_nlcc_forces(mdarray<double,2>& forces)
             vector3d<double> gvec_cart = gvecs.gvec_cart(ig);
 
             // scalar part of a force without multipying by G-vector
-            double_complex z = fact * fourpi * ctx_.radial_integrals().pseudo_core_radial_integral(iat, gvecs.gvec_len(ig)) *
-                               std::conj(xc_pot->f_pw(ig)) * std::exp(double_complex(0.0, -twopi * (gvec * atom.position())));
+            double_complex z = fact * fourpi * ri.value(iat, gvecs.gvec_len(ig)) *
+                               std::conj(xc_pot->f_pw_local(igloc)) * std::exp(double_complex(0.0, -twopi * (gvec * atom.position())));
 
             // get force components multiplying by cartesian G-vector ( -image part goes from formula)
             forces(0, ia) -= (gvec_cart[0] * z).imag();
@@ -188,7 +181,7 @@ void Forces_PS::calc_ultrasoft_forces(mdarray<double,2>& forces)
 
             // scalar part of a force without multipying by G-vector and Qij
             // omega * V_conj(G) * exp(-i G Rn)
-            double_complex g_atom_part =  reduce_g_fact * ctx_.unit_cell().omega() * std::conj(veff_full->f_pw(ig)) *
+            double_complex g_atom_part =  reduce_g_fact * ctx_.unit_cell().omega() * std::conj(veff_full->f_pw_local(igloc)) *
                     std::exp(double_complex(0.0, - twopi * (gvec * atom.position())));
 
             const Augmentation_operator &aug_op = ctx_.augmentation_op(iat);
@@ -289,9 +282,9 @@ void Forces_PS::calc_ewald_forces(mdarray<double,2>& forces)
 
     //mpi
     #pragma omp parallel for reduction( + : forces )
-    for (int igloc = 0; igloc < ctx_.gvec_count(); igloc++)
+    for (int igloc = 0; igloc < ctx_.gvec().count(); igloc++)
     {
-        int ig = ctx_.gvec_offset() + igloc;
+        int ig = ctx_.gvec().offset() + igloc;
 
         if( ig == 0 )
         {
