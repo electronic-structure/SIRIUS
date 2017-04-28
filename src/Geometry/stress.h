@@ -339,6 +339,8 @@ class Stress {
 
         Radial_integrals_aug<false> ri(ctx_.unit_cell(), ctx_.pw_cutoff(), 20);
         Radial_integrals_aug<true> ri_dq(ctx_.unit_cell(), ctx_.pw_cutoff(), 20);
+        
+        Augmentation_operator_gvec_deriv q_deriv(ctx_);
 
         for (int iat = 0; iat < ctx_.unit_cell().num_atom_types(); iat++) {
             auto& atom_type = ctx_.unit_cell().atom_type(iat);
@@ -368,26 +370,27 @@ class Stress {
             t0.stop();
             mdarray<double, 2> q_tmp(nbf * (nbf + 1) / 2, ctx_.gvec().count() * 2);
             for (int nu = 0; nu < 3; nu++) {
-                Augmentation_operator_gvec_deriv q_deriv(ctx_, iat, ri, ri_dq, nu);
+                q_deriv.generate_pw_coeffs(iat, ri, ri_dq, nu);
 
                 for (int mu = 0; mu < 3; mu++) {
                     sddk::timer t2("sirius::Stress|us|q_tmp");
+                    int igloc0{0};
+                    if (ctx_.comm().rank() == 0) {
+                        for (int i = 0; i < nbf * (nbf + 1) / 2; i++) {
+                            q_tmp(i, 0) = q_tmp(i, 1) = 0;
+                        }
+                        igloc0 = 1;
+                    }
                     #pragma omp parallel for schedule(static)
-                    for (int igloc = 0; igloc < ctx_.gvec().count(); igloc++) {
+                    for (int igloc = igloc0; igloc < ctx_.gvec().count(); igloc++) {
                         int ig = ctx_.gvec().offset() + igloc;
                         auto gvc = ctx_.gvec().gvec_cart(ig);
                         double g = gvc.length();
-                        if (ig == 0) {
-                            for (int i = 0; i < nbf * (nbf + 1) / 2; i++) {
-                                q_tmp(i, 0) = q_tmp(i, 1) = 0;
-                            }
-                        } else {
-                            for (int i = 0; i < nbf * (nbf + 1) / 2; i++) {
-                                auto z = double_complex(q_deriv.q_pw(i, 2 * igloc), q_deriv.q_pw(i, 2 * igloc + 1)) *
-                                         std::conj(potential_.effective_potential()->f_pw_local(igloc)) * (-gvc[mu] / g);
-                                q_tmp(i, 2 * igloc)     = z.real();
-                                q_tmp(i, 2 * igloc + 1) = z.imag();
-                            }
+                        for (int i = 0; i < nbf * (nbf + 1) / 2; i++) {
+                            auto z = double_complex(q_deriv.q_pw(i, 2 * igloc), q_deriv.q_pw(i, 2 * igloc + 1)) *
+                                     std::conj(potential_.effective_potential()->f_pw_local(igloc)) * (-gvc[mu] / g);
+                            q_tmp(i, 2 * igloc)     = z.real();
+                            q_tmp(i, 2 * igloc + 1) = z.imag();
                         }
                     }
                     t2.stop();
