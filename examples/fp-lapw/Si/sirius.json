@@ -1,0 +1,65 @@
+{
+    "control" : {
+        "cyclic_block_size" : 16,
+        "processing_unit" : "cpu",
+    
+        "std_evp_solver_type" : "lapack",
+        "gen_evp_solver_type" : "lapack",
+        "verbosity" : 2
+    },
+
+    "parameters" : {
+        "xc_functionals" : ["XC_GGA_X_PW91", "XC_GGA_C_PW91"],
+    
+        "electronic_structure_method" : "full_potential_lapwlo",
+    
+        "#num_fv_states" : 60,
+
+        "auto_rmt" : 1,
+
+        "num_mag_dims" : 0,
+
+        "num_dft_iter" : 100,
+
+        "ngridk" : [2,2,2],
+    
+        "use_symmetry" : true,
+
+        "pw_cutoff" : 20,
+
+        "aw_cutoff" : 8,
+    
+        "lmax_apw" : 8,
+        "lmax_pot" : 8,
+        "lmax_rho" : 8,
+
+        "potential_tol" : 1e-5,
+        "energy_tol" : 1e-8
+    },
+    
+    "mixer" : {
+      "beta" : 0.5,
+      "type" : "broyden1",
+      "max_history" : 8
+    },
+        
+    "unit_cell" : {
+        "lattice_vectors" : [
+            [0, 5.13, 5.13],
+            [5.13, 0, 5.13],
+            [5.13, 5.13, 0]
+        ],
+        "atom_types" : [
+            "Si"
+        ],
+        "atom_files" : {
+            "Si" : "Si.json"
+        },
+        "atoms" : {
+            "Si" : [
+                [0.0, 0.0, 0.0],
+                [0.250, 0.250, 0.250]
+            ]
+        }
+    }
+}
