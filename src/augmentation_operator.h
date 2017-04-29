@@ -259,6 +259,33 @@ class Augmentation_operator_gvec_deriv
                 vector3d<double> dphi_dq({-std::sin(phi), std::cos(phi), 0.0});
 
                 SHT::spherical_harmonics(2 * lmax, theta, phi, &rlm_g_(0, igloc));
+                
+                //double dg = 1e-6 * rtp[0];
+                //auto v = ctx_.gvec().gvec_cart(ig);
+                //for (int x = 0; x < 3; x++) {
+                //    vector3d<double> g1 = v;
+                //    g1[x] += dg;
+                //    vector3d<double> g2 = v;
+                //    g2[x] -= dg;
+                //    
+                //    auto gs1 = SHT::spherical_coordinates(g1);
+                //    auto gs2 = SHT::spherical_coordinates(g2);
+                //    std::vector<double> rlm1(lmmax);
+                //    std::vector<double> rlm2(lmmax);
+                //    
+                //    SHT::spherical_harmonics(2 * lmax, gs1[1], gs1[2], &rlm1[0]);
+                //    SHT::spherical_harmonics(2 * lmax, gs2[1], gs2[2], &rlm2[0]);
+                //    
+                //    if (rtp[0] < 1e-10) {
+                //        for (int lm = 0; lm < lmmax; lm++) {
+                //            rlm_dg_(lm, x, igloc) = 0;
+                //        }
+                //    } else {
+                //        for (int lm = 0; lm < lmmax; lm++) {
+                //            rlm_dg_(lm, x, igloc) = rtp[0] * (rlm1[lm] - rlm2[lm]) / 2 / dg;
+                //        }
+                //    }
+                //}
 
                 mdarray<double, 1> dRlm_dtheta(lmmax);
                 mdarray<double, 1> dRlm_dphi_sin_theta(lmmax);
@@ -304,17 +331,13 @@ class Augmentation_operator_gvec_deriv
             
             /* array of plane-wave coefficients */
             q_pw_ = mdarray<double, 2>(nbf * (nbf + 1) / 2, 2 * gvec_count, memory_t::host_pinned, "q_pw_dg_");
-            q_pw_.zero();
             sddk::timer t2("sirius::Augmentation_operator_gvec_deriv::generate_pw_coeffs|qpw");
             #pragma omp parallel for schedule(static)
             for (int igloc = 0; igloc < gvec_count; igloc++) {
                 int ig = gvec_offset + igloc;
                 double g = ctx_.gvec().gvec_len(ig);
                 auto gvc = ctx_.gvec().gvec_cart(ig);
-                if (ig == 0) {
-                    continue;
-                }
-                
+
                 std::vector<double_complex> v(lmmax);
                 auto ri = ri__.values(atom_type.id(), g);
                 auto ri_dg = ri_dq__.values(atom_type.id(), g);

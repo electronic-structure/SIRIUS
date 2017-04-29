@@ -329,6 +329,11 @@ class Stress {
         stress_nonloc_ *= (1.0 / ctx_.unit_cell().omega());
 
         symmetrize(stress_nonloc_);
+
+        std::vector<std::array<int, 2>> idx = {{0, 1}, {0, 2}, {1, 2}};
+        for (auto e: idx) {
+            stress_nonloc_(e[0], e[1]) = stress_nonloc_(e[1], e[0]) = 0.5 * (stress_nonloc_(e[0], e[1]) + stress_nonloc_(e[1], e[0]));
+        }
     }
 
     inline void calc_stress_us()
@@ -353,8 +358,7 @@ class Stress {
             /* get auxiliary density matrix */
             auto dm = density_.density_matrix_aux(iat);
 
-            /* treat phase factors as real array with 2x size */
-            mdarray<double, 2> phase_factors(atom_type.num_atoms(), ctx_.gvec().count() * 2);
+            mdarray<double_complex, 2> phase_factors(atom_type.num_atoms(), ctx_.gvec().count());
 
             sddk::timer t0("sirius::Stress|us|phase_fac");
             #pragma omp parallel for schedule(static)
@@ -362,22 +366,25 @@ class Stress {
                 int ig = ctx_.gvec().offset() + igloc;
                 for (int i = 0; i < atom_type.num_atoms(); i++) {
                     int ia = atom_type.atom_id(i);
-                    double_complex z = std::conj(ctx_.gvec_phase_factor(ig, ia));
-                    phase_factors(i, 2 * igloc)     = z.real();
-                    phase_factors(i, 2 * igloc + 1) = z.imag();
+                    phase_factors(i, igloc) = std::conj(ctx_.gvec_phase_factor(ig, ia));
                 }
             }
             t0.stop();
             mdarray<double, 2> q_tmp(nbf * (nbf + 1) / 2, ctx_.gvec().count() * 2);
+            mdarray<double, 2> v_tmp(atom_type.num_atoms(), ctx_.gvec().count() * 2);
+            mdarray<double, 2> tmp(nbf * (nbf + 1) / 2, atom_type.num_atoms());
             for (int nu = 0; nu < 3; nu++) {
                 q_deriv.generate_pw_coeffs(iat, ri, ri_dq, nu);
 
                 for (int mu = 0; mu < 3; mu++) {
-                    sddk::timer t2("sirius::Stress|us|q_tmp");
+                    sddk::timer t2("sirius::Stress|us|prepare");
                     int igloc0{0};
                     if (ctx_.comm().rank() == 0) {
                         for (int i = 0; i < nbf * (nbf + 1) / 2; i++) {
                             q_tmp(i, 0) = q_tmp(i, 1) = 0;
+                        }
+                        for (int ia = 0; ia < atom_type.num_atoms(); ia++) {
+                            v_tmp(ia, 0) = v_tmp(ia, 1) = 0;
                         }
                         igloc0 = 1;
                     }
@@ -387,18 +394,58 @@ class Stress {
                         auto gvc = ctx_.gvec().gvec_cart(ig);
                         double g = gvc.length();
                         for (int i = 0; i < nbf * (nbf + 1) / 2; i++) {
-                            auto z = double_complex(q_deriv.q_pw(i, 2 * igloc), q_deriv.q_pw(i, 2 * igloc + 1)) *
-                                     std::conj(potential_.effective_potential()->f_pw_local(igloc)) * (-gvc[mu] / g);
+                            auto z = double_complex(q_deriv.q_pw(i, 2 * igloc), q_deriv.q_pw(i, 2 * igloc + 1)) * (-gvc[mu] / g);
                             q_tmp(i, 2 * igloc)     = z.real();
                             q_tmp(i, 2 * igloc + 1) = z.imag();
                         }
+                        for (int ia = 0; ia < atom_type.num_atoms(); ia++) {
+                            auto z = phase_factors(ia, igloc) * std::conj(potential_.effective_potential()->f_pw_local(igloc));
+                            v_tmp(ia, 2 * igloc)     = z.real();
+                            v_tmp(ia, 2 * igloc + 1) = z.imag();
+                        }
                     }
                     t2.stop();
+
                     
+                    //tmp.zero();
+                    //for (int ia = 0; ia < atom_type.num_atoms(); ia++) {
+                    //    int iaglob = atom_type.atom_id(ia);
+                    //    for (int i = 0; i < nbf * (nbf + 1) / 2; i++) {
+                    //        for (int igloc = igloc0; igloc < ctx_.gvec().count(); igloc++) {
+                    //            int ig = ctx_.gvec().offset() + igloc;
+                    //            auto gvc = ctx_.gvec().gvec_cart(ig);
+                    //            double g = gvc.length();
+                    //            tmp(i, ia) += std::real(
+                    //                    double_complex(q_deriv.q_pw(i, 2 * igloc), q_deriv.q_pw(i, 2 * igloc + 1)) *
+                    //                    std::conj(potential_.effective_potential()->f_pw_local(igloc)) * (-gvc[mu] / g) *
+                    //                    double_complex(phase_factors(ia, 2 * igloc), phase_factors(ia, 2 * igloc + 1))
+                    //                    );
+                    //        }
+                    //    }
+                    //}
+                    
+                    ///* canonical code */
+                    //for (int igloc = igloc0; igloc < ctx_.gvec().count(); igloc++) {
+                    //    int ig = ctx_.gvec().offset() + igloc;
+                    //    auto gvc = ctx_.gvec().gvec_cart(ig);
+                    //    double g = gvc.length();
+                    //    for (int ia = 0; ia < atom_type.num_atoms(); ia++) {
+                    //        int iaglob = atom_type.atom_id(ia);
+                    //        for (int i = 0; i < nbf * (nbf + 1) / 2; i++) {
+                    //            stress_us_(mu, nu) += std::real(
+                    //                double_complex(q_deriv.q_pw(i, 2 * igloc), q_deriv.q_pw(i, 2 * igloc + 1)) *
+                    //                std::conj(potential_.effective_potential()->f_pw_local(igloc)) * (-gvc[mu] / g) *
+                    //                double_complex(phase_factors(ia, 2 * igloc), phase_factors(ia, 2 * igloc + 1)) *
+                    //                dm(i, ia, 0) * q_deriv.sym_weight(i)
+                    //            );
+
+                    //        }
+                    //    }
+                    //}
+
                     sddk::timer t1("sirius::Stress|us|gemm");
-                    mdarray<double, 2> tmp(nbf * (nbf + 1) / 2, atom_type.num_atoms());
                     linalg<CPU>::gemm(0, 1, nbf * (nbf + 1) / 2, atom_type.num_atoms(), 2 * ctx_.gvec().count(),
-                                      q_tmp, phase_factors, tmp);
+                                      q_tmp, v_tmp, tmp);
                     t1.stop();
                     for (int ia = 0; ia < atom_type.num_atoms(); ia++) {
                         for (int i = 0; i < nbf * (nbf + 1) / 2; i++) {
@@ -417,6 +464,11 @@ class Stress {
         stress_us_ *= (1.0 / ctx_.unit_cell().omega());
 
         symmetrize(stress_us_);
+
+        std::vector<std::array<int, 2>> idx = {{0, 1}, {0, 2}, {1, 2}};
+        for (auto e: idx) {
+            stress_us_(e[0], e[1]) = stress_us_(e[1], e[0]) = 0.5 * (stress_us_(e[0], e[1]) + stress_us_(e[1], e[0]));
+        }
     }
 
     inline void symmetrize(matrix3d<double>& mtrx__) const

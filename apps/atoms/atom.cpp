@@ -71,9 +71,10 @@ class Free_atom: public sirius::Atom_type
                 vrho[i] = 0;
             }
 
-            std::vector<double> w;
-            sirius::Mixer<double>* mixer = new sirius::Broyden1<double>(np, 12, 0.8, w, mpi_comm_self());
-            for (int i = 0; i < np; i++) mixer->input(i, vrho[i]);
+            sirius::Mixer<double>* mixer = new sirius::Broyden1<double>(0, np, 12, 0.8, mpi_comm_self());
+            for (int i = 0; i < np; i++) {
+                mixer->input_local(i, vrho[i]);
+            }
             mixer->initialize();
         
             sirius::Spline<double> rho(radial_grid());
@@ -165,10 +166,12 @@ class Free_atom: public sirius::Atom_type
                 }
                
                 /* mix old and new effective potential */
-                for (int i = 0; i < np; i++) mixer->input(i, vh[i] + vxc[i]);
+                for (int i = 0; i < np; i++) {
+                    mixer->input_local(i, vh[i] + vxc[i]);
+                }
                 mixer->mix();
                 for (int i = 0; i < np; i++) {
-                    vrho[i] = mixer->output_buffer(i);
+                    vrho[i] = mixer->output_local(i);
                     veff[i] = vrho[i] + vnuc[i];
                 }
 
