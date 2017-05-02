@@ -201,7 +201,7 @@ class DFT_ground_state
         {
             double exc = density_.rho()->inner(potential_.xc_energy_density());
             if (!ctx_.full_potential()) {
-                exc += density_.rho_pseudo_core()->inner(potential_.xc_energy_density());
+                exc += density_.rho_pseudo_core().inner(potential_.xc_energy_density());
             }
             return exc;
         }

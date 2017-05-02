@@ -800,7 +800,7 @@ class Potential
                 Periodic_function<double> rhovc(ctx_, 0);
                 rhovc.zero();
                 rhovc.add(density__.rho());
-                rhovc.add(density__.rho_pseudo_core());
+                rhovc.add(&density__.rho_pseudo_core());
                 /* construct XC potentials from rho + rho_core */
                 xc(&rhovc, density__.magnetization(), xc_potential_, effective_magnetic_field_, xc_energy_density_);
             }
