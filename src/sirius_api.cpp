@@ -2929,8 +2929,7 @@ void sirius_get_forces(ftn_char label__, ftn_double* forces__)
     auto get_forces = [&](const mdarray<double,2>& sirius_forces__)
         {
             #pragma omp parallel for
-            for(size_t i = 0; i < sirius_forces__.size(); i++)
-            {
+            for(size_t i = 0; i < sirius_forces__.size(); i++){
                 forces__[i] = sirius_forces__[i];
             }
         };

@@ -63,7 +63,6 @@ class Forces_PS
         Unit_cell &unit_cell = ctx_.unit_cell();
 
         Beta_projectors& bp = kpoint.beta_projectors();
-
         Beta_projectors_gradient bp_grad(ctx_, kpoint.gkvec(), bp);
 
         auto& bp_chunks = bp.beta_projector_chunks();
@@ -164,18 +163,14 @@ class Forces_PS
         sym_forces.zero();
 
         #pragma omp parallel for
-        for(int ia = 0; ia < (int)unsym_forces.size(1); ia++)
-        {
+        for(int ia = 0; ia < (int)unsym_forces.size(1); ia++){
             vector3d<double> cart_force(&unsym_forces(0,ia) );
-
             vector3d<double> lat_force = inverse_lattice_vectors * (cart_force / (double)ctx_.unit_cell().symmetry().num_mag_sym());
 
-            for (int isym = 0; isym < ctx_.unit_cell().symmetry().num_mag_sym(); isym++)
-            {
+            for (int isym = 0; isym < ctx_.unit_cell().symmetry().num_mag_sym(); isym++){
                 int ja = ctx_.unit_cell().symmetry().sym_table(ia,isym);
 
                 auto &R = ctx_.unit_cell().symmetry().magnetic_group_symmetry(isym).spg_op.R;
-
                 vector3d<double> rot_force = lattice_vectors * ( R * lat_force );
 
                 #pragma omp atomic update
@@ -239,17 +234,14 @@ public:
 
         // here the calculations are in lattice vectors space
         #pragma omp parallel for
-        for (int ia = 0; ia < unit_cell.num_atoms(); ia++)
-        {
+        for (int ia = 0; ia < unit_cell.num_atoms(); ia++){
             Atom &atom = unit_cell.atom(ia);
 
             int iat = atom.type_id();
 
             // mpi distributed
-            for (int igloc = 0; igloc < gvec_count; igloc++)
-            {
+            for (int igloc = 0; igloc < gvec_count; igloc++){
                 int ig = gvec_offset + igloc;
-
                 int igs = gvecs.shell(ig);
 
                 // fractional form for calculation of scalar product with atomic position
@@ -279,7 +271,6 @@ public:
 
         // get main arrays
         const mdarray<double_complex, 4> &density_matrix = density_.density_matrix();
-
         const Periodic_function<double> *veff_full = potential_.effective_potential();
 
         // other
@@ -296,8 +287,7 @@ public:
 
         // iterate over atoms
         #pragma omp parallel for
-        for (int ia = 0; ia < unit_cell.num_atoms(); ia++)
-        {
+        for (int ia = 0; ia < unit_cell.num_atoms(); ia++)        {
             Atom &atom = unit_cell.atom(ia);
 
             int iat = atom.type_id();
@@ -305,8 +295,7 @@ public:
                 continue;
             }
 
-            for (int igloc = 0; igloc < gvec_count; igloc++)
-            {
+            for (int igloc = 0; igloc < gvec_count; igloc++)            {
                 int ig = gvec_offset + igloc;
 
                 // fractional form for calculation of scalar product with atomic position
@@ -324,10 +313,8 @@ public:
                 const Augmentation_operator &aug_op = ctx_.augmentation_op(iat);
 
                 // iterate over trangle matrix Qij
-                for (int ib2 = 0; ib2 < atom.type().indexb().size(); ib2++)
-                {
-                    for(int ib1 = 0; ib1 <= ib2; ib1++)
-                    {
+                for (int ib2 = 0; ib2 < atom.type().indexb().size(); ib2++){
+                    for(int ib1 = 0; ib1 <= ib2; ib1++){
                         int iqij = (ib2 * (ib2 + 1)) / 2 + ib1;
 
                         double diag_fact = ib1 == ib2 ? 1.0 : 2.0;
@@ -359,8 +346,7 @@ public:
 
         auto& spl_num_kp = kset_.spl_num_kpoints();
 
-        for(int ikploc=0; ikploc < spl_num_kp.local_size() ; ikploc++)
-        {
+        for(int ikploc=0; ikploc < spl_num_kp.local_size() ; ikploc++){
             K_point *kp = kset_.k_point(spl_num_kp[ikploc]);
 
             if (ctx_.gamma_point()) {
@@ -400,17 +386,14 @@ public:
 
         // here the calculations are in lattice vectors space
         #pragma omp parallel for
-        for (int ia = 0; ia < unit_cell.num_atoms(); ia++)
-        {
+        for (int ia = 0; ia < unit_cell.num_atoms(); ia++)        {
             Atom &atom = unit_cell.atom(ia);
 
             int iat = atom.type_id();
 
             // mpi distributed
-            for (int igloc = 0; igloc < gvec_count; igloc++)
-            {
+            for (int igloc = 0; igloc < gvec_count; igloc++){
                 int ig = gvec_offset + igloc;
-
                 int igs = gvecs.shell(ig);
 
                 // fractional form for calculation of scalar product with atomic position
@@ -430,9 +413,7 @@ public:
                 forces(2, ia) -= (gvec_cart[2] * z).imag();
             }
         }
-
         ctx_.comm().allreduce(&forces(0,0), static_cast<int>(forces.size()));
-
     }
 
     inline void calc_ewald_forces(mdarray<double,2>& forces)
@@ -445,7 +426,6 @@ public:
 
         #pragma omp declare reduction( + : mdarray<double,2> : add_mdarray2d(omp_in, omp_out))  initializer( init_mdarray2d(omp_priv, omp_orig) )
 
-
         // 1 / ( 2 sigma^2 )
         double alpha = 1.5;
 
@@ -453,12 +433,10 @@ public:
 
         //mpi
         #pragma omp parallel for reduction( + : forces )
-        for (int igloc = 0; igloc < ctx_.gvec().count(); igloc++)
-        {
+        for (int igloc = 0; igloc < ctx_.gvec().count(); igloc++){
             int ig = ctx_.gvec().offset() + igloc;
 
-            if( ig == 0 )
-            {
+            if( ig == 0 ){
                 continue;
             }
 
@@ -466,23 +444,19 @@ public:
 
             // cartesian form for getting cartesian force components
             vector3d<double> gvec_cart = ctx_.gvec().gvec_cart(ig);
-
             double_complex rho(0, 0);
 
-            for (int ja = 0; ja < unit_cell.num_atoms(); ja++)
-            {
+            for (int ja = 0; ja < unit_cell.num_atoms(); ja++){
                 rho += ctx_.gvec_phase_factor(ig, ja) * static_cast<double>(unit_cell.atom(ja).zn());
             }
 
             rho = std::conj(rho);
 
-            for (int ja = 0; ja < unit_cell.num_atoms(); ja++)
-            {
+            for (int ja = 0; ja < unit_cell.num_atoms(); ja++){
                 double scalar_part = prefac * (rho * ctx_.gvec_phase_factor(ig, ja)).imag() *
                         static_cast<double>(unit_cell.atom(ja).zn()) * std::exp(-g2 / (4 * alpha) ) / g2;
 
-                for(int x: {0,1,2})
-                {
+                for(int x: {0,1,2}){
                     forces(x,ja) += scalar_part * gvec_cart[x];
                 }
             }
@@ -494,14 +468,11 @@ public:
         double invpi = 1. / pi;
 
         #pragma omp parallel for
-        for (int ia = 0; ia < unit_cell.num_atoms(); ia++)
-        {
-            for (int i = 1; i < unit_cell.num_nearest_neighbours(ia); i++)
-            {
+        for (int ia = 0; ia < unit_cell.num_atoms(); ia++){
+            for (int i = 1; i < unit_cell.num_nearest_neighbours(ia); i++){
                 int ja = unit_cell.nearest_neighbour(i, ia).atom_id;
 
                 double d = unit_cell.nearest_neighbour(i, ia).distance;
-
                 double d2 = d*d;
 
                 vector3d<double> t = unit_cell.lattice_vectors() * unit_cell.nearest_neighbour(i, ia).translation;
@@ -510,8 +481,7 @@ public:
                               ( gsl_sf_erfc(std::sqrt(alpha) * d) / d  +  2.0 * std::sqrt(alpha * invpi ) * std::exp( - d2 * alpha ) );
 
 
-                for(int x: {0,1,2})
-                {
+                for(int x: {0,1,2}){
                     forces(x,ia) += scalar_part * t[x];
                 }
             }
