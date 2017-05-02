@@ -2944,6 +2944,8 @@ void sirius_get_forces(ftn_char label__, ftn_double* forces__)
         get_forces( forces->nonlocal_forces() );
     } else if (label == "us") {
         get_forces( forces->ultrasoft_forces() );
+    } else if (label == "usnl") {
+        get_forces( forces->us_nl_forces() );
     } else if (label == "tot") {
         get_forces( forces->total_forces() );
     } else {

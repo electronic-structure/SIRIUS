@@ -56,6 +56,7 @@ class Forces_PS
     mdarray<double, 2> nlcc_forces_;
     mdarray<double, 2> ewald_forces_;
     mdarray<double, 2> total_forces_;
+    mdarray<double, 2> us_nl_forces_;
 
     template<typename T>
     void add_k_point_contribution_to_nonlocal2(K_point& kpoint, mdarray<double,2>& forces)
@@ -201,6 +202,7 @@ public:
         nlcc_forces_      = mdarray<double,2>(3, ctx_.unit_cell().num_atoms());
         ewald_forces_     = mdarray<double,2>(3, ctx_.unit_cell().num_atoms());
         total_forces_     = mdarray<double,2>(3, ctx_.unit_cell().num_atoms());
+        us_nl_forces_     = mdarray<double,2>(3, ctx_.unit_cell().num_atoms());
 
         calc_forces_contributions();
 
@@ -527,12 +529,18 @@ public:
         return total_forces_;
     }
 
+    inline mdarray<double,2> const& us_nl_forces()
+    {
+        return us_nl_forces_;
+    }
+
     inline void sum_forces()
     {
         mdarray<double,2> total_forces_unsym(3, ctx_.unit_cell().num_atoms());
 
         #pragma omp parallel for
         for(size_t i = 0; i < local_forces_.size(); i++ ) {
+            us_nl_forces_[i] = ultrasoft_forces_[i] + nonlocal_forces_[i];
             total_forces_unsym[i] = local_forces_[i] + ultrasoft_forces_[i] + nonlocal_forces_[i] + nlcc_forces_[i] + ewald_forces_[i];
         }
 

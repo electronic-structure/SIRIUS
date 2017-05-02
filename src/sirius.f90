@@ -924,10 +924,17 @@ module sirius
             integer,                  intent(in)  :: nhm
         end subroutine
 
-        subroutine sirius_calc_forces(forces)&
+        subroutine sirius_calc_forces(kset_id)&
             &bind(C, name="sirius_calc_forces")
+            integer,                 intent(in) :: kset_id
+        end subroutine
+
+        subroutine sirius_get_forces(label, forces)&
+            &bind(C, name="sirius_get_forces")
+            character, dimension(*), intent(in)  :: label
             real(8),                 intent(out) :: forces
         end subroutine
+
 
         subroutine sirius_generate_rho_multipole_moments(lmmax, qmt)&
             &bind(C, name="sirius_generate_rho_multipole_moments")
