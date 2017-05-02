@@ -175,7 +175,7 @@ class Density // TODO: return rho_vec
          *  exchange-correlation energy which is introduced trough the pseudo core density: 
          *  \f$ E_{xc}[\rho_{val} + \rho_{core}] \f$. The 'pseudo' reflects the fact that 
          *  this density integrated does not reproduce the total number of core elctrons. */
-        Periodic_function<double>* rho_pseudo_core_{nullptr};
+        std::unique_ptr<Periodic_function<double>> rho_pseudo_core_{nullptr};
         
         Periodic_function<double>* magnetization_[3];
         
@@ -356,12 +356,14 @@ class Density // TODO: return rho_vec
 
             auto ri = Radial_integrals_rho_core_pseudo(ctx_.unit_cell(), ctx_.pw_cutoff(), 20);
 
-            auto v = ctx_.make_periodic_function<index_domain_t::global>([&ri](int iat, double g)
-                                                                         {
-                                                                             return ri.value(iat, g);
-                                                                         });
-            ctx_.fft().transform<1>(ctx_.gvec().partition(), &v[ctx_.gvec().partition().gvec_offset_fft()]);
-            ctx_.fft().output(&rho_pseudo_core_->f_rg(0));
+            auto v = ctx_.make_periodic_function<index_domain_t::local>([&ri](int iat, double g)
+                                                                        {
+                                                                            return ri.value(iat, g);
+                                                                        });
+            std::copy(v.begin(), v.end(), &rho_pseudo_core_->f_pw_local(0));
+            rho_pseudo_core_->fft_transform(1);
+            //ctx_.fft().transform<1>(ctx_.gvec().partition(), &v[ctx_.gvec().partition().gvec_offset_fft()]);
+            //ctx_.fft().output(&rho_pseudo_core_->f_rg(0));
         }
 
     public:
@@ -379,7 +381,7 @@ class Density // TODO: return rho_vec
 
             /* core density of the pseudopotential method */
             if (!ctx_.full_potential()) {
-                rho_pseudo_core_ = new Periodic_function<double>(ctx_, 0);
+                rho_pseudo_core_ = std::unique_ptr<Periodic_function<double>>(new Periodic_function<double>(ctx_, 0));
                 rho_pseudo_core_->zero();
 
                 generate_pseudo_core_charge_density();
@@ -422,9 +424,6 @@ class Density // TODO: return rho_vec
             delete rho_;
             for (int j = 0; j < ctx_.num_mag_dims(); j++) {
                 delete magnetization_[j];
-            }
-            if (rho_pseudo_core_ != nullptr) {
-                delete rho_pseudo_core_;
             }
         }
 
@@ -800,9 +799,9 @@ class Density // TODO: return rho_vec
             return rho_;
         }
         
-        Periodic_function<double>* rho_pseudo_core()
+        Periodic_function<double>& rho_pseudo_core()
         {
-            return rho_pseudo_core_;
+            return *rho_pseudo_core_;
         }
         
         Periodic_function<double>** magnetization()

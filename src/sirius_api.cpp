@@ -3013,6 +3013,8 @@ void sirius_get_pw_coeffs(ftn_char label__,
             v = density->rho()->gather_f_pw();
         } else if (label == "veff") {
             v = potential->effective_potential()->gather_f_pw();
+        } else if (label == "rhoc") {
+            v = density->rho_pseudo_core().gather_f_pw();
         } else {
             TERMINATE("wrong label");
         }
