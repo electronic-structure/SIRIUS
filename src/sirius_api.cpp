@@ -3060,22 +3060,10 @@ void sirius_get_pw_coeffs_real(ftn_char    atom_type__,
         mdarray<int, 2> gvec(gvl__, 3, *ngv__);
         
         double fourpi_omega = fourpi / sim_ctx->unit_cell().omega();
+        #pragma omp parallel for
         for (int i = 0; i < *ngv__; i++) {
-            vector3d<int> G(gvec(0, i), gvec(1, i), gvec(2, i));
-
-            int ig = sim_ctx->gvec().index_by_gvec(G);
-            if (ig == -1 && sim_ctx->gvec().reduced()) {
-                ig = sim_ctx->gvec().index_by_gvec(G * (-1));
-            }
-            if (ig == -1) {
-                std::stringstream s;
-                auto gvc = sim_ctx->unit_cell().reciprocal_lattice_vectors() * vector3d<double>(G[0], G[1], G[2]);
-                s << "wrong index of G-vector" << std::endl
-                  << "input G-vector: " << G << " (length: " << gvc.length() << " [a.u.^-1])" << std::endl;
-                TERMINATE(s);
-            }
-            double g = sim_ctx->gvec().gvec_len(ig);
-            pw_coeffs__[i] = fourpi_omega * f(g);
+            auto gc = sim_ctx->unit_cell().reciprocal_lattice_vectors() *  vector3d<int>(gvec(0, i), gvec(1, i), gvec(2, i));
+            pw_coeffs__[i] = fourpi_omega * f(gc.length());
         }
     };
     
