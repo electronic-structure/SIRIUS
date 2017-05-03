@@ -262,9 +262,7 @@ class Potential
                                                                         {
                                                                             return ri.value(iat, g);
                                                                         });
-            for (int igloc = 0; igloc < ctx_.gvec().count(); igloc++) {
-                local_potential_->f_pw_local(igloc) = v[igloc];
-            }
+            std::copy(v.begin(), v.end(), &local_potential_->f_pw_local(0));
             local_potential_->fft_transform(1);
 
             if (ctx_.control().print_checksum_) {
