@@ -205,6 +205,7 @@ class Radial_integrals_rho_pseudo: public Radial_integrals_base<1>
     }
 };
 
+template <bool jl_deriv>
 class Radial_integrals_rho_core_pseudo: public Radial_integrals_base<1>
 {
   private:
@@ -226,7 +227,12 @@ class Radial_integrals_rho_core_pseudo: public Radial_integrals_base<1>
             for (int iq = 0; iq < grid_q_.num_points(); iq++) {
                 Spherical_Bessel_functions jl(0, atom_type.radial_grid(), grid_q_[iq]);
 
-                values_(iat)[iq] = sirius::inner(jl[0], ps_core, 2, atom_type.num_mt_points());
+                if (jl_deriv) {
+                    auto s = jl.deriv_q(0);
+                    values_(iat)[iq] = sirius::inner(s, ps_core, 2, atom_type.num_mt_points());
+                } else {
+                    values_(iat)[iq] = sirius::inner(jl[0], ps_core, 2, atom_type.num_mt_points());
+                }
             }
             values_(iat).interpolate();
         }

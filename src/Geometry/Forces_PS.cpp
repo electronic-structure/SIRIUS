@@ -94,7 +94,7 @@ void Forces_PS::calc_nlcc_forces(mdarray<double,2>& forces)
 
     double fact = gvecs.reduced() ? 2.0 : 1.0 ;
     
-    auto ri = Radial_integrals_rho_core_pseudo(ctx_.unit_cell(), ctx_.pw_cutoff(), 20);
+    auto ri = Radial_integrals_rho_core_pseudo<false>(ctx_.unit_cell(), ctx_.pw_cutoff(), 20);
 
     // here the calculations are in lattice vectors space
     #pragma omp parallel for

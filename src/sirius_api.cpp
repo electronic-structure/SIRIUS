@@ -3044,6 +3044,44 @@ void sirius_get_pw_coeffs(ftn_char label__,
     }
 }
 
+void sirius_get_pw_coeffs_real(ftn_char    atom_type__,
+                               ftn_char    label__,  
+                               ftn_double* pw_coeffs__,
+                               ftn_int*    ngv__,
+                               ftn_int*    gvl__, 
+                               ftn_int*    comm__)
+{
+    std::string label(label__);
+    std::string atom_label(atom_type__);
+    int iat = sim_ctx->unit_cell().atom_type(atom_label).id();
+
+    auto make_pw_coeffs = [&](std::function<double(double)> f)
+    {
+        mdarray<int, 2> gvec(gvl__, 3, *ngv__);
+        
+        double fourpi_omega = fourpi / sim_ctx->unit_cell().omega();
+        #pragma omp parallel for
+        for (int i = 0; i < *ngv__; i++) {
+            auto gc = sim_ctx->unit_cell().reciprocal_lattice_vectors() *  vector3d<int>(gvec(0, i), gvec(1, i), gvec(2, i));
+            pw_coeffs__[i] = fourpi_omega * f(gc.length());
+        }
+    };
+    
+    if (label == "rhoc") {
+        auto ri = sirius::Radial_integrals_rho_core_pseudo<false>(sim_ctx->unit_cell(), sim_ctx->pw_cutoff(), 20);
+        make_pw_coeffs([&ri, iat](double g)
+                       {
+                           return ri.value(iat, g);
+                       });
+    } else if (label == "rhoc_dg") {
+        auto ri = sirius::Radial_integrals_rho_core_pseudo<true>(sim_ctx->unit_cell(), sim_ctx->pw_cutoff(), 20);
+        make_pw_coeffs([&ri, iat](double g)
+                       {
+                           return ri.value(iat, g);
+                       });
+    }
+}
+
 void sirius_calculate_stress_tensor(ftn_int* kset_id__)
 {
     auto& kset = *kset_list[*kset_id__];

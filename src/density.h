@@ -354,7 +354,7 @@ class Density // TODO: return rho_vec
         {
             PROFILE("sirius::Density::generate_pseudo_core_charge_density");
 
-            auto ri = Radial_integrals_rho_core_pseudo(ctx_.unit_cell(), ctx_.pw_cutoff(), 20);
+            auto ri = Radial_integrals_rho_core_pseudo<false>(ctx_.unit_cell(), ctx_.pw_cutoff(), 20);
 
             auto v = ctx_.make_periodic_function<index_domain_t::local>([&ri](int iat, double g)
                                                                         {
@@ -362,8 +362,6 @@ class Density // TODO: return rho_vec
                                                                         });
             std::copy(v.begin(), v.end(), &rho_pseudo_core_->f_pw_local(0));
             rho_pseudo_core_->fft_transform(1);
-            //ctx_.fft().transform<1>(ctx_.gvec().partition(), &v[ctx_.gvec().partition().gvec_offset_fft()]);
-            //ctx_.fft().output(&rho_pseudo_core_->f_rg(0));
         }
 
     public:
