@@ -109,6 +109,8 @@ inline void Band::initialize_subspace(K_point* kp__,
 {
     PROFILE("sirius::Band::initialize_subspace|kp");
 
+    sddk::timer t1("sirius::Band::initialize_subspace|kp|init");
+
     /* number of basis functions */
     int num_phi = std::max(num_ao__, ctx_.num_fv_states());
     
@@ -222,6 +224,10 @@ inline void Band::initialize_subspace(K_point* kp__,
         DUMP("checksum(phi): %18.10f %18.10f", cs.real(), cs.imag());
     }
 
+    t1.stop();
+
+    sddk::timer t2("sirius::Band::initialize_subspace|kp|diag");
+
     for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
         /* apply Hamiltonian and overlap operators to the new basis functions */
         apply_h_o<T>(kp__, ispn, 0, num_phi, phi, hphi, ophi, d_op, q_op);
@@ -302,6 +308,7 @@ inline void Band::initialize_subspace(K_point* kp__,
             kp__->band_energy(j + ispn * ctx_.num_fv_states()) = eval[j];
         }
     }
+    t2.stop();
 
     kp__->beta_projectors().dismiss();
     ctx_.fft_coarse().dismiss();
