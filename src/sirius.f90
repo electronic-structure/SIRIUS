@@ -955,6 +955,16 @@ module sirius
             real(8),                 intent(out) :: s
         end subroutine
 
+        subroutine sirius_get_pw_coeffs_real(atom_type, label, pw_coeffs, ngv, gvl, comm)&
+            &bind(C, name="sirius_get_pw_coeffs_real")
+            character,         target, dimension(*), intent(in)  :: atom_type
+            character,         target, dimension(*), intent(in)  :: label
+            real(8),                                 intent(out) :: pw_coeffs
+            integer,                                 intent(in)  :: ngv
+            integer,                                 intent(in)  :: gvl
+            integer,                                 intent(in)  :: comm
+        end subroutine
+
     end interface
 
 contains
