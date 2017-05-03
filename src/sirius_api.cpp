@@ -2929,25 +2929,25 @@ void sirius_get_forces(ftn_char label__, ftn_double* forces__)
     auto get_forces = [&](const mdarray<double,2>& sirius_forces__)
         {
             #pragma omp parallel for
-            for(size_t i = 0; i < sirius_forces__.size(); i++){
+            for (size_t i = 0; i < sirius_forces__.size(); i++){
                 forces__[i] = sirius_forces__[i];
             }
         };
 
     if (label == "vloc") {
-        get_forces( forces->local_forces() );
+        get_forces(forces->local_forces());
     } else if (label == "nlcc") {
-        get_forces( forces->nlcc_forces() );
+        get_forces(forces->nlcc_forces());
     } else if (label == "ewald") {
-        get_forces( forces->ewald_forces() );
+        get_forces(forces->ewald_forces());
     } else if (label == "nl") {
-        get_forces( forces->nonlocal_forces() );
+        get_forces(forces->nonlocal_forces());
     } else if (label == "us") {
-        get_forces( forces->ultrasoft_forces() );
+        get_forces(forces->ultrasoft_forces());
     } else if (label == "usnl") {
-        get_forces( forces->us_nl_forces() );
+        get_forces(forces->us_nl_forces());
     } else if (label == "tot") {
-        get_forces( forces->total_forces() );
+        get_forces(forces->total_forces());
     } else {
         TERMINATE("wrong label");
     }
