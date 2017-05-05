@@ -263,7 +263,7 @@ inline void Band::initialize_subspace(K_point* kp__,
             /* global index of G+k vector */
             int igk = kp__->idxgk(igk_loc);
             if (igk) {
-                phi.pw_coeffs().prime(igk_loc, i) += type_wrapper<double_complex>::random() * 1e-5;
+                phi.pw_coeffs().prime(igk_loc, i) += type_wrapper<double>::random() * 1e-5;
             }
         }
     }
