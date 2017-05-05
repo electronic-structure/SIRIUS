@@ -109,21 +109,13 @@ inline void Band::initialize_subspace(K_point* kp__,
 {
     PROFILE("sirius::Band::initialize_subspace|kp");
 
-    sddk::timer t1("sirius::Band::initialize_subspace|kp|init");
-
-    sddk::timer t3("sirius::Band::initialize_subspace|kp|init_wf");
-
     /* number of basis functions */
     int num_phi = std::max(num_ao__, ctx_.num_fv_states());
     
-    sddk::timer t6("sirius::Band::initialize_subspace|kp|zero_wf");
     wave_functions phi(ctx_.processing_unit(), kp__->gkvec(), num_phi);
     phi.pw_coeffs().prime().zero();
-    t6.stop();
 
     if (num_ao__ > 0) {
-
-        sddk::timer t4("sirius::Band::initialize_subspace|kp|init_gk");
         mdarray<double, 2> rlm_gk(kp__->num_gkvec_loc(), Utils::lmmax(unit_cell_.lmax()));
         mdarray<std::pair<int, double>, 1> idx_gk(kp__->num_gkvec_loc());
         #pragma omp parallel for schedule(static)
@@ -141,7 +133,6 @@ inline void Band::initialize_subspace(K_point* kp__,
             double dgk = vs[0] - rad_int__[0][0].radial_grid()[i];
             idx_gk(igk_loc) = std::pair<int, double>(i, dgk);
         }
-        t4.stop();
 
         std::vector<int> idxao;
         int n{0};
@@ -155,7 +146,6 @@ inline void Band::initialize_subspace(K_point* kp__,
             }
         }
 
-        sddk::timer t7("sirius::Band::initialize_subspace|kp|init_ri");
         mdarray<double, 3> ri(kp__->num_gkvec_loc(), unit_cell_.lmax() + 1, unit_cell_.num_atom_types());
         for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
             for (int l = 0; l <= unit_cell_.atom_type(iat).indexr().lmax(); l++) {
@@ -165,9 +155,7 @@ inline void Band::initialize_subspace(K_point* kp__,
                 }
             }
         }
-        t7.stop();
 
-        sddk::timer t5("sirius::Band::initialize_subspace|kp|init_phi");
         #pragma omp parallel for schedule(static)
         for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
             double phase = twopi * (kp__->gkvec().vk() * unit_cell_.atom(ia).position());
@@ -181,6 +169,7 @@ inline void Band::initialize_subspace(K_point* kp__,
             }
             auto& atom_type = unit_cell_.atom(ia).type();
             int n{0};
+            //for (size_t i = 0; i < atom_type.pp_desc().atomic_pseudo_wfs_.size(); i++) {
             for (int l = 0; l <= atom_type.indexr().lmax(); l++) {
                 //int l = atom_type.pp_desc().atomic_pseudo_wfs_[i].first;
                 double_complex z = std::pow(double_complex(0, -1), l) * fourpi / std::sqrt(unit_cell_.omega());
@@ -195,45 +184,8 @@ inline void Band::initialize_subspace(K_point* kp__,
                 }
             }
         }
-        t5.stop();
-
-        //#pragma omp parallel
-        //{
-        //    std::vector<double> gkvec_rlm(Utils::lmmax(unit_cell_.lmax()));
-        //    /* fill first N functions with atomic orbitals */
-        //    #pragma omp for schedule(static)
-        //    for (int igk_loc = 0; igk_loc < kp__->num_gkvec_loc(); igk_loc++) {
-        //        /* global index of G+k vector */
-        //        int igk = kp__->gkvec().idxgk(igk_loc);
-        //        /* vs = {r, theta, phi} */
-        //        auto vs = SHT::spherical_coordinates(kp__->gkvec().gkvec_cart(igk));
-        //        int idx_gk = static_cast<int>((vs[0] / ctx_.gk_cutoff()) * (rad_int__[0][0].num_points() - 1));
-        //        double dgk = vs[0] - rad_int__[0][0].radial_grid()[idx_gk];
-        //        /* compute real spherical harmonics for G+k vector */
-        //        SHT::spherical_harmonics(unit_cell_.lmax(), vs[1], vs[2], &gkvec_rlm[0]);
-
-        //        int n{0};
-        //        for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
-        //            double phase = twopi * (kp__->gkvec().gkvec(igk) * unit_cell_.atom(ia).position());
-        //            double_complex phase_factor = std::exp(double_complex(0.0, -phase));
-
-        //            auto& atom_type = unit_cell_.atom(ia).type();
-        //            //for (size_t i = 0; i < atom_type.pp_desc().atomic_pseudo_wfs_.size(); i++) {
-        //            for (int l = 0; l <= atom_type.indexr().lmax(); l++) {
-        //                //int l = atom_type.pp_desc().atomic_pseudo_wfs_[i].first;
-        //                for (int m = -l; m <= l; m++) {
-        //                    int lm = Utils::lm_by_l_m(l, m);
-        //                    double_complex z = std::pow(double_complex(0, -1), l) * fourpi / std::sqrt(unit_cell_.omega());
-        //                    //phi.pw_coeffs().prime(igk_loc, n++) = z * phase_factor * gkvec_rlm[lm] * rad_int__[atom_type.id()][i](vs[0]);
-        //                    phi.pw_coeffs().prime(igk_loc, n++) = z * phase_factor * gkvec_rlm[lm] * rad_int__[atom_type.id()][l](idx_gk, dgk);
-        //                }
-        //            }
-        //        }
-        //    }
-        //}
     }
 
-    sddk::timer t8("sirius::Band::initialize_subspace|kp|init_phi_1");
     assert(kp__->num_gkvec() > num_phi + 10);
     #pragma omp parallel for schedule(static)
     for (int i = 0; i < num_phi - num_ao__; i++) {
@@ -254,21 +206,24 @@ inline void Band::initialize_subspace(K_point* kp__,
             }
         }
     }
-    t8.stop();
 
-    sddk::timer t9("sirius::Band::initialize_subspace|kp|init_phi_2");
+    std::vector<double> tmp(1024);
+    for (int i = 0; i < 1024; i++) {
+        tmp[i] = type_wrapper<double>::random();
+    }
+    
+    int igk0{0};
+    if (kp__->comm().rank() == 0) {
+        igk0 = 1;
+    }
     #pragma omp parallel for schedule(static)
     for (int i = 0; i < num_phi; i++) {
-        for (int igk_loc = 0; igk_loc < kp__->num_gkvec_loc(); igk_loc++) {
+        for (int igk_loc = igk0; igk_loc < kp__->num_gkvec_loc(); igk_loc++) {
             /* global index of G+k vector */
             int igk = kp__->idxgk(igk_loc);
-            if (igk) {
-                phi.pw_coeffs().prime(igk_loc, i) += type_wrapper<double>::random() * 1e-5;
-            }
+            phi.pw_coeffs().prime(igk_loc, i) += tmp[igk & 0x3FF] * 1e-5;
         }
     }
-    t9.stop();
-    t3.stop();
 
     /* short notation for number of target wave-functions */
     int num_bands = ctx_.num_fv_states();
@@ -310,10 +265,6 @@ inline void Band::initialize_subspace(K_point* kp__,
         auto cs = phi.checksum(0, num_phi);
         DUMP("checksum(phi): %18.10f %18.10f", cs.real(), cs.imag());
     }
-
-    t1.stop();
-
-    sddk::timer t2("sirius::Band::initialize_subspace|kp|diag");
 
     for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
         /* apply Hamiltonian and overlap operators to the new basis functions */
@@ -395,7 +346,6 @@ inline void Band::initialize_subspace(K_point* kp__,
             kp__->band_energy(j + ispn * ctx_.num_fv_states()) = eval[j];
         }
     }
-    t2.stop();
 
     kp__->beta_projectors().dismiss();
     ctx_.fft_coarse().dismiss();
