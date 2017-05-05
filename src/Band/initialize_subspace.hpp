@@ -116,8 +116,10 @@ inline void Band::initialize_subspace(K_point* kp__,
     /* number of basis functions */
     int num_phi = std::max(num_ao__, ctx_.num_fv_states());
     
+    sddk::timer t6("sirius::Band::initialize_subspace|kp|zero_wf");
     wave_functions phi(ctx_.processing_unit(), kp__->gkvec(), num_phi);
     phi.pw_coeffs().prime().zero();
+    t6.stop();
 
     if (num_ao__ > 0) {
 
@@ -153,6 +155,7 @@ inline void Band::initialize_subspace(K_point* kp__,
             }
         }
 
+        sddk::timer t7("sirius::Band::initialize_subspace|kp|init_ri");
         mdarray<double, 3> ri(kp__->num_gkvec_loc(), unit_cell_.lmax() + 1, unit_cell_.num_atom_types());
         for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
             for (int l = 0; l <= unit_cell_.atom_type(iat).indexr().lmax(); l++) {
@@ -162,7 +165,7 @@ inline void Band::initialize_subspace(K_point* kp__,
                 }
             }
         }
-
+        t7.stop();
 
         sddk::timer t5("sirius::Band::initialize_subspace|kp|init_phi");
         #pragma omp parallel for schedule(static)
@@ -230,6 +233,7 @@ inline void Band::initialize_subspace(K_point* kp__,
         //}
     }
 
+    sddk::timer t8("sirius::Band::initialize_subspace|kp|init_phi_1");
     assert(kp__->num_gkvec() > num_phi + 10);
     #pragma omp parallel for schedule(static)
     for (int i = 0; i < num_phi - num_ao__; i++) {
@@ -250,7 +254,9 @@ inline void Band::initialize_subspace(K_point* kp__,
             }
         }
     }
+    t8.stop();
 
+    sddk::timer t9("sirius::Band::initialize_subspace|kp|init_phi_2");
     #pragma omp parallel for schedule(static)
     for (int i = 0; i < num_phi; i++) {
         for (int igk_loc = 0; igk_loc < kp__->num_gkvec_loc(); igk_loc++) {
@@ -261,6 +267,7 @@ inline void Band::initialize_subspace(K_point* kp__,
             }
         }
     }
+    t9.stop();
     t3.stop();
 
     /* short notation for number of target wave-functions */
