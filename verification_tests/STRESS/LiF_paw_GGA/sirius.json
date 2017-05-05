@@ -1,0 +1,78 @@
+
+{
+  "control" : {
+      "cyclic_block_size" : 16,
+      "processing_unit" : "cpu",
+      "!std_evp_solver_type" : "lapack",
+      "!gen_evp_solver_type" : "lapack",
+      "reduce_gvec": true,
+	  "verbosity": 1,
+      "print_stress": true,
+      "print_forces": true
+  },
+
+  "parameters" : {
+      "electronic_structure_method" : "pseudopotential",
+
+      "!num_fv_states" : 40,
+
+      "xc_functionals" : ["XC_LDA_X", "XC_LDA_C_PZ"],
+
+      "smearing_width" : 0.025,
+
+      "use_symmetry" : true,
+
+      "num_mag_dims" : 0,
+
+      "gk_cutoff" : 6.0,
+      "pw_cutoff" : 20.00,
+
+      "energy_tol" : 1e-8,
+      "potential_tol" : 1e-8,
+
+      "num_dft_iter" : 100,
+
+      "ngridk" : [4,4,4]
+  },
+
+    "iterative_solver" : {
+        "energy_tolerance" : 1e-2,
+        "residual_tolerance" : 1e-6,
+        "num_steps" : 20,
+        "subspace_size" : 4,
+        "type" : "davidson",
+        "converge_by_energy" : 1
+    },
+
+
+    "unit_cell" : {
+
+            "lattice_vectors" : [ [0, 3.50402, 3.60402],
+                                  [3.80402, 0, 3.80402],
+                                  [3.80402, 3.80402, 0]
+                                ],
+
+            "atom_types" : ["Li", "F"],
+
+            "atom_files" : {
+                "Li" : "li_pbe_v1.4.uspp.F.UPF.json",
+                "F"  : "f_pbe_v1.4.uspp.F.UPF.json"
+            },
+
+            "atoms" : {
+                "F" : [
+                    [0.5, 0.5, 0.45]
+                ],
+                "Li" : [
+                    [0, 0, 0]
+                ]
+            }
+        },
+
+    "mixer" : {
+        "beta" : 0.7,
+        "type" : "broyden1",
+        "max_history" : 8
+    }
+
+}
