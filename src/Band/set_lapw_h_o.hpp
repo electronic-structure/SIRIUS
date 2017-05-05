@@ -186,6 +186,10 @@ inline void Band::set_fv_h_o<GPU, electronic_structure_method_t::full_potential_
     mdarray<double_complex, 3> halm_col(kp__->num_gkvec_col(), max_mt_aw, 2, memory_t::host_pinned | memory_t::device);
     t2.stop();
 
+    if (ctx_.comm().rank() == 0 && ctx_.control().print_memory_usage_) {
+        MEMORY_USAGE_INFO();
+    }
+
     sddk::timer t1("sirius::Band::set_fv_h_o|zgemm");
     for (int iblk = 0; iblk < nblk; iblk++) {
         int num_mt_aw = 0;
@@ -567,47 +571,47 @@ void Band::set_h_it(K_point* kp, Periodic_function<double>* effective_potential,
 
     STOP(); // effective potential is now stored in the veff_pw_ auxiliary array. Fix this.
 
-    #pragma omp parallel for default(shared)
-    for (int igk_col = 0; igk_col < kp->num_gkvec_col(); igk_col++) {
-        auto gkvec_col_cart = kp->gkvec().gkvec_cart(kp->igk_col(igk_col));
-        auto gvec_col = kp->gkvec().gvec(kp->igk_col(igk_col));
-        for (int igk_row = 0; igk_row < kp->num_gkvec_row(); igk_row++) {
-            auto gkvec_row_cart = kp->gkvec().gkvec_cart(kp->igk_row(igk_row));
-            auto gvec_row = kp->gkvec().gvec(kp->igk_row(igk_row));
+    //#pragma omp parallel for default(shared)
+    //for (int igk_col = 0; igk_col < kp->num_gkvec_col(); igk_col++) {
+    //    auto gkvec_col_cart = kp->gkvec().gkvec_cart(kp->igk_col(igk_col));
+    //    auto gvec_col = kp->gkvec().gvec(kp->igk_col(igk_col));
+    //    for (int igk_row = 0; igk_row < kp->num_gkvec_row(); igk_row++) {
+    //        auto gkvec_row_cart = kp->gkvec().gkvec_cart(kp->igk_row(igk_row));
+    //        auto gvec_row = kp->gkvec().gvec(kp->igk_row(igk_row));
 
-            int ig12 = ctx_.gvec().index_g12(gvec_row, gvec_col);
-            
-            /* pw kinetic energy */
-            double t1 = 0.5 * (gkvec_row_cart * gkvec_col_cart);
-                              
-            switch (sblock) {
-                case spin_block_t::nm: {
-                    h(igk_row, igk_col) += (effective_potential->f_pw(ig12) + t1 * ctx_.step_function().theta_pw(ig12));
-                    break;
-                }
-                case spin_block_t::uu: {
-                    h(igk_row, igk_col) += (effective_potential->f_pw(ig12) + effective_magnetic_field[0]->f_pw(ig12) +  
-                                            t1 * ctx_.step_function().theta_pw(ig12));
-                    break;
-                }
-                case spin_block_t::dd: {
-                    h(igk_row, igk_col) += (effective_potential->f_pw(ig12) - effective_magnetic_field[0]->f_pw(ig12) +  
-                                            t1 * ctx_.step_function().theta_pw(ig12));
-                    break;
-                }
-                case spin_block_t::ud: {
-                    h(igk_row, igk_col) += (effective_magnetic_field[1]->f_pw(ig12) - 
-                                            double_complex(0, 1) * effective_magnetic_field[2]->f_pw(ig12));
-                    break;
-                }
-                case spin_block_t::du: {
-                    h(igk_row, igk_col) += (effective_magnetic_field[1]->f_pw(ig12) + 
-                                            double_complex(0, 1) * effective_magnetic_field[2]->f_pw(ig12));
-                    break;
-                }
-            }
-        }
-    }
+    //        int ig12 = ctx_.gvec().index_g12(gvec_row, gvec_col);
+    //        
+    //        /* pw kinetic energy */
+    //        double t1 = 0.5 * (gkvec_row_cart * gkvec_col_cart);
+    //                          
+    //        switch (sblock) {
+    //            case spin_block_t::nm: {
+    //                h(igk_row, igk_col) += (effective_potential->f_pw(ig12) + t1 * ctx_.step_function().theta_pw(ig12));
+    //                break;
+    //            }
+    //            case spin_block_t::uu: {
+    //                h(igk_row, igk_col) += (effective_potential->f_pw(ig12) + effective_magnetic_field[0]->f_pw(ig12) +  
+    //                                        t1 * ctx_.step_function().theta_pw(ig12));
+    //                break;
+    //            }
+    //            case spin_block_t::dd: {
+    //                h(igk_row, igk_col) += (effective_potential->f_pw(ig12) - effective_magnetic_field[0]->f_pw(ig12) +  
+    //                                        t1 * ctx_.step_function().theta_pw(ig12));
+    //                break;
+    //            }
+    //            case spin_block_t::ud: {
+    //                h(igk_row, igk_col) += (effective_magnetic_field[1]->f_pw(ig12) - 
+    //                                        double_complex(0, 1) * effective_magnetic_field[2]->f_pw(ig12));
+    //                break;
+    //            }
+    //            case spin_block_t::du: {
+    //                h(igk_row, igk_col) += (effective_magnetic_field[1]->f_pw(ig12) + 
+    //                                        double_complex(0, 1) * effective_magnetic_field[2]->f_pw(ig12));
+    //                break;
+    //            }
+    //        }
+    //    }
+    //}
 }
 
 template <spin_block_t sblock>

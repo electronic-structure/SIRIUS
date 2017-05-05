@@ -1,0 +1,74 @@
+{
+    "control" : {
+        "cyclic_block_size" : 16,
+        "processing_unit" : "cpu",
+        "std_evp_solver_type" : "lapack",
+        "gen_evp_solver_type" : "lapack",
+        "verbosity" : 2
+    },
+
+    "parameters" : {
+        "electronic_structure_method" : "full_potential_lapwlo",
+        "xc_functionals" : ["XC_LDA_X", "XC_LDA_C_PW"],
+        "smearing_width" : 0.05,
+        "valence_relativity" : "none",
+        "core_relativity" : "none",
+        "num_fv_states" : 10,
+        "aw_cutoff" : 3.0,
+        "pw_cutoff" : 12.00,
+        "auto_rmt" : 1,
+        "use_symmetry": true,
+        "ngridk" : [1,1,1],
+        "potential_tol" : 1e-7,
+        "energy_tol" : 1e-7,
+        "num_dft_iter" : 100,
+        "lmax_apw"     : 8,
+        "lmax_pot"     : 8,
+        "lmax_rho"     : 8
+    },
+
+    "iterative_solver" : {
+        "energy_tolerance" : 1e-4,
+        "residual_tolerance" : 1e-5,
+        "num_steps" : 12,
+        "subspace_size" : 12,
+        "type" : "davidson",
+        "converge_by_energy" : 0,
+        "converge_occupied" : 0
+    },
+
+    "unit_cell" : {
+
+        "lattice_vectors" : [ [1, 0, 0], 
+                              [0, 1, 0], 
+                              [0, 0, 1]
+                            ],
+        "lattice_vectors_scale" : 14,
+
+        "atom_types" : ["H", "O"],
+
+        "atom_files" : {
+            "H" : "H.json",
+            "O"  :"O.json"
+        },
+
+        "atom_coordinate_units" : "A",
+
+        "atoms" : {
+            "O" : [
+                [0.000000,     0.000000,     0.000000]
+            ],
+            "H" : [
+                [0.000000,     0.000000,     0.968539],
+                [0.941293,     0.000000,    -0.228116]
+            ]
+        }
+    },
+    
+    "mixer" : {
+        "beta" : 0.9,
+        "type" : "broyden1",
+        "max_history" : 8
+    }
+
+}

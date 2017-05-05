@@ -1,6 +1,5 @@
 {
   "control" : {
-      "cyclic_block_size" : 16,
       "processing_unit" : "cpu",
       "std_evp_solver_type" : "lapack",
       "gen_evp_solver_type" : "lapack"
@@ -15,7 +14,7 @@
 
       "smearing_width" : 0.025,
 
-      "use_symmetry" : 1,
+      "use_symmetry" : true,
 
       "num_mag_dims" : 0,
 

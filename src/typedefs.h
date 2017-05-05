@@ -41,9 +41,6 @@ enum class electronic_structure_method_t
     /// Full potential linearized augmented plane waves with local orbitals.
     full_potential_lapwlo,
 
-    /// Full potential plane waves with local orbitals (heavily experimental and not completely implemented).
-    full_potential_pwlo,
-
     /// Pseudopotential (ultrasoft, norm-conserving, PAW).
     pseudopotential
 };

@@ -16,9 +16,6 @@ inline void K_point::generate_spinor_wave_functions()
         if (ctx_.processing_unit() == GPU) {
             fv_states().allocate_on_device();
             fv_states().copy_to_device(0, nfv);
-            for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-                spinor_wave_functions(ispn).allocate_on_device();
-            }
             sv_eigen_vectors_[0].allocate(memory_t::device);
             sv_eigen_vectors_[0].copy_to_device();
             if (ctx_.num_mag_dims() != 3) {
@@ -49,7 +46,6 @@ inline void K_point::generate_spinor_wave_functions()
             fv_states().deallocate_on_device();
             for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
                 spinor_wave_functions(ispn).copy_to_host(0, nbnd);
-                spinor_wave_functions(ispn).deallocate_on_device();
             }
             sv_eigen_vectors_[0].deallocate_on_device();
             if (ctx_.num_mag_dims() != 3) {

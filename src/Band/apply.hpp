@@ -125,18 +125,13 @@ void Band::apply_h_o(K_point* kp__,
         return;
     }
 
-    for (int i = 0; i < kp__->beta_projectors().num_beta_chunks(); i++) {
+    for (int i = 0; i < ctx_.beta_projector_chunks().num_chunks(); i++) {
         kp__->beta_projectors().generate(i);
 
-        kp__->beta_projectors().inner<T>(i, phi__, N__, n__);
+        auto beta_phi = kp__->beta_projectors().inner<T>(i, phi__, N__, n__);
 
-        if (!ctx_.iterative_solver_input_section().real_space_prj_) {
-            d_op.apply(i, ispn__, hphi__, N__, n__);
-            q_op.apply(i, 0, ophi__, N__, n__);
-        } else {
-            STOP();
-            //add_nl_h_o_rs(kp__, n__, phi, hphi, ophi, packed_mtrx_offset__, d_mtrx_packed__, q_mtrx_packed__, kappa__);
-        }
+        d_op.apply(i, ispn__, hphi__, N__, n__, beta_phi);
+        q_op.apply(i, 0, ophi__, N__, n__, beta_phi);
     }
     
     if (ctx_.control().print_checksum_) {
@@ -170,8 +165,6 @@ inline void Band::apply_fv_o(K_point* kp__,
     matrix<double_complex> alm(kp__->num_gkvec_loc(), unit_cell_.max_mt_aw_basis_size());
     matrix<double_complex> oalm(kp__->num_gkvec_loc(), unit_cell_.max_mt_aw_basis_size());
     matrix<double_complex> tmp(unit_cell_.max_mt_aw_basis_size(), n__);
-
-    //mdarray<double_complex, 1> v(n__);
 
     #ifdef __GPU
     if (ctx_.processing_unit() == GPU) {

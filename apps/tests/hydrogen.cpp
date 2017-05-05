@@ -19,9 +19,9 @@ int main(int argn, char** argv)
     args.register_key("--grid_type=","{int} type of the radial grid");
     args.register_key("--num_points=","{int} number of grid points");
     args.register_key("--rmin=","{double} first grid point");
+    args.register_key("--p=","{double} additional grid parameter");
     args.parse_args(argn, argv);
-    if (args.exist("help"))
-    {
+    if (args.exist("help")) {
         printf("Usage: %s [options]", argv[0]);
         args.print_help();
         return 0;
@@ -34,12 +34,20 @@ int main(int argn, char** argv)
 
     sirius::initialize(1);
 
-    int num_points = 20000;
-    if (args.exist("num_points")) num_points = args.value<int>("num_points");
+    int num_points{20000};
+    if (args.exist("num_points")) {
+        num_points = args.value<int>("num_points");
+    }
     radial_grid_t grid_type = static_cast<radial_grid_t>(args.value<int>("grid_type"));
 
-    double rmin = 1e-7;
-    if (args.exist("rmin")) rmin = args.value<double>("rmin");
+    double rmin{1e-7};
+    if (args.exist("rmin")) {
+        rmin = args.value<double>("rmin");
+    }
+    double p{1};
+    if (args.exist("p")) {
+        p = args.value<double>("p");
+    }
 
     std::vector<level_conf> levels;
     for (int k = 0; k < 10; k++)
@@ -53,13 +61,15 @@ int main(int argn, char** argv)
     }
 
     {
-        Radial_grid r(grid_type, num_points, rmin, 200.0);
-        std::string fname = "grid_" + r.grid_type_name() + ".txt";
+        auto r = Radial_grid_factory<double>(grid_type, num_points, rmin, 200.0, p);
+
+        //Radial_grid r(grid_type, num_points, rmin, 200.0);
+        std::string fname = "grid_" + r.name() + ".txt";
         FILE* fout = fopen(fname.c_str(), "w");
         for (int i = 0; i < r.num_points(); i++) fprintf(fout,"%i %16.12e\n", i, r[i]);
         fclose(fout);
 
-        printf("radial grid: %s\n", r.grid_type_name().c_str());
+        printf("radial grid: %s\n", r.name().c_str());
     }
 
     std::vector<double> err(levels.size());
@@ -71,8 +81,8 @@ int main(int argn, char** argv)
         int n = levels[j].n;
         int l = levels[j].l;
         int z = levels[j].z;
-
-        Radial_grid radial_grid(grid_type, num_points, rmin, 200.0 + z * 3.0);
+        
+        auto radial_grid = Radial_grid_factory<double>(grid_type, num_points, rmin, 200.0 + z * 3.0, p);
 
         std::vector<double> v(radial_grid.num_points());
         for (int i = 0; i < radial_grid.num_points(); i++) v[i] = -z / radial_grid[i];

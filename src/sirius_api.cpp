@@ -25,7 +25,7 @@
 #include "sirius.h"
 
 /// Simulation context.
-sirius::Simulation_context* sim_ctx = nullptr;
+std::unique_ptr<sirius::Simulation_context> sim_ctx{nullptr};
 
 /// Pointer to Density class, implicitly used by Fortran side.
 sirius::Density* density = nullptr;
@@ -41,6 +41,9 @@ sirius::DFT_ground_state* dft_ground_state = nullptr;
 
 /// List of timers created on the Fortran side.
 std::map<std::string, sddk::timer*> ftimers;
+
+std::unique_ptr<sirius::Stress> stress_tensor{nullptr};
+std::unique_ptr<sirius::Forces_PS> forces{nullptr};
 
 extern "C" {
 
@@ -82,10 +85,7 @@ void sirius_clear(void)
             kset_list[i] = nullptr;
         }
     }
-    if (sim_ctx != nullptr) {
-        delete sim_ctx;
-        sim_ctx = nullptr;
-    }
+    sim_ctx = nullptr;
 
     kset_list.clear();
 }
@@ -94,9 +94,9 @@ void sirius_create_simulation_context(const char* config_file_name__)
 {
     std::string config_file_name(config_file_name__);
     if (config_file_name.length() == 0) {
-        sim_ctx = new sirius::Simulation_context(mpi_comm_world());
+        sim_ctx = std::unique_ptr<sirius::Simulation_context>(new sirius::Simulation_context(mpi_comm_world()));
     } else {
-        sim_ctx = new sirius::Simulation_context(config_file_name, mpi_comm_world());
+        sim_ctx = std::unique_ptr<sirius::Simulation_context>(new sirius::Simulation_context(config_file_name, mpi_comm_world()));
     }
 }
 
@@ -111,9 +111,6 @@ void sirius_initialize_simulation_context()
 
 void sirius_delete_simulation_context()
 {
-    if (sim_ctx != nullptr) {
-        delete sim_ctx;
-    }
     sim_ctx = nullptr;
 }
 
@@ -808,7 +805,7 @@ void sirius_get_band_occupancies(int32_t* kset_id, int32_t* ik_, double* band_oc
 
 void sirius_print_timers(void)
 {
-    sddk::timer::print();
+    sddk::timer::print(0);
 }
 
 void sirius_start_timer(char const* name__)
@@ -1001,44 +998,31 @@ void sirius_load_kset(int32_t* kset_id)
 
 void FORTRAN(sirius_plot_potential)(void)
 {
-//    //FORTRAN(sirius_read_state)();
-//
-//    density->initial_density(1);
-//
-//    potential->generate_effective_potential(density->rho(), density->magnetization());
-//
-//
-//    // generate plane-wave coefficients of the potential in the interstitial region
-//    sim_ctx->fft().input(potential->effective_potential()->f_it());
-//    sim_ctx->fft().transform(-1);
-//    sim_ctx->fft().output(sim_ctx->num_gvec(), sim_ctx->fft_index(),
-//                                   potential->effective_potential()->f_pw());
-//
-//    int N = 10000;
-//    double* p = new double[N];
-//    double* x = new double[N];
-//
-//    double vf1[] = {0.1, 0.1, 0.1};
-//    double vf2[] = {0.9, 0.9, 0.9};
-//
-//    #pragma omp parallel for default(shared)
-//    for (int i = 0; i < N; i++)
-//    {
-//        double vf[3];
-//        double vc[3];
-//        double t = double(i) / (N - 1);
-//        for (int j = 0; j < 3; j++) vf[j] = vf1[j] + t * (vf2[j] - vf1[j]);
-//
-//        sim_ctx->get_coordinates<cartesian, direct>(vf, vc);
-//        p[i] = potential->value(vc);
-//        x[i] = Utils::vector_length(vc);
-//    }
-//
-//    FILE* fout = fopen("potential.dat", "w");
-//    for (int i = 0; i < N; i++) fprintf(fout, "%.12f %.12f\n", x[i] - x[0], p[i]);
-//    fclose(fout);
-//    delete x;
-//    delete p;
+    int N{10000};
+
+    potential->effective_potential()->fft_transform(-1);
+
+    std::vector<double> p(N);
+    std::vector<double> x(N);
+
+    vector3d<double> vf1({0.1, 0.1, 0.1});
+    vector3d<double> vf2({0.4, 0.4, 0.4});
+
+    #pragma omp parallel for default(shared)
+    for (int i = 0; i < N; i++) {
+        double t = double(i) / (N - 1);
+        auto vf = vf1 + (vf2 - vf1) * t;
+
+        auto vc = sim_ctx->unit_cell().get_cartesian_coordinates(vf);
+        p[i] = potential->effective_potential()->value(vc);
+        x[i] = vc.length();
+    }
+
+    FILE* fout = fopen("potential.dat", "w");
+    for (int i = 0; i < N; i++) {
+        fprintf(fout, "%.12f %.12f\n", x[i] - x[0], p[i]);
+    }
+    fclose(fout);
 }
 
 void sirius_write_json_output(void)
@@ -1541,6 +1525,43 @@ void sirius_generate_xc_potential(ftn_double* vxcmt__,
     }
 }
 
+void sirius_generate_rho_multipole_moments(ftn_int*            lmmax__,
+                                           ftn_double_complex* qmt__)
+{
+    mdarray<ftn_double_complex, 2> qmt(qmt__, *lmmax__, sim_ctx->unit_cell().num_atoms());
+    qmt.zero();
+    
+    int lmmax = std::min(*lmmax__, sim_ctx->lmmax_rho());
+
+    auto l_by_lm = Utils::l_by_lm(Utils::lmax_by_lmmax(lmmax));
+
+    for (int ialoc = 0; ialoc < sim_ctx->unit_cell().spl_num_atoms().local_size(); ialoc++) {
+        int ia = sim_ctx->unit_cell().spl_num_atoms(ialoc);
+        std::vector<double> tmp(lmmax);
+        for (int lm = 0; lm < lmmax; lm++) {
+            int l = l_by_lm[lm];
+            auto s = density->rho()->f_mt(ialoc).component(lm);
+            tmp[lm] = s.integrate(l + 2);
+        }
+        sirius::SHT::convert(Utils::lmax_by_lmmax(lmmax), tmp.data(), &qmt(0, ia));
+        qmt(0, ia) -= sim_ctx->unit_cell().atom(ia).zn() * y00;
+    }
+    sim_ctx->comm().allreduce(&qmt(0, 0), static_cast<int>(qmt.size()));
+}
+
+void sirius_generate_coulomb_potential_mt(ftn_int*            ia__,
+                                          ftn_int*            lmmax_rho__,
+                                          ftn_double_complex* rho__,
+                                          ftn_int*            lmmax_pot__,
+                                          ftn_double_complex* vmt__)
+{
+    auto& atom = sim_ctx->unit_cell().atom(*ia__ - 1);
+
+    sirius::Spheric_function<function_domain_t::spectral, double_complex> rho(rho__, *lmmax_rho__, atom.radial_grid());
+    sirius::Spheric_function<function_domain_t::spectral, double_complex> vmt(vmt__, *lmmax_pot__, atom.radial_grid());
+    potential->poisson_vmt<true>(atom, rho, vmt);
+}
+
 void sirius_generate_coulomb_potential(ftn_double* vclmt__,
                                        ftn_double* vclit__)
 {
@@ -1578,7 +1599,7 @@ void sirius_radial_solver(ftn_char    type__,
 
     relativity_t rel = relativity_t::none;
 
-    sirius::Radial_grid rgrid(*nr__, r__);
+    sirius::Radial_grid_ext<double> rgrid(*nr__, r__);
     std::vector<double> v(v__, v__ + rgrid.num_points());
     sirius::Radial_solver solver(*zn__, v, rgrid);
 
@@ -2139,67 +2160,6 @@ void sirius_symmetrize_density()
     dft_ground_state->symmetrize(density->rho(), density->magnetization(0), density->magnetization(1), density->magnetization(2));
 }
 
-void sirius_get_rho_pw(ftn_int*            num_gvec__,
-                       ftn_int*            gvec__,
-                       ftn_double_complex* rho_pw__) // TODO: unify all get_pw() methods in a single function
-{
-
-    mdarray<int, 2> gvec(gvec__, 3, *num_gvec__);
-
-    for (int i = 0; i < *num_gvec__; i++) {
-        bool is_inverse{false};
-        vector3d<int> G(gvec(0, i), gvec(1, i), gvec(2, i));
-        int ig = sim_ctx->gvec().index_by_gvec(G);
-        if (ig == -1 && sim_ctx->gvec().reduced()) {
-            ig = sim_ctx->gvec().index_by_gvec(G * (-1));
-            is_inverse = true;
-        }
-        if (ig == -1) {
-            std::stringstream s;
-            auto gvc = sim_ctx->unit_cell().reciprocal_lattice_vectors() * vector3d<double>(G[0], G[1], G[2]);
-            s << "wrong index of G-vector" << std::endl
-              << "input G-vector: " << G << " (length: " << gvc.length() << " [a.u.^-1])" << std::endl;
-            TERMINATE(s);
-        }
-        //if (ig == -1 ) {
-        //    rho_pw__[i] = 0;
-        //    continue;
-        //}
-        if (is_inverse) {
-            rho_pw__[i] = std::conj(density->rho()->f_pw(ig));
-        } else {
-            rho_pw__[i] = density->rho()->f_pw(ig);
-        }
-    }
-}
-
-void sirius_get_veff_pw(ftn_int*            num_gvec__,
-                        ftn_int*            gvec__,
-                        ftn_double_complex* veff_pw__)
-{
-
-    mdarray<int, 2> gvec(gvec__, 3, *num_gvec__);
-
-    for (int i = 0; i < *num_gvec__; i++)
-    {
-        vector3d<int> G(gvec(0, i), gvec(1, i), gvec(2, i));
-        int ig = sim_ctx->gvec().index_by_gvec(G);
-        if (ig == -1) {
-            if (sim_ctx->gvec().reduced()) {
-                int ig1 = sim_ctx->gvec().index_by_gvec(G * (-1));
-                if (ig1 == -1) {
-                    TERMINATE("wrong index of G-vector");
-                }
-                veff_pw__[i] = std::conj(potential->effective_potential()->f_pw(ig1));
-            } else {
-                TERMINATE("wrong index of G-vector");
-            }
-        } else {
-            veff_pw__[i] = potential->effective_potential()->f_pw(ig);
-        }
-    }
-}
-
 void sirius_get_gvec_index(int32_t* gvec__, int32_t* ig__)
 {
     vector3d<int> gv(gvec__[0], gvec__[1], gvec__[2]);
@@ -2208,7 +2168,7 @@ void sirius_get_gvec_index(int32_t* gvec__, int32_t* ig__)
 
 void sirius_use_internal_mixer(int32_t* use_internal_mixer__)
 {
-    *use_internal_mixer__ = (sim_ctx->mixer_input_section().exist_) ? 1 : 0;
+    *use_internal_mixer__ = (sim_ctx->mixer_input().exist_) ? 1 : 0;
 }
 
 void sirius_set_iterative_solver_tolerance(double* tol__)
@@ -2786,7 +2746,7 @@ void sirius_fderiv(ftn_int* m__,
                    ftn_double* g__)
 {
     int np = *np__;
-    sirius::Radial_grid rgrid(np, x__);
+    sirius::Radial_grid_ext<double> rgrid(np, x__);
     sirius::Spline<double> s(rgrid);
     for (int i = 0; i < np; i++) {
         s[i] = f__[i];
@@ -2814,7 +2774,7 @@ void sirius_integrate_(ftn_int* m__,
                       ftn_double* result__)
 {
     int np = *np__;
-    sirius::Radial_grid rgrid(np, x__);
+    sirius::Radial_grid_ext<double> rgrid(np, x__);
     sirius::Spline<double> s(rgrid);
     for (int i = 0; i < np; i++) {
         s[i] = f__[i];
@@ -2866,53 +2826,55 @@ void sirius_get_beta_projectors(ftn_int* kset_id__,
 {
     PROFILE("sirius_api::sirius_get_beta_projectors");
 
-    if (*nkb__ != sim_ctx->unit_cell().mt_lo_basis_size()) {
-        TERMINATE("wrong number of beta-projectors");
-    }
+    STOP();
 
-    auto kset = kset_list[*kset_id__];
-    auto kp = (*kset)[*ik__ - 1];
-    auto& beta_gk = kp->beta_projectors().beta_gk();
+    //if (*nkb__ != sim_ctx->unit_cell().mt_lo_basis_size()) {
+    //    TERMINATE("wrong number of beta-projectors");
+    //}
 
-    mdarray<int, 2> gvec_k(gvec_k__, 3, *npw__);
-    mdarray<double_complex, 2> vkb(vkb__, *ld__, *nkb__);
-    vkb.zero();
-    
-    std::vector<double_complex> wf_tmp(kp->num_gkvec());
-    int gkvec_count = kp->gkvec().gvec_count(kp->comm().rank());
-    int gkvec_offset = kp->gkvec().gvec_offset(kp->comm().rank());
+    //auto kset = kset_list[*kset_id__];
+    //auto kp = (*kset)[*ik__ - 1];
+    //auto& beta_gk = kp->beta_projectors().beta_gk_total();
 
-    for (int ia = 0; ia < sim_ctx->unit_cell().num_atoms(); ia++) {
-        auto& atom = sim_ctx->unit_cell().atom(ia);
-        
-        int nbf = atom.mt_basis_size();
+    //mdarray<int, 2> gvec_k(gvec_k__, 3, *npw__);
+    //mdarray<double_complex, 2> vkb(vkb__, *ld__, *nkb__);
+    //vkb.zero();
+    //
+    //std::vector<double_complex> wf_tmp(kp->num_gkvec());
+    //int gkvec_count = kp->gkvec().gvec_count(kp->comm().rank());
+    //int gkvec_offset = kp->gkvec().gvec_offset(kp->comm().rank());
 
-        /* index of Rlm of QE */
-        auto idx_Rlm = [](int lm)
-        {
-            int l = static_cast<int>(std::sqrt(static_cast<double>(lm) + 1e-12));
-            int m = lm - l * l - l;
-            return (m > 0) ? 2 * m - 1 : -2 * m;
-        };
+    //for (int ia = 0; ia < sim_ctx->unit_cell().num_atoms(); ia++) {
+    //    auto& atom = sim_ctx->unit_cell().atom(ia);
+    //    
+    //    int nbf = atom.mt_basis_size();
 
-        for (int xi = 0; xi < nbf; xi++) {
-            int lm     = atom.type().indexb(xi).lm;
-            int idxrf  = atom.type().indexb(xi).idxrf;
-            /* position in QE array */
-            int xi1 = atom.type().indexb().index_by_idxrf(idxrf) + idx_Rlm(lm);
+    //    /* index of Rlm of QE */
+    //    auto idx_Rlm = [](int lm)
+    //    {
+    //        int l = static_cast<int>(std::sqrt(static_cast<double>(lm) + 1e-12));
+    //        int m = lm - l * l - l;
+    //        return (m > 0) ? 2 * m - 1 : -2 * m;
+    //    };
 
-            std::memcpy(&wf_tmp[gkvec_offset], &beta_gk(0, atom.offset_lo() + xi), gkvec_count * sizeof(double_complex));
-            kp->comm().allgather(wf_tmp.data(), gkvec_offset, gkvec_count);
+    //    for (int xi = 0; xi < nbf; xi++) {
+    //        int lm     = atom.type().indexb(xi).lm;
+    //        int idxrf  = atom.type().indexb(xi).idxrf;
+    //        /* position in QE array */
+    //        int xi1 = atom.type().indexb().index_by_idxrf(idxrf) + idx_Rlm(lm);
 
-            for (int ig = 0; ig < *npw__; ig++) {
-                int ig1 = kp->gkvec().index_by_gvec({gvec_k(0, ig), gvec_k(1, ig), gvec_k(2, ig)});
-                if (ig1 < 0 || ig1 >= kp->num_gkvec()) {
-                    TERMINATE("G-vector is out of range");
-                }
-                vkb(ig, atom.offset_lo() + xi1) = wf_tmp[ig1];
-            }
-        }
-    }
+    //        std::memcpy(&wf_tmp[gkvec_offset], &beta_gk(0, atom.offset_lo() + xi), gkvec_count * sizeof(double_complex));
+    //        kp->comm().allgather(wf_tmp.data(), gkvec_offset, gkvec_count);
+
+    //        for (int ig = 0; ig < *npw__; ig++) {
+    //            int ig1 = kp->gkvec().index_by_gvec({gvec_k(0, ig), gvec_k(1, ig), gvec_k(2, ig)});
+    //            if (ig1 < 0 || ig1 >= kp->num_gkvec()) {
+    //                TERMINATE("G-vector is out of range");
+    //            }
+    //            vkb(ig, atom.offset_lo() + xi1) = wf_tmp[ig1];
+    //        }
+    //    }
+    //}
 }
 
 void sirius_get_beta_projectors_by_kp(ftn_int* kset_id__,
@@ -2954,11 +2916,41 @@ void sirius_get_density_matrix(ftn_int*            ia__,
     }
 }
 
-void sirius_calc_forces(double* forces__)
+void sirius_calc_forces(ftn_int* kset_id__)
 {
-    mdarray<double,2> forces(forces__, 3, sim_ctx->unit_cell().num_atoms() );
+    auto& kset = *kset_list[*kset_id__];
+    forces = std::unique_ptr<sirius::Forces_PS>(new sirius::Forces_PS(*sim_ctx, *density, *potential, kset));
+}
 
-    dft_ground_state->forces(forces);
+void sirius_get_forces(ftn_char label__, ftn_double* forces__)
+{
+    std::string label(label__);
+
+    auto get_forces = [&](const mdarray<double,2>& sirius_forces__)
+        {
+            #pragma omp parallel for
+            for (size_t i = 0; i < sirius_forces__.size(); i++){
+                forces__[i] = sirius_forces__[i];
+            }
+        };
+
+    if (label == "vloc") {
+        get_forces(forces->local_forces());
+    } else if (label == "nlcc") {
+        get_forces(forces->nlcc_forces());
+    } else if (label == "ewald") {
+        get_forces(forces->ewald_forces());
+    } else if (label == "nl") {
+        get_forces(forces->nonlocal_forces());
+    } else if (label == "us") {
+        get_forces(forces->ultrasoft_forces());
+    } else if (label == "usnl") {
+        get_forces(forces->us_nl_forces());
+    } else if (label == "tot") {
+        get_forces(forces->total_forces());
+    } else {
+        TERMINATE("wrong label");
+    }
 }
 
 void sirius_set_verbosity(ftn_int* level__)
@@ -3004,42 +2996,157 @@ void sirius_set_pw_coeffs(ftn_char label__,
         Communicator comm(MPI_Comm_f2c(*comm__));
         mdarray<int, 2> gvec(gvl__, 3, *ngv__);
 
-        if (label == "rho") {
-            density->rho()->zero();
-            for (int i = 0; i < *ngv__; i++) {
-                vector3d<int> G(gvec(0, i), gvec(1, i), gvec(2, i));
-                int ig = sim_ctx->gvec().index_by_gvec(G);
-                if (ig >= 0) {
-                    density->rho()->f_pw(ig) = pw_coeffs__[i];
-                }
+        std::vector<double_complex> v(sim_ctx->gvec().num_gvec(), 0);
+        for (int i = 0; i < *ngv__; i++) {
+            vector3d<int> G(gvec(0, i), gvec(1, i), gvec(2, i));
+            int ig = sim_ctx->gvec().index_by_gvec(G);
+            if (ig >= 0) {
+                v[ig] = pw_coeffs__[i];
             }
-            comm.allreduce(&density->rho()->f_pw(0), sim_ctx->gvec().num_gvec());
+        }
+        comm.allreduce(v.data(), sim_ctx->gvec().num_gvec());
+
+        if (label == "rho") {
+            density->rho()->scatter_f_pw(v);
             density->rho()->fft_transform(1);
         } else if (label == "veff") {
-            potential->effective_potential()->zero();
-            for (int i = 0; i < *ngv__; i++) {
-                vector3d<int> G(gvec(0, i), gvec(1, i), gvec(2, i));
-                int ig = sim_ctx->gvec().index_by_gvec(G);
-                if (ig >= 0) {
-                    potential->effective_potential()->f_pw(ig) = pw_coeffs__[i];
-                }
-            }
-            comm.allreduce(&potential->effective_potential()->f_pw(0), sim_ctx->gvec().num_gvec());
+            potential->effective_potential()->scatter_f_pw(v);
             potential->effective_potential()->fft_transform(1);
         } else if (label == "vxc") {
-            potential->xc_potential()->zero();
-            for (int i = 0; i < *ngv__; i++) {
-                vector3d<int> G(gvec(0, i), gvec(1, i), gvec(2, i));
-                int ig = sim_ctx->gvec().index_by_gvec(G);
-                if (ig >= 0) {
-                    potential->xc_potential()->f_pw(ig) = pw_coeffs__[i];
-                }
-            }
-        
-            comm.allreduce(&potential->xc_potential()->f_pw(0), sim_ctx->gvec().num_gvec());
+            potential->xc_potential()->scatter_f_pw(v);
             potential->xc_potential()->fft_transform(1);
         } else {
             TERMINATE("wrong label");
+        }
+    }
+}
+
+void sirius_get_pw_coeffs(ftn_char label__,
+                          double_complex* pw_coeffs__,
+                          ftn_int* ngv__,
+                          ftn_int* gvl__, 
+                          ftn_int* comm__)
+{
+    std::string label(label__);
+    if (sim_ctx->full_potential()) {
+        STOP();
+    } else {
+        assert(ngv__ != NULL);
+        assert(gvl__ != NULL);
+        assert(comm__ != NULL);
+
+        Communicator comm(MPI_Comm_f2c(*comm__));
+        mdarray<int, 2> gvec(gvl__, 3, *ngv__);
+
+        std::vector<double_complex> v;
+
+        if (label == "rho") {
+            v = density->rho()->gather_f_pw();
+        } else if (label == "veff") {
+            v = potential->effective_potential()->gather_f_pw();
+        } else if (label == "vloc") {
+            v = potential->local_potential().gather_f_pw();
+        } else if (label == "rhoc") {
+            v = density->rho_pseudo_core().gather_f_pw();
+        } else {
+            TERMINATE("wrong label");
+        }
+
+        for (int i = 0; i < *ngv__; i++) {
+            vector3d<int> G(gvec(0, i), gvec(1, i), gvec(2, i));
+            
+            bool is_inverse{false};
+            int ig = sim_ctx->gvec().index_by_gvec(G);
+            if (ig == -1 && sim_ctx->gvec().reduced()) {
+                ig = sim_ctx->gvec().index_by_gvec(G * (-1));
+                is_inverse = true;
+            }
+            if (ig == -1) {
+                std::stringstream s;
+                auto gvc = sim_ctx->unit_cell().reciprocal_lattice_vectors() * vector3d<double>(G[0], G[1], G[2]);
+                s << "wrong index of G-vector" << std::endl
+                  << "input G-vector: " << G << " (length: " << gvc.length() << " [a.u.^-1])" << std::endl;
+                TERMINATE(s);
+            }
+            if (is_inverse) {
+                pw_coeffs__[i] = std::conj(v[ig]);
+            } else {
+                pw_coeffs__[i] = v[ig];
+            }
+        }
+    }
+}
+
+void sirius_get_pw_coeffs_real(ftn_char    atom_type__,
+                               ftn_char    label__,  
+                               ftn_double* pw_coeffs__,
+                               ftn_int*    ngv__,
+                               ftn_int*    gvl__, 
+                               ftn_int*    comm__)
+{
+    std::string label(label__);
+    std::string atom_label(atom_type__);
+    int iat = sim_ctx->unit_cell().atom_type(atom_label).id();
+
+    auto make_pw_coeffs = [&](std::function<double(double)> f)
+    {
+        mdarray<int, 2> gvec(gvl__, 3, *ngv__);
+        
+        double fourpi_omega = fourpi / sim_ctx->unit_cell().omega();
+        #pragma omp parallel for
+        for (int i = 0; i < *ngv__; i++) {
+            auto gc = sim_ctx->unit_cell().reciprocal_lattice_vectors() *  vector3d<int>(gvec(0, i), gvec(1, i), gvec(2, i));
+            pw_coeffs__[i] = fourpi_omega * f(gc.length());
+        }
+    };
+    
+    if (label == "rhoc") {
+        sirius::Radial_integrals_rho_core_pseudo<false> ri(sim_ctx->unit_cell(), sim_ctx->pw_cutoff(), 20);
+        make_pw_coeffs([&ri, iat](double g)
+                       {
+                           return ri.value(iat, g);
+                       });
+    } else if (label == "rhoc_dg") {
+        sirius::Radial_integrals_rho_core_pseudo<true> ri(sim_ctx->unit_cell(), sim_ctx->pw_cutoff(), 20);
+        make_pw_coeffs([&ri, iat](double g)
+                       {
+                           return ri.value(iat, g);
+                       });
+    } else if (label == "vloc") {
+        sirius::Radial_integrals_vloc ri(sim_ctx->unit_cell(), sim_ctx->pw_cutoff(), 100);
+        make_pw_coeffs([&ri, iat](double g)
+                       {
+                           return ri.value(iat, g);
+                       });
+    }
+}
+
+void sirius_calculate_stress_tensor(ftn_int* kset_id__)
+{
+    auto& kset = *kset_list[*kset_id__];
+    stress_tensor = std::unique_ptr<sirius::Stress>(new sirius::Stress(*sim_ctx, kset, *density, *potential));
+}
+
+void sirius_get_stress_tensor(ftn_char label__, ftn_double* stress_tensor__)
+{
+    std::string label(label__);
+    matrix3d<double> s;
+    if (label == "vloc") {
+        s = stress_tensor->stress_vloc();
+    } else if (label == "har") {
+        s = stress_tensor->stress_har();
+    } else if (label == "ewald") {
+        s = stress_tensor->stress_ewald();
+    } else if (label == "kin") {
+        s = stress_tensor->stress_kin();
+    } else if (label == "nl") {
+        s = stress_tensor->stress_nl();
+    } else {
+        TERMINATE("wrong label");
+    }
+    for (int mu = 0; mu < 3; mu++) {
+        for (int nu = 0; nu < 3; nu++) {
+            stress_tensor__[nu + mu * 3] = s(mu, nu);
         }
     }
 }

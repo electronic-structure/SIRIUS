@@ -1277,7 +1277,8 @@ class Eigenproblem_elpa: public Eigenproblem
             mpi_comm_cols_ = MPI_Comm_c2f(comm_col_.mpi_comm());
             mpi_comm_all_  = MPI_Comm_c2f(comm_all_.mpi_comm());
         }
-
+        
+        #ifdef __ELPA
         void transform_to_standard(int32_t matrix_size__,
                                    double_complex* A__, int32_t lda__,
                                    double_complex* B__, int32_t ldb__,
@@ -1399,6 +1400,7 @@ class Eigenproblem_elpa: public Eigenproblem
                                                  &num_rows_loc__, &block_size_, &mpi_comm_rows_, &mpi_comm_cols_, Z__, &ldz__, 
                                                  (int32_t)1, (int32_t)1);
         }
+        #endif
 
 };
 
@@ -1418,7 +1420,8 @@ class Eigenproblem_elpa1: public Eigenproblem_elpa
                   double_complex* B, int32_t ldb,
                   double* eval, 
                   double_complex* Z, int32_t ldz,
-                  int32_t num_rows_loc = 0, int32_t num_cols_loc = 0) const
+                  int32_t num_rows_loc,
+                  int32_t num_cols_loc) const
         {
             assert(nevec <= matrix_size);
 
@@ -1444,7 +1447,8 @@ class Eigenproblem_elpa1: public Eigenproblem_elpa
                   double* B, int32_t ldb,
                   double* eval, 
                   double* Z, int32_t ldz,
-                  int32_t num_rows_loc = 0, int32_t num_cols_loc = 0) const
+                  int32_t num_rows_loc,
+                  int32_t num_cols_loc) const
         {
             assert(nevec <= matrix_size);
 
@@ -1469,7 +1473,8 @@ class Eigenproblem_elpa1: public Eigenproblem_elpa
                   double* A, int32_t lda,
                   double* eval, 
                   double* Z, int32_t ldz,
-                  int32_t num_rows_loc, int32_t num_cols_loc) const
+                  int32_t num_rows_loc,
+                  int32_t num_cols_loc) const
         {
             assert(nevec <= matrix_size);
 

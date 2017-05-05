@@ -115,7 +115,7 @@ inline void Potential::generate_PAW_effective_potential(Density& density)
     paw_total_core_energy_ = energies[3];
 }
 
-inline double Potential::xc_mt_PAW_nonmagnetic(const Radial_grid& rgrid,
+inline double Potential::xc_mt_PAW_nonmagnetic(const Radial_grid<double>& rgrid,
                                                mdarray<double, 3>& out_atom_pot,
                                                mdarray<double, 2> const& full_rho_lm,
                                                std::vector<double> const& rho_core)
@@ -158,7 +158,7 @@ inline double Potential::xc_mt_PAW_nonmagnetic(const Radial_grid& rgrid,
     return inner(exc_lm_sf, full_rho_lm_sf_new);
 }
 
-inline double Potential::xc_mt_PAW_collinear(const Radial_grid& rgrid,
+inline double Potential::xc_mt_PAW_collinear(const Radial_grid<double>& rgrid,
                                              mdarray<double, 3>& out_atom_pot,
                                              mdarray<double, 2> const& full_rho_lm,
                                              mdarray<double, 3> const& magnetization_lm,
@@ -225,7 +225,7 @@ inline double Potential::xc_mt_PAW_collinear(const Radial_grid& rgrid,
 }
 
 inline double Potential::calc_PAW_hartree_potential(Atom& atom,
-                                                    const Radial_grid& grid,
+                                                    const Radial_grid<double>& grid,
                                                     mdarray<double, 2> const& full_density,
                                                     mdarray<double, 3>& out_atom_pot)
 {
@@ -248,7 +248,7 @@ inline double Potential::calc_PAW_hartree_potential(Atom& atom,
     //---------------------
     //--- calc energy ---
     //---------------------
-    std::vector<int> l_by_lm = Utils::l_by_lm( Utils::lmax_by_lmmax(lmsize_rho) );
+    auto l_by_lm = Utils::l_by_lm( Utils::lmax_by_lmmax(lmsize_rho) );
 
     // create array for integration
     std::vector<double> intdata(grid.num_points(),0);
@@ -355,7 +355,7 @@ inline void Potential::calc_PAW_local_Dij(paw_potential_data_t &pdd, mdarray<dou
     int lmax = atom_type.indexr().lmax_lo();
     int lmsize_rho = Utils::lmmax(2 * lmax);
 
-    std::vector<int> l_by_lm = Utils::l_by_lm(2 * lmax);
+    auto l_by_lm = Utils::l_by_lm(2 * lmax);
 
     // TODO: calculate not for every atom but for every atom type
     Gaunt_coefficients<double> GC(lmax, 2 * lmax, lmax, SHT::gaunt_rlm);
@@ -375,7 +375,7 @@ inline void Potential::calc_PAW_local_Dij(paw_potential_data_t &pdd, mdarray<dou
                 // common index
                 int iqij = (irb2 * (irb2 + 1)) / 2 + irb1;
 
-                Radial_grid newgrid = atom_type.radial_grid().segment(pp_desc.cutoff_radius_index);
+                Radial_grid<double> newgrid = atom_type.radial_grid().segment(pp_desc.cutoff_radius_index);
 
                 // create array for integration
                 std::vector<double> intdata(newgrid.num_points(),0);

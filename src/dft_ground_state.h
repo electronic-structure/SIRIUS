@@ -29,14 +29,13 @@
 #include "density.h"
 #include "k_point_set.h"
 #include "force.h"
+#include "Geometry/forces.h"
 #include "json.hpp"
-#include "Geometry/Forces_PS.h"
 #include "Geometry/stress.h"
 
 using json = nlohmann::json;
 
-namespace sirius
-{
+namespace sirius {
 
 class DFT_ground_state
 {
@@ -54,7 +53,7 @@ class DFT_ground_state
 
         Band band_;
 
-        std::unique_ptr<Forces_PS> forces_;
+//        std::unique_ptr<Forces_PS> forces_;
 
         int use_symmetry_;
 
@@ -149,7 +148,7 @@ class DFT_ground_state
                 ewald_energy_ = ewald_energy();
             }
 
-            forces_ = std::unique_ptr<Forces_PS>(new Forces_PS(ctx_, density_, potential_, kset_));
+//            forces_ = std::unique_ptr<Forces_PS>(new Forces_PS(ctx_, density_, potential_, kset_));
         }
 
         mdarray<double, 2> forces();
@@ -170,7 +169,7 @@ class DFT_ground_state
                 for (int ialoc = 0; ialoc < unit_cell_.spl_num_atoms().local_size(); ialoc++) {
                     int ia = unit_cell_.spl_num_atoms(ialoc);
                     int zn = unit_cell_.atom(ia).zn();
-                    enuc -= 0.5 * zn * potential_.vh_el(ia) * y00;
+                    enuc -= 0.5 * zn * potential_.vh_el(ia); // * y00;
                 }
                 ctx_.comm().allreduce(&enuc, 1);
             }
@@ -202,7 +201,7 @@ class DFT_ground_state
         {
             double exc = density_.rho()->inner(potential_.xc_energy_density());
             if (!ctx_.full_potential()) {
-                exc += density_.rho_pseudo_core()->inner(potential_.xc_energy_density());
+                exc += density_.rho_pseudo_core().inner(potential_.xc_energy_density());
             }
             return exc;
         }
@@ -314,8 +313,7 @@ class DFT_ground_state
             double tot_en{0};
 
             switch (ctx_.esm_type()) {
-                case electronic_structure_method_t::full_potential_lapwlo:
-                case electronic_structure_method_t::full_potential_pwlo: {
+                case electronic_structure_method_t::full_potential_lapwlo: {
                     tot_en = (energy_kin() + energy_exc() + 0.5 * energy_vha() + energy_enuc());
                     break;
                 }
@@ -342,15 +340,24 @@ class DFT_ground_state
             auto& comm = ctx_.comm();
 
             /* symmetrize PW components */
-            unit_cell_.symmetry().symmetrize_function(&f__->f_pw(0), ctx_.gvec(), comm);
+            auto v = f__->gather_f_pw();
+            unit_cell_.symmetry().symmetrize_function(&v[0], ctx_.gvec(), comm);
+            f__->scatter_f_pw(v);
             switch (ctx_.num_mag_dims()) {
                 case 1: {
-                    unit_cell_.symmetry().symmetrize_vector_function(&gz__->f_pw(0), ctx_.gvec(), comm);
+                    auto vz = gz__->gather_f_pw();
+                    unit_cell_.symmetry().symmetrize_vector_function(&vz[0], ctx_.gvec(), comm);
+                    gz__->scatter_f_pw(vz);
                     break;
                 }
                 case 3: {
-                    unit_cell_.symmetry().symmetrize_vector_function(&gx__->f_pw(0), &gy__->f_pw(0), &gz__->f_pw(0),
-                                                                     ctx_.gvec(), comm);
+                    auto vx = gx__->gather_f_pw();
+                    auto vy = gy__->gather_f_pw();
+                    auto vz = gz__->gather_f_pw();
+                    unit_cell_.symmetry().symmetrize_vector_function(&vx[0], &vy[0], &vz[0], ctx_.gvec(), comm);
+                    gx__->scatter_f_pw(vx);
+                    gy__->scatter_f_pw(vy);
+                    gz__->scatter_f_pw(vz);
                     break;
                 }
             }
@@ -433,8 +440,8 @@ inline double DFT_ground_state::ewald_energy()
         double ewald_g_pt = 0;
 
         #pragma omp for
-        for (int igloc = 0; igloc < ctx_.gvec_count(); igloc++) {
-            int ig = ctx_.gvec_offset() + igloc;
+        for (int igloc = 0; igloc < ctx_.gvec().count(); igloc++) {
+            int ig = ctx_.gvec().offset() + igloc;
             if (!ig) {
                 continue;
             }
@@ -488,56 +495,56 @@ inline double DFT_ground_state::ewald_energy()
     return (ewald_g + ewald_r);
 }
 
-inline void DFT_ground_state::forces(mdarray<double, 2>& inout_forces)
-{
-    PROFILE("sirius::DFT_ground_state::forces");
+//inline void DFT_ground_state::forces(mdarray<double, 2>& inout_forces)
+//{
+//    PROFILE("sirius::DFT_ground_state::forces");
+//
+//    forces_->calc_forces_contributions();
+//
+//    forces_->sum_forces(inout_forces);
+//
+//    if(ctx_.comm().rank() == 0)
+//    {
+//        auto print_forces=[&](mdarray<double, 2> const& forces)
+//        {
+//            for(int ia=0; ia < unit_cell_.num_atoms(); ia++)
+//            {
+//                printf("Atom %4i    force = %15.7f  %15.7f  %15.7f \n",
+//                       unit_cell_.atom(ia).type_id(), forces(0,ia), forces(1,ia), forces(2,ia));
+//            }
+//        };
+//
+//        std::cout<<"===== Total Forces in Ha/bohr =====" << std::endl;
+//        print_forces( inout_forces );
+//
+//        std::cout<<"===== Forces: ultrasoft contribution from Qij =====" << std::endl;
+//        print_forces( forces_->ultrasoft_forces() );
+//
+//        std::cout<<"===== Forces: non-local contribution from Beta-projectors =====" << std::endl;
+//        print_forces( forces_->nonlocal_forces() );
+//
+//        std::cout<<"===== Forces: local contribution from local potential=====" << std::endl;
+//        print_forces( forces_->local_forces() );
+//
+//        std::cout<<"===== Forces: nlcc contribution from core density=====" << std::endl;
+//        print_forces( forces_->nlcc_forces() );
+//
+//        std::cout<<"===== Forces: Ewald forces from ions =====" << std::endl;
+//        print_forces( forces_->ewald_forces() );
+//    }
+//}
 
-    forces_->calc_forces_contributions();
 
-    forces_->sum_forces(inout_forces);
-
-    if(ctx_.comm().rank() == 0)
-    {
-        auto print_forces=[&](mdarray<double, 2> const& forces)
-        {
-            for(int ia=0; ia < unit_cell_.num_atoms(); ia++)
-            {
-                printf("Atom %4i    force = %15.7f  %15.7f  %15.7f \n",
-                       unit_cell_.atom(ia).type_id(), forces(0,ia), forces(1,ia), forces(2,ia));
-            }
-        };
-
-        std::cout<<"===== Total Forces in Ha/bohr =====" << std::endl;
-        print_forces( inout_forces );
-
-        std::cout<<"===== Forces: ultrasoft contribution from Qij =====" << std::endl;
-        print_forces( forces_->ultrasoft_forces() );
-
-        std::cout<<"===== Forces: non-local contribution from Beta-projectors =====" << std::endl;
-        print_forces( forces_->nonlocal_forces() );
-
-        std::cout<<"===== Forces: local contribution from local potential=====" << std::endl;
-        print_forces( forces_->local_forces() );
-
-        std::cout<<"===== Forces: nlcc contribution from core density=====" << std::endl;
-        print_forces( forces_->nlcc_forces() );
-
-        std::cout<<"===== Forces: Ewald forces from ions =====" << std::endl;
-        print_forces( forces_->ewald_forces() );
-    }
-}
-
-
-inline mdarray<double,2 > DFT_ground_state::forces()
-{
-    PROFILE("sirius::DFT_ground_state::forces");
-
-    mdarray<double,2 > tot_forces(3, unit_cell_.num_atoms());
-
-    forces(tot_forces);
-
-    return std::move(tot_forces);
-}
+//inline mdarray<double,2 > DFT_ground_state::forces()
+//{
+//    PROFILE("sirius::DFT_ground_state::forces");
+//
+//    mdarray<double,2 > tot_forces(3, unit_cell_.num_atoms());
+//
+//    forces(tot_forces);
+//
+//    return std::move(tot_forces);
+//}
 
 inline int DFT_ground_state::find(double potential_tol, double energy_tol, int num_dft_iter, bool write_state)
 {
@@ -552,8 +559,6 @@ inline int DFT_ground_state::find(double potential_tol, double energy_tol, int n
     }
 
     int result{-1};
-
-//    tbb::task_scheduler_init tbb_init(omp_get_num_threads());
 
     for (int iter = 0; iter < num_dft_iter; iter++) {
         sddk::timer t1("sirius::DFT_ground_state::scf_loop|iteration");
@@ -674,8 +679,6 @@ inline int DFT_ground_state::find(double potential_tol, double energy_tol, int n
         potential_.save();
         density_.save();
     }
-
-//    tbb_init.terminate();
 
     return result;
 }
