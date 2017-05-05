@@ -20,23 +20,23 @@ namespace sirius {
 
 using namespace geometry3d;
 
-/* for omp reduction */
-template <typename T>
-void init_mdarray2d(mdarray<T, 2>& priv, mdarray<T, 2>& orig)
-{
-    priv = mdarray<double, 2>(orig.size(0), orig.size(1));
-    priv.zero();
-}
-
-template <typename T>
-void add_mdarray2d(mdarray<T, 2>& in, mdarray<T, 2>& out)
-{
-    for (size_t i = 0; i < in.size(1); i++) {
-        for (size_t j = 0; j < in.size(0); j++) {
-            out(j, i) += in(j, i);
-        }
-    }
-}
+///* for omp reduction */
+//template <typename T>
+//void init_mdarray2d(mdarray<T, 2>& priv, mdarray<T, 2>& orig)
+//{
+//    priv = mdarray<double, 2>(orig.size(0), orig.size(1));
+//    priv.zero();
+//}
+//
+//template <typename T>
+//void add_mdarray2d(mdarray<T, 2>& in, mdarray<T, 2>& out)
+//{
+//    for (size_t i = 0; i < in.size(1); i++) {
+//        for (size_t j = 0; j < in.size(0); j++) {
+//            out(j, i) += in(j, i);
+//        }
+//    }
+//}
 
 class Forces_PS
 {
@@ -407,35 +407,45 @@ class Forces_PS
 
         forces.zero();
 
-        #pragma omp declare reduction(+ : mdarray <double, 2> : add_mdarray2d(omp_in, omp_out)) initializer(init_mdarray2d(omp_priv, omp_orig))
+        //#pragma omp declare reduction(+ : mdarray <double, 2> : add_mdarray2d(omp_in, omp_out)) initializer(init_mdarray2d(omp_priv, omp_orig))
 
         /* 1 / ( 2 sigma^2 ) */
         double alpha = 1.5;
 
         double prefac = (ctx_.gvec().reduced() ? 4.0 : 2.0) * (twopi / unit_cell.omega());
 
-        #pragma omp parallel for reduction(+ : forces)
-        for (int igloc = 0; igloc < ctx_.gvec().count(); igloc++) {
+        int ig0{0};
+        if (ctx_.comm().rank() == 0) {
+            ig0 = 1;
+        }
+
+        mdarray<double_complex, 1> rho_tmp(ctx_.gvec().count());
+        rho_tmp.zero();
+        #pragma omp parallel for schedule(static)
+        for (int igloc = ig0; igloc < ctx_.gvec().count(); igloc++) {
             int ig = ctx_.gvec().offset() + igloc;
 
-            if (ig == 0) {
-                continue;
-            }
-
-            double g2 = std::pow(ctx_.gvec().shell_len(ctx_.gvec().shell(ig)), 2);
-
-            /* cartesian form for getting cartesian force components */
-            vector3d<double> gvec_cart = ctx_.gvec().gvec_cart(ig);
             double_complex rho(0, 0);
 
             for (int ja = 0; ja < unit_cell.num_atoms(); ja++) {
                 rho += ctx_.gvec_phase_factor(ig, ja) * static_cast<double>(unit_cell.atom(ja).zn());
             }
 
-            rho = std::conj(rho);
+            rho_tmp[igloc] = std::conj(rho);
+        }
 
-            for (int ja = 0; ja < unit_cell.num_atoms(); ja++) {
-                double scalar_part = prefac * (rho * ctx_.gvec_phase_factor(ig, ja)).imag() *
+        #pragma omp parallel for
+        for (int ja = 0; ja < unit_cell.num_atoms(); ja++) {
+            for (int igloc = ig0; igloc < ctx_.gvec().count(); igloc++) {
+                int ig = ctx_.gvec().offset() + igloc;
+
+                double g2 = std::pow(ctx_.gvec().gvec_len(ig), 2);
+
+                /* cartesian form for getting cartesian force components */
+                vector3d<double> gvec_cart = ctx_.gvec().gvec_cart(ig);
+                double_complex rho(0, 0);
+
+                double scalar_part = prefac * (rho_tmp[igloc] * ctx_.gvec_phase_factor(ig, ja)).imag() *
                                      static_cast<double>(unit_cell.atom(ja).zn()) * std::exp(-g2 / (4 * alpha)) / g2;
 
                 for (int x : {0, 1, 2}) {
@@ -443,6 +453,36 @@ class Forces_PS
                 }
             }
         }
+
+        //#pragma omp parallel for reduction(+ : forces)
+        //for (int igloc = 0; igloc < ctx_.gvec().count(); igloc++) {
+        //    int ig = ctx_.gvec().offset() + igloc;
+
+        //    if (ig == 0) {
+        //        continue;
+        //    }
+
+        //    double g2 = std::pow(ctx_.gvec().shell_len(ctx_.gvec().shell(ig)), 2);
+
+        //    /* cartesian form for getting cartesian force components */
+        //    vector3d<double> gvec_cart = ctx_.gvec().gvec_cart(ig);
+        //    double_complex rho(0, 0);
+
+        //    for (int ja = 0; ja < unit_cell.num_atoms(); ja++) {
+        //        rho += ctx_.gvec_phase_factor(ig, ja) * static_cast<double>(unit_cell.atom(ja).zn());
+        //    }
+
+        //    rho = std::conj(rho);
+
+        //    for (int ja = 0; ja < unit_cell.num_atoms(); ja++) {
+        //        double scalar_part = prefac * (rho * ctx_.gvec_phase_factor(ig, ja)).imag() *
+        //                             static_cast<double>(unit_cell.atom(ja).zn()) * std::exp(-g2 / (4 * alpha)) / g2;
+
+        //        for (int x : {0, 1, 2}) {
+        //            forces(x, ja) += scalar_part * gvec_cart[x];
+        //        }
+        //    }
+        //}
 
         ctx_.comm().allreduce(&forces(0, 0), static_cast<int>(forces.size()));
 
