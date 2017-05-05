@@ -410,7 +410,7 @@ class Forces_PS
         #pragma omp declare reduction(+ : mdarray <double, 2> : add_mdarray2d(omp_in, omp_out)) initializer(init_mdarray2d(omp_priv, omp_orig))
 
         /* 1 / ( 2 sigma^2 ) */
-        double alpha = 1.5;
+        double alpha = 2.0;
 
         double prefac = (ctx_.gvec().reduced() ? 4.0 : 2.0) * (twopi / unit_cell.omega());
 

@@ -315,7 +315,7 @@ class Radial_integrals_beta_jl: public Radial_integrals_base<3>
 
     void generate()
     {
-        PROFILE("sirius::Radial_integrals|beta");
+        PROFILE("sirius::Radial_integrals|beta_jl");
     
         for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
             auto& atom_type = unit_cell_.atom_type(iat);
