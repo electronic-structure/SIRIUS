@@ -111,6 +111,8 @@ inline void Band::initialize_subspace(K_point* kp__,
 
     sddk::timer t1("sirius::Band::initialize_subspace|kp|init");
 
+    sddk::timer t3("sirius::Band::initialize_subspace|kp|init_wf");
+
     /* number of basis functions */
     int num_phi = std::max(num_ao__, ctx_.num_fv_states());
     
@@ -241,6 +243,7 @@ inline void Band::initialize_subspace(K_point* kp__,
             }
         }
     }
+    t3.stop();
 
     /* short notation for number of target wave-functions */
     int num_bands = ctx_.num_fv_states();
