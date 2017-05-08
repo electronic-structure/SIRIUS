@@ -409,8 +409,27 @@ class Forces_PS
 
         #pragma omp declare reduction(+ : mdarray <double, 2> : add_mdarray2d(omp_in, omp_out)) initializer(init_mdarray2d(omp_priv, omp_orig))
 
-        /* 1 / ( 2 sigma^2 ) */
-        double alpha = 2.0;
+        /* alpha = 1 / ( 2 sigma^2 ) , selecting alpha here for better convergence*/
+        double alpha = 1.0;
+        double gmax = ctx_.pw_cutoff();
+        double upper_bound = 0.0;
+        double charge = 0.0;
+
+        /* total charge */
+        for(int ia = 0; ia < unit_cell.num_atoms(); ia++){
+            charge += unit_cell.atom(ia).zn();
+        }
+
+        /* iterate to find alpha */
+        do{
+            alpha += 0.1;
+            upper_bound = charge*charge * std::sqrt( 2.0 * alpha / twopi) * gsl_sf_erfc( gmax * std::sqrt(1.0 / (4.0 * alpha)) );
+            //std::cout<<"alpha " <<alpha<<" ub "<<upper_bound<<std::endl;
+        }while(upper_bound < 1.0e-8);
+
+        if(alpha < 1.5){
+            std::cout<<"Ewald forces error: probably, pw_cutoff is too small."<<std::endl;
+        }
 
         double prefac = (ctx_.gvec().reduced() ? 4.0 : 2.0) * (twopi / unit_cell.omega());
 
@@ -436,7 +455,7 @@ class Forces_PS
 
             for (int ja = 0; ja < unit_cell.num_atoms(); ja++) {
                 double scalar_part = prefac * (rho * ctx_.gvec_phase_factor(ig, ja)).imag() *
-                                     static_cast<double>(unit_cell.atom(ja).zn()) * std::exp(-g2 / (4 * alpha)) / g2;
+                                     static_cast<double>(unit_cell.atom(ja).zn()) * std::exp(-g2 / (4.0 * alpha)) / g2;
 
                 for (int x : {0, 1, 2}) {
                     forces(x, ja) += scalar_part * gvec_cart[x];
