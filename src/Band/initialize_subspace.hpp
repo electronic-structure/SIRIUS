@@ -115,6 +115,8 @@ inline void Band::initialize_subspace(K_point* kp__,
     wave_functions phi(ctx_.processing_unit(), kp__->gkvec(), num_phi);
     phi.pw_coeffs().prime().zero();
 
+    sddk::timer t1("sirius::Band::initialize_subspace|kp|wf");
+
     if (num_ao__ > 0) {
         mdarray<double, 2> rlm_gk(kp__->num_gkvec_loc(), Utils::lmmax(unit_cell_.lmax()));
         mdarray<std::pair<int, double>, 1> idx_gk(kp__->num_gkvec_loc());
@@ -224,6 +226,7 @@ inline void Band::initialize_subspace(K_point* kp__,
             phi.pw_coeffs().prime(igk_loc, i) += tmp[igk & 0x3FF] * 1e-5;
         }
     }
+    t1.stop();
 
     /* short notation for number of target wave-functions */
     int num_bands = ctx_.num_fv_states();
