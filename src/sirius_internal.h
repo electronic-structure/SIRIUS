@@ -80,7 +80,7 @@ namespace sirius {
         assert(sizeof(double) == 8);
     }
 
-    inline void finalize(bool call_mpi_fin__)
+    inline void finalize(bool call_mpi_fin__ = true)
     {
         #ifdef __MAGMA
         magma_finalize_wrapper();
