@@ -62,8 +62,6 @@ class BLACS_grid
         , num_ranks_row_(num_ranks_row__)
         , num_ranks_col_(num_ranks_col__)
     {
-        PROFILE("sddk::BLACS_grid::BLACS_grid");
-
         mpi_grid_ = std::unique_ptr<MPI_grid>(new MPI_grid({num_ranks_row__, num_ranks_col__}, comm_));
 
         rank_row_ = mpi_grid_->coordinate(0);
@@ -102,8 +100,6 @@ class BLACS_grid
 
     ~BLACS_grid()
     {
-        PROFILE("sddk::BLACS_grid::~BLACS_grid");
-
         #ifdef __SCALAPACK
         linalg_base::gridexit(blacs_context_);
         linalg_base::free_blacs_handler(blacs_handler_);

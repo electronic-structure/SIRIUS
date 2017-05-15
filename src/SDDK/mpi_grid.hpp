@@ -76,8 +76,6 @@ class MPI_grid
     /// Initialize the grid.
     void initialize()
     {
-        PROFILE("sddk::MPI_grid::initialize");
-
         if (dimensions_.size() == 0) {
             TERMINATE("no dimensions provided for the MPI grid");
         }
@@ -170,8 +168,6 @@ class MPI_grid
 
     void finalize()
     {
-        PROFILE("sddk::MPI_grid::finalize");
-
         communicators_.clear();
         communicator_root_.clear();
         communicator_size_.clear();
@@ -189,7 +185,6 @@ class MPI_grid
         : dimensions_(dimensions__)
         , parent_communicator_(parent_communicator__)
     {
-        PROFILE("sddk::MPI_grid::MPI_grid");
         initialize();
     }
 
@@ -197,13 +192,11 @@ class MPI_grid
         : dimensions_({parent_communicator__.size()})
         , parent_communicator_(parent_communicator__)
     {
-        PROFILE("sddk::MPI_grid::MPI_grid");
         initialize();
     }
 
     ~MPI_grid()
     {
-        PROFILE("sddk::MPI_grid::~MPI_grid");
         finalize();
     }
 
