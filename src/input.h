@@ -365,6 +365,8 @@ struct Parameters_input
     /// True if symmetry is used.
     bool use_symmetry_{true};
 
+    double nn_radius_{-1};
+
     void read(json const& parser)
     {
         if (parser.count("parameters")) {
@@ -403,6 +405,7 @@ struct Parameters_input
             energy_tol_     = parser["parameters"].value("energy_tol", energy_tol_);
             potential_tol_  = parser["parameters"].value("potential_tol", potential_tol_);
             molecule_       = parser["parameters"].value("molecule", molecule_);
+            nn_radius_      = parser["parameters"].value("nn_radius", nn_radius_);
         }
     }
 };

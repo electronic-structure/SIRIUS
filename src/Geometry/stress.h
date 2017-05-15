@@ -132,7 +132,7 @@ class Stress {
     {
         PROFILE("sirius::Stress|ewald");
 
-        double lambda = 1.5;
+        double lambda = 2.5;
 
         auto& uc = ctx_.unit_cell();
 

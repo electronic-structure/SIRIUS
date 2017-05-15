@@ -613,8 +613,6 @@ class Unit_cell
 
         inline void import(Unit_cell_input const& inp__)
         {
-            PROFILE("sirius::Unit_cell::import");
- 
             if (inp__.exist_) {
                 /* first, load all types */
                 for (int iat = 0; iat < (int)inp__.labels_.size(); iat++) {
@@ -686,7 +684,8 @@ inline void Unit_cell::initialize()
     auto v1 = lattice_vector(1);
     auto v2 = lattice_vector(2);
 
-    double r = std::max(v0.length(), std::max(v1.length(), v2.length()));
+    double r = std::max(std::max(v0.length(), std::max(v1.length(), v2.length())), parameters_.parameters_input().nn_radius_);
+
     find_nearest_neighbours(r);
 
     if (parameters_.full_potential()) {
