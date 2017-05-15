@@ -613,8 +613,6 @@ class Unit_cell
 
         inline void import(Unit_cell_input const& inp__)
         {
-            PROFILE("sirius::Unit_cell::import");
- 
             if (inp__.exist_) {
                 /* first, load all types */
                 for (int iat = 0; iat < (int)inp__.labels_.size(); iat++) {

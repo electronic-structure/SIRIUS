@@ -229,11 +229,9 @@ inline int Band::residuals(K_point* kp__,
                kp__->comm_col().recv(&evec_tmp(0, pos_dest.local_index), num_rows_local, pos_src.rank, ev_idx[j]);
             }
         }
-        #ifdef __GPU
         if (ctx_.processing_unit() == GPU && kp__->comm().size() == 1) {
             evec_tmp.allocate(memory_t::device);
         }
-        #endif
         /* compute H\Psi_{i} = \sum_{mu} H\phi_{mu} * Z_{mu, i} and O\Psi_{i} = \sum_{mu} O\phi_{mu} * Z_{mu, i} */
         transform<T>({&hphi__, &ophi__}, 0, N__, evec_tmp, 0, 0, {&hpsi__, &opsi__}, 0, n);
 
