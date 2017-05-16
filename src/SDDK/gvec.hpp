@@ -325,31 +325,57 @@ class Gvec
     {
         PROFILE("sddk::Gvec::find_gvec_shells");
 
-        /* find G-shells */
-        std::map<size_t, std::vector<int>> gsh;
+        std::vector<std::pair<size_t, int>> tmp(num_gvec_);
+        #pragma omp parallel for schedule(static)
         for (int ig = 0; ig < num_gvec_; ig++) {
             /* take G+k */
             auto gk = gkvec_cart(ig);
             /* make some reasonable roundoff */
             size_t len = size_t(gk.length() * 1e10);
-
-            if (!gsh.count(len)) {
-                gsh[len] = std::vector<int>();
-            }
-            gsh[len].push_back(ig);
+            tmp[ig] = std::pair<size_t, int>(len, ig);
         }
-        num_gvec_shells_ = static_cast<int>(gsh.size());
-        gvec_shell_      = mdarray<int, 1>(num_gvec_);
-        gvec_shell_len_  = mdarray<double, 1>(num_gvec_shells_);
+        std::sort(tmp.begin(), tmp.end());
 
-        int n{0};
-        for (auto it = gsh.begin(); it != gsh.end(); it++) {
-            gvec_shell_len_(n) = static_cast<double>(it->first) * 1e-10;
-            for (int ig : it->second) {
-                gvec_shell_(ig) = n;
+        gvec_shell_ = mdarray<int, 1>(num_gvec_);
+        gvec_shell_(0) = 0;
+        num_gvec_shells_ = 1;
+        std::vector<double> tmp_len;
+        tmp_len.push_back(0);
+        for (int ig = 1; ig < num_gvec_; ig++) {
+            if (tmp[ig].first != tmp[ig - 1].first) {
+                num_gvec_shells_++;
+                tmp_len.push_back(static_cast<double>(tmp[ig].first) * 1e-10);
             }
-            n++;
+            gvec_shell_(tmp[ig].second) = num_gvec_shells_ - 1;
         }
+        gvec_shell_len_ = mdarray<double, 1>(num_gvec_shells_);
+        std::copy(tmp_len.begin(), tmp_len.end(), gvec_shell_len_.at<CPU>());
+
+        ///* find G-shells */
+        //std::map<size_t, std::vector<int>> gsh;
+        //for (int ig = 0; ig < num_gvec_; ig++) {
+        //    /* take G+k */
+        //    auto gk = gkvec_cart(ig);
+        //    /* make some reasonable roundoff */
+        //    size_t len = size_t(gk.length() * 1e10);
+
+        //    if (!gsh.count(len)) {
+        //        gsh[len] = std::vector<int>();
+        //    }
+        //    gsh[len].push_back(ig);
+        //}
+        //num_gvec_shells_ = static_cast<int>(gsh.size());
+        //gvec_shell_      = mdarray<int, 1>(num_gvec_);
+        //gvec_shell_len_  = mdarray<double, 1>(num_gvec_shells_);
+
+        //int n{0};
+        //for (auto it = gsh.begin(); it != gsh.end(); it++) {
+        //    gvec_shell_len_(n) = static_cast<double>(it->first) * 1e-10;
+        //    for (int ig : it->second) {
+        //        gvec_shell_(ig) = n;
+        //    }
+        //    n++;
+        //}
     }
 
     void init()
