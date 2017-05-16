@@ -88,6 +88,8 @@ class Augmentation_operator
                 double g = gvec__.gvec_len(ig);
                 
                 std::vector<double_complex> v(lmmax);
+                
+                auto ri = radial_integrals__.values(atom_type_.id(), g);
 
                 for (int xi2 = 0; xi2 < nbf; xi2++) {
                     int lm2 = atom_type_.indexb(xi2).lm;
@@ -103,7 +105,7 @@ class Augmentation_operator
                         int idxrf12 = idxrf2 * (idxrf2 + 1) / 2 + idxrf1;
                         
                         for (int lm3 = 0; lm3 < lmmax; lm3++) {
-                            v[lm3] = std::conj(zilm[lm3]) * gvec_rlm(lm3, igloc) * radial_integrals__.value(idxrf12, l_by_lm[lm3], atom_type_.id(), g);
+                            v[lm3] = std::conj(zilm[lm3]) * gvec_rlm(lm3, igloc) * ri(idxrf12, l_by_lm[lm3]);
                         }
 
                         double_complex z = fourpi_omega * gaunt_coefs.sum_L3_gaunt(lm2, lm1, &v[0]);
