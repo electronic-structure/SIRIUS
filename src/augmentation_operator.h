@@ -71,6 +71,7 @@ class Augmentation_operator
             
             /* array of real spherical harmonics for each G-vector */
             mdarray<double, 2> gvec_rlm(Utils::lmmax(2 * lmax_beta), gvec_count);
+            #pragma omp parallel for schedule(static)
             for (int igloc = 0; igloc < gvec_count; igloc++) {
                 int ig = gvec_offset + igloc;
                 auto rtp = SHT::spherical_coordinates(gvec__.gvec_cart(ig));
@@ -82,7 +83,7 @@ class Augmentation_operator
             
             /* array of plane-wave coefficients */
             q_pw_ = mdarray<double, 2>(nbf * (nbf + 1) / 2, 2 * gvec_count, memory_t::host_pinned, "q_pw_");
-            #pragma omp parallel for
+            #pragma omp parallel for schedule(static)
             for (int igloc = 0; igloc < gvec_count; igloc++) {
                 int ig = gvec_offset + igloc;
                 double g = gvec__.gvec_len(ig);

@@ -43,6 +43,13 @@ std::unique_ptr<Simulation_context> create_sim_ctx(std::string     fname__,
     ctx.set_gen_evp_solver_name(gen_evp_solver_name);
 
     auto pu = args__.value<std::string>("processing_unit", ctx.control().processing_unit_);
+    if (pu == "") {
+        #ifdef __GPU
+        pu = "gpu";
+        #else
+        pu = "cpu";
+        #endif
+    }
     ctx.set_processing_unit(pu);
 
     return std::move(ctx_ptr);
