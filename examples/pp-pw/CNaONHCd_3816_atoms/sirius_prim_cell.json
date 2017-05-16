@@ -1,46 +1,4 @@
 {
-    "control" : {
-        "cyclic_block_size" : 64,
-        "processing_unit" : "cpu",
-        "std_evp_solver_type" : "elpa1",
-        "gen_evp_solver_type" : "elpa1",
-        "verbosity" : 2
-    },
-
-    "parameters" : {
-        "# num_fv_states" : 40,
-        "electronic_structure_method" : "pseudopotential",
-        
-        "xc_functionals" : ["XC_LDA_X", "XC_LDA_C_PZ"],
-
-        "smearing_width" : 0.025,
-        
-        "use_symmetry" : true,
-        
-        "num_mag_dims" : 0,
-        
-        "gk_cutoff" : 2.0,
-        "pw_cutoff" : 6.00,
-        
-        "energy_tol" : 1e-8,
-        
-        "num_dft_iter" : 1,
-        
-        "ngridk" : [1, 1, 1],
-
-        "gamma_point" : true
-    },
-
-    "iterative_solver" : {
-        "energy_tolerance" : 1e-2,
-        "residual_tolerance" : 1e-6,
-        "num_steps" : 20,
-        "subspace_size" : 4,
-        "type" : "davidson",
-        "converge_by_energy" : 1
-    },
-    
-
     "unit_cell": {
         "lattice_vectors": [
             [
@@ -63,12 +21,12 @@
             "Cd"
         ], 
         "atom_files": {
-            "C": "c_lda_v1.2.uspp.F.UPF.json", 
-            "Na": "na_lda_v1.5.uspp.F.UPF.json", 
-            "O": "o_lda_v1.2.uspp.F.UPF.json", 
-            "Cd": "cd_lda_v1.uspp.F.UPF.json", 
-            "H": "h_lda_v1.4.uspp.F.UPF.json", 
-            "N": "n_lda_v1.2.uspp.F.UPF.json"
+            "C": "C.json", 
+            "Na": "Na.json", 
+            "O": "O.json", 
+            "Cd": "Cd.json", 
+            "H": "H.json", 
+            "N": "N.json"
         }, 
         "atoms": {
             "C": [
