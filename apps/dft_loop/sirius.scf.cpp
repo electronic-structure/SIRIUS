@@ -165,7 +165,7 @@ double ground_state(Simulation_context& ctx,
     /* wait for all */
     ctx.comm().barrier();
 
-    sddk::timer::print(0);
+    sddk::timer::print();
 
     return dft.total_energy();
 }
@@ -211,6 +211,6 @@ int main(int argn, char** argv)
 
     run_tasks(args);
     
-    sirius::finalize();
+    sirius::finalize(1);
     return 0;
 }
