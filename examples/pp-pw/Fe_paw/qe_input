@@ -1,0 +1,43 @@
+ &control
+    calculation='scf'
+    restart_mode='from_scratch',
+    pseudo_dir = './',
+    outdir='./',
+    prefix='cu',
+    tstress = .true.,
+    tprnfor = .true.,
+    verbosity = 'high',
+    iprint = 100,
+    forc_conv_thr = 0.001
+ /
+ &system
+    ibrav = 0, nat= 2, ntyp= 1,
+    ecutwfc = 36.0, ecutrho = 400.0, nspin = 2,
+    starting_magnetization(1) = 1.0, starting_magnetization(2) = 1.0,
+    occupations='smearing', smearing='gaussian', degauss=0.02
+ /
+ &electrons
+  electron_maxstep=100,
+  diago_thr_init=1D-12,
+    diagonalization='david'
+    conv_thr = 1.0e-10
+    mixing_beta = 0.7
+ /
+ &ions
+ ion_dynamics = 'bfgs'
+ /
+ &cell
+ cell_dynamics = 'bfgs'
+ /
+CELL_PARAMETERS bohr
+5.5415878223         0.0000000000         0.0000000000
+0.0000000000         5.5415878223         0.0000000000
+0.0000000000         0.0000000000         5.5415878223
+ATOMIC_SPECIES
+ Fe 6.941  Fe.pz-spn-kjpaw_psl.0.2.1.UPF
+ATOMIC_POSITIONS crystal
+ Fe  0.0 0.0 0.0
+ Fe  0.5 0.5 0.5
+K_POINTS (automatic)
+ 4 4 4 0 0 0
+

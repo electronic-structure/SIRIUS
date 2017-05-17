@@ -1,0 +1,90 @@
+{
+    "control" : {
+        "cyclic_block_size" : 16,
+        "processing_unit" : "cpu",
+        "std_evp_solver_type" : "lapack",
+        "gen_evp_solver_type" : "lapack",
+        "verbosity" : 1,
+        "verification" : 0,
+        "print_memory_usage" : false,
+        "print_checksum" : false,
+        "print_stress" : true,
+        "print_forces" : true
+    },
+
+    "parameters" : {
+        "electronic_structure_method" : "pseudopotential",
+
+        "num_fv_states" : 40,
+
+        "xc_functionals" : ["XC_LDA_X", "XC_LDA_C_PZ"],
+
+        "smearing_width" : 0.025,
+
+        "use_symmetry" : true,
+
+        "num_mag_dims" : 0,
+        
+        "gk_cutoff" : 6.0,
+        "pw_cutoff" : 20.00,
+
+        "energy_tol" : 1e-8,
+        "potential_tol" : 1e-8,
+
+        "num_dft_iter" : 100,
+
+        "ngridk" : [2,2,2],
+        "gamma_point" : false
+    },
+
+
+    "iterative_solver" : {
+        "!energy_tolerance" : 1e-2,
+        "!residual_tolerance" : 1e-6,
+        "num_steps" : 20,
+        "subspace_size" : 4,
+        "type" : "davidson",
+        "converge_by_energy" : 1,
+        "!orthogonalize" : false,
+        "!init_subspace" : "lcao"
+    },
+
+
+    "unit_cell" : {
+
+        "lattice_vectors" : [ [1, 0, 0],
+                              [0, 0.8, 0.2],
+                              [0.1, 0, 0.9]
+                            ],
+        "lattice_vectors_scale" : 7.260327248,
+
+        "atom_types" : ["Sr", "V", "O"],
+
+        "atom_files" : {
+            "Sr" : "sr_lda_v1.uspp.F.UPF.json",
+            "V"  : "v_lda_v1.4.uspp.F.UPF.json",
+            "O"  : "o_lda_v1.2.uspp.F.UPF.json"
+        },
+
+        "atoms" : {
+            "Sr" : [
+                [0.5, 0.48, 0.49]
+            ],
+            "V" : [
+                [0, 0, 0, 0, 0, 4]
+            ],
+            "O" : [
+                [0.5, 0.0, 0.0],
+                [0.0, 0.5, 0.0],
+                [0.0, 0.0, 0.5]
+            ]
+        }
+    },
+
+    "mixer" : {
+        "beta" : 0.95,
+        "type" : "broyden1",
+        "max_history" : 8
+    }
+
+}
