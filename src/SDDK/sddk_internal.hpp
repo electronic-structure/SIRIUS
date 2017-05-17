@@ -168,14 +168,15 @@ class timer
 
         for (auto& it: timer_values()) {
             if (timer_values_ex().count(it.first)) {
+                /* collect external times */
                 double te{0};
                 for (auto& it2: timer_values_ex()[it.first]) {
                     te += it2.second;
                 }
                 double f = it.second.tot_val / ttot;
                 if (f > 0.01) {
-                    printf("%s (%% of self: %6.2f, %% of total: %6.2f)\n",
-                           it.first.c_str(), (it.second.tot_val - te) / it.second.tot_val * 100, f * 100);
+                    printf("%s (%10.4fs, %% of self: %.2f, %% of total: %.2f)\n",
+                           it.first.c_str(), it.second.tot_val, (it.second.tot_val - te) / it.second.tot_val * 100, f * 100);
                 
                     std::vector<std::pair<double, std::string>> tmp;
             
@@ -184,7 +185,7 @@ class timer
                     }
                     std::sort(tmp.rbegin(), tmp.rend());
                     for (auto& e: tmp) {
-                        printf("|-%s (%6.2f %%) \n", e.second.c_str(), e.first * 100);
+                        printf("|--%s (%10.4fs, %.2f %%) \n", e.second.c_str(), timer_values_ex()[it.first][e.second], e.first * 100);
                     }
                 }
             }
