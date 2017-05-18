@@ -512,7 +512,22 @@ class Stress {
      *    -\frac{1}{2\sqrt{\Omega}} \delta_{\mu \nu} \int e^{-i{\bf q r}} \beta_{\xi}^{\alpha}({\bf r}) d{\bf r} + 
      *    \frac{1}{\sqrt{\Omega}} \int i r_{\nu} q_{\mu} e^{-i{\bf q r}} \beta_{\xi}^{\alpha}({\bf r}) d{\bf r}
      * \f]
-     * (second term comes from the strain derivative of \f$ e^{-i{\bf q r}} \f$).
+     * (second term comes from the strain derivative of \f$ e^{-i{\bf q r}} \f$). Remembering that \f$ {\bf r} \f$ is
+     * proportional to p-like real spherical harmonics, we can rewrite the second part of beta-projector derivative as:
+     * \f[
+     *   \frac{1}{\sqrt{\Omega}} \int i r_{\nu} q_{\mu} e^{-i{\bf q r}} \beta_{\xi}^{\alpha}({\bf r}) d{\bf r} = 
+     *    \frac{1}{\sqrt{\Omega}} i q_{\mu} \int r \bar R_{1 \nu}(\theta, \phi) 4\pi \sum_{\ell_3 m_3} (-i)^{\ell_3} R_{\ell_3 m_3}(\theta_q, \phi_q)
+     *    R_{\ell_3 m_3}(\theta, \phi) j_{\ell_3}(q r) \beta_{\ell_2}^{\alpha}(r) R_{\ell_2 m_2}(\theta, \phi) d{\bf r} = \\
+     *     \frac{4 \pi}{\sqrt{\Omega}} i q_{\mu} \sum_{\ell_3 m_3} (-i)^{\ell_3} R_{\ell_3 m_3}(\theta_q, \phi_q) 
+     *     \langle \bar R_{1\nu} | R_{\ell_3 m_3} | R_{\ell_2 m_2} \rangle
+     *     \int j_{\ell_3}(q r) \beta_{\ell_2}^{\alpha}(r) r^3 dr 
+     * \f]
+     * where
+     * \f[
+     *   \bar R_{1 x}(\theta, \phi) = -2 \sqrt{\frac{\pi}{3}} R_{11}(\theta, \phi) \\
+     *   \bar R_{1 y}(\theta, \phi) = -2 \sqrt{\frac{\pi}{3}} R_{1-1}(\theta,\phi) \\
+     *   \bar R_{1 z}(\theta, \phi) = 2 \sqrt{\frac{\pi}{3}} R_{10}(\theta, \phi)
+     * \f]
      */
     template <typename T>
     inline void calc_stress_nonloc()
