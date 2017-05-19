@@ -25,22 +25,15 @@
 #ifndef __BETA_PROJECTORS_H__
 #define __BETA_PROJECTORS_H__
 
-#include "gpu.h"
 #include "communicator.hpp"
 #include "Unit_cell/unit_cell.h"
 #include "wave_functions.hpp"
-#include "sbessel.h"
 #include "simulation_context.h"
 #include "beta_projectors_base.h"
 
 namespace sirius {
 
 /// Stores <G+k | beta> expansion
-/** \todo Beta_projectors and Beta_projectors_gradient need some rethinking. Beta_projectors are used in two
- *        places: in application of non-local potential and in generation of density matrix. Beta_projectors_gradient
- *        are used in the calculation of forces. Both are split in chunks, both require an inner product with
- *        wave-functions.
- */
 class Beta_projectors: public Beta_projectors_base<1>
 {
     friend class Beta_projectors_gradient;

@@ -164,7 +164,7 @@ void create_qe_input()
     FILE* fout = fopen("pw.in", "w");
     fprintf(fout, "&control\ncalculation=\'scf\',\nrestart_mode=\'from_scratch\',\npseudo_dir = \'./\',\noutdir=\'./\',\nprefix = \'scf_\'\n/\n");
     fprintf(fout, "&system\nibrav=0, celldm(1)=1, ecutwfc=40, ecutrho = 300,\noccupations = \'smearing\', smearing = \'gauss\', degauss = 0.001,\n");
-    fprintf(fout, "nat=%i ntyp=%i\n/\n", ctx.unit_cell().num_atom_types(), ctx.unit_cell().num_atoms());
+    fprintf(fout, "nat=%i ntyp=%i\n/\n", ctx.unit_cell().num_atoms(), ctx.unit_cell().num_atom_types());
     fprintf(fout, "&electrons\nconv_thr =  1.0d-11,\nmixing_beta = 0.7,\nelectron_maxstep = 100\n/\n");
     fprintf(fout, "ATOMIC_SPECIES\n");
     for (int iat = 0; iat < ctx.unit_cell().num_atom_types(); iat++) {

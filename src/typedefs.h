@@ -30,6 +30,7 @@
 #include <mpi.h>
 #include <assert.h>
 #include <complex>
+#include <limits>
 
 using double_complex = std::complex<double>;
 
@@ -48,6 +49,17 @@ enum class electronic_structure_method_t
 enum class index_domain_t {global, local};
 
 enum function_domain_t {spatial, spectral};
+
+inline uint32_t rnd()
+{
+    static uint32_t a = 123456;
+    a = (a ^ 61) ^ (a >> 16);
+    a = a + (a << 3);
+    a = a ^ (a >> 4);
+    a = a * 0x27d4eb2d;
+    a = a ^ (a >> 15);
+    return a;
+}
 
 /// Wrapper for data types
 template <typename T> 
@@ -87,7 +99,8 @@ class type_wrapper<double>
 
         static inline double random()
         {
-            return double(std::rand()) / RAND_MAX;
+            return static_cast<double>(rnd()) / std::numeric_limits<uint32_t>::max();
+            //return double(std::rand()) / RAND_MAX;
         }
 };
 
@@ -151,7 +164,10 @@ class type_wrapper<double_complex>
         
         static inline std::complex<double> random()
         {
-            return std::complex<double>(double(std::rand()) / RAND_MAX, double(std::rand()) / RAND_MAX);
+            //return std::complex<double>(double(std::rand()) / RAND_MAX, double(std::rand()) / RAND_MAX);
+            double x = static_cast<double>(rnd()) / std::numeric_limits<uint32_t>::max();
+            double y = static_cast<double>(rnd()) / std::numeric_limits<uint32_t>::max();
+            return std::complex<double>(x, y);
         }
 };
 

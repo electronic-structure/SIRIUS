@@ -1,0 +1,41 @@
+&control
+    calculation='vc-relax',
+    restart_mode='from_scratch',
+    pseudo_dir = './',
+    outdir='./',
+    prefix = 'LiF_',
+    verbosity='high',
+    tstress = false
+    tprnfor = false
+    nstep=2
+ /
+ &system
+    ibrav=0, celldm(1)=7.60501685, nat=2, ntyp=2,
+    ecutwfc=36.0, ecutrho = 400,
+    occupations = 'smearing', smearing = 'gauss', degauss = 0.02
+ /
+ &electrons
+    conv_thr =  1.0d-8,
+    mixing_beta = 0.7,
+    diago_thr_init=1e-2
+    electron_maxstep=100
+ /
+&IONS
+ ion_dynamics='bfgs',
+/
+&CELL
+ cell_dynamics='bfgs',
+/
+ATOMIC_SPECIES
+ Li 0 Li.pz-s-kjpaw_psl.0.2.1.UPF
+ F  0 F.pz-n-kjpaw_psl.0.1.UPF
+CELL_PARAMETERS
+   0.150000000   0.500000000   0.500000000
+   0.500000000   0.000000000   0.500000000
+   0.500000000   0.500000000   0.000000000
+ATOMIC_POSITIONS (alat)
+Li       0.0           0.0           0.0
+F        0.5           0.5           0.5
+K_POINTS (automatic)
+2 2 2 0 0 0
+

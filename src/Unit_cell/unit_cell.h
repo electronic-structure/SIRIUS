@@ -216,8 +216,6 @@ class Unit_cell
         /// Add new atom type to the list of atom types and read necessary data from the .json file
         inline void add_atom_type(const std::string label, const std::string file_name)
         {
-            PROFILE("sirius::Unit_cell::add_atom_type");
-
             if (atoms_.size()) {
                 TERMINATE("Can't add new atom type if atoms are already added");
             }
@@ -229,8 +227,6 @@ class Unit_cell
         /// Add new atom to the list of atom types.
         inline void add_atom(const std::string label, vector3d<double> position, vector3d<double> vector_field)
         {
-            PROFILE("sirius::Unit_cell::add_atom");
-
             if (atom_type_id_map_.count(label) == 0) {
                 std::stringstream s;
                 s << "atom type with label " << label << " is not found";
@@ -249,6 +245,12 @@ class Unit_cell
 
         }
 
+        /// Add new atom without vector field to the list of atom types.
+        inline void add_atom(const std::string label, vector3d<double> position)
+        {
+            add_atom(label, position, {0, 0, 0});
+        }
+        
         /// Add PAW atoms.
         inline void init_paw()
         {
@@ -283,13 +285,6 @@ class Unit_cell
             return paw_atom_index_[ipaw__];
         }
 
-        /// Add new atom without vector field to the list of atom types.
-        inline void add_atom(const std::string label, vector3d<double> position)
-        {
-            PROFILE("sirius::Unit_cell::add_atom");
-            add_atom(label, position, {0, 0, 0});
-        }
-        
         /// Print basic info.
         inline void print_info(int verbosity_);
 
@@ -618,8 +613,6 @@ class Unit_cell
 
         inline void import(Unit_cell_input const& inp__)
         {
-            PROFILE("sirius::Unit_cell::import");
- 
             if (inp__.exist_) {
                 /* first, load all types */
                 for (int iat = 0; iat < (int)inp__.labels_.size(); iat++) {
@@ -691,7 +684,8 @@ inline void Unit_cell::initialize()
     auto v1 = lattice_vector(1);
     auto v2 = lattice_vector(2);
 
-    double r = std::max(v0.length(), std::max(v1.length(), v2.length()));
+    double r = std::max(std::max(v0.length(), std::max(v1.length(), v2.length())), parameters_.parameters_input().nn_radius_);
+
     find_nearest_neighbours(r);
 
     if (parameters_.full_potential()) {

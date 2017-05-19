@@ -484,13 +484,13 @@ class Eigenproblem_plasma: public Eigenproblem
 };
 
 #ifdef __MAGMA
-extern "C" void magma_zhegvdx_2stage_wrapper(int32_t matrix_size, int32_t nv, void* a, int32_t lda, 
+extern "C" int magma_zhegvdx_2stage_wrapper(int32_t matrix_size, int32_t nv, void* a, int32_t lda, 
                                              void* b, int32_t ldb, double* eval);
 
-extern "C" void magma_dsygvdx_2stage_wrapper(int32_t matrix_size, int32_t nv, void* a, int32_t lda, void* b, 
+extern "C" int magma_dsygvdx_2stage_wrapper(int32_t matrix_size, int32_t nv, void* a, int32_t lda, void* b, 
                                              int32_t ldb, double* eval);
 
-extern "C" void magma_dsyevdx_wrapper(int32_t matrix_size, int32_t nv, double* a, int32_t lda, double* eval);
+extern "C" int magma_dsyevdx_wrapper(int32_t matrix_size, int32_t nv, double* a, int32_t lda, double* eval);
 
 extern "C" int magma_zheevdx_wrapper(int32_t matrix_size, int32_t nv, double_complex* a, int32_t lda, double* eval);
 
@@ -518,18 +518,22 @@ class Eigenproblem_magma: public Eigenproblem
 
             int nt = omp_get_max_threads();
             
-            magma_zhegvdx_2stage_wrapper(matrix_size, nevec, A, lda, B, ldb, eval);
+            int result = magma_zhegvdx_2stage_wrapper(matrix_size, nevec, A, lda, B, ldb, eval);
 
             if (nt != omp_get_max_threads()) {
                 TERMINATE("magma has changed the number of threads");
             }
-            
-            #pragma omp parallel for
-            for (int i = 0; i < nevec; i++) {
-                std::memcpy(&Z[ldz * i], &A[lda * i], matrix_size * sizeof(double_complex));
-            }
 
-            return 0;
+            if (result) {
+                return Eigenproblem_lapack().solve(matrix_size, nevec, A, lda, B, ldb, eval, Z, ldz);
+            } else {
+                #pragma omp parallel for
+                for (int i = 0; i < nevec; i++) {
+                    std::memcpy(&Z[ldz * i], &A[lda * i], matrix_size * sizeof(double_complex));
+                }
+
+                return 0;
+            }
         }
 
         int solve(int32_t matrix_size, int32_t nevec, 
@@ -543,18 +547,22 @@ class Eigenproblem_magma: public Eigenproblem
 
             int nt = omp_get_max_threads();
             
-            magma_dsygvdx_2stage_wrapper(matrix_size, nevec, A, lda, B, ldb, eval);
+            int result = magma_dsygvdx_2stage_wrapper(matrix_size, nevec, A, lda, B, ldb, eval);
 
             if (nt != omp_get_max_threads()) {
                 TERMINATE("magma has changed the number of threads");
             }
 
-            #pragma omp parallel for
-            for (int i = 0; i < nevec; i++) {
-                std::memcpy(&Z[ldz * i], &A[lda * i], matrix_size * sizeof(double));
-            }
+            if (result) {
+                return Eigenproblem_lapack().solve(matrix_size, nevec, A, lda, B, ldb, eval, Z, ldz);
+            } else {
+                #pragma omp parallel for
+                for (int i = 0; i < nevec; i++) {
+                    std::memcpy(&Z[ldz * i], &A[lda * i], matrix_size * sizeof(double));
+                }
 
-            return 0;
+                return 0;
+            }
         }
 
         int solve(int32_t matrix_size, int32_t nevec, 
@@ -567,18 +575,22 @@ class Eigenproblem_magma: public Eigenproblem
 
             int nt = omp_get_max_threads();
             
-            magma_dsyevdx_wrapper(matrix_size, nevec, A, lda, eval);
+            int result = magma_dsyevdx_wrapper(matrix_size, nevec, A, lda, eval);
 
             if (nt != omp_get_max_threads()) {
                 TERMINATE("magma has changed the number of threads");
             }
-            
-            #pragma omp parallel for
-            for (int i = 0; i < nevec; i++) {
-                std::memcpy(&Z[ldz * i], &A[lda * i], matrix_size * sizeof(double));
-            }
 
-            return 0;
+            if (result) {
+                return Eigenproblem_lapack().solve(matrix_size, nevec, A, lda, eval, Z, ldz);
+            } else {
+                #pragma omp parallel for
+                for (int i = 0; i < nevec; i++) {
+                    std::memcpy(&Z[ldz * i], &A[lda * i], matrix_size * sizeof(double));
+                }
+
+                return 0;
+            }
         }
 
         int solve(int32_t matrix_size, int32_t nevec, 
@@ -597,16 +609,16 @@ class Eigenproblem_magma: public Eigenproblem
             if (nt != omp_get_max_threads()) {
                 TERMINATE("magma has changed the number of threads");
             }
-            
-            if (result == 0) {
+
+            if (result) {
+                return Eigenproblem_lapack().solve(matrix_size, nevec, A, lda, eval, Z, ldz);
+            } else {
                 #pragma omp parallel for
                 for (int i = 0; i < nevec; i++) {
                     std::memcpy(&Z[ldz * i], &A[lda * i], matrix_size * sizeof(double_complex));
                 }
                 return 0;
-            }
-
-            return 1;
+            } 
         }
         #endif
 

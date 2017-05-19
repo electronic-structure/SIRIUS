@@ -9,6 +9,11 @@ module sirius
             integer,                 intent(in) :: call_mpi_init
         end subroutine
 
+        subroutine sirius_finalize(call_mpi_fin)&
+            &bind(C, name="sirius_finalize")
+            integer,                 intent(in) :: call_mpi_fin
+        end subroutine
+
         subroutine sirius_clear()&
             &bind(C, name="sirius_clear")
         end subroutine
