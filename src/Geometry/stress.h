@@ -53,6 +53,10 @@ namespace sirius {
  *  \f[
  *    \frac{\partial \Omega}{\partial \varepsilon_{\mu \nu}} = \delta_{\mu \nu} \Omega
  *  \f]
+ *    - strain derivative of the inverse square root of the unit cell volume:
+ *  \f[
+ *    \frac{\partial}{\partial \varepsilon_{\mu \nu}} \frac{1}{\sqrt{\Omega}} = -\frac{1}{2}\frac{1}{\sqrt{\Omega}} \delta_{\mu \nu}
+ *  \f]
  *    - strain derivative of a reciprocal vector:
  *  \f[
  *    \frac{\partial G_{\tau}}{\partial \varepsilon_{\mu \nu}} = -\delta_{\tau \nu} G_{\mu}
@@ -467,7 +471,8 @@ class Stress {
      *      \frac{\partial R_{\ell m}(\theta, \phi)}{\partial \theta} \sum_{\tau} \frac{\partial \theta}{\partial q_{\tau}} \frac{\partial{q_{\tau}}}{\partial \varepsilon_{\mu \nu}} + 
      *      \frac{\partial R_{\ell m}(\theta, \phi)}{\partial \phi} \sum_{\tau} \frac{\partial \phi}{\partial q_{\tau}}\frac{\partial q_{\tau}}{\partial \varepsilon_{\mu \nu}} = 
      *      -q_{\mu} \Big(  \frac{\partial R_{\ell m}(\theta, \phi)}{\partial \theta} \frac{\partial \theta}{\partial q_{\nu}} + 
-     *              \frac{\partial R_{\ell m}(\theta, \phi)}{\partial \phi} \frac{\partial \phi}{\partial q_{\nu}}\Big)
+     *              \frac{\partial R_{\ell m}(\theta, \phi)}{\partial \phi} \frac{\partial \phi}{\partial q_{\nu}}\Big) = 
+     *      -q_{\mu} \frac{\partial R_{\ell m}(\theta, \phi)}{\partial q_{\nu}} 
      *  \f]
      *  
      *  The derivatives of angles are:
@@ -524,9 +529,9 @@ class Stress {
      * \f]
      * where
      * \f[
-     *   \bar R_{1 x}(\theta, \phi) = -2 \sqrt{\frac{\pi}{3}} R_{11}(\theta, \phi) \\
-     *   \bar R_{1 y}(\theta, \phi) = -2 \sqrt{\frac{\pi}{3}} R_{1-1}(\theta,\phi) \\
-     *   \bar R_{1 z}(\theta, \phi) = 2 \sqrt{\frac{\pi}{3}} R_{10}(\theta, \phi)
+     *   \bar R_{1 x}(\theta, \phi) = -2 \sqrt{\frac{\pi}{3}} R_{11}(\theta, \phi) = \sin(\theta) \cos(\phi) \\
+     *   \bar R_{1 y}(\theta, \phi) = -2 \sqrt{\frac{\pi}{3}} R_{1-1}(\theta,\phi) = \sin(\theta) \sin(\phi) \\
+     *   \bar R_{1 z}(\theta, \phi) = 2 \sqrt{\frac{\pi}{3}} R_{10}(\theta, \phi) = \cos(\theta)
      * \f]
      */
     template <typename T>
@@ -609,6 +614,38 @@ class Stress {
         }
     }
 
+    /// Contribution to the stress tensor from the augmentation operator.
+    /** Total energy in ultrasoft pseudopotential contains this term:
+     *  \f[
+     *    \int V^{eff}({\bf r})\rho^{aug}({\bf r})d{\bf r} =
+     *      \sum_{\alpha} \sum_{\xi \xi'} n_{\xi \xi'}^{\alpha} \int V^{eff}({\bf r}) Q_{\xi \xi'}^{\alpha}({\bf r}) d{\bf r}  
+     *  \f]
+     *  The derivatives of beta-projectors (hidden in the desnity matrix expression) are taken into account in sirius::Stress::calc_stress_nonloc.
+     *  Here we need to compute the remaining contribution from the \f$ Q_{\xi \xi'}({\bf r}) \f$ itself. We are interested in the integral:
+     *  \f[
+     *     \int V^{eff}({\bf r}) Q_{\xi \xi'}^{\alpha}({\bf r}) d{\bf r} = \sum_{\bf G} V^{eff}({\bf G}) \tilde Q_{\xi \xi'}^{\alpha}({\bf G})
+     *  \f]
+     *  where
+     *  \f[
+     *     \tilde Q_{\xi \xi'}^{\alpha}({\bf G}) = \int e^{-i{\bf Gr}} Q_{\xi \xi'}^{\alpha}({\bf r}) d{\bf r} = 
+     *      4\pi \sum_{\ell m} (-i)^{\ell} R_{\ell m}(\hat{\bf G}) \langle R_{\ell_{\xi} m_{\xi}} | R_{\ell m} | R_{\ell_{\xi'} m_{\xi'}} \rangle \int Q_{\ell_{\xi} \ell_{\xi'}}^{\ell}(r) j_{\ell}(Gr) r^2 dr
+     *  \f]
+     *  Strain derivative of \f$ \tilde Q_{\xi \xi'}^{\alpha}({\bf G}) \f$ is:
+     *  \f[
+     *    \frac{\partial}{\partial \varepsilon_{\mu \nu}}  \tilde Q_{\xi \xi'}^{\alpha}({\bf G}) = 
+     *      4\pi \sum_{\ell m} (-i)^{\ell} \langle R_{\ell_{\xi} m_{\xi}} | R_{\ell m} | R_{\ell_{\xi'} m_{\xi'}} \rangle 
+     *      \Big( \frac{\partial R_{\ell m}(\hat{\bf G})}{\partial  \varepsilon_{\mu \nu}} \int Q_{\ell_{\xi} \ell_{\xi'}}^{\ell}(r) j_{\ell}(Gr) r^2 dr +
+     *       R_{\ell m}(\hat{\bf G}) \int Q_{\ell_{\xi} \ell_{\xi'}}^{\ell}(r) \frac{\partial j_{\ell}(Gr)}{\partial \varepsilon_{\mu \nu}} r^2 dr \Big)
+     *  \f]
+     *  For strain derivatives of spherical harmonics and Bessel functions see sirius::Stress::calc_stress_nonloc. We can pull the
+     *  common multiplier \f$ -G_{\mu} / G \f$ from both terms and arrive to the following expression:
+     *  \f[
+     *    \frac{\partial}{\partial \varepsilon_{\mu \nu}} \tilde Q_{\xi \xi'}^{\alpha}({\bf G}) = 
+     *      -\frac{G_{\mu}}{G}  4\pi \sum_{\ell m} (-i)^{\ell} \langle R_{\ell_{\xi} m_{\xi}} | R_{\ell m} | R_{\ell_{\xi'} m_{\xi'}} \rangle 
+     *      \Big( \big(\nabla_{G} R_{\ell m}(\hat{\bf G})\big)_{\nu} \int Q_{\ell_{\xi} \ell_{\xi'}}^{\ell}(r) j_{\ell}(Gr) r^2 dr +
+     *       R_{\ell m}(\hat{\bf G}) \int Q_{\ell_{\xi} \ell_{\xi'}}^{\ell}(r) \frac{\partial j_{\ell}(Gr)}{\partial G} G_{\nu} r^2 dr \Big)
+     *  \f]
+     */
     inline void calc_stress_us()
     {
         PROFILE("sirius::Stress|us");
