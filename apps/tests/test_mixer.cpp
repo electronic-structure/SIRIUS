@@ -15,15 +15,15 @@ void test_mixer(Mixer<double>& mixer)
     double beta = mixer.beta();
     printf("beta: %f\n", beta);
 
-    for (int i = 0; i < N; i++) mixer.input(i, a[i]);
+    for (int i = 0; i < N; i++) mixer.input_shared(i, a[i]);
     mixer.initialize();
 
-    for (int i = 0; i < N; i++) mixer.input(i, b[i]);
+    for (int i = 0; i < N; i++) mixer.input_shared(i, b[i]);
 
     mixer.mix();
     std::vector<double> c(N);
 
-    for (int i = 0; i < N; i++) c[i] = mixer.output_buffer(i);
+    for (int i = 0; i < N; i++) c[i] = mixer.output_shared(i);
 
     for (int i = 0; i < N; i++) printf("diff: %18.12f\n", std::abs(c[i] - (beta * b[i] + (1 - beta) * a[i])));
 }
@@ -45,15 +45,13 @@ int main(int argn, char** argv)
     int N = 10;
     double beta = 0.05;
     
-    Linear_mixer<double> mixer1(N, beta, mpi_comm_world());
+    Linear_mixer<double> mixer1(N, 0, beta, mpi_comm_world());
     test_mixer(mixer1);
     
-    std::vector<double> weights;
-    
-    Broyden1<double> mixer2(N, 8, beta, weights, mpi_comm_world());
+    Broyden1<double> mixer2(N, 0, 8, beta, mpi_comm_world());
     test_mixer(mixer2);
 
-    Broyden2<double> mixer3(N, 8, beta, 0.15, 100.0, weights, mpi_comm_world());
+    Broyden2<double> mixer3(N, 0, 8, beta, 0.15, 100.0, mpi_comm_world());
     test_mixer(mixer3);
 
     sirius::finalize();
