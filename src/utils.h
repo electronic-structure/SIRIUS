@@ -397,24 +397,9 @@ class Utils
             json dict;
 
             /* collect local timers */
-            for (auto& it: sddk::timer::timers()) {
-                sddk::timer::timer_stats ts;
-
-                ts.count = static_cast<int>(it.second.size());
-                ts.total_value = 0.0;
-                ts.min_value = 1e100;
-                ts.max_value = 0.0;
-                for (int i = 0; i < ts.count; i++) {
-                    ts.total_value += it.second[i];
-                    ts.min_value = std::min(ts.min_value, it.second[i]);
-                    ts.max_value = std::max(ts.max_value, it.second[i]);
-                }
-                ts.average_value = (ts.count == 0) ? 0.0 : ts.total_value / ts.count;
-                if (ts.count == 0) {
-                    ts.min_value = 0.0;
-                }
-
-                dict[it.first] = {ts.total_value, ts.average_value, ts.min_value, ts.max_value};
+            for (auto& it: sddk::timer::timer_values()) {
+                sddk::timer_stats_t ts;
+                dict[it.first] = {it.second.tot_val, it.second.tot_val / it.second.count, it.second.min_val, it.second.max_val};
             }
             return std::move(dict);
         }

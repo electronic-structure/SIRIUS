@@ -40,6 +40,7 @@
 #include "communicator.hpp"
 #include "gpu.h"
 #include "runtime.h"
+#include "sddk.hpp"
 
 #ifdef __PLASMA
 extern "C" void plasma_init(int num_cores);
@@ -55,7 +56,9 @@ namespace sirius {
 
     inline void initialize(bool call_mpi_init__)
     {
-        if (call_mpi_init__) Communicator::initialize();
+        if (call_mpi_init__) {
+            Communicator::initialize();
+        }
 
         #ifdef __GPU
         cuda_create_streams(omp_get_max_threads() + 1);
@@ -71,13 +74,14 @@ namespace sirius {
         libsci_acc_init();
         #endif
 
+        sddk::start_global_timer();
+
         assert(sizeof(int) == 4);
         assert(sizeof(double) == 8);
     }
 
-    inline void finalize()
+    inline void finalize(bool call_mpi_fin__ = true)
     {
-        Communicator::finalize();
         #ifdef __MAGMA
         magma_finalize_wrapper();
         #endif
@@ -90,6 +94,11 @@ namespace sirius {
         cuda_device_reset();
         #endif
         fftw_cleanup();
+        sddk::stop_global_timer();
+        sddk::timer::print_tree();
+        if (call_mpi_fin__) {
+            Communicator::finalize();
+        }
     }
 };
 

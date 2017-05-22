@@ -43,6 +43,13 @@ std::unique_ptr<Simulation_context> create_sim_ctx(std::string     fname__,
     ctx.set_gen_evp_solver_name(gen_evp_solver_name);
 
     auto pu = args__.value<std::string>("processing_unit", ctx.control().processing_unit_);
+    if (pu == "") {
+        #ifdef __GPU
+        pu = "gpu";
+        #else
+        pu = "cpu";
+        #endif
+    }
     ctx.set_processing_unit(pu);
 
     return std::move(ctx_ptr);
@@ -165,7 +172,7 @@ double ground_state(Simulation_context& ctx,
     /* wait for all */
     ctx.comm().barrier();
 
-    sddk::timer::print(0);
+    sddk::timer::print();
 
     return dft.total_energy();
 }
@@ -211,6 +218,6 @@ int main(int argn, char** argv)
 
     run_tasks(args);
     
-    sirius::finalize();
+    sirius::finalize(1);
     return 0;
 }

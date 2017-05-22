@@ -90,6 +90,12 @@ void sirius_clear(void)
     kset_list.clear();
 }
 
+void sirius_finalize(ftn_int* call_mpi_fin__)
+{
+    bool call_mpi_fin = (*call_mpi_fin__ != 0) ? true : false;
+    sirius::finalize(call_mpi_fin);
+}
+
 void sirius_create_simulation_context(const char* config_file_name__)
 {
     std::string config_file_name(config_file_name__);
@@ -805,7 +811,7 @@ void sirius_get_band_occupancies(int32_t* kset_id, int32_t* ik_, double* band_oc
 
 void sirius_print_timers(void)
 {
-    sddk::timer::print(0);
+    sddk::timer::print();
 }
 
 void sirius_start_timer(char const* name__)

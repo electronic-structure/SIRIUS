@@ -71,6 +71,7 @@ class Augmentation_operator
             
             /* array of real spherical harmonics for each G-vector */
             mdarray<double, 2> gvec_rlm(Utils::lmmax(2 * lmax_beta), gvec_count);
+            #pragma omp parallel for schedule(static)
             for (int igloc = 0; igloc < gvec_count; igloc++) {
                 int ig = gvec_offset + igloc;
                 auto rtp = SHT::spherical_coordinates(gvec__.gvec_cart(ig));
@@ -82,12 +83,14 @@ class Augmentation_operator
             
             /* array of plane-wave coefficients */
             q_pw_ = mdarray<double, 2>(nbf * (nbf + 1) / 2, 2 * gvec_count, memory_t::host_pinned, "q_pw_");
-            #pragma omp parallel for
+            #pragma omp parallel for schedule(static)
             for (int igloc = 0; igloc < gvec_count; igloc++) {
                 int ig = gvec_offset + igloc;
                 double g = gvec__.gvec_len(ig);
                 
                 std::vector<double_complex> v(lmmax);
+                
+                auto ri = radial_integrals__.values(atom_type_.id(), g);
 
                 for (int xi2 = 0; xi2 < nbf; xi2++) {
                     int lm2 = atom_type_.indexb(xi2).lm;
@@ -103,7 +106,7 @@ class Augmentation_operator
                         int idxrf12 = idxrf2 * (idxrf2 + 1) / 2 + idxrf1;
                         
                         for (int lm3 = 0; lm3 < lmmax; lm3++) {
-                            v[lm3] = std::conj(zilm[lm3]) * gvec_rlm(lm3, igloc) * radial_integrals__.value(idxrf12, l_by_lm[lm3], atom_type_.id(), g);
+                            v[lm3] = std::conj(zilm[lm3]) * gvec_rlm(lm3, igloc) * ri(idxrf12, l_by_lm[lm3]);
                         }
 
                         double_complex z = fourpi_omega * gaunt_coefs.sum_L3_gaunt(lm2, lm1, &v[0]);
