@@ -279,7 +279,7 @@ class Radial_integrals_beta: public Radial_integrals_base<2>
                     /* remeber that beta(r) are defined as miltiplied by r */
                     if (jl_deriv) {
                         auto s = jl.deriv_q(l);
-                        sirius::inner(s, atom_type.beta_rf(idxrf), 1, nr);
+                        values_(idxrf, iat)[iq] = sirius::inner(s, atom_type.beta_rf(idxrf), 1, nr);
                     } else {
                         values_(idxrf, iat)[iq] = sirius::inner(jl[l], atom_type.beta_rf(idxrf), 1, nr);
                     }
