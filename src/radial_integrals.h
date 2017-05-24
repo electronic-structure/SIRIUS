@@ -306,6 +306,17 @@ class Radial_integrals_beta: public Radial_integrals_base<2>
         auto idx = iqdq(q__);
         return values_(idxrf__, iat__)(idx.first, idx.second);
     }
+
+    inline mdarray<double, 1> values(int iat__, double q__) const
+    {
+        auto idx = iqdq(q__);
+        auto& atom_type = unit_cell_.atom_type(iat__);
+        mdarray<double, 1> val(atom_type.mt_radial_basis_size());
+        for (int i = 0; i < atom_type.mt_radial_basis_size(); i++) {
+            val(i) = values_(i, iat__)(idx.first, idx.second);
+        }
+        return std::move(val);
+    }
 };
 
 class Radial_integrals_beta_jl: public Radial_integrals_base<3>
@@ -463,7 +474,7 @@ class Radial_integrals_vloc: public Radial_integrals_base<1>
     }
 };
 
-class Radial_integrals_vloc_dg: public Radial_integrals_base<1>
+class Radial_integrals_vloc_dg: public Radial_integrals_base<1> // TODO: combine vloc and vloc_dg
 {
   private:
     void generate()

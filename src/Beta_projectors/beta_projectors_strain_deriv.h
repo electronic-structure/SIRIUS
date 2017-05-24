@@ -16,8 +16,8 @@ class Beta_projectors_strain_deriv : public Beta_projectors_base<9>
             return;
         }
 
-        Radial_integrals_beta<false> beta_ri0(ctx_.unit_cell(), ctx_.gk_cutoff(), 20);
-        Radial_integrals_beta<true> beta_ri1(ctx_.unit_cell(), ctx_.gk_cutoff(), 20);
+        auto& beta_ri0 = ctx_.beta_ri();
+        auto& beta_ri1 = ctx_.beta_ri_djl();
 
         auto& comm = gkvec_.comm();
 
@@ -88,12 +88,16 @@ class Beta_projectors_strain_deriv : public Beta_projectors_base<9>
                 continue;
             }
 
-            for (int nu = 0; nu < 3; nu++) {
-                for (int mu = 0; mu < 3; mu++) {
-                    double p = (mu == nu) ? 0.5 : 0;
+            for (int iat = 0; iat < ctx_.unit_cell().num_atom_types(); iat++) {
+                auto& atom_type = ctx_.unit_cell().atom_type(iat);
+                
+                auto ri0 = beta_ri0.values(iat, gvs[0]);  
+                auto ri1 = beta_ri1.values(iat, gvs[0]);  
 
-                    for (int iat = 0; iat < ctx_.unit_cell().num_atom_types(); iat++) {
-                        auto& atom_type = ctx_.unit_cell().atom_type(iat);
+                for (int nu = 0; nu < 3; nu++) {
+                    for (int mu = 0; mu < 3; mu++) {
+                        double p = (mu == nu) ? 0.5 : 0;
+
                         for (int xi = 0; xi < atom_type.mt_basis_size(); xi++) {
                             int l     = atom_type.indexb(xi).l;
                             int lm    = atom_type.indexb(xi).lm;
@@ -101,9 +105,9 @@ class Beta_projectors_strain_deriv : public Beta_projectors_base<9>
 
                             auto z = std::pow(double_complex(0, -1), l) * fourpi / std::sqrt(ctx_.unit_cell().omega());
 
-                            auto d1 = beta_ri0.value(idxrf, iat, gvs[0]) * (rlm_dg(lm, nu, igkloc) * (-gvc[mu] / gvs[0]) - p * rlm_g(lm, igkloc));
+                            auto d1 = ri0(idxrf) * (rlm_dg(lm, nu, igkloc) * (-gvc[mu] / gvs[0]) - p * rlm_g(lm, igkloc));
 
-                            auto d2 = beta_ri1.value(idxrf, iat, gvs[0]) * rlm_g(lm, igkloc) * (-gvc[mu] * gvc[nu] / gvs[0]);
+                            auto d2 = ri1(idxrf) * rlm_g(lm, igkloc) * (-gvc[mu] * gvc[nu] / gvs[0]);
 
                             pw_coeffs_t_[mu + nu * 3](igkloc, atom_type.offset_lo() + xi) = z * (d1 + d2);
                         }
