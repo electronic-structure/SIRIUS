@@ -295,6 +295,18 @@ class matrix3d
         return a;
     }
 
+    /// += operator
+    template <typename U>
+    inline matrix3d<T> operator+=(matrix3d<U> const& b)
+    {
+        for (int i = 0; i < 3; i++) {
+            for (int j = 0; j < 3; j++) {
+                (*this)(i, j) += b(i, j);
+            }
+        }
+        return *this;
+    }
+
     /// Multiply matrix by a scalar number.
     template <typename U>
     inline matrix3d<decltype(T{} * U{})> operator*(U p) const

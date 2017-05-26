@@ -15,28 +15,12 @@
 #include "../Beta_projectors/beta_projectors_gradient.h"
 #include "../potential.h"
 #include "../density.h"
+#include "Non_local_functor.h"
 
 namespace sirius {
 
 using namespace geometry3d;
 
-/* for omp reduction */
-template <typename T>
-void init_mdarray2d(mdarray<T, 2>& priv, mdarray<T, 2>& orig)
-{
-    priv = mdarray<double, 2>(orig.size(0), orig.size(1));
-    priv.zero();
-}
-
-template <typename T>
-void add_mdarray2d(mdarray<T, 2>& in, mdarray<T, 2>& out)
-{
-    for (size_t i = 0; i < in.size(1); i++) {
-        for (size_t j = 0; j < in.size(0); j++) {
-            out(j, i) += in(j, i);
-        }
-    }
-}
 
 class Forces_PS
 {
@@ -58,93 +42,15 @@ class Forces_PS
     mdarray<double, 2> us_nl_forces_;
 
     template <typename T>
-    void add_k_point_contribution_to_nonlocal2(K_point& kpoint, mdarray<double, 2>& forces)
-    {
-        Unit_cell& unit_cell = ctx_.unit_cell();
+   void add_k_point_contribution_to_nonlocal2(K_point& kpoint, mdarray<double, 2>& forces)
+   {
+       Beta_projectors_gradient bp_grad(ctx_, kpoint.gkvec(), kpoint.beta_projectors());
 
-        Beta_projectors& bp = kpoint.beta_projectors();
-        Beta_projectors_gradient bp_grad(ctx_, kpoint.gkvec(), bp);
+       Non_local_functor<T, 3> nlf(ctx_, bp_grad);
 
-        auto& bp_chunks = bp.beta_projector_chunks();
+       nlf.add_k_point_contribution(kpoint, forces);
+   }
 
-        /* from formula */
-        double main_two_factor = -2.0;
-
-        #ifdef __GPU
-        for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-            if (ctx_.processing_unit() == GPU) {
-                int nbnd = kpoint.num_occupied_bands(ispn);
-                kpoint.spinor_wave_functions(ispn).copy_to_device(0, nbnd);
-            }
-        }
-        #endif
-
-        bp_grad.prepare();
-        bp.prepare();
-
-        for (int icnk = 0; icnk < bp_chunks.num_chunks(); icnk++) {
-            /* generate chunk for inner product of beta */
-            bp.generate(icnk);
-
-            for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-                /* total number of occupied bands for this spin */
-                int nbnd = kpoint.num_occupied_bands(ispn);
-
-                /* inner product of beta and WF */
-                auto bp_phi_chunk = bp.inner<T>(icnk, kpoint.spinor_wave_functions(ispn), 0, nbnd);
-
-                for (int x = 0; x < 3; x++) {
-                    /* generate chunk for inner product of beta gradient */
-                    bp_grad.generate(icnk, x);
-
-                    /* inner product of beta gradient and WF */
-                    auto bp_grad_phi_chunk = bp_grad.inner<T>(icnk, kpoint.spinor_wave_functions(ispn), 0, nbnd);
-
-                    splindex<block> spl_nbnd(nbnd, kpoint.comm().size(), kpoint.comm().rank());
-
-                    int nbnd_loc   = spl_nbnd.local_size();
-                    int bnd_offset = spl_nbnd.global_offset();
-
-                    #pragma omp parallel for
-                    for (int ia_chunk = 0; ia_chunk < bp_chunks(icnk).num_atoms_; ia_chunk++) {
-                        int ia   = bp_chunks(icnk).desc_(3, ia_chunk);
-                        int offs = bp_chunks(icnk).desc_(1, ia_chunk);
-                        int nbf  = bp_chunks(icnk).desc_(0, ia_chunk);
-                        int iat  = unit_cell.atom(ia).type_id();
-
-                        for (int ibnd_loc = 0; ibnd_loc < nbnd_loc; ibnd_loc++) {
-                            int ibnd = spl_nbnd[ibnd_loc];
-
-                            auto D_aug_mtrx = [&](int i, int j) {
-                                if (unit_cell.atom(ia).type().pp_desc().augment) {
-                                    return unit_cell.atom(ia).d_mtrx(i, j, ispn) -
-                                           kpoint.band_energy(ibnd) * ctx_.augmentation_op(iat).q_mtrx(i, j);
-                                } else {
-                                    return unit_cell.atom(ia).d_mtrx(i, j, ispn);
-                                }
-                            };
-
-                            for (int ibf = 0; ibf < unit_cell.atom(ia).type().mt_lo_basis_size(); ibf++) {
-                                for (int jbf = 0; jbf < unit_cell.atom(ia).type().mt_lo_basis_size(); jbf++) {
-                                    /* calculate scalar part of the forces */
-                                    double_complex scalar_part =
-                                        main_two_factor * kpoint.band_occupancy(ibnd + ispn * ctx_.num_fv_states()) *
-                                        kpoint.weight() * D_aug_mtrx(ibf, jbf) *
-                                        std::conj(bp_phi_chunk(offs + jbf, ibnd));
-
-                                    /* multiply scalar part by gradient components */
-                                    forces(x, ia) += (scalar_part * bp_grad_phi_chunk(offs + ibf, ibnd)).real();
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        bp.dismiss();
-        bp_grad.dismiss();
-    }
 
     inline void allocate()
     {
@@ -407,8 +313,6 @@ class Forces_PS
 
         forces.zero();
 
-        #pragma omp declare reduction(+ : mdarray <double, 2> : add_mdarray2d(omp_in, omp_out)) initializer(init_mdarray2d(omp_priv, omp_orig))
-
         /* alpha = 1 / ( 2 sigma^2 ) , selecting alpha here for better convergence*/
         double alpha = 1.0;
         double gmax = ctx_.pw_cutoff();
@@ -433,29 +337,39 @@ class Forces_PS
 
         double prefac = (ctx_.gvec().reduced() ? 4.0 : 2.0) * (twopi / unit_cell.omega());
 
-        #pragma omp parallel for reduction(+ : forces)
-        for (int igloc = 0; igloc < ctx_.gvec().count(); igloc++) {
+        int ig0{0};
+        if (ctx_.comm().rank() == 0) {
+            ig0 = 1;
+        }
+
+        mdarray<double_complex, 1> rho_tmp(ctx_.gvec().count());
+        rho_tmp.zero();
+        #pragma omp parallel for schedule(static)
+        for (int igloc = ig0; igloc < ctx_.gvec().count(); igloc++) {
             int ig = ctx_.gvec().offset() + igloc;
 
-            if (ig == 0) {
-                continue;
-            }
-
-            double g2 = std::pow(ctx_.gvec().shell_len(ctx_.gvec().shell(ig)), 2);
-
-            /* cartesian form for getting cartesian force components */
-            vector3d<double> gvec_cart = ctx_.gvec().gvec_cart(ig);
             double_complex rho(0, 0);
 
             for (int ja = 0; ja < unit_cell.num_atoms(); ja++) {
                 rho += ctx_.gvec_phase_factor(ig, ja) * static_cast<double>(unit_cell.atom(ja).zn());
             }
 
-            rho = std::conj(rho);
+            rho_tmp[igloc] = std::conj(rho);
+        }
 
-            for (int ja = 0; ja < unit_cell.num_atoms(); ja++) {
-                double scalar_part = prefac * (rho * ctx_.gvec_phase_factor(ig, ja)).imag() *
-                                     static_cast<double>(unit_cell.atom(ja).zn()) * std::exp(-g2 / (4.0 * alpha)) / g2;
+        #pragma omp parallel for
+        for (int ja = 0; ja < unit_cell.num_atoms(); ja++) {
+            for (int igloc = ig0; igloc < ctx_.gvec().count(); igloc++) {
+                int ig = ctx_.gvec().offset() + igloc;
+
+                double g2 = std::pow(ctx_.gvec().gvec_len(ig), 2);
+
+                /* cartesian form for getting cartesian force components */
+                vector3d<double> gvec_cart = ctx_.gvec().gvec_cart(ig);
+                double_complex rho(0, 0);
+
+                double scalar_part = prefac * (rho_tmp[igloc] * ctx_.gvec_phase_factor(ig, ja)).imag() *
+                                     static_cast<double>(unit_cell.atom(ja).zn()) * std::exp(-g2 / (4 * alpha)) / g2;
 
                 for (int x : {0, 1, 2}) {
                     forces(x, ja) += scalar_part * gvec_cart[x];
