@@ -53,10 +53,6 @@ class DFT_ground_state
 
         Band band_;
 
-//        std::unique_ptr<Forces_PS> forces_;
-
-        int use_symmetry_;
-
         double ewald_energy_{0};
         
         /// Compute the ion-ion electrostatic energy using Ewald method.
@@ -134,26 +130,18 @@ class DFT_ground_state
         DFT_ground_state(Simulation_context& ctx__,
                          Potential& potential__,
                          Density& density__,
-                         K_point_set& kset__,
-                         int use_symmetry__)
+                         K_point_set& kset__)
             : ctx_(ctx__)
             , unit_cell_(ctx__.unit_cell())
             , potential_(potential__)
             , density_(density__)
             , kset_(kset__)
             , band_(ctx_)
-            , use_symmetry_(use_symmetry__)
         {
             if (!ctx_.full_potential()) {
                 ewald_energy_ = ewald_energy();
             }
-
-//            forces_ = std::unique_ptr<Forces_PS>(new Forces_PS(ctx_, density_, potential_, kset_));
         }
-
-        mdarray<double, 2> forces();
-
-        void forces(mdarray<double, 2>& inout_forces);
 
         int find(double potential_tol, double energy_tol, int num_dft_iter, bool write_state);
 
@@ -495,57 +483,6 @@ inline double DFT_ground_state::ewald_energy()
     return (ewald_g + ewald_r);
 }
 
-//inline void DFT_ground_state::forces(mdarray<double, 2>& inout_forces)
-//{
-//    PROFILE("sirius::DFT_ground_state::forces");
-//
-//    forces_->calc_forces_contributions();
-//
-//    forces_->sum_forces(inout_forces);
-//
-//    if(ctx_.comm().rank() == 0)
-//    {
-//        auto print_forces=[&](mdarray<double, 2> const& forces)
-//        {
-//            for(int ia=0; ia < unit_cell_.num_atoms(); ia++)
-//            {
-//                printf("Atom %4i    force = %15.7f  %15.7f  %15.7f \n",
-//                       unit_cell_.atom(ia).type_id(), forces(0,ia), forces(1,ia), forces(2,ia));
-//            }
-//        };
-//
-//        std::cout<<"===== Total Forces in Ha/bohr =====" << std::endl;
-//        print_forces( inout_forces );
-//
-//        std::cout<<"===== Forces: ultrasoft contribution from Qij =====" << std::endl;
-//        print_forces( forces_->ultrasoft_forces() );
-//
-//        std::cout<<"===== Forces: non-local contribution from Beta-projectors =====" << std::endl;
-//        print_forces( forces_->nonlocal_forces() );
-//
-//        std::cout<<"===== Forces: local contribution from local potential=====" << std::endl;
-//        print_forces( forces_->local_forces() );
-//
-//        std::cout<<"===== Forces: nlcc contribution from core density=====" << std::endl;
-//        print_forces( forces_->nlcc_forces() );
-//
-//        std::cout<<"===== Forces: Ewald forces from ions =====" << std::endl;
-//        print_forces( forces_->ewald_forces() );
-//    }
-//}
-
-
-//inline mdarray<double,2 > DFT_ground_state::forces()
-//{
-//    PROFILE("sirius::DFT_ground_state::forces");
-//
-//    mdarray<double,2 > tot_forces(3, unit_cell_.num_atoms());
-//
-//    forces(tot_forces);
-//
-//    return std::move(tot_forces);
-//}
-
 inline int DFT_ground_state::find(double potential_tol, double energy_tol, int num_dft_iter, bool write_state)
 {
     PROFILE("sirius::DFT_ground_state::scf_loop");
@@ -570,7 +507,7 @@ inline int DFT_ground_state::find(double potential_tol, double energy_tol, int n
         /* generate new density from the occupied wave-functions */
         density_.generate(kset_);
         /* symmetrize density and magnetization */
-        if (use_symmetry_) {
+        if (ctx_.use_symmetry()) {
             symmetrize(density_.rho(), density_.magnetization(0), density_.magnetization(1),
                        density_.magnetization(2));
         }
@@ -640,7 +577,7 @@ inline int DFT_ground_state::find(double potential_tol, double energy_tol, int n
         potential_.generate(density_);
 
         /* symmetrize potential and effective magnetic field */
-        if (use_symmetry_) {
+        if (ctx_.use_symmetry()) {
             symmetrize(potential_.effective_potential(), potential_.effective_magnetic_field(0),
                        potential_.effective_magnetic_field(1), potential_.effective_magnetic_field(2));
         }
