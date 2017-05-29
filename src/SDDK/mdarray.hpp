@@ -36,17 +36,17 @@
 #include <initializer_list>
 #include <type_traits>
 #ifdef __GPU
-#include "gpu.h"
+#include "GPU/cuda.hpp"
 #endif
 
 namespace sddk {
 
-#ifdef __GPU
-extern "C" void add_checksum_gpu(cuDoubleComplex* wf__,
-                                 int num_rows_loc__,
-                                 int nwf__,
-                                 cuDoubleComplex* result__);
-#endif
+//#ifdef __GPU
+//extern "C" void add_checksum_gpu(cuDoubleComplex* wf__,
+//                                 int num_rows_loc__,
+//                                 int nwf__,
+//                                 cuDoubleComplex* result__);
+//#endif
 
 #ifdef NDEBUG
 #define mdarray_assert(condition__)
@@ -214,13 +214,13 @@ struct mdarray_mem_mgr
 
         if ((mode_ & memory_t::host_pinned) != memory_t::none) {
             #ifdef __GPU
-            cuda_free_host(p__);
+            acc::deallocate_host(p__);
             #endif
         }
 
         if ((mode_ & memory_t::device) != memory_t::none) {
             #ifdef __GPU
-            cuda_free(p__);
+            acc::deallocate(p__);
             #endif
         }
     }
@@ -440,7 +440,7 @@ class mdarray_base
 
             if ((memory__ & memory_t::host_pinned) != memory_t::none) {
                 #ifdef __GPU
-                raw_ptr_    = static_cast<T*>(cuda_malloc_host(sz * sizeof(T)));
+                raw_ptr_    = acc::allocate_host<T>(sz);
                 unique_ptr_ = std::unique_ptr<T[], mdarray_mem_mgr<T>>(raw_ptr_, mdarray_mem_mgr<T>(sz, memory_t::host_pinned));
                 #endif
             }
@@ -456,7 +456,7 @@ class mdarray_base
         /* device allocation */
         if ((memory__ & memory_t::device) != memory_t::none) {
             #ifdef __GPU
-            raw_ptr_device_    = static_cast<T*>(cuda_malloc(sz * sizeof(T)));
+            raw_ptr_device_    = acc::allocate<T>(sz);
             unique_ptr_device_ = std::unique_ptr<T[], mdarray_mem_mgr<T>>(raw_ptr_device_, mdarray_mem_mgr<T>(sz, memory_t::device));
             #endif
         }

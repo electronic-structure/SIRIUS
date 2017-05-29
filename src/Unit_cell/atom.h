@@ -267,7 +267,7 @@ class Atom
                 sddk::timer t2("sirius::Atom::generate_radial_integrals|inner");
                 spline_inner_product_gpu_v3(idx_ri.at<GPU>(), (int)idx_ri.size(1), nmtp, rgrid.x().at<GPU>(), rgrid.dx().at<GPU>(),
                                             rf_coef.at<GPU>(), vrf_coef.at<GPU>(), result.at<GPU>());
-                cuda_device_synchronize();
+                acc::sync();
                 if (type().parameters().control().print_performance_) {
                     double tval = t2.stop();
                     DUMP("spline GPU integration performance: %12.6f GFlops", 1e-9 * double(idx_ri.size(1)) * nmtp * 85 / tval);

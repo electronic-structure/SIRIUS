@@ -1,4 +1,5 @@
 #include "../SDDK/GPU/cuda_common.h"
+#include "../SDDK/GPU/cuda.hpp"
 
 __global__ void sum_q_pw_dm_pw_gpu_kernel
 (
@@ -58,7 +59,7 @@ extern "C" void sum_q_pw_dm_pw_gpu(int num_gvec_loc__,
 {
     CUDA_timer t("sum_q_pw_dm_pw_gpu");
 
-    cudaStream_t stream = cuda_stream_by_id(stream_id__);
+    cudaStream_t stream = acc::stream(stream_id__);
 
     dim3 grid_t(64);
     dim3 grid_b(num_gvec_loc__);

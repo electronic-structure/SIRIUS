@@ -1,4 +1,5 @@
 #include "cuda_common.h"
+#include "cuda.hpp"
 
 template <int direction, bool conjugate>
 __global__ void pack_unpack_z_cols_gpu_kernel
@@ -42,7 +43,7 @@ extern "C" void unpack_z_cols_gpu(cuDoubleComplex* z_cols_packed__,
                                   bool use_reduction__, 
                                   int stream_id__)
 {
-    cudaStream_t stream = cuda_stream_by_id(stream_id__);
+    cudaStream_t stream = acc::stream(stream_id__);
 
     dim3 grid_t(64);
     dim3 grid_b(num_blocks(num_z_cols__, grid_t.x), size_z__);
@@ -82,7 +83,7 @@ extern "C" void pack_z_cols_gpu(cuDoubleComplex* z_cols_packed__,
                                 int const* z_col_pos__,
                                 int stream_id__)
 {
-    cudaStream_t stream = cuda_stream_by_id(stream_id__);
+    cudaStream_t stream = acc::stream(stream_id__);
 
     dim3 grid_t(64);
     dim3 grid_b(num_blocks(num_z_cols__, grid_t.x), size_z__);
@@ -152,7 +153,7 @@ extern "C" void unpack_z_cols_2_gpu(cuDoubleComplex* z_cols_packed1__,
                                     int const* z_col_pos__,
                                     int stream_id__)
 {
-    cudaStream_t stream = cuda_stream_by_id(stream_id__);
+    cudaStream_t stream = acc::stream(stream_id__);
 
     dim3 grid_t(64);
     dim3 grid_b(num_blocks(num_z_cols__, grid_t.x), size_z__);
@@ -193,7 +194,7 @@ extern "C" void pack_z_cols_2_gpu(cuDoubleComplex* z_cols_packed1__,
                                   int const* z_col_pos__,
                                   int stream_id__)
 {
-    cudaStream_t stream = cuda_stream_by_id(stream_id__);
+    cudaStream_t stream = acc::stream(stream_id__);
 
     dim3 grid_t(64);
     dim3 grid_b(num_blocks(num_z_cols__, grid_t.x), size_z__);

@@ -38,9 +38,11 @@
 #include <algorithm>
 #include "config.h"
 #include "communicator.hpp"
-#include "gpu.h"
 #include "runtime.h"
 #include "sddk.hpp"
+#ifdef __MAGMA
+#include "GPU/magma.hpp"
+#endif
 
 #ifdef __PLASMA
 extern "C" void plasma_init(int num_cores);
@@ -61,11 +63,13 @@ namespace sirius {
         }
 
         #ifdef __GPU
-        cuda_create_streams(omp_get_max_threads() + 1);
-        cublas_create_handles(omp_get_max_threads() + 1);
+        if (acc::num_devices()) {
+            acc::create_streams(omp_get_max_threads() + 1);
+            cublas::create_stream_handles();
+        }
         #endif
         #ifdef __MAGMA
-        magma_init_wrapper();
+        magma::init();
         #endif
         #ifdef __PLASMA
         plasma_init(omp_get_max_threads());
@@ -83,15 +87,17 @@ namespace sirius {
     inline void finalize(bool call_mpi_fin__ = true)
     {
         #ifdef __MAGMA
-        magma_finalize_wrapper();
+        magma::finalize();
         #endif
         #ifdef __LIBSCI_ACC
         libsci_acc_finalize();
         #endif
         #ifdef __GPU
-        cublas_destroy_handles(omp_get_max_threads() + 1);
-        cuda_destroy_streams();
-        cuda_device_reset();
+        if (acc::num_devices()) {
+            cublas::destroy_stream_handles();
+            acc::destroy_streams();
+            acc::reset();
+        }
         #endif
         fftw_cleanup();
         sddk::stop_global_timer();

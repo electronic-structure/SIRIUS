@@ -29,12 +29,15 @@
 #include "geometry3d.hpp"
 #include "fft3d_grid.hpp"
 #include "gvec.hpp"
+#ifdef __GPU
+#include "GPU/cufft.hpp"
+#endif
 
 namespace sddk {
 
 #ifdef __GPU
-extern "C" void unpack_z_cols_gpu(cuDoubleComplex* z_cols_packed__,
-                                  cuDoubleComplex* fft_buf__,
+extern "C" void unpack_z_cols_gpu(double_complex* z_cols_packed__,
+                                  double_complex* fft_buf__,
                                   int size_x__,
                                   int size_y__,
                                   int size_z__,
@@ -43,9 +46,9 @@ extern "C" void unpack_z_cols_gpu(cuDoubleComplex* z_cols_packed__,
                                   bool use_reduction,
                                   int stream_id__);
 
-extern "C" void unpack_z_cols_2_gpu(cuDoubleComplex* z_cols_packed1__,
-                                    cuDoubleComplex* z_cols_packed2__,
-                                    cuDoubleComplex* fft_buf__,
+extern "C" void unpack_z_cols_2_gpu(double_complex* z_cols_packed1__,
+                                    double_complex* z_cols_packed2__,
+                                    double_complex* fft_buf__,
                                     int size_x__,
                                     int size_y__,
                                     int size_z__,
@@ -53,8 +56,8 @@ extern "C" void unpack_z_cols_2_gpu(cuDoubleComplex* z_cols_packed1__,
                                     int const* z_columns_pos__,
                                     int stream_id__);
 
-extern "C" void pack_z_cols_gpu(cuDoubleComplex* z_cols_packed__,
-                                cuDoubleComplex* fft_buf__,
+extern "C" void pack_z_cols_gpu(double_complex* z_cols_packed__,
+                                double_complex* fft_buf__,
                                 int size_x__,
                                 int size_y__,
                                 int size_z__,
@@ -62,9 +65,9 @@ extern "C" void pack_z_cols_gpu(cuDoubleComplex* z_cols_packed__,
                                 int const* z_columns_pos__,
                                 int stream_id__);
 
-extern "C" void pack_z_cols_2_gpu(cuDoubleComplex* z_cols_packed1__,
-                                  cuDoubleComplex* z_cols_packed2__,
-                                  cuDoubleComplex* fft_buf__,
+extern "C" void pack_z_cols_2_gpu(double_complex* z_cols_packed1__,
+                                  double_complex* z_cols_packed2__,
+                                  double_complex* fft_buf__,
                                   int size_x__,
                                   int size_y__,
                                   int size_z__,
@@ -76,29 +79,29 @@ extern "C" void cufft_batch_load_gpu(int fft_size,
                                      int num_pw_components, 
                                      int num_fft,
                                      int const* map, 
-                                     cuDoubleComplex const* data, 
-                                     cuDoubleComplex* fft_buffer,
+                                     double_complex const* data, 
+                                     double_complex* fft_buffer,
                                      int stream_id);
 
 extern "C" void cufft_batch_unload_gpu(int fft_size,
                                        int num_pw_components,
                                        int num_fft,
                                        int const* map, 
-                                       cuDoubleComplex const* fft_buffer, 
-                                       cuDoubleComplex* data,
+                                       double_complex const* fft_buffer, 
+                                       double_complex* data,
                                        double alpha,
                                        double beta,
                                        int stream_id);
 
 extern "C" void cufft_load_x0y0_col_gpu(int z_col_size,
                                         int const* map,
-                                        cuDoubleComplex const* data,
-                                        cuDoubleComplex* fft_buffer,
+                                        double_complex const* data,
+                                        double_complex* fft_buffer,
                                         int stream_id);
 
-extern "C" void double_complex_checksum_gpu(cuDoubleComplex const* ptr__,
+extern "C" void double_complex_checksum_gpu(double_complex const* ptr__,
                                             size_t size__,
-                                            cuDoubleComplex* result__);
+                                            double_complex* result__);
 #endif
 
 // TODO:  add += operation for (-1) transform, i.e. accumulate in the output buffer. This will allow to get rid of
@@ -246,12 +249,12 @@ class FFT3D
                                                     0);
                         }
                         /* transform all columns */
-                        cufft_backward_transform(cufft_plan_z_, fft_buffer_aux__.at<GPU>());
+                        cufft::backward_transform(cufft_plan_z_, (cuDoubleComplex*)fft_buffer_aux__.at<GPU>());
                         break;
                     }
                     case -1: {
                         /* transform all columns */
-                        cufft_forward_transform(cufft_plan_z_, fft_buffer_aux__.at<GPU>());
+                        cufft::forward_transform(cufft_plan_z_, (cuDoubleComplex*)fft_buffer_aux__.at<GPU>());
                         acc::zero(data__, gvec__.gvec_count_fft()); // TODO: this should happen in cufft_batch_unload_gpu()
                         /* get all columns from FFT buffer */
                         cufft_batch_unload_gpu(gvec__.zcol_count_fft() * grid_.size(2), gvec__.gvec_count_fft(), 1, 
@@ -450,12 +453,12 @@ class FFT3D
                         unpack_z_cols_gpu(fft_buffer_aux__.at<GPU>(), fft_buffer_.at<GPU>(), grid_.size(0), grid_.size(1), 
                                           local_size_z_, gvec__.num_zcol(), z_col_pos_.at<GPU>(), is_reduced, 0);
                         /* stream #0 executes FFT */
-                        cufft_backward_transform(cufft_plan_xy_, fft_buffer_.at<GPU>());
+                        cufft::backward_transform(cufft_plan_xy_, (cuDoubleComplex*)fft_buffer_.at<GPU>());
                         break;
                     }
                     case -1: {
                         /* stream #0 executes FFT */
-                        cufft_forward_transform(cufft_plan_xy_, fft_buffer_.at<GPU>());
+                        cufft::forward_transform(cufft_plan_xy_, (cuDoubleComplex*)fft_buffer_.at<GPU>());
                         /* stream #0 packs z-columns */
                         pack_z_cols_gpu(fft_buffer_aux__.at<GPU>(), fft_buffer_.at<GPU>(), grid_.size(0), grid_.size(1), 
                                         local_size_z_, gvec__.num_zcol(), z_col_pos_.at<GPU>(), 0);
@@ -540,12 +543,12 @@ class FFT3D
                                             grid_.size(0), grid_.size(1), local_size_z_,
                                             gvec__.num_zcol(), z_col_pos_.at<GPU>(), 0);
                         /* stream #0 executes FFT */
-                        cufft_backward_transform(cufft_plan_xy_, fft_buffer_.at<GPU>());
+                        cufft::backward_transform(cufft_plan_xy_, (cuDoubleComplex*)fft_buffer_.at<GPU>());
                         break;
                     }
                     case -1: {
                         /* stream #0 executes FFT */
-                        cufft_forward_transform(cufft_plan_xy_, fft_buffer_.at<GPU>());
+                        cufft::forward_transform(cufft_plan_xy_, (cuDoubleComplex*)fft_buffer_.at<GPU>());
                         /* stream #0 packs z-columns */
                         pack_z_cols_2_gpu(fft_buffer_aux1__.at<GPU>(), fft_buffer_aux2__.at<GPU>(), fft_buffer_.at<GPU>(),
                                           grid_.size(0), grid_.size(1), local_size_z_,
@@ -668,11 +671,11 @@ class FFT3D
                 int auto_alloc{0};
                 int dim_xy[] = {grid_.size(1), grid_.size(0)};
                 /* create plan handler for xy transform */
-                cufft_create_plan_handle(&cufft_plan_xy_);
+                cufft::create_plan_handle(&cufft_plan_xy_);
                 /* create plan for xy transform */
-                cufft_create_batch_plan(cufft_plan_xy_, 2, dim_xy, dim_xy, 1, grid_.size(0) * grid_.size(1), local_size_z_, auto_alloc);
+                cufft::create_batch_plan(cufft_plan_xy_, 2, dim_xy, dim_xy, 1, grid_.size(0) * grid_.size(1), local_size_z_, auto_alloc);
                 /* stream #0 will execute FFTs */
-                cufft_set_stream(cufft_plan_xy_, 0);
+                cufft::set_stream(cufft_plan_xy_, 0);
             }
             #endif
         }
@@ -694,7 +697,7 @@ class FFT3D
             }
             #ifdef __GPU
             if (pu_ == GPU) {
-                cufft_destroy_plan_handle(cufft_plan_xy_);
+                cufft::destroy_plan_handle(cufft_plan_xy_);
             }
             #endif
         }
@@ -861,22 +864,22 @@ class FFT3D
                     map_zcol_to_fft_buffer_x0y0_.copy<memory_t::host, memory_t::device>();
                 }
 
-                cufft_create_plan_handle(&cufft_plan_z_);
-                cufft_set_stream(cufft_plan_z_, 0);
+                cufft::create_plan_handle(&cufft_plan_z_);
+                cufft::set_stream(cufft_plan_z_, 0);
                 
                 int dim_z[] = {grid_.size(2)};
-                cufft_create_batch_plan(cufft_plan_z_, 1, dim_z, dim_z, 1, grid_.size(2), gvec__.zcol_count_fft(), 0);
+                cufft::create_batch_plan(cufft_plan_z_, 1, dim_z, dim_z, 1, grid_.size(2), gvec__.zcol_count_fft(), 0);
 
                 int dims_xy[] = {grid_.size(1), grid_.size(0)};
                 /* worksize for z and xy transforms */
-                work_size = std::max(cufft_get_work_size(2, dims_xy, local_size_z_),
-                                     cufft_get_work_size(1, dim_z, gvec__.zcol_count_fft()));
+                work_size = std::max(cufft::get_work_size(2, dims_xy, local_size_z_),
+                                     cufft::get_work_size(1, dim_z, gvec__.zcol_count_fft()));
                
                 /* allocate cufft work buffer */
                 cufft_work_buf_ = mdarray<char, 1>(work_size, memory_t::device, "FFT3D.cufft_work_buf_");
                 /* set work area for cufft */ 
-                cufft_set_work_area(cufft_plan_xy_, cufft_work_buf_.at<GPU>());
-                cufft_set_work_area(cufft_plan_z_, cufft_work_buf_.at<GPU>());
+                cufft::set_work_area(cufft_plan_xy_, cufft_work_buf_.at<GPU>());
+                cufft::set_work_area(cufft_plan_z_, cufft_work_buf_.at<GPU>());
 
                 fft_buffer_aux1_.allocate(memory_t::device);
                 fft_buffer_aux2_.allocate(memory_t::device);
@@ -902,7 +905,7 @@ class FFT3D
                 cufft_work_buf_.deallocate_on_device();
                 map_zcol_to_fft_buffer_.deallocate_on_device();
                 map_zcol_to_fft_buffer_x0y0_.deallocate_on_device();
-                cufft_destroy_plan_handle(cufft_plan_z_);
+                cufft::destroy_plan_handle(cufft_plan_z_);
             }
             #endif
             prepared_ = false;

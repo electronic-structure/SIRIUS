@@ -35,7 +35,7 @@ extern "C" void generate_phase_factors_gpu(int num_gvec_loc__,
                                            int num_atoms__,
                                            int const* gvec__,
                                            double const* atom_pos__,
-                                           cuDoubleComplex* phase_factors__);
+                                           double_complex* phase_factors__);
 #endif
 
 namespace sirius {
@@ -802,7 +802,7 @@ inline void Simulation_context_base::print_info()
     }
     if (processing_unit() == GPU) {
         #ifdef __GPU
-        cuda_device_info();
+        acc::print_device_info(0);
         #endif
     }
    

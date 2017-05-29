@@ -1,5 +1,4 @@
 #include "cuda_common.h"
-#include "cuda_interface.h"
 
 __global__ void double_complex_checksum_gpu_kernel
 (
@@ -44,7 +43,8 @@ extern "C" void double_complex_checksum_gpu(cuDoubleComplex const* ptr__,
     dim3 grid_t(64);
     dim3 grid_b(1);
 
-    cuDoubleComplex* res = (cuDoubleComplex*)cuda_malloc(sizeof(cuDoubleComplex));
+    cuDoubleComplex* res;
+    cudaMalloc(&res, sizeof(cuDoubleComplex));
 
     double_complex_checksum_gpu_kernel <<<grid_b, grid_t, 2 * grid_t.x * sizeof(double)>>>
     (
@@ -53,7 +53,7 @@ extern "C" void double_complex_checksum_gpu(cuDoubleComplex const* ptr__,
         res
     );
 
-    cuda_copy_to_host(result__, res, sizeof(cuDoubleComplex));
+    cudaMemcpy(result__, res, sizeof(cuDoubleComplex), cudaMemcpyDeviceToHost);
 
-    cuda_free(res);
+    cudaFree(res);
 }
