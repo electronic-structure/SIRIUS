@@ -18,7 +18,7 @@
 namespace sirius
 {
 
-template<class T, int N>
+template<typename T, int N>
 class Non_local_functor
 {
 private:
@@ -29,12 +29,12 @@ public:
 
     Non_local_functor(Simulation_context& ctx__,
                       Beta_projectors_base<N>& bp_base__)
-    : ctx_(ctx__),
-      bp_base_(bp_base__)
+    : ctx_(ctx__)
+    , bp_base_(bp_base__)
     {}
 
     /// static const can be public
-    static const int num_ = N;
+    static const int N_ = N;
 
     /// collect summation result in an array
     void add_k_point_contribution(K_point& kpoint__, mdarray<double, 2>& collect_res__)
@@ -45,17 +45,16 @@ public:
 
         auto& bp_chunks = bp.beta_projector_chunks();
 
-        // from formula
         double main_two_factor = -2.0;
 
-        #ifdef __GPU
-        for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-            if (ctx_.processing_unit() == GPU) {
-                int nbnd = kpoint__.num_occupied_bands(ispn);
-                kpoint__.spinor_wave_functions(ispn).copy_to_device(0, nbnd);
-            }
-        }
-        #endif
+//        #ifdef __GPU
+//        for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
+//            if (ctx_.processing_unit() == GPU) {
+//                int nbnd = kpoint__.num_occupied_bands(ispn);
+//                kpoint__.spinor_wave_functions(ispn).copy_to_device(0, nbnd);
+//            }
+//        }
+//        #endif
 
         bp_base_.prepare();
         bp.prepare();
@@ -68,14 +67,14 @@ public:
                 /* total number of occupied bands for this spin */
                 int nbnd = kpoint__.num_occupied_bands(ispn);
 
-                // inner product of beta and WF
+                /* inner product of beta and WF */
                 auto bp_phi_chunk = bp.inner<T>(icnk, kpoint__.spinor_wave_functions(ispn), 0, nbnd);
 
                 for (int x = 0; x < N; x++) {
                     /* generate chunk for inner product of beta gradient */
                     bp_base_.generate(icnk, x);
 
-                    // inner product of beta gradient and WF
+                    /* inner product of beta gradient and WF */
                     auto bp_base_phi_chunk = bp_base_.inner<T>(icnk, kpoint__.spinor_wave_functions(ispn), 0, nbnd);
 
                     splindex<block> spl_nbnd(nbnd, kpoint__.comm().size(), kpoint__.comm().rank());
@@ -86,25 +85,24 @@ public:
 
                     #pragma omp parallel for
                     for(int ia_chunk = 0; ia_chunk < bp_chunks(icnk).num_atoms_; ia_chunk++) {
-                        int ia   = bp_chunks(icnk).desc_(3, ia_chunk);
-                        int offs = bp_chunks(icnk).desc_(1, ia_chunk);
-                        int nbf  = bp_chunks(icnk).desc_(0, ia_chunk);
+                        int ia   = bp_chunks(icnk).desc_(beta_desc_idx::ia, ia_chunk);
+                        int offs = bp_chunks(icnk).desc_(beta_desc_idx::offset, ia_chunk);
+                        int nbf  = bp_chunks(icnk).desc_(beta_desc_idx::nbf, ia_chunk);
                         int iat  = unit_cell.atom(ia).type_id();
 
-                        // mpi
-                        // TODO make in smart way with matrix multiplication
+                        /* iterate ove mpi-distributed bands */
                         for (int ibnd_loc = 0; ibnd_loc < nbnd_loc; ibnd_loc++) {
                             int ibnd = spl_nbnd[ibnd_loc];
 
                             auto D_aug_mtrx = [&](int i, int j)
-                                                                    {
+                            {
                                 if (unit_cell.atom(ia).type().pp_desc().augment) {
                                     return unit_cell.atom(ia).d_mtrx(i, j, ispn) - kpoint__.band_energy(ibnd) *
                                             ctx_.augmentation_op(iat).q_mtrx(i, j);
                                 } else {
                                     return unit_cell.atom(ia).d_mtrx(i, j, ispn);
                                 }
-                                                                    };
+                            };
 
                             for (int ibf = 0; ibf < unit_cell.atom(ia).type().mt_lo_basis_size(); ibf++) {
                                 for (int jbf = 0; jbf < unit_cell.atom(ia).type().mt_lo_basis_size(); jbf++) {

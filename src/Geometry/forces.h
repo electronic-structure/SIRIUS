@@ -15,7 +15,7 @@
 #include "../Beta_projectors/beta_projectors_gradient.h"
 #include "../potential.h"
 #include "../density.h"
-#include "Non_local_functor.h"
+#include "non_local_functor.h"
 
 namespace sirius {
 
@@ -42,7 +42,7 @@ class Forces_PS
     mdarray<double, 2> us_nl_forces_;
 
     template <typename T>
-   void add_k_point_contribution_to_nonlocal2(K_point& kpoint, mdarray<double, 2>& forces)
+   void add_k_point_contribution(K_point& kpoint, mdarray<double, 2>& forces)
    {
        Beta_projectors_gradient bp_grad(ctx_, kpoint.gkvec(), kpoint.beta_projectors());
 
@@ -238,9 +238,9 @@ class Forces_PS
             K_point* kp = kset_.k_point(spl_num_kp[ikploc]);
 
             if (ctx_.gamma_point()) {
-                add_k_point_contribution_to_nonlocal2<double>(*kp, unsym_forces);
+                add_k_point_contribution<double>(*kp, unsym_forces);
             } else {
-                add_k_point_contribution_to_nonlocal2<double_complex>(*kp, unsym_forces);
+                add_k_point_contribution<double_complex>(*kp, unsym_forces);
             }
         }
 
@@ -292,9 +292,7 @@ class Forces_PS
 
                 /* scalar part of a force without multipying by G-vector */
                 double_complex z = fact * fourpi * ri.value(iat, gvecs.gvec_len(ig)) *
-                                   std::conj(xc_pot->f_pw_local(igloc)) *
-                                   std::conj(ctx_.gvec_phase_factor(
-                                       ig, ia)); // std::exp(double_complex(0.0, -twopi * (gvec * atom.position())));
+                        std::conj(xc_pot->f_pw_local(igloc) * ctx_.gvec_phase_factor( ig, ia));
 
                 /* get force components multiplying by cartesian G-vector */
                 forces(0, ia) -= (gvec_cart[0] * z).imag();
@@ -317,21 +315,16 @@ class Forces_PS
         double alpha = 1.0;
         double gmax = ctx_.pw_cutoff();
         double upper_bound = 0.0;
-        double charge = 0.0;
-
-        /* total charge */
-        for(int ia = 0; ia < unit_cell.num_atoms(); ia++){
-            charge += unit_cell.atom(ia).zn();
-        }
+        double charge = ctx_.unit_cell().num_electrons();
 
         /* iterate to find alpha */
-        do{
+        do {
             alpha += 0.1;
             upper_bound = charge*charge * std::sqrt( 2.0 * alpha / twopi) * gsl_sf_erfc( gmax * std::sqrt(1.0 / (4.0 * alpha)) );
             //std::cout<<"alpha " <<alpha<<" ub "<<upper_bound<<std::endl;
-        }while(upper_bound < 1.0e-8);
+        } while(upper_bound < 1.0e-8);
 
-        if(alpha < 1.5){
+        if (alpha < 1.5) {
             std::cout<<"Ewald forces error: probably, pw_cutoff is too small."<<std::endl;
         }
 
