@@ -120,7 +120,9 @@ inline size_t get_free_mem()
 inline int num_devices()
 {
     int count;
-    CALL_CUDA(cudaGetDeviceCount, (&count));
+    if (cudaGetDeviceCount(&count) != cudaSuccess) {
+        return 0;
+    }
     return count;
 }
 
