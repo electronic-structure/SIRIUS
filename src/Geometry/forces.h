@@ -85,7 +85,6 @@ class Forces_PS
                     splindex<block> spl_nbnd(nbnd, kpoint.comm().size(), kpoint.comm().rank());
 
                     int nbnd_loc   = spl_nbnd.local_size();
-                    int bnd_offset = spl_nbnd.global_offset();
 
                     #pragma omp parallel for
                     for (int ia_chunk = 0; ia_chunk < bp_chunks(icnk).num_atoms_; ia_chunk++) {
@@ -106,8 +105,8 @@ class Forces_PS
                                 }
                             };
 
-                            for (int ibf = 0; ibf < unit_cell.atom(ia).type().mt_lo_basis_size(); ibf++) {
-                                for (int jbf = 0; jbf < unit_cell.atom(ia).type().mt_lo_basis_size(); jbf++) {
+                            for (int ibf = 0; ibf < nbf; ibf++) {
+                                for (int jbf = 0; jbf < nbf; jbf++) {
                                     /* calculate scalar part of the forces */
                                     double_complex scalar_part =
                                         main_two_factor * kpoint.band_occupancy(ibnd + ispn * ctx_.num_fv_states()) *
@@ -214,7 +213,6 @@ class Forces_PS
 
             for (int igloc = 0; igloc < gvec_count; igloc++) {
                 int ig  = gvec_offset + igloc;
-                int igs = gvecs.shell(ig);
 
                 /* cartesian form for getting cartesian force components */
                 vector3d<double> gvec_cart = gvecs.gvec_cart(ig);
@@ -357,7 +355,6 @@ class Forces_PS
 
             for (int igloc = 0; igloc < gvec_count; igloc++) {
                 int ig  = gvec_offset + igloc;
-                int igs = gvecs.shell(ig);
 
                 if (ig == 0) {
                     continue;

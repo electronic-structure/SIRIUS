@@ -245,8 +245,6 @@ class Beta_projectors_base
 
         auto& bchunk = ctx_.beta_projector_chunks();
 
-        int num_beta = bchunk(ichunk__).num_beta_;
-
         auto& comm = gkvec_.comm();
 
         switch (ctx_.processing_unit()) {

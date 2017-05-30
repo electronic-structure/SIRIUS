@@ -356,7 +356,6 @@ class FFT3D
             PROFILE("sddk::FFT3D::transform_z");
 
             int rank = comm_.rank();
-            int num_zcol_local = gvec__.zcol_distr_fft().counts[rank];
 
             if (direction == -1) {
                 #ifdef __GPU

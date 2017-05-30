@@ -369,9 +369,6 @@ inline void Simulation_context_base::init_fft()
 {
     auto rlv = unit_cell_.reciprocal_lattice_vectors();
 
-    int npr = control().mpi_grid_dims_[0];
-    int npc = control().mpi_grid_dims_[1];
-
     if (!(control().fft_mode_ == "serial" || control().fft_mode_ == "parallel")) {
         TERMINATE("wrong FFT mode");
     }
