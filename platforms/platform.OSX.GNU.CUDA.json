@@ -1,20 +1,37 @@
 {
+    "comment"     : "MPI C++ compiler and options",
     "MPI_CXX"     : "mpic++",
-    "MPI_CXX_OPT" : "-std=c++11 -g -O3 -Wall -Wconversion -fopenmp -DNDEBUG -D__SCALAPACK -D__ELPA -D__GPU",
+    "MPI_CXX_OPT" : "-std=c++11 -Wall -Wconversion -fopenmp -D__SCALAPACK -D__ELPA -D__GPU -D__MAGMA",
+    
+    "comment"     : "MPI Fortran compiler and oprions",
     "MPI_FC"      : "mpif90",
     "MPI_FC_OPT"  : "-O3 -fopenmp -cpp",
+   
+    "comment"     : "plain C compler",
+    "CC"          : "gcc-mp-5",
     
-    "CC"          : "gcc-mp-4.9",
-    "CXX"         : "c++-mp-4.9",
-    "FC"          : "gfortran-mp-4.9",
-    "FCCPP"       : "cpp-mp-4.9",
+    "comment"     : "plain C++ compiler",
+    "CXX"         : "c++-mp-5",
 
-    "NVCC"        : "/Developer/NVIDIA/CUDA-7.5/bin/nvcc",
+    "comment"     : "plain Fortran compiler",
+    "FC"          : "gfortran-mp-5",
+
+    "comment"     : "Fortran preprocessor",
+    "FCCPP"       : "cpp-mp-5",
+    
+    "comment"     : "location of CUDA toolkit",
+    "CUDA_ROOT"   : "/Developer/NVIDIA/CUDA-7.5",
+
+    "comment"     : "CUDA compiler and options",
+    "NVCC"        : "nvcc",
     "NVCC_OPT"    : "-ccbin=clang++-mp-3.6 -arch=sm_30 -m64 -DNDEBUG",
+    
+    "comment"     : "location of MAGMA library",
+    "MAGMA_ROOT"  : "/Users/antonk/src/magma-2.0.0-beta3",
 
-    "SYSTEM_LIBS" : "~/src/LAPACK/scalapack-2.0.2/libscalapack.a ~/src/LAPACK/lapack-3.4.2/liblapack.a /Users/antonk/src/LAPACK/lapack-3.4.2/librefblas.a ~/local/lib/libmpi_mpifh.a -L/opt/local/lib -lz -lgfortran -L/Developer/NVIDIA/CUDA-7.5/lib -lcublas -lcudart -lcufft -Wl,-rpath,/Developer/NVIDIA/CUDA-7.5/lib -lstdc++ -lc++",
+    "SYSTEM_LIBS" : "~/src/LAPACK/scalapack-2.0.2/libscalapack.a ~/src/LAPACK/lapack-3.4.2/liblapack.a ~/src/LAPACK/lapack-3.4.2/librefblas.a ~/local/lib/libmpi_mpifh.a -L/opt/local/lib -lz -lgfortran -lstdc++ -lc++",
 
-    "install"     : ["gsl", "fftw", "xc", "spg", "hdf5"]
+    "install"     : ["spg", "gsl", "fftw", "xc", "hdf5"]
 }
 
 
