@@ -264,18 +264,19 @@ class Stress {
         double gmax = ctx_.pw_cutoff();
         double upper_bound = 0.0;
         double charge = ctx_.unit_cell().num_electrons();
-
+        
+        // TODO: common function for stress, forces and total energy contributions
         /* iterate to find alpha */
         do {
             lambda += 0.1;
-            upper_bound = charge*charge * std::sqrt( 2.0 * lambda / twopi) * gsl_sf_erfc( gmax * std::sqrt(1.0 / (4.0 * lambda)) );
-            //std::cout<<"alpha " <<alpha<<" ub "<<upper_bound<<std::endl;
-        } while(upper_bound < 1.0e-8);
+            upper_bound = charge*charge * std::sqrt(2.0 * lambda / twopi) * gsl_sf_erfc(gmax * std::sqrt(1.0 / (4.0 * lambda)));
+        } while (upper_bound < 1.0e-8);
 
         if (lambda < 1.5) {
-            std::cout<<"Ewald forces error: probably, pw_cutoff is too small."<<std::endl;
+            std::stringstream s;
+            s << "Ewald forces error: probably, pw_cutoff is too small.";
+            WARNING(s);
         }
-
 
         auto& uc = ctx_.unit_cell();
 
@@ -556,7 +557,7 @@ class Stress {
     {
         PROFILE("sirius::Stress|nonloc");
 
-        mdarray<double, 2> collect_result(9, ctx_.unit_cell().num_atoms() );
+        mdarray<double, 2> collect_result(9, ctx_.unit_cell().num_atoms());
         collect_result.zero();
 
         for (int ikloc = 0; ikloc < kset_.spl_num_kpoints().local_size(); ikloc++) {
@@ -577,25 +578,23 @@ class Stress {
             matrix3d<double> tmp_stress;
 
             #pragma omp for
-            for (size_t ia=0; ia < collect_result.size(1); ia++){
-                for (int i=0; i<3; i++){
-                    for (int j=0; j<3; j++){
-                        tmp_stress(i,j) -= collect_result(j*3+i, ia) ;
+            for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {
+                for (int i = 0; i < 3; i++) {
+                    for (int j = 0; j < 3; j++) {
+                        tmp_stress(i, j) -= collect_result(j * 3 + i, ia);
                     }
                 }
             }
 
             #pragma omp critical
-            {
-                stress_nonloc_ += tmp_stress;
-            }
+            stress_nonloc_ += tmp_stress;
         }
 
         ctx_.comm().allreduce(&stress_nonloc_(0, 0), 9);
 
-        symmetrize(stress_nonloc_);
-
         stress_nonloc_ *= (1.0 / ctx_.unit_cell().omega());
+
+        symmetrize(stress_nonloc_);
 
         std::vector<std::array<int, 2>> idx = {{0, 1}, {0, 2}, {1, 2}};
         for (auto e: idx) {
