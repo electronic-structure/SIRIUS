@@ -116,36 +116,114 @@ namespace sirius {
 
 #endif // __SIRIUS_INTERNAL_H__
 
-/** \mainpage Welcome to SIRIUS
- *  \section intro Introduction
- *  SIRIUS is a domain-specific library for electronic structure calculations. It supports full-potential linearized
- *  augmented plane wave (FP-LAPW) and pseudopotential plane wave (PP-PW) methods and is designed to work with codes
- *  such as Exciting, Elk, Quantum ESPRESSO, etc.
- *  \section install Installation
- *   ...
- */
+/** 
+\mainpage Welcome to SIRIUS
+\section intro Introduction
+SIRIUS is a domain-specific library for electronic structure calculations. It supports full-potential linearized
+augmented plane wave (FP-LAPW) and pseudopotential plane wave (PP-PW) methods and is designed to work with codes
+such as Exciting, Elk and Quantum ESPRESSO.
+\section install Installation
+First, you need to clone the source code:
+\verbatim
+git clone https://github.com/electronic-structure/SIRIUS.git
+\endverbatim 
 
-/** \page stdvarname Standard variable names
- *   
- *  Below is the list of standard names for some of the loop variables:
- *  
- *  l - index of orbital quantum number \n
- *  m - index of azimutal quantum nuber \n
- *  lm - combined index of (l,m) quantum numbers \n
- *  ia - index of atom \n
- *  ic - index of atom class \n
- *  iat - index of atom type \n
- *  ir - index of r-point \n
- *  ig - index of G-vector \n
- *  idxlo - index of local orbital \n
- *  idxrf - index of radial function \n
- *  xi - compbined index of lm and idxrf (product of angular and radial functions) \n
- *  ik - index of k-point \n
- *  itp - index of (theta, phi) spherical angles \n
- *
- *  The _loc suffix is often added to the variables to indicate that they represent the local fraction of the elements
- *  assigned to the given MPI rank.
- */
+Then you need to create a configuration \c json file where you specify your compiliers, compiler flags and libraries.
+Examples of such configuration files can be found in the <tt>./platforms/</tt> folder. The following variables have to be
+provided:
+  - \c MPI_CXX -- the MPI wrapper for the C++11 compiler (this is the main compiler for the library)
+  - \c MPI_CXX_OPT -- the C++ compiler options for the library
+  - \c MPI_FC -- the MPI wrapper for the Fortran compiler (used to build ELPA and SIRIUS F90 interface)
+  - \c MPI_FC_OPT -- Fortran compiler options
+  - \c CC -- plain C compilers (used to build the external libraries)
+  - \c CXX -- plain C++ compiler (used to build the external libraries)
+  - \c FC -- plain Fortran compiler (used to build the external libraries)
+  - \c FCCPP -- Fortran preprocessor (usually 'cpp', required by LibXC package)
+  - \c SYSTEM_LIBS -- list of the libraries, necessary for the linking (typically BLAS/LAPACK/ScaLAPACK, libstdc++ and Fortran run-time) 
+  - \c install -- list of packages to download, configure and build
+
+In addition, the following variables can also be specified:
+  - \c CUDA_ROOT -- path to the CUDA toolkit (if you compile with GPU support)
+  - \c NVCC -- name of the CUDA C++ compiler (usually \c nvcc)
+  - \c NVCC_OPT -- CUDA compiler options
+  - \c MAGMA_ROOT -- location of the compiled MAGMA library (if you compile with MAGMA support)
+
+Below is an example of the configurtaion file for the Cray XC50 platform. Cray compiler wrappers for C/C++/Fortran are 
+ftn/cc/CC. The GNU compilers and MKL are used.
+\verbatim
+{
+    "comment"     : "MPI C++ compiler and options",
+    "MPI_CXX"     : "CC",
+    "MPI_CXX_OPT" : "-std=c++11 -Wall -Wconversion -fopenmp -D__SCALAPACK -D__ELPA -D__GPU -D__MAGMA -I$(MKLROOT)/include/fftw/",
+
+    "comment"     : "MPI Fortran compiler and oprions",
+    "MPI_FC"      : "ftn",
+    "MPI_FC_OPT"  : "-O3 -fopenmp -cpp",
+
+    "comment"     : "plain C compler",
+    "CC"          : "cc",
+
+    "comment"     : "plain C++ compiler",
+    "CXX"         : "CC",
+
+    "comment"     : "plain Fortran compiler",
+    "FC"          : "ftn",
+
+    "comment"     : "Fortran preprocessor",
+    "FCCPP"       : "cpp",
+
+    "comment"     : "location of CUDA toolkit",
+    "CUDA_ROOT"   : "$(CUDATOOLKIT_HOME)",
+
+    "comment"     : "CUDA compiler and options",
+    "NVCC"        : "nvcc",
+    "NVCC_OPT"    : "-arch=sm_60 -m64 -DNDEBUG",
+
+    "comment"     : "location of MAGMA library",
+    "MAGMA_ROOT"  : "$(HOME)/src/daint/magma-2.2.0",
+
+    "SYSTEM_LIBS" : "$(MKLROOT)/lib/intel64/libmkl_scalapack_lp64.a -Wl,--start-group  $(MKLROOT)/lib/intel64/libmkl_intel_lp64.a $(MKLROOT)/lib/intel64/libmkl_gnu_thread.a $(MKLROOT)/lib/intel64/libmkl_core.a $(MKLROOT)/lib/intel64/libmkl_blacs_intelmpi_lp64.a -Wl,--end-group -lpthread -lstdc++ -ldl",
+
+    "install"     : ["spg", "gsl", "xc"]
+}
+\endverbatim
+FFT library is part of the MKL. The corresponding C++ include directory is passed to the compiler: -I\$(MKLROOT)/include/fftw/.
+The \c HDF5 library is installed as a module and handeled by the Cray wrappers. The remaining three libraries necessary for 
+SIRIUS (spglib, GSL, libXC) are not available and have to be installed.
+
+Once the configuration \c json file is created, you can run
+\verbatim
+python configure.py path/to/config.json
+\endverbatim 
+
+The Python script will download and configure external packages, specified in the <tt>"install"</tt> list and create 
+Makefile and make.inc files. That's it! The configuration is done and you can run
+\verbatim
+make
+\endverbatim 
+*/
+
+//! \page stdvarname Standard variable names
+//!  
+//! Below is the list of standard names for some of the loop variables:
+//! 
+//! l - index of orbital quantum number \n
+//! m - index of azimutal quantum nuber \n
+//! lm - combined index of (l,m) quantum numbers \n
+//! ia - index of atom \n
+//! ic - index of atom class \n
+//! iat - index of atom type \n
+//! ir - index of r-point \n
+//! ig - index of G-vector \n
+//! idxlo - index of local orbital \n
+//! idxrf - index of radial function \n
+//! xi - compbined index of lm and idxrf (product of angular and radial functions) \n
+//! ik - index of k-point \n
+//! itp - index of (theta, phi) spherical angles \n
+//!
+//! The _loc suffix is often added to the variables to indicate that they represent the local fraction of the elements
+//! assigned to the given MPI rank.
+//!
 
 //! \page coding Coding style
 //!     
