@@ -756,21 +756,25 @@ inline void DFT_ground_state::print_info()
                 printf("interstitial moment   : [%8.4f, %8.4f, %8.4f], magnitude : %10.6f\n", 
                        v[0], v[1], v[2], v.length());
             }
-            
             printf("\n");
-            printf("total charge          : %10.6f\n", total_charge);
-            printf("total core leakage    : %10.8e\n", total_core_leakage);
-            if (ctx_.num_mag_dims()) {
-                vector3d<double> v;
-                v[2] = total_mag[0];
-                if (ctx_.num_mag_dims() == 3) {
-                    v[0] = total_mag[1];
-                    v[1] = total_mag[2];
-                }
-                printf("total moment          : [%8.4f, %8.4f, %8.4f], magnitude : %10.6f\n", 
-                       v[0], v[1], v[2], v.length());
-            }
+            printf("total core leakage : %10.8e\n", total_core_leakage);
         }
+
+        printf("total charge          : %10.6f\n", total_charge);
+
+        if (ctx_.num_mag_dims()) {
+            vector3d<double> v;
+            v[2] = total_mag[0];
+            if (ctx_.num_mag_dims() == 3) {
+                v[0] = total_mag[1];
+                v[1] = total_mag[2];
+            }
+            printf("total moment          : [%8.4f, %8.4f, %8.4f], magnitude : %10.6f\n",
+                   v[0], v[1], v[2], v.length());
+        }
+
+
+
         printf("\n");
         printf("Energy\n");
         for (int i = 0; i < 80; i++) printf("-");

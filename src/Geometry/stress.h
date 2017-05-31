@@ -26,6 +26,7 @@
 #define __STRESS_H__
 
 #include "../Beta_projectors/beta_projectors_strain_deriv.h"
+#include "non_local_functor.h"
 
 namespace sirius {
 
@@ -258,7 +259,23 @@ class Stress {
     {
         PROFILE("sirius::Stress|ewald");
 
-        double lambda = 2.5;
+        /* alpha = 1 / ( 2 sigma^2 ) , selecting alpha here for better convergence*/
+        double lambda = 1.0;
+        double gmax = ctx_.pw_cutoff();
+        double upper_bound = 0.0;
+        double charge = ctx_.unit_cell().num_electrons();
+
+        /* iterate to find alpha */
+        do {
+            lambda += 0.1;
+            upper_bound = charge*charge * std::sqrt( 2.0 * lambda / twopi) * gsl_sf_erfc( gmax * std::sqrt(1.0 / (4.0 * lambda)) );
+            //std::cout<<"alpha " <<alpha<<" ub "<<upper_bound<<std::endl;
+        } while(upper_bound < 1.0e-8);
+
+        if (lambda < 1.5) {
+            std::cout<<"Ewald forces error: probably, pw_cutoff is too small."<<std::endl;
+        }
+
 
         auto& uc = ctx_.unit_cell();
 
@@ -315,7 +332,7 @@ class Stress {
                 }
 
                 double a1 = (0.5 * uc.atom(ia).zn() * uc.atom(ja).zn() / uc.omega() / std::pow(len, 3)) *
-                            (-2 * std::exp(-lambda * std::pow(len, 2)) * std::sqrt(lambda / pi) * len - gsl_sf_erfc(std::sqrt(lambda) * len)); 
+                            (-2 * std::exp(-lambda * std::pow(len, 2)) * std::sqrt(lambda / pi) * len - gsl_sf_erfc(std::sqrt(lambda) * len));
 
                 for (int mu: {0, 1, 2}) {
                     for (int nu: {0, 1, 2}) {
@@ -539,79 +556,52 @@ class Stress {
     {
         PROFILE("sirius::Stress|nonloc");
 
-        auto& bchunk = ctx_.beta_projector_chunks();
+        mdarray<double, 2> collect_result(9, ctx_.unit_cell().num_atoms() );
+        collect_result.zero();
 
         for (int ikloc = 0; ikloc < kset_.spl_num_kpoints().local_size(); ikloc++) {
             int ik = kset_.spl_num_kpoints(ikloc);
             auto kp = kset_[ik];
             if (kp->gkvec().reduced()) {
-                TERMINATE("fix this");
+                TERMINATE("reduced G+k vectors are not implemented for non-local stress: fix this");
             }
 
-            auto d_mtrx = [&](Atom& atom, int ibnd, int i, int j)
-            {
-                if (atom.type().pp_desc().augment) {
-                    return atom.d_mtrx(i, j, 0) - kp->band_energy(ibnd) * ctx_.augmentation_op(atom.type_id()).q_mtrx(i, j);
-                } else {
-                    return atom.d_mtrx(i, j, 0);
-                }
-            };
-
             Beta_projectors_strain_deriv bp_strain_deriv(ctx_, kp->gkvec());
+            Non_local_functor<T, 9> nlf(ctx_, bp_strain_deriv);
 
-            kp->beta_projectors().prepare();
-            bp_strain_deriv.prepare();
+            nlf.add_k_point_contribution(*kp, collect_result);
+        }
 
-            for (int ichunk = 0; ichunk < bchunk.num_chunks(); ichunk++) {
-                kp->beta_projectors().generate(ichunk);
+        #pragma omp parallel
+        {
+            matrix3d<double> tmp_stress;
 
-                int nbnd = kp->num_occupied_bands(0);
-                splindex<block> spl_nbnd(nbnd, kp->comm().size(), kp->comm().rank());
-
-                /* compute <beta|psi> */
-                auto beta_psi = kp->beta_projectors().inner<T>(ichunk, kp->spinor_wave_functions(0), 0, nbnd);
-
-                for (int mu = 0; mu < 3; mu++) {
-                    for (int nu = 0; nu < 3; nu++) {
-                        bp_strain_deriv.generate(ichunk, mu + nu * 3);
-                        auto dbeta_psi = bp_strain_deriv.inner<T>(ichunk, kp->spinor_wave_functions(0), 0, nbnd);
-
-                        for (int i = 0; i < bchunk(ichunk).num_atoms_; i++) {
-                            int ia   = bchunk(ichunk).desc_(beta_desc_idx::ia, i);
-                            int offs = bchunk(ichunk).desc_(beta_desc_idx::offset, i);
-                            int nbf  = bchunk(ichunk).desc_(beta_desc_idx::nbf, i);
-
-                            auto& atom = ctx_.unit_cell().atom(ia);
-
-                            for (int ibnd_loc = 0; ibnd_loc < spl_nbnd.local_size(); ibnd_loc++) {
-                                int ibnd = spl_nbnd[ibnd_loc];
-                                double w = kp->weight() * kp->band_occupancy(ibnd);
-
-                                for (int xi1 = 0; xi1 < nbf; xi1++) {
-                                    for (int xi2 = 0; xi2 < nbf; xi2++) {
-                                        stress_nonloc_(mu, nu) += w * std::real(
-                                            std::conj(dbeta_psi(offs + xi1, ibnd)) * d_mtrx(atom, ibnd, xi1, xi2) * beta_psi(offs + xi2, ibnd) +
-                                            std::conj(beta_psi(offs + xi1, ibnd)) * d_mtrx(atom, ibnd, xi1, xi2) * dbeta_psi(offs + xi2, ibnd)
-                                        );
-                                    }
-                                }
-                            }
-                        }
+            #pragma omp for
+            for (size_t ia=0; ia < collect_result.size(1); ia++){
+                for (int i=0; i<3; i++){
+                    for (int j=0; j<3; j++){
+                        tmp_stress(i,j) -= collect_result(j*3+i, ia) ;
                     }
                 }
             }
-            kp->beta_projectors().dismiss();
+
+            #pragma omp critical
+            {
+                stress_nonloc_ += tmp_stress;
+            }
         }
+
         ctx_.comm().allreduce(&stress_nonloc_(0, 0), 9);
 
-        stress_nonloc_ *= (1.0 / ctx_.unit_cell().omega());
-
         symmetrize(stress_nonloc_);
+
+        stress_nonloc_ *= (1.0 / ctx_.unit_cell().omega());
 
         std::vector<std::array<int, 2>> idx = {{0, 1}, {0, 2}, {1, 2}};
         for (auto e: idx) {
             stress_nonloc_(e[0], e[1]) = stress_nonloc_(e[1], e[0]) = 0.5 * (stress_nonloc_(e[0], e[1]) + stress_nonloc_(e[1], e[0]));
         }
+
     }
 
     /// Contribution to the stress tensor from the augmentation operator.
@@ -654,7 +644,7 @@ class Stress {
 
         Radial_integrals_aug<false> ri(ctx_.unit_cell(), ctx_.pw_cutoff(), 20);
         Radial_integrals_aug<true> ri_dq(ctx_.unit_cell(), ctx_.pw_cutoff(), 20);
-        
+
         Augmentation_operator_gvec_deriv q_deriv(ctx_);
 
         for (int iat = 0; iat < ctx_.unit_cell().num_atom_types(); iat++) {
@@ -664,7 +654,7 @@ class Stress {
             }
 
             int nbf = atom_type.mt_basis_size();
-            
+
             /* get auxiliary density matrix */
             auto dm = density_.density_matrix_aux(iat);
 
@@ -715,7 +705,7 @@ class Stress {
                         }
                     }
                     t2.stop();
-                    
+
                     //tmp.zero();
                     //for (int ia = 0; ia < atom_type.num_atoms(); ia++) {
                     //    int iaglob = atom_type.atom_id(ia);
@@ -732,7 +722,7 @@ class Stress {
                     //        }
                     //    }
                     //}
-                    
+
                     /* canonical code */
                     //for (int igloc = igloc0; igloc < ctx_.gvec().count(); igloc++) {
                     //    int ig = ctx_.gvec().offset() + igloc;

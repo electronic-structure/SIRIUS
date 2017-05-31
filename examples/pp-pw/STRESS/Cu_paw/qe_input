@@ -1,0 +1,33 @@
+ &control
+    calculation='scf'
+    restart_mode='from_scratch',
+    pseudo_dir = './',
+    outdir='./',
+    prefix='cu',
+    tstress = .true.,
+    tprnfor = .true.,
+    verbosity = 'high',
+    iprint = 1
+ /
+ &system
+    ibrav = 0, celldm(1) =6.73, nat= 1, ntyp= 1,
+    ecutwfc = 25.0, ecutrho = 300.0
+    occupations='smearing', smearing='gaussian', degauss=0.02
+ /
+ &electrons
+  electron_maxstep=100,
+  diago_thr_init=1D-12,
+    diagonalization='david'
+    conv_thr = 1.0e-8
+    mixing_beta = 0.7
+ /
+CELL_PARAMETERS alat
+ 0.0 0.4 0.4
+ 0.5 0.0 0.5
+ 0.5 0.5 0.0
+ATOMIC_SPECIES
+ Cu 63.55 Cu.pz-dn-kjpaw_psl.0.2.UPF
+ATOMIC_POSITIONS
+ Cu 0.0 0.0 0.0
+K_POINTS (automatic)
+ 4 4 4 0 0 0
