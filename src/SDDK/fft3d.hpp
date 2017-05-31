@@ -31,78 +31,10 @@
 #include "gvec.hpp"
 #ifdef __GPU
 #include "GPU/cufft.hpp"
+#include "GPU/fft_kernels.h"
 #endif
 
 namespace sddk {
-
-#ifdef __GPU
-extern "C" void unpack_z_cols_gpu(double_complex* z_cols_packed__,
-                                  double_complex* fft_buf__,
-                                  int size_x__,
-                                  int size_y__,
-                                  int size_z__,
-                                  int num_z_cols__,
-                                  int const* z_columns_pos__,
-                                  bool use_reduction,
-                                  int stream_id__);
-
-extern "C" void unpack_z_cols_2_gpu(double_complex* z_cols_packed1__,
-                                    double_complex* z_cols_packed2__,
-                                    double_complex* fft_buf__,
-                                    int size_x__,
-                                    int size_y__,
-                                    int size_z__,
-                                    int num_z_cols__,
-                                    int const* z_columns_pos__,
-                                    int stream_id__);
-
-extern "C" void pack_z_cols_gpu(double_complex* z_cols_packed__,
-                                double_complex* fft_buf__,
-                                int size_x__,
-                                int size_y__,
-                                int size_z__,
-                                int num_z_cols__,
-                                int const* z_columns_pos__,
-                                int stream_id__);
-
-extern "C" void pack_z_cols_2_gpu(double_complex* z_cols_packed1__,
-                                  double_complex* z_cols_packed2__,
-                                  double_complex* fft_buf__,
-                                  int size_x__,
-                                  int size_y__,
-                                  int size_z__,
-                                  int num_z_cols__,
-                                  int const* z_columns_pos__,
-                                  int stream_id__);
-
-extern "C" void cufft_batch_load_gpu(int fft_size,
-                                     int num_pw_components, 
-                                     int num_fft,
-                                     int const* map, 
-                                     double_complex const* data, 
-                                     double_complex* fft_buffer,
-                                     int stream_id);
-
-extern "C" void cufft_batch_unload_gpu(int fft_size,
-                                       int num_pw_components,
-                                       int num_fft,
-                                       int const* map, 
-                                       double_complex const* fft_buffer, 
-                                       double_complex* data,
-                                       double alpha,
-                                       double beta,
-                                       int stream_id);
-
-extern "C" void cufft_load_x0y0_col_gpu(int z_col_size,
-                                        int const* map,
-                                        double_complex const* data,
-                                        double_complex* fft_buffer,
-                                        int stream_id);
-
-extern "C" void double_complex_checksum_gpu(double_complex const* ptr__,
-                                            size_t size__,
-                                            double_complex* result__);
-#endif
 
 // TODO:  add += operation for (-1) transform, i.e. accumulate in the output buffer. This will allow to get rid of
 //        temporary vphi1, vphi2 buffers in Local_operator
@@ -238,14 +170,14 @@ class FFT3D
                                              gvec__.gvec_count_fft(),
                                              1, 
                                              map_zcol_to_fft_buffer_.at<GPU>(),
-                                             data__,
-                                             fft_buffer_aux__.at<GPU>(),
+                                             (cuDoubleComplex*)data__,
+                                             (cuDoubleComplex*)fft_buffer_aux__.at<GPU>(),
                                              0);
                         if (is_reduced && comm_.rank() == 0) {
                             cufft_load_x0y0_col_gpu(static_cast<int>(gvec__.zcol(0).z.size()),
                                                     map_zcol_to_fft_buffer_x0y0_.at<GPU>(),
-                                                    data__,
-                                                    fft_buffer_aux__.at<GPU>(),
+                                                    (cuDoubleComplex*)data__,
+                                                    (cuDoubleComplex*)fft_buffer_aux__.at<GPU>(),
                                                     0);
                         }
                         /* transform all columns */
@@ -257,8 +189,15 @@ class FFT3D
                         cufft::forward_transform(cufft_plan_z_, (cuDoubleComplex*)fft_buffer_aux__.at<GPU>());
                         acc::zero(data__, gvec__.gvec_count_fft()); // TODO: this should happen in cufft_batch_unload_gpu()
                         /* get all columns from FFT buffer */
-                        cufft_batch_unload_gpu(gvec__.zcol_count_fft() * grid_.size(2), gvec__.gvec_count_fft(), 1, 
-                                               map_zcol_to_fft_buffer_.at<GPU>(), fft_buffer_aux__.at<GPU>(), data__, 0.0, norm, 0);
+                        cufft_batch_unload_gpu(gvec__.zcol_count_fft() * grid_.size(2),
+                                               gvec__.gvec_count_fft(),
+                                               1,
+                                               map_zcol_to_fft_buffer_.at<GPU>(),
+                                               (cuDoubleComplex*)fft_buffer_aux__.at<GPU>(),
+                                               (cuDoubleComplex*)data__,
+                                               0.0,
+                                               norm,
+                                               0);
                         break;
                     }
                     default: {
@@ -449,8 +388,15 @@ class FFT3D
                 switch (direction) {
                     case 1: {
                         /* srteam #0 unpacks z-columns into proper position of FFT buffer */
-                        unpack_z_cols_gpu(fft_buffer_aux__.at<GPU>(), fft_buffer_.at<GPU>(), grid_.size(0), grid_.size(1), 
-                                          local_size_z_, gvec__.num_zcol(), z_col_pos_.at<GPU>(), is_reduced, 0);
+                        unpack_z_cols_gpu((cuDoubleComplex*)fft_buffer_aux__.at<GPU>(),
+                                          (cuDoubleComplex*)fft_buffer_.at<GPU>(),
+                                          grid_.size(0),
+                                          grid_.size(1),
+                                          local_size_z_,
+                                          gvec__.num_zcol(),
+                                          z_col_pos_.at<GPU>(),
+                                          is_reduced,
+                                          0);
                         /* stream #0 executes FFT */
                         cufft::backward_transform(cufft_plan_xy_, (cuDoubleComplex*)fft_buffer_.at<GPU>());
                         break;
@@ -459,8 +405,14 @@ class FFT3D
                         /* stream #0 executes FFT */
                         cufft::forward_transform(cufft_plan_xy_, (cuDoubleComplex*)fft_buffer_.at<GPU>());
                         /* stream #0 packs z-columns */
-                        pack_z_cols_gpu(fft_buffer_aux__.at<GPU>(), fft_buffer_.at<GPU>(), grid_.size(0), grid_.size(1), 
-                                        local_size_z_, gvec__.num_zcol(), z_col_pos_.at<GPU>(), 0);
+                        pack_z_cols_gpu((cuDoubleComplex*)fft_buffer_aux__.at<GPU>(),
+                                        (cuDoubleComplex*)fft_buffer_.at<GPU>(),
+                                        grid_.size(0),
+                                        grid_.size(1),
+                                        local_size_z_,
+                                        gvec__.num_zcol(),
+                                        z_col_pos_.at<GPU>(),
+                                        0);
                         break;
                     }
                 }
@@ -538,9 +490,15 @@ class FFT3D
                 switch (direction) {
                     case 1: {
                         /* srteam #0 unpacks z-columns into proper position of FFT buffer */
-                        unpack_z_cols_2_gpu(fft_buffer_aux1__.at<GPU>(), fft_buffer_aux2__.at<GPU>(), fft_buffer_.at<GPU>(),
-                                            grid_.size(0), grid_.size(1), local_size_z_,
-                                            gvec__.num_zcol(), z_col_pos_.at<GPU>(), 0);
+                        unpack_z_cols_2_gpu((cuDoubleComplex*)fft_buffer_aux1__.at<GPU>(),
+                                            (cuDoubleComplex*)fft_buffer_aux2__.at<GPU>(),
+                                            (cuDoubleComplex*)fft_buffer_.at<GPU>(),
+                                            grid_.size(0),
+                                            grid_.size(1),
+                                            local_size_z_,
+                                            gvec__.num_zcol(),
+                                            z_col_pos_.at<GPU>(),
+                                            0);
                         /* stream #0 executes FFT */
                         cufft::backward_transform(cufft_plan_xy_, (cuDoubleComplex*)fft_buffer_.at<GPU>());
                         break;
@@ -549,9 +507,15 @@ class FFT3D
                         /* stream #0 executes FFT */
                         cufft::forward_transform(cufft_plan_xy_, (cuDoubleComplex*)fft_buffer_.at<GPU>());
                         /* stream #0 packs z-columns */
-                        pack_z_cols_2_gpu(fft_buffer_aux1__.at<GPU>(), fft_buffer_aux2__.at<GPU>(), fft_buffer_.at<GPU>(),
-                                          grid_.size(0), grid_.size(1), local_size_z_,
-                                          gvec__.num_zcol(), z_col_pos_.at<GPU>(), 0);
+                        pack_z_cols_2_gpu((cuDoubleComplex*)fft_buffer_aux1__.at<GPU>(),
+                                          (cuDoubleComplex*)fft_buffer_aux2__.at<GPU>(),
+                                          (cuDoubleComplex*)fft_buffer_.at<GPU>(),
+                                          grid_.size(0),
+                                          grid_.size(1),
+                                          local_size_z_,
+                                          gvec__.num_zcol(),
+                                          z_col_pos_.at<GPU>(),
+                                          0);
                         break;
                     }
                 }

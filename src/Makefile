@@ -8,8 +8,7 @@ OBJ = $(SRC:.cpp=.o)
 
 ifneq (,$(findstring D__GPU,$(CXX_OPT)))
 	OBJ := $(OBJ) \
-	SDDK/GPU/cufft_interface.o \
-	SDDK/GPU/pack_unpack_z_columns.o \
+	SDDK/GPU/fft_kernels.o \
 	SDDK/GPU/checksum.o \
 	SDDK/GPU/scale_matrix.o \
 	Kernels/cuda_uspp_kernels.o \
