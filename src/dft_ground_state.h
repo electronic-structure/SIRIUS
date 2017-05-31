@@ -632,7 +632,6 @@ inline void DFT_ground_state::print_info()
     double etot = total_energy();
     double gap = kset_.band_gap() * ha2ev;
     double ef = kset_.energy_fermi();
-    double core_leak = density_.core_leakage();
     double enuc = energy_enuc();
 
     double one_elec_en = evalsum1 - (evxc + evha);
@@ -710,8 +709,6 @@ inline void DFT_ground_state::print_info()
                    v[0], v[1], v[2], v.length());
         }
 
-
-
         printf("\n");
         printf("Energy\n");
         for (int i = 0; i < 80; i++) printf("-");
@@ -740,9 +737,6 @@ inline void DFT_ground_state::print_info()
         printf("band gap (eV) : %18.8f\n", gap);
         printf("Efermi        : %18.8f\n", ef);
         printf("\n");
-        if (ctx_.full_potential()) {
-            printf("core leakage : %18.8f\n", core_leak);
-        }
     }
 }
 
