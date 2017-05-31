@@ -30,8 +30,8 @@
 #ifdef __GPU
 extern "C" void add_pw_ekin_gpu(int num_gvec__,
                                 double const* pw_ekin__,
-                                cuDoubleComplex const* vphi__,
-                                cuDoubleComplex* hphi__);
+                                double_complex const* vphi__,
+                                double_complex* hphi__);
 #endif
 
 namespace sirius {

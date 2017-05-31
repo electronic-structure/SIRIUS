@@ -70,8 +70,6 @@ class Non_local_functor
 
                     int nbnd_loc = spl_nbnd.local_size();
 
-                    int bnd_offset = spl_nbnd.global_offset();
-
                     #pragma omp parallel for
                     for (int ia_chunk = 0; ia_chunk < bp_chunks(icnk).num_atoms_; ia_chunk++) {
                         int ia   = bp_chunks(icnk).desc_(beta_desc_idx::ia, ia_chunk);
@@ -92,8 +90,8 @@ class Non_local_functor
                                 }
                             };
 
-                            for (int ibf = 0; ibf < unit_cell.atom(ia).type().mt_lo_basis_size(); ibf++) {
-                                for (int jbf = 0; jbf < unit_cell.atom(ia).type().mt_lo_basis_size(); jbf++) {
+                            for (int ibf = 0; ibf < nbf; ibf++) {
+                                for (int jbf = 0; jbf < nbf; jbf++) {
                                     /* calculate scalar part of the forces */
                                     double_complex scalar_part =
                                         main_two_factor * kpoint__.band_occupancy(ibnd + ispn * ctx_.num_fv_states()) *
@@ -114,6 +112,7 @@ class Non_local_functor
         bp_base_.dismiss();
     }
 };
+
 }
 
 #endif /* __NON_LOCAL_FUNCTOR_H__ */

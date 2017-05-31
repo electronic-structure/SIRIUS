@@ -265,14 +265,14 @@ class Radial_integrals_beta: public Radial_integrals_base<2>
             auto& atom_type = unit_cell_.atom_type(iat);
             int nrb = atom_type.mt_radial_basis_size();
 
-            for (int idxrf = 0; idxrf < atom_type.mt_radial_basis_size(); idxrf++) {
+            for (int idxrf = 0; idxrf < nrb; idxrf++) {
                 values_(idxrf, iat) = Spline<double>(grid_q_);
             }
     
             #pragma omp parallel for
             for (int iq = 0; iq < grid_q_.num_points(); iq++) {
                 Spherical_Bessel_functions jl(unit_cell_.lmax(), atom_type.radial_grid(), grid_q_[iq]);
-                for (int idxrf = 0; idxrf < atom_type.mt_radial_basis_size(); idxrf++) {
+                for (int idxrf = 0; idxrf < nrb; idxrf++) {
                     int l  = atom_type.indexr(idxrf).l;
                     int nr = atom_type.pp_desc().num_beta_radial_points[idxrf];
                     /* compute \int j_l(q * r) beta_l(r) r^2 dr or \int d (j_l(q*r) / dq) beta_l(r) r^2  */
@@ -286,7 +286,7 @@ class Radial_integrals_beta: public Radial_integrals_base<2>
                 }
             }
 
-            for (int idxrf = 0; idxrf < atom_type.mt_radial_basis_size(); idxrf++) {
+            for (int idxrf = 0; idxrf < nrb; idxrf++) {
                 values_(idxrf, iat).interpolate();
             }
         }
@@ -332,7 +332,7 @@ class Radial_integrals_beta_jl: public Radial_integrals_base<3>
             auto& atom_type = unit_cell_.atom_type(iat);
             int nrb = atom_type.mt_radial_basis_size();
 
-            for (int idxrf = 0; idxrf < atom_type.mt_radial_basis_size(); idxrf++) {
+            for (int idxrf = 0; idxrf < nrb; idxrf++) {
                 for (int l1 = 0; l1 <= lmax_; l1++) {
                     values_(idxrf, l1, iat) = Spline<double>(grid_q_);
                 }
@@ -341,8 +341,7 @@ class Radial_integrals_beta_jl: public Radial_integrals_base<3>
             #pragma omp parallel for
             for (int iq = 0; iq < grid_q_.num_points(); iq++) {
                 Spherical_Bessel_functions jl(lmax_, atom_type.radial_grid(), grid_q_[iq]);
-                for (int idxrf = 0; idxrf < atom_type.mt_radial_basis_size(); idxrf++) {
-                    int l  = atom_type.indexr(idxrf).l;
+                for (int idxrf = 0; idxrf < nrb; idxrf++) {
                     int nr = atom_type.pp_desc().num_beta_radial_points[idxrf];
                     for (int l1 = 0; l1 <= lmax_; l1++) {
                         /* compute \int j_{l'}(q * r) beta_l(r) r^2 * r * dr */
@@ -352,7 +351,7 @@ class Radial_integrals_beta_jl: public Radial_integrals_base<3>
                 }
             }
 
-            for (int idxrf = 0; idxrf < atom_type.mt_radial_basis_size(); idxrf++) {
+            for (int idxrf = 0; idxrf < nrb; idxrf++) {
                 for (int l1 = 0; l1 <= lmax_; l1++) {
                     values_(idxrf, l1, iat).interpolate();
                 }

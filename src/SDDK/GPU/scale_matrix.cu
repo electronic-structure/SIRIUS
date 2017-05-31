@@ -1,4 +1,4 @@
-#include "../SDDK/GPU/cuda_common.h"
+#include "cuda_common.h"
 
 __global__ void scale_matrix_columns_gpu_kernel
 (

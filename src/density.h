@@ -50,7 +50,7 @@ extern "C" void sum_q_pw_dm_pw_gpu(int num_gvec_loc__,
                                    int stream_id__);
 
 extern "C" void update_density_rg_1_gpu(int size__, 
-                                        cuDoubleComplex const* psi_rg__, 
+                                        double_complex const* psi_rg__, 
                                         double wt__, 
                                         double* density_rg__);
 #endif

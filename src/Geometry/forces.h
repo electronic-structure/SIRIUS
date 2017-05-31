@@ -42,15 +42,14 @@ class Forces_PS
     mdarray<double, 2> us_nl_forces_;
 
     template <typename T>
-   void add_k_point_contribution(K_point& kpoint, mdarray<double, 2>& forces)
-   {
-       Beta_projectors_gradient bp_grad(ctx_, kpoint.gkvec(), kpoint.beta_projectors());
+    void add_k_point_contribution(K_point& kpoint, mdarray<double, 2>& forces)
+    {
+        Beta_projectors_gradient bp_grad(ctx_, kpoint.gkvec(), kpoint.beta_projectors());
 
-       Non_local_functor<T, 3> nlf(ctx_, bp_grad);
+        Non_local_functor<T, 3> nlf(ctx_, bp_grad);
 
-       nlf.add_k_point_contribution(kpoint, forces);
-   }
-
+        nlf.add_k_point_contribution(kpoint, forces);
+    }
 
     inline void allocate()
     {
@@ -138,7 +137,6 @@ class Forces_PS
 
             for (int igloc = 0; igloc < gvec_count; igloc++) {
                 int ig  = gvec_offset + igloc;
-                int igs = gvecs.shell(ig);
 
                 /* cartesian form for getting cartesian force components */
                 vector3d<double> gvec_cart = gvecs.gvec_cart(ig);
@@ -281,7 +279,6 @@ class Forces_PS
 
             for (int igloc = 0; igloc < gvec_count; igloc++) {
                 int ig  = gvec_offset + igloc;
-                int igs = gvecs.shell(ig);
 
                 if (ig == 0) {
                     continue;

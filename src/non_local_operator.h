@@ -161,7 +161,7 @@ inline void Non_local_operator<double_complex>::apply(int chunk__,
                               omp_get_thread_num());
 
         }
-        cuda_device_synchronize();
+        acc::sync();
         double_complex alpha(1, 0);
         
         /* compute <G+k|beta> * O * <beta|phi> and add to op_phi */
@@ -169,7 +169,7 @@ inline void Non_local_operator<double_complex>::apply(int chunk__,
                           beta_gk.at<GPU>(), beta_gk.ld(), work_.at<GPU>(), nbeta, &alpha, 
                           op_phi__.pw_coeffs().prime().at<GPU>(0, idx0__), op_phi__.pw_coeffs().prime().ld());
         
-        cuda_device_synchronize();
+        acc::sync();
     }
     #endif
 }

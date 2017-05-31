@@ -35,7 +35,7 @@ extern "C" void generate_phase_factors_gpu(int num_gvec_loc__,
                                            int num_atoms__,
                                            int const* gvec__,
                                            double const* atom_pos__,
-                                           cuDoubleComplex* phase_factors__);
+                                           double_complex* phase_factors__);
 #endif
 
 namespace sirius {
@@ -368,9 +368,6 @@ class Simulation_context_base: public Simulation_parameters
 inline void Simulation_context_base::init_fft()
 {
     auto rlv = unit_cell_.reciprocal_lattice_vectors();
-
-    int npr = control().mpi_grid_dims_[0];
-    int npc = control().mpi_grid_dims_[1];
 
     if (!(control().fft_mode_ == "serial" || control().fft_mode_ == "parallel")) {
         TERMINATE("wrong FFT mode");
@@ -802,7 +799,7 @@ inline void Simulation_context_base::print_info()
     }
     if (processing_unit() == GPU) {
         #ifdef __GPU
-        cuda_device_info();
+        acc::print_device_info(0);
         #endif
     }
    

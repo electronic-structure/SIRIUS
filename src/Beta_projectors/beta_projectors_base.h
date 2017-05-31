@@ -31,10 +31,10 @@ namespace sirius {
 extern "C" void create_beta_gk_gpu(int num_atoms,
                                    int num_gkvec,
                                    int const* beta_desc,
-                                   cuDoubleComplex const* beta_gk_t,
+                                   double_complex const* beta_gk_t,
                                    double const* gkvec,
                                    double const* atom_pos,
-                                   cuDoubleComplex* beta_gk);
+                                   double_complex* beta_gk);
 #endif
 
 /// Base class for beta-projectors, gradient of beta-projectors and strain derivatives of beta-projectors.
@@ -244,8 +244,6 @@ class Beta_projectors_base
         PROFILE("sirius::Beta_projectors_base::generate");
 
         auto& bchunk = ctx_.beta_projector_chunks();
-
-        int num_beta = bchunk(ichunk__).num_beta_;
 
         auto& comm = gkvec_.comm();
 
