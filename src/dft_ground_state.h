@@ -681,6 +681,7 @@ inline void DFT_ground_state::print_info()
             }
             
             printf("\n");
+            printf("total core leakage    : %10.8e\n", total_core_leakage);
             printf("interstitial charge   : %10.6f\n", it_charge);
             if (ctx_.num_mag_dims()) {
                 vector3d<double> v;
@@ -692,8 +693,6 @@ inline void DFT_ground_state::print_info()
                 printf("interstitial moment   : [%8.4f, %8.4f, %8.4f], magnitude : %10.6f\n", 
                        v[0], v[1], v[2], v.length());
             }
-            printf("\n");
-            printf("total core leakage : %10.8e\n", total_core_leakage);
         }
 
         printf("total charge          : %10.6f\n", total_charge);
