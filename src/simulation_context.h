@@ -25,12 +25,11 @@
 #ifndef __SIMULATION_CONTEXT_H__
 #define __SIMULATION_CONTEXT_H__
 
-#include "simulation_parameters.h"
+#include "simulation_context_base.h"
 #include "mpi_grid.hpp"
 #include "step_function.h"
 #include "version.h"
 #include "augmentation_operator.h"
-#include "radial_integrals.h"
 #include "Beta_projectors/beta_projector_chunks.h"
 
 #ifdef __GPU
@@ -38,7 +37,7 @@ extern "C" void generate_phase_factors_gpu(int num_gvec_loc__,
                                            int num_atoms__,
                                            int const* gvec__,
                                            double const* atom_pos__,
-                                           cuDoubleComplex* phase_factors__);
+                                           double_complex* phase_factors__);
 #endif
 
 namespace sirius {

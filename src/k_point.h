@@ -165,7 +165,6 @@ class K_point
             : ctx_(ctx__)
             , unit_cell_(ctx_.unit_cell())
             , weight_(weight__)
-            , spinor_wave_functions_{nullptr, nullptr}
             , comm_(ctx_.blacs_grid().comm())
             , comm_row_(ctx_.blacs_grid().comm_row())
             , comm_col_(ctx_.blacs_grid().comm_col())
@@ -184,12 +183,6 @@ class K_point
             
             rank_row_ = comm_row_.rank();
             rank_col_ = comm_col_.rank();
-
-            #ifndef __GPU
-            if (ctx_.processing_unit() == GPU) {
-                TERMINATE_NO_GPU
-            }
-            #endif
         }
 
         /// Find G+k vectors within the cutoff.
@@ -262,28 +255,44 @@ class K_point
         /// Get the number of occupied bands for each spin channel.
         int num_occupied_bands(int ispn__ = -1)
         {
-            int nbnd{0};
+            //int nbnd{0};
 
             if (ctx_.num_mag_dims() == 3) {
-                for (int j = 0; j < ctx_.num_bands(); j++) {
-                    if (band_occupancy(j) * weight() > 1e-14) {
-                        nbnd++;
+                for (int j = ctx_.num_bands() - 1; j >= 0; j--) {
+                    if (std::abs(band_occupancy(j) * weight()) > 1e-14) {
+                        return j + 1;
                     }
                 }
-                return nbnd;
+
+                //for (int j = 0; j < ctx_.num_bands(); j++) {
+                //    if (band_occupancy(j) * weight() > 1e-14) {
+                //        nbnd++;
+                //    }
+                //}
+                //return nbnd;
             }
 
             if (!(ispn__ == 0 || ispn__ == 1)) {
                 TERMINATE("wrong spin channel");
             }
 
-            for (int i = 0; i < ctx_.num_fv_states(); i++) {
+            for (int i = ctx_.num_fv_states() - 1; i >= 0; i--) {
                 int j = i + ispn__ * ctx_.num_fv_states();
-                if (band_occupancy(j) * weight() > 1e-14) {
-                    nbnd++;
+                if (std::abs(band_occupancy(j) * weight()) > 1e-14) {
+                    return i + 1;
                 }
             }
-            return nbnd;
+            
+            TERMINATE("number of occupied bands is not found");
+            return -1;
+
+            //for (int i = 0; i < ctx_.num_fv_states(); i++) {
+            //    int j = i + ispn__ * ctx_.num_fv_states();
+            //    if (band_occupancy(j) * weight() > 1e-14) {
+            //        nbnd++;
+            //    }
+            //}
+            //return nbnd;
         }
 
         /// Total number of G+k vectors within the cutoff distance

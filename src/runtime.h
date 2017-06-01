@@ -18,7 +18,7 @@
 #include "communicator.hpp"
 #include "json.hpp"
 #ifdef __GPU
-#include "gpu.h"
+#include "GPU/cuda.hpp"
 #endif
 
 using json = nlohmann::json;
@@ -666,7 +666,7 @@ inline void print_memory_usage(const char* file__, int line__)
     n += snprintf(&str[n], 2048, " VmHWM: %i Mb, VmRSS: %i Mb", static_cast<int>(VmHWM >> 20), static_cast<int>(VmRSS >> 20));
 
     #ifdef __GPU
-    size_t gpu_mem = cuda_get_free_mem();
+    size_t gpu_mem = acc::get_free_mem();
     n += snprintf(&str[n], 2048, ", GPU free memory: %i Mb", static_cast<int>(gpu_mem >> 20));
     #endif
 

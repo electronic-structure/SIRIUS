@@ -35,7 +35,7 @@ extern "C" void generate_phase_factors_gpu(int num_gvec_loc__,
                                            int num_atoms__,
                                            int const* gvec__,
                                            double const* atom_pos__,
-                                           cuDoubleComplex* phase_factors__);
+                                           double_complex* phase_factors__);
 #endif
 
 namespace sirius {
@@ -87,6 +87,10 @@ class Simulation_context_base: public Simulation_parameters
         std::vector<mdarray<double, 2>> atom_coord_;
         
         mdarray<char, 1> memory_buffer_;
+
+        std::unique_ptr<Radial_integrals_beta<false>> beta_ri_;
+
+        std::unique_ptr<Radial_integrals_beta<true>> beta_ri_djl_;
 
         double time_active_;
         
@@ -349,14 +353,21 @@ class Simulation_context_base: public Simulation_parameters
             }
             return memory_buffer_.at<CPU>();
         }
+
+        Radial_integrals_beta<false> const& beta_ri() const
+        {
+            return *beta_ri_;
+        }
+
+        Radial_integrals_beta<true> const& beta_ri_djl() const
+        {
+            return *beta_ri_djl_;
+        }
 };
 
 inline void Simulation_context_base::init_fft()
 {
     auto rlv = unit_cell_.reciprocal_lattice_vectors();
-
-    int npr = control().mpi_grid_dims_[0];
-    int npc = control().mpi_grid_dims_[1];
 
     if (!(control().fft_mode_ == "serial" || control().fft_mode_ == "parallel")) {
         TERMINATE("wrong FFT mode");
@@ -599,6 +610,12 @@ inline void Simulation_context_base::initialize()
             atom_coord_.back().copy<memory_t::host, memory_t::device>();
         }
     }
+    
+    if (!full_potential()) {
+        beta_ri_ = std::unique_ptr<Radial_integrals_beta<false>>(new Radial_integrals_beta<false>(unit_cell(), gk_cutoff(), 20));
+
+        beta_ri_djl_ = std::unique_ptr<Radial_integrals_beta<true>>(new Radial_integrals_beta<true>(unit_cell(), gk_cutoff(), 20));
+    }
 
     //time_active_ = -runtime::wtime();
 
@@ -782,7 +799,7 @@ inline void Simulation_context_base::print_info()
     }
     if (processing_unit() == GPU) {
         #ifdef __GPU
-        cuda_device_info();
+        acc::print_device_info(0);
         #endif
     }
    

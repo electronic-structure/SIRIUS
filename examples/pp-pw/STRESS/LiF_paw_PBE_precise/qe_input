@@ -1,0 +1,43 @@
+ &control
+    calculation='scf'
+    restart_mode='from_scratch',
+    pseudo_dir = './',
+    outdir='./',
+    prefix='cu',
+    tstress = .true.,
+    tprnfor = .true.,
+    verbosity = 'high',
+    iprint = 100,
+    forc_conv_thr = 0.001
+ /
+ &system
+    ibrav = 0, nat= 2, ntyp= 2, nosym=.true.,
+    ecutwfc = 80.0, ecutrho = 640.0, nspin = 1,
+    starting_magnetization(1) = 0.0, starting_magnetization(2) = 0.0,
+    occupations='smearing', smearing='gaussian', degauss=0.02
+ /
+ &electrons
+  electron_maxstep=100,
+  diago_thr_init=1D-12,
+    diagonalization='david'
+    conv_thr = 1.0e-10
+    mixing_beta = 0.7
+ /
+ &ions
+ ion_dynamics = 'bfgs'
+ /
+ &cell
+ cell_dynamics = 'bfgs'
+ /
+CELL_PARAMETERS bohr
+ 0 3.50402 3.60402
+ 3.80402 0 3.80402
+ 3.80402 3.80402 0
+ATOMIC_SPECIES
+ Li 6.941  li_pbe_v1.4.uspp.F.UPF
+ F  18.998 f_pbe_v1.4.uspp.F.UPF
+ATOMIC_POSITIONS crystal
+ Li 0.0 0.0 0.0
+ F  0.5 0.5 0.45
+K_POINTS (automatic)
+ 4 4 4 0 0 0

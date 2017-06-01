@@ -8,15 +8,9 @@ OBJ = $(SRC:.cpp=.o)
 
 ifneq (,$(findstring D__GPU,$(CXX_OPT)))
 	OBJ := $(OBJ) \
-	GPU/cuda_interface.o \
-	GPU/cufft_interface.o \
-	GPU/cublas_interface.o \
-	GPU/pack_unpack_z_columns.o \
-	GPU/checksum.o
-endif
-
-ifneq (,$(findstring D__MAGMA,$(CXX_OPT)))
-	OBJ := $(OBJ) GPU/magma_interface.o
+	GPU/fft_kernels.o \
+	GPU/checksum.o \
+	GPU/scale_matrix.o
 endif
 
 .cpp.o:

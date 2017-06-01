@@ -26,6 +26,12 @@
 #define __LINALG_HPP__
 
 #include <stdint.h>
+#ifdef __GPU
+#include "GPU/cublas.hpp"
+#endif
+#ifdef __MAGMA
+#include "GPU/magma.hpp"
+#endif
 #include "blas_lapack.h"
 #include "mdarray.hpp"
 #include "dmatrix.hpp"
@@ -822,7 +828,7 @@ inline void linalg<GPU>::gemv<ftn_double_complex>(int trans, ftn_int m, ftn_int 
                                                   ftn_double_complex* beta, ftn_double_complex* y, ftn_int incy,
                                                   int stream_id)
 {
-    cublas_zgemv(trans, m, n, alpha, A, lda, x, incx, beta, y, incy, stream_id);
+    cublas::zgemv(trans, m, n, (cuDoubleComplex*)alpha, (cuDoubleComplex*)A, lda, (cuDoubleComplex*)x, incx, (cuDoubleComplex*)beta, (cuDoubleComplex*)y, incy, stream_id);
 }
 
 // Generic interface to zgemm
@@ -832,7 +838,7 @@ inline void linalg<GPU>::gemm<ftn_double_complex>(int transa, int transb, ftn_in
                                                   ftn_double_complex const* B, ftn_int ldb, ftn_double_complex const* beta,
                                                   ftn_double_complex* C, ftn_int ldc, int stream_id)
 {
-    cublas_zgemm(transa, transb, m, n, k, alpha, A, lda, B, ldb, beta, C, ldc, stream_id);
+    cublas::zgemm(transa, transb, m, n, k, (cuDoubleComplex*)alpha, (cuDoubleComplex*)A, lda, (cuDoubleComplex*)B, ldb, (cuDoubleComplex*)beta, (cuDoubleComplex*)C, ldc, stream_id);
 }
 
 // Generic interface to dgemm
@@ -842,7 +848,7 @@ inline void linalg<GPU>::gemm<ftn_double>(int transa, int transb, ftn_int m, ftn
                                           ftn_double const* B, ftn_int ldb, ftn_double const* beta,
                                           ftn_double* C, ftn_int ldc, int stream_id)
 {
-    cublas_dgemm(transa, transb, m, n, k, alpha, A, lda, B, ldb, beta, C, ldc, stream_id);
+    cublas::dgemm(transa, transb, m, n, k, alpha, A, lda, B, ldb, beta, C, ldc, stream_id);
 }
 
 template<>
@@ -851,7 +857,7 @@ inline ftn_int linalg<GPU>::potrf<ftn_double>(ftn_int n,
                                               ftn_int lda)
 {
     #ifdef __MAGMA
-    return magma_dpotrf_wrapper('U', n, A, lda);
+    return magma::dpotrf('U', n, A, lda);
     #else
     printf("not compiled with MAGMA support\n");
     raise(SIGTERM);
@@ -865,7 +871,7 @@ inline ftn_int linalg<GPU>::potrf<ftn_double_complex>(ftn_int n,
                                                       ftn_int lda)
 {
     #ifdef __MAGMA
-    return magma_zpotrf_wrapper('U', n, A, lda);
+    return magma::zpotrf('U', n, (magmaDoubleComplex*)A, lda);
     #else
     printf("not compiled with MAGMA support\n");
     raise(SIGTERM);
@@ -879,7 +885,7 @@ inline ftn_int linalg<GPU>::trtri<ftn_double>(ftn_int n,
                                               ftn_int lda)
 {
     #ifdef __MAGMA
-    return magma_dtrtri_wrapper('U', n, A, lda);
+    return magma::dtrtri('U', n, A, lda);
     #else
     printf("not compiled with MAGMA support\n");
     raise(SIGTERM);
@@ -893,7 +899,7 @@ inline ftn_int linalg<GPU>::trtri<ftn_double_complex>(ftn_int n,
                                                       ftn_int lda)
 {
     #ifdef __MAGMA
-    return magma_ztrtri_wrapper('U', n, A, lda);
+    return magma::ztrtri('U', n, (magmaDoubleComplex*)A, lda);
     #else
     printf("not compiled with MAGMA support\n");
     raise(SIGTERM);
@@ -913,7 +919,7 @@ inline void linalg<GPU>::trmm<ftn_double>(char side,
                                           ftn_double* B,
                                           ftn_int ldb)
 {
-    cublas_dtrmm(side, uplo, transa, 'N', m, n, alpha, A, lda, B, ldb);
+    cublas::dtrmm(side, uplo, transa, 'N', m, n, alpha, A, lda, B, ldb);
 }
 
 template <>
@@ -928,7 +934,7 @@ inline void linalg<GPU>::trmm<ftn_double_complex>(char side,
                                                   ftn_double_complex* B,
                                                   ftn_int ldb)
 {
-    cublas_ztrmm(side, uplo, transa, 'N', m, n, alpha, A, lda, B, ldb);
+    cublas::ztrmm(side, uplo, transa, 'N', m, n, (cuDoubleComplex*)alpha, (cuDoubleComplex*)A, lda, (cuDoubleComplex*)B, ldb);
 }
 
 template<>
@@ -943,7 +949,7 @@ inline void linalg<GPU>::ger<ftn_double>(ftn_int     m,
                                          ftn_int     lda,
                                          int         stream_id)
 {
-    cublas_dger(m, n, alpha, x, incx, y, incy, A, lda, stream_id);
+    cublas::dger(m, n, alpha, x, incx, y, incy, A, lda, stream_id);
 }
 
 template<>
@@ -958,7 +964,7 @@ inline void linalg<GPU>::ger<ftn_double_complex>(ftn_int             m,
                                                  ftn_int             lda,
                                                  int                 stream_id)
 {
-    cublas_zgeru(m, n, alpha, x, incx, y, incy, A, lda, stream_id);
+    cublas::zgeru(m, n, (cuDoubleComplex const*)alpha, (cuDoubleComplex*)x, incx, (cuDoubleComplex*)y, incy, (cuDoubleComplex*)A, lda, stream_id);
 }
 
 template <>
@@ -969,7 +975,7 @@ inline void linalg<GPU>::axpy<ftn_double_complex>(ftn_int n__,
                                                   ftn_double_complex* y__,
                                                   ftn_int incy__)
 {
-    cublas_zaxpy(n__, alpha__, x__, incx__, y__, incy__);
+    cublas::zaxpy(n__, (cuDoubleComplex const*)alpha__, (cuDoubleComplex*)x__, incx__, (cuDoubleComplex*)y__, incy__);
 }
 #endif // __GPU
 

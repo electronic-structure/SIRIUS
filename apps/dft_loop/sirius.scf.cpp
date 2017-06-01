@@ -86,7 +86,7 @@ double ground_state(Simulation_context& ctx,
     std::string ref_file = args.value<std::string>("test_against", "");
     bool write_state = (ref_file.size() == 0);
     
-    DFT_ground_state dft(ctx, potential, density, ks, ctx.use_symmetry());
+    DFT_ground_state dft(ctx, potential, density, ks);
 
     if (task == task_t::ground_state_restart) {
         if (!Utils::file_exists(storage_file_name)) {

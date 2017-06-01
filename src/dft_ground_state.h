@@ -53,10 +53,6 @@ class DFT_ground_state
 
         Band band_;
 
-//        std::unique_ptr<Forces_PS> forces_;
-
-        int use_symmetry_;
-
         double ewald_energy_{0};
         
         /// Compute the ion-ion electrostatic energy using Ewald method.
@@ -134,26 +130,18 @@ class DFT_ground_state
         DFT_ground_state(Simulation_context& ctx__,
                          Potential& potential__,
                          Density& density__,
-                         K_point_set& kset__,
-                         int use_symmetry__)
+                         K_point_set& kset__)
             : ctx_(ctx__)
             , unit_cell_(ctx__.unit_cell())
             , potential_(potential__)
             , density_(density__)
             , kset_(kset__)
             , band_(ctx_)
-            , use_symmetry_(use_symmetry__)
         {
             if (!ctx_.full_potential()) {
                 ewald_energy_ = ewald_energy();
             }
-
-//            forces_ = std::unique_ptr<Forces_PS>(new Forces_PS(ctx_, density_, potential_, kset_));
         }
-
-        mdarray<double, 2> forces();
-
-        void forces(mdarray<double, 2>& inout_forces);
 
         int find(double potential_tol, double energy_tol, int num_dft_iter, bool write_state);
 
@@ -495,57 +483,6 @@ inline double DFT_ground_state::ewald_energy()
     return (ewald_g + ewald_r);
 }
 
-//inline void DFT_ground_state::forces(mdarray<double, 2>& inout_forces)
-//{
-//    PROFILE("sirius::DFT_ground_state::forces");
-//
-//    forces_->calc_forces_contributions();
-//
-//    forces_->sum_forces(inout_forces);
-//
-//    if(ctx_.comm().rank() == 0)
-//    {
-//        auto print_forces=[&](mdarray<double, 2> const& forces)
-//        {
-//            for(int ia=0; ia < unit_cell_.num_atoms(); ia++)
-//            {
-//                printf("Atom %4i    force = %15.7f  %15.7f  %15.7f \n",
-//                       unit_cell_.atom(ia).type_id(), forces(0,ia), forces(1,ia), forces(2,ia));
-//            }
-//        };
-//
-//        std::cout<<"===== Total Forces in Ha/bohr =====" << std::endl;
-//        print_forces( inout_forces );
-//
-//        std::cout<<"===== Forces: ultrasoft contribution from Qij =====" << std::endl;
-//        print_forces( forces_->ultrasoft_forces() );
-//
-//        std::cout<<"===== Forces: non-local contribution from Beta-projectors =====" << std::endl;
-//        print_forces( forces_->nonlocal_forces() );
-//
-//        std::cout<<"===== Forces: local contribution from local potential=====" << std::endl;
-//        print_forces( forces_->local_forces() );
-//
-//        std::cout<<"===== Forces: nlcc contribution from core density=====" << std::endl;
-//        print_forces( forces_->nlcc_forces() );
-//
-//        std::cout<<"===== Forces: Ewald forces from ions =====" << std::endl;
-//        print_forces( forces_->ewald_forces() );
-//    }
-//}
-
-
-//inline mdarray<double,2 > DFT_ground_state::forces()
-//{
-//    PROFILE("sirius::DFT_ground_state::forces");
-//
-//    mdarray<double,2 > tot_forces(3, unit_cell_.num_atoms());
-//
-//    forces(tot_forces);
-//
-//    return std::move(tot_forces);
-//}
-
 inline int DFT_ground_state::find(double potential_tol, double energy_tol, int num_dft_iter, bool write_state)
 {
     PROFILE("sirius::DFT_ground_state::scf_loop");
@@ -570,7 +507,7 @@ inline int DFT_ground_state::find(double potential_tol, double energy_tol, int n
         /* generate new density from the occupied wave-functions */
         density_.generate(kset_);
         /* symmetrize density and magnetization */
-        if (use_symmetry_) {
+        if (ctx_.use_symmetry()) {
             symmetrize(density_.rho(), density_.magnetization(0), density_.magnetization(1),
                        density_.magnetization(2));
         }
@@ -640,7 +577,7 @@ inline int DFT_ground_state::find(double potential_tol, double energy_tol, int n
         potential_.generate(density_);
 
         /* symmetrize potential and effective magnetic field */
-        if (use_symmetry_) {
+        if (ctx_.use_symmetry()) {
             symmetrize(potential_.effective_potential(), potential_.effective_magnetic_field(0),
                        potential_.effective_magnetic_field(1), potential_.effective_magnetic_field(2));
         }
@@ -695,7 +632,6 @@ inline void DFT_ground_state::print_info()
     double etot = total_energy();
     double gap = kset_.band_gap() * ha2ev;
     double ef = kset_.energy_fermi();
-    double core_leak = density_.core_leakage();
     double enuc = energy_enuc();
 
     double one_elec_en = evalsum1 - (evxc + evha);
@@ -745,6 +681,7 @@ inline void DFT_ground_state::print_info()
             }
             
             printf("\n");
+            printf("total core leakage    : %10.8e\n", total_core_leakage);
             printf("interstitial charge   : %10.6f\n", it_charge);
             if (ctx_.num_mag_dims()) {
                 vector3d<double> v;
@@ -756,21 +693,21 @@ inline void DFT_ground_state::print_info()
                 printf("interstitial moment   : [%8.4f, %8.4f, %8.4f], magnitude : %10.6f\n", 
                        v[0], v[1], v[2], v.length());
             }
-            
-            printf("\n");
-            printf("total charge          : %10.6f\n", total_charge);
-            printf("total core leakage    : %10.8e\n", total_core_leakage);
-            if (ctx_.num_mag_dims()) {
-                vector3d<double> v;
-                v[2] = total_mag[0];
-                if (ctx_.num_mag_dims() == 3) {
-                    v[0] = total_mag[1];
-                    v[1] = total_mag[2];
-                }
-                printf("total moment          : [%8.4f, %8.4f, %8.4f], magnitude : %10.6f\n", 
-                       v[0], v[1], v[2], v.length());
-            }
         }
+
+        printf("total charge          : %10.6f\n", total_charge);
+
+        if (ctx_.num_mag_dims()) {
+            vector3d<double> v;
+            v[2] = total_mag[0];
+            if (ctx_.num_mag_dims() == 3) {
+                v[0] = total_mag[1];
+                v[1] = total_mag[2];
+            }
+            printf("total moment          : [%8.4f, %8.4f, %8.4f], magnitude : %10.6f\n",
+                   v[0], v[1], v[2], v.length());
+        }
+
         printf("\n");
         printf("Energy\n");
         for (int i = 0; i < 80; i++) printf("-");
@@ -799,9 +736,6 @@ inline void DFT_ground_state::print_info()
         printf("band gap (eV) : %18.8f\n", gap);
         printf("Efermi        : %18.8f\n", ef);
         printf("\n");
-        if (ctx_.full_potential()) {
-            printf("core leakage : %18.8f\n", core_leak);
-        }
     }
 }
 
