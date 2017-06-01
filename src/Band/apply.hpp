@@ -693,14 +693,6 @@ inline void Band::apply_magnetic_field(wave_functions& fv_states__,
 
     assert(hpsi__.size() == 2 || hpsi__.size() == 3);
 
-    //#ifdef __GPU
-    //if (ctx_.processing_unit() == GPU) {
-    //    fv_states__.allocate_on_device();
-    //    fv_states__.copy_to_device(0, ctx_.num_fv_states());
-    //    for (auto& e: hpsi__) {
-    //        e.allocate_on_device();
-    //}
-
     local_op_->apply_b(gkvec__.partition(), 0, ctx_.num_fv_states(), fv_states__, hpsi__);
 
     mdarray<double_complex, 3> zm(unit_cell_.max_mt_basis_size(), unit_cell_.max_mt_basis_size(), ctx_.num_mag_dims());

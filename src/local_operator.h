@@ -140,6 +140,7 @@ class Local_operator
             fft_coarse_.prepare(gvec_coarse__.partition());
             /* map components of effective potential to a corase grid */
             for (int j = 0; j < num_mag_dims__ + 1; j++) {
+                /* collect PW coefficients into global array */
                 auto v = veff_vec[j]->gather_f_pw();
                 /* loop over low-frequency G-vectors */
                 for (int ig = 0; ig < gvec_coarse__.partition().gvec_count_fft(); ig++) {
@@ -670,12 +671,6 @@ class Local_operator
 
             fft_coarse_.prepare(gkvec_par__);
 
-            //#ifdef __GPU
-            //if (fft_coarse_.pu() == GPU) {
-            //    phi__.pw_coeffs().copy_to_host(N__, n__);
-            //}
-            //#endif
-
             /* components of H|psi> to which H is applied */
             std::vector<int> iv(1, 0);
             if (bphi__.size() == 3) {
@@ -728,11 +723,6 @@ class Local_operator
 
             for (int i: iv) {
                 bphi__[i].pw_coeffs().remap_backward(gkvec_par__.gvec_fft_slab(), comm_col, n__, N__);
-                //#ifdef __GPU
-                //if (fft_coarse_.pu() == GPU) {
-                //    bphi__[i].pw_coeffs().copy_to_device(N__, n__);
-                //}
-                //#endif
             }
 
             fft_coarse_.dismiss();
