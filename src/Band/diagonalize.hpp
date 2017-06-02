@@ -688,7 +688,7 @@ inline void Band::diag_pseudo_potential_davidson(K_point* kp__,
 
     std::vector<double> eval(num_bands);
     for (int i = 0; i < num_bands; i++) {
-        eval[i] = kp__->band_energy(i);
+        eval[i] = kp__->band_energy(i + ispn__ * ctx_.num_fv_states());
     }
     std::vector<double> eval_old(num_bands);
     
