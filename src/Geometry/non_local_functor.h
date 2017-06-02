@@ -25,6 +25,13 @@ private:
     Simulation_context& ctx_;
     Beta_projectors_base<N>& bp_base_;
 
+    enum spin_state_t
+    {
+        non_mag=0,
+        spin_up,
+        spin_down
+    };
+
 public:
 
     Non_local_functor(Simulation_context& ctx__,
@@ -47,6 +54,8 @@ public:
 
         double main_two_factor = -2.0;
 
+        spin_state_t spin_state = spin_state_t::non_mag;
+
 //        #ifdef __GPU
 //        for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
 //            if (ctx_.processing_unit() == GPU) {
@@ -64,6 +73,16 @@ public:
             bp.generate(icnk);
 
             for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
+
+                if (ctx_.num_spins() == 2){
+                    if (ispn == 0) {
+                        spin_state = spin_state_t::spin_up;
+                    }
+                    if (ispn == 1) {
+                        spin_state = spin_state_t::spin_down;
+                    }
+                }
+
                 /* total number of occupied bands for this spin */
                 int nbnd = kpoint__.num_occupied_bands(ispn);
 
@@ -90,26 +109,42 @@ public:
                         int nbf  = bp_chunks(icnk).desc_(beta_desc_idx::nbf, ia_chunk);
                         int iat  = unit_cell.atom(ia).type_id();
 
-                        /* iterate ove mpi-distributed bands */
+                        // TODO store this to array before (for speed optimization)
+                        auto D_aug_mtrx = [&](int i, int j, int ibnd)
+                        {
+                            double dij = 0.0;
+
+                            switch (spin_state) {
+                                case non_mag  :
+                                    dij = unit_cell.atom(ia).d_mtrx(i, j, 0); break;
+
+                                case spin_up  :
+                                    dij = 0.5 * (unit_cell.atom(ia).d_mtrx(i, j, 0) + unit_cell.atom(ia).d_mtrx(i, j, 1)); break;
+
+                                case spin_down:
+                                    dij = 0.5 * (unit_cell.atom(ia).d_mtrx(i, j, 0) - unit_cell.atom(ia).d_mtrx(i, j, 1)); break;
+
+                                default :
+                                    TERMINATE("ERROR in Non_local_functor");
+                            }
+
+                            if (unit_cell.atom(ia).type().pp_desc().augment) {
+                                dij -= kpoint__.band_energy(ibnd) * ctx_.augmentation_op(iat).q_mtrx(i, j);
+                            }
+
+                            return dij;
+                        };
+
+                        /* iterate over mpi-distributed bands */
                         for (int ibnd_loc = 0; ibnd_loc < nbnd_loc; ibnd_loc++) {
                             int ibnd = spl_nbnd[ibnd_loc];
-
-                            auto D_aug_mtrx = [&](int i, int j)
-                            {
-                                if (unit_cell.atom(ia).type().pp_desc().augment) {
-                                    return unit_cell.atom(ia).d_mtrx(i, j, ispn) - kpoint__.band_energy(ibnd) *
-                                            ctx_.augmentation_op(iat).q_mtrx(i, j);
-                                } else {
-                                    return unit_cell.atom(ia).d_mtrx(i, j, ispn);
-                                }
-                            };
 
                             for (int ibf = 0; ibf < unit_cell.atom(ia).type().mt_lo_basis_size(); ibf++) {
                                 for (int jbf = 0; jbf < unit_cell.atom(ia).type().mt_lo_basis_size(); jbf++) {
                                     /* calculate scalar part of the forces */
                                     double_complex scalar_part = main_two_factor *
                                             kpoint__.band_occupancy(ibnd + ispn * ctx_.num_fv_states()) * kpoint__.weight() *
-                                            D_aug_mtrx(ibf, jbf) * std::conj(bp_phi_chunk(offs + jbf, ibnd));
+                                            D_aug_mtrx(ibf, jbf, ibnd) * std::conj(bp_phi_chunk(offs + jbf, ibnd));
 
                                     /* multiply scalar part by gradient components */
                                     collect_res__(x, ia) += (scalar_part * bp_base_phi_chunk(offs + ibf, ibnd)).real();
