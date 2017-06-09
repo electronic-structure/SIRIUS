@@ -404,8 +404,6 @@ class Stress {
                                                                          return ri_vloc_dg.value(iat, g);
                                                                      });
         
-        double sdiag{0};
-
         for (int igloc = 0; igloc < ctx_.gvec().count(); igloc++) {
             int ig = ctx_.gvec().offset() + igloc;
             
@@ -420,34 +418,21 @@ class Stress {
                     stress_vloc_(mu, nu) += std::real(std::conj(density_.rho()->f_pw_local(igloc)) * dv[igloc]) * G[mu] * G[nu];
                 }
             }
-
-            sdiag += std::real(std::conj(density_.rho()->f_pw_local(igloc)) * v[igloc]);
         }
         
-        std::cout<<"========= vloc diag = "<<sdiag<<std::endl;
-
         if (ctx_.gvec().reduced()) {
             stress_vloc_ *= 2;
-            sdiag *= 2;
-        }
-        if (ctx_.comm().rank() == 0) {
-            sdiag += std::real(std::conj(density_.rho()->f_pw_local(0)) * v[0]);
         }
 
-        std::cout<<"========= vloc diag = "<<sdiag<<std::endl;
-
-        const Periodic_function<double>* valence_rho = density_.rho();
-        double vloc_energy = valence_rho->inner(&potential_.local_potential()) / ctx_.unit_cell().omega();
-
-        std::cout<<"========= vloc energy = "<<vloc_energy<<std::endl;
+        double sdiag = density_.rho()->inner(&potential_.local_potential()) / ctx_.unit_cell().omega();
 
         for (int mu: {0, 1, 2}) {
-            stress_vloc_(mu, mu) -= vloc_energy;
+            stress_vloc_(mu, mu) -= sdiag;
         }
 
         ctx_.comm().allreduce(&stress_vloc_(0, 0), 9);
 
-        //symmetrize(stress_vloc_);
+        symmetrize(stress_vloc_);
     }
 
     /// Non-local contribution to stress.
