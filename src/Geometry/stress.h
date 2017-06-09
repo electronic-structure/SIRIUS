@@ -130,12 +130,15 @@ class Stress {
                 int ig = kp->idxgk(igloc);
                 auto Gk = kp->gkvec().gkvec_cart(ig);
                 
+
                 double d{0};
-                for (int i = 0; i < ctx_.num_bands(); i++) {
-                    double f = kp->band_occupancy(i);
-                    if (f > 1e-12) {
-                        auto z = kp->spinor_wave_functions(0).pw_coeffs().prime(igloc, i);
-                        d += f * (std::pow(z.real(), 2) + std::pow(z.imag(), 2));
+                for (int ispin = 0; ispin < ctx_.num_spins(); ispin++ ) {
+                    for (int i = 0; i < ctx_.num_fv_states(); i++) {
+                        double f = kp->band_occupancy( i + ispin * ctx_.num_fv_states());
+                        if (f > 1e-12) {
+                            auto z = kp->spinor_wave_functions(ispin).pw_coeffs().prime(igloc, i);
+                            d += f * (std::pow(z.real(), 2) + std::pow(z.imag(), 2));
+                        }
                     }
                 }
                 d *= kp->weight();
@@ -382,14 +385,14 @@ class Stress {
      *  \f[
      *    \int \Big(V_{\alpha}(r) r + Z_{\alpha}^p {\rm erf}(r) \Big) \Big( \frac{\sin (G r)}{G^3} - \frac{r \cos (G r)}{G^2}\Big) dr - 
      *      Z_{\alpha}^p \Big( \frac{e^{-\frac{G^2}{4}}}{2 G^2} + \frac{2 e^{-\frac{G^2}{4}}}{G^4} \Big)  
-     *  \f]
+     *  \f] 4731.36-4751.47 4304.54-4326.38
      */
     inline void calc_stress_vloc()
     {
         PROFILE("sirius::Stress|vloc");
 
-        Radial_integrals_vloc ri_vloc(ctx_.unit_cell(), ctx_.pw_cutoff(), 100);
-        Radial_integrals_vloc_dg ri_vloc_dg(ctx_.unit_cell(), ctx_.pw_cutoff(), 100);
+        Radial_integrals_vloc ri_vloc(ctx_.unit_cell(), ctx_.pw_cutoff(), 150);
+        Radial_integrals_vloc_dg ri_vloc_dg(ctx_.unit_cell(), ctx_.pw_cutoff(), 150);
 
         auto v = ctx_.make_periodic_function<index_domain_t::local>([&ri_vloc](int iat, double g)
                                                                     {
@@ -421,6 +424,8 @@ class Stress {
             sdiag += std::real(std::conj(density_.rho()->f_pw_local(igloc)) * v[igloc]);
         }
         
+        std::cout<<"========= vloc diag = "<<sdiag<<std::endl;
+
         if (ctx_.gvec().reduced()) {
             stress_vloc_ *= 2;
             sdiag *= 2;
@@ -429,13 +434,20 @@ class Stress {
             sdiag += std::real(std::conj(density_.rho()->f_pw_local(0)) * v[0]);
         }
 
+        std::cout<<"========= vloc diag = "<<sdiag<<std::endl;
+
+        const Periodic_function<double>* valence_rho = density_.rho();
+        double vloc_energy = valence_rho->inner(&potential_.local_potential()) / ctx_.unit_cell().omega();
+
+        std::cout<<"========= vloc energy = "<<vloc_energy<<std::endl;
+
         for (int mu: {0, 1, 2}) {
-            stress_vloc_(mu, mu) -= sdiag;
+            stress_vloc_(mu, mu) -= vloc_energy;
         }
 
         ctx_.comm().allreduce(&stress_vloc_(0, 0), 9);
 
-        symmetrize(stress_vloc_);
+        //symmetrize(stress_vloc_);
     }
 
     /// Non-local contribution to stress.

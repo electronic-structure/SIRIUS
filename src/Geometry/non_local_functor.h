@@ -25,13 +25,6 @@ private:
     Simulation_context& ctx_;
     Beta_projectors_base<N>& bp_base_;
 
-    enum spin_state_t
-    {
-        non_mag=0,
-        spin_up,
-        spin_down
-    };
-
 public:
 
     Non_local_functor(Simulation_context& ctx__,
@@ -54,8 +47,6 @@ public:
 
         double main_two_factor = -2.0;
 
-        spin_state_t spin_state = spin_state_t::non_mag;
-
 //        #ifdef __GPU
 //        for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
 //            if (ctx_.processing_unit() == GPU) {
@@ -73,15 +64,7 @@ public:
             bp.generate(icnk);
 
             for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-
-                if (ctx_.num_spins() == 2){
-                    if (ispn == 0) {
-                        spin_state = spin_state_t::spin_up;
-                    }
-                    if (ispn == 1) {
-                        spin_state = spin_state_t::spin_down;
-                    }
-                }
+                double spin_factor = (ispn == 0 ? 1.0 : -1.0);
 
                 /* total number of occupied bands for this spin */
                 int nbnd = kpoint__.num_occupied_bands(ispn);
@@ -114,18 +97,19 @@ public:
                         {
                             double dij = 0.0;
 
-                            switch (spin_state) {
-                                case non_mag  :
-                                    dij = unit_cell.atom(ia).d_mtrx(i, j, 0); break;
+                            switch (ctx_.num_spins())
+                            {
+                                case 1:
+                                    dij = unit_cell.atom(ia).d_mtrx(i, j, 0);
+                                    break;
 
-                                case spin_up  :
-                                    dij = 0.5 * (unit_cell.atom(ia).d_mtrx(i, j, 0) + unit_cell.atom(ia).d_mtrx(i, j, 1)); break;
+                                case 2:
+                                    dij =  (unit_cell.atom(ia).d_mtrx(i, j, 0) + spin_factor * unit_cell.atom(ia).d_mtrx(i, j, 1));
+                                    break;
 
-                                case spin_down:
-                                    dij = 0.5 * (unit_cell.atom(ia).d_mtrx(i, j, 0) - unit_cell.atom(ia).d_mtrx(i, j, 1)); break;
-
-                                default :
-                                    TERMINATE("ERROR in Non_local_functor");
+                                default:
+                                    TERMINATE("Error in calc_ultrasoft_forces: Non-collinear not implemented");
+                                    break;
                             }
 
                             if (unit_cell.atom(ia).type().pp_desc().augment) {
