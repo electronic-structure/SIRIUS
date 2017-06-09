@@ -113,6 +113,8 @@ class SHT // TODO: better name
                     coord_(2, itp) = z[itp];
                     
                     auto vs = spherical_coordinates(vector3d<double>(x[itp], y[itp], z[itp]));
+                    tp_(0, itp) = vs[1];
+                    tp_(1, itp) = vs[2];
                     spherical_harmonics(lmax_, vs[1], vs[2], &ylm_backward_(0, itp));
                     spherical_harmonics(lmax_, vs[1], vs[2], &rlm_backward_(0, itp));
                     for (int lm = 0; lm < lmmax_; lm++) {
@@ -567,6 +569,21 @@ class SHT // TODO: better name
         inline double coord(int x, int itp) const
         {
             return coord_(x, itp);
+        }
+
+        inline vector3d<double> coord(int idx__) const
+        {
+            return vector3d<double>(coord_(0, idx__), coord_(1, idx__), coord(2, idx__));
+        }
+
+        inline double theta(int idx__) const
+        {
+            return tp_(0, idx__);
+        }
+
+        inline double phi(int idx__) const
+        {
+            return tp_(1, idx__);
         }
 
         inline int num_points() const
@@ -1048,8 +1065,6 @@ class SHT // TODO: better name
             
             data[80]=(-3*std::sqrt(12155/pi)*sin_phi[7]*std::pow(sin_theta[0],7))/32.;
         }
-
-
 
         /// Compute derivative of real-spherical harmonic with respect to theta angle.
         static double dRlm_dtheta(int lm, double theta, double phi)

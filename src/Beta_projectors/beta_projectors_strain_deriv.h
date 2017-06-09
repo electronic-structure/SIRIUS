@@ -139,10 +139,15 @@ class Beta_projectors_strain_deriv : public Beta_projectors_base<9>
             pw_coeffs_t_[i].zero();
         }
 
+        std::vector<double_complex> zil(lmax_beta_ + 2);
+        for (int l = 0; l < lmax_beta_ + 2; l++) {
+            zil[l] = std::pow(double_complex(0, -1), l);
+        }
+
         Gaunt_coefficients<double> gc(1, lmax_beta_ + 2, lmax_beta_, SHT::gaunt_rlm);
 
         /* compute d <G+k|beta> / d epsilon_{mu, nu} */
-        #pragma omp parallel for
+        #pragma omp parallel for schedule(static)
         for (int igkloc = 0; igkloc < num_gkvec_loc(); igkloc++) {
             int igk  = gkvec_.gvec_offset(comm.rank()) + igkloc;
             auto gvc = gkvec_.gkvec_cart(igk);
@@ -166,7 +171,8 @@ class Beta_projectors_strain_deriv : public Beta_projectors_base<9>
                 for (int mu = 0; mu < 3; mu++) {
                     double p = (mu == nu) ? 0.5 : 0;
 
-                    auto z = fourpi / std::sqrt(ctx_.unit_cell().omega());
+                    auto z1 = fourpi / std::sqrt(ctx_.unit_cell().omega());
+                    auto z2 = z1 * gvc[mu] * double_complex(0, 1) * r_f[nu];
 
                     for (int iat = 0; iat < ctx_.unit_cell().num_atom_types(); iat++) {
                         auto& atom_type = ctx_.unit_cell().atom_type(iat);
@@ -174,23 +180,31 @@ class Beta_projectors_strain_deriv : public Beta_projectors_base<9>
                             int l     = atom_type.indexb(xi).l;
                             int lm    = atom_type.indexb(xi).lm;
                             int idxrf = atom_type.indexb(xi).idxrf;
-
+                            
+                            double_complex z3(0, 0);
                             for (int k = 0; k < gc.num_gaunt(Utils::lm_by_l_m(1, r_m[nu]), lm); k++) {
                                 auto& c = gc.gaunt(Utils::lm_by_l_m(1, r_m[nu]), lm, k);
                                 int l3 = c.l3;
-
-                                pw_coeffs_t_[mu + nu * 3](igkloc, atom_type.offset_lo() + xi) += 
-                                    gvc[mu] * std::pow(double_complex(0, -1), l3) * z * double_complex(0, 1) * 
-                                    gkvec_rlm[c.lm3] * c.coef * tmp(idxrf, l3, iat) * r_f[nu];
+                                z3 += zil[l3] * gkvec_rlm[c.lm3] * c.coef * tmp(idxrf, l3, iat);
                             }
+
+                                //pw_coeffs_t_[mu + nu * 3](igkloc, atom_type.offset_lo() + xi) += 
+                                //    gvc[mu] * std::pow(double_complex(0, -1), l3) * z * double_complex(0, 1) * 
+                                //    gkvec_rlm[c.lm3] * c.coef * tmp(idxrf, l3, iat) * r_f[nu];
+                            pw_coeffs_t_[mu + nu * 3](igkloc, atom_type.offset_lo() + xi) += z3 * z2;
 
                             auto d2 = beta_ri0.value(idxrf, iat, gvs[0]) * (-p * gkvec_rlm[lm]);
 
-                            pw_coeffs_t_[mu + nu * 3](igkloc, atom_type.offset_lo() + xi) += z * d2 * std::pow(double_complex(0, -1), l);
+                            pw_coeffs_t_[mu + nu * 3](igkloc, atom_type.offset_lo() + xi) += z1 * d2 * zil[l];
                         }
                     }
-                }
-            }
+                } // mu
+                //for (int mu = 0; mu <= nu; mu++) {
+                //    for (int xi = 0; xi < atom_type.mt_basis_size(); xi++) {
+                //        pw_coeffs_t_[nu + mu * 3](igkloc, atom_type.offset_lo() + xi) = pw_coeffs_t_[mu + nu * 3](igkloc, atom_type.offset_lo() + xi);
+                //    }
+                //}
+            } // nu
         }
     }
 
@@ -199,8 +213,8 @@ class Beta_projectors_strain_deriv : public Beta_projectors_base<9>
                                  Gvec const&         gkvec__)
         : Beta_projectors_base<9>(ctx__, gkvec__)
     {
-        generate_pw_coefs_t();
-        //generate_pw_coefs_t_v2();
+        //generate_pw_coefs_t();
+        generate_pw_coefs_t_v2();
 
         if (ctx__.processing_unit() == GPU) {
             for (int j = 0; j < 9; j++) {

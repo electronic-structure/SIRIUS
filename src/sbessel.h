@@ -73,6 +73,29 @@ class Spherical_Bessel_functions
             }
         }
 
+        static void sbessel(int lmax__, double t__, double* jl__)
+        {
+            gsl_sf_bessel_jl_array(lmax__, t__, jl__);
+        }
+
+        static void sbessel_deriv_q(int lmax__, double q__, double x__, double* jl_dq__)
+        {
+            std::vector<double> jl(lmax__ + 2);
+            sbessel(lmax__ + 2, x__ * q__, &jl[0]);
+
+            for (int l = 0; l <= lmax__ + 1; l++) {
+                if (q__ != 0) {
+                    jl_dq__[l] = (l / q__) * jl[l] - x__ * jl[l + 1];
+                } else {
+                    if (l == 1) {
+                        jl_dq__[l] = x__ / 3;
+                    } else {
+                        jl_dq__[l] = 0;
+                    }
+                }
+            }
+        }
+
         Spline<double> const& operator[](int l__) const
         {
             assert(l__ <= lmax_);
