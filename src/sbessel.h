@@ -81,9 +81,9 @@ class Spherical_Bessel_functions
         static void sbessel_deriv_q(int lmax__, double q__, double x__, double* jl_dq__)
         {
             std::vector<double> jl(lmax__ + 2);
-            sbessel(lmax__ + 2, x__ * q__, &jl[0]);
+            sbessel(lmax__ + 1, x__ * q__, &jl[0]);
 
-            for (int l = 0; l <= lmax__ + 1; l++) {
+            for (int l = 0; l <= lmax__; l++) {
                 if (q__ != 0) {
                     jl_dq__[l] = (l / q__) * jl[l] - x__ * jl[l + 1];
                 } else {

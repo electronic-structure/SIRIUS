@@ -11,7 +11,7 @@ void test(vector3d<double> G)
     std::cout << "lmax = " << lmax << std::endl;
     std::cout << "sht.num_points = " << sht.num_points() << std::endl;
 
-    double r{1.5};
+    double r{0.5};
 
     auto vgs = SHT::spherical_coordinates(G);
     std::cout << "G(spherical): " << vgs[0] << " " << vgs[1] << " " << vgs[2] << std::endl;
@@ -50,38 +50,28 @@ void test1(int mu, vector3d<double> G)
     SHT sht(lmax);
     int lmmax = Utils::lmmax(lmax);
 
-    double r{1.5};
+    double r{0.5};
 
     auto vgs = SHT::spherical_coordinates(G);
 
 
     double theta = vgs[1];
     double phi   = vgs[2];
-    vector3d<double> dtheta_dq({std::cos(phi) * std::cos(theta), std::cos(theta) * std::sin(phi), -std::sin(theta)});
-    vector3d<double> dphi_dq({-std::sin(phi), std::cos(phi), 0.0});
 
     std::vector<double> rlm_g(lmmax);
     SHT::spherical_harmonics(lmax, theta, phi, &rlm_g[0]);
 
-    mdarray<double, 1> dRlm_dtheta(lmmax);
-    mdarray<double, 1> dRlm_dphi_sin_theta(lmmax);
-
-    SHT::dRlm_dtheta(lmax, theta, phi, dRlm_dtheta);
-    SHT::dRlm_dphi_sin_theta(lmax, theta, phi, dRlm_dphi_sin_theta);
-
     mdarray<double ,2> rlm_dg(lmmax, 3);
-    for (int nu = 0; nu < 3; nu++) {
-        for (int lm = 0; lm < lmmax; lm++) {
-            rlm_dg(lm, nu) = dRlm_dtheta[lm] * dtheta_dq[nu] + dRlm_dphi_sin_theta[lm] * dphi_dq[nu];
-        }
-    }
 
+    SHT::dRlm_dr(lmax, G, rlm_dg);
 
-    std::vector<double> rlm(Utils::lmmax(lmax));
+    std::vector<double> rlm(lmmax);
 
     double jl[lmax + 1];
+    std::cout << "computing jl" << std::endl;
     Spherical_Bessel_functions::sbessel(lmax, r * vgs[0], jl);
     double jl_dq[lmax + 1];
+    std::cout << "computing djl" << std::endl;
     Spherical_Bessel_functions::sbessel_deriv_q(lmax, vgs[0], r, &jl_dq[0]);
     
     double diff{0};
@@ -94,7 +84,7 @@ void test1(int mu, vector3d<double> G)
         for (int l = 0; l <= lmax; l++) {
             for (int m = -l; m <= l; m++) {
                 int lm = Utils::lm_by_l_m(l, m);
-                z += fourpi * std::pow(double_complex(0, 1), l) * rlm[lm] * (rlm_g[lm] * jl_dq[l] * G[mu] / vgs[0] + rlm_dg(lm, mu) * jl[l] / vgs[0]);
+                z += fourpi * std::pow(double_complex(0, 1), l) * rlm[lm] * (rlm_g[lm] * jl_dq[l] * G[mu] / vgs[0] + rlm_dg(lm, mu) * jl[l]);
             }
         }
 
@@ -118,21 +108,25 @@ int main(int argn, char** argv)
 
     sirius::initialize(1);
     test({0.4, 0, 0});
-    test({0, 0.2, 0});
-    test({0, 0, 0.2});
+    test({0, 0.4, 0});
+    test({0, 0, 0.4});
     test({0.1, 0.2, 0.3});
 
     test1(0, {0.4, 0, 0});
     test1(1, {0.4, 0, 0});
     test1(2, {0.4, 0, 0});
 
+    test1(0, {0.0, 0.4, 0});
+    test1(1, {0.0, 0.4, 0});
+    test1(2, {0.0, 0.4, 0});
+
     test1(0, {0.0, 0, 0.4});
     test1(1, {0.0, 0, 0.4});
     test1(2, {0.0, 0, 0.4});
     
-    test1(0, {0.1, 0.2, 0.4});
-    test1(1, {0.1, 0.2, 0.4});
-    test1(2, {0.1, 0.2, 0.4});
+    test1(0, {0.1, 0.2, 0.3});
+    test1(1, {0.1, 0.2, 0.3});
+    test1(2, {0.1, 0.2, 0.3});
 
     sirius::finalize();
 }
