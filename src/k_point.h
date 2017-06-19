@@ -165,7 +165,6 @@ class K_point
             : ctx_(ctx__)
             , unit_cell_(ctx_.unit_cell())
             , weight_(weight__)
-            , spinor_wave_functions_{nullptr, nullptr}
             , comm_(ctx_.blacs_grid().comm())
             , comm_row_(ctx_.blacs_grid().comm_row())
             , comm_col_(ctx_.blacs_grid().comm_col())
@@ -184,12 +183,6 @@ class K_point
             
             rank_row_ = comm_row_.rank();
             rank_col_ = comm_col_.rank();
-
-            #ifndef __GPU
-            if (ctx_.processing_unit() == GPU) {
-                TERMINATE_NO_GPU
-            }
-            #endif
         }
 
         /// Find G+k vectors within the cutoff.

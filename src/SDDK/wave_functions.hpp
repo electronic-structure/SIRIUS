@@ -31,17 +31,17 @@
 namespace sddk {
 
 #ifdef __GPU
-extern "C" void add_square_sum_gpu(cuDoubleComplex const* wf__,
+extern "C" void add_square_sum_gpu(double_complex const* wf__,
                                    int num_rows_loc__,
                                    int nwf__,
                                    int reduced__,
                                    int mpi_rank__,
                                    double* result__);
 
-extern "C" void add_checksum_gpu(cuDoubleComplex* wf__,
+extern "C" void add_checksum_gpu(double_complex* wf__,
                                  int num_rows_loc__,
                                  int nwf__,
-                                 cuDoubleComplex* result__);
+                                 double_complex* result__);
 #endif
 
 const int sddk_default_block_size = 256;
@@ -603,14 +603,14 @@ inline void transform(double alpha__,
                 }
             } else {
                 /* scale PW part */
-                scale_matrix_elements_gpu(wf_out__[iv]->pw_coeffs().prime().at<GPU>(0, j0__),
+                scale_matrix_elements_gpu((cuDoubleComplex*)wf_out__[iv]->pw_coeffs().prime().at<GPU>(0, j0__),
                                           wf_out__[iv]->pw_coeffs().prime().ld(),
                                           wf_out__[iv]->pw_coeffs().num_rows_loc(),
                                           n__,
                                           beta__);
                 /* scale MT part */
                 if (wf_out__[iv]->has_mt() && wf_out__[iv]->mt_coeffs().num_rows_loc()) {
-                    scale_matrix_elements_gpu(wf_out__[iv]->mt_coeffs().prime().at<GPU>(0, j0__),
+                    scale_matrix_elements_gpu((cuDoubleComplex*)wf_out__[iv]->mt_coeffs().prime().at<GPU>(0, j0__),
                                               wf_out__[iv]->mt_coeffs().prime().ld(),
                                               wf_out__[iv]->mt_coeffs().num_rows_loc(),
                                               n__,

@@ -15,46 +15,36 @@
 #include "../potential.h"
 #include "../density.h"
 
-namespace sirius
-{
+namespace sirius {
 
-template<typename T, int N>
+template <typename T, int N>
 class Non_local_functor
 {
-private:
+  private:
     Simulation_context& ctx_;
     Beta_projectors_base<N>& bp_base_;
 
-public:
+  public:
 
     Non_local_functor(Simulation_context& ctx__,
                       Beta_projectors_base<N>& bp_base__)
-    : ctx_(ctx__)
-    , bp_base_(bp_base__)
+        : ctx_(ctx__)
+        , bp_base_(bp_base__)
     {}
 
-    /// static const can be public
+    /// Dimension of the beta-projector array.
     static const int N_ = N;
 
     /// collect summation result in an array
     void add_k_point_contribution(K_point& kpoint__, mdarray<double, 2>& collect_res__)
     {
-        Unit_cell &unit_cell = ctx_.unit_cell();
+        Unit_cell& unit_cell = ctx_.unit_cell();
 
         Beta_projectors& bp = kpoint__.beta_projectors();
 
         auto& bp_chunks = bp.beta_projector_chunks();
 
         double main_two_factor = -2.0;
-
-//        #ifdef __GPU
-//        for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-//            if (ctx_.processing_unit() == GPU) {
-//                int nbnd = kpoint__.num_occupied_bands(ispn);
-//                kpoint__.spinor_wave_functions(ispn).copy_to_device(0, nbnd);
-//            }
-//        }
-//        #endif
 
         bp_base_.prepare();
         bp.prepare();
@@ -86,7 +76,7 @@ public:
                     int bnd_offset = spl_nbnd.global_offset();
 
                     #pragma omp parallel for
-                    for(int ia_chunk = 0; ia_chunk < bp_chunks(icnk).num_atoms_; ia_chunk++) {
+                    for (int ia_chunk = 0; ia_chunk < bp_chunks(icnk).num_atoms_; ia_chunk++) {
                         int ia   = bp_chunks(icnk).desc_(beta_desc_idx::ia, ia_chunk);
                         int offs = bp_chunks(icnk).desc_(beta_desc_idx::offset, ia_chunk);
                         int nbf  = bp_chunks(icnk).desc_(beta_desc_idx::nbf, ia_chunk);
@@ -126,9 +116,9 @@ public:
                             for (int ibf = 0; ibf < unit_cell.atom(ia).type().mt_lo_basis_size(); ibf++) {
                                 for (int jbf = 0; jbf < unit_cell.atom(ia).type().mt_lo_basis_size(); jbf++) {
                                     /* calculate scalar part of the forces */
-                                    double_complex scalar_part = main_two_factor *
-                                            kpoint__.band_occupancy(ibnd + ispn * ctx_.num_fv_states()) * kpoint__.weight() *
-                                            D_aug_mtrx(ibf, jbf, ibnd) * std::conj(bp_phi_chunk(offs + jbf, ibnd));
+                                    double_complex scalar_part = main_two_factor * kpoint__.band_occupancy(ibnd + ispn * ctx_.num_fv_states()) *
+                                            kpoint__.weight() * D_aug_mtrx(ibf, jbf, ibnd) *
+                                            std::conj(bp_phi_chunk(offs + jbf, ibnd));
 
                                     /* multiply scalar part by gradient components */
                                     collect_res__(x, ia) += (scalar_part * bp_base_phi_chunk(offs + ibf, ibnd)).real();
@@ -146,6 +136,5 @@ public:
 };
 
 }
-
 
 #endif /* __NON_LOCAL_FUNCTOR_H__ */

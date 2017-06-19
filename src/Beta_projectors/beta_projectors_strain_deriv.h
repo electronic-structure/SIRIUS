@@ -11,6 +11,8 @@ class Beta_projectors_strain_deriv : public Beta_projectors_base<9>
 
     void generate_pw_coefs_t()
     {
+        PROFILE("sirius::Beta_projectors_strain_deriv::generate_pw_coefs_t");
+
         auto& bchunk = ctx_.beta_projector_chunks();
         if (!bchunk.num_beta_t()) {
             return;
@@ -36,21 +38,27 @@ class Beta_projectors_strain_deriv : public Beta_projectors_base<9>
 
             double theta = rtp[1];
             double phi   = rtp[2];
-            vector3d<double> dtheta_dq({std::cos(phi) * std::cos(theta), std::cos(theta) * std::sin(phi), -std::sin(theta)});
-            vector3d<double> dphi_dq({-std::sin(phi), std::cos(phi), 0.0});
+            //vector3d<double> dtheta_dq({std::cos(phi) * std::cos(theta), std::cos(theta) * std::sin(phi), -std::sin(theta)});
+            //vector3d<double> dphi_dq({-std::sin(phi), std::cos(phi), 0.0});
 
             SHT::spherical_harmonics(lmax, theta, phi, &rlm_g(0, igkloc));
-            
-            mdarray<double, 1> dRlm_dtheta(lmmax);
-            mdarray<double, 1> dRlm_dphi_sin_theta(lmmax);
-
-            SHT::dRlm_dtheta(lmax, theta, phi, dRlm_dtheta);
-            SHT::dRlm_dphi_sin_theta(lmax, theta, phi, dRlm_dphi_sin_theta);
-            for (int nu = 0; nu < 3; nu++) {
-                for (int lm = 0; lm < lmmax; lm++) {
-                    rlm_dg(lm, nu, igkloc) = dRlm_dtheta[lm] * dtheta_dq[nu] + dRlm_dphi_sin_theta[lm] * dphi_dq[nu];
-                }
+            mdarray<double, 2> rlm_dg_tmp(&rlm_dg(0, 0, igkloc), lmmax, 3);
+            if (rtp[0] > 1e-12) {
+                SHT::dRlm_dr(lmax, gvc, rlm_dg_tmp);
+            } else {
+                rlm_dg_tmp.zero();
             }
+            
+            //mdarray<double, 1> dRlm_dtheta(lmmax);
+            //mdarray<double, 1> dRlm_dphi_sin_theta(lmmax);
+
+            //SHT::dRlm_dtheta(lmax, theta, phi, dRlm_dtheta);
+            //SHT::dRlm_dphi_sin_theta(lmax, theta, phi, dRlm_dphi_sin_theta);
+            //for (int nu = 0; nu < 3; nu++) {
+            //    for (int lm = 0; lm < lmmax; lm++) {
+            //        rlm_dg(lm, nu, igkloc) = dRlm_dtheta[lm] * dtheta_dq[nu] + dRlm_dphi_sin_theta[lm] * dphi_dq[nu];
+            //    }
+            //}
         }
 
         /* compute d <G+k|beta> / d epsilon_{mu, nu} */
@@ -105,7 +113,7 @@ class Beta_projectors_strain_deriv : public Beta_projectors_base<9>
 
                             auto z = std::pow(double_complex(0, -1), l) * fourpi / std::sqrt(ctx_.unit_cell().omega());
 
-                            auto d1 = ri0(idxrf) * (rlm_dg(lm, nu, igkloc) * (-gvc[mu] / gvs[0]) - p * rlm_g(lm, igkloc));
+                            auto d1 = ri0(idxrf) * (-gvc[mu] * rlm_dg(lm, nu, igkloc) - p * rlm_g(lm, igkloc));
 
                             auto d2 = ri1(idxrf) * rlm_g(lm, igkloc) * (-gvc[mu] * gvc[nu] / gvs[0]);
 
@@ -119,7 +127,7 @@ class Beta_projectors_strain_deriv : public Beta_projectors_base<9>
 
     void generate_pw_coefs_t_v2()
     {
-        PROFILE("sirius::Beta_projectors_strain_deriv::generate_pw_coefs_t");
+        PROFILE("sirius::Beta_projectors_strain_deriv::generate_pw_coefs_t_v2");
 
         auto& bchunk = ctx_.beta_projector_chunks();
         if (!bchunk.num_beta_t()) {
@@ -139,10 +147,15 @@ class Beta_projectors_strain_deriv : public Beta_projectors_base<9>
             pw_coeffs_t_[i].zero();
         }
 
+        std::vector<double_complex> zil(lmax_beta_ + 2);
+        for (int l = 0; l < lmax_beta_ + 2; l++) {
+            zil[l] = std::pow(double_complex(0, -1), l);
+        }
+
         Gaunt_coefficients<double> gc(1, lmax_beta_ + 2, lmax_beta_, SHT::gaunt_rlm);
 
         /* compute d <G+k|beta> / d epsilon_{mu, nu} */
-        #pragma omp parallel for
+        #pragma omp parallel for schedule(static)
         for (int igkloc = 0; igkloc < num_gkvec_loc(); igkloc++) {
             int igk  = gkvec_.gvec_offset(comm.rank()) + igkloc;
             auto gvc = gkvec_.gkvec_cart(igk);
@@ -166,38 +179,46 @@ class Beta_projectors_strain_deriv : public Beta_projectors_base<9>
                 for (int mu = 0; mu < 3; mu++) {
                     double p = (mu == nu) ? 0.5 : 0;
 
-                    auto z = fourpi / std::sqrt(ctx_.unit_cell().omega());
+                    auto z1 = fourpi / std::sqrt(ctx_.unit_cell().omega());
+                    auto z2 = z1 * gvc[mu] * double_complex(0, 1) * r_f[nu];
 
                     for (int iat = 0; iat < ctx_.unit_cell().num_atom_types(); iat++) {
                         auto& atom_type = ctx_.unit_cell().atom_type(iat);
                         for (int xi = 0; xi < atom_type.mt_basis_size(); xi++) {
                             int l     = atom_type.indexb(xi).l;
-                            int m     = atom_type.indexb(xi).m;
                             int lm    = atom_type.indexb(xi).lm;
                             int idxrf = atom_type.indexb(xi).idxrf;
-
+                            
+                            double_complex z3(0, 0);
                             for (int k = 0; k < gc.num_gaunt(Utils::lm_by_l_m(1, r_m[nu]), lm); k++) {
                                 auto& c = gc.gaunt(Utils::lm_by_l_m(1, r_m[nu]), lm, k);
                                 int l3 = c.l3;
-
-                                pw_coeffs_t_[mu + nu * 3](igkloc, atom_type.offset_lo() + xi) += 
-                                    gvc[mu] * std::pow(double_complex(0, -1), l3) * z * double_complex(0, 1) * 
-                                    gkvec_rlm[c.lm3] * c.coef * tmp(idxrf, l3, iat) * r_f[nu];
+                                z3 += zil[l3] * gkvec_rlm[c.lm3] * c.coef * tmp(idxrf, l3, iat);
                             }
+
+                                //pw_coeffs_t_[mu + nu * 3](igkloc, atom_type.offset_lo() + xi) += 
+                                //    gvc[mu] * std::pow(double_complex(0, -1), l3) * z * double_complex(0, 1) * 
+                                //    gkvec_rlm[c.lm3] * c.coef * tmp(idxrf, l3, iat) * r_f[nu];
+                            pw_coeffs_t_[mu + nu * 3](igkloc, atom_type.offset_lo() + xi) += z3 * z2;
 
                             auto d2 = beta_ri0.value(idxrf, iat, gvs[0]) * (-p * gkvec_rlm[lm]);
 
-                            pw_coeffs_t_[mu + nu * 3](igkloc, atom_type.offset_lo() + xi) += z * d2 * std::pow(double_complex(0, -1), l);
+                            pw_coeffs_t_[mu + nu * 3](igkloc, atom_type.offset_lo() + xi) += z1 * d2 * zil[l];
                         }
                     }
-                }
-            }
+                } // mu
+                //for (int mu = 0; mu <= nu; mu++) {
+                //    for (int xi = 0; xi < atom_type.mt_basis_size(); xi++) {
+                //        pw_coeffs_t_[nu + mu * 3](igkloc, atom_type.offset_lo() + xi) = pw_coeffs_t_[mu + nu * 3](igkloc, atom_type.offset_lo() + xi);
+                //    }
+                //}
+            } // nu
         }
     }
 
   public:
     Beta_projectors_strain_deriv(Simulation_context& ctx__,
-                                 Gvec         const& gkvec__)
+                                 Gvec const&         gkvec__)
         : Beta_projectors_base<9>(ctx__, gkvec__)
     {
         generate_pw_coefs_t();

@@ -51,7 +51,6 @@ class Forces_PS
         nlf.add_k_point_contribution(kpoint, forces);
     }
 
-
     inline void allocate()
     {
         local_forces_     = mdarray<double, 2>(3, ctx_.unit_cell().num_atoms());
@@ -63,17 +62,16 @@ class Forces_PS
         us_nl_forces_     = mdarray<double, 2>(3, ctx_.unit_cell().num_atoms());
     }
 
-    inline void symmetrize_forces(mdarray<double, 2>& forces)
+    inline void symmetrize_forces(mdarray<double, 2>& unsym_forces, mdarray<double, 2>& sym_forces)
     {
-        mdarray<double, 2> sym_forces(3, ctx_.unit_cell().num_atoms());
-        sym_forces.zero();
-
         matrix3d<double> const& lattice_vectors         = ctx_.unit_cell().symmetry().lattice_vectors();
         matrix3d<double> const& inverse_lattice_vectors = ctx_.unit_cell().symmetry().inverse_lattice_vectors();
 
+        sym_forces.zero();
+
         #pragma omp parallel for
         for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {
-            vector3d<double> cart_force(&forces(0, ia));
+            vector3d<double> cart_force(&unsym_forces(0, ia));
             vector3d<double> lat_force =
                 inverse_lattice_vectors * (cart_force / (double)ctx_.unit_cell().symmetry().num_mag_sym());
 
@@ -93,8 +91,6 @@ class Forces_PS
                 sym_forces(2, ja) += rot_force[2];
             }
         }
-
-        forces = std::move(sym_forces);
     }
 
   public:
@@ -141,7 +137,6 @@ class Forces_PS
 
             for (int igloc = 0; igloc < gvec_count; igloc++) {
                 int ig  = gvec_offset + igloc;
-                int igs = gvecs.shell(ig);
 
                 /* cartesian form for getting cartesian force components */
                 vector3d<double> gvec_cart = gvecs.gvec_cart(ig);
@@ -167,7 +162,6 @@ class Forces_PS
 
         const mdarray<double_complex, 4>& density_matrix = density_.density_matrix();
         const Periodic_function<double>* veff_full = potential_.effective_potential();
-        const Periodic_function<double>* field_eff = potential_.effective_magnetic_field(0);
 
         Unit_cell& unit_cell = ctx_.unit_cell();
 
@@ -189,79 +183,36 @@ class Forces_PS
                 continue;
             }
 
-            for (int ispin = 0; ispin < ctx_.num_spins(); ispin++ ){
-                double spin_factor = (ispin == 0 ? 1.0 : -1.0);
+            for (int igloc = 0; igloc < gvec_count; igloc++) {
+                int ig = gvec_offset + igloc;
 
-                auto potential_spin = [&](int igloc)
-                {
-                    switch (ctx_.num_spins())
-                    {
-                        case 1:
-                            return veff_full->f_pw_local(igloc);
-                            break;
+                /* cartesian form for getting cartesian force components */
+                vector3d<double> gvec_cart = gvecs.gvec_cart(ig);
 
-                        case 2:
-                            return veff_full->f_pw_local(igloc) + spin_factor * field_eff->f_pw_local(igloc);
-                            break;
-
-                        default:
-                            TERMINATE("Error in calc_ultrasoft_forces: Non-collinear not implemented");
-                            break;
-                    }
-                    return double_complex(0.0, 0.0);
-                };
-
-//                auto density_matrix_spin = [&](int ib1, int ib2) -> double
-//                {
-//                    switch (ctx_.num_spins())
-//                    {
-//                        case 1:
-//                            return density_matrix(ib1, ib2, 0, ia).real();
-//                            break;
-//
-//                        case 2:
-//                            return 0.5 * (density_matrix(ib1, ib2, 0, ia).real() + spin_factor * density_matrix(ib1, ib2, 1, ia).real());
-//                            break;
-//
-//                        default:
-//                            TERMINATE("Error in calc_ultrasoft_forces: Non-collinear not implemented");
-//                            break;
-//                    }
-//                    return 0.0;
-//                };
-
-                for (int igloc = 0; igloc < gvec_count; igloc++) {
-                    int ig = gvec_offset + igloc;
-
-                    /* cartesian form for getting cartesian force components */
-                    vector3d<double> gvec_cart = gvecs.gvec_cart(ig);
-
-                    /* scalar part of a force without multipying by G-vector and Qij
+                /* scalar part of a force without multipying by G-vector and Qij
                    omega * V_conj(G) * exp(-i G Rn) */
+                double_complex g_atom_part = reduce_g_fact * ctx_.unit_cell().omega() *
+                                             std::conj(veff_full->f_pw_local(igloc)) *
+                                             std::conj(ctx_.gvec_phase_factor(ig, ia));
 
+                const Augmentation_operator& aug_op = ctx_.augmentation_op(iat);
 
-                    double_complex g_atom_part = reduce_g_fact * ctx_.unit_cell().omega() *
-                            std::conj(potential_spin(igloc) * ctx_.gvec_phase_factor(ig, ia));
+                /* iterate over trangle matrix Qij */
+                for (int ib2 = 0; ib2 < atom.type().indexb().size(); ib2++) {
+                    for (int ib1 = 0; ib1 <= ib2; ib1++) {
+                        int iqij = (ib2 * (ib2 + 1)) / 2 + ib1;
 
-                    const Augmentation_operator& aug_op = ctx_.augmentation_op(iat);
+                        double diag_fact = ib1 == ib2 ? 1.0 : 2.0;
 
-                    /* iterate over trangle matrix Qij */
-                    for (int ib2 = 0; ib2 < atom.type().indexb().size(); ib2++) {
-                        for (int ib1 = 0; ib1 <= ib2; ib1++) {
-                            int iqij = (ib2 * (ib2 + 1)) / 2 + ib1;
+                        /* [omega * V_conj(G) * exp(-i G Rn) ] * rho_ij * Qij(G) */
+                        double_complex z =
+                            diag_fact * g_atom_part * density_matrix(ib1, ib2, 0, ia).real() *
+                            double_complex(aug_op.q_pw(iqij, 2 * igloc), aug_op.q_pw(iqij, 2 * igloc + 1));
 
-                            double diag_fact = (ib1 == ib2 ? 1.0 : 2.0);
-
-                            /* [omega * V_conj(G) * exp(-i G Rn) ] * rho_ij * Qij(G) */
-                            double_complex z =
-                                    diag_fact * g_atom_part * density_matrix(ib1, ib2, ispin, ia).real() *
-                                    double_complex(aug_op.q_pw(iqij, 2 * igloc), aug_op.q_pw(iqij, 2 * igloc + 1));
-
-                            /* get force components multiplying by cartesian G-vector */
-                            forces(0, ia) -= (gvec_cart[0] * z).imag();
-                            forces(1, ia) -= (gvec_cart[1] * z).imag();
-                            forces(2, ia) -= (gvec_cart[2] * z).imag();
-                        }
+                        /* get force components multiplying by cartesian G-vector */
+                        forces(0, ia) -= (gvec_cart[0] * z).imag();
+                        forces(1, ia) -= (gvec_cart[1] * z).imag();
+                        forces(2, ia) -= (gvec_cart[2] * z).imag();
                     }
                 }
             }
@@ -274,6 +225,9 @@ class Forces_PS
     {
         PROFILE("sirius::Forces_PS::calc_nonlocal_forces");
 
+        mdarray<double, 2> unsym_forces(forces.size(0), forces.size(1));
+
+        unsym_forces.zero();
         forces.zero();
 
         auto& spl_num_kp = kset_.spl_num_kpoints();
@@ -282,15 +236,15 @@ class Forces_PS
             K_point* kp = kset_.k_point(spl_num_kp[ikploc]);
 
             if (ctx_.gamma_point()) {
-                add_k_point_contribution<double>(*kp, forces);
+                add_k_point_contribution<double>(*kp, unsym_forces);
             } else {
-                add_k_point_contribution<double_complex>(*kp, forces);
+                add_k_point_contribution<double_complex>(*kp, unsym_forces);
             }
         }
 
-        ctx_.comm().allreduce(&forces(0, 0), static_cast<int>(forces.size()));
+        ctx_.comm().allreduce(&unsym_forces(0, 0), static_cast<int>(unsym_forces.size()));
 
-        symmetrize_forces(forces);
+        symmetrize_forces(unsym_forces, forces);
     }
 
     inline void calc_nlcc_forces(mdarray<double, 2>& forces)
@@ -325,7 +279,6 @@ class Forces_PS
 
             for (int igloc = 0; igloc < gvec_count; igloc++) {
                 int ig  = gvec_offset + igloc;
-                int igs = gvecs.shell(ig);
 
                 if (ig == 0) {
                     continue;
@@ -485,12 +438,16 @@ class Forces_PS
 
     inline void sum_forces()
     {
-        //#pragma omp parallel for
+        mdarray<double, 2> total_forces_unsym(3, ctx_.unit_cell().num_atoms());
+
+        #pragma omp parallel for
         for (size_t i = 0; i < local_forces_.size(); i++) {
             us_nl_forces_[i] = ultrasoft_forces_[i] + nonlocal_forces_[i];
-            total_forces_[i] =
+            total_forces_unsym[i] =
                 local_forces_[i] + ultrasoft_forces_[i] + nonlocal_forces_[i] + nlcc_forces_[i] + ewald_forces_[i];
         }
+
+        symmetrize_forces(total_forces_unsym, total_forces_);
     }
 
     inline void print_info()
@@ -513,9 +470,6 @@ class Forces_PS
 
             std::cout << "===== Forces: non-local contribution from Beta-projectors =====" << std::endl;
             print_forces(nonlocal_forces());
-
-            std::cout << "===== Forces: non-local + ultrasoft =====" << std::endl;
-            print_forces(us_nl_forces());
 
             std::cout << "===== Forces: local contribution from local potential=====" << std::endl;
             print_forces(local_forces());

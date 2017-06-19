@@ -278,7 +278,6 @@ inline void Band::apply_fv_o(K_point* kp__,
             /* local orbital indices */
             int l_lo     = type.indexb(xi_lo).l;
             int lm_lo    = type.indexb(xi_lo).lm;
-            int idxrf_lo = type.indexb(xi_lo).idxrf;
             int order_lo = type.indexb(xi_lo).order;
             /* use oalm as temporary buffer to compute alm*o */
             for (int order_aw = 0; order_aw < (int)type.aw_descriptor(l_lo).size(); order_aw++) {
@@ -306,7 +305,6 @@ inline void Band::apply_fv_o(K_point* kp__,
                 int l_lo     = type.indexb(xi_lo).l;
                 int lm_lo    = type.indexb(xi_lo).lm;
                 int order_lo = type.indexb(xi_lo).order;
-                int idxrf_lo = type.indexb(xi_lo).idxrf;
                 
                 if (ia_location.rank == kp__->comm().rank()) {
                     /* lo-lo contribution */
@@ -314,7 +312,6 @@ inline void Band::apply_fv_o(K_point* kp__,
                         int xi_lo1 = type.mt_aw_basis_size() + jlo;
                         int lm1    = type.indexb(xi_lo1).lm;
                         int order1 = type.indexb(xi_lo1).order;
-                        int idxrf1 = type.indexb(xi_lo1).idxrf;
                         if (lm_lo == lm1) {
                             ophi__.mt_coeffs().prime(ophi__.offset_mt_coeffs(ia_location.local_index) + ilo, N__ + i) +=
                                 phi_lo_ia(jlo, i) * atom.symmetry_class().o_radial_integral(l_lo, order_lo, order1);
@@ -695,14 +692,6 @@ inline void Band::apply_magnetic_field(wave_functions& fv_states__,
     PROFILE("sirius::Band::apply_magnetic_field");
 
     assert(hpsi__.size() == 2 || hpsi__.size() == 3);
-
-    //#ifdef __GPU
-    //if (ctx_.processing_unit() == GPU) {
-    //    fv_states__.allocate_on_device();
-    //    fv_states__.copy_to_device(0, ctx_.num_fv_states());
-    //    for (auto& e: hpsi__) {
-    //        e.allocate_on_device();
-    //}
 
     local_op_->apply_b(gkvec__.partition(), 0, ctx_.num_fv_states(), fv_states__, hpsi__);
 

@@ -38,35 +38,45 @@
 
 namespace sirius {
 
-/// Spherical harmonics transformation.
+/// Spherical harmonics transformations and related oprtations.
+/** This class is responsible for the generation of complex and real spherical harmonics, generation of transformation 
+ *  matrices, transformation between spectral and real-space representations, generation of Gaunt and Clebsch-Gordan
+ *  coefficients and calculation of spherical harmonic derivatives */
 class SHT // TODO: better name
 {
     private:
-
+        
+        /// Maximum \f$ \ell \f$ of spherical harmonics.
         int lmax_;
-
+        
+        /// Maximum number of \f$ \ell, m \f$ components.
         int lmmax_;
 
+        /// Number of real-space \f$ (\theta, \phi) \f$ points on the sphere.
         int num_points_;
-
+        
+        /// Cartesian coordinates of points (normalized to 1).
         mdarray<double, 2> coord_;
 
+        /// \f$ (\theta, \phi) \f$ angles of points.
         mdarray<double, 2> tp_;
-
+        
+        /// Point weights.
         std::vector<double> w_;
 
-        /// backward transformation from Ylm to spherical coordinates
+        /// Backward transformation from Ylm to spherical coordinates.
         mdarray<double_complex, 2> ylm_backward_;
         
-        /// forward transformation from spherical coordinates to Ylm
+        /// Forward transformation from spherical coordinates to Ylm.
         mdarray<double_complex, 2> ylm_forward_;
         
-        /// backward transformation from Rlm to spherical coordinates
+        /// Backward transformation from Rlm to spherical coordinates.
         mdarray<double, 2> rlm_backward_;
 
-        /// forward transformation from spherical coordinates to Rlm
+        /// Forward transformation from spherical coordinates to Rlm.
         mdarray<double, 2> rlm_forward_;
 
+        /// Type of spherical grid (0: Lebedev-Laikov, 1: uniform).
         int mesh_type_;
 
     public:
@@ -113,6 +123,8 @@ class SHT // TODO: better name
                     coord_(2, itp) = z[itp];
                     
                     auto vs = spherical_coordinates(vector3d<double>(x[itp], y[itp], z[itp]));
+                    tp_(0, itp) = vs[1];
+                    tp_(1, itp) = vs[2];
                     spherical_harmonics(lmax_, vs[1], vs[2], &ylm_backward_(0, itp));
                     spherical_harmonics(lmax_, vs[1], vs[2], &rlm_backward_(0, itp));
                     for (int lm = 0; lm < lmmax_; lm++) {
@@ -569,6 +581,21 @@ class SHT // TODO: better name
             return coord_(x, itp);
         }
 
+        inline vector3d<double> coord(int idx__) const
+        {
+            return vector3d<double>(coord_(0, idx__), coord_(1, idx__), coord(2, idx__));
+        }
+
+        inline double theta(int idx__) const
+        {
+            return tp_(0, idx__);
+        }
+
+        inline double phi(int idx__) const
+        {
+            return tp_(1, idx__);
+        }
+
         inline int num_points() const
         {
             return num_points_;
@@ -673,6 +700,7 @@ class SHT // TODO: better name
             }
         }
 
+        /// Compute derivative of real-spherical harmonic with respect to theta angle.
         static void dRlm_dtheta(int lmax, double theta, double phi, mdarray<double, 1>& data)
         {
             assert(lmax <= 8);
@@ -861,6 +889,7 @@ class SHT // TODO: better name
             data[80]=(3*std::sqrt(12155/pi)*cos_phi[7]*cos_theta[0]*std::pow(sin_theta[0],7))/32.;
         }
 
+        ///  Compute derivative of real-spherical harmonic with respect to phi angle and divide by sin(theta).
         static void dRlm_dphi_sin_theta(int lmax, double theta, double phi, mdarray<double, 1>& data)
         {
             assert(lmax <= 8);
@@ -1049,130 +1078,72 @@ class SHT // TODO: better name
             data[80]=(-3*std::sqrt(12155/pi)*sin_phi[7]*std::pow(sin_theta[0],7))/32.;
         }
 
-
-
-        /// Compute derivative of real-spherical harmonic with respect to theta angle.
-        static double dRlm_dtheta(int lm, double theta, double phi)
+        /// Compute the derivatives of real spherical harmonics over the components of cartesian vector.
+        /** The following derivative is computed:
+         *  \f[
+         *    \frac{\partial R_{\ell m}(\theta_r, \phi_r)}{\partial r_{\mu}} =
+         *      \frac{\partial R_{\ell m}(\theta_r, \phi_r)}{\partial \theta_r} \frac{\partial \theta_r}{\partial r_{\mu}} + 
+         *      \frac{\partial R_{\ell m}(\theta_r, \phi_r)}{\partial \phi_r} \frac{\partial \phi_r}{\partial r_{\mu}}
+         *  \f]
+         *  The derivatives of angles are:
+         *  \f[
+         *     \frac{\partial \theta_r}{\partial r_{x}} = \frac{\cos(\phi_r) \cos(\theta_r)}{r} \\
+         *     \frac{\partial \theta_r}{\partial r_{y}} = \frac{\cos(\theta_r) \sin(\phi_r)}{r} \\
+         *     \frac{\partial \theta_r}{\partial r_{z}} = -\frac{\sin(\theta_r)}{r}
+         *  \f]
+         *  and
+         *  \f[
+         *     \frac{\partial \phi_r}{\partial r_{x}} = -\frac{\sin(\phi_r)}{\sin(\theta_r) r} \\
+         *     \frac{\partial \phi_r}{\partial r_{y}} = \frac{\cos(\phi_r)}{\sin(\theta_r) r} \\
+         *     \frac{\partial \phi_r}{\partial r_{z}} = 0
+         *  \f]
+         *  The derivative of \f$ \phi \f$ has discontinuities at \f$ \theta = 0, \theta=\pi \f$. This, however, is not a problem, because
+         *  multiplication by the the derivative of \f$ R_{\ell m} \f$ removes it. The following functions have to be hardcoded:
+         *  \f[
+         *    \frac{\partial R_{\ell m}(\theta, \phi)}{\partial \theta} \\
+         *    \frac{\partial R_{\ell m}(\theta, \phi)}{\partial \phi} \frac{1}{\sin(\theta)} 
+         *  \f]
+         *  
+         *  Mathematica script for spherical harmonic derivatives:
+            \verbatim
+            Rlm[l_, m_, th_, ph_] := 
+             If[m > 0, Sqrt[2]*ComplexExpand[Re[SphericalHarmonicY[l, m, th, ph]]],
+               If[m < 0, Sqrt[2]*ComplexExpand[Im[SphericalHarmonicY[l, m, th, ph]]], 
+                 If[m == 0, ComplexExpand[Re[SphericalHarmonicY[l, 0, th, ph]]]]
+               ]
+             ]
+            Do[Print[FullSimplify[D[Rlm[l, m, theta, phi], theta]]], {l, 0, 4}, {m, -l, l}]
+            Do[Print[FullSimplify[TrigExpand[D[Rlm[l, m, theta, phi], phi]/Sin[theta]]]], {l, 0, 4}, {m, -l, l}]
+            \endverbatim
+        */
+        static void dRlm_dr(int lmax__, vector3d<double>& r__, mdarray<double, 2>& data__)
         {
-            switch (lm) {
-                case 0: return 0;
-                
-                case 1: return -(std::sqrt(3/pi)*std::cos(theta)*std::sin(phi))/2.;
-                
-                case 2: return -(std::sqrt(3/pi)*std::sin(theta))/2.;
-                
-                case 3: return -(std::sqrt(3/pi)*std::cos(phi)*std::cos(theta))/2.;
-                
-                case 4: return -(std::sqrt(15/pi)*std::cos(phi)*std::cos(theta)*std::sin(phi)*std::sin(theta));
-                
-                case 5: return -(std::sqrt(15/pi)*std::cos(2*theta)*std::sin(phi))/2.;
-                
-                case 6: return (-3*std::sqrt(5/pi)*std::cos(theta)*std::sin(theta))/2.;
-                
-                case 7: return -(std::sqrt(15/pi)*std::cos(phi)*std::cos(2*theta))/2.;
-                
-                case 8: return (std::sqrt(15/pi)*std::cos(2*phi)*std::sin(2*theta))/4.;
-                
-                case 9: return (-3*std::sqrt(35/(2.*pi))*std::cos(theta)*std::sin(3*phi)*std::pow(std::sin(theta),2))/4.;
-                
-                case 10: return (std::sqrt(105/pi)*std::sin(2*phi)*(std::sin(theta) - 3*std::sin(3*theta)))/16.;
-                
-                case 11: return (std::sqrt(21/(2.*pi))*std::cos(theta)*(7 - 15*std::cos(2*theta))*std::sin(phi))/8.;
-                
-                case 12: return (-3*std::sqrt(7/pi)*(3 + 5*std::cos(2*theta))*std::sin(theta))/8.;
-                
-                case 13: return (std::sqrt(21/(2.*pi))*std::cos(phi)*std::cos(theta)*(7 - 15*std::cos(2*theta)))/8.;
-                
-                case 14: return (std::sqrt(105/pi)*std::cos(2*phi)*(1 + 3*std::cos(2*theta))*std::sin(theta))/8.;
-                
-                case 15: return (-3*std::sqrt(35/(2.*pi))*std::cos(3*phi)*std::cos(theta)*std::pow(std::sin(theta),2))/4.;
-                
-                case 16: return (-3*std::sqrt(35/pi)*std::cos(theta)*std::sin(4*phi)*std::pow(std::sin(theta),3))/4.;
-                
-                case 17: return (-3*std::sqrt(35/(2.*pi))*(1 + 2*std::cos(2*theta))*std::sin(3*phi)*std::pow(std::sin(theta),2))/4.;
-                
-                case 18: return (3*std::sqrt(5/pi)*(1 - 7*std::cos(2*theta))*std::sin(2*phi)*std::sin(2*theta))/8.;
-                
-                case 19: return (-3*std::sqrt(5/(2.*pi))*(std::cos(2*theta) + 7*std::cos(4*theta))*std::sin(phi))/8.;
-                
-                case 20: return (15*std::cos(theta)*(3 - 7*std::pow(std::cos(theta),2))*std::sin(theta))/(4.*std::sqrt(pi));
-                
-                case 21: return (-3*std::sqrt(5/(2.*pi))*std::cos(phi)*(std::cos(2*theta) + 7*std::cos(4*theta)))/8.;
-                
-                case 22: return (3*std::sqrt(5/pi)*std::cos(2*phi)*(-2*std::sin(2*theta) + 7*std::sin(4*theta)))/16.;
-                
-                case 23: return (-3*std::sqrt(35/(2.*pi))*std::cos(3*phi)*(1 + 2*std::cos(2*theta))*std::pow(std::sin(theta),2))/4.;
-                
-                case 24: return (3*std::sqrt(35/pi)*std::cos(4*phi)*std::cos(theta)*std::pow(std::sin(theta),3))/4.;
+            auto vrs = spherical_coordinates(r__);
 
-                default: {
-                    TERMINATE_NOT_IMPLEMENTED
+            assert(vrs[0] > 1e-12);
+
+            int lmmax = (lmax__ + 1) * (lmax__ + 1);
+            
+            double theta = vrs[1];
+            double phi   = vrs[2];
+
+            vector3d<double> dtheta_dr({std::cos(phi) * std::cos(theta), std::cos(theta) * std::sin(phi), -std::sin(theta)});
+            vector3d<double> dphi_dr({-std::sin(phi), std::cos(phi), 0.0});
+
+            mdarray<double, 1> dRlm_dt(lmmax);
+            mdarray<double, 1> dRlm_dp_sin_t(lmmax);
+
+            dRlm_dtheta(lmax__, theta, phi, dRlm_dt);
+            dRlm_dphi_sin_theta(lmax__, theta, phi, dRlm_dp_sin_t);
+
+            for (int mu = 0; mu < 3; mu++) {
+                for (int lm = 0; lm < lmmax; lm++) {
+                    data__(lm, mu) = (dRlm_dt[lm] * dtheta_dr[mu] + dRlm_dp_sin_t[lm] * dphi_dr[mu]) / vrs[0];
                 }
             }
-            return 0; // make compiler happy
-        }
-        
-        ///  Compute derivative of real-spherical harmonic with respect to phi angle and divide by sin(theta).
-        static double dRlm_dphi_sin_theta(int lm, double theta, double phi)
-        {
-            switch (lm) {
-                case 0: return 0;
-                
-                case 1: return -(std::sqrt(3/pi)*std::cos(phi))/2.;
-                
-                case 2: return 0;
-                
-                case 3: return (std::sqrt(3/pi)*std::sin(phi))/2.;
-                
-                case 4: return -(std::sqrt(15/pi)*std::cos(2*phi)*std::sin(theta))/2.;
-                
-                case 5: return -(std::sqrt(15/pi)*std::cos(phi)*std::cos(theta))/2.;
-                
-                case 6: return 0;
-                
-                case 7: return (std::sqrt(15/pi)*std::cos(theta)*std::sin(phi))/2.;
-                
-                case 8: return -(std::sqrt(15/pi)*std::cos(phi)*std::sin(phi)*std::sin(theta));
-                
-                case 9: return (-3*std::sqrt(35/(2.*pi))*std::cos(3*phi)*std::pow(std::sin(theta),2))/4.;
-                
-                case 10: return -(std::sqrt(105/pi)*std::cos(2*phi)*std::sin(2*theta))/4.;
-                
-                case 11: return -(std::sqrt(21/(2.*pi))*std::cos(phi)*(3 + 5*std::cos(2*theta)))/8.;
-                
-                case 12: return 0;
-                
-                case 13: return (std::sqrt(21/(2.*pi))*(3 + 5*std::cos(2*theta))*std::sin(phi))/8.;
-                
-                case 14: return -(std::sqrt(105/pi)*std::cos(phi)*std::cos(theta)*std::sin(phi)*std::sin(theta));
-                
-                case 15: return (3*std::sqrt(35/(2.*pi))*std::sin(3*phi)*std::pow(std::sin(theta),2))/4.;
-                
-                case 16: return (-3*std::sqrt(35/pi)*std::cos(4*phi)*std::pow(std::sin(theta),3))/4.;
-                
-                case 17: return (-9*std::sqrt(35/(2.*pi))*std::cos(3*phi)*std::cos(theta)*std::pow(std::sin(theta),2))/4.;
-                
-                case 18: return (-3*std::sqrt(5/pi)*std::cos(2*phi)*(3*std::sin(theta) + 7*std::sin(3*theta)))/16.;
-                
-                case 19: return (-3*std::sqrt(5/(2.*pi))*std::cos(phi)*(9*std::cos(theta) + 7*std::cos(3*theta)))/16.;
-                
-                case 20: return 0;
-                
-                case 21: return (3*std::sqrt(5/(2.*pi))*std::cos(theta)*(1 + 7*std::cos(2*theta))*std::sin(phi))/8.;
-                
-                case 22: return (-3*std::sqrt(5/pi)*std::sin(2*phi)*(3*std::sin(theta) + 7*std::sin(3*theta)))/16.;
-                
-                case 23: return (9*std::sqrt(35/(2.*pi))*std::cos(theta)*std::sin(3*phi)*std::pow(std::sin(theta),2))/4.;
-                
-                case 24: return (-3*std::sqrt(35/pi)*std::sin(4*phi)*std::pow(std::sin(theta),3))/4.;
-
-                default: {
-                    TERMINATE_NOT_IMPLEMENTED
-                }
-            }
-            return 0; // make compiler happy
         }
 
+        /// Generate \f$ \cos(m x) \f$ for m in [1, n] using recursion.
         static mdarray<double, 1> cosxn(int n__, double x__)
         {
             assert(n__ > 0);
@@ -1187,6 +1158,7 @@ class SHT // TODO: better name
             return std::move(data);
         }
 
+        /// Generate \f$ \sin(m x) \f$ for m in [1, n] using recursion.
         static mdarray<double, 1> sinxn(int n__, double x__)
         {
             assert(n__ > 0);

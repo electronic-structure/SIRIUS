@@ -14,10 +14,8 @@
 #include <vector>
 #include <memory>
 #include <complex>
+#include <algorithm>
 #include "communicator.hpp"
-#ifdef __GPU
-#include "gpu.h"
-#endif
 
 namespace sddk {
 

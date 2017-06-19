@@ -37,7 +37,7 @@ extern "C" void generate_phase_factors_gpu(int num_gvec_loc__,
                                            int num_atoms__,
                                            int const* gvec__,
                                            double const* atom_pos__,
-                                           cuDoubleComplex* phase_factors__);
+                                           double_complex* phase_factors__);
 #endif
 
 namespace sirius {

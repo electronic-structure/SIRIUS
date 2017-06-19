@@ -1,4 +1,5 @@
-// This file must be compiled with nvcc
+#ifndef __MAGMA_HPP__
+#define __MAGMA_HPP__
 
 #include <stdio.h>
 #include <assert.h>
@@ -7,19 +8,22 @@
 #include <magma_z.h>
 #include <magma_d.h>
 #include <magma_threadsetting.h>
+#include <cstring>
 
-extern "C" void magma_init_wrapper()
+namespace magma {
+
+inline void init()
 {
     magma_init();
 }
 
-extern "C" void magma_finalize_wrapper()
+inline void finalize()
 {
     magma_finalize();
 }
 
-extern "C" int magma_zhegvdx_2stage_wrapper(int32_t matrix_size, int32_t nv, void* a, int32_t lda, void* b, 
-                                            int32_t ldb, double* eval)
+inline int zhegvdx_2stage(int32_t matrix_size, int32_t nv, void* a, int32_t lda, void* b, 
+                          int32_t ldb, double* eval)
 {
     int m;
     int info;
@@ -73,7 +77,7 @@ extern "C" int magma_zhegvdx_2stage_wrapper(int32_t matrix_size, int32_t nv, voi
     }
 
     if (is_ok) {
-        memcpy(eval, &w[0], nv * sizeof(double));
+        std::memcpy(eval, &w[0], nv * sizeof(double));
     }
     
     cudaFreeHost(h_work);
@@ -87,8 +91,8 @@ extern "C" int magma_zhegvdx_2stage_wrapper(int32_t matrix_size, int32_t nv, voi
     return 1;
 }
 
-extern "C" int magma_dsygvdx_2stage_wrapper(int32_t matrix_size, int32_t nv, void* a, int32_t lda, void* b, 
-                                            int32_t ldb, double* eval)
+inline int dsygvdx_2stage(int32_t matrix_size, int32_t nv, void* a, int32_t lda, void* b, 
+                          int32_t ldb, double* eval)
 {
     int m;
     int info;
@@ -149,7 +153,7 @@ extern "C" int magma_dsygvdx_2stage_wrapper(int32_t matrix_size, int32_t nv, voi
     return 1;
 }
 
-extern "C" int magma_dsyevdx_wrapper(int32_t matrix_size, int32_t nv, double* a, int32_t lda, double* eval)
+inline int dsyevdx(int32_t matrix_size, int32_t nv, double* a, int32_t lda, double* eval)
 {
     int info, m;
 
@@ -209,7 +213,7 @@ extern "C" int magma_dsyevdx_wrapper(int32_t matrix_size, int32_t nv, double* a,
     return 1;
 }
 
-extern "C" int magma_zheevdx_wrapper(int32_t matrix_size, int32_t nv, cuDoubleComplex* a, int32_t lda, double* eval)
+inline int zheevdx(int32_t matrix_size, int32_t nv, cuDoubleComplex* a, int32_t lda, double* eval)
 {
     int info, m;
 
@@ -276,7 +280,7 @@ extern "C" int magma_zheevdx_wrapper(int32_t matrix_size, int32_t nv, cuDoubleCo
     return 1;
 }
 
-extern "C" int magma_zheevdx_2stage_wrapper(int32_t matrix_size, int32_t nv, cuDoubleComplex* a, int32_t lda, double* eval)
+inline int zheevdx_2stage(int32_t matrix_size, int32_t nv, cuDoubleComplex* a, int32_t lda, double* eval)
 {
     int info, m;
 
@@ -343,10 +347,9 @@ extern "C" int magma_zheevdx_2stage_wrapper(int32_t matrix_size, int32_t nv, cuD
     return 1;
 }
 
-extern "C" int magma_dpotrf_wrapper(char uplo, int n, double* A, int lda)
+inline int dpotrf(char uplo, int n, double* A, int lda)
 {
-    if (!(uplo == 'U' || uplo == 'L'))
-    {
+    if (!(uplo == 'U' || uplo == 'L')) {
         printf("magma_dpotrf_wrapper: wrong uplo\n");
         exit(-1);
     }
@@ -356,10 +359,9 @@ extern "C" int magma_dpotrf_wrapper(char uplo, int n, double* A, int lda)
     return info;
 }
 
-extern "C" int magma_zpotrf_wrapper(char uplo, int n, magmaDoubleComplex* A, int lda)
+inline int zpotrf(char uplo, int n, magmaDoubleComplex* A, int lda)
 {
-    if (!(uplo == 'U' || uplo == 'L'))
-    {
+    if (!(uplo == 'U' || uplo == 'L')) {
         printf("magma_zpotrf_wrapper: wrong uplo\n");
         exit(-1);
     }
@@ -369,10 +371,9 @@ extern "C" int magma_zpotrf_wrapper(char uplo, int n, magmaDoubleComplex* A, int
     return info;
 }
 
-extern "C" int magma_dtrtri_wrapper(char uplo, int n, double* A, int lda)
+inline int dtrtri(char uplo, int n, double* A, int lda)
 {
-    if (!(uplo == 'U' || uplo == 'L'))
-    {
+    if (!(uplo == 'U' || uplo == 'L')) {
         printf("magma_dtrtri_wrapper: wrong uplo\n");
         exit(-1);
     }
@@ -382,10 +383,9 @@ extern "C" int magma_dtrtri_wrapper(char uplo, int n, double* A, int lda)
     return info;
 }
 
-extern "C" int magma_ztrtri_wrapper(char uplo, int n, magmaDoubleComplex* A, int lda)
+inline int ztrtri(char uplo, int n, magmaDoubleComplex* A, int lda)
 {
-    if (!(uplo == 'U' || uplo == 'L'))
-    {
+    if (!(uplo == 'U' || uplo == 'L')) {
         printf("magma_ztrtri_wrapper: wrong uplo\n");
         exit(-1);
     }
@@ -395,5 +395,7 @@ extern "C" int magma_ztrtri_wrapper(char uplo, int n, magmaDoubleComplex* A, int
     return info;
 }
 
+} // namespace magma
 
+#endif
 
