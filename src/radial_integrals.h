@@ -444,6 +444,8 @@ class Radial_integrals_vloc: public Radial_integrals_base<1>
                         s[ir] = (x * atom_type.pp_desc().vloc[ir] + atom_type.zn()) * x;
                     }
                     values_(iat)[iq] = s.interpolate().integrate(0);
+                    //values_(iat)[iq] = s.integrate_simple();
+                    //std::cout << "vloc(0)="<<values_(iat)[iq]<<std::endl;
                 } else {
                     double g = grid_q_[iq];
                     double g2 = g * g;
