@@ -123,9 +123,17 @@ class matrix_storage<T, matrix_storage_t::slab>
             /* reallocate buffers if necessary */
             if (extra_buf_.size() < sz) {
                 extra_buf_     = mdarray<T, 1>(sz);
+                if (pu_ == GPU && prime_.on_device()) {
+                    extra_buf_.allocate(memory_t::device);
+                }
                 send_recv_buf_ = mdarray<T, 1>(sz, memory_t::host, "matrix_storage.send_recv_buf_");
             }
-            extra_ = mdarray<T, 2>(extra_buf_.template at<CPU>(), num_rows__, max_n_loc, "matrix_storage.extra_");
+            if (pu_ == GPU && prime_.on_device()) {
+                extra_ = mdarray<T, 2>(extra_buf_.template at<CPU>(), extra_buf_.template at<GPU>(),
+                                       num_rows__, max_n_loc, "matrix_storage.extra_");
+            } else {
+                extra_ = mdarray<T, 2>(extra_buf_.template at<CPU>(), num_rows__, max_n_loc, "matrix_storage.extra_");
+            }
         }
     }
     
@@ -182,8 +190,8 @@ class matrix_storage<T, matrix_storage_t::slab>
             }
         }
         /* if prime storage was on device, copy extra storage to the device as well */
-        if ((mem_type & memory_t::device) != memory_t::none) {
-            extra_.allocate(memory_t::device);
+        if ((mem_type & memory_t::device) == memory_t::device) {
+            //extra_.allocate(memory_t::device);
             extra_.template copy<memory_t::host, memory_t::device>();
         }
     }
@@ -209,7 +217,7 @@ class matrix_storage<T, matrix_storage_t::slab>
         }
         
         /* move data to host to perfoem MPI a2a communication */
-        if ((mem_type & memory_t::device) != memory_t::none) {
+        if ((mem_type & memory_t::device) == memory_t::device) {
             extra_.template copy<memory_t::device, memory_t::host>();
         }
 
@@ -245,7 +253,7 @@ class matrix_storage<T, matrix_storage_t::slab>
                             rd.counts.data(), rd.offsets.data());
 
         /* move data back to device */
-        if ((mem_type & memory_t::device) != memory_t::none && num_rows_loc()) {
+        if ((mem_type & memory_t::device) == memory_t::device && num_rows_loc()) {
             prime_.template copy<memory_t::host, memory_t::device>(idx0__ * num_rows_loc(), n__ * num_rows_loc());
         }
     }
