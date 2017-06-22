@@ -97,11 +97,15 @@ void Band::apply_h_o(K_point* kp__,
     }
     #endif
     /* apply local part of Hamiltonian */
-    if (ctx_.processing_unit() == CPU) {
-        local_op_->apply_h<CPU>(ispn__, hphi__, N__, n__);
-    }
-    if (ctx_.processing_unit() == GPU) {
-        local_op_->apply_h<GPU>(ispn__, hphi__, N__, n__);
+    switch (ctx_.processing_unit()) {
+        case CPU: {
+            local_op_->apply_h<CPU>(ispn__, hphi__, N__, n__);
+            break;
+        }
+        case GPU: {
+            local_op_->apply_h<GPU>(ispn__, hphi__, N__, n__);
+            break;
+        }
     }
     t1 += omp_get_wtime();
 
