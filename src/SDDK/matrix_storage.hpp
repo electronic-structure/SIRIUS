@@ -148,9 +148,9 @@ class matrix_storage<T, matrix_storage_t::slab>
      */
     template <memory_t mem_type = memory_t::host>
     inline void remap_forward(block_data_descriptor const& row_distr__,
-                              Communicator const& comm_col__,
-                              int n__,
-                              int idx0__ = 0)
+                              Communicator const&          comm_col__,
+                              int                          n__,
+                              int                          idx0__ = 0)
     {
         PROFILE("sddk::matrix_storage::remap_forward");
 
@@ -191,7 +191,6 @@ class matrix_storage<T, matrix_storage_t::slab>
         }
         /* if prime storage was on device, copy extra storage to the device as well */
         if ((mem_type & memory_t::device) == memory_t::device) {
-            //extra_.allocate(memory_t::device);
             extra_.template copy<memory_t::host, memory_t::device>();
         }
     }
@@ -205,9 +204,9 @@ class matrix_storage<T, matrix_storage_t::slab>
      */
     template <memory_t mem_type = memory_t::host>
     inline void remap_backward(block_data_descriptor const& row_distr__,
-                               Communicator const& comm_col__,
-                               int n__,
-                               int idx0__ = 0)
+                               Communicator const&          comm_col__,
+                               int                          n__,
+                               int                          idx0__ = 0)
     {
         PROFILE("sddk::matrix_storage::remap_backward");
 
