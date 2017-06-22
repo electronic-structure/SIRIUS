@@ -13,12 +13,10 @@ inline void Density::add_k_point_contribution_rg(K_point* kp__)
     mdarray<double, 2> density_rg(ptr, fft.local_size(), ctx_.num_mag_dims() + 1, "density_rg");
     density_rg.zero();
 
-    #ifdef __GPU
     if (fft.pu() == GPU) {
         density_rg.allocate(memory_t::device);
-        density_rg.zero_on_device();
+        density_rg.zero<memory_t::device>();
     }
-    #endif
 
     fft.prepare(kp__->gkvec().partition());
 
@@ -31,7 +29,6 @@ inline void Density::add_k_point_contribution_rg(K_point* kp__)
                 continue;
             }
 
-            #pragma omp for schedule(dynamic, 1)
             for (int i = 0; i < kp__->spinor_wave_functions(ispn).pw_coeffs().spl_num_col().local_size(); i++) {
                 int j = kp__->spinor_wave_functions(ispn).pw_coeffs().spl_num_col()[i];
                 double w = kp__->band_occupancy(j + ispn * nfv) * kp__->weight() / omega;
@@ -44,18 +41,22 @@ inline void Density::add_k_point_contribution_rg(K_point* kp__)
                     fft.transform<1>(kp__->gkvec().partition(),
                                      kp__->spinor_wave_functions(ispn).pw_coeffs().extra().template at<CPU>(0, i));
                 }
-
-                if (fft.pu() == GPU) {
-                    #ifdef __GPU
-                    update_density_rg_1_gpu(fft.local_size(), fft.buffer().at<GPU>(), w, density_rg.at<GPU>(0, ispn));
-                    #else
-                    TERMINATE_NO_GPU
-                    #endif
-                } else {
-                    #pragma omp parallel for
-                    for (int ir = 0; ir < fft.local_size(); ir++) {
-                        auto z = fft.buffer(ir);
-                        density_rg(ir, ispn) += w * (std::pow(z.real(), 2) + std::pow(z.imag(), 2));
+                switch (fft.pu()) {
+                    case CPU: {
+                        #pragma omp parallel for schedule(static)
+                        for (int ir = 0; ir < fft.local_size(); ir++) {
+                            auto z = fft.buffer(ir);
+                            density_rg(ir, ispn) += w * (std::pow(z.real(), 2) + std::pow(z.imag(), 2));
+                        }
+                        break;
+                    }
+                    case GPU: {
+                        #ifdef __GPU
+                        update_density_rg_1_gpu(fft.local_size(), fft.buffer().at<GPU>(), w, density_rg.at<GPU>(0, ispn));
+                        #else
+                        TERMINATE_NO_GPU
+                        #endif
+                        break;
                     }
                 }
             }
@@ -66,7 +67,6 @@ inline void Density::add_k_point_contribution_rg(K_point* kp__)
 
         std::vector<double_complex> psi_r(fft.local_size());
 
-        #pragma omp for schedule(dynamic, 1)
         for (int i = 0; i < kp__->spinor_wave_functions(0).pw_coeffs().spl_num_col().local_size(); i++) {
             int j = kp__->spinor_wave_functions(0).pw_coeffs().spl_num_col()[i];
             double w = kp__->band_occupancy(j) * kp__->weight() / omega;
@@ -87,7 +87,7 @@ inline void Density::add_k_point_contribution_rg(K_point* kp__)
                 //TERMINATE_NO_GPU
                 //#endif
             } else {
-                #pragma omp parallel for
+                #pragma omp parallel for schedule(static)
                 for (int ir = 0; ir < fft.local_size(); ir++) {
                     auto r0 = (std::pow(psi_r[ir].real(), 2) + std::pow(psi_r[ir].imag(), 2)) * w;
                     auto r1 = (std::pow(fft.buffer(ir).real(), 2) + std::pow(fft.buffer(ir).imag(), 2)) * w;
@@ -103,11 +103,9 @@ inline void Density::add_k_point_contribution_rg(K_point* kp__)
         }
     }
 
-    #ifdef __GPU
     if (fft.pu() == GPU) {
-        density_rg.copy_to_host();
+        density_rg.copy<memory_t::device, memory_t::host>();
     }
-    #endif
     
     /* switch from real density matrix to density and magnetization */
     switch (ctx_.num_mag_dims()) {
