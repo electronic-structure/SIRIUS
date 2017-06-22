@@ -84,9 +84,9 @@ class wave_functions
     public:
         
         /// Constructor for PW wave-functions.
-        wave_functions(device_t pu__,
+        wave_functions(device_t    pu__,
                        Gvec const& gkvec__,
-                       int num_wf__)
+                       int         num_wf__)
             : pu_(pu__)
             , comm_(gkvec__.comm())
             , gkvec_(gkvec__)
@@ -98,9 +98,9 @@ class wave_functions
 
         /// Constructor for PW wave-functions.
         wave_functions(double_complex* ptr__,
-                       device_t pu__,
-                       Gvec const& gkvec__,
-                       int num_wf__)
+                       device_t        pu__,
+                       Gvec const&     gkvec__,
+                       int             num_wf__)
             : pu_(pu__)
             , comm_(gkvec__.comm())
             , gkvec_(gkvec__)
@@ -111,11 +111,11 @@ class wave_functions
         }
 
         /// Constructor for LAPW wave-functions.
-        wave_functions(device_t pu__,
-                       Gvec const& gkvec__,
-                       int num_atoms__,
+        wave_functions(device_t                pu__,
+                       Gvec const&             gkvec__,
+                       int                     num_atoms__,
                        std::function<int(int)> mt_size__,
-                       int num_wf__)
+                       int                     num_wf__)
             : pu_(pu__)
             , comm_(gkvec__.comm())
             , gkvec_(gkvec__)
@@ -424,6 +424,76 @@ class wave_functions
             }
         }
         #endif
+
+        //template <memory_t mem_type>
+        //inline void zero(int i0__, int n__)
+        //{
+        //    pw_coeffs().prime().zero<mem_type>(i0__, n__);
+        //    if (has_mt_) {
+        //        mt_coeffs().prime().zero<mem_type>(i0__, n__);
+        //    }
+        //}
+};
+
+/// A set of wave-functions.
+/** This class is used to store several idential sets of wave-functions (for example, the spinor components). */
+class Wave_functions
+{
+  private:
+    /// Set of wave-functions.
+    std::vector<std::unique_ptr<wave_functions>> components_;
+
+  public:
+    
+    /// Default construnctor.
+    Wave_functions()
+    {
+    }
+
+    /// Constructor for PW wave-functions.
+    Wave_functions(device_t    pu__,
+                   Gvec const& gkvec__,
+                   int         num_wf__,
+                   int         num_components__)
+    {
+        for (int i = 0; i < num_components__; i++) {
+            components_.push_back(std::unique_ptr<wave_functions>(new wave_functions(pu__, gkvec__, num_wf__)));
+        }
+    }
+
+    /// Constructor for PW wave-functions.
+    Wave_functions(double_complex* ptr__,
+                   device_t        pu__,
+                   Gvec const&     gkvec__,
+                   int             num_wf__,
+                   int             num_components__)
+    {
+        int offs{0};
+        for (int i = 0; i < num_components__; i++) {
+            components_.push_back(std::unique_ptr<wave_functions>(new wave_functions(ptr__ + offs, pu__, gkvec__, num_wf__)));
+            offs += gkvec__.count() * num_wf__;
+        }
+    }
+
+    /// Constructor for LAPW wave-functions.
+    Wave_functions(device_t                pu__,
+                   Gvec const&             gkvec__,
+                   int                     num_atoms__,
+                   std::function<int(int)> mt_size__,
+                   int                     num_wf__,
+                   int                     num_components__)
+    {
+        for (int i = 0; i < num_components__; i++) {
+            components_.push_back(std::unique_ptr<wave_functions>(new wave_functions(pu__, gkvec__, num_atoms__, mt_size__, num_wf__)));
+        }
+    }
+    
+    /// Return a single component.
+    wave_functions& component(int idx__)
+    {
+        assert(idx__ >=0 && idx__ < (int)components_.size());
+        return *components_[idx__];
+    }
 };
 
 /// Linear transformation of the wave-functions.

@@ -102,6 +102,11 @@ class type_wrapper<double>
             return static_cast<double>(rnd()) / std::numeric_limits<uint32_t>::max();
             //return double(std::rand()) / RAND_MAX;
         }
+
+        static real_t bypass(complex_t val__)
+        {
+            return val__.real();
+        }
 };
 
 template<> 
@@ -168,6 +173,11 @@ class type_wrapper<double_complex>
             double x = static_cast<double>(rnd()) / std::numeric_limits<uint32_t>::max();
             double y = static_cast<double>(rnd()) / std::numeric_limits<uint32_t>::max();
             return std::complex<double>(x, y);
+        }
+
+        static complex_t bypass(complex_t val__)
+        {
+            return val__;
         }
 };
 
