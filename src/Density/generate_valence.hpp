@@ -39,12 +39,6 @@ inline void Density::generate_valence(K_point_set& ks__)
 
         for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
             int nbnd = kp->num_occupied_bands(ispn);
-            /* copy wave-functions to GPU */
-            #ifdef __GPU
-            if (ctx_.processing_unit() == GPU) {
-                kp->spinor_wave_functions(ispn).pw_coeffs().copy_to_device(0, nbnd);
-            }
-            #endif
             /* swap wave functions */
             switch (ctx_.processing_unit()) {
                 case CPU: {
