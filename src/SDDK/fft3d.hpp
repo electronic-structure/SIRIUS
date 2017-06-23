@@ -187,7 +187,7 @@ class FFT3D
                     case -1: {
                         /* transform all columns */
                         cufft::forward_transform(cufft_plan_z_, (cuDoubleComplex*)fft_buffer_aux__.at<GPU>());
-                        acc::zero(data__, gvec__.gvec_count_fft()); // TODO: this should happen in cufft_batch_unload_gpu()
+                        //acc::zero(data__, gvec__.gvec_count_fft()); // TODO: this should happen in cufft_batch_unload_gpu()
                         /* get all columns from FFT buffer */
                         cufft_batch_unload_gpu(gvec__.zcol_count_fft() * grid_.size(2),
                                                gvec__.gvec_count_fft(),
