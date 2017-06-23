@@ -440,11 +440,6 @@ class mdarray_base
     /// Allocate memory for array.
     void allocate(memory_t memory__) const
     {
-        //if ((memory__ & memory_t::host) != memory_t::none && (memory__ & memory_t::host_pinned) != memory_t::none) {
-        //    printf("error at line %i of file %s: host memory can only be of one type\n", __LINE__, __FILE__);
-        //    exit(0);
-        //}
-
         #ifndef __GPU
         if ((memory__ & memory_t::host_pinned) == memory_t::host_pinned) {
             memory__ = memory_t::host;
@@ -617,14 +612,6 @@ class mdarray_base
         return (int32_t)dims_[0].size();
     }
 
-    inline void zero()
-    {
-        if (size() > 0) {
-            mdarray_assert(raw_ptr_ != nullptr);
-            std::memset(raw_ptr_, 0, size() * sizeof(T));
-        }
-    }
-
     /// Compute hash of the array
     /** Example: printf("hash(h) : %16llX\n", h.hash()); */
     inline uint64_t hash() const
@@ -714,7 +701,7 @@ class mdarray_base
     template <memory_t mem_type__>
     inline void zero(size_t idx0__, size_t n__)
     {
-        assert(idx0__ + n__ <= size());
+        mdarray_assert(idx0__ + n__ <= size());
         if (((mem_type__ & memory_t::host) == memory_t::host) && n__) {
             mdarray_assert(raw_ptr_ != nullptr);
             std::memset(&raw_ptr_[idx0__], 0, n__ * sizeof(T));
@@ -726,7 +713,7 @@ class mdarray_base
         #endif
     }
 
-    template <memory_t mem_type__>
+    template <memory_t mem_type__ = memory_t::host>
     inline void zero()
     {
         zero<mem_type__>(0, size());
@@ -781,10 +768,10 @@ class mdarray_base
         acc::copyout(raw_ptr_, raw_ptr_device_, size(), stream_id__);
     }
 
-    void zero_on_device()
-    {
-        acc::zero(raw_ptr_device_, size());
-    }
+    //void zero_on_device()
+    //{
+    //    acc::zero(raw_ptr_device_, size());
+    //}
     #endif
 
     inline bool on_device() const

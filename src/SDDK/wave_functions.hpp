@@ -268,12 +268,10 @@ class wave_functions
 
             mdarray<double, 1> norm(n__, memory_t::host, "l2norm");
             norm.zero();
-            #ifdef __GPU
             if (pu_ == GPU) {
                 norm.allocate(memory_t::device);
-                norm.zero_on_device();
+                norm.zero<memory_t::device>();
             }
-            #endif
              
             if (pu_ == CPU) {
                 #pragma omp parallel for
@@ -343,7 +341,7 @@ class wave_functions
             #ifdef __GPU
             if (pu_ == GPU) {
                 mdarray<double_complex, 1> cs1(n__, memory_t::host | memory_t::device, "checksum");
-                cs1.zero_on_device();
+                cs1.zero<memory_t::device>();
                 add_checksum_gpu(pw_coeffs().prime().at<GPU>(0, i0__), pw_coeffs().num_rows_loc(), n__, cs1.at<GPU>());
                 cs1.copy_to_host();
                 cs = cs1.checksum();
@@ -368,7 +366,7 @@ class wave_functions
             #ifdef __GPU
             if (pu_ == GPU) {
                 mdarray<double_complex, 1> cs1(n__, memory_t::host | memory_t::device, "checksum");
-                cs1.zero_on_device();
+                cs1.zero<memory_t::device>();
                 add_checksum_gpu(pw_coeffs().prime().at<GPU>(0, i0__), pw_coeffs().num_rows_loc(), n__, cs1.at<GPU>());
                 if (has_mt_ && mt_coeffs().num_rows_loc()) {
                     add_checksum_gpu(mt_coeffs().prime().at<GPU>(0, i0__), mt_coeffs().num_rows_loc(), n__, cs1.at<GPU>());
