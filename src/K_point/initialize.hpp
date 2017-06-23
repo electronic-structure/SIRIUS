@@ -173,34 +173,30 @@ inline void K_point::initialize()
                                                                                 return unit_cell_.atom(ia).mt_basis_size();
                                                                             },
                                                                             ctx_.num_fv_states()));
-
-            for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-                spinor_wave_functions_[ispn] = std::unique_ptr<wave_functions>(new wave_functions(ctx_.processing_unit(),
-                                                                                                  gkvec(),
-                                                                                                  unit_cell_.num_atoms(),
-                                                                                                  [this](int ia)
-                                                                                                  {
-                                                                                                      return unit_cell_.atom(ia).mt_basis_size();
-                                                                                                  },
-                                                                                                  nst));
-            }
+            
+            spinor_wave_functions_ = Wave_functions(ctx_.processing_unit(),
+                                                    gkvec(),
+                                                    unit_cell_.num_atoms(),
+                                                    [this](int ia)
+                                                    {
+                                                        return unit_cell_.atom(ia).mt_basis_size();
+                                                    },
+                                                    nst,
+                                                    ctx_.num_spins());
         } else {
             TERMINATE_NOT_IMPLEMENTED
         }
     } else {
         assert(ctx_.num_fv_states() < num_gkvec());
 
-        for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-            spinor_wave_functions_[ispn] = std::unique_ptr<wave_functions>(new wave_functions(ctx_.processing_unit(), gkvec(), nst));
-
-        }
+        spinor_wave_functions_ = Wave_functions(ctx_.processing_unit(), gkvec(), nst, ctx_.num_spins());
     }
     if (ctx_.processing_unit() == GPU) {
         /* allocate GPU memory */
         for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-            spinor_wave_functions_[ispn]->pw_coeffs().prime().allocate(memory_t::device);
+            spinor_wave_functions_.component(ispn).pw_coeffs().prime().allocate(memory_t::device);
             if (ctx_.full_potential()) {
-                spinor_wave_functions_[ispn]->mt_coeffs().prime().allocate(memory_t::device);
+                spinor_wave_functions_.component(ispn).mt_coeffs().prime().allocate(memory_t::device);
             }
         }
     }

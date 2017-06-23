@@ -79,7 +79,7 @@ class K_point
         std::unique_ptr<wave_functions> fv_states_{nullptr};
 
         /// Two-component (spinor) wave functions describing the bands.
-        std::unique_ptr<wave_functions> spinor_wave_functions_[2] = {nullptr, nullptr};
+        Wave_functions spinor_wave_functions_;
 
         /// Band occupation numbers.
         std::vector<double> band_occupancies_;
@@ -235,7 +235,7 @@ class K_point
         /// Generate two-component spinor wave functions 
         inline void generate_spinor_wave_functions();
 
-        Periodic_function<double_complex>* spinor_wave_function_component(int lmax, int ispn, int j);
+        //Periodic_function<double_complex>* spinor_wave_function_component(int lmax, int ispn, int j);
 
         void save(int id);
 
@@ -255,21 +255,12 @@ class K_point
         /// Get the number of occupied bands for each spin channel.
         int num_occupied_bands(int ispn__ = -1)
         {
-            //int nbnd{0};
-
             if (ctx_.num_mag_dims() == 3) {
                 for (int j = ctx_.num_bands() - 1; j >= 0; j--) {
                     if (std::abs(band_occupancy(j) * weight()) > 1e-14) {
                         return j + 1;
                     }
                 }
-
-                //for (int j = 0; j < ctx_.num_bands(); j++) {
-                //    if (band_occupancy(j) * weight() > 1e-14) {
-                //        nbnd++;
-                //    }
-                //}
-                //return nbnd;
             }
 
             if (!(ispn__ == 0 || ispn__ == 1)) {
@@ -285,14 +276,6 @@ class K_point
             
             TERMINATE("number of occupied bands is not found");
             return -1;
-
-            //for (int i = 0; i < ctx_.num_fv_states(); i++) {
-            //    int j = i + ispn__ * ctx_.num_fv_states();
-            //    if (band_occupancy(j) * weight() > 1e-14) {
-            //        nbnd++;
-            //    }
-            //}
-            //return nbnd;
         }
 
         /// Total number of G+k vectors within the cutoff distance
@@ -398,7 +381,12 @@ class K_point
 
         inline wave_functions& spinor_wave_functions(int ispn__)
         {
-            return *(spinor_wave_functions_[ispn__]);
+            return spinor_wave_functions_.component(ispn__);
+        }
+
+        inline Wave_functions& spinor_wave_functions()
+        {
+            return spinor_wave_functions_;
         }
 
         inline wave_functions& singular_components()
