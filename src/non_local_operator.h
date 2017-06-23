@@ -62,20 +62,16 @@ class Non_local_operator
             auto& uc = beta_.unit_cell();
             packed_mtrx_offset_ = mdarray<int, 1>(uc.num_atoms());
             packed_mtrx_size_ = 0;
-            for (int ia = 0; ia < uc.num_atoms(); ia++)
-            {   
+            for (int ia = 0; ia < uc.num_atoms(); ia++) {   
                 int nbf = uc.atom(ia).mt_basis_size();
                 packed_mtrx_offset_(ia) = packed_mtrx_size_;
                 packed_mtrx_size_ += nbf * nbf;
             }
 
-            #ifdef __GPU
-            if (pu_ == GPU)
-            {
+            if (pu_ == GPU) {
                 packed_mtrx_offset_.allocate(memory_t::device);
-                packed_mtrx_offset_.copy_to_device();
+                packed_mtrx_offset_.template copy<memory_t::host, memory_t::device>();
             }
-            #endif
         }
 
         ~Non_local_operator()
@@ -261,38 +257,48 @@ class D_operator: public Non_local_operator<T>
         {
             this->op_ = mdarray<T, 2>(this->packed_mtrx_size_, ctx__.num_mag_dims() + 1);
             this->op_.zero();
+            /* D-matrix is complex in non-collinear case */
+            if (ctx__.num_mag_dims() == 3) {
+                assert((std::is_same<T, double_complex>::value));
+            }
 
             auto& uc = this->beta_.unit_cell();
 
-            for (int j = 0; j < ctx__.num_mag_dims() + 1; j++) {
-                for (int ia = 0; ia < uc.num_atoms(); ia++) {
-                    int nbf = uc.atom(ia).mt_basis_size();
-                    for (int xi2 = 0; xi2 < nbf; xi2++) {
-                        for (int xi1 = 0; xi1 < nbf; xi1++) {
-                            this->op_(this->packed_mtrx_offset_(ia) + xi2 * nbf + xi1, j) = uc.atom(ia).d_mtrx(xi1, xi2, j);
+            for (int ia = 0; ia < uc.num_atoms(); ia++) {
+                int nbf = uc.atom(ia).mt_basis_size();
+                for (int xi2 = 0; xi2 < nbf; xi2++) {
+                    for (int xi1 = 0; xi1 < nbf; xi1++) {
+                        int idx = xi2 * nbf + xi1;
+                        switch (ctx__.num_mag_dims()) {
+                            case 3: {
+                                double bx = uc.atom(ia).d_mtrx(xi1, xi2, 2);
+                                double by = uc.atom(ia).d_mtrx(xi1, xi2, 3);
+                                this->op_(this->packed_mtrx_offset_(ia) + idx, 2) = type_wrapper<T>::bypass(double_complex(bx, -by));
+                                this->op_(this->packed_mtrx_offset_(ia) + idx, 3) = type_wrapper<T>::bypass(double_complex(by, by));
+                            }
+                            case 1: {
+                                double v = uc.atom(ia).d_mtrx(xi1, xi2, 0);
+                                double bz = uc.atom(ia).d_mtrx(xi1, xi2, 1);
+                                this->op_(this->packed_mtrx_offset_(ia) + idx, 0) = v + bz;
+                                this->op_(this->packed_mtrx_offset_(ia) + idx, 1) = v - bz;
+                                break;
+                            }
+                            case 0: {
+                                this->op_(this->packed_mtrx_offset_(ia) + idx, 0) = uc.atom(ia).d_mtrx(xi1, xi2, 0);
+                                break;
+                            }
+                            default: {
+                                TERMINATE("wrong number of magnetic dimensions");
+                            }
                         }
                     }
                 }
             }
-            if (ctx__.num_mag_dims()) {
-                for (int ia = 0; ia < uc.num_atoms(); ia++) {
-                    int nbf = uc.atom(ia).mt_basis_size();
-                    for (int xi2 = 0; xi2 < nbf; xi2++) {
-                        for (int xi1 = 0; xi1 < nbf; xi1++) {
-                            auto v0 = this->op_(this->packed_mtrx_offset_(ia) + xi2 * nbf + xi1, 0); 
-                            auto v1 = this->op_(this->packed_mtrx_offset_(ia) + xi2 * nbf + xi1, 1); 
-                            this->op_(this->packed_mtrx_offset_(ia) + xi2 * nbf + xi1, 0) = std::real(v0 + v1);
-                            this->op_(this->packed_mtrx_offset_(ia) + xi2 * nbf + xi1, 1) = std::real(v0 - v1);
-                        }
-                    }
-                }
-            }
-            #ifdef __GPU
+
             if (this->pu_ == GPU) {
                 this->op_.allocate(memory_t::device);
-                this->op_.copy_to_device();
+                this->op_.template copy<memory_t::host, memory_t::device>();
             }
-            #endif
         }
 };
 
