@@ -111,6 +111,11 @@ inline constexpr memory_t operator|(memory_t a__, memory_t b__)
     return static_cast<memory_t>(static_cast<unsigned int>(a__) | static_cast<unsigned int>(b__));
 }
 
+inline constexpr bool on_device(memory_t mem_type__)
+{
+    return (mem_type__ & memory_t::device) == memory_t::device ? true : false;
+}
+
 /// Index descriptor of mdarray.
 class mdarray_index_descriptor
 {
