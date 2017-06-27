@@ -772,11 +772,6 @@ class mdarray_base
     {
         acc::copyout(raw_ptr_, raw_ptr_device_, size(), stream_id__);
     }
-
-    //void zero_on_device()
-    //{
-    //    acc::zero(raw_ptr_device_, size());
-    //}
     #endif
 
     inline bool on_device() const
