@@ -630,13 +630,27 @@ class mdarray_base
         return h;
     }
 
-    inline T checksum() const
+    inline T checksum_w(size_t idx0__, size_t size__) const
     {
         T cs{0};
-        for (size_t i = 0; i < size(); i++) {
-            cs += raw_ptr_[i];
+        for (size_t i = 0; i < size__; i++) {
+            cs += raw_ptr_[idx0__ + i] * static_cast<double>((i & 0xF) - 8);
         }
         return cs;
+    }
+
+    inline T checksum(size_t idx0__, size_t size__) const
+    {
+        T cs{0};
+        for (size_t i = 0; i < size__; i++) {
+            cs += raw_ptr_[idx0__ + i];
+        }
+        return cs;
+    }
+
+    inline T checksum() const
+    {
+        return checksum(0, size());
     }
 
     //== template <device_t pu>
