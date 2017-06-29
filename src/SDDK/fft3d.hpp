@@ -1,4 +1,4 @@
-// Copyright (c) 2013-2016 Anton Kozhevnikov, Thomas Schulthess
+// Copyright (c) 2013-2017 Anton Kozhevnikov, Thomas Schulthess
 // All rights reserved.
 // 
 // Redistribution and use in source and binary forms, with or without modification, are permitted provided that 
@@ -36,9 +36,6 @@
 
 namespace sddk {
 
-// TODO:  add += operation for (-1) transform, i.e. accumulate in the output buffer. This will allow to get rid of
-//        temporary vphi1, vphi2 buffers in Local_operator
-
 /// Implementation of FFT3D.
 /** FFT convention:
  *  \f[
@@ -55,7 +52,7 @@ namespace sddk {
  *  The following cases are handeled by the FFT driver:
  *    - transformation of a single real / complex function (serial / parallel, cpu / gpu)
  *    - transformation of two real functions (serial / parallel, cpu / gpu)
- *    - input / ouput data buffer pointer (cpu / gpu)
+ *    - input / ouput data buffer pointer (cpu / gpu). GPU input pointer works only in serial.
  *
  *  The transformation of two real functions is done as one transformation of complex function:
  *  \f[
@@ -78,6 +75,9 @@ namespace sddk {
  *   \psi_{1,2}^{*}(G_x, G_y, z) = \sum_{G_z} e^{-izG_z} \psi_{1,2}^{*}(G_x, G_y, G_z) = 
  *      \sum_{G_z} e^{-izG_z} \psi_{1,2}(-G_x, -G_y, -G_z) = \psi_{1,2}(-G_x, -G_y, z)
  *  \f]
+ *
+ *  \todo add += operation for (-1) transform, i.e. accumulate in the output buffer.
+ *  \todo GPU input ponter for parallel FFT
  */
 class FFT3D
 {
@@ -137,6 +137,8 @@ class FFT3D
         /// Mapping of G-vectors of z-columns to the FFT buffer for batched 1D transform.
         mdarray<int, 1> map_zcol_to_fft_buffer_;
         mdarray<int, 1> map_zcol_to_fft_buffer_x0y0_;
+        
+        int const cufft_stream_id{0};
         #endif
 
         /// Position of z-columns inside 2D FFT buffer. 
@@ -166,19 +168,19 @@ class FFT3D
                 switch (direction) {
                     case 1: {
                         /* load all columns into FFT buffer */
-                        cufft_batch_load_gpu(gvec__.zcol_count_fft() * grid_.size(2),
+                        cufft_batch_load_gpu(num_zcol_local * grid_.size(2),
                                              gvec__.gvec_count_fft(),
                                              1, 
                                              map_zcol_to_fft_buffer_.at<GPU>(),
                                              (cuDoubleComplex*)data__,
                                              (cuDoubleComplex*)fft_buffer_aux__.at<GPU>(),
-                                             0);
+                                             cufft_stream_id);
                         if (is_reduced && comm_.rank() == 0) {
                             cufft_load_x0y0_col_gpu(static_cast<int>(gvec__.zcol(0).z.size()),
                                                     map_zcol_to_fft_buffer_x0y0_.at<GPU>(),
                                                     (cuDoubleComplex*)data__,
                                                     (cuDoubleComplex*)fft_buffer_aux__.at<GPU>(),
-                                                    0);
+                                                    cufft_stream_id);
                         }
                         /* transform all columns */
                         cufft::backward_transform(cufft_plan_z_, (cuDoubleComplex*)fft_buffer_aux__.at<GPU>());
@@ -187,7 +189,6 @@ class FFT3D
                     case -1: {
                         /* transform all columns */
                         cufft::forward_transform(cufft_plan_z_, (cuDoubleComplex*)fft_buffer_aux__.at<GPU>());
-                        //acc::zero(data__, gvec__.gvec_count_fft()); // TODO: this should happen in cufft_batch_unload_gpu()
                         /* get all columns from FFT buffer */
                         cufft_batch_unload_gpu(gvec__.zcol_count_fft() * grid_.size(2),
                                                gvec__.gvec_count_fft(),
@@ -197,14 +198,14 @@ class FFT3D
                                                (cuDoubleComplex*)data__,
                                                0.0,
                                                norm,
-                                               0);
+                                               cufft_stream_id);
                         break;
                     }
                     default: {
                         TERMINATE("wrong direction");
                     }
                 }
-                acc::sync_stream(0);
+                acc::sync_stream(cufft_stream_id);
                 #endif
             }
             
@@ -251,7 +252,6 @@ class FFT3D
                                               &fftw_buffer_z_[tid][offs] + lsz, 
                                               &fft_buffer_aux__[offs * num_zcol_local + i * lsz]);
                                 }
-
                                 break;
 
                             }
@@ -325,22 +325,18 @@ class FFT3D
                 }
             
                 /* buffer is on CPU after mpi_a2a and has to be copied to GPU */
-                #ifdef __GPU
                 if (data_ptr_type == GPU && comm_.size() > 1) {
-                    fft_buffer_aux__.copy_to_device(gvec__.zcol_count_fft() * grid_.size(2));
+                    fft_buffer_aux__.copy<memory_t::host, memory_t::device>(gvec__.zcol_count_fft() * grid_.size(2));
                 }
-                #endif
             }
 
             transform_z_serial<direction, data_ptr_type>(gvec__, data__, fft_buffer_aux__);
 
             if (direction == 1) {
                 /* data is on GPU but we need to perform mpi_a2a */
-                #ifdef __GPU
                 if (data_ptr_type == GPU && comm_.size() > 1) {
-                    fft_buffer_aux__.copy_to_host(gvec__.zcol_count_fft() * grid_.size(2));
+                    fft_buffer_aux__.copy<memory_t::device, memory_t::host>(gvec__.zcol_count_fft() * grid_.size(2));
                 }
-                #endif
 
                 /* scatter z-columns between slabs of FFT buffer */
                 if (comm_.size() > 1) {
@@ -363,11 +359,9 @@ class FFT3D
                               &fft_buffer_aux__[0]);
                 }
 
-                #ifdef __GPU
                 if ((data_ptr_type == CPU && pu_ == GPU) || (data_ptr_type == GPU && comm_.size() > 1)) {
-                    fft_buffer_aux__.copy_to_device(local_size_z_ * gvec__.num_zcol());
+                    fft_buffer_aux__.copy<memory_t::host, memory_t::device>(local_size_z_ * gvec__.num_zcol());
                 }
-                #endif
             }
         } 
         
