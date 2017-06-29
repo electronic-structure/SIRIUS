@@ -1,17 +1,19 @@
 #include "../SDDK/GPU/cuda_common.h"
 
 __global__ void add_pw_ekin_gpu_kernel(int num_gvec__,
+                                       cuDoubleComplex const* phi__,
                                        double const* pw_ekin__,
                                        cuDoubleComplex const* vphi__,
                                        cuDoubleComplex* hphi__)
 {
     int ig = blockIdx.x * blockDim.x + threadIdx.x;
     if (ig < num_gvec__) {
-        hphi__[ig] = cuCadd(vphi__[ig], make_cuDoubleComplex(hphi__[ig].x * pw_ekin__[ig], hphi__[ig].y * pw_ekin__[ig]));
+        hphi__[ig] = cuCadd(vphi__[ig], make_cuDoubleComplex(phi__[ig].x * pw_ekin__[ig], phi__[ig].y * pw_ekin__[ig]));
     }
 }
 
 extern "C" void add_pw_ekin_gpu(int num_gvec__,
+                                cuDoubleComplex const* phi__,
                                 double const* pw_ekin__,
                                 cuDoubleComplex const* vphi__,
                                 cuDoubleComplex* hphi__)
@@ -22,6 +24,7 @@ extern "C" void add_pw_ekin_gpu(int num_gvec__,
     add_pw_ekin_gpu_kernel <<<grid_b, grid_t>>>
     (
         num_gvec__,
+        phi__,
         pw_ekin__,
         vphi__,
         hphi__
