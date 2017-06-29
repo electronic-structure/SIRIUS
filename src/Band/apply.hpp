@@ -87,26 +87,12 @@ void Band::apply_h_o(K_point* kp__,
     PROFILE("sirius::Band::apply_h_o");
     
     double t1 = -omp_get_wtime();
-    /* set initial hphi */
-    hphi__.copy_from(phi__, N__, n__);
-
-    /* copy data to CPU for data remapping */
-    #ifdef __GPU
-    if (ctx_.processing_unit() == GPU) {
-        hphi__.pw_coeffs().copy_to_host(N__, n__);
+    /* for the data remapping we need phi on CPU */
+    if (ctx_.processing_unit() == GPU && phi__.pw_coeffs().is_remapped()) {
+        phi__.pw_coeffs().copy_to_host(N__, n__);
     }
-    #endif
     /* apply local part of Hamiltonian */
-    switch (ctx_.processing_unit()) {
-        case CPU: {
-            local_op_->apply_h<CPU>(ispn__, hphi__, N__, n__);
-            break;
-        }
-        case GPU: {
-            local_op_->apply_h<GPU>(ispn__, hphi__, N__, n__);
-            break;
-        }
-    }
+    local_op_->apply_h(ispn__, phi__, hphi__, N__, n__);
     t1 += omp_get_wtime();
 
     if (kp__->comm().rank() == 0 && ctx_.control().print_performance_) {
@@ -123,7 +109,7 @@ void Band::apply_h_o(K_point* kp__,
     }
 
     /* set intial ophi */
-    ophi__.copy_from(phi__, N__, n__);
+    ophi__.copy_from(phi__, N__, n__, ctx_.processing_unit());
 
     if (!ctx_.unit_cell().mt_lo_basis_size()) {
         return;
@@ -372,8 +358,8 @@ inline void Band::apply_fv_h_o(K_point* kp__,
     }
     
     if (ctx_.control().print_checksum_) {
-        auto cs1 = hphi__.checksum_pw(N__, n__);
-        auto cs2 = ophi__.checksum_pw(N__, n__);
+        auto cs1 = hphi__.checksum_pw(N__, n__, ctx_.processing_unit());
+        auto cs2 = ophi__.checksum_pw(N__, n__, ctx_.processing_unit());
         if (kp__->comm().rank() == 0) {
             DUMP("checksum(hphi_istl): %18.10f %18.10f", cs1.real(), cs1.imag());
             DUMP("checksum(ophi_istl): %18.10f %18.10f", cs2.real(), cs2.imag());
@@ -669,8 +655,8 @@ inline void Band::apply_fv_h_o(K_point* kp__,
     #endif
 
     if (ctx_.control().print_checksum_) {
-        auto cs1 = hphi__.checksum_pw(N__, n__);
-        auto cs2 = ophi__.checksum_pw(N__, n__);
+        auto cs1 = hphi__.checksum_pw(N__, n__, ctx_.processing_unit());
+        auto cs2 = ophi__.checksum_pw(N__, n__, ctx_.processing_unit());
         if (kp__->comm().rank() == 0) {
             DUMP("checksum(hphi_pw): %18.10f %18.10f", cs1.real(), cs1.imag());
             DUMP("checksum(ophi_pw): %18.10f %18.10f", cs2.real(), cs2.imag());
