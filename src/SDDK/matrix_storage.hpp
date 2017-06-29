@@ -1,4 +1,4 @@
-// Copyright (c) 2013-2016 Anton Kozhevnikov, Thomas Schulthess
+// Copyright (c) 2013-2017 Anton Kozhevnikov, Thomas Schulthess
 // All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without modification, are permitted provided that
@@ -43,14 +43,14 @@ template <typename T>
 class matrix_storage<T, matrix_storage_t::slab>
 {
   private:
-    /// Type of processing unit used.
-    device_t pu_;
-
     /// Local number of rows.
     int num_rows_loc_{0};
 
     /// Total number of columns.
     int num_cols_;
+
+    /// Communicator for column distribution in extra storage.
+    Communicator const& comm_col_;
 
     /// Primary storage of matrix.
     mdarray<T, 2> prime_;
@@ -69,95 +69,118 @@ class matrix_storage<T, matrix_storage_t::slab>
     splindex<block> spl_num_col_;
 
   public:
-    matrix_storage(int num_rows_loc__, int num_cols__, device_t pu__)
-        : pu_(pu__)
-        , num_rows_loc_(num_rows_loc__)
+    /// Constructor.
+    matrix_storage(int num_rows_loc__, int num_cols__, Communicator const& comm_col__)
+        : num_rows_loc_(num_rows_loc__)
         , num_cols_(num_cols__)
+        , comm_col_(comm_col__)
     {
         PROFILE("sddk::matrix_storage::matrix_storage");
         /* primary storage of PW wave functions: slabs */
         prime_ = mdarray<T, 2>(num_rows_loc_, num_cols_, memory_t::host, "matrix_storage.prime_");
     }
 
-    matrix_storage(T* ptr__, int num_rows_loc__, int num_cols__, device_t pu__)
-        : pu_(pu__)
-        , num_rows_loc_(num_rows_loc__)
+    /// Constructor.
+    matrix_storage(T* ptr__, int num_rows_loc__, int num_cols__, Communicator const& comm_col__)
+        : num_rows_loc_(num_rows_loc__)
         , num_cols_(num_cols__)
+        , comm_col_(comm_col__)
     {
         PROFILE("sddk::matrix_storage::matrix_storage");
         /* primary storage of PW wave functions: slabs */
         prime_ = mdarray<T, 2>(ptr__, num_rows_loc_, num_cols_, "matrix_storage.prime_");
     }
 
+    /// Check if data needs to be remapped. This happens when comm_col is not trivial communicator.
+    inline bool is_remapped() const
+    {
+        return (comm_col_.size() > 1);
+    }
+
     /// Set the dimensions of the extra matrix storage.
-    /** \param [in] num_rows Number of rows in the extra matrix storage.
-     *  \param [in] comm     Communicator used to distribute columns of the matrix.
+    /** \param [in] pu       Target processing unit.
+     *  \param [in] num_rows Local number of rows in the extra matrix storage.
      *  \param [in] n        Number of matrix columns to distribute.
      *  \param [in] idx0     Starting column of the matrix.
      *
      *  \image html matrix_storage.png "Redistribution of wave-functions between MPI ranks"
      *
-     *  In general, the extra storage is created in the CPU pointer. The only exception is when the data
-     *  distribution doesn't change (no swapping between comm_col ranks is performed) – then the extra
-     *  storage will mirror the prime storage (both on CPU and GPU).
+     *  The extra storage is always created in the CPU memory. If the data distribution doesn't 
+     *  change (no swapping between comm_col ranks is performed) – then the extra storage will mirror 
+     *  the prime storage (both on CPU and GPU) irrespective of the target processing unit. If
+     *  data remapping is necessary and target processing unit is GPU then the extra storage will be 
+     *  allocated on the GPU as well.
      */
-    inline void set_num_extra(int num_rows__, Communicator const& comm_col__, int n__, int idx0__ = 0)
+    inline void set_num_extra(device_t pu__,
+                              int      num_rows__,
+                              int      n__,
+                              int      idx0__ = 0)
     {
         /* this is how n columns of the matrix will be distributed between columns of the MPI grid */
-        spl_num_col_ = splindex<block>(n__, comm_col__.size(), comm_col__.rank());
+        spl_num_col_ = splindex<block>(n__, comm_col_.size(), comm_col_.rank());
+
+        T* ptr{nullptr};
+        T* ptr_d{nullptr};
+        int ncol{0};
 
         /* trivial case */
-        if (comm_col__.size() == 1) {
+        if (!is_remapped()) {
             assert(num_rows_loc_ == num_rows__);
-            if (pu_ == GPU && prime_.on_device()) {
-                extra_ = mdarray<T, 2>(prime_.template at<CPU>(0, idx0__), prime_.template at<GPU>(0, idx0__),
-                                       num_rows__, n__, "matrix_storage.extra_");
-            } else {
-                extra_ = mdarray<T, 2>(prime_.template at<CPU>(0, idx0__), num_rows__, n__, "matrix_storage.extra_");
+            ncol = n__;
+            ptr = prime_.template at<CPU>(0, idx0__);
+            if (prime_.on_device()) {
+                ptr_d = prime_.template at<GPU>(0, idx0__);
             }
         } else {
             /* maximum local number of matrix columns */
-            int max_n_loc = splindex_base<int>::block_size(n__, comm_col__.size());
+            ncol = splindex_base<int>::block_size(n__, comm_col_.size());
             /* upper limit for the size of swapped extra matrix */
-            size_t sz = num_rows__ * max_n_loc;
+            size_t sz = num_rows__ * ncol;
             /* reallocate buffers if necessary */
             if (extra_buf_.size() < sz) {
-                extra_buf_     = mdarray<T, 1>(sz);
-                if (pu_ == GPU && prime_.on_device()) {
-                    extra_buf_.allocate(memory_t::device);
-                }
                 send_recv_buf_ = mdarray<T, 1>(sz, memory_t::host, "matrix_storage.send_recv_buf_");
+                memory_t mem_type = memory_t::none;
+                switch (pu__) {
+                    case CPU: {
+                        mem_type = memory_t:: host;
+                        break;
+                    }
+                    case GPU: {
+                        mem_type = memory_t:: host | memory_t::device;
+                        break;
+                    }
+                }
+                extra_buf_ = mdarray<T, 1>(sz, mem_type);
             }
-            if (pu_ == GPU && prime_.on_device()) {
-                extra_ = mdarray<T, 2>(extra_buf_.template at<CPU>(), extra_buf_.template at<GPU>(),
-                                       num_rows__, max_n_loc, "matrix_storage.extra_");
-            } else {
-                extra_ = mdarray<T, 2>(extra_buf_.template at<CPU>(), num_rows__, max_n_loc, "matrix_storage.extra_");
+            ptr = extra_buf_.template at<CPU>();
+            if (extra_buf_.on_device()) {
+                ptr_d = extra_buf_.template at<GPU>();
             }
         }
+        extra_ = mdarray<T, 2>(ptr, ptr_d, num_rows__, ncol, "matrix_storage.extra_");
     }
     
     /// Remap data from prime to extra storage.
-    /** Prime storage is expected on the CPU (for the MPI a2a communication). If prime storage was also allocated on
-     *  the device, extra storage will be copied to device as well. 
+    /** \param [in] pu        Target processing unit.
      *  \param [in] row_distr Distribution of rows of prime matrix in the extra matrix storage. 
-     *  \param [in] comm      Communicator used to distribute columns of the matrix.
      *  \param [in] n         Number of matrix columns to distribute.
      *  \param [in] idx0      Starting column of the matrix.
-     *  \tparam mem_type      Indicates which type of memory is remapped to exrta storage.
-     */
-    template <memory_t mem_type = memory_t::host>
-    inline void remap_forward(block_data_descriptor const& row_distr__,
-                              Communicator const&          comm_col__,
+     *
+     *  Prime storage is expected on the CPU (for the MPI a2a communication). If the target processing unit is GPU
+     *  extra storage will be copied to the device memory. */
+    inline void remap_forward(device_t                     pu__,
+                              block_data_descriptor const& row_distr__,
                               int                          n__,
                               int                          idx0__ = 0)
     {
         PROFILE("sddk::matrix_storage::remap_forward");
 
-        set_num_extra(row_distr__.counts.back() + row_distr__.offsets.back(), comm_col__, n__, idx0__);
+        /* row_distr describes the local part of the remapped matrix;
+           row_distr__.counts.back() + row_distr__.offsets.back() gives the local number of rows in the extra storage */
+        set_num_extra(pu__, row_distr__.counts.back() + row_distr__.offsets.back(), n__, idx0__);
 
         /* trivial case when extra storage mirrors the prime storage */
-        if (comm_col__.size() == 1) {
+        if (!is_remapped()) {
             return;
         }
 
@@ -165,23 +188,23 @@ class matrix_storage<T, matrix_storage_t::slab>
         int n_loc = spl_num_col_.local_size();
 
         /* send and recieve dimensions */
-        block_data_descriptor sd(comm_col__.size()), rd(comm_col__.size());
-        for (int j = 0; j < comm_col__.size(); j++) {
-            sd.counts[j] = spl_num_col_.local_size(j) * row_distr__.counts[comm_col__.rank()];
-            rd.counts[j] = spl_num_col_.local_size(comm_col__.rank()) * row_distr__.counts[j];
+        block_data_descriptor sd(comm_col_.size()), rd(comm_col_.size());
+        for (int j = 0; j < comm_col_.size(); j++) {
+            sd.counts[j] = spl_num_col_.local_size(j) * row_distr__.counts[comm_col_.rank()];
+            rd.counts[j] = spl_num_col_.local_size(comm_col_.rank()) * row_distr__.counts[j];
         }
         sd.calc_offsets();
         rd.calc_offsets();
 
         T* send_buf = (num_rows_loc_ == 0) ? nullptr : prime_.template at<CPU>(0, idx0__);
 
-        comm_col__.alltoall(send_buf, sd.counts.data(), sd.offsets.data(), send_recv_buf_.template at<CPU>(),
-                            rd.counts.data(), rd.offsets.data());
+        comm_col_.alltoall(send_buf, sd.counts.data(), sd.offsets.data(), send_recv_buf_.template at<CPU>(),
+                           rd.counts.data(), rd.offsets.data());
 
         /* reorder recieved blocks */
         #pragma omp parallel for
         for (int i = 0; i < n_loc; i++) {
-            for (int j = 0; j < comm_col__.size(); j++) {
+            for (int j = 0; j < comm_col_.size(); j++) {
                 int offset = row_distr__.offsets[j];
                 int count  = row_distr__.counts[j];
                 if (count) {
@@ -189,37 +212,32 @@ class matrix_storage<T, matrix_storage_t::slab>
                 }
             }
         }
-        /* if prime storage was on device, copy extra storage to the device as well */
-        if ((mem_type & memory_t::device) == memory_t::device) {
+        /*  copy extra storage to the device if needed */
+        if (pu__ == GPU) {
             extra_.template copy<memory_t::host, memory_t::device>();
         }
     }
 
     /// Remap data from extra to prime storage.
-    /** \param [in] row_distr Distribution of rows of prime matrix in the extra matrix storage. 
-     *  \param [in] comm      Communicator used to distribute columns of the matrix.
+    /** \param [in] pu        Target processing unit.
+     *  \param [in] row_distr Distribution of rows of prime matrix in the extra matrix storage. 
      *  \param [in] n         Number of matrix columns to collect.
      *  \param [in] idx0      Starting column of the matrix.
-     *  \tparam mem_type      Indicates which type of memory is remapped back to prime storage.
-     */
-    template <memory_t mem_type = memory_t::host>
-    inline void remap_backward(block_data_descriptor const& row_distr__,
-                               Communicator const&          comm_col__,
+     *
+     *  Extra storage is expected on the CPU (for the MPI a2a communication). If the target processing unit is GPU
+     *  prime storage will be copied to the device memory. */
+    inline void remap_backward(device_t                     pu__,
+                               block_data_descriptor const& row_distr__,
                                int                          n__,
                                int                          idx0__ = 0)
     {
         PROFILE("sddk::matrix_storage::remap_backward");
 
         /* trivial case when extra storage mirrors the prime storage */
-        if (comm_col__.size() == 1) {
+        if (!is_remapped()) {
             return;
         }
         
-        /* move data to host to perfoem MPI a2a communication */
-        if ((mem_type & memory_t::device) == memory_t::device) {
-            extra_.template copy<memory_t::device, memory_t::host>();
-        }
-
         assert(n__ == spl_num_col_.global_index_size());
 
         /* local number of columns */
@@ -228,7 +246,7 @@ class matrix_storage<T, matrix_storage_t::slab>
         /* reorder sending blocks */
         #pragma omp parallel for
         for (int i = 0; i < n_loc; i++) {
-            for (int j = 0; j < comm_col__.size(); j++) {
+            for (int j = 0; j < comm_col_.size(); j++) {
                 int offset = row_distr__.offsets[j];
                 int count  = row_distr__.counts[j];
                 if (count) {
@@ -238,21 +256,21 @@ class matrix_storage<T, matrix_storage_t::slab>
         }
 
         /* send and recieve dimensions */
-        block_data_descriptor sd(comm_col__.size()), rd(comm_col__.size());
-        for (int j = 0; j < comm_col__.size(); j++) {
-            sd.counts[j] = spl_num_col_.local_size(comm_col__.rank()) * row_distr__.counts[j];
-            rd.counts[j] = spl_num_col_.local_size(j) * row_distr__.counts[comm_col__.rank()];
+        block_data_descriptor sd(comm_col_.size()), rd(comm_col_.size());
+        for (int j = 0; j < comm_col_.size(); j++) {
+            sd.counts[j] = spl_num_col_.local_size(comm_col_.rank()) * row_distr__.counts[j];
+            rd.counts[j] = spl_num_col_.local_size(j) * row_distr__.counts[comm_col_.rank()];
         }
         sd.calc_offsets();
         rd.calc_offsets();
 
         T* recv_buf = (num_rows_loc_ == 0) ? nullptr : prime_.template at<CPU>(0, idx0__);
 
-        comm_col__.alltoall(send_recv_buf_.template at<CPU>(), sd.counts.data(), sd.offsets.data(), recv_buf,
-                            rd.counts.data(), rd.offsets.data());
+        comm_col_.alltoall(send_recv_buf_.template at<CPU>(), sd.counts.data(), sd.offsets.data(), recv_buf,
+                           rd.counts.data(), rd.offsets.data());
 
         /* move data back to device */
-        if ((mem_type & memory_t::device) == memory_t::device && num_rows_loc()) {
+        if (pu__ == GPU && prime_.on_device()) {
             prime_.template copy<memory_t::host, memory_t::device>(idx0__ * num_rows_loc(), n__ * num_rows_loc());
         }
     }
@@ -412,7 +430,7 @@ class matrix_storage<T, matrix_storage_t::slab>
     void deallocate_on_device()
     {
         prime_.deallocate_on_device();
-        extra_.deallocate_on_device();
+        extra_buf_.deallocate_on_device();
     }
     
     /// Copy prime storage to device memory.
