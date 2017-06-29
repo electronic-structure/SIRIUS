@@ -93,7 +93,7 @@ class wave_functions
             , num_wf_(num_wf__)
         {
             pw_coeffs_ = std::unique_ptr<matrix_storage<double_complex, matrix_storage_t::slab>>(
-                new matrix_storage<double_complex, matrix_storage_t::slab>(gkvec_.gvec_count(comm_.rank()), num_wf_, pu_));
+                new matrix_storage<double_complex, matrix_storage_t::slab>(gkvec_.count(), num_wf_, gkvec_.comm_ortho_fft()));
         }
 
         /// Constructor for PW wave-functions.
@@ -107,7 +107,7 @@ class wave_functions
             , num_wf_(num_wf__)
         {
             pw_coeffs_ = std::unique_ptr<matrix_storage<double_complex, matrix_storage_t::slab>>(
-                new matrix_storage<double_complex, matrix_storage_t::slab>(ptr__, gkvec_.gvec_count(comm_.rank()), num_wf_, pu_));
+                new matrix_storage<double_complex, matrix_storage_t::slab>(ptr__, gkvec_.count(), num_wf_, gkvec_.comm_ortho_fft()));
         }
 
         /// Constructor for LAPW wave-functions.
@@ -123,7 +123,7 @@ class wave_functions
             , has_mt_(true)
         {
             pw_coeffs_ = std::unique_ptr<matrix_storage<double_complex, matrix_storage_t::slab>>(
-                new matrix_storage<double_complex, matrix_storage_t::slab>(gkvec_.gvec_count(comm_.rank()), num_wf_, pu_));
+                new matrix_storage<double_complex, matrix_storage_t::slab>(gkvec_.count(), num_wf_, gkvec_.comm_ortho_fft()));
 
             spl_num_atoms_ = splindex<block>(num_atoms__, comm_.size(), comm_.rank());
             mt_coeffs_distr_ = block_data_descriptor(comm_.size());
@@ -142,7 +142,7 @@ class wave_functions
             
             mt_coeffs_ = std::unique_ptr<matrix_storage<double_complex, matrix_storage_t::slab>>(
                 new matrix_storage<double_complex, matrix_storage_t::slab>(mt_coeffs_distr_.counts[comm_.rank()],
-                                                                           num_wf_, pu_));
+                                                                           num_wf_, mpi_comm_null()));
         }
 
         inline matrix_storage<double_complex, matrix_storage_t::slab>& pw_coeffs()
@@ -188,17 +188,26 @@ class wave_functions
         {
             return offset_mt_coeffs_[ialoc__];
         }
-
+        
+        /// Copy values from another wave-function.
+        /** \param [in] src Input wave-function.
+         *  \param [in] i0  Starting index of wave-functions in src.
+         *  \param [in] n   Number of wave-functions to copy.
+         *  \param [in] j0  Starting index of wave-functions in destination.
+         *  \param [in] pu  Type of processging unit which copies data. */
         inline void copy_from(wave_functions const& src__,
                               int i0__,
                               int n__,
-                              int j0__)
+                              int j0__,
+                              device_t pu__)
         {
-            switch (pu_) {
+            switch (pu__) {
                 case CPU: {
+                    /* copy PW part */
                     std::memcpy(pw_coeffs().prime().at<CPU>(0, j0__),
                                 src__.pw_coeffs().prime().at<CPU>(0, i0__),
                                 pw_coeffs().num_rows_loc() * n__ * sizeof(double_complex));
+                    /* copy MT part */
                     if (has_mt_ && mt_coeffs().num_rows_loc()) {
                         std::memcpy(mt_coeffs().prime().at<CPU>(0, j0__),
                                     src__.mt_coeffs().prime().at<CPU>(0, i0__),
@@ -208,43 +217,11 @@ class wave_functions
                 }
                 case GPU: {
                     #ifdef __GPU
+                    /* copy PW part */
                     acc::copy(pw_coeffs().prime().at<GPU>(0, j0__),
                               src__.pw_coeffs().prime().at<GPU>(0, i0__),
                               pw_coeffs().num_rows_loc() * n__);
-                    if (has_mt_ && mt_coeffs().num_rows_loc()) {
-                        acc::copy(mt_coeffs().prime().at<GPU>(0, j0__),
-                                  src__.mt_coeffs().prime().at<GPU>(0, i0__),
-                                  mt_coeffs().num_rows_loc() * n__);
-                    }
-                    #endif
-                    break;
-                }
-            }
-        }
-
-        template <device_t pu>
-        inline void copy_from(wave_functions const& src__,
-                              int i0__,
-                              int n__,
-                              int j0__)
-        {
-            switch (pu) {
-                case CPU: {
-                    std::memcpy(pw_coeffs().prime().at<CPU>(0, j0__),
-                                src__.pw_coeffs().prime().at<CPU>(0, i0__),
-                                pw_coeffs().num_rows_loc() * n__ * sizeof(double_complex));
-                    if (has_mt_ && mt_coeffs().num_rows_loc()) {
-                        std::memcpy(mt_coeffs().prime().at<CPU>(0, j0__),
-                                    src__.mt_coeffs().prime().at<CPU>(0, i0__),
-                                    mt_coeffs().num_rows_loc() * n__ * sizeof(double_complex));
-                    }
-                    break;
-                }
-                case GPU: {
-                    #ifdef __GPU
-                    acc::copy(pw_coeffs().prime().at<GPU>(0, j0__),
-                              src__.pw_coeffs().prime().at<GPU>(0, i0__),
-                              pw_coeffs().num_rows_loc() * n__);
+                    /* copy MT part */
                     if (has_mt_ && mt_coeffs().num_rows_loc()) {
                         acc::copy(mt_coeffs().prime().at<GPU>(0, j0__),
                                   src__.mt_coeffs().prime().at<GPU>(0, i0__),
@@ -256,9 +233,9 @@ class wave_functions
             }
         }
         
-        inline void copy_from(wave_functions const& src__, int i0__, int n__)
+        inline void copy_from(wave_functions const& src__, int i0__, int n__, device_t pu__)
         {
-            copy_from(src__, i0__, n__, i0__);
+            copy_from(src__, i0__, n__, i0__, pu__);
         }
 
         /// Compute L2 norm of first n wave-functions.
@@ -334,24 +311,28 @@ class wave_functions
             return gkvec_;
         }
 
-        inline double_complex checksum_pw(int i0__, int n__)
+        inline double_complex checksum_pw(int i0__, int n__, device_t pu__)
         {
             assert(n__ != 0);
             double_complex cs(0, 0);
-            #ifdef __GPU
-            if (pu_ == GPU) {
-                mdarray<double_complex, 1> cs1(n__, memory_t::host | memory_t::device, "checksum");
-                cs1.zero<memory_t::device>();
-                add_checksum_gpu(pw_coeffs().prime().at<GPU>(0, i0__), pw_coeffs().num_rows_loc(), n__, cs1.at<GPU>());
-                cs1.copy_to_host();
-                cs = cs1.checksum();
-            }
-            #endif
-            if (pu_ == CPU) {
-                for (int i = 0; i < n__; i++) {
-                    for (int j = 0; j < pw_coeffs().num_rows_loc(); j++) {
-                        cs += pw_coeffs().prime(j, i0__ + i);
+            switch (pu__) {
+                case CPU: {
+                    for (int i = 0; i < n__; i++) {
+                        for (int j = 0; j < pw_coeffs().num_rows_loc(); j++) {
+                            cs += pw_coeffs().prime(j, i0__ + i);
+                        }
                     }
+                    break;
+                }
+                case GPU: {
+                    mdarray<double_complex, 1> cs1(n__, memory_t::host | memory_t::device, "checksum");
+                    cs1.zero<memory_t::device>();
+                    #ifdef __GPU
+                    add_checksum_gpu(pw_coeffs().prime().at<GPU>(0, i0__), pw_coeffs().num_rows_loc(), n__, cs1.at<GPU>());
+                    cs1.copy_to_host();
+                    cs = cs1.checksum();
+                    #endif
+                    break;
                 }
             }
             comm_.allreduce(&cs, 1);
@@ -1374,7 +1355,7 @@ inline void orthogonalize(int N__,
         /* phi is transformed into phi, so we can't use it as the output buffer; use tmp instead and then overwrite phi */
         for (auto& e: wfs__) {
             transform(*e, N__, n__, o__, 0, 0, tmp__, 0, n__);
-            e->copy_from(tmp__, 0, n__, N__);
+            e->copy_from(tmp__, 0, n__, N__, pu);
         }
     }
 }
