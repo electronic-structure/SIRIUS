@@ -137,7 +137,6 @@ class Band
         /// Iterative Davidson diagonalization.
         template <typename T>
         inline void diag_pseudo_potential_davidson(K_point* kp__,
-                                                   int ispn__,
                                                    D_operator<T>& d_op__,
                                                    Q_operator<T>& q_op__) const;
         /// RMM-DIIS diagonalization.
@@ -175,31 +174,32 @@ class Band
                        Q_operator<T>& q_op) const;
 
         /// Auxiliary function used internally by residuals() function.
-        inline mdarray<double,1> residuals_aux(K_point* kp__,
-                                               int num_bands__,
-                                               std::vector<double>& eval__,
-                                               wave_functions& hpsi__,
-                                               wave_functions& opsi__,
-                                               wave_functions& res__,
-                                               mdarray<double, 1>& h_diag__,
-                                               mdarray<double, 1>& o_diag__) const;
+        inline mdarray<double, 1> residuals_aux(K_point*             kp__,
+                                                int                  ispn__,
+                                                int                  num_bands__,
+                                                std::vector<double>& eval__,
+                                                wave_functions&      hpsi__,
+                                                wave_functions&      opsi__,
+                                                wave_functions&      res__,
+                                                mdarray<double, 2>&  h_diag__,
+                                                mdarray<double, 1>&  o_diag__) const;
         
         /// Compute residuals.
         template <typename T>
-        inline int residuals(K_point* kp__,
-                             int ispn__,
-                             int N__,
-                             int num_bands__,
+        inline int residuals(K_point*             kp__,
+                             int                  ispn__,
+                             int                  N__,
+                             int                  num_bands__,
                              std::vector<double>& eval__,
                              std::vector<double>& eval_old__,
-                             dmatrix<T>& evec__,
-                             wave_functions& hphi__,
-                             wave_functions& ophi__,
-                             wave_functions& hpsi__,
-                             wave_functions& opsi__,
-                             wave_functions& res__,
-                             mdarray<double, 1>& h_diag__,
-                             mdarray<double, 1>& o_diag__) const;
+                             dmatrix<T>&          evec__,
+                             wave_functions&      hphi__,
+                             wave_functions&      ophi__,
+                             wave_functions&      hpsi__,
+                             wave_functions&      opsi__,
+                             wave_functions&      res__,
+                             mdarray<double, 2>&  h_diag__,
+                             mdarray<double, 1>&  o_diag__) const;
         
         /// Setup the Hermitian subspace matrix.
         /** Compute \f$ O_{ii'} = \langle \phi_i | \hat O | \phi_{i'} \rangle \f$ operator matrix
@@ -311,13 +311,7 @@ class Band
                     STOP();
                 }
             } else if (itso.type_ == "davidson") {
-                if (ctx_.num_mag_dims() != 3) {
-                    for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-                        diag_pseudo_potential_davidson(kp__, ispn, d_op, q_op);
-                    }
-                } else {
-                    STOP();
-                }
+                diag_pseudo_potential_davidson(kp__, d_op, q_op);
             } else if (itso.type_ == "rmm-diis") {
                 if (ctx_.num_mag_dims() != 3) {
                     for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
@@ -746,7 +740,7 @@ class Band
         }
 
         /// Get diagonal elements of LAPW Hamiltonian.
-        inline mdarray<double, 1> get_h_diag(K_point* kp__,
+        inline mdarray<double, 2> get_h_diag(K_point* kp__,
                                              double v0__,
                                              double theta0__) const;
 
@@ -756,10 +750,9 @@ class Band
 
         /// Get diagonal elements of pseudopotential Hamiltonian.
         template <typename T>
-        inline mdarray<double, 1> get_h_diag(K_point* kp__,
-                                             int ispn__,
-                                             double v0__,
-                                             D_operator<T>& d_op__) const;
+        inline mdarray<double, 2> get_h_diag(K_point*        kp__,
+                                             Local_operator& v_loc__,
+                                             D_operator<T>&  d_op__) const;
 
         /// Get diagonal elements of pseudopotential overlap matrix.
         template <typename T>
