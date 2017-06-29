@@ -78,9 +78,9 @@ void Band::apply_h_o(K_point* kp__,
                      int ispn__,
                      int N__,
                      int n__,
-                     wave_functions& phi__,
-                     wave_functions& hphi__,
-                     wave_functions& ophi__,
+                     Wave_functions& phi__,
+                     Wave_functions& hphi__,
+                     Wave_functions& ophi__,
                      D_operator<T>& d_op,
                      Q_operator<T>& q_op) const
 {
@@ -88,8 +88,12 @@ void Band::apply_h_o(K_point* kp__,
     
     double t1 = -omp_get_wtime();
     /* for the data remapping we need phi on CPU */
-    if (ctx_.processing_unit() == GPU && phi__.pw_coeffs().is_remapped()) {
-        phi__.pw_coeffs().copy_to_host(N__, n__);
+    if (ctx_.processing_unit() == GPU) {
+        for (int ispn = 0; ispn < phi__.num_components(); ispn++) {
+            if (phi__.component(ispn).pw_coeffs().is_remapped()) {
+                phi__.component(ispn).pw_coeffs().copy_to_host(N__, n__);
+            }
+        }
     }
     /* apply local part of Hamiltonian */
     local_op_->apply_h(ispn__, phi__, hphi__, N__, n__);
@@ -100,8 +104,8 @@ void Band::apply_h_o(K_point* kp__,
     }
 
     if (ctx_.control().print_checksum_) {
-        auto cs1 = phi__.checksum(N__, n__);
-        auto cs2 = hphi__.checksum(N__, n__);
+        auto cs1 = phi__.component(0).checksum(N__, n__);
+        auto cs2 = hphi__.component(0).checksum(N__, n__);
         if (kp__->comm().rank() == 0) {
             DUMP("checksum(phi): %18.10f %18.10f", cs1.real(), cs1.imag());
             DUMP("checksum(hloc_phi): %18.10f %18.10f", cs2.real(), cs2.imag());
@@ -109,7 +113,9 @@ void Band::apply_h_o(K_point* kp__,
     }
 
     /* set intial ophi */
-    ophi__.copy_from(phi__, N__, n__, ctx_.processing_unit());
+    for (int ispn = 0; ispn < ophi__.num_components(); ispn++) {
+        ophi__.component(ispn).copy_from(phi__.component(ispn), N__, n__, ctx_.processing_unit());
+    }
 
     if (!ctx_.unit_cell().mt_lo_basis_size()) {
         return;
@@ -118,15 +124,15 @@ void Band::apply_h_o(K_point* kp__,
     for (int i = 0; i < ctx_.beta_projector_chunks().num_chunks(); i++) {
         kp__->beta_projectors().generate(i);
 
-        auto beta_phi = kp__->beta_projectors().inner<T>(i, phi__, N__, n__);
+        auto beta_phi = kp__->beta_projectors().inner<T>(i, phi__.component(0), N__, n__);
 
-        d_op.apply(i, ispn__, hphi__, N__, n__, beta_phi);
-        q_op.apply(i, 0, ophi__, N__, n__, beta_phi);
+        d_op.apply(i, ispn__, hphi__.component(0), N__, n__, beta_phi);
+        q_op.apply(i, 0, ophi__.component(0), N__, n__, beta_phi);
     }
     
     if (ctx_.control().print_checksum_) {
-        auto cs1 = hphi__.checksum(N__, n__);
-        auto cs2 = ophi__.checksum(N__, n__);
+        auto cs1 = hphi__.component(0).checksum(N__, n__);
+        auto cs2 = ophi__.component(0).checksum(N__, n__);
         if (kp__->comm().rank() == 0) {
             DUMP("checksum(hphi): %18.10f %18.10f", cs1.real(), cs1.imag());
             DUMP("checksum(ophi): %18.10f %18.10f", cs2.real(), cs2.imag());

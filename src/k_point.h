@@ -79,7 +79,7 @@ class K_point
         std::unique_ptr<wave_functions> fv_states_{nullptr};
 
         /// Two-component (spinor) wave functions describing the bands.
-        Wave_functions spinor_wave_functions_;
+        std::unique_ptr<Wave_functions> spinor_wave_functions_{nullptr};
 
         /// Band occupation numbers.
         std::vector<double> band_occupancies_;
@@ -381,12 +381,12 @@ class K_point
 
         inline wave_functions& spinor_wave_functions(int ispn__)
         {
-            return spinor_wave_functions_.component(ispn__);
+            return spinor_wave_functions_->component(ispn__);
         }
 
         inline Wave_functions& spinor_wave_functions()
         {
-            return spinor_wave_functions_;
+            return *spinor_wave_functions_;
         }
 
         inline wave_functions& singular_components()

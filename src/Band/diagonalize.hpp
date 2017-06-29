@@ -215,7 +215,8 @@ inline void Band::diag_pseudo_potential_exact(K_point* kp__,
         phi.pw_coeffs().prime(i, i) = 1;
     }
 
-    apply_h_o(kp__, ispn__, 0, ngk, phi, hphi, ophi, d_op__, q_op__);
+    STOP();
+    //apply_h_o(kp__, ispn__, 0, ngk, phi, hphi, ophi, d_op__, q_op__);
         
     //Utils::check_hermitian("h", hphi.coeffs(), ngk);
     //Utils::check_hermitian("o", ophi.coeffs(), ngk);
@@ -724,10 +725,11 @@ inline void Band::diag_pseudo_potential_davidson(K_point* kp__,
         MEMORY_USAGE_INFO();
     }
 
+    /* get diagonal elements for preconditioning */
+    auto h_diag = get_h_diag(kp__, *local_op_, d_op__);
+    auto o_diag = get_o_diag(kp__, q_op__);
+
     for (int ispin_step = 0; ispin_step < num_spin_steps; ispin_step++) {
-        /* get diagonal elements for preconditioning */
-        auto h_diag = get_h_diag(kp__, *local_op_, d_op__);
-        auto o_diag = get_o_diag(kp__, q_op__);
 
         std::vector<double> eval(num_bands);
 
@@ -753,7 +755,7 @@ inline void Band::diag_pseudo_potential_davidson(K_point* kp__,
             /* apply Hamiltonian and overlap operators to the new basis functions */
             if (nc_mag) {
             } else {
-                apply_h_o<T>(kp__, ispin_step, N, n, phi.component(0), hphi.component(0), ophi.component(0), d_op__, q_op__);
+                apply_h_o<T>(kp__, ispin_step, N, n, phi, hphi, ophi, d_op__, q_op__);
             }
             
             if (itso.orthogonalize_) {

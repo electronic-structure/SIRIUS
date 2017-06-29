@@ -422,18 +422,17 @@ class Wave_functions
     /// Set of wave-functions.
     std::vector<std::unique_ptr<wave_functions>> components_;
 
+    /// G+k vectors of the wave-function.
+    Gvec const& gkvec_;
+
   public:
     
-    /// Default construnctor.
-    Wave_functions()
-    {
-    }
-
     /// Constructor for PW wave-functions.
     Wave_functions(device_t    pu__,
                    Gvec const& gkvec__,
                    int         num_wf__,
                    int         num_components__)
+        : gkvec_(gkvec__)
     {
         for (int i = 0; i < num_components__; i++) {
             components_.push_back(std::unique_ptr<wave_functions>(new wave_functions(pu__, gkvec__, num_wf__)));
@@ -446,6 +445,7 @@ class Wave_functions
                    Gvec const&     gkvec__,
                    int             num_wf__,
                    int             num_components__)
+        : gkvec_(gkvec__)
     {
         int offs{0};
         for (int i = 0; i < num_components__; i++) {
@@ -461,17 +461,28 @@ class Wave_functions
                    std::function<int(int)> mt_size__,
                    int                     num_wf__,
                    int                     num_components__)
+        : gkvec_(gkvec__)
     {
         for (int i = 0; i < num_components__; i++) {
             components_.push_back(std::unique_ptr<wave_functions>(new wave_functions(pu__, gkvec__, num_atoms__, mt_size__, num_wf__)));
         }
     }
+
+    inline int num_components() const
+    {
+        return static_cast<int>(components_.size());
+    }
     
     /// Return a single component.
     wave_functions& component(int idx__)
     {
-        assert(idx__ >=0 && idx__ < (int)components_.size());
+        assert(idx__ >=0 && idx__ < num_components());
         return *components_[idx__];
+    }
+
+    Gvec const& gkvec() const
+    {
+        return gkvec_;
     }
 };
 

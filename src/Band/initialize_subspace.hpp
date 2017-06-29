@@ -283,7 +283,7 @@ inline void Band::initialize_subspace(K_point* kp__,
 
     for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
         /* apply Hamiltonian and overlap operators to the new basis functions */
-        apply_h_o<T>(kp__, ispn, 0, num_phi, phi.component(0), hphi.component(0), ophi.component(0), d_op, q_op);
+        apply_h_o<T>(kp__, ispn, 0, num_phi, phi, hphi, ophi, d_op, q_op);
         
         /* do some checks */
         if (ctx_.control().verification_ >= 1) {

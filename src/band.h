@@ -167,9 +167,9 @@ class Band
                        int ispn__, 
                        int N__,
                        int n__,
-                       wave_functions& phi__,
-                       wave_functions& hphi__,
-                       wave_functions& ophi__,
+                       Wave_functions& phi__,
+                       Wave_functions& hphi__,
+                       Wave_functions& ophi__,
                        D_operator<T>& d_op,
                        Q_operator<T>& q_op) const;
 

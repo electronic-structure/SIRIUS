@@ -747,7 +747,7 @@ inline void DFT_ground_state::print_info()
  *  \section section1 Preliminary notes
  *
  *  \note Here and below sybol \f$ {\boldsymbol \sigma} \f$ is reserved for the vector of Pauli matrices. Spin components 
- *        are labeled with \f$ \alpha \f$ or \f$ \beta\f$.
+ *        are labeled with \f$ \alpha \f$ or \f$ \beta \f$.
  *
  *  Wave-function of spin-1/2 particle is a two-component spinor:
  *  \f[
@@ -755,7 +755,7 @@ inline void DFT_ground_state::print_info()
  *  \f]
  *  Operator of spin:
  *  \f[
- *      {\bf \hat S}=\frac{\hbar}{2}{\bf \sigma},
+ *      {\bf \hat S}=\frac{\hbar}{2}{\boldsymbol \sigma},
  *  \f]
  *  Pauli matrices:
  *  \f[
@@ -768,6 +768,29 @@ inline void DFT_ground_state::print_info()
  *           \sigma_z=\left( \begin{array}{cc}
  *         1 & 0 \\
  *         0 & -1 \\ \end{array} \right)
+ *  \f]
+ *
+ *  Spin moment of an electron in quantum state \f$ \varphi \f$:
+ *  \f[
+ *     {\bf S}=\langle \varphi | {\bf \hat S} | \varphi \rangle  = \frac{\hbar}{2} \langle \varphi | {\boldsymbol \sigma} | \varphi \rangle
+ *  \f]
+ *
+ *  Spin magnetic moment of electron:
+ *  \f[
+ *    {\bf \mu}_e=\gamma_e {\bf S},
+ *  \f]
+ *  where \f$ \gamma_e \f$ is the gyromagnetic ratio for the electron.
+ *  \f[
+ *   \gamma_e=-\frac{g_e \mu_B}{\hbar} \;\;\; \mu_B=\frac{e\hbar}{2m_ec}
+ *  \f]
+ *  Here \f$ g_e \f$ is a g-factor for electron which is ~2, and \f$ \mu_B \f$ - Bohr magneton (defined as positive constant). 
+ *  Finally, magnetic moment of electron:
+ *  \f[
+ *    {\bf \mu}_e=-{\bf \mu}_B \langle \varphi | {\boldsymbol \sigma} | \varphi \rangle
+ *  \f]
+ *  Potential energy of magnetic dipole in magnetic field:
+ *  \f[
+ *    U=-{\bf B}{\bf \mu}={\bf \mu}_B {\bf B} \langle \varphi | {\boldsymbol \sigma} | \varphi \rangle
  *  \f]
  *
  *  \section section2 Density and magnetization
@@ -802,4 +825,174 @@ inline void DFT_ground_state::print_info()
  *    \rho_{\alpha \beta}({\bf r}) = \frac{1}{2} \sum_{j}^{occ} \psi_{j}^{\beta *}({\bf r})\psi_{j}^{\alpha}({\bf r})
  *  \f]
  */
+
+
+//== + Spin-polarized KS equations
+//== In magnetic calculations we have charge density n(**r**) (scalar function) and magnetization density **m**(**r**) (vector function).
+//== [[math]]
+//== n({\bf r})=\sum_i^{occ} \varphi^{\dagger}_{i}({\bf r}){\bf I}\varphi_{i}({\bf r}),
+//== [[/math]]
+//== where [[${\bf I}$]] is 2x2 identity matrix and
+//== [[math]]
+//== {\bf m}({\bf r})=\sum_i^{occ} \varphi^{\dagger}_{i}({\bf r}){\bf \sigma}\varphi_{i}({\bf r})
+//== [[/math]]
+//== [[# densmtrx]]
+//== They can be grouped into the 2x2 density matrix:
+//== [[math]]
+//==   \rho_{\alpha\beta}({\bf r})=\frac{1}{2}\Big({\bf I}n({\bf r})+{\bf \sigma}{\bf m}({\bf r})\Big)_{\alpha\beta}=\sum_i^{occ}\varphi_{i\beta}^{*}({\bf r})\varphi_{i\alpha}({\bf r})
+//== [[/math]]
+//== External electric potential [[$v^{ext}({\bf r})$]] and external magnetic field [[${\bf B}^{ext}({\bf r})$]] can also be grouped into 2x2 matrix:
+//== [[math]]
+//==   V_{\alpha\beta}^{ext}({\bf r})=\Big({\bf I}v^{ext}({\bf r})+\mu_{B}{\bf \sigma}{\bf B}^{ext}({\bf r}) \Big)
+//== [[/math]]
+//== Let's check that potential energy in  external fields can be written in the following way:
+//== [[math]]
+//== E_{ext}=\int  \sum_{\alpha\beta} \rho_{\alpha\beta}({\bf r})V_{\beta\alpha}^{ext}({\bf r}) d^3{\bf r}
+//== [[/math]]
+//== For that we should write explicitly expressions for matrix elements of [[$\rho$]] and [[$V^{ext}$]] (**r** dependency is assumed below, notation //ext// for the
+//== external fields is removed for simplicity):
+//== [[math]]
+//==   \rho_{\alpha\beta}=\frac{1}{2} \left( \begin{array}{cc} n+m_z & m_x-im_y \\ m_x+im_y & n-m_z \end{array} \right)
+//== [[/math]]
+//== [[math]]
+//==   V_{\alpha\beta}=\left( \begin{array}{cc} v+\mu_{B}B_z & \mu_{B}(B_x-iB_y) \\ \mu_{B}(B_x+iB_y) & v-\mu_{B}B_z \end{array} \right)
+//== [[/math]]
+//== [[math]]
+//== \begin{eqnarray}
+//==   \rho_{11}V_{11} &= \frac{1}{2}(n+m_z)(v+\mu_{B}B_z) = \frac{1}{2}(nv+\mu_{B}nB_z+m_zv+\mu_{B}m_zB_z) \\
+//==   \rho_{22}V_{22} &= \frac{1}{2}(n-m_z)(v-\mu_{B}B_z) = \frac{1}{2}(nv-\mu_{B}nB_z-m_zv+\mu_{B}m_zB_z) \\
+//==   \rho_{12}V_{21} &= \frac{1}{2}(m_x-im_y)(\mu_{B}(B_x+iB_y))=\frac{\mu_B}{2}(m_xB_x+im_xB_y-im_yB_x+m_yB_y) \\
+//==   \rho_{21}V_{12} &= \frac{1}{2}(m_x+im_y)(\mu_{B}(B_x-iB_y))=\frac{\mu_B}{2}(m_xB_x-im_xB_y+im_yB_x+m_yB_y)
+//==  \end{eqnarray}
+//== [[/math]]
+//== The sum of this four terms will exactly give [[$nv+\mu_{B}{\bf m}{\bf B}$]].
+//== To derive Kohn-Sham equations we need to write total energy functional of density matrix [[$\rho_{\alpha\beta}({\bf r})$]]:
+//== [[math]]
+//==   E_{tot}=T_{0}+E_{H}+E_{ext}+E_{xc}
+//== [[/math]]
+//== Kinetic energy of non-interacting electrons is written in the following way:
+//== [[math]]
+//==   T_{0}[\rho_{\alpha\beta}] \equiv T_{0}[\varphi[\rho_{\alpha\beta}]]=-\frac{1}{2}\int d^3{\bf r} \sum_{i}^{occ}\sum_{\alpha\beta}\varphi_{i\alpha}^{*}({\bf r})\nabla^{2}\varphi_{i\beta}({\bf r})\delta_{\alpha\beta}
+//== [[/math]]
+//== (question: can expression for kinetic energy be derived or this is //ad-hock// of the theory?)
+//== Hartree energy:
+//== [[math]]
+//==   E_{H}[\rho_{\alpha\beta}]=\int d^{3}{\bf r}\int d^{3}{\bf r'}\frac{n({\bf r})n({\bf r'})}{|{\bf r}-{\bf r'}|}=
+//==   \int d^{3}{\bf r}\int d^{3}{\bf r'}\sum_{\alpha\beta}\frac{\rho_{\alpha\beta}({\bf r})n({\bf r'})}{|{\bf r}-{\bf r'}|}\delta_{\alpha\beta}
+//== [[/math]]
+//== Here we used the fact that [[$n({\bf r})=Tr \rho_{\alpha\beta}({\bf r})$]]
+//== Now we can write the total energy variation over auxiliary orbitals with constrain of orbital normalization:
+//== [[math]]
+//==   \delta \Big\{E_{tot}+\varepsilon_i(1-\int \varphi^{\dagger}_{i}({\bf r})\varphi_{i}({\bf r})d^3{\bf r}) \Big\}/\delta \varphi_{i\gamma}^{*}({\bf r})=0
+//== [[/math]]
+//== We will use the following chain rule:
+//== [[math]]
+//==   \frac{\delta F[\rho_{\alpha\beta}]}{\delta \varphi_{i\gamma}^{*}({\bf r})}=\sum_{\alpha''\beta''}\frac{\delta F[\rho_{\alpha\beta}]}{\delta \rho_{\alpha''\beta''}({\bf r})}
+//== \frac{\delta \rho_{\alpha''\beta''}({\bf r})}{\delta \varphi_{i\gamma}^{*}({\bf r})}=\sum_{\alpha''\beta''}\frac{\delta F[\rho_{\alpha\beta}]}{\delta \rho_{\alpha''\beta''}({\bf r})}\varphi_{i\alpha''}({\bf r})\delta_{\beta''\gamma}=\sum_{\alpha''}\frac{\delta F[\rho_{\alpha\beta}]}{\delta \rho_{\alpha''\gamma}({\bf r})}\varphi_{i\alpha''}({\bf r})
+//== [[/math]]
+//== Variation of kinetic energy functional:
+//== [[math]]
+//==   \frac{\delta T_0}{\delta \varphi_{i\gamma}^{*}({\bf r})}=-\frac{1}{2}\sum_{\alpha\beta}\nabla^{2}\varphi_{i\beta}({\bf r})\delta_{\alpha\beta}\delta_{\alpha\gamma}=
+//== -\frac{1}{2}\sum_{\beta}\nabla^{2}\varphi_{i\beta}({\bf r})\delta_{\beta\gamma}=-\frac{1}{2}\nabla^{2}\varphi_{i\gamma}({\bf r})
+//== [[/math]]
+//== Variation of Hartree energy functional:
+//== [[math]]
+//==   \begin{align}
+//==   \frac{\delta E_{H}[\rho_{\alpha\beta}]}{\delta \varphi_{i\gamma}^{*}({\bf r})} &= \sum_{\alpha''} \int d^{3}{\bf r'}\sum_{\alpha\beta}\frac{n({\bf r'})}{|{\bf r}-{\bf r'}|}\delta_{\alpha\beta}\delta_{\alpha\alpha''}\delta_{\beta\gamma} \varphi_{i\alpha''}({\bf r})=\sum_{\alpha}\int d^{3}{\bf r'}\frac{n({\bf r'})}{|{\bf r}-{\bf r'}|}\varphi_{i\alpha}({\bf r}) \delta_{\alpha\gamma} \\
+//== &=\int d^{3}{\bf r'}\frac{n({\bf r'})}{|{\bf r}-{\bf r'}|}\varphi_{i\gamma}({\bf r})=v_{H}({\bf r})\varphi_{i\gamma}({\bf r})
+//== \end{align}
+//== [[/math]]
+//== Variation of external energy functional:
+//== [[math]]
+//== \frac{\delta E_{ext}[\rho_{\alpha\beta}]}{\delta \varphi_{i\gamma}^{*}({\bf r})}=\sum_{\alpha''} \sum_{\alpha\beta} V_{\beta\alpha}^{ext}({\bf r}) \delta_{\alpha\alpha''} \delta_{\beta\gamma} \varphi_{i\alpha''}({\bf r})=\sum_{\alpha\beta} V_{\beta\alpha}^{ext}({\bf r}) \varphi_{i\alpha}({\bf r})\delta_{\beta\gamma}=
+//== \sum_{\alpha} V_{\gamma\alpha}^{ext}({\bf r}) \varphi_{i\alpha}({\bf r})
+//== [[/math]]
+//== Variation of normalization integral:
+//== [[math]]
+//==   \frac{\delta \int \sum_{\alpha} \varphi^{*}_{i\alpha}({\bf r})\varphi_{i\alpha}({\bf r})d^3{\bf r} }{\delta \varphi_{i\gamma}^{*}({\bf r})}=
+//== \sum_{\alpha} \varphi_{i\alpha}({\bf r})\delta_{\alpha\gamma}=\varphi_{i\gamma}({\bf r})
+//== [[/math]]
+//== Finally, we arrive to the following Kohn-Sham equation for each component [[$\gamma$]] of spinor wave-function:
+//== [[math]]
+//== -\frac{1}{2}\nabla^{2}\varphi_{i\gamma}({\bf r})+v_{H}({\bf r})\varphi_{i\gamma}({\bf r})+\sum_{\alpha} V_{\gamma\alpha}^{ext}({\bf r}) \varphi_{i\alpha}({\bf r}) +
+//== \sum_{\alpha}\frac{\delta E_{xc}[\rho_{\alpha\beta}]}{\delta \rho_{\alpha\gamma}({\bf r})}\varphi_{i\alpha}({\bf r})=\varepsilon_i \varphi_{i\gamma}({\bf r})
+//== [[/math]]
+//== 
+//== + Local spin-density approximation
+//== In LSDA
+//== [[math]]
+//== E_{xc}[\rho_{\alpha\beta}({\bf r})] \equiv E_{xc}[n({\bf r}),|{\bf m}({\bf r})|]=\int n({\bf r})\eta_{xc}(n({\bf r}),m({\bf r}))d^{3}{\bf r}
+//== [[/math]]
+//== Variation of exchange-correlation functional:
+//== [[math]]
+//== \frac{\delta E_{xc}[\rho_{\alpha\beta}]}{\delta \rho_{\alpha\gamma}({\bf r})}=\frac{\delta E_{xc}[\rho_{\alpha\beta}]}{\delta n({\bf r})}\frac{\delta n({\bf r})}{\delta \rho_{\alpha\gamma}({\bf r})}+\frac{\delta E_{xc}[\rho_{\alpha\beta}]}{\delta m({\bf r})} \frac{\delta m({\bf r})}{\delta {\bf m}({\bf r})} \frac{\delta {\bf m}({\bf r})}{\delta \rho_{\alpha\gamma}({\bf r})}
+//== [[/math]]
+//== First term:
+//== [[math]]
+//== \begin{align}
+//== \frac{\delta E_{xc}[\rho_{\alpha\beta}]}{\delta n({\bf r})} &= v^{xc}({\bf r}) \\
+//== \frac{\delta n({\bf r})}{\delta \rho_{\alpha\gamma}({\bf r})} &= \delta_{\alpha\gamma}
+//== \end{align}
+//== [[/math]]
+//== Second term:
+//== [[math]]
+//== \begin{align}
+//==   \frac{\delta E_{xc}[\rho_{\alpha\beta}]}{\delta m({\bf r})} &= B^{xc}({\bf r}) \\
+//==   \frac{\delta m({\bf r})}{\delta {\bf m}({\bf r})} &= \hat {\bf m} \;\;\; \mbox{unit vector parallel to {\bf m}} \\
+//==  \Big( \frac{\delta {\bf m}({\bf r})}{\delta \rho_{\alpha\gamma}({\bf r})}\Big)_{p} &= \big( {\bf \sigma}_{p} \big)_{\gamma\alpha} \;\;\; \mbox{p=x,y,z}
+//== \end{align}
+//== [[/math]]
+//== The last identity is proved by expressing x,y,z-components of **m** in terms of density matrix elements and taking variational derivatives.
+//== Similarly to external potential, exchange-correlation potential can be grouped into 2x2 matrix:
+//== [[math]]
+//==   \frac{\delta E_{xc}[\rho_{\alpha\beta}]}{\delta \rho_{\alpha\gamma}({\bf r})} \equiv V^{xc}_{\gamma\alpha}({\bf r})=\Big( {\bf I}v^{xc}({\bf r}) + {\bf B}^{xc}({\bf r}) \sigma \Big)_{\gamma\alpha},
+//== [[/math]]
+//== where [[${\bf B}^{xc}({\bf r})=\hat {\bf m}B^{xc}({\bf r})$]] -- exchange-correlation magnetic field, parallel to **m**. We can collect [[$v_{H}({\bf r})$]], [[$V_{\alpha\beta}^{ext}({\bf r})$]] and [[$V_{\alpha\beta}^{xc}({\bf r})$]] to one effective potential:
+//== [[math]]
+//==   V^{eff}_{\alpha\beta}({\bf r})=v_{H}({\bf r})\delta_{\alpha\beta}+V_{\alpha\beta}^{ext}({\bf r})+V_{\alpha\beta}^{xc}({\bf r}) =
+//==   \Big({\bf I}\big(v_{H}({\bf r})+v^{ext}({\bf r})+v^{xc}({\bf r})\big)+\sigma\big( \mu_{B}{\bf B}^{ext}({\bf r})+{\bf B}^{xc}({\bf r})\big)\Big)_{\alpha\beta}
+//== [[/math]]
+//== Kohn-Sham equations take the form:
+//== [[math]]
+//== -\frac{1}{2}\sum_{\alpha}\nabla^{2}\varphi_{i\gamma}({\bf r})\delta_{\alpha\gamma}+\sum_{\alpha} V_{\gamma\alpha}^{eff}({\bf r}) \varphi_{i\alpha}({\bf r}) =\varepsilon_i \varphi_{i\gamma}({\bf r})
+//== [[/math]]
+//== or in matrix form
+//== [[math]]
+//==   \left( \begin{array}{cc} -\frac{1}{2}\nabla^2+V^{eff}_{11} & V^{eff}_{12} \\
+//==   V^{eff}_{21} & -\frac{1}{2}\nabla^2+V^{eff}_{22} \end{array}\right)
+//==   \left(\begin{array}{c} \varphi_{i1}({\bf r}) \\ \varphi_{i2}({\bf r}) \end{array} \right)=\varepsilon_i
+//==   \left(\begin{array}{c} \varphi_{i1}({\bf r}) \\ \varphi_{i2}({\bf r}) \end{array} \right)
+//== [[/math]]
+//== 
+//== + Second-variational approach
+//== Suppose that we know first N,,fv,, solutions of the following equation (so-called first variational equation):
+//== [[math]]
+//==   \Big(-\frac{1}{2}\nabla^2+v_{H}({\bf r})+v^{ext}({\bf r})+v^{xc}({\bf r}) \Big)\phi_{i}({\bf r})=\epsilon_i \phi_{i}({\bf r})
+//== [[/math]]
+//== We can write expansion of spinor wave-functions [[$\varphi$]] in terms of first-variational states [[$\phi$]]:
+//== [[math]]
+//==   \varphi_{i\alpha}=\sum_{j}^{N_{fv}}C_{ij}^{\alpha}\phi_{j}
+//== [[/math]]
+//== Next thing to do is to switch to matrix equation:
+//== [[math]]
+//== \begin{aligned}
+//==   \langle \varphi_{i'}| \hat H | \varphi_{i} \rangle &=\varepsilon_i  \langle \varphi_{i'}|\varphi_{i}\rangle \\
+//==   \sum_{\alpha'\alpha}  \sum_{j'} C_{i'j'}^{\alpha'*} \langle \phi_{j'}|\hat H_{\alpha'\alpha}|\sum_{j}C_{ij}^{\alpha} |\phi_{j}\rangle &= \varepsilon_i \delta_{ii'} \\
+//==   \sum_{\alpha'\alpha}  \sum_{j'j} C_{i'j'}^{\alpha'*} C_{ij}^{\alpha} \langle \phi_{j'}|\hat H_{\alpha'\alpha} |\phi_{j}\rangle &= \varepsilon_i \delta_{ii'} \\
+//==   \sum_{\alpha'\alpha}  \sum_{j'j} C_{i'j'}^{\alpha'*} C_{ij}^{\alpha} H_{j'j}^{\alpha'\alpha} &= \varepsilon_i \delta_{ii'}
+//== \end{aligned}
+//== [[/math]]
+//== We can combine indexes [[$ \{j,\alpha\} $]] to one global index [[$ \nu $]]. If we also assume that the number of second-variational states is 2*N,,fv,,, then we arrive to the
+//== well-known eigen decomposition:
+//== [[math]]
+//==   \sum_{\nu'\nu} C_{\nu' i'}^{*} H_{\nu'\nu} C_{\nu i} = \epsilon_i \delta_{ii'}
+//== [[/math]]
+//== The expression for second-variational Hamiltonian is simple:
+//== [[math]]
+//==   \begin{aligned}
+//== \langle \phi_{j'}|\hat H_{\alpha'\alpha} |\phi_{j}\rangle &=  \langle \phi_{j'} | \Big(-\frac{1}{2}\nabla^2+v_{H}({\bf r})+v^{ext}({\bf r})+v^{xc}({\bf r}) \Big)\delta_{\alpha\alpha'}|\phi_{j}\rangle + \langle \phi_{j'} | \sigma_{\alpha\alpha'}\Big( \mu_{B}{\bf B}^{ext}({\bf r})+{\bf B}^{xc}({\bf r})\Big) | \phi_{j}\rangle \\
+//==  &= \epsilon_{j}\delta_{jj'}\delta_{\alpha\alpha'} + {\bf \sigma}_{\alpha\alpha'}\langle \phi_{j'} | \Big( \mu_{B}{\bf B}^{ext}({\bf r})+{\bf B}^{xc}({\bf r})\Big) | \phi_{j}\rangle
+//== \end{aligned}
+//== [[/math]]
+//==  */
 
