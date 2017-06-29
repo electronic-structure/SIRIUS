@@ -78,8 +78,11 @@ class Local_operator
         }
 
         /// This constructor is used internally in the debug and performance tests only.
-        Local_operator(FFT3D& fft_coarse__, Gvec const& gvec__)
-            : fft_coarse_(fft_coarse__)
+        Local_operator(Simulation_parameters const& param__,
+                       FFT3D&                       fft_coarse__,
+                       Gvec const&                  gvec__)
+            : param_(&param__)
+            , fft_coarse_(fft_coarse__)
         {
             veff_vec_ = mdarray<double, 2>(fft_coarse_.local_size(), 1, memory_t::host, "Local_operator::veff_vec_");
             for (int ir = 0; ir < fft_coarse_.local_size(); ir++) {
@@ -322,12 +325,9 @@ class Local_operator
             #endif
         }
 
-        //template <memory_t mem_type__>
         void apply_h(int ispn__, wave_functions& phi__, wave_functions& hphi__, int idx0__, int n__)
         {
             PROFILE("sirius::Local_operator::apply_h");
-
-            //auto const pu = on_device(mem_type__) ? GPU : CPU;
 
             auto& gkp = phi__.gkvec().partition();
 
