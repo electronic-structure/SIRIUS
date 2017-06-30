@@ -794,7 +794,8 @@ inline void DFT_ground_state::print_info()
  *  \f]
  *
  *  \section section2 Density and magnetization
- *  Density is defined as:
+ *  In magnetic calculations we have charge density \f$ rho({\bf r}) \f$ (scalar function) and magnetization density 
+ *  \f$ {\bf m}({\bf r}) \f$ (vector function). Density is defined as:
  *  \f[
  *      \rho({\bf r}) = \sum_{j}^{occ} \Psi_{j}^{*}({\bf r}){\bf I} \Psi_{j}({\bf r}) = 
  *         \sum_{j}^{occ} \psi_{j}^{\uparrow *} \psi_{j}^{\uparrow} + \psi_{j}^{\downarrow *} \psi_{j}^{\downarrow} 
@@ -827,7 +828,6 @@ inline void DFT_ground_state::print_info()
  */
 
 
-//== + Spin-polarized KS equations
 //== In magnetic calculations we have charge density n(**r**) (scalar function) and magnetization density **m**(**r**) (vector function).
 //== [[math]]
 //== n({\bf r})=\sum_i^{occ} \varphi^{\dagger}_{i}({\bf r}){\bf I}\varphi_{i}({\bf r}),

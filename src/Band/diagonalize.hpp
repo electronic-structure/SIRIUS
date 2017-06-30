@@ -204,19 +204,21 @@ inline void Band::diag_pseudo_potential_exact(K_point* kp__,
 
     int ngk = kp__->num_gkvec();
 
-    wave_functions  phi(ctx_.processing_unit(), kp__->gkvec(), ngk);
-    wave_functions hphi(ctx_.processing_unit(), kp__->gkvec(), ngk);
-    wave_functions ophi(ctx_.processing_unit(), kp__->gkvec(), ngk);
+    /* number of spin components, treated simultaneously */
+    int nsc = (ctx_.num_mag_dims() == 3) ? 2 : 1;
+
+    Wave_functions  phi(ctx_.processing_unit(), kp__->gkvec(), ngk, nsc);
+    Wave_functions hphi(ctx_.processing_unit(), kp__->gkvec(), ngk, nsc);
+    Wave_functions ophi(ctx_.processing_unit(), kp__->gkvec(), ngk, nsc);
     
     std::vector<double> eval(ngk);
 
-    phi.pw_coeffs().prime().zero();
+    phi.component(0).pw_coeffs().prime().zero();
     for (int i = 0; i < ngk; i++) {
-        phi.pw_coeffs().prime(i, i) = 1;
+        phi.component(0).pw_coeffs().prime(i, i) = 1;
     }
 
-    STOP();
-    //apply_h_o(kp__, ispn__, 0, ngk, phi, hphi, ophi, d_op__, q_op__);
+    apply_h_o(kp__, ispn__, 0, ngk, phi, hphi, ophi, d_op__, q_op__);
         
     //Utils::check_hermitian("h", hphi.coeffs(), ngk);
     //Utils::check_hermitian("o", ophi.coeffs(), ngk);
@@ -229,10 +231,10 @@ inline void Band::diag_pseudo_potential_exact(K_point* kp__,
     #endif
 
     if (gen_evp_solver().solve(ngk, num_bands,
-                               hphi.pw_coeffs().prime().at<CPU>(),
-                               hphi.pw_coeffs().prime().ld(),
-                               ophi.pw_coeffs().prime().at<CPU>(),
-                               ophi.pw_coeffs().prime().ld(), 
+                               hphi.component(0).pw_coeffs().prime().at<CPU>(),
+                               hphi.component(0).pw_coeffs().prime().ld(),
+                               ophi.component(0).pw_coeffs().prime().at<CPU>(),
+                               ophi.component(0).pw_coeffs().prime().ld(), 
                                &eval[0],
                                psi.pw_coeffs().prime().at<CPU>(),
                                psi.pw_coeffs().prime().ld())) {
