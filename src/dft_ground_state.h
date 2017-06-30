@@ -794,7 +794,7 @@ inline void DFT_ground_state::print_info()
  *  \f]
  *
  *  \section section2 Density and magnetization
- *  In magnetic calculations we have charge density \f$ rho({\bf r}) \f$ (scalar function) and magnetization density 
+ *  In magnetic calculations we have charge density \f$ \rho({\bf r}) \f$ (scalar function) and magnetization density 
  *  \f$ {\bf m}({\bf r}) \f$ (vector function). Density is defined as:
  *  \f[
  *      \rho({\bf r}) = \sum_{j}^{occ} \Psi_{j}^{*}({\bf r}){\bf I} \Psi_{j}({\bf r}) = 
@@ -813,7 +813,7 @@ inline void DFT_ground_state::print_info()
  *  \f[
  *      m_z({\bf r}) = \sum_{j}^{occ} \psi_{j}^{\uparrow *} \psi_{j}^{\uparrow} - \psi_{j}^{\downarrow *} \psi_{j}^{\downarrow} 
  *  \f]
- *  Density matrix is defined as:
+ *  Density and magnetization can be grouped into a \f$ 2 \times 2 \f$ density matrix, which is defined as:
  *  \f[
  *      {\boldsymbol \rho}({\bf r}) = \frac{1}{2} \Big( {\bf I}\rho({\bf r}) + {\boldsymbol \sigma} {\bf m}({\bf r})\Big) = 
  *        \frac{1}{2} \sum_{j}^{occ} \left( \begin{array}{cc} \psi_{j}^{\uparrow *} \psi_{j}^{\uparrow} & 
@@ -821,22 +821,14 @@ inline void DFT_ground_state::print_info()
  *                                                            \psi_{j}^{\uparrow *} \psi_{j}^{\downarrow} &
  *                                                            \psi_{j}^{\downarrow *} \psi_{j}^{\downarrow} \end{array} \right)
  *  \f]
- *  Pay attention to the order of spin indices in the \f$ 2 \times 2 \f$ density matrix:
+ *  or simply
  *  \f[
  *    \rho_{\alpha \beta}({\bf r}) = \frac{1}{2} \sum_{j}^{occ} \psi_{j}^{\beta *}({\bf r})\psi_{j}^{\alpha}({\bf r})
  *  \f]
+ *  Pay attention to the order of spin indices in the \f$ 2 \times 2 \f$ density matrix.
  */
 
 
-//== In magnetic calculations we have charge density n(**r**) (scalar function) and magnetization density **m**(**r**) (vector function).
-//== [[math]]
-//== n({\bf r})=\sum_i^{occ} \varphi^{\dagger}_{i}({\bf r}){\bf I}\varphi_{i}({\bf r}),
-//== [[/math]]
-//== where [[${\bf I}$]] is 2x2 identity matrix and
-//== [[math]]
-//== {\bf m}({\bf r})=\sum_i^{occ} \varphi^{\dagger}_{i}({\bf r}){\bf \sigma}\varphi_{i}({\bf r})
-//== [[/math]]
-//== [[# densmtrx]]
 //== They can be grouped into the 2x2 density matrix:
 //== [[math]]
 //==   \rho_{\alpha\beta}({\bf r})=\frac{1}{2}\Big({\bf I}n({\bf r})+{\bf \sigma}{\bf m}({\bf r})\Big)_{\alpha\beta}=\sum_i^{occ}\varphi_{i\beta}^{*}({\bf r})\varphi_{i\alpha}({\bf r})
