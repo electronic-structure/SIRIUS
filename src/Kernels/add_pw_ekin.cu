@@ -1,20 +1,33 @@
+/** \file add_pw_ekin.cu
+ *   
+ *  \brief CUDA kernel for the hphi update.
+ */
+
 #include "../SDDK/GPU/cuda_common.h"
 
 __global__ void add_pw_ekin_gpu_kernel(int num_gvec__,
-                                       cuDoubleComplex const* phi__,
+                                       double alpha__,
                                        double const* pw_ekin__,
+                                       cuDoubleComplex const* phi__,
                                        cuDoubleComplex const* vphi__,
                                        cuDoubleComplex* hphi__)
 {
     int ig = blockIdx.x * blockDim.x + threadIdx.x;
     if (ig < num_gvec__) {
-        hphi__[ig] = cuCadd(vphi__[ig], make_cuDoubleComplex(phi__[ig].x * pw_ekin__[ig], phi__[ig].y * pw_ekin__[ig]));
+        cuDoubleComplex z1 = cuCadd(vphi__[ig], make_cuDoubleComplex(alpha__ * pw_ekin__[ig] * phi__[ig].x, 
+                                                                     alpha__ * pw_ekin__[ig] * phi__[ig].y));
+        hphi__[ig] = cuCadd(hphi__[ig], z1);
     }
 }
 
+/// Update the hphi wave functions.
+/** The following operation is performed:
+ *    hphi[ig] += (alpha *  pw_ekin[ig] * phi[ig] + vphi[ig])
+ */
 extern "C" void add_pw_ekin_gpu(int num_gvec__,
-                                cuDoubleComplex const* phi__,
+                                double alpha__,
                                 double const* pw_ekin__,
+                                cuDoubleComplex const* phi__,
                                 cuDoubleComplex const* vphi__,
                                 cuDoubleComplex* hphi__)
 {
@@ -24,8 +37,9 @@ extern "C" void add_pw_ekin_gpu(int num_gvec__,
     add_pw_ekin_gpu_kernel <<<grid_b, grid_t>>>
     (
         num_gvec__,
-        phi__,
+        alpha__,
         pw_ekin__,
+        phi__,
         vphi__,
         hphi__
     );

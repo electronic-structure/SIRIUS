@@ -29,8 +29,9 @@
 
 #ifdef __GPU
 extern "C" void add_pw_ekin_gpu(int num_gvec__,
-                                double_complex const* phi__,
+                                double alpha__,
                                 double const* pw_ekin__,
+                                double_complex const* phi__,
                                 double_complex const* vphi__,
                                 double_complex* hphi__);
 #endif
@@ -423,70 +424,78 @@ class Local_operator
                     }
                 }
             };
-
-            auto add_to_hphi = [&](int i, int ispn, bool gamma = false)
+            
+            /* store the resulting hphi
+               spin block (ispn_block) is used as a bit mask: 
+                - first bit: spin component which is updated
+                - second bit: add or not kinetic energy term */
+            auto add_to_hphi = [&](int i, int ispn_block, bool gamma = false)
             {
-                /* trivial case: data was not remapped and hphi is on CPU or GPU */
-                if (!phi__.component(ispn).pw_coeffs().is_remapped()) {
-                    switch (param_->processing_unit()) {
-                        case CPU: {
-                            if (gamma) {
-                                #pragma omp parallel for schedule(static)
-                                for (int ig = 0; ig < gkp.gvec_count_fft(); ig++) {
-                                    hphi__.component(ispn).pw_coeffs().extra()(ig, 2 * i)     = phi__.component(ispn).pw_coeffs().extra()(ig, 2 * i)     * pw_ekin_[ig] + vphi1_[ig];
-                                    hphi__.component(ispn).pw_coeffs().extra()(ig, 2 * i + 1) = phi__.component(ispn).pw_coeffs().extra()(ig, 2 * i + 1) * pw_ekin_[ig] + vphi2_[ig];
-                                }
-                            } else {
-                                #pragma omp parallel for schedule(static)
-                                for (int ig = 0; ig < gkp.gvec_count_fft(); ig++) {
-                                    hphi__.component(ispn).pw_coeffs().extra()(ig, i) = phi__.component(ispn).pw_coeffs().extra()(ig, i) * pw_ekin_[ig] + vphi1_[ig];
-                                }
-                            }
-                            break;
-                        }
-                        case GPU: {
-                            #ifdef __GPU
-                            if (gamma) {
-                                add_pw_ekin_gpu(gkp.gvec_count_fft(), 
-                                                phi__.component(ispn).pw_coeffs().extra().at<GPU>(0, 2 * i),
-                                                pw_ekin_.at<GPU>(),
-                                                vphi1_.at<GPU>(),
-                                                hphi__.component(ispn).pw_coeffs().extra().at<GPU>(0, 2 * i));
-                                add_pw_ekin_gpu(gkp.gvec_count_fft(),
-                                                phi__.component(ispn).pw_coeffs().extra().at<GPU>(0, 2 * i + 1),
-                                                pw_ekin_.at<GPU>(),
-                                                vphi2_.at<GPU>(),
-                                                hphi__.component(ispn).pw_coeffs().extra().at<GPU>(0, 2 * i + 1));
-                            } else {
-                                add_pw_ekin_gpu(gkp.gvec_count_fft(),
-                                                phi__.component(ispn).pw_coeffs().extra().at<GPU>(0, i),
-                                                pw_ekin_.at<GPU>(),
-                                                vphi1_.at<GPU>(),
-                                                hphi__.component(ispn).pw_coeffs().extra().at<GPU>(0, i));
-                            }
-                            #else
-                            TERMINATE_NO_GPU
-                            #endif
-                            break;
-                        }
-                    }
-                } else { /* data was remapped and hphi is allocated only on CPU */
-                    if (param_->processing_unit() == GPU) {
-                        if (gamma) {
-                            vphi2_.copy<memory_t::device, memory_t::host>();
-                        }
-                        vphi1_.copy<memory_t::device, memory_t::host>();
-                    }
+                int ispn = ispn_block & 1;
+                int ekin = (ispn_block & 2) ? 0 : 1;
+
+                if (!phi__.component(ispn).pw_coeffs().is_remapped() && param_->processing_unit() == GPU) {
+                    double alpha = static_cast<double>(ekin);
+
+                    #ifdef __GPU
                     if (gamma) {
+                        add_pw_ekin_gpu(gkp.gvec_count_fft(),
+                                        alpha,
+                                        pw_ekin_.at<GPU>(),
+                                        phi__.component(ispn).pw_coeffs().extra().at<GPU>(0, 2 * i),
+                                        vphi1_.at<GPU>(),
+                                        hphi__.component(ispn).pw_coeffs().extra().at<GPU>(0, 2 * i));
+                        add_pw_ekin_gpu(gkp.gvec_count_fft(),
+                                        alpha,
+                                        pw_ekin_.at<GPU>(),
+                                        phi__.component(ispn).pw_coeffs().extra().at<GPU>(0, 2 * i + 1),
+                                        vphi2_.at<GPU>(),
+                                        hphi__.component(ispn).pw_coeffs().extra().at<GPU>(0, 2 * i + 1));
+                    } else {
+                        add_pw_ekin_gpu(gkp.gvec_count_fft(),
+                                        alpha,
+                                        pw_ekin_.at<GPU>(),
+                                        phi__.component(ispn).pw_coeffs().extra().at<GPU>(0, i),
+                                        vphi1_.at<GPU>(),
+                                        hphi__.component(ispn).pw_coeffs().extra().at<GPU>(0, i));
+                    }
+                    #else
+                    TERMINATE_NO_GPU
+                    #endif
+                    return;
+                }
+                /* data was remapped and hphi is allocated only on CPU */
+                if (phi__.component(ispn).pw_coeffs().is_remapped() && param_->processing_unit() == GPU) {
+                    if (gamma) {
+                        vphi2_.copy<memory_t::device, memory_t::host>();
+                    }
+                    vphi1_.copy<memory_t::device, memory_t::host>();
+                }
+                /* CPU case */
+                if (gamma) { /* update two wave functions */
+                    if (ekin) {
                         #pragma omp parallel for schedule(static)
                         for (int ig = 0; ig < gkp.gvec_count_fft(); ig++) {
-                            hphi__.component(ispn).pw_coeffs().extra()(ig, 2 * i)     = phi__.component(ispn).pw_coeffs().extra()(ig, 2 * i)     * pw_ekin_[ig] + vphi1_[ig];
-                            hphi__.component(ispn).pw_coeffs().extra()(ig, 2 * i + 1) = phi__.component(ispn).pw_coeffs().extra()(ig, 2 * i + 1) * pw_ekin_[ig] + vphi2_[ig];
+                            hphi__.component(ispn).pw_coeffs().extra()(ig, 2 * i)     += (phi__.component(ispn).pw_coeffs().extra()(ig, 2 * i)     * pw_ekin_[ig] + vphi1_[ig]);
+                            hphi__.component(ispn).pw_coeffs().extra()(ig, 2 * i + 1) += (phi__.component(ispn).pw_coeffs().extra()(ig, 2 * i + 1) * pw_ekin_[ig] + vphi2_[ig]);
                         }
                     } else {
                         #pragma omp parallel for schedule(static)
                         for (int ig = 0; ig < gkp.gvec_count_fft(); ig++) {
-                            hphi__.component(ispn).pw_coeffs().extra()(ig, i) = phi__.component(ispn).pw_coeffs().extra()(ig, i) * pw_ekin_[ig] + vphi1_[ig];
+                            hphi__.component(ispn).pw_coeffs().extra()(ig, 2 * i)     += vphi1_[ig];
+                            hphi__.component(ispn).pw_coeffs().extra()(ig, 2 * i + 1) += vphi2_[ig];
+                        }
+                    }
+                } else { /* update single wave function */
+                    if (ekin) {
+                        #pragma omp parallel for schedule(static)
+                        for (int ig = 0; ig < gkp.gvec_count_fft(); ig++) {
+                            hphi__.component(ispn).pw_coeffs().extra()(ig, i) += (phi__.component(ispn).pw_coeffs().extra()(ig, i) * pw_ekin_[ig] + vphi1_[ig]);
+                        }
+                    } else {
+                        #pragma omp parallel for schedule(static)
+                        for (int ig = 0; ig < gkp.gvec_count_fft(); ig++) {
+                            hphi__.component(ispn).pw_coeffs().extra()(ig, i) += vphi1_[ig];
                         }
                     }
                 }
