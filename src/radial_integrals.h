@@ -435,22 +435,26 @@ class Radial_integrals_vloc: public Radial_integrals_base<1>
             auto& atom_type = unit_cell_.atom_type(iat);
             values_(iat) = Spline<double>(grid_q_);
 
+            int np = atom_type.radial_grid().index_of(10);
+            if (np == -1) {
+                np = atom_type.num_mt_points();
+            }
+            auto rg = atom_type.radial_grid().segment(np);
+
             #pragma omp parallel for
             for (int iq = 0; iq < grid_q_.num_points(); iq++) {
-                Spline<double> s(atom_type.radial_grid());
+                Spline<double> s(rg);
                 if (iq == 0) {
-                    for (int ir = 0; ir < atom_type.num_mt_points(); ir++) {
-                        double x = atom_type.radial_grid(ir);
+                    for (int ir = 0; ir < rg.num_points(); ir++) {
+                        double x = rg[ir];
                         s[ir] = (x * atom_type.pp_desc().vloc[ir] + atom_type.zn()) * x;
                     }
                     values_(iat)[iq] = s.interpolate().integrate(0);
-                    //values_(iat)[iq] = s.integrate_simple();
-                    //std::cout << "vloc(0)="<<values_(iat)[iq]<<std::endl;
                 } else {
                     double g = grid_q_[iq];
                     double g2 = g * g;
-                    for (int ir = 0; ir < atom_type.num_mt_points(); ir++) {
-                        double x = atom_type.radial_grid(ir);
+                    for (int ir = 0; ir < rg.num_points(); ir++) {
+                        double x = rg[ir];
                         s[ir] = (x * atom_type.pp_desc().vloc[ir] + atom_type.zn() * gsl_sf_erf(x)) * std::sin(g * x);
                     }
                     values_(iat)[iq] = (s.interpolate().integrate(0) / g - atom_type.zn() * std::exp(-g2 / 4) / g2);
@@ -486,15 +490,21 @@ class Radial_integrals_vloc_dg: public Radial_integrals_base<1> // TODO: combine
             auto& atom_type = unit_cell_.atom_type(iat);
             values_(iat) = Spline<double>(grid_q_);
 
+            int np = atom_type.radial_grid().index_of(10);
+            if (np == -1) {
+                np = atom_type.num_mt_points();
+            }
+            auto rg = atom_type.radial_grid().segment(np);
+
             #pragma omp parallel for
             for (int iq = 1; iq < grid_q_.num_points(); iq++) {
-                Spline<double> s1(atom_type.radial_grid());
-                Spline<double> s2(atom_type.radial_grid());
+                Spline<double> s1(rg);
+                Spline<double> s2(rg);
                 double g = grid_q_[iq];
                 double g2 = g * g;
                 
-                for (int ir = 0; ir < atom_type.num_mt_points(); ir++) {
-                    double x = atom_type.radial_grid(ir);
+                for (int ir = 0; ir < rg.num_points(); ir++) {
+                    double x = rg[ir];
                     s1[ir] = (x * atom_type.pp_desc().vloc[ir] + atom_type.zn() * gsl_sf_erf(x)) * std::sin(g * x);
                     s2[ir] = (x * atom_type.pp_desc().vloc[ir] + atom_type.zn() * gsl_sf_erf(x)) * std::cos(g * x);
                 }
