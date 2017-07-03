@@ -398,7 +398,26 @@ class Local_operator
                         }
                     }
                 } else {
-
+                    double pref = (ispn == 2) ? -1 : 1;
+                    switch (fft_coarse_.pu()) {
+                        case CPU: {
+                            #pragma omp parallel for schedule(static)
+                            for (int ir = 0; ir < fft_coarse_.local_size(); ir++) {
+                                /* multiply by Bx +/- i*By */
+                                buf[ir] *= double_complex(veff_vec_(ir, 2), pref * veff_vec_(ir, 3));
+                            }
+                            break;
+                        }
+                        case GPU: {
+                            STOP();
+                            break;
+                            //#ifdef __GPU
+                            //scale_matrix_rows_gpu(fft_coarse_.local_size(), 1, buf.at<GPU>(), veff_vec_.at<GPU>(0, ispn));
+                            //#else
+                            //TERMINATE_NO_GPU
+                            //#endif
+                        }
+                    }
                 }
             };
 
@@ -526,15 +545,99 @@ class Local_operator
             for (int i = first; i < phi__.component(0).pw_coeffs().spl_num_col().local_size(); i++) {
                 
                 /* non-collinear case */
+                /* 2x2 Hamiltonian in applied to spinor wave-functions
+                 * .--------.--------.   .-----.   .------.
+                 * | H_{uu} | H_{ud} |   |phi_u|   |hphi_u|
+                 * .--------.--------. x .-----. = .------.
+                 * | H_{du} | H_{dd} |   |phi_d|   |hphi_d|
+                 * .--------.--------.   .-----.   .------.
+                 *
+                 * hphi_u = H_{uu} phi_u + H_{ud} phi_d
+                 * hphi_d = H_{du} phi_u + H_{dd} phi_d
+                 *
+                 * The following indexing scheme will be used for spin-blocks
+                 * .---.---.
+                 * | 0 | 2 |
+                 * .---.---.
+                 * | 3 | 1 |
+                 * .---.---.
+                 */        
                 if (param_->num_mag_dims() == 3) {
-                    /* phi_up(G) -> phi_up(r) */
+                    /* phi_u(G) -> phi_u(r) */
                     phi_to_r(i, 0);
-                    /* save phi_up(r) */
-                    fft_coarse_.output(buf_rg_.at<CPU>());
-                    /* multiply phi_up(r) by effective potential */
+                    /* save phi_u(r) */
+                    switch (fft_coarse_.pu()) {
+                        case CPU: {
+                            fft_coarse_.output(buf_rg_.at<CPU>());
+                            break;
+                        }
+                        case GPU: {
+                            acc::copy(buf_rg_.at<GPU>(), fft_coarse_.buffer().at<GPU>(), fft_coarse_.local_size());
+                            break;
+                        }
+                    }
+                    /* multiply phi_u(r) by effective potential */
                     mul_by_veff(fft_coarse_.buffer(), 0);
-                    /* V_{uu}(r)phi_{u}(r) -> [V*phi]_{uu}(G) */
+                    /* V_{uu}(r)phi_{u}(r) -> [V*phi]_{u}(G) */
                     vphi_to_G();
+                    /* add kinetic energy */
+                    add_to_hphi(i, 0);
+                    /* multiply phi_{u} by V_{du} */
+                    mul_by_veff(buf_rg_, 3);
+                    /* copy to FFT buffer */
+                    switch (fft_coarse_.pu()) {
+                        case CPU: {
+                            fft_coarse_.input(buf_rg_.at<CPU>());
+                            break;
+                        }
+                        case GPU: {
+                            acc::copy(fft_coarse_.buffer().at<GPU>(), buf_rg_.at<GPU>(), fft_coarse_.local_size());
+                            break;
+                        }
+                    }
+                    /* V_{du}(r)phi_{u}(r) -> [V*phi]_{d}(G) */
+                    vphi_to_G();
+                    /* add to hphi_{d} */
+                    add_to_hphi(i, 3);
+
+                    /* for the second spin */
+
+                    /* phi_d(G) -> phi_d(r) */
+                    phi_to_r(i, 1);
+                    /* save phi_d(r) */
+                    switch (fft_coarse_.pu()) {
+                        case CPU: {
+                            fft_coarse_.output(buf_rg_.at<CPU>());
+                            break;
+                        }
+                        case GPU: {
+                            acc::copy(buf_rg_.at<GPU>(), fft_coarse_.buffer().at<GPU>(), fft_coarse_.local_size());
+                            break;
+                        }
+                    }
+                    /* multiply phi_d(r) by effective potential */
+                    mul_by_veff(fft_coarse_.buffer(), 1);
+                    /* V_{dd}(r)phi_{d}(r) -> [V*phi]_{d}(G) */
+                    vphi_to_G();
+                    /* add kinetic energy */
+                    add_to_hphi(i, 1);
+                    /* multiply phi_{d} by V_{ud} */
+                    mul_by_veff(buf_rg_, 2);
+                    /* copy to FFT buffer */
+                    switch (fft_coarse_.pu()) {
+                        case CPU: {
+                            fft_coarse_.input(buf_rg_.at<CPU>());
+                            break;
+                        }
+                        case GPU: {
+                            acc::copy(fft_coarse_.buffer().at<GPU>(), buf_rg_.at<GPU>(), fft_coarse_.local_size());
+                            break;
+                        }
+                    }
+                    /* V_{ud}(r)phi_{d}(r) -> [V*phi]_{u}(G) */
+                    vphi_to_G();
+                    /* add to hphi_{u} */
+                    add_to_hphi(i, 2);
 
                 } else { /* spin-collinear case */
                     /* phi(G) -> phi(r) */
@@ -820,7 +923,6 @@ class Local_operator
         {
             return v0_[ispn__];
         }
-
 };
 
 } // namespace
