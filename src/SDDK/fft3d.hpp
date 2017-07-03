@@ -667,11 +667,9 @@ class FFT3D
             for (int i = 0; i < local_size(); i++) {
                 fft_buffer_[i] = data__[i];
             }
-            #ifdef __GPU
             if (pu_ == GPU) {
-                fft_buffer_.copy_to_device();
+                fft_buffer_.copy<memory_t::host, memory_t::device>();
             }
-            #endif
         }
         
         /// Get real-space values from the FFT buffer.
