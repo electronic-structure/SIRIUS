@@ -77,16 +77,6 @@ class type_wrapper<double>
             return H5T_NATIVE_DOUBLE;
         }
         
-        static inline double conjugate(double const& v)
-        {
-            return v;
-        }
-
-        static inline double real(double const& v)
-        {
-            return v;
-        }
-
         static bool is_complex()
         {
             return false;
@@ -141,16 +131,6 @@ class type_wrapper<double_complex>
     public:
         typedef double_complex complex_t;
         typedef double real_t;
-        
-        static inline double_complex conjugate(double_complex const& v)
-        {
-            return std::conj(v);
-        }
-
-        static inline double real(double_complex const& v)
-        {
-            return v.real();
-        }
         
         static hid_t hdf5_type_id()
         {

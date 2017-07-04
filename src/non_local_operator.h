@@ -1,4 +1,4 @@
-// Copyright (c) 2013-2016 Anton Kozhevnikov, Thomas Schulthess
+// Copyright (c) 2013-2017 Anton Kozhevnikov, Thomas Schulthess
 // All rights reserved.
 // 
 // Redistribution and use in source and binary forms, with or without modification, are permitted provided that 
@@ -119,14 +119,15 @@ inline void Non_local_operator<double_complex>::apply(int chunk__,
             work_.allocate(memory_t::device);
         }
     }
-
+        
+        // TODO: refactor this, use swich-case, no acc::sync, single for-loop over atoms
     if (pu_ == CPU) {
         #pragma omp parallel for
         for (int i = 0; i < bp_chunks(chunk__).num_atoms_; i++) {
             /* number of beta functions for a given atom */
-            int nbf  = bp_chunks(chunk__).desc_(0, i);
-            int offs = bp_chunks(chunk__).desc_(1, i);
-            int ia   = bp_chunks(chunk__).desc_(3, i);
+            int nbf  = bp_chunks(chunk__).desc_(beta_desc_idx::nbf,    i);
+            int offs = bp_chunks(chunk__).desc_(beta_desc_idx::offset, i);
+            int ia   = bp_chunks(chunk__).desc_(beta_desc_idx::ia,     i);
 
             /* compute O * <beta|phi> */
             linalg<CPU>::gemm(0, 0, nbf, n__, nbf,
@@ -145,10 +146,9 @@ inline void Non_local_operator<double_complex>::apply(int chunk__,
         #pragma omp parallel for
         for (int i = 0; i < bp_chunks(chunk__).num_atoms_; i++) {
             /* number of beta functions for a given atom */
-            int nbf  = bp_chunks(chunk__).desc_(0, i);
-            int offs = bp_chunks(chunk__).desc_(1, i);
-            int ia   = bp_chunks(chunk__).desc_(3, i);
-
+            int nbf  = bp_chunks(chunk__).desc_(beta_desc_idx::nbf,    i);
+            int offs = bp_chunks(chunk__).desc_(beta_desc_idx::offset, i);
+            int ia   = bp_chunks(chunk__).desc_(beta_desc_idx::ia,     i);
             /* compute O * <beta|phi> */
             linalg<GPU>::gemm(0, 0, nbf, n__, nbf,
                               op_.at<GPU>(packed_mtrx_offset_(ia), ispn__), nbf, 
@@ -253,7 +253,8 @@ class D_operator: public Non_local_operator<T>
 {
     public:
 
-        D_operator(Simulation_context const& ctx__, Beta_projectors& beta__) : Non_local_operator<T>(beta__, ctx__.processing_unit())
+        D_operator(Simulation_context const& ctx__, Beta_projectors& beta__) 
+            : Non_local_operator<T>(beta__, ctx__.processing_unit())
         {
             this->op_ = mdarray<T, 2>(this->packed_mtrx_size_, ctx__.num_mag_dims() + 1);
             this->op_.zero();
@@ -307,7 +308,8 @@ class Q_operator: public Non_local_operator<T>
 {
     public:
         
-        Q_operator(Simulation_context const& ctx__, Beta_projectors& beta__) : Non_local_operator<T>(beta__, ctx__.processing_unit())
+        Q_operator(Simulation_context const& ctx__, Beta_projectors& beta__) 
+            : Non_local_operator<T>(beta__, ctx__.processing_unit())
         {
             /* Q-operator is independent of spin */
             this->op_ = mdarray<T, 2>(this->packed_mtrx_size_, 1);

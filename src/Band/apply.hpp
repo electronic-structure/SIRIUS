@@ -112,22 +112,42 @@ void Band::apply_h_o(K_point* kp__,
         }
     }
 
+    int nsc = (ctx_.num_mag_dims() == 3) ? 2 : 1;
     /* set intial ophi */
-    for (int ispn = 0; ispn < ophi__.num_components(); ispn++) {
+    for (int ispn = 0; ispn < nsc; ispn++) {
         ophi__.component(ispn).copy_from(phi__.component(ispn), N__, n__, ctx_.processing_unit());
     }
-
+    /* return if there are no beta-projectors */
     if (!ctx_.unit_cell().mt_lo_basis_size()) {
         return;
     }
+    
+    /* non-collinear case */
+    if (ctx_.num_mag_dims() == 3) {
+        for (int i = 0; i < ctx_.beta_projector_chunks().num_chunks(); i++) {
+            kp__->beta_projectors().generate(i);
 
-    for (int i = 0; i < ctx_.beta_projector_chunks().num_chunks(); i++) {
-        kp__->beta_projectors().generate(i);
+            for (int ispn = 0; ispn < 2; ispn++) {
 
-        auto beta_phi = kp__->beta_projectors().inner<T>(i, phi__.component(0), N__, n__);
+                auto beta_phi = kp__->beta_projectors().inner<T>(i, phi__.component(ispn), N__, n__);
+                
+                /* apply diagonal spin blocks */
+                d_op.apply(i, ispn, hphi__.component(ispn), N__, n__, beta_phi);
+                /* apply non-diagonal spin blocks */
+                d_op.apply(i, (ispn == 0) ? 3 : 2, hphi__.component((ispn == 0) ? 1 : 0), N__, n__, beta_phi);
+                
+                q_op.apply(i, 0, ophi__.component(ispn), N__, n__, beta_phi);
+            }
+        }
+    } else { /* non-magnetic or collinear case */
+        for (int i = 0; i < ctx_.beta_projector_chunks().num_chunks(); i++) {
+            kp__->beta_projectors().generate(i);
 
-        d_op.apply(i, ispn__, hphi__.component(0), N__, n__, beta_phi);
-        q_op.apply(i, 0, ophi__.component(0), N__, n__, beta_phi);
+            auto beta_phi = kp__->beta_projectors().inner<T>(i, phi__.component(0), N__, n__);
+
+            d_op.apply(i, ispn__, hphi__.component(0), N__, n__, beta_phi);
+            q_op.apply(i, 0, ophi__.component(0), N__, n__, beta_phi);
+        }
     }
     
     if (ctx_.control().print_checksum_) {

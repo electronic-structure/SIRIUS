@@ -14,23 +14,23 @@ inline void K_point::initialize()
     /* In case of collinear magnetism we store only non-zero spinor components.
      *
      * non magnetic case: 
-     * +---+
+     * .---.
      * |   |
-     * +---+
+     * .---.
      *
      * collinear case:
-     * +---+
-     * |uu |
-     * +---+---+
-     *     |dd |
-     *     +---+
+     * .---.          .---.
+     * |uu | 0        |uu |
+     * .---.---.  ->  .---.
+     *   0 |dd |      |dd |
+     *     .---.      .---.
      *
      * non collinear case:
-     * +-------+
+     * .-------.
      * |       |
-     * +-------+
+     * .-------.
      * |       |
-     * +-------+
+     * .-------.
      */
     int nst = (ctx_.num_mag_dims() == 3) ? ctx_.num_bands() : ctx_.num_fv_states();
 

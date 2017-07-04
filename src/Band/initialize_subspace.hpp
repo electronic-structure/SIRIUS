@@ -114,6 +114,8 @@ inline void Band::initialize_subspace(K_point* kp__,
 
     int num_sc = (ctx_.num_mag_dims() == 3) ? 2 : 1;
 
+    int num_spin_steps = (ctx_.num_mag_dims() == 3) ? 1 : ctx_.num_spins();
+
     int num_phi_tot = (ctx_.num_mag_dims() == 3) ? num_phi * 2 : num_phi;
     
     /* initial basis functions */
@@ -234,12 +236,12 @@ inline void Band::initialize_subspace(K_point* kp__,
         }
     }
     if (ctx_.num_mag_dims() == 3) {
-        phi.component(1).copy_from(phi.component(0), num_phi, num_phi, CPU);
+        phi.component(1).copy_from(phi.component(0), 0, num_phi, num_phi, CPU);
     }
     t1.stop();
 
     /* short notation for number of target wave-functions */
-    int num_bands = ctx_.num_fv_states();
+    int num_bands = (ctx_.num_mag_dims() == 3) ? ctx_.num_bands() : ctx_.num_fv_states();
 
     ctx_.fft_coarse().prepare(kp__->gkvec().partition());
     local_op_->prepare(kp__->gkvec());
@@ -250,7 +252,8 @@ inline void Band::initialize_subspace(K_point* kp__,
     /* allocate wave-functions */
     Wave_functions hphi(ctx_.processing_unit(), kp__->gkvec(), num_phi_tot, num_sc);
     Wave_functions ophi(ctx_.processing_unit(), kp__->gkvec(), num_phi_tot, num_sc);
-    Wave_functions wf_tmp(ctx_.processing_unit(), kp__->gkvec(), num_phi_tot, num_sc);
+    /* temporary wave-functions required as a storage during orthogonalization */
+    wave_functions wf_tmp(ctx_.processing_unit(), kp__->gkvec(), num_phi_tot);
 
     int bs = ctx_.cyclic_block_size();
     auto mem_type = (std_evp_solver().type() == ev_magma) ? memory_t::host_pinned : memory_t::host;
@@ -269,34 +272,36 @@ inline void Band::initialize_subspace(K_point* kp__,
             phi.component(ispn).copy_to_device(0, num_phi_tot);
             hphi.component(ispn).allocate_on_device();
             ophi.component(ispn).allocate_on_device();
-            wf_tmp.component(ispn).allocate_on_device();
         }
+        wf_tmp.allocate_on_device();
         evec.allocate(memory_t::device);
         hmlt.allocate(memory_t::device);
     }
     #endif
     
-    //if (ctx_.control().print_checksum_) {
-    //    auto cs = phi.checksum(0, num_phi);
-    //    DUMP("checksum(phi): %18.10f %18.10f", cs.real(), cs.imag());
-    //}
+    if (ctx_.control().print_checksum_) {
+        for (int ispn = 0; ispn < num_sc; ispn++) {
+            auto cs = phi.component(ispn).checksum(0, num_phi_tot);
+            DUMP("checksum(phi%i): %18.10f %18.10f", ispn, cs.real(), cs.imag());
+        }
+    }
 
-    for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
+    for (int ispn_step = 0; ispn_step < num_spin_steps; ispn_step++) {
         /* apply Hamiltonian and overlap operators to the new basis functions */
-        apply_h_o<T>(kp__, ispn, 0, num_phi, phi, hphi, ophi, d_op, q_op);
+        apply_h_o<T>(kp__, ispn_step, 0, num_phi_tot, phi, hphi, ophi, d_op, q_op);
         
         /* do some checks */
         if (ctx_.control().verification_ >= 1) {
-            set_subspace_mtrx<T>(0, num_phi, phi.component(0), ophi.component(0), hmlt, hmlt_old);
+            set_subspace_mtrx<T>(num_sc, 0, num_phi_tot, phi, ophi, hmlt, hmlt_old);
             //hmlt.serialize("overlap", num_phi);
-            double max_diff = Utils::check_hermitian(hmlt, num_phi);
+            double max_diff = check_hermitian(hmlt, num_phi_tot);
             if (max_diff > 1e-12) {
                 std::stringstream s;
                 s << "overlap matrix is not hermitian, max_err = " << max_diff;
                 TERMINATE(s);
             }
-            std::vector<double> eo(num_phi);
-            if (std_evp_solver().solve(num_phi, num_phi, hmlt.template at<CPU>(), hmlt.ld(),
+            std::vector<double> eo(num_phi_tot);
+            if (std_evp_solver().solve(num_phi_tot, num_phi_tot, hmlt.template at<CPU>(), hmlt.ld(),
                                        eo.data(), evec.template at<CPU>(), evec.ld(),
                                        hmlt.num_rows_local(), hmlt.num_cols_local())) {
                 std::stringstream s;
@@ -311,56 +316,64 @@ inline void Band::initialize_subspace(K_point* kp__,
             }
         }
         
-        orthogonalize<T>(0, num_phi, phi.component(0), hphi.component(0), ophi.component(0), hmlt, wf_tmp.component(0));
+        orthogonalize<T>(ctx_.processing_unit(), num_sc, 0, num_phi_tot, phi, hphi, ophi, hmlt, wf_tmp);
 
         /* setup eigen-value problem */
-        set_subspace_mtrx<T>(0, num_phi, phi.component(0), hphi.component(0), hmlt, hmlt_old);
+        set_subspace_mtrx<T>(num_sc, 0, num_phi_tot, phi, hphi, hmlt, hmlt_old);
 
         /* solve generalized eigen-value problem with the size N */
-        if (std_evp_solver().solve(num_phi, num_bands, hmlt.template at<CPU>(), hmlt.ld(),
-                                   eval.data(), evec.template at<CPU>(), evec.ld(),
+        if (std_evp_solver().solve(num_phi_tot, num_bands,
+                                   hmlt.template at<CPU>(), hmlt.ld(),
+                                   eval.data(),
+                                   evec.template at<CPU>(), evec.ld(),
                                    hmlt.num_rows_local(), hmlt.num_cols_local())) {
             std::stringstream s;
             s << "error in diagonalziation";
             TERMINATE(s);
         }
 
-        if (ctx_.control().print_checksum_) {
-            auto cs = evec.checksum();
-            kp__->comm().allreduce(&cs, 1);
-            DUMP("checksum(evec): %18.10f", std::abs(cs));
-            double cs1{0};
-            for (int i = 0; i < num_bands; i++) {
-                cs1 += eval[i];
-            }
-            DUMP("checksum(eval): %18.10f", cs1);
-        }
+        //if (ctx_.control().print_checksum_) {
+        //    auto cs = evec.checksum();
+        //    kp__->comm().allreduce(&cs, 1);
+        //    DUMP("checksum(evec): %18.10f", std::abs(cs));
+        //    double cs1{0};
+        //    for (int i = 0; i < num_bands; i++) {
+        //        cs1 += eval[i];
+        //    }
+        //    DUMP("checksum(eval): %18.10f", cs1);
+        //}
 
         if (ctx_.control().verbosity_ >= 3 && kp__->comm().rank() == 0) {
             for (int i = 0; i < num_bands; i++) {
                 DUMP("eval[%i]=%20.16f", i, eval[i]);
             }
         }
-        
+
         /* compute wave-functions */
         /* \Psi_{i} = \sum_{mu} \phi_{mu} * Z_{mu, i} */
-        transform<T>(phi.component(0), 0, num_phi, evec, 0, 0, kp__->spinor_wave_functions(ispn), 0, num_bands);
-
-        if (ctx_.control().print_checksum_) {
-            auto cs = kp__->spinor_wave_functions(ispn).checksum(0, num_bands);
-            DUMP("checksum(spinor_wave_functions): %18.10f %18.10f", cs.real(), cs.imag());
+        if (ctx_.num_mag_dims() == 3) {
+            transform<T>(num_sc, 1.0, {&phi}, 0, num_phi_tot, evec, 0, 0, 0.0, {&kp__->spinor_wave_functions()}, 0, num_bands);
+        } else {
+            transform<T>(phi.component(0), 0, num_phi, evec, 0, 0, kp__->spinor_wave_functions(ispn_step), 0, num_bands);
         }
 
-        #ifdef __GPU
-        if (ctx_.processing_unit() == GPU) {
-            kp__->spinor_wave_functions(ispn).pw_coeffs().copy_to_host(0, num_bands);
-        }
-        #endif
+        //if (ctx_.control().print_checksum_) {
+        //    auto cs = kp__->spinor_wave_functions(ispn).checksum(0, num_bands);
+        //    DUMP("checksum(spinor_wave_functions): %18.10f %18.10f", cs.real(), cs.imag());
+        //}
 
-        for (int j = 0; j < ctx_.num_fv_states(); j++) {
-            kp__->band_energy(j + ispn * ctx_.num_fv_states()) = eval[j];
+        for (int j = 0; j < num_bands; j++) {
+            kp__->band_energy(j + ispn_step * ctx_.num_fv_states()) = eval[j];
         }
     }
+
+    #ifdef __GPU
+    if (ctx_.processing_unit() == GPU) {
+        for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
+            kp__->spinor_wave_functions(ispn).pw_coeffs().copy_to_host(0, num_bands);
+        }
+    }
+    #endif
 
     kp__->beta_projectors().dismiss();
     ctx_.fft_coarse().dismiss();

@@ -525,7 +525,7 @@ class Local_operator
             /* non-collinear case is not treated here because nc wave-functions are complex */
             if (gkp.reduced()) {
                 int npairs = phi__.component(0).pw_coeffs().spl_num_col().local_size() / 2;
-
+                /* Gamma-point case can only be non-magnetic or spin-collinear */
                 for (int i = 0; i < npairs; i++) {
                     /* phi(G) -> phi(r) */
                     phi_to_r(i, 0, true);
