@@ -45,10 +45,8 @@ inline void inner(wave_functions& bra__,
     }
     double time = -omp_get_wtime();
 
-    double_complex zalpha(1, 0); // TODO: T alpha
-    double_complex zbeta(beta__, 0);
-    double dalpha{2};
-    double dbeta = beta__;
+    T alpha = (std::is_same<T, double_complex>::value) ? 1 : 2;
+    T beta = beta__;
 
     auto local_inner = [&](int i0__,
                            int m__,
@@ -57,21 +55,22 @@ inline void inner(wave_functions& bra__,
                            T*  buf__,
                            int ld__,
                            int stream_id){
+        /* wave-functions are complex and inner product is complex */
         if (std::is_same<T, double_complex>::value) {
             switch (pu) {
                 case CPU: {
                     linalg<CPU>::gemm(2, 0, m__, n__, bra__.pw_coeffs().num_rows_loc(),
-                                      zalpha,
+                                      *reinterpret_cast<double_complex*>(&alpha),
                                       bra__.pw_coeffs().prime().at<CPU>(0, i0__), bra__.pw_coeffs().prime().ld(),
                                       ket__.pw_coeffs().prime().at<CPU>(0, j0__), ket__.pw_coeffs().prime().ld(),
-                                      zbeta,
+                                      *reinterpret_cast<double_complex*>(&beta),
                                       reinterpret_cast<double_complex*>(buf__), ld__);
                     if (bra__.has_mt() && bra__.mt_coeffs().num_rows_loc()) {
                         linalg<CPU>::gemm(2, 0, m__, n__, bra__.mt_coeffs().num_rows_loc(),
-                                          zalpha,
+                                          *reinterpret_cast<double_complex*>(&alpha),
                                           bra__.mt_coeffs().prime().at<CPU>(0, i0__), bra__.mt_coeffs().prime().ld(),
                                           ket__.mt_coeffs().prime().at<CPU>(0, j0__), ket__.mt_coeffs().prime().ld(),
-                                          zbeta,
+                                          linalg_const<double_complex>::one(),
                                           reinterpret_cast<double_complex*>(buf__), ld__);
                     }
                     break;
@@ -79,18 +78,18 @@ inline void inner(wave_functions& bra__,
                 case GPU: {
                     #ifdef __GPU
                     linalg<GPU>::gemm(2, 0, m__, n__, bra__.pw_coeffs().num_rows_loc(),
-                                      &zalpha,
+                                      reinterpret_cast<double_complex*>(&alpha),
                                       bra__.pw_coeffs().prime().at<GPU>(0, i0__), bra__.pw_coeffs().prime().ld(),
                                       ket__.pw_coeffs().prime().at<GPU>(0, j0__), ket__.pw_coeffs().prime().ld(),
-                                      &zbeta,
+                                      reinterpret_cast<double_complex*>(&beta),
                                       reinterpret_cast<double_complex*>(buf__), ld__,
                                       stream_id);
                     if (bra__.has_mt() && bra__.mt_coeffs().num_rows_loc()) {
                         linalg<GPU>::gemm(2, 0, m__, n__, bra__.mt_coeffs().num_rows_loc(),
-                                          &zalpha,
+                                          reinterpret_cast<double_complex*>(&alpha),
                                           bra__.mt_coeffs().prime().at<GPU>(0, i0__), bra__.mt_coeffs().prime().ld(),
                                           ket__.mt_coeffs().prime().at<GPU>(0, j0__), ket__.mt_coeffs().prime().ld(),
-                                          &zbeta,
+                                          &linalg_const<double_complex>::one(),
                                           reinterpret_cast<double_complex*>(buf__), ld__,
                                           stream_id);
                     }
@@ -107,17 +106,17 @@ inline void inner(wave_functions& bra__,
             switch (pu) {
                 case CPU: {
                     linalg<CPU>::gemm(2, 0, m__, n__, 2 * bra__.pw_coeffs().num_rows_loc(),
-                                      dalpha,
+                                      *reinterpret_cast<double*>(&alpha),
                                       reinterpret_cast<double*>(bra__.pw_coeffs().prime().at<CPU>(0, i0__)), 2 * bra__.pw_coeffs().prime().ld(),
                                       reinterpret_cast<double*>(ket__.pw_coeffs().prime().at<CPU>(0, j0__)), 2 * ket__.pw_coeffs().prime().ld(),
-                                      dbeta,
+                                      *reinterpret_cast<double*>(&beta),
                                       reinterpret_cast<double*>(buf__), ld__);
                     /* subtract one extra G=0 contribution */
                     if (comm.rank() == 0) {
                         linalg<CPU>::ger(m__, n__, -1.0,
-                                        reinterpret_cast<double*>(bra__.pw_coeffs().prime().at<CPU>(0, i0__)), 2 * bra__.pw_coeffs().prime().ld(),
-                                        reinterpret_cast<double*>(ket__.pw_coeffs().prime().at<CPU>(0, j0__)), 2 * ket__.pw_coeffs().prime().ld(),
-                                        reinterpret_cast<double*>(buf__), ld__); 
+                                         reinterpret_cast<double*>(bra__.pw_coeffs().prime().at<CPU>(0, i0__)), 2 * bra__.pw_coeffs().prime().ld(),
+                                         reinterpret_cast<double*>(ket__.pw_coeffs().prime().at<CPU>(0, j0__)), 2 * ket__.pw_coeffs().prime().ld(),
+                                         reinterpret_cast<double*>(buf__), ld__); 
 
                     }
                     break;
@@ -125,19 +124,19 @@ inline void inner(wave_functions& bra__,
                 case GPU: {
                     #ifdef __GPU
                     linalg<GPU>::gemm(2, 0, m__, n__, 2 * bra__.pw_coeffs().num_rows_loc(),
-                                      &dalpha,
+                                      reinterpret_cast<double*>(&alpha),
                                       reinterpret_cast<double*>(bra__.pw_coeffs().prime().at<GPU>(0, i0__)), 2 * bra__.pw_coeffs().prime().ld(),
                                       reinterpret_cast<double*>(ket__.pw_coeffs().prime().at<GPU>(0, j0__)), 2 * ket__.pw_coeffs().prime().ld(),
-                                      &dbeta,
+                                      reinterpret_cast<double*>(&beta),
                                       reinterpret_cast<double*>(buf__), ld__,
                                       stream_id);
                     /* subtract one extra G=0 contribution */
                     if (comm.rank() == 0) {
                         linalg<GPU>::ger(m__, n__, &linalg_const<double>::m_one(),
-                                        reinterpret_cast<double*>(bra__.pw_coeffs().prime().at<GPU>(0, i0__)), 2 * bra__.pw_coeffs().prime().ld(),
-                                        reinterpret_cast<double*>(ket__.pw_coeffs().prime().at<GPU>(0, j0__)), 2 * ket__.pw_coeffs().prime().ld(),
-                                        reinterpret_cast<double*>(buf__), ld__,
-                                        stream_id);
+                                         reinterpret_cast<double*>(bra__.pw_coeffs().prime().at<GPU>(0, i0__)), 2 * bra__.pw_coeffs().prime().ld(),
+                                         reinterpret_cast<double*>(ket__.pw_coeffs().prime().at<GPU>(0, j0__)), 2 * ket__.pw_coeffs().prime().ld(),
+                                         reinterpret_cast<double*>(buf__), ld__,
+                                         stream_id);
                     }
                     #endif
                     break;

@@ -145,47 +145,47 @@ inline void Band::diag_fv_full_potential_exact(K_point* kp, Potential const& pot
         }
     }
 
-    //== wave_functions phi(ctx_, kp->comm(), kp->gkvec(), unit_cell_.num_atoms(),
-    //==                    [this](int ia) {return unit_cell_.atom(ia).mt_lo_basis_size(); }, ctx_.num_fv_states());
-    //== wave_functions hphi(ctx_, kp->comm(), kp->gkvec(), unit_cell_.num_atoms(),
-    //==                    [this](int ia) {return unit_cell_.atom(ia).mt_lo_basis_size(); }, ctx_.num_fv_states());
-    //== wave_functions ophi(ctx_, kp->comm(), kp->gkvec(), unit_cell_.num_atoms(),
-    //==                    [this](int ia) {return unit_cell_.atom(ia).mt_lo_basis_size(); }, ctx_.num_fv_states());
-    //== 
-    //== for (int i = 0; i < ctx_.num_fv_states(); i++) {
-    //==     std::memcpy(phi.pw_coeffs().prime().at<CPU>(0, i),
-    //==                 kp->fv_eigen_vectors().at<CPU>(0, i),
-    //==                 kp->num_gkvec() * sizeof(double_complex));
-    //==     if (unit_cell_.mt_lo_basis_size()) {
-    //==         std::memcpy(phi.mt_coeffs().prime().at<CPU>(0, i),
-    //==                     kp->fv_eigen_vectors().at<CPU>(kp->num_gkvec(), i),
-    //==                     unit_cell_.mt_lo_basis_size() * sizeof(double_complex));
-    //==     }
-    //== }
+    if (ctx_.control().verification_ >= 1) {
+        /* check application of H and O */
+        wave_functions phi(ctx_.processing_unit(), kp->gkvec(), unit_cell_.num_atoms(),
+                           [this](int ia) {return unit_cell_.atom(ia).mt_lo_basis_size(); }, ctx_.num_fv_states());
+        wave_functions hphi(ctx_.processing_unit(), kp->gkvec(), unit_cell_.num_atoms(),
+                           [this](int ia) {return unit_cell_.atom(ia).mt_lo_basis_size(); }, ctx_.num_fv_states());
+        wave_functions ophi(ctx_.processing_unit(), kp->gkvec(), unit_cell_.num_atoms(),
+                           [this](int ia) {return unit_cell_.atom(ia).mt_lo_basis_size(); }, ctx_.num_fv_states());
+        
+        for (int i = 0; i < ctx_.num_fv_states(); i++) {
+            std::memcpy(phi.pw_coeffs().prime().at<CPU>(0, i),
+                        kp->fv_eigen_vectors().at<CPU>(0, i),
+                        kp->num_gkvec() * sizeof(double_complex));
+            if (unit_cell_.mt_lo_basis_size()) {
+                std::memcpy(phi.mt_coeffs().prime().at<CPU>(0, i),
+                            kp->fv_eigen_vectors().at<CPU>(kp->num_gkvec(), i),
+                            unit_cell_.mt_lo_basis_size() * sizeof(double_complex));
+            }
+        }
 
-    //== Interstitial_operator istl_op(ctx_.fft_coarse(), ctx_.gvec_coarse(),
-    //==                               ctx_.mpi_grid_fft_vloc().communicator(1 << 1),
-    //==                               effective_potential, ctx_.step_function());
-    //== apply_fv_h_o(kp, istl_op, 0, 0, ctx_.num_fv_states(), phi, hphi, ophi);
+        apply_fv_h_o(kp, 0, 0, ctx_.num_fv_states(), phi, hphi, ophi);
 
-    //== dmatrix<double_complex> ovlp(ctx_.num_fv_states(), ctx_.num_fv_states(), ctx_.blacs_grid(), ctx_.cyclic_block_size(), ctx_.cyclic_block_size());
-    //== dmatrix<double_complex> hmlt(ctx_.num_fv_states(), ctx_.num_fv_states(), ctx_.blacs_grid(), ctx_.cyclic_block_size(), ctx_.cyclic_block_size());
+        dmatrix<double_complex> ovlp(ctx_.num_fv_states(), ctx_.num_fv_states(), ctx_.blacs_grid(), ctx_.cyclic_block_size(), ctx_.cyclic_block_size());
+        dmatrix<double_complex> hmlt(ctx_.num_fv_states(), ctx_.num_fv_states(), ctx_.blacs_grid(), ctx_.cyclic_block_size(), ctx_.cyclic_block_size());
 
-    //== inner(phi, 0, ctx_.num_fv_states(), hphi, 0, ctx_.num_fv_states(), hmlt, 0, 0);
-    //== inner(phi, 0, ctx_.num_fv_states(), ophi, 0, ctx_.num_fv_states(), ovlp, 0, 0);
+        inner(phi, 0, ctx_.num_fv_states(), hphi, 0, ctx_.num_fv_states(), 0.0, hmlt, 0, 0);
+        inner(phi, 0, ctx_.num_fv_states(), ophi, 0, ctx_.num_fv_states(), 0.0, ovlp, 0, 0);
 
-    //== for (int i = 0; i < ctx_.num_fv_states(); i++) {
-    //==     for (int j = 0; j < ctx_.num_fv_states(); j++) {
-    //==         double_complex z = (i == j) ? ovlp(i, j) - 1.0 : ovlp(i, j);
-    //==         double_complex z1 = (i == j) ? hmlt(i, j) - eval[i] : hmlt(i, j);
-    //==         if (std::abs(z) > 1e-10) {
-    //==             printf("ovlp(%i, %i) = %f %f\n", i, j, z.real(), z.imag());
-    //==         }
-    //==         if (std::abs(z1) > 1e-10) {
-    //==             printf("hmlt(%i, %i) = %f %f\n", i, j, z1.real(), z1.imag());
-    //==         }
-    //==     }
-    //== }
+        for (int i = 0; i < ctx_.num_fv_states(); i++) {
+            for (int j = 0; j < ctx_.num_fv_states(); j++) {
+                double_complex z = (i == j) ? ovlp(i, j) - 1.0 : ovlp(i, j);
+                double_complex z1 = (i == j) ? hmlt(i, j) - eval[i] : hmlt(i, j);
+                if (std::abs(z) > 1e-10) {
+                    printf("ovlp(%i, %i) = %f %f\n", i, j, z.real(), z.imag());
+                }
+                if (std::abs(z1) > 1e-10) {
+                    printf("hmlt(%i, %i) = %f %f\n", i, j, z1.real(), z1.imag());
+                }
+            }
+        }
+    }
 }
 
 template <typename T>
@@ -414,7 +414,6 @@ inline void Band::get_singular_components(K_point* kp__) const
 
     kp__->comm().barrier();
 }
-
 
 inline void Band::diag_fv_full_potential_davidson(K_point* kp) const
 {
