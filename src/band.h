@@ -183,6 +183,17 @@ class Band
                                                 wave_functions&      res__,
                                                 mdarray<double, 2>&  h_diag__,
                                                 mdarray<double, 1>&  o_diag__) const;
+
+        /// Auxiliary function used internally by residuals() function.
+        inline mdarray<double, 1> residuals_aux(K_point*             kp__,
+                                                int                  ispn__,
+                                                int                  num_bands__,
+                                                std::vector<double>& eval__,
+                                                Wave_functions&      hpsi__,
+                                                Wave_functions&      opsi__,
+                                                Wave_functions&      res__,
+                                                mdarray<double, 2>&  h_diag__,
+                                                mdarray<double, 1>&  o_diag__) const;
         
         /// Compute residuals.
         template <typename T>
@@ -198,6 +209,23 @@ class Band
                              wave_functions&      hpsi__,
                              wave_functions&      opsi__,
                              wave_functions&      res__,
+                             mdarray<double, 2>&  h_diag__,
+                             mdarray<double, 1>&  o_diag__) const;
+
+        /// Compute residuals.
+        template <typename T>
+        inline int residuals(K_point*             kp__,
+                             int                  ispn__,
+                             int                  N__,
+                             int                  num_bands__,
+                             std::vector<double>& eval__,
+                             std::vector<double>& eval_old__,
+                             dmatrix<T>&          evec__,
+                             Wave_functions&      hphi__,
+                             Wave_functions&      ophi__,
+                             Wave_functions&      hpsi__,
+                             Wave_functions&      opsi__,
+                             Wave_functions&      res__,
                              mdarray<double, 2>&  h_diag__,
                              mdarray<double, 1>&  o_diag__) const;
         
