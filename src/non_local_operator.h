@@ -275,10 +275,10 @@ class D_operator: public Non_local_operator<T>
                                 double bx = uc.atom(ia).d_mtrx(xi1, xi2, 2);
                                 double by = uc.atom(ia).d_mtrx(xi1, xi2, 3);
                                 this->op_(this->packed_mtrx_offset_(ia) + idx, 2) = type_wrapper<T>::bypass(double_complex(bx, -by));
-                                this->op_(this->packed_mtrx_offset_(ia) + idx, 3) = type_wrapper<T>::bypass(double_complex(by, by));
+                                this->op_(this->packed_mtrx_offset_(ia) + idx, 3) = type_wrapper<T>::bypass(double_complex(bx,  by));
                             }
                             case 1: {
-                                double v = uc.atom(ia).d_mtrx(xi1, xi2, 0);
+                                double v  = uc.atom(ia).d_mtrx(xi1, xi2, 0);
                                 double bz = uc.atom(ia).d_mtrx(xi1, xi2, 1);
                                 this->op_(this->packed_mtrx_offset_(ia) + idx, 0) = v + bz;
                                 this->op_(this->packed_mtrx_offset_(ia) + idx, 1) = v - bz;
@@ -316,29 +316,24 @@ class Q_operator: public Non_local_operator<T>
             this->op_.zero();
 
             auto& uc = this->beta_.unit_cell();
-            for (int ia = 0; ia < uc.num_atoms(); ia++)
-            {
+            for (int ia = 0; ia < uc.num_atoms(); ia++) {
                 int iat = uc.atom(ia).type().id();
                 if (!uc.atom_type(iat).pp_desc().augment) {
                     continue;
                 }
                 int nbf = uc.atom(ia).mt_basis_size();
-                for (int xi2 = 0; xi2 < nbf; xi2++)
-                {
-                    for (int xi1 = 0; xi1 < nbf; xi1++)
-                    {
+                for (int xi2 = 0; xi2 < nbf; xi2++) {
+                    for (int xi1 = 0; xi1 < nbf; xi1++) {
                         if (ctx__.unit_cell().atom_type(iat).pp_desc().augment) {
                             this->op_(this->packed_mtrx_offset_(ia) + xi2 * nbf + xi1, 0) = ctx__.augmentation_op(iat).q_mtrx(xi1, xi2);
                         }
                     }
                 }
             }
-            #ifdef __GPU
             if (this->pu_ == GPU) {
                 this->op_.allocate(memory_t::device);
-                this->op_.copy_to_device();
+                this->op_.template copy<memory_t::host, memory_t::device>();
             }
-            #endif
         }
 };
 
