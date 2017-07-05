@@ -101,10 +101,10 @@ inline void Band::initialize_subspace(K_point_set& kset__,
 }
 
 template <typename T>
-inline void Band::initialize_subspace(K_point* kp__,
-                                      Periodic_function<double>* effective_potential__,
-                                      Periodic_function<double>* effective_magnetic_field__[3],
-                                      int num_ao__,
+inline void Band::initialize_subspace(K_point*                                        kp__,
+                                      Periodic_function<double>*                      effective_potential__,
+                                      Periodic_function<double>*                      effective_magnetic_field__[3],
+                                      int                                             num_ao__,
                                       std::vector<std::vector<Spline<double>>> const& rad_int__) const
 {
     PROFILE("sirius::Band::initialize_subspace|kp");
@@ -203,9 +203,6 @@ inline void Band::initialize_subspace(K_point* kp__,
         for (int igk_loc = 0; igk_loc < kp__->num_gkvec_loc(); igk_loc++) {
             /* global index of G+k vector */
             int igk = kp__->idxgk(igk_loc);
-            //if (igk == 0) {
-            //    phi.component(0).pw_coeffs().prime(igk_loc, num_ao__ + i) = 0.0;
-            //}
             if (igk == i + 1) {
                 phi.component(0).pw_coeffs().prime(igk_loc, num_ao__ + i) = 1.0;
             }
@@ -289,7 +286,7 @@ inline void Band::initialize_subspace(K_point* kp__,
     for (int ispn_step = 0; ispn_step < num_spin_steps; ispn_step++) {
         /* apply Hamiltonian and overlap operators to the new basis functions */
         apply_h_o<T>(kp__, ispn_step, 0, num_phi_tot, phi, hphi, ophi, d_op, q_op);
-        
+
         /* do some checks */
         if (ctx_.control().verification_ >= 1) {
             set_subspace_mtrx<T>(num_sc, 0, num_phi_tot, phi, ophi, hmlt, hmlt_old);
@@ -332,16 +329,16 @@ inline void Band::initialize_subspace(K_point* kp__,
             TERMINATE(s);
         }
 
-        //if (ctx_.control().print_checksum_) {
-        //    auto cs = evec.checksum();
-        //    kp__->comm().allreduce(&cs, 1);
-        //    DUMP("checksum(evec): %18.10f", std::abs(cs));
-        //    double cs1{0};
-        //    for (int i = 0; i < num_bands; i++) {
-        //        cs1 += eval[i];
-        //    }
-        //    DUMP("checksum(eval): %18.10f", cs1);
-        //}
+        if (ctx_.control().print_checksum_) {
+            auto cs = evec.checksum();
+            kp__->comm().allreduce(&cs, 1);
+            DUMP("checksum(evec): %18.10f", std::abs(cs));
+            double cs1{0};
+            for (int i = 0; i < num_bands; i++) {
+                cs1 += eval[i];
+            }
+            DUMP("checksum(eval): %18.10f", cs1);
+        }
 
         if (ctx_.control().verbosity_ >= 3 && kp__->comm().rank() == 0) {
             for (int i = 0; i < num_bands; i++) {
@@ -357,11 +354,6 @@ inline void Band::initialize_subspace(K_point* kp__,
             transform<T>(phi.component(0), 0, num_phi, evec, 0, 0, kp__->spinor_wave_functions(ispn_step), 0, num_bands);
         }
 
-        //if (ctx_.control().print_checksum_) {
-        //    auto cs = kp__->spinor_wave_functions(ispn).checksum(0, num_bands);
-        //    DUMP("checksum(spinor_wave_functions): %18.10f %18.10f", cs.real(), cs.imag());
-        //}
-
         for (int j = 0; j < num_bands; j++) {
             kp__->band_energy(j + ispn_step * ctx_.num_fv_states()) = eval[j];
         }
@@ -374,6 +366,13 @@ inline void Band::initialize_subspace(K_point* kp__,
         }
     }
     #endif
+
+    if (ctx_.control().print_checksum_) {
+        for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
+            auto cs = kp__->spinor_wave_functions(ispn).checksum(0, num_bands);
+            DUMP("checksum(spinor_wave_functions_%i): %18.10f %18.10f", ispn, cs.real(), cs.imag());
+        }
+    }
 
     kp__->beta_projectors().dismiss();
     ctx_.fft_coarse().dismiss();
