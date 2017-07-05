@@ -1015,13 +1015,17 @@ class Density // TODO: return rho_vec
                     for (int xi1 = 0; xi1 <= xi2; xi1++) {
                         int idx12 = xi2 * (xi2 + 1) / 2 + xi1;
                         switch (ctx_.num_mag_dims()) {
-                            case 0: {
-                                dm(idx12, i, 0) = density_matrix_(xi2, xi1, 0, ia).real();
-                                break;
+                            case 3: {
+                                dm(idx12, i, 2) = 2 * std::real(density_matrix_(xi2, xi1, 2, ia));
+                                dm(idx12, i, 3) = -2 * std::imag(density_matrix_(xi2, xi1, 2, ia));
                             }
                             case 1: {
                                 dm(idx12, i, 0) = std::real(density_matrix_(xi2, xi1, 0, ia) + density_matrix_(xi2, xi1, 1, ia));
                                 dm(idx12, i, 1) = std::real(density_matrix_(xi2, xi1, 0, ia) - density_matrix_(xi2, xi1, 1, ia));
+                                break;
+                            }
+                            case 0: {
+                                dm(idx12, i, 0) = density_matrix_(xi2, xi1, 0, ia).real();
                                 break;
                             }
                         }
