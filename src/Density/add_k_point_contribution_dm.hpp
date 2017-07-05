@@ -99,9 +99,9 @@ inline void Density::add_k_point_contribution_dm(K_point* kp__,
                             mdarray<double_complex, 2> bp2(nbeta, nbnd_loc);
                             #pragma omp for
                             for (int ia = 0; ia < bp_chunks(chunk).num_atoms_; ia++) {
-                                int nbf  = bp_chunks(chunk).desc_(0, ia);
-                                int offs = bp_chunks(chunk).desc_(1, ia);
-                                int ja   = bp_chunks(chunk).desc_(3, ia);
+                                int nbf  = bp_chunks(chunk).desc_(beta_desc_idx::nbf,    ia);
+                                int offs = bp_chunks(chunk).desc_(beta_desc_idx::offset, ia);
+                                int ja   = bp_chunks(chunk).desc_(beta_desc_idx::ia,     ia);
 
                                 for (int i = 0; i < nbnd_loc; i++) {
                                     int j = spl_nbnd[i];
@@ -122,7 +122,61 @@ inline void Density::add_k_point_contribution_dm(K_point* kp__,
                 }
             }
         } else {
-            TERMINATE_NOT_IMPLEMENTED
+            for (int chunk = 0; chunk < bp_chunks.num_chunks(); chunk++) {
+                kp__->beta_projectors().generate(chunk);
+
+                /* number of beta projectors */
+                int nbeta = bp_chunks(chunk).num_beta_;
+
+                /* total number of occupied bands */
+                int nbnd = kp__->num_occupied_bands();
+
+                splindex<block> spl_nbnd(nbnd, kp__->comm().size(), kp__->comm().rank());
+                int nbnd_loc = spl_nbnd.local_size();
+
+                /* auxiliary arrays */
+                mdarray<double_complex, 3> bp1(nbeta, nbnd_loc, 2);
+                mdarray<double_complex, 3> bp2(nbeta, nbnd_loc, 2);
+
+                for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
+                    /* compute <beta|psi> */
+                    auto beta_psi = kp__->beta_projectors().inner<T>(chunk, kp__->spinor_wave_functions(ispn), 0, nbnd);
+                    #pragma omp parallel for schedule(static)
+                    for (int i = 0; i < nbnd_loc; i++) {
+                        int j = spl_nbnd[i];
+
+                        for (int m = 0; m < nbeta; m++) {
+                            bp1(m, i, ispn) = beta_psi(m, j);
+                            bp2(m, i, ispn) = std::conj(beta_psi(m, j)) * kp__->weight() * kp__->band_occupancy(j);
+                        }
+                    }
+                }
+                if (nbnd_loc) {
+                    #pragma omp parallel for
+                    for (int ia = 0; ia < bp_chunks(chunk).num_atoms_; ia++) {
+                        int nbf  = bp_chunks(chunk).desc_(beta_desc_idx::nbf,    ia);
+                        int offs = bp_chunks(chunk).desc_(beta_desc_idx::offset, ia);
+                        int ja   = bp_chunks(chunk).desc_(beta_desc_idx::ia,     ia);
+                        /* compute diagonal spin blocks */
+                        for (int ispn = 0; ispn < 2; ispn++) {
+                            linalg<CPU>::gemm(0, 1, nbf, nbf, nbnd_loc,
+                                              linalg_const<double_complex>::one(),
+                                              &bp1(offs, 0, ispn), bp1.ld(),
+                                              &bp2(offs, 0, ispn), bp2.ld(),
+                                              linalg_const<double_complex>::one(),
+                                              &density_matrix__(0, 0, ispn, ja), density_matrix__.ld());
+                        }
+                        /* off-diagonal spin block */
+                        linalg<CPU>::gemm(0, 1, nbf, nbf, nbnd_loc,
+                                          linalg_const<double_complex>::one(),
+                                          &bp1(offs, 0, 0), bp1.ld(),
+                                          &bp2(offs, 0, 1), bp2.ld(),
+                                          linalg_const<double_complex>::one(),
+                                          &density_matrix__(0, 0, 2, ja), density_matrix__.ld());
+                    }
+                }
+
+            }
         }
 
         kp__->beta_projectors().dismiss();
