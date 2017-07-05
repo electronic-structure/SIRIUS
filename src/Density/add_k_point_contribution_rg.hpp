@@ -117,14 +117,14 @@ inline void Density::add_k_point_contribution_rg(K_point* kp__)
     /* switch from real density matrix to density and magnetization */
     switch (ctx_.num_mag_dims()) {
         case 3: {
-            #pragma omp parallel for
+            #pragma omp parallel for schedule(static)
             for (int ir = 0; ir < fft.local_size(); ir++) {
                 rho_mag_coarse_[2]->f_rg(ir) += density_rg(ir, 2); // Mx
                 rho_mag_coarse_[3]->f_rg(ir) += density_rg(ir, 3); // My
             }
         }
         case 1: {
-            #pragma omp parallel for
+            #pragma omp parallel for schedule(static)
             for (int ir = 0; ir < fft.local_size(); ir++) {
                 rho_mag_coarse_[0]->f_rg(ir) += (density_rg(ir, 0) + density_rg(ir, 1)); // rho
                 rho_mag_coarse_[1]->f_rg(ir) += (density_rg(ir, 0) - density_rg(ir, 1)); // Mz
@@ -132,7 +132,7 @@ inline void Density::add_k_point_contribution_rg(K_point* kp__)
             break;
         }
         case 0: {
-            #pragma omp parallel for
+            #pragma omp parallel for schedule(static)
             for (int ir = 0; ir < fft.local_size(); ir++) {
                 rho_mag_coarse_[0]->f_rg(ir) += density_rg(ir, 0); // rho
             }
