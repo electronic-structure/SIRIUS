@@ -625,7 +625,7 @@ inline void Band::diag_fv_full_potential_davidson(K_point* kp) const
 }
 
 template <typename T>
-inline void Band::diag_pseudo_potential_davidson(K_point* kp__,
+inline void Band::diag_pseudo_potential_davidson(K_point*       kp__,
                                                  D_operator<T>& d_op__,
                                                  Q_operator<T>& q_op__) const
 {
@@ -655,6 +655,17 @@ inline void Band::diag_pseudo_potential_davidson(K_point* kp__,
 
     /* short notation for target wave-functions */
     auto& psi = kp__->spinor_wave_functions();
+
+    //std::cout << "in diag" << std::endl;
+    //for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
+    //    for (int ib = 0; ib < ctx_.num_bands(); ib++) {
+    //        double d{0};
+    //        for (int j = 0; j < kp__->num_gkvec_loc(); j++) {
+    //            d += std::abs(kp__->spinor_wave_functions(ispn).pw_coeffs().prime(j, ib));
+    //        }
+    //        std::cout << "band " << ib << " spin " << ispn << " val " << d << std::endl;
+    //    }
+    //}
 
     /* maximum subspace size */
     int num_phi = itso.subspace_size_ * num_bands;
@@ -739,10 +750,9 @@ inline void Band::diag_pseudo_potential_davidson(K_point* kp__,
         }
         std::vector<double> eval_old(num_bands);
 
-        if (nc_mag) {
-        } else {
-            /* trial basis functions */
-            phi.component(0).copy_from(psi.component(ispin_step), 0, num_bands, ctx_.processing_unit());
+        /* trial basis functions */
+        for (int ispn = 0; ispn < num_sc; ispn++) {
+            phi.component(ispn).copy_from(psi.component(ctx_.num_mag_dims() == 3 ? ispn : ispin_step), 0, num_bands, ctx_.processing_unit());
         }
 
         /* current subspace size */
@@ -754,25 +764,16 @@ inline void Band::diag_pseudo_potential_davidson(K_point* kp__,
         /* start iterative diagonalization */
         for (int k = 0; k < itso.num_steps_; k++) {
             /* apply Hamiltonian and overlap operators to the new basis functions */
-            if (nc_mag) {
-            } else {
-                apply_h_o<T>(kp__, ispin_step, N, n, phi, hphi, ophi, d_op__, q_op__);
-            }
+            apply_h_o<T>(kp__, ispin_step, N, n, phi, hphi, ophi, d_op__, q_op__);
             
             if (itso.orthogonalize_) {
-                if (nc_mag) {
-                } else {
-                    orthogonalize<T>(N, n, phi.component(0), hphi.component(0), ophi.component(0), ovlp, res.component(0));
-                }
+                orthogonalize<T>(ctx_.processing_unit(), num_sc, N, n, phi, hphi, ophi, ovlp, res.component(0));
             }
 
             /* setup eigen-value problem
              * N is the number of previous basis functions
              * n is the number of new basis functions */
-            if (nc_mag) {
-            } else {
-                set_subspace_mtrx(N, n, phi.component(0), hphi.component(0), hmlt, hmlt_old);
-            }
+            set_subspace_mtrx(num_sc, N, n, phi, hphi, hmlt, hmlt_old);
 
             if (ctx_.control().verification_ >= 1) {
                 double max_diff = Utils::check_hermitian(hmlt, N + n);
@@ -785,10 +786,8 @@ inline void Band::diag_pseudo_potential_davidson(K_point* kp__,
 
             if (!itso.orthogonalize_) {
                 /* setup overlap matrix */
-                if (nc_mag) {
-                } else {
-                    set_subspace_mtrx(N, n, phi.component(0), ophi.component(0), ovlp, ovlp_old);
-                }
+                set_subspace_mtrx(num_sc, N, n, phi, ophi, ovlp, ovlp_old);
+
                 if (ctx_.control().verification_ >= 1) {
                     double max_diff = Utils::check_hermitian(ovlp, N + n);
                     if (max_diff > 1e-12) {
@@ -841,12 +840,8 @@ inline void Band::diag_pseudo_potential_davidson(K_point* kp__,
             /* don't compute residuals on last iteration */
             if (k != itso.num_steps_ - 1) {
                 /* get new preconditionined residuals, and also hpsi and opsi as a by-product */
-                if (nc_mag) {
-                } else {
-                    n = residuals<T>(kp__, ispin_step, N, num_bands, eval, eval_old, evec, hphi.component(0),
-                                     ophi.component(0), hpsi.component(0), opsi.component(0),
-                                     res.component(0), h_diag, o_diag);
-                }
+                n = residuals<T>(kp__, ispin_step, N, num_bands, eval, eval_old, evec, hphi,
+                                 ophi, hpsi, opsi, res, h_diag, o_diag);
             }
 
             /* check if we run out of variational space or eigen-vectors are converged or it's a last iteration */
@@ -855,6 +850,7 @@ inline void Band::diag_pseudo_potential_davidson(K_point* kp__,
                 /* recompute wave-functions */
                 /* \Psi_{i} = \sum_{mu} \phi_{mu} * Z_{mu, i} */
                 if (nc_mag) {
+                    transform<T>(2, 1.0, {&phi}, 0, N, evec, 0, 0, 0.0, {&psi}, 0, num_bands);
                 } else {
                     transform<T>(phi.component(0), 0, N, evec, 0, 0, psi.component(ispin_step), 0, num_bands);
                 }
@@ -880,34 +876,32 @@ inline void Band::diag_pseudo_potential_davidson(K_point* kp__,
                     /* need to compute all hpsi and opsi states (not only unconverged) */
                     if (converge_by_energy) {
                         if (nc_mag) {
+                            transform<T>(2, 1.0, {&hphi, &ophi}, 0, N, evec, 0, 0, 0.0, {&hpsi, &opsi}, 0, num_bands);
                         } else {
                             transform<T>({&hphi.component(0), &ophi.component(0)}, 0, N, evec, 0, 0, {&hpsi.component(0), &opsi.component(0)}, 0, num_bands);
                         }
                     }
  
                     /* update basis functions, hphi and ophi */
-                    if (nc_mag) {
-                    } else {
-                        phi.component(0).copy_from(psi.component(ispin_step), 0, num_bands, ctx_.processing_unit());
-                        hphi.component(0).copy_from(hpsi.component(0), 0, num_bands, ctx_.processing_unit());
-                        ophi.component(0).copy_from(opsi.component(0), 0, num_bands, ctx_.processing_unit());
+                    for (int ispn = 0; ispn < num_sc; ispn++) {
+                        phi.component(ispn).copy_from(psi.component(ctx_.num_mag_dims() == 3 ? ispn : ispin_step), 0, num_bands, ctx_.processing_unit());
+                        hphi.component(ispn).copy_from(hpsi.component(ispn), 0, num_bands, ctx_.processing_unit());
+                        ophi.component(ispn).copy_from(opsi.component(ispn), 0, num_bands, ctx_.processing_unit());
                     }
                     /* number of basis functions that we already have */
                     N = num_bands;
                 }
             }
             /* expand variational subspace with new basis vectors obtatined from residuals */
-            if (nc_mag) {
-            } else {
-                phi.component(0).copy_from(res.component(0), 0, n, N, ctx_.processing_unit());
-            }
+            phi.copy_from(res, 0, n, N, ctx_.processing_unit());
+
             //if (ctx_.processing_unit() == GPU) {
             //    #ifdef __GPU
             //    phi.component(0).copy_to_host(N, n);
             //    #endif
             //}
         }
-        for (int j = 0; j < ctx_.num_fv_states(); j++) {
+        for (int j = 0; j < num_bands; j++) {
             kp__->band_energy(j + ispin_step * ctx_.num_fv_states()) = eval[j];
         }
     }
