@@ -103,16 +103,19 @@ void Band::apply_h_o(K_point* kp__,
         DUMP("hloc performace: %12.6f bands/sec", n__ / t1);
     }
 
+    int nsc = (ctx_.num_mag_dims() == 3) ? 2 : 1;
+
     if (ctx_.control().print_checksum_) {
-        auto cs1 = phi__.component(0).checksum(N__, n__);
-        auto cs2 = hphi__.component(0).checksum(N__, n__);
-        if (kp__->comm().rank() == 0) {
-            DUMP("checksum(phi): %18.10f %18.10f", cs1.real(), cs1.imag());
-            DUMP("checksum(hloc_phi): %18.10f %18.10f", cs2.real(), cs2.imag());
+        for (int ispn = 0; ispn < nsc; ispn++) {
+            auto cs1 = phi__.component(ispn).checksum(N__, n__);
+            auto cs2 = hphi__.component(ispn).checksum(N__, n__);
+            if (kp__->comm().rank() == 0) {
+                DUMP("checksum(phi_%i): %18.10f %18.10f", ispn, cs1.real(), cs1.imag());
+                DUMP("checksum(hloc_phi_%i): %18.10f %18.10f", ispn, cs2.real(), cs2.imag());
+            }
         }
     }
 
-    int nsc = (ctx_.num_mag_dims() == 3) ? 2 : 1;
     /* set intial ophi */
     for (int ispn = 0; ispn < nsc; ispn++) {
         ophi__.component(ispn).copy_from(phi__.component(ispn), N__, n__, ctx_.processing_unit());
@@ -121,12 +124,12 @@ void Band::apply_h_o(K_point* kp__,
     if (!ctx_.unit_cell().mt_lo_basis_size()) {
         return;
     }
-    
-    /* non-collinear case */
-    if (ctx_.num_mag_dims() == 3) {
-        for (int i = 0; i < ctx_.beta_projector_chunks().num_chunks(); i++) {
-            kp__->beta_projectors().generate(i);
 
+    for (int i = 0; i < ctx_.beta_projector_chunks().num_chunks(); i++) {
+        /* generate beta-projectors for a block of atoms */
+        kp__->beta_projectors().generate(i);
+        /* non-collinear case */
+        if (ctx_.num_mag_dims() == 3) {
             for (int ispn = 0; ispn < 2; ispn++) {
 
                 auto beta_phi = kp__->beta_projectors().inner<T>(i, phi__.component(ispn), N__, n__);
@@ -135,13 +138,10 @@ void Band::apply_h_o(K_point* kp__,
                 d_op.apply(i, ispn, hphi__.component(ispn), N__, n__, beta_phi);
                 /* apply non-diagonal spin blocks */
                 d_op.apply(i, (ispn == 0) ? 3 : 2, hphi__.component((ispn == 0) ? 1 : 0), N__, n__, beta_phi);
-                
+                /* apply Q operator (diagonal in spin) */  
                 q_op.apply(i, 0, ophi__.component(ispn), N__, n__, beta_phi);
             }
-        }
-    } else { /* non-magnetic or collinear case */
-        for (int i = 0; i < ctx_.beta_projector_chunks().num_chunks(); i++) {
-            kp__->beta_projectors().generate(i);
+        } else { /* non-magnetic or collinear case */
 
             auto beta_phi = kp__->beta_projectors().inner<T>(i, phi__.component(0), N__, n__);
 
@@ -151,11 +151,13 @@ void Band::apply_h_o(K_point* kp__,
     }
     
     if (ctx_.control().print_checksum_) {
-        auto cs1 = hphi__.component(0).checksum(N__, n__);
-        auto cs2 = ophi__.component(0).checksum(N__, n__);
-        if (kp__->comm().rank() == 0) {
-            DUMP("checksum(hphi): %18.10f %18.10f", cs1.real(), cs1.imag());
-            DUMP("checksum(ophi): %18.10f %18.10f", cs2.real(), cs2.imag());
+        for (int ispn = 0; ispn < nsc; ispn++) {
+            auto cs1 = hphi__.component(ispn).checksum(N__, n__);
+            auto cs2 = ophi__.component(ispn).checksum(N__, n__);
+            if (kp__->comm().rank() == 0) {
+                DUMP("checksum(hphi_%i): %18.10f %18.10f", ispn, cs1.real(), cs1.imag());
+                DUMP("checksum(ophi_%i): %18.10f %18.10f", ispn, cs2.real(), cs2.imag());
+            }
         }
     }
 }
