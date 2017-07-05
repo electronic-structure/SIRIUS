@@ -1,4 +1,4 @@
-// Copyright (c) 2013-2016 Anton Kozhevnikov, Thomas Schulthess
+// Copyright (c) 2013-2017 Anton Kozhevnikov, Thomas Schulthess
 // All rights reserved.
 // 
 // Redistribution and use in source and binary forms, with or without modification, are permitted provided that 
@@ -62,20 +62,16 @@ class Non_local_operator
             auto& uc = beta_.unit_cell();
             packed_mtrx_offset_ = mdarray<int, 1>(uc.num_atoms());
             packed_mtrx_size_ = 0;
-            for (int ia = 0; ia < uc.num_atoms(); ia++)
-            {   
+            for (int ia = 0; ia < uc.num_atoms(); ia++) {   
                 int nbf = uc.atom(ia).mt_basis_size();
                 packed_mtrx_offset_(ia) = packed_mtrx_size_;
                 packed_mtrx_size_ += nbf * nbf;
             }
 
-            #ifdef __GPU
-            if (pu_ == GPU)
-            {
+            if (pu_ == GPU) {
                 packed_mtrx_offset_.allocate(memory_t::device);
-                packed_mtrx_offset_.copy_to_device();
+                packed_mtrx_offset_.template copy<memory_t::host, memory_t::device>();
             }
-            #endif
         }
 
         ~Non_local_operator()
@@ -123,14 +119,15 @@ inline void Non_local_operator<double_complex>::apply(int chunk__,
             work_.allocate(memory_t::device);
         }
     }
-
+        
+        // TODO: refactor this, use swich-case, no acc::sync, single for-loop over atoms
     if (pu_ == CPU) {
         #pragma omp parallel for
         for (int i = 0; i < bp_chunks(chunk__).num_atoms_; i++) {
             /* number of beta functions for a given atom */
-            int nbf  = bp_chunks(chunk__).desc_(0, i);
-            int offs = bp_chunks(chunk__).desc_(1, i);
-            int ia   = bp_chunks(chunk__).desc_(3, i);
+            int nbf  = bp_chunks(chunk__).desc_(beta_desc_idx::nbf,    i);
+            int offs = bp_chunks(chunk__).desc_(beta_desc_idx::offset, i);
+            int ia   = bp_chunks(chunk__).desc_(beta_desc_idx::ia,     i);
 
             /* compute O * <beta|phi> */
             linalg<CPU>::gemm(0, 0, nbf, n__, nbf,
@@ -149,10 +146,9 @@ inline void Non_local_operator<double_complex>::apply(int chunk__,
         #pragma omp parallel for
         for (int i = 0; i < bp_chunks(chunk__).num_atoms_; i++) {
             /* number of beta functions for a given atom */
-            int nbf  = bp_chunks(chunk__).desc_(0, i);
-            int offs = bp_chunks(chunk__).desc_(1, i);
-            int ia   = bp_chunks(chunk__).desc_(3, i);
-
+            int nbf  = bp_chunks(chunk__).desc_(beta_desc_idx::nbf,    i);
+            int offs = bp_chunks(chunk__).desc_(beta_desc_idx::offset, i);
+            int ia   = bp_chunks(chunk__).desc_(beta_desc_idx::ia,     i);
             /* compute O * <beta|phi> */
             linalg<GPU>::gemm(0, 0, nbf, n__, nbf,
                               op_.at<GPU>(packed_mtrx_offset_(ia), ispn__), nbf, 
@@ -257,42 +253,53 @@ class D_operator: public Non_local_operator<T>
 {
     public:
 
-        D_operator(Simulation_context const& ctx__, Beta_projectors& beta__) : Non_local_operator<T>(beta__, ctx__.processing_unit())
+        D_operator(Simulation_context const& ctx__, Beta_projectors& beta__) 
+            : Non_local_operator<T>(beta__, ctx__.processing_unit())
         {
             this->op_ = mdarray<T, 2>(this->packed_mtrx_size_, ctx__.num_mag_dims() + 1);
             this->op_.zero();
+            /* D-matrix is complex in non-collinear case */
+            if (ctx__.num_mag_dims() == 3) {
+                assert((std::is_same<T, double_complex>::value));
+            }
 
             auto& uc = this->beta_.unit_cell();
 
-            for (int j = 0; j < ctx__.num_mag_dims() + 1; j++) {
-                for (int ia = 0; ia < uc.num_atoms(); ia++) {
-                    int nbf = uc.atom(ia).mt_basis_size();
-                    for (int xi2 = 0; xi2 < nbf; xi2++) {
-                        for (int xi1 = 0; xi1 < nbf; xi1++) {
-                            this->op_(this->packed_mtrx_offset_(ia) + xi2 * nbf + xi1, j) = uc.atom(ia).d_mtrx(xi1, xi2, j);
+            for (int ia = 0; ia < uc.num_atoms(); ia++) {
+                int nbf = uc.atom(ia).mt_basis_size();
+                for (int xi2 = 0; xi2 < nbf; xi2++) {
+                    for (int xi1 = 0; xi1 < nbf; xi1++) {
+                        int idx = xi2 * nbf + xi1;
+                        switch (ctx__.num_mag_dims()) {
+                            case 3: {
+                                double bx = uc.atom(ia).d_mtrx(xi1, xi2, 2);
+                                double by = uc.atom(ia).d_mtrx(xi1, xi2, 3);
+                                this->op_(this->packed_mtrx_offset_(ia) + idx, 2) = type_wrapper<T>::bypass(double_complex(bx, -by));
+                                this->op_(this->packed_mtrx_offset_(ia) + idx, 3) = type_wrapper<T>::bypass(double_complex(bx,  by));
+                            }
+                            case 1: {
+                                double v  = uc.atom(ia).d_mtrx(xi1, xi2, 0);
+                                double bz = uc.atom(ia).d_mtrx(xi1, xi2, 1);
+                                this->op_(this->packed_mtrx_offset_(ia) + idx, 0) = v + bz;
+                                this->op_(this->packed_mtrx_offset_(ia) + idx, 1) = v - bz;
+                                break;
+                            }
+                            case 0: {
+                                this->op_(this->packed_mtrx_offset_(ia) + idx, 0) = uc.atom(ia).d_mtrx(xi1, xi2, 0);
+                                break;
+                            }
+                            default: {
+                                TERMINATE("wrong number of magnetic dimensions");
+                            }
                         }
                     }
                 }
             }
-            if (ctx__.num_mag_dims()) {
-                for (int ia = 0; ia < uc.num_atoms(); ia++) {
-                    int nbf = uc.atom(ia).mt_basis_size();
-                    for (int xi2 = 0; xi2 < nbf; xi2++) {
-                        for (int xi1 = 0; xi1 < nbf; xi1++) {
-                            auto v0 = this->op_(this->packed_mtrx_offset_(ia) + xi2 * nbf + xi1, 0); 
-                            auto v1 = this->op_(this->packed_mtrx_offset_(ia) + xi2 * nbf + xi1, 1); 
-                            this->op_(this->packed_mtrx_offset_(ia) + xi2 * nbf + xi1, 0) = std::real(v0 + v1);
-                            this->op_(this->packed_mtrx_offset_(ia) + xi2 * nbf + xi1, 1) = std::real(v0 - v1);
-                        }
-                    }
-                }
-            }
-            #ifdef __GPU
+
             if (this->pu_ == GPU) {
                 this->op_.allocate(memory_t::device);
-                this->op_.copy_to_device();
+                this->op_.template copy<memory_t::host, memory_t::device>();
             }
-            #endif
         }
 };
 
@@ -301,36 +308,32 @@ class Q_operator: public Non_local_operator<T>
 {
     public:
         
-        Q_operator(Simulation_context const& ctx__, Beta_projectors& beta__) : Non_local_operator<T>(beta__, ctx__.processing_unit())
+        Q_operator(Simulation_context const& ctx__, Beta_projectors& beta__) 
+            : Non_local_operator<T>(beta__, ctx__.processing_unit())
         {
             /* Q-operator is independent of spin */
             this->op_ = mdarray<T, 2>(this->packed_mtrx_size_, 1);
             this->op_.zero();
 
             auto& uc = this->beta_.unit_cell();
-            for (int ia = 0; ia < uc.num_atoms(); ia++)
-            {
+            for (int ia = 0; ia < uc.num_atoms(); ia++) {
                 int iat = uc.atom(ia).type().id();
                 if (!uc.atom_type(iat).pp_desc().augment) {
                     continue;
                 }
                 int nbf = uc.atom(ia).mt_basis_size();
-                for (int xi2 = 0; xi2 < nbf; xi2++)
-                {
-                    for (int xi1 = 0; xi1 < nbf; xi1++)
-                    {
+                for (int xi2 = 0; xi2 < nbf; xi2++) {
+                    for (int xi1 = 0; xi1 < nbf; xi1++) {
                         if (ctx__.unit_cell().atom_type(iat).pp_desc().augment) {
                             this->op_(this->packed_mtrx_offset_(ia) + xi2 * nbf + xi1, 0) = ctx__.augmentation_op(iat).q_mtrx(xi1, xi2);
                         }
                     }
                 }
             }
-            #ifdef __GPU
             if (this->pu_ == GPU) {
                 this->op_.allocate(memory_t::device);
-                this->op_.copy_to_device();
+                this->op_.template copy<memory_t::host, memory_t::device>();
             }
-            #endif
         }
 };
 

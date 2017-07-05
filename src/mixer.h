@@ -304,7 +304,7 @@ class Broyden1: public Mixer<T>
                             T dr1 = residuals_(i, i1) - residuals_(i, i2);
                             T dr2 = residuals_(i, i3) - residuals_(i, i4);
 
-                            S(j1, j2) += type_wrapper<T>::real(type_wrapper<T>::conjugate(dr1) * dr2) * this->weights_(i);
+                            S(j1, j2) += std::real(std::conj(dr1) * dr2) * this->weights_(i);
                         }
                         S(j2, j1) = S(j1, j2);
                     }
@@ -341,7 +341,7 @@ class Broyden1: public Mixer<T>
                     int i2 = this->idx_hist(this->count_ - j - 1);
                     for (int i = 0; i < this->local_size_; i++) {
                         T dr = residuals_(i, i1) - residuals_(i, i2);
-                        c(j) += type_wrapper<T>::real(type_wrapper<T>::conjugate(dr) * residuals_(i, ipos)) * this->weights_(i);
+                        c(j) += std::real(std::conj(dr) * residuals_(i, ipos)) * this->weights_(i);
                     }
                 }
                 this->comm_.allreduce(c.at<CPU>(), (int)c.size());
@@ -451,7 +451,7 @@ class Broyden2: public Mixer<T>
                     for (int j2 = 0; j2 <= j1; j2++) {
                         int i2 = this->idx_hist(this->count_ - N + j2);
                         for (int i = 0; i < this->local_size_; i++) {
-                            S(j1, j2) += type_wrapper<T>::real(type_wrapper<T>::conjugate(residuals_(i, i1)) * residuals_(i, i2));
+                            S(j1, j2) += std::real(std::conj(residuals_(i, i1)) * residuals_(i, i2));
                         }
                         S(j2, j1) = S(j1, j2);
                     }

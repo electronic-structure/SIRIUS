@@ -749,33 +749,56 @@ inline void Symmetry::symmetrize_vector_function(double_complex* fx_pw__,
             /* index of a rotated G-vector */
             int ig_rot = gvec__.index_by_gvec(gv_rot);
 
-            assert(ig_rot >= 0 && ig_rot < gvec__.num_gvec());
 
             double_complex phase = std::exp(double_complex(0, twopi * (gvec__.gvec(ig) * t)));
-            double_complex vz[] = {double_complex(0, 0), double_complex(0, 0), double_complex(0, 0)};
+            vector3d<double_complex> vz;
             for (int j: {0, 1, 2}) {
                 for (int k: {0, 1, 2}) {
                     vz[j] += phase * S(j, k) * v_pw_in[k][ig];
                 }
             }
+            if (gvec__.reduced() && ig_rot == -1) {
+                gv_rot = gv_rot * (-1);
+                int ig_rot = gvec__.index_by_gvec(gv_rot);
 
-            #pragma omp atomic update
-            ptr_x[2 * ig_rot] += vz[0].real();
+                #pragma omp atomic update
+                ptr_x[2 * ig_rot] += vz[0].real();
 
-            #pragma omp atomic update
-            ptr_y[2 * ig_rot] += vz[1].real();
+                #pragma omp atomic update
+                ptr_y[2 * ig_rot] += vz[1].real();
 
-            #pragma omp atomic update
-            ptr_z[2 * ig_rot] += vz[2].real();
+                #pragma omp atomic update
+                ptr_z[2 * ig_rot] += vz[2].real();
 
-            #pragma omp atomic update
-            ptr_x[2 * ig_rot + 1] += vz[0].imag();
-            
-            #pragma omp atomic update
-            ptr_y[2 * ig_rot + 1] += vz[1].imag();
+                #pragma omp atomic update
+                ptr_x[2 * ig_rot + 1] -= vz[0].imag();
+                
+                #pragma omp atomic update
+                ptr_y[2 * ig_rot + 1] -= vz[1].imag();
 
-            #pragma omp atomic update
-            ptr_z[2 * ig_rot + 1] += vz[2].imag();
+                #pragma omp atomic update
+                ptr_z[2 * ig_rot + 1] -= vz[2].imag();
+            } else {
+                assert(ig_rot >= 0 && ig_rot < gvec__.num_gvec());
+
+                #pragma omp atomic update
+                ptr_x[2 * ig_rot] += vz[0].real();
+
+                #pragma omp atomic update
+                ptr_y[2 * ig_rot] += vz[1].real();
+
+                #pragma omp atomic update
+                ptr_z[2 * ig_rot] += vz[2].real();
+
+                #pragma omp atomic update
+                ptr_x[2 * ig_rot + 1] += vz[0].imag();
+                
+                #pragma omp atomic update
+                ptr_y[2 * ig_rot + 1] += vz[1].imag();
+
+                #pragma omp atomic update
+                ptr_z[2 * ig_rot + 1] += vz[2].imag();
+            }
         }
     }
     comm__.allreduce(&sym_fx_pw(0), gvec__.num_gvec());

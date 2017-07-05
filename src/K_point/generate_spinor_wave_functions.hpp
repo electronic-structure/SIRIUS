@@ -3,13 +3,19 @@ inline void K_point::generate_spinor_wave_functions()
     PROFILE("sirius::K_point::generate_spinor_wave_functions");
 
     if (use_second_variation) {
+        int nfv = ctx_.num_fv_states();
+
         if (!ctx_.need_sv()) {
             /* copy eigen-states and exit */
-            spinor_wave_functions(0).copy_from<CPU>(fv_states(), 0, ctx_.num_fv_states(), 0);
+            spinor_wave_functions(0).copy_from(fv_states(), 0, ctx_.num_fv_states(), 0, CPU);
+            if (ctx_.processing_unit() == GPU) {
+                #ifdef __GPU
+                spinor_wave_functions(0).copy_to_device(0, ctx_.num_fv_states());
+                #endif
+            }
             return;
         }
 
-        int nfv = ctx_.num_fv_states();
         int nbnd = (ctx_.num_mag_dims() == 3) ? ctx_.num_bands() : nfv;
 
         #ifdef __GPU

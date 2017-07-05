@@ -158,13 +158,11 @@ inline void Band::set_fv_h_o<GPU, electronic_structure_method_t::full_potential_
     PROFILE("sirius::Band::set_fv_h_o");
     
     sddk::timer t2("sirius::Band::set_fv_h_o|alloc");
-    h__.zero();
     h__.allocate(memory_t::device);
-    h__.zero_on_device();
+    h__.zero<memory_t::host | memory_t::device>();
 
-    o__.zero();
     o__.allocate(memory_t::device);
-    o__.zero_on_device();
+    o__.zero<memory_t::host | memory_t::device>();
 
     double_complex zone(1, 0);
 

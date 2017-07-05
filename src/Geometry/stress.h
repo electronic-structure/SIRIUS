@@ -486,43 +486,10 @@ class Stress {
      *  Strain derivative of the real spherical harmonics:
      *  \f[
      *    \frac{\partial R_{\ell m}(\theta, \phi)}{\partial \varepsilon_{\mu \nu}} = 
-     *      \frac{\partial R_{\ell m}(\theta, \phi)}{\partial \theta} \sum_{\tau} \frac{\partial \theta}{\partial q_{\tau}} \frac{\partial{q_{\tau}}}{\partial \varepsilon_{\mu \nu}} + 
-     *      \frac{\partial R_{\ell m}(\theta, \phi)}{\partial \phi} \sum_{\tau} \frac{\partial \phi}{\partial q_{\tau}}\frac{\partial q_{\tau}}{\partial \varepsilon_{\mu \nu}} = 
-     *      -q_{\mu} \Big(  \frac{\partial R_{\ell m}(\theta, \phi)}{\partial \theta} \frac{\partial \theta}{\partial q_{\nu}} + 
-     *              \frac{\partial R_{\ell m}(\theta, \phi)}{\partial \phi} \frac{\partial \phi}{\partial q_{\nu}}\Big) = 
+     *      \sum_{\tau} \frac{\partial R_{\ell m}(\theta, \phi)}{\partial q_{\tau}} \frac{\partial q_{\tau}}{\partial \varepsilon_{\mu \nu}} =
      *      -q_{\mu} \frac{\partial R_{\ell m}(\theta, \phi)}{\partial q_{\nu}} 
      *  \f]
-     *  
-     *  The derivatives of angles are:
-     *  \f[
-     *     \frac{\partial \theta}{\partial q_{x}} = \frac{\cos(\phi) \cos(\theta)}{q} \\
-     *     \frac{\partial \theta}{\partial q_{y}} = \frac{\cos(\theta) \sin(\phi)}{q} \\
-     *     \frac{\partial \theta}{\partial q_{z}} = -\frac{\sin(\theta)}{q}
-     *  \f]
-     *  and
-     *  \f[
-     *     \frac{\partial \phi}{\partial q_{x}} = -\frac{\sin(\phi)}{\sin(\theta) q} \\
-     *     \frac{\partial \phi}{\partial q_{y}} = \frac{\cos(\phi)}{\sin(\theta) q} \\
-     *     \frac{\partial \phi}{\partial q_{z}} = 0
-     *  \f]
-     *  The derivative of \f$ \phi \f$ has discontinuities at \f$ \theta = 0, \theta=\pi \f$. This, however, is not a problem, because
-     *  multiplication by the the derivative of \f$ R_{\ell m} \f$ removes it. The following functions have to be hardcoded:
-     *  \f[
-     *    \frac{\partial R_{\ell m}(\theta, \phi)}{\partial \theta} \\
-     *    \frac{\partial R_{\ell m}(\theta, \phi)}{\partial \phi} \frac{1}{\sin(\theta)} 
-     *  \f]
-     *  
-     *  Mathematica script for spherical harmonic derivatives:
-        \verbatim
-        Rlm[l_, m_, th_, ph_] := 
-         If[m > 0, Sqrt[2]*ComplexExpand[Re[SphericalHarmonicY[l, m, th, ph]]],
-           If[m < 0, Sqrt[2]*ComplexExpand[Im[SphericalHarmonicY[l, m, th, ph]]], 
-             If[m == 0, ComplexExpand[Re[SphericalHarmonicY[l, 0, th, ph]]]]
-           ]
-         ]
-        Do[Print[FullSimplify[D[Rlm[l, m, theta, phi], theta]]], {l, 0, 4}, {m, -l, l}]
-        Do[Print[FullSimplify[TrigExpand[D[Rlm[l, m, theta, phi], phi]/Sin[theta]]]], {l, 0, 4}, {m, -l, l}]
-        \endverbatim
+     *  For the derivatives of spherical harmonics over Cartesian components of vector please refer to the SHT::dRlm_dr function.
      *  
      *  Strain derivative of spherical Bessel function integral:
      *  \f[

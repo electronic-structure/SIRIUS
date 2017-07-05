@@ -30,6 +30,8 @@
 //#include <cublas_v2.h>
 #include "cuda.hpp"
 
+extern "C" cublasStatus_t cublasGetError();
+
 namespace cublas {
 
 inline void error_message(cublasStatus_t status)

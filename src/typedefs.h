@@ -77,16 +77,6 @@ class type_wrapper<double>
             return H5T_NATIVE_DOUBLE;
         }
         
-        static inline double conjugate(double const& v)
-        {
-            return v;
-        }
-
-        static inline double real(double const& v)
-        {
-            return v;
-        }
-
         static bool is_complex()
         {
             return false;
@@ -101,6 +91,11 @@ class type_wrapper<double>
         {
             return static_cast<double>(rnd()) / std::numeric_limits<uint32_t>::max();
             //return double(std::rand()) / RAND_MAX;
+        }
+
+        static real_t bypass(complex_t val__)
+        {
+            return val__.real();
         }
 };
 
@@ -137,16 +132,6 @@ class type_wrapper<double_complex>
         typedef double_complex complex_t;
         typedef double real_t;
         
-        static inline double_complex conjugate(double_complex const& v)
-        {
-            return std::conj(v);
-        }
-
-        static inline double real(double_complex const& v)
-        {
-            return v.real();
-        }
-        
         static hid_t hdf5_type_id()
         {
             return H5T_NATIVE_LDOUBLE;
@@ -168,6 +153,11 @@ class type_wrapper<double_complex>
             double x = static_cast<double>(rnd()) / std::numeric_limits<uint32_t>::max();
             double y = static_cast<double>(rnd()) / std::numeric_limits<uint32_t>::max();
             return std::complex<double>(x, y);
+        }
+
+        static complex_t bypass(complex_t val__)
+        {
+            return val__;
         }
 };
 

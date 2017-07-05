@@ -305,7 +305,7 @@ inline void end_range_marker()
 template <typename T>
 inline void register_host(T* ptr__, size_t size__)
 {
-    assert(ptr);
+    assert(ptr__);
     
     CALL_CUDA(cudaHostRegister, (ptr__, size__ * sizeof(T), cudaHostRegisterMapped));
 }
