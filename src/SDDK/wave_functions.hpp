@@ -480,9 +480,38 @@ class Wave_functions
         return *components_[idx__];
     }
 
+    wave_functions const& component(int idx__) const
+    {
+        assert(idx__ >=0 && idx__ < num_components());
+        return *components_[idx__];
+    }
+
     Gvec const& gkvec() const
     {
         return gkvec_;
+    }
+
+    inline mdarray<double,1> l2norm(int n__)
+    {
+        auto norm1 = component(0).l2norm(n__);
+        if (num_components() == 2) {
+            auto norm2 = component(1).l2norm(n__);
+            for (int i = 0; i < n__; i++) {
+                norm1[i] += norm2[i];
+            }
+        }
+        return norm1;
+    }
+
+    inline void copy_from(Wave_functions const& src__,
+                          int i0__,
+                          int n__,
+                          int j0__,
+                          device_t pu__)
+    {
+        for (int ispn = 0; ispn < num_components(); ispn++) {
+            component(ispn).copy_from(src__.component(ispn), i0__, n__, j0__, pu__);
+        }
     }
 };
 
