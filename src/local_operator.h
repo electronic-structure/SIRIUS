@@ -28,6 +28,8 @@
 #include "periodic_function.h"
 
 #ifdef __GPU
+extern "C" void mul_by_veff_gpu(int ispn__, int size__, double const* veff__, double_complex* buf__);
+
 extern "C" void add_pw_ekin_gpu(int num_gvec__,
                                 double alpha__,
                                 double const* pw_ekin__,
@@ -379,44 +381,28 @@ class Local_operator
             auto mul_by_veff = [&](mdarray<double_complex, 1>& buf, int ispn)
             {
                 /* multiply by effective potential */
-                if (ispn == 0 || ispn == 1) {
-                    switch (fft_coarse_.pu()) {
-                        case CPU: {
+                switch (fft_coarse_.pu()) {
+                    case CPU: {
+                        if (ispn < 2) {
                             #pragma omp parallel for schedule(static)
                             for (int ir = 0; ir < fft_coarse_.local_size(); ir++) {
                                 buf[ir] *= veff_vec_(ir, ispn);
                             }
-                            break;
-                        }
-                        case GPU: {
-                            #ifdef __GPU
-                            scale_matrix_rows_gpu(fft_coarse_.local_size(), 1, buf.at<GPU>(), veff_vec_.at<GPU>(0, ispn));
-                            #else
-                            TERMINATE_NO_GPU
-                            #endif
-                            break;
-                        }
-                    }
-                } else {
-                    double pref = (ispn == 2) ? -1 : 1;
-                    switch (fft_coarse_.pu()) {
-                        case CPU: {
+                        } else {
+                            double pref = (ispn == 2) ? -1 : 1;
                             #pragma omp parallel for schedule(static)
                             for (int ir = 0; ir < fft_coarse_.local_size(); ir++) {
                                 /* multiply by Bx +/- i*By */
                                 buf[ir] *= double_complex(veff_vec_(ir, 2), pref * veff_vec_(ir, 3));
                             }
-                            break;
                         }
-                        case GPU: {
-                            STOP();
-                            break;
-                            //#ifdef __GPU
-                            //scale_matrix_rows_gpu(fft_coarse_.local_size(), 1, buf.at<GPU>(), veff_vec_.at<GPU>(0, ispn));
-                            //#else
-                            //TERMINATE_NO_GPU
-                            //#endif
-                        }
+                        break;
+                    }
+                    case GPU: {
+                        #ifdef __GPU
+                        mul_by_veff_gpu(ispn, fft_coarse_.local_size(), veff_vec_.at<GPU>(), buf.at<GPU>());
+                        #endif
+                        break;
                     }
                 }
             };

@@ -53,6 +53,13 @@ extern "C" void update_density_rg_1_gpu(int size__,
                                         double_complex const* psi_rg__, 
                                         double wt__, 
                                         double* density_rg__);
+
+extern "C" void update_density_rg_2_gpu(int size__, 
+                                        double_complex const* psi_rg_up__, 
+                                        double_complex const* psi_rg_dn__, 
+                                        double wt__, 
+                                        double* density_x_rg__,
+                                        double* density_y_rg__);
 #endif
 
 namespace sirius {

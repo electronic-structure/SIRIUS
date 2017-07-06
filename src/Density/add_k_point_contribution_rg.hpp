@@ -71,8 +71,9 @@ inline void Density::add_k_point_contribution_rg(K_point* kp__)
     } else { /* non-collinear case */
         assert(kp__->spinor_wave_functions(0).pw_coeffs().spl_num_col().local_size() ==
                kp__->spinor_wave_functions(1).pw_coeffs().spl_num_col().local_size());
-
-        std::vector<double_complex> psi_r(fft.local_size());
+        
+        /* allocate on CPU or GPU */
+        mdarray<double_complex, 1> psi_r(fft.local_size(), ctx_.main_memory_t());
 
         for (int i = 0; i < kp__->spinor_wave_functions(0).pw_coeffs().spl_num_col().local_size(); i++) {
             int j = kp__->spinor_wave_functions(0).pw_coeffs().spl_num_col()[i];
@@ -81,30 +82,49 @@ inline void Density::add_k_point_contribution_rg(K_point* kp__)
             /* transform up- component of spinor function to real space; in case of GPU wave-function stays in GPU memory */
             fft.transform<1>(kp__->gkvec().partition(), kp__->spinor_wave_functions(0).pw_coeffs().extra().template at<CPU>(0, i));
             /* save in auxiliary buffer */
-            fft.output(&psi_r[0]);
+            switch (fft.pu()) {
+                case CPU: {
+                    fft.output(&psi_r[0]);
+                    break;
+                }
+                case GPU: {
+                    #ifdef __GPU
+                    acc::copyout(psi_r.at<GPU>(), fft.buffer().at<GPU>(), fft.local_size());
+                    #endif
+                    break;
+                }
+            }
+
             /* transform dn- component of spinor wave function */
             fft.transform<1>(kp__->gkvec().partition(), kp__->spinor_wave_functions(1).pw_coeffs().extra().template at<CPU>(0, i));
 
-            if (fft.pu() == GPU) {
-                STOP();
-                //#ifdef __GPU
-                //update_it_density_matrix_1_gpu(ctx_.fft(thread_id)->local_size(), ispn, ctx_.fft(thread_id)->buffer<GPU>(), w,
-                //                               it_density_matrix_gpu.at<GPU>());
-                //#else
-                //TERMINATE_NO_GPU
-                //#endif
-            } else {
-                #pragma omp parallel for schedule(static)
-                for (int ir = 0; ir < fft.local_size(); ir++) {
-                    auto r0 = (std::pow(psi_r[ir].real(), 2) + std::pow(psi_r[ir].imag(), 2)) * w;
-                    auto r1 = (std::pow(fft.buffer(ir).real(), 2) + std::pow(fft.buffer(ir).imag(), 2)) * w;
+            switch (fft.pu()) {
+                case CPU: {
+                    #pragma omp parallel for schedule(static)
+                    for (int ir = 0; ir < fft.local_size(); ir++) {
+                        auto r0 = (std::pow(psi_r[ir].real(), 2) + std::pow(psi_r[ir].imag(), 2)) * w;
+                        auto r1 = (std::pow(fft.buffer(ir).real(), 2) + std::pow(fft.buffer(ir).imag(), 2)) * w;
 
-                    auto z2 = psi_r[ir] * std::conj(fft.buffer(ir)) * w;
+                        auto z2 = psi_r[ir] * std::conj(fft.buffer(ir)) * w;
 
-                    density_rg(ir, 0) += r0;
-                    density_rg(ir, 1) += r1;
-                    density_rg(ir, 2) += 2.0 * std::real(z2);
-                    density_rg(ir, 3) -= 2.0 * std::imag(z2);
+                        density_rg(ir, 0) += r0;
+                        density_rg(ir, 1) += r1;
+                        density_rg(ir, 2) += 2.0 * std::real(z2);
+                        density_rg(ir, 3) -= 2.0 * std::imag(z2);
+                    }
+                    break;
+                }
+                case GPU: {
+                    #ifdef __GPU
+                    /* add up-up contribution */
+                    update_density_rg_1_gpu(fft.local_size(), psi_r.at<GPU>(), w, density_rg.at<GPU>(0, 0));
+                    /* add dn-dn contribution */
+                    update_density_rg_1_gpu(fft.local_size(), fft.buffer().at<GPU>(), w, density_rg.at<GPU>(0, 1));
+                    /* add off-diagonal contribution */
+                    update_density_rg_2_gpu(fft.local_size(), psi_r.at<GPU>(), fft.buffer().at<GPU>(), w,
+                                            density_rg.at<GPU>(0, 2), density_rg.at<GPU>(0, 3));
+                    #endif
+                    break;
                 }
             }
         }
