@@ -209,7 +209,7 @@ inline void orthogonalize(device_t                     pu__,
     if (o__.blacs_grid().comm().size() == 1) {
         bool use_magma{false};
         #if defined(__GPU) && defined(__MAGMA)
-        if (pu == GPU) {
+        if (pu__ == GPU) {
             use_magma = true;
         }
         #endif
