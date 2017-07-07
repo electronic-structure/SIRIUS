@@ -1,18 +1,10 @@
 template <device_t pu>
 inline void Density::generate_rho_aug(std::vector<Periodic_function<double>*> rho__,
-                                      mdarray<double_complex, 2>& rho_aug__)
+                                      mdarray<double_complex, 2>&             rho_aug__)
 {
     PROFILE("sirius::Density::generate_rho_aug");
 
-    if (pu == CPU) {
-        rho_aug__.zero();
-    }
-
-    #ifdef __GPU
-    if (pu == GPU) {
-        rho_aug__.zero_on_device();
-    }
-    #endif
+    rho_aug__.zero<(pu == CPU) ? memory_t::host : memory_t::device>();
     
     ctx_.augmentation_op(0).prepare(0);
 

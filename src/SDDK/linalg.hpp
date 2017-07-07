@@ -979,6 +979,58 @@ inline void linalg<GPU>::axpy<ftn_double_complex>(ftn_int n__,
 }
 #endif // __GPU
 
+template <typename T>
+static void check_hermitian(const std::string& name, matrix<T> const& mtrx, int n = -1)
+{
+    assert(mtrx.size(0) == mtrx.size(1));
+
+    double maxdiff = 0.0;
+    int i0 = -1;
+    int j0 = -1;
+
+    if (n == -1) {
+        n = static_cast<int>(mtrx.size(0));
+    }
+
+    for (int i = 0; i < n; i++) {
+        for (int j = 0; j < n; j++) {
+            double diff = std::abs(mtrx(i, j) - std::conj(mtrx(j, i)));
+            if (diff > maxdiff) {
+                maxdiff = diff;
+                i0 = i;
+                j0 = j;
+            }
+        }
+    }
+
+    if (maxdiff > 1e-10) {
+        std::stringstream s;
+        s << name << " is not a symmetric or hermitian matrix" << std::endl
+          << "  maximum error: i, j : " << i0 << " " << j0 << " diff : " << maxdiff;
+
+        WARNING(s);
+    }
+}
+
+template <typename T>
+static double check_hermitian(dmatrix<T>& mtrx__, int n__)
+{
+    dmatrix<T> tmp(n__, n__, mtrx__.blacs_grid(), mtrx__.bs_row(), mtrx__.bs_col());
+    linalg<CPU>::tranc(n__, n__, mtrx__, 0, 0, tmp, 0, 0);
+
+    splindex<block_cyclic> spl_r(n__, mtrx__.blacs_grid().num_ranks_row(), mtrx__.blacs_grid().rank_row(), mtrx__.bs_row());
+    splindex<block_cyclic> spl_c(n__, mtrx__.blacs_grid().num_ranks_col(), mtrx__.blacs_grid().rank_col(), mtrx__.bs_col());
+    
+    double max_diff{0};
+    for (int i = 0; i < spl_c.local_size(); i++) {
+        for (int j = 0; j < spl_r.local_size(); j++) {
+            max_diff = std::max(max_diff, std::abs(mtrx__(j, i) - tmp(j, i)));
+        }
+    }
+    mtrx__.blacs_grid().comm().template allreduce<double, mpi_op_t::max>(&max_diff, 1);
+    return max_diff;
+}
+
 } // namespace sddk
 
 #endif // __LINALG_HPP__

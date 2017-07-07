@@ -215,6 +215,11 @@ class Simulation_parameters
             }
         }
 
+        inline void set_processing_unit(device_t pu__)
+        {
+            processing_unit_ = pu__;
+        }
+
         inline void set_molecule(bool molecule__)
         {
             parameters_input_.molecule_ = molecule__;

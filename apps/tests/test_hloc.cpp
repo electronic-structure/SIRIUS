@@ -28,8 +28,11 @@ void test_hloc(std::vector<int> mpi_grid_dims__, double cutoff__, int num_bands_
     }
 
     fft.prepare(gvec.partition());
+
+    Simulation_parameters params;
+    params.set_processing_unit(pu);
     
-    Local_operator hloc(fft, gvec);
+    Local_operator hloc(params, fft, gvec);
 
     wave_functions phi(pu, gvec, 4 * num_bands__);
     for (int i = 0; i < 4 * num_bands__; i++) {
@@ -51,27 +54,16 @@ void test_hloc(std::vector<int> mpi_grid_dims__, double cutoff__, int num_bands_
     mpi_comm_world().barrier();
     sddk::timer t1("h_loc");
     for (int i = 0; i < 4; i++) {
-        hphi.copy_from(phi, i * num_bands__, num_bands__);
-        #ifdef __GPU
-        if (pu == GPU) {
-            hphi.pw_coeffs().copy_to_host(i * num_bands__, num_bands__);
-        }
-        #endif
-        if (gpu_ptr__) {
-            hloc.apply_h<GPU>(0, hphi, i * num_bands__, num_bands__);
-        }
-        else {
-            hloc.apply_h<CPU>(0, hphi, i * num_bands__, num_bands__);
-        }
+        hloc.apply_h(0, phi, hphi, i * num_bands__, num_bands__);
     }
     mpi_comm_world().barrier();
     t1.stop();
 
-    #ifdef __GPU
-    if (pu == GPU && gpu_ptr__) {
-        hphi.pw_coeffs().copy_to_host(0, 4 * num_bands__);
-    }
-    #endif
+    //#ifdef __GPU
+    //if (pu == GPU && gpu_ptr__) {
+    //    hphi.pw_coeffs().copy_to_host(0, 4 * num_bands__);
+    //}
+    //#endif
 
     double diff{0};
     for (int i = 0; i < 4 * num_bands__; i++) {

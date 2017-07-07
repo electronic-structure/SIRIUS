@@ -398,6 +398,11 @@ inline void Simulation_context_base::initialize()
     if (initialized_) {
         TERMINATE("Simulation parameters are already initialized.");
     }
+    /* Gamma-point calculation and non-collinear magnetism are not compatible */
+    if (num_mag_dims() == 3) {
+        set_gamma_point(false);
+    }
+
     set_esm_type(parameters_input().esm_);
     set_core_relativity(parameters_input().core_relativity_);
     set_valence_relativity(parameters_input().valence_relativity_);

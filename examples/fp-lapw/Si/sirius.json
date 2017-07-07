@@ -5,7 +5,8 @@
     
         "std_evp_solver_type" : "lapack",
         "gen_evp_solver_type" : "lapack",
-        "verbosity" : 2
+        "verbosity" : 2,
+        "verification" : 1
     },
 
     "parameters" : {

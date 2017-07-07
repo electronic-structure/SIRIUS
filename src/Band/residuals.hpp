@@ -30,12 +30,13 @@ extern "C" void apply_preconditioner_gpu(double_complex* res__,
 
 inline mdarray<double, 1>
 Band::residuals_aux(K_point* kp__,
+                    int ispn__,
                     int num_bands__,
                     std::vector<double>& eval__,
                     wave_functions& hpsi__,
                     wave_functions& opsi__,
                     wave_functions& res__,
-                    mdarray<double, 1>& h_diag__,
+                    mdarray<double, 2>& h_diag__,
                     mdarray<double, 1>& o_diag__) const
 {
     PROFILE("sirius::Band::residuals_aux");
@@ -51,13 +52,11 @@ Band::residuals_aux(K_point* kp__,
 
     auto pu = ctx_.processing_unit();
 
-    #ifdef __GPU
     mdarray<double, 1> eval(eval__.data(), num_bands__, "residuals_aux::eval");
     if (pu == GPU) {
         eval.allocate(memory_t::device);
-        eval.copy_to_device();
+        eval.copy<memory_t::host, memory_t::device>();
     }
-    #endif
 
     /* compute residuals */
     if (pu == CPU) {
@@ -102,13 +101,13 @@ Band::residuals_aux(K_point* kp__,
         for (int i = 0; i < num_bands__; i++) {
             /* apply preconditioner */
             for (int ig = 0; ig < res__.pw_coeffs().num_rows_loc(); ig++) {
-                double p = h_diag__[ig] - eval__[i] * o_diag__[ig];
+                double p = h_diag__(ig, ispn__) - eval__[i] * o_diag__[ig];
                 p = 0.5 * (1 + p + std::sqrt(1 + (p - 1) * (p - 1)));
                 res__.pw_coeffs().prime(ig, i) /= p;
             }
             if (res__.has_mt()) {
                 for (int j = 0; j < res__.mt_coeffs().num_rows_loc(); j++) {
-                    double p = h_diag__[kp__->num_gkvec_loc() + j] - eval__[i] * o_diag__[kp__->num_gkvec_loc() + j];
+                    double p = h_diag__(kp__->num_gkvec_loc() + j, ispn__) - eval__[i] * o_diag__[kp__->num_gkvec_loc() + j];
                     p = 0.5 * (1 + p + std::sqrt(1 + (p - 1) * (p - 1)));
                     res__.mt_coeffs().prime(j, i) /= p;
                 }
@@ -121,14 +120,14 @@ Band::residuals_aux(K_point* kp__,
                                  res__.pw_coeffs().num_rows_loc(),
                                  num_bands__,
                                  eval.at<GPU>(),
-                                 h_diag__.at<GPU>(),
+                                 h_diag__.at<GPU>(0, ispn__),
                                  o_diag__.at<GPU>());
         if (res__.has_mt() && res__.mt_coeffs().num_rows_loc()) {
             apply_preconditioner_gpu(res__.mt_coeffs().prime().at<GPU>(),
                                      res__.mt_coeffs().num_rows_loc(),
                                      num_bands__,
                                      eval.at<GPU>(),
-                                     h_diag__.at<GPU>(kp__->num_gkvec_loc()),
+                                     h_diag__.at<GPU>(kp__->num_gkvec_loc(), ispn__),
                                      o_diag__.at<GPU>(kp__->num_gkvec_loc()));
         }
     }
@@ -174,6 +173,165 @@ Band::residuals_aux(K_point* kp__,
     return std::move(res_norm);
 }
 
+inline mdarray<double, 1>
+Band::residuals_aux(K_point*             kp__,
+                    int                  ispn__,
+                    int                  num_bands__,
+                    std::vector<double>& eval__,
+                    Wave_functions&      hpsi__,
+                    Wave_functions&      opsi__,
+                    Wave_functions&      res__,
+                    mdarray<double, 2>&  h_diag__,
+                    mdarray<double, 1>&  o_diag__) const
+{
+    PROFILE("sirius::Band::residuals_aux");
+
+    assert(num_bands__ != 0);
+
+    auto pu = ctx_.processing_unit();
+
+    mdarray<double, 1> eval(eval__.data(), num_bands__, "residuals_aux::eval");
+    if (pu == GPU) {
+        eval.allocate(memory_t::device);
+        eval.copy<memory_t::host, memory_t::device>();
+    }
+
+    int num_sc = (ctx_.num_mag_dims() == 3) ? 2 : 1;
+
+    /* compute residuals */
+    for (int ispn = 0; ispn < num_sc; ispn++) {
+        switch (pu) {
+            case CPU: {
+                /* compute residuals r_{i} = H\Psi_{i} - E_{i}O\Psi_{i} */
+                #pragma omp parallel for
+                for (int i = 0; i < num_bands__; i++) {
+                    for (int ig = 0; ig < res__.component(ispn).pw_coeffs().num_rows_loc(); ig++) {
+                        res__.component(ispn).pw_coeffs().prime(ig, i) = hpsi__.component(ispn).pw_coeffs().prime(ig, i) -
+                                                                         eval__[i] * opsi__.component(ispn).pw_coeffs().prime(ig, i);
+                    }
+                    if (res__.component(ispn).has_mt() && res__.component(ispn).mt_coeffs().num_rows_loc()) {
+                        for (int j = 0; j < res__.component(ispn).mt_coeffs().num_rows_loc(); j++) {
+                            res__.component(ispn).mt_coeffs().prime(j, i) = hpsi__.component(ispn).mt_coeffs().prime(j, i) -
+                                                                            eval__[i] * opsi__.component(ispn).mt_coeffs().prime(j, i);
+                        }
+                    }
+                }
+                break;
+            }
+            case GPU: {
+                #ifdef __GPU
+                compute_residuals_gpu(hpsi__.component(ispn).pw_coeffs().prime().at<GPU>(),
+                                      opsi__.component(ispn).pw_coeffs().prime().at<GPU>(),
+                                      res__.component(ispn).pw_coeffs().prime().at<GPU>(),
+                                      kp__->num_gkvec_loc(),
+                                      num_bands__,
+                                      eval.at<GPU>());
+                if (res__.component(ispn).has_mt() && res__.component(ispn).mt_coeffs().num_rows_loc()) {
+                    compute_residuals_gpu(hpsi__.component(ispn).mt_coeffs().prime().at<GPU>(),
+                                          opsi__.component(ispn).mt_coeffs().prime().at<GPU>(),
+                                          res__.component(ispn).mt_coeffs().prime().at<GPU>(),
+                                          res__.component(ispn).mt_coeffs().num_rows_loc(),
+                                          num_bands__,
+                                          eval.at<GPU>());
+                }
+                #endif
+            }
+        }
+    }
+
+    /* compute norm */
+    auto res_norm = res__.l2norm(num_bands__);
+
+    for (int ispn = 0; ispn < num_sc; ispn++) {
+        switch (pu) {
+            case CPU: {
+                /* apply preconditioner */
+                #pragma omp parallel for
+                for (int i = 0; i < num_bands__; i++) {
+                    /* apply preconditioner */
+                    for (int ig = 0; ig < res__.component(ispn).pw_coeffs().num_rows_loc(); ig++) {
+                        double p = h_diag__(ig, ctx_.num_mag_dims() == 3 ? ispn : ispn__) - eval__[i] * o_diag__[ig];
+                        p = 0.5 * (1 + p + std::sqrt(1 + (p - 1) * (p - 1)));
+                        res__.component(ispn).pw_coeffs().prime(ig, i) /= p;
+                    }
+                    if (res__.component(ispn).has_mt()) {
+                        for (int j = 0; j < res__.component(ispn).mt_coeffs().num_rows_loc(); j++) {
+                            double p = h_diag__(kp__->num_gkvec_loc() + j, ctx_.num_mag_dims() == 3 ? ispn : ispn__) - eval__[i] * o_diag__[kp__->num_gkvec_loc() + j];
+                            p = 0.5 * (1 + p + std::sqrt(1 + (p - 1) * (p - 1)));
+                            res__.component(ispn).mt_coeffs().prime(j, i) /= p;
+                        }
+                    }
+                }
+                break;
+            }
+            case GPU: {
+                #ifdef __GPU
+                apply_preconditioner_gpu(res__.component(ispn).pw_coeffs().prime().at<GPU>(),
+                                         res__.component(ispn).pw_coeffs().num_rows_loc(),
+                                         num_bands__,
+                                         eval.at<GPU>(),
+                                         h_diag__.at<GPU>(0, ctx_.num_mag_dims() == 3 ? ispn : ispn__),
+                                         o_diag__.at<GPU>());
+                if (res__.component(ispn).has_mt() && res__.component(ispn).mt_coeffs().num_rows_loc()) {
+                    apply_preconditioner_gpu(res__.component(ispn).mt_coeffs().prime().at<GPU>(),
+                                             res__.component(ispn).mt_coeffs().num_rows_loc(),
+                                             num_bands__,
+                                             eval.at<GPU>(),
+                                             h_diag__.at<GPU>(kp__->num_gkvec_loc(), ctx_.num_mag_dims() == 3 ? ispn : ispn__),
+                                             o_diag__.at<GPU>(kp__->num_gkvec_loc()));
+                }
+                break;
+                #endif
+            }
+        }
+    }
+
+    auto p_norm = res__.l2norm(num_bands__);
+
+    /* normalize preconditioned residuals */
+    for (int ispn = 0; ispn < num_sc; ispn++) {
+        switch (pu) {
+            case CPU: {
+                #pragma omp parallel for
+                for (int i = 0; i < num_bands__; i++) {
+                    double a = 1.0 / p_norm[i];
+                    for (int ig = 0; ig < res__.component(ispn).pw_coeffs().num_rows_loc(); ig++) {
+                        res__.component(ispn).pw_coeffs().prime(ig, i) *= a;
+                    }
+                    if (res__.component(ispn).has_mt() && res__.component(ispn).mt_coeffs().num_rows_loc()) {
+                        for (int j = 0; j < res__.component(ispn).mt_coeffs().num_rows_loc(); j++) {
+                            res__.component(ispn).mt_coeffs().prime(j, i) *= a;
+                        }
+                    }
+                }
+                break;
+            }
+            case GPU: {
+                #ifdef __GPU
+                for (int i = 0; i < num_bands__; i++) {
+                    p_norm[i] = 1.0 / p_norm[i];
+                }
+                p_norm.copy<memory_t::host, memory_t::device>();
+                scale_matrix_columns_gpu(res__.component(ispn).pw_coeffs().num_rows_loc(),
+                                         num_bands__,
+                                         res__.component(ispn).pw_coeffs().prime().at<GPU>(),
+                                         p_norm.at<GPU>());
+
+                if (res__.component(ispn).has_mt() && res__.component(ispn).mt_coeffs().num_rows_loc()) {
+                    scale_matrix_columns_gpu(res__.component(ispn).mt_coeffs().num_rows_loc(),
+                                             num_bands__,
+                                             res__.component(ispn).mt_coeffs().prime().at<GPU>(),
+                                             p_norm.at<GPU>());
+                }
+                #endif
+                break;
+            }
+        }
+    }
+
+    return std::move(res_norm);
+}
+
 template <typename T>
 inline int Band::residuals(K_point* kp__,
                            int ispn__,
@@ -187,7 +345,7 @@ inline int Band::residuals(K_point* kp__,
                            wave_functions& hpsi__,
                            wave_functions& opsi__,
                            wave_functions& res__,
-                           mdarray<double, 1>& h_diag__,
+                           mdarray<double, 2>& h_diag__,
                            mdarray<double, 1>& o_diag__) const
 {
     PROFILE("sirius::Band::residuals");
@@ -235,7 +393,7 @@ inline int Band::residuals(K_point* kp__,
         /* compute H\Psi_{i} = \sum_{mu} H\phi_{mu} * Z_{mu, i} and O\Psi_{i} = \sum_{mu} O\phi_{mu} * Z_{mu, i} */
         transform<T>({&hphi__, &ophi__}, 0, N__, evec_tmp, 0, 0, {&hpsi__, &opsi__}, 0, n);
 
-        auto res_norm = residuals_aux(kp__, n, eval_tmp, hpsi__, opsi__, res__, h_diag__, o_diag__);
+        auto res_norm = residuals_aux(kp__, ispn__, n, eval_tmp, hpsi__, opsi__, res__, h_diag__, o_diag__);
 
         int nmax = n;
         n = 0;
@@ -244,7 +402,7 @@ inline int Band::residuals(K_point* kp__,
             if (res_norm[i] > itso.residual_tolerance_) {
                 /* shift unconverged residuals to the beginning of array */
                 if (n != i) {
-                    res__.copy_from(res__, i, 1, n);
+                    res__.copy_from(res__, i, 1, n, ctx_.processing_unit());
                 }
                 n++;
             }
@@ -256,7 +414,7 @@ inline int Band::residuals(K_point* kp__,
         /* compute H\Psi_{i} = \sum_{mu} H\phi_{mu} * Z_{mu, i} and O\Psi_{i} = \sum_{mu} O\phi_{mu} * Z_{mu, i} */
         transform<T>({&hphi__, &ophi__}, 0, N__, evec__, 0, 0, {&hpsi__, &opsi__}, 0, num_bands__);
 
-        auto res_norm = residuals_aux(kp__, num_bands__, eval__, hpsi__, opsi__, res__, h_diag__, o_diag__);
+        auto res_norm = residuals_aux(kp__, ispn__, num_bands__, eval__, hpsi__, opsi__, res__, h_diag__, o_diag__);
 
         for (int i = 0; i < num_bands__; i++) {
             double tol = itso.residual_tolerance_ + 1e-3 * std::abs(kp__->band_occupancy(i + ispn__ * ctx_.num_fv_states()) / ctx_.max_occupancy() - 1);
@@ -264,7 +422,7 @@ inline int Band::residuals(K_point* kp__,
             if (res_norm[i] > tol) {
                 /* shift unconverged residuals to the beginning of array */
                 if (n != i) {
-                    res__.copy_from(res__, i, 1, n);
+                    res__.copy_from(res__, i, 1, n, ctx_.processing_unit());
                 }
                 n++;
             }
@@ -286,6 +444,129 @@ inline int Band::residuals(K_point* kp__,
             DUMP("checksum(res): %18.10f %18.10f", cs.real(), cs.imag());
             DUMP("checksum(hpsi): %18.10f %18.10f", cs1.real(), cs1.imag());
             DUMP("checksum(opsi): %18.10f %18.10f", cs2.real(), cs2.imag());
+        }
+    }
+
+    return n;
+}
+
+template <typename T>
+inline int Band::residuals(K_point*             kp__,
+                           int                  ispn__,
+                           int                  N__,
+                           int                  num_bands__,
+                           std::vector<double>& eval__,
+                           std::vector<double>& eval_old__,
+                           dmatrix<T>&          evec__,
+                           Wave_functions&      hphi__,
+                           Wave_functions&      ophi__,
+                           Wave_functions&      hpsi__,
+                           Wave_functions&      opsi__,
+                           Wave_functions&      res__,
+                           mdarray<double, 2>&  h_diag__,
+                           mdarray<double, 1>&  o_diag__) const
+{
+    PROFILE("sirius::Band::residuals");
+
+    assert(N__ != 0);
+
+    auto& itso = ctx_.iterative_solver_input();
+    bool converge_by_energy = (itso.converge_by_energy_ == 1);
+
+    int num_sc = ctx_.num_mag_dims() == 3 ? 2 : 1;
+
+    int n{0};
+    if (converge_by_energy) {
+        /* main trick here: first estimate energy difference, and only then compute unconverged residuals */
+        std::vector<int> ev_idx;
+        for (int i = 0; i < num_bands__; i++) {
+            double tol = itso.energy_tolerance_ + 1e-7 * std::abs(kp__->band_occupancy(i + ispn__ * ctx_.num_fv_states()) / ctx_.max_occupancy() - 1);
+            if (std::abs(eval__[i] - eval_old__[i]) > tol) {
+                ev_idx.push_back(i);
+            }
+        }
+
+        if ((n = static_cast<int>(ev_idx.size())) == 0) {
+            return 0;
+        }
+
+        std::vector<double> eval_tmp(n);
+
+        int bs = ctx_.cyclic_block_size();
+        dmatrix<T> evec_tmp(N__, n, ctx_.blacs_grid(), bs, bs);
+        int num_rows_local = evec_tmp.num_rows_local();
+        for (int j = 0; j < n; j++) {
+            eval_tmp[j] = eval__[ev_idx[j]];
+            auto pos_src = evec__.spl_col().location(ev_idx[j]);
+            auto pos_dest = evec_tmp.spl_col().location(j);
+
+            if (pos_src.rank == kp__->comm_col().rank()) {
+                kp__->comm_col().isend(&evec__(0, pos_src.local_index), num_rows_local, pos_dest.rank, ev_idx[j]);
+            }
+            if (pos_dest.rank == kp__->comm_col().rank()) {
+               kp__->comm_col().recv(&evec_tmp(0, pos_dest.local_index), num_rows_local, pos_src.rank, ev_idx[j]);
+            }
+        }
+        if (ctx_.processing_unit() == GPU && kp__->comm().size() == 1) {
+            evec_tmp.allocate(memory_t::device);
+        }
+        /* compute H\Psi_{i} = \sum_{mu} H\phi_{mu} * Z_{mu, i} and O\Psi_{i} = \sum_{mu} O\phi_{mu} * Z_{mu, i} */
+        transform<T>(num_sc, 1.0, {&hphi__, &ophi__}, 0, N__, evec_tmp, 0, 0, 0.0, {&hpsi__, &opsi__}, 0, n);
+
+        auto res_norm = residuals_aux(kp__, ispn__, n, eval_tmp, hpsi__, opsi__, res__, h_diag__, o_diag__);
+
+        int nmax = n;
+        n = 0;
+        for (int i = 0; i < nmax; i++) {
+            /* take the residual if it's norm is above the threshold */
+            if (res_norm[i] > itso.residual_tolerance_) {
+                /* shift unconverged residuals to the beginning of array */
+                if (n != i) {
+                    res__.copy_from(res__, i, 1, n, ctx_.processing_unit());
+                }
+                n++;
+            }
+        }
+        if (ctx_.control().verbosity_ > 2 && kp__->comm().rank() == 0) {
+            DUMP("initial and final number of residuals : %i %i", nmax, n);
+        }
+    } else {
+        /* compute H\Psi_{i} = \sum_{mu} H\phi_{mu} * Z_{mu, i} and O\Psi_{i} = \sum_{mu} O\phi_{mu} * Z_{mu, i} */
+        transform<T>(num_sc, 1.0, {&hphi__, &ophi__}, 0, N__, evec__, 0, 0, 0.0, {&hpsi__, &opsi__}, 0, num_bands__);
+
+        auto res_norm = residuals_aux(kp__, ispn__, num_bands__, eval__, hpsi__, opsi__, res__, h_diag__, o_diag__);
+
+        for (int i = 0; i < num_bands__; i++) {
+            double tol = itso.residual_tolerance_ + 1e-3 * std::abs(kp__->band_occupancy(i + ispn__ * ctx_.num_fv_states()) / ctx_.max_occupancy() - 1);
+            /* take the residual if it's norm is above the threshold */
+            if (res_norm[i] > tol) {
+                /* shift unconverged residuals to the beginning of array */
+                if (n != i) {
+                    res__.copy_from(res__, i, 1, n, ctx_.processing_unit());
+                }
+                n++;
+            }
+        }
+    }
+
+    /* prevent numerical noise */
+    /* this only happens for real wave-functions (Gamma-point case), non-magnetic or collinear magnetic */
+    if (std::is_same<T, double>::value && kp__->comm().rank() == 0) {
+        for (int i = 0; i < n; i++) {
+            res__.component(0).pw_coeffs().prime(0, i) = res__.component(0).pw_coeffs().prime(0, i).real();
+        }
+    }
+
+    if (ctx_.control().print_checksum_ && n != 0) {
+        for (int ispn = 0; ispn < num_sc; ispn++) {
+            auto cs = res__.component(ispn).checksum(0, n);
+            auto cs1 = hpsi__.component(ispn).checksum(0, n);
+            auto cs2 = opsi__.component(ispn).checksum(0, n);
+            if (kp__->comm().rank() == 0) {
+                DUMP("checksum(res%i): %18.10f %18.10f", ispn, cs.real(), cs.imag());
+                DUMP("checksum(hpsi%i): %18.10f %18.10f", ispn, cs1.real(), cs1.imag());
+                DUMP("checksum(opsi%i): %18.10f %18.10f", ispn, cs2.real(), cs2.imag());
+            }
         }
     }
 
