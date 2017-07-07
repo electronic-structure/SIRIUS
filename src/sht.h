@@ -380,7 +380,7 @@ class SHT // TODO: better name
             std::vector<double_complex> ylm(lmmax);
             spherical_harmonics(lmax, theta, phi, &ylm[0]);
             
-            double t = std::sqrt(2.0);
+            double const t = std::sqrt(2.0);
             
             rlm[0] = y00;
 
@@ -430,7 +430,7 @@ class SHT // TODO: better name
          */
         static inline double_complex ylm_dot_rlm(int l, int m1, int m2)
         {
-            const double isqrt2 = 0.70710678118654752440;
+            double const isqrt2 = 1.0 / std::sqrt(2);
 
             assert(l >= 0 && std::abs(m1) <= l && std::abs(m2) <= l);
 
