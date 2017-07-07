@@ -22,6 +22,7 @@ inline void Density::symmetrize_density_matrix()
         auto eang = sym.magnetic_group_symmetry(i).spg_op.euler_angles;
         int isym = sym.magnetic_group_symmetry(i).isym;
         SHT::rotation_matrix(lmax, eang, pr, rotm);
+        auto spin_rot_su2 = SHT::rotation_matrix_su2(sym.magnetic_group_symmetry(i).spin_rotation);
 
         for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
             auto& atom_type = unit_cell_.atom(ia).type();
@@ -47,6 +48,19 @@ inline void Density::symmetrize_density_matrix()
                                 dm(xi1, xi2, j, ia) += density_matrix_(xi3, xi4, j, ja) * rotm(lm1, lm3) * rotm(lm2, lm4) * alpha;
                             }
                         }
+                    }
+
+                    /* magnetic symmetrization */
+                    if (ndm == 2){
+                        dm(xi1, xi2, 0, ia) += alpha * (density_matrix_(xi1, xi2, 0, ja) * spin_rot_su2(0, 0) * spin_rot_su2(0, 0).conj() +
+                                                        density_matrix_(xi1, xi2, 1, ja) * spin_rot_su2(0, 1) * spin_rot_su2(0, 1).conj() );
+
+                        dm(xi1, xi2, 1, ia) += alpha * (density_matrix_(xi1, xi2, 1, ja) * spin_rot_su2(1, 1) * spin_rot_su2(1, 1).conj() +
+                                                        density_matrix_(xi1, xi2, 0, ja) * spin_rot_su2(1, 0) * spin_rot_su2(1, 0).conj() );
+                    }
+
+                    if (ndm == 3){
+
                     }
                 }
             }

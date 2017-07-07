@@ -1078,6 +1078,35 @@ class SHT // TODO: better name
             data[80]=(-3*std::sqrt(12155/pi)*sin_phi[7]*std::pow(sin_theta[0],7))/32.;
         }
 
+        /// convert 3x3 transformation matrix to SU2 2x2 matrix
+        // TODO create 2x2 matrices, temporarily put them in 3x3 matrix
+        static matrix3d<complex> rotation_matrix_su2(const matrix3d<double>& m)
+        {
+            double det = m.det() > 0 ? 1.0 : -1.0;
+
+            matrix3d<double> mat = det * m;
+            matrix3d<complex> su2mat;
+
+            /* make quaternion components*/
+            double w = sqrt( max( 0, 1 + mat(0,0) + mat(1,1) + mat(2,2) ) ) / 2.;
+            double x = sqrt( max( 0, 1 + mat(0,0) - mat(1,1) - mat(2,2) ) ) / 2.;
+            double y = sqrt( max( 0, 1 - mat(0,0) + mat(1,1) - mat(2,2) ) ) / 2.;
+            double z = sqrt( max( 0, 1 - mat(0,0) - mat(1,1) + mat(2,2) ) ) / 2;
+            x = std::copysign( x, mat(2,1) - mat(1,2) );
+            y = std::copysign( y, mat(0,2) - mat(2,0) );
+            z = std::copysign( z, mat(1,0) - mat(0,1) );
+
+            double_complex i(0,1);
+
+            su2mat(0, 0) = double_complex( w, -z);
+            su2mat(1, 1) = double_complex( w,  z);
+            su2mat(0, 1) = double_complex(-y, -x);
+            su2mat(1, 0) = double_complex( y, -x);
+
+            /* (3,3) component */
+            su2mat(2, 2) = double_complex( 1,  0);
+        }
+
         /// Compute the derivatives of real spherical harmonics over the components of cartesian vector.
         /** The following derivative is computed:
          *  \f[
