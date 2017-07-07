@@ -440,9 +440,8 @@ class Local_operator
                 int ekin = (ispn_block & 2) ? 0 : 1;
 
                 if (!phi__.component(ispn).pw_coeffs().is_remapped() && param_->processing_unit() == GPU) {
-                    double alpha = static_cast<double>(ekin);
-
                     #ifdef __GPU
+                    double alpha = static_cast<double>(ekin);
                     if (gamma) {
                         add_pw_ekin_gpu(gkp.gvec_count_fft(),
                                         alpha,
@@ -558,7 +557,9 @@ class Local_operator
                             break;
                         }
                         case GPU: {
+                            #ifdef __GPU
                             acc::copy(buf_rg_.at<GPU>(), fft_coarse_.buffer().at<GPU>(), fft_coarse_.local_size());
+                            #endif
                             break;
                         }
                     }
@@ -577,7 +578,9 @@ class Local_operator
                             break;
                         }
                         case GPU: {
+                            #ifdef __GPU
                             acc::copy(fft_coarse_.buffer().at<GPU>(), buf_rg_.at<GPU>(), fft_coarse_.local_size());
+                            #endif
                             break;
                         }
                     }
@@ -597,7 +600,9 @@ class Local_operator
                             break;
                         }
                         case GPU: {
+                            #ifdef __GPU
                             acc::copy(buf_rg_.at<GPU>(), fft_coarse_.buffer().at<GPU>(), fft_coarse_.local_size());
+                            #endif
                             break;
                         }
                     }
@@ -616,7 +621,9 @@ class Local_operator
                             break;
                         }
                         case GPU: {
+                            #ifdef __GPU
                             acc::copy(fft_coarse_.buffer().at<GPU>(), buf_rg_.at<GPU>(), fft_coarse_.local_size());
+                            #endif
                             break;
                         }
                     }

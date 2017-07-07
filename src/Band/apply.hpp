@@ -88,6 +88,7 @@ void Band::apply_h_o(K_point* kp__,
     
     double t1 = -omp_get_wtime();
     /* for the data remapping we need phi on CPU */
+    #ifdef __GPU
     if (ctx_.processing_unit() == GPU) {
         for (int ispn = 0; ispn < phi__.num_components(); ispn++) {
             if (phi__.component(ispn).pw_coeffs().is_remapped()) {
@@ -95,6 +96,7 @@ void Band::apply_h_o(K_point* kp__,
             }
         }
     }
+    #endif
     /* apply local part of Hamiltonian */
     local_op_->apply_h(ispn__, phi__, hphi__, N__, n__);
     t1 += omp_get_wtime();

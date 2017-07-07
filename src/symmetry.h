@@ -136,6 +136,34 @@ class Symmetry
          */
         matrix3d<double> rot_mtrx_cart(vector3d<double> euler_angles__) const;
 
+        /// Get axis and angle from rotation matrix.
+        static std::pair<vector3d<double>, double> axis_angle(matrix3d<double> R__)
+        {
+            vector3d<double> u;
+            /* make proper rotation */
+            R__ = R__ * R__.det();
+            u[0] = R__(2, 1) - R__(1, 2);
+            u[1] = R__(0, 2) - R__(2, 0);
+            u[2] = R__(1, 0) - R__(0, 1);
+
+            double sint = u.length() / 2.0;
+            double cost = (R__(0, 0) + R__(1, 1) + R__(2, 2) - 1) / 2.0;
+
+            double theta = Utils::phi_by_sin_cos(sint, cost);
+
+            /* zero angle */
+            if (std::abs(theta) < 1e-12) {
+                u = vector3d<double>({0, 0, 1});
+            } else if (std::abs(theta - pi) < 1e-12) { /* rotation angle is Pi */
+
+            } else {
+                u = u * (1.0 / u.length());
+            }
+
+            return std::pair<vector3d<double>, double>(u, theta);
+        }
+
+
     public:
 
         Symmetry(matrix3d<double>& lattice_vectors__,
