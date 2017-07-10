@@ -301,7 +301,7 @@ inline void Potential::xc_mt_magnetic(Radial_grid<double> const& rgrid,
 }
 
 inline void Potential::xc_mt(Periodic_function<double>* rho, 
-                             Periodic_function<double>* magnetization[3],
+                             std::array<Periodic_function<double>*, 3> magnetization,
                              std::vector<XC_functional>& xc_func,
                              Periodic_function<double>* vxc, 
                              Periodic_function<double>* bxc[3], 
@@ -617,7 +617,7 @@ inline void Potential::xc_it_nonmagnetic(Periodic_function<double>* rho__,
 }
 
 inline void Potential::xc_it_magnetic(Periodic_function<double>* rho, 
-                                      Periodic_function<double>* magnetization[3], 
+                                      std::array<Periodic_function<double>*, 3> magnetization, 
                                       std::vector<XC_functional>& xc_func,
                                       Periodic_function<double>* vxc, 
                                       Periodic_function<double>* bxc[3], 
@@ -853,7 +853,7 @@ inline void Potential::xc_it_magnetic(Periodic_function<double>* rho,
 }
 
 inline void Potential::xc(Periodic_function<double>* rho, 
-                          Periodic_function<double>* magnetization[3], 
+                          std::array<Periodic_function<double>*, 3> magnetization, 
                           Periodic_function<double>* vxc, 
                           Periodic_function<double>* bxc[3], 
                           Periodic_function<double>* exc)

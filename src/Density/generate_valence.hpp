@@ -63,12 +63,6 @@ inline void Density::generate_valence(K_point_set& ks__)
         ctx_.comm().allreduce(density_matrix_.at<CPU>(), static_cast<int>(density_matrix_.size()));
     }
 
-    std::vector<Periodic_function<double>*> rho_vec(ctx_.num_mag_dims() + 1);
-    rho_vec[0] = rho_;
-    for (int j = 0; j < ctx_.num_mag_dims(); j++) {
-        rho_vec[1 + j] = magnetization_[j];
-    }
-
     ctx_.fft_coarse().prepare(ctx_.gvec_coarse().partition());
     auto& comm = ctx_.gvec_coarse().comm_ortho_fft();
     for (int j = 0; j < ctx_.num_mag_dims() + 1; j++) {
@@ -82,7 +76,7 @@ inline void Density::generate_valence(K_point_set& ks__)
         for (int i = 0; i < static_cast<int>(lf_gvec_.size()); i++) {
             int igloc = lf_gvec_[i];
             int ig = ctx_.gvec_coarse().index_by_gvec(ctx_.gvec().gvec(ctx_.gvec().offset() + igloc));
-            rho_vec[j]->f_pw_local(igloc) = fpw[ig];
+            rho_vec_[j]->f_pw_local(igloc) = fpw[ig];
         }
     }
     ctx_.fft_coarse().dismiss();

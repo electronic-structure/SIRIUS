@@ -1,6 +1,5 @@
 template <device_t pu>
-inline void Density::generate_rho_aug(std::vector<Periodic_function<double>*> rho__,
-                                      mdarray<double_complex, 2>&             rho_aug__)
+inline void Density::generate_rho_aug(mdarray<double_complex, 2>& rho_aug__)
 {
     PROFILE("sirius::Density::generate_rho_aug");
 
