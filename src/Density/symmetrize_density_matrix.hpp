@@ -52,14 +52,27 @@ inline void Density::symmetrize_density_matrix()
 
                     /* magnetic symmetrization */
                     if (ndm == 2){
-                        dm(xi1, xi2, 0, ia) += alpha * (density_matrix_(xi1, xi2, 0, ja) * spin_rot_su2(0, 0) * spin_rot_su2(0, 0).conj() +
-                                                        density_matrix_(xi1, xi2, 1, ja) * spin_rot_su2(0, 1) * spin_rot_su2(0, 1).conj() );
+                        dm(xi1, xi2, 0, ia) += alpha * (density_matrix_(xi1, xi2, 0, ja) * spin_rot_su2(0, 0) * std::conj( spin_rot_su2(0, 0) ) +
+                                                        density_matrix_(xi1, xi2, 1, ja) * spin_rot_su2(0, 1) * std::conj( spin_rot_su2(0, 1) ) );
 
-                        dm(xi1, xi2, 1, ia) += alpha * (density_matrix_(xi1, xi2, 1, ja) * spin_rot_su2(1, 1) * spin_rot_su2(1, 1).conj() +
-                                                        density_matrix_(xi1, xi2, 0, ja) * spin_rot_su2(1, 0) * spin_rot_su2(1, 0).conj() );
+                        dm(xi1, xi2, 1, ia) += alpha * (density_matrix_(xi1, xi2, 1, ja) * spin_rot_su2(1, 1) * std::conj( spin_rot_su2(1, 1) ) +
+                                                        density_matrix_(xi1, xi2, 0, ja) * spin_rot_su2(1, 0) * std::conj( spin_rot_su2(1, 0) ) );
                     }
 
                     if (ndm == 3){
+                        double_complex spin_dm[2][2]=
+                            {
+                                { density_matrix_(xi1, xi2, 0, ja), std::conj( density_matrix_(xi1, xi2, 2, ja) ) },
+                                { density_matrix_(xi1, xi2, 2, ja), density_matrix_(xi1, xi2, 1, ja) }
+                            };
+
+                        for (int i = 0; i < 2; i++ ){
+                            for (int j = 0; j < 2; j++ ){
+                                dm(xi1, xi2, 0, ia) += alpha * spin_dm[i][j] * spin_rot_su2(0, i) * std::conj( spin_rot_su2(0, j) );
+                                dm(xi1, xi2, 1, ia) += alpha * spin_dm[i][j] * spin_rot_su2(1, i) * std::conj( spin_rot_su2(1, j) );
+                                dm(xi1, xi2, 2, ia) += alpha * spin_dm[i][j] * spin_rot_su2(0, i) * std::conj( spin_rot_su2(1, j) );
+                            }
+                        }
 
                     }
                 }
