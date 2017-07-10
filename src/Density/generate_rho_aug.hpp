@@ -1,6 +1,5 @@
 template <device_t pu>
-inline void Density::generate_rho_aug(std::vector<Periodic_function<double>*> rho__,
-                                      mdarray<double_complex, 2>&             rho_aug__)
+inline void Density::generate_rho_aug(mdarray<double_complex, 2>& rho_aug__)
 {
     PROFILE("sirius::Density::generate_rho_aug");
 
@@ -10,15 +9,17 @@ inline void Density::generate_rho_aug(std::vector<Periodic_function<double>*> rh
 
     for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
         auto& atom_type = unit_cell_.atom_type(iat);
-        if (!atom_type.pp_desc().augment) {
-            #ifdef __GPU
-            if (ctx_.processing_unit() == GPU) {
-                acc::sync_stream(0);
-                if (iat + 1 != unit_cell_.num_atom_types()) {
-                    ctx_.augmentation_op(iat + 1).prepare(0);
-                }
+
+        #ifdef __GPU
+        if (ctx_.processing_unit() == GPU) {
+            acc::sync_stream(0);
+            if (iat + 1 != unit_cell_.num_atom_types()) {
+                ctx_.augmentation_op(iat + 1).prepare(0);
             }
-            #endif
+        }
+        #endif
+
+        if (!atom_type.pp_desc().augment) {
             continue;
         }
 
@@ -84,7 +85,7 @@ inline void Density::generate_rho_aug(std::vector<Periodic_function<double>*> rh
         #ifdef __GPU
         if (pu == GPU) {
             dm.allocate(memory_t::device);
-            dm.copy_to_device();
+            dm.copy<memory_t::host, memory_t::device>();
 
             /* treat auxiliary array as double with x2 size */
             mdarray<double, 2> dm_pw(nullptr, nbf * (nbf + 1) / 2, ctx_.gvec().count() * 2);
@@ -92,11 +93,6 @@ inline void Density::generate_rho_aug(std::vector<Periodic_function<double>*> rh
 
             mdarray<double, 1> phase_factors(nullptr, atom_type.num_atoms() * ctx_.gvec().count() * 2);
             phase_factors.allocate(memory_t::device);
-
-            acc::sync_stream(0);
-            if (iat + 1 != unit_cell_.num_atom_types()) {
-                ctx_.augmentation_op(iat + 1).prepare(0);
-            }
 
             for (int iv = 0; iv < ctx_.num_mag_dims() + 1; iv++) {
                 generate_dm_pw_gpu(atom_type.num_atoms(),
@@ -122,17 +118,13 @@ inline void Density::generate_rho_aug(std::vector<Periodic_function<double>*> rh
         #endif
     }
 
-    #ifdef __GPU
     if (pu == GPU) {
-        rho_aug__.copy_to_host();
+        rho_aug__.copy<memory_t::device, memory_t::host>();
     }
-    #endif
     
-    #ifdef __PRINT_OBJECT_CHECKSUM
-    {
+    if (ctx_.control().print_checksum_) {
          auto cs = rho_aug__.checksum();
          DUMP("checksum(rho_aug): %20.14f %20.14f", cs.real(), cs.imag());
     }
-    #endif
 }
 

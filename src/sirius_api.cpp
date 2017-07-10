@@ -3044,19 +3044,41 @@ void sirius_get_pw_coeffs(ftn_char label__,
         Communicator comm(MPI_Comm_f2c(*comm__));
         mdarray<int, 2> gvec(gvl__, 3, *ngv__);
 
-        std::vector<double_complex> v;
+        std::map<std::string, sirius::Periodic_function<double>*> func = {
+            {"rho", density->rho()},
+            {"magz", density->magnetization(0)},
+            {"magx", density->magnetization(1)},
+            {"magy", density->magnetization(2)},
+            {"veff", potential->effective_potential()},
+            {"vloc", &potential->local_potential()},
+            {"rhoc", &density->rho_pseudo_core()}
+        };
 
-        if (label == "rho") {
-            v = density->rho()->gather_f_pw();
-        } else if (label == "veff") {
-            v = potential->effective_potential()->gather_f_pw();
-        } else if (label == "vloc") {
-            v = potential->local_potential().gather_f_pw();
-        } else if (label == "rhoc") {
-            v = density->rho_pseudo_core().gather_f_pw();
-        } else {
+        std::vector<double_complex> v;
+        try {
+            v = func.at(label)->gather_f_pw();
+        } catch(...) {
             TERMINATE("wrong label");
         }
+
+
+        //if (label == "rho") {
+        //    v = density->rho()->gather_f_pw();
+        //} else if (label == "magz") {
+        //    v = density->magnetization(0)->gather_f_pw();
+        //} else if (label == "magx") {
+        //    v = density->magnetization(1)->gather_f_pw();
+        //} else if (label == "magy") {
+        //    v = density->magnetization(2)->gather_f_pw();
+        //} else if (label == "veff") {
+        //    v = potential->effective_potential()->gather_f_pw();
+        //} else if (label == "vloc") {
+        //    v = potential->local_potential().gather_f_pw();
+        //} else if (label == "rhoc") {
+        //    v = density->rho_pseudo_core().gather_f_pw();
+        //} else {
+        //    TERMINATE("wrong label");
+        //}
 
         for (int i = 0; i < *ngv__; i++) {
             vector3d<int> G(gvec(0, i), gvec(1, i), gvec(2, i));
