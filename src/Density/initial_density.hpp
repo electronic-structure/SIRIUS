@@ -60,13 +60,6 @@ inline void Density::initial_density_pseudo()
         rho_->f_rg(ir) = std::max(rho_->f_rg(ir), 0.0);
     }
 
-    if (ctx_.control().print_checksum_) {
-        auto cs = rho_->checksum_rg();
-        if (ctx_.comm().rank() == 0) {
-            DUMP("checksum(rho_rg) : %18.10f", cs);
-        }
-    }
-
     /* initialize the magnetization */
     if (ctx_.num_mag_dims()) {
         for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
@@ -105,6 +98,15 @@ inline void Density::initial_density_pseudo()
                         }
                     }
                 }
+            }
+        }
+    }
+
+    if (ctx_.control().print_checksum_) {
+        for (int i = 0; i < ctx_.num_mag_dims() + 1; i++) {
+            auto cs = rho_vec_[i]->checksum_rg();
+            if (ctx_.comm().rank() == 0) {
+                DUMP("checksum(rho_vec[%i]_rg) : %18.10f", i, cs);
             }
         }
     }
