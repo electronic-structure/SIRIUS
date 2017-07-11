@@ -411,6 +411,7 @@ class Density
 
             density_matrix_ = mdarray<double_complex, 4>(unit_cell_.max_mt_basis_size(), unit_cell_.max_mt_basis_size(), 
                                                          ctx_.num_mag_comp(), unit_cell_.num_atoms());
+            density_matrix_.zero();
 
             /* split local G-vectors to low-frequency and high-frequency */
             for (int igloc = 0; igloc < ctx_.gvec().count(); igloc++) {

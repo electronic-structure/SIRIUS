@@ -190,6 +190,11 @@ class Local_operator
                     buf_rg_.allocate(memory_t::device);
                 }
             }
+
+            if (param_->control().print_checksum_) {
+                auto cs = veff_vec_.checksum();
+                DUMP("checksum(veff_vec_): %18.10f", cs);
+            }
         }
 
         /// Map effective potential and magnetic field to a coarse FFT mesh in case of FP-LAPW.

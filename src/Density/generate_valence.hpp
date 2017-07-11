@@ -12,7 +12,10 @@ inline void Density::generate_valence(K_point_set& ks__)
     }
 
     if (std::abs(wt - 1.0) > 1e-12) {
-        TERMINATE("K_point weights don't sum to one");
+        std::stringstream s;
+        s << "K_point weights don't sum to one" << std::endl
+          << "  obtained sum: " << wt; 
+        TERMINATE(s);
     }
 
     if (std::abs(occ_val - unit_cell_.num_valence_electrons()) > 1e-8) {
