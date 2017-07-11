@@ -51,6 +51,8 @@ inline void Density::symmetrize_density_matrix()
                     }
 
                     /* magnetic symmetrization */
+
+
                     if (ndm == 2){
                         dm(xi1, xi2, 0, ia) += alpha * (density_matrix_(xi1, xi2, 0, ja) * spin_rot_su2(0, 0) * std::conj( spin_rot_su2(0, 0) ) +
                                                         density_matrix_(xi1, xi2, 1, ja) * spin_rot_su2(0, 1) * std::conj( spin_rot_su2(0, 1) ) );
@@ -62,8 +64,8 @@ inline void Density::symmetrize_density_matrix()
                     if (ndm == 3){
                         double_complex spin_dm[2][2]=
                             {
-                                { density_matrix_(xi1, xi2, 0, ja), std::conj( density_matrix_(xi1, xi2, 2, ja) ) },
-                                { density_matrix_(xi1, xi2, 2, ja), density_matrix_(xi1, xi2, 1, ja) }
+                                { density_matrix_(xi1, xi2, 0, ja),              density_matrix_(xi1, xi2, 2, ja) },
+                                { std::conj( density_matrix_(xi1, xi2, 2, ja) ), density_matrix_(xi1, xi2, 1, ja) }
                             };
 
                         for (int i = 0; i < 2; i++ ){
@@ -78,10 +80,26 @@ inline void Density::symmetrize_density_matrix()
                 }
             }
         }
+
+
     }
     
     //ctx_.comm().allreduce(dm.at<CPU>(), static_cast<int>(dm.size()));
     dm >> density_matrix_;
+
+    std::ofstream dmf("dms.dat");
+    for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
+        Atom& atom = unit_cell_.atom(ia);
+        for (int ispin = 0; ispin < ndm; ispin++ ){
+            for (int ib2 = 0; ib2 < atom.type().indexb().size(); ib2++) {
+                for (int ib1 = 0; ib1 < atom.type().indexb().size(); ib1++) {
+                    dmf << density_matrix_(ib1, ib2, ispin, ia).real() <<" ";
+                }
+                dmf <<std::endl;
+            }
+        }
+    }
+    dmf.close();
 
     #ifdef __PRINT_OBJECT_CHECKSUM
     {

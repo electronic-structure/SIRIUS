@@ -94,10 +94,13 @@ inline void Density::initial_density_pseudo()
                                     const double norm = pi * std::pow(R, 3) / 3.0;
 
                                     if (a <= R) {
-                                        magnetization_[0]->f_rg(ir) += v[2] * (1.0 - a / R) / norm;
+                                        magnetization_[0]->f_rg(ir) += v[2] * 1.0 / (std::exp( (a-R)/0.1) + 1.0) / norm;
+                                        //magnetization_[0]->f_rg(ir) += v[2] * (1.0 - a / R) / norm;
                                         if (ctx_.num_mag_dims() == 3) {
-                                            magnetization_[1]->f_rg(ir) += v[0] * (1.0 - a / R) / norm;
-                                            magnetization_[2]->f_rg(ir) += v[1] * (1.0 - a / R) / norm;
+                                            magnetization_[1]->f_rg(ir) += v[0] * 1.0 / (std::exp( (a-R)/0.1) + 1.0) / norm;
+                                            magnetization_[2]->f_rg(ir) += v[1] * 1.0 / (std::exp( (a-R)/0.1) + 1.0) / norm;
+                                            //magnetization_[1]->f_rg(ir) += v[0] * (1.0 - a / R) / norm;
+                                            //magnetization_[2]->f_rg(ir) += v[1] * (1.0 - a / R) / norm;
                                         }
                                     }
                                 }
