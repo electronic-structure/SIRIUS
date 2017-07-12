@@ -3185,4 +3185,9 @@ void sirius_get_stress_tensor(ftn_char label__, ftn_double* stress_tensor__)
     }
 }
 
+void sirius_set_processing_unit(ftn_char pu__)
+{
+    sim_ctx->set_processing_unit(pu__);
+}
+
 } // extern "C"

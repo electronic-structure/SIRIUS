@@ -979,6 +979,11 @@ module sirius
             integer,                                 intent(in)  :: comm
         end subroutine
 
+        subroutine sirius_set_processing_unit(pu)&
+            &bind(C, name="sirius_set_processing_unit")
+            character, dimension(*), intent(in)  :: pu
+        end subroutine
+
     end interface
 
 contains
