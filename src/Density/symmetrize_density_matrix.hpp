@@ -2,6 +2,10 @@ inline void Density::symmetrize_density_matrix()
 {
     PROFILE("sirius::Density::symmetrize_density_matrix");
 
+    if (!ctx_.use_symmetry()){
+        return;
+    }
+
     auto& sym = unit_cell_.symmetry();
 
     int ndm = std::max(ctx_.num_mag_dims(), ctx_.num_spins());
@@ -51,8 +55,6 @@ inline void Density::symmetrize_density_matrix()
                     }
 
                     /* magnetic symmetrization */
-
-
                     if (ndm == 2){
                         dm(xi1, xi2, 0, ia) += alpha * (density_matrix_(xi1, xi2, 0, ja) * spin_rot_su2(0, 0) * std::conj( spin_rot_su2(0, 0) ) +
                                                         density_matrix_(xi1, xi2, 1, ja) * spin_rot_su2(0, 1) * std::conj( spin_rot_su2(0, 1) ) );
@@ -87,19 +89,37 @@ inline void Density::symmetrize_density_matrix()
     //ctx_.comm().allreduce(dm.at<CPU>(), static_cast<int>(dm.size()));
     dm >> density_matrix_;
 
-    std::ofstream dmf("dms.dat");
-    for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
-        Atom& atom = unit_cell_.atom(ia);
-        for (int ispin = 0; ispin < ndm; ispin++ ){
-            for (int ib2 = 0; ib2 < atom.type().indexb().size(); ib2++) {
-                for (int ib1 = 0; ib1 < atom.type().indexb().size(); ib1++) {
-                    dmf << density_matrix_(ib1, ib2, ispin, ia).real() <<" ";
+    {
+        std::ofstream dmf("dms_R.dat");
+        for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
+            Atom& atom = unit_cell_.atom(ia);
+            for (int ispin = 0; ispin < ndm; ispin++ ){
+                for (int ib2 = 0; ib2 < atom.type().indexb().size(); ib2++) {
+                    for (int ib1 = 0; ib1 < atom.type().indexb().size(); ib1++) {
+                        dmf << density_matrix_(ib1, ib2, ispin, ia).real() <<" ";
+                    }
+                    dmf <<std::endl;
                 }
-                dmf <<std::endl;
             }
         }
+        dmf.close();
     }
-    dmf.close();
+    {
+        std::ofstream dmf("dms_I.dat");
+        for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
+            Atom& atom = unit_cell_.atom(ia);
+            for (int ispin = 0; ispin < ndm; ispin++ ){
+                for (int ib2 = 0; ib2 < atom.type().indexb().size(); ib2++) {
+                    for (int ib1 = 0; ib1 < atom.type().indexb().size(); ib1++) {
+                        dmf << density_matrix_(ib1, ib2, ispin, ia).imag() <<" ";
+                    }
+                    dmf <<std::endl;
+                }
+            }
+        }
+        dmf.close();
+    }
+
 
     #ifdef __PRINT_OBJECT_CHECKSUM
     {
