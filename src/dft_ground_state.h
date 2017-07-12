@@ -755,6 +755,28 @@ inline void DFT_ground_state::print_info()
         printf("band gap (eV) : %18.8f\n", gap);
         printf("Efermi        : %18.8f\n", ef);
         printf("\n");
+        //if (ctx_.control().verbosity_ >= 3 && !ctx_.full_potential()) {
+        //    for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
+        //        printf("atom: %i\n", ia);
+        //        int nbf = unit_cell_.atom(ia).type().mt_basis_size();
+        //        for (int j = 0; j < ctx_.num_mag_comp(); j++) {
+        //            //printf("component of density matrix: %i\n", j);
+        //            //for (int xi1 = 0; xi1 < nbf; xi1++) {
+        //            //    for (int xi2 = 0; xi2 < nbf; xi2++) {
+        //            //        auto z = density_.density_matrix()(xi1, xi2, j, ia);
+        //            //        printf("(%f, %f) ", z.real(), z.imag());
+        //            //    }
+        //            //    printf("\n");
+        //            //}
+        //            printf("diagonal components of density matrix: %i\n", j);
+        //            for (int xi2 = 0; xi2 < nbf; xi2++) {
+        //                auto z = density_.density_matrix()(xi2, xi2, j, ia);
+        //                printf("(%10.6f, %10.6f) ", z.real(), z.imag());
+        //            }
+        //            printf("\n");
+        //        }
+        //    }
+        //}
     }
 }
 

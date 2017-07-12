@@ -4,7 +4,7 @@ inline void Density::symmetrize_density_matrix()
 
     auto& sym = unit_cell_.symmetry();
 
-    int ndm = std::max(ctx_.num_mag_dims(), ctx_.num_spins());
+    int ndm = ctx_.num_mag_comp();
 
     mdarray<double_complex, 4> dm(unit_cell_.max_mt_basis_size(), unit_cell_.max_mt_basis_size(), 
                                   ndm, unit_cell_.num_atoms());
@@ -53,7 +53,6 @@ inline void Density::symmetrize_density_matrix()
         }
     }
     
-    //ctx_.comm().allreduce(dm.at<CPU>(), static_cast<int>(dm.size()));
     dm >> density_matrix_;
 
     #ifdef __PRINT_OBJECT_CHECKSUM

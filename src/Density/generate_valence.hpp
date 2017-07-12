@@ -99,7 +99,7 @@ inline void Density::generate_valence(K_point_set& ks__)
         }
     }
 
-    if (ctx_.esm_type() == electronic_structure_method_t::pseudopotential) {
+    if (ctx_.esm_type() == electronic_structure_method_t::pseudopotential && ctx_.use_symmetry()) {
         symmetrize_density_matrix();
     }
 
