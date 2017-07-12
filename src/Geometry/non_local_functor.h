@@ -103,7 +103,7 @@ class Non_local_functor
                             }
 
                             if (unit_cell.atom(ia).type().pp_desc().augment) {
-                                dij -= kpoint__.band_energy(ibnd) * ctx_.augmentation_op(iat).q_mtrx(i, j);
+                                dij -= kpoint__.band_energy(ibnd + ispn * ctx_.num_fv_states()) * ctx_.augmentation_op(iat).q_mtrx(i, j);
                             }
 
                             return dij;

@@ -2,13 +2,17 @@ inline void Density::symmetrize_density_matrix()
 {
     PROFILE("sirius::Density::symmetrize_density_matrix");
 
-    if (!ctx_.use_symmetry()){
-        return;
-    }
+
+
+
+
 
     auto& sym = unit_cell_.symmetry();
 
     int ndm = std::max(ctx_.num_mag_dims(), ctx_.num_spins());
+
+    //TODO its just for test
+    if (ctx_.use_symmetry()){
 
     mdarray<double_complex, 4> dm(unit_cell_.max_mt_basis_size(), unit_cell_.max_mt_basis_size(), 
                                   ndm, unit_cell_.num_atoms());
@@ -42,6 +46,8 @@ inline void Density::symmetrize_density_matrix()
                     int lm2 = atom_type.indexb(xi2).lm;
                     int o2  = atom_type.indexb(xi2).order;
                     
+                    double_complex dm_loc_spatial[3] = { {0.0, 0.0}, {0.0, 0.0}, {0.0, 0.0} };
+
                     for (int j = 0; j < ndm; j++) {
                         for (int m3 = -l1; m3 <= l1; m3++) {
                             int lm3 = Utils::lm_by_l_m(l1, m3);
@@ -49,32 +55,35 @@ inline void Density::symmetrize_density_matrix()
                             for (int m4 = -l2; m4 <= l2; m4++) {
                                 int lm4 = Utils::lm_by_l_m(l2, m4);
                                 int xi4 = atom_type.indexb().index_by_lm_order(lm4, o2);
-                                dm(xi1, xi2, j, ia) += density_matrix_(xi3, xi4, j, ja) * rotm(lm1, lm3) * rotm(lm2, lm4) * alpha;
+                                //dm(xi1, xi2, j, ia) += density_matrix_(xi3, xi4, j, ja) * rotm(lm1, lm3) * rotm(lm2, lm4) * alpha;
+                                dm_loc_spatial[j] += density_matrix_(xi3, xi4, j, ja) * rotm(lm1, lm3) * rotm(lm2, lm4) * alpha;
                             }
                         }
                     }
 
+                    //double_complex dm_loc_spin[3] = { {0.0, 0.0}, {0.0, 0.0}, {0.0, 0.0} };
+
                     /* magnetic symmetrization */
                     if (ndm == 2){
-                        dm(xi1, xi2, 0, ia) += alpha * (density_matrix_(xi1, xi2, 0, ja) * spin_rot_su2(0, 0) * std::conj( spin_rot_su2(0, 0) ) +
-                                                        density_matrix_(xi1, xi2, 1, ja) * spin_rot_su2(0, 1) * std::conj( spin_rot_su2(0, 1) ) );
+                        dm(xi1, xi2, 0, ia) += dm_loc_spatial[0] * spin_rot_su2(0, 0) * std::conj( spin_rot_su2(0, 0) ) +
+                                               dm_loc_spatial[1] * spin_rot_su2(0, 1) * std::conj( spin_rot_su2(0, 1) ) ;
 
-                        dm(xi1, xi2, 1, ia) += alpha * (density_matrix_(xi1, xi2, 1, ja) * spin_rot_su2(1, 1) * std::conj( spin_rot_su2(1, 1) ) +
-                                                        density_matrix_(xi1, xi2, 0, ja) * spin_rot_su2(1, 0) * std::conj( spin_rot_su2(1, 0) ) );
+                        dm(xi1, xi2, 1, ia) += dm_loc_spatial[1] * spin_rot_su2(1, 1) * std::conj( spin_rot_su2(1, 1) ) +
+                                               dm_loc_spatial[0] * spin_rot_su2(1, 0) * std::conj( spin_rot_su2(1, 0) ) ;
                     }
 
                     if (ndm == 3){
                         double_complex spin_dm[2][2]=
                             {
-                                { density_matrix_(xi1, xi2, 0, ja),              density_matrix_(xi1, xi2, 2, ja) },
-                                { std::conj( density_matrix_(xi1, xi2, 2, ja) ), density_matrix_(xi1, xi2, 1, ja) }
+                                { dm_loc_spatial[0],              dm_loc_spatial[2] },
+                                { std::conj( dm_loc_spatial[2] ), dm_loc_spatial[1] }
                             };
 
                         for (int i = 0; i < 2; i++ ){
                             for (int j = 0; j < 2; j++ ){
-                                dm(xi1, xi2, 0, ia) += alpha * spin_dm[i][j] * spin_rot_su2(0, i) * std::conj( spin_rot_su2(0, j) );
-                                dm(xi1, xi2, 1, ia) += alpha * spin_dm[i][j] * spin_rot_su2(1, i) * std::conj( spin_rot_su2(1, j) );
-                                dm(xi1, xi2, 2, ia) += alpha * spin_dm[i][j] * spin_rot_su2(0, i) * std::conj( spin_rot_su2(1, j) );
+                                dm(xi1, xi2, 0, ia) += spin_dm[i][j] * spin_rot_su2(0, i) * std::conj( spin_rot_su2(0, j) );
+                                dm(xi1, xi2, 1, ia) += spin_dm[i][j] * spin_rot_su2(1, i) * std::conj( spin_rot_su2(1, j) );
+                                dm(xi1, xi2, 2, ia) += spin_dm[i][j] * spin_rot_su2(0, i) * std::conj( spin_rot_su2(1, j) );
                             }
                         }
 
@@ -88,6 +97,7 @@ inline void Density::symmetrize_density_matrix()
     
     //ctx_.comm().allreduce(dm.at<CPU>(), static_cast<int>(dm.size()));
     dm >> density_matrix_;
+    }
 
     {
         std::ofstream dmf("dms_R.dat");

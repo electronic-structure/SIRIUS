@@ -161,7 +161,8 @@ class Forces_PS
         PROFILE("sirius::Forces_PS::calc_ultrasoft_forces");
 
         const mdarray<double_complex, 4>& density_matrix = density_.density_matrix();
-        const Periodic_function<double>* veff_full = potential_.effective_potential();
+        Periodic_function<double>* veff_full = potential_.effective_potential();
+        Periodic_function<double>* field_eff = potential_.effective_magnetic_field(0);
 
         Unit_cell& unit_cell = ctx_.unit_cell();
 
@@ -183,36 +184,59 @@ class Forces_PS
                 continue;
             }
 
-            for (int igloc = 0; igloc < gvec_count; igloc++) {
-                int ig = gvec_offset + igloc;
+            for (int ispin = 0; ispin < ctx_.num_spins(); ispin++ ){
+                double spin_factor = (ispin == 0 ? 1.0 : -1.0);
 
-                /* cartesian form for getting cartesian force components */
-                vector3d<double> gvec_cart = gvecs.gvec_cart(ig);
+                auto potential_spin = [&](int igloc)
+                                    {
+                    switch (ctx_.num_spins())
+                    {
+                        case 1:
+                            return veff_full->f_pw_local(igloc);
+                            break;
 
-                /* scalar part of a force without multipying by G-vector and Qij
+                        case 2:
+                            return veff_full->f_pw_local(igloc) + spin_factor * field_eff->f_pw_local(igloc);
+                            break;
+
+                        default:
+                            TERMINATE("Error in calc_ultrasoft_forces: Non-collinear not implemented");
+                            break;
+                    }
+                    return double_complex(0.0, 0.0);
+                                    };
+
+                for (int igloc = 0; igloc < gvec_count; igloc++) {
+                    int ig = gvec_offset + igloc;
+
+                    /* cartesian form for getting cartesian force components */
+                    vector3d<double> gvec_cart = gvecs.gvec_cart(ig);
+
+                    /* scalar part of a force without multipying by G-vector and Qij
                    omega * V_conj(G) * exp(-i G Rn) */
-                double_complex g_atom_part = reduce_g_fact * ctx_.unit_cell().omega() *
-                                             std::conj(veff_full->f_pw_local(igloc)) *
-                                             std::conj(ctx_.gvec_phase_factor(ig, ia));
+                    double_complex g_atom_part = reduce_g_fact * ctx_.unit_cell().omega() *
+                            std::conj(potential_spin(igloc) * ctx_.gvec_phase_factor(ig, ia));
 
-                const Augmentation_operator& aug_op = ctx_.augmentation_op(iat);
 
-                /* iterate over trangle matrix Qij */
-                for (int ib2 = 0; ib2 < atom.type().indexb().size(); ib2++) {
-                    for (int ib1 = 0; ib1 <= ib2; ib1++) {
-                        int iqij = (ib2 * (ib2 + 1)) / 2 + ib1;
+                    const Augmentation_operator& aug_op = ctx_.augmentation_op(iat);
 
-                        double diag_fact = ib1 == ib2 ? 1.0 : 2.0;
+                    /* iterate over trangle matrix Qij */
+                    for (int ib2 = 0; ib2 < atom.type().indexb().size(); ib2++) {
+                        for (int ib1 = 0; ib1 <= ib2; ib1++) {
+                            int iqij = (ib2 * (ib2 + 1)) / 2 + ib1;
 
-                        /* [omega * V_conj(G) * exp(-i G Rn) ] * rho_ij * Qij(G) */
-                        double_complex z =
-                            diag_fact * g_atom_part * density_matrix(ib1, ib2, 0, ia).real() *
-                            double_complex(aug_op.q_pw(iqij, 2 * igloc), aug_op.q_pw(iqij, 2 * igloc + 1));
+                            double diag_fact = ib1 == ib2 ? 1.0 : 2.0;
 
-                        /* get force components multiplying by cartesian G-vector */
-                        forces(0, ia) -= (gvec_cart[0] * z).imag();
-                        forces(1, ia) -= (gvec_cart[1] * z).imag();
-                        forces(2, ia) -= (gvec_cart[2] * z).imag();
+                            /* [omega * V_conj(G) * exp(-i G Rn) ] * rho_ij * Qij(G) */
+                            double_complex z = diag_fact * g_atom_part * density_matrix(ib1, ib2, ispin, ia).real() *
+                                    double_complex(aug_op.q_pw(iqij, 2 * igloc), aug_op.q_pw(iqij, 2 * igloc + 1));
+
+
+                            /* get force components multiplying by cartesian G-vector */
+                            forces(0, ia) -= (gvec_cart[0] * z).imag();
+                            forces(1, ia) -= (gvec_cart[1] * z).imag();
+                            forces(2, ia) -= (gvec_cart[2] * z).imag();
+                        }
                     }
                 }
             }
