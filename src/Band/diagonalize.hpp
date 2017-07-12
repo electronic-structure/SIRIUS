@@ -850,7 +850,7 @@ inline void Band::diag_pseudo_potential_davidson(K_point*       kp__,
                 /* recompute wave-functions */
                 /* \Psi_{i} = \sum_{mu} \phi_{mu} * Z_{mu, i} */
                 if (nc_mag) {
-                    transform<T>(2, 1.0, {&phi}, 0, N, evec, 0, 0, 0.0, {&psi}, 0, num_bands);
+                    transform<T>(1.0, {&phi}, 0, N, evec, 0, 0, 0.0, {&psi}, 0, num_bands);
                 } else {
                     transform<T>(phi.component(0), 0, N, evec, 0, 0, psi.component(ispin_step), 0, num_bands);
                 }
@@ -875,11 +875,7 @@ inline void Band::diag_pseudo_potential_davidson(K_point*       kp__,
 
                     /* need to compute all hpsi and opsi states (not only unconverged) */
                     if (converge_by_energy) {
-                        if (nc_mag) {
-                            transform<T>(2, 1.0, {&hphi, &ophi}, 0, N, evec, 0, 0, 0.0, {&hpsi, &opsi}, 0, num_bands);
-                        } else {
-                            transform<T>({&hphi.component(0), &ophi.component(0)}, 0, N, evec, 0, 0, {&hpsi.component(0), &opsi.component(0)}, 0, num_bands);
-                        }
+                        transform<T>(1.0, std::vector<Wave_functions*>({&hphi, &ophi}), 0, N, evec, 0, 0, 0.0, {&hpsi, &opsi}, 0, num_bands);
                     }
  
                     /* update basis functions, hphi and ophi */
