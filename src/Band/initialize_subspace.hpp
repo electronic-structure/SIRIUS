@@ -349,7 +349,7 @@ inline void Band::initialize_subspace(K_point*                                  
         /* compute wave-functions */
         /* \Psi_{i} = \sum_{mu} \phi_{mu} * Z_{mu, i} */
         if (ctx_.num_mag_dims() == 3) {
-            transform<T>(num_sc, 1.0, {&phi}, 0, num_phi_tot, evec, 0, 0, 0.0, {&kp__->spinor_wave_functions()}, 0, num_bands);
+            transform<T>(1.0, {&phi}, 0, num_phi_tot, evec, 0, 0, 0.0, {&kp__->spinor_wave_functions()}, 0, num_bands);
         } else {
             transform<T>(phi.component(0), 0, num_phi, evec, 0, 0, kp__->spinor_wave_functions(ispn_step), 0, num_bands);
         }

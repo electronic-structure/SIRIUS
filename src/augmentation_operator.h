@@ -219,8 +219,6 @@ class Augmentation_operator_gvec_deriv
 
         Communicator const& comm_;
 
-        //Atom_type const& atom_type_;
-
         mdarray<double, 2> q_pw_;
 
         mdarray<double, 1> sym_weight_;
@@ -263,33 +261,6 @@ class Augmentation_operator_gvec_deriv
 
                 SHT::spherical_harmonics(2 * lmax, theta, phi, &rlm_g_(0, igloc));
                 
-                //double dg = 1e-6 * rtp[0];
-                //auto v = ctx_.gvec().gvec_cart(ig);
-                //for (int x = 0; x < 3; x++) {
-                //    vector3d<double> g1 = v;
-                //    g1[x] += dg;
-                //    vector3d<double> g2 = v;
-                //    g2[x] -= dg;
-                //    
-                //    auto gs1 = SHT::spherical_coordinates(g1);
-                //    auto gs2 = SHT::spherical_coordinates(g2);
-                //    std::vector<double> rlm1(lmmax);
-                //    std::vector<double> rlm2(lmmax);
-                //    
-                //    SHT::spherical_harmonics(2 * lmax, gs1[1], gs1[2], &rlm1[0]);
-                //    SHT::spherical_harmonics(2 * lmax, gs2[1], gs2[2], &rlm2[0]);
-                //    
-                //    if (rtp[0] < 1e-10) {
-                //        for (int lm = 0; lm < lmmax; lm++) {
-                //            rlm_dg_(lm, x, igloc) = 0;
-                //        }
-                //    } else {
-                //        for (int lm = 0; lm < lmmax; lm++) {
-                //            rlm_dg_(lm, x, igloc) = rtp[0] * (rlm1[lm] - rlm2[lm]) / 2 / dg;
-                //        }
-                //    }
-                //}
-
                 mdarray<double, 1> dRlm_dtheta(lmmax);
                 mdarray<double, 1> dRlm_dphi_sin_theta(lmmax);
 

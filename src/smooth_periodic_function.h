@@ -36,7 +36,6 @@ namespace sirius {
  *    - distribution of plane-wave coefficients over entire communicator
  *    - Fourier transformation using FFT communicator
  *    - gather PW coefficients into global array
- *  In some cases the PW coefficients are not necessary and only the real-space values are stored.
  */
 template <typename T>
 class Smooth_periodic_function

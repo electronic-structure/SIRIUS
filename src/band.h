@@ -195,6 +195,22 @@ class Band
                                                 mdarray<double, 2>&  h_diag__,
                                                 mdarray<double, 1>&  o_diag__) const;
         
+        template <typename T, typename wave_functions_t>
+        int residuals_common(K_point*             kp__,
+                             int                  ispn__,
+                             int                  N__,
+                             int                  num_bands__,
+                             std::vector<double>& eval__,
+                             std::vector<double>& eval_old__,
+                             dmatrix<T>&          evec__,
+                             wave_functions_t&    hphi__,
+                             wave_functions_t&    ophi__,
+                             wave_functions_t&    hpsi__,
+                             wave_functions_t&    opsi__,
+                             wave_functions_t&    res__,
+                             mdarray<double, 2>&  h_diag__,
+                             mdarray<double, 1>&  o_diag__) const;
+
         /// Compute residuals.
         template <typename T>
         inline int residuals(K_point*             kp__,

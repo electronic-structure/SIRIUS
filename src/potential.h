@@ -293,7 +293,7 @@ class Potential
                                    Spheric_function<spatial, double>& exc_tp);
 
         inline void xc_mt(Periodic_function<double>* rho, 
-                          Periodic_function<double>* magnetization[3], 
+                          std::array<Periodic_function<double>*, 3> magnetization, 
                           std::vector<XC_functional>& xc_func,
                           Periodic_function<double>* vxc, 
                           Periodic_function<double>* bxc[3], 
@@ -305,7 +305,7 @@ class Potential
                                       Periodic_function<double>* exc);
 
         inline void xc_it_magnetic(Periodic_function<double>* rho, 
-                                   Periodic_function<double>* magnetization[3], 
+                                   std::array<Periodic_function<double>*, 3> magnetization, 
                                    std::vector<XC_functional>& xc_func,
                                    Periodic_function<double>* vxc, 
                                    Periodic_function<double>* bxc[3], 
@@ -769,11 +769,11 @@ class Potential
          *      V^{\downarrow}({\bf r}) &=& V_{xc}({\bf r}) - {\rm B}_{xc}({\bf r}) 
          *  \f}
          */
-        void xc(Periodic_function<double>* rho,
-                Periodic_function<double>* magnetization[3], 
-                Periodic_function<double>* vxc,
-                Periodic_function<double>* bxc[3],
-                Periodic_function<double>* exc);
+        void xc(Periodic_function<double>*                rho__,
+                std::array<Periodic_function<double>*, 3> magnetization__,
+                Periodic_function<double>*                vxc__,
+                Periodic_function<double>*                bxc__[3],
+                Periodic_function<double>*                exc__);
         
         /// Generate effective potential and magnetic field from charge density and magnetization.
         inline void generate(Density& density__)

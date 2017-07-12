@@ -2922,43 +2922,6 @@ void sirius_get_density_matrix(ftn_int*            ia__,
     }
 }
 
-void sirius_calc_forces(ftn_int* kset_id__)
-{
-    auto& kset = *kset_list[*kset_id__];
-    forces = std::unique_ptr<sirius::Forces_PS>(new sirius::Forces_PS(*sim_ctx, *density, *potential, kset));
-}
-
-void sirius_get_forces(ftn_char label__, ftn_double* forces__)
-{
-    std::string label(label__);
-
-    auto get_forces = [&](const mdarray<double,2>& sirius_forces__)
-        {
-            #pragma omp parallel for
-            for (size_t i = 0; i < sirius_forces__.size(); i++){
-                forces__[i] = sirius_forces__[i];
-            }
-        };
-
-    if (label == "vloc") {
-        get_forces(forces->local_forces());
-    } else if (label == "nlcc") {
-        get_forces(forces->nlcc_forces());
-    } else if (label == "ewald") {
-        get_forces(forces->ewald_forces());
-    } else if (label == "nl") {
-        get_forces(forces->nonlocal_forces());
-    } else if (label == "us") {
-        get_forces(forces->ultrasoft_forces());
-    } else if (label == "usnl") {
-        get_forces(forces->us_nl_forces());
-    } else if (label == "tot") {
-        get_forces(forces->total_forces());
-    } else {
-        TERMINATE("wrong label");
-    }
-}
-
 void sirius_set_verbosity(ftn_int* level__)
 {
     sim_ctx->set_verbosity(*level__);
@@ -3011,27 +2974,49 @@ void sirius_set_pw_coeffs(ftn_char label__,
             }
         }
         comm.allreduce(v.data(), sim_ctx->gvec().num_gvec());
-
+        
+        // TODO: check if FFT transformation is necessary
         if (label == "rho") {
             density->rho()->scatter_f_pw(v);
             density->rho()->fft_transform(1);
         } else if (label == "veff") {
             potential->effective_potential()->scatter_f_pw(v);
             potential->effective_potential()->fft_transform(1);
+        } else if (label == "bz") {
+            potential->effective_magnetic_field(0)->scatter_f_pw(v);
+            potential->effective_magnetic_field(0)->fft_transform(1);
+        } else if (label == "bx") {
+            potential->effective_magnetic_field(1)->scatter_f_pw(v);
+            potential->effective_magnetic_field(1)->fft_transform(1);
+        } else if (label == "by") {
+            potential->effective_magnetic_field(2)->scatter_f_pw(v);
+            potential->effective_magnetic_field(2)->fft_transform(1);
         } else if (label == "vxc") {
             potential->xc_potential()->scatter_f_pw(v);
             potential->xc_potential()->fft_transform(1);
+        } else if (label == "magz") {
+            density->magnetization(0)->scatter_f_pw(v);
+            density->magnetization(0)->fft_transform(1);
+        } else if (label == "magx") {
+            density->magnetization(1)->scatter_f_pw(v);
+            density->magnetization(1)->fft_transform(1);
+        } else if (label == "magy") {
+            density->magnetization(2)->scatter_f_pw(v);
+            density->magnetization(2)->fft_transform(1);
         } else {
-            TERMINATE("wrong label");
+            std::stringstream s;
+            s << "wrong label in sirius_set_pw_coeffs()" << std::endl
+              << "  label: " << label;
+            TERMINATE(s);
         }
     }
 }
 
-void sirius_get_pw_coeffs(ftn_char label__,
+void sirius_get_pw_coeffs(ftn_char        label__,
                           double_complex* pw_coeffs__,
-                          ftn_int* ngv__,
-                          ftn_int* gvl__, 
-                          ftn_int* comm__)
+                          ftn_int*        ngv__,
+                          ftn_int*        gvl__, 
+                          ftn_int*        comm__)
 {
     std::string label(label__);
     if (sim_ctx->full_potential()) {
@@ -3044,17 +3029,20 @@ void sirius_get_pw_coeffs(ftn_char label__,
         Communicator comm(MPI_Comm_f2c(*comm__));
         mdarray<int, 2> gvec(gvl__, 3, *ngv__);
 
-        std::vector<double_complex> v;
+        std::map<std::string, sirius::Periodic_function<double>*> func = {
+            {"rho", density->rho()},
+            {"magz", density->magnetization(0)},
+            {"magx", density->magnetization(1)},
+            {"magy", density->magnetization(2)},
+            {"veff", potential->effective_potential()},
+            {"vloc", &potential->local_potential()},
+            {"rhoc", &density->rho_pseudo_core()}
+        };
 
-        if (label == "rho") {
-            v = density->rho()->gather_f_pw();
-        } else if (label == "veff") {
-            v = potential->effective_potential()->gather_f_pw();
-        } else if (label == "vloc") {
-            v = potential->local_potential().gather_f_pw();
-        } else if (label == "rhoc") {
-            v = density->rho_pseudo_core().gather_f_pw();
-        } else {
+        std::vector<double_complex> v;
+        try {
+            v = func.at(label)->gather_f_pw();
+        } catch(...) {
             TERMINATE("wrong label");
         }
 
@@ -3124,6 +3112,43 @@ void sirius_get_pw_coeffs_real(ftn_char    atom_type__,
                        {
                            return ri.value(iat, g);
                        });
+    }
+}
+
+void sirius_calculate_forces(ftn_int* kset_id__)
+{
+    auto& kset = *kset_list[*kset_id__];
+    forces = std::unique_ptr<sirius::Forces_PS>(new sirius::Forces_PS(*sim_ctx, *density, *potential, kset));
+}
+
+void sirius_get_forces(ftn_char label__, ftn_double* forces__)
+{
+    std::string label(label__);
+
+    auto get_forces = [&](const mdarray<double,2>& sirius_forces__)
+        {
+            #pragma omp parallel for
+            for (size_t i = 0; i < sirius_forces__.size(); i++){
+                forces__[i] = sirius_forces__[i];
+            }
+        };
+
+    if (label == "vloc") {
+        get_forces(forces->local_forces());
+    } else if (label == "nlcc") {
+        get_forces(forces->nlcc_forces());
+    } else if (label == "ewald") {
+        get_forces(forces->ewald_forces());
+    } else if (label == "nl") {
+        get_forces(forces->nonlocal_forces());
+    } else if (label == "us") {
+        get_forces(forces->ultrasoft_forces());
+    } else if (label == "usnl") {
+        get_forces(forces->us_nl_forces());
+    } else if (label == "tot") {
+        get_forces(forces->total_forces());
+    } else {
+        TERMINATE("wrong label");
     }
 }
 

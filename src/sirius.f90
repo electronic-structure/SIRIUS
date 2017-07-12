@@ -929,8 +929,8 @@ module sirius
             integer,                  intent(in)  :: nhm
         end subroutine
 
-        subroutine sirius_calc_forces(kset_id)&
-            &bind(C, name="sirius_calc_forces")
+        subroutine sirius_calculate_forces(kset_id)&
+            &bind(C, name="sirius_calculate_forces")
             integer,                 intent(in) :: kset_id
         end subroutine
 

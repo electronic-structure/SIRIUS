@@ -151,16 +151,49 @@ class Symmetry
 
             double theta = Utils::phi_by_sin_cos(sint, cost);
 
-            /* zero angle */
+            /* rotation angle is zero */
             if (std::abs(theta) < 1e-12) {
                 u = vector3d<double>({0, 0, 1});
             } else if (std::abs(theta - pi) < 1e-12) { /* rotation angle is Pi */
+                /* rotation matrix for Pi angle has this form 
 
+                [-1+2ux^2 |  2 ux uy |  2 ux uz]
+                [2 ux uy  | -1+2uy^2 |  2 uy uz]
+                [2 ux uz  | 2 uy uz  | -1+2uz^2] */
+
+                if (R__(0, 0) >= R__(1, 1) && R__(0, 0) >= R__(2, 2)) { /* x-component is largest */
+                    u[0] = std::sqrt(std::abs(R__(0, 0) + 1) / 2);
+                    u[1] = (R__(0, 1) + R__(1, 0)) / 4 / u[0];
+                    u[2] = (R__(0, 2) + R__(2, 0)) / 4 / u[0];
+                } else if (R__(1, 1) >= R__(0, 0) && R__(1, 1) >= R__(2, 2)) { /* y-component is largest */
+                    u[1] = std::sqrt(std::abs(R__(1, 1) + 1) / 2);
+                    u[0] = (R__(1, 0) + R__(0, 1)) / 4 / u[1];
+                    u[2] = (R__(1, 2) + R__(2, 1)) / 4 / u[1];
+                } else {
+                    u[2] = std::sqrt(std::abs(R__(2, 2) + 1) / 2);
+                    u[0] = (R__(2, 0) + R__(0, 2)) / 4 / u[2];
+                    u[1] = (R__(2, 1) + R__(1, 2)) / 4 / u[2];
+                }
             } else {
                 u = u * (1.0 / u.length());
             }
 
             return std::pair<vector3d<double>, double>(u, theta);
+        }
+
+        static mdarray<double_complex, 2> spinor_rotation_matrix(vector3d<double> u__, double theta__)
+        {
+            mdarray<double_complex, 2> rotm(2, 2);
+
+            auto cost = std::cos(theta__ / 2);
+            auto sint = std::sin(theta__ / 2);
+
+            rotm(0, 0) = double_complex(cost, -u__[2] * sint);
+            rotm(1, 1) = double_complex(cost,  u__[2] * sint);
+            rotm(0, 1) = double_complex(-u__[1] * sint, -u__[0] * sint);
+            rotm(1, 0) = double_complex( u__[1] * sint, -u__[0] * sint);
+
+            return std::move(rotm);
         }
 
 
