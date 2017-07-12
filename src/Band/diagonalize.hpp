@@ -912,7 +912,7 @@ inline void Band::diag_pseudo_potential_davidson(K_point*       kp__,
         }
     }
     #endif
-    kp__->comm().barrier();
+    //kp__->comm().barrier();
 }
 
 template <typename T>

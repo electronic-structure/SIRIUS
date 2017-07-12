@@ -769,6 +769,7 @@ class FFT3D
 
             int nc = gvec__.reduced() ? 2 : 1;
             
+            sddk::timer t1("sddk::FFT3D::prepare|cpu");
             /* get positions of z-columns in xy plane */
             z_col_pos_ = mdarray<int, 2>(gvec__.num_zcol(), nc, memory_t::host, "FFT3D.z_col_pos_");
             #pragma omp parallel for schedule(static)
@@ -786,9 +787,11 @@ class FFT3D
                     z_col_pos_(i, 1) = x + y * grid_.size(0);
                 }
             }
+            t1.stop();
 
             #ifdef __GPU
             if (pu_ == GPU) {
+                sddk::timer t2("sddk::FFT3D::prepare|gpu");
                 size_t work_size;
                 map_zcol_to_fft_buffer_ = mdarray<int, 1>(gvec__.gvec_count_fft(), memory_t::host | memory_t::device, "FFT3D.map_zcol_to_fft_buffer_");
                 /* loop over local set of columns */

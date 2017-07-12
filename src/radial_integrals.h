@@ -72,6 +72,8 @@ class Radial_integrals_aug: public Radial_integrals_base<3>
     {
         PROFILE("sirius::Radial_integrals|aug");
 
+        splindex<block> spl_q(grid_q_.num_points(), unit_cell_.comm().size(), unit_cell_.comm().rank());
+
         /* interpolate <j_{l_n}(q*x) | Q_{xi,xi'}^{l}(x) > with splines */
         for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
             auto& atom_type = unit_cell_.atom_type(iat);
@@ -92,7 +94,9 @@ class Radial_integrals_aug: public Radial_integrals_base<3>
             }
 
             #pragma omp parallel for
-            for (int iq = 0; iq < grid_q_.num_points(); iq++) {
+            for (int iq_loc = 0; iq_loc < spl_q.local_size(); iq_loc++) {
+                int iq = spl_q[iq_loc];
+
                 Spherical_Bessel_functions jl(2 * lmax_beta, atom_type.radial_grid(), grid_q_[iq]);
 
                 for (int l3 = 0; l3 <= 2 * lmax_beta; l3++) {
@@ -115,6 +119,11 @@ class Radial_integrals_aug: public Radial_integrals_base<3>
                             }
                         }
                     }
+                }
+            }
+            for (int l = 0; l <= 2 * lmax_beta; l++) {
+                for (int idx = 0; idx < nbrf * (nbrf + 1) / 2; idx++) {
+                    unit_cell_.comm().allgather(&values_(idx, l, iat)[0], spl_q.global_offset(), spl_q.local_size());
                 }
             }
 
