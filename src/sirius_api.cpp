@@ -2917,6 +2917,7 @@ void sirius_get_density_matrix(ftn_int*            ia__,
 {
     mdarray<double_complex, 2> dm(dm__, *ld__, *ld__);
     int nbf = sim_ctx->unit_cell().atom(*ia__ - 1).mt_basis_size();
+    assert(nbf <= *ld__);
     for (int i = 0; i < nbf; i++) {
         for (int j = 0; j < nbf; j++) {
             dm(i, j) = density->density_matrix()(i, j, 0, *ia__ - 1);
