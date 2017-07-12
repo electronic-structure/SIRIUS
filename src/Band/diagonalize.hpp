@@ -735,6 +735,7 @@ inline void Band::diag_pseudo_potential_davidson(K_point*       kp__,
     auto h_diag = get_h_diag(kp__, *local_op_, d_op__);
     auto o_diag = get_o_diag(kp__, q_op__);
 
+    sddk::timer t3("sirius::Band::diag_pseudo_potential_davidson|iter");
     for (int ispin_step = 0; ispin_step < num_spin_steps; ispin_step++) {
 
         std::vector<double> eval(num_bands);
@@ -895,6 +896,7 @@ inline void Band::diag_pseudo_potential_davidson(K_point*       kp__,
             kp__->band_energy(j + ispin_step * ctx_.num_fv_states()) = eval[j];
         }
     }
+    t3.stop();
 
     kp__->beta_projectors().dismiss();
 
