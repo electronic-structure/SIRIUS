@@ -901,16 +901,18 @@ module sirius
             integer,                  intent(in)  :: nkb
         end subroutine
 
-        subroutine sirius_get_d_operator_matrix(ia, d_mtrx, ld)&
+        subroutine sirius_get_d_operator_matrix(ia, ispn, d_mtrx, ld)&
             &bind(C, name="sirius_get_d_operator_matrix")
             integer,                  intent(in)  :: ia
+            integer,                  intent(in)  :: ispn
             real(8),                  intent(out) :: d_mtrx
             integer,                  intent(in)  :: ld
         end subroutine
 
-        subroutine sirius_set_d_operator_matrix(ia, d_mtrx, ld)&
+        subroutine sirius_set_d_operator_matrix(ia, ispn, d_mtrx, ld)&
             &bind(C, name="sirius_set_d_operator_matrix")
             integer,                  intent(in)  :: ia
+            integer,                  intent(in)  :: ispn
             real(8),                  intent(in)  :: d_mtrx
             integer,                  intent(in)  :: ld
         end subroutine

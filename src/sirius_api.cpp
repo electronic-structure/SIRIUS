@@ -2393,6 +2393,7 @@ void sirius_get_q_operator_matrix(ftn_int*    iat__,
 }
 
 void sirius_get_d_operator_matrix(ftn_int*    ia__,
+                                  ftn_int*    ispn__,
                                   ftn_double* d_mtrx__,
                                   ftn_int*    ld__)
 {
@@ -2421,7 +2422,7 @@ void sirius_get_d_operator_matrix(ftn_int*    ia__,
 
     for (int xi1 = 0; xi1 < nbf; xi1++) {
         for (int xi2 = 0; xi2 < nbf; xi2++) {
-            d_mtrx(idx_map[xi1], idx_map[xi2]) = atom.d_mtrx(xi1, xi2, 0);
+            d_mtrx(idx_map[xi1], idx_map[xi2]) = atom.d_mtrx(xi1, xi2, *ispn__ - 1);
         }
     }
 
@@ -2474,6 +2475,7 @@ void sirius_get_d_operator_matrix(ftn_int*    ia__,
 }
 
 void sirius_set_d_operator_matrix(ftn_int*    ia__,
+                                  ftn_int*    ispn__,
                                   ftn_double* d_mtrx__,
                                   ftn_int*    ld__)
 {
@@ -2500,7 +2502,7 @@ void sirius_set_d_operator_matrix(ftn_int*    ia__,
     
     for (int xi1 = 0; xi1 < nbf; xi1++) {
         for (int xi2 = 0; xi2 < nbf; xi2++) {
-            atom.d_mtrx(xi1, xi2, 0) = d_mtrx(idx_map[xi1], idx_map[xi2]);
+            atom.d_mtrx(xi1, xi2, *ispn__ - 1) = d_mtrx(idx_map[xi1], idx_map[xi2]);
         }
     }
 }
