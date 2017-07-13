@@ -199,7 +199,7 @@ inline void orthogonalize(device_t                     pu__,
      * |\tilda phi_new> = |phi_new> - |phi_old><phi_old|phi_new> */
     if (N__ > 0) {
         inner(num_sc__, *wfs__[idx_bra__], 0, N__, *wfs__[idx_ket__], N__, n__, o__, 0, 0);
-        transform(num_sc__, -1.0, wfs__, 0, N__, o__, 0, 0, 1.0, wfs__, N__, n__);
+        transform(-1.0, wfs__, 0, N__, o__, 0, 0, 1.0, wfs__, N__, n__);
     }
 
     /* orthogonalize new n__ x n__ block */

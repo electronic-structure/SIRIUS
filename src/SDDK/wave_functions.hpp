@@ -278,7 +278,7 @@ class wave_functions
                     add_square_sum_gpu(mt_coeffs().prime().at<GPU>(), mt_coeffs().num_rows_loc(), n__,
                                        0, comm_.rank(), norm.at<GPU>());
                 }
-                norm.copy_to_host();
+                norm.copy<memory_t::device, memory_t::host>();
             }
             #endif
 
@@ -287,11 +287,9 @@ class wave_functions
                 norm[i] = std::sqrt(norm[i]);
             }
 
-            #ifdef __GPU
-            if (pu_ == GPU) {
-                norm.copy_to_device();
-            }
-            #endif
+            //if (pu_ == GPU) {
+            //    norm.copy<memory_t::host, memory_t::device>();
+            //}
 
             return std::move(norm);
         }
@@ -500,7 +498,7 @@ class Wave_functions
                 norm1[i] += norm2[i];
             }
         }
-        return norm1;
+        return std::move(norm1);
     }
 
     inline void copy_from(Wave_functions const& src__,

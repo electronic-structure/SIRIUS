@@ -402,8 +402,7 @@ inline void transform(wave_functions& wf_in__,
 }
 
 template <typename T>
-inline void transform(int                          num_sc__,
-                      double                       alpha__,
+inline void transform(double                       alpha__,
                       std::vector<Wave_functions*> wf_in__,
                       int                          i0__,
                       int                          m__,
@@ -415,7 +414,13 @@ inline void transform(int                          num_sc__,
                       int                          j0__,
                       int                          n__)
 {
-    for (int is = 0; is < num_sc__; is++) {
+    assert(wf_in__.size() == wf_out__.size());
+    for (size_t i = 0; i < wf_in__.size(); i++) {
+        assert(wf_in__[i]->num_components() == wf_in__[0]->num_components());
+        assert(wf_in__[i]->num_components() == wf_out__[i]->num_components());
+    }
+    int num_sc = wf_in__[0]->num_components();
+    for (int is = 0; is < num_sc; is++) {
         std::vector<wave_functions*> wf_in;
         std::vector<wave_functions*> wf_out;
         for (size_t i = 0; i < wf_in__.size(); i++) {

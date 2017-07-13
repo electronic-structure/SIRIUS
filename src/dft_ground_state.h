@@ -125,6 +125,48 @@ class DFT_ground_state
          */
         double ewald_energy();
 
+        mdarray<double, 2> compute_atomic_mag_mom() const
+        {
+            mdarray<double, 2> mmom(3, unit_cell_.num_atoms());
+            mmom.zero();
+
+            for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
+                for (int j0 = 0; j0 < ctx_.fft().grid().size(0); j0++) {
+                    for (int j1 = 0; j1 < ctx_.fft().grid().size(1); j1++) {
+                        for (int j2 = 0; j2 < ctx_.fft().local_size_z(); j2++) {
+                            /* get real space fractional coordinate */
+                            auto v0 = vector3d<double>(double(j0) / ctx_.fft().grid().size(0), 
+                                                       double(j1) / ctx_.fft().grid().size(1), 
+                                                       double(ctx_.fft().offset_z() + j2) / ctx_.fft().grid().size(2));
+                            /* index of real space point */
+                            int ir = ctx_.fft().grid().index_by_coord(j0, j1, j2);
+
+                            for (int t0 = -1; t0 <= 1; t0++) {
+                                for (int t1 = -1; t1 <= 1; t1++) {
+                                    for (int t2 = -1; t2 <= 1; t2++) {
+                                        vector3d<double> v1 = v0 - (unit_cell_.atom(ia).position() + vector3d<double>(t0, t1, t2));
+                                        auto r = unit_cell_.get_cartesian_coordinates(v1);
+                                        auto a = r.length();
+
+                                        if (a <= 2.0) {
+                                            for (int j = 0; j < ctx_.num_mag_dims(); j++) {
+                                                mmom(j, ia) += density_.magnetization(j)->f_rg(ir);
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                for (int j: {0, 1, 2}) {
+                    mmom(j, ia) *= (unit_cell_.omega() / ctx_.fft().size());
+                }
+            }
+            ctx_.fft().comm().allreduce(&mmom(0, 0), static_cast<int>(mmom.size()));
+            return std::move(mmom);
+        }
+
     public:
 
         DFT_ground_state(Simulation_context& ctx__,
@@ -524,54 +566,12 @@ inline int DFT_ground_state::find(double potential_tol, double energy_tol, int n
         if (!ctx_.full_potential()) {
             density_.generate_paw_loc_density();
         }
+
         /* transform density to realspace after mixing and symmetrization */
         density_.fft_transform(1);
+
         /* check number of elctrons */
         density_.check_num_electrons();
-
-        //== if (ctx_.num_mag_dims())
-        //== {
-        //==     for (int ia = 0; ia < unit_cell_.num_atoms(); ia++)
-        //==     {
-        //==         vector3d<double> mag(0, 0, 0);
-
-        //==         for (int j0 = 0; j0 < ctx_.fft().grid().size(0); j0++)
-        //==         {
-        //==             for (int j1 = 0; j1 < ctx_.fft().grid().size(1); j1++)
-        //==             {
-        //==                 for (int j2 = 0; j2 < ctx_.fft().local_size_z(); j2++)
-        //==                 {
-        //==                     /* get real space fractional coordinate */
-        //==                     auto v0 = vector3d<double>(double(j0) / ctx_.fft().grid().size(0), 
-        //==                                                double(j1) / ctx_.fft().grid().size(1), 
-        //==                                                double(ctx_.fft().offset_z() + j2) / ctx_.fft().grid().size(2));
-        //==                     /* index of real space point */
-        //==                     int ir = ctx_.fft().grid().index_by_coord(j0, j1, j2);
-
-        //==                     for (int t0 = -1; t0 <= 1; t0++)
-        //==                     {
-        //==                         for (int t1 = -1; t1 <= 1; t1++)
-        //==                         {
-        //==                             for (int t2 = -1; t2 <= 1; t2++)
-        //==                             {
-        //==                                 vector3d<double> v1 = v0 - (unit_cell_.atom(ia).position() + vector3d<double>(t0, t1, t2));
-        //==                                 auto r = unit_cell_.get_cartesian_coordinates(v1);
-        //==                                 auto a = r.length();
-
-        //==                                 if (a <= 2.0)
-        //==                                 {
-        //==                                     mag[2] += density_.magnetization(0)->f_rg(ir);
-        //==                                 }
-        //==                             }
-        //==                         }
-        //==                     }
-        //==                 }
-        //==             }
-        //==         }
-        //==         for (int x: {0, 1, 2}) mag[x] *= (unit_cell_.omega() / ctx_.fft().size());
-        //==         printf("atom: %i, mag: %f %f %f\n", ia, mag[0], mag[1], mag[2]);
-        //==     }
-        //== }
 
         /* compute new potential */
         potential_.generate(density_);
@@ -581,6 +581,7 @@ inline int DFT_ground_state::find(double potential_tol, double energy_tol, int n
             symmetrize(potential_.effective_potential(), potential_.effective_magnetic_field(0),
                        potential_.effective_magnetic_field(1), potential_.effective_magnetic_field(2));
         }
+
         /* transform potential to real space after symmetrization */
         potential_.fft_transform(1);
 
@@ -650,8 +651,27 @@ inline void DFT_ground_state::print_info()
     for (int j = 0; j < ctx_.num_mag_dims(); j++) {
         total_mag[j] = density_.magnetization(j)->integrate(mt_mag[j], it_mag[j]);
     }
+
+    mdarray<double, 2> mmom;
+    if (!ctx_.full_potential() && ctx_.num_mag_dims()) {
+        mmom = compute_atomic_mag_mom();
+    }
     
     if (ctx_.comm().rank() == 0) {
+        if (!ctx_.full_potential() && ctx_.num_mag_dims()) {
+            printf("Magnetic moments\n");
+            for (int i = 0; i < 80; i++) printf("-");
+            printf("\n"); 
+            printf("atom                 moment               |moment|");
+            printf("\n");
+            for (int i = 0; i < 80; i++) printf("-");
+            printf("\n");
+            for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
+                vector3d<double> v({mmom(1, ia), mmom(2, ia), mmom(0, ia)});
+                printf("%4i    [%8.4f, %8.4f, %8.4f]  %10.6f\n", ia, v[0], v[1], v[2], v.length());
+            }
+        }
+
         if (ctx_.full_potential()) {
             double total_core_leakage = 0.0;
             printf("\n");
@@ -694,7 +714,6 @@ inline void DFT_ground_state::print_info()
                        v[0], v[1], v[2], v.length());
             }
         }
-
         printf("total charge          : %10.6f\n", total_charge);
 
         if (ctx_.num_mag_dims()) {
@@ -736,6 +755,28 @@ inline void DFT_ground_state::print_info()
         printf("band gap (eV) : %18.8f\n", gap);
         printf("Efermi        : %18.8f\n", ef);
         printf("\n");
+        //if (ctx_.control().verbosity_ >= 3 && !ctx_.full_potential()) {
+        //    for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
+        //        printf("atom: %i\n", ia);
+        //        int nbf = unit_cell_.atom(ia).type().mt_basis_size();
+        //        for (int j = 0; j < ctx_.num_mag_comp(); j++) {
+        //            //printf("component of density matrix: %i\n", j);
+        //            //for (int xi1 = 0; xi1 < nbf; xi1++) {
+        //            //    for (int xi2 = 0; xi2 < nbf; xi2++) {
+        //            //        auto z = density_.density_matrix()(xi1, xi2, j, ia);
+        //            //        printf("(%f, %f) ", z.real(), z.imag());
+        //            //    }
+        //            //    printf("\n");
+        //            //}
+        //            printf("diagonal components of density matrix: %i\n", j);
+        //            for (int xi2 = 0; xi2 < nbf; xi2++) {
+        //                auto z = density_.density_matrix()(xi2, xi2, j, ia);
+        //                printf("(%10.6f, %10.6f) ", z.real(), z.imag());
+        //            }
+        //            printf("\n");
+        //        }
+        //    }
+        //}
     }
 }
 
