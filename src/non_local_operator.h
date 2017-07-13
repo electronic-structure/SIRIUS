@@ -188,7 +188,9 @@ inline void Non_local_operator<double>::apply(int chunk__,
 {
     PROFILE("sirius::Non_local_operator::apply");
 
-    if (is_null_) return;
+    if (is_null_) {
+        return;
+    }
 
     assert(op_phi__.pw_coeffs().num_rows_loc() == beta_.num_gkvec_loc());
 
@@ -208,9 +210,9 @@ inline void Non_local_operator<double>::apply(int chunk__,
     #pragma omp parallel for
     for (int i = 0; i < bp_chunks(chunk__).num_atoms_; i++) {
         /* number of beta functions for a given atom */
-        int nbf  = bp_chunks(chunk__).desc_(0, i);
-        int offs = bp_chunks(chunk__).desc_(1, i);
-        int ia   = bp_chunks(chunk__).desc_(3, i);
+        int nbf  = bp_chunks(chunk__).desc_(beta_desc_idx::nbf,    i);
+        int offs = bp_chunks(chunk__).desc_(beta_desc_idx::offset, i);
+        int ia   = bp_chunks(chunk__).desc_(beta_desc_idx::ia,     i);
 
         switch (pu_) {
             case CPU: {
