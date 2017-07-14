@@ -909,8 +909,8 @@ inline void Band::diag_pseudo_potential_davidson(K_point*       kp__,
 
     #ifdef __GPU
     if (ctx_.processing_unit() == GPU) {
-        for (int i = 0; i < num_sc; i++) {
-            psi.component(i).pw_coeffs().copy_to_host(0, num_bands);
+        for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
+            psi.component(ispn).pw_coeffs().copy_to_host(0, num_bands);
         }
     }
     #endif

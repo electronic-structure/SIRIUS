@@ -71,10 +71,21 @@ inline void Density::generate_valence(K_point_set& ks__)
     for (int j = 0; j < ctx_.num_mag_dims() + 1; j++) {
         /* reduce arrays; assume that each rank did its own fraction of the density */
         comm.allreduce(&rho_mag_coarse_[j]->f_rg(0), ctx_.fft_coarse().local_size()); 
+        if (ctx_.control().print_checksum_) {
+            auto cs = mdarray<double, 1>(&rho_mag_coarse_[j]->f_rg(0), ctx_.fft_coarse().local_size()).checksum();
+            ctx_.fft_coarse().comm().allreduce(&cs, 1);
+            if (ctx_.comm().rank() == 0) {
+                DUMP("checksum(rho_mag_coarse_rg) : %18.10f", cs);
+            }
+        }
         /* transform to PW domain */
         rho_mag_coarse_[j]->fft_transform(-1);
         /* get the whole vector of PW coefficients */
         auto fpw = rho_mag_coarse_[j]->gather_f_pw(); // TODO: reuse FFT G-vec arrays
+        if (ctx_.control().print_checksum_ && ctx_.comm().rank() == 0) {
+            auto z1 = mdarray<double_complex, 1>(&fpw[0], ctx_.gvec_coarse().num_gvec()).checksum();
+            DUMP("checksum(rho_mag_coarse_pw) : %18.10f %18.10f", z1.real(), z1.imag());
+        }
         /* map to fine G-vector grid */
         for (int i = 0; i < static_cast<int>(lf_gvec_.size()); i++) {
             int igloc = lf_gvec_[i];
