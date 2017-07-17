@@ -190,7 +190,7 @@ class Forces_PS
             /* get auxiliary density matrix */
             auto dm = density_.density_matrix_aux(iat);
 
-            mdarray<double, 2> q_tmp(nbf * (nbf + 1) / 2, ctx_.gvec().count() * 2);
+            //mdarray<double, 2> q_tmp(nbf * (nbf + 1) / 2, ctx_.gvec().count() * 2);
             mdarray<double, 2> v_tmp(atom_type.num_atoms(), ctx_.gvec().count() * 2);
             mdarray<double, 2> tmp(nbf * (nbf + 1) / 2, atom_type.num_atoms());
 

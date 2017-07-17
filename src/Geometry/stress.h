@@ -608,6 +608,15 @@ class Stress {
         Radial_integrals_aug<false> ri(ctx_.unit_cell(), ctx_.pw_cutoff(), 20);
         Radial_integrals_aug<true> ri_dq(ctx_.unit_cell(), ctx_.pw_cutoff(), 20);
 
+        /* pack v effective in one array of pointers*/
+        Periodic_function<double>* vfield_eff[4];
+        vfield_eff[0] = potential_.effective_potential();
+        vfield_eff[0]->fft_transform(-1);
+        for (int imag = 0; imag < ctx_.num_mag_dims(); imag++){
+            vfield_eff[imag+1] = potential_.effective_magnetic_field(imag);
+            vfield_eff[imag+1]->fft_transform(-1);
+        }
+
         Augmentation_operator_gvec_deriv q_deriv(ctx_);
 
         for (int iat = 0; iat < ctx_.unit_cell().num_atom_types(); iat++) {
@@ -634,86 +643,89 @@ class Stress {
                 }
             }
             t0.stop();
-            mdarray<double, 2> q_tmp(nbf * (nbf + 1) / 2, ctx_.gvec().count() * 2);
+            //mdarray<double, 2> q_tmp(nbf * (nbf + 1) / 2, ctx_.gvec().count() * 2);
             mdarray<double, 2> v_tmp(atom_type.num_atoms(), ctx_.gvec().count() * 2);
             mdarray<double, 2> tmp(nbf * (nbf + 1) / 2, atom_type.num_atoms());
-            for (int nu = 0; nu < 3; nu++) {
-                q_deriv.generate_pw_coeffs(iat, ri, ri_dq, nu);
+            /* over spin components, can be from 1 to 4*/
+            for (int ispin = 0; ispin < ctx_.num_mag_dims() + 1; ispin++ ){
+                for (int nu = 0; nu < 3; nu++) {
+                    q_deriv.generate_pw_coeffs(iat, ri, ri_dq, nu);
 
-                for (int mu = 0; mu < 3; mu++) {
-                    sddk::timer t2("sirius::Stress|us|prepare");
-                    int igloc0{0};
-                    if (ctx_.comm().rank() == 0) {
-                        for (int i = 0; i < nbf * (nbf + 1) / 2; i++) {
-                            q_tmp(i, 0) = q_tmp(i, 1) = 0;
+                    for (int mu = 0; mu < 3; mu++) {
+                        sddk::timer t2("sirius::Stress|us|prepare");
+                        int igloc0{0};
+                        if (ctx_.comm().rank() == 0) {
+                            //                        for (int i = 0; i < nbf * (nbf + 1) / 2; i++) {
+                            //                            q_tmp(i, 0) = q_tmp(i, 1) = 0;
+                            //                        }
+                            for (int ia = 0; ia < atom_type.num_atoms(); ia++) {
+                                v_tmp(ia, 0) = v_tmp(ia, 1) = 0;
+                            }
+                            igloc0 = 1;
                         }
+                        #pragma omp parallel for schedule(static)
+                        for (int igloc = igloc0; igloc < ctx_.gvec().count(); igloc++) {
+                            int ig = ctx_.gvec().offset() + igloc;
+                            auto gvc = ctx_.gvec().gvec_cart(ig);
+                            double g = gvc.length();
+                            //                        for (int i = 0; i < nbf * (nbf + 1) / 2; i++) {
+                            //                            auto z = double_complex(q_deriv.q_pw(i, 2 * igloc), q_deriv.q_pw(i, 2 * igloc + 1)) * (-gvc[mu] / g);
+                            //                            q_tmp(i, 2 * igloc)     = z.real();
+                            //                            q_tmp(i, 2 * igloc + 1) = z.imag();
+                            //                        }
+                            for (int ia = 0; ia < atom_type.num_atoms(); ia++) {
+                                //auto z = phase_factors(ia, igloc) * std::conj(potential_.effective_potential()->f_pw_local(igloc));
+                                auto z = phase_factors(ia, igloc) * vfield_eff[ispin]->f_pw_local(igloc) * (-gvc[mu] / g);
+                                v_tmp(ia, 2 * igloc)     = z.real();
+                                v_tmp(ia, 2 * igloc + 1) = z.imag();
+                            }
+                        }
+                        t2.stop();
+
+                        //tmp.zero();
+                        //for (int ia = 0; ia < atom_type.num_atoms(); ia++) {
+                        //    int iaglob = atom_type.atom_id(ia);
+                        //    for (int i = 0; i < nbf * (nbf + 1) / 2; i++) {
+                        //        for (int igloc = igloc0; igloc < ctx_.gvec().count(); igloc++) {
+                        //            int ig = ctx_.gvec().offset() + igloc;
+                        //            auto gvc = ctx_.gvec().gvec_cart(ig);
+                        //            double g = gvc.length();
+                        //            tmp(i, ia) += std::real(
+                        //                    double_complex(q_deriv.q_pw(i, 2 * igloc), q_deriv.q_pw(i, 2 * igloc + 1)) *
+                        //                    std::conj(potential_.effective_potential()->f_pw_local(igloc)) * (-gvc[mu] / g) *
+                        //                    double_complex(phase_factors(ia, 2 * igloc), phase_factors(ia, 2 * igloc + 1))
+                        //                    );
+                        //        }
+                        //    }
+                        //}
+
+                        /* canonical code */
+                        //for (int igloc = igloc0; igloc < ctx_.gvec().count(); igloc++) {
+                        //    int ig = ctx_.gvec().offset() + igloc;
+                        //    auto gvc = ctx_.gvec().gvec_cart(ig);
+                        //    double g = gvc.length();
+                        //    for (int ia = 0; ia < atom_type.num_atoms(); ia++) {
+                        //        int iaglob = atom_type.atom_id(ia);
+                        //        for (int i = 0; i < nbf * (nbf + 1) / 2; i++) {
+                        //            stress_us_(mu, nu) += std::real(
+                        //                double_complex(q_deriv.q_pw(i, 2 * igloc), q_deriv.q_pw(i, 2 * igloc + 1)) *
+                        //                std::conj(potential_.effective_potential()->f_pw_local(igloc)) * (-gvc[mu] / g) *
+                        //                double_complex(phase_factors(ia, 2 * igloc), phase_factors(ia, 2 * igloc + 1)) *
+                        //                dm(i, ia, 0) * q_deriv.sym_weight(i)
+                        //            );
+
+                        //        }
+                        //    }
+                        //}
+
+                        sddk::timer t1("sirius::Stress|us|gemm");
+                        linalg<CPU>::gemm(0, 1, nbf * (nbf + 1) / 2, atom_type.num_atoms(), 2 * ctx_.gvec().count(),
+                                          q_deriv.q_pw(), v_tmp, tmp);
+                        t1.stop();
                         for (int ia = 0; ia < atom_type.num_atoms(); ia++) {
-                            v_tmp(ia, 0) = v_tmp(ia, 1) = 0;
-                        }
-                        igloc0 = 1;
-                    }
-                    #pragma omp parallel for schedule(static)
-                    for (int igloc = igloc0; igloc < ctx_.gvec().count(); igloc++) {
-                        int ig = ctx_.gvec().offset() + igloc;
-                        auto gvc = ctx_.gvec().gvec_cart(ig);
-                        double g = gvc.length();
-                        for (int i = 0; i < nbf * (nbf + 1) / 2; i++) {
-                            auto z = double_complex(q_deriv.q_pw(i, 2 * igloc), q_deriv.q_pw(i, 2 * igloc + 1)) * (-gvc[mu] / g);
-                            q_tmp(i, 2 * igloc)     = z.real();
-                            q_tmp(i, 2 * igloc + 1) = z.imag();
-                        }
-                        for (int ia = 0; ia < atom_type.num_atoms(); ia++) {
-                            //auto z = phase_factors(ia, igloc) * std::conj(potential_.effective_potential()->f_pw_local(igloc));
-                            auto z = phase_factors(ia, igloc) * potential_.effective_potential()->f_pw_local(igloc);
-                            v_tmp(ia, 2 * igloc)     = z.real();
-                            v_tmp(ia, 2 * igloc + 1) = z.imag();
-                        }
-                    }
-                    t2.stop();
-
-                    //tmp.zero();
-                    //for (int ia = 0; ia < atom_type.num_atoms(); ia++) {
-                    //    int iaglob = atom_type.atom_id(ia);
-                    //    for (int i = 0; i < nbf * (nbf + 1) / 2; i++) {
-                    //        for (int igloc = igloc0; igloc < ctx_.gvec().count(); igloc++) {
-                    //            int ig = ctx_.gvec().offset() + igloc;
-                    //            auto gvc = ctx_.gvec().gvec_cart(ig);
-                    //            double g = gvc.length();
-                    //            tmp(i, ia) += std::real(
-                    //                    double_complex(q_deriv.q_pw(i, 2 * igloc), q_deriv.q_pw(i, 2 * igloc + 1)) *
-                    //                    std::conj(potential_.effective_potential()->f_pw_local(igloc)) * (-gvc[mu] / g) *
-                    //                    double_complex(phase_factors(ia, 2 * igloc), phase_factors(ia, 2 * igloc + 1))
-                    //                    );
-                    //        }
-                    //    }
-                    //}
-
-                    /* canonical code */
-                    //for (int igloc = igloc0; igloc < ctx_.gvec().count(); igloc++) {
-                    //    int ig = ctx_.gvec().offset() + igloc;
-                    //    auto gvc = ctx_.gvec().gvec_cart(ig);
-                    //    double g = gvc.length();
-                    //    for (int ia = 0; ia < atom_type.num_atoms(); ia++) {
-                    //        int iaglob = atom_type.atom_id(ia);
-                    //        for (int i = 0; i < nbf * (nbf + 1) / 2; i++) {
-                    //            stress_us_(mu, nu) += std::real(
-                    //                double_complex(q_deriv.q_pw(i, 2 * igloc), q_deriv.q_pw(i, 2 * igloc + 1)) *
-                    //                std::conj(potential_.effective_potential()->f_pw_local(igloc)) * (-gvc[mu] / g) *
-                    //                double_complex(phase_factors(ia, 2 * igloc), phase_factors(ia, 2 * igloc + 1)) *
-                    //                dm(i, ia, 0) * q_deriv.sym_weight(i)
-                    //            );
-
-                    //        }
-                    //    }
-                    //}
-
-                    sddk::timer t1("sirius::Stress|us|gemm");
-                    linalg<CPU>::gemm(0, 1, nbf * (nbf + 1) / 2, atom_type.num_atoms(), 2 * ctx_.gvec().count(),
-                                      q_tmp, v_tmp, tmp);
-                    t1.stop();
-                    for (int ia = 0; ia < atom_type.num_atoms(); ia++) {
-                        for (int i = 0; i < nbf * (nbf + 1) / 2; i++) {
-                            stress_us_(mu, nu) += tmp(i, ia) * dm(i, ia, 0) * q_deriv.sym_weight(i);
+                            for (int i = 0; i < nbf * (nbf + 1) / 2; i++) {
+                                stress_us_(mu, nu) += tmp(i, ia) * dm(i, ia, ispin) * q_deriv.sym_weight(i);
+                            }
                         }
                     }
                 }
