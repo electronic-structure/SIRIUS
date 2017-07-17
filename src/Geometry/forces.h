@@ -204,9 +204,13 @@ class Forces_PS
                         int ig = ctx_.gvec().offset() + igloc;
                         auto gvc = ctx_.gvec().gvec_cart(ig);
                         for (int ia = 0; ia < atom_type.num_atoms(); ia++) {
-                            auto z = double_complex(0,1) * gvc[ivec] * std::conj( ctx_.gvec_phase_factor(ig, atom_type.atom_id(ia)) *   vfield_eff[ispin]->f_pw_local(igloc));
+                            /* here we write in v_tmp  -i * G * exp[ iGRn] Veff(G)
+                             * but in formula we have   i * G * exp[-iGRn] Veff*(G)
+                             * the differences because we unfold complex array in the real one
+                             * and need negative imagine part due to a multiplication law of complex numbers */
+                            auto z = double_complex(0,-gvc[ivec]) * ctx_.gvec_phase_factor(ig, atom_type.atom_id(ia)) * vfield_eff[ispin]->f_pw_local(igloc);
                             v_tmp(ia, 2 * igloc)     = z.real();
-                            v_tmp(ia, 2 * igloc + 1) = - z.imag();
+                            v_tmp(ia, 2 * igloc + 1) = z.imag();
                         }
                     }
 
