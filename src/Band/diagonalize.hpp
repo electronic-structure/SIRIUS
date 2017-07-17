@@ -656,16 +656,7 @@ inline void Band::diag_pseudo_potential_davidson(K_point*       kp__,
     /* short notation for target wave-functions */
     auto& psi = kp__->spinor_wave_functions();
 
-    //std::cout << "in diag" << std::endl;
-    //for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-    //    for (int ib = 0; ib < ctx_.num_bands(); ib++) {
-    //        double d{0};
-    //        for (int j = 0; j < kp__->num_gkvec_loc(); j++) {
-    //            d += std::abs(kp__->spinor_wave_functions(ispn).pw_coeffs().prime(j, ib));
-    //        }
-    //        std::cout << "band " << ib << " spin " << ispn << " val " << d << std::endl;
-    //    }
-    //}
+    sddk::timer t1("sirius::Band::diag_pseudo_potential_davidson|wf");
 
     /* maximum subspace size */
     int num_phi = itso.subspace_size_ * num_bands;
@@ -699,7 +690,9 @@ inline void Band::diag_pseudo_potential_davidson(K_point*       kp__,
 
     /* residuals */
     Wave_functions res(mem_buf_ptr, ctx_.processing_unit(), kp__->gkvec(), num_bands, num_sc);
+    t1.stop();
 
+    sddk::timer t2("sirius::Band::diag_pseudo_potential_davidson|alloc");
     auto mem_type = (std_evp_solver().type() == ev_magma) ? memory_t::host_pinned : memory_t::host;
 
     int bs = ctx_.cyclic_block_size();
@@ -736,11 +729,13 @@ inline void Band::diag_pseudo_potential_davidson(K_point*       kp__,
     if (kp__->comm().rank() == 0 && ctx_.control().print_memory_usage_) {
         MEMORY_USAGE_INFO();
     }
+    t2.stop();
 
     /* get diagonal elements for preconditioning */
     auto h_diag = get_h_diag(kp__, *local_op_, d_op__);
     auto o_diag = get_o_diag(kp__, q_op__);
 
+    sddk::timer t3("sirius::Band::diag_pseudo_potential_davidson|iter");
     for (int ispin_step = 0; ispin_step < num_spin_steps; ispin_step++) {
 
         std::vector<double> eval(num_bands);
@@ -901,6 +896,7 @@ inline void Band::diag_pseudo_potential_davidson(K_point*       kp__,
             kp__->band_energy(j + ispin_step * ctx_.num_fv_states()) = eval[j];
         }
     }
+    t3.stop();
 
     kp__->beta_projectors().dismiss();
 
@@ -918,7 +914,7 @@ inline void Band::diag_pseudo_potential_davidson(K_point*       kp__,
         }
     }
     #endif
-    kp__->comm().barrier();
+    //kp__->comm().barrier();
 }
 
 template <typename T>

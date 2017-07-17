@@ -1104,20 +1104,20 @@ class SHT // TODO: better name
             su2mat(0, 1) = double_complex(-y, -x);
             su2mat(1, 0) = double_complex( y, -x);
 
-            std::cout<<"---- SO3 rot mtrx -----"<<std::endl;
-            for (int i = 0; i < 3; i++ ){
-                std::cout<< m(i, 0)<< " "
-                        << m(i, 1)<< " "
-                        << m(i, 2)<< std::endl;
-            }
-
-            std::cout<<"---- SU2 rot mtrx -----"<<std::endl;
-            for (int i = 0; i < 2; i++ ){
-                std::cout<< su2mat(i, 0)<< " " << su2mat(i, 1)<< std::endl;
-            }
-
-
-
+//            std::cout<<"---- SO3 rot mtrx -----"<<std::endl;
+//            for (int i = 0; i < 3; i++ ){
+//                std::cout<< m(i, 0)<< " "
+//                        << m(i, 1)<< " "
+//                        << m(i, 2)<< std::endl;
+//            }
+//
+//            std::cout<<"---- SU2 rot mtrx -----"<<std::endl;
+//            for (int i = 0; i < 2; i++ ){
+//                std::cout<< su2mat(i, 0)<< " " << su2mat(i, 1)<< std::endl;
+//            }
+//
+//
+//
 
             return std::move(su2mat);
         }

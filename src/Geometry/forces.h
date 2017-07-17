@@ -160,87 +160,136 @@ class Forces_PS
     {
         PROFILE("sirius::Forces_PS::calc_ultrasoft_forces");
 
-        const mdarray<double_complex, 4>& density_matrix = density_.density_matrix();
-        Periodic_function<double>* veff_full = potential_.effective_potential();
-        Periodic_function<double>* field_eff = potential_.effective_magnetic_field(0);
+        /* pack v effective in one array of pointers*/
+        Periodic_function<double>* vfield_eff[4];
+        vfield_eff[0] = potential_.effective_potential();
+        vfield_eff[0]->fft_transform(-1);
+        for (int imag = 0; imag < ctx_.num_mag_dims(); imag++){
+            vfield_eff[imag+1] = potential_.effective_magnetic_field(imag);
+            vfield_eff[imag+1]->fft_transform(-1);
+        }
 
         Unit_cell& unit_cell = ctx_.unit_cell();
 
-        Gvec const& gvecs = ctx_.gvec();
-
-        int gvec_count  = gvecs.gvec_count(ctx_.comm().rank());
-        int gvec_offset = gvecs.gvec_offset(ctx_.comm().rank());
-
         forces.zero();
 
-        double reduce_g_fact = veff_full->gvec().reduced() ? 2.0 : 1.0;
+        double reduce_g_fact = ctx_.gvec().reduced() ? 2.0 : 1.0;
 
-        #pragma omp parallel for
-        for (int ia = 0; ia < unit_cell.num_atoms(); ia++) {
-            Atom& atom = unit_cell.atom(ia);
+        /* over atom types */
+        for (int iat = 0; iat < unit_cell.num_atom_types(); iat++){
+            auto& atom_type = unit_cell.atom_type(iat);
 
-            int iat = atom.type_id();
-            if (!unit_cell.atom_type(iat).pp_desc().augment) {
+            if (!atom_type.pp_desc().augment) {
                 continue;
             }
 
-            for (int ispin = 0; ispin < ctx_.num_spins(); ispin++ ){
-                double spin_factor = (ispin == 0 ? 1.0 : -1.0);
+            const Augmentation_operator& aug_op = ctx_.augmentation_op(iat);
 
-                auto potential_spin = [&](int igloc)
-                                    {
-                    switch (ctx_.num_spins())
-                    {
-                        case 1:
-                            return veff_full->f_pw_local(igloc);
-                            break;
+            int nbf = atom_type.mt_basis_size();
 
-                        case 2:
-                            return veff_full->f_pw_local(igloc) + spin_factor * field_eff->f_pw_local(igloc);
-                            break;
+            /* get auxiliary density matrix */
+            auto dm = density_.density_matrix_aux(iat);
 
-                        default:
-                            TERMINATE("Error in calc_ultrasoft_forces: Non-collinear not implemented");
-                            break;
+            mdarray<double, 2> q_tmp(nbf * (nbf + 1) / 2, ctx_.gvec().count() * 2);
+            mdarray<double, 2> v_tmp(atom_type.num_atoms(), ctx_.gvec().count() * 2);
+            mdarray<double, 2> tmp(nbf * (nbf + 1) / 2, atom_type.num_atoms());
+
+            /* over spin components, can be from 1 to 4*/
+            for (int ispin = 0; ispin < ctx_.num_mag_dims() + 1; ispin++ ){
+                /* over 3 components of the force/G -vectors*/
+                for (int ivec = 0; ivec < 3; ivec++ ){
+                    /* over local rank G vectors */
+                    #pragma omp parallel for schedule(static)
+                    for (int igloc = 0; igloc < ctx_.gvec().count(); igloc++) {
+                        int ig = ctx_.gvec().offset() + igloc;
+                        auto gvc = ctx_.gvec().gvec_cart(ig);
+                        for (int ia = 0; ia < atom_type.num_atoms(); ia++) {
+                            auto z = double_complex(0,1) * gvc[ivec] * std::conj( ctx_.gvec_phase_factor(ig, atom_type.atom_id(ia)) *   vfield_eff[ispin]->f_pw_local(igloc));
+                            v_tmp(ia, 2 * igloc)     = z.real();
+                            v_tmp(ia, 2 * igloc + 1) = - z.imag();
+                        }
                     }
-                    return double_complex(0.0, 0.0);
-                                    };
 
-                for (int igloc = 0; igloc < gvec_count; igloc++) {
-                    int ig = gvec_offset + igloc;
-
-                    /* cartesian form for getting cartesian force components */
-                    vector3d<double> gvec_cart = gvecs.gvec_cart(ig);
-
-                    /* scalar part of a force without multipying by G-vector and Qij
-                   omega * V_conj(G) * exp(-i G Rn) */
-                    double_complex g_atom_part = reduce_g_fact * ctx_.unit_cell().omega() *
-                            std::conj(potential_spin(igloc) * ctx_.gvec_phase_factor(ig, ia));
+                    /* multiply tmp matrices, or sum over G*/
+                    linalg<CPU>::gemm(0, 1, nbf * (nbf + 1) / 2, atom_type.num_atoms(), 2 * ctx_.gvec().count(),
+                                      aug_op.q_pw(), v_tmp, tmp);
 
 
-                    const Augmentation_operator& aug_op = ctx_.augmentation_op(iat);
-
-                    /* iterate over trangle matrix Qij */
-                    for (int ib2 = 0; ib2 < atom.type().indexb().size(); ib2++) {
-                        for (int ib1 = 0; ib1 <= ib2; ib1++) {
-                            int iqij = (ib2 * (ib2 + 1)) / 2 + ib1;
-
-                            double diag_fact = ib1 == ib2 ? 1.0 : 2.0;
-
-                            /* [omega * V_conj(G) * exp(-i G Rn) ] * rho_ij * Qij(G) */
-                            double_complex z = diag_fact * g_atom_part * density_matrix(ib1, ib2, ispin, ia).real() *
-                                    double_complex(aug_op.q_pw(iqij, 2 * igloc), aug_op.q_pw(iqij, 2 * igloc + 1));
-
-
-                            /* get force components multiplying by cartesian G-vector */
-                            forces(0, ia) -= (gvec_cart[0] * z).imag();
-                            forces(1, ia) -= (gvec_cart[1] * z).imag();
-                            forces(2, ia) -= (gvec_cart[2] * z).imag();
+                    #pragma omp parallel for
+                    for (int ia = 0; ia < atom_type.num_atoms(); ia++) {
+                        for (int i = 0; i < nbf * (nbf + 1) / 2; i++) {
+                            forces(ivec, atom_type.atom_id(ia)) += ctx_.unit_cell().omega() * reduce_g_fact * dm(i, ia, ispin) *  aug_op.sym_weight(i) * tmp(i, ia);
                         }
                     }
                 }
             }
         }
+//        #pragma omp parallel for
+//        for (int ia = 0; ia < unit_cell.num_atoms(); ia++) {
+//            Atom& atom = unit_cell.atom(ia);
+//
+//            int iat = atom.type_id();
+//            if (!unit_cell.atom_type(iat).pp_desc().augment) {
+//                continue;
+//            }
+//
+//            for (int ispin = 0; ispin < ctx_.num_spins(); ispin++ ){
+//                double spin_factor = (ispin == 0 ? 1.0 : -1.0);
+//
+//                auto potential_spin = [&](int igloc)
+//                                    {
+//                    switch (ctx_.num_spins())
+//                    {
+//                        case 1:
+//                            return veff_full->f_pw_local(igloc);
+//                            break;
+//
+//                        case 2:
+//                            return veff_full->f_pw_local(igloc) + spin_factor * field_eff->f_pw_local(igloc);
+//                            break;
+//
+//                        default:
+//                            TERMINATE("Error in calc_ultrasoft_forces: Non-collinear not implemented");
+//                            break;
+//                    }
+//                    return double_complex(0.0, 0.0);
+//                                    };
+//
+//                for (int igloc = 0; igloc < gvec_count; igloc++) {
+//                    int ig = gvec_offset + igloc;
+//
+//                    /* cartesian form for getting cartesian force components */
+//                    vector3d<double> gvec_cart = gvecs.gvec_cart(ig);
+//
+//                    /* scalar part of a force without multipying by G-vector and Qij
+//                   omega * V_conj(G) * exp(-i G Rn) */
+//                    double_complex g_atom_part = reduce_g_fact * ctx_.unit_cell().omega() *
+//                            std::conj(potential_spin(igloc) * ctx_.gvec_phase_factor(ig, ia));
+//
+//
+//                    const Augmentation_operator& aug_op = ctx_.augmentation_op(iat);
+//
+//                    /* iterate over trangle matrix Qij */
+//                    for (int ib2 = 0; ib2 < atom.type().indexb().size(); ib2++) {
+//                        for (int ib1 = 0; ib1 <= ib2; ib1++) {
+//                            int iqij = (ib2 * (ib2 + 1)) / 2 + ib1;
+//
+//                            double diag_fact = ib1 == ib2 ? 1.0 : 2.0;
+//
+//                            /* [omega * V_conj(G) * exp(-i G Rn) ] * rho_ij * Qij(G) */
+//                            double_complex z = diag_fact * g_atom_part * density_matrix(ib1, ib2, ispin, ia).real() *
+//                                    double_complex(aug_op.q_pw(iqij, 2 * igloc), aug_op.q_pw(iqij, 2 * igloc + 1));
+//
+//
+//                            /* get force components multiplying by cartesian G-vector */
+//                            forces(0, ia) -= (gvec_cart[0] * z).imag();
+//                            forces(1, ia) -= (gvec_cart[1] * z).imag();
+//                            forces(2, ia) -= (gvec_cart[2] * z).imag();
+//                        }
+//                    }
+//                }
+//            }
+//        }
 
         ctx_.comm().allreduce(&forces(0, 0), static_cast<int>(forces.size()));
     }

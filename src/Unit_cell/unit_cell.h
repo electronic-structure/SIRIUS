@@ -640,6 +640,11 @@ class Unit_cell
         {
             return parameters_;
         }
+
+        Communicator const& comm() const
+        {
+            return comm_;
+        }
 };
     
 inline void Unit_cell::initialize()
