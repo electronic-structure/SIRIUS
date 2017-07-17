@@ -348,7 +348,7 @@ class Local_operator
 
             for (int ispn = 0; ispn < phi__.num_components(); ispn++) {
 
-                phi__.component(ispn).pw_coeffs().remap_forward(param_->processing_unit(), gkp.gvec_fft_slab(), n__, idx0__);
+                phi__.component(ispn).pw_coeffs().remap_forward(fft_coarse_.pu(), gkp.gvec_fft_slab(), n__, idx0__);
 
                 hphi__.component(ispn).pw_coeffs().set_num_extra(CPU, gkp.gvec_count_fft(), n__, idx0__);
                 hphi__.component(ispn).pw_coeffs().extra().zero<memory_t::host | memory_t::device>();
@@ -358,7 +358,7 @@ class Local_operator
              * transformation is stored in the FFT buffer */
             auto phi_to_r = [&](int i, int ispn, bool gamma = false)
             {
-                switch (param_->processing_unit()) {
+                switch (fft_coarse_.pu()) {
                     case CPU: {
                         if (gamma) {
                             fft_coarse_.transform<1, CPU>(gkp,
@@ -415,7 +415,7 @@ class Local_operator
             /* transform one or two functions to PW domain */
             auto vphi_to_G = [&](bool gamma = false)
             {
-                switch (param_->processing_unit()) {
+                switch (fft_coarse_.pu()) {
                     case CPU: {
                         if (gamma) {
                             fft_coarse_.transform<-1, CPU>(gkp, vphi1_.at<CPU>(), vphi2_.at<CPU>());
@@ -444,7 +444,7 @@ class Local_operator
                 int ispn = ispn_block & 1;
                 int ekin = (ispn_block & 2) ? 0 : 1;
 
-                if (!phi__.component(ispn).pw_coeffs().is_remapped() && param_->processing_unit() == GPU) {
+                if (!phi__.component(ispn).pw_coeffs().is_remapped() && fft_coarse_.pu() == GPU) {
                     #ifdef __GPU
                     double alpha = static_cast<double>(ekin);
                     if (gamma) {
@@ -474,7 +474,7 @@ class Local_operator
                     return;
                 }
                 /* data was remapped and hphi is allocated only on CPU */
-                if (phi__.component(ispn).pw_coeffs().is_remapped() && param_->processing_unit() == GPU) {
+                if (phi__.component(ispn).pw_coeffs().is_remapped() && fft_coarse_.pu() == GPU) {
                     if (gamma) {
                         vphi2_.copy<memory_t::device, memory_t::host>();
                     }

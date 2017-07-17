@@ -173,7 +173,7 @@ class timer
                 }
                 double f = it.second.tot_val / ttot;
                 if (f > 0.01) {
-                    printf("%s (%10.4fs, %% of self: %.2f, %% of total: %.2f)\n",
+                    printf("%s (%10.4fs, %.2f %% of self, %.2f %% of total)\n",
                            it.first.c_str(), it.second.tot_val, (it.second.tot_val - te) / it.second.tot_val * 100, f * 100);
                 
                     std::vector<std::pair<double, std::string>> tmp;

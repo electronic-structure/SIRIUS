@@ -35,27 +35,31 @@ inline void error_message(cufftResult result)
 {
     switch (result) {
         case CUFFT_INVALID_PLAN: {
-            printf("CUFFT_INVALID_PLAN\n");
+            printf("CUFFT_INVALID_PLAN: the plan parameter is not a valid handle\n");
             break;
         }
         case CUFFT_ALLOC_FAILED: {
-            printf("CUFFT_ALLOC_FAILED\n");
+            printf("CUFFT_ALLOC_FAILED: cuFFT failed to allocate GPU or CPU memory\n");
             break;
         }
         case CUFFT_INVALID_VALUE: {
-            printf("CUFFT_INVALID_VALUE\n");
+            printf("CUFFT_INVALID_VALUE: at least one of the parameters idata, odata, and direction is not valid\n");
             break;
         }
         case CUFFT_INTERNAL_ERROR: {
-            printf("CUFFT_INTERNAL_ERROR\n");
+            printf("CUFFT_INTERNAL_ERROR: an internal driver error was detected\n");
             break;
         }
         case CUFFT_SETUP_FAILED: {
-            printf("CUFFT_SETUP_FAILED\n");
+            printf("CUFFT_SETUP_FAILED: the cuFFT library failed to initialize\n");
             break;
         }
         case CUFFT_INVALID_SIZE: {
-            printf("CUFFT_INVALID_SIZE\n");
+            printf("CUFFT_INVALID_SIZE: user specified an invalid transform size\n");
+            break;
+        }
+        case CUFFT_EXEC_FAILED: {
+            printf("CUFFT_EXEC_FAILED: cuFFT failed to execute the transform on the GPU\n");
             break;
         }
         default: {
@@ -73,7 +77,7 @@ inline void error_message(cufftResult result)
         gethostname(nm, 1024);                                                      \
         printf("hostname: %s\n", nm);                                               \
         printf("Error in %s at line %i of file %s: ", #func__, __LINE__, __FILE__); \
-        error_message(result);                                                      \
+        cufft::error_message(result);                                                      \
         exit(-100);                                                                 \
     }                                                                               \
 }
