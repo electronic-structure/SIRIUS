@@ -95,7 +95,8 @@ inline void Potential::generate_D_operator_matrix()
                         for (int igloc = 0; igloc < ctx_.gvec().count(); igloc++) {
                             int ig = ctx_.gvec().offset() + igloc;
                             /* conjugate V(G) * exp(i * G * r_{alpha}) */
-                            auto z = std::conj(veff_vec[iv]->f_pw_local(igloc) * ctx_.gvec_phase_factor(ig, ia));
+                            //auto z = std::conj(veff_vec[iv]->f_pw_local(igloc) * ctx_.gvec_phase_factor(ig, ia));
+                            auto z = veff_vec[iv]->f_pw_local(igloc) * ctx_.gvec_phase_factor(ig, ia);
                             veff_a(2 * igloc,     i) = z.real();
                             veff_a(2 * igloc + 1, i) = z.imag();
                         }
@@ -108,7 +109,6 @@ inline void Potential::generate_D_operator_matrix()
                 case GPU: {
                     #ifdef __GPU
                     /* copy plane wave coefficients of effective potential to GPU */
-
                     mdarray<double_complex, 1> veff(&veff_vec[iv]->f_pw_local(0), veff_tmp.at<GPU>(),
                                                     ctx_.gvec().count());
                     veff.copy<memory_t::host, memory_t::device>();

@@ -385,7 +385,9 @@ inline void Simulation_context_base::init_fft()
     /* create FFT driver for coarse mesh */
     auto fft_coarse_grid = FFT3D_grid(find_translations(2 * gk_cutoff(), rlv));
     auto pu = (fft_coarse_grid.size() < std::pow(64, 3)) ? CPU : processing_unit(); 
-    //auto pu = processing_unit(); 
+    if (full_potential()) {
+        pu = processing_unit();
+    }
     fft_coarse_ = std::unique_ptr<FFT3D>(new FFT3D(fft_coarse_grid, comm_fft_coarse(), pu));
 
     /* create a list of G-vectors for corase FFT grid */
