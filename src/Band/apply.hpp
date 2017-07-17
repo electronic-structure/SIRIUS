@@ -91,7 +91,7 @@ void Band::apply_h_o(K_point* kp__,
     #ifdef __GPU
     if (ctx_.processing_unit() == GPU) {
         for (int ispn = 0; ispn < phi__.num_components(); ispn++) {
-            if (phi__.component(ispn).pw_coeffs().is_remapped()) {
+            if (phi__.component(ispn).pw_coeffs().is_remapped() || ctx_.fft_coarse().pu() == CPU) {
                 phi__.component(ispn).pw_coeffs().copy_to_host(N__, n__);
             }
         }
@@ -99,6 +99,13 @@ void Band::apply_h_o(K_point* kp__,
     #endif
     /* apply local part of Hamiltonian */
     local_op_->apply_h(ispn__, phi__, hphi__, N__, n__);
+    #ifdef __GPU
+    if (ctx_.processing_unit() == GPU && ctx_.fft_coarse().pu() == CPU) {
+        for (int ispn = 0; ispn < phi__.num_components(); ispn++) {
+            hphi__.component(ispn).pw_coeffs().copy_to_device(N__, n__);
+        }
+    }
+    #endif
     t1 += omp_get_wtime();
 
     if (kp__->comm().rank() == 0 && ctx_.control().print_performance_) {

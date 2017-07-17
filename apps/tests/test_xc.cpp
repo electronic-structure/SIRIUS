@@ -30,12 +30,12 @@ void test_xc()
 
 void test_xc2()
 {
-    //XC_functional Ex("XC_GGA_X_PBE", 1);
-    //XC_functional Ec("XC_GGA_C_PBE", 1);
+    XC_functional Ex("XC_GGA_X_PBE", 1);
+    XC_functional Ec("XC_GGA_C_PBE", 1);
     //XC_functional Ex("XC_LDA_X", 1);
     //XC_functional Ec("XC_LDA_C_PZ", 1);
-    XC_functional Ex("XC_GGA_X_PW91", 1);
-    XC_functional Ec("XC_GGA_C_PW91", 1);
+    ///XC_functional Ex("XC_GGA_X_PW91", 1);
+    //XC_functional Ec("XC_GGA_C_PW91", 1);
     
     std::vector<double> sigma(101);
     std::vector<double> vrho(101);
