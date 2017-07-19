@@ -182,7 +182,7 @@ inline void Band::solve_sv(K_point* kp,
         for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
 
             /* compute <wf_i | h * wf_j> */
-            inner(kp->fv_states(), 0, nfv, hpsi[ispn], 0, nfv, h, 0, 0);
+            inner(kp->fv_states(), 0, nfv, hpsi[ispn], 0, nfv, 0.0, h, 0, 0);
             
             for (int i = 0; i < nfv; i++) {
                 h.add(i, i, kp->fv_eigen_value(i));
@@ -205,11 +205,11 @@ inline void Band::solve_sv(K_point* kp,
         }
         #endif
         /* compute <wf_i | h * wf_j> for up-up block */
-        inner(kp->fv_states(), 0, nfv, hpsi[0], 0, nfv, h, 0, 0);
+        inner(kp->fv_states(), 0, nfv, hpsi[0], 0, nfv, 0.0, h, 0, 0);
         /* compute <wf_i | h * wf_j> for dn-dn block */
-        inner(kp->fv_states(), 0, nfv, hpsi[1], 0, nfv, h, nfv, nfv);
+        inner(kp->fv_states(), 0, nfv, hpsi[1], 0, nfv, 0.0, h, nfv, nfv);
         /* compute <wf_i | h * wf_j> for up-dn block */
-        inner(kp->fv_states(), 0, nfv, hpsi[2], 0, nfv, h, 0, nfv);
+        inner(kp->fv_states(), 0, nfv, hpsi[2], 0, nfv, 0.0, h, 0, nfv);
 
         if (kp->comm().size() == 1) {
             for (int i = 0; i < nfv; i++) {

@@ -36,7 +36,6 @@ namespace sirius {
  *    - distribution of plane-wave coefficients over entire communicator
  *    - Fourier transformation using FFT communicator
  *    - gather PW coefficients into global array
- *  In some cases the PW coefficients are not necessary and only the real-space values are stored.
  */
 template <typename T>
 class Smooth_periodic_function
@@ -84,9 +83,9 @@ class Smooth_periodic_function
             : fft_(&fft__)
             , gvec_(&gvec__)
         {
-            f_rg_       = mdarray<T, 1>(fft_->local_size());
-            f_pw_fft_   = mdarray<double_complex, 1>(gvec_->partition().gvec_count_fft());
-            f_pw_local_ = mdarray<double_complex, 1>(gvec_->count());
+            f_rg_       = mdarray<T, 1>(fft_->local_size(), memory_t::host, "Smooth_periodic_function.f_rg_");
+            f_pw_fft_   = mdarray<double_complex, 1>(gvec_->partition().gvec_count_fft(), memory_t::host, "Smooth_periodic_function.f_pw_fft_");
+            f_pw_local_ = mdarray<double_complex, 1>(gvec_->count(), memory_t::host, "Smooth_periodic_function.f_pw_local_");
 
             /* check ordering of mpi ranks */
             int rank = fft_->comm().rank() * gvec_->comm_ortho_fft().size() + gvec_->comm_ortho_fft().rank();

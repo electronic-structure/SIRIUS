@@ -301,7 +301,7 @@ inline void Potential::xc_mt_magnetic(Radial_grid<double> const& rgrid,
 }
 
 inline void Potential::xc_mt(Periodic_function<double>* rho, 
-                             Periodic_function<double>* magnetization[3],
+                             std::array<Periodic_function<double>*, 3> magnetization,
                              std::vector<XC_functional>& xc_func,
                              Periodic_function<double>* vxc, 
                              Periodic_function<double>* bxc[3], 
@@ -617,7 +617,7 @@ inline void Potential::xc_it_nonmagnetic(Periodic_function<double>* rho__,
 }
 
 inline void Potential::xc_it_magnetic(Periodic_function<double>* rho, 
-                                      Periodic_function<double>* magnetization[3], 
+                                      std::array<Periodic_function<double>*, 3> magnetization, 
                                       std::vector<XC_functional>& xc_func,
                                       Periodic_function<double>* vxc, 
                                       Periodic_function<double>* bxc[3], 
@@ -673,17 +673,17 @@ inline void Potential::xc_it_magnetic(Periodic_function<double>* rho,
     Smooth_periodic_function<double> grad_rho_up_grad_rho_up;
     Smooth_periodic_function<double> grad_rho_up_grad_rho_dn;
     Smooth_periodic_function<double> grad_rho_dn_grad_rho_dn;
-    
+
     if (is_gga) {
         /* get plane-wave coefficients of densities */
         rho_up.fft_transform(-1);
         rho_dn.fft_transform(-1);
 
         /* generate pw coeffs of the gradient and laplacian */
-        auto grad_rho_up = gradient(rho_up);
-        auto grad_rho_dn = gradient(rho_dn);
-        auto lapl_rho_up = laplacian(rho_up);
-        auto lapl_rho_dn = laplacian(rho_dn);
+        grad_rho_up = gradient(rho_up);
+        grad_rho_dn = gradient(rho_dn);
+        lapl_rho_up = laplacian(rho_up);
+        lapl_rho_dn = laplacian(rho_dn);
 
         /* gradient in real space */
         for (int x: {0, 1, 2}) {
@@ -701,13 +701,13 @@ inline void Potential::xc_it_magnetic(Periodic_function<double>* rho,
         lapl_rho_dn.fft_transform(1);
     }
 
-    mdarray<double, 1> exc_tmp(num_points);
+    mdarray<double, 1> exc_tmp(num_points, memory_t::host, "exc_tmp");
     exc_tmp.zero();
 
-    mdarray<double, 1> vxc_up_tmp(num_points);
+    mdarray<double, 1> vxc_up_tmp(num_points, memory_t::host, "vxc_up_tmp");
     vxc_up_tmp.zero();
 
-    mdarray<double, 1> vxc_dn_tmp(num_points);
+    mdarray<double, 1> vxc_dn_tmp(num_points, memory_t::host, "vxc_dn_dmp");
     vxc_dn_tmp.zero();
 
     mdarray<double, 1> vsigma_uu_tmp;
@@ -715,13 +715,13 @@ inline void Potential::xc_it_magnetic(Periodic_function<double>* rho,
     mdarray<double, 1> vsigma_dd_tmp;
 
     if (is_gga) {
-        vsigma_uu_tmp = mdarray<double, 1>(num_points);
+        vsigma_uu_tmp = mdarray<double, 1>(num_points, memory_t::host, "vsigma_uu_tmp");
         vsigma_uu_tmp.zero();
         
-        vsigma_ud_tmp = mdarray<double, 1>(num_points);
+        vsigma_ud_tmp = mdarray<double, 1>(num_points, memory_t::host, "vsigma_ud_tmp");
         vsigma_ud_tmp.zero();
         
-        vsigma_dd_tmp = mdarray<double, 1>(num_points);
+        vsigma_dd_tmp = mdarray<double, 1>(num_points, memory_t::host, "vsigma_dd_tmp");
         vsigma_dd_tmp.zero();
     }
 
@@ -738,6 +738,7 @@ inline void Potential::xc_it_magnetic(Periodic_function<double>* rho,
             if (ixc.is_lda()) {
                 std::vector<double> vxc_up_t(spl_t.local_size());
                 std::vector<double> vxc_dn_t(spl_t.local_size());
+
 
                 ixc.get_lda(spl_t.local_size(), 
                             &rho_up.f_rg(spl_t.global_offset()), 
@@ -774,7 +775,7 @@ inline void Potential::xc_it_magnetic(Periodic_function<double>* rho,
                             &vsigma_ud_t[0], 
                             &vsigma_dd_t[0], 
                             &exc_t[0]);
-
+                
                 for (int i = 0; i < spl_t.local_size(); i++) {
                     /* add Exc contribution */
                     exc_tmp(spl_t[i]) += exc_t[i];
@@ -784,9 +785,9 @@ inline void Potential::xc_it_magnetic(Periodic_function<double>* rho,
                     vxc_dn_tmp(spl_t[i]) += (vrho_dn_t[i] - 2 * vsigma_dd_t[i] * lapl_rho_dn.f_rg(spl_t[i]) - vsigma_ud_t[i] * lapl_rho_up.f_rg(spl_t[i]));
 
                     /* save the sigma derivative */
-                    vsigma_uu_tmp(spl_t[i]) += vsigma_uu_t[i]; 
-                    vsigma_ud_tmp(spl_t[i]) += vsigma_ud_t[i]; 
-                    vsigma_dd_tmp(spl_t[i]) += vsigma_dd_t[i]; 
+                    vsigma_uu_tmp(spl_t[i]) += vsigma_uu_t[i];
+                    vsigma_ud_tmp(spl_t[i]) += vsigma_ud_t[i];
+                    vsigma_dd_tmp(spl_t[i]) += vsigma_dd_t[i];
                 }
             }
         }
@@ -852,7 +853,7 @@ inline void Potential::xc_it_magnetic(Periodic_function<double>* rho,
 }
 
 inline void Potential::xc(Periodic_function<double>* rho, 
-                          Periodic_function<double>* magnetization[3], 
+                          std::array<Periodic_function<double>*, 3> magnetization, 
                           Periodic_function<double>* vxc, 
                           Periodic_function<double>* bxc[3], 
                           Periodic_function<double>* exc)

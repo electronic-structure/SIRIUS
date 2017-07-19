@@ -78,68 +78,95 @@ void Band::apply_h_o(K_point* kp__,
                      int ispn__,
                      int N__,
                      int n__,
-                     wave_functions& phi__,
-                     wave_functions& hphi__,
-                     wave_functions& ophi__,
+                     Wave_functions& phi__,
+                     Wave_functions& hphi__,
+                     Wave_functions& ophi__,
                      D_operator<T>& d_op,
                      Q_operator<T>& q_op) const
 {
     PROFILE("sirius::Band::apply_h_o");
     
     double t1 = -omp_get_wtime();
-    /* set initial hphi */
-    hphi__.copy_from(phi__, N__, n__);
-
-    /* copy data to CPU for data remapping */
+    /* for the data remapping we need phi on CPU */
     #ifdef __GPU
     if (ctx_.processing_unit() == GPU) {
-        hphi__.pw_coeffs().copy_to_host(N__, n__);
+        for (int ispn = 0; ispn < phi__.num_components(); ispn++) {
+            if (phi__.component(ispn).pw_coeffs().is_remapped() || ctx_.fft_coarse().pu() == CPU) {
+                phi__.component(ispn).pw_coeffs().copy_to_host(N__, n__);
+            }
+        }
     }
     #endif
     /* apply local part of Hamiltonian */
-    if (ctx_.processing_unit() == CPU) {
-        local_op_->apply_h<CPU>(ispn__, hphi__, N__, n__);
+    local_op_->apply_h(ispn__, phi__, hphi__, N__, n__);
+    #ifdef __GPU
+    if (ctx_.processing_unit() == GPU && ctx_.fft_coarse().pu() == CPU) {
+        for (int ispn = 0; ispn < phi__.num_components(); ispn++) {
+            hphi__.component(ispn).pw_coeffs().copy_to_device(N__, n__);
+        }
     }
-    if (ctx_.processing_unit() == GPU) {
-        local_op_->apply_h<GPU>(ispn__, hphi__, N__, n__);
-    }
+    #endif
     t1 += omp_get_wtime();
 
     if (kp__->comm().rank() == 0 && ctx_.control().print_performance_) {
         DUMP("hloc performace: %12.6f bands/sec", n__ / t1);
     }
 
+    int nsc = (ctx_.num_mag_dims() == 3) ? 2 : 1;
+
     if (ctx_.control().print_checksum_) {
-        auto cs1 = phi__.checksum(N__, n__);
-        auto cs2 = hphi__.checksum(N__, n__);
-        if (kp__->comm().rank() == 0) {
-            DUMP("checksum(phi): %18.10f %18.10f", cs1.real(), cs1.imag());
-            DUMP("checksum(hloc_phi): %18.10f %18.10f", cs2.real(), cs2.imag());
+        for (int ispn = 0; ispn < nsc; ispn++) {
+            auto cs1 = phi__.component(ispn).checksum(N__, n__);
+            auto cs2 = hphi__.component(ispn).checksum(N__, n__);
+            if (kp__->comm().rank() == 0) {
+                DUMP("checksum(phi_%i): %18.10f %18.10f", ispn, cs1.real(), cs1.imag());
+                DUMP("checksum(hloc_phi_%i): %18.10f %18.10f", ispn, cs2.real(), cs2.imag());
+            }
         }
     }
 
     /* set intial ophi */
-    ophi__.copy_from(phi__, N__, n__);
-
+    for (int ispn = 0; ispn < nsc; ispn++) {
+        ophi__.component(ispn).copy_from(phi__.component(ispn), N__, n__, ctx_.processing_unit());
+    }
+    /* return if there are no beta-projectors */
     if (!ctx_.unit_cell().mt_lo_basis_size()) {
         return;
     }
 
     for (int i = 0; i < ctx_.beta_projector_chunks().num_chunks(); i++) {
+        /* generate beta-projectors for a block of atoms */
         kp__->beta_projectors().generate(i);
+        /* non-collinear case */
+        if (ctx_.num_mag_dims() == 3) {
+            for (int ispn = 0; ispn < 2; ispn++) {
 
-        auto beta_phi = kp__->beta_projectors().inner<T>(i, phi__, N__, n__);
+                auto beta_phi = kp__->beta_projectors().inner<T>(i, phi__.component(ispn), N__, n__);
+                
+                /* apply diagonal spin blocks */
+                d_op.apply(i, ispn, hphi__.component(ispn), N__, n__, beta_phi);
+                /* apply non-diagonal spin blocks */
+                d_op.apply(i, (ispn == 0) ? 3 : 2, hphi__.component((ispn == 0) ? 1 : 0), N__, n__, beta_phi);
+                /* apply Q operator (diagonal in spin) */  
+                q_op.apply(i, 0, ophi__.component(ispn), N__, n__, beta_phi);
+            }
+        } else { /* non-magnetic or collinear case */
 
-        d_op.apply(i, ispn__, hphi__, N__, n__, beta_phi);
-        q_op.apply(i, 0, ophi__, N__, n__, beta_phi);
+            auto beta_phi = kp__->beta_projectors().inner<T>(i, phi__.component(0), N__, n__);
+
+            d_op.apply(i, ispn__, hphi__.component(0), N__, n__, beta_phi);
+            q_op.apply(i, 0, ophi__.component(0), N__, n__, beta_phi);
+        }
     }
     
     if (ctx_.control().print_checksum_) {
-        auto cs1 = hphi__.checksum(N__, n__);
-        auto cs2 = ophi__.checksum(N__, n__);
-        if (kp__->comm().rank() == 0) {
-            DUMP("checksum(hphi): %18.10f %18.10f", cs1.real(), cs1.imag());
-            DUMP("checksum(ophi): %18.10f %18.10f", cs2.real(), cs2.imag());
+        for (int ispn = 0; ispn < nsc; ispn++) {
+            auto cs1 = hphi__.component(ispn).checksum(N__, n__);
+            auto cs2 = ophi__.component(ispn).checksum(N__, n__);
+            if (kp__->comm().rank() == 0) {
+                DUMP("checksum(hphi_%i): %18.10f %18.10f", ispn, cs1.real(), cs1.imag());
+                DUMP("checksum(ophi_%i): %18.10f %18.10f", ispn, cs2.real(), cs2.imag());
+            }
         }
     }
 }
@@ -368,8 +395,8 @@ inline void Band::apply_fv_h_o(K_point* kp__,
     }
     
     if (ctx_.control().print_checksum_) {
-        auto cs1 = hphi__.checksum_pw(N__, n__);
-        auto cs2 = ophi__.checksum_pw(N__, n__);
+        auto cs1 = hphi__.checksum_pw(N__, n__, ctx_.processing_unit());
+        auto cs2 = ophi__.checksum_pw(N__, n__, ctx_.processing_unit());
         if (kp__->comm().rank() == 0) {
             DUMP("checksum(hphi_istl): %18.10f %18.10f", cs1.real(), cs1.imag());
             DUMP("checksum(ophi_istl): %18.10f %18.10f", cs2.real(), cs2.imag());
@@ -665,8 +692,8 @@ inline void Band::apply_fv_h_o(K_point* kp__,
     #endif
 
     if (ctx_.control().print_checksum_) {
-        auto cs1 = hphi__.checksum_pw(N__, n__);
-        auto cs2 = ophi__.checksum_pw(N__, n__);
+        auto cs1 = hphi__.checksum_pw(N__, n__, ctx_.processing_unit());
+        auto cs2 = ophi__.checksum_pw(N__, n__, ctx_.processing_unit());
         if (kp__->comm().rank() == 0) {
             DUMP("checksum(hphi_pw): %18.10f %18.10f", cs1.real(), cs1.imag());
             DUMP("checksum(ophi_pw): %18.10f %18.10f", cs2.real(), cs2.imag());

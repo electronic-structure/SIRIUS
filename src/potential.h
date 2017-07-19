@@ -293,7 +293,7 @@ class Potential
                                    Spheric_function<spatial, double>& exc_tp);
 
         inline void xc_mt(Periodic_function<double>* rho, 
-                          Periodic_function<double>* magnetization[3], 
+                          std::array<Periodic_function<double>*, 3> magnetization, 
                           std::vector<XC_functional>& xc_func,
                           Periodic_function<double>* vxc, 
                           Periodic_function<double>* bxc[3], 
@@ -305,7 +305,7 @@ class Potential
                                       Periodic_function<double>* exc);
 
         inline void xc_it_magnetic(Periodic_function<double>* rho, 
-                                   Periodic_function<double>* magnetization[3], 
+                                   std::array<Periodic_function<double>*, 3> magnetization, 
                                    std::vector<XC_functional>& xc_func,
                                    Periodic_function<double>* vxc, 
                                    Periodic_function<double>* bxc[3], 
@@ -769,11 +769,11 @@ class Potential
          *      V^{\downarrow}({\bf r}) &=& V_{xc}({\bf r}) - {\rm B}_{xc}({\bf r}) 
          *  \f}
          */
-        void xc(Periodic_function<double>* rho,
-                Periodic_function<double>* magnetization[3], 
-                Periodic_function<double>* vxc,
-                Periodic_function<double>* bxc[3],
-                Periodic_function<double>* exc);
+        void xc(Periodic_function<double>*                rho__,
+                std::array<Periodic_function<double>*, 3> magnetization__,
+                Periodic_function<double>*                vxc__,
+                Periodic_function<double>*                bxc__[3],
+                Periodic_function<double>*                exc__);
         
         /// Generate effective potential and magnetic field from charge density and magnetization.
         inline void generate(Density& density__)
@@ -915,8 +915,8 @@ class Potential
          *  In the sum over plane-wave coefficients the \f$ {\bf G} \f$ and \f$ -{\bf G} \f$ contributions will give:
          *  \f[
          *       Q_{\xi \xi'}^{A}({\bf G}) \tilde V_{\alpha}^{*}({\bf G}) + Q_{\xi \xi'}^{A}(-{\bf G}) \tilde V_{\alpha}^{*}(-{\bf G}) =
-         *          2 \Re \Big( Q_{\xi \xi'}^{A}({\bf G}) \Big) \Re \Big( \tilde V_{\alpha}^{*}({\bf G}) \Big) + 
-         *          2 \Im \Big( Q_{\xi \xi'}^{A}({\bf G}) \Big) \Im \Big( \tilde V_{\alpha}^{*}({\bf G}) \Big) 
+         *          2 \Re \Big( Q_{\xi \xi'}^{A}({\bf G}) \Big) \Re \Big( \tilde V_{\alpha}({\bf G}) \Big) + 
+         *          2 \Im \Big( Q_{\xi \xi'}^{A}({\bf G}) \Big) \Im \Big( \tilde V_{\alpha}({\bf G}) \Big) 
          *  \f]
          *  This allows the use of a <b>dgemm</b> instead of a <b>zgemm</b> when \f$  D_{\xi \xi'}^{\alpha} \f$ matrix
          *  is calculated for all atoms of the same type.

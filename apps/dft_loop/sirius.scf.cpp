@@ -116,14 +116,13 @@ double ground_state(Simulation_context& ctx,
 
         if (std::abs(e1 - e2) > 1e-7) {
             printf("total energy is different\n");
-            exit(1);
+            sirius::terminate(1);
         }
 
         write_output = 0;
     }
 
     if (!ctx.full_potential()) {
-        //dft.forces();
         if (ctx.control().print_stress_) {
             Stress s(ctx, ks, density, potential);
             s.print_info();

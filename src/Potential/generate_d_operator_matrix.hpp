@@ -55,7 +55,18 @@ inline void Potential::generate_D_operator_matrix()
     for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
         auto& atom_type = unit_cell_.atom_type(iat);
         int nbf = atom_type.mt_basis_size();
-
+        
+        /* start copy of Q(G) for the next atom type */
+        #ifdef __GPU
+        if (ctx_.processing_unit() == GPU) {
+            acc::sync_stream(0);
+            if (iat + 1 != unit_cell_.num_atom_types()) {
+                ctx_.augmentation_op(iat + 1).prepare(0);
+            }
+        }
+        #endif
+        
+        /* trivial case */
         if (!atom_type.pp_desc().augment) {
             for (int iv = 0; iv < ctx_.num_mag_dims() + 1; iv++) {
                 for (int i = 0; i < atom_type.num_atoms(); i++) {
@@ -69,70 +80,58 @@ inline void Potential::generate_D_operator_matrix()
                     }
                 }
             }
-            #ifdef __GPU
-            if (ctx_.processing_unit() == GPU) {
-                acc::sync_stream(0);
-                if (iat + 1 != unit_cell_.num_atom_types()) {
-                    ctx_.augmentation_op(iat + 1).prepare(0);
-                }
-            }
-            #endif
             continue;
         }
         matrix<double> d_tmp(nbf * (nbf + 1) / 2, atom_type.num_atoms()); 
         for (int iv = 0; iv < ctx_.num_mag_dims() + 1; iv++) {
-            if (ctx_.processing_unit() == CPU) {
-                matrix<double> veff_a(2 * ctx_.gvec().count(), atom_type.num_atoms());
+            switch (ctx_.processing_unit()) {
+                case CPU: {
+                    matrix<double> veff_a(2 * ctx_.gvec().count(), atom_type.num_atoms());
 
-                #pragma omp parallel for schedule(static)
-                for (int i = 0; i < atom_type.num_atoms(); i++) {
-                    int ia = atom_type.atom_id(i);
+                    #pragma omp parallel for schedule(static)
+                    for (int i = 0; i < atom_type.num_atoms(); i++) {
+                        int ia = atom_type.atom_id(i);
 
-                    for (int igloc = 0; igloc < ctx_.gvec().count(); igloc++) {
-                        int ig = ctx_.gvec().offset() + igloc;
-                        /* conjugate V(G) * exp(i * G * r_{alpha}) */
-                        auto z = std::conj(veff_vec[iv]->f_pw_local(igloc) * ctx_.gvec_phase_factor(ig, ia));
-                        veff_a(2 * igloc,     i) = z.real();
-                        veff_a(2 * igloc + 1, i) = z.imag();
+                        for (int igloc = 0; igloc < ctx_.gvec().count(); igloc++) {
+                            int ig = ctx_.gvec().offset() + igloc;
+                            /* conjugate V(G) * exp(i * G * r_{alpha}) */
+                            //auto z = std::conj(veff_vec[iv]->f_pw_local(igloc) * ctx_.gvec_phase_factor(ig, ia));
+                            auto z = veff_vec[iv]->f_pw_local(igloc) * ctx_.gvec_phase_factor(ig, ia);
+                            veff_a(2 * igloc,     i) = z.real();
+                            veff_a(2 * igloc + 1, i) = z.imag();
+                        }
                     }
+
+                    linalg<CPU>::gemm(0, 0, nbf * (nbf + 1) / 2, atom_type.num_atoms(), 2 * ctx_.gvec().count(),
+                                      ctx_.augmentation_op(iat).q_pw(), veff_a, d_tmp);
+                    break;
                 }
+                case GPU: {
+                    #ifdef __GPU
+                    /* copy plane wave coefficients of effective potential to GPU */
+                    mdarray<double_complex, 1> veff(&veff_vec[iv]->f_pw_local(0), veff_tmp.at<GPU>(),
+                                                    ctx_.gvec().count());
+                    veff.copy<memory_t::host, memory_t::device>();
 
-                linalg<CPU>::gemm(0, 0, nbf * (nbf + 1) / 2, atom_type.num_atoms(), 2 * ctx_.gvec().count(),
-                                  ctx_.augmentation_op(iat).q_pw(), veff_a, d_tmp);
-            }
+                    matrix<double> veff_a(2 * ctx_.gvec().count(), atom_type.num_atoms(), memory_t::device);
+                    
+                    d_tmp.allocate(memory_t::device);
 
-            #ifdef __GPU
-            /* copy plane wave coefficients of effective potential to GPU */
-            mdarray<double_complex, 1> veff;
-            if (ctx_.processing_unit() == GPU) {
+                    mul_veff_with_phase_factors_gpu(atom_type.num_atoms(),
+                                                    ctx_.gvec().count(),
+                                                    veff.at<GPU>(),
+                                                    ctx_.gvec_coord().at<GPU>(),
+                                                    ctx_.atom_coord(iat).at<GPU>(),
+                                                    veff_a.at<GPU>(), 1);
 
-                veff = mdarray<double_complex, 1>(&veff_vec[iv]->f_pw_local(0), veff_tmp.at<GPU>(),
-                                                  ctx_.gvec().count());
-                veff.copy_to_device();
+                    linalg<GPU>::gemm(0, 0, nbf * (nbf + 1) / 2, atom_type.num_atoms(), 2 * ctx_.gvec().count(),
+                                      ctx_.augmentation_op(iat).q_pw(), veff_a, d_tmp, 1);
 
-                matrix<double> veff_a(2 * ctx_.gvec().count(), atom_type.num_atoms(), memory_t::device);
-                
-                d_tmp.allocate(memory_t::device);
-
-                acc::sync_stream(0);
-                if (iat + 1 != unit_cell_.num_atom_types()) {
-                    ctx_.augmentation_op(iat + 1).prepare(0);
+                    d_tmp.copy<memory_t::device, memory_t::host>();
+                    #endif
+                    break;
                 }
-
-                mul_veff_with_phase_factors_gpu(atom_type.num_atoms(),
-                                                ctx_.gvec().count(),
-                                                veff.at<GPU>(),
-                                                ctx_.gvec_coord().at<GPU>(),
-                                                ctx_.atom_coord(iat).at<GPU>(),
-                                                veff_a.at<GPU>(), 1);
-
-                linalg<GPU>::gemm(0, 0, nbf * (nbf + 1) / 2, atom_type.num_atoms(), 2 * ctx_.gvec().count(),
-                                  ctx_.augmentation_op(iat).q_pw(), veff_a, d_tmp, 1);
-
-                d_tmp.copy_to_host();
-                ctx_.augmentation_op(iat).dismiss();
             }
-            #endif
 
             if (ctx_.gvec().reduced()) {
                 if (comm_.rank() == 0) {
@@ -173,6 +172,7 @@ inline void Potential::generate_D_operator_matrix()
                 }
             }
         }
+        ctx_.augmentation_op(iat).dismiss();
     }
 
     /* add d_ion to the effective potential component of D-operator */

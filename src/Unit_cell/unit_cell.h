@@ -640,6 +640,11 @@ class Unit_cell
         {
             return parameters_;
         }
+
+        Communicator const& comm() const
+        {
+            return comm_;
+        }
 };
     
 inline void Unit_cell::initialize()
@@ -980,11 +985,13 @@ inline void Unit_cell::print_info(int verbosity_)
     }
     if (verbosity_ >= 2) {
         printf("\n");
-        printf("atom id              position            type id    class id\n");
-        printf("------------------------------------------------------------\n");
+        printf("atom id              position                    vector_field        type id    class id\n");
+        printf("----------------------------------------------------------------------------------------\n");
         for (int i = 0; i < num_atoms(); i++) {
             auto pos = atom(i).position();
-            printf("%6i      %f %f %f   %6i      %6i\n", i, pos[0], pos[1], pos[2], atom(i).type_id(), atom(i).symmetry_class_id());
+            auto vf = atom(i).vector_field();
+            printf("%6i      %f %f %f   %f %f %f   %6i      %6i\n", i, pos[0], pos[1], pos[2], vf[0], vf[1], vf[2], 
+                   atom(i).type_id(), atom(i).symmetry_class_id());
         }
    
         printf("\n");

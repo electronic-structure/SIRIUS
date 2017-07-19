@@ -383,8 +383,12 @@ inline void Simulation_context_base::init_fft()
     fft_->prepare(gvec_.partition());
 
     /* create FFT driver for coarse mesh */
-    fft_coarse_ = std::unique_ptr<FFT3D>(new FFT3D(find_translations(2 * gk_cutoff(), rlv), comm_fft_coarse(),
-                                                   processing_unit()));
+    auto fft_coarse_grid = FFT3D_grid(find_translations(2 * gk_cutoff(), rlv));
+    auto pu = (fft_coarse_grid.size() < std::pow(64, 3)) ? CPU : processing_unit(); 
+    if (full_potential()) {
+        pu = processing_unit();
+    }
+    fft_coarse_ = std::unique_ptr<FFT3D>(new FFT3D(fft_coarse_grid, comm_fft_coarse(), pu));
 
     /* create a list of G-vectors for corase FFT grid */
     gvec_coarse_ = Gvec(rlv, gk_cutoff() * 2, comm(), comm_fft_coarse(), control().reduce_gvec_);
@@ -398,6 +402,11 @@ inline void Simulation_context_base::initialize()
     if (initialized_) {
         TERMINATE("Simulation parameters are already initialized.");
     }
+    /* Gamma-point calculation and non-collinear magnetism are not compatible */
+    if (num_mag_dims() == 3) {
+        set_gamma_point(false);
+    }
+
     set_esm_type(parameters_input().esm_);
     set_core_relativity(parameters_input().core_relativity_);
     set_valence_relativity(parameters_input().valence_relativity_);

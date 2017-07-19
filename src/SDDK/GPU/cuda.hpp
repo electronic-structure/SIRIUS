@@ -94,7 +94,6 @@ inline cudaStream_t stream(int id__)
     return (id__ == -1) ? NULL : streams()[id__];
 }
 
-
 /// Reset device.
 inline void reset()
 {
@@ -119,7 +118,7 @@ inline size_t get_free_mem()
 /// Get the number of devices.
 inline int num_devices()
 {
-    int count;
+    int count = 0;
     if (cudaGetDeviceCount(&count) != cudaSuccess) {
         return 0;
     }
@@ -305,7 +304,7 @@ inline void end_range_marker()
 template <typename T>
 inline void register_host(T* ptr__, size_t size__)
 {
-    assert(ptr);
+    assert(ptr__);
     
     CALL_CUDA(cudaHostRegister, (ptr__, size__ * sizeof(T), cudaHostRegisterMapped));
 }

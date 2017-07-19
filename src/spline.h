@@ -359,6 +359,39 @@ class Spline
             }
         }
 
+        T integrate_simpson() const
+        {
+            std::vector<U> w(num_points(), 0);
+
+            for (int i = 0; i < num_points() - 2; i++) {
+                U x0 = (*radial_grid_)[i];
+                U x1 = (*radial_grid_)[i + 1];
+                U x2 = (*radial_grid_)[i + 2];
+                w[i] += (2 * x0 + x1 - 3 * x2) * (x1 - x0) / (x0 - x2) / 6;
+                w[i + 1] += (x0 - x1) * (x0 + 2 * x1 - 3 * x2) / 6 / (x2 - x1);
+                w[i + 2] += std::pow(x0 - x1, 3) / 6 / (x2 - x0) / (x2 - x1);
+            }
+            //for (int i = 1; i < num_points() - 1; i++) {
+            //    w[i] *= 0.5;
+            //}
+
+            T res{0};
+            for (int i = 0; i < num_points(); i++) {
+                res += w[i] * coeffs_(i, 0);
+            }
+            return res;
+        }
+
+        T integrate_simple() const
+        {
+            T res{0};
+            for (int i = 0; i < num_points() - 1; i++) {
+                U dx = radial_grid_->dx(i);
+                res += 0.5 * (coeffs_(i, 0) + coeffs_(i + 1, 0)) * dx;
+            }
+            return res;
+        }
+
         T integrate(std::vector<T>& g__, int m__) const
         {
             g__ = std::vector<T>(num_points());
@@ -395,10 +428,8 @@ class Spline
                     }
                     break;
                 }
-                case -1:
-                {
-                    for (int i = 0; i < num_points() - 1; i++)
-                    {
+                case -1: {
+                    for (int i = 0; i < num_points() - 1; i++) {
                         U x0 = (*radial_grid_)[i];
                         U x1 = (*radial_grid_)[i + 1];
                         U dx = radial_grid_->dx(i);
@@ -415,10 +446,8 @@ class Spline
                     }
                     break;
                 }
-                case -2:
-                {
-                    for (int i = 0; i < num_points() - 1; i++)
-                    {
+                case -2: {
+                    for (int i = 0; i < num_points() - 1; i++) {
                         U x0 = (*radial_grid_)[i];
                         U x1 = (*radial_grid_)[i + 1];
                         U dx = radial_grid_->dx(i);
@@ -440,10 +469,8 @@ class Spline
                     }
                     break;
                 }
-                case -3:
-                {
-                    for (int i = 0; i < num_points() - 1; i++)
-                    {
+                case -3: {
+                    for (int i = 0; i < num_points() - 1; i++) {
                         U x0 = (*radial_grid_)[i];
                         U x1 = (*radial_grid_)[i + 1];
                         U dx = radial_grid_->dx(i);
@@ -466,10 +493,8 @@ class Spline
                     }
                     break;
                 }
-                case -4:
-                {
-                    for (int i = 0; i < num_points() - 1; i++)
-                    {
+                case -4: {
+                    for (int i = 0; i < num_points() - 1; i++) {
                         U x0 = (*radial_grid_)[i];
                         U x1 = (*radial_grid_)[i + 1];
                         U dx = radial_grid_->dx(i);
@@ -494,10 +519,8 @@ class Spline
                     }
                     break;
                 }
-                default:
-                {
-                    for (int i = 0; i < num_points() - 1; i++)
-                    {
+                default: {
+                    for (int i = 0; i < num_points() - 1; i++) {
                         U x0 = (*radial_grid_)[i];
                         U x1 = (*radial_grid_)[i + 1];
                         T a0 = coeffs_(i, 0);

@@ -72,6 +72,8 @@ class Radial_integrals_aug: public Radial_integrals_base<3>
     {
         PROFILE("sirius::Radial_integrals|aug");
 
+        splindex<block> spl_q(grid_q_.num_points(), unit_cell_.comm().size(), unit_cell_.comm().rank());
+
         /* interpolate <j_{l_n}(q*x) | Q_{xi,xi'}^{l}(x) > with splines */
         for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
             auto& atom_type = unit_cell_.atom_type(iat);
@@ -92,7 +94,9 @@ class Radial_integrals_aug: public Radial_integrals_base<3>
             }
 
             #pragma omp parallel for
-            for (int iq = 0; iq < grid_q_.num_points(); iq++) {
+            for (int iq_loc = 0; iq_loc < spl_q.local_size(); iq_loc++) {
+                int iq = spl_q[iq_loc];
+
                 Spherical_Bessel_functions jl(2 * lmax_beta, atom_type.radial_grid(), grid_q_[iq]);
 
                 for (int l3 = 0; l3 <= 2 * lmax_beta; l3++) {
@@ -115,6 +119,11 @@ class Radial_integrals_aug: public Radial_integrals_base<3>
                             }
                         }
                     }
+                }
+            }
+            for (int l = 0; l <= 2 * lmax_beta; l++) {
+                for (int idx = 0; idx < nbrf * (nbrf + 1) / 2; idx++) {
+                    unit_cell_.comm().allgather(&values_(idx, l, iat)[0], spl_q.global_offset(), spl_q.local_size());
                 }
             }
 
@@ -435,20 +444,26 @@ class Radial_integrals_vloc: public Radial_integrals_base<1>
             auto& atom_type = unit_cell_.atom_type(iat);
             values_(iat) = Spline<double>(grid_q_);
 
+            int np = atom_type.radial_grid().index_of(10);
+            if (np == -1) {
+                np = atom_type.num_mt_points();
+            }
+            auto rg = atom_type.radial_grid().segment(np);
+
             #pragma omp parallel for
             for (int iq = 0; iq < grid_q_.num_points(); iq++) {
-                Spline<double> s(atom_type.radial_grid());
+                Spline<double> s(rg);
                 if (iq == 0) {
-                    for (int ir = 0; ir < atom_type.num_mt_points(); ir++) {
-                        double x = atom_type.radial_grid(ir);
+                    for (int ir = 0; ir < rg.num_points(); ir++) {
+                        double x = rg[ir];
                         s[ir] = (x * atom_type.pp_desc().vloc[ir] + atom_type.zn()) * x;
                     }
                     values_(iat)[iq] = s.interpolate().integrate(0);
                 } else {
                     double g = grid_q_[iq];
                     double g2 = g * g;
-                    for (int ir = 0; ir < atom_type.num_mt_points(); ir++) {
-                        double x = atom_type.radial_grid(ir);
+                    for (int ir = 0; ir < rg.num_points(); ir++) {
+                        double x = rg[ir];
                         s[ir] = (x * atom_type.pp_desc().vloc[ir] + atom_type.zn() * gsl_sf_erf(x)) * std::sin(g * x);
                     }
                     values_(iat)[iq] = (s.interpolate().integrate(0) / g - atom_type.zn() * std::exp(-g2 / 4) / g2);
@@ -484,15 +499,21 @@ class Radial_integrals_vloc_dg: public Radial_integrals_base<1> // TODO: combine
             auto& atom_type = unit_cell_.atom_type(iat);
             values_(iat) = Spline<double>(grid_q_);
 
+            int np = atom_type.radial_grid().index_of(10);
+            if (np == -1) {
+                np = atom_type.num_mt_points();
+            }
+            auto rg = atom_type.radial_grid().segment(np);
+
             #pragma omp parallel for
             for (int iq = 1; iq < grid_q_.num_points(); iq++) {
-                Spline<double> s1(atom_type.radial_grid());
-                Spline<double> s2(atom_type.radial_grid());
+                Spline<double> s1(rg);
+                Spline<double> s2(rg);
                 double g = grid_q_[iq];
                 double g2 = g * g;
                 
-                for (int ir = 0; ir < atom_type.num_mt_points(); ir++) {
-                    double x = atom_type.radial_grid(ir);
+                for (int ir = 0; ir < rg.num_points(); ir++) {
+                    double x = rg[ir];
                     s1[ir] = (x * atom_type.pp_desc().vloc[ir] + atom_type.zn() * gsl_sf_erf(x)) * std::sin(g * x);
                     s2[ir] = (x * atom_type.pp_desc().vloc[ir] + atom_type.zn() * gsl_sf_erf(x)) * std::cos(g * x);
                 }

@@ -23,8 +23,8 @@
       "gk_cutoff" : 6.0,
       "pw_cutoff" : 20.00,
 
-      "energy_tol" : 1e-8,
-      "potential_tol" : 1e-8,
+      "energy_tol" : 1e-9,
+      "potential_tol" : 1e-9,
 
       "num_dft_iter" : 100,
 
@@ -33,7 +33,7 @@
 
     "iterative_solver" : {
         "energy_tolerance" : 1e-2,
-        "residual_tolerance" : 1e-4,
+        "residual_tolerance" : 1e-6,
         "num_steps" : 20,
         "subspace_size" : 4,
         "type" : "davidson",

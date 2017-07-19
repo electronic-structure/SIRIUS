@@ -12,7 +12,7 @@ for test in $tests; do
     echo "OK"
   else
     echo "'${test}' failed"
-    exit ${err}
+    #exit ${err}
   fi
   cd ../
 done

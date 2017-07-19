@@ -901,16 +901,18 @@ module sirius
             integer,                  intent(in)  :: nkb
         end subroutine
 
-        subroutine sirius_get_d_operator_matrix(ia, d_mtrx, ld)&
+        subroutine sirius_get_d_operator_matrix(ia, ispn, d_mtrx, ld)&
             &bind(C, name="sirius_get_d_operator_matrix")
             integer,                  intent(in)  :: ia
+            integer,                  intent(in)  :: ispn
             real(8),                  intent(out) :: d_mtrx
             integer,                  intent(in)  :: ld
         end subroutine
 
-        subroutine sirius_set_d_operator_matrix(ia, d_mtrx, ld)&
+        subroutine sirius_set_d_operator_matrix(ia, ispn, d_mtrx, ld)&
             &bind(C, name="sirius_set_d_operator_matrix")
             integer,                  intent(in)  :: ia
+            integer,                  intent(in)  :: ispn
             real(8),                  intent(in)  :: d_mtrx
             integer,                  intent(in)  :: ld
         end subroutine
@@ -929,8 +931,8 @@ module sirius
             integer,                  intent(in)  :: nhm
         end subroutine
 
-        subroutine sirius_calc_forces(kset_id)&
-            &bind(C, name="sirius_calc_forces")
+        subroutine sirius_calculate_forces(kset_id)&
+            &bind(C, name="sirius_calculate_forces")
             integer,                 intent(in) :: kset_id
         end subroutine
 
@@ -975,6 +977,11 @@ module sirius
             integer,                                 intent(in)  :: ngv
             integer,                                 intent(in)  :: gvl
             integer,                                 intent(in)  :: comm
+        end subroutine
+
+        subroutine sirius_set_processing_unit(pu)&
+            &bind(C, name="sirius_set_processing_unit")
+            character, dimension(*), intent(in)  :: pu
         end subroutine
 
     end interface

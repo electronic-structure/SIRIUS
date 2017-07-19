@@ -106,6 +106,11 @@ namespace sirius {
             Communicator::finalize();
         }
     }
+
+     inline void terminate(int err_code__)
+     {
+        MPI_Abort(MPI_COMM_WORLD, err_code__);
+     }
 };
 
 #define TERMINATE_NO_GPU TERMINATE("not compiled with GPU support");

@@ -12,7 +12,10 @@ inline void Density::generate_valence(K_point_set& ks__)
     }
 
     if (std::abs(wt - 1.0) > 1e-12) {
-        TERMINATE("K_point weights don't sum to one");
+        std::stringstream s;
+        s << "K_point weights don't sum to one" << std::endl
+          << "  obtained sum: " << wt; 
+        TERMINATE(s);
     }
 
     if (std::abs(occ_val - unit_cell_.num_valence_electrons()) > 1e-8) {
@@ -39,27 +42,8 @@ inline void Density::generate_valence(K_point_set& ks__)
 
         for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
             int nbnd = kp->num_occupied_bands(ispn);
-            /* copy wave-functions to GPU */
-            #ifdef __GPU
-            if (ctx_.processing_unit() == GPU) {
-                kp->spinor_wave_functions(ispn).pw_coeffs().copy_to_device(0, nbnd);
-            }
-            #endif
             /* swap wave functions */
-            switch (ctx_.processing_unit()) {
-                case CPU: {
-                    kp->spinor_wave_functions(ispn).pw_coeffs().remap_forward(kp->gkvec().partition().gvec_fft_slab(),
-                                                                              kp->gkvec().comm_ortho_fft(),
-                                                                              nbnd);
-                    break;
-                }
-                case GPU: {
-                    kp->spinor_wave_functions(ispn).pw_coeffs().remap_forward<memory_t::host | memory_t::device>(kp->gkvec().partition().gvec_fft_slab(),
-                                                                                                                 kp->gkvec().comm_ortho_fft(),
-                                                                                                                 nbnd);
-                    break;
-                }
-            }
+            kp->spinor_wave_functions(ispn).pw_coeffs().remap_forward(ctx_.processing_unit(), kp->gkvec().partition().gvec_fft_slab(), nbnd);
         }
         
         if (ctx_.esm_type() == electronic_structure_method_t::full_potential_lapwlo) {
@@ -82,26 +66,31 @@ inline void Density::generate_valence(K_point_set& ks__)
         ctx_.comm().allreduce(density_matrix_.at<CPU>(), static_cast<int>(density_matrix_.size()));
     }
 
-    std::vector<Periodic_function<double>*> rho_vec(ctx_.num_mag_dims() + 1);
-    rho_vec[0] = rho_;
-    for (int j = 0; j < ctx_.num_mag_dims(); j++) {
-        rho_vec[1 + j] = magnetization_[j];
-    }
-
     ctx_.fft_coarse().prepare(ctx_.gvec_coarse().partition());
     auto& comm = ctx_.gvec_coarse().comm_ortho_fft();
     for (int j = 0; j < ctx_.num_mag_dims() + 1; j++) {
         /* reduce arrays; assume that each rank did its own fraction of the density */
         comm.allreduce(&rho_mag_coarse_[j]->f_rg(0), ctx_.fft_coarse().local_size()); 
+        if (ctx_.control().print_checksum_) {
+            auto cs = mdarray<double, 1>(&rho_mag_coarse_[j]->f_rg(0), ctx_.fft_coarse().local_size()).checksum();
+            ctx_.fft_coarse().comm().allreduce(&cs, 1);
+            if (ctx_.comm().rank() == 0) {
+                DUMP("checksum(rho_mag_coarse_rg) : %18.10f", cs);
+            }
+        }
         /* transform to PW domain */
         rho_mag_coarse_[j]->fft_transform(-1);
         /* get the whole vector of PW coefficients */
         auto fpw = rho_mag_coarse_[j]->gather_f_pw(); // TODO: reuse FFT G-vec arrays
+        if (ctx_.control().print_checksum_ && ctx_.comm().rank() == 0) {
+            auto z1 = mdarray<double_complex, 1>(&fpw[0], ctx_.gvec_coarse().num_gvec()).checksum();
+            DUMP("checksum(rho_mag_coarse_pw) : %18.10f %18.10f", z1.real(), z1.imag());
+        }
         /* map to fine G-vector grid */
         for (int i = 0; i < static_cast<int>(lf_gvec_.size()); i++) {
             int igloc = lf_gvec_[i];
             int ig = ctx_.gvec_coarse().index_by_gvec(ctx_.gvec().gvec(ctx_.gvec().offset() + igloc));
-            rho_vec[j]->f_pw_local(igloc) = fpw[ig];
+            rho_vec_[j]->f_pw_local(igloc) = fpw[ig];
         }
     }
     ctx_.fft_coarse().dismiss();
@@ -121,7 +110,7 @@ inline void Density::generate_valence(K_point_set& ks__)
         }
     }
 
-    if (ctx_.esm_type() == electronic_structure_method_t::pseudopotential) {
+    if (ctx_.esm_type() == electronic_structure_method_t::pseudopotential && ctx_.use_symmetry()) {
         symmetrize_density_matrix();
     }
 
