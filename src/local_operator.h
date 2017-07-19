@@ -100,16 +100,14 @@ class Local_operator
             vphi1_ = mdarray<double_complex, 1>(ngv_fft, memory_t::host, "Local_operator::vphi1");
             vphi2_ = mdarray<double_complex, 1>(ngv_fft, memory_t::host, "Local_operator::vphi2");
 
-            #ifdef __GPU
             if (fft_coarse_.pu() == GPU) {
                 veff_vec_.allocate(memory_t::device);
-                veff_vec_.copy_to_device();
+                veff_vec_.copy<memory_t::host, memory_t::device>();
                 pw_ekin_.allocate(memory_t::device);
-                pw_ekin_.copy_to_device();
+                pw_ekin_.copy<memory_t::host, memory_t::device>();
                 vphi1_.allocate(memory_t::device);
                 vphi2_.allocate(memory_t::device);
             }
-            #endif
         }
         
         /// Map effective potential and magnetic field to a coarse FFT mesh in case of PP-PW.
@@ -473,7 +471,7 @@ class Local_operator
                     #endif
                     return;
                 }
-                /* data was remapped and hphi is allocated only on CPU */
+                /* data was remapped and hphi extra storage is allocated only on CPU */
                 if (phi__.component(ispn).pw_coeffs().is_remapped() && fft_coarse_.pu() == GPU) {
                     if (gamma) {
                         vphi2_.copy<memory_t::device, memory_t::host>();
@@ -849,7 +847,7 @@ class Local_operator
         /// Apply magnetic field to the wave-functions.
         /** In case of collinear magnetism only Bz is applied to <tt>phi</tt> and stored in the first component of
          *  <tt>bphi</tt>. In case of non-collinear magnetims Bx-iBy is also applied and stored in the third
-         *  component of <tt>bphi</tt>. The second componet of <tt>bphi</tt> is used to store -Bz|phi>. */
+         *  component of <tt>bphi</tt>. The second component of <tt>bphi</tt> is used to store -Bz|phi>. */
         void apply_b(Gvec_partition const& gkvec_par__,
                      int N__,
                      int n__,

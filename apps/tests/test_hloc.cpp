@@ -34,20 +34,20 @@ void test_hloc(std::vector<int> mpi_grid_dims__, double cutoff__, int num_bands_
     
     Local_operator hloc(params, fft, gvec);
 
-    wave_functions phi(pu, gvec, 4 * num_bands__);
+    Wave_functions phi(pu, gvec, 4 * num_bands__, 1);
     for (int i = 0; i < 4 * num_bands__; i++) {
-        for (int j = 0; j < phi.pw_coeffs().num_rows_loc(); j++) {
-            phi.pw_coeffs().prime(j, i) = type_wrapper<double_complex>::random();
+        for (int j = 0; j < phi.component(0).pw_coeffs().num_rows_loc(); j++) {
+            phi.component(0).pw_coeffs().prime(j, i) = type_wrapper<double_complex>::random();
         }
-        phi.pw_coeffs().prime(0, i) = 1.0;
+        phi.component(0).pw_coeffs().prime(0, i) = 1.0;
     }
-    wave_functions hphi(pu, gvec, 4 * num_bands__);
+    Wave_functions hphi(pu, gvec, 4 * num_bands__, 1);
 
     #ifdef __GPU
     if (pu == GPU) {
-        phi.pw_coeffs().allocate_on_device();
-        phi.pw_coeffs().copy_to_device(0, 4 * num_bands__);
-        hphi.pw_coeffs().allocate_on_device();
+        phi.component(0).pw_coeffs().allocate_on_device();
+        phi.component(0).pw_coeffs().copy_to_device(0, 4 * num_bands__);
+        hphi.component(0).pw_coeffs().allocate_on_device();
     }
     #endif
     
@@ -59,16 +59,21 @@ void test_hloc(std::vector<int> mpi_grid_dims__, double cutoff__, int num_bands_
     mpi_comm_world().barrier();
     t1.stop();
 
-    //#ifdef __GPU
-    //if (pu == GPU && gpu_ptr__) {
-    //    hphi.pw_coeffs().copy_to_host(0, 4 * num_bands__);
-    //}
-    //#endif
+    #ifdef __GPU
+    if (pu == GPU && !phi.component(0).pw_coeffs().is_remapped()) {
+        hphi.component(0).pw_coeffs().copy_to_host(0, 4 * num_bands__);
+    }
+    #endif
+
+    auto cs1 = phi.component(0).checksum_pw(0, 4 * num_bands__, CPU);
+    auto cs2 = hphi.component(0).checksum_pw(0, 4 * num_bands__, CPU);
+
+    std::cout << "checksum(phi): " << cs1 << " checksum(hphi): " << cs2 << std::endl;
 
     double diff{0};
     for (int i = 0; i < 4 * num_bands__; i++) {
-        for (int j = 0; j < phi.pw_coeffs().num_rows_loc(); j++) {
-            diff += std::pow(std::abs(2.71828 * phi.pw_coeffs().prime(j, i) - hphi.pw_coeffs().prime(j, i)), 2);
+        for (int j = 0; j < phi.component(0).pw_coeffs().num_rows_loc(); j++) {
+            diff += std::pow(std::abs(2.71828 * phi.component(0).pw_coeffs().prime(j, i) - hphi.component(0).pw_coeffs().prime(j, i)), 2);
         }
     }
     if (diff != diff) {
