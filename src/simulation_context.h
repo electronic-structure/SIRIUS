@@ -91,9 +91,17 @@ class Simulation_context: public Simulation_context_base
             if (!full_potential()) {
                 Radial_integrals_aug<false> ri(unit_cell(), pw_cutoff(), 20);
 
+                if (comm().rank() == 0 && control().print_memory_usage_) {
+                    MEMORY_USAGE_INFO();
+                }
+
                 /* create augmentation operator Q_{xi,xi'}(G) here */
                 for (int iat = 0; iat < unit_cell().num_atom_types(); iat++) {
                     augmentation_op_.push_back(std::move(Augmentation_operator(*this, iat, ri)));
+
+                    if (comm().rank() == 0 && control().print_memory_usage_) {
+                        MEMORY_USAGE_INFO();
+                    }
                 }
 
                 beta_projector_chunks_ = std::unique_ptr<Beta_projector_chunks>(new Beta_projector_chunks(unit_cell()));
