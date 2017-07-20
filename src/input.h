@@ -78,19 +78,26 @@ struct Unit_cell_input
 {
     /// First vector of the unit cell.
     vector3d<double> a0_;
+
     /// Second vector of the unit cell.
     vector3d<double> a1_;
+
     /// Third vector of the unit cell.
     vector3d<double> a2_;
+
     /// Labels of the atom types.
     std::vector<std::string> labels_;
+
     /// Mapping between a label of atom type and corresponding atomic species file. 
     std::map<std::string, std::string> atom_files_;
+
     /// Atomic coordinates.
     /** Outer vector size is equal to the number of atom types. */
     std::vector<std::vector<std::vector<double>>> coordinates_;
+
     /// True if this section exists in the input file. 
     bool exist_{false};
+
     /// Read the \b unit_cell input section.
     void read(json const& parser)
     {
@@ -178,17 +185,23 @@ struct Mixer_input
 {
     /// Mixing paramter.
     double beta_{0.7};
+
     /// Mixin ratio in case of initial linear mixing.
     double beta0_{0.15};
+
     /// RMS tolerance above which the linear mixing is triggered.
     double linear_mix_rms_tol_{1e6};
+
     /// Type of the mixer.
     /** Available types are: "broyden1", "broyden2", "linear" */
     std::string type_{"broyden1"};
+
     /// Number of history steps for Broyden-type mixers.
     int max_history_{8};
+
     /// True if this section exists in the input file. 
     bool exist_{false};
+
     /// Read the \b mixer input section.
     void read(json const& parser)
     {
@@ -215,11 +228,23 @@ struct Iterative_solver_input
 
     /// Size of the variational subspace is this number times the number of bands.
     int subspace_size_{4};
-    double energy_tolerance_{1e-2};
-    double residual_tolerance_{1e-6};
-    int converge_by_energy_{1}; // TODO: rename, this is meaningless
 
+    /// Tolerance for the eigen-energy difference \f$ |\epsilon_i^{old} - \epsilon_i^{new} | \f$.
+    /** This parameter is reduced during the SCF cycle to reach the high accuracy of the wave-functions. */
+    double energy_tolerance_{1e-2};
+
+    /// Tolerance for the residual L2 norm.
+    double residual_tolerance_{1e-6};
+
+    /// Defines the flavour of the iterative solver.
+    /** If converge_by_energy is set to 0, then the residuals are estimated by their norm. If converge_by_energy 
+     *  is set to 1 then the residuals are estimated by the eigen-energy difference. This allows to estimate the
+     *  unconverged residuals and only then compute only the unconverged. */
+    int converge_by_energy_{1}; // TODO: rename, this is meaningless
+    
+    /// Minimum number of residuals to continue iterative diagonalization process.
     int min_num_res_{0};
+    
     int real_space_prj_{0}; // TODO: move it from here to parameters
     double R_mask_scale_{1.5};
     double mask_alpha_{3};
@@ -231,7 +256,10 @@ struct Iterative_solver_input
     /** If true, keep basis orthogonal and solve standard eigen-value problem. If false, add preconditioned residuals
      *  as they are and solve generalized eigen-value problem. */
     bool orthogonalize_{true};
-
+    
+    /// Tell how to initialize the subspace.
+    /** It can be either "lcao", i.e. start from the linear combination of atomic orbitals or "random" –- start from
+     *  the randomized wave functions. */
     std::string init_subspace_{"lcao"};
 
     void read(json const& parser)
@@ -251,7 +279,6 @@ struct Iterative_solver_input
             orthogonalize_      = parser["iterative_solver"].value("orthogonalize", orthogonalize_);
             init_subspace_      = parser["iterative_solver"].value("init_subspace", init_subspace_);
             std::transform(init_subspace_.begin(), init_subspace_.end(), init_subspace_.begin(), ::tolower);
-
         }
     }
 };

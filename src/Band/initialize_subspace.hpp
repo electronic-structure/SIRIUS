@@ -264,6 +264,11 @@ inline void Band::initialize_subspace(K_point*                                  
 
     #ifdef __GPU
     if (ctx_.processing_unit() == GPU) {
+        if (!keep_wf_on_gpu) {
+            for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
+                kp__->spinor_wave_functions(ispn).pw_coeffs().allocate_on_device();
+            }
+        }
         for (int ispn = 0; ispn < num_sc; ispn++) {
             phi.component(ispn).allocate_on_device();
             phi.component(ispn).copy_to_device(0, num_phi_tot);
@@ -363,6 +368,9 @@ inline void Band::initialize_subspace(K_point*                                  
     if (ctx_.processing_unit() == GPU) {
         for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
             kp__->spinor_wave_functions(ispn).pw_coeffs().copy_to_host(0, num_bands);
+            if (!keep_wf_on_gpu) {
+                kp__->spinor_wave_functions(ispn).pw_coeffs().deallocate_on_device();
+            }
         }
     }
     #endif
