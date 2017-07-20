@@ -632,6 +632,10 @@ inline void Simulation_context_base::initialize()
         print_info();
     }
 
+    if (comm_.rank() == 0 && control().print_memory_usage_) {
+        MEMORY_USAGE_INFO();
+    }
+
     initialized_ = true;
 }
 

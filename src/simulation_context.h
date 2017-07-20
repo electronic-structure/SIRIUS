@@ -101,6 +101,10 @@ class Simulation_context: public Simulation_context_base
                     beta_projector_chunks_->print_info();
                 }
             }
+
+            if (comm_.rank() == 0 && control().print_memory_usage_) {
+                MEMORY_USAGE_INFO();
+            }
         }
 
         Step_function const& step_function() const
