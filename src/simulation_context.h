@@ -102,7 +102,7 @@ class Simulation_context: public Simulation_context_base
                 }
             }
 
-            if (comm_.rank() == 0 && control().print_memory_usage_) {
+            if (comm().rank() == 0 && control().print_memory_usage_) {
                 MEMORY_USAGE_INFO();
             }
         }
