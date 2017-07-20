@@ -75,13 +75,6 @@ const bool hdf5_trace_errors = false;
 
 const bool check_pseudo_charge = false;
 
-/// Level of internal verification
-/** __VERIFICATION = 0 : nothing to do \n
- *  __VERIFICATION = 1 : basic checkes \n */
-#ifndef __VERIFICATION
-#define __VERIFICATION 0
-#endif
-
 const bool use_second_variation = true;
 
 #endif // __CONFIG_H__

@@ -52,6 +52,8 @@ namespace sirius {
  *              ...
  *          },
  *
+ *          "atom_coordinate_units" : units,
+ *
  *          "atoms" : {
  *              label_A: [
  *                  coordinates_A_1, 
@@ -66,28 +68,39 @@ namespace sirius {
  *          }
  *      }
  *  \endcode
+ *
+ *  The "atom_coordinate_units" string is optional. By default it is set to "lattice" which means that the
+ *  atomic coordinates are provided in lattice (fractional) units. It can also be specified in "A" or "au" which
+ *  means that the input atomic coordinates are Cartesian and provided in Angstroms or atomic units of length.
+ *  This is useful in setting up the molecule calculation.
  */
 struct Unit_cell_input
 {
+    /// First vector of the unit cell.
     vector3d<double> a0_;
+    /// Second vector of the unit cell.
     vector3d<double> a1_;
+    /// Third vector of the unit cell.
     vector3d<double> a2_;
-
+    /// Labels of the atom types.
     std::vector<std::string> labels_;
+    /// Mapping between a label of atom type and corresponding atomic species file. 
     std::map<std::string, std::string> atom_files_;
+    /// Atomic coordinates.
+    /** Outer vector size is equal to the number of atom types. */
     std::vector<std::vector<std::vector<double>>> coordinates_;
-
+    /// True if this section exists in the input file. 
     bool exist_{false};
-
+    /// Read the \b unit_cell input section.
     void read(json const& parser)
     {
         if (parser.count("unit_cell")) {
             exist_ = true;
 
             auto section = parser["unit_cell"];
-            auto a0 = section["lattice_vectors"][0].get<std::vector<double>>();
-            auto a1 = section["lattice_vectors"][1].get<std::vector<double>>();
-            auto a2 = section["lattice_vectors"][2].get<std::vector<double>>();
+            auto a0      = section["lattice_vectors"][0].get<std::vector<double>>();
+            auto a1      = section["lattice_vectors"][1].get<std::vector<double>>();
+            auto a2      = section["lattice_vectors"][2].get<std::vector<double>>();
 
             if (a0.size() != 3 || a1.size() != 3 || a2.size() != 3) {
                 TERMINATE("wrong lattice vectors");
@@ -160,20 +173,28 @@ struct Unit_cell_input
     }
 };
 
+/// Parse mixer input section.
 struct Mixer_input
 {
+    /// Mixing paramter.
     double beta_{0.7};
+    /// Mixin ratio in case of initial linear mixing.
     double beta0_{0.15};
+    /// RMS tolerance above which the linear mixing is triggered.
     double linear_mix_rms_tol_{1e6};
+    /// Type of the mixer.
+    /** Available types are: "broyden1", "broyden2", "linear" */
     std::string type_{"broyden1"};
+    /// Number of history steps for Broyden-type mixers.
     int max_history_{8};
+    /// True if this section exists in the input file. 
     bool exist_{false};
-
+    /// Read the \b mixer input section.
     void read(json const& parser)
     {
         if (parser.count("mixer")) {
             exist_ = true;
-            auto section = parser["mixer"];
+            auto section        = parser["mixer"];
             beta_               = section.value("beta", beta_);
             beta0_              = section.value("beta0", beta0_);
             linear_mix_rms_tol_ = section.value("linear_mix_rms_tol", linear_mix_rms_tol_);
