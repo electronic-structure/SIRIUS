@@ -83,9 +83,9 @@ class Beta_projectors: public Beta_projectors_base<1>
                 }
             }
 
-            if (ctx_.processing_unit() == GPU) {
-                pw_coeffs_t_[0].copy<memory_t::host, memory_t::device>();
-            }
+            //if (ctx_.processing_unit() == GPU) {
+            //    pw_coeffs_t_[0].copy<memory_t::host, memory_t::device>();
+            //}
         }
                     
     public:
