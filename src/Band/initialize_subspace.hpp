@@ -262,6 +262,10 @@ inline void Band::initialize_subspace(K_point*                                  
     
     kp__->beta_projectors().prepare();
 
+    if (ctx_.comm().rank() == 0 && ctx_.control().print_memory_usage_) {
+        MEMORY_USAGE_INFO();
+    }
+
     #ifdef __GPU
     if (ctx_.processing_unit() == GPU) {
         if (!keep_wf_on_gpu) {
@@ -281,6 +285,10 @@ inline void Band::initialize_subspace(K_point*                                  
     }
     #endif
     
+    if (ctx_.comm().rank() == 0 && ctx_.control().print_memory_usage_) {
+        MEMORY_USAGE_INFO();
+    }
+
     if (ctx_.control().print_checksum_) {
         for (int ispn = 0; ispn < num_sc; ispn++) {
             auto cs = phi.component(ispn).checksum(0, num_phi_tot);
