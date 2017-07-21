@@ -37,6 +37,7 @@
 
 namespace sirius {
 
+/// A helper class to establish various index mappings for the atomic radial functions.
 class radial_functions_index
 {
     private: 

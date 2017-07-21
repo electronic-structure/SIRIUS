@@ -69,14 +69,19 @@ struct radial_solution_descriptor
 /// Set of radial solution descriptors, used to construct augmented waves or local orbitals.
 typedef std::vector<radial_solution_descriptor> radial_solution_descriptor_set;
 
-/// descriptor of a local orbital radial function
+/// Descriptor of a local orbital radial function.
 struct local_orbital_descriptor
 {
+    /// Orbital quantum number \f$ \ell \f$.
     int l;
-
+    
+    /// Set of radial solution descriptors.
+    /** Local orbital is constructed from at least two radial functions in order to make it zero at the 
+     *  muffin-tin sphere boundary. */
     radial_solution_descriptor_set rsd_set;
 };
 
+/// Descriptor of the pseudopotential.
 struct pseudopotential_descriptor
 {
     /// True if the pseudopotential is soft and charge augmentation is required.
@@ -141,30 +146,40 @@ struct pseudopotential_descriptor
     int cutoff_radius_index;
 };
 
+/// Descriptor of an atom in a list of nearest neigbours for each atom.
+/** See sirius::Unit_cell::find_nearest_neighbours() for the details of usage. */
 struct nearest_neighbour_descriptor
 {
-    /// id of neighbour atom
+    /// Index of the neighbouring atom.
     int atom_id;
 
-    /// translation along each lattice vector
+    /// Translation in fractional coordinates.
     geometry3d::vector3d<int> translation;
 
-    /// distance from the central atom
+    /// Distance from the central atom.
     double distance;
 };
 
+/// Descriptor for the atomic radial functions.
+/** The radial functions \f$ f_{\ell \nu}(r) \f$ are labeled by two indices: orbital quantum number \f$ \ell \f$ and
+ *  an order \f$ \nu \f$ for a given $\f \ell \f$. 
+ */
 struct radial_function_index_descriptor
 {
+    /// Orbital quantum number \f$ \ell \f$.
     int l;
-
+    
+    /// Order of a function for a given \f$ \ell \f$.
     int order;
 
+    /// If this is a local orbital radial function, idxlo is it's index in the list of local orbital descriptors.
     int idxlo;
-
+    
+    /// Constructor.
     radial_function_index_descriptor(int l, int order, int idxlo = -1) 
-        : l(l), 
-          order(order), 
-          idxlo(idxlo)
+        : l(l)
+        , order(order)
+        , idxlo(idxlo)
     {
         assert(l >= 0);
         assert(order >= 0);

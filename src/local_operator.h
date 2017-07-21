@@ -44,14 +44,16 @@ namespace sirius {
 /** The following functionality is implementated:
  *    - application of the local part of Hamiltonian (kinetic + potential) to the wave-fucntions in the PP-PW case
  *    - application of the interstitial part of H and O in the case of FP-LAPW
+ *    - application of the interstitial part of effective magnetic field to the first-variational functios
  *    - remapping of potential and unit-step functions from fine to coarse mesh of G-vectors
  */
 class Local_operator
 {
     private:
+        /// Common parameters.
         Simulation_parameters const* param_{nullptr};
 
-        /// Coarse-grid FFT driver for this operator
+        /// Coarse-grid FFT driver for this operator.
         FFT3D& fft_coarse_;
         
         /// Kinetic energy of G+k plane-waves.
@@ -59,13 +61,17 @@ class Local_operator
 
         /// Effective potential components.
         mdarray<double, 2> veff_vec_;
-
+        
+        /// Temporary array to store [V*phi](G)
         mdarray<double_complex, 1> vphi1_;
 
+        /// Second temporary array to store [V*phi](G)
         mdarray<double_complex, 1> vphi2_;
-
-        mdarray<double, 1> theta_;
         
+        /// LAPW unit step function on a coarse FFT grid.
+        mdarray<double, 1> theta_;
+       
+        /// Temporary array to store psi_{up}(r).
         mdarray<double_complex, 1> buf_rg_;
         
         /// V(G=0) matrix elements.
