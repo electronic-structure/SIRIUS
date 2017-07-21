@@ -39,6 +39,7 @@ namespace sirius {
 
 using json = nlohmann::json;
 
+/// Representation of a unit cell.
 class Unit_cell
 {
     private:
@@ -138,13 +139,6 @@ class Unit_cell
         /** This is equal to the total number of matching coefficients for each plane-wave. */
         int mt_aw_basis_size_{0};
 
-        /// List of augmented wave basis descriptors.
-        /** Establishes mapping between global index in the range [0, mt_aw_basis_size_) 
-         *  and corresponding atom and local index \f$ \xi \f$ */
-        std::vector<mt_basis_descriptor> mt_aw_basis_descriptors_; 
-
-        std::vector<mt_basis_descriptor> mt_lo_basis_descriptors_; 
-        
         /// Total number of local orbital basis functions.
         int mt_lo_basis_size_{0};
 
@@ -575,16 +569,6 @@ class Unit_cell
             return nearest_neighbours_[ia][i];
         }
 
-        inline mt_basis_descriptor const& mt_aw_basis_descriptor(int idx) const
-        {
-            return mt_aw_basis_descriptors_[idx];
-        }
-
-        inline mt_basis_descriptor const& mt_lo_basis_descriptor(int idx) const
-        {
-            return mt_lo_basis_descriptors_[idx];
-        }
-
         inline Symmetry const& symmetry() const
         {
             return (*symmetry_);
@@ -734,22 +718,6 @@ inline void Unit_cell::initialize()
     }
     
     volume_it_ = omega() - volume_mt_;
-
-    mt_aw_basis_descriptors_.resize(mt_aw_basis_size_);
-    for (int ia = 0, n = 0; ia < num_atoms(); ia++) {
-        for (int xi = 0; xi < atom(ia).mt_aw_basis_size(); xi++, n++) {
-            mt_aw_basis_descriptors_[n].ia = ia;
-            mt_aw_basis_descriptors_[n].xi = xi;
-        }
-    }
-
-    mt_lo_basis_descriptors_.resize(mt_lo_basis_size_);
-    for (int ia = 0, n = 0; ia < num_atoms(); ia++) {
-        for (int xi = 0; xi < atom(ia).mt_lo_basis_size(); xi++, n++) {
-            mt_lo_basis_descriptors_[n].ia = ia;
-            mt_lo_basis_descriptors_[n].xi = xi;
-        }
-    }
 
     init_paw();
 }

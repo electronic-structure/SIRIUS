@@ -247,10 +247,4 @@ struct lo_basis_descriptor
     uint8_t idxrf;
 };
 
-struct mt_basis_descriptor
-{
-    int ia;
-    int xi;
-};
-
 #endif
