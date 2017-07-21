@@ -535,9 +535,13 @@ class Local_operator
                 /* non-collinear case */
                 /* 2x2 Hamiltonian in applied to spinor wave-functions
                  * .--------.--------.   .-----.   .------.
+                 * |        |        |   |     |   |      |
                  * | H_{uu} | H_{ud} |   |phi_u|   |hphi_u|
+                 * |        |        |   |     |   |      |
                  * .--------.--------. x .-----. = .------.
+                 * |        |        |   |     |   |      |
                  * | H_{du} | H_{dd} |   |phi_d|   |hphi_d|
+                 * |        |        |   |     |   |      |
                  * .--------.--------.   .-----.   .------.
                  *
                  * hphi_u = H_{uu} phi_u + H_{ud} phi_d

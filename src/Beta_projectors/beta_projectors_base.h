@@ -84,7 +84,7 @@ class Beta_projectors_base
         , gkvec_(gkvec__)
         , lmax_beta_(ctx_.unit_cell().lmax())
     {
-        num_gkvec_loc_ = gkvec_.gvec_count(gkvec_.comm().rank());
+        num_gkvec_loc_ = gkvec_.count();
 
         auto& bchunk = ctx_.beta_projector_chunks();
         if (!bchunk.num_beta_t()) {
@@ -96,8 +96,6 @@ class Beta_projectors_base
             //pw_coeffs_t_[i] = matrix<double_complex>(num_gkvec_loc(), bchunk.num_beta_t(), ctx_.dual_memory_t(), "pw_coeffs_t_");
             pw_coeffs_t_[i] = matrix<double_complex>(num_gkvec_loc(), bchunk.num_beta_t(), memory_t::host, "pw_coeffs_t_");
         }
-        //auto& buf = pw_coeffs_a_buf(num_gkvec_loc(), bchunk.max_num_beta()
-        //pw_coeffs_a_ = matrix<double_complex>(num_gkvec_loc(), bchunk.max_num_beta(), ctx_.dual_memory_t(), "pw_coeffs_a_");
 
         auto& comm = gkvec_.comm();
 
@@ -281,8 +279,6 @@ class Beta_projectors_base
 
         auto& bchunk = ctx_.beta_projector_chunks();
 
-        auto& comm = gkvec_.comm();
-
         auto& pw_coeffs = pw_coeffs_a();
 
         switch (ctx_.processing_unit()) {
@@ -296,8 +292,9 @@ class Beta_projectors_base
 
                     std::vector<double_complex> phase_gk(num_gkvec_loc());
                     for (int igk_loc = 0; igk_loc < num_gkvec_loc_; igk_loc++) {
-                        int igk = gkvec_.gvec_offset(comm.rank()) + igk_loc;
+                        int igk = gkvec_.offset() + igk_loc;
                         auto G = gkvec_.gvec(igk);
+                        /* total phase e^{i(G+k)r_{\alpha}} */
                         phase_gk[igk_loc] = std::conj(ctx_.gvec_phase_factor(G, ia) * phase_k);
                     }
                     for (int xi = 0; xi < bchunk(ichunk__).desc_(beta_desc_idx::nbf, i); xi++) {
@@ -327,20 +324,20 @@ class Beta_projectors_base
 
     void prepare()
     {
+        PROFILE("sirius::Beta_projectors_base::prepare");
+
         if (ctx_.processing_unit() == GPU) {
             for (int i = 0; i < N; i++) {
                 pw_coeffs_t_[i].allocate(memory_t::device);
                 pw_coeffs_t_[i].template copy<memory_t::host, memory_t::device>();
             }
         }
-
-        //if (ctx_.processing_unit() == GPU) {
-        //    beta_phi_.allocate(memory_t::device);
-        //}
     }
 
     void dismiss()
     {
+        PROFILE("sirius::Beta_projectors_base::dismiss");
+
         #ifdef __GPU
         if (ctx_.processing_unit() == GPU) {
             for (int i = 0; i < N; i++) {
@@ -348,11 +345,6 @@ class Beta_projectors_base
             }
         }
         #endif
-        //#ifdef __GPU
-        //if (ctx_.processing_unit() == GPU) {
-        //    beta_phi_.deallocate_on_device();
-        //}
-        //#endif
     }
 };
 
