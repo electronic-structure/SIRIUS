@@ -534,10 +534,31 @@ class Stress {
                 TERMINATE("reduced G+k vectors are not implemented for non-local stress: fix this");
             }
 
+            #ifdef __GPU
+            if (ctx_.processing_unit() == GPU && !keep_wf_on_gpu) {
+                int nbnd = (ctx_.num_mag_dims() == 3) ? ctx_.num_bands() : ctx_.num_fv_states();
+                for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
+                    /* allocate GPU memory */
+                    kp->spinor_wave_functions(ispn).pw_coeffs().prime().allocate(memory_t::device);
+                    kp->spinor_wave_functions(ispn).pw_coeffs().copy_to_device(0, nbnd);
+                }
+            }
+            #endif
+
             Beta_projectors_strain_deriv bp_strain_deriv(ctx_, kp->gkvec());
+
             Non_local_functor<T, 9> nlf(ctx_, bp_strain_deriv);
 
             nlf.add_k_point_contribution(*kp, collect_result);
+
+            #ifdef __GPU
+            if (ctx_.processing_unit() == GPU && !keep_wf_on_gpu) {
+                for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
+                    /* deallocate GPU memory */
+                    kp->spinor_wave_functions(ispn).pw_coeffs().deallocate_on_device();
+                }
+            }
+            #endif
         }
 
         #pragma omp parallel

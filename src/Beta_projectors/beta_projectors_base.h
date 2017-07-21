@@ -114,10 +114,10 @@ class Beta_projectors_base
     }
     ~Beta_projectors_base()
     {
-        #ifdef __GPU
-        pw_coeffs_a_shared(0, memory_t::none).deallocate_on_device();
-        beta_phi_shared(0, memory_t::none).deallocate_on_device();
-        #endif
+        //#ifdef __GPU
+        pw_coeffs_a_shared(0, memory_t::none) = mdarray<double_complex, 1>(); //.deallocate_on_device();
+        beta_phi_shared(0, memory_t::none) = mdarray<double, 1>(); //.deallocate_on_device();
+        //#endif
     }
 
     inline int num_gkvec_loc() const

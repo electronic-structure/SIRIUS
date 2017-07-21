@@ -46,9 +46,29 @@ class Forces_PS
     {
         Beta_projectors_gradient bp_grad(ctx_, kpoint.gkvec(), kpoint.beta_projectors());
 
+        #ifdef __GPU
+        if (ctx_.processing_unit() == GPU && !keep_wf_on_gpu) {
+            int nbnd = (ctx_.num_mag_dims() == 3) ? ctx_.num_bands() : ctx_.num_fv_states();
+            for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
+                /* allocate GPU memory */
+                kpoint.spinor_wave_functions(ispn).pw_coeffs().prime().allocate(memory_t::device);
+                kpoint.spinor_wave_functions(ispn).pw_coeffs().copy_to_device(0, nbnd);
+            }
+        }
+        #endif
+
         Non_local_functor<T, 3> nlf(ctx_, bp_grad);
 
         nlf.add_k_point_contribution(kpoint, forces);
+
+        #ifdef __GPU
+        if (ctx_.processing_unit() == GPU && !keep_wf_on_gpu) {
+            for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
+                /* deallocate GPU memory */
+                kpoint.spinor_wave_functions(ispn).pw_coeffs().deallocate_on_device();
+            }
+        }
+        #endif
     }
 
     inline void allocate()
