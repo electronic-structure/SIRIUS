@@ -41,20 +41,25 @@ namespace sirius {
 class radial_functions_index
 {
     private: 
-
+        
+        /// A list of radial function index descriptors.
+        /** This list establishes a mapping \f$ f_{\mu}(r) \leftrightarrow  f_{\ell \nu}(r) \f$ between a 
+         *  composite index \f$ \mu \f$ of radial functions and 
+         *  corresponding \f$ \ell \nu \f$ indices, where \f$ \ell \f$ is the orbital quantum number and
+         *  \f$ \nu \f$ is the order of radial function for a given \f$ \ell \f$. */
         std::vector<radial_function_index_descriptor> radial_function_index_descriptors_;
 
         mdarray<int, 2> index_by_l_order_;
 
         mdarray<int, 1> index_by_idxlo_;
 
-        /// number of radial functions for each angular momentum quantum number
+        /// Number of radial functions for each angular momentum quantum number.
         std::vector<int> num_rf_;
 
-        /// number of local orbitals for each angular momentum quantum number
+        /// Number of local orbitals for each angular momentum quantum number.
         std::vector<int> num_lo_;
 
-        // maximum number of radial functions across all angular momentums
+        // Maximum number of radial functions across all angular momentums.
         int max_num_rf_;
 
         int lmax_aw_;
