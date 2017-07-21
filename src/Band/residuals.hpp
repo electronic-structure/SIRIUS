@@ -293,17 +293,39 @@ int Band::residuals_common(K_point*             kp__,
 
     int n{0};
     if (converge_by_energy) {
-        /* main trick here: first estimate energy difference, and only then compute unconverged residuals */
-        std::vector<int> ev_idx;
-        for (int i = 0; i < num_bands__; i++) {
-            double tol = itso.energy_tolerance_ + 1e-7 * std::abs(kp__->band_occupancy(i + ispn__ * ctx_.num_fv_states()) / ctx_.max_occupancy() - 1);
-            if (std::abs(eval__[i] - eval_old__[i]) > tol) {
-                ev_idx.push_back(i);
+
+        auto get_ev_idx = [&](double tol__)
+        {
+            std::vector<int> ev_idx;
+            for (int i = 0; i < num_bands__; i++) {
+                double tol = tol__ + 1e-7 * std::abs(kp__->band_occupancy(i + ispn__ * ctx_.num_fv_states()) / ctx_.max_occupancy() - 1);
+                if (std::abs(eval__[i] - eval_old__[i]) > tol) {
+                    ev_idx.push_back(i);
+                }
             }
-        }
+            return std::move(ev_idx);
+        };
+
+        auto ev_idx = get_ev_idx(itso.energy_tolerance_);
+
+        ///* main trick here: first estimate energy difference, and only then compute unconverged residuals */
+        //std::vector<int> ev_idx;
+        //for (int i = 0; i < num_bands__; i++) {
+        //    double tol = itso.energy_tolerance_ + 1e-7 * std::abs(kp__->band_occupancy(i + ispn__ * ctx_.num_fv_states()) / ctx_.max_occupancy() - 1);
+        //    if (std::abs(eval__[i] - eval_old__[i]) > tol) {
+        //        ev_idx.push_back(i);
+        //    }
+        //}
 
         if ((n = static_cast<int>(ev_idx.size())) == 0) {
             return 0;
+        }
+
+        if (n < 4) {
+            printf("small number of residuals is found: %i\n", n);
+            ev_idx = get_ev_idx(std::max(1e-12, itso.energy_tolerance_ * 0.01));
+            n = static_cast<int>(ev_idx.size()); 
+            printf("new number of residuals: %i\n", n);
         }
 
         std::vector<double> eval_tmp(n);

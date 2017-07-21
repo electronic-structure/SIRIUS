@@ -43,6 +43,8 @@
 #ifdef __MAGMA
 #include "GPU/magma.hpp"
 #endif
+#include "constants.h"
+#include "version.h"
 
 #ifdef __PLASMA
 extern "C" void plasma_init(int num_cores);
@@ -60,6 +62,9 @@ namespace sirius {
     {
         if (call_mpi_init__) {
             Communicator::initialize();
+        }
+        if (mpi_comm_world().rank() == 0) {
+            printf("SIRIUS %i.%i, git hash: %s\n", major_version, minor_version, git_hash);
         }
 
         #ifdef __GPU
