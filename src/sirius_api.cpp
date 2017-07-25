@@ -3006,6 +3006,9 @@ void sirius_set_pw_coeffs(ftn_char label__,
         } else if (label == "magy") {
             density->magnetization(2)->scatter_f_pw(v);
             density->magnetization(2)->fft_transform(1);
+        } else if (label == "vloc") {
+            potential->local_potential().scatter_f_pw(v);
+            potential->local_potential().fft_transform(1);
         } else {
             std::stringstream s;
             s << "wrong label in sirius_set_pw_coeffs()" << std::endl
@@ -3110,7 +3113,7 @@ void sirius_get_pw_coeffs_real(ftn_char    atom_type__,
                            return ri.value(iat, g);
                        });
     } else if (label == "vloc") {
-        sirius::Radial_integrals_vloc ri(sim_ctx->unit_cell(), sim_ctx->pw_cutoff(), 100);
+        sirius::Radial_integrals_vloc<true> ri(sim_ctx->unit_cell(), sim_ctx->pw_cutoff(), 200);
         make_pw_coeffs([&ri, iat](double g)
                        {
                            return ri.value(iat, g);

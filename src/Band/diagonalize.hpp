@@ -707,6 +707,12 @@ inline void Band::diag_pseudo_potential_davidson(K_point*       kp__,
 
     #ifdef __GPU
     if (ctx_.processing_unit() == GPU) {
+        if (!keep_wf_on_gpu) {
+            for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
+                psi.component(ispn).pw_coeffs().allocate_on_device();
+                psi.component(ispn).pw_coeffs().copy_to_device(0, num_bands);
+            }
+        }
         for (int i = 0; i < num_sc; i++) {
             phi.component(i).pw_coeffs().allocate_on_device();
             res.component(i).pw_coeffs().allocate_on_device();
@@ -911,10 +917,12 @@ inline void Band::diag_pseudo_potential_davidson(K_point*       kp__,
     if (ctx_.processing_unit() == GPU) {
         for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
             psi.component(ispn).pw_coeffs().copy_to_host(0, num_bands);
+            if (!keep_wf_on_gpu) {
+                psi.component(ispn).pw_coeffs().deallocate_on_device();
+            }
         }
     }
     #endif
-    //kp__->comm().barrier();
 }
 
 template <typename T>
