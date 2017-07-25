@@ -720,6 +720,13 @@ inline void Unit_cell::initialize()
     volume_it_ = omega() - volume_mt_;
 
     init_paw();
+
+    //== write_cif();
+
+    //== if (comm().rank() == 0) {
+    //==     std::ofstream ofs(std::string("unit_cell.json"), std::ofstream::out | std::ofstream::trunc);
+    //==     ofs << serialize().dump(4);
+    //== }
 }
 
 inline void Unit_cell::get_symmetry()
@@ -960,6 +967,23 @@ inline void Unit_cell::print_info(int verbosity_)
             auto vf = atom(i).vector_field();
             printf("%6i      %f %f %f   %f %f %f   %6i      %6i\n", i, pos[0], pos[1], pos[2], vf[0], vf[1], vf[2], 
                    atom(i).type_id(), atom(i).symmetry_class_id());
+        }
+   
+        printf("\n");
+        for (int ic = 0; ic < num_atom_symmetry_classes(); ic++) {
+            printf("class id : %i   atom id : ", ic);
+            for (int i = 0; i < atom_symmetry_class(ic).num_atoms(); i++) {
+                printf("%i ", atom_symmetry_class(ic).atom_id(i));
+            }
+            printf("\n");
+        }
+        printf("\n");
+        printf("atom id              position (Cartesian, a.u.)\n");
+        printf("----------------------------------------------------------------------------------------\n");
+        for (int i = 0; i < num_atoms(); i++) {
+            auto pos = atom(i).position();
+            auto vc = get_cartesian_coordinates(pos);
+            printf("%6i      %18.12f %18.12f %18.12f\n", i, vc[0], vc[1], vc[2]);
         }
    
         printf("\n");

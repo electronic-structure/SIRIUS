@@ -131,7 +131,7 @@ class Forces_PS
 
         const Periodic_function<double>* valence_rho = density_.rho();
 
-        Radial_integrals_vloc ri(ctx_.unit_cell(), ctx_.pw_cutoff(), 100);
+        Radial_integrals_vloc<false> ri(ctx_.unit_cell(), ctx_.pw_cutoff(), 200);
 
         Unit_cell& unit_cell = ctx_.unit_cell();
 
