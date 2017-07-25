@@ -118,7 +118,7 @@ void find_primitive()
 
     printf("original number of atoms: %i\n", ctx.unit_cell().num_atoms());
 
-    int nat_new = spg_find_primitive(lattice, (double(*)[3])&positions(0, 0), &types[0], ctx.unit_cell().num_atoms(), 1e-4);
+    int nat_new = spg_find_primitive(lattice, (double(*)[3])&positions(0, 0), &types[0], ctx.unit_cell().num_atoms(), ctx.control().spglib_tolerance_);
     printf("new number of atoms: %i\n", nat_new);
 
     Simulation_context ctx_new(mpi_comm_self());
@@ -170,7 +170,8 @@ void create_qe_input()
     "prefix = \'scf_\',\n"
     "tstress = false,\n"
     "tprnfor = false,\n"
-    "verbosity = \'high\'\n"
+    "verbosity = \'high\',\n"
+    "wf_collect = false\n"
     "/\n");
     
     fprintf(fout, "&system\nibrav=0, celldm(1)=1, ecutwfc=40, ecutrho = 300,\noccupations = \'smearing\', smearing = \'gauss\', degauss = 0.001,\n");
@@ -216,6 +217,7 @@ int main(int argn, char** argv)
     args.register_key("--supercell=", "{string} transformation matrix (9 numbers)");
     args.register_key("--qe", "create input for QE");
     args.register_key("--find_primitive", "find a primitive cell");
+    args.register_key("--cif", "create CIF file");
 
     args.parse_args(argn, argv);
     if (args.exist("help")) {
@@ -233,6 +235,10 @@ int main(int argn, char** argv)
     }
     if (args.exist("qe")) {
         create_qe_input();
+    }
+    if (args.exist("cif")) {
+        Simulation_context ctx("sirius.json", mpi_comm_self());
+        ctx.unit_cell().write_cif();
     }
 
     sirius::finalize(1);
