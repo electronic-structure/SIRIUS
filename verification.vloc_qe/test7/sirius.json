@@ -1,0 +1,59 @@
+{
+  "control" : {
+      "cyclic_block_size" : 16,
+      "processing_unit" : "cpu",
+      "std_evp_solver_type" : "lapack",
+      "gen_evp_solver_type" : "lapack",
+      "verbosity" : 1
+  },
+
+  "parameters" : {
+
+    "electronic_structure_method" : "pseudopotential",
+
+    "xc_functionals" : ["XC_GGA_X_PBE", "XC_GGA_C_PBE"],
+
+    "smearing_width" : 0.02,
+
+    "use_symmetry" : true,
+
+    "num_mag_dims" : 1,
+
+    "gk_cutoff" : 6.0,
+    "pw_cutoff" : 25.00,
+
+    "energy_tol" : 1e-8,
+
+    "num_dft_iter" : 100,
+
+    "ngridk" : [2,2,2],
+
+    "reduce_gvec": 1
+  },
+
+  "iterative_solver" : {
+      "energy_tolerance" : 1e-2,
+      "residual_tolerance" : 1e-6,
+      "num_steps" : 20,
+      "subspace_size" : 4,
+      "type" : "davidson",
+      "converge_by_energy" : 1
+  },
+
+    "unit_cell": {
+        "atom_files": {
+            "Ni": "ni_pbe_v1.4.uspp.F.UPF.json"
+        },
+        "atom_types": ["Ni"],
+        "atoms": {
+            "Ni": [
+                [0.0,0.0,0.0,  0,0,1]
+            ]
+        },
+        "lattice_vectors": [
+            [0.0,3.32308339004766,3.32308339004766],
+            [3.32308339004766,0.0,3.32308339004766],
+            [3.32308339004766,3.32308339004766,0.0]
+        ]
+    }
+}
