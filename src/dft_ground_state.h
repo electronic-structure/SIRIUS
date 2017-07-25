@@ -124,12 +124,19 @@ class DFT_ground_state
          *  \f]
          */
         double ewald_energy();
-
+        
+        /// Compute approximate atomic magnetic moments in case of PW-PP.
         mdarray<double, 2> compute_atomic_mag_mom() const
         {
+            PROFILE("sirius::DFT_ground_state::compute_atomic_mag_mom");
+            
+            /* radius of spheres around each atom where "atomic" magnetic moment is calculated */
+            double const R = 2.0;
+
             mdarray<double, 2> mmom(3, unit_cell_.num_atoms());
             mmom.zero();
 
+            #pragma omp parallel for
             for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
                 for (int j0 = 0; j0 < ctx_.fft().grid().size(0); j0++) {
                     for (int j1 = 0; j1 < ctx_.fft().grid().size(1); j1++) {
@@ -148,7 +155,7 @@ class DFT_ground_state
                                         auto r = unit_cell_.get_cartesian_coordinates(v1);
                                         auto a = r.length();
 
-                                        if (a <= 2.0) {
+                                        if (a <= R) {
                                             for (int j = 0; j < ctx_.num_mag_dims(); j++) {
                                                 mmom(j, ia) += density_.magnetization(j)->f_rg(ir);
                                             }

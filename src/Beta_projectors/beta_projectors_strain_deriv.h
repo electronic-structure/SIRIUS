@@ -224,11 +224,11 @@ class Beta_projectors_strain_deriv : public Beta_projectors_base<9>
         generate_pw_coefs_t();
         //generate_pw_coefs_t_v2();
 
-        if (ctx__.processing_unit() == GPU) {
-            for (int j = 0; j < 9; j++) {
-                pw_coeffs_t_[j].copy<memory_t::host, memory_t::device>();
-            }
-        }
+        //if (ctx__.processing_unit() == GPU) {
+        //    for (int j = 0; j < 9; j++) {
+        //        pw_coeffs_t_[j].copy<memory_t::host, memory_t::device>();
+        //    }
+        //}
     }
 };
 
