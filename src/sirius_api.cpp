@@ -3101,19 +3101,19 @@ void sirius_get_pw_coeffs_real(ftn_char    atom_type__,
     };
     
     if (label == "rhoc") {
-        sirius::Radial_integrals_rho_core_pseudo<false> ri(sim_ctx->unit_cell(), sim_ctx->pw_cutoff(), 20);
+        sirius::Radial_integrals_rho_core_pseudo<false> ri(sim_ctx->unit_cell(), sim_ctx->pw_cutoff(), sim_ctx->settings().nprii_rho_core_);
         make_pw_coeffs([&ri, iat](double g)
                        {
                            return ri.value(iat, g);
                        });
     } else if (label == "rhoc_dg") {
-        sirius::Radial_integrals_rho_core_pseudo<true> ri(sim_ctx->unit_cell(), sim_ctx->pw_cutoff(), 20);
+        sirius::Radial_integrals_rho_core_pseudo<true> ri(sim_ctx->unit_cell(), sim_ctx->pw_cutoff(), sim_ctx->settings().nprii_rho_core_);
         make_pw_coeffs([&ri, iat](double g)
                        {
                            return ri.value(iat, g);
                        });
     } else if (label == "vloc") {
-        sirius::Radial_integrals_vloc<true> ri(sim_ctx->unit_cell(), sim_ctx->pw_cutoff(), 200);
+        sirius::Radial_integrals_vloc<true> ri(sim_ctx->unit_cell(), sim_ctx->pw_cutoff(), sim_ctx->settings().nprii_vloc_);
         make_pw_coeffs([&ri, iat](double g)
                        {
                            return ri.value(iat, g);

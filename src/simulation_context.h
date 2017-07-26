@@ -89,7 +89,7 @@ class Simulation_context: public Simulation_context_base
             }
 
             if (!full_potential()) {
-                Radial_integrals_aug<false> ri(unit_cell(), pw_cutoff(), 20);
+                Radial_integrals_aug<false> ri(unit_cell(), pw_cutoff(), settings().nprii_aug_);
 
                 if (comm().rank() == 0 && control().print_memory_usage_) {
                     MEMORY_USAGE_INFO();

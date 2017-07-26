@@ -131,7 +131,7 @@ class Forces_PS
 
         const Periodic_function<double>* valence_rho = density_.rho();
 
-        Radial_integrals_vloc<false> ri(ctx_.unit_cell(), ctx_.pw_cutoff(), 200);
+        Radial_integrals_vloc<false> ri(ctx_.unit_cell(), ctx_.pw_cutoff(), ctx_.settings().nprii_vloc_);
 
         Unit_cell& unit_cell = ctx_.unit_cell();
 
@@ -288,7 +288,7 @@ class Forces_PS
 
         double fact = gvecs.reduced() ? 2.0 : 1.0;
 
-        auto ri = Radial_integrals_rho_core_pseudo<false>(ctx_.unit_cell(), ctx_.pw_cutoff(), 20);
+        auto ri = Radial_integrals_rho_core_pseudo<false>(ctx_.unit_cell(), ctx_.pw_cutoff(), ctx_.settings().nprii_rho_core_);
 
         /* here the calculations are in lattice vectors space */
         #pragma omp parallel for
