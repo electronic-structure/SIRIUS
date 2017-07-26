@@ -458,6 +458,25 @@ struct Parameters_input
     }
 };
 
+struct Settings_input
+{
+    /// Number of points (per a.u.^-1) for radial integral interpolation for local part of pseudopotential.
+    int nprii_vloc_{200};
+    int nprii_beta_{20};
+    int nprii_aug_{20};
+    int nprii_rho_core_{20};
+
+    void read(json const& parser)
+    {
+        if (parser.count("settings")) {
+            nprii_vloc_      = parser["settings"].value("nprii_vloc", nprii_vloc_);
+            nprii_beta_      = parser["settings"].value("nprii_beta", nprii_beta_);
+            nprii_aug_       = parser["settings"].value("nprii_aug", nprii_aug_);
+            nprii_rho_core_  = parser["settings"].value("nprii_rho_core", nprii_rho_core_);
+        }
+    }
+};
+
 };
 
 #endif // __INPUT_H__
