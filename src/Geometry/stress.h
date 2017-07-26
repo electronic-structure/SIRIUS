@@ -389,8 +389,8 @@ class Stress {
     {
         PROFILE("sirius::Stress|vloc");
 
-        Radial_integrals_vloc<false> ri_vloc(ctx_.unit_cell(), ctx_.pw_cutoff(), 200);
-        Radial_integrals_vloc<true> ri_vloc_dg(ctx_.unit_cell(), ctx_.pw_cutoff(), 200);
+        Radial_integrals_vloc<false> ri_vloc(ctx_.unit_cell(), ctx_.pw_cutoff(), ctx_.settings().nprii_vloc_);
+        Radial_integrals_vloc<true> ri_vloc_dg(ctx_.unit_cell(), ctx_.pw_cutoff(), ctx_.settings().nprii_vloc_);
 
         auto v = ctx_.make_periodic_function<index_domain_t::local>([&ri_vloc](int iat, double g)
                                                                     {
@@ -629,8 +629,8 @@ class Stress {
 
         potential_.effective_potential()->fft_transform(-1);
 
-        Radial_integrals_aug<false> ri(ctx_.unit_cell(), ctx_.pw_cutoff(), 20);
-        Radial_integrals_aug<true> ri_dq(ctx_.unit_cell(), ctx_.pw_cutoff(), 20);
+        Radial_integrals_aug<false> ri(ctx_.unit_cell(), ctx_.pw_cutoff(), ctx_.settings().nprii_aug_);
+        Radial_integrals_aug<true> ri_dq(ctx_.unit_cell(), ctx_.pw_cutoff(), ctx_.settings().nprii_aug_);
 
         Augmentation_operator_gvec_deriv q_deriv(ctx_);
 
