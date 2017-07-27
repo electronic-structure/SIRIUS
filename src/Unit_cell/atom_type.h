@@ -1371,10 +1371,9 @@ inline void Atom_type::read_pseudo_uspp(json const& parser)
 
     set_radial_grid(num_mt_points_, rgrid.data());
 
-    pp_desc_.SpinOrbit_Coupling = parser["pseudo_potential"]["header"]["SpinOrbit"];
+    if(parser["pseudo_potential"]["header"].count("SpinOrbit"))
+      pp_desc_.SpinOrbit_Coupling = parser["pseudo_potential"]["header"]["SpinOrbit"];
 
-    if(pp_desc_.SpinOrbit_Coupling)
-      std::cout << "We should not have spin orbit activated" << std::endl;
     pp_desc_.num_beta_radial_functions = parser["pseudo_potential"]["header"]["number_of_proj"];
 
     pp_desc_.beta_radial_functions = mdarray<double, 2>(num_mt_points_, pp_desc_.num_beta_radial_functions);
@@ -1382,6 +1381,7 @@ inline void Atom_type::read_pseudo_uspp(json const& parser)
 
     pp_desc_.num_beta_radial_points.resize(pp_desc_.num_beta_radial_functions);
     pp_desc_.beta_l.resize(pp_desc_.num_beta_radial_functions);
+    
     if (pp_desc_.SpinOrbit_Coupling)
         pp_desc_.beta_j.resize(pp_desc_.num_beta_radial_functions);
     
@@ -1658,7 +1658,7 @@ inline double Atom_type::ClebschGordan(const int l, const double j, const int m,
   
     for (auto m = 2; m <= 2 * l + 1; m = +2) {
       int mi = (m >> 1); // divide by two
-      int n  = l - mi + 1;
+      int n  = l - mi + 1; // shift by l (negative index otherwise)
     
       double EvenOdd = -1.0;
       if (m&0x1 == 0) {
@@ -1680,11 +1680,11 @@ inline double Atom_type::ClebschGordan(const int l, const double j, const int m,
     for (int xi2 = 0; xi2 < nbf; xi2++) {
       const int l2     = this->indexb(xi2).l;
       const double j2  = this->indexb(xi2).j;
-      const int m2 = this->indexb(xi2).m;
+      const int m2 = this->indexb(xi2).m + l2;
       for (int xi1 = 0; xi1 < nbf; xi1++) {
 	const int l1     = this->indexb(xi1).l;
 	const double j1  = this->indexb(xi1).j;
-	const int m1 = this->indexb(xi2).m;
+	const int m1 = this->indexb(xi2).m + l1;
 	if ((l2 == l1) && (fabs(j1 - j2) < 1e-8) && (this->indexb(xi1).idxlo == this->indexb(xi2).idxlo)) {
 	  for (auto sigma1 = 0; sigma1 < 2; sigma1++) {
 	    for (auto sigma2 = 0; sigma2 < 2; sigma2++) {
