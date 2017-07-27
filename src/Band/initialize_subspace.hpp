@@ -81,7 +81,7 @@ inline void Band::initialize_subspace(K_point_set& kset__,
         int ik = kset__.spl_num_kpoints(ikloc);
         auto kp = kset__[ik];
         
-        if (ctx_.gamma_point()) {
+        if (ctx_.gamma_point()&&(ctx_.so_correction() == false)) {
             initialize_subspace<double>(kp, potential__.effective_potential(),
                                         potential__.effective_magnetic_field(), N, rad_int);
         } else {

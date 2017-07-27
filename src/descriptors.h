@@ -74,7 +74,10 @@ struct local_orbital_descriptor
 {
     /// Orbital quantum number \f$ \ell \f$.
     int l;
-    
+
+    /// Total angular momentum
+    double j;
+
     /// Set of radial solution descriptors.
     /** Local orbital is constructed from at least two radial functions in order to make it zero at the 
      *  muffin-tin sphere boundary. */
@@ -84,6 +87,9 @@ struct local_orbital_descriptor
 /// Descriptor of the pseudopotential.
 struct pseudopotential_descriptor
 {
+    /// The pseudo potential includes spin orbit coupling
+    bool SpinOrbit_Coupling{false};
+  
     /// True if the pseudopotential is soft and charge augmentation is required.
     bool augment{false};
     
@@ -101,6 +107,9 @@ struct pseudopotential_descriptor
 
     /// Orbital quantum numbers of each beta radial function.
     std::vector<int> beta_l;
+
+    /// Total orbital quantum numbers of each beta radial function.
+    std::vector<int> beta_j;
 
     /// Number of radial grid points for each beta radial function.
     std::vector<int> num_beta_radial_points;
@@ -168,7 +177,9 @@ struct radial_function_index_descriptor
 {
     /// Orbital quantum number \f$ \ell \f$.
     int l;
-    
+
+  /// Total angular momentum
+  double j;
     /// Order of a function for a given \f$ \ell \f$.
     int order;
 
@@ -184,20 +195,34 @@ struct radial_function_index_descriptor
         assert(l >= 0);
         assert(order >= 0);
     }
+
+    radial_function_index_descriptor(int l, double j, int order, int idxlo = -1) 
+        : l(l),
+          j(j),
+          order(order), 
+          idxlo(idxlo)
+    {
+        assert(l >= 0);
+        assert(order >= 0);
+    }
 };
 
 struct basis_function_index_descriptor
 {
+    /// angular momentum
     int l;
-
+    /// projection of the angular momentum
     int m;
-
+    /// composite index
     int lm;
-
+    /// total angular momemtum
+    double j;
+    /// order of the radial function for a given l (j)
     int order;
-
+    /// indice of local orbital
     int idxlo;
-
+    /// index of the radial function or beta projector in the case of
+    /// pseudo potential
     int idxrf;
     
     basis_function_index_descriptor(int l, int m, int order, int idxlo, int idxrf) 
@@ -213,6 +238,22 @@ struct basis_function_index_descriptor
         assert(idxrf >= 0);
 
         lm = Utils::lm_by_l_m(l, m);
+    }
+
+    basis_function_index_descriptor(int l, int m, double j, int order, int idxlo, int idxrf) 
+         : l(l), 
+           m(m),
+           j(j),
+           order(order), 
+           idxlo(idxlo), 
+           idxrf(idxrf) 
+    {
+         assert(l >= 0);
+         assert(m >= -l && m <= l);
+         assert(order >= 0);
+         assert(idxrf >= 0);
+         assert(std:fabs(std::fabs(j)-0.5)< 1e-8);
+         lm = Utils::lm_by_l_m(l, m);
     }
 };
 

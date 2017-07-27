@@ -35,6 +35,7 @@
 #include <cstring>
 #include <initializer_list>
 #include <type_traits>
+#include <functional>
 #ifdef __GPU
 #include "GPU/cuda.hpp"
 #endif

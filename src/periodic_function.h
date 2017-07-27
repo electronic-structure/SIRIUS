@@ -334,7 +334,7 @@ class Periodic_function: public Smooth_periodic_function<T>
                     
                     #pragma omp for schedule(static)
                     for (int irloc = 0; irloc < this->fft_->local_size(); irloc++) {
-                        rt += std::conj(this->f_rg(irloc)) * g__->f_rg(irloc);
+		      rt += type_wrapper<T>::bypass(std::conj(this->f_rg(irloc))) * g__->f_rg(irloc);
                     }
         
                     #pragma omp critical
@@ -342,7 +342,7 @@ class Periodic_function: public Smooth_periodic_function<T>
                 }
             } else {
                 for (int irloc = 0; irloc < this->fft_->local_size(); irloc++) {
-                    result_rg += std::conj(this->f_rg(irloc)) * g__->f_rg(irloc) * 
+		  result_rg += type_wrapper<T>::bypass(std::conj(this->f_rg(irloc))) * g__->f_rg(irloc) * 
                                  this->step_function_.theta_r(irloc);
                 }
             }

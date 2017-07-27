@@ -149,6 +149,10 @@ void Band::apply_h_o(K_point* kp__,
                 d_op.apply(i, (ispn == 0) ? 3 : 2, hphi__.component((ispn == 0) ? 1 : 0), N__, n__, beta_phi);
                 /* apply Q operator (diagonal in spin) */  
                 q_op.apply(i, 0, ophi__.component(ispn), N__, n__, beta_phi);
+		if(ctx_.so_correction()) {
+		  /* apply non-diagonal spin blocks */
+		  q_op.apply(i, (ispn == 0) ? 3 : 2, ophi__.component((ispn == 0) ? 1 : 0), N__, n__, beta_phi);
+		}
             }
         } else { /* non-magnetic or collinear case */
 
