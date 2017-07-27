@@ -284,34 +284,57 @@ class D_operator: public Non_local_operator<T>
 
             for (int ia = 0; ia < uc.num_atoms(); ia++) {
                 int nbf = uc.atom(ia).mt_basis_size();
-                for (int xi2 = 0; xi2 < nbf; xi2++) {
+		if(uc.atom(ia).type().pp_desc().SpinOrbit_Coupling) {
+		  
+		  // the pseudo potential contains information about
+		  // spin orbit coupling so we use a different formula
+		  // Eq.19 PRB 71 115106 for calculating the D matrix
+
+		  // Note that the D matrices are stored and
+		  // calculated in the up-down basis already not the
+		  // (Veff,Bx,By,Bz) one. 
+		  for (int xi2 = 0; xi2 < nbf; xi2++) {
+		    for (int xi1 = 0; xi1 < nbf; xi1++) {
+		      int idx = xi2 * nbf + xi1;
+		      for(int s=0;s<4;s++) {
+			this->op_(this->packed_mtrx_offset_(ia) + idx, s) = type_wrapper<T>::bypass(uc.atom(ia).d_mtrx_so(xi1, xi2, s));
+		      }
+		    }
+		  }
+		} else {
+		  // No spin orbit coupling for this atom \f[D = D(V_{eff})
+		  // I + D(B_x) \sigma_x + D(B_y) sigma_y + D(B_z)
+		  // sigma_z\f] since the D matrices are calculated that
+		  // way.
+		  for (int xi2 = 0; xi2 < nbf; xi2++) {
                     for (int xi1 = 0; xi1 < nbf; xi1++) {
-                        int idx = xi2 * nbf + xi1;
-                        switch (ctx__.num_mag_dims()) {
-                            case 3: {
-                                double bx = uc.atom(ia).d_mtrx(xi1, xi2, 2);
-                                double by = uc.atom(ia).d_mtrx(xi1, xi2, 3);
-                                this->op_(this->packed_mtrx_offset_(ia) + idx, 2) = type_wrapper<T>::bypass(double_complex(bx, -by));
-                                this->op_(this->packed_mtrx_offset_(ia) + idx, 3) = type_wrapper<T>::bypass(double_complex(bx,  by));
-                            }
-                            case 1: {
-                                double v  = uc.atom(ia).d_mtrx(xi1, xi2, 0);
-                                double bz = uc.atom(ia).d_mtrx(xi1, xi2, 1);
-                                this->op_(this->packed_mtrx_offset_(ia) + idx, 0) = v + bz;
-                                this->op_(this->packed_mtrx_offset_(ia) + idx, 1) = v - bz;
-                                break;
-                            }
-                            case 0: {
-                                this->op_(this->packed_mtrx_offset_(ia) + idx, 0) = uc.atom(ia).d_mtrx(xi1, xi2, 0);
-                                break;
-                            }
-                            default: {
-                                TERMINATE("wrong number of magnetic dimensions");
-                            }
-                        }
+		      int idx = xi2 * nbf + xi1;
+		      switch (ctx__.num_mag_dims()) {
+		      case 3: {
+			double bx = uc.atom(ia).d_mtrx(xi1, xi2, 2);
+			double by = uc.atom(ia).d_mtrx(xi1, xi2, 3);
+			this->op_(this->packed_mtrx_offset_(ia) + idx, 2) = type_wrapper<T>::bypass(double_complex(bx, -by));
+			this->op_(this->packed_mtrx_offset_(ia) + idx, 3) = type_wrapper<T>::bypass(double_complex(bx,  by));
+		      }
+		      case 1: {
+			double v  = uc.atom(ia).d_mtrx(xi1, xi2, 0);
+			double bz = uc.atom(ia).d_mtrx(xi1, xi2, 1);
+			this->op_(this->packed_mtrx_offset_(ia) + idx, 0) = v + bz;
+			this->op_(this->packed_mtrx_offset_(ia) + idx, 1) = v - bz;
+			break;
+		      }
+		      case 0: {
+			this->op_(this->packed_mtrx_offset_(ia) + idx, 0) = type_wrapper<T>::bypass(uc.atom(ia).d_mtrx(xi1, xi2, 0));
+			break;
+		      }
+		      default: {
+			TERMINATE("wrong number of magnetic dimensions");
+		      }
+		      }
                     }
-                }
-            }
+		  }
+		}
+	    }
 
             if (this->pu_ == GPU) {
                 this->op_.allocate(memory_t::device);
@@ -342,17 +365,53 @@ class Q_operator: public Non_local_operator<T>
                 for (int xi2 = 0; xi2 < nbf; xi2++) {
                     for (int xi1 = 0; xi1 < nbf; xi1++) {
                         if (ctx__.unit_cell().atom_type(iat).pp_desc().augment) {
+			  if(ctx__.unit_cell().atom_type(iat).pp_desc().SpinOrbit_Coupling) {
+			    // the ultra soft pseudo potential has spin
+			    // orbit coupling incorporated in it. so we
+			    // need to rotate the q matrix
+			    
+			    // it is nothing else than Eq.18 of Reb PRB 71, 115106
+			    for(auto si=0;si<2;si++) {
+			      for(auto sj=0;sj<2;sj++) {
+				
+				double_complex result = 0.0;
+				
+				for(int xi = 0; xi < nbf; xi++) {
+				  if(uc.atom(ia).type().compare_index_beta_functions(xi2, xi)) {
+				    for(int xj = 0; xj < nbf; xj++) {			      
+				      // the F_Coefficients are already "block diagonal" so we do a full summation.
+				      // We actually rotate the q_matrices only....
+				      if(uc.atom(ia).type().compare_index_beta_functions(xi1, xj)) { 			    
+					for(int s=0;s<2;s++)
+					  result += ctx__.augmentation_op(iat).q_mtrx(xi2, xi1) * uc.atom(ia).type().f_coefficients(xi2, xi, si, s) *
+					    uc.atom(ia).type().f_coefficients(xi1, xj, s, sj) ; 
+				      }
+				    }
+				  }
+				}
+				
+				this->op_(this->packed_mtrx_offset_(ia) + xi2 * nbf + xi1, si, sj) = type_wrapper<T>::bypass(result);
+			      }
+			    }
+			  } else {
                             this->op_(this->packed_mtrx_offset_(ia) + xi2 * nbf + xi1, 0) = ctx__.augmentation_op(iat).q_mtrx(xi1, xi2);
-                        }
-                    }
-                }
-            }
+			    if(ctx__.so_correction()) {
+			      // when spin orbit is included the q
+			      // matrix is spin depend even for non so
+			      // pseudo potentials
+			      this->op_(this->packed_mtrx_offset_(ia) + xi2 * nbf + xi1, 3) = ctx__.augmentation_op(iat).q_mtrx(xi1, xi2);
+			    }
+			  }
+			}
+		    }
+		}
+	    }
             if (this->pu_ == GPU) {
-                this->op_.allocate(memory_t::device);
-                this->op_.template copy<memory_t::host, memory_t::device>();
+	      this->op_.allocate(memory_t::device);
+	      this->op_.template copy<memory_t::host, memory_t::device>();
             }
         }
-};
+ };
 
 template <typename T>
 class P_operator: public Non_local_operator<T>
