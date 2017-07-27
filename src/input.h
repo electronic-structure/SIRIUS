@@ -454,7 +454,8 @@ struct Parameters_input
             potential_tol_  = parser["parameters"].value("potential_tol", potential_tol_);
             molecule_       = parser["parameters"].value("molecule", molecule_);
             nn_radius_      = parser["parameters"].value("nn_radius", nn_radius_);
-	    so_correction_  = parser["parameters"].value("SpinOrbit_coupling", so_correction_);
+	    if(parser["parameters"].count("SpinOrbit_coupling"))
+	      so_correction_  = parser["parameters"].value("SpinOrbit_coupling", so_correction_);
         }
     }
 };
