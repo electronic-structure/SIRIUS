@@ -94,7 +94,9 @@ class Atom
          */
         mdarray<double, 3> d_mtrx_;
 
-    public:
+	/// d matrix for spin orbit coupling. see Ref. PRB 71 115106 eq.19
+        mdarray<double_complex, 3> d_mtrx_so_;
+      public:
     
         /// Constructor.
         Atom(Atom_type const& type__, vector3d<double> position__, vector3d<double> vector_field__)
@@ -141,18 +143,47 @@ class Atom
                 int nbf = type().mt_lo_basis_size();
                 d_mtrx_ = mdarray<double, 3>(nbf, nbf, type().parameters().num_mag_dims() + 1);
                 d_mtrx_.zero();
-
-                for (int xi2 = 0; xi2 < nbf; xi2++) {
-                    int lm2    = type().indexb(xi2).lm;
-                    int idxrf2 = type().indexb(xi2).idxrf;
-                    for (int xi1 = 0; xi1 < nbf; xi1++) {
-                        int lm1    = type().indexb(xi1).lm;
-                        int idxrf1 = type().indexb(xi1).idxrf;
-                        if (lm1 == lm2) {
-                            d_mtrx_(xi1, xi2, 0) = type().pp_desc().d_mtrx_ion(idxrf1, idxrf2);
+		if (!type().pp_desc().SpinOrbit_Coupling) {
+                    for (int xi2 = 0; xi2 < nbf; xi2++) {
+                        int lm2    = type().indexb(xi2).lm;
+                        int idxrf2 = type().indexb(xi2).idxrf;
+                        for (int xi1 = 0; xi1 < nbf; xi1++) {
+                             int lm1    = type().indexb(xi1).lm;
+                             int idxrf1 = type().indexb(xi1).idxrf;
+                             if (lm1 == lm2) {
+                                  d_mtrx_(xi1, xi2, 0) = type().pp_desc().d_mtrx_ion(idxrf1, idxrf2);
+                             }
                         }
                     }
-                }
+		} else {
+		  d_mtrx_so_ = mdarray<double_complex, 3>(nbf, nbf, type().parameters().num_mag_dims() + 1);
+	          d_mtrx_so_.zero();
+
+		  for (int xi2 = 0; xi2 < nbf; xi2++) {
+                    int lm2    = type().indexb(xi2).lm;
+		    int l2 = type().indexb(xi2).l;
+                    int idxrf2 = type().indexb(xi2).idxrf;
+                    double j2  = type().indexb(xi2).j;
+                    int m2     = type().indexb(xi2).m;
+                    for (int xi1 = 0; xi1 < nbf; xi1++) {
+		      int lm1    = type().indexb(xi1).lm;
+		      int l1 = type().indexb(xi1).l;
+		      int idxrf1 = type().indexb(xi1).idxrf;
+		      double j1 = type().indexb(xi1).j;
+		      int m1           = type().indexb(xi1).m;
+		      if ((l1 == l2) && (fabs(j1 - j2) < 1e-8)) {
+			d_mtrx_so_(xi1, xi2, 0) =
+			  type().pp_desc().d_mtrx_ion(idxrf1, idxrf2) * type().f_coefficients(xi2, xi1, 0, 0);
+			d_mtrx_so_(xi1, xi2, 1) =
+			  type().pp_desc().d_mtrx_ion(idxrf1, idxrf2) * type().f_coefficients(xi2, xi1, 0, 1);
+			d_mtrx_so_(xi1, xi2, 2) =
+			  type().pp_desc().d_mtrx_ion(idxrf1, idxrf2) * type().f_coefficients(xi2, xi1, 1, 0);
+			d_mtrx_so_(xi1, xi2, 3) =
+			  type().pp_desc().d_mtrx_ion(idxrf1, idxrf2) * type().f_coefficients(xi2, xi1, 1, 1);
+		      }
+                    }
+		  }
+		}
             }
         }
 
@@ -585,6 +616,16 @@ class Atom
         inline double const& d_mtrx(int xi1, int xi2, int iv) const
         {
             return d_mtrx_(xi1, xi2, iv);
+        }
+
+	inline double_complex& d_mtrx_so(int xi1, int xi2, int iv)
+        {
+            return d_mtrx_so_(xi1, xi2, iv);
+        }
+
+        inline double_complex const& d_mtrx_so(int xi1, int xi2, int iv) const
+        {
+            return d_mtrx_so_(xi1, xi2, iv);
         }
 };
 

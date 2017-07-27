@@ -217,13 +217,16 @@ class basis_functions_index
                 int idxlo = indexr[idxrf].idxlo;
 
                 index_by_idxrf_(idxrf) = (int)basis_function_index_descriptors_.size();
-
-                for (int m = -l; m <= l; m++)
-                    basis_function_index_descriptors_.push_back(basis_function_index_descriptor(l, m, order, idxlo, idxrf));
-            }
-
-            index_by_lm_order_ = mdarray<int, 2>(Utils::lmmax(indexr.lmax()), indexr.max_num_rf());
-
+		//if (!pp_desc_.SpinOrbit_Coupling) {
+		   for (int m = -l; m <= l; m++)
+		     basis_function_index_descriptors_.push_back(basis_function_index_descriptor(l, m, order, idxlo, idxrf));
+		/* } else { */
+		/*   for (int m = -l; m <= l; m++) */
+		/*     basis_function_index_descriptors_.push_back(basis_function_index_descriptor(l, indexr[idxrf].j, m, order, idxlo, idxrf)); */
+		/* } */
+	    }
+	    index_by_lm_order_ = mdarray<int, 2>(Utils::lmmax(indexr.lmax()), indexr.max_num_rf());
+		
             for (int i = 0; i < (int)basis_function_index_descriptors_.size(); i++)
             {
                 int lm = basis_function_index_descriptors_[i].lm;
@@ -347,6 +350,10 @@ class Atom_type
         /** Used in Chebyshev iterative solver as a block-diagonal preconditioner */
         matrix<double_complex> p_mtrx_;
 
+	/// f_coefficients defined in Ref. PRB 71 115106 Eq.9 only
+	/// valid when SO interactions are on
+	mdarray<double_complex, 4> f_coefficients_;
+	
         std::vector<int> atom_id_;
 
         std::string file_name_;
@@ -871,6 +878,10 @@ class Atom_type
             std::memcpy(free_atom_density_.data(), dens__, num_points__ * sizeof(double));
         }
 
+	inline double_complex f_coefficients(int xi1, int xi2, int s1, int s2) const
+	{
+	  return f_coefficients_(xi1, xi2, s1, s2);
+	}
         inline Spline<double> const& beta_rf(int idxrf__) const
         {
             return beta_rf_[idxrf__];
@@ -880,6 +891,22 @@ class Atom_type
         {
             return q_rf_(idx__, l__);
         }
+
+ 	/// compare the angular, total angular momentum and radial part of
+        /// the beta projectors, leaving the m index free. Only useful
+        /// when spin orbit coupling is included.
+        inline bool compare_index_beta_functions(const int xi, const int xj) const
+        {
+            return ((indexr(xi).l == indexr(xj).l) &&
+		    (indexr(xi).idxlo == indexr(xj).idxlo) &&
+		    (fabs(indexr(xi).j - indexr(xj).j)<1e-8));
+	}
+
+
+ private:
+	void Generate_F_coefficients(void);
+	inline double ClebschGordan(const int l, const double j, const int m, const int spin);
+	inline int Calculate_SphericalHarmonic_m_Index(const int l, const double j, const int m, const int sigma);
 };
 
 inline void Atom_type::init(int offset_lo__)
@@ -1059,7 +1086,9 @@ inline void Atom_type::init(int offset_lo__)
         TERMINATE_NO_GPU
         #endif
     }
-    
+
+    if (this->pp_desc().SpinOrbit_Coupling)
+        this->Generate_F_coefficients();
     initialized_ = true;
 }
 
@@ -1342,6 +1371,10 @@ inline void Atom_type::read_pseudo_uspp(json const& parser)
 
     set_radial_grid(num_mt_points_, rgrid.data());
 
+    pp_desc_.SpinOrbit_Coupling = parser["pseudo_potential"]["header"]["SpinOrbit"];
+
+    if(pp_desc_.SpinOrbit_Coupling)
+      std::cout << "We should not have spin orbit activated" << std::endl;
     pp_desc_.num_beta_radial_functions = parser["pseudo_potential"]["header"]["number_of_proj"];
 
     pp_desc_.beta_radial_functions = mdarray<double, 2>(num_mt_points_, pp_desc_.num_beta_radial_functions);
@@ -1349,7 +1382,9 @@ inline void Atom_type::read_pseudo_uspp(json const& parser)
 
     pp_desc_.num_beta_radial_points.resize(pp_desc_.num_beta_radial_functions);
     pp_desc_.beta_l.resize(pp_desc_.num_beta_radial_functions);
-
+    if (pp_desc_.SpinOrbit_Coupling)
+        pp_desc_.beta_j.resize(pp_desc_.num_beta_radial_functions);
+    
     int lmax_beta{0};
     local_orbital_descriptor lod;
     for (int i = 0; i < pp_desc_.num_beta_radial_functions; i++) {
@@ -1366,6 +1401,8 @@ inline void Atom_type::read_pseudo_uspp(json const& parser)
 
         pp_desc_.beta_l[i] = parser["pseudo_potential"]["beta_projectors"][i]["angular_momentum"];
         lmax_beta = std::max(lmax_beta, pp_desc_.beta_l[i]);
+	if(pp_desc_.SpinOrbit_Coupling)
+            pp_desc_.beta_j[i] = parser["pseudo_potential"]["beta_projectors"][i]["total_angular_momentum"];
     }
 
     pp_desc_.d_mtrx_ion = mdarray<double, 2>(pp_desc_.num_beta_radial_functions, pp_desc_.num_beta_radial_functions);
@@ -1522,7 +1559,149 @@ inline void Atom_type::read_input(const std::string& fname)
         free_atom_density_ = parser["free_atom"]["density"].get<std::vector<double>>();
     }
 }
-        
+
+inline double Atom_type::ClebschGordan(const int l, const double j, const int m, const int spin)
+{
+  // l : orbital angular momentum
+  // m:  projection of the total angular momentum $m \pm /frac12$
+  // spin: Component of the spinor, 0 up, 1 down
+  
+  double CG = 0.0; // Clebsch Gordan coeeficient cf PRB 71, 115106 page 3 first column
+  
+  if ((spin != 0) && (spin != 1)) {
+    printf("Error : unkown spin direction\n");
+  }
+  
+  if ((m < -(l + 1)) || (m > l)) {
+    printf(" Value of m=%d with l = %d  not allowed\n", m, l);
+  }
+  // Normally j is half integer but I only use integers
+  int j1 = 2.0 * j;
+  
+  const double denom = sqrt(1.0 / (2.0 * l + 1));
+  
+  if ((j1 - 1 - 2 * l) == 0) {
+    if (spin == 0)
+      CG = sqrt(l + m + 1.0);
+    if (spin == 1)
+      CG = sqrt((l - m));
+    return (CG * denom);
+  }
+  
+  
+  if (((j1 + 1) - 2 * l) == 0) {
+    if (m < (1 - l))
+      CG = 0.0;
+    else {
+      if (spin == 0)
+	CG = sqrt(l - m + 1);
+      if (spin == 1)
+	CG = -sqrt(l + m);
+    }
+    return (CG * denom);
+  }
+  
+  printf("Clebsch gordan coefficients do not exist for this combination of j=%.5lf and l=%d\n", j, l);
+  return 0.0;
+}
+
+    inline int Atom_type::Calculate_SphericalHarmonic_m_Index(const int l, const double j, const int m, const int sigma)
+  {
+    // This function calculates the m index of the spherical harmonic
+    // of a spinor with orbital angular momentum l, total angular
+    // momentum j, projection along z of the total angular momentum m+-1/2.
+    // Spin selects the up (sigma=0) or down (sigma=1) coefficient.
+
+    int result = 0;
+    if ((sigma != 0) && (sigma != 1)) {
+      printf("SphericalIndex function : unkown spin direction\n");
+      return 0;
+    }
+    int j1 = 2.0 * j;
+    if ((m < -(l + 1)) && (m > l)) {
+      printf("SphericalIndex function : value of m not allowed\n");
+    }
+
+    if ((j1 - 2 * l - 1) == 0) {
+      result = m + sigma; // if sigma is up (sigma = 0)
+      return result;
+    }
+
+    if ((j1 - 2 * l + 1) == 0) {
+      if (m < 1 - l)
+        return 0;
+      return m - !sigma;
+    }
+
+    return 0;
+  }
+
+    void Atom_type::Generate_F_coefficients(void)
+    {
+    // we consider Pseudo potentials with spin orbit couplings
+  
+    // First thing, we need to compute the
+    // \f[f^{\sigma\sigma^\prime}_{l,j,m;l\prime,j\prime,m\prime}\f]
+    // They are defined by Eq.9 of Ref PRB 71, 115106
+    // and correspond to transformations of the
+    // spherical harmonics
+    if (!this->pp_desc().SpinOrbit_Coupling)
+      return;
+  
+    // number of beta projectors
+    int nbf = this->mt_radial_basis_size();
+    const int l = this->pp_desc().lmax_beta_;
+    // we need the \f[\alpha_m_j^{\simga,l,j}\f] tensor and the ClesbchGordan coeffients
+    mdarray<double_complex, 2> U(2 * l + 1, 2 * l + 1);
+    U.zero();
+    U(l - 1, l - 1) = 1.0;
+  
+    for (auto m = 2; m <= 2 * l + 1; m = +2) {
+      int mi = (m >> 1); // divide by two
+      int n  = l - mi + 1;
+    
+      double EvenOdd = -1.0;
+      if (m&0x1 == 0) {
+	EvenOdd = 1.0;
+      } else {
+	EvenOdd = -1.0;
+      }
+
+      U(n - 1, m - 1) = EvenOdd / sqrt(2.0);
+      U(n - 1, m)     = -(0, 1.0 / sqrt(2.0)) * EvenOdd;
+      n = l + 1 + mi;
+      U(n - 1, m - 1) = 1.0 / sqrt(2.0);
+      U(n - 1, m)     = (0.0, 1.0 / sqrt(2.0));
+    }
+
+    f_coefficients_ = mdarray<double_complex, 4>(nbf, nbf, 2, 2);
+    f_coefficients_.zero();
+    
+    for (int xi2 = 0; xi2 < nbf; xi2++) {
+      const int l2     = this->indexb(xi2).l;
+      const double j2  = this->indexb(xi2).j;
+      const int m2 = this->indexb(xi2).m;
+      for (int xi1 = 0; xi1 < nbf; xi1++) {
+	const int l1     = this->indexb(xi1).l;
+	const double j1  = this->indexb(xi1).j;
+	const int m1 = this->indexb(xi2).m;
+	if ((l2 == l1) && (fabs(j1 - j2) < 1e-8) && (this->indexb(xi1).idxlo == this->indexb(xi2).idxlo)) {
+	  for (auto sigma1 = 0; sigma1 < 2; sigma1++) {
+	    for (auto sigma2 = 0; sigma2 < 2; sigma2++) {
+	      double_complex coef = {0.0, 0.0};
+	      for (int m = -(l1 + 1); m <= l1; m++) {
+		auto mi = this->Calculate_SphericalHarmonic_m_Index(l2, j2, m, sigma1) + l;
+		auto mj = this->Calculate_SphericalHarmonic_m_Index(l1, j1, m, sigma2) + l;
+		coef += U(mi, m2) * this->ClebschGordan(l2, j2, m, sigma1) * std::conj(U(mj, m1))*this->ClebschGordan(l1, j1, m, sigma2);
+	      }
+	      f_coefficients_(xi2, xi1, sigma1, sigma2) = coef;
+	    }
+	  }
+	}
+      }
+    }
+    }
+
 } // namespace
 
 #endif // __ATOM_TYPE_H__
