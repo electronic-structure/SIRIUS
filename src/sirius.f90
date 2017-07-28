@@ -991,6 +991,11 @@ module sirius
             character, dimension(*), intent(in)  :: pu
         end subroutine
 
+        subroutine sirius_set_use_symmetry(flg)&
+            &bind(C, name="sirius_set_use_symmetry")
+            integer,                 intent(in)  :: flg
+        end subroutine
+
     end interface
 
 contains

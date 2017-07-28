@@ -815,9 +815,19 @@ class Stress {
         return stress_kin_;
     }
 
-    inline matrix3d<double> stress_nl() const
+    //inline matrix3d<double> stress_nl() const
+    //{
+    //    return stress_nonloc_ + stress_us_;
+    //}
+
+    inline matrix3d<double> stress_nonloc() const
     {
-        return stress_nonloc_ + stress_us_;
+        return stress_nonloc_;
+    }
+
+    inline matrix3d<double> stress_us() const
+    {
+        return stress_us_;
     }
 
     inline void print_info() const

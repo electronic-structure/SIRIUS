@@ -3196,8 +3196,10 @@ void sirius_get_stress_tensor(ftn_char label__, ftn_double* stress_tensor__)
         s = stress_tensor->stress_ewald();
     } else if (label == "kin") {
         s = stress_tensor->stress_kin();
-    } else if (label == "nl") {
-        s = stress_tensor->stress_nl();
+    } else if (label == "nonloc") {
+        s = stress_tensor->stress_nonloc();
+    } else if (label == "us") {
+        s = stress_tensor->stress_us();
     } else {
         TERMINATE("wrong label");
     }
@@ -3211,6 +3213,11 @@ void sirius_get_stress_tensor(ftn_char label__, ftn_double* stress_tensor__)
 void sirius_set_processing_unit(ftn_char pu__)
 {
     sim_ctx->set_processing_unit(pu__);
+}
+
+void sirius_set_use_symmetry(ftn_int* flg__)
+{
+    sim_ctx->set_use_symmetry(*flg__);
 }
 
 } // extern "C"
