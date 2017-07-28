@@ -2911,16 +2911,36 @@ void sirius_get_beta_projectors_by_kp(ftn_int* kset_id__,
     TERMINATE(s);
 }
 
+/// Get the component of complex density matrix.
 void sirius_get_density_matrix(ftn_int*            ia__,
                                ftn_double_complex* dm__,
                                ftn_int*            ld__)
 {
-    mdarray<double_complex, 2> dm(dm__, *ld__, *ld__);
+    mdarray<double_complex, 3> dm(dm__, *ld__, *ld__, 3);
     int nbf = sim_ctx->unit_cell().atom(*ia__ - 1).mt_basis_size();
     assert(nbf <= *ld__);
-    for (int i = 0; i < nbf; i++) {
-        for (int j = 0; j < nbf; j++) {
-            dm(i, j) = density->density_matrix()(i, j, 0, *ia__ - 1);
+    for (int icomp = 0; icomp < sim_ctx->num_mag_comp(); icomp++) {
+        for (int i = 0; i < nbf; i++) {
+            for (int j = 0; j < nbf; j++) {
+                dm(i, j, icomp) = density->density_matrix()(i, j, icomp, *ia__ - 1);
+            }
+        }
+    }
+}
+
+/// Set the component of complex density matrix.
+void sirius_set_density_matrix(ftn_int*            ia__,
+                               ftn_double_complex* dm__,
+                               ftn_int*            ld__)
+{
+    mdarray<double_complex, 3> dm(dm__, *ld__, *ld__, 3);
+    int nbf = sim_ctx->unit_cell().atom(*ia__ - 1).mt_basis_size();
+    assert(nbf <= *ld__);
+    for (int icomp = 0; icomp < sim_ctx->num_mag_comp(); icomp++) {
+        for (int i = 0; i < nbf; i++) {
+            for (int j = 0; j < nbf; j++) {
+                density->density_matrix()(i, j, icomp, *ia__ - 1) = dm(i, j, icomp);
+            }
         }
     }
 }
