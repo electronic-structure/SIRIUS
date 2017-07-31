@@ -164,9 +164,9 @@ class Forces_PS
         Periodic_function<double>* vfield_eff[4];
         vfield_eff[0] = potential_.effective_potential();
         vfield_eff[0]->fft_transform(-1);
-        for (int imag = 0; imag < ctx_.num_mag_dims(); imag++){
-            vfield_eff[imag+1] = potential_.effective_magnetic_field(imag);
-            vfield_eff[imag+1]->fft_transform(-1);
+        for (int imagn = 0; imagn < ctx_.num_mag_dims(); imagn++){
+            vfield_eff[imagn+1] = potential_.effective_magnetic_field(imagn);
+            vfield_eff[imagn+1]->fft_transform(-1);
         }
 
         Unit_cell& unit_cell = ctx_.unit_cell();
@@ -196,7 +196,7 @@ class Forces_PS
 
             /* over spin components, can be from 1 to 4*/
             for (int ispin = 0; ispin < ctx_.num_mag_dims() + 1; ispin++ ){
-                /* over 3 components of the force/G -vectors*/
+                /* over 3 components of the force/G - vectors */
                 for (int ivec = 0; ivec < 3; ivec++ ){
                     /* over local rank G vectors */
                     #pragma omp parallel for schedule(static)
