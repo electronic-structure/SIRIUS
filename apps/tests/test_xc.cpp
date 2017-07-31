@@ -32,7 +32,9 @@ void test_xc2()
 {
     XC_functional Ex("XC_GGA_X_PBE", 1);
     XC_functional Ec("XC_GGA_C_PBE", 1);
-    //XC_functional Ex("XC_LDA_X", 1);
+    XC_functional E1("XC_LDA_X", 1);
+    XC_functional E2("XC_LDA_C_PW", 1);
+    
     //XC_functional Ec("XC_LDA_C_PZ", 1);
     ///XC_functional Ex("XC_GGA_X_PW91", 1);
     //XC_functional Ec("XC_GGA_C_PW91", 1);
@@ -40,25 +42,49 @@ void test_xc2()
     std::vector<double> sigma(101);
     std::vector<double> vrho(101);
     std::vector<double> vsigma(101);
-    std::vector<double> e(101);
+    std::vector<double> ex(101);
+    std::vector<double> ec(101);
+    std::vector<double> e1(101);
+    std::vector<double> e2(101);
 
     auto fout = fopen("xc_libxc.dat", "w+");
     for (int i = 0; i <= 50; i++) {
-        std::vector<double> rho(101, i * 0.2);
+        std::vector<double> rho(101, i);
         for (int j = 0; j <= 100; j++) {
-            sigma[j] = j * 0.1;
+            sigma[j] = j;
         }
         std::vector<double> result(101, 0);
-        Ex.get_gga(101, rho.data(), sigma.data(), vrho.data(), vsigma.data(), e.data());
-        //Ex.get_lda(101, rho.data(), vrho.data(), e.data());
+
+        Ex.get_gga(101, rho.data(), sigma.data(), vrho.data(), vsigma.data(), ex.data());
+        Ec.get_gga(101, rho.data(), sigma.data(), vrho.data(), vsigma.data(), ec.data());
+        E1.get_lda(101, rho.data(), vrho.data(), e1.data());
+        E2.get_lda(101, rho.data(), vrho.data(), e2.data());
+
         for (int i = 0; i <= 100; i++) {
-            result[i] += e[i];
+            //result[i] = (ex[i] - e1[i]) * rho[i] + e1[i] + (ec[i] - e2[i]) * rho[i] + e2[i];
+            result[i] = (ex[i] + ec[i]) * rho[i];
         }
-        Ec.get_gga(101, rho.data(), sigma.data(), vrho.data(), vsigma.data(), e.data());
-        //Ec.get_lda(101, rho.data(), vrho.data(), e.data());
-        for (int i = 0; i <= 100; i++) {
-            result[i] += e[i];
-        }
+
+        /////Ex.get_lda(101, rho.data(), vrho.data(), e.data());
+        ///for (int i = 0; i <= 100; i++) {
+        ///    //result[i] += e[i];
+        ///}
+        //Ec.get_gga(101, rho.data(), sigma.data(), vrho.data(), vsigma.data(), e.data());
+        ////Ec.get_lda(101, rho.data(), vrho.data(), e.data());
+        //for (int i = 0; i <= 100; i++) {
+        //    //result[i] += e[i];
+        //}
+
+        //E3.get_lda(101, rho.data(), vrho.data(), e.data());
+        //////Ec.get_lda(101, rho.data(), vrho.data(), e.data());
+        //for (int i = 0; i <= 100; i++) {
+        //    result[i] += e[i];
+        //}
+        //E4.get_lda(101, rho.data(), vrho.data(), e.data());
+        //for (int i = 0; i <= 100; i++) {
+        //    result[i] += e[i];
+        //}
+
         for (int i = 0; i <= 100; i++) {
             fprintf(fout, "%18.10f", result[i]);
         }
