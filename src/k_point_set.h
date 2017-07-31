@@ -184,6 +184,10 @@ class K_point_set
             if (ctx_.control().verbosity_ > 0) {
                 print_info();
             }
+
+            if (ctx_.comm().rank() == 0 && ctx_.control().print_memory_usage_) {
+                MEMORY_USAGE_INFO();
+            }
         }
 
         /// Find Fermi energy and band occupation numbers

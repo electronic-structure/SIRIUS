@@ -931,6 +931,13 @@ module sirius
             integer,                  intent(in)  :: nhm
         end subroutine
 
+        subroutine sirius_set_density_matrix(ia, dm, nhm)&
+            &bind(C, name="sirius_set_density_matrix")
+            integer,                  intent(in)  :: ia
+            complex(8),               intent(in) :: dm
+            integer,                  intent(in)  :: nhm
+        end subroutine
+
         subroutine sirius_calculate_forces(kset_id)&
             &bind(C, name="sirius_calculate_forces")
             integer,                 intent(in) :: kset_id
@@ -982,6 +989,11 @@ module sirius
         subroutine sirius_set_processing_unit(pu)&
             &bind(C, name="sirius_set_processing_unit")
             character, dimension(*), intent(in)  :: pu
+        end subroutine
+
+        subroutine sirius_set_use_symmetry(flg)&
+            &bind(C, name="sirius_set_use_symmetry")
+            integer,                 intent(in)  :: flg
         end subroutine
 
     end interface

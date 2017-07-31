@@ -2,11 +2,11 @@
 
 using namespace sirius;
 
-void test_fft(double cutoff__)
+void test_fft(double cutoff__, device_t pu__)
 {
     matrix3d<double> M = {{1, 0, 0}, {0, 1, 0}, {0, 0, 1}};
 
-    FFT3D fft(find_translations(cutoff__, M), mpi_comm_world(), CPU);
+    FFT3D fft(find_translations(cutoff__, M), mpi_comm_world(), pu__);
 
     Gvec gvec(M, cutoff__, mpi_comm_world(), mpi_comm_world(), false);
 
@@ -21,6 +21,9 @@ void test_fft(double cutoff__)
     fft.prepare(gvec.partition());
 
     mdarray<double_complex, 1> f(gvec.num_gvec());
+    if (pu__ == GPU) {
+        f.allocate(memory_t::device);
+    }
     for (int ig = 0; ig < gvec.num_gvec(); ig++) {
         auto v = gvec.gvec(ig);
         if (mpi_comm_world().rank() == 0) {
@@ -28,7 +31,19 @@ void test_fft(double cutoff__)
         }
         f.zero();
         f[ig] = 1.0;
-        fft.transform<1>(gvec.partition(), &f[gvec.partition().gvec_offset_fft()]);
+        switch (pu__) {
+            case CPU: {
+                fft.transform<1>(gvec.partition(), &f[gvec.partition().gvec_offset_fft()]);
+                break;
+            }
+            case GPU: {
+                f.copy<memory_t::host, memory_t::device>();
+                //fft.transform<1, GPU>(gvec.partition(), f.at<GPU>(gvec.partition().gvec_offset_fft()));
+                fft.transform<1, CPU>(gvec.partition(), f.at<CPU>(gvec.partition().gvec_offset_fft()));
+                fft.buffer().copy<memory_t::device, memory_t::host>();
+                break;
+            }
+        }
 
         double diff = 0;
         /* loop over 3D array (real space) */
@@ -77,7 +92,10 @@ int main(int argn, char **argv)
 
     sirius::initialize(1);
 
-    test_fft(cutoff);
+    test_fft(cutoff, CPU);
+    #ifdef __GPU
+    test_fft(cutoff, GPU);
+    #endif
 
     sddk::timer::print();
     

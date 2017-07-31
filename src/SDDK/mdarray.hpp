@@ -180,7 +180,7 @@ class mdarray_index_descriptor
     }
 };
 
-struct mdarray_mem_count // TODO: not clear if std::atomic can be mixed with openmp
+struct mdarray_mem_count
 {
     static std::atomic<int64_t>& allocated()
     {
@@ -455,12 +455,13 @@ class mdarray_base
 
         /* host allocation */
         if ((memory__ & memory_t::host) == memory_t::host) {
+            /* page-locked memory */
             if ((memory__ & memory_t::host_pinned) == memory_t::host_pinned) {
                 #ifdef __GPU
                 raw_ptr_    = acc::allocate_host<T>(sz);
                 unique_ptr_ = std::unique_ptr<T[], mdarray_mem_mgr<T>>(raw_ptr_, mdarray_mem_mgr<T>(sz, memory_t::host_pinned));
                 #endif
-            } else {
+            } else { /* regular mameory */
                 raw_ptr_    = static_cast<T*>(malloc(sz * sizeof(T)));
                 unique_ptr_ = std::unique_ptr<T[], mdarray_mem_mgr<T>>(raw_ptr_, mdarray_mem_mgr<T>(sz, memory_t::host));
             }

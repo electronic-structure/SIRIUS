@@ -621,15 +621,19 @@ inline void Simulation_context_base::initialize()
     }
     
     if (!full_potential()) {
-        beta_ri_ = std::unique_ptr<Radial_integrals_beta<false>>(new Radial_integrals_beta<false>(unit_cell(), gk_cutoff(), 20));
+        beta_ri_ = std::unique_ptr<Radial_integrals_beta<false>>(new Radial_integrals_beta<false>(unit_cell(), gk_cutoff(), settings().nprii_beta_));
 
-        beta_ri_djl_ = std::unique_ptr<Radial_integrals_beta<true>>(new Radial_integrals_beta<true>(unit_cell(), gk_cutoff(), 20));
+        beta_ri_djl_ = std::unique_ptr<Radial_integrals_beta<true>>(new Radial_integrals_beta<true>(unit_cell(), gk_cutoff(), settings().nprii_beta_));
     }
 
     //time_active_ = -runtime::wtime();
 
     if (control().verbosity_ > 0 && comm_.rank() == 0) {
         print_info();
+    }
+
+    if (comm_.rank() == 0 && control().print_memory_usage_) {
+        MEMORY_USAGE_INFO();
     }
 
     initialized_ = true;

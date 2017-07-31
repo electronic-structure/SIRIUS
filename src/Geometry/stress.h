@@ -392,8 +392,8 @@ class Stress {
     {
         PROFILE("sirius::Stress|vloc");
 
-        Radial_integrals_vloc ri_vloc(ctx_.unit_cell(), ctx_.pw_cutoff(), 150);
-        Radial_integrals_vloc_dg ri_vloc_dg(ctx_.unit_cell(), ctx_.pw_cutoff(), 150);
+        Radial_integrals_vloc<false> ri_vloc(ctx_.unit_cell(), ctx_.pw_cutoff(), ctx_.settings().nprii_vloc_);
+        Radial_integrals_vloc<true> ri_vloc_dg(ctx_.unit_cell(), ctx_.pw_cutoff(), ctx_.settings().nprii_vloc_);
 
         auto v = ctx_.make_periodic_function<index_domain_t::local>([&ri_vloc](int iat, double g)
                                                                     {
@@ -531,10 +531,31 @@ class Stress {
                 TERMINATE("reduced G+k vectors are not implemented for non-local stress: fix this");
             }
 
+            #ifdef __GPU
+            if (ctx_.processing_unit() == GPU && !keep_wf_on_gpu) {
+                int nbnd = (ctx_.num_mag_dims() == 3) ? ctx_.num_bands() : ctx_.num_fv_states();
+                for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
+                    /* allocate GPU memory */
+                    kp->spinor_wave_functions(ispn).pw_coeffs().prime().allocate(memory_t::device);
+                    kp->spinor_wave_functions(ispn).pw_coeffs().copy_to_device(0, nbnd);
+                }
+            }
+            #endif
+
             Beta_projectors_strain_deriv bp_strain_deriv(ctx_, kp->gkvec());
+
             Non_local_functor<T, 9> nlf(ctx_, bp_strain_deriv);
 
             nlf.add_k_point_contribution(*kp, collect_result);
+
+            #ifdef __GPU
+            if (ctx_.processing_unit() == GPU && !keep_wf_on_gpu) {
+                for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
+                    /* deallocate GPU memory */
+                    kp->spinor_wave_functions(ispn).pw_coeffs().deallocate_on_device();
+                }
+            }
+            #endif
         }
 
         #pragma omp parallel
@@ -605,8 +626,8 @@ class Stress {
 
         potential_.effective_potential()->fft_transform(-1);
 
-        Radial_integrals_aug<false> ri(ctx_.unit_cell(), ctx_.pw_cutoff(), 20);
-        Radial_integrals_aug<true> ri_dq(ctx_.unit_cell(), ctx_.pw_cutoff(), 20);
+        Radial_integrals_aug<false> ri(ctx_.unit_cell(), ctx_.pw_cutoff(), ctx_.settings().nprii_aug_);
+        Radial_integrals_aug<true> ri_dq(ctx_.unit_cell(), ctx_.pw_cutoff(), ctx_.settings().nprii_aug_);
 
         /* pack v effective in one array of pointers*/
         Periodic_function<double>* vfield_eff[4];
@@ -638,7 +659,6 @@ class Stress {
                 int ig = ctx_.gvec().offset() + igloc;
                 for (int i = 0; i < atom_type.num_atoms(); i++) {
                     int ia = atom_type.atom_id(i);
-                    //phase_factors(i, igloc) = std::conj(ctx_.gvec_phase_factor(ig, ia));
                     phase_factors(i, igloc) = ctx_.gvec_phase_factor(ig, ia);
                 }
             }
@@ -726,6 +746,7 @@ class Stress {
                             for (int i = 0; i < nbf * (nbf + 1) / 2; i++) {
                                 stress_us_(mu, nu) += tmp(i, ia) * dm(i, ia, ispin) * q_deriv.sym_weight(i);
                             }
+
                         }
                     }
                 }
@@ -805,9 +826,19 @@ class Stress {
         return stress_kin_;
     }
 
-    inline matrix3d<double> stress_nl() const
+    //inline matrix3d<double> stress_nl() const
+    //{
+    //    return stress_nonloc_ + stress_us_;
+    //}
+
+    inline matrix3d<double> stress_nonloc() const
     {
-        return stress_nonloc_ + stress_us_;
+        return stress_nonloc_;
+    }
+
+    inline matrix3d<double> stress_us() const
+    {
+        return stress_us_;
     }
 
     inline void print_info() const

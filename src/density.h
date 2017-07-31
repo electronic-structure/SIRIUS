@@ -365,7 +365,7 @@ class Density
         {
             PROFILE("sirius::Density::generate_pseudo_core_charge_density");
 
-            auto ri = Radial_integrals_rho_core_pseudo<false>(ctx_.unit_cell(), ctx_.pw_cutoff(), 20);
+            auto ri = Radial_integrals_rho_core_pseudo<false>(ctx_.unit_cell(), ctx_.pw_cutoff(), ctx_.settings().nprii_rho_core_);
 
             auto v = ctx_.make_periodic_function<index_domain_t::local>([&ri](int iat, double g)
                                                                         {
@@ -968,6 +968,11 @@ class Density
         }
 
         mdarray<double_complex, 4> const& density_matrix() const
+        {
+            return density_matrix_;
+        }
+
+        mdarray<double_complex, 4>& density_matrix()
         {
             return density_matrix_;
         }

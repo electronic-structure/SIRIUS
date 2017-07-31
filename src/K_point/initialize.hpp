@@ -191,7 +191,7 @@ inline void K_point::initialize()
 
         spinor_wave_functions_ = std::unique_ptr<Wave_functions>(new Wave_functions(ctx_.processing_unit(), gkvec(), nst, ctx_.num_spins()));
     }
-    if (ctx_.processing_unit() == GPU) {
+    if (ctx_.processing_unit() == GPU && keep_wf_on_gpu) {
         /* allocate GPU memory */
         for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
             spinor_wave_functions_->component(ispn).pw_coeffs().prime().allocate(memory_t::device);

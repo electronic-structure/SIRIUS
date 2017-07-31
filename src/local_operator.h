@@ -44,14 +44,16 @@ namespace sirius {
 /** The following functionality is implementated:
  *    - application of the local part of Hamiltonian (kinetic + potential) to the wave-fucntions in the PP-PW case
  *    - application of the interstitial part of H and O in the case of FP-LAPW
+ *    - application of the interstitial part of effective magnetic field to the first-variational functios
  *    - remapping of potential and unit-step functions from fine to coarse mesh of G-vectors
  */
 class Local_operator
 {
     private:
+        /// Common parameters.
         Simulation_parameters const* param_{nullptr};
 
-        /// Coarse-grid FFT driver for this operator
+        /// Coarse-grid FFT driver for this operator.
         FFT3D& fft_coarse_;
         
         /// Kinetic energy of G+k plane-waves.
@@ -59,13 +61,17 @@ class Local_operator
 
         /// Effective potential components.
         mdarray<double, 2> veff_vec_;
-
+        
+        /// Temporary array to store [V*phi](G)
         mdarray<double_complex, 1> vphi1_;
 
+        /// Second temporary array to store [V*phi](G)
         mdarray<double_complex, 1> vphi2_;
-
-        mdarray<double, 1> theta_;
         
+        /// LAPW unit step function on a coarse FFT grid.
+        mdarray<double, 1> theta_;
+       
+        /// Temporary array to store psi_{up}(r).
         mdarray<double_complex, 1> buf_rg_;
         
         /// V(G=0) matrix elements.
@@ -100,16 +106,14 @@ class Local_operator
             vphi1_ = mdarray<double_complex, 1>(ngv_fft, memory_t::host, "Local_operator::vphi1");
             vphi2_ = mdarray<double_complex, 1>(ngv_fft, memory_t::host, "Local_operator::vphi2");
 
-            #ifdef __GPU
             if (fft_coarse_.pu() == GPU) {
                 veff_vec_.allocate(memory_t::device);
-                veff_vec_.copy_to_device();
+                veff_vec_.copy<memory_t::host, memory_t::device>();
                 pw_ekin_.allocate(memory_t::device);
-                pw_ekin_.copy_to_device();
+                pw_ekin_.copy<memory_t::host, memory_t::device>();
                 vphi1_.allocate(memory_t::device);
                 vphi2_.allocate(memory_t::device);
             }
-            #endif
         }
         
         /// Map effective potential and magnetic field to a coarse FFT mesh in case of PP-PW.
@@ -473,7 +477,7 @@ class Local_operator
                     #endif
                     return;
                 }
-                /* data was remapped and hphi is allocated only on CPU */
+                /* data was remapped and hphi extra storage is allocated only on CPU */
                 if (phi__.component(ispn).pw_coeffs().is_remapped() && fft_coarse_.pu() == GPU) {
                     if (gamma) {
                         vphi2_.copy<memory_t::device, memory_t::host>();
@@ -537,9 +541,13 @@ class Local_operator
                 /* non-collinear case */
                 /* 2x2 Hamiltonian in applied to spinor wave-functions
                  * .--------.--------.   .-----.   .------.
+                 * |        |        |   |     |   |      |
                  * | H_{uu} | H_{ud} |   |phi_u|   |hphi_u|
+                 * |        |        |   |     |   |      |
                  * .--------.--------. x .-----. = .------.
+                 * |        |        |   |     |   |      |
                  * | H_{du} | H_{dd} |   |phi_d|   |hphi_d|
+                 * |        |        |   |     |   |      |
                  * .--------.--------.   .-----.   .------.
                  *
                  * hphi_u = H_{uu} phi_u + H_{ud} phi_d
@@ -849,7 +857,7 @@ class Local_operator
         /// Apply magnetic field to the wave-functions.
         /** In case of collinear magnetism only Bz is applied to <tt>phi</tt> and stored in the first component of
          *  <tt>bphi</tt>. In case of non-collinear magnetims Bx-iBy is also applied and stored in the third
-         *  component of <tt>bphi</tt>. The second componet of <tt>bphi</tt> is used to store -Bz|phi>. */
+         *  component of <tt>bphi</tt>. The second component of <tt>bphi</tt> is used to store -Bz|phi>. */
         void apply_b(Gvec_partition const& gkvec_par__,
                      int N__,
                      int n__,

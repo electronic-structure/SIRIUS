@@ -94,8 +94,7 @@ inline void Potential::generate_D_operator_matrix()
 
                         for (int igloc = 0; igloc < ctx_.gvec().count(); igloc++) {
                             int ig = ctx_.gvec().offset() + igloc;
-                            /* conjugate V(G) * exp(i * G * r_{alpha}) */
-                            //auto z = std::conj(veff_vec[iv]->f_pw_local(igloc) * ctx_.gvec_phase_factor(ig, ia));
+                            /* V(G) * exp(i * G * r_{alpha}) */
                             auto z = veff_vec[iv]->f_pw_local(igloc) * ctx_.gvec_phase_factor(ig, ia);
                             veff_a(2 * igloc,     i) = z.real();
                             veff_a(2 * igloc + 1, i) = z.imag();
@@ -151,12 +150,10 @@ inline void Potential::generate_D_operator_matrix()
 
             comm_.allreduce(d_tmp.at<CPU>(), static_cast<int>(d_tmp.size()));
 
-            #ifdef __PRINT_OBJECT_CHECKSUM
-            {
+            if (ctx_.control().print_checksum_) {
                 auto cs = d_tmp.checksum();
                 DUMP("checksum(d_mtrx): %18.10f", cs);
             }
-            #endif
 
             #pragma omp parallel for schedule(static)
             for (int i = 0; i < atom_type.num_atoms(); i++) {

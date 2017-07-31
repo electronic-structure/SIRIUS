@@ -2911,16 +2911,36 @@ void sirius_get_beta_projectors_by_kp(ftn_int* kset_id__,
     TERMINATE(s);
 }
 
+/// Get the component of complex density matrix.
 void sirius_get_density_matrix(ftn_int*            ia__,
                                ftn_double_complex* dm__,
                                ftn_int*            ld__)
 {
-    mdarray<double_complex, 2> dm(dm__, *ld__, *ld__);
+    mdarray<double_complex, 3> dm(dm__, *ld__, *ld__, 3);
     int nbf = sim_ctx->unit_cell().atom(*ia__ - 1).mt_basis_size();
     assert(nbf <= *ld__);
-    for (int i = 0; i < nbf; i++) {
-        for (int j = 0; j < nbf; j++) {
-            dm(i, j) = density->density_matrix()(i, j, 0, *ia__ - 1);
+    for (int icomp = 0; icomp < sim_ctx->num_mag_comp(); icomp++) {
+        for (int i = 0; i < nbf; i++) {
+            for (int j = 0; j < nbf; j++) {
+                dm(i, j, icomp) = density->density_matrix()(i, j, icomp, *ia__ - 1);
+            }
+        }
+    }
+}
+
+/// Set the component of complex density matrix.
+void sirius_set_density_matrix(ftn_int*            ia__,
+                               ftn_double_complex* dm__,
+                               ftn_int*            ld__)
+{
+    mdarray<double_complex, 3> dm(dm__, *ld__, *ld__, 3);
+    int nbf = sim_ctx->unit_cell().atom(*ia__ - 1).mt_basis_size();
+    assert(nbf <= *ld__);
+    for (int icomp = 0; icomp < sim_ctx->num_mag_comp(); icomp++) {
+        for (int i = 0; i < nbf; i++) {
+            for (int j = 0; j < nbf; j++) {
+                density->density_matrix()(i, j, icomp, *ia__ - 1) = dm(i, j, icomp);
+            }
         }
     }
 }
@@ -3006,6 +3026,9 @@ void sirius_set_pw_coeffs(ftn_char label__,
         } else if (label == "magy") {
             density->magnetization(2)->scatter_f_pw(v);
             density->magnetization(2)->fft_transform(1);
+        } else if (label == "vloc") {
+            potential->local_potential().scatter_f_pw(v);
+            potential->local_potential().fft_transform(1);
         } else {
             std::stringstream s;
             s << "wrong label in sirius_set_pw_coeffs()" << std::endl
@@ -3098,19 +3121,19 @@ void sirius_get_pw_coeffs_real(ftn_char    atom_type__,
     };
     
     if (label == "rhoc") {
-        sirius::Radial_integrals_rho_core_pseudo<false> ri(sim_ctx->unit_cell(), sim_ctx->pw_cutoff(), 20);
+        sirius::Radial_integrals_rho_core_pseudo<false> ri(sim_ctx->unit_cell(), sim_ctx->pw_cutoff(), sim_ctx->settings().nprii_rho_core_);
         make_pw_coeffs([&ri, iat](double g)
                        {
                            return ri.value(iat, g);
                        });
     } else if (label == "rhoc_dg") {
-        sirius::Radial_integrals_rho_core_pseudo<true> ri(sim_ctx->unit_cell(), sim_ctx->pw_cutoff(), 20);
+        sirius::Radial_integrals_rho_core_pseudo<true> ri(sim_ctx->unit_cell(), sim_ctx->pw_cutoff(), sim_ctx->settings().nprii_rho_core_);
         make_pw_coeffs([&ri, iat](double g)
                        {
                            return ri.value(iat, g);
                        });
     } else if (label == "vloc") {
-        sirius::Radial_integrals_vloc ri(sim_ctx->unit_cell(), sim_ctx->pw_cutoff(), 100);
+        sirius::Radial_integrals_vloc<true> ri(sim_ctx->unit_cell(), sim_ctx->pw_cutoff(), sim_ctx->settings().nprii_vloc_);
         make_pw_coeffs([&ri, iat](double g)
                        {
                            return ri.value(iat, g);
@@ -3173,8 +3196,10 @@ void sirius_get_stress_tensor(ftn_char label__, ftn_double* stress_tensor__)
         s = stress_tensor->stress_ewald();
     } else if (label == "kin") {
         s = stress_tensor->stress_kin();
-    } else if (label == "nl") {
-        s = stress_tensor->stress_nl();
+    } else if (label == "nonloc") {
+        s = stress_tensor->stress_nonloc();
+    } else if (label == "us") {
+        s = stress_tensor->stress_us();
     } else {
         TERMINATE("wrong label");
     }
@@ -3188,6 +3213,11 @@ void sirius_get_stress_tensor(ftn_char label__, ftn_double* stress_tensor__)
 void sirius_set_processing_unit(ftn_char pu__)
 {
     sim_ctx->set_processing_unit(pu__);
+}
+
+void sirius_set_use_symmetry(ftn_int* flg__)
+{
+    sim_ctx->set_use_symmetry(*flg__);
 }
 
 } // extern "C"

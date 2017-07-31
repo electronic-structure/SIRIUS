@@ -54,11 +54,11 @@ class Beta_projectors_gradient: public Beta_projectors_base<3>
                 }
             }
         }
-        if (ctx_.processing_unit() == GPU) {
-            for (int x = 0; x < 3; x++) {
-                pw_coeffs_t_[x].copy<memory_t::host, memory_t::device>();
-            }
-        }
+        //if (ctx_.processing_unit() == GPU) {
+        //    for (int x = 0; x < 3; x++) {
+        //        pw_coeffs_t_[x].copy<memory_t::host, memory_t::device>();
+        //    }
+        //}
     }
 
   public:
