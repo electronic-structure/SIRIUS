@@ -506,12 +506,9 @@ inline vector3d<double> Symmetry::euler_angles(matrix3d<double> const& rot__) co
 
     auto rm1 = rot_mtrx_cart(angles);
 
-    for (int i = 0; i < 3; i++)
-    {
-        for (int j = 0; j < 3; j++)
-        {
-            if (std::abs(rot__(i, j) - rm1(i, j)) > 1e-10)
-            {
+    for (int i = 0; i < 3; i++) {
+        for (int j = 0; j < 3; j++) {
+            if (std::abs(rot__(i, j) - rm1(i, j)) > 1e-8) {
                 std::stringstream s;
                 s << "matrices don't match" << std::endl
                   << "initial symmetry matrix: " << std::endl
