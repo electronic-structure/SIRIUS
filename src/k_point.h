@@ -274,8 +274,7 @@ class K_point
                 }
             }
             
-            TERMINATE("number of occupied bands is not found");
-            return -1;
+            return 0;
         }
 
         /// Total number of G+k vectors within the cutoff distance

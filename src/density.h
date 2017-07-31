@@ -972,6 +972,11 @@ class Density
             return density_matrix_;
         }
 
+        mdarray<double_complex, 4>& density_matrix()
+        {
+            return density_matrix_;
+        }
+
         inline void fft_transform(int direction__)
         {
             rho_->fft_transform(direction__);

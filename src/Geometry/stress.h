@@ -653,7 +653,6 @@ class Stress {
                 int ig = ctx_.gvec().offset() + igloc;
                 for (int i = 0; i < atom_type.num_atoms(); i++) {
                     int ia = atom_type.atom_id(i);
-                    //phase_factors(i, igloc) = std::conj(ctx_.gvec_phase_factor(ig, ia));
                     phase_factors(i, igloc) = ctx_.gvec_phase_factor(ig, ia);
                 }
             }
@@ -687,7 +686,6 @@ class Stress {
                             q_tmp(i, 2 * igloc + 1) = z.imag();
                         }
                         for (int ia = 0; ia < atom_type.num_atoms(); ia++) {
-                            //auto z = phase_factors(ia, igloc) * std::conj(potential_.effective_potential()->f_pw_local(igloc));
                             auto z = phase_factors(ia, igloc) * potential_.effective_potential()->f_pw_local(igloc);
                             v_tmp(ia, 2 * igloc)     = z.real();
                             v_tmp(ia, 2 * igloc + 1) = z.imag();
@@ -817,9 +815,19 @@ class Stress {
         return stress_kin_;
     }
 
-    inline matrix3d<double> stress_nl() const
+    //inline matrix3d<double> stress_nl() const
+    //{
+    //    return stress_nonloc_ + stress_us_;
+    //}
+
+    inline matrix3d<double> stress_nonloc() const
     {
-        return stress_nonloc_ + stress_us_;
+        return stress_nonloc_;
+    }
+
+    inline matrix3d<double> stress_us() const
+    {
+        return stress_us_;
     }
 
     inline void print_info() const
