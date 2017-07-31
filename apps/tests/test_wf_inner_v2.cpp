@@ -30,9 +30,13 @@ void test_wf_inner(std::vector<int> mpi_grid_dims__,
     dmatrix<double_complex> ovlp(num_bands__, num_bands__, blacs_grid, bs__, bs__);
     
     inner(phi, 0, num_bands__, phi, 0, num_bands__, 0.0, ovlp, 0, 0);
+    mpi_comm_world().barrier();
+
+
 
     sddk::timer t1("inner");
     inner(phi, 0, num_bands__, phi, 0, num_bands__, 0.0, ovlp, 0, 0);
+    mpi_comm_world().barrier();
     t1.stop();
 
     //for (int j = 0; j < ovlp.num_cols_local(); j++) {
