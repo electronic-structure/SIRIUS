@@ -157,118 +157,120 @@ inline void Potential::generate_D_operator_matrix()
 
 #pragma omp parallel for schedule(static)
             for (int i = 0; i < atom_type.num_atoms(); i++) {
-                int ia = atom_type.atom_id(i);
-                auto& atom = unit_cell_.atom(ia);
-
-                for (int xi2 = 0; xi2 < nbf; xi2++) {
-                    for (int xi1 = 0; xi1 <= xi2; xi1++) {
-                        int idx12 = xi2 * (xi2 + 1) / 2 + xi1;
-                        /* D-matix is symmetric */
-                        atom.d_mtrx(xi1, xi2, iv) = atom.d_mtrx(xi2, xi1, iv) = d_tmp(idx12, i) * unit_cell_.omega();
-                    }
-                }
+	      int ia = atom_type.atom_id(i);
+	      auto& atom = unit_cell_.atom(ia);
+	      
+	      for (int xi2 = 0; xi2 < nbf; xi2++) {
+		for (int xi1 = 0; xi1 <= xi2; xi1++) {
+		  int idx12 = xi2 * (xi2 + 1) / 2 + xi1;
+		  /* D-matix is symmetric */
+		  atom.d_mtrx(xi1, xi2, iv) = atom.d_mtrx(xi2, xi1, iv) = d_tmp(idx12, i) * unit_cell_.omega();
+		}
+	      }
             }
         }
-        ctx_.augmentation_op(iat).dismiss();
-
+	
+	// Now compute the d operator for atoms with so interactions
         if (atom_type.pp_desc().SpinOrbit_Coupling) {
 #pragma omp parallel for schedule(static)
-            for (int i = 0; i < atom_type.num_atoms(); i++) {
-                int ia     = atom_type.atom_id(i);
-                auto& atom = unit_cell_.atom(ia);
-                for (int xi2 = 0; xi2 < nbf; xi2++) {
-                    for (int xi1 = 0; xi1 <= xi2; xi1++) {
-
-                        // first compute \f[A^_\alpha I^{I,\alpha}_{xi,xi}\f]
-                        // cf Eq.19 PRB 71 115106
-
-                        // note that the I integrals are already calculated and
-                        // stored in atom.d_mtrx
-                        for (int sigma = 0; sigma < 2; sigma++) {
-                            for (int sigmap = 0; sigmap < 2; sigmap++) {
-                                const double_complex Pauli_vector[4][2][2] = {
-                                    {{{1.0,0.0}, {0.0,0.0}},
-                                     {{0.0, 0.0}, {1.0, 0.0}}},    // Id
-                                    {{{1.0, 0.0}, {0.0, 0.0}},
-                                     {{0.0, 0.0}, {0.0,-1.0}}}, // sigma_z
-                                    {{{0.0, 0.0},{0.0,1.0}},
-                                     {{1.0, 0.0},{0.0,0.0}}},  // sigma_x
-                                    {{{0.0, 0.0},{0.0,-1.0}},
-                                     {{0.0,1.0}, {0.0,0.0}}}      // sigma_y
-                                };
-                                double_complex result = {0.0, 0.0};
-                                for (auto xi2p = 0; xi2p < nbf; xi2p++) {
-                                    if (atom_type.compare_index_beta_functions(xi2, xi2p)) {
-                                        for (auto xi1p = 0; xi1p < nbf; xi1p++) {
-                                            if (atom_type.compare_index_beta_functions(xi1, xi1p)) {
-                                                for (int alpha = 0; alpha < 4; alpha++) { // loop over the 0, z,x,y coordinates
-                                                    for (int sigma1 = 0; sigma1 < 2; sigma1++) {
-                                                        for (int sigma2 = 0; sigma2 < 2; sigma2++) {
-                                                            result +=
-                                                                atom.d_mtrx(xi1p, xi2p, alpha) *
-                                                                Pauli_vector[alpha][sigma1][sigma2] *
-                                                                atom.type().f_coefficients(xi1, xi1p, sigma, sigma1) *
-                                                                atom.type().f_coefficients(xi2, xi2p, sigma2, sigmap);
-                                                        }
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    }
-                                    atom.d_mtrx_so(xi2, xi1, 2 * sigma + sigmap) = result;
-                                }
-                            }
-                        }
-                    }
-                }
-
-                // then add the bare D
-                for (int xi2 = 0; xi2 < nbf; xi2++) {
-                    int lm2    = atom.type().indexb(xi2).lm;
-                    int idxrf2 = atom.type().indexb(xi2).idxrf;
-                    int l2 = atom.type().indexb(xi2).l;
-                    double j2  = atom.type().indexb(xi2).j;
-                    int m2     = atom.type().indexb(xi2).m;
-                    for (int xi1 = 0; xi1 < nbf; xi1++) {
-                        int lm1    = atom.type().indexb(xi1).lm;
-                        int l1 = atom.type().indexb(xi1).l;
-                        int idxrf1 = atom.type().indexb(xi1).idxrf;
-                        double j1 = atom.type().indexb(xi1).j;
-                        int m1           = atom.type().indexb(xi1).m;
-                        if ((l1 == l2) && (fabs(j1 - j2) < 1e-8)) {
-                            atom.d_mtrx_so(xi1, xi2, 0) += atom.type().pp_desc().d_mtrx_ion(idxrf1, idxrf2) *
-                                atom.type().f_coefficients(xi2, xi1, 0, 0);
-                            atom.d_mtrx_so(xi1, xi2, 1) += atom.type().pp_desc().d_mtrx_ion(idxrf1, idxrf2) *
-                                atom.type().f_coefficients(xi2, xi1, 0, 1);
-                            atom.d_mtrx_so(xi1, xi2, 2) += atom.type().pp_desc().d_mtrx_ion(idxrf1, idxrf2) *
-                                atom.type().f_coefficients(xi2, xi1, 1, 0);
-                            atom.d_mtrx_so(xi1, xi2, 3) += atom.type().pp_desc().d_mtrx_ion(idxrf1, idxrf2) *
-                                atom.type().f_coefficients(xi2, xi1, 1, 1);
-                        }
-                    }
-                }
-            }
-            // need to clear d_mtrx_so
-        } else {
-            /* add d_ion to the effective potential component of D-operator */
+	  for (int i = 0; i < atom_type.num_atoms(); i++) {
+	    int ia     = atom_type.atom_id(i);
+	    auto& atom = unit_cell_.atom(ia);
+	    for (int xi2 = 0; xi2 < nbf; xi2++) {
+	      for (int xi1 = 0; xi1 <= xi2; xi1++) {
+		
+		// first compute \f[A^_\alpha I^{I,\alpha}_{xi,xi}\f]
+		// cf Eq.19 PRB 71 115106
+		
+		// note that the I integrals are already calculated and
+		// stored in atom.d_mtrx
+		for (int sigma = 0; sigma < 2; sigma++) {
+		  for (int sigmap = 0; sigmap < 2; sigmap++) {
+		    const double_complex Pauli_vector[4][2][2] = {
+		      {{{1.0,0.0}, {0.0,0.0}},
+		       {{0.0, 0.0}, {1.0, 0.0}}},    // Id
+		      {{{1.0, 0.0}, {0.0, 0.0}},
+		       {{0.0, 0.0}, {0.0,-1.0}}}, // sigma_z
+		      {{{0.0, 0.0},{0.0,1.0}},
+		       {{1.0, 0.0},{0.0,0.0}}},  // sigma_x
+		      {{{0.0, 0.0},{0.0,-1.0}},
+		       {{0.0,1.0}, {0.0,0.0}}}      // sigma_y
+		    };
+		    double_complex result = {0.0, 0.0};
+		    for (auto xi2p = 0; xi2p < nbf; xi2p++) {
+		      if (atom_type.compare_index_beta_functions(xi2, xi2p)) {
+			for (auto xi1p = 0; xi1p < nbf; xi1p++) {
+			  if (atom_type.compare_index_beta_functions(xi1, xi1p)) {
+			    for (int alpha = 0; alpha < 4; alpha++) { // loop over the 0, z,x,y coordinates
+			      for (int sigma1 = 0; sigma1 < 2; sigma1++) {
+				for (int sigma2 = 0; sigma2 < 2; sigma2++) {
+				  result +=
+				    atom.d_mtrx(xi1p, xi2p, alpha) *
+				    Pauli_vector[alpha][sigma1][sigma2] *
+				    atom.type().f_coefficients(xi1, xi1p, sigma, sigma1) *
+				    atom.type().f_coefficients(xi2, xi2p, sigma2, sigmap);
+				}
+			      }
+			    }
+			  }
+			}
+		      }
+		      atom.d_mtrx_so(xi2, xi1, 2 * sigma + sigmap) = result;
+		    }
+		  }
+		}
+	      }
+	    }
+	  }
+	}
+	ctx_.augmentation_op(iat).dismiss();
+	// need to clear d_mtrx_so
+    }
+    
+    /* add d_ion to the effective potential component of D-operator */
 #pragma omp parallel for schedule(static)
-            for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
-                auto& atom_type = unit_cell_.atom(ia).type();
-                int nbf         = unit_cell_.atom(ia).mt_basis_size();
-
-                for (int xi2 = 0; xi2 < nbf; xi2++) {
-                    int lm2    = atom_type.indexb(xi2).lm;
-                    int idxrf2 = atom_type.indexb(xi2).idxrf;
-                    for (int xi1 = 0; xi1 < nbf; xi1++) {
-                        int lm1    = atom_type.indexb(xi1).lm;
-                        int idxrf1 = atom_type.indexb(xi1).idxrf;
-
-                        if (lm1 == lm2) {
-                            unit_cell_.atom(ia).d_mtrx(xi1, xi2, 0) += atom_type.pp_desc().d_mtrx_ion(idxrf1, idxrf2);
-                        }
-                    }
-                }
-            }
-        }
+    for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
+      auto& atom_type = unit_cell_.atom(ia).type();
+      int nbf         = unit_cell_.atom(ia).mt_basis_size();
+      if (atom_type.pp_desc().SpinOrbit_Coupling) {
+	// then add the bare D
+	for (int xi2 = 0; xi2 < nbf; xi2++) {
+	  int lm2    = atom_type.indexb(xi2).lm;
+	  int idxrf2 = atom_type.indexb(xi2).idxrf;
+	  int l2 = atom_type.indexb(xi2).l;
+	  double j2  = atom_type.indexb(xi2).j;
+	  int m2     = atom_type.indexb(xi2).m;
+	  for (int xi1 = 0; xi1 < nbf; xi1++) {
+	    int lm1    = atom_type.indexb(xi1).lm;
+	    int l1 = atom_type.indexb(xi1).l;
+	    int idxrf1 = atom_type.indexb(xi1).idxrf;
+	    double j1 = atom_type.indexb(xi1).j;
+	    int m1           = atom_type.indexb(xi1).m;
+	    if ((l1 == l2) && (fabs(j1 - j2) < 1e-8)) {
+	      unit_cell_.atom(ia).d_mtrx_so(xi1, xi2, 0) += atom_type.pp_desc().d_mtrx_ion(idxrf1, idxrf2) *
+		atom_type.f_coefficients(xi2, xi1, 0, 0);
+	      unit_cell_.atom(ia).d_mtrx_so(xi1, xi2, 1) += atom_type.pp_desc().d_mtrx_ion(idxrf1, idxrf2) *
+		atom_type.f_coefficients(xi2, xi1, 0, 1);
+	      unit_cell_.atom(ia).d_mtrx_so(xi1, xi2, 2) += atom_type.pp_desc().d_mtrx_ion(idxrf1, idxrf2) *
+		atom_type.f_coefficients(xi2, xi1, 1, 0);
+	      unit_cell_.atom(ia).d_mtrx_so(xi1, xi2, 3) += atom_type.pp_desc().d_mtrx_ion(idxrf1, idxrf2) *
+		atom_type.f_coefficients(xi2, xi1, 1, 1);
+	    }
+	  }
+	}
+      } else {
+	for (int xi2 = 0; xi2 < nbf; xi2++) {
+	  int lm2    = atom_type.indexb(xi2).lm;
+	  int idxrf2 = atom_type.indexb(xi2).idxrf;
+	  for (int xi1 = 0; xi1 < nbf; xi1++) {
+	    int lm1    = atom_type.indexb(xi1).lm;
+	    int idxrf1 = atom_type.indexb(xi1).idxrf;
+	    
+	    if (lm1 == lm2) {
+	      unit_cell_.atom(ia).d_mtrx(xi1, xi2, 0) += atom_type.pp_desc().d_mtrx_ion(idxrf1, idxrf2);
+	    }
+	  }
+	}
+      }
     }
 }
