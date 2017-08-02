@@ -3055,7 +3055,7 @@ void sirius_get_pw_coeffs(ftn_char        label__,
         Communicator comm(MPI_Comm_f2c(*comm__));
         mdarray<int, 2> gvec(gvl__, 3, *ngv__);
 
-        std::map<std::string, sirius::Periodic_function<double>*> func = {
+        std::map<std::string, sirius::Smooth_periodic_function<double>*> func = {
             {"rho", density->rho()},
             {"magz", density->magnetization(0)},
             {"magx", density->magnetization(1)},
@@ -3200,6 +3200,10 @@ void sirius_get_stress_tensor(ftn_char label__, ftn_double* stress_tensor__)
         s = stress_tensor->stress_nonloc();
     } else if (label == "us") {
         s = stress_tensor->stress_us();
+    } else if (label == "xc") {
+        s = stress_tensor->stress_xc();
+    } else if (label == "core") {
+        s = stress_tensor->stress_core();
     } else {
         TERMINATE("wrong label");
     }
