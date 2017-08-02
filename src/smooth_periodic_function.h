@@ -201,6 +201,21 @@ class Smooth_periodic_function
         {
             std::copy(&f_pw__[gvec_->offset()], &f_pw__[gvec_->offset()] + gvec_->count(), &f_pw_local_(0));
         }
+
+        void add(Smooth_periodic_function<T> const& g__)
+        {
+            #pragma omp parallel for schedule(static)
+            for (int irloc = 0; irloc < this->fft_->local_size(); irloc++) {
+                this->f_rg_(irloc) += g__.f_rg(irloc);
+            }
+        }
+
+        inline T checksum_rg() const
+        {
+            T cs = this->f_rg_.checksum();
+            this->fft_->comm().allreduce(&cs, 1);
+            return cs;
+        }
 };
 
 /// Gradient of the smooth periodic function.
