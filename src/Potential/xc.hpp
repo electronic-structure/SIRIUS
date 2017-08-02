@@ -520,8 +520,7 @@ inline void Potential::xc_it_nonmagnetic(Periodic_function<double>* rho__,
     vxc_tmp.zero();
 
     mdarray<double, 1> vsigma_tmp;
-    if (is_gga)
-    {
+    if (is_gga) {
         vsigma_tmp = mdarray<double, 1>(spl_np.local_size());
         vsigma_tmp.zero();
     }
@@ -605,15 +604,6 @@ inline void Potential::xc_it_nonmagnetic(Periodic_function<double>* rho__,
     }
     comm.allgather(&vxc_tmp[0], &vxc__->f_rg(0), spl_np.global_offset(), spl_np.local_size()); 
     comm.allgather(&exc_tmp[0], &exc__->f_rg(0), spl_np.global_offset(), spl_np.local_size()); 
-
-    #ifdef __PRINT_OBJECT_CHECKSUM
-    DUMP("checksum(vxc_tmp): %18.10f", vxc_tmp.checksum());
-    DUMP("checksum(exc_tmp): %18.10f", exc_tmp.checksum());
-    #endif
-    #ifdef __PRINT_OBJECT_HASH
-    DUMP("hash(vxc_tmp): %16llX", vxc_tmp.hash());
-    DUMP("hash(exc_tmp): %16llX", exc_tmp.hash());
-    #endif
 }
 
 inline void Potential::xc_it_magnetic(Periodic_function<double>* rho, 
