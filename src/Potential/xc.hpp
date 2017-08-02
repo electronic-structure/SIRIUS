@@ -458,12 +458,7 @@ inline void Potential::xc_it_nonmagnetic(Periodic_function<double>* rho__,
 {
     PROFILE("sirius::Potential::xc_it_nonmagnetic");
 
-    bool is_gga = false;
-    for (auto& ixc: xc_func__) {
-        if (ixc.is_gga()) {
-            is_gga = true;
-        }
-    }
+    bool is_gga = is_gradient_correction();
 
     int num_points = ctx_.fft().local_size();
 
@@ -578,16 +573,14 @@ inline void Potential::xc_it_nonmagnetic(Periodic_function<double>* rho__,
     }
 
     if (is_gga) {
-        Smooth_periodic_function<double> vsigma(ctx_.fft(), ctx_.gvec());
-
         /* gather vsigma */
-        comm.allgather(&vsigma_tmp[0], &vsigma.f_rg(0), spl_np.global_offset(), spl_np.local_size()); 
+        comm.allgather(&vsigma_tmp[0], &vsigma_[0]->f_rg(0), spl_np.global_offset(), spl_np.local_size()); 
 
         /* forward transform vsigma to plane-wave domain */
-        vsigma.fft_transform(-1);
+        vsigma_[0]->fft_transform(-1);
 
         /* gradient of vsigma in plane-wave domain */
-        auto grad_vsigma = gradient(vsigma);
+        auto grad_vsigma = gradient((*vsigma_[0]));
 
         /* backward transform gradient from pw to real space */
         for (int x: {0, 1, 2}) {
