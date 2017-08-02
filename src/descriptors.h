@@ -75,8 +75,7 @@ struct local_orbital_descriptor
     /// Orbital quantum number \f$ \ell \f$.
     int l;
 
-    /// Total angular momentum
-    double j;
+    int j;
 
     /// Set of radial solution descriptors.
     /** Local orbital is constructed from at least two radial functions in order to make it zero at the 
@@ -109,7 +108,7 @@ struct pseudopotential_descriptor
     std::vector<int> beta_l;
 
     /// Total orbital quantum numbers of each beta radial function.
-    std::vector<int> beta_j;
+    std::vector<double> beta_j;
 
     /// Number of radial grid points for each beta radial function.
     std::vector<int> num_beta_radial_points;
@@ -177,9 +176,10 @@ struct radial_function_index_descriptor
 {
     /// Orbital quantum number \f$ \ell \f$.
     int l;
+  
+    /// Total angular momentum
+    double j;
 
-  /// Total angular momentum
-  double j;
     /// Order of a function for a given \f$ \ell \f$.
     int order;
 

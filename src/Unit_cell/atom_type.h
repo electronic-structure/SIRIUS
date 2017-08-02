@@ -217,13 +217,9 @@ class basis_functions_index
                 int idxlo = indexr[idxrf].idxlo;
 
                 index_by_idxrf_(idxrf) = (int)basis_function_index_descriptors_.size();
-		//if (!pp_desc_.SpinOrbit_Coupling) {
-		   for (int m = -l; m <= l; m++)
-		     basis_function_index_descriptors_.push_back(basis_function_index_descriptor(l, m, order, idxlo, idxrf));
-		/* } else { */
-		/*   for (int m = -l; m <= l; m++) */
-		/*     basis_function_index_descriptors_.push_back(basis_function_index_descriptor(l, indexr[idxrf].j, m, order, idxlo, idxrf)); */
-		/* } */
+
+		for (int m = -l; m <= l; m++)
+		  basis_function_index_descriptors_.push_back(basis_function_index_descriptor(l, m, indexr[idxrf].j, order, idxlo, idxrf));
 	    }
 	    index_by_lm_order_ = mdarray<int, 2>(Utils::lmmax(indexr.lmax()), indexr.max_num_rf());
 		
