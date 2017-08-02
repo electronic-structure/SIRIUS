@@ -33,10 +33,15 @@ namespace sirius {
 /// Stress tensor.
 /** The following referenceces were particularly useful in the derivation of the stress tensor components:
  *    - Hutter, D. M. A. J. (2012). Ab Initio Molecular Dynamics (pp. 1–580).
- *    - Marx, D., & Hutter, J. (2000). Ab initio molecular dynamics: Theory and implementation. Modern Methods and Algorithms of Quantum Chemistry.
- *    - Knuth, F., Carbogno, C., Atalla, V., & Blum, V. (2015). All-electron formalism for total energy strain derivatives and stress tensor components for numeric atom-centered orbitals. Computer Physics Communications.
- *    - Willand, A., Kvashnin, Y. O., Genovese, L., Vázquez-Mayagoitia, Á., Deb, A. K., Sadeghi, A., et al. (2013). Norm-conserving pseudopotentials with chemical accuracy compared to all-electron calculations. The Journal of Chemical Physics, 138(10), 104109. http://doi.org/10.1103/PhysRevB.50.4327
- *    - Corso, A. D., & Resta, R. (1994). Density-functional theory of macroscopic stress: Gradient-corrected calculations for crystalline Se. Physical Review B.
+ *    - Marx, D., & Hutter, J. (2000). Ab initio molecular dynamics: Theory and implementation.
+ *      Modern Methods and Algorithms of Quantum Chemistry.
+ *    - Knuth, F., Carbogno, C., Atalla, V., & Blum, V. (2015). All-electron formalism for total energy strain derivatives 
+ *      and stress tensor components for numeric atom-centered orbitals. Computer Physics Communications.
+ *    - Willand, A., Kvashnin, Y. O., Genovese, L., Vázquez-Mayagoitia, Á., Deb, A. K., Sadeghi, A., et al. (2013).
+ *      Norm-conserving pseudopotentials with chemical accuracy compared to all-electron calculations.
+ *      The Journal of Chemical Physics, 138(10), 104109. http://doi.org/10.1103/PhysRevB.50.4327
+ *    - Corso, A. D., & Resta, R. (1994). Density-functional theory of macroscopic stress: Gradient-corrected calculations 
+ *      for crystalline Se. Physical Review B.
  *
  * Stress tensor describes a reaction of crystall to a strain:
  *  \f[
@@ -757,6 +762,37 @@ class Stress {
 
         for (int l = 0; l < 3; l++) {
             stress_xc_(l, l) = e / ctx_.unit_cell().omega();
+        }
+
+        if (potential_.is_gradient_correction()) {
+
+            Smooth_periodic_function<double> rhovc(ctx_.fft(), ctx_.gvec());
+            rhovc.zero();
+            rhovc.add(*density_.rho());
+            rhovc.add(density_.rho_pseudo_core());
+
+            rhovc.fft_transform(-1);
+
+            /* generate pw coeffs of the gradient and laplacian */
+            auto grad_rho = gradient(rhovc);
+
+            /* gradient in real space */
+            for (int x: {0, 1, 2}) {
+                grad_rho[x].fft_transform(1);
+            }
+
+            matrix3d<double> t;
+            for (int irloc = 0; irloc < ctx_.fft().local_size(); irloc++) {
+                for (int mu = 0; mu < 3; mu++) {
+                    for (int nu = 0; nu < 3; nu++) {
+                        t(mu, nu) += grad_rho[mu].f_rg(irloc) * grad_rho[nu].f_rg(irloc) * potential_.vsigma(0).f_rg(irloc);
+                    }
+                }
+            }
+            ctx_.fft().comm().allreduce(&t(0, 0), 9);
+            t *= (-2.0 / ctx_.fft().size()); // factor 2 comes from the derivative of sigma (which is grad(rho) * grad(rho)) 
+                                             // with respect to grad(rho) components
+            stress_xc_ += t;
         }
 
         symmetrize(stress_xc_);
