@@ -180,7 +180,8 @@ class Forces_PS
     {
         PROFILE("sirius::Forces_PS::calc_ultrasoft_forces");
 
-        const mdarray<double_complex, 4>& density_matrix = density_.density_matrix();
+        auto& density_matrix = density_.density_matrix();
+
         const Periodic_function<double>* veff_full = potential_.effective_potential();
 
         Unit_cell& unit_cell = ctx_.unit_cell();
@@ -328,22 +329,7 @@ class Forces_PS
 
         forces.zero();
 
-        /* alpha = 1 / ( 2 sigma^2 ) , selecting alpha here for better convergence*/
-        double alpha = 1.0;
-        double gmax = ctx_.pw_cutoff();
-        double upper_bound = 0.0;
-        double charge = ctx_.unit_cell().num_electrons();
-
-        /* iterate to find alpha */
-        do {
-            alpha += 0.1;
-            upper_bound = charge*charge * std::sqrt( 2.0 * alpha / twopi) * gsl_sf_erfc( gmax * std::sqrt(1.0 / (4.0 * alpha)) );
-            //std::cout<<"alpha " <<alpha<<" ub "<<upper_bound<<std::endl;
-        } while(upper_bound < 1.0e-8);
-
-        if (alpha < 1.5) {
-            std::cout<<"Ewald forces error: probably, pw_cutoff is too small."<<std::endl;
-        }
+        double alpha = ctx_.ewald_lambda();
 
         double prefac = (ctx_.gvec().reduced() ? 4.0 : 2.0) * (twopi / unit_cell.omega());
 
