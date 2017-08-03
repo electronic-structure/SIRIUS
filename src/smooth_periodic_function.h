@@ -216,6 +216,37 @@ class Smooth_periodic_function
             this->fft_->comm().allreduce(&cs, 1);
             return cs;
         }
+
+        /// Compute inner product <f|g>
+        T inner(Smooth_periodic_function<T> const& g__) const
+        {
+            PROFILE("sirius::Periodic_function::inner");
+        
+            assert(this->fft_ == g__.fft_);
+
+            T result_rg{0};
+            
+            #pragma omp parallel
+            {
+                T rt{0};
+                
+                #pragma omp for schedule(static)
+                for (int irloc = 0; irloc < this->fft_->local_size(); irloc++) {
+                    rt += std::conj(this->f_rg(irloc)) * g__.f_rg(irloc);
+                }
+        
+                #pragma omp critical
+                result_rg += rt;
+            }
+            double omega = std::pow(twopi, 3) / std::abs(this->gvec_->lattice_vectors().det());
+                    
+            result_rg *= (omega / this->fft_->size());
+
+            this->fft_->comm().allreduce(&result_rg, 1);
+
+            return result_rg;
+        }
+
 };
 
 /// Gradient of the smooth periodic function.

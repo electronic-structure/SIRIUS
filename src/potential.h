@@ -1204,7 +1204,7 @@ class Potential
         {
             double exc = density__.rho()->inner(xc_energy_density());
             if (!ctx_.full_potential()) {
-                exc += xc_energy_density()->inner(density__.rho_pseudo_core());
+                exc += density__.rho_pseudo_core().inner(*xc_energy_density());
             }
             return exc;
         }

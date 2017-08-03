@@ -308,36 +308,6 @@ class Periodic_function: public Smooth_periodic_function<T>
         }
 
         /// Compute inner product <f|g>
-        T inner(Smooth_periodic_function<T> const& g__) const
-        {
-            PROFILE("sirius::Periodic_function::inner");
-        
-            assert(this->fft_ == g__.fft_);
-
-            T result_rg{0};
-            
-            #pragma omp parallel
-            {
-                T rt{0};
-                
-                #pragma omp for schedule(static)
-                for (int irloc = 0; irloc < this->fft_->local_size(); irloc++) {
-                    rt += std::conj(this->f_rg(irloc)) * g__.f_rg(irloc);
-                }
-        
-                #pragma omp critical
-                result_rg += rt;
-            }
-                    
-            result_rg *= (unit_cell_.omega() / this->fft_->size());
-
-            this->fft_->comm().allreduce(&result_rg, 1);
-
-            return result_rg;
-            
-        }
-
-        /// Compute inner product <f|g>
         T inner(Periodic_function<T> const* g__) const
         {
             PROFILE("sirius::Periodic_function::inner");
@@ -351,7 +321,7 @@ class Periodic_function: public Smooth_periodic_function<T>
             
             if (!ctx_.full_potential()) {
                 Smooth_periodic_function<T> const& tmp = *g__;
-                result_rg = inner(tmp);
+                result_rg = Smooth_periodic_function<T>::inner(tmp);
                 //#pragma omp parallel
                 //{
                 //    T rt{0};
