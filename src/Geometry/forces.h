@@ -59,7 +59,7 @@ class Forces_PS
 
         Non_local_functor<T, 3> nlf(ctx_, bp_grad);
 
-        nlf.add_k_point_contribution(kpoint, forces);
+        nlf.add_k_point_contribution_nc(kpoint, forces);
 
         #ifdef __GPU
         if (ctx_.processing_unit() == GPU && !keep_wf_on_gpu) {

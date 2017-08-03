@@ -158,7 +158,7 @@ class Non_local_functor
 
             for(int ispn = 0; ispn < ctx_.num_spins(); ispn++){
                 int nbnd = kpoint__.num_occupied_bands(ispn);
-                bp_phi_chunks[0] = std::move( bp.inner<T>(icnk, kpoint__.spinor_wave_functions(ispn), 0, nbnd) );
+                bp_phi_chunks[ispn] = std::move( bp.inner<T>(icnk, kpoint__.spinor_wave_functions(ispn), 0, nbnd) );
             }
 
             for (int x = 0; x < N; x++) {
@@ -168,6 +168,8 @@ class Non_local_functor
                 for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
                     int spin_bnd_offset = ctx_.num_mag_dims() == 1 ? ispn * ctx_.num_fv_states() : 0 ;
                     int spin_factor = (ispn == 0 ? 1 : -1);
+
+                    int nbnd = kpoint__.num_occupied_bands(ispn);
 
                     /* inner product of beta gradient and WF */
                     auto bp_base_phi_chunk = bp_base_.inner<T>(icnk, kpoint__.spinor_wave_functions(ispn), 0, nbnd);
@@ -204,7 +206,7 @@ class Non_local_functor
                             for (int jbf = 0; jbf < unit_cell.atom(ia).type().mt_lo_basis_size(); jbf++) {
 
                                 /* Qij exists only in the case of ultrasoft/PAW */
-                                double qij = unit_cell.atom(ia).type().pp_desc().augment ? ctx_.augmentation_op(iat).q_mtrx(i, j) : 0.0;
+                                double qij = unit_cell.atom(ia).type().pp_desc().augment ? ctx_.augmentation_op(iat).q_mtrx(ibf, jbf) : 0.0;
                                 double_complex dij = 0.0;
 
                                 /* get non-magnetic or collinear spin parts of dij*/
