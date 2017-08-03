@@ -934,7 +934,7 @@ module sirius
         subroutine sirius_set_density_matrix(ia, dm, nhm)&
             &bind(C, name="sirius_set_density_matrix")
             integer,                  intent(in)  :: ia
-            complex(8),               intent(in) :: dm
+            complex(8),               intent(in)  :: dm
             integer,                  intent(in)  :: nhm
         end subroutine
 
