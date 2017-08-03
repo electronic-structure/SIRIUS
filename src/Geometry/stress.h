@@ -773,7 +773,7 @@ class Stress {
 
             rhovc.fft_transform(-1);
 
-            /* generate pw coeffs of the gradient and laplacian */
+            /* generate pw coeffs of the gradient */
             auto grad_rho = gradient(rhovc);
 
             /* gradient in real space */
