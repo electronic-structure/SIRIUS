@@ -51,7 +51,7 @@ class Periodic_function: public Smooth_periodic_function<T>
     private:
        
         /// Complex counterpart for a given type T.
-        typedef typename type_wrapper<T>::complex_t complex_t; 
+        typedef typename type_wrapper<T>::complex_t complex_t;
 
         Simulation_context const& ctx_;
         
@@ -164,16 +164,15 @@ class Periodic_function: public Smooth_periodic_function<T>
             }
         }
 
+        using Smooth_periodic_function<T>::add;
+
         /// Add the function
         void add(Periodic_function<T>* g)
         {
             PROFILE("sirius::Periodic_function::add");
-
-            #pragma omp parallel for schedule(static)
-            for (int irloc = 0; irloc < this->fft_->local_size(); irloc++) {
-                this->f_rg_(irloc) += g->f_rg(irloc);
-            }
-            
+            /* add regular-grid part */
+            Smooth_periodic_function<T>::add(*g);
+            /* add muffin-tin part */
             if (ctx_.full_potential()) {
                 for (int ialoc = 0; ialoc < unit_cell_.spl_num_atoms().local_size(); ialoc++)
                     f_mt_local_(ialoc) += g->f_mt(ialoc);
@@ -303,13 +302,6 @@ class Periodic_function: public Smooth_periodic_function<T>
             }
         }
 
-        inline T checksum_rg() const
-        {
-            T cs = this->f_rg_.checksum();
-            this->fft_->comm().allreduce(&cs, 1);
-            return cs;
-        }
-
         mdarray<T, 3>& f_mt()
         {
             return f_mt_;
@@ -328,27 +320,29 @@ class Periodic_function: public Smooth_periodic_function<T>
             T result_rg{0};
             
             if (!ctx_.full_potential()) {
-                #pragma omp parallel
-                {
-                    T rt{0};
-                    
-                    #pragma omp for schedule(static)
-                    for (int irloc = 0; irloc < this->fft_->local_size(); irloc++) {
-                        rt += std::conj(this->f_rg(irloc)) * g__->f_rg(irloc);
-                    }
+                Smooth_periodic_function<T> const& tmp = *g__;
+                result_rg = Smooth_periodic_function<T>::inner(tmp);
+                //#pragma omp parallel
+                //{
+                //    T rt{0};
+                //    
+                //    #pragma omp for schedule(static)
+                //    for (int irloc = 0; irloc < this->fft_->local_size(); irloc++) {
+                //        rt += std::conj(this->f_rg(irloc)) * g__->f_rg(irloc);
+                //    }
         
-                    #pragma omp critical
-                    result_rg += rt;
-                }
+                //    #pragma omp critical
+                //    result_rg += rt;
+                //}
             } else {
                 for (int irloc = 0; irloc < this->fft_->local_size(); irloc++) {
                     result_rg += std::conj(this->f_rg(irloc)) * g__->f_rg(irloc) * 
                                  this->step_function_.theta_r(irloc);
                 }
+                result_rg *= (unit_cell_.omega() / this->fft_->size());
+                this->fft_->comm().allreduce(&result_rg, 1);
             }
                     
-            result_rg *= (unit_cell_.omega() / this->fft_->size());
-            this->fft_->comm().allreduce(&result_rg, 1);
 
             T result_mt{0};
             if (ctx_.full_potential()) {

@@ -31,7 +31,19 @@
 namespace sirius {
 
 /// Stress tensor.
-/** Stress tensor describes a reaction of crystall to a strain:
+/** The following referenceces were particularly useful in the derivation of the stress tensor components:
+ *    - Hutter, D. M. A. J. (2012). Ab Initio Molecular Dynamics (pp. 1–580).
+ *    - Marx, D., & Hutter, J. (2000). Ab initio molecular dynamics: Theory and implementation.
+ *      Modern Methods and Algorithms of Quantum Chemistry.
+ *    - Knuth, F., Carbogno, C., Atalla, V., & Blum, V. (2015). All-electron formalism for total energy strain derivatives 
+ *      and stress tensor components for numeric atom-centered orbitals. Computer Physics Communications.
+ *    - Willand, A., Kvashnin, Y. O., Genovese, L., Vázquez-Mayagoitia, Á., Deb, A. K., Sadeghi, A., et al. (2013).
+ *      Norm-conserving pseudopotentials with chemical accuracy compared to all-electron calculations.
+ *      The Journal of Chemical Physics, 138(10), 104109. http://doi.org/10.1103/PhysRevB.50.4327
+ *    - Corso, A. D., & Resta, R. (1994). Density-functional theory of macroscopic stress: Gradient-corrected calculations 
+ *      for crystalline Se. Physical Review B.
+ *
+ * Stress tensor describes a reaction of crystall to a strain:
  *  \f[
  *    \sigma_{\mu \nu} = \frac{1}{\Omega} \frac{\partial  E}{\partial \varepsilon_{\mu \nu}}
  *  \f]
@@ -100,6 +112,10 @@ class Stress {
     matrix3d<double> stress_nonloc_;
 
     matrix3d<double> stress_us_;
+
+    matrix3d<double> stress_xc_;
+
+    matrix3d<double> stress_core_;
     
     /// Kinetic energy contribution to stress.
     /** Kinetic energy:
@@ -186,12 +202,10 @@ class Stress {
     inline void calc_stress_har()
     {
         PROFILE("sirius::Stress|har");
-
-        for (int igloc = 0; igloc < ctx_.gvec().count(); igloc++) {
+        
+        int ig0 = (ctx_.comm().rank() == 0) ? 1 : 0;
+        for (int igloc = ig0; igloc < ctx_.gvec().count(); igloc++) {
             int ig = ctx_.gvec().offset() + igloc;
-            if (!ig) {
-                continue;
-            }
 
             auto G = ctx_.gvec().gvec_cart(ig);
             double g2 = std::pow(G.length(), 2);
@@ -259,32 +273,13 @@ class Stress {
     {
         PROFILE("sirius::Stress|ewald");
 
-        /* alpha = 1 / ( 2 sigma^2 ) , selecting alpha here for better convergence*/
-        double lambda = 1.0;
-        double gmax = ctx_.pw_cutoff();
-        double upper_bound = 0.0;
-        double charge = ctx_.unit_cell().num_electrons();
-        
-        // TODO: common function for stress, forces and total energy contributions
-        /* iterate to find alpha */
-        do {
-            lambda += 0.1;
-            upper_bound = charge*charge * std::sqrt(2.0 * lambda / twopi) * gsl_sf_erfc(gmax * std::sqrt(1.0 / (4.0 * lambda)));
-        } while (upper_bound < 1.0e-8);
-
-        if (lambda < 1.5) {
-            std::stringstream s;
-            s << "Ewald forces error: probably, pw_cutoff is too small.";
-            WARNING(s);
-        }
+        double lambda = ctx_.ewald_lambda();
 
         auto& uc = ctx_.unit_cell();
 
-        for (int igloc = 0; igloc < ctx_.gvec().count(); igloc++) {
+        int ig0 = (ctx_.comm().rank() == 0) ? 1 : 0;
+        for (int igloc = ig0; igloc < ctx_.gvec().count(); igloc++) {
             int ig = ctx_.gvec().offset() + igloc;
-            if (!ig) {
-                continue;
-            }
 
             auto G = ctx_.gvec().gvec_cart(ig);
             double g2 = std::pow(G.length(), 2);
@@ -404,13 +399,10 @@ class Stress {
         
         double sdiag{0};
 
-        for (int igloc = 0; igloc < ctx_.gvec().count(); igloc++) {
+        int ig0 = (ctx_.comm().rank() == 0) ? 1 : 0;
+        for (int igloc = ig0; igloc < ctx_.gvec().count(); igloc++) {
             int ig = ctx_.gvec().offset() + igloc;
             
-            if (!ig) {
-                continue;
-            }
-
             auto G = ctx_.gvec().gvec_cart(ig);
 
             for (int mu: {0, 1, 2}) {
@@ -588,7 +580,6 @@ class Stress {
         for (auto e: idx) {
             stress_nonloc_(e[0], e[1]) = stress_nonloc_(e[1], e[0]) = 0.5 * (stress_nonloc_(e[0], e[1]) + stress_nonloc_(e[1], e[0]));
         }
-
     }
 
     /// Contribution to the stress tensor from the augmentation operator.
@@ -629,7 +620,7 @@ class Stress {
 
         potential_.effective_potential()->fft_transform(-1);
 
-        Radial_integrals_aug<false> ri(ctx_.unit_cell(), ctx_.pw_cutoff(), ctx_.settings().nprii_aug_);
+        Radial_integrals_aug<false> const& ri = ctx_.aug_ri();
         Radial_integrals_aug<true> ri_dq(ctx_.unit_cell(), ctx_.pw_cutoff(), ctx_.settings().nprii_aug_);
 
         Augmentation_operator_gvec_deriv q_deriv(ctx_);
@@ -757,6 +748,101 @@ class Stress {
         }
     }
 
+    /// XC contribution to stress.
+    /** XC contribution has the following expression:
+     *  \f[
+     *    \frac{\partial E_{xc}}{\partial \varepsilon_{\mu \nu}} = \delta_{\mu \nu} \int \Big( \epsilon_{xc}({\bf r}) - v_{xc}({\bf r}) \Big) \rho({\bf r})d{\bf r} - 
+     *      \int \frac{\partial \epsilon_{xc} \big( \rho({\bf r}), \nabla \rho({\bf r})\big) }{\nabla_{\beta} \rho({\bf r})} \nabla_{\alpha}\rho({\bf r}) d{\bf r}
+     *  \f]
+     */
+    void calc_stress_xc()
+    {
+        double e = potential_.energy_exc(density_) - potential_.energy_vxc(density_);
+
+        for (int l = 0; l < 3; l++) {
+            stress_xc_(l, l) = e / ctx_.unit_cell().omega();
+        }
+
+        if (potential_.is_gradient_correction()) {
+
+            Smooth_periodic_function<double> rhovc(ctx_.fft(), ctx_.gvec());
+            rhovc.zero();
+            rhovc.add(*density_.rho());
+            rhovc.add(density_.rho_pseudo_core());
+
+            rhovc.fft_transform(-1);
+
+            /* generate pw coeffs of the gradient */
+            auto grad_rho = gradient(rhovc);
+
+            /* gradient in real space */
+            for (int x: {0, 1, 2}) {
+                grad_rho[x].fft_transform(1);
+            }
+
+            matrix3d<double> t;
+            for (int irloc = 0; irloc < ctx_.fft().local_size(); irloc++) {
+                for (int mu = 0; mu < 3; mu++) {
+                    for (int nu = 0; nu < 3; nu++) {
+                        t(mu, nu) += grad_rho[mu].f_rg(irloc) * grad_rho[nu].f_rg(irloc) * potential_.vsigma(0).f_rg(irloc);
+                    }
+                }
+            }
+            ctx_.fft().comm().allreduce(&t(0, 0), 9);
+            t *= (-2.0 / ctx_.fft().size()); // factor 2 comes from the derivative of sigma (which is grad(rho) * grad(rho)) 
+                                             // with respect to grad(rho) components
+            stress_xc_ += t;
+        }
+
+        symmetrize(stress_xc_);
+    }
+
+    void calc_stress_core()
+    {
+        potential_.xc_potential()->fft_transform(-1);
+
+        Radial_integrals_rho_core_pseudo<true> ri_dg(ctx_.unit_cell(), ctx_.pw_cutoff(), ctx_.settings().nprii_rho_core_);
+
+        auto drhoc = ctx_.make_periodic_function<index_domain_t::local>([&ri_dg](int iat, double g)
+                                                                        {
+                                                                            return ri_dg.value(iat, g);
+                                                                        });
+        double sdiag{0};
+        int ig0 = (ctx_.comm().rank() == 0) ? 1 : 0;
+
+        for (int igloc = ig0; igloc < ctx_.gvec().count(); igloc++) {
+            int ig = ctx_.gvec().offset() + igloc;
+            
+            auto G = ctx_.gvec().gvec_cart(ig);
+            auto g = G.length();
+
+            for (int mu: {0, 1, 2}) {
+                for (int nu: {0, 1, 2}) {
+                    stress_core_(mu, nu) -= std::real(std::conj(potential_.xc_potential()->f_pw_local(igloc)) * drhoc[igloc]) * G[mu] * G[nu] / g;
+                }
+            }
+
+            sdiag += std::real(std::conj(potential_.xc_potential()->f_pw_local(igloc)) * density_.rho_pseudo_core().f_pw_local(igloc));
+        }
+        
+        if (ctx_.gvec().reduced()) {
+            stress_core_ *= 2;
+            sdiag *= 2;
+        }
+        if (ctx_.comm().rank() == 0) {
+            sdiag += std::real(std::conj(potential_.xc_potential()->f_pw_local(0)) * density_.rho_pseudo_core().f_pw_local(0));
+        }
+
+        for (int mu: {0, 1, 2}) {
+            stress_core_(mu, mu) -= sdiag;
+        }
+
+        ctx_.comm().allreduce(&stress_core_(0, 0), 9);
+
+        symmetrize(stress_core_);
+
+    }
+
     inline void symmetrize(matrix3d<double>& mtrx__) const
     {
         if (!ctx_.use_symmetry()) {
@@ -793,6 +879,8 @@ class Stress {
             calc_stress_nonloc<double_complex>();
         }
         calc_stress_us();
+        calc_stress_xc();
+        calc_stress_core();
     }
 
     inline matrix3d<double> stress_vloc() const
@@ -828,6 +916,16 @@ class Stress {
     inline matrix3d<double> stress_us() const
     {
         return stress_us_;
+    }
+
+    inline matrix3d<double> stress_xc() const
+    {
+        return stress_xc_;
+    }
+
+    inline matrix3d<double> stress_core() const
+    {
+        return stress_core_;
     }
 
     inline void print_info() const

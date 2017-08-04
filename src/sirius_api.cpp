@@ -3055,7 +3055,7 @@ void sirius_get_pw_coeffs(ftn_char        label__,
         Communicator comm(MPI_Comm_f2c(*comm__));
         mdarray<int, 2> gvec(gvl__, 3, *ngv__);
 
-        std::map<std::string, sirius::Periodic_function<double>*> func = {
+        std::map<std::string, sirius::Smooth_periodic_function<double>*> func = {
             {"rho", density->rho()},
             {"magz", density->magnetization(0)},
             {"magx", density->magnetization(1)},
@@ -3200,6 +3200,10 @@ void sirius_get_stress_tensor(ftn_char label__, ftn_double* stress_tensor__)
         s = stress_tensor->stress_nonloc();
     } else if (label == "us") {
         s = stress_tensor->stress_us();
+    } else if (label == "xc") {
+        s = stress_tensor->stress_xc();
+    } else if (label == "core") {
+        s = stress_tensor->stress_core();
     } else {
         TERMINATE("wrong label");
     }
@@ -3218,6 +3222,24 @@ void sirius_set_processing_unit(ftn_char pu__)
 void sirius_set_use_symmetry(ftn_int* flg__)
 {
     sim_ctx->set_use_symmetry(*flg__);
+}
+
+void sirius_ri_aug_(ftn_int* idx__, ftn_int* l__, ftn_int* iat__, ftn_double* q__, ftn_double* val__)
+{
+    if (sim_ctx) {
+        *val__ = sim_ctx->aug_ri().value(*idx__ - 1, *l__, *iat__ - 1, *q__);
+    } else {
+        *val__ = 0;
+    }
+}
+
+void sirius_ri_beta_(ftn_int* idx__, ftn_int* iat__, ftn_double* q__, ftn_double* val__)
+{
+    if (sim_ctx) {
+        *val__ = sim_ctx->beta_ri().value(*idx__ - 1, *iat__ - 1, *q__);
+    } else {
+        *val__ = 0;
+    }
 }
 
 } // extern "C"

@@ -89,7 +89,6 @@ class Simulation_context: public Simulation_context_base
             }
 
             if (!full_potential()) {
-                Radial_integrals_aug<false> ri(unit_cell(), pw_cutoff(), settings().nprii_aug_);
 
                 if (comm().rank() == 0 && control().print_memory_usage_) {
                     MEMORY_USAGE_INFO();
@@ -97,7 +96,7 @@ class Simulation_context: public Simulation_context_base
 
                 /* create augmentation operator Q_{xi,xi'}(G) here */
                 for (int iat = 0; iat < unit_cell().num_atom_types(); iat++) {
-                    augmentation_op_.push_back(std::move(Augmentation_operator(*this, iat, ri)));
+                    augmentation_op_.push_back(std::move(Augmentation_operator(*this, iat, aug_ri())));
 
                     if (comm().rank() == 0 && control().print_memory_usage_) {
                         MEMORY_USAGE_INFO();
@@ -129,6 +128,7 @@ class Simulation_context: public Simulation_context_base
         {
             return *beta_projector_chunks_;
         }
+
 };
 
 } // namespace

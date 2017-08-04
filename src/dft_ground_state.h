@@ -231,16 +231,12 @@ class DFT_ground_state
         
         double energy_vxc()
         {
-            return density_.rho()->inner(potential_.xc_potential());
+            return potential_.energy_vxc(density_);
         }
         
         double energy_exc()
         {
-            double exc = density_.rho()->inner(potential_.xc_energy_density());
-            if (!ctx_.full_potential()) {
-                exc += density_.rho_pseudo_core().inner(potential_.xc_energy_density());
-            }
-            return exc;
+            return potential_.energy_exc(density_);
         }
 
         double energy_bxc()
@@ -259,7 +255,7 @@ class DFT_ground_state
 
         double energy_vloc()
         {
-            return density_.rho()->inner(&potential_.local_potential());
+            return potential_.local_potential().inner(*density_.rho());
         }
 
         /// Full eigen-value sum (core + valence)
