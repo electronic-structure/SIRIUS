@@ -203,6 +203,8 @@ class Forces_PS
             if (!unit_cell.atom_type(iat).pp_desc().augment) {
                 continue;
             }
+            
+            const Augmentation_operator& aug_op = ctx_.augmentation_op(iat);
 
             for (int igloc = 0; igloc < gvec_count; igloc++) {
                 int ig = gvec_offset + igloc;
@@ -215,8 +217,6 @@ class Forces_PS
                 double_complex g_atom_part = reduce_g_fact * ctx_.unit_cell().omega() *
                                              std::conj(veff_full->f_pw_local(igloc)) *
                                              std::conj(ctx_.gvec_phase_factor(ig, ia));
-
-                const Augmentation_operator& aug_op = ctx_.augmentation_op(iat);
 
                 /* iterate over trangle matrix Qij */
                 for (int ib2 = 0; ib2 < atom.type().indexb().size(); ib2++) {

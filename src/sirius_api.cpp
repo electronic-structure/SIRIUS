@@ -3224,4 +3224,22 @@ void sirius_set_use_symmetry(ftn_int* flg__)
     sim_ctx->set_use_symmetry(*flg__);
 }
 
+void sirius_ri_aug_(ftn_int* idx__, ftn_int* l__, ftn_int* iat__, ftn_double* q__, ftn_double* val__)
+{
+    if (sim_ctx) {
+        *val__ = sim_ctx->aug_ri().value(*idx__ - 1, *l__, *iat__ - 1, *q__);
+    } else {
+        *val__ = 0;
+    }
+}
+
+void sirius_ri_beta_(ftn_int* idx__, ftn_int* iat__, ftn_double* q__, ftn_double* val__)
+{
+    if (sim_ctx) {
+        *val__ = sim_ctx->beta_ri().value(*idx__ - 1, *iat__ - 1, *q__);
+    } else {
+        *val__ = 0;
+    }
+}
+
 } // extern "C"

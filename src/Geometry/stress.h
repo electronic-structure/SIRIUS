@@ -580,7 +580,6 @@ class Stress {
         for (auto e: idx) {
             stress_nonloc_(e[0], e[1]) = stress_nonloc_(e[1], e[0]) = 0.5 * (stress_nonloc_(e[0], e[1]) + stress_nonloc_(e[1], e[0]));
         }
-
     }
 
     /// Contribution to the stress tensor from the augmentation operator.
@@ -621,7 +620,7 @@ class Stress {
 
         potential_.effective_potential()->fft_transform(-1);
 
-        Radial_integrals_aug<false> ri(ctx_.unit_cell(), ctx_.pw_cutoff(), ctx_.settings().nprii_aug_);
+        Radial_integrals_aug<false> const& ri = ctx_.aug_ri();
         Radial_integrals_aug<true> ri_dq(ctx_.unit_cell(), ctx_.pw_cutoff(), ctx_.settings().nprii_aug_);
 
         Augmentation_operator_gvec_deriv q_deriv(ctx_);

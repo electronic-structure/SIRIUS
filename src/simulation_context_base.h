@@ -92,6 +92,8 @@ class Simulation_context_base: public Simulation_parameters
 
         std::unique_ptr<Radial_integrals_beta<true>> beta_ri_djl_;
 
+        std::unique_ptr<Radial_integrals_aug<false>> aug_ri_;
+
         double time_active_;
         
         bool initialized_{false};
@@ -354,14 +356,19 @@ class Simulation_context_base: public Simulation_parameters
             return memory_buffer_.at<CPU>();
         }
 
-        Radial_integrals_beta<false> const& beta_ri() const
+        inline Radial_integrals_beta<false> const& beta_ri() const
         {
             return *beta_ri_;
         }
 
-        Radial_integrals_beta<true> const& beta_ri_djl() const
+        inline Radial_integrals_beta<true> const& beta_ri_djl() const
         {
             return *beta_ri_djl_;
+        }
+
+        inline Radial_integrals_aug<false> const& aug_ri() const
+        {
+            return *aug_ri_;
         }
         
         /// Find the lambda parameter used in the Ewald summation.
@@ -649,9 +656,14 @@ inline void Simulation_context_base::initialize()
     }
     
     if (!full_potential()) {
-        beta_ri_ = std::unique_ptr<Radial_integrals_beta<false>>(new Radial_integrals_beta<false>(unit_cell(), gk_cutoff(), settings().nprii_beta_));
 
-        beta_ri_djl_ = std::unique_ptr<Radial_integrals_beta<true>>(new Radial_integrals_beta<true>(unit_cell(), gk_cutoff(), settings().nprii_beta_));
+        /* some extra length is added to cutoffs in order to interface with QE which may require ri(q) for q>cutoff */
+
+        beta_ri_ = std::unique_ptr<Radial_integrals_beta<false>>(new Radial_integrals_beta<false>(unit_cell(), gk_cutoff() + 1, settings().nprii_beta_));
+
+        beta_ri_djl_ = std::unique_ptr<Radial_integrals_beta<true>>(new Radial_integrals_beta<true>(unit_cell(), gk_cutoff() + 1, settings().nprii_beta_));
+        
+        aug_ri_ = std::unique_ptr<Radial_integrals_aug<false>>(new Radial_integrals_aug<false>(unit_cell(), pw_cutoff() + 1, settings().nprii_aug_));
     }
 
     //time_active_ = -runtime::wtime();
