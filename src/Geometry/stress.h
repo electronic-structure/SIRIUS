@@ -635,6 +635,34 @@ class Stress {
 
             /* get auxiliary density matrix */
             auto dm = density_.density_matrix_aux(iat);
+            //== //std::vector<int> rmap;
+            //== //for (int i = 0; i < nbf; i++) {
+            //== //    for (int j = i; j < nbf; j++) {
+            //== //        rmap.push_back(j * (j + 1) / 2 + i);
+            //== //    }
+            //== //}
+
+            //== for (int ia = 0; ia < atom_type.num_atoms(); ia++) {
+            //==     printf("type: %i, atom: %i\n", iat, ia);
+            //==     for (int i = 0; i < nbf; i++) {
+            //==         for (int j = 0; j < nbf; j++) {
+            //==             int idx;
+            //==             if (j <= i) {
+            //==                 idx = i * (i + 1 ) / 2 + j;
+            //==             } else {
+            //==                 idx = j * (j + 1 ) / 2 + i;
+            //==             }
+            //==             double f;
+            //==             if (i == j) {
+            //==                 f = 1;
+            //==             } else {
+            //==                 f = 2;
+            //==             }
+            //==             printf("%12.6f ", f * dm(idx, ia, 0));
+            //==         }
+            //==         printf("\n");
+            //==     }
+            //== }
 
             mdarray<double_complex, 2> phase_factors(atom_type.num_atoms(), ctx_.gvec().count());
 
