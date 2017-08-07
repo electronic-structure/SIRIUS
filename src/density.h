@@ -188,7 +188,7 @@ class Density
          *  exchange-correlation energy which is introduced trough the pseudo core density: 
          *  \f$ E_{xc}[\rho_{val} + \rho_{core}] \f$. The 'pseudo' reflects the fact that 
          *  this density integrated does not reproduce the total number of core elctrons. */
-        std::unique_ptr<Periodic_function<double>> rho_pseudo_core_{nullptr};
+        std::unique_ptr<Smooth_periodic_function<double>> rho_pseudo_core_{nullptr};
         
         /// Non-zero Gaunt coefficients.
         std::unique_ptr<Gaunt_coefficients<double_complex>> gaunt_coefs_{nullptr};
@@ -396,7 +396,7 @@ class Density
 
             /* core density of the pseudopotential method */
             if (!ctx_.full_potential()) {
-                rho_pseudo_core_ = std::unique_ptr<Periodic_function<double>>(new Periodic_function<double>(ctx_, 0));
+                rho_pseudo_core_ = std::unique_ptr<Smooth_periodic_function<double>>(new Smooth_periodic_function<double>(ctx_.fft(), ctx_.gvec()));
                 rho_pseudo_core_->zero();
 
                 generate_pseudo_core_charge_density();
@@ -792,7 +792,7 @@ class Density
             return rho_.get();
         }
         
-        Periodic_function<double>& rho_pseudo_core()
+        Smooth_periodic_function<double>& rho_pseudo_core()
         {
             return *rho_pseudo_core_;
         }
@@ -968,6 +968,11 @@ class Density
         }
 
         mdarray<double_complex, 4> const& density_matrix() const
+        {
+            return density_matrix_;
+        }
+
+        mdarray<double_complex, 4>& density_matrix()
         {
             return density_matrix_;
         }

@@ -321,10 +321,13 @@ class Gvec
         }
     }
 
+    /// Find a list of G-vector shells.
+    /** G or G+k vectors belonging to the same shell have the same length */
     inline void find_gvec_shells()
     {
         PROFILE("sddk::Gvec::find_gvec_shells");
 
+        /* list of pairs (length, index of G-vector) */
         std::vector<std::pair<size_t, int>> tmp(num_gvec_);
         #pragma omp parallel for schedule(static)
         for (int ig = 0; ig < num_gvec_; ig++) {
@@ -334,48 +337,30 @@ class Gvec
             size_t len = size_t(gk.length() * 1e10);
             tmp[ig] = std::pair<size_t, int>(len, ig);
         }
+        /* sort by first element in pair (length) */
         std::sort(tmp.begin(), tmp.end());
-
+        
         gvec_shell_ = mdarray<int, 1>(num_gvec_);
-        gvec_shell_(0) = 0;
+        /* index of the first shell */
+        gvec_shell_(tmp[0].second) = 0;
         num_gvec_shells_ = 1;
+        /* temporary vector to store G-shell radius */
         std::vector<double> tmp_len;
-        tmp_len.push_back(0);
+        /* radius of the first shell */
+        tmp_len.push_back(static_cast<double>(tmp[0].first) * 1e-10);
         for (int ig = 1; ig < num_gvec_; ig++) {
+            /* if this G+k-vector has a different length */
             if (tmp[ig].first != tmp[ig - 1].first) {
+                /* increment number of shells */
                 num_gvec_shells_++;
+                /* save the radius of the new shell */
                 tmp_len.push_back(static_cast<double>(tmp[ig].first) * 1e-10);
             }
+            /* assign the index of the current shell */
             gvec_shell_(tmp[ig].second) = num_gvec_shells_ - 1;
         }
         gvec_shell_len_ = mdarray<double, 1>(num_gvec_shells_);
         std::copy(tmp_len.begin(), tmp_len.end(), gvec_shell_len_.at<CPU>());
-
-        ///* find G-shells */
-        //std::map<size_t, std::vector<int>> gsh;
-        //for (int ig = 0; ig < num_gvec_; ig++) {
-        //    /* take G+k */
-        //    auto gk = gkvec_cart(ig);
-        //    /* make some reasonable roundoff */
-        //    size_t len = size_t(gk.length() * 1e10);
-
-        //    if (!gsh.count(len)) {
-        //        gsh[len] = std::vector<int>();
-        //    }
-        //    gsh[len].push_back(ig);
-        //}
-        //num_gvec_shells_ = static_cast<int>(gsh.size());
-        //gvec_shell_      = mdarray<int, 1>(num_gvec_);
-        //gvec_shell_len_  = mdarray<double, 1>(num_gvec_shells_);
-
-        //int n{0};
-        //for (auto it = gsh.begin(); it != gsh.end(); it++) {
-        //    gvec_shell_len_(n) = static_cast<double>(it->first) * 1e-10;
-        //    for (int ig : it->second) {
-        //        gvec_shell_(ig) = n;
-        //    }
-        //    n++;
-        //}
     }
 
     void init()
@@ -656,6 +641,11 @@ class Gvec
     Communicator const& comm_ortho_fft() const
     {
         return comm_ortho_fft_;
+    }
+
+    inline matrix3d<double> const& lattice_vectors() const
+    {
+        return lattice_vectors_;
     }
 };
 
