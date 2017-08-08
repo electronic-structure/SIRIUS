@@ -133,8 +133,9 @@ class Stress {
 
                 double d{0};
                 for (int ispin = 0; ispin < ctx_.num_spins(); ispin++ ) {
-                    for (int i = 0; i < ctx_.num_fv_states(); i++) {
-                        double f = kp->band_occupancy( i + ispin * ctx_.num_fv_states());
+                    int spin_bnd_offset = ctx_.num_mag_dims() == 1 ? ispin * ctx_.num_fv_states() : 0;
+                    for (int i = 0; i < (ctx_.num_mag_dims() == 1 ? ctx_.num_fv_states() : ctx_.num_bands() ); i++) {
+                        double f = kp->band_occupancy( i + spin_bnd_offset );
                         if (f > 1e-12) {
                             auto z = kp->spinor_wave_functions(ispin).pw_coeffs().prime(igloc, i);
                             d += f * (std::pow(z.real(), 2) + std::pow(z.imag(), 2));
