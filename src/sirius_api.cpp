@@ -1546,7 +1546,7 @@ void sirius_generate_rho_multipole_moments(ftn_int*            lmmax__,
         std::vector<double> tmp(lmmax);
         for (int lm = 0; lm < lmmax; lm++) {
             int l = l_by_lm[lm];
-            auto s = density->rho()->f_mt(ialoc).component(lm);
+            auto s = density->rho().f_mt(ialoc).component(lm);
             tmp[lm] = s.integrate(l + 2);
         }
         sirius::SHT::convert(Utils::lmax_by_lmmax(lmmax), tmp.data(), &qmt(0, ia));
@@ -1571,7 +1571,7 @@ void sirius_generate_coulomb_potential_mt(ftn_int*            ia__,
 void sirius_generate_coulomb_potential(ftn_double* vclmt__,
                                        ftn_double* vclit__)
 {
-    density->rho()->fft_transform(-1);
+    density->rho().fft_transform(-1);
     potential->poisson(density->rho(), potential->hartree_potential());
     potential->hartree_potential()->copy_to_global_ptr(vclmt__, vclit__);
 }
@@ -2163,7 +2163,7 @@ void sirius_set_atom_type_vloc(char const* label__,
 
 void sirius_symmetrize_density()
 {
-    dft_ground_state->symmetrize(density->rho(), density->magnetization(0), density->magnetization(1), density->magnetization(2));
+    dft_ground_state->symmetrize(&density->rho(), density->magnetization(0), density->magnetization(1), density->magnetization(2));
 }
 
 void sirius_get_gvec_index(int32_t* gvec__, int32_t* ig__)
@@ -2964,8 +2964,8 @@ void sirius_set_pw_coeffs(ftn_char label__,
         
         // TODO: check if FFT transformation is necessary
         if (label == "rho") {
-            density->rho()->scatter_f_pw(v);
-            density->rho()->fft_transform(1);
+            density->rho().scatter_f_pw(v);
+            density->rho().fft_transform(1);
         } else if (label == "veff") {
             potential->effective_potential()->scatter_f_pw(v);
             potential->effective_potential()->fft_transform(1);
@@ -3020,7 +3020,7 @@ void sirius_get_pw_coeffs(ftn_char        label__,
         mdarray<int, 2> gvec(gvl__, 3, *ngv__);
 
         std::map<std::string, sirius::Smooth_periodic_function<double>*> func = {
-            {"rho", density->rho()},
+            {"rho", &density->rho()},
             {"magz", density->magnetization(0)},
             {"magx", density->magnetization(1)},
             {"magy", density->magnetization(2)},

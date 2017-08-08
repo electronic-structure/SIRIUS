@@ -209,7 +209,7 @@ class Stress {
 
             auto G = ctx_.gvec().gvec_cart(ig);
             double g2 = std::pow(G.length(), 2);
-            auto z = density_.rho()->f_pw_local(igloc);
+            auto z = density_.rho().f_pw_local(igloc);
             double d = twopi * (std::pow(z.real(), 2) + std::pow(z.imag(), 2)) / g2;
 
             for (int mu: {0, 1, 2}) {
@@ -407,11 +407,11 @@ class Stress {
 
             for (int mu: {0, 1, 2}) {
                 for (int nu: {0, 1, 2}) {
-                    stress_vloc_(mu, nu) += std::real(std::conj(density_.rho()->f_pw_local(igloc)) * dv[igloc]) * G[mu] * G[nu];
+                    stress_vloc_(mu, nu) += std::real(std::conj(density_.rho().f_pw_local(igloc)) * dv[igloc]) * G[mu] * G[nu];
                 }
             }
 
-            sdiag += std::real(std::conj(density_.rho()->f_pw_local(igloc)) * v[igloc]);
+            sdiag += std::real(std::conj(density_.rho().f_pw_local(igloc)) * v[igloc]);
         }
         
         if (ctx_.gvec().reduced()) {
@@ -419,7 +419,7 @@ class Stress {
             sdiag *= 2;
         }
         if (ctx_.comm().rank() == 0) {
-            sdiag += std::real(std::conj(density_.rho()->f_pw_local(0)) * v[0]);
+            sdiag += std::real(std::conj(density_.rho().f_pw_local(0)) * v[0]);
         }
 
         for (int mu: {0, 1, 2}) {
@@ -795,7 +795,7 @@ class Stress {
 
             Smooth_periodic_function<double> rhovc(ctx_.fft(), ctx_.gvec());
             rhovc.zero();
-            rhovc.add(*density_.rho());
+            rhovc.add(density_.rho());
             rhovc.add(density_.rho_pseudo_core());
 
             rhovc.fft_transform(-1);

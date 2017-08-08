@@ -797,9 +797,9 @@ class Density
             //== fclose(fout);
         }
 
-        Periodic_function<double>* rho()
+        Periodic_function<double>& rho()
         {
-            return rho_.get();
+            return *rho_;
         }
         
         Smooth_periodic_function<double>& rho_pseudo_core()

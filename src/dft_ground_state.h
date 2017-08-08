@@ -250,12 +250,12 @@ class DFT_ground_state
 
         double energy_veff()
         {
-            return density_.rho()->inner(potential_.effective_potential());
+            return density_.rho().inner(potential_.effective_potential());
         }
 
         double energy_vloc()
         {
-            return potential_.local_potential().inner(*density_.rho());
+            return potential_.local_potential().inner(density_.rho());
         }
 
         /// Full eigen-value sum (core + valence)
@@ -553,7 +553,7 @@ inline int DFT_ground_state::find(double potential_tol, double energy_tol, int n
         density_.generate(kset_);
         /* symmetrize density and magnetization */
         if (ctx_.use_symmetry()) {
-            symmetrize(density_.rho(), density_.magnetization(0), density_.magnetization(1),
+            symmetrize(&density_.rho(), density_.magnetization(0), density_.magnetization(1),
                        density_.magnetization(2));
         }
         /* set new tolerance of iterative solver */
@@ -646,7 +646,7 @@ inline void DFT_ground_state::print_info()
 
     std::vector<double> mt_charge;
     double it_charge;
-    double total_charge = density_.rho()->integrate(mt_charge, it_charge); 
+    double total_charge = density_.rho().integrate(mt_charge, it_charge); 
     
     double total_mag[3];
     std::vector<double> mt_mag[3];

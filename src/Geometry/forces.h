@@ -129,7 +129,7 @@ class Forces_PS
     {
         PROFILE("sirius::Forces_PS::calc_local_forces");
 
-        const Periodic_function<double>* valence_rho = density_.rho();
+        auto& valence_rho = density_.rho();
 
         Radial_integrals_vloc<false> ri(ctx_.unit_cell(), ctx_.pw_cutoff(), ctx_.settings().nprii_vloc_);
 
@@ -146,7 +146,7 @@ class Forces_PS
 
         forces.zero();
 
-        double fact = valence_rho->gvec().reduced() ? 2.0 : 1.0;
+        double fact = valence_rho.gvec().reduced() ? 2.0 : 1.0;
 
         /* here the calculations are in lattice vectors space */
         #pragma omp parallel for
@@ -163,7 +163,7 @@ class Forces_PS
 
                 /* scalar part of a force without multipying by G-vector */
                 double_complex z = fact * fourpi * ri.value(iat, gvecs.gvec_len(ig)) *
-                                   std::conj(valence_rho->f_pw_local(igloc)) *
+                                   std::conj(valence_rho.f_pw_local(igloc)) *
                                    std::conj(ctx_.gvec_phase_factor(ig, ia));
 
                 /* get force components multiplying by cartesian G-vector  */
