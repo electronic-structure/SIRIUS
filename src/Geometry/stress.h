@@ -585,7 +585,6 @@ class Stress {
         for (auto e: idx) {
             stress_nonloc_(e[0], e[1]) = stress_nonloc_(e[1], e[0]) = 0.5 * (stress_nonloc_(e[0], e[1]) + stress_nonloc_(e[1], e[0]));
         }
-
     }
 
     /// Contribution to the stress tensor from the augmentation operator.

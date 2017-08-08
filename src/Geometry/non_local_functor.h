@@ -134,7 +134,7 @@ class Non_local_functor
                                 /* for non-collinear case*/
                                 if (ctx_.num_mag_dims() == 3) {
                                     /* Dij(10) = dij_X + i dij_Y ; Dij(01) = dij_X - i dij_Y */
-                                    dij =  (unit_cell.atom(ia).d_mtrx(ibf, jbf, 2) + spin_factor * unit_cell.atom(ia).d_mtrx(ibf, jbf, 3));
+                                    dij = double_complex( unit_cell.atom(ia).d_mtrx(ibf, jbf, 2), spin_factor * unit_cell.atom(ia).d_mtrx(ibf, jbf, 3));
                                     /* add non-diagonal spin components*/
                                     for_bnd(ibf, jbf, dij, double_complex(0.0, 0.0), beta_phi_chunks[ispn + spin_factor] );
                                 }
