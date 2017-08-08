@@ -173,7 +173,7 @@ class Density
          *  In the case of pseudopotential this is the valence charge density. */ 
         std::unique_ptr<Periodic_function<double>> rho_{nullptr};
 
-        /// Magnetization
+        /// Magnetization.
         std::array<std::unique_ptr<Periodic_function<double>>, 3> magnetization_;
 
         /// Alias for density and magnetization.
@@ -812,9 +812,9 @@ class Density
             return {magnetization_[0].get(), magnetization_[1].get(), magnetization_[2].get()};
         }
 
-        Periodic_function<double>* magnetization(int i)
+        Periodic_function<double>& magnetization(int i)
         {
-            return magnetization_[i].get();
+            return *(magnetization_[i]);
         }
 
         Spheric_function<spectral, double> const& density_mt(int ialoc) const

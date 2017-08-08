@@ -2163,7 +2163,7 @@ void sirius_set_atom_type_vloc(char const* label__,
 
 void sirius_symmetrize_density()
 {
-    dft_ground_state->symmetrize(&density->rho(), density->magnetization(0), density->magnetization(1), density->magnetization(2));
+    dft_ground_state->symmetrize(&density->rho(), &density->magnetization(0), &density->magnetization(1), &density->magnetization(2));
 }
 
 void sirius_get_gvec_index(int32_t* gvec__, int32_t* ig__)
@@ -2982,14 +2982,14 @@ void sirius_set_pw_coeffs(ftn_char label__,
             potential->xc_potential()->scatter_f_pw(v);
             potential->xc_potential()->fft_transform(1);
         } else if (label == "magz") {
-            density->magnetization(0)->scatter_f_pw(v);
-            density->magnetization(0)->fft_transform(1);
+            density->magnetization(0).scatter_f_pw(v);
+            density->magnetization(0).fft_transform(1);
         } else if (label == "magx") {
-            density->magnetization(1)->scatter_f_pw(v);
-            density->magnetization(1)->fft_transform(1);
+            density->magnetization(1).scatter_f_pw(v);
+            density->magnetization(1).fft_transform(1);
         } else if (label == "magy") {
-            density->magnetization(2)->scatter_f_pw(v);
-            density->magnetization(2)->fft_transform(1);
+            density->magnetization(2).scatter_f_pw(v);
+            density->magnetization(2).fft_transform(1);
         } else if (label == "vloc") {
             potential->local_potential().scatter_f_pw(v);
             potential->local_potential().fft_transform(1);
@@ -3021,9 +3021,9 @@ void sirius_get_pw_coeffs(ftn_char        label__,
 
         std::map<std::string, sirius::Smooth_periodic_function<double>*> func = {
             {"rho", &density->rho()},
-            {"magz", density->magnetization(0)},
-            {"magx", density->magnetization(1)},
-            {"magy", density->magnetization(2)},
+            {"magz", &density->magnetization(0)},
+            {"magx", &density->magnetization(1)},
+            {"magy", &density->magnetization(2)},
             {"veff", potential->effective_potential()},
             {"vloc", &potential->local_potential()},
             {"rhoc", &density->rho_pseudo_core()}
