@@ -53,81 +53,95 @@ class Non_local_functor
             /* generate chunk for inner product of beta */
             bp.generate(icnk);
 
-            for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-                double spin_factor = (ispn == 0 ? 1.0 : -1.0);
+            // store <beta|psi> for spin up and down
+             std::vector<matrix<T>> beta_phi_chunks(2);
 
-                /* total number of occupied bands for this spin */
-                int nbnd = kpoint__.num_occupied_bands(ispn);
+             for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
+                 int nbnd = kpoint__.num_occupied_bands(ispn);
+                 beta_phi_chunks.push_back( std::move( bp.inner<T>(icnk, kpoint__.spinor_wave_functions(ispn), 0, nbnd) ) );
+             }
 
-                /* inner product of beta and WF */
-                auto bp_phi_chunk = bp.inner<T>(icnk, kpoint__.spinor_wave_functions(ispn), 0, nbnd);
+//             /* total number of occupied bands for this spin */
+//             int nbnd = kpoint__.num_occupied_bands(ispn);
+//
+//             /* inner product of beta and WF */
+//             auto bp_phi_chunk = bp.inner<T>(icnk, kpoint__.spinor_wave_functions(ispn), 0, nbnd);
 
-                for (int x = 0; x < N; x++) {
-                    /* generate chunk for inner product of beta gradient */
-                    bp_base_.generate(icnk, x);
+             for (int x = 0; x < N; x++) {
+                 /* generate chunk for inner product of beta gradient */
+                 bp_base_.generate(icnk, x);
 
-                    /* inner product of beta gradient and WF */
-                    auto bp_base_phi_chunk = bp_base_.inner<T>(icnk, kpoint__.spinor_wave_functions(ispn), 0, nbnd);
+                 for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
+                     double spin_factor = (ispn == 0 ? 1.0 : -1.0);
+                     int spin_bnd_offset = ctx_.num_mag_dims() == 1 ? ispn * ctx_.num_fv_states() : 0 ;
 
-                    splindex<block> spl_nbnd(nbnd, kpoint__.comm().size(), kpoint__.comm().rank());
+                     int nbnd = kpoint__.num_occupied_bands(ispn);
+                     /* inner product of beta gradient and WF */
+                     auto bp_base_phi_chunk = bp_base_.inner<T>(icnk, kpoint__.spinor_wave_functions(ispn), 0, nbnd);
+                     beta_phi_chunks[ispn] = std::move( bp.inner<T>(icnk, kpoint__.spinor_wave_functions(ispn), 0, nbnd) );
 
-                    int nbnd_loc = spl_nbnd.local_size();
+                     //for (int i=0; i < 10; i++) std::cout << beta_phi_chunks[ispn][i] << " ";
 
-                    int bnd_offset = spl_nbnd.global_offset();
+                     splindex<block> spl_nbnd(nbnd, kpoint__.comm().size(), kpoint__.comm().rank());
 
-                    #pragma omp parallel for
-                    for (int ia_chunk = 0; ia_chunk < bp_chunks(icnk).num_atoms_; ia_chunk++) {
-                        int ia   = bp_chunks(icnk).desc_(beta_desc_idx::ia, ia_chunk);
-                        int offs = bp_chunks(icnk).desc_(beta_desc_idx::offset, ia_chunk);
-                        int nbf  = bp_chunks(icnk).desc_(beta_desc_idx::nbf, ia_chunk);
-                        int iat  = unit_cell.atom(ia).type_id();
+                     int nbnd_loc = spl_nbnd.local_size();
 
-                        // TODO store this to array before (for speed optimization)
-                        auto D_aug_mtrx = [&](int i, int j, int ibnd)
-                        {
-                            double dij = 0.0;
+                     int bnd_offset = spl_nbnd.global_offset();
 
-                            switch (ctx_.num_spins())
-                            {
-                                case 1:
-                                    dij = unit_cell.atom(ia).d_mtrx(i, j, 0);
-                                    break;
+                     #pragma omp parallel for
+                     for (int ia_chunk = 0; ia_chunk < bp_chunks(icnk).num_atoms_; ia_chunk++) {
+                         int ia   = bp_chunks(icnk).desc_(beta_desc_idx::ia, ia_chunk);
+                         int offs = bp_chunks(icnk).desc_(beta_desc_idx::offset, ia_chunk);
+                         int nbf  = bp_chunks(icnk).desc_(beta_desc_idx::nbf, ia_chunk);
+                         int iat  = unit_cell.atom(ia).type_id();
 
-                                case 2:
-                                    dij =  (unit_cell.atom(ia).d_mtrx(i, j, 0) + spin_factor * unit_cell.atom(ia).d_mtrx(i, j, 1));
-                                    break;
+                         // TODO store this to array before (for speed optimization)
+                         auto D_aug_mtrx = [&](int i, int j, int ibnd)
+                         {
+                             double dij = 0.0;
 
-                                default:
-                                    TERMINATE("Error in calc_ultrasoft_forces: Non-collinear not implemented");
-                                    break;
-                            }
+                             switch (ctx_.num_spins())
+                             {
+                                 case 1:
+                                     dij = unit_cell.atom(ia).d_mtrx(i, j, 0);
+                                     break;
 
-                            if (unit_cell.atom(ia).type().pp_desc().augment) {
-                                dij -= kpoint__.band_energy(ibnd + ispn * ctx_.num_fv_states()) * ctx_.augmentation_op(iat).q_mtrx(i, j);
-                            }
+                                 case 2:
+                                     dij =  (unit_cell.atom(ia).d_mtrx(i, j, 0) + spin_factor * unit_cell.atom(ia).d_mtrx(i, j, 1));
+                                     break;
 
-                            return dij;
-                        };
+                                 default:
+                                     TERMINATE("Error in calc_ultrasoft_forces: Non-collinear not implemented");
+                                     break;
+                             }
 
-                        /* iterate over mpi-distributed bands */
-                        for (int ibnd_loc = 0; ibnd_loc < nbnd_loc; ibnd_loc++) {
-                            int ibnd = spl_nbnd[ibnd_loc];
+                             if (unit_cell.atom(ia).type().pp_desc().augment) {
+                                 dij -= kpoint__.band_energy(ibnd + spin_bnd_offset) * ctx_.augmentation_op(iat).q_mtrx(i, j);
+                             }
 
-                            for (int ibf = 0; ibf < unit_cell.atom(ia).type().mt_lo_basis_size(); ibf++) {
-                                for (int jbf = 0; jbf < unit_cell.atom(ia).type().mt_lo_basis_size(); jbf++) {
-                                    /* calculate scalar part of the forces */
-                                    double_complex scalar_part = main_two_factor * kpoint__.band_occupancy(ibnd + ispn * ctx_.num_fv_states()) *
-                                            kpoint__.weight() * D_aug_mtrx(ibf, jbf, ibnd) *
-                                            std::conj(bp_phi_chunk(offs + jbf, ibnd));
+                             return dij;
+                         };
 
-                                    /* multiply scalar part by gradient components */
-                                    collect_res__(x, ia) += (scalar_part * bp_base_phi_chunk(offs + ibf, ibnd)).real();
-                                }
-                            }
-                        }
-                    }
-                }
-            }
+
+                         for (int ibf = 0; ibf < unit_cell.atom(ia).type().mt_lo_basis_size(); ibf++) {
+                             for (int jbf = 0; jbf < unit_cell.atom(ia).type().mt_lo_basis_size(); jbf++) {
+
+                                 /* iterate over mpi-distributed bands */
+                                 for (int ibnd_loc = 0; ibnd_loc < nbnd_loc; ibnd_loc++) {
+                                     int ibnd = spl_nbnd[ibnd_loc];
+                                     /* calculate scalar part of the forces */
+                                     double_complex scalar_part = main_two_factor * kpoint__.band_occupancy(ibnd + spin_bnd_offset) *
+                                             kpoint__.weight() * D_aug_mtrx(ibf, jbf, ibnd) *
+                                             std::conj(beta_phi_chunks[ispn](offs + jbf, ibnd));
+
+                                     /* multiply scalar part by gradient components */
+                                     collect_res__(x, ia) += (scalar_part * bp_base_phi_chunk(offs + ibf, ibnd)).real();
+                                 }
+                             }
+                         }
+                     }
+                 }
+             }
         }
 
         bp.dismiss();
@@ -138,6 +152,7 @@ class Non_local_functor
     /// collect summation result in an array
     void add_k_point_contribution_nc(K_point& kpoint__, mdarray<double, 2>& collect_res__)
     {
+        std::cout<<" non collinear version of non local forces "<<std::endl;
         Unit_cell& unit_cell = ctx_.unit_cell();
 
         Beta_projectors& bp = kpoint__.beta_projectors();
@@ -154,11 +169,13 @@ class Non_local_functor
             bp.generate(icnk);
 
             // store <beta|psi> for spin up and down
-            matrix<T> bp_phi_chunks[2];
+            matrix<T> beta_phi_chunks[2];
 
             for(int ispn = 0; ispn < ctx_.num_spins(); ispn++){
                 int nbnd = kpoint__.num_occupied_bands(ispn);
-                bp_phi_chunks[ispn] = std::move( bp.inner<T>(icnk, kpoint__.spinor_wave_functions(ispn), 0, nbnd) );
+                auto beta_phi_tmp = bp.inner<T>(icnk, kpoint__.spinor_wave_functions(ispn), 0, nbnd);
+                beta_phi_chunks[ispn] = matrix<T>(beta_phi_tmp.size(0), beta_phi_tmp.size(1)) ;
+                beta_phi_tmp >> beta_phi_chunks[ispn];
             }
 
             for (int x = 0; x < N; x++) {
@@ -168,6 +185,7 @@ class Non_local_functor
                 for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
                     int spin_bnd_offset = ctx_.num_mag_dims() == 1 ? ispn * ctx_.num_fv_states() : 0 ;
                     int spin_factor = (ispn == 0 ? 1 : -1);
+                    //std::cout<<spin_bnd_offset<<" "<<spin_factor<<std::endl;
 
                     int nbnd = kpoint__.num_occupied_bands(ispn);
 
@@ -227,14 +245,24 @@ class Non_local_functor
                                 }
 
                                 /* add non-magnetic or diagonal spin components ( or collinear part) */
-                                for_bnd(ibf, jbf, dij, double_complex(qij, 0.0), bp_phi_chunks[ispn] );
+                                //for_bnd(ibf, jbf, dij, double_complex(qij, 0.0), beta_phi_chunks[ispn] );
+                                for (int ibnd_loc = 0; ibnd_loc < nbnd_loc; ibnd_loc++) {
+                                    int ibnd = spl_nbnd[ibnd_loc];
+                                    /* gather everything */
+                                    double_complex scalar_part = main_two_factor * kpoint__.band_occupancy(ibnd + spin_bnd_offset) * kpoint__.weight() *
+                                            std::conj(beta_phi_chunks[ispn](offs + jbf, ibnd)) * bp_base_phi_chunk(offs + ibf, ibnd) *
+                                            (dij - kpoint__.band_energy(ibnd + spin_bnd_offset) * qij);
+
+                                    /* get real part and add to the result array*/
+                                    collect_res__(x, ia) += scalar_part.real();
+                                }
 
                                 /* for non-collinear case*/
                                 if (ctx_.num_mag_dims() == 3) {
                                     /* Dij(10) = dij_X + i dij_Y ; Dij(01) = dij_X - i dij_Y */
                                     dij =  (unit_cell.atom(ia).d_mtrx(ibf, jbf, 2) + spin_factor * unit_cell.atom(ia).d_mtrx(ibf, jbf, 3));
                                     /* add non-diagonal spin components*/
-                                    for_bnd(ibf, jbf, dij, double_complex(0.0, 0.0), bp_phi_chunks[ispn + spin_factor] );
+                                    for_bnd(ibf, jbf, dij, double_complex(0.0, 0.0), beta_phi_chunks[ispn + spin_factor] );
                                 }
 
 
@@ -258,6 +286,162 @@ class Non_local_functor
         bp.dismiss();
         bp_base_.dismiss();
     }
+
+    /// collect summation result in an array
+//    void add_k_point_contribution_nc2(K_point& kpoint__, mdarray<double, 2>& collect_res__)
+//    {
+//        Unit_cell& unit_cell = ctx_.unit_cell();
+//
+//        Beta_projectors& bp = kpoint__.beta_projectors();
+//
+//        auto& bp_chunks = bp.beta_projector_chunks();
+//
+//        double main_two_factor = -2.0;
+//
+//        bp_base_.prepare();
+//        bp.prepare();
+//
+//        for (int icnk = 0; icnk < bp_chunks.num_chunks(); icnk++) {
+//            /* generate chunk for inner product of beta */
+//            bp.generate(icnk);
+//
+//            auto calc_for_chunk = [&](bool is_spin_diag)
+//            {
+//                int is_diag_coef = is_spin_diag ? 0 : -1;
+//
+//                for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
+//
+//                    int nbnd = kpoint__.num_occupied_bands(ispn);
+//
+//                    int spin_bnd_offset = ctx_.num_mag_dims() == 1 ? ispn * ctx_.num_fv_states() : 0 ;
+//
+//                    int spin_factor = (ispn == 0 ? 1 : -1);
+//
+//                    auto& beta_phi_chunk = bp.inner<T>(icnk, kpoint__.spinor_wave_functions(ispn), 0, nbnd);
+//
+//                    for (int x = 0; x < N; x++) {
+//                        /* generate chunk for inner product of beta gradient */
+//                        bp_base_.generate(icnk, x);
+//
+//
+//                        int spin_bnd_offset = ctx_.num_mag_dims() == 1 ? ispin1 * ctx_.num_fv_states() : 0 ;
+//                        int spin_factor = (ispin1 == 0 ? 1 : -1);
+//
+//                        //std::cout<<spin_bnd_offset<<" "<<spin_factor<<std::endl;
+//
+//
+//
+//                        /* inner product of beta gradient and WF */
+//                        auto bp_base_phi_chunk = bp_base_.inner<T>(icnk, kpoint__.spinor_wave_functions(ispin2), 0,
+//                                                                   kpoint__.num_occupied_bands(ispin2));
+//
+//                        splindex<block> spl_nbnd(nbnd, kpoint__.comm().size(), kpoint__.comm().rank());
+//
+//                        int nbnd_loc = spl_nbnd.local_size();
+//
+//                        int bnd_offset = spl_nbnd.global_offset();
+//
+//                        #pragma omp parallel for
+//                        for (int ia_chunk = 0; ia_chunk < bp_chunks(icnk).num_atoms_; ia_chunk++) {
+//                            int ia   = bp_chunks(icnk).desc_(beta_desc_idx::ia, ia_chunk);
+//                            int offs = bp_chunks(icnk).desc_(beta_desc_idx::offset, ia_chunk);
+//                            int nbf  = bp_chunks(icnk).desc_(beta_desc_idx::nbf, ia_chunk);
+//                            int iat  = unit_cell.atom(ia).type_id();
+//
+//                            /* helper lambda to calculate for sum loop over bands for different beta_phi and dij combinations*/
+//                            auto for_bnd = [&](int ibf, int jbf, double_complex dij, double_complex qij, matrix<T>& beta_phi_chunk)
+//                            {
+//                                for (int ibnd_loc = 0; ibnd_loc < nbnd_loc; ibnd_loc++) {
+//                                    int ibnd = spl_nbnd[ibnd_loc];
+//                                    /* gather everything */
+//                                    double_complex scalar_part = main_two_factor * kpoint__.band_occupancy(ibnd + spin_bnd_offset) * kpoint__.weight() *
+//                                            std::conj(beta_phi_chunk(offs + jbf, ibnd)) * bp_base_phi_chunk(offs + ibf, ibnd) *
+//                                            (dij - kpoint__.band_energy(ibnd + spin_bnd_offset) * qij);
+//
+//                                    /* get real part and add to the result array*/
+//                                    collect_res__(x, ia) += scalar_part.real();
+//                                }
+//                           };
+//
+//                            for (int ibf = 0; ibf < unit_cell.atom(ia).type().mt_lo_basis_size(); ibf++) {
+//                                for (int jbf = 0; jbf < unit_cell.atom(ia).type().mt_lo_basis_size(); jbf++) {
+//
+//                                    /* Qij exists only in the case of ultrasoft/PAW */
+//                                    double qij = unit_cell.atom(ia).type().pp_desc().augment ? ctx_.augmentation_op(iat).q_mtrx(ibf, jbf) : 0.0;
+//                                    double_complex dij = 0.0;
+//
+//                                    /* get non-magnetic or collinear spin parts of dij*/
+//                                    switch (ctx_.num_spins())
+//                                    {
+//                                        case 1:
+//                                            dij = unit_cell.atom(ia).d_mtrx(ibf, jbf, 0);
+//                                            break;
+//
+//                                        case 2:
+//                                            /* Dij(00) = dij + dij_Z ;  Dij(11) = dij - dij_Z*/
+//                                            dij =  (unit_cell.atom(ia).d_mtrx(ibf, jbf, 0) + spin_factor * unit_cell.atom(ia).d_mtrx(ibf, jbf, 1));
+//                                            break;
+//
+//                                        default:
+//                                            TERMINATE("Error in non_local_functor, D_aug_mtrx. ");
+//                                            break;
+//                                    }
+//
+//                                    /* add non-magnetic or diagonal spin components ( or collinear part) */
+//                                    //for_bnd(ibf, jbf, dij, double_complex(qij, 0.0), beta_phi_chunks[ispn] );
+//                                    for (int ibnd_loc = 0; ibnd_loc < nbnd_loc; ibnd_loc++) {
+//                                        int ibnd = spl_nbnd[ibnd_loc];
+//                                        /* gather everything */
+//                                        double_complex scalar_part = main_two_factor * kpoint__.band_occupancy(ibnd + spin_bnd_offset) * kpoint__.weight() *
+//                                                std::conj(beta_phi_chunks[ispn](offs + jbf, ibnd)) * bp_base_phi_chunk(offs + ibf, ibnd) *
+//                                                (dij - kpoint__.band_energy(ibnd + spin_bnd_offset) * qij);
+//
+//                                        /* get real part and add to the result array*/
+//                                        collect_res__(x, ia) += scalar_part.real();
+//                                    }
+//
+//                                    /* for non-collinear case*/
+//                                    if (ctx_.num_mag_dims() == 3) {
+//                                        /* Dij(10) = dij_X + i dij_Y ; Dij(01) = dij_X - i dij_Y */
+//                                        dij =  (unit_cell.atom(ia).d_mtrx(ibf, jbf, 2) + spin_factor * unit_cell.atom(ia).d_mtrx(ibf, jbf, 3));
+//                                        /* add non-diagonal spin components*/
+//                                        for_bnd(ibf, jbf, dij, double_complex(0.0, 0.0), beta_phi_chunks[ispn + spin_factor] );
+//                                    }
+//
+//
+//                                    //                                /* iterate over mpi-distributed bands */
+//                                    //                                for (int ibnd_loc = 0; ibnd_loc < nbnd_loc; ibnd_loc++) {
+//                                    //                                    int ibnd = spl_nbnd[ibnd_loc];
+//                                    //                                    /* calculate scalar part of the forces */
+//                                    //                                    double_complex scalar_part = main_two_factor * kpoint__.band_occupancy(ibnd + spin_bnd_offset) * kpoint__.weight() *
+//                                    //                                            (dij - kpoint__.band_energy(ibnd + spin_bnd_offset) * qij) * std::conj(bp_phi_chunk(offs + jbf, ibnd));
+//                                    //
+//                                    //                                    /* multiply scalar part by gradient components */
+//                                    //                                    collect_res__(x, ia) += (scalar_part * bp_base_phi_chunk(offs + ibf, ibnd)).real();
+//                                    //                                }
+//                                }
+//                            }
+//                        }
+//                    }
+//                }
+//
+//            };
+//
+//            // store <beta|psi> for spin up and down
+//            matrix<T> beta_phi_chunks[2];
+//
+//            for(int ispn = 0; ispn < ctx_.num_spins(); ispn++){
+//                int nbnd = kpoint__.num_occupied_bands(ispn);
+//                beta_phi_chunks[ispn] = std::move( bp.inner<T>(icnk, kpoint__.spinor_wave_functions(ispn), 0, nbnd) );
+//            }
+//
+//
+//        }
+//
+//        bp.dismiss();
+//        bp_base_.dismiss();
+//    }
+
 };
 
 }

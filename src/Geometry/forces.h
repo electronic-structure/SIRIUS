@@ -568,6 +568,9 @@ class Forces_PS
             std::cout << "===== Forces: non-local contribution from Beta-projectors =====" << std::endl;
             print_forces(nonlocal_forces());
 
+            std::cout << "===== Forces: non-local+us  =====" << std::endl;
+            print_forces(us_nl_forces());
+
             std::cout << "===== Forces: local contribution from local potential=====" << std::endl;
             print_forces(local_forces());
 
