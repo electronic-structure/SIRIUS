@@ -675,9 +675,6 @@ class Stress {
                         sddk::timer t2("sirius::Stress|us|prepare");
                         int igloc0{0};
                         if (ctx_.comm().rank() == 0) {
-                            //                        for (int i = 0; i < nbf * (nbf + 1) / 2; i++) {
-                            //                            q_tmp(i, 0) = q_tmp(i, 1) = 0;
-                            //                        }
                             for (int ia = 0; ia < atom_type.num_atoms(); ia++) {
                                 v_tmp(ia, 0) = v_tmp(ia, 1) = 0;
                             }
@@ -688,11 +685,7 @@ class Stress {
                             int ig = ctx_.gvec().offset() + igloc;
                             auto gvc = ctx_.gvec().gvec_cart(ig);
                             double g = gvc.length();
-                            //                        for (int i = 0; i < nbf * (nbf + 1) / 2; i++) {
-                            //                            auto z = double_complex(q_deriv.q_pw(i, 2 * igloc), q_deriv.q_pw(i, 2 * igloc + 1)) * (-gvc[mu] / g);
-                            //                            q_tmp(i, 2 * igloc)     = z.real();
-                            //                            q_tmp(i, 2 * igloc + 1) = z.imag();
-                            //                        }
+
                             for (int ia = 0; ia < atom_type.num_atoms(); ia++) {
                                 //auto z = phase_factors(ia, igloc) * std::conj(potential_.effective_potential()->f_pw_local(igloc));
                                 auto z = phase_factors(ia, igloc) * vfield_eff[ispin]->f_pw_local(igloc) * (-gvc[mu] / g);
