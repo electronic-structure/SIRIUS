@@ -2809,7 +2809,6 @@ static std::vector<int> atomic_orbital_index_map_QE(sirius::Atom_type const& typ
 
     std::vector<int> idx_map(nbf);
     for (int xi = 0; xi < nbf; xi++) {
-        int lm      = type__.indexb(xi).lm;
         int m       = type__.indexb(xi).m;
         int idxrf   = type__.indexb(xi).idxrf;
         idx_map[xi] = type__.indexb().index_by_idxrf(idxrf) + idx_m_QE(m); /* beginning of lm-block + new offset in lm block */

@@ -346,7 +346,7 @@ inline void Band::get_singular_components(K_point* kp__) const
         /* setup eigen-value problem
          * N is the number of previous basis functions
          * n is the number of new basis functions */
-        set_subspace_mtrx(N, n, phi, ophi, ovlp, ovlp_old);
+        set_subspace_mtrx(1, N, n, phi, ophi, ovlp, ovlp_old);
 
         /* increase size of the variation space */
         N += n;
@@ -555,7 +555,7 @@ inline void Band::diag_fv_full_potential_davidson(K_point* kp) const
         /* setup eigen-value problem
          * N is the number of previous basis functions
          * n is the number of new basis functions */
-        set_subspace_mtrx(N, n, phi, hphi, hmlt, hmlt_old);
+        set_subspace_mtrx(1, N, n, phi, hphi, hmlt, hmlt_old);
 
         /* increase size of the variation space */
         N += n;
