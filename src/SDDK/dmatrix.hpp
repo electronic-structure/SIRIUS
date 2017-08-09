@@ -363,6 +363,25 @@ inline void dmatrix<double>::serialize(std::string name__, int n__) const
 
     // std::ofstream ofs(aiida_output_file, std::ofstream::out | std::ofstream::trunc);
     // ofs << dict.dump(4);
+
+    if (blacs_grid_->comm().rank() == 0) {
+        printf("{\n");
+        for (int i = 0; i < n__; i++) {
+            printf("{");
+            for (int j = 0; j < n__; j++) {
+                printf("%18.12f", full_mtrx(i, j));
+                if (j != n__ - 1) {
+                    printf(",");
+                }
+            }
+            if (i != n__ - 1) {
+                printf("},\n");
+            } else {
+                printf("}\n");
+            }
+        }
+        printf("}\n");
+    }
 }
 
 } // namespace sddk
