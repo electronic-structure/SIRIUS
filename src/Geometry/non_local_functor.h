@@ -53,7 +53,7 @@ class Non_local_functor
             /* generate chunk for inner product of beta */
             bp.generate(icnk);
 
-            // store <beta|psi> for spin up and down
+            /* store <beta|psi> for spin up and down */
             matrix<T> beta_phi_chunks[2];
 
             for(int ispn = 0; ispn < ctx_.num_spins(); ispn++){
@@ -92,9 +92,10 @@ class Non_local_functor
                         /* helper lambda to calculate for sum loop over bands for different beta_phi and dij combinations*/
                         auto for_bnd = [&](int ibf, int jbf, double_complex dij, double_complex qij, matrix<T>& beta_phi_chunk)
                         {
+                            /* gather everything = - 2  Re[ occ(k,n) weight(k) beta_phi*(i,n) [ Dij - E(n)Qij] beta_base_phi(j,n) ]*/
                             for (int ibnd_loc = 0; ibnd_loc < nbnd_loc; ibnd_loc++) {
                                 int ibnd = spl_nbnd[ibnd_loc];
-                                /* gather everything */
+
                                 double_complex scalar_part = main_two_factor * kpoint__.band_occupancy(ibnd + spin_bnd_offset) * kpoint__.weight() *
                                         std::conj(beta_phi_chunk(offs + jbf, ibnd)) * bp_base_phi_chunk(offs + ibf, ibnd) *
                                         (dij - kpoint__.band_energy(ibnd + spin_bnd_offset) * qij);
