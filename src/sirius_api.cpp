@@ -1546,7 +1546,7 @@ void sirius_generate_rho_multipole_moments(ftn_int*            lmmax__,
         std::vector<double> tmp(lmmax);
         for (int lm = 0; lm < lmmax; lm++) {
             int l = l_by_lm[lm];
-            auto s = density->rho()->f_mt(ialoc).component(lm);
+            auto s = density->rho().f_mt(ialoc).component(lm);
             tmp[lm] = s.integrate(l + 2);
         }
         sirius::SHT::convert(Utils::lmax_by_lmmax(lmmax), tmp.data(), &qmt(0, ia));
@@ -1571,7 +1571,7 @@ void sirius_generate_coulomb_potential_mt(ftn_int*            ia__,
 void sirius_generate_coulomb_potential(ftn_double* vclmt__,
                                        ftn_double* vclit__)
 {
-    density->rho()->fft_transform(-1);
+    density->rho().fft_transform(-1);
     potential->poisson(density->rho(), potential->hartree_potential());
     potential->hartree_potential()->copy_to_global_ptr(vclmt__, vclit__);
 }
@@ -2163,7 +2163,7 @@ void sirius_set_atom_type_vloc(char const* label__,
 
 void sirius_symmetrize_density()
 {
-    dft_ground_state->symmetrize(density->rho(), density->magnetization(0), density->magnetization(1), density->magnetization(2));
+    dft_ground_state->symmetrize(&density->rho(), &density->magnetization(0), &density->magnetization(1), &density->magnetization(2));
 }
 
 void sirius_get_gvec_index(int32_t* gvec__, int32_t* ig__)
@@ -2390,121 +2390,6 @@ void sirius_get_q_operator_matrix(ftn_int*    iat__,
     //        q_mtrx(xi1, xi2) = real(z1(xi1, xi2));
     //    }
     //}
-}
-
-void sirius_get_d_operator_matrix(ftn_int*    ia__,
-                                  ftn_int*    ispn__,
-                                  ftn_double* d_mtrx__,
-                                  ftn_int*    ld__)
-{
-    mdarray<double, 2> d_mtrx(d_mtrx__, *ld__, *ld__);
-
-    auto& atom = sim_ctx->unit_cell().atom(*ia__ - 1);
-
-    int nbf = atom.mt_basis_size();
-
-    /* index of Rlm of QE */
-    auto idx_Rlm = [](int lm) // TODO: move duplicated code to a separate inline function
-    {
-        int l = static_cast<int>(std::sqrt(static_cast<double>(lm) + 1e-12));
-        int m = lm - l * l - l;
-        return (m > 0) ? 2 * m - 1 : -2 * m;
-    };
-
-    std::vector<int> idx_map(nbf);
-    for (int xi = 0; xi < nbf; xi++) {
-        int lm      = atom.type().indexb(xi).lm;
-        int idxrf   = atom.type().indexb(xi).idxrf;
-        idx_map[xi] = atom.type().indexb().index_by_idxrf(idxrf) + idx_Rlm(lm);
-    }
-    
-    d_mtrx.zero();
-
-    for (int xi1 = 0; xi1 < nbf; xi1++) {
-        for (int xi2 = 0; xi2 < nbf; xi2++) {
-            d_mtrx(idx_map[xi1], idx_map[xi2]) = atom.d_mtrx(xi1, xi2, *ispn__ - 1);
-        }
-    }
-
-    //mdarray<double_complex, 2> sirius_Ylm_to_QE_Rlm(nbf, nbf);
-    //sirius_Ylm_to_QE_Rlm.zero();
-
-    //for (int idxrf = 0; idxrf < atom.type().mt_radial_basis_size(); idxrf++) {
-    //    int l      = atom.type().indexr(idxrf).l;
-    //    int offset = atom.type().indexb().index_by_idxrf(idxrf);
-
-    //    for (int m1 = -l; m1 <= l; m1++) { // this runs over Ylm index of sirius
-    //        for (int m2 = -l; m2 <= l; m2++) { // this runs over Rlm index of sirius
-    //            int i{0}; // index of QE Rlm
-    //            if (m2 > 0) {
-    //                i = m2 * 2 - 1;
-    //            }
-    //            if (m2 < 0) {
-    //                i = (-m2) * 2;
-    //            }
-    //            double phase{1};
-    //            if (m2 < 0 && (-m2) % 2 == 0) {
-    //                phase = -1;
-    //            }
-    //            sirius_Ylm_to_QE_Rlm(offset + i, offset + l + m1) = sirius::SHT::rlm_dot_ylm(l, m2, m1) * phase;
-    //        }
-    //    }
-    //}
-
-    //mdarray<double_complex, 2> z1(nbf, nbf);
-    //mdarray<double_complex, 2> z2(nbf, nbf);
-
-    //for (int xi1 = 0; xi1 < nbf; xi1++) {
-    //    for (int xi2 = 0; xi2 < nbf; xi2++) {
-    //        z1(xi1, xi2) = atom.d_mtrx(xi1, xi2, 0);
-    //    }
-    //}
-    //linalg<CPU>::gemm(0, 2, nbf, nbf, nbf, double_complex(1, 0), z1, sirius_Ylm_to_QE_Rlm, double_complex(0, 0), z2);
-    //linalg<CPU>::gemm(0, 0, nbf, nbf, nbf, double_complex(1, 0), sirius_Ylm_to_QE_Rlm, z2, double_complex(0, 0), z1);
-
-    //for (int xi1 = 0; xi1 < nbf; xi1++) {
-    //    for (int xi2 = 0; xi2 < nbf; xi2++) {
-    //        //double diff = std::abs(d_mtrx(xi1, xi2) - real(z1(xi1, xi2) * 2.0));
-    //        //if (diff > 1e-8)
-    //        //{
-    //        //    printf("ia=%2i, xi1,xi2=%2i %2i, D(QE)=%18.12f D(S)=%18.12f\n", *ia__ - 1, xi1, xi2, d_mtrx(xi1, xi2), real(z1(xi1, xi2)) * 2);
-    //        //}
-    //        d_mtrx(xi1, xi2) = std::real(z1(xi1, xi2)) * 2; // convert to Ry
-    //    }
-    //}
-}
-
-void sirius_set_d_operator_matrix(ftn_int*    ia__,
-                                  ftn_int*    ispn__,
-                                  ftn_double* d_mtrx__,
-                                  ftn_int*    ld__)
-{
-    mdarray<double, 2> d_mtrx(d_mtrx__, *ld__, *ld__);
-
-    auto& atom = sim_ctx->unit_cell().atom(*ia__ - 1);
-
-    int nbf = atom.mt_basis_size();
-
-    /* index of Rlm of QE */
-    auto idx_Rlm = [](int lm) // TODO: move duplicated code to a separate inline function
-    {
-        int l = static_cast<int>(std::sqrt(static_cast<double>(lm) + 1e-12));
-        int m = lm - l * l - l;
-        return (m > 0) ? 2 * m - 1 : -2 * m;
-    };
-
-    std::vector<int> idx_map(nbf);
-    for (int xi = 0; xi < nbf; xi++) {
-        int lm      = atom.type().indexb(xi).lm;
-        int idxrf   = atom.type().indexb(xi).idxrf;
-        idx_map[xi] = atom.type().indexb().index_by_idxrf(idxrf) + idx_Rlm(lm);
-    }
-    
-    for (int xi1 = 0; xi1 < nbf; xi1++) {
-        for (int xi2 = 0; xi2 < nbf; xi2++) {
-            atom.d_mtrx(xi1, xi2, *ispn__ - 1) = d_mtrx(idx_map[xi1], idx_map[xi2]);
-        }
-    }
 }
 
 void sirius_get_q_pw_(int32_t* iat__, int32_t* num_gvec__, double_complex* q_pw__)
@@ -2911,18 +2796,91 @@ void sirius_get_beta_projectors_by_kp(ftn_int* kset_id__,
     TERMINATE(s);
 }
 
+/// Mapping of atomic indices from SIRIUS to QE order.
+static std::vector<int> atomic_orbital_index_map_QE(sirius::Atom_type const& type__)
+{
+    int nbf = type__.mt_basis_size();
+
+    /* index of Rlm in QE in the block of lm coefficients for a given l */
+    auto idx_m_QE = [](int m)
+    {
+        return (m > 0) ? 2 * m - 1 : -2 * m;
+    };
+
+    std::vector<int> idx_map(nbf);
+    for (int xi = 0; xi < nbf; xi++) {
+        int m       = type__.indexb(xi).m;
+        int idxrf   = type__.indexb(xi).idxrf;
+        idx_map[xi] = type__.indexb().index_by_idxrf(idxrf) + idx_m_QE(m); /* beginning of lm-block + new offset in lm block */
+    }
+    return std::move(idx_map);
+}
+
+static inline int phase_Rlm_QE(sirius::Atom_type const& type__, int xi__)
+{
+    return (type__.indexb(xi__).m >= 1 && type__.indexb(xi__).m % 2 == 0) ? -1 : 1;
+}
+
+void sirius_get_d_operator_matrix(ftn_int*    ia__,
+                                  ftn_int*    ispn__,
+                                  ftn_double* d_mtrx__,
+                                  ftn_int*    ld__)
+{
+    mdarray<double, 2> d_mtrx(d_mtrx__, *ld__, *ld__);
+
+    auto& atom = sim_ctx->unit_cell().atom(*ia__ - 1);
+    auto idx_map = atomic_orbital_index_map_QE(atom.type());
+    int nbf = atom.mt_basis_size();
+    
+    d_mtrx.zero();
+
+    for (int xi1 = 0; xi1 < nbf; xi1++) {
+        int p1 = phase_Rlm_QE(atom.type(), xi1);
+        for (int xi2 = 0; xi2 < nbf; xi2++) {
+            int p2 = phase_Rlm_QE(atom.type(), xi2);
+            d_mtrx(idx_map[xi1], idx_map[xi2]) = atom.d_mtrx(xi1, xi2, *ispn__ - 1) * p1 * p2;
+        }
+    }
+}
+
+void sirius_set_d_operator_matrix(ftn_int*    ia__,
+                                  ftn_int*    ispn__,
+                                  ftn_double* d_mtrx__,
+                                  ftn_int*    ld__)
+{
+    mdarray<double, 2> d_mtrx(d_mtrx__, *ld__, *ld__);
+
+    auto& atom = sim_ctx->unit_cell().atom(*ia__ - 1);
+    auto idx_map = atomic_orbital_index_map_QE(atom.type());
+    int nbf = atom.mt_basis_size();
+    
+    for (int xi1 = 0; xi1 < nbf; xi1++) {
+        int p1 = phase_Rlm_QE(atom.type(), xi1);
+        for (int xi2 = 0; xi2 < nbf; xi2++) {
+            int p2 = phase_Rlm_QE(atom.type(), xi2);
+            atom.d_mtrx(xi1, xi2, *ispn__ - 1) = d_mtrx(idx_map[xi1], idx_map[xi2]) * p1 * p2;
+        }
+    }
+}
+
 /// Get the component of complex density matrix.
 void sirius_get_density_matrix(ftn_int*            ia__,
                                ftn_double_complex* dm__,
                                ftn_int*            ld__)
 {
     mdarray<double_complex, 3> dm(dm__, *ld__, *ld__, 3);
-    int nbf = sim_ctx->unit_cell().atom(*ia__ - 1).mt_basis_size();
+
+    auto& atom = sim_ctx->unit_cell().atom(*ia__ - 1);
+    auto idx_map = atomic_orbital_index_map_QE(atom.type());
+    int nbf = atom.mt_basis_size();
     assert(nbf <= *ld__);
+
     for (int icomp = 0; icomp < sim_ctx->num_mag_comp(); icomp++) {
         for (int i = 0; i < nbf; i++) {
+            int p1 = phase_Rlm_QE(atom.type(), i);
             for (int j = 0; j < nbf; j++) {
-                dm(i, j, icomp) = density->density_matrix()(i, j, icomp, *ia__ - 1);
+                int p2 = phase_Rlm_QE(atom.type(), j);
+                dm(idx_map[i], idx_map[j], icomp) = density->density_matrix()(i, j, icomp, *ia__ - 1) * static_cast<double>(p1 * p2);
             }
         }
     }
@@ -2934,12 +2892,17 @@ void sirius_set_density_matrix(ftn_int*            ia__,
                                ftn_int*            ld__)
 {
     mdarray<double_complex, 3> dm(dm__, *ld__, *ld__, 3);
-    int nbf = sim_ctx->unit_cell().atom(*ia__ - 1).mt_basis_size();
+    auto& atom = sim_ctx->unit_cell().atom(*ia__ - 1);
+    auto idx_map = atomic_orbital_index_map_QE(atom.type());
+    int nbf = atom.mt_basis_size();
     assert(nbf <= *ld__);
+
     for (int icomp = 0; icomp < sim_ctx->num_mag_comp(); icomp++) {
         for (int i = 0; i < nbf; i++) {
+            int p1 = phase_Rlm_QE(atom.type(), i);
             for (int j = 0; j < nbf; j++) {
-                density->density_matrix()(i, j, icomp, *ia__ - 1) = dm(i, j, icomp);
+                int p2 = phase_Rlm_QE(atom.type(), j);
+                density->density_matrix()(i, j, icomp, *ia__ - 1) = dm(idx_map[i], idx_map[j], icomp) * static_cast<double>(p1 * p2);
             }
         }
     }
@@ -2991,8 +2954,23 @@ void sirius_set_pw_coeffs(ftn_char label__,
         std::vector<double_complex> v(sim_ctx->gvec().num_gvec(), 0);
         for (int i = 0; i < *ngv__; i++) {
             vector3d<int> G(gvec(0, i), gvec(1, i), gvec(2, i));
+
+            bool is_inverse{false};
             int ig = sim_ctx->gvec().index_by_gvec(G);
-            if (ig >= 0) {
+            if (ig == -1 && sim_ctx->gvec().reduced()) {
+                ig = sim_ctx->gvec().index_by_gvec(G * (-1));
+                is_inverse = true;
+            }
+            if (ig == -1) {
+                std::stringstream s;
+                auto gvc = sim_ctx->unit_cell().reciprocal_lattice_vectors() * vector3d<double>(G[0], G[1], G[2]);
+                s << "wrong index of G-vector" << std::endl
+                  << "input G-vector: " << G << " (length: " << gvc.length() << " [a.u.^-1])" << std::endl;
+                TERMINATE(s);
+            }
+            if (is_inverse) {
+                v[ig] = std::conj(pw_coeffs__[i]);
+            } else {
                 v[ig] = pw_coeffs__[i];
             }
         }
@@ -3000,8 +2978,8 @@ void sirius_set_pw_coeffs(ftn_char label__,
         
         // TODO: check if FFT transformation is necessary
         if (label == "rho") {
-            density->rho()->scatter_f_pw(v);
-            density->rho()->fft_transform(1);
+            density->rho().scatter_f_pw(v);
+            density->rho().fft_transform(1);
         } else if (label == "veff") {
             potential->effective_potential()->scatter_f_pw(v);
             potential->effective_potential()->fft_transform(1);
@@ -3018,14 +2996,14 @@ void sirius_set_pw_coeffs(ftn_char label__,
             potential->xc_potential()->scatter_f_pw(v);
             potential->xc_potential()->fft_transform(1);
         } else if (label == "magz") {
-            density->magnetization(0)->scatter_f_pw(v);
-            density->magnetization(0)->fft_transform(1);
+            density->magnetization(0).scatter_f_pw(v);
+            density->magnetization(0).fft_transform(1);
         } else if (label == "magx") {
-            density->magnetization(1)->scatter_f_pw(v);
-            density->magnetization(1)->fft_transform(1);
+            density->magnetization(1).scatter_f_pw(v);
+            density->magnetization(1).fft_transform(1);
         } else if (label == "magy") {
-            density->magnetization(2)->scatter_f_pw(v);
-            density->magnetization(2)->fft_transform(1);
+            density->magnetization(2).scatter_f_pw(v);
+            density->magnetization(2).fft_transform(1);
         } else if (label == "vloc") {
             potential->local_potential().scatter_f_pw(v);
             potential->local_potential().fft_transform(1);
@@ -3055,11 +3033,11 @@ void sirius_get_pw_coeffs(ftn_char        label__,
         Communicator comm(MPI_Comm_f2c(*comm__));
         mdarray<int, 2> gvec(gvl__, 3, *ngv__);
 
-        std::map<std::string, sirius::Periodic_function<double>*> func = {
-            {"rho", density->rho()},
-            {"magz", density->magnetization(0)},
-            {"magx", density->magnetization(1)},
-            {"magy", density->magnetization(2)},
+        std::map<std::string, sirius::Smooth_periodic_function<double>*> func = {
+            {"rho", &density->rho()},
+            {"magz", &density->magnetization(0)},
+            {"magx", &density->magnetization(1)},
+            {"magy", &density->magnetization(2)},
             {"veff", potential->effective_potential()},
             {"vloc", &potential->local_potential()},
             {"rhoc", &density->rho_pseudo_core()}
@@ -3200,6 +3178,10 @@ void sirius_get_stress_tensor(ftn_char label__, ftn_double* stress_tensor__)
         s = stress_tensor->stress_nonloc();
     } else if (label == "us") {
         s = stress_tensor->stress_us();
+    } else if (label == "xc") {
+        s = stress_tensor->stress_xc();
+    } else if (label == "core") {
+        s = stress_tensor->stress_core();
     } else {
         TERMINATE("wrong label");
     }
@@ -3218,6 +3200,24 @@ void sirius_set_processing_unit(ftn_char pu__)
 void sirius_set_use_symmetry(ftn_int* flg__)
 {
     sim_ctx->set_use_symmetry(*flg__);
+}
+
+void sirius_ri_aug_(ftn_int* idx__, ftn_int* l__, ftn_int* iat__, ftn_double* q__, ftn_double* val__)
+{
+    if (sim_ctx) {
+        *val__ = sim_ctx->aug_ri().value(*idx__ - 1, *l__, *iat__ - 1, *q__);
+    } else {
+        *val__ = 0;
+    }
+}
+
+void sirius_ri_beta_(ftn_int* idx__, ftn_int* iat__, ftn_double* q__, ftn_double* val__)
+{
+    if (sim_ctx) {
+        *val__ = sim_ctx->beta_ri().value(*idx__ - 1, *iat__ - 1, *q__);
+    } else {
+        *val__ = 0;
+    }
 }
 
 } // extern "C"

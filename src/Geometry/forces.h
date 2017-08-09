@@ -129,7 +129,7 @@ class Forces_PS
     {
         PROFILE("sirius::Forces_PS::calc_local_forces");
 
-        const Periodic_function<double>* valence_rho = density_.rho();
+        auto& valence_rho = density_.rho();
 
         Radial_integrals_vloc<false> ri(ctx_.unit_cell(), ctx_.pw_cutoff(), ctx_.settings().nprii_vloc_);
 
@@ -146,7 +146,7 @@ class Forces_PS
 
         forces.zero();
 
-        double fact = valence_rho->gvec().reduced() ? 2.0 : 1.0;
+        double fact = valence_rho.gvec().reduced() ? 2.0 : 1.0;
 
         /* here the calculations are in lattice vectors space */
         #pragma omp parallel for
@@ -163,7 +163,7 @@ class Forces_PS
 
                 /* scalar part of a force without multipying by G-vector */
                 double_complex z = fact * fourpi * ri.value(iat, gvecs.gvec_len(ig)) *
-                                   std::conj(valence_rho->f_pw_local(igloc)) *
+                                   std::conj(valence_rho.f_pw_local(igloc)) *
                                    std::conj(ctx_.gvec_phase_factor(ig, ia));
 
                 /* get force components multiplying by cartesian G-vector  */
@@ -248,72 +248,6 @@ class Forces_PS
                 }
             }
         }
-//        #pragma omp parallel for
-//        for (int ia = 0; ia < unit_cell.num_atoms(); ia++) {
-//            Atom& atom = unit_cell.atom(ia);
-//
-//            int iat = atom.type_id();
-//            if (!unit_cell.atom_type(iat).pp_desc().augment) {
-//                continue;
-//            }
-//
-//            for (int ispin = 0; ispin < ctx_.num_spins(); ispin++ ){
-//                double spin_factor = (ispin == 0 ? 1.0 : -1.0);
-//
-//                auto potential_spin = [&](int igloc)
-//                                    {
-//                    switch (ctx_.num_spins())
-//                    {
-//                        case 1:
-//                            return veff_full->f_pw_local(igloc);
-//                            break;
-//
-//                        case 2:
-//                            return veff_full->f_pw_local(igloc) + spin_factor * field_eff->f_pw_local(igloc);
-//                            break;
-//
-//                        default:
-//                            TERMINATE("Error in calc_ultrasoft_forces: Non-collinear not implemented");
-//                            break;
-//                    }
-//                    return double_complex(0.0, 0.0);
-//                                    };
-//
-//                for (int igloc = 0; igloc < gvec_count; igloc++) {
-//                    int ig = gvec_offset + igloc;
-//
-//                    /* cartesian form for getting cartesian force components */
-//                    vector3d<double> gvec_cart = gvecs.gvec_cart(ig);
-//
-//                    /* scalar part of a force without multipying by G-vector and Qij
-//                   omega * V_conj(G) * exp(-i G Rn) */
-//                    double_complex g_atom_part = reduce_g_fact * ctx_.unit_cell().omega() *
-//                            std::conj(potential_spin(igloc) * ctx_.gvec_phase_factor(ig, ia));
-//
-//
-//                    const Augmentation_operator& aug_op = ctx_.augmentation_op(iat);
-//
-//                    /* iterate over trangle matrix Qij */
-//                    for (int ib2 = 0; ib2 < atom.type().indexb().size(); ib2++) {
-//                        for (int ib1 = 0; ib1 <= ib2; ib1++) {
-//                            int iqij = (ib2 * (ib2 + 1)) / 2 + ib1;
-//
-//                            double diag_fact = ib1 == ib2 ? 1.0 : 2.0;
-//
-//                            /* [omega * V_conj(G) * exp(-i G Rn) ] * rho_ij * Qij(G) */
-//                            double_complex z = diag_fact * g_atom_part * density_matrix(ib1, ib2, ispin, ia).real() *
-//                                    double_complex(aug_op.q_pw(iqij, 2 * igloc), aug_op.q_pw(iqij, 2 * igloc + 1));
-//
-//
-//                            /* get force components multiplying by cartesian G-vector */
-//                            forces(0, ia) -= (gvec_cart[0] * z).imag();
-//                            forces(1, ia) -= (gvec_cart[1] * z).imag();
-//                            forces(2, ia) -= (gvec_cart[2] * z).imag();
-//                        }
-//                    }
-//                }
-//            }
-//        }
 
         ctx_.comm().allreduce(&forces(0, 0), static_cast<int>(forces.size()));
     }
@@ -405,22 +339,7 @@ class Forces_PS
 
         forces.zero();
 
-        /* alpha = 1 / ( 2 sigma^2 ) , selecting alpha here for better convergence*/
-        double alpha = 1.0;
-        double gmax = ctx_.pw_cutoff();
-        double upper_bound = 0.0;
-        double charge = ctx_.unit_cell().num_electrons();
-
-        /* iterate to find alpha */
-        do {
-            alpha += 0.1;
-            upper_bound = charge*charge * std::sqrt( 2.0 * alpha / twopi) * gsl_sf_erfc( gmax * std::sqrt(1.0 / (4.0 * alpha)) );
-            //std::cout<<"alpha " <<alpha<<" ub "<<upper_bound<<std::endl;
-        } while(upper_bound < 1.0e-8);
-
-        if (alpha < 1.5) {
-            std::cout<<"Ewald forces error: probably, pw_cutoff is too small."<<std::endl;
-        }
+        double alpha = ctx_.ewald_lambda();
 
         double prefac = (ctx_.gvec().reduced() ? 4.0 : 2.0) * (twopi / unit_cell.omega());
 

@@ -22,6 +22,13 @@ inline void orthogonalize(int N__,
     /* orthogonalize new n__ x n__ block */
     inner(*wfs__[idx_bra__], N__, n__, *wfs__[idx_ket__], N__, n__, 0.0, o__, 0, 0);
 
+    auto diag = o__.get_diag(n__);
+    for (int i = 0; i < n__; i++) {
+        if (std::abs(diag[i]) < 1e-6) {
+            std::cout << "small norm: " << i << " " << diag[i] << std::endl;
+        }
+    }
+
     /* single MPI rank */
     if (o__.blacs_grid().comm().size() == 1) {
         bool use_magma{false};

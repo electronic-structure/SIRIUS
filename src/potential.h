@@ -45,17 +45,32 @@ class Potential
         Unit_cell& unit_cell_;
 
         Communicator const& comm_;
-
+        
+        /// Total effective potential.
         std::unique_ptr<Periodic_function<double>> effective_potential_;
-
+        
+        /// Total effective magnetic field.
         Periodic_function<double>* effective_magnetic_field_[3];
- 
+        
+        /// Hartree potential.
         Periodic_function<double>* hartree_potential_;
+
+        /// XC potential.
         Periodic_function<double>* xc_potential_;
+
+        /// XC energy per unit particle.
         Periodic_function<double>* xc_energy_density_;
 
         /// Local part of pseudopotential.
-        std::unique_ptr<Periodic_function<double>> local_potential_;
+        std::unique_ptr<Smooth_periodic_function<double>> local_potential_;
+
+        /// Derivative \f$ \partial \epsilon^{XC} / \partial \sigma_{\alpha} \f$.
+        /** \f$ \epsilon^{XC} \f$ is the exchange-correlation energy per unit volume and \f$ \sigma \f$ is one of
+         *  \f$ \nabla \rho_{\uparrow} \nabla \rho_{\uparrow} \f$,  \f$ \nabla \rho_{\uparrow} \nabla \rho_{\downarrow} \f$ or
+         *  \f$ \nabla \rho_{\downarrow} \nabla \rho_{\downarrow} \f$. This quantity is required to compute the GGA
+         *  contribution to the XC stress tensor.
+         */
+        std::array<std::unique_ptr<Smooth_periodic_function<double>>, 2> vsigma_;
 
         mdarray<double, 3> sbessel_mom_;
 
@@ -166,7 +181,7 @@ class Potential
         void add_paw_Dij_to_atom_Dmtrx();
         
         /// Compute MT part of the potential and MT multipole moments
-        inline void poisson_vmt(Periodic_function<double>* rho__, 
+        inline void poisson_vmt(Periodic_function<double>& rho__, 
                                 Periodic_function<double>* vh__,
                                 mdarray<double_complex, 2>& qmt__)
         {
@@ -177,7 +192,7 @@ class Potential
             for (int ialoc = 0; ialoc < unit_cell_.spl_num_atoms().local_size(); ialoc++) {
                 int ia = unit_cell_.spl_num_atoms(ialoc);
 
-                auto qmt = poisson_vmt<false>(unit_cell_.atom(ia), rho__->f_mt(ialoc),
+                auto qmt = poisson_vmt<false>(unit_cell_.atom(ia), rho__.f_mt(ialoc),
                                               const_cast<Spheric_function<function_domain_t::spectral, double>&>(vh__->f_mt(ialoc)));
 
                 SHT::convert(ctx_.lmax_rho(), &qmt[0], &qmt__(0, ia));
@@ -322,24 +337,24 @@ class Potential
                                    Spheric_function<spatial, double>& vxc_dn_tp, 
                                    Spheric_function<spatial, double>& exc_tp);
 
-        inline void xc_mt(Periodic_function<double>* rho, 
+        inline void xc_mt(Periodic_function<double>& rho, 
                           std::array<Periodic_function<double>*, 3> magnetization, 
                           std::vector<XC_functional>& xc_func,
                           Periodic_function<double>* vxc, 
                           Periodic_function<double>* bxc[3], 
                           Periodic_function<double>* exc);
     
-        inline void xc_it_nonmagnetic(Periodic_function<double>* rho, 
+        inline void xc_it_nonmagnetic(Periodic_function<double>& rho, 
                                       std::vector<XC_functional>& xc_func,
                                       Periodic_function<double>* vxc, 
                                       Periodic_function<double>* exc);
 
-        inline void xc_it_magnetic(Periodic_function<double>* rho, 
+        inline void xc_it_magnetic(Periodic_function<double>&                rho, 
                                    std::array<Periodic_function<double>*, 3> magnetization, 
-                                   std::vector<XC_functional>& xc_func,
-                                   Periodic_function<double>* vxc, 
-                                   Periodic_function<double>* bxc[3], 
-                                   Periodic_function<double>* exc);
+                                   std::vector<XC_functional>&               xc_func,
+                                   Periodic_function<double>*                vxc, 
+                                   Periodic_function<double>*                bxc[3], 
+                                   Periodic_function<double>*                exc);
 
         inline void init();
 
@@ -389,10 +404,14 @@ class Potential
             xc_energy_density_->allocate_mt(false);
 
             if (!ctx_.full_potential()) {
-                local_potential_ = std::unique_ptr<Periodic_function<double>>(new Periodic_function<double>(ctx_, 0));
+                local_potential_ = std::unique_ptr<Smooth_periodic_function<double>>(new Smooth_periodic_function<double>(ctx_.fft(), ctx_.gvec()));
                 local_potential_->zero();
 
                 generate_local_potential();
+
+                for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
+                    vsigma_[ispn] = std::unique_ptr<Smooth_periodic_function<double>>(new Smooth_periodic_function<double>(ctx_.fft(), ctx_.gvec()));
+                }
             }
 
             vh_el_ = mdarray<double, 1>(unit_cell_.num_atoms());
@@ -736,7 +755,7 @@ class Potential
          *          Y_{\ell m}^{*}({\bf \hat x'}) Y_{\ell m}(\hat {\bf x})
          *  \f]
          */
-        inline void poisson(Periodic_function<double>* rho, Periodic_function<double>* vh);
+        inline void poisson(Periodic_function<double>& rho, Periodic_function<double>* vh);
         
         /// Generate XC potential and energy density
         /** In case of spin-unpolarized GGA the XC potential has the following expression:
@@ -799,7 +818,7 @@ class Potential
          *      V^{\downarrow}({\bf r}) &=& V_{xc}({\bf r}) - {\rm B}_{xc}({\bf r}) 
          *  \f}
          */
-        void xc(Periodic_function<double>*                rho__,
+        void xc(Periodic_function<double>&                rho__,
                 std::array<Periodic_function<double>*, 3> magnetization__,
                 Periodic_function<double>*                vxc__,
                 Periodic_function<double>*                bxc__[3],
@@ -823,14 +842,14 @@ class Potential
                 xc(density__.rho(), density__.magnetization(), xc_potential_, effective_magnetic_field_, xc_energy_density_);
             } else {
                 /* add local ionic potential to the effective potential */
-                effective_potential_->add(local_potential_.get());
+                effective_potential()->add(local_potential());
                 /* create temporary function for rho + rho_core */
                 Periodic_function<double> rhovc(ctx_, 0);
                 rhovc.zero();
                 rhovc.add(density__.rho());
-                rhovc.add(&density__.rho_pseudo_core());
+                rhovc.add(density__.rho_pseudo_core());
                 /* construct XC potentials from rho + rho_core */
-                xc(&rhovc, density__.magnetization(), xc_potential_, effective_magnetic_field_, xc_energy_density_);
+                xc(rhovc, density__.magnetization(), xc_potential_, effective_magnetic_field_, xc_energy_density_);
             }
             /* add XC potential to the effective potential */
             effective_potential_->add(xc_potential_);
@@ -1007,7 +1026,7 @@ class Potential
             return effective_potential_.get();
         }
 
-        Periodic_function<double>& local_potential()
+        Smooth_periodic_function<double>& local_potential()
         {
             return *local_potential_;
         }
@@ -1173,6 +1192,39 @@ class Potential
                 effective_magnetic_field_[j]->fft_transform(direction__);
             }
         }
+        
+        /// Integral of \f$ \rho({\bf r}) V^{XC}({\bf r}) \f$.
+        double energy_vxc(Density& density__)
+        {
+            return density__.rho().inner(xc_potential());
+        }
+        
+        /// Integral of \f$ \rho({\bf r}) \epsilon^{XC}({\bf r}) \f$.
+        double energy_exc(Density& density__)
+        {
+            double exc = density__.rho().inner(xc_energy_density());
+            if (!ctx_.full_potential()) {
+                exc += density__.rho_pseudo_core().inner(*xc_energy_density());
+            }
+            return exc;
+        }
+
+        bool is_gradient_correction() const
+        {
+            bool is_gga{false};
+            for (auto& ixc: xc_func_) {
+                if (ixc.is_gga()) {
+                    is_gga = true;
+                }
+            }
+            return is_gga;
+        }
+
+        Smooth_periodic_function<double>& vsigma(int ispn__)
+        {
+            return (*vsigma_[ispn__].get());
+        }
+
 };
 
 #include "Potential/init.hpp"
