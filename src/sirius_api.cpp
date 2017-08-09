@@ -2957,6 +2957,14 @@ void sirius_set_pw_coeffs(ftn_char label__,
             int ig = sim_ctx->gvec().index_by_gvec(G);
             if (ig >= 0) {
                 v[ig] = pw_coeffs__[i];
+            } else {
+                ig = sim_ctx->gvec().index_by_gvec(G * (-1));
+                if (ig == -1) {
+                    std::stringstream s;
+                    s << "index of QE G-vector [" << G << "] is not found";
+                    TERMINATE(s);
+                }
+                v[ig] = std::conj(pw_coeffs__[i]);
             }
         }
         comm.allreduce(v.data(), sim_ctx->gvec().num_gvec());
