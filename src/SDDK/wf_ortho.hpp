@@ -21,6 +21,9 @@ inline void orthogonalize(int N__,
         transform(-1.0, wfs__, 0, N__, o__, 0, 0, 1.0, wfs__, N__, n__);
     }
 
+    /* orthogonalize new n__ x n__ block */
+    inner(*wfs__[idx_bra__], N__, n__, *wfs__[idx_ket__], N__, n__, 0.0, o__, 0, 0);
+
     /* single MPI rank */
     if (o__.blacs_grid().comm().size() == 1) {
         bool use_magma{false};
@@ -218,13 +221,11 @@ inline void orthogonalize(device_t                     pu__,
         dmatrix<T> evec(o__.num_rows(), o__.num_cols(), o__.blacs_grid(), o__.bs_row(), o__.bs_col());
 
         Eigenproblem_elpa1 evs(o__.blacs_grid(), o__.bs_row());
-        evs.solve(n__, n__, o__.template at<CPU>(), o__.ld(),
-                           eo.data(), evec.template at<CPU>(), evec.ld(), o__.num_rows_local(), o__.num_cols_local());
+        evs.solve(n__, n__, o__.template at<CPU>(), o__.ld(), eo.data(), evec.template at<CPU>(), evec.ld(),
+                  o__.num_rows_local(), o__.num_cols_local());
 
         if (o__.blacs_grid().comm().rank() == 0) { 
-            for (int i = 0; i < n__; i++) {
-                std::cout << "ev of new nxn block: " << eo[i] << std::endl;
-            }
+            std::cout << "smallest ev of the new n x x block: " << eo[0] << std::endl;
         }
     }
 
