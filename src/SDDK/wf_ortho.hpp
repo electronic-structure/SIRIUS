@@ -204,7 +204,7 @@ inline void orthogonalize(device_t                     pu__,
         transform(-1.0, wfs__, 0, N__, o__, 0, 0, 1.0, wfs__, N__, n__);
     }
 
-    if (true) {
+    if (false) {
 
         inner(num_sc__, *wfs__[idx_bra__], N__, n__, *wfs__[idx_ket__], N__, n__, o__, 0, 0);
 
