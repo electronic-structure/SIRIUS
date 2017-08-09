@@ -77,6 +77,7 @@ struct local_orbital_descriptor
 
     int j;
 
+  double total_angular_momentum;
     /// Set of radial solution descriptors.
     /** Local orbital is constructed from at least two radial functions in order to make it zero at the 
      *  muffin-tin sphere boundary. */
@@ -252,7 +253,7 @@ struct basis_function_index_descriptor
          assert(m >= -l && m <= l);
          assert(order >= 0);
          assert(idxrf >= 0);
-         assert(std:fabs(std::fabs(j)-0.5)< 1e-8);
+
          lm = Utils::lm_by_l_m(l, m);
     }
 };

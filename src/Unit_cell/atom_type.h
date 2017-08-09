@@ -105,12 +105,12 @@ class radial_functions_index
             }
 
             for (int idxlo = 0; idxlo < static_cast<int>(lo_descriptors.size()); idxlo++) {
-                int l = lo_descriptors[idxlo].l;
-                radial_function_index_descriptors_.push_back(radial_function_index_descriptor(l, num_rf_[l], idxlo));
-                num_rf_[l]++;
-                num_lo_[l]++;
+	      int l = lo_descriptors[idxlo].l;
+	      radial_function_index_descriptors_.push_back(radial_function_index_descriptor(l, lo_descriptors[idxlo].total_angular_momentum, num_rf_[l], idxlo));
+	      num_rf_[l]++;
+	      num_lo_[l]++;
             }
-
+	    
             for (int l = 0; l <= lmax_; l++) {
                 max_num_rf_ = std::max(max_num_rf_, num_rf_[l]);
             }
@@ -893,10 +893,10 @@ class Atom_type
         /// when spin orbit coupling is included.
         inline bool compare_index_beta_functions(const int xi, const int xj) const
         {
-            return ((indexr(xi).l == indexr(xj).l) &&
-		    (indexr(xi).idxlo == indexr(xj).idxlo) &&
-		    (fabs(indexr(xi).j - indexr(xj).j)<1e-8));
-	}
+          return ((indexb(xi).l == indexb(xj).l) &&
+                  (indexb(xi).idxrf == indexb(xj).idxrf) &&
+                  (fabs(indexb(xi).j - indexb(xj).j)<1e-8));
+        }
 
 
  private:
@@ -994,6 +994,8 @@ inline void Atom_type::init(int offset_lo__)
         for (int i = 0; i < pp_desc_.num_beta_radial_functions; i++) {
             /* think of |beta> functions as of local orbitals */
             lod.l = pp_desc_.beta_l[i];
+	    if(pp_desc_.SpinOrbit_Coupling)
+	      lod.total_angular_momentum = pp_desc_.beta_j[i];
             lo_descriptors_.push_back(lod);
         }
     }
@@ -1381,8 +1383,8 @@ inline void Atom_type::read_pseudo_uspp(json const& parser)
     if (pp_desc_.SpinOrbit_Coupling)
         pp_desc_.beta_j.resize(pp_desc_.num_beta_radial_functions);
     
-    int lmax_beta{0};
     local_orbital_descriptor lod;
+    int lmax_beta{0};
     for (int i = 0; i < pp_desc_.num_beta_radial_functions; i++) {
         auto beta = parser["pseudo_potential"]["beta_projectors"][i]["radial_function"].get<std::vector<double>>();
         if (static_cast<int>(beta.size()) > num_mt_points_) {
@@ -1397,9 +1399,12 @@ inline void Atom_type::read_pseudo_uspp(json const& parser)
 
         pp_desc_.beta_l[i] = parser["pseudo_potential"]["beta_projectors"][i]["angular_momentum"];
         lmax_beta = std::max(lmax_beta, pp_desc_.beta_l[i]);
-	if(pp_desc_.SpinOrbit_Coupling)
-            pp_desc_.beta_j[i] = parser["pseudo_potential"]["beta_projectors"][i]["total_angular_momentum"];
+        if(pp_desc_.SpinOrbit_Coupling) {
+          pp_desc_.beta_j[i] = parser["pseudo_potential"]["beta_projectors"][i]["total_angular_momentum"];
+        }
     }
+
+    assert(lmax_beta >= 0);
 
     pp_desc_.d_mtrx_ion = mdarray<double, 2>(pp_desc_.num_beta_radial_functions, pp_desc_.num_beta_radial_functions);
     pp_desc_.d_mtrx_ion.zero();
@@ -1417,7 +1422,7 @@ inline void Atom_type::read_pseudo_uspp(json const& parser)
         pp_desc_.q_radial_functions_l.zero();
 
         for (size_t k = 0; k < parser["pseudo_potential"]["augmentation"].size(); k++) {
-            int i    = parser["pseudo_potential"]["augmentation"][k]["i"];
+	    int i    = parser["pseudo_potential"]["augmentation"][k]["i"];
             int j    = parser["pseudo_potential"]["augmentation"][k]["j"];
             int idx  = j * (j + 1) / 2 + i;
             int l    = parser["pseudo_potential"]["augmentation"][k]["angular_momentum"];
@@ -1571,12 +1576,10 @@ inline double Atom_type::ClebschGordan(const int l, const double j, const int m,
   if ((m < -(l + 1)) || (m > l)) {
     printf(" Value of m=%d with l = %d  not allowed\n", m, l);
   }
-  // Normally j is half integer but I only use integers
-  int j1 = 2.0 * j;
   
   const double denom = sqrt(1.0 / (2.0 * l + 1));
   
-  if ((j1 - 1 - 2 * l) == 0) {
+  if (std::abs(j - l - 0.5) <1e-8) {
     if (spin == 0)
       CG = sqrt(l + m + 1.0);
     if (spin == 1)
@@ -1585,14 +1588,14 @@ inline double Atom_type::ClebschGordan(const int l, const double j, const int m,
   }
   
   
-  if (((j1 + 1) - 2 * l) == 0) {
+  if (std::abs(j - l + 0.5) <1e-8) {
     if (m < (1 - l))
       CG = 0.0;
     else {
       if (spin == 0)
-	CG = sqrt(l - m + 1);
+        CG = sqrt(l - m + 1);
       if (spin == 1)
-	CG = -sqrt(l + m);
+        CG = -sqrt(l + m);
     }
     return (CG * denom);
   }
@@ -1601,10 +1604,10 @@ inline double Atom_type::ClebschGordan(const int l, const double j, const int m,
   return 0.0;
 }
 
-    inline int Atom_type::Calculate_SphericalHarmonic_m_Index(const int l, const double j, const int m, const int sigma)
-  {
-    // This function calculates the m index of the spherical harmonic
-    // of a spinor with orbital angular momentum l, total angular
+inline int Atom_type::Calculate_SphericalHarmonic_m_Index(const int l, const double j, const int m, const int sigma)
+{
+  // This function calculates the m index of the spherical harmonic
+  // of a spinor with orbital angular momentum l, total angular
     // momentum j, projection along z of the total angular momentum m+-1/2.
     // Spin selects the up (sigma=0) or down (sigma=1) coefficient.
 
@@ -1613,24 +1616,30 @@ inline double Atom_type::ClebschGordan(const int l, const double j, const int m,
       printf("SphericalIndex function : unkown spin direction\n");
       return 0;
     }
+
+    int ind = 0;
     int j1 = 2.0 * j;
-    if ((m < -(l + 1)) && (m > l)) {
+    if ((m < -(l + 1)) || (m > l)) {
       printf("SphericalIndex function : value of m not allowed\n");
+      return 0;
     }
 
-    if ((j1 - 2 * l - 1) == 0) {
-      result = m + sigma; // if sigma is up (sigma = 0)
-      return result;
+    if (std::abs(j - l - 0.5) <1e-8) {
+      ind = m + sigma; // if sigma is up (sigma = 0)
+    } else {
+      if (std::abs(j -  l + 0.5) <1e-8) {
+        if (m < (1 - l))
+          ind = 0;
+        else
+          ind = m - !sigma; // return m - 1 (up spin), m (down spin)
+      } else {
+        printf("SphericalIndex function : l and j are not compatible\n");
+      }
     }
-
-    if ((j1 - 2 * l + 1) == 0) {
-      if (m < 1 - l)
-        return 0;
-      return m - !sigma;
-    }
-
-    return 0;
-  }
+    
+    if((ind < -l)||(ind>l)) ind = 0;
+    return ind;
+}
 
     void Atom_type::Generate_F_coefficients(void)
     {
@@ -1643,31 +1652,33 @@ inline double Atom_type::ClebschGordan(const int l, const double j, const int m,
     // spherical harmonics
     if (!this->pp_desc().SpinOrbit_Coupling)
       return;
-  
+
+    std::cout << "Entering f_coeff" << std::endl;
     // number of beta projectors
-    int nbf = this->mt_radial_basis_size();
-    const int l = this->pp_desc().lmax_beta_;
+    int nbf = this->mt_basis_size();
+    const int l = this->indexr().lmax();
     // we need the \f[\alpha_m_j^{\simga,l,j}\f] tensor and the ClesbchGordan coeffients
     mdarray<double_complex, 2> U(2 * l + 1, 2 * l + 1);
     U.zero();
-    U(l - 1, l - 1) = 1.0;
+    U(l , 0) = 1.0;
   
-    for (auto m = 2; m <= 2 * l + 1; m = +2) {
+    for (auto m = 2; m <= 2 * l + 1; m += 2) {
       int mi = (m >> 1); // divide by two
       int n  = l - mi + 1; // shift by l (negative index otherwise)
     
       double EvenOdd = -1.0;
-      if (m&0x1 == 0) {
-	EvenOdd = 1.0;
+      if ((m%2) == 0) {
+        EvenOdd = 1.0;
       } else {
-	EvenOdd = -1.0;
+        EvenOdd = -1.0;
       }
-
-      U(n - 1, m - 1) = EvenOdd / sqrt(2.0);
-      U(n - 1, m)     = -(0, 1.0 / sqrt(2.0)) * EvenOdd;
+      if(n<0)
+        std::cout << "Error " << std::endl;
+      U(n - 1, m - 1) = double_complex(EvenOdd / sqrt(2.0), 0.0);
+      U(n - 1, m)     = double_complex(0.0, -1.0* EvenOdd / sqrt(2.0)) ;
       n = l + 1 + mi;
-      U(n - 1, m - 1) = 1.0 / sqrt(2.0);
-      U(n - 1, m)     = (0.0, 1.0 / sqrt(2.0));
+      U(n - 1, m - 1) = double_complex(1.0 / sqrt(2.0), 0.0);
+      U(n - 1, m)     = double_complex(0.0, 1.0 / sqrt(2.0));
     }
 
     f_coefficients_ = mdarray<double_complex, 4>(nbf, nbf, 2, 2);
@@ -1678,22 +1689,22 @@ inline double Atom_type::ClebschGordan(const int l, const double j, const int m,
       const double j2  = this->indexb(xi2).j;
       const int m2 = this->indexb(xi2).m + l2;
       for (int xi1 = 0; xi1 < nbf; xi1++) {
-	const int l1     = this->indexb(xi1).l;
-	const double j1  = this->indexb(xi1).j;
-	const int m1 = this->indexb(xi2).m + l1;
-	if ((l2 == l1) && (fabs(j1 - j2) < 1e-8) && (this->indexb(xi1).idxlo == this->indexb(xi2).idxlo)) {
-	  for (auto sigma1 = 0; sigma1 < 2; sigma1++) {
-	    for (auto sigma2 = 0; sigma2 < 2; sigma2++) {
-	      double_complex coef = {0.0, 0.0};
-	      for (int m = -(l1 + 1); m <= l1; m++) {
-		auto mi = this->Calculate_SphericalHarmonic_m_Index(l2, j2, m, sigma1) + l;
-		auto mj = this->Calculate_SphericalHarmonic_m_Index(l1, j1, m, sigma2) + l;
-		coef += U(mi, m2) * this->ClebschGordan(l2, j2, m, sigma1) * std::conj(U(mj, m1))*this->ClebschGordan(l1, j1, m, sigma2);
-	      }
-	      f_coefficients_(xi2, xi1, sigma1, sigma2) = coef;
-	    }
-	  }
-	}
+        const int l1     = this->indexb(xi1).l;
+        const double j1  = this->indexb(xi1).j;
+        const int m1 = this->indexb(xi2).m + l1;
+        if ((l2 == l1) && (fabs(j1 - j2) < 1e-8) && (this->indexb(xi1).idxrf == this->indexb(xi2).idxrf)) {
+          for (auto sigma1 = 0; sigma1 < 2; sigma1++) {
+            for (auto sigma2 = 0; sigma2 < 2; sigma2++) {
+              double_complex coef = {0.0, 0.0};
+              for (int m = -(l1 + 1); m <= l1; m++) {
+                auto mi = this->Calculate_SphericalHarmonic_m_Index(l2, j2, m, sigma1) + l;
+                auto mj = this->Calculate_SphericalHarmonic_m_Index(l1, j1, m, sigma2) + l;
+                coef += U(mi, m2) * this->ClebschGordan(l2, j2, m, sigma1) * std::conj(U(mj, m1))*this->ClebschGordan(l1, j1, m, sigma2);
+              }
+              f_coefficients_(xi2, xi1, sigma1, sigma2) = coef;
+            }
+          }
+        }
       }
     }
     }
