@@ -180,60 +180,70 @@ class Forces_PS
     {
         PROFILE("sirius::Forces_PS::calc_ultrasoft_forces");
 
-        auto& density_matrix = density_.density_matrix();
-
-        const Periodic_function<double>* veff_full = potential_.effective_potential();
+        /* pack v effective in one array of pointers*/
+        Periodic_function<double>* vfield_eff[4];
+        vfield_eff[0] = potential_.effective_potential();
+        vfield_eff[0]->fft_transform(-1);
+        for (int imagn = 0; imagn < ctx_.num_mag_dims(); imagn++){
+            vfield_eff[imagn + 1] = potential_.effective_magnetic_field(imagn);
+            vfield_eff[imagn + 1]->fft_transform(-1);
+        }
 
         Unit_cell& unit_cell = ctx_.unit_cell();
 
-        Gvec const& gvecs = ctx_.gvec();
-
-        int gvec_count  = gvecs.gvec_count(ctx_.comm().rank());
-        int gvec_offset = gvecs.gvec_offset(ctx_.comm().rank());
-
         forces.zero();
 
-        double reduce_g_fact = veff_full->gvec().reduced() ? 2.0 : 1.0;
+        double reduce_g_fact = ctx_.gvec().reduced() ? 2.0 : 1.0;
 
-        #pragma omp parallel for
-        for (int ia = 0; ia < unit_cell.num_atoms(); ia++) {
-            Atom& atom = unit_cell.atom(ia);
+        /* over atom types */
+        for (int iat = 0; iat < unit_cell.num_atom_types(); iat++){
+            auto& atom_type = unit_cell.atom_type(iat);
 
-            int iat = atom.type_id();
-            if (!unit_cell.atom_type(iat).pp_desc().augment) {
+            if (!atom_type.pp_desc().augment) {
                 continue;
             }
-            
+
             const Augmentation_operator& aug_op = ctx_.augmentation_op(iat);
 
-            for (int igloc = 0; igloc < gvec_count; igloc++) {
-                int ig = gvec_offset + igloc;
+            int nbf = atom_type.mt_basis_size();
 
-                /* cartesian form for getting cartesian force components */
-                vector3d<double> gvec_cart = gvecs.gvec_cart(ig);
+            /* get auxiliary density matrix */
+            auto dm = density_.density_matrix_aux(iat);
 
-                /* scalar part of a force without multipying by G-vector and Qij
-                   omega * V_conj(G) * exp(-i G Rn) */
-                double_complex g_atom_part = reduce_g_fact * ctx_.unit_cell().omega() *
-                                             std::conj(veff_full->f_pw_local(igloc)) *
-                                             std::conj(ctx_.gvec_phase_factor(ig, ia));
+            //mdarray<double, 2> q_tmp(nbf * (nbf + 1) / 2, ctx_.gvec().count() * 2);
+            mdarray<double, 2> v_tmp(atom_type.num_atoms(), ctx_.gvec().count() * 2);
+            mdarray<double, 2> tmp(nbf * (nbf + 1) / 2, atom_type.num_atoms());
 
-                /* iterate over trangle matrix Qij */
-                for (int ib2 = 0; ib2 < atom.type().indexb().size(); ib2++) {
-                    for (int ib1 = 0; ib1 <= ib2; ib1++) {
-                        int iqij = (ib2 * (ib2 + 1)) / 2 + ib1;
+            /* over spin components, can be from 1 to 4*/
+            for (int ispin = 0; ispin < ctx_.num_mag_dims() + 1; ispin++ ){
+                /* over 3 components of the force/G - vectors */
+                for (int ivec = 0; ivec < 3; ivec++ ){
+                    /* over local rank G vectors */
+                    #pragma omp parallel for schedule(static)
+                    for (int igloc = 0; igloc < ctx_.gvec().count(); igloc++) {
+                        int ig = ctx_.gvec().offset() + igloc;
+                        auto gvc = ctx_.gvec().gvec_cart(ig);
+                        for (int ia = 0; ia < atom_type.num_atoms(); ia++) {
+                            /* here we write in v_tmp  -i * G * exp[ iGRn] Veff(G)
+                             * but in formula we have   i * G * exp[-iGRn] Veff*(G)
+                             * the differences because we unfold complex array in the real one
+                             * and need negative imagine part due to a multiplication law of complex numbers */
+                            auto z = double_complex(0,-gvc[ivec]) * ctx_.gvec_phase_factor(ig, atom_type.atom_id(ia)) * vfield_eff[ispin]->f_pw_local(igloc);
+                            v_tmp(ia, 2 * igloc)     = z.real();
+                            v_tmp(ia, 2 * igloc + 1) = z.imag();
+                        }
+                    }
 
-                        double diag_fact = ib1 == ib2 ? 1.0 : 2.0;
+                    /* multiply tmp matrices, or sum over G*/
+                    linalg<CPU>::gemm(0, 1, nbf * (nbf + 1) / 2, atom_type.num_atoms(), 2 * ctx_.gvec().count(),
+                                      aug_op.q_pw(), v_tmp, tmp);
 
-                        /* [omega * V_conj(G) * exp(-i G Rn) ] * rho_ij * Qij(G) */
-                        double_complex z =
-                            diag_fact * g_atom_part * density_matrix(ib1, ib2, 0, ia).real() *
-                            double_complex(aug_op.q_pw(iqij, 2 * igloc), aug_op.q_pw(iqij, 2 * igloc + 1));
 
-                        /* get force components multiplying by cartesian G-vector */
-                        forces(0, ia) -= (gvec_cart[0] * z).imag();
-                        forces(1, ia) -= (gvec_cart[1] * z).imag();
-                        forces(2, ia) -= (gvec_cart[2] * z).imag();
+                    #pragma omp parallel for
+                    for (int ia = 0; ia < atom_type.num_atoms(); ia++) {
+                        for (int i = 0; i < nbf * (nbf + 1) / 2; i++) {
+                            forces(ivec, atom_type.atom_id(ia)) += ctx_.unit_cell().omega() * reduce_g_fact * dm(i, ia, ispin) *  aug_op.sym_weight(i) * tmp(i, ia);
+                        }
                     }
                 }
             }
@@ -476,6 +486,9 @@ class Forces_PS
 
             std::cout << "===== Forces: non-local contribution from Beta-projectors =====" << std::endl;
             print_forces(nonlocal_forces());
+
+            std::cout << "===== Forces: non-local+us  =====" << std::endl;
+            print_forces(us_nl_forces());
 
             std::cout << "===== Forces: local contribution from local potential=====" << std::endl;
             print_forces(local_forces());

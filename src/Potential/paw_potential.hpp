@@ -213,8 +213,8 @@ inline double Potential::xc_mt_PAW_collinear(const Radial_grid<double>& rgrid,
                    exc_tp_sf);
 
     // transform back in lm
-    out_atom_effective_pot_sf += transform(sht_.get(), 0.5 * (vxc_u_tp_sf + vxc_u_tp_sf) );
-    out_atom_effective_field_sf += transform(sht_.get(), 0.5 * (vxc_u_tp_sf - vxc_u_tp_sf));
+    out_atom_effective_pot_sf += transform(sht_.get(), 0.5 * (vxc_u_tp_sf + vxc_d_tp_sf) );
+    out_atom_effective_field_sf += transform(sht_.get(), 0.5 * (vxc_u_tp_sf - vxc_d_tp_sf));
 
     //------------------------
     //--- calculate energy ---
