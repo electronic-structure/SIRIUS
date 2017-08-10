@@ -59,7 +59,7 @@ inline void Density::symmetrize_density_matrix()
                         /* magnetic symmetrization */
                         switch (ndm) {
                             case 1: {
-                                dm(xi1, xi2, 0, ia) = dm_loc_spatial[0];
+                                dm(xi1, xi2, 0, ia) += dm_loc_spatial[0];
                                 break;
                             }
 
