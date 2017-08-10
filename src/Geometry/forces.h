@@ -185,8 +185,8 @@ class Forces_PS
         vfield_eff[0] = potential_.effective_potential();
         vfield_eff[0]->fft_transform(-1);
         for (int imagn = 0; imagn < ctx_.num_mag_dims(); imagn++){
-            vfield_eff[imagn+1] = potential_.effective_magnetic_field(imagn);
-            vfield_eff[imagn+1]->fft_transform(-1);
+            vfield_eff[imagn + 1] = potential_.effective_magnetic_field(imagn);
+            vfield_eff[imagn + 1]->fft_transform(-1);
         }
 
         Unit_cell& unit_cell = ctx_.unit_cell();

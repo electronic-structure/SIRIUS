@@ -150,8 +150,8 @@ class Stress {
                 double d{0};
                 for (int ispin = 0; ispin < ctx_.num_spins(); ispin++ ) {
                     int spin_bnd_offset = ctx_.num_mag_dims() == 1 ? ispin * ctx_.num_fv_states() : 0;
-                    for (int i = 0; i < (ctx_.num_mag_dims() == 1 ? ctx_.num_fv_states() : ctx_.num_bands() ); i++) {
-                        double f = kp->band_occupancy( i + spin_bnd_offset );
+                    for (int i = 0; i < (ctx_.num_mag_dims() == 1 ? ctx_.num_fv_states() : ctx_.num_bands()); i++) {
+                        double f = kp->band_occupancy(i + spin_bnd_offset);
                         if (f > 1e-12) {
                             auto z = kp->spinor_wave_functions(ispin).pw_coeffs().prime(igloc, i);
                             d += f * (std::pow(z.real(), 2) + std::pow(z.imag(), 2));
@@ -382,7 +382,7 @@ class Stress {
      *  \f[
      *    \int \Big(V_{\alpha}(r) r + Z_{\alpha}^p {\rm erf}(r) \Big) \Big( \frac{\sin (G r)}{G^3} - \frac{r \cos (G r)}{G^2}\Big) dr - 
      *      Z_{\alpha}^p \Big( \frac{e^{-\frac{G^2}{4}}}{2 G^2} + \frac{2 e^{-\frac{G^2}{4}}}{G^4} \Big)  
-     *  \f] 4731.36-4751.47 4304.54-4326.38
+     *  \f]
      */
     inline void calc_stress_vloc()
     {
@@ -633,8 +633,8 @@ class Stress {
         vfield_eff[0] = potential_.effective_potential();
         vfield_eff[0]->fft_transform(-1);
         for (int imag = 0; imag < ctx_.num_mag_dims(); imag++){
-            vfield_eff[imag+1] = potential_.effective_magnetic_field(imag);
-            vfield_eff[imag+1]->fft_transform(-1);
+            vfield_eff[imag + 1] = potential_.effective_magnetic_field(imag);
+            vfield_eff[imag + 1]->fft_transform(-1);
         }
 
         Augmentation_operator_gvec_deriv q_deriv(ctx_);

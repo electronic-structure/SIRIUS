@@ -115,18 +115,21 @@ class Non_local_functor
                                 /* get non-magnetic or collinear spin parts of dij*/
                                 switch (ctx_.num_spins())
                                 {
-                                    case 1:
+                                    case 1: {
                                         dij = unit_cell.atom(ia).d_mtrx(ibf, jbf, 0);
                                         break;
+                                    }
 
-                                    case 2:
+                                    case 2: {
                                         /* Dij(00) = dij + dij_Z ;  Dij(11) = dij - dij_Z*/
                                         dij =  (unit_cell.atom(ia).d_mtrx(ibf, jbf, 0) + spin_factor * unit_cell.atom(ia).d_mtrx(ibf, jbf, 1));
                                         break;
+                                    }
 
-                                    default:
+                                    default: {
                                         TERMINATE("Error in non_local_functor, D_aug_mtrx. ");
                                         break;
+                                    }
                                 }
 
                                 /* add non-magnetic or diagonal spin components ( or collinear part) */

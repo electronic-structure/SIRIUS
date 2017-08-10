@@ -1081,6 +1081,10 @@ class SHT // TODO: better name
         }
 
         /// convert 3x3 transformation matrix to SU2 2x2 matrix
+        /// Create quaternion components from the 3x3 matrix. The components are just a w = Cos(\Omega/2)
+        /// and {x,y,z} = unit rotation vector multiplied by Sin[\Omega/2]
+        /// see https://en.wikipedia.org/wiki/Quaternions_and_spatial_rotation
+        /// and https://en.wikipedia.org/wiki/Rotation_group_SO(3)#Quaternions_of_unit_norm
         static mdarray<double_complex, 2> rotation_matrix_su2(const matrix3d<double>& m)
         {
             double det = m.det() > 0 ? 1.0 : -1.0;
@@ -1103,21 +1107,6 @@ class SHT // TODO: better name
             su2mat(1, 1) = double_complex( w,  z);
             su2mat(0, 1) = double_complex(-y, -x);
             su2mat(1, 0) = double_complex( y, -x);
-
-//            std::cout<<"---- SO3 rot mtrx -----"<<std::endl;
-//            for (int i = 0; i < 3; i++ ){
-//                std::cout<< m(i, 0)<< " "
-//                        << m(i, 1)<< " "
-//                        << m(i, 2)<< std::endl;
-//            }
-//
-//            std::cout<<"---- SU2 rot mtrx -----"<<std::endl;
-//            for (int i = 0; i < 2; i++ ){
-//                std::cout<< su2mat(i, 0)<< " " << su2mat(i, 1)<< std::endl;
-//            }
-//
-//
-//
 
             return std::move(su2mat);
         }
