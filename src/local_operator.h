@@ -197,7 +197,10 @@ class Local_operator
 
             if (param_->control().print_checksum_) {
                 auto cs = veff_vec_.checksum();
-                DUMP("checksum(veff_vec_): %18.10f", cs);
+                fft_coarse_.comm().allreduce(&cs, 1);
+                if (gvec_coarse__.comm().rank() == 0) {
+                    print_checksum("Local_operator::prepare::veff_vec", cs);
+                }
             }
         }
 
