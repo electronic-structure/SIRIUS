@@ -109,7 +109,7 @@ class Simulation_context_base: public Simulation_parameters
 
             tm const* ptm = localtime(&start_time_.tv_sec); 
             char buf[100];
-            strftime(buf, sizeof(buf), "%Y%m%d%H%M%S", ptm);
+            strftime(buf, sizeof(buf), "%Y%m%d_%H%M%S", ptm);
             start_time_tag_ = std::string(buf);
         }
 
