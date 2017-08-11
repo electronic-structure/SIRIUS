@@ -357,7 +357,7 @@ int Band::residuals_common(K_point*             kp__,
                 n++;
             }
         }
-        if (ctx_.control().verbosity_ > 2 && kp__->comm().rank() == 0) {
+        if (ctx_.control().verbosity_ >= 3 && kp__->comm().rank() == 0) {
             DUMP("initial and final number of residuals : %i %i", nmax, n);
         }
     } else {

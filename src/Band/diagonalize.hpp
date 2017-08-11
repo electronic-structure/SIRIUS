@@ -85,7 +85,7 @@ inline void Band::diag_fv_full_potential_exact(K_point* kp, Potential const& pot
     t.stop();
     kp->set_fv_eigen_values(&eval[0]);
 
-    if (ctx_.control().verbosity_ >= 3 && kp->comm().rank() == 0) {
+    if (ctx_.control().verbosity_ >= 4 && kp->comm().rank() == 0) {
         for (int i = 0; i < ctx_.num_fv_states(); i++) {
             DUMP("eval[%i]=%20.16f", i, eval[i]);
         }
@@ -362,10 +362,12 @@ inline void Band::get_singular_components(K_point* kp__) const
             TERMINATE(s);
         }
 
-        if (ctx_.control().verbosity_ > 2 && kp__->comm().rank() == 0) {
+        if (ctx_.control().verbosity_ >= 3 && kp__->comm().rank() == 0) {
             DUMP("step: %i, current subspace size: %i, maximum subspace size: %i", k, N, num_phi);
-            for (int i = 0; i < ncomp; i++) {
-                DUMP("eval[%i]=%20.16f, diff=%20.16f", i, eval[i], std::abs(eval[i] - eval_old[i]));
+            if (ctx_.control().verbosity_ >= 4) {
+                for (int i = 0; i < ncomp; i++) {
+                    DUMP("eval[%i]=%20.16f, diff=%20.16f", i, eval[i], std::abs(eval[i] - eval_old[i]));
+                }
             }
         }
 
@@ -387,7 +389,7 @@ inline void Band::get_singular_components(K_point* kp__) const
                 break;
             }
             else { /* otherwise, set Psi as a new trial basis */
-                if (ctx_.control().verbosity_ > 2 && kp__->comm().rank() == 0) {
+                if (ctx_.control().verbosity_ >= 3 && kp__->comm().rank() == 0) {
                     DUMP("subspace size limit reached");
                 }
 
@@ -537,7 +539,7 @@ inline void Band::diag_fv_full_potential_davidson(K_point* kp) const
     /* number of newly added basis functions */
     int n = nlo + ncomp + num_bands;
 
-    if (ctx_.control().verbosity_ > 2 && kp->comm().rank() == 0) {
+    if (ctx_.control().verbosity_ >= 3 && kp->comm().rank() == 0) {
         DUMP("iterative solver tolerance: %18.12f", ctx_.iterative_solver_tolerance());
     }
 
@@ -571,10 +573,12 @@ inline void Band::diag_fv_full_potential_davidson(K_point* kp) const
             TERMINATE(s);
         }
 
-        if (ctx_.control().verbosity_ > 2 && kp->comm().rank() == 0) {
+        if (ctx_.control().verbosity_ >= 3 && kp->comm().rank() == 0) {
             DUMP("step: %i, current subspace size: %i, maximum subspace size: %i", k, N, num_phi);
-            for (int i = 0; i < num_bands; i++) {
-                DUMP("eval[%i]=%20.16f, diff=%20.16f", i, eval[i], std::abs(eval[i] - eval_old[i]));
+            if (ctx_.control().verbosity_ >= 4) {
+                for (int i = 0; i < num_bands; i++) {
+                    DUMP("eval[%i]=%20.16f, diff=%20.16f", i, eval[i], std::abs(eval[i] - eval_old[i]));
+                }
             }
         }
 
@@ -596,7 +600,7 @@ inline void Band::diag_fv_full_potential_davidson(K_point* kp) const
                 break;
             }
             else { /* otherwise, set Psi as a new trial basis */
-                if (ctx_.control().verbosity_ > 2 && kp->comm().rank() == 0) {
+                if (ctx_.control().verbosity_ >= 3 && kp->comm().rank() == 0) {
                     DUMP("subspace size limit reached");
                 }
  
@@ -830,7 +834,7 @@ inline void Band::diag_pseudo_potential_davidson(K_point*       kp__,
             
             if (ctx_.control().verbosity_ >= 2 && kp__->comm().rank() == 0) {
                 DUMP("step: %i, current subspace size: %i, maximum subspace size: %i", k, N, num_phi);
-                if (ctx_.control().verbosity_ >= 3) {
+                if (ctx_.control().verbosity_ >= 4) {
                     for (int i = 0; i < num_bands; i++) {
                         DUMP("eval[%i]=%20.16f, diff=%20.16f, occ=%20.16f", i, eval[i], std::abs(eval[i] - eval_old[i]),
                              kp__->band_occupancy(i + ispin_step * ctx_.num_fv_states()));
@@ -860,7 +864,7 @@ inline void Band::diag_pseudo_potential_davidson(K_point*       kp__,
                 if (n <= itso.min_num_res_ || k == (itso.num_steps_ - 1)) {
                     break;
                 } else { /* otherwise, set Psi as a new trial basis */
-                    if (ctx_.control().verbosity_ > 2 && kp__->comm().rank() == 0) {
+                    if (ctx_.control().verbosity_ >= 3 && kp__->comm().rank() == 0) {
                         DUMP("subspace size limit reached");
                     }
                     hmlt_old.zero();
