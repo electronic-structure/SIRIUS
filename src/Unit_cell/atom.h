@@ -175,11 +175,11 @@ class Atom
                                 d_mtrx_so_(xi1, xi2, 0) =
                                     type().pp_desc().d_mtrx_ion(idxrf1, idxrf2) * type().f_coefficients(xi2, xi1, 0, 0);
                                 d_mtrx_so_(xi1, xi2, 1) =
-                                    type().pp_desc().d_mtrx_ion(idxrf1, idxrf2) * type().f_coefficients(xi2, xi1, 0, 1);
+                                    type().pp_desc().d_mtrx_ion(idxrf1, idxrf2) * type().f_coefficients(xi2, xi1, 1, 1);
                                 d_mtrx_so_(xi1, xi2, 2) =
                                     type().pp_desc().d_mtrx_ion(idxrf1, idxrf2) * type().f_coefficients(xi2, xi1, 1, 0);
                                 d_mtrx_so_(xi1, xi2, 3) =
-                                    type().pp_desc().d_mtrx_ion(idxrf1, idxrf2) * type().f_coefficients(xi2, xi1, 1, 1);
+                                    type().pp_desc().d_mtrx_ion(idxrf1, idxrf2) * type().f_coefficients(xi2, xi1, 0, 1);
                             }
                         }
                     }

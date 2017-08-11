@@ -296,9 +296,8 @@ class D_operator: public Non_local_operator<T>
 		  for (int xi2 = 0; xi2 < nbf; xi2++) {
 		    for (int xi1 = 0; xi1 < nbf; xi1++) {
 		      int idx = xi2 * nbf + xi1;
-		      for(int s=0;s<4;s++) {
-			this->op_(this->packed_mtrx_offset_(ia) + idx, s) = type_wrapper<T>::bypass(uc.atom(ia).d_mtrx_so(xi1, xi2, s));
-		      }
+		      for(int s=0;s<4;s++)
+			this->op_(this->packed_mtrx_offset_(ia) + idx, s) = type_wrapper<T>::bypass(uc.atom(ia).d_mtrx_so(xi2, xi1, s));
 		    }
 		  }
 		} else {
@@ -351,10 +350,14 @@ class Q_operator: public Non_local_operator<T>
         Q_operator(Simulation_context const& ctx__, Beta_projectors& beta__) 
             : Non_local_operator<T>(beta__, ctx__.processing_unit())
         {
-            /* Q-operator is independent of spin */
-            this->op_ = mdarray<T, 2>(this->packed_mtrx_size_, 1);
-            this->op_.zero();
-
+	  if(ctx__.so_correction()) {
+            this->op_ = mdarray<T, 2>(this->packed_mtrx_size_, 4);
+	  } else {
+	    /* Q-operator is independent of spin */
+	    this->op_ = mdarray<T, 2>(this->packed_mtrx_size_, 1);
+	  }
+	  this->op_.zero();
+	  
             auto& uc = this->beta_.unit_cell();
             for (int ia = 0; ia < uc.num_atoms(); ia++) {
                 int iat = uc.atom(ia).type().id();
@@ -374,7 +377,7 @@ class Q_operator: public Non_local_operator<T>
 			    for(auto si=0;si<2;si++) {
 			      for(auto sj=0;sj<2;sj++) {
 				
-				double_complex result = 0.0;
+				double_complex result = 1.0;
 				
 				for(int xi = 0; xi < nbf; xi++) {
 				  if(uc.atom(ia).type().compare_index_beta_functions(xi2, xi)) {

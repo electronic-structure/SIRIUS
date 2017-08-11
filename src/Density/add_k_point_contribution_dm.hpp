@@ -152,11 +152,11 @@ inline void Density::add_k_point_contribution_dm(K_point* kp__,
 			}
 		    }
 		}
-
-		if (ctx_.unit_cell().atom(ia).type().pp_desc().SpinOrbit_Coupling) {
+		for (int ia = 0; ia < bp_chunks(chunk).num_atoms_; ia++) {
+		  if (ctx_.unit_cell().atom(ia).type().pp_desc().SpinOrbit_Coupling) {
 		    mdarray<double_complex, 3> bp3(nbeta, nbnd_loc, 2);
 		    bp3.zero();
-
+		    
 		    /* We already have the <beta|psi> but we need to rotate
 		     *  them when the spin orbit interaction is included in the
 		     *  pseudo potential.
@@ -164,46 +164,47 @@ inline void Density::add_k_point_contribution_dm(K_point* kp__,
 		     *  We rotate \f[\langle\beta|\psi\rangle\f] accordingly by multiplying it with
 		     *  the \f[f^{\sigma\sigma^{'}}_{\xi,\xi^'}\f]
 		     */
-
+		    
 		    for (int xi1 = 0; xi1 < nbf; xi1++) {
-			int j1 = ctx_.unit_cell().atom(ia).type().indexb(xi1).j;
-			int l1 = ctx_.unit_cell().atom(ia).type().indexb(xi1).l;
-			int indrf1 = ctx_.unit_cell().atom(ia).type().indexb(xi1).idxrf;
-			for (int i = 0; i < nbnd_loc; i++) {
-			    int j = spl_nbnd[i];
-			    for (int xi2 = 0; xi2 < nbf; xi2++) {
-				int j2 = ctx_.unit_cell().atom(ia).type().indexb(xi2).j;
-				int l2 = ctx_.unit_cell().atom(ia).type().indexb(xi2).l;
-				int indrf2 = ctx_.unit_cell().atom(ia).type().indexb(xi2).idxrf;
-				if(ctx_.unit_cell().atom(ia).type().compare_index_beta_functions(xi1, xi2)) {
-				    bp3(xi1, i, 0) +=
-					bp1(xi2, i, 0) * ctx_.unit_cell().atom(ia).type().f_coefficients(xi2, xi1, 0, 0) +
-					bp1(xi2, i, 1) * ctx_.unit_cell().atom(ia).type().f_coefficients(xi2, xi1, 1, 0);
-				    bp3(xi1, i, 1) +=
-					bp1(xi2, i, 0) * ctx_.unit_cell().atom(ia).type().f_coefficients(xi2, xi1, 0, 1) +
-					bp1(xi2, i, 1) * ctx_.unit_cell().atom(ia).type().f_coefficients(xi2, xi1, 1, 1);
-				}
-			    }
+		      int j1 = ctx_.unit_cell().atom(ia).type().indexb(xi1).j;
+		      int l1 = ctx_.unit_cell().atom(ia).type().indexb(xi1).l;
+		      int indrf1 = ctx_.unit_cell().atom(ia).type().indexb(xi1).idxrf;
+		      for (int i = 0; i < nbnd_loc; i++) {
+			int j = spl_nbnd[i];
+			for (int xi2 = 0; xi2 < nbf; xi2++) {
+			  int j2 = ctx_.unit_cell().atom(ia).type().indexb(xi2).j;
+			  int l2 = ctx_.unit_cell().atom(ia).type().indexb(xi2).l;
+			  int indrf2 = ctx_.unit_cell().atom(ia).type().indexb(xi2).idxrf;
+			  if(ctx_.unit_cell().atom(ia).type().compare_index_beta_functions(xi1, xi2)) {
+			    bp3(xi1, i, 0) +=
+			      bp1(xi2, i, 0) * ctx_.unit_cell().atom(ia).type().f_coefficients(xi2, xi1, 0, 0) +
+			      bp1(xi2, i, 1) * ctx_.unit_cell().atom(ia).type().f_coefficients(xi2, xi1, 1, 0);
+			    bp3(xi1, i, 1) +=
+			      bp1(xi2, i, 0) * ctx_.unit_cell().atom(ia).type().f_coefficients(xi2, xi1, 0, 1) +
+			      bp1(xi2, i, 1) * ctx_.unit_cell().atom(ia).type().f_coefficients(xi2, xi1, 1, 1);
+			  }
+			}
 			}
 		    }
 		    bp3 >> bp1;
-
+		    
 		    bp3.zero();
 		    for (int xi1 = 0; xi1 < nbf; xi1++) {
 			for (int i = 0; i < nbnd_loc; i++) {
-			    for (int xi2 = 0; xi2 < nbf; xi2++) {
-				if(ctx_.unit_cell().atom(ia).type().compare_index_beta_functions(xi1, xi2)) {
-				    bp3(xi1, i, 0) +=
-					bp2(xi2, i, 0) * ctx_.unit_cell().atom(ia).type().f_coefficients(xi2, xi1, 0, 0) +
-					bp1(xi2, i, 1) * ctx_.unit_cell().atom(ia).type().f_coefficients(xi2, xi1, 0, 1);
-				    bp3(xi1, i, 1) +=
-					bp2(xi2, i, 0) * ctx_.unit_cell().atom(ia).type().f_coefficients(xi2, xi1, 1, 0) +
-					bp1(xi2, i, 1) * ctx_.unit_cell().atom(ia).type().f_coefficients(xi2, xi1, 1, 1);
+			  for (int xi2 = 0; xi2 < nbf; xi2++) {
+			    if(ctx_.unit_cell().atom(ia).type().compare_index_beta_functions(xi1, xi2)) {
+			      bp3(xi1, i, 0) +=
+				bp2(xi2, i, 0) * ctx_.unit_cell().atom(ia).type().f_coefficients(xi2, xi1, 0, 0) +
+				bp1(xi2, i, 1) * ctx_.unit_cell().atom(ia).type().f_coefficients(xi2, xi1, 0, 1);
+			      bp3(xi1, i, 1) +=
+				bp2(xi2, i, 0) * ctx_.unit_cell().atom(ia).type().f_coefficients(xi2, xi1, 1, 0) +
+				bp1(xi2, i, 1) * ctx_.unit_cell().atom(ia).type().f_coefficients(xi2, xi1, 1, 1);
 				}
-			    }
+			  }
 			}
 		    }
 		    bp3 >> bp2;
+		  }
 		}
 		if (nbnd_loc) {
 #pragma omp parallel for
