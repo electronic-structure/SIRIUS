@@ -1691,8 +1691,8 @@ inline int Atom_type::Calculate_SphericalHarmonic_m_Index(const int l, const dou
       for (int xi1 = 0; xi1 < nbf; xi1++) {
         const int l1     = this->indexb(xi1).l;
         const double j1  = this->indexb(xi1).j;
-        const int m1 = this->indexb(xi2).m + l1;
-        if ((l2 == l1) && (fabs(j1 - j2) < 1e-8) && (this->indexb(xi1).idxrf == this->indexb(xi2).idxrf)) {
+        const int m1 = this->indexb(xi1).m + l1;
+        if ((l2 == l1) && (fabs(j1 - j2) < 1e-8)) {
           for (auto sigma1 = 0; sigma1 < 2; sigma1++) {
             for (auto sigma2 = 0; sigma2 < 2; sigma2++) {
               double_complex coef = {0.0, 0.0};
