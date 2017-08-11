@@ -556,6 +556,17 @@ void FORTRAN(pztrtri)(ftn_char            UPLO,
                       ftn_len             UPLO_len,
                       ftn_len             DIAG_len);
 
+void FORTRAN(pdgeqrf)(ftn_int*            M,
+                      ftn_int*            N,
+                      ftn_double*         A,
+                      ftn_int*            IA,
+                      ftn_int*            JA,
+                      ftn_int*            DESCA,
+                      ftn_double*         TAU,
+                      ftn_double*         WORK,
+                      ftn_int*            LWORK,
+                      ftn_int*            INFO);
+
 void FORTRAN(pzgeqrf)(ftn_int*            M,
                       ftn_int*            N,
                       ftn_double_complex* A,

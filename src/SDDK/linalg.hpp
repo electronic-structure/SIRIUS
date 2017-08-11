@@ -806,7 +806,7 @@ inline void linalg<CPU>::geqrf<ftn_double_complex>(ftn_int m, ftn_int n, dmatrix
 {
     ia++; ja++;
     ftn_int lwork = -1;
-    double_complex z;
+    ftn_double_complex z;
     ftn_int info;
     FORTRAN(pzgeqrf)(&m, &n, A.at<CPU>(), &ia, &ja, const_cast<int*>(A.descriptor()), &z, &z, &lwork, &info);
     lwork = static_cast<int>(z.real() + 1);
@@ -818,8 +818,15 @@ inline void linalg<CPU>::geqrf<ftn_double_complex>(ftn_int m, ftn_int n, dmatrix
 template <>
 inline void linalg<CPU>::geqrf<ftn_double>(ftn_int m, ftn_int n, dmatrix<ftn_double>& A, ftn_int ia, ftn_int ja)
 {
-    printf("implement linalg<CPU>::geqrf<ftn_double>\n");
-    exit(-1);
+    ia++; ja++;
+    ftn_int lwork = -1;
+    ftn_double z;
+    ftn_int info;
+    FORTRAN(pdgeqrf)(&m, &n, A.at<CPU>(), &ia, &ja, const_cast<int*>(A.descriptor()), &z, &z, &lwork, &info);
+    lwork = static_cast<int>(z + 1);
+    std::vector<ftn_double> work(lwork);
+    std::vector<ftn_double> tau(std::max(m, n));
+    FORTRAN(pdgeqrf)(&m, &n, A.at<CPU>(), &ia, &ja, const_cast<int*>(A.descriptor()), tau.data(), work.data(), &lwork, &info);
 }
 
 #else
