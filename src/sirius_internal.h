@@ -413,3 +413,17 @@ make
 //! Exceptions are allowed if it makes sense. For example, low level utility classes like 'mdarray' (multi-dimentional
 //! array) or 'pstdout' (parallel standard output) are named with small letters. 
 //!
+
+/** \page fderiv Functional derivatives
+    
+    Definition:
+    \f[
+      \frac{dF[f+\epsilon \eta ]}{d \epsilon}\Bigg\rvert_{\epsilon = 0} := \int \frac{\delta F[f]}{\delta f(x')} \eta(x') dx'
+    \f]
+    Alternative definition is:
+    \f[
+      \frac{\delta F[f(x)]}{\delta f(x')} = \lim_{\epsilon \to 0} \frac{F[f(x) + \epsilon \delta(x-x')] - F[f(x)]}{\epsilon}
+    \f]
+
+
+*/
