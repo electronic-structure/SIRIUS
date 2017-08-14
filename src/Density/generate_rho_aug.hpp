@@ -124,7 +124,10 @@ inline void Density::generate_rho_aug(mdarray<double_complex, 2>& rho_aug__)
     
     if (ctx_.control().print_checksum_) {
          auto cs = rho_aug__.checksum();
-         DUMP("checksum(rho_aug): %20.14f %20.14f", cs.real(), cs.imag());
+         ctx_.comm().allreduce(&cs, 1);
+         if (ctx_.comm().rank() == 0) {
+            print_checksum("rho_aug", cs);
+         }
     }
 }
 

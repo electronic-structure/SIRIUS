@@ -152,7 +152,9 @@ inline void Potential::generate_D_operator_matrix()
 
             if (ctx_.control().print_checksum_) {
                 auto cs = d_tmp.checksum();
-                DUMP("checksum(d_mtrx): %18.10f", cs);
+                if (ctx_.comm().rank() == 0) {
+                    print_checksum("D-op matrix of valence", cs);
+                }
             }
 
             #pragma omp parallel for schedule(static)

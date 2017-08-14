@@ -302,7 +302,9 @@ class Band
                     }
                 }
                 mtrx__.blacs_grid().comm().allreduce(&cs, 1);
-                DUMP("checksum(subspace_mtrx): %18.10f %18.10f", cs.real(), cs.imag());
+                if (mtrx__.blacs_grid().comm().rank() == 0) {
+                    print_checksum("subspace_mtrx", cs);
+                }
             }
 
             mtrx__.make_real_diag(N__ + n__);
