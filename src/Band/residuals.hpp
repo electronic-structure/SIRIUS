@@ -270,7 +270,7 @@ Band::residuals_aux(K_point*             kp__,
     return std::move(res_norm);
 }
 
-template <typename T, typename wave_functions_t>
+template <typename T, typename W>
 int Band::residuals_common(K_point*             kp__,
                            int                  ispn__,
                            int                  N__,
@@ -278,11 +278,11 @@ int Band::residuals_common(K_point*             kp__,
                            std::vector<double>& eval__,
                            std::vector<double>& eval_old__,
                            dmatrix<T>&          evec__,
-                           wave_functions_t&    hphi__,
-                           wave_functions_t&    ophi__,
-                           wave_functions_t&    hpsi__,
-                           wave_functions_t&    opsi__,
-                           wave_functions_t&    res__,
+                           W&                   hphi__,
+                           W&                   ophi__,
+                           W&                   hpsi__,
+                           W&                   opsi__,
+                           W&                   res__,
                            mdarray<double, 2>&  h_diag__,
                            mdarray<double, 1>&  o_diag__) const
 {
@@ -341,7 +341,7 @@ int Band::residuals_common(K_point*             kp__,
             evec_tmp.allocate(memory_t::device);
         }
         /* compute H\Psi_{i} = \sum_{mu} H\phi_{mu} * Z_{mu, i} and O\Psi_{i} = \sum_{mu} O\phi_{mu} * Z_{mu, i} */
-        transform<T>(1.0, std::vector<wave_functions_t*>({&hphi__, &ophi__}), 0, N__, evec_tmp, 0, 0, 0.0, {&hpsi__, &opsi__}, 0, n);
+        transform<T>(1.0, std::vector<W*>({&hphi__, &ophi__}), 0, N__, evec_tmp, 0, 0, 0.0, {&hpsi__, &opsi__}, 0, n);
 
         auto res_norm = residuals_aux(kp__, ispn__, n, eval_tmp, hpsi__, opsi__, res__, h_diag__, o_diag__);
 
@@ -362,7 +362,7 @@ int Band::residuals_common(K_point*             kp__,
         }
     } else {
         /* compute H\Psi_{i} = \sum_{mu} H\phi_{mu} * Z_{mu, i} and O\Psi_{i} = \sum_{mu} O\phi_{mu} * Z_{mu, i} */
-        transform<T>(1.0, std::vector<wave_functions_t*>({&hphi__, &ophi__}), 0, N__, evec__, 0, 0, 0.0, {&hpsi__, &opsi__}, 0, num_bands__);
+        transform<T>(1.0, std::vector<W*>({&hphi__, &ophi__}), 0, N__, evec__, 0, 0, 0.0, {&hpsi__, &opsi__}, 0, num_bands__);
 
         auto res_norm = residuals_aux(kp__, ispn__, num_bands__, eval__, hpsi__, opsi__, res__, h_diag__, o_diag__);
 
@@ -375,7 +375,14 @@ int Band::residuals_common(K_point*             kp__,
                     res__.copy_from(res__, i, 1, n, ctx_.processing_unit());
                 }
                 n++;
+                if (ctx_.control().verbosity_ >= 5) {
+                    DUMP("norm(res(%i)): %18.12f, tolerance: %18.12f", i, res_norm[i], tol);
+                }
             }
+        }
+
+        if (ctx_.control().verbosity_ >= 3 && kp__->comm().rank() == 0) {
+            DUMP("number of residuals : %i", n);
         }
     }
     return n;
