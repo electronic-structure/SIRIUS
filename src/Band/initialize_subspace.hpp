@@ -372,6 +372,13 @@ inline void Band::initialize_subspace(K_point*                                  
         }
     }
 
+    if (ctx_.control().print_checksum_) {
+        for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
+            auto cs = kp__->spinor_wave_functions(ispn).checksum(0, num_bands);
+            DUMP("checksum(spinor_wave_functions_%i): %18.10f %18.10f", ispn, cs.real(), cs.imag());
+        }
+    }
+
     #ifdef __GPU
     if (ctx_.processing_unit() == GPU) {
         for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
@@ -382,13 +389,6 @@ inline void Band::initialize_subspace(K_point*                                  
         }
     }
     #endif
-
-    if (ctx_.control().print_checksum_) {
-        for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-            auto cs = kp__->spinor_wave_functions(ispn).checksum(0, num_bands);
-            DUMP("checksum(spinor_wave_functions_%i): %18.10f %18.10f", ispn, cs.real(), cs.imag());
-        }
-    }
 
     kp__->beta_projectors().dismiss();
     ctx_.fft_coarse().dismiss();
