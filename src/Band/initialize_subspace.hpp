@@ -201,54 +201,54 @@ inline void Band::initialize_subspace(K_point*                                  
     assert(kp__->num_gkvec() > num_phi + 10);
     #pragma omp parallel for schedule(static)
     for (int i = 0; i < num_phi - num_ao__; i++) {
-        //== for (int igk_loc = 0; igk_loc < kp__->num_gkvec_loc(); igk_loc++) {
-        //==     /* global index of G+k vector */
-        //==     int igk = kp__->idxgk(igk_loc);
-        //==     if (igk == i + 1) {
-        //==         phi.component(0).pw_coeffs().prime(igk_loc, num_ao__ + i) = 1.0;
-        //==     }
-        //==     if (igk == i + 2) {
-        //==         phi.component(0).pw_coeffs().prime(igk_loc, num_ao__ + i) = 0.5;
-        //==     }
-        //==     if (igk == i + 3) {
-        //==         phi.component(0).pw_coeffs().prime(igk_loc, num_ao__ + i) = 0.25;
-        //==     }
-        //== }
         for (int igk_loc = 0; igk_loc < kp__->num_gkvec_loc(); igk_loc++) {
             /* global index of G+k vector */
             int igk = kp__->idxgk(igk_loc);
-            /* G-vector */
-            auto G = kp__->gkvec().gvec(igk);
-            /* index of G-vector */
-            int ig = ctx_.gvec().index_by_gvec(G);
-
-            if (ig == -1) {
-                ig = ctx_.gvec().index_by_gvec(G * (-1));
-            }
-
-            if (ig >= 0 && ctx_.gvec().shell(ig) == i + 1) {
+            if (igk == i + 1) {
                 phi.component(0).pw_coeffs().prime(igk_loc, num_ao__ + i) = 1.0;
             }
+            if (igk == i + 2) {
+                phi.component(0).pw_coeffs().prime(igk_loc, num_ao__ + i) = 0.5;
+            }
+            if (igk == i + 3) {
+                phi.component(0).pw_coeffs().prime(igk_loc, num_ao__ + i) = 0.25;
+            }
         }
+        //for (int igk_loc = 0; igk_loc < kp__->num_gkvec_loc(); igk_loc++) {
+        //    /* global index of G+k vector */
+        //    int igk = kp__->idxgk(igk_loc);
+        //    /* G-vector */
+        //    auto G = kp__->gkvec().gvec(igk);
+        //    /* index of G-vector */
+        //    int ig = ctx_.gvec().index_by_gvec(G);
+
+        //    if (ig == -1) {
+        //        ig = ctx_.gvec().index_by_gvec(G * (-1));
+        //    }
+
+        //    if (ig >= 0 && ctx_.gvec().shell(ig) == i + 1) {
+        //        phi.component(0).pw_coeffs().prime(igk_loc, num_ao__ + i) = 1.0;
+        //    }
+        //}
     }
 
-    //std::vector<double> tmp(1024);
-    //for (int i = 0; i < 1024; i++) {
-    //    tmp[i] = type_wrapper<double>::random();
-    //}
-    //
-    //int igk0{0};
-    //if (kp__->comm().rank() == 0) {
-    //    igk0 = 1;
-    //}
-    //#pragma omp parallel for schedule(static)
-    //for (int i = 0; i < num_phi; i++) {
-    //    for (int igk_loc = igk0; igk_loc < kp__->num_gkvec_loc(); igk_loc++) {
-    //        /* global index of G+k vector */
-    //        int igk = kp__->idxgk(igk_loc);
-    //        phi.component(0).pw_coeffs().prime(igk_loc, i) += tmp[igk & 0x3FF] * 1e-5;
-    //    }
-    //}
+    std::vector<double> tmp(1024);
+    for (int i = 0; i < 1024; i++) {
+        tmp[i] = type_wrapper<double>::random();
+    }
+    
+    int igk0{0};
+    if (kp__->comm().rank() == 0) {
+        igk0 = 1;
+    }
+    #pragma omp parallel for schedule(static)
+    for (int i = 0; i < num_phi; i++) {
+        for (int igk_loc = igk0; igk_loc < kp__->num_gkvec_loc(); igk_loc++) {
+            /* global index of G+k vector */
+            int igk = kp__->idxgk(igk_loc);
+            phi.component(0).pw_coeffs().prime(igk_loc, i) += tmp[igk & 0x3FF] * 1e-5;
+        }
+    }
 
     if (ctx_.num_mag_dims() == 3) {
         phi.component(1).copy_from(phi.component(0), 0, num_phi, num_phi, CPU);
