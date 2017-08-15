@@ -31,11 +31,18 @@ inline void Density::init_paw()
         pdd.ia = ia;
 
         // allocate density arrays
-        pdd.ae_density_ = mdarray<double, 3>(lm_max_rho, num_mt_points, ctx_.num_mag_dims() + 1);
-        pdd.ps_density_ = mdarray<double, 3>(lm_max_rho, num_mt_points, ctx_.num_mag_dims() + 1);
+        for (int i = 0; i < ctx_.num_mag_dims() + 1; i++) {
+            pdd.ae_density_.push_back(Spheric_function<spectral, double>(lm_max_rho, pdd.atom_->radial_grid()));
+            pdd.ps_density_.push_back(Spheric_function<spectral, double>(lm_max_rho, pdd.atom_->radial_grid()));
 
-        pdd.ae_density_.zero();
-        pdd.ps_density_.zero();
+            pdd.ae_density_[i].zero();
+            pdd.ps_density_[i].zero();
+        }
+//        pdd.ae_density_ = mdarray<double, 3>(lm_max_rho, num_mt_points, ctx_.num_mag_dims() + 1);
+//        pdd.ps_density_ = mdarray<double, 3>(lm_max_rho, num_mt_points, ctx_.num_mag_dims() + 1);
+//
+//        pdd.ae_density_.zero();
+//        pdd.ps_density_.zero();
 
         // magnetization arrays
 //        pdd.ae_magnetization_ = mdarray<double, 3>(lm_max_rho, num_mt_points, 3);
@@ -114,9 +121,10 @@ inline void Density::generate_paw_atom_density(paw_density_data_t &pdd)
                                   atom_type.indexr().lmax_lo(),
                                   SHT::gaunt_rlm);
 
-    /* get density for current atom */
-    pdd.ae_density_.zero();
-    pdd.ps_density_.zero();
+    for (int i = 0; i < ctx_.num_mag_dims() + 1; i++) {
+        pdd.ae_density_[i].zero();
+        pdd.ps_density_[i].zero();
+    }
 
     /* get radial grid to divide density over r^2 */
     auto &grid = atom_type.radial_grid();
@@ -145,21 +153,23 @@ inline void Density::generate_paw_atom_density(paw_density_data_t &pdd)
             double dm[4];
             switch (ctx_.num_mag_dims()) {
                 case 3: {
-                    dm[2] =  2 * std::real(density_matrix_(ib2, ib1, 2, ia));
-                    dm[3] = -2 * std::imag(density_matrix_(ib2, ib1, 2, ia));
+                    dm[2] =  2 * std::real(density_matrix_(ib1, ib2, 2, ia));
+                    dm[3] = -2 * std::imag(density_matrix_(ib1, ib2, 2, ia));
                 }
                 case 1: {
-                    dm[0] = std::real(density_matrix_(ib2, ib1, 0, ia) + density_matrix_(ib2, ib1, 1, ia));
-                    dm[1] = std::real(density_matrix_(ib2, ib1, 0, ia) - density_matrix_(ib2, ib1, 1, ia));
+                    dm[0] = std::real(density_matrix_(ib1, ib2, 0, ia) + density_matrix_(ib1, ib2, 1, ia));
+                    dm[1] = std::real(density_matrix_(ib1, ib2, 0, ia) - density_matrix_(ib1, ib2, 1, ia));
                     break;
                 }
                 case 0: {
-                    dm[0] = density_matrix_(ib2, ib1, 0, ia).real();
+                    dm[0] = density_matrix_(ib1, ib2, 0, ia).real();
                     break;
                 }
             }
 
             for (int imagn = 0; imagn < ctx_.num_mag_dims() + 1; imagn++) {
+                Spheric_function<spectral, double>& ae_dens = pdd.ae_density_[imagn];
+                Spheric_function<spectral, double>& ps_dens = pdd.ps_density_[imagn];
 
                 /* add nonzero coefficients */
                 for(int inz = 0; inz < num_non_zero_gk; inz++){
@@ -173,8 +183,8 @@ inline void Density::generate_paw_atom_density(paw_density_data_t &pdd)
 
                         /* calculate unified density/magnetization
                          * dm_ij * GauntCoef * ( phi_i phi_j  +  Q_ij) */
-                        pdd.ae_density_(lm3coef.lm3, irad) = dm[imagn] * inv_r2 * lm3coef.coef * pp_desc.all_elec_wfc(irad,irb1) * pp_desc.all_elec_wfc(irad,irb2);
-                        pdd.ps_density_(lm3coef.lm3, irad) = dm[imagn] * inv_r2 * lm3coef.coef *
+                        ae_dens(lm3coef.lm3, irad) += dm[imagn] * inv_r2 * lm3coef.coef * pp_desc.all_elec_wfc(irad,irb1) * pp_desc.all_elec_wfc(irad,irb2);
+                        ps_dens(lm3coef.lm3, irad) += dm[imagn] * inv_r2 * lm3coef.coef *
                                 (pp_desc.pseudo_wfc(irad,irb1) * pp_desc.pseudo_wfc(irad,irb2) + pp_desc.q_radial_functions_l(irad,iqij,l_by_lm[lm3coef.lm3]));
                     }
                 }

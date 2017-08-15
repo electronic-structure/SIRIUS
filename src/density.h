@@ -159,8 +159,8 @@ class Density
             int ia{-1};
 
             /// ae and ps local unified densities+magnetization
-            mdarray<double, 3> ae_density_; // TODO: use Spheric_function
-            mdarray<double, 3> ps_density_;
+            std::vector<Spheric_function<spectral, double>> ae_density_; // TODO: use Spheric_function
+            std::vector<Spheric_function<spectral, double>> ps_density_;
 
 //            mdarray<double, 3> ae_magnetization_;
 //            mdarray<double, 3> ps_magnetization_;
@@ -825,12 +825,12 @@ class Density
         /// Generate \f$ n_1 \f$  and \f$ \tilde{n}_1 \f$ in lm components.
         void generate_paw_loc_density();
 
-        mdarray<double, 3> const& ae_paw_atom_density(int spl_paw_ind) const
+        std::vector<Spheric_function<spectral, double>> const& ae_paw_atom_density(int spl_paw_ind) const
         {
             return paw_density_data_[spl_paw_ind].ae_density_;
         }
 
-        mdarray<double, 3> const& ps_paw_atom_density(int spl_paw_ind) const
+        std::vector<Spheric_function<spectral, double>> const& ps_paw_atom_density(int spl_paw_ind) const
         {
             return paw_density_data_[spl_paw_ind].ps_density_;
         }
