@@ -382,7 +382,7 @@ inline void Band::get_singular_components(K_point* kp__) const
             sddk::timer t1("sirius::Band::diag_fv_full_potential_davidson|update_phi");
             /* recompute wave-functions */
             /* \Psi_{i} = \sum_{mu} \phi_{mu} * Z_{mu, i} */
-            transform(phi, 0, N, evec, 0, 0, psi, 0, ncomp);
+            transform(ctx_.processing_unit(), phi, 0, N, evec, 0, 0, psi, 0, ncomp);
 
             /* exit the loop if the eigen-vectors are converged or this is a last iteration */
             if (n <= itso.min_num_res_ || k == (itso.num_steps_ - 1)) {
@@ -593,7 +593,7 @@ inline void Band::diag_fv_full_potential_davidson(K_point* kp) const
             sddk::timer t1("sirius::Band::diag_fv_full_potential_davidson|update_phi");
             /* recompute wave-functions */
             /* \Psi_{i} = \sum_{mu} \phi_{mu} * Z_{mu, i} */
-            transform(phi, 0, N, evec, 0, 0, psi, 0, num_bands);
+            transform(ctx_.processing_unit(), phi, 0, N, evec, 0, 0, psi, 0, num_bands);
 
             /* exit the loop if the eigen-vectors are converged or this is a last iteration */
             if (n <= itso.min_num_res_ || k == (itso.num_steps_ - 1)) {
@@ -745,6 +745,17 @@ inline void Band::diag_pseudo_potential_davidson(K_point*       kp__,
     auto h_diag = get_h_diag(kp__, *local_op_, d_op__);
     auto o_diag = get_o_diag(kp__, q_op__);
 
+    if (ctx_.control().print_checksum_) {
+        auto cs1 = h_diag.checksum();
+        auto cs2 = o_diag.checksum();
+        kp__->comm().allreduce(&cs1, 1);
+        kp__->comm().allreduce(&cs2, 1);
+        if (kp__->comm().rank() == 0) {
+            print_checksum("h_diag", cs1);
+            print_checksum("o_diag", cs2);
+        }
+    }
+
     sddk::timer t3("sirius::Band::diag_pseudo_potential_davidson|iter");
     for (int ispin_step = 0; ispin_step < num_spin_steps; ispin_step++) {
 
@@ -779,6 +790,16 @@ inline void Band::diag_pseudo_potential_davidson(K_point*       kp__,
              * N is the number of previous basis functions
              * n is the number of new basis functions */
             set_subspace_mtrx(num_sc, N, n, phi, hphi, hmlt, hmlt_old);
+            
+            //== static int counter{0};
+            //== std::stringstream s;
+            //== if (ctx_.processing_unit() == CPU) {
+            //==     s<<"hmlt_cpu"<<counter;
+            //== } else {
+            //==     s<<"hmlt_gpu"<<counter;
+            //== }
+            //== hmlt.serialize(s.str(), N + n);
+            //== counter++;
 
             if (ctx_.control().verification_ >= 1) {
                 double max_diff = Utils::check_hermitian(hmlt, N + n);
@@ -855,9 +876,9 @@ inline void Band::diag_pseudo_potential_davidson(K_point*       kp__,
                 /* recompute wave-functions */
                 /* \Psi_{i} = \sum_{mu} \phi_{mu} * Z_{mu, i} */
                 if (nc_mag) {
-                    transform<T>(1.0, {&phi}, 0, N, evec, 0, 0, 0.0, {&psi}, 0, num_bands);
+                    transform<T>(ctx_.processing_unit(), 1.0, {&phi}, 0, N, evec, 0, 0, 0.0, {&psi}, 0, num_bands);
                 } else {
-                    transform<T>(phi.component(0), 0, N, evec, 0, 0, psi.component(ispin_step), 0, num_bands);
+                    transform<T>(ctx_.processing_unit(), phi.component(0), 0, N, evec, 0, 0, psi.component(ispin_step), 0, num_bands);
                 }
 
                 /* exit the loop if the eigen-vectors are converged or this is a last iteration */
@@ -880,7 +901,7 @@ inline void Band::diag_pseudo_potential_davidson(K_point*       kp__,
 
                     /* need to compute all hpsi and opsi states (not only unconverged) */
                     if (converge_by_energy) {
-                        transform<T>(1.0, std::vector<Wave_functions*>({&hphi, &ophi}), 0, N, evec, 0, 0, 0.0, {&hpsi, &opsi}, 0, num_bands);
+                        transform<T>(ctx_.processing_unit(), 1.0, std::vector<Wave_functions*>({&hphi, &ophi}), 0, N, evec, 0, 0, 0.0, {&hpsi, &opsi}, 0, num_bands);
                     }
  
                     /* update basis functions, hphi and ophi */
