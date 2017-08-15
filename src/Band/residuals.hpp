@@ -26,6 +26,10 @@ extern "C" void apply_preconditioner_gpu(double_complex* res__,
                                          double* eval__,
                                          double* h_diag__,
                                          double* o_diag__);
+
+extern "C" void make_real_g0_gpu(double_complex* res__,
+                                 int ld__,
+                                 int n__);
 #endif
 
 static void compute_res(device_t            pu__,
@@ -248,13 +252,13 @@ Band::residuals_aux(K_point*             kp__,
     }
 
     /* compute norm */
-    auto res_norm = res__.l2norm(num_bands__);
+    auto res_norm = res__.l2norm(pu, num_bands__);
 
     for (int ispn = 0; ispn < num_sc; ispn++) {
         apply_p(pu, num_bands__, ctx_.num_mag_dims() == 3 ? ispn : ispn__, res__.component(ispn), h_diag__, o_diag__, eval);
     }
 
-    auto p_norm = res__.l2norm(num_bands__);
+    auto p_norm = res__.l2norm(pu, num_bands__);
     for (int i = 0; i < num_bands__; i++) {
         p_norm[i] = 1.0 / p_norm[i];
     }
@@ -268,10 +272,10 @@ Band::residuals_aux(K_point*             kp__,
     }
     
     if (ctx_.control().verbosity_ >= 5) {
-        auto n_norm = res__.l2norm(num_bands__);
+        auto n_norm = res__.l2norm(pu, num_bands__);
         if (kp__->comm().rank() == 0) {
             for (int i = 0; i < num_bands__; i++) {
-                DUMP("norms of residual %i: %18.12f %18.12f %18.12f", i, res_norm[i], p_norm[i], n_norm[i]);
+                DUMP("norms of residual %3i: %18.14f %24.14f %18.14f", i, res_norm[i], p_norm[i], n_norm[i]);
             }
         }
     }
@@ -322,13 +326,6 @@ int Band::residuals_common(K_point*             kp__,
             return 0;
         }
 
-        //if (n < 4) {
-        //    printf("small number of residuals is found: %i\n", n);
-        //    ev_idx = get_ev_idx(std::max(1e-12, itso.energy_tolerance_ * 0.01));
-        //    n = static_cast<int>(ev_idx.size()); 
-        //    printf("new number of residuals: %i\n", n);
-        //}
-
         std::vector<double> eval_tmp(n);
 
         int bs = ctx_.cyclic_block_size();
@@ -350,7 +347,7 @@ int Band::residuals_common(K_point*             kp__,
             evec_tmp.allocate(memory_t::device);
         }
         /* compute H\Psi_{i} = \sum_{mu} H\phi_{mu} * Z_{mu, i} and O\Psi_{i} = \sum_{mu} O\phi_{mu} * Z_{mu, i} */
-        transform<T>(1.0, std::vector<W*>({&hphi__, &ophi__}), 0, N__, evec_tmp, 0, 0, 0.0, {&hpsi__, &opsi__}, 0, n);
+        transform<T>(ctx_.processing_unit(), 1.0, std::vector<W*>({&hphi__, &ophi__}), 0, N__, evec_tmp, 0, 0, 0.0, {&hpsi__, &opsi__}, 0, n);
 
         auto res_norm = residuals_aux(kp__, ispn__, n, eval_tmp, hpsi__, opsi__, res__, h_diag__, o_diag__);
 
@@ -371,7 +368,7 @@ int Band::residuals_common(K_point*             kp__,
         }
     } else {
         /* compute H\Psi_{i} = \sum_{mu} H\phi_{mu} * Z_{mu, i} and O\Psi_{i} = \sum_{mu} O\phi_{mu} * Z_{mu, i} */
-        transform<T>(1.0, std::vector<W*>({&hphi__, &ophi__}), 0, N__, evec__, 0, 0, 0.0, {&hpsi__, &opsi__}, 0, num_bands__);
+        transform<T>(ctx_.processing_unit(), 1.0, std::vector<W*>({&hphi__, &ophi__}), 0, N__, evec__, 0, 0, 0.0, {&hpsi__, &opsi__}, 0, num_bands__);
 
         auto res_norm = residuals_aux(kp__, ispn__, num_bands__, eval__, hpsi__, opsi__, res__, h_diag__, o_diag__);
 
@@ -384,12 +381,8 @@ int Band::residuals_common(K_point*             kp__,
                     res__.copy_from(res__, i, 1, n, ctx_.processing_unit());
                 }
                 n++;
-                if (ctx_.control().verbosity_ >= 5) {
-                    DUMP("norm(res(%i)): %18.12f, tolerance: %18.12f", i, res_norm[i], tol);
-                }
             }
         }
-
         if (ctx_.control().verbosity_ >= 3 && kp__->comm().rank() == 0) {
             DUMP("number of residuals : %i", n);
         }
@@ -419,8 +412,19 @@ inline int Band::residuals(K_point* kp__,
                                         
     /* prevent numerical noise */
     if (std::is_same<T, double>::value && kp__->comm().rank() == 0) {
-        for (int i = 0; i < n; i++) {
-            res__.pw_coeffs().prime(0, i) = res__.pw_coeffs().prime(0, i).real();
+        switch (ctx_.processing_unit()) {
+            case CPU: {
+                for (int i = 0; i < n; i++) {
+                    res__.pw_coeffs().prime(0, i) = res__.pw_coeffs().prime(0, i).real();
+                }
+                break;
+            }
+            case GPU: {
+                #ifdef __GPU
+                make_real_g0_gpu(res__.pw_coeffs().prime().at<GPU>(), res__.pw_coeffs().prime().ld(), n);
+                #endif
+                break;
+            }
         }
     }
 
@@ -464,8 +468,19 @@ inline int Band::residuals(K_point*             kp__,
     /* prevent numerical noise */
     /* this only happens for real wave-functions (Gamma-point case), non-magnetic or collinear magnetic */
     if (std::is_same<T, double>::value && kp__->comm().rank() == 0) {
-        for (int i = 0; i < n; i++) {
-            res__.component(0).pw_coeffs().prime(0, i) = res__.component(0).pw_coeffs().prime(0, i).real();
+        switch (ctx_.processing_unit()) {
+            case CPU: {
+                for (int i = 0; i < n; i++) {
+                    res__.component(0).pw_coeffs().prime(0, i) = res__.component(0).pw_coeffs().prime(0, i).real();
+                }
+                break;
+            }
+            case GPU: {
+                #ifdef __GPU
+                make_real_g0_gpu(res__.component(0).pw_coeffs().prime().at<GPU>(), res__.component(0).pw_coeffs().prime().ld(), n);
+                #endif
+                break;
+            }
         }
     }
 
