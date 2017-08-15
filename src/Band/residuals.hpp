@@ -266,6 +266,15 @@ Band::residuals_aux(K_point*             kp__,
     for (int ispn = 0; ispn < num_sc; ispn++) {
         normalize_res(pu, num_bands__, res__.component(ispn), p_norm);
     }
+    
+    if (ctx_.control().verbosity_ >= 5) {
+        auto n_norm = res__.l2norm(num_bands__);
+        if (kp__->comm().rank() == 0) {
+            for (int i = 0; i < num_bands__; i++) {
+                DUMP("norms of residual %i: %18.12f %18.12f %18.12f", i, res_norm[i], p_norm[i], n_norm[i]);
+            }
+        }
+    }
 
     return std::move(res_norm);
 }
