@@ -77,11 +77,14 @@ class dmatrix : public matrix<T>
             memory_t mem_type__ = memory_t::host)
         : matrix<T>(splindex<block_cyclic>(num_rows__, blacs_grid__.num_ranks_row(), blacs_grid__.rank_row(), bs_row__).local_size(),
                     splindex<block_cyclic>(num_cols__, blacs_grid__.num_ranks_col(), blacs_grid__.rank_col(), bs_col__).local_size(),
-                    mem_type__),
-          num_rows_(num_rows__), num_cols_(num_cols__), bs_row_(bs_row__), bs_col_(bs_col__),
-          blacs_grid_(&blacs_grid__),
-          spl_row_(num_rows_, blacs_grid__.num_ranks_row(), blacs_grid__.rank_row(), bs_row_),
-          spl_col_(num_cols_, blacs_grid__.num_ranks_col(), blacs_grid__.rank_col(), bs_col_)
+                    mem_type__)
+        , num_rows_(num_rows__)
+        , num_cols_(num_cols__)
+        , bs_row_(bs_row__)
+        , bs_col_(bs_col__)
+        , blacs_grid_(&blacs_grid__)
+        , spl_row_(num_rows_, blacs_grid__.num_ranks_row(), blacs_grid__.rank_row(), bs_row_)
+        , spl_col_(num_cols_, blacs_grid__.num_ranks_col(), blacs_grid__.rank_col(), bs_col_)
     {
         init();
     }
@@ -89,11 +92,14 @@ class dmatrix : public matrix<T>
     dmatrix(T* ptr__, int num_rows__, int num_cols__, BLACS_grid const& blacs_grid__, int bs_row__, int bs_col__)
         : matrix<T>(ptr__,
                     splindex<block_cyclic>(num_rows__, blacs_grid__.num_ranks_row(), blacs_grid__.rank_row(), bs_row__).local_size(),
-                    splindex<block_cyclic>(num_cols__, blacs_grid__.num_ranks_col(), blacs_grid__.rank_col(), bs_col__).local_size()),
-          num_rows_(num_rows__), num_cols_(num_cols__), bs_row_(bs_row__), bs_col_(bs_col__),
-          blacs_grid_(&blacs_grid__),
-          spl_row_(num_rows_, blacs_grid__.num_ranks_row(), blacs_grid__.rank_row(), bs_row_),
-          spl_col_(num_cols_, blacs_grid__.num_ranks_col(), blacs_grid__.rank_col(), bs_col_)
+                    splindex<block_cyclic>(num_cols__, blacs_grid__.num_ranks_col(), blacs_grid__.rank_col(), bs_col__).local_size())
+        , num_rows_(num_rows__)
+        , num_cols_(num_cols__)
+        , bs_row_(bs_row__)
+        , bs_col_(bs_col__)
+        , blacs_grid_(&blacs_grid__)
+        , spl_row_(num_rows_, blacs_grid__.num_ranks_row(), blacs_grid__.rank_row(), bs_row_)
+        , spl_col_(num_cols_, blacs_grid__.num_ranks_col(), blacs_grid__.rank_col(), bs_col_)
     {
         init();
     }
@@ -148,6 +154,26 @@ class dmatrix : public matrix<T>
     {
         return descriptor_;
     }
+
+    //inline void zero()
+    //{
+    //    this->zero();
+    //}
+
+    //inline void zero(int ir0__, int jc0__, int mr__, int nc__)
+    //{
+    //    for (int j = 0; j < num_cols_local(); j++) {
+    //        int jc = icol(j);
+    //        if (jc >= jc0__ && jc < jc0__ + nc__) {
+    //            for (int i = 0; i < num_rows_local(); i++) {
+    //                int ir = irow(i);
+    //                if (ir >= ir0__ && ir < ir0__ + mr__) {
+    //                    (*this)(i, j) = 0;
+    //                }
+    //            }
+    //        }
+    //    }
+    //}
 
 #ifdef __GPU
 //== inline void copy_cols_to_device(int icol_fisrt, int icol_last)
@@ -209,6 +235,24 @@ class dmatrix : public matrix<T>
                 }
             }
         }
+    }
+
+    inline mdarray<T, 1> get_diag(int n__)
+    {
+        mdarray<T, 1> d(n__);
+        d.zero();
+
+        for (int i = 0; i < n__; i++) {
+            auto r = spl_row_.location(i);
+            if (blacs_grid_->rank_row() == r.rank) {
+                auto c = spl_col_.location(i);
+                if (blacs_grid_->rank_col() == c.rank) {
+                    d(i) = (*this)(r.local_index, c.local_index);
+                }
+            }
+        }
+        blacs_grid_->comm().allreduce(d.template at<CPU>(), n__);
+        return std::move(d);
     }
 
     inline splindex<block_cyclic> const& spl_col() const
@@ -337,6 +381,25 @@ inline void dmatrix<double>::serialize(std::string name__, int n__) const
 
     // std::ofstream ofs(aiida_output_file, std::ofstream::out | std::ofstream::trunc);
     // ofs << dict.dump(4);
+
+    if (blacs_grid_->comm().rank() == 0) {
+        printf("{\n");
+        for (int i = 0; i < n__; i++) {
+            printf("{");
+            for (int j = 0; j < n__; j++) {
+                printf("%18.12f", full_mtrx(i, j));
+                if (j != n__ - 1) {
+                    printf(",");
+                }
+            }
+            if (i != n__ - 1) {
+                printf("},\n");
+            } else {
+                printf("}\n");
+            }
+        }
+        printf("}\n");
+    }
 }
 
 } // namespace sddk

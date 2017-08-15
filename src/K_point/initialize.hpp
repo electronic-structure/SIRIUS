@@ -14,23 +14,23 @@ inline void K_point::initialize()
     /* In case of collinear magnetism we store only non-zero spinor components.
      *
      * non magnetic case: 
-     * +---+
+     * .---.
      * |   |
-     * +---+
+     * .---.
      *
      * collinear case:
-     * +---+
-     * |uu |
-     * +---+---+
-     *     |dd |
-     *     +---+
+     * .---.          .---.
+     * |uu | 0        |uu |
+     * .---.---.  ->  .---.
+     *   0 |dd |      |dd |
+     *     .---.      .---.
      *
      * non collinear case:
-     * +-------+
+     * .-------.
      * |       |
-     * +-------+
+     * .-------.
      * |       |
-     * +-------+
+     * .-------.
      */
     int nst = (ctx_.num_mag_dims() == 3) ? ctx_.num_bands() : ctx_.num_fv_states();
 
@@ -174,29 +174,29 @@ inline void K_point::initialize()
                                                                             },
                                                                             ctx_.num_fv_states()));
             
-            spinor_wave_functions_ = Wave_functions(ctx_.processing_unit(),
-                                                    gkvec(),
-                                                    unit_cell_.num_atoms(),
-                                                    [this](int ia)
-                                                    {
-                                                        return unit_cell_.atom(ia).mt_basis_size();
-                                                    },
-                                                    nst,
-                                                    ctx_.num_spins());
+            spinor_wave_functions_ = std::unique_ptr<Wave_functions>(new Wave_functions(ctx_.processing_unit(),
+                                                                                        gkvec(),
+                                                                                        unit_cell_.num_atoms(),
+                                                                                        [this](int ia)
+                                                                                        {
+                                                                                            return unit_cell_.atom(ia).mt_basis_size();
+                                                                                        },
+                                                                                        nst,
+                                                                                        ctx_.num_spins()));
         } else {
             TERMINATE_NOT_IMPLEMENTED
         }
     } else {
         assert(ctx_.num_fv_states() < num_gkvec());
 
-        spinor_wave_functions_ = Wave_functions(ctx_.processing_unit(), gkvec(), nst, ctx_.num_spins());
+        spinor_wave_functions_ = std::unique_ptr<Wave_functions>(new Wave_functions(ctx_.processing_unit(), gkvec(), nst, ctx_.num_spins()));
     }
-    if (ctx_.processing_unit() == GPU) {
+    if (ctx_.processing_unit() == GPU && keep_wf_on_gpu) {
         /* allocate GPU memory */
         for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-            spinor_wave_functions_.component(ispn).pw_coeffs().prime().allocate(memory_t::device);
+            spinor_wave_functions_->component(ispn).pw_coeffs().prime().allocate(memory_t::device);
             if (ctx_.full_potential()) {
-                spinor_wave_functions_.component(ispn).mt_coeffs().prime().allocate(memory_t::device);
+                spinor_wave_functions_->component(ispn).mt_coeffs().prime().allocate(memory_t::device);
             }
         }
     }

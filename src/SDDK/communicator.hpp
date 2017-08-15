@@ -585,6 +585,13 @@ inline Communicator const& mpi_comm_world()
     return comm;
 }
 
+inline Communicator const& mpi_comm_null()
+{
+    static Communicator comm(MPI_COMM_NULL);
+    return comm;
+}
+
+
 } // namespace sddk
 
 #endif // __COMMUNICATOR_HPP__

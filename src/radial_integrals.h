@@ -52,6 +52,8 @@ class Radial_integrals_base
         grid_q_ = Radial_grid_lin<double>(static_cast<int>(np__ * qmax__), 0, qmax__);
     }
     
+    /// Get starting index iq and delta dq for the q-point on the linear grid.
+    /** The following condition is satisfied: q = grid_q[iq] + dq */
     inline std::pair<int, double> iqdq(double q__) const
     {
         std::pair<int, double> result;
@@ -71,6 +73,8 @@ class Radial_integrals_aug: public Radial_integrals_base<3>
     void generate()
     {
         PROFILE("sirius::Radial_integrals|aug");
+
+        splindex<block> spl_q(grid_q_.num_points(), unit_cell_.comm().size(), unit_cell_.comm().rank());
 
         /* interpolate <j_{l_n}(q*x) | Q_{xi,xi'}^{l}(x) > with splines */
         for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
@@ -92,7 +96,9 @@ class Radial_integrals_aug: public Radial_integrals_base<3>
             }
 
             #pragma omp parallel for
-            for (int iq = 0; iq < grid_q_.num_points(); iq++) {
+            for (int iq_loc = 0; iq_loc < spl_q.local_size(); iq_loc++) {
+                int iq = spl_q[iq_loc];
+
                 Spherical_Bessel_functions jl(2 * lmax_beta, atom_type.radial_grid(), grid_q_[iq]);
 
                 for (int l3 = 0; l3 <= 2 * lmax_beta; l3++) {
@@ -115,6 +121,11 @@ class Radial_integrals_aug: public Radial_integrals_base<3>
                             }
                         }
                     }
+                }
+            }
+            for (int l = 0; l <= 2 * lmax_beta; l++) {
+                for (int idx = 0; idx < nbrf * (nbrf + 1) / 2; idx++) {
+                    unit_cell_.comm().allgather(&values_(idx, l, iat)[0], spl_q.global_offset(), spl_q.local_size());
                 }
             }
 
@@ -424,6 +435,7 @@ class Radial_integrals_theta: public Radial_integrals_base<1>
     }
 };
 
+template <bool jl_deriv>
 class Radial_integrals_vloc: public Radial_integrals_base<1>
 {
   private:
@@ -435,26 +447,36 @@ class Radial_integrals_vloc: public Radial_integrals_base<1>
             auto& atom_type = unit_cell_.atom_type(iat);
             values_(iat) = Spline<double>(grid_q_);
 
+            int np = atom_type.radial_grid().index_of(10);
+            if (np == -1) {
+                np = atom_type.num_mt_points();
+            }
+            auto rg = atom_type.radial_grid().segment(np);
+
             #pragma omp parallel for
             for (int iq = 0; iq < grid_q_.num_points(); iq++) {
-                Spline<double> s(atom_type.radial_grid());
-                if (iq == 0) {
-                    for (int ir = 0; ir < atom_type.num_mt_points(); ir++) {
-                        double x = atom_type.radial_grid(ir);
-                        s[ir] = (x * atom_type.pp_desc().vloc[ir] + atom_type.zn()) * x;
+                Spline<double> s(rg);
+                double g = grid_q_[iq];
+
+                if (jl_deriv) { /* integral with derivative of j0(q*r) over q */
+                    for (int ir = 0; ir < rg.num_points(); ir++) {
+                        double x = rg[ir];
+                        s[ir] = (x * atom_type.pp_desc().vloc[ir] + atom_type.zn() * gsl_sf_erf(x)) * (std::sin(g * x) - g * x * std::cos(g * x));
                     }
-                    values_(iat)[iq] = s.interpolate().integrate(0);
-                    //values_(iat)[iq] = s.integrate_simple();
-                    //std::cout << "vloc(0)="<<values_(iat)[iq]<<std::endl;
-                } else {
-                    double g = grid_q_[iq];
-                    double g2 = g * g;
-                    for (int ir = 0; ir < atom_type.num_mt_points(); ir++) {
-                        double x = atom_type.radial_grid(ir);
-                        s[ir] = (x * atom_type.pp_desc().vloc[ir] + atom_type.zn() * gsl_sf_erf(x)) * std::sin(g * x);
+                } else { /* integral with j0(q*r) */
+                    if (iq == 0) {
+                        for (int ir = 0; ir < rg.num_points(); ir++) {
+                            double x = rg[ir];
+                            s[ir] = (x * atom_type.pp_desc().vloc[ir] + atom_type.zn()) * x;
+                        }
+                    } else {
+                        for (int ir = 0; ir < rg.num_points(); ir++) {
+                            double x = rg[ir];
+                            s[ir] = (x * atom_type.pp_desc().vloc[ir] + atom_type.zn() * gsl_sf_erf(x)) * std::sin(g * x);
+                        }
                     }
-                    values_(iat)[iq] = (s.interpolate().integrate(0) / g - atom_type.zn() * std::exp(-g2 / 4) / g2);
                 }
+                values_(iat)[iq] = s.interpolate().integrate(0);
             }
             values_(iat).interpolate();
         }
@@ -471,54 +493,21 @@ class Radial_integrals_vloc: public Radial_integrals_base<1>
     inline double value(int iat__, double q__) const
     {
         auto idx = iqdq(q__);
-        return values_(iat__)(idx.first, idx.second);
-    }
-};
-
-class Radial_integrals_vloc_dg: public Radial_integrals_base<1> // TODO: combine vloc and vloc_dg
-{
-  private:
-    void generate()
-    {
-        PROFILE("sirius::Radial_integrals|vloc_dg");
-
-        for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
-            auto& atom_type = unit_cell_.atom_type(iat);
-            values_(iat) = Spline<double>(grid_q_);
-
-            #pragma omp parallel for
-            for (int iq = 1; iq < grid_q_.num_points(); iq++) {
-                Spline<double> s1(atom_type.radial_grid());
-                Spline<double> s2(atom_type.radial_grid());
-                double g = grid_q_[iq];
-                double g2 = g * g;
-                
-                for (int ir = 0; ir < atom_type.num_mt_points(); ir++) {
-                    double x = atom_type.radial_grid(ir);
-                    s1[ir] = (x * atom_type.pp_desc().vloc[ir] + atom_type.zn() * gsl_sf_erf(x)) * std::sin(g * x);
-                    s2[ir] = (x * atom_type.pp_desc().vloc[ir] + atom_type.zn() * gsl_sf_erf(x)) * std::cos(g * x);
-                }
-                values_(iat)[iq] = (s1.interpolate().integrate(0) / g - s2.interpolate().integrate(1)) / g2;
-                values_(iat)[iq] -= atom_type.zn() * std::exp(-g2 / 4) * (4 + g2) / 2 / g2 / g2;
+        if (std::abs(q__) < 1e-12) {
+            if (jl_deriv) {
+                return 0;
+            } else {
+                return values_(iat__)[0];
             }
-            /* V(0) is not used; this is done just to make the interpolation easy */
-            values_(iat)[0] = values_(iat)[1];
-            values_(iat).interpolate();
+        } else {
+            auto& atom_type = unit_cell_.atom_type(iat__);
+            auto q2 = std::pow(q__, 2);
+            if (jl_deriv) {
+                return values_(iat__)(idx.first, idx.second) / q2 / q__ - atom_type.zn() * std::exp(-q2 / 4) * (4 + q2) / 2 / q2 / q2;
+            } else {
+                return values_(iat__)(idx.first, idx.second) / q__ - atom_type.zn() * std::exp(-q2 / 4) / q2;
+            }
         }
-    }
-  
-  public:
-    Radial_integrals_vloc_dg(Unit_cell const& unit_cell__, double qmax__, int np__)
-        : Radial_integrals_base<1>(unit_cell__, qmax__, np__)
-    {
-        values_ = mdarray<Spline<double>, 1>(unit_cell_.num_atom_types());
-        generate();
-    }
-
-    inline double value(int iat__, double q__) const
-    {
-        auto idx = iqdq(q__);
-        return values_(iat__)(idx.first, idx.second);
     }
 };
 

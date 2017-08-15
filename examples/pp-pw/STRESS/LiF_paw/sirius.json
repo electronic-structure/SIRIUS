@@ -6,7 +6,7 @@
       "!std_evp_solver_type" : "lapack",
       "!gen_evp_solver_type" : "lapack",
       "reduce_gvec": true,
-	  "verbosity": 1,
+	  "verbosity": 0,
       "print_stress": true,
       "print_forces": true
   },
@@ -32,7 +32,8 @@
 
       "num_dft_iter" : 100,
 
-      "ngridk" : [4,4,4]
+      "ngridk" : [4,4,4],
+      "reduce_gvec": 1
   },
 
     "iterative_solver" : {
@@ -55,8 +56,8 @@
             "atom_types" : ["Li", "F"],
 
             "atom_files" : {
-                "Li" : "Li.pz-s-kjpaw_psl.0.2.1.UPF.json",
-                "F"  : "F.pz-n-kjpaw_psl.0.1.UPF.json"
+                "Li" : "li_lda_v1.4.uspp.F.UPF.json",
+                "F"  : "f_lda_v1.4.uspp.F.UPF.json"
             },
 
             "atoms" : {

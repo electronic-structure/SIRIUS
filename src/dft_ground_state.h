@@ -1,4 +1,4 @@
-// Copyright (c) 2013-2014 Anton Kozhevnikov, Thomas Schulthess
+// Copyright (c) 2013-2017 Anton Kozhevnikov, Thomas Schulthess
 // All rights reserved.
 // 
 // Redistribution and use in source and binary forms, with or without modification, are permitted provided that 
@@ -124,6 +124,55 @@ class DFT_ground_state
          *  \f]
          */
         double ewald_energy();
+        
+        /// Compute approximate atomic magnetic moments in case of PW-PP.
+        mdarray<double, 2> compute_atomic_mag_mom() const
+        {
+            PROFILE("sirius::DFT_ground_state::compute_atomic_mag_mom");
+            
+            /* radius of spheres around each atom where "atomic" magnetic moment is calculated */
+            double const R = 2.0;
+
+            mdarray<double, 2> mmom(3, unit_cell_.num_atoms());
+            mmom.zero();
+
+            #pragma omp parallel for
+            for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
+                for (int j0 = 0; j0 < ctx_.fft().grid().size(0); j0++) {
+                    for (int j1 = 0; j1 < ctx_.fft().grid().size(1); j1++) {
+                        for (int j2 = 0; j2 < ctx_.fft().local_size_z(); j2++) {
+                            /* get real space fractional coordinate */
+                            auto v0 = vector3d<double>(double(j0) / ctx_.fft().grid().size(0), 
+                                                       double(j1) / ctx_.fft().grid().size(1), 
+                                                       double(ctx_.fft().offset_z() + j2) / ctx_.fft().grid().size(2));
+                            /* index of real space point */
+                            int ir = ctx_.fft().grid().index_by_coord(j0, j1, j2);
+
+                            for (int t0 = -1; t0 <= 1; t0++) {
+                                for (int t1 = -1; t1 <= 1; t1++) {
+                                    for (int t2 = -1; t2 <= 1; t2++) {
+                                        vector3d<double> v1 = v0 - (unit_cell_.atom(ia).position() + vector3d<double>(t0, t1, t2));
+                                        auto r = unit_cell_.get_cartesian_coordinates(v1);
+                                        auto a = r.length();
+
+                                        if (a <= R) {
+                                            for (int j = 0; j < ctx_.num_mag_dims(); j++) {
+                                                mmom(j, ia) += density_.magnetization(j).f_rg(ir);
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                for (int j: {0, 1, 2}) {
+                    mmom(j, ia) *= (unit_cell_.omega() / ctx_.fft().size());
+                }
+            }
+            ctx_.fft().comm().allreduce(&mmom(0, 0), static_cast<int>(mmom.size()));
+            return std::move(mmom);
+        }
 
     public:
 
@@ -182,35 +231,31 @@ class DFT_ground_state
         
         double energy_vxc()
         {
-            return density_.rho()->inner(potential_.xc_potential());
+            return potential_.energy_vxc(density_);
         }
         
         double energy_exc()
         {
-            double exc = density_.rho()->inner(potential_.xc_energy_density());
-            if (!ctx_.full_potential()) {
-                exc += density_.rho_pseudo_core().inner(potential_.xc_energy_density());
-            }
-            return exc;
+            return potential_.energy_exc(density_);
         }
 
         double energy_bxc()
         {
             double ebxc{0};
             for (int j = 0; j < ctx_.num_mag_dims(); j++) {
-                ebxc += density_.magnetization(j)->inner(potential_.effective_magnetic_field(j));
+                ebxc += density_.magnetization(j).inner(potential_.effective_magnetic_field(j));
             }
             return ebxc;
         }
 
         double energy_veff()
         {
-            return density_.rho()->inner(potential_.effective_potential());
+            return density_.rho().inner(potential_.effective_potential());
         }
 
         double energy_vloc()
         {
-            return density_.rho()->inner(&potential_.local_potential());
+            return potential_.local_potential().inner(density_.rho());
         }
 
         /// Full eigen-value sum (core + valence)
@@ -508,8 +553,8 @@ inline int DFT_ground_state::find(double potential_tol, double energy_tol, int n
         density_.generate(kset_);
         /* symmetrize density and magnetization */
         if (ctx_.use_symmetry()) {
-            symmetrize(density_.rho(), density_.magnetization(0), density_.magnetization(1),
-                       density_.magnetization(2));
+            symmetrize(&density_.rho(), &density_.magnetization(0), &density_.magnetization(1),
+                       &density_.magnetization(2));
         }
         /* set new tolerance of iterative solver */
         if (!ctx_.full_potential()) {
@@ -524,54 +569,12 @@ inline int DFT_ground_state::find(double potential_tol, double energy_tol, int n
         if (!ctx_.full_potential()) {
             density_.generate_paw_loc_density();
         }
+
         /* transform density to realspace after mixing and symmetrization */
         density_.fft_transform(1);
+
         /* check number of elctrons */
         density_.check_num_electrons();
-
-        //== if (ctx_.num_mag_dims())
-        //== {
-        //==     for (int ia = 0; ia < unit_cell_.num_atoms(); ia++)
-        //==     {
-        //==         vector3d<double> mag(0, 0, 0);
-
-        //==         for (int j0 = 0; j0 < ctx_.fft().grid().size(0); j0++)
-        //==         {
-        //==             for (int j1 = 0; j1 < ctx_.fft().grid().size(1); j1++)
-        //==             {
-        //==                 for (int j2 = 0; j2 < ctx_.fft().local_size_z(); j2++)
-        //==                 {
-        //==                     /* get real space fractional coordinate */
-        //==                     auto v0 = vector3d<double>(double(j0) / ctx_.fft().grid().size(0), 
-        //==                                                double(j1) / ctx_.fft().grid().size(1), 
-        //==                                                double(ctx_.fft().offset_z() + j2) / ctx_.fft().grid().size(2));
-        //==                     /* index of real space point */
-        //==                     int ir = ctx_.fft().grid().index_by_coord(j0, j1, j2);
-
-        //==                     for (int t0 = -1; t0 <= 1; t0++)
-        //==                     {
-        //==                         for (int t1 = -1; t1 <= 1; t1++)
-        //==                         {
-        //==                             for (int t2 = -1; t2 <= 1; t2++)
-        //==                             {
-        //==                                 vector3d<double> v1 = v0 - (unit_cell_.atom(ia).position() + vector3d<double>(t0, t1, t2));
-        //==                                 auto r = unit_cell_.get_cartesian_coordinates(v1);
-        //==                                 auto a = r.length();
-
-        //==                                 if (a <= 2.0)
-        //==                                 {
-        //==                                     mag[2] += density_.magnetization(0)->f_rg(ir);
-        //==                                 }
-        //==                             }
-        //==                         }
-        //==                     }
-        //==                 }
-        //==             }
-        //==         }
-        //==         for (int x: {0, 1, 2}) mag[x] *= (unit_cell_.omega() / ctx_.fft().size());
-        //==         printf("atom: %i, mag: %f %f %f\n", ia, mag[0], mag[1], mag[2]);
-        //==     }
-        //== }
 
         /* compute new potential */
         potential_.generate(density_);
@@ -581,6 +584,7 @@ inline int DFT_ground_state::find(double potential_tol, double energy_tol, int n
             symmetrize(potential_.effective_potential(), potential_.effective_magnetic_field(0),
                        potential_.effective_magnetic_field(1), potential_.effective_magnetic_field(2));
         }
+
         /* transform potential to real space after symmetrization */
         potential_.fft_transform(1);
 
@@ -642,16 +646,35 @@ inline void DFT_ground_state::print_info()
 
     std::vector<double> mt_charge;
     double it_charge;
-    double total_charge = density_.rho()->integrate(mt_charge, it_charge); 
+    double total_charge = density_.rho().integrate(mt_charge, it_charge); 
     
     double total_mag[3];
     std::vector<double> mt_mag[3];
     double it_mag[3];
     for (int j = 0; j < ctx_.num_mag_dims(); j++) {
-        total_mag[j] = density_.magnetization(j)->integrate(mt_mag[j], it_mag[j]);
+        total_mag[j] = density_.magnetization(j).integrate(mt_mag[j], it_mag[j]);
+    }
+
+    mdarray<double, 2> mmom;
+    if (!ctx_.full_potential() && ctx_.num_mag_dims()) {
+        mmom = compute_atomic_mag_mom();
     }
     
     if (ctx_.comm().rank() == 0) {
+        if (!ctx_.full_potential() && ctx_.num_mag_dims()) {
+            printf("Magnetic moments\n");
+            for (int i = 0; i < 80; i++) printf("-");
+            printf("\n"); 
+            printf("atom                 moment               |moment|");
+            printf("\n");
+            for (int i = 0; i < 80; i++) printf("-");
+            printf("\n");
+            for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
+                vector3d<double> v({mmom(1, ia), mmom(2, ia), mmom(0, ia)});
+                printf("%4i    [%8.4f, %8.4f, %8.4f]  %10.6f\n", ia, v[0], v[1], v[2], v.length());
+            }
+        }
+
         if (ctx_.full_potential()) {
             double total_core_leakage = 0.0;
             printf("\n");
@@ -694,7 +717,6 @@ inline void DFT_ground_state::print_info()
                        v[0], v[1], v[2], v.length());
             }
         }
-
         printf("total charge          : %10.6f\n", total_charge);
 
         if (ctx_.num_mag_dims()) {
@@ -736,6 +758,28 @@ inline void DFT_ground_state::print_info()
         printf("band gap (eV) : %18.8f\n", gap);
         printf("Efermi        : %18.8f\n", ef);
         printf("\n");
+        //if (ctx_.control().verbosity_ >= 3 && !ctx_.full_potential()) {
+        //    for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
+        //        printf("atom: %i\n", ia);
+        //        int nbf = unit_cell_.atom(ia).type().mt_basis_size();
+        //        for (int j = 0; j < ctx_.num_mag_comp(); j++) {
+        //            //printf("component of density matrix: %i\n", j);
+        //            //for (int xi1 = 0; xi1 < nbf; xi1++) {
+        //            //    for (int xi2 = 0; xi2 < nbf; xi2++) {
+        //            //        auto z = density_.density_matrix()(xi1, xi2, j, ia);
+        //            //        printf("(%f, %f) ", z.real(), z.imag());
+        //            //    }
+        //            //    printf("\n");
+        //            //}
+        //            printf("diagonal components of density matrix: %i\n", j);
+        //            for (int xi2 = 0; xi2 < nbf; xi2++) {
+        //                auto z = density_.density_matrix()(xi2, xi2, j, ia);
+        //                printf("(%10.6f, %10.6f) ", z.real(), z.imag());
+        //            }
+        //            printf("\n");
+        //        }
+        //    }
+        //}
     }
 }
 
@@ -747,15 +791,15 @@ inline void DFT_ground_state::print_info()
  *  \section section1 Preliminary notes
  *
  *  \note Here and below sybol \f$ {\boldsymbol \sigma} \f$ is reserved for the vector of Pauli matrices. Spin components 
- *        are labeled with \f$ \alpha \f$ or \f$ \beta\f$.
+ *        are labeled with \f$ \alpha \f$ or \f$ \beta \f$.
  *
  *  Wave-function of spin-1/2 particle is a two-component spinor:
  *  \f[
- *      {\bf \varphi}({\bf r})=\left( \begin{array}{c} \varphi_1({\bf r}) \\ \varphi_2({\bf r}) \end{array} \right)
+ *      {\bf \Psi}({\bf r}) = \left( \begin{array}{c} \psi^{\uparrow}({\bf r}) \\ \psi^{\downarrow}({\bf r}) \end{array} \right)
  *  \f]
  *  Operator of spin:
  *  \f[
- *      {\bf \hat S}=\frac{\hbar}{2}{\bf \sigma},
+ *      {\bf \hat S}=\frac{\hbar}{2}{\boldsymbol \sigma},
  *  \f]
  *  Pauli matrices:
  *  \f[
@@ -770,36 +814,236 @@ inline void DFT_ground_state::print_info()
  *         0 & -1 \\ \end{array} \right)
  *  \f]
  *
+ *  Spin moment of an electron in quantum state \f$ | \Psi \rangle \f$:
+ *  \f[
+ *     {\bf S}=\langle \Psi | {\bf \hat S} | \Psi \rangle  = \frac{\hbar}{2} \langle \Psi | {\boldsymbol \sigma} | \Psi \rangle
+ *  \f]
+ *
+ *  Spin magnetic moment of electron:
+ *  \f[
+ *    {\bf \mu}_e=\gamma_e {\bf S},
+ *  \f]
+ *  where \f$ \gamma_e \f$ is the gyromagnetic ratio for the electron.
+ *  \f[
+ *   \gamma_e=-\frac{g_e \mu_B}{\hbar} \;\;\; \mu_B=\frac{e\hbar}{2m_ec}
+ *  \f]
+ *  Here \f$ g_e \f$ is a g-factor for electron which is ~2, and \f$ \mu_B \f$ - Bohr magneton (defined as positive constant). 
+ *  Finally, magnetic moment of electron:
+ *  \f[
+ *    {\bf \mu}_e=-{\bf \mu}_B \langle \Psi | {\boldsymbol \sigma} | \Psi \rangle
+ *  \f]
+ *  Potential energy of magnetic dipole in magnetic field:
+ *  \f[
+ *    U=-{\bf B}{\bf \mu}={\bf \mu}_B {\bf B} \langle \Psi | {\boldsymbol \sigma} | \Psi \rangle
+ *  \f]
+ *
  *  \section section2 Density and magnetization
- *  Density is defined as:
+ *  In magnetic calculations we have charge density \f$ \rho({\bf r}) \f$ (scalar function) and magnetization density 
+ *  \f$ {\bf m}({\bf r}) \f$ (vector function). Density is defined as:
  *  \f[
  *      \rho({\bf r}) = \sum_{j}^{occ} \Psi_{j}^{*}({\bf r}){\bf I} \Psi_{j}({\bf r}) = 
- *         \sum_{j}^{occ} \psi_{j}^{\uparrow *} \psi_{j}^{\uparrow} + \psi_{j}^{\downarrow *} \psi_{j}^{\downarrow} 
+ *         \sum_{j}^{occ} \psi_{j}^{\uparrow *}({\bf r}) \psi_{j}^{\uparrow}({\bf r}) +
+ *         \psi_{j}^{\downarrow *}({\bf r}) \psi_{j}^{\downarrow}({\bf r})
  *  \f]
  *  Magnetization is defined as:
  *  \f[
  *      {\bf m}({\bf r}) = \sum_{j}^{occ} \Psi_{j}^{*}({\bf r}) {\boldsymbol \sigma} \Psi_{j}({\bf r})
  *  \f]
  *  \f[
- *      m_x({\bf r}) = \sum_{j}^{occ} \psi_{j}^{\uparrow *} \psi_{j}^{\downarrow} + \psi_{j}^{\downarrow *} \psi_{j}^{\uparrow} 
+ *      m_x({\bf r}) = \sum_{j}^{occ} \psi_{j}^{\uparrow *}({\bf r}) \psi_{j}^{\downarrow}({\bf r}) +
+ *        \psi_{j}^{\downarrow *}({\bf r}) \psi_{j}^{\uparrow}({\bf r}) 
  *  \f]
  *  \f[
- *      m_y({\bf r}) = \sum_{j}^{occ} -i \psi_{j}^{\uparrow *} \psi_{j}^{\downarrow} + i \psi_{j}^{\downarrow *} \psi_{j}^{\uparrow} 
+ *      m_y({\bf r}) = \sum_{j}^{occ} -i \psi_{j}^{\uparrow *}({\bf r}) \psi_{j}^{\downarrow}({\bf r}) + 
+ *        i \psi_{j}^{\downarrow *}({\bf r}) \psi_{j}^{\uparrow}({\bf r}) 
  *  \f]
  *  \f[
- *      m_z({\bf r}) = \sum_{j}^{occ} \psi_{j}^{\uparrow *} \psi_{j}^{\uparrow} - \psi_{j}^{\downarrow *} \psi_{j}^{\downarrow} 
+ *      m_z({\bf r}) = \sum_{j}^{occ} \psi_{j}^{\uparrow *}({\bf r}) \psi_{j}^{\uparrow}({\bf r}) - 
+ *        \psi_{j}^{\downarrow *}({\bf r}) \psi_{j}^{\downarrow}({\bf r}) 
  *  \f]
- *  Density matrix is defined as:
+ *  Density and magnetization can be grouped into a \f$ 2 \times 2 \f$ density matrix, which is defined as:
  *  \f[
  *      {\boldsymbol \rho}({\bf r}) = \frac{1}{2} \Big( {\bf I}\rho({\bf r}) + {\boldsymbol \sigma} {\bf m}({\bf r})\Big) = 
- *        \frac{1}{2} \sum_{j}^{occ} \left( \begin{array}{cc} \psi_{j}^{\uparrow *} \psi_{j}^{\uparrow} & 
- *                                                            \psi_{j}^{\downarrow *} \psi_{j}^{\uparrow} \\
- *                                                            \psi_{j}^{\uparrow *} \psi_{j}^{\downarrow} &
- *                                                            \psi_{j}^{\downarrow *} \psi_{j}^{\downarrow} \end{array} \right)
+ *        \frac{1}{2} \left( \begin{array}{cc} \rho({\bf r}) + m_z({\bf r}) & m_x({\bf r}) - i m_y({\bf r}) \\
+ *                                              m_x({\bf r}) + i m_y({\bf r}) & \rho({\bf r}) - m_z({\bf r}) \end{array} \right) = 
+ *        \sum_{j}^{occ} \left( \begin{array}{cc} \psi_{j}^{\uparrow *}({\bf r}) \psi_{j}^{\uparrow}({\bf r}) & 
+ *                                                \psi_{j}^{\downarrow *}({\bf r}) \psi_{j}^{\uparrow}({\bf r}) \\
+ *                                                \psi_{j}^{\uparrow *}({\bf r}) \psi_{j}^{\downarrow}({\bf r}) &
+ *                                                \psi_{j}^{\downarrow *}({\bf r}) \psi_{j}^{\downarrow}({\bf r}) \end{array} \right)
  *  \f]
- *  Pay attention to the order of spin indices in the \f$ 2 \times 2 \f$ density matrix:
+ *  or simply
  *  \f[
- *    \rho_{\alpha \beta}({\bf r}) = \frac{1}{2} \sum_{j}^{occ} \psi_{j}^{\beta *}({\bf r})\psi_{j}^{\alpha}({\bf r})
+ *    \rho_{\alpha \beta}({\bf r}) = \sum_{j}^{occ} \psi_{j}^{\beta *}({\bf r})\psi_{j}^{\alpha}({\bf r})
+ *  \f]
+ *  Pay attention to the order of spin indices in the \f$ 2 \times 2 \f$ density matrix.
+ *  External potential \f$ v^{ext}({\bf r}) \f$ and external magnetic field \f$ {\bf B}^{ext}({\bf r}) \f$ can 
+ *  also be grouped into a \f$ 2 \times 2 \f$ matrix:
+ *  \f[
+ *    V_{\alpha\beta}^{ext}({\bf r})=\Big({\bf I}v^{ext}({\bf r})+\mu_{B}{\boldsymbol \sigma}{\bf B}^{ext}({\bf r}) \Big) = 
+ *      \left( \begin{array}{cc} v^{ext}({\bf r})+\mu_{B}B_z^{ext}({\bf r}) & \mu_{B} \Big( B_x^{ext}({\bf r})-iB_y^{exp}({\bf r}) \Big) \\ 
+ *         \mu_{B} \Big( B_x^{ext}({\bf r})+iB_y^{ext}({\bf r}) \Big) & v^{ext}({\bf r})-\mu_{B}B_z^{ext}({\bf r}) \end{array} \right)
+ *  \f] 
+ *  Let's check that potential energy in external fields can be written in the following way:
+ *  \f[
+ *    E^{ext}=\int Tr \Big( {\boldsymbol \rho}({\bf r}) {\bf V}^{ext}({\bf r}) \Big) d{\bf r} = 
+ *      \sum_{\alpha\beta} \int \rho_{\alpha\beta}({\bf r})V_{\beta\alpha}^{ext}({\bf r}) d{\bf r}
+ *  \f]
+ *  (below \f$ {\bf r} \f$, \f$ ext \f$ and \f$ \int d{\bf r} \f$ are dropped for simplicity)
+ *  \f[
+ *   \begin{eqnarray}
+ *    \rho_{11}V_{11} &= \frac{1}{2}(\rho+m_z)(v+\mu_{B}B_z) = \frac{1}{2}(\rho v +\mu_{B} \rho B_z + m_z v + \mu_{B}m_zB_z) \\
+ *    \rho_{22}V_{22} &= \frac{1}{2}(\rho-m_z)(v-\mu_{B}B_z) = \frac{1}{2}(\rho v -\mu_{B} \rho B_z - m_z v + \mu_{B}m_zB_z) \\
+ *    \rho_{12}V_{21} &= \frac{1}{2}(m_x-im_y)\Big( \mu_{B}( B_x+iB_y) \Big) = \frac{\mu_B}{2}(m_xB_x+im_xB_y-im_yB_x+m_yB_y) \\
+ *    \rho_{21}V_{12} &= \frac{1}{2}(m_x+im_y)\Big( \mu_{B}( B_x-iB_y) \Big) = \frac{\mu_B}{2}(m_xB_x-im_xB_y+im_yB_x+m_yB_y)
+ *   \end{eqnarray}
+ *  \f]
+ *  The sum of this four terms will give exactly \f$ \int \rho({\bf r}) v^{ext}({\bf r}) + \mu_{B}{\bf m}({\bf r}) {\bf B}^{ext}({\bf r}) d{\bf r}\f$
+ * 
+ *  \section section3 Total energy variation
+ *
+ *  To derive Kohn-Sham equations we need to write total energy functional of density matrix \f$ \rho_{\alpha\beta}({\bf r}) \f$:
+ *  \f[
+ *    E^{tot}[\rho_{\alpha\beta}] = E^{kin}[\rho_{\alpha\beta}] + E^{H}[\rho_{\alpha\beta}] + E^{ext}[\rho_{\alpha\beta}] + 
+ *      E^{XC}[\rho_{\alpha\beta}]
+ *  \f]
+ *  Kinetic energy of non-interacting electrons is written in the following way:
+ *  \f[
+ *    E^{kin}[\rho_{\alpha\beta}] \equiv E^{kin}[\Psi[\rho_{\alpha\beta}]] = 
+ *    -\frac{1}{2} \sum_{i}^{occ}\sum_{\alpha} \int \psi_{i}^{\alpha*}({\bf r}) \nabla^{2} \psi_{i}^{\alpha}({\bf r})d^3{\bf r} 
+ *  \f]
+ *  Hartree energy:
+ *  \f[
+ *    E^{H}[\rho_{\alpha\beta}]= \frac{1}{2} \iint \frac{\rho({\bf r})\rho({\bf r'})}{|{\bf r}-{\bf r'}|} d{\bf r} d{\bf r'} =
+ *    \frac{1}{2} \iint \sum_{\alpha\beta}\delta_{\alpha\beta} \frac{\rho_{\alpha\beta}({\bf r}) \rho({\bf r'})}{|{\bf r}-{\bf r'}|} d{\bf r} d{\bf r'}
+ *  \f]
+ *  where \f$ \rho({\bf r}) = Tr \rho_{\alpha\beta}({\bf r}) \f$.
+ *
+ *  Exchange-correlation energy:
+ *  \f[
+ *    E^{XC}[\rho_{\alpha\beta}({\bf r})] \equiv E^{XC}[\rho({\bf r}),|{\bf m}({\bf r})|] =
+ *     \int \rho({\bf r}) \eta_{XC}(\rho({\bf r}), m({\bf r})) d{\bf r} = 
+ *     \int \rho({\bf r}) \eta_{XC}(\rho^{\uparrow}({\bf r}), \rho_{\downarrow}({\bf r})) d{\bf r} 
+ *  \f]
+ *  Now we can write the total energy variation over auxiliary orbitals with constrain of orbital normalization:
+ *  \f[
+ *    \frac{\delta \Big( E^{tot}+\varepsilon_i \big( 1-\sum_{\alpha} \int \psi^{\alpha*}_{i}({\bf r})\psi^{\alpha}_{i}({\bf r})d{\bf r} \big) \Big)}
+ *         {\delta \psi_{i}^{\gamma*}({\bf r})} = 0
+ *  \f]
+ *  We will use the following chain rule:
+ *  \f[
+ *    \frac{\delta F[\rho_{\alpha\beta}]}{\delta \psi_{i}^{\gamma *}({\bf r})} = 
+ *      \sum_{\alpha' \beta'} \frac{\delta F[\rho_{\alpha\beta}]}{\delta \rho_{\alpha'\beta'}({\bf r})}
+ *      \frac{\delta \rho_{\alpha'\beta'}({\bf r})}{\delta \psi_{i}^{\gamma *}({\bf r})} = 
+ *      \sum_{\alpha'\beta'}\frac{\delta F[\rho_{\alpha\beta}]}{\delta \rho_{\alpha'\beta'}({\bf r})}
+ *        \psi_{i}^{\alpha'}({\bf r}) \delta_{\beta'\gamma} =
+ *        \sum_{\alpha'}\frac{\delta F[\rho_{\alpha\beta}]}{\delta \rho_{\alpha'\gamma}({\bf r})}\psi_{i}^{\alpha'}({\bf r})
+ *  \f]
+ *  Variation of the normalization integral:
+ *  \f[
+ *   \frac{\delta \sum_{\alpha} \int \psi_{i}^{\alpha*}({\bf r}) \psi_{i}^{\alpha}({\bf r}) d {\bf r} }{\delta \psi_{i}^{\gamma *}({\bf r})} =
+ *     \psi_{i}^{\gamma}({\bf r})
+ *  \f]
+ *  Variation of the kinetic energy functional:
+ *  \f[
+ *    \frac{\delta E^{kin}}{\delta \psi_{i}^{\gamma*}({\bf r})}  = -\frac{1}{2} \sum_{\alpha} \nabla^{2} \psi_{i}^{\alpha}({\bf r}) 
+ *      \delta_{\alpha\gamma} = -\frac{1}{2}\nabla^{2}\psi_{i}^{\gamma}({\bf r})
+ *  \f]
+ *  Variation of the Hartree energy functional:
+ *  \f[
+ *    \frac{\delta E^{H}[\rho_{\alpha\beta}]}{\delta \psi_{i}^{\gamma *}({\bf r})} = 
+ *    \sum_{\alpha'} \sum_{\alpha\beta} \delta_{\alpha\beta} \frac{1}{2} \int \frac{ \rho({\bf r'})}{|{\bf r}-{\bf r'}|} d{\bf r'} 
+ *    \delta_{\alpha\alpha'}\delta_{\beta\gamma} \psi_{i}^{\alpha'}({\bf r}) = v^{H}({\bf r}) \psi_{i}^{\gamma}({\bf r}) 
+ *  \f]
+ *  Variation of the external energy functional:
+ *  \f[
+ *    \frac{\delta E^{ext}[\rho_{\alpha\beta}]}{\delta \psi_{i}^{\gamma*}({\bf r}) } = 
+ *      \sum_{\alpha'} \sum_{\alpha\beta} V_{\beta\alpha}^{ext}({\bf r}) \delta_{\alpha\alpha'} \delta_{\beta\gamma} \psi_{i}^{\alpha'}({\bf r})=
+ *      \sum_{\alpha} V_{\gamma\alpha}^{ext}({\bf r}) \psi_{i}^{\alpha}({\bf r})
+ *  \f]
+ *
+ *  Variation of the exchange-correlation functional:
+ *  \f[
+ *    \frac{\delta E^{XC}[\rho_{\alpha\beta}]}{ \delta \psi_{i}^{\gamma*}({\bf r}) } = 
+ *    \frac{\delta E^{XC}[\rho_{\alpha\beta}]}{ \delta \rho({\bf r})} \frac{\delta \rho({\bf r})}{\delta \psi_{i}^{\gamma*}({\bf r})} +
+ *    \frac{\delta E^{XC}[\rho_{\alpha\beta}]}{ \delta m({\bf r})} \sum_{p=x,y,z} \frac{\delta m({\bf r})}{ \delta m_p({\bf r})}
+ *    \frac{\delta m_p({\bf r})}{\delta \psi_{i}^{\gamma*}({\bf r})} 
+ *  \f]
+ *  where \f$ m({\bf r}) = |{\bf  m}({\bf r})|\f$ is the length of magnetization vector.
+ * 
+ *  First term:
+ *  \f[
+ *    \frac{\delta E^{XC}[\rho_{\alpha\beta}]}{ \delta \rho({\bf r})} \frac{\delta \rho({\bf r})}{\delta \psi_{i}^{\gamma*}({\bf r})} =  
+ *      v^{XC}({\bf r}) \psi_{i}^{\gamma}({\bf r}) 
+ *  \f]
+ *  Second term:
+ *  \f[
+ *    \frac{\delta E^{XC}[\rho_{\alpha\beta}]}{ \delta m({\bf r})} \sum_{p=x,y,z} \frac{\delta m({\bf r})}{ \delta m_p({\bf r})}
+ *       \frac{\delta m_p({\bf r})}{\delta \psi_{i}^{\gamma*}({\bf r})} = 
+ *       B^{XC}({\bf r}) \hat {\bf m} \sum_{\beta} {\boldsymbol \sigma}_{\gamma \beta} \psi_{i}^{\beta}({\bf r}) 
+ *  \f]
+ *  where \f$ B^{XC}({\bf r}) = \frac{\delta E^{XC}[\rho_{\alpha\beta}]}{ \delta m({\bf r})} \f$, 
+ *  \f$ \hat {\bf m}({\bf r}) = \frac{\delta m({\bf r})}{ \delta {\bf m}({\bf r})} \f$ is the unit vector, 
+ *  parallel to \f$ {\bf m}({\bf r}) \f$
+ *  and \f$ {\bf m}({\bf r}) = \sum_{i} \sum_{\alpha \beta} \psi_{i}^{\alpha*}({\bf r}) {\boldsymbol \sigma}_{\alpha \beta} \psi_i^{\beta}({\bf r}) \f$
+ *
+ *  Similarly to external potential, exchange-correlation potential can be grouped into \f$ 2 \times 2 \f$ matrix::
+ *  \f[
+ *    \frac{\delta E^{XC}[\rho_{\alpha\beta}]}{\delta \rho_{\alpha'\beta'}({\bf r})} \equiv V^{XC}_{\beta'\alpha'}({\bf r})  = 
+ *      \Big( {\bf I}v^{XC}({\bf r}) + {\bf B}^{XC}({\bf r}) {\boldsymbol \sigma} \Big)_{\beta'\alpha'}
+ *  \f]
+ *  where \f${\bf B}^{XC}({\bf r}) = \hat {\bf m}({\bf r})B^{XC}({\bf r}) \f$ -- exchange-correlation magnetic field,
+ *  parallel to \f$ {\bf m}({\bf r}) \f$ at each point in space. We can now collect \f$ v^{H}({\bf r}) \f$,
+ *  \f$ V_{\alpha\beta}^{ext}({\bf r}) \f$ and \f$V_{\alpha\beta}^{XC}({\bf r}) \f$ to one effective potential:
+ *  \f[
+ *    V^{eff}_{\alpha\beta}({\bf r}) = v^{H}({\bf r})\delta_{\alpha\beta} + V_{\alpha\beta}^{ext}({\bf r}) +
+ *         V_{\alpha\beta}^{XC}({\bf r}) =
+ *     \Big({\bf I}\big(v^{H}({\bf r})+v^{ext}({\bf r})+v^{XC}({\bf r})\big) + 
+ *     {\boldsymbol \sigma}\big( \mu_{B}{\bf B}^{ext}({\bf r}) + {\bf B}^{XC}({\bf r})\big)\Big)_{\alpha\beta}
+ *  \f]
+ *  and finally, we arrive to the following Kohn-Sham equation for each component \f$ \gamma \f$ of spinor wave-functions:
+ *  \f[
+ *   -\frac{1}{2}\nabla^{2}\psi_{i}^{\gamma}({\bf r}) + \sum_{\alpha} V_{\gamma\alpha}^{eff}({\bf r}) \psi_{i}^{\alpha}({\bf r}) = 
+ *    \varepsilon_i \psi_{i}^{\gamma}({\bf r})
+ *  \f]
+ *  or in matrix form
+ *  \f[
+ *  \left( \begin{array}{cc} -\frac{1}{2}\nabla^2+V^{eff}_{\uparrow \uparrow} & V^{eff}_{\uparrow \downarrow} \\
+ *    V^{eff}_{\downarrow \uparrow} & -\frac{1}{2}\nabla^2+V^{eff}_{\downarrow \downarrow} \end{array}\right)
+ *    \left(\begin{array}{c} \psi_{i}^{\uparrow}({\bf r}) \\ \psi_{i}^{\downarrow} ({\bf r}) \end{array} \right) = \varepsilon_i
+ *   \left(\begin{array}{c} \psi_{i}^{\uparrow}({\bf r}) \\ \psi_{i}^{\downarrow}({\bf r}) \end{array} \right)
+ *  \f]
+ *
+ *  \section section4 Second-variational approach
+ *  
+ *  Suppose that we know first \f$ N_{fv} \f$ solutions of the following equation (so-called first variational equation):
+ *  \f[
+ *    \Big(-\frac{1}{2}\nabla^2+v^{H}({\bf r})+v^{ext}({\bf r})+v^{XC}({\bf r}) \Big)\phi_{i}({\bf r}) = \epsilon_i \phi_{i}({\bf r})
+ *  \f]
+ *  We can write expansion of the components of spinor wave-functions \f$ \psi^{\alpha}_j({\bf r}) \f$ in terms of 
+ *  first-variational states \f$ \phi_i({\bf r}) \f$:
+ *  \f[
+ *    \psi_{j}^{\alpha}({\bf r}) = \sum_{i}^{N_{fv}}C_{ij}^{\alpha}\phi_{i}({\bf r})
+ *  \f]
+ *  Next, we switch to matrix equation:
+ *  \f[
+ *    \langle \Psi_{j'}| \hat H | \Psi_{j} \rangle = \varepsilon_j \delta_{j'j} \\
+ *    \sum_{\alpha \alpha'} \sum_{ii'} C_{i'j'}^{\alpha'*} C_{ij}^{\alpha} \langle \phi_{i'} | \hat H_{\alpha' \alpha} | \phi_{i} \rangle = 
+ *    \sum_{\alpha \alpha'} \sum_{ii'} C_{i'j'}^{\alpha'*} C_{ij}^{\alpha} H_{\alpha'i', \alpha i} = \varepsilon_j \delta_{j'j}
+ *  \f]
+ *
+ *  We can combine indices \f$ \{i,\alpha\} \f$ into one 'flat' index \f$ \nu \f$. If we also assume that the number of 
+ *  spinor wave-functions is equal to \f$ 2 N_{fv} \f$ then we arrive to the well-known eigen decomposition:
+ *  \f[
+ *    \sum_{\nu'\nu} C_{\nu' j'}^{*} H_{\nu'\nu} C_{\nu j} = \varepsilon_j \delta_{j'j}
+ *  \f]
+ *
+ * The expression for second-variational Hamiltonian is simple:
+ * \f[
+ *   \langle \phi_{i'}|\hat H_{\alpha'\alpha} |\phi_{i} \rangle = 
+ *    \langle \phi_{i'} | \Big(-\frac{1}{2}\nabla^2 + v^{H}({\bf r}) + v^{ext}({\bf r}) + v^{XC}({\bf r}) \Big) \delta_{\alpha\alpha'}|\phi_{i}\rangle + 
+ *    \langle \phi_{i'} | {\boldsymbol \sigma}_{\alpha\alpha'} \Big( \mu_{B}{\bf B}^{ext}({\bf r})+{\bf B}^{XC}({\bf r})\Big) | \phi_{i}\rangle =\\
+ *    \epsilon_{i}\delta_{i'i}\delta_{\alpha\alpha'} + {\boldsymbol \sigma}_{\alpha\alpha'} \langle \phi_{i'} | \Big( \mu_{B}{\bf B}^{ext}({\bf r}) + 
+ *    {\bf B}^{XC}({\bf r})\Big) | \phi_{i}\rangle
  *  \f]
  */
 

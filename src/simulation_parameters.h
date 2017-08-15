@@ -58,6 +58,8 @@ class Simulation_parameters
         Control_input control_input_;
 
         Parameters_input parameters_input_;
+
+        Settings_input settings_input_;
         
         /// Import data from initial input parameters.
         void import(std::string const& fname__)
@@ -77,6 +79,8 @@ class Simulation_parameters
             control_input_.read(dict);
             /* read parameters */
             parameters_input_.read(dict);
+            /* read settings */
+            settings_input_.read(dict);
         }
 
     public:
@@ -215,6 +219,11 @@ class Simulation_parameters
             }
         }
 
+        inline void set_processing_unit(device_t pu__)
+        {
+            processing_unit_ = pu__;
+        }
+
         inline void set_molecule(bool molecule__)
         {
             parameters_input_.molecule_ = molecule__;
@@ -283,6 +292,8 @@ class Simulation_parameters
         }
         
         /// Number of spin components.
+        /** This parameter can take only two values: 1 -- non-magnetic calcaulation and wave-functions,
+         *  2 -- spin-polarized calculation and wave-functions. */
         inline int num_spins() const
         {
             return (num_mag_dims() == 0) ? 1 : 2;
@@ -290,7 +301,7 @@ class Simulation_parameters
 
         /// Number of components in the complex density matrix.
         /** In case of non-collinear magnetism only one out of two non-diagonal components is stored. */
-        inline int num_mag_comp() const
+        inline int num_mag_comp() const // TODO: rename; current name does not reflect the meaning
         {
             return (num_mag_dims() == 3) ? 3 : num_spins();
         }
@@ -481,6 +492,11 @@ class Simulation_parameters
         inline Parameters_input const& parameters_input() const
         {
             return parameters_input_;
+        }
+
+        inline Settings_input const& settings() const
+        {
+            return settings_input_;
         }
 };
 

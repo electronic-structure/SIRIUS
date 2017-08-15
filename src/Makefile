@@ -20,7 +20,8 @@ ifneq (,$(findstring D__GPU,$(CXX_OPT)))
 	Kernels/generate_dm_pw.o \
 	Kernels/sum_q_pw_dm_pw.o \
 	Kernels/generate_phase_factors.o \
-	Kernels/add_pw_ekin.o
+	Kernels/add_pw_ekin.o \
+	Kernels/mul_by_veff.o
 endif
 
 ifneq (,$(findstring D__PLASMA,$(CXX_OPT)))

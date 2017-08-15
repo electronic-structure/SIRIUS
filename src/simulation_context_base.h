@@ -92,6 +92,8 @@ class Simulation_context_base: public Simulation_parameters
 
         std::unique_ptr<Radial_integrals_beta<true>> beta_ri_djl_;
 
+        std::unique_ptr<Radial_integrals_aug<false>> aug_ri_;
+
         double time_active_;
         
         bool initialized_{false};
@@ -107,7 +109,7 @@ class Simulation_context_base: public Simulation_parameters
 
             tm const* ptm = localtime(&start_time_.tv_sec); 
             char buf[100];
-            strftime(buf, sizeof(buf), "%Y%m%d%H%M%S", ptm);
+            strftime(buf, sizeof(buf), "%Y%m%d_%H%M%S", ptm);
             start_time_tag_ = std::string(buf);
         }
 
@@ -354,14 +356,47 @@ class Simulation_context_base: public Simulation_parameters
             return memory_buffer_.at<CPU>();
         }
 
-        Radial_integrals_beta<false> const& beta_ri() const
+        inline Radial_integrals_beta<false> const& beta_ri() const
         {
             return *beta_ri_;
         }
 
-        Radial_integrals_beta<true> const& beta_ri_djl() const
+        inline Radial_integrals_beta<true> const& beta_ri_djl() const
         {
             return *beta_ri_djl_;
+        }
+
+        inline Radial_integrals_aug<false> const& aug_ri() const
+        {
+            return *aug_ri_;
+        }
+        
+        /// Find the lambda parameter used in the Ewald summation.
+        /** lambda parameter scales the erfc function argument:
+         *  \f[
+         *    {\rm erf}(\sqrt{\lambda}x)
+         *  \f]
+         */
+        double ewald_lambda()
+        {
+            /* alpha = 1 / (2*sigma^2), selecting alpha here for better convergence */
+            double lambda{1};
+            double gmax = pw_cutoff();
+            double upper_bound{0};
+            double charge = unit_cell_.num_electrons();
+            
+            /* iterate to find lambda */
+            do {
+                lambda += 0.1;
+                upper_bound = charge * charge * std::sqrt(2.0 * lambda / twopi) * gsl_sf_erfc(gmax * std::sqrt(1.0 / (4.0 * lambda)));
+            } while (upper_bound < 1.0e-8);
+
+            if (lambda < 1.5) {
+                std::stringstream s;
+                s << "Ewald forces error: probably, pw_cutoff is too small.";
+                WARNING(s);
+            }
+            return lambda;
         }
 };
 
@@ -383,8 +418,12 @@ inline void Simulation_context_base::init_fft()
     fft_->prepare(gvec_.partition());
 
     /* create FFT driver for coarse mesh */
-    fft_coarse_ = std::unique_ptr<FFT3D>(new FFT3D(find_translations(2 * gk_cutoff(), rlv), comm_fft_coarse(),
-                                                   processing_unit()));
+    auto fft_coarse_grid = FFT3D_grid(find_translations(2 * gk_cutoff(), rlv));
+    auto pu = (fft_coarse_grid.size() < std::pow(64, 3)) ? CPU : processing_unit(); 
+    if (full_potential()) {
+        pu = processing_unit();
+    }
+    fft_coarse_ = std::unique_ptr<FFT3D>(new FFT3D(fft_coarse_grid, comm_fft_coarse(), pu));
 
     /* create a list of G-vectors for corase FFT grid */
     gvec_coarse_ = Gvec(rlv, gk_cutoff() * 2, comm(), comm_fft_coarse(), control().reduce_gvec_);
@@ -617,15 +656,24 @@ inline void Simulation_context_base::initialize()
     }
     
     if (!full_potential()) {
-        beta_ri_ = std::unique_ptr<Radial_integrals_beta<false>>(new Radial_integrals_beta<false>(unit_cell(), gk_cutoff(), 20));
 
-        beta_ri_djl_ = std::unique_ptr<Radial_integrals_beta<true>>(new Radial_integrals_beta<true>(unit_cell(), gk_cutoff(), 20));
+        /* some extra length is added to cutoffs in order to interface with QE which may require ri(q) for q>cutoff */
+
+        beta_ri_ = std::unique_ptr<Radial_integrals_beta<false>>(new Radial_integrals_beta<false>(unit_cell(), gk_cutoff() + 1, settings().nprii_beta_));
+
+        beta_ri_djl_ = std::unique_ptr<Radial_integrals_beta<true>>(new Radial_integrals_beta<true>(unit_cell(), gk_cutoff() + 1, settings().nprii_beta_));
+        
+        aug_ri_ = std::unique_ptr<Radial_integrals_aug<false>>(new Radial_integrals_aug<false>(unit_cell(), pw_cutoff() + 1, settings().nprii_aug_));
     }
 
     //time_active_ = -runtime::wtime();
 
     if (control().verbosity_ > 0 && comm_.rank() == 0) {
         print_info();
+    }
+
+    if (comm_.rank() == 0 && control().print_memory_usage_) {
+        MEMORY_USAGE_INFO();
     }
 
     initialized_ = true;

@@ -201,7 +201,10 @@ class linalg<CPU>: public linalg_base
 
         template <typename T>
         static void gemr2d(ftn_int m, ftn_int n, dmatrix<T>& A, ftn_int ia, ftn_int ja,
-                           dmatrix<T>& B, ftn_int ib, ftn_int jb, ftn_int gcontext); 
+                           dmatrix<T>& B, ftn_int ib, ftn_int jb, ftn_int gcontext);
+
+        template <typename T>
+        static void geqrf(ftn_int m, ftn_int n, dmatrix<T>& A, ftn_int ia, ftn_int ja);
 };
 
 #ifdef __GPU
@@ -478,15 +481,13 @@ inline void linalg<CPU>::heinv<ftn_double_complex>(ftn_int n, matrix<ftn_double_
 {
     std::vector<int> ipiv(n);
     int info = hetrf(n, A.at<CPU>(), A.ld(), &ipiv[0]);
-    if (info)
-    {
+    if (info) {
         printf("hetrf returned %i\n", info);
         exit(-1);
     }
 
     info = hetri(n, A.at<CPU>(), A.ld(), &ipiv[0]);
-    if (info)
-    {
+    if (info) {
         printf("hetri returned %i\n", info);
         exit(-1);
     }
@@ -799,6 +800,35 @@ inline ftn_int linalg<CPU>::trtri<ftn_double_complex>(ftn_int n, dmatrix<ftn_dou
     FORTRAN(pztrtri)("U", "N", &n, A.at<CPU>(), &ia, &ja, const_cast<int*>(A.descriptor()), &info, (ftn_len)1, (ftn_len)1);
     return info;
 }
+
+template <>
+inline void linalg<CPU>::geqrf<ftn_double_complex>(ftn_int m, ftn_int n, dmatrix<ftn_double_complex>& A, ftn_int ia, ftn_int ja)
+{
+    ia++; ja++;
+    ftn_int lwork = -1;
+    ftn_double_complex z;
+    ftn_int info;
+    FORTRAN(pzgeqrf)(&m, &n, A.at<CPU>(), &ia, &ja, const_cast<int*>(A.descriptor()), &z, &z, &lwork, &info);
+    lwork = static_cast<int>(z.real() + 1);
+    std::vector<ftn_double_complex> work(lwork);
+    std::vector<ftn_double_complex> tau(std::max(m, n));
+    FORTRAN(pzgeqrf)(&m, &n, A.at<CPU>(), &ia, &ja, const_cast<int*>(A.descriptor()), tau.data(), work.data(), &lwork, &info);
+}
+
+template <>
+inline void linalg<CPU>::geqrf<ftn_double>(ftn_int m, ftn_int n, dmatrix<ftn_double>& A, ftn_int ia, ftn_int ja)
+{
+    ia++; ja++;
+    ftn_int lwork = -1;
+    ftn_double z;
+    ftn_int info;
+    FORTRAN(pdgeqrf)(&m, &n, A.at<CPU>(), &ia, &ja, const_cast<int*>(A.descriptor()), &z, &z, &lwork, &info);
+    lwork = static_cast<int>(z + 1);
+    std::vector<ftn_double> work(lwork);
+    std::vector<ftn_double> tau(std::max(m, n));
+    FORTRAN(pdgeqrf)(&m, &n, A.at<CPU>(), &ia, &ja, const_cast<int*>(A.descriptor()), tau.data(), work.data(), &lwork, &info);
+}
+
 #else
 template<>
 inline void linalg<CPU>::gemm<ftn_double_complex>(int transa, int transb, ftn_int m, ftn_int n, ftn_int k,
@@ -978,6 +1008,58 @@ inline void linalg<GPU>::axpy<ftn_double_complex>(ftn_int n__,
     cublas::zaxpy(n__, (cuDoubleComplex const*)alpha__, (cuDoubleComplex*)x__, incx__, (cuDoubleComplex*)y__, incy__);
 }
 #endif // __GPU
+
+template <typename T>
+static void check_hermitian(const std::string& name, matrix<T> const& mtrx, int n = -1)
+{
+    assert(mtrx.size(0) == mtrx.size(1));
+
+    double maxdiff = 0.0;
+    int i0 = -1;
+    int j0 = -1;
+
+    if (n == -1) {
+        n = static_cast<int>(mtrx.size(0));
+    }
+
+    for (int i = 0; i < n; i++) {
+        for (int j = 0; j < n; j++) {
+            double diff = std::abs(mtrx(i, j) - std::conj(mtrx(j, i)));
+            if (diff > maxdiff) {
+                maxdiff = diff;
+                i0 = i;
+                j0 = j;
+            }
+        }
+    }
+
+    if (maxdiff > 1e-10) {
+        std::stringstream s;
+        s << name << " is not a symmetric or hermitian matrix" << std::endl
+          << "  maximum error: i, j : " << i0 << " " << j0 << " diff : " << maxdiff;
+
+        WARNING(s);
+    }
+}
+
+template <typename T>
+static double check_hermitian(dmatrix<T>& mtrx__, int n__)
+{
+    dmatrix<T> tmp(n__, n__, mtrx__.blacs_grid(), mtrx__.bs_row(), mtrx__.bs_col());
+    linalg<CPU>::tranc(n__, n__, mtrx__, 0, 0, tmp, 0, 0);
+
+    splindex<block_cyclic> spl_r(n__, mtrx__.blacs_grid().num_ranks_row(), mtrx__.blacs_grid().rank_row(), mtrx__.bs_row());
+    splindex<block_cyclic> spl_c(n__, mtrx__.blacs_grid().num_ranks_col(), mtrx__.blacs_grid().rank_col(), mtrx__.bs_col());
+    
+    double max_diff{0};
+    for (int i = 0; i < spl_c.local_size(); i++) {
+        for (int j = 0; j < spl_r.local_size(); j++) {
+            max_diff = std::max(max_diff, std::abs(mtrx__(j, i) - tmp(j, i)));
+        }
+    }
+    mtrx__.blacs_grid().comm().template allreduce<double, mpi_op_t::max>(&max_diff, 1);
+    return max_diff;
+}
 
 } // namespace sddk
 

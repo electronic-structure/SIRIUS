@@ -111,6 +111,11 @@ inline constexpr memory_t operator|(memory_t a__, memory_t b__)
     return static_cast<memory_t>(static_cast<unsigned int>(a__) | static_cast<unsigned int>(b__));
 }
 
+inline constexpr bool on_device(memory_t mem_type__)
+{
+    return (mem_type__ & memory_t::device) == memory_t::device ? true : false;
+}
+
 /// Index descriptor of mdarray.
 class mdarray_index_descriptor
 {
@@ -175,7 +180,7 @@ class mdarray_index_descriptor
     }
 };
 
-struct mdarray_mem_count // TODO: not clear if std::atomic can be mixed with openmp
+struct mdarray_mem_count
 {
     static std::atomic<int64_t>& allocated()
     {
@@ -450,12 +455,13 @@ class mdarray_base
 
         /* host allocation */
         if ((memory__ & memory_t::host) == memory_t::host) {
+            /* page-locked memory */
             if ((memory__ & memory_t::host_pinned) == memory_t::host_pinned) {
                 #ifdef __GPU
                 raw_ptr_    = acc::allocate_host<T>(sz);
                 unique_ptr_ = std::unique_ptr<T[], mdarray_mem_mgr<T>>(raw_ptr_, mdarray_mem_mgr<T>(sz, memory_t::host_pinned));
                 #endif
-            } else {
+            } else { /* regular mameory */
                 raw_ptr_    = static_cast<T*>(malloc(sz * sizeof(T)));
                 unique_ptr_ = std::unique_ptr<T[], mdarray_mem_mgr<T>>(raw_ptr_, mdarray_mem_mgr<T>(sz, memory_t::host));
             }
@@ -625,13 +631,27 @@ class mdarray_base
         return h;
     }
 
-    inline T checksum() const
+    inline T checksum_w(size_t idx0__, size_t size__) const
     {
         T cs{0};
-        for (size_t i = 0; i < size(); i++) {
-            cs += raw_ptr_[i];
+        for (size_t i = 0; i < size__; i++) {
+            cs += raw_ptr_[idx0__ + i] * static_cast<double>((i & 0xF) - 8);
         }
         return cs;
+    }
+
+    inline T checksum(size_t idx0__, size_t size__) const
+    {
+        T cs{0};
+        for (size_t i = 0; i < size__; i++) {
+            cs += raw_ptr_[idx0__ + i];
+        }
+        return cs;
+    }
+
+    inline T checksum() const
+    {
+        return checksum(0, size());
     }
 
     //== template <device_t pu>
@@ -767,11 +787,6 @@ class mdarray_base
     {
         acc::copyout(raw_ptr_, raw_ptr_device_, size(), stream_id__);
     }
-
-    //void zero_on_device()
-    //{
-    //    acc::zero(raw_ptr_device_, size());
-    //}
     #endif
 
     inline bool on_device() const

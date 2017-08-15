@@ -186,16 +186,17 @@ __global__ void add_square_sum_gpu_kernel
         __syncthreads();
     }
 
-    if (!reduced__) {
-        result__[blockIdx.x] += sdata[0];
-    }
-    else {
-        if (mpi_rank__ == 0) {
-            double x = wf__[array2D_offset(0, blockIdx.x, num_rows_loc__)].x;
-            result__[blockIdx.x] += (2 * sdata[0] - x * x);
-        }
-        else {
-            result__[blockIdx.x] += 2 * sdata[0];
+    if (threadIdx.x == 0) {
+        if (!reduced__) {
+            result__[blockIdx.x] += sdata[0];
+        } else {
+            if (mpi_rank__ == 0) {
+                double x = wf__[array2D_offset(0, blockIdx.x, num_rows_loc__)].x;
+                result__[blockIdx.x] += (2 * sdata[0] - x * x);
+            }
+            else {
+                result__[blockIdx.x] += 2 * sdata[0];
+            }
         }
     }
 }

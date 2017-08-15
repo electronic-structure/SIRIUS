@@ -43,6 +43,8 @@
 #ifdef __MAGMA
 #include "GPU/magma.hpp"
 #endif
+#include "constants.h"
+#include "version.h"
 
 #ifdef __PLASMA
 extern "C" void plasma_init(int num_cores);
@@ -60,6 +62,9 @@ namespace sirius {
     {
         if (call_mpi_init__) {
             Communicator::initialize();
+        }
+        if (mpi_comm_world().rank() == 0) {
+            printf("SIRIUS %i.%i, git hash: %s\n", major_version, minor_version, git_hash);
         }
 
         #ifdef __GPU
@@ -408,3 +413,17 @@ make
 //! Exceptions are allowed if it makes sense. For example, low level utility classes like 'mdarray' (multi-dimentional
 //! array) or 'pstdout' (parallel standard output) are named with small letters. 
 //!
+
+/** \page fderiv Functional derivatives
+    
+    Definition:
+    \f[
+      \frac{dF[f+\epsilon \eta ]}{d \epsilon}\Bigg\rvert_{\epsilon = 0} := \int \frac{\delta F[f]}{\delta f(x')} \eta(x') dx'
+    \f]
+    Alternative definition is:
+    \f[
+      \frac{\delta F[f(x)]}{\delta f(x')} = \lim_{\epsilon \to 0} \frac{F[f(x) + \epsilon \delta(x-x')] - F[f(x)]}{\epsilon}
+    \f]
+
+
+*/

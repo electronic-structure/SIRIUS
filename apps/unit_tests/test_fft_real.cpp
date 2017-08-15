@@ -74,8 +74,8 @@ void test2(vector3d<int> const& dims__, double cutoff__, device_t pu__)
 
     mdarray<double_complex, 1> phi1(gvec_r.partition().gvec_count_fft());
     mdarray<double_complex, 1> phi2(gvec_r.partition().gvec_count_fft());
-    mdarray<double, 1> phi1_rg(fft.local_size());
-    mdarray<double, 1> phi2_rg(fft.local_size());
+    mdarray<double_complex, 1> phi1_rg(fft.local_size());
+    mdarray<double_complex, 1> phi2_rg(fft.local_size());
 
     for (int i = 0; i < gvec_r.partition().gvec_count_fft(); i++) {
         phi1(i) = type_wrapper<double_complex>::random();
@@ -90,16 +90,30 @@ void test2(vector3d<int> const& dims__, double cutoff__, device_t pu__)
     fft.transform<1>(gvec_r.partition(), &phi2(0));
     fft.output(&phi2_rg(0));
 
+    for (int i = 0; i < fft.local_size(); i++) {
+        if (phi1_rg(i).imag() > 1e-10) {
+            printf("phi1 is not real at idx = %i, image value: %18.12f\n", i, phi1_rg(i).imag());
+            exit(1);
+        }
+        if (phi2_rg(i).imag() > 1e-10) {
+            printf("phi2 is not real at idx = %i, image value: %18.12f\n", i, phi2_rg(i).imag());
+            exit(1);
+        }
+    }
+
     fft.transform<1>(gvec_r.partition(), &phi1(0), &phi2(0));
 
     mdarray<double_complex, 1> phi12_rg(fft.local_size());
     fft.output(&phi12_rg(0));
 
+    //printf("phi1(0)=%18.10f\n", phi1_rg(0));
+    //printf("phi2(0)=%18.10f\n", phi2_rg(0));
+
     for (int i = 0; i < fft.local_size(); i++) {
-        if (std::abs(double_complex(phi1_rg(i), phi2_rg(i)) - phi12_rg(i)) > 1e-10) {
+        if (std::abs(double_complex(phi1_rg(i).real(), phi2_rg(i).real()) - phi12_rg(i)) > 1e-10) {
             printf("functions don't match\n");
-            printf("phi1: %18.10f\n", phi1_rg(i));
-            printf("phi2: %18.10f\n", phi2_rg(i));
+            printf("phi1: %18.10f\n", phi1_rg(i).real());
+            printf("phi2: %18.10f\n", phi2_rg(i).real());
             printf("complex phi: %18.10f %18.10f\n", fft.buffer(i).real(), fft.buffer(i).imag());
             exit(1);
         }
@@ -123,6 +137,92 @@ void test2(vector3d<int> const& dims__, double cutoff__, device_t pu__)
 
     fft.dismiss();
 }
+
+#ifdef __GPU
+void test3(vector3d<int> const& dims__, double cutoff__)
+{
+    printf("test3\n");
+    matrix3d<double> M;
+    M(0, 0) = M(1, 1) = M(2, 2) = 1.0;
+
+    FFT3D fft(find_translations(cutoff__, M), mpi_comm_world(), GPU);
+
+    Gvec gvec_r(M, cutoff__, mpi_comm_world(), mpi_comm_world(), true);
+
+    fft.prepare(gvec_r.partition());
+
+    mdarray<double_complex, 1> phi1(gvec_r.partition().gvec_count_fft(), memory_t::host | memory_t::device);
+    mdarray<double_complex, 1> phi2(gvec_r.partition().gvec_count_fft(), memory_t::host | memory_t::device);
+    mdarray<double_complex, 1> phi1_rg(fft.local_size());
+    mdarray<double_complex, 1> phi2_rg(fft.local_size());
+
+    for (int i = 0; i < gvec_r.partition().gvec_count_fft(); i++) {
+        phi1(i) = type_wrapper<double_complex>::random();
+        phi2(i) = type_wrapper<double_complex>::random();
+    }
+    phi1(0) = 1.0;
+    phi2(0) = 1.0;
+
+    phi1.copy<memory_t::host, memory_t::device>();
+    phi2.copy<memory_t::host, memory_t::device>();
+
+    fft.transform<1, GPU>(gvec_r.partition(), phi1.at<GPU>());
+    fft.output(&phi1_rg(0));
+
+    fft.transform<1, GPU>(gvec_r.partition(), phi2.at<GPU>());
+    fft.output(&phi2_rg(0));
+
+    for (int i = 0; i < fft.local_size(); i++) {
+        if (phi1_rg(i).imag() > 1e-10) {
+            printf("phi1 is not real at idx = %i, image value: %18.12f\n", i, phi1_rg(i).imag());
+            exit(1);
+        }
+        if (phi2_rg(i).imag() > 1e-10) {
+            printf("phi2 is not real at idx = %i, image value: %18.12f\n", i, phi2_rg(i).imag());
+            exit(1);
+        }
+    }
+
+    fft.transform<1, GPU>(gvec_r.partition(), phi1.at<GPU>(), phi2.at<GPU>());
+
+    mdarray<double_complex, 1> phi12_rg(fft.local_size());
+    fft.output(&phi12_rg(0));
+
+    //printf("phi1(0)=%18.10f\n", phi1_rg(0));
+    //printf("phi2(0)=%18.10f\n", phi2_rg(0));
+
+    for (int i = 0; i < fft.local_size(); i++) {
+        if (std::abs(double_complex(phi1_rg(i).real(), phi2_rg(i).real()) - phi12_rg(i)) > 1e-10) {
+            printf("functions don't match\n");
+            printf("phi1: %18.10f\n", phi1_rg(i).real());
+            printf("phi2: %18.10f\n", phi2_rg(i).real());
+            printf("complex phi: %18.10f %18.10f\n", fft.buffer(i).real(), fft.buffer(i).imag());
+            exit(1);
+        }
+    }
+
+    mdarray<double_complex, 1> phi1_bt(gvec_r.partition().gvec_count_fft(), memory_t::host | memory_t::device);
+    mdarray<double_complex, 1> phi2_bt(gvec_r.partition().gvec_count_fft(), memory_t::host | memory_t::device);
+    fft.transform<-1, GPU>(gvec_r.partition(), phi1_bt.at<GPU>(), phi2_bt.at<GPU>());
+
+    phi1_bt.copy<memory_t::device, memory_t::host>();
+    phi2_bt.copy<memory_t::device, memory_t::host>();
+
+    double diff{0};
+    for (int i = 0; i < gvec_r.partition().gvec_count_fft(); i++) {
+        diff += std::abs(phi1(i) - phi1_bt(i));
+        diff += std::abs(phi2(i) - phi2_bt(i));
+    }
+    diff /= gvec_r.partition().gvec_count_fft();
+    printf("diff: %18.10f\n", diff);
+    if (diff > 1e-13) {
+        printf("functions are different\n");
+        exit(1);
+    }
+
+    fft.dismiss();
+}
+#endif
 
 int main(int argn, char **argv)
 {
@@ -149,6 +249,7 @@ int main(int argn, char **argv)
     #ifdef __GPU
     test1(dims, cutoff, GPU);
     test2(dims, cutoff, GPU);
+    test3(dims, cutoff);
     #endif
     
     sirius::finalize();

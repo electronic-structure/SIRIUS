@@ -137,7 +137,6 @@ class Band
         /// Iterative Davidson diagonalization.
         template <typename T>
         inline void diag_pseudo_potential_davidson(K_point* kp__,
-                                                   int ispn__,
                                                    D_operator<T>& d_op__,
                                                    Q_operator<T>& q_op__) const;
         /// RMM-DIIS diagonalization.
@@ -168,48 +167,93 @@ class Band
                        int ispn__, 
                        int N__,
                        int n__,
-                       wave_functions& phi__,
-                       wave_functions& hphi__,
-                       wave_functions& ophi__,
+                       Wave_functions& phi__,
+                       Wave_functions& hphi__,
+                       Wave_functions& ophi__,
                        D_operator<T>& d_op,
                        Q_operator<T>& q_op) const;
 
         /// Auxiliary function used internally by residuals() function.
-        inline mdarray<double,1> residuals_aux(K_point* kp__,
-                                               int num_bands__,
-                                               std::vector<double>& eval__,
-                                               wave_functions& hpsi__,
-                                               wave_functions& opsi__,
-                                               wave_functions& res__,
-                                               mdarray<double, 1>& h_diag__,
-                                               mdarray<double, 1>& o_diag__) const;
+        inline mdarray<double, 1> residuals_aux(K_point*             kp__,
+                                                int                  ispn__,
+                                                int                  num_bands__,
+                                                std::vector<double>& eval__,
+                                                wave_functions&      hpsi__,
+                                                wave_functions&      opsi__,
+                                                wave_functions&      res__,
+                                                mdarray<double, 2>&  h_diag__,
+                                                mdarray<double, 1>&  o_diag__) const;
+
+        /// Auxiliary function used internally by residuals() function.
+        inline mdarray<double, 1> residuals_aux(K_point*             kp__,
+                                                int                  ispn__,
+                                                int                  num_bands__,
+                                                std::vector<double>& eval__,
+                                                Wave_functions&      hpsi__,
+                                                Wave_functions&      opsi__,
+                                                Wave_functions&      res__,
+                                                mdarray<double, 2>&  h_diag__,
+                                                mdarray<double, 1>&  o_diag__) const;
         
-        /// Compute residuals.
-        template <typename T>
-        inline int residuals(K_point* kp__,
-                             int ispn__,
-                             int N__,
-                             int num_bands__,
+        template <typename T, typename wave_functions_t>
+        int residuals_common(K_point*             kp__,
+                             int                  ispn__,
+                             int                  N__,
+                             int                  num_bands__,
                              std::vector<double>& eval__,
                              std::vector<double>& eval_old__,
-                             dmatrix<T>& evec__,
-                             wave_functions& hphi__,
-                             wave_functions& ophi__,
-                             wave_functions& hpsi__,
-                             wave_functions& opsi__,
-                             wave_functions& res__,
-                             mdarray<double, 1>& h_diag__,
-                             mdarray<double, 1>& o_diag__) const;
+                             dmatrix<T>&          evec__,
+                             wave_functions_t&    hphi__,
+                             wave_functions_t&    ophi__,
+                             wave_functions_t&    hpsi__,
+                             wave_functions_t&    opsi__,
+                             wave_functions_t&    res__,
+                             mdarray<double, 2>&  h_diag__,
+                             mdarray<double, 1>&  o_diag__) const;
+
+        /// Compute residuals.
+        template <typename T>
+        inline int residuals(K_point*             kp__,
+                             int                  ispn__,
+                             int                  N__,
+                             int                  num_bands__,
+                             std::vector<double>& eval__,
+                             std::vector<double>& eval_old__,
+                             dmatrix<T>&          evec__,
+                             wave_functions&      hphi__,
+                             wave_functions&      ophi__,
+                             wave_functions&      hpsi__,
+                             wave_functions&      opsi__,
+                             wave_functions&      res__,
+                             mdarray<double, 2>&  h_diag__,
+                             mdarray<double, 1>&  o_diag__) const;
+
+        /// Compute residuals.
+        template <typename T>
+        inline int residuals(K_point*             kp__,
+                             int                  ispn__,
+                             int                  N__,
+                             int                  num_bands__,
+                             std::vector<double>& eval__,
+                             std::vector<double>& eval_old__,
+                             dmatrix<T>&          evec__,
+                             Wave_functions&      hphi__,
+                             Wave_functions&      ophi__,
+                             Wave_functions&      hpsi__,
+                             Wave_functions&      opsi__,
+                             Wave_functions&      res__,
+                             mdarray<double, 2>&  h_diag__,
+                             mdarray<double, 1>&  o_diag__) const;
         
-        /// Setup the Hermitian subspace matrix.
         /** Compute \f$ O_{ii'} = \langle \phi_i | \hat O | \phi_{i'} \rangle \f$ operator matrix
          *  for the subspace spanned by the wave-functions \f$ \phi_i \f$. The matrix is always returned
          *  in the CPU pointer because most of the standard math libraries start from the CPU. */
-        template <typename T>
-        inline void set_subspace_mtrx(int N__,
-                                      int n__,
-                                      wave_functions& phi__,
-                                      wave_functions& op_phi__,
+        template <typename T, typename W>
+        inline void set_subspace_mtrx(int         num_sc__,
+                                      int         N__,
+                                      int         n__,
+                                      W&          phi__,
+                                      W&          op_phi__,
                                       dmatrix<T>& mtrx__,
                                       dmatrix<T>& mtrx_old__) const
         {
@@ -232,7 +276,7 @@ class Band
             }
 
             /* <{phi,phi_new}|Op|phi_new> */
-            inner(phi__, 0, N__ + n__, op_phi__, N__, n__, mtrx__, 0, N__);
+            inner(num_sc__, phi__, 0, N__ + n__, op_phi__, N__, n__, mtrx__, 0, N__);
             
             /* restore lower part */
             if (N__ > 0) {
@@ -258,7 +302,9 @@ class Band
                     }
                 }
                 mtrx__.blacs_grid().comm().allreduce(&cs, 1);
-                DUMP("checksum(subspace_mtrx): %18.10f %18.10f", cs.real(), cs.imag());
+                if (mtrx__.blacs_grid().comm().rank() == 0) {
+                    print_checksum("subspace_mtrx", cs);
+                }
             }
 
             mtrx__.make_real_diag(N__ + n__);
@@ -311,13 +357,7 @@ class Band
                     STOP();
                 }
             } else if (itso.type_ == "davidson") {
-                if (ctx_.num_mag_dims() != 3) {
-                    for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-                        diag_pseudo_potential_davidson(kp__, ispn, d_op, q_op);
-                    }
-                } else {
-                    STOP();
-                }
+                diag_pseudo_potential_davidson(kp__, d_op, q_op);
             } else if (itso.type_ == "rmm-diis") {
                 if (ctx_.num_mag_dims() != 3) {
                     for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
@@ -746,7 +786,7 @@ class Band
         }
 
         /// Get diagonal elements of LAPW Hamiltonian.
-        inline mdarray<double, 1> get_h_diag(K_point* kp__,
+        inline mdarray<double, 2> get_h_diag(K_point* kp__,
                                              double v0__,
                                              double theta0__) const;
 
@@ -756,25 +796,25 @@ class Band
 
         /// Get diagonal elements of pseudopotential Hamiltonian.
         template <typename T>
-        inline mdarray<double, 1> get_h_diag(K_point* kp__,
-                                             int ispn__,
-                                             double v0__,
-                                             D_operator<T>& d_op__) const;
+        inline mdarray<double, 2> get_h_diag(K_point*        kp__,
+                                             Local_operator& v_loc__,
+                                             D_operator<T>&  d_op__) const;
 
         /// Get diagonal elements of pseudopotential overlap matrix.
         template <typename T>
-        inline mdarray<double, 1> get_o_diag(K_point* kp__,
+        inline mdarray<double, 1> get_o_diag(K_point*       kp__,
                                              Q_operator<T>& q_op__) const;
 
+        /// Initialize the subspace for the entire k-point set.
         inline void initialize_subspace(K_point_set& kset__,
-                                        Potential& potential__) const;
+                                        Potential&   potential__) const;
 
         /// Initialize the wave-functions subspace.
         template <typename T>
-        inline void initialize_subspace(K_point* kp__,
-                                        Periodic_function<double>* effective_potential__,
-                                        Periodic_function<double>* effective_magnetic_field[3],
-                                        int num_ao__,
+        inline void initialize_subspace(K_point*                                        kp__,
+                                        Periodic_function<double>*                      effective_potential__,
+                                        Periodic_function<double>*                      effective_magnetic_field[3],
+                                        int                                             num_ao__,
                                         std::vector<std::vector<Spline<double>>> const& rad_int__) const;
 };
 

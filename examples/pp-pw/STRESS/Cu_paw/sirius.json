@@ -5,7 +5,9 @@
       "!std_evp_solver_type" : "lapack",
       "!gen_evp_solver_type" : "lapack",
 	  "verbosity": 1,
-	"reduce_gvec": true
+	"reduce_gvec": true,
+        "print_stress" : true,
+        "print_forces" : true
   },
 
   "parameters" : {
@@ -16,7 +18,7 @@
 
     "smearing_width" : 0.02,
 
-    "use_symmetry" : 1,
+    "use_symmetry" : true,
 
     "num_mag_dims" : 0,
 

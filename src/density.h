@@ -53,6 +53,13 @@ extern "C" void update_density_rg_1_gpu(int size__,
                                         double_complex const* psi_rg__, 
                                         double wt__, 
                                         double* density_rg__);
+
+extern "C" void update_density_rg_2_gpu(int size__, 
+                                        double_complex const* psi_rg_up__, 
+                                        double_complex const* psi_rg_dn__, 
+                                        double wt__, 
+                                        double* density_x_rg__,
+                                        double* density_y_rg__);
 #endif
 
 namespace sirius {
@@ -132,12 +139,14 @@ namespace sirius {
  *  quadratic forms in radial functions. 
  *
  *  \note density and potential are allocated as global function because it's easier to load and save them. */
-class Density // TODO: return rho_vec
+class Density
 {
     private:
 
+        /// Context of the simulation.
         Simulation_context& ctx_;
         
+        /// Alias to ctx_.unit_cell()
         Unit_cell& unit_cell_;
 
         /// Density matrix for all atoms.
@@ -162,7 +171,13 @@ class Density // TODO: return rho_vec
         /// Pointer to charge density.
         /** In the case of full-potential calculation this is the full (valence + core) electron charge density.
          *  In the case of pseudopotential this is the valence charge density. */ 
-        Periodic_function<double>* rho_;
+        std::unique_ptr<Periodic_function<double>> rho_{nullptr};
+
+        /// Magnetization.
+        std::array<std::unique_ptr<Periodic_function<double>>, 3> magnetization_;
+
+        /// Alias for density and magnetization.
+        std::array<Periodic_function<double>*, 4> rho_vec_{{nullptr, nullptr, nullptr, nullptr}};
         
         /// Density and magnetization on the coarse FFT mesh.
         /** Coarse FFT grid is enough to generate density and magnetization from the wave-functions. The components
@@ -175,9 +190,7 @@ class Density // TODO: return rho_vec
          *  exchange-correlation energy which is introduced trough the pseudo core density: 
          *  \f$ E_{xc}[\rho_{val} + \rho_{core}] \f$. The 'pseudo' reflects the fact that 
          *  this density integrated does not reproduce the total number of core elctrons. */
-        std::unique_ptr<Periodic_function<double>> rho_pseudo_core_{nullptr};
-        
-        Periodic_function<double>* magnetization_[3];
+        std::unique_ptr<Smooth_periodic_function<double>> rho_pseudo_core_{nullptr};
         
         /// Non-zero Gaunt coefficients.
         std::unique_ptr<Gaunt_coefficients<double_complex>> gaunt_coefs_{nullptr};
@@ -193,9 +206,14 @@ class Density // TODO: return rho_vec
 
         /// Mixer for the full-potential density mixing.
         std::unique_ptr<Mixer<double>> mixer_{nullptr};
-
+        
+        /// List of local low-fequency G-vectors.
         std::vector<int> lf_gvec_;
+
+        /// List of local high-fequency G-vectors.
         std::vector<int> hf_gvec_;
+
+        /// Weights of local low-frequency G-vectors.
         std::vector<double> lf_gvec_weights_;
 
         /// Allocate PAW data.
@@ -258,12 +276,12 @@ class Density // TODO: return rho_vec
          *          \langle Y_{\ell m} | R_{\ell_3 m_3} | Y_{\ell' m'} \rangle
          *  \f] 
          */
-        template <int num_mag_dims, typename T>
-        void reduce_density_matrix(Atom_type                  const& atom_type__,
-                                   int                               ia__,
-                                   mdarray<double_complex, 4> const& zdens__,
-                                   Gaunt_coefficients<T>      const& gaunt_coeffs__,
-                                   mdarray<double, 3>&               mt_density_matrix__)
+        template <int num_mag_dims>
+        void reduce_density_matrix(Atom_type const&                          atom_type__,
+                                   int                                       ia__,
+                                   mdarray<double_complex, 4> const&         zdens__,
+                                   Gaunt_coefficients<double_complex> const& gaunt_coeffs__,
+                                   mdarray<double, 3>&                       mt_density_matrix__)
         {
             mt_density_matrix__.zero();
             
@@ -280,7 +298,7 @@ class Density // TODO: return rho_vec
                         for (int lm1 = Utils::lm_by_l_m(l1, -l1); lm1 <= Utils::lm_by_l_m(l1, l1); lm1++, xi1++) {
                             for (int k = 0; k < gaunt_coeffs__.num_gaunt(lm1, lm2); k++) {
                                 int lm3 = gaunt_coeffs__.gaunt(lm1, lm2, k).lm3;
-                                T gc = gaunt_coeffs__.gaunt(lm1, lm2, k).coef;
+                                auto gc = gaunt_coeffs__.gaunt(lm1, lm2, k).coef;
                                 switch (num_mag_dims) {
                                     case 3: {
                                         mt_density_matrix__(lm3, offs, 2) += 2.0 * std::real(zdens__(xi1, xi2, 2, ia__) * gc); 
@@ -354,7 +372,7 @@ class Density // TODO: return rho_vec
         {
             PROFILE("sirius::Density::generate_pseudo_core_charge_density");
 
-            auto ri = Radial_integrals_rho_core_pseudo<false>(ctx_.unit_cell(), ctx_.pw_cutoff(), 20);
+            auto ri = Radial_integrals_rho_core_pseudo<false>(ctx_.unit_cell(), ctx_.pw_cutoff(), ctx_.settings().nprii_rho_core_);
 
             auto v = ctx_.make_periodic_function<index_domain_t::local>([&ri](int iat, double g)
                                                                         {
@@ -371,24 +389,29 @@ class Density // TODO: return rho_vec
             : ctx_(ctx__)
             , unit_cell_(ctx_.unit_cell())
         {
-            rho_ = new Periodic_function<double>(ctx_, ctx_.lmmax_rho());
-
+            /* allocate charge density */
+            rho_ = std::unique_ptr<Periodic_function<double>>(new Periodic_function<double>(ctx_, ctx_.lmmax_rho()));
+            rho_vec_[0] = rho_.get();
+            
+            /* allocate magnetization density */
+            for (int i = 0; i < ctx_.num_mag_dims(); i++) {
+                magnetization_[i] = std::unique_ptr<Periodic_function<double>>(new Periodic_function<double>(ctx_, ctx_.lmmax_rho()));
+                rho_vec_[i + 1] = magnetization_[i].get();
+            }
+            
+            /*  allocate charge density and magnetization on a coarse grid */
             for (int i = 0; i < ctx_.num_mag_dims() + 1; i++) {
                 rho_mag_coarse_[i] = std::unique_ptr<Smooth_periodic_function<double>>(new Smooth_periodic_function<double>(ctx_.fft_coarse(), ctx_.gvec_coarse()));
             }
 
             /* core density of the pseudopotential method */
             if (!ctx_.full_potential()) {
-                rho_pseudo_core_ = std::unique_ptr<Periodic_function<double>>(new Periodic_function<double>(ctx_, 0));
+                rho_pseudo_core_ = std::unique_ptr<Smooth_periodic_function<double>>(new Smooth_periodic_function<double>(ctx_.fft(), ctx_.gvec()));
                 rho_pseudo_core_->zero();
 
                 generate_pseudo_core_charge_density();
             }
 
-            for (int i = 0; i < ctx_.num_mag_dims(); i++) {
-                magnetization_[i] = new Periodic_function<double>(ctx_, ctx_.lmmax_rho());
-            }
-            
             if (ctx_.full_potential()) {
                 using gc_z = Gaunt_coefficients<double_complex>;
                 gaunt_coefs_ = std::unique_ptr<gc_z>(new gc_z(ctx_.lmax_apw(), ctx_.lmax_rho(), ctx_.lmax_apw(), SHT::gaunt_hybrid));
@@ -398,6 +421,7 @@ class Density // TODO: return rho_vec
 
             density_matrix_ = mdarray<double_complex, 4>(unit_cell_.max_mt_basis_size(), unit_cell_.max_mt_basis_size(), 
                                                          ctx_.num_mag_comp(), unit_cell_.num_atoms());
+            density_matrix_.zero();
 
             /* split local G-vectors to low-frequency and high-frequency */
             for (int igloc = 0; igloc < ctx_.gvec().count(); igloc++) {
@@ -416,15 +440,6 @@ class Density // TODO: return rho_vec
             }
         }
         
-        /// Destructor
-        ~Density()
-        {
-            delete rho_;
-            for (int j = 0; j < ctx_.num_mag_dims(); j++) {
-                delete magnetization_[j];
-            }
-        }
-
         /// Set pointers to muffin-tin and interstitial charge density arrays
         void set_charge_density_ptr(double* rhomt, double* rhorg)
         {
@@ -609,15 +624,8 @@ class Density // TODO: return rho_vec
                 return;
             }
 
-            /* collect density and magnetization into single array */
-            std::vector<Periodic_function<double>*> rho_vec(ctx_.num_mag_dims() + 1);
-            rho_vec[0] = rho_;
-            for (int j = 0; j < ctx_.num_mag_dims(); j++) {
-                rho_vec[1 + j] = magnetization_[j];
-            }
-
             //if (ctx_.control().print_checksum_) {
-            //    for (auto e: rho_vec) {
+            //    for (auto e: rho_vec_) {
             //        auto cs = e->checksum_pw();
             //        DUMP("checksum(rho_vec_pw): %20.14f %20.14f", cs.real(), cs.imag());
             //    }
@@ -627,11 +635,11 @@ class Density // TODO: return rho_vec
 
             switch (ctx_.processing_unit()) {
                 case CPU: {
-                    generate_rho_aug<CPU>(rho_vec, rho_aug);
+                    generate_rho_aug<CPU>(rho_aug);
                     break;
                 }
                 case GPU: {
-                    generate_rho_aug<GPU>(rho_vec, rho_aug);
+                    generate_rho_aug<GPU>(rho_aug);
                     break;
                 }
             }
@@ -639,19 +647,16 @@ class Density // TODO: return rho_vec
             for (int iv = 0; iv < ctx_.num_mag_dims() + 1; iv++) {
                 #pragma omp parallel for
                 for (int igloc = 0; igloc < ctx_.gvec().count(); igloc++) {
-                    rho_vec[iv]->f_pw_local(igloc) += rho_aug(igloc, iv);
+                    rho_vec_[iv]->f_pw_local(igloc) += rho_aug(igloc, iv);
                 }
             }
         }
 
         template <device_t pu>
-        inline void generate_rho_aug(std::vector<Periodic_function<double>*> rho__,
-                                     mdarray<double_complex, 2>& rho_aug__);
+        inline void generate_rho_aug(mdarray<double_complex, 2>& rho_aug__);
 
         /// Check density at MT boundary
         void check_density_continuity_at_mt();
-
-        //mdarray<double, 2> generate_rho_radial_integrals(int type__);
 
         void generate_pw_coefs()
         {
@@ -792,24 +797,24 @@ class Density // TODO: return rho_vec
             //== fclose(fout);
         }
 
-        Periodic_function<double>* rho()
+        Periodic_function<double>& rho()
         {
-            return rho_;
+            return *rho_;
         }
         
-        Periodic_function<double>& rho_pseudo_core()
+        Smooth_periodic_function<double>& rho_pseudo_core()
         {
             return *rho_pseudo_core_;
         }
         
-        Periodic_function<double>** magnetization()
+        std::array<Periodic_function<double>*, 3> magnetization()
         {
-            return magnetization_;
+            return {magnetization_[0].get(), magnetization_[1].get(), magnetization_[2].get()};
         }
 
-        Periodic_function<double>* magnetization(int i)
+        Periodic_function<double>& magnetization(int i)
         {
-            return magnetization_[i];
+            return *(magnetization_[i]);
         }
 
         Spheric_function<spectral, double> const& density_mt(int ialoc) const
@@ -817,7 +822,7 @@ class Density // TODO: return rho_vec
             return rho_->f_mt(ialoc);
         }
 
-        /// generate n_1 and \tilda{n}_1 in lm components
+        /// Generate \f$ n_1 \f$  and \f$ \tilde{n}_1 \f$ in lm components.
         void generate_paw_loc_density();
 
         mdarray<double, 2> const& ae_paw_atom_density(int spl_paw_ind) const
@@ -853,19 +858,12 @@ class Density // TODO: return rho_vec
             if (ctx_.full_potential()) {
                 STOP();
             } else {
-                /* collect density and magnetization into single array */
-                std::vector<Periodic_function<double>*> rho_vec(ctx_.num_mag_dims() + 1);
-                rho_vec[0] = rho_;
-                for (int j = 0; j < ctx_.num_mag_dims(); j++) {
-                    rho_vec[1 + j] = magnetization_[j];
-                }
-
                 int ld = static_cast<int>(hf_gvec_.size());
                 /* input high-frequency components */
                 for (int j = 0; j < ctx_.num_mag_dims() + 1; j++) {
                     for (int i = 0; i < static_cast<int>(hf_gvec_.size()); i++) {
                         int igloc = hf_gvec_[i];
-                        hf_mixer_->input_local(i + j * ld, rho_vec[j]->f_pw_local(igloc));
+                        hf_mixer_->input_local(i + j * ld, rho_vec_[j]->f_pw_local(igloc));
                     }
                 }
                 ld = static_cast<int>(lf_gvec_.size());
@@ -874,12 +872,12 @@ class Density // TODO: return rho_vec
                     if (j == 0) {
                         for (int i = 0; i < static_cast<int>(lf_gvec_.size()); i++) {
                             int igloc = lf_gvec_[i];
-                            lf_mixer_->input_local(i + j * ld, rho_vec[j]->f_pw_local(igloc), lf_gvec_weights_[i]);
+                            lf_mixer_->input_local(i + j * ld, rho_vec_[j]->f_pw_local(igloc), lf_gvec_weights_[i]);
                         }
                     } else {
                         for (int i = 0; i < static_cast<int>(lf_gvec_.size()); i++) {
                             int igloc = lf_gvec_[i];
-                            lf_mixer_->input_local(i + j * ld, rho_vec[j]->f_pw_local(igloc));
+                            lf_mixer_->input_local(i + j * ld, rho_vec_[j]->f_pw_local(igloc));
                         }
                     }
                 }
@@ -895,19 +893,12 @@ class Density // TODO: return rho_vec
             if (ctx_.full_potential()) {
                 STOP();
             } else {
-                /* collect density and magnetization into single array */
-                std::vector<Periodic_function<double>*> rho_vec(ctx_.num_mag_dims() + 1);
-                rho_vec[0] = rho_;
-                for (int j = 0; j < ctx_.num_mag_dims(); j++) {
-                    rho_vec[1 + j] = magnetization_[j];
-                }
-
                 int ld = static_cast<int>(hf_gvec_.size());
                 /* get high-frequency components */
                 for (int j = 0; j < ctx_.num_mag_dims() + 1; j++) {
                     for (int i = 0; i < static_cast<int>(hf_gvec_.size()); i++) {
                         int igloc = hf_gvec_[i];
-                        rho_vec[j]->f_pw_local(igloc) = hf_mixer_->output_local(i + j * ld);
+                        rho_vec_[j]->f_pw_local(igloc) = hf_mixer_->output_local(i + j * ld);
                     }
                 }
 
@@ -916,7 +907,7 @@ class Density // TODO: return rho_vec
                 for (int j = 0; j < ctx_.num_mag_dims() + 1; j++) {
                     for (int i = 0; i < static_cast<int>(lf_gvec_.size()); i++) {
                         int igloc = lf_gvec_[i];
-                        rho_vec[j]->f_pw_local(igloc) = lf_mixer_->output_local(i + j * ld);
+                        rho_vec_[j]->f_pw_local(igloc) = lf_mixer_->output_local(i + j * ld);
                     }
                 }
 
@@ -991,6 +982,11 @@ class Density // TODO: return rho_vec
             return density_matrix_;
         }
 
+        mdarray<double_complex, 4>& density_matrix()
+        {
+            return density_matrix_;
+        }
+
         inline void fft_transform(int direction__)
         {
             rho_->fft_transform(direction__);
@@ -1015,13 +1011,17 @@ class Density // TODO: return rho_vec
                     for (int xi1 = 0; xi1 <= xi2; xi1++) {
                         int idx12 = xi2 * (xi2 + 1) / 2 + xi1;
                         switch (ctx_.num_mag_dims()) {
-                            case 0: {
-                                dm(idx12, i, 0) = density_matrix_(xi2, xi1, 0, ia).real();
-                                break;
+                            case 3: {
+                                dm(idx12, i, 2) = 2 * std::real(density_matrix_(xi2, xi1, 2, ia));
+                                dm(idx12, i, 3) = -2 * std::imag(density_matrix_(xi2, xi1, 2, ia));
                             }
                             case 1: {
                                 dm(idx12, i, 0) = std::real(density_matrix_(xi2, xi1, 0, ia) + density_matrix_(xi2, xi1, 1, ia));
                                 dm(idx12, i, 1) = std::real(density_matrix_(xi2, xi1, 0, ia) - density_matrix_(xi2, xi1, 1, ia));
+                                break;
+                            }
+                            case 0: {
+                                dm(idx12, i, 0) = density_matrix_(xi2, xi1, 0, ia).real();
                                 break;
                             }
                         }
