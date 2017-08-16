@@ -119,8 +119,8 @@ class Potential
 
             int ia_paw{-1};
 
-            mdarray<double, 3> ae_potential_; // TODO: -> Spheric_function
-            mdarray<double, 3> ps_potential_;
+            std::vector<Spheric_function<spectral, double>> ae_potential_;
+            std::vector<Spheric_function<spectral, double>> ps_potential_;
 
             double hartree_energy_{0.0};
             double xc_energy_{0.0};
@@ -166,9 +166,9 @@ class Potential
 
         void calc_PAW_local_Dij(paw_potential_data_t &pdd, mdarray<double_complex, 4>& paw_dij);
 
-        double calc_PAW_hartree_potential(Atom& atom, const Radial_grid<double>& grid,
+        double calc_PAW_hartree_potential(Atom& atom,
                                           Spheric_function<spectral, double> const& full_density,
-                                          mdarray<double, 3>& out_atom_pot);
+                                          Spheric_function<spectral, double>& full_potential);
 
         double calc_PAW_one_elec_energy(paw_potential_data_t &pdd,
                                         const mdarray<double_complex, 4>& density_matrix,

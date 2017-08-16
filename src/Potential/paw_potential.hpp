@@ -31,9 +31,13 @@ inline void Potential::init_PAW()
 
         ppd.ia_paw = ia_paw;
 
-        /* allocate potential */
-        ppd.ae_potential_ = mdarray<double, 3>(lm_max_rho, num_mt_points, ctx_.num_mag_dims() + 1, memory_t::host, "pdd.ae_potential_");
-        ppd.ps_potential_ = mdarray<double, 3>(lm_max_rho, num_mt_points, ctx_.num_mag_dims() + 1, memory_t::host, "pdd.ps_potential_");
+        /* allocate potential arrays*/
+        for (int i = 0; i < ctx_.num_mag_dims() + 1; i++) {
+            ppd.ae_potential_.push_back(Spheric_function<spectral, double>(lm_max_rho, ppd.atom_->radial_grid()));
+            ppd.ps_potential_.push_back(Spheric_function<spectral, double>(lm_max_rho, ppd.atom_->radial_grid()));
+        }
+//        ppd.ae_potential_ = mdarray<double, 3>(lm_max_rho, num_mt_points, ctx_.num_mag_dims() + 1, memory_t::host, "pdd.ae_potential_");
+//        ppd.ps_potential_ = mdarray<double, 3>(lm_max_rho, num_mt_points, ctx_.num_mag_dims() + 1, memory_t::host, "pdd.ps_potential_");
 
         ppd.core_energy_ = atom_type.pp_desc().core_energy;
 
@@ -219,11 +223,12 @@ inline double Potential::xc_mt_PAW_collinear(Radial_grid<double> const& rgrid,
 }
 
 inline double Potential::calc_PAW_hartree_potential(Atom& atom,
-                                                    const Radial_grid<double>& grid,
                                                     Spheric_function<spectral, double> const& full_density,
-                                                    mdarray<double, 3>& out_atom_pot)
+                                                    Spheric_function<spectral, double>& full_potential)
 {
     int lmsize_rho = static_cast<int>(out_atom_pot.size(0));
+
+    const Radial_grid<double>& grid = full_density.radial_grid();
 
     // array passed to poisson solver
     Spheric_function<spectral, double> atom_pot_sf(lmsize_rho, grid);
@@ -231,10 +236,8 @@ inline double Potential::calc_PAW_hartree_potential(Atom& atom,
 
     poisson_vmt<true>(atom, full_density, atom_pot_sf);
 
-    // make spher funcs from arrays
-    Spheric_function<spectral, double> out_atom_pot_sf(&out_atom_pot(0, 0, 0), lmsize_rho, grid);
-    out_atom_pot_sf += atom_pot_sf;
-
+    /* add hartree contribution */
+    full_potential += atom_pot_sf;
 
     //---------------------
     //--- calc energy ---
@@ -251,7 +254,7 @@ inline double Potential::calc_PAW_hartree_potential(Atom& atom,
         // fill data to integrate
         for(int irad = 0; irad < grid.num_points(); irad++)
         {
-            intdata[irad] = full_density(lm,irad) * out_atom_pot(lm, irad, 0) * grid[irad] * grid[irad];
+            intdata[irad] = full_density(lm,irad) * full_potential(lm, irad) * grid[irad] * grid[irad];
         }
 
         // create spline from the data
@@ -273,8 +276,11 @@ inline void Potential::calc_PAW_local_potential(paw_potential_data_t &pdd,
     //---- Calculation of Hartree potential ---
     //-----------------------------------------
 
-    pdd.ae_potential_.zero();
-    pdd.ps_potential_.zero();
+    for (int i = 0; i < ctx_.num_mag_dims() + 1; i++) {
+        ppd.ae_potential_[i].zero();
+        ppd.ps_potential_[i].zero();
+    }
+
 
     double ae_hartree_energy = calc_PAW_hartree_potential(*pdd.atom_,
                                                           pdd.atom_->radial_grid(),
