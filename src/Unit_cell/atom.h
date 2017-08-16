@@ -586,6 +586,11 @@ class Atom
         {
             return d_mtrx_(xi1, xi2, iv);
         }
+
+        inline mdarray<double, 3> const& d_mtrx() const
+        {
+            return d_mtrx_;
+        }
 };
 
 } // namespace

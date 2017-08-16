@@ -114,7 +114,7 @@ double ground_state(Simulation_context& ctx,
         double e1 = dict["ground_state"]["energy"]["total"];
         double e2 = dict_ref["ground_state"]["energy"]["total"];
 
-        if (std::abs(e1 - e2) > 1e-7) {
+        if (std::abs(e1 - e2) > 1e-6) {
             printf("total energy is different\n");
             sirius::terminate(1);
         }

@@ -1546,7 +1546,7 @@ void sirius_generate_rho_multipole_moments(ftn_int*            lmmax__,
         std::vector<double> tmp(lmmax);
         for (int lm = 0; lm < lmmax; lm++) {
             int l = l_by_lm[lm];
-            auto s = density->rho()->f_mt(ialoc).component(lm);
+            auto s = density->rho().f_mt(ialoc).component(lm);
             tmp[lm] = s.integrate(l + 2);
         }
         sirius::SHT::convert(Utils::lmax_by_lmmax(lmmax), tmp.data(), &qmt(0, ia));
@@ -1571,7 +1571,7 @@ void sirius_generate_coulomb_potential_mt(ftn_int*            ia__,
 void sirius_generate_coulomb_potential(ftn_double* vclmt__,
                                        ftn_double* vclit__)
 {
-    density->rho()->fft_transform(-1);
+    density->rho().fft_transform(-1);
     potential->poisson(density->rho(), potential->hartree_potential());
     potential->hartree_potential()->copy_to_global_ptr(vclmt__, vclit__);
 }
@@ -2163,7 +2163,7 @@ void sirius_set_atom_type_vloc(char const* label__,
 
 void sirius_symmetrize_density()
 {
-    dft_ground_state->symmetrize(density->rho(), density->magnetization(0), density->magnetization(1), density->magnetization(2));
+    dft_ground_state->symmetrize(&density->rho(), &density->magnetization(0), &density->magnetization(1), &density->magnetization(2));
 }
 
 void sirius_get_gvec_index(int32_t* gvec__, int32_t* ig__)
@@ -2809,7 +2809,6 @@ static std::vector<int> atomic_orbital_index_map_QE(sirius::Atom_type const& typ
 
     std::vector<int> idx_map(nbf);
     for (int xi = 0; xi < nbf; xi++) {
-        int lm      = type__.indexb(xi).lm;
         int m       = type__.indexb(xi).m;
         int idxrf   = type__.indexb(xi).idxrf;
         idx_map[xi] = type__.indexb().index_by_idxrf(idxrf) + idx_m_QE(m); /* beginning of lm-block + new offset in lm block */
@@ -2958,14 +2957,62 @@ void sirius_set_pw_coeffs(ftn_char label__,
             int ig = sim_ctx->gvec().index_by_gvec(G);
             if (ig >= 0) {
                 v[ig] = pw_coeffs__[i];
+            } else {
+                if (sim_ctx->gamma_point()) {
+                    ig = sim_ctx->gvec().index_by_gvec(G * (-1));
+                    if (ig == -1) {
+                        std::stringstream s;
+                        auto gvc = sim_ctx->unit_cell().reciprocal_lattice_vectors() * vector3d<double>(G[0], G[1], G[2]);
+                        s << "wrong index of G-vector" << std::endl
+                          << "input G-vector: " << G << " (length: " << gvc.length() << " [a.u.^-1])" << std::endl;
+                        TERMINATE(s);
+                    } else {
+                        v[ig] = std::conj(pw_coeffs__[i]);
+                    }
+                }
             }
+
+
+            //if (ig == -1) {
+            //    ig = sim_ctx->gvec().index_by_gvec(G * (-1));
+            //    if (ig == -1) {
+            //        std::stringstream s;
+            //        auto gvc = sim_ctx->unit_cell().reciprocal_lattice_vectors() * vector3d<double>(G[0], G[1], G[2]);
+            //        s << "wrong index of G-vector" << std::endl
+            //          << "input G-vector: " << G << " (length: " << gvc.length() << " [a.u.^-1])" << std::endl;
+            //        TERMINATE(s);
+            //    } else {
+            //        v[ig] = std::conj(pw_coeffs__[i]);
+            //    }
+            //} else {
+            //    v[ig] = pw_coeffs__[i];
+            //}
+
+            //bool is_inverse{false};
+            //int ig = sim_ctx->gvec().index_by_gvec(G);
+            //if (ig == -1 && sim_ctx->gamma_point()) {
+            //    ig = sim_ctx->gvec().index_by_gvec(G * (-1));
+            //    is_inverse = true;
+            //}
+            //if (ig == -1) {
+            //    std::stringstream s;
+            //    auto gvc = sim_ctx->unit_cell().reciprocal_lattice_vectors() * vector3d<double>(G[0], G[1], G[2]);
+            //    s << "wrong index of G-vector" << std::endl
+            //      << "input G-vector: " << G << " (length: " << gvc.length() << " [a.u.^-1])" << std::endl;
+            //    TERMINATE(s);
+            //}
+            //if (is_inverse) {
+            //    v[ig] = std::conj(pw_coeffs__[i]);
+            //} else {
+            //    v[ig] = pw_coeffs__[i];
+            //}
         }
         comm.allreduce(v.data(), sim_ctx->gvec().num_gvec());
         
         // TODO: check if FFT transformation is necessary
         if (label == "rho") {
-            density->rho()->scatter_f_pw(v);
-            density->rho()->fft_transform(1);
+            density->rho().scatter_f_pw(v);
+            density->rho().fft_transform(1);
         } else if (label == "veff") {
             potential->effective_potential()->scatter_f_pw(v);
             potential->effective_potential()->fft_transform(1);
@@ -2982,14 +3029,14 @@ void sirius_set_pw_coeffs(ftn_char label__,
             potential->xc_potential()->scatter_f_pw(v);
             potential->xc_potential()->fft_transform(1);
         } else if (label == "magz") {
-            density->magnetization(0)->scatter_f_pw(v);
-            density->magnetization(0)->fft_transform(1);
+            density->magnetization(0).scatter_f_pw(v);
+            density->magnetization(0).fft_transform(1);
         } else if (label == "magx") {
-            density->magnetization(1)->scatter_f_pw(v);
-            density->magnetization(1)->fft_transform(1);
+            density->magnetization(1).scatter_f_pw(v);
+            density->magnetization(1).fft_transform(1);
         } else if (label == "magy") {
-            density->magnetization(2)->scatter_f_pw(v);
-            density->magnetization(2)->fft_transform(1);
+            density->magnetization(2).scatter_f_pw(v);
+            density->magnetization(2).fft_transform(1);
         } else if (label == "vloc") {
             potential->local_potential().scatter_f_pw(v);
             potential->local_potential().fft_transform(1);
@@ -3020,10 +3067,10 @@ void sirius_get_pw_coeffs(ftn_char        label__,
         mdarray<int, 2> gvec(gvl__, 3, *ngv__);
 
         std::map<std::string, sirius::Smooth_periodic_function<double>*> func = {
-            {"rho", density->rho()},
-            {"magz", density->magnetization(0)},
-            {"magx", density->magnetization(1)},
-            {"magy", density->magnetization(2)},
+            {"rho", &density->rho()},
+            {"magz", &density->magnetization(0)},
+            {"magx", &density->magnetization(1)},
+            {"magy", &density->magnetization(2)},
             {"veff", potential->effective_potential()},
             {"vloc", &potential->local_potential()},
             {"rhoc", &density->rho_pseudo_core()}

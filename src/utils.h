@@ -386,6 +386,11 @@ class Utils
             return a0 + b;
         }
 
+        inline static double_complex round(double_complex a__, int n__)
+        {
+            return double_complex(round(a__.real(), n__), round(a__.imag(), n__));
+        }
+
         template <typename T>
         inline static int sign(T val)
         {

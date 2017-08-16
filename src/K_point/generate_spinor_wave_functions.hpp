@@ -50,7 +50,7 @@ inline void K_point::generate_spinor_wave_functions()
                 o = 0;
             }
             /* multiply consecutively up and dn blocks */
-            transform(fv_states(), 0, nfv, sv_eigen_vectors_[s], o, 0, spinor_wave_functions(ispn), 0, nbnd);
+            transform(ctx_.processing_unit(), fv_states(), 0, nfv, sv_eigen_vectors_[s], o, 0, spinor_wave_functions(ispn), 0, nbnd);
         }
 
         #ifdef __GPU

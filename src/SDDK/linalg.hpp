@@ -201,7 +201,10 @@ class linalg<CPU>: public linalg_base
 
         template <typename T>
         static void gemr2d(ftn_int m, ftn_int n, dmatrix<T>& A, ftn_int ia, ftn_int ja,
-                           dmatrix<T>& B, ftn_int ib, ftn_int jb, ftn_int gcontext); 
+                           dmatrix<T>& B, ftn_int ib, ftn_int jb, ftn_int gcontext);
+
+        template <typename T>
+        static void geqrf(ftn_int m, ftn_int n, dmatrix<T>& A, ftn_int ia, ftn_int ja);
 };
 
 #ifdef __GPU
@@ -478,15 +481,13 @@ inline void linalg<CPU>::heinv<ftn_double_complex>(ftn_int n, matrix<ftn_double_
 {
     std::vector<int> ipiv(n);
     int info = hetrf(n, A.at<CPU>(), A.ld(), &ipiv[0]);
-    if (info)
-    {
+    if (info) {
         printf("hetrf returned %i\n", info);
         exit(-1);
     }
 
     info = hetri(n, A.at<CPU>(), A.ld(), &ipiv[0]);
-    if (info)
-    {
+    if (info) {
         printf("hetri returned %i\n", info);
         exit(-1);
     }
@@ -799,6 +800,35 @@ inline ftn_int linalg<CPU>::trtri<ftn_double_complex>(ftn_int n, dmatrix<ftn_dou
     FORTRAN(pztrtri)("U", "N", &n, A.at<CPU>(), &ia, &ja, const_cast<int*>(A.descriptor()), &info, (ftn_len)1, (ftn_len)1);
     return info;
 }
+
+template <>
+inline void linalg<CPU>::geqrf<ftn_double_complex>(ftn_int m, ftn_int n, dmatrix<ftn_double_complex>& A, ftn_int ia, ftn_int ja)
+{
+    ia++; ja++;
+    ftn_int lwork = -1;
+    ftn_double_complex z;
+    ftn_int info;
+    FORTRAN(pzgeqrf)(&m, &n, A.at<CPU>(), &ia, &ja, const_cast<int*>(A.descriptor()), &z, &z, &lwork, &info);
+    lwork = static_cast<int>(z.real() + 1);
+    std::vector<ftn_double_complex> work(lwork);
+    std::vector<ftn_double_complex> tau(std::max(m, n));
+    FORTRAN(pzgeqrf)(&m, &n, A.at<CPU>(), &ia, &ja, const_cast<int*>(A.descriptor()), tau.data(), work.data(), &lwork, &info);
+}
+
+template <>
+inline void linalg<CPU>::geqrf<ftn_double>(ftn_int m, ftn_int n, dmatrix<ftn_double>& A, ftn_int ia, ftn_int ja)
+{
+    ia++; ja++;
+    ftn_int lwork = -1;
+    ftn_double z;
+    ftn_int info;
+    FORTRAN(pdgeqrf)(&m, &n, A.at<CPU>(), &ia, &ja, const_cast<int*>(A.descriptor()), &z, &z, &lwork, &info);
+    lwork = static_cast<int>(z + 1);
+    std::vector<ftn_double> work(lwork);
+    std::vector<ftn_double> tau(std::max(m, n));
+    FORTRAN(pdgeqrf)(&m, &n, A.at<CPU>(), &ia, &ja, const_cast<int*>(A.descriptor()), tau.data(), work.data(), &lwork, &info);
+}
+
 #else
 template<>
 inline void linalg<CPU>::gemm<ftn_double_complex>(int transa, int transb, ftn_int m, ftn_int n, ftn_int k,

@@ -196,7 +196,8 @@ inline void Band::initialize_subspace(K_point*                                  
             }
         }
     }
-
+    
+    /* fill remaining wave-functions with pseudo-random guess */
     assert(kp__->num_gkvec() > num_phi + 10);
     #pragma omp parallel for schedule(static)
     for (int i = 0; i < num_phi - num_ao__; i++) {
@@ -213,25 +214,41 @@ inline void Band::initialize_subspace(K_point*                                  
                 phi.component(0).pw_coeffs().prime(igk_loc, num_ao__ + i) = 0.25;
             }
         }
+        //for (int igk_loc = 0; igk_loc < kp__->num_gkvec_loc(); igk_loc++) {
+        //    /* global index of G+k vector */
+        //    int igk = kp__->idxgk(igk_loc);
+        //    /* G-vector */
+        //    auto G = kp__->gkvec().gvec(igk);
+        //    /* index of G-vector */
+        //    int ig = ctx_.gvec().index_by_gvec(G);
+
+        //    if (ig == -1) {
+        //        ig = ctx_.gvec().index_by_gvec(G * (-1));
+        //    }
+
+        //    if (ig >= 0 && ctx_.gvec().shell(ig) == i + 1) {
+        //        phi.component(0).pw_coeffs().prime(igk_loc, num_ao__ + i) = 1.0;
+        //    }
+        //}
     }
 
-    std::vector<double> tmp(1024);
-    for (int i = 0; i < 1024; i++) {
+    std::vector<double> tmp(4096);
+    for (int i = 0; i < 4096; i++) {
         tmp[i] = type_wrapper<double>::random();
     }
     
-    int igk0{0};
-    if (kp__->comm().rank() == 0) {
-        igk0 = 1;
-    }
+    int igk0 = (kp__->comm().rank() == 0) ? 1 : 0;
+
     #pragma omp parallel for schedule(static)
+    //for (int i = 0; i < num_phi - num_ao__; i++) {
     for (int i = 0; i < num_phi; i++) {
         for (int igk_loc = igk0; igk_loc < kp__->num_gkvec_loc(); igk_loc++) {
             /* global index of G+k vector */
             int igk = kp__->idxgk(igk_loc);
-            phi.component(0).pw_coeffs().prime(igk_loc, i) += tmp[igk & 0x3FF] * 1e-5;
+            phi.component(0).pw_coeffs().prime(igk_loc, i) += tmp[igk & 0xFFF] * 1e-5;
         }
     }
+
     if (ctx_.num_mag_dims() == 3) {
         phi.component(1).copy_from(phi.component(0), 0, num_phi, num_phi, CPU);
     }
@@ -303,7 +320,7 @@ inline void Band::initialize_subspace(K_point*                                  
         /* do some checks */
         if (ctx_.control().verification_ >= 1) {
             set_subspace_mtrx<T>(num_sc, 0, num_phi_tot, phi, ophi, hmlt, hmlt_old);
-            //hmlt.serialize("overlap", num_phi);
+            //hmlt.serialize("overlap", num_phi_tot);
             double max_diff = check_hermitian(hmlt, num_phi_tot);
             if (max_diff > 1e-12) {
                 std::stringstream s;
@@ -330,6 +347,8 @@ inline void Band::initialize_subspace(K_point*                                  
 
         /* setup eigen-value problem */
         set_subspace_mtrx<T>(num_sc, 0, num_phi_tot, phi, hphi, hmlt, hmlt_old);
+        
+        //hmlt.serialize("hmlt", num_phi_tot);
 
         /* solve generalized eigen-value problem with the size N */
         if (std_evp_solver().solve(num_phi_tot, num_bands,
@@ -362,13 +381,20 @@ inline void Band::initialize_subspace(K_point*                                  
         /* compute wave-functions */
         /* \Psi_{i} = \sum_{mu} \phi_{mu} * Z_{mu, i} */
         if (ctx_.num_mag_dims() == 3) {
-            transform<T>(1.0, {&phi}, 0, num_phi_tot, evec, 0, 0, 0.0, {&kp__->spinor_wave_functions()}, 0, num_bands);
+            transform<T>(ctx_.processing_unit(), 1.0, {&phi}, 0, num_phi_tot, evec, 0, 0, 0.0, {&kp__->spinor_wave_functions()}, 0, num_bands);
         } else {
-            transform<T>(phi.component(0), 0, num_phi, evec, 0, 0, kp__->spinor_wave_functions(ispn_step), 0, num_bands);
+            transform<T>(ctx_.processing_unit(), phi.component(0), 0, num_phi, evec, 0, 0, kp__->spinor_wave_functions(ispn_step), 0, num_bands);
         }
 
         for (int j = 0; j < num_bands; j++) {
             kp__->band_energy(j + ispn_step * ctx_.num_fv_states()) = eval[j];
+        }
+    }
+
+    if (ctx_.control().print_checksum_) {
+        for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
+            auto cs = kp__->spinor_wave_functions(ispn).checksum(0, num_bands);
+            DUMP("checksum(spinor_wave_functions_%i): %18.10f %18.10f", ispn, cs.real(), cs.imag());
         }
     }
 
@@ -382,13 +408,6 @@ inline void Band::initialize_subspace(K_point*                                  
         }
     }
     #endif
-
-    if (ctx_.control().print_checksum_) {
-        for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-            auto cs = kp__->spinor_wave_functions(ispn).checksum(0, num_bands);
-            DUMP("checksum(spinor_wave_functions_%i): %18.10f %18.10f", ispn, cs.real(), cs.imag());
-        }
-    }
 
     kp__->beta_projectors().dismiss();
     ctx_.fft_coarse().dismiss();

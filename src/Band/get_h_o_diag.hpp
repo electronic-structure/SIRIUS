@@ -218,11 +218,9 @@ Band::get_o_diag(K_point*       kp__,
             }
         }
     }
-    #ifdef __GPU
     if (ctx_.processing_unit() == GPU) {
         o_diag.allocate(memory_t::device);
-        o_diag.copy_to_device();
+        o_diag.copy<memory_t::host, memory_t::device>();
     }
-    #endif
     return std::move(o_diag);
 }

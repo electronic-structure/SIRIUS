@@ -237,6 +237,24 @@ class dmatrix : public matrix<T>
         }
     }
 
+    inline mdarray<T, 1> get_diag(int n__)
+    {
+        mdarray<T, 1> d(n__);
+        d.zero();
+
+        for (int i = 0; i < n__; i++) {
+            auto r = spl_row_.location(i);
+            if (blacs_grid_->rank_row() == r.rank) {
+                auto c = spl_col_.location(i);
+                if (blacs_grid_->rank_col() == c.rank) {
+                    d(i) = (*this)(r.local_index, c.local_index);
+                }
+            }
+        }
+        blacs_grid_->comm().allreduce(d.template at<CPU>(), n__);
+        return std::move(d);
+    }
+
     inline splindex<block_cyclic> const& spl_col() const
     {
         return spl_col_;
@@ -311,12 +329,13 @@ inline void dmatrix<double_complex>::serialize(std::string name__, int n__) cons
     if (blacs_grid_->comm().rank() == 0) {
         //std::cout << "mtrx: " << name__ << std::endl;
         // std::cout << dict.dump(4);
-
+        
+        printf("matrix label: %s\n", name__.c_str());
         printf("{\n");
         for (int i = 0; i < n__; i++) {
             printf("{");
             for (int j = 0; j < n__; j++) {
-                printf("%18.12f + I * %18.12f", full_mtrx(i, j).real(), full_mtrx(i, j).imag());
+                printf("%18.13f + I * %18.13f", full_mtrx(i, j).real(), full_mtrx(i, j).imag());
                 if (j != n__ - 1) {
                     printf(",");
                 }
@@ -363,6 +382,26 @@ inline void dmatrix<double>::serialize(std::string name__, int n__) const
 
     // std::ofstream ofs(aiida_output_file, std::ofstream::out | std::ofstream::trunc);
     // ofs << dict.dump(4);
+
+    if (blacs_grid_->comm().rank() == 0) {
+        printf("matrix label: %s\n", name__.c_str());
+        printf("{\n");
+        for (int i = 0; i < n__; i++) {
+            printf("{");
+            for (int j = 0; j < n__; j++) {
+                printf("%18.13f", full_mtrx(i, j));
+                if (j != n__ - 1) {
+                    printf(",");
+                }
+            }
+            if (i != n__ - 1) {
+                printf("},\n");
+            } else {
+                printf("}\n");
+            }
+        }
+        printf("}\n");
+    }
 }
 
 } // namespace sddk

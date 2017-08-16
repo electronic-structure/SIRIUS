@@ -23,12 +23,11 @@
     "pw_cutoff" : 25.00,
 
     "energy_tol" : 1e-8,
+    "potential_tol" : 1e-8,
 
     "num_dft_iter" : 100,
 
-    "ngridk" : [2,2,2],
-
-    "reduce_gvec": 1
+    "ngridk" : [4,4,4]
   },
 
   "iterative_solver" : {
@@ -55,5 +54,8 @@
             [3.32308339004766,0.0,3.32308339004766],
             [3.32308339004766,3.32308339004766,0.0]
         ]
+    },
+    "mixer" : {
+        "beta" : 0.8
     }
 }
