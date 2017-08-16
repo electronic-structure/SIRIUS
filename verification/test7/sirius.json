@@ -23,10 +23,11 @@
     "pw_cutoff" : 25.00,
 
     "energy_tol" : 1e-8,
+    "potential_tol" : 1e-8,
 
     "num_dft_iter" : 100,
 
-    "ngridk" : [2,2,2]
+    "ngridk" : [4,4,4]
   },
 
   "iterative_solver" : {
