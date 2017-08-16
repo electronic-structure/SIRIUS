@@ -232,21 +232,20 @@ inline void Band::initialize_subspace(K_point*                                  
         //}
     }
 
-    std::vector<double> tmp(1024);
-    for (int i = 0; i < 1024; i++) {
+    std::vector<double> tmp(4096);
+    for (int i = 0; i < 4096; i++) {
         tmp[i] = type_wrapper<double>::random();
     }
     
-    int igk0{0};
-    if (kp__->comm().rank() == 0) {
-        igk0 = 1;
-    }
+    int igk0 = (kp__->comm().rank() == 0) ? 1 : 0;
+
     #pragma omp parallel for schedule(static)
-    for (int i = 0; i < num_phi; i++) {
+    for (int i = 0; i < num_phi - num_ao__; i++) {
+    //for (int i = 0; i < num_phi; i++) {
         for (int igk_loc = igk0; igk_loc < kp__->num_gkvec_loc(); igk_loc++) {
             /* global index of G+k vector */
             int igk = kp__->idxgk(igk_loc);
-            phi.component(0).pw_coeffs().prime(igk_loc, i) += tmp[igk & 0x3FF] * 1e-5;
+            phi.component(0).pw_coeffs().prime(igk_loc, num_ao__ + i) += tmp[igk & 0xFFF] * 1e-5;
         }
     }
 
