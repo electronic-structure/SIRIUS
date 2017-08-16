@@ -146,31 +146,28 @@ class Potential
 
         void init_PAW();
 
-        double xc_mt_PAW_nonmagnetic(Radial_grid<double> const& rgrid,
+        double xc_mt_PAW_nonmagnetic(const Radial_grid<double>& rgrid,
                                      mdarray<double, 3>& out_atom_pot,
-                                     mdarray<double, 2> const& full_rho_lm,
+                                     Spheric_function<spectral, double> const& full_density,
                                      std::vector<double> const& rho_core);
 
 
         double xc_mt_PAW_collinear(Radial_grid<double> const& rgrid,
                                    mdarray<double,3> &out_atom_pot,
-                                   mdarray<double,2> const& full_rho_lm,
-                                   mdarray<double,3> const& magnetization_lm,
+                                   std::vector<Spheric_function<spectral, double>> const& density,
                                    std::vector<double> const& rho_core);
 
         // TODO DO
         void xc_mt_PAW_noncollinear(    )   {     };
 
         void calc_PAW_local_potential(paw_potential_data_t &pdd,
-                                      mdarray<double, 2> const& ae_full_density,
-                                      mdarray<double, 2> const& ps_full_density,
-                                      mdarray<double, 3> const& ae_local_magnetization,
-                                      mdarray<double, 3> const& ps_local_magnetization);
+                                      std::vector<Spheric_function<spectral, double>> const& ae_density,
+                                      std::vector<Spheric_function<spectral, double>> const& ps_density);
 
         void calc_PAW_local_Dij(paw_potential_data_t &pdd, mdarray<double_complex, 4>& paw_dij);
 
         double calc_PAW_hartree_potential(Atom& atom, const Radial_grid<double>& grid,
-                                          mdarray<double, 2> const& full_density,
+                                          Spheric_function<spectral, double> const& full_density,
                                           mdarray<double, 3>& out_atom_pot);
 
         double calc_PAW_one_elec_energy(paw_potential_data_t &pdd,
