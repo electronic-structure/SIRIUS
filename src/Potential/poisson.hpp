@@ -322,7 +322,7 @@ inline void Potential::poisson(Periodic_function<double>& rho, Periodic_function
     if (ctx_.control().print_checksum_) {
         auto cs = vh->checksum_rg();
         if (ctx_.comm().rank() == 0) {
-            DUMP("checksum(vha_rg): %20.14f", cs);
+            print_checksum("vha_rg", cs);
         }
     }
     

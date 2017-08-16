@@ -249,14 +249,14 @@ inline void copyout(T* target__, int ld1__, T const* source__, int ld2__, int nr
     CALL_CUDA(cudaMemcpy2D, (target__, ld1__ * sizeof(T), source__, ld2__ * sizeof(T), nrow__ * sizeof(T), ncol__, cudaMemcpyDeviceToHost, stream(stream_id__)));
 }
 
-/// Zero the devide memory.
+/// Zero the device memory.
 template <typename T>
 inline void zero(T* ptr__, size_t n__)
 {
     CALL_CUDA(cudaMemset, (ptr__, 0, n__ * sizeof(T)));
 }
 
-/// Zero the 2D block of devide memory.
+/// Zero the 2D block of device memory.
 template <typename T>
 inline void zero(T* ptr__, int ld__, int nrow__, int ncol__)
 {

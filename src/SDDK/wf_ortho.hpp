@@ -18,7 +18,7 @@ inline void orthogonalize(int N__,
      * |\tilda phi_new> = |phi_new> - |phi_old><phi_old|phi_new> */
     if (N__ > 0) {
         inner(*wfs__[idx_bra__], 0, N__, *wfs__[idx_ket__], N__, n__, 0.0, o__, 0, 0);
-        transform(-1.0, wfs__, 0, N__, o__, 0, 0, 1.0, wfs__, N__, n__);
+        transform(pu, -1.0, wfs__, 0, N__, o__, 0, 0, 1.0, wfs__, N__, n__);
     }
 
     /* orthogonalize new n__ x n__ block */
@@ -161,7 +161,7 @@ inline void orthogonalize(int N__,
 
         /* phi is transformed into phi, so we can't use it as the output buffer; use tmp instead and then overwrite phi */
         for (auto& e: wfs__) {
-            transform(*e, N__, n__, o__, 0, 0, tmp__, 0, n__);
+            transform(pu, *e, N__, n__, o__, 0, 0, tmp__, 0, n__);
             e->copy_from(tmp__, 0, n__, N__, pu);
         }
     }
@@ -201,33 +201,35 @@ inline void orthogonalize(device_t                     pu__,
      * |\tilda phi_new> = |phi_new> - |phi_old><phi_old|phi_new> */
     if (N__ > 0) {
         inner(num_sc__, *wfs__[idx_bra__], 0, N__, *wfs__[idx_ket__], N__, n__, o__, 0, 0);
-        transform(-1.0, wfs__, 0, N__, o__, 0, 0, 1.0, wfs__, N__, n__);
+        transform(pu__, -1.0, wfs__, 0, N__, o__, 0, 0, 1.0, wfs__, N__, n__);
     }
 
-    if (false) {
+    //if (true) {
 
-        inner(num_sc__, *wfs__[idx_bra__], N__, n__, *wfs__[idx_ket__], N__, n__, o__, 0, 0);
+    //    inner(num_sc__, *wfs__[idx_bra__], N__, n__, *wfs__[idx_ket__], N__, n__, o__, 0, 0);
 
-        auto diag = o__.get_diag(n__);
-        if (o__.blacs_grid().comm().rank() == 0) {
-            for (int i = 0; i < n__; i++) {
-                if (std::abs(diag[i]) < 1e-6) {
-                    std::cout << "small norm: " << i << " " << diag[i] << std::endl;
-                }
-            }
-        }
+    //    linalg<CPU>::geqrf(n__, n__, o__, 0, 0);
+    //    auto diag = o__.get_diag(n__);
+    //    if (o__.blacs_grid().comm().rank() == 0) {
+    //        printf("diagonal of R-factor\n");
+    //        for (int i = 0; i < n__; i++) {
+    //            if (std::abs(diag[i]) < 1e-6) {
+    //                std::cout << "small norm: " << i << " " << diag[i] << std::endl;
+    //            }
+    //        }
+    //    }
 
-        std::vector<double> eo(n__);
-        dmatrix<T> evec(o__.num_rows(), o__.num_cols(), o__.blacs_grid(), o__.bs_row(), o__.bs_col());
+    //    //std::vector<double> eo(n__);
+    //    //dmatrix<T> evec(o__.num_rows(), o__.num_cols(), o__.blacs_grid(), o__.bs_row(), o__.bs_col());
 
-        Eigenproblem_elpa1 evs(o__.blacs_grid(), o__.bs_row());
-        evs.solve(n__, n__, o__.template at<CPU>(), o__.ld(), eo.data(), evec.template at<CPU>(), evec.ld(),
-                  o__.num_rows_local(), o__.num_cols_local());
+    //    //Eigenproblem_elpa1 evs(o__.blacs_grid(), o__.bs_row());
+    //    //evs.solve(n__, n__, o__.template at<CPU>(), o__.ld(), eo.data(), evec.template at<CPU>(), evec.ld(),
+    //    //          o__.num_rows_local(), o__.num_cols_local());
 
-        if (o__.blacs_grid().comm().rank() == 0) { 
-            std::cout << "smallest ev of the new n x x block: " << eo[0] << std::endl;
-        }
-    }
+    //    //if (o__.blacs_grid().comm().rank() == 0) { 
+    //    //    std::cout << "smallest ev of the new n x x block: " << eo[0] << std::endl;
+    //    //}
+    //}
 
     /* orthogonalize new n__ x n__ block */
     inner(num_sc__, *wfs__[idx_bra__], N__, n__, *wfs__[idx_ket__], N__, n__, o__, 0, 0);
@@ -375,7 +377,7 @@ inline void orthogonalize(device_t                     pu__,
         /* phi is transformed into phi, so we can't use it as the output buffer; use tmp instead and then overwrite phi */
         for (auto& e: wfs__) {
             for (int isc = 0; isc < num_sc__; isc++) {
-                transform(e->component(isc), N__, n__, o__, 0, 0, tmp__, 0, n__);
+                transform(pu__, e->component(isc), N__, n__, o__, 0, 0, tmp__, 0, n__);
                 e->component(isc).copy_from(tmp__, 0, n__, N__, pu__);
             }
         }

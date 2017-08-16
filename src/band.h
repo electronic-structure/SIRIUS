@@ -277,6 +277,28 @@ class Band
 
             /* <{phi,phi_new}|Op|phi_new> */
             inner(num_sc__, phi__, 0, N__ + n__, op_phi__, N__, n__, mtrx__, 0, N__);
+            //if (true) {
+            //    if (mtrx__.blacs_grid().comm().size() == 1) {
+            //        for (int i = 0; i < n__; i++) {
+            //            for (int j = 0; j < n__ + N__; j++) {
+            //                mtrx__(j, N__ + i) = Utils::round(mtrx__(j, N__ + i), 10);
+            //            }
+            //        }
+            //    }
+            //}
+
+            //if (true) {
+            //    if (mtrx__.blacs_grid().comm().size() == 1) {
+            //        for (int i = 0; i < n__; i++) {
+            //            for (int j = 0; j < n__; j++) {
+            //                auto zij = mtrx__(N__ + i, N__ + j);
+            //                auto zji = mtrx__(N__ + j, N__ + i);
+            //                mtrx__(N__ + i, N__ + j) = 0.5 * (zij + std::conj(zji));
+            //                mtrx__(N__ + j, N__ + i) = std::conj(mtrx__(N__ + i, N__ + j));
+            //            }
+            //        }
+            //    }
+            //}
             
             /* restore lower part */
             if (N__ > 0) {
@@ -292,6 +314,18 @@ class Band
                 }
             }
 
+            //if (true) {
+            //    splindex<block_cyclic> spl_row(N__ + n__, mtrx__.blacs_grid().num_ranks_row(), mtrx__.blacs_grid().rank_row(), mtrx__.bs_row());
+            //    splindex<block_cyclic> spl_col(N__ + n__, mtrx__.blacs_grid().num_ranks_col(), mtrx__.blacs_grid().rank_col(), mtrx__.bs_col());
+            //    for (int i = 0; i < spl_col.local_size(); i++) {
+            //        for (int j = 0; j < spl_row.local_size(); j++) {
+            //            if (std::abs(mtrx__(j, i)) < 1e-11) {
+            //                mtrx__(j, i) = 0;
+            //            }
+            //        }
+            //    }
+            //}
+
             if (ctx_.control().print_checksum_) {
                 splindex<block_cyclic> spl_row(N__ + n__, mtrx__.blacs_grid().num_ranks_row(), mtrx__.blacs_grid().rank_row(), mtrx__.bs_row());
                 splindex<block_cyclic> spl_col(N__ + n__, mtrx__.blacs_grid().num_ranks_col(), mtrx__.blacs_grid().rank_col(), mtrx__.bs_col());
@@ -302,7 +336,9 @@ class Band
                     }
                 }
                 mtrx__.blacs_grid().comm().allreduce(&cs, 1);
-                DUMP("checksum(subspace_mtrx): %18.10f %18.10f", cs.real(), cs.imag());
+                if (mtrx__.blacs_grid().comm().rank() == 0) {
+                    print_checksum("subspace_mtrx", cs);
+                }
             }
 
             mtrx__.make_real_diag(N__ + n__);
