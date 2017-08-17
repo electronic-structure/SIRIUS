@@ -158,6 +158,15 @@ class vector3d: public std::array<T, 3>
     }
 
     template <typename U>
+    inline vector3d<T>& operator*=(U p)
+    {
+        for (int x : {0, 1, 2}) {
+            (*this)[x] *= p;
+        }
+        return *this;
+    }
+
+    template <typename U>
     inline vector3d<T>& operator/=(U p)
     {
         for (int x : {0, 1, 2}) {

@@ -146,19 +146,18 @@ class Potential
 
         void init_PAW();
 
-        double xc_mt_PAW_nonmagnetic(const Radial_grid<double>& rgrid,
-                                     mdarray<double, 3>& out_atom_pot,
+        double xc_mt_PAW_nonmagnetic(Spheric_function<spectral, double>& full_potential,
                                      Spheric_function<spectral, double> const& full_density,
                                      std::vector<double> const& rho_core);
 
 
-        double xc_mt_PAW_collinear(Radial_grid<double> const& rgrid,
-                                   mdarray<double,3> &out_atom_pot,
+        double xc_mt_PAW_collinear(std::vector<Spheric_function<spectral, double>>& potential,
                                    std::vector<Spheric_function<spectral, double>> const& density,
                                    std::vector<double> const& rho_core);
 
-        // TODO DO
-        void xc_mt_PAW_noncollinear(    )   {     };
+        double xc_mt_PAW_noncollinear(std::vector<Spheric_function<spectral, double>>& potential,
+                                      std::vector<Spheric_function<spectral, double>> const& density,
+                                      std::vector<double> const& rho_core);
 
         void calc_PAW_local_potential(paw_potential_data_t &pdd,
                                       std::vector<Spheric_function<spectral, double>> const& ae_density,
