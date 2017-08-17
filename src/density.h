@@ -665,22 +665,34 @@ class Density
          
         void save()
         {
-            if (ctx_.comm().rank() == 0)
-            {
+            if (ctx_.comm().rank() == 0) {
                 HDF5_tree fout(storage_file_name, false);
                 rho_->hdf5_write(fout["density"]);
-                for (int j = 0; j < ctx_.num_mag_dims(); j++)
+                for (int j = 0; j < ctx_.num_mag_dims(); j++) {
                     magnetization_[j]->hdf5_write(fout["magnetization"].create_node(j));
+                }
             }
             ctx_.comm().barrier();
         }
 
         void load()
         {
-            HDF5_tree fout(storage_file_name, false);
-            rho_->hdf5_read(fout["density"]);
-            for (int j = 0; j < ctx_.num_mag_dims(); j++)
-                magnetization_[j]->hdf5_read(fout["magnetization"][j]);
+            HDF5_tree fin(storage_file_name, false);
+
+            int ngv;
+            fin.read("/parameters/num_gvec", &ngv, 1);
+            if (ngv != ctx_.gvec().num_gvec()) {
+                TERMINATE("wrong number of G-vectors");
+            }
+            mdarray<int, 2> gv(3, ngv);
+            fin.read("/parameters/gvec", gv);
+
+            rho_->hdf5_read(fin["density"], gv);
+            rho_->fft_transform(1);
+            for (int j = 0; j < ctx_.num_mag_dims(); j++) {
+                magnetization_[j]->hdf5_read(fin["magnetization"][j], gv);
+                magnetization_[j]->fft_transform(1);
+            }
         }
 
         void save_to_xsf()

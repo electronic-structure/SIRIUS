@@ -1,4 +1,4 @@
-// Copyright (c) 2013-2016 Anton Kozhevnikov, Thomas Schulthess
+// Copyright (c) 2013-2017 Anton Kozhevnikov, Thomas Schulthess
 // All rights reserved.
 // 
 // Redistribution and use in source and binary forms, with or without modification, are permitted provided that 
@@ -244,17 +244,32 @@ class Periodic_function: public Smooth_periodic_function<T>
             //if (ctx_.full_potential()) {
             //    h5f.write("f_mt", f_mt_);
             //}
-            //h5f.write("f_pw", f_pw_);
-            //h5f.write("f_rg", this->f_rg_);
+            auto v = this->gather_f_pw();
+            h5f.write("f_pw", reinterpret_cast<double*>(v.data()), static_cast<int>(v.size() * 2));
         }
 
-        void hdf5_read(HDF5_tree h5f)
+        void hdf5_read(HDF5_tree h5f__, mdarray<int, 2>& gvec__)
         {
             //if (ctx_.full_potential()) {
             //    h5f.read("f_mt", f_mt_);
             //}
-            //h5f.read("f_pw", f_pw_);
-            //h5f.read_mdarray("f_rg", this->f_rg_);
+            std::vector<double_complex> v(gvec_.num_gvec());
+            h5f__.read("f_pw", reinterpret_cast<double*>(v.data()), static_cast<int>(v.size() * 2));
+
+            std::map<vector3d<int>, int> local_gvec_mapping;
+
+            for (int igloc = 0; igloc < gvec_.count(); igloc++) {
+                int ig = gvec_.offset() + igloc;
+                auto G = gvec_.gvec(ig);
+                local_gvec_mapping[G] = igloc;
+            }
+
+            for (int ig = 0; ig < gvec_.num_gvec(); ig++) {
+                vector3d<int> G(&gvec__(0, ig));
+                if (local_gvec_mapping.count(G) != 0) {
+                    this->f_pw_local_[local_gvec_mapping[G]] = v[ig];
+                }
+            }
         }
 
         /// Set the global pointer to the muffin-tin part

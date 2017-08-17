@@ -893,12 +893,20 @@ class Potential
         
         inline void load()
         {
-            HDF5_tree fout(storage_file_name, false);
-            
-            effective_potential_->hdf5_read(fout["effective_potential"]);
+            HDF5_tree fin(storage_file_name, false);
+
+            int ngv;
+            fin.read("/parameters/num_gvec", &ngv, 1);
+            if (ngv != ctx_.gvec().num_gvec()) {
+                TERMINATE("wrong number of G-vectors");
+            }
+            mdarray<int, 2> gv(3, ngv);
+            fin.read("/parameters/gvec", gv);
+
+            effective_potential_->hdf5_read(fin["effective_potential"], gv);
 
             for (int j = 0; j < ctx_.num_mag_dims(); j++) {
-                effective_magnetic_field_[j]->hdf5_read(fout["effective_magnetic_field"][j]);
+                effective_magnetic_field_[j]->hdf5_read(fin["effective_magnetic_field"][j], gv);
             }
             
             if (ctx_.full_potential()) {
