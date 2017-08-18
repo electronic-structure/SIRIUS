@@ -26,6 +26,7 @@
 #define __LOCAL_OPERATOR_H__
 
 #include "periodic_function.h"
+#include "potential.h"
 
 #ifdef __GPU
 extern "C" void mul_by_veff_gpu(int ispn__, int size__, double const* veff__, double_complex* buf__);
