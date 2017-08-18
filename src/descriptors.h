@@ -1,20 +1,20 @@
 // Copyright (c) 2013-2016 Anton Kozhevnikov, Thomas Schulthess
 // All rights reserved.
-// 
-// Redistribution and use in source and binary forms, with or without modification, are permitted provided that 
+//
+// Redistribution and use in source and binary forms, with or without modification, are permitted provided that
 // the following conditions are met:
-// 
-// 1. Redistributions of source code must retain the above copyright notice, this list of conditions and the 
+//
+// 1. Redistributions of source code must retain the above copyright notice, this list of conditions and the
 //    following disclaimer.
-// 2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions 
+// 2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions
 //    and the following disclaimer in the documentation and/or other materials provided with the distribution.
-// 
-// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED 
-// WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A 
-// PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR 
-// ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, 
-// PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER 
-// CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR 
+//
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED
+// WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A
+// PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
+// ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+// PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+// CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
 // OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 /** \file descriptors.h
@@ -36,10 +36,10 @@ struct atomic_level_descriptor
 
     /// Angular momentum quantum number.
     int l;
-    
+
     /// Quantum number k.
     int k;
-    
+
     /// Level occupancy.
     double occupancy;
 
@@ -52,16 +52,16 @@ struct radial_solution_descriptor
 {
     /// Principal quantum number.
     int n;
-    
+
     /// Angular momentum quantum number.
     int l;
-    
+
     /// Order of energy derivative.
     int dme;
-    
+
     /// Energy of the solution.
     double enu;
-    
+
     /// Automatically determine energy.
     int auto_enu;
 };
@@ -77,9 +77,9 @@ struct local_orbital_descriptor
 
     int j;
 
-  double total_angular_momentum;
+    double total_angular_momentum;
     /// Set of radial solution descriptors.
-    /** Local orbital is constructed from at least two radial functions in order to make it zero at the 
+    /** Local orbital is constructed from at least two radial functions in order to make it zero at the
      *  muffin-tin sphere boundary. */
     radial_solution_descriptor_set rsd_set;
 };
@@ -89,10 +89,10 @@ struct pseudopotential_descriptor
 {
     /// The pseudo potential includes spin orbit coupling
     bool SpinOrbit_Coupling{false};
-  
+
     /// True if the pseudopotential is soft and charge augmentation is required.
     bool augment{false};
-    
+
     /// True if the pseudopotential is used for PAW.
     bool is_paw{false};
 
@@ -129,9 +129,9 @@ struct pseudopotential_descriptor
     /// Atomic wave-functions used to setup the initial subspace.
     /** This are the chi wave-function in the USPP file. Pairs of [l, chi_l(r)] are stored. */
     std::vector<std::pair<int, std::vector<double>>> atomic_pseudo_wfs_;
-    
+
     /// Occupation of starting wave functions
-    //std::vector<double> atomic_pseudo_wfs_occ_;
+    // std::vector<double> atomic_pseudo_wfs_occ_;
 
     /// All electron basis wave functions, have the same dimensionality as uspp.beta_radial_functions.
     mdarray<double, 2> all_elec_wfc;
@@ -142,7 +142,7 @@ struct pseudopotential_descriptor
     /// Core energy of PAW.
     double core_energy; // TODO: proper desciption comment
 
-    /// Occubations of atomic states. 
+    /// Occubations of atomic states.
     /** Length of vector is the same as the number of beta projectors and all_elec_wfc and pseudo_wfc */
     std::vector<double> occupations;
 
@@ -171,13 +171,13 @@ struct nearest_neighbour_descriptor
 
 /// Descriptor for the atomic radial functions.
 /** The radial functions \f$ f_{\ell \nu}(r) \f$ are labeled by two indices: orbital quantum number \f$ \ell \f$ and
- *  an order \f$ \nu \f$ for a given $\f \ell \f$. 
+ *  an order \f$ \nu \f$ for a given $\f \ell \f$.
  */
 struct radial_function_index_descriptor
 {
     /// Orbital quantum number \f$ \ell \f$.
     int l;
-  
+
     /// Total angular momentum
     double j;
 
@@ -186,9 +186,9 @@ struct radial_function_index_descriptor
 
     /// If this is a local orbital radial function, idxlo is it's index in the list of local orbital descriptors.
     int idxlo;
-    
+
     /// Constructor.
-    radial_function_index_descriptor(int l, int order, int idxlo = -1) 
+    radial_function_index_descriptor(int l, int order, int idxlo = -1)
         : l(l)
         , order(order)
         , idxlo(idxlo)
@@ -197,11 +197,11 @@ struct radial_function_index_descriptor
         assert(order >= 0);
     }
 
-    radial_function_index_descriptor(int l, double j, int order, int idxlo = -1) 
-        : l(l),
-          j(j),
-          order(order), 
-          idxlo(idxlo)
+    radial_function_index_descriptor(int l, double j, int order, int idxlo = -1)
+        : l(l)
+        , j(j)
+        , order(order)
+        , idxlo(idxlo)
     {
         assert(l >= 0);
         assert(order >= 0);
@@ -225,13 +225,13 @@ struct basis_function_index_descriptor
     /// index of the radial function or beta projector in the case of
     /// pseudo potential
     int idxrf;
-    
-    basis_function_index_descriptor(int l, int m, int order, int idxlo, int idxrf) 
-        : l(l), 
-          m(m), 
-          order(order), 
-          idxlo(idxlo), 
-          idxrf(idxrf) 
+
+    basis_function_index_descriptor(int l, int m, int order, int idxlo, int idxrf)
+        : l(l)
+        , m(m)
+        , order(order)
+        , idxlo(idxlo)
+        , idxrf(idxrf)
     {
         assert(l >= 0);
         assert(m >= -l && m <= l);
@@ -241,20 +241,20 @@ struct basis_function_index_descriptor
         lm = Utils::lm_by_l_m(l, m);
     }
 
-    basis_function_index_descriptor(int l, int m, double j, int order, int idxlo, int idxrf) 
-         : l(l), 
-           m(m),
-           j(j),
-           order(order), 
-           idxlo(idxlo), 
-           idxrf(idxrf) 
+    basis_function_index_descriptor(int l, int m, double j, int order, int idxlo, int idxrf)
+        : l(l)
+        , m(m)
+        , j(j)
+        , order(order)
+        , idxlo(idxlo)
+        , idxrf(idxrf)
     {
-         assert(l >= 0);
-         assert(m >= -l && m <= l);
-         assert(order >= 0);
-         assert(idxrf >= 0);
+        assert(l >= 0);
+        assert(m >= -l && m <= l);
+        assert(order >= 0);
+        assert(idxrf >= 0);
 
-         lm = Utils::lm_by_l_m(l, m);
+        lm = Utils::lm_by_l_m(l, m);
     }
 };
 
@@ -268,7 +268,7 @@ struct unit_cell_parameters_descriptor
     double gamma;
 };
 
-/// Descriptor of the local-orbital part of the LAPW+lo basis. 
+/// Descriptor of the local-orbital part of the LAPW+lo basis.
 struct lo_basis_descriptor
 {
     /// Index of atom.
@@ -281,7 +281,7 @@ struct lo_basis_descriptor
     uint16_t lm;
 
     /// Order of the local orbital radial function for the given orbital quantum number \f$ \ell \f$.
-    /** All radial functions for the given orbital quantum number \f$ \ell \f$ are ordered in the following way: 
+    /** All radial functions for the given orbital quantum number \f$ \ell \f$ are ordered in the following way:
      *  augmented radial functions come first followed by the local orbital radial function. */
     uint8_t order;
 
