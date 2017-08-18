@@ -140,7 +140,7 @@ class Potential
 
         std::vector<paw_potential_data_t> paw_potential_data_;
 
-        mdarray<double_complex, 4> paw_dij_;
+        mdarray<double, 4> paw_dij_;
 
         int max_paw_basis_size_{0};
 
@@ -163,7 +163,7 @@ class Potential
                                       std::vector<Spheric_function<spectral, double>> const& ae_density,
                                       std::vector<Spheric_function<spectral, double>> const& ps_density);
 
-        void calc_PAW_local_Dij(paw_potential_data_t &pdd, mdarray<double_complex, 4>& paw_dij);
+        void calc_PAW_local_Dij(paw_potential_data_t &pdd, mdarray<double, 4>& paw_dij);
 
         double calc_PAW_hartree_potential(Atom& atom,
                                           Spheric_function<spectral, double> const& full_density,
@@ -171,7 +171,7 @@ class Potential
 
         double calc_PAW_one_elec_energy(paw_potential_data_t &pdd,
                                         const mdarray<double_complex, 4>& density_matrix,
-                                        const mdarray<double_complex, 4>& paw_dij);
+                                        const mdarray<double, 4>& paw_dij);
 
 
         void add_paw_Dij_to_atom_Dmtrx();
