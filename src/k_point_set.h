@@ -227,8 +227,6 @@ class K_point_set
             return max_num_gkvec;
         }
 
-        void force(mdarray<double, 2>& forcek);
-        
         void add_kpoint(double* vk__, double weight__)
         {
             PROFILE("sirius::K_point_set::add_kpoint");
@@ -315,11 +313,6 @@ class K_point_set
         //        kpq[ik].K = vkqr.second;
         //    }
         //}
-
-        inline K_point* k_point(int ik)
-        {
-            return kpoints_[ik].get();
-        }
 
         inline Communicator const& comm() const
         {

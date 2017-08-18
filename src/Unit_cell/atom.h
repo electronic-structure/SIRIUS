@@ -464,7 +464,7 @@ class Atom
         template <spin_block_t sblock>
         inline double_complex radial_integrals_sum_L3(int idxrf1__,
                                                       int idxrf2__,
-                                                      std::vector<gaunt_L3<double_complex> > const& gnt__) const
+                                                      std::vector<gaunt_L3<double_complex>> const& gnt__) const
         {
             double_complex zsum(0, 0);
 

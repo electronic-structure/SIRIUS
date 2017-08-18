@@ -74,19 +74,16 @@ inline void Band::initialize_subspace(K_point_set& kset__,
         }
     }
 
-    local_op_->prepare(ctx_.gvec_coarse(), ctx_.num_mag_dims(), potential__.effective_potential(),
-                       potential__.effective_magnetic_field());
+    local_op_->prepare(ctx_.gvec_coarse(), ctx_.num_mag_dims(), potential__);
 
     for (int ikloc = 0; ikloc < kset__.spl_num_kpoints().local_size(); ikloc++) {
         int ik = kset__.spl_num_kpoints(ikloc);
         auto kp = kset__[ik];
         
         if (ctx_.gamma_point()) {
-            initialize_subspace<double>(kp, potential__.effective_potential(),
-                                        potential__.effective_magnetic_field(), N, rad_int);
+            initialize_subspace<double>(kp, N, rad_int);
         } else {
-            initialize_subspace<double_complex>(kp, potential__.effective_potential(),
-                                                potential__.effective_magnetic_field(), N, rad_int);
+            initialize_subspace<double_complex>(kp, N, rad_int);
         }
     }
     local_op_->dismiss();
@@ -102,8 +99,6 @@ inline void Band::initialize_subspace(K_point_set& kset__,
 
 template <typename T>
 inline void Band::initialize_subspace(K_point*                                        kp__,
-                                      Periodic_function<double>*                      effective_potential__,
-                                      Periodic_function<double>*                      effective_magnetic_field__[3],
                                       int                                             num_ao__,
                                       std::vector<std::vector<Spline<double>>> const& rad_int__) const
 {

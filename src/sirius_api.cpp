@@ -1503,8 +1503,7 @@ void sirius_generate_xc_potential(ftn_double* vxcmt__,
                                   ftn_double* bxcit__)
 {
 
-    potential->xc(density->rho(), density->magnetization(), potential->xc_potential(), potential->effective_magnetic_field(),
-                  potential->xc_energy_density());
+    potential->xc(*density);
 
     potential->xc_potential()->copy_to_global_ptr(vxcmt__, vxcit__);
 
@@ -1572,8 +1571,8 @@ void sirius_generate_coulomb_potential(ftn_double* vclmt__,
                                        ftn_double* vclit__)
 {
     density->rho().fft_transform(-1);
-    potential->poisson(density->rho(), potential->hartree_potential());
-    potential->hartree_potential()->copy_to_global_ptr(vclmt__, vclit__);
+    potential->poisson(density->rho());
+    potential->hartree_potential().copy_to_global_ptr(vclmt__, vclit__);
 }
 
 void sirius_update_atomic_potential()
