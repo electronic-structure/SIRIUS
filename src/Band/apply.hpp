@@ -2,7 +2,7 @@
  *  \param [out] hphi Hamiltonian, applied to wave-functions [storage: CPU || GPU].
  */
 template <typename T>
-void Band::apply_h(K_point* kp__, 
+void Band::apply_h(K_point* kp__,
                    int ispn__,
                    int N__,
                    int n__,
@@ -74,7 +74,7 @@ void Band::apply_h(K_point* kp__,
  *  \param [out] ophi Overlap operator, applied to wave-functions [storage: CPU || GPU].
  */
 template <typename T>
-void Band::apply_h_o(K_point* kp__, 
+void Band::apply_h_o(K_point* kp__,
                      int ispn__,
                      int N__,
                      int n__,
@@ -85,7 +85,7 @@ void Band::apply_h_o(K_point* kp__,
                      Q_operator<T>& q_op) const
 {
     PROFILE("sirius::Band::apply_h_o");
-    
+
     double t1 = -omp_get_wtime();
     /* for the data remapping we need phi on CPU */
     #ifdef __GPU
@@ -142,21 +142,20 @@ void Band::apply_h_o(K_point* kp__,
             for (int ispn = 0; ispn < 2; ispn++) {
 
                 auto beta_phi = kp__->beta_projectors().inner<T>(i, phi__.component(ispn), N__, n__);
-                
+
                 /* apply diagonal spin blocks */
                 d_op.apply(i, ispn, hphi__.component(ispn), N__, n__, beta_phi);
                 /* apply non-diagonal spin blocks */
                 d_op.apply(i, (ispn == 0) ? 3 : 2, hphi__.component((ispn == 0) ? 1 : 0), N__, n__, beta_phi);
-                
-		if(ctx_.so_correction()) {
-		  q_op.apply(i, ispn, ophi__.component(ispn), N__, n__, beta_phi);
-		  /* apply non-diagonal spin blocks */
-		  q_op.apply(i, (ispn == 0) ? 3 : 2, ophi__.component((ispn == 0) ? 1 : 0), N__, n__, beta_phi);
-		} else {
-                /* apply Q operator (diagonal in spin) */  
-		  q_op.apply(i, 0, ophi__.component(ispn), N__, n__, beta_phi);
-		}
-		    
+
+                if (ctx_.so_correction()) {
+                    q_op.apply(i, ispn, ophi__.component(ispn), N__, n__, beta_phi);
+                    /* apply non-diagonal spin blocks */
+                    q_op.apply(i, (ispn == 0) ? 3 : 2, ophi__.component((ispn == 0) ? 1 : 0), N__, n__, beta_phi);
+                } else {
+                    /* apply Q operator (diagonal in spin) */
+                    q_op.apply(i, 0, ophi__.component(ispn), N__, n__, beta_phi);
+                }
             }
         } else { /* non-magnetic or collinear case */
 
@@ -166,7 +165,7 @@ void Band::apply_h_o(K_point* kp__,
             q_op.apply(i, 0, ophi__.component(0), N__, n__, beta_phi);
         }
     }
-    
+
     if (ctx_.control().print_checksum_) {
         for (int ispn = 0; ispn < nsc; ispn++) {
             auto cs1 = hphi__.component(ispn).checksum(N__, n__);
@@ -188,7 +187,7 @@ inline void Band::apply_fv_o(K_point* kp__,
                              wave_functions& ophi__) const
 {
     PROFILE("sirius::Band::apply_fv_o");
-    
+
     if (!apw_only__) {
         /* zero the local-orbital part */
         ophi__.mt_coeffs().zero<memory_t::host>(N__, n__);
@@ -213,7 +212,7 @@ inline void Band::apply_fv_o(K_point* kp__,
 
     for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
         auto& atom = unit_cell_.atom(ia);
-        auto& type = atom.type(); 
+        auto& type = atom.type();
         /* number of AW for this atom */
         int naw = atom.mt_aw_basis_size();
         /* number of lo for this atom */
@@ -292,7 +291,7 @@ inline void Band::apply_fv_o(K_point* kp__,
         if (!nlo || apw_only__) {
             continue;
         }
-            
+
         /* local orbital coefficients of atom ia for all states */
         matrix<double_complex> phi_lo_ia(nlo, n__);
         auto ia_location = phi__.spl_num_atoms().location(ia);
@@ -340,7 +339,7 @@ inline void Band::apply_fv_o(K_point* kp__,
                 int l_lo     = type.indexb(xi_lo).l;
                 int lm_lo    = type.indexb(xi_lo).lm;
                 int order_lo = type.indexb(xi_lo).order;
-                
+
                 if (ia_location.rank == kp__->comm().rank()) {
                     /* lo-lo contribution */
                     for (int jlo = 0; jlo < type.mt_lo_basis_size(); jlo++) {
@@ -355,7 +354,7 @@ inline void Band::apply_fv_o(K_point* kp__,
 
                     for (int order_aw = 0; order_aw < (int)type.aw_descriptor(l_lo).size(); order_aw++) {
                         /* lo-APW contribution */
-                        ophi__.mt_coeffs().prime(ophi__.offset_mt_coeffs(ia_location.local_index) + ilo, N__ + i) += 
+                        ophi__.mt_coeffs().prime(ophi__.offset_mt_coeffs(ia_location.local_index) + ilo, N__ + i) +=
                             atom.symmetry_class().o_radial_integral(l_lo, order_lo, order_aw) *
                             tmp(type.indexb_by_lm_order(lm_lo, order_aw), i);
                     }
@@ -384,7 +383,7 @@ inline void Band::apply_fv_h_o(K_point* kp__,
     PROFILE("sirius::Band::apply_fv_h_o");
 
     assert(ophi__.mt_coeffs().num_rows_loc() == hphi__.mt_coeffs().num_rows_loc());
-    
+
     if (N__ == 0) {
         /* zero plane-wave part of pure local orbital basis functions */
         hphi__.pw_coeffs().zero<memory_t::host | memory_t::device>(0, nlo__);
@@ -401,7 +400,7 @@ inline void Band::apply_fv_h_o(K_point* kp__,
     } else {
         local_op_->apply_h_o(kp__->gkvec().partition(), N__, n__, phi__, hphi__, ophi__);
     }
-    
+
     if (ctx_.control().print_checksum_) {
         auto cs1 = hphi__.checksum_pw(N__, n__, ctx_.processing_unit());
         auto cs2 = ophi__.checksum_pw(N__, n__, ctx_.processing_unit());
@@ -417,7 +416,7 @@ inline void Band::apply_fv_h_o(K_point* kp__,
     matrix<double_complex> halm(kp__->num_gkvec_loc(),
                                 std::max(unit_cell_.max_mt_aw_basis_size(), unit_cell_.max_mt_lo_basis_size()),
                                 ctx_.dual_memory_t());
-    
+
     matrix<double_complex> tmp1(unit_cell_.max_mt_aw_basis_size(), n__, ctx_.dual_memory_t());
     matrix<double_complex> tmp2(unit_cell_.max_mt_aw_basis_size(), n__, ctx_.dual_memory_t());
 
@@ -431,7 +430,7 @@ inline void Band::apply_fv_h_o(K_point* kp__,
 
     for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
         auto& atom = unit_cell_.atom(ia);
-        auto& type = atom.type(); 
+        auto& type = atom.type();
         /* number of AW for this atom */
         int naw = atom.mt_aw_basis_size();
         /* number of lo for this atom */
@@ -443,7 +442,7 @@ inline void Band::apply_fv_h_o(K_point* kp__,
             alm.copy<memory_t::host, memory_t::device>();
             halm.copy<memory_t::host, memory_t::device>();
         }
-        
+
         /* create arrays with proper dimensions from the already allocated chunk of memory */
         matrix<double_complex> alm_phi;
         matrix<double_complex> halm_phi;
@@ -538,7 +537,7 @@ inline void Band::apply_fv_h_o(K_point* kp__,
                               ophi__.pw_coeffs().prime().at<GPU>(0, N__),
                               ophi__.pw_coeffs().prime().ld());
             /* APW-APW contribution to Hamiltonian */
-            linalg<GPU>::gemm(0, 0, kp__->num_gkvec_loc(), n__, naw, 
+            linalg<GPU>::gemm(0, 0, kp__->num_gkvec_loc(), n__, naw,
                               &linalg_const<double_complex>::one(),
                               alm.at<GPU>(), alm.ld(),
                               halm_phi.at<GPU>(), halm_phi.ld(),
@@ -552,7 +551,7 @@ inline void Band::apply_fv_h_o(K_point* kp__,
         if (!nlo) {
             continue;
         }
-            
+
         /* local orbital coefficients of atom ia for all states */
         matrix<double_complex> phi_lo_ia(nlo, n__, ctx_.dual_memory_t());
         auto ia_location = phi__.spl_num_atoms().location(ia);
@@ -618,7 +617,7 @@ inline void Band::apply_fv_h_o(K_point* kp__,
         }
         #ifdef __GPU
         if (ctx_.processing_unit() == GPU) {
-            halm.copy<memory_t::host, memory_t::device>();    
+            halm.copy<memory_t::host, memory_t::device>();
             hmt.copy<memory_t::host, memory_t::device>();
             linalg<GPU>::gemm(0, 0, kp__->num_gkvec_loc(), n__, nlo,
                               &linalg_const<double_complex>::one(),
@@ -653,7 +652,7 @@ inline void Band::apply_fv_h_o(K_point* kp__,
                 int lm_lo    = type.indexb(xi_lo).lm;
                 int order_lo = type.indexb(xi_lo).order;
                 int idxrf_lo = type.indexb(xi_lo).idxrf;
-                
+
                 if (ia_location.rank == kp__->comm().rank()) {
                     /* lo-lo contribution */
                     for (int jlo = 0; jlo < type.mt_lo_basis_size(); jlo++) {
@@ -672,7 +671,7 @@ inline void Band::apply_fv_h_o(K_point* kp__,
 
                     for (int order_aw = 0; order_aw < (int)type.aw_descriptor(l_lo).size(); order_aw++) {
                         /* lo-APW contribution */
-                        ophi__.mt_coeffs().prime(ophi__.offset_mt_coeffs(ia_location.local_index) + ilo, N__ + i) += 
+                        ophi__.mt_coeffs().prime(ophi__.offset_mt_coeffs(ia_location.local_index) + ilo, N__ + i) +=
                             atom.symmetry_class().o_radial_integral(l_lo, order_lo, order_aw) *
                             alm_phi(type.indexb_by_lm_order(lm_lo, order_aw), i);
                     }
@@ -737,32 +736,32 @@ inline void Band::apply_magnetic_field(wave_functions& fv_states__,
         auto& atom = unit_cell_.atom(ia);
         int offset = fv_states__.offset_mt_coeffs(ialoc);
         int mt_basis_size = atom.type().mt_basis_size();
-        
+
         zm.zero();
-        
+
         /* only upper triangular part of zm is computed because it is a hermitian matrix */
         #pragma omp parallel for default(shared)
         for (int xi2 = 0; xi2 < mt_basis_size; xi2++) {
             int lm2    = atom.type().indexb(xi2).lm;
             int idxrf2 = atom.type().indexb(xi2).idxrf;
-            
+
             for (int i = 0; i < ctx_.num_mag_dims(); i++) {
                 for (int xi1 = 0; xi1 <= xi2; xi1++) {
                     int lm1    = atom.type().indexb(xi1).lm;
                     int idxrf1 = atom.type().indexb(xi1).idxrf;
 
-                    zm(xi1, xi2, i) = gaunt_coefs_->sum_L3_gaunt(lm1, lm2, atom.b_radial_integrals(idxrf1, idxrf2, i)); 
+                    zm(xi1, xi2, i) = gaunt_coefs_->sum_L3_gaunt(lm1, lm2, atom.b_radial_integrals(idxrf1, idxrf2, i));
                 }
             }
         }
         /* compute bwf = B_z*|wf_j> */
         linalg<CPU>::hemm(0, 0, mt_basis_size, ctx_.num_fv_states(),
                           linalg_const<double_complex>::one(),
-                          zm.at<CPU>(), zm.ld(), 
+                          zm.at<CPU>(), zm.ld(),
                           fv_states__.mt_coeffs().prime().at<CPU>(offset, 0), fv_states__.mt_coeffs().prime().ld(),
                           linalg_const<double_complex>::zero(),
                           hpsi__[0].mt_coeffs().prime().at<CPU>(offset, 0), hpsi__[0].mt_coeffs().prime().ld());
-        
+
         /* compute bwf = (B_x - iB_y)|wf_j> */
         if (hpsi__.size() == 3) {
             /* reuse first (z) component of zm matrix to store (B_x - iB_y) */
@@ -770,16 +769,16 @@ inline void Band::apply_magnetic_field(wave_functions& fv_states__,
                 for (int xi1 = 0; xi1 <= xi2; xi1++) {
                     zm(xi1, xi2, 0) = zm(xi1, xi2, 1) - double_complex(0, 1) * zm(xi1, xi2, 2);
                 }
-                
-                /* remember: zm for x,y,z, components of magnetic field is hermitian and we computed 
+
+                /* remember: zm for x,y,z, components of magnetic field is hermitian and we computed
                  * only the upper triangular part */
                 for (int xi1 = xi2 + 1; xi1 < mt_basis_size; xi1++) {
                     zm(xi1, xi2, 0) = std::conj(zm(xi2, xi1, 1)) - double_complex(0, 1) * std::conj(zm(xi2, xi1, 2));
                 }
             }
-              
+
             linalg<CPU>::gemm(0, 0, mt_basis_size, ctx_.num_fv_states(), mt_basis_size,
-                              zm.at<CPU>(), zm.ld(), 
+                              zm.at<CPU>(), zm.ld(),
                               fv_states__.mt_coeffs().prime().at<CPU>(offset, 0), fv_states__.mt_coeffs().prime().ld(),
                               hpsi__[2].mt_coeffs().prime().at<CPU>(offset, 0), hpsi__[2].mt_coeffs().prime().ld());
         }
@@ -800,19 +799,19 @@ inline void Band::apply_magnetic_field(wave_functions& fv_states__,
 //== void Band::apply_uj_correction(mdarray<double_complex, 2>& fv_states, mdarray<double_complex, 3>& hpsi)
 //== {
 //==     Timer t("sirius::Band::apply_uj_correction");
-//== 
+//==
 //==     for (int ia = 0; ia < unit_cell_.num_atoms(); ia++)
 //==     {
 //==         if (unit_cell_.atom(ia)->apply_uj_correction())
 //==         {
 //==             Atom_type* type = unit_cell_.atom(ia)->type();
-//== 
+//==
 //==             int offset = unit_cell_.atom(ia)->offset_wf();
-//== 
+//==
 //==             int l = unit_cell_.atom(ia)->uj_correction_l();
-//== 
+//==
 //==             int nrf = type->indexr().num_rf(l);
-//== 
+//==
 //==             for (int order2 = 0; order2 < nrf; order2++)
 //==             {
 //==                 for (int lm2 = Utils::lm_by_l_m(l, -l); lm2 <= Utils::lm_by_l_m(l, l); lm2++)
@@ -821,32 +820,32 @@ inline void Band::apply_magnetic_field(wave_functions& fv_states__,
 //==                     for (int order1 = 0; order1 < nrf; order1++)
 //==                     {
 //==                         double ori = unit_cell_.atom(ia)->symmetry_class()->o_radial_integral(l, order2, order1);
-//==                         
+//==
 //==                         for (int ist = 0; ist < parameters_.spl_fv_states().local_size(); ist++)
 //==                         {
 //==                             for (int lm1 = Utils::lm_by_l_m(l, -l); lm1 <= Utils::lm_by_l_m(l, l); lm1++)
 //==                             {
 //==                                 int idx1 = type->indexb_by_lm_order(lm1, order1);
 //==                                 double_complex z1 = fv_states(offset + idx1, ist) * ori;
-//== 
+//==
 //==                                 if (sblock == uu)
 //==                                 {
-//==                                     hpsi(offset + idx2, ist, 0) += z1 * 
+//==                                     hpsi(offset + idx2, ist, 0) += z1 *
 //==                                         unit_cell_.atom(ia)->uj_correction_matrix(lm2, lm1, 0, 0);
 //==                                 }
-//== 
+//==
 //==                                 if (sblock == dd)
 //==                                 {
 //==                                     hpsi(offset + idx2, ist, 1) += z1 *
 //==                                         unit_cell_.atom(ia)->uj_correction_matrix(lm2, lm1, 1, 1);
 //==                                 }
-//== 
+//==
 //==                                 if (sblock == ud)
 //==                                 {
 //==                                     hpsi(offset + idx2, ist, 2) += z1 *
 //==                                         unit_cell_.atom(ia)->uj_correction_matrix(lm2, lm1, 0, 1);
 //==                                 }
-//==                                 
+//==
 //==                                 if (sblock == du)
 //==                                 {
 //==                                     hpsi(offset + idx2, ist, 3) += z1 *
@@ -864,40 +863,40 @@ inline void Band::apply_magnetic_field(wave_functions& fv_states__,
 //== void Band::apply_so_correction(mdarray<double_complex, 2>& fv_states, mdarray<double_complex, 3>& hpsi)
 //== {
 //==     Timer t("sirius::Band::apply_so_correction");
-//== 
+//==
 //==     for (int ia = 0; ia < unit_cell_.num_atoms(); ia++)
 //==     {
 //==         Atom_type* type = unit_cell_.atom(ia)->type();
-//== 
+//==
 //==         int offset = unit_cell_.atom(ia)->offset_wf();
-//== 
+//==
 //==         for (int l = 0; l <= parameters_.lmax_apw(); l++)
 //==         {
 //==             int nrf = type->indexr().num_rf(l);
-//== 
+//==
 //==             for (int order1 = 0; order1 < nrf; order1++)
 //==             {
 //==                 for (int order2 = 0; order2 < nrf; order2++)
 //==                 {
 //==                     double sori = unit_cell_.atom(ia)->symmetry_class()->so_radial_integral(l, order1, order2);
-//==                     
+//==
 //==                     for (int m = -l; m <= l; m++)
 //==                     {
 //==                         int idx1 = type->indexb_by_l_m_order(l, m, order1);
 //==                         int idx2 = type->indexb_by_l_m_order(l, m, order2);
 //==                         int idx3 = (m + l != 0) ? type->indexb_by_l_m_order(l, m - 1, order2) : 0;
 //==                         int idx4 = (m - l != 0) ? type->indexb_by_l_m_order(l, m + 1, order2) : 0;
-//== 
+//==
 //==                         for (int ist = 0; ist < (int)parameters_.spl_fv_states().local_size(); ist++)
 //==                         {
 //==                             double_complex z1 = fv_states(offset + idx2, ist) * double(m) * sori;
 //==                             hpsi(offset + idx1, ist, 0) += z1;
 //==                             hpsi(offset + idx1, ist, 1) -= z1;
 //==                             // apply L_{-} operator
-//==                             if (m + l) hpsi(offset + idx1, ist, 2) += fv_states(offset + idx3, ist) * sori * 
+//==                             if (m + l) hpsi(offset + idx1, ist, 2) += fv_states(offset + idx3, ist) * sori *
 //==                                                                       sqrt(double(l * (l + 1) - m * (m - 1)));
 //==                             // apply L_{+} operator
-//==                             if (m - l) hpsi(offset + idx1, ist, 3) += fv_states(offset + idx4, ist) * sori * 
+//==                             if (m - l) hpsi(offset + idx1, ist, 3) += fv_states(offset + idx4, ist) * sori *
 //==                                                                       sqrt(double(l * (l + 1) - m * (m + 1)));
 //==                         }
 //==                     }
@@ -906,5 +905,3 @@ inline void Band::apply_magnetic_field(wave_functions& fv_states__,
 //==         }
 //==     }
 //== }
-
-

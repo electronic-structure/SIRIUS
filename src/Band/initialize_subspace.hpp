@@ -319,7 +319,7 @@ inline void Band::initialize_subspace(K_point*                                  
                 TERMINATE(s);
             }
             if (kp__->comm().rank() == 0) {
-                printf("[verification] minimum eiegen-value of the overlap matrix: %18.12f\n", eo[0]);
+                printf("[verification] minimum eigen-value of the overlap matrix: %18.12f\n", eo[0]);
             }
             if (eo[0] < 0) {
                 TERMINATE("overlap matrix is not positively defined");
@@ -338,7 +338,7 @@ inline void Band::initialize_subspace(K_point*                                  
                                    evec.template at<CPU>(), evec.ld(),
                                    hmlt.num_rows_local(), hmlt.num_cols_local())) {
             std::stringstream s;
-            s << "error in diagonalziation";
+            s << "error in diagonalization";
             TERMINATE(s);
         }
 

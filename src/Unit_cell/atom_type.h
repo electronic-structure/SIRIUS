@@ -34,7 +34,7 @@
 #include "radial_solver.h"
 #include "xc_functional.h"
 #include "simulation_parameters.h"
-
+#include "sht.h"
 namespace sirius {
 
 /// A helper class to establish various index mappings for the atomic radial functions.
@@ -105,10 +105,13 @@ class radial_functions_index
             }
 
             for (int idxlo = 0; idxlo < static_cast<int>(lo_descriptors.size()); idxlo++) {
-	      int l = lo_descriptors[idxlo].l;
-	      radial_function_index_descriptors_.push_back(radial_function_index_descriptor(l, lo_descriptors[idxlo].total_angular_momentum, num_rf_[l], idxlo));
-	      num_rf_[l]++;
-	      num_lo_[l]++;
+                int l = lo_descriptors[idxlo].l;
+                radial_function_index_descriptors_.push_back(radial_function_index_descriptor(l,
+											      lo_descriptors[idxlo].total_angular_momentum,
+											      num_rf_[l],
+											      idxlo));
+                num_rf_[l]++;
+                num_lo_[l]++;
             }
 	    
             for (int l = 0; l <= lmax_; l++) {
@@ -218,11 +221,11 @@ class basis_functions_index
 
                 index_by_idxrf_(idxrf) = (int)basis_function_index_descriptors_.size();
 
-		for (int m = -l; m <= l; m++)
-		  basis_function_index_descriptors_.push_back(basis_function_index_descriptor(l, m, indexr[idxrf].j, order, idxlo, idxrf));
-	    }
-	    index_by_lm_order_ = mdarray<int, 2>(Utils::lmmax(indexr.lmax()), indexr.max_num_rf());
-		
+                for (int m = -l; m <= l; m++)
+                    basis_function_index_descriptors_.push_back(basis_function_index_descriptor(l, m, indexr[idxrf].j, order, idxlo, idxrf));
+            }
+            index_by_lm_order_ = mdarray<int, 2>(Utils::lmmax(indexr.lmax()), indexr.max_num_rf());
+
             for (int i = 0; i < (int)basis_function_index_descriptors_.size(); i++)
             {
                 int lm = basis_function_index_descriptors_[i].lm;
@@ -901,8 +904,9 @@ class Atom_type
 
  private:
 	void Generate_F_coefficients(void);
-	inline double ClebschGordan(const int l, const double j, const int m, const int spin);
-	inline int Calculate_SphericalHarmonic_m_Index(const int l, const double j, const int m, const int sigma);
+	inline double ClebschGordan(const int l, const double j, const double m, const int spin);
+	inline double_complex Calculate_U_sigma_m(const int l, const double j, const int mj, const int m, const int sigma);
+
 };
 
 inline void Atom_type::init(int offset_lo__)
@@ -1561,7 +1565,7 @@ inline void Atom_type::read_input(const std::string& fname)
     }
 }
 
-inline double Atom_type::ClebschGordan(const int l, const double j, const int m, const int spin)
+inline double Atom_type::ClebschGordan(const int l, const double j, const double mj, const int spin)
 {
   // l : orbital angular momentum
   // m:  projection of the total angular momentum $m \pm /frac12$
@@ -1573,141 +1577,157 @@ inline double Atom_type::ClebschGordan(const int l, const double j, const int m,
     printf("Error : unkown spin direction\n");
   }
   
-  if ((m < -(l + 1)) || (m > l)) {
-    printf(" Value of m=%d with l = %d  not allowed\n", m, l);
-  }
-  
-  const double denom = sqrt(1.0 / (2.0 * l + 1));
+  const double denom = sqrt(1.0 / (2.0 * l + 1.0));
   
   if (std::abs(j - l - 0.5) <1e-8) {
+    int m = static_cast<int>(mj - 0.5);
     if (spin == 0)
       CG = sqrt(l + m + 1.0);
     if (spin == 1)
       CG = sqrt((l - m));
-    return (CG * denom);
-  }
-  
-  
-  if (std::abs(j - l + 0.5) <1e-8) {
-    if (m < (1 - l))
-      CG = 0.0;
-    else {
-      if (spin == 0)
-        CG = sqrt(l - m + 1);
-      if (spin == 1)
-        CG = -sqrt(l + m);
-    }
-    return (CG * denom);
-  }
-  
-  printf("Clebsch gordan coefficients do not exist for this combination of j=%.5lf and l=%d\n", j, l);
-  return 0.0;
-}
-
-inline int Atom_type::Calculate_SphericalHarmonic_m_Index(const int l, const double j, const int m, const int sigma)
-{
-  // This function calculates the m index of the spherical harmonic
-  // of a spinor with orbital angular momentum l, total angular
-    // momentum j, projection along z of the total angular momentum m+-1/2.
-    // Spin selects the up (sigma=0) or down (sigma=1) coefficient.
-
-    int result = 0;
-    if ((sigma != 0) && (sigma != 1)) {
-      printf("SphericalIndex function : unkown spin direction\n");
-      return 0;
-    }
-
-    int ind = 0;
-    int j1 = 2.0 * j;
-    if ((m < -(l + 1)) || (m > l)) {
-      printf("SphericalIndex function : value of m not allowed\n");
-      return 0;
-    }
-
-    if (std::abs(j - l - 0.5) <1e-8) {
-      ind = m + sigma; // if sigma is up (sigma = 0)
-    } else {
-      if (std::abs(j -  l + 0.5) <1e-8) {
-        if (m < (1 - l))
-          ind = 0;
-        else
-          ind = m - !sigma; // return m - 1 (up spin), m (down spin)
-      } else {
-        printf("SphericalIndex function : l and j are not compatible\n");
+  } else {  
+    if (std::abs(j - l + 0.5) <1e-8) {
+      int m = static_cast<int>(mj + 0.5);
+      if (m < (1 - l))
+	CG = 0.0;
+      else {
+	if (spin == 0)
+	  CG = sqrt(l - m + 1);
+	if (spin == 1)
+	  CG = -sqrt(l + m);
       }
+    } else {
+        printf("Clebsch gordan coefficients do not exist for this combination of j=%.5lf and l=%d\n", j, l);
+	exit(0);
     }
-    
-    if((ind < -l)||(ind>l)) ind = 0;
-    return ind;
+  }
+  return (CG * denom);
 }
 
-    void Atom_type::Generate_F_coefficients(void)
-    {
-    // we consider Pseudo potentials with spin orbit couplings
+
+static inline double_complex ylm_dot_rlm(int l, int m1, int m2)
+{
+  double const isqrt2 = 1.0 / std::sqrt(2);
   
+  assert(l >= 0 && std::abs(m1) <= l && std::abs(m2) <= l);
+  
+  if (!((m1 == m2) || (m1 == -m2))) {
+    return double_complex(0, 0);
+  }
+  
+  if (m1 == 0) {
+    return double_complex(1, 0);
+  }
+  
+  if (m1 < 0) {
+    if (m2 < 0) {
+      return -double_complex(0, isqrt2);
+    } else {
+      return std::pow(-1.0, m2) * double_complex(isqrt2, 0);
+    }
+  } else {
+    if (m2 < 0) {
+      return pow(-1.0, m1) * double_complex(0, isqrt2);
+     } else {
+      return double_complex(isqrt2, 0);
+    }
+  }
+}
+
+static inline double_complex rlm_dot_ylm(int l, int m1, int m2)
+{
+  return std::conj(ylm_dot_rlm(l, m2, m1));
+}
+// this function computes the U^sigma_{ljm mj} coefficient that
+// rotates the complex spherical harmonics to the real one
+
+inline double_complex Atom_type::Calculate_U_sigma_m(const int l, const double j, const int mj, const int mp, const int sigma)
+{
+  
+  int result = 0;
+  if ((sigma != 0) && (sigma != 1)) {
+    printf("SphericalIndex function : unkown spin direction\n");
+    return 0;
+  }
+  
+  double_complex res = 0.0;
+  
+  if (std::abs(j - l - 0.5) <1e-8) {
+    // j = l + 1/2
+    // m = mj - 1/2
+    
+    //int m1 = static_cast<int>(mj - 0.5 - 1e-8);
+
+    int m1 = (mj - 1)>>1;
+    if(sigma == 0) { // up spin
+      if(m1 < -l) // convention U^s_{mj,m'} = 0
+	return 0.0;
+      else // U^s_{mj,mp} = 
+	return rlm_dot_ylm(l, m1, mp);
+    } else { // down spin
+      if((m1 + 1)> l)
+	return 0.0;
+      else
+	return rlm_dot_ylm(l, m1+1, mp);
+    }
+  } else {
+    if (std::abs(j -  l + 0.5) <1e-8) {
+      //int m1 = static_cast<int>(mj + 0.5 + 1e-8);
+      int m1 = (mj + 1)>>1;
+      if(sigma == 0) {
+	return rlm_dot_ylm(l, m1-1, mp);
+      } else {
+	return rlm_dot_ylm(l, m1, mp);	
+      }
+    } else {
+      printf("Spherical Index function : l and j are not compatible\n");
+      exit(0);
+    }
+  }
+}
+
+
+void Atom_type::Generate_F_coefficients(void)
+{
+    // we consider Pseudo potentials with spin orbit couplings
+
     // First thing, we need to compute the
     // \f[f^{\sigma\sigma^\prime}_{l,j,m;l\prime,j\prime,m\prime}\f]
     // They are defined by Eq.9 of Ref PRB 71, 115106
     // and correspond to transformations of the
     // spherical harmonics
     if (!this->pp_desc().SpinOrbit_Coupling)
-      return;
+        return;
 
-    std::cout << "Entering f_coeff" << std::endl;
     // number of beta projectors
     int nbf = this->mt_basis_size();
-    const int l = this->indexr().lmax();
-    // we need the \f[\alpha_m_j^{\simga,l,j}\f] tensor and the ClesbchGordan coeffients
-    mdarray<double_complex, 2> U(2 * l + 1, 2 * l + 1);
-    U.zero();
-    U(l , 0) = 1.0;
-  
-    for (auto m = 2; m <= 2 * l + 1; m += 2) {
-      int mi = (m >> 1); // divide by two
-      int n  = l - mi + 1; // shift by l (negative index otherwise)
-    
-      double EvenOdd = -1.0;
-      if ((m%2) == 0) {
-        EvenOdd = 1.0;
-      } else {
-        EvenOdd = -1.0;
-      }
-      if(n<0)
-        std::cout << "Error " << std::endl;
-      U(n - 1, m - 1) = double_complex(EvenOdd / sqrt(2.0), 0.0);
-      U(n - 1, m)     = double_complex(0.0, -1.0* EvenOdd / sqrt(2.0)) ;
-      n = l + 1 + mi;
-      U(n - 1, m - 1) = double_complex(1.0 / sqrt(2.0), 0.0);
-      U(n - 1, m)     = double_complex(0.0, 1.0 / sqrt(2.0));
-    }
-
     f_coefficients_ = mdarray<double_complex, 4>(nbf, nbf, 2, 2);
     f_coefficients_.zero();
-    
+
     for (int xi2 = 0; xi2 < nbf; xi2++) {
-      const int l2     = this->indexb(xi2).l;
-      const double j2  = this->indexb(xi2).j;
-      const int m2 = this->indexb(xi2).m + l2;
-      for (int xi1 = 0; xi1 < nbf; xi1++) {
-        const int l1     = this->indexb(xi1).l;
-        const double j1  = this->indexb(xi1).j;
-        const int m1 = this->indexb(xi1).m + l1;
-        if ((l2 == l1) && (fabs(j1 - j2) < 1e-8)) {
-          for (auto sigma1 = 0; sigma1 < 2; sigma1++) {
-            for (auto sigma2 = 0; sigma2 < 2; sigma2++) {
-              double_complex coef = {0.0, 0.0};
-              for (int m = -(l1 + 1); m <= l1; m++) {
-                auto mi = this->Calculate_SphericalHarmonic_m_Index(l2, j2, m, sigma1) + l;
-                auto mj = this->Calculate_SphericalHarmonic_m_Index(l1, j1, m, sigma2) + l;
-                coef += U(mi, m2) * this->ClebschGordan(l2, j2, m, sigma1) * std::conj(U(mj, m1))*this->ClebschGordan(l1, j1, m, sigma2);
-              }
-              f_coefficients_(xi2, xi1, sigma1, sigma2) = coef;
+        const int l2     = this->indexb(xi2).l;
+        const double j2  = this->indexb(xi2).j;
+        const int m2 = this->indexb(xi2).m;
+        for (int xi1 = 0; xi1 < nbf; xi1++) {
+            const int l1     = this->indexb(xi1).l;
+            const double j1  = this->indexb(xi1).j;
+            const int m1 = this->indexb(xi1).m;
+            if ((l2 == l1) && (std::abs(j1 - j2) < 1e-8)) {
+                for (auto sigma2 = 0; sigma2 < 2; sigma2++) {
+                    for (auto sigma1 = 0; sigma1 < 2; sigma1++) {
+                        double_complex coef = {0.0, 0.0};
+			int jj1 = 2.0*j1;
+                        for (int mj = -jj1; mj <= jj1; mj += 2) {
+			  coef += Calculate_U_sigma_m(l1, j1, mj, m1, sigma1) * this->ClebschGordan(l1, j1, mj/2.0, sigma1) *
+			    std::conj(Calculate_U_sigma_m(l2, j2, mj, m2, sigma2))*this->ClebschGordan(l2, j2, mj/2.0, sigma2);
+                        }
+                        f_coefficients_(xi1, xi2, sigma1, sigma2) = coef;
+                    }
+                }
             }
-          }
         }
-      }
     }
-    }
+}
 
 } // namespace
 

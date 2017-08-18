@@ -28,7 +28,7 @@ inline void Band::solve_fd(K_point* kp__,
 {
     switch (ctx_.esm_type()) {
         case electronic_structure_method_t::pseudopotential: {
-            if (ctx_.gamma_point()) {
+            if (ctx_.gamma_point()&&(ctx_.so_correction() == false)) {
                 diag_pseudo_potential<double>(kp__, effective_potential__, effective_magnetic_field__);
             } else {
                 diag_pseudo_potential<double_complex>(kp__, effective_potential__, effective_magnetic_field__);
