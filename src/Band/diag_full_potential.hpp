@@ -561,7 +561,7 @@ inline void Band::diag_fv_davidson(K_point* kp) const
 }
 
 inline void Band::diag_sv(K_point* kp,
-                           Periodic_function<double>* effective_magnetic_field[3]) const
+                          Potential& potential__) const
 {
     PROFILE("sirius::Band::diag_sv");
 
@@ -591,7 +591,7 @@ inline void Band::diag_sv(K_point* kp,
 
     /* compute product of magnetic field and wave-function */
     if (ctx_.num_spins() == 2) {
-        apply_magnetic_field(kp->fv_states(), kp->gkvec(), effective_magnetic_field, hpsi);
+        apply_magnetic_field(kp->fv_states(), kp->gkvec(), hpsi);
     }
     else {
         hpsi[0].pw_coeffs().prime().zero();

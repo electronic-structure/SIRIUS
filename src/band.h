@@ -83,7 +83,6 @@ class Band
         /** Must be called first because hpsi is overwritten with B|fv_j>. */
         void apply_magnetic_field(wave_functions& fv_states__,
                                   Gvec const& gkvec__,
-                                  Periodic_function<double>* effective_magnetic_field__[3],
                                   std::vector<wave_functions>& hpsi__) const;
 
         /// Apply SO correction to the first-variational states.
@@ -370,9 +369,7 @@ class Band
                 
         /// Diagonalize a pseudo-potential Hamiltonian.
         template <typename T>
-        void diag_pseudo_potential(K_point* kp__, 
-                                   Periodic_function<double>* effective_potential__,
-                                   Periodic_function<double>* effective_magnetic_field__[3]) const
+        void diag_pseudo_potential(K_point* kp__) const
         {
             PROFILE("sirius::Band::diag_pseudo_potential");
 
@@ -798,7 +795,7 @@ class Band
 
         /// Solve second-variational problem.
         inline void diag_sv(K_point* kp,
-                            Periodic_function<double>* effective_magnetic_field[3]) const;
+                            Potential& potential__) const;
         
         /// Solve \f$ \hat H \psi = E \psi \f$ and find eigen-states of the Hamiltonian.
         inline void solve_for_kset(K_point_set& kset__,
@@ -842,8 +839,6 @@ class Band
         /// Initialize the wave-functions subspace.
         template <typename T>
         inline void initialize_subspace(K_point*                                        kp__,
-                                        Periodic_function<double>*                      effective_potential__,
-                                        Periodic_function<double>*                      effective_magnetic_field[3],
                                         int                                             num_ao__,
                                         std::vector<std::vector<Spline<double>>> const& rad_int__) const;
 };

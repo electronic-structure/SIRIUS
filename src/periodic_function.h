@@ -167,15 +167,15 @@ class Periodic_function: public Smooth_periodic_function<T>
         using Smooth_periodic_function<T>::add;
 
         /// Add the function
-        void add(Periodic_function<T>* g)
+        void add(Periodic_function<T>* g, double alpha__ = 1)
         {
             PROFILE("sirius::Periodic_function::add");
             /* add regular-grid part */
-            Smooth_periodic_function<T>::add(*g);
+            Smooth_periodic_function<T>::add(*g, alpha__);
             /* add muffin-tin part */
             if (ctx_.full_potential()) {
                 for (int ialoc = 0; ialoc < unit_cell_.spl_num_atoms().local_size(); ialoc++)
-                    f_mt_local_(ialoc) += g->f_mt(ialoc);
+                    f_mt_local_(ialoc) += g->f_mt(ialoc) * alpha__;
             }
         }
 

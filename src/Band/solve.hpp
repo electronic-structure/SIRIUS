@@ -34,7 +34,7 @@ inline void Band::solve_with_second_variation(K_point& kp__, Potential& potentia
     /* generate first-variational states */
     kp__.generate_fv_states();
     /* solve magnetic Hamiltonian */
-    diag_sv(&kp__, potential__.effective_magnetic_field());
+    diag_sv(&kp__, potential__);
     /* generate spinor wave-functions */
     kp__.generate_spinor_wave_functions();
 }
@@ -44,9 +44,9 @@ inline void Band::solve_with_single_variation(K_point& kp__, Potential& potentia
     switch (ctx_.esm_type()) {
         case electronic_structure_method_t::pseudopotential: {
             if (ctx_.gamma_point()) {
-                diag_pseudo_potential<double>(&kp__, potential__.effective_potential(), potential__.effective_magnetic_field());
+                diag_pseudo_potential<double>(&kp__);
             } else {
-                diag_pseudo_potential<double_complex>(&kp__, potential__.effective_potential(), potential__.effective_magnetic_field());
+                diag_pseudo_potential<double_complex>(&kp__);
             }
             break;
         }
@@ -118,11 +118,9 @@ inline void Band::solve_for_kset(K_point_set& kset__,
     }
 
     if (ctx_.full_potential()) {
-        local_op_->prepare(ctx_.gvec_coarse(), ctx_.num_mag_dims(), potential__.effective_potential(),
-                           potential__.effective_magnetic_field(), ctx_.step_function());
+        local_op_->prepare(ctx_.gvec_coarse(), ctx_.num_mag_dims(), potential__, ctx_.step_function());
     } else {
-        local_op_->prepare(ctx_.gvec_coarse(), ctx_.num_mag_dims(), potential__.effective_potential(),
-                           potential__.effective_magnetic_field());
+        local_op_->prepare(ctx_.gvec_coarse(), ctx_.num_mag_dims(), potential__);
     }
 
     if (ctx_.comm().rank() == 0 && ctx_.control().print_memory_usage_) {
