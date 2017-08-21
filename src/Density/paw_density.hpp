@@ -69,8 +69,6 @@ inline void Density::init_density_matrix_for_paw()
         // magnetization vector
         vector3d<double> magn = atom.vector_field();
 
-        double norm = magn.length();
-
         for (int xi = 0; xi < nbf; xi++)
         {
             basis_function_index_descriptor const& basis_func_index_dsc = atom_type.indexb()[xi];
@@ -81,17 +79,21 @@ inline void Density::init_density_matrix_for_paw()
 
             int l = basis_func_index_dsc.l;
 
-            switch (ctx_.num_mag_dims())
-            {
-                case 0:
-                {
+            switch (ctx_.num_mag_dims()){
+                case 0:{
                     density_matrix_(xi,xi,0,ia) = occ / (double)( 2 * l + 1 );
                     break;
                 }
 
-                case 1:
-                {
-                    double nm = (norm < 1. ) ? magn[0] : 1.;
+//                case 3:{
+//                    density_matrix_(xi,xi,0,ia) = 0.5 * (1.0 ) * occ / (double)( 2 * l + 1 );
+//                    density_matrix_(xi,xi,1,ia) = 0.5 * (1.0 ) * occ / (double)( 2 * l + 1 );
+//                    break;
+//                }
+
+                case 3:
+                case 1:{
+                    double nm = ( std::abs(magn[2]) < 1. ) ? magn[2] :  std::copysign(1, magn[2] ) ;
 
                     density_matrix_(xi,xi,0,ia) = 0.5 * (1.0 + nm ) * occ / (double)( 2 * l + 1 );
                     density_matrix_(xi,xi,1,ia) = 0.5 * (1.0 - nm ) * occ / (double)( 2 * l + 1 );
@@ -147,7 +149,7 @@ inline void Density::generate_paw_atom_density(paw_density_data_t &pdd)
             double diag_coef = ib1 == ib2 ? 1. : 2. ;
 
             /* store density matrix in aux form */
-            double dm[4];
+            double dm[4]={0,0,0,0};
             switch (ctx_.num_mag_dims()) {
                 case 3: {
                     dm[2] =  2 * std::real(density_matrix_(ib1, ib2, 2, ia));
@@ -160,6 +162,10 @@ inline void Density::generate_paw_atom_density(paw_density_data_t &pdd)
                 }
                 case 0: {
                     dm[0] = density_matrix_(ib1, ib2, 0, ia).real();
+                    break;
+                }
+                default:{
+                    TERMINATE("generate_paw_atom_density FATAL ERROR!");
                     break;
                 }
             }

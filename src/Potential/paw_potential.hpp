@@ -229,7 +229,7 @@ inline double Potential::xc_mt_PAW_noncollinear(std::vector<Spheric_function<spe
     int lmsize_rho = static_cast<int>(density[0].size(0));
 
     /* transform density to theta phi components */
-    std::vector<Spheric_function<spatial, double>> rho_tp;
+    std::vector<Spheric_function<spatial, double>> rho_tp(density.size());
 
     for (size_t i = 0; i < density.size(); i++){
         rho_tp[i] = transform(sht_.get(), density[i]);
@@ -243,10 +243,10 @@ inline double Potential::xc_mt_PAW_noncollinear(std::vector<Spheric_function<spe
     for (int ir = 0; ir < rgrid.num_points(); ir++ ) {
         for (int itp = 0; itp < sht_->num_points(); itp++ ) {
             vector3d<double> magn({rho_tp[1](itp, ir), rho_tp[2](itp, ir), rho_tp[3](itp, ir)});
-            double magn_scalar = magn.length();
+            double norm = magn.length();
 
-            rho_u_tp(itp, ir) = 0.5 * (rho_tp[0](itp, ir) + rho_core[ir] + magn_scalar);
-            rho_d_tp(itp, ir) = 0.5 * (rho_tp[0](itp, ir) + rho_core[ir] - magn_scalar);
+            rho_u_tp(itp, ir) = 0.5 * (rho_tp[0](itp, ir) + rho_core[ir] + norm);
+            rho_d_tp(itp, ir) = 0.5 * (rho_tp[0](itp, ir) + rho_core[ir] - norm);
         }
     }
 
@@ -286,7 +286,8 @@ inline double Potential::xc_mt_PAW_noncollinear(std::vector<Spheric_function<spe
 
             /* get unit magnetization vector*/
             vector3d<double> magn({rho_tp[1](itp, ir), rho_tp[2](itp, ir), rho_tp[3](itp, ir)});
-            magn *= field / magn.length();
+            double norm = magn.length();
+            magn *= norm > 0.0 ? field / norm : 0.0 ;
 
             /* add total potential and effective field values at current point */
             vxc_tp[0](itp, ir) = pot;
@@ -508,7 +509,7 @@ inline double Potential::calc_PAW_one_elec_energy(paw_potential_data_t& pdd,
 
     for (int ib2 = 0; ib2 < pdd.atom_->mt_lo_basis_size(); ib2++ ) {
         for (int ib1 = 0; ib1 < pdd.atom_->mt_lo_basis_size(); ib1++ ) {
-            double dm[4];
+            double dm[4]={0,0,0,0};
             switch (ctx_.num_mag_dims()) {
                 case 3: {
                     dm[2] =  2 * std::real(density_matrix(ib1, ib2, 2, ia));
@@ -521,6 +522,10 @@ inline double Potential::calc_PAW_one_elec_energy(paw_potential_data_t& pdd,
                 }
                 case 0: {
                     dm[0] = density_matrix(ib1, ib2, 0, ia).real();
+                    break;
+                }
+                default:{
+                    TERMINATE("calc_PAW_one_elec_energy FATAL ERROR!");
                     break;
                 }
             }
