@@ -741,6 +741,109 @@ inline bool Gvec_partition::reduced() const
     return gvec_->reduced();
 }
 
+struct remap_gvec_to_shells
+{
+    block_data_descriptor a2a_send;
+    block_data_descriptor a2a_recv;
+    splindex<block> spl_num_gsh;
+    mdarray<int, 2> gvec_remapped_;
+
+    Communicator const& comm_;
+
+    Gvec const& gvec_;
+
+    remap_gvec_to_shells(Communicator const& comm__, Gvec const& gvec__)
+        : comm_(comm__)
+        , gvec_(gvec__)
+    {
+        a2a_send = block_data_descriptor(comm_.size());
+        a2a_recv = block_data_descriptor(comm_.size());
+
+        /* split G-vector shells between ranks */
+        spl_num_gsh = splindex<block>(gvec_.num_shells(), comm_.size(), comm_.rank());
+
+        /* each rank sends a fraction of its local G-vectors to other ranks */
+        /* count this fraction */
+        for (int igloc = 0; igloc < gvec_.count(); igloc++) {
+            int ig = gvec_.offset() + igloc;
+            int igsh = gvec__.shell(ig);
+            a2a_send.counts[spl_num_gsh.local_rank(igsh)]++;
+        }
+        a2a_send.calc_offsets();
+        /* sanity check: total number of elements to send is equal to the local number of G-vector */
+        if (a2a_send.size() != gvec_.count()) {
+            TERMINATE("wrong number of G-vectors");
+        }
+        /* count the number of elements to receive */
+        for (int r = 0; r < comm_.size(); r++) {
+            for (int igloc = 0; igloc < gvec_.gvec_count(r); igloc++) {
+                int ig = gvec_.gvec_offset(r) + igloc;
+                int igsh = gvec_.shell(ig);
+                if (spl_num_gsh.local_rank(igsh) == comm_.rank()) {
+                    a2a_recv.counts[r]++;
+                }
+            }
+        }
+        a2a_recv.calc_offsets();
+        
+        /* local set of G-vectors in the remapped order */
+        gvec_remapped_ = mdarray<int, 2>(3, a2a_recv.size());
+        std::vector<int> counts(comm_.size(), 0);
+        for (int r = 0; r < comm_.size(); r++) {
+            for (int igloc = 0; igloc < gvec_.gvec_count(r); igloc++) {
+                int ig = gvec_.gvec_offset(r) + igloc;
+                int igsh = gvec_.shell(ig);
+                auto G = gvec_.gvec(ig);
+                if (spl_num_gsh.local_rank(igsh) == comm_.rank()) {
+                    for (int x = 0; x < 3; x++) {
+                        gvec_remapped_(x, a2a_recv.offsets[r] + counts[r]) = G[x];
+                    }
+                    counts[r]++;
+                }
+            }
+        }
+    }
+    
+    template <typename T>
+    std::vector<T> remap_forward(T* data__)
+    {
+        std::vector<T> send_buf(gvec_.count());
+        std::vector<int> counts(comm_.size(), 0);
+        for (int igloc = 0; igloc < gvec_.count(); igloc++) {
+            int ig = gvec_.offset() + igloc;
+            int igsh = gvec_.shell(ig);
+            int r = spl_num_gsh.local_rank(igsh);
+            send_buf[a2a_send.offsets[r] + counts[r]] = data__[igloc];
+            counts[r]++;
+        }
+
+        std::vector<double> recv_buf(a2a_recv.size());
+
+        comm_.alltoall(send_buf.data(), a2a_send.counts.data(), a2a_send.offsets.data(),
+                       recv_buf.data(), a2a_recv.counts.data(), a2a_recv.offsets.data());
+
+        return std::move(recv_buf);
+    }
+    
+    template <typename T>
+    void remap_backward(std::vector<T> buf__, T* data__)
+    {
+        std::vector<T> recv_buf(gvec_.count());
+        
+        comm_.alltoall(buf__.data(), a2a_recv.counts.data(), a2a_recv.offsets.data(),
+                       recv_buf.data(), a2a_send.counts.data(), a2a_send.offsets.data());
+
+        std::vector<int> counts(comm_.size(), 0);
+        for (int igloc = 0; igloc < gvec_.count(); igloc++) {
+            int ig = gvec_.offset() + igloc;
+            int igsh = gvec_.shell(ig);
+            int r = spl_num_gsh.local_rank(igsh);
+            data__[igloc] = recv_buf[a2a_send.offsets[r] + counts[r]];
+            counts[r]++;
+        }
+    }
+};
+
 } // namespace sddk
 
 #endif //__GVEC_HPP__
