@@ -305,7 +305,7 @@ inline void Potential::generate_D_operator_matrix()
             }
         }
     }
-    
+
     if (ctx_.control().print_checksum_ && ctx_.comm().rank() == 0) {
         for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
             auto cs = unit_cell_.atom(ia).d_mtrx().checksum();

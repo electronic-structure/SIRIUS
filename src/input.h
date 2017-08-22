@@ -1,24 +1,24 @@
 // Copyright (c) 2013-2017 Anton Kozhevnikov, Thomas Schulthess
 // All rights reserved.
-// 
-// Redistribution and use in source and binary forms, with or without modification, are permitted provided that 
+//
+// Redistribution and use in source and binary forms, with or without modification, are permitted provided that
 // the following conditions are met:
-// 
-// 1. Redistributions of source code must retain the above copyright notice, this list of conditions and the 
+//
+// 1. Redistributions of source code must retain the above copyright notice, this list of conditions and the
 //    following disclaimer.
-// 2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions 
+// 2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions
 //    and the following disclaimer in the documentation and/or other materials provided with the distribution.
-// 
-// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED 
-// WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A 
-// PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR 
-// ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, 
-// PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER 
-// CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR 
+//
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED
+// WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A
+// PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
+// ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+// PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+// CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
 // OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 /** \file input.h
- *   
+ *
  *  \brief Contains input parameters structures.
  */
 
@@ -47,7 +47,7 @@ namespace sirius {
  *          "atom_types" : [label_A, label_B, ...],
  *
  *          "atom_files" : {
- *              label_A : file_A, 
+ *              label_A : file_A,
  *              label_B : file_B,
  *              ...
  *          },
@@ -56,7 +56,7 @@ namespace sirius {
  *
  *          "atoms" : {
  *              label_A: [
- *                  coordinates_A_1, 
+ *                  coordinates_A_1,
  *                  coordinates_A_2,
  *                  ...
  *              ],
@@ -88,14 +88,14 @@ struct Unit_cell_input
     /// Labels of the atom types.
     std::vector<std::string> labels_;
 
-    /// Mapping between a label of atom type and corresponding atomic species file. 
+    /// Mapping between a label of atom type and corresponding atomic species file.
     std::map<std::string, std::string> atom_files_;
 
     /// Atomic coordinates.
     /** Outer vector size is equal to the number of atom types. */
     std::vector<std::vector<std::vector<double>>> coordinates_;
 
-    /// True if this section exists in the input file. 
+    /// True if this section exists in the input file.
     bool exist_{false};
 
     /// Read the \b unit_cell input section.
@@ -115,40 +115,40 @@ struct Unit_cell_input
 
             double scale = section.value("lattice_vectors_scale", 1.0);
 
-            for (int x: {0, 1, 2}) {
+            for (int x : {0, 1, 2}) {
                 a0_[x] = a0[x] * scale;
                 a1_[x] = a1[x] * scale;
                 a2_[x] = a2[x] * scale;
             }
 
             matrix3d<double> lv;
-            for (int x: {0, 1, 2}) {
+            for (int x : {0, 1, 2}) {
                 lv(x, 0) = a0_[x];
                 lv(x, 1) = a1_[x];
                 lv(x, 2) = a2_[x];
             }
             auto ilv = inverse(lv);
-            
+
             labels_.clear();
             coordinates_.clear();
 
             std::string units = section.value("atom_coordinate_units", "lattice");
-            
-            for (auto& label: section["atom_types"]) {
+
+            for (auto& label : section["atom_types"]) {
                 if (std::find(std::begin(labels_), std::end(labels_), label) != std::end(labels_)) {
                     TERMINATE("duplicate atom type label");
                 }
                 labels_.push_back(label);
             }
-            
+
             if (section.count("atom_files")) {
-                for (auto& label: labels_) {
+                for (auto& label : labels_) {
                     atom_files_[label] = section["atom_files"].value(label, "");
                 }
             }
-            
+
             for (int iat = 0; iat < (int)labels_.size(); iat++) {
-                coordinates_.push_back(std::vector< std::vector<double> >());
+                coordinates_.push_back(std::vector<std::vector<double>>());
                 for (size_t ia = 0; ia < section["atoms"][labels_[iat]].size(); ia++) {
                     auto v = section["atoms"][labels_[iat]][ia].get<std::vector<double>>();
 
@@ -161,14 +161,14 @@ struct Unit_cell_input
 
                     vector3d<double> v1(v[0], v[1], v[2]);
                     if (units == "A") {
-                        for (int x: {0, 1, 2}) {
+                        for (int x : {0, 1, 2}) {
                             v1[x] /= bohr_radius;
                         }
                     }
                     if (units == "au" || units == "A") {
-                        v1 = ilv * v1;
+                        v1       = ilv * v1;
                         auto rv1 = reduce_coordinates(v1);
-                        for (int x: {0, 1, 2}) {
+                        for (int x : {0, 1, 2}) {
                             v[x] = rv1.first[x];
                         }
                     }
@@ -199,14 +199,14 @@ struct Mixer_input
     /// Number of history steps for Broyden-type mixers.
     int max_history_{8};
 
-    /// True if this section exists in the input file. 
+    /// True if this section exists in the input file.
     bool exist_{false};
 
     /// Read the \b mixer input section.
     void read(json const& parser)
     {
         if (parser.count("mixer")) {
-            exist_ = true;
+            exist_              = true;
             auto section        = parser["mixer"];
             beta_               = section.value("beta", beta_);
             beta0_              = section.value("beta0", beta0_);
@@ -237,14 +237,14 @@ struct Iterative_solver_input
     double residual_tolerance_{1e-6};
 
     /// Defines the flavour of the iterative solver.
-    /** If converge_by_energy is set to 0, then the residuals are estimated by their norm. If converge_by_energy 
+    /** If converge_by_energy is set to 0, then the residuals are estimated by their norm. If converge_by_energy
      *  is set to 1 then the residuals are estimated by the eigen-energy difference. This allows to estimate the
      *  unconverged residuals and only then compute only the unconverged. */
     int converge_by_energy_{1}; // TODO: rename, this is meaningless
-    
+
     /// Minimum number of residuals to continue iterative diagonalization process.
     int min_num_res_{0};
-    
+
     int real_space_prj_{0}; // TODO: move it from here to parameters
     double R_mask_scale_{1.5};
     double mask_alpha_{3};
@@ -256,7 +256,7 @@ struct Iterative_solver_input
     /** If true, keep basis orthogonal and solve standard eigen-value problem. If false, add preconditioned residuals
      *  as they are and solve generalized eigen-value problem. */
     bool orthogonalize_{true};
-    
+
     /// Tell how to initialize the subspace.
     /** It can be either "lcao", i.e. start from the linear combination of atomic orbitals or "random" –- start from
      *  the randomized wave functions. */
@@ -327,7 +327,7 @@ struct Control_input
     void read(json const& parser)
     {
         if (parser.count("control")) {
-            mpi_grid_dims_       = parser["control"].value("mpi_grid_dims", mpi_grid_dims_); 
+            mpi_grid_dims_       = parser["control"].value("mpi_grid_dims", mpi_grid_dims_);
             cyclic_block_size_   = parser["control"].value("cyclic_block_size", cyclic_block_size_);
             std_evp_solver_name_ = parser["control"].value("std_evp_solver_type", std_evp_solver_name_);
             gen_evp_solver_name_ = parser["control"].value("gen_evp_solver_type", gen_evp_solver_name_);
@@ -346,7 +346,7 @@ struct Control_input
             print_forces_        = parser["control"].value("print_forces", print_forces_);
 
             auto strings = {&std_evp_solver_name_, &gen_evp_solver_name_, &fft_mode_, &processing_unit_};
-            for (auto s: strings) {
+            for (auto s : strings) {
                 std::transform(s->begin(), s->end(), s->begin(), ::tolower);
             }
         }
@@ -361,7 +361,7 @@ struct Parameters_input
     std::vector<std::string> xc_functionals_;
     std::string core_relativity_{"dirac"};
     std::string valence_relativity_{"zora"};
-    
+
     /// Number of first-variational states.
     int num_fv_states_{-1};
 
@@ -370,13 +370,13 @@ struct Parameters_input
 
     /// Cutoff for plane-waves (for density and potential expansion).
     double pw_cutoff_{20.0}; // in a.u.^-1
-    
+
     /// Cutoff for augmented-wave functions.
     double aw_cutoff_{7.0}; // this is R_{MT} * |G+k|_{max}
 
     /// Cutoff for |G+k| plane-waves.
     double gk_cutoff_{6.0}; // in a.u.^-1
-    
+
     /// Maximum l for APW functions.
     int lmax_apw_{8};
 
@@ -385,13 +385,13 @@ struct Parameters_input
 
     /// Maximum l for potential
     int lmax_pot_{8};
-    
+
     /// Number of dimensions of the magnetization and effective magnetic field (0, 1 or 3).
     int num_mag_dims_{0};
 
     /// Scale muffin-tin radii automatically.
     int auto_rmt_{1};
-    
+
     std::vector<int> ngridk_{1, 1, 1};
     std::vector<int> shiftk_{0, 0, 0};
     int num_dft_iter_{100};
@@ -424,7 +424,7 @@ struct Parameters_input
             /* read list of XC functionals */
             if (parser["parameters"].count("xc_functionals")) {
                 xc_functionals_.clear();
-                for (auto& label: parser["parameters"]["xc_functionals"]) {
+                for (auto& label : parser["parameters"]["xc_functionals"]) {
                     xc_functionals_.push_back(label);
                 }
             }
@@ -433,7 +433,8 @@ struct Parameters_input
             std::transform(core_relativity_.begin(), core_relativity_.end(), core_relativity_.begin(), ::tolower);
 
             valence_relativity_ = parser["parameters"].value("valence_relativity", valence_relativity_);
-            std::transform(valence_relativity_.begin(), valence_relativity_.end(), valence_relativity_.begin(), ::tolower);
+            std::transform(valence_relativity_.begin(), valence_relativity_.end(), valence_relativity_.begin(),
+                           ::tolower);
 
             num_fv_states_  = parser["parameters"].value("num_fv_states", num_fv_states_);
             smearing_width_ = parser["parameters"].value("smearing_width", smearing_width_);
@@ -454,10 +455,10 @@ struct Parameters_input
             potential_tol_  = parser["parameters"].value("potential_tol", potential_tol_);
             molecule_       = parser["parameters"].value("molecule", molecule_);
             nn_radius_      = parser["parameters"].value("nn_radius", nn_radius_);
-	    if(parser["parameters"].count("SpinOrbit")) {
-	      so_correction_  = parser["parameters"].value("SpinOrbit", so_correction_);
-	      num_mag_dims_ = 3;
-	    }
+            if (parser["parameters"].count("SpinOrbit")) {
+                so_correction_ = parser["parameters"].value("SpinOrbit", so_correction_);
+                num_mag_dims_  = 3;
+            }
         }
     }
 };
@@ -473,15 +474,13 @@ struct Settings_input
     void read(json const& parser)
     {
         if (parser.count("settings")) {
-            nprii_vloc_      = parser["settings"].value("nprii_vloc", nprii_vloc_);
-            nprii_beta_      = parser["settings"].value("nprii_beta", nprii_beta_);
-            nprii_aug_       = parser["settings"].value("nprii_aug", nprii_aug_);
-            nprii_rho_core_  = parser["settings"].value("nprii_rho_core", nprii_rho_core_);
+            nprii_vloc_     = parser["settings"].value("nprii_vloc", nprii_vloc_);
+            nprii_beta_     = parser["settings"].value("nprii_beta", nprii_beta_);
+            nprii_aug_      = parser["settings"].value("nprii_aug", nprii_aug_);
+            nprii_rho_core_ = parser["settings"].value("nprii_rho_core", nprii_rho_core_);
         }
     }
 };
-
 };
 
 #endif // __INPUT_H__
-

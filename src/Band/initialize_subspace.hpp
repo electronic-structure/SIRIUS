@@ -80,7 +80,7 @@ inline void Band::initialize_subspace(K_point_set& kset__, Potential& potential_
     for (int ikloc = 0; ikloc < kset__.spl_num_kpoints().local_size(); ikloc++) {
         int ik  = kset__.spl_num_kpoints(ikloc);
         auto kp = kset__[ik];
-        
+
         if (ctx_.gamma_point() && (ctx_.so_correction() == false)) {
             initialize_subspace<double>(kp, N, rad_int);
         } else {
@@ -99,9 +99,8 @@ inline void Band::initialize_subspace(K_point_set& kset__, Potential& potential_
 }
 
 template <typename T>
-inline void Band::initialize_subspace(K_point*                                        kp__,
-                                      int                                             num_ao__,
-                                      std::vector<std::vector<Spline<double>>> const& rad_int__) const
+inline void
+Band::initialize_subspace(K_point* kp__, int num_ao__, std::vector<std::vector<Spline<double>>> const& rad_int__) const
 {
     PROFILE("sirius::Band::initialize_subspace|kp");
 
@@ -193,7 +192,7 @@ inline void Band::initialize_subspace(K_point*                                  
             }
         }
     }
-    
+
     /* fill remaining wave-functions with pseudo-random guess */
     assert(kp__->num_gkvec() > num_phi + 10);
 #pragma omp parallel for schedule(static)
@@ -211,7 +210,7 @@ inline void Band::initialize_subspace(K_point*                                  
                 phi.component(0).pw_coeffs().prime(igk_loc, num_ao__ + i) = 0.25;
             }
         }
-        //for (int igk_loc = 0; igk_loc < kp__->num_gkvec_loc(); igk_loc++) {
+        // for (int igk_loc = 0; igk_loc < kp__->num_gkvec_loc(); igk_loc++) {
         //    /* global index of G+k vector */
         //    int igk = kp__->idxgk(igk_loc);
         //    /* G-vector */
@@ -235,7 +234,7 @@ inline void Band::initialize_subspace(K_point*                                  
     }
     int igk0 = (kp__->comm().rank() == 0) ? 1 : 0;
 
-    #pragma omp parallel for schedule(static)
+#pragma omp parallel for schedule(static)
     for (int i = 0; i < num_phi; i++) {
         for (int igk_loc = igk0; igk_loc < kp__->num_gkvec_loc(); igk_loc++) {
             /* global index of G+k vector */
@@ -342,8 +341,8 @@ inline void Band::initialize_subspace(K_point*                                  
 
         /* setup eigen-value problem */
         set_subspace_mtrx<T>(num_sc, 0, num_phi_tot, phi, hphi, hmlt, hmlt_old);
-        
-        //hmlt.serialize("hmlt", num_phi_tot);
+
+        // hmlt.serialize("hmlt", num_phi_tot);
 
         /* solve generalized eigen-value problem with the size N */
         if (std_evp_solver().solve(num_phi_tot, num_bands, hmlt.template at<CPU>(), hmlt.ld(), eval.data(),
@@ -373,9 +372,11 @@ inline void Band::initialize_subspace(K_point*                                  
         /* compute wave-functions */
         /* \Psi_{i} = \sum_{mu} \phi_{mu} * Z_{mu, i} */
         if (ctx_.num_mag_dims() == 3) {
-            transform<T>(ctx_.processing_unit(), 1.0, {&phi}, 0, num_phi_tot, evec, 0, 0, 0.0, {&kp__->spinor_wave_functions()}, 0, num_bands);
+            transform<T>(ctx_.processing_unit(), 1.0, {&phi}, 0, num_phi_tot, evec, 0, 0, 0.0,
+                         {&kp__->spinor_wave_functions()}, 0, num_bands);
         } else {
-            transform<T>(ctx_.processing_unit(), phi.component(0), 0, num_phi, evec, 0, 0, kp__->spinor_wave_functions(ispn_step), 0, num_bands);
+            transform<T>(ctx_.processing_unit(), phi.component(0), 0, num_phi, evec, 0, 0,
+                         kp__->spinor_wave_functions(ispn_step), 0, num_bands);
         }
 
         for (int j = 0; j < num_bands; j++) {
@@ -390,17 +391,17 @@ inline void Band::initialize_subspace(K_point*                                  
         }
     }
 
-    #ifdef __GPU
+#ifdef __GPU
     if (ctx_.processing_unit() == GPU) {
-      for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-	kp__->spinor_wave_functions(ispn).pw_coeffs().copy_to_host(0, num_bands);
-	if (!keep_wf_on_gpu) {
-	  kp__->spinor_wave_functions(ispn).pw_coeffs().deallocate_on_device();
-	}
-      }
+        for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
+            kp__->spinor_wave_functions(ispn).pw_coeffs().copy_to_host(0, num_bands);
+            if (!keep_wf_on_gpu) {
+                kp__->spinor_wave_functions(ispn).pw_coeffs().deallocate_on_device();
+            }
+        }
     }
 #endif
-    
+
     kp__->beta_projectors().dismiss();
     ctx_.fft_coarse().dismiss();
 }

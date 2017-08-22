@@ -43,7 +43,7 @@ inline void Band::solve_with_single_variation(K_point& kp__, Potential& potentia
 {
     switch (ctx_.esm_type()) {
         case electronic_structure_method_t::pseudopotential: {
-	  if (ctx_.gamma_point() && (ctx_.so_correction() == false)) {
+            if (ctx_.gamma_point() && (ctx_.so_correction() == false)) {
                 diag_pseudo_potential<double>(&kp__);
             } else {
                 diag_pseudo_potential<double_complex>(&kp__);
@@ -72,7 +72,7 @@ inline void Band::solve_with_single_variation(K_point& kp__, Potential& potentia
     //==
     //==     Timer t2("sirius::Band::solve_fd|diag");
     //==     parameters_.gen_evp_solver()->solve(kp->gklo_basis_size(), kp->gklo_basis_size_row(),
-    //kp->gklo_basis_size_col(),
+    // kp->gklo_basis_size_col(),
     //==                                         parameters_.num_fv_states(), h.ptr(), h.ld(), o.ptr(), o.ld(),
     //==                                         &eval[0], fd_evec.ptr(), fd_evec.ld());
     //== }
@@ -88,7 +88,7 @@ inline void Band::solve_with_single_variation(K_point& kp__, Potential& potentia
     //==
     //==     Timer t2("sirius::Band::solve_fd|diag");
     //==     parameters_.gen_evp_solver()->solve(kp->gklo_basis_size(), kp->gklo_basis_size_row(),
-    //kp->gklo_basis_size_col(),
+    // kp->gklo_basis_size_col(),
     //==                                         parameters_.num_fv_states(), h.ptr(), h.ld(), o.ptr(), o.ld(),
     //==                                         &eval[0], &fd_evec(0, 0), fd_evec.ld());
     //==     t2.stop();
@@ -97,7 +97,7 @@ inline void Band::solve_with_single_variation(K_point& kp__, Potential& potentia
     //==
     //==     t2.start();
     //==     parameters_.gen_evp_solver()->solve(kp->gklo_basis_size(), kp->gklo_basis_size_row(),
-    //kp->gklo_basis_size_col(),
+    // kp->gklo_basis_size_col(),
     //==                                         parameters_.num_fv_states(), h.ptr(), h.ld(), o1.ptr(), o1.ld(),
     //==                                         &eval[parameters_.num_fv_states()],
     //==                                         &fd_evec(0, parameters_.spl_fv_states().local_size()), fd_evec.ld());
@@ -107,9 +107,7 @@ inline void Band::solve_with_single_variation(K_point& kp__, Potential& potentia
     //== kp->set_band_energies(&eval[0]);
 }
 
-inline void Band::solve_for_kset(K_point_set& kset__,
-                                 Potential& potential__,
-                                 bool precompute__) const
+inline void Band::solve_for_kset(K_point_set& kset__, Potential& potential__, bool precompute__) const
 {
     PROFILE("sirius::Band::solve_for_kset");
 
@@ -132,7 +130,7 @@ inline void Band::solve_for_kset(K_point_set& kset__,
 
     /* solve secular equation and generate wave functions */
     for (int ikloc = 0; ikloc < kset__.spl_num_kpoints().local_size(); ikloc++) {
-        int ik = kset__.spl_num_kpoints(ikloc);
+        int ik  = kset__.spl_num_kpoints(ikloc);
         auto kp = kset__[ik];
 
         if (ctx_.full_potential() && use_second_variation) {

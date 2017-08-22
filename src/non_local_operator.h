@@ -311,15 +311,15 @@ class D_operator : public Non_local_operator<T>
             }
         }
 
-	if (ctx__.control().print_checksum_ && ctx__.comm().rank() == 0) {
-	    auto cs = this->op_.checksum();
-	    print_checksum("D_operator", cs);
-	}
-	
-	if (this->pu_ == GPU) {
-	    this->op_.allocate(memory_t::device);
-	    this->op_.template copy<memory_t::host, memory_t::device>();
-	}
+        if (ctx__.control().print_checksum_ && ctx__.comm().rank() == 0) {
+            auto cs = this->op_.checksum();
+            print_checksum("D_operator", cs);
+        }
+
+        if (this->pu_ == GPU) {
+            this->op_.allocate(memory_t::device);
+            this->op_.template copy<memory_t::host, memory_t::device>();
+        }
     }
 };
 
@@ -401,16 +401,16 @@ class Q_operator : public Non_local_operator<T>
                     // }
                 }
             }
-	}
-	if (ctx__.control().print_checksum_ && ctx__.comm().rank() == 0) {
-	    auto cs = this->op_.checksum();
-	    print_checksum("Q_operator", cs);
-	}
-	
-	if (this->pu_ == GPU) {
-	    this->op_.allocate(memory_t::device);
-	    this->op_.template copy<memory_t::host, memory_t::device>();
-	}
+        }
+        if (ctx__.control().print_checksum_ && ctx__.comm().rank() == 0) {
+            auto cs = this->op_.checksum();
+            print_checksum("Q_operator", cs);
+        }
+
+        if (this->pu_ == GPU) {
+            this->op_.allocate(memory_t::device);
+            this->op_.template copy<memory_t::host, memory_t::device>();
+        }
     }
 };
 
