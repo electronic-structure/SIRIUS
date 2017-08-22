@@ -367,6 +367,20 @@ inline void Band::diag_pseudo_potential_davidson(K_point*       kp__,
     }
     t3.stop();
 
+    phi.component(0).copy_from(psi.component(0), 0, num_bands, ctx_.processing_unit());
+    apply_h_o<T>(kp__, 0, 0, num_bands, phi, hphi, ophi, d_op__, q_op__);
+    for (int i = 0; i < num_bands; i++) {
+        double rnorm = 0;
+        for (int ig = 0; ig < kp__->num_gkvec(); ig++) {
+            rnorm += std::pow(std::abs(hphi.component(0).pw_coeffs().prime(ig, i) - kp__->band_energy(i) * ophi.component(0).pw_coeffs().prime(ig, i)), 2);
+        }
+        std::cout << "band: " << i << ", l2norm: " << std::sqrt(rnorm) << std::endl;
+    }
+
+
+
+
+
     kp__->beta_projectors().dismiss();
 
     //if (ctx_.control().print_checksum_) {

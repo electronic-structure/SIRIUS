@@ -751,11 +751,16 @@ struct remap_gvec_to_shells
     Communicator const& comm_;
 
     Gvec const& gvec_;
+    
+    /// A mapping between G-vector and it's local index in the new distribution.
+    std::map<vector3d<int>, int> idx_gvec;
 
     remap_gvec_to_shells(Communicator const& comm__, Gvec const& gvec__)
         : comm_(comm__)
         , gvec_(gvec__)
     {
+        PROFILE("sddk::remap_gvec_to_shells|init");
+
         a2a_send = block_data_descriptor(comm_.size());
         a2a_recv = block_data_descriptor(comm_.size());
 
@@ -802,11 +807,27 @@ struct remap_gvec_to_shells
                 }
             }
         }
+
+        for (int ig = 0; ig < a2a_recv.size(); ig++) {
+            vector3d<int> G(&gvec_remapped_(0, ig));
+            idx_gvec[G] = ig;
+        }
+    }
+
+    int index_by_gvec(vector3d<int> G__) 
+    {
+        if (idx_gvec.count(G__)) {
+            return idx_gvec[G__];
+        } else {
+            return -1;
+        }
     }
     
     template <typename T>
     std::vector<T> remap_forward(T* data__)
     {
+        PROFILE("sddk::remap_gvec_to_shells|remap_forward");
+
         std::vector<T> send_buf(gvec_.count());
         std::vector<int> counts(comm_.size(), 0);
         for (int igloc = 0; igloc < gvec_.count(); igloc++) {
@@ -817,7 +838,7 @@ struct remap_gvec_to_shells
             counts[r]++;
         }
 
-        std::vector<double> recv_buf(a2a_recv.size());
+        std::vector<T> recv_buf(a2a_recv.size());
 
         comm_.alltoall(send_buf.data(), a2a_send.counts.data(), a2a_send.offsets.data(),
                        recv_buf.data(), a2a_recv.counts.data(), a2a_recv.offsets.data());
@@ -828,6 +849,8 @@ struct remap_gvec_to_shells
     template <typename T>
     void remap_backward(std::vector<T> buf__, T* data__)
     {
+        PROFILE("sddk::remap_gvec_to_shells|remap_backward");
+
         std::vector<T> recv_buf(gvec_.count());
         
         comm_.alltoall(buf__.data(), a2a_recv.counts.data(), a2a_recv.offsets.data(),
