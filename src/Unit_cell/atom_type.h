@@ -1613,8 +1613,6 @@ Atom_type::calculate_U_sigma_m(const int l, const double j, const int mj, const 
         return 0;
     }
 
-    double_complex res = 0.0;
-
     if (std::abs(j - l - 0.5) < 1e-8) {
         // j = l + 1/2
         // m = mj - 1/2
@@ -1623,18 +1621,16 @@ Atom_type::calculate_U_sigma_m(const int l, const double j, const int mj, const 
         if (sigma == 0) { // up spin
             if (m1 < -l) { // convention U^s_{mj,m'} = 0
                 return 0.0;
-	    }
-            else {// U^s_{mj,mp} =
+            } else {// U^s_{mj,mp} =
                 return SHT::rlm_dot_ylm(l, m1, mp);
-	    }
+            }
         } else { // down spin
             if ((m1 + 1) > l) {
                 return 0.0;
-	    }
-            else {
+            } else {
                 return SHT::rlm_dot_ylm(l, m1 + 1, mp);
-	    }
-	}
+            }
+        }
     } else {
         if (std::abs(j - l + 0.5) < 1e-8) {
             int m1 = (mj + 1) >> 1;

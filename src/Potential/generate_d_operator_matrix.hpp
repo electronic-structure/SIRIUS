@@ -68,8 +68,8 @@ inline void Potential::generate_D_operator_matrix()
         auto& atom_type = unit_cell_.atom_type(iat);
         int nbf         = atom_type.mt_basis_size();
 
-/* start copy of Q(G) for the next atom type */
 #ifdef __GPU
+        /* start copy of Q(G) for the next atom type */
         if (ctx_.processing_unit() == GPU) {
             acc::sync_stream(0);
             if (iat + 1 != unit_cell_.num_atom_types()) {
@@ -137,7 +137,7 @@ inline void Potential::generate_D_operator_matrix()
                     linalg<GPU>::gemm(0, 0, nbf * (nbf + 1) / 2, atom_type.num_atoms(), 2 * ctx_.gvec().count(),
                                       ctx_.augmentation_op(iat).q_pw(), veff_a, d_tmp, 1);
 
-                    ` d_tmp.copy<memory_t::device, memory_t::host>();
+                    d_tmp.copy<memory_t::device, memory_t::host>();
 #endif
                     break;
                 }
@@ -254,8 +254,7 @@ inline void Potential::generate_D_operator_matrix()
         ctx_.augmentation_op(iat).dismiss();
     }
 
-/* add d_ion to the effective potential component of D-operator */
-
+    /* add d_ion to the effective potential component of D-operator */
     #pragma omp parallel for schedule(static)
     for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
         auto& atom_type = unit_cell_.atom(ia).type();
