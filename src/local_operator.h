@@ -26,6 +26,7 @@
 #define __LOCAL_OPERATOR_H__
 
 #include "periodic_function.h"
+#include "potential.h"
 
 #ifdef __GPU
 extern "C" void mul_by_veff_gpu(int ispn__, int size__, double const* veff__, double_complex* buf__);
@@ -117,27 +118,25 @@ class Local_operator
         }
         
         /// Map effective potential and magnetic field to a coarse FFT mesh in case of PP-PW.
-        /** \param [in] gvec_coarse              G-vectors of the coarse FFT grid.
-         *  \param [in] num_mag_dims             Number of magnetic dimensions.
-         *  \param [in] effective_potential      \f$ V_{eff}({\bf r}) \f$ on the fine grid FFT grid.
-         *  \param [in] effective_magnetic_field \f$ {\bf B}_{eff}({\bf r}) \f$ on the fine FFT grid.
+        /** \param [in] gvec_coarse    G-vectors of the coarse FFT grid.
+         *  \param [in] num_mag_dims   Number of magnetic dimensions.
+         *  \param [in] potential      \f$ V_{eff}({\bf r}) \f$ and \f$ {\bf B}_{eff}({\bf r}) \f$ on the fine grid FFT grid.
          *
          *  This function should be called prior to the band diagonalziation. In case of GPU execution all
          *  effective fields on the coarse grid will be copied to the device and will remain there until the
          *  dismiss() method is called after band diagonalization.
          */
-        inline void prepare(Gvec const&                gvec_coarse__,
-                            int                        num_mag_dims__,
-                            Periodic_function<double>* effective_potential__,
-                            Periodic_function<double>* effective_magnetic_field__[3])
+        inline void prepare(Gvec const& gvec_coarse__,
+                            int         num_mag_dims__,
+                            Potential&  potential__)
         {
             PROFILE("sirius::Local_operator::prepare");
 
             /* group effective fields into single vector */
             std::vector<Periodic_function<double>*> veff_vec(num_mag_dims__ + 1);
-            veff_vec[0] = effective_potential__;
+            veff_vec[0] = potential__.effective_potential();
             for (int j = 0; j < num_mag_dims__; j++) {
-                veff_vec[1 + j] = effective_magnetic_field__[j];
+                veff_vec[1 + j] = potential__.effective_magnetic_field(j);
             }
             
             /* allocate only once */
@@ -197,30 +196,31 @@ class Local_operator
 
             if (param_->control().print_checksum_) {
                 auto cs = veff_vec_.checksum();
-                DUMP("checksum(veff_vec_): %18.10f", cs);
+                fft_coarse_.comm().allreduce(&cs, 1);
+                if (gvec_coarse__.comm().rank() == 0) {
+                    print_checksum("Local_operator::prepare::veff_vec", cs);
+                }
             }
         }
 
         /// Map effective potential and magnetic field to a coarse FFT mesh in case of FP-LAPW.
-        /** \param [in] gvec_coarse              G-vectors of the coarse FFT grid.
-         *  \param [in] num_mag_dims             Number of magnetic dimensions.
-         *  \param [in] effective_potential      \f$ V_{eff}({\bf r}) \f$ on the fine grid FFT grid.
-         *  \param [in] effective_magnetic_field \f$ {\bf B}_{eff}({\bf r}) \f$ on the fine FFT grid.
-         *  \param [in] step_function            Unit step function of the LAPW method.
+        /** \param [in] gvec_coarse    G-vectors of the coarse FFT grid.
+         *  \param [in] num_mag_dims   Number of magnetic dimensions.
+         *  \param [in] potential      \f$ V_{eff}({\bf r}) \f$ and \f$ {\bf B}_{eff}({\bf r}) \f$ on the fine grid FFT grid.
+         *  \param [in] step_function  Unit step function of the LAPW method.
          */
-        inline void prepare(Gvec const&                gvec_coarse__,
-                            int                        num_mag_dims__,
-                            Periodic_function<double>* effective_potential__,
-                            Periodic_function<double>* effective_magnetic_field__[3],
-                            Step_function const&       step_function__)
+        inline void prepare(Gvec const&          gvec_coarse__,
+                            int                  num_mag_dims__,
+                            Potential&           potential__,
+                            Step_function const& step_function__)
         {
             PROFILE("sirius::Local_operator::prepare");
 
             /* group effective fields into single vector */
             std::vector<Periodic_function<double>*> veff_vec(num_mag_dims__ + 1);
-            veff_vec[0] = effective_potential__;
+            veff_vec[0] = potential__.effective_potential();
             for (int j = 0; j < num_mag_dims__; j++) {
-                veff_vec[1 + j] = effective_magnetic_field__[j];
+                veff_vec[1 + j] = potential__.effective_magnetic_field(j);
             }
 
             /* allocate only once */
@@ -236,8 +236,8 @@ class Local_operator
                 buf_rg_ = mdarray<double_complex, 1>(fft_coarse_.local_size(), memory_t::host, "Local_operator::buf_rg_");
             }
 
-            auto& fft_dense = effective_potential__->fft();
-            auto& gvec_dense = effective_potential__->gvec();
+            auto& fft_dense = potential__.effective_potential()->fft();
+            auto& gvec_dense = potential__.effective_potential()->gvec();
 
             mdarray<double_complex, 1> v_pw_fine(gvec_dense.num_gvec());
             /* low-frequency part of PW coefficients */

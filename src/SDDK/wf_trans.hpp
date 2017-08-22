@@ -1,7 +1,8 @@
 /// Linear transformation of the wave-functions.
 /** The transformation matrix is expected in the CPU memory. */
 template <typename T>
-inline void transform(double                       alpha__,
+inline void transform(device_t                     pu__,
+                      double                       alpha__,
                       std::vector<wave_functions*> wf_in__,
                       int                          i0__,
                       int                          m__,
@@ -32,8 +33,6 @@ inline void transform(double                       alpha__,
         assert(wf_out__[i]->comm().size() == comm.size());
     }
     
-    auto pu = wf_in__[0]->pu();
-
     double ngop{0};
     if (std::is_same<T, double>::value) {
         ngop = 2e-9;
@@ -49,19 +48,20 @@ inline void transform(double                       alpha__,
     int sddk_block_size = (sddk_bs_raw == NULL) ? sddk_default_block_size : std::atoi(sddk_bs_raw);
 
     T alpha = alpha__;
-
-    auto local_transform = [pu](T*              alpha,
-                                wave_functions* wf_in__,
-                                int             i0__,
-                                int             m__,
-                                matrix<T>&      mtrx__,
-                                int             irow0__,
-                                int             jcol0__,
-                                wave_functions* wf_out__,
-                                int             j0__,
-                                int             n__)
+    
+    /* perform a local {d,z}gemm; in case of GPU transformation is done in the stream#0 (not in the null stream!) */
+    auto local_transform = [pu__](T*              alpha,
+                                  wave_functions* wf_in__,
+                                  int             i0__,
+                                  int             m__,
+                                  matrix<T>&      mtrx__,
+                                  int             irow0__,
+                                  int             jcol0__,
+                                  wave_functions* wf_out__,
+                                  int             j0__,
+                                  int             n__)
     {
-        if (pu == CPU) {
+        if (pu__ == CPU) {
             if (std::is_same<T, double_complex>::value) {
                 /* transform plane-wave part */
                 linalg<CPU>::gemm(0, 0, wf_in__->pw_coeffs().num_rows_loc(), n__, m__,
@@ -94,7 +94,7 @@ inline void transform(double                       alpha__,
             }
         }
         #ifdef __GPU
-        if (pu == GPU) {
+        if (pu__ == GPU) {
             if (std::is_same<T, double_complex>::value) {
                 linalg<GPU>::gemm(0, 0, wf_in__->pw_coeffs().num_rows_loc(), n__, m__,
                                   reinterpret_cast<double_complex*>(alpha),
@@ -134,7 +134,7 @@ inline void transform(double                       alpha__,
     sddk::timer t1("sddk::wave_functions::transform|init");
     /* initial values for the resulting wave-functions */
     for (int iv = 0; iv < nwf; iv++) {
-        if (pu == CPU) {
+        if (pu__ == CPU) {
             if (beta__ == 0) {
                 /* zero PW part */
                 for (int j = 0; j < n__; j++) {
@@ -167,7 +167,7 @@ inline void transform(double                       alpha__,
             }
         }
         #ifdef __GPU
-        if (pu == GPU) {
+        if (pu__ == GPU) {
             if (beta__ == 0) {
                 /* zero PW part */
                 acc::zero(wf_out__[iv]->pw_coeffs().prime().at<GPU>(0, j0__),
@@ -210,7 +210,7 @@ inline void transform(double                       alpha__,
     /* trivial case */
     if (comm.size() == 1) {
         #ifdef __GPU
-        if (pu == GPU) {
+        if (pu__ == GPU) {
             acc::copyin(mtrx__.template at<GPU>(irow0__, jcol0__), mtrx__.ld(),
                         mtrx__.template at<CPU>(irow0__, jcol0__), mtrx__.ld(), m__, n__);
         }
@@ -218,6 +218,12 @@ inline void transform(double                       alpha__,
         for (int iv = 0; iv < nwf; iv++) {
             local_transform(&alpha, wf_in__[iv], i0__, m__, mtrx__, irow0__, jcol0__, wf_out__[iv], j0__, n__);
         }
+        #ifdef __GPU
+        if (pu__ == GPU) {
+            /* wait for the last cudaZgemm */
+            acc::sync_stream(0);
+        }
+        #endif
         if (sddk_pp) {
             time += omp_get_wtime();
             int k = wf_in__[0]->pw_coeffs().num_rows_loc();
@@ -235,7 +241,7 @@ inline void transform(double                       alpha__,
     mdarray<T, 1> buf(BS * BS, memory_t::host_pinned, "transform::buf");
     matrix<T> submatrix(BS, BS, memory_t::host_pinned, "transform::submatrix");
 
-    if (pu == GPU) {
+    if (pu__ == GPU) {
         submatrix.allocate(memory_t::device);
     }
 
@@ -316,7 +322,7 @@ inline void transform(double                       alpha__,
                 assert(sd.counts[rank] == counts[rank]);
             }
             #ifdef __GPU
-            if (pu == GPU) {
+            if (pu__ == GPU) {
                 acc::copyin(submatrix.template at<GPU>(), submatrix.ld(),
                             submatrix.template at<CPU>(), submatrix.ld(),
                             nrow, ncol, 0);
@@ -329,7 +335,7 @@ inline void transform(double                       alpha__,
             }
         }
         #ifdef __GPU
-        if (pu == GPU) {
+        if (pu__ == GPU) {
             /* wait for the last cudaZgemm */
             acc::sync_stream(0);
         }
@@ -352,7 +358,8 @@ inline void transform(double                       alpha__,
 }
 
 template <typename T>
-inline void transform(std::vector<wave_functions*> wf_in__,
+inline void transform(device_t pu__,
+                      std::vector<wave_functions*> wf_in__,
                       int i0__,
                       int m__,
                       dmatrix<T>& mtrx__,
@@ -362,7 +369,7 @@ inline void transform(std::vector<wave_functions*> wf_in__,
                       int j0__,
                       int n__)
 {
-    transform<T>(1.0, wf_in__, i0__, m__, mtrx__, irow0__, jcol0__, 0.0, wf_out__, j0__, n__);
+    transform<T>(pu__, 1.0, wf_in__, i0__, m__, mtrx__, irow0__, jcol0__, 0.0, wf_out__, j0__, n__);
 }
 
 /// Linear transformation of wave-functions.
@@ -372,7 +379,8 @@ inline void transform(std::vector<wave_functions*> wf_in__,
  *  \f]
  */
 template <typename T>
-inline void transform(double          alpha__,
+inline void transform(device_t pu__,
+                      double          alpha__,
                       wave_functions& wf_in__,
                       int             i0__,
                       int             m__,
@@ -384,11 +392,12 @@ inline void transform(double          alpha__,
                       int             j0__,
                       int             n__)
 {
-    transform<T>(alpha__, {&wf_in__}, i0__, m__, mtrx__, irow0__, jcol0__, beta__, {&wf_out__}, j0__, n__);
+    transform<T>(pu__, alpha__, {&wf_in__}, i0__, m__, mtrx__, irow0__, jcol0__, beta__, {&wf_out__}, j0__, n__);
 }
 
 template <typename T>
-inline void transform(wave_functions& wf_in__,
+inline void transform(device_t        pu__,
+                      wave_functions& wf_in__,
                       int             i0__,
                       int             m__,
                       dmatrix<T>&     mtrx__,
@@ -398,11 +407,12 @@ inline void transform(wave_functions& wf_in__,
                       int             j0__,
                       int             n__)
 {
-    transform<T>(1.0, {&wf_in__}, i0__, m__, mtrx__, irow0__, jcol0__, 0.0, {&wf_out__}, j0__, n__);
+    transform<T>(pu__, 1.0, {&wf_in__}, i0__, m__, mtrx__, irow0__, jcol0__, 0.0, {&wf_out__}, j0__, n__);
 }
 
 template <typename T>
-inline void transform(double                       alpha__,
+inline void transform(device_t                     pu__,
+                      double                       alpha__,
                       std::vector<Wave_functions*> wf_in__,
                       int                          i0__,
                       int                          m__,
@@ -427,6 +437,6 @@ inline void transform(double                       alpha__,
             wf_in.push_back(&wf_in__[i]->component(is));
             wf_out.push_back(&wf_out__[i]->component(is));
         }
-        transform(alpha__, wf_in, i0__, m__, mtrx__, irow0__, jcol0__, beta__, wf_out, j0__, n__);
+        transform(pu__, alpha__, wf_in, i0__, m__, mtrx__, irow0__, jcol0__, beta__, wf_out, j0__, n__);
     }
 }

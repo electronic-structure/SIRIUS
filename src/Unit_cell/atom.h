@@ -355,7 +355,6 @@ class Atom
 
             for (int i2 = 0; i2 < type().indexr().size(); i2++) {
                 int l2 = type().indexr(i2).l;
-
                 for (int i1 = 0; i1 <= i2; i1++) {
                     int l1 = type().indexr(i1).l;
                     if ((l + l1 + l2) % 2 == 0) {
@@ -622,6 +621,12 @@ class Atom
         return d_mtrx_(xi1, xi2, iv);
     }
 
+
+    inline mdarray<double, 3> const& d_mtrx() const
+      {
+	return d_mtrx_;
+      }
+    
     inline double_complex& d_mtrx_so(int xi1, int xi2, int iv)
     {
         return d_mtrx_so_(xi1, xi2, iv);
@@ -631,7 +636,7 @@ class Atom
     {
         return d_mtrx_so_(xi1, xi2, iv);
     }
-};
+	  };
 
 } // namespace
 

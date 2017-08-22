@@ -61,13 +61,28 @@ class Band
         /// Interface to a generalized eigen-value solver.
         std::unique_ptr<Eigenproblem> gen_evp_solver_;
 
+        /// Local part of the Hamiltonian operator.
         std::unique_ptr<Local_operator> local_op_;
+
+        /// Solve the band diagonalziation problem with single (full) variation.
+        inline void solve_with_single_variation(K_point& kp__, Potential& potential__) const;
+
+        /// Solve the band diagonalziation problem with second variation approach.
+        /** This is only used by the FP-LAPW method. */
+        inline void solve_with_second_variation(K_point& kp__, Potential& potential__) const;
+
+        /// Solve the first-variational (non-magnetic) problem with exact diagonalization.
+        /** This is only used by the LAPW method. */
+        inline void diag_fv_exact(K_point* kp__,
+                                  Potential& potential__) const;
+        
+        /// Solve the first-variational (non-magnetic) problem with iterative Davidson diagonalization.
+        inline void diag_fv_davidson(K_point* kp__) const;
 
         /// Apply effective magentic field to the first-variational state.
         /** Must be called first because hpsi is overwritten with B|fv_j>. */
         void apply_magnetic_field(wave_functions& fv_states__,
                                   Gvec const& gkvec__,
-                                  Periodic_function<double>* effective_magnetic_field__[3],
                                   std::vector<wave_functions>& hpsi__) const;
 
         /// Apply SO correction to the first-variational states.
@@ -112,11 +127,6 @@ class Band
                           Periodic_function<double>* effective_magnetic_field[3],
                           mdarray<double_complex, 2>& h);
        
-        inline void diag_fv_full_potential_exact(K_point* kp__,
-                                                 Potential const& potential__) const;
-        
-        inline void diag_fv_full_potential_davidson(K_point* kp__) const;
-
         inline void apply_fv_o(K_point* kp__,
                                bool apw_only__,
                                bool add_o1__,
@@ -124,7 +134,9 @@ class Band
                                int n__,
                                wave_functions& phi__,
                                wave_functions& ophi__) const;
-        
+
+        /// Get singular components of the LAPW overlap matrix.
+        /** Singular components are the eigen-vectors with a very small eigen-value. */
         inline void get_singular_components(K_point* kp__) const;
 
         /// Exact (not iterative) diagonalization of the Hamiltonian.
@@ -245,88 +257,17 @@ class Band
                              mdarray<double, 2>&  h_diag__,
                              mdarray<double, 1>&  o_diag__) const;
         
-        /// Setup the Hermitian subspace matrix.
         /** Compute \f$ O_{ii'} = \langle \phi_i | \hat O | \phi_{i'} \rangle \f$ operator matrix
          *  for the subspace spanned by the wave-functions \f$ \phi_i \f$. The matrix is always returned
          *  in the CPU pointer because most of the standard math libraries start from the CPU. */
-        template <typename T>
-        inline void set_subspace_mtrx(int             N__,
-                                      int             n__,
-                                      wave_functions& phi__,
-                                      wave_functions& op_phi__,
-                                      dmatrix<T>&     mtrx__,
-                                      dmatrix<T>&     mtrx_old__) const
-        {
-            PROFILE("sirius::Band::set_subspace_mtrx");
-            
-            assert(n__ != 0);
-            if (mtrx_old__.size()) {
-                assert(&mtrx__.blacs_grid() == &mtrx_old__.blacs_grid());
-            }
-
-            /* copy old N x N distributed matrix */
-            if (N__ > 0) {
-                splindex<block_cyclic> spl_row(N__, mtrx__.blacs_grid().num_ranks_row(), mtrx__.blacs_grid().rank_row(), mtrx__.bs_row());
-                splindex<block_cyclic> spl_col(N__, mtrx__.blacs_grid().num_ranks_col(), mtrx__.blacs_grid().rank_col(), mtrx__.bs_col());
-
-                #pragma omp parallel for
-                for (int i = 0; i < spl_col.local_size(); i++) {
-                    std::memcpy(&mtrx__(0, i), &mtrx_old__(0, i), spl_row.local_size() * sizeof(T));
-                }
-            }
-
-            /* <{phi,phi_new}|Op|phi_new> */
-            inner(phi__, 0, N__ + n__, op_phi__, N__, n__, 0.0, mtrx__, 0, N__);
-            
-            /* restore lower part */
-            if (N__ > 0) {
-                if (mtrx__.blacs_grid().comm().size() == 1) {
-                    #pragma omp parallel for
-                    for (int i = 0; i < N__; i++) {
-                        for (int j = N__; j < N__ + n__; j++) {
-                            mtrx__(j, i) = std::conj(mtrx__(i, j));
-                        }
-                    }
-                } else {
-                    linalg<CPU>::tranc(n__, N__, mtrx__, 0, N__, mtrx__, N__, 0);
-                }
-            }
-
-            if (ctx_.control().print_checksum_) {
-                splindex<block_cyclic> spl_row(N__ + n__, mtrx__.blacs_grid().num_ranks_row(), mtrx__.blacs_grid().rank_row(), mtrx__.bs_row());
-                splindex<block_cyclic> spl_col(N__ + n__, mtrx__.blacs_grid().num_ranks_col(), mtrx__.blacs_grid().rank_col(), mtrx__.bs_col());
-                double_complex cs(0, 0);
-                for (int i = 0; i < spl_col.local_size(); i++) {
-                    for (int j = 0; j < spl_row.local_size(); j++) {
-                        cs += mtrx__(j, i);
-                    }
-                }
-                mtrx__.blacs_grid().comm().allreduce(&cs, 1);
-                DUMP("checksum(subspace_mtrx): %18.10f %18.10f", cs.real(), cs.imag());
-            }
-
-            mtrx__.make_real_diag(N__ + n__);
-
-            /* save new matrix */
-            if (mtrx_old__.size()) {
-                splindex<block_cyclic> spl_row(N__ + n__, mtrx__.blacs_grid().num_ranks_row(), mtrx__.blacs_grid().rank_row(), mtrx__.bs_row());
-                splindex<block_cyclic> spl_col(N__ + n__, mtrx__.blacs_grid().num_ranks_col(), mtrx__.blacs_grid().rank_col(), mtrx__.bs_col());
-
-                #pragma omp parallel for
-                for (int i = 0; i < spl_col.local_size(); i++) {
-                    std::memcpy(&mtrx_old__(0, i), &mtrx__(0, i), spl_row.local_size() * sizeof(T));
-                }
-            }
-        }
-
-        template <typename T>
-        inline void set_subspace_mtrx(int             num_sc__,
-                                      int             N__,
-                                      int             n__,
-                                      Wave_functions& phi__,
-                                      Wave_functions& op_phi__,
-                                      dmatrix<T>&     mtrx__,
-                                      dmatrix<T>&     mtrx_old__) const
+        template <typename T, typename W>
+        inline void set_subspace_mtrx(int         num_sc__,
+                                      int         N__,
+                                      int         n__,
+                                      W&          phi__,
+                                      W&          op_phi__,
+                                      dmatrix<T>& mtrx__,
+                                      dmatrix<T>& mtrx_old__) const
         {
             PROFILE("sirius::Band::set_subspace_mtrx");
             
@@ -348,6 +289,28 @@ class Band
 
             /* <{phi,phi_new}|Op|phi_new> */
             inner(num_sc__, phi__, 0, N__ + n__, op_phi__, N__, n__, mtrx__, 0, N__);
+            //if (true) {
+            //    if (mtrx__.blacs_grid().comm().size() == 1) {
+            //        for (int i = 0; i < n__; i++) {
+            //            for (int j = 0; j < n__ + N__; j++) {
+            //                mtrx__(j, N__ + i) = Utils::round(mtrx__(j, N__ + i), 10);
+            //            }
+            //        }
+            //    }
+            //}
+
+            //if (true) {
+            //    if (mtrx__.blacs_grid().comm().size() == 1) {
+            //        for (int i = 0; i < n__; i++) {
+            //            for (int j = 0; j < n__; j++) {
+            //                auto zij = mtrx__(N__ + i, N__ + j);
+            //                auto zji = mtrx__(N__ + j, N__ + i);
+            //                mtrx__(N__ + i, N__ + j) = 0.5 * (zij + std::conj(zji));
+            //                mtrx__(N__ + j, N__ + i) = std::conj(mtrx__(N__ + i, N__ + j));
+            //            }
+            //        }
+            //    }
+            //}
             
             /* restore lower part */
             if (N__ > 0) {
@@ -363,6 +326,18 @@ class Band
                 }
             }
 
+            //if (true) {
+            //    splindex<block_cyclic> spl_row(N__ + n__, mtrx__.blacs_grid().num_ranks_row(), mtrx__.blacs_grid().rank_row(), mtrx__.bs_row());
+            //    splindex<block_cyclic> spl_col(N__ + n__, mtrx__.blacs_grid().num_ranks_col(), mtrx__.blacs_grid().rank_col(), mtrx__.bs_col());
+            //    for (int i = 0; i < spl_col.local_size(); i++) {
+            //        for (int j = 0; j < spl_row.local_size(); j++) {
+            //            if (std::abs(mtrx__(j, i)) < 1e-11) {
+            //                mtrx__(j, i) = 0;
+            //            }
+            //        }
+            //    }
+            //}
+
             if (ctx_.control().print_checksum_) {
                 splindex<block_cyclic> spl_row(N__ + n__, mtrx__.blacs_grid().num_ranks_row(), mtrx__.blacs_grid().rank_row(), mtrx__.bs_row());
                 splindex<block_cyclic> spl_col(N__ + n__, mtrx__.blacs_grid().num_ranks_col(), mtrx__.blacs_grid().rank_col(), mtrx__.bs_col());
@@ -373,7 +348,9 @@ class Band
                     }
                 }
                 mtrx__.blacs_grid().comm().allreduce(&cs, 1);
-                DUMP("checksum(subspace_mtrx): %18.10f %18.10f", cs.real(), cs.imag());
+                if (mtrx__.blacs_grid().comm().rank() == 0) {
+                    print_checksum("subspace_mtrx", cs);
+                }
             }
 
             mtrx__.make_real_diag(N__ + n__);
@@ -390,23 +367,9 @@ class Band
             }
         }
                 
-        /// Diagonalize a full-potential Hamiltonian.
-        void diag_fv_full_potential(K_point* kp__,
-                                    Potential const& potential__) const
-        {
-            auto& itso = ctx_.iterative_solver_input();
-            if (itso.type_ == "exact") {
-                diag_fv_full_potential_exact(kp__, potential__);
-            } else if (itso.type_ == "davidson") {
-                diag_fv_full_potential_davidson(kp__);
-            }
-        }
-
         /// Diagonalize a pseudo-potential Hamiltonian.
         template <typename T>
-        void diag_pseudo_potential(K_point* kp__, 
-                                   Periodic_function<double>* effective_potential__,
-                                   Periodic_function<double>* effective_magnetic_field__[3]) const
+        void diag_pseudo_potential(K_point* kp__) const
         {
             PROFILE("sirius::Band::diag_pseudo_potential");
 
@@ -831,14 +794,9 @@ class Band
                                  wave_functions& ophi__) const;
 
         /// Solve second-variational problem.
-        inline void solve_sv(K_point* kp,
-                             Periodic_function<double>* effective_magnetic_field[3]) const;
+        inline void diag_sv(K_point* kp,
+                            Potential& potential__) const;
         
-        /// Diagonalization of the full Hamiltonian (without second variation).
-        inline void solve_fd(K_point* kp,
-                             Periodic_function<double>* effective_potential, 
-                             Periodic_function<double>* effective_magnetic_field[3]) const;
-
         /// Solve \f$ \hat H \psi = E \psi \f$ and find eigen-states of the Hamiltonian.
         inline void solve_for_kset(K_point_set& kset__,
                                    Potential& potential__,
@@ -871,18 +829,17 @@ class Band
 
         /// Get diagonal elements of pseudopotential overlap matrix.
         template <typename T>
-        inline mdarray<double, 1> get_o_diag(K_point* kp__,
+        inline mdarray<double, 1> get_o_diag(K_point*       kp__,
                                              Q_operator<T>& q_op__) const;
 
+        /// Initialize the subspace for the entire k-point set.
         inline void initialize_subspace(K_point_set& kset__,
-                                        Potential& potential__) const;
+                                        Potential&   potential__) const;
 
         /// Initialize the wave-functions subspace.
         template <typename T>
-        inline void initialize_subspace(K_point* kp__,
-                                        Periodic_function<double>* effective_potential__,
-                                        Periodic_function<double>* effective_magnetic_field[3],
-                                        int num_ao__,
+        inline void initialize_subspace(K_point*                                        kp__,
+                                        int                                             num_ao__,
                                         std::vector<std::vector<Spline<double>>> const& rad_int__) const;
 };
 
@@ -890,7 +847,8 @@ class Band
 #include "Band/apply.hpp"
 #include "Band/set_lapw_h_o.hpp"
 #include "Band/residuals.hpp"
-#include "Band/diagonalize.hpp"
+#include "Band/diag_full_potential.hpp"
+#include "Band/diag_pseudo_potential.hpp"
 #include "Band/initialize_subspace.hpp"
 #include "Band/solve.hpp"
 

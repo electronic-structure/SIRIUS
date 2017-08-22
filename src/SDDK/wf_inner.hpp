@@ -333,6 +333,20 @@ inline void inner(wave_functions& bra__,
         }
     }
 }
+template <typename T>
+inline void inner(int             num_sc__,
+                  wave_functions& bra__,
+                  int             i0__,
+                  int             m__,
+                  wave_functions& ket__,
+                  int             j0__,
+                  int             n__,
+                  dmatrix<T>&     result__,
+                  int             irow0__,
+                  int             jcol0__)
+{
+    inner(bra__, i0__, m__, ket__, j0__, n__, 0.0, result__, irow0__, jcol0__);
+}
 
 template <typename T>
 inline void inner(int             num_sc__,

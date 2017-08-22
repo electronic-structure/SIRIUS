@@ -671,7 +671,6 @@ inline void Band::apply_fv_h_o(K_point* kp__,
 // TODO: port to GPU
 inline void Band::apply_magnetic_field(wave_functions& fv_states__,
                                        Gvec const& gkvec__,
-                                       Periodic_function<double>* effective_magnetic_field__[3],
                                        std::vector<wave_functions>& hpsi__) const
 {
     PROFILE("sirius::Band::apply_magnetic_field");

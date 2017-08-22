@@ -380,6 +380,11 @@ class Augmentation_operator_gvec_deriv
         //    return q_pw_;
         //}
 
+        mdarray<double, 2> const& q_pw() const
+        {
+            return q_pw_;
+        }
+
         double q_pw(int i__, int ig__) const
         {
             return q_pw_(i__, ig__);

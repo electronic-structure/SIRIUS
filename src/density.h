@@ -143,8 +143,10 @@ class Density
 {
     private:
 
+        /// Context of the simulation.
         Simulation_context& ctx_;
         
+        /// Alias to ctx_.unit_cell()
         Unit_cell& unit_cell_;
 
         /// Density matrix for all atoms.
@@ -171,7 +173,7 @@ class Density
          *  In the case of pseudopotential this is the valence charge density. */ 
         std::unique_ptr<Periodic_function<double>> rho_{nullptr};
 
-        /// Magnetization
+        /// Magnetization.
         std::array<std::unique_ptr<Periodic_function<double>>, 3> magnetization_;
 
         /// Alias for density and magnetization.
@@ -204,9 +206,14 @@ class Density
 
         /// Mixer for the full-potential density mixing.
         std::unique_ptr<Mixer<double>> mixer_{nullptr};
-
+        
+        /// List of local low-fequency G-vectors.
         std::vector<int> lf_gvec_;
+
+        /// List of local high-fequency G-vectors.
         std::vector<int> hf_gvec_;
+
+        /// Weights of local low-frequency G-vectors.
         std::vector<double> lf_gvec_weights_;
 
         /// Allocate PAW data.
@@ -382,14 +389,17 @@ class Density
             : ctx_(ctx__)
             , unit_cell_(ctx_.unit_cell())
         {
+            /* allocate charge density */
             rho_ = std::unique_ptr<Periodic_function<double>>(new Periodic_function<double>(ctx_, ctx_.lmmax_rho()));
             rho_vec_[0] = rho_.get();
-
+            
+            /* allocate magnetization density */
             for (int i = 0; i < ctx_.num_mag_dims(); i++) {
                 magnetization_[i] = std::unique_ptr<Periodic_function<double>>(new Periodic_function<double>(ctx_, ctx_.lmmax_rho()));
                 rho_vec_[i + 1] = magnetization_[i].get();
             }
-
+            
+            /*  allocate charge density and magnetization on a coarse grid */
             for (int i = 0; i < ctx_.num_mag_dims() + 1; i++) {
                 rho_mag_coarse_[i] = std::unique_ptr<Smooth_periodic_function<double>>(new Smooth_periodic_function<double>(ctx_.fft_coarse(), ctx_.gvec_coarse()));
             }
@@ -655,22 +665,34 @@ class Density
          
         void save()
         {
-            if (ctx_.comm().rank() == 0)
-            {
+            if (ctx_.comm().rank() == 0) {
                 HDF5_tree fout(storage_file_name, false);
                 rho_->hdf5_write(fout["density"]);
-                for (int j = 0; j < ctx_.num_mag_dims(); j++)
+                for (int j = 0; j < ctx_.num_mag_dims(); j++) {
                     magnetization_[j]->hdf5_write(fout["magnetization"].create_node(j));
+                }
             }
             ctx_.comm().barrier();
         }
 
         void load()
         {
-            HDF5_tree fout(storage_file_name, false);
-            rho_->hdf5_read(fout["density"]);
-            for (int j = 0; j < ctx_.num_mag_dims(); j++)
-                magnetization_[j]->hdf5_read(fout["magnetization"][j]);
+            HDF5_tree fin(storage_file_name, false);
+
+            int ngv;
+            fin.read("/parameters/num_gvec", &ngv, 1);
+            if (ngv != ctx_.gvec().num_gvec()) {
+                TERMINATE("wrong number of G-vectors");
+            }
+            mdarray<int, 2> gv(3, ngv);
+            fin.read("/parameters/gvec", gv);
+
+            rho_->hdf5_read(fin["density"], gv);
+            rho_->fft_transform(1);
+            for (int j = 0; j < ctx_.num_mag_dims(); j++) {
+                magnetization_[j]->hdf5_read(fin["magnetization"][j], gv);
+                magnetization_[j]->fft_transform(1);
+            }
         }
 
         void save_to_xsf()
@@ -787,9 +809,9 @@ class Density
             //== fclose(fout);
         }
 
-        Periodic_function<double>* rho()
+        Periodic_function<double>& rho()
         {
-            return rho_.get();
+            return *rho_;
         }
         
         Smooth_periodic_function<double>& rho_pseudo_core()
@@ -802,9 +824,9 @@ class Density
             return {magnetization_[0].get(), magnetization_[1].get(), magnetization_[2].get()};
         }
 
-        Periodic_function<double>* magnetization(int i)
+        Periodic_function<double>& magnetization(int i)
         {
-            return magnetization_[i].get();
+            return *(magnetization_[i]);
         }
 
         Spheric_function<spectral, double> const& density_mt(int ialoc) const

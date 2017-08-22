@@ -109,7 +109,7 @@ class Simulation_context_base: public Simulation_parameters
 
             tm const* ptm = localtime(&start_time_.tv_sec); 
             char buf[100];
-            strftime(buf, sizeof(buf), "%Y%m%d%H%M%S", ptm);
+            strftime(buf, sizeof(buf), "%Y%m%d_%H%M%S", ptm);
             start_time_tag_ = std::string(buf);
         }
 
@@ -236,7 +236,9 @@ class Simulation_context_base: public Simulation_parameters
                 mdarray<int, 2> gv(3, gvec_.num_gvec());
                 for (int ig = 0; ig < gvec_.num_gvec(); ig++) {
                     auto G = gvec_.gvec(ig);
-                    for (int x: {0, 1, 2}) gv(x, ig) = G[x];
+                    for (int x: {0, 1, 2}) {
+                        gv(x, ig) = G[x];
+                    }
                 }
                 fout["parameters"].write("num_gvec", gvec_.num_gvec());
                 fout["parameters"].write("gvec", gv);

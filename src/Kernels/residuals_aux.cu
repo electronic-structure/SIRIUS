@@ -186,16 +186,17 @@ __global__ void add_square_sum_gpu_kernel
         __syncthreads();
     }
 
-    if (!reduced__) {
-        result__[blockIdx.x] += sdata[0];
-    }
-    else {
-        if (mpi_rank__ == 0) {
-            double x = wf__[array2D_offset(0, blockIdx.x, num_rows_loc__)].x;
-            result__[blockIdx.x] += (2 * sdata[0] - x * x);
-        }
-        else {
-            result__[blockIdx.x] += 2 * sdata[0];
+    if (threadIdx.x == 0) {
+        if (!reduced__) {
+            result__[blockIdx.x] += sdata[0];
+        } else {
+            if (mpi_rank__ == 0) {
+                double x = wf__[array2D_offset(0, blockIdx.x, num_rows_loc__)].x;
+                result__[blockIdx.x] += (2 * sdata[0] - x * x);
+            }
+            else {
+                result__[blockIdx.x] += 2 * sdata[0];
+            }
         }
     }
 }
@@ -220,14 +221,11 @@ extern "C" void add_square_sum_gpu(cuDoubleComplex* wf__,
     );
 }
 
-__global__ void apply_preconditioner_gpu_kernel
-(
-    int const num_rows_loc__,
-    double const* eval__,
-    double const* h_diag__,
-    double const* o_diag__,
-    cuDoubleComplex* res__
-)
+__global__ void apply_preconditioner_gpu_kernel(int const num_rows_loc__,
+                                                double const* eval__,
+                                                double const* h_diag__,
+                                                double const* o_diag__,
+                                                cuDoubleComplex* res__)
 {
     int j = blockIdx.x * blockDim.x + threadIdx.x;
     int ibnd = blockIdx.y;
@@ -250,14 +248,26 @@ extern "C" void apply_preconditioner_gpu(cuDoubleComplex* res__,
     dim3 grid_t(64);
     dim3 grid_b(num_blocks(num_rows_loc__, grid_t.x), num_bands__);
 
-    apply_preconditioner_gpu_kernel <<<grid_b, grid_t>>>
-    (
-        num_rows_loc__,
-        eval__,
-        h_diag__,
-        o_diag__,
-        res__
-    );
+    apply_preconditioner_gpu_kernel <<<grid_b, grid_t>>> (num_rows_loc__, eval__, h_diag__, o_diag__, res__);
+}
+
+__global__ void make_real_g0_gpu_kernel(cuDoubleComplex* res__,
+                                        int              ld__)
+{
+    cuDoubleComplex z = res__[array2D_offset(0, blockIdx.x, ld__)];
+    if (threadIdx.x == 0) {
+        res__[array2D_offset(0, blockIdx.x, ld__)] = make_cuDoubleComplex(z.x, 0);
+    }
+}
+
+extern "C" void make_real_g0_gpu(cuDoubleComplex* res__,
+                                 int              ld__,
+                                 int              n__)
+{
+    dim3 grid_t(32);
+    dim3 grid_b(n__);
+
+    make_real_g0_gpu_kernel <<<grid_b, grid_t>>> (res__, ld__);
 }
 
 

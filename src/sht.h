@@ -31,6 +31,8 @@
 #include <gsl/gsl_sf_legendre.h>
 #include <string.h>
 #include <vector>
+#include <algorithm>
+
 #include "typedefs.h"
 #include "utils.h"
 #include "linalg.hpp"
@@ -399,34 +401,35 @@ class SHT // TODO: better name
                         
         /// Compute element of the transformation matrix from complex to real spherical harmonics. 
         /** Real spherical harmonic can be written as a linear combination of complex harmonics:
-         *
-         *    \f[
-         *        R_{\ell m}(\theta, \phi) = \sum_{m'} a^{\ell}_{m' m}Y_{\ell m'}(\theta, \phi)
-         *    \f]
-         *    where 
-         *    \f[
-         *        a^{\ell}_{m' m} = \langle Y_{\ell m'} | R_{\ell m} \rangle
-         *    \f]
-         *
-         *    Transformation from real to complex spherical harmonics is conjugate transpose:
-         *    
-         *    \f[
-         *        Y_{\ell m}(\theta, \phi) = \sum_{m'} a^{\ell*}_{m m'}R_{\ell m'}(\theta, \phi)
-         *    \f]
-         *
-         *    Mathematica code:
-         *    \verbatim
-         *    b[m1_, m2_] := 
-         *     If[m1 == 0, 1, 
-         *     If[m1 < 0 && m2 < 0, -I/std::sqrt[2], 
-         *     If[m1 > 0 && m2 < 0, (-1)^m1*I/std::sqrt[2], 
-         *     If[m1 < 0 && m2 > 0, (-1)^m2/std::sqrt[2], 
-         *     If[m1 > 0 && m2 > 0, 1/std::sqrt[2]]]]]]
-         *    
-         *    a[m1_, m2_] := If[Abs[m1] == Abs[m2], b[m1, m2], 0]
-         *    
-         *    R[l_, m_, t_, p_] := Sum[a[m1, m]*SphericalHarmonicY[l, m1, t, p], {m1, -l, l}]
-         *    \endverbatim
+         
+            \f[
+                R_{\ell m}(\theta, \phi) = \sum_{m'} a^{\ell}_{m' m}Y_{\ell m'}(\theta, \phi)
+            \f]
+            where 
+            \f[
+                a^{\ell}_{m' m} = \langle Y_{\ell m'} | R_{\ell m} \rangle
+            \f]
+            which gives the name to this function.
+         
+            Transformation from real to complex spherical harmonics is conjugate transpose:
+            
+            \f[
+                Y_{\ell m}(\theta, \phi) = \sum_{m'} a^{\ell*}_{m m'}R_{\ell m'}(\theta, \phi)
+            \f]
+         
+            Mathematica code:
+            \verbatim
+            b[m1_, m2_] := 
+             If[m1 == 0, 1, 
+             If[m1 < 0 && m2 < 0, -I/Sqrt[2], 
+             If[m1 > 0 && m2 < 0, (-1)^m1*I/Sqrt[2], 
+             If[m1 < 0 && m2 > 0, (-1)^m2/Sqrt[2], 
+             If[m1 > 0 && m2 > 0, 1/Sqrt[2]]]]]]
+            
+            a[m1_, m2_] := If[Abs[m1] == Abs[m2], b[m1, m2], 0]
+            
+            Rlm[l_, m_, t_, p_] := Sum[a[m1, m]*SphericalHarmonicY[l, m1, t, p], {m1, -l, l}]
+            \endverbatim
          */
         static inline double_complex ylm_dot_rlm(int l, int m1, int m2)
         {
@@ -450,7 +453,7 @@ class SHT // TODO: better name
                 }
             } else {
                 if (m2 < 0) {
-                    return pow(-1.0, m1) * double_complex(0, isqrt2);
+                    return std::pow(-1.0, m1) * double_complex(0, isqrt2);
                 } else {
                     return double_complex(isqrt2, 0);
                 }
@@ -1076,6 +1079,37 @@ class SHT // TODO: better name
             data[79]=(21*std::sqrt(12155/pi)*cos_theta[0]*sin_phi[6]*std::pow(sin_theta[0],6))/64.;
             
             data[80]=(-3*std::sqrt(12155/pi)*sin_phi[7]*std::pow(sin_theta[0],7))/32.;
+        }
+
+        /// convert 3x3 transformation matrix to SU2 2x2 matrix
+        /// Create quaternion components from the 3x3 matrix. The components are just a w = Cos(\Omega/2)
+        /// and {x,y,z} = unit rotation vector multiplied by Sin[\Omega/2]
+        /// see https://en.wikipedia.org/wiki/Quaternions_and_spatial_rotation
+        /// and https://en.wikipedia.org/wiki/Rotation_group_SO(3)#Quaternions_of_unit_norm
+        static mdarray<double_complex, 2> rotation_matrix_su2(const matrix3d<double>& m)
+        {
+            double det = m.det() > 0 ? 1.0 : -1.0;
+
+            matrix3d<double> mat = m * det;
+            mdarray<double_complex, 2> su2mat(2, 2);
+
+            su2mat.zero();
+
+            /* make quaternion components*/
+            double w = sqrt( std::max( 0., 1. + mat(0,0) + mat(1,1) + mat(2,2) ) ) / 2.;
+            double x = sqrt( std::max( 0., 1. + mat(0,0) - mat(1,1) - mat(2,2) ) ) / 2.;
+            double y = sqrt( std::max( 0., 1. - mat(0,0) + mat(1,1) - mat(2,2) ) ) / 2.;
+            double z = sqrt( std::max( 0., 1. - mat(0,0) - mat(1,1) + mat(2,2) ) ) / 2.;
+            x = std::copysign( x, mat(2,1) - mat(1,2) );
+            y = std::copysign( y, mat(0,2) - mat(2,0) );
+            z = std::copysign( z, mat(1,0) - mat(0,1) );
+
+            su2mat(0, 0) = double_complex( w, -z);
+            su2mat(1, 1) = double_complex( w,  z);
+            su2mat(0, 1) = double_complex(-y, -x);
+            su2mat(1, 0) = double_complex( y, -x);
+
+            return std::move(su2mat);
         }
 
         /// Compute the derivatives of real spherical harmonics over the components of cartesian vector.
