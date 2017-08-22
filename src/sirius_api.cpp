@@ -2086,15 +2086,15 @@ void sirius_set_atom_type_beta_rf(char* label__,
     auto& type = sim_ctx->unit_cell().atom_type(std::string(label__));
     mdarray<double, 2> beta_rf(beta_rf__, *ld__, *num_beta__);
     if(*SpinOrbit != 0) {
-      type.pp_desc().SpinOrbit_Coupling = true;
+      type.pp_desc().spin_orbit_coupling = true;
     } else {
-      type.pp_desc().SpinOrbit_Coupling = false;
+      type.pp_desc().spin_orbit_coupling = false;
     }
 
     type.pp_desc().lmax_beta_ = 0;
     type.pp_desc().num_beta_radial_functions = *num_beta__;
     type.pp_desc().beta_l = std::vector<int>(*num_beta__);
-    if(type.pp_desc().SpinOrbit_Coupling)
+    if(type.pp_desc().spin_orbit_coupling)
       type.pp_desc().beta_j = std::vector<double>(*num_beta__);
     type.pp_desc().num_beta_radial_points = std::vector<int>(*num_beta__);
     for (int i = 0; i < *num_beta__; i++)

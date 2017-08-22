@@ -32,18 +32,18 @@ inline void Band::initialize_subspace(K_point_set& kset__, Potential& potential_
                 // rad_int[iat][i] = Spline<double>(qgrid);
                 rad_int[iat][l] = Spline<double>(qgrid);
 
-///* interpolate atomic_pseudo_wfs(r) */
-// Spline<double> wf(atom_type.radial_grid());
-// for (int ir = 0; ir < atom_type.num_mt_points(); ir++) {
-//    //wf[ir] = atom_type.pp_desc().atomic_pseudo_wfs_[i].second[ir];
-//    double x = atom_type.radial_grid(ir);
-//    wf[ir] = std::exp(-atom_type.zn() * x) * std::pow(x, l);
-//}
-// wf.interpolate();
-// double norm = inner(wf, wf, 2);
-//
-////int l = atom_type.pp_desc().atomic_pseudo_wfs_[i].first;
-#pragma omp parallel for
+		///* interpolate atomic_pseudo_wfs(r) */
+		// Spline<double> wf(atom_type.radial_grid());
+		// for (int ir = 0; ir < atom_type.num_mt_points(); ir++) {
+		//    //wf[ir] = atom_type.pp_desc().atomic_pseudo_wfs_[i].second[ir];
+		//    double x = atom_type.radial_grid(ir);
+		//    wf[ir] = std::exp(-atom_type.zn() * x) * std::pow(x, l);
+		//}
+		// wf.interpolate();
+		// double norm = inner(wf, wf, 2);
+		//
+		////int l = atom_type.pp_desc().atomic_pseudo_wfs_[i].first;
+                #pragma omp parallel for
                 for (int iq = 0; iq < nq; iq++) {
                     double q = qgrid[iq];
                     // rad_int[iat][i][iq] = sirius::inner(jl(iq, iat)[l], wf, 1);
@@ -124,7 +124,7 @@ Band::initialize_subspace(K_point* kp__, int num_ao__, std::vector<std::vector<S
     if (num_ao__ > 0) {
         mdarray<double, 2> rlm_gk(kp__->num_gkvec_loc(), Utils::lmmax(unit_cell_.lmax()));
         mdarray<std::pair<int, double>, 1> idx_gk(kp__->num_gkvec_loc());
-#pragma omp parallel for schedule(static)
+        #pragma omp parallel for schedule(static)
         for (int igk_loc = 0; igk_loc < kp__->num_gkvec_loc(); igk_loc++) {
             int igk = kp__->idxgk(igk_loc);
             /* vs = {r, theta, phi} */
@@ -155,7 +155,7 @@ Band::initialize_subspace(K_point* kp__, int num_ao__, std::vector<std::vector<S
         mdarray<double, 3> ri(kp__->num_gkvec_loc(), unit_cell_.lmax() + 1, unit_cell_.num_atom_types());
         for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
             for (int l = 0; l <= unit_cell_.atom_type(iat).indexr().lmax(); l++) {
-#pragma omp parallel for
+                #pragma omp parallel for
                 for (int igk_loc = 0; igk_loc < kp__->num_gkvec_loc(); igk_loc++) {
                     ri(igk_loc, l, iat) = rad_int__[iat][l](idx_gk[igk_loc].first, idx_gk[igk_loc].second);
                 }
@@ -195,7 +195,7 @@ Band::initialize_subspace(K_point* kp__, int num_ao__, std::vector<std::vector<S
 
     /* fill remaining wave-functions with pseudo-random guess */
     assert(kp__->num_gkvec() > num_phi + 10);
-#pragma omp parallel for schedule(static)
+    #pragma omp parallel for schedule(static)
     for (int i = 0; i < num_phi - num_ao__; i++) {
         for (int igk_loc = 0; igk_loc < kp__->num_gkvec_loc(); igk_loc++) {
             /* global index of G+k vector */
@@ -234,7 +234,7 @@ Band::initialize_subspace(K_point* kp__, int num_ao__, std::vector<std::vector<S
     }
     int igk0 = (kp__->comm().rank() == 0) ? 1 : 0;
 
-#pragma omp parallel for schedule(static)
+    #pragma omp parallel for schedule(static)
     for (int i = 0; i < num_phi; i++) {
         for (int igk_loc = igk0; igk_loc < kp__->num_gkvec_loc(); igk_loc++) {
             /* global index of G+k vector */

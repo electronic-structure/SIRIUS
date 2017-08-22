@@ -143,7 +143,7 @@ class Atom
             int nbf = type().mt_lo_basis_size();
             d_mtrx_ = mdarray<double, 3>(nbf, nbf, type().parameters().num_mag_dims() + 1);
             d_mtrx_.zero();
-            if (!type().pp_desc().SpinOrbit_Coupling) {
+            if (!type().pp_desc().spin_orbit_coupling) {
                 for (int xi2 = 0; xi2 < nbf; xi2++) {
                     int lm2    = type().indexb(xi2).lm;
                     int idxrf2 = type().indexb(xi2).idxrf;
@@ -225,7 +225,7 @@ class Atom
 
         /* copy radial functions to spline objects */
         std::vector<Spline<double>> rf_spline(nrf);
-#pragma omp parallel for
+        #pragma omp parallel for
         for (int i = 0; i < nrf; i++) {
             rf_spline[i] = Spline<double>(type().radial_grid());
             for (int ir = 0; ir < nmtp; ir++) {
@@ -235,7 +235,7 @@ class Atom
 
         /* copy effective potential components to spline objects */
         std::vector<Spline<double>> v_spline(lmmax * (1 + num_mag_dims));
-#pragma omp parallel for
+        #pragma omp parallel for
         for (int lm = 0; lm < lmmax; lm++) {
             v_spline[lm] = Spline<double>(type().radial_grid());
             for (int ir = 0; ir < nmtp; ir++) {
@@ -264,24 +264,24 @@ class Atom
             auto& vrf_coef = type().vrf_coef();
 
             sddk::timer t1("sirius::Atom::generate_radial_integrals|interp");
-#pragma omp parallel
+            #pragma omp parallel
             {
 // int tid = Platform::thread_id();
-#pragma omp for
+                #pragma omp for
                 for (int i = 0; i < nrf; i++) {
                     rf_spline[i].interpolate();
                     std::memcpy(rf_coef.at<CPU>(0, 0, i), rf_spline[i].coeffs().at<CPU>(), nmtp * 4 * sizeof(double));
                     // cuda_async_copy_to_device(rf_coef.at<GPU>(0, 0, i), rf_coef.at<CPU>(0, 0, i), nmtp * 4 *
                     // sizeof(double), tid);
                 }
-#pragma omp for
+                #pragma omp for
                 for (int i = 0; i < lmmax * (1 + num_mag_dims); i++) {
                     v_spline[i].interpolate();
                 }
             }
             rf_coef.async_copy_to_device();
 
-#pragma omp parallel for
+            #pragma omp parallel for
             for (int lm = 0; lm < lmmax; lm++) {
                 for (int i = 0; i < nrf; i++) {
                     for (int j = 0; j < num_mag_dims + 1; j++) {
@@ -315,18 +315,18 @@ class Atom
         }
         if (pu__ == CPU) {
             sddk::timer t1("sirius::Atom::generate_radial_integrals|interp");
-#pragma omp parallel
+            #pragma omp parallel
             {
-#pragma omp for
+                #pragma omp for
                 for (int i = 0; i < nrf; i++) {
                     rf_spline[i].interpolate();
                 }
-#pragma omp for
+                #pragma omp for
                 for (int i = 0; i < lmmax * (1 + num_mag_dims); i++) {
                     v_spline[i].interpolate();
                 }
 
-#pragma omp for
+                #pragma omp for
                 for (int lm = 0; lm < lmmax; lm++) {
                     for (int i = 0; i < nrf; i++) {
                         for (int j = 0; j < num_mag_dims + 1; j++) {
@@ -338,7 +338,7 @@ class Atom
             t1.stop();
 
             sddk::timer t2("sirius::Atom::generate_radial_integrals|inner");
-#pragma omp parallel for
+            #pragma omp parallel for
             for (int j = 0; j < (int)idx_ri.size(1); j++) {
                 result(j) = inner(rf_spline[idx_ri(0, j)], vrf_spline[idx_ri(1, j)], 2);
             }

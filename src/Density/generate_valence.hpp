@@ -60,7 +60,7 @@ inline void Density::generate_valence(K_point_set& ks__)
         }
         
         if (ctx_.esm_type() == electronic_structure_method_t::pseudopotential) {
-	  if (ctx_.gamma_point()&&(!ctx_.so_correction())) {
+	  if (ctx_.gamma_point() && (ctx_.so_correction() == false)) {
                 add_k_point_contribution_dm<double>(kp, density_matrix_);
             } else {
                 add_k_point_contribution_dm<double_complex>(kp, density_matrix_);

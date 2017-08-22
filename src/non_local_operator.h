@@ -256,7 +256,7 @@ class D_operator : public Non_local_operator<T>
 
         for (int ia = 0; ia < uc.num_atoms(); ia++) {
             int nbf = uc.atom(ia).mt_basis_size();
-            if (uc.atom(ia).type().pp_desc().SpinOrbit_Coupling) {
+            if (uc.atom(ia).type().pp_desc().spin_orbit_coupling) {
 
                 // the pseudo potential contains information about
                 // spin orbit coupling so we use a different formula
@@ -347,7 +347,7 @@ class Q_operator : public Non_local_operator<T>
             for (int xi2 = 0; xi2 < nbf; xi2++) {
                 for (int xi1 = 0; xi1 < nbf; xi1++) {
                     // if (ctx__.unit_cell().atom_type(iat).pp_desc().augment) {
-                    if (ctx__.unit_cell().atom_type(iat).pp_desc().SpinOrbit_Coupling) {
+                    if (ctx__.unit_cell().atom_type(iat).pp_desc().spin_orbit_coupling) {
                         // the ultra soft pseudo potential has spin
                         // orbit coupling incorporated to it. so we
                         // need to rotate the q matrix

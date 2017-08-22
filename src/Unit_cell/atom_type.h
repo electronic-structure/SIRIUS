@@ -889,13 +889,13 @@ class Atom_type
     inline bool compare_index_beta_functions(const int xi, const int xj) const
     {
         return ((indexb(xi).l == indexb(xj).l) && (indexb(xi).idxrf == indexb(xj).idxrf) &&
-                (fabs(indexb(xi).j - indexb(xj).j) < 1e-8));
+                (std::abs(indexb(xi).j - indexb(xj).j) < 1e-8));
     }
 
   private:
-    void Generate_F_coefficients(void);
+    void generate_f_coefficients(void);
     inline double ClebschGordan(const int l, const double j, const double m, const int spin);
-    inline double_complex Calculate_U_sigma_m(const int l, const double j, const int mj, const int m, const int sigma);
+    inline double_complex calculate_U_sigma_m(const int l, const double j, const int mj, const int m, const int sigma);
 };
 
 inline void Atom_type::init(int offset_lo__)
@@ -986,7 +986,7 @@ inline void Atom_type::init(int offset_lo__)
         for (int i = 0; i < pp_desc_.num_beta_radial_functions; i++) {
             /* think of |beta> functions as of local orbitals */
             lod.l = pp_desc_.beta_l[i];
-            if (pp_desc_.SpinOrbit_Coupling)
+            if (pp_desc_.spin_orbit_coupling)
                 lod.total_angular_momentum = pp_desc_.beta_j[i];
             lo_descriptors_.push_back(lod);
         }
@@ -1016,7 +1016,7 @@ inline void Atom_type::init(int offset_lo__)
         /* interpolate Q-operator radial functions */
         if (pp_desc().augment) {
             q_rf_ = mdarray<Spline<double>, 2>(nbrf * (nbrf + 1) / 2, 2 * lmax_beta + 1);
-#pragma omp parallel for
+            #pragma omp parallel for
             for (int idx = 0; idx < nbrf * (nbrf + 1) / 2; idx++) {
                 for (int l = 0; l <= 2 * lmax_beta; l++) {
                     q_rf_(idx, l) = Spline<double>(radial_grid());
@@ -1079,8 +1079,8 @@ inline void Atom_type::init(int offset_lo__)
 #endif
     }
 
-    if (this->pp_desc().SpinOrbit_Coupling)
-        this->Generate_F_coefficients();
+    if (this->pp_desc().spin_orbit_coupling)
+        this->generate_f_coefficients();
     initialized_ = true;
 }
 
@@ -1356,8 +1356,8 @@ inline void Atom_type::read_pseudo_uspp(json const& parser)
 
     set_radial_grid(num_mt_points_, rgrid.data());
 
-    if (parser["pseudo_potential"]["header"].count("SpinOrbit"))
-        pp_desc_.SpinOrbit_Coupling = parser["pseudo_potential"]["header"]["SpinOrbit"];
+    if (parser["pseudo_potential"]["header"].count("spin_orbit"))
+        pp_desc_.spin_orbit_coupling = parser["pseudo_potential"]["header"]["spin_orbit"];
 
     pp_desc_.num_beta_radial_functions = parser["pseudo_potential"]["header"]["number_of_proj"];
 
@@ -1367,7 +1367,7 @@ inline void Atom_type::read_pseudo_uspp(json const& parser)
     pp_desc_.num_beta_radial_points.resize(pp_desc_.num_beta_radial_functions);
     pp_desc_.beta_l.resize(pp_desc_.num_beta_radial_functions);
 
-    if (pp_desc_.SpinOrbit_Coupling)
+    if (pp_desc_.spin_orbit_coupling)
         pp_desc_.beta_j.resize(pp_desc_.num_beta_radial_functions);
 
     local_orbital_descriptor lod;
@@ -1387,7 +1387,7 @@ inline void Atom_type::read_pseudo_uspp(json const& parser)
 
         pp_desc_.beta_l[i] = parser["pseudo_potential"]["beta_projectors"][i]["angular_momentum"];
         lmax_beta          = std::max(lmax_beta, pp_desc_.beta_l[i]);
-        if (pp_desc_.SpinOrbit_Coupling) {
+        if (pp_desc_.spin_orbit_coupling) {
             pp_desc_.beta_j[i] = parser["pseudo_potential"]["beta_projectors"][i]["total_angular_momentum"];
         }
     }
@@ -1568,20 +1568,25 @@ inline double Atom_type::ClebschGordan(const int l, const double j, const double
 
     if (std::abs(j - l - 0.5) < 1e-8) {
         int m = static_cast<int>(mj - 0.5);
-        if (spin == 0)
+        if (spin == 0) {
             CG = sqrt(l + m + 1.0);
-        if (spin == 1)
+	}
+        if (spin == 1) {
             CG = sqrt((l - m));
+	}
     } else {
         if (std::abs(j - l + 0.5) < 1e-8) {
             int m = static_cast<int>(mj + 0.5);
-            if (m < (1 - l))
+            if (m < (1 - l)) {
                 CG = 0.0;
+	    }
             else {
-                if (spin == 0)
+		if (spin == 0) {
                     CG = sqrt(l - m + 1);
-                if (spin == 1)
-                    CG = -sqrt(l + m);
+		}
+		if (spin == 1) {
+		    CG = -sqrt(l + m);
+		}
             }
         } else {
             printf("Clebsch gordan coefficients do not exist for this combination of j=%.5lf and l=%d\n", j, l);
@@ -1599,7 +1604,7 @@ inline double Atom_type::ClebschGordan(const int l, const double j, const double
 // error it is considered as integer so mj = 2 mj
 
 inline double_complex
-Atom_type::Calculate_U_sigma_m(const int l, const double j, const int mj, const int mp, const int sigma)
+Atom_type::calculate_U_sigma_m(const int l, const double j, const int mj, const int mp, const int sigma)
 {
 
     int result = 0;
@@ -1616,16 +1621,20 @@ Atom_type::Calculate_U_sigma_m(const int l, const double j, const int mj, const 
 
         int m1 = (mj - 1) >> 1;
         if (sigma == 0) { // up spin
-            if (m1 < -l)  // convention U^s_{mj,m'} = 0
+            if (m1 < -l) { // convention U^s_{mj,m'} = 0
                 return 0.0;
-            else // U^s_{mj,mp} =
+	    }
+            else {// U^s_{mj,mp} =
                 return SHT::rlm_dot_ylm(l, m1, mp);
+	    }
         } else { // down spin
-            if ((m1 + 1) > l)
+            if ((m1 + 1) > l) {
                 return 0.0;
-            else
+	    }
+            else {
                 return SHT::rlm_dot_ylm(l, m1 + 1, mp);
-        }
+	    }
+	}
     } else {
         if (std::abs(j - l + 0.5) < 1e-8) {
             int m1 = (mj + 1) >> 1;
@@ -1641,7 +1650,7 @@ Atom_type::Calculate_U_sigma_m(const int l, const double j, const int mj, const 
     }
 }
 
-void Atom_type::Generate_F_coefficients(void)
+void Atom_type::generate_f_coefficients(void)
 {
     // we consider Pseudo potentials with spin orbit couplings
 
@@ -1650,7 +1659,7 @@ void Atom_type::Generate_F_coefficients(void)
     // They are defined by Eq.9 of Ref PRB 71, 115106
     // and correspond to transformations of the
     // spherical harmonics
-    if (!this->pp_desc().SpinOrbit_Coupling)
+    if (!this->pp_desc().spin_orbit_coupling)
         return;
 
     // number of beta projectors
@@ -1680,9 +1689,9 @@ void Atom_type::Generate_F_coefficients(void)
 
                         int jj1 = static_cast<int>(2.0 * j1 + 1e-8);
                         for (int mj = -jj1; mj <= jj1; mj += 2) {
-                            coef += Calculate_U_sigma_m(l1, j1, mj, m1, sigma1) *
+                            coef += calculate_U_sigma_m(l1, j1, mj, m1, sigma1) *
                                     this->ClebschGordan(l1, j1, mj / 2.0, sigma1) *
-                                    std::conj(Calculate_U_sigma_m(l2, j2, mj, m2, sigma2)) *
+                                    std::conj(calculate_U_sigma_m(l2, j2, mj, m2, sigma2)) *
                                     this->ClebschGordan(l2, j2, mj / 2.0, sigma2);
                         }
                         f_coefficients_(xi1, xi2, sigma1, sigma2) = coef;

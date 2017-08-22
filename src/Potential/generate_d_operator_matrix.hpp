@@ -88,7 +88,7 @@ inline void Potential::generate_D_operator_matrix()
                     for (int xi2 = 0; xi2 < nbf; xi2++) {
                         for (int xi1 = 0; xi1 < nbf; xi1++) {
                             atom.d_mtrx(xi1, xi2, iv) = 0;
-                            if (atom_type.pp_desc().SpinOrbit_Coupling)
+                            if (atom_type.pp_desc().spin_orbit_coupling)
                                 atom.d_mtrx_so(xi1, xi2, iv) = 0;
                         }
                     }
@@ -102,7 +102,7 @@ inline void Potential::generate_D_operator_matrix()
                 case CPU: {
                     matrix<double> veff_a(2 * ctx_.gvec().count(), atom_type.num_atoms());
 
-#pragma omp parallel for schedule(static)
+                    #pragma omp parallel for schedule(static)
                     for (int i = 0; i < atom_type.num_atoms(); i++) {
                         int ia = atom_type.atom_id(i);
 
@@ -167,7 +167,7 @@ inline void Potential::generate_D_operator_matrix()
                 print_checksum("D-op matrix of valence", cs);
             }
 
-#pragma omp parallel for schedule(static)
+            #pragma omp parallel for schedule(static)
             for (int i = 0; i < atom_type.num_atoms(); i++) {
                 int ia     = atom_type.atom_id(i);
                 auto& atom = unit_cell_.atom(ia);
@@ -182,8 +182,8 @@ inline void Potential::generate_D_operator_matrix()
             }
         }
         // Now compute the d operator for atoms with so interactions
-        if (atom_type.pp_desc().SpinOrbit_Coupling) {
-#pragma omp parallel for schedule(static)
+        if (atom_type.pp_desc().spin_orbit_coupling) {
+            #pragma omp parallel for schedule(static)
             for (int i = 0; i < atom_type.num_atoms(); i++) {
                 int ia     = atom_type.atom_id(i);
                 auto& atom = unit_cell_.atom(ia);
@@ -256,12 +256,12 @@ inline void Potential::generate_D_operator_matrix()
 
 /* add d_ion to the effective potential component of D-operator */
 
-#pragma omp parallel for schedule(static)
+    #pragma omp parallel for schedule(static)
     for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
         auto& atom_type = unit_cell_.atom(ia).type();
         int nbf         = unit_cell_.atom(ia).mt_basis_size();
 
-        if (atom_type.pp_desc().SpinOrbit_Coupling) {
+        if (atom_type.pp_desc().spin_orbit_coupling) {
             // spin orbit coupling mixes this term
 
             // keep the order of the indices because it is crucial
@@ -275,7 +275,7 @@ inline void Potential::generate_D_operator_matrix()
                     int l1     = atom_type.indexb(xi1).l;
                     double j1  = atom_type.indexb(xi1).j;
                     int idxrf1 = atom_type.indexb(xi1).idxrf;
-                    if ((l1 == l2) && (fabs(j1 - j2) < 1e-8)) {
+                    if ((l1 == l2) && (std::abs(j1 - j2) < 1e-8)) {
                         // up-up down-down
                         unit_cell_.atom(ia).d_mtrx_so(xi1, xi2, 0) +=
                             atom_type.pp_desc().d_mtrx_ion(idxrf1, idxrf2) * atom_type.f_coefficients(xi1, xi2, 0, 0);

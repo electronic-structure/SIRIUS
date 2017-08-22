@@ -92,12 +92,12 @@ inline void Density::add_k_point_contribution_dm(K_point* kp__, mdarray<double_c
 
                     int nbnd_loc = spl_nbnd.local_size();
                     if (nbnd_loc) { // TODO: this part can also be moved to GPU
-#pragma omp parallel
+                     #pragma omp parallel
                         {
                             /* auxiliary arrays */
                             mdarray<double_complex, 2> bp1(nbeta, nbnd_loc);
                             mdarray<double_complex, 2> bp2(nbeta, nbnd_loc);
-#pragma omp for
+                            #pragma omp for
                             for (int ia = 0; ia < bp_chunks(chunk).num_atoms_; ia++) {
                                 int nbf  = bp_chunks(chunk).desc_(beta_desc_idx::nbf, ia);
                                 int offs = bp_chunks(chunk).desc_(beta_desc_idx::offset, ia);
@@ -144,7 +144,7 @@ inline void Density::add_k_point_contribution_dm(K_point* kp__, mdarray<double_c
                 for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
                     /* compute <beta|psi> */
                     auto beta_psi = kp__->beta_projectors().inner<T>(chunk, kp__->spinor_wave_functions(ispn), 0, nbnd);
-#pragma omp parallel for schedule(static)
+                    #pragma omp parallel for schedule(static)
                     for (int i = 0; i < nbnd_loc; i++) {
                         int j = spl_nbnd[i];
 
@@ -158,7 +158,7 @@ inline void Density::add_k_point_contribution_dm(K_point* kp__, mdarray<double_c
                     int nbf  = bp_chunks(chunk).desc_(beta_desc_idx::nbf, ia);
                     int offs = bp_chunks(chunk).desc_(beta_desc_idx::offset, ia);
                     int ja   = bp_chunks(chunk).desc_(beta_desc_idx::ia, ia);
-                    if (ctx_.unit_cell().atom(ja).type().pp_desc().SpinOrbit_Coupling) {
+                    if (ctx_.unit_cell().atom(ja).type().pp_desc().spin_orbit_coupling) {
                         mdarray<double_complex, 3> bp3(nbf, nbnd_loc, 2);
                         bp3.zero();
                         /* We already have the <beta|psi> but we need to rotate
@@ -227,7 +227,7 @@ inline void Density::add_k_point_contribution_dm(K_point* kp__, mdarray<double_c
                 }
 
                 if (nbnd_loc) {
-#pragma omp parallel for
+                    #pragma omp parallel for
                     for (int ia = 0; ia < bp_chunks(chunk).num_atoms_; ia++) {
                         int nbf  = bp_chunks(chunk).desc_(beta_desc_idx::nbf, ia);
                         int offs = bp_chunks(chunk).desc_(beta_desc_idx::offset, ia);

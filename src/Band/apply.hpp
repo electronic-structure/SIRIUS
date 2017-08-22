@@ -297,7 +297,7 @@ inline void Band::apply_fv_o(K_point* kp__,
 
         sddk::timer t2("sirius::Band::apply_fv_o|apw-lo");
         oalm.zero();
-#pragma omp parallel for
+        #pragma omp parallel for
         for (int ilo = 0; ilo < nlo; ilo++) {
             int xi_lo = type.mt_aw_basis_size() + ilo;
             /* local orbital indices */
@@ -538,7 +538,7 @@ inline void Band::apply_fv_h_o(K_point* kp__,
 
         sddk::timer t2("sirius::Band::apply_fv_h_o|apw-lo");
         halm.zero();
-#pragma omp parallel for
+        #pragma omp parallel for
         for (int ilo = 0; ilo < nlo; ilo++) {
             int xi_lo = type.mt_aw_basis_size() + ilo;
             /* local orbital indices */
@@ -690,7 +690,7 @@ inline void Band::apply_magnetic_field(wave_functions& fv_states__,
         zm.zero();
 
 /* only upper triangular part of zm is computed because it is a hermitian matrix */
-#pragma omp parallel for default(shared)
+        #pragma omp parallel for default(shared)
         for (int xi2 = 0; xi2 < mt_basis_size; xi2++) {
             int lm2    = atom.type().indexb(xi2).lm;
             int idxrf2 = atom.type().indexb(xi2).idxrf;

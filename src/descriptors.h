@@ -88,7 +88,7 @@ struct local_orbital_descriptor
 struct pseudopotential_descriptor
 {
     /// The pseudo potential includes spin orbit coupling
-    bool SpinOrbit_Coupling{false};
+    bool spin_orbit_coupling{false};
 
     /// True if the pseudopotential is soft and charge augmentation is required.
     bool augment{false};
