@@ -335,29 +335,28 @@ class Periodic_function: public Smooth_periodic_function<T>
             T result_rg{0};
             
             if (!ctx_.full_potential()) {
-                Smooth_periodic_function<T> const& tmp = *g__;
-                result_rg = Smooth_periodic_function<T>::inner(tmp);
-                //#pragma omp parallel
-                //{
-                //    T rt{0};
-                //    
-                //    #pragma omp for schedule(static)
-                //    for (int irloc = 0; irloc < this->fft_->local_size(); irloc++) {
-                //        rt += std::conj(this->f_rg(irloc)) * g__->f_rg(irloc);
-                //    }
-        
-                //    #pragma omp critical
-                //    result_rg += rt;
-                //}
+	      Smooth_periodic_function<T> const& tmp = *g__;
+	      result_rg = Smooth_periodic_function<T>::inner(tmp);
+	      //#pragma omp parallel
+	      //{
+	      //    T rt{0};
+	      //    
+	      //    #pragma omp for schedule(static)
+	      //    for (int irloc = 0; irloc < this->fft_->local_size(); irloc++) {
+	      //        rt += std::conj(this->f_rg(irloc)) * g__->f_rg(irloc);
+	      //    }        
+	      //    #pragma omp critical
+	      //    result_rg += rt;
+	      //}
             } else {
-                for (int irloc = 0; irloc < this->fft_->local_size(); irloc++) {
-                    result_rg += std::conj(this->f_rg(irloc)) * g__->f_rg(irloc) * 
-                                 this->step_function_.theta_r(irloc);
-                }
-                result_rg *= (unit_cell_.omega() / this->fft_->size());
-                this->fft_->comm().allreduce(&result_rg, 1);
+	      for (int irloc = 0; irloc < this->fft_->local_size(); irloc++) {
+		result_rg += type_wrapper<T>::bypass(std::conj(this->f_rg(irloc))) * g__->f_rg(irloc) * 
+		  this->step_function_.theta_r(irloc);
+	      }
+	      result_rg *= (unit_cell_.omega() / this->fft_->size());
+	      this->fft_->comm().allreduce(&result_rg, 1);
             }
-                    
+	    
 
             T result_mt{0};
             if (ctx_.full_potential()) {

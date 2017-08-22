@@ -2077,23 +2077,34 @@ void sirius_set_atom_type_dion(char* label__,
 void sirius_set_atom_type_beta_rf(char* label__,
                                   int32_t* num_beta__,
                                   int32_t* beta_l__,
+				  double* beta_j__,
                                   int32_t* num_mesh_points__,
                                   double* beta_rf__,
-                                  int32_t* ld__)
+                                  int32_t* ld__,
+				  int32_t* SpinOrbit)
 {
     auto& type = sim_ctx->unit_cell().atom_type(std::string(label__));
-
     mdarray<double, 2> beta_rf(beta_rf__, *ld__, *num_beta__);
+    if(*SpinOrbit != 0) {
+      type.pp_desc().spin_orbit_coupling = true;
+    } else {
+      type.pp_desc().spin_orbit_coupling = false;
+    }
+
     type.pp_desc().lmax_beta_ = 0;
     type.pp_desc().num_beta_radial_functions = *num_beta__;
     type.pp_desc().beta_l = std::vector<int>(*num_beta__);
+    if(type.pp_desc().spin_orbit_coupling)
+      type.pp_desc().beta_j = std::vector<double>(*num_beta__);
     type.pp_desc().num_beta_radial_points = std::vector<int>(*num_beta__);
     for (int i = 0; i < *num_beta__; i++)
-    {
+      {
         type.pp_desc().beta_l[i] = beta_l__[i];
+	if(type.pp_desc().beta_j.size())
+	  type.pp_desc().beta_j[i] = beta_j__[i];
         type.pp_desc().lmax_beta_ = std::max(type.pp_desc().lmax_beta_, beta_l__[i]);
         type.pp_desc().num_beta_radial_points[i] = num_mesh_points__[i];
-    }
+      }
     type.pp_desc().beta_radial_functions = mdarray<double, 2>(type.num_mt_points(), *num_beta__);
     beta_rf >> type.pp_desc().beta_radial_functions;
 }
@@ -2308,7 +2319,7 @@ void sirius_ylmr2_(int32_t* lmmax__, int32_t* nr__, double* vr__, double* rlm__)
 //    //for (int i = 0; i < fft_coarse->size(); i++) vloc__[i] *= 2; // convert to Ry
 //}
 
-void sirius_get_q_operator_matrix(ftn_int*    iat__,
+void sirius_get_q_operator_matrix (ftn_int*    iat__,
                                   ftn_double* q_mtrx__,
                                   ftn_int*    ld__)
 {

@@ -232,7 +232,7 @@ class Smooth_periodic_function
 
                 #pragma omp for schedule(static)
                 for (int irloc = 0; irloc < this->fft_->local_size(); irloc++) {
-                    rt += std::conj(this->f_rg(irloc)) * g__.f_rg(irloc);
+		  rt += type_wrapper<T>::bypass(std::conj(this->f_rg(irloc))) * g__.f_rg(irloc);
                 }
 
                 #pragma omp critical

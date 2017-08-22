@@ -1,24 +1,24 @@
 // Copyright (c) 2013-2017 Anton Kozhevnikov, Thomas Schulthess
 // All rights reserved.
-// 
-// Redistribution and use in source and binary forms, with or without modification, are permitted provided that 
+//
+// Redistribution and use in source and binary forms, with or without modification, are permitted provided that
 // the following conditions are met:
-// 
-// 1. Redistributions of source code must retain the above copyright notice, this list of conditions and the 
+//
+// 1. Redistributions of source code must retain the above copyright notice, this list of conditions and the
 //    following disclaimer.
-// 2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions 
+// 2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions
 //    and the following disclaimer in the documentation and/or other materials provided with the distribution.
-// 
-// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED 
-// WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A 
-// PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR 
-// ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, 
-// PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER 
-// CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR 
+//
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED
+// WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A
+// PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
+// ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+// PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+// CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
 // OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 /** \file solve.hpp
- *   
+ *
  *   \brief Contains interfaces to the sirius::Band solvers.
  */
 
@@ -43,7 +43,7 @@ inline void Band::solve_with_single_variation(K_point& kp__, Potential& potentia
 {
     switch (ctx_.esm_type()) {
         case electronic_structure_method_t::pseudopotential: {
-            if (ctx_.gamma_point()) {
+            if (ctx_.gamma_point() && (ctx_.so_correction() == false)) {
                 diag_pseudo_potential<double>(&kp__);
             } else {
                 diag_pseudo_potential<double_complex>(&kp__);
@@ -59,7 +59,7 @@ inline void Band::solve_with_single_variation(K_point& kp__, Potential& potentia
 
     //== mdarray<double_complex, 2> h(kp->gklo_basis_size_row(), kp->gklo_basis_size_col());
     //== mdarray<double_complex, 2> o(kp->gklo_basis_size_row(), kp->gklo_basis_size_col());
-    //== 
+    //==
     //== set_o(kp, o);
 
     //== std::vector<double> eval(parameters_.num_bands());
@@ -69,13 +69,14 @@ inline void Band::solve_with_single_variation(K_point& kp__, Potential& potentia
     //== {
     //==     assert(kp->gklo_basis_size() >= parameters_.num_fv_states());
     //==     set_h<nm>(kp, effective_potential, effective_magnetic_field, h);
-    //==    
+    //==
     //==     Timer t2("sirius::Band::solve_fd|diag");
-    //==     parameters_.gen_evp_solver()->solve(kp->gklo_basis_size(), kp->gklo_basis_size_row(), kp->gklo_basis_size_col(), 
-    //==                                         parameters_.num_fv_states(), h.ptr(), h.ld(), o.ptr(), o.ld(), 
+    //==     parameters_.gen_evp_solver()->solve(kp->gklo_basis_size(), kp->gklo_basis_size_row(),
+    // kp->gklo_basis_size_col(),
+    //==                                         parameters_.num_fv_states(), h.ptr(), h.ld(), o.ptr(), o.ld(),
     //==                                         &eval[0], fd_evec.ptr(), fd_evec.ld());
     //== }
-    //== 
+    //==
     //== if (parameters_.num_mag_dims() == 1)
     //== {
     //==     assert(kp->gklo_basis_size() >= parameters_.num_fv_states());
@@ -84,19 +85,21 @@ inline void Band::solve_with_single_variation(K_point& kp__, Potential& potentia
     //==     memcpy(&o1(0, 0), &o(0, 0), o.size() * sizeof(double_complex));
 
     //==     set_h<uu>(kp, effective_potential, effective_magnetic_field, h);
-    //==    
+    //==
     //==     Timer t2("sirius::Band::solve_fd|diag");
-    //==     parameters_.gen_evp_solver()->solve(kp->gklo_basis_size(), kp->gklo_basis_size_row(), kp->gklo_basis_size_col(), 
-    //==                                         parameters_.num_fv_states(), h.ptr(), h.ld(), o.ptr(), o.ld(), 
+    //==     parameters_.gen_evp_solver()->solve(kp->gklo_basis_size(), kp->gklo_basis_size_row(),
+    // kp->gklo_basis_size_col(),
+    //==                                         parameters_.num_fv_states(), h.ptr(), h.ld(), o.ptr(), o.ld(),
     //==                                         &eval[0], &fd_evec(0, 0), fd_evec.ld());
     //==     t2.stop();
 
     //==     set_h<dd>(kp, effective_potential, effective_magnetic_field, h);
-    //==     
+    //==
     //==     t2.start();
-    //==     parameters_.gen_evp_solver()->solve(kp->gklo_basis_size(), kp->gklo_basis_size_row(), kp->gklo_basis_size_col(), 
-    //==                                         parameters_.num_fv_states(), h.ptr(), h.ld(), o1.ptr(), o1.ld(), 
-    //==                                         &eval[parameters_.num_fv_states()], 
+    //==     parameters_.gen_evp_solver()->solve(kp->gklo_basis_size(), kp->gklo_basis_size_row(),
+    // kp->gklo_basis_size_col(),
+    //==                                         parameters_.num_fv_states(), h.ptr(), h.ld(), o1.ptr(), o1.ld(),
+    //==                                         &eval[parameters_.num_fv_states()],
     //==                                         &fd_evec(0, parameters_.spl_fv_states().local_size()), fd_evec.ld());
     //==     t2.stop();
     //== }
@@ -104,9 +107,7 @@ inline void Band::solve_with_single_variation(K_point& kp__, Potential& potentia
     //== kp->set_band_energies(&eval[0]);
 }
 
-inline void Band::solve_for_kset(K_point_set& kset__,
-                                 Potential& potential__,
-                                 bool precompute__) const
+inline void Band::solve_for_kset(K_point_set& kset__, Potential& potential__, bool precompute__) const
 {
     PROFILE("sirius::Band::solve_for_kset");
 
@@ -129,7 +130,7 @@ inline void Band::solve_for_kset(K_point_set& kset__,
 
     /* solve secular equation and generate wave functions */
     for (int ikloc = 0; ikloc < kset__.spl_num_kpoints().local_size(); ikloc++) {
-        int ik = kset__.spl_num_kpoints(ikloc);
+        int ik  = kset__.spl_num_kpoints(ikloc);
         auto kp = kset__[ik];
 
         if (ctx_.full_potential() && use_second_variation) {
@@ -165,4 +166,3 @@ inline void Band::solve_for_kset(K_point_set& kset__,
         }
     }
 }
-

@@ -318,7 +318,7 @@ class Band
                     #pragma omp parallel for
                     for (int i = 0; i < N__; i++) {
                         for (int j = N__; j < N__ + n__; j++) {
-                            mtrx__(j, i) = std::conj(mtrx__(i, j));
+			  mtrx__(j, i) = type_wrapper<T>::bypass(std::conj(mtrx__(i, j)));
                         }
                     }
                 } else {
