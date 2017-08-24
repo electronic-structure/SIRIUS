@@ -61,13 +61,28 @@ class Band
         /// Interface to a generalized eigen-value solver.
         std::unique_ptr<Eigenproblem> gen_evp_solver_;
 
+        /// Local part of the Hamiltonian operator.
         std::unique_ptr<Local_operator> local_op_;
+
+        /// Solve the band diagonalziation problem with single (full) variation.
+        inline void solve_with_single_variation(K_point& kp__, Potential& potential__) const;
+
+        /// Solve the band diagonalziation problem with second variation approach.
+        /** This is only used by the FP-LAPW method. */
+        inline void solve_with_second_variation(K_point& kp__, Potential& potential__) const;
+
+        /// Solve the first-variational (non-magnetic) problem with exact diagonalization.
+        /** This is only used by the LAPW method. */
+        inline void diag_fv_exact(K_point* kp__,
+                                  Potential& potential__) const;
+        
+        /// Solve the first-variational (non-magnetic) problem with iterative Davidson diagonalization.
+        inline void diag_fv_davidson(K_point* kp__) const;
 
         /// Apply effective magentic field to the first-variational state.
         /** Must be called first because hpsi is overwritten with B|fv_j>. */
         void apply_magnetic_field(wave_functions& fv_states__,
                                   Gvec const& gkvec__,
-                                  Periodic_function<double>* effective_magnetic_field__[3],
                                   std::vector<wave_functions>& hpsi__) const;
 
         /// Apply SO correction to the first-variational states.
@@ -112,11 +127,6 @@ class Band
                           Periodic_function<double>* effective_magnetic_field[3],
                           mdarray<double_complex, 2>& h);
        
-        inline void diag_fv_full_potential_exact(K_point* kp__,
-                                                 Potential const& potential__) const;
-        
-        inline void diag_fv_full_potential_davidson(K_point* kp__) const;
-
         inline void apply_fv_o(K_point* kp__,
                                bool apw_only__,
                                bool add_o1__,
@@ -124,7 +134,9 @@ class Band
                                int n__,
                                wave_functions& phi__,
                                wave_functions& ophi__) const;
-        
+
+        /// Get singular components of the LAPW overlap matrix.
+        /** Singular components are the eigen-vectors with a very small eigen-value. */
         inline void get_singular_components(K_point* kp__) const;
 
         /// Exact (not iterative) diagonalization of the Hamiltonian.
@@ -277,6 +289,28 @@ class Band
 
             /* <{phi,phi_new}|Op|phi_new> */
             inner(num_sc__, phi__, 0, N__ + n__, op_phi__, N__, n__, mtrx__, 0, N__);
+            //if (true) {
+            //    if (mtrx__.blacs_grid().comm().size() == 1) {
+            //        for (int i = 0; i < n__; i++) {
+            //            for (int j = 0; j < n__ + N__; j++) {
+            //                mtrx__(j, N__ + i) = Utils::round(mtrx__(j, N__ + i), 10);
+            //            }
+            //        }
+            //    }
+            //}
+
+            //if (true) {
+            //    if (mtrx__.blacs_grid().comm().size() == 1) {
+            //        for (int i = 0; i < n__; i++) {
+            //            for (int j = 0; j < n__; j++) {
+            //                auto zij = mtrx__(N__ + i, N__ + j);
+            //                auto zji = mtrx__(N__ + j, N__ + i);
+            //                mtrx__(N__ + i, N__ + j) = 0.5 * (zij + std::conj(zji));
+            //                mtrx__(N__ + j, N__ + i) = std::conj(mtrx__(N__ + i, N__ + j));
+            //            }
+            //        }
+            //    }
+            //}
             
             /* restore lower part */
             if (N__ > 0) {
@@ -284,13 +318,25 @@ class Band
                     #pragma omp parallel for
                     for (int i = 0; i < N__; i++) {
                         for (int j = N__; j < N__ + n__; j++) {
-                            mtrx__(j, i) = std::conj(mtrx__(i, j));
+			  mtrx__(j, i) = type_wrapper<T>::bypass(std::conj(mtrx__(i, j)));
                         }
                     }
                 } else {
                     linalg<CPU>::tranc(n__, N__, mtrx__, 0, N__, mtrx__, N__, 0);
                 }
             }
+
+            //if (true) {
+            //    splindex<block_cyclic> spl_row(N__ + n__, mtrx__.blacs_grid().num_ranks_row(), mtrx__.blacs_grid().rank_row(), mtrx__.bs_row());
+            //    splindex<block_cyclic> spl_col(N__ + n__, mtrx__.blacs_grid().num_ranks_col(), mtrx__.blacs_grid().rank_col(), mtrx__.bs_col());
+            //    for (int i = 0; i < spl_col.local_size(); i++) {
+            //        for (int j = 0; j < spl_row.local_size(); j++) {
+            //            if (std::abs(mtrx__(j, i)) < 1e-11) {
+            //                mtrx__(j, i) = 0;
+            //            }
+            //        }
+            //    }
+            //}
 
             if (ctx_.control().print_checksum_) {
                 splindex<block_cyclic> spl_row(N__ + n__, mtrx__.blacs_grid().num_ranks_row(), mtrx__.blacs_grid().rank_row(), mtrx__.bs_row());
@@ -321,23 +367,9 @@ class Band
             }
         }
                 
-        /// Diagonalize a full-potential Hamiltonian.
-        void diag_fv_full_potential(K_point* kp__,
-                                    Potential const& potential__) const
-        {
-            auto& itso = ctx_.iterative_solver_input();
-            if (itso.type_ == "exact") {
-                diag_fv_full_potential_exact(kp__, potential__);
-            } else if (itso.type_ == "davidson") {
-                diag_fv_full_potential_davidson(kp__);
-            }
-        }
-
         /// Diagonalize a pseudo-potential Hamiltonian.
         template <typename T>
-        void diag_pseudo_potential(K_point* kp__, 
-                                   Periodic_function<double>* effective_potential__,
-                                   Periodic_function<double>* effective_magnetic_field__[3]) const
+        void diag_pseudo_potential(K_point* kp__) const
         {
             PROFILE("sirius::Band::diag_pseudo_potential");
 
@@ -762,14 +794,9 @@ class Band
                                  wave_functions& ophi__) const;
 
         /// Solve second-variational problem.
-        inline void solve_sv(K_point* kp,
-                             Periodic_function<double>* effective_magnetic_field[3]) const;
+        inline void diag_sv(K_point* kp,
+                            Potential& potential__) const;
         
-        /// Diagonalization of the full Hamiltonian (without second variation).
-        inline void solve_fd(K_point* kp,
-                             Periodic_function<double>* effective_potential, 
-                             Periodic_function<double>* effective_magnetic_field[3]) const;
-
         /// Solve \f$ \hat H \psi = E \psi \f$ and find eigen-states of the Hamiltonian.
         inline void solve_for_kset(K_point_set& kset__,
                                    Potential& potential__,
@@ -812,8 +839,6 @@ class Band
         /// Initialize the wave-functions subspace.
         template <typename T>
         inline void initialize_subspace(K_point*                                        kp__,
-                                        Periodic_function<double>*                      effective_potential__,
-                                        Periodic_function<double>*                      effective_magnetic_field[3],
                                         int                                             num_ao__,
                                         std::vector<std::vector<Spline<double>>> const& rad_int__) const;
 };
@@ -822,7 +847,8 @@ class Band
 #include "Band/apply.hpp"
 #include "Band/set_lapw_h_o.hpp"
 #include "Band/residuals.hpp"
-#include "Band/diagonalize.hpp"
+#include "Band/diag_full_potential.hpp"
+#include "Band/diag_pseudo_potential.hpp"
 #include "Band/initialize_subspace.hpp"
 #include "Band/solve.hpp"
 

@@ -149,6 +149,8 @@ class FFT3D
         /// True if FFT driver is prepared for the transformation.
         bool prepared_{false};
 
+        memory_t host_memory_type_;
+
         /// Serial part of 1D transformation of columns.
         template <int direction, device_t data_ptr_type>
         void transform_z_serial(Gvec_partition const& gvec__,
@@ -597,8 +599,14 @@ class FFT3D
             local_size_z_ = spl_z_.local_size();
             offset_z_     = spl_z_.global_offset();
 
+            if (pu_ == CPU) {
+                host_memory_type_ = memory_t::host;
+            } else {
+                host_memory_type_ = memory_t::host_pinned;
+            }
+
             /* allocate main buffer */
-            fft_buffer_ = mdarray<double_complex, 1>(local_size(), memory_t::host_pinned, "FFT3D.fft_buffer_");
+            fft_buffer_ = mdarray<double_complex, 1>(local_size(), host_memory_type_, "FFT3D.fft_buffer_");
             
             /* allocate 1d and 2d buffers */
             for (int i = 0; i < omp_get_max_threads(); i++) {
@@ -892,7 +900,7 @@ class FFT3D
                 sz_max = grid_.size(2) * gvec__.num_zcol();
             }
             if (sz_max > fft_buffer_aux1_.size()) {
-                fft_buffer_aux1_ = mdarray<double_complex, 1>(sz_max, memory_t::host_pinned, "fft_buffer_aux1_");
+                fft_buffer_aux1_ = mdarray<double_complex, 1>(sz_max, host_memory_type_, "fft_buffer_aux1_");
                 if (pu_ == GPU) {
                     fft_buffer_aux1_.allocate(memory_t::device);
                 }
@@ -941,13 +949,13 @@ class FFT3D
             }
             
             if (sz_max > fft_buffer_aux1_.size()) {
-                fft_buffer_aux1_ = mdarray<double_complex, 1>(sz_max, memory_t::host_pinned, "fft_buffer_aux1_");
+                fft_buffer_aux1_ = mdarray<double_complex, 1>(sz_max, host_memory_type_, "fft_buffer_aux1_");
                 if (pu_ == GPU) {
                     fft_buffer_aux1_.allocate(memory_t::device);
                 }
             }
             if (sz_max > fft_buffer_aux2_.size()) {
-                fft_buffer_aux2_ = mdarray<double_complex, 1>(sz_max, memory_t::host_pinned, "fft_buffer_aux2_");
+                fft_buffer_aux2_ = mdarray<double_complex, 1>(sz_max, host_memory_type_, "fft_buffer_aux2_");
                 if (pu_ == GPU) {
                     fft_buffer_aux2_.allocate(memory_t::device);
                 }

@@ -239,59 +239,63 @@ class wave_functions
         }
 
         /// Compute L2 norm of first n wave-functions.
-        inline mdarray<double,1> l2norm(int n__) const
+        inline mdarray<double,1> l2norm(device_t pu__, int n__) const
         {
             assert(n__ != 0);
 
             mdarray<double, 1> norm(n__, memory_t::host, "l2norm");
             norm.zero();
-            if (pu_ == GPU) {
-                norm.allocate(memory_t::device);
-                norm.zero<memory_t::device>();
-            }
-             
-            if (pu_ == CPU) {
-                #pragma omp parallel for
-                for (int i = 0; i < n__; i++) {
-                    for (int ig = 0; ig < pw_coeffs().num_rows_loc(); ig++) {
-                        norm[i] += (std::pow(pw_coeffs().prime(ig, i).real(), 2) + std::pow(pw_coeffs().prime(ig, i).imag(), 2));
-                    }
-                    if (gkvec_.reduced()) {
-                        if (comm_.rank() == 0) {
-                            norm[i] = 2 * norm[i] - std::pow(pw_coeffs().prime(0, i).real(), 2);
-                        } else {
-                            norm[i] *= 2;
+
+            switch (pu__) {
+                case CPU: {
+                    #pragma omp parallel for
+                    for (int i = 0; i < n__; i++) {
+                        for (int ig = 0; ig < pw_coeffs().num_rows_loc(); ig++) {
+                            norm[i] += (std::pow(pw_coeffs().prime(ig, i).real(), 2) + std::pow(pw_coeffs().prime(ig, i).imag(), 2));
+                        }
+                        if (gkvec_.reduced()) {
+                            if (comm_.rank() == 0) {
+                                norm[i] = 2 * norm[i] - std::pow(pw_coeffs().prime(0, i).real(), 2);
+                            } else {
+                                norm[i] *= 2;
+                            }
+                        }
+                        if (has_mt_ && mt_coeffs().num_rows_loc()) {
+                            for (int j = 0; j < mt_coeffs().num_rows_loc(); j++) {
+                                norm[i] += (std::pow(mt_coeffs().prime(j, i).real(), 2) + std::pow(mt_coeffs().prime(j, i).imag(), 2));
+                            }
                         }
                     }
+                    break;
+                }
+                case GPU: {
+                    #ifdef __GPU
+                    norm.allocate(memory_t::device);
+                    norm.zero<memory_t::device>();
+                    add_square_sum_gpu(pw_coeffs().prime().at<GPU>(), pw_coeffs().num_rows_loc(), n__,
+                                       gkvec_.reduced(), comm_.rank(), norm.at<GPU>());
                     if (has_mt_ && mt_coeffs().num_rows_loc()) {
-                        for (int j = 0; j < mt_coeffs().num_rows_loc(); j++) {
-                            norm[i] += (std::pow(mt_coeffs().prime(j, i).real(), 2) + std::pow(mt_coeffs().prime(j, i).imag(), 2));
-                        }
+                        add_square_sum_gpu(mt_coeffs().prime().at<GPU>(), mt_coeffs().num_rows_loc(), n__,
+                                           0, comm_.rank(), norm.at<GPU>());
                     }
+                    norm.copy<memory_t::device, memory_t::host>();
+                    #endif
+                    break;
                 }
             }
-            #ifdef __GPU
-            if (pu_ == GPU) {
-                add_square_sum_gpu(pw_coeffs().prime().at<GPU>(), pw_coeffs().num_rows_loc(), n__,
-                                   gkvec_.reduced(), comm_.rank(), norm.at<GPU>());
-                if (has_mt_ && mt_coeffs().num_rows_loc()) {
-                    add_square_sum_gpu(mt_coeffs().prime().at<GPU>(), mt_coeffs().num_rows_loc(), n__,
-                                       0, comm_.rank(), norm.at<GPU>());
-                }
-                norm.copy<memory_t::device, memory_t::host>();
-            }
-            #endif
 
             comm_.allreduce(norm.at<CPU>(), n__);
             for (int i = 0; i < n__; i++) {
                 norm[i] = std::sqrt(norm[i]);
             }
 
-            //if (pu_ == GPU) {
-            //    norm.copy<memory_t::host, memory_t::device>();
-            //}
-
             return std::move(norm);
+        }
+
+        /// Compute L2 norm of first n wave-functions.
+        inline mdarray<double,1> l2norm(int n__) const
+        {
+            return l2norm(pu_, n__);
         }
 
         Communicator const& comm() const
@@ -487,6 +491,18 @@ class Wave_functions
     Gvec const& gkvec() const
     {
         return gkvec_;
+    }
+
+    inline mdarray<double,1> l2norm(device_t pu__, int n__)
+    {
+        auto norm1 = component(0).l2norm(pu__, n__);
+        if (num_components() == 2) {
+            auto norm2 = component(1).l2norm(pu__, n__);
+            for (int i = 0; i < n__; i++) {
+                norm1[i] += norm2[i];
+            }
+        }
+        return std::move(norm1);
     }
 
     inline mdarray<double,1> l2norm(int n__)

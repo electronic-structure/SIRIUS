@@ -37,6 +37,7 @@ def parse_header(upf_dict, root):
     upf_dict['header']['mesh_size'] = int(node.attrib['mesh_size'])
     upf_dict['header']['is_ultrasoft'] = str2bool(node.attrib['is_ultrasoft'])
     upf_dict['header']['number_of_wfc'] = int(node.attrib['number_of_wfc'])
+    upf_dict['header']['SpinOrbit'] = str2bool(node.attrib['has_so'])
 
 def parse_radial_grid(upf_dict, root):
     # radial grid
@@ -73,7 +74,11 @@ def parse_non_local(upf_dict, root):
         #upf_dict['beta_projectors'][i]['cutoff_radius_index'] = int(node.attrib['cutoff_radius_index'])
         upf_dict['beta_projectors'][i]['cutoff_radius'] = float(node.attrib['cutoff_radius'])
         upf_dict['beta_projectors'][i]['ultrasoft_cutoff_radius'] = float(node.attrib['ultrasoft_cutoff_radius'])
-
+        #if upf_dict['header']['SpinOrbit']: 
+        #  node1 = root.findall("./PP_SPIN_ORB/PP_RELBETA.%i"%(i+1))[0]
+        #  upf_dict['beta_projectors'][i]['total_angular_momentum'] = float(node1.attrib['jjj'])
+          
+          
     #--------------------------
     #------- Dij matrix -------
     #--------------------------
@@ -218,6 +223,31 @@ def parse_pswfc(upf_dict, root):
         wfc['occupation'] = float(node.attrib['occupation'])
         upf_dict['atomic_wave_functions'].append(wfc)
 
+
+####################################################
+############# Spin orbit coupling #################
+####################################################
+
+def parse_SpinOrbit(upf_dict, root):
+    if not upf_dict['header']['SpinOrbit']: return
+
+    ### Spin orbit informations for the projectors
+
+    proj_num = upf_dict['header']['number_of_proj']
+    for i in range(proj_num):
+       node = root.findall("./PP_SPIN_ORB/PP_RELBETA.%i"%(i+1))[0]
+       upf_dict['beta_projectors'][i]['angular_momentum'] = float(node.attrib['lll'])
+       upf_dict['beta_projectors'][i]['total_angular_momentum'] = float(node.attrib['jjj'])
+
+    ### spin orbit information for the AEWFC
+#    wfc_num = upf_dict['header']['number_of_wfc']
+#    for i in range(wfc_num):
+#      node = root.findall("./PP_SPIN_ORB/PP_RELWFC.%i"%(i+1))[0]
+#      upf_dict['paw_data']['ae_wfc']['ae_wfc_rel'] = float(node)
+#      upf_dict['paw_data']['ae_wfc']['total_angular_momentum'] = float(node('jchi'))
+#      upf_dict['paw_data']['ps_wfc']['total_angular_momentum'] = float(node('jchi'))
+ 
+
 ######################################################
 ################## MAIN ##############################
 ######################################################
@@ -257,6 +287,9 @@ def main():
     # parse pseudo wavefunctions
     parse_pswfc(upf_dict, root)
 
+    # parse data for spin orbit coupling
+    parse_SpinOrbit(upf_dict, root)
+    
     # rho
     node = root.findall("./PP_RHOATOM")[0]
     rho = [float(e) for e in str.split(node.text)]

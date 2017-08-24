@@ -329,12 +329,13 @@ inline void dmatrix<double_complex>::serialize(std::string name__, int n__) cons
     if (blacs_grid_->comm().rank() == 0) {
         //std::cout << "mtrx: " << name__ << std::endl;
         // std::cout << dict.dump(4);
-
+        
+        printf("matrix label: %s\n", name__.c_str());
         printf("{\n");
         for (int i = 0; i < n__; i++) {
             printf("{");
             for (int j = 0; j < n__; j++) {
-                printf("%18.12f + I * %18.12f", full_mtrx(i, j).real(), full_mtrx(i, j).imag());
+                printf("%18.13f + I * %18.13f", full_mtrx(i, j).real(), full_mtrx(i, j).imag());
                 if (j != n__ - 1) {
                     printf(",");
                 }
@@ -383,11 +384,12 @@ inline void dmatrix<double>::serialize(std::string name__, int n__) const
     // ofs << dict.dump(4);
 
     if (blacs_grid_->comm().rank() == 0) {
+        printf("matrix label: %s\n", name__.c_str());
         printf("{\n");
         for (int i = 0; i < n__; i++) {
             printf("{");
             for (int j = 0; j < n__; j++) {
-                printf("%18.12f", full_mtrx(i, j));
+                printf("%18.13f", full_mtrx(i, j));
                 if (j != n__ - 1) {
                     printf(",");
                 }

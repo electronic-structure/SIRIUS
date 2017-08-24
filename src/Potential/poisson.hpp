@@ -177,7 +177,7 @@ inline void Potential::poisson_add_pseudo_pw(mdarray<double_complex, 2>& qmt__,
     }
 }
 
-inline void Potential::poisson(Periodic_function<double>& rho, Periodic_function<double>* vh)
+inline void Potential::poisson(Periodic_function<double>& rho)
 {
     PROFILE("sirius::Potential::poisson");
 
@@ -186,7 +186,7 @@ inline void Potential::poisson(Periodic_function<double>& rho, Periodic_function
 
         /* true multipole moments */
         mdarray<double_complex, 2> qmt(ctx_.lmmax_rho(), unit_cell_.num_atoms());
-        poisson_vmt(rho, vh, qmt);
+        poisson_vmt(rho, qmt);
         
         //== for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
         //==     for (int lm = 0; lm < ctx_.lmmax_rho(); lm++) {
@@ -240,22 +240,22 @@ inline void Potential::poisson(Periodic_function<double>& rho, Periodic_function
     /* compute pw coefficients of Hartree potential */
     int ig0{0};
     if (ctx_.gvec().comm().rank() == 0) {
-        vh->f_pw_local(0) = 0.0;
+        hartree_potential_->f_pw_local(0) = 0.0;
         ig0 = 1;
     }
     if (!ctx_.molecule()) {
-        #pragma omp parallel for
+        #pragma omp parallel for schedule(static)
         for (int igloc = ig0; igloc < ctx_.gvec().count(); igloc++) {
             int ig = ctx_.gvec().offset() + igloc;
-            vh->f_pw_local(igloc) = (fourpi * rho.f_pw_local(igloc) / std::pow(ctx_.gvec().gvec_len(ig), 2));
+            hartree_potential_->f_pw_local(igloc) = (fourpi * rho.f_pw_local(igloc) / std::pow(ctx_.gvec().gvec_len(ig), 2));
         }
     } else {
         double R_cut = 0.5 * std::pow(unit_cell_.omega(), 1.0 / 3);
-        #pragma omp parallel for
+        #pragma omp parallel for schedule(static)
         for (int igloc = ig0; igloc < ctx_.gvec().count(); igloc++) {
             int ig = ctx_.gvec().offset() + igloc;
-            vh->f_pw_local(igloc) = (fourpi * rho.f_pw_local(igloc) / std::pow(ctx_.gvec().gvec_len(ig), 2)) *
-                                    (1.0 - std::cos(ctx_.gvec().gvec_len(ig) * R_cut));
+            hartree_potential_->f_pw_local(igloc) = (fourpi * rho.f_pw_local(igloc) / std::pow(ctx_.gvec().gvec_len(ig), 2)) *
+                                                    (1.0 - std::cos(ctx_.gvec().gvec_len(ig) * R_cut));
         }
     }
     
@@ -270,7 +270,7 @@ inline void Potential::poisson(Periodic_function<double>& rho, Periodic_function
     if (ctx_.full_potential()) {
         /* compute V_lm at the MT boundary */
         mdarray<double_complex, 2> vmtlm(ctx_.lmmax_pot(), unit_cell_.num_atoms());
-        poisson_sum_G(ctx_.lmmax_pot(), &vh->f_pw_local(0), sbessel_mt_, vmtlm);
+        poisson_sum_G(ctx_.lmmax_pot(), &hartree_potential_->f_pw_local(0), sbessel_mt_, vmtlm);
         
         /* add boundary condition and convert to Rlm */
         sddk::timer t1("sirius::Potential::poisson|bc");
@@ -302,14 +302,14 @@ inline void Potential::poisson(Periodic_function<double>& rho, Periodic_function
                 int l = l_by_lm_[lm];
 
                 for (int ir = 0; ir < nmtp; ir++) {
-                    vh->f_mt<index_domain_t::local>(lm, ir, ialoc) += vlm[lm] * rRl(ir, l);
+                    hartree_potential_->f_mt<index_domain_t::local>(lm, ir, ialoc) += vlm[lm] * rRl(ir, l);
                 }
             }
             /* save electronic part of the potential at the point of origin */
             #ifdef __VHA_AUX
-            vh_el_(ia) = y00 * vh->f_mt<index_domain_t::local>(0, 0, ialoc) + unit_cell_.atom(ia).zn() / unit_cell_.atom(ia).radial_grid(0);
+            vh_el_(ia) = y00 * hartree_potential_->f_mt<index_domain_t::local>(0, 0, ialoc) + unit_cell_.atom(ia).zn() / unit_cell_.atom(ia).radial_grid(0);
             #else
-            vh_el_(ia) = y00 * vh->f_mt<index_domain_t::local>(0, 0, ialoc);
+            vh_el_(ia) = y00 * hartree_potential_->f_mt<index_domain_t::local>(0, 0, ialoc);
             #endif
         }
         ctx_.comm().allgather(vh_el_.at<CPU>(), unit_cell_.spl_num_atoms().global_offset(),
@@ -317,17 +317,17 @@ inline void Potential::poisson(Periodic_function<double>& rho, Periodic_function
     }
 
     /* transform Hartree potential to real space */
-    vh->fft_transform(1);
+    hartree_potential_->fft_transform(1);
 
     if (ctx_.control().print_checksum_) {
-        auto cs = vh->checksum_rg();
+        auto cs = hartree_potential_->checksum_rg();
         if (ctx_.comm().rank() == 0) {
-            DUMP("checksum(vha_rg): %20.14f", cs);
+            print_checksum("vha_rg", cs);
         }
     }
     
     /* compute contribution from the smooth part of Hartree potential */
-    energy_vha_ = rho.inner(vh);
+    energy_vha_ = rho.inner(hartree_potential_.get());
         
     #ifndef __VHA_AUX
     /* add nucleus potential and contribution to Hartree energy */
