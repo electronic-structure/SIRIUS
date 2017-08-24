@@ -35,18 +35,6 @@ inline void Density::init_paw()
             pdd.ae_density_.push_back(Spheric_function<spectral, double>(lm_max_rho, pdd.atom_->radial_grid()));
             pdd.ps_density_.push_back(Spheric_function<spectral, double>(lm_max_rho, pdd.atom_->radial_grid()));
         }
-//        pdd.ae_density_ = mdarray<double, 3>(lm_max_rho, num_mt_points, ctx_.num_mag_dims() + 1);
-//        pdd.ps_density_ = mdarray<double, 3>(lm_max_rho, num_mt_points, ctx_.num_mag_dims() + 1);
-//
-//        pdd.ae_density_.zero();
-//        pdd.ps_density_.zero();
-
-        // magnetization arrays
-//        pdd.ae_magnetization_ = mdarray<double, 3>(lm_max_rho, num_mt_points, 3);
-//        pdd.ps_magnetization_ = mdarray<double, 3>(lm_max_rho, num_mt_points, 3);
-//
-//        pdd.ae_magnetization_.zero();
-//        pdd.ps_magnetization_.zero();
 
         paw_density_data_.push_back(std::move(pdd));
     }
@@ -84,12 +72,6 @@ inline void Density::init_density_matrix_for_paw()
                     density_matrix_(xi,xi,0,ia) = occ / (double)( 2 * l + 1 );
                     break;
                 }
-
-//                case 3:{
-//                    density_matrix_(xi,xi,0,ia) = 0.5 * (1.0 ) * occ / (double)( 2 * l + 1 );
-//                    density_matrix_(xi,xi,1,ia) = 0.5 * (1.0 ) * occ / (double)( 2 * l + 1 );
-//                    break;
-//                }
 
                 case 3:
                 case 1:{
