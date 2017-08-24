@@ -150,6 +150,9 @@ class FFT3D
         bool prepared_{false};
 
         memory_t host_memory_type_;
+        
+        /// Defines the distribution of G-vectors between the MPI ranks of FFT communicator. 
+        Gvec_partition const* gvec_partition_{nullptr};
 
         /// Serial part of 1D transformation of columns.
         template <int direction, device_t data_ptr_type>
@@ -777,6 +780,8 @@ class FFT3D
         {
             PROFILE("sddk::FFT3D::prepare");
 
+            gvec_partition_ = &gvec__;
+
             int nc = gvec__.reduced() ? 2 : 1;
             
             sddk::timer t1("sddk::FFT3D::prepare|cpu");
@@ -877,6 +882,7 @@ class FFT3D
             }
             #endif
             prepared_ = false;
+            gvec_partition_ = nullptr;
         }
         
         /// Transform a single functions.
@@ -889,15 +895,17 @@ class FFT3D
                 TERMINATE("FFT3D is not ready");
             }
 
+            assert(gvec_partition_ == &gvec__);
+
             /* reallocate auxiliary buffer if needed */
             size_t sz_max;
             if (comm_.size() > 1) {
                 int rank = comm_.rank();
-                int num_zcol_local = gvec__.zcol_distr_fft().counts[rank];
+                int num_zcol_local = gvec_partition_->zcol_distr_fft().counts[rank];
                 /* we need this buffer size for mpi_alltoall */
                 sz_max = std::max(grid_.size(2) * num_zcol_local, local_size());
             } else {
-                sz_max = grid_.size(2) * gvec__.num_zcol();
+                sz_max = grid_.size(2) * gvec_partition_->num_zcol();
             }
             if (sz_max > fft_buffer_aux1_.size()) {
                 fft_buffer_aux1_ = mdarray<double_complex, 1>(sz_max, host_memory_type_, "fft_buffer_aux1_");
@@ -908,13 +916,13 @@ class FFT3D
 
             switch (direction) {
                 case 1: {
-                    transform_z<direction, data_ptr_type>(gvec__, data__, fft_buffer_aux1_);
-                    transform_xy<direction>(gvec__, fft_buffer_aux1_);
+                    transform_z<direction, data_ptr_type>(*gvec_partition_, data__, fft_buffer_aux1_);
+                    transform_xy<direction>(*gvec_partition_, fft_buffer_aux1_);
                     break;
                 }
                 case -1: {
-                    transform_xy<direction>(gvec__, fft_buffer_aux1_);
-                    transform_z<direction, data_ptr_type>(gvec__, data__, fft_buffer_aux1_);
+                    transform_xy<direction>(*gvec_partition_, fft_buffer_aux1_);
+                    transform_z<direction, data_ptr_type>(*gvec_partition_, data__, fft_buffer_aux1_);
                     break;
                 }
                 default: {
@@ -933,7 +941,9 @@ class FFT3D
                 TERMINATE("FFT3D is not ready");
             }
 
-            if (!gvec__.reduced()) {
+            assert(gvec_partition_ == &gvec__);
+
+            if (!gvec_partition_->reduced()) {
                 TERMINATE("reduced set of G-vectors is required");
             }
 
@@ -941,11 +951,11 @@ class FFT3D
             size_t sz_max;
             if (comm_.size() > 1) {
                 int rank = comm_.rank();
-                int num_zcol_local = gvec__.zcol_distr_fft().counts[rank];
+                int num_zcol_local = gvec_partition_->zcol_distr_fft().counts[rank];
                 /* we need this buffer for mpi_alltoall */
                 sz_max = std::max(grid_.size(2) * num_zcol_local, local_size());
             } else {
-                sz_max = grid_.size(2) * gvec__.num_zcol();
+                sz_max = grid_.size(2) * gvec_partition_->num_zcol();
             }
             
             if (sz_max > fft_buffer_aux1_.size()) {
@@ -962,15 +972,15 @@ class FFT3D
             }
             switch (direction) {
                 case 1: {
-                    transform_z<direction, data_ptr_type>(gvec__, data1__, fft_buffer_aux1_);
-                    transform_z<direction, data_ptr_type>(gvec__, data2__, fft_buffer_aux2_);
-                    transform_xy<direction>(gvec__, fft_buffer_aux1_, fft_buffer_aux2_);
+                    transform_z<direction, data_ptr_type>(*gvec_partition_, data1__, fft_buffer_aux1_);
+                    transform_z<direction, data_ptr_type>(*gvec_partition_, data2__, fft_buffer_aux2_);
+                    transform_xy<direction>(*gvec_partition_, fft_buffer_aux1_, fft_buffer_aux2_);
                     break;
                 }
                 case -1: {
-                    transform_xy<direction>(gvec__, fft_buffer_aux1_, fft_buffer_aux2_);
-                    transform_z<direction, data_ptr_type>(gvec__, data1__, fft_buffer_aux1_);
-                    transform_z<direction, data_ptr_type>(gvec__, data2__, fft_buffer_aux2_);
+                    transform_xy<direction>(*gvec_partition_, fft_buffer_aux1_, fft_buffer_aux2_);
+                    transform_z<direction, data_ptr_type>(*gvec_partition_, data1__, fft_buffer_aux1_);
+                    transform_z<direction, data_ptr_type>(*gvec_partition_, data2__, fft_buffer_aux2_);
                     break;
                 }
                 default: {
