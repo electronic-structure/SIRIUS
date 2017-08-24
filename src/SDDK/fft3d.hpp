@@ -397,7 +397,7 @@ class FFT3D
                                           gvec__.num_zcol(),
                                           z_col_pos_.at<GPU>(),
                                           is_reduced,
-                                          0);
+                                          cufft_stream_id);
                         /* stream #0 executes FFT */
                         cufft::backward_transform(cufft_plan_xy_, (cuDoubleComplex*)fft_buffer_.at<GPU>());
                         break;
@@ -413,7 +413,7 @@ class FFT3D
                                         local_size_z_,
                                         gvec__.num_zcol(),
                                         z_col_pos_.at<GPU>(),
-                                        0);
+                                        cufft_stream_id);
                         break;
                     }
                 }
@@ -499,7 +499,7 @@ class FFT3D
                                             local_size_z_,
                                             gvec__.num_zcol(),
                                             z_col_pos_.at<GPU>(),
-                                            0);
+                                            cufft_stream_id);
                         /* stream #0 executes FFT */
                         cufft::backward_transform(cufft_plan_xy_, (cuDoubleComplex*)fft_buffer_.at<GPU>());
                         break;
@@ -516,11 +516,11 @@ class FFT3D
                                           local_size_z_,
                                           gvec__.num_zcol(),
                                           z_col_pos_.at<GPU>(),
-                                          0);
+                                          cufft_stream_id);
                         break;
                     }
                 }
-                acc::sync_stream(0);
+                acc::sync_stream(cufft_stream_id);
             }
             #endif
 
@@ -645,7 +645,7 @@ class FFT3D
                 /* create plan for xy transform */
                 cufft::create_batch_plan(cufft_plan_xy_, 2, dim_xy, dim_xy, 1, grid_.size(0) * grid_.size(1), local_size_z_, auto_alloc);
                 /* stream #0 will execute FFTs */
-                cufft::set_stream(cufft_plan_xy_, 0);
+                cufft::set_stream(cufft_plan_xy_, cufft_stream_id);
             }
             #endif
         }
@@ -838,7 +838,7 @@ class FFT3D
                 }
 
                 cufft::create_plan_handle(&cufft_plan_z_);
-                cufft::set_stream(cufft_plan_z_, 0);
+                cufft::set_stream(cufft_plan_z_, cufft_stream_id);
                 
                 int dim_z[] = {grid_.size(2)};
                 cufft::create_batch_plan(cufft_plan_z_, 1, dim_z, dim_z, 1, grid_.size(2), gvec__.zcol_count_fft(), 0);
@@ -887,15 +887,13 @@ class FFT3D
         
         /// Transform a single functions.
         template <int direction, device_t data_ptr_type = CPU>
-        void transform(Gvec_partition const& gvec__, double_complex* data__)
+        void transform(double_complex* data__)
         {
             PROFILE("sddk::FFT3D::transform");
 
             if (!prepared_) {
                 TERMINATE("FFT3D is not ready");
             }
-
-            assert(gvec_partition_ == &gvec__);
 
             /* reallocate auxiliary buffer if needed */
             size_t sz_max;
@@ -933,15 +931,13 @@ class FFT3D
         
         /// Transform two real functions.
         template <int direction, device_t data_ptr_type = CPU>
-        void transform(Gvec_partition const& gvec__, double_complex* data1__, double_complex* data2__)
+        void transform(double_complex* data1__, double_complex* data2__)
         {
             PROFILE("sddk::FFT3D::transform");
 
             if (!prepared_) {
                 TERMINATE("FFT3D is not ready");
             }
-
-            assert(gvec_partition_ == &gvec__);
 
             if (!gvec_partition_->reduced()) {
                 TERMINATE("reduced set of G-vectors is required");
