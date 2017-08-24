@@ -213,6 +213,7 @@ class HDF5_tree
     // HDF5_tree& operator=(HDF5_tree const& src) = delete;
 
   public:
+
     /// Constructor to create the HDF5 tree.
     HDF5_tree(const std::string& file_name__, bool truncate)
         : file_name_(file_name__)

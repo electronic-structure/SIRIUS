@@ -90,9 +90,9 @@ class Gvec_partition
     inline void pile_gvec();
 
   public:
-    Gvec_partition(Gvec const& gvec__, Communicator const& comm__)
+    Gvec_partition(Gvec const& gvec__, Communicator const& fft_comm__)
         : gvec_(&gvec__)
-        , fft_comm_(&comm__)
+        , fft_comm_(&fft_comm__)
     {
         build_fft_distr();
         calc_offsets();

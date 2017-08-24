@@ -229,6 +229,11 @@ class Simulation_context_base: public Simulation_parameters
                 fout.create_node("density");
                 fout.create_node("magnetization");
                 
+                for (int j = 0; j < num_mag_dims(); j++) {
+                    fout["magnetization"].create_node(j);
+                    fout["effective_magnetic_field"].create_node(j);
+                }
+                
                 fout["parameters"].write("num_spins", num_spins());
                 fout["parameters"].write("num_mag_dims", num_mag_dims());
                 fout["parameters"].write("num_bands", num_bands());

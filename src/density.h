@@ -665,12 +665,11 @@ class Density
          
         void save()
         {
-            if (ctx_.comm().rank() == 0) {
-                HDF5_tree fout(storage_file_name, false);
-                rho_->hdf5_write(fout["density"]);
-                for (int j = 0; j < ctx_.num_mag_dims(); j++) {
-                    magnetization_[j]->hdf5_write(fout["magnetization"].create_node(j));
-                }
+            rho_->hdf5_write(storage_file_name, "density");
+            for (int j = 0; j < ctx_.num_mag_dims(); j++) {
+                std::stringstream s;
+                s << "magnetization/" << j;
+                magnetization_[j]->hdf5_write(storage_file_name, s.str());
             }
             ctx_.comm().barrier();
         }
