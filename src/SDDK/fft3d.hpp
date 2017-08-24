@@ -146,9 +146,6 @@ class FFT3D
         /// Position of z-columns inside 2D FFT buffer. 
         mdarray<int, 2> z_col_pos_;
         
-        /// True if FFT driver is prepared for the transformation.
-        bool prepared_{false};
-
         memory_t host_memory_type_;
         
         /// Defines the distribution of G-vectors between the MPI ranks of FFT communicator. 
@@ -653,7 +650,7 @@ class FFT3D
         /// Destructor.
         ~FFT3D()
         {
-            if (prepared_) {
+            if (gvec_partition_) {
                 dismiss();
             }
             for (int i = 0; i < omp_get_max_threads(); i++) {
@@ -775,7 +772,7 @@ class FFT3D
             return pu_;
         }
         
-        /// Prepare FFT driver to transfrom functions with gvec_fft_distr.
+        /// Prepare FFT driver to transfrom functions with the specific G-vector distribution. 
         void prepare(Gvec_partition const& gvec__)
         {
             PROFILE("sddk::FFT3D::prepare");
@@ -863,8 +860,6 @@ class FFT3D
                 z_col_pos_.copy_to_device();
             }
             #endif
-
-            prepared_ = true;
         }
 
         void dismiss()
@@ -881,7 +876,6 @@ class FFT3D
                 cufft::destroy_plan_handle(cufft_plan_z_);
             }
             #endif
-            prepared_ = false;
             gvec_partition_ = nullptr;
         }
         
@@ -891,7 +885,7 @@ class FFT3D
         {
             PROFILE("sddk::FFT3D::transform");
 
-            if (!prepared_) {
+            if (!gvec_partition_) {
                 TERMINATE("FFT3D is not ready");
             }
 
@@ -935,7 +929,7 @@ class FFT3D
         {
             PROFILE("sddk::FFT3D::transform");
 
-            if (!prepared_) {
+            if (!gvec_partition_) {
                 TERMINATE("FFT3D is not ready");
             }
 
