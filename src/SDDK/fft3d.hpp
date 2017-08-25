@@ -369,14 +369,13 @@ class FFT3D
         
         /// Apply 2D FFT transformation to z-columns of one complex function.
         template <int direction>
-        void transform_xy(Gvec_partition const& gvec__,
-                          mdarray<double_complex, 1>& fft_buffer_aux__)
+        void transform_xy(mdarray<double_complex, 1>& fft_buffer_aux__)
         {
             PROFILE("sddk::FFT3D::transform_xy");
 
             int size_xy = grid_.size(0) * grid_.size(1);
 
-            int is_reduced = gvec__.reduced();
+            int is_reduced = gvec_partition_->reduced();
 
             #ifdef __GPU
             if (pu_ == GPU) {
@@ -389,7 +388,7 @@ class FFT3D
                                           grid_.size(0),
                                           grid_.size(1),
                                           local_size_z_,
-                                          gvec__.num_zcol(),
+                                          gvec_partition_->num_zcol(),
                                           z_col_pos_.at<GPU>(),
                                           is_reduced,
                                           cufft_stream_id);
@@ -406,7 +405,7 @@ class FFT3D
                                         grid_.size(0),
                                         grid_.size(1),
                                         local_size_z_,
-                                        gvec__.num_zcol(),
+                                        gvec_partition_->num_zcol(),
                                         z_col_pos_.at<GPU>(),
                                         cufft_stream_id);
                         break;
@@ -427,7 +426,7 @@ class FFT3D
                                 /* clear xy-buffer */
                                 std::fill(fftw_buffer_xy_[tid], fftw_buffer_xy_[tid] + size_xy, 0);
                                 /* load z-columns into proper location */
-                                for (int i = 0; i < gvec__.num_zcol(); i++) {
+                                for (int i = 0; i < gvec_partition_->num_zcol(); i++) {
                                     fftw_buffer_xy_[tid][z_col_pos_(i, 0)] = fft_buffer_aux__[iz + i * local_size_z_];
 
                                     if (is_reduced && i) {
@@ -451,7 +450,7 @@ class FFT3D
                                 fftw_execute(plan_forward_xy_[tid]);
 
                                 /* get z-columns */
-                                for (int i = 0; i < gvec__.num_zcol(); i++) {
+                                for (int i = 0; i < gvec_partition_->num_zcol(); i++) {
                                     fft_buffer_aux__[iz  + i * local_size_z_] = fftw_buffer_xy_[tid][z_col_pos_(i, 0)];
                                 }
 
@@ -468,13 +467,12 @@ class FFT3D
 
         /// Apply 2D FFT transformation to z-columns of two real functions.
         template <int direction>
-        void transform_xy(Gvec_partition const& gvec__,
-                          mdarray<double_complex, 1>& fft_buffer_aux1__, 
+        void transform_xy(mdarray<double_complex, 1>& fft_buffer_aux1__, 
                           mdarray<double_complex, 1>& fft_buffer_aux2__)
         {
             PROFILE("sddk::FFT3D::transform_xy");
 
-            if (!gvec__.reduced()) {
+            if (!gvec_partition_->reduced()) {
                 TERMINATE("reduced set of G-vectors is required");
             }
 
@@ -492,7 +490,7 @@ class FFT3D
                                             grid_.size(0),
                                             grid_.size(1),
                                             local_size_z_,
-                                            gvec__.num_zcol(),
+                                            gvec_partition_->num_zcol(),
                                             z_col_pos_.at<GPU>(),
                                             cufft_stream_id);
                         /* stream #0 executes FFT */
@@ -509,7 +507,7 @@ class FFT3D
                                           grid_.size(0),
                                           grid_.size(1),
                                           local_size_z_,
-                                          gvec__.num_zcol(),
+                                          gvec_partition_->num_zcol(),
                                           z_col_pos_.at<GPU>(),
                                           cufft_stream_id);
                         break;
@@ -535,7 +533,7 @@ class FFT3D
                                     double_complex(0, 1) * fft_buffer_aux2__[iz];
 
                                 /* load remaining z-columns into proper location */
-                                for (int i = 1; i < gvec__.num_zcol(); i++) {
+                                for (int i = 1; i < gvec_partition_->num_zcol(); i++) {
                                     /* {x, y} part */
                                     fftw_buffer_xy_[tid][z_col_pos_(i, 0)] = fft_buffer_aux1__[iz + i * local_size_z_] + 
                                         double_complex(0, 1) * fft_buffer_aux2__[iz + i * local_size_z_];
@@ -561,7 +559,7 @@ class FFT3D
                                 fftw_execute(plan_forward_xy_[tid]);
 
                                 /* get z-columns */
-                                for (int i = 0; i < gvec__.num_zcol(); i++) {
+                                for (int i = 0; i < gvec_partition_->num_zcol(); i++) {
                                     fft_buffer_aux1__[iz  + i * local_size_z_] = 0.5 * 
                                         (fftw_buffer_xy_[tid][z_col_pos_(i, 0)] + std::conj(fftw_buffer_xy_[tid][z_col_pos_(i, 1)]));
 
@@ -907,11 +905,11 @@ class FFT3D
             switch (direction) {
                 case 1: {
                     transform_z<direction, data_ptr_type>(data__, fft_buffer_aux1_);
-                    transform_xy<direction>(*gvec_partition_, fft_buffer_aux1_);
+                    transform_xy<direction>(fft_buffer_aux1_);
                     break;
                 }
                 case -1: {
-                    transform_xy<direction>(*gvec_partition_, fft_buffer_aux1_);
+                    transform_xy<direction>(fft_buffer_aux1_);
                     transform_z<direction, data_ptr_type>(data__, fft_buffer_aux1_);
                     break;
                 }
@@ -962,11 +960,11 @@ class FFT3D
                 case 1: {
                     transform_z<direction, data_ptr_type>(data1__, fft_buffer_aux1_);
                     transform_z<direction, data_ptr_type>(data2__, fft_buffer_aux2_);
-                    transform_xy<direction>(*gvec_partition_, fft_buffer_aux1_, fft_buffer_aux2_);
+                    transform_xy<direction>(fft_buffer_aux1_, fft_buffer_aux2_);
                     break;
                 }
                 case -1: {
-                    transform_xy<direction>(*gvec_partition_, fft_buffer_aux1_, fft_buffer_aux2_);
+                    transform_xy<direction>(fft_buffer_aux1_, fft_buffer_aux2_);
                     transform_z<direction, data_ptr_type>(data1__, fft_buffer_aux1_);
                     transform_z<direction, data_ptr_type>(data2__, fft_buffer_aux2_);
                     break;
