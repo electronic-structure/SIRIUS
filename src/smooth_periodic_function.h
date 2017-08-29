@@ -202,11 +202,11 @@ class Smooth_periodic_function
             std::copy(&f_pw__[gvec_->offset()], &f_pw__[gvec_->offset()] + gvec_->count(), &f_pw_local_(0));
         }
 
-        void add(Smooth_periodic_function<T> const& g__)
+        void add(Smooth_periodic_function<T> const& g__, double alpha__ = 1)
         {
             #pragma omp parallel for schedule(static)
             for (int irloc = 0; irloc < this->fft_->local_size(); irloc++) {
-                this->f_rg_(irloc) += g__.f_rg(irloc);
+                this->f_rg_(irloc) += g__.f_rg(irloc) * alpha__;
             }
         }
 
@@ -232,7 +232,7 @@ class Smooth_periodic_function
 
                 #pragma omp for schedule(static)
                 for (int irloc = 0; irloc < this->fft_->local_size(); irloc++) {
-                    rt += std::conj(this->f_rg(irloc)) * g__.f_rg(irloc);
+		  rt += type_wrapper<T>::bypass(std::conj(this->f_rg(irloc))) * g__.f_rg(irloc);
                 }
 
                 #pragma omp critical

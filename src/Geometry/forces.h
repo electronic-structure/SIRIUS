@@ -264,7 +264,7 @@ class Forces_PS
         auto& spl_num_kp = kset_.spl_num_kpoints();
 
         for (int ikploc = 0; ikploc < spl_num_kp.local_size(); ikploc++) {
-            K_point* kp = kset_.k_point(spl_num_kp[ikploc]);
+            K_point* kp = kset_[spl_num_kp[ikploc]];
 
             if (ctx_.gamma_point()) {
                 add_k_point_contribution<double>(*kp, unsym_forces);
@@ -299,7 +299,7 @@ class Forces_PS
 
         double fact = gvecs.reduced() ? 2.0 : 1.0;
 
-        auto ri = Radial_integrals_rho_core_pseudo<false>(ctx_.unit_cell(), ctx_.pw_cutoff(), ctx_.settings().nprii_rho_core_);
+        Radial_integrals_rho_core_pseudo<false> ri(ctx_.unit_cell(), ctx_.pw_cutoff(), ctx_.settings().nprii_rho_core_);
 
         /* here the calculations are in lattice vectors space */
         #pragma omp parallel for

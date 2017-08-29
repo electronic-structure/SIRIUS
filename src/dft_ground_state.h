@@ -372,25 +372,31 @@ class DFT_ground_state
 
             auto& comm = ctx_.comm();
 
+            remap_gvec_to_shells remap_gvec(comm, ctx_.gvec());
+
+            unit_cell_.symmetry().symmetrize_function(&f__->f_pw_local(0), remap_gvec);
+
             /* symmetrize PW components */
-            auto v = f__->gather_f_pw();
-            unit_cell_.symmetry().symmetrize_function(&v[0], ctx_.gvec(), comm);
-            f__->scatter_f_pw(v);
+            //auto v = f__->gather_f_pw();
+            //unit_cell_.symmetry().symmetrize_function(&v[0], ctx_.gvec(), comm);
+            //f__->scatter_f_pw(v);
             switch (ctx_.num_mag_dims()) {
                 case 1: {
-                    auto vz = gz__->gather_f_pw();
-                    unit_cell_.symmetry().symmetrize_vector_function(&vz[0], ctx_.gvec(), comm);
-                    gz__->scatter_f_pw(vz);
+                    //auto vz = gz__->gather_f_pw();
+                    //unit_cell_.symmetry().symmetrize_vector_function(&vz[0], ctx_.gvec(), comm);
+                    //gz__->scatter_f_pw(vz);
+                    unit_cell_.symmetry().symmetrize_vector_function(&gz__->f_pw_local(0), remap_gvec);
                     break;
                 }
                 case 3: {
-                    auto vx = gx__->gather_f_pw();
-                    auto vy = gy__->gather_f_pw();
-                    auto vz = gz__->gather_f_pw();
-                    unit_cell_.symmetry().symmetrize_vector_function(&vx[0], &vy[0], &vz[0], ctx_.gvec(), comm);
-                    gx__->scatter_f_pw(vx);
-                    gy__->scatter_f_pw(vy);
-                    gz__->scatter_f_pw(vz);
+                    //auto vx = gx__->gather_f_pw();
+                    //auto vy = gy__->gather_f_pw();
+                    //auto vz = gz__->gather_f_pw();
+                    //unit_cell_.symmetry().symmetrize_vector_function(&vx[0], &vy[0], &vz[0], ctx_.gvec(), comm);
+                    //gx__->scatter_f_pw(vx);
+                    //gy__->scatter_f_pw(vy);
+                    //gz__->scatter_f_pw(vz);
+                    unit_cell_.symmetry().symmetrize_vector_function(&gx__->f_pw_local(0), &gy__->f_pw_local(0), &gz__->f_pw_local(0), remap_gvec);
                     break;
                 }
             }

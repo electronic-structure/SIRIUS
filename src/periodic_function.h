@@ -1,4 +1,4 @@
-// Copyright (c) 2013-2016 Anton Kozhevnikov, Thomas Schulthess
+// Copyright (c) 2013-2017 Anton Kozhevnikov, Thomas Schulthess
 // All rights reserved.
 // 
 // Redistribution and use in source and binary forms, with or without modification, are permitted provided that 
@@ -167,15 +167,15 @@ class Periodic_function: public Smooth_periodic_function<T>
         using Smooth_periodic_function<T>::add;
 
         /// Add the function
-        void add(Periodic_function<T>* g)
+        void add(Periodic_function<T>* g, double alpha__ = 1)
         {
             PROFILE("sirius::Periodic_function::add");
             /* add regular-grid part */
-            Smooth_periodic_function<T>::add(*g);
+            Smooth_periodic_function<T>::add(*g, alpha__);
             /* add muffin-tin part */
             if (ctx_.full_potential()) {
                 for (int ialoc = 0; ialoc < unit_cell_.spl_num_atoms().local_size(); ialoc++)
-                    f_mt_local_(ialoc) += g->f_mt(ialoc);
+                    f_mt_local_(ialoc) += g->f_mt(ialoc) * alpha__;
             }
         }
 
@@ -238,23 +238,41 @@ class Periodic_function: public Smooth_periodic_function<T>
         }
         
         /** \todo write and read distributed functions */
-        void hdf5_write(HDF5_tree h5f)
+        void hdf5_write(std::string storage_file_name__, std::string path__)
         {
             //STOP();
             //if (ctx_.full_potential()) {
             //    h5f.write("f_mt", f_mt_);
             //}
-            //h5f.write("f_pw", f_pw_);
-            //h5f.write("f_rg", this->f_rg_);
+            auto v = this->gather_f_pw();
+            if (ctx_.comm().rank() == 0) {
+                HDF5_tree fout(storage_file_name, false);
+                fout[path__].write("f_pw", reinterpret_cast<double*>(v.data()), static_cast<int>(v.size() * 2));
+            }
         }
 
-        void hdf5_read(HDF5_tree h5f)
+        void hdf5_read(HDF5_tree h5f__, mdarray<int, 2>& gvec__)
         {
             //if (ctx_.full_potential()) {
             //    h5f.read("f_mt", f_mt_);
             //}
-            //h5f.read("f_pw", f_pw_);
-            //h5f.read_mdarray("f_rg", this->f_rg_);
+            std::vector<double_complex> v(gvec_.num_gvec());
+            h5f__.read("f_pw", reinterpret_cast<double*>(v.data()), static_cast<int>(v.size() * 2));
+
+            std::map<vector3d<int>, int> local_gvec_mapping;
+
+            for (int igloc = 0; igloc < gvec_.count(); igloc++) {
+                int ig = gvec_.offset() + igloc;
+                auto G = gvec_.gvec(ig);
+                local_gvec_mapping[G] = igloc;
+            }
+
+            for (int ig = 0; ig < gvec_.num_gvec(); ig++) {
+                vector3d<int> G(&gvec__(0, ig));
+                if (local_gvec_mapping.count(G) != 0) {
+                    this->f_pw_local_[local_gvec_mapping[G]] = v[ig];
+                }
+            }
         }
 
         /// Set the global pointer to the muffin-tin part
@@ -320,29 +338,28 @@ class Periodic_function: public Smooth_periodic_function<T>
             T result_rg{0};
             
             if (!ctx_.full_potential()) {
-                Smooth_periodic_function<T> const& tmp = *g__;
-                result_rg = Smooth_periodic_function<T>::inner(tmp);
-                //#pragma omp parallel
-                //{
-                //    T rt{0};
-                //    
-                //    #pragma omp for schedule(static)
-                //    for (int irloc = 0; irloc < this->fft_->local_size(); irloc++) {
-                //        rt += std::conj(this->f_rg(irloc)) * g__->f_rg(irloc);
-                //    }
-        
-                //    #pragma omp critical
-                //    result_rg += rt;
-                //}
+	      Smooth_periodic_function<T> const& tmp = *g__;
+	      result_rg = Smooth_periodic_function<T>::inner(tmp);
+	      //#pragma omp parallel
+	      //{
+	      //    T rt{0};
+	      //    
+	      //    #pragma omp for schedule(static)
+	      //    for (int irloc = 0; irloc < this->fft_->local_size(); irloc++) {
+	      //        rt += std::conj(this->f_rg(irloc)) * g__->f_rg(irloc);
+	      //    }        
+	      //    #pragma omp critical
+	      //    result_rg += rt;
+	      //}
             } else {
-                for (int irloc = 0; irloc < this->fft_->local_size(); irloc++) {
-                    result_rg += std::conj(this->f_rg(irloc)) * g__->f_rg(irloc) * 
-                                 this->step_function_.theta_r(irloc);
-                }
-                result_rg *= (unit_cell_.omega() / this->fft_->size());
-                this->fft_->comm().allreduce(&result_rg, 1);
+	      for (int irloc = 0; irloc < this->fft_->local_size(); irloc++) {
+		result_rg += type_wrapper<T>::bypass(std::conj(this->f_rg(irloc))) * g__->f_rg(irloc) * 
+		  this->step_function_.theta_r(irloc);
+	      }
+	      result_rg *= (unit_cell_.omega() / this->fft_->size());
+	      this->fft_->comm().allreduce(&result_rg, 1);
             }
-                    
+	    
 
             T result_mt{0};
             if (ctx_.full_potential()) {

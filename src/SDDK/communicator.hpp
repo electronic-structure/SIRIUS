@@ -164,6 +164,11 @@ struct block_data_descriptor
             offsets[i] = offsets[i - 1] + counts[i - 1];
         }
     }
+
+    inline int size() const
+    {
+        return counts.back() + offsets.back();
+    }
 };
 
 // TODO: proper way of controlling who owns comm and who needs to free it
