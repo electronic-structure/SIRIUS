@@ -144,10 +144,9 @@ class Mixer
                 spl_shared_local_size_ = spl_shared_size_.local_size();
             }
             local_size_ = spl_shared_local_size_ + local_vector_size_;
-	    if (local_size_ == 0)
-	        {
-		    TERMINATE("Ratio between gk_cutoff and pw_cutoff is exactly 2\n");
-		}
+            if (local_size_ == 0) {
+                TERMINATE("Ratio between gk_cutoff and pw_cutoff is exactly 2\n");
+            }
             /* allocate input buffer */
             input_buffer_ = mdarray<T, 1>(local_size_, memory_t::host, "Mixer::input_buffer_");
             /* allocate output bffer */
