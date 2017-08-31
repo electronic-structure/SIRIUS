@@ -34,8 +34,7 @@ inline void Density::add_k_point_contribution_rg(K_point* kp__)
                 double w = kp__->band_occupancy(j + ispn * nfv) * kp__->weight() / omega;
 
                 ///* transform to real space; in case of GPU wave-function stays in GPU memory */
-                fft.transform<1>(kp__->gkvec().partition(),
-                                 kp__->spinor_wave_functions(ispn).pw_coeffs().extra().template at<CPU>(0, i));
+                fft.transform<1>(kp__->spinor_wave_functions(ispn).pw_coeffs().extra().template at<CPU>(0, i));
                 //switch (fft.pu()) {
                 //    case CPU: {
                 //        fft.transform<1>(kp__->gkvec().partition(),
@@ -82,7 +81,7 @@ inline void Density::add_k_point_contribution_rg(K_point* kp__)
             double w = kp__->band_occupancy(j) * kp__->weight() / omega;
 
             /* transform up- component of spinor function to real space; in case of GPU wave-function stays in GPU memory */
-            fft.transform<1>(kp__->gkvec().partition(), kp__->spinor_wave_functions(0).pw_coeffs().extra().template at<CPU>(0, i));
+            fft.transform<1>(kp__->spinor_wave_functions(0).pw_coeffs().extra().template at<CPU>(0, i));
             /* save in auxiliary buffer */
             switch (fft.pu()) {
                 case CPU: {
@@ -98,7 +97,7 @@ inline void Density::add_k_point_contribution_rg(K_point* kp__)
             }
 
             /* transform dn- component of spinor wave function */
-            fft.transform<1>(kp__->gkvec().partition(), kp__->spinor_wave_functions(1).pw_coeffs().extra().template at<CPU>(0, i));
+            fft.transform<1>(kp__->spinor_wave_functions(1).pw_coeffs().extra().template at<CPU>(0, i));
 
             switch (fft.pu()) {
                 case CPU: {

@@ -167,13 +167,13 @@ class Smooth_periodic_function
             switch (direction__) {
                 case 1: {
                     gather_f_pw_fft();
-                    fft_->transform<1>(gvec_->partition(), f_pw_fft_.at<CPU>());
+                    fft_->transform<1>(f_pw_fft_.at<CPU>());
                     fft_->output(f_rg_.template at<CPU>());
                     break;
                 }
                 case -1: {
                     fft_->input(f_rg_.template at<CPU>());
-                    fft_->transform<-1>(gvec_->partition(), f_pw_fft_.at<CPU>());
+                    fft_->transform<-1>(f_pw_fft_.at<CPU>());
                     int count  = gvec_fft_slab_.counts[gvec_->comm_ortho_fft().rank()];
                     int offset = gvec_fft_slab_.offsets[gvec_->comm_ortho_fft().rank()];
                     std::memcpy(f_pw_local_.at<CPU>(), f_pw_fft_.at<CPU>(offset), count * sizeof(double_complex));

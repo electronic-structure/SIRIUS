@@ -94,6 +94,11 @@ inline void Potential::generate_PAW_effective_potential(Density& density)
     // collect Dij and add to atom d_mtrx
     comm_.allreduce(&paw_dij_(0, 0, 0, 0), static_cast<int>(paw_dij_.size()));
 
+    if (ctx_.control().print_checksum_ && comm_.rank() == 0) {
+        auto cs = paw_dij_.checksum();
+        print_checksum("paw_dij", cs);
+    }
+
     // add paw Dij to uspp Dij
     add_paw_Dij_to_atom_Dmtrx();
 

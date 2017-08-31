@@ -117,7 +117,6 @@ inline void Density::add_k_point_contribution_dm(K_point* kp__, mdarray<double_c
                                                   &bp1(0, 0), bp1.ld(), &bp2(0, 0), bp2.ld(),
                                                   linalg_const<double_complex>::one(),
                                                   &density_matrix__(0, 0, ispn, ja),
-
                                                   density_matrix__.ld());
                             }
                         }

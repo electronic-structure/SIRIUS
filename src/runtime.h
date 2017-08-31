@@ -208,6 +208,11 @@ inline void print_checksum(std::string label__, std::complex<double> cs__)
     printf("checksum(%s): %18.12f %18.12f\n", label__.c_str(), cs__.real(), cs__.imag());
 }
 
+inline void print_hash(std::string label__, uint64_t hash__)
+{
+    printf("hash(%s): %16llX\n", label__.c_str(), hash__);
+}
+
 inline void print_memory_usage(const char* file__, int line__)
 {
     size_t VmRSS, VmHWM;

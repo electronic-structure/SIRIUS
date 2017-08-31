@@ -144,18 +144,16 @@ void sddk_get_gvec_offset_fft(ftn_int* gvec_id__,
 }
 
 void sddk_fft(ftn_int*            fft_id__,
-              ftn_int*            gvec_id__,
               ftn_int*            direction__,
               ftn_double_complex* data__)
 {
-    auto gv = reinterpret_cast<Gvec*>(sddk_objects[*gvec_id__]);
     switch (*direction__) {
         case 1: {
-            reinterpret_cast<FFT3D*>(sddk_objects[*fft_id__])->transform<1>(gv->partition(), data__);
+            reinterpret_cast<FFT3D*>(sddk_objects[*fft_id__])->transform<1>(data__);
             break;
         }
         case -1: {
-            reinterpret_cast<FFT3D*>(sddk_objects[*fft_id__])->transform<-1>(gv->partition(), data__);
+            reinterpret_cast<FFT3D*>(sddk_objects[*fft_id__])->transform<-1>(data__);
             break;
         }
         default: {

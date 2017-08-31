@@ -70,10 +70,9 @@ module sddk
             integer,                 intent(out) :: gvec_offset
         end subroutine
 
-        subroutine sddk_fft(fft_id, gvec_id, dir, dat)&
+        subroutine sddk_fft(fft_id, dir, dat)&
             &bind(C, name="sddk_fft")
             integer,                 intent(in)  :: fft_id
-            integer,                 intent(in)  :: gvec_id
             integer,                 intent(in)  :: dir
             complex(8),              intent(inout)  :: dat
         end subroutine

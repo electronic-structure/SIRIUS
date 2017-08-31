@@ -60,8 +60,8 @@ psi = 0.d0
 psi(1) = 1
 
 call sddk_fft_prepare(fft_id, gvec_id)
-call sddk_fft(fft_id, gvec_id, 1, psi(1))
-call sddk_fft(fft_id, gvec_id, -1, psi_out(1))
+call sddk_fft(fft_id, 1, psi(1))
+call sddk_fft(fft_id, -1, psi_out(1))
 call sddk_fft_dismiss(fft_id)
 
 do i = 1, gvec_count_fft
