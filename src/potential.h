@@ -833,6 +833,11 @@ class Potential
                 /* construct XC potentials from rho + rho_core */
                 xc(density__);
                 density__.rho().add(density__.rho_pseudo_core(), -1.0);
+                // TODO: this turns out to be a bad design; for gradient correction rho is transformed to PW domain
+                //        and rho(G) is replaces by rho(G)+rho_core(G) which is wrong.
+                if (is_gradient_correction()) {
+                    density__.rho().fft_transform(-1);
+                }
             }
             /* add XC potential to the effective potential */
             effective_potential_->add(xc_potential_);
