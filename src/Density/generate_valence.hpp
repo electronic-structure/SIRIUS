@@ -60,7 +60,7 @@ inline void Density::generate_valence(K_point_set& ks__)
         }
         
         if (ctx_.esm_type() == electronic_structure_method_t::pseudopotential) {
-	  if (ctx_.gamma_point() && (ctx_.so_correction() == false)) {
+            if (ctx_.gamma_point() && (ctx_.so_correction() == false)) {
                 add_k_point_contribution_dm<double>(kp, density_matrix_);
             } else {
                 add_k_point_contribution_dm<double_complex>(kp, density_matrix_);
@@ -93,16 +93,22 @@ inline void Density::generate_valence(K_point_set& ks__)
             auto cs = mdarray<double, 1>(&rho_mag_coarse_[j]->f_rg(0), ctx_.fft_coarse().local_size()).checksum();
             ctx_.fft_coarse().comm().allreduce(&cs, 1);
             if (ctx_.comm().rank() == 0) {
-                DUMP("checksum(rho_mag_coarse_rg) : %18.10f", cs);
+                print_checksum("rho_mag_coarse_rg", cs);
             }
         }
         /* transform to PW domain */
         rho_mag_coarse_[j]->fft_transform(-1);
         /* get the whole vector of PW coefficients */
         auto fpw = rho_mag_coarse_[j]->gather_f_pw(); // TODO: reuse FFT G-vec arrays
+        /* print checksum */
         if (ctx_.control().print_checksum_ && ctx_.comm().rank() == 0) {
             auto z1 = mdarray<double_complex, 1>(&fpw[0], ctx_.gvec_coarse().num_gvec()).checksum();
-            DUMP("checksum(rho_mag_coarse_pw) : %18.10f %18.10f", z1.real(), z1.imag());
+            print_checksum("rho_mag_coarse_pw", z1);
+        }
+        /* print hash */
+        if (ctx_.control().print_hash_ && ctx_.comm().rank() == 0) {
+            auto h = mdarray<double_complex, 1>(&fpw[0], ctx_.gvec_coarse().num_gvec()).hash();
+            print_hash("rho_mag_coarse_pw", h);
         }
         /* map to fine G-vector grid */
         for (int i = 0; i < static_cast<int>(lf_gvec_.size()); i++) {
@@ -115,6 +121,11 @@ inline void Density::generate_valence(K_point_set& ks__)
 
     if (!ctx_.full_potential()) {
         augment(ks__);
+        
+        if (ctx_.control().print_hash_ && ctx_.comm().rank() == 0) {
+            auto h = mdarray<double_complex, 1>(&rho_->f_pw_local(0), ctx_.gvec().count()).hash();
+            print_hash("rho", h);
+        }
 
         double nel = rho_->f_0().real() * unit_cell_.omega();
         /* check the number of electrons */
