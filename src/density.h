@@ -645,7 +645,7 @@ class Density
             }
 
             for (int iv = 0; iv < ctx_.num_mag_dims() + 1; iv++) {
-                #pragma omp parallel for
+                #pragma omp parallel for schedule(static)
                 for (int igloc = 0; igloc < ctx_.gvec().count(); igloc++) {
                     rho_vec_[iv]->f_pw_local(igloc) += rho_aug(igloc, iv);
                 }
