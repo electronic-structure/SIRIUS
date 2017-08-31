@@ -31,7 +31,7 @@
 #include "atom_symmetry_class.h"
 #include "atom.h"
 #include "mpi_grid.hpp"
-#include "symmetry.h"
+#include "sirius_symmetry.h"
 #include "simulation_parameters.h"
 #include "json.hpp"
 
@@ -68,7 +68,7 @@ class Unit_cell
         /// Split index of PAW atoms.
         splindex<block> spl_num_paw_atoms_;
 
-        /// Split index of atom symmetry classes.
+        /// Split index of atom SiriusSymmetry classes.
         splindex<block> spl_num_atom_symmetry_classes_;
 
         /// Bravais lattice vectors in column order.
@@ -162,7 +162,7 @@ class Unit_cell
 
         Communicator_bundle comm_bundle_atoms_;
         
-        std::unique_ptr<Symmetry> symmetry_;
+        std::unique_ptr<SiriusSymmetry> symmetry_;
 
         Communicator const& comm_;
 
@@ -203,7 +203,7 @@ class Unit_cell
          *    3. [if needed] Scale MT radii
          *    4. Check MT overlap 
          *    5. Create radial grid for each atom type
-         *    6. Find symmetry and assign symmetry class to each atom
+         *    6. Find SiriusSymmetry and assign SiriusSymmetry class to each atom
          *    7. Create split indices for atoms and atom classes */
         inline void initialize();
 
@@ -286,8 +286,8 @@ class Unit_cell
         
         /// Get crystal symmetries and equivalent atoms.
         /** Makes a call to spglib providing the basic unit cell information: lattice vectors and atomic types 
-         *  and positions. Gets back symmetry operations and a table of equivalent atoms. The table of equivalent 
-         *  atoms is then used to make a list of atom symmetry classes and related data. */
+         *  and positions. Gets back SiriusSymmetry operations and a table of equivalent atoms. The table of equivalent 
+         *  atoms is then used to make a list of atom SiriusSymmetry classes and related data. */
         inline void get_symmetry();
 
         /// Write structure to CIF file.
@@ -395,19 +395,19 @@ class Unit_cell
             return atom_type(id);
         }
 
-        /// Number of atom symmetry classes.
+        /// Number of atom SiriusSymmetry classes.
         inline int num_atom_symmetry_classes() const
         {
             return static_cast<int>(atom_symmetry_classes_.size());
         }
        
-        /// Return const symmetry class instance by class id.
+        /// Return const SiriusSymmetry class instance by class id.
         inline Atom_symmetry_class const& atom_symmetry_class(int id__) const
         {
             return atom_symmetry_classes_[id__];
         }
 
-        /// Return symmetry class instance by class id.
+        /// Return SiriusSymmetry class instance by class id.
         inline Atom_symmetry_class& atom_symmetry_class(int id__)
         {
             return atom_symmetry_classes_[id__];
@@ -569,7 +569,7 @@ class Unit_cell
             return nearest_neighbours_[ia][i];
         }
 
-        inline Symmetry const& symmetry() const
+        inline SiriusSymmetry const& symmetry() const
         {
             return (*symmetry_);
         }
@@ -745,7 +745,7 @@ inline void Unit_cell::get_symmetry()
     }
 
     if (symmetry_ != nullptr) {
-        TERMINATE("Symmetry() object is already allocated");
+        TERMINATE("SiriusSymmetry() object is already allocated");
     }
 
     mdarray<double, 2> positions(3, num_atoms());
@@ -761,13 +761,13 @@ inline void Unit_cell::get_symmetry()
         types[ia] = atom(ia).type_id();
     }
     
-    symmetry_ = std::unique_ptr<Symmetry>(new Symmetry(lattice_vectors_, num_atoms(), positions, spins, types,
+    symmetry_ = std::unique_ptr<SiriusSymmetry>(new SiriusSymmetry(lattice_vectors_, num_atoms(), positions, spins, types,
                                                        parameters_.spglib_tolerance()));
 
     int atom_class_id{-1};
     std::vector<int> asc(num_atoms(), -1);
     for (int i = 0; i < num_atoms(); i++) {
-        /* if symmetry class is not assigned to this atom */
+        /* if SiriusSymmetry class is not assigned to this atom */
         if (asc[i] == -1) {
             /* take next id */
             atom_class_id++;
@@ -954,7 +954,7 @@ inline void Unit_cell::print_info(int verbosity_)
     }
 
     printf("number of atoms : %i\n", num_atoms());
-    printf("number of symmetry classes : %i\n", num_atom_symmetry_classes());
+    printf("number of SiriusSymmetry classes : %i\n", num_atom_symmetry_classes());
     if (!parameters_.full_potential()) {
         printf("number of PAW atoms : %i\n", num_paw_atoms());
     }
@@ -1015,7 +1015,7 @@ inline void Unit_cell::print_info(int verbosity_)
         printf("%12.6f %12.6f %12.6f\n", t[0], t[1], t[2]);
         
         if (verbosity_ >= 2) {
-            printf("symmetry operations  : \n");
+            printf("SiriusSymmetry operations  : \n");
             for (int isym = 0; isym < symmetry_->num_mag_sym(); isym++) {
                 auto R = symmetry_->magnetic_group_symmetry(isym).spg_op.R;
                 auto t = symmetry_->magnetic_group_symmetry(isym).spg_op.t;
