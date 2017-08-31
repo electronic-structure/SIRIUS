@@ -317,12 +317,14 @@ struct Control_input
      *    - 3: extensive output (hi level of output) */
     int verbosity_{0};
     int verification_{0};
+    int num_bands_to_print_{10};
     bool print_performance_{false};
     bool print_memory_usage_{false};
     bool print_checksum_{false};
-    int num_bands_to_print_{10};
+    bool print_hash_{false};
     bool print_stress_{false};
     bool print_forces_{false};
+    bool print_timers_{true};
 
     void read(json const& parser)
     {
@@ -338,12 +340,14 @@ struct Control_input
             spglib_tolerance_    = parser["control"].value("spglib_tolerance", spglib_tolerance_);
             verbosity_           = parser["control"].value("verbosity", verbosity_);
             verification_        = parser["control"].value("verification", verification_);
+            num_bands_to_print_  = parser["control"].value("num_bands_to_print", num_bands_to_print_);
             print_performance_   = parser["control"].value("print_performance", print_performance_);
             print_memory_usage_  = parser["control"].value("print_memory_usage", print_memory_usage_);
             print_checksum_      = parser["control"].value("print_checksum", print_checksum_);
-            num_bands_to_print_  = parser["control"].value("num_bands_to_print", num_bands_to_print_);
+            print_hash_          = parser["control"].value("print_hash", print_hash_);
             print_stress_        = parser["control"].value("print_stress", print_stress_);
             print_forces_        = parser["control"].value("print_forces", print_forces_);
+            print_timers_        = parser["control"].value("print_timers", print_timers_);
 
             auto strings = {&std_evp_solver_name_, &gen_evp_solver_name_, &fft_mode_, &processing_unit_};
             for (auto s : strings) {
