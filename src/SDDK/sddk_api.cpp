@@ -144,7 +144,6 @@ void sddk_get_gvec_offset_fft(ftn_int* gvec_id__,
 }
 
 void sddk_fft(ftn_int*            fft_id__,
-              ftn_int*            gvec_id__,
               ftn_int*            direction__,
               ftn_double_complex* data__)
 {
