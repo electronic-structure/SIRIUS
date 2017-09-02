@@ -1,6 +1,72 @@
 #include "cuda.hpp"
 #include "cuda_common.h"
 
+#include <stdio.h>
+
+/*
+__global__ void cufft_repack_z_buffer_kernel2(int dimz,
+                                             int num_zcol_loc, 
+                                             int num_ranks,
+                                             int const* local_z_offsets,
+                                             int const* local_z_sizes,
+                                             cuDoubleComplex const* old_buffer,
+                                             cuDoubleComplex* new_buffer)
+{
+    int rank = blockDim.x * blockIdx.x + threadIdx.x;
+    int izcol = blockDim.y * blockIdx.y + threadIdx.y;
+    
+    if (rank < num_ranks && izcol < num_zcol_loc) {
+        int offs = ranks_z_offsets[rank];
+        int local_zsize = local_z_sizes[rank-1];
+        for (int iz = 0; iz < local_zsize; iz++) {
+            new_buffer[offs * num_zcol_loc + izcol * local_zsize + iz] = old_buffer[offs + iz + izcol * ]
+        }    
+    }
+}
+*/
+
+__global__ void cufft_repack_z_buffer_kernel(int dimz,
+                                             int num_zcol_loc, 
+                                             int const* local_z_offsets,
+                                             int const* local_z_sizes,
+                                             cuDoubleComplex const* old_buffer,
+                                             cuDoubleComplex* new_buffer)
+{
+    int iz = blockDim.x * blockIdx.x + threadIdx.x;
+    int izcol = blockIdx.y;
+    int rank = blockIdx.z;
+    
+    int local_zsize = local_z_sizes[rank];
+    if (iz < local_zsize) {
+        int offs = local_z_offsets[rank];
+        new_buffer[offs * num_zcol_loc + izcol * local_zsize + iz] = old_buffer[offs + iz + izcol * dimz];
+    }
+}
+
+
+extern "C" void cufft_repack_z_buffer(int num_ranks,
+                                      int dimz,
+                                      int num_zcol_loc,
+                                      int zcol_max_size,
+                                      int const* local_z_offsets,
+                                      int const* local_z_sizes,
+                                      cuDoubleComplex const* old_buffer,
+                                      cuDoubleComplex* new_buffer)
+{
+    dim3 grid_t(64);
+    dim3 grid_b(num_blocks(zcol_max_size, grid_t.x), num_zcol_loc, num_ranks);
+
+    cufft_repack_z_buffer_kernel<<<grid_b, grid_t, 0, 0>>>
+                                                   (dimz,
+                                                    num_zcol_loc,
+                                                    local_z_offsets,
+                                                    local_z_sizes,
+                                                    old_buffer,
+                                                    new_buffer);
+}
+
+
+
 __global__ void cufft_batch_load_gpu_kernel(int                    fft_size, 
                                             int                    num_pw_components, 
                                             int const*             map, 

@@ -2,6 +2,17 @@
 
 extern "C" {
 
+
+void cufft_repack_z_buffer(int num_ranks,
+                                      int dimz,
+                                      int num_zcol_loc,
+                                      int zcol_max_size,
+                                      int const* local_z_offsets,
+                                      int const* local_z_sizes,
+                                      cuDoubleComplex const* old_buffer,
+                                      cuDoubleComplex* new_buffer);
+
+     
 void cufft_batch_load_gpu(int                    fft_size,
                           int                    num_pw_components, 
                           int                    num_fft,

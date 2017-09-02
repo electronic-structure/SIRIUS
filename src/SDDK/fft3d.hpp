@@ -131,9 +131,18 @@ class FFT3D
         /// Handler for z-transform cuFFT plan.
         cufftHandle cufft_plan_z_;
 
+        /// offsets  for z-buffer
+        mdarray<int,1> z_offsets_;
+        
+        /// local sizes for z-buffer
+        mdarray<int,1> z_sizes_;
+
+        /// max local z size
+        int max_zloc_size_{0};
+
         /// Work buffer, required by cuFFT.
         mdarray<char, 1> cufft_work_buf_;
-
+       
         /// Mapping of the G-vectors to the FFT buffer for batched 1D transform.
         mdarray<int, 1> map_gvec_to_fft_buffer_;
 
@@ -188,6 +197,20 @@ class FFT3D
                         }
                         /* transform all columns */
                         cufft::backward_transform(cufft_plan_z_, (cuDoubleComplex*)fft_buffer_aux__.at<GPU>());
+                        
+                        /* copy to temp buffer*/
+                        acc::copy<cuDoubleComplex>((cuDoubleComplex*)cufft_work_buf_.at<GPU>(), (cuDoubleComplex*)fft_buffer_aux__.at<GPU>(), fft_buffer_aux__.size());
+                        
+                        /* repack the buffer */
+                        
+                        cufft_repack_z_buffer(comm_.size(),
+                          grid_.size(2),
+                          num_zcol_local,
+                          max_zloc_size_,
+                          z_offsets_.at<GPU>(),
+                          z_sizes_.at<GPU>(),
+                          (cuDoubleComplex*)cufft_work_buf_.at<GPU>(),
+                          (cuDoubleComplex*)fft_buffer_aux__.at<GPU>());
                         break;
                     }
                     case -1: {
@@ -842,9 +865,31 @@ class FFT3D
                 /* worksize for z and xy transforms */
                 work_size = std::max(cufft::get_work_size(2, dims_xy, local_size_z_),
                                      cufft::get_work_size(1, dim_z, gvec__.zcol_count_fft()));
-               
+                
+                /* use as temp array also after z-transform*/
+                work_size = std::max(work_size, sizeof(double_complex) * grid_.size(2) * local_size_z_);
+
+                /* allocate arrays with z- offsets and sizes on the host and device*/
+                z_offsets_ = mdarray<int, 1>(comm_.size(), memory_t::host | memory_t::device);
+                z_sizes_   = mdarray<int, 1>(comm_.size(), memory_t::host | memory_t::device);
+                
+                /* copy z- offsets and sizes in mdarray since we can store it also on device*/
+                for (int r = 0; r < comm_.size(); r++) {
+                    z_offsets_(r) = spl_z_.global_offset();
+                    z_sizes_(r) = spl_z_.local_size();
+                    
+                    if (max_zloc_size_ < z_sizes_(r)) {
+                        max_zloc_size_ = z_sizes_(r);
+                    }
+                }
+                
+                /* copy them to device */
+                z_offsets_.copy<memory_t::host, memory_t::device>();
+                z_sizes_.copy<memory_t::host, memory_t::device>(); 
+
                 /* allocate cufft work buffer */
                 cufft_work_buf_ = mdarray<char, 1>(work_size, memory_t::device, "FFT3D.cufft_work_buf_");
+                               
                 /* set work area for cufft */ 
                 cufft::set_work_area(cufft_plan_xy_, cufft_work_buf_.at<GPU>());
                 cufft::set_work_area(cufft_plan_z_, cufft_work_buf_.at<GPU>());
@@ -874,6 +919,7 @@ class FFT3D
                 map_gvec_to_fft_buffer_.deallocate_on_device();
                 map_gvec_to_fft_buffer_x0y0_.deallocate_on_device();
                 cufft::destroy_plan_handle(cufft_plan_z_);
+                //tmp_work_buf_.deallocate_on_device();
             }
             #endif
             prepared_ = false;
