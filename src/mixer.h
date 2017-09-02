@@ -281,7 +281,15 @@ class Broyden1: public Mixer<T>
             this->comm_.allreduce(&this->rss_, 1);
 
             /* exit if the vector has converged */
-            if (this->rss_ < 1e-11) {
+            if (this->rss_ < 1e-16) {
+                int i1 = this->idx_hist(this->count_);
+                /* copy input to output */
+                for (int i = 0; i < this->local_size_; i++) {
+                    this->vectors_(i, i1) = this->input_buffer_(i);
+                }
+
+                this->comm_.allgather(&this->vectors_(0, i1), this->output_buffer_.template at<CPU>(),
+                                      this->spl_shared_size_.global_offset(), this->spl_shared_size_.local_size());
                 return 0.0;
             }
 

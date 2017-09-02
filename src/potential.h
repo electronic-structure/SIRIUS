@@ -870,7 +870,7 @@ class Potential
             effective_potential_->hdf5_write(storage_file_name, "effective_potential");
             for (int j = 0; j < ctx_.num_mag_dims(); j++) {
                 std::stringstream s;
-                s << "effective_potential/" << j;
+                s << "effective_magnetic_field/" << j;
                 effective_magnetic_field_[j]->hdf5_write(storage_file_name, s.str());
             }
             comm_.barrier();

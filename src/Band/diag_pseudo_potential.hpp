@@ -193,7 +193,7 @@ inline void Band::diag_pseudo_potential_davidson(K_point*       kp__,
             print_checksum("o_diag", cs2);
         }
     }
-
+    
     sddk::timer t3("sirius::Band::diag_pseudo_potential_davidson|iter");
     for (int ispin_step = 0; ispin_step < num_spin_steps; ispin_step++) {
 
@@ -313,10 +313,20 @@ inline void Band::diag_pseudo_potential_davidson(K_point*       kp__,
                 sddk::timer t1("sirius::Band::diag_pseudo_potential_davidson|update_phi");
                 /* recompute wave-functions */
                 /* \Psi_{i} = \sum_{mu} \phi_{mu} * Z_{mu, i} */
-                if (nc_mag) {
-                    transform<T>(ctx_.processing_unit(), 1.0, {&phi}, 0, N, evec, 0, 0, 0.0, {&psi}, 0, num_bands);
+                if (ctx_.settings().always_update_wf_ || k + n > 0) {
+                    if (nc_mag) {
+                        transform<T>(ctx_.processing_unit(), 1.0, {&phi}, 0, N, evec, 0, 0, 0.0, {&psi}, 0, num_bands);
+                    } else {
+                        transform<T>(ctx_.processing_unit(), phi.component(0), 0, N, evec, 0, 0, psi.component(ispin_step), 0, num_bands);
+                    }
+                    /* update eigen-values */
+                    for (int j = 0; j < num_bands; j++) {
+                        kp__->band_energy(j + ispin_step * ctx_.num_fv_states()) = eval[j];
+                    }
                 } else {
-                    transform<T>(ctx_.processing_unit(), phi.component(0), 0, N, evec, 0, 0, psi.component(ispin_step), 0, num_bands);
+                    if (ctx_.control().verbosity_ >= 2 && kp__->comm().rank() == 0) {
+                        printf("wave-functions are not recomputed\n");
+                    }
                 }
 
                 /* exit the loop if the eigen-vectors are converged or this is a last iteration */
@@ -361,10 +371,7 @@ inline void Band::diag_pseudo_potential_davidson(K_point*       kp__,
             //    #endif
             //}
         }
-        for (int j = 0; j < num_bands; j++) {
-            kp__->band_energy(j + ispin_step * ctx_.num_fv_states()) = eval[j];
-        }
-    }
+    } // ispin_step
     t3.stop();
 
     //phi.component(0).copy_from(psi.component(0), 0, num_bands, ctx_.processing_unit());
