@@ -167,15 +167,15 @@ class Periodic_function: public Smooth_periodic_function<T>
         using Smooth_periodic_function<T>::add;
 
         /// Add the function
-        void add(Periodic_function<T>* g, double alpha__ = 1)
+        void add(Periodic_function<T>* g)
         {
             PROFILE("sirius::Periodic_function::add");
             /* add regular-grid part */
-            Smooth_periodic_function<T>::add(*g, alpha__);
+            Smooth_periodic_function<T>::add(*g);
             /* add muffin-tin part */
             if (ctx_.full_potential()) {
                 for (int ialoc = 0; ialoc < unit_cell_.spl_num_atoms().local_size(); ialoc++)
-                    f_mt_local_(ialoc) += g->f_mt(ialoc) * alpha__;
+                    f_mt_local_(ialoc) += g->f_mt(ialoc);
             }
         }
 
@@ -226,6 +226,19 @@ class Periodic_function: public Smooth_periodic_function<T>
 
         template <index_domain_t index_domain>
         inline T& f_mt(int idx0, int ir, int ia)
+        {
+            switch (index_domain) {
+                case index_domain_t::local: {
+                    return f_mt_local_(ia)(idx0, ir);
+                }
+                case index_domain_t::global: {
+                    return f_mt_(idx0, ir, ia);
+                }
+            }
+        }
+
+        template <index_domain_t index_domain>
+        inline T const& f_mt(int idx0, int ir, int ia) const
         {
             switch (index_domain) {
                 case index_domain_t::local: {
