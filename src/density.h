@@ -812,8 +812,18 @@ class Density
         {
             return *rho_;
         }
+
+        Periodic_function<double> const& rho() const
+        {
+            return *rho_;
+        }
         
         Smooth_periodic_function<double>& rho_pseudo_core()
+        {
+            return *rho_pseudo_core_;
+        }
+
+        Smooth_periodic_function<double> const& rho_pseudo_core() const
         {
             return *rho_pseudo_core_;
         }
@@ -824,6 +834,11 @@ class Density
         }
 
         Periodic_function<double>& magnetization(int i)
+        {
+            return *(magnetization_[i]);
+        }
+
+        Periodic_function<double> const& magnetization(int i) const
         {
             return *(magnetization_[i]);
         }
