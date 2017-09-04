@@ -57,7 +57,7 @@ inline void Potential::init_PAW()
     paw_one_elec_energies_.resize(unit_cell_.num_paw_atoms());
 }
 
-inline void Potential::generate_PAW_effective_potential(Density& density)
+inline void Potential::generate_PAW_effective_potential(Density const& density)
 {
     PROFILE("sirius::Potential::generate_PAW_effective_potential");
 

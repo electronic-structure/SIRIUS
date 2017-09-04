@@ -459,14 +459,15 @@ struct Parameters_input
             potential_tol_  = parser["parameters"].value("potential_tol", potential_tol_);
             molecule_       = parser["parameters"].value("molecule", molecule_);
             nn_radius_      = parser["parameters"].value("nn_radius", nn_radius_);
-            if (parser["parameters"].count("spin_orbit")) {
-                so_correction_ = parser["parameters"].value("spin_orbit", so_correction_);
+            if (parser["parameters"].count("so_correction")) {
+                so_correction_ = parser["parameters"].value("so_correction", so_correction_);
                 num_mag_dims_  = 3;
             }
         }
     }
 };
 
+/// Settings control the internal parameters related to the numerical implementation.
 struct Settings_input
 {
     /// Number of points (per a.u.^-1) for radial integral interpolation for local part of pseudopotential.
@@ -474,14 +475,16 @@ struct Settings_input
     int nprii_beta_{20};
     int nprii_aug_{20};
     int nprii_rho_core_{20};
+    bool always_update_wf_{true};
 
     void read(json const& parser)
     {
         if (parser.count("settings")) {
-            nprii_vloc_     = parser["settings"].value("nprii_vloc", nprii_vloc_);
-            nprii_beta_     = parser["settings"].value("nprii_beta", nprii_beta_);
-            nprii_aug_      = parser["settings"].value("nprii_aug", nprii_aug_);
-            nprii_rho_core_ = parser["settings"].value("nprii_rho_core", nprii_rho_core_);
+            nprii_vloc_       = parser["settings"].value("nprii_vloc", nprii_vloc_);
+            nprii_beta_       = parser["settings"].value("nprii_beta", nprii_beta_);
+            nprii_aug_        = parser["settings"].value("nprii_aug", nprii_aug_);
+            nprii_rho_core_   = parser["settings"].value("nprii_rho_core", nprii_rho_core_);
+            always_update_wf_ = parser["settings"].value("always_update_wf", always_update_wf_);
         }
     }
 };

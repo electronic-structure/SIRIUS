@@ -181,7 +181,7 @@ class Potential
         void add_paw_Dij_to_atom_Dmtrx();
         
         /// Compute MT part of the potential and MT multipole moments
-        inline void poisson_vmt(Periodic_function<double>& rho__, 
+        inline void poisson_vmt(Periodic_function<double> const& rho__, 
                                 mdarray<double_complex, 2>& qmt__)
         {
             PROFILE("sirius::Potential::poisson_vmt");
@@ -202,7 +202,7 @@ class Potential
 
         /// Perform a G-vector summation of plane-wave coefficiens multiplied by radial integrals.
         inline void poisson_sum_G(int lmmax__, 
-                                  double_complex* fpw__, 
+                                  double_complex const* fpw__, 
                                   mdarray<double, 3>& fl__, 
                                   mdarray<double_complex, 2>& flm__);
         
@@ -284,7 +284,7 @@ class Potential
                 auto cs1 = local_potential_->checksum_rg();
                 if (ctx_.comm().rank() == 0) {
                     //DUMP("checksum(local_potential_pw): %18.10f %18.10f", cs.real(), cs.imag());
-                    DUMP("checksum(local_potential_rg): %18.10f", cs1);
+                    print_checksum("local_potential_r", cs1);
                 }
             }
 
@@ -340,11 +340,15 @@ class Potential
                                    Spheric_function<spatial, double>& exc_tp);
         
         /// Generate XC potential in the muffin-tins.
-        inline void xc_mt(Density& density__);
+        inline void xc_mt(Density const& density__);
     
-        inline void xc_it_nonmagnetic(Density& density__);
+        /// Generate non-magnetic XC potential on the regular real-space grid.
+        template <bool add_pseudo_core__>
+        inline void xc_rg_nonmagnetic(Density const& density__);
 
-        inline void xc_it_magnetic(Density& density__);
+        /// Generate magnetic XC potential on the regular real-space grid.
+        template <bool add_pseudo_core__>
+        inline void xc_rg_magnetic(Density const& density__);
 
         inline void init();
 
@@ -744,7 +748,7 @@ class Potential
          *          Y_{\ell m}^{*}({\bf \hat x'}) Y_{\ell m}(\hat {\bf x})
          *  \f]
          */
-        inline void poisson(Periodic_function<double>& rho);
+        inline void poisson(Periodic_function<double> const& rho);
         
         /// Generate XC potential and energy density
         /** In case of spin-unpolarized GGA the XC potential has the following expression:
@@ -807,10 +811,11 @@ class Potential
          *      V^{\downarrow}({\bf r}) &=& V_{xc}({\bf r}) - {\rm B}_{xc}({\bf r}) 
          *  \f}
          */
-        void xc(Density& rho__);
+        template <bool add_pseudo_core__ = false>
+        void xc(Density const& rho__);
         
         /// Generate effective potential and magnetic field from charge density and magnetization.
-        inline void generate(Density& density__)
+        inline void generate(Density const& density__)
         {
             PROFILE("sirius::Potential::generate");
 
@@ -828,16 +833,8 @@ class Potential
             } else {
                 /* add local ionic potential to the effective potential */
                 effective_potential()->add(local_potential());
-                /* make rho + rho_core */
-                density__.rho().add(density__.rho_pseudo_core());
                 /* construct XC potentials from rho + rho_core */
-                xc(density__);
-                density__.rho().add(density__.rho_pseudo_core(), -1.0);
-                // TODO: this turns out to be a bad design; for gradient correction rho is transformed to PW domain
-                //        and rho(G) is replaces by rho(G)+rho_core(G) which is wrong.
-                if (is_gradient_correction()) {
-                    density__.rho().fft_transform(-1);
-                }
+                xc<true>(density__);
             }
             /* add XC potential to the effective potential */
             effective_potential_->add(xc_potential_);
@@ -870,7 +867,7 @@ class Potential
             effective_potential_->hdf5_write(storage_file_name, "effective_potential");
             for (int j = 0; j < ctx_.num_mag_dims(); j++) {
                 std::stringstream s;
-                s << "effective_potential/" << j;
+                s << "effective_magnetic_field/" << j;
                 effective_magnetic_field_[j]->hdf5_write(storage_file_name, s.str());
             }
             comm_.barrier();
@@ -965,7 +962,7 @@ class Potential
          */
         void generate_D_operator_matrix();
 
-        void generate_PAW_effective_potential(Density& density);
+        void generate_PAW_effective_potential(Density const& density);
 
         std::vector<double> const& PAW_hartree_energies() const
         {

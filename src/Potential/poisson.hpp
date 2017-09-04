@@ -4,7 +4,7 @@
  *  \f]
  */
 inline void Potential::poisson_sum_G(int lmmax__,
-                                     double_complex* fpw__,
+                                     double_complex const* fpw__,
                                      mdarray<double, 3>& fl__,
                                      matrix<double_complex>& flm__)
 {
@@ -177,7 +177,7 @@ inline void Potential::poisson_add_pseudo_pw(mdarray<double_complex, 2>& qmt__,
     }
 }
 
-inline void Potential::poisson(Periodic_function<double>& rho)
+inline void Potential::poisson(Periodic_function<double> const& rho)
 {
     PROFILE("sirius::Potential::poisson");
 
@@ -195,10 +195,11 @@ inline void Potential::poisson(Periodic_function<double>& rho)
         //==     printf("\n");
         //== }
 
-        #ifdef __PRINT_OBJECT_CHECKSUM
-        double_complex z1 = qmt.checksum();
-        DUMP("checksum(qmt): %18.10f %18.10f", std::real(z1), std::imag(z1));
-        #endif
+        if (ctx_.control().print_checksum_) {
+            if (ctx_.comm().rank() == 0) {
+                print_checksum("qmt", qmt.checksum());
+            }
+        }
 
         /* compute multipoles of interstitial density in MT region */
         mdarray<double_complex, 2> qit(ctx_.lmmax_rho(), unit_cell_.num_atoms());
@@ -211,19 +212,15 @@ inline void Potential::poisson(Periodic_function<double>& rho)
         //==     printf("\n");
         //== }
 
-        #ifdef __PRINT_OBJECT_CHECKSUM
-        double_complex z2 = qit.checksum();
-        DUMP("checksum(qit): %18.10f %18.10f", std::real(z2), std::imag(z2));
-        #endif
+        if (ctx_.control().print_checksum_) {
+            if (ctx_.comm().rank() == 0) {
+                print_checksum("qit", qit.checksum());
+            }
+        }
 
         /* add contribution from the pseudo-charge */
-        poisson_add_pseudo_pw(qmt, qit, &rho.f_pw_local(0));
+        poisson_add_pseudo_pw(qmt, qit, const_cast<double_complex*>(&rho.f_pw_local(0)));
         
-        #ifdef __PRINT_OBJECT_CHECKSUM
-        double_complex z3 = mdarray<double_complex, 1>(&rho->f_pw(0), ctx_.gvec().num_gvec()).checksum();
-        DUMP("checksum(rho_ps_pw): %18.10f %18.10f", std::real(z3), std::imag(z3));
-        #endif
-
         if (check_pseudo_charge) {
             poisson_sum_G(ctx_.lmmax_rho(), &rho.f_pw_local(0), sbessel_mom_, qit);
 
