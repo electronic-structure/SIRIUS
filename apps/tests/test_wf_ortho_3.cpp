@@ -21,21 +21,31 @@ void test_wf_ortho(std::vector<int> mpi_grid_dims__,
         printf("number of G-vectors: %i\n", gvec.num_gvec());
     }
 
-    int num_atoms = 10;
-    auto nmt = [](int i) {
-        return 20;
-    };
+    //int num_atoms = 10;
+    //auto nmt = [](int i) {
+    //    return 20;
+    //};
 
-    wave_functions phi(pu, gvec, num_atoms, nmt, 2 * num_bands__);
-    wave_functions hphi(pu, gvec, num_atoms, nmt, 2 * num_bands__);
-    wave_functions tmp(pu, gvec, num_atoms, nmt, 2 * num_bands__);
-    
+    wave_functions phi(pu, gvec, 2 * num_bands__);
+    wave_functions hphi(pu, gvec, 2 * num_bands__);
+    wave_functions tmp(pu, gvec, 2 * num_bands__);
+
     phi.pw_coeffs().prime() = [](int64_t i0, int64_t i1){return type_wrapper<double_complex>::random();};
-    phi.mt_coeffs().prime() = [](int64_t i0, int64_t i1){return type_wrapper<double_complex>::random();};
+    //phi.mt_coeffs().prime() = [](int64_t i0, int64_t i1){return type_wrapper<double_complex>::random();};
     hphi.pw_coeffs().prime() = [](int64_t i0, int64_t i1){return type_wrapper<double_complex>::random();};
-    hphi.mt_coeffs().prime() = [](int64_t i0, int64_t i1){return type_wrapper<double_complex>::random();};
+    //hphi.mt_coeffs().prime() = [](int64_t i0, int64_t i1){return type_wrapper<double_complex>::random();};
 
     dmatrix<double_complex> ovlp(2 * num_bands__, 2 * num_bands__, blacs_grid, bs__, bs__);
+
+    if (pu == GPU) {
+        phi.pw_coeffs().allocate_on_device();
+        hphi.pw_coeffs().allocate_on_device();
+        tmp.pw_coeffs().allocate_on_device();
+        phi.pw_coeffs().copy_to_device(0, 2 * num_bands__);
+        hphi.pw_coeffs().copy_to_device(0, 2 * num_bands__);
+        ovlp.allocate(memory_t::device);
+    }
+    
     
     orthogonalize<double_complex>(0, num_bands__, phi, hphi, ovlp, tmp);
     orthogonalize<double_complex>(num_bands__, num_bands__, phi, hphi, ovlp, tmp);
