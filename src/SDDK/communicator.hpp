@@ -506,6 +506,13 @@ class Communicator
         return std::move(new_comm);
     }
 
+    Communicator duplicate() const
+    {
+        Communicator new_comm;
+        MPI_Comm_dup(mpi_comm(), &new_comm.mpi_comm());
+        return std::move(new_comm);
+    }
+
     //==alltoall_descriptor map_alltoall(std::vector<int> local_sizes_in, std::vector<int> local_sizes_out) const
     //=={
     //==    alltoall_descriptor a2a;

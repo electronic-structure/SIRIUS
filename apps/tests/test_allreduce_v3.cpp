@@ -29,12 +29,13 @@ void test1(int BS, int n, int nt)
 
     #pragma omp parallel num_threads(nt)
     {
+        auto comm = mpi_comm_world().duplicate();
         int tid = omp_get_thread_num();
         int s{0};
         for (int ibc = 0; ibc < n; ibc++) {
             for (int ibr = 0; ibr < n; ibr++) {
                 if (s % nt == tid) {
-                    mpi_comm_world().allreduce(buf.at<CPU>(0, 0, tid), BS * BS);
+                    comm.allreduce(buf.at<CPU>(0, 0, tid), BS * BS);
                 }
                 s++;
             }
