@@ -19,8 +19,13 @@ void test1(int BS, int n, int nt)
     buf.zero();
 
     //omp_set_nested(1);
-    
+
+    mpi_comm_world().barrier();
     sddk::timer t1("allreduce");
+
+    if (mpi_comm_world().rank() == 0) {
+        printf("spawning %i thread\n", nt);
+    }
 
     #pragma omp parallel num_threads(nt)
     {
@@ -35,7 +40,12 @@ void test1(int BS, int n, int nt)
             }
         }
     }
-    t1.stop();
+    mpi_comm_world().barrier();
+    double tval = t1.stop();
+    if (mpi_comm_world().rank() == 0) {
+        printf("time: %12.6f sec.\n", tval);
+    }
+
 
         //double time = t1.stop();
 
