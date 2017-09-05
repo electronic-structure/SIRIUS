@@ -27,10 +27,15 @@ void test1(int BS, int n, int nt)
         printf("spawning %i thread\n", nt);
     }
 
+    std::vector<Communicator> c;
+    for (int i = 0; i < nt; i++) {
+        c.push_back(std::move(mpi_comm_world().duplicate()));
+    }
+
     #pragma omp parallel num_threads(nt)
     {
-        auto comm = mpi_comm_world().duplicate();
         int tid = omp_get_thread_num();
+        auto& comm = c[tid];
         int s{0};
         for (int ibc = 0; ibc < n; ibc++) {
             for (int ibr = 0; ibr < n; ibr++) {
