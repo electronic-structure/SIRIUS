@@ -168,8 +168,9 @@ inline void inner(wave_functions& bra__,
     }
     
     const int BS = sddk_block_size;
+    const int num_streams = 8; // number of CUDA streams and GPU/CPU buffers; has nothing to do with OpenMP threads
 
-    mdarray<T, 2> c_tmp(BS * BS, 2, memory_t::host_pinned, "inner::c_tmp");
+    mdarray<T, 2> c_tmp(BS * BS, num_streams, memory_t::host_pinned, "inner::c_tmp");
     if (pu == GPU) {
         c_tmp.allocate(memory_t::device);
     }
@@ -177,21 +178,22 @@ inline void inner(wave_functions& bra__,
     int nbr = m__ / BS + std::min(1, m__ % BS);
     int nbc = n__ / BS + std::min(1, n__ % BS);
 
-    std::array<MPI_Request, 2> req = {MPI_REQUEST_NULL, MPI_REQUEST_NULL};
+    std::array<MPI_Request, 2> req = {MPI_REQUEST_NULL, MPI_REQUEST_NULL}; // TODO: change these?
     std::array<std::array<int, 4>, 2> dims;
 
     preparation_timer.stop();
     
     if (pu == GPU) {
         
+        #ifdef __GPU
         sddk::timer gpu_preparation_timer("gpu_preparation");
         
-        #ifdef __GPU
         /* state of the buffers:
          * state = 0: buffer is free
          * state = 1: buffer stores result of local zgemm */
-        int cpu_buf_state[] = {0, 0};
-        int gpu_buf_state[] = {0, 0};
+        std::array<int,num_streams> cpu_buf_state, gpu_buf_state;
+        cpu_buf_state.fill(0);
+        gpu_buf_state.fill(0);
          
         omp_set_nested(1);
         int nt = omp_get_max_threads();
@@ -207,7 +209,7 @@ inline void inner(wave_functions& bra__,
                 omp_set_num_threads(nt - 1);
             }
 
-            int s{0}; // this switches between buffer and CUDA stream 0 and 1, together, in a round robin way
+            int s{0}; // this rotates the buffers and the CUDA stream numbers, in a round robin way
             
             for (int ibc = 0; ibc < nbc; ibc++) {
                 int j0 = ibc * BS;
@@ -224,27 +226,27 @@ inline void inner(wave_functions& bra__,
                         int gpu_state{1};
                         while (gpu_state) {
                             #pragma omp atomic read
-                            gpu_state = gpu_buf_state[s % 2];
+                            gpu_state = gpu_buf_state[s];
                         }
                         #pragma omp atomic write
-                        gpu_buf_state[s % 2] = 1;
+                        gpu_buf_state[s] = 1;
                         
                         /* enqueue the gemm kernel */
-                        T* buf = c_tmp.template at<GPU>(0, s % 2);
-                        local_inner(i0__ + i0, nrow, j0__ + j0, ncol, buf, nrow, s % 2);
+                        T* buf = c_tmp.template at<GPU>(0, s);
+                        local_inner(i0__ + i0, nrow, j0__ + j0, ncol, buf, nrow, s);
                         
                         /* wait for the release of the CPU buffer, and lock it */
                         int cpu_state{1};
                         while (cpu_state) {
                             #pragma omp atomic read
-                            cpu_state = cpu_buf_state[s % 2];
+                            cpu_state = cpu_buf_state[s];
                         }
                         #pragma omp atomic write
-                        cpu_buf_state[s % 2] = 1;
+                        cpu_buf_state[s] = 1;
                         
                         /* enqueue a copyout operation */
                         #ifdef __GPU
-                        acc::copyout(c_tmp.template at<CPU>(0, s % 2), c_tmp.template at<GPU>(0, s % 2), nrow * ncol, s % 2);
+                        acc::copyout(c_tmp.template at<CPU>(0, s), c_tmp.template at<GPU>(0, s), nrow * ncol, s);
                         #endif
                         
                     } else { /* this thread will do allreduce and store */
@@ -256,26 +258,26 @@ inline void inner(wave_functions& bra__,
                         sddk::timer lock_wait_timer("cputhr_lock_wait");
                         while (!cpu_state || !gpu_state) {
                             #pragma omp atomic read
-                            cpu_state = cpu_buf_state[s % 2];
+                            cpu_state = cpu_buf_state[s];
                             #pragma omp atomic read
-                            gpu_state = gpu_buf_state[s % 2];
+                            gpu_state = gpu_buf_state[s];
                         }
                         lock_wait_timer.stop();
                         
                         /* wait for the cuda stream to finish (both gemm and copyout) */
                         sddk::timer stream_wait_timer("cputhr_stream_wait");
                         #ifdef __GPU
-                        acc::sync_stream(s % 2);
+                        acc::sync_stream(s);
                         #endif
                         stream_wait_timer.stop();
                         
                         /* release the GPU buffer */
                         #pragma omp atomic write
-                        gpu_buf_state[s % 2] = 0;
+                        gpu_buf_state[s] = 0;
                         
                         /* MPI allreduce */
                         sddk::timer allreduce_timer("cputhr_allreduce");
-                        comm.allreduce(c_tmp.template at<CPU>(0, s % 2), nrow * ncol);
+                        comm.allreduce(c_tmp.template at<CPU>(0, s), nrow * ncol);
                         allreduce_timer.stop();
 
                         /* store panel */
@@ -284,16 +286,16 @@ inline void inner(wave_functions& bra__,
                         for (int jcol = 0; jcol < ncol; jcol++) {
                             for (int irow = 0; irow < nrow; irow++) {
                                 result__.set(irow0__ + irow + i0, jcol0__ + jcol + j0,
-                                             c_tmp(irow + nrow * jcol, s % 2));
+                                             c_tmp(irow + nrow * jcol, s));
                             }
                         }
                         local_store_timer.stop();
                         
                         /* release the CPU buffer */
                         #pragma omp atomic write
-                        cpu_buf_state[s % 2] = 0;
+                        cpu_buf_state[s] = 0;
                     }
-                    s++;
+                    s = (s+1) % num_streams;
                 }
             }
         }
@@ -301,6 +303,8 @@ inline void inner(wave_functions& bra__,
         omp_set_num_threads(nt);
         #endif
     }
+    
+    // TODO: the following may or may not be compatible with num_streams != 2
     
     if (pu == CPU) {
         auto store_panel = [&req, &result__, &dims, &c_tmp, irow0__, jcol0__](int s)
