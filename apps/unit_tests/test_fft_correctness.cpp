@@ -38,8 +38,8 @@ void test_fft(double cutoff__, device_t pu__)
             }
             case GPU: {
                 f.copy<memory_t::host, memory_t::device>();
-                //fft.transform<1, GPU>(gvec.partition(), f.at<GPU>(gvec.partition().gvec_offset_fft()));
-                fft.transform<1, CPU>(gvec.partition(), f.at<CPU>(gvec.partition().gvec_offset_fft()));
+                fft.transform<1, GPU>(gvec.partition(), f.at<GPU>(gvec.partition().gvec_offset_fft()));
+                //fft.transform<1, CPU>(gvec.partition(), f.at<CPU>(gvec.partition().gvec_offset_fft()));
                 fft.buffer().copy<memory_t::device, memory_t::host>();
                 break;
             }
