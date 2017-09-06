@@ -85,5 +85,6 @@ int main(int argn, char** argv)
     }
     mpi_comm_world().barrier();
     sddk::timer::print();
+    sddk::timer::print_to_file(std::string("ortho_3_times_rk")+std::to_string(mpi_comm_world().rank())+".out");
     sirius::finalize();
 }

@@ -105,15 +105,16 @@ class timer
         return val;
     }
 
-    static void print()
+    static void print(int rank=0)
     {
-        if (mpi_comm_world().rank()) {
+        if (mpi_comm_world().rank() != rank) {
             return;
         }
         for (int i = 0; i < 140; i++) {
             printf("-");
         }
         printf("\n");
+//         printf("Rank %d printing times\n", mpi_comm_world().rank());
         printf("name                                                                 count      total        min        max    average    self (%%)\n");
         for (int i = 0; i < 140; i++) {
             printf("-");
@@ -146,6 +147,66 @@ class timer
             //    printf("-");
             //}
             //printf("\n");
+        }
+    }
+    
+    static void print_to_stream(std::ostream& os = std::cout)
+    {
+        for (int i = 0; i < 140; i++) {
+            os << "-";
+        }
+        os << "\n";
+        os << "name                                                                 count      total        min        max    average    self (%%)\n";
+        for (int i = 0; i < 140; i++) {
+            os << "-";
+        }
+        os << "\n";
+        for (auto& it: timer_values()) {
+
+            double te{0};
+            if (timer_values_ex().count(it.first)) {
+                for (auto& it2: timer_values_ex()[it.first]) {
+                    te += it2.second;
+                }
+            }
+            if (it.second.tot_val > 0.0) {
+                os << it.first.c_str() << " : " << it.second.count << " " << it.second.tot_val << " "
+                   << it.second.min_val << " " << it.second.max_val << " " << it.second.tot_val / it.second.count << " "
+                   << (it.second.tot_val - te) / it.second.tot_val * 100 << "\n";
+            }
+        }
+    }
+    
+    static void print_to_file(const std::string filename)
+    {
+        FILE *f;
+        f = fopen(filename.c_str(), "w");
+        for (int i = 0; i < 140; i++) {
+            fprintf(f, "-");
+        }
+        fprintf(f, "\n");
+        fprintf(f, "name                                                                 count      total        min        max    average    self (%%)\n");
+        for (int i = 0; i < 140; i++) {
+            fprintf(f, "-");
+        }
+        fprintf(f, "\n");
+        for (auto& it: timer_values()) {
+
+            double te{0};
+            if (timer_values_ex().count(it.first)) {
+                for (auto& it2: timer_values_ex()[it.first]) {
+                    te += it2.second;
+                }
+            }
+            if (it.second.tot_val > 0.0) {
+                fprintf(f, "%-65s : %6i %10.4f %10.4f %10.4f %10.4f     %6.2f\n", it.first.c_str(),
+                                                                              it.second.count,
+                                                                              it.second.tot_val,
+                                                                              it.second.min_val,
+                                                                              it.second.max_val,
+                                                                              it.second.tot_val / it.second.count,
+                                                                              (it.second.tot_val - te) / it.second.tot_val * 100);
+            }
         }
     }
 
