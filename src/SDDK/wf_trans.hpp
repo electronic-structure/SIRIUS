@@ -401,8 +401,10 @@ inline void transform(device_t                     pu__,
     #ifdef __GPU
     sddk::timer t11("transform::11_sync_last_gemm");
     if (pu__ == GPU) {
-        /* wait for the last cudaZgemm */
-        acc::sync_stream(0);
+        /* wait for the last cudaZgemm, on all streams */
+        for (int s=0; s<num_streams; s++) {
+            acc::sync_stream(s);
+        }
     }
     t11.stop();
     #endif
