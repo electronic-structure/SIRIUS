@@ -67,9 +67,9 @@ inline void Band::diag_pseudo_potential_exact(K_point* kp__,
 }
 
 template <typename T>
-inline void Band::diag_pseudo_potential_davidson(K_point*       kp__,
-                                                 D_operator<T>& d_op__,
-                                                 Q_operator<T>& q_op__) const
+inline int Band::diag_pseudo_potential_davidson(K_point*       kp__,
+                                                D_operator<T>& d_op__,
+                                                Q_operator<T>& q_op__) const
 {
     PROFILE("sirius::Band::diag_pseudo_potential_davidson");
 
@@ -193,6 +193,8 @@ inline void Band::diag_pseudo_potential_davidson(K_point*       kp__,
             print_checksum("o_diag", cs2);
         }
     }
+
+    int niter{0};
     
     sddk::timer t3("sirius::Band::diag_pseudo_potential_davidson|iter");
     for (int ispin_step = 0; ispin_step < num_spin_steps; ispin_step++) {
@@ -217,6 +219,7 @@ inline void Band::diag_pseudo_potential_davidson(K_point*       kp__,
 
         /* start iterative diagonalization */
         for (int k = 0; k < itso.num_steps_; k++) {
+            niter++;
             /* apply Hamiltonian and overlap operators to the new basis functions */
             apply_h_o<T>(kp__, ispin_step, N, n, phi, hphi, ophi, d_op__, q_op__);
             
@@ -407,6 +410,8 @@ inline void Band::diag_pseudo_potential_davidson(K_point*       kp__,
         }
     }
     #endif
+
+    return niter;
 }
 
 template <typename T>

@@ -668,7 +668,7 @@ inline void Symmetry::symmetrize_function(double_complex* f_pw__,
     for (int i = 0; i < num_mag_sym(); i++) {
         /* full space-group symmetry operation is {R|t} */
         auto R = magnetic_group_symmetry(i).spg_op.R;
-        auto t = magnetic_group_symmetry(i).spg_op.t;
+        //auto t = magnetic_group_symmetry(i).spg_op.t;
 
         for (int igloc = 0; igloc < remap_gvec__.a2a_recv.size(); igloc++) {
             vector3d<int> G(&remap_gvec__.gvec_remapped_(0, igloc));
