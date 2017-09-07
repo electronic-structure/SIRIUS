@@ -22,9 +22,9 @@ inline void transform(device_t                     pu__,
     assert(m__ != 0);
 
     assert(wf_in__.size() == wf_out__.size());
-    int nwf = static_cast<int>(wf_in__.size()); 
+    int nwf = static_cast<int>(wf_in__.size());
     auto& comm = mtrx__.blacs_grid().comm();
-    for (int i = 0; i < nwf; i++) { 
+    for (int i = 0; i < nwf; i++) {
         assert(wf_in__[i]->pw_coeffs().num_rows_loc() == wf_out__[i]->pw_coeffs().num_rows_loc());
         if (wf_in__[i]->has_mt()) {
             assert(wf_in__[i]->mt_coeffs().num_rows_loc() == wf_out__[i]->mt_coeffs().num_rows_loc());
@@ -131,7 +131,7 @@ inline void transform(device_t                     pu__,
         #endif
     };
     
-    sddk::timer t1("transform::init");
+    sddk::timer t1("transform::01_init");
     /* initial values for the resulting wave-functions */
     for (int iv = 0; iv < nwf; iv++) {
         if (pu__ == CPU) {
@@ -205,7 +205,9 @@ inline void transform(device_t                     pu__,
     if (sddk_pp) {
         comm.barrier();
     }
+    
     double time = -omp_get_wtime();
+    sddk::timer t2("transform::02_gpu_preparation");
     
     /* trivial case */
     if (comm.size() == 1) {
@@ -265,9 +267,12 @@ inline void transform(device_t                     pu__,
     /* Offests and counts of the elements of the */
     block_data_descriptor sd(comm.size());
 
+    t2.stop();
     double time_mpi{0};
 
     for (int ibc = 0; ibc < nbc; ibc++) {
+        
+        sddk::timer t3("transform::03_col_loop_prologue");
         /* global index of column */
         int j0 = ibc * BS;
         /* actual number of columns in the submatrix */
@@ -282,8 +287,10 @@ inline void transform(device_t                     pu__,
 
         /* local number of elements (provided by the mapping) in the panel for the current rank. */
         int local_size_col = spl_col_end.local_size() - spl_col_begin.local_size();
+        t3.stop();
 
         for (int ibr = 0; ibr < nbr; ibr++) {
+            sddk::timer t4("transform::04_row_loop_prologue");
             /* global index of column */
             int i0 = ibr * BS;
             /* actual number of rows in the submatrix */
@@ -298,16 +305,21 @@ inline void transform(device_t                     pu__,
 
             /* total number of elements owned by the current rank in the block */
             sd.counts[comm.rank()] = local_size_row * local_size_col;
+            t4.stop();
 
             /* all the nrank sizes of sd.counts are now populated by allgather  */
+            sddk::timer t5("transform::05_gather_sizes");
             comm.allgather(sd.counts.data(), comm.rank(), 1);
 
             sd.calc_offsets();
 
             assert(sd.offsets.back() + sd.counts.back() <= (int)buf.size());
+            t5.stop();
+            
             /* fetch elements of sub-matrix */
             /* now each rank knows where to copy data in the buffer
              * that will be later allgathered.  */
+            sddk::timer t6("transform::06_memcpy");
             if (local_size_row) {
                 for (int j = 0; j < local_size_col; j++) {
                     std::memcpy(&buf[sd.offsets[comm.rank()] + local_size_row * j],
@@ -316,11 +328,15 @@ inline void transform(device_t                     pu__,
                 }
             }
             double t0 = omp_get_wtime();
+            t6.stop();
             /* collect submatrix */
+            sddk::timer t7("transform::07_gather_submatrix");
             comm.allgather(&buf[0], sd.counts.data(), sd.offsets.data());
             time_mpi += (omp_get_wtime() - t0);
+            t7.stop();
             
             /* unpack data */
+            sddk::timer t8("transform::08_unpack_submatrix");
             std::vector<int> counts(comm.size(), 0);
             for (int jcol = 0; jcol < ncol; jcol++) {
                 auto pos_jcol = mtrx__.spl_col().location(jcol0__ + j0 + jcol);
@@ -335,7 +351,9 @@ inline void transform(device_t                     pu__,
             for (int rank = 0; rank < comm.size(); rank++) {
                 assert(sd.counts[rank] == counts[rank]);
             }
+            t8.stop();
             #ifdef __GPU
+            sddk::timer t9("transform::09_copyin");
             if (pu__ == GPU) {
                 acc::copyin(submatrix.template at<GPU>(), submatrix.ld(),
                             submatrix.template at<CPU>(), submatrix.ld(),
@@ -343,22 +361,28 @@ inline void transform(device_t                     pu__,
                 /* wait for the data copy; as soon as this is done, CPU buffer is free and can be reused */
                 acc::sync_stream(0);
             }
+            t9.stop();
             #endif
             /* nwf is the number of wavefunction sets */
+            sddk::timer t10("transform::10_enqueue_local_transform");
             for (int iv = 0; iv < nwf; iv++) {
                 local_transform(&alpha, wf_in__[iv], i0__ + i0, nrow, submatrix, 0, 0, wf_out__[iv], j0__ + j0, ncol);
             }
+            t10.stop();
         }
-        #ifdef __GPU
-        if (pu__ == GPU) {
-            /* wait for the last cudaZgemm */
-            acc::sync_stream(0);
-        }
-        #endif
     }
+    
+    #ifdef __GPU
+    sddk::timer t11("transform::11_sync_last_gemm");
+    if (pu__ == GPU) {
+        /* wait for the last cudaZgemm */
+        acc::sync_stream(0);
+    }
+    t11.stop();
+    #endif
 
     if (sddk_pp) {
-        sddk::timer print_performance_timer("transform::print_performance");
+        sddk::timer print_performance_timer("transform::12_print_performance");
         comm.barrier();
         time += omp_get_wtime();
         int k = wf_in__[0]->pw_coeffs().num_rows_loc();
