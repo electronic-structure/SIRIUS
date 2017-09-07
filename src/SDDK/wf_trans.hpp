@@ -300,16 +300,18 @@ inline void transform(device_t                     pu__,
             /* same as above for the rows */
             splindex<block_cyclic> spl_row_begin(irow0__ + i0,        mtrx__.num_ranks_row(), mtrx__.rank_row(), mtrx__.bs_row());
             splindex<block_cyclic>   spl_row_end(irow0__ + i0 + nrow, mtrx__.num_ranks_row(), mtrx__.rank_row(), mtrx__.bs_row());
+            t4.stop();
 
+            sddk::timer t5("transform::05_compute_sizes");
             int local_size_row = spl_row_end.local_size() - spl_row_begin.local_size();
 
             /* total number of elements owned by the current rank in the block */
-            sd.counts[comm.rank()] = local_size_row * local_size_col;
-            t4.stop();
-
-            /* all the nrank sizes of sd.counts are now populated by allgather  */
-            sddk::timer t5("transform::05_gather_sizes");
-            comm.allgather(sd.counts.data(), comm.rank(), 1);
+            for (int i = 0; i < mtrx__.blacs_grid().num_ranks_col(); i++) {
+                for (int j = 0; j < mtrx__.blacs_grid().num_ranks_row(); j++) {
+                    int l = cart_rank(j, i);
+                    sd.counts[l] = (spl_row_end.local_size(j) - spl_row_begin.local_size(j)) * (spl_col_end.local_size(i) - spl_col_begin.local_size(i));
+                }
+            }
 
             sd.calc_offsets();
 
@@ -321,10 +323,13 @@ inline void transform(device_t                     pu__,
              * that will be later allgathered.  */
             sddk::timer t6("transform::06_memcpy");
             if (local_size_row) {
+                int i0 = spl_row_begin.local_size();
+                int j0 = spl_col_begin.local_size();
+                int r = comm.rank();
+                int s = local_size_row * sizeof(T);
                 for (int j = 0; j < local_size_col; j++) {
-                    std::memcpy(&buf[sd.offsets[comm.rank()] + local_size_row * j],
-                                &mtrx__(spl_row_begin.local_size(), spl_col_begin.local_size() + j),
-                                local_size_row * sizeof(T));
+                    std::memcpy(&buf[sd.offsets[r] + local_size_row * j],
+                                &mtrx__(i0, j0 + j), s);
                 }
             }
             double t0 = omp_get_wtime();
@@ -343,7 +348,6 @@ inline void transform(device_t                     pu__,
                 for (int irow = 0; irow < nrow; irow++) {
                     auto pos_irow = mtrx__.spl_row().location(irow0__ + i0 + irow);
                     int rank = cart_rank(pos_irow.rank, pos_jcol.rank);
-
                     submatrix(irow, jcol) = buf[sd.offsets[rank] + counts[rank]];
                     counts[rank]++;
                 }
