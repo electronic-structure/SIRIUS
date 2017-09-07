@@ -97,6 +97,12 @@ namespace sirius {
         #ifdef __LIBSCI_ACC
         libsci_acc_finalize();
         #endif
+        fftw_cleanup();
+        sddk::stop_global_timer();
+        sddk::timer::print_tree();
+        if (call_mpi_fin__) {
+            Communicator::finalize();
+        }
         #ifdef __GPU
         if (acc::num_devices()) {
             cublas::destroy_stream_handles();
@@ -104,12 +110,6 @@ namespace sirius {
             acc::reset();
         }
         #endif
-        fftw_cleanup();
-        sddk::stop_global_timer();
-        sddk::timer::print_tree();
-        if (call_mpi_fin__) {
-            Communicator::finalize();
-        }
     }
 
      inline void terminate(int err_code__)
