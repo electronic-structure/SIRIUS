@@ -239,13 +239,16 @@ class Communicator
     /// MPI initialization.
     static void initialize()
     {
+        int required = MPI_THREAD_MULTIPLE;
         int provided;
 
-        MPI_Init_thread(NULL, NULL, MPI_THREAD_FUNNELED, &provided);
+        //MPI_Init_thread(NULL, NULL, MPI_THREAD_FUNNELED, &provided);
+        MPI_Init_thread(NULL, NULL, required, &provided);
 
         MPI_Query_thread(&provided);
-        if (provided < MPI_THREAD_FUNNELED) {
-            printf("Warning! MPI_THREAD_FUNNELED level of thread support is not provided.\n");
+        if (provided < required) {
+            //printf("Warning! MPI_THREAD_FUNNELED level of thread support is not provided.\n");
+            printf("Warning! MPI_THREAD_MULTIPLE level of thread support is not provided.\n");
         }
     }
     
@@ -503,6 +506,13 @@ class Communicator
     {
         Communicator new_comm;
         MPI_Comm_split(mpi_comm(), color__, rank(), &new_comm.mpi_comm());
+        return std::move(new_comm);
+    }
+
+    Communicator duplicate() const
+    {
+        Communicator new_comm;
+        MPI_Comm_dup(mpi_comm(), &new_comm.mpi_comm());
         return std::move(new_comm);
     }
 

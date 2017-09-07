@@ -2,7 +2,7 @@
 
 using namespace sirius;
 
-void test_wf_ortho(std::vector<int> mpi_grid_dims__,
+void test_wf_ortho(BLACS_grid const& blacs_grid__,
                    double cutoff__,
                    int num_bands__,
                    int use_gpu__,
@@ -10,7 +10,6 @@ void test_wf_ortho(std::vector<int> mpi_grid_dims__,
 {
     device_t pu = static_cast<device_t>(use_gpu__);
 
-    BLACS_grid blacs_grid(mpi_comm_world(), mpi_grid_dims__[0], mpi_grid_dims__[1]);
 
     matrix3d<double> M = {{1, 0, 0}, {0, 1, 0}, {0, 0, 1}};
     
@@ -21,24 +20,30 @@ void test_wf_ortho(std::vector<int> mpi_grid_dims__,
         printf("number of G-vectors: %i\n", gvec.num_gvec());
     }
 
-    int num_atoms = 10;
-    auto nmt = [](int i) {
-        return 20;
-    };
+    //int num_atoms = 10;
+    //auto nmt = [](int i) {
+    //    return 20;
+    //};
 
-    wave_functions phi(pu, gvec, num_atoms, nmt, 2 * num_bands__);
-    wave_functions hphi(pu, gvec, num_atoms, nmt, 2 * num_bands__);
-    wave_functions tmp(pu, gvec, num_atoms, nmt, 2 * num_bands__);
-    
+    wave_functions phi(pu, gvec, 2 * num_bands__);
+    wave_functions tmp(pu, gvec, 2 * num_bands__);
+
     phi.pw_coeffs().prime() = [](int64_t i0, int64_t i1){return type_wrapper<double_complex>::random();};
-    phi.mt_coeffs().prime() = [](int64_t i0, int64_t i1){return type_wrapper<double_complex>::random();};
-    hphi.pw_coeffs().prime() = [](int64_t i0, int64_t i1){return type_wrapper<double_complex>::random();};
-    hphi.mt_coeffs().prime() = [](int64_t i0, int64_t i1){return type_wrapper<double_complex>::random();};
+    //phi.mt_coeffs().prime() = [](int64_t i0, int64_t i1){return type_wrapper<double_complex>::random();};
+    //hphi.mt_coeffs().prime() = [](int64_t i0, int64_t i1){return type_wrapper<double_complex>::random();};
 
-    dmatrix<double_complex> ovlp(2 * num_bands__, 2 * num_bands__, blacs_grid, bs__, bs__);
+    dmatrix<double_complex> ovlp(2 * num_bands__, 2 * num_bands__, blacs_grid__, bs__, bs__);
+
+    if (pu == GPU) {
+        phi.pw_coeffs().allocate_on_device();
+        tmp.pw_coeffs().allocate_on_device();
+        phi.pw_coeffs().copy_to_device(0, 2 * num_bands__);
+        ovlp.allocate(memory_t::device);
+    }
     
-    orthogonalize<double_complex>(0, num_bands__, phi, hphi, ovlp, tmp);
-    orthogonalize<double_complex>(num_bands__, num_bands__, phi, hphi, ovlp, tmp);
+    
+    orthogonalize<double_complex>(0, num_bands__, phi, ovlp, tmp);
+    orthogonalize<double_complex>(num_bands__, num_bands__, phi, ovlp, tmp);
 
     inner(phi, 0, 2 * num_bands__, phi, 0, 2 * num_bands__, 0.0, ovlp, 0, 0);
 
@@ -52,6 +57,20 @@ void test_wf_ortho(std::vector<int> mpi_grid_dims__,
     }
 }
 
+void call_test(std::vector<int> mpi_grid__,
+               double cutoff__,
+               int num_bands__,
+               int use_gpu__,
+               int bs__,
+               int repeat__)
+{
+    BLACS_grid blacs_grid(mpi_comm_world(), mpi_grid__[0], mpi_grid__[1]);
+    for (int i = 0; i < repeat__; i++) {
+        test_wf_ortho(blacs_grid, cutoff__, num_bands__, use_gpu__, bs__);
+    }
+
+}
+
 int main(int argn, char** argv)
 {
     cmd_args args;
@@ -60,6 +79,7 @@ int main(int argn, char** argv)
     args.register_key("--bs=", "{int} block size");
     args.register_key("--num_bands=", "{int} block size");
     args.register_key("--use_gpu=", "{int} 0: CPU only, 1: hybrid CPU+GPU");
+    args.register_key("--repeat=", "{int} number of repeats");
 
     args.parse_args(argn, argv);
     if (args.exist("help")) {
@@ -67,16 +87,15 @@ int main(int argn, char** argv)
         args.print_help();
         return 0;
     }
-    auto mpi_grid_dims = args.value< std::vector<int> >("mpi_grid_dims", {1, 1});
+    auto mpi_grid_dims = args.value<std::vector<int>>("mpi_grid_dims", {1, 1});
     auto cutoff = args.value<double>("cutoff", 8.0);
     auto use_gpu = args.value<int>("use_gpu", 0);
     auto bs = args.value<int>("bs", 32);
     auto num_bands = args.value<int>("num_bands", 100);
+    auto repeat = args.value<int>("repeat", 10);
 
     sirius::initialize(1);
-    for (int repeat = 0; repeat < 2; repeat++) {
-        test_wf_ortho(mpi_grid_dims, cutoff, num_bands, use_gpu, bs);
-    }
+    call_test(mpi_grid_dims, cutoff, num_bands, use_gpu, bs, repeat);
     mpi_comm_world().barrier();
     sddk::timer::print();
     sirius::finalize();

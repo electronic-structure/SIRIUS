@@ -553,7 +553,7 @@ class Profiler
         #endif
 
         #if defined(__GPU) && defined(__GPU_NVTX)
-        cuda_begin_range_marker(label_.c_str());
+        acc::begin_range_marker(label_.c_str());
         #endif
     }
 
@@ -575,7 +575,7 @@ class Profiler
         #endif
 
         #if defined(__GPU) && defined(__GPU_NVTX)
-        cuda_end_range_marker();
+        acc::end_range_marker();
         #endif
     }
 
