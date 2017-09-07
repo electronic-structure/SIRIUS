@@ -937,7 +937,7 @@ class mdarray : public mdarray_base<T, N>
 
     mdarray<T, N>& operator=(std::function<T(int64_t)> f__)
     {
-        assert(N == 1);
+        static_assert(N == 1, "wrong number of dimensions");
 
         for (int64_t i0 = this->dims_[0].begin(); i0 <= this->dims_[0].end(); i0++) {
             (*this)(i0) = f__(i0);
@@ -947,7 +947,7 @@ class mdarray : public mdarray_base<T, N>
 
     mdarray<T, N>& operator=(std::function<T(int64_t, int64_t)> f__)
     {
-        assert(N == 2);
+        static_assert(N == 2, "wrong number of dimensions");
 
         for (int64_t i1 = this->dims_[1].begin(); i1 <= this->dims_[1].end(); i1++) {
             for (int64_t i0 = this->dims_[0].begin(); i0 <= this->dims_[0].end(); i0++) {
