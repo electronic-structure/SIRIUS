@@ -17,13 +17,13 @@
 // CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR 
 // OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-/** \file symmetry.h
+/** \file SiriusSymmetry.h
  *   
- *  \brief Contains definition and partial implementation of sirius::Symmetry class.
+ *  \brief Contains definition and partial implementation of sirius::SiriusSymmetry class.
  */
 
-#ifndef __SYMMETRY_H__
-#define __SYMMETRY_H__
+#ifndef __SIRIUS_SYMMETRY_H__
+#define __SIRIUS_SYMMETRY_H__
 
 extern "C" {
 #include <spglib.h>
@@ -36,10 +36,10 @@ extern "C" {
 
 namespace sirius {
 
-/// Descriptor of the space group symmetry operation.
+/// Descriptor of the space group SiriusSymmetry operation.
 struct space_group_symmetry_descriptor
 {
-    /// Rotational part of symmetry operation (fractional coordinates).
+    /// Rotational part of SiriusSymmetry operation (fractional coordinates).
     matrix3d<int> R;
 
     /// Fractional translation.
@@ -55,22 +55,22 @@ struct space_group_symmetry_descriptor
     vector3d<double> euler_angles;
 };
 
-/// Descriptor of the magnetic group symmetry operation.
+/// Descriptor of the magnetic group SiriusSymmetry operation.
 struct magnetic_group_symmetry_descriptor
 {
-    /// Element of space group symmetry.
+    /// Element of space group SiriusSymmetry.
     space_group_symmetry_descriptor spg_op;
     
-    /// Index of the space group symmetry operation.
+    /// Index of the space group SiriusSymmetry operation.
     /** This index is used to search for the transfomation of atoms under the current space group operation
-     *  in the precomputed symmetry table. */
+     *  in the precomputed SiriusSymmetry table. */
     int isym;
 
     /// Proper rotation matrix in Cartesian coordinates.
     matrix3d<double> spin_rotation;
 };
 
-class Symmetry
+class SiriusSymmetry
 {
     private:
        
@@ -91,18 +91,18 @@ class Symmetry
         /// Crystal structure descriptor returned by spglib.
         SpglibDataset* spg_dataset_;
         
-        /// Symmetry table for atoms.
-        /** For each atom ia and symmetry isym sym_table_(ia, isym) stores index of atom ja to which original atom
-         *  transforms under symmetry operation. */
+        /// SiriusSymmetry table for atoms.
+        /** For each atom ia and SiriusSymmetry isym sym_table_(ia, isym) stores index of atom ja to which original atom
+         *  transforms under SiriusSymmetry operation. */
         mdarray<int, 2> sym_table_;
         
-        /// List of all space group symmetry operations.
+        /// List of all space group SiriusSymmetry operations.
         std::vector<space_group_symmetry_descriptor> space_group_symmetry_;
 
-        /// List of all magnetic group symmetry operations.
+        /// List of all magnetic group SiriusSymmetry operations.
         std::vector<magnetic_group_symmetry_descriptor> magnetic_group_symmetry_;
 
-        /// Compute Euler angles corresponding to the proper rotation part of the given symmetry.
+        /// Compute Euler angles corresponding to the proper rotation part of the given SiriusSymmetry.
         vector3d<double> euler_angles(matrix3d<double> const& rot__) const;
 
         /// Generate rotation matrix from three Euler angles
@@ -199,14 +199,14 @@ class Symmetry
 
     public:
 
-        Symmetry(matrix3d<double>& lattice_vectors__,
+        SiriusSymmetry(matrix3d<double>& lattice_vectors__,
                  int num_atoms__,
                  mdarray<double, 2>& positions__,
                  mdarray<double, 2>& spins__,
                  std::vector<int>& types__,
                  double tolerance__);
 
-        ~Symmetry()
+        ~SiriusSymmetry()
         {
             spg_free_dataset(spg_dataset_);
         }
@@ -283,7 +283,7 @@ class Symmetry
          *               = \frac{1}{N_{sym}} \sum_{{\bf \hat P}} \sum_{\bf G} e^{i{\bf G t}} e^{i{\bf G Rx}} f({\bf G})
          *  \f]
          *  Now we do a mapping \f$ {\bf GR} \rightarrow \tilde {\bf G} \f$ and find expansion coefficients of the
-         *  symmetry transformed function:
+         *  SiriusSymmetry transformed function:
          *  \f[
          *    f(\tilde{\bf G}) = e^{i{\bf G t}} f({\bf G})
          *  \f]
@@ -340,7 +340,7 @@ class Symmetry
         }
 };
 
-inline Symmetry::Symmetry(matrix3d<double>& lattice_vectors__,  
+inline SiriusSymmetry::SiriusSymmetry(matrix3d<double>& lattice_vectors__,  
                           int num_atoms__,
                           mdarray<double, 2>& positions__,
                           mdarray<double, 2>& spins__,
@@ -351,7 +351,7 @@ inline Symmetry::Symmetry(matrix3d<double>& lattice_vectors__,
     , types_(types__)
     , tolerance_(tolerance__)
 {
-    PROFILE("sirius::Symmetry::Symmetry");
+    PROFILE("sirius::SiriusSymmetry::SiriusSymmetry");
 
     if (lattice_vectors__.det() < 0) {
         std::stringstream s;
@@ -467,7 +467,7 @@ inline Symmetry::Symmetry(matrix3d<double>& lattice_vectors__,
     }
 }
 
-inline matrix3d<double> Symmetry::rot_mtrx_cart(vector3d<double> euler_angles) const
+inline matrix3d<double> SiriusSymmetry::rot_mtrx_cart(vector3d<double> euler_angles) const
 {
     double alpha = euler_angles[0];
     double beta = euler_angles[1];
@@ -487,7 +487,7 @@ inline matrix3d<double> Symmetry::rot_mtrx_cart(vector3d<double> euler_angles) c
     return rm;
 }
 
-inline vector3d<double> Symmetry::euler_angles(matrix3d<double> const& rot__) const
+inline vector3d<double> SiriusSymmetry::euler_angles(matrix3d<double> const& rot__) const
 {
     vector3d<double> angles(0, 0, 0);
     
@@ -522,12 +522,12 @@ inline vector3d<double> Symmetry::euler_angles(matrix3d<double> const& rot__) co
             if (std::abs(rot__(i, j) - rm1(i, j)) > 1e-8) {
                 std::stringstream s;
                 s << "matrices don't match" << std::endl
-                  << "initial symmetry matrix: " << std::endl
+                  << "initial SiriusSymmetry matrix: " << std::endl
                   << rot__(0, 0) << " " << rot__(0, 1) << " " << rot__(0, 2) << std::endl
                   << rot__(1, 0) << " " << rot__(1, 1) << " " << rot__(1, 2) << std::endl
                   << rot__(2, 0) << " " << rot__(2, 1) << " " << rot__(2, 2) << std::endl
                   << "euler angles : " << angles[0] / pi << " " << angles[1] / pi << " " << angles[2] / pi << std::endl
-                  << "computed symmetry matrix : " << std::endl
+                  << "computed SiriusSymmetry matrix : " << std::endl
                   << rm1(0, 0) << " " << rm1(0, 1) << " " << rm1(0, 2) << std::endl
                   << rm1(1, 0) << " " << rm1(1, 1) << " " << rm1(1, 2) << std::endl
                   << rm1(2, 0) << " " << rm1(2, 1) << " " << rm1(2, 2) << std::endl;
@@ -539,7 +539,7 @@ inline vector3d<double> Symmetry::euler_angles(matrix3d<double> const& rot__) co
     return angles;
 }
 
-inline int Symmetry::get_irreducible_reciprocal_mesh(vector3d<int> k_mesh__,
+inline int SiriusSymmetry::get_irreducible_reciprocal_mesh(vector3d<int> k_mesh__,
                                                      vector3d<int> is_shift__,
                                                      mdarray<double, 2>& kp__,
                                                      std::vector<double>& wk__) const
@@ -588,9 +588,9 @@ inline int Symmetry::get_irreducible_reciprocal_mesh(vector3d<int> k_mesh__,
     return nknr;
 }
 
-inline void Symmetry::check_gvec_symmetry(Gvec const& gvec__, Communicator const& comm__) const
+inline void SiriusSymmetry::check_gvec_symmetry(Gvec const& gvec__, Communicator const& comm__) const
 {
-    PROFILE("sirius::Symmetry::check_gvec_symmetry");
+    PROFILE("sirius::SiriusSymmetry::check_gvec_symmetry");
 
     int gvec_count  = gvec__.gvec_count(comm__.rank());
     int gvec_offset = gvec__.gvec_offset(comm__.rank());
@@ -603,7 +603,7 @@ inline void Symmetry::check_gvec_symmetry(Gvec const& gvec__, Communicator const
             int ig = gvec_offset + igloc;
 
             auto gv = gvec__.gvec(ig);
-            /* apply symmetry operation to the G-vector */
+            /* apply SiriusSymmetry operation to the G-vector */
             auto gv_rot = transpose(sm) * gv;
 
             //== /* check limits */
@@ -650,10 +650,10 @@ inline void Symmetry::check_gvec_symmetry(Gvec const& gvec__, Communicator const
     }
 }
 
-inline void Symmetry::symmetrize_function(double_complex* f_pw__,
+inline void SiriusSymmetry::symmetrize_function(double_complex* f_pw__,
                                           remap_gvec_to_shells& remap_gvec__) const
 {
-    PROFILE("sirius::Symmetry::symmetrize_function_pw");
+    PROFILE("sirius::SiriusSymmetry::symmetrize_function_pw");
 
     auto v = remap_gvec__.remap_forward(f_pw__);
 
@@ -661,10 +661,10 @@ inline void Symmetry::symmetrize_function(double_complex* f_pw__,
     
     double* ptr = (double*)&sym_f_pw[0];
 
-    sddk::timer t1("sirius::Symmetry::symmetrize_function_pw|local");
+    sddk::timer t1("sirius::SiriusSymmetry::symmetrize_function_pw|local");
     #pragma omp parallel for
     for (int i = 0; i < num_mag_sym(); i++) {
-        /* full space-group symmetry operation is {R|t} */
+        /* full space-group SiriusSymmetry operation is {R|t} */
         auto R = magnetic_group_symmetry(i).spg_op.R;
         auto t = magnetic_group_symmetry(i).spg_op.t;
 
@@ -673,7 +673,7 @@ inline void Symmetry::symmetrize_function(double_complex* f_pw__,
             
             double_complex z = v[igloc] * std::exp(double_complex(0, twopi * (G * t)));
 
-            /* apply symmetry operation to the G-vector;
+            /* apply SiriusSymmetry operation to the G-vector;
              * remember that we move R from acting on x to acting on G: G(Rx) = (GR)x;
              * GR is a vector-matrix multiplication [G][.....]
              *                                         [..R..]
@@ -717,11 +717,11 @@ inline void Symmetry::symmetrize_function(double_complex* f_pw__,
     remap_gvec__.remap_backward(sym_f_pw, f_pw__);
 }
 
-//inline void Symmetry::symmetrize_function(double_complex* f_pw__,
+//inline void SiriusSymmetry::symmetrize_function(double_complex* f_pw__,
 //                                          Gvec const& gvec__,
 //                                          Communicator const& comm__) const
 //{
-//    PROFILE("sirius::Symmetry::symmetrize_function_pw");
+//    PROFILE("sirius::SiriusSymmetry::symmetrize_function_pw");
 //
 //    int gvec_count = gvec__.gvec_count(comm__.rank());
 //    int gvec_offset = gvec__.gvec_offset(comm__.rank());
@@ -731,10 +731,10 @@ inline void Symmetry::symmetrize_function(double_complex* f_pw__,
 //    
 //    double* ptr = (double*)&sym_f_pw(0);
 //
-//    sddk::timer t1("sirius::Symmetry::symmetrize_function_pw|local");
+//    sddk::timer t1("sirius::SiriusSymmetry::symmetrize_function_pw|local");
 //    #pragma omp parallel for
 //    for (int i = 0; i < num_mag_sym(); i++) {
-//        /* full space-group symmetry operation is {R|t} */
+//        /* full space-group SiriusSymmetry operation is {R|t} */
 //        auto R = magnetic_group_symmetry(i).spg_op.R;
 //        auto t = magnetic_group_symmetry(i).spg_op.t;
 //
@@ -743,7 +743,7 @@ inline void Symmetry::symmetrize_function(double_complex* f_pw__,
 //            
 //            double_complex z = f_pw__[ig] * std::exp(double_complex(0, twopi * (gvec__.gvec(ig) * t)));
 //
-//            /* apply symmetry operation to the G-vector;
+//            /* apply SiriusSymmetry operation to the G-vector;
 //             * remember that we move R from acting on x to acting on G: G(Rx) = (GR)x;
 //             * GR is a vector-matrix multiplication [G][.....]
 //             *                                         [..R..]
@@ -777,7 +777,7 @@ inline void Symmetry::symmetrize_function(double_complex* f_pw__,
 //    }
 //    t1.stop();
 //
-//    sddk::timer t2("sirius::Symmetry::symmetrize_function_pw|mpi");
+//    sddk::timer t2("sirius::SiriusSymmetry::symmetrize_function_pw|mpi");
 //    comm__.allreduce(&sym_f_pw(0), gvec__.num_gvec());
 //    t2.stop();
 //    
@@ -789,11 +789,11 @@ inline void Symmetry::symmetrize_function(double_complex* f_pw__,
 //}
 
 
-//inline void Symmetry::symmetrize_vector_function(double_complex* fz_pw__,
+//inline void SiriusSymmetry::symmetrize_vector_function(double_complex* fz_pw__,
 //                                                 Gvec const& gvec__,
 //                                                 Communicator const& comm__) const
 //{
-//    PROFILE("sirius::Symmetry::symmetrize_vector_function_pw");
+//    PROFILE("sirius::SiriusSymmetry::symmetrize_vector_function_pw");
 //    
 //    int gvec_count = gvec__.gvec_count(comm__.rank());
 //    int gvec_offset = gvec__.gvec_offset(comm__.rank());
@@ -806,7 +806,7 @@ inline void Symmetry::symmetrize_function(double_complex* f_pw__,
 //    #pragma omp parallel for
 //    for (int i = 0; i < num_mag_sym(); i++)
 //    {
-//        /* full space-group symmetry operation is {R|t} */
+//        /* full space-group SiriusSymmetry operation is {R|t} */
 //        auto R = magnetic_group_symmetry(i).spg_op.R;
 //        auto t = magnetic_group_symmetry(i).spg_op.t;
 //        auto S = magnetic_group_symmetry(i).spin_rotation;
@@ -847,10 +847,10 @@ inline void Symmetry::symmetrize_function(double_complex* f_pw__,
 //        fz_pw__[ig] = sym_f_pw(ig) / double(num_mag_sym());
 //    }
 //}
-inline void Symmetry::symmetrize_vector_function(double_complex* fz_pw__,
+inline void SiriusSymmetry::symmetrize_vector_function(double_complex* fz_pw__,
                                                  remap_gvec_to_shells& remap_gvec__) const
 {
-    PROFILE("sirius::Symmetry::symmetrize_vector_function_pw");
+    PROFILE("sirius::SiriusSymmetry::symmetrize_vector_function_pw");
     
     auto v = remap_gvec__.remap_forward(fz_pw__);
 
@@ -860,7 +860,7 @@ inline void Symmetry::symmetrize_vector_function(double_complex* fz_pw__,
 
     #pragma omp parallel for
     for (int i = 0; i < num_mag_sym(); i++) {
-        /* full space-group symmetry operation is {R|t} */
+        /* full space-group SiriusSymmetry operation is {R|t} */
         auto R = magnetic_group_symmetry(i).spg_op.R;
         auto t = magnetic_group_symmetry(i).spg_op.t;
         auto S = magnetic_group_symmetry(i).spin_rotation;
@@ -905,13 +905,13 @@ inline void Symmetry::symmetrize_vector_function(double_complex* fz_pw__,
 
     remap_gvec__.remap_backward(sym_f_pw, fz_pw__);
 }
-//inline void Symmetry::symmetrize_vector_function(double_complex* fx_pw__,
+//inline void SiriusSymmetry::symmetrize_vector_function(double_complex* fx_pw__,
 //                                                 double_complex* fy_pw__,
 //                                                 double_complex* fz_pw__,
 //                                                 Gvec const& gvec__,
 //                                                 Communicator const& comm__) const
 //{
-//    PROFILE("sirius::Symmetry::symmetrize_vector_function_pw");
+//    PROFILE("sirius::SiriusSymmetry::symmetrize_vector_function_pw");
 //    
 //    int gvec_count = gvec__.gvec_count(comm__.rank());
 //    int gvec_offset = gvec__.gvec_offset(comm__.rank());
@@ -930,7 +930,7 @@ inline void Symmetry::symmetrize_vector_function(double_complex* fz_pw__,
 //
 //    #pragma omp parallel for
 //    for (int i = 0; i < num_mag_sym(); i++) {
-//        /* full space-group symmetry operation is {R|t} */
+//        /* full space-group SiriusSymmetry operation is {R|t} */
 //        auto R = magnetic_group_symmetry(i).spg_op.R;
 //        auto t = magnetic_group_symmetry(i).spg_op.t;
 //        auto S = magnetic_group_symmetry(i).spin_rotation;
@@ -1007,12 +1007,12 @@ inline void Symmetry::symmetrize_vector_function(double_complex* fz_pw__,
 //}
 
 
-inline void Symmetry::symmetrize_vector_function(double_complex* fx_pw__,
+inline void SiriusSymmetry::symmetrize_vector_function(double_complex* fx_pw__,
                                                  double_complex* fy_pw__,
                                                  double_complex* fz_pw__,
                                                  remap_gvec_to_shells& remap_gvec__) const
 {
-    PROFILE("sirius::Symmetry::symmetrize_vector_function_pw");
+    PROFILE("sirius::SiriusSymmetry::symmetrize_vector_function_pw");
 
     auto vx = remap_gvec__.remap_forward(fx_pw__);
     auto vy = remap_gvec__.remap_forward(fy_pw__);
@@ -1030,7 +1030,7 @@ inline void Symmetry::symmetrize_vector_function(double_complex* fx_pw__,
 
     #pragma omp parallel for
     for (int i = 0; i < num_mag_sym(); i++) {
-        /* full space-group symmetry operation is {R|t} */
+        /* full space-group SiriusSymmetry operation is {R|t} */
         auto R = magnetic_group_symmetry(i).spg_op.R;
         auto t = magnetic_group_symmetry(i).spg_op.t;
         auto S = magnetic_group_symmetry(i).spin_rotation;
@@ -1112,10 +1112,10 @@ inline void Symmetry::symmetrize_vector_function(double_complex* fx_pw__,
     remap_gvec__.remap_backward(sym_fz_pw, fz_pw__);
 }
 
-inline void Symmetry::symmetrize_function(mdarray<double, 3>& frlm__,
+inline void SiriusSymmetry::symmetrize_function(mdarray<double, 3>& frlm__,
                                           Communicator const& comm__) const
 {
-    PROFILE("sirius::Symmetry::symmetrize_function_mt");
+    PROFILE("sirius::SiriusSymmetry::symmetrize_function_mt");
 
     int lmmax = (int)frlm__.size(0);
     int nrmax = (int)frlm__.size(1);
@@ -1133,7 +1133,7 @@ inline void Symmetry::symmetrize_function(mdarray<double, 3>& frlm__,
     double alpha = 1.0 / double(num_mag_sym());
 
     for (int i = 0; i < num_mag_sym(); i++) {
-        /* full space-group symmetry operation is {R|t} */
+        /* full space-group SiriusSymmetry operation is {R|t} */
         int pr = magnetic_group_symmetry(i).spg_op.proper;
         auto eang = magnetic_group_symmetry(i).spg_op.euler_angles;
         int isym = magnetic_group_symmetry(i).isym;
@@ -1155,10 +1155,10 @@ inline void Symmetry::symmetrize_function(mdarray<double, 3>& frlm__,
                      lmmax * nrmax * spl_atoms.local_size());
 }
 
-inline void Symmetry::symmetrize_vector_function(mdarray<double, 3>& vz_rlm__,
+inline void SiriusSymmetry::symmetrize_vector_function(mdarray<double, 3>& vz_rlm__,
                                                  Communicator const& comm__) const
 {
-    PROFILE("sirius::Symmetry::symmetrize_vector_function_mt");
+    PROFILE("sirius::SiriusSymmetry::symmetrize_vector_function_mt");
 
     int lmmax = (int)vz_rlm__.size(0);
     int nrmax = (int)vz_rlm__.size(1);
@@ -1179,7 +1179,7 @@ inline void Symmetry::symmetrize_vector_function(mdarray<double, 3>& vz_rlm__,
     double alpha = 1.0 / double(num_mag_sym());
 
     for (int i = 0; i < num_mag_sym(); i++) {
-        /* full space-group symmetry operation is {R|t} */
+        /* full space-group SiriusSymmetry operation is {R|t} */
         int pr = magnetic_group_symmetry(i).spg_op.proper;
         auto eang = magnetic_group_symmetry(i).spg_op.euler_angles;
         int isym = magnetic_group_symmetry(i).isym;
@@ -1203,12 +1203,12 @@ inline void Symmetry::symmetrize_vector_function(mdarray<double, 3>& vz_rlm__,
                      lmmax * nrmax * spl_atoms.local_size());
 }
 
-inline void Symmetry::symmetrize_vector_function(mdarray<double, 3>& vx_rlm__,
+inline void SiriusSymmetry::symmetrize_vector_function(mdarray<double, 3>& vx_rlm__,
                                                  mdarray<double, 3>& vy_rlm__,
                                                  mdarray<double, 3>& vz_rlm__,
                                                  Communicator const& comm__) const
 {
-    PROFILE("sirius::Symmetry::symmetrize_vector_function_mt");
+    PROFILE("sirius::SiriusSymmetry::symmetrize_vector_function_mt");
 
     int lmmax = (int)vx_rlm__.size(0);
     int nrmax = (int)vx_rlm__.size(1);
@@ -1229,7 +1229,7 @@ inline void Symmetry::symmetrize_vector_function(mdarray<double, 3>& vx_rlm__,
     std::vector<mdarray<double, 3>*> vrlm({&vx_rlm__, &vy_rlm__, &vz_rlm__});
 
     for (int i = 0; i < num_mag_sym(); i++) {
-        /* full space-group symmetry operation is {R|t} */
+        /* full space-group SiriusSymmetry operation is {R|t} */
         int pr = magnetic_group_symmetry(i).spg_op.proper;
         auto eang = magnetic_group_symmetry(i).spg_op.euler_angles;
         int isym = magnetic_group_symmetry(i).isym;
@@ -1270,17 +1270,17 @@ inline void Symmetry::symmetrize_vector_function(mdarray<double, 3>& vx_rlm__,
 
 } // namespace
 
-/** \page sym Symmetry
- *  \section section1 Definition of symmetry operation
+/** \page sym SiriusSymmetry
+ *  \section section1 Definition of SiriusSymmetry operation
  *
- *  SIRIUS uses Spglib to find the spacial symmetry operations. Spglib defines symmetry operation in fractional 
+ *  SIRIUS uses Spglib to find the spacial SiriusSymmetry operations. Spglib defines SiriusSymmetry operation in fractional 
  *  coordinates:
  *  \f[
  *      {\bf x'} = \{ {\bf R} | {\bf t} \} {\bf x} \equiv {\bf R}{\bf x} + {\bf t}
  *  \f]
  *  where \b R is the proper or improper rotation matrix with elements equal to -1,0,1 and determinant of 1 
- *  (pure rotation) or -1 (rotoreflection) and \b t is the fractional translation, associated with the symmetry 
- *  operation. The inverse of the symmetry operation is:
+ *  (pure rotation) or -1 (rotoreflection) and \b t is the fractional translation, associated with the SiriusSymmetry 
+ *  operation. The inverse of the SiriusSymmetry operation is:
  *  \f[
  *      {\bf x} = \{ {\bf R} | {\bf t} \}^{-1} {\bf x'} = {\bf R}^{-1} ({\bf x'} - {\bf t}) = 
  *          {\bf R}^{-1} {\bf x'} - {\bf R}^{-1} {\bf t}
@@ -1313,4 +1313,4 @@ inline void Symmetry::symmetrize_vector_function(mdarray<double, 3>& vx_rlm__,
  *  \f]
  */
 
-#endif // __SYMMETRY_H__
+#endif // __SIRIUS_SYMMETRY_H__
