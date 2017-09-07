@@ -45,7 +45,7 @@ inline void inner(wave_functions& bra__,
     }
     double time = -omp_get_wtime();
 
-    sddk::timer preparation_timer("preparation");
+    sddk::timer preparation_timer("inner::preparation");
     T alpha = (std::is_same<T, double_complex>::value) ? 1 : 2;
     T beta = beta__;
 
@@ -186,7 +186,7 @@ inline void inner(wave_functions& bra__,
     if (pu == GPU) {
         
         #ifdef __GPU
-        sddk::timer gpu_preparation_timer("gpu_preparation");
+        sddk::timer gpu_preparation_timer("inner::gpu_preparation");
         
         /* state of the buffers:
          * state = 0: buffer is free
@@ -255,7 +255,7 @@ inline void inner(wave_functions& bra__,
                         
                         /* wait for the lock of both CPU and GPU buffers */
                         // TODO: it may be redundant to wait for both
-                        sddk::timer lock_wait_timer("cputhr_lock_wait");
+                        sddk::timer lock_wait_timer("inner::cputhr_lock_wait");
                         while (!cpu_state || !gpu_state) {
                             #pragma omp atomic read
                             cpu_state = cpu_buf_state[s];
@@ -265,7 +265,7 @@ inline void inner(wave_functions& bra__,
                         lock_wait_timer.stop();
                         
                         /* wait for the cuda stream to finish (both gemm and copyout) */
-                        sddk::timer stream_wait_timer("cputhr_stream_wait");
+                        sddk::timer stream_wait_timer("inner::cputhr_stream_wait");
                         #ifdef __GPU
                         acc::sync_stream(s);
                         #endif
@@ -276,12 +276,12 @@ inline void inner(wave_functions& bra__,
                         gpu_buf_state[s] = 0;
                         
                         /* MPI allreduce */
-                        sddk::timer allreduce_timer("cputhr_allreduce");
+                        sddk::timer allreduce_timer("inner::cputhr_allreduce");
                         comm.allreduce(c_tmp.template at<CPU>(0, s), nrow * ncol);
                         allreduce_timer.stop();
 
                         /* store panel */
-                        sddk::timer local_store_timer("cputhr_local_store");
+                        sddk::timer local_store_timer("inner::cputhr_local_store");
                         #pragma omp parallel for
                         for (int jcol = 0; jcol < ncol; jcol++) {
                             for (int irow = 0; irow < nrow; irow++) {

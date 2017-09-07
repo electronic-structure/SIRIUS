@@ -169,7 +169,7 @@ class timer
                     te += it2.second;
                 }
             }
-            if (it.second.tot_val > 0.0) {
+            if (it.second.tot_val > 0.0) {  // <-- NOTE
                 os << it.first.c_str() << " : " << it.second.count << " " << it.second.tot_val << " "
                    << it.second.min_val << " " << it.second.max_val << " " << it.second.tot_val / it.second.count << " "
                    << (it.second.tot_val - te) / it.second.tot_val * 100 << "\n";
@@ -198,7 +198,7 @@ class timer
                     te += it2.second;
                 }
             }
-            if (it.second.tot_val > 0.0) {
+            if (it.second.tot_val > 0.0) {  // <-- NOTE
                 fprintf(f, "%-65s : %6i %10.4f %10.4f %10.4f %10.4f     %6.2f\n", it.first.c_str(),
                                                                               it.second.count,
                                                                               it.second.tot_val,

@@ -131,7 +131,7 @@ inline void transform(device_t                     pu__,
         #endif
     };
     
-    sddk::timer t1("sddk::wave_functions::transform|init");
+    sddk::timer t1("transform::init");
     /* initial values for the resulting wave-functions */
     for (int iv = 0; iv < nwf; iv++) {
         if (pu__ == CPU) {
@@ -343,6 +343,7 @@ inline void transform(device_t                     pu__,
     }
 
     if (sddk_pp) {
+        sddk::timer print_performance_timer("transform::print_performance");
         comm.barrier();
         time += omp_get_wtime();
         int k = wf_in__[0]->pw_coeffs().num_rows_loc();
@@ -354,6 +355,7 @@ inline void transform(device_t                     pu__,
             printf("transform() performance: %12.6f GFlops/rank, [m,n,k=%i %i %i, nvec=%i, time=%f (sec), time_mpi=%f (sec)]\n",
                    ngop * m__ * n__ * k * nwf / time / comm.size(), k, n__, m__, nwf,  time, time_mpi);
         }
+        print_performance_timer.stop();
     }
 }
 
