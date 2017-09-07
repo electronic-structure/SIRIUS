@@ -1,5 +1,6 @@
 /// Linear transformation of the wave-functions.
 /** The transformation matrix is expected in the CPU memory. */
+// NOTE: the CPU-only code path needs to be reviewed!
 template <typename T>
 inline void transform(device_t                     pu__,
                       double                       alpha__,
@@ -54,20 +55,23 @@ inline void transform(device_t                     pu__,
                                   wave_functions* wf_in__,
                                   int             i0__,
                                   int             m__,
-                                  matrix<T>&      mtrx__,
+                                  mdarray<T,3>&   mtrx__,
                                   int             irow0__,
                                   int             jcol0__,
                                   wave_functions* wf_out__,
                                   int             j0__,
-                                  int             n__)
+                                  int             n__,
+                                  int             stream_id)
     {
+        const int buffer_id = stream_id;
+        
         if (pu__ == CPU) {
             if (std::is_same<T, double_complex>::value) {
                 /* transform plane-wave part */
                 linalg<CPU>::gemm(0, 0, wf_in__->pw_coeffs().num_rows_loc(), n__, m__,
                                   *reinterpret_cast<double_complex*>(alpha),
                                   wf_in__->pw_coeffs().prime().at<CPU>(0, i0__), wf_in__->pw_coeffs().prime().ld(),
-                                  reinterpret_cast<double_complex*>(mtrx__.template at<CPU>(irow0__, jcol0__)), mtrx__.ld(),
+                                  reinterpret_cast<double_complex*>(mtrx__.template at<CPU>(irow0__, jcol0__, buffer_id)), mtrx__.ld(),
                                   linalg_const<double_complex>::one(),
                                   wf_out__->pw_coeffs().prime().at<CPU>(0, j0__), wf_out__->pw_coeffs().prime().ld());
                 /* transform muffin-tin part */
@@ -75,7 +79,7 @@ inline void transform(device_t                     pu__,
                     linalg<CPU>::gemm(0, 0, wf_in__->mt_coeffs().num_rows_loc(), n__, m__,
                                       *reinterpret_cast<double_complex*>(alpha),
                                       wf_in__->mt_coeffs().prime().at<CPU>(0, i0__), wf_in__->mt_coeffs().prime().ld(),
-                                      reinterpret_cast<double_complex*>(mtrx__.template at<CPU>(irow0__, jcol0__)), mtrx__.ld(),
+                                      reinterpret_cast<double_complex*>(mtrx__.template at<CPU>(irow0__, jcol0__, buffer_id)), mtrx__.ld(),
                                       linalg_const<double_complex>::one(),
                                       wf_out__->mt_coeffs().prime().at<CPU>(0, j0__), wf_out__->mt_coeffs().prime().ld());
                 }
@@ -85,7 +89,7 @@ inline void transform(device_t                     pu__,
                 linalg<CPU>::gemm(0, 0, 2 * wf_in__->pw_coeffs().num_rows_loc(), n__, m__,
                                   *reinterpret_cast<double*>(alpha),
                                   reinterpret_cast<double*>(wf_in__->pw_coeffs().prime().at<CPU>(0, i0__)), 2 * wf_in__->pw_coeffs().prime().ld(),
-                                  reinterpret_cast<double*>(mtrx__.template at<CPU>(irow0__, jcol0__)), mtrx__.ld(),
+                                  reinterpret_cast<double*>(mtrx__.template at<CPU>(irow0__, jcol0__, buffer_id)), mtrx__.ld(),
                                   linalg_const<double>::one(),
                                   reinterpret_cast<double*>(wf_out__->pw_coeffs().prime().at<CPU>(0, j0__)), 2 * wf_out__->pw_coeffs().prime().ld());
                 if (wf_in__->has_mt()) {
@@ -93,13 +97,14 @@ inline void transform(device_t                     pu__,
                 }
             }
         }
+        
         #ifdef __GPU
         if (pu__ == GPU) {
             if (std::is_same<T, double_complex>::value) {
                 linalg<GPU>::gemm(0, 0, wf_in__->pw_coeffs().num_rows_loc(), n__, m__,
                                   reinterpret_cast<double_complex*>(alpha),
                                   wf_in__->pw_coeffs().prime().at<GPU>(0, i0__), wf_in__->pw_coeffs().prime().ld(),
-                                  reinterpret_cast<double_complex*>(mtrx__.template at<GPU>(irow0__, jcol0__)), mtrx__.ld(),
+                                  reinterpret_cast<double_complex*>(mtrx__.template at<GPU>(irow0__, jcol0__, buffer_id)), mtrx__.ld(),
                                   &linalg_const<double_complex>::one(),
                                   wf_out__->pw_coeffs().prime().at<GPU>(0, j0__), wf_out__->pw_coeffs().prime().ld(),
                                   0);
@@ -108,7 +113,7 @@ inline void transform(device_t                     pu__,
                     linalg<GPU>::gemm(0, 0, wf_in__->mt_coeffs().num_rows_loc(), n__, m__,
                                       reinterpret_cast<double_complex*>(alpha),
                                       wf_in__->mt_coeffs().prime().at<GPU>(0, i0__), wf_in__->mt_coeffs().prime().ld(),
-                                      reinterpret_cast<double_complex*>(mtrx__.template at<GPU>(irow0__, jcol0__)), mtrx__.ld(),
+                                      reinterpret_cast<double_complex*>(mtrx__.template at<GPU>(irow0__, jcol0__, buffer_id)), mtrx__.ld(),
                                       &linalg_const<double_complex>::one(),
                                       wf_out__->mt_coeffs().prime().at<GPU>(0, j0__), wf_out__->mt_coeffs().prime().ld(),
                                       0);
@@ -119,7 +124,7 @@ inline void transform(device_t                     pu__,
                 linalg<GPU>::gemm(0, 0, 2 * wf_in__->pw_coeffs().num_rows_loc(), n__, m__,
                                   reinterpret_cast<double*>(alpha),
                                   reinterpret_cast<double*>(wf_in__->pw_coeffs().prime().at<GPU>(0, i0__)), 2 * wf_in__->pw_coeffs().prime().ld(),
-                                  reinterpret_cast<double*>(mtrx__.template at<GPU>(irow0__, jcol0__)), mtrx__.ld(),
+                                  reinterpret_cast<double*>(mtrx__.template at<GPU>(irow0__, jcol0__, buffer_id)), mtrx__.ld(),
                                   &linalg_const<double>::one(),
                                   reinterpret_cast<double*>(wf_out__->pw_coeffs().prime().at<GPU>(0, j0__)), 2 * wf_out__->pw_coeffs().prime().ld(),
                                   0);
@@ -218,7 +223,10 @@ inline void transform(device_t                     pu__,
         }
         #endif
         for (int iv = 0; iv < nwf; iv++) {
-            local_transform(&alpha, wf_in__[iv], i0__, m__, mtrx__, irow0__, jcol0__, wf_out__[iv], j0__, n__);
+            // TODO: can be improved with multiple streams?.
+            // TODO: FIXME!!!
+            assert(false && "this case needs to be fixed");
+            //local_transform(&alpha, wf_in__[iv], i0__, m__, mtrx__, irow0__, jcol0__, wf_out__[iv], j0__, n__, 0);
         }
         #ifdef __GPU
         if (pu__ == GPU) {
@@ -239,11 +247,12 @@ inline void transform(device_t                     pu__,
     }
 
     const int BS = sddk_block_size;
+    const int num_streams = 2; // number of CUDA streams and GPU/CPU buffers
 
     /*  buffer for allgather (initialized to 0) */
     mdarray<T, 1> buf(BS * BS, memory_t::host_pinned, "transform::buf");
-    matrix<T> submatrix(BS, BS, memory_t::host_pinned, "transform::submatrix");
-
+    mdarray<T, 3> submatrix(BS, BS, num_streams, memory_t::host_pinned, "transform::submatrix"); // a pair of 2-dimensional buffers
+    
     if (pu__ == GPU) {
         submatrix.allocate(memory_t::device);
     }
@@ -270,6 +279,8 @@ inline void transform(device_t                     pu__,
     t2.stop();
     double time_mpi{0};
 
+    int s{0}; // this rotates the buffers and the CUDA stream numbers, in a round robin way
+    
     for (int ibc = 0; ibc < nbc; ibc++) {
         
         sddk::timer t3("transform::03_col_loop_prologue");
@@ -326,10 +337,10 @@ inline void transform(device_t                     pu__,
                 int i0 = spl_row_begin.local_size();
                 int j0 = spl_col_begin.local_size();
                 int r = comm.rank();
-                int s = local_size_row * sizeof(T);
+                int sz = local_size_row * sizeof(T);
                 for (int j = 0; j < local_size_col; j++) {
                     std::memcpy(&buf[sd.offsets[r] + local_size_row * j],
-                                &mtrx__(i0, j0 + j), s);
+                                &mtrx__(i0, j0 + j), sz);
                 }
             }
             double t0 = omp_get_wtime();
@@ -340,39 +351,50 @@ inline void transform(device_t                     pu__,
             time_mpi += (omp_get_wtime() - t0);
             t7.stop();
             
+            /* Wait for the previous copyin on this stream to finish,
+             * so that the CPU buffer "submatrix" is free for unpacking.
+             * NOTE: doing a syncstream is suboptimal, because we also wait
+             * for the GEMM to finish, which doesn't use the CPU buffer;
+             * but this solution doesn't require CUDA events. */
+            sddk::timer t81("transform::081_sync_stream");
+            acc::sync_stream(s);
+            t81.stop();
+            
             /* unpack data */
-            sddk::timer t8("transform::08_unpack_submatrix");
+            sddk::timer t82("transform::082_unpack_submatrix");
             std::vector<int> counts(comm.size(), 0);
             for (int jcol = 0; jcol < ncol; jcol++) {
                 auto pos_jcol = mtrx__.spl_col().location(jcol0__ + j0 + jcol);
                 for (int irow = 0; irow < nrow; irow++) {
                     auto pos_irow = mtrx__.spl_row().location(irow0__ + i0 + irow);
                     int rank = cart_rank(pos_irow.rank, pos_jcol.rank);
-                    submatrix(irow, jcol) = buf[sd.offsets[rank] + counts[rank]];
+                    submatrix(irow, jcol, s) = buf[sd.offsets[rank] + counts[rank]];
                     counts[rank]++;
                 }
             }
             for (int rank = 0; rank < comm.size(); rank++) {
                 assert(sd.counts[rank] == counts[rank]);
             }
-            t8.stop();
+            t82.stop();
             #ifdef __GPU
             sddk::timer t9("transform::09_copyin");
             if (pu__ == GPU) {
-                acc::copyin(submatrix.template at<GPU>(), submatrix.ld(),
-                            submatrix.template at<CPU>(), submatrix.ld(),
+                acc::copyin(submatrix.template at<GPU>(0,0,s), submatrix.ld(),
+                            submatrix.template at<CPU>(0,0,s), submatrix.ld(),
                             nrow, ncol, 0);
                 /* wait for the data copy; as soon as this is done, CPU buffer is free and can be reused */
-                acc::sync_stream(0);
+//                 acc::sync_stream(0);
             }
             t9.stop();
             #endif
             /* nwf is the number of wavefunction sets */
             sddk::timer t10("transform::10_enqueue_local_transform");
             for (int iv = 0; iv < nwf; iv++) {
-                local_transform(&alpha, wf_in__[iv], i0__ + i0, nrow, submatrix, 0, 0, wf_out__[iv], j0__ + j0, ncol);
+                local_transform(&alpha, wf_in__[iv], i0__ + i0, nrow, submatrix, 0, 0, wf_out__[iv], j0__ + j0, ncol, s);
             }
             t10.stop();
+            
+            s = (s+1) % num_streams;
         }
     }
     
