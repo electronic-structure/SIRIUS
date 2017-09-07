@@ -1,6 +1,12 @@
 /// Inner product between wave-functions.
-/** The result is always returned in the CPU pointer. In case of a single MPI rank the result is also returned in the
- *  GPU pointer */
+
+/*  This function computer the inner product using a moving window scheme
+ *  plus allreduce.
+ *
+ *  The input and output data must be previously allocated on the GPU.
+ *  The result is always returned in the CPU pointer. In case of a single MPI rank the result is also returned in the
+ *  GPU pointer
+ */
 template <typename T>
 inline void inner(wave_functions& bra__,
                   int             i0__,
@@ -172,11 +178,33 @@ inline void inner(wave_functions& bra__,
     if (pu == GPU) {
         c_tmp.allocate(memory_t::device);
     }
-
+    /* compute the number of movements of the windows needed
+     * to cover the whole matrix size.
+     * If m__  is not divided by BS, you need to cover the remaining border 
+     *
+     * +-------------+--------------+------|
+     * | <-- BS -->  |              |      |
+     * |             |              |      |
+     * |             |              |      |
+     * |             |              |      |
+     * |-------------+--------------+------|
+     * | ^           |              |      |
+     * | |           |              |      |
+     * | | BS        |              |      |
+     * | V           |              |      |
+     * |-------------+--------------+------|
+     * |             |              |      |
+     * |-------------+--------------+------|
+     *
+     * */
     int nbr = m__ / BS + std::min(1, m__ % BS);
     int nbc = n__ / BS + std::min(1, n__ % BS);
 
+
+    /* A double buffer method is used */
     std::array<MPI_Request, 2> req = {MPI_REQUEST_NULL, MPI_REQUEST_NULL};
+    /* dimension of the block on which the GEMM is done:
+     *  cornesr (2 int) and sizes (2 int) for the two buffers */
     std::array<std::array<int, 4>, 2> dims;
 
     if (pu == GPU) {
@@ -185,7 +213,13 @@ inline void inner(wave_functions& bra__,
          * state = 0: buffer is free
          * state = 1: buffer stores result of local zgemm */
         int buf_state[] = {0, 0};
-         
+
+        /* The real computation here is done by GPUs
+         * the is to leave the interaction with the GPUs
+         * to 1 OMP thread and the MPI compunication
+         * and data reshifling to the remaining threads.
+         * As a first step, a nested OMP region is needed
+         * and at least 2 threads must be available.  */
         omp_set_nested(1);
         int nt = omp_get_max_threads();
         if (nt < 2) {
@@ -195,13 +229,18 @@ inline void inner(wave_functions& bra__,
         #pragma omp parallel num_threads(2) shared(buf_state)
         {
             if (omp_get_thread_num() == 0) {
+                /* threads 0 spawns as many threads as possible */
                 omp_set_num_threads(nt - 1);
             }
 
             int s{0};
+
+            /* Loop over BS sized windows */
             for (int ibc = 0; ibc < nbc; ibc++) {
-                int j0 = ibc * BS;
-                int ncol = std::min(n__, (ibc + 1) * BS) - j0;
+                int j0 = ibc * BS; // initial reference
+                /* size to compute: either the size of the block or 
+                 * what remains of the border  */
+                int ncol = std::min(n__, (ibc + 1) * BS) - j0; 
 
                 for (int ibr = 0; ibr < nbr; ibr++) {
                     int i0 = ibr * BS;
@@ -215,10 +254,12 @@ inline void inner(wave_functions& bra__,
                             #pragma omp atomic read
                             state = buf_state[s % 2];
                         }
-
+                        /* takes the GPU pointer */
                         T* buf = (pu == CPU) ? c_tmp.template at<CPU>(0, s % 2) : c_tmp.template at<GPU>(0, s % 2);
+                        /* Works on stream 0 or stream 1 */
                         local_inner(i0__ + i0, nrow, j0__ + j0, ncol, buf, nrow, s % 2);
 
+                        /* async copy */
                         #ifdef __GPU
                         if (pu == GPU) {
                             acc::copyout(c_tmp.template at<CPU>(0, s % 2), c_tmp.template at<GPU>(0, s % 2), nrow * ncol, s % 2);
@@ -244,7 +285,11 @@ inline void inner(wave_functions& bra__,
                         
                         comm.allreduce(c_tmp.template at<CPU>(0, s % 2), nrow * ncol);
 
-                        /* store panel */
+                        /* store panel
+                         * go over the elements of the window and set the elements of the global 
+                         * array.
+                         * The .set function skips the elements that are not part of the local
+                         * result matrix. */
                         #pragma omp parallel for
                         for (int jcol = 0; jcol < ncol; jcol++) {
                             for (int irow = 0; irow < nrow; irow++) {

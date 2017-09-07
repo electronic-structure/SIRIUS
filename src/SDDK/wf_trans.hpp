@@ -238,6 +238,7 @@ inline void transform(device_t                     pu__,
 
     const int BS = sddk_block_size;
 
+    /*  buffer for allgather (initialized to 0) */
     mdarray<T, 1> buf(BS * BS, memory_t::host_pinned, "transform::buf");
     matrix<T> submatrix(BS, BS, memory_t::host_pinned, "transform::submatrix");
 
@@ -245,7 +246,11 @@ inline void transform(device_t                     pu__,
         submatrix.allocate(memory_t::device);
     }
 
-    /* cache cartesian ranks */
+    /* cache cartesian ranks
+     * cart_rank stores the mapping between cartesian MPI ranks
+     * and the flat rank of the comunicator stored in blacs_grid().cart_rank(j, i)
+     * going from 0 to nrank-1 in the comunicator in blacs_grid.
+     *  */
     mdarray<int, 2> cart_rank(mtrx__.blacs_grid().num_ranks_row(), mtrx__.blacs_grid().num_ranks_col());
     for (int i = 0; i < mtrx__.blacs_grid().num_ranks_col(); i++) {
         for (int j = 0; j < mtrx__.blacs_grid().num_ranks_row(); j++) {
@@ -253,9 +258,11 @@ inline void transform(device_t                     pu__,
         }
     }
 
+    /* See wf_inner.hpp for this variables. */
     int nbr = m__ / BS + std::min(1, m__ % BS);
     int nbc = n__ / BS + std::min(1, n__ % BS);
 
+    /* Offests and counts of the elements of the */
     block_data_descriptor sd(comm.size());
 
     double time_mpi{0};
@@ -268,9 +275,12 @@ inline void transform(device_t                     pu__,
 
         assert(ncol != 0);
         
+        /* Split index,                      beginning column     # ranks               columns rank   block size cols  */
         splindex<block_cyclic> spl_col_begin(jcol0__ + j0,        mtrx__.num_ranks_col(), mtrx__.rank_col(), mtrx__.bs_col());
+        /* Split index,                      final column         # ranks               columns rank   block size cols  */
         splindex<block_cyclic>   spl_col_end(jcol0__ + j0 + ncol, mtrx__.num_ranks_col(), mtrx__.rank_col(), mtrx__.bs_col());
 
+        /* local number of elements (provided by the mapping) in the panel for the current rank. */
         int local_size_col = spl_col_end.local_size() - spl_col_begin.local_size();
 
         for (int ibr = 0; ibr < nbr; ibr++) {
@@ -280,20 +290,24 @@ inline void transform(device_t                     pu__,
             int nrow = std::min(m__, (ibr + 1) * BS) - i0;
 
             assert(nrow != 0);
-
+            /* same as above for the rows */
             splindex<block_cyclic> spl_row_begin(irow0__ + i0,        mtrx__.num_ranks_row(), mtrx__.rank_row(), mtrx__.bs_row());
             splindex<block_cyclic>   spl_row_end(irow0__ + i0 + nrow, mtrx__.num_ranks_row(), mtrx__.rank_row(), mtrx__.bs_row());
 
             int local_size_row = spl_row_end.local_size() - spl_row_begin.local_size();
 
+            /* total number of elements owned by the current rank in the block */
             sd.counts[comm.rank()] = local_size_row * local_size_col;
 
+            /* all the nrank sizes of sd.counts are now populated by allgather  */
             comm.allgather(sd.counts.data(), comm.rank(), 1);
 
             sd.calc_offsets();
 
             assert(sd.offsets.back() + sd.counts.back() <= (int)buf.size());
             /* fetch elements of sub-matrix */
+            /* now each rank knows where to copy data in the buffer
+             * that will be later allgathered.  */
             if (local_size_row) {
                 for (int j = 0; j < local_size_col; j++) {
                     std::memcpy(&buf[sd.offsets[comm.rank()] + local_size_row * j],
@@ -330,6 +344,7 @@ inline void transform(device_t                     pu__,
                 acc::sync_stream(0);
             }
             #endif
+            /* nwf is the number of wavefunction sets */
             for (int iv = 0; iv < nwf; iv++) {
                 local_transform(&alpha, wf_in__[iv], i0__ + i0, nrow, submatrix, 0, 0, wf_out__[iv], j0__ + j0, ncol);
             }
