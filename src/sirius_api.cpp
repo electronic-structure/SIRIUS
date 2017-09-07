@@ -364,8 +364,8 @@ void sirius_add_atom_type(ftn_char label__,
     enddo
     \endcode
  */
-void sirius_set_atom_type_properties(char const* label__,
-                                     char const* symbol__,
+void sirius_set_atom_type_properties(ftn_char label__,
+                                     ftn_char symbol__,
                                      int32_t* zn__,
                                      double* mass__,
                                      double* mt_radius__,
@@ -3235,6 +3235,15 @@ void sirius_get_stress_tensor(ftn_char label__, ftn_double* stress_tensor__)
             stress_tensor__[nu + mu * 3] = s(mu, nu);
         }
     }
+}
+
+void sirius_add_atom_type_chi(ftn_char label__,
+                              ftn_int* l__,
+                              ftn_int* num_points__,
+                              ftn_double* chi__)
+{
+    auto& type = sim_ctx->unit_cell().atom_type(std::string(label__));
+    type.pp_desc().atomic_pseudo_wfs_.push_back(std::make_pair(*l__, std::vector<double>(chi__, chi__ + *num_points__)));
 }
 
 void sirius_set_processing_unit(ftn_char pu__)

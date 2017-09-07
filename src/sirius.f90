@@ -998,6 +998,14 @@ module sirius
             integer,                 intent(in)  :: flg
         end subroutine
 
+        subroutine sirius_add_atom_type_chi(atom_type, l, num_points, chi)&
+            &bind(C, name="sirius_add_atom_type_chi")
+            character,         target, dimension(*), intent(in)  :: atom_type
+            integer,                                 intent(in)  :: l
+            integer,                                 intent(in)  :: num_points
+            real(8),                                 intent(in)  :: chi
+        end subroutine
+
     end interface
 
 contains
