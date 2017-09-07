@@ -664,50 +664,60 @@ inline void Symmetry::symmetrize_function(double_complex* f_pw__,
     double* ptr = (double*)&sym_f_pw[0];
 
     sddk::timer t1("sirius::Symmetry::symmetrize_function_pw|local");
-    #pragma omp parallel for
-    for (int i = 0; i < num_mag_sym(); i++) {
-        /* full space-group symmetry operation is {R|t} */
-        auto R = magnetic_group_symmetry(i).spg_op.R;
-        //auto t = magnetic_group_symmetry(i).spg_op.t;
+    #pragma omp parallel
+    {
+        int nt = omp_get_max_threads();
+        int tid = omp_get_thread_num();
 
         for (int igloc = 0; igloc < remap_gvec__.a2a_recv.size(); igloc++) {
             vector3d<int> G(&remap_gvec__.gvec_remapped_(0, igloc));
-            
-            //double_complex z = v[igloc] * std::exp(double_complex(0, twopi * (G * t)));
-            double_complex z = v[igloc] * sym_phase_factors__(0, G[0], i) *
-                                          sym_phase_factors__(1, G[1], i) *
-                                          sym_phase_factors__(2, G[2], i);
 
-            /* apply symmetry operation to the G-vector;
-             * remember that we move R from acting on x to acting on G: G(Rx) = (GR)x;
-             * GR is a vector-matrix multiplication [G][.....]
-             *                                         [..R..]
-             *                                         [.....]
-             * which can also be written as matrix^{T}-vector operation
-             */
-            auto gv_rot = transpose(R) * G;
+            int igsh = remap_gvec__.gvec_shell_remapped(igloc);
 
-            /* index of a rotated G-vector */
-            int ig_rot = remap_gvec__.index_by_gvec(gv_rot);
+            if (igsh % nt == tid) {
 
-            if (ig_rot == -1) {
-                gv_rot = gv_rot * (-1);
-                ig_rot = remap_gvec__.index_by_gvec(gv_rot);
-                assert(ig_rot >=0 && ig_rot < (int)v.size());
-              
-                #pragma omp atomic update
-                ptr[2 * ig_rot] += z.real();
+                for (int i = 0; i < num_mag_sym(); i++) {
+                    /* full space-group symmetry operation is {R|t} */
+                    auto R = magnetic_group_symmetry(i).spg_op.R;
+                    //auto t = magnetic_group_symmetry(i).spg_op.t;
+                
+                    //double_complex z = v[igloc] * std::exp(double_complex(0, twopi * (G * t)));
+                    double_complex z = v[igloc] * sym_phase_factors__(0, G[0], i) *
+                                                  sym_phase_factors__(1, G[1], i) *
+                                                  sym_phase_factors__(2, G[2], i);
 
-                #pragma omp atomic update
-                ptr[2 * ig_rot + 1] -= z.imag();
-            } else {
-                assert(ig_rot >=0 && ig_rot < (int)v.size());
-              
-                #pragma omp atomic update
-                ptr[2 * ig_rot] += z.real();
+                    /* apply symmetry operation to the G-vector;
+                     * remember that we move R from acting on x to acting on G: G(Rx) = (GR)x;
+                     * GR is a vector-matrix multiplication [G][.....]
+                     *                                         [..R..]
+                     *                                         [.....]
+                     * which can also be written as matrix^{T}-vector operation
+                     */
+                    auto gv_rot = transpose(R) * G;
 
-                #pragma omp atomic update
-                ptr[2 * ig_rot + 1] += z.imag();
+                    /* index of a rotated G-vector */
+                    int ig_rot = remap_gvec__.index_by_gvec(gv_rot);
+
+                    if (ig_rot == -1) {
+                        gv_rot = gv_rot * (-1);
+                        ig_rot = remap_gvec__.index_by_gvec(gv_rot);
+                        assert(ig_rot >=0 && ig_rot < (int)v.size());
+                      
+                        //#pragma omp atomic update
+                        ptr[2 * ig_rot] += z.real();
+
+                        //#pragma omp atomic update
+                        ptr[2 * ig_rot + 1] -= z.imag();
+                    } else {
+                        assert(ig_rot >=0 && ig_rot < (int)v.size());
+                      
+                        //#pragma omp atomic update
+                        ptr[2 * ig_rot] += z.real();
+
+                        //#pragma omp atomic update
+                        ptr[2 * ig_rot + 1] += z.imag();
+                    }
+                }
             }
         }
     }

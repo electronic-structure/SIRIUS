@@ -747,6 +747,7 @@ struct remap_gvec_to_shells
     block_data_descriptor a2a_recv;
     splindex<block> spl_num_gsh;
     mdarray<int, 2> gvec_remapped_;
+    mdarray<int, 1> gvec_shell_remapped_;
 
     Communicator const& comm_;
 
@@ -793,6 +794,7 @@ struct remap_gvec_to_shells
         
         /* local set of G-vectors in the remapped order */
         gvec_remapped_ = mdarray<int, 2>(3, a2a_recv.size());
+        gvec_shell_remapped_ = mdarray<int, 1>(a2a_recv.size());
         std::vector<int> counts(comm_.size(), 0);
         for (int r = 0; r < comm_.size(); r++) {
             for (int igloc = 0; igloc < gvec_.gvec_count(r); igloc++) {
@@ -803,6 +805,7 @@ struct remap_gvec_to_shells
                     for (int x = 0; x < 3; x++) {
                         gvec_remapped_(x, a2a_recv.offsets[r] + counts[r]) = G[x];
                     }
+                    gvec_shell_remapped_(a2a_recv.offsets[r] + counts[r]) = igsh;
                     counts[r]++;
                 }
             }
@@ -821,6 +824,10 @@ struct remap_gvec_to_shells
         } else {
             return -1;
         }
+    }
+
+    int gvec_shell_remapped(int igloc__) {
+        return gvec_shell_remapped_(igloc__);
     }
     
     template <typename T>
