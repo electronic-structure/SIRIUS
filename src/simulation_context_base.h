@@ -81,6 +81,8 @@ class Simulation_context_base: public Simulation_parameters
         ev_solver_t gen_evp_solver_type_{ev_lapack};
 
         mdarray<double_complex, 3> phase_factors_;
+
+        mdarray<double_complex, 3> sym_phase_factors_;
         
         mdarray<int, 2> gvec_coord_;
 
@@ -405,6 +407,11 @@ class Simulation_context_base: public Simulation_parameters
             }
             return lambda;
         }
+
+        mdarray<double_complex, 3> const& sym_phase_factors() const
+        {
+            return sym_phase_factors_;
+        }
 };
 
 inline void Simulation_context_base::init_fft()
@@ -551,6 +558,18 @@ inline void Simulation_context_base::initialize()
             auto pos = unit_cell_.atom(ia).position();
             for (int x: {0, 1, 2}) {
                 phase_factors_(x, i, ia) = std::exp(double_complex(0.0, twopi * (i * pos[x])));
+            }
+        }
+    }
+
+    sym_phase_factors_ = mdarray<double_complex, 3>(3, limits, unit_cell().symmetry().num_mag_sym());
+
+    #pragma omp parallel for
+    for (int i = limits.first; i <= limits.second; i++) {
+        for (int isym = 0; isym < unit_cell().symmetry().num_mag_sym(); isym++) {
+            auto t = unit_cell().symmetry().magnetic_group_symmetry(isym).spg_op.t;
+            for (int x: {0, 1, 2}) {
+                sym_phase_factors_(x, i, isym) = std::exp(double_complex(0.0, twopi * (i * t[x])));
             }
         }
     }

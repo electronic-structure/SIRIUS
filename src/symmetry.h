@@ -289,7 +289,8 @@ class Symmetry
          *  \f]
          */
         void symmetrize_function(double_complex* f_pw__, 
-                                 remap_gvec_to_shells& remap_gvec__) const;
+                                 remap_gvec_to_shells& remap_gvec__,
+                                 mdarray<double_complex, 3> const& sym_phase_factors__) const;
 
         void symmetrize_vector_function(double_complex* fz_pw__,
                                         remap_gvec_to_shells& remap_gvec__) const;
@@ -651,14 +652,15 @@ inline void Symmetry::check_gvec_symmetry(Gvec const& gvec__, Communicator const
 }
 
 inline void Symmetry::symmetrize_function(double_complex* f_pw__,
-                                          remap_gvec_to_shells& remap_gvec__) const
+                                          remap_gvec_to_shells& remap_gvec__,
+                                          mdarray<double_complex, 3> const& sym_phase_factors__) const
 {
     PROFILE("sirius::Symmetry::symmetrize_function_pw");
 
     auto v = remap_gvec__.remap_forward(f_pw__);
 
     std::vector<double_complex> sym_f_pw(v.size(), 0);
-    
+
     double* ptr = (double*)&sym_f_pw[0];
 
     sddk::timer t1("sirius::Symmetry::symmetrize_function_pw|local");
@@ -671,7 +673,10 @@ inline void Symmetry::symmetrize_function(double_complex* f_pw__,
         for (int igloc = 0; igloc < remap_gvec__.a2a_recv.size(); igloc++) {
             vector3d<int> G(&remap_gvec__.gvec_remapped_(0, igloc));
             
-            double_complex z = v[igloc] * std::exp(double_complex(0, twopi * (G * t)));
+            //double_complex z = v[igloc] * std::exp(double_complex(0, twopi * (G * t)));
+            double_complex z = v[igloc] * sym_phase_factors__(0, G[0], i) *
+                                          sym_phase_factors__(1, G[1], i) *
+                                          sym_phase_factors__(2, G[2], i);
 
             /* apply symmetry operation to the G-vector;
              * remember that we move R from acting on x to acting on G: G(Rx) = (GR)x;
