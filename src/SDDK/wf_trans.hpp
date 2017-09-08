@@ -107,7 +107,7 @@ inline void transform(device_t                     pu__,
                                   reinterpret_cast<double_complex*>(mtrx__.template at<GPU>(irow0__, jcol0__, buffer_id)), mtrx__.ld(),
                                   &linalg_const<double_complex>::one(),
                                   wf_out__->pw_coeffs().prime().at<GPU>(0, j0__), wf_out__->pw_coeffs().prime().ld(),
-                                  0);
+                                  stream_id);
 
                 if (wf_in__->has_mt() && wf_in__->mt_coeffs().num_rows_loc()) {
                     linalg<GPU>::gemm(0, 0, wf_in__->mt_coeffs().num_rows_loc(), n__, m__,
@@ -116,7 +116,7 @@ inline void transform(device_t                     pu__,
                                       reinterpret_cast<double_complex*>(mtrx__.template at<GPU>(irow0__, jcol0__, buffer_id)), mtrx__.ld(),
                                       &linalg_const<double_complex>::one(),
                                       wf_out__->mt_coeffs().prime().at<GPU>(0, j0__), wf_out__->mt_coeffs().prime().ld(),
-                                      0);
+                                      stream_id);
                 }
             }
 
@@ -127,7 +127,7 @@ inline void transform(device_t                     pu__,
                                   reinterpret_cast<double*>(mtrx__.template at<GPU>(irow0__, jcol0__, buffer_id)), mtrx__.ld(),
                                   &linalg_const<double>::one(),
                                   reinterpret_cast<double*>(wf_out__->pw_coeffs().prime().at<GPU>(0, j0__)), 2 * wf_out__->pw_coeffs().prime().ld(),
-                                  0);
+                                  stream_id);
                 if (wf_in__->has_mt()) {
                     TERMINATE("not implemented");
                 }
@@ -381,7 +381,7 @@ inline void transform(device_t                     pu__,
             if (pu__ == GPU) {
                 acc::copyin(submatrix.template at<GPU>(0,0,s), submatrix.ld(),
                             submatrix.template at<CPU>(0,0,s), submatrix.ld(),
-                            nrow, ncol, 0);
+                            nrow, ncol, s);
                 /* wait for the data copy; as soon as this is done, CPU buffer is free and can be reused */
 //                 acc::sync_stream(0);
             }
