@@ -148,6 +148,10 @@ class FFT3D
         
         memory_t host_memory_type_;
         
+        /// Maximum number of z-columns ever transformed.
+        /** This is used to recreate the cuFFT plan only when the number of columns has increased */ 
+        int zcol_count_max_{0};
+        
         /// Defines the distribution of G-vectors between the MPI ranks of FFT communicator. 
         Gvec_partition const* gvec_partition_{nullptr};
 
@@ -661,6 +665,7 @@ class FFT3D
             #ifdef __GPU
             if (pu_ == GPU) {
                 cufft::destroy_plan_handle(cufft_plan_xy_);
+                cufft::destroy_plan_handle(cufft_plan_z_);
             }
             #endif
         }
@@ -829,17 +834,23 @@ class FFT3D
                     }
                     map_gvec_to_fft_buffer_x0y0_.copy<memory_t::host, memory_t::device>();
                 }
-
-                cufft::create_plan_handle(&cufft_plan_z_);
-                cufft::set_stream(cufft_plan_z_, cufft_stream_id);
                 
                 int dim_z[] = {grid_.size(2)};
-                cufft::create_batch_plan(cufft_plan_z_, 1, dim_z, dim_z, 1, grid_.size(2), gvec__.zcol_count_fft(), 0);
-
                 int dims_xy[] = {grid_.size(1), grid_.size(0)};
-                /* worksize for z and xy transforms */
+
+                /* check if we need to create a batch cuFFT plan for larger number of z-columns */
+                if (gvec__.zcol_count_fft() > zcol_count_max_) {
+                    /* now this is the maximum number of columns */
+                    zcol_count_max_ = gvec__.zcol_count_fft();
+                    cufft::create_plan_handle(&cufft_plan_z_);
+                    cufft::set_stream(cufft_plan_z_, cufft_stream_id);
+
+                    cufft::create_batch_plan(cufft_plan_z_, 1, dim_z, dim_z, 1, grid_.size(2), zcol_count_max_, 0);
+                }
+                
+                /* maximum worksize of z and xy transforms */
                 work_size = std::max(cufft::get_work_size(2, dims_xy, local_size_z_),
-                                     cufft::get_work_size(1, dim_z, gvec__.zcol_count_fft()));
+                                     cufft::get_work_size(1, dim_z, zcol_count_max_));
                
                 /* allocate cufft work buffer */
                 cufft_work_buf_ = mdarray<char, 1>(work_size, memory_t::device, "FFT3D.cufft_work_buf_");
@@ -869,7 +880,6 @@ class FFT3D
                 cufft_work_buf_.deallocate_on_device();
                 map_gvec_to_fft_buffer_.deallocate_on_device();
                 map_gvec_to_fft_buffer_x0y0_.deallocate_on_device();
-                cufft::destroy_plan_handle(cufft_plan_z_);
             }
             #endif
             gvec_partition_ = nullptr;

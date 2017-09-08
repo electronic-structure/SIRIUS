@@ -981,16 +981,16 @@ class Density
                 STOP();
                 /* mix in real-space in case of FP-LAPW */
                 mixer_input();
-                rms = mixer_->mix();
+                rms = mixer_->mix(ctx_.settings().mixer_rss_min_);
                 mixer_output();
                 /* get rho(G) after mixing */
                 rho_->fft_transform(-1);
             } else {
                 /* mix in G-space in case of PP */
                 mixer_input();
-                rms = lf_mixer_->mix();
+                rms = lf_mixer_->mix(ctx_.settings().mixer_rss_min_);
                 if (hf_mixer_) {
-                    rms += hf_mixer_->mix();
+                    rms += hf_mixer_->mix(ctx_.settings().mixer_rss_min_);
                 }
                 mixer_output();
             }
