@@ -758,6 +758,9 @@ struct remap_gvec_to_shells
     splindex<block> spl_num_gsh;
     mdarray<int, 2> gvec_remapped_;
     mdarray<int, 1> gvec_shell_remapped_;
+    
+    /* mapping beween G-shell index and local G-vector index */
+    std::map<int, std::vector<int>> gvec_sh_;
 
     Communicator const& comm_;
 
@@ -824,6 +827,11 @@ struct remap_gvec_to_shells
         for (int ig = 0; ig < a2a_recv.size(); ig++) {
             vector3d<int> G(&gvec_remapped_(0, ig));
             idx_gvec[G] = ig;
+            int igsh = gvec_shell_remapped_(ig);
+            if (!gvec_sh_.count(igsh)) {
+                gvec_sh_[igsh] = std::vector<int>();
+            }
+            gvec_sh_[igsh].push_back(ig);
         }
     }
 

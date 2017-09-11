@@ -660,8 +660,9 @@ inline void Symmetry::symmetrize_function(double_complex* f_pw__,
     auto v = remap_gvec__.remap_forward(f_pw__);
 
     std::vector<double_complex> sym_f_pw(v.size(), 0);
+    std::vector<bool> is_done(v.size(), false);
 
-    double* ptr = (double*)&sym_f_pw[0];
+    double norm = 1 / double(num_mag_sym());
 
     sddk::timer t1("sirius::Symmetry::symmetrize_function_pw|local");
     #pragma omp parallel
@@ -673,19 +674,20 @@ inline void Symmetry::symmetrize_function(double_complex* f_pw__,
             vector3d<int> G(&remap_gvec__.gvec_remapped_(0, igloc));
 
             int igsh = remap_gvec__.gvec_shell_remapped(igloc);
-
-            if (igsh % nt == tid) {
+                
+            /* each thread is working on full shell of G-vectors */
+            if (igsh % nt == tid && !is_done[igloc]) {
+                double_complex zsym(0, 0);
 
                 for (int i = 0; i < num_mag_sym(); i++) {
                     /* full space-group symmetry operation is {R|t} */
                     auto R = magnetic_group_symmetry(i).spg_op.R;
-                    //auto t = magnetic_group_symmetry(i).spg_op.t;
-                
-                    //double_complex z = v[igloc] * std::exp(double_complex(0, twopi * (G * t)));
-                    double_complex z = v[igloc] * sym_phase_factors__(0, G[0], i) *
-                                                  sym_phase_factors__(1, G[1], i) *
-                                                  sym_phase_factors__(2, G[2], i);
 
+                    /* phase factor exp^{i * 2 * pi * {\vec G} * {\vec \tau})} */
+                    double_complex phase = sym_phase_factors__(0, G[0], i) *
+                                           sym_phase_factors__(1, G[1], i) *
+                                           sym_phase_factors__(2, G[2], i);
+ 
                     /* apply symmetry operation to the G-vector;
                      * remember that we move R from acting on x to acting on G: G(Rx) = (GR)x;
                      * GR is a vector-matrix multiplication [G][.....]
@@ -701,33 +703,57 @@ inline void Symmetry::symmetrize_function(double_complex* f_pw__,
                     if (ig_rot == -1) {
                         gv_rot = gv_rot * (-1);
                         ig_rot = remap_gvec__.index_by_gvec(gv_rot);
-                        assert(ig_rot >=0 && ig_rot < (int)v.size());
+                        assert(ig_rot >= 0 && ig_rot < (int)v.size());
+                        zsym += std::conj(v[ig_rot]) * phase;
                       
-                        //#pragma omp atomic update
-                        ptr[2 * ig_rot] += z.real();
-
-                        //#pragma omp atomic update
-                        ptr[2 * ig_rot + 1] -= z.imag();
                     } else {
-                        assert(ig_rot >=0 && ig_rot < (int)v.size());
-                      
-                        //#pragma omp atomic update
-                        ptr[2 * ig_rot] += z.real();
+                        assert(ig_rot >= 0 && ig_rot < (int)v.size());
 
-                        //#pragma omp atomic update
-                        ptr[2 * ig_rot + 1] += z.imag();
+                        zsym += v[ig_rot] * std::conj(phase);
                     }
-                }
+                } /* loop over symmetries */
+
+                zsym *= norm;
+
+                for (int i = 0; i < num_mag_sym(); i++) {
+                    /* full space-group symmetry operation is {R|t} */
+                    auto R = magnetic_group_symmetry(i).spg_op.R;
+
+                    /* phase factor exp^{i * 2 * pi * {\vec G} * {\vec \tau})} */
+                    double_complex phase = sym_phase_factors__(0, G[0], i) *
+                                           sym_phase_factors__(1, G[1], i) *
+                                           sym_phase_factors__(2, G[2], i);
+ 
+                
+                    /* apply symmetry operation to the G-vector;
+                     * remember that we move R from acting on x to acting on G: G(Rx) = (GR)x;
+                     * GR is a vector-matrix multiplication [G][.....]
+                     *                                         [..R..]
+                     *                                         [.....]
+                     * which can also be written as matrix^{T}-vector operation
+                     */
+                    auto gv_rot = transpose(R) * G;
+
+                    /* index of a rotated G-vector */
+                    int ig_rot = remap_gvec__.index_by_gvec(gv_rot);
+
+                    if (ig_rot == -1) {
+                        gv_rot = gv_rot * (-1);
+                        ig_rot = remap_gvec__.index_by_gvec(gv_rot);
+                        assert(ig_rot >= 0 && ig_rot < (int)v.size());
+                        sym_f_pw[ig_rot] = std::conj(zsym * phase);
+                      
+                    } else {
+                        assert(ig_rot >= 0 && ig_rot < (int)v.size());
+
+                        sym_f_pw[ig_rot] = zsym * phase;
+                    }
+                    is_done[ig_rot] = true;
+                } /* loop over symmetries */
             }
-        }
+        } /* loop over igloc */
     }
     t1.stop();
-
-    double nrm = 1 / double(num_mag_sym());
-    #pragma omp parallel for schedule(static)
-    for (int ig = 0; ig < remap_gvec__.a2a_recv.size(); ig++) {
-       sym_f_pw[ig] *= nrm;
-    }
 
     remap_gvec__.remap_backward(sym_f_pw, f_pw__);
 }
