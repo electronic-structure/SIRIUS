@@ -160,17 +160,13 @@ class Atom
                 d_mtrx_so_.zero();
 
                 for (int xi2 = 0; xi2 < nbf; xi2++) {
-                    int lm2    = type().indexb(xi2).lm;
                     int l2     = type().indexb(xi2).l;
                     int idxrf2 = type().indexb(xi2).idxrf;
                     double j2  = type().indexb(xi2).j;
-                    int m2     = type().indexb(xi2).m;
                     for (int xi1 = 0; xi1 < nbf; xi1++) {
-                        int lm1    = type().indexb(xi1).lm;
                         int l1     = type().indexb(xi1).l;
                         int idxrf1 = type().indexb(xi1).idxrf;
                         double j1  = type().indexb(xi1).j;
-                        int m1     = type().indexb(xi1).m;
                         if ((l1 == l2) && (fabs(j1 - j2) < 1e-8)) {
                             d_mtrx_so_(xi1, xi2, 0) =
                                 type().pp_desc().d_mtrx_ion(idxrf1, idxrf2) * type().f_coefficients(xi1, xi2, 0, 0);
