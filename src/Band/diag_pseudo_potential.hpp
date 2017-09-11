@@ -300,7 +300,7 @@ inline int Band::diag_pseudo_potential_davidson(K_point*       kp__,
                     if (converge_by_energy) {
                         transform<T>(ctx_.processing_unit(), 1.0, std::vector<Wave_functions*>({&hphi, &ophi}), 0, N, evec, 0, 0, 0.0, {&hpsi, &opsi}, 0, num_bands);
                     }
- 
+
                     /* update basis functions, hphi and ophi */
                     for (int ispn = 0; ispn < num_sc; ispn++) {
                         phi.component(ispn).copy_from(psi.component(ctx_.num_mag_dims() == 3 ? ispn : ispin_step), 0, num_bands, ctx_.processing_unit());
@@ -311,13 +311,13 @@ inline int Band::diag_pseudo_potential_davidson(K_point*       kp__,
                     N = num_bands;
                 }
             }
-            
+
             /* expand variational subspace with new basis vectors obtatined from residuals */
             phi.copy_from(res, 0, n, N, ctx_.processing_unit());
 
             /* apply Hamiltonian and overlap operators to the new basis functions */
             apply_h_o<T>(kp__, ispin_step, N, n, phi, hphi, ophi, d_op__, q_op__);
-            
+
             if (itso.orthogonalize_) {
                 orthogonalize<T>(ctx_.processing_unit(), num_sc, N, n, phi, hphi, ophi, ovlp, res.component(0));
             }
@@ -326,7 +326,7 @@ inline int Band::diag_pseudo_potential_davidson(K_point*       kp__,
              * N is the number of previous basis functions
              * n is the number of new basis functions */
             set_subspace_mtrx(num_sc, N, n, phi, hphi, hmlt, hmlt_old);
-            
+
             //== static int counter{0};
             //== std::stringstream s;
             //== if (ctx_.processing_unit() == CPU) {
@@ -364,7 +364,7 @@ inline int Band::diag_pseudo_potential_davidson(K_point*       kp__,
             N += n;
 
             eval_old = eval;
-            
+
             sddk::timer t1("sirius::Band::diag_pseudo_potential_davidson|evp");
             if (itso.orthogonalize_) {
                 /* solve standard eigen-value problem with the size N */
@@ -388,7 +388,7 @@ inline int Band::diag_pseudo_potential_davidson(K_point*       kp__,
                 }
             }
             t1.stop();
-            
+
             if (ctx_.control().verbosity_ >= 2 && kp__->comm().rank() == 0) {
                 DUMP("step: %i, current subspace size: %i, maximum subspace size: %i", k, N, num_phi);
                 if (ctx_.control().verbosity_ >= 4) {
