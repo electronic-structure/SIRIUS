@@ -681,7 +681,7 @@ inline void Symmetry::symmetrize_function(double_complex* f_pw__,
             vector3d<int> G(&remap_gvec__.gvec_remapped_(0, igloc));
 
             int igsh = remap_gvec__.gvec_shell_remapped(igloc);
-                
+
             /* each thread is working on full shell of G-vectors */
             if (igsh % nt == tid && !is_done[igloc]) {
                 double_complex zsym(0, 0);
@@ -710,7 +710,7 @@ inline void Symmetry::symmetrize_function(double_complex* f_pw__,
                         ig_rot = remap_gvec__.index_by_gvec(gv_rot);
                         assert(ig_rot >= 0 && ig_rot < (int)v.size());
                         zsym += std::conj(v[ig_rot]) * phase;
-                      
+
                     } else {
                         assert(ig_rot >= 0 && ig_rot < (int)v.size());
 
@@ -744,7 +744,7 @@ inline void Symmetry::symmetrize_function(double_complex* f_pw__,
                         ig_rot = remap_gvec__.index_by_gvec(gv_rot);
                         assert(ig_rot >= 0 && ig_rot < (int)v.size());
                         sym_f_pw[ig_rot] = std::conj(zsym * phase);
-                      
+
                     } else {
                         assert(ig_rot >= 0 && ig_rot < (int)v.size());
 
