@@ -115,8 +115,8 @@ inline void Non_local_operator<double_complex>::apply(
             work_.allocate(memory_t::device);
         }
     }
-/* compute O * <beta|phi> for atoms in a chunk */
-#pragma omp parallel for
+    /* compute O * <beta|phi> for atoms in a chunk */
+    #pragma omp parallel for
     for (int i = 0; i < bp_chunks(chunk__).num_atoms_; i++) {
         /* number of beta functions for a given atom */
         int nbf  = bp_chunks(chunk__).desc_(beta_desc_idx::nbf, i);
@@ -149,8 +149,8 @@ inline void Non_local_operator<double_complex>::apply(
         }
         case GPU: {
 #ifdef __GPU
-/* wait for previous zgemms */
-#pragma omp parallel
+            /* wait for previous zgemms */
+            #pragma omp parallel
             acc::sync_stream(omp_get_thread_num());
 
             linalg<GPU>::gemm(0, 0, num_gkvec_loc, n__, nbeta, &linalg_const<double_complex>::one(), beta_gk.at<GPU>(),
@@ -164,8 +164,12 @@ inline void Non_local_operator<double_complex>::apply(
 }
 
 template <>
-inline void Non_local_operator<double>::apply(
-    int chunk__, int ispn__, wave_functions& op_phi__, int idx0__, int n__, matrix<double>& beta_phi__)
+inline void Non_local_operator<double>::apply(int chunk__,
+                                              int ispn__,
+                                              wave_functions& op_phi__,
+                                              int idx0__,
+                                              int n__,
+                                              matrix<double>& beta_phi__)
 {
     PROFILE("sirius::Non_local_operator::apply");
 
@@ -187,8 +191,8 @@ inline void Non_local_operator<double>::apply(
         }
     }
 
-/* compute O * <beta|phi> */
-#pragma omp parallel for
+    /* compute O * <beta|phi> */
+    #pragma omp parallel for
     for (int i = 0; i < bp_chunks(chunk__).num_atoms_; i++) {
         /* number of beta functions for a given atom */
         int nbf  = bp_chunks(chunk__).desc_(beta_desc_idx::nbf, i);
@@ -222,8 +226,8 @@ inline void Non_local_operator<double>::apply(
         }
         case GPU: {
 #ifdef __GPU
-/* wait for previous zgemms */
-#pragma omp parallel
+            /* wait for previous zgemms */
+            #pragma omp parallel
             acc::sync_stream(omp_get_thread_num());
 
             linalg<GPU>::gemm(0, 0, 2 * num_gkvec_loc, n__, nbeta, &linalg_const<double>::one(),
