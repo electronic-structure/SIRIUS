@@ -71,6 +71,8 @@ class Simulation_context_base: public Simulation_parameters
         /// G-vectors within the 2 * |Gmax^{WF}| cutoff.
         Gvec gvec_coarse_;
 
+        std::unique_ptr<remap_gvec_to_shells> remap_gvec_; 
+
         /// Creation time of the parameters.
         timeval start_time_;
 
@@ -176,6 +178,11 @@ class Simulation_context_base: public Simulation_parameters
         Gvec const& gvec_coarse() const
         {
             return gvec_coarse_;
+        }
+
+        remap_gvec_to_shells const& remap_gvec() const
+        {
+            return *remap_gvec_;
         }
 
         BLACS_grid const& blacs_grid() const
@@ -427,6 +434,8 @@ inline void Simulation_context_base::init_fft()
 
     /* create a list of G-vectors for dense FFT grid; G-vectors are divided between all available MPI ranks.*/
     gvec_ = Gvec(rlv, pw_cutoff(), comm(), comm_fft(), control().reduce_gvec_);
+
+    remap_gvec_ = std::unique_ptr<remap_gvec_to_shells>(new remap_gvec_to_shells(comm(), gvec()));
 
     /* prepare fine-grained FFT driver for the entire simulation */
     fft_->prepare(gvec_.partition());

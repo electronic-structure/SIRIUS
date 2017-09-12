@@ -751,16 +751,29 @@ inline bool Gvec_partition::reduced() const
     return gvec_->reduced();
 }
 
+/// Helper class to redistribute G-vectors for symmetrization.
+/** G-vectors are remapped from default distribution which balances both the local number 
+ *  of z-columns and G-vectors to the distributio of G-vector shells in which each MPI rank stores
+ *  local set of complete G-vector shells such that the "rotated" G-vector remains on the same MPI rank. */  
 struct remap_gvec_to_shells
 {
+    /// Sending counts and offsets.
     block_data_descriptor a2a_send;
+
+    /// Receiving counts and offsets.
     block_data_descriptor a2a_recv;
-    splindex<block> spl_num_gsh;
+
+    /// Split global index of G-shells between MPI ranks.
+    splindex<block_cyclic> spl_num_gsh;
+    
+    /// List of G-vectors in the remapped storage.
     mdarray<int, 2> gvec_remapped_;
+    
+    /// Mapping between index of local G-vector and global index of G-vector shell.
     mdarray<int, 1> gvec_shell_remapped_;
     
     /* mapping beween G-shell index and local G-vector index */
-    std::map<int, std::vector<int>> gvec_sh_;
+    //std::map<int, std::vector<int>> gvec_sh_;
 
     Communicator const& comm_;
 
@@ -778,8 +791,8 @@ struct remap_gvec_to_shells
         a2a_send = block_data_descriptor(comm_.size());
         a2a_recv = block_data_descriptor(comm_.size());
 
-        /* split G-vector shells between ranks */
-        spl_num_gsh = splindex<block>(gvec_.num_shells(), comm_.size(), comm_.rank());
+        /* split G-vector shells between ranks in cyclic order */
+        spl_num_gsh = splindex<block_cyclic>(gvec_.num_shells(), comm_.size(), comm_.rank(), 1);
 
         /* each rank sends a fraction of its local G-vectors to other ranks */
         /* count this fraction */
@@ -827,30 +840,30 @@ struct remap_gvec_to_shells
         for (int ig = 0; ig < a2a_recv.size(); ig++) {
             vector3d<int> G(&gvec_remapped_(0, ig));
             idx_gvec[G] = ig;
-            int igsh = gvec_shell_remapped_(ig);
-            if (!gvec_sh_.count(igsh)) {
-                gvec_sh_[igsh] = std::vector<int>();
-            }
-            gvec_sh_[igsh].push_back(ig);
+            //int igsh = gvec_shell_remapped_(ig);
+            //if (!gvec_sh_.count(igsh)) {
+            //    gvec_sh_[igsh] = std::vector<int>();
+            //}
+            //gvec_sh_[igsh].push_back(ig);
         }
     }
 
-    int index_by_gvec(vector3d<int> G__)
+    int index_by_gvec(vector3d<int> G__) const
     {
         if (idx_gvec.count(G__)) {
-            return idx_gvec[G__];
+            return idx_gvec.at(G__);
         } else {
             return -1;
         }
     }
 
-    int gvec_shell_remapped(int igloc__)
+    int gvec_shell_remapped(int igloc__) const
     {
         return gvec_shell_remapped_(igloc__);
     }
 
     template <typename T>
-    std::vector<T> remap_forward(T* data__)
+    std::vector<T> remap_forward(T* data__) const
     {
         PROFILE("sddk::remap_gvec_to_shells|remap_forward");
 
@@ -873,7 +886,7 @@ struct remap_gvec_to_shells
     }
 
     template <typename T>
-    void remap_backward(std::vector<T> buf__, T* data__)
+    void remap_backward(std::vector<T> buf__, T* data__) const
     {
         PROFILE("sddk::remap_gvec_to_shells|remap_backward");
 

@@ -289,16 +289,16 @@ class Symmetry
          *  \f]
          */
         void symmetrize_function(double_complex* f_pw__, 
-                                 remap_gvec_to_shells& remap_gvec__,
+                                 remap_gvec_to_shells const& remap_gvec__,
                                  mdarray<double_complex, 3> const& sym_phase_factors__) const;
 
         void symmetrize_vector_function(double_complex* fz_pw__,
-                                        remap_gvec_to_shells& remap_gvec__) const;
+                                        remap_gvec_to_shells const& remap_gvec__) const;
 
         void symmetrize_vector_function(double_complex* fx_pw__,
                                         double_complex* fy_pw__,
                                         double_complex* fz_pw__,
-                                        remap_gvec_to_shells& remap_gvec__) const;
+                                        remap_gvec_to_shells const& remap_gvec__) const;
 
         //void symmetrize_function(double_complex* f_pw__,
         //                         Gvec const& gvec__,
@@ -652,7 +652,7 @@ inline void Symmetry::check_gvec_symmetry(Gvec const& gvec__, Communicator const
 }
 
 inline void Symmetry::symmetrize_function(double_complex* f_pw__,
-                                          remap_gvec_to_shells& remap_gvec__,
+                                          remap_gvec_to_shells const& remap_gvec__,
                                           mdarray<double_complex, 3> const& sym_phase_factors__) const
 {
     PROFILE("sirius::Symmetry::symmetrize_function_pw");
@@ -663,6 +663,13 @@ inline void Symmetry::symmetrize_function(double_complex* f_pw__,
     std::vector<bool> is_done(v.size(), false);
 
     double norm = 1 / double(num_mag_sym());
+
+    auto phase_factor = [&](int isym, vector3d<int> G)
+    {
+        return sym_phase_factors__(0, G[0], isym) *
+               sym_phase_factors__(1, G[1], isym) *
+               sym_phase_factors__(2, G[2], isym);
+    };
 
     sddk::timer t1("sirius::Symmetry::symmetrize_function_pw|local");
     #pragma omp parallel
@@ -684,9 +691,7 @@ inline void Symmetry::symmetrize_function(double_complex* f_pw__,
                     auto R = magnetic_group_symmetry(i).spg_op.R;
 
                     /* phase factor exp^{i * 2 * pi * {\vec G} * {\vec \tau})} */
-                    double_complex phase = sym_phase_factors__(0, G[0], i) *
-                                           sym_phase_factors__(1, G[1], i) *
-                                           sym_phase_factors__(2, G[2], i);
+                    double_complex phase = phase_factor(i, G);
  
                     /* apply symmetry operation to the G-vector;
                      * remember that we move R from acting on x to acting on G: G(Rx) = (GR)x;
@@ -720,11 +725,8 @@ inline void Symmetry::symmetrize_function(double_complex* f_pw__,
                     auto R = magnetic_group_symmetry(i).spg_op.R;
 
                     /* phase factor exp^{i * 2 * pi * {\vec G} * {\vec \tau})} */
-                    double_complex phase = sym_phase_factors__(0, G[0], i) *
-                                           sym_phase_factors__(1, G[1], i) *
-                                           sym_phase_factors__(2, G[2], i);
+                    double_complex phase = phase_factor(i, G);
  
-                
                     /* apply symmetry operation to the G-vector;
                      * remember that we move R from acting on x to acting on G: G(Rx) = (GR)x;
                      * GR is a vector-matrix multiplication [G][.....]
@@ -889,7 +891,7 @@ inline void Symmetry::symmetrize_function(double_complex* f_pw__,
 //    }
 //}
 inline void Symmetry::symmetrize_vector_function(double_complex* fz_pw__,
-                                                 remap_gvec_to_shells& remap_gvec__) const
+                                                 remap_gvec_to_shells const& remap_gvec__) const
 {
     PROFILE("sirius::Symmetry::symmetrize_vector_function_pw");
     
@@ -1051,7 +1053,7 @@ inline void Symmetry::symmetrize_vector_function(double_complex* fz_pw__,
 inline void Symmetry::symmetrize_vector_function(double_complex* fx_pw__,
                                                  double_complex* fy_pw__,
                                                  double_complex* fz_pw__,
-                                                 remap_gvec_to_shells& remap_gvec__) const
+                                                 remap_gvec_to_shells const& remap_gvec__) const
 {
     PROFILE("sirius::Symmetry::symmetrize_vector_function_pw");
 
