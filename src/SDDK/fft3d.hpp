@@ -215,31 +215,6 @@ class FFT3D
                                 (cuDoubleComplex*)cufft_work_buf_.at<GPU>(),
                                 (cuDoubleComplex*)fft_buffer_aux__.at<GPU>());
 
-//                        cufft_work_buf_.copy<memory_t::device, memory_t::host>();
-//                        fft_buffer_aux__.copy<memory_t::device, memory_t::host>(); 
-//
-//                        double_complex* oldb = (double_complex*)cufft_work_buf_.at<CPU>();
-//                        double_complex* newb = (double_complex*)fft_buffer_aux__.at<CPU>();
-//
-//
-//    for (int r=0; r<comm_.size(); r++)
-//    {
-//        int zsize = z_sizes_[r];
-//        int zoff  = z_offsets_[r];
-//
-//        for (int ic=0; ic<num_zcol_local; ic++)
-//        {
-//            for (int iz=0; iz<zsize; iz++)
-//            {
-//                if ( oldb[zoff + iz + ic * grid_.size(2)] != 
-//                        newb[zoff * num_zcol_local + ic * zsize + iz] )
-//                {
-//                    std::cout << "error at r="<<r<<" ic="<<ic<<" iz="<<iz<<std::endl;
-//                    return ; 
-//                }
-//            }
-//        }
-//    }
                         break;
                     }
                     case -1: {
@@ -423,65 +398,8 @@ class FFT3D
                 }
             }
 
-//            mdarray<double_complex, 1> test_buf(fft_buffer_aux__.size(), memory_t::host|memory_t::device);
-//            mdarray<double_complex, 1> data_tmp(gvec__.gvec_count_fft());
-//
-//            acc::copyout<double_complex>(&data_tmp(0),data__,gvec__.gvec_count_fft());
-
             transform_z_serial<direction, data_ptr_type>(gvec__, data__, fft_buffer_aux__);
             
-//            transform_z_serial<direction, CPU>(gvec__, &data_tmp(0), test_buf);
-//           
-//            fft_buffer_aux__.copy<memory_t::device,memory_t::host>();
-//
-//            std::cout<<"inp data"<<std::endl;
-//
-//            for(int i=0; i< data_tmp.size(); i++){
-//                std::cout<< data_tmp(i)<<std::endl;
-//            }
-//
-//            std::cout<<"out data"<<std::endl;
-//            for(int i=0; i < grid_.size(2) * gvec__.zcol_count_fft(); i++) {
-//                if( std::abs(fft_buffer_aux__(i) - test_buf(i)) > 10E-10)
-//                {
-//                    std::cout<<i<<" diff cpu "<< test_buf(i)<<" gpu "<<fft_buffer_aux__(i)<<std::endl;
-//                }
-//                else
-//                {
-//                    std::cout<<i<<" eq cpu "<< test_buf(i)<<" gpu "<<fft_buffer_aux__(i)<<std::endl;
-//                }
-//            }
-            
-            
-//            if (direction == 1) {
-//                
-//                if (comm_.size() > 1) {
-//                    sddk::timer t("sddk::FFT3D::transform_z|comm");
-//
-//                    block_data_descriptor send(comm_.size());
-//                    block_data_descriptor recv(comm_.size());
-//                    for (int r = 0; r < comm_.size(); r++) {
-//                        send.counts[r] = spl_z_.local_size(r)    * gvec__.zcol_distr_fft().counts[rank];
-//                        recv.counts[r] = spl_z_.local_size(rank) * gvec__.zcol_distr_fft().counts[r];
-//                    }
-//                    send.calc_offsets();
-//                    recv.calc_offsets();
-//
-//                    for (int r = 0; r < comm_.size(); r++) { 
-//                        std::cout<<r<<" send.counts "<<send.counts[r]<<" recv.counts "<<recv.counts[r]<<std::endl;
-//                        std::cout<<r<<" send.offsets "<<send.offsets[r]<<" recv.offsets "<<recv.offsets[r]<<std::endl;
-//                    }
-//                    /* scatter z-columns */
-//                    if (data_ptr_type == GPU) {
-//                        comm_.alltoall(fft_buffer_aux__.at<GPU>(), &send.counts[0], &send.offsets[0], fft_buffer_.at<GPU>(), &recv.counts[0], &recv.offsets[0]);
-//                    }
-//                    if (data_ptr_type == CPU) {
-//                        comm_.alltoall(&fft_buffer_aux__[0], &send.counts[0], &send.offsets[0], &fft_buffer_[0], &recv.counts[0], &recv.offsets[0]);
-//                        std::copy(&fft_buffer_[0], &fft_buffer_[0] + gvec__.num_zcol() * local_size_z_, &fft_buffer_aux__[0]);
-//                    }
-//                }
-//            }
-
             if (direction == 1) {
                 /* scatter z-columns between slabs of FFT buffer */
                 if (comm_.size() > 1) {
@@ -814,6 +732,24 @@ class FFT3D
                 cufft::create_batch_plan(cufft_plan_xy_, 2, dim_xy, dim_xy, 1, grid_.size(0) * grid_.size(1), local_size_z_, auto_alloc);
                 /* stream #0 will execute FFTs */
                 cufft::set_stream(cufft_plan_xy_, 0);
+
+                /* allocate arrays with z- offsets and sizes on the host and device*/
+                z_offsets_ = mdarray<int, 1>(comm_.size(), memory_t::host | memory_t::device);
+                z_sizes_   = mdarray<int, 1>(comm_.size(), memory_t::host | memory_t::device);
+
+                /* copy z- offsets and sizes in mdarray since we can store it also on device*/
+                for (int r = 0; r < comm_.size(); r++) {
+                    z_offsets_(r) = spl_z_.global_offset(r);
+                    z_sizes_(r) = spl_z_.local_size(r);
+
+                    if (max_zloc_size_ < z_sizes_(r)) {
+                        max_zloc_size_ = z_sizes_(r);
+                    }
+                }
+
+                /* copy them to device */
+                z_offsets_.copy<memory_t::host, memory_t::device>();
+                z_sizes_.copy<memory_t::host, memory_t::device>();
             }
             #endif
         }
@@ -1016,24 +952,6 @@ class FFT3D
                 
                 /* use as temp array also after z-transform*/
                 work_size = std::max(work_size, sizeof(double_complex) * grid_.size(2) * local_size_z_);
-
-                /* allocate arrays with z- offsets and sizes on the host and device*/
-                z_offsets_ = mdarray<int, 1>(comm_.size(), memory_t::host | memory_t::device);
-                z_sizes_   = mdarray<int, 1>(comm_.size(), memory_t::host | memory_t::device);
-                
-                /* copy z- offsets and sizes in mdarray since we can store it also on device*/
-                for (int r = 0; r < comm_.size(); r++) {
-                    z_offsets_(r) = spl_z_.global_offset(r);
-                    z_sizes_(r) = spl_z_.local_size(r);
-                    
-                    if (max_zloc_size_ < z_sizes_(r)) {
-                        max_zloc_size_ = z_sizes_(r);
-                    }
-                }
-                
-                /* copy them to device */
-                z_offsets_.copy<memory_t::host, memory_t::device>();
-                z_sizes_.copy<memory_t::host, memory_t::device>(); 
 
                 /* allocate cufft work buffer */
                 cufft_work_buf_ = mdarray<char, 1>(work_size, memory_t::device, "FFT3D.cufft_work_buf_");
