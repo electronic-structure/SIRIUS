@@ -7,8 +7,7 @@ inline void Potential::xc_mt_nonmagnetic(Radial_grid<double> const& rgrid,
 {
     PROFILE("sirius::Potential::xc_mt_nonmagnetic");
 
-    bool is_gga = false;
-    for (auto& ixc: xc_func) if (ixc.is_gga()) is_gga = true;
+    bool is_gga = is_gradient_correction();
 
     Spheric_function_gradient<spatial, double> grad_rho_tp(sht_->num_points(), rgrid);
     Spheric_function<spatial, double> lapl_rho_tp;
@@ -129,12 +128,7 @@ inline void Potential::xc_mt_magnetic(Radial_grid<double> const& rgrid,
 {
     PROFILE("sirius::Potential::xc_mt_magnetic");
 
-    bool is_gga = false;
-    for (auto& ixc: xc_func) {
-        if (ixc.is_gga()) {
-            is_gga = true;
-        }
-    }
+    bool is_gga = is_gradient_correction();
 
     Spheric_function_gradient<spatial, double> grad_rho_up_tp(sht_->num_points(), rgrid);
     Spheric_function_gradient<spatial, double> grad_rho_dn_tp(sht_->num_points(), rgrid);
