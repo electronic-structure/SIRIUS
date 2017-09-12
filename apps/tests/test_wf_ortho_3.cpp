@@ -34,13 +34,14 @@ void test_wf_ortho(BLACS_grid const& blacs_grid__,
 
     dmatrix<double_complex> ovlp(2 * num_bands__, 2 * num_bands__, blacs_grid__, bs__, bs__);
 
+#ifdef __GPU
     if (pu == GPU) {
         phi.pw_coeffs().allocate_on_device();
         tmp.pw_coeffs().allocate_on_device();
         phi.pw_coeffs().copy_to_device(0, 2 * num_bands__);
         ovlp.allocate(memory_t::device);
     }
-    
+#endif
     
     orthogonalize<double_complex>(0, num_bands__, phi, ovlp, tmp);
     orthogonalize<double_complex>(num_bands__, num_bands__, phi, ovlp, tmp);
