@@ -1,0 +1,33 @@
+{
+    "_comment"    : "Remember to change optimization flags when targeting  Marconi A1, A2 or A3 (BDW, KNL, SKL). Compile using modules: module load autoload intelmpi mkl gsl libxc hdf5",
+
+    "MPI_CXX"     : "mpiicpc",
+    "comment"     : "your MPI C++ compiler",
+    
+    "MPI_CXX_OPT" : "-O3 -qopenmp -std=c++11 -xMIC-AVX512 -DNDEBUG -D__SCALAPACK -D__ELPA -I$(MKLROOT)/include/fftw/ -I$(HDF5_INC) -I$(GSL_INC) -I$(LIBXC_INC)",
+    "comment"     : "compiler options for the SIRIUS library",
+    
+    "MPI_FC"      : "mpiifort",
+    "MPI_FC_OPT"  : "-O3 -qopenmp -cpp -xMIC-AVX512 ",
+
+    "CC"          : "icc -qopenmp ",
+    "comment"     : "plain C compiler for the supplementary libraries",
+    
+    "CXX"         : "icpc",
+    "comment"     : "plain C++ compiler for the supplementary libraries",
+    
+    "FC"          : "ifort",
+    "comment"     : "plain Fortran compiler for the supplementary libraries",
+    
+    "FCCPP"       : "cpp",
+    "comment"     : "Fortran preprocessor",
+
+    "NVCC"        : "",
+    "NVCC_OPT"    : "",
+    
+    "SYSTEM_LIBS" : " $(MKLROOT)/lib/intel64/libmkl_scalapack_lp64.a -Wl,--start-group  $(MKLROOT)/lib/intel64/libmkl_intel_lp64.a $(MKLROOT)/lib/intel64/libmkl_intel_thread.a $(MKLROOT)/lib/intel64/libmkl_core.a $(MKLROOT)/lib/intel64/libmkl_blacs_intelmpi_lp64.a -Wl,--end-group -lpthread -L$(LIBXC_LIB) -L$(GSL_LIB) -L$(HDF5_LIB) -lgsl -lgslcblas -lhdf5 -lxc -lifcore",
+    "comment"     : "only spg libraries compiled by SIRIUS",
+    
+    "install"     : ["spg"],
+    "comment"     : "additional libraries to download and configure"
+}
