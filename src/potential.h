@@ -1135,7 +1135,7 @@ class Potential
         double mix()
         {
             mixer_input();
-            double rms = mixer_->mix();
+            double rms = mixer_->mix(ctx_.settings().mixer_rss_min_);
             mixer_output();
             return rms;
         }

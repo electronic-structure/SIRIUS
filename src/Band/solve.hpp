@@ -39,14 +39,15 @@ inline void Band::solve_with_second_variation(K_point& kp__, Potential& potentia
     kp__.generate_spinor_wave_functions();
 }
 
-inline void Band::solve_with_single_variation(K_point& kp__, Potential& potential__) const
+inline int Band::solve_with_single_variation(K_point& kp__, Potential& potential__) const
 {
+    int niter{0};
     switch (ctx_.esm_type()) {
         case electronic_structure_method_t::pseudopotential: {
             if (ctx_.gamma_point() && (ctx_.so_correction() == false)) {
-                diag_pseudo_potential<double>(&kp__);
+                niter = diag_pseudo_potential<double>(&kp__);
             } else {
-                diag_pseudo_potential<double_complex>(&kp__);
+                niter = diag_pseudo_potential<double_complex>(&kp__);
             }
             break;
         }
@@ -105,6 +106,7 @@ inline void Band::solve_with_single_variation(K_point& kp__, Potential& potentia
     //== }
 
     //== kp->set_band_energies(&eval[0]);
+    return niter;
 }
 
 inline void Band::solve_for_kset(K_point_set& kset__, Potential& potential__, bool precompute__) const
@@ -127,7 +129,8 @@ inline void Band::solve_for_kset(K_point_set& kset__, Potential& potential__, bo
     if (ctx_.comm().rank() == 0 && ctx_.control().print_memory_usage_) {
         MEMORY_USAGE_INFO();
     }
-
+    
+    int num_dav_iter{0};
     /* solve secular equation and generate wave functions */
     for (int ikloc = 0; ikloc < kset__.spl_num_kpoints().local_size(); ikloc++) {
         int ik  = kset__.spl_num_kpoints(ikloc);
@@ -136,8 +139,12 @@ inline void Band::solve_for_kset(K_point_set& kset__, Potential& potential__, bo
         if (ctx_.full_potential() && use_second_variation) {
             solve_with_second_variation(*kp, potential__);
         } else {
-            solve_with_single_variation(*kp, potential__);
+            num_dav_iter += solve_with_single_variation(*kp, potential__);
         }
+    }
+    kset__.comm().allreduce(&num_dav_iter, 1);
+    if (ctx_.comm().rank() == 0) {
+        printf("Average number of iterations: %12.6f\n", static_cast<double>(num_dav_iter) / kset__.num_kpoints());
     }
 
     local_op_->dismiss();

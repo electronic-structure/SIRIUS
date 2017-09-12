@@ -80,8 +80,6 @@ class Non_local_functor
 
                     int nbnd_loc = spl_nbnd.local_size();
 
-                    int bnd_offset = spl_nbnd.global_offset();
-
                     #pragma omp parallel for
                     for (int ia_chunk = 0; ia_chunk < bp_chunks(icnk).num_atoms_; ia_chunk++) {
                         int ia   = bp_chunks(icnk).desc_(beta_desc_idx::ia, ia_chunk);
@@ -105,8 +103,8 @@ class Non_local_functor
                             }
                         };
 
-                        for (int ibf = 0; ibf < unit_cell.atom(ia).type().mt_lo_basis_size(); ibf++) {
-                            for (int jbf = 0; jbf < unit_cell.atom(ia).type().mt_lo_basis_size(); jbf++) {
+                        for (int ibf = 0; ibf < nbf; ibf++) {
+                            for (int jbf = 0; jbf < nbf; jbf++) {
 
                                 /* Qij exists only in the case of ultrasoft/PAW */
                                 double qij = unit_cell.atom(ia).type().pp_desc().augment ? ctx_.augmentation_op(iat).q_mtrx(ibf, jbf) : 0.0;

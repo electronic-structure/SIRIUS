@@ -372,9 +372,9 @@ class DFT_ground_state
 
             auto& comm = ctx_.comm();
 
-            remap_gvec_to_shells remap_gvec(comm, ctx_.gvec());
+            auto& remap_gvec = ctx_.remap_gvec();
 
-            unit_cell_.symmetry().symmetrize_function(&f__->f_pw_local(0), remap_gvec);
+            unit_cell_.symmetry().symmetrize_function(&f__->f_pw_local(0), remap_gvec, ctx_.sym_phase_factors());
 
             /* symmetrize PW components */
             //auto v = f__->gather_f_pw();

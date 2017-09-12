@@ -310,9 +310,10 @@ int Band::residuals_common(K_point*             kp__,
         /* main trick here: first estimate energy difference, and only then compute unconverged residuals */
         auto get_ev_idx = [&](double tol__)
         {
+            auto empty_tol = std::max(5 * tol__, itso.empty_states_tolerance_);
             std::vector<int> ev_idx;
             for (int i = 0; i < num_bands__; i++) {
-                double tol = tol__ + 1e-7 * std::abs(kp__->band_occupancy(i + ispn__ * ctx_.num_fv_states()) / ctx_.max_occupancy() - 1);
+                double tol = tol__ + empty_tol * std::abs(kp__->band_occupancy(i + ispn__ * ctx_.num_fv_states()) / ctx_.max_occupancy() - 1);
                 if (std::abs(eval__[i] - eval_old__[i]) > tol) {
                     ev_idx.push_back(i);
                 }

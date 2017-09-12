@@ -67,9 +67,9 @@ inline void Band::diag_pseudo_potential_exact(K_point* kp__,
 }
 
 template <typename T>
-inline void Band::diag_pseudo_potential_davidson(K_point*       kp__,
-                                                 D_operator<T>& d_op__,
-                                                 Q_operator<T>& q_op__) const
+inline int Band::diag_pseudo_potential_davidson(K_point*       kp__,
+                                                D_operator<T>& d_op__,
+                                                Q_operator<T>& q_op__) const
 {
     PROFILE("sirius::Band::diag_pseudo_potential_davidson");
 
@@ -85,9 +85,17 @@ inline void Band::diag_pseudo_potential_davidson(K_point*       kp__,
         DUMP("iterative solver tolerance: %18.12f", ctx_.iterative_solver_tolerance());
     }
 
-    /* number of spin components, treated simultaneously */
+    /* number of spin components, treated simultaneously 
+     *   1 - in case of non-magnetic or collinear calculation
+     *   2 - in case of non-collinear calculation
+     */
     int num_sc = (ctx_.num_mag_dims() == 3) ? 2 : 1;
-
+    
+    /* number of steps in spin index
+     * 1 - in case of non-magnetic calculation
+     * 2 - in case of collinear calculation (up, dn) 
+     * 1 - in case of non-collinear calculation (two spins are treated simultaneously)
+     */
     int num_spin_steps = (ctx_.num_mag_dims() == 3) ? 1 : ctx_.num_spins();
 
     /* short notation for number of target wave-functions */
@@ -193,113 +201,54 @@ inline void Band::diag_pseudo_potential_davidson(K_point*       kp__,
             print_checksum("o_diag", cs2);
         }
     }
+
+    int niter{0};
     
     sddk::timer t3("sirius::Band::diag_pseudo_potential_davidson|iter");
     for (int ispin_step = 0; ispin_step < num_spin_steps; ispin_step++) {
 
         std::vector<double> eval(num_bands);
-
-        for (int i = 0; i < num_bands; i++) {
-            eval[i] = kp__->band_energy(i + ispin_step * ctx_.num_fv_states());
-        }
-        std::vector<double> eval_old(num_bands);
+        std::vector<double> eval_old(num_bands, 1e100);
 
         /* trial basis functions */
         for (int ispn = 0; ispn < num_sc; ispn++) {
             phi.component(ispn).copy_from(psi.component(ctx_.num_mag_dims() == 3 ? ispn : ispin_step), 0, num_bands, ctx_.processing_unit());
         }
 
+        /* fisrt phase: setup and diagonalize reduced Hamiltonian and get eigen-values;
+         * this is done before the main itertive loop */
+
+        /* apply Hamiltonian and overlap operators to the basis functions */
+        apply_h_o<T>(kp__, ispin_step, 0, num_bands, phi, hphi, ophi, d_op__, q_op__);
+        
+        /* setup eigen-value problem
+         * N is the number of previous basis functions
+         * n is the number of new basis functions */
+        set_subspace_mtrx(num_sc, 0, num_bands, phi, hphi, hmlt, hmlt_old);
+        /* setup overlap matrix */
+        set_subspace_mtrx(num_sc, 0, num_bands, phi, ophi, ovlp, ovlp_old);
+
         /* current subspace size */
-        int N{0};
+        int N = num_bands;
+
+        sddk::timer t1("sirius::Band::diag_pseudo_potential_davidson|evp");
+        /* solve generalized eigen-value problem with the size N and get lowest num_bands eigen-vectors */
+        if (gen_evp_solver().solve(N, num_bands,
+                                   hmlt.template at<CPU>(), hmlt.ld(),
+                                   ovlp.template at<CPU>(), ovlp.ld(),
+                                   eval.data(), evec.template at<CPU>(), evec.ld(),
+                                   hmlt.num_rows_local(), hmlt.num_cols_local())) {
+            std::stringstream s;
+            s << "error in diagonalziation";
+            TERMINATE(s);
+        }
+        t1.stop();
 
         /* number of newly added basis functions */
-        int n = num_bands;
+        int n{0};
 
-        /* start iterative diagonalization */
+        /* second phase: start iterative diagonalization */
         for (int k = 0; k < itso.num_steps_; k++) {
-            /* apply Hamiltonian and overlap operators to the new basis functions */
-            apply_h_o<T>(kp__, ispin_step, N, n, phi, hphi, ophi, d_op__, q_op__);
-            
-            if (itso.orthogonalize_) {
-                orthogonalize<T>(ctx_.processing_unit(), num_sc, N, n, phi, hphi, ophi, ovlp, res.component(0));
-            }
-
-            /* setup eigen-value problem
-             * N is the number of previous basis functions
-             * n is the number of new basis functions */
-            set_subspace_mtrx(num_sc, N, n, phi, hphi, hmlt, hmlt_old);
-            
-            //== static int counter{0};
-            //== std::stringstream s;
-            //== if (ctx_.processing_unit() == CPU) {
-            //==     s<<"hmlt_cpu"<<counter;
-            //== } else {
-            //==     s<<"hmlt_gpu"<<counter;
-            //== }
-            //== hmlt.serialize(s.str(), N + n);
-            //== counter++;
-
-            if (ctx_.control().verification_ >= 1) {
-                double max_diff = Utils::check_hermitian(hmlt, N + n);
-                if (max_diff > 1e-12) {
-                    std::stringstream s;
-                    s << "H matrix is not hermitian, max_err = " << max_diff;
-                    TERMINATE(s);
-                }
-            }
-
-            if (!itso.orthogonalize_) {
-                /* setup overlap matrix */
-                set_subspace_mtrx(num_sc, N, n, phi, ophi, ovlp, ovlp_old);
-
-                if (ctx_.control().verification_ >= 1) {
-                    double max_diff = Utils::check_hermitian(ovlp, N + n);
-                    if (max_diff > 1e-12) {
-                        std::stringstream s;
-                        s << "S matrix is not hermitian, max_err = " << max_diff;
-                        TERMINATE(s);
-                    }
-                }
-            }
-
-            /* increase size of the variation space */
-            N += n;
-
-            eval_old = eval;
-            
-            sddk::timer t1("sirius::Band::diag_pseudo_potential_davidson|evp");
-            if (itso.orthogonalize_) {
-                /* solve standard eigen-value problem with the size N */
-                if (std_evp_solver().solve(N, num_bands, hmlt.template at<CPU>(), hmlt.ld(),
-                                           eval.data(), evec.template at<CPU>(), evec.ld(),
-                                           hmlt.num_rows_local(), hmlt.num_cols_local())) {
-                    std::stringstream s;
-                    s << "error in diagonalziation";
-                    TERMINATE(s);
-                }
-            } else {
-                /* solve generalized eigen-value problem with the size N */
-                if (gen_evp_solver().solve(N, num_bands,
-                                           hmlt.template at<CPU>(), hmlt.ld(),
-                                           ovlp.template at<CPU>(), ovlp.ld(),
-                                           eval.data(), evec.template at<CPU>(), evec.ld(),
-                                           hmlt.num_rows_local(), hmlt.num_cols_local())) {
-                    std::stringstream s;
-                    s << "error in diagonalziation";
-                    TERMINATE(s);
-                }
-            }
-            t1.stop();
-            
-            if (ctx_.control().verbosity_ >= 2 && kp__->comm().rank() == 0) {
-                DUMP("step: %i, current subspace size: %i, maximum subspace size: %i", k, N, num_phi);
-                if (ctx_.control().verbosity_ >= 4) {
-                    for (int i = 0; i < num_bands; i++) {
-                        DUMP("eval[%i]=%20.16f, diff=%20.16f, occ=%20.16f", i, eval[i], std::abs(eval[i] - eval_old[i]),
-                             kp__->band_occupancy(i + ispin_step * ctx_.num_fv_states()));
-                    }
-                }
-            }
 
             /* don't compute residuals on last iteration */
             if (k != itso.num_steps_ - 1) {
@@ -351,7 +300,7 @@ inline void Band::diag_pseudo_potential_davidson(K_point*       kp__,
                     if (converge_by_energy) {
                         transform<T>(ctx_.processing_unit(), 1.0, std::vector<Wave_functions*>({&hphi, &ophi}), 0, N, evec, 0, 0, 0.0, {&hpsi, &opsi}, 0, num_bands);
                     }
- 
+
                     /* update basis functions, hphi and ophi */
                     for (int ispn = 0; ispn < num_sc; ispn++) {
                         phi.component(ispn).copy_from(psi.component(ctx_.num_mag_dims() == 3 ? ispn : ispin_step), 0, num_bands, ctx_.processing_unit());
@@ -362,16 +311,96 @@ inline void Band::diag_pseudo_potential_davidson(K_point*       kp__,
                     N = num_bands;
                 }
             }
+
             /* expand variational subspace with new basis vectors obtatined from residuals */
             phi.copy_from(res, 0, n, N, ctx_.processing_unit());
 
-            //if (ctx_.processing_unit() == GPU) {
-            //    #ifdef __GPU
-            //    phi.component(0).copy_to_host(N, n);
-            //    #endif
-            //}
+            /* apply Hamiltonian and overlap operators to the new basis functions */
+            apply_h_o<T>(kp__, ispin_step, N, n, phi, hphi, ophi, d_op__, q_op__);
+
+            if (itso.orthogonalize_) {
+                orthogonalize<T>(ctx_.processing_unit(), num_sc, N, n, phi, hphi, ophi, ovlp, res.component(0));
+            }
+
+            /* setup eigen-value problem
+             * N is the number of previous basis functions
+             * n is the number of new basis functions */
+            set_subspace_mtrx(num_sc, N, n, phi, hphi, hmlt, hmlt_old);
+
+            //== static int counter{0};
+            //== std::stringstream s;
+            //== if (ctx_.processing_unit() == CPU) {
+            //==     s<<"hmlt_cpu"<<counter;
+            //== } else {
+            //==     s<<"hmlt_gpu"<<counter;
+            //== }
+            //== hmlt.serialize(s.str(), N + n);
+            //== counter++;
+
+            if (ctx_.control().verification_ >= 1) {
+                double max_diff = Utils::check_hermitian(hmlt, N + n);
+                if (max_diff > 1e-12) {
+                    std::stringstream s;
+                    s << "H matrix is not hermitian, max_err = " << max_diff;
+                    TERMINATE(s);
+                }
+            }
+
+            if (!itso.orthogonalize_) {
+                /* setup overlap matrix */
+                set_subspace_mtrx(num_sc, N, n, phi, ophi, ovlp, ovlp_old);
+
+                if (ctx_.control().verification_ >= 1) {
+                    double max_diff = Utils::check_hermitian(ovlp, N + n);
+                    if (max_diff > 1e-12) {
+                        std::stringstream s;
+                        s << "S matrix is not hermitian, max_err = " << max_diff;
+                        TERMINATE(s);
+                    }
+                }
+            }
+
+            /* increase size of the variation space */
+            N += n;
+
+            eval_old = eval;
+
+            sddk::timer t1("sirius::Band::diag_pseudo_potential_davidson|evp");
+            if (itso.orthogonalize_) {
+                /* solve standard eigen-value problem with the size N */
+                if (std_evp_solver().solve(N, num_bands, hmlt.template at<CPU>(), hmlt.ld(),
+                                           eval.data(), evec.template at<CPU>(), evec.ld(),
+                                           hmlt.num_rows_local(), hmlt.num_cols_local())) {
+                    std::stringstream s;
+                    s << "error in diagonalziation";
+                    TERMINATE(s);
+                }
+            } else {
+                /* solve generalized eigen-value problem with the size N */
+                if (gen_evp_solver().solve(N, num_bands,
+                                           hmlt.template at<CPU>(), hmlt.ld(),
+                                           ovlp.template at<CPU>(), ovlp.ld(),
+                                           eval.data(), evec.template at<CPU>(), evec.ld(),
+                                           hmlt.num_rows_local(), hmlt.num_cols_local())) {
+                    std::stringstream s;
+                    s << "error in diagonalziation";
+                    TERMINATE(s);
+                }
+            }
+            t1.stop();
+
+            if (ctx_.control().verbosity_ >= 2 && kp__->comm().rank() == 0) {
+                DUMP("step: %i, current subspace size: %i, maximum subspace size: %i", k, N, num_phi);
+                if (ctx_.control().verbosity_ >= 4) {
+                    for (int i = 0; i < num_bands; i++) {
+                        DUMP("eval[%i]=%20.16f, diff=%20.16f, occ=%20.16f", i, eval[i], std::abs(eval[i] - eval_old[i]),
+                             kp__->band_occupancy(i + ispin_step * ctx_.num_fv_states()));
+                    }
+                }
+            }
+            niter++;
         }
-    } // ispin_step
+    } /* loop over ispin_step */
     t3.stop();
 
     //phi.component(0).copy_from(psi.component(0), 0, num_bands, ctx_.processing_unit());
@@ -383,10 +412,6 @@ inline void Band::diag_pseudo_potential_davidson(K_point*       kp__,
     //    }
     //    std::cout << "band: " << i << ", l2norm: " << std::sqrt(rnorm) << std::endl;
     //}
-
-
-
-
 
     kp__->beta_projectors().dismiss();
 
@@ -407,6 +432,8 @@ inline void Band::diag_pseudo_potential_davidson(K_point*       kp__,
         }
     }
     #endif
+
+    return niter;
 }
 
 template <typename T>

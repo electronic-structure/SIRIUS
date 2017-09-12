@@ -236,6 +236,8 @@ struct Iterative_solver_input
     /// Tolerance for the residual L2 norm.
     double residual_tolerance_{1e-6};
 
+    double empty_states_tolerance_{1e-5};
+
     /// Defines the flavour of the iterative solver.
     /** If converge_by_energy is set to 0, then the residuals are estimated by their norm. If converge_by_energy
      *  is set to 1 then the residuals are estimated by the eigen-energy difference. This allows to estimate the
@@ -270,6 +272,7 @@ struct Iterative_solver_input
             subspace_size_      = parser["iterative_solver"].value("subspace_size", subspace_size_);
             energy_tolerance_   = parser["iterative_solver"].value("energy_tolerance", energy_tolerance_);
             residual_tolerance_ = parser["iterative_solver"].value("residual_tolerance", residual_tolerance_);
+            empty_states_tolerance_ = parser["iterative_solver"].value("empty_states_tolerance", empty_states_tolerance_);
             converge_by_energy_ = parser["iterative_solver"].value("converge_by_energy", converge_by_energy_);
             min_num_res_        = parser["iterative_solver"].value("min_num_res", min_num_res_);
             real_space_prj_     = parser["iterative_solver"].value("real_space_prj", real_space_prj_);
@@ -476,6 +479,7 @@ struct Settings_input
     int nprii_aug_{20};
     int nprii_rho_core_{20};
     bool always_update_wf_{true};
+    double mixer_rss_min_{1e-12};
 
     void read(json const& parser)
     {
@@ -485,6 +489,7 @@ struct Settings_input
             nprii_aug_        = parser["settings"].value("nprii_aug", nprii_aug_);
             nprii_rho_core_   = parser["settings"].value("nprii_rho_core", nprii_rho_core_);
             always_update_wf_ = parser["settings"].value("always_update_wf", always_update_wf_);
+            mixer_rss_min_    = parser["settings"].value("mixer_rss_min", mixer_rss_min_);
         }
     }
 };
