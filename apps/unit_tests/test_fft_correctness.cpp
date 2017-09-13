@@ -33,13 +33,13 @@ void test_fft(double cutoff__, device_t pu__)
         f[ig] = 1.0;
         switch (pu__) {
             case CPU: {
-                fft.transform<1>(gvec.partition(), &f[gvec.partition().gvec_offset_fft()]);
+                fft.transform<1>(&f[gvec.partition().gvec_offset_fft()]);
                 break;
             }
             case GPU: {
                 f.copy<memory_t::host, memory_t::device>();
                 //fft.transform<1, GPU>(gvec.partition(), f.at<GPU>(gvec.partition().gvec_offset_fft()));
-                fft.transform<1, CPU>(gvec.partition(), f.at<CPU>(gvec.partition().gvec_offset_fft()));
+                fft.transform<1, CPU>(f.at<CPU>(gvec.partition().gvec_offset_fft()));
                 fft.buffer().copy<memory_t::device, memory_t::host>();
                 break;
             }

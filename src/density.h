@@ -645,7 +645,7 @@ class Density
             }
 
             for (int iv = 0; iv < ctx_.num_mag_dims() + 1; iv++) {
-                #pragma omp parallel for
+                #pragma omp parallel for schedule(static)
                 for (int igloc = 0; igloc < ctx_.gvec().count(); igloc++) {
                     rho_vec_[iv]->f_pw_local(igloc) += rho_aug(igloc, iv);
                 }
@@ -665,22 +665,33 @@ class Density
          
         void save()
         {
-            if (ctx_.comm().rank() == 0)
-            {
-                HDF5_tree fout(storage_file_name, false);
-                rho_->hdf5_write(fout["density"]);
-                for (int j = 0; j < ctx_.num_mag_dims(); j++)
-                    magnetization_[j]->hdf5_write(fout["magnetization"].create_node(j));
+            rho_->hdf5_write(storage_file_name, "density");
+            for (int j = 0; j < ctx_.num_mag_dims(); j++) {
+                std::stringstream s;
+                s << "magnetization/" << j;
+                magnetization_[j]->hdf5_write(storage_file_name, s.str());
             }
             ctx_.comm().barrier();
         }
 
         void load()
         {
-            HDF5_tree fout(storage_file_name, false);
-            rho_->hdf5_read(fout["density"]);
-            for (int j = 0; j < ctx_.num_mag_dims(); j++)
-                magnetization_[j]->hdf5_read(fout["magnetization"][j]);
+            HDF5_tree fin(storage_file_name, false);
+
+            int ngv;
+            fin.read("/parameters/num_gvec", &ngv, 1);
+            if (ngv != ctx_.gvec().num_gvec()) {
+                TERMINATE("wrong number of G-vectors");
+            }
+            mdarray<int, 2> gv(3, ngv);
+            fin.read("/parameters/gvec", gv);
+
+            rho_->hdf5_read(fin["density"], gv);
+            rho_->fft_transform(1);
+            for (int j = 0; j < ctx_.num_mag_dims(); j++) {
+                magnetization_[j]->hdf5_read(fin["magnetization"][j], gv);
+                magnetization_[j]->fft_transform(1);
+            }
         }
 
         void save_to_xsf()
@@ -801,8 +812,18 @@ class Density
         {
             return *rho_;
         }
+
+        Periodic_function<double> const& rho() const
+        {
+            return *rho_;
+        }
         
         Smooth_periodic_function<double>& rho_pseudo_core()
+        {
+            return *rho_pseudo_core_;
+        }
+
+        Smooth_periodic_function<double> const& rho_pseudo_core() const
         {
             return *rho_pseudo_core_;
         }
@@ -813,6 +834,11 @@ class Density
         }
 
         Periodic_function<double>& magnetization(int i)
+        {
+            return *(magnetization_[i]);
+        }
+
+        Periodic_function<double> const& magnetization(int i) const
         {
             return *(magnetization_[i]);
         }
@@ -955,16 +981,16 @@ class Density
                 STOP();
                 /* mix in real-space in case of FP-LAPW */
                 mixer_input();
-                rms = mixer_->mix();
+                rms = mixer_->mix(ctx_.settings().mixer_rss_min_);
                 mixer_output();
                 /* get rho(G) after mixing */
                 rho_->fft_transform(-1);
             } else {
                 /* mix in G-space in case of PP */
                 mixer_input();
-                rms = lf_mixer_->mix();
+                rms = lf_mixer_->mix(ctx_.settings().mixer_rss_min_);
                 if (hf_mixer_) {
-                    rms += hf_mixer_->mix();
+                    rms += hf_mixer_->mix(ctx_.settings().mixer_rss_min_);
                 }
                 mixer_output();
             }

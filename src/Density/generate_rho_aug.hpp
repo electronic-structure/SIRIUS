@@ -33,7 +33,7 @@ inline void Density::generate_rho_aug(mdarray<double_complex, 2>& rho_aug__)
             /* treat phase factors as real array with x2 size */
             mdarray<double, 2> phase_factors(atom_type.num_atoms(), ctx_.gvec().count() * 2);
 
-            #pragma omp parallel for
+            #pragma omp parallel for schedule(static)
             for (int igloc = 0; igloc < ctx_.gvec().count(); igloc++) {
                 int ig = ctx_.gvec().offset() + igloc;
                 for (int i = 0; i < atom_type.num_atoms(); i++) {
@@ -127,6 +127,13 @@ inline void Density::generate_rho_aug(mdarray<double_complex, 2>& rho_aug__)
          ctx_.comm().allreduce(&cs, 1);
          if (ctx_.comm().rank() == 0) {
             print_checksum("rho_aug", cs);
+         }
+    }
+
+    if (ctx_.control().print_hash_) {
+         auto h = rho_aug__.hash();
+         if (ctx_.comm().rank() == 0) {
+            print_hash("rho_aug", h);
          }
     }
 }

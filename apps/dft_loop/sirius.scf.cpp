@@ -6,10 +6,11 @@ using json = nlohmann::json;
 
 const std::string aiida_output_file = "output_aiida.json";
 
-enum class task_t
+enum class task_t : int
 {
-    ground_state_new = 0,
+    ground_state_new     = 0,
     ground_state_restart = 1,
+    k_point_path         = 2
 };
 
 const double au2angs = 0.5291772108;
@@ -84,6 +85,7 @@ double ground_state(Simulation_context& ctx,
     }
 
     std::string ref_file = args.value<std::string>("test_against", "");
+    /* don't write output if we compare against the reference calculation */
     bool write_state = (ref_file.size() == 0);
     
     DFT_ground_state dft(ctx, potential, density, ks);
@@ -106,20 +108,17 @@ double ground_state(Simulation_context& ctx,
     int result = dft.find(inp.potential_tol_, inp.energy_tol_, inp.num_dft_iter_, write_state);
 
     if (ref_file.size() != 0) {
-        json dict;
-        dict["ground_state"] = dft.serialize();
+        auto dict = dft.serialize();
         json dict_ref;
         std::ifstream(ref_file) >> dict_ref;
         
-        double e1 = dict["ground_state"]["energy"]["total"];
+        double e1 = dict["energy"]["total"];
         double e2 = dict_ref["ground_state"]["energy"]["total"];
 
         if (std::abs(e1 - e2) > 1e-6) {
-            printf("total energy is different\n");
+            printf("total energy is different: %18.7f computed vs. %18.7f reference\n", e1, e2);
             sirius::terminate(1);
         }
-
-        write_output = 0;
     }
 
     if (!ctx.full_potential()) {
@@ -133,7 +132,7 @@ double ground_state(Simulation_context& ctx,
         }
     }
 
-    if (write_output) {
+    if (write_state && write_output) {
         json dict;
         json_output_common(dict);
         
@@ -171,11 +170,14 @@ double ground_state(Simulation_context& ctx,
     /* wait for all */
     ctx.comm().barrier();
 
-    sddk::timer::print();
+    if (ctx.control().print_timers_)  {
+        sddk::timer::print();
+    }
 
     return dft.total_energy();
 }
 
+/// Run a task based on a command line input.
 void run_tasks(cmd_args const& args)
 {
     /* get the task id */
@@ -183,13 +185,109 @@ void run_tasks(cmd_args const& args)
     /* get the input file name */
     std::string fname = args.value<std::string>("input", "sirius.json");
     if (!Utils::file_exists(fname)) {
-        TERMINATE("input file does not exist");
+        if (mpi_comm_world().rank() == 0) {
+            printf("input file does not exist\n");
+        }
+        return;
     }
 
     if (task == task_t::ground_state_new || task == task_t::ground_state_restart) {
         auto ctx = create_sim_ctx(fname, args);
         ctx->initialize();
         ground_state(*ctx, task, args, 1);
+    }
+
+    if (task == task_t::k_point_path) {
+        auto ctx = create_sim_ctx(fname, args);
+        ctx->set_iterative_solver_tolerance(1e-12);
+        ctx->set_gamma_point(false);
+        ctx->initialize();
+
+        Potential potential(*ctx);
+        potential.allocate();
+
+        Density density(*ctx);
+        density.allocate();
+
+        K_point_set ks(*ctx);
+
+        json inp;
+        std::ifstream(fname) >> inp;
+
+        /* list of pairs (label, k-point vector) */
+        std::vector<std::pair<std::string, std::vector<double>>> vertex;
+
+        auto labels = inp["kpoints_path"].get<std::vector<std::string>>();
+        for (auto e: labels) {
+            auto v = inp["kpoints_rel"][e].get<std::vector<double>>();
+            vertex.push_back({e, v});
+        }
+
+        std::vector<double> x_axis;
+        std::vector<std::pair<double, std::string>> x_ticks;
+
+        /* first point */
+        x_axis.push_back(0);
+        x_ticks.push_back({0, vertex[0].first});
+        ks.add_kpoint(&vertex[0].second[0], 1.0);
+        
+        double t{0};
+        for (size_t i = 0; i < vertex.size() - 1; i++) {
+            vector3d<double> v0 = vector3d<double>(vertex[i].second);
+            vector3d<double> v1 = vector3d<double>(vertex[i + 1].second);
+            vector3d<double> dv = v1 - v0;
+            vector3d<double> dv_cart = ctx->unit_cell().reciprocal_lattice_vectors() * dv;
+            int np = std::max(10, static_cast<int>(30 * dv_cart.length()));
+            for (int j = 1; j <= np; j++) {
+                vector3d<double> v = v0 + dv * static_cast<double>(j) / np;
+                ks.add_kpoint(&v[0], 1.0);
+                t += dv_cart.length() / np;
+                x_axis.push_back(t);
+            }
+            x_ticks.push_back({t, vertex[i + 1].first});
+        }
+        
+        ks.initialize();
+
+        //density.initial_density();
+        density.load();
+        potential.generate(density);
+        Band band(*ctx);
+        if (!ctx->full_potential()) {
+            band.initialize_subspace(ks, potential);
+        }
+        band.solve_for_kset(ks, potential, true);
+
+        ks.sync_band_energies();
+        if (mpi_comm_world().rank() == 0) {
+            json dict;
+            dict["header"] = {};
+            dict["header"]["x_axis"] = x_axis;
+            dict["header"]["x_ticks"] = std::vector<json>();
+            dict["header"]["num_bands"] = ctx->num_bands();
+            for (auto& e: x_ticks) {
+                json j;
+                j["x"] = e.first;
+                j["label"] = e.second;
+                dict["header"]["x_ticks"].push_back(j);
+            }
+            dict["bands"] = std::vector<json>();
+
+            std::vector<double> bnd_e(ctx->num_bands());
+
+            for (int ik = 0; ik < ks.num_kpoints(); ik++) {
+                json bnd_k;
+                bnd_k["kpoint"] = std::vector<double>(3, 0);
+                for (int x = 0; x < 3; x++) {
+                    bnd_k["kpoint"][x] = ks[ik]->vk()[x];
+                }
+                ks.get_band_energies(ik, bnd_e.data());
+                bnd_k["values"] = bnd_e;
+                dict["bands"].push_back(bnd_k);
+            }
+            std::ofstream ofs("bands.json", std::ofstream::out | std::ofstream::trunc);
+            ofs << dict.dump(4);
+        }
     }
 }
 

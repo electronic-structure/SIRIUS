@@ -89,5 +89,10 @@ inline void Density::symmetrize_density_matrix()
         //    DUMP("checksum(density_matrix(%i)): %20.14f %20.14f", ia, cs.real(), cs.imag());
         //}
     }
+
+    if (ctx_.control().print_hash_ && ctx_.comm().rank() == 0) {
+        auto h = dm.hash();
+        print_hash("density_matrix", h);
+    }
 }
 

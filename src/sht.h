@@ -401,34 +401,35 @@ class SHT // TODO: better name
                         
         /// Compute element of the transformation matrix from complex to real spherical harmonics. 
         /** Real spherical harmonic can be written as a linear combination of complex harmonics:
-         *
-         *    \f[
-         *        R_{\ell m}(\theta, \phi) = \sum_{m'} a^{\ell}_{m' m}Y_{\ell m'}(\theta, \phi)
-         *    \f]
-         *    where 
-         *    \f[
-         *        a^{\ell}_{m' m} = \langle Y_{\ell m'} | R_{\ell m} \rangle
-         *    \f]
-         *
-         *    Transformation from real to complex spherical harmonics is conjugate transpose:
-         *    
-         *    \f[
-         *        Y_{\ell m}(\theta, \phi) = \sum_{m'} a^{\ell*}_{m m'}R_{\ell m'}(\theta, \phi)
-         *    \f]
-         *
-         *    Mathematica code:
-         *    \verbatim
-         *    b[m1_, m2_] := 
-         *     If[m1 == 0, 1, 
-         *     If[m1 < 0 && m2 < 0, -I/std::sqrt[2], 
-         *     If[m1 > 0 && m2 < 0, (-1)^m1*I/std::sqrt[2], 
-         *     If[m1 < 0 && m2 > 0, (-1)^m2/std::sqrt[2], 
-         *     If[m1 > 0 && m2 > 0, 1/std::sqrt[2]]]]]]
-         *    
-         *    a[m1_, m2_] := If[Abs[m1] == Abs[m2], b[m1, m2], 0]
-         *    
-         *    R[l_, m_, t_, p_] := Sum[a[m1, m]*SphericalHarmonicY[l, m1, t, p], {m1, -l, l}]
-         *    \endverbatim
+         
+            \f[
+                R_{\ell m}(\theta, \phi) = \sum_{m'} a^{\ell}_{m' m}Y_{\ell m'}(\theta, \phi)
+            \f]
+            where 
+            \f[
+                a^{\ell}_{m' m} = \langle Y_{\ell m'} | R_{\ell m} \rangle
+            \f]
+            which gives the name to this function.
+         
+            Transformation from real to complex spherical harmonics is conjugate transpose:
+            
+            \f[
+                Y_{\ell m}(\theta, \phi) = \sum_{m'} a^{\ell*}_{m m'}R_{\ell m'}(\theta, \phi)
+            \f]
+         
+            Mathematica code:
+            \verbatim
+            b[m1_, m2_] := 
+             If[m1 == 0, 1, 
+             If[m1 < 0 && m2 < 0, -I/Sqrt[2], 
+             If[m1 > 0 && m2 < 0, (-1)^m1*I/Sqrt[2], 
+             If[m1 < 0 && m2 > 0, (-1)^m2/Sqrt[2], 
+             If[m1 > 0 && m2 > 0, 1/Sqrt[2]]]]]]
+            
+            a[m1_, m2_] := If[Abs[m1] == Abs[m2], b[m1, m2], 0]
+            
+            Rlm[l_, m_, t_, p_] := Sum[a[m1, m]*SphericalHarmonicY[l, m1, t, p], {m1, -l, l}]
+            \endverbatim
          */
         static inline double_complex ylm_dot_rlm(int l, int m1, int m2)
         {
@@ -452,7 +453,7 @@ class SHT // TODO: better name
                 }
             } else {
                 if (m2 < 0) {
-                    return pow(-1.0, m1) * double_complex(0, isqrt2);
+                    return std::pow(-1.0, m1) * double_complex(0, isqrt2);
                 } else {
                     return double_complex(isqrt2, 0);
                 }

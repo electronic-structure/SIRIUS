@@ -32,6 +32,8 @@ namespace sirius {
 class Augmentation_operator
 {
     private:
+        
+        Simulation_context_base const& ctx_;
 
         Communicator const& comm_;
 
@@ -140,11 +142,13 @@ class Augmentation_operator
             /* broadcast from rank#0 */
             comm_.bcast(&q_mtrx_(0, 0), nbf * nbf , 0);
 
-            #ifdef __PRINT_OBJECT_CHECKSUM
-            double cs = q_pw_.checksum();
-            comm_.allreduce(&cs, 1);
-            DUMP("checksum(q_pw) : %18.10f", cs);
-            #endif
+            if (ctx_.control().print_checksum_) {
+                double cs = q_pw_.checksum();
+                comm_.allreduce(&cs, 1);
+                if (comm_.rank() == 0) {
+                    print_checksum("q_pw", cs);
+                }
+            }
         }
 
     public:
@@ -152,7 +156,8 @@ class Augmentation_operator
         Augmentation_operator(Simulation_context_base const& ctx__,
                               int iat__,
                               Radial_integrals_aug<false> const& ri__)
-            : comm_(ctx__.comm())
+            : ctx_(ctx__)
+            , comm_(ctx__.comm())
             , atom_type_(ctx__.unit_cell().atom_type(iat__))
         {
             if (atom_type_.pp_desc().augment) {

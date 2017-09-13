@@ -153,14 +153,16 @@ module sirius
             integer,                  intent(in) :: eqatoms
         end subroutine
 
-        subroutine sirius_set_atom_type_beta_rf(label, num_beta, beta_l, num_mesh_points, beta_rf, ld)&
+        subroutine sirius_set_atom_type_beta_rf(label, num_beta, beta_l, beta_j, num_mesh_points, beta_rf, ld, has_so)&
             &bind(C, name="sirius_set_atom_type_beta_rf")
             character, dimension(*), intent(in) :: label
             integer,                 intent(in) :: num_beta
             integer,                 intent(in) :: beta_l
+            real(8),                 intent(in) :: beta_j
             integer,                 intent(in) :: num_mesh_points
             real(8),                 intent(in) :: beta_rf
             integer,                 intent(in) :: ld
+            logical,                 intent(in) :: has_so
         end subroutine
 
         subroutine sirius_set_atom_type_dion(label, num_beta, dion)&
@@ -994,6 +996,14 @@ module sirius
         subroutine sirius_set_use_symmetry(flg)&
             &bind(C, name="sirius_set_use_symmetry")
             integer,                 intent(in)  :: flg
+        end subroutine
+
+        subroutine sirius_add_atom_type_chi(atom_type, l, num_points, chi)&
+            &bind(C, name="sirius_add_atom_type_chi")
+            character,         target, dimension(*), intent(in)  :: atom_type
+            integer,                                 intent(in)  :: l
+            integer,                                 intent(in)  :: num_points
+            real(8),                                 intent(in)  :: chi
         end subroutine
 
     end interface

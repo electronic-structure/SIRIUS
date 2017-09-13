@@ -30,7 +30,7 @@ void test1(vector3d<int> const& dims__, double cutoff__, device_t pu__)
         phi(i) = type_wrapper<double_complex>::random();
     }
     phi(0) = 1.0;
-    fft.transform<1>(gvec_r.partition(), &phi[0]);
+    fft.transform<1>(&phi[0]);
     #ifdef __GPU
     if (pu__ == GPU) {
         fft.buffer().copy_to_host();
@@ -44,7 +44,7 @@ void test1(vector3d<int> const& dims__, double cutoff__, device_t pu__)
         }
     }
     mdarray<double_complex, 1> phi1(gvec_r.partition().gvec_count_fft());
-    fft.transform<-1>(gvec_r.partition(), &phi1[0]);
+    fft.transform<-1>(&phi1[0]);
 
     double rms = 0;
     for (int i = 0; i < gvec_r.partition().gvec_count_fft(); i++) {
@@ -84,10 +84,10 @@ void test2(vector3d<int> const& dims__, double cutoff__, device_t pu__)
     phi1(0) = 1.0;
     phi2(0) = 1.0;
 
-    fft.transform<1>(gvec_r.partition(), &phi1(0));
+    fft.transform<1>(&phi1(0));
     fft.output(&phi1_rg(0));
 
-    fft.transform<1>(gvec_r.partition(), &phi2(0));
+    fft.transform<1>(&phi2(0));
     fft.output(&phi2_rg(0));
 
     for (int i = 0; i < fft.local_size(); i++) {
@@ -101,7 +101,7 @@ void test2(vector3d<int> const& dims__, double cutoff__, device_t pu__)
         }
     }
 
-    fft.transform<1>(gvec_r.partition(), &phi1(0), &phi2(0));
+    fft.transform<1>(&phi1(0), &phi2(0));
 
     mdarray<double_complex, 1> phi12_rg(fft.local_size());
     fft.output(&phi12_rg(0));
@@ -121,7 +121,7 @@ void test2(vector3d<int> const& dims__, double cutoff__, device_t pu__)
 
     mdarray<double_complex, 1> phi1_bt(gvec_r.partition().gvec_count_fft());
     mdarray<double_complex, 1> phi2_bt(gvec_r.partition().gvec_count_fft());
-    fft.transform<-1>(gvec_r.partition(), &phi1_bt(0), &phi2_bt(0));
+    fft.transform<-1>(&phi1_bt(0), &phi2_bt(0));
 
     double diff = 0;
     for (int i = 0; i < gvec_r.partition().gvec_count_fft(); i++) {
@@ -166,10 +166,10 @@ void test3(vector3d<int> const& dims__, double cutoff__)
     phi1.copy<memory_t::host, memory_t::device>();
     phi2.copy<memory_t::host, memory_t::device>();
 
-    fft.transform<1, GPU>(gvec_r.partition(), phi1.at<GPU>());
+    fft.transform<1, GPU>(phi1.at<GPU>());
     fft.output(&phi1_rg(0));
 
-    fft.transform<1, GPU>(gvec_r.partition(), phi2.at<GPU>());
+    fft.transform<1, GPU>(phi2.at<GPU>());
     fft.output(&phi2_rg(0));
 
     for (int i = 0; i < fft.local_size(); i++) {
@@ -183,7 +183,7 @@ void test3(vector3d<int> const& dims__, double cutoff__)
         }
     }
 
-    fft.transform<1, GPU>(gvec_r.partition(), phi1.at<GPU>(), phi2.at<GPU>());
+    fft.transform<1, GPU>(phi1.at<GPU>(), phi2.at<GPU>());
 
     mdarray<double_complex, 1> phi12_rg(fft.local_size());
     fft.output(&phi12_rg(0));
@@ -203,7 +203,7 @@ void test3(vector3d<int> const& dims__, double cutoff__)
 
     mdarray<double_complex, 1> phi1_bt(gvec_r.partition().gvec_count_fft(), memory_t::host | memory_t::device);
     mdarray<double_complex, 1> phi2_bt(gvec_r.partition().gvec_count_fft(), memory_t::host | memory_t::device);
-    fft.transform<-1, GPU>(gvec_r.partition(), phi1_bt.at<GPU>(), phi2_bt.at<GPU>());
+    fft.transform<-1, GPU>(phi1_bt.at<GPU>(), phi2_bt.at<GPU>());
 
     phi1_bt.copy<memory_t::device, memory_t::host>();
     phi2_bt.copy<memory_t::device, memory_t::host>();

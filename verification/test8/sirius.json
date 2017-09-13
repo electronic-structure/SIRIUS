@@ -26,7 +26,7 @@
         "gk_cutoff" : 6.0,
         "pw_cutoff" : 20.00,
 
-        "energy_tol" : 1e-8,
+        "energy_tol" : 1e-7,
         "potential_tol" : 1e-8,
 
         "num_dft_iter" : 100,

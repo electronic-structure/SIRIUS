@@ -26,17 +26,16 @@ module sddk
             integer,                 intent(in)  :: fft_id
         end subroutine
 
-        subroutine sddk_create_gvec(vk, b1, b2, b3, gmax, fft_grid_id, num_ranks, fcomm, reduce_gvec, gvec_id)&
+        subroutine sddk_create_gvec(vk, b1, b2, b3, gmax, reduce_gvec, comm, comm_fft, gvec_id)&
             &bind(C, name="sddk_create_gvec")
             real(8),                 intent(in)  :: vk(3)
             real(8),                 intent(in)  :: b1(3)
             real(8),                 intent(in)  :: b2(3)
             real(8),                 intent(in)  :: b3(3)
             real(8),                 intent(in)  :: gmax
-            integer,                 intent(in)  :: fft_grid_id
-            integer,                 intent(in)  :: num_ranks
             integer,                 intent(in)  :: reduce_gvec
-            integer,                 intent(in)  :: fcomm
+            integer,                 intent(in)  :: comm
+            integer,                 intent(in)  :: comm_fft
             integer,                 intent(out) :: gvec_id
         end subroutine
 
@@ -57,6 +56,40 @@ module sddk
             integer,                 intent(in)  :: gvec_id
             integer,                 intent(in)  :: rank
             integer,                 intent(out) :: gvec_offset
+        end subroutine
+
+        subroutine sddk_get_gvec_count_fft(gvec_id, gvec_count)&
+            &bind(C, name="sddk_get_gvec_count_fft")
+            integer,                 intent(in)  :: gvec_id
+            integer,                 intent(out) :: gvec_count
+        end subroutine
+
+        subroutine sddk_get_gvec_offset_fft(gvec_id, gvec_offset)&
+            &bind(C, name="sddk_get_gvec_offset_fft")
+            integer,                 intent(in)  :: gvec_id
+            integer,                 intent(out) :: gvec_offset
+        end subroutine
+
+        subroutine sddk_fft(fft_id, dir, dat)&
+            &bind(C, name="sddk_fft")
+            integer,                 intent(in)  :: fft_id
+            integer,                 intent(in)  :: dir
+            complex(8),              intent(inout)  :: dat
+        end subroutine
+
+        subroutine sddk_fft_prepare(fft_id, gvec_id)&
+            &bind(C, name="sddk_fft_prepare")
+            integer,                 intent(in)  :: fft_id
+            integer,                 intent(in)  :: gvec_id
+        end subroutine
+
+        subroutine sddk_fft_dismiss(fft_id)&
+            &bind(C, name="sddk_fft_dismiss")
+            integer,                 intent(in)  :: fft_id
+        end subroutine
+
+        subroutine sddk_print_timers()&
+            &bind(C, name="sddk_print_timers")
         end subroutine
 
     end interface
