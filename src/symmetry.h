@@ -652,7 +652,7 @@ inline void Symmetry::check_gvec_symmetry(Gvec const& gvec__, Communicator const
 }
 
 inline void Symmetry::symmetrize_function(double_complex* f_pw__,
-                                          remap_gvec_to_shells& remap_gvec__,
+                                          remap_gvec_to_shells const& remap_gvec__,
                                           mdarray<double_complex, 3> const& sym_phase_factors__) const
 {
     PROFILE("sirius::Symmetry::symmetrize_function_pw");
