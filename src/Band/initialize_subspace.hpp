@@ -299,8 +299,10 @@ Band::initialize_subspace(K_point* kp__, int num_ao__, std::vector<std::vector<S
 
         /* do some checks */
         if (ctx_.control().verification_ >= 1) {
+
             set_subspace_mtrx<T>(num_sc, 0, num_phi_tot, phi, ophi, hmlt, hmlt_old);
-            // hmlt.serialize("overlap", num_phi);
+            //hmlt.serialize("overlap", num_phi_tot);
+
             double max_diff = check_hermitian(hmlt, num_phi_tot);
             if (max_diff > 1e-12) {
                 std::stringstream s;
@@ -327,7 +329,6 @@ Band::initialize_subspace(K_point* kp__, int num_ao__, std::vector<std::vector<S
 
         /* setup eigen-value problem */
         set_subspace_mtrx<T>(num_sc, 0, num_phi_tot, phi, hphi, hmlt, hmlt_old);
-
         // hmlt.serialize("hmlt", num_phi_tot);
 
         /* solve generalized eigen-value problem with the size N */

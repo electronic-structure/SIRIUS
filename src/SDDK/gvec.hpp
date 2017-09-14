@@ -345,7 +345,7 @@ class Gvec
             /* take G+k */
             auto gk = gkvec_cart(ig);
             /* make some reasonable roundoff */
-            size_t len = size_t(gk.length() * 1e10);
+            size_t len = size_t(gk.length() * 1e8);
             tmp[ig]    = std::pair<size_t, int>(len, ig);
         }
         /* sort by first element in pair (length) */
@@ -358,14 +358,14 @@ class Gvec
         /* temporary vector to store G-shell radius */
         std::vector<double> tmp_len;
         /* radius of the first shell */
-        tmp_len.push_back(static_cast<double>(tmp[0].first) * 1e-10);
+        tmp_len.push_back(static_cast<double>(tmp[0].first) * 1e-8);
         for (int ig = 1; ig < num_gvec_; ig++) {
             /* if this G+k-vector has a different length */
             if (tmp[ig].first != tmp[ig - 1].first) {
                 /* increment number of shells */
                 num_gvec_shells_++;
                 /* save the radius of the new shell */
-                tmp_len.push_back(static_cast<double>(tmp[ig].first) * 1e-10);
+                tmp_len.push_back(static_cast<double>(tmp[ig].first) * 1e-8);
             }
             /* assign the index of the current shell */
             gvec_shell_(tmp[ig].second) = num_gvec_shells_ - 1;
@@ -835,6 +835,12 @@ struct remap_gvec_to_shells
                     counts[r]++;
                 }
             }
+        }
+        /* sanity check: sum of local sizes in the remapped order is equal to the total number of G-vectors */
+        int ng = a2a_recv.size();
+        comm_.allreduce(&ng, 1);
+        if (ng != gvec_.num_gvec()) {
+            TERMINATE("wrong number of G-vectors");
         }
 
         for (int ig = 0; ig < a2a_recv.size(); ig++) {

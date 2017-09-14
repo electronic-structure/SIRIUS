@@ -72,6 +72,8 @@ class Potential
          */
         std::array<std::unique_ptr<Smooth_periodic_function<double>>, 2> vsigma_;
 
+        std::unique_ptr<Smooth_periodic_function<double>> dveff_;
+
         mdarray<double, 3> sbessel_mom_;
 
         mdarray<double, 3> sbessel_mt_;
@@ -406,6 +408,8 @@ class Potential
                 for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
                     vsigma_[ispn] = std::unique_ptr<Smooth_periodic_function<double>>(new Smooth_periodic_function<double>(ctx_.fft(), ctx_.gvec()));
                 }
+
+                dveff_ = std::unique_ptr<Smooth_periodic_function<double>>(new Smooth_periodic_function<double>(ctx_.fft(), ctx_.gvec()));
             }
 
             vh_el_ = mdarray<double, 1>(unit_cell_.num_atoms());
@@ -1019,6 +1023,11 @@ class Potential
         Smooth_periodic_function<double>& local_potential()
         {
             return *local_potential_;
+        }
+
+        Smooth_periodic_function<double>& dveff()
+        {
+            return *dveff_;
         }
 
         Spheric_function<spectral, double> const& effective_potential_mt(int ialoc) const

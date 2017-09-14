@@ -478,7 +478,9 @@ inline int Band::residuals(K_point*             kp__,
             }
             case GPU: {
                 #ifdef __GPU
-                make_real_g0_gpu(res__.component(0).pw_coeffs().prime().at<GPU>(), res__.component(0).pw_coeffs().prime().ld(), n);
+                if (n != 0) {
+                    make_real_g0_gpu(res__.component(0).pw_coeffs().prime().at<GPU>(), res__.component(0).pw_coeffs().prime().ld(), n);
+                }
                 #endif
                 break;
             }

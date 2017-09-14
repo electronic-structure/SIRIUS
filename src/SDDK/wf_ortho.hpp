@@ -450,3 +450,20 @@ inline void orthogonalize(device_t        pu__,
     orthogonalize(pu__, num_sc__, N__, n__, wfs, 0, 0, o__, tmp__);
 }
 
+template <typename T>
+inline void orthogonalize(device_t        pu__,
+                          int             num_sc__,
+                          int             N__,
+                          int             n__,
+                          Wave_functions& phi__,
+                          dmatrix<T>&     o__,
+                          wave_functions& tmp__)
+{
+    static_assert(std::is_same<T, double>::value || std::is_same<T, double_complex>::value, "wrong type");
+
+    auto wfs = {&phi__};
+
+    orthogonalize(pu__, num_sc__, N__, n__, wfs, 0, 0, o__, tmp__);
+}
+
+
