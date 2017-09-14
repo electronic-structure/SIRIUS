@@ -19,8 +19,6 @@ inline void Density::init_paw()
         auto& atom = unit_cell_.atom(ia);
         auto& atom_type = atom.type();
 
-        int num_mt_points = atom_type.num_mt_points();
-
         int l_max = 2 * atom_type.indexr().lmax_lo();
         int lm_max_rho = Utils::lmmax(l_max);
 

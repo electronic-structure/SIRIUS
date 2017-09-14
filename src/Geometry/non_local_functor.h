@@ -80,13 +80,12 @@ class Non_local_functor
 
                     int nbnd_loc = spl_nbnd.local_size();
 
-                    int bnd_offset = spl_nbnd.global_offset();
+//                    int bnd_offset = spl_nbnd.global_offset();
 
                     #pragma omp parallel for
                     for (int ia_chunk = 0; ia_chunk < bp_chunks(icnk).num_atoms_; ia_chunk++) {
                         int ia   = bp_chunks(icnk).desc_(beta_desc_idx::ia, ia_chunk);
                         int offs = bp_chunks(icnk).desc_(beta_desc_idx::offset, ia_chunk);
-                        int nbf  = bp_chunks(icnk).desc_(beta_desc_idx::nbf, ia_chunk);
                         int iat  = unit_cell.atom(ia).type_id();
 
                         /* helper lambda to calculate for sum loop over bands for different beta_phi and dij combinations*/
