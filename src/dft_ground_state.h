@@ -572,6 +572,9 @@ inline int DFT_ground_state::find(double potential_tol, double energy_tol, int n
         if (ctx_.use_symmetry()) {
             symmetrize(&density_.rho(), &density_.magnetization(0), &density_.magnetization(1),
                        &density_.magnetization(2));
+            if (ctx_.esm_type() == electronic_structure_method_t::pseudopotential) {
+                density_.symmetrize_density_matrix();
+            }
         }
 
         /* set new tolerance of iterative solver */
