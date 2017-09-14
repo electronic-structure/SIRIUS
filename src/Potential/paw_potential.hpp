@@ -530,7 +530,7 @@ inline double Potential::calc_PAW_one_elec_energy(paw_potential_data_t& pdd,
                 }
             }
             for (int imagn = 0; imagn < ctx_.num_mag_dims() + 1; imagn++ ){
-                energy += dm[imagn] * paw_dij(ib1, ib2, imagn, ia);
+                energy += dm[imagn] * paw_dij(ib1, ib2, imagn, paw_ind);
             }
         }
     }

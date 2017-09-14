@@ -29,7 +29,9 @@
 #include <cassert>
 #include <vector>
 #include <complex>
+#ifdef __GPU
 #include <GPU/cuda.hpp>
+#endif
 
 namespace sddk {
 
@@ -367,7 +369,7 @@ class Communicator
     template <typename T, mpi_op_t mpi_op__ = mpi_op_t::sum>
     inline void iallreduce(T* buffer__, int count__, MPI_Request* req__) const
     {
-        #if defined(__GPU_NVTX_MPI)
+        #if defined(__GPU) && defined(__GPU_NVTX_MPI)
         acc::begin_range_marker("MPI_Iallreduce");
         #endif
         CALL_MPI(MPI_Iallreduce, (MPI_IN_PLACE, buffer__, count__, mpi_type_wrapper<T>::kind(),
