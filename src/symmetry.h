@@ -42,6 +42,8 @@ struct space_group_symmetry_descriptor
     /// Rotational part of symmetry operation (fractional coordinates).
     matrix3d<int> R;
 
+    matrix3d<int> invR;
+
     /// Fractional translation.
     vector3d<double> t;
     
@@ -291,6 +293,10 @@ class Symmetry
         void symmetrize_function(double_complex* f_pw__, 
                                  remap_gvec_to_shells const& remap_gvec__,
                                  mdarray<double_complex, 3> const& sym_phase_factors__) const;
+        
+        //void symmetrize_function(double_complex* f_pw__,
+        //                         Gvec const& gvec__,
+        //                         Communicator const& comm__) const;
 
         void symmetrize_vector_function(double_complex* fz_pw__,
                                         remap_gvec_to_shells const& remap_gvec__) const;
@@ -399,10 +405,25 @@ inline Symmetry::Symmetry(matrix3d<double>& lattice_vectors__,
                                     spg_dataset_->translations[isym][1],
                                     spg_dataset_->translations[isym][2]);
         int p = sym_op.R.det(); 
-        if (!(p == 1 || p == -1)) TERMINATE("wrong rotation matrix");
+        if (!(p == 1 || p == -1)) {
+            TERMINATE("wrong rotation matrix");
+        }
         sym_op.proper = p;
         sym_op.rotation = lattice_vectors_ * matrix3d<double>(sym_op.R * p) * inverse_lattice_vectors_;
         sym_op.euler_angles = euler_angles(sym_op.rotation);
+
+        for (int i = 0; i < spg_dataset_->n_operations; i++) {
+            auto m =  matrix3d<int>(spg_dataset_->rotations[isym]) * matrix3d<int>(spg_dataset_->rotations[i]);
+
+            if (m(0, 0) == 1 && m(1, 1) == 1 && m(2, 2) == 1 &&
+                m(0, 1) == 0 && m(1, 0) == 0 &&
+                m(0, 2) == 0 && m(2, 0) == 0 &&
+                m(1, 2) == 0 && m(2, 1) == 0)
+            {
+                sym_op.invR = matrix3d<int>(spg_dataset_->rotations[i]);
+                break;
+            }
+        }
 
         space_group_symmetry_.push_back(sym_op);
     }
@@ -661,8 +682,6 @@ inline void Symmetry::symmetrize_function(double_complex* f_pw__,
 
     std::vector<double_complex> sym_f_pw(v.size(), 0);
 
-    double* ptr = (double*)&sym_f_pw[0];
-
     sddk::timer t1("sirius::Symmetry::symmetrize_function_pw|local");
     #pragma omp parallel
     {
@@ -702,20 +721,10 @@ inline void Symmetry::symmetrize_function(double_complex* f_pw__,
                         gv_rot = gv_rot * (-1);
                         ig_rot = remap_gvec__.index_by_gvec(gv_rot);
                         assert(ig_rot >=0 && ig_rot < (int)v.size());
-                      
-                        //#pragma omp atomic update
-                        ptr[2 * ig_rot] += z.real();
-
-                        //#pragma omp atomic update
-                        ptr[2 * ig_rot + 1] -= z.imag();
+                        sym_f_pw[ig_rot] += std::conj(z);
                     } else {
                         assert(ig_rot >=0 && ig_rot < (int)v.size());
-                      
-                        //#pragma omp atomic update
-                        ptr[2 * ig_rot] += z.real();
-
-                        //#pragma omp atomic update
-                        ptr[2 * ig_rot + 1] += z.imag();
+                        sym_f_pw[ig_rot] += z;
                     }
                 }
             }

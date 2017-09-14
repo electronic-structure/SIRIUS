@@ -248,7 +248,7 @@ inline void inner(wave_functions& bra__,
                         #pragma omp parallel for
                         for (int jcol = 0; jcol < ncol; jcol++) {
                             for (int irow = 0; irow < nrow; irow++) {
-                                result__.set(irow0__ + irow + i0, jcol0__ + jcol + j0,
+                                result__.add(beta__, irow0__ + irow + i0, jcol0__ + jcol + j0,
                                              c_tmp(irow + nrow * jcol, s % 2));
                             }
                         }
@@ -267,14 +267,14 @@ inline void inner(wave_functions& bra__,
     }
     
     if (pu == CPU) {
-        auto store_panel = [&req, &result__, &dims, &c_tmp, irow0__, jcol0__](int s)
+        auto store_panel = [beta__, &req, &result__, &dims, &c_tmp, irow0__, jcol0__](int s)
         {
             MPI_Wait(&req[s % 2], MPI_STATUS_IGNORE);
 
             #pragma omp parallel for
             for (int jcol = 0; jcol < dims[s % 2][3]; jcol++) {
                 for (int irow = 0; irow < dims[s % 2][2]; irow++) {
-                    result__.set(irow0__ + irow +  dims[s % 2][0], jcol0__ + jcol +  dims[s % 2][1],
+                    result__.add(beta__, irow0__ + irow +  dims[s % 2][0], jcol0__ + jcol +  dims[s % 2][1],
                                  c_tmp(irow + dims[s % 2][2] * jcol, s % 2));
                 }
             }

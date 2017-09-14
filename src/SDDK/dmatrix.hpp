@@ -223,6 +223,17 @@ class dmatrix : public matrix<T>
         }
     }
 
+    inline void add(double beta__, const int irow_glob, const int icol_glob, T val)
+    {
+        auto r = spl_row_.location(irow_glob);
+        if (blacs_grid_->rank_row() == r.rank) {
+            auto c = spl_col_.location(icol_glob);
+            if (blacs_grid_->rank_col() == c.rank) {
+                (*this)(r.local_index, c.local_index) = (*this)(r.local_index, c.local_index) * beta__ + val;
+            }
+        }
+    }
+
     inline void make_real_diag(int n__)
     {
         for (int i = 0; i < n__; i++) {
