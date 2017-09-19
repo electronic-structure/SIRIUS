@@ -706,7 +706,9 @@ inline void Unit_cell::initialize()
         }
     }
     
-    get_symmetry();
+    if (parameters_.use_symmetry()) {
+        get_symmetry();
+    }
     
     spl_num_atom_symmetry_classes_ = splindex<block>(num_atom_symmetry_classes(), comm_.size(), comm_.rank());
     

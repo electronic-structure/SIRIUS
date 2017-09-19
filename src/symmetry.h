@@ -378,7 +378,8 @@ inline Symmetry::Symmetry(matrix3d<double>& lattice_vectors__,
             positions_(x, ia) = positions__(x, ia);
         }
     }
-
+    
+    sddk::timer t1("sirius::Symmetry::Symmetry|spg");
     spg_dataset_ = spg_get_dataset(lattice, (double(*)[3])&positions_(0, 0), &types_[0], num_atoms_, tolerance_);
     if (spg_dataset_ == NULL) {
         TERMINATE("spg_get_dataset() returned NULL");
@@ -394,9 +395,11 @@ inline Symmetry::Symmetry(matrix3d<double>& lattice_vectors__,
           << "expected number of atoms is " <<  num_atoms__;
         TERMINATE(s);
     }
+    t1.stop();
 
     inverse_lattice_vectors_ = inverse(lattice_vectors_);
 
+    sddk::timer t2("sirius::Symmetry::Symmetry|sym1");
     for (int isym = 0; isym < spg_dataset_->n_operations; isym++) {
         space_group_symmetry_descriptor sym_op;
 
@@ -427,7 +430,9 @@ inline Symmetry::Symmetry(matrix3d<double>& lattice_vectors__,
 
         space_group_symmetry_.push_back(sym_op);
     }
+    t2.stop();
 
+    sddk::timer t3("sirius::Symmetry::Symmetry|sym2");
     sym_table_ = mdarray<int, 2>(num_atoms_, num_spg_sym());
     /* loop over spatial symmetries */
     for (int isym = 0; isym < num_spg_sym(); isym++) {
@@ -454,7 +459,9 @@ inline Symmetry::Symmetry(matrix3d<double>& lattice_vectors__,
             sym_table_(ia, isym) = ja;
         }
     }
+    t3.stop();
     
+    sddk::timer t4("sirius::Symmetry::Symmetry|sym3");
     /* loop over spatial symmetries */
     for (int isym = 0; isym < num_spg_sym(); isym++) {
         /* loop over spin symmetries */
@@ -487,6 +494,7 @@ inline Symmetry::Symmetry(matrix3d<double>& lattice_vectors__,
             }
         }
     }
+    t4.stop();
 }
 
 inline matrix3d<double> Symmetry::rot_mtrx_cart(vector3d<double> euler_angles) const

@@ -3020,6 +3020,8 @@ void sirius_set_pw_coeffs(ftn_char label__,
         } else if (label == "vloc") {
             potential->local_potential().scatter_f_pw(v);
             potential->local_potential().fft_transform(1);
+        } else if (label == "dveff") {
+            potential->dveff().scatter_f_pw(v);
         } else {
             std::stringstream s;
             s << "wrong label in sirius_set_pw_coeffs()" << std::endl
@@ -3144,13 +3146,13 @@ void sirius_get_forces(ftn_char label__, ftn_double* forces__)
 {
     std::string label(label__);
 
-    auto get_forces = [&](const mdarray<double,2>& sirius_forces__)
-        {
-            #pragma omp parallel for
-            for (size_t i = 0; i < sirius_forces__.size(); i++){
-                forces__[i] = sirius_forces__[i];
-            }
-        };
+    auto get_forces = [&](const mdarray<double, 2>& sirius_forces__)
+    {
+        #pragma omp parallel for
+        for (size_t i = 0; i < sirius_forces__.size(); i++){
+            forces__[i] = sirius_forces__[i];
+        }
+    };
 
     if (label == "vloc") {
         get_forces(forces->local_forces());
@@ -3166,6 +3168,8 @@ void sirius_get_forces(ftn_char label__, ftn_double* forces__)
         get_forces(forces->us_nl_forces());
     } else if (label == "tot") {
         get_forces(forces->total_forces());
+    } else if (label == "scf_corr") {
+        get_forces(forces->scf_corr_forces());
     } else {
         TERMINATE("wrong label");
     }

@@ -192,8 +192,6 @@ class Density
          *  this density integrated does not reproduce the total number of core elctrons. */
         std::unique_ptr<Smooth_periodic_function<double>> rho_pseudo_core_{nullptr};
 
-        std::unique_ptr<Smooth_periodic_function<double>> rho_atomic_{nullptr};
-        
         /// Non-zero Gaunt coefficients.
         std::unique_ptr<Gaunt_coefficients<double_complex>> gaunt_coefs_{nullptr};
         
@@ -368,8 +366,6 @@ class Density
                 rho_pseudo_core_->zero();
 
                 generate_pseudo_core_charge_density();
-
-                rho_atomic_ = std::unique_ptr<Smooth_periodic_function<double>>(new Smooth_periodic_function<double>(ctx_.fft(), ctx_.gvec()));
             }
 
             if (ctx_.full_potential()) {
@@ -788,11 +784,6 @@ class Density
             return *rho_pseudo_core_;
         }
 
-        Smooth_periodic_function<double>& rho_atomic() const
-        {
-            return *rho_atomic_;
-        }
-        
         std::array<Periodic_function<double>*, 3> magnetization()
         {
             return {magnetization_[0].get(), magnetization_[1].get(), magnetization_[2].get()};
