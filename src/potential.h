@@ -286,39 +286,9 @@ class Potential
                 auto cs1 = local_potential_->checksum_rg();
                 if (ctx_.comm().rank() == 0) {
                     //DUMP("checksum(local_potential_pw): %18.10f %18.10f", cs.real(), cs.imag());
-                    print_checksum("local_potential_r", cs1);
+                    print_checksum("local_potential_rg", cs1);
                 }
             }
-
-            //for (int igsh = 0; igsh < ctx_.gvec().num_shells(); igsh++) {
-            //    auto g = ctx_.gvec().shell_len(igsh);
-            //    
-            //    auto& atom_type = unit_cell_.atom_type(0);
-            //    int np = atom_type.radial_grid().index_of(10);
-            //    if (np == -1) {
-            //        np = atom_type.num_mt_points();
-            //    }
-            //    auto rg = atom_type.radial_grid().segment(np);
-            //    Spline<double> s(rg);
-            //    double val;
-            //    if (std::abs(g) < 1e-10) {
-            //        for (int ir = 0; ir < rg.num_points(); ir++) {
-            //            double x = rg[ir];
-            //            s[ir] = (x * atom_type.pp_desc().vloc[ir] + atom_type.zn()) * x;
-            //        }
-            //        val = s.interpolate().integrate(0);
-            //    } else {
-            //        double g2 = g * g;
-            //        for (int ir = 0; ir < rg.num_points(); ir++) {
-            //            double x = rg[ir];
-            //            s[ir] = (x * atom_type.pp_desc().vloc[ir] + atom_type.zn() * gsl_sf_erf(x)) * std::sin(g * x);
-            //        }
-            //        val = (s.interpolate().integrate(0) / g - atom_type.zn() * std::exp(-g2 / 4) / g2);
-            //    }
-            //    if (std::abs(val - ri.value(0, g)) > 1e-10) {  
-            //        std::cout << "igsh = " << igsh << " exact: " << val << ", iterpolated: " << ri.value(0, g) << " diff: " << std::abs(val - ri.value(0, g)) << std::endl;
-            //    }
-            //}
         }
         
 

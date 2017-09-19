@@ -3007,7 +3007,7 @@ void sirius_set_pw_coeffs(ftn_char label__,
             potential->effective_magnetic_field(2)->fft_transform(1);
         } else if (label == "vxc") {
             potential->xc_potential()->scatter_f_pw(v);
-            //potential->xc_potential()->fft_transform(1);
+            potential->xc_potential()->fft_transform(1);
         } else if (label == "magz") {
             density->magnetization(0).scatter_f_pw(v);
             density->magnetization(0).fft_transform(1);

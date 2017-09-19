@@ -771,7 +771,8 @@ class Stress {
             rhovc.zero();
             rhovc.add(density_.rho());
             rhovc.add(density_.rho_pseudo_core());
-
+            
+            /* transform to PW domain */
             rhovc.fft_transform(-1);
 
             /* generate pw coeffs of the gradient */
