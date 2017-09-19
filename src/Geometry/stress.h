@@ -580,11 +580,6 @@ class Stress {
         stress_nonloc_ *= (1.0 / ctx_.unit_cell().omega());
 
         symmetrize(stress_nonloc_);
-
-        std::vector<std::array<int, 2>> idx = {{0, 1}, {0, 2}, {1, 2}};
-        for (auto e: idx) {
-            stress_nonloc_(e[0], e[1]) = stress_nonloc_(e[1], e[0]) = 0.5 * (stress_nonloc_(e[0], e[1]) + stress_nonloc_(e[1], e[0]));
-        }
     }
 
     /// Contribution to the stress tensor from the augmentation operator.
@@ -753,11 +748,6 @@ class Stress {
         stress_us_ *= (1.0 / ctx_.unit_cell().omega());
 
         symmetrize(stress_us_);
-
-        std::vector<std::array<int, 2>> idx = {{0, 1}, {0, 2}, {1, 2}};
-        for (auto e: idx) {
-            stress_us_(e[0], e[1]) = stress_us_(e[1], e[0]) = 0.5 * (stress_us_(e[0], e[1]) + stress_us_(e[1], e[0]));
-        }
     }
 
     /// XC contribution to stress.
@@ -852,7 +842,6 @@ class Stress {
         ctx_.comm().allreduce(&stress_core_(0, 0), 9);
 
         symmetrize(stress_core_);
-
     }
 
     inline void symmetrize(matrix3d<double>& mtrx__) const
@@ -869,6 +858,11 @@ class Stress {
         }
 
         mtrx__ = result * (1.0 / ctx_.unit_cell().symmetry().num_mag_sym());
+
+        std::vector<std::array<int, 2>> idx = {{0, 1}, {0, 2}, {1, 2}};
+        for (auto e: idx) {
+            mtrx__(e[0], e[1]) = mtrx__(e[1], e[0]) = 0.5 * (mtrx__(e[0], e[1]) + mtrx__(e[1], e[0]));
+        }
     }
 
   public:

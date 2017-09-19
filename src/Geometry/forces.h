@@ -40,6 +40,7 @@ class Forces_PS
     mdarray<double, 2> ewald_forces_;
     mdarray<double, 2> total_forces_;
     mdarray<double, 2> us_nl_forces_;
+    mdarray<double, 2> scf_corr_forces_;
 
     template <typename T>
     void add_k_point_contribution(K_point& kpoint, mdarray<double, 2>& forces)
@@ -73,17 +74,24 @@ class Forces_PS
 
     inline void allocate()
     {
-        local_forces_     = mdarray<double, 2>(3, ctx_.unit_cell().num_atoms());
-        ultrasoft_forces_ = mdarray<double, 2>(3, ctx_.unit_cell().num_atoms());
-        nonlocal_forces_  = mdarray<double, 2>(3, ctx_.unit_cell().num_atoms());
-        nlcc_forces_      = mdarray<double, 2>(3, ctx_.unit_cell().num_atoms());
-        ewald_forces_     = mdarray<double, 2>(3, ctx_.unit_cell().num_atoms());
-        total_forces_     = mdarray<double, 2>(3, ctx_.unit_cell().num_atoms());
-        us_nl_forces_     = mdarray<double, 2>(3, ctx_.unit_cell().num_atoms());
+        int na = ctx_.unit_cell().num_atoms();
+        local_forces_     = mdarray<double, 2>(3, na);
+        ultrasoft_forces_ = mdarray<double, 2>(3, na);
+        nonlocal_forces_  = mdarray<double, 2>(3, na);
+        nlcc_forces_      = mdarray<double, 2>(3, na);
+        ewald_forces_     = mdarray<double, 2>(3, na);
+        total_forces_     = mdarray<double, 2>(3, na);
+        us_nl_forces_     = mdarray<double, 2>(3, na);
+        scf_corr_forces_  = mdarray<double, 2>(3, na);
     }
 
     inline void symmetrize_forces(mdarray<double, 2>& unsym_forces, mdarray<double, 2>& sym_forces)
     {
+        if (!ctx_.use_symmetry()) {
+            unsym_forces >> sym_forces;
+            return;
+        }
+
         matrix3d<double> const& lattice_vectors         = ctx_.unit_cell().symmetry().lattice_vectors();
         matrix3d<double> const& inverse_lattice_vectors = ctx_.unit_cell().symmetry().inverse_lattice_vectors();
 
@@ -96,8 +104,7 @@ class Forces_PS
                 inverse_lattice_vectors * (cart_force / (double)ctx_.unit_cell().symmetry().num_mag_sym());
 
             for (int isym = 0; isym < ctx_.unit_cell().symmetry().num_mag_sym(); isym++) {
-                int ja = ctx_.unit_cell().symmetry().sym_table(ia, isym);
-
+                int ja                     = ctx_.unit_cell().symmetry().sym_table(ia, isym);
                 auto& R                    = ctx_.unit_cell().symmetry().magnetic_group_symmetry(isym).spg_op.R;
                 vector3d<double> rot_force = lattice_vectors * (R * lat_force);
 
@@ -408,6 +415,53 @@ class Forces_PS
         }
     }
 
+    inline void calc_scf_corr_forces(mdarray<double, 2>& forces)
+    {
+        PROFILE("sirius::Forces_PS::calc_scf_corr_forces");
+
+        /* get main arrays */
+        auto& dveff = potential_.dveff();
+
+        Unit_cell& unit_cell = ctx_.unit_cell();
+
+        Gvec const& gvec = ctx_.gvec();
+
+        int gvec_count  = gvec.count();
+        int gvec_offset = gvec.offset();
+
+        forces.zero();
+
+        double fact = gvec.reduced() ? 2.0 : 1.0;
+
+        int ig0 = (ctx_.comm().rank() == 0) ? 1 : 0;
+        
+        Radial_integrals_rho_pseudo ri(ctx_.unit_cell(), ctx_.pw_cutoff(), 20);
+
+        #pragma omp parallel for
+        for (int ia = 0; ia < unit_cell.num_atoms(); ia++) {
+            Atom& atom = unit_cell.atom(ia);
+
+            int iat = atom.type_id();
+
+            for (int igloc = ig0; igloc < gvec_count; igloc++) {
+                int ig = gvec_offset + igloc;
+
+                /* cartesian form for getting cartesian force components */
+                vector3d<double> gvec_cart = gvec.gvec_cart(ig);
+
+                /* scalar part of a force without multipying by G-vector */
+                double_complex z = fact * fourpi * ri.value(iat, gvec.gvec_len(ig)) *
+                        std::conj(dveff.f_pw_local(igloc) * ctx_.gvec_phase_factor(ig, ia));
+
+                /* get force components multiplying by cartesian G-vector */
+                forces(0, ia) -= (gvec_cart[0] * z).imag();
+                forces(1, ia) -= (gvec_cart[1] * z).imag();
+                forces(2, ia) -= (gvec_cart[2] * z).imag();
+            }
+        }
+        ctx_.comm().allreduce(&forces(0, 0), static_cast<int>(forces.size()));
+    }
+
     inline void calc_forces_contributions()
     {
         calc_local_forces(local_forces_);
@@ -415,6 +469,12 @@ class Forces_PS
         calc_nonlocal_forces(nonlocal_forces_);
         calc_nlcc_forces(nlcc_forces_);
         calc_ewald_forces(ewald_forces_);
+        calc_scf_corr_forces(scf_corr_forces_);
+    }
+
+    inline mdarray<double, 2> const& scf_corr_forces() const
+    {
+        return scf_corr_forces_;
     }
 
     inline mdarray<double, 2> const& local_forces()
