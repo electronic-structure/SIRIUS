@@ -16,6 +16,9 @@
 #include <complex>
 #include <algorithm>
 #include "communicator.hpp"
+#ifdef __GPU
+#include "GPU/cuda.hpp"
+#endif
 
 namespace sddk {
 
