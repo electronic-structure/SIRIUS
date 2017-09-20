@@ -28,7 +28,7 @@
 std::unique_ptr<sirius::Simulation_context> sim_ctx{nullptr};
 
 /// Pointer to Density class, implicitly used by Fortran side.
-sirius::Density* density = nullptr;
+std::unique_ptr<sirius::Density> density{nullptr};
 
 /// Pointer to Potential class, implicitly used by Fortran side.
 sirius::Potential* potential = nullptr;
@@ -67,10 +67,8 @@ void sirius_initialize(ftn_int* call_mpi_init__)
 /// Clear global variables and destroy all objects
 void sirius_clear(void)
 {
-    if (density != nullptr) {
-        delete density;
-        density = nullptr;
-    }
+    density = nullptr;
+
     if (potential != nullptr) {
         delete potential;
         potential = nullptr;
@@ -126,10 +124,10 @@ void sirius_delete_simulation_context()
  *  \param [in] beffmt pointer to the muffin-tin part of effective magnetic field
  *  \param [in] beffit pointer to the interstitial part of the effective magnetic field
  */
-void sirius_create_potential(double* veffit__,
-                             double* veffmt__,
-                             double* beffit__,
-                             double* beffmt__)
+void sirius_create_potential(ftn_double* veffit__,
+                             ftn_double* veffmt__,
+                             ftn_double* beffit__,
+                             ftn_double* beffmt__)
 {
     potential = new sirius::Potential(*sim_ctx);
     potential->set_effective_potential_ptr(veffmt__, veffit__);
@@ -150,21 +148,18 @@ void sirius_delete_potential()
  *  \param [in] magmt pointer to the muffin-tin part of the magnetization
  *  \param [in] magit pointer to the interstitial part of the magnetization
  */
-void sirius_create_density(double* rhoit__,
-                           double* rhomt__,
-                           double* magit__,
-                           double* magmt__)
+void sirius_create_density(ftn_double* rhoit__,
+                           ftn_double* rhomt__,
+                           ftn_double* magit__,
+                           ftn_double* magmt__)
 {
-    density = new sirius::Density(*sim_ctx);
+    density = std::unique_ptr<sirius::Density>(new sirius::Density(*sim_ctx));
     density->set_charge_density_ptr(rhomt__, rhoit__);
     density->set_magnetization_ptr(magmt__, magit__);
 }
 
 void sirius_delete_density()
 {
-    if (density != nullptr) {
-        delete density;
-    }
     density = nullptr;
 }
 

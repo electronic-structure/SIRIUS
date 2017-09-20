@@ -369,15 +369,15 @@ class Potential
             xc_energy_density_ = new Periodic_function<double>(ctx_, ctx_.lmmax_pot());
             xc_energy_density_->allocate_mt(false);
 
+            for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
+                vsigma_[ispn] = std::unique_ptr<Smooth_periodic_function<double>>(new Smooth_periodic_function<double>(ctx_.fft(), ctx_.gvec()));
+            }
+
             if (!ctx_.full_potential()) {
                 local_potential_ = std::unique_ptr<Smooth_periodic_function<double>>(new Smooth_periodic_function<double>(ctx_.fft(), ctx_.gvec()));
                 local_potential_->zero();
 
                 generate_local_potential();
-
-                for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-                    vsigma_[ispn] = std::unique_ptr<Smooth_periodic_function<double>>(new Smooth_periodic_function<double>(ctx_.fft(), ctx_.gvec()));
-                }
 
                 dveff_ = std::unique_ptr<Smooth_periodic_function<double>>(new Smooth_periodic_function<double>(ctx_.fft(), ctx_.gvec()));
             }
