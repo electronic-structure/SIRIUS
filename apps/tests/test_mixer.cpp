@@ -20,7 +20,7 @@ void test_mixer(Mixer<double>& mixer)
 
     for (int i = 0; i < N; i++) mixer.input_shared(i, b[i]);
 
-    mixer.mix();
+    mixer.mix(1e-16);
     std::vector<double> c(N);
 
     for (int i = 0; i < N; i++) c[i] = mixer.output_shared(i);

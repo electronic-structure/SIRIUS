@@ -169,7 +169,7 @@ class Free_atom: public sirius::Atom_type
                 for (int i = 0; i < np; i++) {
                     mixer->input_local(i, vh[i] + vxc[i]);
                 }
-                mixer->mix();
+                mixer->mix(1e-16);
                 for (int i = 0; i < np; i++) {
                     vrho[i] = mixer->output_local(i);
                     veff[i] = vrho[i] + vnuc[i];
