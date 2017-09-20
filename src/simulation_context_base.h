@@ -546,7 +546,7 @@ inline void Simulation_context_base::initialize()
         MEMORY_USAGE_INFO();
     }
 
-    if (unit_cell_.num_atoms() != 0) {
+    if (unit_cell_.num_atoms() != 0 && use_symmetry()) {
         unit_cell_.symmetry().check_gvec_symmetry(gvec_, comm_);
         if (!full_potential()) {
             unit_cell_.symmetry().check_gvec_symmetry(gvec_coarse_, comm_);
@@ -571,15 +571,17 @@ inline void Simulation_context_base::initialize()
             }
         }
     }
+    
+    if (use_symmetry()) {
+        sym_phase_factors_ = mdarray<double_complex, 3>(3, limits, unit_cell().symmetry().num_mag_sym());
 
-    sym_phase_factors_ = mdarray<double_complex, 3>(3, limits, unit_cell().symmetry().num_mag_sym());
-
-    #pragma omp parallel for
-    for (int i = limits.first; i <= limits.second; i++) {
-        for (int isym = 0; isym < unit_cell().symmetry().num_mag_sym(); isym++) {
-            auto t = unit_cell().symmetry().magnetic_group_symmetry(isym).spg_op.t;
-            for (int x: {0, 1, 2}) {
-                sym_phase_factors_(x, i, isym) = std::exp(double_complex(0.0, twopi * (i * t[x])));
+        #pragma omp parallel for
+        for (int i = limits.first; i <= limits.second; i++) {
+            for (int isym = 0; isym < unit_cell().symmetry().num_mag_sym(); isym++) {
+                auto t = unit_cell().symmetry().magnetic_group_symmetry(isym).spg_op.t;
+                for (int x: {0, 1, 2}) {
+                    sym_phase_factors_(x, i, isym) = std::exp(double_complex(0.0, twopi * (i * t[x])));
+                }
             }
         }
     }

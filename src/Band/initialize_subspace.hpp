@@ -107,9 +107,18 @@ Band::initialize_subspace(K_point* kp__, int num_ao__, std::vector<std::vector<S
     }
 
     sddk::timer t1("sirius::Band::initialize_subspace|kp|wf");
+    /* get proper lmax */
+    int lmax{0};
+    for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
+        auto& atom_type = unit_cell_.atom_type(iat);
+        for (auto& wf: atom_type.pp_desc().atomic_pseudo_wfs_) {
+            lmax = std::max(lmax, wf.first);
+        }
+    }
+    lmax = std::max(lmax, unit_cell_.lmax());
 
     if (num_ao__ > 0) {
-        mdarray<double, 2> rlm_gk(kp__->num_gkvec_loc(), Utils::lmmax(unit_cell_.lmax()));
+        mdarray<double, 2> rlm_gk(kp__->num_gkvec_loc(), Utils::lmmax(lmax));
         mdarray<std::pair<int, double>, 1> idx_gk(kp__->num_gkvec_loc());
         #pragma omp parallel for schedule(static)
         for (int igk_loc = 0; igk_loc < kp__->num_gkvec_loc(); igk_loc++) {
@@ -117,21 +126,23 @@ Band::initialize_subspace(K_point* kp__, int num_ao__, std::vector<std::vector<S
             /* vs = {r, theta, phi} */
             auto vs = SHT::spherical_coordinates(kp__->gkvec().gkvec_cart(igk));
             /* compute real spherical harmonics for G+k vector */
-            std::vector<double> rlm(Utils::lmmax(unit_cell_.lmax()));
-            SHT::spherical_harmonics(unit_cell_.lmax(), vs[1], vs[2], &rlm[0]);
-            for (int lm = 0; lm < Utils::lmmax(unit_cell_.lmax()); lm++) {
+            std::vector<double> rlm(Utils::lmmax(lmax));
+            SHT::spherical_harmonics(lmax, vs[1], vs[2], &rlm[0]);
+            for (int lm = 0; lm < Utils::lmmax(lmax); lm++) {
                 rlm_gk(igk_loc, lm) = rlm[lm];
             }
             int i = static_cast<int>((vs[0] / ctx_.gk_cutoff()) * (rad_int__[0][0].num_points() - 1));
             double dgk = vs[0] - rad_int__[0][0].radial_grid()[i];
             idx_gk(igk_loc) = std::pair<int, double>(i, dgk);
         }
-
+    
+        /* starting index of atomic orbital block for each atom */
         std::vector<int> idxao;
         int n{0};
         for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
             auto& atom_type = unit_cell_.atom(ia).type();
             idxao.push_back(n);
+            /* increment index of atomic orbitals */
             for (size_t i = 0; i < atom_type.pp_desc().atomic_pseudo_wfs_.size(); i++) {
                 int l = atom_type.pp_desc().atomic_pseudo_wfs_[i].first;
                 n += (2 * l + 1);
@@ -252,6 +263,7 @@ Band::initialize_subspace(K_point* kp__, int num_ao__, std::vector<std::vector<S
     int bs        = ctx_.cyclic_block_size();
     auto mem_type = (std_evp_solver().type() == ev_magma) ? memory_t::host_pinned : memory_t::host;
     dmatrix<T> hmlt(num_phi_tot, num_phi_tot, ctx_.blacs_grid(), bs, bs, mem_type);
+    dmatrix<T> ovlp(num_phi_tot, num_phi_tot, ctx_.blacs_grid(), bs, bs, mem_type);
     dmatrix<T> evec(num_phi_tot, num_phi_tot, ctx_.blacs_grid(), bs, bs, mem_type);
     dmatrix<T> hmlt_old;
 
@@ -279,6 +291,7 @@ Band::initialize_subspace(K_point* kp__, int num_ao__, std::vector<std::vector<S
         wf_tmp.allocate_on_device();
         evec.allocate(memory_t::device);
         hmlt.allocate(memory_t::device);
+        ovlp.allocate(memory_t::device);
     }
 #endif
 
@@ -299,8 +312,12 @@ Band::initialize_subspace(K_point* kp__, int num_ao__, std::vector<std::vector<S
 
         /* do some checks */
         if (ctx_.control().verification_ >= 1) {
+
             set_subspace_mtrx<T>(num_sc, 0, num_phi_tot, phi, ophi, hmlt, hmlt_old);
-            // hmlt.serialize("overlap", num_phi);
+            if (ctx_.control().verification_ >= 2) {
+                hmlt.serialize("overlap", num_phi_tot);
+            }
+
             double max_diff = check_hermitian(hmlt, num_phi_tot);
             if (max_diff > 1e-12) {
                 std::stringstream s;
@@ -323,18 +340,34 @@ Band::initialize_subspace(K_point* kp__, int num_ao__, std::vector<std::vector<S
             }
         }
 
-        orthogonalize<T>(ctx_.processing_unit(), num_sc, 0, num_phi_tot, phi, hphi, ophi, hmlt, wf_tmp);
+        //orthogonalize<T>(ctx_.processing_unit(), num_sc, 0, num_phi_tot, phi, hphi, ophi, hmlt, wf_tmp);
 
         /* setup eigen-value problem */
         set_subspace_mtrx<T>(num_sc, 0, num_phi_tot, phi, hphi, hmlt, hmlt_old);
+        set_subspace_mtrx<T>(num_sc, 0, num_phi_tot, phi, ophi, ovlp, hmlt_old);
 
-        // hmlt.serialize("hmlt", num_phi_tot);
+        if (ctx_.control().verification_ >= 2) {
+            hmlt.serialize("hmlt", num_phi_tot);
+            ovlp.serialize("ovlp", num_phi_tot);
+        }
 
-        /* solve generalized eigen-value problem with the size N */
-        if (std_evp_solver().solve(num_phi_tot, num_bands, hmlt.template at<CPU>(), hmlt.ld(), eval.data(),
-                                   evec.template at<CPU>(), evec.ld(), hmlt.num_rows_local(), hmlt.num_cols_local())) {
+
+        ///* solve generalized eigen-value problem with the size N */
+        //if (std_evp_solver().solve(num_phi_tot, num_bands, hmlt.template at<CPU>(), hmlt.ld(), eval.data(),
+        //                           evec.template at<CPU>(), evec.ld(), hmlt.num_rows_local(), hmlt.num_cols_local())) {
+        //    std::stringstream s;
+        //    s << "error in diagonalization";
+        //    TERMINATE(s);
+        //}
+
+        /* solve generalized eigen-value problem with the size N and get lowest num_bands eigen-vectors */
+        if (gen_evp_solver().solve(num_phi_tot, num_bands,
+                                   hmlt.template at<CPU>(), hmlt.ld(),
+                                   ovlp.template at<CPU>(), ovlp.ld(),
+                                   eval.data(), evec.template at<CPU>(), evec.ld(),
+                                   hmlt.num_rows_local(), hmlt.num_cols_local())) {
             std::stringstream s;
-            s << "error in diagonalization";
+            s << "error in diagonalziation";
             TERMINATE(s);
         }
 

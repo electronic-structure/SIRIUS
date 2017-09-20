@@ -31,7 +31,7 @@ inline void Density::initial_density_pseudo()
     }
 
     std::memcpy(&rho_->f_pw_local(0), &v[0], ctx_.gvec().count() * sizeof(double_complex));
-    
+
     double charge = rho_->f_0().real() * unit_cell_.omega();
 
     if (std::abs(charge - unit_cell_.num_valence_electrons()) > 1e-6) {
