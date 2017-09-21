@@ -299,7 +299,7 @@ inline void inner(wave_functions& bra__,
                 local_inner(i0__ + i0, nrow, j0__ + j0, ncol, buf, nrow, -1);
 
                 comm.iallreduce(c_tmp.template at<CPU>(0, s % 2), nrow * ncol, &req[s % 2]);
-                
+
                 s++;
             }
         }

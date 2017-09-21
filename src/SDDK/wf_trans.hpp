@@ -59,7 +59,8 @@ inline void transform(device_t                     pu__,
                                   int             jcol0__,
                                   wave_functions* wf_out__,
                                   int             j0__,
-                                  int             n__)
+                                  int             n__,
+                                  int             stream_id__)
     {
         if (pu__ == CPU) {
             if (std::is_same<T, double_complex>::value) {
@@ -102,7 +103,7 @@ inline void transform(device_t                     pu__,
                                   reinterpret_cast<double_complex*>(mtrx__.template at<GPU>(irow0__, jcol0__)), mtrx__.ld(),
                                   &linalg_const<double_complex>::one(),
                                   wf_out__->pw_coeffs().prime().at<GPU>(0, j0__), wf_out__->pw_coeffs().prime().ld(),
-                                  0);
+                                  stream_id__);
 
                 if (wf_in__->has_mt() && wf_in__->mt_coeffs().num_rows_loc()) {
                     linalg<GPU>::gemm(0, 0, wf_in__->mt_coeffs().num_rows_loc(), n__, m__,
@@ -111,7 +112,7 @@ inline void transform(device_t                     pu__,
                                       reinterpret_cast<double_complex*>(mtrx__.template at<GPU>(irow0__, jcol0__)), mtrx__.ld(),
                                       &linalg_const<double_complex>::one(),
                                       wf_out__->mt_coeffs().prime().at<GPU>(0, j0__), wf_out__->mt_coeffs().prime().ld(),
-                                      0);
+                                      stream_id__);
                 }
             }
 
@@ -122,7 +123,7 @@ inline void transform(device_t                     pu__,
                                   reinterpret_cast<double*>(mtrx__.template at<GPU>(irow0__, jcol0__)), mtrx__.ld(),
                                   &linalg_const<double>::one(),
                                   reinterpret_cast<double*>(wf_out__->pw_coeffs().prime().at<GPU>(0, j0__)), 2 * wf_out__->pw_coeffs().prime().ld(),
-                                  0);
+                                  stream_id__);
                 if (wf_in__->has_mt()) {
                     TERMINATE("not implemented");
                 }
@@ -212,15 +213,15 @@ inline void transform(device_t                     pu__,
         #ifdef __GPU
         if (pu__ == GPU) {
             acc::copyin(mtrx__.template at<GPU>(irow0__, jcol0__), mtrx__.ld(),
-                        mtrx__.template at<CPU>(irow0__, jcol0__), mtrx__.ld(), m__, n__);
+                        mtrx__.template at<CPU>(irow0__, jcol0__), mtrx__.ld(), m__, n__, 0);
         }
         #endif
         for (int iv = 0; iv < nwf; iv++) {
-            local_transform(&alpha, wf_in__[iv], i0__, m__, mtrx__, irow0__, jcol0__, wf_out__[iv], j0__, n__);
+            local_transform(&alpha, wf_in__[iv], i0__, m__, mtrx__, irow0__, jcol0__, wf_out__[iv], j0__, n__, 0);
         }
         #ifdef __GPU
         if (pu__ == GPU) {
-            /* wait for the last cudaZgemm */
+            /* wait for the stream to finish zgemm */
             acc::sync_stream(0);
         }
         #endif
@@ -238,8 +239,10 @@ inline void transform(device_t                     pu__,
 
     const int BS = sddk_block_size;
 
+    const int num_streams{4};
+
     mdarray<T, 1> buf(BS * BS, memory_t::host_pinned, "transform::buf");
-    matrix<T> submatrix(BS, BS, memory_t::host_pinned, "transform::submatrix");
+    mdarray<T, 3> submatrix(BS, BS, num_streams, memory_t::host_pinned, "transform::submatrix");
 
     if (pu__ == GPU) {
         submatrix.allocate(memory_t::device);
@@ -259,6 +262,8 @@ inline void transform(device_t                     pu__,
     block_data_descriptor sd(comm.size());
 
     double time_mpi{0};
+    
+    int s{0};
 
     for (int ibc = 0; ibc < nbc; ibc++) {
         /* global index of column */
@@ -314,6 +319,13 @@ inline void transform(device_t                     pu__,
             /* collect submatrix */
             comm.allgather(&buf[0], sd.counts.data(), sd.offsets.data());
             time_mpi += (omp_get_wtime() - t0);
+
+            #ifdef __GPU
+            if (pu__ == GPU) {
+                /* wait for the data copy; as soon as this is done, CPU buffer is free and can be reused */
+                acc::sync_stream(s % num_streams);
+            }
+            #endif
             
             /* unpack data */
             std::vector<int> counts(comm.size(), 0);
@@ -323,7 +335,7 @@ inline void transform(device_t                     pu__,
                     auto pos_irow = mtrx__.spl_row().location(irow0__ + i0 + irow);
                     int rank = cart_rank(pos_irow.rank, pos_jcol.rank);
 
-                    submatrix(irow, jcol) = buf[sd.offsets[rank] + counts[rank]];
+                    submatrix(irow, jcol, s % num_streams) = buf[sd.offsets[rank] + counts[rank]];
                     counts[rank]++;
                 }
             }
@@ -332,23 +344,37 @@ inline void transform(device_t                     pu__,
             }
             #ifdef __GPU
             if (pu__ == GPU) {
-                acc::copyin(submatrix.template at<GPU>(), submatrix.ld(),
-                            submatrix.template at<CPU>(), submatrix.ld(),
-                            nrow, ncol, 0);
+                acc::copyin(submatrix.template at<GPU>(0, 0, s % num_streams), submatrix.ld(),
+                            submatrix.template at<CPU>(0, 0, s % num_streams), submatrix.ld(),
+                            nrow, ncol, s % num_streams);
                 /* wait for the data copy; as soon as this is done, CPU buffer is free and can be reused */
-                acc::sync_stream(0);
+                //acc::sync_stream(0);
             }
             #endif
-            for (int iv = 0; iv < nwf; iv++) {
-                local_transform(&alpha, wf_in__[iv], i0__ + i0, nrow, submatrix, 0, 0, wf_out__[iv], j0__ + j0, ncol);
+            matrix<T> tmp;
+            switch (pu__) {
+                case CPU: {
+                    tmp = matrix<T>(submatrix.template at<CPU>(0, 0, s % num_streams), BS, BS);
+                    break;
+                }
+                case GPU: {
+                    tmp = matrix<T>(submatrix.template at<CPU>(0, 0, s % num_streams), submatrix.template at<GPU>(0, 0, s % num_streams), BS, BS);
+                    break;
+                }
             }
+            for (int iv = 0; iv < nwf; iv++) {
+                local_transform(&alpha, wf_in__[iv], i0__ + i0, nrow, tmp, 0, 0, wf_out__[iv], j0__ + j0, ncol, s % num_streams);
+            }
+            s++;
         }
     }
 
     #ifdef __GPU
     if (pu__ == GPU) {
         /* wait for the last cudaZgemm */
-        acc::sync_stream(0);
+        for (int s = 0; s < num_streams; s++) {
+            acc::sync_stream(s);
+        }
     }
     #endif
 

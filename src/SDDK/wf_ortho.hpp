@@ -13,7 +13,7 @@ inline void orthogonalize(int N__,
     PROFILE("sddk::wave_functions::orthogonalize");
 
     auto pu = wfs__[0]->pu();
-        
+
     /* project out the old subspace:
      * |\tilda phi_new> = |phi_new> - |phi_old><phi_old|phi_new> */
     if (N__ > 0) {
