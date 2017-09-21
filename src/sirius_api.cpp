@@ -1570,6 +1570,13 @@ void sirius_generate_coulomb_potential(ftn_double* vclmt__,
     potential->hartree_potential().copy_to_global_ptr(vclmt__, vclit__);
 }
 
+void sirius_get_vha_el(ftn_double* vha_el__)
+{
+    for (int ia = 0; ia < sim_ctx->unit_cell().num_atoms(); ia++) {
+        vha_el__[ia] = potential->vha_el(ia);
+    }
+}
+
 void sirius_update_atomic_potential()
 {
     potential->update_atomic_potential();

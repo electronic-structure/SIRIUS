@@ -392,9 +392,7 @@ class Potential
                     auto rtp = SHT::spherical_coordinates(ctx_.gvec().gvec_cart(ig));
                     SHT::spherical_harmonics(ctx_.lmax_pot(), rtp[1], rtp[2], &gvec_ylm_(0, igloc));
                 }
-            }
 
-            if (ctx_.full_potential()) {
                 switch (ctx_.valence_relativity()) {
                     case relativity_t::iora: {
                         rm2_inv_pw_ = mdarray<double_complex, 1>(ctx_.gvec().num_gvec());
@@ -1189,6 +1187,10 @@ class Potential
             return (*vsigma_[ispn__].get());
         }
 
+        inline double vha_el(int ia__) const
+        {
+            return vh_el_(ia__);
+        }
 };
 
 #include "Potential/init.hpp"
