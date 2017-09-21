@@ -286,9 +286,18 @@ inline void transform(device_t                     pu__,
 
             int local_size_row = spl_row_end.local_size() - spl_row_begin.local_size();
 
-            sd.counts[comm.rank()] = local_size_row * local_size_col;
+            /* total number of elements owned by the current rank in the block */
+            for (int i = 0; i < mtrx__.blacs_grid().num_ranks_col(); i++) {
+                int s1 = spl_col_end.local_size(i) - spl_col_begin.local_size(i);
+                for (int j = 0; j < mtrx__.blacs_grid().num_ranks_row(); j++) {
+                    int l = cart_rank(j, i);
+                    sd.counts[l] = (spl_row_end.local_size(j) - spl_row_begin.local_size(j)) * s1;
+                }
+            }
 
-            comm.allgather(sd.counts.data(), comm.rank(), 1);
+            //sd.counts[comm.rank()] = local_size_row * local_size_col;
+
+            //comm.allgather(sd.counts.data(), comm.rank(), 1);
 
             sd.calc_offsets();
 
@@ -334,13 +343,14 @@ inline void transform(device_t                     pu__,
                 local_transform(&alpha, wf_in__[iv], i0__ + i0, nrow, submatrix, 0, 0, wf_out__[iv], j0__ + j0, ncol);
             }
         }
-        #ifdef __GPU
-        if (pu__ == GPU) {
-            /* wait for the last cudaZgemm */
-            acc::sync_stream(0);
-        }
-        #endif
     }
+
+    #ifdef __GPU
+    if (pu__ == GPU) {
+        /* wait for the last cudaZgemm */
+        acc::sync_stream(0);
+    }
+    #endif
 
     if (sddk_pp) {
         comm.barrier();
