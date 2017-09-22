@@ -12,7 +12,7 @@
 #include <chrono>
 #include <omp.h>
 #include <unistd.h>
-#include <cinttypes.h>
+#include <cinttypes>
 #include <cstring>
 #include <cstdarg>
 #include "config.h"
