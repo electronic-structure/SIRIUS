@@ -56,8 +56,8 @@ inline void Band::diag_fv_exact(K_point* kp, Potential& potential__) const
         kp->comm().allreduce(&z1, 1);
         kp->comm().allreduce(&z2, 1);
         if (kp->comm().rank() == 0) {
-            DUMP("checksum(h): %18.10f %18.10f", std::real(z1), std::imag(z1));
-            DUMP("checksum(o): %18.10f %18.10f", std::real(z2), std::imag(z2));
+            print_checksum("h_lapw", z1);
+            print_checksum("o_lapw", z2);
         }
     }
 
@@ -135,7 +135,7 @@ inline void Band::diag_fv_exact(K_point* kp, Potential& potential__) const
         }
     }
 
-    if (ctx_.control().verification_ >= 1) {
+    if (ctx_.control().verification_ >= 2) {
         /* check application of H and O */
         wave_functions phi(ctx_.processing_unit(), kp->gkvec(), unit_cell_.num_atoms(),
                            [this](int ia) {return unit_cell_.atom(ia).mt_lo_basis_size(); }, ctx_.num_fv_states());

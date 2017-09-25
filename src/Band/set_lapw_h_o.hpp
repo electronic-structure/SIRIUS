@@ -117,9 +117,9 @@ inline void Band::set_fv_h_o<CPU, electronic_structure_method_t::full_potential_
             double_complex z1 = alm_row.checksum();
             double_complex z2 = alm_col.checksum();
             double_complex z3 = halm_col.checksum();
-            DUMP("checksum(alm_row): %18.10f %18.10f", std::real(z1), std::imag(z1));
-            DUMP("checksum(alm_col): %18.10f %18.10f", std::real(z2), std::imag(z2));
-            DUMP("checksum(halm_col): %18.10f %18.10f", std::real(z3), std::imag(z3));
+            print_checksum("alm_row", z1);
+            print_checksum("alm_col", z2);
+            print_checksum("halm_col", z3);
         }
         linalg<CPU>::gemm(0, 1, kp__->num_gkvec_row(), kp__->num_gkvec_col(), num_mt_aw,
                           zone,

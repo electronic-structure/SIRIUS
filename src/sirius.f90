@@ -967,6 +967,11 @@ module sirius
             complex(8),              intent(out) :: pot
         end subroutine
 
+        subroutine sirius_get_vha_el(vha_el)&
+            &bind(C, name="sirius_get_vha_el")
+            real(8),                 intent(out) :: vha_el
+        end subroutine
+
         subroutine sirius_calculate_stress_tensor(kset_id)&
             &bind(C, name="sirius_calculate_stress_tensor")
             integer,                 intent(in)  :: kset_id

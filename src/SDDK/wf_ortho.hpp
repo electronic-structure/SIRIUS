@@ -13,16 +13,56 @@ inline void orthogonalize(int N__,
     PROFILE("sddk::wave_functions::orthogonalize");
 
     auto pu = wfs__[0]->pu();
-        
+
+    const char* sddk_pp_raw = std::getenv("SDDK_PRINT_PERFORMANCE");
+    int sddk_pp = (sddk_pp_raw == NULL) ? 0 : std::atoi(sddk_pp_raw);
+
+    auto& comm = wfs__[idx_bra__]->comm();
+
+    int K{0};
+    if (sddk_pp) {
+        K = wfs__[idx_bra__]->pw_coeffs().num_rows_loc();
+        if (wfs__[idx_bra__]->has_mt()) {
+            K += wfs__[idx_bra__]->mt_coeffs().num_rows_loc();
+        }
+        comm.allreduce(&K, 1);
+        if (std::is_same<T, double>::value) {
+            K *= 2;
+        }
+    }
+
+    double ngop{0};
+    if (std::is_same<T, double>::value) {
+        ngop = 2e-9;
+    }
+    if (std::is_same<T, double_complex>::value) {
+        ngop = 8e-9;
+    }
+
+    if (sddk_pp) {
+        comm.barrier();
+    }
+    double time = -omp_get_wtime();
+
+    double gflops{0};
+
     /* project out the old subspace:
      * |\tilda phi_new> = |phi_new> - |phi_old><phi_old|phi_new> */
     if (N__ > 0) {
         inner(*wfs__[idx_bra__], 0, N__, *wfs__[idx_ket__], N__, n__, 0.0, o__, 0, 0);
         transform(pu, -1.0, wfs__, 0, N__, o__, 0, 0, 1.0, wfs__, N__, n__);
+
+        if (sddk_pp) {
+            gflops += static_cast<int>(1 + wfs__.size()) * ngop * N__ * n__ * K; // inner and transfrom have the same number of flops
+        }
     }
 
     /* orthogonalize new n__ x n__ block */
     inner(*wfs__[idx_bra__], N__, n__, *wfs__[idx_ket__], N__, n__, 0.0, o__, 0, 0);
+
+    if (sddk_pp) {
+        gflops += ngop * n__ * n__ * K;
+    }
 
     /* single MPI rank */
     if (o__.blacs_grid().comm().size() == 1) {

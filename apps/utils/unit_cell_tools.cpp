@@ -171,6 +171,7 @@ void create_qe_input()
     "tstress = false,\n"
     "tprnfor = false,\n"
     "verbosity = \'high\',\n"
+    "disk_io = \'none\',\n"
     "wf_collect = false\n"
     "/\n");
     
