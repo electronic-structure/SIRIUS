@@ -31,7 +31,7 @@
 #include "atom_symmetry_class.h"
 #include "atom.h"
 #include "mpi_grid.hpp"
-#include "symmetry.h"
+#include "unit_cell_symmetry.h"
 #include "simulation_parameters.h"
 #include "json.hpp"
 
@@ -162,7 +162,7 @@ class Unit_cell
 
         Communicator_bundle comm_bundle_atoms_;
         
-        std::unique_ptr<Symmetry> symmetry_;
+        std::unique_ptr<Unit_cell_symmetry> symmetry_;
 
         Communicator const& comm_;
 
@@ -569,7 +569,7 @@ class Unit_cell
             return nearest_neighbours_[ia][i];
         }
 
-        inline Symmetry const& symmetry() const
+        inline Unit_cell_symmetry const& symmetry() const
         {
             return (*symmetry_);
         }
@@ -763,8 +763,9 @@ inline void Unit_cell::get_symmetry()
         types[ia] = atom(ia).type_id();
     }
     
-    symmetry_ = std::unique_ptr<Symmetry>(new Symmetry(lattice_vectors_, num_atoms(), positions, spins, types,
-                                                       parameters_.spglib_tolerance()));
+    symmetry_ = std::unique_ptr<Unit_cell_symmetry>(new Unit_cell_symmetry(lattice_vectors_, num_atoms(), positions,
+                                                                           spins, types,
+                                                                           parameters_.spglib_tolerance()));
 
     int atom_class_id{-1};
     std::vector<int> asc(num_atoms(), -1);

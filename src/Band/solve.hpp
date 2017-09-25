@@ -143,7 +143,7 @@ inline void Band::solve_for_kset(K_point_set& kset__, Potential& potential__, bo
         }
     }
     kset__.comm().allreduce(&num_dav_iter, 1);
-    if (ctx_.comm().rank() == 0) {
+    if (ctx_.comm().rank() == 0 && !ctx_.full_potential()) {
         printf("Average number of iterations: %12.6f\n", static_cast<double>(num_dav_iter) / kset__.num_kpoints());
     }
 

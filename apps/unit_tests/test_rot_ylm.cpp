@@ -18,7 +18,7 @@ void test_symmetry()
     
     std::vector<int> types(num_atoms, 0);
 
-    Symmetry symmetry(lattice, num_atoms, positions, spins, types, 1e-4);
+    Unit_cell_symmetry symmetry(lattice, num_atoms, positions, spins, types, 1e-4);
 
     printf("num_sym_op: %i\n", symmetry.num_mag_sym());
 
