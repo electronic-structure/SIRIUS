@@ -2196,6 +2196,11 @@ void sirius_set_iterative_solver_tolerance(double* tol__)
     sim_ctx->set_iterative_solver_tolerance(*tol__ / 2);
 }
 
+void sirius_set_iterative_solver_type(ftn_char type__)
+{
+    sim_ctx->set_iterative_solver_type(std::string(type__));
+}
+
 void sirius_get_density_dr2(double* dr2__)
 {
     *dr2__ = density->dr2();
