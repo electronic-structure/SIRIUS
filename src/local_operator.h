@@ -289,10 +289,12 @@ class Local_operator
             }
 
             if (param_->control().print_checksum_) {
-                auto cs = veff_vec_.checksum();
-                DUMP("checksum(veff_vec): %18.10f", cs);
-                auto cs1 = theta_.checksum();
-                DUMP("checksum(theta): %18.10f", cs1);
+                double cs[] = {veff_vec_.checksum(), theta_.checksum()};
+                fft_coarse_.comm().allreduce(&cs[0], 2);
+                if (mpi_comm_world().rank() == 0) {
+                    print_checksum("veff_vec", cs[0]);
+                    print_checksum("theta", cs[1]);
+                }
             }
         }
         
@@ -805,7 +807,9 @@ class Local_operator
             
             if (param_->control().print_checksum_) {
                 auto cs = phi__.checksum_pw(N__, n__, param_->processing_unit());
-                DUMP("checksum(phi): %18.10f %18.10f", cs.real(), cs.imag());
+                if (phi__.comm().rank() == 0) {
+                    print_checksum("phi", cs);
+                }
             }
 
              phi__.pw_coeffs().remap_forward(param_->processing_unit(), gkvec_par__.gvec_fft_slab(), n__, N__);
@@ -847,8 +851,10 @@ class Local_operator
             #endif
             
             if (param_->control().print_checksum_) {
-                auto cs2 = ophi__.checksum_pw(N__, n__, param_->processing_unit());
-                DUMP("checksum(ophi_istl): %18.10f %18.10f", cs2.real(), cs2.imag());
+                auto cs = ophi__.checksum_pw(N__, n__, param_->processing_unit());
+                if (phi__.comm().rank() == 0) {
+                    print_checksum("ophi_istl", cs);
+                }
             }
         }
         
