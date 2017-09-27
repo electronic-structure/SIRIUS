@@ -283,7 +283,7 @@ inline int Band::diag_pseudo_potential_davidson(K_point*       kp__,
                     break;
                 } else { /* otherwise, set Psi as a new trial basis */
                     if (ctx_.control().verbosity_ >= 3 && kp__->comm().rank() == 0) {
-                        DUMP("subspace size limit reached");
+                        printf("subspace size limit reached\n");
                     }
                     hmlt_old.zero();
                     for (int i = 0; i < num_bands; i++) {
