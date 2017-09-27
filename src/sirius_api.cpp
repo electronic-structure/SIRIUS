@@ -2547,7 +2547,9 @@ void sirius_set_mpi_grid_dims(int *ndims__, int* dims__)
 {
     assert(*ndims__ > 0);
     std::vector<int> dims(*ndims__);
-    for (int i = 0; i < *ndims__; i++) dims[i] = dims__[i];
+    for (int i = 0; i < *ndims__; i++) {
+        dims[i] = dims__[i];
+    }
     sim_ctx->set_mpi_grid_dims(dims);
 }
 
