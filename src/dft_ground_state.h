@@ -415,10 +415,10 @@ class DFT_ground_state
                     }
                 }
             }
-            if (ctx_.control().print_hash_ && ctx_.comm().rank() == 0) {
-                auto h = mdarray<double_complex, 1>(&f__->f_pw_local(0), ctx_.gvec().count()).hash();
-                print_hash("sym(f)", h);
-            }
+            //if (ctx_.control().print_hash_ && ctx_.comm().rank() == 0) {
+            //    auto h = mdarray<double_complex, 1>(&f__->f_pw_local(0), ctx_.gvec().count()).hash();
+            //    print_hash("sym(f)", h);
+            //}
         }
 
         Band const& band() const
@@ -615,10 +615,10 @@ inline int DFT_ground_state::find(double potential_tol, double energy_tol, int n
         
         if (ctx_.full_potential()) {
             rms = potential_.mix();
-            double tol = std::max(1e-12, rms);
-            if (ctx_.comm().rank() == 0) {
-                printf("tol: %18.10f\n", tol);
-            }
+            double tol = std::max(1e-12, 0.001 * rms);
+            //if (ctx_.comm().rank() == 0) {
+            //    printf("tol: %18.10f\n", tol);
+            //}
             ctx_.set_iterative_solver_tolerance(std::min(ctx_.iterative_solver_tolerance(), tol));
         }
 
