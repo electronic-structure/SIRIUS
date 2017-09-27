@@ -326,7 +326,7 @@ class Forces_PS
                 vector3d<double> gvec_cart = gvecs.gvec_cart(ig);
 
                 /* scalar part of a force without multipying by G-vector */
-                double_complex z = fact * fourpi * ri.value(iat, gvecs.gvec_len(ig)) *
+                double_complex z = fact * fourpi * ri.value<int>(iat, gvecs.gvec_len(ig)) *
                         std::conj(xc_pot->f_pw_local(igloc) * ctx_.gvec_phase_factor( ig, ia));
 
                 /* get force components multiplying by cartesian G-vector */
@@ -450,7 +450,7 @@ class Forces_PS
                 vector3d<double> gvec_cart = gvec.gvec_cart(ig);
 
                 /* scalar part of a force without multipying by G-vector */
-                double_complex z = fact * fourpi * ri.value(iat, gvec.gvec_len(ig)) *
+                double_complex z = fact * fourpi * ri.value<int>(iat, gvec.gvec_len(ig)) *
                         std::conj(dveff.f_pw_local(igloc) * ctx_.gvec_phase_factor(ig, ia));
 
                 /* get force components multiplying by cartesian G-vector */

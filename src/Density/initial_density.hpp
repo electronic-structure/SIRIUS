@@ -22,7 +22,7 @@ inline void Density::initial_density_pseudo()
     Radial_integrals_rho_pseudo ri(unit_cell_, ctx_.pw_cutoff(), 20);
     auto v = ctx_.make_periodic_function<index_domain_t::local>([&ri](int iat, double g)
                                                                  {
-                                                                     return ri.value(iat, g);
+                                                                     return ri.value<int>(iat, g);
                                                                  });
 
     if (ctx_.control().print_checksum_ && ctx_.comm().rank() == 0) {
@@ -169,7 +169,7 @@ inline void Density::initial_density_full_pot()
     /* compute contribution from free atoms to the interstitial density */
     auto v = ctx_.make_periodic_function<index_domain_t::local>([&ri](int iat, double g)
                                                                  {
-                                                                     return ri.value(iat, g);
+                                                                     return ri.value<int>(iat, g);
                                                                  });
     
     double v0{0};

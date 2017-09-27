@@ -332,7 +332,7 @@ class Density
 
             auto v = ctx_.make_periodic_function<index_domain_t::local>([&ri](int iat, double g)
                                                                         {
-                                                                            return ri.value(iat, g);
+                                                                            return ri.value<int>(iat, g);
                                                                         });
             std::copy(v.begin(), v.end(), &rho_pseudo_core_->f_pw_local(0));
             rho_pseudo_core_->fft_transform(1);

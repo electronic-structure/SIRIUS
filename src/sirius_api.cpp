@@ -3128,13 +3128,13 @@ void sirius_get_pw_coeffs_real(ftn_char    atom_type__,
         sirius::Radial_integrals_rho_core_pseudo<false> ri(sim_ctx->unit_cell(), sim_ctx->pw_cutoff(), sim_ctx->settings().nprii_rho_core_);
         make_pw_coeffs([&ri, iat](double g)
                        {
-                           return ri.value(iat, g);
+                           return ri.value<int>(iat, g);
                        });
     } else if (label == "rhoc_dg") {
         sirius::Radial_integrals_rho_core_pseudo<true> ri(sim_ctx->unit_cell(), sim_ctx->pw_cutoff(), sim_ctx->settings().nprii_rho_core_);
         make_pw_coeffs([&ri, iat](double g)
                        {
-                           return ri.value(iat, g);
+                           return ri.value<int>(iat, g);
                        });
     } else if (label == "vloc") {
         sirius::Radial_integrals_vloc<true> ri(sim_ctx->unit_cell(), sim_ctx->pw_cutoff(), sim_ctx->settings().nprii_vloc_);
@@ -3242,7 +3242,7 @@ void sirius_set_use_symmetry(ftn_int* flg__)
 void sirius_ri_aug_(ftn_int* idx__, ftn_int* l__, ftn_int* iat__, ftn_double* q__, ftn_double* val__)
 {
     if (sim_ctx) {
-        *val__ = sim_ctx->aug_ri().value(*idx__ - 1, *l__, *iat__ - 1, *q__);
+        *val__ = sim_ctx->aug_ri().value<int, int, int>(*idx__ - 1, *l__, *iat__ - 1, *q__);
     } else {
         *val__ = 0;
     }
@@ -3251,7 +3251,7 @@ void sirius_ri_aug_(ftn_int* idx__, ftn_int* l__, ftn_int* iat__, ftn_double* q_
 void sirius_ri_beta_(ftn_int* idx__, ftn_int* iat__, ftn_double* q__, ftn_double* val__)
 {
     if (sim_ctx) {
-        *val__ = sim_ctx->beta_ri().value(*idx__ - 1, *iat__ - 1, *q__);
+        *val__ = sim_ctx->beta_ri().value<int, int>(*idx__ - 1, *iat__ - 1, *q__);
     } else {
         *val__ = 0;
     }
