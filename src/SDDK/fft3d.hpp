@@ -125,7 +125,7 @@ class FFT3D
         std::vector<fftw_plan> plan_forward_xy_;
 
 
-        bool is_gpu_direct_{true};
+        bool is_gpu_direct_{false};
         
         #ifdef __GPU
         /// Handler for xy-transform cuFFT plan.
@@ -732,6 +732,11 @@ class FFT3D
             
             #ifdef __GPU
             if (pu_ == GPU) {
+                
+                #ifdef __GPU_DIRECT
+                is_gpu_direct_ = true;
+                #endif
+
                 int auto_alloc{0};
                 int dim_xy[] = {grid_.size(1), grid_.size(0)};
                 /* create plan handler for xy transform */
