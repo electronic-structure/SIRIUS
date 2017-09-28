@@ -83,7 +83,7 @@ class Beta_projectors_strain_deriv : public Beta_projectors_base<9>
                                 if (l == 0) {
                                     auto z = fourpi / std::sqrt(ctx_.unit_cell().omega());
 
-                                    auto d1 = beta_ri0.value(idxrf, iat, gvs[0]) * (-p * y00);
+                                    auto d1 = beta_ri0.value<int, int>(idxrf, iat, gvs[0]) * (-p * y00);
 
                                     pw_coeffs_t_[mu + nu * 3](igkloc, atom_type.offset_lo() + xi) = z * d1;
                                 } else {
@@ -170,7 +170,7 @@ class Beta_projectors_strain_deriv : public Beta_projectors_base<9>
             for (int iat = 0; iat < ctx_.unit_cell().num_atom_types(); iat++) {
                 for (int l = 0; l <= lmax_beta_ + 2; l++) {
                     for (int j = 0; j < ctx_.unit_cell().atom_type(iat).mt_radial_basis_size(); j++) {
-                        tmp(j, l, iat) = beta_ri1.value(j, l, iat, gvs[0]);
+                        tmp(j, l, iat) = beta_ri1.value<int, int, int>(j, l, iat, gvs[0]);
                     }
                 }
             }
@@ -201,7 +201,7 @@ class Beta_projectors_strain_deriv : public Beta_projectors_base<9>
                                 //    gkvec_rlm[c.lm3] * c.coef * tmp(idxrf, l3, iat) * r_f[nu];
                             pw_coeffs_t_[mu + nu * 3](igkloc, atom_type.offset_lo() + xi) += z3 * z2;
 
-                            auto d2 = beta_ri0.value(idxrf, iat, gvs[0]) * (-p * gkvec_rlm[lm]);
+                            auto d2 = beta_ri0.value<int, int>(idxrf, iat, gvs[0]) * (-p * gkvec_rlm[lm]);
 
                             pw_coeffs_t_[mu + nu * 3](igkloc, atom_type.offset_lo() + xi) += z1 * d2 * zil[l];
                         }

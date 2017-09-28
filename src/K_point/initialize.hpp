@@ -142,15 +142,15 @@ inline void K_point::initialize()
             } else {
                 int ncomp = ctx_.iterative_solver_input().num_singular_;
                 if (ncomp < 0) {
-                    ncomp = ctx_.num_fv_states();
+                    ncomp = ctx_.num_fv_states() / 2;
                 }
 
                 singular_components_ = std::unique_ptr<wave_functions>(new wave_functions(ctx_.processing_unit(), gkvec(), ncomp));
                 singular_components_->pw_coeffs().prime().zero();
                 /* starting guess for wave-functions */
                 for (int i = 0; i < ncomp; i++) {
-                    for (int igloc = 0; igloc < gkvec().gvec_count(comm().rank()); igloc++) {
-                        int ig = igloc + gkvec().gvec_offset(comm().rank());
+                    for (int igloc = 0; igloc < gkvec().count(); igloc++) {
+                        int ig = igloc + gkvec().offset();
                         if (ig == i) {
                             singular_components_->pw_coeffs().prime(igloc, i) = 1.0;
                         }
@@ -160,7 +160,13 @@ inline void K_point::initialize()
                         if (ig == i + 2) {
                             singular_components_->pw_coeffs().prime(igloc, i) = 0.125;
                         }
-                        singular_components_->pw_coeffs().prime(igloc, i) += 0.01 * type_wrapper<double_complex>::random();
+                        //singular_components_->pw_coeffs().prime(igloc, i) += 0.01 * type_wrapper<double_complex>::random();
+                    }
+                }
+                if (ctx_.control().print_checksum_) {
+                    auto cs = singular_components_->checksum_pw(0, ncomp, ctx_.processing_unit());
+                    if (comm().rank() == 0) {
+                        print_checksum("singular_components", cs);
                     }
                 }
             }

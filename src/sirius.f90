@@ -572,6 +572,11 @@ module sirius
             real(8),                 intent(in) :: tol
         end subroutine
 
+        subroutine sirius_set_iterative_solver_type(str)&
+            &bind(C, name="sirius_set_iterative_solver_type")
+            character, dimension(*), intent(in) :: str
+        end subroutine
+
         subroutine sirius_get_density_dr2(dr2)&
             &bind(C, name="sirius_get_density_dr2")
             real(8),                 intent(out) :: dr2

@@ -93,7 +93,7 @@ class Step_function
 
             auto f_pw = ctx__.make_periodic_function<index_domain_t::global>([&ri](int iat, double g)
                                                                              {
-                                                                                 return ri.value(iat, g);
+                                                                                 return ri.value<int>(iat, g);
                                                                              });
 
             for (int ig = 0; ig < ctx__.gvec().num_gvec(); ig++) {
