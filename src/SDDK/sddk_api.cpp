@@ -119,6 +119,7 @@ void sddk_create_fft(ftn_int* fft_grid_id__,
     *new_object_id__ = id;
 }
 
+/// Create wave functions.
 void sddk_create_wave_functions(ftn_int* gkvec_id__,
                                 ftn_int* num_wf__,
                                 ftn_int* new_object_id__)
@@ -129,14 +130,45 @@ void sddk_create_wave_functions(ftn_int* gkvec_id__,
     sddk_objects[id] = new wave_functions(CPU, gkvec, *num_wf__);
     sddk_objects_class_name[id] = "wave_functions";
     *new_object_id__ = id;
-    auto& wf = *reinterpret_cast<wave_functions*>(sddk_objects[id]);
-    wf.pw_coeffs().prime(0, 0) = double_complex(12.13, 14.15);
+    //auto& wf = *reinterpret_cast<wave_functions*>(sddk_objects[id]);
+    //wf.pw_coeffs().prime(0, 0) = double_complex(12.13, 14.15);
+    //wf.pw_coeffs().prime(0, 1) = double_complex(1, 2);
+}
+
+void sddk_remap_wave_functions_forward(ftn_int* wf_id__, ftn_int* n__, ftn_int* idx0__)
+{
+    auto& wf = *reinterpret_cast<wave_functions*>(sddk_objects[*wf_id__]);
+    wf.pw_coeffs().remap_forward(CPU, wf.gkvec().partition().gvec_fft_slab(), *n__, *idx0__ - 1);
+}
+
+void sddk_remap_wave_functions_backward(ftn_int* wf_id__, ftn_int* n__, ftn_int* idx0__)
+{
+    auto& wf = *reinterpret_cast<wave_functions*>(sddk_objects[*wf_id__]);
+    wf.pw_coeffs().remap_backward(CPU, wf.gkvec().partition().gvec_fft_slab(), *n__, *idx0__ - 1);
 }
 
 void sddk_get_num_wave_functions(ftn_int* wf_id__, ftn_int* num_wf__)
 {
     auto& wf = *reinterpret_cast<wave_functions*>(sddk_objects[*wf_id__]);
     *num_wf__ = wf.num_wf();
+}
+
+void sddk_get_num_wave_functions_local(ftn_int* wf_id__, ftn_int* num_wf__)
+{
+    auto& wf = *reinterpret_cast<wave_functions*>(sddk_objects[*wf_id__]);
+    *num_wf__ = wf.pw_coeffs().spl_num_col().local_size();
+}
+
+void sddk_get_wave_functions_prime_ld(ftn_int* wf_id__, ftn_int* ld__)
+{
+    auto& wf = *reinterpret_cast<wave_functions*>(sddk_objects[*wf_id__]);
+    *ld__ = wf.pw_coeffs().prime().ld();
+}
+
+void sddk_get_wave_functions_extra_ld(ftn_int* wf_id__, ftn_int* ld__)
+{
+    auto& wf = *reinterpret_cast<wave_functions*>(sddk_objects[*wf_id__]);
+    *ld__ = wf.pw_coeffs().extra().ld();
 }
 
 void sddk_get_wave_functions_prime_ptr(ftn_int* wf_id__,
@@ -146,10 +178,17 @@ void sddk_get_wave_functions_prime_ptr(ftn_int* wf_id__,
     *ptr__ = wf.pw_coeffs().prime().at<CPU>();
 }
 
+void sddk_get_wave_functions_extra_ptr(ftn_int* wf_id__,
+                                       ftn_double_complex** ptr__)
+{
+    auto& wf = *reinterpret_cast<wave_functions*>(sddk_objects[*wf_id__]);
+    *ptr__ = wf.pw_coeffs().extra().at<CPU>();
+}
+
 /// Get total number of G-vectors.
 void sddk_get_num_gvec(ftn_int* gvec_id__, ftn_int* num_gvec__)
 {
-
+    *num_gvec__ = reinterpret_cast<Gvec*>(sddk_objects[*gvec_id__])->num_gvec();
 }
 
 /// Get local number of G-vectors in the fine-graind distribution.
