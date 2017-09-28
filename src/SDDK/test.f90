@@ -2,14 +2,16 @@ program test_sddk
 use sddk
 use mpi
 implicit none
-integer :: fft_grid_id, gvec_id, fft_id, ierr, num_ranks, rank, num_ranks_fft, rank_fft
+integer :: fft_grid_id, gvec_id, fft_id, wf_id, ierr, num_ranks, rank, num_ranks_fft, rank_fft
 integer :: num_gvec_loc, gvec_offset
 integer :: gvec_count_fft, gvec_offset_fft
 real(8) :: vk(3)
 real(8) :: recip_lat(3, 3)
 real(8) :: gmax
-integer :: comm_fft, i
+integer :: comm_fft, i, nbnd
 complex(8), allocatable :: psi(:), psi_out(:)
+!type(C_PTR) :: wf_c_ptr
+complex(8), pointer :: wf_ptr(:,:)
 
 call mpi_init(ierr)
 call mpi_comm_size(MPI_COMM_WORLD, num_ranks, ierr)
@@ -71,16 +73,27 @@ do i = 1, gvec_count_fft
   endif
 enddo
 
+nbnd = 100
+call sddk_create_wave_functions(gvec_id, nbnd, wf_id)
+
+call sddk_get_wave_functions_prime_ptr(wf_id, wf_ptr)
+
+!call sddk_get_wave_functions_prime_ptr(wf_id, wf_c_ptr)
+!call C_F_POINTER(wf_c_ptr, wf_ptr, (/num_gvec_loc, nbnd/))
+!write(*,*)wf_ptr(1,1)
+
 
 deallocate(psi)
 deallocate(psi_out)
 
 ! destroy FFT driver
-call sddk_delete_fft(fft_id)
+call sddk_delete_object(fft_id)
 ! destroy G-vecgtors
-call sddk_delete_gvec(gvec_id)
+call sddk_delete_object(gvec_id)
 ! destroy FFT grid
-call sddk_delete_fft_grid(fft_grid_id)
+call sddk_delete_object(fft_grid_id)
+! destroy wave functions
+call sddk_delete_object(wf_id)
 
 call sddk_print_timers()
 
