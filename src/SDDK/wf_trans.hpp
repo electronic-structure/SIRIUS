@@ -54,9 +54,8 @@ inline void transform(device_t                     pu__,
                                   wave_functions* wf_in__,
                                   int             i0__,
                                   int             m__,
-                                  matrix<T>&      mtrx__,
-                                  int             irow0__,
-                                  int             jcol0__,
+                                  T*              ptr__,
+                                  int             ld__,
                                   wave_functions* wf_out__,
                                   int             j0__,
                                   int             n__,
@@ -68,7 +67,7 @@ inline void transform(device_t                     pu__,
                 linalg<CPU>::gemm(0, 0, wf_in__->pw_coeffs().num_rows_loc(), n__, m__,
                                   *reinterpret_cast<double_complex*>(alpha),
                                   wf_in__->pw_coeffs().prime().at<CPU>(0, i0__), wf_in__->pw_coeffs().prime().ld(),
-                                  reinterpret_cast<double_complex*>(mtrx__.template at<CPU>(irow0__, jcol0__)), mtrx__.ld(),
+                                  reinterpret_cast<double_complex*>(ptr__), ld__,
                                   linalg_const<double_complex>::one(),
                                   wf_out__->pw_coeffs().prime().at<CPU>(0, j0__), wf_out__->pw_coeffs().prime().ld());
                 /* transform muffin-tin part */
@@ -76,7 +75,7 @@ inline void transform(device_t                     pu__,
                     linalg<CPU>::gemm(0, 0, wf_in__->mt_coeffs().num_rows_loc(), n__, m__,
                                       *reinterpret_cast<double_complex*>(alpha),
                                       wf_in__->mt_coeffs().prime().at<CPU>(0, i0__), wf_in__->mt_coeffs().prime().ld(),
-                                      reinterpret_cast<double_complex*>(mtrx__.template at<CPU>(irow0__, jcol0__)), mtrx__.ld(),
+                                      reinterpret_cast<double_complex*>(ptr__), ld__,
                                       linalg_const<double_complex>::one(),
                                       wf_out__->mt_coeffs().prime().at<CPU>(0, j0__), wf_out__->mt_coeffs().prime().ld());
                 }
@@ -86,7 +85,7 @@ inline void transform(device_t                     pu__,
                 linalg<CPU>::gemm(0, 0, 2 * wf_in__->pw_coeffs().num_rows_loc(), n__, m__,
                                   *reinterpret_cast<double*>(alpha),
                                   reinterpret_cast<double*>(wf_in__->pw_coeffs().prime().at<CPU>(0, i0__)), 2 * wf_in__->pw_coeffs().prime().ld(),
-                                  reinterpret_cast<double*>(mtrx__.template at<CPU>(irow0__, jcol0__)), mtrx__.ld(),
+                                  reinterpret_cast<double*>(ptr__), ld__,
                                   linalg_const<double>::one(),
                                   reinterpret_cast<double*>(wf_out__->pw_coeffs().prime().at<CPU>(0, j0__)), 2 * wf_out__->pw_coeffs().prime().ld());
                 if (wf_in__->has_mt()) {
@@ -100,7 +99,7 @@ inline void transform(device_t                     pu__,
                 linalg<GPU>::gemm(0, 0, wf_in__->pw_coeffs().num_rows_loc(), n__, m__,
                                   reinterpret_cast<double_complex*>(alpha),
                                   wf_in__->pw_coeffs().prime().at<GPU>(0, i0__), wf_in__->pw_coeffs().prime().ld(),
-                                  reinterpret_cast<double_complex*>(mtrx__.template at<GPU>(irow0__, jcol0__)), mtrx__.ld(),
+                                  reinterpret_cast<double_complex*>(ptr__), ld__,
                                   &linalg_const<double_complex>::one(),
                                   wf_out__->pw_coeffs().prime().at<GPU>(0, j0__), wf_out__->pw_coeffs().prime().ld(),
                                   stream_id__);
@@ -109,7 +108,7 @@ inline void transform(device_t                     pu__,
                     linalg<GPU>::gemm(0, 0, wf_in__->mt_coeffs().num_rows_loc(), n__, m__,
                                       reinterpret_cast<double_complex*>(alpha),
                                       wf_in__->mt_coeffs().prime().at<GPU>(0, i0__), wf_in__->mt_coeffs().prime().ld(),
-                                      reinterpret_cast<double_complex*>(mtrx__.template at<GPU>(irow0__, jcol0__)), mtrx__.ld(),
+                                      reinterpret_cast<double_complex*>(ptr__), ld__,
                                       &linalg_const<double_complex>::one(),
                                       wf_out__->mt_coeffs().prime().at<GPU>(0, j0__), wf_out__->mt_coeffs().prime().ld(),
                                       stream_id__);
@@ -120,7 +119,7 @@ inline void transform(device_t                     pu__,
                 linalg<GPU>::gemm(0, 0, 2 * wf_in__->pw_coeffs().num_rows_loc(), n__, m__,
                                   reinterpret_cast<double*>(alpha),
                                   reinterpret_cast<double*>(wf_in__->pw_coeffs().prime().at<GPU>(0, i0__)), 2 * wf_in__->pw_coeffs().prime().ld(),
-                                  reinterpret_cast<double*>(mtrx__.template at<GPU>(irow0__, jcol0__)), mtrx__.ld(),
+                                  reinterpret_cast<double*>(ptr__), ld__,
                                   &linalg_const<double>::one(),
                                   reinterpret_cast<double*>(wf_out__->pw_coeffs().prime().at<GPU>(0, j0__)), 2 * wf_out__->pw_coeffs().prime().ld(),
                                   stream_id__);
@@ -216,8 +215,20 @@ inline void transform(device_t                     pu__,
                         mtrx__.template at<CPU>(irow0__, jcol0__), mtrx__.ld(), m__, n__, 0);
         }
         #endif
+        T* ptr{nullptr};
+        switch (pu__) {
+            case CPU: {
+                ptr = mtrx__.template at<CPU>(irow0__, jcol0__);
+                break;
+            }
+            case GPU: {
+                ptr = mtrx__.template at<GPU>(irow0__, jcol0__);
+                break;
+            }
+        }
+                
         for (int iv = 0; iv < nwf; iv++) {
-            local_transform(&alpha, wf_in__[iv], i0__, m__, mtrx__, irow0__, jcol0__, wf_out__[iv], j0__, n__, 0);
+            local_transform(&alpha, wf_in__[iv], i0__, m__, ptr, mtrx__.ld(), wf_out__[iv], j0__, n__, 0);
         }
         #ifdef __GPU
         if (pu__ == GPU) {
@@ -300,10 +311,6 @@ inline void transform(device_t                     pu__,
                 }
             }
 
-            //sd.counts[comm.rank()] = local_size_row * local_size_col;
-
-            //comm.allgather(sd.counts.data(), comm.rank(), 1);
-
             sd.calc_offsets();
 
             assert(sd.offsets.back() + sd.counts.back() <= (int)buf.size());
@@ -347,23 +354,21 @@ inline void transform(device_t                     pu__,
                 acc::copyin(submatrix.template at<GPU>(0, 0, s % num_streams), submatrix.ld(),
                             submatrix.template at<CPU>(0, 0, s % num_streams), submatrix.ld(),
                             nrow, ncol, s % num_streams);
-                /* wait for the data copy; as soon as this is done, CPU buffer is free and can be reused */
-                //acc::sync_stream(0);
             }
             #endif
-            matrix<T> tmp;
+            T* ptr{nullptr};
             switch (pu__) {
                 case CPU: {
-                    tmp = matrix<T>(submatrix.template at<CPU>(0, 0, s % num_streams), BS, BS);
+                    ptr = submatrix.template at<CPU>(0, 0, s % num_streams);
                     break;
                 }
                 case GPU: {
-                    tmp = matrix<T>(submatrix.template at<CPU>(0, 0, s % num_streams), submatrix.template at<GPU>(0, 0, s % num_streams), BS, BS);
+                    ptr = submatrix.template at<GPU>(0, 0, s % num_streams);
                     break;
                 }
             }
             for (int iv = 0; iv < nwf; iv++) {
-                local_transform(&alpha, wf_in__[iv], i0__ + i0, nrow, tmp, 0, 0, wf_out__[iv], j0__ + j0, ncol, s % num_streams);
+                local_transform(&alpha, wf_in__[iv], i0__ + i0, nrow, ptr, BS, wf_out__[iv], j0__ + j0, ncol, s % num_streams);
             }
             s++;
         }
