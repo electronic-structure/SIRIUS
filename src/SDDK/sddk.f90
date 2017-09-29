@@ -34,6 +34,12 @@ module sddk
             integer,                 intent(out) :: gvec_id
         end subroutine
 
+        subroutine sddk_get_num_gvec(gvec_id, num_gvec)&
+            &bind(C, name="sddk_get_num_gvec")
+            integer,                 intent(in)  :: gvec_id
+            integer,                 intent(out) :: num_gvec
+        end subroutine
+
         subroutine sddk_get_gvec_count(gvec_id, rank, gvec_count)&
             &bind(C, name="sddk_get_gvec_count")
             integer,                 intent(in)  :: gvec_id
@@ -89,6 +95,44 @@ module sddk
             &bind(C, name="sddk_print_timers")
         end subroutine
 
+        subroutine sddk_get_num_wave_functions(wf_id, num_wf)&
+            &bind(C, name="sddk_get_num_wave_functions")
+            integer,                 intent(in)  :: wf_id
+            integer,                 intent(out) :: num_wf
+        end subroutine
+
+        subroutine sddk_get_num_wave_functions_local(wf_id, num_wf)&
+            &bind(C, name="sddk_get_num_wave_functions_local")
+            integer,                 intent(in)  :: wf_id
+            integer,                 intent(out) :: num_wf
+        end subroutine
+
+        subroutine sddk_get_wave_functions_prime_ld(wf_id, ld)&
+            &bind(C, name="sddk_get_wave_functions_prime_ld")
+            integer,                 intent(in)  :: wf_id
+            integer,                 intent(out) :: ld
+        end subroutine
+
+        subroutine sddk_get_wave_functions_extra_ld(wf_id, ld)&
+            &bind(C, name="sddk_get_wave_functions_extra_ld")
+            integer,                 intent(in)  :: wf_id
+            integer,                 intent(out) :: ld
+        end subroutine
+
+        subroutine sddk_remap_wave_functions_forward(wf_id, n, idx0)&
+            &bind(C, name="sddk_remap_wave_functions_forward")
+            integer,                 intent(in)  :: wf_id
+            integer,                 intent(in)  :: n
+            integer,                 intent(in)  :: idx0
+        end subroutine
+
+        subroutine sddk_remap_wave_functions_backward(wf_id, n, idx0)&
+            &bind(C, name="sddk_remap_wave_functions_backward")
+            integer,                 intent(in)  :: wf_id
+            integer,                 intent(in)  :: n
+            integer,                 intent(in)  :: idx0
+        end subroutine
+
     end interface
 
 contains
@@ -109,6 +153,7 @@ contains
         integer,             intent(in)  :: wf_id
         complex(8), pointer, intent(out) :: wf_ptr(:, :)
         type(C_PTR) :: wf_c_ptr
+        integer nwf, ld
         interface
             subroutine sddk_get_wave_functions_prime_ptr_aux(wf_id, wf_c_ptr)&
                 &bind(C, name="sddk_get_wave_functions_prime_ptr")
@@ -118,8 +163,29 @@ contains
             end subroutine
         end interface
         call sddk_get_wave_functions_prime_ptr_aux(wf_id, wf_c_ptr)
-        !call C_F_POINTER(wf_c_ptr, wf_ptr, (/num_gvec_loc, nbnd/))
+        call sddk_get_num_wave_functions(wf_id, nwf)
+        call sddk_get_wave_functions_prime_ld(wf_id, ld)
+        call C_F_POINTER(wf_c_ptr, wf_ptr, (/ld, nwf/))
+    end subroutine
 
+    subroutine sddk_get_wave_functions_extra_ptr(wf_id, wf_ptr)
+        implicit none
+        integer,             intent(in)  :: wf_id
+        complex(8), pointer, intent(out) :: wf_ptr(:, :)
+        type(C_PTR) :: wf_c_ptr
+        integer nwf, ld
+        interface
+            subroutine sddk_get_wave_functions_extra_ptr_aux(wf_id, wf_c_ptr)&
+                &bind(C, name="sddk_get_wave_functions_extra_ptr")
+                use, intrinsic :: ISO_C_BINDING
+                integer,                 intent(in)  :: wf_id
+                type(C_PTR),             intent(out) :: wf_c_ptr
+            end subroutine
+        end interface
+        call sddk_get_wave_functions_extra_ptr_aux(wf_id, wf_c_ptr)
+        call sddk_get_num_wave_functions_local(wf_id, nwf)
+        call sddk_get_wave_functions_extra_ld(wf_id, ld)
+        call C_F_POINTER(wf_c_ptr, wf_ptr, (/ld, nwf/))
     end subroutine
 
 end module
