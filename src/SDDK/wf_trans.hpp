@@ -274,40 +274,39 @@ inline void transform(device_t                     pu__,
 
     double time_mpi{0};
     
-    int s{0};
+    for (int ibr = 0; ibr < nbr; ibr++) {
+        /* global index of row */
+        int i0 = ibr * BS;
+        /* actual number of rows in the submatrix */
+        int nrow = std::min(m__, (ibr + 1) * BS) - i0;
 
-    for (int ibc = 0; ibc < nbc; ibc++) {
-        /* global index of column */
-        int j0 = ibc * BS;
-        /* actual number of columns in the submatrix */
-        int ncol = std::min(n__, (ibc + 1) * BS) - j0;
+        assert(nrow != 0);
 
-        assert(ncol != 0);
-        
-        splindex<block_cyclic> spl_col_begin(jcol0__ + j0,        mtrx__.num_ranks_col(), mtrx__.rank_col(), mtrx__.bs_col());
-        splindex<block_cyclic>   spl_col_end(jcol0__ + j0 + ncol, mtrx__.num_ranks_col(), mtrx__.rank_col(), mtrx__.bs_col());
+        splindex<block_cyclic> spl_row_begin(irow0__ + i0,        mtrx__.num_ranks_row(), mtrx__.rank_row(), mtrx__.bs_row());
+        splindex<block_cyclic>   spl_row_end(irow0__ + i0 + nrow, mtrx__.num_ranks_row(), mtrx__.rank_row(), mtrx__.bs_row());
 
-        int local_size_col = spl_col_end.local_size() - spl_col_begin.local_size();
+        int local_size_row = spl_row_end.local_size() - spl_row_begin.local_size();
 
-        for (int ibr = 0; ibr < nbr; ibr++) {
+        int s{0};
+        for (int ibc = 0; ibc < nbc; ibc++) {
             /* global index of column */
-            int i0 = ibr * BS;
-            /* actual number of rows in the submatrix */
-            int nrow = std::min(m__, (ibr + 1) * BS) - i0;
+            int j0 = ibc * BS;
+            /* actual number of columns in the submatrix */
+            int ncol = std::min(n__, (ibc + 1) * BS) - j0;
 
-            assert(nrow != 0);
+            assert(ncol != 0);
+            
+            splindex<block_cyclic> spl_col_begin(jcol0__ + j0,        mtrx__.num_ranks_col(), mtrx__.rank_col(), mtrx__.bs_col());
+            splindex<block_cyclic>   spl_col_end(jcol0__ + j0 + ncol, mtrx__.num_ranks_col(), mtrx__.rank_col(), mtrx__.bs_col());
 
-            splindex<block_cyclic> spl_row_begin(irow0__ + i0,        mtrx__.num_ranks_row(), mtrx__.rank_row(), mtrx__.bs_row());
-            splindex<block_cyclic>   spl_row_end(irow0__ + i0 + nrow, mtrx__.num_ranks_row(), mtrx__.rank_row(), mtrx__.bs_row());
-
-            int local_size_row = spl_row_end.local_size() - spl_row_begin.local_size();
+            int local_size_col = spl_col_end.local_size() - spl_col_begin.local_size();
 
             /* total number of elements owned by the current rank in the block */
             for (int i = 0; i < mtrx__.blacs_grid().num_ranks_col(); i++) {
-                int s1 = spl_col_end.local_size(i) - spl_col_begin.local_size(i);
+                int scol = spl_col_end.local_size(i) - spl_col_begin.local_size(i);
                 for (int j = 0; j < mtrx__.blacs_grid().num_ranks_row(); j++) {
                     int l = cart_rank(j, i);
-                    sd.counts[l] = (spl_row_end.local_size(j) - spl_row_begin.local_size(j)) * s1;
+                    sd.counts[l] = (spl_row_end.local_size(j) - spl_row_begin.local_size(j)) * scol;
                 }
             }
 
@@ -371,17 +370,26 @@ inline void transform(device_t                     pu__,
                 local_transform(&alpha, wf_in__[iv], i0__ + i0, nrow, ptr, BS, wf_out__[iv], j0__ + j0, ncol, s % num_streams);
             }
             s++;
+        } /* loop over ibc */
+        #ifdef __GPU
+        if (pu__ == GPU) {
+            /* wait for the full block of columns (update of different wave-functions); 
+             * otherwise cuda streams can start updating the same block of output wave-functions */
+            for (int s = 0; s < num_streams; s++) {
+                acc::sync_stream(s);
+            }
         }
-    }
+        #endif
+    } /* loop over ibr */
 
-    #ifdef __GPU
-    if (pu__ == GPU) {
-        /* wait for the last cudaZgemm */
-        for (int s = 0; s < num_streams; s++) {
-            acc::sync_stream(s);
-        }
-    }
-    #endif
+    //#ifdef __GPU
+    //if (pu__ == GPU) {
+    //    /* wait for the last cudaZgemm */
+    //    for (int s = 0; s < num_streams; s++) {
+    //        acc::sync_stream(s);
+    //    }
+    //}
+    //#endif
 
     if (sddk_pp) {
         comm.barrier();
