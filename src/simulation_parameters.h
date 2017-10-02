@@ -474,6 +474,11 @@ class Simulation_parameters
             iterative_solver_input_.energy_tolerance_ = tolerance__;
         }
 
+        inline void set_iterative_solver_type(std::string type__)
+        {
+            iterative_solver_input_.type_ = type__;
+        }
+
         inline Control_input const& control() const
         {
             return control_input_;

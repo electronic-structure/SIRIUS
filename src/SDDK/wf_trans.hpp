@@ -54,9 +54,8 @@ inline void transform(device_t                     pu__,
                                   wave_functions* wf_in__,
                                   int             i0__,
                                   int             m__,
-                                  matrix<T>&      mtrx__,
-                                  int             irow0__,
-                                  int             jcol0__,
+                                  T*              ptr__,
+                                  int             ld__,
                                   wave_functions* wf_out__,
                                   int             j0__,
                                   int             n__,
@@ -68,7 +67,7 @@ inline void transform(device_t                     pu__,
                 linalg<CPU>::gemm(0, 0, wf_in__->pw_coeffs().num_rows_loc(), n__, m__,
                                   *reinterpret_cast<double_complex*>(alpha),
                                   wf_in__->pw_coeffs().prime().at<CPU>(0, i0__), wf_in__->pw_coeffs().prime().ld(),
-                                  reinterpret_cast<double_complex*>(mtrx__.template at<CPU>(irow0__, jcol0__)), mtrx__.ld(),
+                                  reinterpret_cast<double_complex*>(ptr__), ld__,
                                   linalg_const<double_complex>::one(),
                                   wf_out__->pw_coeffs().prime().at<CPU>(0, j0__), wf_out__->pw_coeffs().prime().ld());
                 /* transform muffin-tin part */
@@ -76,7 +75,7 @@ inline void transform(device_t                     pu__,
                     linalg<CPU>::gemm(0, 0, wf_in__->mt_coeffs().num_rows_loc(), n__, m__,
                                       *reinterpret_cast<double_complex*>(alpha),
                                       wf_in__->mt_coeffs().prime().at<CPU>(0, i0__), wf_in__->mt_coeffs().prime().ld(),
-                                      reinterpret_cast<double_complex*>(mtrx__.template at<CPU>(irow0__, jcol0__)), mtrx__.ld(),
+                                      reinterpret_cast<double_complex*>(ptr__), ld__,
                                       linalg_const<double_complex>::one(),
                                       wf_out__->mt_coeffs().prime().at<CPU>(0, j0__), wf_out__->mt_coeffs().prime().ld());
                 }
@@ -86,7 +85,7 @@ inline void transform(device_t                     pu__,
                 linalg<CPU>::gemm(0, 0, 2 * wf_in__->pw_coeffs().num_rows_loc(), n__, m__,
                                   *reinterpret_cast<double*>(alpha),
                                   reinterpret_cast<double*>(wf_in__->pw_coeffs().prime().at<CPU>(0, i0__)), 2 * wf_in__->pw_coeffs().prime().ld(),
-                                  reinterpret_cast<double*>(mtrx__.template at<CPU>(irow0__, jcol0__)), mtrx__.ld(),
+                                  reinterpret_cast<double*>(ptr__), ld__,
                                   linalg_const<double>::one(),
                                   reinterpret_cast<double*>(wf_out__->pw_coeffs().prime().at<CPU>(0, j0__)), 2 * wf_out__->pw_coeffs().prime().ld());
                 if (wf_in__->has_mt()) {
@@ -100,7 +99,7 @@ inline void transform(device_t                     pu__,
                 linalg<GPU>::gemm(0, 0, wf_in__->pw_coeffs().num_rows_loc(), n__, m__,
                                   reinterpret_cast<double_complex*>(alpha),
                                   wf_in__->pw_coeffs().prime().at<GPU>(0, i0__), wf_in__->pw_coeffs().prime().ld(),
-                                  reinterpret_cast<double_complex*>(mtrx__.template at<GPU>(irow0__, jcol0__)), mtrx__.ld(),
+                                  reinterpret_cast<double_complex*>(ptr__), ld__,
                                   &linalg_const<double_complex>::one(),
                                   wf_out__->pw_coeffs().prime().at<GPU>(0, j0__), wf_out__->pw_coeffs().prime().ld(),
                                   stream_id__);
@@ -109,7 +108,7 @@ inline void transform(device_t                     pu__,
                     linalg<GPU>::gemm(0, 0, wf_in__->mt_coeffs().num_rows_loc(), n__, m__,
                                       reinterpret_cast<double_complex*>(alpha),
                                       wf_in__->mt_coeffs().prime().at<GPU>(0, i0__), wf_in__->mt_coeffs().prime().ld(),
-                                      reinterpret_cast<double_complex*>(mtrx__.template at<GPU>(irow0__, jcol0__)), mtrx__.ld(),
+                                      reinterpret_cast<double_complex*>(ptr__), ld__,
                                       &linalg_const<double_complex>::one(),
                                       wf_out__->mt_coeffs().prime().at<GPU>(0, j0__), wf_out__->mt_coeffs().prime().ld(),
                                       stream_id__);
@@ -120,7 +119,7 @@ inline void transform(device_t                     pu__,
                 linalg<GPU>::gemm(0, 0, 2 * wf_in__->pw_coeffs().num_rows_loc(), n__, m__,
                                   reinterpret_cast<double*>(alpha),
                                   reinterpret_cast<double*>(wf_in__->pw_coeffs().prime().at<GPU>(0, i0__)), 2 * wf_in__->pw_coeffs().prime().ld(),
-                                  reinterpret_cast<double*>(mtrx__.template at<GPU>(irow0__, jcol0__)), mtrx__.ld(),
+                                  reinterpret_cast<double*>(ptr__), ld__,
                                   &linalg_const<double>::one(),
                                   reinterpret_cast<double*>(wf_out__->pw_coeffs().prime().at<GPU>(0, j0__)), 2 * wf_out__->pw_coeffs().prime().ld(),
                                   stream_id__);
@@ -216,8 +215,20 @@ inline void transform(device_t                     pu__,
                         mtrx__.template at<CPU>(irow0__, jcol0__), mtrx__.ld(), m__, n__, 0);
         }
         #endif
+        T* ptr{nullptr};
+        switch (pu__) {
+            case CPU: {
+                ptr = mtrx__.template at<CPU>(irow0__, jcol0__);
+                break;
+            }
+            case GPU: {
+                ptr = mtrx__.template at<GPU>(irow0__, jcol0__);
+                break;
+            }
+        }
+                
         for (int iv = 0; iv < nwf; iv++) {
-            local_transform(&alpha, wf_in__[iv], i0__, m__, mtrx__, irow0__, jcol0__, wf_out__[iv], j0__, n__, 0);
+            local_transform(&alpha, wf_in__[iv], i0__, m__, ptr, mtrx__.ld(), wf_out__[iv], j0__, n__, 0);
         }
         #ifdef __GPU
         if (pu__ == GPU) {
@@ -263,46 +274,41 @@ inline void transform(device_t                     pu__,
 
     double time_mpi{0};
     
-    int s{0};
+    for (int ibr = 0; ibr < nbr; ibr++) {
+        /* global index of row */
+        int i0 = ibr * BS;
+        /* actual number of rows in the submatrix */
+        int nrow = std::min(m__, (ibr + 1) * BS) - i0;
 
-    for (int ibc = 0; ibc < nbc; ibc++) {
-        /* global index of column */
-        int j0 = ibc * BS;
-        /* actual number of columns in the submatrix */
-        int ncol = std::min(n__, (ibc + 1) * BS) - j0;
+        assert(nrow != 0);
 
-        assert(ncol != 0);
-        
-        splindex<block_cyclic> spl_col_begin(jcol0__ + j0,        mtrx__.num_ranks_col(), mtrx__.rank_col(), mtrx__.bs_col());
-        splindex<block_cyclic>   spl_col_end(jcol0__ + j0 + ncol, mtrx__.num_ranks_col(), mtrx__.rank_col(), mtrx__.bs_col());
+        splindex<block_cyclic> spl_row_begin(irow0__ + i0,        mtrx__.num_ranks_row(), mtrx__.rank_row(), mtrx__.bs_row());
+        splindex<block_cyclic>   spl_row_end(irow0__ + i0 + nrow, mtrx__.num_ranks_row(), mtrx__.rank_row(), mtrx__.bs_row());
 
-        int local_size_col = spl_col_end.local_size() - spl_col_begin.local_size();
+        int local_size_row = spl_row_end.local_size() - spl_row_begin.local_size();
 
-        for (int ibr = 0; ibr < nbr; ibr++) {
+        int s{0};
+        for (int ibc = 0; ibc < nbc; ibc++) {
             /* global index of column */
-            int i0 = ibr * BS;
-            /* actual number of rows in the submatrix */
-            int nrow = std::min(m__, (ibr + 1) * BS) - i0;
+            int j0 = ibc * BS;
+            /* actual number of columns in the submatrix */
+            int ncol = std::min(n__, (ibc + 1) * BS) - j0;
 
-            assert(nrow != 0);
+            assert(ncol != 0);
+            
+            splindex<block_cyclic> spl_col_begin(jcol0__ + j0,        mtrx__.num_ranks_col(), mtrx__.rank_col(), mtrx__.bs_col());
+            splindex<block_cyclic>   spl_col_end(jcol0__ + j0 + ncol, mtrx__.num_ranks_col(), mtrx__.rank_col(), mtrx__.bs_col());
 
-            splindex<block_cyclic> spl_row_begin(irow0__ + i0,        mtrx__.num_ranks_row(), mtrx__.rank_row(), mtrx__.bs_row());
-            splindex<block_cyclic>   spl_row_end(irow0__ + i0 + nrow, mtrx__.num_ranks_row(), mtrx__.rank_row(), mtrx__.bs_row());
-
-            int local_size_row = spl_row_end.local_size() - spl_row_begin.local_size();
+            int local_size_col = spl_col_end.local_size() - spl_col_begin.local_size();
 
             /* total number of elements owned by the current rank in the block */
             for (int i = 0; i < mtrx__.blacs_grid().num_ranks_col(); i++) {
-                int s1 = spl_col_end.local_size(i) - spl_col_begin.local_size(i);
+                int scol = spl_col_end.local_size(i) - spl_col_begin.local_size(i);
                 for (int j = 0; j < mtrx__.blacs_grid().num_ranks_row(); j++) {
                     int l = cart_rank(j, i);
-                    sd.counts[l] = (spl_row_end.local_size(j) - spl_row_begin.local_size(j)) * s1;
+                    sd.counts[l] = (spl_row_end.local_size(j) - spl_row_begin.local_size(j)) * scol;
                 }
             }
-
-            //sd.counts[comm.rank()] = local_size_row * local_size_col;
-
-            //comm.allgather(sd.counts.data(), comm.rank(), 1);
 
             sd.calc_offsets();
 
@@ -347,36 +353,43 @@ inline void transform(device_t                     pu__,
                 acc::copyin(submatrix.template at<GPU>(0, 0, s % num_streams), submatrix.ld(),
                             submatrix.template at<CPU>(0, 0, s % num_streams), submatrix.ld(),
                             nrow, ncol, s % num_streams);
-                /* wait for the data copy; as soon as this is done, CPU buffer is free and can be reused */
-                //acc::sync_stream(0);
             }
             #endif
-            matrix<T> tmp;
+            T* ptr{nullptr};
             switch (pu__) {
                 case CPU: {
-                    tmp = matrix<T>(submatrix.template at<CPU>(0, 0, s % num_streams), BS, BS);
+                    ptr = submatrix.template at<CPU>(0, 0, s % num_streams);
                     break;
                 }
                 case GPU: {
-                    tmp = matrix<T>(submatrix.template at<CPU>(0, 0, s % num_streams), submatrix.template at<GPU>(0, 0, s % num_streams), BS, BS);
+                    ptr = submatrix.template at<GPU>(0, 0, s % num_streams);
                     break;
                 }
             }
             for (int iv = 0; iv < nwf; iv++) {
-                local_transform(&alpha, wf_in__[iv], i0__ + i0, nrow, tmp, 0, 0, wf_out__[iv], j0__ + j0, ncol, s % num_streams);
+                local_transform(&alpha, wf_in__[iv], i0__ + i0, nrow, ptr, BS, wf_out__[iv], j0__ + j0, ncol, s % num_streams);
             }
             s++;
+        } /* loop over ibc */
+        #ifdef __GPU
+        if (pu__ == GPU) {
+            /* wait for the full block of columns (update of different wave-functions); 
+             * otherwise cuda streams can start updating the same block of output wave-functions */
+            for (int s = 0; s < num_streams; s++) {
+                acc::sync_stream(s);
+            }
         }
-    }
+        #endif
+    } /* loop over ibr */
 
-    #ifdef __GPU
-    if (pu__ == GPU) {
-        /* wait for the last cudaZgemm */
-        for (int s = 0; s < num_streams; s++) {
-            acc::sync_stream(s);
-        }
-    }
-    #endif
+    //#ifdef __GPU
+    //if (pu__ == GPU) {
+    //    /* wait for the last cudaZgemm */
+    //    for (int s = 0; s < num_streams; s++) {
+    //        acc::sync_stream(s);
+    //    }
+    //}
+    //#endif
 
     if (sddk_pp) {
         comm.barrier();

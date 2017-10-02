@@ -4,7 +4,7 @@ include ../../make.inc
 
 SRC = sddk_api.cpp
 
-OBJ = $(SRC:.cpp=.o)
+OBJ = $(SRC:.cpp=.o) sddk.o
 
 ifneq (,$(findstring D__GPU,$(CXX_OPT)))
 	OBJ := $(OBJ) \

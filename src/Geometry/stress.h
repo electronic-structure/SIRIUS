@@ -808,7 +808,7 @@ class Stress {
 
         auto drhoc = ctx_.make_periodic_function<index_domain_t::local>([&ri_dg](int iat, double g)
                                                                         {
-                                                                            return ri_dg.value(iat, g);
+                                                                            return ri_dg.value<int>(iat, g);
                                                                         });
         double sdiag{0};
         int ig0 = (ctx_.comm().rank() == 0) ? 1 : 0;

@@ -70,7 +70,7 @@ class Beta_projectors: public Beta_projectors_base<1>
                         int idxrf = atom_type.indexb(xi).idxrf;
 
                         auto z = std::pow(double_complex(0, -1), l) * fourpi / std::sqrt(ctx_.unit_cell().omega());
-                        pw_coeffs_t_[0](igkloc, atom_type.offset_lo() + xi) = z * gkvec_rlm[lm] * beta_radial_integrals.value(idxrf, iat, vs[0]);
+                        pw_coeffs_t_[0](igkloc, atom_type.offset_lo() + xi) = z * gkvec_rlm[lm] * beta_radial_integrals.value<int, int>(idxrf, iat, vs[0]);
                     }
                 }
             }

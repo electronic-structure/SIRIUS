@@ -1,4 +1,4 @@
-// Copyright (c) 2013-2016 Anton Kozhevnikov, Thomas Schulthess
+// Copyright (c) 2013-2017 Anton Kozhevnikov, Thomas Schulthess
 // All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without modification, are permitted provided that
@@ -75,9 +75,9 @@ struct local_orbital_descriptor
     /// Orbital quantum number \f$ \ell \f$.
     int l;
 
-    int j;
-
+    /// Total angular momentum used in pseudopotential SO code.
     double total_angular_momentum;
+
     /// Set of radial solution descriptors.
     /** Local orbital is constructed from at least two radial functions in order to make it zero at the
      *  muffin-tin sphere boundary. */

@@ -42,7 +42,7 @@ inline void orthogonalize(int N__,
     if (sddk_pp) {
         comm.barrier();
     }
-    double time = -omp_get_wtime();
+    //double time = -omp_get_wtime();
 
     double gflops{0};
 

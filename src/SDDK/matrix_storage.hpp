@@ -402,7 +402,7 @@ class matrix_storage<T, matrix_storage_t::slab>
         return extra_;
     }
     
-  template <sddk::memory_t mem_type>
+    template <sddk::memory_t mem_type>
     inline void zero(int i0__, int n__)
     {
         prime_.template zero<mem_type>(i0__ * num_rows_loc(), n__ * num_rows_loc());
