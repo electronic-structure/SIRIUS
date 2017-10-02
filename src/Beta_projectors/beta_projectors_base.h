@@ -311,10 +311,10 @@ class Beta_projectors_base
                 auto& desc = bchunk(ichunk__).desc_;
                 create_beta_gk_gpu(bchunk(ichunk__).num_atoms_,
                                    num_gkvec_loc_,
-                                   desc.at<GPU>(),
+                                   desc.template at<GPU>(),
                                    pw_coeffs_t_[j__].template at<GPU>(),
-                                   gkvec_coord_.at<GPU>(),
-                                   bchunk(ichunk__).atom_pos_.at<GPU>(),
+                                   gkvec_coord_.template at<GPU>(),
+                                   bchunk(ichunk__).atom_pos_.template at<GPU>(),
                                    pw_coeffs.template at<GPU>());
                 #endif
                 break;
