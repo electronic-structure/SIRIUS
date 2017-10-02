@@ -734,6 +734,7 @@ class FFT3D
             if (pu_ == GPU) {
                 
                 #ifdef __GPU_DIRECT
+                #pragma message "=========== GPU direct is enabled =============="
                 is_gpu_direct_ = true;
                 #endif
 
