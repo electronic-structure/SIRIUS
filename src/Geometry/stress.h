@@ -580,11 +580,6 @@ class Stress {
         stress_nonloc_ *= (1.0 / ctx_.unit_cell().omega());
 
         symmetrize(stress_nonloc_);
-
-        std::vector<std::array<int, 2>> idx = {{0, 1}, {0, 2}, {1, 2}};
-        for (auto e: idx) {
-            stress_nonloc_(e[0], e[1]) = stress_nonloc_(e[1], e[0]) = 0.5 * (stress_nonloc_(e[0], e[1]) + stress_nonloc_(e[1], e[0]));
-        }
     }
 
     /// Contribution to the stress tensor from the augmentation operator.
@@ -753,11 +748,6 @@ class Stress {
         stress_us_ *= (1.0 / ctx_.unit_cell().omega());
 
         symmetrize(stress_us_);
-
-        std::vector<std::array<int, 2>> idx = {{0, 1}, {0, 2}, {1, 2}};
-        for (auto e: idx) {
-            stress_us_(e[0], e[1]) = stress_us_(e[1], e[0]) = 0.5 * (stress_us_(e[0], e[1]) + stress_us_(e[1], e[0]));
-        }
     }
 
     /// XC contribution to stress.
@@ -781,7 +771,8 @@ class Stress {
             rhovc.zero();
             rhovc.add(density_.rho());
             rhovc.add(density_.rho_pseudo_core());
-
+            
+            /* transform to PW domain */
             rhovc.fft_transform(-1);
 
             /* generate pw coeffs of the gradient */
@@ -817,7 +808,7 @@ class Stress {
 
         auto drhoc = ctx_.make_periodic_function<index_domain_t::local>([&ri_dg](int iat, double g)
                                                                         {
-                                                                            return ri_dg.value(iat, g);
+                                                                            return ri_dg.value<int>(iat, g);
                                                                         });
         double sdiag{0};
         int ig0 = (ctx_.comm().rank() == 0) ? 1 : 0;
@@ -852,7 +843,6 @@ class Stress {
         ctx_.comm().allreduce(&stress_core_(0, 0), 9);
 
         symmetrize(stress_core_);
-
     }
 
     inline void symmetrize(matrix3d<double>& mtrx__) const
@@ -869,6 +859,11 @@ class Stress {
         }
 
         mtrx__ = result * (1.0 / ctx_.unit_cell().symmetry().num_mag_sym());
+
+        std::vector<std::array<int, 2>> idx = {{0, 1}, {0, 2}, {1, 2}};
+        for (auto e: idx) {
+            mtrx__(e[0], e[1]) = mtrx__(e[1], e[0]) = 0.5 * (mtrx__(e[0], e[1]) + mtrx__(e[1], e[0]));
+        }
     }
 
   public:

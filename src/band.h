@@ -65,7 +65,7 @@ class Band
         std::unique_ptr<Local_operator> local_op_;
 
         /// Solve the band diagonalziation problem with single (full) variation.
-        inline void solve_with_single_variation(K_point& kp__, Potential& potential__) const;
+        inline int solve_with_single_variation(K_point& kp__, Potential& potential__) const;
 
         /// Solve the band diagonalziation problem with second variation approach.
         /** This is only used by the FP-LAPW method. */
@@ -148,9 +148,9 @@ class Band
 
         /// Iterative Davidson diagonalization.
         template <typename T>
-        inline void diag_pseudo_potential_davidson(K_point* kp__,
-                                                   D_operator<T>& d_op__,
-                                                   Q_operator<T>& q_op__) const;
+        inline int diag_pseudo_potential_davidson(K_point* kp__,
+                                                  D_operator<T>& d_op__,
+                                                  Q_operator<T>& q_op__) const;
         /// RMM-DIIS diagonalization.
         template <typename T>
         inline void diag_pseudo_potential_rmm_diis(K_point* kp__,
@@ -318,7 +318,7 @@ class Band
                     #pragma omp parallel for
                     for (int i = 0; i < N__; i++) {
                         for (int j = N__; j < N__ + n__; j++) {
-			  mtrx__(j, i) = type_wrapper<T>::bypass(std::conj(mtrx__(i, j)));
+                            mtrx__(j, i) = type_wrapper<T>::bypass(std::conj(mtrx__(i, j)));
                         }
                     }
                 } else {
@@ -369,7 +369,7 @@ class Band
                 
         /// Diagonalize a pseudo-potential Hamiltonian.
         template <typename T>
-        void diag_pseudo_potential(K_point* kp__) const
+        int diag_pseudo_potential(K_point* kp__) const
         {
             PROFILE("sirius::Band::diag_pseudo_potential");
 
@@ -378,6 +378,8 @@ class Band
 
             D_operator<T> d_op(ctx_, kp__->beta_projectors());
             Q_operator<T> q_op(ctx_, kp__->beta_projectors());
+
+            int niter{0};
 
             auto& itso = ctx_.iterative_solver_input();
             if (itso.type_ == "exact") {
@@ -389,7 +391,7 @@ class Band
                     STOP();
                 }
             } else if (itso.type_ == "davidson") {
-                diag_pseudo_potential_davidson(kp__, d_op, q_op);
+                niter = diag_pseudo_potential_davidson(kp__, d_op, q_op);
             } else if (itso.type_ == "rmm-diis") {
                 if (ctx_.num_mag_dims() != 3) {
                     for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
@@ -413,6 +415,7 @@ class Band
             }
 
             ctx_.fft_coarse().dismiss();
+            return niter;
         }
 
     public:

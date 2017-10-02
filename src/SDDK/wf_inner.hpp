@@ -168,7 +168,9 @@ inline void inner(wave_functions& bra__,
     
     const int BS = sddk_block_size;
 
-    mdarray<T, 2> c_tmp(BS * BS, 2, memory_t::host_pinned, "inner::c_tmp");
+    const int num_streams{4};
+
+    mdarray<T, 2> c_tmp(BS * BS, num_streams, memory_t::host_pinned, "inner::c_tmp");
     if (pu == GPU) {
         c_tmp.allocate(memory_t::device);
     }
@@ -178,14 +180,16 @@ inline void inner(wave_functions& bra__,
 
     std::array<MPI_Request, 2> req = {MPI_REQUEST_NULL, MPI_REQUEST_NULL};
     std::array<std::array<int, 4>, 2> dims;
-
+    
     if (pu == GPU) {
         #ifdef __GPU
         /* state of the buffers:
          * state = 0: buffer is free
          * state = 1: buffer stores result of local zgemm */
-        int buf_state[] = {0, 0};
-         
+
+        std::array<int, num_streams> buf_state;
+        buf_state.fill(0);
+
         omp_set_nested(1);
         int nt = omp_get_max_threads();
         if (nt < 2) {
@@ -213,49 +217,42 @@ inline void inner(wave_functions& bra__,
                         /* wait for the release of the buffer */
                         while (state) {
                             #pragma omp atomic read
-                            state = buf_state[s % 2];
+                            state = buf_state[s % num_streams];
                         }
 
-                        T* buf = (pu == CPU) ? c_tmp.template at<CPU>(0, s % 2) : c_tmp.template at<GPU>(0, s % 2);
-                        local_inner(i0__ + i0, nrow, j0__ + j0, ncol, buf, nrow, s % 2);
+                        local_inner(i0__ + i0, nrow, j0__ + j0, ncol, c_tmp.template at<GPU>(0, s % num_streams), nrow, s % num_streams);
 
-                        #ifdef __GPU
-                        if (pu == GPU) {
-                            acc::copyout(c_tmp.template at<CPU>(0, s % 2), c_tmp.template at<GPU>(0, s % 2), nrow * ncol, s % 2);
-                        }
-                        #endif
+                        acc::copyout(c_tmp.template at<CPU>(0, s % num_streams), 
+                                     c_tmp.template at<GPU>(0, s % num_streams),
+                                     nrow * ncol, s % num_streams);
 
                         #pragma omp atomic write
                         /* lock the buffer */
-                        buf_state[s % 2] = 1;
+                        buf_state[s % num_streams] = 1;
                     } else { /* this thread will do allreduce and store */
                         int state{0};
                         /* wait for the lock of the buffer */
                         while (!state) {
                             #pragma omp atomic read
-                            state = buf_state[s % 2];
+                            state = buf_state[s % num_streams];
                         }
                         /* wait for the cuda stream */
-                        #ifdef __GPU
-                        if (pu == GPU) {
-                            acc::sync_stream(s % 2);
-                        }
-                        #endif
+                        acc::sync_stream(s % num_streams);
                         
-                        comm.allreduce(c_tmp.template at<CPU>(0, s % 2), nrow * ncol);
+                        comm.allreduce(c_tmp.template at<CPU>(0, s % num_streams), nrow * ncol);
 
                         /* store panel */
                         #pragma omp parallel for
                         for (int jcol = 0; jcol < ncol; jcol++) {
                             for (int irow = 0; irow < nrow; irow++) {
-                                result__.set(irow0__ + irow + i0, jcol0__ + jcol + j0,
-                                             c_tmp(irow + nrow * jcol, s % 2));
+                                result__.add(beta__, irow0__ + irow + i0, jcol0__ + jcol + j0,
+                                             c_tmp(irow + nrow * jcol, s % num_streams));
                             }
                         }
 
                         #pragma omp atomic write
                         /* release the buffer */
-                        buf_state[s % 2] = 0;
+                        buf_state[s % num_streams] = 0;
                     }
                     s++;
                 }
@@ -267,14 +264,14 @@ inline void inner(wave_functions& bra__,
     }
     
     if (pu == CPU) {
-        auto store_panel = [&req, &result__, &dims, &c_tmp, irow0__, jcol0__](int s)
+        auto store_panel = [beta__, &req, &result__, &dims, &c_tmp, irow0__, jcol0__](int s)
         {
             MPI_Wait(&req[s % 2], MPI_STATUS_IGNORE);
 
             #pragma omp parallel for
             for (int jcol = 0; jcol < dims[s % 2][3]; jcol++) {
                 for (int irow = 0; irow < dims[s % 2][2]; irow++) {
-                    result__.set(irow0__ + irow +  dims[s % 2][0], jcol0__ + jcol +  dims[s % 2][1],
+                    result__.add(beta__, irow0__ + irow +  dims[s % 2][0], jcol0__ + jcol +  dims[s % 2][1],
                                  c_tmp(irow + dims[s % 2][2] * jcol, s % 2));
                 }
             }
@@ -301,14 +298,8 @@ inline void inner(wave_functions& bra__,
                 T* buf = (pu == CPU) ? c_tmp.template at<CPU>(0, s % 2) : c_tmp.template at<GPU>(0, s % 2);
                 local_inner(i0__ + i0, nrow, j0__ + j0, ncol, buf, nrow, -1);
 
-                #ifdef __GPU
-                if (pu == GPU) {
-                    acc::copyout(c_tmp.template at<CPU>(0, s % 2), c_tmp.template at<GPU>(0, s % 2), nrow * ncol);
-                }
-                #endif
-
                 comm.iallreduce(c_tmp.template at<CPU>(0, s % 2), nrow * ncol, &req[s % 2]);
-                
+
                 s++;
             }
         }

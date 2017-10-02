@@ -117,7 +117,6 @@ inline void Density::add_k_point_contribution_dm(K_point* kp__, mdarray<double_c
                                                   &bp1(0, 0), bp1.ld(), &bp2(0, 0), bp2.ld(),
                                                   linalg_const<double_complex>::one(),
                                                   &density_matrix__(0, 0, ispn, ja),
-
                                                   density_matrix__.ld());
                             }
                         }
@@ -171,7 +170,6 @@ inline void Density::add_k_point_contribution_dm(K_point* kp__, mdarray<double_c
 
                         for (int xi1 = 0; xi1 < nbf; xi1++) {
                             for (int i = 0; i < nbnd_loc; i++) {
-                                int j = spl_nbnd[i];
                                 for (int xi1p = 0; xi1p < nbf; xi1p++) {
                                     if (ctx_.unit_cell().atom(ja).type().compare_index_beta_functions(xi1, xi1p)) {
                                         bp3(xi1, i, 0) +=

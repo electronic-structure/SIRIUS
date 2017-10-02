@@ -191,7 +191,7 @@ class Density
          *  \f$ E_{xc}[\rho_{val} + \rho_{core}] \f$. The 'pseudo' reflects the fact that 
          *  this density integrated does not reproduce the total number of core elctrons. */
         std::unique_ptr<Smooth_periodic_function<double>> rho_pseudo_core_{nullptr};
-        
+
         /// Non-zero Gaunt coefficients.
         std::unique_ptr<Gaunt_coefficients<double_complex>> gaunt_coefs_{nullptr};
         
@@ -223,50 +223,6 @@ class Density
 
         /// Initialize \rho_{ij} - density matrix, occupation on basis of beta-projectors (used for PAW).
         void init_density_matrix_for_paw();
-
-        /// Symmetrize density matrix.
-        /** Initially, density matrix is obtained with summation over irreducible BZ:
-         *  \f[
-         *      \tilde n_{\ell \lambda m \sigma, \ell' \lambda' m' \sigma'}^{\alpha}  = 
-         *          \sum_{j} \sum_{{\bf k}}^{IBZ} \langle Y_{\ell m} u_{\ell \lambda}^{\alpha}| \Psi_{j{\bf k}}^{\sigma} \rangle w_{\bf k} n_{j{\bf k}}
-         *          \langle \Psi_{j{\bf k}}^{\sigma'} | u_{\ell' \lambda'}^{\alpha} Y_{\ell' m'} \rangle 
-         *  \f]
-         *  In order to symmetrize it, the following operation is performed:
-         *  \f[
-         *      n_{\ell \lambda m \sigma, \ell' \lambda' m' \sigma'}^{\alpha} = \sum_{{\bf P}} 
-         *          \sum_{j} \sum_{\bf k}^{IBZ} \langle Y_{\ell m} u_{\ell \lambda}^{\alpha}| \Psi_{j{\bf P}{\bf k}}^{\sigma} \rangle w_{\bf k} n_{j{\bf k}}
-         *          \langle \Psi_{j{\bf P}{\bf k}}^{\sigma'} | u_{\ell' \lambda'}^{\alpha} Y_{\ell' m'} \rangle 
-         *  \f]
-         *  where \f$ {\bf P} \f$ is the space-group symmetry operation. The inner product between wave-function and
-         *  local orbital is transformed as:
-         *  \f[
-         *      \langle \Psi_{j{\bf P}{\bf k}}^{\sigma} | u_{\ell \lambda}^{\alpha} Y_{\ell m} \rangle =
-         *          \int \Psi_{j{\bf P}{\bf k}}^{\sigma *}({\bf r}) u_{\ell \lambda}^{\alpha}(r) Y_{\ell m}(\hat {\bf r}) dr =
-         *          \int \Psi_{j{\bf k}}^{\sigma *}({\bf P}^{-1}{\bf r}) u_{\ell \lambda}^{\alpha}(r) Y_{\ell m}(\hat {\bf r}) dr =
-         *          \int \Psi_{j{\bf k}}^{\sigma *}({\bf r}) u_{\ell \lambda}^{{\bf P}\alpha}(r) Y_{\ell m}({\bf P} \hat{\bf r}) dr
-         *  \f]
-         *  Under rotation the spherical harmonic is transformed as:
-         *  \f[
-         *        Y_{\ell m}({\bf P} \hat{\bf r}) = {\bf P}^{-1}Y_{\ell m}(\hat {\bf r}) = \sum_{m'} D_{m'm}^{\ell}({\bf P}^{-1}) Y_{\ell m'}(\hat {\bf r}) = 
-         *          \sum_{m'} D_{mm'}^{\ell}({\bf P}) Y_{\ell m'}(\hat {\bf r})
-         *  \f]
-         *  The inner-product integral is then rewritten as:
-         *  \f[
-         *      \langle \Psi_{j{\bf P}{\bf k}}^{\sigma} | u_{\ell \lambda}^{\alpha} Y_{\ell m} \rangle  = 
-         *          \sum_{m'} D_{mm'}^{\ell}({\bf P}) \langle \Psi_{j{\bf k}}^{\sigma} | u_{\ell \lambda}^{{\bf P}\alpha} Y_{\ell m} \rangle 
-         *  \f]
-         *  and the final expression for density matrix gets the following form:
-         *  \f[
-         *      n_{\ell \lambda m \sigma, \ell' \lambda' m' \sigma'}^{\alpha} = \sum_{{\bf P}}
-         *          \sum_{j} \sum_{\bf k}^{IBZ} \sum_{m_1 m_2} D_{mm_1}^{\ell *}({\bf P}) D_{m'm_2}^{\ell'}({\bf P})  
-         *          \langle Y_{\ell m_1} u_{\ell \lambda}^{{\bf P} \alpha}| 
-         *          \Psi_{j{\bf k}}^{\sigma} \rangle w_{\bf k} n_{j{\bf k}} \langle \Psi_{j{\bf k}}^{\sigma'} | 
-         *          u_{\ell' \lambda'}^{{\bf P}\alpha} Y_{\ell' m_2} \rangle = \sum_{{\bf P}}
-         *          \sum_{m_1 m_2} D_{mm_1}^{\ell *}({\bf P}) D_{m'm_2}^{\ell'}({\bf P}) 
-         *          \tilde n_{\ell \lambda m_1 \sigma, \ell' \lambda' m_2 \sigma'}^{{\bf P}\alpha} 
-         *  \f]
-         */
-        void symmetrize_density_matrix();
 
         /// Reduce complex density matrix over magnetic quantum numbers
         /** The following operation is performed:
@@ -376,7 +332,7 @@ class Density
 
             auto v = ctx_.make_periodic_function<index_domain_t::local>([&ri](int iat, double g)
                                                                         {
-                                                                            return ri.value(iat, g);
+                                                                            return ri.value<int>(iat, g);
                                                                         });
             std::copy(v.begin(), v.end(), &rho_pseudo_core_->f_pw_local(0));
             rho_pseudo_core_->fft_transform(1);
@@ -645,7 +601,7 @@ class Density
             }
 
             for (int iv = 0; iv < ctx_.num_mag_dims() + 1; iv++) {
-                #pragma omp parallel for
+                #pragma omp parallel for schedule(static)
                 for (int igloc = 0; igloc < ctx_.gvec().count(); igloc++) {
                     rho_vec_[iv]->f_pw_local(igloc) += rho_aug(igloc, iv);
                 }
@@ -812,18 +768,33 @@ class Density
         {
             return *rho_;
         }
+
+        Periodic_function<double> const& rho() const
+        {
+            return *rho_;
+        }
         
         Smooth_periodic_function<double>& rho_pseudo_core()
         {
             return *rho_pseudo_core_;
         }
-        
+
+        Smooth_periodic_function<double> const& rho_pseudo_core() const
+        {
+            return *rho_pseudo_core_;
+        }
+
         std::array<Periodic_function<double>*, 3> magnetization()
         {
             return {magnetization_[0].get(), magnetization_[1].get(), magnetization_[2].get()};
         }
 
         Periodic_function<double>& magnetization(int i)
+        {
+            return *(magnetization_[i]);
+        }
+
+        Periodic_function<double> const& magnetization(int i) const
         {
             return *(magnetization_[i]);
         }
@@ -966,16 +937,16 @@ class Density
                 STOP();
                 /* mix in real-space in case of FP-LAPW */
                 mixer_input();
-                rms = mixer_->mix();
+                rms = mixer_->mix(ctx_.settings().mixer_rss_min_);
                 mixer_output();
                 /* get rho(G) after mixing */
                 rho_->fft_transform(-1);
             } else {
                 /* mix in G-space in case of PP */
                 mixer_input();
-                rms = lf_mixer_->mix();
+                rms = lf_mixer_->mix(ctx_.settings().mixer_rss_min_);
                 if (hf_mixer_) {
-                    rms += hf_mixer_->mix();
+                    rms += hf_mixer_->mix(ctx_.settings().mixer_rss_min_);
                 }
                 mixer_output();
             }
@@ -1042,6 +1013,49 @@ class Density
             return std::move(dm);
         }
 
+        /// Symmetrize density matrix.
+        /** Initially, density matrix is obtained with summation over irreducible BZ:
+         *  \f[
+         *      \tilde n_{\ell \lambda m \sigma, \ell' \lambda' m' \sigma'}^{\alpha}  = 
+         *          \sum_{j} \sum_{{\bf k}}^{IBZ} \langle Y_{\ell m} u_{\ell \lambda}^{\alpha}| \Psi_{j{\bf k}}^{\sigma} \rangle w_{\bf k} n_{j{\bf k}}
+         *          \langle \Psi_{j{\bf k}}^{\sigma'} | u_{\ell' \lambda'}^{\alpha} Y_{\ell' m'} \rangle 
+         *  \f]
+         *  In order to symmetrize it, the following operation is performed:
+         *  \f[
+         *      n_{\ell \lambda m \sigma, \ell' \lambda' m' \sigma'}^{\alpha} = \sum_{{\bf P}} 
+         *          \sum_{j} \sum_{\bf k}^{IBZ} \langle Y_{\ell m} u_{\ell \lambda}^{\alpha}| \Psi_{j{\bf P}{\bf k}}^{\sigma} \rangle w_{\bf k} n_{j{\bf k}}
+         *          \langle \Psi_{j{\bf P}{\bf k}}^{\sigma'} | u_{\ell' \lambda'}^{\alpha} Y_{\ell' m'} \rangle 
+         *  \f]
+         *  where \f$ {\bf P} \f$ is the space-group symmetry operation. The inner product between wave-function and
+         *  local orbital is transformed as:
+         *  \f[
+         *      \langle \Psi_{j{\bf P}{\bf k}}^{\sigma} | u_{\ell \lambda}^{\alpha} Y_{\ell m} \rangle =
+         *          \int \Psi_{j{\bf P}{\bf k}}^{\sigma *}({\bf r}) u_{\ell \lambda}^{\alpha}(r) Y_{\ell m}(\hat {\bf r}) dr =
+         *          \int \Psi_{j{\bf k}}^{\sigma *}({\bf P}^{-1}{\bf r}) u_{\ell \lambda}^{\alpha}(r) Y_{\ell m}(\hat {\bf r}) dr =
+         *          \int \Psi_{j{\bf k}}^{\sigma *}({\bf r}) u_{\ell \lambda}^{{\bf P}\alpha}(r) Y_{\ell m}({\bf P} \hat{\bf r}) dr
+         *  \f]
+         *  Under rotation the spherical harmonic is transformed as:
+         *  \f[
+         *        Y_{\ell m}({\bf P} \hat{\bf r}) = {\bf P}^{-1}Y_{\ell m}(\hat {\bf r}) = \sum_{m'} D_{m'm}^{\ell}({\bf P}^{-1}) Y_{\ell m'}(\hat {\bf r}) = 
+         *          \sum_{m'} D_{mm'}^{\ell}({\bf P}) Y_{\ell m'}(\hat {\bf r})
+         *  \f]
+         *  The inner-product integral is then rewritten as:
+         *  \f[
+         *      \langle \Psi_{j{\bf P}{\bf k}}^{\sigma} | u_{\ell \lambda}^{\alpha} Y_{\ell m} \rangle  = 
+         *          \sum_{m'} D_{mm'}^{\ell}({\bf P}) \langle \Psi_{j{\bf k}}^{\sigma} | u_{\ell \lambda}^{{\bf P}\alpha} Y_{\ell m} \rangle 
+         *  \f]
+         *  and the final expression for density matrix gets the following form:
+         *  \f[
+         *      n_{\ell \lambda m \sigma, \ell' \lambda' m' \sigma'}^{\alpha} = \sum_{{\bf P}}
+         *          \sum_{j} \sum_{\bf k}^{IBZ} \sum_{m_1 m_2} D_{mm_1}^{\ell *}({\bf P}) D_{m'm_2}^{\ell'}({\bf P})  
+         *          \langle Y_{\ell m_1} u_{\ell \lambda}^{{\bf P} \alpha}| 
+         *          \Psi_{j{\bf k}}^{\sigma} \rangle w_{\bf k} n_{j{\bf k}} \langle \Psi_{j{\bf k}}^{\sigma'} | 
+         *          u_{\ell' \lambda'}^{{\bf P}\alpha} Y_{\ell' m_2} \rangle = \sum_{{\bf P}}
+         *          \sum_{m_1 m_2} D_{mm_1}^{\ell *}({\bf P}) D_{m'm_2}^{\ell'}({\bf P}) 
+         *          \tilde n_{\ell \lambda m_1 \sigma, \ell' \lambda' m_2 \sigma'}^{{\bf P}\alpha} 
+         *  \f]
+         */
+        void symmetrize_density_matrix();
 };
 
 #include "Density/initial_density.hpp"

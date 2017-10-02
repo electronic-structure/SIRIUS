@@ -73,7 +73,7 @@ class vector3d: public std::array<T, 3>
     }
     
     /// Create from raw pointer.
-    vector3d(T* ptr__)
+    vector3d(T const* ptr__)
     {
         for (int x : {0, 1, 2}) {
             (*this)[x] = ptr__[x];

@@ -1570,23 +1570,22 @@ inline double Atom_type::ClebschGordan(const int l, const double j, const double
         int m = static_cast<int>(mj - 0.5);
         if (spin == 0) {
             CG = sqrt(l + m + 1.0);
-	}
+        }
         if (spin == 1) {
             CG = sqrt((l - m));
-	}
+        }
     } else {
         if (std::abs(j - l + 0.5) < 1e-8) {
             int m = static_cast<int>(mj + 0.5);
             if (m < (1 - l)) {
                 CG = 0.0;
-	    }
-            else {
-		if (spin == 0) {
+            } else {
+                if (spin == 0) {
                     CG = sqrt(l - m + 1);
-		}
-		if (spin == 1) {
-		    CG = -sqrt(l + m);
-		}
+                }
+                if (spin == 1) {
+                    CG = -sqrt(l + m);
+                }
             }
         } else {
             printf("Clebsch gordan coefficients do not exist for this combination of j=%.5lf and l=%d\n", j, l);
@@ -1607,7 +1606,6 @@ inline double_complex
 Atom_type::calculate_U_sigma_m(const int l, const double j, const int mj, const int mp, const int sigma)
 {
 
-    int result = 0;
     if ((sigma != 0) && (sigma != 1)) {
         printf("SphericalIndex function : unkown spin direction\n");
         return 0;

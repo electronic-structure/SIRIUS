@@ -93,7 +93,7 @@ class Step_function
 
             auto f_pw = ctx__.make_periodic_function<index_domain_t::global>([&ri](int iat, double g)
                                                                              {
-                                                                                 return ri.value(iat, g);
+                                                                                 return ri.value<int>(iat, g);
                                                                              });
 
             for (int ig = 0; ig < ctx__.gvec().num_gvec(); ig++) {
@@ -101,7 +101,7 @@ class Step_function
             }
             step_function_pw_[0] += 1.0;
             
-            ctx__.fft().transform<1>(ctx__.gvec().partition(), &step_function_pw_[ctx__.gvec().partition().gvec_offset_fft()]);
+            ctx__.fft().transform<1>(&step_function_pw_[ctx__.gvec().partition().gvec_offset_fft()]);
             ctx__.fft().output(&step_function_[0]);
             
             double vit{0};

@@ -150,6 +150,8 @@ class Gvec_partition
 };
 
 /// Store list of G-vectors for FFTs and G+k basis functions.
+/** Current implemntation supports up to 2^12 (4096) z-dimension of the FFT grid and 2^20 (1048576) number of
+ *  z-columns. */
 class Gvec
 {
     friend class Gvec_partition;
@@ -166,7 +168,7 @@ class Gvec
 
     /// Total communicator which is used to distribute G or G+k vectors.
     Communicator const* comm_{nullptr};
-    
+
     /// Communicator of FFT driver.
     Communicator const* comm_fft_{nullptr};
 
@@ -186,8 +188,14 @@ class Gvec
     int num_gvec_;
 
     /// Mapping between G-vector index [0:num_gvec_) and a full index.
-    /** Full index is used to store x,y,z coordinates in a packed form in a single integer number. */
-    mdarray<int, 1> gvec_full_index_;
+    /** Full index is used to store x,y,z coordinates in a packed form in a single integer number. 
+     *  The index is equal to ((i << 12) + j) where i is the global index of z_column and j is the
+     *  index of G-vector z-coordinate in the column i. This is a global array: each MPI rank stores exactly the
+     *  same copy of the gvec_full_index_.
+     *
+     *  Limitations: size of z-dimension of FFT grid: 4096, number of z-columns: 1048576
+     */
+    mdarray<uint32_t, 1> gvec_full_index_;
 
     /// Index of the shell to which the given G-vector belongs.
     mdarray<int, 1> gvec_shell_;
@@ -218,12 +226,14 @@ class Gvec
     Gvec(Gvec&& src__) = delete;
 
     /// Return corresponding G-vector for an index in the range [0, num_gvec).
-    inline vector3d<int> gvec_by_full_index(int idx__) const
+    inline vector3d<int> gvec_by_full_index(uint32_t idx__) const
     {
-        int j = idx__ & 0xFFF;
-        int i = idx__ >> 12;
-        assert(i < (int)z_columns_.size());
-        assert(j < (int)z_columns_[i].z.size());
+        /* index of the z coordinate of G-vector: first 12 bits */
+        uint32_t j = idx__ & 0xFFF;
+        /* index of z-column: last 20 bits */
+        uint32_t i = idx__ >> 12;
+        assert(i < (uint32_t)z_columns_.size());
+        assert(j < (uint32_t)z_columns_[i].z.size());
         int x = z_columns_[i].x;
         int y = z_columns_[i].y;
         int z = z_columns_[i].z[j];
@@ -257,7 +267,8 @@ class Gvec
                         zcol.push_back(k);
                     }
                 }
-
+                
+                /* add column to the list */
                 if (zcol.size() && !non_zero_columns(i, j)) {
                     z_columns_.push_back(z_column_descriptor(i, j, zcol));
                     num_gvec_ += static_cast<int>(zcol.size());
@@ -334,27 +345,27 @@ class Gvec
             /* take G+k */
             auto gk = gkvec_cart(ig);
             /* make some reasonable roundoff */
-            size_t len = size_t(gk.length() * 1e10);
-            tmp[ig] = std::pair<size_t, int>(len, ig);
+            size_t len = size_t(gk.length() * 1e8);
+            tmp[ig]    = std::pair<size_t, int>(len, ig);
         }
         /* sort by first element in pair (length) */
         std::sort(tmp.begin(), tmp.end());
-        
+
         gvec_shell_ = mdarray<int, 1>(num_gvec_);
         /* index of the first shell */
         gvec_shell_(tmp[0].second) = 0;
-        num_gvec_shells_ = 1;
+        num_gvec_shells_           = 1;
         /* temporary vector to store G-shell radius */
         std::vector<double> tmp_len;
         /* radius of the first shell */
-        tmp_len.push_back(static_cast<double>(tmp[0].first) * 1e-10);
+        tmp_len.push_back(static_cast<double>(tmp[0].first) * 1e-8);
         for (int ig = 1; ig < num_gvec_; ig++) {
             /* if this G+k-vector has a different length */
             if (tmp[ig].first != tmp[ig - 1].first) {
                 /* increment number of shells */
                 num_gvec_shells_++;
                 /* save the radius of the new shell */
-                tmp_len.push_back(static_cast<double>(tmp[ig].first) * 1e-10);
+                tmp_len.push_back(static_cast<double>(tmp[ig].first) * 1e-8);
             }
             /* assign the index of the current shell */
             gvec_shell_(tmp[ig].second) = num_gvec_shells_ - 1;
@@ -373,21 +384,20 @@ class Gvec
 
         distribute_z_columns();
 
-        gvec_index_by_xy_ =
-            mdarray<int, 3>(2, fft_grid.limits(0), fft_grid.limits(1), memory_t::host, "Gvec.gvec_index_by_xy_");
+        gvec_index_by_xy_ = mdarray<int, 3>(2, fft_grid.limits(0), fft_grid.limits(1), memory_t::host,
+                                            "Gvec.gvec_index_by_xy_");
         std::fill(gvec_index_by_xy_.at<CPU>(), gvec_index_by_xy_.at<CPU>() + gvec_index_by_xy_.size(), -1);
 
         /* build the full G-vector index and reverse mapping */
-        gvec_full_index_ = mdarray<int, 1>(num_gvec_);
+        gvec_full_index_ = mdarray<uint32_t, 1>(num_gvec_);
         int ig{0};
         for (size_t i = 0; i < z_columns_.size(); i++) {
             /* starting G-vector index for a z-stick */
             gvec_index_by_xy_(0, z_columns_[i].x, z_columns_[i].y) = ig;
             /* size of a z-stick */
-            gvec_index_by_xy_(1, z_columns_[i].x, z_columns_[i].y) =
-                static_cast<int>((z_columns_[i].z.size() << 20) + i);
+            gvec_index_by_xy_(1, z_columns_[i].x, z_columns_[i].y) = static_cast<int>((z_columns_[i].z.size() << 20) + i);
             for (size_t j = 0; j < z_columns_[i].z.size(); j++) {
-                gvec_full_index_[ig++] = static_cast<int>((i << 12) + j);
+                gvec_full_index_[ig++] = static_cast<uint32_t>((i << 12) + j);
             }
         }
         if (ig != num_gvec_) {
@@ -446,7 +456,7 @@ class Gvec
     {
         init();
     }
-    
+
     /// Constructor for G-vectors.
     Gvec(matrix3d<double> M__,
          double Gmax__,
@@ -741,17 +751,34 @@ inline bool Gvec_partition::reduced() const
     return gvec_->reduced();
 }
 
+/// Helper class to redistribute G-vectors for symmetrization.
+/** G-vectors are remapped from default distribution which balances both the local number 
+ *  of z-columns and G-vectors to the distributio of G-vector shells in which each MPI rank stores
+ *  local set of complete G-vector shells such that the "rotated" G-vector remains on the same MPI rank. */  
 struct remap_gvec_to_shells
 {
+    /// Sending counts and offsets.
     block_data_descriptor a2a_send;
+
+    /// Receiving counts and offsets.
     block_data_descriptor a2a_recv;
-    splindex<block> spl_num_gsh;
+
+    /// Split global index of G-shells between MPI ranks.
+    splindex<block_cyclic> spl_num_gsh;
+    
+    /// List of G-vectors in the remapped storage.
     mdarray<int, 2> gvec_remapped_;
+    
+    /// Mapping between index of local G-vector and global index of G-vector shell.
+    mdarray<int, 1> gvec_shell_remapped_;
+    
+    /* mapping beween G-shell index and local G-vector index */
+    //std::map<int, std::vector<int>> gvec_sh_;
 
     Communicator const& comm_;
 
     Gvec const& gvec_;
-    
+
     /// A mapping between G-vector and it's local index in the new distribution.
     std::map<vector3d<int>, int> idx_gvec;
 
@@ -764,13 +791,13 @@ struct remap_gvec_to_shells
         a2a_send = block_data_descriptor(comm_.size());
         a2a_recv = block_data_descriptor(comm_.size());
 
-        /* split G-vector shells between ranks */
-        spl_num_gsh = splindex<block>(gvec_.num_shells(), comm_.size(), comm_.rank());
+        /* split G-vector shells between ranks in cyclic order */
+        spl_num_gsh = splindex<block_cyclic>(gvec_.num_shells(), comm_.size(), comm_.rank(), 1);
 
         /* each rank sends a fraction of its local G-vectors to other ranks */
         /* count this fraction */
         for (int igloc = 0; igloc < gvec_.count(); igloc++) {
-            int ig = gvec_.offset() + igloc;
+            int ig   = gvec_.offset() + igloc;
             int igsh = gvec__.shell(ig);
             a2a_send.counts[spl_num_gsh.local_rank(igsh)]++;
         }
@@ -782,7 +809,7 @@ struct remap_gvec_to_shells
         /* count the number of elements to receive */
         for (int r = 0; r < comm_.size(); r++) {
             for (int igloc = 0; igloc < gvec_.gvec_count(r); igloc++) {
-                int ig = gvec_.gvec_offset(r) + igloc;
+                int ig   = gvec_.gvec_offset(r) + igloc;
                 int igsh = gvec_.shell(ig);
                 if (spl_num_gsh.local_rank(igsh) == comm_.rank()) {
                     a2a_recv.counts[r]++;
@@ -790,77 +817,95 @@ struct remap_gvec_to_shells
             }
         }
         a2a_recv.calc_offsets();
-        
+
         /* local set of G-vectors in the remapped order */
-        gvec_remapped_ = mdarray<int, 2>(3, a2a_recv.size());
+        gvec_remapped_       = mdarray<int, 2>(3, a2a_recv.size());
+        gvec_shell_remapped_ = mdarray<int, 1>(a2a_recv.size());
         std::vector<int> counts(comm_.size(), 0);
         for (int r = 0; r < comm_.size(); r++) {
             for (int igloc = 0; igloc < gvec_.gvec_count(r); igloc++) {
-                int ig = gvec_.gvec_offset(r) + igloc;
+                int ig   = gvec_.gvec_offset(r) + igloc;
                 int igsh = gvec_.shell(ig);
-                auto G = gvec_.gvec(ig);
+                auto G   = gvec_.gvec(ig);
                 if (spl_num_gsh.local_rank(igsh) == comm_.rank()) {
                     for (int x = 0; x < 3; x++) {
                         gvec_remapped_(x, a2a_recv.offsets[r] + counts[r]) = G[x];
                     }
+                    gvec_shell_remapped_(a2a_recv.offsets[r] + counts[r]) = igsh;
                     counts[r]++;
                 }
             }
+        }
+        /* sanity check: sum of local sizes in the remapped order is equal to the total number of G-vectors */
+        int ng = a2a_recv.size();
+        comm_.allreduce(&ng, 1);
+        if (ng != gvec_.num_gvec()) {
+            TERMINATE("wrong number of G-vectors");
         }
 
         for (int ig = 0; ig < a2a_recv.size(); ig++) {
             vector3d<int> G(&gvec_remapped_(0, ig));
             idx_gvec[G] = ig;
+            //int igsh = gvec_shell_remapped_(ig);
+            //if (!gvec_sh_.count(igsh)) {
+            //    gvec_sh_[igsh] = std::vector<int>();
+            //}
+            //gvec_sh_[igsh].push_back(ig);
         }
     }
 
-    int index_by_gvec(vector3d<int> G__) 
+    int index_by_gvec(vector3d<int> G__) const
     {
         if (idx_gvec.count(G__)) {
-            return idx_gvec[G__];
+            return idx_gvec.at(G__);
         } else {
             return -1;
         }
     }
-    
+
+    int gvec_shell_remapped(int igloc__) const
+    {
+        return gvec_shell_remapped_(igloc__);
+    }
+
     template <typename T>
-    std::vector<T> remap_forward(T* data__)
+    std::vector<T> remap_forward(T* data__) const
     {
         PROFILE("sddk::remap_gvec_to_shells|remap_forward");
 
         std::vector<T> send_buf(gvec_.count());
         std::vector<int> counts(comm_.size(), 0);
         for (int igloc = 0; igloc < gvec_.count(); igloc++) {
-            int ig = gvec_.offset() + igloc;
-            int igsh = gvec_.shell(ig);
-            int r = spl_num_gsh.local_rank(igsh);
+            int ig                                    = gvec_.offset() + igloc;
+            int igsh                                  = gvec_.shell(ig);
+            int r                                     = spl_num_gsh.local_rank(igsh);
             send_buf[a2a_send.offsets[r] + counts[r]] = data__[igloc];
             counts[r]++;
         }
 
         std::vector<T> recv_buf(a2a_recv.size());
 
-        comm_.alltoall(send_buf.data(), a2a_send.counts.data(), a2a_send.offsets.data(),
-                       recv_buf.data(), a2a_recv.counts.data(), a2a_recv.offsets.data());
+        comm_.alltoall(send_buf.data(), a2a_send.counts.data(), a2a_send.offsets.data(), recv_buf.data(),
+                       a2a_recv.counts.data(), a2a_recv.offsets.data());
 
         return std::move(recv_buf);
     }
-    
+
     template <typename T>
-    void remap_backward(std::vector<T> buf__, T* data__)
+    void remap_backward(std::vector<T> buf__, T* data__) const
     {
         PROFILE("sddk::remap_gvec_to_shells|remap_backward");
 
         std::vector<T> recv_buf(gvec_.count());
-        
-        comm_.alltoall(buf__.data(), a2a_recv.counts.data(), a2a_recv.offsets.data(),
-                       recv_buf.data(), a2a_send.counts.data(), a2a_send.offsets.data());
+
+        comm_.alltoall(buf__.data(), a2a_recv.counts.data(), a2a_recv.offsets.data(), recv_buf.data(),
+                       a2a_send.counts.data(), a2a_send.offsets.data());
 
         std::vector<int> counts(comm_.size(), 0);
         for (int igloc = 0; igloc < gvec_.count(); igloc++) {
-            int ig = gvec_.offset() + igloc;
-            int igsh = gvec_.shell(ig);
-            int r = spl_num_gsh.local_rank(igsh);
+            int ig        = gvec_.offset() + igloc;
+            int igsh      = gvec_.shell(ig);
+            int r         = spl_num_gsh.local_rank(igsh);
             data__[igloc] = recv_buf[a2a_send.offsets[r] + counts[r]];
             counts[r]++;
         }

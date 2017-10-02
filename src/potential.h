@@ -72,6 +72,8 @@ class Potential
          */
         std::array<std::unique_ptr<Smooth_periodic_function<double>>, 2> vsigma_;
 
+        std::unique_ptr<Smooth_periodic_function<double>> dveff_;
+
         mdarray<double, 3> sbessel_mom_;
 
         mdarray<double, 3> sbessel_mt_;
@@ -177,7 +179,7 @@ class Potential
         void add_paw_Dij_to_atom_Dmtrx();
         
         /// Compute MT part of the potential and MT multipole moments
-        inline void poisson_vmt(Periodic_function<double>& rho__, 
+        inline void poisson_vmt(Periodic_function<double> const& rho__, 
                                 mdarray<double_complex, 2>& qmt__)
         {
             PROFILE("sirius::Potential::poisson_vmt");
@@ -198,7 +200,7 @@ class Potential
 
         /// Perform a G-vector summation of plane-wave coefficiens multiplied by radial integrals.
         inline void poisson_sum_G(int lmmax__, 
-                                  double_complex* fpw__, 
+                                  double_complex const* fpw__, 
                                   mdarray<double, 3>& fl__, 
                                   mdarray<double_complex, 2>& flm__);
         
@@ -280,39 +282,9 @@ class Potential
                 auto cs1 = local_potential_->checksum_rg();
                 if (ctx_.comm().rank() == 0) {
                     //DUMP("checksum(local_potential_pw): %18.10f %18.10f", cs.real(), cs.imag());
-                    DUMP("checksum(local_potential_rg): %18.10f", cs1);
+                    print_checksum("local_potential_rg", cs1);
                 }
             }
-
-            //for (int igsh = 0; igsh < ctx_.gvec().num_shells(); igsh++) {
-            //    auto g = ctx_.gvec().shell_len(igsh);
-            //    
-            //    auto& atom_type = unit_cell_.atom_type(0);
-            //    int np = atom_type.radial_grid().index_of(10);
-            //    if (np == -1) {
-            //        np = atom_type.num_mt_points();
-            //    }
-            //    auto rg = atom_type.radial_grid().segment(np);
-            //    Spline<double> s(rg);
-            //    double val;
-            //    if (std::abs(g) < 1e-10) {
-            //        for (int ir = 0; ir < rg.num_points(); ir++) {
-            //            double x = rg[ir];
-            //            s[ir] = (x * atom_type.pp_desc().vloc[ir] + atom_type.zn()) * x;
-            //        }
-            //        val = s.interpolate().integrate(0);
-            //    } else {
-            //        double g2 = g * g;
-            //        for (int ir = 0; ir < rg.num_points(); ir++) {
-            //            double x = rg[ir];
-            //            s[ir] = (x * atom_type.pp_desc().vloc[ir] + atom_type.zn() * gsl_sf_erf(x)) * std::sin(g * x);
-            //        }
-            //        val = (s.interpolate().integrate(0) / g - atom_type.zn() * std::exp(-g2 / 4) / g2);
-            //    }
-            //    if (std::abs(val - ri.value(0, g)) > 1e-10) {  
-            //        std::cout << "igsh = " << igsh << " exact: " << val << ", iterpolated: " << ri.value(0, g) << " diff: " << std::abs(val - ri.value(0, g)) << std::endl;
-            //    }
-            //}
         }
         
 
@@ -336,11 +308,15 @@ class Potential
                                    Spheric_function<spatial, double>& exc_tp);
         
         /// Generate XC potential in the muffin-tins.
-        inline void xc_mt(Density& density__);
+        inline void xc_mt(Density const& density__);
     
-        inline void xc_it_nonmagnetic(Density& density__);
+        /// Generate non-magnetic XC potential on the regular real-space grid.
+        template <bool add_pseudo_core__>
+        inline void xc_rg_nonmagnetic(Density const& density__);
 
-        inline void xc_it_magnetic(Density& density__);
+        /// Generate magnetic XC potential on the regular real-space grid.
+        template <bool add_pseudo_core__>
+        inline void xc_rg_magnetic(Density const& density__);
 
         inline void init();
 
@@ -389,15 +365,17 @@ class Potential
             xc_energy_density_ = new Periodic_function<double>(ctx_, ctx_.lmmax_pot());
             xc_energy_density_->allocate_mt(false);
 
+            for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
+                vsigma_[ispn] = std::unique_ptr<Smooth_periodic_function<double>>(new Smooth_periodic_function<double>(ctx_.fft(), ctx_.gvec()));
+            }
+
             if (!ctx_.full_potential()) {
                 local_potential_ = std::unique_ptr<Smooth_periodic_function<double>>(new Smooth_periodic_function<double>(ctx_.fft(), ctx_.gvec()));
                 local_potential_->zero();
 
                 generate_local_potential();
 
-                for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-                    vsigma_[ispn] = std::unique_ptr<Smooth_periodic_function<double>>(new Smooth_periodic_function<double>(ctx_.fft(), ctx_.gvec()));
-                }
+                dveff_ = std::unique_ptr<Smooth_periodic_function<double>>(new Smooth_periodic_function<double>(ctx_.fft(), ctx_.gvec()));
             }
 
             vh_el_ = mdarray<double, 1>(unit_cell_.num_atoms());
@@ -410,9 +388,7 @@ class Potential
                     auto rtp = SHT::spherical_coordinates(ctx_.gvec().gvec_cart(ig));
                     SHT::spherical_harmonics(ctx_.lmax_pot(), rtp[1], rtp[2], &gvec_ylm_(0, igloc));
                 }
-            }
 
-            if (ctx_.full_potential()) {
                 switch (ctx_.valence_relativity()) {
                     case relativity_t::iora: {
                         rm2_inv_pw_ = mdarray<double_complex, 1>(ctx_.gvec().num_gvec());
@@ -740,7 +716,7 @@ class Potential
          *          Y_{\ell m}^{*}({\bf \hat x'}) Y_{\ell m}(\hat {\bf x})
          *  \f]
          */
-        inline void poisson(Periodic_function<double>& rho);
+        inline void poisson(Periodic_function<double> const& rho);
         
         /// Generate XC potential and energy density
         /** In case of spin-unpolarized GGA the XC potential has the following expression:
@@ -803,10 +779,11 @@ class Potential
          *      V^{\downarrow}({\bf r}) &=& V_{xc}({\bf r}) - {\rm B}_{xc}({\bf r}) 
          *  \f}
          */
-        void xc(Density& rho__);
+        template <bool add_pseudo_core__ = false>
+        void xc(Density const& rho__);
         
         /// Generate effective potential and magnetic field from charge density and magnetization.
-        inline void generate(Density& density__)
+        inline void generate(Density const& density__)
         {
             PROFILE("sirius::Potential::generate");
 
@@ -824,11 +801,8 @@ class Potential
             } else {
                 /* add local ionic potential to the effective potential */
                 effective_potential()->add(local_potential());
-                /* make rho + rho_core */
-                density__.rho().add(density__.rho_pseudo_core());
                 /* construct XC potentials from rho + rho_core */
-                xc(density__);
-                density__.rho().add(density__.rho_pseudo_core(), -1.0);
+                xc<true>(density__);
             }
             /* add XC potential to the effective potential */
             effective_potential_->add(xc_potential_);
@@ -861,7 +835,7 @@ class Potential
             effective_potential_->hdf5_write(storage_file_name, "effective_potential");
             for (int j = 0; j < ctx_.num_mag_dims(); j++) {
                 std::stringstream s;
-                s << "effective_potential/" << j;
+                s << "effective_magnetic_field/" << j;
                 effective_magnetic_field_[j]->hdf5_write(storage_file_name, s.str());
             }
             comm_.barrier();
@@ -956,7 +930,7 @@ class Potential
          */
         void generate_D_operator_matrix();
 
-        void generate_PAW_effective_potential(Density& density);
+        void generate_PAW_effective_potential(Density const& density);
 
         std::vector<double> const& PAW_hartree_energies() const
         {
@@ -1013,6 +987,11 @@ class Potential
         Smooth_periodic_function<double>& local_potential()
         {
             return *local_potential_;
+        }
+
+        Smooth_periodic_function<double>& dveff()
+        {
+            return *dveff_;
         }
 
         Spheric_function<spectral, double> const& effective_potential_mt(int ialoc) const
@@ -1129,7 +1108,7 @@ class Potential
         double mix()
         {
             mixer_input();
-            double rms = mixer_->mix();
+            double rms = mixer_->mix(ctx_.settings().mixer_rss_min_);
             mixer_output();
             return rms;
         }
@@ -1204,6 +1183,10 @@ class Potential
             return (*vsigma_[ispn__].get());
         }
 
+        inline double vha_el(int ia__) const
+        {
+            return vh_el_(ia__);
+        }
 };
 
 #include "Potential/init.hpp"

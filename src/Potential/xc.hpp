@@ -7,8 +7,7 @@ inline void Potential::xc_mt_nonmagnetic(Radial_grid<double> const& rgrid,
 {
     PROFILE("sirius::Potential::xc_mt_nonmagnetic");
 
-    bool is_gga = false;
-    for (auto& ixc: xc_func) if (ixc.is_gga()) is_gga = true;
+    bool is_gga = is_gradient_correction();
 
     Spheric_function_gradient<spatial, double> grad_rho_tp(sht_->num_points(), rgrid);
     Spheric_function<spatial, double> lapl_rho_tp;
@@ -129,12 +128,7 @@ inline void Potential::xc_mt_magnetic(Radial_grid<double> const& rgrid,
 {
     PROFILE("sirius::Potential::xc_mt_magnetic");
 
-    bool is_gga = false;
-    for (auto& ixc: xc_func) {
-        if (ixc.is_gga()) {
-            is_gga = true;
-        }
-    }
+    bool is_gga = is_gradient_correction();
 
     Spheric_function_gradient<spatial, double> grad_rho_up_tp(sht_->num_points(), rgrid);
     Spheric_function_gradient<spatial, double> grad_rho_dn_tp(sht_->num_points(), rgrid);
@@ -300,7 +294,7 @@ inline void Potential::xc_mt_magnetic(Radial_grid<double> const& rgrid,
     }
 }
 
-inline void Potential::xc_mt(Density& density__)
+inline void Potential::xc_mt(Density const& density__)
 {
     PROFILE("sirius::Potential::xc_mt");
 
@@ -436,28 +430,39 @@ inline void Potential::xc_mt(Density& density__)
     }
 }
 
-inline void Potential::xc_it_nonmagnetic(Density& density__)
+template <bool add_pseudo_core__>
+inline void Potential::xc_rg_nonmagnetic(Density const& density__)
 {
-    PROFILE("sirius::Potential::xc_it_nonmagnetic");
+    PROFILE("sirius::Potential::xc_rg_nonmagnetic");
 
     bool is_gga = is_gradient_correction();
 
     int num_points = ctx_.fft().local_size();
 
     /* we can use this comm for parallelization */
-    auto& comm = ctx_.gvec().comm_ortho_fft();
+    //auto& comm = ctx_.gvec().comm_ortho_fft();
+
+    Smooth_periodic_function<double> rho(ctx_.fft(), ctx_.gvec());
 
     /* split real-space points between available ranks */
-    splindex<block> spl_np(num_points, comm.size(), comm.rank());
+    //splindex<block> spl_np(num_points, comm.size(), comm.rank());
 
     /* check for negative values */
-    double rhomin = 0.0;
-    for (int irloc = 0; irloc < spl_np.local_size(); irloc++) {
-        int ir = spl_np[irloc];
-        rhomin = std::min(rhomin, density__.rho().f_rg(ir));
-        if (density__.rho().f_rg(ir) < 0.0) {
-            density__.rho().f_rg(ir) = 0.0;
+    double rhomin{0};
+    for (int ir = 0; ir < num_points; ir++) {
+
+        //int ir = spl_np[irloc];
+        double d = density__.rho().f_rg(ir);
+        if (add_pseudo_core__) {
+            d += density__.rho_pseudo_core().f_rg(ir);
         }
+
+        rhomin = std::min(rhomin, d);
+        if (d < 0.0) {
+            d = 0.0;
+        }
+        
+        rho.f_rg(ir) = d;
     }
     if (rhomin < 0.0) {
         std::stringstream s;
@@ -472,11 +477,11 @@ inline void Potential::xc_it_nonmagnetic(Density& density__)
     
     if (is_gga) {
         /* use fft_transfrom of the base class (Smooth_periodic_function) */
-        density__.rho().Smooth_periodic_function<double>::fft_transform(-1);
+        rho.fft_transform(-1);
 
         /* generate pw coeffs of the gradient and laplacian */
-        grad_rho = gradient(density__.rho());
-        lapl_rho = laplacian(density__.rho());
+        grad_rho = gradient(rho);
+        lapl_rho = laplacian(rho);
 
         /* gradient in real space */
         for (int x: {0, 1, 2}) {
@@ -490,15 +495,15 @@ inline void Potential::xc_it_nonmagnetic(Density& density__)
         lapl_rho.fft_transform(1);
     }
 
-    mdarray<double, 1> exc_tmp(spl_np.local_size());
+    mdarray<double, 1> exc_tmp(num_points);
     exc_tmp.zero();
 
-    mdarray<double, 1> vxc_tmp(spl_np.local_size());
+    mdarray<double, 1> vxc_tmp(num_points);
     vxc_tmp.zero();
 
     mdarray<double, 1> vsigma_tmp;
     if (is_gga) {
-        vsigma_tmp = mdarray<double, 1>(spl_np.local_size());
+        vsigma_tmp = mdarray<double, 1>(num_points);
         vsigma_tmp.zero();
     }
 
@@ -507,7 +512,7 @@ inline void Potential::xc_it_nonmagnetic(Density& density__)
         #pragma omp parallel
         {
             /* split local size between threads */
-            splindex<block> spl_np_t(spl_np.local_size(), omp_get_num_threads(), omp_get_thread_num());
+            splindex<block> spl_np_t(num_points, omp_get_num_threads(), omp_get_thread_num());
 
             std::vector<double> exc_t(spl_np_t.local_size());
 
@@ -516,7 +521,7 @@ inline void Potential::xc_it_nonmagnetic(Density& density__)
                 std::vector<double> vxc_t(spl_np_t.local_size());
 
                 ixc.get_lda(spl_np_t.local_size(),
-                            &density__.rho().f_rg(spl_np.global_offset() + spl_np_t.global_offset()),
+                            &rho.f_rg(spl_np_t.global_offset()),
                             &vxc_t[0],
                             &exc_t[0]);
 
@@ -533,8 +538,8 @@ inline void Potential::xc_it_nonmagnetic(Density& density__)
                 std::vector<double> vsigma_t(spl_np_t.local_size());
                 
                 ixc.get_gga(spl_np_t.local_size(), 
-                            &density__.rho().f_rg(spl_np.global_offset() + spl_np_t.global_offset()), 
-                            &grad_rho_grad_rho.f_rg(spl_np.global_offset() + spl_np_t.global_offset()),
+                            &rho.f_rg(spl_np_t.global_offset()), 
+                            &grad_rho_grad_rho.f_rg(spl_np_t.global_offset()),
                             &vrho_t[0], 
                             &vsigma_t[0], 
                             &exc_t[0]);
@@ -545,7 +550,7 @@ inline void Potential::xc_it_nonmagnetic(Density& density__)
                     exc_tmp(spl_np_t[i]) += exc_t[i];
 
                     /* directly add to Vxc available contributions */
-                    vxc_tmp(spl_np_t[i]) += (vrho_t[i] - 2 * vsigma_t[i] * lapl_rho.f_rg(spl_np.global_offset() + spl_np_t[i]));
+                    vxc_tmp(spl_np_t[i]) += (vrho_t[i] - 2 * vsigma_t[i] * lapl_rho.f_rg(spl_np_t[i]));
 
                     /* save the sigma derivative */
                     vsigma_tmp(spl_np_t[i]) += vsigma_t[i]; 
@@ -556,7 +561,7 @@ inline void Potential::xc_it_nonmagnetic(Density& density__)
 
     if (is_gga) {
         /* gather vsigma */
-        comm.allgather(&vsigma_tmp[0], &vsigma_[0]->f_rg(0), spl_np.global_offset(), spl_np.local_size()); 
+        //comm.allgather(&vsigma_tmp[0], &vsigma_[0]->f_rg(0), spl_np.global_offset(), spl_np.local_size()); 
 
         /* forward transform vsigma to plane-wave domain */
         vsigma_[0]->fft_transform(-1);
@@ -573,24 +578,27 @@ inline void Potential::xc_it_nonmagnetic(Density& density__)
         auto grad_vsigma_grad_rho = grad_vsigma * grad_rho;
 
         /* add remaining term to Vxc */
-        for (int irloc = 0; irloc < spl_np.local_size(); irloc++) {
-            vxc_tmp(irloc) -= 2 * grad_vsigma_grad_rho.f_rg(spl_np[irloc]);
+        //for (int irloc = 0; irloc < spl_np.local_size(); irloc++) {
+        for (int ir = 0; ir < num_points; ir++) {
+            //vxc_tmp(irloc) -= 2 * grad_vsigma_grad_rho.f_rg(spl_np[irloc]);
+            vxc_tmp(ir) -= 2 * grad_vsigma_grad_rho.f_rg(ir);
         }
     }
-    comm.allgather(&vxc_tmp[0], &xc_potential_->f_rg(0), spl_np.global_offset(), spl_np.local_size()); 
-    comm.allgather(&exc_tmp[0], &xc_energy_density_->f_rg(0), spl_np.global_offset(), spl_np.local_size()); 
+    //comm.allgather(&vxc_tmp[0], &xc_potential_->f_rg(0), spl_np.global_offset(), spl_np.local_size()); 
+    //comm.allgather(&exc_tmp[0], &xc_energy_density_->f_rg(0), spl_np.global_offset(), spl_np.local_size()); 
+
+    for (int ir = 0; ir < num_points; ir++) {
+        xc_energy_density_->f_rg(ir) = exc_tmp(ir);
+        xc_potential_->f_rg(ir) = vxc_tmp(ir);
+    }
 }
 
-inline void Potential::xc_it_magnetic(Density& density__)
+template <bool add_pseudo_core__>
+inline void Potential::xc_rg_magnetic(Density const& density__)
 {
-    PROFILE("sirius::Potential::xc_it_magnetic");
+    PROFILE("sirius::Potential::xc_rg_magnetic");
 
-    bool is_gga = false;
-    for (auto& ixc: xc_func_) {
-        if (ixc.is_gga()) {
-            is_gga = true;
-        }
-    }
+    bool is_gga = is_gradient_correction();
 
     int num_points = ctx_.fft().local_size();
     
@@ -598,25 +606,30 @@ inline void Potential::xc_it_magnetic(Density& density__)
     Smooth_periodic_function<double> rho_dn(ctx_.fft(), ctx_.gvec());
 
     /* compute "up" and "dn" components and also check for negative values of density */
-    double rhomin = 0.0;
-    for (int ir = 0; ir < ctx_.fft().local_size(); ir++) {
-        double mag = 0.0;
+    double rhomin{0};
+    for (int ir = 0; ir < num_points; ir++) {
+        double mag{0};
         for (int j = 0; j < ctx_.num_mag_dims(); j++) {
             mag += std::pow(density__.magnetization(j).f_rg(ir), 2);
         }
         mag = std::sqrt(mag);
 
-        /* remove numerical noise at high values of magnetization */
-        mag = std::min(mag, density__.rho().f_rg(ir));
+        double rho = density__.rho().f_rg(ir);
+        if (add_pseudo_core__) {
+            rho += density__.rho_pseudo_core().f_rg(ir);
+        }
 
-        rhomin = std::min(rhomin, density__.rho().f_rg(ir));
-        if (density__.rho().f_rg(ir) < 0.0) {
-            density__.rho().f_rg(ir) = 0.0;
+        /* remove numerical noise at high values of magnetization */
+        mag = std::min(mag, rho);
+
+        rhomin = std::min(rhomin, rho);
+        if (rho < 0.0) {
+            rho = 0.0;
             mag = 0.0;
         }
         
-        rho_up.f_rg(ir) = 0.5 * (density__.rho().f_rg(ir) + mag);
-        rho_dn.f_rg(ir) = 0.5 * (density__.rho().f_rg(ir) - mag);
+        rho_up.f_rg(ir) = 0.5 * (rho + mag);
+        rho_dn.f_rg(ir) = 0.5 * (rho - mag);
     }
 
     if (rhomin < 0.0) {
@@ -812,7 +825,8 @@ inline void Potential::xc_it_magnetic(Density& density__)
     }
 }
 
-inline void Potential::xc(Density& density__)
+template <bool add_pseudo_core__>
+inline void Potential::xc(Density const& density__)
 {
     PROFILE("sirius::Potential::xc");
 
@@ -830,8 +844,8 @@ inline void Potential::xc(Density& density__)
     }
 
     if (ctx_.num_spins() == 1) {
-        xc_it_nonmagnetic(density__);
+        xc_rg_nonmagnetic<add_pseudo_core__>(density__);
     } else {
-        xc_it_magnetic(density__);
+        xc_rg_magnetic<add_pseudo_core__>(density__);
     }
 }

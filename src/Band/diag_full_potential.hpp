@@ -56,8 +56,8 @@ inline void Band::diag_fv_exact(K_point* kp, Potential& potential__) const
         kp->comm().allreduce(&z1, 1);
         kp->comm().allreduce(&z2, 1);
         if (kp->comm().rank() == 0) {
-            DUMP("checksum(h): %18.10f %18.10f", std::real(z1), std::imag(z1));
-            DUMP("checksum(o): %18.10f %18.10f", std::real(z2), std::imag(z2));
+            print_checksum("h_lapw", z1);
+            print_checksum("o_lapw", z2);
         }
     }
 
@@ -135,7 +135,7 @@ inline void Band::diag_fv_exact(K_point* kp, Potential& potential__) const
         }
     }
 
-    if (ctx_.control().verification_ >= 1) {
+    if (ctx_.control().verification_ >= 2) {
         /* check application of H and O */
         wave_functions phi(ctx_.processing_unit(), kp->gkvec(), unit_cell_.num_atoms(),
                            [this](int ia) {return unit_cell_.atom(ia).mt_lo_basis_size(); }, ctx_.num_fv_states());
@@ -257,7 +257,7 @@ inline void Band::get_singular_components(K_point* kp__) const
     int n = ncomp;
 
     if (ctx_.control().verbosity_ >= 3 && kp__->comm().rank() == 0) {
-        DUMP("iterative solver tolerance: %18.12f", ctx_.iterative_solver_tolerance());
+        printf("iterative solver tolerance: %18.12f\n", ctx_.iterative_solver_tolerance());
     }
 
     #ifdef __PRINT_MEMORY_USAGE
@@ -273,6 +273,22 @@ inline void Band::get_singular_components(K_point* kp__) const
         /* apply Hamiltonian and overlap operators to the new basis functions */
         apply_fv_o(kp__, true, true, N, n, phi, ophi);
 
+        if (ctx_.control().verification_ >= 1) {
+            dmatrix<double_complex> tmp;
+            set_subspace_mtrx(1, 0, N + n, phi, ophi, ovlp, tmp);
+
+            if (ctx_.control().verification_ >= 2) {
+                ovlp.serialize("overlap", N + n);
+            }
+
+            double max_diff = check_hermitian(ovlp, N + n);
+            if (max_diff > 1e-12) {
+                std::stringstream s;
+                s << "overlap matrix is not hermitian, max_err = " << max_diff;
+                TERMINATE(s);
+            }
+        }
+
         orthogonalize(N, n, phi, ophi, ovlp, res);
         
         /* setup eigen-value problem
@@ -280,6 +296,20 @@ inline void Band::get_singular_components(K_point* kp__) const
          * n is the number of new basis functions */
         set_subspace_mtrx(1, N, n, phi, ophi, ovlp, ovlp_old);
 
+        if (ctx_.control().verification_ >= 1) {
+
+            if (ctx_.control().verification_ >= 2) {
+                ovlp.serialize("overlap", N + n);
+            }
+
+            double max_diff = check_hermitian(ovlp, N + n);
+            if (max_diff > 1e-12) {
+                std::stringstream s;
+                s << "overlap matrix is not hermitian, max_err = " << max_diff;
+                TERMINATE(s);
+            }
+        }
+        
         /* increase size of the variation space */
         N += n;
 
@@ -293,19 +323,27 @@ inline void Band::get_singular_components(K_point* kp__) const
             s << "error in diagonalziation";
             TERMINATE(s);
         }
+        
+        for (auto e: eval) {
+            if (e < 0) {
+                std::stringstream s;
+                s << "overlap matrix is not positively defined";
+                TERMINATE(s);
+            }
+        }
 
         if (ctx_.control().verbosity_ >= 3 && kp__->comm().rank() == 0) {
-            DUMP("step: %i, current subspace size: %i, maximum subspace size: %i", k, N, num_phi);
+            printf("step: %i, current subspace size: %i, maximum subspace size: %i\n", k, N, num_phi);
             if (ctx_.control().verbosity_ >= 4) {
                 for (int i = 0; i < ncomp; i++) {
-                    DUMP("eval[%i]=%20.16f, diff=%20.16f", i, eval[i], std::abs(eval[i] - eval_old[i]));
+                    printf("eval[%i]=%20.16f, diff=%20.16f\n", i, eval[i], std::abs(eval[i] - eval_old[i]));
                 }
             }
         }
 
         /* don't compute residuals on last iteration */
         if (k != itso.num_steps_ - 1) {
-            /* get new preconditionined residuals, and also hpsi and opsi as a by-product */
+            /* get new preconditionined residuals, and also opsi and psi as a by-product */
             n = residuals(kp__, 0, N, ncomp, eval, eval_old, evec, ophi, phi, opsi, psi, res, o_diag, diag1);
         }
 
@@ -322,7 +360,11 @@ inline void Band::get_singular_components(K_point* kp__) const
             }
             else { /* otherwise, set Psi as a new trial basis */
                 if (ctx_.control().verbosity_ >= 3 && kp__->comm().rank() == 0) {
-                    DUMP("subspace size limit reached");
+                    printf("subspace size limit reached\n");
+                }
+
+                if (itso.converge_by_energy_) {
+                    transform(ctx_.processing_unit(), ophi, 0, N, evec, 0, 0, opsi, 0, ncomp);
                 }
 
                 ovlp_old.zero();
@@ -331,6 +373,7 @@ inline void Band::get_singular_components(K_point* kp__) const
                 }
                 /* update basis functions */
                 phi.copy_from(psi, 0, ncomp, ctx_.processing_unit());
+                ophi.copy_from(opsi, 0, ncomp, ctx_.processing_unit());
                 /* number of basis functions that we already have */
                 N = ncomp;
             }
@@ -345,6 +388,10 @@ inline void Band::get_singular_components(K_point* kp__) const
         psi.deallocate_on_device();
     }
     #endif
+
+    if (ctx_.control().verbosity_ >= 2 && kp__->comm().rank() == 0) {
+        printf("lowest and highest eigen-values of the singluar components: %20.16f %20.16f\n", eval.front(), eval.back());
+    }
 
     kp__->comm().barrier();
 }

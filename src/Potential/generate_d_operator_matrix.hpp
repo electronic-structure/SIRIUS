@@ -163,8 +163,14 @@ inline void Potential::generate_D_operator_matrix()
             comm_.allreduce(d_tmp.at<CPU>(), static_cast<int>(d_tmp.size()));
 
             if (ctx_.control().print_checksum_ && ctx_.comm().rank() == 0) {
-                auto cs = d_tmp.checksum();
-                print_checksum("D-op matrix of valence", cs);
+                for (int i = 0; i < atom_type.num_atoms(); i++) {
+                    std::stringstream s;
+                    s << "D_mtrx_val(atom_" << iat << "_" << i << ")";
+                    auto cs = mdarray<double, 1>(&d_tmp(0, i), nbf * (nbf + 1) / 2).checksum();
+                    print_checksum(s.str(), cs);
+                }
+                //auto cs = d_tmp.checksum();
+                //print_checksum("D_mtrx_valence", cs);
             }
 
             #pragma omp parallel for schedule(static)
@@ -309,7 +315,7 @@ inline void Potential::generate_D_operator_matrix()
         for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
             auto cs = unit_cell_.atom(ia).d_mtrx().checksum();
             std::stringstream s;
-            s << "atom_" << ia;
+            s << "D_mtrx_tot(atom_" << ia << ")";
             print_checksum(s.str(), cs);
         }
     }

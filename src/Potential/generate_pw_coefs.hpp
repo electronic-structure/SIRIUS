@@ -18,7 +18,7 @@ inline void Potential::generate_pw_coefs()
                 ctx_.fft().buffer().copy_to_device();
             }
             #endif
-            ctx_.fft().transform<-1>(ctx_.gvec().partition(), &rm2_inv_pw_[gv_offset]);
+            ctx_.fft().transform<-1>(&rm2_inv_pw_[gv_offset]);
             ctx_.fft().comm().allgather(&rm2_inv_pw_[0], gv_offset, gv_count);
         }
         case relativity_t::zora: {
@@ -31,7 +31,7 @@ inline void Potential::generate_pw_coefs()
                 ctx_.fft().buffer().copy_to_device();
             }
             #endif
-            ctx_.fft().transform<-1>(ctx_.gvec().partition(), &rm_inv_pw_[gv_offset]);
+            ctx_.fft().transform<-1>(&rm_inv_pw_[gv_offset]);
             ctx_.fft().comm().allgather(&rm_inv_pw_[0], gv_offset, gv_count);
         }
         default: {
@@ -43,7 +43,7 @@ inline void Potential::generate_pw_coefs()
                 ctx_.fft().buffer().copy_to_device();
             }
             #endif
-            ctx_.fft().transform<-1>(ctx_.gvec().partition(), &veff_pw_[gv_offset]);
+            ctx_.fft().transform<-1>(&veff_pw_[gv_offset]);
             ctx_.fft().comm().allgather(&veff_pw_[0], gv_offset, gv_count);
         }
     }

@@ -71,6 +71,8 @@ class Simulation_context_base: public Simulation_parameters
         /// G-vectors within the 2 * |Gmax^{WF}| cutoff.
         Gvec gvec_coarse_;
 
+        std::unique_ptr<remap_gvec_to_shells> remap_gvec_; 
+
         /// Creation time of the parameters.
         timeval start_time_;
 
@@ -81,6 +83,8 @@ class Simulation_context_base: public Simulation_parameters
         ev_solver_t gen_evp_solver_type_{ev_lapack};
 
         mdarray<double_complex, 3> phase_factors_;
+
+        mdarray<double_complex, 3> sym_phase_factors_;
         
         mdarray<int, 2> gvec_coord_;
 
@@ -174,6 +178,11 @@ class Simulation_context_base: public Simulation_parameters
         Gvec const& gvec_coarse() const
         {
             return gvec_coarse_;
+        }
+
+        remap_gvec_to_shells const& remap_gvec() const
+        {
+            return *remap_gvec_;
         }
 
         BLACS_grid const& blacs_grid() const
@@ -405,6 +414,11 @@ class Simulation_context_base: public Simulation_parameters
             }
             return lambda;
         }
+
+        mdarray<double_complex, 3> const& sym_phase_factors() const
+        {
+            return sym_phase_factors_;
+        }
 };
 
 inline void Simulation_context_base::init_fft()
@@ -421,15 +435,18 @@ inline void Simulation_context_base::init_fft()
     /* create a list of G-vectors for dense FFT grid; G-vectors are divided between all available MPI ranks.*/
     gvec_ = Gvec(rlv, pw_cutoff(), comm(), comm_fft(), control().reduce_gvec_);
 
+    remap_gvec_ = std::unique_ptr<remap_gvec_to_shells>(new remap_gvec_to_shells(comm(), gvec()));
+
     /* prepare fine-grained FFT driver for the entire simulation */
     fft_->prepare(gvec_.partition());
 
     /* create FFT driver for coarse mesh */
     auto fft_coarse_grid = FFT3D_grid(find_translations(2 * gk_cutoff(), rlv));
-    auto pu = (fft_coarse_grid.size() < std::pow(64, 3)) ? CPU : processing_unit(); 
-    if (full_potential()) {
-        pu = processing_unit();
-    }
+    //auto pu = (fft_coarse_grid.size() < std::pow(64, 3)) ? CPU : processing_unit(); 
+    //if (full_potential()) {
+    //    pu = processing_unit();
+    //}
+    auto pu = processing_unit();
     fft_coarse_ = std::unique_ptr<FFT3D>(new FFT3D(fft_coarse_grid, comm_fft_coarse(), pu));
 
     /* create a list of G-vectors for corase FFT grid */
@@ -529,7 +546,7 @@ inline void Simulation_context_base::initialize()
         MEMORY_USAGE_INFO();
     }
 
-    if (unit_cell_.num_atoms() != 0) {
+    if (unit_cell_.num_atoms() != 0 && use_symmetry()) {
         unit_cell_.symmetry().check_gvec_symmetry(gvec_, comm_);
         if (!full_potential()) {
             unit_cell_.symmetry().check_gvec_symmetry(gvec_coarse_, comm_);
@@ -551,6 +568,20 @@ inline void Simulation_context_base::initialize()
             auto pos = unit_cell_.atom(ia).position();
             for (int x: {0, 1, 2}) {
                 phase_factors_(x, i, ia) = std::exp(double_complex(0.0, twopi * (i * pos[x])));
+            }
+        }
+    }
+    
+    if (use_symmetry()) {
+        sym_phase_factors_ = mdarray<double_complex, 3>(3, limits, unit_cell().symmetry().num_mag_sym());
+
+        #pragma omp parallel for
+        for (int i = limits.first; i <= limits.second; i++) {
+            for (int isym = 0; isym < unit_cell().symmetry().num_mag_sym(); isym++) {
+                auto t = unit_cell().symmetry().magnetic_group_symmetry(isym).spg_op.t;
+                for (int x: {0, 1, 2}) {
+                    sym_phase_factors_(x, i, isym) = std::exp(double_complex(0.0, twopi * (i * t[x])));
+                }
             }
         }
     }

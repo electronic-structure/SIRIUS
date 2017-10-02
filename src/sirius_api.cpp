@@ -28,7 +28,7 @@
 std::unique_ptr<sirius::Simulation_context> sim_ctx{nullptr};
 
 /// Pointer to Density class, implicitly used by Fortran side.
-sirius::Density* density = nullptr;
+std::unique_ptr<sirius::Density> density{nullptr};
 
 /// Pointer to Potential class, implicitly used by Fortran side.
 sirius::Potential* potential = nullptr;
@@ -67,10 +67,8 @@ void sirius_initialize(ftn_int* call_mpi_init__)
 /// Clear global variables and destroy all objects
 void sirius_clear(void)
 {
-    if (density != nullptr) {
-        delete density;
-        density = nullptr;
-    }
+    density = nullptr;
+
     if (potential != nullptr) {
         delete potential;
         potential = nullptr;
@@ -126,10 +124,10 @@ void sirius_delete_simulation_context()
  *  \param [in] beffmt pointer to the muffin-tin part of effective magnetic field
  *  \param [in] beffit pointer to the interstitial part of the effective magnetic field
  */
-void sirius_create_potential(double* veffit__,
-                             double* veffmt__,
-                             double* beffit__,
-                             double* beffmt__)
+void sirius_create_potential(ftn_double* veffit__,
+                             ftn_double* veffmt__,
+                             ftn_double* beffit__,
+                             ftn_double* beffmt__)
 {
     potential = new sirius::Potential(*sim_ctx);
     potential->set_effective_potential_ptr(veffmt__, veffit__);
@@ -150,21 +148,18 @@ void sirius_delete_potential()
  *  \param [in] magmt pointer to the muffin-tin part of the magnetization
  *  \param [in] magit pointer to the interstitial part of the magnetization
  */
-void sirius_create_density(double* rhoit__,
-                           double* rhomt__,
-                           double* magit__,
-                           double* magmt__)
+void sirius_create_density(ftn_double* rhoit__,
+                           ftn_double* rhomt__,
+                           ftn_double* magit__,
+                           ftn_double* magmt__)
 {
-    density = new sirius::Density(*sim_ctx);
+    density = std::unique_ptr<sirius::Density>(new sirius::Density(*sim_ctx));
     density->set_charge_density_ptr(rhomt__, rhoit__);
     density->set_magnetization_ptr(magmt__, magit__);
 }
 
 void sirius_delete_density()
 {
-    if (density != nullptr) {
-        delete density;
-    }
     density = nullptr;
 }
 
@@ -364,8 +359,8 @@ void sirius_add_atom_type(ftn_char label__,
     enddo
     \endcode
  */
-void sirius_set_atom_type_properties(char const* label__,
-                                     char const* symbol__,
+void sirius_set_atom_type_properties(ftn_char label__,
+                                     ftn_char symbol__,
                                      int32_t* zn__,
                                      double* mass__,
                                      double* mt_radius__,
@@ -1575,6 +1570,13 @@ void sirius_generate_coulomb_potential(ftn_double* vclmt__,
     potential->hartree_potential().copy_to_global_ptr(vclmt__, vclit__);
 }
 
+void sirius_get_vha_el(ftn_double* vha_el__)
+{
+    for (int ia = 0; ia < sim_ctx->unit_cell().num_atoms(); ia++) {
+        vha_el__[ia] = potential->vha_el(ia);
+    }
+}
+
 void sirius_update_atomic_potential()
 {
     potential->update_atomic_potential();
@@ -2074,37 +2076,38 @@ void sirius_set_atom_type_dion(char* label__,
 }
 
 // This must be called prior to sirius_set_atom_type_q_rf
-void sirius_set_atom_type_beta_rf(char* label__,
+void sirius_set_atom_type_beta_rf(char*    label__,
                                   int32_t* num_beta__,
                                   int32_t* beta_l__,
-				  double* beta_j__,
+                                  double*  beta_j__,
                                   int32_t* num_mesh_points__,
-                                  double* beta_rf__,
+                                  double*  beta_rf__,
                                   int32_t* ld__,
-				  int32_t* SpinOrbit)
+                                  int32_t* spin_orbit__)
 {
     auto& type = sim_ctx->unit_cell().atom_type(std::string(label__));
     mdarray<double, 2> beta_rf(beta_rf__, *ld__, *num_beta__);
-    if(*SpinOrbit != 0) {
-      type.pp_desc().spin_orbit_coupling = true;
+    if (*spin_orbit__ != 0) {
+        type.pp_desc().spin_orbit_coupling = true;
     } else {
-      type.pp_desc().spin_orbit_coupling = false;
+        type.pp_desc().spin_orbit_coupling = false;
     }
 
     type.pp_desc().lmax_beta_ = 0;
     type.pp_desc().num_beta_radial_functions = *num_beta__;
     type.pp_desc().beta_l = std::vector<int>(*num_beta__);
-    if(type.pp_desc().spin_orbit_coupling)
+    if (type.pp_desc().spin_orbit_coupling) {
       type.pp_desc().beta_j = std::vector<double>(*num_beta__);
+    }
     type.pp_desc().num_beta_radial_points = std::vector<int>(*num_beta__);
-    for (int i = 0; i < *num_beta__; i++)
-      {
+    for (int i = 0; i < *num_beta__; i++) {
         type.pp_desc().beta_l[i] = beta_l__[i];
-	if(type.pp_desc().beta_j.size())
-	  type.pp_desc().beta_j[i] = beta_j__[i];
+        if (type.pp_desc().beta_j.size()) {
+            type.pp_desc().beta_j[i] = beta_j__[i];
+        }
         type.pp_desc().lmax_beta_ = std::max(type.pp_desc().lmax_beta_, beta_l__[i]);
         type.pp_desc().num_beta_radial_points[i] = num_mesh_points__[i];
-      }
+    }
     type.pp_desc().beta_radial_functions = mdarray<double, 2>(type.num_mt_points(), *num_beta__);
     beta_rf >> type.pp_desc().beta_radial_functions;
 }
@@ -2191,6 +2194,11 @@ void sirius_set_iterative_solver_tolerance(double* tol__)
 {
     /* convert tolerance to Ha */
     sim_ctx->set_iterative_solver_tolerance(*tol__ / 2);
+}
+
+void sirius_set_iterative_solver_type(ftn_char type__)
+{
+    sim_ctx->set_iterative_solver_type(std::string(type__));
 }
 
 void sirius_get_density_dr2(double* dr2__)
@@ -2539,7 +2547,9 @@ void sirius_set_mpi_grid_dims(int *ndims__, int* dims__)
 {
     assert(*ndims__ > 0);
     std::vector<int> dims(*ndims__);
-    for (int i = 0; i < *ndims__; i++) dims[i] = dims__[i];
+    for (int i = 0; i < *ndims__; i++) {
+        dims[i] = dims__[i];
+    }
     sim_ctx->set_mpi_grid_dims(dims);
 }
 
@@ -2926,6 +2936,7 @@ void sirius_set_verbosity(ftn_int* level__)
 void sirius_generate_d_operator_matrix()
 {
     potential->generate_D_operator_matrix();
+    //potential->generate_PAW_effective_potential(*density);
 }
 
 /// Set the plane-wave expansion coefficients of a particular function.
@@ -2941,6 +2952,8 @@ void sirius_set_pw_coeffs(ftn_char label__,
                           ftn_int* gvl__, 
                           ftn_int* comm__)
 {
+    PROFILE("sirius_api::sirius_set_pw_coeffs");
+
     std::string label(label__);
 
     if (sim_ctx->full_potential()) {
@@ -2962,6 +2975,7 @@ void sirius_set_pw_coeffs(ftn_char label__,
         mdarray<int, 2> gvec(gvl__, 3, *ngv__);
 
         std::vector<double_complex> v(sim_ctx->gvec().num_gvec(), 0);
+        #pragma omp parallel for schedule(static)
         for (int i = 0; i < *ngv__; i++) {
             vector3d<int> G(gvec(0, i), gvec(1, i), gvec(2, i));
             int ig = sim_ctx->gvec().index_by_gvec(G);
@@ -2981,41 +2995,6 @@ void sirius_set_pw_coeffs(ftn_char label__,
                     }
                 }
             }
-
-
-            //if (ig == -1) {
-            //    ig = sim_ctx->gvec().index_by_gvec(G * (-1));
-            //    if (ig == -1) {
-            //        std::stringstream s;
-            //        auto gvc = sim_ctx->unit_cell().reciprocal_lattice_vectors() * vector3d<double>(G[0], G[1], G[2]);
-            //        s << "wrong index of G-vector" << std::endl
-            //          << "input G-vector: " << G << " (length: " << gvc.length() << " [a.u.^-1])" << std::endl;
-            //        TERMINATE(s);
-            //    } else {
-            //        v[ig] = std::conj(pw_coeffs__[i]);
-            //    }
-            //} else {
-            //    v[ig] = pw_coeffs__[i];
-            //}
-
-            //bool is_inverse{false};
-            //int ig = sim_ctx->gvec().index_by_gvec(G);
-            //if (ig == -1 && sim_ctx->gamma_point()) {
-            //    ig = sim_ctx->gvec().index_by_gvec(G * (-1));
-            //    is_inverse = true;
-            //}
-            //if (ig == -1) {
-            //    std::stringstream s;
-            //    auto gvc = sim_ctx->unit_cell().reciprocal_lattice_vectors() * vector3d<double>(G[0], G[1], G[2]);
-            //    s << "wrong index of G-vector" << std::endl
-            //      << "input G-vector: " << G << " (length: " << gvc.length() << " [a.u.^-1])" << std::endl;
-            //    TERMINATE(s);
-            //}
-            //if (is_inverse) {
-            //    v[ig] = std::conj(pw_coeffs__[i]);
-            //} else {
-            //    v[ig] = pw_coeffs__[i];
-            //}
         }
         comm.allreduce(v.data(), sim_ctx->gvec().num_gvec());
         
@@ -3050,6 +3029,8 @@ void sirius_set_pw_coeffs(ftn_char label__,
         } else if (label == "vloc") {
             potential->local_potential().scatter_f_pw(v);
             potential->local_potential().fft_transform(1);
+        } else if (label == "dveff") {
+            potential->dveff().scatter_f_pw(v);
         } else {
             std::stringstream s;
             s << "wrong label in sirius_set_pw_coeffs()" << std::endl
@@ -3065,6 +3046,8 @@ void sirius_get_pw_coeffs(ftn_char        label__,
                           ftn_int*        gvl__, 
                           ftn_int*        comm__)
 {
+    PROFILE("sirius_api::sirius_get_pw_coeffs");
+
     std::string label(label__);
     if (sim_ctx->full_potential()) {
         STOP();
@@ -3145,13 +3128,13 @@ void sirius_get_pw_coeffs_real(ftn_char    atom_type__,
         sirius::Radial_integrals_rho_core_pseudo<false> ri(sim_ctx->unit_cell(), sim_ctx->pw_cutoff(), sim_ctx->settings().nprii_rho_core_);
         make_pw_coeffs([&ri, iat](double g)
                        {
-                           return ri.value(iat, g);
+                           return ri.value<int>(iat, g);
                        });
     } else if (label == "rhoc_dg") {
         sirius::Radial_integrals_rho_core_pseudo<true> ri(sim_ctx->unit_cell(), sim_ctx->pw_cutoff(), sim_ctx->settings().nprii_rho_core_);
         make_pw_coeffs([&ri, iat](double g)
                        {
-                           return ri.value(iat, g);
+                           return ri.value<int>(iat, g);
                        });
     } else if (label == "vloc") {
         sirius::Radial_integrals_vloc<true> ri(sim_ctx->unit_cell(), sim_ctx->pw_cutoff(), sim_ctx->settings().nprii_vloc_);
@@ -3172,13 +3155,13 @@ void sirius_get_forces(ftn_char label__, ftn_double* forces__)
 {
     std::string label(label__);
 
-    auto get_forces = [&](const mdarray<double,2>& sirius_forces__)
-        {
-            #pragma omp parallel for
-            for (size_t i = 0; i < sirius_forces__.size(); i++){
-                forces__[i] = sirius_forces__[i];
-            }
-        };
+    auto get_forces = [&](const mdarray<double, 2>& sirius_forces__)
+    {
+        #pragma omp parallel for
+        for (size_t i = 0; i < sirius_forces__.size(); i++){
+            forces__[i] = sirius_forces__[i];
+        }
+    };
 
     if (label == "vloc") {
         get_forces(forces->local_forces());
@@ -3194,6 +3177,8 @@ void sirius_get_forces(ftn_char label__, ftn_double* forces__)
         get_forces(forces->us_nl_forces());
     } else if (label == "tot") {
         get_forces(forces->total_forces());
+    } else if (label == "scf_corr") {
+        get_forces(forces->scf_corr_forces());
     } else {
         TERMINATE("wrong label");
     }
@@ -3235,6 +3220,15 @@ void sirius_get_stress_tensor(ftn_char label__, ftn_double* stress_tensor__)
     }
 }
 
+void sirius_add_atom_type_chi(ftn_char label__,
+                              ftn_int* l__,
+                              ftn_int* num_points__,
+                              ftn_double* chi__)
+{
+    auto& type = sim_ctx->unit_cell().atom_type(std::string(label__));
+    type.pp_desc().atomic_pseudo_wfs_.push_back(std::make_pair(*l__, std::vector<double>(chi__, chi__ + *num_points__)));
+}
+
 void sirius_set_processing_unit(ftn_char pu__)
 {
     sim_ctx->set_processing_unit(pu__);
@@ -3248,7 +3242,7 @@ void sirius_set_use_symmetry(ftn_int* flg__)
 void sirius_ri_aug_(ftn_int* idx__, ftn_int* l__, ftn_int* iat__, ftn_double* q__, ftn_double* val__)
 {
     if (sim_ctx) {
-        *val__ = sim_ctx->aug_ri().value(*idx__ - 1, *l__, *iat__ - 1, *q__);
+        *val__ = sim_ctx->aug_ri().value<int, int, int>(*idx__ - 1, *l__, *iat__ - 1, *q__);
     } else {
         *val__ = 0;
     }
@@ -3257,7 +3251,7 @@ void sirius_ri_aug_(ftn_int* idx__, ftn_int* l__, ftn_int* iat__, ftn_double* q_
 void sirius_ri_beta_(ftn_int* idx__, ftn_int* iat__, ftn_double* q__, ftn_double* val__)
 {
     if (sim_ctx) {
-        *val__ = sim_ctx->beta_ri().value(*idx__ - 1, *iat__ - 1, *q__);
+        *val__ = sim_ctx->beta_ri().value<int, int>(*idx__ - 1, *iat__ - 1, *q__);
     } else {
         *val__ = 0;
     }

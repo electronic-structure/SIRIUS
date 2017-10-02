@@ -282,17 +282,12 @@ class mdarray_base
     /// List of offsets to compute the element location by dimension indices.
     std::array<int64_t, N> offsets_;
 
-    void init_dimensions(std::initializer_list<mdarray_index_descriptor> const args)
+    void init_dimensions(std::array<mdarray_index_descriptor, N> const dims__)
     {
-        assert(args.size() == N);
-
-        int i{0};
-        for (auto d : args) {
-            dims_[i++] = d;
-        }
+        dims_ = dims__;
 
         offsets_[0] = -dims_[0].begin();
-        size_t ld   = 1;
+        size_t ld{1};
         for (int i = 1; i < N; i++) {
             ld *= dims_[i - 1].size();
             offsets_[i] = ld;
@@ -303,7 +298,7 @@ class mdarray_base
   private:
     inline int64_t idx(int64_t const i0) const
     {
-        mdarray_assert(N == 1);
+        static_assert(N == 1, "wrong number of dimensions");
         mdarray_assert(i0 >= dims_[0].begin() && i0 <= dims_[0].end());
         size_t i = offsets_[0] + i0;
         mdarray_assert(i >= 0 && i < size());
@@ -312,7 +307,7 @@ class mdarray_base
 
     inline int64_t idx(int64_t const i0, int64_t const i1) const
     {
-        mdarray_assert(N == 2);
+        static_assert(N == 2, "wrong number of dimensions");
         mdarray_assert(i0 >= dims_[0].begin() && i0 <= dims_[0].end());
         mdarray_assert(i1 >= dims_[1].begin() && i1 <= dims_[1].end());
         size_t i = offsets_[0] + i0 + i1 * offsets_[1];
@@ -322,7 +317,7 @@ class mdarray_base
 
     inline int64_t idx(int64_t const i0, int64_t const i1, int64_t const i2) const
     {
-        mdarray_assert(N == 3);
+        static_assert(N == 3, "wrong number of dimensions");
         mdarray_assert(i0 >= dims_[0].begin() && i0 <= dims_[0].end());
         mdarray_assert(i1 >= dims_[1].begin() && i1 <= dims_[1].end());
         mdarray_assert(i2 >= dims_[2].begin() && i2 <= dims_[2].end());
@@ -333,7 +328,7 @@ class mdarray_base
 
     inline int64_t idx(int64_t const i0, int64_t const i1, int64_t const i2, int64_t const i3) const
     {
-        mdarray_assert(N == 4);
+        static_assert(N == 4, "wrong number of dimensions");
         mdarray_assert(i0 >= dims_[0].begin() && i0 <= dims_[0].end());
         mdarray_assert(i1 >= dims_[1].begin() && i1 <= dims_[1].end());
         mdarray_assert(i2 >= dims_[2].begin() && i2 <= dims_[2].end());
@@ -813,6 +808,8 @@ class mdarray : public mdarray_base<T, N>
             memory_t memory__   = memory_t::host,
             std::string label__ = "")
     {
+        static_assert(N == 1, "wrong number of dimensions");
+        
         this->label_ = label__;
         this->init_dimensions({d0});
         this->allocate(memory__);
@@ -823,6 +820,8 @@ class mdarray : public mdarray_base<T, N>
             memory_t memory__   = memory_t::host,
             std::string label__ = "")
     {
+        static_assert(N == 2, "wrong number of dimensions");
+
         this->label_ = label__;
         this->init_dimensions({d0, d1});
         this->allocate(memory__);
@@ -834,6 +833,8 @@ class mdarray : public mdarray_base<T, N>
             memory_t memory__   = memory_t::host,
             std::string label__ = "")
     {
+        static_assert(N == 3, "wrong number of dimensions");
+
         this->label_ = label__;
         this->init_dimensions({d0, d1, d2});
         this->allocate(memory__);
@@ -846,6 +847,8 @@ class mdarray : public mdarray_base<T, N>
             memory_t memory__   = memory_t::host,
             std::string label__ = "")
     {
+        static_assert(N == 4, "wrong number of dimensions");
+
         this->label_ = label__;
         this->init_dimensions({d0, d1, d2, d3});
         this->allocate(memory__);
@@ -855,6 +858,8 @@ class mdarray : public mdarray_base<T, N>
             mdarray_index_descriptor const& d0,
             std::string label__ = "")
     {
+        static_assert(N == 1, "wrong number of dimensions");
+
         this->label_ = label__;
         this->init_dimensions({d0});
         this->raw_ptr_ = ptr__;
@@ -865,6 +870,8 @@ class mdarray : public mdarray_base<T, N>
             mdarray_index_descriptor const& d0,
             std::string label__ = "")
     {
+        static_assert(N == 1, "wrong number of dimensions");
+
         this->label_ = label__;
         this->init_dimensions({d0});
         this->raw_ptr_ = ptr__;
@@ -878,6 +885,8 @@ class mdarray : public mdarray_base<T, N>
             mdarray_index_descriptor const& d1,
             std::string label__ = "")
     {
+        static_assert(N == 2, "wrong number of dimensions");
+
         this->label_ = label__;
         this->init_dimensions({d0, d1});
         this->raw_ptr_ = ptr__;
@@ -889,6 +898,8 @@ class mdarray : public mdarray_base<T, N>
             mdarray_index_descriptor const& d1,
             std::string label__ = "")
     {
+        static_assert(N == 2, "wrong number of dimensions");
+
         this->label_ = label__;
         this->init_dimensions({d0, d1});
         this->raw_ptr_ = ptr__;
@@ -903,6 +914,8 @@ class mdarray : public mdarray_base<T, N>
             mdarray_index_descriptor const& d2,
             std::string label__ = "")
     {
+        static_assert(N == 3, "wrong number of dimensions");
+
         this->label_ = label__;
         this->init_dimensions({d0, d1, d2});
         this->raw_ptr_ = ptr__;
@@ -915,11 +928,13 @@ class mdarray : public mdarray_base<T, N>
             mdarray_index_descriptor const& d2,
             std::string label__ = "")
     {
+        static_assert(N == 3, "wrong number of dimensions");
+
         this->label_ = label__;
         this->init_dimensions({d0, d1, d2});
-        this->ptr_ = ptr__;
+        this->raw_ptr_ = ptr__;
         #ifdef __GPU
-        this->ptr_device_ = ptr_device__;
+        this->raw_ptr_device_ = ptr_device__;
         #endif
     }
 
@@ -930,6 +945,8 @@ class mdarray : public mdarray_base<T, N>
             mdarray_index_descriptor const& d3,
             std::string label__ = "")
     {
+        static_assert(N == 4, "wrong number of dimensions");
+
         this->label_ = label__;
         this->init_dimensions({d0, d1, d2, d3});
         this->raw_ptr_ = ptr__;
@@ -937,7 +954,7 @@ class mdarray : public mdarray_base<T, N>
 
     mdarray<T, N>& operator=(std::function<T(int64_t)> f__)
     {
-        assert(N == 1);
+        static_assert(N == 1, "wrong number of dimensions");
 
         for (int64_t i0 = this->dims_[0].begin(); i0 <= this->dims_[0].end(); i0++) {
             (*this)(i0) = f__(i0);
@@ -947,7 +964,7 @@ class mdarray : public mdarray_base<T, N>
 
     mdarray<T, N>& operator=(std::function<T(int64_t, int64_t)> f__)
     {
-        assert(N == 2);
+        static_assert(N == 2, "wrong number of dimensions");
 
         for (int64_t i1 = this->dims_[1].begin(); i1 <= this->dims_[1].end(); i1++) {
             for (int64_t i0 = this->dims_[0].begin(); i0 <= this->dims_[0].end(); i0++) {

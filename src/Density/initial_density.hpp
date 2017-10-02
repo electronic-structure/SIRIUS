@@ -22,7 +22,7 @@ inline void Density::initial_density_pseudo()
     Radial_integrals_rho_pseudo ri(unit_cell_, ctx_.pw_cutoff(), 20);
     auto v = ctx_.make_periodic_function<index_domain_t::local>([&ri](int iat, double g)
                                                                  {
-                                                                     return ri.value(iat, g);
+                                                                     return ri.value<int>(iat, g);
                                                                  });
 
     if (ctx_.control().print_checksum_ && ctx_.comm().rank() == 0) {
@@ -31,7 +31,7 @@ inline void Density::initial_density_pseudo()
     }
 
     std::memcpy(&rho_->f_pw_local(0), &v[0], ctx_.gvec().count() * sizeof(double_complex));
-    
+
     double charge = rho_->f_0().real() * unit_cell_.omega();
 
     if (std::abs(charge - unit_cell_.num_valence_electrons()) > 1e-6) {
@@ -42,22 +42,34 @@ inline void Density::initial_density_pseudo()
         if (ctx_.comm().rank() == 0) {
             WARNING(s);
         }
-        if (ctx_.gvec().comm().rank() == 0) {
-            rho_->f_pw_local(0) += (unit_cell_.num_valence_electrons() - charge) / unit_cell_.omega();
-        }
+        //if (ctx_.gvec().comm().rank() == 0) {
+        //    rho_->f_pw_local(0) += (unit_cell_.num_valence_electrons() - charge) / unit_cell_.omega();
+        //}
     }
     rho_->fft_transform(1);
+
+    /* remove possible negative noise */
+    for (int ir = 0; ir < ctx_.fft().local_size(); ir++) {
+        rho_->f_rg(ir) = std::max(rho_->f_rg(ir), 0.0);
+    }
+
+    charge = 0;
+    for (int ir = 0; ir < ctx_.fft().local_size(); ir++) {
+        charge += rho_->f_rg(ir);
+    }
+    charge *= (ctx_.unit_cell().omega() / ctx_.fft().size());
+    ctx_.fft().comm().allreduce(&charge, 1);
+    
+    /* renormalize charge */
+    for (int ir = 0; ir < ctx_.fft().local_size(); ir++) {
+         rho_->f_rg(ir) *= (unit_cell_.num_valence_electrons() / charge);
+    }
 
     if (ctx_.control().print_checksum_) {
         auto cs = rho_->checksum_rg();
         if (ctx_.comm().rank() == 0) {
             DUMP("checksum(rho_rg) : %18.10f", cs);
         }
-    }
-
-    /* remove possible negative noise */
-    for (int ir = 0; ir < ctx_.fft().local_size(); ir++) {
-        rho_->f_rg(ir) = std::max(rho_->f_rg(ir), 0.0);
     }
 
     /* initialize the magnetization */
@@ -84,13 +96,29 @@ inline void Density::initial_density_pseudo()
                                     auto a = r.length();
 
                                     const double R = 2.0;
-                                    const double norm = pi * std::pow(R, 3) / 3.0;
+
+                                    auto w = [R](double x)
+                                    {
+                                        /* the constants are picked in such a way that the volume integral of the
+                                           weight function is equal to the volume of the atomic sphere; 
+                                           in this case the starting magnetiation in the atomic spehre
+                                           integrates to the starting magnetization vector */
+
+                                        /* volume of the sphere */
+                                        const double norm = fourpi * std::pow(R, 3) / 3.0;
+                                        return (35.0 / 8) * std::pow(1 - std::pow(x / R, 2), 2) / norm;
+                                        //return 10 * std::pow(1 - x / R, 2) / norm;
+                                        //const double b = 1.1016992073677703;
+                                        //return b * 1.0 /  (std::exp(10 * (a - R)) + 1) / norm;
+                                        //const double norm = pi * std::pow(R, 3) / 3.0;
+                                        //return 1.0 / (std::exp(10 * (x - R)) + 1) / norm;
+                                    };
 
                                     if (a <= R) {
-                                        magnetization_[0]->f_rg(ir) += v[2] * 1.0 / (std::exp(10 * (a-R)) + 1) / norm;
+                                        magnetization_[0]->f_rg(ir) += v[2] * w(a);
                                         if (ctx_.num_mag_dims() == 3) {
-                                            magnetization_[1]->f_rg(ir) += v[0] * 1.0 / (std::exp(10 * (a-R)) + 1) / norm;
-                                            magnetization_[2]->f_rg(ir) += v[1] * 1.0 / (std::exp(10 * (a-R)) + 1) / norm;
+                                            magnetization_[1]->f_rg(ir) += v[0] * w(a);
+                                            magnetization_[2]->f_rg(ir) += v[1] * w(a);
                                         }
                                     }
                                 }
@@ -101,7 +129,7 @@ inline void Density::initial_density_pseudo()
             }
         }
     }
-
+    
     if (ctx_.control().print_checksum_) {
         for (int i = 0; i < ctx_.num_mag_dims() + 1; i++) {
             auto cs = rho_vec_[i]->checksum_rg();
@@ -116,11 +144,11 @@ inline void Density::initial_density_pseudo()
         magnetization_[j]->fft_transform(-1);
     }
     
-    /* renormalize charge */
-    charge = rho_->f_0().real() * unit_cell_.omega();
-    if (ctx_.gvec().comm().rank() == 0) {
-        rho_->f_pw_local(0) += (unit_cell_.num_valence_electrons() - charge) / unit_cell_.omega();
-    }
+    //== /* renormalize charge */
+    //== charge = rho_->f_0().real() * unit_cell_.omega();
+    //== if (ctx_.gvec().comm().rank() == 0) {
+    //==     rho_->f_pw_local(0) += (unit_cell_.num_valence_electrons() - charge) / unit_cell_.omega();
+    //== }
 
     //if (ctx_.control().print_checksum_ && ctx_.comm().rank() == 0) {
     //    double_complex cs = mdarray<double_complex, 1>(&rho_->f_pw(0), ctx_.gvec().num_gvec()).checksum();
@@ -141,22 +169,34 @@ inline void Density::initial_density_full_pot()
     /* compute contribution from free atoms to the interstitial density */
     auto v = ctx_.make_periodic_function<index_domain_t::local>([&ri](int iat, double g)
                                                                  {
-                                                                     return ri.value(iat, g);
+                                                                     return ri.value<int>(iat, g);
                                                                  });
     
-    #ifdef __PRINT_OBJECT_CHECKSUM
-    double_complex z = mdarray<double_complex, 1>(&v[0], ctx_.gvec().num_gvec()).checksum();
-    DUMP("checksum(rho_pw): %18.10f %18.10f", z.real(), z.imag());
-    #endif
+    double v0{0};
+    if (ctx_.comm().rank() == 0) {
+        v0 = v[0].real();
+    }
+    ctx_.comm().bcast(&v0, 1, 0);
+
+    if (ctx_.control().print_checksum_) {
+        auto z = mdarray<double_complex, 1>(&v[0], ctx_.gvec().count()).checksum();
+        ctx_.comm().allreduce(&z, 1);
+        if (ctx_.comm().rank() == 0) {
+            print_checksum("rho_pw", z);
+        }
+    }
     
     /* set plane-wave coefficients of the charge density */
     std::memcpy(&rho_->f_pw_local(0), &v[0], ctx_.gvec().count() * sizeof(double_complex));
     /* convert charge deisnty to real space mesh */
     rho_->fft_transform(1);
     
-    #ifdef __PRINT_OBJECT_CHECKSUM
-    DUMP("checksum(rho_rg): %18.10f", rho_->checksum_rg());
-    #endif
+    if (ctx_.control().print_checksum_) {
+        auto cs = rho_->checksum_rg();
+        if (ctx_.comm().rank() == 0) {
+            print_checksum("rho_rg", cs);
+        }
+    }
     
     /* remove possible negative noise */
     for (int ir = 0; ir < ctx_.fft().local_size(); ir++) {
@@ -173,14 +213,16 @@ inline void Density::initial_density_full_pot()
         int ig = ctx_.gvec().offset() + igloc;
         /* index of the G-vector shell */
         int igsh = ctx_.gvec().shell(ig);
-        if (gsh_map.count(igsh) == 0) gsh_map[igsh] = std::vector<int>();
+        if (gsh_map.count(igsh) == 0) {
+            gsh_map[igsh] = std::vector<int>();
+        }
         gsh_map[igsh].push_back(igloc);
     }
     
     /* list of G-shells for the curent MPI rank */
-    std::vector<std::pair<int, std::vector<int> > > gsh_list;
+    std::vector<std::pair<int, std::vector<int>>> gsh_list;
     for (auto& i: gsh_map) {
-        gsh_list.push_back(std::pair<int, std::vector<int> >(i.first, i.second));
+        gsh_list.push_back(std::pair<int, std::vector<int>>(i.first, i.second));
     }
     
     int lmax = 1; //ctx_.lmax_rho();
@@ -246,10 +288,12 @@ inline void Density::initial_density_full_pot()
     ctx_.comm().allreduce(znulm.at<CPU>(), (int)znulm.size());
     t3.stop();
     
-    #ifdef __PRINT_OBJECT_CHECKSUM
-    double_complex z3 = znulm.checksum();
-    DUMP("checksum(znulm): %18.10f %18.10f", std::real(z3), std::imag(z3));
-    #endif
+    if (ctx_.control().print_checksum_) {
+        double_complex z3 = znulm.checksum();
+        if (ctx_.comm().rank() == 0) {
+            print_checksum("znulm", z3);
+        }
+    }
     
     sddk::timer t4("sirius::Density::initial_density|rholm");
     
@@ -275,9 +319,16 @@ inline void Density::initial_density_full_pot()
         }
         for (int ir = 0; ir < unit_cell_.atom(ia).num_mt_points(); ir++) {
             double x = unit_cell_.atom(ia).radial_grid(ir);
-            rhoylm(0, ir) += (v[0] - unit_cell_.atom(ia).type().free_atom_density(x)) / y00;
+            rhoylm(0, ir) += (v0 - unit_cell_.atom(ia).type().free_atom_density(x)) / y00;
         }
         auto rhorlm = convert(rhoylm);
+        if (ctx_.control().print_checksum_) {
+            std::stringstream s;
+            s << "rhorlm(" << ia << ")";
+            auto cs = rhorlm.checksum();
+            print_checksum(s.str(), cs);
+        }
+
         for (int ir = 0; ir < unit_cell_.atom(ia).num_mt_points(); ir++) {
             for (int lm = 0; lm < lmmax; lm++) {
                 rho_->f_mt<index_domain_t::local>(lm, ir, ialoc) = rhorlm(lm, ir);

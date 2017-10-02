@@ -236,6 +236,8 @@ struct Iterative_solver_input
     /// Tolerance for the residual L2 norm.
     double residual_tolerance_{1e-6};
 
+    double empty_states_tolerance_{1e-5};
+
     /// Defines the flavour of the iterative solver.
     /** If converge_by_energy is set to 0, then the residuals are estimated by their norm. If converge_by_energy
      *  is set to 1 then the residuals are estimated by the eigen-energy difference. This allows to estimate the
@@ -270,6 +272,7 @@ struct Iterative_solver_input
             subspace_size_      = parser["iterative_solver"].value("subspace_size", subspace_size_);
             energy_tolerance_   = parser["iterative_solver"].value("energy_tolerance", energy_tolerance_);
             residual_tolerance_ = parser["iterative_solver"].value("residual_tolerance", residual_tolerance_);
+            empty_states_tolerance_ = parser["iterative_solver"].value("empty_states_tolerance", empty_states_tolerance_);
             converge_by_energy_ = parser["iterative_solver"].value("converge_by_energy", converge_by_energy_);
             min_num_res_        = parser["iterative_solver"].value("min_num_res", min_num_res_);
             real_space_prj_     = parser["iterative_solver"].value("real_space_prj", real_space_prj_);
@@ -317,12 +320,14 @@ struct Control_input
      *    - 3: extensive output (hi level of output) */
     int verbosity_{0};
     int verification_{0};
+    int num_bands_to_print_{10};
     bool print_performance_{false};
     bool print_memory_usage_{false};
     bool print_checksum_{false};
-    int num_bands_to_print_{10};
+    bool print_hash_{false};
     bool print_stress_{false};
     bool print_forces_{false};
+    bool print_timers_{true};
 
     void read(json const& parser)
     {
@@ -338,12 +343,14 @@ struct Control_input
             spglib_tolerance_    = parser["control"].value("spglib_tolerance", spglib_tolerance_);
             verbosity_           = parser["control"].value("verbosity", verbosity_);
             verification_        = parser["control"].value("verification", verification_);
+            num_bands_to_print_  = parser["control"].value("num_bands_to_print", num_bands_to_print_);
             print_performance_   = parser["control"].value("print_performance", print_performance_);
             print_memory_usage_  = parser["control"].value("print_memory_usage", print_memory_usage_);
             print_checksum_      = parser["control"].value("print_checksum", print_checksum_);
-            num_bands_to_print_  = parser["control"].value("num_bands_to_print", num_bands_to_print_);
+            print_hash_          = parser["control"].value("print_hash", print_hash_);
             print_stress_        = parser["control"].value("print_stress", print_stress_);
             print_forces_        = parser["control"].value("print_forces", print_forces_);
+            print_timers_        = parser["control"].value("print_timers", print_timers_);
 
             auto strings = {&std_evp_solver_name_, &gen_evp_solver_name_, &fft_mode_, &processing_unit_};
             for (auto s : strings) {
@@ -455,14 +462,15 @@ struct Parameters_input
             potential_tol_  = parser["parameters"].value("potential_tol", potential_tol_);
             molecule_       = parser["parameters"].value("molecule", molecule_);
             nn_radius_      = parser["parameters"].value("nn_radius", nn_radius_);
-            if (parser["parameters"].count("spin_orbit")) {
-                so_correction_ = parser["parameters"].value("spin_orbit", so_correction_);
+            if (parser["parameters"].count("so_correction")) {
+                so_correction_ = parser["parameters"].value("so_correction", so_correction_);
                 num_mag_dims_  = 3;
             }
         }
     }
 };
 
+/// Settings control the internal parameters related to the numerical implementation.
 struct Settings_input
 {
     /// Number of points (per a.u.^-1) for radial integral interpolation for local part of pseudopotential.
@@ -470,14 +478,18 @@ struct Settings_input
     int nprii_beta_{20};
     int nprii_aug_{20};
     int nprii_rho_core_{20};
+    bool always_update_wf_{true};
+    double mixer_rss_min_{1e-12};
 
     void read(json const& parser)
     {
         if (parser.count("settings")) {
-            nprii_vloc_     = parser["settings"].value("nprii_vloc", nprii_vloc_);
-            nprii_beta_     = parser["settings"].value("nprii_beta", nprii_beta_);
-            nprii_aug_      = parser["settings"].value("nprii_aug", nprii_aug_);
-            nprii_rho_core_ = parser["settings"].value("nprii_rho_core", nprii_rho_core_);
+            nprii_vloc_       = parser["settings"].value("nprii_vloc", nprii_vloc_);
+            nprii_beta_       = parser["settings"].value("nprii_beta", nprii_beta_);
+            nprii_aug_        = parser["settings"].value("nprii_aug", nprii_aug_);
+            nprii_rho_core_   = parser["settings"].value("nprii_rho_core", nprii_rho_core_);
+            always_update_wf_ = parser["settings"].value("always_update_wf", always_update_wf_);
+            mixer_rss_min_    = parser["settings"].value("mixer_rss_min", mixer_rss_min_);
         }
     }
 };

@@ -170,7 +170,9 @@ double ground_state(Simulation_context& ctx,
     /* wait for all */
     ctx.comm().barrier();
 
-    sddk::timer::print();
+    if (ctx.control().print_timers_)  {
+        sddk::timer::print();
+    }
 
     return dft.total_energy();
 }

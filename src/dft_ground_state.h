@@ -372,9 +372,9 @@ class DFT_ground_state
 
             auto& comm = ctx_.comm();
 
-            remap_gvec_to_shells remap_gvec(comm, ctx_.gvec());
+            auto& remap_gvec = ctx_.remap_gvec();
 
-            unit_cell_.symmetry().symmetrize_function(&f__->f_pw_local(0), remap_gvec);
+            unit_cell_.symmetry().symmetrize_function(&f__->f_pw_local(0), remap_gvec, ctx_.sym_phase_factors());
 
             /* symmetrize PW components */
             //auto v = f__->gather_f_pw();
@@ -415,6 +415,10 @@ class DFT_ground_state
                     }
                 }
             }
+            //if (ctx_.control().print_hash_ && ctx_.comm().rank() == 0) {
+            //    auto h = mdarray<double_complex, 1>(&f__->f_pw_local(0), ctx_.gvec().count()).hash();
+            //    print_hash("sym(f)", h);
+            //}
         }
 
         Band const& band() const
@@ -551,6 +555,13 @@ inline int DFT_ground_state::find(double potential_tol, double energy_tol, int n
     for (int iter = 0; iter < num_dft_iter; iter++) {
         sddk::timer t1("sirius::DFT_ground_state::scf_loop|iteration");
 
+        if (ctx_.comm().rank() == 0) {
+            printf("\n");
+            printf("+------------------------------+\n");
+            printf("| SCF iteration %3i out of %3i |\n", iter, num_dft_iter);
+            printf("+------------------------------+\n");
+        }
+
         /* find new wave-functions */
         band_.solve_for_kset(kset_, potential_, true);
         /* find band occupancies */
@@ -561,13 +572,18 @@ inline int DFT_ground_state::find(double potential_tol, double energy_tol, int n
         if (ctx_.use_symmetry()) {
             symmetrize(&density_.rho(), &density_.magnetization(0), &density_.magnetization(1),
                        &density_.magnetization(2));
+            if (ctx_.esm_type() == electronic_structure_method_t::pseudopotential) {
+                density_.symmetrize_density_matrix();
+            }
         }
+
         /* set new tolerance of iterative solver */
         if (!ctx_.full_potential()) {
             rms = density_.mix();
             double tol = std::max(1e-12, 0.1 * density_.dr2() / ctx_.unit_cell().num_valence_electrons());
+            /* print dr2 of mixer and current iterative solver tolerance */
             if (ctx_.comm().rank() == 0) {
-                printf("dr2: %18.10f, tol: %18.10f\n",  density_.dr2(), tol);
+                printf("dr2: %18.12E, tol: %18.12E\n",  density_.dr2(), tol);
             }
             ctx_.set_iterative_solver_tolerance(std::min(ctx_.iterative_solver_tolerance(), tol));
         }
@@ -599,10 +615,10 @@ inline int DFT_ground_state::find(double potential_tol, double energy_tol, int n
         
         if (ctx_.full_potential()) {
             rms = potential_.mix();
-            double tol = std::max(1e-12, rms);
-            if (ctx_.comm().rank() == 0) {
-                printf("tol: %18.10f\n", tol);
-            }
+            double tol = std::max(1e-12, 0.001 * rms);
+            //if (ctx_.comm().rank() == 0) {
+            //    printf("tol: %18.10f\n", tol);
+            //}
             ctx_.set_iterative_solver_tolerance(std::min(ctx_.iterative_solver_tolerance(), tol));
         }
 
@@ -610,12 +626,27 @@ inline int DFT_ground_state::find(double potential_tol, double energy_tol, int n
         print_info();
 
         if (ctx_.comm().rank() == 0) {
-            printf("iteration : %3i, RMS %18.12f, energy difference : %12.6f\n", iter, rms, etot - eold);
+            printf("iteration : %3i, RMS %18.12E, energy difference : %18.12E\n", iter, rms, etot - eold);
         }
-        
-        if (std::abs(eold - etot) < energy_tol && rms < potential_tol) {
-            result = iter;
-            break;
+
+        if (ctx_.full_potential()) {
+            if (std::abs(eold - etot) < energy_tol && rms < potential_tol) {
+                result = iter;
+                break;
+            }
+        }
+
+        if (!ctx_.full_potential()) {
+            if (std::abs(eold - etot) < energy_tol && density_.dr2() < potential_tol) {
+                if (ctx_.comm().rank() == 0) {
+                    printf("\n");
+                    printf("converged after %i SCF iterations!\n", iter + 1);
+                    printf("energy difference  : %18.12E < %18.12E\n", std::abs(eold - etot), energy_tol);
+                    printf("density difference : %18.12E < %18.12E\n", density_.dr2(), potential_tol);
+                }
+                result = iter;
+                break;
+            }
         }
 
         eold = etot;

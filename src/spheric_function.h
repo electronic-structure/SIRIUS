@@ -248,7 +248,7 @@ T inner(Spheric_function<domain_t, T> const& f1, Spheric_function<domain_t, T> c
         int lmmax = std::min(f1.angular_domain_size(), f2.angular_domain_size());
         for (int ir = 0; ir < s.num_points(); ir++) {
             for (int lm = 0; lm < lmmax; lm++) {
-	      s[ir] += type_wrapper<T>::bypass(std::conj(f1(lm, ir))) * f2(lm, ir);
+                s[ir] += type_wrapper<T>::bypass(std::conj(f1(lm, ir))) * f2(lm, ir);
             }
         }
     } else {

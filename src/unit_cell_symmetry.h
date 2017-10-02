@@ -17,13 +17,13 @@
 // CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR 
 // OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-/** \file symmetry.h
+/** \file unit_cell_symmetry.h
  *   
- *  \brief Contains definition and partial implementation of sirius::Symmetry class.
+ *  \brief Contains definition and implementation of sirius::Unit_cell_symmetry class.
  */
 
-#ifndef __SYMMETRY_H__
-#define __SYMMETRY_H__
+#ifndef __UNIT_CELL_SYMMETRY_H__
+#define __UNIT_CELL_SYMMETRY_H__
 
 extern "C" {
 #include <spglib.h>
@@ -41,6 +41,8 @@ struct space_group_symmetry_descriptor
 {
     /// Rotational part of symmetry operation (fractional coordinates).
     matrix3d<int> R;
+
+    matrix3d<int> invR;
 
     /// Fractional translation.
     vector3d<double> t;
@@ -70,7 +72,7 @@ struct magnetic_group_symmetry_descriptor
     matrix3d<double> spin_rotation;
 };
 
-class Symmetry
+class Unit_cell_symmetry
 {
     private:
        
@@ -199,14 +201,14 @@ class Symmetry
 
     public:
 
-        Symmetry(matrix3d<double>& lattice_vectors__,
-                 int num_atoms__,
-                 mdarray<double, 2>& positions__,
-                 mdarray<double, 2>& spins__,
-                 std::vector<int>& types__,
-                 double tolerance__);
+        Unit_cell_symmetry(matrix3d<double>&   lattice_vectors__,
+                           int                 num_atoms__,
+                           mdarray<double, 2>& positions__,
+                           mdarray<double, 2>& spins__,
+                           std::vector<int>&   types__,
+                           double              tolerance__);
 
-        ~Symmetry()
+        ~Unit_cell_symmetry()
         {
             spg_free_dataset(spg_dataset_);
         }
@@ -289,15 +291,20 @@ class Symmetry
          *  \f]
          */
         void symmetrize_function(double_complex* f_pw__, 
-                                 remap_gvec_to_shells& remap_gvec__) const;
+                                 remap_gvec_to_shells const& remap_gvec__,
+                                 mdarray<double_complex, 3> const& sym_phase_factors__) const;
+        
+        //void symmetrize_function(double_complex* f_pw__,
+        //                         Gvec const& gvec__,
+        //                         Communicator const& comm__) const;
 
         void symmetrize_vector_function(double_complex* fz_pw__,
-                                        remap_gvec_to_shells& remap_gvec__) const;
+                                        remap_gvec_to_shells const& remap_gvec__) const;
 
         void symmetrize_vector_function(double_complex* fx_pw__,
                                         double_complex* fy_pw__,
                                         double_complex* fz_pw__,
-                                        remap_gvec_to_shells& remap_gvec__) const;
+                                        remap_gvec_to_shells const& remap_gvec__) const;
 
         //void symmetrize_function(double_complex* f_pw__,
         //                         Gvec const& gvec__,
@@ -340,18 +347,18 @@ class Symmetry
         }
 };
 
-inline Symmetry::Symmetry(matrix3d<double>& lattice_vectors__,  
-                          int num_atoms__,
-                          mdarray<double, 2>& positions__,
-                          mdarray<double, 2>& spins__,
-                          std::vector<int>& types__,
-                          double tolerance__)
+inline Unit_cell_symmetry::Unit_cell_symmetry(matrix3d<double>&   lattice_vectors__,  
+                                              int                 num_atoms__,
+                                              mdarray<double, 2>& positions__,
+                                              mdarray<double, 2>& spins__,
+                                              std::vector<int>&   types__,
+                                              double              tolerance__)
     : lattice_vectors_(lattice_vectors__)
     , num_atoms_(num_atoms__)
     , types_(types__)
     , tolerance_(tolerance__)
 {
-    PROFILE("sirius::Symmetry::Symmetry");
+    PROFILE("sirius::Unit_cell_symmetry::Unit_cell_symmetry");
 
     if (lattice_vectors__.det() < 0) {
         std::stringstream s;
@@ -371,7 +378,8 @@ inline Symmetry::Symmetry(matrix3d<double>& lattice_vectors__,
             positions_(x, ia) = positions__(x, ia);
         }
     }
-
+    
+    sddk::timer t1("sirius::Unit_cell_symmetry::Unit_cell_symmetry|spg");
     spg_dataset_ = spg_get_dataset(lattice, (double(*)[3])&positions_(0, 0), &types_[0], num_atoms_, tolerance_);
     if (spg_dataset_ == NULL) {
         TERMINATE("spg_get_dataset() returned NULL");
@@ -387,9 +395,11 @@ inline Symmetry::Symmetry(matrix3d<double>& lattice_vectors__,
           << "expected number of atoms is " <<  num_atoms__;
         TERMINATE(s);
     }
+    t1.stop();
 
     inverse_lattice_vectors_ = inverse(lattice_vectors_);
 
+    sddk::timer t2("sirius::Unit_cell_symmetry::Unit_cell_symmetry|sym1");
     for (int isym = 0; isym < spg_dataset_->n_operations; isym++) {
         space_group_symmetry_descriptor sym_op;
 
@@ -398,14 +408,31 @@ inline Symmetry::Symmetry(matrix3d<double>& lattice_vectors__,
                                     spg_dataset_->translations[isym][1],
                                     spg_dataset_->translations[isym][2]);
         int p = sym_op.R.det(); 
-        if (!(p == 1 || p == -1)) TERMINATE("wrong rotation matrix");
+        if (!(p == 1 || p == -1)) {
+            TERMINATE("wrong rotation matrix");
+        }
         sym_op.proper = p;
         sym_op.rotation = lattice_vectors_ * matrix3d<double>(sym_op.R * p) * inverse_lattice_vectors_;
         sym_op.euler_angles = euler_angles(sym_op.rotation);
 
+        for (int i = 0; i < spg_dataset_->n_operations; i++) {
+            auto m =  matrix3d<int>(spg_dataset_->rotations[isym]) * matrix3d<int>(spg_dataset_->rotations[i]);
+
+            if (m(0, 0) == 1 && m(1, 1) == 1 && m(2, 2) == 1 &&
+                m(0, 1) == 0 && m(1, 0) == 0 &&
+                m(0, 2) == 0 && m(2, 0) == 0 &&
+                m(1, 2) == 0 && m(2, 1) == 0)
+            {
+                sym_op.invR = matrix3d<int>(spg_dataset_->rotations[i]);
+                break;
+            }
+        }
+
         space_group_symmetry_.push_back(sym_op);
     }
+    t2.stop();
 
+    sddk::timer t3("sirius::Unit_cell_symmetry::Unit_cell_symmetry|sym2");
     sym_table_ = mdarray<int, 2>(num_atoms_, num_spg_sym());
     /* loop over spatial symmetries */
     for (int isym = 0; isym < num_spg_sym(); isym++) {
@@ -432,7 +459,9 @@ inline Symmetry::Symmetry(matrix3d<double>& lattice_vectors__,
             sym_table_(ia, isym) = ja;
         }
     }
+    t3.stop();
     
+    sddk::timer t4("sirius::Unit_cell_symmetry::Unit_cell_symmetry|sym3");
     /* loop over spatial symmetries */
     for (int isym = 0; isym < num_spg_sym(); isym++) {
         /* loop over spin symmetries */
@@ -465,9 +494,10 @@ inline Symmetry::Symmetry(matrix3d<double>& lattice_vectors__,
             }
         }
     }
+    t4.stop();
 }
 
-inline matrix3d<double> Symmetry::rot_mtrx_cart(vector3d<double> euler_angles) const
+inline matrix3d<double> Unit_cell_symmetry::rot_mtrx_cart(vector3d<double> euler_angles) const
 {
     double alpha = euler_angles[0];
     double beta = euler_angles[1];
@@ -487,7 +517,7 @@ inline matrix3d<double> Symmetry::rot_mtrx_cart(vector3d<double> euler_angles) c
     return rm;
 }
 
-inline vector3d<double> Symmetry::euler_angles(matrix3d<double> const& rot__) const
+inline vector3d<double> Unit_cell_symmetry::euler_angles(matrix3d<double> const& rot__) const
 {
     vector3d<double> angles(0, 0, 0);
     
@@ -539,10 +569,10 @@ inline vector3d<double> Symmetry::euler_angles(matrix3d<double> const& rot__) co
     return angles;
 }
 
-inline int Symmetry::get_irreducible_reciprocal_mesh(vector3d<int> k_mesh__,
-                                                     vector3d<int> is_shift__,
-                                                     mdarray<double, 2>& kp__,
-                                                     std::vector<double>& wk__) const
+inline int Unit_cell_symmetry::get_irreducible_reciprocal_mesh(vector3d<int> k_mesh__,
+                                                               vector3d<int> is_shift__,
+                                                               mdarray<double, 2>& kp__,
+                                                               std::vector<double>& wk__) const
 {
     int nktot = k_mesh__[0] * k_mesh__[1] * k_mesh__[2];
 
@@ -588,9 +618,9 @@ inline int Symmetry::get_irreducible_reciprocal_mesh(vector3d<int> k_mesh__,
     return nknr;
 }
 
-inline void Symmetry::check_gvec_symmetry(Gvec const& gvec__, Communicator const& comm__) const
+inline void Unit_cell_symmetry::check_gvec_symmetry(Gvec const& gvec__, Communicator const& comm__) const
 {
-    PROFILE("sirius::Symmetry::check_gvec_symmetry");
+    PROFILE("sirius::Unit_cell_symmetry::check_gvec_symmetry");
 
     int gvec_count  = gvec__.gvec_count(comm__.rank());
     int gvec_offset = gvec__.gvec_offset(comm__.rank());
@@ -650,59 +680,61 @@ inline void Symmetry::check_gvec_symmetry(Gvec const& gvec__, Communicator const
     }
 }
 
-inline void Symmetry::symmetrize_function(double_complex* f_pw__,
-                                          remap_gvec_to_shells& remap_gvec__) const
+inline void Unit_cell_symmetry::symmetrize_function(double_complex* f_pw__,
+                                          remap_gvec_to_shells const& remap_gvec__,
+                                          mdarray<double_complex, 3> const& sym_phase_factors__) const
 {
-    PROFILE("sirius::Symmetry::symmetrize_function_pw");
+    PROFILE("sirius::Unit_cell_symmetry::symmetrize_function_pw");
 
     auto v = remap_gvec__.remap_forward(f_pw__);
 
     std::vector<double_complex> sym_f_pw(v.size(), 0);
-    
-    double* ptr = (double*)&sym_f_pw[0];
 
-    sddk::timer t1("sirius::Symmetry::symmetrize_function_pw|local");
-    #pragma omp parallel for
-    for (int i = 0; i < num_mag_sym(); i++) {
-        /* full space-group symmetry operation is {R|t} */
-        auto R = magnetic_group_symmetry(i).spg_op.R;
-        auto t = magnetic_group_symmetry(i).spg_op.t;
+    sddk::timer t1("sirius::Unit_cell_symmetry::symmetrize_function_pw|local");
+    #pragma omp parallel
+    {
+        int nt = omp_get_max_threads();
+        int tid = omp_get_thread_num();
 
         for (int igloc = 0; igloc < remap_gvec__.a2a_recv.size(); igloc++) {
             vector3d<int> G(&remap_gvec__.gvec_remapped_(0, igloc));
-            
-            double_complex z = v[igloc] * std::exp(double_complex(0, twopi * (G * t)));
 
-            /* apply symmetry operation to the G-vector;
-             * remember that we move R from acting on x to acting on G: G(Rx) = (GR)x;
-             * GR is a vector-matrix multiplication [G][.....]
-             *                                         [..R..]
-             *                                         [.....]
-             * which can also be written as matrix^{T}-vector operation
-             */
-            auto gv_rot = transpose(R) * G;
+            int igsh = remap_gvec__.gvec_shell_remapped(igloc);
 
-            /* index of a rotated G-vector */
-            int ig_rot = remap_gvec__.index_by_gvec(gv_rot);
+            if (igsh % nt == tid) {
 
-            if (ig_rot == -1) {
-                gv_rot = gv_rot * (-1);
-                ig_rot = remap_gvec__.index_by_gvec(gv_rot);
-                assert(ig_rot >=0 && ig_rot < (int)v.size());
-              
-                #pragma omp atomic update
-                ptr[2 * ig_rot] += z.real();
+                for (int i = 0; i < num_mag_sym(); i++) {
+                    /* full space-group symmetry operation is {R|t} */
+                    auto R = magnetic_group_symmetry(i).spg_op.R;
+                    //auto t = magnetic_group_symmetry(i).spg_op.t;
+                
+                    //double_complex z = v[igloc] * std::exp(double_complex(0, twopi * (G * t)));
+                    double_complex z = v[igloc] * sym_phase_factors__(0, G[0], i) *
+                                                  sym_phase_factors__(1, G[1], i) *
+                                                  sym_phase_factors__(2, G[2], i);
 
-                #pragma omp atomic update
-                ptr[2 * ig_rot + 1] -= z.imag();
-            } else {
-                assert(ig_rot >=0 && ig_rot < (int)v.size());
-              
-                #pragma omp atomic update
-                ptr[2 * ig_rot] += z.real();
+                    /* apply symmetry operation to the G-vector;
+                     * remember that we move R from acting on x to acting on G: G(Rx) = (GR)x;
+                     * GR is a vector-matrix multiplication [G][.....]
+                     *                                         [..R..]
+                     *                                         [.....]
+                     * which can also be written as matrix^{T}-vector operation
+                     */
+                    auto gv_rot = transpose(R) * G;
 
-                #pragma omp atomic update
-                ptr[2 * ig_rot + 1] += z.imag();
+                    /* index of a rotated G-vector */
+                    int ig_rot = remap_gvec__.index_by_gvec(gv_rot);
+
+                    if (ig_rot == -1) {
+                        gv_rot = gv_rot * (-1);
+                        ig_rot = remap_gvec__.index_by_gvec(gv_rot);
+                        assert(ig_rot >=0 && ig_rot < (int)v.size());
+                        sym_f_pw[ig_rot] += std::conj(z);
+                    } else {
+                        assert(ig_rot >=0 && ig_rot < (int)v.size());
+                        sym_f_pw[ig_rot] += z;
+                    }
+                }
             }
         }
     }
@@ -717,11 +749,120 @@ inline void Symmetry::symmetrize_function(double_complex* f_pw__,
     remap_gvec__.remap_backward(sym_f_pw, f_pw__);
 }
 
-//inline void Symmetry::symmetrize_function(double_complex* f_pw__,
+//inline void Unit_cell_symmetry::symmetrize_function(double_complex* f_pw__,
+//                                          remap_gvec_to_shells const& remap_gvec__,
+//                                          mdarray<double_complex, 3> const& sym_phase_factors__) const
+//{
+//    PROFILE("sirius::Unit_cell_symmetry::symmetrize_function_pw");
+//
+//    auto v = remap_gvec__.remap_forward(f_pw__);
+//
+//    std::vector<double_complex> sym_f_pw(v.size(), 0);
+//    std::vector<bool> is_done(v.size(), false);
+//
+//    double norm = 1 / double(num_mag_sym());
+//
+//    auto phase_factor = [&](int isym, vector3d<int> G)
+//    {
+//        return sym_phase_factors__(0, G[0], isym) *
+//               sym_phase_factors__(1, G[1], isym) *
+//               sym_phase_factors__(2, G[2], isym);
+//    };
+//
+//    sddk::timer t1("sirius::Unit_cell_symmetry::symmetrize_function_pw|local");
+//    #pragma omp parallel
+//    {
+//        int nt = omp_get_max_threads();
+//        int tid = omp_get_thread_num();
+//
+//        for (int igloc = 0; igloc < remap_gvec__.a2a_recv.size(); igloc++) {
+//            vector3d<int> G(&remap_gvec__.gvec_remapped_(0, igloc));
+//
+//            int igsh = remap_gvec__.gvec_shell_remapped(igloc);
+//
+//            /* each thread is working on full shell of G-vectors */
+//            if (igsh % nt == tid && !is_done[igloc]) {
+//                double_complex zsym(0, 0);
+//
+//                for (int i = 0; i < num_mag_sym(); i++) {
+//                    /* full space-group symmetry operation is {R|t} */
+//                    auto R = magnetic_group_symmetry(i).spg_op.R;
+//
+//                    /* phase factor exp^{i * 2 * pi * {\vec G} * {\vec \tau})} */
+//                    double_complex phase = phase_factor(i, G);
+// 
+//                    /* apply symmetry operation to the G-vector;
+//                     * remember that we move R from acting on x to acting on G: G(Rx) = (GR)x;
+//                     * GR is a vector-matrix multiplication [G][.....]
+//                     *                                         [..R..]
+//                     *                                         [.....]
+//                     * which can also be written as matrix^{T}-vector operation
+//                     */
+//                    auto gv_rot = transpose(R) * G;
+//
+//                    /* index of a rotated G-vector */
+//                    int ig_rot = remap_gvec__.index_by_gvec(gv_rot);
+//
+//                    if (ig_rot == -1) {
+//                        gv_rot = gv_rot * (-1);
+//                        ig_rot = remap_gvec__.index_by_gvec(gv_rot);
+//                        assert(ig_rot >= 0 && ig_rot < (int)v.size());
+//                        zsym += std::conj(v[ig_rot]) * phase;
+//
+//                    } else {
+//                        assert(ig_rot >= 0 && ig_rot < (int)v.size());
+//
+//                        zsym += v[ig_rot] * std::conj(phase);
+//                    }
+//                } /* loop over symmetries */
+//
+//                zsym *= norm;
+//
+//                for (int i = 0; i < num_mag_sym(); i++) {
+//                    /* full space-group symmetry operation is {R|t} */
+//                    auto R = magnetic_group_symmetry(i).spg_op.R;
+//
+//                    /* phase factor exp^{i * 2 * pi * {\vec G} * {\vec \tau})} */
+//                    double_complex phase = phase_factor(i, G);
+// 
+//                    /* apply symmetry operation to the G-vector;
+//                     * remember that we move R from acting on x to acting on G: G(Rx) = (GR)x;
+//                     * GR is a vector-matrix multiplication [G][.....]
+//                     *                                         [..R..]
+//                     *                                         [.....]
+//                     * which can also be written as matrix^{T}-vector operation
+//                     */
+//                    auto gv_rot = transpose(R) * G;
+//
+//                    /* index of a rotated G-vector */
+//                    int ig_rot = remap_gvec__.index_by_gvec(gv_rot);
+//
+//                    if (ig_rot == -1) {
+//                        gv_rot = gv_rot * (-1);
+//                        ig_rot = remap_gvec__.index_by_gvec(gv_rot);
+//                        assert(ig_rot >= 0 && ig_rot < (int)v.size());
+//                        sym_f_pw[ig_rot] = std::conj(zsym * phase);
+//
+//                    } else {
+//                        assert(ig_rot >= 0 && ig_rot < (int)v.size());
+//
+//                        sym_f_pw[ig_rot] = zsym * phase;
+//                    }
+//                    is_done[ig_rot] = true;
+//                } /* loop over symmetries */
+//            }
+//        } /* loop over igloc */
+//    }
+//    t1.stop();
+//
+//    remap_gvec__.remap_backward(sym_f_pw, f_pw__);
+//}
+
+//inline void Unit_cell_symmetry::symmetrize_function(double_complex* f_pw__,
 //                                          Gvec const& gvec__,
 //                                          Communicator const& comm__) const
 //{
-//    PROFILE("sirius::Symmetry::symmetrize_function_pw");
+//    PROFILE("sirius::Unit_cell_symmetry::symmetrize_function_pw");
 //
 //    int gvec_count = gvec__.gvec_count(comm__.rank());
 //    int gvec_offset = gvec__.gvec_offset(comm__.rank());
@@ -731,7 +872,7 @@ inline void Symmetry::symmetrize_function(double_complex* f_pw__,
 //    
 //    double* ptr = (double*)&sym_f_pw(0);
 //
-//    sddk::timer t1("sirius::Symmetry::symmetrize_function_pw|local");
+//    sddk::timer t1("sirius::Unit_cell_symmetry::symmetrize_function_pw|local");
 //    #pragma omp parallel for
 //    for (int i = 0; i < num_mag_sym(); i++) {
 //        /* full space-group symmetry operation is {R|t} */
@@ -777,7 +918,7 @@ inline void Symmetry::symmetrize_function(double_complex* f_pw__,
 //    }
 //    t1.stop();
 //
-//    sddk::timer t2("sirius::Symmetry::symmetrize_function_pw|mpi");
+//    sddk::timer t2("sirius::Unit_cell_symmetry::symmetrize_function_pw|mpi");
 //    comm__.allreduce(&sym_f_pw(0), gvec__.num_gvec());
 //    t2.stop();
 //    
@@ -789,11 +930,11 @@ inline void Symmetry::symmetrize_function(double_complex* f_pw__,
 //}
 
 
-//inline void Symmetry::symmetrize_vector_function(double_complex* fz_pw__,
+//inline void Unit_cell_symmetry::symmetrize_vector_function(double_complex* fz_pw__,
 //                                                 Gvec const& gvec__,
 //                                                 Communicator const& comm__) const
 //{
-//    PROFILE("sirius::Symmetry::symmetrize_vector_function_pw");
+//    PROFILE("sirius::Unit_cell_symmetry::symmetrize_vector_function_pw");
 //    
 //    int gvec_count = gvec__.gvec_count(comm__.rank());
 //    int gvec_offset = gvec__.gvec_offset(comm__.rank());
@@ -847,10 +988,10 @@ inline void Symmetry::symmetrize_function(double_complex* f_pw__,
 //        fz_pw__[ig] = sym_f_pw(ig) / double(num_mag_sym());
 //    }
 //}
-inline void Symmetry::symmetrize_vector_function(double_complex* fz_pw__,
-                                                 remap_gvec_to_shells& remap_gvec__) const
+inline void Unit_cell_symmetry::symmetrize_vector_function(double_complex* fz_pw__,
+                                                 remap_gvec_to_shells const& remap_gvec__) const
 {
-    PROFILE("sirius::Symmetry::symmetrize_vector_function_pw");
+    PROFILE("sirius::Unit_cell_symmetry::symmetrize_vector_function_pw");
     
     auto v = remap_gvec__.remap_forward(fz_pw__);
 
@@ -905,13 +1046,13 @@ inline void Symmetry::symmetrize_vector_function(double_complex* fz_pw__,
 
     remap_gvec__.remap_backward(sym_f_pw, fz_pw__);
 }
-//inline void Symmetry::symmetrize_vector_function(double_complex* fx_pw__,
+//inline void Unit_cell_symmetry::symmetrize_vector_function(double_complex* fx_pw__,
 //                                                 double_complex* fy_pw__,
 //                                                 double_complex* fz_pw__,
 //                                                 Gvec const& gvec__,
 //                                                 Communicator const& comm__) const
 //{
-//    PROFILE("sirius::Symmetry::symmetrize_vector_function_pw");
+//    PROFILE("sirius::Unit_cell_symmetry::symmetrize_vector_function_pw");
 //    
 //    int gvec_count = gvec__.gvec_count(comm__.rank());
 //    int gvec_offset = gvec__.gvec_offset(comm__.rank());
@@ -1007,12 +1148,12 @@ inline void Symmetry::symmetrize_vector_function(double_complex* fz_pw__,
 //}
 
 
-inline void Symmetry::symmetrize_vector_function(double_complex* fx_pw__,
+inline void Unit_cell_symmetry::symmetrize_vector_function(double_complex* fx_pw__,
                                                  double_complex* fy_pw__,
                                                  double_complex* fz_pw__,
-                                                 remap_gvec_to_shells& remap_gvec__) const
+                                                 remap_gvec_to_shells const& remap_gvec__) const
 {
-    PROFILE("sirius::Symmetry::symmetrize_vector_function_pw");
+    PROFILE("sirius::Unit_cell_symmetry::symmetrize_vector_function_pw");
 
     auto vx = remap_gvec__.remap_forward(fx_pw__);
     auto vy = remap_gvec__.remap_forward(fy_pw__);
@@ -1112,10 +1253,10 @@ inline void Symmetry::symmetrize_vector_function(double_complex* fx_pw__,
     remap_gvec__.remap_backward(sym_fz_pw, fz_pw__);
 }
 
-inline void Symmetry::symmetrize_function(mdarray<double, 3>& frlm__,
+inline void Unit_cell_symmetry::symmetrize_function(mdarray<double, 3>& frlm__,
                                           Communicator const& comm__) const
 {
-    PROFILE("sirius::Symmetry::symmetrize_function_mt");
+    PROFILE("sirius::Unit_cell_symmetry::symmetrize_function_mt");
 
     int lmmax = (int)frlm__.size(0);
     int nrmax = (int)frlm__.size(1);
@@ -1155,10 +1296,10 @@ inline void Symmetry::symmetrize_function(mdarray<double, 3>& frlm__,
                      lmmax * nrmax * spl_atoms.local_size());
 }
 
-inline void Symmetry::symmetrize_vector_function(mdarray<double, 3>& vz_rlm__,
+inline void Unit_cell_symmetry::symmetrize_vector_function(mdarray<double, 3>& vz_rlm__,
                                                  Communicator const& comm__) const
 {
-    PROFILE("sirius::Symmetry::symmetrize_vector_function_mt");
+    PROFILE("sirius::Unit_cell_symmetry::symmetrize_vector_function_mt");
 
     int lmmax = (int)vz_rlm__.size(0);
     int nrmax = (int)vz_rlm__.size(1);
@@ -1203,12 +1344,12 @@ inline void Symmetry::symmetrize_vector_function(mdarray<double, 3>& vz_rlm__,
                      lmmax * nrmax * spl_atoms.local_size());
 }
 
-inline void Symmetry::symmetrize_vector_function(mdarray<double, 3>& vx_rlm__,
+inline void Unit_cell_symmetry::symmetrize_vector_function(mdarray<double, 3>& vx_rlm__,
                                                  mdarray<double, 3>& vy_rlm__,
                                                  mdarray<double, 3>& vz_rlm__,
                                                  Communicator const& comm__) const
 {
-    PROFILE("sirius::Symmetry::symmetrize_vector_function_mt");
+    PROFILE("sirius::Unit_cell_symmetry::symmetrize_vector_function_mt");
 
     int lmmax = (int)vx_rlm__.size(0);
     int nrmax = (int)vx_rlm__.size(1);
@@ -1313,4 +1454,4 @@ inline void Symmetry::symmetrize_vector_function(mdarray<double, 3>& vx_rlm__,
  *  \f]
  */
 
-#endif // __SYMMETRY_H__
+#endif // __UNIT_CELL_SYMMETRY_H__

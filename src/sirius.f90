@@ -572,6 +572,11 @@ module sirius
             real(8),                 intent(in) :: tol
         end subroutine
 
+        subroutine sirius_set_iterative_solver_type(str)&
+            &bind(C, name="sirius_set_iterative_solver_type")
+            character, dimension(*), intent(in) :: str
+        end subroutine
+
         subroutine sirius_get_density_dr2(dr2)&
             &bind(C, name="sirius_get_density_dr2")
             real(8),                 intent(out) :: dr2
@@ -967,6 +972,11 @@ module sirius
             complex(8),              intent(out) :: pot
         end subroutine
 
+        subroutine sirius_get_vha_el(vha_el)&
+            &bind(C, name="sirius_get_vha_el")
+            real(8),                 intent(out) :: vha_el
+        end subroutine
+
         subroutine sirius_calculate_stress_tensor(kset_id)&
             &bind(C, name="sirius_calculate_stress_tensor")
             integer,                 intent(in)  :: kset_id
@@ -996,6 +1006,14 @@ module sirius
         subroutine sirius_set_use_symmetry(flg)&
             &bind(C, name="sirius_set_use_symmetry")
             integer,                 intent(in)  :: flg
+        end subroutine
+
+        subroutine sirius_add_atom_type_chi(atom_type, l, num_points, chi)&
+            &bind(C, name="sirius_add_atom_type_chi")
+            character,         target, dimension(*), intent(in)  :: atom_type
+            integer,                                 intent(in)  :: l
+            integer,                                 intent(in)  :: num_points
+            real(8),                                 intent(in)  :: chi
         end subroutine
 
     end interface
