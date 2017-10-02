@@ -350,7 +350,7 @@ class FFT3D
                     
 //                    comm_.barrier();
                     sddk::timer t("sddk::FFT3D::transform_z|comm|d-1|DtoH");
-                    fft_buffer_aux__.copy_to_host(local_size_z_ * gvec__.num_zcol());
+                    fft_buffer_aux__.copy_to_host(local_size_z_ * gvec_partition_->num_zcol());
 //                    comm_.barrier();
                 }
                 #endif
@@ -370,7 +370,7 @@ class FFT3D
                 
                     if (data_ptr_type == CPU || !is_gpu_direct_) {    
                         /* copy auxiliary buffer because it will be use as the output buffer in the following mpi_a2a */
-                        std::copy(&fft_buffer_aux__[0], &fft_buffer_aux__[0] + gvec__.num_zcol() * local_size_z_,
+                        std::copy(&fft_buffer_aux__[0], &fft_buffer_aux__[0] + gvec_partition_->num_zcol() * local_size_z_,
                                   &fft_buffer_[0]);
 
                         comm_.barrier();
@@ -382,7 +382,7 @@ class FFT3D
                     #ifdef __GPU
                     if (data_ptr_type == GPU && is_gpu_direct_) {    
                         /* copy auxiliary buffer because it will be use as the output buffer in the following mpi_a2a */
-                        acc::copy<double_complex>(fft_buffer_.at<GPU>(), fft_buffer_aux__.at<GPU>(), gvec__.num_zcol() * local_size_z_);
+                        acc::copy<double_complex>(fft_buffer_.at<GPU>(), fft_buffer_aux__.at<GPU>(), gvec_partition_->num_zcol() * local_size_z_);
                         
                         comm_.barrier();
                         sddk::timer t("sddk::FFT3D::transform_z|comm|d-1|a2a_gpu");
@@ -394,7 +394,7 @@ class FFT3D
                     if (data_ptr_type == GPU && !is_gpu_direct_) {
 //                        comm_.barrier();
                         sddk::timer t("sddk::FFT3D::transform_z|comm|d-1|HtoD");
-                        fft_buffer_aux__.copy<memory_t::host, memory_t::device>(gvec__.zcol_count_fft() * grid_.size(2));
+                        fft_buffer_aux__.copy<memory_t::host, memory_t::device>(gvec_partition_->zcol_count_fft() * grid_.size(2));
 //                        comm_.barrier();
                     }
                     #endif
@@ -410,7 +410,7 @@ class FFT3D
                     if (data_ptr_type == GPU && !is_gpu_direct_) {
 //                        comm_.barrier();
                         sddk::timer t("sddk::FFT3D::transform_z|comm|d1|DtoH");
-                        fft_buffer_aux__.copy<memory_t::device, memory_t::host>(gvec__.zcol_count_fft() * grid_.size(2));
+                        fft_buffer_aux__.copy<memory_t::device, memory_t::host>(gvec_partition_->zcol_count_fft() * grid_.size(2));
 //                        comm_.barrier();
                         t.stop();
                     }
@@ -436,7 +436,7 @@ class FFT3D
                         comm_.barrier();
                         t.stop();
                         /* copy local fractions of z-columns into auxiliary buffer */
-                        std::copy(&fft_buffer_[0], &fft_buffer_[0] + gvec__.num_zcol() * local_size_z_,
+                        std::copy(&fft_buffer_[0], &fft_buffer_[0] + gvec_partition_->num_zcol() * local_size_z_,
                                   &fft_buffer_aux__[0]);
                     }
 
@@ -449,7 +449,7 @@ class FFT3D
                         comm_.barrier();
                         t.stop();
                         /* copy local fractions of z-columns into auxiliary buffer */
-                        acc::copy<double_complex>(fft_buffer_aux__.at<GPU>(), fft_buffer_.at<GPU>(), gvec__.num_zcol() * local_size_z_);
+                        acc::copy<double_complex>(fft_buffer_aux__.at<GPU>(), fft_buffer_.at<GPU>(), gvec_partition_->num_zcol() * local_size_z_);
                     }
                     #endif
                 }
@@ -457,7 +457,7 @@ class FFT3D
                 if ((data_ptr_type == CPU && pu_ == GPU) || (comm_.size() > 1 && data_ptr_type == GPU && !is_gpu_direct_ ) ) {
 //                        comm_.barrier();
                         sddk::timer t("sddk::FFT3D::transform_z|comm|d1|HtoD");
-                        fft_buffer_aux__.copy<memory_t::host, memory_t::device>(local_size_z_ * gvec__.num_zcol());
+                        fft_buffer_aux__.copy<memory_t::host, memory_t::device>(local_size_z_ * gvec_partition_->num_zcol());
 //                        comm_.barrier();
                         t.stop();
                 }
