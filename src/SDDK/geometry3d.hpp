@@ -167,8 +167,14 @@ class vector3d: public std::array<T, 3>
     }
 };
 
+//template <typename T, typename U>
+//inline auto operator*(vector3d<T> const a, vector3d<U> const b) -> decltype(T{} * U{})
+//{
+//    return (a[0] * b[0] + a[1] * b[1] + a[2] * b[2]);
+//}
+
 template <typename T, typename U>
-inline auto operator*(vector3d<T> const a, vector3d<U> const b) -> decltype(T{} * U{})
+inline auto dot(vector3d<T> const a, vector3d<U> const b) -> decltype(T{} * U{})
 {
     return (a[0] * b[0] + a[1] * b[1] + a[2] * b[2]);
 }

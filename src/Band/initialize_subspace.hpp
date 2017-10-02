@@ -162,7 +162,7 @@ Band::initialize_subspace(K_point* kp__, int num_ao__, std::vector<std::vector<S
 
         #pragma omp parallel for schedule(static)
         for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
-            double phase = twopi * (kp__->gkvec().vk() * unit_cell_.atom(ia).position());
+            double phase = twopi * dot(kp__->gkvec().vk(), unit_cell_.atom(ia).position());
             double_complex phase_k = std::exp(double_complex(0.0, phase));
 
             std::vector<double_complex> phase_gk(kp__->num_gkvec_loc());

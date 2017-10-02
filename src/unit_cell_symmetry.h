@@ -1009,7 +1009,7 @@ inline void Unit_cell_symmetry::symmetrize_vector_function(double_complex* fz_pw
         for (int igloc = 0; igloc < remap_gvec__.a2a_recv.size(); igloc++) {
             vector3d<int> G(&remap_gvec__.gvec_remapped_(0, igloc));
 
-            double_complex z = v[igloc] * std::exp(double_complex(0, twopi * (G * t))) * S(2, 2);
+            double_complex z = v[igloc] * std::exp(double_complex(0, twopi * dot(G, t))) * S(2, 2);
 
             auto gv_rot = transpose(R) * G;
 
@@ -1184,7 +1184,7 @@ inline void Unit_cell_symmetry::symmetrize_vector_function(double_complex* fx_pw
             /* index of a rotated G-vector */
             //int ig_rot = gvec__.index_by_gvec(gv_rot);
 
-            double_complex phase = std::exp(double_complex(0, twopi * (G * t)));
+            double_complex phase = std::exp(double_complex(0, twopi * dot(G, t)));
             vector3d<double_complex> v_rot;
             for (int j: {0, 1, 2}) {
                 v_rot[j] = phase * (S(j, 0) * vx[igloc] + S(j, 1) * vy[igloc] + S(j, 2) * vz[igloc]);
