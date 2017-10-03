@@ -98,6 +98,8 @@ class Simulation_context_base: public Simulation_parameters
 
         std::unique_ptr<Radial_integrals_aug<false>> aug_ri_;
 
+        std::vector<std::vector<vector3d<int>>> atoms_to_grid_idx_;
+
         double time_active_;
         
         bool initialized_{false};
@@ -115,6 +117,18 @@ class Simulation_context_base: public Simulation_parameters
             char buf[100];
             strftime(buf, sizeof(buf), "%Y%m%d_%H%M%S", ptm);
             start_time_tag_ = std::string(buf);
+        }
+
+        void init_atom_to_grid_idx()
+        {
+            vector3d<double> delta = (1.0 / fft_->grid().size(0), 1.0 / fft_->grid().size(1), 1.0 / fft_->grid().size(2));
+
+            for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
+                auto position = unit_cell_.atom(ia).position();
+
+                vector3d<int> ind_position( { (int)position[0]/delta[0], (int)position[1]/delta[1], (int)position[2]/delta[2] });
+
+            }
         }
 
     public:
