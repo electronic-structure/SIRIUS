@@ -40,6 +40,7 @@
 #include "communicator.hpp"
 #include "runtime.h"
 #include "sddk.hpp"
+#include "utils.h"
 #ifdef __MAGMA
 #include "GPU/magma.hpp"
 #endif
@@ -106,7 +107,15 @@ namespace sirius {
         #endif
         fftw_cleanup();
         sddk::stop_global_timer();
-        sddk::timer::print_tree();
+        json dict;
+        dict["flat"] = sddk::timer::serialize_timers();
+        dict["tree"] = sddk::timer::serialize_timers_tree();
+        if (mpi_comm_world().rank() == 0) {
+            std::ofstream ofs("timers.json", std::ofstream::out | std::ofstream::trunc);
+            ofs << dict.dump(4);
+        }
+            
+        //sddk::timer::print_tree();
         if (call_mpi_fin__) {
             Communicator::finalize();
         }
@@ -117,12 +126,6 @@ namespace sirius {
         MPI_Abort(MPI_COMM_WORLD, err_code__);
      }
 };
-
-#define TERMINATE_NO_GPU TERMINATE("not compiled with GPU support");
-
-#define TERMINATE_NO_SCALAPACK TERMINATE("not compiled with ScaLAPACK support");
-
-#define TERMINATE_NOT_IMPLEMENTED TERMINATE("feature is not implemented");
 
 #endif // __SIRIUS_INTERNAL_H__
 

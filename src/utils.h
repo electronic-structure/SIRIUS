@@ -29,10 +29,12 @@
 #include <fstream>
 #include <string>
 #include <complex>
-#include "sirius_internal.h"
+//#include "sirius_internal.h"
 #include "typedefs.h"
 #include "constants.h"
 #include "sddk.hpp"
+
+using namespace sddk;
 
 /// Utility class.
 class Utils
@@ -396,19 +398,6 @@ class Utils
         {
             return (T(0) < val) - (val < T(0));
         }
-
-        static json serialize_timers() // TODO: here in wrong place; move somewhere else
-        {
-            json dict;
-
-            /* collect local timers */
-            for (auto& it: sddk::timer::timer_values()) {
-                sddk::timer_stats_t ts;
-                dict[it.first] = {it.second.tot_val, it.second.tot_val / it.second.count, it.second.min_val, it.second.max_val};
-            }
-            return std::move(dict);
-        }
-
 };
 
 #endif
