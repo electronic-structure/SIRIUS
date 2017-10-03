@@ -1,20 +1,20 @@
 // Copyright (c) 2013-2017 Anton Kozhevnikov, Thomas Schulthess
 // All rights reserved.
-// 
-// Redistribution and use in source and binary forms, with or without modification, are permitted provided that 
+//
+// Redistribution and use in source and binary forms, with or without modification, are permitted provided that
 // the following conditions are met:
-// 
-// 1. Redistributions of source code must retain the above copyright notice, this list of conditions and the 
+//
+// 1. Redistributions of source code must retain the above copyright notice, this list of conditions and the
 //    following disclaimer.
-// 2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions 
+// 2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions
 //    and the following disclaimer in the documentation and/or other materials provided with the distribution.
-// 
-// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED 
-// WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A 
-// PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR 
-// ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, 
-// PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER 
-// CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR 
+//
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED
+// WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A
+// PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
+// ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+// PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+// CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
 // OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 /** \file radial_integrals.h
@@ -37,26 +37,28 @@ class Radial_integrals_base
   protected:
     /// Unit cell.
     Unit_cell const& unit_cell_;
-    
+
     /// Linear grid of q-points on which the interpolation of radial integrals is done.
     Radial_grid<double> grid_q_;
 
     /// Split index of q-points.
     splindex<block> spl_q_;
-   
+
     /// Array with integrals.
     mdarray<Spline<double>, N> values_;
-    
+
+    /// product qmax__ * np__
+    int nq_{0};
   public:
     /// Constructor.
     Radial_integrals_base(Unit_cell const& unit_cell__, double qmax__, int np__)
         : unit_cell_(unit_cell__)
     {
         grid_q_ = Radial_grid_lin<double>(static_cast<int>(np__ * qmax__), 0, qmax__);
-
+        nq_ = static_cast<int>(np__ * qmax__);
         spl_q_ = splindex<block>(grid_q_.num_points(), unit_cell_.comm().size(), unit_cell_.comm().rank());
     }
-    
+
     /// Get starting index iq and delta dq for the q-point on the linear grid.
     /** The following condition is satisfied: q = grid_q[iq] + dq */
     inline std::pair<int, double> iqdq(double q__) const
@@ -74,6 +76,99 @@ class Radial_integrals_base
     {
         auto idx = iqdq(q__);
         return values_(args...)(idx.first, idx.second);
+    }
+
+    inline int nq() const
+    {
+        return nq_;
+    }
+};
+
+/// Radial integrals of the atomic centered orbitals. It is used in
+/// initialize_subspace and in the hubbard correction
+
+ class Radial_integrals_centered_atomic_wfc : public Radial_integrals_base<2>
+{
+ private:
+
+    std::vector<std::vector<int>> angular_momentum;
+    std::vector<std::vector<double>> total_angular_momentum;
+
+    void generate()
+    {
+        PROFILE("sirius::Radial_integrals|atomic_centered_wfc");
+
+        /* spherical Bessel functions jl(qx) */
+        mdarray<Spherical_Bessel_functions, 1> jl(nq());
+        angular_momentum.clear();
+        total_angular_momentum.clear();
+
+        angular_momentum.resize(unit_cell_.num_atom_types());
+        total_angular_momentum.resize(unit_cell_.num_atom_types());
+
+        for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
+
+            auto& atom_type = unit_cell_.atom_type(iat);
+            /* create jl(qx) */
+#pragma omp parallel for
+            for (int iq = 0; iq < nq(); iq++) {
+                jl(iq) = Spherical_Bessel_functions(atom_type.indexr().lmax(), atom_type.radial_grid(), grid_q_[iq]);
+            }
+
+            int nwf = static_cast<int>(atom_type.pp_desc().atomic_pseudo_wfs_.size());
+            angular_momentum[iat].clear();
+            angular_momentum[iat].resize(nwf);
+            total_angular_momentum[iat].clear();
+            total_angular_momentum[iat].resize(nwf);
+
+            /* loop over all pseudo wave-functions */
+            for (int i = 0; i < nwf; i++) {
+                values_(i, iat) = Spline<double>(grid_q_);
+
+                /* interpolate atomic_pseudo_wfs(r) */
+                Spline<double> wf(atom_type.radial_grid());
+                for (int ir = 0; ir < (int)atom_type.pp_desc().atomic_pseudo_wfs_[i].second.size(); ir++) {
+                    wf[ir] = atom_type.pp_desc().atomic_pseudo_wfs_[i].second[ir];
+                }
+
+                wf.interpolate();
+                double norm = inner(wf, wf, 0);
+
+                int l = atom_type.pp_desc().atomic_pseudo_wfs_[i].first;
+#pragma omp parallel for
+                for (int iq = 0; iq < nq(); iq++) {
+                    values_(i, iat)[iq] = sirius::inner(jl(iq)[l], wf, 1) / std::sqrt(norm);
+                }
+
+                values_(i, iat).interpolate();
+                angular_momentum[iat][i] = l;
+                // will need it for Hubbard + so
+                // total_angular_momentum[iat][i] = ;
+            }
+        }
+    }
+
+ public :
+ Radial_integrals_centered_atomic_wfc(Unit_cell const& unit_cell__, double qmax__, int np__)
+     : Radial_integrals_base<2>(unit_cell__, qmax__, np__)
+        {
+            int no_max = -1;
+            for(int atp=0;atp<unit_cell__.num_atom_types();atp++)
+                {
+                    if(no_max < static_cast<int>(unit_cell__.atom_type(atp).pp_desc().atomic_pseudo_wfs_.size()))
+                        no_max = static_cast<int>(unit_cell__.atom_type(atp).pp_desc().atomic_pseudo_wfs_.size());
+                }
+
+            values_ = mdarray<Spline<double>, 2>(no_max,
+                                                 unit_cell_.num_atom_types());
+
+            generate();
+        }
+
+    /// retrieve a given orbital from an atom type
+    inline Spline<double> const &orbital(const size_t iat, const size_t wfc) const
+    {
+        return values_(iat, wfc);
     }
 };
 
@@ -118,7 +213,7 @@ class Radial_integrals_aug: public Radial_integrals_base<3>
                             int l1 = atom_type.indexr(idxrf1).l;
 
                             int idx = idxrf2 * (idxrf2 + 1) / 2 + idxrf1;
-                            
+
                             if (l3 >= std::abs(l1 - l2) && l3 <= (l1 + l2) && (l1 + l2 + l3) % 2 == 0) {
                                 if (jl_deriv) {
                                     auto s = jl.deriv_q(l3);
@@ -153,7 +248,7 @@ class Radial_integrals_aug: public Radial_integrals_base<3>
         : Radial_integrals_base<3>(unit_cell__, qmax__, np__)
     {
         int nmax = unit_cell_.max_mt_radial_basis_size();
-        int lmax = unit_cell_.lmax(); 
+        int lmax = unit_cell_.lmax();
 
         values_ = mdarray<Spline<double>, 3>(nmax * (nmax + 1) / 2, 2 * lmax + 1, unit_cell_.num_atom_types());
 
@@ -285,7 +380,7 @@ class Radial_integrals_beta: public Radial_integrals_base<2>
     void generate()
     {
         PROFILE("sirius::Radial_integrals|beta");
-    
+
         for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
             auto& atom_type = unit_cell_.atom_type(iat);
             int nrb = atom_type.mt_radial_basis_size();
@@ -293,7 +388,7 @@ class Radial_integrals_beta: public Radial_integrals_base<2>
             for (int idxrf = 0; idxrf < nrb; idxrf++) {
                 values_(idxrf, iat) = Spline<double>(grid_q_);
             }
-    
+
             #pragma omp parallel for
             for (int iq_loc = 0; iq_loc < spl_q_.local_size(); iq_loc++) {
                 int iq = spl_q_[iq_loc];
@@ -354,7 +449,7 @@ class Radial_integrals_beta_jl: public Radial_integrals_base<3>
     void generate()
     {
         PROFILE("sirius::Radial_integrals|beta_jl");
-    
+
         for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
             auto& atom_type = unit_cell_.atom_type(iat);
             int nrb = atom_type.mt_radial_basis_size();
@@ -407,7 +502,7 @@ class Radial_integrals_beta_jl: public Radial_integrals_base<3>
 /// Radial integrals for the step function of the LAPW method.
 /** Radial integrals have the following expression:
  *  \f[
- *      \Theta(\alpha, G) = \int_{0}^{R_{\alpha}} \frac{\sin(Gr)}{Gr} r^2 dr = 
+ *      \Theta(\alpha, G) = \int_{0}^{R_{\alpha}} \frac{\sin(Gr)}{Gr} r^2 dr =
  *          \left\{ \begin{array}{ll} \displaystyle R_{\alpha}^3 / 3 & G=0 \\
  *          \Big( \sin(GR_{\alpha}) - GR_{\alpha}\cos(GR_{\alpha}) \Big) / G^3 & G \ne 0 \end{array} \right.
  *  \f]
@@ -500,7 +595,7 @@ class Radial_integrals_vloc: public Radial_integrals_base<1>
             values_(iat).interpolate();
         }
     }
-  
+
   public:
     Radial_integrals_vloc(Unit_cell const& unit_cell__, double qmax__, int np__)
         : Radial_integrals_base<1>(unit_cell__, qmax__, np__)
@@ -579,5 +674,3 @@ class Radial_integrals_rho_free_atom: public Radial_integrals_base<1>
 } // namespace
 
 #endif // __RADIAL_INTEGRALS_H__
-
-
