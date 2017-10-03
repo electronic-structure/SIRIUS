@@ -79,16 +79,7 @@ class vector3d: public std::array<T, 3>
             (*this)[x] = ptr__[x];
         }
     }
-    
-    /// Create from another vector.
-    template<typename U>
-    vector3d(vector3d<U> const& src__)
-    {
-        for (int x : {0, 1, 2}) {
-            (*this)[x] = src__[x];
-        }
-    }
-        
+
     /// Return L1 norm of the vector.
     inline T l1norm() const
     {
@@ -138,40 +129,31 @@ class vector3d: public std::array<T, 3>
     }
 
     template <typename U>
-    inline vector3d<T> operator*(U p)
+    inline friend vector3d<decltype(T{} * U{})> operator*(vector3d<T> vec, U p)
     {
-        vector3d<T> a = *this;
+        vector3d<decltype(T{} * U{})> a;
         for (int x : {0, 1, 2}) {
-            a[x] *= p;
+            a[x] = vec[x] * p;
         }
         return a;
     }
 
     template <typename U>
-    inline vector3d<T> operator/(U p)
+    inline friend vector3d<decltype(T{} * U{})> operator*(U p, vector3d<T> vec)
     {
-        vector3d<T> a = *this;
-        for (int x : {0, 1, 2}) {
-            a[x] /= p;
-        }
-        return a;
+        return vec * p;
     }
 
     template <typename U>
-    inline vector3d<T>& operator/=(U p)
+    inline friend vector3d<decltype(T{} * U{})> operator/(vector3d<T> vec, U p)
     {
+        vector3d<decltype(T{} * U{})> a;
         for (int x : {0, 1, 2}) {
-            (*this)[x] /= p;
+            a[x] = vec[x] / p;
         }
-        return *this;
+        return a;
     }
 };
-
-//template <typename T, typename U>
-//inline auto operator*(vector3d<T> const a, vector3d<U> const b) -> decltype(T{} * U{})
-//{
-//    return (a[0] * b[0] + a[1] * b[1] + a[2] * b[2]);
-//}
 
 template <typename T, typename U>
 inline auto dot(vector3d<T> const a, vector3d<U> const b) -> decltype(T{} * U{})

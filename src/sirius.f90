@@ -95,7 +95,7 @@ module sirius
 
         subroutine sirius_set_gamma_point(gamma_point)&
             &bind(C, name="sirius_set_gamma_point")
-            logical,                 intent(in) :: gamma_point
+            logical(1),              intent(in) :: gamma_point
         end subroutine
 
         subroutine sirius_set_mpi_grid_dims(ndims, dims)&
@@ -131,7 +131,7 @@ module sirius
             integer,                 intent(in) :: l
             integer,                 intent(in) :: k
             real(8),                 intent(in) :: occupancy
-            logical,                 intent(in) :: core
+            logical(1),              intent(in) :: core
         end subroutine
 
         subroutine sirius_set_atom_type_radial_grid(label, num_radial_points, radial_points)&
@@ -162,7 +162,7 @@ module sirius
             integer,                 intent(in) :: num_mesh_points
             real(8),                 intent(in) :: beta_rf
             integer,                 intent(in) :: ld
-            logical,                 intent(in) :: has_so
+            logical(1),              intent(in) :: has_so
         end subroutine
 
         subroutine sirius_set_atom_type_dion(label, num_beta, dion)&

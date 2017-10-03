@@ -843,6 +843,7 @@ class Band
         template <typename T>
         inline void initialize_subspace(K_point*                                        kp__,
                                         int                                             num_ao__,
+                                        Radial_grid_lin<double>&                        qgrid__,
                                         std::vector<std::vector<Spline<double>>> const& rad_int__) const;
 };
 
