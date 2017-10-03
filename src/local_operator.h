@@ -314,7 +314,7 @@ class Local_operator
                 int ig = gkvec__.partition().gvec_offset_fft() + ig_loc;
                 /* get G+k in Cartesian coordinates */
                 auto gv = gkvec__.gkvec_cart(ig);
-                pw_ekin_[ig_loc] = 0.5 * (gv * gv);
+                pw_ekin_[ig_loc] = 0.5 * dot(gv, gv);
             }
 
             if (static_cast<int>(vphi1_.size()) < ngv_fft) {

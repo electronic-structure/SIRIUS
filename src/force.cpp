@@ -165,7 +165,7 @@ void Force::ibs_force(Simulation_context_base& ctx__,
 
                 double_complex zt = std::conj(ctx__.gvec_phase_factor(ig12, ia)) * ffac__(iat, igs) * fourpi / uc.omega();
 
-                double t1 = 0.5 * (gkvec_row_cart * gkvec_col_cart);
+                double t1 = 0.5 * dot(gkvec_row_cart, gkvec_col_cart);
 
                 h(igk_row, igk_col) -= t1 * zt;
                 o(igk_row, igk_col) -= zt;
