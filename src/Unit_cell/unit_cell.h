@@ -1068,9 +1068,9 @@ inline unit_cell_parameters_descriptor Unit_cell::unit_cell_parameters()
     d.b = v1.length();
     d.c = v2.length();
 
-    d.alpha = acos((v1 * v2) / d.b / d.c) * 180 / pi;
-    d.beta  = acos((v0 * v2) / d.a / d.c) * 180 / pi;
-    d.gamma = acos((v0 * v1) / d.a / d.b) * 180 / pi;
+    d.alpha = std::acos(dot(v1, v2) / d.b / d.c) * 180 / pi;
+    d.beta  = std::acos(dot(v0, v2) / d.a / d.c) * 180 / pi;
+    d.gamma = std::acos(dot(v0, v1) / d.a / d.b) * 180 / pi;
 
     return d;
 }

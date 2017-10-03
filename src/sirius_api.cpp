@@ -424,16 +424,15 @@ void sirius_set_free_atom_density(char const* label__,
     enddo
     \endcode
  */
-void sirius_set_atom_type_configuration(char* label__,
-                                        int32_t* n__,
-                                        int32_t* l__,
-                                        int32_t* k__,
-                                        double* occupancy__,
-                                        int32_t* core__)
+void sirius_set_atom_type_configuration(ftn_char    label__,
+                                        ftn_int*    n__,
+                                        ftn_int*    l__,
+                                        ftn_int*    k__,
+                                        ftn_double* occupancy__,
+                                        ftn_bool*   core__)
 {
     auto& type = sim_ctx->unit_cell().atom_type(std::string(label__));
-    bool core = *core__;
-    type.set_configuration(*n__, *l__, *k__, *occupancy__, core);
+    type.set_configuration(*n__, *l__, *k__, *occupancy__, *core__);
 }
 
 /// Add atom to the unit cell.
@@ -509,7 +508,7 @@ void sirius_set_esm_type(char const* name__)
     sim_ctx->set_esm_type(name__);
 }
 
-void sirius_set_gamma_point(ftn_int* gamma_point__)
+void sirius_set_gamma_point(ftn_bool* gamma_point__)
 {
     sim_ctx->set_gamma_point(*gamma_point__);
 }
@@ -2076,23 +2075,18 @@ void sirius_set_atom_type_dion(char* label__,
 }
 
 // This must be called prior to sirius_set_atom_type_q_rf
-void sirius_set_atom_type_beta_rf(char*    label__,
-                                  int32_t* num_beta__,
-                                  int32_t* beta_l__,
-                                  double*  beta_j__,
-                                  int32_t* num_mesh_points__,
-                                  double*  beta_rf__,
-                                  int32_t* ld__,
-                                  int32_t* spin_orbit__)
+void sirius_set_atom_type_beta_rf(ftn_char     label__,
+                                  ftn_int*     num_beta__,
+                                  ftn_int*     beta_l__,
+                                  ftn_double*  beta_j__,
+                                  ftn_int*     num_mesh_points__,
+                                  ftn_double*  beta_rf__,
+                                  ftn_int*     ld__,
+                                  ftn_bool*    spin_orbit__)
 {
     auto& type = sim_ctx->unit_cell().atom_type(std::string(label__));
     mdarray<double, 2> beta_rf(beta_rf__, *ld__, *num_beta__);
-    if (*spin_orbit__ != 0) {
-        type.pp_desc().spin_orbit_coupling = true;
-    } else {
-        type.pp_desc().spin_orbit_coupling = false;
-    }
-
+    type.pp_desc().spin_orbit_coupling = *spin_orbit__;
     type.pp_desc().lmax_beta_ = 0;
     type.pp_desc().num_beta_radial_functions = *num_beta__;
     type.pp_desc().beta_l = std::vector<int>(*num_beta__);
