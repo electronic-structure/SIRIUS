@@ -1,3 +1,4 @@
+#ifndef __EXTERNAL_ELPA_LIB
 subroutine elpa_cholesky_complex_wrapper(na, a, lda, nblk, matrixCols, mpi_comm_rows, mpi_comm_cols)
 use elpa1_auxiliary
 implicit none
@@ -114,5 +115,6 @@ logical success
   success = solve_evp_real_2stage(na, nev, a, lda, ev, q, ldq, nblk, matrixCols, mpi_comm_rows, mpi_comm_cols, mpi_comm_all)
 
 end subroutine
+#endif
 
 
