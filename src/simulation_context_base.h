@@ -25,6 +25,8 @@
 #ifndef __SIMULATION_CONTEXT_BASE_H__
 #define __SIMULATION_CONTEXT_BASE_H__
 
+#include <algorithm>
+
 #include "version.h"
 #include "simulation_parameters.h"
 #include "mpi_grid.hpp"
@@ -119,15 +121,68 @@ class Simulation_context_base: public Simulation_parameters
             start_time_tag_ = std::string(buf);
         }
 
-        void init_atom_to_grid_idx()
+        void init_atoms_to_grid_idx()
         {
-            vector3d<double> delta = (1.0 / fft_->grid().size(0), 1.0 / fft_->grid().size(1), 1.0 / fft_->grid().size(2));
+            atoms_to_grid_idx_.resize(unit_cell_.num_atoms());
 
+            vector3d<double> delta(1.0 / (fft_->grid().size(0) - 1), 1.0 / (fft_->grid().size(1) - 1), 1.0 / (fft_->grid().size(2) - 1));
+
+            vector3d<int> grid_beg(0, 0, fft_->offset_z());
+            vector3d<int> grid_end(fft_->grid().size(0), fft_->grid().size(1), fft_->offset_z() + fft_->local_size_z());
+
+            double R = 2; // approximate atom radius in bohr
+            std::array<vector3d<double>, 8> verts_cart({{-r,-r,-r},{r,-r,-r},{-r,r,-r},{r,r,-r},{-r,-r,r},{r,-r,r},{-r,r,r},{r,r,r}});
+
+            auto bounds_box = [&](vector3d<double> pos)
+            {
+                int size = verts_cart.size();
+                std::array<vector3d<double>, size> verts;
+
+                for (int i = 0; i< size; i++) {
+                    verts.push_back( unit_cell_.get_fractional_coordinates( pos + verts_cart[i] ) );
+                }
+
+                std::pair<vector3d<int>> bounds_ind;
+
+                for (int i : {0,1,2}) {
+                    std::sort(verts.begin(), verts.end(), [](vector3d<double>& a, vector3d<double>& b) { return a[i] < b[i]});
+                    bounds_ind.first[i]  = std::max((int)(verts[0][i] / delta[i]) + 1, grid_beg[i]);
+                    bounds_ind.second[i] = std::min((int)(verts[size-1][i] / delta[i]), grid_end[i]);
+                }
+
+                return bounds_ind;
+            };
+
+            #pragma omp parallel for
             for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
-                auto position = unit_cell_.atom(ia).position();
 
-                vector3d<int> ind_position( { (int)position[0]/delta[0], (int)position[1]/delta[1], (int)position[2]/delta[2] });
+                std::vector<vector3d<int>> atom_to_inds_map;
 
+                for (int t0 = -1; t0 <= 1; t0++) {
+                    for (int t1 = -1; t1 <= 1; t1++) {
+                        for (int t2 = -1; t2 <= 1; t2++) {
+                            auto position = unit_cell_.atom(ia).position() + vector3d<double>(t0, t1, t2);
+
+                            auto box = bounds_box(position);
+
+                            for (int j0 = box.first[0]; j0 < box.second[0]; j0++) {
+                                for (int j1 = box.first[1]; j1 < box.second[1]; j1++) {
+                                    for (int j2 = box.first[2]; j2 < box.second[2]; j2++) {
+                                        auto dist = position - vector3d<double>(double(j0)* delta[0], double(j1) * delta[1], double(j2) * delta[2]);
+
+                                        auto r = unit_cell_.get_cartesian_coordinates(dist);
+
+                                        if (r < R) {
+                                            atom_to_inds_map.push_back(vector3d<int>(j0, j1, j2));
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                atoms_to_grid_idx_[ia] = std::move(atom_to_inds_map);
             }
         }
 
@@ -555,6 +610,8 @@ inline void Simulation_context_base::initialize()
 
     /* initialize FFT interface */
     init_fft();
+
+    init_atoms_to_grid_idx();
 
     if (comm_.rank() == 0 && control().print_memory_usage_) {
         MEMORY_USAGE_INFO();
