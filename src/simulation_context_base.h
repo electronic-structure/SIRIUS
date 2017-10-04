@@ -100,7 +100,10 @@ class Simulation_context_base: public Simulation_parameters
 
         std::unique_ptr<Radial_integrals_aug<false>> aug_ri_;
 
-        std::vector<std::vector<vector3d<int>>> atoms_to_grid_idx_;
+        std::vector<std::vector<std::pair<int,double>>> atoms_to_grid_idx_;
+
+        // TODO remove to somewhere
+        const double av_atom_radius_{2.0};
 
         double time_active_;
         
@@ -130,22 +133,22 @@ class Simulation_context_base: public Simulation_parameters
             vector3d<int> grid_beg(0, 0, fft_->offset_z());
             vector3d<int> grid_end(fft_->grid().size(0), fft_->grid().size(1), fft_->offset_z() + fft_->local_size_z());
 
-            double R = 2; // approximate atom radius in bohr
-            std::array<vector3d<double>, 8> verts_cart({{-r,-r,-r},{r,-r,-r},{-r,r,-r},{r,r,-r},{-r,-r,r},{r,-r,r},{-r,r,r},{r,r,r}});
+            double R = av_atom_radius_; // appRoximate atom radius in bohr
+            std::vector<vector3d<double>> verts_cart{{-R,-R,-R},{R,-R,-R},{-R,R,-R},{R,R,-R},{-R,-R,R},{R,-R,R},{-R,R,R},{R,R,R}};
 
             auto bounds_box = [&](vector3d<double> pos)
             {
-                int size = verts_cart.size();
-                std::array<vector3d<double>, size> verts;
+                std::vector<vector3d<double>> verts;
 
-                for (int i = 0; i< size; i++) {
-                    verts.push_back( unit_cell_.get_fractional_coordinates( pos + verts_cart[i] ) );
+                for (auto v : verts_cart) {
+                    verts.push_back( unit_cell_.get_fractional_coordinates( pos + v ) );
                 }
 
-                std::pair<vector3d<int>> bounds_ind;
+                std::pair<vector3d<int>,vector3d<int>> bounds_ind;
 
+                size_t size = verts.size();
                 for (int i : {0,1,2}) {
-                    std::sort(verts.begin(), verts.end(), [](vector3d<double>& a, vector3d<double>& b) { return a[i] < b[i]});
+                    std::sort(verts.begin(), verts.end(), [i](vector3d<double>& a, vector3d<double>& b) { return a[i] < b[i]; });
                     bounds_ind.first[i]  = std::max((int)(verts[0][i] / delta[i]) + 1, grid_beg[i]);
                     bounds_ind.second[i] = std::min((int)(verts[size-1][i] / delta[i]), grid_end[i]);
                 }
@@ -156,7 +159,7 @@ class Simulation_context_base: public Simulation_parameters
             #pragma omp parallel for
             for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
 
-                std::vector<vector3d<int>> atom_to_inds_map;
+                std::vector<std::pair<int,double>> atom_to_inds_map;
 
                 for (int t0 = -1; t0 <= 1; t0++) {
                     for (int t1 = -1; t1 <= 1; t1++) {
@@ -169,11 +172,11 @@ class Simulation_context_base: public Simulation_parameters
                                 for (int j1 = box.first[1]; j1 < box.second[1]; j1++) {
                                     for (int j2 = box.first[2]; j2 < box.second[2]; j2++) {
                                         auto dist = position - vector3d<double>(double(j0)* delta[0], double(j1) * delta[1], double(j2) * delta[2]);
-
-                                        auto r = unit_cell_.get_cartesian_coordinates(dist);
+                                        auto r = unit_cell_.get_cartesian_coordinates(dist).length();
+                                        auto ir = fft_->grid().index_by_coord(j0, j1, j2);
 
                                         if (r < R) {
-                                            atom_to_inds_map.push_back(vector3d<int>(j0, j1, j2));
+                                            atom_to_inds_map.push_back({ir, r});
                                         }
                                     }
                                 }
@@ -216,6 +219,16 @@ class Simulation_context_base: public Simulation_parameters
 
         /// Initialize the similation (can only be called once).
         void initialize();
+
+        std::vector<std::vector<std::pair<int,double>>> const& atoms_to_grid_idx_map()
+        {
+            return atoms_to_grid_idx_;
+        };
+
+        double av_atom_radius()
+        {
+            return av_atom_radius_;
+        }
 
         void print_info();
 
