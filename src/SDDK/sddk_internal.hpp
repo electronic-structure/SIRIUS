@@ -19,6 +19,7 @@
 #ifdef __GPU
 #include "GPU/cuda.hpp"
 #endif
+#include "json.hpp"
 
 namespace sddk {
 
@@ -81,7 +82,8 @@ class timer
         if (!active_) {
             return 0;
         }
-
+        
+        /* remove this timer name from the list */
         stack().pop_back();
 
         auto t2    = std::chrono::high_resolution_clock::now();
@@ -95,6 +97,7 @@ class timer
         ts.count++;
 
         if (stack().size() != 0) {
+            /* now last element contains the name of the parent timer */
             auto parent_label = stack().back();
             if (timer_values_ex().count(parent_label) == 0) {
                 timer_values_ex()[parent_label] = std::map<std::string, double>();
@@ -193,12 +196,69 @@ class timer
         }
     }
 
-    static std::map<std::string, timer_stats_t>& collect_timer_stats()
+    static nlohmann::json serialize_timers()
     {
-        for (auto& it: timer_values()) {
-            it.second.avg_val = it.second.tot_val / it.second.count;
+        nlohmann::json dict;
+
+        /* collect local timers */
+        for (auto& it: sddk::timer::timer_values()) {
+            sddk::timer_stats_t ts;
+            nlohmann::json node;
+            node["count"] = it.second.count;
+            node["total"] = it.second.tot_val;
+            node["min"] = it.second.min_val;
+            node["max"] = it.second.max_val;
+            node["avg"] = it.second.tot_val / it.second.count;
+            //dict[it.first] = {it.second.tot_val, it.second.tot_val / it.second.count, it.second.min_val, it.second.max_val};
+            dict[it.first] = node;
         }
-        return timer_values();
+        return std::move(dict);
+    }
+
+    static nlohmann::json serialize_timers_tree()
+    {
+        nlohmann::json dict;
+
+        if (!timer_values().count(main_timer_label)) {
+            return {};
+        }
+        /* total execution time */
+        double ttot = timer_values()[main_timer_label].tot_val;
+
+        for (auto& it: timer_values()) {
+            if (timer_values_ex().count(it.first)) {
+                /* collect external times */
+                double te{0};
+                for (auto& it2: timer_values_ex()[it.first]) {
+                    te += it2.second;
+                }
+                nlohmann::json node;
+
+                double f = it.second.tot_val / ttot;
+                if (f > 0.01) {
+                    node["cumulitive_time"]        = it.second.tot_val;
+                    node["self_time"]              = it.second.tot_val - te;
+                    node["percent_of_global_time"] = f * 100;
+                    
+                    std::vector<std::pair<double, std::string>> tmp;
+            
+                    for (auto& it2: timer_values_ex()[it.first]) {
+                        tmp.push_back(std::make_pair(it2.second / it.second.tot_val, it2.first));
+                    }
+                    std::sort(tmp.rbegin(), tmp.rend());
+                    node["call"] = {};
+                    for (auto& e: tmp) {
+                        nlohmann::json n;
+                        n["time"]              = timer_values_ex()[it.first][e.second];
+                        n["percent_of_parent"] = e.first * 100;
+                        node["call"][e.second] = n;
+                    }
+                    dict[it.first] = node;
+                }
+            }
+        }
+
+        return std::move(dict);
     }
 };
 
@@ -676,5 +736,11 @@ inline void warning(const char* file_name__, int line_number__, const std::strin
 #define WARNING(msg) sddk::warning(__FILE__, __LINE__, msg);
 
 #define STOP() TERMINATE("terminated by request")
+
+#define TERMINATE_NO_GPU TERMINATE("not compiled with GPU support");
+
+#define TERMINATE_NO_SCALAPACK TERMINATE("not compiled with ScaLAPACK support");
+
+#define TERMINATE_NOT_IMPLEMENTED TERMINATE("feature is not implemented");
 
 #endif // __SDDK_INTERNAL_HPP__

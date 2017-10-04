@@ -808,13 +808,13 @@ void sirius_print_timers(void)
     sddk::timer::print();
 }
 
-void sirius_start_timer(char const* name__)
+void sirius_start_timer(ftn_char name__)
 {
     std::string name(name__);
     ftimers[name] = new sddk::timer(name);
 }
 
-void sirius_stop_timer(char const* name__)
+void sirius_stop_timer(ftn_char name__)
 {
     std::string name(name__);
     if (ftimers.count(name)) {
@@ -1033,7 +1033,7 @@ void sirius_write_json_output(void)
     dict["comm_world_size"] = mpi_comm_world().size();
     dict["threads_per_rank"] = omp_get_max_threads();
     dict["ground_state"] = dft_ground_state->serialize();
-    dict["timers"] = Utils::serialize_timers();
+    dict["timers"] = sddk::timer::serialize_timers();
  
     if (mpi_comm_world().rank() == 0) {
         std::ofstream ofs(std::string("output_") + sim_ctx->start_time_tag() + std::string(".json"),
