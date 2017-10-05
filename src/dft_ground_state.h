@@ -623,7 +623,7 @@ inline void DFT_ground_state::print_magnetic_moment()
         mmom = density_.compute_atomic_mag_mom();
     }
 
-    if (!ctx_.full_potential() && ctx_.num_mag_dims()) {
+    if (!ctx_.full_potential() && ctx_.num_mag_dims() && ctx_.comm().rank() == 0) {
         printf("Magnetic moments\n");
         for (int i = 0; i < 80; i++) printf("-");
         printf("\n");

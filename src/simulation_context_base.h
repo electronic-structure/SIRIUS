@@ -130,8 +130,9 @@ class Simulation_context_base: public Simulation_parameters
 
             vector3d<double> delta(1.0 / (fft_->grid().size(0) ), 1.0 / (fft_->grid().size(1) ), 1.0 / (fft_->grid().size(2) ));
 
-            vector3d<int> grid_beg(0, 0, fft_->offset_z());
-            vector3d<int> grid_end(fft_->grid().size(0), fft_->grid().size(1), fft_->offset_z() + fft_->local_size_z());
+            int z_off = fft_->offset_z();
+            vector3d<int> grid_beg(0, 0, z_off);
+            vector3d<int> grid_end(fft_->grid().size(0), fft_->grid().size(1), z_off + fft_->local_size_z());
 
             double R = av_atom_radius_; // appRoximate atom radius in bohr
             std::vector<vector3d<double>> verts_cart{{-R,-R,-R},{R,-R,-R},{-R,R,-R},{R,R,-R},{-R,-R,R},{R,-R,R},{-R,R,R},{R,R,R}};
@@ -173,7 +174,7 @@ class Simulation_context_base: public Simulation_parameters
                                     for (int j2 = box.first[2]; j2 < box.second[2]; j2++) {
                                         auto dist = position - vector3d<double>(double(j0)* delta[0], double(j1) * delta[1], double(j2) * delta[2]);
                                         auto r = unit_cell_.get_cartesian_coordinates(dist).length();
-                                        auto ir = fft_->grid().index_by_coord(j0, j1, j2);
+                                        auto ir = fft_->grid().index_by_coord(j0, j1, j2 - z_off);
 
                                         if (r <= R) {
                                             atom_to_inds_map.push_back({ir, r});
