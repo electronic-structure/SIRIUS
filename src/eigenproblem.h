@@ -28,6 +28,13 @@
 #include "constants.h"
 #include "linalg.hpp"
 
+// TODO: simplify the interface, use only dmatrix<T> as input
+//
+// need to solve Ax = E*x  (standard)
+//               Ax = E*Bx (generalized)
+// for N lowes eigen-pairs
+// for all eigen-pairs
+
 /// Type of the solver to use for the standard or generalized eigen-value problem
 enum ev_solver_t 
 {
@@ -1176,13 +1183,16 @@ void FORTRAN(elpa_mult_ah_b_complex_wrapper)(ftn_char            uplo_a,
                                              ftn_int const*      ncb, 
                                              ftn_double_complex* a,
                                              ftn_int const*      lda,
+                                             ftn_int const*      ldaCols,
                                              ftn_double_complex* b,
                                              ftn_int const*      ldb,
+                                             ftn_int const*      ldbCols,
                                              ftn_int const*      nblk,
                                              ftn_int const*      mpi_comm_rows,
                                              ftn_int const*      mpi_comm_cols,
                                              ftn_double_complex* c,
                                              ftn_int const*      ldc,
+                                             ftn_int const*      ldcCols,
                                              ftn_len             uplo_a_len,
                                              ftn_len             uplo_c_len);
 
@@ -1192,13 +1202,16 @@ void FORTRAN(elpa_mult_at_b_real_wrapper)(ftn_char       uplo_a,
                                           ftn_int const* ncb, 
                                           ftn_double*    a,
                                           ftn_int const* lda,
+                                          ftn_int const* ldaCols,
                                           ftn_double*    b,
                                           ftn_int const* ldb,
+                                          ftn_int const* ldbCols,
                                           ftn_int const* nblk,
                                           ftn_int const* mpi_comm_rows,
                                           ftn_int const* mpi_comm_cols,
                                           ftn_double*    c,
                                           ftn_int const* ldc,
+                                          ftn_int const* ldcCols,
                                           ftn_len        uplo_a_len,
                                           ftn_len        uplo_c_len);
 
@@ -1212,7 +1225,8 @@ void FORTRAN(elpa_solve_evp_complex)(ftn_int const* na,
                                      ftn_int const* nblk,
                                      ftn_int const* matrixCols,
                                      ftn_int const* mpi_comm_rows,
-                                     ftn_int const* mpi_comm_cols);
+                                     ftn_int const* mpi_comm_cols,
+                                     ftn_int const* mpi_comm_all);
 
 void FORTRAN(elpa_solve_evp_real)(ftn_int const* na,
                                   ftn_int const* nev,
@@ -1224,7 +1238,8 @@ void FORTRAN(elpa_solve_evp_real)(ftn_int const* na,
                                   ftn_int const* nblk,
                                   ftn_int const* matrixCols,
                                   ftn_int const* mpi_comm_rows,
-                                  ftn_int const* mpi_comm_cols);
+                                  ftn_int const* mpi_comm_cols,
+                                  ftn_int const* mpi_comm_all);
 
 void FORTRAN(elpa_solve_evp_complex_2stage)(ftn_int const* na,
                                             ftn_int const* nev,
@@ -1304,9 +1319,9 @@ class Eigenproblem_elpa: public Eigenproblem
             /* invert L */
             FORTRAN(elpa_invert_trm_complex_wrapper)(&matrix_size__, B__, &ldb__, &block_size_, &num_cols_loc__, &mpi_comm_rows_, &mpi_comm_cols_);
        
-            FORTRAN(elpa_mult_ah_b_complex_wrapper)("U", "L", &matrix_size__, &matrix_size__, B__, &ldb__, A__, &lda__, &block_size_, 
-                                                    &mpi_comm_rows_, &mpi_comm_cols_, tmp1__.at<CPU>(), &num_rows_loc__, (int32_t)1, 
-                                                    (int32_t)1);
+            FORTRAN(elpa_mult_ah_b_complex_wrapper)("U", "L", &matrix_size__, &matrix_size__, B__, &ldb__, &num_cols_loc__, A__, &lda__, &num_cols_loc__, &block_size_, 
+                                                    &mpi_comm_rows_, &mpi_comm_cols_, tmp1__.at<CPU>(), &num_rows_loc__, &num_cols_loc__,
+                                                    (int32_t)1, (int32_t)1);
 
             int32_t descc[9];
             linalg_base::descinit(descc, matrix_size__, matrix_size__, block_size_, block_size_, 0, 0, blacs_context_, lda__);
@@ -1314,9 +1329,10 @@ class Eigenproblem_elpa: public Eigenproblem
             linalg_base::pztranc(matrix_size__, matrix_size__, linalg_const<double_complex>::one(), tmp1__.at<CPU>(), 1, 1, descc, 
                                  linalg_const<double_complex>::zero(), tmp2__.at<CPU>(), 1, 1, descc);
 
-            FORTRAN(elpa_mult_ah_b_complex_wrapper)("U", "U", &matrix_size__, &matrix_size__, B__, &ldb__, tmp2__.at<CPU>(), &num_rows_loc__, 
-                                                    &block_size_, &mpi_comm_rows_, &mpi_comm_cols_, A__, &lda__, (int32_t)1, 
-                                                    (int32_t)1);
+            FORTRAN(elpa_mult_ah_b_complex_wrapper)("U", "U", &matrix_size__, &matrix_size__, B__, &ldb__, &num_cols_loc__, 
+                                                    tmp2__.at<CPU>(), &num_rows_loc__, &num_cols_loc__,
+                                                    &block_size_, &mpi_comm_rows_, &mpi_comm_cols_, A__, &lda__, &num_cols_loc__,
+                                                    (int32_t)1, (int32_t)1);
 
             linalg_base::pztranc(matrix_size__, matrix_size__, linalg_const<double_complex>::one(), A__, 1, 1, descc, linalg_const<double_complex>::zero(), 
                                  tmp1__.at<CPU>(), 1, 1, descc);
@@ -1346,9 +1362,9 @@ class Eigenproblem_elpa: public Eigenproblem
             /* invert L */
             FORTRAN(elpa_invert_trm_real_wrapper)(&matrix_size__, B__, &ldb__, &block_size_, &num_cols_loc__, &mpi_comm_rows_, &mpi_comm_cols_);
        
-            FORTRAN(elpa_mult_at_b_real_wrapper)("U", "L", &matrix_size__, &matrix_size__, B__, &ldb__, A__, &lda__, &block_size_, 
-                                                 &mpi_comm_rows_, &mpi_comm_cols_, tmp1__.at<CPU>(), &num_rows_loc__, (int32_t)1, 
-                                                 (int32_t)1);
+            FORTRAN(elpa_mult_at_b_real_wrapper)("U", "L", &matrix_size__, &matrix_size__, B__, &ldb__, &num_cols_loc__, A__, &lda__, &num_cols_loc__, &block_size_, 
+                                                 &mpi_comm_rows_, &mpi_comm_cols_, tmp1__.at<CPU>(), &num_rows_loc__, &num_cols_loc__, 
+                                                 (int32_t)1, (int32_t)1);
 
             int32_t descc[9];
             linalg_base::descinit(descc, matrix_size__, matrix_size__, block_size_, block_size_, 0, 0, blacs_context_, lda__);
@@ -1356,9 +1372,9 @@ class Eigenproblem_elpa: public Eigenproblem
             linalg_base::pdtran(matrix_size__, matrix_size__, 1.0, tmp1__.at<CPU>(), 1, 1, descc, 0.0,
                                 tmp2__.at<CPU>(), 1, 1, descc);
 
-            FORTRAN(elpa_mult_at_b_real_wrapper)("U", "U", &matrix_size__, &matrix_size__, B__, &ldb__, tmp2__.at<CPU>(), &num_rows_loc__, 
-                                                &block_size_, &mpi_comm_rows_, &mpi_comm_cols_, A__, &lda__, (int32_t)1, 
-                                                (int32_t)1);
+            FORTRAN(elpa_mult_at_b_real_wrapper)("U", "U", &matrix_size__, &matrix_size__, B__, &ldb__, &num_cols_loc__, tmp2__.at<CPU>(), &num_rows_loc__, 
+                                                &num_cols_loc__, &block_size_, &mpi_comm_rows_, &mpi_comm_cols_, A__, &lda__, &num_cols_loc__, 
+                                                (int32_t)1, (int32_t)1);
 
             linalg_base::pdtran(matrix_size__, matrix_size__, 1.0, A__, 1, 1, descc, 0.0, tmp1__.at<CPU>(), 1, 1, descc);
 
@@ -1388,8 +1404,8 @@ class Eigenproblem_elpa: public Eigenproblem
             linalg_base::pztranc(matrix_size__, matrix_size__, linalg_const<double_complex>::one(), B__, 1, 1, descb, linalg_const<double_complex>::zero(), 
                                  tmp2__.at<CPU>(), 1, 1, descb);
 
-            FORTRAN(elpa_mult_ah_b_complex_wrapper)("L", "N", &matrix_size__, &nevec__, tmp2__.at<CPU>(), &num_rows_loc__, tmp1__.at<CPU>(), 
-                                                    &num_rows_loc__, &block_size_, &mpi_comm_rows_, &mpi_comm_cols_, Z__, &ldz__, 
+            FORTRAN(elpa_mult_ah_b_complex_wrapper)("L", "N", &matrix_size__, &nevec__, tmp2__.at<CPU>(), &num_rows_loc__, &num_cols_loc__, tmp1__.at<CPU>(), 
+                                                    &num_rows_loc__, &num_cols_loc__, &block_size_, &mpi_comm_rows_, &mpi_comm_cols_, Z__, &ldz__, &num_cols_loc__,
                                                     (int32_t)1, (int32_t)1);
         }
 
@@ -1407,8 +1423,8 @@ class Eigenproblem_elpa: public Eigenproblem
 
             linalg_base::pdtran(matrix_size__, matrix_size__, 1.0, B__, 1, 1, descb, 0.0, tmp2__.at<CPU>(), 1, 1, descb);
 
-            FORTRAN(elpa_mult_at_b_real_wrapper)("L", "N", &matrix_size__, &nevec__, tmp2__.at<CPU>(), &num_rows_loc__, tmp1__.at<CPU>(), 
-                                                 &num_rows_loc__, &block_size_, &mpi_comm_rows_, &mpi_comm_cols_, Z__, &ldz__, 
+            FORTRAN(elpa_mult_at_b_real_wrapper)("L", "N", &matrix_size__, &nevec__, tmp2__.at<CPU>(), &num_rows_loc__, &num_cols_loc__, tmp1__.at<CPU>(), 
+                                                 &num_rows_loc__, &num_cols_loc__, &block_size_, &mpi_comm_rows_, &mpi_comm_cols_, Z__, &ldz__, &num_cols_loc__,
                                                  (int32_t)1, (int32_t)1);
         }
         #endif
@@ -1438,18 +1454,24 @@ class Eigenproblem_elpa1: public Eigenproblem_elpa
 
             matrix<double_complex> tmp1(num_rows_loc, num_cols_loc);
             matrix<double_complex> tmp2(num_rows_loc, num_cols_loc);
-
+            
+            printf("solve#1\n");
             transform_to_standard(matrix_size, A, lda, B, ldb, num_rows_loc, num_cols_loc, tmp1, tmp2);
+            printf("solve#2\n");
 
             std::vector<double> w(matrix_size);
             sddk::timer t("Eigenproblem_elpa1|diag");
+            printf("nevec=%i\n", nevec);
             FORTRAN(elpa_solve_evp_complex)(&matrix_size, &nevec, A, &lda, &w[0], tmp1.at<CPU>(), &num_rows_loc, 
-                                            &block_size_, &num_cols_loc, &mpi_comm_rows_, &mpi_comm_cols_);
+                                            &block_size_, &num_cols_loc, &mpi_comm_rows_, &mpi_comm_cols_, &mpi_comm_all_);
+            printf("solve#3\n");
             t.stop();
             std::memcpy(eval, &w[0], nevec * sizeof(double));
             
             transform_back(matrix_size, nevec, B, ldb, Z, ldz, num_rows_loc, num_cols_loc, tmp1, tmp2);
 
+            t.stop();
+            printf("solve#4\n");
             return 0;
         }
 
@@ -1471,7 +1493,7 @@ class Eigenproblem_elpa1: public Eigenproblem_elpa
             std::vector<double> w(matrix_size);
             sddk::timer t("Eigenproblem_elpa1|diag");
             FORTRAN(elpa_solve_evp_real)(&matrix_size, &nevec, A, &lda, &w[0], tmp1.at<CPU>(), &num_rows_loc, 
-                                         &block_size_, &num_cols_loc, &mpi_comm_rows_, &mpi_comm_cols_);
+                                         &block_size_, &num_cols_loc, &mpi_comm_rows_, &mpi_comm_cols_, &mpi_comm_all_);
             t.stop();
             std::memcpy(eval, &w[0], nevec * sizeof(double));
             
@@ -1492,7 +1514,7 @@ class Eigenproblem_elpa1: public Eigenproblem_elpa
             std::vector<double> w(matrix_size);
             sddk::timer t("Eigenproblem_elpa1|diag");
             FORTRAN(elpa_solve_evp_real)(&matrix_size, &nevec, A, &lda, &w[0], Z, &ldz, 
-                                         &block_size_, &num_cols_loc, &mpi_comm_rows_, &mpi_comm_cols_);
+                                         &block_size_, &num_cols_loc, &mpi_comm_rows_, &mpi_comm_cols_, &mpi_comm_all_);
             t.stop();
             std::memcpy(eval, &w[0], nevec * sizeof(double));
             
@@ -1510,7 +1532,7 @@ class Eigenproblem_elpa1: public Eigenproblem_elpa
             std::vector<double> w(matrix_size);
             sddk::timer t("Eigenproblem_elpa1|diag");
             FORTRAN(elpa_solve_evp_complex)(&matrix_size, &nevec, A, &lda, &w[0], Z, &ldz, 
-                                            &block_size_, &num_cols_loc, &mpi_comm_rows_, &mpi_comm_cols_);
+                                            &block_size_, &num_cols_loc, &mpi_comm_rows_, &mpi_comm_cols_, &mpi_comm_all_);
             t.stop();
             std::memcpy(eval, &w[0], nevec * sizeof(double));
             
