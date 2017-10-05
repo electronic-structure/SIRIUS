@@ -128,7 +128,7 @@ class Simulation_context_base: public Simulation_parameters
         {
             atoms_to_grid_idx_.resize(unit_cell_.num_atoms());
 
-            vector3d<double> delta(1.0 / (fft_->grid().size(0) - 1), 1.0 / (fft_->grid().size(1) - 1), 1.0 / (fft_->grid().size(2) - 1));
+            vector3d<double> delta(1.0 / (fft_->grid().size(0) ), 1.0 / (fft_->grid().size(1) ), 1.0 / (fft_->grid().size(2) ));
 
             vector3d<int> grid_beg(0, 0, fft_->offset_z());
             vector3d<int> grid_end(fft_->grid().size(0), fft_->grid().size(1), fft_->offset_z() + fft_->local_size_z());
@@ -141,7 +141,7 @@ class Simulation_context_base: public Simulation_parameters
                 std::vector<vector3d<double>> verts;
 
                 for (auto v : verts_cart) {
-                    verts.push_back( unit_cell_.get_fractional_coordinates( pos + v ) );
+                    verts.push_back( pos + unit_cell_.get_fractional_coordinates(v) );
                 }
 
                 std::pair<vector3d<int>,vector3d<int>> bounds_ind;
@@ -149,8 +149,8 @@ class Simulation_context_base: public Simulation_parameters
                 size_t size = verts.size();
                 for (int i : {0,1,2}) {
                     std::sort(verts.begin(), verts.end(), [i](vector3d<double>& a, vector3d<double>& b) { return a[i] < b[i]; });
-                    bounds_ind.first[i]  = std::max((int)(verts[0][i] / delta[i]) + 1, grid_beg[i]);
-                    bounds_ind.second[i] = std::min((int)(verts[size-1][i] / delta[i]), grid_end[i]);
+                    bounds_ind.first[i]  = std::max((int)(verts[0][i] / delta[i])-1, grid_beg[i]);
+                    bounds_ind.second[i] = std::min((int)(verts[size-1][i] / delta[i])+1, grid_end[i]);
                 }
 
                 return bounds_ind;
@@ -175,7 +175,7 @@ class Simulation_context_base: public Simulation_parameters
                                         auto r = unit_cell_.get_cartesian_coordinates(dist).length();
                                         auto ir = fft_->grid().index_by_coord(j0, j1, j2);
 
-                                        if (r < R) {
+                                        if (r <= R) {
                                             atom_to_inds_map.push_back({ir, r});
                                         }
                                     }

@@ -1013,6 +1013,36 @@ class Density
             return std::move(dm);
         }
 
+        /// Calculate magnetic moment of the atoms
+        /// Compute approximate atomic magnetic moments in case of PW-PP.
+        mdarray<double, 2> compute_atomic_mag_mom() const
+        {
+            PROFILE("sirius::DFT_ground_state::compute_atomic_mag_mom");
+
+            mdarray<double, 2> mmom(3, unit_cell_.num_atoms());
+            mmom.zero();
+
+            #pragma omp parallel for
+            for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
+
+                auto& atom_to_grid_map = ctx_.atoms_to_grid_idx_map()[ia];
+
+                for (auto coord : atom_to_grid_map)
+                {
+                    int ir = coord.first;
+                    for (int j = 0; j < ctx_.num_mag_dims(); j++) {
+                        mmom(j, ia) += magnetization(j).f_rg(ir);
+                    }
+                }
+
+                for (int j: {0, 1, 2}) {
+                    mmom(j, ia) *= (unit_cell_.omega() / ctx_.fft().size());
+                }
+            }
+            ctx_.fft().comm().allreduce(&mmom(0, 0), static_cast<int>(mmom.size()));
+            return std::move(mmom);
+        }
+
         /// Symmetrize density matrix.
         /** Initially, density matrix is obtained with summation over irreducible BZ:
          *  \f[
