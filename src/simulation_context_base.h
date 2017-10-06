@@ -126,6 +126,8 @@ class Simulation_context_base: public Simulation_parameters
 
         void init_atoms_to_grid_idx()
         {
+            PROFILE("sirius::Simulation_context_base::init_atoms_to_grid_idx");
+
             atoms_to_grid_idx_.resize(unit_cell_.num_atoms());
 
             vector3d<double> delta(1.0 / (fft_->grid().size(0) ), 1.0 / (fft_->grid().size(1) ), 1.0 / (fft_->grid().size(2) ));
