@@ -1,6 +1,6 @@
 include ../../../make.inc
 
-external_elpa_lib = true
+external_elpa_lib = false
 ifeq ($(external_elpa_lib), true)
   MPI_FC_OPT := $(MPI_FC_OPT) -D__EXTERNAL_ELPA_LIB -I/Users/antonk/local/include/elpa_openmp-2017.05.002/modules
 endif
