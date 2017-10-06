@@ -1455,23 +1455,18 @@ class Eigenproblem_elpa1: public Eigenproblem_elpa
             matrix<double_complex> tmp1(num_rows_loc, num_cols_loc);
             matrix<double_complex> tmp2(num_rows_loc, num_cols_loc);
             
-            printf("solve#1\n");
             transform_to_standard(matrix_size, A, lda, B, ldb, num_rows_loc, num_cols_loc, tmp1, tmp2);
-            printf("solve#2\n");
 
             std::vector<double> w(matrix_size);
             sddk::timer t("Eigenproblem_elpa1|diag");
-            printf("nevec=%i\n", nevec);
             FORTRAN(elpa_solve_evp_complex)(&matrix_size, &nevec, A, &lda, &w[0], tmp1.at<CPU>(), &num_rows_loc, 
                                             &block_size_, &num_cols_loc, &mpi_comm_rows_, &mpi_comm_cols_, &mpi_comm_all_);
-            printf("solve#3\n");
             t.stop();
             std::memcpy(eval, &w[0], nevec * sizeof(double));
             
             transform_back(matrix_size, nevec, B, ldb, Z, ldz, num_rows_loc, num_cols_loc, tmp1, tmp2);
 
             t.stop();
-            printf("solve#4\n");
             return 0;
         }
 
