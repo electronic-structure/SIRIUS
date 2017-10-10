@@ -414,6 +414,9 @@ struct Parameters_input
     /// True if spin-orbit correction is applied.
     bool so_correction_{false};
 
+    /// True if hubbard correction is applied.
+    bool hubbard_correction_{false};
+
     /// True if UJ correction is applied.
     bool uj_correction_{false};
 
@@ -462,10 +465,15 @@ struct Parameters_input
             potential_tol_  = parser["parameters"].value("potential_tol", potential_tol_);
             molecule_       = parser["parameters"].value("molecule", molecule_);
             nn_radius_      = parser["parameters"].value("nn_radius", nn_radius_);
-            if (parser["parameters"].count("so_correction")) {
-                so_correction_ = parser["parameters"].value("so_correction", so_correction_);
+            if (parser["parameters"].count("spin_orbit")) {
+                so_correction_ = parser["parameters"].value("spin_orbit", so_correction_);
                 num_mag_dims_  = 3;
             }
+
+            if (parser["parameters"].count("hubbard_correction")) {
+                hubbard_correction_ = parser["parameters"].value("hubbard_correction", hubbard_correction_);
+            }
+
         }
     }
 };

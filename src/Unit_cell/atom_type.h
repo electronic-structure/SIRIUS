@@ -341,6 +341,28 @@ class Atom_type
 
     pseudopotential_descriptor pp_desc_;
 
+    /// Hubbard correction
+    bool hubbard_correction_{false};
+
+    /// hubbard orbitals
+    int hubbard_lmax_{0};
+
+    /// different hubbard coefficients
+    //  s: U = hubbard_coefficients_[0]
+    //  p: U = hubbard_coefficients_[0], J = hubbard_coefficients_[1]
+    //  d: U = hubbard_coefficients_[0], J = hubbard_coefficients_[1],  B  = hubbard_coefficients_[2]
+    //  f: U = hubbard_coefficients_[0], J = hubbard_coefficients_[1],  E2 = hubbard_coefficients_[2], E3 = hubbard_coefficients_[3]
+    ///   hubbard_coefficients[4] = U_alpha
+    ///   hubbard_coefficients[5] = U_beta
+
+    double hubbard_coefficients_[4];
+
+    mdarray<double, 4> hubbard_matrix_;
+
+    // simplifed hubbard theory
+    double hubbard_alpha_{0.0};
+    double hubbard_beta_{0.0};
+
     /// Inverse of (Q_{\xi \xi'j}^{-1} + beta_pw^{H}_{\xi} * beta_pw_{xi'})
     /** Used in Chebyshev iterative solver as a block-diagonal preconditioner */
     matrix<double_complex> p_mtrx_;
@@ -362,6 +384,8 @@ class Atom_type
     mdarray<Spline<double>, 2> q_rf_;
 
     bool initialized_{false};
+
+    inline void read_hubbard_parameters(json const& parser);
 
     inline void read_input_core(json const& parser);
 
@@ -883,6 +907,69 @@ class Atom_type
         return q_rf_(idx__, l__);
     }
 
+    inline double Hubbard_U() const
+    {
+        return hubbard_coefficients_[0];
+    }
+
+    inline double Hubbard_J() const
+    {
+        return hubbard_coefficients_[1];
+    }
+
+    inline double Hubbard_B() const
+    {
+        return hubbard_coefficients_[2];
+    }
+
+    inline double Hubbard_E2() const
+    {
+        return hubbard_coefficients_[2];
+    }
+
+    inline double Hubbard_E3() const
+    {
+        return hubbard_coefficients_[3];
+    }
+
+    inline double Hubbard_alpha() const
+    {
+        return hubbard_alpha_;
+    }
+
+    inline double Hubbard_beta() const
+    {
+        return hubbard_beta_;
+    }
+
+    inline int hubbard_lmax() const
+    {
+        return hubbard_lmax_;
+    }
+
+    void hubbard_F_coefficients(double *F)
+    {
+        F[0] = Hubbard_U();
+
+        switch(hubbard_lmax_) {
+        case 1:
+            F[1] = 5.0 * Hubbard_J();
+            break;
+        case 2:
+            F[1] = 5.0 * Hubbard_J() + 31.5 * Hubbard_B();
+            F[2] = 9.0 * Hubbard_J() - 31.5 * Hubbard_B();
+            break;
+        case 3:
+            F[1] = (225.0 / 54.0) * Hubbard_J()     + (32175.0 / 42.0) * Hubbard_E2()   + (2475.0 / 42.0) * Hubbard_E3();
+            F[2] = 11.0 * Hubbard_J()            - (141570.0 / 77.0) * Hubbard_E2()  + (4356.0 / 77.0) * Hubbard_E3();
+            F[3] = (7361.640 / 594.0) * Hubbard_J() + (36808.20 / 66.0) * Hubbard_E2()  - 111.54 * Hubbard_E3();
+            break;
+        default:
+            TERMINATE("Hubbard correction not implemented for l > 3");
+            break;
+        }
+    }
+
     /// compare the angular, total angular momentum and radial part of
     /// the beta projectors, leaving the m index free. Only useful
     /// when spin orbit coupling is included.
@@ -896,6 +983,8 @@ class Atom_type
     void generate_f_coefficients(void);
     inline double ClebschGordan(const int l, const double j, const double m, const int spin);
     inline double_complex calculate_U_sigma_m(const int l, const double j, const int mj, const int m, const int sigma);
+    inline void calculate_ak_coefficients(mdarray<double, 5> &ak);
+    inline void compute_hubbard_matrix();
 };
 
 inline void Atom_type::init(int offset_lo__)
@@ -1077,6 +1166,10 @@ inline void Atom_type::init(int offset_lo__)
 #else
         TERMINATE_NO_GPU
 #endif
+    }
+
+    if (this->hubbard_correction_) {
+        compute_hubbard_matrix();
     }
 
     if (this->pp_desc().spin_orbit_coupling)
@@ -1323,6 +1416,53 @@ inline void Atom_type::read_input_lo(json const& parser)
     }
 }
 
+inline void Atom_type::read_hubbard_parameters(json const& parser)
+{
+    hubbard_correction_ = false;
+
+    if(!parser.count("hubbard"))
+        return;
+
+    if(!parser["hubbard"].count(symbol_)) {
+        return;
+    }
+
+    if(parser["hubbard"][symbol_].count("U")) {
+        this->hubbard_coefficients_[0] = parser["hubbard"][symbol_]["U"].get<double>();
+        hubbard_correction_ = true;
+    }
+
+    if(parser["hubbard"][symbol_].count("J")) {
+        this->hubbard_coefficients_[1] = parser["hubbard"][symbol_]["J"].get<double>();
+        hubbard_correction_ = true;
+    }
+
+    if(parser["hubbard"][symbol_].count("B")) {
+        this->hubbard_coefficients_[2] = parser["hubbard"][symbol_]["B"].get<double>();
+        hubbard_correction_ = true;
+    }
+
+    if(parser["hubbard"][symbol_].count("E2")) {
+        this->hubbard_coefficients_[2] = parser["hubbard"][symbol_]["E2"].get<double>();
+        hubbard_correction_ = true;
+    }
+
+    if(parser["hubbard"][symbol_].count("E3")) {
+        this->hubbard_coefficients_[3] = parser["hubbard"][symbol_]["E3"].get<double>();
+        hubbard_correction_ = true;
+    }
+
+    if(parser["hubbard"][symbol_].count("alpha")) {
+        this->hubbard_alpha_ = parser["hubbard"][symbol_]["alpha"].get<double>();
+        hubbard_correction_ = true;
+    }
+
+    if(parser["hubbard"][symbol_].count("beta")) {
+        this->hubbard_beta_ = parser["hubbard"][symbol_]["beta"].get<double>();
+        hubbard_correction_ = true;
+    }
+}
+
 inline void Atom_type::read_pseudo_uspp(json const& parser)
 {
     symbol_ = parser["pseudo_potential"]["header"]["element"];
@@ -1357,7 +1497,7 @@ inline void Atom_type::read_pseudo_uspp(json const& parser)
     set_radial_grid(num_mt_points_, rgrid.data());
 
     if (parser["pseudo_potential"]["header"].count("spin_orbit"))
-        pp_desc_.spin_orbit_coupling = parser["pseudo_potential"]["header"]["spin_orbit"];
+        pp_desc_.spin_orbit_coupling = true;
 
     pp_desc_.num_beta_radial_functions = parser["pseudo_potential"]["header"]["number_of_proj"];
 
@@ -1444,6 +1584,11 @@ inline void Atom_type::read_pseudo_uspp(json const& parser)
             wf.first = parser["pseudo_potential"]["atomic_wave_functions"][k]["angular_momentum"];
             pp_desc_.atomic_pseudo_wfs_.push_back(wf);
 
+            if (pp_desc_.spin_orbit_coupling &&
+                parser["pseudo_potential"]["atomic_wave_functions"][k].count("total_angular_momentum")) {
+                double jchi = parser["pseudo_potential"]["atomic_wave_functions"][k]["total_angular_momentum"];
+                pp_desc_.total_angular_momentum_wfs.push_back(jchi);
+            }
             ///* read occupation of the function */
             // double occ = parser["pseudo_potential"]["atomic_wave_functions"][k]["occupation"];
             // pp_desc_.atomic_pseudo_wfs_occ_.push_back(occ);
@@ -1526,6 +1671,10 @@ inline void Atom_type::read_input(const std::string& fname)
 
         if (parser["pseudo_potential"].count("paw_data")) {
             read_pseudo_paw(parser);
+        }
+
+        if(parameters_.hubbard_correction()) {
+            read_hubbard_parameters(parser);
         }
     }
 
@@ -1696,6 +1845,83 @@ void Atom_type::generate_f_coefficients(void)
     }
 }
 
+void Atom_type::calculate_ak_coefficients(mdarray<double, 5> &ak)
+{
+    /// compute the ak coefficients appearing in the general treatment of hubbard corrections.
+    /// expression taken from Liechtenstein {\it et al}, PRB 52, R5467 (1995)
+
+    ak = mdarray<double, 5>(4,
+                            2 * this->hubbard_lmax_ + 1,
+                            2 * this->hubbard_lmax_ + 1,
+                            2 * this->hubbard_lmax_ + 1,
+                            2 * this->hubbard_lmax_ + 1);
+
+    ak.zero();
+
+    for(int m1 = -this->hubbard_lmax_; m1 <= this->hubbard_lmax_; m1++) {
+        for(int m2 = -this->hubbard_lmax_; m2 <= this->hubbard_lmax_; m2++) {
+            for(int m3 = -this->hubbard_lmax_; m3 <= this->hubbard_lmax_; m3++) {
+                for(int m4 = -this->hubbard_lmax_; m4 <= this->hubbard_lmax_; m4++) {
+                    for(int k = 0; k < 4; k++) {
+                        std::vector<double> tmp(4 * k + 1);
+                        for(int q=- 2 * k; q <= 2 * k; q++) {
+                            tmp[2 * k + q] = SHT::clebsch_gordan(this->hubbard_lmax_, 2 * k, this->hubbard_lmax_, 0, 0, 0) *
+                                SHT::clebsch_gordan(this->hubbard_lmax_, 2 * k, this->hubbard_lmax_, -m1, q, m4) *
+                                SHT::clebsch_gordan(this->hubbard_lmax_, 2 * k, this->hubbard_lmax_, -m3, -q, m4)
+                                * (2 * this->hubbard_lmax_ + 1) * (2 * this->hubbard_lmax_ + 1) *
+                                ((((m1 + q + m2 + 20) % 2) == 0) - (((m1 + q + m2 + 20) % 2)));
+                        }
+                        // now we sum the result
+                        double sum = 0.0;
+                        for(auto q = 0; q < tmp.size(); q++)
+                            sum += tmp[q];
+
+                        sum *= 4.0 * M_PI/(4 * k + 1);
+                        ak(k,
+                           m1 + this->hubbard_lmax_,
+                           m2 + this->hubbard_lmax_,
+                           m3 + this->hubbard_lmax_,
+                           m4 + this->hubbard_lmax_) = sum;
+                    }
+                }
+            }
+        }
+    }
+}
+
+/// this function computes the matrix elements of the orbital part of
+/// the electron-electron interactions. we effectively compute
+
+/// \f[
+/// u(m,m'',m',m''') = \left<m,m''|V_{e-e}|m',m'''\right> \sum_k
+/// a_k(m,m',m'',m''') F_k \f]
+
+void Atom_type::compute_hubbard_matrix()
+{
+    this->hubbard_matrix_ = mdarray<double, 4>(2 * this->hubbard_lmax_ + 1,
+                                               2 * this->hubbard_lmax_ + 1,
+                                               2 * this->hubbard_lmax_ + 1,
+                                               2 * this->hubbard_lmax_ + 1);
+    mdarray<double, 5> ak(this->hubbard_lmax_,
+                          2 * this->hubbard_lmax_ + 1,
+                          2 * this->hubbard_lmax_ + 1,
+                          2 * this->hubbard_lmax_ + 1,
+                          2 * this->hubbard_lmax_ + 1);
+    std::vector<double> F(4);
+    hubbard_F_coefficients(&F[0]);
+    calculate_ak_coefficients(ak);
+
+    for(int m4 = 0; m4 < 2 * this->hubbard_lmax_ + 1; m4++) {
+        for(int m3 = 0; m3 < 2 * this->hubbard_lmax_ + 1; m3++) {
+            for(int m2 = 0; m2 < 2 * this->hubbard_lmax_ + 1; m2++) {
+                for(int m1 = 0; m1 < 2 * this->hubbard_lmax_ + 1; m1++) {
+                    for(int k = 0; k < hubbard_lmax_; k++)
+                        this->hubbard_matrix_(m1, m2, m3, m4) = ak (k, m1, m2, m3, m4) * F[k];
+                }
+            }
+        }
+    }
+}
 } // namespace
 
 #endif // __ATOM_TYPE_H__
