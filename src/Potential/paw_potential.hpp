@@ -292,7 +292,7 @@ inline double Potential::xc_mt_PAW_noncollinear(std::vector<Spheric_function<spe
             /* get unit magnetization vector*/
             vector3d<double> magn({rho_tp[1](itp, ir), rho_tp[2](itp, ir), rho_tp[3](itp, ir)});
             double norm = magn.length();
-            magn *= norm > 0.0 ? field / norm : 0.0 ;
+            magn = magn * (norm > 0.0 ? field / norm : 0.0) ;
 
             /* add total potential and effective field values at current point */
             vxc_tp[0](itp, ir) = pot;

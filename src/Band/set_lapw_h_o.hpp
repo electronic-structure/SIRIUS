@@ -391,7 +391,7 @@ inline void Band::set_fv_h_o_it(K_point* kp,
             auto gkvec_row_cart = kp->gkvec().gkvec_cart(ig_row);
             int ig12 = ctx_.gvec().index_g12(gvec_row, gvec_col);
             /* pw kinetic energy */
-            double t1 = 0.5 * (gkvec_row_cart * gkvec_col_cart);
+            double t1 = 0.5 * dot(gkvec_row_cart, gkvec_col_cart);
 
             h(igk_row, igk_col) += potential__.veff_pw(ig12);
             o(igk_row, igk_col) += ctx_.step_function().theta_pw(ig12);

@@ -245,7 +245,7 @@ class Matching_coefficients
                 
             std::vector<double_complex> phase_factors(num_gkvec_);
             for (int i = 0; i < num_gkvec_; i++) {
-                double phase = twopi * (gkvec_.gkvec(igk_[i]) * unit_cell_.atom(ia).position());
+                double phase = twopi * dot(gkvec_.gkvec(igk_[i]), unit_cell_.atom(ia).position());
                 phase_factors[i] = std::exp(double_complex(0, phase));
             }
             

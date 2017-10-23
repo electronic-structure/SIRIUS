@@ -69,9 +69,9 @@ inline void Band::initialize_subspace(K_point_set& kset__, Potential& potential_
         auto kp = kset__[ik];
 
         if (ctx_.gamma_point() && (ctx_.so_correction() == false)) {
-            initialize_subspace<double>(kp, N, rad_int);
+            initialize_subspace<double>(kp, N, qgrid, rad_int);
         } else {
-            initialize_subspace<double_complex>(kp, N, rad_int);
+            initialize_subspace<double_complex>(kp, N, qgrid, rad_int);
         }
     }
     local_op_->dismiss();
@@ -87,7 +87,7 @@ inline void Band::initialize_subspace(K_point_set& kset__, Potential& potential_
 
 template <typename T>
 inline void
-Band::initialize_subspace(K_point* kp__, int num_ao__, std::vector<std::vector<Spline<double>>> const& rad_int__) const
+Band::initialize_subspace(K_point* kp__, int num_ao__, Radial_grid_lin<double>& qgrid__, std::vector<std::vector<Spline<double>>> const& rad_int__) const
 {
     PROFILE("sirius::Band::initialize_subspace|kp");
 
@@ -131,8 +131,8 @@ Band::initialize_subspace(K_point* kp__, int num_ao__, std::vector<std::vector<S
             for (int lm = 0; lm < Utils::lmmax(lmax); lm++) {
                 rlm_gk(igk_loc, lm) = rlm[lm];
             }
-            int i = static_cast<int>((vs[0] / ctx_.gk_cutoff()) * (rad_int__[0][0].num_points() - 1));
-            double dgk = vs[0] - rad_int__[0][0].radial_grid()[i];
+            int i = static_cast<int>((vs[0] / ctx_.gk_cutoff()) * (qgrid__.num_points() - 1));
+            double dgk = vs[0] - qgrid__[i];
             idx_gk(igk_loc) = std::pair<int, double>(i, dgk);
         }
     
@@ -162,7 +162,7 @@ Band::initialize_subspace(K_point* kp__, int num_ao__, std::vector<std::vector<S
 
         #pragma omp parallel for schedule(static)
         for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
-            double phase = twopi * (kp__->gkvec().vk() * unit_cell_.atom(ia).position());
+            double phase = twopi * dot(kp__->gkvec().vk(), unit_cell_.atom(ia).position());
             double_complex phase_k = std::exp(double_complex(0.0, phase));
 
             std::vector<double_complex> phase_gk(kp__->num_gkvec_loc());
