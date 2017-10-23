@@ -31,11 +31,11 @@ void test_diag(BLACS_grid const& blacs_grid__,
         }
     }
 
-    dmatrix<double_complex> A(num_bands__, num_bands__, blacs_grid__, bs__, bs__);
-    dmatrix<double_complex> B(num_bands__, num_bands__, blacs_grid__, bs__, bs__);
-    dmatrix<double_complex> A_ref(num_bands__, num_bands__, blacs_grid__, bs__, bs__);
-    dmatrix<double_complex> B_ref(num_bands__, num_bands__, blacs_grid__, bs__, bs__);
-    dmatrix<double_complex> Z(num_bands__, num_bands__, blacs_grid__, bs__, bs__);
+    dmatrix<double_complex> A(num_bands__ * 2, num_bands__ * 2, blacs_grid__, bs__, bs__);
+    dmatrix<double_complex> B(num_bands__ * 2, num_bands__ * 2, blacs_grid__, bs__, bs__);
+    dmatrix<double_complex> A_ref(num_bands__ * 2, num_bands__ * 2, blacs_grid__, bs__, bs__);
+    dmatrix<double_complex> B_ref(num_bands__ * 2, num_bands__ * 2, blacs_grid__, bs__, bs__);
+    dmatrix<double_complex> Z(num_bands__ * 2, num_bands__ * 2, blacs_grid__, bs__, bs__);
 
 #ifdef __GPU
     if (pu == GPU) {
@@ -54,6 +54,9 @@ void test_diag(BLACS_grid const& blacs_grid__,
     B >> B_ref;
 
     Eigenproblem_elpa1 evp(blacs_grid__, bs__);
+    experimental::Eigenproblem_elpa1 evp1;
+
+
     //Eigenproblem_scalapack evp(blacs_grid__, bs__, bs__, 1e-12);
     
     //int nev{50};
@@ -66,7 +69,9 @@ void test_diag(BLACS_grid const& blacs_grid__,
         printf("bs = %i\n", bs__);
         printf("== calling eigensolver ==\n");
     }
-    evp.solve(num_bands__, nev, A.at<CPU>(), A.ld(), B.at<CPU>(), B.ld(), eval.data(), Z.at<CPU>(), Z.ld(), A.num_rows_local(), A.num_cols_local()); 
+    evp1.solve(num_bands__, nev, A, B, eval.data(), Z);
+
+    //evp.solve(num_bands__, nev, A.at<CPU>(), A.ld(), B.at<CPU>(), B.ld(), eval.data(), Z.at<CPU>(), Z.ld(), A.num_rows_local(), A.num_cols_local()); 
 
     /* check residuals */
     if (B.blacs_grid().comm().rank() == 0) {
