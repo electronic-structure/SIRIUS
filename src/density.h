@@ -158,12 +158,12 @@ class Density
 
             int ia{-1};
 
-            /// ae and ps local densities
-            mdarray<double, 2> ae_density_; // TODO: use Spheric_function
-            mdarray<double, 2> ps_density_;
+            /// ae and ps local unified densities+magnetization
+            std::vector<Spheric_function<spectral, double>> ae_density_; // TODO: use Spheric_function
+            std::vector<Spheric_function<spectral, double>> ps_density_;
 
-            mdarray<double, 3> ae_magnetization_;
-            mdarray<double, 3> ps_magnetization_;
+//            mdarray<double, 3> ae_magnetization_;
+//            mdarray<double, 3> ps_magnetization_;
         };
 
         std::vector<paw_density_data_t> paw_density_data_;
@@ -807,25 +807,25 @@ class Density
         /// Generate \f$ n_1 \f$  and \f$ \tilde{n}_1 \f$ in lm components.
         void generate_paw_loc_density();
 
-        mdarray<double, 2> const& ae_paw_atom_density(int spl_paw_ind) const
+        std::vector<Spheric_function<spectral, double>> const& ae_paw_atom_density(int spl_paw_ind) const
         {
             return paw_density_data_[spl_paw_ind].ae_density_;
         }
 
-        mdarray<double, 2> const& ps_paw_atom_density(int spl_paw_ind) const
+        std::vector<Spheric_function<spectral, double>> const& ps_paw_atom_density(int spl_paw_ind) const
         {
             return paw_density_data_[spl_paw_ind].ps_density_;
         }
 
-        mdarray<double, 3> const& ae_paw_atom_magn(int spl_paw_ind) const
-        {
-            return paw_density_data_[spl_paw_ind].ae_magnetization_;
-        }
-
-        mdarray<double, 3> const& ps_paw_atom_magn(int spl_paw_ind) const
-        {
-            return paw_density_data_[spl_paw_ind].ps_magnetization_;
-        }
+//        mdarray<double, 3> const& ae_paw_atom_magn(int spl_paw_ind) const
+//        {
+//            return paw_density_data_[spl_paw_ind].ae_magnetization_;
+//        }
+//
+//        mdarray<double, 3> const& ps_paw_atom_magn(int spl_paw_ind) const
+//        {
+//            return paw_density_data_[spl_paw_ind].ps_magnetization_;
+//        }
 
         void allocate()
         {
@@ -1011,6 +1011,36 @@ class Density
                 }
             }
             return std::move(dm);
+        }
+
+        /// Calculate magnetic moment of the atoms
+        /// Compute approximate atomic magnetic moments in case of PW-PP.
+        mdarray<double, 2> compute_atomic_mag_mom() const
+        {
+            PROFILE("sirius::DFT_ground_state::compute_atomic_mag_mom");
+
+            mdarray<double, 2> mmom(3, unit_cell_.num_atoms());
+            mmom.zero();
+
+            #pragma omp parallel for
+            for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
+
+                auto& atom_to_grid_map = ctx_.atoms_to_grid_idx_map()[ia];
+
+                for (auto coord : atom_to_grid_map)
+                {
+                    int ir = coord.first;
+                    for (int j = 0; j < ctx_.num_mag_dims(); j++) {
+                        mmom(j, ia) += magnetization(j).f_rg(ir);
+                    }
+                }
+
+                for (int j: {0, 1, 2}) {
+                    mmom(j, ia) *= (unit_cell_.omega() / ctx_.fft().size());
+                }
+            }
+            ctx_.fft().comm().allreduce(&mmom(0, 0), static_cast<int>(mmom.size()));
+            return std::move(mmom);
         }
 
         /// Symmetrize density matrix.
