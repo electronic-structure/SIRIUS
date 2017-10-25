@@ -21,6 +21,7 @@
 #endif
 #include "json.hpp"
 
+/// Namespace of the Slab Data Distribution Kit.
 namespace sddk {
 
 struct timer_stats_t
