@@ -29,6 +29,9 @@
 #include <cassert>
 #include <vector>
 #include <complex>
+#ifdef __GPU
+#include <GPU/cuda.hpp>
+#endif
 
 namespace sddk {
 
@@ -303,8 +306,14 @@ class Communicator
 
     inline void barrier() const
     {
+        #if defined(__GPU_NVTX_MPI)
+        acc::begin_range_marker("MPI_Barrier");
+        #endif
         assert(mpi_comm_ != MPI_COMM_NULL);
         CALL_MPI(MPI_Barrier, (mpi_comm_));
+        #if defined(__GPU_NVTX_MPI)
+        acc::end_range_marker();
+        #endif
     }
 
     template <typename T, mpi_op_t mpi_op__ = mpi_op_t::sum>
@@ -363,15 +372,27 @@ class Communicator
     template <typename T, mpi_op_t mpi_op__ = mpi_op_t::sum>
     inline void iallreduce(T* buffer__, int count__, MPI_Request* req__) const
     {
+        #if defined(__GPU_NVTX_MPI)
+        acc::begin_range_marker("MPI_Iallreduce");
+        #endif
         CALL_MPI(MPI_Iallreduce, (MPI_IN_PLACE, buffer__, count__, mpi_type_wrapper<T>::kind(),
                                   mpi_op_wrapper<mpi_op__>::kind(), mpi_comm_, req__));
+        #if defined(__GPU_NVTX_MPI)
+        acc::end_range_marker();
+        #endif
     }
 
     /// Perform buffer broadcast.
     template <typename T>
     inline void bcast(T* buffer__, int count__, int root__) const
     {
+        #if defined(__GPU_NVTX_MPI)
+        acc::begin_range_marker("MPI_Bcast");
+        #endif
         CALL_MPI(MPI_Bcast, (buffer__, count__, mpi_type_wrapper<T>::kind(), root__, mpi_comm_));
+        #if defined(__GPU_NVTX_MPI)
+        acc::end_range_marker();
+        #endif
     }
 
     inline void bcast(std::string& str__, int root__) const
@@ -394,8 +415,14 @@ class Communicator
     template <typename T>
     void allgather(T* buffer__, int const* recvcounts__, int const* displs__) const
     {
+        #if defined(__GPU_NVTX_MPI)
+        acc::begin_range_marker("MPI_Allgatherv");
+        #endif
         CALL_MPI(MPI_Allgatherv, (MPI_IN_PLACE, 0, MPI_DATATYPE_NULL, buffer__, recvcounts__, displs__,
                                   mpi_type_wrapper<T>::kind(), mpi_comm_));
+        #if defined(__GPU_NVTX_MPI)
+        acc::end_range_marker();
+        #endif
     }
 
     /// Out-of-place MPI_Allgatherv.
@@ -403,8 +430,14 @@ class Communicator
     void allgather(T* const sendbuf__, int sendcount__, T* recvbuf__, int const* recvcounts__,
                    int const* displs__) const
     {
+        #if defined(__GPU_NVTX_MPI)
+        acc::begin_range_marker("MPI_Allgatherv");
+        #endif
         CALL_MPI(MPI_Allgatherv, (sendbuf__, sendcount__, mpi_type_wrapper<T>::kind(), recvbuf__, recvcounts__,
                                   displs__, mpi_type_wrapper<T>::kind(), mpi_comm_));
+        #if defined(__GPU_NVTX_MPI)
+        acc::end_range_marker();
+        #endif
     }
 
     template <typename T>
@@ -455,19 +488,37 @@ class Communicator
     {
         MPI_Request request;
 
+        #if defined(__GPU_NVTX_MPI)
+        acc::begin_range_marker("MPI_Isend");
+        #endif
         CALL_MPI(MPI_Isend, (buffer__, count__, mpi_type_wrapper<T>::kind(), dest__, tag__, mpi_comm_, &request));
+        #if defined(__GPU_NVTX_MPI)
+        acc::end_range_marker();
+        #endif
     }
 
     template <typename T>
     void recv(T* buffer__, int count__, int source__, int tag__) const
     {
+        #if defined(__GPU_NVTX_MPI)
+        acc::begin_range_marker("MPI_Recv");
+        #endif
         CALL_MPI(MPI_Recv, (buffer__, count__, mpi_type_wrapper<T>::kind(), source__, tag__, mpi_comm_, MPI_STATUS_IGNORE));
+        #if defined(__GPU_NVTX_MPI)
+        acc::end_range_marker();
+        #endif
     }
 
     template <typename T>
     void irecv(T* buffer__, int count__, int source__, int tag__, MPI_Request* request__) const
     {
+        #if defined(__GPU_NVTX_MPI)
+        acc::begin_range_marker("MPI_Irecv");
+        #endif
         CALL_MPI(MPI_Irecv, (buffer__, count__, mpi_type_wrapper<T>::kind(), source__, tag__, mpi_comm_, request__));
+        #if defined(__GPU_NVTX_MPI)
+        acc::end_range_marker();
+        #endif
     }
 
     template <typename T>
@@ -475,31 +526,55 @@ class Communicator
     {
         int sendcount = recvcounts__[rank()];
 
+        #if defined(__GPU_NVTX_MPI)
+        acc::begin_range_marker("MPI_Gatherv");
+        #endif
         CALL_MPI(MPI_Gatherv, (sendbuf__, sendcount, mpi_type_wrapper<T>::kind(), recvbuf__, recvcounts__, displs__,
                                mpi_type_wrapper<T>::kind(), root__, mpi_comm_));
+        #if defined(__GPU_NVTX_MPI)
+        acc::end_range_marker();
+        #endif
     }
 
     template <typename T>
     void scatter(T const* sendbuf__, T* recvbuf__, int const* sendcounts__, int const* displs__, int root__) const
     {
+        #if defined(__GPU_NVTX_MPI)
+        acc::begin_range_marker("MPI_Scatterv");
+        #endif
         int recvcount = sendcounts__[rank()];
         CALL_MPI(MPI_Scatterv, (sendbuf__, sendcounts__, displs__, mpi_type_wrapper<T>::kind(), recvbuf__, recvcount,
                                 mpi_type_wrapper<T>::kind(), root__, mpi_comm_));
+        #if defined(__GPU_NVTX_MPI)
+        acc::end_range_marker();
+        #endif
     }
 
     template <typename T>
     void alltoall(T const* sendbuf__, int sendcounts__, T* recvbuf__, int recvcounts__) const
     {
+        #if defined(__GPU_NVTX_MPI)
+        acc::begin_range_marker("MPI_Alltoall");
+        #endif
         CALL_MPI(MPI_Alltoall, (sendbuf__, sendcounts__, mpi_type_wrapper<T>::kind(), recvbuf__, recvcounts__,
                                 mpi_type_wrapper<T>::kind(), mpi_comm_));
+        #if defined(__GPU_NVTX_MPI)
+        acc::end_range_marker();
+        #endif
     }
 
     template <typename T>
     void alltoall(T const* sendbuf__, int const* sendcounts__, int const* sdispls__, T* recvbuf__,
                   int const* recvcounts__, int const* rdispls__) const
     {
+        #if defined(__GPU_NVTX_MPI)
+        acc::begin_range_marker("MPI_Alltoallv");
+        #endif
         CALL_MPI(MPI_Alltoallv, (sendbuf__, sendcounts__, sdispls__, mpi_type_wrapper<T>::kind(), recvbuf__,
                                  recvcounts__, rdispls__, mpi_type_wrapper<T>::kind(), mpi_comm_));
+        #if defined(__GPU_NVTX_MPI)
+        acc::end_range_marker();
+        #endif
     }
 
     Communicator split(int color__) const

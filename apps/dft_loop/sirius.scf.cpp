@@ -56,6 +56,7 @@ std::unique_ptr<Simulation_context> create_sim_ctx(std::string     fname__,
     return std::move(ctx_ptr);
 }
 
+
 double ground_state(Simulation_context& ctx,
                     task_t              task,
                     cmd_args const&     args,
@@ -107,6 +108,8 @@ double ground_state(Simulation_context& ctx,
     /* launch the calculation */
     int result = dft.find(inp.potential_tol_, inp.energy_tol_, inp.num_dft_iter_, write_state);
 
+    dft.print_magnetic_moment();
+
     if (ref_file.size() != 0) {
         auto dict = dft.serialize();
         json dict_ref;
@@ -138,7 +141,7 @@ double ground_state(Simulation_context& ctx,
         
         dict["task"] = static_cast<int>(task);
         dict["ground_state"] = dft.serialize();
-        dict["timers"] = Utils::serialize_timers();
+        dict["timers"] = sddk::timer::serialize_timers();
  
         if (ctx.comm().rank() == 0) {
             std::ofstream ofs(std::string("output_") + ctx.start_time_tag() + std::string(".json"),

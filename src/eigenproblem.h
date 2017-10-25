@@ -28,6 +28,220 @@
 #include "constants.h"
 #include "linalg.hpp"
 
+#ifdef __ELPA
+extern "C" {
+void FORTRAN(elpa_cholesky_complex_wrapper)(ftn_int const*      na,
+                                            ftn_double_complex* a,
+                                            ftn_int const*      lda,
+                                            ftn_int const*      nblk,
+                                            ftn_int const*      matrixCols,
+                                            ftn_int const*      mpi_comm_rows,
+                                            ftn_int const*      mpi_comm_cols);
+
+void FORTRAN(elpa_cholesky_real_wrapper)(ftn_int const* na,
+                                         ftn_double*    a,
+                                         ftn_int const* lda,
+                                         ftn_int const* nblk,
+                                         ftn_int const* matrixCols,
+                                         ftn_int const* mpi_comm_rows,
+                                         ftn_int const* mpi_comm_cols);
+
+void FORTRAN(elpa_invert_trm_complex_wrapper)(ftn_int const*      na,
+                                              ftn_double_complex* a,
+                                              ftn_int const*      lda,
+                                              ftn_int const*      nblk,
+                                              ftn_int const*      matrixCols,
+                                              ftn_int const*      mpi_comm_rows,
+                                              ftn_int const*      mpi_comm_cols);
+
+void FORTRAN(elpa_invert_trm_real_wrapper)(ftn_int const* na,
+                                           ftn_double*    a,
+                                           ftn_int const* lda,
+                                           ftn_int const* nblk,
+                                           ftn_int const* matrixCols,
+                                           ftn_int const* mpi_comm_rows,
+                                           ftn_int const* mpi_comm_cols);
+
+void FORTRAN(elpa_mult_ah_b_complex_wrapper)(ftn_char            uplo_a,
+                                             ftn_char            uplo_c,
+                                             ftn_int const*      na,
+                                             ftn_int const*      ncb, 
+                                             ftn_double_complex* a,
+                                             ftn_int const*      lda,
+                                             ftn_int const*      ldaCols,
+                                             ftn_double_complex* b,
+                                             ftn_int const*      ldb,
+                                             ftn_int const*      ldbCols,
+                                             ftn_int const*      nblk,
+                                             ftn_int const*      mpi_comm_rows,
+                                             ftn_int const*      mpi_comm_cols,
+                                             ftn_double_complex* c,
+                                             ftn_int const*      ldc,
+                                             ftn_int const*      ldcCols,
+                                             ftn_len             uplo_a_len,
+                                             ftn_len             uplo_c_len);
+
+void FORTRAN(elpa_mult_at_b_real_wrapper)(ftn_char       uplo_a,
+                                          ftn_char       uplo_c,
+                                          ftn_int const* na,
+                                          ftn_int const* ncb, 
+                                          ftn_double*    a,
+                                          ftn_int const* lda,
+                                          ftn_int const* ldaCols,
+                                          ftn_double*    b,
+                                          ftn_int const* ldb,
+                                          ftn_int const* ldbCols,
+                                          ftn_int const* nblk,
+                                          ftn_int const* mpi_comm_rows,
+                                          ftn_int const* mpi_comm_cols,
+                                          ftn_double*    c,
+                                          ftn_int const* ldc,
+                                          ftn_int const* ldcCols,
+                                          ftn_len        uplo_a_len,
+                                          ftn_len        uplo_c_len);
+
+void FORTRAN(elpa_solve_evp_complex)(ftn_int const* na,
+                                     ftn_int const* nev,
+                                     ftn_double_complex* a,
+                                     ftn_int const* lda,
+                                     ftn_double* ev, 
+                                     ftn_double_complex* q,
+                                     ftn_int const* ldq,
+                                     ftn_int const* nblk,
+                                     ftn_int const* matrixCols,
+                                     ftn_int const* mpi_comm_rows,
+                                     ftn_int const* mpi_comm_cols,
+                                     ftn_int const* mpi_comm_all);
+
+void FORTRAN(elpa_solve_evp_real)(ftn_int const* na,
+                                  ftn_int const* nev,
+                                  ftn_double* a,
+                                  ftn_int const* lda,
+                                  ftn_double* ev, 
+                                  ftn_double* q,
+                                  ftn_int const* ldq,
+                                  ftn_int const* nblk,
+                                  ftn_int const* matrixCols,
+                                  ftn_int const* mpi_comm_rows,
+                                  ftn_int const* mpi_comm_cols,
+                                  ftn_int const* mpi_comm_all);
+
+void FORTRAN(elpa_solve_evp_complex_2stage)(ftn_int const* na,
+                                            ftn_int const* nev,
+                                            ftn_double_complex* a,
+                                            ftn_int const* lda,
+                                            ftn_double* ev,
+                                            ftn_double_complex* q,
+                                            ftn_int const* ldq,
+                                            ftn_int const* nblk,
+                                            ftn_int const* matrixCols,
+                                            ftn_int const* mpi_comm_rows,
+                                            ftn_int const* mpi_comm_cols,
+                                            ftn_int const* mpi_comm_all);
+
+void FORTRAN(elpa_solve_evp_real_2stage)(ftn_int const* na,
+                                         ftn_int const* nev,
+                                         ftn_double* a,
+                                         ftn_int const* lda,
+                                         ftn_double* ev,
+                                         ftn_double* q,
+                                         ftn_int const* ldq,
+                                         ftn_int const* nblk,
+                                         ftn_int const* matrixCols,
+                                         ftn_int const* mpi_comm_rows,
+                                         ftn_int const* mpi_comm_cols,
+                                         ftn_int const* mpi_comm_all);
+}
+#endif
+
+namespace experimental {
+
+enum class ev_solver_t 
+{
+    /// use LAPACK
+    ev_lapack, 
+
+    /// use ScaLAPACK
+    ev_scalapack,
+
+    /// use ELPA1 solver
+    ev_elpa1,
+
+    /// use ELPA2 (2-stage) solver
+    ev_elpa2,
+
+    /// use MAGMA
+    ev_magma,
+
+    /// use PLASMA
+    ev_plasma
+};
+
+class Eigenproblem_base
+{
+  public:
+    template <typename T>
+    int solve(int matrix_size__, int nev__, dmatrix<T>& A__, dmatrix<T>& B__, double* eval__, dmatrix<T>& Z__)
+    {
+        TERMINATE("solver is not implemented");
+        return -1;
+    }
+};
+
+class Eigenproblem_elpa1: public Eigenproblem_base
+{
+  public:
+    template <typename T>
+    int solve(int matrix_size__, int nev__, dmatrix<T>& A__, dmatrix<T>& B__, double* eval__, dmatrix<T>& Z__)
+    {
+        printf("in Eigenproblem_elpa1::solve\n");
+        
+        /* Cholesky factorization B = U^{H}*U */
+        linalg<CPU>::potrf(matrix_size__, B__);
+        /* inversion of the triangular matrix */
+        linalg<CPU>::trtri(matrix_size__, B__);
+        /* U^{-1} is upper triangular matrix */
+        for (int i = 0; i < matrix_size__; i++) {
+            for (int j = i + 1; j < matrix_size__; j++) {
+                B__.set(j, i, 0);
+            }
+        }
+        /* transform to standard eigen-problem */
+        /* A * U{-1} -> Z */
+        linalg<CPU>::gemm(0, 0, matrix_size__, matrix_size__, matrix_size__, linalg_const<T>::one(), A__, B__,
+                          linalg_const<T>::zero(), Z__);
+        /* U^{-H} * Z = U{-H} * A * U^{-1} -> A */
+        linalg<CPU>::gemm(2, 0, matrix_size__, matrix_size__, matrix_size__, linalg_const<T>::one(), B__, Z__,
+                          linalg_const<T>::zero(), A__);
+        
+        int num_rows_loc = A__.num_rows_local();
+        int num_cols_loc = A__.num_rows_local();
+        int bs = A__.bs_row();
+        int lda = A__.ld();
+        int mpi_comm_row = MPI_Comm_c2f(A__.blacs_grid().comm_row().mpi_comm());
+        int mpi_comm_col = MPI_Comm_c2f(A__.blacs_grid().comm_col().mpi_comm());
+        int mpi_comm_all = MPI_Comm_c2f(A__.blacs_grid().comm().mpi_comm());
+        /* solve standard eigen-value problem with ELPA1 */
+        FORTRAN(elpa_solve_evp_complex)(&matrix_size__, &nev__, A__.template at<CPU>(), &lda, eval__,
+                                        Z__.template at<CPU>(), &num_rows_loc, &bs, &num_cols_loc,
+                                        &mpi_comm_row, &mpi_comm_col, &mpi_comm_all);
+        /* back-transform of eigen-vectors */
+        linalg<CPU>::gemm(0, 0, matrix_size__, nev__, matrix_size__, linalg_const<T>::one(), B__, Z__,
+                          linalg_const<T>::zero(), A__);
+        A__ >> Z__;
+        return 0;
+    }
+};
+
+}
+
+// TODO: simplify the interface, use only dmatrix<T> as input
+//
+// need to solve Ax = E*x  (standard)
+//               Ax = E*Bx (generalized)
+// for N lowes eigen-pairs
+// for all eigen-pairs
+
 /// Type of the solver to use for the standard or generalized eigen-value problem
 enum ev_solver_t 
 {
@@ -1136,124 +1350,6 @@ class Eigenproblem_scalapack: public Eigenproblem
         }
 };
 
-#ifdef __ELPA
-extern "C" {
-void FORTRAN(elpa_cholesky_complex_wrapper)(ftn_int const*      na,
-                                            ftn_double_complex* a,
-                                            ftn_int const*      lda,
-                                            ftn_int const*      nblk,
-                                            ftn_int const*      matrixCols,
-                                            ftn_int const*      mpi_comm_rows,
-                                            ftn_int const*      mpi_comm_cols);
-
-void FORTRAN(elpa_cholesky_real_wrapper)(ftn_int const* na,
-                                         ftn_double*    a,
-                                         ftn_int const* lda,
-                                         ftn_int const* nblk,
-                                         ftn_int const* matrixCols,
-                                         ftn_int const* mpi_comm_rows,
-                                         ftn_int const* mpi_comm_cols);
-
-void FORTRAN(elpa_invert_trm_complex_wrapper)(ftn_int const*      na,
-                                              ftn_double_complex* a,
-                                              ftn_int const*      lda,
-                                              ftn_int const*      nblk,
-                                              ftn_int const*      matrixCols,
-                                              ftn_int const*      mpi_comm_rows,
-                                              ftn_int const*      mpi_comm_cols);
-
-void FORTRAN(elpa_invert_trm_real_wrapper)(ftn_int const* na,
-                                           ftn_double*    a,
-                                           ftn_int const* lda,
-                                           ftn_int const* nblk,
-                                           ftn_int const* matrixCols,
-                                           ftn_int const* mpi_comm_rows,
-                                           ftn_int const* mpi_comm_cols);
-
-void FORTRAN(elpa_mult_ah_b_complex_wrapper)(ftn_char            uplo_a,
-                                             ftn_char            uplo_c,
-                                             ftn_int const*      na,
-                                             ftn_int const*      ncb, 
-                                             ftn_double_complex* a,
-                                             ftn_int const*      lda,
-                                             ftn_double_complex* b,
-                                             ftn_int const*      ldb,
-                                             ftn_int const*      nblk,
-                                             ftn_int const*      mpi_comm_rows,
-                                             ftn_int const*      mpi_comm_cols,
-                                             ftn_double_complex* c,
-                                             ftn_int const*      ldc,
-                                             ftn_len             uplo_a_len,
-                                             ftn_len             uplo_c_len);
-
-void FORTRAN(elpa_mult_at_b_real_wrapper)(ftn_char       uplo_a,
-                                          ftn_char       uplo_c,
-                                          ftn_int const* na,
-                                          ftn_int const* ncb, 
-                                          ftn_double*    a,
-                                          ftn_int const* lda,
-                                          ftn_double*    b,
-                                          ftn_int const* ldb,
-                                          ftn_int const* nblk,
-                                          ftn_int const* mpi_comm_rows,
-                                          ftn_int const* mpi_comm_cols,
-                                          ftn_double*    c,
-                                          ftn_int const* ldc,
-                                          ftn_len        uplo_a_len,
-                                          ftn_len        uplo_c_len);
-
-void FORTRAN(elpa_solve_evp_complex)(ftn_int const* na,
-                                     ftn_int const* nev,
-                                     ftn_double_complex* a,
-                                     ftn_int const* lda,
-                                     ftn_double* ev, 
-                                     ftn_double_complex* q,
-                                     ftn_int const* ldq,
-                                     ftn_int const* nblk,
-                                     ftn_int const* matrixCols,
-                                     ftn_int const* mpi_comm_rows,
-                                     ftn_int const* mpi_comm_cols);
-
-void FORTRAN(elpa_solve_evp_real)(ftn_int const* na,
-                                  ftn_int const* nev,
-                                  ftn_double* a,
-                                  ftn_int const* lda,
-                                  ftn_double* ev, 
-                                  ftn_double* q,
-                                  ftn_int const* ldq,
-                                  ftn_int const* nblk,
-                                  ftn_int const* matrixCols,
-                                  ftn_int const* mpi_comm_rows,
-                                  ftn_int const* mpi_comm_cols);
-
-void FORTRAN(elpa_solve_evp_complex_2stage)(ftn_int const* na,
-                                            ftn_int const* nev,
-                                            ftn_double_complex* a,
-                                            ftn_int const* lda,
-                                            ftn_double* ev,
-                                            ftn_double_complex* q,
-                                            ftn_int const* ldq,
-                                            ftn_int const* nblk,
-                                            ftn_int const* matrixCols,
-                                            ftn_int const* mpi_comm_rows,
-                                            ftn_int const* mpi_comm_cols,
-                                            ftn_int const* mpi_comm_all);
-
-void FORTRAN(elpa_solve_evp_real_2stage)(ftn_int const* na,
-                                         ftn_int const* nev,
-                                         ftn_double* a,
-                                         ftn_int const* lda,
-                                         ftn_double* ev,
-                                         ftn_double* q,
-                                         ftn_int const* ldq,
-                                         ftn_int const* nblk,
-                                         ftn_int const* matrixCols,
-                                         ftn_int const* mpi_comm_rows,
-                                         ftn_int const* mpi_comm_cols,
-                                         ftn_int const* mpi_comm_all);
-}
-#endif
-
 class Eigenproblem_elpa: public Eigenproblem
 {
     protected:
@@ -1304,9 +1400,9 @@ class Eigenproblem_elpa: public Eigenproblem
             /* invert L */
             FORTRAN(elpa_invert_trm_complex_wrapper)(&matrix_size__, B__, &ldb__, &block_size_, &num_cols_loc__, &mpi_comm_rows_, &mpi_comm_cols_);
        
-            FORTRAN(elpa_mult_ah_b_complex_wrapper)("U", "L", &matrix_size__, &matrix_size__, B__, &ldb__, A__, &lda__, &block_size_, 
-                                                    &mpi_comm_rows_, &mpi_comm_cols_, tmp1__.at<CPU>(), &num_rows_loc__, (int32_t)1, 
-                                                    (int32_t)1);
+            FORTRAN(elpa_mult_ah_b_complex_wrapper)("U", "L", &matrix_size__, &matrix_size__, B__, &ldb__, &num_cols_loc__, A__, &lda__, &num_cols_loc__, &block_size_, 
+                                                    &mpi_comm_rows_, &mpi_comm_cols_, tmp1__.at<CPU>(), &num_rows_loc__, &num_cols_loc__,
+                                                    (int32_t)1, (int32_t)1);
 
             int32_t descc[9];
             linalg_base::descinit(descc, matrix_size__, matrix_size__, block_size_, block_size_, 0, 0, blacs_context_, lda__);
@@ -1314,9 +1410,10 @@ class Eigenproblem_elpa: public Eigenproblem
             linalg_base::pztranc(matrix_size__, matrix_size__, linalg_const<double_complex>::one(), tmp1__.at<CPU>(), 1, 1, descc, 
                                  linalg_const<double_complex>::zero(), tmp2__.at<CPU>(), 1, 1, descc);
 
-            FORTRAN(elpa_mult_ah_b_complex_wrapper)("U", "U", &matrix_size__, &matrix_size__, B__, &ldb__, tmp2__.at<CPU>(), &num_rows_loc__, 
-                                                    &block_size_, &mpi_comm_rows_, &mpi_comm_cols_, A__, &lda__, (int32_t)1, 
-                                                    (int32_t)1);
+            FORTRAN(elpa_mult_ah_b_complex_wrapper)("U", "U", &matrix_size__, &matrix_size__, B__, &ldb__, &num_cols_loc__, 
+                                                    tmp2__.at<CPU>(), &num_rows_loc__, &num_cols_loc__,
+                                                    &block_size_, &mpi_comm_rows_, &mpi_comm_cols_, A__, &lda__, &num_cols_loc__,
+                                                    (int32_t)1, (int32_t)1);
 
             linalg_base::pztranc(matrix_size__, matrix_size__, linalg_const<double_complex>::one(), A__, 1, 1, descc, linalg_const<double_complex>::zero(), 
                                  tmp1__.at<CPU>(), 1, 1, descc);
@@ -1346,9 +1443,9 @@ class Eigenproblem_elpa: public Eigenproblem
             /* invert L */
             FORTRAN(elpa_invert_trm_real_wrapper)(&matrix_size__, B__, &ldb__, &block_size_, &num_cols_loc__, &mpi_comm_rows_, &mpi_comm_cols_);
        
-            FORTRAN(elpa_mult_at_b_real_wrapper)("U", "L", &matrix_size__, &matrix_size__, B__, &ldb__, A__, &lda__, &block_size_, 
-                                                 &mpi_comm_rows_, &mpi_comm_cols_, tmp1__.at<CPU>(), &num_rows_loc__, (int32_t)1, 
-                                                 (int32_t)1);
+            FORTRAN(elpa_mult_at_b_real_wrapper)("U", "L", &matrix_size__, &matrix_size__, B__, &ldb__, &num_cols_loc__, A__, &lda__, &num_cols_loc__, &block_size_, 
+                                                 &mpi_comm_rows_, &mpi_comm_cols_, tmp1__.at<CPU>(), &num_rows_loc__, &num_cols_loc__, 
+                                                 (int32_t)1, (int32_t)1);
 
             int32_t descc[9];
             linalg_base::descinit(descc, matrix_size__, matrix_size__, block_size_, block_size_, 0, 0, blacs_context_, lda__);
@@ -1356,9 +1453,9 @@ class Eigenproblem_elpa: public Eigenproblem
             linalg_base::pdtran(matrix_size__, matrix_size__, 1.0, tmp1__.at<CPU>(), 1, 1, descc, 0.0,
                                 tmp2__.at<CPU>(), 1, 1, descc);
 
-            FORTRAN(elpa_mult_at_b_real_wrapper)("U", "U", &matrix_size__, &matrix_size__, B__, &ldb__, tmp2__.at<CPU>(), &num_rows_loc__, 
-                                                &block_size_, &mpi_comm_rows_, &mpi_comm_cols_, A__, &lda__, (int32_t)1, 
-                                                (int32_t)1);
+            FORTRAN(elpa_mult_at_b_real_wrapper)("U", "U", &matrix_size__, &matrix_size__, B__, &ldb__, &num_cols_loc__, tmp2__.at<CPU>(), &num_rows_loc__, 
+                                                &num_cols_loc__, &block_size_, &mpi_comm_rows_, &mpi_comm_cols_, A__, &lda__, &num_cols_loc__, 
+                                                (int32_t)1, (int32_t)1);
 
             linalg_base::pdtran(matrix_size__, matrix_size__, 1.0, A__, 1, 1, descc, 0.0, tmp1__.at<CPU>(), 1, 1, descc);
 
@@ -1388,8 +1485,8 @@ class Eigenproblem_elpa: public Eigenproblem
             linalg_base::pztranc(matrix_size__, matrix_size__, linalg_const<double_complex>::one(), B__, 1, 1, descb, linalg_const<double_complex>::zero(), 
                                  tmp2__.at<CPU>(), 1, 1, descb);
 
-            FORTRAN(elpa_mult_ah_b_complex_wrapper)("L", "N", &matrix_size__, &nevec__, tmp2__.at<CPU>(), &num_rows_loc__, tmp1__.at<CPU>(), 
-                                                    &num_rows_loc__, &block_size_, &mpi_comm_rows_, &mpi_comm_cols_, Z__, &ldz__, 
+            FORTRAN(elpa_mult_ah_b_complex_wrapper)("L", "N", &matrix_size__, &nevec__, tmp2__.at<CPU>(), &num_rows_loc__, &num_cols_loc__, tmp1__.at<CPU>(), 
+                                                    &num_rows_loc__, &num_cols_loc__, &block_size_, &mpi_comm_rows_, &mpi_comm_cols_, Z__, &ldz__, &num_cols_loc__,
                                                     (int32_t)1, (int32_t)1);
         }
 
@@ -1407,8 +1504,8 @@ class Eigenproblem_elpa: public Eigenproblem
 
             linalg_base::pdtran(matrix_size__, matrix_size__, 1.0, B__, 1, 1, descb, 0.0, tmp2__.at<CPU>(), 1, 1, descb);
 
-            FORTRAN(elpa_mult_at_b_real_wrapper)("L", "N", &matrix_size__, &nevec__, tmp2__.at<CPU>(), &num_rows_loc__, tmp1__.at<CPU>(), 
-                                                 &num_rows_loc__, &block_size_, &mpi_comm_rows_, &mpi_comm_cols_, Z__, &ldz__, 
+            FORTRAN(elpa_mult_at_b_real_wrapper)("L", "N", &matrix_size__, &nevec__, tmp2__.at<CPU>(), &num_rows_loc__, &num_cols_loc__, tmp1__.at<CPU>(), 
+                                                 &num_rows_loc__, &num_cols_loc__, &block_size_, &mpi_comm_rows_, &mpi_comm_cols_, Z__, &ldz__, &num_cols_loc__,
                                                  (int32_t)1, (int32_t)1);
         }
         #endif
@@ -1438,18 +1535,19 @@ class Eigenproblem_elpa1: public Eigenproblem_elpa
 
             matrix<double_complex> tmp1(num_rows_loc, num_cols_loc);
             matrix<double_complex> tmp2(num_rows_loc, num_cols_loc);
-
+            
             transform_to_standard(matrix_size, A, lda, B, ldb, num_rows_loc, num_cols_loc, tmp1, tmp2);
 
             std::vector<double> w(matrix_size);
             sddk::timer t("Eigenproblem_elpa1|diag");
             FORTRAN(elpa_solve_evp_complex)(&matrix_size, &nevec, A, &lda, &w[0], tmp1.at<CPU>(), &num_rows_loc, 
-                                            &block_size_, &num_cols_loc, &mpi_comm_rows_, &mpi_comm_cols_);
+                                            &block_size_, &num_cols_loc, &mpi_comm_rows_, &mpi_comm_cols_, &mpi_comm_all_);
             t.stop();
             std::memcpy(eval, &w[0], nevec * sizeof(double));
             
             transform_back(matrix_size, nevec, B, ldb, Z, ldz, num_rows_loc, num_cols_loc, tmp1, tmp2);
 
+            t.stop();
             return 0;
         }
 
@@ -1471,7 +1569,7 @@ class Eigenproblem_elpa1: public Eigenproblem_elpa
             std::vector<double> w(matrix_size);
             sddk::timer t("Eigenproblem_elpa1|diag");
             FORTRAN(elpa_solve_evp_real)(&matrix_size, &nevec, A, &lda, &w[0], tmp1.at<CPU>(), &num_rows_loc, 
-                                         &block_size_, &num_cols_loc, &mpi_comm_rows_, &mpi_comm_cols_);
+                                         &block_size_, &num_cols_loc, &mpi_comm_rows_, &mpi_comm_cols_, &mpi_comm_all_);
             t.stop();
             std::memcpy(eval, &w[0], nevec * sizeof(double));
             
@@ -1492,7 +1590,7 @@ class Eigenproblem_elpa1: public Eigenproblem_elpa
             std::vector<double> w(matrix_size);
             sddk::timer t("Eigenproblem_elpa1|diag");
             FORTRAN(elpa_solve_evp_real)(&matrix_size, &nevec, A, &lda, &w[0], Z, &ldz, 
-                                         &block_size_, &num_cols_loc, &mpi_comm_rows_, &mpi_comm_cols_);
+                                         &block_size_, &num_cols_loc, &mpi_comm_rows_, &mpi_comm_cols_, &mpi_comm_all_);
             t.stop();
             std::memcpy(eval, &w[0], nevec * sizeof(double));
             
@@ -1510,7 +1608,7 @@ class Eigenproblem_elpa1: public Eigenproblem_elpa
             std::vector<double> w(matrix_size);
             sddk::timer t("Eigenproblem_elpa1|diag");
             FORTRAN(elpa_solve_evp_complex)(&matrix_size, &nevec, A, &lda, &w[0], Z, &ldz, 
-                                            &block_size_, &num_cols_loc, &mpi_comm_rows_, &mpi_comm_cols_);
+                                            &block_size_, &num_cols_loc, &mpi_comm_rows_, &mpi_comm_cols_, &mpi_comm_all_);
             t.stop();
             std::memcpy(eval, &w[0], nevec * sizeof(double));
             

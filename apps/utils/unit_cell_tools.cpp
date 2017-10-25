@@ -2,7 +2,7 @@
 
 using namespace sirius;
 
-void create_supercell(cmd_args& args__)
+void create_supercell(cmd_args const& args__)
 {
     matrix3d<int> scell;
     std::stringstream s(args__.value<std::string>("supercell"));
@@ -71,6 +71,9 @@ void create_supercell(cmd_args& args__)
                         vector3d<double> vf = ctx_sc.unit_cell().get_fractional_coordinates(vc);
 
                         auto vr = reduce_coordinates(vf);
+                        for (int x: {0, 1, 2}) {
+                            vr.first[x] = Utils::round(vr.first[x], 10);
+                        }
                         bool add_atom = (ctx_sc.unit_cell().atom_id_by_position(vr.first) == -1);
                         //==if (add_atom && iat == 2)
                         //=={
@@ -157,9 +160,9 @@ void find_primitive()
 
 }
 
-void create_qe_input()
+void create_qe_input(cmd_args const& args__)
 {
-    Simulation_context ctx("sirius.json", mpi_comm_self());
+    Simulation_context ctx(args__.value<std::string>("input", "sirius.json"), mpi_comm_self());
 
     FILE* fout = fopen("pw.in", "w");
     fprintf(fout, "&control\n"
@@ -176,7 +179,7 @@ void create_qe_input()
     "/\n");
     
     fprintf(fout, "&system\nibrav=0, celldm(1)=1, ecutwfc=40, ecutrho = 300,\noccupations = \'smearing\', smearing = \'gauss\', degauss = 0.001,\n");
-    fprintf(fout, "nat=%i ntyp=%i\n/\n", ctx.unit_cell().num_atoms(), ctx.unit_cell().num_atom_types());
+    fprintf(fout, "nat=%i, ntyp=%i\n/\n", ctx.unit_cell().num_atoms(), ctx.unit_cell().num_atom_types());
     fprintf(fout, "&electrons\nconv_thr =  1.0d-11,\nmixing_beta = 0.7,\nelectron_maxstep = 100\n/\n");
     fprintf(fout, "&IONS\n"
     "ion_dynamics=\'bfgs\',\n"
@@ -219,6 +222,7 @@ int main(int argn, char** argv)
     args.register_key("--qe", "create input for QE");
     args.register_key("--find_primitive", "find a primitive cell");
     args.register_key("--cif", "create CIF file");
+    args.register_key("--input=", "{string} input file name");
 
     args.parse_args(argn, argv);
     if (args.exist("help")) {
@@ -235,7 +239,7 @@ int main(int argn, char** argv)
         find_primitive();
     }
     if (args.exist("qe")) {
-        create_qe_input();
+        create_qe_input(args);
     }
     if (args.exist("cif")) {
         Simulation_context ctx("sirius.json", mpi_comm_self());

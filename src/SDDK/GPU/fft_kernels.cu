@@ -1,6 +1,82 @@
 #include "cuda.hpp"
 #include "cuda_common.h"
 
+#include <stdio.h>
+
+
+__global__ void cufft_repack_z_buffer_back_kernel(int dimz,
+                                             int num_zcol_loc, 
+                                             int const* local_z_offsets,
+                                             int const* local_z_sizes,
+                                             cuDoubleComplex const* old_buffer,
+                                             cuDoubleComplex* new_buffer)
+{
+    int iz = blockDim.x * blockIdx.x + threadIdx.x;
+    int izcol = blockIdx.y;
+    int rank = blockIdx.z;
+    
+    int local_zsize = local_z_sizes[rank];
+    if (iz < local_zsize) {
+        int offs = local_z_offsets[rank];
+        new_buffer[offs + iz + izcol * dimz] = old_buffer[offs * num_zcol_loc + izcol * local_zsize + iz];
+    }
+}
+
+
+__global__ void cufft_repack_z_buffer_kernel(int dimz,
+                                             int num_zcol_loc, 
+                                             int const* local_z_offsets,
+                                             int const* local_z_sizes,
+                                             cuDoubleComplex* old_buffer,
+                                             cuDoubleComplex* new_buffer)
+{
+    int iz = blockDim.x * blockIdx.x + threadIdx.x;
+    int izcol = blockIdx.y;
+    int rank = blockIdx.z;
+    
+    int local_zsize = local_z_sizes[rank];
+    if (iz < local_zsize) {
+        int offs = local_z_offsets[rank];
+        new_buffer[offs * num_zcol_loc + izcol * local_zsize + iz] = old_buffer[offs + iz + izcol * dimz];
+    }
+}
+
+
+extern "C" void cufft_repack_z_buffer(int direction,
+                                      int num_ranks,
+                                      int dimz,
+                                      int num_zcol_loc,
+                                      int zcol_max_size,
+                                      int const* local_z_offsets,
+                                      int const* local_z_sizes,
+                                      cuDoubleComplex* serial_buffer,
+                                      cuDoubleComplex* parallel_buffer)
+{
+    dim3 grid_t(64);
+    dim3 grid_b(num_blocks(zcol_max_size, grid_t.x), num_zcol_loc, num_ranks);
+
+    if (direction == 1) {
+        cufft_repack_z_buffer_kernel<<<grid_b, grid_t, 0, 0>>>
+                                                   (dimz,
+                                                    num_zcol_loc,
+                                                    local_z_offsets,
+                                                    local_z_sizes,
+                                                    serial_buffer,
+                                                    parallel_buffer);
+    } else { 
+        cufft_repack_z_buffer_back_kernel<<<grid_b, grid_t, 0, 0>>>
+                                                   (dimz,
+                                                    num_zcol_loc,
+                                                    local_z_offsets,
+                                                    local_z_sizes,
+                                                    parallel_buffer,
+                                                    serial_buffer);
+    }
+
+}
+
+
+
 __global__ void cufft_batch_load_gpu_kernel(int                    fft_size, 
                                             int                    num_pw_components, 
                                             int const*             map, 
