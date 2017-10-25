@@ -21,16 +21,18 @@ inline void Density::initial_density_pseudo()
 {
     Radial_integrals_rho_pseudo ri(unit_cell_, ctx_.pw_cutoff(), 20);
     auto v = ctx_.make_periodic_function<index_domain_t::local>([&ri](int iat, double g)
-                                                                 {
-                                                                     return ri.value<int>(iat, g);
-                                                                 });
+                                                                {
+                                                                    return ri.value<int>(iat, g);
+                                                                });
 
-    if (ctx_.control().print_checksum_ && ctx_.comm().rank() == 0) {
-        auto z1 = mdarray<double_complex, 1>(&v[0], ctx_.gvec().num_gvec()).checksum();
-        DUMP("checksum(rho_pw) : %18.10f %18.10f", z1.real(), z1.imag());
+    if (ctx_.control().print_checksum_) {
+        auto z1 = mdarray<double_complex, 1>(&v[0], ctx_.gvec().count()).checksum();
+        ctx_.comm().allreduce(&z1, 1);
+        if (ctx_.comm().rank() == 0) {
+            print_checksum("rho_pw_init", z1);
+        }
     }
-
-    std::memcpy(&rho_->f_pw_local(0), &v[0], ctx_.gvec().count() * sizeof(double_complex));
+    std::copy(v.begin(), v.end(), &rho_->f_pw_local(0));
 
     double charge = rho_->f_0().real() * unit_cell_.omega();
 
@@ -98,8 +100,7 @@ inline void Density::initial_density_pseudo()
             auto& atom_to_grid_map = ctx_.atoms_to_grid_idx_map()[ia];
             vector3d<double> v = unit_cell_.atom(ia).vector_field();
 
-            for (auto coord : atom_to_grid_map)
-            {
+            for (auto coord: atom_to_grid_map) {
                 int ir = coord.first;
                 double a = coord.second;
                 magnetization_[0]->f_rg(ir) += v[2] * w(a);
