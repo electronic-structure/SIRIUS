@@ -313,7 +313,7 @@ Band::initialize_subspace(K_point* kp__, int num_ao__, Radial_grid_lin<double>& 
         /* do some checks */
         if (ctx_.control().verification_ >= 1) {
 
-            set_subspace_mtrx<T>(num_sc, 0, num_phi_tot, phi, ophi, hmlt, hmlt_old);
+            set_subspace_mtrx<T>(0, num_phi_tot, phi, ophi, hmlt, hmlt_old);
             if (ctx_.control().verification_ >= 2) {
                 hmlt.serialize("overlap", num_phi_tot);
             }
@@ -343,8 +343,8 @@ Band::initialize_subspace(K_point* kp__, int num_ao__, Radial_grid_lin<double>& 
         //orthogonalize<T>(ctx_.processing_unit(), num_sc, 0, num_phi_tot, phi, hphi, ophi, hmlt, wf_tmp);
 
         /* setup eigen-value problem */
-        set_subspace_mtrx<T>(num_sc, 0, num_phi_tot, phi, hphi, hmlt, hmlt_old);
-        set_subspace_mtrx<T>(num_sc, 0, num_phi_tot, phi, ophi, ovlp, hmlt_old);
+        set_subspace_mtrx<T>(0, num_phi_tot, phi, hphi, hmlt, hmlt_old);
+        set_subspace_mtrx<T>(0, num_phi_tot, phi, ophi, ovlp, hmlt_old);
 
         if (ctx_.control().verification_ >= 2) {
             hmlt.serialize("hmlt", num_phi_tot);

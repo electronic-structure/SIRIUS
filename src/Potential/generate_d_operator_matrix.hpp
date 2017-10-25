@@ -1,37 +1,25 @@
-// Copyright (c) 2013-2016 Anton Kozhevnikov, Thomas Schulthess
+// Copyright (c) 2013-2017 Anton Kozhevnikov, Thomas Schulthess
 // All rights reserved.
-//
-// Redistribution and use in source and binary forms, with or without
-// modification, are permitted provided that
+// 
+// Redistribution and use in source and binary forms, with or without modification, are permitted provided that 
 // the following conditions are met:
-//
-// 1. Redistributions of source code must retain the above copyright notice,
-// this list of conditions and the
+// 
+// 1. Redistributions of source code must retain the above copyright notice, this list of conditions and the 
 //    following disclaimer.
-// 2. Redistributions in binary form must reproduce the above copyright notice,
-// this list of conditions
-//    and the following disclaimer in the documentation and/or other materials
-//    provided with the distribution.
-//
-// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
-// AND ANY EXPRESS OR IMPLIED
-// WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
-// MERCHANTABILITY AND FITNESS FOR A
-// PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR
-// CONTRIBUTORS BE LIABLE FOR
-// ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
-// DAMAGES (INCLUDING, BUT NOT LIMITED TO,
-// PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS;
-// OR BUSINESS INTERRUPTION) HOWEVER
-// CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
-// OR TORT (INCLUDING NEGLIGENCE OR
-// OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF
-// ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+// 2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions 
+//    and the following disclaimer in the documentation and/or other materials provided with the distribution.
+// 
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED 
+// WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A 
+// PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR 
+// ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, 
+// PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER 
+// CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR 
+// OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 /** \file generate_d_operator_matrix.hpp
  *
- *  \brief Contains implementation of
- * sirius::Potential::generate_D_operator_matrix method.
+ *  \brief Contains implementation of sirius::Potential::generate_D_operator_matrix method.
  */
 
 #ifdef __GPU
@@ -165,7 +153,7 @@ inline void Potential::generate_D_operator_matrix()
             if (ctx_.control().print_checksum_ && ctx_.comm().rank() == 0) {
                 for (int i = 0; i < atom_type.num_atoms(); i++) {
                     std::stringstream s;
-                    s << "D_mtrx_val(atom_" << iat << "_" << i << ")";
+                    s << "D_mtrx_val(atom_t" << iat << "_i" << i << "_c" << iv << ")";
                     auto cs = mdarray<double, 1>(&d_tmp(0, i), nbf * (nbf + 1) / 2).checksum();
                     print_checksum(s.str(), cs);
                 }
@@ -187,6 +175,7 @@ inline void Potential::generate_D_operator_matrix()
                 }
             }
         }
+
         // Now compute the d operator for atoms with so interactions
         if (atom_type.pp_desc().spin_orbit_coupling) {
             #pragma omp parallel for schedule(static)
@@ -232,8 +221,7 @@ inline void Potential::generate_D_operator_matrix()
                                             if (atom_type.compare_index_beta_functions(xi1, xi1p)) {
                                                 // just sum over m1, all other indices are the same
 
-                                                for (int alpha = 0; alpha < 4;
-                                                     alpha++) { // loop over the 0, z,x,y coordinates
+                                                for (int alpha = 0; alpha < 4; alpha++) { // loop over the 0, z,x,y coordinates
                                                     for (int sigma1 = 0; sigma1 < 2; sigma1++) {
                                                         for (int sigma2 = 0; sigma2 < 2; sigma2++) {
                                                             result +=

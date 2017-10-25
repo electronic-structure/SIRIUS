@@ -1,6 +1,49 @@
+// Copyright (c) 2013-2017 Anton Kozhevnikov, Thomas Schulthess
+// All rights reserved.
+// 
+// Redistribution and use in source and binary forms, with or without modification, are permitted provided that 
+// the following conditions are met:
+// 
+// 1. Redistributions of source code must retain the above copyright notice, this list of conditions and the 
+//    following disclaimer.
+// 2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions 
+//    and the following disclaimer in the documentation and/or other materials provided with the distribution.
+// 
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED 
+// WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A 
+// PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR 
+// ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, 
+// PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER 
+// CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR 
+// OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+/** \file wf_inner.hpp
+ *   
+ *  \brief Contains implementation of inner product for wave-functions.
+ */
+
 /// Inner product between wave-functions.
-/** The result is always returned in the CPU pointer. In case of a single MPI rank the result is also returned in the
- *  GPU pointer */
+/** This function computes the inner product using a moving window scheme plus allreduce.
+ *  The input wave-functions data must be previously allocated on the GPU.
+ *  The result is always returned in the CPU pointer. In case of a single MPI rank the result is also returned in the
+ *  GPU pointer.
+ *
+ *  The following \f$ m \times n \f$ sub-matrix is computed:
+ *  \f[
+ *    S_{irow0+i,jcol0+j} = \beta S_{irow0+i,jcol0+j} + \langle \phi_{i0 + i} | \tilde \phi_{j0 + j} \rangle
+ *  \f]
+ *
+ *  \param [in] bra   "bra" wave-functions \f$ \phi \f$.
+ *  \param [in] i0    index of the first "bra" wave-function.
+ *  \param [in] m     number of "bra" wave-functions.
+ *  \param [in] ket   "ket" wave-functions \f$ \tilde \phi \f$.
+ *  \param [in] j0    index of the first "ket" wave-function.
+ *  \param [in] n     number of "ket" wave-functions.
+ *  \param [in] beta  \f$ \beta \f$ parameter.
+ *  \param [in,out]   result inner product matrix \f$ S \f$.
+ *  \param [in] irow0 first row (in the global matrix) of the inner product sub-matrix.
+ *  \param [in] jcol0 first column (in the global matix) of the inner product sub-matrix.
+ */
 template <typename T>
 inline void inner(wave_functions& bra__,
                   int             i0__,
@@ -46,7 +89,7 @@ inline void inner(wave_functions& bra__,
     double time = -omp_get_wtime();
 
     T alpha = (std::is_same<T, double_complex>::value) ? 1 : 2;
-    T beta = beta__;
+    T beta = 0;
 
     auto local_inner = [&](int i0__,
                            int m__,
@@ -70,7 +113,7 @@ inline void inner(wave_functions& bra__,
                                           *reinterpret_cast<double_complex*>(&alpha),
                                           bra__.mt_coeffs().prime().at<CPU>(0, i0__), bra__.mt_coeffs().prime().ld(),
                                           ket__.mt_coeffs().prime().at<CPU>(0, j0__), ket__.mt_coeffs().prime().ld(),
-                                          linalg_const<double_complex>::one(),
+                                          *reinterpret_cast<double_complex*>(&beta),
                                           reinterpret_cast<double_complex*>(buf__), ld__);
                     }
                     break;
@@ -89,7 +132,7 @@ inline void inner(wave_functions& bra__,
                                           reinterpret_cast<double_complex*>(&alpha),
                                           bra__.mt_coeffs().prime().at<GPU>(0, i0__), bra__.mt_coeffs().prime().ld(),
                                           ket__.mt_coeffs().prime().at<GPU>(0, j0__), ket__.mt_coeffs().prime().ld(),
-                                          &linalg_const<double_complex>::one(),
+                                          reinterpret_cast<double_complex*>(&beta),
                                           reinterpret_cast<double_complex*>(buf__), ld__,
                                           stream_id);
                     }
@@ -175,9 +218,30 @@ inline void inner(wave_functions& bra__,
         c_tmp.allocate(memory_t::device);
     }
 
+    /* compute the number of movements of the windows needed to cover the whole matrix size.
+     * If m__  is not divided by BS, you need to cover the remaining border; the same for n__
+     *
+     * +-------------+--------------+------|
+     * | <-- BS -->  |              |      |
+     * |             |              |      |
+     * |             |              |      |
+     * |             |              |      |
+     * |-------------+--------------+------|
+     * | ^           |              |      |
+     * | |           |              |      |
+     * | | BS        |              |      |
+     * | V           |              |      |
+     * |-------------+--------------+------|
+     * |             |              |      |
+     * |-------------+--------------+------|
+     *
+     */
+    /* number of blocks to cover rows of the output matrix */
     int nbr = m__ / BS + std::min(1, m__ % BS);
+    /* number of blocks to cover columns of the output matrix */
     int nbc = n__ / BS + std::min(1, n__ % BS);
-
+    
+    /* A double buffer method is used in case of CPU */    
     std::array<MPI_Request, 2> req = {MPI_REQUEST_NULL, MPI_REQUEST_NULL};
     std::array<std::array<int, 4>, 2> dims;
     
@@ -186,10 +250,15 @@ inline void inner(wave_functions& bra__,
         /* state of the buffers:
          * state = 0: buffer is free
          * state = 1: buffer stores result of local zgemm */
-
         std::array<int, num_streams> buf_state;
         buf_state.fill(0);
-
+        
+        /* The real computation here is done by GPUs.
+         * This is to leave the interaction with the GPUs
+         * to 1 OMP thread and the MPI compunication
+         * and data reshifling to the remaining threads.
+         * As a first step, a nested OMP region is needed
+         * and at least 2 threads must be available. */
         omp_set_nested(1);
         int nt = omp_get_max_threads();
         if (nt < 2) {
@@ -199,16 +268,25 @@ inline void inner(wave_functions& bra__,
         #pragma omp parallel num_threads(2) shared(buf_state)
         {
             if (omp_get_thread_num() == 0) {
+                /* thread 0 spawns as many threads as possible */
                 omp_set_num_threads(nt - 1);
             }
 
+            /* this rotates the buffers and the CUDA stream numbers in a round robin way */
             int s{0};
+            /* loop over BS sized windows: columns */
             for (int ibc = 0; ibc < nbc; ibc++) {
+                /* first column (global index) of the block ibc */
                 int j0 = ibc * BS;
+                /* actual number of cloumns in the block: either the size of the block or 
+                 * what remains of the border */
                 int ncol = std::min(n__, (ibc + 1) * BS) - j0;
 
+                /* loop over BS sized windows: rows */
                 for (int ibr = 0; ibr < nbr; ibr++) {
+                    /* first row (global index) of the block ibr */
                     int i0 = ibr * BS;
+                    /* actual number of rows in the block */
                     int nrow = std::min(m__, (ibr + 1) * BS) - i0;
 
                     /* this thread will call cudaZgemm */
@@ -219,15 +297,15 @@ inline void inner(wave_functions& bra__,
                             #pragma omp atomic read
                             state = buf_state[s % num_streams];
                         }
-
+                        /* enqueue the gemm kernel */
                         local_inner(i0__ + i0, nrow, j0__ + j0, ncol, c_tmp.template at<GPU>(0, s % num_streams), nrow, s % num_streams);
-
+                        /* enqueue a copyout operation */
                         acc::copyout(c_tmp.template at<CPU>(0, s % num_streams), 
                                      c_tmp.template at<GPU>(0, s % num_streams),
                                      nrow * ncol, s % num_streams);
 
-                        #pragma omp atomic write
                         /* lock the buffer */
+                        #pragma omp atomic write
                         buf_state[s % num_streams] = 1;
                     } else { /* this thread will do allreduce and store */
                         int state{0};
@@ -236,22 +314,25 @@ inline void inner(wave_functions& bra__,
                             #pragma omp atomic read
                             state = buf_state[s % num_streams];
                         }
-                        /* wait for the cuda stream */
+                        /* wait for the cuda stream to finish (both gemm and copyout) */
                         acc::sync_stream(s % num_streams);
-                        
+                        /* sum over all MPI ranks */ 
                         comm.allreduce(c_tmp.template at<CPU>(0, s % num_streams), nrow * ncol);
 
-                        /* store panel */
+                        /* store panel: go over the elements of the window and add the elements 
+                         * to the resulting array; the .add() method skips the elements that are 
+                         * not part of the local result matrix. */
                         #pragma omp parallel for
                         for (int jcol = 0; jcol < ncol; jcol++) {
                             for (int irow = 0; irow < nrow; irow++) {
-                                result__.add(beta__, irow0__ + irow + i0, jcol0__ + jcol + j0,
+                                /* .add() method takes the global (row, column) indices */
+                                result__.add(beta__, irow0__ + i0 + irow, jcol0__ + j0 + jcol,
                                              c_tmp(irow + nrow * jcol, s % num_streams));
                             }
                         }
 
-                        #pragma omp atomic write
                         /* release the buffer */
+                        #pragma omp atomic write
                         buf_state[s % num_streams] = 0;
                     }
                     s++;
@@ -325,8 +406,7 @@ inline void inner(wave_functions& bra__,
     }
 }
 template <typename T>
-inline void inner(int             num_sc__,
-                  wave_functions& bra__,
+inline void inner(wave_functions& bra__,
                   int             i0__,
                   int             m__,
                   wave_functions& ket__,
@@ -340,8 +420,7 @@ inline void inner(int             num_sc__,
 }
 
 template <typename T>
-inline void inner(int             num_sc__,
-                  Wave_functions& bra__,
+inline void inner(Wave_functions& bra__,
                   int             i0__,
                   int             m__,
                   Wave_functions& ket__,
@@ -351,9 +430,11 @@ inline void inner(int             num_sc__,
                   int             irow0__,
                   int             jcol0__)
 {
+    assert(bra__.num_components() == ket__.num_components());
+    int ncomp = bra__.num_components();
     double beta{0};
-    for (int is = 0; is < num_sc__; is++) {
-        inner(bra__.component(is), i0__, m__, ket__.component(is), j0__, n__, beta, result__, irow0__, jcol0__);
+    for (int is = 0; is < ncomp; is++) {
+        inner(bra__[is], i0__, m__, ket__[is], j0__, n__, beta, result__, irow0__, jcol0__);
         beta = 1;
     }
 }

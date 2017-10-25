@@ -21,16 +21,18 @@ inline void Density::initial_density_pseudo()
 {
     Radial_integrals_rho_pseudo ri(unit_cell_, ctx_.pw_cutoff(), 20);
     auto v = ctx_.make_periodic_function<index_domain_t::local>([&ri](int iat, double g)
-                                                                 {
-                                                                     return ri.value<int>(iat, g);
-                                                                 });
+                                                                {
+                                                                    return ri.value<int>(iat, g);
+                                                                });
 
-    if (ctx_.control().print_checksum_ && ctx_.comm().rank() == 0) {
-        auto z1 = mdarray<double_complex, 1>(&v[0], ctx_.gvec().num_gvec()).checksum();
-        DUMP("checksum(rho_pw) : %18.10f %18.10f", z1.real(), z1.imag());
+    if (ctx_.control().print_checksum_) {
+        auto z1 = mdarray<double_complex, 1>(&v[0], ctx_.gvec().count()).checksum();
+        ctx_.comm().allreduce(&z1, 1);
+        if (ctx_.comm().rank() == 0) {
+            print_checksum("rho_pw_init", z1);
+        }
     }
-
-    std::memcpy(&rho_->f_pw_local(0), &v[0], ctx_.gvec().count() * sizeof(double_complex));
+    std::copy(v.begin(), v.end(), &rho_->f_pw_local(0));
 
     double charge = rho_->f_0().real() * unit_cell_.omega();
 
@@ -74,57 +76,37 @@ inline void Density::initial_density_pseudo()
 
     /* initialize the magnetization */
     if (ctx_.num_mag_dims()) {
+        double R = ctx_.av_atom_radius();
+
+        auto w = [R](double x)
+        {
+            /* the constants are picked in such a way that the volume integral of the
+               weight function is equal to the volume of the atomic sphere;
+               in this case the starting magnetiation in the atomic spehre
+               integrates to the starting magnetization vector */
+
+            /* volume of the sphere */
+            const double norm = fourpi * std::pow(R, 3) / 3.0;
+            return (35.0 / 8) * std::pow(1 - std::pow(x / R, 2), 2) / norm;
+            //return 10 * std::pow(1 - x / R, 2) / norm;
+            //const double b = 1.1016992073677703;
+            //return b * 1.0 /  (std::exp(10 * (a - R)) + 1) / norm;
+            //const double norm = pi * std::pow(R, 3) / 3.0;
+            //return 1.0 / (std::exp(10 * (x - R)) + 1) / norm;
+       };
+
+        #pragma omp parallel for
         for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
-            /* vector field is in Cartesian coordinates */
+            auto& atom_to_grid_map = ctx_.atoms_to_grid_idx_map()[ia];
             vector3d<double> v = unit_cell_.atom(ia).vector_field();
 
-            for (int j0 = 0; j0 < ctx_.fft().grid().size(0); j0++) {
-                for (int j1 = 0; j1 < ctx_.fft().grid().size(1); j1++) {
-                    for (int j2 = 0; j2 < ctx_.fft().local_size_z(); j2++) {
-                        /* get real space fractional coordinate */
-                        auto r0 = vector3d<double>(double(j0) / ctx_.fft().grid().size(0),
-                                                   double(j1) / ctx_.fft().grid().size(1),
-                                                   double(ctx_.fft().offset_z() + j2) / ctx_.fft().grid().size(2));
-                        /* index of real space point */
-                        int ir = ctx_.fft().grid().index_by_coord(j0, j1, j2);
-
-                        for (int t0 = -1; t0 <= 1; t0++) {
-                            for (int t1 = -1; t1 <= 1; t1++) {
-                                for (int t2 = -1; t2 <= 1; t2++) {
-                                    vector3d<double> r1 = r0 - (unit_cell_.atom(ia).position() + vector3d<double>(t0, t1, t2));
-                                    auto r = unit_cell_.get_cartesian_coordinates(r1);
-                                    auto a = r.length();
-
-                                    const double R = 2.0;
-
-                                    auto w = [R](double x)
-                                    {
-                                        /* the constants are picked in such a way that the volume integral of the
-                                           weight function is equal to the volume of the atomic sphere; 
-                                           in this case the starting magnetiation in the atomic spehre
-                                           integrates to the starting magnetization vector */
-
-                                        /* volume of the sphere */
-                                        const double norm = fourpi * std::pow(R, 3) / 3.0;
-                                        return (35.0 / 8) * std::pow(1 - std::pow(x / R, 2), 2) / norm;
-                                        //return 10 * std::pow(1 - x / R, 2) / norm;
-                                        //const double b = 1.1016992073677703;
-                                        //return b * 1.0 /  (std::exp(10 * (a - R)) + 1) / norm;
-                                        //const double norm = pi * std::pow(R, 3) / 3.0;
-                                        //return 1.0 / (std::exp(10 * (x - R)) + 1) / norm;
-                                    };
-
-                                    if (a <= R) {
-                                        magnetization_[0]->f_rg(ir) += v[2] * w(a);
-                                        if (ctx_.num_mag_dims() == 3) {
-                                            magnetization_[1]->f_rg(ir) += v[0] * w(a);
-                                            magnetization_[2]->f_rg(ir) += v[1] * w(a);
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
+            for (auto coord: atom_to_grid_map) {
+                int ir = coord.first;
+                double a = coord.second;
+                magnetization_[0]->f_rg(ir) += v[2] * w(a);
+                if (ctx_.num_mag_dims() == 3) {
+                    magnetization_[1]->f_rg(ir) += v[0] * w(a);
+                    magnetization_[2]->f_rg(ir) += v[1] * w(a);
                 }
             }
         }
