@@ -46,7 +46,7 @@ inline void inner(wave_functions& bra__,
     double time = -omp_get_wtime();
 
     T alpha = (std::is_same<T, double_complex>::value) ? 1 : 2;
-    T beta = beta__;
+    T beta = 0;
 
     auto local_inner = [&](int i0__,
                            int m__,
@@ -70,7 +70,7 @@ inline void inner(wave_functions& bra__,
                                           *reinterpret_cast<double_complex*>(&alpha),
                                           bra__.mt_coeffs().prime().at<CPU>(0, i0__), bra__.mt_coeffs().prime().ld(),
                                           ket__.mt_coeffs().prime().at<CPU>(0, j0__), ket__.mt_coeffs().prime().ld(),
-                                          linalg_const<double_complex>::one(),
+                                          *reinterpret_cast<double_complex*>(&beta),
                                           reinterpret_cast<double_complex*>(buf__), ld__);
                     }
                     break;
@@ -89,7 +89,7 @@ inline void inner(wave_functions& bra__,
                                           reinterpret_cast<double_complex*>(&alpha),
                                           bra__.mt_coeffs().prime().at<GPU>(0, i0__), bra__.mt_coeffs().prime().ld(),
                                           ket__.mt_coeffs().prime().at<GPU>(0, j0__), ket__.mt_coeffs().prime().ld(),
-                                          &linalg_const<double_complex>::one(),
+                                          reinterpret_cast<double_complex*>(&beta),
                                           reinterpret_cast<double_complex*>(buf__), ld__,
                                           stream_id);
                     }
@@ -325,8 +325,7 @@ inline void inner(wave_functions& bra__,
     }
 }
 template <typename T>
-inline void inner(int             num_sc__,
-                  wave_functions& bra__,
+inline void inner(wave_functions& bra__,
                   int             i0__,
                   int             m__,
                   wave_functions& ket__,
@@ -340,8 +339,7 @@ inline void inner(int             num_sc__,
 }
 
 template <typename T>
-inline void inner(int             num_sc__,
-                  Wave_functions& bra__,
+inline void inner(Wave_functions& bra__,
                   int             i0__,
                   int             m__,
                   Wave_functions& ket__,
@@ -351,9 +349,11 @@ inline void inner(int             num_sc__,
                   int             irow0__,
                   int             jcol0__)
 {
+    assert(bra__.num_components() == ket__.num_components());
+    int ncomp = bra__.num_components();
     double beta{0};
-    for (int is = 0; is < num_sc__; is++) {
-        inner(bra__.component(is), i0__, m__, ket__.component(is), j0__, n__, beta, result__, irow0__, jcol0__);
+    for (int is = 0; is < ncomp; is++) {
+        inner(bra__[is], i0__, m__, ket__[is], j0__, n__, beta, result__, irow0__, jcol0__);
         beta = 1;
     }
 }
