@@ -269,7 +269,7 @@ class Potential
         {
             PROFILE("sirius::Potential::generate_local_potential");
             
-            Radial_integrals_vloc<false> ri(ctx_.unit_cell(), ctx_.pw_cutoff(), 200);
+            Radial_integrals_vloc<false> ri(ctx_.unit_cell(), ctx_.pw_cutoff(), ctx_.settings().nprii_vloc_);
             auto v = ctx_.make_periodic_function<index_domain_t::local>([&ri](int iat, double g)
                                                                         {
                                                                             return ri.value(iat, g);
