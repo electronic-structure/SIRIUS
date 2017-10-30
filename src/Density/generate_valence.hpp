@@ -129,12 +129,12 @@ inline void Density::generate_valence(K_point_set& ks__)
 
         double nel = rho_->f_0().real() * unit_cell_.omega();
         /* check the number of electrons */
-        if (std::abs(nel - unit_cell_.num_electrons()) > 1e-8) {
+        if (std::abs(nel - unit_cell_.num_electrons()) > 1e-8 && ctx_.comm().rank() == 0) {
             std::stringstream s;
             s << "wrong unsymmetrized density" << std::endl
-              << "  obtained value : " << nel << std::endl 
-              << "  target value : " << unit_cell_.num_electrons() << std::endl
-              << "  difference : " << std::abs(nel - unit_cell_.num_electrons()) << std::endl;
+              << "  obtained value : " << std::scientific << nel << std::endl 
+              << "  target value : " << std::scientific << unit_cell_.num_electrons() << std::endl
+              << "  difference : " << std::scientific << std::abs(nel - unit_cell_.num_electrons()) << std::endl;
             WARNING(s);
         }
     }
