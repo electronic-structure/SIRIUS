@@ -423,6 +423,7 @@ inline void orthogonalize(device_t                     pu__,
         if (sddk_debug >= 1) {
             diag = o__.get_diag(n__);
         }
+        o__.make_real_diag(n__);
         if (int info = linalg<CPU>::potrf(n__, o__)) {
             std::stringstream s;
             s << "error in Cholesky factorization, info = " << info << ", matrix size = " << n__;
