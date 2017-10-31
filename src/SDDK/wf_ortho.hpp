@@ -248,6 +248,9 @@ inline void orthogonalize(device_t                     pu__,
     int sddk_debug = (sddk_debug_raw == NULL) ? 0 : std::atoi(sddk_debug_raw);
 
     if (sddk_debug >= 2) {
+        if (o__.blacs_grid().comm().rank() == 0) {
+            printf("check QR decomposition\n");
+        }
         inner(*wfs__[idx_bra__], N__, n__, *wfs__[idx_ket__], N__, n__, o__, 0, 0);
 
         linalg<CPU>::geqrf(n__, n__, o__, 0, 0);
@@ -276,10 +279,22 @@ inline void orthogonalize(device_t                     pu__,
     inner(*wfs__[idx_bra__], N__, n__, *wfs__[idx_ket__], N__, n__, o__, 0, 0);
 
     if (sddk_debug >= 1) {
+        if (o__.blacs_grid().comm().rank() == 0) {
+            printf("check diagonal\n");
+        }
+        auto diag = o__.get_diag(n__);
+        for (int i = 0; i < n__; i++) {
+            if (std::real(diag[i]) <= 0 || std::imag(diag[i]) > 1e-12) {
+                std::cout << "wrong diagonal: " << i << " " << diag[i] << std::endl;
+            }
+        }
+        if (o__.blacs_grid().comm().rank() == 0) {
+            printf("check hermitian\n");
+        }
         double d = check_hermitian(o__, n__);
         if (d > 1e-12 && o__.blacs_grid().comm().rank() == 0) {
             std::stringstream s;
-            s << "matrix is not Hermitian, max diff = " << d;
+            s << "matrix is not hermitian, max diff = " << d;
             WARNING(s);
         }
     }
@@ -406,7 +421,7 @@ inline void orthogonalize(device_t                     pu__,
         sddk::timer t1("sddk::wave_functions::orthogonalize|potrf");
         if (int info = linalg<CPU>::potrf(n__, o__)) {
             std::stringstream s;
-            s << "error in factorization, info = " << info;
+            s << "error in Cholesky factorization, info = " << info << ", matrix size = " << n__;
             TERMINATE(s);
         }
         t1.stop();
