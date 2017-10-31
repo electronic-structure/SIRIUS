@@ -39,8 +39,8 @@ inline void Density::initial_density_pseudo()
     if (std::abs(charge - unit_cell_.num_valence_electrons()) > 1e-6) {
         std::stringstream s;
         s << "wrong initial charge density" << std::endl
-          << "  integral of the density : " << charge << std::endl
-          << "  target number of electrons : " << unit_cell_.num_valence_electrons();
+          << "  integral of the density : " << std::scientific << charge << std::endl
+          << "  target number of electrons : " << std::scientific << unit_cell_.num_valence_electrons();
         if (ctx_.comm().rank() == 0) {
             WARNING(s);
         }
