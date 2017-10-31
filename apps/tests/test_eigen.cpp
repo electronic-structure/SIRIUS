@@ -47,6 +47,8 @@ void test_diag(BLACS_grid const& blacs_grid__,
         B.allocate(memory_t::device);
     }
 #endif
+    A.zero();
+    B.zero();
     
     inner(phi, 0, num_bands__, hphi, 0, num_bands__, 0.0, A, 0, 0);
     A >> A_ref;
@@ -54,7 +56,11 @@ void test_diag(BLACS_grid const& blacs_grid__,
     B >> B_ref;
 
     Eigenproblem_elpa1 evp(blacs_grid__, bs__);
-    experimental::Eigenproblem_elpa1 evp1;
+
+    experimental::Eigenproblem_base<double_complex>* evp1;
+    //evp1 = new experimental::Eigenproblem_elpa1<double_complex>();
+    evp1 = new experimental::Eigenproblem_lapack<double_complex>();
+    //experimental::Eigenproblem_scalapack evp1;
 
 
     //Eigenproblem_scalapack evp(blacs_grid__, bs__, bs__, 1e-12);
@@ -69,7 +75,7 @@ void test_diag(BLACS_grid const& blacs_grid__,
         printf("bs = %i\n", bs__);
         printf("== calling eigensolver ==\n");
     }
-    evp1.solve(num_bands__, nev, A, B, eval.data(), Z);
+    evp1->solve(num_bands__, nev, A, B, eval.data(), Z);
 
     //evp.solve(num_bands__, nev, A.at<CPU>(), A.ld(), B.at<CPU>(), B.ld(), eval.data(), Z.at<CPU>(), Z.ld(), A.num_rows_local(), A.num_cols_local()); 
 
@@ -80,7 +86,9 @@ void test_diag(BLACS_grid const& blacs_grid__,
     linalg<CPU>::gemm(0, 0, num_bands__, nev, num_bands__, double_complex(1, 0), B_ref, Z, double_complex(0, 0), B);
     for (int j = 0; j < B.num_cols_local(); j++) {
         for (int i = 0; i < B.num_rows_local(); i++) {
-            B(i, j) *= eval[B.icol(j)];
+            if (B.icol(j) < num_bands__) {
+                B(i, j) *= eval[B.icol(j)];
+            }
         }
     }
     if (B.blacs_grid().comm().rank() == 0) {
