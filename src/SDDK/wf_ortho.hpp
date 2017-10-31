@@ -244,20 +244,21 @@ inline void orthogonalize(device_t                     pu__,
         transform(pu__, -1.0, wfs__, 0, N__, o__, 0, 0, 1.0, wfs__, N__, n__);
     }
 
-    //if (true) {
+    const char* sddk_debug_raw = std::getenv("SDDK_DEBUG");
+    int sddk_debug = (sddk_debug_raw == NULL) ? 0 : std::atoi(sddk_debug_raw);
 
-    //    inner(num_sc__, *wfs__[idx_bra__], N__, n__, *wfs__[idx_ket__], N__, n__, o__, 0, 0);
+    if (sddk_debug >= 2) {
+        inner(*wfs__[idx_bra__], N__, n__, *wfs__[idx_ket__], N__, n__, o__, 0, 0);
 
-    //    linalg<CPU>::geqrf(n__, n__, o__, 0, 0);
-    //    auto diag = o__.get_diag(n__);
-    //    if (o__.blacs_grid().comm().rank() == 0) {
-    //        printf("diagonal of R-factor\n");
-    //        for (int i = 0; i < n__; i++) {
-    //            if (std::abs(diag[i]) < 1e-6) {
-    //                std::cout << "small norm: " << i << " " << diag[i] << std::endl;
-    //            }
-    //        }
-    //    }
+        linalg<CPU>::geqrf(n__, n__, o__, 0, 0);
+        auto diag = o__.get_diag(n__);
+        if (o__.blacs_grid().comm().rank() == 0) {
+            for (int i = 0; i < n__; i++) {
+                if (std::abs(diag[i]) < 1e-6) {
+                    std::cout << "small norm: " << i << " " << diag[i] << std::endl;
+                }
+            }
+        }
 
     //    //std::vector<double> eo(n__);
     //    //dmatrix<T> evec(o__.num_rows(), o__.num_cols(), o__.blacs_grid(), o__.bs_row(), o__.bs_col());
@@ -269,10 +270,19 @@ inline void orthogonalize(device_t                     pu__,
     //    //if (o__.blacs_grid().comm().rank() == 0) { 
     //    //    std::cout << "smallest ev of the new n x x block: " << eo[0] << std::endl;
     //    //}
-    //}
+    }
 
     /* orthogonalize new n__ x n__ block */
     inner(*wfs__[idx_bra__], N__, n__, *wfs__[idx_ket__], N__, n__, o__, 0, 0);
+
+    if (sddk_debug >= 1) {
+        double d = check_hermitian(o__, n__);
+        if (d > 1e-12 && o__.blacs_grid().comm().rank() == 0) {
+            std::stringstream s;
+            s << "matrix is not Hermitian, max diff = " << d;
+            WARNING(s);
+        }
+    }
 
     /* single MPI rank */
     if (o__.blacs_grid().comm().size() == 1) {

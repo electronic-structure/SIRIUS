@@ -34,14 +34,14 @@ inline void Band::diag_fv_exact(K_point* kp, Potential& potential__) const
     }
 
     if (ctx_.control().verification_ >= 1) {
-        double max_diff = Utils::check_hermitian(h, ngklo);
+        double max_diff = check_hermitian(h, ngklo);
         if (max_diff > 1e-12) {
             std::stringstream s;
             s << "H matrix is not hermitian" << std::endl
               << "max error: " << max_diff;
             TERMINATE(s);
         }
-        max_diff = Utils::check_hermitian(o, ngklo);
+        max_diff = check_hermitian(o, ngklo);
         if (max_diff > 1e-12) {
             std::stringstream s;
             s << "O matrix is not hermitian" << std::endl

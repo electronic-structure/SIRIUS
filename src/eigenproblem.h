@@ -159,22 +159,22 @@ namespace experimental {
 enum class ev_solver_t 
 {
     /// use LAPACK
-    ev_lapack, 
+    lapack, 
 
     /// use ScaLAPACK
-    ev_scalapack,
+    scalapack,
 
     /// use ELPA1 solver
-    ev_elpa1,
+    elpa1,
 
     /// use ELPA2 (2-stage) solver
-    ev_elpa2,
+    elpa2,
 
     /// use MAGMA
-    ev_magma,
+    magma,
 
     /// use PLASMA
-    ev_plasma
+    plasma
 };
 
 template <typename T>
@@ -201,69 +201,179 @@ class Eigenproblem_base
     }
 
     /// Solve a standard eigen-value problem for N lowest eigen-pairs.
-    virtual int solve(ftn_int matrix_size__, int nev__, dmatrix<T>& A__, double* eval__, dmatrix<T>& Z__)
+    virtual int solve(ftn_int matrix_size__, ftn_int nev__, dmatrix<T>& A__, double* eval__, dmatrix<T>& Z__)
     {
         TERMINATE("solver is not implemented");
         return -1;
     }
 
     /// Solve a generalized eigen-value problem for N lowest eigen-pairs.
-    virtual int solve(ftn_int matrix_size__, int nev__, dmatrix<T>& A__, dmatrix<T>& B__, double* eval__, dmatrix<T>& Z__)
+    virtual int solve(ftn_int matrix_size__, ftn_int nev__, dmatrix<T>& A__, dmatrix<T>& B__, double* eval__, dmatrix<T>& Z__)
     {
         TERMINATE("solver is not implemented");
         return -1;
     }
 };
 
-//template <typename T>
-//class Eigenproblem_lapack: public Eigenproblem_base<T>
-//{
-//  private:
-//
-//    std::array<ftn_int, 3> get_work_sizes(ftn_int matrix_size) const
-//    {
-//        std::array<ftn_int, 3> work_sizes;
-//        
-//        work_sizes[0] = 2 * matrix_size + matrix_size * matrix_size;
-//        work_sizes[1] = 1 + 5 * matrix_size + 2 * matrix_size * matrix_size;
-//        work_sizes[2] = 3 + 5 * matrix_size;
-//        return work_sizes;
-//    }
-//    
-//  public:
-//
-//    /// Solve a standard eigen-value problem for all eigen-pairs.
-//    int solve(ftn_int matrix_size__, dmatrix<T>& A__, double* eval__, dmatrix<T>& Z__)
-//    {
-//        return 0;
-//    }
-//
-//    /// Solve a generalized eigen-value problem for all eigen-pairs.
-//    int solve(int matrix_size__, dmatrix<T>& A__, dmatrix<T>& B__, double* eval__, dmatrix<T>& Z__)
-//    {
-//        return 0;
-//
-//    }
-//
-//    /// Solve a standard eigen-value problem for N lowest eigen-pairs.
-//    int solve(int matrix_size__, int nev__, dmatrix<T>& A__, double* eval__, dmatrix<T>& Z__)
-//    {
-//        TERMINATE("solver is not implemented");
-//        return -1;
-//    }
-//
-//    /// Solve a generalized eigen-value problem for N lowest eigen-pairs.
-//    int solve(int matrix_size__, int nev__, dmatrix<T>& A__, dmatrix<T>& B__, double* eval__, dmatrix<T>& Z__)
-//    {
-//        TERMINATE("solver is not implemented");
-//        return -1;
-//    }
-//};
-//template <>
-//class Eigenproblem_lapack<double>;
-//
-//template <>
-//class Eigenproblem_lapack<double_complex>;
+template <typename T>
+class Eigenproblem_lapack: public Eigenproblem_base<T>
+{
+  private:
+
+    std::array<ftn_int, 3> get_work_sizes(ftn_int matrix_size) const
+    {
+        std::array<ftn_int, 3> work_sizes;
+        
+        work_sizes[0] = 2 * matrix_size + matrix_size * matrix_size;
+        work_sizes[1] = 1 + 5 * matrix_size + 2 * matrix_size * matrix_size;
+        work_sizes[2] = 3 + 5 * matrix_size;
+        return work_sizes;
+    }
+    
+  public:
+
+    /// Solve a standard eigen-value problem for all eigen-pairs.
+    int solve(ftn_int matrix_size__, dmatrix<T>& A__, double* eval__, dmatrix<T>& Z__)
+    {
+        auto work_sizes = get_work_sizes(matrix_size__);
+
+        ftn_int info;
+        ftn_int lda = A__.ld();
+
+        if (std::is_same<T, double_complex>::value) {
+            std::vector<double_complex> work(work_sizes[0]);
+            std::vector<double> rwork(work_sizes[1]);
+            std::vector<ftn_int> iwork(work_sizes[2]);
+
+            FORTRAN(zheevd)("V", "U", &matrix_size__, reinterpret_cast<double_complex*>(A__.template at<CPU>()),
+                            &lda, eval__, &work[0], &work_sizes[0], &rwork[0], &work_sizes[1], 
+                            &iwork[0], &work_sizes[2], &info, (ftn_int)1, (ftn_int)1);
+            
+            if (info) {
+                std::stringstream s;
+                s << "zheevd returned " << info; 
+                TERMINATE(s);
+            }
+        }
+
+        if (std::is_same<T, double>::value) {
+
+            int32_t lwork = 1 + 6 * matrix_size__ + 2 * matrix_size__ * matrix_size__;
+            int32_t liwork = 3 + 5 * matrix_size__; 
+            
+            std::vector<double> work(lwork);
+            std::vector<int32_t> iwork(liwork);
+
+            FORTRAN(dsyevd)("V", "U", &matrix_size__, reinterpret_cast<double*>(A__.template at<CPU>()), &lda,
+                            eval__, &work[0], &lwork, 
+                            &iwork[0], &liwork, &info, (ftn_int)1, (ftn_int)1);
+            
+            if (info) {
+                std::stringstream s;
+                s << "dsyevd returned " << info; 
+                TERMINATE(s);
+            }
+        }
+
+        for (int i = 0; i < matrix_size__; i++) {
+            std::copy(A__.template at<CPU>(0, i), A__.template at<CPU>(0, i) + matrix_size__, Z__.template at<CPU>(0, i));
+        }
+
+        return 0;
+    }
+
+    /// Solve a generalized eigen-value problem for all eigen-pairs.
+    int solve(ftn_int matrix_size__, dmatrix<T>& A__, dmatrix<T>& B__, double* eval__, dmatrix<T>& Z__)
+    {
+        return 0;
+
+    }
+
+    /// Solve a standard eigen-value problem for N lowest eigen-pairs.
+    int solve(ftn_int matrix_size__, ftn_int nev__, dmatrix<T>& A__, double* eval__, dmatrix<T>& Z__)
+    {
+        TERMINATE("solver is not implemented");
+        return -1;
+    }
+
+    /// Solve a generalized eigen-value problem for N lowest eigen-pairs.
+    int solve(ftn_int matrix_size__, ftn_int nev__, dmatrix<T>& A__, dmatrix<T>& B__, double* eval__, dmatrix<T>& Z__)
+    {
+        ftn_int info;
+
+        ftn_int lda = A__.ld();
+        ftn_int ldb = B__.ld();
+        ftn_int ldz = Z__.ld();
+
+        double abs_tol{0};
+        double vl{0};
+        double vu{0};
+        ftn_int ione{1};
+        ftn_int m{0};
+        std::vector<double> w(matrix_size__);
+        std::vector<int32_t> ifail(matrix_size__);
+
+        if (std::is_same<T, double_complex>::value) {
+
+            int nb = linalg_base::ilaenv(1, "ZHETRD", "U", matrix_size__, 0, 0, 0);
+            int lwork = (nb + 1) * matrix_size__;
+            int lrwork = 7 * matrix_size__;
+            int liwork = 5 * matrix_size__;
+            
+            std::vector<double_complex> work(lwork);
+            std::vector<double> rwork(lrwork);
+            std::vector<int32_t> iwork(liwork);
+       
+            FORTRAN(zhegvx)(&ione, "V", "I", "U", &matrix_size__, reinterpret_cast<double_complex*>(A__.template at<CPU>()),
+                            &lda, reinterpret_cast<double_complex*>(B__.template at<CPU>()), &ldb, 
+                            &vl, &vu, &ione, &nev__, &abs_tol, &m, &w[0], reinterpret_cast<double_complex*>(Z__.template at<CPU>()), &ldz, &work[0], 
+                            &lwork, &rwork[0], &iwork[0], &ifail[0], &info, (ftn_int)1, (ftn_int)1, (ftn_int)1);
+
+            if (info) {
+                std::stringstream s;
+                s << "zhegvx returned " << info; 
+                TERMINATE(s);
+            }
+
+        }
+
+        if (std::is_same<T, double>::value) {
+
+            int nb = linalg_base::ilaenv(1, "DSYTRD", "U", matrix_size__, 0, 0, 0);
+            int lwork = (nb + 3) * matrix_size__ + 1024;
+            int liwork = 5 * matrix_size__;
+            
+            std::vector<double> work(lwork);
+            std::vector<int32_t> iwork(liwork);
+       
+            FORTRAN(dsygvx)(&ione, "V", "I", "U", &matrix_size__, reinterpret_cast<double*>(A__.template at<CPU>()), &lda,
+                            reinterpret_cast<double*>(B__.template at<CPU>()), &ldb, 
+                            &vl, &vu, &ione, &nev__, &abs_tol, &m, &w[0], reinterpret_cast<double*>(Z__.template at<CPU>()),
+                            &ldz, &work[0], &lwork,
+                            &iwork[0], &ifail[0], &info, (ftn_int)1, (ftn_int)1, (ftn_int)1);
+
+            if (info) {
+                std::stringstream s;
+                s << "dsygvx returned " << info; 
+                TERMINATE(s);
+            }
+        }
+
+        if (m != nev__) {
+            std::stringstream s;
+            s << "not all eigen-values are found" << std::endl
+              << "target number of eign-values: " << nev__ << std::endl
+              << "number of eign-values found: " << m << std::endl
+              << "matrix size: " << matrix_size__;
+            WARNING(s);
+            return 1;
+        }
+        
+        std::memcpy(eval__, &w[0], nev__ * sizeof(double));
+
+        return 0;
+    }
+};
 
 //template<>
 //int Eigenproblem_lapack<double_complex>::solve(ftn_int matrix_size__, dmatrix<double_complex>& A__, double* eval__, dmatrix<double_complex>& Z__)
@@ -348,6 +458,34 @@ class Eigenproblem_scalapack: public Eigenproblem_base<T>
 {
 
 };
+
+template <typename T>
+std::unique_ptr<Eigenproblem_base<T>> Eigenproblem_factory(ev_solver_t ev_solver_type__)
+{
+    Eigenproblem_base<T>* ptr;
+    switch (ev_solver_type__) {
+        case ev_solver_t::lapack: {
+            ptr = new Eigenproblem_lapack<T>();
+            break;
+        }
+        case ev_solver_t::scalapack: {
+            ptr = new Eigenproblem_scalapack<T>();
+            break;
+        }
+        case ev_solver_t::elpa1: {
+            ptr = new Eigenproblem_elpa1<T>();
+            break;
+        }
+        //case ev_solver_t::elpa2: {
+        //    ptr = new Eigenproblem_elpa2<T>();
+        //    break;
+        //}
+        default: {
+            TERMINATE("not implemented");
+        }
+    }
+    return std::move(std::unique_ptr<Eigenproblem_base<T>>(ptr));
+}
 
 } // namespace
 
