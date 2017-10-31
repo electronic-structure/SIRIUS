@@ -419,9 +419,16 @@ inline void orthogonalize(device_t                     pu__,
         }
     } else { /* parallel transformation */
         sddk::timer t1("sddk::wave_functions::orthogonalize|potrf");
+        mdarray<T, 1> diag;
+        if (sddk_debug >= 1) {
+            diag = o__.get_diag(n__);
+        }
         if (int info = linalg<CPU>::potrf(n__, o__)) {
             std::stringstream s;
             s << "error in Cholesky factorization, info = " << info << ", matrix size = " << n__;
+            if (sddk_debug >= 1) {
+                s << std::endl << "  diag = " << diag[info - 1];
+            }
             TERMINATE(s);
         }
         t1.stop();
