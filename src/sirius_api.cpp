@@ -3251,4 +3251,10 @@ void sirius_ri_beta_(ftn_int* idx__, ftn_int* iat__, ftn_double* q__, ftn_double
     }
 }
 
+void sirius_set_esm(ftn_bool* enable_esm__, ftn_char esm_bc__)
+{
+    sim_ctx->parameters_input().enable_esm_ = *enable_esm__;
+    sim_ctx->parameters_input().esm_bc_ = std::string(esm_bc__);
+}
+
 } // extern "C"

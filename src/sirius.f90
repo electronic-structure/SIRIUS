@@ -1016,6 +1016,12 @@ module sirius
             real(8),                                 intent(in)  :: chi
         end subroutine
 
+        subroutine sirius_set_esm(enable_esm, esm_bc)&
+            &bind(C, name="sirius_set_esm")
+            logical(1),                              intent(in)  :: enable_esm
+            character,         target, dimension(*), intent(in)  :: esm_bc
+        end subroutine
+
     end interface
 
 contains

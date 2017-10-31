@@ -338,7 +338,7 @@ inline int Band::diag_pseudo_potential_davidson(K_point*       kp__,
             //== counter++;
 
             if (ctx_.control().verification_ >= 1) {
-                double max_diff = Utils::check_hermitian(hmlt, N + n);
+                double max_diff = check_hermitian(hmlt, N + n);
                 if (max_diff > 1e-12) {
                     std::stringstream s;
                     s << "H matrix is not hermitian, max_err = " << max_diff;
@@ -351,7 +351,7 @@ inline int Band::diag_pseudo_potential_davidson(K_point*       kp__,
                 set_subspace_mtrx(N, n, phi, ophi, ovlp, ovlp_old);
 
                 if (ctx_.control().verification_ >= 1) {
-                    double max_diff = Utils::check_hermitian(ovlp, N + n);
+                    double max_diff = check_hermitian(ovlp, N + n);
                     if (max_diff > 1e-12) {
                         std::stringstream s;
                         s << "S matrix is not hermitian, max_err = " << max_diff;

@@ -26,6 +26,7 @@
 #define __WAVE_FUNCTIONS_HPP__
 
 #include <cstdlib>
+#include <iostream>
 #include "linalg.hpp"
 
 namespace sddk {

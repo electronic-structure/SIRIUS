@@ -18,7 +18,7 @@
 // OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 /** \file local_operator.h
- *   
+ *
  *  \brief Contains declaration and implementation of sirius::Local_operator class.
  */
 
