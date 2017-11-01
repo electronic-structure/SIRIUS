@@ -263,12 +263,24 @@ inline void orthogonalize(device_t                     pu__,
             }
         }
 
-    //    //std::vector<double> eo(n__);
-    //    //dmatrix<T> evec(o__.num_rows(), o__.num_cols(), o__.blacs_grid(), o__.bs_row(), o__.bs_col());
+        if (o__.blacs_grid().comm().rank() == 0) {
+            printf("check eigen-values\n");
+        }
+        inner(*wfs__[idx_bra__], N__, n__, *wfs__[idx_ket__], N__, n__, o__, 0, 0);
+        
+        std::vector<double> eo(n__);
+        dmatrix<T> evec(o__.num_rows(), o__.num_cols(), o__.blacs_grid(), o__.bs_row(), o__.bs_col());
 
-    //    //Eigenproblem_elpa1 evs(o__.blacs_grid(), o__.bs_row());
-    //    //evs.solve(n__, n__, o__.template at<CPU>(), o__.ld(), eo.data(), evec.template at<CPU>(), evec.ld(),
-    //    //          o__.num_rows_local(), o__.num_cols_local());
+        auto solver = experimental::Eigenproblem_factory<T>(experimental::ev_solver_t::scalapack);
+        solver->solve(n__, o__, eo.data(), evec);
+
+        if (o__.blacs_grid().comm().rank() == 0) {
+            for (int i = 0; i < n__; i++) {
+                if (eo[i] < 1e-6) {
+                    std::cout << "small eigen-value " << i << " " << eo[i] << std::endl;
+                }
+            }
+        }
 
     //    //if (o__.blacs_grid().comm().rank() == 0) { 
     //    //    std::cout << "smallest ev of the new n x x block: " << eo[0] << std::endl;
@@ -277,6 +289,7 @@ inline void orthogonalize(device_t                     pu__,
 
     /* orthogonalize new n__ x n__ block */
     inner(*wfs__[idx_bra__], N__, n__, *wfs__[idx_ket__], N__, n__, o__, 0, 0);
+    o__.make_real_diag(n__);
 
     if (sddk_debug >= 1) {
         if (o__.blacs_grid().comm().rank() == 0) {
