@@ -249,7 +249,7 @@ inline void orthogonalize(device_t                     pu__,
 
     if (sddk_debug >= 2) {
         if (o__.blacs_grid().comm().rank() == 0) {
-            printf("check QR decomposition\n");
+            printf("check QR decomposition, matrix size : %i\n", n__);
         }
         inner(*wfs__[idx_bra__], N__, n__, *wfs__[idx_ket__], N__, n__, o__, 0, 0);
 
@@ -264,14 +264,14 @@ inline void orthogonalize(device_t                     pu__,
         }
 
         if (o__.blacs_grid().comm().rank() == 0) {
-            printf("check eigen-values\n");
+            printf("check eigen-values, matrix size : %i\n", n__);
         }
         inner(*wfs__[idx_bra__], N__, n__, *wfs__[idx_ket__], N__, n__, o__, 0, 0);
         
         std::vector<double> eo(n__);
         dmatrix<T> evec(o__.num_rows(), o__.num_cols(), o__.blacs_grid(), o__.bs_row(), o__.bs_col());
 
-        auto solver = experimental::Eigenproblem_factory<T>(experimental::ev_solver_t::scalapack);
+        auto solver = experimental::Eigensolver_factory<T>(experimental::ev_solver_t::scalapack);
         solver->solve(n__, o__, eo.data(), evec);
 
         if (o__.blacs_grid().comm().rank() == 0) {
