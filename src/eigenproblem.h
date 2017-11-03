@@ -30,6 +30,49 @@
 
 #ifdef __ELPA
 extern "C" {
+int elpa_solve_evp_complex_1stage_double_precision(int na,
+                                                   int nev,
+                                                   double_complex *a,
+                                                   int lda,
+                                                   double *ev,
+                                                   double_complex *q,
+                                                   int ldq,
+                                                   int nblk,
+                                                   int matrixCols,
+                                                   int mpi_comm_rows,
+                                                   int mpi_comm_cols,
+                                                   int mpi_comm_all,
+                                                   int useGPU);
+
+int elpa_solve_evp_real_1stage_double_precision(int na,
+                                                int nev,
+                                                double *a,
+                                                int lda,
+                                                double *ev,
+                                                double *q,
+                                                int ldq,
+                                                int nblk,
+                                                int matrixCols,
+                                                int mpi_comm_rows,
+                                                int mpi_comm_cols,
+                                                int mpi_comm_all,
+                                                int useGPU);
+
+int elpa_solve_evp_complex_2stage_double_precision(int na,
+                                                   int nev, 
+                                                   double_complex *a,
+                                                   int lda,
+                                                   double *ev,
+                                                   double_complex *q,
+                                                   int ldq, 
+                                                   int nblk,
+                                                   int matrixCols,
+                                                   int mpi_comm_rows,
+                                                   int mpi_comm_cols,
+                                                   int mpi_comm_all,
+                                                   int THIS_COMPLEX_ELPA_KERNEL_API,
+                                                   int useGPU);
+
 void FORTRAN(elpa_cholesky_complex_wrapper)(ftn_int const*      na,
                                             ftn_double_complex* a,
                                             ftn_int const*      lda,
@@ -488,26 +531,41 @@ class Eigensolver_elpa: public Eigensolver<T>
         int mpi_comm_row = MPI_Comm_c2f(A__.blacs_grid().comm_row().mpi_comm());
         int mpi_comm_col = MPI_Comm_c2f(A__.blacs_grid().comm_col().mpi_comm());
         int mpi_comm_all = MPI_Comm_c2f(A__.blacs_grid().comm().mpi_comm());
+        std::vector<double> w(matrix_size__);
         /* solve standard eigen-value problem with ELPA1 */
         if (std::is_same<T, double_complex>::value) {
             if (stage_ == 1) {
+                //elpa_solve_evp_complex_1stage_double_precision(matrix_size__,
+                //                                               nev__,
+                //                                               reinterpret_cast<double_complex*>(A__.template at<CPU>()),
+                //                                               lda,
+                //                                               eval__,
+                //                                               reinterpret_cast<double_complex*>(Z__.template at<CPU>()),
+                //                                               ldz,
+                //                                               bs,
+                //                                               num_cols_loc,
+                //                                               mpi_comm_row,
+                //                                               mpi_comm_col,
+                //                                               mpi_comm_all,
+                //                                               false);
+
                 FORTRAN(elpa_solve_evp_complex)(&matrix_size__, &nev__, reinterpret_cast<double_complex*>(A__.template at<CPU>()),
-                                                &lda, eval__, reinterpret_cast<double_complex*>(Z__.template at<CPU>()), &ldz,
+                                                &lda, w.data(), reinterpret_cast<double_complex*>(Z__.template at<CPU>()), &ldz,
                                                 &bs, &num_cols_loc, &mpi_comm_row, &mpi_comm_col, &mpi_comm_all);
             } else {
                 FORTRAN(elpa_solve_evp_complex_2stage)(&matrix_size__, &nev__, reinterpret_cast<double_complex*>(A__.template at<CPU>()),
-                                                       &lda, eval__, reinterpret_cast<double_complex*>(Z__.template at<CPU>()), &ldz,
+                                                       &lda, w.data(), reinterpret_cast<double_complex*>(Z__.template at<CPU>()), &ldz,
                                                        &bs, &num_cols_loc, &mpi_comm_row, &mpi_comm_col, &mpi_comm_all);
             }
         }
         if (std::is_same<T, double>::value) {
             if (stage_ == 1) {
                 FORTRAN(elpa_solve_evp_real)(&matrix_size__, &nev__, reinterpret_cast<double*>(A__.template at<CPU>()),
-                                             &lda, eval__, reinterpret_cast<double*>(Z__.template at<CPU>()), &ldz,
+                                             &lda, w.data(), reinterpret_cast<double*>(Z__.template at<CPU>()), &ldz,
                                              &bs, &num_cols_loc, &mpi_comm_row, &mpi_comm_col, &mpi_comm_all);
             } else {
                 FORTRAN(elpa_solve_evp_real_2stage)(&matrix_size__, &nev__, reinterpret_cast<double*>(A__.template at<CPU>()),
-                                                    &lda, eval__, reinterpret_cast<double*>(Z__.template at<CPU>()), &ldz,
+                                                    &lda, w.data(), reinterpret_cast<double*>(Z__.template at<CPU>()), &ldz,
                                                     &bs, &num_cols_loc, &mpi_comm_row, &mpi_comm_col, &mpi_comm_all);
             }
         }
@@ -516,6 +574,9 @@ class Eigensolver_elpa: public Eigensolver<T>
         linalg<CPU>::gemm(0, 0, matrix_size__, nev__, matrix_size__, linalg_const<T>::one(), B__, Z__,
                           linalg_const<T>::zero(), A__);
         A__ >> Z__;
+
+        std::copy(w.begin(), w.begin() + nev__, eval__);
+
         return 0;
     }
 
@@ -539,29 +600,45 @@ class Eigensolver_elpa: public Eigensolver<T>
         int mpi_comm_row = MPI_Comm_c2f(A__.blacs_grid().comm_row().mpi_comm());
         int mpi_comm_col = MPI_Comm_c2f(A__.blacs_grid().comm_col().mpi_comm());
         int mpi_comm_all = MPI_Comm_c2f(A__.blacs_grid().comm().mpi_comm());
+        std::vector<double> w(matrix_size__);
         /* solve standard eigen-value problem with ELPA1 */
         if (std::is_same<T, double_complex>::value) {
             if (stage_ == 1) {
+                //elpa_solve_evp_complex_1stage_double_precision(matrix_size__,
+                //                                               nev__,
+                //                                               reinterpret_cast<double_complex*>(A__.template at<CPU>()),
+                //                                               lda,
+                //                                               w.data(),
+                //                                               reinterpret_cast<double_complex*>(Z__.template at<CPU>()),
+                //                                               ldz,
+                //                                               bs,
+                //                                               num_cols_loc,
+                //                                               mpi_comm_row,
+                //                                               mpi_comm_col,
+                //                                               mpi_comm_all,
+                //                                               false);
                 FORTRAN(elpa_solve_evp_complex)(&matrix_size__, &nev__, reinterpret_cast<double_complex*>(A__.template at<CPU>()),
-                                                &lda, eval__, reinterpret_cast<double_complex*>(Z__.template at<CPU>()), &ldz,
+                                                &lda, w.data(), reinterpret_cast<double_complex*>(Z__.template at<CPU>()), &ldz,
                                                 &bs, &num_cols_loc, &mpi_comm_row, &mpi_comm_col, &mpi_comm_all);
             } else {
                 FORTRAN(elpa_solve_evp_complex_2stage)(&matrix_size__, &nev__, reinterpret_cast<double_complex*>(A__.template at<CPU>()),
-                                                       &lda, eval__, reinterpret_cast<double_complex*>(Z__.template at<CPU>()), &ldz,
+                                                       &lda, w.data(), reinterpret_cast<double_complex*>(Z__.template at<CPU>()), &ldz,
                                                        &bs, &num_cols_loc, &mpi_comm_row, &mpi_comm_col, &mpi_comm_all);
             }
         }
         if (std::is_same<T, double>::value) {
             if (stage_ == 1) {
                 FORTRAN(elpa_solve_evp_real)(&matrix_size__, &nev__, reinterpret_cast<double*>(A__.template at<CPU>()),
-                                             &lda, eval__, reinterpret_cast<double*>(Z__.template at<CPU>()), &ldz,
+                                             &lda, w.data(), reinterpret_cast<double*>(Z__.template at<CPU>()), &ldz,
                                              &bs, &num_cols_loc, &mpi_comm_row, &mpi_comm_col, &mpi_comm_all);
             } else {
                 FORTRAN(elpa_solve_evp_real_2stage)(&matrix_size__, &nev__, reinterpret_cast<double*>(A__.template at<CPU>()),
-                                                    &lda, eval__, reinterpret_cast<double*>(Z__.template at<CPU>()), &ldz,
+                                                    &lda, w.data(), reinterpret_cast<double*>(Z__.template at<CPU>()), &ldz,
                                                     &bs, &num_cols_loc, &mpi_comm_row, &mpi_comm_col, &mpi_comm_all);
             }
         }
+
+        std::copy(w.begin(), w.begin() + nev__, eval__);
 
         return 0;
     }
