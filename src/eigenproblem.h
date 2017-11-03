@@ -397,7 +397,7 @@ class Eigensolver_lapack: public Eigensolver<T>
             return 1;
         }
 
-        std::memcpy(eval__, &w[0], nev__ * sizeof(double));
+        std::copy(w.begin(), w.begin() + nev__, eval__);
             
         return 0;
     }
@@ -411,7 +411,7 @@ class Eigensolver_lapack: public Eigensolver<T>
         ftn_int ldb = B__.ld();
         ftn_int ldz = Z__.ld();
 
-        double abs_tol{0};
+        double abs_tol{1e-12};
         double vl{0};
         double vu{0};
         ftn_int ione{1};
@@ -475,7 +475,7 @@ class Eigensolver_lapack: public Eigensolver<T>
             return 1;
         }
         
-        std::memcpy(eval__, &w[0], nev__ * sizeof(double));
+        std::copy(w.begin(), w.begin() + nev__, eval__);
 
         return 0;
     }

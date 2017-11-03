@@ -2,11 +2,11 @@ inline void Band::diag_fv_exact(K_point* kp, Potential& potential__) const
 {
     PROFILE("sirius::Band::diag_fv_exact");
 
-    if (kp->num_ranks() > 1 && !gen_evp_solver().parallel()) {
-        TERMINATE("eigen-value solver is not parallel");
-    }
+    //if (kp->num_ranks() > 1 && !gen_evp_solver().parallel()) {
+    //    TERMINATE("eigen-value solver is not parallel");
+    //}
 
-    auto mem_type = (gen_evp_solver().type() == ev_magma) ? memory_t::host_pinned : memory_t::host;
+    auto mem_type = (ctx_.gen_evp_solver_type() == experimental::ev_solver_t::magma) ? memory_t::host_pinned : memory_t::host;
     int ngklo = kp->gklo_basis_size();
     int bs = ctx_.cyclic_block_size();
     dmatrix<double_complex> h(ngklo, ngklo, ctx_.blacs_grid(), bs, bs, mem_type);
@@ -66,10 +66,9 @@ inline void Band::diag_fv_exact(K_point* kp, Potential& potential__) const
     std::vector<double> eval(ctx_.num_fv_states());
     
     sddk::timer t("sirius::Band::diag_fv_exact|genevp");
+    auto solver = experimental::Eigensolver_factory<double_complex>(ctx_.gen_evp_solver_type());
     
-    if (gen_evp_solver().solve(kp->gklo_basis_size(), ctx_.num_fv_states(), h.at<CPU>(), h.ld(), o.at<CPU>(), o.ld(), 
-                               eval.data(), kp->fv_eigen_vectors().at<CPU>(), kp->fv_eigen_vectors().ld(),
-                               kp->gklo_basis_size_row(), kp->gklo_basis_size_col())) {
+    if (solver->solve(kp->gklo_basis_size(), ctx_.num_fv_states(), h, o, eval.data(), kp->fv_eigen_vectors())) {
         TERMINATE("error in generalized eigen-value problem");
     }
     t.stop();
@@ -267,6 +266,8 @@ inline void Band::get_singular_components(K_point* kp__) const
     printf("[rank%04i at line %i of file %s] CUDA free memory: %i Mb\n", mpi_comm_world().rank(), __LINE__, __FILE__, gpu_mem);
     #endif
     #endif
+
+    auto std_solver = experimental::Eigensolver_factory<double_complex>(ctx_.std_evp_solver_type());
     
     /* start iterative diagonalization */
     for (int k = 0; k < itso.num_steps_; k++) {
@@ -316,9 +317,7 @@ inline void Band::get_singular_components(K_point* kp__) const
         eval_old = eval;
 
         /* solve standard eigen-value problem with the size N */
-        if (std_evp_solver().solve(N,  ncomp, ovlp.template at<CPU>(), ovlp.ld(),
-                                   eval.data(), evec.template at<CPU>(), evec.ld(),
-                                   ovlp.num_rows_local(), ovlp.num_cols_local())) {
+        if (std_solver->solve(N, ncomp, ovlp, eval.data(), evec)) {
             std::stringstream s;
             s << "error in diagonalziation";
             TERMINATE(s);
@@ -525,6 +524,8 @@ inline void Band::diag_fv_davidson(K_point* kp) const
     if (ctx_.control().print_memory_usage_) {
         MEMORY_USAGE_INFO();
     }
+
+        auto std_solver = experimental::Eigensolver_factory<double_complex>(ctx_.std_evp_solver_type());
     
     /* start iterative diagonalization */
     for (int k = 0; k < itso.num_steps_; k++) {
@@ -544,9 +545,7 @@ inline void Band::diag_fv_davidson(K_point* kp) const
         eval_old = eval;
 
         /* solve standard eigen-value problem with the size N */
-        if (std_evp_solver().solve(N,  num_bands, hmlt.template at<CPU>(), hmlt.ld(),
-                                   eval.data(), evec.template at<CPU>(), evec.ld(),
-                                   hmlt.num_rows_local(), hmlt.num_cols_local())) {
+        if (std_solver->solve(N, num_bands, hmlt, eval.data(), evec)) {
             std::stringstream s;
             s << "error in diagonalziation";
             TERMINATE(s);
@@ -617,9 +616,9 @@ inline void Band::diag_sv(K_point* kp,
         return;
     }
 
-    if (kp->num_ranks() > 1 && !std_evp_solver().parallel()) {
-        TERMINATE("eigen-value solver is not parallel");
-    }
+    //if (kp->num_ranks() > 1 && !std_evp_solver().parallel()) {
+    //    TERMINATE("eigen-value solver is not parallel");
+    //}
 
     std::vector<double> band_energies(ctx_.num_bands());
 
@@ -688,6 +687,8 @@ inline void Band::diag_sv(K_point* kp,
         DUMP("checksum(hpsi[i]): %18.10f %18.10f", std::real(z1), std::imag(z1));
     }
     #endif
+
+    auto std_solver = experimental::Eigensolver_factory<double_complex>(ctx_.std_evp_solver_type());
  
     if (ctx_.num_mag_dims() != 3) {
         dmatrix<double_complex> h(nfv, nfv, ctx_.blacs_grid(), bs, bs);
@@ -708,9 +709,7 @@ inline void Band::diag_sv(K_point* kp,
             DUMP("checksum(h): %18.10f %18.10f", std::real(z1), std::imag(z1));
             #endif
             sddk::timer t1("sirius::Band::diag_sv|stdevp");
-            std_evp_solver().solve(nfv, nfv, h.at<CPU>(), h.ld(), &band_energies[ispn * nfv],
-                                   kp->sv_eigen_vectors(ispn).at<CPU>(), kp->sv_eigen_vectors(ispn).ld(),
-                                   h.num_rows_local(), h.num_cols_local());
+            std_solver->solve(nfv, nfv, h, &band_energies[ispn * nfv], kp->sv_eigen_vectors(ispn));
         }
     } else {
         int nb = ctx_.num_bands();
@@ -744,9 +743,7 @@ inline void Band::diag_sv(K_point* kp,
         DUMP("checksum(h): %18.10f %18.10f", std::real(z1), std::imag(z1));
         #endif
         sddk::timer t1("sirius::Band::diag_sv|stdevp");
-        std_evp_solver().solve(nb, nb, h.at<CPU>(), h.ld(), &band_energies[0],
-                               kp->sv_eigen_vectors(0).at<CPU>(), kp->sv_eigen_vectors(0).ld(),
-                               h.num_rows_local(), h.num_cols_local());
+        std_solver->solve(nb, nb, h, &band_energies[0], kp->sv_eigen_vectors(0));
     }
 
     #ifdef __GPU

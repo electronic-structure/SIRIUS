@@ -261,7 +261,7 @@ Band::initialize_subspace(K_point* kp__, int num_ao__, Radial_grid_lin<double>& 
     wave_functions wf_tmp(ctx_.processing_unit(), kp__->gkvec(), num_phi_tot);
 
     int bs        = ctx_.cyclic_block_size();
-    auto mem_type = (std_evp_solver().type() == ev_magma) ? memory_t::host_pinned : memory_t::host;
+    auto mem_type = (ctx_.std_evp_solver_type() == experimental::ev_solver_t::magma) ? memory_t::host_pinned : memory_t::host;
     dmatrix<T> hmlt(num_phi_tot, num_phi_tot, ctx_.blacs_grid(), bs, bs, mem_type);
     dmatrix<T> ovlp(num_phi_tot, num_phi_tot, ctx_.blacs_grid(), bs, bs, mem_type);
     dmatrix<T> evec(num_phi_tot, num_phi_tot, ctx_.blacs_grid(), bs, bs, mem_type);
@@ -306,6 +306,9 @@ Band::initialize_subspace(K_point* kp__, int num_ao__, Radial_grid_lin<double>& 
         }
     }
 
+    auto std_solver = experimental::Eigensolver_factory<T>(ctx_.std_evp_solver_type());
+    auto gen_solver = experimental::Eigensolver_factory<T>(ctx_.gen_evp_solver_type());
+
     for (int ispn_step = 0; ispn_step < num_spin_steps; ispn_step++) {
         /* apply Hamiltonian and overlap operators to the new basis functions */
         apply_h_o<T>(kp__, ispn_step, 0, num_phi_tot, phi, hphi, ophi, d_op, q_op);
@@ -325,9 +328,7 @@ Band::initialize_subspace(K_point* kp__, int num_ao__, Radial_grid_lin<double>& 
                 TERMINATE(s);
             }
             std::vector<double> eo(num_phi_tot);
-            if (std_evp_solver().solve(num_phi_tot, num_phi_tot, hmlt.template at<CPU>(), hmlt.ld(), eo.data(),
-                                       evec.template at<CPU>(), evec.ld(), hmlt.num_rows_local(),
-                                       hmlt.num_cols_local())) {
+            if (std_solver->solve(num_phi_tot, num_phi_tot, hmlt, eo.data(), evec)) {
                 std::stringstream s;
                 s << "error in diagonalziation";
                 TERMINATE(s);
@@ -361,11 +362,7 @@ Band::initialize_subspace(K_point* kp__, int num_ao__, Radial_grid_lin<double>& 
         //}
 
         /* solve generalized eigen-value problem with the size N and get lowest num_bands eigen-vectors */
-        if (gen_evp_solver().solve(num_phi_tot, num_bands,
-                                   hmlt.template at<CPU>(), hmlt.ld(),
-                                   ovlp.template at<CPU>(), ovlp.ld(),
-                                   eval.data(), evec.template at<CPU>(), evec.ld(),
-                                   hmlt.num_rows_local(), hmlt.num_cols_local())) {
+        if (gen_solver->solve(num_phi_tot, num_bands, hmlt, ovlp, eval.data(), evec)) {
             std::stringstream s;
             s << "error in diagonalziation";
             TERMINATE(s);

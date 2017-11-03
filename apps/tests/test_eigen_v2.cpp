@@ -80,7 +80,17 @@ void test_diag(BLACS_grid const& blacs_grid__,
         printf("n = %i\n", n__);
         printf("nev = %i\n", nev__);
         printf("bs = %i\n", bs__);
-        printf("== calling %s eigensolver ==\n", name__.c_str());
+        printf("== calling %s ", name__.c_str());
+        if (test_gen__) {
+            printf("generalized ");
+        }
+        printf("eigensolver ==\n");
+        if (std::is_same<T, double>::value) {
+            printf("real data type\n");
+        }
+        if (std::is_same<T, double_complex>::value) {
+            printf("complex data type\n");
+        }
     }
     if (test_gen__) {
         if (n__ == nev__) {
@@ -147,7 +157,7 @@ void call_test(std::vector<int> mpi_grid__,
 {
     BLACS_grid blacs_grid(mpi_comm_world(), mpi_grid__[0], mpi_grid__[1]);
     for (int i = 0; i < repeat__; i++) {
-        //test_diag<double>(blacs_grid, N__, n__, nev__, bs__, test_gen__);
+        test_diag<double>(blacs_grid, N__, n__, nev__, bs__, test_gen__, name__);
         test_diag<double_complex>(blacs_grid, N__, n__, nev__, bs__, test_gen__, name__);
     }
 
