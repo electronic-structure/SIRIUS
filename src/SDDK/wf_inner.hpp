@@ -90,6 +90,7 @@ inline void inner(wave_functions& bra__,
 
     T alpha = (std::is_same<T, double_complex>::value) ? 1 : 2;
     T beta = 0;
+    T beta1 = 1;
 
     auto local_inner = [&](int i0__,
                            int m__,
@@ -113,7 +114,7 @@ inline void inner(wave_functions& bra__,
                                           *reinterpret_cast<double_complex*>(&alpha),
                                           bra__.mt_coeffs().prime().at<CPU>(0, i0__), bra__.mt_coeffs().prime().ld(),
                                           ket__.mt_coeffs().prime().at<CPU>(0, j0__), ket__.mt_coeffs().prime().ld(),
-                                          *reinterpret_cast<double_complex*>(&beta),
+                                          *reinterpret_cast<double_complex*>(&beta1),
                                           reinterpret_cast<double_complex*>(buf__), ld__);
                     }
                     break;
@@ -132,7 +133,7 @@ inline void inner(wave_functions& bra__,
                                           reinterpret_cast<double_complex*>(&alpha),
                                           bra__.mt_coeffs().prime().at<GPU>(0, i0__), bra__.mt_coeffs().prime().ld(),
                                           ket__.mt_coeffs().prime().at<GPU>(0, j0__), ket__.mt_coeffs().prime().ld(),
-                                          reinterpret_cast<double_complex*>(&beta),
+                                          reinterpret_cast<double_complex*>(&beta1),
                                           reinterpret_cast<double_complex*>(buf__), ld__,
                                           stream_id);
                     }
