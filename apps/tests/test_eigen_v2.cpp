@@ -47,7 +47,8 @@ void test_diag(BLACS_grid const& blacs_grid__,
                int n__,
                int nev__,
                int bs__,
-               bool test_gen__)
+               bool test_gen__,
+               std::string name__)
 {
     dmatrix<T> A = random_symmetric<T>(N__, bs__, blacs_grid__);
     dmatrix<T> A_ref(N__, N__, blacs_grid__, bs__, bs__);
@@ -63,7 +64,14 @@ void test_diag(BLACS_grid const& blacs_grid__,
         B >> B_ref;
     }
 
-    auto solver = experimental::Eigenproblem_factory<T>(experimental::ev_solver_t::scalapack);
+    std::map<std::string, experimental::ev_solver_t> map_name_to_type = {
+        {"lapack", experimental::ev_solver_t::lapack},
+        {"scalapack", experimental::ev_solver_t::scalapack},
+        {"elpa1", experimental::ev_solver_t::elpa1},
+        {"elpa2", experimental::ev_solver_t::elpa2}
+    };
+
+    auto solver = experimental::Eigensolver_factory<T>(map_name_to_type[name__]);
     
     std::vector<double> eval(nev__);
 
@@ -72,7 +80,7 @@ void test_diag(BLACS_grid const& blacs_grid__,
         printf("n = %i\n", n__);
         printf("nev = %i\n", nev__);
         printf("bs = %i\n", bs__);
-        printf("== calling eigensolver ==\n");
+        printf("== calling %s eigensolver ==\n", name__.c_str());
     }
     if (test_gen__) {
         if (n__ == nev__) {
@@ -107,13 +115,6 @@ void test_diag(BLACS_grid const& blacs_grid__,
         linalg<CPU>::gemm(0, 0, n__, nev__, n__, linalg_const<T>::one(), B_ref, A, linalg_const<T>::zero(), B);
         B >> A;
     }
-        //for (int j = 0; j < B.num_cols_local(); j++) {
-        //    for (int i = 0; i < B.num_rows_local(); i++) {
-        //        if (B.icol(j) < nev__) {
-        //            B(i, j) *= eval[B.icol(j)];
-        //        }
-        //    }
-        //}
 
     /* A * Z - lambda * B * Z */
     linalg<CPU>::gemm(0, 0, n__, nev__, n__, linalg_const<T>::one(), A_ref, Z, linalg_const<T>::m_one(), A);
@@ -141,12 +142,13 @@ void call_test(std::vector<int> mpi_grid__,
                int nev__,
                int bs__,
                bool test_gen__,
+               std::string  name__,
                int repeat__)
 {
     BLACS_grid blacs_grid(mpi_comm_world(), mpi_grid__[0], mpi_grid__[1]);
     for (int i = 0; i < repeat__; i++) {
         //test_diag<double>(blacs_grid, N__, n__, nev__, bs__, test_gen__);
-        test_diag<double_complex>(blacs_grid, N__, n__, nev__, bs__, test_gen__);
+        test_diag<double_complex>(blacs_grid, N__, n__, nev__, bs__, test_gen__, name__);
     }
 
 }
@@ -161,6 +163,7 @@ int main(int argn, char** argv)
     args.register_key("--bs=", "{int} block size");
     args.register_key("--repeat=", "{int} number of repeats");
     args.register_key("--gen", "test generalized problem");
+    args.register_key("--name=", "{string} name of the solver");
 
     args.parse_args(argn, argv);
     if (args.exist("help")) {
@@ -174,10 +177,11 @@ int main(int argn, char** argv)
     auto nev      = args.value<int>("nev", 50);
     auto bs       = args.value<int>("bs", 32);
     auto repeat   = args.value<int>("repeat", 2);
-    bool test_gen = args.exist("gen");
+    auto test_gen = args.exist("gen");
+    auto name     = args.value<std::string>("name", "lapack");
 
     sirius::initialize(1);
-    call_test(mpi_grid_dims, N, n, nev, bs, test_gen, repeat);
+    call_test(mpi_grid_dims, N, n, nev, bs, test_gen, name, repeat);
     mpi_comm_world().barrier();
     sddk::timer::print();
     sirius::finalize();
