@@ -31,6 +31,9 @@ inline void orthogonalize(int N__,
         }
     }
 
+    const char* sddk_debug_raw = std::getenv("SDDK_DEBUG");
+    int sddk_debug = (sddk_debug_raw == NULL) ? 0 : std::atoi(sddk_debug_raw);
+
     double ngop{0};
     if (std::is_same<T, double>::value) {
         ngop = 2e-9;
@@ -59,6 +62,27 @@ inline void orthogonalize(int N__,
 
     /* orthogonalize new n__ x n__ block */
     inner(*wfs__[idx_bra__], N__, n__, *wfs__[idx_ket__], N__, n__, 0.0, o__, 0, 0);
+
+    if (sddk_debug >= 1) {
+        if (o__.blacs_grid().comm().rank() == 0) {
+            printf("check diagonal\n");
+        }
+        auto diag = o__.get_diag(n__);
+        for (int i = 0; i < n__; i++) {
+            if (std::real(diag[i]) <= 0 || std::imag(diag[i]) > 1e-12) {
+                std::cout << "wrong diagonal: " << i << " " << diag[i] << std::endl;
+            }
+        }
+        if (o__.blacs_grid().comm().rank() == 0) {
+            printf("check hermitian\n");
+        }
+        double d = check_hermitian(o__, n__);
+        if (d > 1e-12 && o__.blacs_grid().comm().rank() == 0) {
+            std::stringstream s;
+            s << "matrix is not hermitian, max diff = " << d;
+            WARNING(s);
+        }
+    }
 
     if (sddk_pp) {
         gflops += ngop * n__ * n__ * K;
