@@ -506,6 +506,7 @@ class Eigensolver_elpa: public Eigensolver<T>
             TERMINATE("wrong block size");
         }
         
+        sddk::timer t1("Eigensolver_elpa|to_std");
         /* Cholesky factorization B = U^{H}*U */
         linalg<CPU>::potrf(matrix_size__, B__);
         /* inversion of the triangular matrix */
@@ -523,6 +524,7 @@ class Eigensolver_elpa: public Eigensolver<T>
         /* U^{-H} * Z = U{-H} * A * U^{-1} -> A */
         linalg<CPU>::gemm(2, 0, matrix_size__, matrix_size__, matrix_size__, linalg_const<T>::one(), B__, Z__,
                           linalg_const<T>::zero(), A__);
+        t1.stop();
 
         int num_cols_loc = A__.num_cols_local();
         int bs = A__.bs_row();
@@ -532,6 +534,7 @@ class Eigensolver_elpa: public Eigensolver<T>
         int mpi_comm_col = MPI_Comm_c2f(A__.blacs_grid().comm_col().mpi_comm());
         int mpi_comm_all = MPI_Comm_c2f(A__.blacs_grid().comm().mpi_comm());
         std::vector<double> w(matrix_size__);
+        sddk::timer t2("Eigensolver_elpa|solve");
         /* solve standard eigen-value problem with ELPA1 */
         if (std::is_same<T, double_complex>::value) {
             if (stage_ == 1) {
@@ -569,11 +572,14 @@ class Eigensolver_elpa: public Eigensolver<T>
                                                     &bs, &num_cols_loc, &mpi_comm_row, &mpi_comm_col, &mpi_comm_all);
             }
         }
+        t2.stop();
 
+        sddk::timer t3("Eigensolver_elpa|bt");
         /* back-transform of eigen-vectors */
         linalg<CPU>::gemm(0, 0, matrix_size__, nev__, matrix_size__, linalg_const<T>::one(), B__, Z__,
                           linalg_const<T>::zero(), A__);
         A__ >> Z__;
+        t3.stop();
 
         std::copy(w.begin(), w.begin() + nev__, eval__);
 
@@ -601,6 +607,7 @@ class Eigensolver_elpa: public Eigensolver<T>
         int mpi_comm_col = MPI_Comm_c2f(A__.blacs_grid().comm_col().mpi_comm());
         int mpi_comm_all = MPI_Comm_c2f(A__.blacs_grid().comm().mpi_comm());
         std::vector<double> w(matrix_size__);
+        sddk::timer t2("Eigensolver_elpa|solve");
         /* solve standard eigen-value problem with ELPA1 */
         if (std::is_same<T, double_complex>::value) {
             if (stage_ == 1) {
@@ -637,6 +644,7 @@ class Eigensolver_elpa: public Eigensolver<T>
                                                     &bs, &num_cols_loc, &mpi_comm_row, &mpi_comm_col, &mpi_comm_all);
             }
         }
+        t2.stop();
 
         std::copy(w.begin(), w.begin() + nev__, eval__);
 
