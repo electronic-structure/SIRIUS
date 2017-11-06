@@ -50,7 +50,7 @@ inline void Band::diag_pseudo_potential_exact(K_point* kp__,
     printf("checksum(o): %18.10f %18.10f\n", z2.real(), z2.imag());
     #endif
 
-    auto gen_solver = experimental::Eigensolver_factory<T>(ctx_.gen_evp_solver_type());
+    auto gen_solver = ctx_.gen_evp_solver<T>();
     
     TERMINATE("fix this later");
     //if (gen_solver->solve(ngk, num_bands, hphi.component(0), ophi.component(0), &eval[0], psi.pw_coeffs().prime())) {
@@ -198,8 +198,8 @@ inline int Band::diag_pseudo_potential_davidson(K_point*       kp__,
         }
     }
 
-    auto std_solver = experimental::Eigensolver_factory<T>(ctx_.std_evp_solver_type());
-    auto gen_solver = experimental::Eigensolver_factory<T>(ctx_.gen_evp_solver_type());
+    auto std_solver = ctx_.std_evp_solver<T>();
+    auto gen_solver = ctx_.gen_evp_solver<T>();
 
     int niter{0};
     

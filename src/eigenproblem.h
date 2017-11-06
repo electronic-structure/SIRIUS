@@ -481,6 +481,7 @@ class Eigensolver_lapack: public Eigensolver<T>
     }
 };
 
+#ifdef __ELPA
 template <typename T>
 class Eigensolver_elpa: public Eigensolver<T>
 {
@@ -657,7 +658,14 @@ class Eigensolver_elpa: public Eigensolver<T>
         return solve(matrix_size__, matrix_size__, A__, eval__, Z__);
     }
 };
+#else
+template <typename T>
+class Eigensolver_elpa: public Eigensolver<T>
+{
+};
+#endif
 
+#ifdef __SCALAPACK
 template <typename T>
 class Eigensolver_scalapack: public Eigensolver<T>
 {
@@ -941,6 +949,36 @@ class Eigensolver_scalapack: public Eigensolver<T>
         return 0;
     }
 };
+#else
+template <typename T>
+class Eigensolver_scalapack: public Eigensolver<T>
+{
+};
+#endif
+
+#ifdef __MAGMA
+template <typename T>
+class Eigensolver_magma: public Eigensolver<T>
+{
+};
+#else
+template <typename T>
+class Eigensolver_magma: public Eigensolver<T>
+{
+};
+#endif
+
+#ifdef __PLASMA
+template <typename T>
+class Eigensolver_plasma: public Eigensolver<T>
+{
+};
+#else
+template <typename T>
+class Eigensolver_plasma: public Eigensolver<T>
+{
+};
+#endif
 
 template <typename T>
 std::unique_ptr<Eigensolver<T>> Eigensolver_factory(ev_solver_t ev_solver_type__)

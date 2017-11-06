@@ -363,6 +363,18 @@ class Simulation_context_base: public Simulation_parameters
         {
             return gen_evp_solver_type_;
         }
+        
+        template <typename T>
+        inline std::unique_ptr<experimental::Eigensolver<T>> std_evp_solver()
+        {
+            return std::move(experimental::Eigensolver_factory<T>(std_evp_solver_type_));
+        }
+
+        template <typename T>
+        inline std::unique_ptr<experimental::Eigensolver<T>> gen_evp_solver()
+        {
+            return std::move(experimental::Eigensolver_factory<T>(gen_evp_solver_type_));
+        }
 
         /// Phase factors \f$ e^{i {\bf G} {\bf r}_{\alpha}} \f$
         inline double_complex gvec_phase_factor(vector3d<int> G__, int ia__) const
@@ -742,17 +754,10 @@ inline void Simulation_context_base::initialize()
         {"lapack",    experimental::ev_solver_t::lapack},
         {"scalapack", experimental::ev_solver_t::scalapack},
         {"elpa1",     experimental::ev_solver_t::elpa1},
-        {"elpa2",     experimental::ev_solver_t::elpa2}
+        {"elpa2",     experimental::ev_solver_t::elpa2},
+        {"magma",     experimental::ev_solver_t::magma},
+        {"plasma",    experimental::ev_solver_t::plasma}
     };
-
-    //str_to_ev_solver_t["lapack"]    = ev_lapack;
-    //str_to_ev_solver_t["scalapack"] = ev_scalapack;
-    //str_to_ev_solver_t["elpa1"]     = ev_elpa1;
-    //str_to_ev_solver_t["elpa2"]     = ev_elpa2;
-    //str_to_ev_solver_t["magma"]     = ev_magma;
-    //str_to_ev_solver_t["plasma"]    = ev_plasma;
-    //str_to_ev_solver_t["rs_cpu"]    = ev_rs_cpu;
-    //str_to_ev_solver_t["rs_gpu"]    = ev_rs_gpu;
 
     for (int i: {0, 1}) {
         auto name = evsn[i];
@@ -959,14 +964,14 @@ inline void Simulation_context_base::print_info()
             //    break;
             //}
             #endif
-            //case ev_magma: {
-            //    printf("MAGMA\n");
-            //    break;
-            //}
-            //case ev_plasma: {
-            //    printf("PLASMA\n");
-            //    break;
-            //}
+            case experimental::ev_solver_t::magma: {
+                printf("MAGMA\n");
+                break;
+            }
+            case experimental::ev_solver_t::plasma: {
+                printf("PLASMA\n");
+                break;
+            }
             default: {
                 TERMINATE("wrong eigen-value solver");
             }
