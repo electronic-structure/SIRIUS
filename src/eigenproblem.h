@@ -661,6 +661,9 @@ class Eigensolver_elpa: public Eigensolver<T>
 template <typename T>
 class Eigensolver_scalapack: public Eigensolver<T>
 {
+  private:
+    double const ortfac_{1e-6};
+    double const abstol_{1e-12};
   public:
     /// Solve a standard eigen-value problem for all eigen-pairs.
     int solve(ftn_int matrix_size__, dmatrix<T>& A__, double* eval__, dmatrix<T>& Z__)
@@ -722,8 +725,6 @@ class Eigensolver_scalapack: public Eigensolver<T>
         int descz[9];
         linalg_base::descinit(descz, matrix_size__, matrix_size__, Z__.bs_row(), Z__.bs_col(), 0, 0, Z__.blacs_grid().context(), Z__.ld());
         
-        double orfac{1e-6};
-        double abs_tol{1e-12};
         int32_t ione{1};
         
         int32_t m{-1};
@@ -746,7 +747,7 @@ class Eigensolver_scalapack: public Eigensolver<T>
             int32_t lrwork = -1;
             int32_t liwork = -1;
             FORTRAN(pzheevx)("V", "I", "U", &matrix_size__, reinterpret_cast<double_complex*>(A__.template at<CPU>()), 
-                             &ione, &ione, desca, &d1, &d1, &ione, &nev__, &abs_tol, &m, &nz, &w[0], &orfac,
+                             &ione, &ione, desca, &d1, &d1, &ione, &nev__, &abstol_, &m, &nz, &w[0], &ortfac_,
                              reinterpret_cast<double_complex*>(Z__.template at<CPU>()), &ione, &ione, descz, &work[0], &lwork,
                              &rwork[0], &lrwork, &iwork[0], &liwork, &ifail[0], &iclustr[0], &gap[0], &info, 
                              (ftn_int)1, (ftn_int)1, (ftn_int)1); 
@@ -760,7 +761,7 @@ class Eigensolver_scalapack: public Eigensolver<T>
             iwork = std::vector<int32_t>(liwork);
 
             FORTRAN(pzheevx)("V", "I", "U", &matrix_size__, reinterpret_cast<double_complex*>(A__.template at<CPU>()),
-                             &ione, &ione, desca, &d1, &d1, &ione, &nev__, &abs_tol, &m, &nz, &w[0], &orfac,
+                             &ione, &ione, desca, &d1, &d1, &ione, &nev__, &abstol_, &m, &nz, &w[0], &ortfac_,
                              reinterpret_cast<double_complex*>(Z__.template at<CPU>()), &ione, &ione, descz, &work[0],
                              &lwork, &rwork[0], &lrwork, &iwork[0], &liwork, &ifail[0], &iclustr[0], &gap[0], &info, 
                              (ftn_int)1, (ftn_int)1, (ftn_int)1); 
@@ -776,7 +777,7 @@ class Eigensolver_scalapack: public Eigensolver<T>
 
 
             FORTRAN(pdsyevx)("V", "I", "U", &matrix_size__, reinterpret_cast<double*>(A__.template at<CPU>()), &ione, &ione, desca, &d1, &d1, 
-                             &ione, &nev__, &abs_tol, &m, &nz, &w[0], &orfac, reinterpret_cast<double*>(Z__.template at<CPU>()), &ione, &ione, descz, &work[0], &lwork, 
+                             &ione, &nev__, &abstol_, &m, &nz, &w[0], &ortfac_, reinterpret_cast<double*>(Z__.template at<CPU>()), &ione, &ione, descz, &work[0], &lwork, 
                              &iwork[0], &liwork, &ifail[0], &iclustr[0], &gap[0], &info, (ftn_int)1, (ftn_int)1, (ftn_int)1); 
             
             lwork = static_cast<int32_t>(work[0]) + 4 * (1 << 20);
@@ -786,7 +787,7 @@ class Eigensolver_scalapack: public Eigensolver<T>
             iwork = std::vector<int32_t>(liwork);
 
             FORTRAN(pdsyevx)("V", "I", "U", &matrix_size__, reinterpret_cast<double*>(A__.template at<CPU>()), &ione, &ione, desca, &d1, &d1, 
-                             &ione, &nev__, &abs_tol, &m, &nz, &w[0], &orfac, reinterpret_cast<double*>(Z__.template at<CPU>()), &ione, &ione, descz, &work[0], &lwork, 
+                             &ione, &nev__, &abstol_, &m, &nz, &w[0], &ortfac_, reinterpret_cast<double*>(Z__.template at<CPU>()), &ione, &ione, descz, &work[0], &lwork, 
                              &iwork[0], &liwork, &ifail[0], &iclustr[0], &gap[0], &info, 
                              (ftn_int)1, (ftn_int)1, (ftn_int)1); 
 
@@ -814,7 +815,7 @@ class Eigensolver_scalapack: public Eigensolver<T>
             }
 
             std::stringstream s;
-            s << "pdsyevx returned " << info; 
+            s << "p{zhe,dsy}evx returned " << info; 
             TERMINATE(s);
         }
 
@@ -822,8 +823,121 @@ class Eigensolver_scalapack: public Eigensolver<T>
             TERMINATE("Not all eigen-vectors or eigen-values are found.");
         }
 
-        std::memcpy(eval__, &w[0], nev__ * sizeof(double));
+        std::copy(w.begin(), w.begin() + nev__, eval__);
 
+        return 0;
+    }
+
+    /// Solve a generalized eigen-value problem for N lowest eigen-pairs.
+    int solve(ftn_int matrix_size__, ftn_int nev__, dmatrix<T>& A__, dmatrix<T>& B__, double* eval__, dmatrix<T>& Z__)
+    {
+        ftn_int desca[9];
+        linalg_base::descinit(desca, matrix_size__, matrix_size__, A__.bs_row(), A__.bs_col(), 0, 0, A__.blacs_grid().context(), A__.ld());
+
+        ftn_int descb[9];
+        linalg_base::descinit(descb, matrix_size__, matrix_size__, B__.bs_row(), B__.bs_col(), 0, 0, B__.blacs_grid().context(), B__.ld());
+        
+        ftn_int descz[9];
+        linalg_base::descinit(descz, matrix_size__, matrix_size__, Z__.bs_row(), Z__.bs_col(), 0, 0, Z__.blacs_grid().context(), Z__.ld());
+
+
+        std::vector<ftn_int> ifail(matrix_size__);
+        std::vector<ftn_int> iclustr(2 * A__.blacs_grid().comm().size());
+        std::vector<double> gap(A__.blacs_grid().comm().size());
+        std::vector<double> w(matrix_size__);
+
+        ftn_int ione{1};
+            
+        ftn_int m{-1};
+        ftn_int nz{-1};
+        double d1;
+        ftn_int info{-1};
+
+        if (std::is_same<T, double_complex>::value) {
+            int32_t lwork = -1;
+            int32_t lrwork = -1;
+            int32_t liwork = -1;
+            std::vector<double_complex> work(1);
+            std::vector<double> rwork(3);
+            std::vector<int32_t> iwork(1);
+            /* work size query */
+            FORTRAN(pzhegvx)(&ione, "V", "I", "U", &matrix_size__, reinterpret_cast<double_complex*>(A__.template at<CPU>()), 
+                             &ione, &ione, desca, reinterpret_cast<double_complex*>(B__.template at<CPU>()), &ione, &ione, 
+                             descb, &d1, &d1, &ione, &nev__, &abstol_, &m, &nz, &w[0], &ortfac_,
+                             reinterpret_cast<double_complex*>(Z__.template at<CPU>()), &ione, &ione, descz, &work[0], &lwork, 
+                             &rwork[0], &lrwork, &iwork[0], &liwork, &ifail[0], &iclustr[0], &gap[0], &info, 
+                             (ftn_int)1, (ftn_int)1, (ftn_int)1);
+
+            lwork = static_cast<int32_t>(work[0].real()) + 4096;
+            lrwork = static_cast<int32_t>(rwork[0]) + 4096;
+            liwork = iwork[0] + 4096;
+
+            work = std::vector<double_complex>(lwork);
+            rwork = std::vector<double>(lrwork);
+            iwork = std::vector<int32_t>(liwork);
+            
+            FORTRAN(pzhegvx)(&ione, "V", "I", "U", &matrix_size__,  reinterpret_cast<double_complex*>(A__.template at<CPU>()),
+                             &ione, &ione, desca, reinterpret_cast<double_complex*>(B__.template at<CPU>()), &ione, &ione,
+                             descb, &d1, &d1, &ione, &nev__, &abstol_, &m, &nz, &w[0], &ortfac_,
+                             reinterpret_cast<double_complex*>(Z__.template at<CPU>()), &ione, &ione, descz, &work[0], &lwork, 
+                             &rwork[0], &lrwork, &iwork[0], &liwork, &ifail[0], &iclustr[0], &gap[0], &info, 
+                             (ftn_int)1, (ftn_int)1, (ftn_int)1);
+        }
+
+        if (std::is_same<T, double>::value) {
+            double work1;
+            int32_t lwork = -1;
+            int32_t liwork = -1;
+            /* work size query */
+            FORTRAN(pdsygvx)(&ione, "V", "I", "U", &matrix_size__, reinterpret_cast<double*>(A__.template at<CPU>()),
+                             &ione, &ione, desca, reinterpret_cast<double*>(B__.template at<CPU>()), &ione, &ione, descb,
+                             &d1, &d1, &ione, &nev__, &abstol_, &m, &nz, &w[0], &ortfac_,
+                             reinterpret_cast<double*>(Z__.template at<CPU>()), &ione, &ione, descz, &work1, &lwork, 
+                             &liwork, &lwork, &ifail[0], &iclustr[0], &gap[0], &info, (ftn_int)1, (ftn_int)1, (ftn_int)1); 
+            
+            lwork = static_cast<int32_t>(work1) + 4 * (1 << 20);
+            
+            std::vector<double> work(lwork);
+            std::vector<int32_t> iwork(liwork);
+            
+            FORTRAN(pdsygvx)(&ione, "V", "I", "U", &matrix_size__,  reinterpret_cast<double*>(A__.template at<CPU>()),
+                             &ione, &ione, desca, reinterpret_cast<double*>(B__.template at<CPU>()), &ione, &ione, descb,
+                             &d1, &d1, &ione, &nev__, &abstol_, &m, &nz, &w[0], &ortfac_,
+                             reinterpret_cast<double*>(Z__.template at<CPU>()), &ione, &ione, descz, &work[0], &lwork, 
+                             &iwork[0], &liwork, &ifail[0], &iclustr[0], &gap[0], &info, (ftn_int)1, (ftn_int)1, (ftn_int)1); 
+        }
+
+        if (info) {
+            if ((info / 2) % 2) {
+                std::stringstream s;
+                s << "eigenvectors corresponding to one or more clusters of eigenvalues" << std::endl  
+                  << "could not be reorthogonalized because of insufficient workspace" << std::endl;
+
+                int k = A__.blacs_grid().comm().size();
+                for (int i = 0; i < A__.blacs_grid().comm().size() - 1; i++) {
+                    if ((iclustr[2 * i + 1] != 0) && (iclustr[2 * (i + 1)] == 0)) {
+                        k = i + 1;
+                        break;
+                    }
+                }
+               
+                s << "number of eigenvalue clusters : " << k << std::endl;
+                for (int i = 0; i < k; i++) {
+                    s << iclustr[2 * i] << " : " << iclustr[2 * i + 1] << std::endl; 
+                }
+                TERMINATE(s);
+            }
+
+            std::stringstream s;
+            s << "p{zhe,dsy}gvx returned " << info; 
+            TERMINATE(s);
+        }
+
+        if ((m != nev__) || (nz != nev__)) {
+            TERMINATE("Not all eigen-vectors or eigen-values are found.");
+        }
+
+        std::copy(w.begin(), w.begin() + nev__, eval__);
         return 0;
     }
 };
