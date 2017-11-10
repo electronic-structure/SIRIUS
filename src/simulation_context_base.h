@@ -80,13 +80,9 @@ class Simulation_context_base: public Simulation_parameters
 
         std::string start_time_tag_;
 
-        //ev_solver_t std_evp_solver_type_{ev_lapack};
+        ev_solver_t std_evp_solver_type_{ev_solver_t::lapack};
 
-        //ev_solver_t gen_evp_solver_type_{ev_lapack};
-
-        experimental::ev_solver_t std_evp_solver_type_{experimental::ev_solver_t::lapack};
-
-        experimental::ev_solver_t gen_evp_solver_type_{experimental::ev_solver_t::lapack};
+        ev_solver_t gen_evp_solver_type_{ev_solver_t::lapack};
 
         mdarray<double_complex, 3> phase_factors_;
 
@@ -354,26 +350,26 @@ class Simulation_context_base: public Simulation_parameters
             return start_time_tag_;
         }
 
-        inline experimental::ev_solver_t std_evp_solver_type() const
+        inline ev_solver_t std_evp_solver_type() const
         {
             return std_evp_solver_type_;
         }
     
-        inline experimental::ev_solver_t gen_evp_solver_type() const
+        inline ev_solver_t gen_evp_solver_type() const
         {
             return gen_evp_solver_type_;
         }
         
         template <typename T>
-        inline std::unique_ptr<experimental::Eigensolver<T>> std_evp_solver()
+        inline std::unique_ptr<Eigensolver<T>> std_evp_solver()
         {
-            return std::move(experimental::Eigensolver_factory<T>(std_evp_solver_type_));
+            return std::move(Eigensolver_factory<T>(std_evp_solver_type_));
         }
 
         template <typename T>
-        inline std::unique_ptr<experimental::Eigensolver<T>> gen_evp_solver()
+        inline std::unique_ptr<Eigensolver<T>> gen_evp_solver()
         {
-            return std::move(experimental::Eigensolver_factory<T>(gen_evp_solver_type_));
+            return std::move(Eigensolver_factory<T>(gen_evp_solver_type_));
         }
 
         /// Phase factors \f$ e^{i {\bf G} {\bf r}_{\alpha}} \f$
@@ -748,15 +744,15 @@ inline void Simulation_context_base::initialize()
         }
     }
 
-    experimental::ev_solver_t* evst[] = {&std_evp_solver_type_, &gen_evp_solver_type_};
+    ev_solver_t* evst[] = {&std_evp_solver_type_, &gen_evp_solver_type_};
 
-    std::map<std::string, experimental::ev_solver_t> str_to_ev_solver_t = {
-        {"lapack",    experimental::ev_solver_t::lapack},
-        {"scalapack", experimental::ev_solver_t::scalapack},
-        {"elpa1",     experimental::ev_solver_t::elpa1},
-        {"elpa2",     experimental::ev_solver_t::elpa2},
-        {"magma",     experimental::ev_solver_t::magma},
-        {"plasma",    experimental::ev_solver_t::plasma}
+    std::map<std::string, ev_solver_t> str_to_ev_solver_t = {
+        {"lapack",    ev_solver_t::lapack},
+        {"scalapack", ev_solver_t::scalapack},
+        {"elpa1",     ev_solver_t::elpa1},
+        {"elpa2",     ev_solver_t::elpa2},
+        {"magma",     ev_solver_t::magma},
+        {"plasma",    ev_solver_t::plasma}
     };
 
     for (int i: {0, 1}) {
@@ -934,24 +930,24 @@ inline void Simulation_context_base::print_info()
     std::string evsn[] = {"standard eigen-value solver        : ",
                           "generalized eigen-value solver     : "};
 
-    experimental::ev_solver_t evst[] = {std_evp_solver_type_, gen_evp_solver_type_};
+    ev_solver_t evst[] = {std_evp_solver_type_, gen_evp_solver_type_};
     for (int i = 0; i < 2; i++) {
         printf("%s", evsn[i].c_str());
         switch (evst[i]) {
-            case experimental::ev_solver_t::lapack: {
+            case ev_solver_t::lapack: {
                 printf("LAPACK\n");
                 break;
             }
             #ifdef __SCALAPACK
-            case experimental::ev_solver_t::scalapack: {
+            case ev_solver_t::scalapack: {
                 printf("ScaLAPACK\n");
                 break;
             }
-            case experimental::ev_solver_t::elpa1: {
+            case ev_solver_t::elpa1: {
                 printf("ELPA1\n");
                 break;
             }
-            case experimental::ev_solver_t::elpa2: {
+            case ev_solver_t::elpa2: {
                 printf("ELPA2\n");
                 break;
             }
@@ -964,11 +960,11 @@ inline void Simulation_context_base::print_info()
             //    break;
             //}
             #endif
-            case experimental::ev_solver_t::magma: {
+            case ev_solver_t::magma: {
                 printf("MAGMA\n");
                 break;
             }
-            case experimental::ev_solver_t::plasma: {
+            case ev_solver_t::plasma: {
                 printf("PLASMA\n");
                 break;
             }

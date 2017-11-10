@@ -6,7 +6,7 @@ inline void Band::diag_fv_exact(K_point* kp, Potential& potential__) const
     //    TERMINATE("eigen-value solver is not parallel");
     //}
 
-    auto mem_type = (ctx_.gen_evp_solver_type() == experimental::ev_solver_t::magma) ? memory_t::host_pinned : memory_t::host;
+    auto mem_type = (ctx_.gen_evp_solver_type() == ev_solver_t::magma) ? memory_t::host_pinned : memory_t::host;
     int ngklo = kp->gklo_basis_size();
     int bs = ctx_.cyclic_block_size();
     dmatrix<double_complex> h(ngklo, ngklo, ctx_.blacs_grid(), bs, bs, mem_type);
@@ -66,7 +66,7 @@ inline void Band::diag_fv_exact(K_point* kp, Potential& potential__) const
     std::vector<double> eval(ctx_.num_fv_states());
     
     sddk::timer t("sirius::Band::diag_fv_exact|genevp");
-    auto solver = experimental::Eigensolver_factory<double_complex>(ctx_.gen_evp_solver_type());
+    auto solver = ctx_.gen_evp_solver<double_complex>();
     
     if (solver->solve(kp->gklo_basis_size(), ctx_.num_fv_states(), h, o, eval.data(), kp->fv_eigen_vectors())) {
         TERMINATE("error in generalized eigen-value problem");
@@ -267,7 +267,7 @@ inline void Band::get_singular_components(K_point* kp__) const
     #endif
     #endif
 
-    auto std_solver = experimental::Eigensolver_factory<double_complex>(ctx_.std_evp_solver_type());
+    auto std_solver = ctx_.std_evp_solver<double_complex>();
     
     /* start iterative diagonalization */
     for (int k = 0; k < itso.num_steps_; k++) {
@@ -525,7 +525,7 @@ inline void Band::diag_fv_davidson(K_point* kp) const
         MEMORY_USAGE_INFO();
     }
 
-        auto std_solver = experimental::Eigensolver_factory<double_complex>(ctx_.std_evp_solver_type());
+    auto std_solver = ctx_.std_evp_solver<double_complex>();
     
     /* start iterative diagonalization */
     for (int k = 0; k < itso.num_steps_; k++) {
@@ -688,7 +688,7 @@ inline void Band::diag_sv(K_point* kp,
     }
     #endif
 
-    auto std_solver = experimental::Eigensolver_factory<double_complex>(ctx_.std_evp_solver_type());
+    auto std_solver = ctx_.std_evp_solver<double_complex>();
  
     if (ctx_.num_mag_dims() != 3) {
         dmatrix<double_complex> h(nfv, nfv, ctx_.blacs_grid(), bs, bs);

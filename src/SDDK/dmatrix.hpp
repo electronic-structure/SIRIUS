@@ -136,9 +136,8 @@ class dmatrix : public matrix<T>
 
     dmatrix(T* ptr__,
             int num_rows__,
-            int num_cols__,
-            memory_t mem_type__ = memory_t::host)
-        : matrix<T>(ptr__, num_rows__, num_cols__, mem_type__)
+            int num_cols__)
+        : matrix<T>(ptr__, num_rows__, num_cols__)
         , num_rows_(num_rows__)
         , num_cols_(num_cols__)
         , bs_row_(1)

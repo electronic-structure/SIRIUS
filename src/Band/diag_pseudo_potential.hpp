@@ -50,12 +50,16 @@ inline void Band::diag_pseudo_potential_exact(K_point* kp__,
     printf("checksum(o): %18.10f %18.10f\n", z2.real(), z2.imag());
     #endif
 
-    auto gen_solver = ctx_.gen_evp_solver<T>();
+    auto gen_solver = ctx_.gen_evp_solver<double_complex>();
     
     TERMINATE("fix this later");
-    //if (gen_solver->solve(ngk, num_bands, hphi.component(0), ophi.component(0), &eval[0], psi.pw_coeffs().prime())) {
-    //    TERMINATE("error in evp solve");
-    //}
+    dmatrix<double_complex> hmlt(hphi[0].pw_coeffs().prime().template at<CPU>(), ngk, ngk);
+    dmatrix<double_complex> ovlp(ophi[0].pw_coeffs().prime().template at<CPU>(), ngk, ngk);
+    dmatrix<double_complex> Z(psi.pw_coeffs().prime().template at<CPU>(), ngk, ngk);
+
+    if (gen_solver->solve(ngk, num_bands, hmlt, ovlp, &eval[0], Z)) {
+        TERMINATE("error in evp solve");
+    }
 
     for (int j = 0; j < ctx_.num_fv_states(); j++) {
         kp__->band_energy(j + ispn__ * ctx_.num_fv_states()) = eval[j];
@@ -139,7 +143,7 @@ inline int Band::diag_pseudo_potential_davidson(K_point*       kp__,
     t1.stop();
 
     sddk::timer t2("sirius::Band::diag_pseudo_potential_davidson|alloc");
-    auto mem_type = (ctx_.std_evp_solver_type() == experimental::ev_solver_t::magma) ? memory_t::host_pinned : memory_t::host;
+    auto mem_type = (ctx_.std_evp_solver_type() == ev_solver_t::magma) ? memory_t::host_pinned : memory_t::host;
 
     int bs = ctx_.cyclic_block_size();
 

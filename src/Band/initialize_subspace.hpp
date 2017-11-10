@@ -149,17 +149,6 @@ Band::initialize_subspace(K_point* kp__, int num_ao__, Radial_grid_lin<double>& 
             }
         }
 
-        //mdarray<double, 3> ri(kp__->num_gkvec_loc(), unit_cell_.lmax() + 1, unit_cell_.num_atom_types());
-        //for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
-        //    for (size_t i = 0; i < atom_type.pp_desc().atomic_pseudo_wfs_.size(); i++) {
-        //    for (int l = 0; l <= unit_cell_.atom_type(iat).indexr().lmax(); l++) {
-        //        #pragma omp parallel for
-        //        for (int igk_loc = 0; igk_loc < kp__->num_gkvec_loc(); igk_loc++) {
-        //            ri(igk_loc, l, iat) = rad_int__[iat][l](idx_gk[igk_loc].first, idx_gk[igk_loc].second);
-        //        }
-        //    }
-        //}
-
         #pragma omp parallel for schedule(static)
         for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
             double phase = twopi * dot(kp__->gkvec().vk(), unit_cell_.atom(ia).position());
@@ -261,7 +250,7 @@ Band::initialize_subspace(K_point* kp__, int num_ao__, Radial_grid_lin<double>& 
     wave_functions wf_tmp(ctx_.processing_unit(), kp__->gkvec(), num_phi_tot);
 
     int bs        = ctx_.cyclic_block_size();
-    auto mem_type = (ctx_.std_evp_solver_type() == experimental::ev_solver_t::magma) ? memory_t::host_pinned : memory_t::host;
+    auto mem_type = (ctx_.std_evp_solver_type() == ev_solver_t::magma) ? memory_t::host_pinned : memory_t::host;
     dmatrix<T> hmlt(num_phi_tot, num_phi_tot, ctx_.blacs_grid(), bs, bs, mem_type);
     dmatrix<T> ovlp(num_phi_tot, num_phi_tot, ctx_.blacs_grid(), bs, bs, mem_type);
     dmatrix<T> evec(num_phi_tot, num_phi_tot, ctx_.blacs_grid(), bs, bs, mem_type);
@@ -306,8 +295,8 @@ Band::initialize_subspace(K_point* kp__, int num_ao__, Radial_grid_lin<double>& 
         }
     }
 
-    auto std_solver = experimental::Eigensolver_factory<T>(ctx_.std_evp_solver_type());
-    auto gen_solver = experimental::Eigensolver_factory<T>(ctx_.gen_evp_solver_type());
+    auto std_solver = Eigensolver_factory<T>(ctx_.std_evp_solver_type());
+    auto gen_solver = Eigensolver_factory<T>(ctx_.gen_evp_solver_type());
 
     for (int ispn_step = 0; ispn_step < num_spin_steps; ispn_step++) {
         /* apply Hamiltonian and overlap operators to the new basis functions */
@@ -341,8 +330,6 @@ Band::initialize_subspace(K_point* kp__, int num_ao__, Radial_grid_lin<double>& 
             }
         }
 
-        //orthogonalize<T>(ctx_.processing_unit(), num_sc, 0, num_phi_tot, phi, hphi, ophi, hmlt, wf_tmp);
-
         /* setup eigen-value problem */
         set_subspace_mtrx<T>(0, num_phi_tot, phi, hphi, hmlt, hmlt_old);
         set_subspace_mtrx<T>(0, num_phi_tot, phi, ophi, ovlp, hmlt_old);
@@ -351,15 +338,6 @@ Band::initialize_subspace(K_point* kp__, int num_ao__, Radial_grid_lin<double>& 
             hmlt.serialize("hmlt", num_phi_tot);
             ovlp.serialize("ovlp", num_phi_tot);
         }
-
-
-        ///* solve generalized eigen-value problem with the size N */
-        //if (std_evp_solver().solve(num_phi_tot, num_bands, hmlt.template at<CPU>(), hmlt.ld(), eval.data(),
-        //                           evec.template at<CPU>(), evec.ld(), hmlt.num_rows_local(), hmlt.num_cols_local())) {
-        //    std::stringstream s;
-        //    s << "error in diagonalization";
-        //    TERMINATE(s);
-        //}
 
         /* solve generalized eigen-value problem with the size N and get lowest num_bands eigen-vectors */
         if (gen_solver->solve(num_phi_tot, num_bands, hmlt, ovlp, eval.data(), evec)) {
