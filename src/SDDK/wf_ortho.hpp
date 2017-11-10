@@ -31,6 +31,9 @@ inline void orthogonalize(int N__,
         }
     }
 
+    const char* sddk_debug_raw = std::getenv("SDDK_DEBUG");
+    int sddk_debug = (sddk_debug_raw == NULL) ? 0 : std::atoi(sddk_debug_raw);
+
     double ngop{0};
     if (std::is_same<T, double>::value) {
         ngop = 2e-9;
@@ -59,6 +62,27 @@ inline void orthogonalize(int N__,
 
     /* orthogonalize new n__ x n__ block */
     inner(*wfs__[idx_bra__], N__, n__, *wfs__[idx_ket__], N__, n__, 0.0, o__, 0, 0);
+
+    if (sddk_debug >= 1) {
+        if (o__.blacs_grid().comm().rank() == 0) {
+            printf("check diagonal\n");
+        }
+        auto diag = o__.get_diag(n__);
+        for (int i = 0; i < n__; i++) {
+            if (std::real(diag[i]) <= 0 || std::imag(diag[i]) > 1e-12) {
+                std::cout << "wrong diagonal: " << i << " " << diag[i] << std::endl;
+            }
+        }
+        if (o__.blacs_grid().comm().rank() == 0) {
+            printf("check hermitian\n");
+        }
+        double d = check_hermitian(o__, n__);
+        if (d > 1e-12 && o__.blacs_grid().comm().rank() == 0) {
+            std::stringstream s;
+            s << "matrix is not hermitian, max diff = " << d;
+            WARNING(s);
+        }
+    }
 
     if (sddk_pp) {
         gflops += ngop * n__ * n__ * K;
@@ -249,7 +273,7 @@ inline void orthogonalize(device_t                     pu__,
 
     if (sddk_debug >= 2) {
         if (o__.blacs_grid().comm().rank() == 0) {
-            printf("check QR decomposition\n");
+            printf("check QR decomposition, matrix size : %i\n", n__);
         }
         inner(*wfs__[idx_bra__], N__, n__, *wfs__[idx_ket__], N__, n__, o__, 0, 0);
 
@@ -263,12 +287,24 @@ inline void orthogonalize(device_t                     pu__,
             }
         }
 
-    //    //std::vector<double> eo(n__);
-    //    //dmatrix<T> evec(o__.num_rows(), o__.num_cols(), o__.blacs_grid(), o__.bs_row(), o__.bs_col());
+        if (o__.blacs_grid().comm().rank() == 0) {
+            printf("check eigen-values, matrix size : %i\n", n__);
+        }
+        inner(*wfs__[idx_bra__], N__, n__, *wfs__[idx_ket__], N__, n__, o__, 0, 0);
+        
+        std::vector<double> eo(n__);
+        dmatrix<T> evec(o__.num_rows(), o__.num_cols(), o__.blacs_grid(), o__.bs_row(), o__.bs_col());
 
-    //    //Eigenproblem_elpa1 evs(o__.blacs_grid(), o__.bs_row());
-    //    //evs.solve(n__, n__, o__.template at<CPU>(), o__.ld(), eo.data(), evec.template at<CPU>(), evec.ld(),
-    //    //          o__.num_rows_local(), o__.num_cols_local());
+        auto solver = experimental::Eigensolver_factory<T>(experimental::ev_solver_t::scalapack);
+        solver->solve(n__, o__, eo.data(), evec);
+
+        if (o__.blacs_grid().comm().rank() == 0) {
+            for (int i = 0; i < n__; i++) {
+                if (eo[i] < 1e-6) {
+                    std::cout << "small eigen-value " << i << " " << eo[i] << std::endl;
+                }
+            }
+        }
 
     //    //if (o__.blacs_grid().comm().rank() == 0) { 
     //    //    std::cout << "smallest ev of the new n x x block: " << eo[0] << std::endl;
@@ -277,6 +313,7 @@ inline void orthogonalize(device_t                     pu__,
 
     /* orthogonalize new n__ x n__ block */
     inner(*wfs__[idx_bra__], N__, n__, *wfs__[idx_ket__], N__, n__, o__, 0, 0);
+    o__.make_real_diag(n__);
 
     if (sddk_debug >= 1) {
         if (o__.blacs_grid().comm().rank() == 0) {

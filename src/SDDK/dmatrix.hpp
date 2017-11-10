@@ -235,7 +235,8 @@ class dmatrix : public matrix<T>
                 auto c = spl_col_.location(i);
                 if (blacs_grid_->rank_col() == c.rank) {
                     T v = (*this)(r.local_index, c.local_index);
-                    (*this)(r.local_index, c.local_index) = sddk_type_wrapper<T>::real(v);
+                    //(*this)(r.local_index, c.local_index) = sddk_type_wrapper<T>::real(v);
+                    (*this)(r.local_index, c.local_index) = std::real(v);
                 }
             }
         }
