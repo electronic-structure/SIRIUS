@@ -152,8 +152,11 @@ struct pseudopotential_descriptor
     /// electrostatic potential of all electron core charge
     std::vector<double> all_elec_loc_potential;
 
-    /// total angulat momentum j of the (hubbard) wave functions
+    /// total angular momentum j of the (hubbard) wave functions
     std::vector<double> total_angular_momentum_wfs;
+
+    /// total angular momentum j of the (hubbard) wave functions
+    std::vector<double> occupation_wfs;
 
     int cutoff_radius_index;
 };

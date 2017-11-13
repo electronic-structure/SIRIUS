@@ -167,6 +167,13 @@ void Band::apply_h_o(K_point* kp__,
         }
     }
 
+    // apply the hubbard potential if relevant
+    if(ctx_.hubbard_correction() && !ctx_.gamma_point()) {
+        // note that it is done only one's
+        U_->generate_atomic_orbitals(*kp__, q_op);
+        U_->apply_hubbard_potential(*kp__, N__, n__, phi__, hphi__);
+    }
+
     if (ctx_.control().print_checksum_) {
         for (int ispn = 0; ispn < nsc; ispn++) {
             auto cs1 = hphi__.component(ispn).checksum(N__, n__);

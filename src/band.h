@@ -30,7 +30,7 @@
 #include "potential.h"
 #include "local_operator.h"
 #include "non_local_operator.h"
-
+#include "hubbard.hpp"
 namespace sirius
 {
 
@@ -48,6 +48,9 @@ class Band
 
         /// Alias for the unit cell.
         Unit_cell& unit_cell_;
+
+        /// Alias for the hubbard potential (note it is a pointer)
+        std::unique_ptr<Hubbard_potential> U_;
 
         /// BLACS grid for distributed linear algebra operations.
         BLACS_grid const& blacs_grid_;
@@ -528,6 +531,10 @@ class Band
             }
 
             local_op_ = std::unique_ptr<Local_operator>(new Local_operator(ctx_, ctx_.fft_coarse()));
+
+            if(ctx_.hubbard_correction()) {
+                U_ = std::unique_ptr<Hubbard_potential>(new Hubbard_potential(ctx_));
+            }
         }
 
         /// Apply the muffin-tin part of the Hamiltonian to the apw basis functions of an atom.
@@ -843,6 +850,11 @@ class Band
         template <typename T>
         inline void initialize_subspace(K_point*                                        kp__,
                                         int                                             num_ao__) const;
+
+        Hubbard_potential& U()
+            {
+                return *U_;
+            }
 };
 
 #include "Band/get_h_o_diag.hpp"

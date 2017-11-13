@@ -142,8 +142,10 @@ class Radial_integrals_base
 
                 values_(i, iat).interpolate();
                 angular_momentum[iat][i] = l;
-                // will need it for Hubbard + so
-                // total_angular_momentum[iat][i] = ;
+                if(atom_type.pp_desc().total_angular_momentum_wfs.size()) {
+                    // will need it for Hubbard + so
+                    total_angular_momentum[iat][i] = atom_type.pp_desc().total_angular_momentum_wfs[i];
+                }
             }
         }
     }

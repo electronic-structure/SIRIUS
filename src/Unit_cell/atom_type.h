@@ -341,11 +341,24 @@ class Atom_type
 
     pseudopotential_descriptor pp_desc_;
 
+    /// starting magnetization
+    double starting_magnetization_{0.0};
+
+    /// magnetization in spherical coordinates
+    double m_theta_{0.0};
+    double m_phi_{0.0};
+
     /// Hubbard correction
     bool hubbard_correction_{false};
 
-    /// hubbard orbitals
-    int hubbard_lmax_{0};
+    /// hubbard angular momentum s, p, d, f
+    int hubbard_l_{-1};
+
+    /// hubbard orbital
+    int hubbard_n_{0};
+
+    // hubbard occupancy
+    double hubbard_occupancy_orbital_;
 
     /// different hubbard coefficients
     //  s: U = hubbard_coefficients_[0]
@@ -362,6 +375,7 @@ class Atom_type
     // simplifed hubbard theory
     double hubbard_alpha_{0.0};
     double hubbard_beta_{0.0};
+    double hubbard_J0_{0.0};
 
     /// Inverse of (Q_{\xi \xi'j}^{-1} + beta_pw^{H}_{\xi} * beta_pw_{xi'})
     /** Used in Chebyshev iterative solver as a block-diagonal preconditioner */
@@ -906,6 +920,15 @@ class Atom_type
     {
         return q_rf_(idx__, l__);
     }
+    bool const& hubbard_correction() const
+    {
+        return hubbard_correction_;
+    }
+
+    inline double Hubbard_J0() const
+    {
+        return hubbard_J0_;
+    }
 
     inline double Hubbard_U() const
     {
@@ -915,6 +938,11 @@ class Atom_type
     inline double Hubbard_J() const
     {
         return hubbard_coefficients_[1];
+    }
+
+    inline double Hubbard_U_minus_J() const
+    {
+        return Hubbard_U() - Hubbard_J();
     }
 
     inline double Hubbard_B() const
@@ -942,16 +970,46 @@ class Atom_type
         return hubbard_beta_;
     }
 
-    inline int hubbard_lmax() const
+    inline int hubbard_l() const
     {
-        return hubbard_lmax_;
+        return hubbard_l_;
+    }
+
+    inline double magnetization_theta() const
+    {
+        return m_theta_;
+    }
+
+    inline double magnetization_phi() const
+    {
+        return m_phi_;
+    }
+
+    inline double starting_magnetization() const
+    {
+        return starting_magnetization_;
+    }
+
+    inline int hubbard_n() const
+    {
+        return hubbard_n_;
+    }
+
+    inline double hubbard_matrix(const int m1, const int m2, const int m3, const int m4) const
+    {
+        return hubbard_matrix_(m1, m2, m3, m4);
+    }
+
+    inline double& hubbard_matrix(const int m1, const int m2, const int m3, const int m4)
+    {
+        return hubbard_matrix_(m1, m2, m3, m4);
     }
 
     void hubbard_F_coefficients(double *F)
     {
         F[0] = Hubbard_U();
 
-        switch(hubbard_lmax_) {
+        switch(hubbard_l_) {
         case 1:
             F[1] = 5.0 * Hubbard_J();
             break;
@@ -965,6 +1023,7 @@ class Atom_type
             F[3] = (7361.640 / 594.0) * Hubbard_J() + (36808.20 / 66.0) * Hubbard_E2()  - 111.54 * Hubbard_E3();
             break;
         default:
+            printf("%d\n", hubbard_l_);
             TERMINATE("Hubbard correction not implemented for l > 3");
             break;
         }
@@ -979,7 +1038,273 @@ class Atom_type
                 (std::abs(indexb(xi).j - indexb(xj).j) < 1e-8));
     }
 
+    inline void set_hubbard_occupancy_orbital(double occ)
+    {
+        if ((occ < 0) && (hubbard_correction_))
+            TERMINATE("this atom has hubbard correction but the orbital occupancy is negative\n");
+        hubbard_occupancy_orbital_ = occ;
+    }
+
+    inline void set_hubbard_l_and_n_orbital()
+    {
+        std::vector<std::pair<std::string, int>> nl_orb;
+
+        nl_orb.push_back(std::make_pair("Ti", 3));
+        nl_orb.push_back(std::make_pair("V", 3));
+        nl_orb.push_back(std::make_pair("Cr", 3));
+        nl_orb.push_back(std::make_pair("Mn", 3));
+        nl_orb.push_back(std::make_pair("Fe", 3));
+        nl_orb.push_back(std::make_pair("Co", 3));
+        nl_orb.push_back(std::make_pair("Ni", 3));
+        nl_orb.push_back(std::make_pair("Cu", 3));
+        nl_orb.push_back(std::make_pair("Zn", 3));
+        nl_orb.push_back(std::make_pair("As", 3));
+        nl_orb.push_back(std::make_pair("Ga", 3));
+
+        nl_orb.push_back(std::make_pair("Zr", 4));
+        nl_orb.push_back(std::make_pair("Nb", 4));
+        nl_orb.push_back(std::make_pair("Mo", 4));
+        nl_orb.push_back(std::make_pair("Tc", 4));
+        nl_orb.push_back(std::make_pair("Ru", 4));
+        nl_orb.push_back(std::make_pair("Rh", 4));
+        nl_orb.push_back(std::make_pair("Pd", 4));
+        nl_orb.push_back(std::make_pair("Ag", 4));
+        nl_orb.push_back(std::make_pair("Cd", 4));
+        nl_orb.push_back(std::make_pair("Ce", 4));
+        nl_orb.push_back(std::make_pair("Pr", 4));
+        nl_orb.push_back(std::make_pair("Nd", 4));
+        nl_orb.push_back(std::make_pair("Pm", 4));
+        nl_orb.push_back(std::make_pair("Sm", 4));
+        nl_orb.push_back(std::make_pair("Eu", 4));
+        nl_orb.push_back(std::make_pair("Gd", 4));
+        nl_orb.push_back(std::make_pair("Tb", 4));
+        nl_orb.push_back(std::make_pair("Dy", 4));
+        nl_orb.push_back(std::make_pair("Ho", 4));
+        nl_orb.push_back(std::make_pair("Er", 4));
+        nl_orb.push_back(std::make_pair("Tm", 4));
+        nl_orb.push_back(std::make_pair("Yb", 4));
+        nl_orb.push_back(std::make_pair("Lu", 4));
+        nl_orb.push_back(std::make_pair("In", 4));
+
+        nl_orb.push_back(std::make_pair("Th", 5));
+        nl_orb.push_back(std::make_pair("Pa", 5));
+        nl_orb.push_back(std::make_pair("U", 5));
+        nl_orb.push_back(std::make_pair("Np", 5));
+        nl_orb.push_back(std::make_pair("Pu", 5));
+        nl_orb.push_back(std::make_pair("Am", 5));
+        nl_orb.push_back(std::make_pair("Cm", 5));
+        nl_orb.push_back(std::make_pair("Bk", 5));
+        nl_orb.push_back(std::make_pair("Cf", 5));
+        nl_orb.push_back(std::make_pair("Es", 5));
+        nl_orb.push_back(std::make_pair("Fm", 5));
+        nl_orb.push_back(std::make_pair("Md", 5));
+        nl_orb.push_back(std::make_pair("No", 5));
+        nl_orb.push_back(std::make_pair("Lr", 5));
+        nl_orb.push_back(std::make_pair("Hf", 5));
+        nl_orb.push_back(std::make_pair("Ta", 5));
+        nl_orb.push_back(std::make_pair("W", 5));
+        nl_orb.push_back(std::make_pair("Re", 5));
+        nl_orb.push_back(std::make_pair("Os", 5));
+        nl_orb.push_back(std::make_pair("Ir", 5));
+        nl_orb.push_back(std::make_pair("Pt", 5));
+        nl_orb.push_back(std::make_pair("Au", 5));
+        nl_orb.push_back(std::make_pair("Hg", 5));
+
+        nl_orb.push_back(std::make_pair("H", 1));
+
+        nl_orb.push_back(std::make_pair("C", 2));
+        nl_orb.push_back(std::make_pair("N", 2));
+        nl_orb.push_back(std::make_pair("O", 2));
+
+        for(size_t i = 0; i < nl_orb.size(); i++) {
+            if(nl_orb[i].first == symbol_) {
+                hubbard_n_ = nl_orb[i].second;
+                break;
+            }
+        }
+
+        if (hubbard_n_ < 0) {
+            TERMINATE("The atom %s is not included in the list of atoms with hubbard correction\n");
+        }
+
+        // same with orbital momentum
+        nl_orb.clear();
+        // d orbitals
+        nl_orb.push_back(std::make_pair("Ti", 2));
+        nl_orb.push_back(std::make_pair("V", 2));
+        nl_orb.push_back(std::make_pair("Cr", 2));
+        nl_orb.push_back(std::make_pair("Mn", 2));
+        nl_orb.push_back(std::make_pair("Fe", 2));
+        nl_orb.push_back(std::make_pair("Co", 2));
+        nl_orb.push_back(std::make_pair("Ni", 2));
+        nl_orb.push_back(std::make_pair("Cu", 2));
+        nl_orb.push_back(std::make_pair("Zn", 2));
+        nl_orb.push_back(std::make_pair("Zr", 2));
+        nl_orb.push_back(std::make_pair("Nb", 2));
+        nl_orb.push_back(std::make_pair("Mo", 2));
+        nl_orb.push_back(std::make_pair("Tc", 2));
+        nl_orb.push_back(std::make_pair("Ru", 2));
+        nl_orb.push_back(std::make_pair("Rh", 2));
+        nl_orb.push_back(std::make_pair("Pd", 2));
+        nl_orb.push_back(std::make_pair("Ag", 2));
+        nl_orb.push_back(std::make_pair("Cd", 2));
+        nl_orb.push_back(std::make_pair("Hf", 2));
+        nl_orb.push_back(std::make_pair("Ta", 2));
+        nl_orb.push_back(std::make_pair("W", 2));
+        nl_orb.push_back(std::make_pair("Re", 2));
+        nl_orb.push_back(std::make_pair("Os", 2));
+        nl_orb.push_back(std::make_pair("Ir", 2));
+        nl_orb.push_back(std::make_pair("Pt", 2));
+        nl_orb.push_back(std::make_pair("Au", 2));
+        nl_orb.push_back(std::make_pair("Hg", 2));
+        nl_orb.push_back(std::make_pair("As", 2));
+        nl_orb.push_back(std::make_pair("Ga", 2));
+        nl_orb.push_back(std::make_pair("In", 2));
+
+        // f orbitals
+        nl_orb.push_back(std::make_pair("Ce", 3));
+        nl_orb.push_back(std::make_pair("Pr", 3));
+        nl_orb.push_back(std::make_pair("Nd", 3));
+        nl_orb.push_back(std::make_pair("Pm", 3));
+        nl_orb.push_back(std::make_pair("Sm", 3));
+        nl_orb.push_back(std::make_pair("Eu", 3));
+        nl_orb.push_back(std::make_pair("Gd", 3));
+        nl_orb.push_back(std::make_pair("Tb", 3));
+        nl_orb.push_back(std::make_pair("Dy", 3));
+        nl_orb.push_back(std::make_pair("Ho", 3));
+        nl_orb.push_back(std::make_pair("Er", 3));
+        nl_orb.push_back(std::make_pair("Tm", 3));
+        nl_orb.push_back(std::make_pair("Yb", 3));
+        nl_orb.push_back(std::make_pair("Lu", 3));
+        nl_orb.push_back(std::make_pair("Th", 3));
+        nl_orb.push_back(std::make_pair("Pa", 3));
+        nl_orb.push_back(std::make_pair("U", 3));
+        nl_orb.push_back(std::make_pair("Np", 3));
+        nl_orb.push_back(std::make_pair("Pu", 3));
+        nl_orb.push_back(std::make_pair("Am", 3));
+        nl_orb.push_back(std::make_pair("Cm", 3));
+        nl_orb.push_back(std::make_pair("Bk", 3));
+        nl_orb.push_back(std::make_pair("Cf", 3));
+        nl_orb.push_back(std::make_pair("Es", 3));
+        nl_orb.push_back(std::make_pair("Fm", 3));
+        nl_orb.push_back(std::make_pair("Md", 3));
+        nl_orb.push_back(std::make_pair("No", 3));
+        nl_orb.push_back(std::make_pair("Lr", 3));
+
+        // s orbitals
+        nl_orb.push_back(std::make_pair("H", 0));
+
+        // p orbitals
+        nl_orb.push_back(std::make_pair("C", 1));
+        nl_orb.push_back(std::make_pair("N", 1));
+        nl_orb.push_back(std::make_pair("O", 1));
+
+        for(size_t i = 0; i < nl_orb.size(); i++) {
+            if(nl_orb[i].first == symbol_) {
+                hubbard_l_ = nl_orb[i].second;
+                break;
+            }
+        }
+
+        if (hubbard_l_ < 0) {
+            TERMINATE("The atom %s is not included in the list of atoms with hubbard correction\n");
+        }
+
+    }
+
+
+    inline const double get_occupancy_hubbard_orbital() const
+    {
+        return hubbard_occupancy_orbital_;
+    }
+
+    inline void set_occupancy_hubbard_orbital(double oc)
+    {
+        if (oc > 0.0) {
+            hubbard_occupancy_orbital_ = oc;
+            return;
+        }
+
+        std::vector<std::pair<std::string, double>> occ;
+        occ.clear();
+
+        // transition metals
+        occ.push_back(std::make_pair("Ti", 2.0));
+        occ.push_back(std::make_pair("Zr", 2.0));
+        occ.push_back(std::make_pair("Hf", 2.0));
+        occ.push_back(std::make_pair("V", 3.0));
+        occ.push_back(std::make_pair("Nb", 3.0));
+        occ.push_back(std::make_pair("Ta", 3.0));
+        occ.push_back(std::make_pair("Cr", 5.0));
+        occ.push_back(std::make_pair("Mo", 5.0));
+        occ.push_back(std::make_pair("W", 5.0));
+        occ.push_back(std::make_pair("Mn", 5.0));
+        occ.push_back(std::make_pair("Tc", 5.0));
+        occ.push_back(std::make_pair("re", 5.0));
+        occ.push_back(std::make_pair("Fe", 6.0));
+        occ.push_back(std::make_pair("Ru", 6.0));
+        occ.push_back(std::make_pair("Os", 6.0));
+        occ.push_back(std::make_pair("Co", 7.0));
+        occ.push_back(std::make_pair("Rh", 7.0));
+        occ.push_back(std::make_pair("Ir", 7.0));
+        occ.push_back(std::make_pair("Ni", 8.0));
+        occ.push_back(std::make_pair("Pd", 8.0));
+        occ.push_back(std::make_pair("Pt", 8.0));
+        occ.push_back(std::make_pair("Cu", 10.0));
+        occ.push_back(std::make_pair("Ag", 10.0));
+        occ.push_back(std::make_pair("Au", 10.0));
+        occ.push_back(std::make_pair("Zn", 10.0));
+        occ.push_back(std::make_pair("Cd", 10.0));
+        occ.push_back(std::make_pair("Hg", 10.0));
+        occ.push_back(std::make_pair("Ce", 2.0));
+        occ.push_back(std::make_pair("Th", 2.0));
+        occ.push_back(std::make_pair("Pr", 3.0));
+        occ.push_back(std::make_pair("Pa", 3.0));
+        occ.push_back(std::make_pair("Nd", 4.0));
+        occ.push_back(std::make_pair("U", 4.0));
+        occ.push_back(std::make_pair("Pm", 5.0));
+        occ.push_back(std::make_pair("Np", 5.0));
+        occ.push_back(std::make_pair("Sm", 6.0));
+        occ.push_back(std::make_pair("Pu", 6.0));
+        occ.push_back(std::make_pair("Eu", 6.0));
+        occ.push_back(std::make_pair("Am", 6.0));
+        occ.push_back(std::make_pair("Gd", 7.0));
+        occ.push_back(std::make_pair("Cm", 7.0));
+        occ.push_back(std::make_pair("Tb", 8.0));
+        occ.push_back(std::make_pair("Bk", 8.0));
+        occ.push_back(std::make_pair("Dy", 9.0));
+        occ.push_back(std::make_pair("Cf", 9.0));
+        occ.push_back(std::make_pair("Ho", 10.0));
+        occ.push_back(std::make_pair("Es", 10.0));
+        occ.push_back(std::make_pair("Er", 11.0));
+        occ.push_back(std::make_pair("Fm", 11.0));
+        occ.push_back(std::make_pair("Tm", 12.0));
+        occ.push_back(std::make_pair("Md", 12.0));
+        occ.push_back(std::make_pair("Yb", 13.0));
+        occ.push_back(std::make_pair("No", 13.0));
+        occ.push_back(std::make_pair("Lu", 14.0));
+        occ.push_back(std::make_pair("Lr", 14.0));
+        occ.push_back(std::make_pair("C", 2.0));
+        occ.push_back(std::make_pair("N", 3.0));
+        occ.push_back(std::make_pair("O", 4.0));
+        occ.push_back(std::make_pair("H", 1.0));
+        occ.push_back(std::make_pair("Ga", 10.0));
+        occ.push_back(std::make_pair("In", 10.0));
+
+        for(size_t i = 0; i < occ.size(); i++) {
+            if (occ[i].first == symbol_) {
+                hubbard_occupancy_orbital_  = occ[i].second;
+                occ.clear();
+                break;
+            }
+        }
+
+        if (hubbard_occupancy_orbital_ < 0.0) {
+            TERMINATE("this atom is not in the list of atoms with hubbard corrections\n");
+        }
+    }
   private:
+    void read_hubbard_input();
     void generate_f_coefficients(void);
     inline double ClebschGordan(const int l, const double j, const double m, const int spin);
     inline double_complex calculate_U_sigma_m(const int l, const double j, const int mj, const int m, const int sigma);
@@ -1250,6 +1575,14 @@ inline void Atom_type::print_info() const
     printf("number of core electrons    : %f\n", num_core_electrons_);
     printf("number of valence electrons : %f\n", num_valence_electrons_);
 
+    if (parameters_.hubbard_correction() && this->hubbard_correction()) {
+        printf("Hubbard correction is included in the calculations");
+        printf("\n");
+        printf("Angular momentum : %d\n", hubbard_l());
+        printf("principal quantum number : %d\n", hubbard_n());
+        printf("Occupancy : %f\n", hubbard_occupancy_orbital_);
+    }
+
     if (parameters_.full_potential()) {
         printf("\n");
         printf("atomic levels (n, l, k, occupancy, core)\n");
@@ -1416,52 +1749,6 @@ inline void Atom_type::read_input_lo(json const& parser)
     }
 }
 
-inline void Atom_type::read_hubbard_parameters(json const& parser)
-{
-    hubbard_correction_ = false;
-
-    if(!parser.count("hubbard"))
-        return;
-
-    if(!parser["hubbard"].count(symbol_)) {
-        return;
-    }
-
-    if(parser["hubbard"][symbol_].count("U")) {
-        this->hubbard_coefficients_[0] = parser["hubbard"][symbol_]["U"].get<double>();
-        hubbard_correction_ = true;
-    }
-
-    if(parser["hubbard"][symbol_].count("J")) {
-        this->hubbard_coefficients_[1] = parser["hubbard"][symbol_]["J"].get<double>();
-        hubbard_correction_ = true;
-    }
-
-    if(parser["hubbard"][symbol_].count("B")) {
-        this->hubbard_coefficients_[2] = parser["hubbard"][symbol_]["B"].get<double>();
-        hubbard_correction_ = true;
-    }
-
-    if(parser["hubbard"][symbol_].count("E2")) {
-        this->hubbard_coefficients_[2] = parser["hubbard"][symbol_]["E2"].get<double>();
-        hubbard_correction_ = true;
-    }
-
-    if(parser["hubbard"][symbol_].count("E3")) {
-        this->hubbard_coefficients_[3] = parser["hubbard"][symbol_]["E3"].get<double>();
-        hubbard_correction_ = true;
-    }
-
-    if(parser["hubbard"][symbol_].count("alpha")) {
-        this->hubbard_alpha_ = parser["hubbard"][symbol_]["alpha"].get<double>();
-        hubbard_correction_ = true;
-    }
-
-    if(parser["hubbard"][symbol_].count("beta")) {
-        this->hubbard_beta_ = parser["hubbard"][symbol_]["beta"].get<double>();
-        hubbard_correction_ = true;
-    }
-}
 
 inline void Atom_type::read_pseudo_uspp(json const& parser)
 {
@@ -1585,9 +1872,12 @@ inline void Atom_type::read_pseudo_uspp(json const& parser)
             pp_desc_.atomic_pseudo_wfs_.push_back(wf);
 
             if (pp_desc_.spin_orbit_coupling &&
-                parser["pseudo_potential"]["atomic_wave_functions"][k].count("total_angular_momentum")) {
+                parser["pseudo_potential"]["atomic_wave_functions"][k].count("total_angular_momentum") &&
+                parser["pseudo_potential"]["atomic_wave_functions"][k].count("occupation")) {
                 double jchi = parser["pseudo_potential"]["atomic_wave_functions"][k]["total_angular_momentum"];
+                double occ = parser["pseudo_potential"]["atomic_wave_functions"][k]["occupation"];
                 pp_desc_.total_angular_momentum_wfs.push_back(jchi);
+                pp_desc_.occupation_wfs.push_back(occ);
             }
             ///* read occupation of the function */
             // double occ = parser["pseudo_potential"]["atomic_wave_functions"][k]["occupation"];
@@ -1672,11 +1962,9 @@ inline void Atom_type::read_input(const std::string& fname)
         if (parser["pseudo_potential"].count("paw_data")) {
             read_pseudo_paw(parser);
         }
-
-        if(parameters_.hubbard_correction()) {
-            read_hubbard_parameters(parser);
-        }
     }
+
+
 
     if (parameters_.full_potential()) {
         name_               = parser["name"];
@@ -1699,6 +1987,21 @@ inline void Atom_type::read_input(const std::string& fname)
         /* read density */
         free_atom_density_ = parser["free_atom"]["density"].get<std::vector<double>>();
     }
+
+    // it is already done in input.h. I just initialize the
+    // different constants
+
+    read_hubbard_input();
+
+    if(parameters_.hubbard_correction()) {
+        hubbard_correction_ = true;
+        printf("Hubbard correction is included in the calculations");
+        printf("\n");
+        printf("Angular momentum : %d\n", hubbard_l());
+        printf("principal quantum number : %d\n", hubbard_n());
+        printf("Occupancy : %f\n", hubbard_occupancy_orbital_);
+    }
+
 }
 
 inline double Atom_type::ClebschGordan(const int l, const double j, const double mj, const int spin)
@@ -1802,8 +2105,9 @@ void Atom_type::generate_f_coefficients(void)
     // They are defined by Eq.9 of Ref PRB 71, 115106
     // and correspond to transformations of the
     // spherical harmonics
-    if (!this->pp_desc().spin_orbit_coupling)
+    if (!this->pp_desc().spin_orbit_coupling) {
         return;
+    }
 
     // number of beta projectors
     int nbf         = this->mt_basis_size();
@@ -1850,38 +2154,32 @@ void Atom_type::calculate_ak_coefficients(mdarray<double, 5> &ak)
     /// compute the ak coefficients appearing in the general treatment of hubbard corrections.
     /// expression taken from Liechtenstein {\it et al}, PRB 52, R5467 (1995)
 
-    ak = mdarray<double, 5>(4,
-                            2 * this->hubbard_lmax_ + 1,
-                            2 * this->hubbard_lmax_ + 1,
-                            2 * this->hubbard_lmax_ + 1,
-                            2 * this->hubbard_lmax_ + 1);
-
     ak.zero();
 
-    for(int m1 = -this->hubbard_lmax_; m1 <= this->hubbard_lmax_; m1++) {
-        for(int m2 = -this->hubbard_lmax_; m2 <= this->hubbard_lmax_; m2++) {
-            for(int m3 = -this->hubbard_lmax_; m3 <= this->hubbard_lmax_; m3++) {
-                for(int m4 = -this->hubbard_lmax_; m4 <= this->hubbard_lmax_; m4++) {
-                    for(int k = 0; k < 4; k++) {
-                        std::vector<double> tmp(4 * k + 1);
+    for(int m1 = -this->hubbard_l_; m1 <= this->hubbard_l_; m1++) {
+        for(int m2 = -this->hubbard_l_; m2 <= this->hubbard_l_; m2++) {
+            for(int m3 = -this->hubbard_l_; m3 <= this->hubbard_l_; m3++) {
+                for(int m4 = -this->hubbard_l_; m4 <= this->hubbard_l_; m4++) {
+                    for(int k = 0; k < this->hubbard_l_; k++) {
+                        std::vector<double> tmp(4 * k + 1, 0);
                         for(int q=- 2 * k; q <= 2 * k; q++) {
-                            tmp[2 * k + q] = SHT::clebsch_gordan(this->hubbard_lmax_, 2 * k, this->hubbard_lmax_, 0, 0, 0) *
-                                SHT::clebsch_gordan(this->hubbard_lmax_, 2 * k, this->hubbard_lmax_, -m1, q, m4) *
-                                SHT::clebsch_gordan(this->hubbard_lmax_, 2 * k, this->hubbard_lmax_, -m3, -q, m4)
-                                * (2 * this->hubbard_lmax_ + 1) * (2 * this->hubbard_lmax_ + 1) *
-                                ((((m1 + q + m2 + 20) % 2) == 0) - (((m1 + q + m2 + 20) % 2)));
+                            int tp = m1 + q + m2;
+                            tmp[2 * k + q] = SHT::clebsch_gordan(this->hubbard_l_, 2 * k, this->hubbard_l_, 0, 0, 0) *
+                                SHT::clebsch_gordan(this->hubbard_l_, 2 * k, this->hubbard_l_, 0, 0, 0) *
+                                SHT::clebsch_gordan(this->hubbard_l_, 2 * k, this->hubbard_l_, -m1, q, m2) *
+                                SHT::clebsch_gordan(this->hubbard_l_, 2 * k, this->hubbard_l_, -m3, -q, m4)
+                              * static_cast<double>((2 * this->hubbard_l_ + 1) * (2 * this->hubbard_l_ + 1)) * std::pow(-1, tp);
                         }
                         // now we sum the result
                         double sum = 0.0;
                         for(auto q = 0; q < tmp.size(); q++)
                             sum += tmp[q];
 
-                        sum *= 4.0 * M_PI/(4 * k + 1);
                         ak(k,
-                           m1 + this->hubbard_lmax_,
-                           m2 + this->hubbard_lmax_,
-                           m3 + this->hubbard_lmax_,
-                           m4 + this->hubbard_lmax_) = sum;
+                           m1 + this->hubbard_l_,
+                           m2 + this->hubbard_l_,
+                           m3 + this->hubbard_l_,
+                           m4 + this->hubbard_l_) = sum;
                     }
                 }
             }
@@ -1898,29 +2196,69 @@ void Atom_type::calculate_ak_coefficients(mdarray<double, 5> &ak)
 
 void Atom_type::compute_hubbard_matrix()
 {
-    this->hubbard_matrix_ = mdarray<double, 4>(2 * this->hubbard_lmax_ + 1,
-                                               2 * this->hubbard_lmax_ + 1,
-                                               2 * this->hubbard_lmax_ + 1,
-                                               2 * this->hubbard_lmax_ + 1);
-    mdarray<double, 5> ak(this->hubbard_lmax_,
-                          2 * this->hubbard_lmax_ + 1,
-                          2 * this->hubbard_lmax_ + 1,
-                          2 * this->hubbard_lmax_ + 1,
-                          2 * this->hubbard_lmax_ + 1);
+    this->hubbard_matrix_ = mdarray<double, 4>(2 * this->hubbard_l_ + 1,
+                                               2 * this->hubbard_l_ + 1,
+                                               2 * this->hubbard_l_ + 1,
+                                               2 * this->hubbard_l_ + 1);
+    mdarray<double, 5> ak(this->hubbard_l_,
+                          2 * this->hubbard_l_ + 1,
+                          2 * this->hubbard_l_ + 1,
+                          2 * this->hubbard_l_ + 1,
+                          2 * this->hubbard_l_ + 1);
     std::vector<double> F(4);
     hubbard_F_coefficients(&F[0]);
     calculate_ak_coefficients(ak);
 
-    for(int m4 = 0; m4 < 2 * this->hubbard_lmax_ + 1; m4++) {
-        for(int m3 = 0; m3 < 2 * this->hubbard_lmax_ + 1; m3++) {
-            for(int m2 = 0; m2 < 2 * this->hubbard_lmax_ + 1; m2++) {
-                for(int m1 = 0; m1 < 2 * this->hubbard_lmax_ + 1; m1++) {
-                    for(int k = 0; k < hubbard_lmax_; k++)
-                        this->hubbard_matrix_(m1, m2, m3, m4) = ak (k, m1, m2, m3, m4) * F[k];
+    this->hubbard_matrix_.zero();
+
+    for(int m4 = 0; m4 < 2 * this->hubbard_l_ + 1; m4++) {
+        for(int m3 = 0; m3 < 2 * this->hubbard_l_ + 1; m3++) {
+            for(int m2 = 0; m2 < 2 * this->hubbard_l_ + 1; m2++) {
+                for(int m1 = 0; m1 < 2 * this->hubbard_l_ + 1; m1++) {
+                    for(int k = 0; k < hubbard_l_; k++)
+                        this->hubbard_matrix(m1, m2, m3, m4) += ak (k, m1, m2, m3, m4) * F[k];
                 }
             }
         }
     }
+    // for(int k = 0; k < 2; k++) {
+    //   for(int m4 = 0; m4 < 2 * this->hubbard_l_ + 1; m4++) {
+    //     for(int m3 = 0; m3 < 2 * this->hubbard_l_ + 1; m3++) {
+    //       for(int m2 = 0; m2 < 2 * this->hubbard_l_ + 1; m2++) {
+    //         for(int m1 = 0; m1 < 2 * this->hubbard_l_ + 1; m1++) {
+    //           printf(" k = %d, m1 = %d m2 = %d m3 = %d m4 = %d ak = %.5lf\n",
+    //                  k + 1,
+    //                  m1  + 1,
+    //                  m2  + 1,
+    //                  m3  + 1,
+    //                  m4  + 1,
+    //                  ak(k, m1, m2, m3, m4));
+    //         }
+    //       }
+    //     }
+    //   }
+    // }
+}
+
+void Atom_type::read_hubbard_input()
+{
+    if(!parameters_.Hubbard().hubbard_correction_) {
+        return;
+    }
+
+    for(auto &d: parameters_.Hubbard().species) {
+        if (d.first == symbol_) {
+            hubbard_coefficients_[0] = d.second[0];
+            hubbard_coefficients_[1] = d.second[1];
+            hubbard_coefficients_[2] = d.second[2];
+            hubbard_coefficients_[3] = d.second[3];
+            hubbard_alpha_ = d.second[4];
+            hubbard_beta_ = d.second[5];
+        }
+    }
+
+    set_hubbard_l_and_n_orbital();
+    set_occupancy_hubbard_orbital(-1.0);
 }
 } // namespace
 

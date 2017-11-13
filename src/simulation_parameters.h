@@ -61,6 +61,8 @@ class Simulation_parameters
 
         Settings_input settings_input_;
 
+        Hubbard_input hubbard_input_;
+
         /// Import data from initial input parameters.
         void import(std::string const& fname__)
         {
@@ -81,6 +83,8 @@ class Simulation_parameters
             parameters_input_.read(dict);
             /* read settings */
             settings_input_.read(dict);
+            /* read hubbard parameters */
+            hubbard_input_.read(dict);
         }
 
     public:
@@ -513,6 +517,12 @@ class Simulation_parameters
         {
             return settings_input_;
         }
+
+        inline Hubbard_input const& Hubbard() const
+        {
+            return hubbard_input_;
+        }
+
 };
 
 };
