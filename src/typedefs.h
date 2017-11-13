@@ -72,11 +72,6 @@ class type_wrapper<double>
         typedef std::complex<double> complex_t;
         typedef double real_t;
         
-        static hid_t hdf5_type_id()
-        {
-            return H5T_NATIVE_DOUBLE;
-        }
-        
         static bool is_complex()
         {
             return false;
@@ -132,11 +127,6 @@ class type_wrapper<double_complex>
         typedef double_complex complex_t;
         typedef double real_t;
         
-        static hid_t hdf5_type_id()
-        {
-            return H5T_NATIVE_LDOUBLE;
-        }
-        
         static bool is_complex()
         {
             return true;
@@ -161,27 +151,6 @@ class type_wrapper<double_complex>
         }
 };
 
-template<> 
-class type_wrapper<int>
-{
-    public:
-        static hid_t hdf5_type_id()
-        {
-            return H5T_NATIVE_INT;
-        }
-};
-
-//template<> 
-//class type_wrapper<char>
-//{
-//    public:
-//
-//        static inline char random()
-//        {
-//            return static_cast<char>(255 * (double(std::rand()) / RAND_MAX));
-//        }
-//};
-
 enum class relativity_t
 {
     none,
@@ -194,6 +163,5 @@ enum class relativity_t
 
     dirac
 };
-
 
 #endif // __TYPEDEFS_H__

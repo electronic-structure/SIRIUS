@@ -1,5 +1,3 @@
-#include "eigenproblem.h"
-
 /// Orthogonalize n new wave-functions to the N old wave-functions
 template <typename T>
 inline void orthogonalize(int N__,
@@ -245,6 +243,21 @@ inline void orthogonalize(int             N__,
     auto wfs = {&phi__, &hphi__, &ophi__};
 
     orthogonalize(N__, n__, wfs, 0, 2, o__, tmp__);
+}
+
+template <typename T>
+static void save_to_hdf5(std::string name__, dmatrix<T>& mtrx__, int n__)
+{
+    mdarray<T, 2> full_mtrx(mtrx__.num_rows(), mtrx__.num_cols());
+    full_mtrx.zero();
+
+    for (int j = 0; j < mtrx__.num_cols_local(); j++) {
+        for (int i = 0; i < mtrx__.num_rows_local(); i++) {
+            full_mtrx(mtrx__.irow(i), mtrx__.icol(j)) = mtrx__(i, j);
+        }
+    }
+    mtrx__.blacs_grid().comm().allreduce(full_mtrx.template at<CPU>(), static_cast<int>(full_mtrx.size()));
+
 }
 
 /// Orthogonalize n new wave-functions to the N old wave-functions

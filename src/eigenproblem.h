@@ -35,6 +35,8 @@ extern "C" {
 }
 #endif
 
+using namespace sddk;
+
 /// Type of eigen-value solver.
 enum class ev_solver_t 
 {

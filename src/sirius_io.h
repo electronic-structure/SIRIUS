@@ -26,7 +26,7 @@
 #define __SIRIUS_IO_H__
 
 #include <cstdarg>
-#include "hdf5_tree.h"
+#include "hdf5_tree.hpp"
 #include "mdarray.hpp"
 #include "communicator.hpp"
 

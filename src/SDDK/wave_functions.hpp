@@ -28,6 +28,8 @@
 #include <cstdlib>
 #include <iostream>
 #include "linalg.hpp"
+#include "eigenproblem.h"
+#include "hdf5_tree.hpp"
 
 namespace sddk {
 
