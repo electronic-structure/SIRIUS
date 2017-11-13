@@ -513,6 +513,11 @@ class Simulation_parameters
             return parameters_input_;
         }
 
+        inline Parameters_input& parameters_input()
+        {
+            return parameters_input_;
+        }
+
         inline Settings_input const& settings() const
         {
             return settings_input_;

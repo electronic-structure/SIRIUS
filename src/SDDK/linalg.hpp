@@ -1048,12 +1048,18 @@ static double check_hermitian(dmatrix<T>& mtrx__, int n__)
     dmatrix<T> tmp(n__, n__, mtrx__.blacs_grid(), mtrx__.bs_row(), mtrx__.bs_col());
     linalg<CPU>::tranc(n__, n__, mtrx__, 0, 0, tmp, 0, 0);
 
-    splindex<block_cyclic> spl_r(n__, mtrx__.blacs_grid().num_ranks_row(), mtrx__.blacs_grid().rank_row(), mtrx__.bs_row());
-    splindex<block_cyclic> spl_c(n__, mtrx__.blacs_grid().num_ranks_col(), mtrx__.blacs_grid().rank_col(), mtrx__.bs_col());
-    
+    //splindex<block_cyclic> spl_r(n__, mtrx__.blacs_grid().num_ranks_row(), mtrx__.blacs_grid().rank_row(), mtrx__.bs_row());
+    //splindex<block_cyclic> spl_c(n__, mtrx__.blacs_grid().num_ranks_col(), mtrx__.blacs_grid().rank_col(), mtrx__.bs_col());
+    //
+    //double max_diff{0};
+    //for (int i = 0; i < spl_c.local_size(); i++) {
+    //    for (int j = 0; j < spl_r.local_size(); j++) {
+    //        max_diff = std::max(max_diff, std::abs(mtrx__(j, i) - tmp(j, i)));
+    //    }
+    //}
     double max_diff{0};
-    for (int i = 0; i < spl_c.local_size(); i++) {
-        for (int j = 0; j < spl_r.local_size(); j++) {
+    for (int i = 0; i < tmp.num_cols_local(); i++) {
+        for (int j = 0; j < tmp.num_rows_local(); j++) {
             max_diff = std::max(max_diff, std::abs(mtrx__(j, i) - tmp(j, i)));
         }
     }

@@ -264,8 +264,7 @@ class Band
          *  for the subspace spanned by the wave-functions \f$ \phi_i \f$. The matrix is always returned
          *  in the CPU pointer because most of the standard math libraries start from the CPU. */
         template <typename T, typename W>
-        inline void set_subspace_mtrx(int         num_sc__,
-                                      int         N__,
+        inline void set_subspace_mtrx(int         N__,
                                       int         n__,
                                       W&          phi__,
                                       W&          op_phi__,
@@ -291,29 +290,7 @@ class Band
             }
 
             /* <{phi,phi_new}|Op|phi_new> */
-            inner(num_sc__, phi__, 0, N__ + n__, op_phi__, N__, n__, mtrx__, 0, N__);
-            //if (true) {
-            //    if (mtrx__.blacs_grid().comm().size() == 1) {
-            //        for (int i = 0; i < n__; i++) {
-            //            for (int j = 0; j < n__ + N__; j++) {
-            //                mtrx__(j, N__ + i) = Utils::round(mtrx__(j, N__ + i), 10);
-            //            }
-            //        }
-            //    }
-            //}
-
-            //if (true) {
-            //    if (mtrx__.blacs_grid().comm().size() == 1) {
-            //        for (int i = 0; i < n__; i++) {
-            //            for (int j = 0; j < n__; j++) {
-            //                auto zij = mtrx__(N__ + i, N__ + j);
-            //                auto zji = mtrx__(N__ + j, N__ + i);
-            //                mtrx__(N__ + i, N__ + j) = 0.5 * (zij + std::conj(zji));
-            //                mtrx__(N__ + j, N__ + i) = std::conj(mtrx__(N__ + i, N__ + j));
-            //            }
-            //        }
-            //    }
-            //}
+            inner(phi__, 0, N__ + n__, op_phi__, N__, n__, mtrx__, 0, N__);
 
             /* restore lower part */
             if (N__ > 0) {
@@ -328,18 +305,6 @@ class Band
                     linalg<CPU>::tranc(n__, N__, mtrx__, 0, N__, mtrx__, N__, 0);
                 }
             }
-
-            //if (true) {
-            //    splindex<block_cyclic> spl_row(N__ + n__, mtrx__.blacs_grid().num_ranks_row(), mtrx__.blacs_grid().rank_row(), mtrx__.bs_row());
-            //    splindex<block_cyclic> spl_col(N__ + n__, mtrx__.blacs_grid().num_ranks_col(), mtrx__.blacs_grid().rank_col(), mtrx__.bs_col());
-            //    for (int i = 0; i < spl_col.local_size(); i++) {
-            //        for (int j = 0; j < spl_row.local_size(); j++) {
-            //            if (std::abs(mtrx__(j, i)) < 1e-11) {
-            //                mtrx__(j, i) = 0;
-            //            }
-            //        }
-            //    }
-            //}
 
             if (ctx_.control().print_checksum_) {
                 splindex<block_cyclic> spl_row(N__ + n__, mtrx__.blacs_grid().num_ranks_row(), mtrx__.blacs_grid().rank_row(), mtrx__.bs_row());

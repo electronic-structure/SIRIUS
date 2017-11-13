@@ -25,6 +25,8 @@
 #ifndef __SIMULATION_CONTEXT_BASE_H__
 #define __SIMULATION_CONTEXT_BASE_H__
 
+#include <algorithm>
+
 #include "version.h"
 #include "simulation_parameters.h"
 #include "mpi_grid.hpp"
@@ -100,6 +102,11 @@ class Simulation_context_base: public Simulation_parameters
 
         std::unique_ptr<Radial_integrals_centered_atomic_wfc> centered_atm_wfc_;
 
+        std::vector<std::vector<std::pair<int,double>>> atoms_to_grid_idx_;
+
+        // TODO remove to somewhere
+        const double av_atom_radius_{2.0};
+
         double time_active_;
 
         bool initialized_{false};
@@ -117,6 +124,74 @@ class Simulation_context_base: public Simulation_parameters
             char buf[100];
             strftime(buf, sizeof(buf), "%Y%m%d_%H%M%S", ptm);
             start_time_tag_ = std::string(buf);
+        }
+
+        void init_atoms_to_grid_idx()
+        {
+            PROFILE("sirius::Simulation_context_base::init_atoms_to_grid_idx");
+
+            atoms_to_grid_idx_.resize(unit_cell_.num_atoms());
+
+            vector3d<double> delta(1.0 / (fft_->grid().size(0) ), 1.0 / (fft_->grid().size(1) ), 1.0 / (fft_->grid().size(2) ));
+
+            int z_off = fft_->offset_z();
+            vector3d<int> grid_beg(0, 0, z_off);
+            vector3d<int> grid_end(fft_->grid().size(0), fft_->grid().size(1), z_off + fft_->local_size_z());
+
+            double R = av_atom_radius_; // appRoximate atom radius in bohr
+            std::vector<vector3d<double>> verts_cart{{-R,-R,-R},{R,-R,-R},{-R,R,-R},{R,R,-R},{-R,-R,R},{R,-R,R},{-R,R,R},{R,R,R}};
+
+            auto bounds_box = [&](vector3d<double> pos)
+            {
+                std::vector<vector3d<double>> verts;
+
+                for (auto v : verts_cart) {
+                    verts.push_back( pos + unit_cell_.get_fractional_coordinates(v) );
+                }
+
+                std::pair<vector3d<int>,vector3d<int>> bounds_ind;
+
+                size_t size = verts.size();
+                for (int i : {0,1,2}) {
+                    std::sort(verts.begin(), verts.end(), [i](vector3d<double>& a, vector3d<double>& b) { return a[i] < b[i]; });
+                    bounds_ind.first[i]  = std::max((int)(verts[0][i] / delta[i])-1, grid_beg[i]);
+                    bounds_ind.second[i] = std::min((int)(verts[size-1][i] / delta[i])+1, grid_end[i]);
+                }
+
+                return bounds_ind;
+            };
+
+            #pragma omp parallel for
+            for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
+
+                std::vector<std::pair<int,double>> atom_to_inds_map;
+
+                for (int t0 = -1; t0 <= 1; t0++) {
+                    for (int t1 = -1; t1 <= 1; t1++) {
+                        for (int t2 = -1; t2 <= 1; t2++) {
+                            auto position = unit_cell_.atom(ia).position() + vector3d<double>(t0, t1, t2);
+
+                            auto box = bounds_box(position);
+
+                            for (int j0 = box.first[0]; j0 < box.second[0]; j0++) {
+                                for (int j1 = box.first[1]; j1 < box.second[1]; j1++) {
+                                    for (int j2 = box.first[2]; j2 < box.second[2]; j2++) {
+                                        auto dist = position - vector3d<double>(double(j0)* delta[0], double(j1) * delta[1], double(j2) * delta[2]);
+                                        auto r = unit_cell_.get_cartesian_coordinates(dist).length();
+                                        auto ir = fft_->grid().index_by_coord(j0, j1, j2 - z_off);
+
+                                        if (r <= R) {
+                                            atom_to_inds_map.push_back({ir, r});
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                atoms_to_grid_idx_[ia] = std::move(atom_to_inds_map);
+            }
         }
 
     public:
@@ -149,6 +224,16 @@ class Simulation_context_base: public Simulation_parameters
 
         /// Initialize the similation (can only be called once).
         void initialize();
+
+        std::vector<std::vector<std::pair<int,double>>> const& atoms_to_grid_idx_map()
+        {
+            return atoms_to_grid_idx_;
+        };
+
+        double av_atom_radius()
+        {
+            return av_atom_radius_;
+        }
 
         void print_info();
 
@@ -548,6 +633,8 @@ inline void Simulation_context_base::initialize()
 
     /* initialize FFT interface */
     init_fft();
+
+    init_atoms_to_grid_idx();
 
     if (comm_.rank() == 0 && control().print_memory_usage_) {
         MEMORY_USAGE_INFO();

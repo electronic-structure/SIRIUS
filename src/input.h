@@ -425,6 +425,12 @@ struct Parameters_input
 
     double nn_radius_{-1};
 
+    /// Effective screening medium.
+    bool enable_esm_{false};
+
+    /// Type of periodic boundary conditions.
+    std::string esm_bc_{"pbc"};
+
     void read(json const& parser)
     {
         if (parser.count("parameters")) {
@@ -519,9 +525,6 @@ struct Hubbard_input
     }
     void read(json const& parser)
     {
-        if (!hubbard_correction_)
-            return;
-
         if (!parser.count("hubbard"))
             return;
         std::cout << "hubbard 1" << std::endl;

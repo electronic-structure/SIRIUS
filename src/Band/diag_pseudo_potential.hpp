@@ -224,9 +224,9 @@ inline int Band::diag_pseudo_potential_davidson(K_point*       kp__,
         /* setup eigen-value problem
          * N is the number of previous basis functions
          * n is the number of new basis functions */
-        set_subspace_mtrx(num_sc, 0, num_bands, phi, hphi, hmlt, hmlt_old);
+        set_subspace_mtrx(0, num_bands, phi, hphi, hmlt, hmlt_old);
         /* setup overlap matrix */
-        set_subspace_mtrx(num_sc, 0, num_bands, phi, ophi, ovlp, ovlp_old);
+        set_subspace_mtrx(0, num_bands, phi, ophi, ovlp, ovlp_old);
 
         /* current subspace size */
         int N = num_bands;
@@ -325,7 +325,7 @@ inline int Band::diag_pseudo_potential_davidson(K_point*       kp__,
             /* setup eigen-value problem
              * N is the number of previous basis functions
              * n is the number of new basis functions */
-            set_subspace_mtrx(num_sc, N, n, phi, hphi, hmlt, hmlt_old);
+            set_subspace_mtrx(N, n, phi, hphi, hmlt, hmlt_old);
 
             //== static int counter{0};
             //== std::stringstream s;
@@ -338,7 +338,7 @@ inline int Band::diag_pseudo_potential_davidson(K_point*       kp__,
             //== counter++;
 
             if (ctx_.control().verification_ >= 1) {
-                double max_diff = Utils::check_hermitian(hmlt, N + n);
+                double max_diff = check_hermitian(hmlt, N + n);
                 if (max_diff > 1e-12) {
                     std::stringstream s;
                     s << "H matrix is not hermitian, max_err = " << max_diff;
@@ -348,10 +348,10 @@ inline int Band::diag_pseudo_potential_davidson(K_point*       kp__,
 
             if (!itso.orthogonalize_) {
                 /* setup overlap matrix */
-                set_subspace_mtrx(num_sc, N, n, phi, ophi, ovlp, ovlp_old);
+                set_subspace_mtrx(N, n, phi, ophi, ovlp, ovlp_old);
 
                 if (ctx_.control().verification_ >= 1) {
-                    double max_diff = Utils::check_hermitian(ovlp, N + n);
+                    double max_diff = check_hermitian(ovlp, N + n);
                     if (max_diff > 1e-12) {
                         std::stringstream s;
                         s << "S matrix is not hermitian, max_err = " << max_diff;

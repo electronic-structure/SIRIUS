@@ -162,10 +162,10 @@ class Hubbard_potential
         return rms;
     }
 
-#include "Potential/hubbard_generate_atomic_orbitals.hpp"
-#include "Potential/hubbard_potential_energy.hpp"
-#include "Potential/apply_hubbard_potential.hpp"
-#include "Potential/hubbard_occupancy.hpp"
+#include "hubbard/hubbard_generate_atomic_orbitals.hpp"
+#include "hubbard/hubbard_potential_energy.hpp"
+#include "hubbard/apply_hubbard_potential.hpp"
+#include "hubbard/hubbard_occupancy.hpp"
 private:
     inline void calculate_wavefunction_with_U_offset()
     {

@@ -3,55 +3,9 @@ inline void Band::initialize_subspace(K_point_set& kset__, Potential& potential_
     PROFILE("sirius::Band::initialize_subspace");
 
     int N{0};
-    /* interpolate I_{\alpha,n}(q) = <j_{l_n}(q*x) | wf_{n,l_n}(x) > with splines */
-    //std::vector<std::vector<Spline<double>>> rad_int(unit_cell_.num_atom_types());
-
-    /// int nq = static_cast<int>(ctx_.gk_cutoff() * 10);
-
-    /* this is the regular grid in reciprocal space in the range [0, |G+k|_max ] */
-
-    // Radial_grid_lin<double> qgrid(nq, 0, ctx_.gk_cutoff());
 
     if (ctx_.iterative_solver_input().init_subspace_ == "lcao") {
         // it is already calculated during the initialization procedure
-
-        //        compute_atomic_centered_orbitals();
-
-        // /* spherical Bessel functions jl(qx) */
-        // mdarray<Spherical_Bessel_functions, 1> jl(nq);
-
-        // for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
-        //     auto& atom_type = unit_cell_.atom_type(iat);
-        //     /* create jl(qx) */
-        //     #pragma omp parallel for
-        //      for (int iq = 0; iq < nq; iq++) {
-        //         jl(iq) = Spherical_Bessel_functions(atom_type.indexr().lmax(), atom_type.radial_grid(), qgrid[iq]);
-        //     }
-
-        //     int nwf = static_cast<int>(atom_type.pp_desc().atomic_pseudo_wfs_.size());
-
-        //     rad_int[iat].resize(nwf);
-        //     /* loop over all pseudo wave-functions */
-        //     for (int i = 0; i < nwf; i++) {
-        //         rad_int[iat][i] = Spline<double>(qgrid);
-
-        //         /* interpolate atomic_pseudo_wfs(r) */
-        //         Spline<double> wf(atom_type.radial_grid());
-        //         for (int ir = 0; ir < (int)atom_type.pp_desc().atomic_pseudo_wfs_[i].second.size(); ir++) {
-        //             wf[ir] = atom_type.pp_desc().atomic_pseudo_wfs_[i].second[ir];
-        //         }
-        //         wf.interpolate();
-        //         double norm = inner(wf, wf, 0);
-
-        //         int l = atom_type.pp_desc().atomic_pseudo_wfs_[i].first;
-        //         #pragma omp parallel for
-        //         for (int iq = 0; iq < nq; iq++) {
-        //             rad_int[iat][i][iq] = sirius::inner(jl(iq)[l], wf, 1) / std::sqrt(norm);
-        //         }
-
-        //         rad_int[iat][i].interpolate();
-        //     }
-    //  }
 
         /* get the total number of atomic-centered orbitals */
         for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
@@ -123,78 +77,7 @@ Band::initialize_subspace(K_point* kp__, int num_ao__) const
     lmax = std::max(lmax, unit_cell_.lmax());
 
     if (num_ao__ > 0) {
-
         kp__->generate_atomic_centered_wavefunctions(num_ao__, phi);
-        // mdarray<double, 2> rlm_gk(kp__->num_gkvec_loc(), Utils::lmmax(lmax));
-        // mdarray<std::pair<int, double>, 1> idx_gk(kp__->num_gkvec_loc());
-        // #pragma omp parallel for schedule(static)
-        // for (int igk_loc = 0; igk_loc < kp__->num_gkvec_loc(); igk_loc++) {
-        //     int igk = kp__->idxgk(igk_loc);
-        //     /* vs = {r, theta, phi} */
-        //     auto vs = SHT::spherical_coordinates(kp__->gkvec().gkvec_cart(igk));
-        //     /* compute real spherical harmonics for G+k vector */
-        //     std::vector<double> rlm(Utils::lmmax(lmax));
-        //     SHT::spherical_harmonics(lmax, vs[1], vs[2], &rlm[0]);
-        //     for (int lm = 0; lm < Utils::lmmax(lmax); lm++) {
-        //         rlm_gk(igk_loc, lm) = rlm[lm];
-        //     }
-        //     int i = static_cast<int>((vs[0] / ctx_.gk_cutoff()) * (ctx_.centered_atm_wfc().orbital(0, 0).num_points() - 1));
-        //     double dgk = vs[0] - ctx_.centered_atm_wfc().orbital(0, 0).radial_grid()[i];
-        //     idx_gk(igk_loc) = std::pair<int, double>(i, dgk);
-        // }
-
-        // /* starting index of atomic orbital block for each atom */
-        // std::vector<int> idxao;
-        // int n{0};
-        // for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
-        //     auto& atom_type = unit_cell_.atom(ia).type();
-        //     idxao.push_back(n);
-        //     /* increment index of atomic orbitals */
-        //     for (size_t i = 0; i < atom_type.pp_desc().atomic_pseudo_wfs_.size(); i++) {
-        //         int l = atom_type.pp_desc().atomic_pseudo_wfs_[i].first;
-        //         n += (2 * l + 1);
-        //     }
-        // }
-
-        // //mdarray<double, 3> ri(kp__->num_gkvec_loc(), unit_cell_.lmax() + 1, unit_cell_.num_atom_types());
-        // //for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
-        // //    for (size_t i = 0; i < atom_type.pp_desc().atomic_pseudo_wfs_.size(); i++) {
-        // //    for (int l = 0; l <= unit_cell_.atom_type(iat).indexr().lmax(); l++) {
-        // //        #pragma omp parallel for
-        // //        for (int igk_loc = 0; igk_loc < kp__->num_gkvec_loc(); igk_loc++) {
-        // //            ri(igk_loc, l, iat) = rad_int__[iat][l](idx_gk[igk_loc].first, idx_gk[igk_loc].second);
-        // //        }
-        // //    }
-        // //}
-
-        // #pragma omp parallel for schedule(static)
-        // for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
-        //     double phase = twopi * (kp__->gkvec().vk() * unit_cell_.atom(ia).position());
-        //     double_complex phase_k = std::exp(double_complex(0.0, phase));
-
-        //     std::vector<double_complex> phase_gk(kp__->num_gkvec_loc());
-        //     for (int igk_loc = 0; igk_loc < kp__->num_gkvec_loc(); igk_loc++) {
-        //         int igk = kp__->idxgk(igk_loc);
-        //         auto G = kp__->gkvec().gvec(igk);
-        //         phase_gk[igk_loc] = std::conj(ctx_.gvec_phase_factor(G, ia) * phase_k);
-        //     }
-        //     auto& atom_type = unit_cell_.atom(ia).type();
-        //     int n{0};
-        //     for (size_t i = 0; i < atom_type.pp_desc().atomic_pseudo_wfs_.size(); i++) {
-        //         int l = atom_type.pp_desc().atomic_pseudo_wfs_[i].first;
-        //         double_complex z = std::pow(double_complex(0, -1), l) * fourpi / std::sqrt(unit_cell_.omega());
-        //         for (int m = -l; m <= l; m++) {
-        //             int lm = Utils::lm_by_l_m(l, m);
-        //             for (int igk_loc = 0; igk_loc < kp__->num_gkvec_loc(); igk_loc++) {
-        //                 phi.component(0).pw_coeffs().prime(igk_loc, idxao[ia] + n) =
-        //                     z * phase_gk[igk_loc] * rlm_gk(igk_loc, lm) * ctx_.centered_atm_wfc().orbital(i, atom_type.id())(idx_gk[igk_loc].first, idx_gk[igk_loc].second);
-        //                 //phi.component(0).pw_coeffs().prime(igk_loc, idxao[ia] + n) =
-        //                 //    z * phase_gk[igk_loc] * rlm_gk(igk_loc, lm) * ri(igk_loc, l, atom_type.id());
-        //             }
-        //             n++;
-        //         }
-        //     }
-        // }
     }
 
     /* fill remaining wave-functions with pseudo-random guess */
@@ -322,7 +205,7 @@ Band::initialize_subspace(K_point* kp__, int num_ao__) const
         /* do some checks */
         if (ctx_.control().verification_ >= 1) {
 
-            set_subspace_mtrx<T>(num_sc, 0, num_phi_tot, phi, ophi, hmlt, hmlt_old);
+            set_subspace_mtrx<T>(0, num_phi_tot, phi, ophi, hmlt, hmlt_old);
             if (ctx_.control().verification_ >= 2) {
                 hmlt.serialize("overlap", num_phi_tot);
             }
@@ -352,8 +235,8 @@ Band::initialize_subspace(K_point* kp__, int num_ao__) const
         //orthogonalize<T>(ctx_.processing_unit(), num_sc, 0, num_phi_tot, phi, hphi, ophi, hmlt, wf_tmp);
 
         /* setup eigen-value problem */
-        set_subspace_mtrx<T>(num_sc, 0, num_phi_tot, phi, hphi, hmlt, hmlt_old);
-        set_subspace_mtrx<T>(num_sc, 0, num_phi_tot, phi, ophi, ovlp, hmlt_old);
+        set_subspace_mtrx<T>(0, num_phi_tot, phi, hphi, hmlt, hmlt_old);
+        set_subspace_mtrx<T>(0, num_phi_tot, phi, ophi, ovlp, hmlt_old);
 
         if (ctx_.control().verification_ >= 2) {
             hmlt.serialize("hmlt", num_phi_tot);

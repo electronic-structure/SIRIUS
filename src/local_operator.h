@@ -18,7 +18,7 @@
 // OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 /** \file local_operator.h
- *   
+ *
  *  \brief Contains declaration and implementation of sirius::Local_operator class.
  */
 
@@ -314,7 +314,7 @@ class Local_operator
                 int ig = gkvec__.partition().gvec_offset_fft() + ig_loc;
                 /* get G+k in Cartesian coordinates */
                 auto gv = gkvec__.gkvec_cart(ig);
-                pw_ekin_[ig_loc] = 0.5 * (gv * gv);
+                pw_ekin_[ig_loc] = 0.5 * dot(gv, gv);
             }
 
             if (static_cast<int>(vphi1_.size()) < ngv_fft) {

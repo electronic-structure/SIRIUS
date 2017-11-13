@@ -34,14 +34,14 @@ inline void Band::diag_fv_exact(K_point* kp, Potential& potential__) const
     }
 
     if (ctx_.control().verification_ >= 1) {
-        double max_diff = Utils::check_hermitian(h, ngklo);
+        double max_diff = check_hermitian(h, ngklo);
         if (max_diff > 1e-12) {
             std::stringstream s;
             s << "H matrix is not hermitian" << std::endl
               << "max error: " << max_diff;
             TERMINATE(s);
         }
-        max_diff = Utils::check_hermitian(o, ngklo);
+        max_diff = check_hermitian(o, ngklo);
         if (max_diff > 1e-12) {
             std::stringstream s;
             s << "O matrix is not hermitian" << std::endl
@@ -275,7 +275,7 @@ inline void Band::get_singular_components(K_point* kp__) const
 
         if (ctx_.control().verification_ >= 1) {
             dmatrix<double_complex> tmp;
-            set_subspace_mtrx(1, 0, N + n, phi, ophi, ovlp, tmp);
+            set_subspace_mtrx(0, N + n, phi, ophi, ovlp, tmp);
 
             if (ctx_.control().verification_ >= 2) {
                 ovlp.serialize("overlap", N + n);
@@ -294,7 +294,7 @@ inline void Band::get_singular_components(K_point* kp__) const
         /* setup eigen-value problem
          * N is the number of previous basis functions
          * n is the number of new basis functions */
-        set_subspace_mtrx(1, N, n, phi, ophi, ovlp, ovlp_old);
+        set_subspace_mtrx(N, n, phi, ophi, ovlp, ovlp_old);
 
         if (ctx_.control().verification_ >= 1) {
 
@@ -536,7 +536,7 @@ inline void Band::diag_fv_davidson(K_point* kp) const
         /* setup eigen-value problem
          * N is the number of previous basis functions
          * n is the number of new basis functions */
-        set_subspace_mtrx(1, N, n, phi, hphi, hmlt, hmlt_old);
+        set_subspace_mtrx(N, n, phi, hphi, hmlt, hmlt_old);
 
         /* increase size of the variation space */
         N += n;

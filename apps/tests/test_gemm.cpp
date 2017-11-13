@@ -85,7 +85,7 @@ double test_gemm(int M, int N, int K, int transa)
     return perf;
 }
 
-#ifdef _SCALAPACK_
+#ifdef __SCALAPACK
 double test_pgemm(int M, int N, int K, int nrow, int ncol, int transa, int n, int bs)
 {
     //== #ifdef _GPU_
@@ -93,22 +93,19 @@ double test_pgemm(int M, int N, int K, int nrow, int ncol, int transa, int n, in
     //== pout.printf("rank : %3i, free GPU memory (Mb) : %10.2f\n", Platform::mpi_rank(), cuda_get_free_mem() / double(1 << 20));
     //== pout.flush(0);
     //== #endif
-    BLACS_grid blacs_grid(MPI_COMM_WORLD, nrow, ncol, bs);
+    BLACS_grid blacs_grid(mpi_comm_world(), nrow, ncol);
 
     dmatrix<gemm_type> a, b, c;
-    if (transa == 0)
-    {
-        a = dmatrix<gemm_type>(nullptr, M, K, blacs_grid);
+    if (transa == 0) {
+        a = dmatrix<gemm_type>(nullptr, M, K, blacs_grid, bs, bs);
+    } else {
+        a = dmatrix<gemm_type>(nullptr, K, M, blacs_grid, bs, bs);
     }
-    else
-    {
-        a = dmatrix<gemm_type>(nullptr, K, M, blacs_grid);
-    }
-    b = dmatrix<gemm_type>(nullptr, K, N, blacs_grid);
-    c = dmatrix<gemm_type>(nullptr, M, N - n, blacs_grid);
-    a.allocate(alloc_mode);
-    b.allocate(alloc_mode);
-    c.allocate(alloc_mode);
+    b = dmatrix<gemm_type>(nullptr, K, N, blacs_grid, bs, bs);
+    c = dmatrix<gemm_type>(nullptr, M, N - n, blacs_grid, bs, bs);
+    a.allocate(memory_t::host);
+    b.allocate(memory_t::host);
+    c.allocate(memory_t::host);
 
     for (int ic = 0; ic < a.num_cols_local(); ic++)
     {
@@ -122,13 +119,12 @@ double test_pgemm(int M, int N, int K, int nrow, int ncol, int transa, int n, in
 
     c.zero();
 
-    if (Platform::rank() == 0)
+    if (mpi_comm_world().rank() == 0)
     {
         printf("testing parallel gemm with M, N, K = %i, %i, %i, opA = %i\n", M, N - n, K, transa);
         printf("nrow, ncol = %i, %i, bs = %i\n", nrow, ncol, bs);
     }
-    Communicator comm(MPI_COMM_WORLD);
-    sirius::Timer t1("gemm_only", comm); 
+    sddk::timer t1("gemm_only");
     gemm_type one = 1;
     gemm_type zero = 0;
     linalg<CPU>::gemm(transa, 0, M, N - n, K, one, a, 0, 0, b, 0, n, zero, c, 0, 0);
@@ -137,7 +133,7 @@ double test_pgemm(int M, int N, int K, int nrow, int ncol, int transa, int n, in
     //== #endif
     double tval = t1.stop();
     double perf = nop_gemm * 1e-9 * M * (N - n) * K / tval / nrow / ncol;
-    if (Platform::rank() == 0)
+    if (mpi_comm_world().rank() == 0)
     {
         printf("execution time : %12.6f seconds\n", tval);
         printf("performance    : %12.6f GFlops / rank\n", perf);
@@ -146,51 +142,51 @@ double test_pgemm(int M, int N, int K, int nrow, int ncol, int transa, int n, in
     return perf;
 }
 
-double test_pgemm_aHa(int M, int K, int nrow, int ncol, int bs)
-{
-    //== #ifdef _GPU_
-    //== sirius::pstdout pout;
-    //== pout.printf("rank : %3i, free GPU memory (Mb) : %10.2f\n", Platform::mpi_rank(), cuda_get_free_mem() / double(1 << 20));
-    //== pout.flush(0);
-    //== #endif
-    BLACS_grid blacs_grid(MPI_COMM_WORLD, nrow, ncol, bs);
-
-    dmatrix<gemm_type> a, c;
-    a = dmatrix<gemm_type>(nullptr, K, M, blacs_grid);
-    c = dmatrix<gemm_type>(nullptr, M, M, blacs_grid);
-    a.allocate(alloc_mode);
-    c.allocate(alloc_mode);
-
-    for (int ic = 0; ic < a.num_cols_local(); ic++)
-    {
-        for (int ir = 0; ir < a.num_rows_local(); ir++) a(ir, ic) = type_wrapper<gemm_type>::random();
-    }
-
-    c.zero();
-
-    if (Platform::rank() == 0)
-    {
-        printf("testing parallel gemm (a^H * a) with M, K = %i, %i\n", M, K);
-        printf("nrow, ncol = %i, %i, bs = %i\n", nrow, ncol, bs);
-    }
-    Communicator comm(MPI_COMM_WORLD);
-    sirius::Timer t1("gemm_only", comm); 
-    gemm_type one = 1;
-    gemm_type zero = 0;
-    linalg<CPU>::gemm(2, 0, M, M, K, one, a, 0, 0, a, 0, 0, zero, c, 0, 0);
-    #ifdef _GPU_
-    cuda_device_synchronize();
-    #endif
-    double tval = t1.stop();
-    double perf = nop_gemm * 1e-9 * M * M * K / tval / nrow / ncol;
-    if (Platform::rank() == 0)
-    {
-        printf("execution time : %12.6f seconds\n", tval);
-        printf("performance    : %12.6f GFlops / rank\n", perf);
-    }
-
-    return perf;
-}
+//double test_pgemm_aHa(int M, int K, int nrow, int ncol, int bs)
+//{
+//    //== #ifdef _GPU_
+//    //== sirius::pstdout pout;
+//    //== pout.printf("rank : %3i, free GPU memory (Mb) : %10.2f\n", Platform::mpi_rank(), cuda_get_free_mem() / double(1 << 20));
+//    //== pout.flush(0);
+//    //== #endif
+//    BLACS_grid blacs_grid(MPI_COMM_WORLD, nrow, ncol);
+//
+//    dmatrix<gemm_type> a, c;
+//    a = dmatrix<gemm_type>(nullptr, K, M, blacs_grid);
+//    c = dmatrix<gemm_type>(nullptr, M, M, blacs_grid);
+//    a.allocate(alloc_mode);
+//    c.allocate(alloc_mode);
+//
+//    for (int ic = 0; ic < a.num_cols_local(); ic++)
+//    {
+//        for (int ir = 0; ir < a.num_rows_local(); ir++) a(ir, ic) = type_wrapper<gemm_type>::random();
+//    }
+//
+//    c.zero();
+//
+//    if (Platform::rank() == 0)
+//    {
+//        printf("testing parallel gemm (a^H * a) with M, K = %i, %i\n", M, K);
+//        printf("nrow, ncol = %i, %i, bs = %i\n", nrow, ncol, bs);
+//    }
+//    Communicator comm(MPI_COMM_WORLD);
+//    sirius::Timer t1("gemm_only", comm); 
+//    gemm_type one = 1;
+//    gemm_type zero = 0;
+//    linalg<CPU>::gemm(2, 0, M, M, K, one, a, 0, 0, a, 0, 0, zero, c, 0, 0);
+//    #ifdef _GPU_
+//    cuda_device_synchronize();
+//    #endif
+//    double tval = t1.stop();
+//    double perf = nop_gemm * 1e-9 * M * M * K / tval / nrow / ncol;
+//    if (Platform::rank() == 0)
+//    {
+//        printf("execution time : %12.6f seconds\n", tval);
+//        printf("performance    : %12.6f GFlops / rank\n", perf);
+//    }
+//
+//    return perf;
+//}
 #endif
 
 int main(int argn, char **argv)
@@ -237,22 +233,23 @@ int main(int argn, char **argv)
     }
     else
     {
-        #ifdef _SCALAPACK_
+        #ifdef __SCALAPACK
         int n = args.value<int>("n", 0);
         int bs = args.value<int>("bs");
         double perf = 0;
         for (int i = 0; i < repeat; i++) 
         {
-            if (M != N)
-            {
-                perf += test_pgemm(M, N, K, nrow, ncol, transa, n, bs);
-            }
-            else
-            {
-                perf += test_pgemm_aHa(M, K, nrow, ncol, bs);
-            }
+            perf += test_pgemm(M, N, K, nrow, ncol, transa, n, bs);
+            //if (M != N)
+            //{
+            //    perf += test_pgemm(M, N, K, nrow, ncol, transa, n, bs);
+            //}
+            //else
+            //{
+            //    perf += test_pgemm_aHa(M, K, nrow, ncol, bs);
+            //}
         }
-        if (Platform::rank() == 0)
+        if (mpi_comm_world().rank() == 0)
         {
             printf("\n");
             printf("average performance    : %12.6f GFlops / rank\n", perf / repeat);

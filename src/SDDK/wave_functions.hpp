@@ -26,6 +26,7 @@
 #define __WAVE_FUNCTIONS_HPP__
 
 #include <cstdlib>
+#include <iostream>
 #include "linalg.hpp"
 
 namespace sddk {
@@ -478,13 +479,27 @@ class Wave_functions
     /// Return a single component.
     wave_functions& component(int idx__)
     {
-        assert(idx__ >=0 && idx__ < num_components());
+        assert(idx__ >= 0 && idx__ < num_components());
         return *components_[idx__];
     }
 
     wave_functions const& component(int idx__) const
     {
-        assert(idx__ >=0 && idx__ < num_components());
+        assert(idx__ >= 0 && idx__ < num_components());
+        return *components_[idx__];
+    }
+    
+    /// Return a reference to wave-function component.
+    inline wave_functions& operator[](int idx__)
+    {
+        assert(idx__ >= 0 && idx__ < num_components());
+        return *components_[idx__];
+    }
+
+    /// Return a const reference to wave-function component.
+    inline wave_functions const& operator[](int idx__) const
+    {
+        assert(idx__ >= 0 && idx__ < num_components());
         return *components_[idx__];
     }
 

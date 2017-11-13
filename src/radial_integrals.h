@@ -257,12 +257,6 @@ class Radial_integrals_aug: public Radial_integrals_base<3>
         generate();
     }
 
-    //inline double value(int idx__, int l__, int iat__, double q__) const
-    //{
-    //    auto idx = iqdq(q__);
-    //    return values_(idx__, l__, iat__)(idx.first, idx.second);
-    //}
-
     inline mdarray<double, 2> values(int iat__, double q__) const
     {
         auto idx = iqdq(q__);
@@ -317,12 +311,6 @@ class Radial_integrals_rho_pseudo: public Radial_integrals_base<1>
         values_ = mdarray<Spline<double>, 1>(unit_cell_.num_atom_types());
         generate();
     }
-
-    //inline double value(int iat__, double q__) const
-    //{
-    //    auto idx = iqdq(q__);
-    //    return values_(iat__)(idx.first, idx.second);
-    //}
 };
 
 template <bool jl_deriv>
@@ -367,12 +355,6 @@ class Radial_integrals_rho_core_pseudo: public Radial_integrals_base<1>
         values_ = mdarray<Spline<double>, 1>(unit_cell_.num_atom_types());
         generate();
     }
-
-    //inline double value(int iat__, double q__) const
-    //{
-    //    auto idx = iqdq(q__);
-    //    return values_(iat__)(idx.first, idx.second);
-    //}
 };
 
 template <bool jl_deriv>
@@ -424,12 +406,6 @@ class Radial_integrals_beta: public Radial_integrals_base<2>
         values_ = mdarray<Spline<double>, 2>(unit_cell_.max_mt_radial_basis_size(), unit_cell_.num_atom_types());
         generate();
     }
-
-    //inline double value(int idxrf__, int iat__, double q__) const
-    //{
-    //    auto idx = iqdq(q__);
-    //    return values_(idxrf__, iat__)(idx.first, idx.second);
-    //}
 
     inline mdarray<double, 1> values(int iat__, double q__) const
     {
@@ -493,12 +469,6 @@ class Radial_integrals_beta_jl: public Radial_integrals_base<3>
         values_ = mdarray<Spline<double>, 3>(unit_cell_.max_mt_radial_basis_size(), lmax_ + 1, unit_cell_.num_atom_types());
         generate();
     }
-
-    //inline double value(int idxrf__, int l__, int iat__, double q__) const
-    //{
-    //    auto idx = iqdq(q__);
-    //    return values_(idxrf__, l__, iat__)(idx.first, idx.second);
-    //}
 };
 
 /// Radial integrals for the step function of the LAPW method.
@@ -541,12 +511,6 @@ class Radial_integrals_theta: public Radial_integrals_base<1>
         values_ = mdarray<Spline<double>, 1>(unit_cell_.num_atom_types());
         generate();
     }
-
-    //inline double value(int iat__, double q__) const
-    //{
-    //    auto idx = iqdq(q__);
-    //    return values_(iat__)(idx.first, idx.second);
-    //}
 };
 
 template <bool jl_deriv>
@@ -579,10 +543,17 @@ class Radial_integrals_vloc: public Radial_integrals_base<1>
                         s[ir] = (x * atom_type.pp_desc().vloc[ir] + atom_type.zn() * gsl_sf_erf(x)) * (std::sin(g * x) - g * x * std::cos(g * x));
                     }
                 } else { /* integral with j0(q*r) */
-                    if (iq == 0) {
-                        for (int ir = 0; ir < rg.num_points(); ir++) {
-                            double x = rg[ir];
-                            s[ir] = (x * atom_type.pp_desc().vloc[ir] + atom_type.zn()) * x;
+                    if (iq == 0) { /* q=0 case */
+                        if (unit_cell_.parameters().parameters_input().enable_esm_ && unit_cell_.parameters().parameters_input().esm_bc_ != "pbc") {
+                            for (int ir = 0; ir < rg.num_points(); ir++) {
+                                double x = rg[ir];
+                                s[ir] = (x * atom_type.pp_desc().vloc[ir] + atom_type.zn() * gsl_sf_erf(x)) * x;
+                            }
+                        } else {
+                            for (int ir = 0; ir < rg.num_points(); ir++) {
+                                double x = rg[ir];
+                                s[ir] = (x * atom_type.pp_desc().vloc[ir] + atom_type.zn()) * x;
+                            }
                         }
                     } else {
                         for (int ir = 0; ir < rg.num_points(); ir++) {
@@ -619,9 +590,17 @@ class Radial_integrals_vloc: public Radial_integrals_base<1>
             auto& atom_type = unit_cell_.atom_type(iat__);
             auto q2 = std::pow(q__, 2);
             if (jl_deriv) {
-                return values_(iat__)(idx.first, idx.second) / q2 / q__ - atom_type.zn() * std::exp(-q2 / 4) * (4 + q2) / 2 / q2 / q2;
+                if (!unit_cell_.parameters().parameters_input().enable_esm_ || unit_cell_.parameters().parameters_input().esm_bc_ == "pbc") {
+                    return values_(iat__)(idx.first, idx.second) / q2 / q__ - atom_type.zn() * std::exp(-q2 / 4) * (4 + q2) / 2 / q2 / q2;
+                } else {
+                    return values_(iat__)(idx.first, idx.second) / q2 / q__;
+                }
             } else {
-                return values_(iat__)(idx.first, idx.second) / q__ - atom_type.zn() * std::exp(-q2 / 4) / q2;
+                if (!unit_cell_.parameters().parameters_input().enable_esm_ || unit_cell_.parameters().parameters_input().esm_bc_ == "pbc") {
+                    return values_(iat__)(idx.first, idx.second) / q__ - atom_type.zn() * std::exp(-q2 / 4) / q2;
+                } else {
+                    return values_(iat__)(idx.first, idx.second) / q__;
+                }
             }
         }
     }
@@ -665,12 +644,6 @@ class Radial_integrals_rho_free_atom: public Radial_integrals_base<1>
         values_ = mdarray<Spline<double>, 1>(unit_cell_.num_atom_types());
         generate();
     }
-
-    //inline double value(int iat__, double q__) const
-    //{
-    //    auto idx = iqdq(q__);
-    //    return values_(iat__)(idx.first, idx.second);
-    //}
 };
 
 } // namespace

@@ -54,7 +54,7 @@ inline void K_point::generate_atomic_centered_wavefunctions(const int num_ao__, 
 
 #pragma omp parallel for schedule(static)
     for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
-      double phase = twopi * (this->gkvec().vk() * unit_cell_.atom(ia).position());
+      double phase = twopi * geometry3d::dot(this->gkvec().vk() , unit_cell_.atom(ia).position());
       double_complex phase_k = std::exp(double_complex(0.0, phase));
 
       std::vector<double_complex> phase_gk(this->num_gkvec_loc());

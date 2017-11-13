@@ -1,4 +1,4 @@
-// Copyright (c) 2013-2016 Anton Kozhevnikov, Thomas Schulthess
+// Copyright (c) 2013-2017 Anton Kozhevnikov, Thomas Schulthess
 // All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without modification, are permitted provided that
@@ -40,25 +40,32 @@ class dmatrix : public matrix<T>
 
     /// Global number of matrix columns.
     int num_cols_{0};
-
+    
+    /// Row block size.
     int bs_row_{0};
-
+    
+    /// Column block size.
     int bs_col_{0};
-
+    
+    /// BLACS grid.
     BLACS_grid const* blacs_grid_{nullptr};
 
+    /// Split index of matrix rows.
     splindex<block_cyclic> spl_row_;
 
+    /// Split index of matrix columns.
     splindex<block_cyclic> spl_col_;
 
-    /// Matrix descriptor.
+    /// ScaLAPACK matrix descriptor.
     ftn_int descriptor_[9];
 
     void init()
     {
         #ifdef __SCALAPACK
-        linalg_base::descinit(descriptor_, num_rows_, num_cols_, bs_row_, bs_col_, 0, 0, blacs_grid_->context(),
-                              spl_row_.local_size());
+        if (blacs_grid_ != nullptr) {
+            linalg_base::descinit(descriptor_, num_rows_, num_cols_, bs_row_, bs_col_, 0, 0, blacs_grid_->context(),
+                                  spl_row_.local_size());
+        }
         #endif
     }
 
@@ -73,7 +80,11 @@ class dmatrix : public matrix<T>
     {
     }
 
-    dmatrix(int num_rows__, int num_cols__, BLACS_grid const& blacs_grid__, int bs_row__, int bs_col__,
+    dmatrix(int num_rows__,
+            int num_cols__,
+            BLACS_grid const& blacs_grid__,
+            int bs_row__,
+            int bs_col__,
             memory_t mem_type__ = memory_t::host)
         : matrix<T>(splindex<block_cyclic>(num_rows__, blacs_grid__.num_ranks_row(), blacs_grid__.rank_row(), bs_row__).local_size(),
                     splindex<block_cyclic>(num_cols__, blacs_grid__.num_ranks_col(), blacs_grid__.rank_col(), bs_col__).local_size(),
@@ -89,7 +100,26 @@ class dmatrix : public matrix<T>
         init();
     }
 
-    dmatrix(T* ptr__, int num_rows__, int num_cols__, BLACS_grid const& blacs_grid__, int bs_row__, int bs_col__)
+    dmatrix(int num_rows__,
+            int num_cols__,
+            memory_t mem_type__ = memory_t::host)
+        : matrix<T>(num_rows__, num_cols__, mem_type__)
+        , num_rows_(num_rows__)
+        , num_cols_(num_cols__)
+        , bs_row_(1)
+        , bs_col_(1)
+        , spl_row_(num_rows_, 1, 0, bs_row_)
+        , spl_col_(num_cols_, 1, 0, bs_col_)
+    {
+        init();
+    }
+
+    dmatrix(T* ptr__,
+            int num_rows__,
+            int num_cols__,
+            BLACS_grid const& blacs_grid__,
+            int bs_row__,
+            int bs_col__)
         : matrix<T>(ptr__,
                     splindex<block_cyclic>(num_rows__, blacs_grid__.num_ranks_row(), blacs_grid__.rank_row(), bs_row__).local_size(),
                     splindex<block_cyclic>(num_cols__, blacs_grid__.num_ranks_col(), blacs_grid__.rank_col(), bs_col__).local_size())
@@ -107,6 +137,15 @@ class dmatrix : public matrix<T>
     dmatrix(dmatrix<T>&& src) = default;
 
     dmatrix<T>& operator=(dmatrix<T>&& src) = default;
+
+    /// Return size of the square matrix or -1 in case of rectangular matrix.
+    inline int size() const
+    {
+        if (num_rows_ == num_cols_) {
+            return num_rows_;
+        }
+        return -1;
+    }
 
     inline int num_rows() const
     {
@@ -155,52 +194,6 @@ class dmatrix : public matrix<T>
         return descriptor_;
     }
 
-    //inline void zero()
-    //{
-    //    this->zero();
-    //}
-
-    //inline void zero(int ir0__, int jc0__, int mr__, int nc__)
-    //{
-    //    for (int j = 0; j < num_cols_local(); j++) {
-    //        int jc = icol(j);
-    //        if (jc >= jc0__ && jc < jc0__ + nc__) {
-    //            for (int i = 0; i < num_rows_local(); i++) {
-    //                int ir = irow(i);
-    //                if (ir >= ir0__ && ir < ir0__ + mr__) {
-    //                    (*this)(i, j) = 0;
-    //                }
-    //            }
-    //        }
-    //    }
-    //}
-
-#ifdef __GPU
-//== inline void copy_cols_to_device(int icol_fisrt, int icol_last)
-//== {
-//==     splindex<block_cyclic> s0(icol_fisrt, num_ranks_col_, rank_col_, bs_col_);
-//==     splindex<block_cyclic> s1(icol_last,  num_ranks_col_, rank_col_, bs_col_);
-//==     int nloc = static_cast<int>(s1.local_size() - s0.local_size());
-//==     if (nloc)
-//==     {
-//==         cuda_copy_to_device(at<GPU>(0, s0.local_size()), at<CPU>(0, s0.local_size()),
-//==                             num_rows_local() * nloc * sizeof(double_complex));
-//==     }
-//== }
-
-//== inline void copy_cols_to_host(int icol_fisrt, int icol_last)
-//== {
-//==     splindex<block_cyclic> s0(icol_fisrt, num_ranks_col_, rank_col_, bs_col_);
-//==     splindex<block_cyclic> s1(icol_last,  num_ranks_col_, rank_col_, bs_col_);
-//==     int nloc = static_cast<int>(s1.local_size() - s0.local_size());
-//==     if (nloc)
-//==     {
-//==         cuda_copy_to_host(at<CPU>(0, s0.local_size()), at<GPU>(0, s0.local_size()),
-//==                           num_rows_local() * nloc * sizeof(double_complex));
-//==     }
-//== }
-#endif
-
     inline void set(const int irow_glob, const int icol_glob, T val)
     {
         auto r = spl_row_.location(irow_glob);
@@ -242,7 +235,8 @@ class dmatrix : public matrix<T>
                 auto c = spl_col_.location(i);
                 if (blacs_grid_->rank_col() == c.rank) {
                     T v = (*this)(r.local_index, c.local_index);
-                    (*this)(r.local_index, c.local_index) = sddk_type_wrapper<T>::real(v);
+                    //(*this)(r.local_index, c.local_index) = sddk_type_wrapper<T>::real(v);
+                    (*this)(r.local_index, c.local_index) = std::real(v);
                 }
             }
         }

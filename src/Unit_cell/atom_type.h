@@ -2172,7 +2172,7 @@ void Atom_type::calculate_ak_coefficients(mdarray<double, 5> &ak)
                         }
                         // now we sum the result
                         double sum = 0.0;
-                        for(auto q = 0; q < tmp.size(); q++)
+                        for(size_t q = 0; q < tmp.size(); q++)
                             sum += tmp[q];
 
                         ak(k,

@@ -56,7 +56,7 @@ void test_fft(double cutoff__, device_t pu__)
                                                double(fft.offset_z() + j2) / fft.grid().size(2));
                     int idx = fft.grid().index_by_coord(j0, j1, j2);
 
-                    diff += std::pow(std::abs(fft.buffer(idx) - std::exp(double_complex(0.0, twopi * (rl * v)))), 2);
+                    diff += std::pow(std::abs(fft.buffer(idx) - std::exp(double_complex(0.0, twopi * dot(rl, v)))), 2);
                 }
             }
         }
