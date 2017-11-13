@@ -248,20 +248,22 @@ inline void orthogonalize(int             N__,
 template <typename T>
 static void save_to_hdf5(std::string name__, dmatrix<T>& mtrx__, int n__)
 {
-    mdarray<T, 2> full_mtrx(mtrx__.num_rows(), mtrx__.num_cols());
+    mdarray<T, 2> full_mtrx(n__, n__);
     full_mtrx.zero();
 
     for (int j = 0; j < mtrx__.num_cols_local(); j++) {
         for (int i = 0; i < mtrx__.num_rows_local(); i++) {
-            full_mtrx(mtrx__.irow(i), mtrx__.icol(j)) = mtrx__(i, j);
+            if (mtrx__.irow(i) < n__ &&  mtrx__.icol(j) < n__) {
+                full_mtrx(mtrx__.irow(i), mtrx__.icol(j)) = mtrx__(i, j);
+            }
         }
     }
     mtrx__.blacs_grid().comm().allreduce(full_mtrx.template at<CPU>(), static_cast<int>(full_mtrx.size()));
     
     if (mtrx__.blacs_grid().comm().rank() == 0) {
         HDF5_tree h5(name__, true);
-        h5.write("nrow", mtrx__.num_rows());
-        h5.write("ncol", mtrx__.num_cols());
+        h5.write("nrow", n__);
+        h5.write("ncol", n__);
         h5.write("mtrx", full_mtrx);
     }
 }
