@@ -554,8 +554,11 @@ inline int DFT_ground_state::find(double potential_tol, double energy_tol, int n
     int result{-1};
 
     printf("--------------------------------------------- init\n");
-    band_.U().hubbard_compute_occupation_numbers(kset_);
-    band_.U().calculate_hubbard_potential_and_energy();
+
+    if (ctx_.hubbard_correction()) {
+        band_.U().hubbard_compute_occupation_numbers(kset_);
+        band_.U().calculate_hubbard_potential_and_energy();
+    }
 
     for (int iter = 0; iter < num_dft_iter; iter++) {
         sddk::timer t1("sirius::DFT_ground_state::scf_loop|iteration");

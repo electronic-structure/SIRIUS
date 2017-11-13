@@ -519,11 +519,12 @@ struct Hubbard_input
     }
     void read(json const& parser)
     {
-        hubbard_correction_ = false;
-
-        std::cout << "hubbard 1" << std::endl;
-        if(!parser.count("hubbard"))
+        if (!hubbard_correction_)
             return;
+
+        if (!parser.count("hubbard"))
+            return;
+        std::cout << "hubbard 1" << std::endl;
 
         hubbard_orthogonalization_ = parser["hubbard"].value("orthogonalize_hubbard_wave_functions", hubbard_orthogonalization_);
         hubbard_normalization_ = parser["hubbard"].value("normalize_hubbard_wave_functions", hubbard_normalization_);
