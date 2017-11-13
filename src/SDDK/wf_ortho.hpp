@@ -257,7 +257,13 @@ static void save_to_hdf5(std::string name__, dmatrix<T>& mtrx__, int n__)
         }
     }
     mtrx__.blacs_grid().comm().allreduce(full_mtrx.template at<CPU>(), static_cast<int>(full_mtrx.size()));
-
+    
+    if (mtrx__.blacs_grid().comm().rank() == 0) {
+        HDF5_tree h5(name__, true);
+        h5.write("nrow", mtrx__.num_rows());
+        h5.write("ncol", mtrx__.num_cols());
+        h5.write("mtrx", full_mtrx);
+    }
 }
 
 /// Orthogonalize n new wave-functions to the N old wave-functions
@@ -305,6 +311,10 @@ inline void orthogonalize(device_t                     pu__,
         }
         inner(*wfs__[idx_bra__], N__, n__, *wfs__[idx_ket__], N__, n__, o__, 0, 0);
         
+        if (sddk_debug >= 3) {
+            save_to_hdf5("nxn_overlap.h5", o__, n__);
+        }
+
         std::vector<double> eo(n__);
         dmatrix<T> evec(o__.num_rows(), o__.num_cols(), o__.blacs_grid(), o__.bs_row(), o__.bs_col());
 
