@@ -190,6 +190,7 @@ inline void inner(wave_functions& bra__,
     };
 
     if (comm.size() == 1) {
+        beta = beta__;
         T* buf = (pu == CPU) ? result__.template at<CPU>(irow0__, jcol0__) : result__.template at<GPU>(irow0__, jcol0__);
         local_inner(i0__, m__, j0__, n__, buf, result__.ld(), -1);
         #ifdef __GPU
