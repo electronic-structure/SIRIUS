@@ -438,6 +438,7 @@ class Eigensolver_lapack: public Eigensolver<T>
     }
 };
 
+#ifdef __ELPA
 template <typename T>
 class Eigensolver_elpa: public Eigensolver<T>
 {
@@ -572,6 +573,7 @@ class Eigensolver_elpa: public Eigensolver<T>
         return solve(matrix_size__, matrix_size__, A__, eval__, Z__);
     }
 };
+#endif
 
 template <typename T>
 class Eigensolver_scalapack: public Eigensolver<T>
@@ -756,6 +758,7 @@ std::unique_ptr<Eigensolver<T>> Eigensolver_factory(ev_solver_t ev_solver_type__
             ptr = new Eigensolver_scalapack<T>();
             break;
         }
+        #ifdef __ELPA
         case ev_solver_t::elpa1: {
             ptr = new Eigensolver_elpa<T>(1);
             break;
@@ -764,6 +767,7 @@ std::unique_ptr<Eigensolver<T>> Eigensolver_factory(ev_solver_t ev_solver_type__
             ptr = new Eigensolver_elpa<T>(2);
             break;
         }
+        #endif
         default: {
             TERMINATE("not implemented");
         }
@@ -1888,6 +1892,7 @@ class Eigenproblem_scalapack: public Eigenproblem
         }
 };
 
+#ifdef __ELPA
 class Eigenproblem_elpa: public Eigenproblem
 {
     protected:
@@ -2256,6 +2261,7 @@ class Eigenproblem_elpa2: public Eigenproblem_elpa
             return ev_elpa2;
         }
 };
+#endif
 
 #ifdef __RS_GEN_EIG
 void libevs_gen_eig(char uplo, int n, int nev,
