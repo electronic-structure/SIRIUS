@@ -95,6 +95,8 @@ class Eigensolver
         TERMINATE("solver is not implemented");
         return -1;
     }
+
+    virtual bool is_parallel() = 0;
 };
 
 template <typename T>
@@ -113,6 +115,11 @@ class Eigensolver_lapack: public Eigensolver<T>
     }
 
   public:
+
+    inline bool is_parallel()
+    {
+        return false;
+    }
 
     /// Solve a standard eigen-value problem for all eigen-pairs.
     int solve(ftn_int matrix_size__, dmatrix<T>& A__, double* eval__, dmatrix<T>& Z__)
@@ -335,6 +342,11 @@ class Eigensolver_elpa: public Eigensolver<T>
         }
     }
 
+    inline bool is_parallel()
+    {
+        return true;
+    }
+
     /// Solve a generalized eigen-value problem for N lowest eigen-pairs.
     int solve(ftn_int matrix_size__, ftn_int nev__, dmatrix<T>& A__, dmatrix<T>& B__, double* eval__, dmatrix<T>& Z__)
     {
@@ -495,6 +507,11 @@ class Eigensolver_elpa: public Eigensolver<T>
     Eigensolver_elpa(int stage__)
     {
     }
+
+    inline bool is_parallel()
+    {
+        return true;
+    }
 };
 #endif
 
@@ -506,6 +523,12 @@ class Eigensolver_scalapack: public Eigensolver<T>
     double const ortfac_{1e-6};
     double const abstol_{1e-12};
   public:
+
+    inline bool is_parallel()
+    {
+        return true;
+    }
+
     /// Solve a standard eigen-value problem for all eigen-pairs.
     int solve(ftn_int matrix_size__, dmatrix<T>& A__, double* eval__, dmatrix<T>& Z__)
     {
@@ -793,6 +816,13 @@ class Eigensolver_scalapack: public Eigensolver<T>
 template <typename T>
 class Eigensolver_magma: public Eigensolver<T>
 {
+  public:
+
+    inline bool is_parallel()
+    {
+        return false;
+    }
+
     /// Solve a generalized eigen-value problem for N lowest eigen-pairs.
     int solve(ftn_int matrix_size__, ftn_int nev__, dmatrix<T>& A__, dmatrix<T>& B__, double* eval__, dmatrix<T>& Z__)
     {
@@ -874,6 +904,11 @@ class Eigensolver_magma: public Eigensolver<T>
 template <typename T>
 class Eigensolver_magma: public Eigensolver<T>
 {
+  public:
+    inline bool is_parallel()
+    {
+        return false;
+    }
 };
 #endif
 
@@ -881,11 +916,21 @@ class Eigensolver_magma: public Eigensolver<T>
 template <typename T>
 class Eigensolver_plasma: public Eigensolver<T>
 {
+  public:
+    inline bool is_parallel()
+    {
+        return false;
+    }
 };
 #else
 template <typename T>
 class Eigensolver_plasma: public Eigensolver<T>
 {
+  public:
+    inline bool is_parallel()
+    {
+        return false;
+    }
 };
 #endif
 
