@@ -109,7 +109,6 @@ inline void orthogonalize(int N__,
             }
             #endif
         } else { /* CPU version */
-            //check_hermitian("OVLP", o__, n__);
             //o__.serialize("overlap.dat", n__);
             /* Cholesky factorization */
             if (int info = linalg<CPU>::potrf(n__, &o__(0, 0), o__.ld())) {
@@ -330,10 +329,6 @@ inline void orthogonalize(device_t                     pu__,
                 }
             }
         }
-
-    //    //if (o__.blacs_grid().comm().rank() == 0) { 
-    //    //    std::cout << "smallest ev of the new n x x block: " << eo[0] << std::endl;
-    //    //}
     }
 
     /* orthogonalize new n__ x n__ block */
