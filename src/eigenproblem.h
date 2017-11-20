@@ -35,6 +35,10 @@ extern "C" {
 }
 #endif
 
+#if defined(__GPU) && defined(__MAGMA)
+#include "GPU/magma.hpp"
+#endif
+
 using namespace sddk;
 
 /// Type of eigen-value solver.
@@ -870,7 +874,7 @@ class Eigensolver_magma: public Eigensolver<T>
         int lda = A__.ld();
         std::vector<double> w(matrix_size__);
         if (std::is_same<T, double>::value) {
-            result = magma::dsyevde(matrix_size__, nev__, reinterpret_cast<double*>(A__.template at<CPU>()),
+            result = magma::dsyevdx(matrix_size__, nev__, reinterpret_cast<double*>(A__.template at<CPU>()),
                                     lda, w.data());
 
             if (nt != omp_get_max_threads()) {

@@ -211,6 +211,9 @@ inline void inner(wave_functions& bra__,
         return;
     } else if (result__.blacs_grid().comm().size() == 1) {
         mdarray<T, 2> tmp(m__, n__);
+        if (pu == GPU) {
+            tmp.allocate(memory_t::device);
+        }
         T* buf = (pu == CPU) ? tmp.template at<CPU>(0, 0) : tmp.template at<GPU>(0, 0);
         local_inner(i0__, m__, j0__, n__, buf, m__, -1);
         #ifdef __GPU
@@ -224,6 +227,13 @@ inline void inner(wave_functions& bra__,
                 result__(irow0__ + i, jcol0__ + j) = beta__ * result__(irow0__ + i, jcol0__ + j) + tmp(i, j);
             }
         }
+        #ifdef __GPU
+        if (pu == GPU) {
+            acc::copyin(result__.template at<GPU>(irow0__, jcol0__), result__.ld(),
+                        result__.template at<CPU>(irow0__, jcol0__), result__.ld(),
+                        m__, n__);
+        }
+        #endif
         if (sddk_pp) {
             time += omp_get_wtime();
             int k = bra__.pw_coeffs().num_rows_loc();

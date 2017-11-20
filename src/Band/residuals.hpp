@@ -344,7 +344,7 @@ int Band::residuals_common(K_point*             kp__,
                kp__->comm_col().recv(&evec_tmp(0, pos_dest.local_index), num_rows_local, pos_src.rank, ev_idx[j]);
             }
         }
-        if (ctx_.processing_unit() == GPU && kp__->comm().size() == 1) {
+        if (ctx_.processing_unit() == GPU && evec__.blacs_grid().comm().size() == 1) {
             evec_tmp.allocate(memory_t::device);
         }
         /* compute H\Psi_{i} = \sum_{mu} H\phi_{mu} * Z_{mu, i} and O\Psi_{i} = \sum_{mu} O\phi_{mu} * Z_{mu, i} */
