@@ -29,8 +29,8 @@ inline void transform(device_t                     pu__,
         if (wf_in__[i]->has_mt()) {
             assert(wf_in__[i]->mt_coeffs().num_rows_loc() == wf_out__[i]->mt_coeffs().num_rows_loc());
         }
-        assert(wf_in__[i]->comm().size() == comm.size());
-        assert(wf_out__[i]->comm().size() == comm.size());
+        //assert(wf_in__[i]->comm().size() == comm.size());
+        //assert(wf_out__[i]->comm().size() == comm.size());
     }
     
     double ngop{0};
@@ -208,7 +208,7 @@ inline void transform(device_t                     pu__,
     double time = -omp_get_wtime();
     
     /* trivial case */
-    if (comm.size() == 1) {
+    if (mtrx__.blacs_grid().comm().size() == 1) {
         #ifdef __GPU
         if (pu__ == GPU) {
             acc::copyin(mtrx__.template at<GPU>(irow0__, jcol0__), mtrx__.ld(),
@@ -381,15 +381,6 @@ inline void transform(device_t                     pu__,
         }
         #endif
     } /* loop over ibr */
-
-    //#ifdef __GPU
-    //if (pu__ == GPU) {
-    //    /* wait for the last cudaZgemm */
-    //    for (int s = 0; s < num_streams; s++) {
-    //        acc::sync_stream(s);
-    //    }
-    //}
-    //#endif
 
     if (sddk_pp) {
         comm.barrier();
