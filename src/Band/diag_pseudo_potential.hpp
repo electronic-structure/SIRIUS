@@ -174,7 +174,7 @@ inline int Band::diag_pseudo_potential_davidson(K_point*       kp__,
             opsi.component(i).pw_coeffs().allocate_on_device();
         }
     
-        if (kp__->comm().size() == 1) {
+        if (ctx_.blacs_grid().comm().size() == 1) {
             evec.allocate(memory_t::device);
             ovlp.allocate(memory_t::device);
             hmlt.allocate(memory_t::device);
@@ -242,6 +242,12 @@ inline int Band::diag_pseudo_potential_davidson(K_point*       kp__,
             TERMINATE(s);
         }
         t1.stop();
+
+        if (ctx_.control().verbosity_ >= 4 && kp__->comm().rank() == 0) {
+            for (int i = 0; i < num_bands; i++) {
+                printf("eval[%i]=%20.16f\n", i, eval[i]);
+            }
+        }
 
         /* number of newly added basis functions */
         int n{0};
