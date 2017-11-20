@@ -307,7 +307,7 @@ class Band
                     }
                 }
                 mtrx__.blacs_grid().comm().allreduce(&cs, 1);
-                if (mtrx__.blacs_grid().comm().rank() == 0) {
+                if (ctx_.comm_band().rank() == 0) {
                     print_checksum("subspace_mtrx", cs);
                 }
             }
