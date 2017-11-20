@@ -209,6 +209,33 @@ inline void inner(wave_functions& bra__,
             printf("inner() performance: %12.6f GFlops/rank, [m,n,k=%i %i %i, time=%f (sec)]\n", ngop * m__ * n__ * k / time, m__, n__, k, time);
         }
         return;
+    } else if (result__.blacs_grid().comm().size() == 1) {
+        mdarray<T, 2> tmp(m__, n__);
+        T* buf = (pu == CPU) ? tmp.template at<CPU>(0, 0) : tmp.template at<GPU>(0, 0);
+        local_inner(i0__, m__, j0__, n__, buf, m__, -1);
+        #ifdef __GPU
+        if (pu == GPU) {
+            tmp.copy_to_host();
+        }
+        #endif
+        comm.allreduce(&tmp[0], static_cast<int>(tmp.size()));
+        for (int j = 0; j < n__; j++) {
+            for (int i = 0; i < m__; i++) {
+                result__(irow0__ + i, jcol0__ + j) = beta__ * result__(irow0__ + i, jcol0__ + j) + tmp(i, j);
+            }
+        }
+        if (sddk_pp) {
+            time += omp_get_wtime();
+            int k = bra__.pw_coeffs().num_rows_loc();
+            if (bra__.has_mt()) {
+                k += bra__.mt_coeffs().num_rows_loc();
+            }
+            comm.allreduce(&k, 1);
+            if (comm.rank() == 0) {
+                printf("inner() performance: %12.6f GFlops/rank, [m,n,k=%i %i %i, time=%f (sec)]\n", ngop * m__ * n__ * k / time / comm.size(), m__, n__, k, time);
+            }
+        }
+        return;
     }
     
     const int BS = sddk_block_size;
@@ -439,4 +466,5 @@ inline void inner(Wave_functions& bra__,
         inner(bra__[is], i0__, m__, ket__[is], j0__, n__, beta, result__, irow0__, jcol0__);
         beta = 1;
     }
+    // TODO: result__ should be set to zero, otherwise nan may appear as 0 * nan = nan
 }
