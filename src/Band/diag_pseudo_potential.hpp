@@ -347,7 +347,7 @@ inline int Band::diag_pseudo_potential_davidson(K_point*       kp__,
                 if (max_diff > 1e-12) {
                     std::stringstream s;
                     s << "H matrix is not hermitian, max_err = " << max_diff;
-                    TERMINATE(s);
+                    WARNING(s);
                 }
             }
 
@@ -360,7 +360,7 @@ inline int Band::diag_pseudo_potential_davidson(K_point*       kp__,
                     if (max_diff > 1e-12) {
                         std::stringstream s;
                         s << "S matrix is not hermitian, max_err = " << max_diff;
-                        TERMINATE(s);
+                        WARNING(s);
                     }
                 }
             }
