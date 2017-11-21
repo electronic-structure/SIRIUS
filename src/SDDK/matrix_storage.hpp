@@ -25,6 +25,13 @@
 #ifndef __MATRIX_STORAGE_HPP__
 #define __MATRIX_STORAGE_HPP__
 
+#ifdef __GPU
+extern "C" void add_checksum_gpu(std::complex<double>* wf__,
+                                 int                   num_rows_loc__,
+                                 int                   nwf__,
+                                 std::complex<double>* result__);
+#endif
+
 namespace sddk {
 
 enum class matrix_storage_t
@@ -402,7 +409,7 @@ class matrix_storage<T, matrix_storage_t::slab>
         return extra_;
     }
     
-    template <sddk::memory_t mem_type>
+    template <memory_t mem_type>
     inline void zero(int i0__, int n__)
     {
         prime_.template zero<mem_type>(i0__ * num_rows_loc(), n__ * num_rows_loc());
@@ -419,6 +426,30 @@ class matrix_storage<T, matrix_storage_t::slab>
         return spl_num_col_;
     }
 
+    
+    template <memory_t mem_type>
+    inline void scale(int i0__, int n__, double beta__)
+    {
+        switch (mem_type) {
+            case memory_t::host:
+            case memory_t::host_pinned: {
+                for (int i = 0; i < n__; i++) {
+                    for (int j = 0; j < num_rows_loc(); j++) {
+                        prime(j, i0__ + i) *= beta__;
+                    }
+                }
+                break;
+            }
+            case memory_t::device: {
+                #ifdef __GPU
+                scale_matrix_elements_gpu(reinterpret_cast<cuDoubleComplex*>(prime().template at<GPU>(0, i0__)),
+                                          prime().ld(), num_rows_loc(), n__, beta__);
+                #endif
+                break;
+            }
+        }
+    }
+        
     #ifdef __GPU
     /// Allocate prime storage on device.
     void allocate_on_device()
@@ -449,6 +480,35 @@ class matrix_storage<T, matrix_storage_t::slab>
         }
     }
     #endif
+
+    inline double_complex checksum(device_t pu__,
+                                   int      i0__,
+                                   int      n__)
+    {
+        double_complex cs(0, 0);
+
+        switch (pu__) {
+            case CPU: {
+                for (int i = 0; i < n__; i++) {
+                    for (int j = 0; num_rows_loc_; j++) {
+                        cs += prime(j, i0__ + i);
+                    }
+                }
+                break;
+            }
+            case GPU: {
+                mdarray<double_complex, 1> cs1(n__, memory_t::host | memory_t::device, "checksum");
+                cs1.zero<memory_t::device>();
+                #ifdef __GPU
+                add_checksum_gpu(prime().template at<GPU>(0, i0__), num_rows_loc_, n__, cs1.at<GPU>());
+                cs1.copy_to_host();
+                cs = cs1.checksum();
+                #endif
+                break;
+            }
+        }
+        return cs;
+    }
 };
 
 //== template <typename T>
