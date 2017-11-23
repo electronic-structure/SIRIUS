@@ -362,6 +362,10 @@ class DFT_ground_state
                 }
             }
 
+            if (ctx_.hubbard_correction()) {
+                tot_en += band_.U().hubbard_energy();
+            }
+
             return tot_en;
         }
 
@@ -580,7 +584,7 @@ inline int DFT_ground_state::find(double potential_tol, double energy_tol, int n
         /* Compute the hubbard correction */
         if(ctx_.hubbard_correction()) {
             band_.U().hubbard_compute_occupation_numbers(kset_);
-            //            band_.U().mix();
+            band_.U().mix();
             band_.U().calculate_hubbard_potential_and_energy();
         }
         /* symmetrize density and magnetization */
@@ -627,9 +631,6 @@ inline int DFT_ground_state::find(double potential_tol, double energy_tol, int n
 
         /* compute new total energy for a new density */
         double etot = total_energy();
-
-        if(ctx_.hubbard_correction())
-            etot += band_.U().hubbard_energy();
 
         if (ctx_.full_potential()) {
             rms = potential_.mix();

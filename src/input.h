@@ -588,6 +588,11 @@ struct Hubbard_input
                 hubbard_correction_ = true;
             }
 
+            // now convert eV in Ha
+            for (int s = 0; s < coef_.size(); s++) {
+                coef_[s] *= 0.0367493;
+            }
+
             species.push_back(std::make_pair(label, coef_));
         }
         if(!hubbard_correction_) {

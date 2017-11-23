@@ -35,7 +35,7 @@ inline void K_point::generate_atomic_centered_wavefunctions(const int num_ao__, 
       auto& atom_type = unit_cell_.atom(ia).type();
       idxao.push_back(n);
       /* increment index of atomic orbitals */
-      for (size_t i = 0; i < atom_type.pp_desc().atomic_pseudo_wfs_.size(); i++) {
+      for (auto i = 0; i < static_cast<int>(atom_type.pp_desc().atomic_pseudo_wfs_.size()); i++) {
         int l = atom_type.pp_desc().atomic_pseudo_wfs_[i].first;
         n += (2 * l + 1);
       }
@@ -65,7 +65,7 @@ inline void K_point::generate_atomic_centered_wavefunctions(const int num_ao__, 
       }
       auto& atom_type = unit_cell_.atom(ia).type();
       int n{0};
-      for (size_t i = 0; i < atom_type.pp_desc().atomic_pseudo_wfs_.size(); i++) {
+      for (int i = 0; i < static_cast<int>(atom_type.pp_desc().atomic_pseudo_wfs_.size()); i++) {
         int l = atom_type.pp_desc().atomic_pseudo_wfs_[i].first;
         double_complex z = std::pow(double_complex(0, -1), l) * fourpi / std::sqrt(unit_cell_.omega());
         for (int m = -l; m <= l; m++) {

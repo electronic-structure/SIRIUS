@@ -41,7 +41,7 @@ void apply_hubbard_potential(const K_point& kp, const int idx__, const int n__, 
     }
 
     // Need a reduction over the pool
-    kp.comm().allreduce<double_complex, mpi_op_t::sum>(dm.at<CPU>(), dm.size());
+    kp.comm().allreduce<double_complex, mpi_op_t::sum>(dm.at<CPU>(), static_cast<int>(dm.size()));
 
     for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ++ia) {
         const auto &atom = ctx_.unit_cell().atom(ia);
@@ -62,10 +62,12 @@ void apply_hubbard_potential(const K_point& kp, const int idx__, const int n__, 
                                     dm(this->offset[ia] + s2 * (2 * atom.type().hubbard_l() + 1) + m2, nbnd);
                             }
                         }
+
                         for (int s = 0; s < ctx_.num_spins(); s++) {
-                            for (int l = 0; l < kp.hubbard_wave_functions(s).pw_coeffs().num_rows_loc(); l++)
+                            for (int l = 0; l < kp.hubbard_wave_functions(s).pw_coeffs().num_rows_loc(); l++) {
                                 ophi.component(s).pw_coeffs().prime(l, idx__ + nbnd) += temp *
                                     kp.hubbard_wave_functions(s).pw_coeffs().prime(l, this->offset[ia] + s1 * (2 * atom.type().hubbard_l() + 1) + m1);
+                            }
                         }
                     }
                 }

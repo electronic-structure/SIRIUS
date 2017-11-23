@@ -1027,6 +1027,12 @@ class Atom_type
             TERMINATE("Hubbard correction not implemented for l > 3");
             break;
         }
+
+        printf("U = %.5lf\n", Hubbard_U());
+        printf("F[0] = %.5lf\n", F[0]);
+        printf("F[1] = %.5lf\n", F[1]);
+        printf("F[2] = %.5lf\n", F[2]);
+        printf("F[3] = %.5lf\n", F[3]);
     }
 
     /// compare the angular, total angular momentum and radial part of
@@ -2151,35 +2157,34 @@ void Atom_type::generate_f_coefficients(void)
 
 void Atom_type::calculate_ak_coefficients(mdarray<double, 5> &ak)
 {
-    /// compute the ak coefficients appearing in the general treatment of hubbard corrections.
-    /// expression taken from Liechtenstein {\it et al}, PRB 52, R5467 (1995)
+    // compute the ak coefficients appearing in the general treatment of
+    // hubbard corrections.  expression taken from Liechtenstein {\it et
+    // al}, PRB 52, R5467 (1995)
 
+    // Note that for consistency, the ak are calculated with complex
+    // harmonics in the gaunt coefficients <R_lm|Y_l'm'|R_l''m''>.
+    // we need to keep it that way because of the hubbard potential
+  // With a spherical one it does not really matter
     ak.zero();
 
-    for(int m1 = -this->hubbard_l_; m1 <= this->hubbard_l_; m1++) {
-        for(int m2 = -this->hubbard_l_; m2 <= this->hubbard_l_; m2++) {
-            for(int m3 = -this->hubbard_l_; m3 <= this->hubbard_l_; m3++) {
-                for(int m4 = -this->hubbard_l_; m4 <= this->hubbard_l_; m4++) {
-                    for(int k = 0; k < this->hubbard_l_; k++) {
-                        std::vector<double> tmp(4 * k + 1, 0);
-                        for(int q=- 2 * k; q <= 2 * k; q++) {
-                            int tp = m1 + q + m2;
-                            tmp[2 * k + q] = SHT::clebsch_gordan(this->hubbard_l_, 2 * k, this->hubbard_l_, 0, 0, 0) *
-                                SHT::clebsch_gordan(this->hubbard_l_, 2 * k, this->hubbard_l_, 0, 0, 0) *
-                                SHT::clebsch_gordan(this->hubbard_l_, 2 * k, this->hubbard_l_, -m1, q, m2) *
-                                SHT::clebsch_gordan(this->hubbard_l_, 2 * k, this->hubbard_l_, -m3, -q, m4)
-                              * static_cast<double>((2 * this->hubbard_l_ + 1) * (2 * this->hubbard_l_ + 1)) * std::pow(-1, tp);
-                        }
-                        // now we sum the result
+    for (int m1 = -this->hubbard_l_; m1 <= this->hubbard_l_; m1++) {
+        for (int m2 = -this->hubbard_l_; m2 <= this->hubbard_l_; m2++) {
+            for (int m3 = -this->hubbard_l_; m3 <= this->hubbard_l_; m3++) {
+                for (int m4 = -this->hubbard_l_; m4 <= this->hubbard_l_; m4++) {
+                    for (int k = 0; k < 2*this->hubbard_l_; k += 2) {
                         double sum = 0.0;
-                        for(size_t q = 0; q < tmp.size(); q++)
-                            sum += tmp[q];
-
-                        ak(k,
+                        for (int q = -k; q <= k; q++) {
+                            sum += SHT::gaunt_rlm_ylm_rlm(this->hubbard_l_, k, this->hubbard_l_, m1, q, m2) *
+                                SHT::gaunt_rlm_ylm_rlm(this->hubbard_l_, k, this->hubbard_l_, m3, q, m4);
+                        }
+                        // hmmm according to PRB 52, R5467 it is 4
+                        // \pi/(2 k + 1) -> 4 \pi / (4 * k + 1) because
+                        // I only consider a_{k=0} a_{k=2}, a_{k=4}
+                        ak(k/2,
                            m1 + this->hubbard_l_,
                            m2 + this->hubbard_l_,
                            m3 + this->hubbard_l_,
-                           m4 + this->hubbard_l_) = sum;
+                           m4 + this->hubbard_l_) = 4.0 * sum * M_PI / static_cast<double>(2 * k + 1);
                     }
                 }
             }
@@ -2190,54 +2195,45 @@ void Atom_type::calculate_ak_coefficients(mdarray<double, 5> &ak)
 /// this function computes the matrix elements of the orbital part of
 /// the electron-electron interactions. we effectively compute
 
-/// \f[
-/// u(m,m'',m',m''') = \left<m,m''|V_{e-e}|m',m'''\right> \sum_k
-/// a_k(m,m',m'',m''') F_k \f]
+/// \f[ u(m,m'',m',m''') = \left<m,m''|V_{e-e}|m',m'''\right> \sum_k
+/// a_k(m,m',m'',m''') F_k \f] where the F_k are calculated for real
+/// spherical harmonics
+
+
 
 void Atom_type::compute_hubbard_matrix()
 {
-    this->hubbard_matrix_ = mdarray<double, 4>(2 * this->hubbard_l_ + 1,
-                                               2 * this->hubbard_l_ + 1,
-                                               2 * this->hubbard_l_ + 1,
-                                               2 * this->hubbard_l_ + 1);
-    mdarray<double, 5> ak(this->hubbard_l_,
-                          2 * this->hubbard_l_ + 1,
-                          2 * this->hubbard_l_ + 1,
-                          2 * this->hubbard_l_ + 1,
-                          2 * this->hubbard_l_ + 1);
-    std::vector<double> F(4);
-    hubbard_F_coefficients(&F[0]);
-    calculate_ak_coefficients(ak);
+  this->hubbard_matrix_ = mdarray<double, 4>(2 * this->hubbard_l_ + 1,
+                                             2 * this->hubbard_l_ + 1,
+                                             2 * this->hubbard_l_ + 1,
+                                             2 * this->hubbard_l_ + 1);
+  mdarray<double, 5> ak(this->hubbard_l_,
+                        2 * this->hubbard_l_ + 1,
+                        2 * this->hubbard_l_ + 1,
+                        2 * this->hubbard_l_ + 1,
+                        2 * this->hubbard_l_ + 1);
+  std::vector<double> F(4);
+  hubbard_F_coefficients(&F[0]);
+  calculate_ak_coefficients(ak);
 
-    this->hubbard_matrix_.zero();
 
-    for(int m4 = 0; m4 < 2 * this->hubbard_l_ + 1; m4++) {
-        for(int m3 = 0; m3 < 2 * this->hubbard_l_ + 1; m3++) {
-            for(int m2 = 0; m2 < 2 * this->hubbard_l_ + 1; m2++) {
-                for(int m1 = 0; m1 < 2 * this->hubbard_l_ + 1; m1++) {
-                    for(int k = 0; k < hubbard_l_; k++)
-                        this->hubbard_matrix(m1, m2, m3, m4) += ak (k, m1, m2, m3, m4) * F[k];
-                }
-            }
+  // the indices are rotated around
+
+  // <m, m |vee| m'', m'''> = hubbard_matrix(m, m'', m', m''')
+  FILE *f= fopen("f.dat", "w+");
+  this->hubbard_matrix_.zero();
+  for(int m1 = 0; m1 < 2 * this->hubbard_l_ + 1; m1++) {
+    for(int m2 = 0; m2 < 2 * this->hubbard_l_ + 1; m2++) {
+      for(int m3 = 0; m3 < 2 * this->hubbard_l_ + 1; m3++) {
+        for(int m4 = 0; m4 < 2 * this->hubbard_l_ + 1; m4++) {
+          for(int k = 0; k < hubbard_l_; k++)
+            this->hubbard_matrix(m1, m3, m2, m4) += ak (k, m1, m2, m3, m4) * F[k];
+          fprintf(f, "%.15lf\n", this->hubbard_matrix(m1, m3, m2, m4));
         }
+      }
     }
-    // for(int k = 0; k < 2; k++) {
-    //   for(int m4 = 0; m4 < 2 * this->hubbard_l_ + 1; m4++) {
-    //     for(int m3 = 0; m3 < 2 * this->hubbard_l_ + 1; m3++) {
-    //       for(int m2 = 0; m2 < 2 * this->hubbard_l_ + 1; m2++) {
-    //         for(int m1 = 0; m1 < 2 * this->hubbard_l_ + 1; m1++) {
-    //           printf(" k = %d, m1 = %d m2 = %d m3 = %d m4 = %d ak = %.5lf\n",
-    //                  k + 1,
-    //                  m1  + 1,
-    //                  m2  + 1,
-    //                  m3  + 1,
-    //                  m4  + 1,
-    //                  ak(k, m1, m2, m3, m4));
-    //         }
-    //       }
-    //     }
-    //   }
-    // }
+  }
+  fclose(f);
 }
 
 void Atom_type::read_hubbard_input()
