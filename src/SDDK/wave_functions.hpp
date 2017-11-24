@@ -45,12 +45,17 @@ extern "C" void add_checksum_gpu(double_complex* wf__,
                                  double_complex* result__);
 #endif
 
+const int sddk_default_block_size = 256;
+
 namespace experimental {
 
 // TODO: considered ispn=0 a pure spinor with up- component only, ispn=1 a pure spinor with dn- component only,
 //       ispn=2 a general-case spinor with up and dn components.
 //       wf_inner, wf_trans, wf_ortho can use this info to operate on a single component or on two component simultaneously.
 //       The same for .zero(), .scale(), .copy_from() methods
+//
+// the call to checksum will look like:
+// auto cs = wf.checksum(num_mag_dims == 3 ? 2 : ispn)
 
 /// Wave-functions representation.
 /** Wave-functions consist of two parts: plane-wave part and mufin-tin part. Both are the matrix_storage objects
@@ -60,7 +65,7 @@ namespace experimental {
 class Wave_functions
 {
   private:
-        
+
     /// Communicator used to distribute G+k vectors and atoms.
     Communicator const& comm_;
 
@@ -73,7 +78,7 @@ class Wave_functions
     block_data_descriptor mt_coeffs_distr_;
 
     std::vector<int> offset_mt_coeffs_;
-     
+
     /// Total number of muffin-tin coefficients.
     int num_mt_coeffs_{0};
 
@@ -83,13 +88,83 @@ class Wave_functions
     /// Number of spin components (1 or 2).
     int num_sc_{1};
 
-     /// Plane-wave part of wave-functions.
-     std::array<std::unique_ptr<matrix_storage<double_complex, matrix_storage_t::slab>>, 2> pw_coeffs_{{nullptr, nullptr}};
+    /// Plane-wave part of wave-functions.
+    std::array<std::unique_ptr<matrix_storage<double_complex, matrix_storage_t::slab>>, 2> pw_coeffs_{{nullptr, nullptr}};
 
-     /// Muffin-tin part of wave-functions.
-     std::array<std::unique_ptr<matrix_storage<double_complex, matrix_storage_t::slab>>, 2> mt_coeffs_{{nullptr, nullptr}};
+    /// Muffin-tin part of wave-functions.
+    std::array<std::unique_ptr<matrix_storage<double_complex, matrix_storage_t::slab>>, 2> mt_coeffs_{{nullptr, nullptr}};
 
-     bool has_mt_{false};
+    bool has_mt_{false};
+
+    inline int s0(int ispn__) const
+    {
+        assert(ispn__ == 0 || ispn__ == 1 || ispn__ == 2);
+        if (ispn__ == 2) {
+            assert(num_sc_ == 2);
+        }
+        return (ispn__ == 2) ? 0 : ispn__;
+    }
+
+    inline int s1(int ispn__) const
+    {
+        assert(ispn__ == 0 || ispn__ == 1 || ispn__ == 2);
+        if (ispn__ == 2) {
+            assert(num_sc_ == 2);
+        }
+        return (ispn__ == 2) ? 1 : ispn__;
+    }
+
+    inline mdarray<double, 1> sumsqr(device_t pu__, int ispn__, int n__) const
+    {
+        mdarray<double, 1> s(n__, memory_t::host, "sumsqr");
+        s.zero();
+        if (pu__ == GPU) {
+            s.allocate(memory_t::device);
+            s.zero<memory_t::device>();
+        }
+
+        for (int is = s0(ispn__); is <= s1(ispn__); is++) {
+            switch (pu__) {
+                case CPU: {
+                    #pragma omp parallel for
+                    for (int i = 0; i < n__; i++) {
+                        for (int ig = 0; ig < pw_coeffs(is).num_rows_loc(); ig++) {
+                            s[i] += (std::pow(pw_coeffs(is).prime(ig, i).real(), 2) + std::pow(pw_coeffs(is).prime(ig, i).imag(), 2));
+                        }
+                        if (gkvec_.reduced()) {
+                            if (comm_.rank() == 0) {
+                                s[i] = 2 * s[i] - std::pow(pw_coeffs(is).prime(0, i).real(), 2);
+                            } else {
+                                s[i] *= 2;
+                            }
+                        }
+                        if (has_mt()) {
+                            for (int j = 0; j < mt_coeffs(is).num_rows_loc(); j++) {
+                               s[i] += (std::pow(mt_coeffs(is).prime(j, i).real(), 2) + std::pow(mt_coeffs(is).prime(j, i).imag(), 2));
+                            }
+                        }
+                    }
+                    break;
+                }
+                case GPU: {
+                    #ifdef __GPU
+                    add_square_sum_gpu(pw_coeffs(is).prime().at<GPU>(), pw_coeffs(is).num_rows_loc(), n__,
+                                       gkvec_.reduced(), comm_.rank(), s.at<GPU>());
+                    if (has_mt()) {
+                        add_square_sum_gpu(mt_coeffs(is).prime().at<GPU>(), mt_coeffs(is).num_rows_loc(), n__,
+                                           0, comm_.rank(), s.at<GPU>());
+                    }
+                    #endif
+                    break;
+                }
+            }
+        }
+        if (pu__ == GPU) {
+            s.copy<memory_t::device, memory_t::host>();
+        }
+        comm_.allreduce(s.at<CPU>(), n__);
+        return std::move(s);
+    }
 
   public:
     /// Constructor for PW wave-functions.
@@ -178,28 +253,33 @@ class Wave_functions
         return gkvec_;
     }
 
-    inline matrix_storage<double_complex, matrix_storage_t::slab>& pw_coeffs(int ispn__ = 0)
+    inline int num_mt_coeffs() const
+    {
+        return num_mt_coeffs_;
+    }
+
+    inline matrix_storage<double_complex, matrix_storage_t::slab>& pw_coeffs(int ispn__)
     {
         assert(ispn__ == 0 || ispn__ == 1);
         assert(pw_coeffs_[ispn__] != nullptr);
         return *pw_coeffs_[ispn__];
     }
 
-    inline matrix_storage<double_complex, matrix_storage_t::slab> const& pw_coeffs(int ispn__ = 0) const
+    inline matrix_storage<double_complex, matrix_storage_t::slab> const& pw_coeffs(int ispn__) const
     {
         assert(ispn__ == 0 || ispn__ == 1);
         assert(pw_coeffs_[ispn__] != nullptr);
         return *pw_coeffs_[ispn__];
     }
 
-    inline matrix_storage<double_complex, matrix_storage_t::slab>& mt_coeffs(int ispn__ = 0)
+    inline matrix_storage<double_complex, matrix_storage_t::slab>& mt_coeffs(int ispn__)
     {
         assert(ispn__ == 0 || ispn__ == 1);
         assert(mt_coeffs_[ispn__] != nullptr);
         return *mt_coeffs_[ispn__];
     }
 
-    inline matrix_storage<double_complex, matrix_storage_t::slab> const& mt_coeffs(int ispn__ = 0) const
+    inline matrix_storage<double_complex, matrix_storage_t::slab> const& mt_coeffs(int ispn__) const
     {
         assert(ispn__ == 0 || ispn__ == 1);
         assert(mt_coeffs_[ispn__] != nullptr);
@@ -247,12 +327,7 @@ class Wave_functions
     {
         assert(ispn__ == 0 || ispn__ == 1 || ispn__ == 2);
 
-        int s0{0}, s1{1};
-        if (ispn__ != 2) {
-            s0 = s1 = ispn__;
-        }
-        
-        for (int s = s0; s <= s1; s++) {
+        for (int s = s0(ispn__); s <= s1(ispn__); s++) {
             switch (pu__) {
                 case CPU: {
                     /* copy PW part */
@@ -304,21 +379,14 @@ class Wave_functions
                                       int      n__)
     {
         assert(n__ != 0);
-        double_complex cs = pw_coeffs(ispn__).checksum(pu__, i0__, n__);
+        double_complex cs(0, 0);
+        for (int s = s0(ispn__); s <= s1(ispn__); s++) {
+            cs += pw_coeffs(s).checksum(pu__, i0__, n__);
+        }
         comm_.allreduce(&cs, 1);
         return cs;
     }
 
-    /// Compute the checksum of the spinors.
-    inline double_complex checksum_pw(device_t pu__, int i0__, int n__)
-    {
-        double_complex cs(0, 0);
-        for (int ispn = 0; ispn < num_sc_; ispn++) {
-            cs += checksum_pw(pu__, ispn, i0__, n__);
-        }
-        return cs;
-    }
-    
     /// Checksum of muffin-tin coefficients.
     inline double_complex checksum_mt(device_t pu__, int ispn__, int i0__, int n__)
     {
@@ -327,17 +395,10 @@ class Wave_functions
         if (!has_mt()) {
             return cs;
         }
-        cs = mt_coeffs(ispn__).checksum(pu__, i0__, n__);
-        comm_.allreduce(&cs, 1);
-        return cs;
-    }
-
-    inline double_complex checksum_mt(device_t pu__, int i0__, int n__)
-    {
-        double_complex cs(0, 0);
-        for (int ispn = 0; ispn < num_sc_; ispn++) {
-            cs += checksum_mt(pu__, ispn, i0__, n__);
+        for (int s = s0(ispn__); s <= s1(ispn__); s++) {
+            cs += mt_coeffs(s).checksum(pu__, i0__, n__);
         }
+        comm_.allreduce(&cs, 1);
         return cs;
     }
 
@@ -346,29 +407,19 @@ class Wave_functions
         return checksum_pw(pu__, ispn__, i0__, n__) + checksum_mt(pu__, ispn__, i0__, n__);
     }
 
-    inline double_complex checksum(device_t pu__, int i0__, int n__)
-    {
-        return checksum_pw(pu__, i0__, n__) + checksum_mt(pu__, i0__, n__);
-    }
-
     inline void zero_pw(device_t pu__, int ispn__, int i0__, int n__)
     {
-        switch (pu__) {
-            case CPU: {
-                pw_coeffs(ispn__).zero<memory_t::host>(i0__, n__);
-                break;
+        for (int s = s0(ispn__); s <= s1(ispn__); s++) {
+            switch (pu__) {
+                case CPU: {
+                    pw_coeffs(s).zero<memory_t::host>(i0__, n__);
+                    break;
+                }
+                case GPU: {
+                    pw_coeffs(s).zero<memory_t::device>(i0__, n__);
+                    break;
+                }
             }
-            case GPU: {
-                pw_coeffs(ispn__).zero<memory_t::device>(i0__, n__);
-                break;
-            }
-        }
-    }
-
-    inline void zero_pw(device_t pu__, int i0__, int n__)
-    {
-        for (int ispn = 0; ispn < num_sc_; ispn++) {
-            zero_pw(pu__, ispn, i0__, n__);
         }
     }
 
@@ -377,23 +428,17 @@ class Wave_functions
         if (!has_mt()) {
             return;
         }
-
-        switch (pu__) {
-            case CPU: {
-                mt_coeffs(ispn__).zero<memory_t::host>(i0__, n__);
-                break;
+        for (int s = s0(ispn__); s <= s1(ispn__); s++) {
+            switch (pu__) {
+                case CPU: {
+                    mt_coeffs(s).zero<memory_t::host>(i0__, n__);
+                    break;
+                }
+                case GPU: {
+                    mt_coeffs(s).zero<memory_t::device>(i0__, n__);
+                    break;
+                }
             }
-            case GPU: {
-                mt_coeffs(ispn__).zero<memory_t::device>(i0__, n__);
-                break;
-            }
-        }
-    }
-
-    inline void zero_mt(device_t pu__, int i0__, int n__)
-    {
-        for (int ispn = 0; ispn < num_sc_; ispn++) {
-            zero_mt(pu__, ispn, i0__, n__);
         }
     }
 
@@ -403,56 +448,26 @@ class Wave_functions
         zero_mt(pu__, ispn__, i0__, n__);
     }
 
-    inline void zero(device_t pu__, int i0__, int n__)
+    inline void scale(device_t pu__, int ispn__, int i0__, int n__, double beta__)
     {
-        zero_pw(pu__, i0__, n__);
-        zero_mt(pu__, i0__, n__);
-    }
-
-    inline mdarray<double, 1> sumsqr(device_t pu__, int ispn__, int n__) const
-    {
-        mdarray<double, 1> s(n__, memory_t::host, "sumsqr");
-        s.zero();
-
-        switch (pu__) {
-            case CPU: {
-                #pragma omp parallel for
-                for (int i = 0; i < n__; i++) {
-                    for (int ig = 0; ig < pw_coeffs(ispn__).num_rows_loc(); ig++) {
-                        s[i] += (std::pow(pw_coeffs(ispn__).prime(ig, i).real(), 2) + std::pow(pw_coeffs(ispn__).prime(ig, i).imag(), 2));
-                    }
-                    if (gkvec_.reduced()) {
-                        if (comm_.rank() == 0) {
-                            s[i] = 2 * s[i] - std::pow(pw_coeffs(ispn__).prime(0, i).real(), 2);
-                        } else {
-                            s[i] *= 2;
-                        }
-                    }
+        for (int s = s0(ispn__); s <= s1(ispn__); s++) {
+            switch (pu__) {
+                case CPU: {
+                    pw_coeffs(s).scale<memory_t::host>(i0__, n__, beta__);
                     if (has_mt()) {
-                        for (int j = 0; j < mt_coeffs(ispn__).num_rows_loc(); j++) {
-                           s[i] += (std::pow(mt_coeffs(ispn__).prime(j, i).real(), 2) + std::pow(mt_coeffs(ispn__).prime(j, i).imag(), 2));
-                        }
+                        mt_coeffs(s).scale<memory_t::host>(i0__, n__, beta__);
                     }
+                    break;
                 }
-                break;
-            }
-            case GPU: {
-                #ifdef __GPU
-                s.allocate(memory_t::device);
-                s.zero<memory_t::device>();
-                add_square_sum_gpu(pw_coeffs(ispn__).prime().at<GPU>(), pw_coeffs(ispn__).num_rows_loc(), n__,
-                                   gkvec_.reduced(), comm_.rank(), s.at<GPU>());
-                if (has_mt()) {
-                    add_square_sum_gpu(mt_coeffs(ispn__).prime().at<GPU>(), mt_coeffs(ispn__).num_rows_loc(), n__,
-                                       0, comm_.rank(), s.at<GPU>());
+                case GPU: {
+                    pw_coeffs(s).scale<memory_t::device>(i0__, n__, beta__);
+                    if (has_mt()) {
+                        mt_coeffs(s).scale<memory_t::device>(i0__, n__, beta__);
+                    }
+                    break;
                 }
-                s.copy<memory_t::device, memory_t::host>();
-                #endif
-                break;
             }
         }
-        comm_.allreduce(s.at<CPU>(), n__);
-        return std::move(s);
     }
 
     inline mdarray<double,1> l2norm(device_t pu__, int ispn__, int n__) const
@@ -467,51 +482,53 @@ class Wave_functions
         return std::move(norm);
     }
 
-    inline mdarray<double,1> l2norm(device_t pu__, int n__) const
-    {
-        assert(n__ != 0);
-
-        auto norm = sumsqr(pu__, 0, n__);
-        if (num_sc_ == 2) {
-            auto norm1 = sumsqr(pu__, 1, n__);
-            for (int i = 0; i < n__; i++) {
-                norm[i] += norm1[i];
-            }
-        }
-        for (int i = 0; i < n__; i++) {
-            norm[i] = std::sqrt(norm[i]);
-        }
-
-        return std::move(norm);
-    }
-
-    inline void scale(device_t pu__, int ispn__, int i0__, int n__, double beta__)
-    {
-        switch (pu__) {
-            case CPU: {
-                pw_coeffs(ispn__).template scale<memory_t::host>(i0__, n__, beta__);
-                if (has_mt()) {
-                    mt_coeffs(ispn__).template scale<memory_t::host>(i0__, n__, beta__);
-                }
-                break;
-            }
-            case GPU: {
-                pw_coeffs(ispn__).template scale<memory_t::device>(i0__, n__, beta__);
-                if (has_mt()) {
-                    mt_coeffs(ispn__).template scale<memory_t::device>(i0__, n__, beta__);
-                }
-                break;
+    #ifdef __GPU
+    void allocate_on_device(int ispn__) {
+        for (int s = s0(ispn__); s <= s1(ispn__); s++) {
+            pw_coeffs(s).allocate_on_device();
+            if (has_mt()) {
+                mt_coeffs(s).allocate_on_device();
             }
         }
     }
+
+    void deallocate_on_device(int ispn__) {
+        for (int s = s0(ispn__); s <= s1(ispn__); s++) {
+            pw_coeffs(s).deallocate_on_device();
+            if (has_mt()) {
+                mt_coeffs(s).deallocate_on_device();
+            }
+        }
+    }
+
+    void copy_to_device(int ispn__, int i0__, int n__) {
+        for (int s = s0(ispn__); s <= s1(ispn__); s++) {
+            pw_coeffs(s).copy_to_device(i0__, n__);
+            if (has_mt()) {
+                mt_coeffs(s).copy_to_device(i0__, n__);
+            }
+        }
+    }
+
+    void copy_to_host(int ispn__, int i0__, int n__) {
+        for (int s = s0(ispn__); s <= s1(ispn__); s++) {
+            pw_coeffs(s).copy_to_host(i0__, n__);
+            if (has_mt()) {
+                mt_coeffs(s).copy_to_host(i0__, n__);
+            }
+        }
+    }
+    #endif
+
 };
+
+#include "wf_inner_exp.hpp"
+#include "wf_trans_exp.hpp"
+#include "wf_ortho_exp.hpp"
 
 }
 
 namespace sddk {
-
-
-const int sddk_default_block_size = 256;
 
 /// Wave-functions representation.
 /** Wave-functions consist of two parts: plane-wave part and mufin-tin part. Both are the matrix_storage objects
