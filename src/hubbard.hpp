@@ -9,8 +9,7 @@
 #include "non_local_operator.h"
 #include "mixer.h"
 
-namespace sirius
-{
+namespace sirius {
 
 class Hubbard_potential
 {
@@ -45,6 +44,7 @@ class Hubbard_potential
 
     bool orthogonalize_hubbard_orbitals_{false};
     bool normalize_orbitals_only_{true};
+
   public:
     void set_hubbard_correction(const int approx)
     {
@@ -72,12 +72,12 @@ class Hubbard_potential
         return hubbard_potential_(m1, m2, m3, m4);
     }
 
-    const bool &orthogonalize_hubbard_orbitals() const
+    const bool& orthogonalize_hubbard_orbitals() const
     {
         return this->orthogonalize_hubbard_orbitals_;
     }
 
-    const bool &normalize_hubbard_orbitals_only() const
+    const bool& normalize_hubbard_orbitals_only() const
     {
         return this->normalize_orbitals_only_;
     }
@@ -85,7 +85,7 @@ class Hubbard_potential
     void calculate_hubbard_potential_and_energy()
     {
         this->hubbard_energy_                 = 0.0;
-        this->hubbard_energy_u_                 = 0.0;
+        this->hubbard_energy_u_               = 0.0;
         this->hubbard_energy_dc_contribution_ = 0.0;
         this->hubbard_energy_noflip_          = 0.0;
         this->hubbard_energy_flip_            = 0.0;
@@ -100,40 +100,39 @@ class Hubbard_potential
         }
     }
 
-    inline const double  hubbard_energy() const
+    inline const double hubbard_energy() const
     {
         return this->hubbard_energy_;
     }
 
-    int number_of_hubbard_orbitals() const
+    inline const int number_of_hubbard_orbitals() const
     {
         return number_of_hubbard_orbitals_;
     }
 
     Hubbard_potential(Simulation_context& ctx__)
-        : ctx_(ctx__), unit_cell_(ctx__.unit_cell())
+        : ctx_(ctx__)
+        , unit_cell_(ctx__.unit_cell())
     {
-        if(!ctx_.hubbard_correction())
+        if (!ctx_.hubbard_correction())
             return;
         this->orthogonalize_hubbard_orbitals_ = ctx_.Hubbard().hubbard_orthogonalization_;
-        this->normalize_orbitals_only_ = ctx_.Hubbard().hubbard_normalization_;
-        int lmax_ = -1;
+        this->normalize_orbitals_only_        = ctx_.Hubbard().hubbard_normalization_;
+        int lmax_                             = -1;
         for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {
             if (ctx__.unit_cell().atom(ia).type().hubbard_correction()) {
                 lmax_ = std::max(lmax_, ctx_.unit_cell().atom(ia).type().hubbard_l());
             }
         }
 
-        occupancy_number_ = mdarray<double_complex, 4>(2 * lmax_ + 1, 2 * lmax_ + 1, 4, ctx_.unit_cell().num_atoms());
-        hubbard_potential_ = mdarray<double_complex, 4>(2 * lmax_ + 1, 2 * lmax_ + 1, 4, ctx_.unit_cell().num_atoms());;
+        occupancy_number_  = mdarray<double_complex, 4>(2 * lmax_ + 1, 2 * lmax_ + 1, 4, ctx_.unit_cell().num_atoms());
+        hubbard_potential_ = mdarray<double_complex, 4>(2 * lmax_ + 1, 2 * lmax_ + 1, 4, ctx_.unit_cell().num_atoms());
+        ;
         calculate_wavefunction_with_U_offset();
         calculate_initial_occupation_numbers();
 
-        mixer_ = Mixer_factory<double_complex>(ctx_.mixer_input().type_,
-                                               static_cast<int>(occupancy_number_.size()),
-                                               0,
-                                               ctx_.mixer_input(),
-                                               ctx_.comm());
+        mixer_ = Mixer_factory<double_complex>(ctx_.mixer_input().type_, static_cast<int>(occupancy_number_.size()), 0,
+                                               ctx_.mixer_input(), ctx_.comm());
         this->mixer_input();
         mixer_->initialize();
         calculate_hubbard_potential_and_energy();
@@ -141,14 +140,14 @@ class Hubbard_potential
 
     inline void mixer_input()
     {
-        for (int i=0; i < static_cast<int>(occupancy_number_.size()); i++) {
+        for (int i = 0; i < static_cast<int>(occupancy_number_.size()); i++) {
             mixer_->input_shared(i, occupancy_number_[i], 1.0);
         }
     }
 
     inline void mixer_output()
     {
-        for (int i=0; i < static_cast<int>(occupancy_number_.size()); i++) {
+        for (int i = 0; i < static_cast<int>(occupancy_number_.size()); i++) {
             occupancy_number_[i] = mixer_->output_shared(i);
         }
     }
@@ -166,7 +165,7 @@ class Hubbard_potential
 #include "hubbard/hubbard_potential_energy.hpp"
 #include "hubbard/apply_hubbard_potential.hpp"
 #include "hubbard/hubbard_occupancy.hpp"
-private:
+  private:
     inline void calculate_wavefunction_with_U_offset()
     {
         offset.clear();
@@ -174,7 +173,7 @@ private:
 
         int counter = 0;
         for (auto ia = 0; ia < unit_cell_.num_atoms(); ia++) {
-            auto &atom = unit_cell_.atom(ia);
+            auto& atom = unit_cell_.atom(ia);
 
             if (atom.type().hubbard_correction()) {
                 // search for the orbital of given l corresponding to the

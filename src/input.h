@@ -478,8 +478,6 @@ struct Parameters_input
 
             if (parser["parameters"].count("hubbard_correction")) {
                 hubbard_correction_ = parser["parameters"].value("hubbard_correction", hubbard_correction_);
-                std::cout << "-------------------------------------------------------------------" << std::endl;
-                std::cout << " hubbard correction" << std::endl;
             }
 
         }
@@ -527,7 +525,6 @@ struct Hubbard_input
     {
         if (!parser.count("hubbard"))
             return;
-        std::cout << "hubbard 1" << std::endl;
 
         hubbard_orthogonalization_ = parser["hubbard"].value("orthogonalize_hubbard_wave_functions", hubbard_orthogonalization_);
         hubbard_normalization_ = parser["hubbard"].value("normalize_hubbard_wave_functions", hubbard_normalization_);
