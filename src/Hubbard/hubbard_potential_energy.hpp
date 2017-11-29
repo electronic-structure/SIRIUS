@@ -23,19 +23,19 @@ void calculate_hubbard_potential_and_energy_colinear_case()
 
                         for (int m1 = 0; m1 < 2 * atom.type().hubbard_l() + 1; m1++) {
                             this->hubbard_energy_ += (atom.type().Hubbard_alpha() + 0.5 * U_effective) *
-                                                     this->occupancy_number_(m1, m1, is, ia).real();
+                                this->occupancy_number_(m1, m1, is, ia, 0).real();
                             this->U(m1, m1, is, ia) += (atom.type().Hubbard_alpha() + 0.5 * U_effective);
 
                             for (int m2 = 0; m2 < 2 * atom.type().hubbard_l() + 1; m2++) {
 
                                 this->hubbard_energy_ -=
                                     0.5 * U_effective *
-                                    (this->occupancy_number_(m1, m2, is, ia) * this->occupancy_number_(m2, m1, is, ia))
+                                    (this->occupancy_number_(m1, m2, is, ia, 0) * this->occupancy_number_(m2, m1, is, ia, 0))
                                         .real();
 
                                 // POTENTIAL
 
-                                this->U(m1, m2, is, ia) -= U_effective * this->occupancy_number_(m2, m1, is, ia);
+                                this->U(m1, m2, is, ia) -= U_effective * this->occupancy_number_(m2, m1, is, ia, 0);
                             }
                         }
                     }
@@ -53,18 +53,17 @@ void calculate_hubbard_potential_and_energy_colinear_case()
                         for (int m1 = 0; m1 < 2 * atom.type().hubbard_l() + 1; m1++) {
 
                             this->hubbard_energy_ +=
-                                sign * atom.type().Hubbard_beta() * this->occupancy_number_(m1, m1, is, ia).real();
+                                sign * atom.type().Hubbard_beta() * this->occupancy_number_(m1, m1, is, ia, 0).real();
 
                             this->U(m1, m1, is, ia) += sign * atom.type().Hubbard_beta();
 
                             for (int m2 = 0; m2 < 2 * atom.type().hubbard_l() + 1; m2++) {
                                 this->hubbard_energy_ += 0.5 * atom.type().Hubbard_J0() *
-                                                         (this->occupancy_number_(m2, m1, is, ia) *
-                                                          this->occupancy_number_(m1, m2, s_opposite, ia))
-                                                             .real();
+                                    (this->occupancy_number_(m2, m1, is, ia, 0) *
+                                     this->occupancy_number_(m1, m2, s_opposite, ia, 0)).real();
 
                                 this->U(m1, m2, is, ia) +=
-                                    atom.type().Hubbard_J0() * this->occupancy_number_(m2, m1, s_opposite, ia);
+                                    atom.type().Hubbard_J0() * this->occupancy_number_(m2, m1, s_opposite, ia, 0);
                             }
                         }
                     }
@@ -94,11 +93,11 @@ void calculate_hubbard_potential_and_energy_colinear_case()
 
             for (int s = 0; s < ctx_.num_spins(); s++) {
                 for (int m = 0; m < 2 * atom.type().hubbard_l() + 1; m++) {
-                    n_total += this->occupancy_number_(m, m, s, ia).real();
+                    n_total += this->occupancy_number_(m, m, s, ia, 0).real();
                 }
 
                 for (int m = 0; m < 2 * atom.type().hubbard_l() + 1; m++) {
-                    n_updown[s] += this->occupancy_number_(m, m, s, ia).real();
+                    n_updown[s] += this->occupancy_number_(m, m, s, ia, 0).real();
                 }
             }
             double magnetization = 0.0;
@@ -108,7 +107,7 @@ void calculate_hubbard_potential_and_energy_colinear_case()
             } else {
                 for (int m = 0; m < 2 * atom.type().hubbard_l() + 1; m++) {
                     magnetization +=
-                        (this->occupancy_number_(m, m, 0, ia) - this->occupancy_number_(m, m, 1, ia)).real();
+                        (this->occupancy_number_(m, m, 0, ia, 0) - this->occupancy_number_(m, m, 1, ia, 0)).real();
                 }
                 magnetization *= magnetization;
             }
@@ -134,28 +133,27 @@ void calculate_hubbard_potential_and_energy_colinear_case()
 
                                 if (ctx_.num_spins() == 1) {
                                     this->U(m1, m2, is, ia) += 2.0 * atom.type().hubbard_matrix(m1, m3, m2, m4) *
-                                                               this->occupancy_number_(m3, m4, is, ia);
+                                        this->occupancy_number_(m3, m4, is, ia, 0);
                                 } else {
                                     // colinear case
                                     for (int is2 = 0; is2 < 2; is2++) {
                                         this->U(m1, m2, is, ia) += atom.type().hubbard_matrix(m1, m3, m2, m4) *
-                                                                   this->occupancy_number_(m3, m4, is2, ia);
+                                            this->occupancy_number_(m3, m4, is2, ia, 0);
                                     }
                                 }
 
                                 this->U(m1, m2, is, ia) -= atom.type().hubbard_matrix(m1, m3, m4, m2) *
-                                                           this->occupancy_number_(m3, m4, is, ia);
+                                    this->occupancy_number_(m3, m4, is, ia, 0);
 
                                 this->hubbard_energy_u_ += 0.5 *
-                                                           ((atom.type().hubbard_matrix(m1, m3, m2, m4) -
-                                                             atom.type().hubbard_matrix(m1, m3, m4, m2)) *
-                                                                this->occupancy_number_(m1, m2, is, ia) *
-                                                                this->occupancy_number_(m3, m4, is, ia) +
-                                                            atom.type().hubbard_matrix(m1, m3, m2, m4) *
-                                                                this->occupancy_number_(m1, m2, is, ia) *
-                                                                this->occupancy_number_(m3, m4, (is + 1) % 2, ia))
-                                                               .real();
-                                // printf("%.5lf\n", this->hubbard_energy_u_);
+                                    ((atom.type().hubbard_matrix(m1, m3, m2, m4) -
+                                      atom.type().hubbard_matrix(m1, m3, m4, m2)) *
+                                     this->occupancy_number_(m1, m2, is, ia, 0) *
+                                     this->occupancy_number_(m3, m4, is, ia, 0) +
+                                     atom.type().hubbard_matrix(m1, m3, m2, m4) *
+                                     this->occupancy_number_(m1, m2, is, ia, 0) *
+                                     this->occupancy_number_(m3, m4, (is + 1) % 2, ia, 0))
+                                    .real();
                             }
                         }
                     }
@@ -193,16 +191,16 @@ void calculate_hubbard_potential_and_energy_non_colinear_case()
             double my;
             double mz;
 
-            n_total = this->occupancy_number_(0, 0, 0, ia) + this->occupancy_number_(0, 0, 1, ia);
-            mz      = (this->occupancy_number_(0, 0, 0, ia) - this->occupancy_number_(0, 0, 1, ia)).real();
-            mx      = (this->occupancy_number_(0, 0, 2, ia) + this->occupancy_number_(0, 0, 3, ia)).real();
-            my      = (this->occupancy_number_(0, 0, 2, ia) - this->occupancy_number_(0, 0, 3, ia)).imag();
+            n_total = this->occupancy_number_(0, 0, 0, ia, 0) + this->occupancy_number_(0, 0, 1, ia, 0);
+            mz      = (this->occupancy_number_(0, 0, 0, ia, 0) - this->occupancy_number_(0, 0, 1, ia, 0)).real();
+            mx      = (this->occupancy_number_(0, 0, 2, ia, 0) + this->occupancy_number_(0, 0, 3, ia, 0)).real();
+            my      = (this->occupancy_number_(0, 0, 2, ia, 0) - this->occupancy_number_(0, 0, 3, ia, 0)).imag();
 
             for (int m = 1; m < 2 * atom.type().hubbard_l() + 1; m++) {
-                n_total += this->occupancy_number_(m, m, 0, ia) + this->occupancy_number_(m, m, 1, ia);
-                mz += (this->occupancy_number_(m, m, 0, ia) - this->occupancy_number_(m, m, 1, ia)).real();
-                mx += (this->occupancy_number_(m, m, 2, ia) + this->occupancy_number_(m, m, 3, ia)).real();
-                my += (this->occupancy_number_(m, m, 2, ia) - this->occupancy_number_(m, m, 3, ia)).imag();
+                n_total += this->occupancy_number_(m, m, 0, ia, 0) + this->occupancy_number_(m, m, 1, ia, 0);
+                mz += (this->occupancy_number_(m, m, 0, ia, 0) - this->occupancy_number_(m, m, 1, ia, 0)).real();
+                mx += (this->occupancy_number_(m, m, 2, ia, 0) + this->occupancy_number_(m, m, 3, ia, 0)).real();
+                my += (this->occupancy_number_(m, m, 2, ia, 0) - this->occupancy_number_(m, m, 3, ia, 0)).imag();
             }
 
             double magnetization = mz * mz + mx * mx + my * my;
@@ -242,11 +240,11 @@ void calculate_hubbard_potential_and_energy_non_colinear_case()
                                     this->hubbard_energy_noflip_ +=
                                         ((atom.type().hubbard_matrix(m1, m3, m2, m4) -
                                           atom.type().hubbard_matrix(m1, m3, m4, m2)) *
-                                             this->occupancy_number_(m1, m2, is, ia) *
-                                             this->occupancy_number_(m3, m4, is, ia) +
+                                             this->occupancy_number_(m1, m2, is, ia, 0) *
+                                             this->occupancy_number_(m3, m4, is, ia, 0) +
                                          atom.type().hubbard_matrix(m1, m3, m2, m4) *
-                                             this->occupancy_number_(m1, m2, is, ia) *
-                                             this->occupancy_number_(m3, m4, (is + 1) % 2, ia))
+                                             this->occupancy_number_(m1, m2, is, ia, 0) *
+                                             this->occupancy_number_(m3, m4, (is + 1) % 2, ia, 0))
                                             .real();
                                 }
                             }
@@ -259,8 +257,8 @@ void calculate_hubbard_potential_and_energy_non_colinear_case()
                             for (int m3 = 0; m3 < 2 * atom.type().hubbard_l() + 1; ++m3) {
                                 for (int m4 = 0; m4 < 2 * atom.type().hubbard_l() + 1; ++m4) {
                                     this->hubbard_energy_flip_ -= (atom.type().hubbard_matrix(m1, m3, m2, m4) *
-                                                                   this->occupancy_number_(m1, m2, is, ia) *
-                                                                   this->occupancy_number_(m3, m4, is1, ia))
+                                                                   this->occupancy_number_(m1, m2, is, ia, 0) *
+                                                                   this->occupancy_number_(m3, m4, is1, ia, 0))
                                                                       .real();
                                 }
                             }
@@ -276,8 +274,8 @@ void calculate_hubbard_potential_and_energy_non_colinear_case()
                             for (int m3 = 0; m3 < 2 * atom.type().hubbard_l() + 1; ++m3) {
                                 for (int m4 = 0; m4 < 2 * atom.type().hubbard_l() + 1; ++m4) {
                                     this->U(m1, m2, is, ia) += atom.type().hubbard_matrix(m1, m3, m2, m4) *
-                                                               (this->occupancy_number_(m3, m4, 0, ia) +
-                                                                this->occupancy_number_(m3, m4, 1, ia));
+                                                               (this->occupancy_number_(m3, m4, 0, ia, 0) +
+                                                                this->occupancy_number_(m3, m4, 1, ia, 0));
                                 }
                             }
                         }
@@ -288,7 +286,7 @@ void calculate_hubbard_potential_and_energy_non_colinear_case()
 
                 double_complex n_aux = 0.0;
                 for (int m1 = 0; m1 < 2 * atom.type().hubbard_l() + 1; m1++) {
-                    n_aux += this->occupancy_number_(m1, m1, is1, ia);
+                    n_aux += this->occupancy_number_(m1, m1, is1, ia, 0);
                 }
 
                 for (int m1 = 0; m1 < 2 * atom.type().hubbard_l() + 1; m1++) {
@@ -299,7 +297,7 @@ void calculate_hubbard_potential_and_energy_non_colinear_case()
 
                     if (is1 == is) {
                         this->U(m1, m1, is, ia) += 0.5 * (atom.type().Hubbard_U() - atom.type().Hubbard_J()) -
-                                                   atom.type().Hubbard_U() * n_total;
+                            atom.type().Hubbard_U() * n_total;
                     }
 
                     // spin flip contributions
@@ -307,7 +305,7 @@ void calculate_hubbard_potential_and_energy_non_colinear_case()
                         for (int m3 = 0; m3 < 2 * atom.type().hubbard_l() + 1; m3++) {
                             for (int m4 = 0; m4 < 2 * atom.type().hubbard_l() + 1; m4++) {
                                 this->U(m1, m2, is, ia) -= atom.type().hubbard_matrix(m1, m3, m4, m2) *
-                                                           this->occupancy_number_(m3, m4, is1, ia);
+                                    this->occupancy_number_(m3, m4, is1, ia, 0);
                             }
                         }
                     }

@@ -514,6 +514,7 @@ struct Hubbard_input
     bool hubbard_correction_{false};
     bool hubbard_orthogonalization_{false};
     bool hubbard_normalization_{false};
+    bool hubbard_starting_magnetization_{false};
 
     std::vector<std::pair<std::string, std::vector<double>>> species;
 
@@ -532,7 +533,7 @@ struct Hubbard_input
         std::vector<double> coef_;
         std::vector<std::string> labels_;
         coef_.clear();
-        coef_.resize(6, 0.0);
+        coef_.resize(9, 0.0);
         species.clear();
         labels_.clear();
 
@@ -544,11 +545,8 @@ struct Hubbard_input
         }
 
         for (auto &label : labels_) {
-
-            std::cout << label << std::endl;
             for(size_t d = 0; d < coef_.size(); d++)
                 coef_[d] = 0.0;
-
 
             if(parser["hubbard"][label].count("U")) {
                 coef_[0] = parser["hubbard"][label]["U"].get<double>();
@@ -585,8 +583,26 @@ struct Hubbard_input
                 hubbard_correction_ = true;
             }
 
+            // angle for the starting magnetization in deg, convert it
+            // in radian
+
+            if(parser["hubbard"][label].count("starting_magnetization")) {
+                coef_[6] = parser["hubbard"][label]["starting_magnetization"].get<double>();
+                hubbard_starting_magnetization_ = true;
+            }
+
+            if(parser["hubbard"][label].count("starting_magnetization_theta_angle")) {
+                coef_[7] = parser["hubbard"][label]["starting_magnetization_theta_angle"].get<double>() * M_PI / 180.0 ;
+                hubbard_starting_magnetization_ = true;
+            }
+
+            if(parser["hubbard"][label].count("starting_magnetization_phi_angle")) {
+                coef_[8] = parser["hubbard"][label]["starting_magnetization_phi_angle"].get<double>() * M_PI/ 180.0 ;
+                hubbard_starting_magnetization_ = true;
+            }
+
             // now convert eV in Ha
-            for (int s = 0; s < coef_.size(); s++) {
+            for (int s = 0; s < coef_.size() - 3; s++) {
                 coef_[s] *= 0.0367493;
             }
 

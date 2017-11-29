@@ -344,9 +344,9 @@ class Atom_type
     /// starting magnetization
     double starting_magnetization_{0.0};
 
-    /// magnetization in spherical coordinates
-    double m_theta_{0.0};
-    double m_phi_{0.0};
+    // direction of the starting magnetization
+    double starting_magnetization_theta_{0.0};
+    double starting_magnetization_phi_{0.0};
 
     /// Hubbard correction
     bool hubbard_correction_{false};
@@ -975,14 +975,14 @@ class Atom_type
         return hubbard_l_;
     }
 
-    inline double magnetization_theta() const
+    inline double starting_magnetization_theta() const
     {
-        return m_theta_;
+        return starting_magnetization_theta_;
     }
 
-    inline double magnetization_phi() const
+    inline double starting_magnetization_phi() const
     {
-        return m_phi_;
+        return starting_magnetization_phi_;
     }
 
     inline double starting_magnetization() const
@@ -2247,6 +2247,9 @@ void Atom_type::read_hubbard_input()
             hubbard_coefficients_[3] = d.second[3];
             hubbard_alpha_ = d.second[4];
             hubbard_beta_ = d.second[5];
+            starting_magnetization_theta_ = d.second[7];
+            starting_magnetization_phi_ = d.second[8];
+            starting_magnetization_ = d.second[6];
         }
     }
 

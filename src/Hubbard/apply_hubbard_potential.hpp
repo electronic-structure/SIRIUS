@@ -52,7 +52,7 @@ void apply_hubbard_potential(
                         for (int s2 = 0; s2 < ctx_.num_spins(); s2++) {
                             const int ind = (s1 == s2) * s1 + (1 + 2 * s2 + s1) * (s1 != s2);
                             for (int m2 = 0; m2 < 2 * atom.type().hubbard_l() + 1; m2++) {
-                                temp += this->hubbard_potential_(m1, m2, ind, ia) *
+                                temp += this->hubbard_potential_(m1, m2, ind, ia, 0) *
                                         dm(this->offset[ia] + s2 * (2 * atom.type().hubbard_l() + 1) + m2, nbnd);
                             }
                         }

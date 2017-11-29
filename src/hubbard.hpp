@@ -27,7 +27,7 @@ class Hubbard_potential
     /// Low-frequency mixer for the pseudopotential density mixing.
     std::unique_ptr<Mixer<double_complex>> mixer_{nullptr};
 
-    mdarray<double_complex, 4> occupancy_number_;
+    mdarray<double_complex, 5> occupancy_number_;
 
     std::vector<int> offset;
 
@@ -37,18 +37,21 @@ class Hubbard_potential
     double hubbard_energy_noflip_{0.0};
     double hubbard_energy_flip_{0.0};
 
-    mdarray<double_complex, 4> hubbard_potential_;
+    mdarray<double_complex, 5> hubbard_potential_;
 
-    /// type of hubbard correction to be considered.
-    int approximation_{0};
+    /// type of hubbard correction to be considered.  put to true if we
+    /// consider a simple hubbard correction. Not valid if spin orbit
+    /// coupling is included
+    bool approximation_{false};
 
     bool orthogonalize_hubbard_orbitals_{false};
     bool normalize_orbitals_only_{true};
+    // Hubbard with multi channels
+    bool multi_channels_{false};
 
-  public:
-    void set_hubbard_correction(const int approx)
+public:
+    void set_hubbard_simple_method(const bool approx)
     {
-
         approximation_ = approx;
     }
 
@@ -64,12 +67,22 @@ class Hubbard_potential
 
     double_complex U(int m1, int m2, int m3, int m4) const
     {
-        return hubbard_potential_(m1, m2, m3, m4);
+        return hubbard_potential_(m1, m2, m3, m4, 0);
     }
 
     double_complex& U(int m1, int m2, int m3, int m4)
     {
-        return hubbard_potential_(m1, m2, m3, m4);
+        return hubbard_potential_(m1, m2, m3, m4, 0);
+    }
+
+    double_complex U(int m1, int m2, int m3, int m4, int channel) const
+    {
+        return hubbard_potential_(m1, m2, m3, m4, channel);
+    }
+
+    double_complex& U(int m1, int m2, int m3, int m4, int channel)
+    {
+        return hubbard_potential_(m1, m2, m3, m4, channel);
     }
 
     const bool& orthogonalize_hubbard_orbitals() const
@@ -98,6 +111,31 @@ class Hubbard_potential
         } else {
             calculate_hubbard_potential_and_energy_non_colinear_case();
         }
+
+        // The potential should be hermitian from the calculations but
+        // by security I make it hermitian again
+
+        for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
+            auto& atom = unit_cell_.atom(ia);
+            if (atom.type().hubbard_correction()) {
+                // diagonal up up down down blocks
+                for (int is = 0; is < ctx_.num_spins(); is++) {
+                    for (int m1 = 0; m1 < 2 * atom.type().hubbard_l() + 1; ++m1) {
+                        for (int m2 = m1 + 1; m2 < 2 * atom.type().hubbard_l() + 1; ++m2) {
+                            this->U(m1, m2, is, ia) = std::conj(this->U(m2, m1, is, ia));
+                        }
+                    }
+                }
+
+                if(ctx_.num_mag_dims() == 3) {
+                    for (int m1 = 0; m1 < 2 * atom.type().hubbard_l() + 1; ++m1) {
+                        for (int m2 = 0; m2 < 2 * atom.type().hubbard_l() + 1; ++m2) {
+                            this->U(m1, m2, 3, ia) = std::conj(this->U(m2, m1, 2, ia));
+                        }
+                    }
+                }
+            }
+        }
     }
 
     inline const double hubbard_energy() const
@@ -125,9 +163,19 @@ class Hubbard_potential
             }
         }
 
-        occupancy_number_  = mdarray<double_complex, 4>(2 * lmax_ + 1, 2 * lmax_ + 1, 4, ctx_.unit_cell().num_atoms());
-        hubbard_potential_ = mdarray<double_complex, 4>(2 * lmax_ + 1, 2 * lmax_ + 1, 4, ctx_.unit_cell().num_atoms());
-        ;
+        /// if spin orbit coupling or non colinear magnetisms are
+        /// activated, then we consider the full spherical hubbard
+        /// correction
+        if ((ctx_.so_correction()) || (ctx_.num_mag_dims() == 3)) {
+            approximation_ = false;
+        }
+
+        // prepare things for the multi channel case. The last index
+        // indicates which channel we consider. By default we only have
+        // one channel per atomic type
+        occupancy_number_  = mdarray<double_complex, 5>(2 * lmax_ + 1, 2 * lmax_ + 1, 4, ctx_.unit_cell().num_atoms(), 1);
+        hubbard_potential_ = mdarray<double_complex, 5>(2 * lmax_ + 1, 2 * lmax_ + 1, 4, ctx_.unit_cell().num_atoms(), 1);
+
         calculate_wavefunction_with_U_offset();
         calculate_initial_occupation_numbers();
 
@@ -161,10 +209,10 @@ class Hubbard_potential
         return rms;
     }
 
-#include "hubbard/hubbard_generate_atomic_orbitals.hpp"
-#include "hubbard/hubbard_potential_energy.hpp"
-#include "hubbard/apply_hubbard_potential.hpp"
-#include "hubbard/hubbard_occupancy.hpp"
+#include "Hubbard/hubbard_generate_atomic_orbitals.hpp"
+#include "Hubbard/hubbard_potential_energy.hpp"
+#include "Hubbard/apply_hubbard_potential.hpp"
+#include "Hubbard/hubbard_occupancy.hpp"
   private:
     inline void calculate_wavefunction_with_U_offset()
     {
