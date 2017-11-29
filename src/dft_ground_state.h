@@ -818,7 +818,7 @@ inline void DFT_ground_state::print_magnetic_moment()
             printf("PAW contribution          : %18.8f\n", potential_.PAW_total_energy());
         }
         if(ctx_.hubbard_correction()) {
-            printf("Hubbard energy            : %18.8f\n", band_.U().hubbard_energy());
+            printf("Hubbard energy            : %18.8f (Ha), %18.8f (Ry)\n", band_.U().hubbard_energy(), band_.U().hubbard_energy() * 2.0);
         }
 
         printf("Total energy              : %18.8f (Ha), %18.8f (Ry)\n", etot, etot * 2);

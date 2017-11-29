@@ -168,9 +168,9 @@ class Radial_integrals_base
         }
 
     /// retrieve a given orbital from an atom type
-    inline Spline<double> const &orbital(const size_t iat, const size_t wfc) const
+    inline Spline<double> const &orbital(const size_t wfc, const size_t iat) const
     {
-        return values_(iat, wfc);
+        return values_(wfc, iat);
     }
 };
 
