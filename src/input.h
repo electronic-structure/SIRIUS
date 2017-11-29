@@ -414,6 +414,9 @@ struct Parameters_input
     /// True if spin-orbit correction is applied.
     bool so_correction_{false};
 
+    /// True if hubbard correction is applied.
+    bool hubbard_correction_{false};
+
     /// True if UJ correction is applied.
     bool uj_correction_{false};
 
@@ -421,10 +424,10 @@ struct Parameters_input
     bool use_symmetry_{true};
 
     double nn_radius_{-1};
-    
+
     /// Effective screening medium.
     bool enable_esm_{false};
-    
+
     /// Type of periodic boundary conditions.
     std::string esm_bc_{"pbc"};
 
@@ -468,10 +471,15 @@ struct Parameters_input
             potential_tol_  = parser["parameters"].value("potential_tol", potential_tol_);
             molecule_       = parser["parameters"].value("molecule", molecule_);
             nn_radius_      = parser["parameters"].value("nn_radius", nn_radius_);
-            if (parser["parameters"].count("so_correction")) {
-                so_correction_ = parser["parameters"].value("so_correction", so_correction_);
+            if (parser["parameters"].count("spin_orbit")) {
+                so_correction_ = parser["parameters"].value("spin_orbit", so_correction_);
                 num_mag_dims_  = 3;
             }
+
+            if (parser["parameters"].count("hubbard_correction")) {
+                hubbard_correction_ = parser["parameters"].value("hubbard_correction", hubbard_correction_);
+            }
+
         }
     }
 };
@@ -497,6 +505,97 @@ struct Settings_input
             always_update_wf_ = parser["settings"].value("always_update_wf", always_update_wf_);
             mixer_rss_min_    = parser["settings"].value("mixer_rss_min", mixer_rss_min_);
         }
+    }
+};
+
+struct Hubbard_input
+{
+    int number_of_species{1};
+    bool hubbard_correction_{false};
+    bool hubbard_orthogonalization_{false};
+    bool hubbard_normalization_{false};
+
+    std::vector<std::pair<std::string, std::vector<double>>> species;
+
+    const bool hubbard_correction() const
+    {
+        return hubbard_correction_;
+    }
+    void read(json const& parser)
+    {
+        if (!parser.count("hubbard"))
+            return;
+
+        hubbard_orthogonalization_ = parser["hubbard"].value("orthogonalize_hubbard_wave_functions", hubbard_orthogonalization_);
+        hubbard_normalization_ = parser["hubbard"].value("normalize_hubbard_wave_functions", hubbard_normalization_);
+
+        std::vector<double> coef_;
+        std::vector<std::string> labels_;
+        coef_.clear();
+        coef_.resize(6, 0.0);
+        species.clear();
+        labels_.clear();
+
+        for (auto& label : parser["unit_cell"]["atom_types"]) {
+            if (std::find(std::begin(labels_), std::end(labels_), label) != std::end(labels_)) {
+                TERMINATE("duplicate atom type label");
+            }
+            labels_.push_back(label);
+        }
+
+        for (auto &label : labels_) {
+
+            std::cout << label << std::endl;
+            for(size_t d = 0; d < coef_.size(); d++)
+                coef_[d] = 0.0;
+
+
+            if(parser["hubbard"][label].count("U")) {
+                coef_[0] = parser["hubbard"][label]["U"].get<double>();
+                hubbard_correction_ = true;
+            }
+
+            if(parser["hubbard"][label].count("J")) {
+                coef_[1] = parser["hubbard"][label]["J"].get<double>();
+                hubbard_correction_ = true;
+            }
+
+            if(parser["hubbard"][label].count("B")) {
+                coef_[2] = parser["hubbard"][label]["B"].get<double>();
+                hubbard_correction_ = true;
+            }
+
+            if(parser["hubbard"][label].count("E2")) {
+                coef_[2] = parser["hubbard"][label]["E2"].get<double>();
+                hubbard_correction_ = true;
+            }
+
+            if(parser["hubbard"][label].count("E3")) {
+                coef_[3] = parser["hubbard"][label]["E3"].get<double>();
+                hubbard_correction_ = true;
+            }
+
+            if(parser["hubbard"][label].count("alpha")) {
+                coef_[4] = parser["hubbard"][label]["alpha"].get<double>();
+                hubbard_correction_ = true;
+            }
+
+            if(parser["hubbard"][label].count("beta")) {
+                coef_[5] = parser["hubbard"][label]["beta"].get<double>();
+                hubbard_correction_ = true;
+            }
+
+            // now convert eV in Ha
+            for (int s = 0; s < coef_.size(); s++) {
+                coef_[s] *= 0.0367493;
+            }
+
+            species.push_back(std::make_pair(label, coef_));
+        }
+        if(!hubbard_correction_) {
+            TERMINATE("The hubbard section is empty");
+        }
+
     }
 };
 };

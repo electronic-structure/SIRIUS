@@ -1,24 +1,24 @@
 // Copyright (c) 2013-2017 Anton Kozhevnikov, Thomas Schulthess
 // All rights reserved.
-// 
-// Redistribution and use in source and binary forms, with or without modification, are permitted provided that 
+//
+// Redistribution and use in source and binary forms, with or without modification, are permitted provided that
 // the following conditions are met:
-// 
-// 1. Redistributions of source code must retain the above copyright notice, this list of conditions and the 
+//
+// 1. Redistributions of source code must retain the above copyright notice, this list of conditions and the
 //    following disclaimer.
-// 2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions 
+// 2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions
 //    and the following disclaimer in the documentation and/or other materials provided with the distribution.
-// 
-// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED 
-// WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A 
-// PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR 
-// ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, 
-// PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER 
-// CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR 
+//
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED
+// WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A
+// PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
+// ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+// PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+// CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
 // OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 /** \file simulation_context_base.h
- *   
+ *
  *  \brief Contains definition and implementation of Simulation_context_base class.
  */
 
@@ -49,7 +49,7 @@ class Simulation_context_base: public Simulation_parameters
 
         /// Communicator for this simulation.
         Communicator const& comm_;
-        
+
         /// Unit cell of the simulation.
         Unit_cell unit_cell_;
 
@@ -60,20 +60,20 @@ class Simulation_context_base: public Simulation_parameters
         std::unique_ptr<BLACS_grid> blacs_grid_;
 
         /// Fine-grained FFT for density and potential.
-        /** This is the FFT driver to transform periodic functions such as density and potential on the fine-grained 
+        /** This is the FFT driver to transform periodic functions such as density and potential on the fine-grained
          *  FFT grid. The transformation is parallel. */
         std::unique_ptr<FFT3D> fft_;
-        
+
         /// Coarse-grained FFT for application of local potential and density summation.
         std::unique_ptr<FFT3D> fft_coarse_;
 
         /// G-vectors within the Gmax cutoff.
         Gvec gvec_;
-        
+
         /// G-vectors within the 2 * |Gmax^{WF}| cutoff.
         Gvec gvec_coarse_;
 
-        std::unique_ptr<remap_gvec_to_shells> remap_gvec_; 
+        std::unique_ptr<remap_gvec_to_shells> remap_gvec_;
 
         /// Creation time of the parameters.
         timeval start_time_;
@@ -87,11 +87,11 @@ class Simulation_context_base: public Simulation_parameters
         mdarray<double_complex, 3> phase_factors_;
 
         mdarray<double_complex, 3> sym_phase_factors_;
-        
+
         mdarray<int, 2> gvec_coord_;
 
         std::vector<mdarray<double, 2>> atom_coord_;
-        
+
         mdarray<char, 1> memory_buffer_;
 
         std::unique_ptr<Radial_integrals_beta<false>> beta_ri_;
@@ -100,13 +100,15 @@ class Simulation_context_base: public Simulation_parameters
 
         std::unique_ptr<Radial_integrals_aug<false>> aug_ri_;
 
+        std::unique_ptr<Radial_integrals_centered_atomic_wfc> centered_atm_wfc_;
+
         std::vector<std::vector<std::pair<int,double>>> atoms_to_grid_idx_;
 
         // TODO remove to somewhere
         const double av_atom_radius_{2.0};
 
         double time_active_;
-        
+
         bool initialized_{false};
 
         void init_fft();
@@ -118,7 +120,7 @@ class Simulation_context_base: public Simulation_parameters
         {
             gettimeofday(&start_time_, NULL);
 
-            tm const* ptm = localtime(&start_time_.tv_sec); 
+            tm const* ptm = localtime(&start_time_.tv_sec);
             char buf[100];
             strftime(buf, sizeof(buf), "%Y%m%d_%H%M%S", ptm);
             start_time_tag_ = std::string(buf);
@@ -322,12 +324,12 @@ class Simulation_context_base: public Simulation_parameters
                 fout.create_node("effective_magnetic_field");
                 fout.create_node("density");
                 fout.create_node("magnetization");
-                
+
                 for (int j = 0; j < num_mag_dims(); j++) {
                     fout["magnetization"].create_node(j);
                     fout["effective_magnetic_field"].create_node(j);
                 }
-                
+
                 fout["parameters"].write("num_spins", num_spins());
                 fout["parameters"].write("num_mag_dims", num_mag_dims());
                 fout["parameters"].write("num_bands", num_bands());
@@ -354,7 +356,7 @@ class Simulation_context_base: public Simulation_parameters
         {
             return std_evp_solver_type_;
         }
-    
+
         inline ev_solver_t gen_evp_solver_type() const
         {
             return gen_evp_solver_type_;
@@ -471,7 +473,12 @@ class Simulation_context_base: public Simulation_parameters
         {
             return *aug_ri_;
         }
-        
+
+        inline Radial_integrals_centered_atomic_wfc const& centered_atm_wfc() const
+        {
+            return *centered_atm_wfc_;
+        }
+
         /// Find the lambda parameter used in the Ewald summation.
         /** lambda parameter scales the erfc function argument:
          *  \f[
@@ -485,7 +492,7 @@ class Simulation_context_base: public Simulation_parameters
             double gmax = pw_cutoff();
             double upper_bound{0};
             double charge = unit_cell_.num_electrons();
-            
+
             /* iterate to find lambda */
             do {
                 lambda += 0.1;
@@ -515,7 +522,7 @@ inline void Simulation_context_base::init_fft()
     }
 
     /* create FFT driver for dense mesh (density and potential) */
-    fft_ = std::unique_ptr<FFT3D>(new FFT3D(find_translations(pw_cutoff(), rlv), comm_fft(), processing_unit())); 
+    fft_ = std::unique_ptr<FFT3D>(new FFT3D(find_translations(pw_cutoff(), rlv), comm_fft(), processing_unit()));
 
     /* create a list of G-vectors for dense FFT grid; G-vectors are divided between all available MPI ranks.*/
     gvec_ = Gvec(rlv, pw_cutoff(), comm(), comm_fft(), control().reduce_gvec_);
@@ -527,7 +534,7 @@ inline void Simulation_context_base::init_fft()
 
     /* create FFT driver for coarse mesh */
     auto fft_coarse_grid = FFT3D_grid(find_translations(2 * gk_cutoff(), rlv));
-    //auto pu = (fft_coarse_grid.size() < std::pow(64, 3)) ? CPU : processing_unit(); 
+    //auto pu = (fft_coarse_grid.size() < std::pow(64, 3)) ? CPU : processing_unit();
     //if (full_potential()) {
     //    pu = processing_unit();
     //}
@@ -572,7 +579,7 @@ inline void Simulation_context_base::initialize()
         TERMINATE_NO_GPU
         #endif
     }
-    
+
     /* check MPI grid dimensions and set a default grid if needed */
     if (!control().mpi_grid_dims_.size()) {
         set_mpi_grid_dims({1, 1});
@@ -580,7 +587,7 @@ inline void Simulation_context_base::initialize()
     if (control().mpi_grid_dims_.size() != 2) {
         TERMINATE("wrong MPI grid");
     }
-    
+
     int npr = control_input_.mpi_grid_dims_[0];
     int npc = control_input_.mpi_grid_dims_[1];
     int npb = npr * npc;
@@ -593,7 +600,7 @@ inline void Simulation_context_base::initialize()
 
     /* setup MPI grid */
     mpi_grid_ = std::unique_ptr<MPI_grid>(new MPI_grid({npr, npc, npk}, comm_));
-    
+
     /* setup BLACS grid */
     blacs_grid_ = std::unique_ptr<BLACS_grid>(new BLACS_grid(comm_band(), npr, npc));
 
@@ -643,8 +650,8 @@ inline void Simulation_context_base::initialize()
     auto& fft_grid = fft().grid();
     std::pair<int, int> limits(0, 0);
     for (int x: {0, 1, 2}) {
-        limits.first  = std::min(limits.first,  fft_grid.limits(x).first); 
-        limits.second = std::max(limits.second, fft_grid.limits(x).second); 
+        limits.first  = std::min(limits.first,  fft_grid.limits(x).first);
+        limits.second = std::max(limits.second, fft_grid.limits(x).second);
     }
 
     phase_factors_ = mdarray<double_complex, 3>(3, limits, unit_cell().num_atoms(), memory_t::host, "phase_factors_");
@@ -658,7 +665,7 @@ inline void Simulation_context_base::initialize()
             }
         }
     }
-    
+
     if (use_symmetry()) {
         sym_phase_factors_ = mdarray<double_complex, 3>(3, limits, unit_cell().symmetry().num_mag_sym());
 
@@ -672,19 +679,19 @@ inline void Simulation_context_base::initialize()
             }
         }
     }
-    
+
     /* take 10% of empty non-magnetic states */
     if (num_fv_states() < 0) {
         set_num_fv_states(static_cast<int>(unit_cell_.num_valence_electrons() / 2.0) +
                                            std::max(10, static_cast<int>(0.1 * unit_cell_.num_valence_electrons())));
     }
-    
+
     if (num_fv_states() < static_cast<int>(unit_cell_.num_valence_electrons() / 2.0)) {
         std::stringstream s;
         s << "not enough first-variational states : " << num_fv_states();
         TERMINATE(s);
     }
-    
+
     /* setup the cyclic block size */
     if (cyclic_block_size() < 0) {
         double a = std::min(std::log2(double(num_fv_states()) / blacs_grid_->num_ranks_col()),
@@ -695,7 +702,7 @@ inline void Simulation_context_base::initialize()
             control_input_.cyclic_block_size_ = static_cast<int>(std::min(128.0, std::pow(2.0, static_cast<int>(a))) + 1e-12);
         }
     }
-    
+
     std::string evsn[] = {std_evp_solver_name(), gen_evp_solver_name()};
 
     if (comm_band().size() == 1) {
@@ -779,7 +786,7 @@ inline void Simulation_context_base::initialize()
             atom_coord_.back().copy<memory_t::host, memory_t::device>();
         }
     }
-    
+
     if (!full_potential()) {
 
         /* some extra length is added to cutoffs in order to interface with QE which may require ri(q) for q>cutoff */
@@ -787,10 +794,12 @@ inline void Simulation_context_base::initialize()
         beta_ri_ = std::unique_ptr<Radial_integrals_beta<false>>(new Radial_integrals_beta<false>(unit_cell(), gk_cutoff() + 1, settings().nprii_beta_));
 
         beta_ri_djl_ = std::unique_ptr<Radial_integrals_beta<true>>(new Radial_integrals_beta<true>(unit_cell(), gk_cutoff() + 1, settings().nprii_beta_));
-        
-        aug_ri_ = std::unique_ptr<Radial_integrals_aug<false>>(new Radial_integrals_aug<false>(unit_cell(), pw_cutoff() + 1, settings().nprii_aug_));
-    }
 
+        aug_ri_ = std::unique_ptr<Radial_integrals_aug<false>>(new Radial_integrals_aug<false>(unit_cell(), pw_cutoff() + 1, settings().nprii_aug_));
+
+        centered_atm_wfc_ = std::unique_ptr<Radial_integrals_centered_atomic_wfc>(new Radial_integrals_centered_atomic_wfc(unit_cell(), gk_cutoff(), 10));
+
+    }
     //time_active_ = -runtime::wtime();
 
     if (control().verbosity_ > 0 && comm_.rank() == 0) {
@@ -806,7 +815,7 @@ inline void Simulation_context_base::initialize()
 
 inline void Simulation_context_base::print_info()
 {
-    tm const* ptm = localtime(&start_time_.tv_sec); 
+    tm const* ptm = localtime(&start_time_.tv_sec);
     char buf[100];
     strftime(buf, sizeof(buf), "%a, %e %b %Y %H:%M:%S", ptm);
 
@@ -980,7 +989,7 @@ inline void Simulation_context_base::print_info()
         acc::print_device_info(0);
         #endif
     }
-   
+
     int i{1};
     printf("\n");
     printf("XC functionals\n");

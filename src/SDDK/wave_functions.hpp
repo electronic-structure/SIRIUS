@@ -1,24 +1,24 @@
 // Copyright (c) 2013-2017 Anton Kozhevnikov, Thomas Schulthess
 // All rights reserved.
 //
-// Redistribution and use in source and binary forms, with or without modification, are permitted provided that 
+// Redistribution and use in source and binary forms, with or without modification, are permitted provided that
 // the following conditions are met:
 //
-// 1. Redistributions of source code must retain the above copyright notice, this list of conditions and the 
+// 1. Redistributions of source code must retain the above copyright notice, this list of conditions and the
 //    following disclaimer.
-// 2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions 
+// 2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions
 //    and the following disclaimer in the documentation and/or other materials provided with the distribution.
 //
-// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED 
-// WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A 
-// PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR 
-// ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, 
-// PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER 
-// CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR 
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED
+// WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A
+// PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
+// ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+// PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+// CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
 // OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 /** \file wave_functions.hpp
- *   
+ *
  *  \brief Contains declaration and implementation of wave_functions class.
  */
 
@@ -53,7 +53,7 @@ const int sddk_default_block_size = 256;
 class wave_functions
 {
     private:
-        
+
         device_t pu_;
 
         /// Communicator which is used to distribute G+k vectors and MT spheres.
@@ -67,7 +67,7 @@ class wave_functions
         block_data_descriptor mt_coeffs_distr_;
 
         std::vector<int> offset_mt_coeffs_;
-        
+
         /// Total number of muffin-tin coefficients.
         int num_mt_coeffs_{0};
 
@@ -83,7 +83,7 @@ class wave_functions
         bool has_mt_{false};
 
     public:
-        
+
         /// Constructor for PW wave-functions.
         wave_functions(device_t    pu__,
                        Gvec const& gkvec__,
@@ -128,19 +128,19 @@ class wave_functions
 
             spl_num_atoms_ = splindex<block>(num_atoms__, comm_.size(), comm_.rank());
             mt_coeffs_distr_ = block_data_descriptor(comm_.size());
-            
+
             for (int ia = 0; ia < num_atoms__; ia++) {
                 int rank = spl_num_atoms_.local_rank(ia);
                 if (rank == comm_.rank()) {
                     offset_mt_coeffs_.push_back(mt_coeffs_distr_.counts[rank]);
                 }
                 mt_coeffs_distr_.counts[rank] += mt_size__(ia);
-                
+
             }
             mt_coeffs_distr_.calc_offsets();
 
             num_mt_coeffs_ = mt_coeffs_distr_.offsets.back() + mt_coeffs_distr_.counts.back();
-            
+
             mt_coeffs_ = std::unique_ptr<matrix_storage<double_complex, matrix_storage_t::slab>>(
                 new matrix_storage<double_complex, matrix_storage_t::slab>(mt_coeffs_distr_.counts[comm_.rank()],
                                                                            num_wf_, mpi_comm_null()));
@@ -189,7 +189,7 @@ class wave_functions
         {
             return offset_mt_coeffs_[ialoc__];
         }
-        
+
         /// Copy values from another wave-function.
         /** \param [in] src Input wave-function.
          *  \param [in] i0  Starting index of wave-functions in src.
@@ -233,7 +233,7 @@ class wave_functions
                 }
             }
         }
-        
+
         inline void copy_from(wave_functions const& src__, int i0__, int n__, device_t pu__)
         {
             copy_from(src__, i0__, n__, i0__, pu__);
@@ -341,7 +341,7 @@ class wave_functions
             comm_.allreduce(&cs, 1);
             return cs;
         }
-        
+
         /// Compute the checksum for n wave-functions starting from i0.
         inline double_complex checksum(int i0__, int n__)
         {
@@ -429,7 +429,7 @@ class Wave_functions
     Gvec const& gkvec_;
 
   public:
-    
+
     /// Constructor for PW wave-functions.
     Wave_functions(device_t    pu__,
                    Gvec const& gkvec__,
@@ -475,7 +475,7 @@ class Wave_functions
     {
         return static_cast<int>(components_.size());
     }
-    
+
     /// Return a single component.
     wave_functions& component(int idx__)
     {
@@ -514,7 +514,7 @@ class Wave_functions
         if (num_components() == 2) {
             auto norm2 = component(1).l2norm(pu__, n__);
             for (int i = 0; i < n__; i++) {
-                norm1[i] += norm2[i];
+                norm1[i] = std::sqrt(norm1[i] * norm1[i] + norm2[i] * norm2[i]);
             }
         }
         return std::move(norm1);
@@ -522,14 +522,7 @@ class Wave_functions
 
     inline mdarray<double,1> l2norm(int n__)
     {
-        auto norm1 = component(0).l2norm(n__);
-        if (num_components() == 2) {
-            auto norm2 = component(1).l2norm(n__);
-            for (int i = 0; i < n__; i++) {
-                norm1[i] += norm2[i];
-            }
-        }
-        return std::move(norm1);
+        return l2norm(component(0).pu(), n__);
     }
 
     inline void copy_from(Wave_functions const& src__,
