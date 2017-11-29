@@ -421,6 +421,12 @@ struct Parameters_input
     bool use_symmetry_{true};
 
     double nn_radius_{-1};
+    
+    /// Effective screening medium.
+    bool enable_esm_{false};
+    
+    /// Type of periodic boundary conditions.
+    std::string esm_bc_{"pbc"};
 
     void read(json const& parser)
     {

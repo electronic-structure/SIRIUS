@@ -18,8 +18,6 @@ inline void Potential::init_PAW()
 
         auto& atom_type = atom.type();
 
-        int num_mt_points = atom_type.num_mt_points();
-
         int l_max = 2 * atom_type.indexr().lmax_lo();
         int lm_max_rho = Utils::lmmax(l_max);
 
@@ -31,13 +29,11 @@ inline void Potential::init_PAW()
 
         ppd.ia_paw = ia_paw;
 
-        /* allocate potential arrays*/
+        /* allocate potential arrays */
         for (int i = 0; i < ctx_.num_mag_dims() + 1; i++) {
             ppd.ae_potential_.push_back(Spheric_function<spectral, double>(lm_max_rho, ppd.atom_->radial_grid()));
             ppd.ps_potential_.push_back(Spheric_function<spectral, double>(lm_max_rho, ppd.atom_->radial_grid()));
         }
-//        ppd.ae_potential_ = mdarray<double, 3>(lm_max_rho, num_mt_points, ctx_.num_mag_dims() + 1, memory_t::host, "pdd.ae_potential_");
-//        ppd.ps_potential_ = mdarray<double, 3>(lm_max_rho, num_mt_points, ctx_.num_mag_dims() + 1, memory_t::host, "pdd.ps_potential_");
 
         ppd.core_energy_ = atom_type.pp_desc().core_energy;
 
@@ -230,8 +226,6 @@ inline double Potential::xc_mt_PAW_noncollinear(std::vector<Spheric_function<spe
     }
 
     Radial_grid<double> const& rgrid = density[0].radial_grid();
-
-    int lmsize_rho = static_cast<int>(density[0].size(0));
 
     /* transform density to theta phi components */
     std::vector<Spheric_function<spatial, double>> rho_tp(density.size());

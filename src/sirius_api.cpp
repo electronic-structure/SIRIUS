@@ -3111,7 +3111,7 @@ void sirius_get_pw_coeffs_real(ftn_char    atom_type__,
         mdarray<int, 2> gvec(gvl__, 3, *ngv__);
         
         double fourpi_omega = fourpi / sim_ctx->unit_cell().omega();
-        #pragma omp parallel for
+        #pragma omp parallel for schedule(static)
         for (int i = 0; i < *ngv__; i++) {
             auto gc = sim_ctx->unit_cell().reciprocal_lattice_vectors() *  vector3d<int>(gvec(0, i), gvec(1, i), gvec(2, i));
             pw_coeffs__[i] = fourpi_omega * f(gc.length());
@@ -3131,7 +3131,7 @@ void sirius_get_pw_coeffs_real(ftn_char    atom_type__,
                            return ri.value<int>(iat, g);
                        });
     } else if (label == "vloc") {
-        sirius::Radial_integrals_vloc<true> ri(sim_ctx->unit_cell(), sim_ctx->pw_cutoff(), sim_ctx->settings().nprii_vloc_);
+        sirius::Radial_integrals_vloc<false> ri(sim_ctx->unit_cell(), sim_ctx->pw_cutoff(), sim_ctx->settings().nprii_vloc_);
         make_pw_coeffs([&ri, iat](double g)
                        {
                            return ri.value(iat, g);
@@ -3249,6 +3249,12 @@ void sirius_ri_beta_(ftn_int* idx__, ftn_int* iat__, ftn_double* q__, ftn_double
     } else {
         *val__ = 0;
     }
+}
+
+void sirius_set_esm(ftn_bool* enable_esm__, ftn_char esm_bc__)
+{
+    sim_ctx->parameters_input().enable_esm_ = *enable_esm__;
+    sim_ctx->parameters_input().esm_bc_ = std::string(esm_bc__);
 }
 
 } // extern "C"

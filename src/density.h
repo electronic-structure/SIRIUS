@@ -159,11 +159,8 @@ class Density
             int ia{-1};
 
             /// ae and ps local unified densities+magnetization
-            std::vector<Spheric_function<spectral, double>> ae_density_; // TODO: use Spheric_function
+            std::vector<Spheric_function<spectral, double>> ae_density_;
             std::vector<Spheric_function<spectral, double>> ps_density_;
-
-//            mdarray<double, 3> ae_magnetization_;
-//            mdarray<double, 3> ps_magnetization_;
         };
 
         std::vector<paw_density_data_t> paw_density_data_;
