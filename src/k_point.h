@@ -62,9 +62,9 @@ class K_point
         dmatrix<double_complex> fv_eigen_vectors_;
 
         /// First-variational eigen vectors, distributed in slabs.
-        std::unique_ptr<wave_functions> fv_eigen_vectors_slab_;
+        std::unique_ptr<Wave_functions> fv_eigen_vectors_slab_;
 
-        std::unique_ptr<wave_functions> singular_components_;
+        std::unique_ptr<Wave_functions> singular_components_;
         
         /// Second-variational eigen vectors.
         /** Second-variational eigen-vectors are stored as one or two \f$ N_{fv} \times N_{fv} \f$ matrices in
@@ -76,7 +76,7 @@ class K_point
         mdarray<double_complex, 2> fd_eigen_vectors_;
 
         /// First-variational states.
-        std::unique_ptr<wave_functions> fv_states_{nullptr};
+        std::unique_ptr<Wave_functions> fv_states_{nullptr};
 
         /// Two-component (spinor) wave functions describing the bands.
         std::unique_ptr<Wave_functions> spinor_wave_functions_{nullptr};
@@ -373,22 +373,22 @@ class K_point
             return weight_;
         }
 
-        inline wave_functions& fv_states()
+        inline Wave_functions& fv_states()
         {
             return *fv_states_;
         }
 
-        inline wave_functions& spinor_wave_functions(int ispn__)
-        {
-            return spinor_wave_functions_->component(ispn__);
-        }
+        //inline wave_functions& spinor_wave_functions(int ispn__)
+        //{
+        //    return spinor_wave_functions_->component(ispn__);
+        //}
 
         inline Wave_functions& spinor_wave_functions()
         {
             return *spinor_wave_functions_;
         }
 
-        inline wave_functions& singular_components()
+        inline Wave_functions& singular_components()
         {
             return *singular_components_;
         }
@@ -539,7 +539,7 @@ class K_point
             return fv_eigen_vectors_;
         }
 
-        inline wave_functions& fv_eigen_vectors_slab()
+        inline Wave_functions& fv_eigen_vectors_slab()
         {
             return *fv_eigen_vectors_slab_;
         }

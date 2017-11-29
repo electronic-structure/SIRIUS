@@ -271,7 +271,14 @@ inline void orthogonalize(device_t                     pu__,
         /* phi is transformed into phi, so we can't use it as the output buffer; use tmp instead and then overwrite phi */
         for (auto& e: wfs__) {
             transform(pu__, ispn__, *e, N__, n__, o__, 0, 0, tmp__, 0, n__);
-            e->copy_from(pu__, tmp__, ispn__, 0, n__, N__);
+            int s0{0};
+            int s1{1};
+            if (ispn__ != 2) {
+                s0 = s1 = ispn__;
+            }
+            for (int s = s0; s <= s1; s++) {
+                e->copy_from(pu__, n__, tmp__, ispn__, 0, ispn__, N__);
+            }
         }
     }
 }

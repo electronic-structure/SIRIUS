@@ -75,9 +75,9 @@ class Band
 
         /// Apply effective magentic field to the first-variational state.
         /** Must be called first because hpsi is overwritten with B|fv_j>. */
-        void apply_magnetic_field(wave_functions& fv_states__,
+        void apply_magnetic_field(Wave_functions& fv_states__,
                                   Gvec const& gkvec__,
-                                  std::vector<wave_functions>& hpsi__) const;
+                                  std::vector<Wave_functions>& hpsi__) const;
 
         /// Apply SO correction to the first-variational states.
         /** Raising and lowering operators:
@@ -126,8 +126,8 @@ class Band
                                bool add_o1__,
                                int N__,
                                int n__,
-                               wave_functions& phi__,
-                               wave_functions& ophi__) const;
+                               Wave_functions& phi__,
+                               Wave_functions& ophi__) const;
 
         /// Get singular components of the LAPW overlap matrix.
         /** Singular components are the eigen-vectors with a very small eigen-value. */
@@ -164,31 +164,20 @@ class Band
                             int ispn__, 
                             int N__,
                             int n__,
-                            wave_functions& phi__,
-                            wave_functions& hphi__,
+                            Wave_functions& phi__,
+                            Wave_functions& hphi__,
                             D_operator<T>& d_op) const;
 
         template <typename T>
-        void apply_h_o(K_point* kp__,
+        void apply_h_s(K_point* kp__,
                        int ispn__, 
                        int N__,
                        int n__,
                        Wave_functions& phi__,
                        Wave_functions& hphi__,
-                       Wave_functions& ophi__,
+                       Wave_functions& sphi__,
                        D_operator<T>& d_op,
                        Q_operator<T>& q_op) const;
-
-        /// Auxiliary function used internally by residuals() function.
-        inline mdarray<double, 1> residuals_aux(K_point*             kp__,
-                                                int                  ispn__,
-                                                int                  num_bands__,
-                                                std::vector<double>& eval__,
-                                                wave_functions&      hpsi__,
-                                                wave_functions&      opsi__,
-                                                wave_functions&      res__,
-                                                mdarray<double, 2>&  h_diag__,
-                                                mdarray<double, 1>&  o_diag__) const;
 
         /// Auxiliary function used internally by residuals() function.
         inline mdarray<double, 1> residuals_aux(K_point*             kp__,
@@ -200,8 +189,8 @@ class Band
                                                 Wave_functions&      res__,
                                                 mdarray<double, 2>&  h_diag__,
                                                 mdarray<double, 1>&  o_diag__) const;
-        
-        template <typename T, typename wave_functions_t>
+
+        template <typename T>
         int residuals_common(K_point*             kp__,
                              int                  ispn__,
                              int                  N__,
@@ -209,28 +198,11 @@ class Band
                              std::vector<double>& eval__,
                              std::vector<double>& eval_old__,
                              dmatrix<T>&          evec__,
-                             wave_functions_t&    hphi__,
-                             wave_functions_t&    ophi__,
-                             wave_functions_t&    hpsi__,
-                             wave_functions_t&    opsi__,
-                             wave_functions_t&    res__,
-                             mdarray<double, 2>&  h_diag__,
-                             mdarray<double, 1>&  o_diag__) const;
-
-        /// Compute residuals.
-        template <typename T>
-        inline int residuals(K_point*             kp__,
-                             int                  ispn__,
-                             int                  N__,
-                             int                  num_bands__,
-                             std::vector<double>& eval__,
-                             std::vector<double>& eval_old__,
-                             dmatrix<T>&          evec__,
-                             wave_functions&      hphi__,
-                             wave_functions&      ophi__,
-                             wave_functions&      hpsi__,
-                             wave_functions&      opsi__,
-                             wave_functions&      res__,
+                             Wave_functions&      hphi__,
+                             Wave_functions&      ophi__,
+                             Wave_functions&      hpsi__,
+                             Wave_functions&      opsi__,
+                             Wave_functions&      res__,
                              mdarray<double, 2>&  h_diag__,
                              mdarray<double, 1>&  o_diag__) const;
 
@@ -254,13 +226,13 @@ class Band
         /** Compute \f$ O_{ii'} = \langle \phi_i | \hat O | \phi_{i'} \rangle \f$ operator matrix
          *  for the subspace spanned by the wave-functions \f$ \phi_i \f$. The matrix is always returned
          *  in the CPU pointer because most of the standard math libraries start from the CPU. */
-        template <typename T, typename W>
-        inline void set_subspace_mtrx(int         N__,
-                                      int         n__,
-                                      W&          phi__,
-                                      W&          op_phi__,
-                                      dmatrix<T>& mtrx__,
-                                      dmatrix<T>& mtrx_old__) const
+        template <typename T>
+        inline void set_subspace_mtrx(int             N__,
+                                      int             n__,
+                                      Wave_functions& phi__,
+                                      Wave_functions& op_phi__,
+                                      dmatrix<T>&     mtrx__,
+                                      dmatrix<T>&     mtrx_old__) const
         {
             PROFILE("sirius::Band::set_subspace_mtrx");
             
@@ -658,9 +630,9 @@ class Band
                                  int nlo,
                                  int N,
                                  int n,
-                                 wave_functions& phi__,
-                                 wave_functions& hphi__,
-                                 wave_functions& ophi__) const;
+                                 Wave_functions& phi__,
+                                 Wave_functions& hphi__,
+                                 Wave_functions& ophi__) const;
 
         /// Solve second-variational problem.
         inline void diag_sv(K_point* kp,

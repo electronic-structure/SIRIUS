@@ -60,20 +60,25 @@ inline void transform(device_t                     pu__,
             s0 = s1 = ispn__;
         }
         for (int s = s0; s <= s1; s++) {
+            /* input wave-functions may be scalar (this is the case of transformation of first-variational states
+               into spinor wave-functions or transforamtion of scalar auxiliary wave-functions into spin-dependent 
+               wave-fucntions; in this case we set spin index of input wave-function to 0 */
+            int in_s = (wf_in__->num_sc() == 1) ? 0 : s;
+            
             if (pu__ == CPU) {
                 if (std::is_same<T, double_complex>::value) {
                     /* transform plane-wave part */
-                    linalg<CPU>::gemm(0, 0, wf_in__->pw_coeffs(s).num_rows_loc(), n__, m__,
+                    linalg<CPU>::gemm(0, 0, wf_in__->pw_coeffs(in_s).num_rows_loc(), n__, m__,
                                       *reinterpret_cast<double_complex*>(alpha),
-                                      wf_in__->pw_coeffs(s).prime().at<CPU>(0, i0__), wf_in__->pw_coeffs(s).prime().ld(),
+                                      wf_in__->pw_coeffs(in_s).prime().at<CPU>(0, i0__), wf_in__->pw_coeffs(in_s).prime().ld(),
                                       reinterpret_cast<double_complex*>(ptr__), ld__,
                                       linalg_const<double_complex>::one(),
                                       wf_out__->pw_coeffs(s).prime().at<CPU>(0, j0__), wf_out__->pw_coeffs(s).prime().ld());
                     /* transform muffin-tin part */
                     if (wf_in__->has_mt()) {
-                        linalg<CPU>::gemm(0, 0, wf_in__->mt_coeffs(s).num_rows_loc(), n__, m__,
+                        linalg<CPU>::gemm(0, 0, wf_in__->mt_coeffs(in_s).num_rows_loc(), n__, m__,
                                           *reinterpret_cast<double_complex*>(alpha),
-                                          wf_in__->mt_coeffs(s).prime().at<CPU>(0, i0__), wf_in__->mt_coeffs(s).prime().ld(),
+                                          wf_in__->mt_coeffs(in_s).prime().at<CPU>(0, i0__), wf_in__->mt_coeffs(in_s).prime().ld(),
                                           reinterpret_cast<double_complex*>(ptr__), ld__,
                                           linalg_const<double_complex>::one(),
                                           wf_out__->mt_coeffs(s).prime().at<CPU>(0, j0__), wf_out__->mt_coeffs(s).prime().ld());
@@ -82,9 +87,9 @@ inline void transform(device_t                     pu__,
 
                 if (std::is_same<T, double>::value) {
                     /* transform plane-wave part */
-                    linalg<CPU>::gemm(0, 0, 2 * wf_in__->pw_coeffs(s).num_rows_loc(), n__, m__,
+                    linalg<CPU>::gemm(0, 0, 2 * wf_in__->pw_coeffs(in_s).num_rows_loc(), n__, m__,
                                       *reinterpret_cast<double*>(alpha),
-                                      reinterpret_cast<double*>(wf_in__->pw_coeffs(s).prime().at<CPU>(0, i0__)), 2 * wf_in__->pw_coeffs(s).prime().ld(),
+                                      reinterpret_cast<double*>(wf_in__->pw_coeffs(in_s).prime().at<CPU>(0, i0__)), 2 * wf_in__->pw_coeffs(in_s).prime().ld(),
                                       reinterpret_cast<double*>(ptr__), ld__,
                                       linalg_const<double>::one(),
                                       reinterpret_cast<double*>(wf_out__->pw_coeffs(s).prime().at<CPU>(0, j0__)), 2 * wf_out__->pw_coeffs(s).prime().ld());
@@ -97,9 +102,9 @@ inline void transform(device_t                     pu__,
             if (pu__ == GPU) {
                 if (std::is_same<T, double_complex>::value) {
                     /* transform plane-wave part */
-                    linalg<GPU>::gemm(0, 0, wf_in__->pw_coeffs(s).num_rows_loc(), n__, m__,
+                    linalg<GPU>::gemm(0, 0, wf_in__->pw_coeffs(in_s).num_rows_loc(), n__, m__,
                                       reinterpret_cast<double_complex*>(alpha),
-                                      wf_in__->pw_coeffs(s).prime().at<GPU>(0, i0__), wf_in__->pw_coeffs(s).prime().ld(),
+                                      wf_in__->pw_coeffs(in_s).prime().at<GPU>(0, i0__), wf_in__->pw_coeffs(in_s).prime().ld(),
                                       reinterpret_cast<double_complex*>(ptr__), ld__,
                                       &linalg_const<double_complex>::one(),
                                       wf_out__->pw_coeffs(s).prime().at<GPU>(0, j0__), wf_out__->pw_coeffs(s).prime().ld(),
@@ -107,9 +112,9 @@ inline void transform(device_t                     pu__,
 
                     if (wf_in__->has_mt()) {
                         /* transform muffin-tin part */
-                        linalg<GPU>::gemm(0, 0, wf_in__->mt_coeffs(s).num_rows_loc(), n__, m__,
+                        linalg<GPU>::gemm(0, 0, wf_in__->mt_coeffs(in_s).num_rows_loc(), n__, m__,
                                           reinterpret_cast<double_complex*>(alpha),
-                                          wf_in__->mt_coeffs(s).prime().at<GPU>(0, i0__), wf_in__->mt_coeffs(s).prime().ld(),
+                                          wf_in__->mt_coeffs(in_s).prime().at<GPU>(0, i0__), wf_in__->mt_coeffs(in_s).prime().ld(),
                                           reinterpret_cast<double_complex*>(ptr__), ld__,
                                           &linalg_const<double_complex>::one(),
                                           wf_out__->mt_coeffs(s).prime().at<GPU>(0, j0__), wf_out__->mt_coeffs(s).prime().ld(),
@@ -119,9 +124,9 @@ inline void transform(device_t                     pu__,
 
                 if (std::is_same<T, double>::value) {
                     /* transform plane-wave part */
-                    linalg<GPU>::gemm(0, 0, 2 * wf_in__->pw_coeffs(s).num_rows_loc(), n__, m__,
+                    linalg<GPU>::gemm(0, 0, 2 * wf_in__->pw_coeffs(in_s).num_rows_loc(), n__, m__,
                                       reinterpret_cast<double*>(alpha),
-                                      reinterpret_cast<double*>(wf_in__->pw_coeffs(s).prime().at<GPU>(0, i0__)), 2 * wf_in__->pw_coeffs(s).prime().ld(),
+                                      reinterpret_cast<double*>(wf_in__->pw_coeffs(in_s).prime().at<GPU>(0, i0__)), 2 * wf_in__->pw_coeffs(in_s).prime().ld(),
                                       reinterpret_cast<double*>(ptr__), ld__,
                                       &linalg_const<double>::one(),
                                       reinterpret_cast<double*>(wf_out__->pw_coeffs(s).prime().at<GPU>(0, j0__)), 2 * wf_out__->pw_coeffs(s).prime().ld(),

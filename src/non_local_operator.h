@@ -78,7 +78,7 @@ class Non_local_operator
     {
     }
 
-    inline void apply(int chunk__, int ispn__, wave_functions& op_phi__, int idx0__, int n__, matrix<T>& beta_phi__);
+    inline void apply(int chunk__, int ispn__, Wave_functions& op_phi__, int idx0__, int n__, matrix<T>& beta_phi__);
 
     inline T operator()(int xi1__, int xi2__, int ia__)
     {
@@ -94,7 +94,7 @@ class Non_local_operator
 
 template <>
 inline void Non_local_operator<double_complex>::apply(
-    int chunk__, int ispn__, wave_functions& op_phi__, int idx0__, int n__, matrix<double_complex>& beta_phi__)
+    int chunk__, int ispn__, Wave_functions& op_phi__, int idx0__, int n__, matrix<double_complex>& beta_phi__)
 {
     PROFILE("sirius::Non_local_operator::apply");
 
@@ -102,7 +102,7 @@ inline void Non_local_operator<double_complex>::apply(
         return;
     }
 
-    assert(op_phi__.pw_coeffs().num_rows_loc() == beta_.num_gkvec_loc());
+    assert(op_phi__.pw_coeffs(ispn__).num_rows_loc() == beta_.num_gkvec_loc());
 
     auto& beta_gk     = beta_.pw_coeffs_a();
     int num_gkvec_loc = beta_.num_gkvec_loc();
@@ -144,7 +144,7 @@ inline void Non_local_operator<double_complex>::apply(
         case CPU: {
             linalg<CPU>::gemm(0, 0, num_gkvec_loc, n__, nbeta, linalg_const<double_complex>::one(), beta_gk.at<CPU>(),
                               num_gkvec_loc, work_.at<CPU>(), nbeta, linalg_const<double_complex>::one(),
-                              op_phi__.pw_coeffs().prime().at<CPU>(0, idx0__), op_phi__.pw_coeffs().prime().ld());
+                              op_phi__.pw_coeffs(ispn__).prime().at<CPU>(0, idx0__), op_phi__.pw_coeffs(ispn__).prime().ld());
             break;
         }
         case GPU: {
@@ -155,7 +155,7 @@ inline void Non_local_operator<double_complex>::apply(
 
             linalg<GPU>::gemm(0, 0, num_gkvec_loc, n__, nbeta, &linalg_const<double_complex>::one(), beta_gk.at<GPU>(),
                               beta_gk.ld(), work_.at<GPU>(), nbeta, &linalg_const<double_complex>::one(),
-                              op_phi__.pw_coeffs().prime().at<GPU>(0, idx0__), op_phi__.pw_coeffs().prime().ld());
+                              op_phi__.pw_coeffs(ispn__).prime().at<GPU>(0, idx0__), op_phi__.pw_coeffs(ispn__).prime().ld());
             acc::sync_stream(-1);
 #endif
             break;
@@ -166,7 +166,7 @@ inline void Non_local_operator<double_complex>::apply(
 template <>
 inline void Non_local_operator<double>::apply(int chunk__,
                                               int ispn__,
-                                              wave_functions& op_phi__,
+                                              Wave_functions& op_phi__,
                                               int idx0__,
                                               int n__,
                                               matrix<double>& beta_phi__)
@@ -177,7 +177,7 @@ inline void Non_local_operator<double>::apply(int chunk__,
         return;
     }
 
-    assert(op_phi__.pw_coeffs().num_rows_loc() == beta_.num_gkvec_loc());
+    assert(op_phi__.pw_coeffs(ispn__).num_rows_loc() == beta_.num_gkvec_loc());
 
     auto& beta_gk     = beta_.pw_coeffs_a();
     int num_gkvec_loc = beta_.num_gkvec_loc();
@@ -220,8 +220,8 @@ inline void Non_local_operator<double>::apply(int chunk__,
         case CPU: {
             linalg<CPU>::gemm(0, 0, 2 * num_gkvec_loc, n__, nbeta, 1.0, reinterpret_cast<double*>(beta_gk.at<CPU>()),
                               2 * num_gkvec_loc, work_.at<CPU>(), nbeta, 1.0,
-                              reinterpret_cast<double*>(op_phi__.pw_coeffs().prime().at<CPU>(0, idx0__)),
-                              2 * op_phi__.pw_coeffs().prime().ld());
+                              reinterpret_cast<double*>(op_phi__.pw_coeffs(ispn__).prime().at<CPU>(0, idx0__)),
+                              2 * op_phi__.pw_coeffs(ispn__).prime().ld());
             break;
         }
         case GPU: {
@@ -233,7 +233,7 @@ inline void Non_local_operator<double>::apply(int chunk__,
             linalg<GPU>::gemm(0, 0, 2 * num_gkvec_loc, n__, nbeta, &linalg_const<double>::one(),
                               reinterpret_cast<double*>(beta_gk.at<GPU>()), 2 * num_gkvec_loc, work_.at<GPU>(), nbeta,
                               &linalg_const<double>::one(),
-                              reinterpret_cast<double*>(op_phi__.pw_coeffs().prime().at<GPU>(0, idx0__)),
+                              reinterpret_cast<double*>(op_phi__.pw_coeffs(ispn__).prime().at<GPU>(0, idx0__)),
                               2 * num_gkvec_loc);
             acc::sync_stream(-1);
 #endif
