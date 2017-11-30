@@ -81,11 +81,8 @@ class K_point
         /// Two-component (spinor) wave functions describing the bands.
         std::unique_ptr<Wave_functions> spinor_wave_functions_{nullptr};
 
-        /// Two-component (spinor) hubbard wave functions .
+        /// Two-component (spinor) hubbard wave functions where the S matrix is applied (if ppus).
         std::unique_ptr<Wave_functions> hubbard_wave_functions_{nullptr};
-
-        /// Two-component (spinor) hubbard wave functions where the S matrix is applied.
-        std::unique_ptr<Wave_functions> hubbard_wave_functions_ppus_{nullptr};
 
         /// Band occupation numbers.
         std::vector<double> band_occupancies_;
@@ -405,30 +402,14 @@ class K_point
             return *hubbard_wave_functions_;
         }
 
-        inline wave_functions& hubbard_wave_functions_ppus(int ispn__) const
-        {
-            return hubbard_wave_functions_ppus_->component(ispn__);
-        }
-
-        inline Wave_functions& hubbard_wave_functions_ppus()
-        {
-            return *hubbard_wave_functions_ppus_;
-        }
-
         inline void allocate_hubbard_wave_functions(int size)
         {
             if (hubbard_wave_functions_ != NULL)
                 return;
             hubbard_wave_functions_ = std::unique_ptr<Wave_functions>(new Wave_functions(ctx_.processing_unit(),
-                                                                                         gkvec(),
-                                                                                         size,
-                                                                                         ctx_.num_spins()));
-            if (!ctx_.full_potential()) {
-                hubbard_wave_functions_ppus_ = std::unique_ptr<Wave_functions>(new Wave_functions(ctx_.processing_unit(),
-                                                                                                  gkvec(),
-                                                                                                  size,
-                                                                                                  ctx_.num_spins()));
-            }
+                                                                                              gkvec(),
+                                                                                              size,
+                                                                                              ctx_.num_spins()));
         }
 
         inline bool hubbard_wave_functions_calculated()
