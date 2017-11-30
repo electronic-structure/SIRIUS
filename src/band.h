@@ -253,7 +253,7 @@ class Band
             }
 
             /* <{phi,phi_new}|Op|phi_new> */
-            inner(phi__, 0, N__ + n__, op_phi__, N__, n__, mtrx__, 0, N__);
+            inner(ctx_.processing_unit(), (ctx_.num_mag_dims() == 3) ? 2 : 0, phi__, 0, N__ + n__, op_phi__, N__, n__, mtrx__, 0, N__);
 
             /* restore lower part */
             if (N__ > 0) {

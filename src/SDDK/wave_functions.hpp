@@ -94,23 +94,33 @@ class Wave_functions
     std::array<std::unique_ptr<matrix_storage<double_complex, matrix_storage_t::slab>>, 2> mt_coeffs_{{nullptr, nullptr}};
 
     bool has_mt_{false};
-
+    
+    /// Lower boundary for the spin component index by spin index.
     inline int s0(int ispn__) const
     {
         assert(ispn__ == 0 || ispn__ == 1 || ispn__ == 2);
+
         if (ispn__ == 2) {
-            assert(num_sc_ == 2);
+            return 0;
+        } else {
+            return ispn__;
         }
-        return (ispn__ == 2) ? 0 : ispn__;
     }
 
+    /// Upper boundary for the spin component index by spin index.
     inline int s1(int ispn__) const
     {
         assert(ispn__ == 0 || ispn__ == 1 || ispn__ == 2);
+
         if (ispn__ == 2) {
-            assert(num_sc_ == 2);
+            if (num_sc_ == 1) {
+                return 0;
+            } else {
+                return 1;
+            }
+        } else {
+            return ispn__;
         }
-        return (ispn__ == 2) ? 1 : ispn__;
     }
 
     inline mdarray<double, 1> sumsqr(device_t pu__, int ispn__, int n__) const
@@ -175,7 +185,9 @@ class Wave_functions
         , num_wf_(num_wf__)
         , num_sc_(num_sc__)
     {
-        assert(num_sc__ == 1 || num_sc__ == 2);
+        if (!(num_sc__ == 1 || num_sc__ == 2)) {
+            TERMINATE("wrong number of spin components");
+        }
 
         for (int ispn = 0; ispn < num_sc_; ispn++) {
             pw_coeffs_[ispn] = std::unique_ptr<matrix_storage<double_complex, matrix_storage_t::slab>>(
@@ -193,7 +205,9 @@ class Wave_functions
         , num_wf_(num_wf__)
         , num_sc_(num_sc__)
     {
-        assert(num_sc__ == 1 || num_sc__ == 2);
+        if (!(num_sc__ == 1 || num_sc__ == 2)) {
+            TERMINATE("wrong number of spin components");
+        }
 
         for (int ispn = 0; ispn < num_sc_; ispn++) {
             pw_coeffs_[ispn] = std::unique_ptr<matrix_storage<double_complex, matrix_storage_t::slab>>(
@@ -213,7 +227,9 @@ class Wave_functions
         , num_sc_(num_sc__)
         , has_mt_(true)
     {
-        assert(num_sc__ == 1 || num_sc__ == 2);
+        if (!(num_sc__ == 1 || num_sc__ == 2)) {
+            TERMINATE("wrong number of spin components");
+        }
 
         for (int ispn = 0; ispn < num_sc_; ispn++) {
             pw_coeffs_[ispn] = std::unique_ptr<matrix_storage<double_complex, matrix_storage_t::slab>>(

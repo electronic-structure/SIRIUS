@@ -2710,7 +2710,7 @@ void sirius_get_wave_functions(ftn_int* kset_id__,
     int gkvec_offset = kp->gkvec().gvec_offset(kp->comm().rank());
 
     for (int i = 0; i < sim_ctx->num_bands(); i++) {
-        std::memcpy(&wf_tmp[gkvec_offset], &kp->spinor_wave_functions(0).pw_coeffs().prime(0, i), gkvec_count * sizeof(double_complex));
+        std::memcpy(&wf_tmp[gkvec_offset], &kp->spinor_wave_functions().pw_coeffs(0).prime(0, i), gkvec_count * sizeof(double_complex));
         kp->comm().allgather(wf_tmp.data(), gkvec_offset, gkvec_count);
 
         for (int ig = 0; ig < *npw__; ig++) {

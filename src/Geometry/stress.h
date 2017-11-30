@@ -153,7 +153,7 @@ class Stress {
                     for (int i = 0; i < (ctx_.num_mag_dims() == 1 ? ctx_.num_fv_states() : ctx_.num_bands()); i++) {
                         double f = kp->band_occupancy(i + spin_bnd_offset);
                         if (f > 1e-12) {
-                            auto z = kp->spinor_wave_functions(ispin).pw_coeffs().prime(igloc, i);
+                            auto z = kp->spinor_wave_functions().pw_coeffs(ispin).prime(igloc, i);
                             d += f * (std::pow(z.real(), 2) + std::pow(z.imag(), 2));
                         }
                     }
@@ -536,8 +536,8 @@ class Stress {
                 int nbnd = (ctx_.num_mag_dims() == 3) ? ctx_.num_bands() : ctx_.num_fv_states();
                 for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
                     /* allocate GPU memory */
-                    kp->spinor_wave_functions(ispn).pw_coeffs().prime().allocate(memory_t::device);
-                    kp->spinor_wave_functions(ispn).pw_coeffs().copy_to_device(0, nbnd);
+                    kp->spinor_wave_functions().pw_coeffs(ispn).allocate_on_device();
+                    kp->spinor_wave_functions().pw_coeffs(ispn).copy_to_device(0, nbnd);
                 }
             }
             #endif
@@ -552,7 +552,7 @@ class Stress {
             if (ctx_.processing_unit() == GPU && !keep_wf_on_gpu) {
                 for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
                     /* deallocate GPU memory */
-                    kp->spinor_wave_functions(ispn).pw_coeffs().deallocate_on_device();
+                    kp->spinor_wave_functions().pw_coeffs(ispn).deallocate_on_device();
                 }
             }
             #endif

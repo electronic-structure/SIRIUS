@@ -329,26 +329,16 @@ inline int Band::diag_pseudo_potential_davidson(K_point*       kp__,
             }
 
             /* apply Hamiltonian and overlap operators to the new basis functions */
-            apply_h_o<T>(kp__, ispin_step, N, n, phi, hphi, ophi, d_op__, q_op__);
+            apply_h_s<T>(kp__, ispin_step, N, n, phi, hphi, sphi, d_op__, q_op__);
 
             if (itso.orthogonalize_) {
-                orthogonalize<T>(ctx_.processing_unit(), num_sc, N, n, phi, hphi, ophi, ovlp, res.component(0));
+                orthogonalize<T>(ctx_.processing_unit(), nc_mag ? 2 : 0, phi, hphi, sphi, N, n, ovlp, res);
             }
 
             /* setup eigen-value problem
              * N is the number of previous basis functions
              * n is the number of new basis functions */
             set_subspace_mtrx(N, n, phi, hphi, hmlt, hmlt_old);
-
-            //== static int counter{0};
-            //== std::stringstream s;
-            //== if (ctx_.processing_unit() == CPU) {
-            //==     s<<"hmlt_cpu"<<counter;
-            //== } else {
-            //==     s<<"hmlt_gpu"<<counter;
-            //== }
-            //== hmlt.serialize(s.str(), N + n);
-            //== counter++;
 
             if (ctx_.control().verification_ >= 1) {
                 double max_diff = check_hermitian(hmlt, N + n);
@@ -361,7 +351,7 @@ inline int Band::diag_pseudo_potential_davidson(K_point*       kp__,
 
             if (!itso.orthogonalize_) {
                 /* setup overlap matrix */
-                set_subspace_mtrx(N, n, phi, ophi, ovlp, ovlp_old);
+                set_subspace_mtrx(N, n, phi, sphi, ovlp, ovlp_old);
 
                 if (ctx_.control().verification_ >= 1) {
                     double max_diff = check_hermitian(ovlp, N + n);
@@ -432,9 +422,9 @@ inline int Band::diag_pseudo_potential_davidson(K_point*       kp__,
     #ifdef __GPU
     if (ctx_.processing_unit() == GPU) {
         for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-            psi.component(ispn).pw_coeffs().copy_to_host(0, num_bands);
+            psi.pw_coeffs(ispn).copy_to_host(0, num_bands);
             if (!keep_wf_on_gpu) {
-                psi.component(ispn).pw_coeffs().deallocate_on_device();
+                psi.pw_coeffs(ispn).deallocate_on_device();
             }
         }
     }

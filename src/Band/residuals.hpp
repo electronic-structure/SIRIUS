@@ -310,96 +310,98 @@ int Band::residuals_common(K_point*             kp__,
 {
     assert(N__ != 0);
 
-    auto& itso = ctx_.iterative_solver_input();
-    bool converge_by_energy = (itso.converge_by_energy_ == 1);
+    STOP();
 
-    int n{0};
-    if (converge_by_energy) {
+    //auto& itso = ctx_.iterative_solver_input();
+    //bool converge_by_energy = (itso.converge_by_energy_ == 1);
 
-        /* main trick here: first estimate energy difference, and only then compute unconverged residuals */
-        auto get_ev_idx = [&](double tol__)
-        {
-            auto empty_tol = std::max(5 * tol__, itso.empty_states_tolerance_);
-            std::vector<int> ev_idx;
-            for (int i = 0; i < num_bands__; i++) {
-                double tol = tol__ + empty_tol * std::abs(kp__->band_occupancy(i + ispn__ * ctx_.num_fv_states()) / ctx_.max_occupancy() - 1);
-                if (std::abs(eval__[i] - eval_old__[i]) > tol) {
-                    ev_idx.push_back(i);
-                }
-            }
-            return std::move(ev_idx);
-        };
+    //int n{0};
+    //if (converge_by_energy) {
 
-        auto ev_idx = get_ev_idx(itso.energy_tolerance_);
+    //    /* main trick here: first estimate energy difference, and only then compute unconverged residuals */
+    //    auto get_ev_idx = [&](double tol__)
+    //    {
+    //        auto empty_tol = std::max(5 * tol__, itso.empty_states_tolerance_);
+    //        std::vector<int> ev_idx;
+    //        for (int i = 0; i < num_bands__; i++) {
+    //            double tol = tol__ + empty_tol * std::abs(kp__->band_occupancy(i + ispn__ * ctx_.num_fv_states()) / ctx_.max_occupancy() - 1);
+    //            if (std::abs(eval__[i] - eval_old__[i]) > tol) {
+    //                ev_idx.push_back(i);
+    //            }
+    //        }
+    //        return std::move(ev_idx);
+    //    };
 
-        if ((n = static_cast<int>(ev_idx.size())) == 0) {
-            return 0;
-        }
+    //    auto ev_idx = get_ev_idx(itso.energy_tolerance_);
 
-        std::vector<double> eval_tmp(n);
+    //    if ((n = static_cast<int>(ev_idx.size())) == 0) {
+    //        return 0;
+    //    }
 
-        int bs = ctx_.cyclic_block_size();
-        dmatrix<T> evec_tmp(N__, n, ctx_.blacs_grid(), bs, bs);
-        int num_rows_local = evec_tmp.num_rows_local();
-        for (int j = 0; j < n; j++) {
-            eval_tmp[j] = eval__[ev_idx[j]];
-            auto pos_src = evec__.spl_col().location(ev_idx[j]);
-            auto pos_dest = evec_tmp.spl_col().location(j);
+    //    std::vector<double> eval_tmp(n);
 
-            if (pos_src.rank == kp__->comm_col().rank()) {
-                kp__->comm_col().isend(&evec__(0, pos_src.local_index), num_rows_local, pos_dest.rank, ev_idx[j]);
-            }
-            if (pos_dest.rank == kp__->comm_col().rank()) {
-               kp__->comm_col().recv(&evec_tmp(0, pos_dest.local_index), num_rows_local, pos_src.rank, ev_idx[j]);
-            }
-        }
-        if (ctx_.processing_unit() == GPU && evec__.blacs_grid().comm().size() == 1) {
-            evec_tmp.allocate(memory_t::device);
-        }
-        /* compute H\Psi_{i} = \sum_{mu} H\phi_{mu} * Z_{mu, i} and O\Psi_{i} = \sum_{mu} O\phi_{mu} * Z_{mu, i} */
-        transform<T>(ctx_.processing_unit(), 1.0, {&hphi__, &ophi__}, 0, N__, evec_tmp, 0, 0, 0.0, {&hpsi__, &opsi__}, 0, n);
+    //    int bs = ctx_.cyclic_block_size();
+    //    dmatrix<T> evec_tmp(N__, n, ctx_.blacs_grid(), bs, bs);
+    //    int num_rows_local = evec_tmp.num_rows_local();
+    //    for (int j = 0; j < n; j++) {
+    //        eval_tmp[j] = eval__[ev_idx[j]];
+    //        auto pos_src = evec__.spl_col().location(ev_idx[j]);
+    //        auto pos_dest = evec_tmp.spl_col().location(j);
 
-        auto res_norm = residuals_aux(kp__, ispn__, n, eval_tmp, hpsi__, opsi__, res__, h_diag__, o_diag__);
+    //        if (pos_src.rank == kp__->comm_col().rank()) {
+    //            kp__->comm_col().isend(&evec__(0, pos_src.local_index), num_rows_local, pos_dest.rank, ev_idx[j]);
+    //        }
+    //        if (pos_dest.rank == kp__->comm_col().rank()) {
+    //           kp__->comm_col().recv(&evec_tmp(0, pos_dest.local_index), num_rows_local, pos_src.rank, ev_idx[j]);
+    //        }
+    //    }
+    //    if (ctx_.processing_unit() == GPU && evec__.blacs_grid().comm().size() == 1) {
+    //        evec_tmp.allocate(memory_t::device);
+    //    }
+    //    /* compute H\Psi_{i} = \sum_{mu} H\phi_{mu} * Z_{mu, i} and O\Psi_{i} = \sum_{mu} O\phi_{mu} * Z_{mu, i} */
+    //    transform<T>(ctx_.processing_unit(), 1.0, {&hphi__, &ophi__}, 0, N__, evec_tmp, 0, 0, 0.0, {&hpsi__, &opsi__}, 0, n);
 
-        int nmax = n;
-        n = 0;
-        for (int i = 0; i < nmax; i++) {
-            /* take the residual if it's norm is above the threshold */
-            if (res_norm[i] > itso.residual_tolerance_) {
-                /* shift unconverged residuals to the beginning of array */
-                if (n != i) {
-                    STOP();
-                    //res__.copy_from(res__, i, 1, n, ctx_.processing_unit());
-                }
-                n++;
-            }
-        }
-        if (ctx_.control().verbosity_ >= 3 && kp__->comm().rank() == 0) {
-            DUMP("initial and final number of residuals : %i %i", nmax, n);
-        }
-    } else {
-        /* compute H\Psi_{i} = \sum_{mu} H\phi_{mu} * Z_{mu, i} and O\Psi_{i} = \sum_{mu} O\phi_{mu} * Z_{mu, i} */
-        transform<T>(ctx_.processing_unit(), 1.0, {&hphi__, &ophi__}, 0, N__, evec__, 0, 0, 0.0, {&hpsi__, &opsi__}, 0, num_bands__);
+    //    auto res_norm = residuals_aux(kp__, ispn__, n, eval_tmp, hpsi__, opsi__, res__, h_diag__, o_diag__);
 
-        auto res_norm = residuals_aux(kp__, ispn__, num_bands__, eval__, hpsi__, opsi__, res__, h_diag__, o_diag__);
+    //    int nmax = n;
+    //    n = 0;
+    //    for (int i = 0; i < nmax; i++) {
+    //        /* take the residual if it's norm is above the threshold */
+    //        if (res_norm[i] > itso.residual_tolerance_) {
+    //            /* shift unconverged residuals to the beginning of array */
+    //            if (n != i) {
+    //                STOP();
+    //                //res__.copy_from(res__, i, 1, n, ctx_.processing_unit());
+    //            }
+    //            n++;
+    //        }
+    //    }
+    //    if (ctx_.control().verbosity_ >= 3 && kp__->comm().rank() == 0) {
+    //        DUMP("initial and final number of residuals : %i %i", nmax, n);
+    //    }
+    //} else {
+    //    /* compute H\Psi_{i} = \sum_{mu} H\phi_{mu} * Z_{mu, i} and O\Psi_{i} = \sum_{mu} O\phi_{mu} * Z_{mu, i} */
+    //    transform<T>(ctx_.processing_unit(), 1.0, {&hphi__, &ophi__}, 0, N__, evec__, 0, 0, 0.0, {&hpsi__, &opsi__}, 0, num_bands__);
 
-        for (int i = 0; i < num_bands__; i++) {
-            double tol = itso.residual_tolerance_ + 1e-3 * std::abs(kp__->band_occupancy(i + ispn__ * ctx_.num_fv_states()) / ctx_.max_occupancy() - 1);
-            /* take the residual if it's norm is above the threshold */
-            if (res_norm[i] > tol) {
-                /* shift unconverged residuals to the beginning of array */
-                if (n != i) {
-                    STOP();
-                    //res__.copy_from(res__, i, 1, n, ctx_.processing_unit());
-                }
-                n++;
-            }
-        }
-        if (ctx_.control().verbosity_ >= 3 && kp__->comm().rank() == 0) {
-            DUMP("number of residuals : %i", n);
-        }
-    }
-    return n;
+    //    auto res_norm = residuals_aux(kp__, ispn__, num_bands__, eval__, hpsi__, opsi__, res__, h_diag__, o_diag__);
+
+    //    for (int i = 0; i < num_bands__; i++) {
+    //        double tol = itso.residual_tolerance_ + 1e-3 * std::abs(kp__->band_occupancy(i + ispn__ * ctx_.num_fv_states()) / ctx_.max_occupancy() - 1);
+    //        /* take the residual if it's norm is above the threshold */
+    //        if (res_norm[i] > tol) {
+    //            /* shift unconverged residuals to the beginning of array */
+    //            if (n != i) {
+    //                STOP();
+    //                //res__.copy_from(res__, i, 1, n, ctx_.processing_unit());
+    //            }
+    //            n++;
+    //        }
+    //    }
+    //    if (ctx_.control().verbosity_ >= 3 && kp__->comm().rank() == 0) {
+    //        DUMP("number of residuals : %i", n);
+    //    }
+    //}
+    //return n;
 }
 
 //template <typename T>
