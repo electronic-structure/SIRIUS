@@ -52,10 +52,10 @@ void hubbard_compute_occupation_numbers(K_point_set& kset_)
                               linalg_const<double_complex>::one(), dm.at<CPU>(0, 0), dm.ld());
         }
 
-// now compute O_{ij}^{sigma,sigma'} = \sum_{nk} <psi_nk|phi_{i,sigma}><phi_{j,sigma^'}|psi_nk> f_{nk}
-
-// there must be a way to do that with matrix multiplication
-#pragma omp parallel for schedule(static)
+        // now compute O_{ij}^{sigma,sigma'} = \sum_{nk} <psi_nk|phi_{i,sigma}><phi_{j,sigma^'}|psi_nk> f_{nk}
+        
+        // there must be a way to do that with matrix multiplication
+        #pragma omp parallel for schedule(static)
         for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
             const auto& atom = unit_cell_.atom(ia);
             if (atom.type().hubbard_correction()) {
@@ -101,11 +101,11 @@ void hubbard_compute_occupation_numbers(K_point_set& kset_)
             for (int i = 0; i < sym.num_mag_sym(); i++) {
                 int pr    = sym.magnetic_group_symmetry(i).spg_op.proper;
                 auto eang = sym.magnetic_group_symmetry(i).spg_op.euler_angles;
-                int isym  = sym.magnetic_group_symmetry(i).isym;
+                //int isym  = sym.magnetic_group_symmetry(i).isym;
                 SHT::rotation_matrix(lmax, eang, pr, rotm);
                 auto spin_rot_su2 = SHT::rotation_matrix_su2(sym.magnetic_group_symmetry(i).spin_rotation);
 
-#pragma omp parallel for schedule(static)
+                #pragma omp parallel for schedule(static)
                 for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
                     const auto& atom = unit_cell_.atom(ia);
                     if (atom.type().hubbard_correction()) {
@@ -319,8 +319,9 @@ void calculate_initial_occupation_numbers()
                         }
                     }
                 } else {
-                    double c1, s1;
-                    sincos(atom.type().starting_magnetization_theta(), &s1, &c1);
+                    //double c1, s1;
+                    //sincos(atom.type().starting_magnetization_theta(), &s1, &c1);
+                    double c1 = std::cos(atom.type().starting_magnetization_theta());
                     double_complex cs =
                         double_complex(cos(atom.type().starting_magnetization_phi()), sin(atom.type().starting_magnetization_phi()));
                     double_complex ns[4];

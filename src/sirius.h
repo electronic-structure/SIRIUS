@@ -1,4 +1,4 @@
-// Copyright (c) 2013-2014 Anton Kozhevnikov, Thomas Schulthess
+// Copyright (c) 2013-2017 Anton Kozhevnikov, Thomas Schulthess
 // All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without modification, are permitted provided that
@@ -37,7 +37,7 @@ using json = nlohmann::json;
 #include "sht.h"
 #include "gaunt.h"
 #include "sddk.hpp"
-#include "hdf5_tree.h"
+#include "hdf5_tree.hpp" 
 #include "xc_functional.h"
 #include "sirius_io.h"
 #include "descriptors.h"

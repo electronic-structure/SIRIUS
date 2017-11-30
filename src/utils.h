@@ -29,7 +29,6 @@
 #include <fstream>
 #include <string>
 #include <complex>
-//#include "sirius_internal.h"
 #include "typedefs.h"
 #include "constants.h"
 #include "sddk.hpp"

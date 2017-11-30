@@ -171,7 +171,7 @@ class K_point
             : ctx_(ctx__)
             , unit_cell_(ctx_.unit_cell())
             , weight_(weight__)
-            , comm_(ctx_.blacs_grid().comm())
+            , comm_(ctx_.comm_band())
             , comm_row_(ctx_.blacs_grid().comm_row())
             , comm_col_(ctx_.blacs_grid().comm_col())
         {

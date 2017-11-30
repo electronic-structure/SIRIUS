@@ -10,11 +10,11 @@ packages = {
         "options" : []
     },
     "fftw" : {
-        "url"     : "http://www.fftw.org/fftw-3.3.5.tar.gz",
+        "url"     : "http://www.fftw.org/fftw-3.3.7.tar.gz",
         "options" : []
     },
     "gsl" : {
-        "url"     : "ftp://ftp.gnu.org/gnu/gsl/gsl-2.3.tar.gz",
+        "url"     : "ftp://ftp.gnu.org/gnu/gsl/gsl-2.4.tar.gz",
         "options" : ["--disable-shared"]
     },
     "hdf5" : {
@@ -210,10 +210,10 @@ endif'''+"\n")
             make_packages.append(opts[2])
             clean_packages.append(opts[3])
 
-    build_elpa = False
-    if "-D__ELPA" in platform['MPI_CXX_OPT']:
-        build_elpa = True
-        makeinc.write("LIBS := $(LIBS) %s/libs/elpa/latest/libelpa.a\n"%os.getcwd())
+    #build_elpa = False
+    #if "-D__ELPA" in platform['MPI_CXX_OPT']:
+    #    build_elpa = True
+    #    makeinc.write("LIBS := $(LIBS) %s/libs/elpa/latest/libelpa.a\n"%os.getcwd())
 
     if 'CUDA_ROOT' in platform:
         makeinc.write("LIBS := $(LIBS) -L%s/lib -lcublas -lcudart -lcufft -lcusparse -lnvToolsExt -Wl,-rpath,%s/lib  \n"%(platform['CUDA_ROOT'], platform['CUDA_ROOT']))
@@ -257,12 +257,12 @@ endif'''+"\n")
     makef.write("packages:\n")
     for i in range(len(make_packages)):
         makef.write(make_packages[i])
-    if build_elpa: makef.write("\tcd ./libs/elpa/latest; make\n")
+    #if build_elpa: makef.write("\tcd ./libs/elpa/latest; make\n")
 
     makef.write("cleanall:\n")
     for i in range(len(clean_packages)):
         makef.write(clean_packages[i])
-    if build_elpa: makef.write("\tcd ./libs/elpa/latest; make clean\n")
+    #if build_elpa: makef.write("\tcd ./libs/elpa/latest; make clean\n")
 
     makef.write("\n")
     makef.write("clean:\n")

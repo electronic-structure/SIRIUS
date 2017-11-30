@@ -58,12 +58,6 @@ class Band
         /// Non-zero Gaunt coefficients
         std::unique_ptr<Gaunt_coefficients<double_complex>> gaunt_coefs_;
 
-        /// Interface to a standard eigen-value solver.
-        std::unique_ptr<Eigenproblem> std_evp_solver_;
-
-        /// Interface to a generalized eigen-value solver.
-        std::unique_ptr<Eigenproblem> gen_evp_solver_;
-
         /// Local part of the Hamiltonian operator.
         std::unique_ptr<Local_operator> local_op_;
 
@@ -316,7 +310,7 @@ class Band
                     }
                 }
                 mtrx__.blacs_grid().comm().allreduce(&cs, 1);
-                if (mtrx__.blacs_grid().comm().rank() == 0) {
+                if (ctx_.comm_band().rank() == 0) {
                     print_checksum("subspace_mtrx", cs);
                 }
             }
@@ -402,102 +396,9 @@ class Band
                                                        ctx_.lmax_apw(),
                                                        SHT::gaunt_hybrid));
 
-            Eigenproblem* ptr;
-            /* create standard eigen-value solver */
-            switch (ctx_.std_evp_solver_type()) {
-                case ev_lapack: {
-                    ptr = new Eigenproblem_lapack(2 * linalg_base::dlamch('S'));
-                    break;
-                }
-                #ifdef __SCALAPACK
-                case ev_scalapack: {
-                    ptr = new Eigenproblem_scalapack(blacs_grid_, ctx_.cyclic_block_size(), ctx_.cyclic_block_size(), 1e-12);
-                    break;
-                }
-                #endif
-                #ifdef __PLASMA
-                case ev_plasma: {
-                    ptr = new Eigenproblem_plasma();
-                    break;
-                }
-                #endif
-                #ifdef __MAGMA
-                case ev_magma: {
-                    ptr = new Eigenproblem_magma();
-                    break;
-                }
-                #endif
-                #ifdef __ELPA
-                case ev_elpa1: {
-                    ptr = new Eigenproblem_elpa1(blacs_grid_, ctx_.cyclic_block_size());
-                    break;
-                }
-                case ev_elpa2: {
-                    ptr = new Eigenproblem_elpa2(blacs_grid_, ctx_.cyclic_block_size());
-                    break;
-                }
-                #endif
-                default: {
-                    TERMINATE("wrong standard eigen-value solver");
-                }
-            }
-            std_evp_solver_ = std::unique_ptr<Eigenproblem>(ptr);
-
-            /* create generalized eign-value solver */
-            switch (ctx_.gen_evp_solver_type()) {
-                case ev_lapack: {
-                    ptr = new Eigenproblem_lapack(2 * linalg_base::dlamch('S'));
-                    break;
-                }
-                #ifdef __SCALAPACK
-                case ev_scalapack: {
-                    ptr = new Eigenproblem_scalapack(blacs_grid_, ctx_.cyclic_block_size(), ctx_.cyclic_block_size(), 1e-12);
-                    break;
-                }
-                #endif
-                #ifdef __ELPA
-                case ev_elpa1: {
-                    ptr = new Eigenproblem_elpa1(blacs_grid_, ctx_.cyclic_block_size());
-                    break;
-                }
-                case ev_elpa2: {
-                    ptr = new Eigenproblem_elpa2(blacs_grid_, ctx_.cyclic_block_size());
-                    break;
-                }
-                #endif
-                #ifdef __MAGMA
-                case ev_magma: {
-                    ptr = new Eigenproblem_magma();
-                    break;
-                }
-                #endif
-                #ifdef __RS_GEN_EIG
-                case ev_rs_gpu: {
-                    ptr = new Eigenproblem_RS_GPU(blacs_grid_, ctx_.cyclic_block_size(), ctx_.cyclic_block_size());
-                    break;
-                }
-                case ev_rs_cpu: {
-                    ptr = new Eigenproblem_RS_CPU(blacs_grid_, ctx_.cyclic_block_size(), ctx_.cyclic_block_size());
-                    break;
-                }
-                #endif
-                default: {
-                    TERMINATE("wrong generalized eigen-value solver");
-                }
-            }
-            gen_evp_solver_ = std::unique_ptr<Eigenproblem>(ptr);
-
-            if (std_evp_solver_->parallel() != gen_evp_solver_->parallel()) {
-                TERMINATE("both eigen-value solvers must be serial or parallel");
-            }
-
-            if (!std_evp_solver_->parallel() && blacs_grid_.comm().size() > 1) {
-                TERMINATE("eigen-value solvers must be parallel");
-            }
-
             local_op_ = std::unique_ptr<Local_operator>(new Local_operator(ctx_, ctx_.fft_coarse()));
 
-            if(ctx_.hubbard_correction()) {
+            if (ctx_.hubbard_correction()) {
                 U_ = std::unique_ptr<Hubbard_potential>(new Hubbard_potential(ctx_));
             }
         }
@@ -777,15 +678,15 @@ class Band
                                    Potential& potential__,
                                    bool precompute__) const;
 
-        inline Eigenproblem const& std_evp_solver() const
-        {
-            return *std_evp_solver_;
-        }
+        //inline Eigenproblem const& std_evp_solver() const
+        //{
+        //    return *std_evp_solver_;
+        //}
 
-        inline Eigenproblem const& gen_evp_solver() const
-        {
-            return *gen_evp_solver_;
-        }
+        //inline Eigenproblem const& gen_evp_solver() const
+        //{
+        //    return *gen_evp_solver_;
+        //}
 
         /// Get diagonal elements of LAPW Hamiltonian.
         inline mdarray<double, 2> get_h_diag(K_point* kp__,

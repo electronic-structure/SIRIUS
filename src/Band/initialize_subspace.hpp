@@ -153,7 +153,10 @@ Band::initialize_subspace(K_point* kp__, int num_ao__) const
     wave_functions wf_tmp(ctx_.processing_unit(), kp__->gkvec(), num_phi_tot);
 
     int bs        = ctx_.cyclic_block_size();
-    auto mem_type = (std_evp_solver().type() == ev_magma) ? memory_t::host_pinned : memory_t::host;
+    auto mem_type = (ctx_.std_evp_solver_type() == ev_solver_t::magma) ? memory_t::host_pinned : memory_t::host;
+
+    auto gen_solver = Eigensolver_factory<T>(ctx_.gen_evp_solver_type());
+    
     dmatrix<T> hmlt(num_phi_tot, num_phi_tot, ctx_.blacs_grid(), bs, bs, mem_type);
     dmatrix<T> ovlp(num_phi_tot, num_phi_tot, ctx_.blacs_grid(), bs, bs, mem_type);
     dmatrix<T> evec(num_phi_tot, num_phi_tot, ctx_.blacs_grid(), bs, bs, mem_type);
@@ -194,7 +197,11 @@ Band::initialize_subspace(K_point* kp__, int num_ao__) const
     if (ctx_.control().print_checksum_) {
         for (int ispn = 0; ispn < num_sc; ispn++) {
             auto cs = phi.component(ispn).checksum(0, num_phi_tot);
-            DUMP("checksum(phi%i): %18.10f %18.10f", ispn, cs.real(), cs.imag());
+            if (kp__->comm().rank() == 0) {
+                std::stringstream s;
+                s << "initial_phi" << ispn;
+                print_checksum(s.str(), cs);
+            }
         }
     }
 
@@ -217,9 +224,8 @@ Band::initialize_subspace(K_point* kp__, int num_ao__) const
                 TERMINATE(s);
             }
             std::vector<double> eo(num_phi_tot);
-            if (std_evp_solver().solve(num_phi_tot, num_phi_tot, hmlt.template at<CPU>(), hmlt.ld(), eo.data(),
-                                       evec.template at<CPU>(), evec.ld(), hmlt.num_rows_local(),
-                                       hmlt.num_cols_local())) {
+            auto std_solver = Eigensolver_factory<T>(ctx_.std_evp_solver_type());
+            if (std_solver->solve(num_phi_tot, num_phi_tot, hmlt, eo.data(), evec)) {
                 std::stringstream s;
                 s << "error in diagonalziation";
                 TERMINATE(s);
@@ -232,8 +238,6 @@ Band::initialize_subspace(K_point* kp__, int num_ao__) const
             }
         }
 
-        //orthogonalize<T>(ctx_.processing_unit(), num_sc, 0, num_phi_tot, phi, hphi, ophi, hmlt, wf_tmp);
-
         /* setup eigen-value problem */
         set_subspace_mtrx<T>(0, num_phi_tot, phi, hphi, hmlt, hmlt_old);
         set_subspace_mtrx<T>(0, num_phi_tot, phi, ophi, ovlp, hmlt_old);
@@ -243,21 +247,8 @@ Band::initialize_subspace(K_point* kp__, int num_ao__) const
             ovlp.serialize("ovlp", num_phi_tot);
         }
 
-
-        ///* solve generalized eigen-value problem with the size N */
-        //if (std_evp_solver().solve(num_phi_tot, num_bands, hmlt.template at<CPU>(), hmlt.ld(), eval.data(),
-        //                           evec.template at<CPU>(), evec.ld(), hmlt.num_rows_local(), hmlt.num_cols_local())) {
-        //    std::stringstream s;
-        //    s << "error in diagonalization";
-        //    TERMINATE(s);
-        //}
-
         /* solve generalized eigen-value problem with the size N and get lowest num_bands eigen-vectors */
-        if (gen_evp_solver().solve(num_phi_tot, num_bands,
-                                   hmlt.template at<CPU>(), hmlt.ld(),
-                                   ovlp.template at<CPU>(), ovlp.ld(),
-                                   eval.data(), evec.template at<CPU>(), evec.ld(),
-                                   hmlt.num_rows_local(), hmlt.num_cols_local())) {
+        if (gen_solver->solve(num_phi_tot, num_bands, hmlt, ovlp, eval.data(), evec)) {
             std::stringstream s;
             s << "error in diagonalziation";
             TERMINATE(s);
@@ -265,18 +256,20 @@ Band::initialize_subspace(K_point* kp__, int num_ao__) const
 
         if (ctx_.control().print_checksum_) {
             auto cs = evec.checksum();
-            kp__->comm().allreduce(&cs, 1);
-            DUMP("checksum(evec): %18.10f", std::abs(cs));
+            evec.blacs_grid().comm().allreduce(&cs, 1);
             double cs1{0};
             for (int i = 0; i < num_bands; i++) {
                 cs1 += eval[i];
             }
-            DUMP("checksum(eval): %18.10f", cs1);
+            if (kp__->comm().rank() == 0) {
+                print_checksum("evec", cs);
+                print_checksum("eval", cs1);
+            }
         }
 
         if (ctx_.control().verbosity_ >= 3 && kp__->comm().rank() == 0) {
             for (int i = 0; i < num_bands; i++) {
-                DUMP("eval[%i]=%20.16f", i, eval[i]);
+                printf("eval[%i]=%20.16f\n", i, eval[i]);
             }
         }
 
@@ -298,7 +291,11 @@ Band::initialize_subspace(K_point* kp__, int num_ao__) const
     if (ctx_.control().print_checksum_) {
         for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
             auto cs = kp__->spinor_wave_functions(ispn).checksum(0, num_bands);
-            DUMP("checksum(spinor_wave_functions_%i): %18.10f %18.10f", ispn, cs.real(), cs.imag());
+            std::stringstream s;
+            s << "initial_spinor_wave_functions" << ispn;
+            if (kp__->comm().rank() == 0) {
+                print_checksum(s.str(), cs);
+            }
         }
     }
 

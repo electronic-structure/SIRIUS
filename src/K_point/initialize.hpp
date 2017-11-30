@@ -34,8 +34,8 @@ inline void K_point::initialize()
      */
     int nst = (ctx_.num_mag_dims() == 3) ? ctx_.num_bands() : ctx_.num_fv_states();
 
-    auto mem_type_evp = (ctx_.std_evp_solver_type() == ev_magma) ? memory_t::host_pinned : memory_t::host;
-    auto mem_type_gevp = (ctx_.gen_evp_solver_type() == ev_magma) ? memory_t::host_pinned : memory_t::host;
+    auto mem_type_evp = (ctx_.std_evp_solver_type() == ev_solver_t::magma) ? memory_t::host_pinned : memory_t::host;
+    auto mem_type_gevp = (ctx_.gen_evp_solver_type() == ev_solver_t::magma) ? memory_t::host_pinned : memory_t::host;
 
     if (use_second_variation && ctx_.need_sv()) {
         /* in case of collinear magnetism store pure up and pure dn components, otherwise store the full matrix */
