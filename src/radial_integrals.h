@@ -166,6 +166,18 @@ class Radial_integrals_atomic_wf : public Radial_integrals_base<2>
     {
         return values_(iwf__, iat__);
     }
+
+    /// Get all values for a given atom type and q-point.
+    inline mdarray<double, 1> values(int iat__, double q__) const
+    {
+        auto idx        = iqdq(q__);
+        auto& atom_type = unit_cell_.atom_type(iat__);
+        mdarray<double, 1> val(atom_type.pp_desc().atomic_pseudo_wfs_.size());
+        for (int i = 0; i < static_cast<int>(atom_type.pp_desc().atomic_pseudo_wfs_.size()); i++) {
+            val(i) = values_(i, iat__)(idx.first, idx.second);
+        }
+        return std::move(val);
+    }
 };
 
 /// Radial integrals of the augmentation operator.
@@ -400,7 +412,8 @@ class Radial_integrals_beta : public Radial_integrals_base<2>
         values_ = mdarray<Spline<double>, 2>(unit_cell_.max_mt_radial_basis_size(), unit_cell_.num_atom_types());
         generate();
     }
-
+    
+    /// Get all values for a given atom type and q-point.
     inline mdarray<double, 1> values(int iat__, double q__) const
     {
         auto idx        = iqdq(q__);
