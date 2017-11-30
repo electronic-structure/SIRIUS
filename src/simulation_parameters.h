@@ -1,24 +1,24 @@
 // Copyright (c) 2013-2017 Anton Kozhevnikov, Thomas Schulthess
 // All rights reserved.
-// 
-// Redistribution and use in source and binary forms, with or without modification, are permitted provided that 
+//
+// Redistribution and use in source and binary forms, with or without modification, are permitted provided that
 // the following conditions are met:
-// 
-// 1. Redistributions of source code must retain the above copyright notice, this list of conditions and the 
+//
+// 1. Redistributions of source code must retain the above copyright notice, this list of conditions and the
 //    following disclaimer.
-// 2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions 
+// 2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions
 //    and the following disclaimer in the documentation and/or other materials provided with the distribution.
-// 
-// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED 
-// WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A 
-// PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR 
-// ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, 
-// PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER 
-// CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR 
+//
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED
+// WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A
+// PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
+// ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+// PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+// CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
 // OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 /** \file simulation_parameters.h
- *   
+ *
  *  \brief Contains definition and implementation of sirius::Simulation_parameters_base class.
  */
 
@@ -36,21 +36,21 @@ namespace sirius {
 class Simulation_parameters
 {
     protected:
-    
+
         /// Type of the processing unit.
         device_t processing_unit_{CPU};
-    
+
         /// Type of relativity for valence states.
         relativity_t valence_relativity_{relativity_t::zora};
-        
+
         /// Type of relativity for core states.
         relativity_t core_relativity_{relativity_t::dirac};
-        
+
         /// Type of electronic structure method.
         electronic_structure_method_t esm_type_{electronic_structure_method_t::full_potential_lapwlo};
 
         Iterative_solver_input iterative_solver_input_;
-        
+
         Mixer_input mixer_input_;
 
         Unit_cell_input unit_cell_input_;
@@ -60,7 +60,9 @@ class Simulation_parameters
         Parameters_input parameters_input_;
 
         Settings_input settings_input_;
-        
+
+        Hubbard_input hubbard_input_;
+
         /// Import data from initial input parameters.
         void import(std::string const& fname__)
         {
@@ -81,6 +83,8 @@ class Simulation_parameters
             parameters_input_.read(dict);
             /* read settings */
             settings_input_.read(dict);
+            /* read hubbard parameters */
+            hubbard_input_.read(dict);
         }
 
     public:
@@ -89,12 +93,12 @@ class Simulation_parameters
         {
             parameters_input_.lmax_apw_ = lmax_apw__;
         }
-    
+
         inline void set_lmax_rho(int lmax_rho__)
         {
             parameters_input_.lmax_rho_ = lmax_rho__;
         }
-    
+
         inline void set_lmax_pot(int lmax_pot__)
         {
             parameters_input_.lmax_pot_ = lmax_pot__;
@@ -122,20 +126,25 @@ class Simulation_parameters
         {
             parameters_input_.pw_cutoff_ = pw_cutoff__;
         }
-    
+
         inline void set_gk_cutoff(double gk_cutoff__)
         {
             parameters_input_.gk_cutoff_ = gk_cutoff__;
         }
-    
+
         inline void set_so_correction(bool so_correction__)
         {
-            parameters_input_.so_correction_ = so_correction__; 
+            parameters_input_.so_correction_ = so_correction__;
         }
-    
+
+        inline void set_hubbard_correction(bool hubbard_correction__)
+        {
+            parameters_input_.hubbard_correction_ = hubbard_correction__;
+        }
+
         inline void set_uj_correction(bool uj_correction__)
         {
-            parameters_input_.uj_correction_ = uj_correction__; 
+            parameters_input_.uj_correction_ = uj_correction__;
         }
 
         inline void set_gamma_point(bool gamma_point__)
@@ -238,27 +247,27 @@ class Simulation_parameters
         {
             return parameters_input_.lmax_apw_;
         }
-    
+
         inline int lmmax_apw() const
         {
             return Utils::lmmax(parameters_input_.lmax_apw_);
         }
-        
+
         inline int lmax_rho() const
         {
             return parameters_input_.lmax_rho_;
         }
-    
+
         inline int lmmax_rho() const
         {
             return Utils::lmmax(parameters_input_.lmax_rho_);
         }
-        
+
         inline int lmax_pot() const
         {
             return parameters_input_.lmax_pot_;
         }
-    
+
         inline int lmmax_pot() const
         {
             return Utils::lmmax(parameters_input_.lmax_pot_);
@@ -268,29 +277,29 @@ class Simulation_parameters
         {
             return parameters_input_.aw_cutoff_;
         }
-    
+
         /// Plane-wave cutoff for G-vectors (in 1/[a.u.]).
         inline double pw_cutoff() const
         {
             return parameters_input_.pw_cutoff_;
         }
-        
+
         /// Cutoff for G+k vectors (in 1/[a.u.]).
         inline double gk_cutoff() const
         {
             return parameters_input_.gk_cutoff_;
         }
-            
+
         /// Number of dimensions in the magnetization vector.
         inline int num_mag_dims() const
         {
             assert(parameters_input_.num_mag_dims_ == 0 ||
                    parameters_input_.num_mag_dims_ == 1 ||
                    parameters_input_.num_mag_dims_ == 3);
-            
+
             return parameters_input_.num_mag_dims_;
         }
-        
+
         /// Number of spin components.
         /** This parameter can take only two values: 1 -- non-magnetic calcaulation and wave-functions,
          *  2 -- spin-polarized calculation and wave-functions. */
@@ -305,13 +314,13 @@ class Simulation_parameters
         {
             return (num_mag_dims() == 3) ? 3 : num_spins();
         }
-        
+
         /// Number of first-variational states.
         inline int num_fv_states() const
         {
             return parameters_input_.num_fv_states_;
         }
-        
+
         /// Total number of bands.
         inline int num_bands() const
         {
@@ -322,12 +331,17 @@ class Simulation_parameters
         {
             return (2 / num_spins());
         }
-        
+
         inline bool so_correction() const
         {
             return parameters_input_.so_correction_;
         }
-        
+
+        inline bool hubbard_correction() const
+        {
+            return parameters_input_.hubbard_correction_;
+        }
+
         inline bool uj_correction() const
         {
             return parameters_input_.uj_correction_;
@@ -337,12 +351,12 @@ class Simulation_parameters
         {
             return parameters_input_.gamma_point_;
         }
-    
+
         inline device_t processing_unit() const
         {
             return processing_unit_;
         }
-    
+
         inline double smearing_width() const
         {
             return parameters_input_.smearing_width_;
@@ -362,12 +376,12 @@ class Simulation_parameters
         {
             return parameters_input_.auto_rmt_;
         }
-    
+
         bool need_sv() const
         {
             return (num_spins() == 2 || uj_correction() || so_correction());
         }
-        
+
         inline std::vector<int> const& mpi_grid_dims() const
         {
             return control_input_.mpi_grid_dims_;
@@ -377,12 +391,12 @@ class Simulation_parameters
         {
             return control_input_.cyclic_block_size_;
         }
-    
+
         inline electronic_structure_method_t esm_type() const
         {
             return esm_type_;
         }
-    
+
         inline bool full_potential() const
         {
             return (esm_type_ == electronic_structure_method_t::full_potential_lapwlo);
@@ -508,6 +522,12 @@ class Simulation_parameters
         {
             return settings_input_;
         }
+
+        inline Hubbard_input const& Hubbard() const
+        {
+            return hubbard_input_;
+        }
+
 };
 
 };

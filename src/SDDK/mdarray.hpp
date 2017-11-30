@@ -18,7 +18,7 @@
 // OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 /** \file mdarray.hpp
- *   
+ *
  *  \brief Contains implementation of multidimensional array class.
  */
 
@@ -202,7 +202,7 @@ struct mdarray_mem_mgr
 {
     /// Number of elements of the current allocation.
     size_t size_{0};
-    
+
     /// Type of allocated memory.
     memory_t mode_{memory_t::none};
 
@@ -236,7 +236,7 @@ struct mdarray_mem_mgr
 
         /* host memory can be of two types */
         if ((mode_ & memory_t::host) == memory_t::host) {
-            /* check if the memory is host pinned */ 
+            /* check if the memory is host pinned */
             if ((mode_ & memory_t::host_pinned) == memory_t::host_pinned) {
                 #ifdef __GPU
                 acc::deallocate_host(p__);
@@ -334,6 +334,19 @@ class mdarray_base
         mdarray_assert(i2 >= dims_[2].begin() && i2 <= dims_[2].end());
         mdarray_assert(i3 >= dims_[3].begin() && i3 <= dims_[3].end());
         size_t i = offsets_[0] + i0 + i1 * offsets_[1] + i2 * offsets_[2] + i3 * offsets_[3];
+        mdarray_assert(i >= 0 && i < size());
+        return i;
+    }
+
+    inline int64_t idx(int64_t const i0, int64_t const i1, int64_t const i2, int64_t const i3, int64_t const i4) const
+    {
+        static_assert(N == 5, "wrong number of dimensions");
+        mdarray_assert(i0 >= dims_[0].begin() && i0 <= dims_[0].end());
+        mdarray_assert(i1 >= dims_[1].begin() && i1 <= dims_[1].end());
+        mdarray_assert(i2 >= dims_[2].begin() && i2 <= dims_[2].end());
+        mdarray_assert(i3 >= dims_[3].begin() && i3 <= dims_[3].end());
+        mdarray_assert(i4 >= dims_[4].begin() && i4 <= dims_[4].end());
+        size_t i = offsets_[0] + i0 + i1 * offsets_[1] + i2 * offsets_[2] + i3 * offsets_[3] + i4 * offsets_[4];
         mdarray_assert(i >= 0 && i < size());
         return i;
     }
@@ -527,6 +540,18 @@ class mdarray_base
         return raw_ptr_[idx(i0, i1, i2, i3)];
     }
 
+    inline T& operator()(int64_t const i0, int64_t const i1, int64_t const i2, int64_t const i3, int64_t const i4)
+    {
+        mdarray_assert(raw_ptr_ != nullptr);
+        return raw_ptr_[idx(i0, i1, i2, i3, i4)];
+    }
+
+    inline T const& operator()(int64_t const i0, int64_t const i1, int64_t const i2, int64_t const i3, int64_t const i4) const
+    {
+        mdarray_assert(raw_ptr_ != nullptr);
+        return raw_ptr_[idx(i0, i1, i2, i3, i4)];
+    }
+
     inline T& operator[](size_t const idx__)
     {
         mdarray_assert(idx__ >= 0 && idx__ < size());
@@ -585,6 +610,12 @@ class mdarray_base
     inline T* at(int64_t const i0, int64_t const i1, int64_t const i2, int64_t const i3)
     {
         return at_idx<pu>(idx(i0, i1, i2, i3));
+    }
+
+    template <device_t pu>
+    inline T* at(int64_t const i0, int64_t const i1, int64_t const i2, int64_t const i3, int64_t const i4)
+    {
+        return at_idx<pu>(idx(i0, i1, i2, i3, i4));
     }
 
     /// Return total size (number of elements) of the array.
@@ -681,7 +712,7 @@ class mdarray_base
         }
         std::memcpy(dest__.raw_ptr_, raw_ptr_, size() * sizeof(T));
     }
-    
+
     /// Copy n elements starting from idx0.
     template <memory_t from__, memory_t to__>
     inline void copy(size_t idx0__, size_t n__)
@@ -809,7 +840,7 @@ class mdarray : public mdarray_base<T, N>
             std::string label__ = "")
     {
         static_assert(N == 1, "wrong number of dimensions");
-        
+
         this->label_ = label__;
         this->init_dimensions({d0});
         this->allocate(memory__);
@@ -851,6 +882,21 @@ class mdarray : public mdarray_base<T, N>
 
         this->label_ = label__;
         this->init_dimensions({d0, d1, d2, d3});
+        this->allocate(memory__);
+    }
+
+    mdarray(mdarray_index_descriptor const& d0,
+            mdarray_index_descriptor const& d1,
+            mdarray_index_descriptor const& d2,
+            mdarray_index_descriptor const& d3,
+            mdarray_index_descriptor const& d4,
+            memory_t memory__   = memory_t::host,
+            std::string label__ = "")
+    {
+        static_assert(N == 5, "wrong number of dimensions");
+
+        this->label_ = label__;
+        this->init_dimensions({d0, d1, d2, d3, d4});
         this->allocate(memory__);
     }
 
@@ -949,6 +995,21 @@ class mdarray : public mdarray_base<T, N>
 
         this->label_ = label__;
         this->init_dimensions({d0, d1, d2, d3});
+        this->raw_ptr_ = ptr__;
+    }
+
+    mdarray(T* ptr__,
+            mdarray_index_descriptor const& d0,
+            mdarray_index_descriptor const& d1,
+            mdarray_index_descriptor const& d2,
+            mdarray_index_descriptor const& d3,
+            mdarray_index_descriptor const& d4,
+            std::string label__ = "")
+    {
+        static_assert(N == 5, "wrong number of dimensions");
+
+        this->label_ = label__;
+        this->init_dimensions({d0, d1, d2, d3, d4});
         this->raw_ptr_ = ptr__;
     }
 
