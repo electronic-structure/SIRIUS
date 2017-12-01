@@ -46,6 +46,8 @@ class DFT_ground_state
 
         Unit_cell& unit_cell_;
 
+        Hamiltonian &H_;
+
         Potential& potential_;
 
         Density& density_;
@@ -177,12 +179,13 @@ class DFT_ground_state
     public:
 
         DFT_ground_state(Simulation_context& ctx__,
-                         Potential& potential__,
+                         Hamiltonian& H__,
                          Density& density__,
                          K_point_set& kset__)
             : ctx_(ctx__)
             , unit_cell_(ctx__.unit_cell())
-            , potential_(potential__)
+            , H_(H__)
+            , potential_(H__.potential())
             , density_(density__)
             , kset_(kset__)
             , band_(ctx_)
@@ -363,7 +366,7 @@ class DFT_ground_state
             }
 
             if (ctx_.hubbard_correction()) {
-                tot_en += band_.U().hubbard_energy();
+                tot_en += H_.U().hubbard_energy();
             }
 
             return tot_en;
@@ -561,8 +564,8 @@ inline int DFT_ground_state::find(double potential_tol, double energy_tol, int n
     printf("--------------------------------------------- init\n");
 
     if (ctx_.hubbard_correction()) {
-        band_.U().hubbard_compute_occupation_numbers(kset_);
-        band_.U().calculate_hubbard_potential_and_energy();
+        H_.U().hubbard_compute_occupation_numbers(kset_);
+        H_.U().calculate_hubbard_potential_and_energy();
     }
 
     for (int iter = 0; iter < num_dft_iter; iter++) {
@@ -576,7 +579,7 @@ inline int DFT_ground_state::find(double potential_tol, double energy_tol, int n
         }
 
         /* find new wave-functions */
-        band_.solve_for_kset(kset_, potential_, true);
+        band_.solve_for_kset(kset_, H_, true);
         /* find band occupancies */
         kset_.find_band_occupancies();
         /* generate new density from the occupied wave-functions */
@@ -664,9 +667,9 @@ inline int DFT_ground_state::find(double potential_tol, double energy_tol, int n
 
         /* Compute the hubbard correction */
         if(ctx_.hubbard_correction()) {
-            band_.U().hubbard_compute_occupation_numbers(kset_);
-            band_.U().mix();
-            band_.U().calculate_hubbard_potential_and_energy();
+            H_.U().hubbard_compute_occupation_numbers(kset_);
+            H_.U().mix();
+            H_.U().calculate_hubbard_potential_and_energy();
         }
 
         eold = etot;
@@ -818,7 +821,7 @@ inline void DFT_ground_state::print_magnetic_moment()
             printf("PAW contribution          : %18.8f\n", potential_.PAW_total_energy());
         }
         if(ctx_.hubbard_correction()) {
-            printf("Hubbard energy            : %18.8f (Ha), %18.8f (Ry)\n", band_.U().hubbard_energy(), band_.U().hubbard_energy() * 2.0);
+            printf("Hubbard energy            : %18.8f (Ha), %18.8f (Ry)\n", H_.U().hubbard_energy(), H_.U().hubbard_energy() * 2.0);
         }
 
         printf("Total energy              : %18.8f (Ha), %18.8f (Ry)\n", etot, etot * 2);

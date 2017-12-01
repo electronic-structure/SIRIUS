@@ -515,7 +515,9 @@ struct Hubbard_input
     bool hubbard_orthogonalization_{false};
     bool hubbard_normalization_{false};
     bool hubbard_starting_magnetization_{false};
-
+    bool hubbard_U_plus_V_{false};
+    int projection_method_{0};
+    std::string wave_function_file_;
     std::vector<std::pair<std::string, std::vector<double>>> species;
 
     const bool hubbard_correction() const
@@ -527,8 +529,15 @@ struct Hubbard_input
         if (!parser.count("hubbard"))
             return;
 
-        hubbard_orthogonalization_ = parser["hubbard"].value("orthogonalize_hubbard_wave_functions", hubbard_orthogonalization_);
-        hubbard_normalization_ = parser["hubbard"].value("normalize_hubbard_wave_functions", hubbard_normalization_);
+        hubbard_orthogonalization_ = false;
+        if (parser["hubbard"].count("orthogonalize_hubbard_wave_functions")) {
+            hubbard_orthogonalization_ = parser["hubbard"].value("orthogonalize_hubbard_wave_functions", hubbard_orthogonalization_);
+        }
+
+        hubbard_normalization_ = false;
+        if (parser["hubbard"].count("normalize_hubbard_wave_functions")) {
+            hubbard_normalization_ = parser["hubbard"].value("normalize_hubbard_wave_functions", hubbard_normalization_);
+        }
 
         std::vector<double> coef_;
         std::vector<std::string> labels_;
@@ -542,6 +551,26 @@ struct Hubbard_input
                 TERMINATE("duplicate atom type label");
             }
             labels_.push_back(label);
+        }
+
+        // by default we use the atomic orbitals given in the pseudo potentials
+        this->projection_method_ = 0;
+
+        if (parser["hubbard"].count("projection_method")) {
+            std::string projection_method__ = parser["hubbard"]["projection_method"].get<std::string>();
+            if (projection_method__ == "file") {
+                // they are provided by a external file
+                if (parser["hubbard"].count("wave_function_file")) {
+                    this->wave_function_file_ = parser["hubbard"]["wave_function_file"].get<std::string>();
+                    this->projection_method_ = 1;
+                } else {
+                    TERMINATE("The hubbard projection method 'file' requires the option 'wave_function_file' to be defined");
+                }
+            }
+
+            if (projection_method__ == "pseudo") {
+                this->projection_method_ = 2;
+            }
         }
 
         for (auto &label : labels_) {
@@ -608,7 +637,12 @@ struct Hubbard_input
 
             species.push_back(std::make_pair(label, coef_));
         }
-        if(!hubbard_correction_) {
+        if (parser["habbard"].count("hubbard_u_plus_v")) {
+            hubbard_U_plus_V_ = true;
+        }
+
+
+        if (!hubbard_correction_) {
             TERMINATE("The hubbard section is empty");
         }
 

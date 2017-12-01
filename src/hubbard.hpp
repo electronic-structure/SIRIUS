@@ -24,7 +24,7 @@ class Hubbard_potential
 
     int number_of_hubbard_orbitals_{0};
 
-    /// Low-frequency mixer for the pseudopotential density mixing.
+    ///  mixer for the hubbard occupancies.
     std::unique_ptr<Mixer<double_complex>> mixer_{nullptr};
 
     mdarray<double_complex, 5> occupancy_number_;
@@ -44,12 +44,35 @@ class Hubbard_potential
     /// coupling is included
     bool approximation_{false};
 
+    /// orthogonalize and/or normalize the projectors
     bool orthogonalize_hubbard_orbitals_{false};
+
+    /// by default we just normalize them
     bool normalize_orbitals_only_{true};
-    // Hubbard with multi channels
+
+    /// hubbard correction with next nearest neighbors
+    bool hubbard_U_plus_V_{false};
+
+    /// hubbard projection method. By default we use the wave functions
+    /// provided by the pseudo potentials.
+    int projection_method_{0};
+
+    /// Hubbard with multi channels (not implemented yet)
     bool multi_channels_{false};
 
+    /// file containing the hubbard wave functions
+    std::string wave_function_file_;
+
+    /// pointer the radial integrals of the projectors. Only there for
+    /// future use.
+    std::unique_ptr<Radial_integrals_centered_atomic_wfc> wfc_;
+
 public:
+    void set_hubbard_U_plus_V(const bool U_plus_V_)
+    {
+        hubbard_U_plus_V_ = true;
+    }
+
     void set_hubbard_simple_method(const bool approx)
     {
         approximation_ = approx;
@@ -156,6 +179,15 @@ public:
             return;
         this->orthogonalize_hubbard_orbitals_ = ctx_.Hubbard().hubbard_orthogonalization_;
         this->normalize_orbitals_only_        = ctx_.Hubbard().hubbard_normalization_;
+        this->projection_method_ = ctx_.Hubbard().projection_method_;
+
+        // if the projectors are defined externaly then we need the file
+        // that contains them. All the other methods do not depend on
+        // that parameter
+        if(this->projection_method_ == 1) {
+            this->wave_function_file_ = ctx_.Hubbard().wave_function_file_;
+        }
+
         int lmax_                             = -1;
         for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {
             if (ctx__.unit_cell().atom(ia).type().hubbard_correction()) {
@@ -178,6 +210,7 @@ public:
 
         calculate_wavefunction_with_U_offset();
         calculate_initial_occupation_numbers();
+
 
         mixer_ = Mixer_factory<double_complex>(ctx_.mixer_input().type_, static_cast<int>(occupancy_number_.size()), 0,
                                                ctx_.mixer_input(), ctx_.comm());
@@ -208,6 +241,7 @@ public:
         mixer_output();
         return rms;
     }
+
 
 #include "Hubbard/hubbard_generate_atomic_orbitals.hpp"
 #include "Hubbard/hubbard_potential_energy.hpp"
