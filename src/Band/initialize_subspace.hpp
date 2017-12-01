@@ -22,7 +22,7 @@ inline void Band::initialize_subspace(K_point_set& kset__, Hamiltonian& H__) con
         }
     }
 
-    local_op_->prepare(ctx_.gvec_coarse(), ctx_.num_mag_dims(), H__.potential());
+    H__.local_op().prepare(ctx_.gvec_coarse(), ctx_.num_mag_dims(), H__.potential());
 
     for (int ikloc = 0; ikloc < kset__.spl_num_kpoints().local_size(); ikloc++) {
         int ik  = kset__.spl_num_kpoints(ikloc);
@@ -33,7 +33,7 @@ inline void Band::initialize_subspace(K_point_set& kset__, Hamiltonian& H__) con
             initialize_subspace<double_complex>(kp, H__, N);
         }
     }
-    local_op_->dismiss();
+    H__.local_op().dismiss();
 
     /* reset the energies for the iterative solver to do at least two steps */
     for (int ik = 0; ik < kset__.num_kpoints(); ik++) {
@@ -139,7 +139,7 @@ Band::initialize_subspace(K_point* kp__, Hamiltonian &H__, int num_ao__) const
     int num_bands = (ctx_.num_mag_dims() == 3) ? ctx_.num_bands() : ctx_.num_fv_states();
 
     ctx_.fft_coarse().prepare(kp__->gkvec().partition());
-    local_op_->prepare(kp__->gkvec());
+    H__.local_op().prepare(kp__->gkvec());
 
     D_operator<T> d_op(ctx_, kp__->beta_projectors());
     Q_operator<T> q_op(ctx_, kp__->beta_projectors());
@@ -156,7 +156,7 @@ Band::initialize_subspace(K_point* kp__, Hamiltonian &H__, int num_ao__) const
     auto mem_type = (ctx_.std_evp_solver_type() == ev_solver_t::magma) ? memory_t::host_pinned : memory_t::host;
 
     auto gen_solver = Eigensolver_factory<T>(ctx_.gen_evp_solver_type());
-    
+
     dmatrix<T> hmlt(num_phi_tot, num_phi_tot, ctx_.blacs_grid(), bs, bs, mem_type);
     dmatrix<T> ovlp(num_phi_tot, num_phi_tot, ctx_.blacs_grid(), bs, bs, mem_type);
     dmatrix<T> evec(num_phi_tot, num_phi_tot, ctx_.blacs_grid(), bs, bs, mem_type);
@@ -207,7 +207,7 @@ Band::initialize_subspace(K_point* kp__, Hamiltonian &H__, int num_ao__) const
 
     for (int ispn_step = 0; ispn_step < num_spin_steps; ispn_step++) {
         /* apply Hamiltonian and overlap operators to the new basis functions */
-        apply_h_o<T>(kp__, ispn_step, 0, num_phi_tot, phi, hphi, ophi, H__, d_op, q_op);
+        H__.apply_h_o<T>(kp__, ispn_step, 0, num_phi_tot, phi, hphi, ophi, d_op, q_op);
 
         /* do some checks */
         if (ctx_.control().verification_ >= 1) {

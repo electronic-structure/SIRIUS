@@ -39,7 +39,7 @@ inline void Band::diag_pseudo_potential_exact(K_point* kp__,
         phi.component(0).pw_coeffs().prime(i, i) = 1;
     }
 
-    apply_h_o(kp__, ispn__, 0, ngk, phi, hphi, ophi, H_, d_op__, q_op__);
+    H_.apply_h_o(kp__, ispn__, 0, ngk, phi, hphi, ophi, d_op__, q_op__);
 
     //Utils::check_hermitian("h", hphi.coeffs(), ngk);
     //Utils::check_hermitian("o", ophi.coeffs(), ngk);
@@ -190,8 +190,8 @@ inline int Band::diag_pseudo_potential_davidson(K_point*       kp__,
     t2.stop();
 
     /* get diagonal elements for preconditioning */
-    auto h_diag = get_h_diag(kp__, *local_op_, d_op__);
-    auto o_diag = get_o_diag(kp__, q_op__);
+    auto h_diag = H_.get_h_diag(kp__, d_op__);
+    auto o_diag = H_.get_o_diag(kp__, q_op__);
 
     if (ctx_.control().print_checksum_) {
         auto cs1 = h_diag.checksum();
@@ -224,7 +224,7 @@ inline int Band::diag_pseudo_potential_davidson(K_point*       kp__,
          * this is done before the main itertive loop */
 
         /* apply Hamiltonian and overlap operators to the basis functions */
-        apply_h_o<T>(kp__, ispin_step, 0, num_bands, phi, hphi, ophi, H_, d_op__, q_op__);
+        H_.apply_h_o<T>(kp__, ispin_step, 0, num_bands, phi, hphi, ophi, d_op__, q_op__);
 
         /* setup eigen-value problem
          * N is the number of previous basis functions
@@ -323,7 +323,7 @@ inline int Band::diag_pseudo_potential_davidson(K_point*       kp__,
             phi.copy_from(res, 0, n, N, ctx_.processing_unit());
 
             /* apply Hamiltonian and overlap operators to the new basis functions */
-            apply_h_o<T>(kp__, ispin_step, N, n, phi, hphi, ophi, H_, d_op__, q_op__);
+            H_.apply_h_o<T>(kp__, ispin_step, N, n, phi, hphi, ophi, d_op__, q_op__);
 
             if (itso.orthogonalize_) {
                 orthogonalize<T>(ctx_.processing_unit(), num_sc, N, n, phi, hphi, ophi, ovlp, res.component(0));

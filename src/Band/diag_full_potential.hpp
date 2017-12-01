@@ -19,12 +19,12 @@ inline void Band::diag_fv_exact(K_point* kp, Hamiltonian& hamiltonian__) const
     /* setup Hamiltonian and overlap */
     switch (ctx_.processing_unit()) {
         case CPU: {
-            set_fv_h_o<CPU, electronic_structure_method_t::full_potential_lapwlo>(kp, hamiltonian__, h, o);
+            hamiltonian__.set_fv_h_o<CPU, electronic_structure_method_t::full_potential_lapwlo>(kp, h, o);
             break;
         }
         #ifdef __GPU
         case GPU: {
-            set_fv_h_o<GPU, electronic_structure_method_t::full_potential_lapwlo>(kp, hamiltonian__, h, o);
+            hamiltonian__.set_fv_h_o<GPU, electronic_structure_method_t::full_potential_lapwlo>(kp, h, o);
             break;
         }
         #endif
@@ -104,7 +104,7 @@ inline void Band::diag_fv_exact(K_point* kp, Hamiltonian& hamiltonian__) const
         }
         #endif
 
-        apply_fv_o(kp, false, false, 0, ctx_.num_fv_states(), kp->fv_eigen_vectors_slab(), ofv);
+        hamiltonian__.apply_fv_o(kp, false, false, 0, ctx_.num_fv_states(), kp->fv_eigen_vectors_slab(), ofv);
 
         #ifdef __GPU
         if (ctx_.processing_unit() == GPU) {
@@ -154,7 +154,7 @@ inline void Band::diag_fv_exact(K_point* kp, Hamiltonian& hamiltonian__) const
             }
         }
 
-        apply_fv_h_o(kp, 0, 0, ctx_.num_fv_states(), phi, hphi, ophi);
+        hamiltonian__.apply_fv_h_o(kp, 0, 0, ctx_.num_fv_states(), phi, hphi, ophi);
 
         dmatrix<double_complex> ovlp(ctx_.num_fv_states(), ctx_.num_fv_states(), ctx_.blacs_grid(), ctx_.cyclic_block_size(), ctx_.cyclic_block_size());
         dmatrix<double_complex> hmlt(ctx_.num_fv_states(), ctx_.num_fv_states(), ctx_.blacs_grid(), ctx_.cyclic_block_size(), ctx_.cyclic_block_size());
@@ -177,11 +177,11 @@ inline void Band::diag_fv_exact(K_point* kp, Hamiltonian& hamiltonian__) const
     }
 }
 
-inline void Band::get_singular_components(K_point* kp__) const
+inline void Band::get_singular_components(K_point* kp__, Hamiltonian& H__) const
 {
     PROFILE("sirius::Band::get_singular_components");
 
-    auto o_diag_tmp = get_o_diag(kp__, ctx_.step_function().theta_pw(0).real());
+    auto o_diag_tmp = H__.get_o_diag(kp__, ctx_.step_function().theta_pw(0).real());
 
     mdarray<double, 2> o_diag(kp__->num_gkvec_loc(), 1, memory_t::host, "o_diag");
     mdarray<double, 1> diag1(kp__->num_gkvec_loc(), memory_t::host, "diag1");
@@ -272,7 +272,7 @@ inline void Band::get_singular_components(K_point* kp__) const
     /* start iterative diagonalization */
     for (int k = 0; k < itso.num_steps_; k++) {
         /* apply Hamiltonian and overlap operators to the new basis functions */
-        apply_fv_o(kp__, true, true, N, n, phi, ophi);
+        H__.apply_fv_o(kp__, true, true, N, n, phi, ophi);
 
         if (ctx_.control().verification_ >= 1) {
             dmatrix<double_complex> tmp;
@@ -395,14 +395,14 @@ inline void Band::get_singular_components(K_point* kp__) const
     kp__->comm().barrier();
 }
 
-inline void Band::diag_fv_davidson(K_point* kp) const
+inline void Band::diag_fv_davidson(K_point* kp, Hamiltonian& H__) const
 {
     PROFILE("sirius::Band::diag_fv_davidson");
 
-    get_singular_components(kp);
+    get_singular_components(kp, H__);
 
-    auto h_diag = get_h_diag(kp, local_op_->v0(0), ctx_.step_function().theta_pw(0).real());
-    auto o_diag = get_o_diag(kp, ctx_.step_function().theta_pw(0).real());
+    auto h_diag = H__.get_h_diag(kp, H__.local_op().v0(0), ctx_.step_function().theta_pw(0).real());
+    auto o_diag = H__.get_o_diag(kp, ctx_.step_function().theta_pw(0).real());
 
     /* short notation for number of target wave-functions */
     int num_bands = ctx_.num_fv_states();
@@ -530,7 +530,7 @@ inline void Band::diag_fv_davidson(K_point* kp) const
     /* start iterative diagonalization */
     for (int k = 0; k < itso.num_steps_; k++) {
         /* apply Hamiltonian and overlap operators to the new basis functions */
-        apply_fv_h_o(kp, nlo, N, n, phi, hphi, ophi);
+        H__.apply_fv_h_o(kp, nlo, N, n, phi, hphi, ophi);
 
         orthogonalize(N, n, phi, hphi, ophi, ovlp, res);
 
@@ -637,7 +637,7 @@ inline void Band::diag_sv(K_point* kp,
 
     /* compute product of magnetic field and wave-function */
     if (ctx_.num_spins() == 2) {
-        apply_magnetic_field(kp->fv_states(), kp->gkvec(), hpsi);
+        hamiltonian__.apply_magnetic_field(kp->fv_states(), kp->gkvec(), hpsi);
     }
     else {
         hpsi[0].pw_coeffs().prime().zero();

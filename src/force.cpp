@@ -1,27 +1,27 @@
 // Copyright (c) 2013-2014 Anton Kozhevnikov, Thomas Schulthess
 // All rights reserved.
 //
-// Redistribution and use in source and binary forms, with or without modification, are permitted provided that 
+// Redistribution and use in source and binary forms, with or without modification, are permitted provided that
 // the following conditions are met:
 //
-// 1. Redistributions of source code must retain the above copyright notice, this list of conditions and the 
+// 1. Redistributions of source code must retain the above copyright notice, this list of conditions and the
 //    following disclaimer.
-// 2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions 
+// 2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions
 //    and the following disclaimer in the documentation and/or other materials provided with the distribution.
 //
-// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED 
-// WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A 
-// PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR 
-// ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, 
-// PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER 
-// CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR 
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED
+// WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A
+// PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
+// ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+// PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+// CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
 // OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 /** \file force.cpp
  *
  *  \brief Contains implementation of sirius::Force class.
  */
- 
+
 #include "force.h"
 
 namespace sirius {
@@ -85,7 +85,7 @@ void Force::compute_dmat(Simulation_parameters const& parameters__,
 }
 
 void Force::ibs_force(Simulation_context_base& ctx__,
-                      Band* band__,
+                      Hamiltonian* H__,
                       K_point* kp__,
                       mdarray<double, 2>& ffac__,
                       mdarray<double, 2>& forcek__)
@@ -129,10 +129,10 @@ void Force::ibs_force(Simulation_context_base& ctx__,
         kp__->alm_coeffs_col().generate(ia, alm_col);
 
         /* setup apw-lo and lo-apw blocks */
-        band__->set_fv_h_o_apw_lo(kp__, type, atom, ia, alm_row, alm_col, h, o);
+        H__->set_fv_h_o_apw_lo(kp__, type, atom, ia, alm_row, alm_col, h, o);
 
         /* apply MT Hamiltonian to column coefficients */
-        band__->apply_hmt_to_apw<spin_block_t::nm>(atom, kp__->num_gkvec_col(), alm_col, halm_col);
+        H__->apply_hmt_to_apw<spin_block_t::nm>(atom, kp__->num_gkvec_col(), alm_col, halm_col);
 
         /* conjugate row (<bra|) matching coefficients */
         for (int i = 0; i < type.mt_aw_basis_size(); i++)
@@ -141,13 +141,13 @@ void Force::ibs_force(Simulation_context_base& ctx__,
         }
 
         /* apw-apw block of the overlap matrix */
-        linalg<CPU>::gemm(0, 1, kp__->num_gkvec_row(), kp__->num_gkvec_col(), type.mt_aw_basis_size(), 
+        linalg<CPU>::gemm(0, 1, kp__->num_gkvec_row(), kp__->num_gkvec_col(), type.mt_aw_basis_size(),
                           alm_row.at<CPU>(), alm_row.ld(), alm_col.at<CPU>(), alm_col.ld(), o.at<CPU>(), o.ld());
-            
+
         /* apw-apw block of the Hamiltonian matrix */
-        linalg<CPU>::gemm(0, 1, kp__->num_gkvec_row(), kp__->num_gkvec_col(), type.mt_aw_basis_size(), 
+        linalg<CPU>::gemm(0, 1, kp__->num_gkvec_row(), kp__->num_gkvec_col(), type.mt_aw_basis_size(),
                           alm_row.at<CPU>(), alm_row.ld(), halm_col.at<CPU>(), halm_col.ld(), h.at<CPU>(), h.ld());
-        
+
         int iat = type.id();
 
         for (int igk_col = 0; igk_col < kp__->num_gkvec_col(); igk_col++) // loop over columns
@@ -195,7 +195,7 @@ void Force::ibs_force(Simulation_context_base& ctx__,
                     o1(igk_row, icol + kp__->num_gkvec_col()) = double_complex(0.0, gkvec_row_cart[x]) * o(igk_row, icol + kp__->num_gkvec_col());
                 }
             }
-                    
+
             for (int irow = 0; irow < kp__->num_lo_row(); irow++)
             {
                 for (int igk_col = 0; igk_col < kp__->num_gkvec_col(); igk_col++)
@@ -207,7 +207,7 @@ void Force::ibs_force(Simulation_context_base& ctx__,
             }
 
             /* zm1 = H * V */
-            linalg<CPU>::gemm(0, 0, kp__->gklo_basis_size(), ctx__.num_fv_states(), kp__->gklo_basis_size(), 
+            linalg<CPU>::gemm(0, 0, kp__->gklo_basis_size(), ctx__.num_fv_states(), kp__->gklo_basis_size(),
                               linalg_const<double_complex>::one(), h1, fv_evec, linalg_const<double_complex>::zero(), zm1);
 
             /* F = V^{+} * zm1 = V^{+} * H * V */
@@ -215,9 +215,9 @@ void Force::ibs_force(Simulation_context_base& ctx__,
                               linalg_const<double_complex>::one(), fv_evec, zm1, linalg_const<double_complex>::zero(), zf);
 
             /* zm1 = O * V */
-            linalg<CPU>::gemm(0, 0, kp__->gklo_basis_size(), ctx__.num_fv_states(), kp__->gklo_basis_size(), 
+            linalg<CPU>::gemm(0, 0, kp__->gklo_basis_size(), ctx__.num_fv_states(), kp__->gklo_basis_size(),
                               linalg_const<double_complex>::one(), o1, fv_evec, linalg_const<double_complex>::zero(), zm1);
-            
+
             STOP();
             ///* multiply by energy */
             //for (int i = 0; i < (int)kp__->spl_fv_states().local_size(); i++)
@@ -266,7 +266,7 @@ void Force::total_force(Simulation_context_base& ctx__,
         }
     }
     ctx__.comm().allreduce(&force__(0, 0), (int)force__.size());
-    
+
     if (ctx__.control().verbosity_ > 2 && ctx__.comm().rank() == 0) {
         printf("\n");
         printf("Forces\n");
@@ -293,7 +293,7 @@ void Force::total_force(Simulation_context_base& ctx__,
             printf("ia : %i, Hellmann–Feynman : %12.6f %12.6f %12.6f\n", ia, forcehf(0, ia), forcehf(1, ia), forcehf(2, ia));
         }
     }
-    
+
     mdarray<double, 2> forcerho(3, uc.num_atoms());
     forcerho.zero();
     for (int ialoc = 0; ialoc < (int)uc.spl_num_atoms().local_size(); ialoc++)
@@ -303,7 +303,7 @@ void Force::total_force(Simulation_context_base& ctx__,
         for (int x = 0; x < 3; x++) forcerho(x, ia) = inner(potential__->effective_potential_mt(ialoc), g[x]);
     }
     ctx__.comm().allreduce(&forcerho(0, 0), (int)forcerho.size());
-    
+
     if (ctx__.control().verbosity_ > 2 && ctx__.comm().rank() == 0) {
         printf("\n");
         printf("rho force\n");
@@ -311,7 +311,7 @@ void Force::total_force(Simulation_context_base& ctx__,
             printf("ia : %i, density contribution : %12.6f %12.6f %12.6f\n", ia, forcerho(0, ia), forcerho(1, ia), forcerho(2, ia));
         }
     }
-    
+
     for (int ia = 0; ia < uc.num_atoms(); ia++) {
         for (int x = 0; x < 3; x++) {
             force__(x, ia) += (forcehf(x, ia) + forcerho(x, ia));
@@ -320,4 +320,3 @@ void Force::total_force(Simulation_context_base& ctx__,
 }
 
 }
-

@@ -29,7 +29,7 @@ inline void Band::solve_with_second_variation(K_point& kp__, Hamiltonian& hamilt
     if (itso.type_ == "exact") {
         diag_fv_exact(&kp__, hamiltonian__);
     } else if (itso.type_ == "davidson") {
-        diag_fv_davidson(&kp__);
+        diag_fv_davidson(&kp__, hamiltonian__);
     }
     /* generate first-variational states */
     kp__.generate_fv_states();
@@ -121,9 +121,9 @@ inline void Band::solve_for_kset(K_point_set& kset__, Hamiltonian& Hamiltonian__
     }
 
     if (ctx_.full_potential()) {
-        local_op_->prepare(ctx_.gvec_coarse(), ctx_.num_mag_dims(), Hamiltonian__.potential(), ctx_.step_function());
+        Hamiltonian__.local_op().prepare(ctx_.gvec_coarse(), ctx_.num_mag_dims(), Hamiltonian__.potential(), ctx_.step_function());
     } else {
-        local_op_->prepare(ctx_.gvec_coarse(), ctx_.num_mag_dims(), Hamiltonian__.potential());
+        Hamiltonian__.local_op().prepare(ctx_.gvec_coarse(), ctx_.num_mag_dims(), Hamiltonian__.potential());
     }
 
     if (ctx_.comm().rank() == 0 && ctx_.control().print_memory_usage_) {
@@ -147,7 +147,7 @@ inline void Band::solve_for_kset(K_point_set& kset__, Hamiltonian& Hamiltonian__
         printf("Average number of iterations: %12.6f\n", static_cast<double>(num_dav_iter) / kset__.num_kpoints());
     }
 
-    local_op_->dismiss();
+    Hamiltonian__.local_op().dismiss();
 
     /* synchronize eigen-values */
     kset__.sync_band_energies();
