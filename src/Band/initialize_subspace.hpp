@@ -1,4 +1,4 @@
-inline void Band::initialize_subspace(K_point_set& kset__, Potential& potential__) const
+inline void Band::initialize_subspace(K_point_set& kset__, Hamiltonian& H__) const
 {
     PROFILE("sirius::Band::initialize_subspace");
 
@@ -22,15 +22,15 @@ inline void Band::initialize_subspace(K_point_set& kset__, Potential& potential_
         }
     }
 
-    local_op_->prepare(ctx_.gvec_coarse(), ctx_.num_mag_dims(), potential__);
+    local_op_->prepare(ctx_.gvec_coarse(), ctx_.num_mag_dims(), H__.potential());
 
     for (int ikloc = 0; ikloc < kset__.spl_num_kpoints().local_size(); ikloc++) {
         int ik  = kset__.spl_num_kpoints(ikloc);
         auto kp = kset__[ik];
         if (ctx_.gamma_point() && (ctx_.so_correction() == false)) {
-            initialize_subspace<double>(kp, N);
+            initialize_subspace<double>(kp, H__, N);
         } else {
-            initialize_subspace<double_complex>(kp, N);
+            initialize_subspace<double_complex>(kp, H__, N);
         }
     }
     local_op_->dismiss();
@@ -46,7 +46,7 @@ inline void Band::initialize_subspace(K_point_set& kset__, Potential& potential_
 
 template <typename T>
 inline void
-Band::initialize_subspace(K_point* kp__, int num_ao__) const
+Band::initialize_subspace(K_point* kp__, Hamiltonian &H__, int num_ao__) const
 {
     PROFILE("sirius::Band::initialize_subspace|kp");
 
@@ -200,7 +200,7 @@ Band::initialize_subspace(K_point* kp__, int num_ao__) const
 
     for (int ispn_step = 0; ispn_step < num_spin_steps; ispn_step++) {
         /* apply Hamiltonian and overlap operators to the new basis functions */
-        apply_h_o<T>(kp__, ispn_step, 0, num_phi_tot, phi, hphi, ophi, d_op, q_op);
+        apply_h_o<T>(kp__, ispn_step, 0, num_phi_tot, phi, hphi, ophi, H__, d_op, q_op);
 
         /* do some checks */
         if (ctx_.control().verification_ >= 1) {

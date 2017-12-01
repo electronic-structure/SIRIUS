@@ -22,32 +22,32 @@
  *   \brief Contains interfaces to the sirius::Band solvers.
  */
 
-inline void Band::solve_with_second_variation(K_point& kp__, Potential& potential__) const
+inline void Band::solve_with_second_variation(K_point& kp__, Hamiltonian& H__) const
 {
     /* solve non-magnetic Hamiltonian (so-called first variation) */
     auto& itso = ctx_.iterative_solver_input();
     if (itso.type_ == "exact") {
-        diag_fv_exact(&kp__, potential__);
+        diag_fv_exact(&kp__, H__);
     } else if (itso.type_ == "davidson") {
-        diag_fv_davidson(&kp__);
+        diag_fv_davidson(&kp__, H__);
     }
     /* generate first-variational states */
     kp__.generate_fv_states();
     /* solve magnetic Hamiltonian */
-    diag_sv(&kp__, potential__);
+    diag_sv(&kp__, H__);
     /* generate spinor wave-functions */
     kp__.generate_spinor_wave_functions();
 }
 
-inline int Band::solve_with_single_variation(K_point& kp__, Potential& potential__) const
+inline int Band::solve_with_single_variation(K_point& kp__, Hamiltonian& H__) const
 {
     int niter{0};
     switch (ctx_.esm_type()) {
         case electronic_structure_method_t::pseudopotential: {
             if (ctx_.gamma_point() && (ctx_.so_correction() == false)) {
-                niter = diag_pseudo_potential<double>(&kp__);
+                niter = diag_pseudo_potential<double>(&kp__, H__);
             } else {
-                niter = diag_pseudo_potential<double_complex>(&kp__);
+                niter = diag_pseudo_potential<double_complex>(&kp__, H__);
             }
             break;
         }
@@ -109,27 +109,27 @@ inline int Band::solve_with_single_variation(K_point& kp__, Potential& potential
     return niter;
 }
 
-inline void Band::solve_for_kset(K_point_set& kset__, Potential& potential__, bool precompute__) const
+inline void Band::solve_for_kset(K_point_set& kset__, Hamiltonian& H__, bool precompute__) const
 {
     PROFILE("sirius::Band::solve_for_kset");
 
     if (precompute__ && ctx_.full_potential()) {
-        potential__.generate_pw_coefs();
-        potential__.update_atomic_potential();
+        H__.potential().generate_pw_coefs();
+        H__.potential().update_atomic_potential();
         unit_cell_.generate_radial_functions();
         unit_cell_.generate_radial_integrals();
     }
 
     if (ctx_.full_potential()) {
-        local_op_->prepare(ctx_.gvec_coarse(), ctx_.num_mag_dims(), potential__, ctx_.step_function());
+        local_op_->prepare(ctx_.gvec_coarse(), ctx_.num_mag_dims(), H__.potential(), ctx_.step_function());
     } else {
-        local_op_->prepare(ctx_.gvec_coarse(), ctx_.num_mag_dims(), potential__);
+        local_op_->prepare(ctx_.gvec_coarse(), ctx_.num_mag_dims(), H__.potential());
     }
 
     if (ctx_.comm().rank() == 0 && ctx_.control().print_memory_usage_) {
         MEMORY_USAGE_INFO();
     }
-    
+
     int num_dav_iter{0};
     /* solve secular equation and generate wave functions */
     for (int ikloc = 0; ikloc < kset__.spl_num_kpoints().local_size(); ikloc++) {
@@ -137,9 +137,9 @@ inline void Band::solve_for_kset(K_point_set& kset__, Potential& potential__, bo
         auto kp = kset__[ik];
 
         if (ctx_.full_potential() && use_second_variation) {
-            solve_with_second_variation(*kp, potential__);
+            solve_with_second_variation(*kp, H__);
         } else {
-            num_dav_iter += solve_with_single_variation(*kp, potential__);
+            num_dav_iter += solve_with_single_variation(*kp, H__);
         }
     }
     kset__.comm().allreduce(&num_dav_iter, 1);

@@ -8,6 +8,7 @@ void Band::apply_h(K_point* kp__,
                    int n__,
                    wave_functions& phi__,
                    wave_functions& hphi__,
+                   Hamiltonian &H,
                    D_operator<T>& d_op) const
 {
     PROFILE("sirius::Band::apply_h");
@@ -82,6 +83,7 @@ void Band::apply_h_o(K_point* kp__,
                      Wave_functions& phi__,
                      Wave_functions& hphi__,
                      Wave_functions& ophi__,
+                     Hamiltonian &H_,
                      D_operator<T>& d_op,
                      Q_operator<T>& q_op) const
 {
@@ -169,9 +171,11 @@ void Band::apply_h_o(K_point* kp__,
 
     // apply the hubbard potential if relevant
     if(ctx_.hubbard_correction() && !ctx_.gamma_point()) {
-        // note that it is done only one's
-        U_->generate_atomic_orbitals(*kp__, q_op);
-        U_->apply_hubbard_potential(*kp__, N__, n__, phi__, hphi__);
+        // note that the first function is called only one's in full
+        // version and will return immediately if the wave functions already exist
+        H_.U().generate_atomic_orbitals(*kp__, q_op);
+
+        H_.U().apply_hubbard_potential(*kp__, N__, n__, phi__, hphi__);
     }
 
     if (ctx_.control().print_checksum_) {
