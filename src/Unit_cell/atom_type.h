@@ -1541,6 +1541,8 @@ inline void Atom_type::init(int offset_lo__)
     }
 
     if (this->hubbard_correction_) {
+        set_hubbard_l_and_n_orbital();
+        set_occupancy_hubbard_orbital(-1.0);
         compute_hubbard_matrix();
     }
 

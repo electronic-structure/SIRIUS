@@ -15,10 +15,11 @@ class Hamiltonian
   /// Alias for the unit cell.
   Unit_cell& unit_cell_;
 
+  /// alias for the potential
+  Potential &potential_;
+
   /// Alias for the hubbard potential (note it is a pointer)
   std::unique_ptr<Hubbard_potential> U_;
-
-  Potential &potential_;
 
  public:
   Hubbard_potential& U() const

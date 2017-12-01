@@ -7,6 +7,7 @@
 #include "k_point.h"
 #include "wave_functions.hpp"
 #include "non_local_operator.h"
+#include "radial_integrals.h"
 #include "mixer.h"
 
 namespace sirius {
@@ -65,7 +66,7 @@ class Hubbard_potential
 
     /// pointer the radial integrals of the projectors. Only there for
     /// future use.
-    std::unique_ptr<Radial_integrals_centered_atomic_wfc> wfc_;
+    ///std::unique_ptr<Radial_integrals_centered_atomic_wfc> wfc_;
 
 public:
     void set_hubbard_U_plus_V(const bool U_plus_V_)

@@ -637,7 +637,7 @@ struct Hubbard_input
 
             species.push_back(std::make_pair(label, coef_));
         }
-        if (parser["habbard"].count("hubbard_u_plus_v")) {
+        if (parser["hubbard"].count("hubbard_u_plus_v")) {
             hubbard_U_plus_V_ = true;
         }
 

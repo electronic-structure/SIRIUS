@@ -1,4 +1,4 @@
-inline void Band::diag_fv_exact(K_point* kp, Hamiltonian &H__) const
+inline void Band::diag_fv_exact(K_point* kp, Hamiltonian& hamiltonian__) const
 {
     PROFILE("sirius::Band::diag_fv_exact");
 
@@ -19,12 +19,12 @@ inline void Band::diag_fv_exact(K_point* kp, Hamiltonian &H__) const
     /* setup Hamiltonian and overlap */
     switch (ctx_.processing_unit()) {
         case CPU: {
-            set_fv_h_o<CPU, electronic_structure_method_t::full_potential_lapwlo>(kp, H__, h, o);
+            set_fv_h_o<CPU, electronic_structure_method_t::full_potential_lapwlo>(kp, hamiltonian__, h, o);
             break;
         }
         #ifdef __GPU
         case GPU: {
-            set_fv_h_o<GPU, electronic_structure_method_t::full_potential_lapwlo>(kp, H__, h, o);
+            set_fv_h_o<GPU, electronic_structure_method_t::full_potential_lapwlo>(kp, hamiltonian__, h, o);
             break;
         }
         #endif
@@ -66,9 +66,9 @@ inline void Band::diag_fv_exact(K_point* kp, Hamiltonian &H__) const
     std::vector<double> eval(ctx_.num_fv_states());
 
     sddk::timer t("sirius::Band::diag_fv_exact|genevp");
-    if (gen_evp_solver().solve(kp->gklo_basis_size(), ctx_.num_fv_states(), h.at<CPU>(), h.ld(), o.at<CPU>(), o.ld(),
-                               eval.data(), kp->fv_eigen_vectors().at<CPU>(), kp->fv_eigen_vectors().ld(),
-                               kp->gklo_basis_size_row(), kp->gklo_basis_size_col())) {
+    auto solver = ctx_.gen_evp_solver<double_complex>();
+
+    if (solver->solve(kp->gklo_basis_size(), ctx_.num_fv_states(), h, o, eval.data(), kp->fv_eigen_vectors())) {
         TERMINATE("error in generalized eigen-value problem");
     }
     t.stop();
@@ -267,6 +267,8 @@ inline void Band::get_singular_components(K_point* kp__) const
     #endif
     #endif
 
+    auto std_solver = ctx_.std_evp_solver<double_complex>();
+
     /* start iterative diagonalization */
     for (int k = 0; k < itso.num_steps_; k++) {
         /* apply Hamiltonian and overlap operators to the new basis functions */
@@ -393,7 +395,7 @@ inline void Band::get_singular_components(K_point* kp__) const
     kp__->comm().barrier();
 }
 
-inline void Band::diag_fv_davidson(K_point* kp, Hamiltonian &H__) const
+inline void Band::diag_fv_davidson(K_point* kp) const
 {
     PROFILE("sirius::Band::diag_fv_davidson");
 
@@ -523,6 +525,8 @@ inline void Band::diag_fv_davidson(K_point* kp, Hamiltonian &H__) const
         MEMORY_USAGE_INFO();
     }
 
+    auto std_solver = ctx_.std_evp_solver<double_complex>();
+
     /* start iterative diagonalization */
     for (int k = 0; k < itso.num_steps_; k++) {
         /* apply Hamiltonian and overlap operators to the new basis functions */
@@ -603,7 +607,7 @@ inline void Band::diag_fv_davidson(K_point* kp, Hamiltonian &H__) const
 }
 
 inline void Band::diag_sv(K_point* kp,
-                          Hamiltonian& H__) const
+                          Hamiltonian& hamiltonian__) const
 {
     PROFILE("sirius::Band::diag_sv");
 
@@ -684,11 +688,8 @@ inline void Band::diag_sv(K_point* kp,
     }
     #endif
 
-<<<<<<< HEAD
-=======
     auto std_solver = ctx_.std_evp_solver<double_complex>();
 
->>>>>>> 92039fd84a1a4436392f5ee5acd8b74fcac4cf59
     if (ctx_.num_mag_dims() != 3) {
         dmatrix<double_complex> h(nfv, nfv, ctx_.blacs_grid(), bs, bs);
         if (kp->num_ranks() == 1 && ctx_.processing_unit() == GPU) {

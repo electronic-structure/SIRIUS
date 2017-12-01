@@ -27,9 +27,12 @@
 
 #include "periodic_function.h"
 #include "k_point_set.h"
+#include "potential.h"
 #include "local_operator.h"
 #include "non_local_operator.h"
+#include "hubbard.hpp"
 #include "Hamiltonian.h"
+
 namespace sirius
 {
 
@@ -58,18 +61,19 @@ class Band
         std::unique_ptr<Local_operator> local_op_;
 
         /// Solve the band diagonalziation problem with single (full) variation.
-        inline int solve_with_single_variation(K_point& kp__, Hamiltonian& H__) const;
+        inline int solve_with_single_variation(K_point& kp__, Hamiltonian& hamiltonian__) const;
 
         /// Solve the band diagonalziation problem with second variation approach.
         /** This is only used by the FP-LAPW method. */
-        inline void solve_with_second_variation(K_point& kp__, Hamiltonian& H__) const;
+        inline void solve_with_second_variation(K_point& kp__, Hamiltonian& hamiltonian__) const;
 
         /// Solve the first-variational (non-magnetic) problem with exact diagonalization.
         /** This is only used by the LAPW method. */
-        inline void diag_fv_exact(K_point* kp__, Hamiltonian &H__) const;
+        inline void diag_fv_exact(K_point* kp__,
+                                  Hamiltonian& hamiltonian__) const;
 
         /// Solve the first-variational (non-magnetic) problem with iterative Davidson diagonalization.
-        inline void diag_fv_davidson(K_point* kp__, Hamiltonian &H__) const;
+        inline void diag_fv_davidson(K_point* kp__) const;
 
         /// Apply effective magentic field to the first-variational state.
         /** Must be called first because hpsi is overwritten with B|fv_j>. */
@@ -91,7 +95,7 @@ class Band
 
         /// Add interstitial contribution to apw-apw block of Hamiltonian and overlap
         inline void set_fv_h_o_it(K_point* kp__,
-                                  Hamiltonian const& H__,
+                                  Hamiltonian const& hamiltonian__,
                                   matrix<double_complex>& h__,
                                   matrix<double_complex>& o__) const;
 
@@ -168,7 +172,7 @@ class Band
                             int n__,
                             wave_functions& phi__,
                             wave_functions& hphi__,
-                            Hamiltonian &H_,
+                            Hamiltonian &H__,
                             D_operator<T>& d_op) const;
 
         template <typename T>
@@ -179,7 +183,7 @@ class Band
                        Wave_functions& phi__,
                        Wave_functions& hphi__,
                        Wave_functions& ophi__,
-                       Hamiltonian & H_,
+                       Hamiltonian &H__,
                        D_operator<T>& d_op,
                        Q_operator<T>& q_op) const;
 
@@ -332,7 +336,7 @@ class Band
 
         /// Diagonalize a pseudo-potential Hamiltonian.
         template <typename T>
-            int diag_pseudo_potential(K_point* kp__, Hamiltonian &H__) const
+            int diag_pseudo_potential(K_point* kp__, Hamiltonian &H_) const
         {
             PROFILE("sirius::Band::diag_pseudo_potential");
 
@@ -348,17 +352,17 @@ class Band
             if (itso.type_ == "exact") {
                 if (ctx_.num_mag_dims() != 3) {
                     for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-                        diag_pseudo_potential_exact(kp__, ispn, H__, d_op, q_op);
+                        diag_pseudo_potential_exact(kp__, ispn, H_, d_op, q_op);
                     }
                 } else {
                     STOP();
                 }
             } else if (itso.type_ == "davidson") {
-                niter = diag_pseudo_potential_davidson(kp__, H__, d_op, q_op);
+                niter = diag_pseudo_potential_davidson(kp__, H_, d_op, q_op);
             } else if (itso.type_ == "rmm-diis") {
                 if (ctx_.num_mag_dims() != 3) {
                     for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-                        diag_pseudo_potential_rmm_diis(kp__, ispn, H__, d_op, q_op);
+                        diag_pseudo_potential_rmm_diis(kp__, ispn, H_, d_op, q_op);
                     }
                 } else {
                     STOP();
@@ -367,7 +371,7 @@ class Band
                 P_operator<T> p_op(ctx_, kp__->beta_projectors(), kp__->p_mtrx());
                 if (ctx_.num_mag_dims() != 3) {
                     for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-                        diag_pseudo_potential_chebyshev(kp__, ispn, H__, d_op, q_op, p_op);
+                        diag_pseudo_potential_chebyshev(kp__, ispn, H_, d_op, q_op, p_op);
 
                     }
                 } else {
@@ -398,7 +402,6 @@ class Band
                                                        SHT::gaunt_hybrid));
 
             local_op_ = std::unique_ptr<Local_operator>(new Local_operator(ctx_, ctx_.fft_coarse()));
-
         }
 
         /// Apply the muffin-tin part of the Hamiltonian to the apw basis functions of an atom.
@@ -538,7 +541,7 @@ class Band
          */
         template <device_t pu, electronic_structure_method_t basis>
         inline void set_fv_h_o(K_point* kp,
-                               Hamiltonian const& Hamiltonian__,
+                               Hamiltonian const& hamiltonian__,
                                dmatrix<double_complex>& h,
                                dmatrix<double_complex>& o) const;
 
@@ -713,7 +716,7 @@ class Band
         /// Initialize the wave-functions subspace.
         template <typename T>
         inline void initialize_subspace(K_point*                                        kp__,
-                                        Hamiltonian &H__,
+                                        Hamiltonian& hamiltonian__,
                                         int                                             num_ao__) const;
 };
 

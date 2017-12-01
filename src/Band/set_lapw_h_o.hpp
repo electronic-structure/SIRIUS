@@ -24,7 +24,7 @@
 
 template<>
 inline void Band::set_fv_h_o<CPU, electronic_structure_method_t::full_potential_lapwlo>(K_point* kp__,
-                                                                                        Hamiltonian const& H__,
+                                                                                        Hamiltonian const& Hamiltonian__,
                                                                                         dmatrix<double_complex>& h__,
                                                                                         dmatrix<double_complex>& o__) const
 {
@@ -142,7 +142,7 @@ inline void Band::set_fv_h_o<CPU, electronic_structure_method_t::full_potential_
     }
 
     /* add interstitial contributon */
-    set_fv_h_o_it(kp__, H__, h__, o__);
+    set_fv_h_o_it(kp__, Hamiltonian__, h__, o__);
 
     /* setup lo-lo block */
     set_fv_h_o_lo_lo(kp__, h__, o__);
@@ -151,7 +151,7 @@ inline void Band::set_fv_h_o<CPU, electronic_structure_method_t::full_potential_
 #ifdef __GPU
 template<>
 inline void Band::set_fv_h_o<GPU, electronic_structure_method_t::full_potential_lapwlo>(K_point* kp__,
-                                                                                        Hamiltonian const& H__,
+                                                                                        Hamiltonian const& Hamiltonian__,
                                                                                         dmatrix<double_complex>& h__,
                                                                                         dmatrix<double_complex>& o__) const
 {
@@ -263,7 +263,7 @@ inline void Band::set_fv_h_o<GPU, electronic_structure_method_t::full_potential_
     }
 
     /* add interstitial contributon */
-    set_fv_h_o_it(kp__, H__, h__, o__);
+    set_fv_h_o_it(kp__, Hamiltonian__.potential(), h__, o__);
 
     /* setup lo-lo block */
     set_fv_h_o_lo_lo(kp__, h__, o__);
@@ -367,7 +367,7 @@ inline void Band::set_fv_h_o_apw_lo(K_point* kp,
 }
 
 inline void Band::set_fv_h_o_it(K_point* kp,
-                                Hamiltonian const& H__,
+                                Hamiltonian const& Hamiltonian__,
                                 mdarray<double_complex, 2>& h,
                                 mdarray<double_complex, 2>& o) const
 {
@@ -393,16 +393,16 @@ inline void Band::set_fv_h_o_it(K_point* kp,
             /* pw kinetic energy */
             double t1 = 0.5 * dot(gkvec_row_cart, gkvec_col_cart);
 
-            h(igk_row, igk_col) += H__.potential().veff_pw(ig12);
+            h(igk_row, igk_col) += Hamiltonian__.potential().veff_pw(ig12);
             o(igk_row, igk_col) += ctx_.step_function().theta_pw(ig12);
 
             if (ctx_.valence_relativity() == relativity_t::none) {
                 h(igk_row, igk_col) += t1 * ctx_.step_function().theta_pw(ig12);
             } else {
-                h(igk_row, igk_col) += t1 * H__.potential().rm_inv_pw(ig12);
+                h(igk_row, igk_col) += t1 * Hamiltonian__.potential().rm_inv_pw(ig12);
             }
             if (ctx_.valence_relativity() == relativity_t::iora) {
-                o(igk_row, igk_col) += t1 * sq_alpha_half * H__.potential().rm2_inv_pw(ig12);
+                o(igk_row, igk_col) += t1 * sq_alpha_half * Hamiltonian__.potential().rm2_inv_pw(ig12);
             }
         }
     }

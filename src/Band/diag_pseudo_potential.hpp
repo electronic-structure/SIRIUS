@@ -51,14 +51,14 @@ inline void Band::diag_pseudo_potential_exact(K_point* kp__,
     printf("checksum(o): %18.10f %18.10f\n", z2.real(), z2.imag());
     #endif
 
-    if (gen_evp_solver().solve(ngk, num_bands,
-                               hphi.component(0).pw_coeffs().prime().at<CPU>(),
-                               hphi.component(0).pw_coeffs().prime().ld(),
-                               ophi.component(0).pw_coeffs().prime().at<CPU>(),
-                               ophi.component(0).pw_coeffs().prime().ld(),
-                               &eval[0],
-                               psi.pw_coeffs().prime().at<CPU>(),
-                               psi.pw_coeffs().prime().ld())) {
+    auto gen_solver = ctx_.gen_evp_solver<double_complex>();
+
+    TERMINATE("fix this later");
+    dmatrix<double_complex> hmlt(hphi[0].pw_coeffs().prime().template at<CPU>(), ngk, ngk);
+    dmatrix<double_complex> ovlp(ophi[0].pw_coeffs().prime().template at<CPU>(), ngk, ngk);
+    dmatrix<double_complex> Z(psi.pw_coeffs().prime().template at<CPU>(), ngk, ngk);
+
+    if (gen_solver->solve(ngk, num_bands, hmlt, ovlp, &eval[0], Z)) {
         TERMINATE("error in evp solve");
     }
 
@@ -69,7 +69,7 @@ inline void Band::diag_pseudo_potential_exact(K_point* kp__,
 
 template <typename T>
 inline int Band::diag_pseudo_potential_davidson(K_point*       kp__,
-                                                Hamiltonian &H_,
+                                                Hamiltonian& H_,
                                                 D_operator<T>& d_op__,
                                                 Q_operator<T>& q_op__) const
 {
@@ -440,7 +440,7 @@ inline int Band::diag_pseudo_potential_davidson(K_point*       kp__,
 template <typename T>
 inline void Band::diag_pseudo_potential_chebyshev(K_point* kp__,
                                                   int ispn__,
-                                                  Hamiltonian &H_,
+                                                  Hamiltonian &H__,
                                                   D_operator<T>& d_op__,
                                                   Q_operator<T>& q_op__,
                                                   P_operator<T>& p_op__) const
@@ -696,7 +696,7 @@ inner_local<double_complex>(K_point* kp__,
 template <typename T>
 inline void Band::diag_pseudo_potential_rmm_diis(K_point* kp__,
                                                  int ispn__,
-                                                 Hamiltonian &H_,
+                                                 Hamiltonian &H__,
                                                  D_operator<T>& d_op__,
                                                  Q_operator<T>& q_op__) const
 
@@ -705,7 +705,7 @@ inline void Band::diag_pseudo_potential_rmm_diis(K_point* kp__,
     double tol = ctx_.iterative_solver_tolerance();
 
     if (tol > 1e-4) {
-        diag_pseudo_potential_davidson(kp__, H_, d_op__, q_op__);
+        diag_pseudo_potential_davidson(kp__, H__, d_op__, q_op__);
         return;
     }
 
