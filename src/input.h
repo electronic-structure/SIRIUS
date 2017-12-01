@@ -632,7 +632,7 @@ struct Hubbard_input
 
             // now convert eV in Ha
             for (int s = 0; s < static_cast<int>(coef_.size() - 3); s++) {
-                coef_[s] *= 0.0367493;
+                coef_[s] /= ha2ev;
             }
 
             species.push_back(std::make_pair(label, coef_));

@@ -306,7 +306,7 @@ class sbessel_approx
                 qnu.resize(n);
                 for (int i = 0; i < n; i++) qnu[i] = qmin__ + (qmax__ - qmin__) * i / (n - 1);
                 
-                mdarray<double_complex, 2> ovlp(n, n);
+                dmatrix<double_complex> ovlp(n, n);
                 for (int i = 0; i < n; i++)
                 {
                     for (int j = 0; j <= i; j++)
@@ -317,10 +317,10 @@ class sbessel_approx
                 }
                 
                 std::vector<double> eval(n);
-                mdarray<double_complex, 2> z(n, n);
+                dmatrix<double_complex> z(n, n);
 
-                Eigenproblem_lapack solver;
-                solver.solve(n, ovlp.at<CPU>(), n, &eval[0], z.at<CPU>(), n);
+                Eigensolver_lapack<double_complex> solver;
+                solver.solve(n, ovlp, &eval[0], z);
                 min_val = eval[0];
 
             } while (min_val > eps__);
@@ -534,7 +534,7 @@ class Spherical_Bessel_approximant
                 qnu.resize(n);
                 for (int i = 0; i < n; i++) qnu[i] = qmin__ + (qmax__ - qmin__) * i / (n - 1);
                 
-                matrix<double> ovlp(n, n);
+                dmatrix<double> ovlp(n, n);
                 for (int i = 0; i < n; i++)
                 {
                     for (int j = 0; j <= i; j++)
@@ -545,10 +545,10 @@ class Spherical_Bessel_approximant
                 }
                 
                 std::vector<double> eval(n);
-                matrix<double> z(n, n);
+                dmatrix<double> z(n, n);
 
-                Eigenproblem_lapack solver;
-                solver.solve(n, ovlp.at<CPU>(), n, &eval[0], z.at<CPU>(), n);
+                Eigensolver_lapack<double> solver;
+                solver.solve(n, ovlp, &eval[0], z);
                 min_val = eval[0];
 
             } while (min_val > eps__);
@@ -701,7 +701,7 @@ class Spherical_Bessel_approximant2
                 qnu.resize(n);
                 for (int i = 0; i < n; i++) qnu[i] = qmin__ + (qmax__ - qmin__) * i / (n - 1);
                 
-                matrix<double> ovlp(n, n);
+                dmatrix<double> ovlp(n, n);
                 for (int i = 0; i < n; i++)
                 {
                     for (int j = 0; j <= i; j++)
@@ -712,10 +712,10 @@ class Spherical_Bessel_approximant2
                 }
                 
                 std::vector<double> eval(n);
-                matrix<double> z(n, n);
+                dmatrix<double> z(n, n);
 
-                Eigenproblem_lapack solver;
-                solver.solve(n, ovlp.at<CPU>(), n, &eval[0], z.at<CPU>(), n);
+                Eigensolver_lapack<double> solver;
+                solver.solve(n, ovlp, &eval[0], z);
                 min_val = eval[0];
 
                 if (n > 100) return 100;

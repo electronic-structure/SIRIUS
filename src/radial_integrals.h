@@ -47,16 +47,13 @@ class Radial_integrals_base
     /// Array with integrals.
     mdarray<Spline<double>, N> values_;
 
-    /// product qmax__ * np__
-    int nq_{0};
   public:
     /// Constructor.
     Radial_integrals_base(Unit_cell const& unit_cell__, double qmax__, int np__)
         : unit_cell_(unit_cell__)
     {
         grid_q_ = Radial_grid_lin<double>(static_cast<int>(np__ * qmax__), 0, qmax__);
-        nq_ = static_cast<int>(np__ * qmax__);
-        spl_q_ = splindex<block>(grid_q_.num_points(), unit_cell_.comm().size(), unit_cell_.comm().rank());
+        spl_q_  = splindex<block>(grid_q_.num_points(), unit_cell_.comm().size(), unit_cell_.comm().rank());
     }
 
     /// Get starting index iq and delta dq for the q-point on the linear grid.
@@ -80,17 +77,16 @@ class Radial_integrals_base
 
     inline int nq() const
     {
-        return nq_;
+        return grid_q_.num_points();
     }
 };
 
 /// Radial integrals of the atomic centered orbitals. It is used in
 /// initialize_subspace and in the hubbard correction
 
- class Radial_integrals_centered_atomic_wfc : public Radial_integrals_base<2>
+class Radial_integrals_atomic_wf : public Radial_integrals_base<2>
 {
- private:
-
+  private:
     std::vector<std::vector<int>> angular_momentum;
     std::vector<std::vector<double>> total_angular_momentum;
 
@@ -110,7 +106,7 @@ class Radial_integrals_base
 
             auto& atom_type = unit_cell_.atom_type(iat);
             /* create jl(qx) */
-#pragma omp parallel for
+            #pragma omp parallel for
             for (int iq = 0; iq < nq(); iq++) {
                 jl(iq) = Spherical_Bessel_functions(atom_type.indexr().lmax(), atom_type.radial_grid(), grid_q_[iq]);
             }
@@ -135,14 +131,15 @@ class Radial_integrals_base
                 double norm = inner(wf, wf, 0);
 
                 int l = atom_type.pp_desc().atomic_pseudo_wfs_[i].first;
-#pragma omp parallel for
+                
+                #pragma omp parallel for
                 for (int iq = 0; iq < nq(); iq++) {
                     values_(i, iat)[iq] = sirius::inner(jl(iq)[l], wf, 1) / std::sqrt(norm);
                 }
 
                 values_(i, iat).interpolate();
                 angular_momentum[iat][i] = l;
-                if(atom_type.pp_desc().total_angular_momentum_wfs.size()) {
+                if (atom_type.pp_desc().total_angular_momentum_wfs.size()) {
                     // will need it for Hubbard + so
                     total_angular_momentum[iat][i] = atom_type.pp_desc().total_angular_momentum_wfs[i];
                 }
@@ -150,33 +147,42 @@ class Radial_integrals_base
         }
     }
 
- public :
- Radial_integrals_centered_atomic_wfc(Unit_cell const& unit_cell__, double qmax__, int np__)
-     : Radial_integrals_base<2>(unit_cell__, qmax__, np__)
-        {
-            int no_max = -1;
-            for(int atp=0;atp<unit_cell__.num_atom_types();atp++)
-                {
-                    if(no_max < static_cast<int>(unit_cell__.atom_type(atp).pp_desc().atomic_pseudo_wfs_.size()))
-                        no_max = static_cast<int>(unit_cell__.atom_type(atp).pp_desc().atomic_pseudo_wfs_.size());
-                }
-
-            values_ = mdarray<Spline<double>, 2>(no_max,
-                                                 unit_cell_.num_atom_types());
-
-            generate();
+  public:
+    Radial_integrals_atomic_wf(Unit_cell const& unit_cell__, double qmax__, int np__)
+        : Radial_integrals_base<2>(unit_cell__, qmax__, np__)
+    {
+        int no_max{0};
+        for (int iat = 0; iat < unit_cell__.num_atom_types(); iat++) {
+            no_max = std::max(no_max, static_cast<int>(unit_cell__.atom_type(iat).pp_desc().atomic_pseudo_wfs_.size()));
         }
 
+        values_ = mdarray<Spline<double>, 2>(no_max, unit_cell_.num_atom_types());
+
+        generate();
+    }
+
     /// retrieve a given orbital from an atom type
-    inline Spline<double> const &orbital(const size_t wfc, const size_t iat) const
+    inline Spline<double> const& values(int iwf__, int iat__) const
     {
-        return values_(wfc, iat);
+        return values_(iwf__, iat__);
+    }
+
+    /// Get all values for a given atom type and q-point.
+    inline mdarray<double, 1> values(int iat__, double q__) const
+    {
+        auto idx        = iqdq(q__);
+        auto& atom_type = unit_cell_.atom_type(iat__);
+        mdarray<double, 1> val(atom_type.pp_desc().atomic_pseudo_wfs_.size());
+        for (int i = 0; i < static_cast<int>(atom_type.pp_desc().atomic_pseudo_wfs_.size()); i++) {
+            val(i) = values_(i, iat__)(idx.first, idx.second);
+        }
+        return std::move(val);
     }
 };
 
 /// Radial integrals of the augmentation operator.
 template <bool jl_deriv>
-class Radial_integrals_aug: public Radial_integrals_base<3>
+class Radial_integrals_aug : public Radial_integrals_base<3>
 {
   private:
     void generate()
@@ -219,11 +225,11 @@ class Radial_integrals_aug: public Radial_integrals_base<3>
                             if (l3 >= std::abs(l1 - l2) && l3 <= (l1 + l2) && (l1 + l2 + l3) % 2 == 0) {
                                 if (jl_deriv) {
                                     auto s = jl.deriv_q(l3);
-                                    values_(idx, l3, iat)[iq] = sirius::inner(s, atom_type.q_rf(idx, l3), 0,
-                                                                              atom_type.num_mt_points());
+                                    values_(idx, l3, iat)[iq] =
+                                        sirius::inner(s, atom_type.q_rf(idx, l3), 0, atom_type.num_mt_points());
                                 } else {
-                                    values_(idx, l3, iat)[iq] = sirius::inner(jl[l3], atom_type.q_rf(idx, l3), 0,
-                                                                              atom_type.num_mt_points());
+                                    values_(idx, l3, iat)[iq] =
+                                        sirius::inner(jl[l3], atom_type.q_rf(idx, l3), 0, atom_type.num_mt_points());
                                 }
                             }
                         }
@@ -262,8 +268,8 @@ class Radial_integrals_aug: public Radial_integrals_base<3>
         auto idx = iqdq(q__);
 
         auto& atom_type = unit_cell_.atom_type(iat__);
-        int lmax = atom_type.indexr().lmax();
-        int nbrf = atom_type.mt_radial_basis_size();
+        int lmax        = atom_type.indexr().lmax();
+        int nbrf        = atom_type.mt_radial_basis_size();
 
         mdarray<double, 2> val(nbrf * (nbrf + 1) / 2, 2 * lmax + 1);
         for (int l = 0; l <= 2 * lmax; l++) {
@@ -275,7 +281,7 @@ class Radial_integrals_aug: public Radial_integrals_base<3>
     }
 };
 
-class Radial_integrals_rho_pseudo: public Radial_integrals_base<1>
+class Radial_integrals_rho_pseudo : public Radial_integrals_base<1>
 {
   private:
     void generate()
@@ -284,7 +290,7 @@ class Radial_integrals_rho_pseudo: public Radial_integrals_base<1>
 
         for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
             auto& atom_type = unit_cell_.atom_type(iat);
-            values_(iat) = Spline<double>(grid_q_);
+            values_(iat)    = Spline<double>(grid_q_);
 
             Spline<double> rho(atom_type.radial_grid());
             for (int ir = 0; ir < atom_type.num_mt_points(); ir++) {
@@ -314,7 +320,7 @@ class Radial_integrals_rho_pseudo: public Radial_integrals_base<1>
 };
 
 template <bool jl_deriv>
-class Radial_integrals_rho_core_pseudo: public Radial_integrals_base<1>
+class Radial_integrals_rho_core_pseudo : public Radial_integrals_base<1>
 {
   private:
     void generate()
@@ -323,7 +329,7 @@ class Radial_integrals_rho_core_pseudo: public Radial_integrals_base<1>
 
         for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
             auto& atom_type = unit_cell_.atom_type(iat);
-            values_(iat) = Spline<double>(grid_q_);
+            values_(iat)    = Spline<double>(grid_q_);
 
             Spline<double> ps_core(atom_type.radial_grid());
             for (int ir = 0; ir < atom_type.num_mt_points(); ir++) {
@@ -337,7 +343,7 @@ class Radial_integrals_rho_core_pseudo: public Radial_integrals_base<1>
                 Spherical_Bessel_functions jl(0, atom_type.radial_grid(), grid_q_[iq]);
 
                 if (jl_deriv) {
-                    auto s = jl.deriv_q(0);
+                    auto s           = jl.deriv_q(0);
                     values_(iat)[iq] = sirius::inner(s, ps_core, 2, atom_type.num_mt_points());
                 } else {
                     values_(iat)[iq] = sirius::inner(jl[0], ps_core, 2, atom_type.num_mt_points());
@@ -358,7 +364,7 @@ class Radial_integrals_rho_core_pseudo: public Radial_integrals_base<1>
 };
 
 template <bool jl_deriv>
-class Radial_integrals_beta: public Radial_integrals_base<2>
+class Radial_integrals_beta : public Radial_integrals_base<2>
 {
   private:
     void generate()
@@ -367,7 +373,7 @@ class Radial_integrals_beta: public Radial_integrals_base<2>
 
         for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
             auto& atom_type = unit_cell_.atom_type(iat);
-            int nrb = atom_type.mt_radial_basis_size();
+            int nrb         = atom_type.mt_radial_basis_size();
 
             for (int idxrf = 0; idxrf < nrb; idxrf++) {
                 values_(idxrf, iat) = Spline<double>(grid_q_);
@@ -383,7 +389,7 @@ class Radial_integrals_beta: public Radial_integrals_base<2>
                     /* compute \int j_l(q * r) beta_l(r) r^2 dr or \int d (j_l(q*r) / dq) beta_l(r) r^2  */
                     /* remeber that beta(r) are defined as miltiplied by r */
                     if (jl_deriv) {
-                        auto s = jl.deriv_q(l);
+                        auto s                  = jl.deriv_q(l);
                         values_(idxrf, iat)[iq] = sirius::inner(s, atom_type.beta_rf(idxrf), 1, nr);
                     } else {
                         values_(idxrf, iat)[iq] = sirius::inner(jl[l], atom_type.beta_rf(idxrf), 1, nr);
@@ -406,10 +412,11 @@ class Radial_integrals_beta: public Radial_integrals_base<2>
         values_ = mdarray<Spline<double>, 2>(unit_cell_.max_mt_radial_basis_size(), unit_cell_.num_atom_types());
         generate();
     }
-
+    
+    /// Get all values for a given atom type and q-point.
     inline mdarray<double, 1> values(int iat__, double q__) const
     {
-        auto idx = iqdq(q__);
+        auto idx        = iqdq(q__);
         auto& atom_type = unit_cell_.atom_type(iat__);
         mdarray<double, 1> val(atom_type.mt_radial_basis_size());
         for (int i = 0; i < atom_type.mt_radial_basis_size(); i++) {
@@ -419,7 +426,7 @@ class Radial_integrals_beta: public Radial_integrals_base<2>
     }
 };
 
-class Radial_integrals_beta_jl: public Radial_integrals_base<3>
+class Radial_integrals_beta_jl : public Radial_integrals_base<3>
 {
   private:
     int lmax_;
@@ -430,7 +437,7 @@ class Radial_integrals_beta_jl: public Radial_integrals_base<3>
 
         for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
             auto& atom_type = unit_cell_.atom_type(iat);
-            int nrb = atom_type.mt_radial_basis_size();
+            int nrb         = atom_type.mt_radial_basis_size();
 
             for (int idxrf = 0; idxrf < nrb; idxrf++) {
                 for (int l = 0; l <= lmax_; l++) {
@@ -466,7 +473,8 @@ class Radial_integrals_beta_jl: public Radial_integrals_base<3>
     {
         lmax_ = unit_cell__.lmax() + 2;
         /* create space for <j_l(qr)|beta> radial integrals */
-        values_ = mdarray<Spline<double>, 3>(unit_cell_.max_mt_radial_basis_size(), lmax_ + 1, unit_cell_.num_atom_types());
+        values_ =
+            mdarray<Spline<double>, 3>(unit_cell_.max_mt_radial_basis_size(), lmax_ + 1, unit_cell_.num_atom_types());
         generate();
     }
 };
@@ -479,7 +487,7 @@ class Radial_integrals_beta_jl: public Radial_integrals_base<3>
  *          \Big( \sin(GR_{\alpha}) - GR_{\alpha}\cos(GR_{\alpha}) \Big) / G^3 & G \ne 0 \end{array} \right.
  *  \f]
  */
-class Radial_integrals_theta: public Radial_integrals_base<1>
+class Radial_integrals_theta : public Radial_integrals_base<1>
 {
   private:
     void generate()
@@ -488,15 +496,15 @@ class Radial_integrals_theta: public Radial_integrals_base<1>
 
         for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
             auto& atom_type = unit_cell_.atom_type(iat);
-            auto R = atom_type.mt_radius();
-            values_(iat) = Spline<double>(grid_q_);
+            auto R          = atom_type.mt_radius();
+            values_(iat)    = Spline<double>(grid_q_);
 
             #pragma omp parallel for
             for (int iq = 0; iq < grid_q_.num_points(); iq++) {
                 if (iq == 0) {
                     values_(iat)[iq] = std::pow(R, 3) / 3.0;
                 } else {
-                    double g = grid_q_[iq];
+                    double g         = grid_q_[iq];
                     values_(iat)[iq] = (std::sin(g * R) - g * R * std::cos(g * R)) / std::pow(g, 3);
                 }
             }
@@ -514,7 +522,7 @@ class Radial_integrals_theta: public Radial_integrals_base<1>
 };
 
 template <bool jl_deriv>
-class Radial_integrals_vloc: public Radial_integrals_base<1>
+class Radial_integrals_vloc : public Radial_integrals_base<1>
 {
   private:
     void generate()
@@ -523,7 +531,7 @@ class Radial_integrals_vloc: public Radial_integrals_base<1>
 
         for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
             auto& atom_type = unit_cell_.atom_type(iat);
-            values_(iat) = Spline<double>(grid_q_);
+            values_(iat)    = Spline<double>(grid_q_);
 
             int np = atom_type.radial_grid().index_of(10);
             if (np == -1) {
@@ -540,25 +548,28 @@ class Radial_integrals_vloc: public Radial_integrals_base<1>
                 if (jl_deriv) { /* integral with derivative of j0(q*r) over q */
                     for (int ir = 0; ir < rg.num_points(); ir++) {
                         double x = rg[ir];
-                        s[ir] = (x * atom_type.pp_desc().vloc[ir] + atom_type.zn() * gsl_sf_erf(x)) * (std::sin(g * x) - g * x * std::cos(g * x));
+                        s[ir]    = (x * atom_type.pp_desc().vloc[ir] + atom_type.zn() * gsl_sf_erf(x)) *
+                                (std::sin(g * x) - g * x * std::cos(g * x));
                     }
-                } else { /* integral with j0(q*r) */
+                } else {           /* integral with j0(q*r) */
                     if (iq == 0) { /* q=0 case */
-                        if (unit_cell_.parameters().parameters_input().enable_esm_ && unit_cell_.parameters().parameters_input().esm_bc_ != "pbc") {
+                        if (unit_cell_.parameters().parameters_input().enable_esm_ &&
+                            unit_cell_.parameters().parameters_input().esm_bc_ != "pbc") {
                             for (int ir = 0; ir < rg.num_points(); ir++) {
                                 double x = rg[ir];
-                                s[ir] = (x * atom_type.pp_desc().vloc[ir] + atom_type.zn() * gsl_sf_erf(x)) * x;
+                                s[ir]    = (x * atom_type.pp_desc().vloc[ir] + atom_type.zn() * gsl_sf_erf(x)) * x;
                             }
                         } else {
                             for (int ir = 0; ir < rg.num_points(); ir++) {
                                 double x = rg[ir];
-                                s[ir] = (x * atom_type.pp_desc().vloc[ir] + atom_type.zn()) * x;
+                                s[ir]    = (x * atom_type.pp_desc().vloc[ir] + atom_type.zn()) * x;
                             }
                         }
                     } else {
                         for (int ir = 0; ir < rg.num_points(); ir++) {
                             double x = rg[ir];
-                            s[ir] = (x * atom_type.pp_desc().vloc[ir] + atom_type.zn() * gsl_sf_erf(x)) * std::sin(g * x);
+                            s[ir] =
+                                (x * atom_type.pp_desc().vloc[ir] + atom_type.zn() * gsl_sf_erf(x)) * std::sin(g * x);
                         }
                     }
                 }
@@ -588,15 +599,18 @@ class Radial_integrals_vloc: public Radial_integrals_base<1>
             }
         } else {
             auto& atom_type = unit_cell_.atom_type(iat__);
-            auto q2 = std::pow(q__, 2);
+            auto q2         = std::pow(q__, 2);
             if (jl_deriv) {
-                if (!unit_cell_.parameters().parameters_input().enable_esm_ || unit_cell_.parameters().parameters_input().esm_bc_ == "pbc") {
-                    return values_(iat__)(idx.first, idx.second) / q2 / q__ - atom_type.zn() * std::exp(-q2 / 4) * (4 + q2) / 2 / q2 / q2;
+                if (!unit_cell_.parameters().parameters_input().enable_esm_ ||
+                    unit_cell_.parameters().parameters_input().esm_bc_ == "pbc") {
+                    return values_(iat__)(idx.first, idx.second) / q2 / q__ -
+                           atom_type.zn() * std::exp(-q2 / 4) * (4 + q2) / 2 / q2 / q2;
                 } else {
                     return values_(iat__)(idx.first, idx.second) / q2 / q__;
                 }
             } else {
-                if (!unit_cell_.parameters().parameters_input().enable_esm_ || unit_cell_.parameters().parameters_input().esm_bc_ == "pbc") {
+                if (!unit_cell_.parameters().parameters_input().enable_esm_ ||
+                    unit_cell_.parameters().parameters_input().esm_bc_ == "pbc") {
                     return values_(iat__)(idx.first, idx.second) / q__ - atom_type.zn() * std::exp(-q2 / 4) / q2;
                 } else {
                     return values_(iat__)(idx.first, idx.second) / q__;
@@ -606,7 +620,7 @@ class Radial_integrals_vloc: public Radial_integrals_base<1>
     }
 };
 
-class Radial_integrals_rho_free_atom: public Radial_integrals_base<1>
+class Radial_integrals_rho_free_atom : public Radial_integrals_base<1>
 {
   private:
     void generate()
@@ -615,7 +629,7 @@ class Radial_integrals_rho_free_atom: public Radial_integrals_base<1>
 
         for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
             auto& atom_type = unit_cell_.atom_type(iat);
-            values_(iat) = Spline<double>(grid_q_);
+            values_(iat)    = Spline<double>(grid_q_);
 
             #pragma omp parallel for
             for (int iq = 0; iq < grid_q_.num_points(); iq++) {
@@ -646,6 +660,6 @@ class Radial_integrals_rho_free_atom: public Radial_integrals_base<1>
     }
 };
 
-} // namespace
+} // namespace sirius
 
 #endif // __RADIAL_INTEGRALS_H__

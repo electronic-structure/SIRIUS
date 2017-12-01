@@ -1,5 +1,3 @@
-#include "eigenproblem.h"
-
 /// Orthogonalize n new wave-functions to the N old wave-functions
 template <typename T>
 inline void orthogonalize(int N__,
@@ -111,7 +109,6 @@ inline void orthogonalize(int N__,
             }
             #endif
         } else { /* CPU version */
-            //check_hermitian("OVLP", o__, n__);
             //o__.serialize("overlap.dat", n__);
             /* Cholesky factorization */
             if (int info = linalg<CPU>::potrf(n__, &o__(0, 0), o__.ld())) {
@@ -247,6 +244,29 @@ inline void orthogonalize(int             N__,
     orthogonalize(N__, n__, wfs, 0, 2, o__, tmp__);
 }
 
+template <typename T>
+static void save_to_hdf5(std::string name__, dmatrix<T>& mtrx__, int n__)
+{
+    mdarray<T, 2> full_mtrx(n__, n__);
+    full_mtrx.zero();
+
+    for (int j = 0; j < mtrx__.num_cols_local(); j++) {
+        for (int i = 0; i < mtrx__.num_rows_local(); i++) {
+            if (mtrx__.irow(i) < n__ &&  mtrx__.icol(j) < n__) {
+                full_mtrx(mtrx__.irow(i), mtrx__.icol(j)) = mtrx__(i, j);
+            }
+        }
+    }
+    mtrx__.blacs_grid().comm().allreduce(full_mtrx.template at<CPU>(), static_cast<int>(full_mtrx.size()));
+    
+    if (mtrx__.blacs_grid().comm().rank() == 0) {
+        HDF5_tree h5(name__, true);
+        h5.write("nrow", n__);
+        h5.write("ncol", n__);
+        h5.write("mtrx", full_mtrx);
+    }
+}
+
 /// Orthogonalize n new wave-functions to the N old wave-functions
 template <typename T>
 inline void orthogonalize(device_t                     pu__,
@@ -292,10 +312,14 @@ inline void orthogonalize(device_t                     pu__,
         }
         inner(*wfs__[idx_bra__], N__, n__, *wfs__[idx_ket__], N__, n__, o__, 0, 0);
         
+        if (sddk_debug >= 3) {
+            save_to_hdf5("nxn_overlap.h5", o__, n__);
+        }
+
         std::vector<double> eo(n__);
         dmatrix<T> evec(o__.num_rows(), o__.num_cols(), o__.blacs_grid(), o__.bs_row(), o__.bs_col());
 
-        auto solver = experimental::Eigensolver_factory<T>(experimental::ev_solver_t::scalapack);
+        auto solver = Eigensolver_factory<T>(ev_solver_t::scalapack);
         solver->solve(n__, o__, eo.data(), evec);
 
         if (o__.blacs_grid().comm().rank() == 0) {
@@ -305,10 +329,6 @@ inline void orthogonalize(device_t                     pu__,
                 }
             }
         }
-
-    //    //if (o__.blacs_grid().comm().rank() == 0) { 
-    //    //    std::cout << "smallest ev of the new n x x block: " << eo[0] << std::endl;
-    //    //}
     }
 
     /* orthogonalize new n__ x n__ block */

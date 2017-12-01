@@ -539,7 +539,7 @@ inline std::vector<int> Atom_symmetry_class::check_lo_linear_independence(double
     int nmtp = atom_type_.num_mt_points();
     
     Spline<double> s(atom_type_.radial_grid());
-    mdarray<double, 2> loprod(num_lo_descriptors(), num_lo_descriptors());
+    dmatrix<double> loprod(num_lo_descriptors(), num_lo_descriptors());
     loprod.zero();
     for (int idxlo1 = 0; idxlo1 < num_lo_descriptors(); idxlo1++) {
         
@@ -562,13 +562,12 @@ inline std::vector<int> Atom_symmetry_class::check_lo_linear_independence(double
     mdarray<double, 2> ovlp(num_lo_descriptors(), num_lo_descriptors());
     loprod >> ovlp;
 
-    Eigenproblem_lapack stdevp;
+    Eigensolver_lapack<double> stdevp;
 
     std::vector<double> loprod_eval(num_lo_descriptors());
-    mdarray<double, 2> loprod_evec(num_lo_descriptors(), num_lo_descriptors());
+    dmatrix<double> loprod_evec(num_lo_descriptors(), num_lo_descriptors());
 
-    stdevp.solve(num_lo_descriptors(), loprod.at<CPU>(), loprod.ld(), &loprod_eval[0], 
-                 loprod_evec.at<CPU>(), loprod_evec.ld());
+    stdevp.solve(num_lo_descriptors(), loprod, &loprod_eval[0], loprod_evec);
 
     if (std::abs(loprod_eval[0]) < tol__) {
         printf("\n");
@@ -602,15 +601,15 @@ inline std::vector<int> Atom_symmetry_class::check_lo_linear_independence(double
         }
 
         std::vector<double> eval(ilo.size());
-        mdarray<double, 2> evec(ilo.size(), ilo.size());
-        mdarray<double, 2> tmp(ilo.size(), ilo.size());
+        dmatrix<double> evec(static_cast<int>(ilo.size()), static_cast<int>(ilo.size()));
+        dmatrix<double> tmp(static_cast<int>(ilo.size()), static_cast<int>(ilo.size()));
         for (size_t j1 = 0; j1 < ilo.size(); j1++) {
             for (size_t j2 = 0; j2 < ilo.size(); j2++) {
                 tmp(j1, j2) = ovlp(ilo[j1], ilo[j2]);
             }
         }
 
-        stdevp.solve(static_cast<int>(ilo.size()), tmp.at<CPU>(), tmp.ld(), &eval[0], evec.at<CPU>(), evec.ld());
+        stdevp.solve(static_cast<int>(ilo.size()), tmp, &eval[0], evec);
 
         if (eval[0] < tol__) {
             printf("local orbital %i can be removed\n", i);

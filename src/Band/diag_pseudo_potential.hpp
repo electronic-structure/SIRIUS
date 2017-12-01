@@ -145,7 +145,7 @@ inline int Band::diag_pseudo_potential_davidson(K_point*       kp__,
     t1.stop();
 
     sddk::timer t2("sirius::Band::diag_pseudo_potential_davidson|alloc");
-    auto mem_type = (std_evp_solver().type() == ev_magma) ? memory_t::host_pinned : memory_t::host;
+    auto mem_type = (ctx_.std_evp_solver_type() == ev_solver_t::magma) ? memory_t::host_pinned : memory_t::host;
 
     int bs = ctx_.cyclic_block_size();
 
@@ -176,7 +176,7 @@ inline int Band::diag_pseudo_potential_davidson(K_point*       kp__,
             opsi.component(i).pw_coeffs().allocate_on_device();
         }
 
-        if (kp__->comm().size() == 1) {
+        if (ctx_.blacs_grid().comm().size() == 1) {
             evec.allocate(memory_t::device);
             ovlp.allocate(memory_t::device);
             hmlt.allocate(memory_t::device);
@@ -203,6 +203,9 @@ inline int Band::diag_pseudo_potential_davidson(K_point*       kp__,
             print_checksum("o_diag", cs2);
         }
     }
+
+    auto std_solver = ctx_.std_evp_solver<T>();
+    auto gen_solver = ctx_.gen_evp_solver<T>();
 
     int niter{0};
 
@@ -235,16 +238,18 @@ inline int Band::diag_pseudo_potential_davidson(K_point*       kp__,
 
         sddk::timer t1("sirius::Band::diag_pseudo_potential_davidson|evp");
         /* solve generalized eigen-value problem with the size N and get lowest num_bands eigen-vectors */
-        if (gen_evp_solver().solve(N, num_bands,
-                                   hmlt.template at<CPU>(), hmlt.ld(),
-                                   ovlp.template at<CPU>(), ovlp.ld(),
-                                   eval.data(), evec.template at<CPU>(), evec.ld(),
-                                   hmlt.num_rows_local(), hmlt.num_cols_local())) {
+        if (gen_solver->solve(N, num_bands, hmlt, ovlp, eval.data(), evec)) {
             std::stringstream s;
             s << "error in diagonalziation";
             TERMINATE(s);
         }
         t1.stop();
+
+        if (ctx_.control().verbosity_ >= 4 && kp__->comm().rank() == 0) {
+            for (int i = 0; i < num_bands; i++) {
+                printf("eval[%i]=%20.16f\n", i, eval[i]);
+            }
+        }
 
         /* number of newly added basis functions */
         int n{0};
@@ -344,7 +349,7 @@ inline int Band::diag_pseudo_potential_davidson(K_point*       kp__,
                 if (max_diff > 1e-12) {
                     std::stringstream s;
                     s << "H matrix is not hermitian, max_err = " << max_diff;
-                    TERMINATE(s);
+                    WARNING(s);
                 }
             }
 
@@ -357,7 +362,7 @@ inline int Band::diag_pseudo_potential_davidson(K_point*       kp__,
                     if (max_diff > 1e-12) {
                         std::stringstream s;
                         s << "S matrix is not hermitian, max_err = " << max_diff;
-                        TERMINATE(s);
+                        WARNING(s);
                     }
                 }
             }
@@ -370,20 +375,14 @@ inline int Band::diag_pseudo_potential_davidson(K_point*       kp__,
             sddk::timer t1("sirius::Band::diag_pseudo_potential_davidson|evp");
             if (itso.orthogonalize_) {
                 /* solve standard eigen-value problem with the size N */
-                if (std_evp_solver().solve(N, num_bands, hmlt.template at<CPU>(), hmlt.ld(),
-                                           eval.data(), evec.template at<CPU>(), evec.ld(),
-                                           hmlt.num_rows_local(), hmlt.num_cols_local())) {
+                if (std_solver->solve(N, num_bands, hmlt, eval.data(), evec)) {
                     std::stringstream s;
                     s << "error in diagonalziation";
                     TERMINATE(s);
                 }
             } else {
                 /* solve generalized eigen-value problem with the size N */
-                if (gen_evp_solver().solve(N, num_bands,
-                                           hmlt.template at<CPU>(), hmlt.ld(),
-                                           ovlp.template at<CPU>(), ovlp.ld(),
-                                           eval.data(), evec.template at<CPU>(), evec.ld(),
-                                           hmlt.num_rows_local(), hmlt.num_cols_local())) {
+                if (gen_solver->solve(N, num_bands, hmlt, ovlp, eval.data(), evec)) {
                     std::stringstream s;
                     s << "error in diagonalziation";
                     TERMINATE(s);

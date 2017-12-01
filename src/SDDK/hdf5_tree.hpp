@@ -17,19 +17,49 @@
 // CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
 // OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-/** \file hdf5_tree.h
+/** \file hdf5_tree.hpp
  *
  *  \brief Contains definition and implementation of sirius::HDF5_tree class.
  */
 
-#ifndef __HDF5_TREE_H__
-#define __HDF5_TREE_H__
+#ifndef __HDF5_TREE_HPP__
+#define __HDF5_TREE_HPP__
 
+#include <fstream>
 #include <hdf5.h>
 #include "mdarray.hpp"
-#include "utils.h"
 
-namespace sirius {
+namespace sddk {
+
+template <typename T>
+struct hdf5_type_wrapper;
+
+template<> 
+struct hdf5_type_wrapper<double>
+{
+    static hid_t type_id()
+    {
+        return H5T_NATIVE_DOUBLE;
+    }
+};
+
+template<> 
+struct hdf5_type_wrapper<double_complex>
+{
+    static hid_t type_id()
+    {
+        return H5T_NATIVE_LDOUBLE;
+    }
+};
+
+template<> 
+struct hdf5_type_wrapper<int>
+{
+    static hid_t type_id()
+    {
+        return H5T_NATIVE_INT;
+    }
+};
 
 /// Interface to the HDF5 library.
 class HDF5_tree
@@ -185,10 +215,10 @@ class HDF5_tree
         HDF5_dataspace dataspace(dims);
 
         /* create new dataset */
-        HDF5_dataset dataset(group, dataspace, name, type_wrapper<T>::hdf5_type_id());
+        HDF5_dataset dataset(group, dataspace, name, hdf5_type_wrapper<T>::type_id());
 
         /* write data */
-        if (H5Dwrite(dataset.id(), type_wrapper<T>::hdf5_type_id(), dataspace.id(), H5S_ALL, H5P_DEFAULT, data) < 0) {
+        if (H5Dwrite(dataset.id(), hdf5_type_wrapper<T>::type_id(), dataspace.id(), H5S_ALL, H5P_DEFAULT, data) < 0) {
             TERMINATE("error in H5Dwrite()");
         }
     }
@@ -203,7 +233,7 @@ class HDF5_tree
 
         HDF5_dataset dataset(group.id(), name);
 
-        if (H5Dread(dataset.id(), type_wrapper<T>::hdf5_type_id(), dataspace.id(), H5S_ALL, H5P_DEFAULT, data) < 0) {
+        if (H5Dread(dataset.id(), hdf5_type_wrapper<T>::type_id(), dataspace.id(), H5S_ALL, H5P_DEFAULT, data) < 0) {
             TERMINATE("error in H5Dread()");
         }
     }
@@ -226,7 +256,7 @@ class HDF5_tree
             H5Eset_auto(H5E_DEFAULT, NULL, NULL);
         }
 
-        if (!truncate && Utils::file_exists(file_name_)) {
+        if (!truncate && std::ifstream(file_name_).good()) {
             /* try to open existing file */
             file_id_ = H5Fopen(file_name_.c_str(), H5F_ACC_RDWR, H5P_DEFAULT);
 
@@ -403,6 +433,6 @@ class HDF5_tree
     }
 };
 
-}; // namespace sirius
+}; // namespace sddk
 
-#endif // __HDF5_TREE_H__
+#endif // __HDF5_TREE_HPP__
