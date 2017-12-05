@@ -490,7 +490,7 @@ class matrix_storage<T, matrix_storage_t::slab>
         switch (pu__) {
             case CPU: {
                 for (int i = 0; i < n__; i++) {
-                    for (int j = 0; num_rows_loc_; j++) {
+                    for (int j = 0; j < num_rows_loc(); j++) {
                         cs += prime(j, i0__ + i);
                     }
                 }
@@ -500,7 +500,7 @@ class matrix_storage<T, matrix_storage_t::slab>
                 mdarray<double_complex, 1> cs1(n__, memory_t::host | memory_t::device, "checksum");
                 cs1.zero<memory_t::device>();
                 #ifdef __GPU
-                add_checksum_gpu(prime().template at<GPU>(0, i0__), num_rows_loc_, n__, cs1.at<GPU>());
+                add_checksum_gpu(prime().template at<GPU>(0, i0__), num_rows_loc(), n__, cs1.at<GPU>());
                 cs1.copy_to_host();
                 cs = cs1.checksum();
                 #endif
