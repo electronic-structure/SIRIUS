@@ -15,18 +15,18 @@ void apply_hubbard_potential(
 
     dm.zero();
     linalg<CPU>::gemm(2, 0, this->number_of_hubbard_orbitals(), n__,
-                      kp.hubbard_wave_functions_ppus(0).pw_coeffs().num_rows_loc(),
-                      kp.hubbard_wave_functions_ppus(0).pw_coeffs().prime().at<CPU>(0, 0),
-                      kp.hubbard_wave_functions_ppus(0).pw_coeffs().prime().ld(),
-                      phi.component(0).pw_coeffs().prime().at<CPU>(0, idx__), phi.component(0).pw_coeffs().prime().ld(),
+                      kp.hubbard_wave_functions_ppus().pw_coeffs(0).num_rows_loc(),
+                      kp.hubbard_wave_functions_ppus().pw_coeffs(0).prime().at<CPU>(0, 0),
+                      kp.hubbard_wave_functions_ppus().pw_coeffs(0).prime().ld(),
+                      phi.pw_coeffs(0).prime().at<CPU>(0, idx__), phi.pw_coeffs(0).prime().ld(),
                       dm.at<CPU>(0, 0), dm.ld());
 
     for (int s = 1; s < ctx_.num_spins(); s++) {
         linalg<CPU>::gemm(
-            2, 0, this->number_of_hubbard_orbitals(), n__, kp.hubbard_wave_functions_ppus(s).pw_coeffs().num_rows_loc(),
-            linalg_const<double_complex>::one(), kp.hubbard_wave_functions_ppus(s).pw_coeffs().prime().at<CPU>(0, 0),
-            kp.hubbard_wave_functions_ppus(s).pw_coeffs().prime().ld(),
-            phi.component(s).pw_coeffs().prime().at<CPU>(0, idx__), phi.component(s).pw_coeffs().prime().ld(),
+            2, 0, this->number_of_hubbard_orbitals(), n__, kp.hubbard_wave_functions_ppus().pw_coeffs(s).num_rows_loc(),
+            linalg_const<double_complex>::one(), kp.hubbard_wave_functions_ppus().pw_coeffs(s).prime().at<CPU>(0, 0),
+            kp.hubbard_wave_functions_ppus().pw_coeffs(s).prime().ld(),
+            phi.pw_coeffs(s).prime().at<CPU>(0, idx__), phi.pw_coeffs(s).prime().ld(),
             linalg_const<double_complex>::one(), dm.at<CPU>(0, 0), dm.ld());
     }
 
@@ -58,10 +58,9 @@ void apply_hubbard_potential(
                         }
 
                         for (int s = 0; s < ctx_.num_spins(); s++) {
-                            for (int l = 0; l < kp.hubbard_wave_functions(s).pw_coeffs().num_rows_loc(); l++) {
-                                ophi.component(s).pw_coeffs().prime(l, idx__ + nbnd) +=
-                                    temp *
-                                    kp.hubbard_wave_functions_ppus(s).pw_coeffs().prime(
+                            for (int l = 0; l < kp.hubbard_wave_functions().pw_coeffs(s).num_rows_loc(); l++) {
+                                ophi.pw_coeffs(s).prime(l, idx__ + nbnd) += temp *
+                                    kp.hubbard_wave_functions_ppus().pw_coeffs(s).prime(
                                         l, this->offset[ia] + s1 * (2 * atom.type().hubbard_l() + 1) + m1);
                             }
                         }

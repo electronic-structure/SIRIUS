@@ -60,9 +60,9 @@ Band::initialize_subspace(K_point* kp__, int num_ao__) const
     int num_phi_tot = (ctx_.num_mag_dims() == 3) ? num_phi * 2 : num_phi;
 
     /* initial basis functions */
-    Wave_functions phi(ctx_.processing_unit(), kp__->gkvec(), num_phi_tot, num_sc);
+    Wave_functions phi(kp__->gkvec(), num_phi_tot, num_sc);
     for (int ispn = 0; ispn < num_sc; ispn++) {
-        phi.component(ispn).pw_coeffs().prime().zero();
+        phi.pw_coeffs(ispn).prime().zero();
     }
 
     sddk::timer t1("sirius::Band::initialize_subspace|kp|wf");
@@ -88,13 +88,13 @@ Band::initialize_subspace(K_point* kp__, int num_ao__) const
             /* global index of G+k vector */
             int igk = kp__->idxgk(igk_loc);
             if (igk == i + 1) {
-                phi.component(0).pw_coeffs().prime(igk_loc, num_ao__ + i) = 1.0;
+                phi.pw_coeffs(0).prime(igk_loc, num_ao__ + i) = 1.0;
             }
             if (igk == i + 2) {
-                phi.component(0).pw_coeffs().prime(igk_loc, num_ao__ + i) = 0.5;
+                phi.pw_coeffs(0).prime(igk_loc, num_ao__ + i) = 0.5;
             }
             if (igk == i + 3) {
-                phi.component(0).pw_coeffs().prime(igk_loc, num_ao__ + i) = 0.25;
+                phi.pw_coeffs(0).prime(igk_loc, num_ao__ + i) = 0.25;
             }
         }
         // for (int igk_loc = 0; igk_loc < kp__->num_gkvec_loc(); igk_loc++) {
@@ -126,12 +126,12 @@ Band::initialize_subspace(K_point* kp__, int num_ao__) const
         for (int igk_loc = igk0; igk_loc < kp__->num_gkvec_loc(); igk_loc++) {
             /* global index of G+k vector */
             int igk = kp__->idxgk(igk_loc);
-            phi.component(0).pw_coeffs().prime(igk_loc, i) += tmp[igk & 0xFFF] * 1e-5;
+            phi.pw_coeffs(0).prime(igk_loc, i) += tmp[igk & 0xFFF] * 1e-5;
         }
     }
 
     if (ctx_.num_mag_dims() == 3) {
-        phi.component(1).copy_from(phi.component(0), 0, num_phi, num_phi, CPU);
+        phi.copy_from(CPU, num_phi, phi, 0, 0, 1, num_phi);
     }
     t1.stop();
 
@@ -147,10 +147,10 @@ Band::initialize_subspace(K_point* kp__, int num_ao__) const
     // Hubbard operator U_op(ctx_, )
 
     /* allocate wave-functions */
-    Wave_functions hphi(ctx_.processing_unit(), kp__->gkvec(), num_phi_tot, num_sc);
-    Wave_functions ophi(ctx_.processing_unit(), kp__->gkvec(), num_phi_tot, num_sc);
+    Wave_functions hphi(kp__->gkvec(), num_phi_tot, num_sc);
+    Wave_functions ophi(kp__->gkvec(), num_phi_tot, num_sc);
     /* temporary wave-functions required as a storage during orthogonalization */
-    wave_functions wf_tmp(ctx_.processing_unit(), kp__->gkvec(), num_phi_tot);
+    Wave_functions wf_tmp(kp__->gkvec(), num_phi_tot, num_sc);
 
     int bs        = ctx_.cyclic_block_size();
     auto mem_type = (ctx_.std_evp_solver_type() == ev_solver_t::magma) ? memory_t::host_pinned : memory_t::host;
@@ -174,16 +174,16 @@ Band::initialize_subspace(K_point* kp__, int num_ao__) const
     if (ctx_.processing_unit() == GPU) {
         if (!keep_wf_on_gpu) {
             for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-                kp__->spinor_wave_functions(ispn).pw_coeffs().allocate_on_device();
+                kp__->spinor_wave_functions().pw_coeffs(ispn).allocate_on_device();
             }
         }
         for (int ispn = 0; ispn < num_sc; ispn++) {
-            phi.component(ispn).allocate_on_device();
-            phi.component(ispn).copy_to_device(0, num_phi_tot);
-            hphi.component(ispn).allocate_on_device();
-            ophi.component(ispn).allocate_on_device();
+            phi.pw_coeffs(ispn).allocate_on_device();
+            phi.pw_coeffs(ispn).copy_to_device(0, num_phi_tot);
+            hphi.pw_coeffs(ispn).allocate_on_device();
+            ophi.pw_coeffs(ispn).allocate_on_device();
+            wf_tmp.pw_coeffs(ispn).allocate_on_device();
         }
-        wf_tmp.allocate_on_device();
         evec.allocate(memory_t::device);
         hmlt.allocate(memory_t::device);
         ovlp.allocate(memory_t::device);
@@ -196,7 +196,7 @@ Band::initialize_subspace(K_point* kp__, int num_ao__) const
 
     if (ctx_.control().print_checksum_) {
         for (int ispn = 0; ispn < num_sc; ispn++) {
-            auto cs = phi.component(ispn).checksum(0, num_phi_tot);
+            auto cs = phi.checksum_pw(ctx_.processing_unit(), ispn, 0, num_phi_tot);
             if (kp__->comm().rank() == 0) {
                 std::stringstream s;
                 s << "initial_phi" << ispn;
@@ -207,7 +207,7 @@ Band::initialize_subspace(K_point* kp__, int num_ao__) const
 
     for (int ispn_step = 0; ispn_step < num_spin_steps; ispn_step++) {
         /* apply Hamiltonian and overlap operators to the new basis functions */
-        apply_h_o<T>(kp__, ispn_step, 0, num_phi_tot, phi, hphi, ophi, d_op, q_op);
+        apply_h_s<T>(kp__, (ctx_.num_mag_dims() == 3) ? 2 : ispn_step, 0, num_phi_tot, phi, hphi, ophi, d_op, q_op);
 
         /* do some checks */
         if (ctx_.control().verification_ >= 1) {
@@ -275,13 +275,8 @@ Band::initialize_subspace(K_point* kp__, int num_ao__) const
 
         /* compute wave-functions */
         /* \Psi_{i} = \sum_{mu} \phi_{mu} * Z_{mu, i} */
-        if (ctx_.num_mag_dims() == 3) {
-            transform<T>(ctx_.processing_unit(), 1.0, {&phi}, 0, num_phi_tot, evec, 0, 0, 0.0,
-                         {&kp__->spinor_wave_functions()}, 0, num_bands);
-        } else {
-            transform<T>(ctx_.processing_unit(), phi.component(0), 0, num_phi, evec, 0, 0,
-                         kp__->spinor_wave_functions(ispn_step), 0, num_bands);
-        }
+        transform<T>(ctx_.processing_unit(), (ctx_.num_mag_dims() == 3) ? 2 : ispn_step, {&phi}, 0, num_phi_tot, evec, 0, 0, 
+                    {&kp__->spinor_wave_functions()}, 0, num_bands);
 
         for (int j = 0; j < num_bands; j++) {
             kp__->band_energy(j + ispn_step * ctx_.num_fv_states()) = eval[j];
@@ -290,7 +285,7 @@ Band::initialize_subspace(K_point* kp__, int num_ao__) const
 
     if (ctx_.control().print_checksum_) {
         for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-            auto cs = kp__->spinor_wave_functions(ispn).checksum(0, num_bands);
+            auto cs = kp__->spinor_wave_functions().checksum_pw(ctx_.processing_unit(), ispn, 0, num_bands);
             std::stringstream s;
             s << "initial_spinor_wave_functions" << ispn;
             if (kp__->comm().rank() == 0) {
@@ -302,9 +297,9 @@ Band::initialize_subspace(K_point* kp__, int num_ao__) const
 #ifdef __GPU
     if (ctx_.processing_unit() == GPU) {
         for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-            kp__->spinor_wave_functions(ispn).pw_coeffs().copy_to_host(0, num_bands);
+            kp__->spinor_wave_functions().pw_coeffs(ispn).copy_to_host(0, num_bands);
             if (!keep_wf_on_gpu) {
-                kp__->spinor_wave_functions(ispn).pw_coeffs().deallocate_on_device();
+                kp__->spinor_wave_functions().pw_coeffs(ispn).deallocate_on_device();
             }
         }
     }

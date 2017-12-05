@@ -29,8 +29,6 @@ inline void transform(device_t                     pu__,
         if (wf_in__[i]->has_mt()) {
             assert(wf_in__[i]->mt_coeffs().num_rows_loc() == wf_out__[i]->mt_coeffs().num_rows_loc());
         }
-        //assert(wf_in__[i]->comm().size() == comm.size());
-        //assert(wf_out__[i]->comm().size() == comm.size());
     }
     
     double ngop{0};

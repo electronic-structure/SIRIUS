@@ -2,7 +2,7 @@
 
 void test1()
 {
-    sirius::HDF5_tree f("f.h5", true);
+    sddk::HDF5_tree f("f.h5", true);
     
     mdarray<double, 2> dat(2, 4);
     dat.zero();
@@ -28,7 +28,7 @@ void test1()
 
 void test2()
 {
-    sirius::HDF5_tree f("f.h5", true);
+    sddk::HDF5_tree f("f.h5", true);
     f.create_node("node1");
 
     mdarray<double, 2> md1(2, 4);
@@ -49,7 +49,7 @@ void test2()
 
 void test3()
 {
-    sirius::HDF5_tree f("f.h5", false);
+    sddk::HDF5_tree f("f.h5", false);
 
     mdarray<double, 2> md1(2, 4);
     f["node1"].read("md1", md1);

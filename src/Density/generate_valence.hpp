@@ -46,13 +46,13 @@ inline void Density::generate_valence(K_point_set& ks__)
             #ifdef __GPU
             if (ctx_.processing_unit() == GPU && !keep_wf_on_gpu) {
                 /* allocate GPU memory */
-                kp->spinor_wave_functions(ispn).pw_coeffs().prime().allocate(memory_t::device);
-                kp->spinor_wave_functions(ispn).pw_coeffs().copy_to_device(0, nbnd);
+                kp->spinor_wave_functions().pw_coeffs(ispn).prime().allocate(memory_t::device);
+                kp->spinor_wave_functions().pw_coeffs(ispn).copy_to_device(0, nbnd);
             }
             #endif
             /* swap wave functions */
             //kp->spinor_wave_functions(ispn).pw_coeffs().remap_forward(ctx_.processing_unit(), kp->gkvec().partition().gvec_fft_slab(), nbnd);
-            kp->spinor_wave_functions(ispn).pw_coeffs().remap_forward(CPU, kp->gkvec().partition().gvec_fft_slab(), nbnd);
+            kp->spinor_wave_functions().pw_coeffs(ispn).remap_forward(CPU, kp->gkvec().partition().gvec_fft_slab(), nbnd);
         }
         
         if (ctx_.esm_type() == electronic_structure_method_t::full_potential_lapwlo) {
@@ -74,7 +74,7 @@ inline void Density::generate_valence(K_point_set& ks__)
         if (ctx_.processing_unit() == GPU && !keep_wf_on_gpu) {
             for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
                 /* deallocate GPU memory */
-                kp->spinor_wave_functions(ispn).pw_coeffs().deallocate_on_device();
+                kp->spinor_wave_functions().pw_coeffs(ispn).deallocate_on_device();
             }
         }
         #endif
