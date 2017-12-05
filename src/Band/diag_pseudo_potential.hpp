@@ -267,7 +267,7 @@ inline int Band::diag_pseudo_potential_davidson(K_point*       kp__,
             /* don't compute residuals on last iteration */
             if (k != itso.num_steps_ - 1) {
                 /* get new preconditionined residuals, and also hpsi and opsi as a by-product */
-                n = residuals<T>(kp__, ispin_step, N, num_bands, eval, eval_old, evec, hphi,
+                n = residuals<T>(kp__, nc_mag ? 2 : ispin_step, N, num_bands, eval, eval_old, evec, hphi,
                                  sphi, hpsi, spsi, res, h_diag, o_diag);
             }
 

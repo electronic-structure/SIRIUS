@@ -70,9 +70,18 @@ void Band::apply_h(K_point* kp__,
     //==}
 }
 
-/** \param [in] phi Input wave-functions [storage: CPU && GPU].
+/** \param [in]  kp   Pointer to k-point.
+ *  \param [in]  ispn Index of spin.
+ *  \param [in]  N    Starting index of wave-functions.
+ *  \param [in]  n    Number of wave-functions to which H and S are applied.
+ *  \param [in]  phi  Input wave-functions [storage: CPU && GPU].
  *  \param [out] hphi Hamiltonian, applied to wave-functions [storage: CPU || GPU].
  *  \param [out] ophi Overlap operator, applied to wave-functions [storage: CPU || GPU].
+ *  \param [in]  d_op D-operator representation.
+ *  \param [in]  q_op Q-operator representation.
+ *
+ *  In non-collinear case (ispn = 2) the Hamiltonian and S operator are applied to both components of spinor
+ *  wave-functions. Otherwise they are applied to a single component.
  */
 template <typename T>
 void Band::apply_h_s(K_point* kp__,
@@ -87,98 +96,100 @@ void Band::apply_h_s(K_point* kp__,
 {
     PROFILE("sirius::Band::apply_h_o");
 
-    STOP();
-//
-//    double t1 = -omp_get_wtime();
-///* for the data remapping we need phi on CPU */
-//#ifdef __GPU
-//    if (ctx_.processing_unit() == GPU) {
-//        for (int ispn = 0; ispn < phi__.num_sc(); ispn++) {
-//            if (phi__.pw_coeffs(ispn).is_remapped() || ctx_.fft_coarse().pu() == CPU) {
-//                phi__.pw_coeffs(ispn).copy_to_host(N__, n__);
-//            }
-//        }
-//    }
-//#endif
-//    /* apply local part of Hamiltonian */
-//    local_op_->apply_h(ispn__, phi__, hphi__, N__, n__);
-//#ifdef __GPU
-//    if (ctx_.processing_unit() == GPU && ctx_.fft_coarse().pu() == CPU) {
-//        for (int ispn = 0; ispn < phi__.num_sc(); ispn++) {
-//            hphi__.pw_coeffs(ispn).copy_to_device(N__, n__);
-//        }
-//    }
-//#endif
-//    t1 += omp_get_wtime();
-//
-//    if (kp__->comm().rank() == 0 && ctx_.control().print_performance_) {
-//        DUMP("hloc performace: %12.6f bands/sec", n__ / t1);
-//    }
-//
-//    int nsc = (ctx_.num_mag_dims() == 3) ? 2 : 1;
-//
-//    //if (ctx_.control().print_checksum_) {
-//    //    for (int ispn = 0; ispn < nsc; ispn++) {
-//    //        auto cs1 = phi__.checksum(N__, n__);
-//    //        auto cs2 = hphi__.component(ispn).checksum(N__, n__);
-//    //        if (kp__->comm().rank() == 0) {
-//    //            DUMP("checksum(phi_%i): %18.10f %18.10f", ispn, cs1.real(), cs1.imag());
-//    //            DUMP("checksum(hloc_phi_%i): %18.10f %18.10f", ispn, cs2.real(), cs2.imag());
-//    //        }
-//    //    }
-//    //}
-//
-//    /* set intial ophi */
-//    for (int ispn = 0; ispn < nsc; ispn++) {
-//        ophi__.component(ispn).copy_from(phi__.component(ispn), N__, n__, ctx_.processing_unit());
-//    }
-//    /* return if there are no beta-projectors */
-//    if (!ctx_.unit_cell().mt_lo_basis_size()) {
-//        return;
-//    }
-//
-//    for (int i = 0; i < ctx_.beta_projector_chunks().num_chunks(); i++) {
-//        /* generate beta-projectors for a block of atoms */
-//        kp__->beta_projectors().generate(i);
-//        /* non-collinear case */
-//        if (ctx_.num_mag_dims() == 3) {
-//            for (int ispn = 0; ispn < 2; ispn++) {
-//
-//                auto beta_phi = kp__->beta_projectors().inner<T>(i, phi__.component(ispn), N__, n__);
-//
-//                /* apply diagonal spin blocks */
-//                d_op.apply(i, ispn, hphi__.component(ispn), N__, n__, beta_phi);
-//                /* apply non-diagonal spin blocks */
-//                d_op.apply(i, (ispn == 0) ? 3 : 2, hphi__.component((ispn == 0) ? 1 : 0), N__, n__, beta_phi);
-//
-//                if (ctx_.so_correction()) {
-//                    q_op.apply(i, ispn, ophi__.component(ispn), N__, n__, beta_phi);
-//                    /* apply non-diagonal spin blocks */
-//                    q_op.apply(i, (ispn == 0) ? 3 : 2, ophi__.component((ispn == 0) ? 1 : 0), N__, n__, beta_phi);
-//                } else {
-//                    /* apply Q operator (diagonal in spin) */
-//                    q_op.apply(i, 0, ophi__.component(ispn), N__, n__, beta_phi);
-//                }
-//            }
-//        } else { /* non-magnetic or collinear case */
-//
-//            auto beta_phi = kp__->beta_projectors().inner<T>(i, phi__.component(0), N__, n__);
-//
-//            d_op.apply(i, ispn__, hphi__.component(0), N__, n__, beta_phi);
-//            q_op.apply(i, 0, ophi__.component(0), N__, n__, beta_phi);
-//        }
-//    }
-//
-//    if (ctx_.control().print_checksum_) {
-//        for (int ispn = 0; ispn < nsc; ispn++) {
-//            auto cs1 = hphi__.component(ispn).checksum(N__, n__);
-//            auto cs2 = ophi__.component(ispn).checksum(N__, n__);
-//            if (kp__->comm().rank() == 0) {
-//                DUMP("checksum(hphi_%i): %18.10f %18.10f", ispn, cs1.real(), cs1.imag());
-//                DUMP("checksum(ophi_%i): %18.10f %18.10f", ispn, cs2.real(), cs2.imag());
-//            }
-//        }
-//    }
+    double t1 = -omp_get_wtime();
+
+/* for the data remapping we need phi on CPU */
+#ifdef __GPU
+    if (ctx_.processing_unit() == GPU) {
+        for (int ispn = 0; ispn < phi__.num_sc(); ispn++) {
+            if (phi__.pw_coeffs(ispn).is_remapped() || ctx_.fft_coarse().pu() == CPU) {
+                phi__.pw_coeffs(ispn).copy_to_host(N__, n__);
+            }
+        }
+    }
+#endif
+    /* apply local part of Hamiltonian */
+    local_op_->apply_h(ispn__, phi__, hphi__, N__, n__);
+#ifdef __GPU
+    if (ctx_.processing_unit() == GPU && ctx_.fft_coarse().pu() == CPU) {
+        for (int ispn = 0; ispn < phi__.num_sc(); ispn++) {
+            hphi__.pw_coeffs(ispn).copy_to_device(N__, n__);
+        }
+    }
+#endif
+    t1 += omp_get_wtime();
+
+    if (kp__->comm().rank() == 0 && ctx_.control().print_performance_) {
+        DUMP("hloc performace: %12.6f bands/sec", n__ / t1);
+    }
+
+    int nsc = (ispn__ == 2) ? 2 : 1;
+
+    if (ctx_.control().print_checksum_) {
+        for (int ispn = 0; ispn < nsc; ispn++) {
+            auto cs1 = phi__.checksum(ctx_.processing_unit(), ispn, N__, n__);
+            auto cs2 = hphi__.checksum(ctx_.processing_unit(), ispn, N__, n__);
+            if (kp__->comm().rank() == 0) {
+                std::stringstream s;
+                s << "phi_" << ispn;
+                print_checksum(s.str(), cs1);
+                s = std::stringstream();
+                s << "hphi_" << ispn;
+                print_checksum(s.str(), cs2);
+            }
+        }
+    }
+
+    /* set intial sphi */
+    for (int ispn = 0; ispn < nsc; ispn++) {
+        sphi__.copy_from(ctx_.processing_unit(), n__, phi__, ispn, N__, ispn, N__);
+    }
+    /* return if there are no beta-projectors */
+    if (!ctx_.unit_cell().mt_lo_basis_size()) {
+        return;
+    }
+
+    for (int i = 0; i < ctx_.beta_projector_chunks().num_chunks(); i++) {
+        /* generate beta-projectors for a block of atoms */
+        kp__->beta_projectors().generate(i);
+        /* non-collinear case */
+        if (ispn__ == 2) {
+            for (int ispn = 0; ispn < 2; ispn++) {
+
+                auto beta_phi = kp__->beta_projectors().inner<T>(i, phi__, ispn, N__, n__);
+
+                /* apply diagonal spin blocks */
+                d_op.apply(i, ispn, hphi__, N__, n__, beta_phi);
+                /* apply non-diagonal spin blocks */
+                /* xor 3 operator will map 0 to 3 and 1 to 2 */
+                d_op.apply(i, ispn ^ 3, hphi__, N__, n__, beta_phi);
+
+                /* apply Q operator (diagonal in spin) */
+                q_op.apply(i, ispn, sphi__, N__, n__, beta_phi);
+                /* apply non-diagonal spin blocks */
+                if (ctx_.so_correction()) {
+                    q_op.apply(i, ispn ^ 3, sphi__, N__, n__, beta_phi);
+                }
+            }
+        } else { /* non-magnetic or collinear case */
+
+            auto beta_phi = kp__->beta_projectors().inner<T>(i, phi__, ispn__, N__, n__);
+
+            d_op.apply(i, ispn__, hphi__, N__, n__, beta_phi);
+            q_op.apply(i, ispn__, sphi__, N__, n__, beta_phi);
+        }
+    }
+
+    //if (ctx_.control().print_checksum_) {
+    //    for (int ispn = 0; ispn < nsc; ispn++) {
+    //        auto cs1 = hphi__.component(ispn).checksum(N__, n__);
+    //        auto cs2 = ophi__.component(ispn).checksum(N__, n__);
+    //        if (kp__->comm().rank() == 0) {
+    //            DUMP("checksum(hphi_%i): %18.10f %18.10f", ispn, cs1.real(), cs1.imag());
+    //            DUMP("checksum(ophi_%i): %18.10f %18.10f", ispn, cs2.real(), cs2.imag());
+    //        }
+    //    }
+    //}
 }
 
 inline void Band::apply_fv_o(K_point* kp__,

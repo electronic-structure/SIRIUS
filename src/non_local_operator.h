@@ -78,7 +78,7 @@ class Non_local_operator
     {
     }
 
-    inline void apply(int chunk__, int ispn__, Wave_functions& op_phi__, int idx0__, int n__, matrix<T>& beta_phi__);
+    inline void apply(int chunk__, int ispn_block__, Wave_functions& op_phi__, int idx0__, int n__, matrix<T>& beta_phi__);
 
     inline T operator()(int xi1__, int xi2__, int ia__)
     {
@@ -93,8 +93,12 @@ class Non_local_operator
 };
 
 template <>
-inline void Non_local_operator<double_complex>::apply(
-    int chunk__, int ispn__, Wave_functions& op_phi__, int idx0__, int n__, matrix<double_complex>& beta_phi__)
+inline void Non_local_operator<double_complex>::apply(int chunk__,
+                                                      int ispn_block__,
+                                                      Wave_functions& op_phi__,
+                                                      int idx0__,
+                                                      int n__,
+                                                      matrix<double_complex>& beta_phi__)
 {
     PROFILE("sirius::Non_local_operator::apply");
 
@@ -102,7 +106,7 @@ inline void Non_local_operator<double_complex>::apply(
         return;
     }
 
-    assert(op_phi__.pw_coeffs(ispn__).num_rows_loc() == beta_.num_gkvec_loc());
+    int jspn = ispn_block__ & 1;
 
     auto& beta_gk     = beta_.pw_coeffs_a();
     int num_gkvec_loc = beta_.num_gkvec_loc();
@@ -124,14 +128,14 @@ inline void Non_local_operator<double_complex>::apply(
         int ia   = bp_chunks(chunk__).desc_(beta_desc_idx::ia, i);
         switch (pu_) {
             case CPU: {
-                linalg<CPU>::gemm(0, 0, nbf, n__, nbf, op_.at<CPU>(packed_mtrx_offset_(ia), ispn__), nbf,
+                linalg<CPU>::gemm(0, 0, nbf, n__, nbf, op_.at<CPU>(packed_mtrx_offset_(ia), ispn_block__), nbf,
                                   beta_phi__.at<CPU>(offs, 0), nbeta, work_.at<CPU>(offs), nbeta);
 
                 break;
             }
             case GPU: {
 #ifdef __GPU
-                linalg<GPU>::gemm(0, 0, nbf, n__, nbf, op_.at<GPU>(packed_mtrx_offset_(ia), ispn__), nbf,
+                linalg<GPU>::gemm(0, 0, nbf, n__, nbf, op_.at<GPU>(packed_mtrx_offset_(ia), ispn_block__), nbf,
                                   beta_phi__.at<GPU>(offs, 0), nbeta, work_.at<GPU>(offs), nbeta, omp_get_thread_num());
 #endif
                 break;
@@ -144,7 +148,7 @@ inline void Non_local_operator<double_complex>::apply(
         case CPU: {
             linalg<CPU>::gemm(0, 0, num_gkvec_loc, n__, nbeta, linalg_const<double_complex>::one(), beta_gk.at<CPU>(),
                               num_gkvec_loc, work_.at<CPU>(), nbeta, linalg_const<double_complex>::one(),
-                              op_phi__.pw_coeffs(ispn__).prime().at<CPU>(0, idx0__), op_phi__.pw_coeffs(ispn__).prime().ld());
+                              op_phi__.pw_coeffs(jspn).prime().at<CPU>(0, idx0__), op_phi__.pw_coeffs(jspn).prime().ld());
             break;
         }
         case GPU: {
@@ -155,7 +159,7 @@ inline void Non_local_operator<double_complex>::apply(
 
             linalg<GPU>::gemm(0, 0, num_gkvec_loc, n__, nbeta, &linalg_const<double_complex>::one(), beta_gk.at<GPU>(),
                               beta_gk.ld(), work_.at<GPU>(), nbeta, &linalg_const<double_complex>::one(),
-                              op_phi__.pw_coeffs(ispn__).prime().at<GPU>(0, idx0__), op_phi__.pw_coeffs(ispn__).prime().ld());
+                              op_phi__.pw_coeffs(jspn).prime().at<GPU>(0, idx0__), op_phi__.pw_coeffs(jspn).prime().ld());
             acc::sync_stream(-1);
 #endif
             break;
@@ -165,7 +169,7 @@ inline void Non_local_operator<double_complex>::apply(
 
 template <>
 inline void Non_local_operator<double>::apply(int chunk__,
-                                              int ispn__,
+                                              int ispn_block__,
                                               Wave_functions& op_phi__,
                                               int idx0__,
                                               int n__,
@@ -177,7 +181,7 @@ inline void Non_local_operator<double>::apply(int chunk__,
         return;
     }
 
-    assert(op_phi__.pw_coeffs(ispn__).num_rows_loc() == beta_.num_gkvec_loc());
+    int jspn = ispn_block__ & 1;
 
     auto& beta_gk     = beta_.pw_coeffs_a();
     int num_gkvec_loc = beta_.num_gkvec_loc();
@@ -201,13 +205,13 @@ inline void Non_local_operator<double>::apply(int chunk__,
 
         switch (pu_) {
             case CPU: {
-                linalg<CPU>::gemm(0, 0, nbf, n__, nbf, op_.at<CPU>(packed_mtrx_offset_(ia), ispn__), nbf,
+                linalg<CPU>::gemm(0, 0, nbf, n__, nbf, op_.at<CPU>(packed_mtrx_offset_(ia), ispn_block__), nbf,
                                   beta_phi__.at<CPU>(offs, 0), nbeta, work_.at<CPU>(offs), nbeta);
                 break;
             }
             case GPU: {
 #ifdef __GPU
-                linalg<GPU>::gemm(0, 0, nbf, n__, nbf, op_.at<GPU>(packed_mtrx_offset_(ia), ispn__), nbf,
+                linalg<GPU>::gemm(0, 0, nbf, n__, nbf, op_.at<GPU>(packed_mtrx_offset_(ia), ispn_block__), nbf,
                                   beta_phi__.at<GPU>(offs, 0), nbeta, work_.at<GPU>(offs), nbeta, omp_get_thread_num());
                 break;
 #endif
@@ -220,8 +224,8 @@ inline void Non_local_operator<double>::apply(int chunk__,
         case CPU: {
             linalg<CPU>::gemm(0, 0, 2 * num_gkvec_loc, n__, nbeta, 1.0, reinterpret_cast<double*>(beta_gk.at<CPU>()),
                               2 * num_gkvec_loc, work_.at<CPU>(), nbeta, 1.0,
-                              reinterpret_cast<double*>(op_phi__.pw_coeffs(ispn__).prime().at<CPU>(0, idx0__)),
-                              2 * op_phi__.pw_coeffs(ispn__).prime().ld());
+                              reinterpret_cast<double*>(op_phi__.pw_coeffs(jspn).prime().at<CPU>(0, idx0__)),
+                              2 * op_phi__.pw_coeffs(jspn).prime().ld());
             break;
         }
         case GPU: {
@@ -233,7 +237,7 @@ inline void Non_local_operator<double>::apply(int chunk__,
             linalg<GPU>::gemm(0, 0, 2 * num_gkvec_loc, n__, nbeta, &linalg_const<double>::one(),
                               reinterpret_cast<double*>(beta_gk.at<GPU>()), 2 * num_gkvec_loc, work_.at<GPU>(), nbeta,
                               &linalg_const<double>::one(),
-                              reinterpret_cast<double*>(op_phi__.pw_coeffs(ispn__).prime().at<GPU>(0, idx0__)),
+                              reinterpret_cast<double*>(op_phi__.pw_coeffs(jspn).prime().at<GPU>(0, idx0__)),
                               2 * num_gkvec_loc);
             acc::sync_stream(-1);
 #endif
@@ -334,12 +338,9 @@ class Q_operator : public Non_local_operator<T>
     Q_operator(Simulation_context const& ctx__, Beta_projectors& beta__)
         : Non_local_operator<T>(beta__, ctx__.processing_unit())
     {
-        if (ctx__.so_correction()) {
-            this->op_ = mdarray<T, 2>(this->packed_mtrx_size_, 4);
-        } else {
-            /* Q-operator is independent of spin */
-            this->op_ = mdarray<T, 2>(this->packed_mtrx_size_, 1);
-        }
+        /* Q-operator is independent of spin if there is no spin-orbit; however, it simplifies the apply()
+         * method if the Q-operator has a spin index */
+        this->op_ = mdarray<T, 2>(this->packed_mtrx_size_, ctx__.num_mag_dims() + 1);
         this->op_.zero();
         auto& uc = this->beta_.unit_cell();
         for (int ia = 0; ia < uc.num_atoms(); ia++) {
@@ -350,24 +351,20 @@ class Q_operator : public Non_local_operator<T>
             int nbf = uc.atom(ia).mt_basis_size();
             for (int xi2 = 0; xi2 < nbf; xi2++) {
                 for (int xi1 = 0; xi1 < nbf; xi1++) {
-                    // if (ctx__.unit_cell().atom_type(iat).pp_desc().augment) {
+                    /* The ultra soft pseudo potential has spin orbit coupling incorporated to it, so we
+                       need to rotate the Q matrix */
                     if (ctx__.unit_cell().atom_type(iat).pp_desc().spin_orbit_coupling) {
-                        // the ultra soft pseudo potential has spin
-                        // orbit coupling incorporated to it. so we
-                        // need to rotate the q matrix
-
-                        // it is nothing else than Eq.18 of Ref PRB 71, 115106
+                        /* this is nothing else than Eq.18 of Ref PRB 71, 115106 */
                         for (auto si = 0; si < 2; si++) {
                             for (auto sj = 0; sj < 2; sj++) {
 
-                                double_complex result = double_complex(0.0, 0.0);
+                                double_complex result(0, 0);
 
                                 for (int xi2p = 0; xi2p < nbf; xi2p++) {
                                     if (uc.atom(ia).type().compare_index_beta_functions(xi2, xi2p)) {
                                         for (int xi1p = 0; xi1p < nbf; xi1p++) {
-                                            // the F_Coefficients are already "block diagonal" so we do a full
-                                            // summation.
-                                            // We actually rotate the q_matrices only....
+                                            /* The F coefficients are already "block diagonal" so we do a full
+                                               summation. We actually rotate the q_matrices only */
                                             if (uc.atom(ia).type().compare_index_beta_functions(xi1, xi1p)) {
                                                 result += ctx__.augmentation_op(iat).q_mtrx(xi1p, xi2p) *
                                                           (uc.atom(ia).type().f_coefficients(xi1, xi1p, sj, 0) *
@@ -379,30 +376,23 @@ class Q_operator : public Non_local_operator<T>
                                     }
                                 }
 
-                                // the order of the index is important
-                                const int ind = (si == sj) * si + (1 + 2 * sj + si) * (si != sj);
-                                // this formula gives
-                                // ind = 0 if si = up and sj = up
-                                // ind = 1 if si = sj = down
-                                // ind = 2 if si = down and sj = up
-                                // ind = 3 if si = up and sj = down
-                                assert(ind <= 3);
+                                /* the order of the index is important */
+                                const int ind = (si == sj) ? si : sj + 2;
+                                /* this gives
+                                   ind = 0 if si = up and sj = up
+                                   ind = 1 if si = sj = down
+                                   ind = 2 if si = down and sj = up
+                                   ind = 3 if si = up and sj = down */
                                 this->op_(this->packed_mtrx_offset_(ia) + xi2 * nbf + xi1, ind) =
                                     type_wrapper<T>::bypass(result);
                             }
                         }
                     } else {
-                        this->op_(this->packed_mtrx_offset_(ia) + xi2 * nbf + xi1, 0) =
-                            ctx__.augmentation_op(iat).q_mtrx(xi1, xi2);
-                        if (ctx__.so_correction()) {
-                            // when spin orbit is included the q
-                            // matrix is spin depend even for non so
-                            // pseudo potentials
-                            this->op_(this->packed_mtrx_offset_(ia) + xi2 * nbf + xi1, 1) =
+                        for (int ispn = 0; ispn < ctx__.num_spins(); ispn++) {
+                            this->op_(this->packed_mtrx_offset_(ia) + xi2 * nbf + xi1, ispn) =
                                 ctx__.augmentation_op(iat).q_mtrx(xi1, xi2);
                         }
                     }
-                    // }
                 }
             }
         }

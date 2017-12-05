@@ -304,7 +304,7 @@ Band::initialize_subspace(K_point* kp__, int num_ao__, Radial_grid_lin<double>& 
 
     for (int ispn_step = 0; ispn_step < num_spin_steps; ispn_step++) {
         /* apply Hamiltonian and overlap operators to the new basis functions */
-        apply_h_s<T>(kp__, ispn_step, 0, num_phi_tot, phi, hphi, ophi, d_op, q_op);
+        apply_h_s<T>(kp__, (ctx_.num_mag_dims() == 3) ? 2 : ispn_step, 0, num_phi_tot, phi, hphi, ophi, d_op, q_op);
 
         /* do some checks */
         if (ctx_.control().verification_ >= 1) {

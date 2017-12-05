@@ -60,7 +60,13 @@ namespace sddk {
 /** Wave-functions consist of two parts: plane-wave part and mufin-tin part. Both are the matrix_storage objects
  *  with the slab distribution. Wave-functions have one or two spin components. In case of collinear magnetism
  *  each component represents a pure (up- or dn-) spinor state and they are independent. In non-collinear case 
- *  the two components represent a full spinor state. */
+ *  the two components represent a full spinor state. 
+ *
+ *  In case of collinear magnetism we can work with auxiliary scalar wave-functions and update up- or dn- components
+ *  of pure spinor wave-functions independently. We can also apply uu or dd block of Hamiltonian. In this case it is 
+ *  reasonable to implement the following convention: for scalar wave-function (num_sc = 1) it's value is returned 
+ *  for any spin index (ispn = 0 or ispn = 1).
+ */
 class Wave_functions
 {
   private:
@@ -113,14 +119,17 @@ class Wave_functions
         assert(ispn__ == 0 || ispn__ == 1 || ispn__ == 2);
 
         if (ispn__ == 2) {
-            if (num_sc_ == 1) {
-                return 0;
-            } else {
-                return 1;
-            }
+            return (num_sc_ == 1) ? 0 : 1;
         } else {
             return ispn__;
         }
+    }
+
+    /// Spin-component index by spin index.
+    inline int isc(int ispn__) const
+    {
+        assert(ispn__ == 0 || ispn__ == 1);
+        return (num_sc_ == 1) ? 0 : ispn__;
     }
 
     inline mdarray<double, 1> sumsqr(device_t pu__, int ispn__, int n__) const
@@ -275,30 +284,22 @@ class Wave_functions
 
     inline matrix_storage<double_complex, matrix_storage_t::slab>& pw_coeffs(int ispn__)
     {
-        assert(ispn__ == 0 || ispn__ == 1);
-        assert(pw_coeffs_[ispn__] != nullptr);
-        return *pw_coeffs_[ispn__];
+        return *pw_coeffs_[isc(ispn__)];
     }
 
     inline matrix_storage<double_complex, matrix_storage_t::slab> const& pw_coeffs(int ispn__) const
     {
-        assert(ispn__ == 0 || ispn__ == 1);
-        assert(pw_coeffs_[ispn__] != nullptr);
-        return *pw_coeffs_[ispn__];
+        return *pw_coeffs_[isc(ispn__)];
     }
 
     inline matrix_storage<double_complex, matrix_storage_t::slab>& mt_coeffs(int ispn__)
     {
-        assert(ispn__ == 0 || ispn__ == 1);
-        assert(mt_coeffs_[ispn__] != nullptr);
-        return *mt_coeffs_[ispn__];
+        return *mt_coeffs_[isc(ispn__)];
     }
 
     inline matrix_storage<double_complex, matrix_storage_t::slab> const& mt_coeffs(int ispn__) const
     {
-        assert(ispn__ == 0 || ispn__ == 1);
-        assert(mt_coeffs_[ispn__] != nullptr);
-        return *mt_coeffs_[ispn__];
+        return *mt_coeffs_[isc(ispn__)];
     }
 
     inline bool has_mt() const
@@ -342,18 +343,22 @@ class Wave_functions
                           int                   jspn__,
                           int                   j0__)
     {
-        assert(ispn__ == 0 || ispn__ == 1 || ispn__ == 2);
+        assert(ispn__ == 0 || ispn__ == 1);
+        assert(jspn__ == 0 || jspn__ == 1);
+
+        int ngv =  pw_coeffs(jspn__).num_rows_loc();
+        int nmt = has_mt() ? mt_coeffs(jspn__).num_rows_loc() : 0;
 
         switch (pu__) {
             case CPU: {
                 /* copy PW part */
                 std::copy(src__.pw_coeffs(ispn__).prime().at<CPU>(0, i0__),
-                          src__.pw_coeffs(ispn__).prime().at<CPU>(0, i0__ + n__),
+                          src__.pw_coeffs(ispn__).prime().at<CPU>(0, i0__) + ngv * n__,
                           pw_coeffs(jspn__).prime().at<CPU>(0, j0__));
                 /* copy MT part */
                 if (has_mt()) {
                     std::copy(src__.mt_coeffs(ispn__).prime().at<CPU>(0, i0__),
-                              src__.mt_coeffs(ispn__).prime().at<CPU>(0, i0__ + n__),
+                              src__.mt_coeffs(ispn__).prime().at<CPU>(0, i0__) + nmt * n__,
                               mt_coeffs(jspn__).prime().at<CPU>(0, j0__));
                 }
                 break;
@@ -363,12 +368,12 @@ class Wave_functions
                 /* copy PW part */
                 acc::copy(pw_coeffs(jspn__).prime().at<GPU>(0, j0__),
                           src__.pw_coeffs(ispn__).prime().at<GPU>(0, i0__),
-                          pw_coeffs(jspn__).num_rows_loc() * n__);
+                          ngv * n__);
                 /* copy MT part */
                 if (has_mt()) {
                     acc::copy(mt_coeffs(jspn__).prime().at<GPU>(0, j0__),
                               src__.mt_coeffs(ispn__).prime().at<GPU>(0, i0__),
-                              mt_coeffs(jspn__).num_rows_loc() * n__);
+                              nmt * n__);
                 }
                 #endif
                 break;

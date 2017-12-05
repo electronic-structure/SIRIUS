@@ -345,13 +345,26 @@ class Local_operator
             buf_rg_.deallocate_on_device();
             #endif
         }
-
+        
+        /// Apply local part of Hamiltonian to wave-functions.
+        /** \param [in]  ispn Index of spin.
+         *  \param [in]  phi  Input wave-functions.
+         *  \param [out] hphi Hamiltonian applied to wave-function.
+         *  \param [in]  idx0 Starting index of wave-functions.
+         *  \param [in]  n    Number of wave-functions to which H is applied.
+         *
+         *  Index of spin can take the following values:
+         *    - 0: apply H_{uu} to the up- component of wave-functions
+         *    - 1: apply H_{dd} to the dn- component of wave-functions
+         *    - 2: apply full Hamiltonian to the spinor wave-functions
+         */
         void apply_h(int ispn__, Wave_functions& phi__, Wave_functions& hphi__, int idx0__, int n__)
         {
             PROFILE("sirius::Local_operator::apply_h");
 
             auto& gkp = phi__.gkvec().partition();
-
+            
+            /* remap wave-functions */
             for (int ispn = 0; ispn < phi__.num_sc(); ispn++) {
 
                 phi__.pw_coeffs(ispn).remap_forward(fft_coarse_.pu(), gkp.gvec_fft_slab(), n__, idx0__);
@@ -387,18 +400,18 @@ class Local_operator
                 }
             };
 
-            auto mul_by_veff = [&](mdarray<double_complex, 1>& buf, int ispn)
+            auto mul_by_veff = [&](mdarray<double_complex, 1>& buf, int ispn_block)
             {
                 /* multiply by effective potential */
                 switch (fft_coarse_.pu()) {
                     case CPU: {
-                        if (ispn < 2) {
+                        if (ispn_block < 2) {
                             #pragma omp parallel for schedule(static)
                             for (int ir = 0; ir < fft_coarse_.local_size(); ir++) {
-                                buf[ir] *= veff_vec_(ir, ispn);
+                                buf[ir] *= veff_vec_(ir, ispn_block);
                             }
                         } else {
-                            double pref = (ispn == 2) ? -1 : 1;
+                            double pref = (ispn_block == 2) ? -1 : 1;
                             #pragma omp parallel for schedule(static)
                             for (int ir = 0; ir < fft_coarse_.local_size(); ir++) {
                                 /* multiply by Bx +/- i*By */
@@ -409,7 +422,7 @@ class Local_operator
                     }
                     case GPU: {
                         #ifdef __GPU
-                        mul_by_veff_gpu(ispn, fft_coarse_.local_size(), veff_vec_.at<GPU>(), buf.at<GPU>());
+                        mul_by_veff_gpu(ispn_block, fft_coarse_.local_size(), veff_vec_.at<GPU>(), buf.at<GPU>());
                         #endif
                         break;
                     }
@@ -513,30 +526,32 @@ class Local_operator
                     }
                 }
             };
+            /* local number of wave-functions in extra-storage distribution */
+            int num_wf_loc = phi__.pw_coeffs(0).spl_num_col().local_size();
 
             int first{0};
-            /* if G-vectors are reduced, wave-functions are real and we can transform two of them at once */
-            /* non-collinear case is not treated here because nc wave-functions are complex */
+            /* If G-vectors are reduced, wave-functions are real and we can transform two of them at once.
+             * Non-collinear case is not treated here because nc wave-functions are complex and G+k vectors 
+             * can't be reduced */
             if (gkp.reduced()) {
-                int npairs = phi__.pw_coeffs(0).spl_num_col().local_size() / 2;
+                int npairs = num_wf_loc / 2;
                 /* Gamma-point case can only be non-magnetic or spin-collinear */
                 for (int i = 0; i < npairs; i++) {
                     /* phi(G) -> phi(r) */
-                    phi_to_r(i, 0, true);
+                    phi_to_r(i, ispn__, true);
                     /* multiply by effective potential */
                     mul_by_veff(fft_coarse_.buffer(), ispn__);
                     /* V(r)phi(r) -> [V*phi](G) */
                     vphi_to_G(true);
                     /* add kinetic energy */
-                    add_to_hphi(i, 0, true);
+                    add_to_hphi(i, ispn__, true);
                 }
                 /* check if we have to do last wave-function which had no pair */
-                first = (phi__.pw_coeffs(0).spl_num_col().local_size() % 2) ? phi__.pw_coeffs(0).spl_num_col().local_size() - 1
-                                                                            : phi__.pw_coeffs(0).spl_num_col().local_size();
+                first = num_wf_loc - num_wf_loc % 2;
             }
             
             /* if we don't have G-vector reductions, first = 0 and we start a normal loop */
-            for (int i = first; i < phi__.pw_coeffs(0).spl_num_col().local_size(); i++) {
+            for (int i = first; i < num_wf_loc; i++) {
                 
                 /* non-collinear case */
                 /* 2x2 Hamiltonian in applied to spinor wave-functions
@@ -560,7 +575,7 @@ class Local_operator
                  * | 3 | 1 |
                  * .---.---.
                  */        
-                if (param_->num_mag_dims() == 3) {
+                if (ispn__ == 2) {
                     /* phi_u(G) -> phi_u(r) */
                     phi_to_r(i, 0);
                     /* save phi_u(r) */
@@ -647,13 +662,13 @@ class Local_operator
 
                 } else { /* spin-collinear case */
                     /* phi(G) -> phi(r) */
-                    phi_to_r(i, 0);
+                    phi_to_r(i, ispn__);
                     /* multiply by effective potential */
                     mul_by_veff(fft_coarse_.buffer(), ispn__);
                     /* V(r)phi(r) -> [V*phi](G) */
                     vphi_to_G();
                     /* add kinetic energy */
-                    add_to_hphi(i, 0);
+                    add_to_hphi(i, ispn__);
                 }
             }
 
