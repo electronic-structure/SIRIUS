@@ -22,32 +22,32 @@
  *   \brief Contains interfaces to the sirius::Band solvers.
  */
 
-inline void Band::solve_with_second_variation(K_point& kp__, Potential& potential__) const
+inline void Band::solve_with_second_variation(K_point& kp__, Hamiltonian& hamiltonian__) const
 {
     /* solve non-magnetic Hamiltonian (so-called first variation) */
     auto& itso = ctx_.iterative_solver_input();
     if (itso.type_ == "exact") {
-        diag_fv_exact(&kp__, potential__);
+        diag_fv_exact(&kp__, hamiltonian__);
     } else if (itso.type_ == "davidson") {
-        diag_fv_davidson(&kp__);
+        diag_fv_davidson(&kp__, hamiltonian__);
     }
     /* generate first-variational states */
     kp__.generate_fv_states();
     /* solve magnetic Hamiltonian */
-    diag_sv(&kp__, potential__);
+    diag_sv(&kp__, hamiltonian__);
     /* generate spinor wave-functions */
     kp__.generate_spinor_wave_functions();
 }
 
-inline int Band::solve_with_single_variation(K_point& kp__, Potential& potential__) const
+inline int Band::solve_with_single_variation(K_point& kp__, Hamiltonian& hamiltonian__) const
 {
     int niter{0};
     switch (ctx_.esm_type()) {
         case electronic_structure_method_t::pseudopotential: {
             if (ctx_.gamma_point() && (ctx_.so_correction() == false)) {
-                niter = diag_pseudo_potential<double>(&kp__);
+                niter = diag_pseudo_potential<double>(&kp__, hamiltonian__);
             } else {
-                niter = diag_pseudo_potential<double_complex>(&kp__);
+                niter = diag_pseudo_potential<double_complex>(&kp__, hamiltonian__);
             }
             break;
         }
@@ -109,27 +109,27 @@ inline int Band::solve_with_single_variation(K_point& kp__, Potential& potential
     return niter;
 }
 
-inline void Band::solve_for_kset(K_point_set& kset__, Potential& potential__, bool precompute__) const
+inline void Band::solve_for_kset(K_point_set& kset__, Hamiltonian& Hamiltonian__, bool precompute__) const
 {
     PROFILE("sirius::Band::solve_for_kset");
 
     if (precompute__ && ctx_.full_potential()) {
-        potential__.generate_pw_coefs();
-        potential__.update_atomic_potential();
+        Hamiltonian__.potential().generate_pw_coefs();
+        Hamiltonian__.potential().update_atomic_potential();
         unit_cell_.generate_radial_functions();
         unit_cell_.generate_radial_integrals();
     }
 
     if (ctx_.full_potential()) {
-        local_op_->prepare(ctx_.gvec_coarse(), ctx_.num_mag_dims(), potential__, ctx_.step_function());
+        Hamiltonian__.local_op().prepare(ctx_.gvec_coarse(), ctx_.num_mag_dims(), Hamiltonian__.potential(), ctx_.step_function());
     } else {
-        local_op_->prepare(ctx_.gvec_coarse(), ctx_.num_mag_dims(), potential__);
+        Hamiltonian__.local_op().prepare(ctx_.gvec_coarse(), ctx_.num_mag_dims(), Hamiltonian__.potential());
     }
 
     if (ctx_.comm().rank() == 0 && ctx_.control().print_memory_usage_) {
         MEMORY_USAGE_INFO();
     }
-    
+
     int num_dav_iter{0};
     /* solve secular equation and generate wave functions */
     for (int ikloc = 0; ikloc < kset__.spl_num_kpoints().local_size(); ikloc++) {
@@ -137,9 +137,9 @@ inline void Band::solve_for_kset(K_point_set& kset__, Potential& potential__, bo
         auto kp = kset__[ik];
 
         if (ctx_.full_potential() && use_second_variation) {
-            solve_with_second_variation(*kp, potential__);
+            solve_with_second_variation(*kp, Hamiltonian__);
         } else {
-            num_dav_iter += solve_with_single_variation(*kp, potential__);
+            num_dav_iter += solve_with_single_variation(*kp, Hamiltonian__);
         }
     }
     kset__.comm().allreduce(&num_dav_iter, 1);
@@ -147,7 +147,7 @@ inline void Band::solve_for_kset(K_point_set& kset__, Potential& potential__, bo
         printf("Average number of iterations: %12.6f\n", static_cast<double>(num_dav_iter) / kset__.num_kpoints());
     }
 
-    local_op_->dismiss();
+    Hamiltonian__.local_op().dismiss();
 
     /* synchronize eigen-values */
     kset__.sync_band_energies();

@@ -760,7 +760,7 @@ module sirius
             &bind(C, name="sirius_get_fft_comm")
             integer,                 intent(out) :: fcomm
         end subroutine
-        
+
         subroutine sirius_get_kpoint_inner_comm(fcomm)&
             &bind(C, name="sirius_get_kpoint_inner_comm")
             integer,                 intent(out) :: fcomm
@@ -1022,7 +1022,36 @@ module sirius
             character,         target, dimension(*), intent(in)  :: esm_bc
         end subroutine
 
-    end interface
+        subroutine sirius_set_hubbard_correction(hubbard_correction_)&
+          &bind(C, name="sirius_set_hubbard_correction")
+          logical(1),                                intent(in) :: hubbard_correction_
+        end subroutine sirius_set_hubbard_correction
+
+        subroutine sirius_set_hubbard_occupations(occ, ld)&
+          &bind(C, name="sirius_set_hubbard_occupations")
+          complex(8),                                intent(in) :: occ
+          integer,                                   intent(in) :: ld
+        end subroutine sirius_set_hubbard_occupations
+
+        subroutine sirius_set_hubbard_potential(occ, ld)&
+          &bind(C, name="sirius_set_hubbard_potential")
+          complex(8),                                intent(in) :: occ
+          integer,                                   intent(in) :: ld
+        end subroutine sirius_set_hubbard_potential
+
+
+        subroutine sirius_set_atom_type_hubbard(label__, hub_correction, J_, theta_, phi_, alpha_, beta_, J0_)&
+          &bind(C, name="sirius_set_atom_type_hubbard")
+          character, dimension(*), intent(in) :: label__
+          logical(1),                intent(in) :: hub_correction
+          real(8),                intent(in) :: J_
+          real(8),                intent(in) :: theta_
+          real(8),                intent(in) :: phi_
+          real(8),                intent(in) :: alpha_
+          real(8),                intent(in) :: beta_
+          real(8),                intent(in) :: J0_
+        end subroutine sirius_set_atom_type_hubbard
+     end interface
 
 contains
 
@@ -1057,13 +1086,13 @@ contains
 
         rhoit_ptr = C_NULL_PTR
         if (present(rhoit)) rhoit_ptr = C_LOC(rhoit)
-        
+
         magit_ptr = C_NULL_PTR
         if (present(magit)) magit_ptr = C_LOC(magit)
-        
+
         rhomt_ptr = C_NULL_PTR
         if (present(rhomt)) rhomt_ptr = C_LOC(rhomt)
-        
+
         magmt_ptr = C_NULL_PTR
         if (present(magmt)) magmt_ptr = C_LOC(magmt)
 
@@ -1172,7 +1201,7 @@ contains
 
         nk_loc_ptr = C_NULL_PTR
         if (present(nk_loc)) nk_loc_ptr = C_LOC(nk_loc)
-        
+
         call sirius_create_kset_aux(num_kpoints, kpoints, kpoint_weights, init_kset, kset_id, nk_loc_ptr)
 
     end subroutine

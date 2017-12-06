@@ -2,13 +2,13 @@
  *  \param [out] hphi Hamiltonian, applied to wave-functions [storage: CPU || GPU].
  */
 template <typename T>
-void Band::apply_h(K_point* kp__,
-                   int ispn__,
-                   int N__,
-                   int n__,
-                   wave_functions& phi__,
-                   wave_functions& hphi__,
-                   D_operator<T>& d_op) const
+void Hamiltonian::apply_h(K_point* kp__,
+                          int ispn__,
+                          int N__,
+                          int n__,
+                          wave_functions& phi__,
+                          wave_functions& hphi__,
+                          D_operator<T>& d_op) const
 {
     PROFILE("sirius::Band::apply_h");
 #ifdef __GPU
@@ -75,15 +75,15 @@ void Band::apply_h(K_point* kp__,
  *  \param [out] ophi Overlap operator, applied to wave-functions [storage: CPU || GPU].
  */
 template <typename T>
-void Band::apply_h_o(K_point* kp__,
-                     int ispn__,
-                     int N__,
-                     int n__,
-                     Wave_functions& phi__,
-                     Wave_functions& hphi__,
-                     Wave_functions& ophi__,
-                     D_operator<T>& d_op,
-                     Q_operator<T>& q_op) const
+void Hamiltonian::apply_h_o(K_point* kp__,
+                            int ispn__,
+                            int N__,
+                            int n__,
+                            Wave_functions& phi__,
+                            Wave_functions& hphi__,
+                            Wave_functions& ophi__,
+                            D_operator<T>& d_op,
+                            Q_operator<T>& q_op) const
 {
     PROFILE("sirius::Band::apply_h_o");
 
@@ -169,9 +169,11 @@ void Band::apply_h_o(K_point* kp__,
 
     // apply the hubbard potential if relevant
     if(ctx_.hubbard_correction() && !ctx_.gamma_point()) {
-        // note that it is done only one's
-        U_->generate_atomic_orbitals(*kp__, q_op);
-        U_->apply_hubbard_potential(*kp__, N__, n__, phi__, hphi__);
+        // note that the first function is called only one's in full
+        // version and will return immediately if the wave functions already exist
+        this->U().generate_atomic_orbitals(*kp__, q_op);
+
+        this->U().apply_hubbard_potential(*kp__, N__, n__, phi__, hphi__);
     }
 
     if (ctx_.control().print_checksum_) {
@@ -186,13 +188,13 @@ void Band::apply_h_o(K_point* kp__,
     }
 }
 
-inline void Band::apply_fv_o(K_point* kp__,
-                             bool apw_only__,
-                             bool add_o1__,
-                             int N__,
-                             int n__,
-                             wave_functions& phi__,
-                             wave_functions& ophi__) const
+inline void Hamiltonian::apply_fv_o(K_point* kp__,
+                                    bool apw_only__,
+                                    bool add_o1__,
+                                    int N__,
+                                    int n__,
+                                    wave_functions& phi__,
+                                    wave_functions& ophi__) const
 {
     PROFILE("sirius::Band::apply_fv_o");
 
@@ -366,13 +368,13 @@ inline void Band::apply_fv_o(K_point* kp__,
 }
 
 /* first come the local orbitals, then the singular components, then the auxiliary basis functions */
-inline void Band::apply_fv_h_o(K_point* kp__,
-                               int nlo__,
-                               int N__,
-                               int n__,
-                               wave_functions& phi__,
-                               wave_functions& hphi__,
-                               wave_functions& ophi__) const
+inline void Hamiltonian::apply_fv_h_o(K_point* kp__,
+                                      int nlo__,
+                                      int N__,
+                                      int n__,
+                                      wave_functions& phi__,
+                                      wave_functions& hphi__,
+                                      wave_functions& ophi__) const
 {
     PROFILE("sirius::Band::apply_fv_h_o");
 
@@ -676,9 +678,9 @@ inline void Band::apply_fv_h_o(K_point* kp__,
 }
 
 // TODO: port to GPU
-inline void Band::apply_magnetic_field(wave_functions& fv_states__,
-                                       Gvec const& gkvec__,
-                                       std::vector<wave_functions>& hpsi__) const
+inline void Hamiltonian::apply_magnetic_field(wave_functions& fv_states__,
+                                              Gvec const& gkvec__,
+                                              std::vector<wave_functions>& hpsi__) const
 {
     PROFILE("sirius::Band::apply_magnetic_field");
 

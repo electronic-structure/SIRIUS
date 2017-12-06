@@ -970,6 +970,47 @@ class Atom_type
         return hubbard_beta_;
     }
 
+    inline void set_hubbard_alpha(const double alpha)
+    {
+        hubbard_alpha_ = alpha;
+    }
+
+    inline void set_hubbard_beta(const double beta_)
+    {
+        hubbard_beta_ = beta_;
+    }
+
+    inline void set_starting_magnetization_theta(const double theta_)
+    {
+        starting_magnetization_theta_ = theta_;
+    }
+
+    inline void set_starting_magnetization_phi(const double phi_)
+    {
+        starting_magnetization_phi_ = phi_;;
+    }
+
+    inline void set_hubbard_coefficients(double const * J_)
+    {
+        this->hubbard_coefficients_[0] = J_[0];
+        this->hubbard_coefficients_[1] = J_[1];
+        this->hubbard_coefficients_[2] = J_[2];
+        this->hubbard_coefficients_[3] = J_[3];
+    }
+
+    inline void set_hubbard_J0(double const J0_)
+    {
+        this->hubbard_J0_ = J0_;
+    }
+
+    inline void set_hubbard_correction(const int co_)
+    {
+        if(co_ > 0)
+            this->hubbard_correction_ = true;
+        else
+            this->hubbard_correction_ = false;
+    }
+
     inline int hubbard_l() const
     {
         return hubbard_l_;
@@ -1500,6 +1541,8 @@ inline void Atom_type::init(int offset_lo__)
     }
 
     if (this->hubbard_correction_) {
+        set_hubbard_l_and_n_orbital();
+        set_occupancy_hubbard_orbital(-1.0);
         compute_hubbard_matrix();
     }
 
@@ -2231,6 +2274,9 @@ void Atom_type::compute_hubbard_matrix()
       }
     }
   }
+
+  set_hubbard_l_and_n_orbital();
+  set_occupancy_hubbard_orbital(-1.0);
 }
 
 void Atom_type::read_hubbard_input()
@@ -2252,9 +2298,6 @@ void Atom_type::read_hubbard_input()
             starting_magnetization_ = d.second[6];
         }
     }
-
-    set_hubbard_l_and_n_orbital();
-    set_occupancy_hubbard_orbital(-1.0);
 }
 } // namespace
 

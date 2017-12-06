@@ -33,9 +33,9 @@ void hubbard_compute_occupation_numbers(K_point_set& kset_)
         dm.zero();
 
         linalg<CPU>::gemm(2, 0, this->number_of_hubbard_orbitals(), kp->num_occupied_bands(),
-                          kp->hubbard_wave_functions_ppus(0).pw_coeffs().num_rows_loc(),
-                          kp->hubbard_wave_functions_ppus(0).pw_coeffs().prime().at<CPU>(0, 0),
-                          kp->hubbard_wave_functions_ppus(0).pw_coeffs().prime().ld(),
+                          kp->hubbard_wave_functions(0).pw_coeffs().num_rows_loc(),
+                          kp->hubbard_wave_functions(0).pw_coeffs().prime().at<CPU>(0, 0),
+                          kp->hubbard_wave_functions(0).pw_coeffs().prime().ld(),
                           kp->spinor_wave_functions(0).pw_coeffs().prime().at<CPU>(0, 0),
                           kp->spinor_wave_functions(0).pw_coeffs().prime().ld(), dm.at<CPU>(0, 0), dm.ld());
 
@@ -43,10 +43,10 @@ void hubbard_compute_occupation_numbers(K_point_set& kset_)
             // compute <phi_{i,\sigma}|psi_nk> the bands been distributed over the pool
 
             linalg<CPU>::gemm(2, 0, this->number_of_hubbard_orbitals(), kp->num_occupied_bands(),
-                              kp->hubbard_wave_functions_ppus(s1).pw_coeffs().num_rows_loc(),
+                              kp->hubbard_wave_functions(s1).pw_coeffs().num_rows_loc(),
                               linalg_const<double_complex>::one(),
-                              kp->hubbard_wave_functions_ppus(s1).pw_coeffs().prime().at<CPU>(0, 0),
-                              kp->hubbard_wave_functions_ppus(s1).pw_coeffs().prime().ld(),
+                              kp->hubbard_wave_functions(s1).pw_coeffs().prime().at<CPU>(0, 0),
+                              kp->hubbard_wave_functions(s1).pw_coeffs().prime().ld(),
                               kp->spinor_wave_functions(s1).pw_coeffs().prime().at<CPU>(0, 0),
                               kp->spinor_wave_functions(s1).pw_coeffs().prime().ld(),
                               linalg_const<double_complex>::one(), dm.at<CPU>(0, 0), dm.ld());
@@ -429,4 +429,45 @@ void calculate_initial_occupation_numbers()
             printf("\n");
         }
     }
+}
+
+void set_hubbard_occupation_matrix(double_complex *occ, int ld)
+{
+    mdarray<double_complex, 4> occupation_(occ, 2 * this->lmax_ + 1, 2 * this->lmax_ + 1, 4, ctx_.unit_cell().num_atoms());
+
+    if(ctx_.num_spins() == 1) {
+        for (int m1 = 0; m1 < (2 * ctx_.unit_cell().atom(ia).type().hubbard_l() + 1); m1++) {
+            int mm1 = ((m1 % 2 == 0) - (m1 %2 == 1)) * ((m1 + 1) >> 1) + ctx_.unit_cell().atom(ia).type().hubbard_l();
+            for (int m2 = 0; m2 < (2 * ctx_.unit_cell().atom(ia).type().hubbard_l() + 1); m2++) {
+                int mm2 = ((m2 % 2 == 0) - (m2 %2 == 1)) * ((m2 + 1) >> 1) + ctx_.unit_cell().atom(ia).type().hubbard_l();
+                this->occupancy_number_(mm1, mm2, 0, ia, 0) = occupation_(m1, m2, 0, ia);
+            }
+        }
+    } else {
+        for(int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {
+            if(ctx_.num_mag_dims() == 3) {
+                for (int m1 = 0; m1 < (2 * ctx_.unit_cell().atom(ia).type().hubbard_l() + 1); m1++) {
+                    int mm1 = ((m1 % 2 == 0) - (m1 %2 == 1)) * ((m1 + 1) >> 1) + ctx_.unit_cell().atom(ia).type().hubbard_l();
+                    for (int m2 = 0; m2 < (2 * ctx_.unit_cell().atom(ia).type().hubbard_l() + 1); m2++) {
+                        int mm2 = ((m2 % 2 == 0) - (m2 %2 == 1)) * ((m2 + 1) >> 1) + ctx_.unit_cell().atom(ia).type().hubbard_l();
+                        this->occupancy_number_(mm1, mm2, 0, ia, 0) = occupation_(m1, m2, 0, ia);
+                        this->occupancy_number_(mm1, mm2, 1, ia, 0) = occupation_(m1, m2, 3, ia);
+                        this->occupancy_number_(mm1, mm2, 2, ia, 0) = occupation_(m1, m2, 1, ia);
+                        this->occupancy_number_(mm1, mm2, 3, ia, 0) = occupation_(m1, m2, 2, ia);
+                    }
+                }
+            } else {
+                for (int m1 = 0; m1 < (2 * ctx_.unit_cell().atom(ia).type().hubbard_l() + 1); m1++) {
+                    int mm1 = ((m1 % 2 == 0) - (m1 %2 == 1)) * ((m1 + 1) >> 1) + ctx_.unit_cell().atom(ia).type().hubbard_l();
+                    for (int m2 = 0; m2 < (2 * ctx_.unit_cell().atom(ia).type().hubbard_l() + 1); m2++) {
+                        int mm2 = ((m2 % 2 == 0) - (m2 %2 == 1)) * ((m2 + 1) >> 1) + ctx_.unit_cell().atom(ia).type().hubbard_l();
+                        this->occupancy_number_(mm1, mm2, 0, ia, 0) = occupation_(m1, m2, 0, ia);
+                        this->occupancy_number_(mm1, mm2, 1, ia, 0) = occupation_(m1, m2, 1, ia);
+                    }
+                }
+            }
+        }
+    }
+
+    calculate_hubbard_potential_and_energy();
 }

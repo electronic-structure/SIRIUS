@@ -72,6 +72,8 @@ double ground_state(Simulation_context& ctx,
     Density density(ctx);
     density.allocate();
 
+    Hamiltonian H(ctx, potential);
+
     if (ctx.comm().rank() == 0 && ctx.control().print_memory_usage_) {
         MEMORY_USAGE_INFO();
     }
@@ -89,7 +91,7 @@ double ground_state(Simulation_context& ctx,
     /* don't write output if we compare against the reference calculation */
     bool write_state = (ref_file.size() == 0);
 
-    DFT_ground_state dft(ctx, potential, density, ks);
+    DFT_ground_state dft(ctx, H, density, ks);
 
     if (task == task_t::ground_state_restart) {
         if (!Utils::file_exists(storage_file_name)) {
@@ -101,7 +103,7 @@ double ground_state(Simulation_context& ctx,
         density.initial_density();
         potential.generate(density);
         if (!ctx.full_potential()) {
-            dft.band().initialize_subspace(ks, potential);
+            dft.band().initialize_subspace(ks, H);
         }
     }
 
@@ -208,6 +210,8 @@ void run_tasks(cmd_args const& args)
         Potential potential(*ctx);
         potential.allocate();
 
+        Hamiltonian H(*ctx, potential);
+
         Density density(*ctx);
         density.allocate();
 
@@ -256,11 +260,11 @@ void run_tasks(cmd_args const& args)
         potential.generate(density);
         Band band(*ctx);
         if (!ctx->full_potential()) {
-            band.initialize_subspace(ks, potential);
+            band.initialize_subspace(ks, H);
             printf("--------------------------------------------- init\n");
-            band.U().hubbard_compute_occupation_numbers(ks);
+            H.U().hubbard_compute_occupation_numbers(ks);
         }
-        band.solve_for_kset(ks, potential, true);
+        band.solve_for_kset(ks, H, true);
 
         ks.sync_band_energies();
         if (mpi_comm_world().rank() == 0) {

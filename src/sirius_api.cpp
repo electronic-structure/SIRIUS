@@ -33,6 +33,9 @@ std::unique_ptr<sirius::Density> density{nullptr};
 /// Pointer to Potential class, implicitly used by Fortran side.
 sirius::Potential* potential = nullptr;
 
+/// Pointer to the Hamiltonian
+sirius:: Hamiltonian* H_ = nullptr;
+
 /// List of pointers to the sets of k-points.
 std::vector<sirius::K_point_set*> kset_list;
 
@@ -224,12 +227,14 @@ void sirius_create_ground_state(int32_t* kset_id__)
         TERMINATE("dft_ground_state object is already allocate");
     }
 
-    dft_ground_state = new sirius::DFT_ground_state(*sim_ctx, *potential, *density, *kset_list[*kset_id__]);
+    H_ = new sirius::Hamiltonian(*sim_ctx, *potential);
+    dft_ground_state = new sirius::DFT_ground_state(*sim_ctx, *H_, *density, *kset_list[*kset_id__]);
 }
 
 void sirius_delete_ground_state()
 {
     delete dft_ground_state;
+    delete H_;
     dft_ground_state = nullptr;
 }
 
@@ -395,6 +400,39 @@ void sirius_set_atom_type_radial_grid(char const* label__,
     type.set_free_atom_radial_grid(*num_radial_points__, radial_points__);
 }
 
+/// set the hubbard correction for the atomic type.
+/** \param [in] label : unique label of the atom type
+ *  \param [in] hub_correction : hubbard correction
+ *  \param [in] J_ hubbard constants for the full hubbard treatment
+ *  \param [in] theta_ : azimutal angle of the local magnetization
+ *  \param [in] phi_ : polar angle of the local magnetization
+ *  \param [in] alpha_ : J_alpha for the simple hubbard treatment
+ *  \param [in] beta_ : J_beta for the simple hubbard treatment
+ *  \param [in] J0_ : J0 for the simple hubbard treatment
+ */
+void sirius_set_atom_type_hubbard(char const* label__,
+                                  int32_t const* hub_correction,
+                                  double const* J_,
+                                  double const* theta_,
+                                  double const* phi_,
+                                  double const* alpha_,
+                                  double const* beta_,
+                                  double const* J0_)
+{
+    auto& type = sim_ctx->unit_cell().atom_type(std::string(label__));
+    if(hub_correction > 0) {
+        type.set_hubbard_correction(true);
+        type.set_hubbard_alpha(*alpha_);
+        type.set_hubbard_beta(*alpha_);
+        type.set_hubbard_coefficients(J_);
+        type.set_starting_magnetization_theta(*theta_);
+        type.set_starting_magnetization_phi(*phi_);
+        type.set_hubbard_J0(*J0_);
+    }
+
+    type.set_hubbard_correction(false);
+}
+
 void sirius_set_free_atom_density(char const* label__,
                                   int32_t const* num_points__,
                                   double const* dens__)
@@ -416,7 +454,7 @@ void sirius_set_free_atom_density(char const* label__,
  *  Example
     \code{.F90}
     do is=1,nspecies
-      do ist=1,spnst(is)
+    do ist=occ1,spnst(is)
         call sirius_set_atom_type_configuration(trim(spfname(is)), spn(ist, is), spl(ist, is),&
                                                &spk(ist, is), spocc(ist, is),&
                                                &spcore(ist, is))
@@ -722,7 +760,7 @@ void sirius_generate_effective_potential()
 
 void sirius_initialize_subspace(ftn_int* kset_id__)
 {
-    dft_ground_state->band().initialize_subspace(*kset_list[*kset_id__], *potential);
+    dft_ground_state->band().initialize_subspace(*kset_list[*kset_id__], *H_);
 }
 
 void sirius_generate_density(int32_t* kset_id__)
@@ -768,7 +806,7 @@ void sirius_find_eigen_states(int32_t* kset_id__,
                               int32_t* precompute__)
 {
     bool precompute = (*precompute__) ? true : false;
-    dft_ground_state->band().solve_for_kset(*kset_list[*kset_id__], *potential, precompute);
+    dft_ground_state->band().solve_for_kset(*kset_list[*kset_id__], *H_, precompute);
 }
 
 void sirius_find_band_occupancies(int32_t* kset_id__)
@@ -1034,7 +1072,7 @@ void sirius_write_json_output(void)
     dict["threads_per_rank"] = omp_get_max_threads();
     dict["ground_state"] = dft_ground_state->serialize();
     dict["timers"] = sddk::timer::serialize_timers();
- 
+
     if (mpi_comm_world().rank() == 0) {
         std::ofstream ofs(std::string("output_") + sim_ctx->start_time_tag() + std::string(".json"),
                           std::ofstream::out | std::ofstream::trunc);
@@ -1257,7 +1295,7 @@ void sirius_get_gkvec_arrays(ftn_int*    kset_id__,
                              ftn_double* gkvec_len,
                              ftn_double* gkvec_tp__)
 {
-    
+
     auto ks = kset_list[*kset_id__];
     auto kp = (*kset_list[*kset_id__])[*ik__ - 1];
 
@@ -1529,7 +1567,7 @@ void sirius_generate_rho_multipole_moments(ftn_int*            lmmax__,
 {
     mdarray<ftn_double_complex, 2> qmt(qmt__, *lmmax__, sim_ctx->unit_cell().num_atoms());
     qmt.zero();
-    
+
     int lmmax = std::min(*lmmax__, sim_ctx->lmmax_rho());
 
     auto l_by_lm = Utils::l_by_lm(Utils::lmax_by_lmmax(lmmax));
@@ -1585,7 +1623,7 @@ void sirius_radial_solver(ftn_char    type__,
                           ftn_int*    zn__,
                           ftn_int*    dme__,
                           ftn_int*    l__,
-                          ftn_int*    k__, 
+                          ftn_int*    k__,
                           ftn_double* enu__,
                           ftn_int*    nr__,
                           ftn_double* r__,
@@ -1839,7 +1877,7 @@ void sirius_set_aw_aw_h_radial_integral(int32_t* ia__,
     int ia = *ia__ - 1;
     int idxrf1 = sim_ctx->unit_cell().atom(ia).type().indexr_by_l_order(*l1__, *io1__ - 1);
     int idxrf2 = sim_ctx->unit_cell().atom(ia).type().indexr_by_l_order(*l2__, *io2__ - 1);
-    
+
     //double d1 = std::abs(*haa__ - sim_ctx->unit_cell().atom(ia).h_radial_integrals(idxrf1, idxrf2)[*lm3__ - 1]);
     //
     //if (d1 > 1e-3) {
@@ -2345,9 +2383,9 @@ void sirius_get_q_operator_matrix (ftn_int*    iat__,
         int idxrf  = atom_type.indexb(xi).idxrf;
         idx_map[xi] = atom_type.indexb().index_by_idxrf(idxrf) + idx_Rlm(lm);
     }
-    
+
     q_mtrx.zero();
-    
+
     if (atom_type.pp_desc().augment) {
         for (int xi1 = 0; xi1 < nbf; xi1++) {
             for (int xi2 = 0; xi2 < nbf; xi2++) {
@@ -2361,7 +2399,7 @@ void sirius_get_q_operator_matrix (ftn_int*    iat__,
 
     //for (int idxrf = 0; idxrf < atom_type.mt_radial_basis_size(); idxrf++) {
     //    int l      = atom_type.indexr(idxrf).l;
-    //    int offset = atom_type.indexb().index_by_idxrf(idxrf); 
+    //    int offset = atom_type.indexb().index_by_idxrf(idxrf);
     //    for (int m1 = -l; m1 <= l; m1++) { // this runs over Ylm index of sirius
     //        for (int m2 = -l; m2 <= l; m2++) { // this runs over Rlm index of sirius
     //            int i{0}; // index of QE Rlm
@@ -2635,7 +2673,7 @@ void sirius_get_paw_one_elec_energy(double* one_elec_en__)
 }
 
 void sirius_reduce_coordinates(ftn_double* coord__,
-                               ftn_double* reduced_coord__, 
+                               ftn_double* reduced_coord__,
                                ftn_int* T__)
 {
     vector3d<double> coord(coord__[0], coord__[1], coord__[2]);
@@ -2704,7 +2742,7 @@ void sirius_get_wave_functions(ftn_int* kset_id__,
     mdarray<int, 2> gvec_k(gvec_k__, 3, *npw__);
     mdarray<double_complex, 2> evc(evc__, *ld__, sim_ctx->num_bands());
     evc.zero();
-    
+
     std::vector<double_complex> wf_tmp(kp->num_gkvec());
     int gkvec_count = kp->gkvec().gvec_count(kp->comm().rank());
     int gkvec_offset = kp->gkvec().gvec_offset(kp->comm().rank());
@@ -2753,7 +2791,7 @@ void sirius_get_beta_projectors(ftn_int* kset_id__,
 
     //for (int ia = 0; ia < sim_ctx->unit_cell().num_atoms(); ia++) {
     //    auto& atom = sim_ctx->unit_cell().atom(ia);
-    //    
+    //
     //    int nbf = atom.mt_basis_size();
 
     //    /* index of Rlm of QE */
@@ -2845,7 +2883,7 @@ void sirius_get_d_operator_matrix(ftn_int*    ia__,
     auto& atom = sim_ctx->unit_cell().atom(*ia__ - 1);
     auto idx_map = atomic_orbital_index_map_QE(atom.type());
     int nbf = atom.mt_basis_size();
-    
+
     d_mtrx.zero();
 
     for (int xi1 = 0; xi1 < nbf; xi1++) {
@@ -2867,7 +2905,7 @@ void sirius_set_d_operator_matrix(ftn_int*    ia__,
     auto& atom = sim_ctx->unit_cell().atom(*ia__ - 1);
     auto idx_map = atomic_orbital_index_map_QE(atom.type());
     int nbf = atom.mt_basis_size();
-    
+
     for (int xi1 = 0; xi1 < nbf; xi1++) {
         int p1 = phase_Rlm_QE(atom.type(), xi1);
         for (int xi2 = 0; xi2 < nbf; xi2++) {
@@ -2943,7 +2981,7 @@ void sirius_generate_d_operator_matrix()
 void sirius_set_pw_coeffs(ftn_char label__,
                           double_complex* pw_coeffs__,
                           ftn_int* ngv__,
-                          ftn_int* gvl__, 
+                          ftn_int* gvl__,
                           ftn_int* comm__)
 {
     PROFILE("sirius_api::sirius_set_pw_coeffs");
@@ -2991,7 +3029,7 @@ void sirius_set_pw_coeffs(ftn_char label__,
             }
         }
         comm.allreduce(v.data(), sim_ctx->gvec().num_gvec());
-        
+
         // TODO: check if FFT transformation is necessary
         if (label == "rho") {
             density->rho().scatter_f_pw(v);
@@ -3037,7 +3075,7 @@ void sirius_set_pw_coeffs(ftn_char label__,
 void sirius_get_pw_coeffs(ftn_char        label__,
                           double_complex* pw_coeffs__,
                           ftn_int*        ngv__,
-                          ftn_int*        gvl__, 
+                          ftn_int*        gvl__,
                           ftn_int*        comm__)
 {
     PROFILE("sirius_api::sirius_get_pw_coeffs");
@@ -3072,7 +3110,7 @@ void sirius_get_pw_coeffs(ftn_char        label__,
 
         for (int i = 0; i < *ngv__; i++) {
             vector3d<int> G(gvec(0, i), gvec(1, i), gvec(2, i));
-            
+
             bool is_inverse{false};
             int ig = sim_ctx->gvec().index_by_gvec(G);
             if (ig == -1 && sim_ctx->gvec().reduced()) {
@@ -3096,10 +3134,10 @@ void sirius_get_pw_coeffs(ftn_char        label__,
 }
 
 void sirius_get_pw_coeffs_real(ftn_char    atom_type__,
-                               ftn_char    label__,  
+                               ftn_char    label__,
                                ftn_double* pw_coeffs__,
                                ftn_int*    ngv__,
-                               ftn_int*    gvl__, 
+                               ftn_int*    gvl__,
                                ftn_int*    comm__)
 {
     std::string label(label__);
@@ -3109,7 +3147,7 @@ void sirius_get_pw_coeffs_real(ftn_char    atom_type__,
     auto make_pw_coeffs = [&](std::function<double(double)> f)
     {
         mdarray<int, 2> gvec(gvl__, 3, *ngv__);
-        
+
         double fourpi_omega = fourpi / sim_ctx->unit_cell().omega();
         #pragma omp parallel for schedule(static)
         for (int i = 0; i < *ngv__; i++) {
@@ -3117,7 +3155,7 @@ void sirius_get_pw_coeffs_real(ftn_char    atom_type__,
             pw_coeffs__[i] = fourpi_omega * f(gc.length());
         }
     };
-    
+
     if (label == "rhoc") {
         sirius::Radial_integrals_rho_core_pseudo<false> ri(sim_ctx->unit_cell(), sim_ctx->pw_cutoff(), sim_ctx->settings().nprii_rho_core_);
         make_pw_coeffs([&ri, iat](double g)
@@ -3258,3 +3296,22 @@ void sirius_set_esm(ftn_bool* enable_esm__, ftn_char esm_bc__)
 }
 
 } // extern "C"
+
+void sirius_set_hubbard_correction(int32_t *hubbard_correction_)
+{
+    if (*hubbard_correction_ != 0) {
+        sim_ctx->set_hubbard_correction(true);
+    } else {
+        sim_ctx->set_hubbard_correction(false);
+    }
+}
+
+void sirius_set_hubbard_occupations(ftn_double_complex *occ, ftn_int *ld)
+{
+    H_->U().set_hubbard_occupation_matrix(occ, *ld);
+}
+
+void sirius_set_hubbard_potential(ftn_double_complex *occ, ftn_int *ld)
+{
+    H_->U().set_hubbard_potential(occ, *ld);
+}

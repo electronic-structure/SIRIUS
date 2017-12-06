@@ -1,7 +1,7 @@
 inline mdarray<double, 2>
-Band::get_h_diag(K_point* kp__,
-                 double   v0__,
-                 double   theta0__) const
+Hamiltonian::get_h_diag(K_point* kp__,
+                        double   v0__,
+                        double   theta0__) const
 {
     // TODO: code is replicated in o_diag
     splindex<block> spl_num_atoms(unit_cell_.num_atoms(), kp__->comm().size(), kp__->comm().rank());
@@ -35,7 +35,7 @@ Band::get_h_diag(K_point* kp__,
             }
         }
     }
-    
+
     nlo = 0;
     for (int ialoc = 0; ialoc < spl_num_atoms.local_size(); ialoc++) {
         int ia = spl_num_atoms[ialoc];
@@ -59,8 +59,8 @@ Band::get_h_diag(K_point* kp__,
 }
 
 inline mdarray<double, 1>
-Band::get_o_diag(K_point* kp__,
-                 double   theta0__) const
+Hamiltonian::get_o_diag(K_point* kp__,
+                        double   theta0__) const
 {
     splindex<block> spl_num_atoms(unit_cell_.num_atoms(), kp__->comm().size(), kp__->comm().rank());
     int nlo{0};
@@ -68,7 +68,7 @@ Band::get_o_diag(K_point* kp__,
         int ia = spl_num_atoms[ialoc];
         nlo += unit_cell_.atom(ia).mt_lo_basis_size();
     }
-    
+
     mdarray<double, 1> o_diag(kp__->num_gkvec_loc() + nlo);
     for (int igloc = 0; igloc < kp__->num_gkvec_loc(); igloc++) {
         o_diag[igloc] = theta0__;
@@ -100,9 +100,8 @@ Band::get_o_diag(K_point* kp__,
 
 template <typename T>
 inline mdarray<double, 2>
-Band::get_h_diag(K_point*        kp__,
-                 Local_operator& vloc__,
-                 D_operator<T>&  d_op__) const
+Hamiltonian::get_h_diag(K_point*        kp__,
+                        D_operator<T>&  d_op__) const
 {
     PROFILE("sirius::Band::get_h_diag");
 
@@ -114,7 +113,7 @@ Band::get_h_diag(K_point*        kp__,
         for (int ig_loc = 0; ig_loc < kp__->num_gkvec_loc(); ig_loc++) {
             int ig = kp__->igk_loc(ig_loc);
             auto vgk = kp__->gkvec().gkvec_cart(ig);
-            h_diag(ig_loc, ispn) = 0.5 * dot(vgk, vgk) + vloc__.v0(ispn);
+            h_diag(ig_loc, ispn) = 0.5 * dot(vgk, vgk) + this->local_op().v0(ispn);
         }
 
         /* non-local H contribution */
@@ -129,9 +128,9 @@ Band::get_h_diag(K_point*        kp__,
 
             for (int i = 0; i < atom_type.num_atoms(); i++) {
                 int ia = atom_type.atom_id(i);
-            
+
                 for (int xi2 = 0; xi2 < nbf; xi2++) {
-                    for (int xi1 = 0; xi1 < nbf; xi1++) { 
+                    for (int xi1 = 0; xi1 < nbf; xi1++) {
                         d_sum(xi1, xi2) += d_op__(xi1, xi2, ispn, ia);
                     }
                 }
@@ -165,8 +164,8 @@ Band::get_h_diag(K_point*        kp__,
 
 template <typename T>
 inline mdarray<double, 1>
-Band::get_o_diag(K_point*       kp__,
-                 Q_operator<T>& q_op__) const
+Hamiltonian::get_o_diag(K_point*       kp__,
+                        Q_operator<T>& q_op__) const
 {
     PROFILE("sirius::Band::get_o_diag");
 
@@ -189,12 +188,12 @@ Band::get_o_diag(K_point*       kp__,
 
         matrix<double_complex> q_sum(nbf, nbf);
         q_sum.zero();
-        
+
         for (int i = 0; i < atom_type.num_atoms(); i++) {
             int ia = atom_type.atom_id(i);
-        
+
             for (int xi2 = 0; xi2 < nbf; xi2++) {
-                for (int xi1 = 0; xi1 < nbf; xi1++) { 
+                for (int xi1 = 0; xi1 < nbf; xi1++) {
                     q_sum(xi1, xi2) += q_op__(xi1, xi2, ia);
                 }
             }
