@@ -434,11 +434,10 @@ inline void Band::diag_fv_davidson(K_point* kp) const
                         [this](int ia){return unit_cell_.atom(ia).mt_lo_basis_size();}, num_bands);
 
     /* residuals */
-    /* res is also used as a temporary array in orthogonalize() */
-    //Wave_functions res(kp->gkvec(), unit_cell_.num_atoms(),
-    //                   [this](int ia){return unit_cell_.atom(ia).mt_lo_basis_size();}, nlo + ncomp + 2 * num_bands);
+    /* res is also used as a temporary array in orthogonalize() and the first time nlo + ncomp + num_bands
+     * states will be orthogonalized */
     Wave_functions res(kp->gkvec(), unit_cell_.num_atoms(),
-                       [this](int ia){return unit_cell_.atom(ia).mt_lo_basis_size();}, num_bands);
+                       [this](int ia){return unit_cell_.atom(ia).mt_lo_basis_size();}, nlo + ncomp + num_bands);
 
     //auto mem_type = (gen_evp_solver_->type() == ev_magma) ? memory_t::host_pinned : memory_t::host;
 
@@ -472,12 +471,10 @@ inline void Band::diag_fv_davidson(K_point* kp) const
     #ifdef __GPU
     if (ctx_.processing_unit() == GPU) {
         psi.allocate_on_device(0);
-        psi.pw_coeffs(0).copy_to_device(0, num_bands);
-        psi.mt_coeffs(0).copy_to_device(0, num_bands);
+        psi.copy_to_device(0, 0, num_bands);
 
         phi.allocate_on_device(0);
-        phi.pw_coeffs(0).copy_to_device(0, nlo + ncomp);
-        phi.mt_coeffs(0).copy_to_device(0, nlo + ncomp);
+        phi.copy_to_device(0, 0, nlo + ncomp);
 
         res.allocate_on_device(0);
 
