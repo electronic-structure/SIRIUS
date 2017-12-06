@@ -165,28 +165,32 @@ void sddk_get_num_wave_functions_local(ftn_int* wf_id__, ftn_int* num_wf__)
 
 void sddk_get_wave_functions_prime_ld(ftn_int* wf_id__, ftn_int* ld__)
 {
-    auto& wf = *reinterpret_cast<Wave_functions*>(sddk_objects[*wf_id__]);
-    *ld__ = wf.pw_coeffs().prime().ld();
+    //auto& wf = *reinterpret_cast<Wave_functions*>(sddk_objects[*wf_id__]);
+    STOP();
+    //*ld__ = wf.pw_coeffs().prime().ld();
 }
 
 void sddk_get_wave_functions_extra_ld(ftn_int* wf_id__, ftn_int* ld__)
 {
-    auto& wf = *reinterpret_cast<Wave_functions*>(sddk_objects[*wf_id__]);
-    *ld__ = wf.pw_coeffs().extra().ld();
+    STOP();
+    //auto& wf = *reinterpret_cast<Wave_functions*>(sddk_objects[*wf_id__]);
+    //*ld__ = wf.pw_coeffs().extra().ld();
 }
 
 void sddk_get_wave_functions_prime_ptr(ftn_int* wf_id__,
                                        ftn_double_complex** ptr__)
 {
-    auto& wf = *reinterpret_cast<Wave_functions*>(sddk_objects[*wf_id__]);
-    *ptr__ = wf.pw_coeffs().prime().at<CPU>();
+    STOP();
+    //auto& wf = *reinterpret_cast<Wave_functions*>(sddk_objects[*wf_id__]);
+    //*ptr__ = wf.pw_coeffs().prime().at<CPU>();
 }
 
 void sddk_get_wave_functions_extra_ptr(ftn_int* wf_id__,
                                        ftn_double_complex** ptr__)
 {
-    auto& wf = *reinterpret_cast<Wave_functions*>(sddk_objects[*wf_id__]);
-    *ptr__ = wf.pw_coeffs().extra().at<CPU>();
+    STOP();
+    //auto& wf = *reinterpret_cast<Wave_functions*>(sddk_objects[*wf_id__]);
+    //*ptr__ = wf.pw_coeffs().extra().at<CPU>();
 }
 
 /// Get total number of G-vectors.
