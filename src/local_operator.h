@@ -686,17 +686,15 @@ class Local_operator
         {
             PROFILE("sirius::Local_operator::apply_h_o");
 
-            STOP();
+            fft_coarse_.prepare(gkvec_par__);
 
-            //fft_coarse_.prepare(gkvec_par__);
+            mdarray<double_complex, 1> buf_pw(gkvec_par__.gvec_count_fft());
 
-            //mdarray<double_complex, 1> buf_pw(gkvec_par__.gvec_count_fft());
-
-            //#ifdef __GPU
-            //if (fft_coarse_.pu() == GPU) {
-            //    phi__.pw_coeffs().copy_to_host(N__, n__);
-            //}
-            //#endif
+#ifdef __GPU
+            if (fft_coarse_.pu() == GPU) {
+                phi__.pw_coeffs(0).copy_to_host(N__, n__);
+            }
+#endif
 
             //if (param_->control().print_checksum_) {
             //    auto cs = phi__.checksum_pw(N__, n__, param_->processing_unit());
@@ -705,97 +703,97 @@ class Local_operator
             //    }
             //}
 
-            // phi__.pw_coeffs().remap_forward(param_->processing_unit(), gkvec_par__.gvec_fft_slab(), n__, N__);
-            //hphi__.pw_coeffs().set_num_extra(CPU, gkvec_par__.gvec_count_fft(), n__, N__);
-            //ophi__.pw_coeffs().set_num_extra(CPU, gkvec_par__.gvec_count_fft(), n__, N__);
+             phi__.pw_coeffs(0).remap_forward(param_->processing_unit(), gkvec_par__.gvec_fft_slab(), n__, N__);
+            hphi__.pw_coeffs(0).set_num_extra(CPU, gkvec_par__.gvec_count_fft(), n__, N__);
+            ophi__.pw_coeffs(0).set_num_extra(CPU, gkvec_par__.gvec_count_fft(), n__, N__);
 
-            //for (int j = 0; j < phi__.pw_coeffs().spl_num_col().local_size(); j++) {
-            //    if (fft_coarse_.pu() == CPU) {
-            //        /* phi(G) -> phi(r) */
-            //        fft_coarse_.transform<1>(phi__.pw_coeffs().extra().at<CPU>(0, j));
-            //        #pragma omp parallel for schedule(static)
-            //        for (int ir = 0; ir < fft_coarse_.local_size(); ir++) {
-            //            /* save phi(r) */
-            //            buf_rg_[ir] = fft_coarse_.buffer(ir);
-            //            /* multiply by step function */
-            //            fft_coarse_.buffer(ir) *= theta_[ir];
-            //        }
-            //        /* phi(r) * Theta(r) -> ophi(G) */
-            //        fft_coarse_.transform<-1>(ophi__.pw_coeffs().extra().at<CPU>(0, j));
-            //        #pragma omp parallel for schedule(static)
-            //        for (int ir = 0; ir < fft_coarse_.local_size(); ir++) {
-            //            /* multiply be effective potential, which itself was multiplied by the step function in constructor */
-            //            fft_coarse_.buffer(ir) = buf_rg_[ir] * veff_vec_(ir, 0);
-            //        }
-            //        /* phi(r) * Theta(r) * V(r) -> ophi(G) */
-            //        fft_coarse_.transform<-1>(hphi__.pw_coeffs().extra().at<CPU>(0, j));
-            //    }
-            //    #ifdef __GPU
-            //    if (fft_coarse_.pu() == GPU) {
-            //        /* phi(G) -> phi(r) */
-            //        fft_coarse_.transform<1>(phi__.pw_coeffs().extra().at<CPU>(0, j));
-            //        /* save phi(r) */
-            //        acc::copy(buf_rg_.at<GPU>(), fft_coarse_.buffer().at<GPU>(), fft_coarse_.local_size());
-            //        /* multiply by step function */
-            //        scale_matrix_rows_gpu(fft_coarse_.local_size(), 1, fft_coarse_.buffer().at<GPU>(), theta_.at<GPU>());
-            //        /* phi(r) * Theta(r) -> ophi(G) */
-            //        fft_coarse_.transform<-1>(ophi__.pw_coeffs().extra().at<CPU>(0, j));
-            //        /* multiply by effective potential */
-            //        scale_matrix_rows_gpu(fft_coarse_.local_size(), 1, buf_rg_.at<GPU>(), veff_vec_.at<GPU>());
-            //        /* copy phi(r) * Theta(r) * V(r) to GPU buffer */
-            //        acc::copy(fft_coarse_.buffer().at<GPU>(), buf_rg_.at<GPU>(), fft_coarse_.local_size());
-            //        /* phi(r) * Theta(r) * V(r) -> ophi(G) */
-            //        fft_coarse_.transform<-1>(hphi__.pw_coeffs().extra().at<CPU>(0, j));
-            //    }
-            //    #endif
+            for (int j = 0; j < phi__.pw_coeffs(0).spl_num_col().local_size(); j++) {
+                if (fft_coarse_.pu() == CPU) {
+                    /* phi(G) -> phi(r) */
+                    fft_coarse_.transform<1>(phi__.pw_coeffs(0).extra().at<CPU>(0, j));
+                    #pragma omp parallel for schedule(static)
+                    for (int ir = 0; ir < fft_coarse_.local_size(); ir++) {
+                        /* save phi(r) */
+                        buf_rg_[ir] = fft_coarse_.buffer(ir);
+                        /* multiply by step function */
+                        fft_coarse_.buffer(ir) *= theta_[ir];
+                    }
+                    /* phi(r) * Theta(r) -> ophi(G) */
+                    fft_coarse_.transform<-1>(ophi__.pw_coeffs(0).extra().at<CPU>(0, j));
+                    #pragma omp parallel for schedule(static)
+                    for (int ir = 0; ir < fft_coarse_.local_size(); ir++) {
+                        /* multiply be effective potential, which itself was multiplied by the step function in constructor */
+                        fft_coarse_.buffer(ir) = buf_rg_[ir] * veff_vec_(ir, 0);
+                    }
+                    /* phi(r) * Theta(r) * V(r) -> ophi(G) */
+                    fft_coarse_.transform<-1>(hphi__.pw_coeffs(0).extra().at<CPU>(0, j));
+                }
+                #ifdef __GPU
+                if (fft_coarse_.pu() == GPU) {
+                    /* phi(G) -> phi(r) */
+                    fft_coarse_.transform<1>(phi__.pw_coeffs(0).extra().at<CPU>(0, j));
+                    /* save phi(r) */
+                    acc::copy(buf_rg_.at<GPU>(), fft_coarse_.buffer().at<GPU>(), fft_coarse_.local_size());
+                    /* multiply by step function */
+                    scale_matrix_rows_gpu(fft_coarse_.local_size(), 1, fft_coarse_.buffer().at<GPU>(), theta_.at<GPU>());
+                    /* phi(r) * Theta(r) -> ophi(G) */
+                    fft_coarse_.transform<-1>(ophi__.pw_coeffs(0).extra().at<CPU>(0, j));
+                    /* multiply by effective potential */
+                    scale_matrix_rows_gpu(fft_coarse_.local_size(), 1, buf_rg_.at<GPU>(), veff_vec_.at<GPU>());
+                    /* copy phi(r) * Theta(r) * V(r) to GPU buffer */
+                    acc::copy(fft_coarse_.buffer().at<GPU>(), buf_rg_.at<GPU>(), fft_coarse_.local_size());
+                    /* phi(r) * Theta(r) * V(r) -> ophi(G) */
+                    fft_coarse_.transform<-1>(hphi__.pw_coeffs(0).extra().at<CPU>(0, j));
+                }
+                #endif
 
-            //    /* add kinetic energy */
-            //    for (int x: {0, 1, 2}) {
-            //        for (int igloc = 0; igloc < gkvec_par__.gvec_count_fft(); igloc++) {
-            //            /* global index of G-vector */
-            //            int ig = gkvec_par__.gvec_offset_fft() + igloc;
-            //            /* \hat P phi = phi(G+k) * (G+k), \hat P is momentum operator */ 
-            //            buf_pw[igloc] = phi__.pw_coeffs().extra()(igloc, j) * gkvec_par__.gvec().gkvec_cart(ig)[x];
-            //        }
-            //        /* transform Cartesian component of wave-function gradient to real space */
-            //        fft_coarse_.transform<1>(&buf_pw[0]);
-            //        switch (fft_coarse_.pu()) {
-            //            case CPU: {
-            //                #pragma omp parallel for schedule(static)
-            //                for (int ir = 0; ir < fft_coarse_.local_size(); ir++) {
-            //                    /* multiply be step function */
-            //                    fft_coarse_.buffer(ir) *= theta_[ir];
-            //                }
-            //                break;
-            //            }
-            //            case GPU: {
-            //                #ifdef __GPU
-            //                /* multiply by step function */
-            //                scale_matrix_rows_gpu(fft_coarse_.local_size(), 1, fft_coarse_.buffer().at<GPU>(), theta_.at<GPU>());
-            //                #endif
-            //                break;
-            //            }
-            //        }
-            //        /* transform back to PW domain */
-            //        fft_coarse_.transform<-1>(&buf_pw[0]);
-            //        for (int igloc = 0; igloc < gkvec_par__.gvec_count_fft(); igloc++) {
-            //            int ig = gkvec_par__.gvec_offset_fft() + igloc;
-            //            hphi__.pw_coeffs().extra()(igloc, j) += 0.5 * buf_pw[igloc] * gkvec_par__.gvec().gkvec_cart(ig)[x];
-            //        }
-            //    }
-            //}
+                /* add kinetic energy */
+                for (int x: {0, 1, 2}) {
+                    for (int igloc = 0; igloc < gkvec_par__.gvec_count_fft(); igloc++) {
+                        /* global index of G-vector */
+                        int ig = gkvec_par__.gvec_offset_fft() + igloc;
+                        /* \hat P phi = phi(G+k) * (G+k), \hat P is momentum operator */ 
+                        buf_pw[igloc] = phi__.pw_coeffs(0).extra()(igloc, j) * gkvec_par__.gvec().gkvec_cart(ig)[x];
+                    }
+                    /* transform Cartesian component of wave-function gradient to real space */
+                    fft_coarse_.transform<1>(&buf_pw[0]);
+                    switch (fft_coarse_.pu()) {
+                        case CPU: {
+                            #pragma omp parallel for schedule(static)
+                            for (int ir = 0; ir < fft_coarse_.local_size(); ir++) {
+                                /* multiply be step function */
+                                fft_coarse_.buffer(ir) *= theta_[ir];
+                            }
+                            break;
+                        }
+                        case GPU: {
+                            #ifdef __GPU
+                            /* multiply by step function */
+                            scale_matrix_rows_gpu(fft_coarse_.local_size(), 1, fft_coarse_.buffer().at<GPU>(), theta_.at<GPU>());
+                            #endif
+                            break;
+                        }
+                    }
+                    /* transform back to PW domain */
+                    fft_coarse_.transform<-1>(&buf_pw[0]);
+                    for (int igloc = 0; igloc < gkvec_par__.gvec_count_fft(); igloc++) {
+                        int ig = gkvec_par__.gvec_offset_fft() + igloc;
+                        hphi__.pw_coeffs(0).extra()(igloc, j) += 0.5 * buf_pw[igloc] * gkvec_par__.gvec().gkvec_cart(ig)[x];
+                    }
+                }
+            }
 
-            //hphi__.pw_coeffs().remap_backward(param_->processing_unit(), gkvec_par__.gvec_fft_slab(), n__, N__);
-            //ophi__.pw_coeffs().remap_backward(param_->processing_unit(), gkvec_par__.gvec_fft_slab(), n__, N__);
+            hphi__.pw_coeffs(0).remap_backward(param_->processing_unit(), gkvec_par__.gvec_fft_slab(), n__, N__);
+            ophi__.pw_coeffs(0).remap_backward(param_->processing_unit(), gkvec_par__.gvec_fft_slab(), n__, N__);
 
-            //fft_coarse_.dismiss();
+            fft_coarse_.dismiss();
 
-            //#ifdef __GPU
-            //if (fft_coarse_.pu() == GPU) {
-            //    hphi__.pw_coeffs().copy_to_device(N__, n__);
-            //    ophi__.pw_coeffs().copy_to_device(N__, n__);
-            //}
-            //#endif
+#ifdef __GPU
+            if (fft_coarse_.pu() == GPU) {
+                hphi__.pw_coeffs(0).copy_to_device(N__, n__);
+                ophi__.pw_coeffs(0).copy_to_device(N__, n__);
+            }
+#endif
             //if (param_->control().print_checksum_) {
             //    auto cs1 = hphi__.checksum_pw(N__, n__, param_->processing_unit());
             //    auto cs2 = ophi__.checksum_pw(N__, n__, param_->processing_unit());
@@ -814,67 +812,71 @@ class Local_operator
         {
             PROFILE("sirius::Local_operator::apply_o");
 
-            STOP();
+            fft_coarse_.prepare(gkvec_par__);
 
-            //fft_coarse_.prepare(gkvec_par__);
+#ifdef __GPU
+            if (fft_coarse_.pu() == GPU) {
+                phi__.pw_coeffs(0).copy_to_host(N__, n__);
+            }
+#endif
+            
+            if (param_->control().print_checksum_) {
+                auto cs = phi__.checksum_pw(param_->processing_unit(), 0, 0, N__+ n__);
+                if (phi__.comm().rank() == 0) {
+                    print_checksum("phi_[0, N + n)", cs);
+                }
+                if (N__ != 0) {
+                    auto cs1 = ophi__.checksum_pw(param_->processing_unit(), 0, 0, N__);
+                    if (phi__.comm().rank() == 0) {
+                        print_checksum("ophi_[0, N)", cs1);
+                    }
+                }
+            }
 
-            //#ifdef __GPU
-            //if (fft_coarse_.pu() == GPU) {
-            //    phi__.pw_coeffs().copy_to_host(N__, n__);
-            //}
-            //#endif
-            //
-            //if (param_->control().print_checksum_) {
-            //    auto cs = phi__.checksum_pw(N__, n__, param_->processing_unit());
-            //    if (phi__.comm().rank() == 0) {
-            //        print_checksum("phi", cs);
-            //    }
-            //}
+             phi__.pw_coeffs(0).remap_forward(param_->processing_unit(), gkvec_par__.gvec_fft_slab(), n__, N__);
+            ophi__.pw_coeffs(0).set_num_extra(CPU, gkvec_par__.gvec_count_fft(), n__, N__);
 
-            // phi__.pw_coeffs().remap_forward(param_->processing_unit(), gkvec_par__.gvec_fft_slab(), n__, N__);
-            //ophi__.pw_coeffs().set_num_extra(CPU, gkvec_par__.gvec_count_fft(), n__, N__);
+            for (int j = 0; j < phi__.pw_coeffs(0).spl_num_col().local_size(); j++) {
+                if (fft_coarse_.pu() == CPU) {
+                    /* phi(G) -> phi(r) */
+                    fft_coarse_.transform<1>(phi__.pw_coeffs(0).extra().at<CPU>(0, j));
+                    #pragma omp parallel for schedule(static)
+                    for (int ir = 0; ir < fft_coarse_.local_size(); ir++) {
+                        /* multiply by step function */
+                        fft_coarse_.buffer(ir) *= theta_[ir];
+                    }
+                    /* phi(r) * Theta(r) -> ophi(G) */
+                    fft_coarse_.transform<-1>(ophi__.pw_coeffs(0).extra().at<CPU>(0, j));
+                } else {
+#ifdef __GPU
+                    /* phi(G) -> phi(r) */
+                    fft_coarse_.transform<1>(phi__.pw_coeffs(0).extra().at<CPU>(0, j));
+                    /* multiply by step function */
+                    scale_matrix_rows_gpu(fft_coarse_.local_size(), 1, fft_coarse_.buffer().at<GPU>(), theta_.at<GPU>());
+                    /* phi(r) * Theta(r) -> ophi(G) */
+                    fft_coarse_.transform<-1>(ophi__.pw_coeffs(0).extra().at<CPU>(0, j));
+#else
+                    TERMINATE_NO_GPU
+#endif
+                }
+            }
 
-            //for (int j = 0; j < phi__.pw_coeffs().spl_num_col().local_size(); j++) {
-            //    if (fft_coarse_.pu() == CPU) {
-            //        /* phi(G) -> phi(r) */
-            //        fft_coarse_.transform<1>(phi__.pw_coeffs().extra().at<CPU>(0, j));
-            //        #pragma omp parallel for schedule(static)
-            //        for (int ir = 0; ir < fft_coarse_.local_size(); ir++) {
-            //            /* multiply by step function */
-            //            fft_coarse_.buffer(ir) *= theta_[ir];
-            //        }
-            //        /* phi(r) * Theta(r) -> ophi(G) */
-            //        fft_coarse_.transform<-1>(ophi__.pw_coeffs().extra().at<CPU>(0, j));
-            //    } else {
-            //        #ifdef __GPU
-            //        /* phi(G) -> phi(r) */
-            //        fft_coarse_.transform<1>(phi__.pw_coeffs().extra().at<CPU>(0, j));
-            //        /* multiply by step function */
-            //        scale_matrix_rows_gpu(fft_coarse_.local_size(), 1, fft_coarse_.buffer().at<GPU>(), theta_.at<GPU>());
-            //        /* phi(r) * Theta(r) -> ophi(G) */
-            //        fft_coarse_.transform<-1>(ophi__.pw_coeffs().extra().at<CPU>(0, j));
-            //        #else
-            //        TERMINATE_NO_GPU
-            //        #endif
-            //    }
-            //}
+            ophi__.pw_coeffs(0).remap_backward(param_->processing_unit(), gkvec_par__.gvec_fft_slab(), n__, N__);
 
-            //ophi__.pw_coeffs().remap_backward(param_->processing_unit(), gkvec_par__.gvec_fft_slab(), n__, N__);
+            fft_coarse_.dismiss();
 
-            //fft_coarse_.dismiss();
-
-            //#ifdef __GPU
-            //if (fft_coarse_.pu() == GPU) {
-            //    ophi__.pw_coeffs().copy_to_device(N__, n__);
-            //}
-            //#endif
-            //
-            //if (param_->control().print_checksum_) {
-            //    auto cs = ophi__.checksum_pw(N__, n__, param_->processing_unit());
-            //    if (phi__.comm().rank() == 0) {
-            //        print_checksum("ophi_istl", cs);
-            //    }
-            //}
+#ifdef __GPU
+            if (fft_coarse_.pu() == GPU) {
+                ophi__.pw_coeffs(0).copy_to_device(N__, n__);
+            }
+#endif
+            
+            if (param_->control().print_checksum_) {
+                auto cs = ophi__.checksum_pw(param_->processing_unit(), 0, 0, N__ + n__);
+                if (phi__.comm().rank() == 0) {
+                    print_checksum("ophi_istl_[0, N + n)", cs);
+                }
+            }
         }
         
         /// Apply magnetic field to the wave-functions.

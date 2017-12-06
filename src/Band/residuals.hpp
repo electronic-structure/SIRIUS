@@ -44,7 +44,7 @@ static void compute_res(device_t            pu__,
     int s0 = (ispn__ == 2) ? 0 : ispn__;
     int s1 = (ispn__ == 2) ? 1 : ispn__;
 
-    for (int ispn = s0; ispn < s1; ispn++) {
+    for (int ispn = s0; ispn <= s1; ispn++) {
         switch (pu__) {
             case CPU: {
                 /* compute residuals r_{i} = H\Psi_{i} - E_{i}O\Psi_{i} */
@@ -235,7 +235,11 @@ Band::residuals_aux(K_point*             kp__,
         auto n_norm = res__.l2norm(pu, ispn__, num_bands__);
         if (kp__->comm().rank() == 0) {
             for (int i = 0; i < num_bands__; i++) {
-                DUMP("norms of residual %3i: %18.14f %24.14f %18.14f", i, res_norm[i], p_norm[i], n_norm[i]);
+                printf("norms of residual %3i: %18.14f %24.14f %18.14f", i, res_norm[i], p_norm[i], n_norm[i]);
+                if (res_norm[i] > ctx_.iterative_solver_input().residual_tolerance_) {
+                    printf(" +");
+                }
+                printf("\n");
             }
         }
     }
@@ -276,7 +280,7 @@ inline int Band::residuals(K_point*             kp__,
             std::vector<int> ev_idx;
             int s = ispn__ == 2 ? 0 : ispn__;
             for (int i = 0; i < num_bands__; i++) {
-                double tol = tol__ + empty_tol * std::abs(kp__->band_occupancy(i + s * ctx_.num_fv_states()) / ctx_.max_occupancy() - 1);
+                double tol = tol__ + empty_tol * std::abs(1 - kp__->band_occupancy(i + s * ctx_.num_fv_states()) / ctx_.max_occupancy());
                 if (std::abs(eval__[i] - eval_old__[i]) > tol) {
                     ev_idx.push_back(i);
                 }
@@ -321,14 +325,13 @@ inline int Band::residuals(K_point*             kp__,
                 if (res_norm[i] > itso.residual_tolerance_) {
                     /* shift unconverged residuals to the beginning of array */
                     if (n != i) {
-                        STOP();
-                        //res__.copy_from(res__, i, 1, n, ctx_.processing_unit());
+                        res__.copy_from(ctx_.processing_unit(), 1, res__, ispn__, i, ispn__, n);
                     }
                     n++;
                 }
             }
             if (ctx_.control().verbosity_ >= 3 && kp__->comm().rank() == 0) {
-                DUMP("initial and final number of residuals : %i %i", nmax, n);
+                printf("initial and final number of residuals : %i %i\n", nmax, n);
             }
         }
     } else {
@@ -338,26 +341,25 @@ inline int Band::residuals(K_point*             kp__,
         auto res_norm = residuals_aux(kp__, ispn__, num_bands__, eval__, hpsi__, opsi__, res__, h_diag__, o_diag__);
 
         for (int i = 0; i < num_bands__; i++) {
-            int s = ispn__ == 2 ? 0 : ispn__;
-            double tol = itso.residual_tolerance_ + 1e-3 * std::abs(kp__->band_occupancy(i + s * ctx_.num_fv_states()) / ctx_.max_occupancy() - 1);
-            /* take the residual if it's norm is above the threshold */
+            //int s = ispn__ == 2 ? 0 : ispn__;
+            double tol = itso.residual_tolerance_;// + 1e-3 * std::abs(kp__->band_occupancy(i + s * ctx_.num_fv_states()) / ctx_.max_occupancy() - 1);
+            /* take the residual if its norm is above the threshold */
             if (res_norm[i] > tol) {
                 /* shift unconverged residuals to the beginning of array */
                 if (n != i) {
-                    STOP();
-                    //res__.copy_from(res__, i, 1, n, ctx_.processing_unit());
+                    res__.copy_from(ctx_.processing_unit(), 1, res__, ispn__, i, ispn__, n);
                 }
                 n++;
             }
         }
         if (ctx_.control().verbosity_ >= 3 && kp__->comm().rank() == 0) {
-            DUMP("number of residuals : %i", n);
+            printf("number of residuals : %i\n", n);
         }
     }
                                         
     /* prevent numerical noise */
     /* this only happens for real wave-functions (Gamma-point case), non-magnetic or collinear magnetic */
-    if (std::is_same<T, double>::value && kp__->comm().rank() == 0) {
+    if (std::is_same<T, double>::value && kp__->comm().rank() == 0 && n != 0) {
         assert(ispn__ == 0 || ispn__ == 1);
         switch (ctx_.processing_unit()) {
             case CPU: {
@@ -367,16 +369,15 @@ inline int Band::residuals(K_point*             kp__,
                 break;
             }
             case GPU: {
-                #ifdef __GPU
-                if (n != 0) {
-                    make_real_g0_gpu(res__.pw_coeffs(ispn__).prime().at<GPU>(), res__.pw_coeffs(ispn__).prime().ld(), n);
-                }
-                #endif
+#ifdef __GPU
+                make_real_g0_gpu(res__.pw_coeffs(ispn__).prime().at<GPU>(), res__.pw_coeffs(ispn__).prime().ld(), n);
+#endif
                 break;
             }
         }
     }
-
+    
+    /* print checksums */
     if (ctx_.control().print_checksum_ && n != 0) {
         int s0 = (ispn__ == 2) ? 0 : ispn__;
         int s1 = (ispn__ == 2) ? 1 : ispn__;

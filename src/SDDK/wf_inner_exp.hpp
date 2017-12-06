@@ -92,7 +92,6 @@ inline void inner(device_t        pu__,
 
     T alpha = (std::is_same<T, double_complex>::value) ? 1 : 2;
     T beta = 0;
-    T beta1 = 1;
 
     auto local_inner = [&](int i0__,
                            int m__,
@@ -106,6 +105,7 @@ inline void inner(device_t        pu__,
         if (ispn__ != 2) {
             s0 = s1 = ispn__;
         }
+        beta = 0;
         for (int s = s0; s <= s1; s++) {
             /* wave-functions are complex and inner product is complex */
             if (std::is_same<T, double_complex>::value) {
@@ -122,7 +122,7 @@ inline void inner(device_t        pu__,
                                               *reinterpret_cast<double_complex*>(&alpha),
                                               bra__.mt_coeffs(s).prime().at<CPU>(0, i0__), bra__.mt_coeffs(s).prime().ld(),
                                               ket__.mt_coeffs(s).prime().at<CPU>(0, j0__), ket__.mt_coeffs(s).prime().ld(),
-                                              *reinterpret_cast<double_complex*>(&beta1),
+                                              linalg_const<double_complex>::one(),
                                               reinterpret_cast<double_complex*>(buf__), ld__);
                         }
                         break;
@@ -141,7 +141,7 @@ inline void inner(device_t        pu__,
                                               reinterpret_cast<double_complex*>(&alpha),
                                               bra__.mt_coeffs(s).prime().at<GPU>(0, i0__), bra__.mt_coeffs(s).prime().ld(),
                                               ket__.mt_coeffs(s).prime().at<GPU>(0, j0__), ket__.mt_coeffs(s).prime().ld(),
-                                              reinterpret_cast<double_complex*>(&beta1),
+                                              &linalg_const<double_complex>::one(),
                                               reinterpret_cast<double_complex*>(buf__), ld__,
                                               stream_id);
                         }

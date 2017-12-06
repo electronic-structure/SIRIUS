@@ -381,15 +381,6 @@ class Wave_functions
         }
     }
 
-    //inline void copy_from(device_t              pu__,
-    //                      Wave_functions const& src__,
-    //                      int                   ispn__,
-    //                      int                   i0__,
-    //                      int                   n__)
-    //{
-    //    copy_from(pu__, src__, ispn__, i0__, n__, i0__);
-    //}
-    
     /// Compute the checksum of the spin-components.
     /** Checksum of the n wave-function spin components is computed starting from i0. 
      *  Only plane-wave coefficients are considered. */

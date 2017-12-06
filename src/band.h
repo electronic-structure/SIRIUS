@@ -249,9 +249,22 @@ class Band
                 splindex<block_cyclic> spl_row(N__, mtrx__.blacs_grid().num_ranks_row(), mtrx__.blacs_grid().rank_row(), mtrx__.bs_row());
                 splindex<block_cyclic> spl_col(N__, mtrx__.blacs_grid().num_ranks_col(), mtrx__.blacs_grid().rank_col(), mtrx__.bs_col());
 
-                #pragma omp parallel for
+                #pragma omp parallel for schedule(static)
                 for (int i = 0; i < spl_col.local_size(); i++) {
-                    std::memcpy(&mtrx__(0, i), &mtrx_old__(0, i), spl_row.local_size() * sizeof(T));
+                    std::copy(&mtrx_old__(0, i), &mtrx_old__(0, i) + spl_row.local_size(), &mtrx__(0, i));
+                }
+
+                if (ctx_.control().print_checksum_) {
+                    double_complex cs(0, 0);
+                    for (int i = 0; i < spl_col.local_size(); i++) {
+                        for (int j = 0; j < spl_row.local_size(); j++) {
+                            cs += mtrx__(j, i);
+                        }
+                    }
+                    mtrx__.blacs_grid().comm().allreduce(&cs, 1);
+                    if (ctx_.comm_band().rank() == 0) {
+                        print_checksum("subspace_mtrx_old", cs);
+                    }
                 }
             }
 
@@ -286,7 +299,8 @@ class Band
                     print_checksum("subspace_mtrx", cs);
                 }
             }
-
+            
+            /* kill any numerical noise */
             mtrx__.make_real_diag(N__ + n__);
 
             /* save new matrix */
@@ -294,9 +308,9 @@ class Band
                 splindex<block_cyclic> spl_row(N__ + n__, mtrx__.blacs_grid().num_ranks_row(), mtrx__.blacs_grid().rank_row(), mtrx__.bs_row());
                 splindex<block_cyclic> spl_col(N__ + n__, mtrx__.blacs_grid().num_ranks_col(), mtrx__.blacs_grid().rank_col(), mtrx__.bs_col());
 
-                #pragma omp parallel for
+                #pragma omp parallel for schedule(static)
                 for (int i = 0; i < spl_col.local_size(); i++) {
-                    std::memcpy(&mtrx_old__(0, i), &mtrx__(0, i), spl_row.local_size() * sizeof(T));
+                    std::copy(&mtrx__(0, i), &mtrx__(0, i) + spl_row.local_size(), &mtrx_old__(0, i));
                 }
             }
         }
