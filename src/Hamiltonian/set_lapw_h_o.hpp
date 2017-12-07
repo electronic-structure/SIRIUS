@@ -261,7 +261,7 @@ inline void Hamiltonian::set_fv_h_o<GPU, electronic_structure_method_t::full_pot
     }
 
     /* add interstitial contributon */
-    set_fv_h_o_it(kp__, Hamiltonian__.potential(), h__, o__);
+    set_fv_h_o_it(kp__, h__, o__);
 
     /* setup lo-lo block */
     set_fv_h_o_lo_lo(kp__, h__, o__);
