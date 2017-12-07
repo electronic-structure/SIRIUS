@@ -1,4 +1,4 @@
-// Copyright (c) 2013-2016 Anton Kozhevnikov, Thomas Schulthess
+// Copyright (c) 2013-2017 Anton Kozhevnikov, Thomas Schulthess
 // All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without modification, are permitted provided that
@@ -67,7 +67,7 @@ class BLACS_grid
         rank_row_ = mpi_grid_->coordinate(0);
         rank_col_ = mpi_grid_->coordinate(1);
 
-        #ifdef __SCALAPACK
+#ifdef __SCALAPACK
         /* create handler first */
         blacs_handler_ = linalg_base::create_blacs_handler(mpi_grid_->communicator().mpi_comm());
 
@@ -95,15 +95,15 @@ class BLACS_grid
               << " blacs    " << irow1 << " " << icol1 << " " << nrow1 << " " << ncol1;
             TERMINATE(s);
         }
-        #endif
+#endif
     }
 
     ~BLACS_grid()
     {
-        #ifdef __SCALAPACK
+#ifdef __SCALAPACK
         linalg_base::gridexit(blacs_context_);
         linalg_base::free_blacs_handler(blacs_handler_);
-        #endif
+#endif
     }
 
     inline int context() const

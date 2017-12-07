@@ -52,8 +52,8 @@ class Forces_PS
             int nbnd = (ctx_.num_mag_dims() == 3) ? ctx_.num_bands() : ctx_.num_fv_states();
             for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
                 /* allocate GPU memory */
-                kpoint.spinor_wave_functions(ispn).pw_coeffs().prime().allocate(memory_t::device);
-                kpoint.spinor_wave_functions(ispn).pw_coeffs().copy_to_device(0, nbnd);
+                kpoint.spinor_wave_functions().pw_coeffs(ispn).allocate_on_device();
+                kpoint.spinor_wave_functions().pw_coeffs(ispn).copy_to_device(0, nbnd);
             }
         }
         #endif
@@ -66,7 +66,7 @@ class Forces_PS
         if (ctx_.processing_unit() == GPU && !keep_wf_on_gpu) {
             for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
                 /* deallocate GPU memory */
-                kpoint.spinor_wave_functions(ispn).pw_coeffs().deallocate_on_device();
+                kpoint.spinor_wave_functions().pw_coeffs(ispn).deallocate_on_device();
             }
         }
         #endif

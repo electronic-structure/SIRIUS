@@ -34,7 +34,24 @@
 
 using double_complex = std::complex<double>;
 
-enum class spin_block_t {nm, uu, ud, dd, du};
+/// Spin-blocks of the Hamiltonian.
+enum class spin_block_t 
+{
+    /// Non-magnetic case.
+    nm,
+
+    /// Up-up block.
+    uu,
+
+    /// Down-donw block.
+    dd,
+
+    ///Up-down block.
+    ud, 
+
+    /// Down-up block.
+    du
+};
 
 /// Type of electronic structure methods.
 enum class electronic_structure_method_t 
