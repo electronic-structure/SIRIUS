@@ -116,24 +116,24 @@ inline void K_point::initialize()
     if (ctx_.full_potential()) {
         if (use_second_variation) {
             /* allocate fv eien vectors */
-            fv_eigen_vectors_slab_ = std::unique_ptr<wave_functions>(
-                new wave_functions(ctx_.processing_unit(), gkvec(), unit_cell_.num_atoms(),
-                    [this](int ia){return unit_cell_.atom(ia).mt_lo_basis_size();}, ctx_.num_fv_states()));
+            fv_eigen_vectors_slab_ = std::unique_ptr<Wave_functions>(
+                new Wave_functions(gkvec(), unit_cell_.num_atoms(),
+                    [this](int ia){return unit_cell_.atom(ia).mt_lo_basis_size();}, ctx_.num_fv_states(), 1));
 
-            fv_eigen_vectors_slab_->pw_coeffs().prime().zero();
-            fv_eigen_vectors_slab_->mt_coeffs().prime().zero();
+            fv_eigen_vectors_slab_->pw_coeffs(0).prime().zero();
+            fv_eigen_vectors_slab_->mt_coeffs(0).prime().zero();
             /* starting guess for wave-functions */
             for (int i = 0; i < ctx_.num_fv_states(); i++) {
                 for (int igloc = 0; igloc < gkvec().gvec_count(comm().rank()); igloc++) {
                     int ig = igloc + gkvec().gvec_offset(comm().rank());
                     if (ig == i) {
-                        fv_eigen_vectors_slab_->pw_coeffs().prime(igloc, i) = 1.0;
+                        fv_eigen_vectors_slab_->pw_coeffs(0).prime(igloc, i) = 1.0;
                     }
                     if (ig == i + 1) {
-                        fv_eigen_vectors_slab_->pw_coeffs().prime(igloc, i) = 0.5;
+                        fv_eigen_vectors_slab_->pw_coeffs(0).prime(igloc, i) = 0.5;
                     }
                     if (ig == i + 2) {
-                        fv_eigen_vectors_slab_->pw_coeffs().prime(igloc, i) = 0.125;
+                        fv_eigen_vectors_slab_->pw_coeffs(0).prime(igloc, i) = 0.125;
                     }
                 }
             }
@@ -145,43 +145,42 @@ inline void K_point::initialize()
                     ncomp = ctx_.num_fv_states() / 2;
                 }
 
-                singular_components_ = std::unique_ptr<wave_functions>(new wave_functions(ctx_.processing_unit(), gkvec(), ncomp));
-                singular_components_->pw_coeffs().prime().zero();
+                singular_components_ = std::unique_ptr<Wave_functions>(new Wave_functions(gkvec(), ncomp, 1));
+                singular_components_->pw_coeffs(0).prime().zero();
                 /* starting guess for wave-functions */
                 for (int i = 0; i < ncomp; i++) {
                     for (int igloc = 0; igloc < gkvec().count(); igloc++) {
                         int ig = igloc + gkvec().offset();
                         if (ig == i) {
-                            singular_components_->pw_coeffs().prime(igloc, i) = 1.0;
+                            singular_components_->pw_coeffs(0).prime(igloc, i) = 1.0;
                         }
                         if (ig == i + 1) {
-                            singular_components_->pw_coeffs().prime(igloc, i) = 0.5;
+                            singular_components_->pw_coeffs(0).prime(igloc, i) = 0.5;
                         }
                         if (ig == i + 2) {
-                            singular_components_->pw_coeffs().prime(igloc, i) = 0.125;
+                            singular_components_->pw_coeffs(0).prime(igloc, i) = 0.125;
                         }
                         //singular_components_->pw_coeffs().prime(igloc, i) += 0.01 * type_wrapper<double_complex>::random();
                     }
                 }
                 if (ctx_.control().print_checksum_) {
-                    auto cs = singular_components_->checksum_pw(0, ncomp, ctx_.processing_unit());
+                    auto cs = singular_components_->checksum_pw(ctx_.processing_unit(), 0, 0, ncomp);
                     if (comm().rank() == 0) {
                         print_checksum("singular_components", cs);
                     }
                 }
             }
 
-            fv_states_ = std::unique_ptr<wave_functions>(new wave_functions(ctx_.processing_unit(),
-                                                                            gkvec(),
+            fv_states_ = std::unique_ptr<Wave_functions>(new Wave_functions(gkvec(),
                                                                             unit_cell_.num_atoms(),
                                                                             [this](int ia)
                                                                             {
                                                                                 return unit_cell_.atom(ia).mt_basis_size();
                                                                             },
-                                                                            ctx_.num_fv_states()));
+                                                                            ctx_.num_fv_states(),
+                                                                            1));
             
-            spinor_wave_functions_ = std::unique_ptr<Wave_functions>(new Wave_functions(ctx_.processing_unit(),
-                                                                                        gkvec(),
+            spinor_wave_functions_ = std::unique_ptr<Wave_functions>(new Wave_functions(gkvec(),
                                                                                         unit_cell_.num_atoms(),
                                                                                         [this](int ia)
                                                                                         {
@@ -195,14 +194,14 @@ inline void K_point::initialize()
     } else {
         assert(ctx_.num_fv_states() < num_gkvec());
 
-        spinor_wave_functions_ = std::unique_ptr<Wave_functions>(new Wave_functions(ctx_.processing_unit(), gkvec(), nst, ctx_.num_spins()));
+        spinor_wave_functions_ = std::unique_ptr<Wave_functions>(new Wave_functions(gkvec(), nst, ctx_.num_spins()));
     }
     if (ctx_.processing_unit() == GPU && keep_wf_on_gpu) {
         /* allocate GPU memory */
         for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-            spinor_wave_functions_->component(ispn).pw_coeffs().prime().allocate(memory_t::device);
+            spinor_wave_functions_->pw_coeffs(ispn).prime().allocate(memory_t::device);
             if (ctx_.full_potential()) {
-                spinor_wave_functions_->component(ispn).mt_coeffs().prime().allocate(memory_t::device);
+                spinor_wave_functions_->mt_coeffs(ispn).prime().allocate(memory_t::device);
             }
         }
     }

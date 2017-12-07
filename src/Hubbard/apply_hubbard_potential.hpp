@@ -10,30 +10,22 @@ void apply_hubbard_potential(const K_point& kp,
                              Wave_functions& ophi)
 {
 
-    mdarray<double_complex, 2> dm(this->number_of_hubbard_orbitals(), // independent of the k point
-                                  n__);
+    mdarray<double_complex, 2> dm(this->number_of_hubbard_orbitals(), n__); // independent of the k point
 
     // First calculate the projections
     // dm(i, n, sigma)  = <phi_i^\sigma | psi_{nk}>
 
     dm.zero();
-    linalg<CPU>::gemm(2, 0, this->number_of_hubbard_orbitals(), n__,
-                      kp.hubbard_wave_functions(0).pw_coeffs().num_rows_loc(),
-                      kp.hubbard_wave_functions(0).pw_coeffs().prime().at<CPU>(0, 0),
-                      kp.hubbard_wave_functions(0).pw_coeffs().prime().ld(),
-                      phi.component(0).pw_coeffs().prime().at<CPU>(0, idx__),
-                      phi.component(0).pw_coeffs().prime().ld(),
-                      dm.at<CPU>(0, 0), dm.ld());
-
-    for (int s = 1; s < ctx_.num_spins(); s++) {
+    for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
         linalg<CPU>::gemm(2, 0,
-                          this->number_of_hubbard_orbitals(), n__,
-                          kp.hubbard_wave_functions(s).pw_coeffs().num_rows_loc(),
+                          this->number_of_hubbard_orbitals(),
+                          n__,
+                          kp.hubbard_wave_functions().pw_coeffs(ispn).num_rows_loc(),
                           linalg_const<double_complex>::one(),
-                          kp.hubbard_wave_functions(s).pw_coeffs().prime().at<CPU>(0, 0),
-                          kp.hubbard_wave_functions(s).pw_coeffs().prime().ld(),
-                          phi.component(s).pw_coeffs().prime().at<CPU>(0, idx__),
-                          phi.component(s).pw_coeffs().prime().ld(),
+                          kp.hubbard_wave_functions().pw_coeffs(ispn).prime().at<CPU>(0, 0),
+                          kp.hubbard_wave_functions().pw_coeffs(ispn).prime().ld(),
+                          phi.pw_coeffs(ispn).prime().at<CPU>(0, idx__),
+                          phi.pw_coeffs(ispn).prime().ld(),
                           linalg_const<double_complex>::one(),
                           dm.at<CPU>(0, 0),
                           dm.ld());
@@ -67,10 +59,9 @@ void apply_hubbard_potential(const K_point& kp,
                         }
 
                         for (int s = 0; s < ctx_.num_spins(); s++) {
-                            for (int l = 0; l < kp.hubbard_wave_functions(s).pw_coeffs().num_rows_loc(); l++) {
-                                ophi.component(s).pw_coeffs().prime(l, idx__ + nbnd) +=
-                                    temp *
-                                    kp.hubbard_wave_functions(s).pw_coeffs().prime(l, this->offset[ia] + s1 * (2 * atom.type().hubbard_l() + 1) + m1);
+                            for (int l = 0; l < kp.hubbard_wave_functions().pw_coeffs(s).num_rows_loc(); l++) {
+                                ophi.pw_coeffs(s).prime(l, idx__ + nbnd) += temp *
+                                    kp.hubbard_wave_functions().pw_coeffs(s).prime(l, this->offset[ia] + s1 * (2 * atom.type().hubbard_l() + 1) + m1);
                             }
                         }
                     }

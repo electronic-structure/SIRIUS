@@ -36,7 +36,7 @@
 #include "typedefs.h"
 #include "utils.h"
 #include "linalg.hpp"
-#include "LebedevLaikov.h"
+#include "lebedev_grids.hpp"
 
 namespace sirius {
 

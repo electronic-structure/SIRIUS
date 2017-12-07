@@ -62,10 +62,10 @@ class K_point
         dmatrix<double_complex> fv_eigen_vectors_;
 
         /// First-variational eigen vectors, distributed in slabs.
-        std::unique_ptr<wave_functions> fv_eigen_vectors_slab_;
+        std::unique_ptr<Wave_functions> fv_eigen_vectors_slab_;
 
-        std::unique_ptr<wave_functions> singular_components_;
-
+        std::unique_ptr<Wave_functions> singular_components_;
+        
         /// Second-variational eigen vectors.
         /** Second-variational eigen-vectors are stored as one or two \f$ N_{fv} \times N_{fv} \f$ matrices in
          *  case of non-magnetic or collinear magnetic case or as a single \f$ 2 N_{fv} \times 2 N_{fv} \f$
@@ -76,7 +76,7 @@ class K_point
         mdarray<double_complex, 2> fd_eigen_vectors_;
 
         /// First-variational states.
-        std::unique_ptr<wave_functions> fv_states_{nullptr};
+        std::unique_ptr<Wave_functions> fv_states_{nullptr};
 
         /// Two-component (spinor) wave functions describing the bands.
         std::unique_ptr<Wave_functions> spinor_wave_functions_{nullptr};
@@ -377,14 +377,9 @@ class K_point
             return weight_;
         }
 
-        inline wave_functions& fv_states()
+        inline Wave_functions& fv_states()
         {
             return *fv_states_;
-        }
-
-        inline wave_functions& spinor_wave_functions(int ispn__)
-        {
-            return spinor_wave_functions_->component(ispn__);
         }
 
         inline Wave_functions& spinor_wave_functions()
@@ -392,35 +387,32 @@ class K_point
             return *spinor_wave_functions_;
         }
 
-        inline wave_functions& hubbard_wave_functions(int ispn__) const
+        inline Wave_functions& hubbard_wave_functions()
         {
-            return hubbard_wave_functions_->component(ispn__);
+            return *hubbard_wave_functions_;
         }
 
-        inline Wave_functions& hubbard_wave_functions()
+        inline Wave_functions const& hubbard_wave_functions() const
         {
             return *hubbard_wave_functions_;
         }
 
         inline void allocate_hubbard_wave_functions(int size)
         {
-            if (hubbard_wave_functions_ != NULL)
+            if (hubbard_wave_functions_ != nullptr) {
                 return;
-            hubbard_wave_functions_ = std::unique_ptr<Wave_functions>(new Wave_functions(ctx_.processing_unit(),
-                                                                                              gkvec(),
-                                                                                              size,
-                                                                                              ctx_.num_spins()));
+            }
+            hubbard_wave_functions_ = std::unique_ptr<Wave_functions>(new Wave_functions(gkvec(),
+                                                                                         size,
+                                                                                         ctx_.num_spins()));
         }
 
         inline bool hubbard_wave_functions_calculated()
         {
-            if (hubbard_wave_functions_ != NULL)
-                return true;
-
-            return false;
+            return (hubbard_wave_functions_ != nullptr);
         }
 
-        inline wave_functions& singular_components()
+        inline Wave_functions& singular_components()
         {
             return *singular_components_;
         }
@@ -571,7 +563,7 @@ class K_point
             return fv_eigen_vectors_;
         }
 
-        inline wave_functions& fv_eigen_vectors_slab()
+        inline Wave_functions& fv_eigen_vectors_slab()
         {
             return *fv_eigen_vectors_slab_;
         }

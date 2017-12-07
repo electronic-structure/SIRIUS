@@ -22,34 +22,23 @@ void hubbard_compute_occupation_numbers(K_point_set& kset_)
         // now for each spin components and each atom we need to calculate
         // <psi_{nk}|phi^I_m'><phi^I_m|psi_{nk}>
 
-        // split the bands over the different procs of a given kp communicator
-        // splindex<block> spl_nbnd(kp->num_occupied_bands(), kp->comm().size(), kp->comm().rank());
-
-        // How many bands do I have locally
-        // int nbnd_loc = spl_nbnd.local_size();
-
-        // if (nbnd_loc) {
         mdarray<double_complex, 2> dm(this->number_of_hubbard_orbitals(), kp->num_occupied_bands());
         dm.zero();
 
-        linalg<CPU>::gemm(2, 0, this->number_of_hubbard_orbitals(), kp->num_occupied_bands(),
-                          kp->hubbard_wave_functions(0).pw_coeffs().num_rows_loc(),
-                          kp->hubbard_wave_functions(0).pw_coeffs().prime().at<CPU>(0, 0),
-                          kp->hubbard_wave_functions(0).pw_coeffs().prime().ld(),
-                          kp->spinor_wave_functions(0).pw_coeffs().prime().at<CPU>(0, 0),
-                          kp->spinor_wave_functions(0).pw_coeffs().prime().ld(), dm.at<CPU>(0, 0), dm.ld());
-
-        for (int s1 = 1; s1 < ctx_.num_spins(); s1++) {
-            // compute <phi_{i,\sigma}|psi_nk> the bands been distributed over the pool
-
-            linalg<CPU>::gemm(2, 0, this->number_of_hubbard_orbitals(), kp->num_occupied_bands(),
-                              kp->hubbard_wave_functions(s1).pw_coeffs().num_rows_loc(),
+        for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
+            /* compute <phi_{i,\sigma}|psi_nk> the bands been distributed over the pool */
+            linalg<CPU>::gemm(2, 0,
+                              this->number_of_hubbard_orbitals(),
+                              kp->num_occupied_bands(),
+                              kp->hubbard_wave_functions().pw_coeffs(ispn).num_rows_loc(),
                               linalg_const<double_complex>::one(),
-                              kp->hubbard_wave_functions(s1).pw_coeffs().prime().at<CPU>(0, 0),
-                              kp->hubbard_wave_functions(s1).pw_coeffs().prime().ld(),
-                              kp->spinor_wave_functions(s1).pw_coeffs().prime().at<CPU>(0, 0),
-                              kp->spinor_wave_functions(s1).pw_coeffs().prime().ld(),
-                              linalg_const<double_complex>::one(), dm.at<CPU>(0, 0), dm.ld());
+                              kp->hubbard_wave_functions().pw_coeffs(ispn).prime().at<CPU>(0, 0),
+                              kp->hubbard_wave_functions().pw_coeffs(ispn).prime().ld(),
+                              kp->spinor_wave_functions().pw_coeffs(ispn).prime().at<CPU>(0, 0),
+                              kp->spinor_wave_functions().pw_coeffs(ispn).prime().ld(),
+                              linalg_const<double_complex>::one(),
+                              dm.at<CPU>(0, 0),
+                              dm.ld());
         }
 
         // now compute O_{ij}^{sigma,sigma'} = \sum_{nk} <psi_nk|phi_{i,sigma}><phi_{j,sigma^'}|psi_nk> f_{nk}

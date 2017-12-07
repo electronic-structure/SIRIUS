@@ -57,7 +57,7 @@ chvd
 **
 */
 
-int Lebedev_Laikov_npoint(int lvalue)
+static int Lebedev_Laikov_npoint(int lvalue)
 {
 
   int fraction, tmp_lvalue;
@@ -125,7 +125,7 @@ int Lebedev_Laikov_npoint(int lvalue)
 }
 
 
-int Lebedev_Laikov_Oh (int n, double a, double b, double v, double *x, double *y, double *z, double *w)
+static int Lebedev_Laikov_Oh (int n, double a, double b, double v, double *x, double *y, double *z, double *w)
 {
   double c;
   switch (n) {
@@ -274,7 +274,7 @@ int Lebedev_Laikov_Oh (int n, double a, double b, double v, double *x, double *y
 }
 
 
-int Lebedev_Laikov_sphere (int N, double *X, double *Y, double *Z, double *W)
+static int Lebedev_Laikov_sphere (int N, double *X, double *Y, double *Z, double *W)
 {
 #define A n+=Lebedev_Laikov_Oh(
 #define B ,X+n,Y+n,Z+n,W+n);

@@ -80,11 +80,11 @@ class Hamiltonian
                                            int ispn__,
                                            int N__,
                                            int n__,
-                                           wave_functions& phi__,
-                                           wave_functions& hphi__,
+                                           Wave_functions& phi__,
+                                           Wave_functions& hphi__,
                                            D_operator<T>& d_op) const;
 
-  template<typename T> inline void apply_h_o(K_point* kp__,
+  template<typename T> inline void apply_h_s(K_point* kp__,
                                              int ispn__,
                                              int N__,
                                              int n__,
@@ -99,13 +99,13 @@ class Hamiltonian
                          bool add_o1__,
                          int N__,
                          int n__,
-                         wave_functions& phi__,
-                         wave_functions& ophi__) const;
+                         Wave_functions& phi__,
+                         Wave_functions& ophi__) const;
 
 
-  inline void apply_magnetic_field(wave_functions& fv_states__,
+  inline void apply_magnetic_field(Wave_functions& fv_states__,
                                    Gvec const& gkvec__,
-                                   std::vector<wave_functions>& hpsi__) const;
+                                   std::vector<Wave_functions>& hpsi__) const;
 
   /// Apply SO correction to the first-variational states.
   /** Raising and lowering operators:
@@ -410,9 +410,9 @@ class Hamiltonian
                                  int nlo,
                                  int N,
                                  int n,
-                                 wave_functions& phi__,
-                                 wave_functions& hphi__,
-                                 wave_functions& ophi__) const;
+                                 Wave_functions& phi__,
+                                 Wave_functions& hphi__,
+                                 Wave_functions& ophi__) const;
 
         /// Get diagonal elements of LAPW Hamiltonian.
         inline mdarray<double, 2> get_h_diag(K_point* kp__,
