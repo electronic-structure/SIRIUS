@@ -129,7 +129,7 @@ class Simulation_context_base: public Simulation_parameters
             fft_ = std::unique_ptr<FFT3D>(new FFT3D(find_translations(pw_cutoff(), rlv), comm_fft(), processing_unit())); 
 
             /* create a list of G-vectors for dense FFT grid; G-vectors are divided between all available MPI ranks.*/
-            gvec_ = Gvec(rlv, pw_cutoff(), comm(), comm_fft(), control().reduce_gvec_);
+            gvec_ = Gvec(rlv, pw_cutoff(), comm(), comm_fft(), comm_ortho_fft(), control().reduce_gvec_);
 
             remap_gvec_ = std::unique_ptr<remap_gvec_to_shells>(new remap_gvec_to_shells(comm(), gvec()));
 
@@ -141,7 +141,7 @@ class Simulation_context_base: public Simulation_parameters
             fft_coarse_ = std::unique_ptr<FFT3D>(new FFT3D(fft_coarse_grid, comm_fft_coarse(), processing_unit()));
 
             /* create a list of G-vectors for corase FFT grid */
-            gvec_coarse_ = Gvec(rlv, gk_cutoff() * 2, comm(), comm_fft_coarse(), control().reduce_gvec_);
+            gvec_coarse_ = Gvec(rlv, gk_cutoff() * 2, comm(), comm_fft_coarse(), comm_ortho_fft_coarse(), control().reduce_gvec_);
         }
 
         /* copy constructor is forbidden */
