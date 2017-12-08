@@ -173,7 +173,7 @@ class Gvec
     Communicator const* comm_fft_{nullptr};
 
     /// Communicator which is orthogonal to FFT communicator.
-    Communicator comm_ortho_fft_;
+    Communicator const* comm_ortho_fft_{nullptr};
 
     /// Indicates that G-vectors are reduced by inversion symmetry.
     bool reduce_gvec_;
@@ -443,13 +443,14 @@ class Gvec
          double Gmax__,
          Communicator const& comm__,
          Communicator const& comm_fft__,
+         Communicator const& comm_ortho_fft_,
          bool reduce_gvec__)
         : vk_(vk__)
         , Gmax_(Gmax__)
         , lattice_vectors_(M__)
         , comm_(&comm__)
         , comm_fft_(&comm_fft__)
-        , comm_ortho_fft_(comm__.split(comm_fft__.rank()))
+        , comm_ortho_fft_(&comm_ortho_fft_)
         , reduce_gvec_(reduce_gvec__)
         , rank_(comm__.rank())
         , num_ranks_(comm__.size())
@@ -462,13 +463,14 @@ class Gvec
          double Gmax__,
          Communicator const& comm__,
          Communicator const& comm_fft__,
+         Communicator const& comm_ortho_fft_,
          bool reduce_gvec__)
         : vk_({0, 0, 0})
         , Gmax_(Gmax__)
         , lattice_vectors_(M__)
         , comm_(&comm__)
         , comm_fft_(&comm_fft__)
-        , comm_ortho_fft_(comm__.split(comm_fft__.rank()))
+        , comm_ortho_fft_(&comm_ortho_fft_)
         , reduce_gvec_(reduce_gvec__)
         , rank_(comm__.rank())
         , num_ranks_(comm__.size())
@@ -485,7 +487,7 @@ class Gvec
             lattice_vectors_       = src__.lattice_vectors_;
             comm_                  = src__.comm_;
             comm_fft_              = src__.comm_fft_;
-            comm_ortho_fft_        = std::move(src__.comm_ortho_fft_);
+            comm_ortho_fft_        = src__.comm_ortho_fft_;
             reduce_gvec_           = src__.reduce_gvec_;
             rank_                  = src__.rank_;
             num_ranks_             = src__.num_ranks_;
@@ -650,7 +652,7 @@ class Gvec
 
     Communicator const& comm_ortho_fft() const
     {
-        return comm_ortho_fft_;
+        return *comm_ortho_fft_;
     }
 
     inline matrix3d<double> const& lattice_vectors() const
