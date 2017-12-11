@@ -49,6 +49,12 @@ class Simulation_context_base: public Simulation_parameters
 
         /// Communicator for this simulation.
         Communicator const& comm_;
+
+        /// Auxiliary communicator for the fine-grid FFT transformation.
+        Communicator comm_ortho_fft_;
+
+        /// Auxiliary communicator for the coarse-grid FFT transformation.
+        Communicator comm_ortho_fft_coarse_;
         
         /// Unit cell of the simulation.
         Unit_cell unit_cell_;
@@ -123,7 +129,7 @@ class Simulation_context_base: public Simulation_parameters
             fft_ = std::unique_ptr<FFT3D>(new FFT3D(find_translations(pw_cutoff(), rlv), comm_fft(), processing_unit())); 
 
             /* create a list of G-vectors for dense FFT grid; G-vectors are divided between all available MPI ranks.*/
-            gvec_ = Gvec(rlv, pw_cutoff(), comm(), comm_fft(), control().reduce_gvec_);
+            gvec_ = Gvec(rlv, pw_cutoff(), comm(), comm_fft(), comm_ortho_fft(), control().reduce_gvec_);
 
             remap_gvec_ = std::unique_ptr<remap_gvec_to_shells>(new remap_gvec_to_shells(comm(), gvec()));
 
@@ -135,7 +141,7 @@ class Simulation_context_base: public Simulation_parameters
             fft_coarse_ = std::unique_ptr<FFT3D>(new FFT3D(fft_coarse_grid, comm_fft_coarse(), processing_unit()));
 
             /* create a list of G-vectors for corase FFT grid */
-            gvec_coarse_ = Gvec(rlv, gk_cutoff() * 2, comm(), comm_fft_coarse(), control().reduce_gvec_);
+            gvec_coarse_ = Gvec(rlv, gk_cutoff() * 2, comm(), comm_fft_coarse(), comm_ortho_fft_coarse(), control().reduce_gvec_);
         }
 
         /* copy constructor is forbidden */
@@ -329,6 +335,11 @@ class Simulation_context_base: public Simulation_parameters
             return mpi_grid_->communicator(1 << 0);
         }
 
+        Communicator const& comm_ortho_fft() const
+        {
+            return comm_ortho_fft_;
+        }
+
         /// Communicator of the coarse FFT grid.
         Communicator const& comm_fft_coarse() const
         {
@@ -337,6 +348,11 @@ class Simulation_context_base: public Simulation_parameters
             } else {
                 return comm_fft();
             }
+        }
+
+        Communicator const& comm_ortho_fft_coarse() const
+        {
+            return comm_ortho_fft_coarse_;
         }
 
         void create_storage_file() const
@@ -605,6 +621,10 @@ inline void Simulation_context_base::initialize()
 
     /* setup MPI grid */
     mpi_grid_ = std::unique_ptr<MPI_grid>(new MPI_grid({npr, npc, npk}, comm_));
+
+    comm_ortho_fft_ = comm_.split(comm_fft().rank());
+
+    comm_ortho_fft_coarse_ = comm_.split(comm_fft_coarse().rank());
     
     /* can't use reduced G-vectors in LAPW code */
     if (full_potential()) {
