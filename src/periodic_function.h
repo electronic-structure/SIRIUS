@@ -253,22 +253,18 @@ class Periodic_function: public Smooth_periodic_function<T>
         /** \todo write and read distributed functions */
         void hdf5_write(std::string storage_file_name__, std::string path__)
         {
-            //STOP();
-            //if (ctx_.full_potential()) {
-            //    h5f.write("f_mt", f_mt_);
-            //}
             auto v = this->gather_f_pw();
             if (ctx_.comm().rank() == 0) {
                 HDF5_tree fout(storage_file_name, false);
                 fout[path__].write("f_pw", reinterpret_cast<double*>(v.data()), static_cast<int>(v.size() * 2));
+                if (ctx_.full_potential()) {
+                    fout[path__].write("f_mt", f_mt_);
+                }
             }
         }
 
         void hdf5_read(HDF5_tree h5f__, mdarray<int, 2>& gvec__)
         {
-            //if (ctx_.full_potential()) {
-            //    h5f.read("f_mt", f_mt_);
-            //}
             std::vector<double_complex> v(gvec_.num_gvec());
             h5f__.read("f_pw", reinterpret_cast<double*>(v.data()), static_cast<int>(v.size() * 2));
 
@@ -285,6 +281,10 @@ class Periodic_function: public Smooth_periodic_function<T>
                 if (local_gvec_mapping.count(G) != 0) {
                     this->f_pw_local_[local_gvec_mapping[G]] = v[ig];
                 }
+            }
+
+            if (ctx_.full_potential()) {
+                h5f__.read("f_mt", f_mt_);
             }
         }
 
