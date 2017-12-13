@@ -675,6 +675,12 @@ inline int DFT_ground_state::find(double potential_tol, double energy_tol, int n
 
     if (write_state) {
         ctx_.create_storage_file();
+        if (ctx_.full_potential()) { // TODO: why this is necessary?
+            density_.rho().fft_transform(-1);
+            for (int j = 0; j < ctx_.num_mag_dims(); j++) {
+                density_.magnetization(j).fft_transform(-1);
+            }
+        }
         potential_.save();
         density_.save();
     }

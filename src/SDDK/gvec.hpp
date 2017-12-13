@@ -30,6 +30,9 @@
 #include "fft3d_grid.hpp"
 #include "geometry3d.hpp"
 
+// TODO: generate fine G-vectors in such a way that local set of fine vectors fully contain the local set of coarse G-vectors
+//       this will considerbly simplify the remapping of G-vectors from fine to corase mesh or vice versa
+
 using namespace geometry3d;
 
 namespace sddk {

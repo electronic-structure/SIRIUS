@@ -261,7 +261,6 @@ void run_tasks(cmd_args const& args)
         Band band(*ctx);
         if (!ctx->full_potential()) {
             band.initialize_subspace(ks, H);
-            printf("--------------------------------------------- init\n");
             H.U().hubbard_compute_occupation_numbers(ks);
         }
         band.solve_for_kset(ks, H, true);

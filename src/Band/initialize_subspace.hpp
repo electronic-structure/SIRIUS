@@ -144,8 +144,6 @@ Band::initialize_subspace(K_point* kp__, Hamiltonian &H__, int num_ao__) const
     D_operator<T> d_op(ctx_, kp__->beta_projectors());
     Q_operator<T> q_op(ctx_, kp__->beta_projectors());
 
-    // Hubbard operator U_op(ctx_, )
-
     /* allocate wave-functions */
     Wave_functions hphi(kp__->gkvec(), num_phi_tot, num_sc);
     Wave_functions ophi(kp__->gkvec(), num_phi_tot, num_sc);
@@ -287,7 +285,7 @@ Band::initialize_subspace(K_point* kp__, Hamiltonian &H__, int num_ao__) const
         for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
             auto cs = kp__->spinor_wave_functions().checksum_pw(ctx_.processing_unit(), ispn, 0, num_bands);
             std::stringstream s;
-            s << "initial_spinor_wave_functions" << ispn;
+            s << "initial_spinor_wave_functions_" << ispn;
             if (kp__->comm().rank() == 0) {
                 print_checksum(s.str(), cs);
             }
@@ -304,7 +302,7 @@ Band::initialize_subspace(K_point* kp__, Hamiltonian &H__, int num_ao__) const
         }
     }
 #endif
-
+    
     kp__->beta_projectors().dismiss();
     ctx_.fft_coarse().dismiss();
 }

@@ -611,11 +611,6 @@ class Density
         /// Check density at MT boundary
         void check_density_continuity_at_mt();
 
-        void generate_pw_coefs()
-        {
-            rho_->fft_transform(-1);
-        }
-         
         void save()
         {
             rho_->hdf5_write(storage_file_name, "density");

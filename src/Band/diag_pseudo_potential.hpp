@@ -226,14 +226,14 @@ inline int Band::diag_pseudo_potential_davidson(K_point*       kp__,
 
         /* trial basis functions */
         for (int ispn = 0; ispn < num_sc; ispn++) {
-            phi.copy_from(ctx_.processing_unit(), num_bands, psi, ctx_.num_mag_dims() == 3 ? ispn : ispin_step, 0, ispn, 0);
+            phi.copy_from(ctx_.processing_unit(), num_bands, psi, nc_mag ? ispn : ispin_step, 0, ispn, 0);
         }
 
         /* fisrt phase: setup and diagonalize reduced Hamiltonian and get eigen-values;
          * this is done before the main itertive loop */
 
         /* apply Hamiltonian and S operators to the basis functions */
-        H__.apply_h_s<T>(kp__, ispin_step, 0, num_bands, phi, hphi, sphi, d_op__, q_op__);
+        H__.apply_h_s<T>(kp__, nc_mag ? 2 : ispin_step, 0, num_bands, phi, hphi, sphi, d_op__, q_op__);
 
         /* setup eigen-value problem
          * N is the number of previous basis functions
@@ -241,6 +241,28 @@ inline int Band::diag_pseudo_potential_davidson(K_point*       kp__,
         set_subspace_mtrx(0, num_bands, phi, hphi, hmlt, hmlt_old);
         /* setup overlap matrix */
         set_subspace_mtrx(0, num_bands, phi, sphi, ovlp, ovlp_old);
+
+        if (ctx_.control().verification_ >= 1) {
+            double max_diff = check_hermitian(hmlt, num_bands);
+            if (max_diff > 1e-12) {
+                std::stringstream s;
+                s << "H matrix is not hermitian, max_err = " << max_diff;
+                WARNING(s);
+            }
+            max_diff = check_hermitian(ovlp, num_bands);
+            if (max_diff > 1e-12) {
+                std::stringstream s;
+                s << "S matrix is not hermitian, max_err = " << max_diff;
+                WARNING(s);
+            }
+
+            if (ctx_.control().verification_ >= 2) {
+                hmlt.serialize("H matrix", num_bands);
+            }
+            if (ctx_.control().verification_ >= 2) {
+                ovlp.serialize("S matrix", num_bands);
+            }
+        }
 
         /* current subspace size */
         int N = num_bands;
@@ -331,7 +353,7 @@ inline int Band::diag_pseudo_potential_davidson(K_point*       kp__,
             }
 
             /* apply Hamiltonian and S operators to the new basis functions */
-            H__.apply_h_s<T>(kp__, ispin_step, N, n, phi, hphi, sphi, d_op__, q_op__);
+            H__.apply_h_s<T>(kp__, nc_mag ? 2 : ispin_step, N, n, phi, hphi, sphi, d_op__, q_op__);
 
             if (itso.orthogonalize_) {
                 orthogonalize<T>(ctx_.processing_unit(), nc_mag ? 2 : 0, phi, hphi, sphi, N, n, ovlp, res);
