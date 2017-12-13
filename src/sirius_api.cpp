@@ -1995,12 +1995,14 @@ void sirius_set_lo_lo_o1_radial_integral(ftn_int* ia__,
 
 void sirius_generate_potential_pw_coefs()
 {
-    potential->generate_pw_coefs();
+    STOP();
+    //potential->generate_pw_coefs();
 }
 
 void sirius_generate_density_pw_coefs()
 {
-    density->generate_pw_coefs();
+    STOP();
+    //density->generate_pw_coefs();
 }
 
 /// Get first-variational eigen-vectors
