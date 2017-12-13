@@ -325,7 +325,13 @@ inline int Band::residuals(K_point*             kp__,
                 if (res_norm[i] > itso.residual_tolerance_) {
                     /* shift unconverged residuals to the beginning of array */
                     if (n != i) {
-                        res__.copy_from(ctx_.processing_unit(), 1, res__, ispn__, i, ispn__, n);
+                        int s0{0}, s1{1};
+                        if (ispn__ != 2) {
+                            s0 = s1 = ispn__;
+                        }
+                        for (int ispn = s0; ispn <= s1; ispn++) {
+                            res__.copy_from(ctx_.processing_unit(), 1, res__, ispn, i, ispn, n);
+                        }
                     }
                     n++;
                 }
@@ -347,7 +353,13 @@ inline int Band::residuals(K_point*             kp__,
             if (res_norm[i] > tol) {
                 /* shift unconverged residuals to the beginning of array */
                 if (n != i) {
-                    res__.copy_from(ctx_.processing_unit(), 1, res__, ispn__, i, ispn__, n);
+                    int s0{0}, s1{1};
+                    if (ispn__ != 2) {
+                        s0 = s1 = ispn__;
+                    }
+                    for (int ispn = s0; ispn <= s1; ispn++) {
+                        res__.copy_from(ctx_.processing_unit(), 1, res__, ispn, i, ispn, n);
+                    }
                 }
                 n++;
             }
