@@ -237,7 +237,7 @@ class Band
 
         /// Diagonalize a pseudo-potential Hamiltonian.
         template <typename T>
-            int diag_pseudo_potential(K_point* kp__, Hamiltonian &H_) const
+        int diag_pseudo_potential(K_point* kp__, Hamiltonian &H_) const
         {
             PROFILE("sirius::Band::diag_pseudo_potential");
 

@@ -214,6 +214,7 @@ class Wave_functions
         for (int ispn = 0; ispn < num_sc_; ispn++) {
             pw_coeffs_[ispn] = std::unique_ptr<matrix_storage<double_complex, matrix_storage_t::slab>>(
                 new matrix_storage<double_complex, matrix_storage_t::slab>(ptr__, gkvec_.count(), num_wf_, gkvec_.comm_ortho_fft()));
+                ptr__ += gkvec_.count() * num_wf_;
         }
     }
 

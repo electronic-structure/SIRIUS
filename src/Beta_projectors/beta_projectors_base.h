@@ -37,6 +37,8 @@ extern "C" void create_beta_gk_gpu(int                   num_atoms,
                                    double_complex*       beta_gk);
 #endif
 
+// TODO: allocation strategy for beta and beta projectors is not good enough; shold be a better way
+
 /// Base class for beta-projectors, gradient of beta-projectors and strain derivatives of beta-projectors.
 template <int N>
 class Beta_projectors_base
