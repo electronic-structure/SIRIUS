@@ -247,6 +247,29 @@ class Smooth_periodic_function
             return result_rg;
         }
 
+        inline uint64_t hash_f_pw() const
+        {
+            auto h = f_pw_local_.hash();
+            gvec_->comm().bcast(&h, 1, 0);
+
+            for (int r = 1; r < gvec_->comm().size(); r++) {
+                h = f_pw_local_.hash(h);
+                gvec_->comm().bcast(&h, 1, r);
+            }
+            return h;
+        }
+
+        inline uint64_t hash_f_rg() const
+        {
+            auto h = f_rg_.hash();
+            fft_->comm().bcast(&h, 1, 0);
+
+            for (int r = 1; r < fft_->comm().size(); r++) {
+                h = f_rg_.hash(h);
+                fft_->comm().bcast(&h, 1, r);
+            }
+            return h;
+        }
 };
 
 /// Gradient of the smooth periodic function.
@@ -301,7 +324,7 @@ inline Smooth_periodic_function_gradient<double> gradient(Smooth_periodic_functi
 {
     Smooth_periodic_function_gradient<double> g(f__.fft(), f__.gvec());
 
-    #pragma omp parallel for
+    #pragma omp parallel for schedule(static)
     for (int igloc = 0; igloc < f__.gvec().count(); igloc++) {
         int ig = f__.gvec().offset() + igloc;
         auto G = f__.gvec().gvec_cart(ig);
@@ -317,7 +340,7 @@ inline Smooth_periodic_function<double> laplacian(Smooth_periodic_function<doubl
 {
     Smooth_periodic_function<double> g(f__.fft(), f__.gvec());
 
-    #pragma omp parallel for
+    #pragma omp parallel for schedule(static)
     for (int igloc = 0; igloc < f__.gvec().count(); igloc++) {
         int ig = f__.gvec().offset() + igloc;
         auto G = f__.gvec().gvec_cart(ig);
@@ -328,8 +351,8 @@ inline Smooth_periodic_function<double> laplacian(Smooth_periodic_function<doubl
 }
 
 template <typename T>
-Smooth_periodic_function<T> operator*(Smooth_periodic_function_gradient<T>& grad_f__, 
-                                      Smooth_periodic_function_gradient<T>& grad_g__)
+inline Smooth_periodic_function<T> dot(Smooth_periodic_function_gradient<T>& grad_f__, 
+                                       Smooth_periodic_function_gradient<T>& grad_g__)
 
 {
     assert(&grad_f__.fft() == &grad_g__.fft());
@@ -337,7 +360,7 @@ Smooth_periodic_function<T> operator*(Smooth_periodic_function_gradient<T>& grad
 
     Smooth_periodic_function<T> result(grad_f__.fft(), grad_f__.gvec());
 
-    #pragma omp parallel for
+    #pragma omp parallel for schedule(static)
     for (int ir = 0; ir < grad_f__.fft().local_size(); ir++) {
         double d{0};
         for (int x: {0, 1, 2}) {

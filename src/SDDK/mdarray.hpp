@@ -647,15 +647,13 @@ class mdarray_base
 
     /// Compute hash of the array
     /** Example: printf("hash(h) : %16llX\n", h.hash()); */
-    inline uint64_t hash() const
+    inline uint64_t hash(uint64_t h__ = 5381) const
     {
-        uint64_t h{5381};
-
         for (size_t i = 0; i < size() * sizeof(T); i++) {
-            h = ((h << 5) + h) + ((unsigned char*)raw_ptr_)[i];
+            h__ = ((h__ << 5) + h__) + ((unsigned char*)raw_ptr_)[i];
         }
 
-        return h;
+        return h__;
     }
 
     inline T checksum_w(size_t idx0__, size_t size__) const

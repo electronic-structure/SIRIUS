@@ -8,7 +8,7 @@ void test_fft(double cutoff__, device_t pu__)
 
     FFT3D fft(find_translations(cutoff__, M), mpi_comm_world(), pu__);
 
-    Gvec gvec(M, cutoff__, mpi_comm_world(), mpi_comm_world(), false);
+    Gvec gvec(M, cutoff__, mpi_comm_world(), mpi_comm_world(), mpi_comm_self(), false);
 
     if (mpi_comm_world().rank() == 0) {
         printf("num_gvec: %i\n", gvec.num_gvec());

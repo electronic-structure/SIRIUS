@@ -458,17 +458,20 @@ inline void Potential::xc_rg_nonmagnetic(Density const& density__)
         }
 
         rhomin = std::min(rhomin, d);
-        if (d < 0.0) {
-            d = 0.0;
-        }
-        
-        rho.f_rg(ir) = d;
+        rho.f_rg(ir) = std::max(d, 0.0);
     }
     if (rhomin < 0.0) {
         std::stringstream s;
         s << "Interstitial charge density has negative values" << std::endl
           << "most negatve value : " << rhomin;
         WARNING(s);
+    }
+
+    if (ctx_.control().print_hash_) {
+        auto h = rho.hash_f_rg();
+        if (ctx_.comm().rank() == 0) {
+            print_hash("rho", h);
+        }
     }
     
     Smooth_periodic_function_gradient<double> grad_rho;
@@ -489,10 +492,19 @@ inline void Potential::xc_rg_nonmagnetic(Density const& density__)
         }
 
         /* product of gradients */
-        grad_rho_grad_rho = grad_rho * grad_rho;
+        grad_rho_grad_rho = dot(grad_rho, grad_rho);
         
         /* Laplacian in real space */
         lapl_rho.fft_transform(1);
+
+        if (ctx_.control().print_hash_) {
+            auto h1 = lapl_rho.hash_f_rg();
+            auto h2 = grad_rho_grad_rho.hash_f_rg();
+            if (ctx_.comm().rank() == 0) {
+                print_hash("lapl_rho", h1);
+                print_hash("grad_rho_grad_rho", h2);
+            }
+        }
     }
 
     mdarray<double, 1> exc_tmp(num_points);
@@ -575,7 +587,7 @@ inline void Potential::xc_rg_nonmagnetic(Density const& density__)
         }
 
         /* compute scalar product of two gradients */
-        auto grad_vsigma_grad_rho = grad_vsigma * grad_rho;
+        auto grad_vsigma_grad_rho = dot(grad_vsigma, grad_rho);
 
         /* add remaining term to Vxc */
         //for (int irloc = 0; irloc < spl_np.local_size(); irloc++) {
@@ -639,6 +651,15 @@ inline void Potential::xc_rg_magnetic(Density const& density__)
         WARNING(s);
     }
 
+    if (ctx_.control().print_hash_) {
+        auto h1 = rho_up.hash_f_rg();
+        auto h2 = rho_dn.hash_f_rg();
+        if (ctx_.comm().rank() == 0) {
+            print_hash("rho_up", h1);
+            print_hash("rho_dn", h2);
+        }
+    }
+
     Smooth_periodic_function_gradient<double> grad_rho_up;
     Smooth_periodic_function_gradient<double> grad_rho_dn;
     Smooth_periodic_function<double> lapl_rho_up;
@@ -665,13 +686,30 @@ inline void Potential::xc_rg_magnetic(Density const& density__)
         }
 
         /* product of gradients */
-        grad_rho_up_grad_rho_up = grad_rho_up * grad_rho_up;
-        grad_rho_up_grad_rho_dn = grad_rho_up * grad_rho_dn;
-        grad_rho_dn_grad_rho_dn = grad_rho_dn * grad_rho_dn;
+        grad_rho_up_grad_rho_up = dot(grad_rho_up, grad_rho_up);
+        grad_rho_up_grad_rho_dn = dot(grad_rho_up, grad_rho_dn);
+        grad_rho_dn_grad_rho_dn = dot(grad_rho_dn, grad_rho_dn);
         
         /* Laplacian in real space */
         lapl_rho_up.fft_transform(1);
         lapl_rho_dn.fft_transform(1);
+
+        if (ctx_.control().print_hash_) {
+            auto h1 = lapl_rho_up.hash_f_rg();
+            auto h2 = lapl_rho_dn.hash_f_rg();
+
+            auto h3 = grad_rho_up_grad_rho_up.hash_f_rg();
+            auto h4 = grad_rho_up_grad_rho_dn.hash_f_rg();
+            auto h5 = grad_rho_dn_grad_rho_dn.hash_f_rg();
+
+            if (ctx_.comm().rank() == 0) {
+                print_hash("lapl_rho_up", h1);
+                print_hash("lapl_rho_dn", h2);
+                print_hash("grad_rho_up_grad_rho_up", h3);
+                print_hash("grad_rho_up_grad_rho_dn", h4);
+                print_hash("grad_rho_dn_grad_rho_dn", h5);
+            }
+        }
     }
 
     mdarray<double, 1> exc_tmp(num_points, memory_t::host, "exc_tmp");
@@ -795,10 +833,10 @@ inline void Potential::xc_rg_magnetic(Density const& density__)
         }
 
         /* compute scalar product of two gradients */
-        auto grad_vsigma_uu_grad_rho_up = grad_vsigma_uu * grad_rho_up;
-        auto grad_vsigma_dd_grad_rho_dn = grad_vsigma_dd * grad_rho_dn;
-        auto grad_vsigma_ud_grad_rho_up = grad_vsigma_ud * grad_rho_up;
-        auto grad_vsigma_ud_grad_rho_dn = grad_vsigma_ud * grad_rho_dn;
+        auto grad_vsigma_uu_grad_rho_up = dot(grad_vsigma_uu, grad_rho_up);
+        auto grad_vsigma_dd_grad_rho_dn = dot(grad_vsigma_dd, grad_rho_dn);
+        auto grad_vsigma_ud_grad_rho_up = dot(grad_vsigma_ud, grad_rho_up);
+        auto grad_vsigma_ud_grad_rho_dn = dot(grad_vsigma_ud, grad_rho_dn);
 
         /* add remaining term to Vxc */
         for (int ir = 0; ir < num_points; ir++) {
@@ -823,6 +861,7 @@ inline void Potential::xc_rg_magnetic(Density const& density__)
             }
         }
     }
+
 }
 
 template <bool add_pseudo_core__>
@@ -847,5 +886,12 @@ inline void Potential::xc(Density const& density__)
         xc_rg_nonmagnetic<add_pseudo_core__>(density__);
     } else {
         xc_rg_magnetic<add_pseudo_core__>(density__);
+    }
+
+    if (ctx_.control().print_hash_) {
+        auto h = xc_energy_density_->hash_f_rg();
+        if (ctx_.comm().rank() == 0) {
+            print_hash("Exc", h);
+        }
     }
 }

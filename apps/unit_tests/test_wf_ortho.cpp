@@ -14,38 +14,29 @@ void test_wf_ortho(std::vector<int> mpi_grid_dims__,
 
     matrix3d<double> M = {{1, 0, 0}, {0, 1, 0}, {0, 0, 1}};
     
-    /* create FFT box */
-    //FFT3D_grid fft_box(Utils::find_translations(2.01 * cutoff__, M));
     /* create G-vectors */
-    Gvec gvec(M, cutoff__, mpi_comm_world(), mpi_comm_world(), false);
-    /* parameters to pass to wave-functions */
-
-    //if (mpi_comm_world().rank() == 0) {
-    //    printf("total number of G-vectors: %i\n", gvec.num_gvec());
-    //    printf("local number of G-vectors: %i\n", gvec.gvec_count(0));
-    //    printf("FFT grid size: %i %i %i\n", fft_box.size(0), fft_box.size(1), fft_box.size(2));
-    //}
+    Gvec gvec(M, cutoff__, mpi_comm_world(), mpi_comm_world(), mpi_comm_self(), false);
 
     int num_atoms = 10;
     auto nmt = [](int i) {
         return 20;
     };
 
-    wave_functions phi(pu, gvec, num_atoms, nmt, 2 * num_bands__);
-    wave_functions hphi(pu, gvec, num_atoms, nmt, 2 * num_bands__);
-    wave_functions tmp(pu, gvec, num_atoms, nmt, 2 * num_bands__);
+    Wave_functions phi(gvec, num_atoms, nmt, 2 * num_bands__);
+    Wave_functions hphi(gvec, num_atoms, nmt, 2 * num_bands__);
+    Wave_functions tmp(gvec, num_atoms, nmt, num_bands__);
     
-    phi.pw_coeffs().prime() = [](int64_t i0, int64_t i1){return type_wrapper<double_complex>::random();};
-    phi.mt_coeffs().prime() = [](int64_t i0, int64_t i1){return type_wrapper<double_complex>::random();};
-    hphi.pw_coeffs().prime() = [](int64_t i0, int64_t i1){return type_wrapper<double_complex>::random();};
-    hphi.mt_coeffs().prime() = [](int64_t i0, int64_t i1){return type_wrapper<double_complex>::random();};
+    phi.pw_coeffs(0).prime() = [](int64_t i0, int64_t i1){return type_wrapper<double_complex>::random();};
+    phi.mt_coeffs(0).prime() = [](int64_t i0, int64_t i1){return type_wrapper<double_complex>::random();};
+    hphi.pw_coeffs(0).prime() = [](int64_t i0, int64_t i1){return type_wrapper<double_complex>::random();};
+    hphi.mt_coeffs(0).prime() = [](int64_t i0, int64_t i1){return type_wrapper<double_complex>::random();};
 
     dmatrix<double_complex> ovlp(2 * num_bands__, 2 * num_bands__, blacs_grid, bs__, bs__);
     
-    orthogonalize<double_complex>(0, num_bands__, phi, hphi, ovlp, tmp);
-    orthogonalize<double_complex>(num_bands__, num_bands__, phi, hphi, ovlp, tmp);
+    orthogonalize<double_complex>(pu, 0, phi, hphi, 0, num_bands__, ovlp, tmp);
+    orthogonalize<double_complex>(pu, 0, phi, hphi, num_bands__, num_bands__, ovlp, tmp);
 
-    inner(phi, 0, 2 * num_bands__, phi, 0, 2 * num_bands__, 0.0, ovlp, 0, 0);
+    inner(pu, 0, phi, 0, 2 * num_bands__, phi, 0, 2 * num_bands__, ovlp, 0, 0);
 
     for (int j = 0; j < ovlp.num_cols_local(); j++) {
         for (int i = 0; i < ovlp.num_rows_local(); i++) {

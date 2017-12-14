@@ -383,29 +383,53 @@ class DFT_ground_state
 
             auto& remap_gvec = ctx_.remap_gvec();
 
+            if (ctx_.control().print_hash_) {
+                auto h = f__->hash_f_pw();
+                if (ctx_.comm().rank() == 0) {
+                    print_hash("f_unsymmetrized(G)", h);
+                }
+            }
+
             unit_cell_.symmetry().symmetrize_function(&f__->f_pw_local(0), remap_gvec, ctx_.sym_phase_factors());
 
+            if (ctx_.control().print_hash_) {
+                auto h = f__->hash_f_pw();
+                if (ctx_.comm().rank() == 0) {
+                    print_hash("f_symmetrized(G)", h);
+                }
+            }
+
             /* symmetrize PW components */
-            //auto v = f__->gather_f_pw();
-            //unit_cell_.symmetry().symmetrize_function(&v[0], ctx_.gvec(), comm);
-            //f__->scatter_f_pw(v);
             switch (ctx_.num_mag_dims()) {
                 case 1: {
-                    //auto vz = gz__->gather_f_pw();
-                    //unit_cell_.symmetry().symmetrize_vector_function(&vz[0], ctx_.gvec(), comm);
-                    //gz__->scatter_f_pw(vz);
-                    unit_cell_.symmetry().symmetrize_vector_function(&gz__->f_pw_local(0), remap_gvec);
+                    unit_cell_.symmetry().symmetrize_vector_function(&gz__->f_pw_local(0), remap_gvec, ctx_.sym_phase_factors());
                     break;
                 }
                 case 3: {
-                    //auto vx = gx__->gather_f_pw();
-                    //auto vy = gy__->gather_f_pw();
-                    //auto vz = gz__->gather_f_pw();
-                    //unit_cell_.symmetry().symmetrize_vector_function(&vx[0], &vy[0], &vz[0], ctx_.gvec(), comm);
-                    //gx__->scatter_f_pw(vx);
-                    //gy__->scatter_f_pw(vy);
-                    //gz__->scatter_f_pw(vz);
-                    unit_cell_.symmetry().symmetrize_vector_function(&gx__->f_pw_local(0), &gy__->f_pw_local(0), &gz__->f_pw_local(0), remap_gvec);
+                    if (ctx_.control().print_hash_) {
+                        auto h1 = gx__->hash_f_pw();
+                        auto h2 = gy__->hash_f_pw();
+                        auto h3 = gz__->hash_f_pw();
+                        if (ctx_.comm().rank() == 0) {
+                            print_hash("fx_unsymmetrized(G)", h1);
+                            print_hash("fy_unsymmetrized(G)", h2);
+                            print_hash("fz_unsymmetrized(G)", h3);
+                        }
+                    }
+
+                    unit_cell_.symmetry().symmetrize_vector_function(&gx__->f_pw_local(0), &gy__->f_pw_local(0), &gz__->f_pw_local(0),
+                                                                     remap_gvec, ctx_.sym_phase_factors());
+
+                    if (ctx_.control().print_hash_) {
+                        auto h1 = gx__->hash_f_pw();
+                        auto h2 = gy__->hash_f_pw();
+                        auto h3 = gz__->hash_f_pw();
+                        if (ctx_.comm().rank() == 0) {
+                            print_hash("fx_symmetrized(G)", h1);
+                            print_hash("fy_symmetrized(G)", h2);
+                            print_hash("fz_symmetrized(G)", h3);
+                        }
+                    }
                     break;
                 }
             }
@@ -424,10 +448,6 @@ class DFT_ground_state
                     }
                 }
             }
-            //if (ctx_.control().print_hash_ && ctx_.comm().rank() == 0) {
-            //    auto h = mdarray<double_complex, 1>(&f__->f_pw_local(0), ctx_.gvec().count()).hash();
-            //    print_hash("sym(f)", h);
-            //}
         }
 
         Band & band()
