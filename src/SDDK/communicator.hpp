@@ -136,6 +136,15 @@ struct mpi_type_wrapper<unsigned long long>
     }
 };
 
+template <>
+struct mpi_type_wrapper<unsigned long>
+{
+    static MPI_Datatype kind()
+    {
+        return MPI_UNSIGNED_LONG;
+    }
+};
+
 struct alltoall_descriptor
 {
     std::vector<int> sendcounts;
