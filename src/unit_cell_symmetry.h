@@ -1199,13 +1199,13 @@ inline void Unit_cell_symmetry::symmetrize_vector_function(double_complex* fx_pw
                     if (ig_rot == -1) {
                         gv_rot = gv_rot * (-1);
                         ig_rot = remap_gvec__.index_by_gvec(gv_rot);
-                        assert(ig_rot >=0 && ig_rot < (int)v.size());
+                        assert(ig_rot >=0 && ig_rot < (int)vx.size());
 
                         sym_fx_pw[ig_rot] += std::conj(v_rot[0]);
                         sym_fy_pw[ig_rot] += std::conj(v_rot[1]);
                         sym_fz_pw[ig_rot] += std::conj(v_rot[2]);
                     } else {
-                        assert(ig_rot >=0 && ig_rot < (int)v.size());
+                        assert(ig_rot >=0 && ig_rot < (int)vx.size());
 
                         sym_fx_pw[ig_rot] += v_rot[0];
                         sym_fy_pw[ig_rot] += v_rot[1];
