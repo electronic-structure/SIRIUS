@@ -328,6 +328,7 @@ struct Control_input
     bool print_stress_{false};
     bool print_forces_{false};
     bool print_timers_{true};
+    bool print_neighbors_{false};
 
     void read(json const& parser)
     {
@@ -351,6 +352,7 @@ struct Control_input
             print_stress_        = parser["control"].value("print_stress", print_stress_);
             print_forces_        = parser["control"].value("print_forces", print_forces_);
             print_timers_        = parser["control"].value("print_timers", print_timers_);
+            print_neighbors_     = parser["control"].value("print_neighbors", print_neighbors_);
 
             auto strings = {&std_evp_solver_name_, &gen_evp_solver_name_, &fft_mode_, &processing_unit_};
             for (auto s : strings) {
