@@ -11,8 +11,8 @@ void test1(vector3d<int> const& dims__, double cutoff__, device_t pu__)
 
     FFT3D fft(find_translations(cutoff__, M), mpi_comm_world(), pu__);
 
-    Gvec gvec(M, cutoff__, mpi_comm_world(), mpi_comm_world(), false);
-    Gvec gvec_r(M, cutoff__, mpi_comm_world(), mpi_comm_world(), true);
+    Gvec gvec(M, cutoff__, mpi_comm_world(), mpi_comm_world(), mpi_comm_self(), false);
+    Gvec gvec_r(M, cutoff__, mpi_comm_world(), mpi_comm_world(), mpi_comm_self(), true);
 
     if (gvec_r.num_gvec() != gvec.num_gvec() / 2 + 1) {
         printf("wrong number of reduced G-vectors");
@@ -68,7 +68,7 @@ void test2(vector3d<int> const& dims__, double cutoff__, device_t pu__)
 
     FFT3D fft(find_translations(cutoff__, M), mpi_comm_world(), pu__);
 
-    Gvec gvec_r(M, cutoff__, mpi_comm_world(), mpi_comm_world(), true);
+    Gvec gvec_r(M, cutoff__, mpi_comm_world(), mpi_comm_world(), mpi_comm_self(), true);
 
     fft.prepare(gvec_r.partition());
 
@@ -147,7 +147,7 @@ void test3(vector3d<int> const& dims__, double cutoff__)
 
     FFT3D fft(find_translations(cutoff__, M), mpi_comm_world(), GPU);
 
-    Gvec gvec_r(M, cutoff__, mpi_comm_world(), mpi_comm_world(), true);
+    Gvec gvec_r(M, cutoff__, mpi_comm_world(), mpi_comm_world(), mpi_comm_self(), true);
 
     fft.prepare(gvec_r.partition());
 
