@@ -384,6 +384,13 @@ class Simulation_context_base: public Simulation_parameters
                 }
                 fout["parameters"].write("num_gvec", gvec_.num_gvec());
                 fout["parameters"].write("gvec", gv);
+
+                fout.create_node("unit_cell");
+                fout["unit_cell"].create_node("atoms");
+                for (int j = 0; j < unit_cell().num_atoms(); j++) {
+                    fout["unit_cell"]["atoms"].create_node(j);
+                    fout["unit_cell"]["atoms"][j].write("mt_basis_size", unit_cell().atom(j).mt_basis_size());
+                }
             }
             comm_.barrier();
         }

@@ -859,6 +859,12 @@ class Potential
                 s << "effective_magnetic_field/" << j;
                 effective_magnetic_field_[j]->hdf5_write(storage_file_name, s.str());
             }
+            if (ctx_.comm().rank() == 0 && !ctx_.full_potential()) {
+                HDF5_tree fout(storage_file_name, false);
+                for (int j = 0; j < ctx_.unit_cell().num_atoms(); j++) {
+                    fout["unit_cell"]["atoms"][j].write("D_operator", ctx_.unit_cell().atom(j).d_mtrx());
+                }
+            }
             comm_.barrier();
         }
         
@@ -882,6 +888,13 @@ class Potential
             
             if (ctx_.full_potential()) {
                 update_atomic_potential();
+            }
+
+            if (!ctx_.full_potential()) {
+                HDF5_tree fout(storage_file_name, false);
+                for (int j = 0; j < ctx_.unit_cell().num_atoms(); j++) {
+                    fout["unit_cell"]["atoms"][j].read("D_operator", ctx_.unit_cell().atom(j).d_mtrx());
+                }
             }
         }
         
