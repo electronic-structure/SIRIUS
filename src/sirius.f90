@@ -6,12 +6,12 @@ module sirius
 
         subroutine sirius_initialize(call_mpi_init)&
             &bind(C, name="sirius_initialize")
-            integer,                 intent(in) :: call_mpi_init
+            logical(1),              intent(in) :: call_mpi_init
         end subroutine
 
         subroutine sirius_finalize(call_mpi_fin)&
             &bind(C, name="sirius_finalize")
-            integer,                 intent(in) :: call_mpi_fin
+            logical(1),              intent(in) :: call_mpi_fin
         end subroutine
 
         subroutine sirius_clear()&
@@ -1051,6 +1051,27 @@ module sirius
           real(8),                intent(in) :: beta_
           real(8),                intent(in) :: J0_
         end subroutine sirius_set_atom_type_hubbard
+
+        subroutine sirius_create_storage_file()&
+          &bind(C, name="sirius_create_storage_file")
+        end subroutine sirius_create_storage_file
+
+        subroutine sirius_save_potential()&
+          &bind(C, name="sirius_save_potential")
+        end subroutine sirius_save_potential
+
+        subroutine sirius_load_potential()&
+          &bind(C, name="sirius_load_potential")
+        end subroutine sirius_load_potential
+
+        subroutine sirius_save_density()&
+          &bind(C, name="sirius_save_density")
+        end subroutine sirius_save_density
+
+        subroutine sirius_load_density()&
+          &bind(C, name="sirius_load_density")
+        end subroutine sirius_load_density
+
      end interface
 
 contains
