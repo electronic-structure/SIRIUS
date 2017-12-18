@@ -276,7 +276,7 @@ inline int Band::residuals(K_point*             kp__,
         /* main trick here: first estimate energy difference, and only then compute unconverged residuals */
         auto get_ev_idx = [&](double tol__)
         {
-            auto empty_tol = std::max(5 * tol__, itso.empty_states_tolerance_);
+            auto empty_tol = (itso.empty_states_tolerance_ == 0) ? tol__ : std::max(5 * tol__, itso.empty_states_tolerance_);
             std::vector<int> ev_idx;
             int s = ispn__ == 2 ? 0 : ispn__;
             for (int i = 0; i < num_bands__; i++) {

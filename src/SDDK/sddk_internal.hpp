@@ -672,40 +672,6 @@ class Profiler
 
 using double_complex = std::complex<double>;
 
-/// Wrapper for data types
-template <typename T>
-class sddk_type_wrapper;
-
-template <>
-class sddk_type_wrapper<double>
-{
-  public:
-    static inline double conjugate(double const& v)
-    {
-        return v;
-    }
-
-    static inline double real(double const& v)
-    {
-        return v;
-    }
-};
-
-template <>
-class sddk_type_wrapper<double_complex>
-{
-  public:
-    static inline double_complex conj(double_complex const& v)
-    {
-        return std::conj(v);
-    }
-
-    static inline double real(double_complex const& v)
-    {
-        return v.real();
-    }
-};
-
 inline void terminate(const char* file_name__, int line_number__, const std::string& message__)
 {
     printf("\n=== Fatal error at line %i of file %s ===\n", line_number__, file_name__);

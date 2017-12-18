@@ -796,6 +796,13 @@ class Potential
             /* add Hartree potential to the total potential */
             effective_potential_->add(hartree_potential_.get());
 
+            if (ctx_.control().print_hash_) {
+                auto h = effective_potential_->hash_f_rg();
+                if (ctx_.comm().rank() == 0) {
+                    print_hash("Vha", h);
+                }
+            }
+
             if (ctx_.full_potential()) {
                 xc(density__);
             } else {
@@ -806,6 +813,13 @@ class Potential
             }
             /* add XC potential to the effective potential */
             effective_potential_->add(xc_potential_);
+
+            if (ctx_.control().print_hash_) {
+                auto h = effective_potential_->hash_f_rg();
+                if (ctx_.comm().rank() == 0) {
+                    print_hash("Vha+Vxc", h);
+                }
+            }
     
             if (ctx_.full_potential()) {
                 effective_potential_->sync_mt();
@@ -822,6 +836,13 @@ class Potential
             effective_potential_->fft_transform(-1);
             for (int j = 0; j < ctx_.num_mag_dims(); j++) {
                 effective_magnetic_field_[j]->fft_transform(-1);
+            }
+
+            if (ctx_.control().print_hash_) {
+                auto h = effective_potential_->hash_f_pw();
+                if (ctx_.comm().rank() == 0) {
+                    print_hash("V(G)", h);
+                }
             }
 
             if (!ctx_.full_potential()) {

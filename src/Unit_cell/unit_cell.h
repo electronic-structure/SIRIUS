@@ -886,7 +886,9 @@ inline std::vector<double> Unit_cell::find_mt_radii()
     
     for (int i = 0; i < num_atom_types(); i++) {
         if (Rmt[i] < 0.3) {
-            TERMINATE("Muffin-tin radius is too small");
+            std::stringstream s;
+            s << "muffin-tin radius for atom type " << i << " (" << atom_types_[i].label() << ") is too small: " << Rmt[i];
+            TERMINATE(s);
         }
     }
 
@@ -903,9 +905,6 @@ inline bool Unit_cell::check_mt_overlap(int& ia__, int& ja__)
         /* first atom is always the central one itself */
         if (nearest_neighbours_[ia].size() <= 1) {
             continue;
-            //std::stringstream s;
-            //s << "array of nearest neighbours for atom " << ia << " is empty";
-            //TERMINATE(s);
         }
 
         int ja = nearest_neighbours_[ia][1].atom_id;
@@ -1189,27 +1188,31 @@ inline void Unit_cell::find_nearest_neighbours(double cluster_radius)
         }
     }
 
-    //== if (Platform::mpi_rank() == 0) // TODO: move to a separate task
-    //== {
-    //==     FILE* fout = fopen("nghbr.txt", "w");
-    //==     for (int ia = 0; ia < num_atoms(); ia++)
-    //==     {
-    //==         fprintf(fout, "Central atom: %s (%i)\n", atom(ia).type()->symbol().c_str(), ia);
-    //==         for (int i = 0; i < 80; i++) fprintf(fout, "-");
-    //==         fprintf(fout, "\n");
-    //==         fprintf(fout, "atom (  id)       D [a.u.]    translation  R\n");
-    //==         for (int i = 0; i < 80; i++) fprintf(fout, "-");
-    //==         fprintf(fout, "\n");
-    //==         for (int i = 0; i < (int)nearest_neighbours_[ia].size(); i++)
-    //==         {
-    //==             int ja = nearest_neighbours_[ia][i].atom_id;
-    //==             fprintf(fout, "%4s (%4i)   %12.6f\n", atom(ja)->type()->symbol().c_str(), ja, 
-    //==                                                   nearest_neighbours_[ia][i].distance);
-    //==         }
-    //==         fprintf(fout, "\n");
-    //==     }
-    //==     fclose(fout);
-    //== }
+    if (parameters_.control().print_neighbors_ && comm_.rank() == 0) {
+        printf("Nearest neighbors\n");
+        printf("=================\n");
+        for (int ia = 0; ia < num_atoms(); ia++) {
+            printf("Central atom: %s (%i)\n", atom(ia).type().symbol().c_str(), ia);
+            for (int i = 0; i < 80; i++) {
+                printf("-");
+            }
+            printf("\n");
+            printf("atom (  id)       D [a.u.]    translation\n");
+            for (int i = 0; i < 80; i++) {
+                printf("-");
+            }
+            printf("\n");
+            for (int i = 0; i < (int)nearest_neighbours_[ia].size(); i++) {
+                int ja = nearest_neighbours_[ia][i].atom_id;
+                printf("%4s (%4i)   %12.6f  %4i %4i %4i\n", atom(ja).type().symbol().c_str(), ja, 
+                                                            nearest_neighbours_[ia][i].distance,
+                                                            nearest_neighbours_[ia][i].translation[0],
+                                                            nearest_neighbours_[ia][i].translation[1],
+                                                            nearest_neighbours_[ia][i].translation[2]);
+            }
+            printf("\n");
+        }
+    }
 }
 
 inline bool Unit_cell::is_point_in_mt(vector3d<double> vc, int& ja, int& jr, double& dr, double tp[2]) const
