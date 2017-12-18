@@ -11,9 +11,7 @@ extern "C" void compute_chebyshev_polynomial_gpu(int num_gkvec,
 template <typename T>
 inline void Band::diag_pseudo_potential_exact(K_point* kp__,
                                               int ispn__,
-                                              Hamiltonian &H_,
-                                              D_operator<T>& d_op__,
-                                              Q_operator<T>& q_op__) const
+                                              Hamiltonian &H_) const
 {
     PROFILE("sirius::Band::diag_pseudo_potential_exact");
 
@@ -23,7 +21,7 @@ inline void Band::diag_pseudo_potential_exact(K_point* kp__,
 //    auto& psi = kp__->spinor_wave_functions(ispn__);
 //
 //    /* short notation for number of target wave-functions */
-//    int num_bands = ctx_.num_fv_states();     
+//    int num_bands = ctx_.num_fv_states();
 //
 //    int ngk = kp__->num_gkvec();
 //
@@ -33,7 +31,7 @@ inline void Band::diag_pseudo_potential_exact(K_point* kp__,
 //    Wave_functions  phi(ctx_.processing_unit(), kp__->gkvec(), ngk, nsc);
 //    Wave_functions hphi(ctx_.processing_unit(), kp__->gkvec(), ngk, nsc);
 //    Wave_functions ophi(ctx_.processing_unit(), kp__->gkvec(), ngk, nsc);
-//    
+//
 //    std::vector<double> eval(ngk);
 //
 //    phi.component(0).pw_coeffs().prime().zero();
@@ -42,7 +40,7 @@ inline void Band::diag_pseudo_potential_exact(K_point* kp__,
 //    }
 //
 //    H__.apply_h_s(kp__, ispn__, 0, ngk, phi, hphi, ophi, d_op__, q_op__);
-//        
+//
 //    //Utils::check_hermitian("h", hphi.coeffs(), ngk);
 //    //Utils::check_hermitian("o", ophi.coeffs(), ngk);
 //
@@ -54,7 +52,7 @@ inline void Band::diag_pseudo_potential_exact(K_point* kp__,
 //    #endif
 //
 //    auto gen_solver = ctx_.gen_evp_solver<double_complex>();
-//    
+//
 //    TERMINATE("fix this later");
 //    dmatrix<double_complex> hmlt(hphi[0].pw_coeffs().prime().template at<CPU>(), ngk, ngk);
 //    dmatrix<double_complex> ovlp(ophi[0].pw_coeffs().prime().template at<CPU>(), ngk, ngk);
@@ -71,9 +69,7 @@ inline void Band::diag_pseudo_potential_exact(K_point* kp__,
 
 template <typename T>
 inline int Band::diag_pseudo_potential_davidson(K_point*       kp__,
-                                                Hamiltonian&   H__,
-                                                D_operator<T>& d_op__,
-                                                Q_operator<T>& q_op__) const
+                                                Hamiltonian&   H__) const
 {
     PROFILE("sirius::Band::diag_pseudo_potential_davidson");
 
@@ -90,24 +86,24 @@ inline int Band::diag_pseudo_potential_davidson(K_point*       kp__,
     }
 
     /* true if this is a non-collinear case */
-    bool nc_mag = (ctx_.num_mag_dims() == 3);
+    const bool nc_mag = (ctx_.num_mag_dims() == 3);
 
-    /* number of spin components, treated simultaneously 
+    /* number of spin components, treated simultaneously
      *   1 - in case of non-magnetic or collinear calculation
      *   2 - in case of non-collinear calculation
      */
-    int num_sc = nc_mag ? 2 : 1;
-    
+    const int num_sc = nc_mag ? 2 : 1;
+
     /* number of steps in spin index
      * 1 - in case of non-magnetic calculation
-     * 2 - in case of collinear calculation (up, dn) 
+     * 2 - in case of collinear calculation (up, dn)
      * 1 - in case of non-collinear calculation (two spin components are treated simultaneously)
      */
-    int num_spin_steps = nc_mag ? 1 : ctx_.num_spins();
+    const int num_spin_steps = nc_mag ? 1 : ctx_.num_spins();
 
     /* short notation for number of target wave-functions */
-    int num_bands = nc_mag ? ctx_.num_bands() : ctx_.num_fv_states();
-    
+    const int num_bands = nc_mag ? ctx_.num_bands() : ctx_.num_fv_states();
+
     /* short notation for target wave-functions */
     auto& psi = kp__->spinor_wave_functions();
 
@@ -123,7 +119,7 @@ inline int Band::diag_pseudo_potential_davidson(K_point*       kp__,
     }
 
     /* total memory size of all wave-functions */
-    size_t size = sizeof(double_complex) * num_sc * kp__->num_gkvec_loc() * (3 * num_phi + 3 * num_bands);
+    const size_t size = sizeof(double_complex) * num_sc * kp__->num_gkvec_loc() * (3 * num_phi + 3 * num_bands);
     /* get preallocatd memory buffer */
     double_complex* mem_buf_ptr = static_cast<double_complex*>(ctx_.memory_buffer(size));
 
@@ -156,7 +152,7 @@ inline int Band::diag_pseudo_potential_davidson(K_point*       kp__,
     sddk::timer t2("sirius::Band::diag_pseudo_potential_davidson|alloc");
     auto mem_type = (ctx_.std_evp_solver_type() == ev_solver_t::magma) ? memory_t::host_pinned : memory_t::host;
 
-    int bs = ctx_.cyclic_block_size();
+    const int bs = ctx_.cyclic_block_size();
 
     dmatrix<T> hmlt(num_phi, num_phi, ctx_.blacs_grid(), bs, bs, mem_type);
     dmatrix<T> ovlp(num_phi, num_phi, ctx_.blacs_grid(), bs, bs, mem_type);
@@ -199,8 +195,8 @@ inline int Band::diag_pseudo_potential_davidson(K_point*       kp__,
     t2.stop();
 
     /* get diagonal elements for preconditioning */
-    auto h_diag = H__.get_h_diag(kp__, d_op__);
-    auto o_diag = H__.get_o_diag(kp__, q_op__);
+    auto h_diag = H__.get_h_diag<T>(kp__);
+    auto o_diag = H__.get_o_diag<T>(kp__);
 
     if (ctx_.control().print_checksum_) {
         auto cs1 = h_diag.checksum();
@@ -233,7 +229,7 @@ inline int Band::diag_pseudo_potential_davidson(K_point*       kp__,
          * this is done before the main itertive loop */
 
         /* apply Hamiltonian and S operators to the basis functions */
-        H__.apply_h_s<T>(kp__, nc_mag ? 2 : ispin_step, 0, num_bands, phi, hphi, sphi, d_op__, q_op__);
+        H__.apply_h_s<T>(kp__, nc_mag ? 2 : ispin_step, 0, num_bands, phi, hphi, sphi);
 
         /* setup eigen-value problem
          * N is the number of previous basis functions
@@ -301,7 +297,7 @@ inline int Band::diag_pseudo_potential_davidson(K_point*       kp__,
                 /* recompute wave-functions */
                 /* \Psi_{i} = \sum_{mu} \phi_{mu} * Z_{mu, i} */
                 if (ctx_.settings().always_update_wf_ || k + n > 0) {
-                    /* in case of non-collinear magnetism transform two components */ 
+                    /* in case of non-collinear magnetism transform two components */
                     transform<T>(ctx_.processing_unit(), nc_mag ? 2 : ispin_step, {&phi}, 0, N, evec, 0, 0, {&psi}, 0, num_bands);
                     /* update eigen-values */
                     for (int j = 0; j < num_bands; j++) {
@@ -353,7 +349,7 @@ inline int Band::diag_pseudo_potential_davidson(K_point*       kp__,
             }
 
             /* apply Hamiltonian and S operators to the new basis functions */
-            H__.apply_h_s<T>(kp__, nc_mag ? 2 : ispin_step, N, n, phi, hphi, sphi, d_op__, q_op__);
+            H__.apply_h_s<T>(kp__, nc_mag ? 2 : ispin_step, N, n, phi, hphi, sphi);
 
             if (itso.orthogonalize_) {
                 orthogonalize<T>(ctx_.processing_unit(), nc_mag ? 2 : 0, phi, hphi, sphi, N, n, ovlp, res);
@@ -461,8 +457,6 @@ template <typename T>
 inline void Band::diag_pseudo_potential_chebyshev(K_point* kp__,
                                                   int ispn__,
                                                   Hamiltonian &H__,
-                                                  D_operator<T>& d_op__,
-                                                  Q_operator<T>& q_op__,
                                                   P_operator<T>& p_op__) const
 {
     PROFILE("sirius::Band::diag_pseudo_potential_chebyshev");
@@ -667,7 +661,7 @@ inline void Band::diag_pseudo_potential_chebyshev(K_point* kp__,
 }
 
 //template <typename T>
-//inline T 
+//inline T
 //inner_local(K_point* kp__,
 //            wave_functions& a,
 //            int ia,
@@ -675,7 +669,7 @@ inline void Band::diag_pseudo_potential_chebyshev(K_point* kp__,
 //            int ib);
 //
 //template<>
-//inline double 
+//inline double
 //inner_local<double>(K_point* kp__,
 //                    wave_functions& a,
 //                    int ia,
@@ -699,7 +693,7 @@ inline void Band::diag_pseudo_potential_chebyshev(K_point* kp__,
 //}
 //
 //template<>
-//inline double_complex 
+//inline double_complex
 //inner_local<double_complex>(K_point* kp__,
 //                            wave_functions& a,
 //                            int ia,
@@ -716,16 +710,14 @@ inline void Band::diag_pseudo_potential_chebyshev(K_point* kp__,
 template <typename T>
 inline void Band::diag_pseudo_potential_rmm_diis(K_point* kp__,
                                                  int ispn__,
-                                                 Hamiltonian &H__,
-                                                 D_operator<T>& d_op__,
-                                                 Q_operator<T>& q_op__) const
+                                                 Hamiltonian &H__) const
 
 {
     //auto& itso = ctx_.iterative_solver_input();
     double tol = ctx_.iterative_solver_tolerance();
 
     if (tol > 1e-4) {
-        diag_pseudo_potential_davidson(kp__, H__, d_op__, q_op__);
+        diag_pseudo_potential_davidson<T>(kp__, H__);
         return;
     }
 

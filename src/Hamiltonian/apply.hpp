@@ -7,8 +7,7 @@ void Hamiltonian::apply_h(K_point* kp__,
                           int N__,
                           int n__,
                           Wave_functions& phi__,
-                          Wave_functions& hphi__,
-                          D_operator<T>& d_op) const
+                          Wave_functions& hphi__) const
 {
     PROFILE("sirius::Hamiltonian::apply_h");
 
@@ -87,9 +86,7 @@ void Hamiltonian::apply_h_s(K_point* kp__,
                             int n__,
                             Wave_functions& phi__,
                             Wave_functions& hphi__,
-                            Wave_functions& sphi__,
-                            D_operator<T>& d_op,
-                            Q_operator<T>& q_op) const
+                            Wave_functions& sphi__) const
 {
     PROFILE("sirius::Hamiltonian::apply_h_s");
 
@@ -156,32 +153,32 @@ void Hamiltonian::apply_h_s(K_point* kp__,
                 auto beta_phi = kp__->beta_projectors().inner<T>(i, phi__, ispn, N__, n__);
 
                 /* apply diagonal spin blocks */
-                d_op.apply(i, ispn, hphi__, N__, n__, beta_phi);
+                D<T>().apply(i, ispn, hphi__, N__, n__, kp__->beta_projectors(), beta_phi);
                 /* apply non-diagonal spin blocks */
                 /* xor 3 operator will map 0 to 3 and 1 to 2 */
-                d_op.apply(i, ispn ^ 3, hphi__, N__, n__, beta_phi);
+                D<T>().apply(i, ispn ^ 3, hphi__, N__, n__, kp__->beta_projectors(), beta_phi);
 
                 /* apply Q operator (diagonal in spin) */
-                q_op.apply(i, ispn, sphi__, N__, n__, beta_phi);
+                Q<T>().apply(i, ispn, sphi__, N__, n__, kp__->beta_projectors(), beta_phi);
                 /* apply non-diagonal spin blocks */
                 if (ctx_.so_correction()) {
-                    q_op.apply(i, ispn ^ 3, sphi__, N__, n__, beta_phi);
+                    Q<T>().apply(i, ispn ^ 3, sphi__, N__, n__, kp__->beta_projectors(), beta_phi);
                 }
             }
         } else { /* non-magnetic or collinear case */
 
             auto beta_phi = kp__->beta_projectors().inner<T>(i, phi__, ispn__, N__, n__);
 
-            d_op.apply(i, ispn__, hphi__, N__, n__, beta_phi);
-            q_op.apply(i, ispn__, sphi__, N__, n__, beta_phi);
+            D<T>().apply(i, ispn__, hphi__, N__, n__, kp__->beta_projectors(), beta_phi);
+            Q<T>().apply(i, ispn__, sphi__, N__, n__, kp__->beta_projectors(), beta_phi);
         }
     }
 
     /* apply the hubbard potential if relevant */
     if (ctx_.hubbard_correction() && !ctx_.gamma_point()) {
-        // note that the first function is called only one's in full
-        // version and will return immediately if the wave functions already exist
-        this->U().generate_atomic_orbitals(*kp__, q_op);
+
+        // return immediately if the wave functions already exist
+        this->U().generate_atomic_orbitals(*kp__, Q<T>());
 
         this->U().apply_hubbard_potential(*kp__, N__, n__, phi__, hphi__);
     }
@@ -273,7 +270,7 @@ inline void Hamiltonian::apply_fv_o(K_point* kp__,
                 alm(ig, xi) = std::conj(alm(ig, xi));
             }
         }
-        
+
         switch (ctx_.processing_unit()) {
             case CPU: {
                 /* APW-APW contribution to overlap */
