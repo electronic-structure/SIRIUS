@@ -46,9 +46,9 @@ void generate_atomic_orbitals(K_point& kp, Q_operator<double_complex>& q_op)
 
     #pragma omp parallel for schedule(static)
     for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
-        auto& atom             = unit_cell_.atom(ia);
-        double phase           = twopi * geometry3d::dot(kp.gkvec().vk(), unit_cell_.atom(ia).position());
-        double_complex phase_k = double_complex(cos(phase), sin(phase));
+        const auto& atom             = unit_cell_.atom(ia);
+        const double phase           = twopi * geometry3d::dot(kp.gkvec().vk(), unit_cell_.atom(ia).position());
+        const double_complex phase_k = double_complex(cos(phase), sin(phase));
 
         std::vector<double_complex> phase_gk(kp.num_gkvec_loc());
         for (int igk_loc = 0; igk_loc < kp.num_gkvec_loc(); igk_loc++) {
@@ -56,11 +56,11 @@ void generate_atomic_orbitals(K_point& kp, Q_operator<double_complex>& q_op)
             auto G            = kp.gkvec().gvec(igk);
             phase_gk[igk_loc] = std::conj(ctx_.gvec_phase_factor(G, ia) * phase_k);
         }
-        auto& atom_type = atom.type();
+        const auto& atom_type = atom.type();
         int n{0};
         if (atom_type.hubbard_correction()) {
             const int l      = atom_type.hubbard_l();
-            double_complex z = std::pow(double_complex(0, -1), l) * fourpi / std::sqrt(unit_cell_.omega());
+            const double_complex z = std::pow(double_complex(0, -1), l) * fourpi / std::sqrt(unit_cell_.omega());
             if (atom_type.pp_desc().spin_orbit_coupling) {
                 int orb[2];
                 int s = 0;
@@ -73,11 +73,10 @@ void generate_atomic_orbitals(K_point& kp, Q_operator<double_complex>& q_op)
                 for (int m = -l; m <= l; m++) {
                     int lm = Utils::lm_by_l_m(l, m);
                     for (int igk_loc = 0; igk_loc < kp.num_gkvec_loc(); igk_loc++) {
-                        double_complex temp = (ctx_.atomic_wf_ri().values(orb[0], atom_type.id())(
-                                                   idx_gk[igk_loc].first, idx_gk[igk_loc].second) +
-                                               ctx_.atomic_wf_ri().values(orb[1], atom_type.id())(
-                                                   idx_gk[igk_loc].first, idx_gk[igk_loc].second)) *
-                                              0.5;
+                        const double_complex temp = (ctx_.atomic_wf_ri().values(orb[0], atom_type.id())(
+                                                     idx_gk[igk_loc].first, idx_gk[igk_loc].second) +
+                                                     ctx_.atomic_wf_ri().values(orb[1], atom_type.id())(
+                                                     idx_gk[igk_loc].first, idx_gk[igk_loc].second)) * 0.5;
                         sphi.pw_coeffs(0).prime(igk_loc, this->offset[ia] + n) =
                             z * phase_gk[igk_loc] * rlm_gk(igk_loc, lm) * temp;
 
@@ -135,11 +134,11 @@ void generate_atomic_orbitals(K_point& kp, Q_operator<double_complex>& q_op)
                                                                                this->number_of_hubbard_orbitals());
 
                     /* apply Q operator (diagonal in spin) */
-                    q_op.apply(i, ispn, kp.hubbard_wave_functions(), 0, this->number_of_hubbard_orbitals(),
+                    q_op.apply(i, ispn, kp.hubbard_wave_functions(), 0, this->number_of_hubbard_orbitals(), kp.beta_projectors(),
                                beta_phi);
                     /* apply non-diagonal spin blocks */
                     if (ctx_.so_correction()) {
-                        q_op.apply(i, ispn ^ 3, kp.hubbard_wave_functions(), 0, this->number_of_hubbard_orbitals(),
+                        q_op.apply(i, ispn ^ 3, kp.hubbard_wave_functions(), 0, this->number_of_hubbard_orbitals(), kp.beta_projectors(),
                                    beta_phi);
                     }
 
@@ -148,7 +147,7 @@ void generate_atomic_orbitals(K_point& kp, Q_operator<double_complex>& q_op)
                 auto beta_phi = kp.beta_projectors().inner<double_complex>(i, kp.hubbard_wave_functions(), 0, 0,
                                                                            this->number_of_hubbard_orbitals());
 
-                q_op.apply(i, 0, kp.hubbard_wave_functions(), 0, this->number_of_hubbard_orbitals(), beta_phi);
+                q_op.apply(i, 0, kp.hubbard_wave_functions(), 0, this->number_of_hubbard_orbitals(), kp.beta_projectors(), beta_phi);
             }
         }
         kp.beta_projectors().dismiss();
@@ -164,14 +163,14 @@ void generate_atomic_orbitals(K_point& kp, Q_operator<double_complex>& q_op)
             linalg<CPU>::gemm(2, 0,
                               this->number_of_hubbard_orbitals(),
                               this->number_of_hubbard_orbitals(),
-                              sphi.pw_coeffs(ispn).num_rows_loc(), 
+                              sphi.pw_coeffs(ispn).num_rows_loc(),
                               linalg_const<double_complex>::one(),
                               sphi.pw_coeffs(ispn).prime().at<CPU>(0, 0),
                               sphi.pw_coeffs(ispn).prime().ld(),
                               kp.hubbard_wave_functions().pw_coeffs(ispn).prime().at<CPU>(0, 0),
                               kp.hubbard_wave_functions().pw_coeffs(ispn).prime().ld(),
                               linalg_const<double_complex>::one(),
-                              S.at<CPU>(0, 0), 
+                              S.at<CPU>(0, 0),
                               S.ld());
         }
 

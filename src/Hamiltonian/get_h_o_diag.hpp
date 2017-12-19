@@ -100,8 +100,7 @@ Hamiltonian::get_o_diag(K_point* kp__,
 
 template <typename T>
 inline mdarray<double, 2>
-Hamiltonian::get_h_diag(K_point*        kp__,
-                        D_operator<T>&  d_op__) const
+Hamiltonian::get_h_diag(K_point*        kp__) const
 {
     PROFILE("sirius::Band::get_h_diag");
 
@@ -131,7 +130,7 @@ Hamiltonian::get_h_diag(K_point*        kp__,
 
                 for (int xi2 = 0; xi2 < nbf; xi2++) {
                     for (int xi1 = 0; xi1 < nbf; xi1++) {
-                        d_sum(xi1, xi2) += d_op__(xi1, xi2, ispn, ia);
+                        d_sum(xi1, xi2) += this->D<T>().operator()(xi1, xi2, ispn, ia);
                     }
                 }
             }
@@ -164,8 +163,7 @@ Hamiltonian::get_h_diag(K_point*        kp__,
 
 template <typename T>
 inline mdarray<double, 1>
-Hamiltonian::get_o_diag(K_point*       kp__,
-                        Q_operator<T>& q_op__) const
+Hamiltonian::get_o_diag(K_point*       kp__) const
 {
     PROFILE("sirius::Band::get_o_diag");
 
@@ -194,7 +192,7 @@ Hamiltonian::get_o_diag(K_point*       kp__,
 
             for (int xi2 = 0; xi2 < nbf; xi2++) {
                 for (int xi1 = 0; xi1 < nbf; xi1++) {
-                    q_sum(xi1, xi2) += q_op__(xi1, xi2, ia);
+                    q_sum(xi1, xi2) += Q<T>().operator()(xi1, xi2, ia);
                 }
             }
         }
