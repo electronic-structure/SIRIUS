@@ -769,8 +769,15 @@ void sirius_generate_density(int32_t* kset_id__)
 void sirius_generate_valence_density(int32_t* kset_id__)
 {
     density->generate_valence(*kset_list[*kset_id__]);
-    /* only PW coeffs have been generated; transfrom them to real space */
-    density->fft_transform(1);
+    if (sim_ctx->full_potential()) {
+        /* only PW coeffs have been generated; transfrom them to real space */
+        density->fft_transform(1);
+        /* MT part was calculated for local number of atoms; synchronize to global array */
+        density->rho().sync_mt();
+        for (int j = 0; j < sim_ctx->num_mag_dims(); j++) {
+            density->magnetization(j).sync_mt();
+        }
+    }
 }
 
 void sirius_augment_density(int32_t* kset_id__)

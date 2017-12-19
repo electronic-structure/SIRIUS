@@ -55,6 +55,8 @@ class Simulation_context_base: public Simulation_parameters
 
         /// Auxiliary communicator for the coarse-grid FFT transformation.
         Communicator comm_ortho_fft_coarse_;
+
+        Communicator comm_band_ortho_fft_coarse_;
         
         /// Unit cell of the simulation.
         Unit_cell unit_cell_;
@@ -355,6 +357,11 @@ class Simulation_context_base: public Simulation_parameters
             return comm_ortho_fft_coarse_;
         }
 
+        Communicator const& comm_band_ortho_fft_coarse() const
+        {
+            return comm_band_ortho_fft_coarse_;
+        }
+
         void create_storage_file() const
         {
             if (comm_.rank() == 0) {
@@ -629,9 +636,11 @@ inline void Simulation_context_base::initialize()
     /* setup MPI grid */
     mpi_grid_ = std::unique_ptr<MPI_grid>(new MPI_grid({npr, npc, npk}, comm_));
 
-    comm_ortho_fft_ = comm_.split(comm_fft().rank());
+    comm_ortho_fft_ = comm().split(comm_fft().rank());
 
-    comm_ortho_fft_coarse_ = comm_.split(comm_fft_coarse().rank());
+    comm_ortho_fft_coarse_ = comm().split(comm_fft_coarse().rank());
+
+    comm_band_ortho_fft_coarse_ = comm_band().split(comm_fft_coarse().rank());
     
     /* can't use reduced G-vectors in LAPW code */
     if (full_potential()) {
