@@ -1,24 +1,24 @@
 // Copyright (c) 2013-2017 Anton Kozhevnikov, Thomas Schulthess
 // All rights reserved.
 //
-// Redistribution and use in source and binary forms, with or without modification, are permitted provided that 
+// Redistribution and use in source and binary forms, with or without modification, are permitted provided that
 // the following conditions are met:
 //
-// 1. Redistributions of source code must retain the above copyright notice, this list of conditions and the 
+// 1. Redistributions of source code must retain the above copyright notice, this list of conditions and the
 //    following disclaimer.
-// 2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions 
+// 2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions
 //    and the following disclaimer in the documentation and/or other materials provided with the distribution.
 //
-// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED 
-// WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A 
-// PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR 
-// ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, 
-// PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER 
-// CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR 
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED
+// WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A
+// PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
+// ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+// PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+// CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
 // OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 /** \file wave_functions.hpp
- *   
+ *
  *  \brief Contains declaration and implementation of wave_functions class.
  */
 
@@ -30,7 +30,6 @@
 #include "linalg.hpp"
 #include "eigenproblem.h"
 #include "hdf5_tree.hpp"
-
 #ifdef __GPU
 extern "C" void add_square_sum_gpu(double_complex const* wf__,
                                    int num_rows_loc__,
@@ -52,12 +51,12 @@ namespace sddk {
 /// Wave-functions representation.
 /** Wave-functions consist of two parts: plane-wave part and mufin-tin part. Both are the matrix_storage objects
  *  with the slab distribution. Wave-functions have one or two spin components. In case of collinear magnetism
- *  each component represents a pure (up- or dn-) spinor state and they are independent. In non-collinear case 
- *  the two components represent a full spinor state. 
+ *  each component represents a pure (up- or dn-) spinor state and they are independent. In non-collinear case
+ *  the two components represent a full spinor state.
  *
  *  In case of collinear magnetism we can work with auxiliary scalar wave-functions and update up- or dn- components
- *  of pure spinor wave-functions independently. We can also apply uu or dd block of Hamiltonian. In this case it is 
- *  reasonable to implement the following convention: for scalar wave-function (num_sc = 1) it's value is returned 
+ *  of pure spinor wave-functions independently. We can also apply uu or dd block of Hamiltonian. In this case it is
+ *  reasonable to implement the following convention: for scalar wave-function (num_sc = 1) it's value is returned
  *  for any spin index (ispn = 0 or ispn = 1).
  */
 class Wave_functions
@@ -93,7 +92,7 @@ class Wave_functions
     std::array<std::unique_ptr<matrix_storage<double_complex, matrix_storage_t::slab>>, 2> mt_coeffs_{{nullptr, nullptr}};
 
     bool has_mt_{false};
-    
+
     /// Lower boundary for the spin component index by spin index.
     inline int s0(int ispn__) const
     {
@@ -241,19 +240,19 @@ class Wave_functions
 
         spl_num_atoms_ = splindex<block>(num_atoms__, comm_.size(), comm_.rank());
         mt_coeffs_distr_ = block_data_descriptor(comm_.size());
-        
+
         for (int ia = 0; ia < num_atoms__; ia++) {
             int rank = spl_num_atoms_.local_rank(ia);
             if (rank == comm_.rank()) {
                 offset_mt_coeffs_.push_back(mt_coeffs_distr_.counts[rank]);
             }
             mt_coeffs_distr_.counts[rank] += mt_size__(ia);
-            
+
         }
         mt_coeffs_distr_.calc_offsets();
 
         num_mt_coeffs_ = mt_coeffs_distr_.offsets.back() + mt_coeffs_distr_.counts.back();
-        
+
         for (int ispn = 0; ispn < num_sc_; ispn++) {
             mt_coeffs_[ispn] = std::unique_ptr<matrix_storage<double_complex, matrix_storage_t::slab>>(
                 new matrix_storage<double_complex, matrix_storage_t::slab>(mt_coeffs_distr_.counts[comm_.rank()],
@@ -376,7 +375,7 @@ class Wave_functions
     }
 
     /// Compute the checksum of the spin-components.
-    /** Checksum of the n wave-function spin components is computed starting from i0. 
+    /** Checksum of the n wave-function spin components is computed starting from i0.
      *  Only plane-wave coefficients are considered. */
     inline double_complex checksum_pw(device_t pu__,
                                       int      ispn__,
@@ -525,6 +524,117 @@ class Wave_functions
     }
     #endif
 
+    /// Compute the overlap matrix between two sets of wave functions
+    /// and return the result in an 2D array
+    /// \f[ O_{ij} = \left< phi_i | psi_j\right> \f]
+
+    template <typename T> inline mdarray<T, 2> overlap(device_t pu,
+                                                       Wave_functions &phi_,
+                                                       const int start_idx_psi_,
+                                                       const int num_of_wf_psi_,
+                                                       const int start_idx_phi_,
+                                                       const int num_of_wf_phi_)
+    {
+        assert(((start_idx_phi_ + num_of_wf_phi_) <= phi_.num_wf())&&(num_of_wf_phi_ > 0));
+        assert(start_idx_phi_ >= 0);
+        assert(((start_idx_psi_ + num_of_wf_psi_) <= this->num_wf())&&(num_of_wf_psi_ > 0));
+        assert(start_idx_psi_ >= 0);
+
+        mdarray <T, 2> dm_(num_of_wf_psi_, num_of_wf_phi_);
+
+        dm_.zero();
+
+        if (this->num_sc() != phi_.num_sc()) {
+            TERMINATE("Inconsistency between the two wave functions !!!!. they do not have the same number of components");
+        }
+
+        if (pu == CPU) {
+            for (int ispn = 0; ispn < this->num_sc(); ispn++) {
+                linalg<CPU>::gemm(2, 0,
+                                  num_of_wf_psi_,
+                                  num_of_wf_phi_,
+                                  this->pw_coeffs(ispn).num_rows_loc(),
+                                  linalg_const<T>::one(),
+                                  this->pw_coeffs(ispn).prime().at<CPU>(0, start_idx_psi_),
+                                  this->pw_coeffs(ispn).prime().ld(),
+                                  phi_.pw_coeffs(ispn).prime().at<CPU>(0, start_idx_phi_),
+                                  phi_.pw_coeffs(ispn).prime().ld(),
+                                  linalg_const<T>::one(),
+                                  dm_.template at<CPU>(),
+                                  dm_.ld());
+
+                if (this->has_mt()) {
+                    linalg<CPU>::gemm(2, 0,
+                                      num_of_wf_psi_,
+                                      num_of_wf_phi_,
+                                      this->mt_coeffs(ispn).num_rows_loc(),
+                                      linalg_const<T>::one(),
+                                      this->mt_coeffs(ispn).prime().at<CPU>(0, start_idx_psi_),
+                                      this->mt_coeffs(ispn).prime().ld(),
+                                      phi_.mt_coeffs(ispn).prime().at<CPU>(0, start_idx_phi_),
+                                      phi_.mt_coeffs(ispn).prime().ld(),
+                                      linalg_const<T>::one(),
+                                      dm_.template at<CPU>(),
+                                      dm_.ld());
+                }
+            }
+        } else {
+#ifdef __GPU
+            dm_.allocate_on_device();
+            for (int ispn = 0; ispn < this->num_sc(); ispn++) {
+
+                this->pw_coeffs(ispn).prime().allocate(memory_t::device);
+                this->pw_coeffs(ispn).copy_to_device(0, this->num_wf());
+
+                phi_.pw_coeffs(ispn).prime().allocate(memory_t::device);
+                phi_.pw_coeffs(ispn).copy_to_device(0, phi_.num_wf());
+
+                linalg<GPU>::gemm(2, 0,
+                                  num_of_wf_psi_,
+                                  num_of_wf_phi_,
+                                  this->pw_coeffs(ispn).num_rows_loc(),
+                                  linalg_const<T>::one(),
+                                  this->pw_coeffs(ispn).prime().at<GPU>(0, start_idx_psi_),
+                                  this->pw_coeffs(ispn).prime().ld(),
+                                  phi_.pw_coeffs(ispn).prime().at<GPU>(0, start_idx_phi_),
+                                  phi_.pw_coeffs(ispn).prime().ld(),
+                                  linalg_const<T>::one(),
+                                  dm_.template at<GPU>(),
+                                  dm_.ld());
+
+                phi_.pw_coeffs(ispn).prime().deallocate();
+                this->pw_coeffs(ispn).prime().deallocate();
+
+                if (this->has_mt()) {
+                    this->mt_coeffs(ispn).prime().allocate(memory_t::device);
+                    this->mt_coeffs(ispn).copy_to_device(0, this->num_wf());
+                    phi_.mt_coeffs(ispn).prime().allocate(memory_t::device);
+                    phi_.mt_coeffs(ispn).copy_to_device(0, phi_.num_wf());
+
+                    linalg<GPU>::gemm(2, 0,
+                                      num_of_wf_psi_,
+                                      num_of_wf_phi_,
+                                      this->mt_coeffs(ispn).num_rows_loc(),
+                                      linalg_const<T>::one(),
+                                      this->mt_coeffs(ispn).prime().at<GPU>(0, start_idx_psi_),
+                                      this->mt_coeffs(ispn).prime().ld(),
+                                      phi_.mt_coeffs(ispn).prime().at<GPU>(0, start_idx_phi_),
+                                      phi_.mt_coeffs(ispn).prime().ld(),
+                                      linalg_const<T>::one(),
+                                      dm_.template at<GPU>(),
+                                      dm_.ld());
+
+                    phi_.pw_coeffs(ispn).prime().deallocate();
+                    this->pw_coeffs(ispn).prime().deallocate();
+                }
+
+            }
+
+            dm_.copy_from_device();
+#endif
+        }
+        return dm_;
+    }
 };
 
 #include "wf_inner.hpp"
