@@ -580,7 +580,7 @@ class Wave_functions
             }
         } else {
 #ifdef __GPU
-            dm_.allocate_on_device();
+            dm_.allocate(memory_t::device);
             for (int ispn = 0; ispn < this->num_sc(); ispn++) {
 
                 this->pw_coeffs(ispn).prime().allocate(memory_t::device);
@@ -593,17 +593,17 @@ class Wave_functions
                                   num_of_wf_psi_,
                                   num_of_wf_phi_,
                                   this->pw_coeffs(ispn).num_rows_loc(),
-                                  linalg_const<T>::one(),
+                                  &linalg_const<T>::one(),
                                   this->pw_coeffs(ispn).prime().at<GPU>(0, start_idx_psi_),
                                   this->pw_coeffs(ispn).prime().ld(),
                                   phi_.pw_coeffs(ispn).prime().at<GPU>(0, start_idx_phi_),
                                   phi_.pw_coeffs(ispn).prime().ld(),
-                                  linalg_const<T>::one(),
+                                  &linalg_const<T>::one(),
                                   dm_.template at<GPU>(),
                                   dm_.ld());
 
-                phi_.pw_coeffs(ispn).prime().deallocate();
-                this->pw_coeffs(ispn).prime().deallocate();
+                phi_.pw_coeffs(ispn).prime().deallocate_on_device();
+                this->pw_coeffs(ispn).prime().deallocate_on_device();
 
                 if (this->has_mt()) {
                     this->mt_coeffs(ispn).prime().allocate(memory_t::device);
@@ -615,22 +615,22 @@ class Wave_functions
                                       num_of_wf_psi_,
                                       num_of_wf_phi_,
                                       this->mt_coeffs(ispn).num_rows_loc(),
-                                      linalg_const<T>::one(),
+                                      &linalg_const<T>::one(),
                                       this->mt_coeffs(ispn).prime().at<GPU>(0, start_idx_psi_),
                                       this->mt_coeffs(ispn).prime().ld(),
                                       phi_.mt_coeffs(ispn).prime().at<GPU>(0, start_idx_phi_),
                                       phi_.mt_coeffs(ispn).prime().ld(),
-                                      linalg_const<T>::one(),
+                                      &linalg_const<T>::one(),
                                       dm_.template at<GPU>(),
                                       dm_.ld());
 
-                    phi_.pw_coeffs(ispn).prime().deallocate();
-                    this->pw_coeffs(ispn).prime().deallocate();
+                    phi_.pw_coeffs(ispn).prime().deallocate_on_device();
+                    this->pw_coeffs(ispn).prime().deallocate_on_device();
                 }
 
             }
 
-            dm_.copy_from_device();
+            dm_.template copy<memory_t::device, memory_t::host>();
 #endif
         }
         return dm_;

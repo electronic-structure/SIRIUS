@@ -59,12 +59,12 @@ void apply_hubbard_potential(K_point& kp,
 #ifdef __GPU
                             for (int s = 0; s < ctx_.num_spins(); s++) {
                                 linalg<GPU>::axpy(hub_wf.pw_coeffs(s).num_rows_loc(),
-                                                  temp,
-                                                  hub_wf.pw_coeffs(s).prime().at(0,
+                                                  &temp,
+                                                  hub_wf.pw_coeffs(s).prime().template at<GPU>(0,
                                                                                  this->offset[ia] +
                                                                                  s1 * lmax_at + m1),
                                                   1,
-                                                  ophi.pw_coeffs(s).prime().at(0, idx__ + nbnd),
+                                                  ophi.pw_coeffs(s).prime().template at<GPU>(0, idx__ + nbnd),
                                                   1);
                             }
 #endif

@@ -1260,7 +1260,7 @@ class Atom_type
     }
 
 
-    inline const double get_occupancy_hubbard_orbital() const
+    inline double get_occupancy_hubbard_orbital() const
     {
         return hubbard_occupancy_orbital_;
     }

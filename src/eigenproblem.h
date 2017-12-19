@@ -355,7 +355,15 @@ class Eigensolver_elpa: public Eigensolver<T>
     int solve(ftn_int matrix_size__, ftn_int nev__, dmatrix<T>& A__, dmatrix<T>& B__, double* eval__, dmatrix<T>& Z__)
     {
         if (A__.num_cols_local() != Z__.num_cols_local()) {
-            TERMINATE("number of columns in A and Z don't match");
+            std::stringstream s;
+            s << "number of columns in A and Z don't match" << std::endl
+              << "  number of cols in A (local and global): " << A__.num_cols_local() << " " << A__.num_cols() << std::endl
+              << "  number of cols in B (local and global): " << B__.num_cols_local() << " " << B__.num_cols() << std::endl
+              << "  number of cols in Z (local and global): " << Z__.num_cols_local() << " " << Z__.num_cols() << std::endl
+              << "  number of rows in A (local and global): " << A__.num_rows_local() << " " << A__.num_rows() << std::endl
+              << "  number of rows in B (local and global): " << B__.num_rows_local() << " " << B__.num_rows() << std::endl
+              << "  number of rows in Z (local and global): " << Z__.num_rows_local() << " " << Z__.num_rows() << std::endl;
+            TERMINATE(s);
         }
         if (A__.bs_row() != A__.bs_col()) {
             TERMINATE("wrong block size");

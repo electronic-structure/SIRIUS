@@ -286,10 +286,6 @@ class matrix_storage<T, matrix_storage_t::slab>
     {
         PROFILE("sddk::matrix_storage::remap_from");
 
-        if (mtrx__.num_cols() != num_cols_) {
-            TERMINATE("different number of columns");
-        }
-
         auto& comm = mtrx__.blacs_grid().comm();
 
         /* cache cartesian ranks */

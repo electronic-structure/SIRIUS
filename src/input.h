@@ -519,10 +519,11 @@ struct Hubbard_input
     std::string wave_function_file_;
     std::vector<std::pair<std::string, std::vector<double>>> species;
 
-    const bool hubbard_correction() const
+    bool hubbard_correction() const
     {
         return hubbard_correction_;
     }
+
     void read(json const& parser)
     {
         if (!parser.count("hubbard"))

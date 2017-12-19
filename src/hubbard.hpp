@@ -162,12 +162,12 @@ public:
         }
     }
 
-    inline const double hubbard_energy() const
+    inline double hubbard_energy() const
     {
         return this->hubbard_energy_;
     }
 
-    inline const int number_of_hubbard_orbitals() const
+    inline int number_of_hubbard_orbitals() const
     {
         return number_of_hubbard_orbitals_;
     }
