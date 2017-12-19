@@ -622,6 +622,11 @@ class Atom
         return d_mtrx_;
     }
 
+    inline mdarray<double, 3>& d_mtrx()
+    {
+        return d_mtrx_;
+    }
+
     inline double_complex& d_mtrx_so(int xi1, int xi2, int iv)
     {
         return d_mtrx_so_(xi1, xi2, iv);

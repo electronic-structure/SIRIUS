@@ -61,10 +61,9 @@ extern "C" {
     call sirius_initialize(0)
     \endcode
  */
-void sirius_initialize(ftn_int* call_mpi_init__)
+void sirius_initialize(ftn_bool* call_mpi_init__)
 {
-    bool call_mpi_init = (*call_mpi_init__ != 0) ? true : false;
-    sirius::initialize(call_mpi_init);
+    sirius::initialize(*call_mpi_init__);
 }
 
 /// Clear global variables and destroy all objects
@@ -91,10 +90,9 @@ void sirius_clear(void)
     kset_list.clear();
 }
 
-void sirius_finalize(ftn_int* call_mpi_fin__)
+void sirius_finalize(ftn_bool* call_mpi_fin__)
 {
-    bool call_mpi_fin = (*call_mpi_fin__ != 0) ? true : false;
-    sirius::finalize(call_mpi_fin);
+    sirius::finalize(*call_mpi_fin__);
 }
 
 void sirius_create_simulation_context(const char* config_file_name__)
@@ -420,7 +418,7 @@ void sirius_set_atom_type_hubbard(char const* label__,
                                   double const* J0_)
 {
     auto& type = sim_ctx->unit_cell().atom_type(std::string(label__));
-    if(hub_correction > 0) {
+    if (*hub_correction > 0) {
         type.set_hubbard_correction(true);
         type.set_hubbard_alpha(*alpha_);
         type.set_hubbard_beta(*alpha_);
@@ -771,8 +769,15 @@ void sirius_generate_density(int32_t* kset_id__)
 void sirius_generate_valence_density(int32_t* kset_id__)
 {
     density->generate_valence(*kset_list[*kset_id__]);
-    /* only PW coeffs have been generated; transfrom them to real space */
-    density->fft_transform(1);
+    if (sim_ctx->full_potential()) {
+        /* only PW coeffs have been generated; transfrom them to real space */
+        density->fft_transform(1);
+        /* MT part was calculated for local number of atoms; synchronize to global array */
+        density->rho().sync_mt();
+        for (int j = 0; j < sim_ctx->num_mag_dims(); j++) {
+            density->magnetization(j).sync_mt();
+        }
+    }
 }
 
 void sirius_augment_density(int32_t* kset_id__)
@@ -873,6 +878,11 @@ void sirius_save_density(void)
 void sirius_load_potential(void)
 {
     potential->load();
+}
+
+void sirius_load_density(void)
+{
+    density->load();
 }
 
 //== void FORTRAN(sirius_save_wave_functions)(int32_t* kset_id)
@@ -1101,15 +1111,6 @@ void FORTRAN(sirius_set_so_correction)(int32_t* so_correction)
     }
 }
 
-void FORTRAN(sirius_set_uj_correction)(int32_t* uj_correction)
-{
-    if (*uj_correction != 0) {
-        sim_ctx->set_uj_correction(true);
-    } else {
-        sim_ctx->set_uj_correction(false);
-    }
-}
-
 void sirius_get_energy_tot(double* total_energy__)
 {
     *total_energy__ = dft_ground_state->total_energy();
@@ -1119,7 +1120,6 @@ void sirius_get_energy_ewald(double* ewald_energy__)
 {
     *ewald_energy__ = dft_ground_state->energy_ewald();
 }
-
 
 void sirius_add_atom_type_aw_descriptor(char const* label__,
                                         int32_t const* n__,

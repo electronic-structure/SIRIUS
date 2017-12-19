@@ -142,11 +142,6 @@ class Simulation_parameters
             parameters_input_.hubbard_correction_ = hubbard_correction__;
         }
 
-        inline void set_uj_correction(bool uj_correction__)
-        {
-            parameters_input_.uj_correction_ = uj_correction__;
-        }
-
         inline void set_gamma_point(bool gamma_point__)
         {
             parameters_input_.gamma_point_ = gamma_point__;
@@ -342,11 +337,6 @@ class Simulation_parameters
             return parameters_input_.hubbard_correction_;
         }
 
-        inline bool uj_correction() const
-        {
-            return parameters_input_.uj_correction_;
-        }
-
         inline bool gamma_point() const
         {
             return parameters_input_.gamma_point_;
@@ -379,7 +369,7 @@ class Simulation_parameters
 
         bool need_sv() const
         {
-            return (num_spins() == 2 || uj_correction() || so_correction());
+            return (num_spins() == 2 || hubbard_correction() || so_correction());
         }
 
         inline std::vector<int> const& mpi_grid_dims() const

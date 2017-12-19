@@ -416,11 +416,8 @@ struct Parameters_input
     /// True if spin-orbit correction is applied.
     bool so_correction_{false};
 
-    /// True if hubbard correction is applied.
+    /// True if Hubbard (or U) correction is applied.
     bool hubbard_correction_{false};
-
-    /// True if UJ correction is applied.
-    bool uj_correction_{false};
 
     /// True if symmetry is used.
     bool use_symmetry_{true};

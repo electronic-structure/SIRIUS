@@ -277,7 +277,7 @@ inline void orthogonalize(device_t                     pu__,
                 s0 = s1 = ispn__;
             }
             for (int s = s0; s <= s1; s++) {
-                e->copy_from(pu__, n__, tmp__, ispn__, 0, ispn__, N__);
+                e->copy_from(pu__, n__, tmp__, s, 0, s, N__);
             }
         }
     }

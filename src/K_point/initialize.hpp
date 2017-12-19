@@ -49,7 +49,7 @@ inline void K_point::initialize()
         fv_eigen_values_.resize(ctx_.num_fv_states());
     }
 
-    /* Build a full list of G+k vectors for all MPI ranks */
+    /* build a full list of G+k vectors for all MPI ranks */
     generate_gkvec(ctx_.gk_cutoff());
     /* build a list of basis functions */
     generate_gklo_basis();
