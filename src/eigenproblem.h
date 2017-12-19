@@ -361,7 +361,8 @@ class Eigensolver_elpa: public Eigensolver<T>
               << "  number of cols in B (local and global): " << B__.num_cols_local() << " " << B__.num_cols() << std::endl
               << "  number of cols in Z (local and global): " << Z__.num_cols_local() << " " << Z__.num_cols() << std::endl
               << "  number of rows in A (local and global): " << A__.num_rows_local() << " " << A__.num_rows() << std::endl
-              << "  number of rows in B (local and global): " << B__.num_rows_local() << " " << B__.num_rows() << std::endl;
+              << "  number of rows in B (local and global): " << B__.num_rows_local() << " " << B__.num_rows() << std::endl
+              << "  number of rows in Z (local and global): " << Z__.num_rows_local() << " " << Z__.num_rows() << std::endl;
             TERMINATE(s);
         }
         if (A__.bs_row() != A__.bs_col()) {

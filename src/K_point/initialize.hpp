@@ -138,7 +138,8 @@ inline void K_point::initialize()
                 }
             }
             if (ctx_.iterative_solver_input().type_ == "exact") {
-                fv_eigen_vectors_ = dmatrix<double_complex>(gklo_basis_size(), ctx_.num_fv_states(), ctx_.blacs_grid(), bs, bs, mem_type_gevp);
+                //fv_eigen_vectors_ = dmatrix<double_complex>(gklo_basis_size(), ctx_.num_fv_states(), ctx_.blacs_grid(), bs, bs, mem_type_gevp);
+                fv_eigen_vectors_ = dmatrix<double_complex>(gklo_basis_size(), gklo_basis_size(), ctx_.blacs_grid(), bs, bs, mem_type_gevp);
             } else {
                 int ncomp = ctx_.iterative_solver_input().num_singular_;
                 if (ncomp < 0) {
