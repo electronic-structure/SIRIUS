@@ -710,13 +710,13 @@ inline void Gvec_partition::pile_gvec()
 {
     /* build a table of {offset, count} values for G-vectors in the swapped wfs;
      * we are preparing to swap wave-functions from a default slab distribution to a FFT-friendly distribution
-     * +==============+      +----+----+----+
-     * |    :    :    |      I    I    I    I
-     * +==============+      I....I....I....I
-     * |    :    :    |  ->  I    I    I    I
-     * +==============+      I....I....I....I
-     * |    :    :    |      I    I    I    I
-     * +==============+      +----+----+----+
+     * +--------------+      +----+----+----+
+     * |    :    :    |      |    |    |    |
+     * +--------------+      |....|....|....|
+     * |    :    :    |  ->  |    |    |    |
+     * +--------------+      |....|....|....|
+     * |    :    :    |      |    |    |    |
+     * +--------------+      +----+----+----+
      *
      * i.e. we will make G-vector slabs more fat (pile-of-slabs) and at the same time reshulffle wave-functions
      * between columns of the 2D MPI grid */
