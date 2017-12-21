@@ -126,27 +126,27 @@ inline int Band::diag_pseudo_potential_davidson(K_point*       kp__,
     /* allocate wave-functions */
 
     /* auxiliary wave-functions */
-    Wave_functions phi(mem_buf_ptr, kp__->gkvec(), num_phi, num_sc);
+    Wave_functions phi(mem_buf_ptr, kp__->gkvec_partition(), num_phi, num_sc);
     mem_buf_ptr += kp__->num_gkvec_loc() * num_phi * num_sc;
 
     /* Hamiltonian, applied to auxiliary wave-functions */
-    Wave_functions hphi(mem_buf_ptr, kp__->gkvec(), num_phi, num_sc);
+    Wave_functions hphi(mem_buf_ptr, kp__->gkvec_partition(), num_phi, num_sc);
     mem_buf_ptr += kp__->num_gkvec_loc() * num_phi * num_sc;
 
     /* S operator, applied to auxiliary wave-functions */
-    Wave_functions sphi(mem_buf_ptr, kp__->gkvec(), num_phi, num_sc);
+    Wave_functions sphi(mem_buf_ptr, kp__->gkvec_partition(), num_phi, num_sc);
     mem_buf_ptr += kp__->num_gkvec_loc() * num_phi * num_sc;
 
     /* Hamiltonain, applied to new Psi wave-functions */
-    Wave_functions hpsi(mem_buf_ptr, kp__->gkvec(), num_bands, num_sc);
+    Wave_functions hpsi(mem_buf_ptr, kp__->gkvec_partition(), num_bands, num_sc);
     mem_buf_ptr += kp__->num_gkvec_loc() * num_bands * num_sc;
 
     /* S operator, applied to new Psi wave-functions */
-    Wave_functions spsi(mem_buf_ptr, kp__->gkvec(), num_bands, num_sc);
+    Wave_functions spsi(mem_buf_ptr, kp__->gkvec_partition(), num_bands, num_sc);
     mem_buf_ptr += kp__->num_gkvec_loc() * num_bands * num_sc;
 
     /* residuals */
-    Wave_functions res(mem_buf_ptr, kp__->gkvec(), num_bands, num_sc);
+    Wave_functions res(mem_buf_ptr, kp__->gkvec_partition(), num_bands, num_sc);
     t1.stop();
 
     sddk::timer t2("sirius::Band::diag_pseudo_potential_davidson|alloc");

@@ -121,9 +121,9 @@ inline void Band::solve_for_kset(K_point_set& kset__, Hamiltonian& Hamiltonian__
     }
 
     if (ctx_.full_potential()) {
-        Hamiltonian__.local_op().prepare(ctx_.gvec_coarse(), ctx_.num_mag_dims(), Hamiltonian__.potential(), ctx_.step_function());
+        Hamiltonian__.local_op().prepare(ctx_.gvec_coarse_partition(), ctx_.num_mag_dims(), Hamiltonian__.potential(), ctx_.step_function());
     } else {
-        Hamiltonian__.local_op().prepare(ctx_.gvec_coarse(), ctx_.num_mag_dims(), Hamiltonian__.potential());
+        Hamiltonian__.local_op().prepare(ctx_.gvec_coarse_partition(), ctx_.num_mag_dims(), Hamiltonian__.potential());
     }
 
     if (ctx_.comm().rank() == 0 && ctx_.control().print_memory_usage_) {

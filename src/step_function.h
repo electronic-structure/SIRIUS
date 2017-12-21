@@ -101,7 +101,7 @@ class Step_function
             }
             step_function_pw_[0] += 1.0;
             
-            ctx__.fft().transform<1>(&step_function_pw_[ctx__.gvec().partition().gvec_offset_fft()]);
+            ctx__.fft().transform<1>(&step_function_pw_[ctx__.gvec_partition().gvec_offset_fft()]);
             ctx__.fft().output(&step_function_[0]);
             
             double vit{0};

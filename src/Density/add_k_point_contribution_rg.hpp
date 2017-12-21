@@ -18,7 +18,7 @@ inline void Density::add_k_point_contribution_rg(K_point* kp__)
         density_rg.zero<memory_t::device>();
     }
 
-    fft.prepare(kp__->gkvec().partition());
+    fft.prepare(kp__->gkvec_partition());
 
     /* non-magnetic or collinear case */
     if (ctx_.num_mag_dims() != 3) {
