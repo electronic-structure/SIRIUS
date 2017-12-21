@@ -54,7 +54,6 @@ class Matching_coefficients
 
         int num_gkvec_;
 
-        //std::vector<gklo_basis_descriptor> const& gklo_basis_descriptors_;
         std::vector<int>& igk_;
 
         Gvec const& gkvec_;

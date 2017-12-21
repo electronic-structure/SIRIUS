@@ -41,6 +41,8 @@ extern "C" void add_pw_ekin_gpu(int num_gvec__,
 
 namespace sirius {
 
+// TODO: use new mapping between fine and coarse FFT meshes
+
 /// Representation of the local operator.
 /** The following functionality is implementated:
  *    - application of the local part of Hamiltonian (kinetic + potential) to the wave-fucntions in the PP-PW case
@@ -90,7 +92,7 @@ class Local_operator
         /// This constructor is used internally in the debug and performance tests only.
         Local_operator(Simulation_parameters const& param__,
                        FFT3D&                       fft_coarse__,
-                       Gvec const&                  gvec__)
+                       Gvec_partition const&        gvecp__)
             : param_(&param__)
             , fft_coarse_(fft_coarse__)
         {
@@ -99,7 +101,7 @@ class Local_operator
                 veff_vec_(ir, 0) = 2.71828;
             }
 
-            int ngv_fft = gvec__.partition().gvec_count_fft();
+            int ngv_fft = gvecp__.gvec_count_fft();
             
             pw_ekin_ = mdarray<double, 1>(ngv_fft, memory_t::host, "Local_operator::pw_ekin");
             pw_ekin_.zero();
@@ -126,9 +128,9 @@ class Local_operator
          *  effective fields on the coarse grid will be copied to the device and will remain there until the
          *  dismiss() method is called after band diagonalization.
          */
-        inline void prepare(Gvec const& gvec_coarse__,
-                            int         num_mag_dims__,
-                            Potential&  potential__)
+        inline void prepare(Gvec_partition const& gvec_coarse_partition__,
+                            int                   num_mag_dims__,
+                            Potential&            potential__)
         {
             PROFILE("sirius::Local_operator::prepare");
 
@@ -149,17 +151,17 @@ class Local_operator
             }
 
             /* low-frequency part of PW coefficients */
-            std::vector<double_complex> v_pw_coarse(gvec_coarse__.partition().gvec_count_fft());
+            std::vector<double_complex> v_pw_coarse(gvec_coarse_partition__.gvec_count_fft());
             /* prepare FFT for transformation */
-            fft_coarse_.prepare(gvec_coarse__.partition());
+            fft_coarse_.prepare(gvec_coarse_partition__);
             /* map components of effective potential to a corase grid */
             for (int j = 0; j < num_mag_dims__ + 1; j++) {
                 /* collect PW coefficients into global array */
                 auto v = veff_vec[j]->gather_f_pw();
                 /* loop over low-frequency G-vectors */
-                for (int ig = 0; ig < gvec_coarse__.partition().gvec_count_fft(); ig++) {
+                for (int ig = 0; ig < gvec_coarse_partition__.gvec_count_fft(); ig++) {
                     /* G-vector in fractional coordinates */
-                    auto G = gvec_coarse__.gvec(ig + gvec_coarse__.partition().gvec_offset_fft());
+                    auto G = gvec_coarse_partition__.gvec().gvec(ig + gvec_coarse_partition__.gvec_offset_fft());
                     v_pw_coarse[ig] = v[veff_vec[j]->gvec().index_by_gvec(G)];
                 }
                 /* transform to real space */
@@ -197,7 +199,7 @@ class Local_operator
             if (param_->control().print_checksum_) {
                 auto cs = veff_vec_.checksum();
                 fft_coarse_.comm().allreduce(&cs, 1);
-                if (gvec_coarse__.comm().rank() == 0) {
+                if (gvec_coarse_partition__.gvec().comm().rank() == 0) {
                     print_checksum("Local_operator::prepare::veff_vec", cs);
                 }
             }
@@ -209,10 +211,10 @@ class Local_operator
          *  \param [in] potential      \f$ V_{eff}({\bf r}) \f$ and \f$ {\bf B}_{eff}({\bf r}) \f$ on the fine grid FFT grid.
          *  \param [in] step_function  Unit step function of the LAPW method.
          */
-        inline void prepare(Gvec const&          gvec_coarse__,
-                            int                  num_mag_dims__,
-                            Potential&           potential__,
-                            Step_function const& step_function__)
+        inline void prepare(Gvec_partition const& gvec_coarse_partition__,
+                            int                   num_mag_dims__,
+                            Potential&            potential__,
+                            Step_function const&  step_function__)
         {
             PROFILE("sirius::Local_operator::prepare");
 
@@ -237,13 +239,13 @@ class Local_operator
             }
 
             auto& fft_dense = potential__.effective_potential()->fft();
-            auto& gvec_dense = potential__.effective_potential()->gvec();
+            auto& gvec_dense_partition = potential__.effective_potential()->gvec_partition();
 
-            mdarray<double_complex, 1> v_pw_fine(gvec_dense.num_gvec());
+            mdarray<double_complex, 1> v_pw_fine(gvec_dense_partition.gvec().num_gvec());
             /* low-frequency part of PW coefficients */
-            std::vector<double_complex> v_pw_coarse(gvec_coarse__.partition().gvec_count_fft());
+            std::vector<double_complex> v_pw_coarse(gvec_coarse_partition__.gvec_count_fft());
             /* prepare coarse-grained FFT for transformation */
-            fft_coarse_.prepare(gvec_coarse__.partition());
+            fft_coarse_.prepare(gvec_coarse_partition__);
             /* map components of effective potential to a corase grid */
             for (int j = 0; j < num_mag_dims__ + 1; j++) {
                 for (int ir = 0; ir < fft_dense.local_size(); ir++) {
@@ -252,17 +254,17 @@ class Local_operator
                 if (fft_dense.pu() == GPU) {
                     fft_dense.buffer().copy<memory_t::host, memory_t::device>();
                 }
-                fft_dense.transform<-1>(&v_pw_fine[gvec_dense.partition().gvec_offset_fft()]);
-                fft_dense.comm().allgather(&v_pw_fine[0], gvec_dense.partition().gvec_offset_fft(),
-                                           gvec_dense.partition().gvec_count_fft());
+                fft_dense.transform<-1>(&v_pw_fine[gvec_dense_partition.gvec_offset_fft()]);
+                fft_dense.comm().allgather(&v_pw_fine[0], gvec_dense_partition.gvec_offset_fft(),
+                                           gvec_dense_partition.gvec_count_fft());
                 if (j == 0) {
                     v0_[0] = v_pw_fine[0].real();
                 }
                 /* loop over low-frequency G-vectors */
-                for (int ig = 0; ig < gvec_coarse__.partition().gvec_count_fft(); ig++) {
+                for (int ig = 0; ig < gvec_coarse_partition__.gvec_count_fft(); ig++) {
                     /* G-vector in fractional coordinates */
-                    auto G = gvec_coarse__.gvec(ig + gvec_coarse__.partition().gvec_offset_fft());
-                    v_pw_coarse[ig] = v_pw_fine[gvec_dense.index_by_gvec(G)];
+                    auto G = gvec_coarse_partition__.gvec().gvec(ig + gvec_coarse_partition__.gvec_offset_fft());
+                    v_pw_coarse[ig] = v_pw_fine[gvec_dense_partition.gvec().index_by_gvec(G)];
                 }
 
                 fft_coarse_.transform<1>(&v_pw_coarse[0]);
@@ -270,10 +272,10 @@ class Local_operator
             }
             
             /* map unit-step function */
-            for (int ig = 0; ig < gvec_coarse__.partition().gvec_count_fft(); ig++) {
+            for (int ig = 0; ig < gvec_coarse_partition__.gvec_count_fft(); ig++) {
                 /* G-vector in fractional coordinates */
-                auto G = gvec_coarse__.gvec(ig + gvec_coarse__.partition().gvec_offset_fft());
-                v_pw_coarse[ig] = step_function__.theta_pw(gvec_dense.index_by_gvec(G));
+                auto G = gvec_coarse_partition__.gvec().gvec(ig + gvec_coarse_partition__.gvec_offset_fft());
+                v_pw_coarse[ig] = step_function__.theta_pw(gvec_dense_partition.gvec().index_by_gvec(G));
             }
             fft_coarse_.transform<1>(&v_pw_coarse[0]);
             fft_coarse_.output(&theta_(0));
@@ -299,11 +301,11 @@ class Local_operator
         }
         
         /// Prepare the k-point dependent arrays.
-        inline void prepare(Gvec const& gkvec__)
+        inline void prepare(Gvec_partition const& gkvec_partition__)
         {
             PROFILE("sirius::Local_operator::prepare");
 
-            int ngv_fft = gkvec__.partition().gvec_count_fft();
+            int ngv_fft = gkvec_partition__.gvec_count_fft();
             
             /* cache kinteic energy of plane-waves */
             if (static_cast<int>(pw_ekin_.size()) < ngv_fft) {
@@ -311,16 +313,16 @@ class Local_operator
             }
             for (int ig_loc = 0; ig_loc < ngv_fft; ig_loc++) {
                 /* global index of G-vector */
-                int ig = gkvec__.partition().gvec_offset_fft() + ig_loc;
+                int ig = gkvec_partition__.gvec_offset_fft() + ig_loc;
                 /* get G+k in Cartesian coordinates */
-                auto gv = gkvec__.gkvec_cart(ig);
+                auto gv = gkvec_partition__.gvec().gkvec_cart(ig);
                 pw_ekin_[ig_loc] = 0.5 * dot(gv, gv);
             }
 
             if (static_cast<int>(vphi1_.size()) < ngv_fft) {
                 vphi1_ = mdarray<double_complex, 1>(ngv_fft, memory_t::host, "Local_operator::vphi1");
             }
-            if (gkvec__.reduced() && static_cast<int>(vphi2_.size()) < ngv_fft) {
+            if (gkvec_partition__.gvec().reduced() && static_cast<int>(vphi2_.size()) < ngv_fft) {
                 vphi2_ = mdarray<double_complex, 1>(ngv_fft, memory_t::host, "Local_operator::vphi2");
             }
 
@@ -328,7 +330,7 @@ class Local_operator
                 pw_ekin_.allocate(memory_t::device);
                 pw_ekin_.copy<memory_t::host, memory_t::device>();
                 vphi1_.allocate(memory_t::device);
-                if (gkvec__.reduced()) {
+                if (gkvec_partition__.gvec().reduced()) {
                     vphi2_.allocate(memory_t::device);
                 }
             }
@@ -362,7 +364,7 @@ class Local_operator
         {
             PROFILE("sirius::Local_operator::apply_h");
 
-            auto& gkp = phi__.gkvec().partition();
+            auto& gkp = phi__.gkvec_partition();
             
             /* remap wave-functions */
             for (int ispn = 0; ispn < phi__.num_sc(); ispn++) {
@@ -533,7 +535,7 @@ class Local_operator
             /* If G-vectors are reduced, wave-functions are real and we can transform two of them at once.
              * Non-collinear case is not treated here because nc wave-functions are complex and G+k vectors 
              * can't be reduced */
-            if (gkp.reduced()) {
+            if (gkp.gvec().reduced()) {
                 int npairs = num_wf_loc / 2;
                 /* Gamma-point case can only be non-magnetic or spin-collinear */
                 for (int i = 0; i < npairs; i++) {

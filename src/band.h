@@ -230,8 +230,8 @@ class Band
     {
         PROFILE("sirius::Band::diag_pseudo_potential");
 
-        H_.local_op().prepare(kp__->gkvec());
-        ctx_.fft_coarse().prepare(kp__->gkvec().partition());
+        H_.local_op().prepare(kp__->gkvec_partition());
+        ctx_.fft_coarse().prepare(kp__->gkvec_partition());
         H_.create_d_and_q_operator<T>();
         H_.initialize_D_and_Q_operators<T>();
         /* D_operator<T> d_op(ctx_, kp__->beta_projectors()); */

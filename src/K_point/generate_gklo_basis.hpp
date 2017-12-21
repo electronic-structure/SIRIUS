@@ -20,7 +20,7 @@ inline void K_point::generate_gklo_basis()
     
     igk_loc_.resize(num_gkvec_loc());
     for (int i = 0; i < num_gkvec_loc(); i++) {
-        igk_loc_[i] = gkvec_.gvec_offset(comm_.rank()) + i;
+        igk_loc_[i] = gkvec().offset() + i;
     }
 
     if (ctx_.full_potential()) {

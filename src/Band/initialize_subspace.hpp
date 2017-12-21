@@ -22,7 +22,7 @@ inline void Band::initialize_subspace(K_point_set& kset__, Hamiltonian& H__) con
         }
     }
 
-    H__.local_op().prepare(ctx_.gvec_coarse(), ctx_.num_mag_dims(), H__.potential());
+    H__.local_op().prepare(ctx_.gvec_coarse_partition(), ctx_.num_mag_dims(), H__.potential());
 
     for (int ikloc = 0; ikloc < kset__.spl_num_kpoints().local_size(); ikloc++) {
         int ik  = kset__.spl_num_kpoints(ikloc);
@@ -64,7 +64,7 @@ Band::initialize_subspace(K_point* kp__, Hamiltonian &H__, int num_ao__) const
     int num_phi_tot = (ctx_.num_mag_dims() == 3) ? num_phi * 2 : num_phi;
 
     /* initial basis functions */
-    Wave_functions phi(kp__->gkvec(), num_phi_tot, num_sc);
+    Wave_functions phi(kp__->gkvec_partition(), num_phi_tot, num_sc);
     for (int ispn = 0; ispn < num_sc; ispn++) {
         phi.pw_coeffs(ispn).prime().zero();
     }
@@ -142,14 +142,14 @@ Band::initialize_subspace(K_point* kp__, Hamiltonian &H__, int num_ao__) const
     /* short notation for number of target wave-functions */
     int num_bands = (ctx_.num_mag_dims() == 3) ? ctx_.num_bands() : ctx_.num_fv_states();
 
-    ctx_.fft_coarse().prepare(kp__->gkvec().partition());
-    H__.local_op().prepare(kp__->gkvec());
+    ctx_.fft_coarse().prepare(kp__->gkvec_partition());
+    H__.local_op().prepare(kp__->gkvec_partition());
 
     /* allocate wave-functions */
-    Wave_functions hphi(kp__->gkvec(), num_phi_tot, num_sc);
-    Wave_functions ophi(kp__->gkvec(), num_phi_tot, num_sc);
+    Wave_functions hphi(kp__->gkvec_partition(), num_phi_tot, num_sc);
+    Wave_functions ophi(kp__->gkvec_partition(), num_phi_tot, num_sc);
     /* temporary wave-functions required as a storage during orthogonalization */
-    Wave_functions wf_tmp(kp__->gkvec(), num_phi_tot, num_sc);
+    Wave_functions wf_tmp(kp__->gkvec_partition(), num_phi_tot, num_sc);
 
     int bs        = ctx_.cyclic_block_size();
     auto mem_type = (ctx_.std_evp_solver_type() == ev_solver_t::magma) ? memory_t::host_pinned : memory_t::host;

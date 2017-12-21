@@ -57,17 +57,17 @@ inline void K_point::initialize()
     if (ctx_.esm_type() == electronic_structure_method_t::full_potential_lapwlo) {
         if (ctx_.iterative_solver_input().type_ == "exact") {
             alm_coeffs_row_ = std::unique_ptr<Matching_coefficients>(
-                new Matching_coefficients(unit_cell_, ctx_.lmax_apw(), num_gkvec_row(), igk_row_, gkvec_));
+                new Matching_coefficients(unit_cell_, ctx_.lmax_apw(), num_gkvec_row(), igk_row_, gkvec()));
             alm_coeffs_col_ = std::unique_ptr<Matching_coefficients>(
-                new Matching_coefficients(unit_cell_, ctx_.lmax_apw(), num_gkvec_col(), igk_col_, gkvec_));
+                new Matching_coefficients(unit_cell_, ctx_.lmax_apw(), num_gkvec_col(), igk_col_, gkvec()));
         }
         alm_coeffs_loc_ = std::unique_ptr<Matching_coefficients>(
-            new Matching_coefficients(unit_cell_, ctx_.lmax_apw(), num_gkvec_loc(), igk_loc_, gkvec_));
+            new Matching_coefficients(unit_cell_, ctx_.lmax_apw(), num_gkvec_loc(), igk_loc_, gkvec()));
     }
 
     if (!ctx_.full_potential()) {
         /* compute |beta> projectors for atom types */
-        beta_projectors_ = std::unique_ptr<Beta_projectors>(new Beta_projectors(ctx_, gkvec_));
+        beta_projectors_ = std::unique_ptr<Beta_projectors>(new Beta_projectors(ctx_, gkvec()));
 
         //if (false) {
         //    p_mtrx_ = mdarray<double_complex, 3>(unit_cell_.max_mt_basis_size(), unit_cell_.max_mt_basis_size(), unit_cell_.num_atom_types());
@@ -117,8 +117,8 @@ inline void K_point::initialize()
         if (use_second_variation) {
             /* allocate fv eien vectors */
             fv_eigen_vectors_slab_ = std::unique_ptr<Wave_functions>(
-                new Wave_functions(gkvec(), unit_cell_.num_atoms(),
-                    [this](int ia){return unit_cell_.atom(ia).mt_lo_basis_size();}, ctx_.num_fv_states(), 1));
+                new Wave_functions(gkvec_partition(), unit_cell_.num_atoms(),
+                    [this](int ia){return unit_cell_.atom(ia).mt_lo_basis_size();}, ctx_.num_fv_states()));
 
             fv_eigen_vectors_slab_->pw_coeffs(0).prime().zero();
             fv_eigen_vectors_slab_->mt_coeffs(0).prime().zero();
@@ -146,7 +146,7 @@ inline void K_point::initialize()
                     ncomp = ctx_.num_fv_states() / 2;
                 }
 
-                singular_components_ = std::unique_ptr<Wave_functions>(new Wave_functions(gkvec(), ncomp, 1));
+                singular_components_ = std::unique_ptr<Wave_functions>(new Wave_functions(gkvec_partition(), ncomp));
                 singular_components_->pw_coeffs(0).prime().zero();
                 /* starting guess for wave-functions */
                 for (int i = 0; i < ncomp; i++) {
@@ -172,16 +172,15 @@ inline void K_point::initialize()
                 }
             }
 
-            fv_states_ = std::unique_ptr<Wave_functions>(new Wave_functions(gkvec(),
+            fv_states_ = std::unique_ptr<Wave_functions>(new Wave_functions(gkvec_partition(),
                                                                             unit_cell_.num_atoms(),
                                                                             [this](int ia)
                                                                             {
                                                                                 return unit_cell_.atom(ia).mt_basis_size();
                                                                             },
-                                                                            ctx_.num_fv_states(),
-                                                                            1));
+                                                                            ctx_.num_fv_states()));
             
-            spinor_wave_functions_ = std::unique_ptr<Wave_functions>(new Wave_functions(gkvec(),
+            spinor_wave_functions_ = std::unique_ptr<Wave_functions>(new Wave_functions(gkvec_partition(),
                                                                                         unit_cell_.num_atoms(),
                                                                                         [this](int ia)
                                                                                         {
@@ -195,7 +194,7 @@ inline void K_point::initialize()
     } else {
         assert(ctx_.num_fv_states() < num_gkvec());
 
-        spinor_wave_functions_ = std::unique_ptr<Wave_functions>(new Wave_functions(gkvec(), nst, ctx_.num_spins()));
+        spinor_wave_functions_ = std::unique_ptr<Wave_functions>(new Wave_functions(gkvec_partition(), nst, ctx_.num_spins()));
     }
     if (ctx_.processing_unit() == GPU && keep_wf_on_gpu) {
         /* allocate GPU memory */

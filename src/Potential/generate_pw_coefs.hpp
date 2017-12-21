@@ -4,8 +4,8 @@ inline void Potential::generate_pw_coefs()
 
     double sq_alpha_half = 0.5 * std::pow(speed_of_light, -2);
 
-    int gv_count  = ctx_.gvec().partition().gvec_count_fft();
-    int gv_offset = ctx_.gvec().partition().gvec_offset_fft();
+    int gv_count  = ctx_.gvec_partition().gvec_count_fft();
+    int gv_offset = ctx_.gvec_partition().gvec_offset_fft();
 
     switch (ctx_.valence_relativity()) {
         case relativity_t::iora: {

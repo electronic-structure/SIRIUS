@@ -67,7 +67,7 @@ class Wave_functions
     Communicator const& comm_;
 
     /// G+k vectors of the wave-function.
-    Gvec const& gkvec_;
+    Gvec_partition const& gkvecp_;
 
     splindex<block> spl_num_atoms_;
 
@@ -141,7 +141,7 @@ class Wave_functions
                         for (int ig = 0; ig < pw_coeffs(is).num_rows_loc(); ig++) {
                             s[i] += (std::pow(pw_coeffs(is).prime(ig, i).real(), 2) + std::pow(pw_coeffs(is).prime(ig, i).imag(), 2));
                         }
-                        if (gkvec_.reduced()) {
+                        if (gkvecp_.gvec().reduced()) {
                             if (comm_.rank() == 0) {
                                 s[i] = 2 * s[i] - std::pow(pw_coeffs(is).prime(0, i).real(), 2);
                             } else {
@@ -178,11 +178,11 @@ class Wave_functions
 
   public:
     /// Constructor for PW wave-functions.
-    Wave_functions(Gvec const& gkvec__,
-                   int         num_wf__,
-                   int         num_sc__ = 1)
-        : comm_(gkvec__.comm())
-        , gkvec_(gkvec__)
+    Wave_functions(Gvec_partition const& gkvecp__,
+                   int                   num_wf__,
+                   int                   num_sc__ = 1)
+        : comm_(gkvecp__.gvec().comm())
+        , gkvecp_(gkvecp__)
         , num_wf_(num_wf__)
         , num_sc_(num_sc__)
     {
@@ -192,17 +192,17 @@ class Wave_functions
 
         for (int ispn = 0; ispn < num_sc_; ispn++) {
             pw_coeffs_[ispn] = std::unique_ptr<matrix_storage<double_complex, matrix_storage_t::slab>>(
-                new matrix_storage<double_complex, matrix_storage_t::slab>(gkvec_.count(), num_wf_, gkvec_.comm_ortho_fft()));
+                new matrix_storage<double_complex, matrix_storage_t::slab>(gkvecp_.gvec().count(), num_wf_, gkvecp_.comm_ortho_fft()));
         }
     }
 
     /// Constructor for PW wave-functions.
-    Wave_functions(double_complex* ptr__,
-                   Gvec const&     gkvec__,
-                   int             num_wf__,
-                   int             num_sc__ = 1)
-        : comm_(gkvec__.comm())
-        , gkvec_(gkvec__)
+    Wave_functions(double_complex*       ptr__,
+                   Gvec_partition const& gkvecp__,
+                   int                   num_wf__,
+                   int                   num_sc__ = 1)
+        : comm_(gkvecp__.gvec().comm())
+        , gkvecp_(gkvecp__)
         , num_wf_(num_wf__)
         , num_sc_(num_sc__)
     {
@@ -212,19 +212,19 @@ class Wave_functions
 
         for (int ispn = 0; ispn < num_sc_; ispn++) {
             pw_coeffs_[ispn] = std::unique_ptr<matrix_storage<double_complex, matrix_storage_t::slab>>(
-                new matrix_storage<double_complex, matrix_storage_t::slab>(ptr__, gkvec_.count(), num_wf_, gkvec_.comm_ortho_fft()));
-                ptr__ += gkvec_.count() * num_wf_;
+                new matrix_storage<double_complex, matrix_storage_t::slab>(ptr__, gkvecp_.gvec().count(), num_wf_, gkvecp_.comm_ortho_fft()));
+                ptr__ += gkvecp_.gvec().count() * num_wf_;
         }
     }
 
     /// Constructor for LAPW wave-functions.
-    Wave_functions(Gvec const&             gkvec__,
+    Wave_functions(Gvec_partition const&   gkvecp__,
                    int                     num_atoms__,
                    std::function<int(int)> mt_size__,
                    int                     num_wf__,
                    int                     num_sc__ = 1)
-        : comm_(gkvec__.comm())
-        , gkvec_(gkvec__)
+        : comm_(gkvecp__.gvec().comm())
+        , gkvecp_(gkvecp__)
         , num_wf_(num_wf__)
         , num_sc_(num_sc__)
         , has_mt_(true)
@@ -235,7 +235,7 @@ class Wave_functions
 
         for (int ispn = 0; ispn < num_sc_; ispn++) {
             pw_coeffs_[ispn] = std::unique_ptr<matrix_storage<double_complex, matrix_storage_t::slab>>(
-                new matrix_storage<double_complex, matrix_storage_t::slab>(gkvec_.count(), num_wf_, gkvec_.comm_ortho_fft()));
+                new matrix_storage<double_complex, matrix_storage_t::slab>(gkvecp_.gvec().count(), num_wf_, gkvecp_.comm_ortho_fft()));
         }
 
         spl_num_atoms_ = splindex<block>(num_atoms__, comm_.size(), comm_.rank());
@@ -267,7 +267,12 @@ class Wave_functions
 
     Gvec const& gkvec() const
     {
-        return gkvec_;
+        return gkvecp_.gvec();
+    }
+
+    Gvec_partition const& gkvec_partition() const
+    {
+        return gkvecp_;
     }
 
     inline int num_mt_coeffs() const

@@ -442,7 +442,7 @@ inline void Potential::xc_rg_nonmagnetic(Density const& density__)
     /* we can use this comm for parallelization */
     //auto& comm = ctx_.gvec().comm_ortho_fft();
 
-    Smooth_periodic_function<double> rho(ctx_.fft(), ctx_.gvec());
+    Smooth_periodic_function<double> rho(ctx_.fft(), ctx_.gvec_partition());
 
     /* split real-space points between available ranks */
     //splindex<block> spl_np(num_points, comm.size(), comm.rank());
@@ -614,8 +614,8 @@ inline void Potential::xc_rg_magnetic(Density const& density__)
 
     int num_points = ctx_.fft().local_size();
     
-    Smooth_periodic_function<double> rho_up(ctx_.fft(), ctx_.gvec());
-    Smooth_periodic_function<double> rho_dn(ctx_.fft(), ctx_.gvec());
+    Smooth_periodic_function<double> rho_up(ctx_.fft(), ctx_.gvec_partition());
+    Smooth_periodic_function<double> rho_dn(ctx_.fft(), ctx_.gvec_partition());
 
     /* compute "up" and "dn" components and also check for negative values of density */
     double rhomin{0};
@@ -806,9 +806,9 @@ inline void Potential::xc_rg_magnetic(Density const& density__)
 
     if (is_gga) {
         /* gather vsigma */
-        Smooth_periodic_function<double> vsigma_uu(ctx_.fft(), ctx_.gvec());
-        Smooth_periodic_function<double> vsigma_ud(ctx_.fft(), ctx_.gvec());
-        Smooth_periodic_function<double> vsigma_dd(ctx_.fft(), ctx_.gvec());
+        Smooth_periodic_function<double> vsigma_uu(ctx_.fft(), ctx_.gvec_partition());
+        Smooth_periodic_function<double> vsigma_ud(ctx_.fft(), ctx_.gvec_partition());
+        Smooth_periodic_function<double> vsigma_dd(ctx_.fft(), ctx_.gvec_partition());
         for (int ir = 0; ir < num_points; ir++) {
             vsigma_uu.f_rg(ir) = vsigma_uu_tmp[ir];
             vsigma_ud.f_rg(ir) = vsigma_ud_tmp[ir];

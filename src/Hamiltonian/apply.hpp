@@ -215,7 +215,7 @@ inline void Hamiltonian::apply_fv_o(K_point* kp__,
     }
 
     /* interstitial part */
-    local_op_->apply_o(kp__->gkvec().partition(), N__, n__, phi__, ophi__);
+    local_op_->apply_o(kp__->gkvec_partition(), N__, n__, phi__, ophi__);
 
     matrix<double_complex> alm(kp__->num_gkvec_loc(), unit_cell_.max_mt_aw_basis_size());
     matrix<double_complex> oalm(kp__->num_gkvec_loc(), unit_cell_.max_mt_aw_basis_size());
@@ -403,9 +403,9 @@ inline void Hamiltonian::apply_fv_h_o(K_point* kp__,
     /* interstitial part */
     if (N__ == 0) {
         /* don't apply to the pure local orbital basis functions */
-        local_op_->apply_h_o(kp__->gkvec().partition(), nlo__, n__ - nlo__, phi__, hphi__, ophi__);
+        local_op_->apply_h_o(kp__->gkvec_partition(), nlo__, n__ - nlo__, phi__, hphi__, ophi__);
     } else {
-        local_op_->apply_h_o(kp__->gkvec().partition(), N__, n__, phi__, hphi__, ophi__);
+        local_op_->apply_h_o(kp__->gkvec_partition(), N__, n__, phi__, hphi__, ophi__);
     }
 
     //if (ctx_.control().print_checksum_) {

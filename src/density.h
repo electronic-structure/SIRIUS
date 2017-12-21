@@ -354,12 +354,12 @@ class Density
             
             /*  allocate charge density and magnetization on a coarse grid */
             for (int i = 0; i < ctx_.num_mag_dims() + 1; i++) {
-                rho_mag_coarse_[i] = std::unique_ptr<Smooth_periodic_function<double>>(new Smooth_periodic_function<double>(ctx_.fft_coarse(), ctx_.gvec_coarse()));
+                rho_mag_coarse_[i] = std::unique_ptr<Smooth_periodic_function<double>>(new Smooth_periodic_function<double>(ctx_.fft_coarse(), ctx_.gvec_coarse_partition()));
             }
 
             /* core density of the pseudopotential method */
             if (!ctx_.full_potential()) {
-                rho_pseudo_core_ = std::unique_ptr<Smooth_periodic_function<double>>(new Smooth_periodic_function<double>(ctx_.fft(), ctx_.gvec()));
+                rho_pseudo_core_ = std::unique_ptr<Smooth_periodic_function<double>>(new Smooth_periodic_function<double>(ctx_.fft(), ctx_.gvec_partition()));
                 rho_pseudo_core_->zero();
 
                 generate_pseudo_core_charge_density();

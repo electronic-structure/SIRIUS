@@ -46,7 +46,7 @@ class Smooth_periodic_function
         FFT3D* fft_{nullptr};
 
         /// Distribution of G-vectors.
-        Gvec const* gvec_{nullptr};
+        Gvec_partition const* gvecp_{nullptr};
 
         /// Function on the regular real-space grid.
         mdarray<T, 1> f_rg_;
@@ -58,18 +58,18 @@ class Smooth_periodic_function
         mdarray<double_complex, 1> f_pw_fft_;
 
         /// Distribution of G-vectors inside FFT slab.
-        block_data_descriptor gvec_fft_slab_;
+        //block_data_descriptor gvec_fft_slab_;
 
         /// Gather plane-wave coefficients for the subsequent FFT call.
         inline void gather_f_pw_fft()
         {
-            int rank = fft_->comm().rank() * gvec_->comm_ortho_fft().size() + gvec_->comm_ortho_fft().rank();
+            int rank = fft_->comm().rank() * gvecp_->comm_ortho_fft().size() + gvecp_->comm_ortho_fft().rank();
             /* collect scattered PW coefficients */
-            gvec_->comm_ortho_fft().allgather(f_pw_local_.at<CPU>(),
-                                              gvec_->gvec_count(rank),
-                                              f_pw_fft_.at<CPU>(),
-                                              gvec_fft_slab_.counts.data(), 
-                                              gvec_fft_slab_.offsets.data());
+            gvecp_->comm_ortho_fft().allgather(f_pw_local_.at<CPU>(),
+                                               gvecp_->gvec().gvec_count(rank),
+                                               f_pw_fft_.at<CPU>(),
+                                               gvecp_->gvec_fft_slab().counts.data(), 
+                                               gvecp_->gvec_fft_slab().offsets.data());
         }
 
     public:
@@ -79,25 +79,25 @@ class Smooth_periodic_function
         {
         }
 
-        Smooth_periodic_function(FFT3D& fft__, Gvec const& gvec__)
+        Smooth_periodic_function(FFT3D& fft__, Gvec_partition const& gvecp__)
             : fft_(&fft__)
-            , gvec_(&gvec__)
+            , gvecp_(&gvecp__)
         {
             f_rg_       = mdarray<T, 1>(fft_->local_size(), memory_t::host, "Smooth_periodic_function.f_rg_");
-            f_pw_fft_   = mdarray<double_complex, 1>(gvec_->partition().gvec_count_fft(), memory_t::host, "Smooth_periodic_function.f_pw_fft_");
-            f_pw_local_ = mdarray<double_complex, 1>(gvec_->count(), memory_t::host, "Smooth_periodic_function.f_pw_local_");
+            f_pw_fft_   = mdarray<double_complex, 1>(gvecp_->gvec_count_fft(), memory_t::host, "Smooth_periodic_function.f_pw_fft_");
+            f_pw_local_ = mdarray<double_complex, 1>(gvecp_->gvec().count(), memory_t::host, "Smooth_periodic_function.f_pw_local_");
 
             /* check ordering of mpi ranks */
-            int rank = fft_->comm().rank() * gvec_->comm_ortho_fft().size() + gvec_->comm_ortho_fft().rank();
-            if (rank != gvec_->comm().rank()) {
+            int rank = fft_->comm().rank() * gvecp_->comm_ortho_fft().size() + gvecp_->comm_ortho_fft().rank();
+            if (rank != gvecp_->gvec().comm().rank()) {
                 TERMINATE("wrong order of MPI ranks");
             }
 
-            gvec_fft_slab_ = block_data_descriptor(gvec_->comm_ortho_fft().size());
-            for (int i = 0; i < gvec_->comm_ortho_fft().size(); i++) {
-                gvec_fft_slab_.counts[i] = gvec_->gvec_count(fft_->comm().rank() * gvec_->comm_ortho_fft().size() + i);
-            }
-            gvec_fft_slab_.calc_offsets();
+            //gvec_fft_slab_ = block_data_descriptor(gvecp_->comm_ortho_fft().size());
+            //for (int i = 0; i < gvecp_->comm_ortho_fft().size(); i++) {
+            //    gvec_fft_slab_.counts[i] = gvecp_->gvec().gvec_count(fft_->comm().rank() * gvecp_->comm_ortho_fft().size() + i);
+            //}
+            //gvec_fft_slab_.calc_offsets();
         }
 
         inline void zero()
@@ -133,10 +133,10 @@ class Smooth_periodic_function
         inline double_complex f_0() const
         {
             double_complex z;
-            if (gvec_->comm().rank() == 0) {
+            if (gvecp_->gvec().comm().rank() == 0) {
                 z = f_pw_local_(0);
             }
-            gvec_->comm().bcast(&z, 1, 0);
+            gvecp_->gvec().comm().bcast(&z, 1, 0);
             return z;
         }
 
@@ -154,15 +154,20 @@ class Smooth_periodic_function
 
         Gvec const& gvec() const
         {
-            assert(gvec_ != nullptr);
-            return *gvec_;
+            assert(gvecp_ != nullptr);
+            return gvecp_->gvec();
+        }
+
+        Gvec_partition const& gvec_partition() const
+        {
+            return *gvecp_;
         }
 
         void fft_transform(int direction__)
         {
             PROFILE("sirius::Smooth_periodic_function::fft_transform");
 
-            assert(gvec_ != nullptr);
+            assert(gvecp_ != nullptr);
 
             switch (direction__) {
                 case 1: {
@@ -174,8 +179,8 @@ class Smooth_periodic_function
                 case -1: {
                     fft_->input(f_rg_.template at<CPU>());
                     fft_->transform<-1>(f_pw_fft_.at<CPU>());
-                    int count  = gvec_fft_slab_.counts[gvec_->comm_ortho_fft().rank()];
-                    int offset = gvec_fft_slab_.offsets[gvec_->comm_ortho_fft().rank()];
+                    int count  = gvecp_->gvec_fft_slab().counts[gvecp_->comm_ortho_fft().rank()];
+                    int offset = gvecp_->gvec_fft_slab().offsets[gvecp_->comm_ortho_fft().rank()];
                     std::memcpy(f_pw_local_.at<CPU>(), f_pw_fft_.at<CPU>(offset), count * sizeof(double_complex));
                     break;
                 }
@@ -191,15 +196,15 @@ class Smooth_periodic_function
 
             gather_f_pw_fft();
 
-            std::vector<double_complex> fpw(gvec_->num_gvec());
-            fft_->comm().allgather(f_pw_fft_.at<CPU>(), fpw.data(), gvec_->partition().gvec_offset_fft(), gvec_->partition().gvec_count_fft());
+            std::vector<double_complex> fpw(gvecp_->gvec().num_gvec());
+            fft_->comm().allgather(f_pw_fft_.at<CPU>(), fpw.data(), gvecp_->gvec_offset_fft(), gvecp_->gvec_count_fft());
 
             return std::move(fpw);
         }
 
         inline void scatter_f_pw(std::vector<double_complex> const& f_pw__)
         {
-            std::copy(&f_pw__[gvec_->offset()], &f_pw__[gvec_->offset()] + gvec_->count(), &f_pw_local_(0));
+            std::copy(&f_pw__[gvecp_->gvec().offset()], &f_pw__[gvecp_->gvec().offset()] + gvecp_->gvec().count(), &f_pw_local_(0));
         }
 
         void add(Smooth_periodic_function<T> const& g__)
@@ -238,7 +243,7 @@ class Smooth_periodic_function
                 #pragma omp critical
                 result_rg += rt;
             }
-            double omega = std::pow(twopi, 3) / std::abs(this->gvec_->lattice_vectors().det());
+            double omega = std::pow(twopi, 3) / std::abs(this->gvec().lattice_vectors().det());
 
             result_rg *= (omega / this->fft_->size());
 
@@ -250,11 +255,11 @@ class Smooth_periodic_function
         inline uint64_t hash_f_pw() const
         {
             auto h = f_pw_local_.hash();
-            gvec_->comm().bcast(&h, 1, 0);
+            gvecp_->gvec().comm().bcast(&h, 1, 0);
 
-            for (int r = 1; r < gvec_->comm().size(); r++) {
+            for (int r = 1; r < gvecp_->gvec().comm().size(); r++) {
                 h = f_pw_local_.hash(h);
-                gvec_->comm().bcast(&h, 1, r);
+                gvecp_->gvec().comm().bcast(&h, 1, r);
             }
             return h;
         }
@@ -282,7 +287,7 @@ class Smooth_periodic_function_gradient
         FFT3D* fft_{nullptr};
 
         /// Distribution of G-vectors.
-        Gvec const* gvec_{nullptr};
+        Gvec_partition const* gvecp_{nullptr};
 
         std::array<Smooth_periodic_function<T>, 3> grad_f_;
 
@@ -292,12 +297,12 @@ class Smooth_periodic_function_gradient
         {
         }
 
-        Smooth_periodic_function_gradient(FFT3D& fft__, Gvec const& gvec__)
+        Smooth_periodic_function_gradient(FFT3D& fft__, Gvec_partition const& gvecp__)
             : fft_(&fft__)
-            , gvec_(&gvec__)
+            , gvecp_(&gvecp__)
         {
             for (int x: {0, 1, 2}) {
-                grad_f_[x] = Smooth_periodic_function<T>(fft__, gvec__);
+                grad_f_[x] = Smooth_periodic_function<T>(fft__, gvecp__);
             }
         }
 
@@ -312,17 +317,17 @@ class Smooth_periodic_function_gradient
             return *fft_;
         }
 
-        Gvec const& gvec() const
+        Gvec_partition const& gvec_partition() const
         {
-            assert(gvec_ != nullptr);
-            return *gvec_;
+            assert(gvecp_ != nullptr);
+            return *gvecp_;
         }
 };
 
 /// Gradient of the function in the plane-wave domain.
 inline Smooth_periodic_function_gradient<double> gradient(Smooth_periodic_function<double>& f__)
 {
-    Smooth_periodic_function_gradient<double> g(f__.fft(), f__.gvec());
+    Smooth_periodic_function_gradient<double> g(f__.fft(), f__.gvec_partition());
 
     #pragma omp parallel for schedule(static)
     for (int igloc = 0; igloc < f__.gvec().count(); igloc++) {
@@ -338,7 +343,7 @@ inline Smooth_periodic_function_gradient<double> gradient(Smooth_periodic_functi
 /// Laplacian of the function in the plane-wave domain.
 inline Smooth_periodic_function<double> laplacian(Smooth_periodic_function<double>& f__)
 {
-    Smooth_periodic_function<double> g(f__.fft(), f__.gvec());
+    Smooth_periodic_function<double> g(f__.fft(), f__.gvec_partition());
 
     #pragma omp parallel for schedule(static)
     for (int igloc = 0; igloc < f__.gvec().count(); igloc++) {
@@ -356,9 +361,9 @@ inline Smooth_periodic_function<T> dot(Smooth_periodic_function_gradient<T>& gra
 
 {
     assert(&grad_f__.fft() == &grad_g__.fft());
-    assert(&grad_f__.gvec() == &grad_g__.gvec());
+    assert(&grad_f__.gvec_partition() == &grad_g__.gvec_partition());
 
-    Smooth_periodic_function<T> result(grad_f__.fft(), grad_f__.gvec());
+    Smooth_periodic_function<T> result(grad_f__.fft(), grad_f__.gvec_partition());
 
     #pragma omp parallel for schedule(static)
     for (int ir = 0; ir < grad_f__.fft().local_size(); ir++) {

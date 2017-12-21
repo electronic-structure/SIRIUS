@@ -52,7 +52,7 @@ inline void Density::generate_valence(K_point_set& ks__)
             #endif
             /* swap wave functions */
             //kp->spinor_wave_functions(ispn).pw_coeffs().remap_forward(ctx_.processing_unit(), kp->gkvec().partition().gvec_fft_slab(), nbnd);
-            kp->spinor_wave_functions().pw_coeffs(ispn).remap_forward(CPU, kp->gkvec().partition().gvec_fft_slab(), nbnd);
+            kp->spinor_wave_functions().pw_coeffs(ispn).remap_forward(CPU, kp->gkvec_partition().gvec_fft_slab(), nbnd);
         }
         
         if (ctx_.esm_type() == electronic_structure_method_t::full_potential_lapwlo) {
@@ -84,8 +84,8 @@ inline void Density::generate_valence(K_point_set& ks__)
         ctx_.comm().allreduce(density_matrix_.at<CPU>(), static_cast<int>(density_matrix_.size()));
     }
 
-    ctx_.fft_coarse().prepare(ctx_.gvec_coarse().partition());
-    auto& comm = ctx_.gvec_coarse().comm_ortho_fft();
+    ctx_.fft_coarse().prepare(ctx_.gvec_coarse_partition());
+    auto& comm = ctx_.gvec_coarse_partition().comm_ortho_fft();
     for (int j = 0; j < ctx_.num_mag_dims() + 1; j++) {
         /* reduce arrays; assume that each rank did its own fraction of the density */
         comm.allreduce(&rho_mag_coarse_[j]->f_rg(0), ctx_.fft_coarse().local_size()); 
@@ -98,23 +98,27 @@ inline void Density::generate_valence(K_point_set& ks__)
         }
         /* transform to PW domain */
         rho_mag_coarse_[j]->fft_transform(-1);
-        /* get the whole vector of PW coefficients */
-        auto fpw = rho_mag_coarse_[j]->gather_f_pw(); // TODO: reuse FFT G-vec arrays
-        /* print checksum */
-        if (ctx_.control().print_checksum_ && ctx_.comm().rank() == 0) {
-            auto z1 = mdarray<double_complex, 1>(&fpw[0], ctx_.gvec_coarse().num_gvec()).checksum();
-            print_checksum("rho_mag_coarse_pw", z1);
-        }
-        /* print hash */
-        if (ctx_.control().print_hash_ && ctx_.comm().rank() == 0) {
-            auto h = mdarray<double_complex, 1>(&fpw[0], ctx_.gvec_coarse().num_gvec()).hash();
-            print_hash("rho_mag_coarse_pw", h);
-        }
+        ///* get the whole vector of PW coefficients */
+        //auto fpw = rho_mag_coarse_[j]->gather_f_pw(); // TODO: reuse FFT G-vec arrays
+        ///* print checksum */
+        //if (ctx_.control().print_checksum_ && ctx_.comm().rank() == 0) {
+        //    auto z1 = mdarray<double_complex, 1>(&fpw[0], ctx_.gvec_coarse().num_gvec()).checksum();
+        //    print_checksum("rho_mag_coarse_pw", z1);
+        //}
+        ///* print hash */
+        //if (ctx_.control().print_hash_ && ctx_.comm().rank() == 0) {
+        //    auto h = mdarray<double_complex, 1>(&fpw[0], ctx_.gvec_coarse().num_gvec()).hash();
+        //    print_hash("rho_mag_coarse_pw", h);
+        //}
         /* map to fine G-vector grid */
-        for (int i = 0; i < static_cast<int>(lf_gvec_.size()); i++) {
-            int igloc = lf_gvec_[i];
-            int ig = ctx_.gvec_coarse().index_by_gvec(ctx_.gvec().gvec(ctx_.gvec().offset() + igloc));
-            rho_vec_[j]->f_pw_local(igloc) = fpw[ig];
+        //for (int i = 0; i < static_cast<int>(lf_gvec_.size()); i++) {
+        //    int igloc = lf_gvec_[i];
+        //    int ig = ctx_.gvec_coarse().index_by_gvec(ctx_.gvec().gvec(ctx_.gvec().offset() + igloc));
+        //    rho_vec_[j]->f_pw_local(igloc) = fpw[ig];
+        //}
+        /* map to fine G-vector grid */
+        for (int igloc = 0; igloc < ctx_.gvec_coarse().count(); igloc++) {
+            rho_vec_[j]->f_pw_local(ctx_.gvec().gvec_base_mapping(igloc)) = rho_mag_coarse_[j]->f_pw_local(igloc);
         }
     }
     ctx_.fft_coarse().dismiss();

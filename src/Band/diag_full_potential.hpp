@@ -94,7 +94,7 @@ inline void Band::diag_fv_exact(K_point* kp, Hamiltonian& hamiltonian__) const
     
     /* renormalize wave-functions */
     if (ctx_.valence_relativity() == relativity_t::iora) {
-        Wave_functions ofv(kp->gkvec(), unit_cell_.num_atoms(),
+        Wave_functions ofv(kp->gkvec_partition(), unit_cell_.num_atoms(),
                            [this](int ia){return unit_cell_.atom(ia).mt_lo_basis_size();}, ctx_.num_fv_states(), 1);
         #ifdef __GPU
         if (ctx_.processing_unit() == GPU) {
@@ -212,10 +212,10 @@ inline void Band::get_singular_components(K_point* kp__, Hamiltonian& H__) const
 
     int num_phi = itso.subspace_size_ * ncomp;
 
-    Wave_functions  phi(kp__->gkvec(), num_phi);
-    Wave_functions ophi(kp__->gkvec(), num_phi);
-    Wave_functions opsi(kp__->gkvec(), ncomp);
-    Wave_functions  res(kp__->gkvec(), ncomp);
+    Wave_functions  phi(kp__->gkvec_partition(), num_phi);
+    Wave_functions ophi(kp__->gkvec_partition(), num_phi);
+    Wave_functions opsi(kp__->gkvec_partition(), ncomp);
+    Wave_functions  res(kp__->gkvec_partition(), ncomp);
 
     int bs = ctx_.cyclic_block_size();
 
@@ -422,21 +422,21 @@ inline void Band::diag_fv_davidson(K_point* kp, Hamiltonian& H__) const
     }
 
     /* allocate wave-functions */
-    Wave_functions  phi(kp->gkvec(), unit_cell_.num_atoms(),
+    Wave_functions  phi(kp->gkvec_partition(), unit_cell_.num_atoms(),
                         [this](int ia){return unit_cell_.atom(ia).mt_lo_basis_size();}, num_phi);
-    Wave_functions hphi(kp->gkvec(), unit_cell_.num_atoms(),
+    Wave_functions hphi(kp->gkvec_partition(), unit_cell_.num_atoms(),
                         [this](int ia){return unit_cell_.atom(ia).mt_lo_basis_size();}, num_phi);
-    Wave_functions ophi(kp->gkvec(), unit_cell_.num_atoms(),
+    Wave_functions ophi(kp->gkvec_partition(), unit_cell_.num_atoms(),
                         [this](int ia){return unit_cell_.atom(ia).mt_lo_basis_size();}, num_phi);
-    Wave_functions hpsi(kp->gkvec(), unit_cell_.num_atoms(),
+    Wave_functions hpsi(kp->gkvec_partition(), unit_cell_.num_atoms(),
                         [this](int ia){return unit_cell_.atom(ia).mt_lo_basis_size();}, num_bands);
-    Wave_functions opsi(kp->gkvec(), unit_cell_.num_atoms(),
+    Wave_functions opsi(kp->gkvec_partition(), unit_cell_.num_atoms(),
                         [this](int ia){return unit_cell_.atom(ia).mt_lo_basis_size();}, num_bands);
 
     /* residuals */
     /* res is also used as a temporary array in orthogonalize() and the first time nlo + ncomp + num_bands
      * states will be orthogonalized */
-    Wave_functions res(kp->gkvec(), unit_cell_.num_atoms(),
+    Wave_functions res(kp->gkvec_partition(), unit_cell_.num_atoms(),
                        [this](int ia){return unit_cell_.atom(ia).mt_lo_basis_size();}, nlo + ncomp + num_bands);
 
     //auto mem_type = (gen_evp_solver_->type() == ev_magma) ? memory_t::host_pinned : memory_t::host;
@@ -621,7 +621,7 @@ inline void Band::diag_sv(K_point* kp,
     /* product of the second-variational Hamiltonian and a first-variational wave-function */
     std::vector<Wave_functions> hpsi;
     for (int i = 0; i < ctx_.num_mag_comp(); i++) {
-        hpsi.push_back(std::move(Wave_functions(kp->gkvec(),
+        hpsi.push_back(std::move(Wave_functions(kp->gkvec_partition(),
                                                 unit_cell_.num_atoms(),
                                                 [this](int ia)
                                                 {

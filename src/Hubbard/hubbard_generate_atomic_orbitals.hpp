@@ -42,7 +42,7 @@ void generate_atomic_orbitals(K_point& kp, Q_operator<double_complex>& q_op)
     }
 
     // temporary wave functions
-    Wave_functions sphi(kp.gkvec(), this->number_of_hubbard_orbitals(), ctx_.num_spins());
+    Wave_functions sphi(kp.gkvec_partition(), this->number_of_hubbard_orbitals(), ctx_.num_spins());
 
     #pragma omp parallel for schedule(static)
     for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {

@@ -100,7 +100,7 @@ Hamiltonian::get_o_diag(K_point* kp__,
 
 template <typename T>
 inline mdarray<double, 2>
-Hamiltonian::get_h_diag(K_point*        kp__) const
+Hamiltonian::get_h_diag(K_point* kp__) const
 {
     PROFILE("sirius::Band::get_h_diag");
 
