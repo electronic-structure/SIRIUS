@@ -8,17 +8,18 @@ void test_fft(double cutoff__, device_t pu__)
 
     FFT3D fft(find_translations(cutoff__, M), mpi_comm_world(), pu__);
 
-    Gvec gvec(M, cutoff__, mpi_comm_world(), mpi_comm_world(), mpi_comm_self(), false);
+    Gvec gvec(M, cutoff__, mpi_comm_world(), false);
+    Gvec_partition gvecp(gvec, mpi_comm_world(), mpi_comm_self());
 
     if (mpi_comm_world().rank() == 0) {
         printf("num_gvec: %i\n", gvec.num_gvec());
     }
     MPI_grid mpi_grid(mpi_comm_world());
 
-    printf("num_gvec_fft: %i\n", gvec.partition().gvec_count_fft());
-    printf("offset_gvec_fft: %i\n", gvec.partition().gvec_offset_fft());
+    printf("num_gvec_fft: %i\n", gvecp.gvec_count_fft());
+    printf("offset_gvec_fft: %i\n", gvecp.gvec_offset_fft());
 
-    fft.prepare(gvec.partition());
+    fft.prepare(gvecp);
 
     mdarray<double_complex, 1> f(gvec.num_gvec());
     if (pu__ == GPU) {
@@ -33,13 +34,13 @@ void test_fft(double cutoff__, device_t pu__)
         f[ig] = 1.0;
         switch (pu__) {
             case CPU: {
-                fft.transform<1>(&f[gvec.partition().gvec_offset_fft()]);
+                fft.transform<1>(&f[gvecp.gvec_offset_fft()]);
                 break;
             }
             case GPU: {
                 f.copy<memory_t::host, memory_t::device>();
                 //fft.transform<1, GPU>(gvec.partition(), f.at<GPU>(gvec.partition().gvec_offset_fft()));
-                fft.transform<1, CPU>(f.at<CPU>(gvec.partition().gvec_offset_fft()));
+                fft.transform<1, CPU>(f.at<CPU>(gvecp.gvec_offset_fft()));
                 fft.buffer().copy<memory_t::device, memory_t::host>();
                 break;
             }

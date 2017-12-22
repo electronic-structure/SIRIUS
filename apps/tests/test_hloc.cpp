@@ -17,7 +17,9 @@ void test_hloc(std::vector<int> mpi_grid_dims__, double cutoff__, int num_bands_
 
     Communicator comm_ortho_fft = mpi_comm_world().split(fft.comm().rank());
 
-    Gvec gvec(M, cutoff__, mpi_comm_world(), fft.comm(), comm_ortho_fft, reduce_gvec__);
+    Gvec gvec(M, cutoff__, mpi_comm_world(), reduce_gvec__);
+
+    Gvec_partition gvecp(gvec,  fft.comm(), comm_ortho_fft);
 
     if (mpi_comm_world().rank() == 0) {
         printf("total number of G-vectors: %i\n", gvec.num_gvec());
@@ -29,21 +31,21 @@ void test_hloc(std::vector<int> mpi_grid_dims__, double cutoff__, int num_bands_
         printf("number of z-columns: %i\n", gvec.num_zcol());
     }
 
-    fft.prepare(gvec.partition());
+    fft.prepare(gvecp);
 
     Simulation_parameters params;
     params.set_processing_unit(pu);
     
-    Local_operator hloc(params, fft, gvec);
+    Local_operator hloc(params, fft, gvecp);
 
-    Wave_functions phi(gvec, 4 * num_bands__);
+    Wave_functions phi(gvecp, 4 * num_bands__);
     for (int i = 0; i < 4 * num_bands__; i++) {
         for (int j = 0; j < phi.pw_coeffs(0).num_rows_loc(); j++) {
             phi.pw_coeffs(0).prime(j, i) = type_wrapper<double_complex>::random();
         }
         phi.pw_coeffs(0).prime(0, i) = 1.0;
     }
-    Wave_functions hphi(gvec, 4 * num_bands__);
+    Wave_functions hphi(gvecp, 4 * num_bands__);
 
     #ifdef __GPU
     if (pu == GPU) {

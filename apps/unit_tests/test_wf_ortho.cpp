@@ -15,16 +15,17 @@ void test_wf_ortho(std::vector<int> mpi_grid_dims__,
     matrix3d<double> M = {{1, 0, 0}, {0, 1, 0}, {0, 0, 1}};
     
     /* create G-vectors */
-    Gvec gvec(M, cutoff__, mpi_comm_world(), mpi_comm_world(), mpi_comm_self(), false);
+    Gvec gvec(M, cutoff__, mpi_comm_world(), false);
+    Gvec_partition gvecp(gvec, mpi_comm_world(), mpi_comm_self());
 
     int num_atoms = 10;
     auto nmt = [](int i) {
         return 20;
     };
 
-    Wave_functions phi(gvec, num_atoms, nmt, 2 * num_bands__);
-    Wave_functions hphi(gvec, num_atoms, nmt, 2 * num_bands__);
-    Wave_functions tmp(gvec, num_atoms, nmt, num_bands__);
+    Wave_functions phi(gvecp, num_atoms, nmt, 2 * num_bands__);
+    Wave_functions hphi(gvecp, num_atoms, nmt, 2 * num_bands__);
+    Wave_functions tmp(gvecp, num_atoms, nmt, num_bands__);
     
     phi.pw_coeffs(0).prime() = [](int64_t i0, int64_t i1){return type_wrapper<double_complex>::random();};
     phi.mt_coeffs(0).prime() = [](int64_t i0, int64_t i1){return type_wrapper<double_complex>::random();};
