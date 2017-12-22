@@ -813,20 +813,26 @@ void sirius_get_energy_fermi(int32_t* kset_id__, double* efermi__)
     *efermi__ = kset_list[*kset_id__]->energy_fermi();
 }
 
-void sirius_set_band_occupancies(int32_t* kset_id__,
-                                 int32_t* ik__,
-                                 double* band_occupancies__)
+void sirius_set_band_occupancies(ftn_int*    kset_id__,
+                                 ftn_int*    ik__,
+                                 ftn_double* band_occupancies__,
+                                 ftn_int*    num_bands__)
 {
     int ik = *ik__ - 1;
-    kset_list[*kset_id__]->set_band_occupancies(ik, band_occupancies__);
+    for (int i = 0; i < *num_bands__; i++) {
+        (*kset_list[*kset_id__])[ik]->band_occupancy(i) = band_occupancies__[i];
+    }
 }
 
-void sirius_get_band_energies(int32_t* kset_id__,
-                              int32_t* ik__,
-                              double* band_energies__)
+void sirius_get_band_energies(ftn_int*    kset_id__,
+                              ftn_int*    ik__,
+                              ftn_double* band_energies__,
+                              ftn_int*    num_bands__) 
 {
     int ik = *ik__ - 1;
-    kset_list[*kset_id__]->get_band_energies(ik, band_energies__);
+    for (int i = 0; i < *num_bands__; i++) {
+        band_energies__[i] = (*kset_list[*kset_id__])[ik]->band_energy(i);
+    }
 }
 
 void sirius_get_band_occupancies(int32_t* kset_id, int32_t* ik_, double* band_occupancies)

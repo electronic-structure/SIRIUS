@@ -353,23 +353,27 @@ class K_point
             std::memcpy(&band_energies_[0], band_energies, ctx_.num_bands() * sizeof(double));
         }
 
-        inline double band_occupancy(int j) const
+        inline double band_occupancy(int j__) const
         {
-            return band_occupancies_[j];
+            assert(j__ >= 0 && j__ < static_cast<int>(band_occupancies_.size()));
+            return band_occupancies_[j__];
         }
 
-        inline double& band_occupancy(int j)
+        inline double& band_occupancy(int j__)
         {
-            return band_occupancies_[j];
+            assert(j__ >= 0 && j__ < static_cast<int>(band_occupancies_.size()));
+            return band_occupancies_[j__];
         }
 
-        inline double band_energy(int j) const
+        inline double band_energy(int j__) const
         {
-            return band_energies_[j];
+            assert(j__ >= 0 && j__ < static_cast<int>(band_energies_.size()));
+            return band_energies_[j__];
         }
 
         inline double& band_energy(int j__)
         {
+            assert(j__ >= 0 && j__ < static_cast<int>(band_energies_.size()));
             return band_energies_[j__];
         }
 
