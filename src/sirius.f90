@@ -420,27 +420,17 @@ module sirius
             &bind(C, name="sirius_symmetrize_density")
         end subroutine
 
-        !subroutine sirius_create_kset_aux(num_kpoints, kpoints, kpoint_weights, init_kset, kset_id, nk_loc_ptr)&
-        !    &bind(C, name="sirius_create_kset")
-        !    use, intrinsic :: ISO_C_BINDING
-        !    integer,                 intent(in)  :: num_kpoints
-        !    real(8),                 intent(in)  :: kpoints
-        !    real(8),                 intent(in)  :: kpoint_weights
-        !    integer,                 intent(in)  :: init_kset
-        !    integer,                 intent(out) :: kset_id
-        !    type(C_PTR), value,      intent(in)  :: nk_loc_ptr
-        !end subroutine
-
         subroutine sirius_delete_kset(kset_id)&
             &bind(C, name="sirius_delete_kset")
             integer,                 intent(in) :: kset_id
         end subroutine
 
-        subroutine sirius_get_band_energies(kset_id, ik, band_energies)&
+        subroutine sirius_get_band_energies(kset_id, ik, band_energies, num_bands)&
             &bind(C, name="sirius_get_band_energies")
-            integer,                 intent(in) :: kset_id
-            integer,                 intent(in) :: ik
+            integer,                 intent(in)  :: kset_id
+            integer,                 intent(in)  :: ik
             real(8),                 intent(out) :: band_energies
+            integer,                 intent(in)  :: num_bands
         end subroutine
 
         subroutine sirius_get_energy_fermi(kset_id, efermi)&
@@ -449,11 +439,12 @@ module sirius
             real(8),                 intent(out) :: efermi
         end subroutine
 
-        subroutine sirius_set_band_occupancies(kset_id, ik, band_occupancies)&
+        subroutine sirius_set_band_occupancies(kset_id, ik, band_occupancies, num_bands)&
             &bind(C, name="sirius_set_band_occupancies")
             integer,                 intent(in) :: kset_id
             integer,                 intent(in) :: ik
             real(8),                 intent(in) :: band_occupancies
+            integer,                 intent(in) :: num_bands
         end subroutine
 
         subroutine sirius_get_gvec_index(gvec, ig)&
