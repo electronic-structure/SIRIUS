@@ -53,7 +53,7 @@ inline __device__ size_t array4D_offset(int i0, int i1, int i2, int i3, int ld0,
 
 inline __host__ __device__ int num_blocks(int length, int block_size)
 {
-    return (length / block_size) + min(length % block_size, 1);
+    return (length / block_size) + (length % block_size) ? 1 : 0;
 }
 
 class CUDA_timers_wrapper
