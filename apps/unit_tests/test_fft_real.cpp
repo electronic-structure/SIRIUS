@@ -151,16 +151,17 @@ void test3(vector3d<int> const& dims__, double cutoff__)
 
     FFT3D fft(find_translations(cutoff__, M), mpi_comm_world(), GPU);
 
-    Gvec gvec_r(M, cutoff__, mpi_comm_world(), mpi_comm_world(), mpi_comm_self(), true);
+    Gvec gvec_r(M, cutoff__, mpi_comm_world(), true);
+    Gvec_partition gvecp_r(gvec_r, mpi_comm_world(), mpi_comm_self());
 
-    fft.prepare(gvec_r.partition());
+    fft.prepare(gvecp_r);
 
-    mdarray<double_complex, 1> phi1(gvec_r.partition().gvec_count_fft(), memory_t::host | memory_t::device);
-    mdarray<double_complex, 1> phi2(gvec_r.partition().gvec_count_fft(), memory_t::host | memory_t::device);
+    mdarray<double_complex, 1> phi1(gvecp_r.gvec_count_fft(), memory_t::host | memory_t::device);
+    mdarray<double_complex, 1> phi2(gvecp_r.gvec_count_fft(), memory_t::host | memory_t::device);
     mdarray<double_complex, 1> phi1_rg(fft.local_size());
     mdarray<double_complex, 1> phi2_rg(fft.local_size());
 
-    for (int i = 0; i < gvec_r.partition().gvec_count_fft(); i++) {
+    for (int i = 0; i < gvecp_r.gvec_count_fft(); i++) {
         phi1(i) = type_wrapper<double_complex>::random();
         phi2(i) = type_wrapper<double_complex>::random();
     }
@@ -205,19 +206,19 @@ void test3(vector3d<int> const& dims__, double cutoff__)
         }
     }
 
-    mdarray<double_complex, 1> phi1_bt(gvec_r.partition().gvec_count_fft(), memory_t::host | memory_t::device);
-    mdarray<double_complex, 1> phi2_bt(gvec_r.partition().gvec_count_fft(), memory_t::host | memory_t::device);
+    mdarray<double_complex, 1> phi1_bt(gvecp_r.gvec_count_fft(), memory_t::host | memory_t::device);
+    mdarray<double_complex, 1> phi2_bt(gvecp_r.gvec_count_fft(), memory_t::host | memory_t::device);
     fft.transform<-1, GPU>(phi1_bt.at<GPU>(), phi2_bt.at<GPU>());
 
     phi1_bt.copy<memory_t::device, memory_t::host>();
     phi2_bt.copy<memory_t::device, memory_t::host>();
 
     double diff{0};
-    for (int i = 0; i < gvec_r.partition().gvec_count_fft(); i++) {
+    for (int i = 0; i < gvecp_r.gvec_count_fft(); i++) {
         diff += std::abs(phi1(i) - phi1_bt(i));
         diff += std::abs(phi2(i) - phi2_bt(i));
     }
-    diff /= gvec_r.partition().gvec_count_fft();
+    diff /= gvecp_r.gvec_count_fft();
     printf("diff: %18.10f\n", diff);
     if (diff > 1e-13) {
         printf("functions are different\n");
