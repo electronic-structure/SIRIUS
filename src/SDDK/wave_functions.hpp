@@ -159,7 +159,7 @@ class Wave_functions
                 case GPU: {
                     #ifdef __GPU
                     add_square_sum_gpu(pw_coeffs(is).prime().at<GPU>(), pw_coeffs(is).num_rows_loc(), n__,
-                                       gkvec_.reduced(), comm_.rank(), s.at<GPU>());
+                                       gkvecp_.gvec().reduced(), comm_.rank(), s.at<GPU>());
                     if (has_mt()) {
                         add_square_sum_gpu(mt_coeffs(is).prime().at<GPU>(), mt_coeffs(is).num_rows_loc(), n__,
                                            0, comm_.rank(), s.at<GPU>());
