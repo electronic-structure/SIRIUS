@@ -1,4 +1,4 @@
-#include "../SDDK/GPU/cuda_common.h"
+#include "../SDDK/GPU/cuda_common.hpp"
 
 __global__ void create_beta_gk_gpu_kernel
 (

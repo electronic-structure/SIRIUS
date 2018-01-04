@@ -17,13 +17,13 @@
 // CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR 
 // OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-/** \file cuda_common.h
+/** \file cuda_common.hpp
  *   
  *  \brief Common functions used by CUDA kernels.
  */
 
-#ifndef __CUDA_COMMON_H__
-#define __CUDA_COMMON_H__
+#ifndef __CUDA_COMMON_HPP__
+#define __CUDA_COMMON_HPP__
 
 #include <execinfo.h>
 #include <signal.h>
@@ -53,7 +53,7 @@ inline __device__ size_t array4D_offset(int i0, int i1, int i2, int i3, int ld0,
 
 inline __host__ __device__ int num_blocks(int length, int block_size)
 {
-    return (length / block_size) + min(length % block_size, 1);
+    return (length / block_size) + ((length % block_size) ? 1 : 0);
 }
 
 class CUDA_timers_wrapper
