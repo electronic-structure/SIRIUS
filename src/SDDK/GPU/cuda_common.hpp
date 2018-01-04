@@ -17,13 +17,13 @@
 // CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR 
 // OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-/** \file cuda_common.h
+/** \file cuda_common.hpp
  *   
  *  \brief Common functions used by CUDA kernels.
  */
 
-#ifndef __CUDA_COMMON_H__
-#define __CUDA_COMMON_H__
+#ifndef __CUDA_COMMON_HPP__
+#define __CUDA_COMMON_HPP__
 
 #include <execinfo.h>
 #include <signal.h>

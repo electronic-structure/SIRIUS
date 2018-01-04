@@ -1,4 +1,4 @@
-#include "../SDDK/GPU/cuda_common.h"
+#include "../SDDK/GPU/cuda_common.hpp"
 #include "../SDDK/GPU/cuda.hpp"
 
 __global__ void sum_q_pw_dm_pw_gpu_kernel

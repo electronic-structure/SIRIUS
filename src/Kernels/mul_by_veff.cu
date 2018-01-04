@@ -1,4 +1,4 @@
-#include "../SDDK/GPU/cuda_common.h"
+#include "../SDDK/GPU/cuda_common.hpp"
 #include "../SDDK/GPU/cuda.hpp"
 
 __global__ void mul_by_veff0_gpu_kernel(int                    size__,

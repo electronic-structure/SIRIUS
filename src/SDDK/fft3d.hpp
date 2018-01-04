@@ -31,7 +31,7 @@
 #include "gvec.hpp"
 #ifdef __GPU
 #include "GPU/cufft.hpp"
-#include "GPU/fft_kernels.h"
+#include "GPU/fft_kernels.hpp"
 #endif
 
 namespace sddk {

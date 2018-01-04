@@ -1,4 +1,4 @@
-#include "kernels_common.h"
+#include "kernels_common.hpp"
 
 __global__ void update_apw_coeffs_gpu_kernel(cuDoubleComplex* apw_coeffs__,
                                              int ld__,

@@ -1,4 +1,4 @@
-#include "../SDDK/GPU/cuda_common.h"
+#include "../SDDK/GPU/cuda_common.hpp"
 
 __global__ void spline_inner_product_gpu_kernel_v3(int num_points__,
                                                    int const* idx_ri__,

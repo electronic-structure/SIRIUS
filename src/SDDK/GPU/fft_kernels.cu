@@ -1,5 +1,5 @@
 #include "cuda.hpp"
-#include "cuda_common.h"
+#include "cuda_common.hpp"
 
 #include <stdio.h>
 

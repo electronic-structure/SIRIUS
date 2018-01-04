@@ -1,4 +1,4 @@
-#include "cuda_common.h"
+#include "cuda_common.hpp"
 
 __global__ void double_complex_checksum_gpu_kernel
 (
