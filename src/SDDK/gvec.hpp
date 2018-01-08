@@ -31,15 +31,12 @@
 #include "fft3d_grid.hpp"
 #include "geometry3d.hpp"
 
-// TODO: generate fine G-vectors in such a way that local set of fine vectors fully contain the local set of coarse
-// G-vectors this will considerbly simplify the remapping of G-vectors from fine to corase mesh or vice versa
-
 using namespace geometry3d;
 
 namespace sddk {
 
 /// Descriptor of the z-column (x,y fixed, z varying) of the G-vectors.
-/** Sphere of G-vectors within a given plane-wave cutoff is represented as a set of z-columns with different lengths */
+/** Sphere of G-vectors within a given plane-wave cutoff is represented as a set of z-columns with different lengths. */
 struct z_column_descriptor
 {
     /// X-coordinate (can be negative and positive).
@@ -48,11 +45,7 @@ struct z_column_descriptor
     int y;
     /// List of the Z-coordinates of the column.
     std::vector<int> z;
-
-    z_column_descriptor()
-    {
-    }
-
+    /// Constructor.
     z_column_descriptor(int x__, int y__, std::vector<int> z__)
         : x(x__)
         , y(y__)
@@ -118,6 +111,17 @@ class Gvec
      *  without MPI communication. */
     Gvec const* gvec_base_{nullptr};
 
+    /// Mapping between current and base G-vector sets.
+    /** This mapping allows for a local-to-local copy of PW coefficients without any MPI communication.
+
+        Example:
+        \code{.cpp}
+        // Copy from a coarse G-vector set.
+        for (int igloc = 0; igloc < ctx_.gvec_coarse().count(); igloc++) {
+            rho_vec_[j]->f_pw_local(ctx_.gvec().gvec_base_mapping(igloc)) = rho_mag_coarse_[j]->f_pw_local(igloc);
+        }
+        \endcode
+    */
     mdarray<int, 1> gvec_base_mapping_;
 
     /* copy constructor is forbidden */

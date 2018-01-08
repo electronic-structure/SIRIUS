@@ -84,8 +84,6 @@ namespace sirius {
         libsci_acc_init();
         #endif
 
-        sddk::start_global_timer();
-
         assert(sizeof(int) == 4);
         assert(sizeof(double) == 8);
     }
@@ -106,7 +104,7 @@ namespace sirius {
         }
         #endif
         fftw_cleanup();
-        sddk::stop_global_timer();
+
         json dict;
         dict["flat"] = sddk::timer::serialize_timers();
         dict["tree"] = sddk::timer::serialize_timers_tree();
@@ -114,7 +112,7 @@ namespace sirius {
             std::ofstream ofs("timers.json", std::ofstream::out | std::ofstream::trunc);
             ofs << dict.dump(4);
         }
-            
+
         //sddk::timer::print_tree();
         if (call_mpi_fin__) {
             Communicator::finalize();

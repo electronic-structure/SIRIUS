@@ -843,7 +843,9 @@ void sirius_get_band_occupancies(int32_t* kset_id, int32_t* ik_, double* band_oc
 
 void sirius_print_timers(void)
 {
-    sddk::timer::print();
+    if (sim_ctx->comm().rank() == 0) {
+        sddk::timer::print();
+    }
 }
 
 void sirius_start_timer(ftn_char name__)

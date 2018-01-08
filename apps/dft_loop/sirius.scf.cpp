@@ -174,7 +174,7 @@ double ground_state(Simulation_context& ctx,
     /* wait for all */
     ctx.comm().barrier();
 
-    if (ctx.control().print_timers_)  {
+    if (ctx.control().print_timers_ && ctx.comm().rank() == 0)  {
         sddk::timer::print();
     }
 
