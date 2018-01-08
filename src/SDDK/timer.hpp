@@ -57,41 +57,67 @@ class timer
         return timer_values_;
     }
 
+    static timer_stats_t& timer_values(std::string label__)
+    {
+        return timer_values()[label__];
+    }
+    
+    /// Mapping between parent timer and child timers.
+    /** This map is needed to build a call tree of timers with the information about "self" time
+        and time spent in calling other timers. */
     static std::map<std::string, std::map<std::string, double>>& timer_values_ex()
     {
+        /* the following map is stored:
+           
+           parent_timer_label1  |--- child_timer_label1, time1a
+                                |--- child timer_label2, time2
+                                |--- child_timer_label3, time3
+
+           parent_timer_label2  |--- child_timer_label1, time1b
+                                |--- child_timer_label4, time4
+
+           etc.
+        */
         static std::map<std::string, std::map<std::string, double>> timer_values_ex_;
         return timer_values_ex_;
     }
 
   public:
-
+    
+    /// Constructor.
     timer(std::string label__)
         : label_(label__)
     {
+        /* measure the starting time */
         starting_time_ = std::chrono::high_resolution_clock::now();
+        /* add timer label to the list of called timers */
         stack().push_back(label_);
         active_ = true;
     }
-
+    
+    /// Destructor.
     ~timer()
     {
         stop();
     }
-
+    
+    /// Stop the timer and update the statistics.
     double stop()
     {
         if (!active_) {
             return 0;
         }
 
-        /* remove this timer name from the list */
+        /* remove this timer name from the list; now last element contains
+           the name of the parent timer */
         stack().pop_back();
-
+        
+        /* measure the time difference */
         auto t2    = std::chrono::high_resolution_clock::now();
         auto tdiff = std::chrono::duration_cast<std::chrono::duration<double>>(t2 - starting_time_);
         double val = tdiff.count();
 
-        auto& ts = timer_values()[label_];
+        auto& ts = timer_values(label_);
 #ifdef __TIMER_SEQUENCE
         auto abs_time = std::chrono::duration_cast<std::chrono::duration<double>>(starting_time_.time_since_epoch());
         double abs_time_val = abs_time.count();
@@ -106,8 +132,9 @@ class timer
         ts.count++;
 
         if (stack().size() != 0) {
-            /* now last element contains the name of the parent timer */
+            /* last element contains the name of the parent timer */
             auto parent_label = stack().back();
+            /* add value to the parent timer */
             if (timer_values_ex().count(parent_label) == 0) {
                 timer_values_ex()[parent_label] = std::map<std::string, double>();
             }
