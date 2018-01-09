@@ -396,6 +396,11 @@ class Unit_cell
         /// Return const atom type instance by label.
         inline Atom_type const& atom_type(std::string const label__) const
         {
+            if (!atom_type_id_map_.count(label__)) {
+                std::stringstream s;
+                s << "atom type " << label__ << " is not found";
+                TERMINATE(s);
+            }
             int id = atom_type_id_map_.at(label__);
             return atom_type(id);
         }

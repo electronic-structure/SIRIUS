@@ -98,7 +98,12 @@ class timer
     /// Destructor.
     ~timer()
     {
-        stop();
+        /* global timer can't be stopped in the destructor: this happens when the program shuts down 
+           (static global_timer object is destroyed after exit from the main program) and it causes a crash 
+           in case of C++/Fortran interface; pure C++ program works fine */
+        if (label_ != main_timer_label) {
+            stop();
+        }
     }
     
     /// Stop the timer and update the statistics.
