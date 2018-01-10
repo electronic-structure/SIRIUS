@@ -25,10 +25,10 @@
 #ifndef __INPUT_H__
 #define __INPUT_H__
 
-#include "geometry3d.hpp"
-#include "runtime.h"
 #include "constants.h"
-#include "utils.h"
+#include "sddk.hpp"
+
+using namespace geometry3d;
 
 namespace sirius {
 
