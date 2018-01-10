@@ -25,6 +25,8 @@
 #ifndef __CONSTANTS_H__
 #define __CONSTANTS_H__
 
+#include <complex>
+
 const int major_version = 4;
 const int minor_version = 12;
 

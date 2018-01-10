@@ -29,6 +29,7 @@
 #include "radial_grid.h"
 #include "spline.h"
 #include "constants.h"
+#include "typedefs.h"
 
 namespace sirius {
 

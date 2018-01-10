@@ -298,7 +298,8 @@ inline int Band::diag_pseudo_potential_davidson(K_point*       kp__,
                 /* \Psi_{i} = \sum_{mu} \phi_{mu} * Z_{mu, i} */
                 if (ctx_.settings().always_update_wf_ || k + n > 0) {
                     /* in case of non-collinear magnetism transform two components */
-                    transform<T>(ctx_.processing_unit(), nc_mag ? 2 : ispin_step, {&phi}, 0, N, evec, 0, 0, {&psi}, 0, num_bands);
+                    transform<T>(ctx_.processing_unit(), nc_mag ? 2 : ispin_step, {&phi}, 0, N, evec, 0, 0,
+                                 {&psi}, 0, num_bands);
                     /* update eigen-values */
                     for (int j = 0; j < num_bands; j++) {
                         kp__->band_energy(j + ispin_step * ctx_.num_fv_states()) = eval[j];
@@ -329,7 +330,9 @@ inline int Band::diag_pseudo_potential_davidson(K_point*       kp__,
 
                     /* need to compute all hpsi and opsi states (not only unconverged) */
                     if (converge_by_energy) {
-                        transform<T>(ctx_.processing_unit(), nc_mag ? 2 : ispin_step, 1.0, std::vector<Wave_functions*>({&hphi, &sphi}), 0, N, evec, 0, 0, 0.0, {&hpsi, &spsi}, 0, num_bands);
+                        transform<T>(ctx_.processing_unit(), nc_mag ? 2 : ispin_step, 1.0,
+                                     std::vector<Wave_functions*>({&hphi, &sphi}), 0, N, evec, 0, 0, 0.0,
+                                     {&hpsi, &spsi}, 0, num_bands);
                     }
 
                     /* update basis functions, hphi and ophi */
@@ -410,7 +413,7 @@ inline int Band::diag_pseudo_potential_davidson(K_point*       kp__,
                 DUMP("step: %i, current subspace size: %i, maximum subspace size: %i", k, N, num_phi);
                 if (ctx_.control().verbosity_ >= 4) {
                     for (int i = 0; i < num_bands; i++) {
-                        DUMP("eval[%i]=%20.16f, diff=%20.16f, occ=%20.16f", i, eval[i], std::abs(eval[i] - eval_old[i]),
+                        printf("eval[%i]=%20.16f, diff=%20.16f, occ=%20.16f\n", i, eval[i], std::abs(eval[i] - eval_old[i]),
                              kp__->band_occupancy(i + ispin_step * ctx_.num_fv_states()));
                     }
                 }
@@ -419,16 +422,38 @@ inline int Band::diag_pseudo_potential_davidson(K_point*       kp__,
         }
     } /* loop over ispin_step */
     t3.stop();
+    
+    /* check residuals */
+    if (ctx_.control().verification_ >= 1) {
+        if (kp__->comm().rank() == 0) {
+            printf("checking residuals\n");
+        }
+        /* compute residuals */
+        for (int ispin_step = 0; ispin_step < num_spin_steps; ispin_step++) {
+            /* apply Hamiltonian and S operators to the wave-functions */
+            H__.apply_h_s<T>(kp__, nc_mag ? 2 : ispin_step, 0, num_bands, psi, hpsi, spsi);
+            
+            for (int ispn = 0; ispn < num_sc; ispn++) {
+                #pragma omp parallel for schedule(static)
+                for (int j = 0; j < num_bands; j++) {
+                    for (int ig = 0; ig < kp__->num_gkvec_loc(); ig++) {
+                        res.pw_coeffs(ispn).prime(ig, j) = hpsi.pw_coeffs(ispn).prime(ig, j) -
+                                                           spsi.pw_coeffs(ispn).prime(ig, j) * 
+                                                           kp__->band_energy(j + ispin_step * ctx_.num_fv_states());
+                    }
+                }
+            }
+            /* get the norm */
+            auto l2norm = res.l2norm(ctx_.processing_unit(), nc_mag ? 2 : ispin_step, num_bands);
 
-    //phi.component(0).copy_from(psi.component(0), 0, num_bands, ctx_.processing_unit());
-    //apply_h_o<T>(kp__, 0, 0, num_bands, phi, hphi, ophi, d_op__, q_op__);
-    //for (int i = 0; i < num_bands; i++) {
-    //    double rnorm = 0;
-    //    for (int ig = 0; ig < kp__->num_gkvec(); ig++) {
-    //        rnorm += std::pow(std::abs(hphi.component(0).pw_coeffs().prime(ig, i) - kp__->band_energy(i) * ophi.component(0).pw_coeffs().prime(ig, i)), 2);
-    //    }
-    //    std::cout << "band: " << i << ", l2norm: " << std::sqrt(rnorm) << std::endl;
-    //}
+            for (int j = 0; j < num_bands; j++) {
+                if (kp__->comm().rank() == 0) {
+                    printf("band: %i, residual l2norm: %18.12f\n", j, l2norm[j]);
+                }
+            }
+        }
+
+    }
 
     kp__->beta_projectors().dismiss();
 
