@@ -300,14 +300,19 @@ inline int Band::residuals(K_point*             kp__,
             int num_rows_local = evec_tmp.num_rows_local();
             for (int j = 0; j < n; j++) {
                 eval_tmp[j] = eval__[ev_idx[j]];
-                auto pos_src = evec__.spl_col().location(ev_idx[j]);
-                auto pos_dest = evec_tmp.spl_col().location(j);
-
-                if (pos_src.rank == kp__->comm_col().rank()) {
-                    kp__->comm_col().isend(&evec__(0, pos_src.local_index), num_rows_local, pos_dest.rank, ev_idx[j]);
-                }
-                if (pos_dest.rank == kp__->comm_col().rank()) {
-                   kp__->comm_col().recv(&evec_tmp(0, pos_dest.local_index), num_rows_local, pos_src.rank, ev_idx[j]);
+                if (ctx_.blacs_grid().comm().size() == 1) {
+                    /* do a local copy */
+                    std::copy(&evec__(0, ev_idx[j]), &evec__(0, ev_idx[j]) + num_rows_local, &evec_tmp(0, j));
+                } else {
+                    auto pos_src  = evec__.spl_col().location(ev_idx[j]);
+                    auto pos_dest = evec_tmp.spl_col().location(j);
+                    /* do MPI send / recieve */
+                    if (pos_src.rank == kp__->comm_col().rank()) {
+                        kp__->comm_col().isend(&evec__(0, pos_src.local_index), num_rows_local, pos_dest.rank, ev_idx[j]);
+                    }
+                    if (pos_dest.rank == kp__->comm_col().rank()) {
+                       kp__->comm_col().recv(&evec_tmp(0, pos_dest.local_index), num_rows_local, pos_src.rank, ev_idx[j]);
+                    }
                 }
             }
             if (ctx_.processing_unit() == GPU && evec__.blacs_grid().comm().size() == 1) {
