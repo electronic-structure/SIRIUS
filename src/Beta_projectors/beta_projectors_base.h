@@ -47,26 +47,30 @@ class Beta_projectors_base
 
     Simulation_context& ctx_;
 
+    /// List of G+k vectors.
     Gvec const& gkvec_;
+
+    /// Mapping between local and global G+k vector index.
+    std::vector<int> const& igk_;
 
     mdarray<double, 2> gkvec_coord_;
     
-    int num_gkvec_loc_;
-
     int lmax_beta_;
 
     /// Phase-factor independent coefficients of |beta> functions for atom types.
     std::array<matrix<double_complex>, N> pw_coeffs_t_;
 
-    /// A buffer for plane-wave coefficients of beta projectors, shared between instances of Beta_projectors_base class.
-    static mdarray<double_complex, 1>& pw_coeffs_a_shared(size_t size__, memory_t mem_type__)
-    {
-        static mdarray<double_complex, 1> a;
-        if (a.size() < size__) {
-            a = mdarray<double_complex, 1>(size__, mem_type__, "pw_coeffs_a_shared");
-        }
-        return a;
-    }
+    matrix<double_complex> pw_coeffs_a_;
+
+    ///// A buffer for plane-wave coefficients of beta projectors, shared between instances of Beta_projectors_base class.
+    //static mdarray<double_complex, 1>& pw_coeffs_a_shared(size_t size__, memory_t mem_type__)
+    //{
+    //    static mdarray<double_complex, 1> a;
+    //    if (a.size() < size__) {
+    //        a = mdarray<double_complex, 1>(size__, mem_type__, "pw_coeffs_a_shared");
+    //    }
+    //    return a;
+    //}
 
     /// A buffer for <beta|phi> product, shared between instances of Beta_projectors_base class.
     /** Stored as double to handle both gamma- and general k-point cases */
@@ -80,14 +84,14 @@ class Beta_projectors_base
     }
 
   public:
-    Beta_projectors_base(Simulation_context& ctx__,
-                         Gvec         const& gkvec__)
+    Beta_projectors_base(Simulation_context&     ctx__,
+                         Gvec const&             gkvec__,
+                         std::vector<int> const& igk__)
         : ctx_(ctx__)
         , gkvec_(gkvec__)
+        , igk_(igk__)
         , lmax_beta_(ctx_.unit_cell().lmax())
     {
-        num_gkvec_loc_ = gkvec_.count();
-
         auto& bchunk = ctx_.beta_projector_chunks();
         if (!bchunk.num_beta_t()) {
             return;
@@ -99,14 +103,11 @@ class Beta_projectors_base
             pw_coeffs_t_[i] = matrix<double_complex>(num_gkvec_loc(), bchunk.num_beta_t(), memory_t::host, "pw_coeffs_t_");
         }
 
-        auto& comm = gkvec_.comm();
-
         if (ctx_.processing_unit() == GPU) {
             gkvec_coord_ = mdarray<double, 2>(3, num_gkvec_loc(), ctx__.dual_memory_t());
             /* copy G+k vectors */
-            for (int igk_loc = 0; igk_loc < num_gkvec_loc_; igk_loc++) {
-                int igk  = gkvec_.gvec_offset(comm.rank()) + igk_loc;
-                auto vgk = gkvec_.gkvec(igk);
+            for (int igk_loc = 0; igk_loc < num_gkvec_loc(); igk_loc++) {
+                auto vgk = gkvec_.gkvec(igk_[igk_loc]);
                 for (auto x: {0, 1, 2}) {
                     gkvec_coord_(x, igk_loc) = vgk[x];
                 }
@@ -114,17 +115,16 @@ class Beta_projectors_base
             gkvec_coord_.copy<memory_t::host, memory_t::device>();
         }
     }
+
     ~Beta_projectors_base()
     {
-        //#ifdef __GPU
-        pw_coeffs_a_shared(0, memory_t::none) = mdarray<double_complex, 1>(); //.deallocate_on_device();
-        beta_phi_shared(0, memory_t::none) = mdarray<double, 1>(); //.deallocate_on_device();
-        //#endif
+        //pw_coeffs_a_shared(0, memory_t::none) = mdarray<double_complex, 1>();
+        beta_phi_shared(0, memory_t::none) = mdarray<double, 1>();
     }
 
     inline int num_gkvec_loc() const
     {
-        return num_gkvec_loc_;
+        return static_cast<int>(igk_.size());
     }
 
     inline Unit_cell const& unit_cell() const
@@ -140,20 +140,20 @@ class Beta_projectors_base
     /// Plane wave coefficients of |beta> projectors for a chunk of atoms.
     matrix<double_complex>& pw_coeffs_a()
     {
-        auto& bchunk = ctx_.beta_projector_chunks();
-        auto& buf = pw_coeffs_a_shared(num_gkvec_loc() * bchunk.max_num_beta(), ctx_.dual_memory_t());
+        //auto& bchunk = ctx_.beta_projector_chunks();
+        //auto& buf = pw_coeffs_a_shared(num_gkvec_loc() * bchunk.max_num_beta(), ctx_.dual_memory_t());
 
-        static mdarray<double_complex, 2> pw_coeffs_a_;
-        switch (ctx_.processing_unit()) {
-            case CPU: {
-                pw_coeffs_a_ = mdarray<double_complex, 2>(buf.template at<CPU>(), num_gkvec_loc(), bchunk.max_num_beta(), "pw_coeffs_a_");
-                break;
-            } 
-            case GPU: {
-                pw_coeffs_a_ = mdarray<double_complex, 2>(buf.template at<CPU>(), buf.template at<GPU>(), num_gkvec_loc(), bchunk.max_num_beta(), "pw_coeffs_a_");
-                break;
-           }
-        }
+        //static mdarray<double_complex, 2> pw_coeffs_a_;
+        //switch (ctx_.processing_unit()) {
+        //    case CPU: {
+        //        pw_coeffs_a_ = mdarray<double_complex, 2>(buf.template at<CPU>(), num_gkvec_loc(), bchunk.max_num_beta(), "pw_coeffs_a_");
+        //        break;
+        //    } 
+        //    case GPU: {
+        //        pw_coeffs_a_ = mdarray<double_complex, 2>(buf.template at<CPU>(), buf.template at<GPU>(), num_gkvec_loc(), bchunk.max_num_beta(), "pw_coeffs_a_");
+        //        break;
+        //   }
+        //}
         return pw_coeffs_a_;
     }
 
@@ -168,7 +168,7 @@ class Beta_projectors_base
     {
         PROFILE("sirius::Beta_projectors_base::inner");
 
-        assert(num_gkvec_loc_ == phi__.pw_coeffs(ispn__).num_rows_loc());
+        assert(num_gkvec_loc() == phi__.pw_coeffs(ispn__).num_rows_loc());
         
         auto& bp_chunks = ctx_.beta_projector_chunks();
 
@@ -197,16 +197,16 @@ class Beta_projectors_base
             switch (ctx_.processing_unit()) {
                 case CPU: {
                     /* compute <beta|phi> */
-                    linalg<CPU>::gemm(2, 0, nbeta, n__, num_gkvec_loc_,
-                                      pw_coeffs_a().template at<CPU>(), num_gkvec_loc_,
+                    linalg<CPU>::gemm(2, 0, nbeta, n__, num_gkvec_loc(),
+                                      pw_coeffs_a().template at<CPU>(), num_gkvec_loc(),
                                       phi__.pw_coeffs(ispn__).prime().at<CPU>(0, idx0__), phi__.pw_coeffs(ispn__).prime().ld(),
                                       reinterpret_cast<double_complex*>(beta_phi.template at<CPU>()), nbeta);
                     break;
                 }
                 case GPU: {
                     #ifdef __GPU
-                    linalg<GPU>::gemm(2, 0, nbeta, n__, num_gkvec_loc_,
-                                      pw_coeffs_a().template at<GPU>(), num_gkvec_loc_,
+                    linalg<GPU>::gemm(2, 0, nbeta, n__, num_gkvec_loc(),
+                                      pw_coeffs_a().template at<GPU>(), num_gkvec_loc(),
                                       phi__.pw_coeffs(ispn__).prime().at<GPU>(0, idx0__), phi__.pw_coeffs(ispn__).prime().ld(),
                                       reinterpret_cast<double_complex*>(beta_phi.template at<GPU>()), nbeta);
                     beta_phi.template copy<memory_t::device, memory_t::host>();
@@ -225,9 +225,9 @@ class Beta_projectors_base
             switch (ctx_.processing_unit()) {
                 case CPU: {
                     /* compute <beta|phi> */
-                    linalg<CPU>::gemm(2, 0, nbeta, n__, 2 * num_gkvec_loc_,
+                    linalg<CPU>::gemm(2, 0, nbeta, n__, 2 * num_gkvec_loc(),
                                       a,
-                                      reinterpret_cast<double*>(pw_coeffs_a().template at<CPU>()), 2 * num_gkvec_loc_,
+                                      reinterpret_cast<double*>(pw_coeffs_a().template at<CPU>()), 2 * num_gkvec_loc(),
                                       reinterpret_cast<double*>(phi__.pw_coeffs(ispn__).prime().at<CPU>(0, idx0__)),
                                       2 * phi__.pw_coeffs(ispn__).prime().ld(),
                                       b,
@@ -236,7 +236,7 @@ class Beta_projectors_base
                     if (gkvec_.comm().rank() == 0) {
                         /* subtract one extra G=0 contribution */
                         linalg<CPU>::ger(nbeta, n__, a1,
-                                         reinterpret_cast<double*>(pw_coeffs_a().template at<CPU>()), 2 * num_gkvec_loc_,
+                                         reinterpret_cast<double*>(pw_coeffs_a().template at<CPU>()), 2 * num_gkvec_loc(),
                                          reinterpret_cast<double*>(phi__.pw_coeffs(ispn__).prime().at<CPU>(0, idx0__)), 
                                          2 * phi__.pw_coeffs(ispn__).prime().ld(),
                                          reinterpret_cast<double*>(beta_phi.template at<CPU>()), nbeta);
@@ -245,9 +245,9 @@ class Beta_projectors_base
                 }
                 case GPU: {
                     #ifdef __GPU
-                    linalg<GPU>::gemm(2, 0, nbeta, n__, 2 * num_gkvec_loc_,
+                    linalg<GPU>::gemm(2, 0, nbeta, n__, 2 * num_gkvec_loc(),
                                       &a,
-                                      reinterpret_cast<double*>(pw_coeffs_a().template at<GPU>()), 2 * num_gkvec_loc_,
+                                      reinterpret_cast<double*>(pw_coeffs_a().template at<GPU>()), 2 * num_gkvec_loc(),
                                       reinterpret_cast<double*>(phi__.pw_coeffs(ispn__).prime().at<GPU>(0, idx0__)),
                                       2 * phi__.pw_coeffs(ispn__).prime().ld(),
                                       &b,
@@ -256,7 +256,7 @@ class Beta_projectors_base
                     if (gkvec_.comm().rank() == 0) {
                         /* subtract one extra G=0 contribution */
                         linalg<GPU>::ger(nbeta, n__, &a1, 
-                                         reinterpret_cast<double*>(pw_coeffs_a().template at<GPU>()), 2 * num_gkvec_loc_,
+                                         reinterpret_cast<double*>(pw_coeffs_a().template at<GPU>()), 2 * num_gkvec_loc().
                                          reinterpret_cast<double*>(phi__.pw_coeffs(ispn__).prime().at<GPU>(0, idx0__)),
                                          2 * phi__.pw_coeffs(ispn__).prime().ld(),
                                          reinterpret_cast<double*>(beta_phi.template at<GPU>()), nbeta);
@@ -298,9 +298,8 @@ class Beta_projectors_base
                     double_complex phase_k = std::exp(double_complex(0.0, phase));
 
                     std::vector<double_complex> phase_gk(num_gkvec_loc());
-                    for (int igk_loc = 0; igk_loc < num_gkvec_loc_; igk_loc++) {
-                        int igk = gkvec_.offset() + igk_loc;
-                        auto G = gkvec_.gvec(igk);
+                    for (int igk_loc = 0; igk_loc < num_gkvec_loc(); igk_loc++) {
+                        auto G = gkvec_.gvec(igk_[igk_loc]);
                         /* total phase e^{i(G+k)r_{\alpha}} */
                         phase_gk[igk_loc] = std::conj(ctx_.gvec_phase_factor(G, ia) * phase_k);
                     }
@@ -333,17 +332,24 @@ class Beta_projectors_base
     {
         PROFILE("sirius::Beta_projectors_base::prepare");
 
+        auto& bchunk = ctx_.beta_projector_chunks();
+        pw_coeffs_a_ = matrix<double_complex>(num_gkvec_loc(), bchunk.max_num_beta());
+
         if (ctx_.processing_unit() == GPU) {
+            pw_coeffs_a_.allocate(memory_t::device);
             for (int i = 0; i < N; i++) {
                 pw_coeffs_t_[i].allocate(memory_t::device);
                 pw_coeffs_t_[i].template copy<memory_t::host, memory_t::device>();
             }
         }
+
     }
 
     void dismiss()
     {
         PROFILE("sirius::Beta_projectors_base::dismiss");
+
+        pw_coeffs_a_ = mdarray<double_complex, 2>();
 
         #ifdef __GPU
         if (ctx_.processing_unit() == GPU) {

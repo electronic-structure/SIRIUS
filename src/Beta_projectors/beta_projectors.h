@@ -41,7 +41,7 @@ class Beta_projectors: public Beta_projectors_base<1>
     protected:
 
         /// Generate plane-wave coefficients for beta-projectors of atom types.
-        void generate_pw_coefs_t()
+        void generate_pw_coefs_t(std::vector<int>& igk__)
         {
             PROFILE("sirius::Beta_projectors::generate_pw_coefs_t");
             auto& bchunk = ctx_.beta_projector_chunks();
@@ -55,8 +55,8 @@ class Beta_projectors: public Beta_projectors_base<1>
 
             /* compute <G+k|beta> */
             #pragma omp parallel for
-            for (int igkloc = 0; igkloc < gkvec_.gvec_count(comm.rank()); igkloc++) {
-                int igk = gkvec_.gvec_offset(comm.rank()) + igkloc;
+            for (int igkloc = 0; igkloc < num_gkvec_loc(); igkloc++) {
+                int igk = igk__[igkloc];
                 /* vs = {r, theta, phi} */
                 auto vs = SHT::spherical_coordinates(gkvec_.gkvec_cart(igk));
                 /* compute real spherical harmonics for G+k vector */
@@ -91,11 +91,12 @@ class Beta_projectors: public Beta_projectors_base<1>
     public:
 
         Beta_projectors(Simulation_context& ctx__,
-                        Gvec const&         gkvec__)
-            : Beta_projectors_base<1>(ctx__, gkvec__)
+                        Gvec const&         gkvec__,
+                        std::vector<int>&   igk__)
+            : Beta_projectors_base<1>(ctx__, gkvec__, igk__)
         {
             PROFILE("sirius::Beta_projectors::Beta_projectors");
-            generate_pw_coefs_t();
+            generate_pw_coefs_t(igk__);
         }
 
         void generate(int chunk__)

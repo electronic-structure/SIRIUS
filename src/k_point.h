@@ -151,6 +151,10 @@ class K_point
 
         std::unique_ptr<Beta_projectors> beta_projectors_{nullptr};
 
+        std::unique_ptr<Beta_projectors> beta_projectors_row_{nullptr};
+
+        std::unique_ptr<Beta_projectors> beta_projectors_col_{nullptr};
+
         /// Preconditioner matrix for Chebyshev solver.
         mdarray<double_complex, 3> p_mtrx_;
 
@@ -508,14 +512,29 @@ class K_point
             return igk_loc_[idx__];
         }
 
+        inline std::vector<int> const& igk_loc() const
+        {
+            return igk_loc_;
+        }
+
         inline int igk_row(int idx__) const
         {
             return igk_row_[idx__];
         }
 
+        inline std::vector<int> const& igk_row() const
+        {
+            return igk_row_;
+        }
+
         inline int igk_col(int idx__) const
         {
             return igk_col_[idx__];
+        }
+
+        inline std::vector<int> const& igk_col() const
+        {
+            return igk_col_;
         }
 
         inline int num_ranks_row() const
@@ -652,6 +671,18 @@ class K_point
         {
             assert(beta_projectors_ != nullptr);
             return *beta_projectors_;
+        }
+
+        Beta_projectors& beta_projectors_row()
+        {
+            assert(beta_projectors_ != nullptr);
+            return *beta_projectors_row_;
+        }
+
+        Beta_projectors& beta_projectors_col()
+        {
+            assert(beta_projectors_ != nullptr);
+            return *beta_projectors_col_;
         }
 };
 

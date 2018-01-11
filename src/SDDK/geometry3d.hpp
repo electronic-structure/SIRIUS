@@ -172,7 +172,7 @@ inline vector3d<T> cross(vector3d<T> const a, vector3d<T> const b)
 }
 
 template <typename T>
-std::ostream& operator<<(std::ostream& out, vector3d<T>& v)
+std::ostream& operator<<(std::ostream& out, vector3d<T> const& v)
 {
     out << v[0] << " " << v[1] << " " << v[2];
     return out;

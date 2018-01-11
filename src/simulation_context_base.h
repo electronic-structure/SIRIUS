@@ -101,6 +101,9 @@ class Simulation_context_base: public Simulation_parameters
 
         mdarray<double_complex, 3> sym_phase_factors_;
         
+        /// Phase factors for atom types.
+        mdarray<double_complex, 2> phase_factors_t_;
+        
         mdarray<int, 2> gvec_coord_;
 
         std::vector<mdarray<double, 2>> atom_coord_;
@@ -515,9 +518,8 @@ class Simulation_context_base: public Simulation_parameters
                 double g = gvec().gvec_len(ig);
 
                 int j = (index_domain == index_domain_t::local) ? igloc : ig;
-                for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
-                    int iat = unit_cell_.atom(ia).type_id();
-                    f_pw[j] += fourpi_omega * std::conj(gvec_phase_factor(ig, ia)) * form_factors__(iat, g);
+                for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
+                    f_pw[j] += fourpi_omega * std::conj(phase_factors_t_(igloc, iat)) * form_factors__(iat, g);
                 }
             }
 
@@ -721,7 +723,21 @@ inline void Simulation_context_base::initialize()
             }
         }
     }
-    
+
+    phase_factors_t_ = mdarray<double_complex, 2>(gvec().count(), unit_cell().num_atom_types());
+    #pragma omp parallel for schedule(static)
+    for (int igloc = 0; igloc < gvec().count(); igloc++) {
+        /* global index of G-vector */
+        int ig = gvec().offset() + igloc;
+        for (int iat = 0; iat < unit_cell().num_atom_types(); iat++) {
+            double_complex z(0, 0);
+            for (int ia = 0; ia < unit_cell().atom_type(iat).num_atoms(); ia++) {
+                z += gvec_phase_factor(ig, unit_cell().atom_type(iat).atom_id(ia));
+            }
+            phase_factors_t_(igloc, iat) = z;
+        }
+    }
+
     if (use_symmetry()) {
         sym_phase_factors_ = mdarray<double_complex, 3>(3, limits, unit_cell().symmetry().num_mag_sym());
 

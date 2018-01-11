@@ -45,7 +45,7 @@ class Forces_PS
     template <typename T>
     void add_k_point_contribution(K_point& kpoint, mdarray<double, 2>& forces)
     {
-        Beta_projectors_gradient bp_grad(ctx_, kpoint.gkvec(), kpoint.beta_projectors());
+        Beta_projectors_gradient bp_grad(ctx_, kpoint.gkvec(), kpoint.igk_loc(), kpoint.beta_projectors());
 
         #ifdef __GPU
         if (ctx_.processing_unit() == GPU && !keep_wf_on_gpu) {

@@ -125,8 +125,8 @@ inline void Non_local_operator<double_complex>::apply(int chunk__,
             work_.allocate(memory_t::device);
         }
     }
-/* compute O * <beta|phi> for atoms in a chunk */
-#pragma omp parallel for
+    /* compute O * <beta|phi> for atoms in a chunk */
+    #pragma omp parallel for
     for (int i = 0; i < bp_chunks(chunk__).num_atoms_; i++) {
         /* number of beta functions for a given atom */
         int nbf  = bp_chunks(chunk__).desc_(beta_desc_idx::nbf, i);
@@ -160,8 +160,8 @@ inline void Non_local_operator<double_complex>::apply(int chunk__,
         }
         case GPU: {
 #ifdef __GPU
-/* wait for previous zgemms */
-#pragma omp parallel
+            /* wait for previous zgemms */
+            #pragma omp parallel
             acc::sync_stream(omp_get_thread_num());
 
             linalg<GPU>::gemm(0, 0, num_gkvec_loc, n__, nbeta, &linalg_const<double_complex>::one(), beta_gk.at<GPU>(),
@@ -204,8 +204,8 @@ inline void Non_local_operator<double>::apply(int chunk__,
         }
     }
 
-/* compute O * <beta|phi> */
-#pragma omp parallel for
+    /* compute O * <beta|phi> */
+    #pragma omp parallel for
     for (int i = 0; i < bp_chunks(chunk__).num_atoms_; i++) {
         /* number of beta functions for a given atom */
         int nbf  = bp_chunks(chunk__).desc_(beta_desc_idx::nbf, i);
@@ -239,8 +239,8 @@ inline void Non_local_operator<double>::apply(int chunk__,
         }
         case GPU: {
 #ifdef __GPU
-/* wait for previous zgemms */
-#pragma omp parallel
+            /* wait for previous zgemms */
+            #pragma omp parallel
             acc::sync_stream(omp_get_thread_num());
 
             linalg<GPU>::gemm(0, 0, 2 * num_gkvec_loc, n__, nbeta, &linalg_const<double>::one(),
@@ -290,9 +290,10 @@ class D_operator : public Non_local_operator<T>
                 for (int xi2 = 0; xi2 < nbf; xi2++) {
                     for (int xi1 = 0; xi1 < nbf; xi1++) {
                         int idx = xi2 * nbf + xi1;
-                        for (int s = 0; s < 4; s++)
+                        for (int s = 0; s < 4; s++) {
                             this->op_(this->packed_mtrx_offset_(ia) + idx, s) =
                                 type_wrapper<T>::bypass(uc.atom(ia).d_mtrx_so(xi1, xi2, s));
+                        }
                     }
                 }
             } else {
