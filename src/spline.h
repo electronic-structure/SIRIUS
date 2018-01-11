@@ -25,6 +25,8 @@
 #ifndef __SPLINE_H__
 #define __SPLINE_H__
 
+#include "radial_grid.h"
+
 // TODO: add back() method like in std::vector
 
 // TODO: [?] store radial grid, not the pointer to the grid.

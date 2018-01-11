@@ -35,6 +35,7 @@
 #include "xc_functional.h"
 #include "simulation_parameters.h"
 #include "sht.h"
+
 namespace sirius {
 
 /// A helper class to establish various index mappings for the atomic radial functions.
