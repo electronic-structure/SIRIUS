@@ -256,8 +256,8 @@ class Beta_projectors_base
                     if (gkvec_.comm().rank() == 0) {
                         /* subtract one extra G=0 contribution */
                         linalg<GPU>::ger(nbeta, n__, &a1, 
-                                         reinterpret_cast<double*>(pw_coeffs_a().template at<GPU>()), 2 * num_gkvec_loc().
-                                         reinterpret_cast<double*>(phi__.pw_coeffs(ispn__).prime().at<GPU>(0, idx0__)),
+                                         reinterpret_cast<double*>(pw_coeffs_a().template at<GPU>()), 2 * num_gkvec_loc(),
+                                         reinterpret_cast<double*>(phi__.pw_coeffs(ispn__).prime().template at<GPU>(0, idx0__)),
                                          2 * phi__.pw_coeffs(ispn__).prime().ld(),
                                          reinterpret_cast<double*>(beta_phi.template at<GPU>()), nbeta);
                     }
@@ -316,7 +316,7 @@ class Beta_projectors_base
                 #ifdef __GPU
                 auto& desc = bchunk(ichunk__).desc_;
                 create_beta_gk_gpu(bchunk(ichunk__).num_atoms_,
-                                   num_gkvec_loc_,
+                                   num_gkvec_loc(),
                                    desc.template at<GPU>(),
                                    pw_coeffs_t_[j__].template at<GPU>(),
                                    gkvec_coord_.template at<GPU>(),
