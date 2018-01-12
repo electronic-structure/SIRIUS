@@ -258,20 +258,8 @@ inline void Non_local_operator<double>::apply(int chunk__,
 template <typename T>
 class D_operator : public Non_local_operator<T>
 {
-  public:
-    D_operator(Simulation_context const& ctx_)
-        : Non_local_operator<T>(ctx_)
-    {
-        this->op_ = mdarray<T, 2>(this->packed_mtrx_size_, ctx_.num_mag_dims() + 1);
-        this->op_.zero();
-        /* D-matrix is complex in non-collinear case */
-        if (ctx_.num_mag_dims() == 3) {
-            assert((std::is_same<T, double_complex>::value));
-        }
-        initialize_operator();
-    };
-
-    void initialize_operator()
+  private:
+    void initialize()
     {
 
         auto& uc = this->ctx__.unit_cell();
@@ -344,23 +332,27 @@ class D_operator : public Non_local_operator<T>
             this->op_.template copy<memory_t::host, memory_t::device>();
         }
     }
+
+  public:
+    D_operator(Simulation_context const& ctx_)
+        : Non_local_operator<T>(ctx_)
+    {
+        this->op_ = mdarray<T, 2>(this->packed_mtrx_size_, ctx_.num_mag_dims() + 1);
+        this->op_.zero();
+        /* D-matrix is complex in non-collinear case */
+        if (ctx_.num_mag_dims() == 3) {
+            assert((std::is_same<T, double_complex>::value));
+        }
+        initialize();
+    };
+
 };
 
 template <typename T>
 class Q_operator : public Non_local_operator<T>
 {
-  public:
-    Q_operator(Simulation_context const& ctx_)
-        : Non_local_operator<T>(ctx_)
-    {
-        /* Q-operator is independent of spin if there is no spin-orbit; however, it simplifies the apply()
-         * method if the Q-operator has a spin index */
-        this->op_ = mdarray<T, 2>(this->packed_mtrx_size_, ctx_.num_mag_dims() + 1);
-        this->op_.zero();
-        initialize_operator();
-    }
-
-    void initialize_operator()
+  private:
+    void initialize()
     {
         auto& uc = this->ctx__.unit_cell();
         for (int ia = 0; ia < uc.num_atoms(); ia++) {
@@ -425,6 +417,17 @@ class Q_operator : public Non_local_operator<T>
             this->op_.allocate(memory_t::device);
             this->op_.template copy<memory_t::host, memory_t::device>();
         }
+    }
+
+  public:
+    Q_operator(Simulation_context const& ctx_)
+        : Non_local_operator<T>(ctx_)
+    {
+        /* Q-operator is independent of spin if there is no spin-orbit; however, it simplifies the apply()
+         * method if the Q-operator has a spin index */
+        this->op_ = mdarray<T, 2>(this->packed_mtrx_size_, ctx_.num_mag_dims() + 1);
+        this->op_.zero();
+        initialize();
     }
 };
 

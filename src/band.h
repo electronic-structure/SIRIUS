@@ -27,7 +27,7 @@
 
 #include "periodic_function.h"
 #include "k_point_set.h"
-#include "local_operator.h"
+#include "Hamiltonian/local_operator.hpp"
 #include "non_local_operator.h"
 #include "hubbard.hpp"
 #include "Hamiltonian.h"
@@ -232,8 +232,6 @@ class Band
 
         H__.local_op().prepare(kp__->gkvec_partition());
         ctx_.fft_coarse().prepare(kp__->gkvec_partition());
-        H__.create_d_and_q_operator<T>();
-        H__.initialize_D_and_Q_operators<T>();
 
         int niter{0};
 

@@ -17,19 +17,19 @@
 // CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR 
 // OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-/** \file local_operator.h
+/** \file local_operator.hpp
  *
  *  \brief Contains declaration and implementation of sirius::Local_operator class.
  */
 
-#ifndef __LOCAL_OPERATOR_H__
-#define __LOCAL_OPERATOR_H__
+#ifndef __LOCAL_OPERATOR_HPP__
+#define __LOCAL_OPERATOR_HPP__
 
 #include "periodic_function.h"
 #include "potential.h"
 
 #ifdef __GPU
-extern "C" void mul_by_veff_gpu(int ispn__, int size__, double const* veff__, double_complex* buf__);
+extern "C" void mul_by_veff_gpu(int ispn__, int size__, double* const* veff__, double_complex* buf__);
 
 extern "C" void add_pw_ekin_gpu(int num_gvec__,
                                 double alpha__,
@@ -40,8 +40,6 @@ extern "C" void add_pw_ekin_gpu(int num_gvec__,
 #endif
 
 namespace sirius {
-
-// TODO: use new mapping between fine and coarse FFT meshes
 
 /// Representation of the local operator.
 /** The following functionality is implementated:
@@ -54,16 +52,21 @@ class Local_operator
 {
     private:
         /// Common parameters.
-        Simulation_parameters const* param_{nullptr};
+        Simulation_parameters const& param_;
 
         /// Coarse-grid FFT driver for this operator.
         FFT3D& fft_coarse_;
+
+        /// Distribution of the G-vectors for the FFT transformation.
+        Gvec_partition const& gvec_coarse_p_;
+
+        Gvec_partition const* gkvec_p_{nullptr};
         
         /// Kinetic energy of G+k plane-waves.
         mdarray<double, 1> pw_ekin_;
 
-        /// Effective potential components.
-        mdarray<double, 2> veff_vec_;
+        /// Effective potential components on a coarse FFT grid.
+        std::array<Smooth_periodic_function<double>, 4> veff_vec_;
         
         /// Temporary array to store [V*phi](G)
         mdarray<double_complex, 1> vphi1_;
@@ -72,7 +75,7 @@ class Local_operator
         mdarray<double_complex, 1> vphi2_;
         
         /// LAPW unit step function on a coarse FFT grid.
-        mdarray<double, 1> theta_;
+        Smooth_periodic_function<double> theta_;
        
         /// Temporary array to store psi_{up}(r).
         mdarray<double_complex, 1> buf_rg_;
@@ -83,104 +86,99 @@ class Local_operator
     public:
         /// Constructor.
         Local_operator(Simulation_parameters const& param__,
-                       FFT3D& fft_coarse__)
-            : param_(&param__)
-            , fft_coarse_(fft_coarse__)
-        {
-        }
-
-        /// This constructor is used internally in the debug and performance tests only.
-        Local_operator(Simulation_parameters const& param__,
                        FFT3D&                       fft_coarse__,
-                       Gvec_partition const&        gvecp__)
-            : param_(&param__)
+                       Gvec_partition const&        gvec_coarse_p__)
+            : param_(param__)
             , fft_coarse_(fft_coarse__)
+            , gvec_coarse_p_(gvec_coarse_p__)
+
         {
-            veff_vec_ = mdarray<double, 2>(fft_coarse_.local_size(), 1, memory_t::host, "Local_operator::veff_vec_");
-            for (int ir = 0; ir < fft_coarse_.local_size(); ir++) {
-                veff_vec_(ir, 0) = 2.71828;
+            for (int j = 0; j < param__.num_mag_dims() + 1; j++) {
+                veff_vec_[j] = Smooth_periodic_function<double>(fft_coarse__, gvec_coarse_p__);
+                for (int ir = 0; ir < fft_coarse_.local_size(); ir++) {
+                    veff_vec_[j].f_rg(ir) = 2.71828;
+                }
             }
-
-            int ngv_fft = gvecp__.gvec_count_fft();
-            
-            pw_ekin_ = mdarray<double, 1>(ngv_fft, memory_t::host, "Local_operator::pw_ekin");
-            pw_ekin_.zero();
-
-            vphi1_ = mdarray<double_complex, 1>(ngv_fft, memory_t::host, "Local_operator::vphi1");
-            vphi2_ = mdarray<double_complex, 1>(ngv_fft, memory_t::host, "Local_operator::vphi2");
-
-            if (fft_coarse_.pu() == GPU) {
-                veff_vec_.allocate(memory_t::device);
-                veff_vec_.copy<memory_t::host, memory_t::device>();
-                pw_ekin_.allocate(memory_t::device);
-                pw_ekin_.copy<memory_t::host, memory_t::device>();
-                vphi1_.allocate(memory_t::device);
-                vphi2_.allocate(memory_t::device);
+            if (param__.full_potential()) {
+                theta_ = Smooth_periodic_function<double>(fft_coarse__, gvec_coarse_p__);
             }
         }
+
+        ///// This constructor is used internally in the debug and performance tests only.
+        //Local_operator(Simulation_parameters const& param__,
+        //               FFT3D&                       fft_coarse__,
+        //               Gvec_partition const&        gvecp__)
+        //    : param_(&param__)
+        //    , fft_coarse_(fft_coarse__)
+        //{
+        //    veff_vec_ = mdarray<double, 2>(fft_coarse_.local_size(), 1, memory_t::host, "Local_operator::veff_vec_");
+        //    for (int ir = 0; ir < fft_coarse_.local_size(); ir++) {
+        //        veff_vec_(ir, 0) = 2.71828;
+        //    }
+
+        //    int ngv_fft = gvecp__.gvec_count_fft();
+        //    
+        //    pw_ekin_ = mdarray<double, 1>(ngv_fft, memory_t::host, "Local_operator::pw_ekin");
+        //    pw_ekin_.zero();
+
+        //    vphi1_ = mdarray<double_complex, 1>(ngv_fft, memory_t::host, "Local_operator::vphi1");
+        //    vphi2_ = mdarray<double_complex, 1>(ngv_fft, memory_t::host, "Local_operator::vphi2");
+
+        //    if (fft_coarse_.pu() == GPU) {
+        //        veff_vec_.allocate(memory_t::device);
+        //        veff_vec_.copy<memory_t::host, memory_t::device>();
+        //        pw_ekin_.allocate(memory_t::device);
+        //        pw_ekin_.copy<memory_t::host, memory_t::device>();
+        //        vphi1_.allocate(memory_t::device);
+        //        vphi2_.allocate(memory_t::device);
+        //    }
+        //}
         
         /// Map effective potential and magnetic field to a coarse FFT mesh in case of PP-PW.
-        /** \param [in] gvec_coarse    G-vectors of the coarse FFT grid.
-         *  \param [in] num_mag_dims   Number of magnetic dimensions.
-         *  \param [in] potential      \f$ V_{eff}({\bf r}) \f$ and \f$ {\bf B}_{eff}({\bf r}) \f$ on the fine grid FFT grid.
+        /** \param [in] potential      \f$ V_{eff}({\bf r}) \f$ and \f$ {\bf B}_{eff}({\bf r}) \f$ on the fine grid FFT grid.
          *
          *  This function should be called prior to the band diagonalziation. In case of GPU execution all
          *  effective fields on the coarse grid will be copied to the device and will remain there until the
          *  dismiss() method is called after band diagonalization.
          */
-        inline void prepare(Gvec_partition const& gvec_coarse_partition__,
-                            int                   num_mag_dims__,
-                            Potential&            potential__)
+        inline void prepare(Potential& potential__)
         {
             PROFILE("sirius::Local_operator::prepare");
 
             /* group effective fields into single vector */
-            std::vector<Periodic_function<double>*> veff_vec(num_mag_dims__ + 1);
+            std::vector<Periodic_function<double>*> veff_vec(param_.num_mag_dims() + 1);
             veff_vec[0] = potential__.effective_potential();
-            for (int j = 0; j < num_mag_dims__; j++) {
+            for (int j = 0; j < param_.num_mag_dims(); j++) {
                 veff_vec[1 + j] = potential__.effective_magnetic_field(j);
             }
             
-            /* allocate only once */
-            if (!veff_vec_.size()) {
-                veff_vec_ = mdarray<double, 2>(fft_coarse_.local_size(), num_mag_dims__ + 1, memory_t::host, "Local_operator::veff_vec_");
-            }
-
-            if (!buf_rg_.size() && param_->num_mag_dims() == 3) {
+            if (!buf_rg_.size() && param_.num_mag_dims() == 3) {
                 buf_rg_ = mdarray<double_complex, 1>(fft_coarse_.local_size(), memory_t::host, "Local_operator::buf_rg_");
             }
 
-            /* low-frequency part of PW coefficients */
-            std::vector<double_complex> v_pw_coarse(gvec_coarse_partition__.gvec_count_fft());
-            /* prepare FFT for transformation */
-            fft_coarse_.prepare(gvec_coarse_partition__);
-            /* map components of effective potential to a corase grid */
-            for (int j = 0; j < num_mag_dims__ + 1; j++) {
-                /* collect PW coefficients into global array */
-                auto v = veff_vec[j]->gather_f_pw();
-                /* loop over low-frequency G-vectors */
-                for (int ig = 0; ig < gvec_coarse_partition__.gvec_count_fft(); ig++) {
-                    /* G-vector in fractional coordinates */
-                    auto G = gvec_coarse_partition__.gvec().gvec(ig + gvec_coarse_partition__.gvec_offset_fft());
-                    v_pw_coarse[ig] = v[veff_vec[j]->gvec().index_by_gvec(G)];
+            fft_coarse_.prepare(gvec_coarse_p_);
+            for (int j = 0; j < param_.num_mag_dims() + 1; j++) {
+                /* loop over local set of coarse G-vectors */
+                #pragma omp parallel for schedule(static)
+                for (int igloc = 0; igloc < gvec_coarse_p_.gvec().count(); igloc++) {
+                    /* map from fine to coarse set of G-vectors */
+                    veff_vec_[j].f_pw_local(igloc) = veff_vec[j]->f_pw_local(veff_vec[j]->gvec().gvec_base_mapping(igloc));
                 }
                 /* transform to real space */
-                fft_coarse_.transform<1>(&v_pw_coarse[0]);
-                /* save V(r) */
-                fft_coarse_.output(&veff_vec_(0, j));
+                veff_vec_[j].fft_transform(1);
             }
             fft_coarse_.dismiss();
 
-            if (num_mag_dims__) {
+            if (param_.num_mag_dims()) {
                 for (int ir = 0; ir < fft_coarse_.local_size(); ir++) {
-                    double v0 = veff_vec_(ir, 0);
-                    double v1 = veff_vec_(ir, 1);
-                    veff_vec_(ir, 0) = v0 + v1; // v + Bz
-                    veff_vec_(ir, 1) = v0 - v1; // v - Bz
+                    double v0 = veff_vec_[0].f_rg(ir);
+                    double v1 = veff_vec_[1].f_rg(ir);
+                    veff_vec_[0].f_rg(ir) = v0 + v1; // v + Bz
+                    veff_vec_[1].f_rg(ir) = v0 - v1; // v - Bz
                 }
             }
             
-            if (num_mag_dims__ == 0) {
+            if (param_.num_mag_dims() == 0) {
                 v0_[0] = veff_vec[0]->f_0().real();
             } else {
                 v0_[0] = veff_vec[0]->f_0().real() + veff_vec[1]->f_0().real();
@@ -189,123 +187,107 @@ class Local_operator
             
             /* copy veff to device */
             if (fft_coarse_.pu() == GPU) {
-                veff_vec_.allocate(memory_t::device);
-                veff_vec_.copy<memory_t::host, memory_t::device>();
-                if (param_->num_mag_dims() == 3) {
+                for (int j = 0; j < param_.num_mag_dims() + 1; j++) {
+                    veff_vec_[j].f_rg().allocate(memory_t::device);
+                    veff_vec_[j].f_rg().copy<memory_t::host, memory_t::device>();
+                }
+                if (param_.num_mag_dims() == 3) {
                     buf_rg_.allocate(memory_t::device);
                 }
             }
 
-            if (param_->control().print_checksum_) {
-                auto cs = veff_vec_.checksum();
-                fft_coarse_.comm().allreduce(&cs, 1);
-                if (gvec_coarse_partition__.gvec().comm().rank() == 0) {
-                    print_checksum("Local_operator::prepare::veff_vec", cs);
-                }
-            }
+            //if (param_.control().print_checksum_) {
+            //    auto cs = veff_vec_.checksum();
+            //    fft_coarse_.comm().allreduce(&cs, 1);
+            //    if (gvec_coarse_p_.gvec().comm().rank() == 0) {
+            //        print_checksum("Local_operator::prepare::veff_vec", cs);
+            //    }
+            //}
         }
 
         /// Map effective potential and magnetic field to a coarse FFT mesh in case of FP-LAPW.
-        /** \param [in] gvec_coarse    G-vectors of the coarse FFT grid.
-         *  \param [in] num_mag_dims   Number of magnetic dimensions.
-         *  \param [in] potential      \f$ V_{eff}({\bf r}) \f$ and \f$ {\bf B}_{eff}({\bf r}) \f$ on the fine grid FFT grid.
+        /** \param [in] potential      \f$ V_{eff}({\bf r}) \f$ and \f$ {\bf B}_{eff}({\bf r}) \f$ on the fine grid FFT grid.
          *  \param [in] step_function  Unit step function of the LAPW method.
          */
-        inline void prepare(Gvec_partition const& gvec_coarse_partition__,
-                            int                   num_mag_dims__,
-                            Potential&            potential__,
-                            Step_function const&  step_function__)
+        inline void prepare(Potential&           potential__,
+                            Step_function const& step_function__)
         {
             PROFILE("sirius::Local_operator::prepare");
 
             /* group effective fields into single vector */
-            std::vector<Periodic_function<double>*> veff_vec(num_mag_dims__ + 1);
+            std::vector<Periodic_function<double>*> veff_vec(param_.num_mag_dims() + 1);
             veff_vec[0] = potential__.effective_potential();
-            for (int j = 0; j < num_mag_dims__; j++) {
+            for (int j = 0; j < param_.num_mag_dims(); j++) {
                 veff_vec[1 + j] = potential__.effective_magnetic_field(j);
-            }
-
-            /* allocate only once */
-            if (!veff_vec_.size()) {
-                veff_vec_ = mdarray<double, 2>(fft_coarse_.local_size(), num_mag_dims__ + 1, memory_t::host, "Local_operator::veff_vec_");
-            }
-            
-            if (!theta_.size()) {
-                theta_ = mdarray<double, 1>(fft_coarse_.local_size(), memory_t::host, "Local_operator::theta_");
             }
 
             if (!buf_rg_.size()) {
                 buf_rg_ = mdarray<double_complex, 1>(fft_coarse_.local_size(), memory_t::host, "Local_operator::buf_rg_");
             }
 
-            auto& fft_dense = potential__.effective_potential()->fft();
-            auto& gvec_dense_partition = potential__.effective_potential()->gvec_partition();
+            auto& fft_dense    = potential__.effective_potential()->fft();
+            auto& gvec_dense_p = potential__.effective_potential()->gvec_partition();
 
-            mdarray<double_complex, 1> v_pw_fine(gvec_dense_partition.gvec().num_gvec());
-            /* low-frequency part of PW coefficients */
-            std::vector<double_complex> v_pw_coarse(gvec_coarse_partition__.gvec_count_fft());
-            /* prepare coarse-grained FFT for transformation */
-            fft_coarse_.prepare(gvec_coarse_partition__);
-            /* map components of effective potential to a corase grid */
-            for (int j = 0; j < num_mag_dims__ + 1; j++) {
+            fft_coarse_.prepare(gvec_coarse_p_);
+
+            Smooth_periodic_function<double> ftmp(fft_dense, gvec_dense_p);
+            for (int j = 0; j < param_.num_mag_dims() + 1; j++) {
                 for (int ir = 0; ir < fft_dense.local_size(); ir++) {
-                    fft_dense.buffer(ir) = veff_vec[j]->f_rg(ir) * step_function__.theta_r(ir);
+                    ftmp.f_rg(ir) = veff_vec[j]->f_rg(ir) * step_function__.theta_r(ir);
                 }
-                if (fft_dense.pu() == GPU) {
-                    fft_dense.buffer().copy<memory_t::host, memory_t::device>();
-                }
-                fft_dense.transform<-1>(&v_pw_fine[gvec_dense_partition.gvec_offset_fft()]);
-                fft_dense.comm().allgather(&v_pw_fine[0], gvec_dense_partition.gvec_offset_fft(),
-                                           gvec_dense_partition.gvec_count_fft());
+                ftmp.fft_transform(-1);
                 if (j == 0) {
-                    v0_[0] = v_pw_fine[0].real();
+                    v0_[0] = ftmp.f_0().real();
                 }
-                /* loop over low-frequency G-vectors */
-                for (int ig = 0; ig < gvec_coarse_partition__.gvec_count_fft(); ig++) {
-                    /* G-vector in fractional coordinates */
-                    auto G = gvec_coarse_partition__.gvec().gvec(ig + gvec_coarse_partition__.gvec_offset_fft());
-                    v_pw_coarse[ig] = v_pw_fine[gvec_dense_partition.gvec().index_by_gvec(G)];
+                /* loop over local set of coarse G-vectors */
+                #pragma omp parallel for schedule(static)
+                for (int igloc = 0; igloc < gvec_coarse_p_.gvec().count(); igloc++) {
+                    /* map from fine to coarse set of G-vectors */
+                    veff_vec_[j].f_pw_local(igloc) = ftmp.f_pw_local(gvec_dense_p.gvec().gvec_base_mapping(igloc));
                 }
+                /* transform to real space */
+                veff_vec_[j].fft_transform(1);
+            }
 
-                fft_coarse_.transform<1>(&v_pw_coarse[0]);
-                fft_coarse_.output(&veff_vec_(0, j));
-            }
-            
             /* map unit-step function */
-            for (int ig = 0; ig < gvec_coarse_partition__.gvec_count_fft(); ig++) {
-                /* G-vector in fractional coordinates */
-                auto G = gvec_coarse_partition__.gvec().gvec(ig + gvec_coarse_partition__.gvec_offset_fft());
-                v_pw_coarse[ig] = step_function__.theta_pw(gvec_dense_partition.gvec().index_by_gvec(G));
+            #pragma omp parallel for schedule(static)
+            for (int igloc = 0; igloc < gvec_coarse_p_.gvec().count(); igloc++) {
+                /* map from fine to coarse set of G-vectors */
+                theta_.f_pw_local(igloc) = step_function__.theta_pw(gvec_dense_p.gvec().gvec_base_mapping(igloc) +
+                                                                    gvec_dense_p.gvec().offset());
             }
-            fft_coarse_.transform<1>(&v_pw_coarse[0]);
-            fft_coarse_.output(&theta_(0));
+            theta_.fft_transform(1);
             /* release FFT driver */ 
             fft_coarse_.dismiss();
 
             if (fft_coarse_.pu() == GPU) {
-                veff_vec_.allocate(memory_t::device);
-                veff_vec_.copy<memory_t::host, memory_t::device>();
-                theta_.allocate(memory_t::device);
-                theta_.copy<memory_t::host, memory_t::device>();
+                for (int j = 0; j < param_.num_mag_dims() + 1; j++) {
+                    veff_vec_[j].f_rg().allocate(memory_t::device);
+                    veff_vec_[j].f_rg().copy<memory_t::host, memory_t::device>();
+                }
+                theta_.f_rg().allocate(memory_t::device);
+                theta_.f_rg().copy<memory_t::host, memory_t::device>();
                 buf_rg_.allocate(memory_t::device);
             }
 
-            if (param_->control().print_checksum_) {
-                double cs[] = {veff_vec_.checksum(), theta_.checksum()};
-                fft_coarse_.comm().allreduce(&cs[0], 2);
-                if (mpi_comm_world().rank() == 0) {
-                    print_checksum("veff_vec", cs[0]);
-                    print_checksum("theta", cs[1]);
-                }
-            }
+            //if (param_.control().print_checksum_) {
+            //    double cs[] = {veff_vec_.checksum(), theta_.checksum()};
+            //    fft_coarse_.comm().allreduce(&cs[0], 2);
+            //    if (mpi_comm_world().rank() == 0) {
+            //        print_checksum("veff_vec", cs[0]);
+            //        print_checksum("theta", cs[1]);
+            //    }
+            //}
         }
         
         /// Prepare the k-point dependent arrays.
-        inline void prepare(Gvec_partition const& gkvec_partition__)
+        inline void prepare(Gvec_partition const& gkvec_p__)
         {
             PROFILE("sirius::Local_operator::prepare");
 
-            int ngv_fft = gkvec_partition__.gvec_count_fft();
+            gkvec_p_ = &gkvec_p__;
+
+            int ngv_fft = gkvec_p__.gvec_count_fft();
             
             /* cache kinteic energy of plane-waves */
             if (static_cast<int>(pw_ekin_.size()) < ngv_fft) {
@@ -313,16 +295,16 @@ class Local_operator
             }
             for (int ig_loc = 0; ig_loc < ngv_fft; ig_loc++) {
                 /* global index of G-vector */
-                int ig = gkvec_partition__.gvec_offset_fft() + ig_loc;
+                int ig = gkvec_p__.gvec_offset_fft() + ig_loc;
                 /* get G+k in Cartesian coordinates */
-                auto gv = gkvec_partition__.gvec().gkvec_cart(ig);
+                auto gv = gkvec_p__.gvec().gkvec_cart(ig);
                 pw_ekin_[ig_loc] = 0.5 * dot(gv, gv);
             }
 
             if (static_cast<int>(vphi1_.size()) < ngv_fft) {
                 vphi1_ = mdarray<double_complex, 1>(ngv_fft, memory_t::host, "Local_operator::vphi1");
             }
-            if (gkvec_partition__.gvec().reduced() && static_cast<int>(vphi2_.size()) < ngv_fft) {
+            if (gkvec_p__.gvec().reduced() && static_cast<int>(vphi2_.size()) < ngv_fft) {
                 vphi2_ = mdarray<double_complex, 1>(ngv_fft, memory_t::host, "Local_operator::vphi2");
             }
 
@@ -330,22 +312,26 @@ class Local_operator
                 pw_ekin_.allocate(memory_t::device);
                 pw_ekin_.copy<memory_t::host, memory_t::device>();
                 vphi1_.allocate(memory_t::device);
-                if (gkvec_partition__.gvec().reduced()) {
+                if (gkvec_p__.gvec().reduced()) {
                     vphi2_.allocate(memory_t::device);
                 }
             }
         }
-
+        
+        /// Cleanup the local operator.
         inline void dismiss()
         {
             #ifdef __GPU
-            veff_vec_.deallocate_on_device();
+            for (int j = 0; j < param_.num_mag_dims() + 1; j++) {
+                veff_vec_[j].f_rg().deallocate_on_device();
+            }
             pw_ekin_.deallocate_on_device();
             vphi1_.deallocate_on_device();
             vphi2_.deallocate_on_device();
-            theta_.deallocate_on_device();
+            theta_.f_rg().deallocate_on_device();
             buf_rg_.deallocate_on_device();
             #endif
+            gkvec_p_ = nullptr;
         }
         
         /// Apply local part of Hamiltonian to wave-functions.
@@ -364,17 +350,30 @@ class Local_operator
         {
             PROFILE("sirius::Local_operator::apply_h");
 
-            auto& gkp = phi__.gkvec_partition();
-            
+            if (!gkvec_p_) {
+                TERMINATE("Local operator is not prepared");
+            }
+
             /* remap wave-functions */
             for (int ispn = 0; ispn < phi__.num_sc(); ispn++) {
 
-                phi__.pw_coeffs(ispn).remap_forward(fft_coarse_.pu(), gkp.gvec_fft_slab(), n__, idx0__);
+                phi__.pw_coeffs(ispn).remap_forward(fft_coarse_.pu(), gkvec_p_->gvec_fft_slab(), n__, idx0__);
 
-                hphi__.pw_coeffs(ispn).set_num_extra(CPU, gkp.gvec_count_fft(), n__, idx0__);
+                hphi__.pw_coeffs(ispn).set_num_extra(CPU, gkvec_p_->gvec_count_fft(), n__, idx0__);
                 hphi__.pw_coeffs(ispn).extra().zero<memory_t::host | memory_t::device>();
             }
             
+            #ifdef __GPU
+            mdarray<double*, 1> vptr(4, memory_t::host | memory_t::device);
+            vptr.zero();
+            if (fft_coarse_.pu() == GPU) {
+                for (int j = 0; j < param_.num_mag_dims() + 1; j++) {
+                    vptr[j] = veff_vec_[j].f_rg().at<GPU>();
+                }
+                vptr.copy<memory_t::host, memory_t::device>();
+            }
+            #endif
+
             /* transform one or two wave-functions to real space; the result of
              * transformation is stored in the FFT buffer */
             auto phi_to_r = [&](int i, int ispn, bool gamma = false)
@@ -410,21 +409,21 @@ class Local_operator
                         if (ispn_block < 2) {
                             #pragma omp parallel for schedule(static)
                             for (int ir = 0; ir < fft_coarse_.local_size(); ir++) {
-                                buf[ir] *= veff_vec_(ir, ispn_block);
+                                buf[ir] *= veff_vec_[ispn_block].f_rg(ir);
                             }
                         } else {
                             double pref = (ispn_block == 2) ? -1 : 1;
                             #pragma omp parallel for schedule(static)
                             for (int ir = 0; ir < fft_coarse_.local_size(); ir++) {
                                 /* multiply by Bx +/- i*By */
-                                buf[ir] *= double_complex(veff_vec_(ir, 2), pref * veff_vec_(ir, 3));
+                                buf[ir] *= double_complex(veff_vec_[2].f_rg(ir), pref * veff_vec_[3].f_rg(ir));
                             }
                         }
                         break;
                     }
                     case GPU: {
                         #ifdef __GPU
-                        mul_by_veff_gpu(ispn_block, fft_coarse_.local_size(), veff_vec_.at<GPU>(), buf.at<GPU>());
+                        mul_by_veff_gpu(ispn_block, fft_coarse_.local_size(), vptr.at<GPU>(), buf.at<GPU>());
                         #endif
                         break;
                     }
@@ -467,20 +466,20 @@ class Local_operator
                     #ifdef __GPU
                     double alpha = static_cast<double>(ekin);
                     if (gamma) {
-                        add_pw_ekin_gpu(gkp.gvec_count_fft(),
+                        add_pw_ekin_gpu(gkvec_p_->gvec_count_fft(),
                                         alpha,
                                         pw_ekin_.at<GPU>(),
                                         phi__.pw_coeffs(ispn).extra().at<GPU>(0, 2 * i),
                                         vphi1_.at<GPU>(),
                                         hphi__.pw_coeffs(ispn).extra().at<GPU>(0, 2 * i));
-                        add_pw_ekin_gpu(gkp.gvec_count_fft(),
+                        add_pw_ekin_gpu(gkvec_p_->gvec_count_fft(),
                                         alpha,
                                         pw_ekin_.at<GPU>(),
                                         phi__.pw_coeffs(ispn).extra().at<GPU>(0, 2 * i + 1),
                                         vphi2_.at<GPU>(),
                                         hphi__.pw_coeffs(ispn).extra().at<GPU>(0, 2 * i + 1));
                     } else {
-                        add_pw_ekin_gpu(gkp.gvec_count_fft(),
+                        add_pw_ekin_gpu(gkvec_p_->gvec_count_fft(),
                                         alpha,
                                         pw_ekin_.at<GPU>(),
                                         phi__.pw_coeffs(ispn).extra().at<GPU>(0, i),
@@ -503,13 +502,13 @@ class Local_operator
                 if (gamma) { /* update two wave functions */
                     if (ekin) {
                         #pragma omp parallel for schedule(static)
-                        for (int ig = 0; ig < gkp.gvec_count_fft(); ig++) {
+                        for (int ig = 0; ig < gkvec_p_->gvec_count_fft(); ig++) {
                             hphi__.pw_coeffs(ispn).extra()(ig, 2 * i)     += (phi__.pw_coeffs(ispn).extra()(ig, 2 * i)     * pw_ekin_[ig] + vphi1_[ig]);
                             hphi__.pw_coeffs(ispn).extra()(ig, 2 * i + 1) += (phi__.pw_coeffs(ispn).extra()(ig, 2 * i + 1) * pw_ekin_[ig] + vphi2_[ig]);
                         }
                     } else {
                         #pragma omp parallel for schedule(static)
-                        for (int ig = 0; ig < gkp.gvec_count_fft(); ig++) {
+                        for (int ig = 0; ig < gkvec_p_->gvec_count_fft(); ig++) {
                             hphi__.pw_coeffs(ispn).extra()(ig, 2 * i)     += vphi1_[ig];
                             hphi__.pw_coeffs(ispn).extra()(ig, 2 * i + 1) += vphi2_[ig];
                         }
@@ -517,12 +516,12 @@ class Local_operator
                 } else { /* update single wave function */
                     if (ekin) {
                         #pragma omp parallel for schedule(static)
-                        for (int ig = 0; ig < gkp.gvec_count_fft(); ig++) {
+                        for (int ig = 0; ig < gkvec_p_->gvec_count_fft(); ig++) {
                             hphi__.pw_coeffs(ispn).extra()(ig, i) += (phi__.pw_coeffs(ispn).extra()(ig, i) * pw_ekin_[ig] + vphi1_[ig]);
                         }
                     } else {
                         #pragma omp parallel for schedule(static)
-                        for (int ig = 0; ig < gkp.gvec_count_fft(); ig++) {
+                        for (int ig = 0; ig < gkvec_p_->gvec_count_fft(); ig++) {
                             hphi__.pw_coeffs(ispn).extra()(ig, i) += vphi1_[ig];
                         }
                     }
@@ -535,7 +534,7 @@ class Local_operator
             /* If G-vectors are reduced, wave-functions are real and we can transform two of them at once.
              * Non-collinear case is not treated here because nc wave-functions are complex and G+k vectors 
              * can't be reduced */
-            if (gkp.gvec().reduced()) {
+            if (gkvec_p_->gvec().reduced()) {
                 int npairs = num_wf_loc / 2;
                 /* Gamma-point case can only be non-magnetic or spin-collinear */
                 for (int i = 0; i < npairs; i++) {
@@ -675,12 +674,11 @@ class Local_operator
             }
 
             for (int ispn = 0; ispn < hphi__.num_sc(); ispn++) {
-                hphi__.pw_coeffs(ispn).remap_backward(param_->processing_unit(), gkp.gvec_fft_slab(), n__, idx0__);
+                hphi__.pw_coeffs(ispn).remap_backward(param_.processing_unit(), gkvec_p_->gvec_fft_slab(), n__, idx0__);
             }
         }
 
-        void apply_h_o(Gvec_partition const& gkvec_par__,
-                       int N__,
+        void apply_h_o(int N__,
                        int n__,
                        Wave_functions& phi__,
                        Wave_functions& hphi__,
@@ -688,9 +686,13 @@ class Local_operator
         {
             PROFILE("sirius::Local_operator::apply_h_o");
 
-            fft_coarse_.prepare(gkvec_par__);
+            if (!gkvec_p_) {
+                TERMINATE("Local operator is not prepared");
+            }
 
-            mdarray<double_complex, 1> buf_pw(gkvec_par__.gvec_count_fft());
+            fft_coarse_.prepare(*gkvec_p_);
+
+            mdarray<double_complex, 1> buf_pw(gkvec_p_->gvec_count_fft());
 
 #ifdef __GPU
             if (fft_coarse_.pu() == GPU) {
@@ -705,9 +707,9 @@ class Local_operator
             //    }
             //}
 
-             phi__.pw_coeffs(0).remap_forward(param_->processing_unit(), gkvec_par__.gvec_fft_slab(), n__, N__);
-            hphi__.pw_coeffs(0).set_num_extra(CPU, gkvec_par__.gvec_count_fft(), n__, N__);
-            ophi__.pw_coeffs(0).set_num_extra(CPU, gkvec_par__.gvec_count_fft(), n__, N__);
+             phi__.pw_coeffs(0).remap_forward(param_.processing_unit(), gkvec_p_->gvec_fft_slab(), n__, N__);
+            hphi__.pw_coeffs(0).set_num_extra(CPU, gkvec_p_->gvec_count_fft(), n__, N__);
+            ophi__.pw_coeffs(0).set_num_extra(CPU, gkvec_p_->gvec_count_fft(), n__, N__);
 
             for (int j = 0; j < phi__.pw_coeffs(0).spl_num_col().local_size(); j++) {
                 if (fft_coarse_.pu() == CPU) {
@@ -718,14 +720,14 @@ class Local_operator
                         /* save phi(r) */
                         buf_rg_[ir] = fft_coarse_.buffer(ir);
                         /* multiply by step function */
-                        fft_coarse_.buffer(ir) *= theta_[ir];
+                        fft_coarse_.buffer(ir) *= theta_.f_rg(ir);
                     }
                     /* phi(r) * Theta(r) -> ophi(G) */
                     fft_coarse_.transform<-1>(ophi__.pw_coeffs(0).extra().at<CPU>(0, j));
                     #pragma omp parallel for schedule(static)
                     for (int ir = 0; ir < fft_coarse_.local_size(); ir++) {
                         /* multiply be effective potential, which itself was multiplied by the step function in constructor */
-                        fft_coarse_.buffer(ir) = buf_rg_[ir] * veff_vec_(ir, 0);
+                        fft_coarse_.buffer(ir) = buf_rg_[ir] * veff_vec_[0].f_rg(ir);
                     }
                     /* phi(r) * Theta(r) * V(r) -> ophi(G) */
                     fft_coarse_.transform<-1>(hphi__.pw_coeffs(0).extra().at<CPU>(0, j));
@@ -737,11 +739,11 @@ class Local_operator
                     /* save phi(r) */
                     acc::copy(buf_rg_.at<GPU>(), fft_coarse_.buffer().at<GPU>(), fft_coarse_.local_size());
                     /* multiply by step function */
-                    scale_matrix_rows_gpu(fft_coarse_.local_size(), 1, fft_coarse_.buffer().at<GPU>(), theta_.at<GPU>());
+                    scale_matrix_rows_gpu(fft_coarse_.local_size(), 1, fft_coarse_.buffer().at<GPU>(), theta_.f_rg().at<GPU>());
                     /* phi(r) * Theta(r) -> ophi(G) */
                     fft_coarse_.transform<-1>(ophi__.pw_coeffs(0).extra().at<CPU>(0, j));
                     /* multiply by effective potential */
-                    scale_matrix_rows_gpu(fft_coarse_.local_size(), 1, buf_rg_.at<GPU>(), veff_vec_.at<GPU>());
+                    scale_matrix_rows_gpu(fft_coarse_.local_size(), 1, buf_rg_.at<GPU>(), veff_vec_[0].f_rg().at<GPU>());
                     /* copy phi(r) * Theta(r) * V(r) to GPU buffer */
                     acc::copy(fft_coarse_.buffer().at<GPU>(), buf_rg_.at<GPU>(), fft_coarse_.local_size());
                     /* phi(r) * Theta(r) * V(r) -> ophi(G) */
@@ -751,11 +753,11 @@ class Local_operator
 
                 /* add kinetic energy */
                 for (int x: {0, 1, 2}) {
-                    for (int igloc = 0; igloc < gkvec_par__.gvec_count_fft(); igloc++) {
+                    for (int igloc = 0; igloc < gkvec_p_->gvec_count_fft(); igloc++) {
                         /* global index of G-vector */
-                        int ig = gkvec_par__.gvec_offset_fft() + igloc;
+                        int ig = gkvec_p_->gvec_offset_fft() + igloc;
                         /* \hat P phi = phi(G+k) * (G+k), \hat P is momentum operator */ 
-                        buf_pw[igloc] = phi__.pw_coeffs(0).extra()(igloc, j) * gkvec_par__.gvec().gkvec_cart(ig)[x];
+                        buf_pw[igloc] = phi__.pw_coeffs(0).extra()(igloc, j) * gkvec_p_->gvec().gkvec_cart(ig)[x];
                     }
                     /* transform Cartesian component of wave-function gradient to real space */
                     fft_coarse_.transform<1>(&buf_pw[0]);
@@ -764,29 +766,29 @@ class Local_operator
                             #pragma omp parallel for schedule(static)
                             for (int ir = 0; ir < fft_coarse_.local_size(); ir++) {
                                 /* multiply be step function */
-                                fft_coarse_.buffer(ir) *= theta_[ir];
+                                fft_coarse_.buffer(ir) *= theta_.f_rg(ir);
                             }
                             break;
                         }
                         case GPU: {
                             #ifdef __GPU
                             /* multiply by step function */
-                            scale_matrix_rows_gpu(fft_coarse_.local_size(), 1, fft_coarse_.buffer().at<GPU>(), theta_.at<GPU>());
+                            scale_matrix_rows_gpu(fft_coarse_.local_size(), 1, fft_coarse_.buffer().at<GPU>(), theta_.f_rg().at<GPU>());
                             #endif
                             break;
                         }
                     }
                     /* transform back to PW domain */
                     fft_coarse_.transform<-1>(&buf_pw[0]);
-                    for (int igloc = 0; igloc < gkvec_par__.gvec_count_fft(); igloc++) {
-                        int ig = gkvec_par__.gvec_offset_fft() + igloc;
-                        hphi__.pw_coeffs(0).extra()(igloc, j) += 0.5 * buf_pw[igloc] * gkvec_par__.gvec().gkvec_cart(ig)[x];
+                    for (int igloc = 0; igloc < gkvec_p_->gvec_count_fft(); igloc++) {
+                        int ig = gkvec_p_->gvec_offset_fft() + igloc;
+                        hphi__.pw_coeffs(0).extra()(igloc, j) += 0.5 * buf_pw[igloc] * gkvec_p_->gvec().gkvec_cart(ig)[x];
                     }
                 }
             }
 
-            hphi__.pw_coeffs(0).remap_backward(param_->processing_unit(), gkvec_par__.gvec_fft_slab(), n__, N__);
-            ophi__.pw_coeffs(0).remap_backward(param_->processing_unit(), gkvec_par__.gvec_fft_slab(), n__, N__);
+            hphi__.pw_coeffs(0).remap_backward(param_.processing_unit(), gkvec_p_->gvec_fft_slab(), n__, N__);
+            ophi__.pw_coeffs(0).remap_backward(param_.processing_unit(), gkvec_p_->gvec_fft_slab(), n__, N__);
 
             fft_coarse_.dismiss();
 
@@ -806,15 +808,18 @@ class Local_operator
             //}
         }
 
-        void apply_o(Gvec_partition const& gkvec_par__,
-                     int N__,
+        void apply_o(int N__,
                      int n__,
                      Wave_functions& phi__,
                      Wave_functions& ophi__) const
         {
             PROFILE("sirius::Local_operator::apply_o");
 
-            fft_coarse_.prepare(gkvec_par__);
+            if (!gkvec_p_) {
+                TERMINATE("Local operator is not prepared");
+            }
+
+            fft_coarse_.prepare(*gkvec_p_);
 
 #ifdef __GPU
             if (fft_coarse_.pu() == GPU) {
@@ -822,21 +827,21 @@ class Local_operator
             }
 #endif
             
-            if (param_->control().print_checksum_) {
-                auto cs = phi__.checksum_pw(param_->processing_unit(), 0, 0, N__+ n__);
+            if (param_.control().print_checksum_) {
+                auto cs = phi__.checksum_pw(param_.processing_unit(), 0, 0, N__+ n__);
                 if (phi__.comm().rank() == 0) {
                     print_checksum("phi_[0, N + n)", cs);
                 }
                 if (N__ != 0) {
-                    auto cs1 = ophi__.checksum_pw(param_->processing_unit(), 0, 0, N__);
+                    auto cs1 = ophi__.checksum_pw(param_.processing_unit(), 0, 0, N__);
                     if (phi__.comm().rank() == 0) {
                         print_checksum("ophi_[0, N)", cs1);
                     }
                 }
             }
 
-             phi__.pw_coeffs(0).remap_forward(param_->processing_unit(), gkvec_par__.gvec_fft_slab(), n__, N__);
-            ophi__.pw_coeffs(0).set_num_extra(CPU, gkvec_par__.gvec_count_fft(), n__, N__);
+             phi__.pw_coeffs(0).remap_forward(param_.processing_unit(), gkvec_p_->gvec_fft_slab(), n__, N__);
+            ophi__.pw_coeffs(0).set_num_extra(CPU, gkvec_p_->gvec_count_fft(), n__, N__);
 
             for (int j = 0; j < phi__.pw_coeffs(0).spl_num_col().local_size(); j++) {
                 if (fft_coarse_.pu() == CPU) {
@@ -845,7 +850,7 @@ class Local_operator
                     #pragma omp parallel for schedule(static)
                     for (int ir = 0; ir < fft_coarse_.local_size(); ir++) {
                         /* multiply by step function */
-                        fft_coarse_.buffer(ir) *= theta_[ir];
+                        fft_coarse_.buffer(ir) *= theta_.f_rg(ir);
                     }
                     /* phi(r) * Theta(r) -> ophi(G) */
                     fft_coarse_.transform<-1>(ophi__.pw_coeffs(0).extra().at<CPU>(0, j));
@@ -854,7 +859,7 @@ class Local_operator
                     /* phi(G) -> phi(r) */
                     fft_coarse_.transform<1>(phi__.pw_coeffs(0).extra().at<CPU>(0, j));
                     /* multiply by step function */
-                    scale_matrix_rows_gpu(fft_coarse_.local_size(), 1, fft_coarse_.buffer().at<GPU>(), theta_.at<GPU>());
+                    scale_matrix_rows_gpu(fft_coarse_.local_size(), 1, fft_coarse_.buffer().at<GPU>(), theta_.f_rg().at<GPU>());
                     /* phi(r) * Theta(r) -> ophi(G) */
                     fft_coarse_.transform<-1>(ophi__.pw_coeffs(0).extra().at<CPU>(0, j));
 #else
@@ -863,7 +868,7 @@ class Local_operator
                 }
             }
 
-            ophi__.pw_coeffs(0).remap_backward(param_->processing_unit(), gkvec_par__.gvec_fft_slab(), n__, N__);
+            ophi__.pw_coeffs(0).remap_backward(param_.processing_unit(), gkvec_p_->gvec_fft_slab(), n__, N__);
 
             fft_coarse_.dismiss();
 
@@ -873,8 +878,8 @@ class Local_operator
             }
 #endif
             
-            if (param_->control().print_checksum_) {
-                auto cs = ophi__.checksum_pw(param_->processing_unit(), 0, 0, N__ + n__);
+            if (param_.control().print_checksum_) {
+                auto cs = ophi__.checksum_pw(param_.processing_unit(), 0, 0, N__ + n__);
                 if (phi__.comm().rank() == 0) {
                     print_checksum("ophi_istl_[0, N + n)", cs);
                 }
@@ -885,73 +890,70 @@ class Local_operator
         /** In case of collinear magnetism only Bz is applied to <tt>phi</tt> and stored in the first component of
          *  <tt>bphi</tt>. In case of non-collinear magnetims Bx-iBy is also applied and stored in the third
          *  component of <tt>bphi</tt>. The second component of <tt>bphi</tt> is used to store -Bz|phi>. */
-        void apply_b(Gvec_partition const& gkvec_par__,
-                     int N__,
-                     int n__,
-                     Wave_functions& phi__,
+        void apply_b(int                          N__,
+                     int                          n__,
+                     Wave_functions&              phi__,
                      std::vector<Wave_functions>& bphi__)
         {
             PROFILE("sirius::Local_operator::apply_b");
 
-            STOP();
+            fft_coarse_.prepare(*gkvec_p_);
 
-            //fft_coarse_.prepare(gkvec_par__);
+            /* components of H|psi> to which H is applied */
+            std::vector<int> iv(1, 0);
+            if (bphi__.size() == 3) {
+                iv.push_back(2);
+            }
 
-            ///* components of H|psi> to which H is applied */
-            //std::vector<int> iv(1, 0);
-            //if (bphi__.size() == 3) {
-            //    iv.push_back(2);
-            //}
+            phi__.pw_coeffs(0).remap_forward(param_.processing_unit(), gkvec_p_->gvec_fft_slab(), n__, N__);
+            for (int i: iv) {
+                bphi__[i].pw_coeffs(0).set_num_extra(CPU, gkvec_p_->gvec_count_fft(), n__, N__);
+            }
 
-            //phi__.pw_coeffs().remap_forward(param_->processing_unit(), gkvec_par__.gvec_fft_slab(), n__, N__);
-            //for (int i: iv) {
-            //    bphi__[i].pw_coeffs().set_num_extra(CPU, gkvec_par__.gvec_count_fft(), n__, N__);
-            //}
+            for (int j = 0; j < phi__.pw_coeffs(0).spl_num_col().local_size(); j++) {
+                if (fft_coarse_.pu() == CPU) {
+                    /* phi(G) -> phi(r) */
+                    fft_coarse_.transform<1>(phi__.pw_coeffs(0).extra().at<CPU>(0, j));
+                    /* save phi(r) */
+                    if (bphi__.size() == 3) {
+                        fft_coarse_.output(buf_rg_.at<CPU>());
+                    }
+                    #pragma omp parallel for schedule(static)
+                    for (int ir = 0; ir < fft_coarse_.local_size(); ir++) {
+                        /* multiply by Bz */
+                        fft_coarse_.buffer(ir) *= veff_vec_[1].f_rg(ir);
+                    }
+                    /* phi(r) * Bz(r) -> bphi[0](G) */
+                    fft_coarse_.transform<-1>(bphi__[0].pw_coeffs(0).extra().at<CPU>(0, j));
+                    /* non-collinear case */
+                    if (bphi__.size() == 3) {
+                        #pragma omp parallel for schedule(static)
+                        for (int ir = 0; ir < fft_coarse_.local_size(); ir++) {
+                            /* multiply by Bx-iBy */
+                            fft_coarse_.buffer(ir) = buf_rg_[ir] * double_complex(veff_vec_[2].f_rg(ir), -veff_vec_[3].f_rg(ir));
+                        }
+                        /* phi(r) * (Bx(r)-iBy(r)) -> bphi[2](G) */
+                        fft_coarse_.transform<-1>(bphi__[2].pw_coeffs(0).extra().at<CPU>(0, j));
+                    }
+                } else {
+                    #ifdef __GPU
+                    /* phi(G) -> phi(r) */
+                    fft_coarse_.transform<1>(phi__.pw_coeffs(0).extra().at<CPU>(0, j));
+                    /* multiply by Bz */
+                    scale_matrix_rows_gpu(fft_coarse_.local_size(), 1, fft_coarse_.buffer().at<GPU>(), veff_vec_[1].f_rg().at<GPU>());
+                    /* phi(r) * Bz(r) -> bphi[0](G) */
+                    fft_coarse_.transform<-1>(bphi__[0].pw_coeffs(0).extra().at<CPU>(0, j));
+                    #else
+                    TERMINATE_NO_GPU
+                    #endif
+                }
+            }
 
-            //for (int j = 0; j < phi__.pw_coeffs().spl_num_col().local_size(); j++) {
-            //    if (fft_coarse_.pu() == CPU) {
-            //        /* phi(G) -> phi(r) */
-            //        fft_coarse_.transform<1>(phi__.pw_coeffs().extra().at<CPU>(0, j));
-            //        /* save phi(r) */
-            //        if (bphi__.size() == 3) {
-            //            fft_coarse_.output(buf_rg_.at<CPU>());
-            //        }
-            //        #pragma omp parallel for schedule(static)
-            //        for (int ir = 0; ir < fft_coarse_.local_size(); ir++) {
-            //            /* multiply by Bz */
-            //            fft_coarse_.buffer(ir) *= veff_vec_(ir, 1);
-            //        }
-            //        /* phi(r) * Bz(r) -> bphi[0](G) */
-            //        fft_coarse_.transform<-1>(bphi__[0].pw_coeffs().extra().at<CPU>(0, j));
-            //        /* non-collinear case */
-            //        if (bphi__.size() == 3) {
-            //            #pragma omp parallel for schedule(static)
-            //            for (int ir = 0; ir < fft_coarse_.local_size(); ir++) {
-            //                /* multiply by Bx-iBy */
-            //                fft_coarse_.buffer(ir) = buf_rg_[ir] * double_complex(veff_vec_(ir, 2), -veff_vec_(ir, 3));
-            //            }
-            //            /* phi(r) * (Bx(r)-iBy(r)) -> bphi[2](G) */
-            //            fft_coarse_.transform<-1>(bphi__[2].pw_coeffs().extra().at<CPU>(0, j));
-            //        }
-            //    } else {
-            //        #ifdef __GPU
-            //        /* phi(G) -> phi(r) */
-            //        fft_coarse_.transform<1>(phi__.pw_coeffs().extra().at<CPU>(0, j));
-            //        /* multiply by Bz */
-            //        scale_matrix_rows_gpu(fft_coarse_.local_size(), 1, fft_coarse_.buffer().at<GPU>(), veff_vec_.at<GPU>(0, 1));
-            //        /* phi(r) * Bz(r) -> bphi[0](G) */
-            //        fft_coarse_.transform<-1>(bphi__[0].pw_coeffs().extra().at<CPU>(0, j));
-            //        #else
-            //        TERMINATE_NO_GPU
-            //        #endif
-            //    }
-            //}
+            for (int i: iv) {
+                bphi__[i].pw_coeffs(0).remap_backward(param_.processing_unit(), gkvec_p_->gvec_fft_slab(), n__, N__);
+            }
 
-            //for (int i: iv) {
-            //    bphi__[i].pw_coeffs().remap_backward(param_->processing_unit(), gkvec_par__.gvec_fft_slab(), n__, N__);
-            //}
-
-            //fft_coarse_.dismiss();
+            fft_coarse_.dismiss();
         }
 
         inline double v0(int ispn__) const

@@ -57,9 +57,6 @@ class Smooth_periodic_function
         /// Storage of the PW coefficients for the FFT transformation.
         mdarray<double_complex, 1> f_pw_fft_;
 
-        /// Distribution of G-vectors inside FFT slab.
-        //block_data_descriptor gvec_fft_slab_;
-
         /// Gather plane-wave coefficients for the subsequent FFT call.
         inline void gather_f_pw_fft()
         {
@@ -92,12 +89,6 @@ class Smooth_periodic_function
             if (rank != gvecp_->gvec().comm().rank()) {
                 TERMINATE("wrong order of MPI ranks");
             }
-
-            //gvec_fft_slab_ = block_data_descriptor(gvecp_->comm_ortho_fft().size());
-            //for (int i = 0; i < gvecp_->comm_ortho_fft().size(); i++) {
-            //    gvec_fft_slab_.counts[i] = gvecp_->gvec().gvec_count(fft_->comm().rank() * gvecp_->comm_ortho_fft().size() + i);
-            //}
-            //gvec_fft_slab_.calc_offsets();
         }
 
         inline void zero()
@@ -115,6 +106,16 @@ class Smooth_periodic_function
             return f_rg_(ir__);
         }
 
+        inline mdarray<T, 1>& f_rg()
+        {
+            return f_rg_;
+        }
+
+        inline mdarray<T, 1> const& f_rg() const
+        {
+            return f_rg_;
+        }
+
         inline double_complex& f_pw_local(int ig__)
         {
             return f_pw_local_(ig__);
@@ -130,6 +131,7 @@ class Smooth_periodic_function
             return f_pw_fft_(ig__);
         }
 
+        /// Return plane-wave coefficient for G=0 component.
         inline double_complex f_0() const
         {
             double_complex z;
