@@ -35,6 +35,7 @@
 #include "xc_functional.h"
 #include "simulation_parameters.h"
 #include "sht.h"
+
 namespace sirius {
 
 /// A helper class to establish various index mappings for the atomic radial functions.
@@ -841,6 +842,7 @@ class Atom_type
         return atom_id_[idx];
     }
 
+    /// Add global index of atom to this atom type.
     inline void add_atom_id(int atom_id__)
     {
         atom_id_.push_back(atom_id__);

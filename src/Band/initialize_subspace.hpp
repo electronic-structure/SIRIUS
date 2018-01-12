@@ -22,21 +22,23 @@ inline void Band::initialize_subspace(K_point_set& kset__, Hamiltonian& H__) con
         }
     }
 
-    H__.local_op().prepare(ctx_.gvec_coarse_partition(), ctx_.num_mag_dims(), H__.potential());
+    H__.local_op().prepare(H__.potential());
+    if (ctx_.gamma_point() && (ctx_.so_correction() == false)) {
+        H__.prepare<double>();
+    } else {
+        H__.prepare<double_complex>();
+    }
 
     for (int ikloc = 0; ikloc < kset__.spl_num_kpoints().local_size(); ikloc++) {
         int ik  = kset__.spl_num_kpoints(ikloc);
         auto kp = kset__[ik];
         if (ctx_.gamma_point() && (ctx_.so_correction() == false)) {
-            H__.create_d_and_q_operator<double>();
-            H__.initialize_D_and_Q_operators<double>();
             initialize_subspace<double>(kp, H__, N);
         } else {
-            H__.create_d_and_q_operator<double_complex>();
-            H__.initialize_D_and_Q_operators<double_complex>();
             initialize_subspace<double_complex>(kp, H__, N);
         }
     }
+    H__.dismiss();
     H__.local_op().dismiss();
 
     /* reset the energies for the iterative solver to do at least two steps */

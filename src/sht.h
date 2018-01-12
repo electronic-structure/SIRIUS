@@ -1177,9 +1177,13 @@ class SHT // TODO: better name
         */
         static void dRlm_dr(int lmax__, vector3d<double>& r__, mdarray<double, 2>& data__)
         {
+            /* get spherical coordinates of the Cartesian vector */
             auto vrs = spherical_coordinates(r__);
 
-            assert(vrs[0] > 1e-12);
+            if (vrs[0] < 1e-12) {
+                data__.zero();
+                return;
+            }
 
             int lmmax = (lmax__ + 1) * (lmax__ + 1);
 

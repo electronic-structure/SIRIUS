@@ -30,7 +30,6 @@
 #include "step_function.h"
 #include "version.h"
 #include "augmentation_operator.h"
-#include "Beta_projectors/beta_projector_chunks.h"
 
 #ifdef __GPU
 extern "C" void generate_phase_factors_gpu(int num_gvec_loc__,
@@ -54,8 +53,6 @@ class Simulation_context: public Simulation_context_base
         std::unique_ptr<Step_function> step_function_;
 
         std::vector<Augmentation_operator> augmentation_op_;
-
-        std::unique_ptr<Beta_projector_chunks> beta_projector_chunks_;
 
         /* copy constructor is forbidden */
         Simulation_context(Simulation_context const&) = delete;
@@ -102,11 +99,6 @@ class Simulation_context: public Simulation_context_base
                         MEMORY_USAGE_INFO();
                     }
                 }
-
-                beta_projector_chunks_ = std::unique_ptr<Beta_projector_chunks>(new Beta_projector_chunks(unit_cell()));
-                if (control().verbosity_ > 1 && comm().rank() == 0) {
-                    beta_projector_chunks_->print_info();
-                }
             }
 
             if (comm().rank() == 0 && control().print_memory_usage_) {
@@ -123,12 +115,6 @@ class Simulation_context: public Simulation_context_base
         {
             return augmentation_op_[iat__];
         }
-
-        inline Beta_projector_chunks const& beta_projector_chunks() const
-        {
-            return *beta_projector_chunks_;
-        }
-
 };
 
 } // namespace

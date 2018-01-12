@@ -396,6 +396,8 @@ inline void Band::diag_fv_davidson(K_point* kp, Hamiltonian& H__) const
 {
     PROFILE("sirius::Band::diag_fv_davidson");
 
+    H__.local_op().prepare(kp->gkvec_partition());
+
     get_singular_components(kp, H__);
 
     auto h_diag = H__.get_h_diag(kp, H__.local_op().v0(0), ctx_.step_function().theta_pw(0).real());
@@ -606,13 +608,13 @@ inline void Band::diag_fv_davidson(K_point* kp, Hamiltonian& H__) const
     kp->comm().barrier();
 }
 
-inline void Band::diag_sv(K_point* kp,
+inline void Band::diag_sv(K_point*     kp__,
                           Hamiltonian& hamiltonian__) const
 {
     PROFILE("sirius::Band::diag_sv");
 
     if (!ctx_.need_sv()) {
-        kp->bypass_sv();
+        kp__->bypass_sv();
         return;
     }
 
@@ -621,7 +623,7 @@ inline void Band::diag_sv(K_point* kp,
     /* product of the second-variational Hamiltonian and a first-variational wave-function */
     std::vector<Wave_functions> hpsi;
     for (int i = 0; i < ctx_.num_mag_comp(); i++) {
-        hpsi.push_back(std::move(Wave_functions(kp->gkvec_partition(),
+        hpsi.push_back(std::move(Wave_functions(kp__->gkvec_partition(),
                                                 unit_cell_.num_atoms(),
                                                 [this](int ia)
                                                 {
@@ -632,7 +634,7 @@ inline void Band::diag_sv(K_point* kp,
 
     /* compute product of magnetic field and wave-function */
     if (ctx_.num_spins() == 2) {
-        hamiltonian__.apply_magnetic_field(kp->fv_states(), kp->gkvec(), hpsi);
+        hamiltonian__.apply_magnetic_field(kp__, kp__->fv_states(), hpsi);
     }
     else {
         hpsi[0].pw_coeffs(0).prime().zero();
@@ -661,8 +663,8 @@ inline void Band::diag_sv(K_point* kp,
 
 #ifdef __GPU
     if (ctx_.processing_unit() == GPU) {
-        kp->fv_states().allocate_on_device(0);
-        kp->fv_states().copy_to_device(0, 0, nfv);
+        kp__->fv_states().allocate_on_device(0);
+        kp__->fv_states().copy_to_device(0, 0, nfv);
         for (int i = 0; i < ctx_.num_mag_comp(); i++) {
             hpsi[i].allocate_on_device(0);
             hpsi[i].copy_to_device(0, 0, nfv);
@@ -687,39 +689,39 @@ inline void Band::diag_sv(K_point* kp,
 
     if (ctx_.num_mag_dims() != 3) {
         dmatrix<double_complex> h(nfv, nfv, ctx_.blacs_grid(), bs, bs);
-        if (kp->num_ranks() == 1 && ctx_.processing_unit() == GPU) {
+        if (kp__->num_ranks() == 1 && ctx_.processing_unit() == GPU) {
             h.allocate(memory_t::device);
         }
         /* perform one or two consecutive diagonalizations */
         for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
 
             /* compute <wf_i | h * wf_j> */
-            inner(ctx_.processing_unit(), 0, kp->fv_states(), 0, nfv, hpsi[ispn], 0, nfv, h, 0, 0);
+            inner(ctx_.processing_unit(), 0, kp__->fv_states(), 0, nfv, hpsi[ispn], 0, nfv, h, 0, 0);
             
             for (int i = 0; i < nfv; i++) {
-                h.add(i, i, kp->fv_eigen_value(i));
+                h.add(i, i, kp__->fv_eigen_value(i));
             }
             //#ifdef __PRINT_OBJECT_CHECKSUM
             //auto z1 = h.checksum();
             //DUMP("checksum(h): %18.10f %18.10f", std::real(z1), std::imag(z1));
             //#endif
             sddk::timer t1("sirius::Band::diag_sv|stdevp");
-            std_solver->solve(nfv, nfv, h, &band_energies[ispn * nfv], kp->sv_eigen_vectors(ispn));
+            std_solver->solve(nfv, nfv, h, &band_energies[ispn * nfv], kp__->sv_eigen_vectors(ispn));
         }
     } else {
         int nb = ctx_.num_bands();
         dmatrix<double_complex> h(nb, nb, ctx_.blacs_grid(), bs, bs);
-        if (kp->num_ranks() == 1 && ctx_.processing_unit() == GPU) {
+        if (kp__->num_ranks() == 1 && ctx_.processing_unit() == GPU) {
             h.allocate(memory_t::device);
         }
         /* compute <wf_i | h * wf_j> for up-up block */
-        inner(ctx_.processing_unit(), 0, kp->fv_states(), 0, nfv, hpsi[0], 0, nfv, h, 0, 0);
+        inner(ctx_.processing_unit(), 0, kp__->fv_states(), 0, nfv, hpsi[0], 0, nfv, h, 0, 0);
         /* compute <wf_i | h * wf_j> for dn-dn block */
-        inner(ctx_.processing_unit(), 0, kp->fv_states(), 0, nfv, hpsi[1], 0, nfv, h, nfv, nfv);
+        inner(ctx_.processing_unit(), 0, kp__->fv_states(), 0, nfv, hpsi[1], 0, nfv, h, nfv, nfv);
         /* compute <wf_i | h * wf_j> for up-dn block */
-        inner(ctx_.processing_unit(), 0, kp->fv_states(), 0, nfv, hpsi[2], 0, nfv, h, 0, nfv);
+        inner(ctx_.processing_unit(), 0, kp__->fv_states(), 0, nfv, hpsi[2], 0, nfv, h, 0, nfv);
 
-        if (kp->comm().size() == 1) {
+        if (kp__->comm().size() == 1) {
             for (int i = 0; i < nfv; i++) {
                 for (int j = 0; j < nfv; j++) {
                     h(nfv + j, i) = std::conj(h(i, nfv + j));
@@ -730,25 +732,25 @@ inline void Band::diag_sv(K_point* kp,
         }
 
         for (int i = 0; i < nfv; i++) {
-            h.add(i,       i,       kp->fv_eigen_value(i));
-            h.add(i + nfv, i + nfv, kp->fv_eigen_value(i));
+            h.add(i,       i,       kp__->fv_eigen_value(i));
+            h.add(i + nfv, i + nfv, kp__->fv_eigen_value(i));
         }
         //#ifdef __PRINT_OBJECT_CHECKSUM
         //auto z1 = h.checksum();
         //DUMP("checksum(h): %18.10f %18.10f", std::real(z1), std::imag(z1));
         //#endif
         sddk::timer t1("sirius::Band::diag_sv|stdevp");
-        std_solver->solve(nb, nb, h, &band_energies[0], kp->sv_eigen_vectors(0));
+        std_solver->solve(nb, nb, h, &band_energies[0], kp__->sv_eigen_vectors(0));
     }
 
 #ifdef __GPU
     if (ctx_.processing_unit() == GPU) {
-        kp->fv_states().deallocate_on_device(0);
+        kp__->fv_states().deallocate_on_device(0);
         for (int i = 0; i < ctx_.num_mag_comp(); i++) {
             hpsi[i].deallocate_on_device(0);
         }
     }
 #endif
  
-    kp->set_band_energies(&band_energies[0]);
+    kp__->set_band_energies(&band_energies[0]);
 }

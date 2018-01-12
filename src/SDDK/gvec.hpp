@@ -561,8 +561,30 @@ class Gvec
     {
         auto v  = g1__ - g2__;
         int idx = index_by_gvec(v);
-        assert(idx >= 0 && idx < num_gvec());
+        assert(idx >= 0);
+        assert(idx < num_gvec());
         return idx;
+    }
+
+    inline std::pair<int, bool> index_g12_safe(vector3d<int> const& g1__, vector3d<int> const& g2__) const
+    {
+        auto v  = g1__ - g2__;
+        int idx = index_by_gvec(v);
+        bool conj{false};
+        if (idx < 0) {
+            idx = index_by_gvec(v * (-1));
+            conj = true;
+        }
+        if (idx < 0 || idx >= num_gvec()) {
+            std::stringstream s;
+            s << "wrong index of G-G' vector" << std::endl
+              << "  G: " << g1__ << std::endl
+              << "  G': " << g2__ << std::endl
+              << "  G - G': " << v << std::endl
+              << " idx: " << idx;
+            TERMINATE(s);
+        }
+        return std::make_pair(idx, conj);
     }
 
     inline int index_g12_safe(int ig1__, int ig2__) const

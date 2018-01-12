@@ -27,7 +27,7 @@
 
 #include "periodic_function.h"
 #include "k_point_set.h"
-#include "local_operator.h"
+#include "Hamiltonian/local_operator.hpp"
 #include "non_local_operator.h"
 #include "hubbard.hpp"
 #include "Hamiltonian.h"
@@ -153,7 +153,7 @@ class Band
             splindex<block_cyclic> spl_col(N__, mtrx__.blacs_grid().num_ranks_col(), mtrx__.blacs_grid().rank_col(),
                                            mtrx__.bs_col());
 
-#pragma omp parallel for schedule(static)
+            #pragma omp parallel for schedule(static)
             for (int i = 0; i < spl_col.local_size(); i++) {
                 std::copy(&mtrx_old__(0, i), &mtrx_old__(0, i) + spl_row.local_size(), &mtrx__(0, i));
             }
@@ -179,7 +179,7 @@ class Band
         /* restore lower part */
         if (N__ > 0) {
             if (mtrx__.blacs_grid().comm().size() == 1) {
-#pragma omp parallel for
+                #pragma omp parallel for
                 for (int i = 0; i < N__; i++) {
                     for (int j = N__; j < N__ + n__; j++) {
                         mtrx__(j, i) = type_wrapper<T>::bypass(std::conj(mtrx__(i, j)));
@@ -217,7 +217,7 @@ class Band
             splindex<block_cyclic> spl_col(N__ + n__, mtrx__.blacs_grid().num_ranks_col(),
                                            mtrx__.blacs_grid().rank_col(), mtrx__.bs_col());
 
-#pragma omp parallel for schedule(static)
+            #pragma omp parallel for schedule(static)
             for (int i = 0; i < spl_col.local_size(); i++) {
                 std::copy(&mtrx__(0, i), &mtrx__(0, i) + spl_row.local_size(), &mtrx_old__(0, i));
             }
@@ -226,16 +226,12 @@ class Band
 
     /// Diagonalize a pseudo-potential Hamiltonian.
     template <typename T>
-    int diag_pseudo_potential(K_point* kp__, Hamiltonian& H_) const
+    int diag_pseudo_potential(K_point* kp__, Hamiltonian& H__) const
     {
         PROFILE("sirius::Band::diag_pseudo_potential");
 
-        H_.local_op().prepare(kp__->gkvec_partition());
+        H__.local_op().prepare(kp__->gkvec_partition());
         ctx_.fft_coarse().prepare(kp__->gkvec_partition());
-        H_.create_d_and_q_operator<T>();
-        H_.initialize_D_and_Q_operators<T>();
-        /* D_operator<T> d_op(ctx_, kp__->beta_projectors()); */
-        /* Q_operator<T> q_op(ctx_, kp__->beta_projectors()); */
 
         int niter{0};
 
@@ -243,17 +239,17 @@ class Band
         if (itso.type_ == "exact") {
             if (ctx_.num_mag_dims() != 3) {
                 for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-                    diag_pseudo_potential_exact<T>(kp__, ispn, H_);
+                    diag_pseudo_potential_exact<double_complex>(kp__, ispn, H__);
                 }
             } else {
                 STOP();
             }
         } else if (itso.type_ == "davidson") {
-            niter = diag_pseudo_potential_davidson<T>(kp__, H_);
+            niter = diag_pseudo_potential_davidson<T>(kp__, H__);
         } else if (itso.type_ == "rmm-diis") {
             if (ctx_.num_mag_dims() != 3) {
                 for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-                    diag_pseudo_potential_rmm_diis<T>(kp__, ispn, H_);
+                    diag_pseudo_potential_rmm_diis<T>(kp__, ispn, H__);
                 }
             } else {
                 STOP();
@@ -262,7 +258,7 @@ class Band
             P_operator<T> p_op(ctx_, kp__->p_mtrx());
             if (ctx_.num_mag_dims() != 3) {
                 for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-                    diag_pseudo_potential_chebyshev<T>(kp__, ispn, H_, p_op);
+                    diag_pseudo_potential_chebyshev<T>(kp__, ispn, H__, p_op);
                 }
             } else {
                 STOP();

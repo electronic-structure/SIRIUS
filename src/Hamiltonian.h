@@ -1,10 +1,12 @@
 #ifndef __HAMILTONIAN_H__
 #define __HAMILTONIAN_H__
+
+#include <typeinfo>
 #include "simulation_context.h"
 #include "hubbard.hpp"
 #include "potential.h"
 #include "k_point.h"
-#include "local_operator.h"
+#include "Hamiltonian/local_operator.hpp"
 #include "non_local_operator.h"
 
 namespace sirius {
@@ -34,6 +36,8 @@ class Hamiltonian
 
     /// Q operator
     void* q_op_{nullptr};
+
+    std::type_info const* type_of_T_{nullptr};
 
   public:
     Hubbard_potential& U() const
@@ -70,34 +74,37 @@ class Hamiltonian
         gaunt_coefs_ = std::unique_ptr<Gaunt_coefficients<double_complex>>(new Gaunt_coefficients<double_complex>(
             ctx_.lmax_apw(), ctx_.lmax_pot(), ctx_.lmax_apw(), SHT::gaunt_hybrid));
 
-        local_op_ = std::unique_ptr<Local_operator>(new Local_operator(ctx_, ctx_.fft_coarse()));
+        local_op_ = std::unique_ptr<Local_operator>(new Local_operator(ctx_, ctx_.fft_coarse(), ctx_.gvec_coarse_partition()));
 
         if (ctx_.hubbard_correction()) {
             U_ = std::unique_ptr<Hubbard_potential>(new Hubbard_potential(ctx_));
         }
-
-        // if (ctx_.gamma_point() && (ctx_.num_mag_dims() != 3)) {
-        //   create_d_and_q_operator<double>();
-        // } else {
-        //   create_d_and_q_operator<double_complex>();
-        // }
     }
-
+    
+    /// Prepare k-point independent operators.
     template <typename T>
-    inline void create_d_and_q_operator()
+    inline void prepare()
     {
-        if (d_op_ != nullptr)
-            return;
-
+        if (type_of_T_) {
+            TERMINATE("Operator is alredy prepared");
+        }
+        type_of_T_ = &typeid(T);
         d_op_ = static_cast<void*>(new D_operator<T>(ctx_));
         q_op_ = static_cast<void*>(new Q_operator<T>(ctx_));
-    };
+    }
 
-    template <typename T>
-    inline void initialize_D_and_Q_operators()
+    inline void dismiss()
     {
-        static_cast<D_operator<T>*>(d_op_)->initialize_operator();
-        static_cast<Q_operator<T>*>(q_op_)->initialize_operator();
+        if (*type_of_T_ == typeid(double)) {
+            delete static_cast<D_operator<double>*>(d_op_);
+            delete static_cast<Q_operator<double>*>(q_op_);
+        } else if (*type_of_T_ == typeid(double_complex)) {
+            delete static_cast<D_operator<double_complex>*>(d_op_);
+            delete static_cast<Q_operator<double_complex>*>(q_op_);
+        }
+        d_op_ = nullptr;
+        q_op_ = nullptr;
+        type_of_T_ = nullptr;
     }
 
     template <typename T>
@@ -113,28 +120,33 @@ class Hamiltonian
     }
 
     template <typename T>
-    inline void
-    apply_h(K_point* kp__, int ispn__, int N__, int n__, Wave_functions& phi__, Wave_functions& hphi__) const;
+    inline void apply_h(K_point*        kp__,
+                        int             ispn__,
+                        int             N__,
+                        int             n__,
+                        Wave_functions& phi__,
+                        Wave_functions& hphi__) const;
 
     template <typename T>
-    inline void apply_h_s(K_point* kp__,
-                          int ispn__,
-                          int N__,
-                          int n__,
+    inline void apply_h_s(K_point*        kp__,
+                          int             ispn__,
+                          int             N__,
+                          int             n__,
                           Wave_functions& phi__,
                           Wave_functions& hphi__,
                           Wave_functions& ophi__) const;
 
-    inline void apply_fv_o(K_point* kp__,
-                           bool apw_only__,
-                           bool add_o1__,
-                           int N__,
-                           int n__,
+    inline void apply_fv_o(K_point*        kp__,
+                           bool            apw_only__,
+                           bool            add_o1__,
+                           int             N__,
+                           int             n__,
                            Wave_functions& phi__,
                            Wave_functions& ophi__) const;
 
-    inline void
-    apply_magnetic_field(Wave_functions& fv_states__, Gvec const& gkvec__, std::vector<Wave_functions>& hpsi__) const;
+    inline void apply_magnetic_field(K_point*                     kp__,
+                                     Wave_functions&              fv_states__,
+                                     std::vector<Wave_functions>& hpsi__) const;
 
     /// Apply SO correction to the first-variational states.
     /** Raising and lowering operators:

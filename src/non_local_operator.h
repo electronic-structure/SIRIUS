@@ -125,8 +125,8 @@ inline void Non_local_operator<double_complex>::apply(int chunk__,
             work_.allocate(memory_t::device);
         }
     }
-/* compute O * <beta|phi> for atoms in a chunk */
-#pragma omp parallel for
+    /* compute O * <beta|phi> for atoms in a chunk */
+    #pragma omp parallel for
     for (int i = 0; i < bp_chunks(chunk__).num_atoms_; i++) {
         /* number of beta functions for a given atom */
         int nbf  = bp_chunks(chunk__).desc_(beta_desc_idx::nbf, i);
@@ -160,8 +160,8 @@ inline void Non_local_operator<double_complex>::apply(int chunk__,
         }
         case GPU: {
 #ifdef __GPU
-/* wait for previous zgemms */
-#pragma omp parallel
+            /* wait for previous zgemms */
+            #pragma omp parallel
             acc::sync_stream(omp_get_thread_num());
 
             linalg<GPU>::gemm(0, 0, num_gkvec_loc, n__, nbeta, &linalg_const<double_complex>::one(), beta_gk.at<GPU>(),
@@ -204,8 +204,8 @@ inline void Non_local_operator<double>::apply(int chunk__,
         }
     }
 
-/* compute O * <beta|phi> */
-#pragma omp parallel for
+    /* compute O * <beta|phi> */
+    #pragma omp parallel for
     for (int i = 0; i < bp_chunks(chunk__).num_atoms_; i++) {
         /* number of beta functions for a given atom */
         int nbf  = bp_chunks(chunk__).desc_(beta_desc_idx::nbf, i);
@@ -239,8 +239,8 @@ inline void Non_local_operator<double>::apply(int chunk__,
         }
         case GPU: {
 #ifdef __GPU
-/* wait for previous zgemms */
-#pragma omp parallel
+            /* wait for previous zgemms */
+            #pragma omp parallel
             acc::sync_stream(omp_get_thread_num());
 
             linalg<GPU>::gemm(0, 0, 2 * num_gkvec_loc, n__, nbeta, &linalg_const<double>::one(),
@@ -258,20 +258,8 @@ inline void Non_local_operator<double>::apply(int chunk__,
 template <typename T>
 class D_operator : public Non_local_operator<T>
 {
-  public:
-    D_operator(Simulation_context const& ctx_)
-        : Non_local_operator<T>(ctx_)
-    {
-        this->op_ = mdarray<T, 2>(this->packed_mtrx_size_, ctx_.num_mag_dims() + 1);
-        this->op_.zero();
-        /* D-matrix is complex in non-collinear case */
-        if (ctx_.num_mag_dims() == 3) {
-            assert((std::is_same<T, double_complex>::value));
-        }
-        initialize_operator();
-    };
-
-    void initialize_operator()
+  private:
+    void initialize()
     {
 
         auto& uc = this->ctx__.unit_cell();
@@ -290,9 +278,10 @@ class D_operator : public Non_local_operator<T>
                 for (int xi2 = 0; xi2 < nbf; xi2++) {
                     for (int xi1 = 0; xi1 < nbf; xi1++) {
                         int idx = xi2 * nbf + xi1;
-                        for (int s = 0; s < 4; s++)
+                        for (int s = 0; s < 4; s++) {
                             this->op_(this->packed_mtrx_offset_(ia) + idx, s) =
                                 type_wrapper<T>::bypass(uc.atom(ia).d_mtrx_so(xi1, xi2, s));
+                        }
                     }
                 }
             } else {
@@ -343,23 +332,27 @@ class D_operator : public Non_local_operator<T>
             this->op_.template copy<memory_t::host, memory_t::device>();
         }
     }
+
+  public:
+    D_operator(Simulation_context const& ctx_)
+        : Non_local_operator<T>(ctx_)
+    {
+        this->op_ = mdarray<T, 2>(this->packed_mtrx_size_, ctx_.num_mag_dims() + 1);
+        this->op_.zero();
+        /* D-matrix is complex in non-collinear case */
+        if (ctx_.num_mag_dims() == 3) {
+            assert((std::is_same<T, double_complex>::value));
+        }
+        initialize();
+    };
+
 };
 
 template <typename T>
 class Q_operator : public Non_local_operator<T>
 {
-  public:
-    Q_operator(Simulation_context const& ctx_)
-        : Non_local_operator<T>(ctx_)
-    {
-        /* Q-operator is independent of spin if there is no spin-orbit; however, it simplifies the apply()
-         * method if the Q-operator has a spin index */
-        this->op_ = mdarray<T, 2>(this->packed_mtrx_size_, ctx_.num_mag_dims() + 1);
-        this->op_.zero();
-        initialize_operator();
-    }
-
-    void initialize_operator()
+  private:
+    void initialize()
     {
         auto& uc = this->ctx__.unit_cell();
         for (int ia = 0; ia < uc.num_atoms(); ia++) {
@@ -424,6 +417,17 @@ class Q_operator : public Non_local_operator<T>
             this->op_.allocate(memory_t::device);
             this->op_.template copy<memory_t::host, memory_t::device>();
         }
+    }
+
+  public:
+    Q_operator(Simulation_context const& ctx_)
+        : Non_local_operator<T>(ctx_)
+    {
+        /* Q-operator is independent of spin if there is no spin-orbit; however, it simplifies the apply()
+         * method if the Q-operator has a spin index */
+        this->op_ = mdarray<T, 2>(this->packed_mtrx_size_, ctx_.num_mag_dims() + 1);
+        this->op_.zero();
+        initialize();
     }
 };
 

@@ -119,11 +119,18 @@ inline void Band::solve_for_kset(K_point_set& kset__, Hamiltonian& Hamiltonian__
         unit_cell_.generate_radial_functions();
         unit_cell_.generate_radial_integrals();
     }
-
+    
+    /* map local potential to a coarse grid */
     if (ctx_.full_potential()) {
-        Hamiltonian__.local_op().prepare(ctx_.gvec_coarse_partition(), ctx_.num_mag_dims(), Hamiltonian__.potential(), ctx_.step_function());
+        Hamiltonian__.local_op().prepare(Hamiltonian__.potential(), ctx_.step_function());
     } else {
-        Hamiltonian__.local_op().prepare(ctx_.gvec_coarse_partition(), ctx_.num_mag_dims(), Hamiltonian__.potential());
+        Hamiltonian__.local_op().prepare(Hamiltonian__.potential());
+        /* prepare non-local operators */
+        if (ctx_.gamma_point() && (ctx_.so_correction() == false)) {
+            Hamiltonian__.prepare<double>();
+        } else {
+            Hamiltonian__.prepare<double_complex>();
+        }
     }
 
     if (ctx_.comm().rank() == 0 && ctx_.control().print_memory_usage_) {
@@ -148,6 +155,9 @@ inline void Band::solve_for_kset(K_point_set& kset__, Hamiltonian& Hamiltonian__
     }
 
     Hamiltonian__.local_op().dismiss();
+    if (!ctx_.full_potential()) {
+        Hamiltonian__.dismiss();
+    }
 
     /* synchronize eigen-values */
     kset__.sync_band_energies();

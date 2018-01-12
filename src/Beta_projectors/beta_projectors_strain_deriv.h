@@ -9,7 +9,7 @@ class Beta_projectors_strain_deriv : public Beta_projectors_base<9>
 {
   private:
 
-    void generate_pw_coefs_t()
+    void generate_pw_coefs_t(std::vector<int> const& igk__)
     {
         PROFILE("sirius::Beta_projectors_strain_deriv::generate_pw_coefs_t");
 
@@ -21,8 +21,6 @@ class Beta_projectors_strain_deriv : public Beta_projectors_base<9>
         auto& beta_ri0 = ctx_.beta_ri();
         auto& beta_ri1 = ctx_.beta_ri_djl();
 
-        auto& comm = gkvec_.comm();
-
         int lmax = ctx_.unit_cell().lmax();
         int lmmax = Utils::lmmax(lmax);
 
@@ -32,40 +30,21 @@ class Beta_projectors_strain_deriv : public Beta_projectors_base<9>
         /* array of real spherical harmonics and derivatives for each G-vector */
         #pragma omp parallel for schedule(static)
         for (int igkloc = 0; igkloc < num_gkvec_loc(); igkloc++) {
-            int igk  = gkvec_.gvec_offset(comm.rank()) + igkloc;
-            auto gvc = gkvec_.gkvec_cart(igk);
+            auto gvc = gkvec_.gkvec_cart(igk__[igkloc]);
             auto rtp = SHT::spherical_coordinates(gvc);
 
             double theta = rtp[1];
             double phi   = rtp[2];
-            //vector3d<double> dtheta_dq({std::cos(phi) * std::cos(theta), std::cos(theta) * std::sin(phi), -std::sin(theta)});
-            //vector3d<double> dphi_dq({-std::sin(phi), std::cos(phi), 0.0});
 
             SHT::spherical_harmonics(lmax, theta, phi, &rlm_g(0, igkloc));
             mdarray<double, 2> rlm_dg_tmp(&rlm_dg(0, 0, igkloc), lmmax, 3);
-            if (rtp[0] > 1e-12) {
-                SHT::dRlm_dr(lmax, gvc, rlm_dg_tmp);
-            } else {
-                rlm_dg_tmp.zero();
-            }
-            
-            //mdarray<double, 1> dRlm_dtheta(lmmax);
-            //mdarray<double, 1> dRlm_dphi_sin_theta(lmmax);
-
-            //SHT::dRlm_dtheta(lmax, theta, phi, dRlm_dtheta);
-            //SHT::dRlm_dphi_sin_theta(lmax, theta, phi, dRlm_dphi_sin_theta);
-            //for (int nu = 0; nu < 3; nu++) {
-            //    for (int lm = 0; lm < lmmax; lm++) {
-            //        rlm_dg(lm, nu, igkloc) = dRlm_dtheta[lm] * dtheta_dq[nu] + dRlm_dphi_sin_theta[lm] * dphi_dq[nu];
-            //    }
-            //}
+            SHT::dRlm_dr(lmax, gvc, rlm_dg_tmp);
         }
 
         /* compute d <G+k|beta> / d epsilon_{mu, nu} */
         #pragma omp parallel for schedule(static)
         for (int igkloc = 0; igkloc < num_gkvec_loc(); igkloc++) {
-            int igk  = gkvec_.gvec_offset(comm.rank()) + igkloc;
-            auto gvc = gkvec_.gkvec_cart(igk);
+            auto gvc = gkvec_.gkvec_cart(igk__[igkloc]);
             /* vs = {r, theta, phi} */
             auto gvs = SHT::spherical_coordinates(gvc);
 
@@ -217,11 +196,12 @@ class Beta_projectors_strain_deriv : public Beta_projectors_base<9>
     }
 
   public:
-    Beta_projectors_strain_deriv(Simulation_context& ctx__,
-                                 Gvec const&         gkvec__)
-        : Beta_projectors_base<9>(ctx__, gkvec__)
+    Beta_projectors_strain_deriv(Simulation_context&     ctx__,
+                                 Gvec const&             gkvec__,
+                                 std::vector<int> const& igk__)
+        : Beta_projectors_base<9>(ctx__, gkvec__, igk__)
     {
-        generate_pw_coefs_t();
+        generate_pw_coefs_t(igk__);
         //generate_pw_coefs_t_v2();
 
         //if (ctx__.processing_unit() == GPU) {

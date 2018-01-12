@@ -11,60 +11,111 @@ extern "C" void compute_chebyshev_polynomial_gpu(int num_gkvec,
 template <typename T>
 inline void Band::diag_pseudo_potential_exact(K_point* kp__,
                                               int ispn__,
-                                              Hamiltonian &H_) const
+                                              Hamiltonian& H__) const
 {
     PROFILE("sirius::Band::diag_pseudo_potential_exact");
 
-    STOP();
+    const int bs = ctx_.cyclic_block_size();
+    dmatrix<T> hmlt(kp__->num_gkvec(), kp__->num_gkvec(), ctx_.blacs_grid(), bs, bs);
+    dmatrix<T> ovlp(kp__->num_gkvec(), kp__->num_gkvec(), ctx_.blacs_grid(), bs, bs);
+    dmatrix<T> evec(kp__->num_gkvec(), kp__->num_gkvec(), ctx_.blacs_grid(), bs, bs);
+    std::vector<double> eval(kp__->num_gkvec());
 
-//    /* short notation for target wave-functions */
-//    auto& psi = kp__->spinor_wave_functions(ispn__);
-//
-//    /* short notation for number of target wave-functions */
-//    int num_bands = ctx_.num_fv_states();
-//
-//    int ngk = kp__->num_gkvec();
-//
-//    /* number of spin components, treated simultaneously */
-//    int nsc = (ctx_.num_mag_dims() == 3) ? 2 : 1;
-//
-//    Wave_functions  phi(ctx_.processing_unit(), kp__->gkvec(), ngk, nsc);
-//    Wave_functions hphi(ctx_.processing_unit(), kp__->gkvec(), ngk, nsc);
-//    Wave_functions ophi(ctx_.processing_unit(), kp__->gkvec(), ngk, nsc);
-//
-//    std::vector<double> eval(ngk);
-//
-//    phi.component(0).pw_coeffs().prime().zero();
-//    for (int i = 0; i < ngk; i++) {
-//        phi.component(0).pw_coeffs().prime(i, i) = 1;
-//    }
-//
-//    H__.apply_h_s(kp__, ispn__, 0, ngk, phi, hphi, ophi, d_op__, q_op__);
-//
-//    //Utils::check_hermitian("h", hphi.coeffs(), ngk);
-//    //Utils::check_hermitian("o", ophi.coeffs(), ngk);
-//
-//    #ifdef __PRINT_OBJECT_CHECKSUM
-//    auto z1 = hphi.pw_coeffs().prime().checksum();
-//    auto z2 = ophi.pw_coeffs().prime().checksum();
-//    printf("checksum(h): %18.10f %18.10f\n", z1.real(), z1.imag());
-//    printf("checksum(o): %18.10f %18.10f\n", z2.real(), z2.imag());
-//    #endif
-//
-//    auto gen_solver = ctx_.gen_evp_solver<double_complex>();
-//
-//    TERMINATE("fix this later");
-//    dmatrix<double_complex> hmlt(hphi[0].pw_coeffs().prime().template at<CPU>(), ngk, ngk);
-//    dmatrix<double_complex> ovlp(ophi[0].pw_coeffs().prime().template at<CPU>(), ngk, ngk);
-//    dmatrix<double_complex> Z(psi.pw_coeffs().prime().template at<CPU>(), ngk, ngk);
-//
-//    if (gen_solver->solve(ngk, num_bands, hmlt, ovlp, &eval[0], Z)) {
-//        TERMINATE("error in evp solve");
-//    }
-//
-//    for (int j = 0; j < ctx_.num_fv_states(); j++) {
-//        kp__->band_energy(j + ispn__ * ctx_.num_fv_states()) = eval[j];
-//    }
+    hmlt.zero();
+    ovlp.zero();
+    
+    auto gen_solver = ctx_.gen_evp_solver<T>();
+
+    for (int ig = 0; ig < kp__->num_gkvec(); ig++) {
+        hmlt.set(ig, ig, 0.5 * std::pow(kp__->gkvec().gkvec_cart(ig).length(), 2));
+        ovlp.set(ig, ig, 1);
+    }
+
+    auto veff = H__.potential().effective_potential()->gather_f_pw();
+
+    #pragma omp parallel for schedule(static)
+    for (int igk_col = 0; igk_col < kp__->num_gkvec_col(); igk_col++) {
+        int ig_col    = kp__->igk_col(igk_col);
+        auto gvec_col = kp__->gkvec().gvec(ig_col);
+        for (int igk_row = 0; igk_row < kp__->num_gkvec_row(); igk_row++) {
+            int ig_row    = kp__->igk_row(igk_row);
+            auto gvec_row = kp__->gkvec().gvec(ig_row);
+            auto ig12 = ctx_.gvec().index_g12_safe(gvec_row, gvec_col);
+            
+            if (ig12.second) {
+                hmlt(igk_row, igk_col) += std::conj(veff[ig12.first]);
+            } else {
+                hmlt(igk_row, igk_col) += veff[ig12.first];
+            }
+        }
+    }
+
+    auto& bp_chunks = ctx_.beta_projector_chunks();
+
+    mdarray<double_complex, 2> dop(ctx_.unit_cell().max_mt_basis_size(), ctx_.unit_cell().max_mt_basis_size());
+    mdarray<double_complex, 2> qop(ctx_.unit_cell().max_mt_basis_size(), ctx_.unit_cell().max_mt_basis_size());
+
+    mdarray<double_complex, 2> btmp(kp__->num_gkvec_row(), ctx_.unit_cell().max_mt_basis_size());
+    
+    kp__->beta_projectors_row().prepare();
+    kp__->beta_projectors_col().prepare();
+    for (int ichunk = 0; ichunk < ctx_.beta_projector_chunks().num_chunks(); ichunk++) {
+        /* generate beta-projectors for a block of atoms */
+        kp__->beta_projectors_row().generate(ichunk);
+        kp__->beta_projectors_col().generate(ichunk);
+
+        auto& beta_row = kp__->beta_projectors_row().pw_coeffs_a();
+        auto& beta_col = kp__->beta_projectors_col().pw_coeffs_a();
+
+        for (int i = 0; i < bp_chunks(ichunk).num_atoms_; i++) {
+            /* number of beta functions for a given atom */
+            int nbf  = bp_chunks(ichunk).desc_(beta_desc_idx::nbf, i);
+            int offs = bp_chunks(ichunk).desc_(beta_desc_idx::offset, i);
+            int ia   = bp_chunks(ichunk).desc_(beta_desc_idx::ia, i);
+
+            for (int xi1 = 0; xi1 < nbf; xi1++) {
+                for (int xi2 = 0; xi2 < nbf; xi2++) {
+                    dop(xi1, xi2) = ctx_.unit_cell().atom(ia).d_mtrx(xi1, xi2, 0);
+                    qop(xi1, xi2) = ctx_.augmentation_op(ctx_.unit_cell().atom(ia).type_id()).q_mtrx(xi1, xi2);
+                }
+            }
+            linalg<CPU>::gemm(0, 0, kp__->num_gkvec_row(), nbf, nbf,
+                              &beta_row(0, offs), beta_row.ld(),
+                              &dop(0, 0), dop.ld(),
+                              &btmp(0, 0), btmp.ld());
+            linalg<CPU>::gemm(0, 2, kp__->num_gkvec_row(), kp__->num_gkvec_col(), nbf,
+                              linalg_const<double_complex>::one(),
+                              &btmp(0, 0), btmp.ld(),
+                              &beta_col(0, offs), beta_col.ld(),
+                              linalg_const<double_complex>::one(),
+                              &hmlt(0, 0), hmlt.ld());
+
+            linalg<CPU>::gemm(0, 0, kp__->num_gkvec_row(), nbf, nbf,
+                              &beta_row(0, offs), beta_row.ld(),
+                              &qop(0, 0), qop.ld(),
+                              &btmp(0, 0), btmp.ld());
+            linalg<CPU>::gemm(0, 2, kp__->num_gkvec_row(), kp__->num_gkvec_col(), nbf,
+                              linalg_const<double_complex>::one(),
+                              &btmp(0, 0), btmp.ld(),
+                              &beta_col(0, offs), beta_col.ld(),
+                              linalg_const<double_complex>::one(),
+                              &ovlp(0, 0), ovlp.ld());
+        }
+    }
+    kp__->beta_projectors_row().dismiss();
+    kp__->beta_projectors_col().dismiss();
+    
+    if (gen_solver->solve(kp__->num_gkvec(), ctx_.num_bands(), hmlt, ovlp, eval.data(), evec)) {
+        std::stringstream s;
+        s << "error in full diagonalziation";
+        TERMINATE(s);
+    }
+
+    for (int j = 0; j < ctx_.num_fv_states(); j++) {
+        kp__->band_energy(j + ispn__ * ctx_.num_fv_states()) = eval[j];
+    }
+
+    kp__->spinor_wave_functions().pw_coeffs(0).remap_from(evec, 0);
 }
 
 template <typename T>

@@ -18,6 +18,7 @@ inline void K_point::generate_gklo_basis()
         igk_col_[i] = spl_ngk_col[i];
     }
     
+    /* mapping between local and global G+k vecotor indices */
     igk_loc_.resize(num_gkvec_loc());
     for (int i = 0; i < num_gkvec_loc(); i++) {
         igk_loc_[i] = gkvec().offset() + i;

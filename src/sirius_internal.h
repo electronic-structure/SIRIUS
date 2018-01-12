@@ -59,7 +59,7 @@ extern "C" void libsci_acc_finalize();
 /// Namespace of the SIRIUS library.
 namespace sirius {
 
-    inline void initialize(bool call_mpi_init__)
+    inline void initialize(bool call_mpi_init__ = true)
     {
         if (call_mpi_init__) {
             Communicator::initialize();

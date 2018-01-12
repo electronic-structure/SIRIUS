@@ -539,7 +539,7 @@ class Stress {
             }
             #endif
 
-            Beta_projectors_strain_deriv bp_strain_deriv(ctx_, kp->gkvec());
+            Beta_projectors_strain_deriv bp_strain_deriv(ctx_, kp->gkvec(), kp->igk_loc());
 
             Non_local_functor<T, 9> nlf(ctx_, bp_strain_deriv);
 
