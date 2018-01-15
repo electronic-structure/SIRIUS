@@ -2,7 +2,7 @@ include ../make.inc
 
 .SUFFIXES: .cpp .cu .f90
 
-SRC =  force.cpp 
+SRC = 
 
 OBJ = $(SRC:.cpp=.o)
 
