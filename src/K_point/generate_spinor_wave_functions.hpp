@@ -23,10 +23,10 @@ inline void K_point::generate_spinor_wave_functions()
             fv_states().allocate_on_device(0);
             fv_states().copy_to_device(0, 0, nfv);
             sv_eigen_vectors_[0].allocate(memory_t::device);
-            sv_eigen_vectors_[0].copy_to_device();
+            sv_eigen_vectors_[0].copy<memory_t::host, memory_t::device>();
             if (ctx_.num_mag_dims() == 1) {
                 sv_eigen_vectors_[1].allocate(memory_t::device);
-                sv_eigen_vectors_[1].copy_to_device();
+                sv_eigen_vectors_[1].copy<memory_t::host, memory_t::device>();
             }
             if (!keep_wf_on_gpu) {
                 for (int ispn = 0; ispn < ctx_.num_mag_dims(); ispn++) {
@@ -59,9 +59,9 @@ inline void K_point::generate_spinor_wave_functions()
             for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
                 spinor_wave_functions().copy_to_host(ispn, 0, nbnd);
             }
-            sv_eigen_vectors_[0].deallocate_on_device();
+            sv_eigen_vectors_[0].deallocate(memory_t::device);
             if (ctx_.num_mag_dims() == 3) {
-                sv_eigen_vectors_[1].deallocate_on_device();
+                sv_eigen_vectors_[1].deallocate(memory_t::device);
             }
             if (!keep_wf_on_gpu) {
                 for (int ispn = 0; ispn < ctx_.num_mag_dims(); ispn++) {

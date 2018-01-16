@@ -68,7 +68,7 @@ inline void K_point::generate_fv_states()
         }
         #ifdef __GPU
         if (ctx_.processing_unit() == GPU) {
-            alm.copy_to_device(mt_aw_size * num_gkvec_loc());
+            alm.copy<memory_t::host, memory_t::device>(mt_aw_size * num_gkvec_loc());
             linalg<GPU>::gemm(1, 0, mt_aw_size, ctx_.num_fv_states(), num_gkvec_loc(),
                               alm.at<GPU>(), alm.ld(),
                               fv_eigen_vectors_slab().pw_coeffs(0).prime().at<GPU>(),

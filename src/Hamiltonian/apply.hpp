@@ -252,7 +252,7 @@ inline void Hamiltonian::apply_fv_o(K_point* kp__,
             }
             case GPU: {
 #ifdef __GPU
-                alm.copy_to_device();
+                alm.copy<memory_t::host, memory_t::device>();
                 /* tmp(lm, i) = A(G, lm)^{T} * C(G, i) */
                 linalg<GPU>::gemm(1, 0, naw, n__, kp__->num_gkvec_loc(), alm.at<GPU>(), alm.ld(),
                                   phi__.pw_coeffs(0).prime().at<GPU>(0, N__), phi__.pw_coeffs(0).prime().ld(), tmp.at<GPU>(),
@@ -281,8 +281,8 @@ inline void Hamiltonian::apply_fv_o(K_point* kp__,
             }
             case GPU: {
 #ifdef __GPU
-                alm.copy_to_device();
-                tmp.copy_to_device(naw * n__);
+                alm.copy<memory_t::host, memory_t::device>();
+                tmp.copy<memory_t::host, memory_t::device>(naw * n__);
                 /* APW-APW contribution to overlap */
                 linalg<GPU>::gemm(0, 0, kp__->num_gkvec_loc(), n__, naw, &linalg_const<double_complex>::one(),
                                   alm.at<GPU>(), alm.ld(), tmp.at<GPU>(), tmp.ld(), &linalg_const<double_complex>::one(),

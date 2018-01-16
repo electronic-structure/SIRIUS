@@ -262,7 +262,7 @@ class Atom
             sddk::timer t1("sirius::Atom::generate_radial_integrals|interp");
             #pragma omp parallel
             {
-// int tid = Platform::thread_id();
+                // int tid = Platform::thread_id();
                 #pragma omp for
                 for (int i = 0; i < nrf; i++) {
                     rf_spline[i].interpolate();
@@ -290,7 +290,7 @@ class Atom
                     }
                 }
             }
-            vrf_coef.copy_to_device();
+            vrf_coef.copy<memory_t::host, memory_t::device>();
             t1.stop();
 
             result.allocate(memory_t::device);
@@ -304,7 +304,7 @@ class Atom
                      1e-9 * double(idx_ri.size(1)) * nmtp * 85 / tval);
             }
             result.copy_to_host();
-            result.deallocate_on_device();
+            result.deallocate(memory_t::device);
 #else
             TERMINATE_NO_GPU
 #endif

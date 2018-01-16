@@ -987,24 +987,22 @@ class FFT3D
                 fft_buffer_.allocate(memory_t::device);
 
                 z_col_pos_.allocate(memory_t::device);
-                z_col_pos_.copy_to_device();
+                z_col_pos_.copy<memory_t::host, memory_t::device>();
             }
             #endif
         }
 
         void dismiss()
         {
-            #ifdef __GPU
             if (pu_ == GPU) {
-                fft_buffer_aux1_.deallocate_on_device();
-                fft_buffer_aux2_.deallocate_on_device();
-                z_col_pos_.deallocate_on_device();
-                fft_buffer_.deallocate_on_device();
-                cufft_work_buf_.deallocate_on_device();
-                map_gvec_to_fft_buffer_.deallocate_on_device();
-                map_gvec_to_fft_buffer_x0y0_.deallocate_on_device();
+                fft_buffer_aux1_.deallocate(memory_t::device);
+                fft_buffer_aux2_.deallocate(memory_t::device);
+                z_col_pos_.deallocate(memory_t::device);
+                fft_buffer_.deallocate(memory_t::device);
+                cufft_work_buf_.deallocate(memory_t::device);
+                map_gvec_to_fft_buffer_.deallocate(memory_t::device);
+                map_gvec_to_fft_buffer_x0y0_.deallocate(memory_t::device);
             }
-            #endif
             gvec_partition_ = nullptr;
         }
         

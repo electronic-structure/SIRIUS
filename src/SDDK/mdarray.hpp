@@ -454,11 +454,11 @@ class mdarray_base
     /// Allocate memory for array.
     void allocate(memory_t memory__) const
     {
-        #ifndef __GPU
+#ifndef __GPU
         if ((memory__ & memory_t::host_pinned) == memory_t::host_pinned) {
             memory__ = memory_t::host;
         }
-        #endif
+#endif
 
         size_t sz = size();
 
@@ -466,10 +466,10 @@ class mdarray_base
         if ((memory__ & memory_t::host) == memory_t::host) {
             /* page-locked memory */
             if ((memory__ & memory_t::host_pinned) == memory_t::host_pinned) {
-                #ifdef __GPU
+#ifdef __GPU
                 raw_ptr_    = acc::allocate_host<T>(sz);
                 unique_ptr_ = std::unique_ptr<T[], mdarray_mem_mgr<T>>(raw_ptr_, mdarray_mem_mgr<T>(sz, memory_t::host_pinned));
-                #endif
+#endif
             } else { /* regular mameory */
                 raw_ptr_    = static_cast<T*>(malloc(sz * sizeof(T)));
                 unique_ptr_ = std::unique_ptr<T[], mdarray_mem_mgr<T>>(raw_ptr_, mdarray_mem_mgr<T>(sz, memory_t::host));
@@ -484,12 +484,30 @@ class mdarray_base
         }
 
         /* device allocation */
+#ifdef __GPU
         if ((memory__ & memory_t::device) == memory_t::device) {
-            #ifdef __GPU
             raw_ptr_device_    = acc::allocate<T>(sz);
             unique_ptr_device_ = std::unique_ptr<T[], mdarray_mem_mgr<T>>(raw_ptr_device_, mdarray_mem_mgr<T>(sz, memory_t::device));
-            #endif
         }
+#endif
+    }
+
+    void deallocate(memory_t memory__) const
+    {
+        if ((memory__ & memory_t::host) == memory_t::host) {
+            if (unique_ptr_) {
+                unique_ptr_.reset(nullptr);
+                raw_ptr_ = nullptr;
+            }
+        }
+#ifdef __GPU
+        if ((memory__ & memory_t::device) == memory_t::device) {
+            if (unique_ptr_device_) {
+                unique_ptr_device_.reset(nullptr);
+                raw_ptr_device_ = nullptr;
+            }
+        }
+#endif
     }
 
     inline T& operator()(int64_t const i0)
@@ -765,28 +783,6 @@ class mdarray_base
     }
 
     #ifdef __GPU
-    void deallocate_on_device() const
-    {
-        unique_ptr_device_.reset(nullptr);
-        raw_ptr_device_ = nullptr;
-    }
-
-    void copy_to_device() const
-    {
-        mdarray_assert(raw_ptr_ != nullptr);
-        mdarray_assert(raw_ptr_device_ != nullptr);
-
-        acc::copyin(raw_ptr_device_, raw_ptr_, size());
-    }
-
-    void copy_to_device(size_t n__) const
-    {
-        mdarray_assert(raw_ptr_ != nullptr);
-        mdarray_assert(raw_ptr_device_ != nullptr);
-
-        acc::copyin(raw_ptr_device_, raw_ptr_, n__);
-    }
-
     void copy_to_host()
     {
         mdarray_assert(raw_ptr_ != nullptr);
@@ -824,7 +820,7 @@ class mdarray_base
     }
 };
 
-/// Multidimensional array.
+/// Multidimensional array with the column-major (Fortran) order.
 template <typename T, int N>
 class mdarray : public mdarray_base<T, N>
 {

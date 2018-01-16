@@ -44,7 +44,7 @@ inline void Potential::poisson_sum_G(int lmmax__,
             }
             case GPU: {
                 #ifdef __GPU
-                zm.copy_to_device();
+                zm.copy<memory_t::host, memory_t::device>();
                 linalg<GPU>::gemm(0, 0, lmmax__, na, ngv_loc,
                                   zm.at<GPU>(), zm.ld(),
                                   phase_factors.at<GPU>(), phase_factors.ld(),
@@ -135,7 +135,7 @@ inline void Potential::poisson_add_pseudo_pw(mdarray<double_complex, 2>& qmt__,
             }
             case GPU: {
                 #ifdef __GPU
-                qa.copy_to_device();
+                qa.copy<memory_t::host, memory_t::device>();
                 linalg<GPU>::gemm(0, 2, ctx_.lmmax_rho(), ctx_.gvec().count(), unit_cell_.atom_type(iat).num_atoms(),
                                   qa.at<GPU>(), qa.ld(),
                                   pf.at<GPU>(), pf.ld(),

@@ -456,8 +456,8 @@ class matrix_storage<T, matrix_storage_t::slab>
     /// Deallocate storage on device.
     void deallocate_on_device()
     {
-        prime_.deallocate_on_device();
-        extra_buf_.deallocate_on_device();
+        prime_.deallocate(memory_t::device);
+        extra_buf_.deallocate(memory_t::device);
     }
     
     /// Copy prime storage to device memory.

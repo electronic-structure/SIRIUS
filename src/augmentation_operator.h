@@ -180,12 +180,10 @@ class Augmentation_operator
 
         void dismiss() const
         {
-            #ifdef __GPU
             if (atom_type_.parameters().processing_unit() == GPU && atom_type_.pp_desc().augment) {
-                q_pw_.deallocate_on_device();
-                sym_weight_.deallocate_on_device();
+                q_pw_.deallocate(memory_t::device);
+                sym_weight_.deallocate(memory_t::device);
             }
-            #endif
         }
 
         mdarray<double, 2> const& q_pw() const

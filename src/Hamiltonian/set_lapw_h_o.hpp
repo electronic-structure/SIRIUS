@@ -266,8 +266,8 @@ inline void Hamiltonian::set_fv_h_o<GPU, electronic_structure_method_t::full_pot
     /* setup lo-lo block */
     set_fv_h_o_lo_lo(kp__, h__, o__);
 
-    h__.deallocate_on_device();
-    o__.deallocate_on_device();
+    h__.deallocate(memory_t::device);
+    o__.deallocate(memory_t::device);
 }
 #endif
 
