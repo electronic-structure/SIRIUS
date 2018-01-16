@@ -400,6 +400,8 @@ class Gvec
                 }
             }
         }
+
+        // TODO: add a check for gvec_base (there is already a test for this).
     }
 
     Gvec& operator=(Gvec&& src__) = delete;
