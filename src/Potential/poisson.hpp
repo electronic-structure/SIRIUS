@@ -49,7 +49,7 @@ inline void Potential::poisson_sum_G(int lmmax__,
                                   zm.at<GPU>(), zm.ld(),
                                   phase_factors.at<GPU>(), phase_factors.ld(),
                                   tmp.at<GPU>(), tmp.ld());
-                tmp.copy_to_host();
+                tmp.copy<memory_t::device, memory_t::host>();
                 #endif
                 break;
             }
@@ -140,7 +140,7 @@ inline void Potential::poisson_add_pseudo_pw(mdarray<double_complex, 2>& qmt__,
                                   qa.at<GPU>(), qa.ld(),
                                   pf.at<GPU>(), pf.ld(),
                                   qapf.at<GPU>(), qapf.ld());
-                qapf.copy_to_host();
+                qapf.copy<memory_t::device, memory_t::host>();
                 #endif
                 break;
             }

@@ -227,13 +227,13 @@ inline void Hamiltonian::set_fv_h_o<GPU, electronic_structure_method_t::full_pot
                             alm_row_tmp(igk, xi) = std::conj(alm_row_tmp(igk, xi));
                         }
                     }
-                    alm_row_tmp.async_copy_to_device(tid);
+                    alm_row_tmp.async_copy<memory_t::host, memory_t::device>(tid);
 
                     kp__->alm_coeffs_col().generate(ia, alm_col_tmp);
-                    alm_col_tmp.async_copy_to_device(tid);
+                    alm_col_tmp.async_copy<memory_t::host, memory_t::device>(tid);
 
                     apply_hmt_to_apw<spin_block_t::nm>(atom, kp__->num_gkvec_col(), alm_col_tmp, halm_col_tmp);
-                    halm_col_tmp.async_copy_to_device(tid);
+                    halm_col_tmp.async_copy<memory_t::host, memory_t::device>(tid);
 
                     /* setup apw-lo and lo-apw blocks */
                     set_fv_h_o_apw_lo(kp__, type, atom, ia, alm_row_tmp, alm_col_tmp, h__, o__);

@@ -275,7 +275,7 @@ class Atom
                     v_spline[i].interpolate();
                 }
             }
-            rf_coef.async_copy_to_device();
+            rf_coef.async_copy<memory_t::host, memory_t::device>(-1);
 
             #pragma omp parallel for
             for (int lm = 0; lm < lmmax; lm++) {
@@ -303,7 +303,7 @@ class Atom
                 DUMP("spline GPU integration performance: %12.6f GFlops",
                      1e-9 * double(idx_ri.size(1)) * nmtp * 85 / tval);
             }
-            result.copy_to_host();
+            result.copy<memory_t::device, memory_t::host>();
             result.deallocate(memory_t::device);
 #else
             TERMINATE_NO_GPU

@@ -257,7 +257,7 @@ inline void Hamiltonian::apply_fv_o(K_point* kp__,
                 linalg<GPU>::gemm(1, 0, naw, n__, kp__->num_gkvec_loc(), alm.at<GPU>(), alm.ld(),
                                   phi__.pw_coeffs(0).prime().at<GPU>(0, N__), phi__.pw_coeffs(0).prime().ld(), tmp.at<GPU>(),
                                   tmp.ld());
-                tmp.copy_to_host(naw * n__);
+                tmp.copy<memory_t::device, memory_t::host>(naw * n__);
 #endif
                 break;
             }

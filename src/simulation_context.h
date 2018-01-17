@@ -115,6 +115,11 @@ class Simulation_context: public Simulation_context_base
         {
             return augmentation_op_[iat__];
         }
+
+        inline Augmentation_operator& augmentation_op(int iat__)
+        {
+            return augmentation_op_[iat__];
+        }
 };
 
 } // namespace

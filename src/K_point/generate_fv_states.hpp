@@ -74,7 +74,7 @@ inline void K_point::generate_fv_states()
                               fv_eigen_vectors_slab().pw_coeffs(0).prime().at<GPU>(),
                               fv_eigen_vectors_slab().pw_coeffs(0).prime().ld(),
                               tmp1.at<GPU>(), tmp1.ld());
-            tmp1.copy_to_host();
+            tmp1.copy<memory_t::device, memory_t::host>();
         }
         #endif
 
