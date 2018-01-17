@@ -262,7 +262,7 @@ class Atom
             sddk::timer t1("sirius::Atom::generate_radial_integrals|interp");
             #pragma omp parallel
             {
-// int tid = Platform::thread_id();
+                // int tid = Platform::thread_id();
                 #pragma omp for
                 for (int i = 0; i < nrf; i++) {
                     rf_spline[i].interpolate();
@@ -275,7 +275,7 @@ class Atom
                     v_spline[i].interpolate();
                 }
             }
-            rf_coef.async_copy_to_device();
+            rf_coef.async_copy<memory_t::host, memory_t::device>(-1);
 
             #pragma omp parallel for
             for (int lm = 0; lm < lmmax; lm++) {
@@ -290,7 +290,7 @@ class Atom
                     }
                 }
             }
-            vrf_coef.copy_to_device();
+            vrf_coef.copy<memory_t::host, memory_t::device>();
             t1.stop();
 
             result.allocate(memory_t::device);
@@ -303,8 +303,8 @@ class Atom
                 DUMP("spline GPU integration performance: %12.6f GFlops",
                      1e-9 * double(idx_ri.size(1)) * nmtp * 85 / tval);
             }
-            result.copy_to_host();
-            result.deallocate_on_device();
+            result.copy<memory_t::device, memory_t::host>();
+            result.deallocate(memory_t::device);
 #else
             TERMINATE_NO_GPU
 #endif

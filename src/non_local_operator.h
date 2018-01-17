@@ -455,12 +455,10 @@ class P_operator : public Non_local_operator<T>
                 }
             }
         }
-#ifdef __GPU
         if (this->pu_ == GPU) {
             this->op_.allocate(memory_t::device);
-            this->op_.copy_to_device();
+            this->op_.template copy<memory_t::host, memory_t::device>();
         }
-#endif
     }
 };
 }

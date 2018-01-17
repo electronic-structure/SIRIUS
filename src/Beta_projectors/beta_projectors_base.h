@@ -351,13 +351,11 @@ class Beta_projectors_base
 
         pw_coeffs_a_ = mdarray<double_complex, 2>();
 
-        #ifdef __GPU
         if (ctx_.processing_unit() == GPU) {
             for (int i = 0; i < N; i++) {
-                pw_coeffs_t_[i].deallocate_on_device();
+                pw_coeffs_t_[i].deallocate(memory_t::device);
             }
         }
-        #endif
     }
 };
 

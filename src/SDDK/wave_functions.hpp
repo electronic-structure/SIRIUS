@@ -607,8 +607,8 @@ class Wave_functions
                                   dm_.template at<GPU>(),
                                   dm_.ld());
 
-                phi_.pw_coeffs(ispn).prime().deallocate_on_device();
-                this->pw_coeffs(ispn).prime().deallocate_on_device();
+                phi_.pw_coeffs(ispn).prime().deallocate(memory_t::device);
+                this->pw_coeffs(ispn).prime().deallocate(memory_t::device);
 
                 if (this->has_mt()) {
                     this->mt_coeffs(ispn).prime().allocate(memory_t::device);
@@ -629,8 +629,8 @@ class Wave_functions
                                       dm_.template at<GPU>(),
                                       dm_.ld());
 
-                    phi_.pw_coeffs(ispn).prime().deallocate_on_device();
-                    this->pw_coeffs(ispn).prime().deallocate_on_device();
+                    phi_.pw_coeffs(ispn).prime().deallocate(memory_t::device);
+                    this->pw_coeffs(ispn).prime().deallocate(memory_t::device);
                 }
 
             }

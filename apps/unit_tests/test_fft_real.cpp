@@ -34,11 +34,9 @@ void test1(vector3d<int> const& dims__, double cutoff__, device_t pu__)
     }
     phi(0) = 1.0;
     fft.transform<1>(&phi[0]);
-    #ifdef __GPU
     if (pu__ == GPU) {
-        fft.buffer().copy_to_host();
+        fft.buffer().copy<memory_t::device, memory_t::host>();
     }
-    #endif
 
     for (int i = 0; i < fft.local_size(); i++) {
         if (fft.buffer(i).imag() > 1e-10) {

@@ -46,7 +46,7 @@ std::unique_ptr<sirius::DFT_ground_state> dft_ground_state{nullptr};
 std::map<std::string, sddk::timer*> ftimers;
 
 std::unique_ptr<sirius::Stress> stress_tensor{nullptr};
-std::unique_ptr<sirius::Forces_PS> forces{nullptr};
+std::unique_ptr<sirius::Force> forces{nullptr};
 
 extern "C" {
 
@@ -3179,7 +3179,7 @@ void sirius_get_pw_coeffs_real(ftn_char    atom_type__,
 void sirius_calculate_forces(ftn_int* kset_id__)
 {
     auto& kset = *kset_list[*kset_id__];
-    forces = std::unique_ptr<sirius::Forces_PS>(new sirius::Forces_PS(*sim_ctx, *density, *potential, kset));
+    forces = std::unique_ptr<sirius::Force>(new sirius::Force(*sim_ctx, *density, *potential, kset));
 }
 
 void sirius_get_forces(ftn_char label__, ftn_double* forces__)

@@ -456,8 +456,8 @@ class matrix_storage<T, matrix_storage_t::slab>
     /// Deallocate storage on device.
     void deallocate_on_device()
     {
-        prime_.deallocate_on_device();
-        extra_buf_.deallocate_on_device();
+        prime_.deallocate(memory_t::device);
+        extra_buf_.deallocate(memory_t::device);
     }
     
     /// Copy prime storage to device memory.
@@ -497,7 +497,7 @@ class matrix_storage<T, matrix_storage_t::slab>
                 cs1.zero<memory_t::device>();
                 #ifdef __GPU
                 add_checksum_gpu(prime().template at<GPU>(0, i0__), num_rows_loc(), n__, cs1.at<GPU>());
-                cs1.copy_to_host();
+                cs1.copy<memory_t::device, memory_t::host>();
                 cs = cs1.checksum();
                 #endif
                 break;

@@ -321,16 +321,16 @@ class Local_operator
         /// Cleanup the local operator.
         inline void dismiss()
         {
-            #ifdef __GPU
-            for (int j = 0; j < param_.num_mag_dims() + 1; j++) {
-                veff_vec_[j].f_rg().deallocate_on_device();
+            if (fft_coarse_.pu() == GPU) { 
+                for (int j = 0; j < param_.num_mag_dims() + 1; j++) {
+                    veff_vec_[j].f_rg().deallocate(memory_t::device);
+                }
+                pw_ekin_.deallocate(memory_t::device);
+                vphi1_.deallocate(memory_t::device);
+                vphi2_.deallocate(memory_t::device);
+                theta_.f_rg().deallocate(memory_t::device);
+                buf_rg_.deallocate(memory_t::device);
             }
-            pw_ekin_.deallocate_on_device();
-            vphi1_.deallocate_on_device();
-            vphi2_.deallocate_on_device();
-            theta_.f_rg().deallocate_on_device();
-            buf_rg_.deallocate_on_device();
-            #endif
             gkvec_p_ = nullptr;
         }
         

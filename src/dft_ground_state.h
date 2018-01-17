@@ -28,10 +28,9 @@
 #include "potential.h"
 #include "density.h"
 #include "k_point_set.h"
-#include "force.h"
-#include "Geometry/forces.h"
-#include "json.hpp"
+#include "Geometry/force.hpp"
 #include "Geometry/stress.h"
+#include "json.hpp"
 #include "hubbard.hpp"
 
 using json = nlohmann::json;

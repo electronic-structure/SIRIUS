@@ -54,7 +54,7 @@ void test_hloc(std::vector<int> mpi_grid_dims__, double cutoff__, int num_bands_
         hphi.pw_coeffs(0).allocate_on_device();
     }
     #endif
-    
+    hloc.prepare(gvecp); 
     mpi_comm_world().barrier();
     sddk::timer t1("h_loc");
     for (int i = 0; i < 4; i++) {
@@ -62,6 +62,7 @@ void test_hloc(std::vector<int> mpi_grid_dims__, double cutoff__, int num_bands_
     }
     mpi_comm_world().barrier();
     t1.stop();
+    hloc.dismiss();
 
     #ifdef __GPU
     if (pu == GPU && !phi.pw_coeffs(0).is_remapped()) {
@@ -77,7 +78,9 @@ void test_hloc(std::vector<int> mpi_grid_dims__, double cutoff__, int num_bands_
     double diff{0};
     for (int i = 0; i < 4 * num_bands__; i++) {
         for (int j = 0; j < phi.pw_coeffs(0).num_rows_loc(); j++) {
-            diff += std::pow(std::abs(2.71828 * phi.pw_coeffs(0).prime(j, i) - hphi.pw_coeffs(0).prime(j, i)), 2);
+            int ig = gvec.offset() + j;
+            auto gc = gvec.gvec_cart(ig);
+            diff += std::pow(std::abs((2.71828 + 0.5 * dot(gc, gc)) * phi.pw_coeffs(0).prime(j, i) - hphi.pw_coeffs(0).prime(j, i)), 2);
         }
     }
     if (diff != diff) {
@@ -88,7 +91,7 @@ void test_hloc(std::vector<int> mpi_grid_dims__, double cutoff__, int num_bands_
     if (mpi_comm_world().rank() == 0) {
         printf("RMS: %18.16f\n", diff);
     }
-    if (diff > 1e-14) {
+    if (diff > 1e-12) {
         TERMINATE("RMS is too large");
     }
 
@@ -125,7 +128,10 @@ int main(int argn, char** argv)
         test_hloc(mpi_grid_dims, cutoff, num_bands, reduce_gvec, use_gpu, gpu_ptr);
     }
     mpi_comm_world().barrier();
-    sddk::timer::print();
+    if (mpi_comm_world().rank() == 0) {
+        sddk::timer::print();
+    }
+    mpi_comm_world().barrier();
     //runtime::Timer::print_all();
     sirius::finalize();
 }

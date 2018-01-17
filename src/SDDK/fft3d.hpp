@@ -345,16 +345,11 @@ class FFT3D
             int rank = comm_.rank();
 
             if (direction == -1) {
-                #ifdef __GPU
                 /* copy z-sticks to CPU */
                 if ((data_ptr_type == CPU && pu_ == GPU) || (data_ptr_type == GPU && !is_gpu_direct_ && comm_.size() > 1)) {
-                    
-//                    comm_.barrier();
                     sddk::timer t("sddk::FFT3D::transform_z|comm|d-1|DtoH");
-                    fft_buffer_aux__.copy_to_host(local_size_z_ * gvec_partition_->gvec().num_zcol());
-//                    comm_.barrier();
+                    fft_buffer_aux__.copy<memory_t::device, memory_t::host>(local_size_z_ * gvec_partition_->gvec().num_zcol());
                 }
-                #endif
                 
                 /* collect full sticks */
                 if (comm_.size() > 1) {
@@ -800,11 +795,9 @@ class FFT3D
         /** \param [out] data CPU pointer to the real-space data. */
         inline void output(double* data__)
         {
-            #ifdef __GPU
             if (pu_ == GPU) {
-                fft_buffer_.copy_to_host();
+                fft_buffer_.copy<memory_t::device, memory_t::host>();
             }
-            #endif
             for (int i = 0; i < local_size(); i++) {
                 data__[i] = fft_buffer_[i].real();
             }
@@ -987,24 +980,22 @@ class FFT3D
                 fft_buffer_.allocate(memory_t::device);
 
                 z_col_pos_.allocate(memory_t::device);
-                z_col_pos_.copy_to_device();
+                z_col_pos_.copy<memory_t::host, memory_t::device>();
             }
             #endif
         }
 
         void dismiss()
         {
-            #ifdef __GPU
             if (pu_ == GPU) {
-                fft_buffer_aux1_.deallocate_on_device();
-                fft_buffer_aux2_.deallocate_on_device();
-                z_col_pos_.deallocate_on_device();
-                fft_buffer_.deallocate_on_device();
-                cufft_work_buf_.deallocate_on_device();
-                map_gvec_to_fft_buffer_.deallocate_on_device();
-                map_gvec_to_fft_buffer_x0y0_.deallocate_on_device();
+                fft_buffer_aux1_.deallocate(memory_t::device);
+                fft_buffer_aux2_.deallocate(memory_t::device);
+                z_col_pos_.deallocate(memory_t::device);
+                fft_buffer_.deallocate(memory_t::device);
+                cufft_work_buf_.deallocate(memory_t::device);
+                map_gvec_to_fft_buffer_.deallocate(memory_t::device);
+                map_gvec_to_fft_buffer_x0y0_.deallocate(memory_t::device);
             }
-            #endif
             gvec_partition_ = nullptr;
         }
         

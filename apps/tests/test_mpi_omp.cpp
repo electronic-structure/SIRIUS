@@ -97,7 +97,7 @@ void kernel_memcpy(int size, double_complex* in, double_complex* out)
 template <int kernel_id>
 void test_fft_1d(int size, int num_tasks, int repeat)
 {
-    int num_threads = Platform::max_num_threads();
+    int num_threads = omp_get_max_threads();
 
     std::vector<double_complex*> in_buf(num_threads);
     std::vector<double_complex*> out_buf(num_threads);
@@ -228,10 +228,9 @@ void test_fft_1d(int size, int num_tasks, int repeat)
     #endif
     
     double avg_thread_perf = 0;
-    Communicator comm_world(MPI_COMM_WORLD);
-    pstdout pout(comm_world);
+    runtime::pstdout pout(mpi_comm_world());
     pout.printf("\n");
-    pout.printf("rank: %2i\n", comm_world.rank());
+    pout.printf("rank: %2i\n", mpi_comm_world().rank());
     pout.printf("---------\n");
     for (int tid = 0; tid < num_threads; tid++)
     {
@@ -269,12 +268,12 @@ void test_fft_1d(int size, int num_tasks, int repeat)
     pout.printf("---------\n");
     pout.flush();
 
-    comm_world.allreduce(&perf, 1);
-    comm_world.allreduce(&avg_thread_perf, 1);
-    if (comm_world.rank() == 0)
+    mpi_comm_world().allreduce(&perf, 1);
+    mpi_comm_world().allreduce(&avg_thread_perf, 1);
+    if (mpi_comm_world().rank() == 0)
     {
         printf("\n");
-        printf("Average MPI rank performance: %.4f kernels/sec.\n", avg_thread_perf / comm_world.size());
+        printf("Average MPI rank performance: %.4f kernels/sec.\n", avg_thread_perf / mpi_comm_world().size());
         printf("Aggregate effective performance: %.4f kernels/sec.\n", perf);
         printf("\n");
     }
@@ -308,7 +307,7 @@ int main(int argn, char** argv)
     int repeat = args.value<int>("repeat", 100);
     int kernel_id = args.value<int>("kernel", 0);
 
-    Platform::initialize(1);
+    sirius::initialize(1);
 
     if (kernel_id == 0) test_fft_1d<0>(size, num_tasks, repeat);
     if (kernel_id == 1) test_fft_1d<1>(size, num_tasks, repeat);
@@ -317,5 +316,5 @@ int main(int argn, char** argv)
     if (kernel_id == 4) test_fft_1d<4>(size, num_tasks, repeat);
     if (kernel_id == 5) test_fft_1d<5>(size, num_tasks, repeat);
 
-    Platform::finalize();
+    sirius::finalize();
 }
