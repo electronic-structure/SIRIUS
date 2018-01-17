@@ -106,7 +106,7 @@ for e in timers_to_show:
     
         for i in range(len(values) / 2):
             ax.add_patch(patches.Rectangle((values[i * 2], ypos), (values[2 * i + 1] - values[2 * i]), 0.9, linewidth=0.1, edgecolor='black', facecolor=c))
-
+            #ax.text(values[2 * i] + 0.01, ypos + 0.45, '%.3f'%(values[2 * i + 1] - values[2 * i]))
         idx_c = idx_c + 1
 
     ypos = ypos + 1
