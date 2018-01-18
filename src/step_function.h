@@ -89,12 +89,22 @@ class Step_function
             step_function_pw_.resize(ctx__.gvec().num_gvec());
             step_function_.resize(ctx__.fft().local_size());
 
-            Radial_integrals_theta ri(ctx__.unit_cell(), ctx__.pw_cutoff(), 100);
+            //Radial_integrals_theta ri(ctx__.unit_cell(), ctx__.pw_cutoff(), 100);
+            auto ri = [&](int iat, double g)
+            {
+                auto R = ctx__.unit_cell().atom_type(iat).mt_radius();
+                if (g < 1e-12) {
+                    return std::pow(R, 3) / 3.0;
+                } else {
+                    return (std::sin(g * R) - g * R * std::cos(g * R)) / std::pow(g, 3);
+                }
+            };
 
-            auto f_pw = ctx__.make_periodic_function<index_domain_t::global>([&ri](int iat, double g)
-                                                                             {
-                                                                                 return ri.value<int>(iat, g);
-                                                                             });
+            auto f_pw = ctx__.make_periodic_function<index_domain_t::global>(ri);
+            //[&ri](int iat, double g)
+            //                                                                 {
+            //                                                                     return ri.value<int>(iat, g);
+            //                                                                 });
 
             for (int ig = 0; ig < ctx__.gvec().num_gvec(); ig++) {
                 step_function_pw_[ig] = -f_pw[ig];

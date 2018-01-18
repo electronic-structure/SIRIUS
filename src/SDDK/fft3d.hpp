@@ -849,6 +849,16 @@ class FFT3D
             return offset_z_;
         }
 
+        inline int size_x() const
+        {
+            return grid_.size(0);
+        }
+
+        inline int size_y() const
+        {
+            return grid_.size(1);
+        }
+
         /// Direct access to the FFT buffer
         inline double_complex& buffer(int idx__)
         {

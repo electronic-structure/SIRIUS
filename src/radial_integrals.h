@@ -487,39 +487,39 @@ class Radial_integrals_beta_jl : public Radial_integrals_base<3>
  *          \Big( \sin(GR_{\alpha}) - GR_{\alpha}\cos(GR_{\alpha}) \Big) / G^3 & G \ne 0 \end{array} \right.
  *  \f]
  */
-class Radial_integrals_theta : public Radial_integrals_base<1>
-{
-  private:
-    void generate()
-    {
-        PROFILE("sirius::Radial_integrals|theta");
-
-        for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
-            auto& atom_type = unit_cell_.atom_type(iat);
-            auto R          = atom_type.mt_radius();
-            values_(iat)    = Spline<double>(grid_q_);
-
-            #pragma omp parallel for
-            for (int iq = 0; iq < grid_q_.num_points(); iq++) {
-                if (iq == 0) {
-                    values_(iat)[iq] = std::pow(R, 3) / 3.0;
-                } else {
-                    double g         = grid_q_[iq];
-                    values_(iat)[iq] = (std::sin(g * R) - g * R * std::cos(g * R)) / std::pow(g, 3);
-                }
-            }
-            values_(iat).interpolate();
-        }
-    }
-
-  public:
-    Radial_integrals_theta(Unit_cell const& unit_cell__, double qmax__, int np__)
-        : Radial_integrals_base<1>(unit_cell__, qmax__, np__)
-    {
-        values_ = mdarray<Spline<double>, 1>(unit_cell_.num_atom_types());
-        generate();
-    }
-};
+//class Radial_integrals_theta : public Radial_integrals_base<1>
+//{
+//  private:
+//    void generate()
+//    {
+//        PROFILE("sirius::Radial_integrals|theta");
+//
+//        for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
+//            auto& atom_type = unit_cell_.atom_type(iat);
+//            auto R          = atom_type.mt_radius();
+//            values_(iat)    = Spline<double>(grid_q_);
+//
+//            #pragma omp parallel for
+//            for (int iq = 0; iq < grid_q_.num_points(); iq++) {
+//                if (iq == 0) {
+//                    values_(iat)[iq] = std::pow(R, 3) / 3.0;
+//                } else {
+//                    double g         = grid_q_[iq];
+//                    values_(iat)[iq] = (std::sin(g * R) - g * R * std::cos(g * R)) / std::pow(g, 3);
+//                }
+//            }
+//            values_(iat).interpolate();
+//        }
+//    }
+//
+//  public:
+//    Radial_integrals_theta(Unit_cell const& unit_cell__, double qmax__, int np__)
+//        : Radial_integrals_base<1>(unit_cell__, qmax__, np__)
+//    {
+//        values_ = mdarray<Spline<double>, 1>(unit_cell_.num_atom_types());
+//        generate();
+//    }
+//};
 
 template <bool jl_deriv>
 class Radial_integrals_vloc : public Radial_integrals_base<1>
