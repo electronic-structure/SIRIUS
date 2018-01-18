@@ -251,7 +251,6 @@ class matrix_storage<T, matrix_storage_t::slab>
      *  Extra storage is expected on the CPU (for the MPI a2a communication). If the target processing unit is GPU
      *  prime storage will be copied to the device memory. */
     inline void remap_backward(device_t                     pu__,
-                               block_data_descriptor const& row_distr__,
                                int                          n__,
                                int                          idx0__ = 0)
     {
@@ -263,6 +262,8 @@ class matrix_storage<T, matrix_storage_t::slab>
         }
 
         auto& comm_col = gvp_->comm_ortho_fft();
+
+        auto& row_distr = gvp_->gvec_fft_slab();
         
         assert(n__ == spl_num_col_.global_index_size());
 
@@ -273,8 +274,8 @@ class matrix_storage<T, matrix_storage_t::slab>
         #pragma omp parallel for
         for (int i = 0; i < n_loc; i++) {
             for (int j = 0; j < comm_col.size(); j++) {
-                int offset = row_distr__.offsets[j];
-                int count  = row_distr__.counts[j];
+                int offset = row_distr.offsets[j];
+                int count  = row_distr.counts[j];
                 if (count) {
                     std::memcpy(&send_recv_buf_[offset * n_loc + count * i], &extra_(offset, i), count * sizeof(T));
                 }
@@ -284,8 +285,8 @@ class matrix_storage<T, matrix_storage_t::slab>
         /* send and recieve dimensions */
         block_data_descriptor sd(comm_col.size()), rd(comm_col.size());
         for (int j = 0; j < comm_col.size(); j++) {
-            sd.counts[j] = spl_num_col_.local_size(comm_col.rank()) * row_distr__.counts[j];
-            rd.counts[j] = spl_num_col_.local_size(j) * row_distr__.counts[comm_col.rank()];
+            sd.counts[j] = spl_num_col_.local_size(comm_col.rank()) * row_distr.counts[j];
+            rd.counts[j] = spl_num_col_.local_size(j) * row_distr.counts[comm_col.rank()];
         }
         sd.calc_offsets();
         rd.calc_offsets();

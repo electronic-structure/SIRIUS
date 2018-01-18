@@ -674,7 +674,7 @@ class Local_operator
             }
 
             for (int ispn = 0; ispn < hphi__.num_sc(); ispn++) {
-                hphi__.pw_coeffs(ispn).remap_backward(param_.processing_unit(), gkvec_p_->gvec_fft_slab(), n__, idx0__);
+                hphi__.pw_coeffs(ispn).remap_backward(param_.processing_unit(), n__, idx0__);
             }
         }
 
@@ -787,8 +787,8 @@ class Local_operator
                 }
             }
 
-            hphi__.pw_coeffs(0).remap_backward(param_.processing_unit(), gkvec_p_->gvec_fft_slab(), n__, N__);
-            ophi__.pw_coeffs(0).remap_backward(param_.processing_unit(), gkvec_p_->gvec_fft_slab(), n__, N__);
+            hphi__.pw_coeffs(0).remap_backward(param_.processing_unit(), n__, N__);
+            ophi__.pw_coeffs(0).remap_backward(param_.processing_unit(), n__, N__);
 
             fft_coarse_.dismiss();
 
@@ -868,7 +868,7 @@ class Local_operator
                 }
             }
 
-            ophi__.pw_coeffs(0).remap_backward(param_.processing_unit(), gkvec_p_->gvec_fft_slab(), n__, N__);
+            ophi__.pw_coeffs(0).remap_backward(param_.processing_unit(), n__, N__);
 
             fft_coarse_.dismiss();
 
@@ -950,7 +950,7 @@ class Local_operator
             }
 
             for (int i: iv) {
-                bphi__[i].pw_coeffs(0).remap_backward(param_.processing_unit(), gkvec_p_->gvec_fft_slab(), n__, N__);
+                bphi__[i].pw_coeffs(0).remap_backward(param_.processing_unit(), n__, N__);
             }
 
             fft_coarse_.dismiss();
