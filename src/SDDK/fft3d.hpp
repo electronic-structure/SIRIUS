@@ -849,6 +849,16 @@ class FFT3D
             return offset_z_;
         }
 
+        inline int size_x() const
+        {
+            return grid_.size(0);
+        }
+
+        inline int size_y() const
+        {
+            return grid_.size(1);
+        }
+
         /// Direct access to the FFT buffer
         inline double_complex& buffer(int idx__)
         {
@@ -992,9 +1002,11 @@ class FFT3D
                 fft_buffer_aux2_.deallocate(memory_t::device);
                 z_col_pos_.deallocate(memory_t::device);
                 fft_buffer_.deallocate(memory_t::device);
+#ifdef __GPU
                 cufft_work_buf_.deallocate(memory_t::device);
                 map_gvec_to_fft_buffer_.deallocate(memory_t::device);
                 map_gvec_to_fft_buffer_x0y0_.deallocate(memory_t::device);
+#endif
             }
             gvec_partition_ = nullptr;
         }
