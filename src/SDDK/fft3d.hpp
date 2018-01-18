@@ -1002,9 +1002,11 @@ class FFT3D
                 fft_buffer_aux2_.deallocate(memory_t::device);
                 z_col_pos_.deallocate(memory_t::device);
                 fft_buffer_.deallocate(memory_t::device);
+#ifdef __GPU
                 cufft_work_buf_.deallocate(memory_t::device);
                 map_gvec_to_fft_buffer_.deallocate(memory_t::device);
                 map_gvec_to_fft_buffer_x0y0_.deallocate(memory_t::device);
+#endif
             }
             gvec_partition_ = nullptr;
         }
