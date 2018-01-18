@@ -357,9 +357,9 @@ class Local_operator
             /* remap wave-functions */
             for (int ispn = 0; ispn < phi__.num_sc(); ispn++) {
 
-                phi__.pw_coeffs(ispn).remap_forward(fft_coarse_.pu(), gkvec_p_->gvec_fft_slab(), n__, idx0__);
+                phi__.pw_coeffs(ispn).remap_forward(fft_coarse_.pu(), n__, idx0__);
 
-                hphi__.pw_coeffs(ispn).set_num_extra(CPU, gkvec_p_->gvec_count_fft(), n__, idx0__);
+                hphi__.pw_coeffs(ispn).set_num_extra(CPU, n__, idx0__);
                 hphi__.pw_coeffs(ispn).extra().zero<memory_t::host | memory_t::device>();
             }
             
@@ -707,9 +707,9 @@ class Local_operator
             //    }
             //}
 
-             phi__.pw_coeffs(0).remap_forward(param_.processing_unit(), gkvec_p_->gvec_fft_slab(), n__, N__);
-            hphi__.pw_coeffs(0).set_num_extra(CPU, gkvec_p_->gvec_count_fft(), n__, N__);
-            ophi__.pw_coeffs(0).set_num_extra(CPU, gkvec_p_->gvec_count_fft(), n__, N__);
+             phi__.pw_coeffs(0).remap_forward(param_.processing_unit(), n__, N__);
+            hphi__.pw_coeffs(0).set_num_extra(CPU, n__, N__);
+            ophi__.pw_coeffs(0).set_num_extra(CPU, n__, N__);
 
             for (int j = 0; j < phi__.pw_coeffs(0).spl_num_col().local_size(); j++) {
                 if (fft_coarse_.pu() == CPU) {
@@ -840,8 +840,8 @@ class Local_operator
                 }
             }
 
-             phi__.pw_coeffs(0).remap_forward(param_.processing_unit(), gkvec_p_->gvec_fft_slab(), n__, N__);
-            ophi__.pw_coeffs(0).set_num_extra(CPU, gkvec_p_->gvec_count_fft(), n__, N__);
+             phi__.pw_coeffs(0).remap_forward(param_.processing_unit(), n__, N__);
+            ophi__.pw_coeffs(0).set_num_extra(CPU, n__, N__);
 
             for (int j = 0; j < phi__.pw_coeffs(0).spl_num_col().local_size(); j++) {
                 if (fft_coarse_.pu() == CPU) {
@@ -905,9 +905,9 @@ class Local_operator
                 iv.push_back(2);
             }
 
-            phi__.pw_coeffs(0).remap_forward(param_.processing_unit(), gkvec_p_->gvec_fft_slab(), n__, N__);
+            phi__.pw_coeffs(0).remap_forward(param_.processing_unit(), n__, N__);
             for (int i: iv) {
-                bphi__[i].pw_coeffs(0).set_num_extra(CPU, gkvec_p_->gvec_count_fft(), n__, N__);
+                bphi__[i].pw_coeffs(0).set_num_extra(CPU, n__, N__);
             }
 
             for (int j = 0; j < phi__.pw_coeffs(0).spl_num_col().local_size(); j++) {

@@ -52,7 +52,7 @@ inline void Density::generate_valence(K_point_set& ks__)
             #endif
             /* swap wave functions */
             //kp->spinor_wave_functions(ispn).pw_coeffs().remap_forward(ctx_.processing_unit(), kp->gkvec().partition().gvec_fft_slab(), nbnd);
-            kp->spinor_wave_functions().pw_coeffs(ispn).remap_forward(CPU, kp->gkvec_partition().gvec_fft_slab(), nbnd);
+            kp->spinor_wave_functions().pw_coeffs(ispn).remap_forward(CPU, nbnd);
         }
         
         if (ctx_.esm_type() == electronic_structure_method_t::full_potential_lapwlo) {
