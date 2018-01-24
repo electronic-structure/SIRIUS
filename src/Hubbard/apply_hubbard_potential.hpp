@@ -13,27 +13,50 @@ void apply_hubbard_potential(K_point& kp,
     // First calculate the local part of the projections
     // dm(i, n)  = <phi_i | psi_{nk}>
 
-    auto dm = hub_wf.overlap<double_complex>(ctx_.processing_unit(),
-                                             phi,
-                                             0,
-                                             number_of_hubbard_orbitals(),
-                                             idx__,
-                                             n__);
+    dmatrix<double_complex> dm(this->number_of_hubbard_orbitals(),
+                               n__);
 
-    // Need a reduction over the pool
-    kp.comm().allreduce<double_complex, mpi_op_t::sum>(dm.at<CPU>(), static_cast<int>(dm.size()));
+    dm.zero();
+
+    if (ctx_.num_mag_dims() == 3) {
+        inner(ctx_.processing_unit(),
+              2,
+              hub_wf,
+              0,
+              this->number_of_hubbard_orbitals(),
+              phi,
+              idx__,
+              n__,
+              dm,
+              0,
+              0);
+    } else {
+        inner(ctx_.processing_unit(),
+              ctx_.num_spins() - 1,
+              hub_wf,
+              0,
+              this->number_of_hubbard_orbitals(),
+              phi,
+              idx__,
+              n__,
+              dm,
+              0,
+              0);
+    }
+
 
     for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ++ia) {
         const auto& atom = ctx_.unit_cell().atom(ia);
+        const int lmax_at = 2 * atom.type().hubbard_l() + 1;
         if (atom.type().hubbard_correction()) {
-
+            dmatrix<double_complex> Up(lmax_at * ctx_.num_spins(), n__);
+            Up.zero();
             // we apply the hubbard correction. For now I have no papers
             // giving me the formula for the SO case so I rely on QE for it
             // but I do not like it at all
             #pragma omp parallel for
             for (int nbnd = 0; nbnd < n__; nbnd++) {
                 for (int s1 = 0; s1 < ctx_.num_spins(); s1++) {
-                    const int lmax_at = 2 * atom.type().hubbard_l() + 1;
                     for (int m1 = 0; m1 < lmax_at; m1++) {
                         double_complex temp = linalg_const<double_complex>::zero();
 
@@ -47,30 +70,39 @@ void apply_hubbard_potential(K_point& kp,
                                         dm(this->offset[ia] + s2 * lmax_at + m2, nbnd);
                             }
                         }
-
-                        if (ctx_.processing_unit() == CPU) {
-                            for (int s = 0; s < ctx_.num_spins(); s++) {
-                                for (int l = 0; l < hub_wf.pw_coeffs(s).num_rows_loc(); l++) {
-                                    ophi.pw_coeffs(s).prime(l, idx__ + nbnd) += temp *
-                                        hub_wf.pw_coeffs(s).prime(l, this->offset[ia] + s1 * lmax_at + m1);
-                                }
-                            }
-                        } else {
-#ifdef __GPU
-                            for (int s = 0; s < ctx_.num_spins(); s++) {
-                                linalg<GPU>::axpy(hub_wf.pw_coeffs(s).num_rows_loc(),
-                                                  &temp,
-                                                  hub_wf.pw_coeffs(s).prime().template at<GPU>(0,
-                                                                                 this->offset[ia] +
-                                                                                 s1 * lmax_at + m1),
-                                                  1,
-                                                  ophi.pw_coeffs(s).prime().template at<GPU>(0, idx__ + nbnd),
-                                                  1);
-                            }
-#endif
-                        }
+                        Up(s1 * lmax_at + m1, nbnd) = temp;
                     }
                 }
+            }
+
+            if(ctx_.num_mag_dims() == 3) {
+                transform<double_complex>(ctx_.processing_unit(),
+                                          2,
+                                          1.0,
+                                          hub_wf,
+                                          this->offset[ia],
+                                          2 * lmax_at,
+                                          Up,
+                                          0,
+                                          0,
+                                          1.0,
+                                          ophi,
+                                          idx__,
+                                          n__);
+            } else {
+                transform<double_complex>(ctx_.processing_unit(),
+                                          ctx_.num_spins() - 1,
+                                          1.0,
+                                          hub_wf,
+                                          this->offset[ia],
+                                          lmax_at,
+                                          Up,
+                                          0,
+                                          0,
+                                          1.0,
+                                          ophi,
+                                          idx__,
+                                          n__);
             }
         }
     }

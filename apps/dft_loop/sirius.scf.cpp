@@ -263,6 +263,7 @@ void run_tasks(cmd_args const& args)
             band.initialize_subspace(ks, H);
             if (ctx->hubbard_correction()) {
                 H.U().hubbard_compute_occupation_numbers(ks);
+                H.U().calculate_hubbard_potential_and_energy();
             }
         }
         band.solve_for_kset(ks, H, true);

@@ -41,13 +41,16 @@ class dmatrix : public matrix<T>
 
     /// Global number of matrix columns.
     int num_cols_{0};
-    
+
     /// Row block size.
     int bs_row_{0};
-    
+
     /// Column block size.
     int bs_col_{0};
-    
+
+    /// the matrix is distributed or not
+    bool is_distributed_{false};
+
     /// BLACS grid.
     BLACS_grid const* blacs_grid_{nullptr};
 
@@ -62,10 +65,14 @@ class dmatrix : public matrix<T>
 
     void init()
     {
+        is_distributed_ = false;
         #ifdef __SCALAPACK
         if (blacs_grid_ != nullptr) {
             linalg_base::descinit(descriptor_, num_rows_, num_cols_, bs_row_, bs_col_, 0, 0, blacs_grid_->context(),
                                   spl_row_.local_size());
+            if (blacs_grid_->comm().size() > 1) {
+                is_distributed_ = true;
+            }
         }
         #endif
     }
@@ -345,7 +352,7 @@ class dmatrix : public matrix<T>
     {
         mdarray<T, 2> full_mtrx(m__, n__);
         full_mtrx.zero();
-    
+
         for (int j = 0; j < this->num_cols_local(); j++) {
             for (int i = 0; i < this->num_rows_local(); i++) {
                 if (this->irow(i) < m__ &&  this->icol(j) < n__) {
@@ -353,8 +360,8 @@ class dmatrix : public matrix<T>
                 }
             }
         }
-        this->blacs_grid().comm().allreduce(full_mtrx.template at<CPU>(), static_cast<int>(full_mtrx.size()));
-        
+        this->comm().allreduce(full_mtrx.template at<CPU>(), static_cast<int>(full_mtrx.size()));
+
         if (this->blacs_grid().comm().rank() == 0) {
             HDF5_tree h5(name__, true);
             h5.write("nrow", m__);
@@ -364,6 +371,19 @@ class dmatrix : public matrix<T>
     }
 
     inline void serialize(std::string name__, int n__) const;
+
+    inline bool is_distributed() const {
+        return is_distributed_;
+    }
+
+    inline const Communicator &comm() const {
+        if (is_distributed_) {
+            return blacs_grid().comm();
+        } else {
+            static Communicator comm_ = Communicator(MPI_COMM_SELF);
+            return comm_;
+        }
+    }
 };
 
 template <>
@@ -391,7 +411,7 @@ inline void dmatrix<double_complex>::serialize(std::string name__, int n__) cons
     if (blacs_grid_->comm().rank() == 0) {
         //std::cout << "mtrx: " << name__ << std::endl;
         // std::cout << dict.dump(4);
-        
+
         printf("matrix label: %s\n", name__.c_str());
         printf("{\n");
         for (int i = 0; i < n__; i++) {

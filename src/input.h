@@ -511,8 +511,9 @@ struct Hubbard_input
 {
     int number_of_species{1};
     bool hubbard_correction_{false};
-    bool hubbard_orthogonalization_{false};
-    bool hubbard_normalization_{false};
+    bool simplified_hubbard_correction_{false};
+    bool orthogonalize_hubbard_orbitals_{false};
+    bool normalize_hubbard_orbitals_{false};
     bool hubbard_starting_magnetization_{false};
     bool hubbard_U_plus_V_{false};
     int projection_method_{0};
@@ -529,16 +530,20 @@ struct Hubbard_input
         if (!parser.count("hubbard"))
             return;
 
-        hubbard_orthogonalization_ = false;
+        orthogonalize_hubbard_orbitals_ = false;
         if (parser["hubbard"].count("orthogonalize_hubbard_wave_functions")) {
-            hubbard_orthogonalization_ = parser["hubbard"].value("orthogonalize_hubbard_wave_functions", hubbard_orthogonalization_);
+            orthogonalize_hubbard_orbitals_ = parser["hubbard"].value("orthogonalize_hubbard_wave_functions", orthogonalize_hubbard_orbitals_);
         }
 
-        hubbard_normalization_ = false;
+        normalize_hubbard_orbitals_ = false;
         if (parser["hubbard"].count("normalize_hubbard_wave_functions")) {
-            hubbard_normalization_ = parser["hubbard"].value("normalize_hubbard_wave_functions", hubbard_normalization_);
+            normalize_hubbard_orbitals_ = parser["hubbard"].value("normalize_hubbard_wave_functions", normalize_hubbard_orbitals_);
         }
 
+        if (parser["hubbard"].count("simplified_hubbard_correction")) {
+            simplified_hubbard_correction_ = parser["hubbard"].value("simplified_hubbard_correction",
+                                                                     simplified_hubbard_correction_);
+        }
         std::vector<double> coef_;
         std::vector<std::string> labels_;
         coef_.clear();

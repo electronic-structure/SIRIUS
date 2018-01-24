@@ -49,7 +49,7 @@ class Hubbard_potential
     bool orthogonalize_hubbard_orbitals_{false};
 
     /// by default we just normalize them
-    bool normalize_orbitals_only_{true};
+    bool normalize_orbitals_only_{false};
 
     /// hubbard correction with next nearest neighbors
     bool hubbard_U_plus_V_{false};
@@ -74,19 +74,19 @@ public:
         hubbard_U_plus_V_ = true;
     }
 
-    void set_hubbard_simple_method(const bool approx)
+    void set_hubbard_simple_correction()
     {
-        approximation_ = approx;
+        approximation_ = true;
     }
 
     void set_orthogonalize_hubbard_orbitals(const bool test)
     {
-        this->orthogonalize_hubbard_orbitals_ = true;
+        this->orthogonalize_hubbard_orbitals_ = test;
     }
 
-    void set_normalize_hubbard_orbitals_only(const bool test)
+    void set_normalize_hubbard_orbitals(const bool test)
     {
-        this->normalize_orbitals_only_ = true;
+        this->normalize_orbitals_only_ = test;
     }
 
     double_complex U(int m1, int m2, int m3, int m4) const
@@ -114,7 +114,7 @@ public:
         return this->orthogonalize_hubbard_orbitals_;
     }
 
-    const bool& normalize_hubbard_orbitals_only() const
+    const bool& normalize_hubbard_orbitals() const
     {
         return this->normalize_orbitals_only_;
     }
@@ -178,8 +178,8 @@ public:
     {
         if (!ctx_.hubbard_correction())
             return;
-        this->orthogonalize_hubbard_orbitals_ = ctx_.Hubbard().hubbard_orthogonalization_;
-        this->normalize_orbitals_only_        = ctx_.Hubbard().hubbard_normalization_;
+        this->orthogonalize_hubbard_orbitals_ = ctx_.Hubbard().orthogonalize_hubbard_orbitals_;
+        this->normalize_orbitals_only_        = ctx_.Hubbard().normalize_hubbard_orbitals_;
         this->projection_method_ = ctx_.Hubbard().projection_method_;
 
         // if the projectors are defined externaly then we need the file
@@ -218,6 +218,7 @@ public:
         this->mixer_input();
         mixer_->initialize();
         calculate_hubbard_potential_and_energy();
+        printf("We are where we should be\n");
     }
 
     inline void mixer_input()

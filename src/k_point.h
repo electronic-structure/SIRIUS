@@ -54,7 +54,7 @@ class K_point
 
         /// List of G-vectors with |G+k| < cutoff.
         std::unique_ptr<Gvec> gkvec_;
-        
+
         std::unique_ptr<Gvec_partition> gkvec_partition_;
 
         /// First-variational eigen values
@@ -67,7 +67,7 @@ class K_point
         std::unique_ptr<Wave_functions> fv_eigen_vectors_slab_;
 
         std::unique_ptr<Wave_functions> singular_components_;
-        
+
         /// Second-variational eigen vectors.
         /** Second-variational eigen-vectors are stored as one or two \f$ N_{fv} \times N_{fv} \f$ matrices in
          *  case of non-magnetic or collinear magnetic case or as a single \f$ 2 N_{fv} \times 2 N_{fv} \f$
@@ -368,6 +368,12 @@ class K_point
             assert(j__ >= 0 && j__ < static_cast<int>(band_occupancies_.size()));
             return band_occupancies_[j__];
         }
+
+        inline std::vector<double>& band_occupancy()
+        {
+            return band_occupancies_;
+        }
+
 
         inline double band_energy(int j__) const
         {

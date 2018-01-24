@@ -999,12 +999,14 @@ module sirius
             integer,                 intent(in)  :: flg
         end subroutine
 
-        subroutine sirius_add_atom_type_chi(atom_type, l, num_points, chi)&
+        subroutine sirius_add_atom_type_chi(atom_type, l, jchi, num_points, chi, oc)&
             &bind(C, name="sirius_add_atom_type_chi")
             character,         target, dimension(*), intent(in)  :: atom_type
             integer,                                 intent(in)  :: l
+            REAL(8),                                 intent(in)  :: jchi
             integer,                                 intent(in)  :: num_points
             real(8),                                 intent(in)  :: chi
+            real(8),                                 intent(in)  :: oc
         end subroutine
 
         subroutine sirius_set_esm(enable_esm, esm_bc)&
@@ -1013,28 +1015,66 @@ module sirius
             character,         target, dimension(*), intent(in)  :: esm_bc
         end subroutine
 
-        subroutine sirius_set_hubbard_correction(hubbard_correction_)&
+                subroutine sirius_set_hubbard_correction()&
           &bind(C, name="sirius_set_hubbard_correction")
-          logical(1),                                intent(in) :: hubbard_correction_
         end subroutine sirius_set_hubbard_correction
 
-        subroutine sirius_set_hubbard_occupations(occ, ld)&
-          &bind(C, name="sirius_set_hubbard_occupations")
+        subroutine sirius_set_hubbard_occupancies(occ, ld)&
+          &bind(C, name="sirius_set_hubbard_occupancies")
+          real(8),             target, dimension(*),                  intent(in) :: occ
+          integer,                                   intent(in) :: ld
+        end subroutine sirius_set_hubbard_occupancies
+
+        subroutine sirius_get_hubbard_occupancies(occ, ld)&
+             &bind(C, name="sirius_get_hubbard_occupancies")
+          real(8),                                   intent(out) :: occ
+          integer,                                   intent(in) :: ld
+        end subroutine sirius_get_hubbard_occupancies
+
+        subroutine sirius_set_hubbard_occupancies_nc(occ, ld)&
+             &bind(C, name="sirius_set_hubbard_occupancies_nc")
           complex(8),                                intent(in) :: occ
           integer,                                   intent(in) :: ld
-        end subroutine sirius_set_hubbard_occupations
+        end subroutine sirius_set_hubbard_occupancies_nc
 
         subroutine sirius_set_hubbard_potential(occ, ld)&
           &bind(C, name="sirius_set_hubbard_potential")
-          complex(8),                                intent(in) :: occ
+          real(8),                                   intent(in) :: occ
           integer,                                   intent(in) :: ld
         end subroutine sirius_set_hubbard_potential
 
+        subroutine sirius_set_hubbard_potential_nc(occ, ld)&
+             &bind(C, name="sirius_set_hubbard_potential_nc")
+          complex(8),                                intent(in) :: occ
+          integer,                                   intent(in) :: ld
+        end subroutine sirius_set_hubbard_potential_nc
 
-        subroutine sirius_set_atom_type_hubbard(label__, hub_correction, J_, theta_, phi_, alpha_, beta_, J0_)&
+        subroutine sirius_get_hubbard_occupancies_nc(occ, ld)&
+             &bind(C, name="sirius_get_hubbard_occupancies_nc")
+          complex(8),                                intent(out) :: occ
+          integer,                                   intent(in) :: ld
+        end subroutine sirius_get_hubbard_occupancies_nc
+
+        subroutine sirius_calculate_hubbard_potential()&
+             &bind(C, name="sirius_calculate_hubbard_potential")
+        end subroutine sirius_calculate_hubbard_potential
+
+        subroutine sirius_set_hubbard_simplified_method()&
+             &bind(C, name="sirius_set_hubbard_simplified_method")
+        end subroutine sirius_set_hubbard_simplified_method
+
+        subroutine sirius_set_orthogonalize_hubbard_orbitals()&
+             &bind(C, name="sirius_set_orthogonalize_hubbard_orbitals")
+        end subroutine sirius_set_orthogonalize_hubbard_orbitals
+
+        subroutine sirius_set_normalize_hubbard_orbitals()&
+             &bind(C, name="sirius_set_normalize_hubbard_orbitals")
+        end subroutine sirius_set_normalize_hubbard_orbitals
+
+        subroutine sirius_set_atom_type_hubbard(label__, U_, J_, theta_, phi_, alpha_, beta_, J0_)&
           &bind(C, name="sirius_set_atom_type_hubbard")
           character, dimension(*), intent(in) :: label__
-          logical(1),                intent(in) :: hub_correction
+          real(8),                intent(in) :: U_
           real(8),                intent(in) :: J_
           real(8),                intent(in) :: theta_
           real(8),                intent(in) :: phi_
@@ -1042,6 +1082,10 @@ module sirius
           real(8),                intent(in) :: beta_
           real(8),                intent(in) :: J0_
         end subroutine sirius_set_atom_type_hubbard
+
+        subroutine sirius_calculate_hubbard_occupancies()&
+             &bind(C, name="sirius_calculate_hubbard_occupancies")
+        end subroutine sirius_calculate_hubbard_occupancies
 
         subroutine sirius_create_storage_file()&
           &bind(C, name="sirius_create_storage_file")

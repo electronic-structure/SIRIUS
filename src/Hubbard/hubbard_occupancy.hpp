@@ -21,29 +21,36 @@ void hubbard_compute_occupation_numbers(K_point_set& kset_)
 
         // now for each spin components and each atom we need to calculate
         // <psi_{nk}|phi^I_m'><phi^I_m|psi_{nk}>
+        dmatrix<double_complex> dm(this->number_of_hubbard_orbitals(),
+                                   kp->num_occupied_bands(0));
 
-        mdarray<double_complex, 2> dm = kp->hubbard_wave_functions().overlap<double_complex>(ctx_.processing_unit(),
-                                                                                             kp->spinor_wave_functions(),
-                                                                                             0,
-                                                                                             this->number_of_hubbard_orbitals(),
-                                                                                             0,
-                                                                                             kp->num_occupied_bands());
+        dm.zero();
 
-        // for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-        //     /* compute <phi_{i,\sigma}|psi_nk> the bands been distributed over the pool */
-        //     linalg<CPU>::gemm(2, 0,
-        //                       this->number_of_hubbard_orbitals(),
-        //                       kp->num_occupied_bands(),
-        //                       kp->hubbard_wave_functions().pw_coeffs(ispn).num_rows_loc(),
-        //                       linalg_const<double_complex>::one(),
-        //                       kp->hubbard_wave_functions().pw_coeffs(ispn).prime().at<CPU>(0, 0),
-        //                       kp->hubbard_wave_functions().pw_coeffs(ispn).prime().ld(),
-        //                       kp->spinor_wave_functions().pw_coeffs(ispn).prime().at<CPU>(0, 0),
-        //                       kp->spinor_wave_functions().pw_coeffs(ispn).prime().ld(),
-        //                       linalg_const<double_complex>::one(),
-        //                       dm.at<CPU>(0, 0),
-        //                       dm.ld());
-        // }
+        if (ctx_.num_mag_dims() == 3) {
+            inner(ctx_.processing_unit(),
+                  2,
+                  kp->hubbard_wave_functions(),
+                  0,
+                  this->number_of_hubbard_orbitals(),
+                  kp->spinor_wave_functions(),
+                  0,
+                  kp->num_occupied_bands(),
+                  dm,
+                  0,
+                  0);
+        } else {
+            inner(ctx_.processing_unit(),
+                  ctx_.num_spins() - 1,
+                  kp->hubbard_wave_functions(),
+                  0,
+                  this->number_of_hubbard_orbitals(),
+                  kp->spinor_wave_functions(),
+                  0,
+                  kp->num_occupied_bands(0),
+                  dm,
+                  0,
+                  0);
+        }
 
         // now compute O_{ij}^{sigma,sigma'} = \sum_{nk} <psi_nk|phi_{i,sigma}><phi_{j,sigma^'}|psi_nk> f_{nk}
 
@@ -51,17 +58,18 @@ void hubbard_compute_occupation_numbers(K_point_set& kset_)
         #pragma omp parallel for schedule(static)
         for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
             const auto& atom = unit_cell_.atom(ia);
+            const int lmax_at = 2 * atom.type().hubbard_l() + 1;
             if (atom.type().hubbard_correction()) {
                 for (int s1 = 0; s1 < ctx_.num_spins(); s1++) {
                     for (int s2 = 0; s2 < ctx_.num_spins(); s2++) {
                         int s = (s1 == s2) * s1 + (s1 != s2) * (1 + 2 * s2 + s1);
-                        for (int nband = 0; nband < kp->num_occupied_bands(); nband++) {
-                            for (int m = 0; m < 2 * atom.type().hubbard_l() + 1; m++) {
-                                for (int mp = 0; mp < 2 * atom.type().hubbard_l() + 1; mp++) {
+                        for (int nband = 0; nband < kp->num_occupied_bands(0); nband++) {
+                            for (int m = 0; m < lmax_at; m++) {
+                                for (int mp = 0; mp < lmax_at; mp++) {
                                     this->occupancy_number_(m, mp, s, ia, 0) +=
                                         std::conj(
-                                            dm(this->offset[ia] + m + s1 * (2 * atom.type().hubbard_l() + 1), nband)) *
-                                        dm(this->offset[ia] + mp + s2 * (2 * atom.type().hubbard_l() + 1), nband) *
+                                            dm(this->offset[ia] + m + s1 * lmax_at, nband)) *
+                                        dm(this->offset[ia] + mp + s2 * lmax_at, nband) *
                                         kp->band_occupancy(nband) * kp->weight();
                                 }
                             }
@@ -76,7 +84,7 @@ void hubbard_compute_occupation_numbers(K_point_set& kset_)
                                                          static_cast<int>(this->occupancy_number_.size()));
 
     // Now symmetrization procedure
-    if (ctx_.use_symmetry()) {
+    if (0) {
         auto& sym = unit_cell_.symmetry();
 
         // check if we have some symmetries
@@ -101,10 +109,11 @@ void hubbard_compute_occupation_numbers(K_point_set& kset_)
                 #pragma omp parallel for schedule(static)
                 for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
                     const auto& atom = unit_cell_.atom(ia);
+                    const int lmax_at = 2 * atom.type().hubbard_l() + 1;
                     if (atom.type().hubbard_correction()) {
-                        for (int ii = 0; ii < 2 * atom.type().hubbard_l() + 1; ii++) {
+                        for (int ii = 0; ii < lmax_at; ii++) {
                             int l1 = Utils::lm_by_l_m(atom.type().hubbard_l(), ii - atom.type().hubbard_l());
-                            for (int ll = 0; ll < 2 * atom.type().hubbard_l() + 1; ll++) {
+                            for (int ll = 0; ll < lmax_at; ll++) {
                                 int l2 = Utils::lm_by_l_m(atom.type().hubbard_l(), ll - atom.type().hubbard_l());
                                 mdarray<double_complex, 1> rot_spa(ctx_.num_spins() * ctx_.num_spins());
                                 rot_spa.zero();
@@ -113,10 +122,10 @@ void hubbard_compute_occupation_numbers(K_point_set& kset_)
                                         // symmetrization procedure
                                         // A_ij B_jk C_kl
 
-                                        for (int jj = 0; jj < 2 * atom.type().hubbard_l() + 1; jj++) {
+                                        for (int jj = 0; jj < lmax_at; jj++) {
                                             int l3 =
                                                 Utils::lm_by_l_m(atom.type().hubbard_l(), jj - atom.type().hubbard_l());
-                                            for (int kk = 0; kk < 2 * atom.type().hubbard_l() + 1; kk++) {
+                                            for (int kk = 0; kk < lmax_at; kk++) {
                                                 int l4 = Utils::lm_by_l_m(atom.type().hubbard_l(),
                                                                           kk - atom.type().hubbard_l());
                                                 rot_spa(2 * s1 + s2) +=
@@ -160,9 +169,10 @@ void hubbard_compute_occupation_numbers(K_point_set& kset_)
 
             for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
                 auto& atom = unit_cell_.atom(ia);
+                const int lmax_at = 2 * atom.type().hubbard_l() + 1;
                 if (atom.type().hubbard_correction()) {
-                    for (int ii = 0; ii < 2 * atom.type().hubbard_l() + 1; ii++) {
-                        for (int ll = 0; ll < 2 * atom.type().hubbard_l() + 1; ll++) {
+                    for (int ii = 0; ii < lmax_at; ii++) {
+                        for (int ll = 0; ll < lmax_at; ll++) {
                             for (int s = 0; s < ctx_.num_spins() * ctx_.num_spins(); s++) {
                                 this->occupancy_number_(ii, ll, s, ia, 0) = rotated_oc(ii, ll, s, ia);
                             }
@@ -175,11 +185,12 @@ void hubbard_compute_occupation_numbers(K_point_set& kset_)
 
     for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
         const auto& atom = unit_cell_.atom(ia);
+        const int lmax_at = 2 * atom.type().hubbard_l() + 1;
         if (atom.type().hubbard_correction()) {
             for (int s1 = 0; s1 < ctx_.num_spins(); s1++) {
                 // diagonal blocks
-                for (int m = 0; m < (2 * atom.type().hubbard_l() + 1); m++) {
-                    for (int mp = m + 1; mp < (2 * atom.type().hubbard_l() + 1); mp++) {
+                for (int m = 0; m < lmax_at; m++) {
+                    for (int mp = m + 1; mp < lmax_at; mp++) {
                         this->occupancy_number_(mp, m, s1, ia, 0) = std::conj(this->occupancy_number_(m, mp, s1, ia, 0));
                     }
                 }
@@ -187,8 +198,8 @@ void hubbard_compute_occupation_numbers(K_point_set& kset_)
 
             if (ctx_.num_mag_dims() == 3) {
                 // off diagonal blocks
-                for (int m = 0; m < (2 * atom.type().hubbard_l() + 1); m++) {
-                    for (int mp = m + 1; mp < (2 * atom.type().hubbard_l() + 1); mp++) {
+                for (int m = 0; m < lmax_at; m++) {
+                    for (int mp = m + 1; mp < lmax_at; mp++) {
                         this->occupancy_number_(mp, m, 2, ia, 0) = std::conj(this->occupancy_number_(m, mp, 3, ia, 0));
                     }
                 }
@@ -196,72 +207,7 @@ void hubbard_compute_occupation_numbers(K_point_set& kset_)
         }
     }
 
-    if (ctx_.control().verbosity_ > 1) {
-        if (ctx_.comm().rank() == 0) {
-            printf("\n");
-            printf("hubbard occupancies\n");
-            printf("----------------------------------------------------------------------\n");
-            for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
-                printf("Atom : %d\n", ia);
-                const auto& atom = unit_cell_.atom(ia);
-                if (atom.type().hubbard_correction()) {
-                    for (int m1 = 0; m1 < 2 * atom.type().hubbard_l() + 1; m1++) {
-                        for (int m2 = 0; m2 < 2 * atom.type().hubbard_l() + 1; m2++) {
-                            printf("%.3lf %.3lf ", this->occupancy_number_(m1, m2, 0, ia, 0).real(),
-                                   this->occupancy_number_(m1, m2, 0, ia, 0).imag());
-                        }
-
-                        if (ctx_.num_mag_dims() == 3) {
-                            printf(" ");
-                            for (int m2 = 0; m2 < 2 * atom.type().hubbard_l() + 1; m2++) {
-                                printf("%.3lf %.3lf ", this->occupancy_number_(m1, m2, 2, ia, 0).real(),
-                                       this->occupancy_number_(m1, m2, 2, ia, 0).imag());
-                            }
-                        }
-                        printf("\n");
-                    }
-                    if (ctx_.num_spins() == 2) {
-                        for (int m1 = 0; m1 < 2 * atom.type().hubbard_l() + 1; m1++) {
-                            for (int m2 = 0; m2 < 2 * atom.type().hubbard_l() + 1; m2++) {
-                                printf("%.3lf %.3lf ", this->occupancy_number_(m1, m2, 3, ia, 0).real(),
-                                       this->occupancy_number_(m1, m2, 3, ia, 0).imag());
-                            }
-                            if (ctx_.num_mag_dims() == 3) {
-                                printf(" ");
-                                for (int m2 = 0; m2 < 2 * atom.type().hubbard_l() + 1; m2++) {
-                                    printf("%.3lf %.3lf ", this->occupancy_number_(m1, m2, 1, ia, 0).real(),
-                                           this->occupancy_number_(m1, m2, 1, ia, 0).imag());
-                                }
-                            }
-                            printf("\n");
-                        }
-                    }
-
-                    double n_up, n_down, n_total;
-                    n_up   = 0.0;
-                    n_down = 0.0;
-                    for (int m1 = 0; m1 < 2 * atom.type().hubbard_l() + 1; m1++) {
-                        n_up += this->occupancy_number_(m1, m1, 0, ia, 0).real();
-                    }
-
-                    if (ctx_.num_spins() == 2) {
-                        for (int m1 = 0; m1 < 2 * atom.type().hubbard_l() + 1; m1++) {
-                            n_down += this->occupancy_number_(m1, m1, 1, ia, 0).real();
-                        }
-                    }
-                    printf("\n");
-                    n_total = n_up + n_down;
-                    if (ctx_.num_spins() == 2) {
-                        printf("Atom charge (total) %.5lf (n_up) %.5lf (n_down) %.5lf (mz) %.5lf\n", n_total, n_up,
-                               n_down, n_up - n_down);
-                    } else {
-                        printf("Atom charge (total) %.5lf\n", n_total);
-                    }
-                }
-            }
-            printf("-------------------------------------------------------------\n");
-        }
-    }
+    print_occupancies();
 }
 
 // The initial occupancy is calculated following Hund rules. We first
@@ -275,6 +221,7 @@ void calculate_initial_occupation_numbers()
 #pragma omp parallel for schedule(static)
     for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
         const auto& atom = unit_cell_.atom(ia);
+        const int lmax_at = 2 * atom.type().hubbard_l() + 1;
         if (atom.type().hubbard_correction()) {
 
             // compute the total charge for the hubbard orbitals
@@ -298,17 +245,17 @@ void calculate_initial_occupation_numbers()
                 if (ctx_.num_mag_dims() != 3) {
                     // colinear case
 
-                    if (charge > (2 * atom.type().hubbard_l() + 1)) {
-                        for (int m = 0; m < 2 * atom.type().hubbard_l() + 1; m++) {
+                    if (charge > (lmax_at)) {
+                        for (int m = 0; m < lmax_at; m++) {
                             this->occupancy_number_(m, m, majs, ia, 0) = 1.0;
                             this->occupancy_number_(m, m, mins, ia, 0) =
-                                (charge - static_cast<double>(2 * atom.type().hubbard_l() + 1)) /
-                                static_cast<double>(2 * atom.type().hubbard_l() + 1);
+                                (charge - static_cast<double>(lmax_at)) /
+                                static_cast<double>(lmax_at);
                         }
                     } else {
-                        for (int m = 0; m < 2 * atom.type().hubbard_l() + 1; m++) {
+                        for (int m = 0; m < lmax_at; m++) {
                             this->occupancy_number_(m, m, majs, ia, 0) =
-                                charge / static_cast<double>(2 * atom.type().hubbard_l() + 1);
+                                charge / static_cast<double>(lmax_at);
                         }
                     }
                 } else {
@@ -319,12 +266,12 @@ void calculate_initial_occupation_numbers()
                         double_complex(cos(atom.type().starting_magnetization_phi()), sin(atom.type().starting_magnetization_phi()));
                     double_complex ns[4];
 
-                    if (charge > (2 * atom.type().hubbard_l() + 1)) {
+                    if (charge > (lmax_at)) {
                         ns[majs] = 1.0;
-                        ns[mins] = (charge - static_cast<double>(2 * atom.type().hubbard_l() + 1)) /
-                                   static_cast<double>(2 * atom.type().hubbard_l() + 1);
+                        ns[mins] = (charge - static_cast<double>(lmax_at)) /
+                                   static_cast<double>(lmax_at);
                     } else {
-                        ns[majs] = charge / static_cast<double>(2 * atom.type().hubbard_l() + 1);
+                        ns[majs] = charge / static_cast<double>(lmax_at);
                         ns[mins] = 0.0;
                     }
 
@@ -338,7 +285,7 @@ void calculate_initial_occupation_numbers()
                     ns[2] = mag * std::conj(cs) * 0.5;
                     ns[3] = mag * cs * 0.5;
 
-                    for (int m = 0; m < 2 * atom.type().hubbard_l() + 1; m++) {
+                    for (int m = 0; m < lmax_at; m++) {
                         this->occupancy_number_(m, m, 0, ia, 0) = ns[0];
                         this->occupancy_number_(m, m, 1, ia, 0) = ns[1];
                         this->occupancy_number_(m, m, 2, ia, 0) = ns[2];
@@ -347,69 +294,151 @@ void calculate_initial_occupation_numbers()
                 }
             } else {
                 for (int s = 0; s < ctx_.num_spins(); s++) {
-                    for (int m = 0; m < 2 * atom.type().hubbard_l() + 1; m++) {
+                    for (int m = 0; m < lmax_at; m++) {
                         this->occupancy_number_(m, m, s, ia, 0) =
-                            charge * 0.5 / static_cast<double>(2 * atom.type().hubbard_l() + 1);
+                            charge * 0.5 / static_cast<double>(lmax_at);
                     }
                 }
             }
         }
     }
 
+    print_occupancies();
+}
+
+
+inline int natural_lm_to_qe(int m, int l)
+{
+    return (m > 0) ? 2 * m - 1 : -2 * m;
+}
+
+inline void set_hubbard_occupancies_matrix(double *occ, int ld)
+{
+    mdarray<double, 4> occupation_(occ, ld, ld, ctx_.num_spins(), ctx_.unit_cell().num_atoms());
+
+    for(int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {
+        const int l = ctx_.unit_cell().atom(ia).type().hubbard_l();
+        for (int m1 = -l; m1 <= l; m1++) {
+            const int mm1 = natural_lm_to_qe(m1, l);
+            for (int m2 = -l; m2 <= l ; m2++) {
+                const int mm2 = natural_lm_to_qe(m2, l);
+                for(int s = 0; s < ctx_.num_spins(); s++) {
+                    this->occupancy_number_(l + m1, l + m2, s, ia, 0) = occupation_(mm1, mm2, s, ia);
+                }
+            }
+        }
+    }
+}
+
+inline void set_hubbard_occupancies_matrix_nc(double_complex *occ, int ld)
+{
+    mdarray<double_complex, 4> occupation_(occ, ld, ld, 4, ctx_.unit_cell().num_atoms());
+
+    for(int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {
+        const int l = ctx_.unit_cell().atom(ia).type().hubbard_l();
+        for (int m1 = -l; m1 <= -l; m1++) {
+            const int mm1 = natural_lm_to_qe(m1, l);
+            for (int m2 = -l; m2 <= l; m2++) {
+                const int mm2 = natural_lm_to_qe(m2, l);
+                this->occupancy_number_(l + m1, l + m2, 0, ia, 0) = occupation_(mm1, mm2, 0, ia);
+                this->occupancy_number_(l + m1, l + m2, 1, ia, 0) = occupation_(mm1, mm2, 3, ia);
+                this->occupancy_number_(l + m1, l + m2, 2, ia, 0) = occupation_(mm1, mm2, 1, ia);
+                this->occupancy_number_(l + m1, l + m2, 3, ia, 0) = occupation_(mm1, mm2, 2, ia);
+            }
+        }
+    }
+}
+
+inline void get_hubbard_occupancies_matrix(double *occ, int ld)
+{
+    mdarray<double, 4> occupation_(occ, ld, ld, ctx_.num_spins(), ctx_.unit_cell().num_atoms());
+
+    for(int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {
+        const int l = ctx_.unit_cell().atom(ia).type().hubbard_l();
+        for (int m1 = -l; m1 <= l; m1++) {
+            const int mm1 = natural_lm_to_qe(m1, l);
+            for (int m2 = -l; m2 <= l; m2++) {
+                const int mm2 = natural_lm_to_qe(m2, l);
+                for (int s = 0; s < ctx_.num_spins(); s++) {
+                        occupation_(mm1, mm2, s, ia) = this->occupancy_number_(l + m1, l + m2, s, ia, 0).real();
+                }
+            }
+        }
+    }
+}
+
+inline void get_hubbard_occupancies_matrix_nc(double_complex *occ, int ld)
+{
+    mdarray<double_complex, 4> occupation_(occ, ld, ld, 4, ctx_.unit_cell().num_atoms());
+
+    for(int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {
+        const int l = ctx_.unit_cell().atom(ia).type().hubbard_l();
+        for (int m1 = -l; m1 <= l; m1++) {
+            const int mm1 = natural_lm_to_qe(m1, l);
+            for (int m2 = -l; m2 <= l; m2++) {
+                const int mm2 = natural_lm_to_qe(m2, l);
+                occupation_(mm1, mm2, 0, ia) = this->occupancy_number_(l + m1, l + m2, 0, ia, 0);
+                occupation_(mm1, mm2, 3, ia) = this->occupancy_number_(l + m1, l + m2, 1, ia, 0);
+                occupation_(mm1, mm2, 1, ia) = this->occupancy_number_(l + m1, l + m2, 2, ia, 0);
+                occupation_(mm1, mm2, 2, ia) = this->occupancy_number_(l + m1, l + m2, 3, ia, 0);
+            }
+        }
+    }
+}
+
+inline void print_occupancies()
+{
     if (ctx_.control().verbosity_ > 1) {
         if (ctx_.comm().rank() == 0) {
-            printf("Initial occupancy\n");
+            printf("\n");
+            printf("hubbard occupancies\n");
+            printf("----------------------------------------------------------------------\n");
             for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
                 printf("Atom : %d\n", ia);
                 const auto& atom = unit_cell_.atom(ia);
+                const int lmax_at = 2 * atom.type().hubbard_l() + 1;
                 if (atom.type().hubbard_correction()) {
-                    for (int m1 = 0; m1 < 2 * atom.type().hubbard_l() + 1; m1++) {
-                        for (int m2 = 0; m2 < 2 * atom.type().hubbard_l() + 1; m2++) {
-                            printf("%.3lf %.3lf ", this->occupancy_number_(m1, m2, 0, ia, 0).real(),
-                                   this->occupancy_number_(m1, m2, 0, ia, 0).imag());
+                    for (int m1 = 0; m1 < lmax_at; m1++) {
+                        for (int m2 = 0; m2 < lmax_at; m2++) {
+                            printf("%.3lf ", std::norm(this->occupancy_number_(m1, m2, 0, ia, 0)));
                         }
 
                         if (ctx_.num_mag_dims() == 3) {
                             printf(" ");
-                            for (int m2 = 0; m2 < 2 * atom.type().hubbard_l() + 1; m2++) {
-                                printf("%.3lf %.3lf ", this->occupancy_number_(m1, m2, 2, ia, 0).real(),
-                                       this->occupancy_number_(m1, m2, 2, ia, 0).imag());
+                            for (int m2 = 0; m2 < lmax_at; m2++) {
+                                printf("%.3lf ", std::norm(this->occupancy_number_(m1, m2, 2, ia, 0)));
                             }
                         }
                         printf("\n");
                     }
-                    printf("\n");
                     if (ctx_.num_spins() == 2) {
-                        for (int m1 = 0; m1 < 2 * atom.type().hubbard_l() + 1; m1++) {
-                            for (int m2 = 0; m2 < 2 * atom.type().hubbard_l() + 1; m2++) {
-                                printf("%.3lf %.3lf ", this->occupancy_number_(m1, m2, 3, ia, 0).real(),
-                                       this->occupancy_number_(m1, m2, 3, ia, 0).imag());
+                        for (int m1 = 0; m1 < lmax_at; m1++) {
+                            for (int m2 = 0; m2 < lmax_at; m2++) {
+                                printf("%.3lf ", std::norm(this->occupancy_number_(m1, m2, 3, ia, 0)));
                             }
                             if (ctx_.num_mag_dims() == 3) {
                                 printf(" ");
-                                for (int m2 = 0; m2 < 2 * atom.type().hubbard_l() + 1; m2++) {
-                                    printf("%.3lf %.3lf ", this->occupancy_number_(m1, m2, 1, ia, 0).real(),
-                                           this->occupancy_number_(m1, m2, 1, ia, 0).imag());
+                                for (int m2 = 0; m2 < lmax_at; m2++) {
+                                    printf("%.3lf ", std::norm(this->occupancy_number_(m1, m2, 1, ia, 0)));
                                 }
                             }
                             printf("\n");
                         }
                     }
 
-                    printf("\n");
                     double n_up, n_down, n_total;
                     n_up   = 0.0;
                     n_down = 0.0;
-                    for (int m1 = 0; m1 < 2 * atom.type().hubbard_l() + 1; m1++) {
+                    for (int m1 = 0; m1 < lmax_at; m1++) {
                         n_up += this->occupancy_number_(m1, m1, 0, ia, 0).real();
                     }
 
                     if (ctx_.num_spins() == 2) {
-                        for (int m1 = 0; m1 < 2 * atom.type().hubbard_l() + 1; m1++) {
+                        for (int m1 = 0; m1 < lmax_at; m1++) {
                             n_down += this->occupancy_number_(m1, m1, 1, ia, 0).real();
                         }
                     }
-
+                    printf("\n");
                     n_total = n_up + n_down;
                     if (ctx_.num_spins() == 2) {
                         printf("Atom charge (total) %.5lf (n_up) %.5lf (n_down) %.5lf (mz) %.5lf\n", n_total, n_up,
@@ -419,48 +448,7 @@ void calculate_initial_occupation_numbers()
                     }
                 }
             }
-            printf("\n");
+            printf("-------------------------------------------------------------\n");
         }
     }
-}
-
-void set_hubbard_occupation_matrix(double_complex *occ, int ld)
-{
-    mdarray<double_complex, 4> occupation_(occ, 2 * this->lmax_ + 1, 2 * this->lmax_ + 1, 4, ctx_.unit_cell().num_atoms());
-
-    if(ctx_.num_spins() == 1) {
-        for (int m1 = 0; m1 < (2 * ctx_.unit_cell().atom(ia).type().hubbard_l() + 1); m1++) {
-            int mm1 = ((m1 % 2 == 0) - (m1 %2 == 1)) * ((m1 + 1) >> 1) + ctx_.unit_cell().atom(ia).type().hubbard_l();
-            for (int m2 = 0; m2 < (2 * ctx_.unit_cell().atom(ia).type().hubbard_l() + 1); m2++) {
-                int mm2 = ((m2 % 2 == 0) - (m2 %2 == 1)) * ((m2 + 1) >> 1) + ctx_.unit_cell().atom(ia).type().hubbard_l();
-                this->occupancy_number_(mm1, mm2, 0, ia, 0) = occupation_(m1, m2, 0, ia);
-            }
-        }
-    } else {
-        for(int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {
-            if(ctx_.num_mag_dims() == 3) {
-                for (int m1 = 0; m1 < (2 * ctx_.unit_cell().atom(ia).type().hubbard_l() + 1); m1++) {
-                    int mm1 = ((m1 % 2 == 0) - (m1 %2 == 1)) * ((m1 + 1) >> 1) + ctx_.unit_cell().atom(ia).type().hubbard_l();
-                    for (int m2 = 0; m2 < (2 * ctx_.unit_cell().atom(ia).type().hubbard_l() + 1); m2++) {
-                        int mm2 = ((m2 % 2 == 0) - (m2 %2 == 1)) * ((m2 + 1) >> 1) + ctx_.unit_cell().atom(ia).type().hubbard_l();
-                        this->occupancy_number_(mm1, mm2, 0, ia, 0) = occupation_(m1, m2, 0, ia);
-                        this->occupancy_number_(mm1, mm2, 1, ia, 0) = occupation_(m1, m2, 3, ia);
-                        this->occupancy_number_(mm1, mm2, 2, ia, 0) = occupation_(m1, m2, 1, ia);
-                        this->occupancy_number_(mm1, mm2, 3, ia, 0) = occupation_(m1, m2, 2, ia);
-                    }
-                }
-            } else {
-                for (int m1 = 0; m1 < (2 * ctx_.unit_cell().atom(ia).type().hubbard_l() + 1); m1++) {
-                    int mm1 = ((m1 % 2 == 0) - (m1 %2 == 1)) * ((m1 + 1) >> 1) + ctx_.unit_cell().atom(ia).type().hubbard_l();
-                    for (int m2 = 0; m2 < (2 * ctx_.unit_cell().atom(ia).type().hubbard_l() + 1); m2++) {
-                        int mm2 = ((m2 % 2 == 0) - (m2 %2 == 1)) * ((m2 + 1) >> 1) + ctx_.unit_cell().atom(ia).type().hubbard_l();
-                        this->occupancy_number_(mm1, mm2, 0, ia, 0) = occupation_(m1, m2, 0, ia);
-                        this->occupancy_number_(mm1, mm2, 1, ia, 0) = occupation_(m1, m2, 1, ia);
-                    }
-                }
-            }
-        }
-    }
-
-    calculate_hubbard_potential_and_energy();
 }

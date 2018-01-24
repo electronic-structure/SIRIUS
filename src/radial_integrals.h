@@ -106,9 +106,10 @@ class Radial_integrals_atomic_wf : public Radial_integrals_base<2>
 
             auto& atom_type = unit_cell_.atom_type(iat);
             /* create jl(qx) */
+
             #pragma omp parallel for
             for (int iq = 0; iq < nq(); iq++) {
-                jl(iq) = Spherical_Bessel_functions(atom_type.indexr().lmax(), atom_type.radial_grid(), grid_q_[iq]);
+                jl(iq) = Spherical_Bessel_functions(5, atom_type.radial_grid(), grid_q_[iq]);
             }
 
             int nwf = static_cast<int>(atom_type.pp_desc().atomic_pseudo_wfs_.size());
@@ -131,7 +132,7 @@ class Radial_integrals_atomic_wf : public Radial_integrals_base<2>
                 double norm = inner(wf, wf, 0);
 
                 int l = atom_type.pp_desc().atomic_pseudo_wfs_[i].first;
-                
+                std::cout << l << std::endl;
                 #pragma omp parallel for
                 for (int iq = 0; iq < nq(); iq++) {
                     values_(i, iat)[iq] = sirius::inner(jl(iq)[l], wf, 1) / std::sqrt(norm);
@@ -412,7 +413,7 @@ class Radial_integrals_beta : public Radial_integrals_base<2>
         values_ = mdarray<Spline<double>, 2>(unit_cell_.max_mt_radial_basis_size(), unit_cell_.num_atom_types());
         generate();
     }
-    
+
     /// Get all values for a given atom type and q-point.
     inline mdarray<double, 1> values(int iat__, double q__) const
     {

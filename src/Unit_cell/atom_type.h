@@ -369,6 +369,8 @@ class Atom_type
     ///   hubbard_coefficients[4] = U_alpha
     ///   hubbard_coefficients[5] = U_beta
 
+    double hubbard_J_{0.0};
+    double hubbard_U_{0.0};
     double hubbard_coefficients_[4];
 
     mdarray<double, 4> hubbard_matrix_;
@@ -934,12 +936,22 @@ class Atom_type
 
     inline double Hubbard_U() const
     {
-        return hubbard_coefficients_[0];
+        return hubbard_U_;
     }
 
     inline double Hubbard_J() const
     {
-        return hubbard_coefficients_[1];
+        return hubbard_J_;
+    }
+
+    inline void set_hubbard_U(double U__)
+    {
+        hubbard_U_ = U__;
+    }
+
+    inline void set_hubbard_J(double J__)
+    {
+        hubbard_J_ = J__;
     }
 
     inline double Hubbard_U_minus_J() const
@@ -1053,6 +1065,8 @@ class Atom_type
         F[0] = Hubbard_U();
 
         switch(hubbard_l_) {
+        case 0:
+            F[1] = Hubbard_J();
         case 1:
             F[1] = 5.0 * Hubbard_J();
             break;
@@ -1160,6 +1174,7 @@ class Atom_type
         nl_orb.push_back(std::make_pair("Hg", 5));
 
         nl_orb.push_back(std::make_pair("H", 1));
+        nl_orb.push_back(std::make_pair("He", 1));
 
         nl_orb.push_back(std::make_pair("C", 2));
         nl_orb.push_back(std::make_pair("N", 2));
@@ -1242,11 +1257,13 @@ class Atom_type
 
         // s orbitals
         nl_orb.push_back(std::make_pair("H", 0));
+        nl_orb.push_back(std::make_pair("He", 0));
 
         // p orbitals
         nl_orb.push_back(std::make_pair("C", 1));
         nl_orb.push_back(std::make_pair("N", 1));
         nl_orb.push_back(std::make_pair("O", 1));
+
 
         for(size_t i = 0; i < nl_orb.size(); i++) {
             if(nl_orb[i].first == symbol_) {
@@ -1276,6 +1293,8 @@ class Atom_type
 
         std::vector<std::pair<std::string, double>> occ;
         occ.clear();
+
+        occ.push_back(std::make_pair("He", 2.0));
 
         // transition metals
         occ.push_back(std::make_pair("Ti", 2.0));
@@ -1844,9 +1863,9 @@ inline void Atom_type::read_pseudo_uspp(json const& parser)
     pp_desc_.num_beta_radial_points.resize(pp_desc_.num_beta_radial_functions);
     pp_desc_.beta_l.resize(pp_desc_.num_beta_radial_functions);
 
-    if (pp_desc_.spin_orbit_coupling)
+    if (pp_desc_.spin_orbit_coupling) {
         pp_desc_.beta_j.resize(pp_desc_.num_beta_radial_functions);
-
+    }
     local_orbital_descriptor lod;
     int lmax_beta{0};
     for (int i = 0; i < pp_desc_.num_beta_radial_functions; i++) {
@@ -2247,37 +2266,34 @@ void Atom_type::calculate_ak_coefficients(mdarray<double, 5> &ak)
 
 void Atom_type::compute_hubbard_matrix()
 {
-  this->hubbard_matrix_ = mdarray<double, 4>(2 * this->hubbard_l_ + 1,
-                                             2 * this->hubbard_l_ + 1,
-                                             2 * this->hubbard_l_ + 1,
-                                             2 * this->hubbard_l_ + 1);
-  mdarray<double, 5> ak(this->hubbard_l_,
-                        2 * this->hubbard_l_ + 1,
-                        2 * this->hubbard_l_ + 1,
-                        2 * this->hubbard_l_ + 1,
-                        2 * this->hubbard_l_ + 1);
-  std::vector<double> F(4);
-  hubbard_F_coefficients(&F[0]);
-  calculate_ak_coefficients(ak);
+    this->hubbard_matrix_ = mdarray<double, 4>(2 * this->hubbard_l_ + 1,
+                                               2 * this->hubbard_l_ + 1,
+                                               2 * this->hubbard_l_ + 1,
+                                               2 * this->hubbard_l_ + 1);
+    mdarray<double, 5> ak(this->hubbard_l_,
+                          2 * this->hubbard_l_ + 1,
+                          2 * this->hubbard_l_ + 1,
+                          2 * this->hubbard_l_ + 1,
+                          2 * this->hubbard_l_ + 1);
+    std::vector<double> F(4);
+    hubbard_F_coefficients(&F[0]);
+    calculate_ak_coefficients(ak);
 
 
-  // the indices are rotated around
+    // the indices are rotated around
 
-  // <m, m |vee| m'', m'''> = hubbard_matrix(m, m'', m', m''')
-  this->hubbard_matrix_.zero();
-  for(int m1 = 0; m1 < 2 * this->hubbard_l_ + 1; m1++) {
-    for(int m2 = 0; m2 < 2 * this->hubbard_l_ + 1; m2++) {
-      for(int m3 = 0; m3 < 2 * this->hubbard_l_ + 1; m3++) {
-        for(int m4 = 0; m4 < 2 * this->hubbard_l_ + 1; m4++) {
-          for(int k = 0; k < hubbard_l_; k++)
-            this->hubbard_matrix(m1, m3, m2, m4) += ak (k, m1, m2, m3, m4) * F[k];
+    // <m, m |vee| m'', m'''> = hubbard_matrix(m, m'', m', m''')
+    this->hubbard_matrix_.zero();
+    for(int m1 = 0; m1 < 2 * this->hubbard_l_ + 1; m1++) {
+        for(int m2 = 0; m2 < 2 * this->hubbard_l_ + 1; m2++) {
+            for(int m3 = 0; m3 < 2 * this->hubbard_l_ + 1; m3++) {
+                for(int m4 = 0; m4 < 2 * this->hubbard_l_ + 1; m4++) {
+                    for(int k = 0; k < hubbard_l_; k++)
+                        this->hubbard_matrix(m1, m2, m3, m4) += ak (k, m1, m3, m2, m4) * F[k];
+                }
+            }
         }
-      }
     }
-  }
-
-  set_hubbard_l_and_n_orbital();
-  set_occupancy_hubbard_orbital(-1.0);
 }
 
 void Atom_type::read_hubbard_input()
@@ -2288,6 +2304,8 @@ void Atom_type::read_hubbard_input()
 
     for(auto &d: parameters_.Hubbard().species) {
         if (d.first == symbol_) {
+            hubbard_U_ = d.second[0];
+            hubbard_J_ = d.second[1];
             hubbard_coefficients_[0] = d.second[0];
             hubbard_coefficients_[1] = d.second[1];
             hubbard_coefficients_[2] = d.second[2];
