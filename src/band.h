@@ -38,6 +38,16 @@ namespace sirius {
 //       We can do first- and second-variation or a full variation. We can do iterative or exact diagonalization.
 //       This has to be organized.
 
+// solve_for_kset should be the the main entry point (rename to solve() and pass K_point_set)
+// solve() ---> solve_fplapw(K_point) -> |-->  second_variation()  --> fv_diag() : exact or itrative : sv_diag()
+//         |                             |-->  single_variation() : exact or iterative
+//         |                            
+//         |                           
+//         \--> solve_pppw(K_point) -> |--> davidson()
+//                                     |--> rmm_diis()
+//                                     |--> chebyshev()
+//                                     |--> exact()
+
 /// Setup and solve the eigen value problem.
 class Band
 {
