@@ -2,7 +2,7 @@ include ../make.inc
 
 .SUFFIXES: .cpp .cu .f90
 
-SRC = 
+SRC = sirius_api.cpp
 
 OBJ = $(SRC:.cpp=.o)
 
@@ -35,19 +35,14 @@ OBJ_DBG = $(OBJ:%.o=%.o)
 	$(CXX) $(CXX_OPT) -c -o $(*D)/$(*F).o $<
 
 .cu.o:
-	$(NVCC) -DADD_ $(NVCC_OPT) -c -o $(*D)/$(*F).o $<
+	$(NVCC) $(NVCC_OPT) -c -o $(*D)/$(*F).o $<
 
 .f90.o:
 	$(MPI_FC) $(MPI_FC_OPT) -c $<
 
-all: log $(OBJ) sirius_api.o sirius.o
+all: log $(OBJ) sirius.o
 	ar -r libsirius.a $(OBJ)
-	ar -r libsirius_f.a $(OBJ) sirius_api.o sirius.o
-
-
-
-#%.o: %.cpp
-#	$(CXX) $(CXX_OPT_DBG) -c -o $(*D)/$(*F).o $<
+	ar -r libsirius_f.a $(OBJ) sirius.o
 
 debug: CXX_OPT=$(CXX_OPT_DBG)
 debug: $(OBJ_DBG) sirius_api.o sirius.o

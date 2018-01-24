@@ -62,16 +62,6 @@ class Beta_projectors_base
 
     matrix<double_complex> pw_coeffs_a_;
 
-    ///// A buffer for plane-wave coefficients of beta projectors, shared between instances of Beta_projectors_base class.
-    //static mdarray<double_complex, 1>& pw_coeffs_a_shared(size_t size__, memory_t mem_type__)
-    //{
-    //    static mdarray<double_complex, 1> a;
-    //    if (a.size() < size__) {
-    //        a = mdarray<double_complex, 1>(size__, mem_type__, "pw_coeffs_a_shared");
-    //    }
-    //    return a;
-    //}
-
     /// A buffer for <beta|phi> product, shared between instances of Beta_projectors_base class.
     /** Stored as double to handle both gamma- and general k-point cases */
     static mdarray<double, 1>& beta_phi_shared(size_t size__, memory_t mem_type__)
@@ -99,7 +89,6 @@ class Beta_projectors_base
 
         /* allocate memory */
         for (int i = 0; i < N; i++) {
-            //pw_coeffs_t_[i] = matrix<double_complex>(num_gkvec_loc(), bchunk.num_beta_t(), ctx_.dual_memory_t(), "pw_coeffs_t_");
             pw_coeffs_t_[i] = matrix<double_complex>(num_gkvec_loc(), bchunk.num_beta_t(), memory_t::host, "pw_coeffs_t_");
         }
 
@@ -118,7 +107,6 @@ class Beta_projectors_base
 
     ~Beta_projectors_base()
     {
-        //pw_coeffs_a_shared(0, memory_t::none) = mdarray<double_complex, 1>();
         beta_phi_shared(0, memory_t::none) = mdarray<double, 1>();
     }
 
@@ -140,20 +128,6 @@ class Beta_projectors_base
     /// Plane wave coefficients of |beta> projectors for a chunk of atoms.
     matrix<double_complex>& pw_coeffs_a()
     {
-        //auto& bchunk = ctx_.beta_projector_chunks();
-        //auto& buf = pw_coeffs_a_shared(num_gkvec_loc() * bchunk.max_num_beta(), ctx_.dual_memory_t());
-
-        //static mdarray<double_complex, 2> pw_coeffs_a_;
-        //switch (ctx_.processing_unit()) {
-        //    case CPU: {
-        //        pw_coeffs_a_ = mdarray<double_complex, 2>(buf.template at<CPU>(), num_gkvec_loc(), bchunk.max_num_beta(), "pw_coeffs_a_");
-        //        break;
-        //    } 
-        //    case GPU: {
-        //        pw_coeffs_a_ = mdarray<double_complex, 2>(buf.template at<CPU>(), buf.template at<GPU>(), num_gkvec_loc(), bchunk.max_num_beta(), "pw_coeffs_a_");
-        //        break;
-        //   }
-        //}
         return pw_coeffs_a_;
     }
 

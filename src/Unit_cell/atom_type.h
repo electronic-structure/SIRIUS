@@ -183,6 +183,14 @@ class radial_functions_index
     }
 };
 
+/// A helper class to establish various index mappings for the atomic basis functions.
+/** Atomic basis function is a radial function multiplied by a spherical harmonic:
+    \f[
+      \phi_{\ell m \nu}({\bf r}) = f_{\ell \nu}(r) Y_{\ell m}(\hat {\bf r})
+    \f]
+    Multiple radial functions for each \f$ \ell \f$ channel are allowed. This is reflected by
+    the \f$ \nu \f$ index and called "order".
+  */
 class basis_functions_index
 {
   private:
@@ -192,18 +200,13 @@ class basis_functions_index
 
     mdarray<int, 1> index_by_idxrf_;
 
-    /// number of augmented wave basis functions
-    int size_aw_;
+    /// Number of augmented wave basis functions.
+    int size_aw_{0};
 
-    /// number of local orbital basis functions
-    int size_lo_;
+    /// Number of local orbital basis functions.
+    int size_lo_{0};
 
   public:
-    basis_functions_index()
-        : size_aw_(0)
-        , size_lo_(0)
-    {
-    }
 
     void init(radial_functions_index& indexr)
     {
@@ -278,9 +281,12 @@ class basis_functions_index
     }
 };
 
+/// Defines the properties of atom type.
+/** Atoms wth the same properties are grouped by type. */
 class Atom_type
 {
   private:
+    /// Basic parameters.
     Simulation_parameters const& parameters_;
 
     /// Unique id of atom type in the range [0, \f$ N_{types} \f$).
@@ -295,7 +301,7 @@ class Atom_type
     /// Chemical element name.
     std::string name_;
 
-    /// Nucleus charge, treated as positive(!) integer.
+    /// Nucleus charge or pseudocharge, treated as positive(!) integer.
     int zn_{0};
 
     /// Atom mass.
@@ -595,6 +601,12 @@ class Atom_type
     inline int zn() const
     {
         assert(zn_ > 0);
+        return zn_;
+    }
+
+    inline int zn(int zn__)
+    {
+        zn_ = zn__;
         return zn_;
     }
 

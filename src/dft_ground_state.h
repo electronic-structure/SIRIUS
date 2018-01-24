@@ -731,11 +731,11 @@ inline void DFT_ground_state::print_magnetic_moment()
 
  inline void DFT_ground_state::print_info()
  {
-     double evalsum1 = kset_.valence_eval_sum();
-     double evalsum2 = core_eval_sum();
-     double ekin = energy_kin();
-     double evxc = energy_vxc();
-     double eexc = energy_exc();
+    double evalsum1 = kset_.valence_eval_sum();
+    double evalsum2 = core_eval_sum();
+    double ekin = energy_kin();
+    double evxc = energy_vxc();
+    double eexc = energy_exc();
     double ebxc = energy_bxc();
     double evha = energy_vha();
     double etot = total_energy();

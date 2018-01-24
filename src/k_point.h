@@ -55,6 +55,7 @@ class K_point
         /// List of G-vectors with |G+k| < cutoff.
         std::unique_ptr<Gvec> gkvec_;
 
+        /// G-vector distribution for the FFT transformation.
         std::unique_ptr<Gvec_partition> gkvec_partition_;
 
         /// First-variational eigen values
@@ -66,6 +67,7 @@ class K_point
         /// First-variational eigen vectors, distributed in slabs.
         std::unique_ptr<Wave_functions> fv_eigen_vectors_slab_;
 
+        /// Lowest eigen-vectors of the LAPW overlap matrix with small aigen-values.
         std::unique_ptr<Wave_functions> singular_components_;
 
         /// Second-variational eigen vectors.
@@ -92,10 +94,15 @@ class K_point
         /// Band energies.
         std::vector<double> band_energies_;
 
+        /// LAPW matching coefficients for the row G+k vectors.
+        /** Used to setup the distributed LAPW Hamiltonian and overlap matrices. */
         std::unique_ptr<Matching_coefficients> alm_coeffs_row_{nullptr};
 
+        /// LAPW matching coefficients for the column G+k vectors.
+        /** Used to setup the distributed LAPW Hamiltonian and overlap matrices. */
         std::unique_ptr<Matching_coefficients> alm_coeffs_col_{nullptr};
 
+        /// LAPW matching coefficients for the local set G+k vectors.
         std::unique_ptr<Matching_coefficients> alm_coeffs_loc_{nullptr};
 
         /// Mapping between local row and global G+k vecotor index.
@@ -139,25 +146,34 @@ class K_point
         /// Mapping between lm and l.
         mdarray<int, 1> l_by_lm_;
 
-        /// column rank of the processors of ScaLAPACK/ELPA diagonalization grid
+        /// Column rank of the processors of ScaLAPACK/ELPA diagonalization grid.
         int rank_col_;
 
-        /// number of processors along columns of the diagonalization grid
+        /// Number of processors along the columns of the diagonalization grid.
         int num_ranks_col_;
 
+        /// Row rank of the processors of ScaLAPACK/ELPA diagonalization grid.
         int rank_row_;
 
+        /// Number of processors along the rows of the diagonalization grid.
         int num_ranks_row_;
 
+        /// Beta projectors for a local set of G+k vectors.
         std::unique_ptr<Beta_projectors> beta_projectors_{nullptr};
 
+        /// Beta projectors for row G+k vectors.
+        /** Used to setup the full Hamiltonian in PP-PW case (for verification purpose only) */
         std::unique_ptr<Beta_projectors> beta_projectors_row_{nullptr};
 
+        /// Beta projectors for column G+k vectors.
+        /** Used to setup the full Hamiltonian in PP-PW case (for verification purpose only) */
         std::unique_ptr<Beta_projectors> beta_projectors_col_{nullptr};
 
         /// Preconditioner matrix for Chebyshev solver.
         mdarray<double_complex, 3> p_mtrx_;
 
+        /// Communicator for parallelization inside k-point.
+        /** This communicator is used to split G+k vectors and wave-functions. */
         Communicator const& comm_;
 
         /// Communicator between(!!) rows.
@@ -166,6 +182,7 @@ class K_point
         /// Communicator between(!!) columns.
         Communicator const& comm_col_;
 
+        /// Generate G+k and local orbital basis sets.
         inline void generate_gklo_basis();
 
         /// Test orthonormalization of first-variational states.

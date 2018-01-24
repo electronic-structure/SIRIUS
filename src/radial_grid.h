@@ -153,14 +153,14 @@ class Radial_grid
         assert(i < (int)x_.size());
         return x_(i);
     }
-    
+
     /// Return \f$ dx_{i} \f$.
     inline T dx(const int i) const
     {
         assert(i < (int)dx_.size());
         return dx_(i);
     }
-    
+
     /// Return \f$ x_{i}^{-1} \f$.
     inline T x_inv(const int i) const
     {
