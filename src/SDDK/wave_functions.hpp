@@ -192,7 +192,7 @@ class Wave_functions
 
         for (int ispn = 0; ispn < num_sc_; ispn++) {
             pw_coeffs_[ispn] = std::unique_ptr<matrix_storage<double_complex, matrix_storage_t::slab>>(
-                new matrix_storage<double_complex, matrix_storage_t::slab>(gkvecp_.gvec().count(), num_wf_, gkvecp_.comm_ortho_fft()));
+                new matrix_storage<double_complex, matrix_storage_t::slab>(gkvecp_, num_wf_));
         }
     }
 
@@ -212,7 +212,7 @@ class Wave_functions
 
         for (int ispn = 0; ispn < num_sc_; ispn++) {
             pw_coeffs_[ispn] = std::unique_ptr<matrix_storage<double_complex, matrix_storage_t::slab>>(
-                new matrix_storage<double_complex, matrix_storage_t::slab>(ptr__, gkvecp_.gvec().count(), num_wf_, gkvecp_.comm_ortho_fft()));
+                new matrix_storage<double_complex, matrix_storage_t::slab>(ptr__, gkvecp_, num_wf_));
                 ptr__ += gkvecp_.gvec().count() * num_wf_;
         }
     }
@@ -235,7 +235,7 @@ class Wave_functions
 
         for (int ispn = 0; ispn < num_sc_; ispn++) {
             pw_coeffs_[ispn] = std::unique_ptr<matrix_storage<double_complex, matrix_storage_t::slab>>(
-                new matrix_storage<double_complex, matrix_storage_t::slab>(gkvecp_.gvec().count(), num_wf_, gkvecp_.comm_ortho_fft()));
+                new matrix_storage<double_complex, matrix_storage_t::slab>(gkvecp_, num_wf_));
         }
 
         spl_num_atoms_ = splindex<block>(num_atoms__, comm_.size(), comm_.rank());
@@ -256,7 +256,7 @@ class Wave_functions
         for (int ispn = 0; ispn < num_sc_; ispn++) {
             mt_coeffs_[ispn] = std::unique_ptr<matrix_storage<double_complex, matrix_storage_t::slab>>(
                 new matrix_storage<double_complex, matrix_storage_t::slab>(mt_coeffs_distr_.counts[comm_.rank()],
-                                                                           num_wf_, mpi_comm_null()));
+                                                                           num_wf_));
         }
     }
 

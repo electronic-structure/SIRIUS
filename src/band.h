@@ -38,6 +38,16 @@ namespace sirius {
 //       We can do first- and second-variation or a full variation. We can do iterative or exact diagonalization.
 //       This has to be organized.
 
+// solve_for_kset should be the the main entry point (rename to solve() and pass K_point_set)
+// solve() ---> solve_fplapw(K_point) -> |-->  second_variation()  --> fv_diag() : exact or itrative : sv_diag()
+//         |                             |-->  single_variation() : exact or iterative
+//         |                            
+//         |                           
+//         \--> solve_pppw(K_point) -> |--> davidson()
+//                                     |--> rmm_diis()
+//                                     |--> chebyshev()
+//                                     |--> exact()
+
 /// Setup and solve the eigen value problem.
 class Band
 {
@@ -94,22 +104,6 @@ class Band
                                             Wave_functions& res__,
                                             mdarray<double, 2>& h_diag__,
                                             mdarray<double, 1>& o_diag__) const;
-
-    template <typename T>
-    int residuals_common(K_point* kp__,
-                         int ispn__,
-                         int N__,
-                         int num_bands__,
-                         std::vector<double>& eval__,
-                         std::vector<double>& eval_old__,
-                         dmatrix<T>& evec__,
-                         Wave_functions& hphi__,
-                         Wave_functions& ophi__,
-                         Wave_functions& hpsi__,
-                         Wave_functions& opsi__,
-                         Wave_functions& res__,
-                         mdarray<double, 2>& h_diag__,
-                         mdarray<double, 1>& o_diag__) const;
 
     /// Compute residuals.
     template <typename T>

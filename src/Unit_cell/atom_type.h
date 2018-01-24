@@ -602,6 +602,12 @@ class Atom_type
         return zn_;
     }
 
+    inline int zn(int zn__)
+    {
+        zn_ = zn__;
+        return zn_;
+    }
+
     inline std::string const& symbol() const
     {
         return symbol_;

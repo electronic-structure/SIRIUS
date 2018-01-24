@@ -36,8 +36,6 @@ namespace sirius {
 /// Stores <G+k | beta> expansion
 class Beta_projectors: public Beta_projectors_base<1>
 {
-    friend class Beta_projectors_gradient;
-
     protected:
 
         /// Generate plane-wave coefficients for beta-projectors of atom types.
