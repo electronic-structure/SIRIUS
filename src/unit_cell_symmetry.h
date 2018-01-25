@@ -437,6 +437,7 @@ inline Unit_cell_symmetry::Unit_cell_symmetry(matrix3d<double>&   lattice_vector
     sddk::timer t3("sirius::Unit_cell_symmetry::Unit_cell_symmetry|sym2");
     sym_table_ = mdarray<int, 2>(num_atoms_, num_spg_sym());
     /* loop over spatial symmetries */
+    #pragma omp parallel for schedule(static)
     for (int isym = 0; isym < num_spg_sym(); isym++) {
         for (int ia = 0; ia < num_atoms_; ia++) {
             auto R = space_group_symmetry(isym).R;
@@ -476,7 +477,7 @@ inline Unit_cell_symmetry::Unit_cell_symmetry(matrix3d<double>&   lattice_vector
             for (int ia = 0; ia < num_atoms_; ia++) {
                 int ja = sym_table_(ia, isym);
 
-                /* now check tha vector filed transforms from atom ia to atom ja */
+                /* now check that vector field transforms from atom ia to atom ja */
                 /* vector field of atom is expected to be in Cartesian coordinates */
                 auto vd = Rspin * vector3d<double>(spins__(0, ia), spins__(1, ia), spins__(2, ia)) -
                                   vector3d<double>(spins__(0, ja), spins__(1, ja), spins__(2, ja));
