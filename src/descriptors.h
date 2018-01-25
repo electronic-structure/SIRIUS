@@ -99,24 +99,6 @@ struct pseudopotential_descriptor
     /// Local part of potential.
     std::vector<double> vloc;
 
-    /// Maximum angular momentum for |beta> projectors.
-    int lmax_beta_;
-
-    /// Number of radial functions for |beta> projectors.
-    int num_beta_radial_functions;
-
-    /// Orbital quantum numbers of each beta radial function.
-    std::vector<int> beta_l;
-
-    /// Total orbital quantum numbers of each beta radial function.
-    std::vector<double> beta_j;
-
-    /// Number of radial grid points for each beta radial function.
-    std::vector<int> num_beta_radial_points;
-
-    /// Radial functions of beta-projectors.
-    mdarray<double, 2> beta_radial_functions;
-
     /// Radial functions of Q-operator.
     mdarray<double, 3> q_radial_functions_l;
 
