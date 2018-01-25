@@ -341,12 +341,17 @@ class Atom_type
     int max_aw_order_{0};
 
     int offset_lo_{-1};
-
+    
+    /// Index of radial basis functions.
     radial_functions_index indexr_;
 
+    /// Index of atomic basis functions (radial function * spherical harmonic).
     basis_functions_index indexb_;
 
     pseudopotential_descriptor pp_desc_;
+    
+    /// Radial functions of beta-projectors.
+    std::vector<std::pair<int, Spline<double>>> beta_radial_functions_;
 
     /// starting magnetization
     double starting_magnetization_{0.0};
@@ -391,7 +396,8 @@ class Atom_type
     /// f_coefficients defined in Ref. PRB 71 115106 Eq.9 only
     /// valid when SO interactions are on
     mdarray<double_complex, 4> f_coefficients_;
-
+    
+    /// List of atom indices (global) for a given type.
     std::vector<int> atom_id_;
 
     std::string file_name_;
@@ -401,7 +407,6 @@ class Atom_type
     mutable mdarray<double, 3> rf_coef_;
     mutable mdarray<double, 3> vrf_coef_;
 
-    mdarray<Spline<double>, 1> beta_rf_;
     mdarray<Spline<double>, 2> q_rf_;
 
     bool initialized_{false};
@@ -495,7 +500,16 @@ class Atom_type
 
     inline void init(int offset_lo__);
 
-    inline void set_radial_grid(int num_points__ = -1, double const* points__ = nullptr)
+    inline void set_radial_grid(radial_grid_t grid_type__, int num_points__, double rmin__, double rmax__)
+    {
+        radial_grid_ = Radial_grid_factory<double>(grid_type__, num_points__, rmin__, rmax__);
+        num_mt_points_ = num_points__;
+        mt_radius_ = rmax__;
+        radial_grid_origin_ = rmin__;
+    }
+
+    //inline void set_radial_grid(int num_points__ = -1, double const* points__ = nullptr)
+    inline void set_radial_grid(int num_points__, double const* points__)
     {
         if (num_mt_points_ == 0) {
             TERMINATE("number of muffin-tin points is zero");
@@ -585,6 +599,35 @@ class Atom_type
     inline void add_lo_descriptor(local_orbital_descriptor const& lod__)
     {
         lo_descriptors_.push_back(lod__);
+    }
+
+    /// Add a radial function of beta-projector to a list of functions.
+    inline void add_beta_radial_function(int l__, std::vector<double>& beta__)
+    {
+        Spline<double> s(radial_grid_, beta__);
+        beta_radial_functions_.push_back(std::move(std::make_pair(l__, std::move(s))));
+    }
+    
+    /// Return a radial beta functions.
+    inline Spline<double> const& beta_radial_function(int idxrf__) const
+    {
+        return beta_radial_functions_[idxrf__].second;
+    }
+
+    /// Maximum orbital quantum number between all beta-projector radial functions.
+    inline int lmax_beta() const
+    {
+        int lmax{-1};
+        for (auto& e: beta_radial_functions_) {
+            lmax = std::max(lmax, e.first);
+        }
+        return lmax;
+    }
+    
+    /// Number of beta-radial functions.
+    inline int num_beta_radial_functions() const
+    {
+        return static_cast<int>(beta_radial_functions_.size());
     }
 
     inline void init_free_atom(bool smooth);
@@ -774,7 +817,8 @@ class Atom_type
     {
         return indexb_.size();
     }
-
+    
+    /// Total number of radial basis functions.
     inline int mt_radial_basis_size() const
     {
         return indexr_.size();
@@ -815,9 +859,8 @@ class Atom_type
         mass_ = mass__;
     }
 
-    inline void
-    set_mt_radius(double mt_radius__) // TODO: this can cause inconsistency with radial_grid; remove this method
-                                      // mt_radius should always be the last point of radial_grid
+    inline void set_mt_radius(double mt_radius__) // TODO: this can cause inconsistency with radial_grid; remove this method
+                                                  // mt_radius should always be the last point of radial_grid
     {
         mt_radius_ = mt_radius__;
     }
@@ -830,6 +873,11 @@ class Atom_type
     inline void set_radial_grid_origin(double radial_grid_origin__)
     {
         radial_grid_origin_ = radial_grid_origin__;
+    }
+
+    inline double radial_grid_origin() const
+    {
+        return radial_grid_origin_;
     }
 
     inline void set_configuration(int n, int l, int k, double occupancy, bool core)
@@ -924,10 +972,6 @@ class Atom_type
     inline double_complex f_coefficients(int xi1, int xi2, int s1, int s2) const
     {
         return f_coefficients_(xi1, xi2, s1, s2);
-    }
-    inline Spline<double> const& beta_rf(int idxrf__) const
-    {
-        return beta_rf_[idxrf__];
     }
 
     inline Spline<double> const& q_rf(int idx__, int l__) const
@@ -1431,10 +1475,10 @@ inline void Atom_type::init(int offset_lo__)
         }
     }
 
-    /* set default radial grid if it was not done by user */
-    if (radial_grid_.num_points() == 0) {
-        set_radial_grid();
-    }
+    ///* set default radial grid if it was not done by user */
+    //if (radial_grid_.num_points() == 0) {
+    //    set_radial_grid();
+    //}
 
     if (parameters_.full_potential()) {
         /* initialize aw descriptors if they were not set manually */
@@ -1455,14 +1499,13 @@ inline void Atom_type::init(int offset_lo__)
             TERMINATE("maximum aw order > 3");
         }
     }
-
+    
     if (!parameters_.full_potential()) {
-        local_orbital_descriptor lod;
-        for (int i = 0; i < pp_desc_.num_beta_radial_functions; i++) {
+        /* add beta projectors to a list of atom's local orbitals */
+        for (auto& e: beta_radial_functions_) {
             /* think of |beta> functions as of local orbitals */
-            lod.l = pp_desc_.beta_l[i];
-            if (pp_desc_.spin_orbit_coupling)
-                lod.total_angular_momentum = pp_desc_.beta_j[i];
+            local_orbital_descriptor lod;
+            lod.l = e.first;
             lo_descriptors_.push_back(lod);
         }
     }
@@ -1474,20 +1517,15 @@ inline void Atom_type::init(int offset_lo__)
     indexb_.init(indexr_);
 
     if (!parameters_.full_potential()) {
+
+        assert(mt_radial_basis_size() == num_beta_radial_functions());
+        assert(lmax_beta() == indexr().lmax());
+
         /* number of radial beta-functions */
         int nbrf = mt_radial_basis_size();
         /* maximum l of beta-projectors */
         int lmax_beta = indexr().lmax();
-        /* interpolate beta radial functions */
-        beta_rf_ = mdarray<Spline<double>, 1>(mt_radial_basis_size());
-        for (int idxrf = 0; idxrf < nbrf; idxrf++) {
-            beta_rf_[idxrf] = Spline<double>(radial_grid());
-            int nr          = pp_desc().num_beta_radial_points[idxrf];
-            for (int ir = 0; ir < nr; ir++) {
-                beta_rf_[idxrf][ir] = pp_desc().beta_radial_functions(ir, idxrf);
-            }
-            beta_rf_[idxrf].interpolate();
-        }
+
         /* interpolate Q-operator radial functions */
         if (pp_desc().augment) {
             q_rf_ = mdarray<Spline<double>, 2>(nbrf * (nbrf + 1) / 2, 2 * lmax_beta + 1);
@@ -1559,8 +1597,9 @@ inline void Atom_type::init(int offset_lo__)
         compute_hubbard_matrix();
     }
 
-    if (this->pp_desc().spin_orbit_coupling)
+    if (this->pp_desc().spin_orbit_coupling) {
         this->generate_f_coefficients();
+    }
     initialized_ = true;
 }
 
@@ -1845,23 +1884,13 @@ inline void Atom_type::read_pseudo_uspp(json const& parser)
 
     set_radial_grid(num_mt_points_, rgrid.data());
 
-    if (parser["pseudo_potential"]["header"].count("spin_orbit"))
+    if (parser["pseudo_potential"]["header"].count("spin_orbit")) {
         pp_desc_.spin_orbit_coupling = true;
+    }
 
-    pp_desc_.num_beta_radial_functions = parser["pseudo_potential"]["header"]["number_of_proj"];
+    int nbf = parser["pseudo_potential"]["header"]["number_of_proj"];
 
-    pp_desc_.beta_radial_functions = mdarray<double, 2>(num_mt_points_, pp_desc_.num_beta_radial_functions);
-    pp_desc_.beta_radial_functions.zero();
-
-    pp_desc_.num_beta_radial_points.resize(pp_desc_.num_beta_radial_functions);
-    pp_desc_.beta_l.resize(pp_desc_.num_beta_radial_functions);
-
-    if (pp_desc_.spin_orbit_coupling)
-        pp_desc_.beta_j.resize(pp_desc_.num_beta_radial_functions);
-
-    local_orbital_descriptor lod;
-    int lmax_beta{0};
-    for (int i = 0; i < pp_desc_.num_beta_radial_functions; i++) {
+    for (int i = 0; i < nbf; i++) {
         auto beta = parser["pseudo_potential"]["beta_projectors"][i]["radial_function"].get<std::vector<double>>();
         if (static_cast<int>(beta.size()) > num_mt_points_) {
             std::stringstream s;
@@ -1870,34 +1899,23 @@ inline void Atom_type::read_pseudo_uspp(json const& parser)
               << "radial grid size: " << num_mt_points_;
             TERMINATE(s);
         }
-        pp_desc_.num_beta_radial_points[i] = static_cast<int>(beta.size());
-        std::memcpy(&pp_desc_.beta_radial_functions(0, i), &beta[0],
-                    pp_desc_.num_beta_radial_points[i] * sizeof(double));
-
-        pp_desc_.beta_l[i] = parser["pseudo_potential"]["beta_projectors"][i]["angular_momentum"];
-        lmax_beta          = std::max(lmax_beta, pp_desc_.beta_l[i]);
-        if (pp_desc_.spin_orbit_coupling) {
-            pp_desc_.beta_j[i] = parser["pseudo_potential"]["beta_projectors"][i]["total_angular_momentum"];
-        }
+        int l = parser["pseudo_potential"]["beta_projectors"][i]["angular_momentum"];
+        add_beta_radial_function(l, beta);
     }
 
-    assert(lmax_beta >= 0);
-
-    pp_desc_.d_mtrx_ion = mdarray<double, 2>(pp_desc_.num_beta_radial_functions, pp_desc_.num_beta_radial_functions);
+    pp_desc_.d_mtrx_ion = mdarray<double, 2>(nbf, nbf);
     pp_desc_.d_mtrx_ion.zero();
     auto dion = parser["pseudo_potential"]["D_ion"].get<std::vector<double>>();
 
-    for (int i = 0; i < pp_desc_.num_beta_radial_functions; i++) {
-        for (int j = 0; j < pp_desc_.num_beta_radial_functions; j++) {
-            pp_desc_.d_mtrx_ion(i, j) = dion[j * pp_desc_.num_beta_radial_functions + i];
+    for (int i = 0; i < nbf; i++) {
+        for (int j = 0; j < nbf; j++) {
+            pp_desc_.d_mtrx_ion(i, j) = dion[j * nbf + i];
         }
     }
 
     if (parser["pseudo_potential"].count("augmentation")) {
         pp_desc_.augment              = true;
-        pp_desc_.q_radial_functions_l = mdarray<double, 3>(
-            num_mt_points_, pp_desc_.num_beta_radial_functions * (pp_desc_.num_beta_radial_functions + 1) / 2,
-            2 * lmax_beta + 1);
+        pp_desc_.q_radial_functions_l = mdarray<double, 3>(num_mt_points_, nbf * (nbf + 1) / 2, 2 * lmax_beta() + 1);
         pp_desc_.q_radial_functions_l.zero();
 
         for (size_t k = 0; k < parser["pseudo_potential"]["augmentation"].size(); k++) {
@@ -1958,11 +1976,6 @@ inline void Atom_type::read_pseudo_paw(json const& parser)
     /* cutoff index */
     pp_desc_.cutoff_radius_index = parser["pseudo_potential"]["header"]["cutoff_radius_index"];
 
-    /* read augmentation multipoles and integrals */
-    // pp_desc_.aug_integrals = parser["pseudo_potential"]["paw_data"]["aug_integrals"].get<std::vector<double>>();
-
-    // pp_desc_.aug_multopoles = parser["pseudo_potential"]["paw_data"]["aug_multipoles"].get<std::vector<double>>();
-
     /* read core density and potential */
     pp_desc_.all_elec_core_charge =
         parser["pseudo_potential"]["paw_data"]["ae_core_charge_density"].get<std::vector<double>>();
@@ -1974,7 +1987,7 @@ inline void Atom_type::read_pseudo_paw(json const& parser)
     pp_desc_.occupations = parser["pseudo_potential"]["paw_data"]["occupations"].get<std::vector<double>>();
 
     /* setups for reading AE and PS basis wave functions */
-    int num_wfc = pp_desc_.num_beta_radial_functions;
+    int num_wfc = num_beta_radial_functions();
 
     pp_desc_.all_elec_wfc = mdarray<double, 2>(num_mt_points_, num_wfc);
     pp_desc_.pseudo_wfc   = mdarray<double, 2>(num_mt_points_, num_wfc);
@@ -2026,8 +2039,6 @@ inline void Atom_type::read_input(const std::string& fname)
         }
     }
 
-
-
     if (parameters_.full_potential()) {
         name_               = parser["name"];
         symbol_             = parser["symbol"];
@@ -2036,6 +2047,8 @@ inline void Atom_type::read_input(const std::string& fname)
         radial_grid_origin_ = parser["rmin"];
         mt_radius_          = parser["rmt"];
         num_mt_points_      = parser["nrmt"];
+
+        set_radial_grid(radial_grid_t::exponential_grid, num_mt_points_, radial_grid_origin_, mt_radius_);
 
         read_input_core(parser);
 
