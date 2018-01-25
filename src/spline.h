@@ -157,6 +157,16 @@ class Spline
             }
             return this->interpolate();
         }
+
+        void operator=(std::vector<T> const& v__)
+        {
+            assert(v__.size() <= coeffs_.size(0));
+            int i{0};
+            for (auto e: v__) {
+                this->coeffs_(i++, 0) = e;
+            }
+            this->interpolate();
+        }
         
         /// Integrate with r^m weight.
         T integrate(int m__) const
