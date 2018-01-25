@@ -25,6 +25,8 @@
 #ifndef __BETA_PROJECTORS_BASE_H__
 #define __BETA_PROJECTORS_BASE_H__
 
+#include "SDDK/memory_pool.hpp"
+
 namespace sirius {
 
 #ifdef __GPU
@@ -59,6 +61,8 @@ class Beta_projectors_base
 
     /// Phase-factor independent coefficients of |beta> functions for atom types.
     std::array<matrix<double_complex>, N> pw_coeffs_t_;
+
+    memory_pool mem_pool_beta_;
 
     matrix<double_complex> pw_coeffs_a_;
 
@@ -307,7 +311,9 @@ class Beta_projectors_base
         PROFILE("sirius::Beta_projectors_base::prepare");
 
         auto& bchunk = ctx_.beta_projector_chunks();
-        pw_coeffs_a_ = matrix<double_complex>(num_gkvec_loc(), bchunk.max_num_beta());
+
+        double_complex* ptr = mem_pool_beta_.allocate<double_complex>(num_gkvec_loc() * bchunk.max_num_beta());
+        pw_coeffs_a_ = matrix<double_complex>(ptr, num_gkvec_loc(), bchunk.max_num_beta());
 
         if (ctx_.processing_unit() == GPU) {
             pw_coeffs_a_.allocate(memory_t::device);
@@ -323,7 +329,8 @@ class Beta_projectors_base
     {
         PROFILE("sirius::Beta_projectors_base::dismiss");
 
-        pw_coeffs_a_ = mdarray<double_complex, 2>();
+        //pw_coeffs_a_ = mdarray<double_complex, 2>();
+        mem_pool_beta_.reset();
 
         if (ctx_.processing_unit() == GPU) {
             for (int i = 0; i < N; i++) {
