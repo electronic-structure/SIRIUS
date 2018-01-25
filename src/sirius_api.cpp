@@ -2124,23 +2124,14 @@ void sirius_set_atom_type_beta_rf(ftn_char     label__,
     auto& type = sim_ctx->unit_cell().atom_type(std::string(label__));
     mdarray<double, 2> beta_rf(beta_rf__, *ld__, *num_beta__);
     type.pp_desc().spin_orbit_coupling = *spin_orbit__;
-    type.pp_desc().lmax_beta_ = 0;
-    type.pp_desc().num_beta_radial_functions = *num_beta__;
-    type.pp_desc().beta_l = std::vector<int>(*num_beta__);
-    if (type.pp_desc().spin_orbit_coupling) {
-      type.pp_desc().beta_j = std::vector<double>(*num_beta__);
-    }
-    type.pp_desc().num_beta_radial_points = std::vector<int>(*num_beta__);
+
     for (int i = 0; i < *num_beta__; i++) {
-        type.pp_desc().beta_l[i] = beta_l__[i];
-        if (type.pp_desc().beta_j.size()) {
-            type.pp_desc().beta_j[i] = beta_j__[i];
+        std::vector<double> v(num_mesh_points__[i]);
+        for (int ir = 0; ir < num_mesh_points__[i]; ir++) {
+            v[ir] = beta_rf(ir, i);
         }
-        type.pp_desc().lmax_beta_ = std::max(type.pp_desc().lmax_beta_, beta_l__[i]);
-        type.pp_desc().num_beta_radial_points[i] = num_mesh_points__[i];
+        type.add_beta_radial_function(beta_l__[i], v);
     }
-    type.pp_desc().beta_radial_functions = mdarray<double, 2>(type.num_mt_points(), *num_beta__);
-    beta_rf >> type.pp_desc().beta_radial_functions;
 }
 
 void sirius_set_atom_type_q_rf(char* label__,
@@ -2149,28 +2140,28 @@ void sirius_set_atom_type_q_rf(char* label__,
 {
     auto& type = sim_ctx->unit_cell().atom_type(std::string(label__));
 
-    int nbeta = type.pp_desc().num_beta_radial_functions;
+    int nbeta = type.num_beta_radial_functions();
 
     /* temporary wrapper */
     mdarray<double, 3> q_rf(q_rf__, type.num_mt_points(), nbeta * (nbeta + 1) / 2, 2 * (*lmax__) + 1);
 
     /* allocate space for radial functions of Q operator */
-    type.pp_desc().q_radial_functions_l = mdarray<double, 3>(type.num_mt_points(), nbeta * (nbeta + 1) / 2, 2 * type.pp_desc().lmax_beta_ + 1);
-
+    type.pp_desc().q_radial_functions_l = mdarray<double, 3>(type.num_mt_points(), nbeta * (nbeta + 1) / 2, 2 * type.lmax_beta() + 1);
+    
     for (int nb = 0; nb < nbeta; nb++) {
         for (int mb = nb; mb < nbeta; mb++) {
             /* combined index */
             int ijv = (mb + 1) * mb / 2 + nb;
 
-            if (*lmax__ ==  type.pp_desc().lmax_beta_) {
-                for (int l = 0; l <= 2 * type.pp_desc().lmax_beta_; l++) {
+            if (*lmax__ ==  type.lmax_beta()) {
+                for (int l = 0; l <= 2 * type.lmax_beta(); l++) {
                     std::memcpy(&type.pp_desc().q_radial_functions_l(0, ijv, l), &q_rf(0, ijv, l), type.num_mt_points() * sizeof(double));
                 }
             } else {
                 std::stringstream s;
                 s << "wrong lmax for " << std::string(label__) << " " << std::endl
                   << "lmax: " << *lmax__ << std::endl
-                  << "lmax_beta: " << type.pp_desc().lmax_beta_;
+                  << "lmax_beta: " << type.lmax_beta();
                 TERMINATE(s);
             }
         }
@@ -2600,7 +2591,7 @@ void sirius_set_atom_type_paw_data(char* label__,
 
     auto& pp_desc = type.pp_desc();
 
-    if (*num_wfc__ != type.pp_desc().num_beta_radial_functions) {
+    if (*num_wfc__ != type.num_beta_radial_functions()) {
         TERMINATE("PAW error: different number of projectors and wave functions!");
     }
 
@@ -2612,7 +2603,7 @@ void sirius_set_atom_type_paw_data(char* label__,
         TERMINATE("PAW error: different number of grid points of core charge and wave functions!");
     }
 
-    if (*num_occ__ != type.pp_desc().num_beta_radial_functions) {
+    if (*num_occ__ != type.num_beta_radial_functions()) {
         TERMINATE("PAW error: different number of occupations and wave functions!");
     }
 
@@ -2625,11 +2616,11 @@ void sirius_set_atom_type_paw_data(char* label__,
     pp_desc.cutoff_radius_index = *cutoff_radius_index__;
 
     // load ae and ps wave functions
-    mdarray<double, 2> aewfcs(ae_wfc_rf__, type.num_mt_points(), type.pp_desc().num_beta_radial_functions);
-    mdarray<double, 2> pswfcs(ps_wfc_rf__, type.num_mt_points(), type.pp_desc().num_beta_radial_functions);
+    mdarray<double, 2> aewfcs(ae_wfc_rf__, type.num_mt_points(), type.num_beta_radial_functions());
+    mdarray<double, 2> pswfcs(ps_wfc_rf__, type.num_mt_points(), type.num_beta_radial_functions());
 
-    pp_desc.all_elec_wfc = mdarray<double, 2>(type.num_mt_points(), type.pp_desc().num_beta_radial_functions);
-    pp_desc.pseudo_wfc   = mdarray<double, 2>(type.num_mt_points(), type.pp_desc().num_beta_radial_functions);
+    pp_desc.all_elec_wfc = mdarray<double, 2>(type.num_mt_points(), type.num_beta_radial_functions());
+    pp_desc.pseudo_wfc   = mdarray<double, 2>(type.num_mt_points(), type.num_beta_radial_functions());
 
     pp_desc.all_elec_wfc.zero();
     pp_desc.pseudo_wfc.zero();
@@ -2637,7 +2628,7 @@ void sirius_set_atom_type_paw_data(char* label__,
     aewfcs >> pp_desc.all_elec_wfc;
     pswfcs >> pp_desc.pseudo_wfc;
 
-    for (int i = 0; i < type.pp_desc().num_beta_radial_functions; i++) {
+    for (int i = 0; i < type.num_beta_radial_functions(); i++) {
         std::memcpy(&pp_desc.all_elec_wfc(0, i), &aewfcs(0, i), pp_desc.cutoff_radius_index * sizeof(double));
         std::memcpy(&pp_desc.pseudo_wfc(0, i),   &pswfcs(0, i), pp_desc.cutoff_radius_index * sizeof(double));
     }
@@ -2648,9 +2639,9 @@ void sirius_set_atom_type_paw_data(char* label__,
     std::memcpy(pp_desc.all_elec_core_charge.data(), ae_core_charge__, type.num_mt_points() * sizeof(double));
 
     // read occupations
-    pp_desc.occupations.resize(type.pp_desc().num_beta_radial_functions);
+    pp_desc.occupations.resize(type.num_beta_radial_functions());
 
-    std::memcpy(pp_desc.occupations.data(), occupations__, type.pp_desc().num_beta_radial_functions * sizeof(double));
+    std::memcpy(pp_desc.occupations.data(), occupations__, type.num_beta_radial_functions() * sizeof(double));
 }
 
 void sirius_get_paw_total_energy(double* tot_en__)
