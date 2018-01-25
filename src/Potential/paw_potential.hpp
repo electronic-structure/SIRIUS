@@ -425,14 +425,14 @@ inline void Potential::calc_PAW_local_Dij(paw_potential_data_t &pdd, mdarray<dou
     Gaunt_coefficients<double> GC(lmax, 2 * lmax, lmax, SHT::gaunt_rlm);
 
     /* store integrals here */
-    mdarray<double, 3> integrals(lmsize_rho, pp_desc.num_beta_radial_functions * (pp_desc.num_beta_radial_functions + 1) / 2,
+    mdarray<double, 3> integrals(lmsize_rho, atom_type.num_beta_radial_functions() * (atom_type.num_beta_radial_functions() + 1) / 2,
                                  ctx_.num_mag_dims() + 1);
 
     for(int imagn = 0; imagn < ctx_.num_mag_dims() + 1; imagn++ ){
         auto &ae_atom_pot = pdd.ae_potential_[imagn];
         auto &ps_atom_pot = pdd.ps_potential_[imagn];
 
-        for (int irb2 = 0; irb2 < pp_desc.num_beta_radial_functions; irb2++){
+        for (int irb2 = 0; irb2 < atom_type.num_beta_radial_functions(); irb2++){
             for (int irb1 = 0; irb1 <= irb2; irb1++){
                 int iqij = (irb2 * (irb2 + 1)) / 2 + irb1;
 
@@ -444,19 +444,19 @@ inline void Potential::calc_PAW_local_Dij(paw_potential_data_t &pdd, mdarray<dou
                 for (int lm3 = 0; lm3 < lmsize_rho; lm3++) {
                     // fill array
                     for (int irad = 0; irad < newgrid.num_points(); irad++) {
-                        double ae_part = pp_desc.all_elec_wfc(irad,irb1) * pp_desc.all_elec_wfc(irad,irb2);
-                        double ps_part = pp_desc.pseudo_wfc(irad,irb1) * pp_desc.pseudo_wfc(irad,irb2)  + pp_desc.q_radial_functions_l(irad,iqij,l_by_lm[lm3]);
+                        double ae_part = pp_desc.all_elec_wfc(irad, irb1) * pp_desc.all_elec_wfc(irad, irb2);
+                        double ps_part = pp_desc.pseudo_wfc(irad, irb1) * pp_desc.pseudo_wfc(irad, irb2) + 
+                                         pp_desc.q_radial_functions_l(irad, iqij, l_by_lm[lm3]);
 
-                        intdata[irad] = ae_atom_pot(lm3,irad) * ae_part - ps_atom_pot(lm3,irad) * ps_part;
+                        intdata[irad] = ae_atom_pot(lm3, irad) * ae_part - ps_atom_pot(lm3, irad) * ps_part;
                     }
 
                     // create spline from data arrays
-                    Spline<double> dij_spl(newgrid,intdata);
+                    Spline<double> dij_spl(newgrid, intdata);
 
                     // integrate
                     integrals(lm3, iqij, imagn) = dij_spl.integrate(0);
                 }
-
             }
         }
     }
