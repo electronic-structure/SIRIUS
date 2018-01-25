@@ -205,7 +205,7 @@ class Unit_cell
     inline void initialize();
 
     /// Add new atom type to the list of atom types and read necessary data from the .json file
-    inline void add_atom_type(const std::string label, const std::string file_name)
+    inline void add_atom_type(const std::string label, const std::string file_name = "")
     {
         if (atoms_.size()) {
             TERMINATE("Can't add new atom type if atoms are already added");
@@ -687,7 +687,8 @@ inline void Unit_cell::initialize()
             std::vector<double> Rmt = find_mt_radii();
             for (int iat = 0; iat < num_atom_types(); iat++) {
                 atom_type(iat).set_mt_radius(Rmt[iat]);
-                atom_type(iat).set_radial_grid();
+                atom_type(iat).set_radial_grid(radial_grid_t::exponential_grid, atom_type(iat).num_mt_points(),
+                                               atom_type(iat).radial_grid_origin(), Rmt[iat]);
             }
         }
 
