@@ -385,14 +385,14 @@ class Radial_integrals_beta : public Radial_integrals_base<2>
                 Spherical_Bessel_functions jl(unit_cell_.lmax(), atom_type.radial_grid(), grid_q_[iq]);
                 for (int idxrf = 0; idxrf < nrb; idxrf++) {
                     int l  = atom_type.indexr(idxrf).l;
-                    int nr = atom_type.pp_desc().num_beta_radial_points[idxrf];
+                    //int nr = atom_type.numpp_desc().num_beta_radial_points[idxrf];
                     /* compute \int j_l(q * r) beta_l(r) r^2 dr or \int d (j_l(q*r) / dq) beta_l(r) r^2  */
                     /* remeber that beta(r) are defined as miltiplied by r */
                     if (jl_deriv) {
-                        auto s                  = jl.deriv_q(l);
-                        values_(idxrf, iat)[iq] = sirius::inner(s, atom_type.beta_rf(idxrf), 1, nr);
+                        auto s  = jl.deriv_q(l);
+                        values_(idxrf, iat)[iq] = sirius::inner(s, atom_type.beta_radial_function(idxrf), 1);
                     } else {
-                        values_(idxrf, iat)[iq] = sirius::inner(jl[l], atom_type.beta_rf(idxrf), 1, nr);
+                        values_(idxrf, iat)[iq] = sirius::inner(jl[l], atom_type.beta_radial_function(idxrf), 1);
                     }
                 }
             }
@@ -449,11 +449,11 @@ class Radial_integrals_beta_jl : public Radial_integrals_base<3>
             for (int iq = 0; iq < grid_q_.num_points(); iq++) {
                 Spherical_Bessel_functions jl(lmax_, atom_type.radial_grid(), grid_q_[iq]);
                 for (int idxrf = 0; idxrf < nrb; idxrf++) {
-                    int nr = atom_type.pp_desc().num_beta_radial_points[idxrf];
+                    //int nr = atom_type.pp_desc().num_beta_radial_points[idxrf];
                     for (int l = 0; l <= lmax_; l++) {
                         /* compute \int j_{l'}(q * r) beta_l(r) r^2 * r * dr */
                         /* remeber that beta(r) are defined as miltiplied by r */
-                        values_(idxrf, l, iat)[iq] = sirius::inner(jl[l], atom_type.beta_rf(idxrf), 2, nr);
+                        values_(idxrf, l, iat)[iq] = sirius::inner(jl[l], atom_type.beta_radial_function(idxrf), 2);
                     }
                 }
             }
