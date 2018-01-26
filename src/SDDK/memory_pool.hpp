@@ -28,6 +28,8 @@
 #include <list>
 #include "mdarray.hpp"
 
+namespace sddk {
+
 class memory_pool {
   private:
     size_t pos_;
@@ -54,7 +56,7 @@ class memory_pool {
             return ptr;
         } else {
             tmp_pool_.emplace_back(new sddk::mdarray<int8_t, 1>(sz));
-            return reinterpret_cast<T*>(tmp_pool_.back()->template at<sddk::CPU>());
+            return reinterpret_cast<T*>(tmp_pool_.back()->template at<CPU>());
         }
     }
 
@@ -72,5 +74,7 @@ class memory_pool {
         pos_ = 0;
     }
 };
+
+}
 
 #endif  // __MEMORY_POOL_HPP__

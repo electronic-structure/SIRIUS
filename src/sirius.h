@@ -28,6 +28,7 @@
 #include "json.hpp"
 using json = nlohmann::json;
 
+#include "sirius_internal.h"
 #include "input.h"
 #include "cmd_args.h"
 #include "constants.h"

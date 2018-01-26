@@ -25,8 +25,6 @@
 #ifndef __BETA_PROJECTORS_BASE_H__
 #define __BETA_PROJECTORS_BASE_H__
 
-#include "SDDK/memory_pool.hpp"
-
 namespace sirius {
 
 #ifdef __GPU
@@ -38,8 +36,6 @@ extern "C" void create_beta_gk_gpu(int                   num_atoms,
                                    double const*         atom_pos,
                                    double_complex*       beta_gk);
 #endif
-
-// TODO: allocation strategy for beta and beta projectors is not good enough; shold be a better way
 
 /// Base class for beta-projectors, gradient of beta-projectors and strain derivatives of beta-projectors.
 template <int N>
@@ -55,14 +51,13 @@ class Beta_projectors_base
     /// Mapping between local and global G+k vector index.
     std::vector<int> const& igk_;
 
+    /// Coordinates of G+k vectors used by GPU kernel.
     mdarray<double, 2> gkvec_coord_;
     
-    int lmax_beta_;
-
     /// Phase-factor independent coefficients of |beta> functions for atom types.
     std::array<matrix<double_complex>, N> pw_coeffs_t_;
 
-    memory_pool mem_pool_beta_;
+    bool reallocate_pw_coeffs_t_on_gpu_{true};
 
     matrix<double_complex> pw_coeffs_a_;
 
@@ -71,8 +66,20 @@ class Beta_projectors_base
     static mdarray<double, 1>& beta_phi_shared(size_t size__, memory_t mem_type__)
     {
         static mdarray<double, 1> a;
+        /* reallocate buffer */
         if (a.size() < size__) {
             a = mdarray<double, 1>(size__, mem_type__, "beta_phi_shared");
+        }
+        return a;
+    }
+
+    /// A buffer for beta projectors for a chunk of atoms.
+    static mdarray<double_complex, 1>& pw_coeffs_a_shared(size_t size__, memory_t mem_type__)
+    {
+        static mdarray<double_complex, 1> a;
+        /* reallocate buffer */
+        if (a.size() < size__) {
+            a = mdarray<double_complex, 1>(size__, mem_type__, "pw_coeffs_a_shared");
         }
         return a;
     }
@@ -84,7 +91,6 @@ class Beta_projectors_base
         : ctx_(ctx__)
         , gkvec_(gkvec__)
         , igk_(igk__)
-        , lmax_beta_(ctx_.unit_cell().lmax())
     {
         auto& bchunk = ctx_.beta_projector_chunks();
         if (!bchunk.num_beta_t()) {
@@ -312,31 +318,43 @@ class Beta_projectors_base
 
         auto& bchunk = ctx_.beta_projector_chunks();
 
-        double_complex* ptr = mem_pool_beta_.allocate<double_complex>(num_gkvec_loc() * bchunk.max_num_beta());
-        pw_coeffs_a_ = matrix<double_complex>(ptr, num_gkvec_loc(), bchunk.max_num_beta());
+        auto& buf = pw_coeffs_a_shared(num_gkvec_loc() * bchunk.max_num_beta(), ctx_.dual_memory_t());
 
-        if (ctx_.processing_unit() == GPU) {
-            pw_coeffs_a_.allocate(memory_t::device);
+        switch (ctx_.processing_unit()) {
+            case CPU: {
+                pw_coeffs_a_ = matrix<double_complex>(buf.template at<CPU>(), num_gkvec_loc(), bchunk.max_num_beta());
+                break;
+            }
+            case GPU: {
+                pw_coeffs_a_ = matrix<double_complex>(buf.template at<CPU>(), buf.template at<GPU>(), num_gkvec_loc(),
+                                                      bchunk.max_num_beta());
+                break;
+            }
+        }
+
+        if (ctx_.processing_unit() == GPU && reallocate_pw_coeffs_t_on_gpu_) {
             for (int i = 0; i < N; i++) {
                 pw_coeffs_t_[i].allocate(memory_t::device);
                 pw_coeffs_t_[i].template copy<memory_t::host, memory_t::device>();
             }
         }
-
     }
 
     void dismiss()
     {
         PROFILE("sirius::Beta_projectors_base::dismiss");
 
-        //pw_coeffs_a_ = mdarray<double_complex, 2>();
-        mem_pool_beta_.reset();
-
-        if (ctx_.processing_unit() == GPU) {
+        if (ctx_.processing_unit() == GPU && reallocate_pw_coeffs_t_on_gpu_) {
             for (int i = 0; i < N; i++) {
                 pw_coeffs_t_[i].deallocate(memory_t::device);
             }
         }
+    }
+
+    static void cleanup()
+    {
+        beta_phi_shared(0, memory_t::host | memory_t::device) = mdarray<double, 1>();
+        pw_coeffs_a_shared(0, memory_t::host|memory_t::device) = mdarray<double_complex, 1>();
     }
 };
 

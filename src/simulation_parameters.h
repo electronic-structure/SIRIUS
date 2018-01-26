@@ -27,7 +27,7 @@
 
 #include "typedefs.h"
 #include "utils.h"
-#include "sirius_internal.h"
+//#include "sirius_internal.h"
 #include "input.h"
 
 namespace sirius {

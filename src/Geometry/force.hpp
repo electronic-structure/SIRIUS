@@ -374,7 +374,7 @@ class Force
 
     inline void calc_local_forces(mdarray<double, 2>& forces)
     {
-        PROFILE("sirius::Forces::calc_local_forces");
+        PROFILE("sirius::Force::calc_local_forces");
 
         auto& valence_rho = density_.rho();
 

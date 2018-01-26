@@ -506,9 +506,11 @@ class Atom_type
         num_mt_points_ = num_points__;
         mt_radius_ = rmax__;
         radial_grid_origin_ = rmin__;
+        if (parameters_.processing_unit() == GPU) {
+            radial_grid_.copy_to_device();
+        }
     }
 
-    //inline void set_radial_grid(int num_points__ = -1, double const* points__ = nullptr)
     inline void set_radial_grid(int num_points__, double const* points__)
     {
         if (num_mt_points_ == 0) {
@@ -522,9 +524,7 @@ class Atom_type
             radial_grid_ = Radial_grid_ext<double>(num_points__, points__);
         }
         if (parameters_.processing_unit() == GPU) {
-#ifdef __GPU
             radial_grid_.copy_to_device();
-#endif
         }
     }
 
@@ -1580,15 +1580,12 @@ inline void Atom_type::init(int offset_lo__)
     }
 
     if (parameters_.processing_unit() == GPU && parameters_.full_potential()) {
-#ifdef __GPU
         idx_radial_integrals_.allocate(memory_t::device);
         idx_radial_integrals_.copy<memory_t::host, memory_t::device>();
-        rf_coef_ = mdarray<double, 3>(num_mt_points_, 4, indexr().size(), memory_t::host_pinned | memory_t::device);
+        rf_coef_  = mdarray<double, 3>(num_mt_points_, 4, indexr().size(), memory_t::host_pinned | memory_t::device,
+                                       "Atom_type::rf_coef_");
         vrf_coef_ = mdarray<double, 3>(num_mt_points_, 4, lmmax_pot * indexr().size() * (parameters_.num_mag_dims() + 1),
-                                       memory_t::host_pinned | memory_t::device);
-#else
-        TERMINATE_NO_GPU
-#endif
+                                       memory_t::host_pinned | memory_t::device, "Atom_type::vrf_coef_");
     }
 
     if (this->hubbard_correction_) {

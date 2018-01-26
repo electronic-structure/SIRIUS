@@ -23,6 +23,7 @@
  */
 
 #include "sirius.h"
+#include "sirius_internal.h"
 
 /// Simulation context.
 std::unique_ptr<sirius::Simulation_context> sim_ctx{nullptr};
