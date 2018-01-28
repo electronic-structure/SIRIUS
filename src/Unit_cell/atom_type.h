@@ -352,7 +352,15 @@ class Atom_type
     
     /// Radial functions of beta-projectors.
     std::vector<std::pair<int, Spline<double>>> beta_radial_functions_;
-
+    
+    /// Radial functions of the Q-operator.
+    /** The dimension of this array is fully determined by the number and lmax of beta-projectors.
+        Beta-projectors must be loaded before loading the Q radial functions. */
+    mdarray<Spline<double>, 2> q_radial_functions_l_;
+    
+    /// True if the pseudopotential is soft and charge augmentation is required.
+    bool augment_{false};
+    
     /// starting magnetization
     double starting_magnetization_{0.0};
 
@@ -502,9 +510,9 @@ class Atom_type
 
     inline void set_radial_grid(radial_grid_t grid_type__, int num_points__, double rmin__, double rmax__)
     {
-        radial_grid_ = Radial_grid_factory<double>(grid_type__, num_points__, rmin__, rmax__);
-        num_mt_points_ = num_points__;
-        mt_radius_ = rmax__;
+        radial_grid_        = Radial_grid_factory<double>(grid_type__, num_points__, rmin__, rmax__);
+        num_mt_points_      = num_points__;
+        mt_radius_          = rmax__;
         radial_grid_origin_ = rmin__;
         if (parameters_.processing_unit() == GPU) {
             radial_grid_.copy_to_device();
@@ -513,16 +521,10 @@ class Atom_type
 
     inline void set_radial_grid(int num_points__, double const* points__)
     {
-        if (num_mt_points_ == 0) {
-            TERMINATE("number of muffin-tin points is zero");
-        }
-        if (num_points__ < 0 && points__ == nullptr) {
-            /* create default exponential grid */
-            radial_grid_ = Radial_grid_exp<double>(num_mt_points_, radial_grid_origin_, mt_radius_);
-        } else {
-            assert(num_points__ == num_mt_points_);
-            radial_grid_ = Radial_grid_ext<double>(num_points__, points__);
-        }
+        radial_grid_        = Radial_grid_ext<double>(num_points__, points__);
+        num_mt_points_      = num_points__;
+        mt_radius_          = radial_grid_.last();
+        radial_grid_origin_ = radial_grid_.first();
         if (parameters_.processing_unit() == GPU) {
             radial_grid_.copy_to_device();
         }
@@ -604,6 +606,9 @@ class Atom_type
     /// Add a radial function of beta-projector to a list of functions.
     inline void add_beta_radial_function(int l__, std::vector<double>& beta__)
     {
+        if (augment_) {
+            TERMINATE("can't add more beta projectors");
+        }
         Spline<double> s(radial_grid_, beta__);
         beta_radial_functions_.push_back(std::move(std::make_pair(l__, std::move(s))));
     }
@@ -628,6 +633,32 @@ class Atom_type
     inline int num_beta_radial_functions() const
     {
         return static_cast<int>(beta_radial_functions_.size());
+    }
+
+    inline void add_q_radial_function(int idxrf1__, int idxrf2__, int l__, std::vector<double> qrf__)
+    {
+        if (!augment_) {
+            augment_ = true;
+            /* number of radial beta-functions */
+            int nbrf = num_beta_radial_functions();
+            q_radial_functions_l_ = mdarray<Spline<double>, 2>(nbrf * (nbrf + 1) / 2, 2 * lmax_beta() + 1);
+        }
+
+        /* pack Q-radial functions in a triangular matrix (Q_{ij} matrix is symmetrix):
+               j
+           +-------+
+           | +     |
+          i|   +   |   -> idx = j * (j + 1) / 2 + i  for  i <= j
+           |     + | 
+           +-------+
+         */
+        
+        /* combined index */
+        if (idxrf1__ > idxrf2__) {
+            std::swap(idxrf1__, idxrf2__);
+        }
+        int ijv = idxrf2__ * (idxrf2__ + 1) / 2 + idxrf1__;
+        q_radial_functions_l_(ijv, l__) = Spline<double>(radial_grid_, qrf__);
     }
 
     inline void init_free_atom(bool smooth);
