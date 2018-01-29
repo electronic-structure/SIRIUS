@@ -90,17 +90,8 @@ struct pseudopotential_descriptor
     /// The pseudo potential includes spin orbit coupling
     bool spin_orbit_coupling{false};
 
-    /// True if the pseudopotential is soft and charge augmentation is required.
-    bool augment{false};
-
     /// True if the pseudopotential is used for PAW.
     bool is_paw{false};
-
-    /// Local part of potential.
-    std::vector<double> vloc;
-
-    /// Radial functions of Q-operator.
-    mdarray<double, 3> q_radial_functions_l;
 
     std::vector<double> core_charge_density;
 
@@ -111,9 +102,6 @@ struct pseudopotential_descriptor
     /// Atomic wave-functions used to setup the initial subspace.
     /** This are the chi wave-function in the USPP file. Pairs of [l, chi_l(r)] are stored. */
     std::vector<std::pair<int, std::vector<double>>> atomic_pseudo_wfs_;
-
-    /// Occupation of starting wave functions
-    // std::vector<double> atomic_pseudo_wfs_occ_;
 
     /// All electron basis wave functions, have the same dimensionality as uspp.beta_radial_functions.
     mdarray<double, 2> all_elec_wfc;

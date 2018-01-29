@@ -2127,6 +2127,7 @@ void sirius_set_atom_type_beta_rf(ftn_char     label__,
     type.pp_desc().spin_orbit_coupling = *spin_orbit__;
 
     for (int i = 0; i < *num_beta__; i++) {
+        // TODO: use std::copy
         std::vector<double> v(num_mesh_points__[i]);
         for (int ir = 0; ir < num_mesh_points__[i]; ir++) {
             v[ir] = beta_rf(ir, i);
@@ -2143,31 +2144,31 @@ void sirius_set_atom_type_q_rf(char* label__,
 
     int nbeta = type.num_beta_radial_functions();
 
+    if (*lmax__ != type.lmax_beta()) {
+        std::stringstream s;
+        s << "wrong lmax for " << std::string(label__) << " " << std::endl
+          << "lmax: " << *lmax__ << std::endl
+          << "lmax_beta: " << type.lmax_beta();
+        TERMINATE(s);
+    }
+
     /* temporary wrapper */
     mdarray<double, 3> q_rf(q_rf__, type.num_mt_points(), nbeta * (nbeta + 1) / 2, 2 * (*lmax__) + 1);
 
-    /* allocate space for radial functions of Q operator */
-    type.pp_desc().q_radial_functions_l = mdarray<double, 3>(type.num_mt_points(), nbeta * (nbeta + 1) / 2, 2 * type.lmax_beta() + 1);
-    
     for (int nb = 0; nb < nbeta; nb++) {
         for (int mb = nb; mb < nbeta; mb++) {
             /* combined index */
             int ijv = (mb + 1) * mb / 2 + nb;
-
-            if (*lmax__ ==  type.lmax_beta()) {
-                for (int l = 0; l <= 2 * type.lmax_beta(); l++) {
-                    std::memcpy(&type.pp_desc().q_radial_functions_l(0, ijv, l), &q_rf(0, ijv, l), type.num_mt_points() * sizeof(double));
+            for (int l = 0; l <= 2 * type.lmax_beta(); l++) {
+                // TODO: use std::copy
+                std::vector<double> v(type.num_mt_points());
+                for (int ir = 0; ir < type.num_mt_points(); ir++) {
+                    v[ir] = q_rf(ir, ijv, l);
                 }
-            } else {
-                std::stringstream s;
-                s << "wrong lmax for " << std::string(label__) << " " << std::endl
-                  << "lmax: " << *lmax__ << std::endl
-                  << "lmax_beta: " << type.lmax_beta();
-                TERMINATE(s);
+                type.add_q_radial_function(nb, mb, l, v);
             }
         }
     }
-    type.pp_desc().augment = true;
 }
 
 void sirius_set_atom_type_rho_core(char const* label__,
@@ -2193,8 +2194,7 @@ void sirius_set_atom_type_vloc(char const* label__,
                                double* vloc__)
 {
     auto& type = sim_ctx->unit_cell().atom_type(std::string(label__));
-    type.pp_desc().vloc = std::vector<double>(*num_points__);
-    for (int i = 0; i < *num_points__; i++) type.pp_desc().vloc[i] = vloc__[i];
+    type.local_potential(std::vector<double>(vloc__, vloc__ + (*num_points__)));
 }
 
 void sirius_symmetrize_density()
@@ -2377,7 +2377,7 @@ void sirius_get_q_operator_matrix (ftn_int*    iat__,
 
     q_mtrx.zero();
 
-    if (atom_type.pp_desc().augment) {
+    if (atom_type.augment()) {
         for (int xi1 = 0; xi1 < nbf; xi1++) {
             for (int xi2 = 0; xi2 < nbf; xi2++) {
                 q_mtrx(idx_map[xi1], idx_map[xi2]) = sim_ctx->augmentation_op(*iat__ - 1).q_mtrx(xi1, xi2);

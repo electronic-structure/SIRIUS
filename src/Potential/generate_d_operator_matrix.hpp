@@ -67,7 +67,7 @@ inline void Potential::generate_D_operator_matrix()
 #endif
 
         /* trivial case */
-        if (!atom_type.pp_desc().augment) {
+        if (!atom_type.augment()) {
             for (int iv = 0; iv < ctx_.num_mag_dims() + 1; iv++) {
                 for (int i = 0; i < atom_type.num_atoms(); i++) {
                     int ia     = atom_type.atom_id(i);

@@ -357,7 +357,7 @@ class Q_operator : public Non_local_operator<T>
         auto& uc = this->ctx__.unit_cell();
         for (int ia = 0; ia < uc.num_atoms(); ia++) {
             int iat = uc.atom(ia).type().id();
-            if (!uc.atom_type(iat).pp_desc().augment) {
+            if (!uc.atom_type(iat).augment()) {
                 continue;
             }
             int nbf = uc.atom(ia).mt_basis_size();
@@ -445,7 +445,7 @@ class P_operator : public Non_local_operator<T>
         auto& uc = ctx_.unit_cell();
         for (int ia = 0; ia < uc.num_atoms(); ia++) {
             int iat = uc.atom(ia).type().id();
-            if (!uc.atom_type(iat).pp_desc().augment) {
+            if (!uc.atom_type(iat).augment()) {
                 continue;
             }
             int nbf = uc.atom(ia).mt_basis_size();

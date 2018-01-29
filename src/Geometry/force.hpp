@@ -446,7 +446,7 @@ class Force
         for (int iat = 0; iat < unit_cell.num_atom_types(); iat++){
             auto& atom_type = unit_cell.atom_type(iat);
 
-            if (!atom_type.pp_desc().augment) {
+            if (!atom_type.augment()) {
                 continue;
             }
 

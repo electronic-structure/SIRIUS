@@ -121,7 +121,7 @@ inline void Density::generate_paw_atom_density(paw_density_data_t &pdd)
             int irb1 = atom_type.indexb(ib1).idxrf;
 
             // index to iterate Qij,
-            int iqij = irb2 * (irb2 + 1) / 2 + irb1;
+            //int iqij = irb2 * (irb2 + 1) / 2 + irb1;
 
             // get num of non-zero GC
             int num_non_zero_gk = GC.num_gaunt(lm1,lm2);
@@ -168,7 +168,7 @@ inline void Density::generate_paw_atom_density(paw_density_data_t &pdd)
                          * dm_ij * GauntCoef * ( phi_i phi_j  +  Q_ij) */
                         ae_dens(lm3coef.lm3, irad) += dm[imagn] * inv_r2 * lm3coef.coef * pp_desc.all_elec_wfc(irad,irb1) * pp_desc.all_elec_wfc(irad,irb2);
                         ps_dens(lm3coef.lm3, irad) += dm[imagn] * inv_r2 * lm3coef.coef *
-                                (pp_desc.pseudo_wfc(irad,irb1) * pp_desc.pseudo_wfc(irad,irb2) + pp_desc.q_radial_functions_l(irad,iqij,l_by_lm[lm3coef.lm3]));
+                                (pp_desc.pseudo_wfc(irad,irb1) * pp_desc.pseudo_wfc(irad,irb2) + atom_type.q_radial_function(irb1, irb2, l_by_lm[lm3coef.lm3])[irad]);
                     }
                 }
             }

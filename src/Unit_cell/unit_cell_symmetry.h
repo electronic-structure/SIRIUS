@@ -62,7 +62,7 @@ struct magnetic_group_symmetry_descriptor
 {
     /// Element of space group symmetry.
     space_group_symmetry_descriptor spg_op;
-    
+
     /// Index of the space group symmetry operation.
     /** This index is used to search for the transfomation of atoms under the current space group operation
      *  in the precomputed symmetry table. */
@@ -75,7 +75,7 @@ struct magnetic_group_symmetry_descriptor
 class Unit_cell_symmetry
 {
     private:
-       
+
         /// Matrix of lattice vectors.
         /** Spglib requires this matrix to have a positively defined determinant. */
         matrix3d<double> lattice_vectors_;
@@ -92,7 +92,7 @@ class Unit_cell_symmetry
 
         /// Crystal structure descriptor returned by spglib.
         SpglibDataset* spg_dataset_;
-        
+
         /// Symmetry table for atoms.
         /** For each atom ia and symmetry isym sym_table_(ia, isym) stores index of atom ja to which original atom
          *  transforms under symmetry operation. */

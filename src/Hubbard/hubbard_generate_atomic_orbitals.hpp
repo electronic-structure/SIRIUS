@@ -112,7 +112,7 @@ void generate_atomic_orbitals(K_point& kp, Q_operator<double_complex>& q_op)
     // check if we have a norm conserving pseudo potential only
     bool augment = false;
     for (auto ia = 0; (ia < ctx_.unit_cell().num_atom_types()) && (!augment); ia++) {
-        augment = ctx_.unit_cell().atom_type(ia).pp_desc().augment;
+        augment = ctx_.unit_cell().atom_type(ia).augment();
     }
 
     for (int s = 0; s < ctx_.num_spins(); s++) {

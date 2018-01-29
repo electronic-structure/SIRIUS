@@ -340,7 +340,7 @@ class Atom_type
     /// Maximum number of AW radial functions across angular momentums.
     int max_aw_order_{0};
 
-    int offset_lo_{-1};
+    int offset_lo_{-1}; // TODO: better name
     
     /// Index of radial basis functions.
     radial_functions_index indexr_;
@@ -361,10 +361,13 @@ class Atom_type
     /// True if the pseudopotential is soft and charge augmentation is required.
     bool augment_{false};
     
-    /// starting magnetization
+    /// Local part of pseudopotential.
+    std::vector<double> local_potential_;
+    
+    /// starting magnetization // TODO: remove that
     double starting_magnetization_{0.0};
 
-    // direction of the starting magnetization
+    // direction of the starting magnetization // TODO: remove that
     double starting_magnetization_theta_{0.0};
     double starting_magnetization_phi_{0.0};
 
@@ -414,8 +417,6 @@ class Atom_type
 
     mutable mdarray<double, 3> rf_coef_;
     mutable mdarray<double, 3> vrf_coef_;
-
-    mdarray<Spline<double>, 2> q_rf_;
 
     bool initialized_{false};
 
@@ -642,15 +643,23 @@ class Atom_type
             /* number of radial beta-functions */
             int nbrf = num_beta_radial_functions();
             q_radial_functions_l_ = mdarray<Spline<double>, 2>(nbrf * (nbrf + 1) / 2, 2 * lmax_beta() + 1);
+
+            for (int l = 0; l <= 2* lmax_beta(); l++) {
+                for (int idx = 0; idx < nbrf * (nbrf + 1) / 2; idx++) {
+                    q_radial_functions_l_(idx, l) = Spline<double>(radial_grid_);
+                }
+            }
         }
 
-        /* pack Q-radial functions in a triangular matrix (Q_{ij} matrix is symmetrix):
+        /* pack Q-radial functions in a triangular matrix (Q_{ij} matrix is symmetric):
                j
            +-------+
            | +     |
           i|   +   |   -> idx = j * (j + 1) / 2 + i  for  i <= j
-           |     + | 
+           |     + |
            +-------+
+
+           i, j are the indices of radial beta-functions
          */
         
         /* combined index */
@@ -659,6 +668,22 @@ class Atom_type
         }
         int ijv = idxrf2__ * (idxrf2__ + 1) / 2 + idxrf1__;
         q_radial_functions_l_(ijv, l__) = Spline<double>(radial_grid_, qrf__);
+    }
+
+    inline bool augment() const
+    {
+        return augment_;
+    }
+
+    inline std::vector<double>& local_potential(std::vector<double> vloc__)
+    {
+        local_potential_ = vloc__;
+        return local_potential_;
+    }
+
+    inline std::vector<double> const& local_potential() const
+    {
+        return local_potential_;
     }
 
     inline void init_free_atom(bool smooth);
@@ -1005,10 +1030,22 @@ class Atom_type
         return f_coefficients_(xi1, xi2, s1, s2);
     }
 
-    inline Spline<double> const& q_rf(int idx__, int l__) const
+    //inline Spline<double> const& q_radial_function(int idx__, int l__) const
+    //{
+    //    return q_radial_functions_l_(idx__, l__);
+    //}
+
+    inline Spline<double> const& q_radial_function(int idxrf1__, int idxrf2__, int l__) const
     {
-        return q_rf_(idx__, l__);
+        if (idxrf1__ > idxrf2__) {
+            std::swap(idxrf1__, idxrf2__);
+        }
+        /* combined index */
+        int ijv = idxrf2__ * (idxrf2__ + 1) / 2 + idxrf1__;
+
+        return q_radial_functions_l_(ijv, l__);
     }
+
     bool const& hubbard_correction() const
     {
         return hubbard_correction_;
@@ -1506,11 +1543,6 @@ inline void Atom_type::init(int offset_lo__)
         }
     }
 
-    ///* set default radial grid if it was not done by user */
-    //if (radial_grid_.num_points() == 0) {
-    //    set_radial_grid();
-    //}
-
     if (parameters_.full_potential()) {
         /* initialize aw descriptors if they were not set manually */
         if (aw_descriptors_.size() == 0) {
@@ -1548,29 +1580,8 @@ inline void Atom_type::init(int offset_lo__)
     indexb_.init(indexr_);
 
     if (!parameters_.full_potential()) {
-
         assert(mt_radial_basis_size() == num_beta_radial_functions());
         assert(lmax_beta() == indexr().lmax());
-
-        /* number of radial beta-functions */
-        int nbrf = mt_radial_basis_size();
-        /* maximum l of beta-projectors */
-        int lmax_beta = indexr().lmax();
-
-        /* interpolate Q-operator radial functions */
-        if (pp_desc().augment) {
-            q_rf_ = mdarray<Spline<double>, 2>(nbrf * (nbrf + 1) / 2, 2 * lmax_beta + 1);
-            #pragma omp parallel for
-            for (int idx = 0; idx < nbrf * (nbrf + 1) / 2; idx++) {
-                for (int l = 0; l <= 2 * lmax_beta; l++) {
-                    q_rf_(idx, l) = Spline<double>(radial_grid());
-                    for (int ir = 0; ir < num_mt_points(); ir++) {
-                        q_rf_(idx, l)[ir] = pp_desc().q_radial_functions_l(ir, idx, l);
-                    }
-                    q_rf_(idx, l).interpolate();
-                }
-            }
-        }
     }
 
     /* get number of valence electrons */
@@ -1894,16 +1905,16 @@ inline void Atom_type::read_pseudo_uspp(json const& parser)
         TERMINATE("wrong mesh size");
     }
 
-    pp_desc_.vloc = parser["pseudo_potential"]["local_potential"].get<std::vector<double>>();
+    local_potential(parser["pseudo_potential"]["local_potential"].get<std::vector<double>>());
 
     pp_desc_.core_charge_density =
         parser["pseudo_potential"].value("core_charge_density", std::vector<double>(rgrid.size(), 0));
 
     pp_desc_.total_charge_density = parser["pseudo_potential"]["total_charge_density"].get<std::vector<double>>();
 
-    if (pp_desc_.vloc.size() != rgrid.size() || pp_desc_.core_charge_density.size() != rgrid.size() ||
+    if (local_potential().size() != rgrid.size() || pp_desc_.core_charge_density.size() != rgrid.size() ||
         pp_desc_.total_charge_density.size() != rgrid.size()) {
-        std::cout << pp_desc_.vloc.size() << " " << pp_desc_.core_charge_density.size() << " "
+        std::cout << local_potential().size() << " " << pp_desc_.core_charge_density.size() << " "
                   << pp_desc_.total_charge_density.size() << std::endl;
         TERMINATE("wrong array size");
     }
@@ -1942,21 +1953,16 @@ inline void Atom_type::read_pseudo_uspp(json const& parser)
     }
 
     if (parser["pseudo_potential"].count("augmentation")) {
-        pp_desc_.augment              = true;
-        pp_desc_.q_radial_functions_l = mdarray<double, 3>(num_mt_points_, nbf * (nbf + 1) / 2, 2 * lmax_beta() + 1);
-        pp_desc_.q_radial_functions_l.zero();
-
         for (size_t k = 0; k < parser["pseudo_potential"]["augmentation"].size(); k++) {
             int i    = parser["pseudo_potential"]["augmentation"][k]["i"];
             int j    = parser["pseudo_potential"]["augmentation"][k]["j"];
-            int idx  = j * (j + 1) / 2 + i;
+            //int idx  = j * (j + 1) / 2 + i;
             int l    = parser["pseudo_potential"]["augmentation"][k]["angular_momentum"];
             auto qij = parser["pseudo_potential"]["augmentation"][k]["radial_function"].get<std::vector<double>>();
             if ((int)qij.size() != num_mt_points_) {
                 TERMINATE("wrong size of qij");
             }
-
-            std::memcpy(&pp_desc_.q_radial_functions_l(0, idx, l), &qij[0], num_mt_points_ * sizeof(double));
+            add_q_radial_function(i, j, l, qij);
         }
     }
 

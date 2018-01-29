@@ -193,7 +193,7 @@ class Radial_integrals_aug : public Radial_integrals_base<3>
         for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
             auto& atom_type = unit_cell_.atom_type(iat);
 
-            if (!atom_type.pp_desc().augment) {
+            if (!atom_type.augment()) {
                 continue;
             }
 
@@ -226,10 +226,10 @@ class Radial_integrals_aug : public Radial_integrals_base<3>
                                 if (jl_deriv) {
                                     auto s = jl.deriv_q(l3);
                                     values_(idx, l3, iat)[iq] =
-                                        sirius::inner(s, atom_type.q_rf(idx, l3), 0, atom_type.num_mt_points());
+                                        sirius::inner(s, atom_type.q_radial_function(idxrf1, idxrf2, l3), 0);
                                 } else {
                                     values_(idx, l3, iat)[iq] =
-                                        sirius::inner(jl[l3], atom_type.q_rf(idx, l3), 0, atom_type.num_mt_points());
+                                        sirius::inner(jl[l3], atom_type.q_radial_function(idxrf1, idxrf2, l3), 0);
                                 }
                             }
                         }
@@ -533,6 +533,8 @@ class Radial_integrals_vloc : public Radial_integrals_base<1>
             auto& atom_type = unit_cell_.atom_type(iat);
             values_(iat)    = Spline<double>(grid_q_);
 
+            auto& vloc = atom_type.local_potential();
+
             int np = atom_type.radial_grid().index_of(10);
             if (np == -1) {
                 np = atom_type.num_mt_points();
@@ -548,8 +550,8 @@ class Radial_integrals_vloc : public Radial_integrals_base<1>
                 if (jl_deriv) { /* integral with derivative of j0(q*r) over q */
                     for (int ir = 0; ir < rg.num_points(); ir++) {
                         double x = rg[ir];
-                        s[ir]    = (x * atom_type.pp_desc().vloc[ir] + atom_type.zn() * gsl_sf_erf(x)) *
-                                (std::sin(g * x) - g * x * std::cos(g * x));
+                        s[ir]    = (x * vloc[ir] + atom_type.zn() * gsl_sf_erf(x)) *
+                                   (std::sin(g * x) - g * x * std::cos(g * x));
                     }
                 } else {           /* integral with j0(q*r) */
                     if (iq == 0) { /* q=0 case */
@@ -557,19 +559,18 @@ class Radial_integrals_vloc : public Radial_integrals_base<1>
                             unit_cell_.parameters().parameters_input().esm_bc_ != "pbc") {
                             for (int ir = 0; ir < rg.num_points(); ir++) {
                                 double x = rg[ir];
-                                s[ir]    = (x * atom_type.pp_desc().vloc[ir] + atom_type.zn() * gsl_sf_erf(x)) * x;
+                                s[ir]    = (x * vloc[ir] + atom_type.zn() * gsl_sf_erf(x)) * x;
                             }
                         } else {
                             for (int ir = 0; ir < rg.num_points(); ir++) {
                                 double x = rg[ir];
-                                s[ir]    = (x * atom_type.pp_desc().vloc[ir] + atom_type.zn()) * x;
+                                s[ir]    = (x * vloc[ir] + atom_type.zn()) * x;
                             }
                         }
                     } else {
                         for (int ir = 0; ir < rg.num_points(); ir++) {
                             double x = rg[ir];
-                            s[ir] =
-                                (x * atom_type.pp_desc().vloc[ir] + atom_type.zn() * gsl_sf_erf(x)) * std::sin(g * x);
+                            s[ir] = (x * vloc[ir] + atom_type.zn() * gsl_sf_erf(x)) * std::sin(g * x);
                         }
                     }
                 }

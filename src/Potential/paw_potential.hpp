@@ -446,7 +446,7 @@ inline void Potential::calc_PAW_local_Dij(paw_potential_data_t &pdd, mdarray<dou
                     for (int irad = 0; irad < newgrid.num_points(); irad++) {
                         double ae_part = pp_desc.all_elec_wfc(irad, irb1) * pp_desc.all_elec_wfc(irad, irb2);
                         double ps_part = pp_desc.pseudo_wfc(irad, irb1) * pp_desc.pseudo_wfc(irad, irb2) + 
-                                         pp_desc.q_radial_functions_l(irad, iqij, l_by_lm[lm3]);
+                                         atom_type.q_radial_function(irb1, irb2, l_by_lm[lm3])[irad];
 
                         intdata[irad] = ae_atom_pot(lm3, irad) * ae_part - ps_atom_pot(lm3, irad) * ps_part;
                     }
