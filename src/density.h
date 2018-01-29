@@ -492,7 +492,7 @@ class Density
             }
             
             /* check the number of electrons */
-            if (std::abs(nel - unit_cell_.num_electrons()) > 1e-5) {
+            if (std::abs(nel - unit_cell_.num_electrons()) > 1e-5 && ctx_.comm().rank() == 0) {
                 std::stringstream s;
                 s << "wrong number of electrons" << std::endl
                   << "  obtained value : " << nel << std::endl 
