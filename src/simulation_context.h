@@ -69,6 +69,12 @@ class Simulation_context: public Simulation_context_base
             : Simulation_context_base(comm__)
         {
         }
+        Simulation_context(Communicator const& comm__,
+                           std::string method__)
+            : Simulation_context_base(comm__)
+        {
+            this->set_esm_type(method__);
+        }
 
         ~Simulation_context()
         {

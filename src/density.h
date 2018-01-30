@@ -492,7 +492,7 @@ class Density
             }
             
             /* check the number of electrons */
-            if (std::abs(nel - unit_cell_.num_electrons()) > 1e-5) {
+            if (std::abs(nel - unit_cell_.num_electrons()) > 1e-5 && ctx_.comm().rank() == 0) {
                 std::stringstream s;
                 s << "wrong number of electrons" << std::endl
                   << "  obtained value : " << nel << std::endl 
@@ -524,7 +524,8 @@ class Density
                 for (int ialoc = 0; ialoc < (int)unit_cell_.spl_num_atoms().local_size(); ialoc++) {
                     int ia = unit_cell_.spl_num_atoms(ialoc);
                     for (int ir = 0; ir < unit_cell_.atom(ia).num_mt_points(); ir++) {
-                        rho_->f_mt<index_domain_t::local>(0, ir, ialoc) += unit_cell_.atom(ia).symmetry_class().core_charge_density(ir) / y00;
+                        rho_->f_mt<index_domain_t::local>(0, ir, ialoc) += 
+                            unit_cell_.atom(ia).symmetry_class().ae_core_charge_density(ir) / y00;
                     }
                 }
                 /* synchronize muffin-tin part */
@@ -571,7 +572,7 @@ class Density
             /*check if we need to augment charge density and magnetization */
             bool need_to_augment{false};
             for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
-                need_to_augment |= unit_cell_.atom_type(iat).pp_desc().augment;
+                need_to_augment |= unit_cell_.atom_type(iat).augment();
             }
             if (!need_to_augment) {
                 return;

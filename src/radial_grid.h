@@ -86,9 +86,9 @@ class Radial_grid
 
     Radial_grid(int num_points__)
     {
-        x_     = mdarray<T, 1>(num_points__);
-        x_inv_ = mdarray<T, 1>(num_points__);
-        dx_    = mdarray<T, 1>(num_points__ - 1);
+        x_     = mdarray<T, 1>(num_points__, memory_t::host, "Radial_grid::x");
+        x_inv_ = mdarray<T, 1>(num_points__, memory_t::host, "Radial_grid::x_inv");
+        dx_    = mdarray<T, 1>(num_points__ - 1, memory_t::host, "Radial_grid::dx");
     }
 
     Radial_grid(Radial_grid<T>&& src__)

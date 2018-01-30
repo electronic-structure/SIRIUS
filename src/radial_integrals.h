@@ -87,8 +87,8 @@ class Radial_integrals_base
 class Radial_integrals_atomic_wf : public Radial_integrals_base<2>
 {
   private:
-    std::vector<std::vector<int>> angular_momentum;
-    std::vector<std::vector<double>> total_angular_momentum;
+    //std::vector<std::vector<int>> angular_momentum;
+    //std::vector<std::vector<double>> total_angular_momentum;
 
     void generate()
     {
@@ -96,11 +96,11 @@ class Radial_integrals_atomic_wf : public Radial_integrals_base<2>
 
         /* spherical Bessel functions jl(qx) */
         mdarray<Spherical_Bessel_functions, 1> jl(nq());
-        angular_momentum.clear();
-        total_angular_momentum.clear();
+        //angular_momentum.clear();
+        //total_angular_momentum.clear();
 
-        angular_momentum.resize(unit_cell_.num_atom_types());
-        total_angular_momentum.resize(unit_cell_.num_atom_types());
+        //angular_momentum.resize(unit_cell_.num_atom_types());
+        //total_angular_momentum.resize(unit_cell_.num_atom_types());
 
         for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
 
@@ -111,38 +111,33 @@ class Radial_integrals_atomic_wf : public Radial_integrals_base<2>
                 jl(iq) = Spherical_Bessel_functions(atom_type.indexr().lmax(), atom_type.radial_grid(), grid_q_[iq]);
             }
 
-            int nwf = static_cast<int>(atom_type.pp_desc().atomic_pseudo_wfs_.size());
-            angular_momentum[iat].clear();
-            angular_momentum[iat].resize(nwf);
-            total_angular_momentum[iat].clear();
-            total_angular_momentum[iat].resize(nwf);
+            int nwf = atom_type.num_ps_atomic_wf();
+            //angular_momentum[iat].clear();
+            //angular_momentum[iat].resize(nwf);
+            //total_angular_momentum[iat].clear();
+            //total_angular_momentum[iat].resize(nwf);
 
             /* loop over all pseudo wave-functions */
             for (int i = 0; i < nwf; i++) {
                 values_(i, iat) = Spline<double>(grid_q_);
 
-                /* interpolate atomic_pseudo_wfs(r) */
-                Spline<double> wf(atom_type.radial_grid());
-                for (int ir = 0; ir < (int)atom_type.pp_desc().atomic_pseudo_wfs_[i].second.size(); ir++) {
-                    wf[ir] = atom_type.pp_desc().atomic_pseudo_wfs_[i].second[ir];
-                }
+                auto& wf = atom_type.ps_atomic_wf(i);
 
-                wf.interpolate();
-                double norm = inner(wf, wf, 0);
+                double norm = inner(wf.second, wf.second, 0);
 
-                int l = atom_type.pp_desc().atomic_pseudo_wfs_[i].first;
+                int l = wf.first;
                 
                 #pragma omp parallel for
                 for (int iq = 0; iq < nq(); iq++) {
-                    values_(i, iat)[iq] = sirius::inner(jl(iq)[l], wf, 1) / std::sqrt(norm);
+                    values_(i, iat)[iq] = sirius::inner(jl(iq)[l], wf.second, 1) / std::sqrt(norm);
                 }
 
                 values_(i, iat).interpolate();
-                angular_momentum[iat][i] = l;
-                if (atom_type.pp_desc().total_angular_momentum_wfs.size()) {
-                    // will need it for Hubbard + so
-                    total_angular_momentum[iat][i] = atom_type.pp_desc().total_angular_momentum_wfs[i];
-                }
+                //angular_momentum[iat][i] = l;
+                //if (atom_type.pp_desc().total_angular_momentum_wfs.size()) {
+                //    // will need it for Hubbard + so
+                //    total_angular_momentum[iat][i] = atom_type.pp_desc().total_angular_momentum_wfs[i];
+                //}
             }
         }
     }
@@ -153,7 +148,7 @@ class Radial_integrals_atomic_wf : public Radial_integrals_base<2>
     {
         int no_max{0};
         for (int iat = 0; iat < unit_cell__.num_atom_types(); iat++) {
-            no_max = std::max(no_max, static_cast<int>(unit_cell__.atom_type(iat).pp_desc().atomic_pseudo_wfs_.size()));
+            no_max = std::max(no_max, unit_cell__.atom_type(iat).num_ps_atomic_wf());
         }
 
         values_ = mdarray<Spline<double>, 2>(no_max, unit_cell_.num_atom_types());
@@ -172,8 +167,8 @@ class Radial_integrals_atomic_wf : public Radial_integrals_base<2>
     {
         auto idx        = iqdq(q__);
         auto& atom_type = unit_cell_.atom_type(iat__);
-        mdarray<double, 1> val(atom_type.pp_desc().atomic_pseudo_wfs_.size());
-        for (int i = 0; i < static_cast<int>(atom_type.pp_desc().atomic_pseudo_wfs_.size()); i++) {
+        mdarray<double, 1> val(atom_type.num_ps_atomic_wf());
+        for (int i = 0; i < atom_type.num_ps_atomic_wf(); i++) {
             val(i) = values_(i, iat__)(idx.first, idx.second);
         }
         return std::move(val);
@@ -193,7 +188,7 @@ class Radial_integrals_aug : public Radial_integrals_base<3>
         for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
             auto& atom_type = unit_cell_.atom_type(iat);
 
-            if (!atom_type.pp_desc().augment) {
+            if (!atom_type.augment()) {
                 continue;
             }
 
@@ -226,10 +221,10 @@ class Radial_integrals_aug : public Radial_integrals_base<3>
                                 if (jl_deriv) {
                                     auto s = jl.deriv_q(l3);
                                     values_(idx, l3, iat)[iq] =
-                                        sirius::inner(s, atom_type.q_rf(idx, l3), 0, atom_type.num_mt_points());
+                                        sirius::inner(s, atom_type.q_radial_function(idxrf1, idxrf2, l3), 0);
                                 } else {
                                     values_(idx, l3, iat)[iq] =
-                                        sirius::inner(jl[l3], atom_type.q_rf(idx, l3), 0, atom_type.num_mt_points());
+                                        sirius::inner(jl[l3], atom_type.q_radial_function(idxrf1, idxrf2, l3), 0);
                                 }
                             }
                         }
@@ -292,11 +287,7 @@ class Radial_integrals_rho_pseudo : public Radial_integrals_base<1>
             auto& atom_type = unit_cell_.atom_type(iat);
             values_(iat)    = Spline<double>(grid_q_);
 
-            Spline<double> rho(atom_type.radial_grid());
-            for (int ir = 0; ir < atom_type.num_mt_points(); ir++) {
-                rho[ir] = atom_type.pp_desc().total_charge_density[ir];
-            }
-            rho.interpolate();
+            Spline<double> rho(atom_type.radial_grid(), atom_type.ps_total_charge_density());
 
             #pragma omp parallel for
             for (int iq_loc = 0; iq_loc < spl_q_.local_size(); iq_loc++) {
@@ -331,11 +322,7 @@ class Radial_integrals_rho_core_pseudo : public Radial_integrals_base<1>
             auto& atom_type = unit_cell_.atom_type(iat);
             values_(iat)    = Spline<double>(grid_q_);
 
-            Spline<double> ps_core(atom_type.radial_grid());
-            for (int ir = 0; ir < atom_type.num_mt_points(); ir++) {
-                ps_core[ir] = atom_type.pp_desc().core_charge_density[ir];
-            }
-            ps_core.interpolate();
+            Spline<double> ps_core(atom_type.radial_grid(), atom_type.ps_core_charge_density());
 
             #pragma omp parallel for
             for (int iq_loc = 0; iq_loc < spl_q_.local_size(); iq_loc++) {
@@ -385,14 +372,14 @@ class Radial_integrals_beta : public Radial_integrals_base<2>
                 Spherical_Bessel_functions jl(unit_cell_.lmax(), atom_type.radial_grid(), grid_q_[iq]);
                 for (int idxrf = 0; idxrf < nrb; idxrf++) {
                     int l  = atom_type.indexr(idxrf).l;
-                    int nr = atom_type.pp_desc().num_beta_radial_points[idxrf];
+                    //int nr = atom_type.numpp_desc().num_beta_radial_points[idxrf];
                     /* compute \int j_l(q * r) beta_l(r) r^2 dr or \int d (j_l(q*r) / dq) beta_l(r) r^2  */
                     /* remeber that beta(r) are defined as miltiplied by r */
                     if (jl_deriv) {
-                        auto s                  = jl.deriv_q(l);
-                        values_(idxrf, iat)[iq] = sirius::inner(s, atom_type.beta_rf(idxrf), 1, nr);
+                        auto s  = jl.deriv_q(l);
+                        values_(idxrf, iat)[iq] = sirius::inner(s, atom_type.beta_radial_function(idxrf), 1);
                     } else {
-                        values_(idxrf, iat)[iq] = sirius::inner(jl[l], atom_type.beta_rf(idxrf), 1, nr);
+                        values_(idxrf, iat)[iq] = sirius::inner(jl[l], atom_type.beta_radial_function(idxrf), 1);
                     }
                 }
             }
@@ -449,11 +436,11 @@ class Radial_integrals_beta_jl : public Radial_integrals_base<3>
             for (int iq = 0; iq < grid_q_.num_points(); iq++) {
                 Spherical_Bessel_functions jl(lmax_, atom_type.radial_grid(), grid_q_[iq]);
                 for (int idxrf = 0; idxrf < nrb; idxrf++) {
-                    int nr = atom_type.pp_desc().num_beta_radial_points[idxrf];
+                    //int nr = atom_type.pp_desc().num_beta_radial_points[idxrf];
                     for (int l = 0; l <= lmax_; l++) {
                         /* compute \int j_{l'}(q * r) beta_l(r) r^2 * r * dr */
                         /* remeber that beta(r) are defined as miltiplied by r */
-                        values_(idxrf, l, iat)[iq] = sirius::inner(jl[l], atom_type.beta_rf(idxrf), 2, nr);
+                        values_(idxrf, l, iat)[iq] = sirius::inner(jl[l], atom_type.beta_radial_function(idxrf), 2);
                     }
                 }
             }
@@ -533,6 +520,8 @@ class Radial_integrals_vloc : public Radial_integrals_base<1>
             auto& atom_type = unit_cell_.atom_type(iat);
             values_(iat)    = Spline<double>(grid_q_);
 
+            auto& vloc = atom_type.local_potential();
+
             int np = atom_type.radial_grid().index_of(10);
             if (np == -1) {
                 np = atom_type.num_mt_points();
@@ -548,8 +537,8 @@ class Radial_integrals_vloc : public Radial_integrals_base<1>
                 if (jl_deriv) { /* integral with derivative of j0(q*r) over q */
                     for (int ir = 0; ir < rg.num_points(); ir++) {
                         double x = rg[ir];
-                        s[ir]    = (x * atom_type.pp_desc().vloc[ir] + atom_type.zn() * gsl_sf_erf(x)) *
-                                (std::sin(g * x) - g * x * std::cos(g * x));
+                        s[ir]    = (x * vloc[ir] + atom_type.zn() * gsl_sf_erf(x)) *
+                                   (std::sin(g * x) - g * x * std::cos(g * x));
                     }
                 } else {           /* integral with j0(q*r) */
                     if (iq == 0) { /* q=0 case */
@@ -557,19 +546,18 @@ class Radial_integrals_vloc : public Radial_integrals_base<1>
                             unit_cell_.parameters().parameters_input().esm_bc_ != "pbc") {
                             for (int ir = 0; ir < rg.num_points(); ir++) {
                                 double x = rg[ir];
-                                s[ir]    = (x * atom_type.pp_desc().vloc[ir] + atom_type.zn() * gsl_sf_erf(x)) * x;
+                                s[ir]    = (x * vloc[ir] + atom_type.zn() * gsl_sf_erf(x)) * x;
                             }
                         } else {
                             for (int ir = 0; ir < rg.num_points(); ir++) {
                                 double x = rg[ir];
-                                s[ir]    = (x * atom_type.pp_desc().vloc[ir] + atom_type.zn()) * x;
+                                s[ir]    = (x * vloc[ir] + atom_type.zn()) * x;
                             }
                         }
                     } else {
                         for (int ir = 0; ir < rg.num_points(); ir++) {
                             double x = rg[ir];
-                            s[ir] =
-                                (x * atom_type.pp_desc().vloc[ir] + atom_type.zn() * gsl_sf_erf(x)) * std::sin(g * x);
+                            s[ir] = (x * vloc[ir] + atom_type.zn() * gsl_sf_erf(x)) * std::sin(g * x);
                         }
                     }
                 }

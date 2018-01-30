@@ -19,7 +19,7 @@ inline void Density::generate_rho_aug(mdarray<double_complex, 2>& rho_aug__)
         }
         #endif
 
-        if (!atom_type.pp_desc().augment) {
+        if (!atom_type.augment()) {
             continue;
         }
 

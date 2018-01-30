@@ -35,7 +35,7 @@ inline void Potential::init_PAW()
             ppd.ps_potential_.push_back(Spheric_function<spectral, double>(lm_max_rho, ppd.atom_->radial_grid()));
         }
 
-        ppd.core_energy_ = atom_type.pp_desc().core_energy;
+        ppd.core_energy_ = atom_type.paw_core_energy();
 
         paw_potential_data_.push_back(std::move(ppd));
     }
@@ -355,8 +355,6 @@ inline void Potential::calc_PAW_local_potential(paw_potential_data_t &ppd,
                                                 std::vector<Spheric_function<spectral, double>> const& ae_density,
                                                 std::vector<Spheric_function<spectral, double>> const& ps_density)
 {
-    auto& pp_desc = ppd.atom_->type().pp_desc();
-
     //-----------------------------------------
     //---- Calculation of Hartree potential ---
     //-----------------------------------------
@@ -365,7 +363,6 @@ inline void Potential::calc_PAW_local_potential(paw_potential_data_t &ppd,
         ppd.ae_potential_[i].zero();
         ppd.ps_potential_[i].zero();
     }
-
 
     double ae_hartree_energy = calc_PAW_hartree_potential(*ppd.atom_,
                                                           ae_density[0],
@@ -380,41 +377,48 @@ inline void Potential::calc_PAW_local_potential(paw_potential_data_t &ppd,
     //-----------------------------------------
     //---- Calculation of XC potential ---
     //-----------------------------------------
+    auto& ps_core = ppd.atom_->type().ps_core_charge_density();
+    auto& ae_core = ppd.atom_->type().paw_ae_core_charge_density();
+
     double ae_xc_energy = 0.0;
     double ps_xc_energy = 0.0;
 
-    switch (ctx_.num_mag_dims()){
-        case 0:{
-            ae_xc_energy = xc_mt_PAW_nonmagnetic(ppd.ae_potential_[0], ae_density[0], pp_desc.all_elec_core_charge);
-            ps_xc_energy = xc_mt_PAW_nonmagnetic(ppd.ps_potential_[0], ps_density[0], pp_desc.core_charge_density);
-        }break;
+    switch (ctx_.num_mag_dims()) {
+        case 0: {
+            ae_xc_energy = xc_mt_PAW_nonmagnetic(ppd.ae_potential_[0], ae_density[0], ae_core);
+            ps_xc_energy = xc_mt_PAW_nonmagnetic(ppd.ps_potential_[0], ps_density[0], ps_core);
+            break;
+        }
 
-        case 1:{
-            ae_xc_energy = xc_mt_PAW_collinear(ppd.ae_potential_, ae_density, pp_desc.all_elec_core_charge);
-            ps_xc_energy = xc_mt_PAW_collinear(ppd.ps_potential_, ps_density, pp_desc.core_charge_density);
-        }break;
+        case 1: {
+            ae_xc_energy = xc_mt_PAW_collinear(ppd.ae_potential_, ae_density, ae_core);
+            ps_xc_energy = xc_mt_PAW_collinear(ppd.ps_potential_, ps_density, ps_core);
+            break;
+        }
 
         case 3:{
-            ae_xc_energy = xc_mt_PAW_noncollinear(ppd.ae_potential_, ae_density, pp_desc.all_elec_core_charge);
-            ps_xc_energy = xc_mt_PAW_noncollinear(ppd.ps_potential_, ps_density, pp_desc.core_charge_density);
-        }break;
+            ae_xc_energy = xc_mt_PAW_noncollinear(ppd.ae_potential_, ae_density, ae_core);
+            ps_xc_energy = xc_mt_PAW_noncollinear(ppd.ps_potential_, ps_density, ps_core);
+            break;
+        }
 
         default:{
             TERMINATE("PAW local potential error! Wrong number of spins!")
-        }break;
+        }
     }
 
     /* save xc energy in pdd structure */
     ppd.xc_energy_ = ae_xc_energy - ps_xc_energy;
 }
 
-inline void Potential::calc_PAW_local_Dij(paw_potential_data_t &pdd, mdarray<double,4>& paw_dij)
+inline void Potential::calc_PAW_local_Dij(paw_potential_data_t& pdd, mdarray<double, 4>& paw_dij)
 {
     int paw_ind = pdd.ia_paw;
 
     auto& atom_type = pdd.atom_->type();
 
-    auto& pp_desc = atom_type.pp_desc();
+    auto& paw_ae_wfs = atom_type.paw_ae_wfs();
+    auto& paw_ps_wfs = atom_type.paw_ps_wfs();
 
     /* get lm size for density */
     int lmax = atom_type.indexr().lmax_lo();
@@ -425,38 +429,38 @@ inline void Potential::calc_PAW_local_Dij(paw_potential_data_t &pdd, mdarray<dou
     Gaunt_coefficients<double> GC(lmax, 2 * lmax, lmax, SHT::gaunt_rlm);
 
     /* store integrals here */
-    mdarray<double, 3> integrals(lmsize_rho, pp_desc.num_beta_radial_functions * (pp_desc.num_beta_radial_functions + 1) / 2,
+    mdarray<double, 3> integrals(lmsize_rho, atom_type.num_beta_radial_functions() * (atom_type.num_beta_radial_functions() + 1) / 2,
                                  ctx_.num_mag_dims() + 1);
+
+    auto& rgrid = atom_type.radial_grid();
 
     for(int imagn = 0; imagn < ctx_.num_mag_dims() + 1; imagn++ ){
         auto &ae_atom_pot = pdd.ae_potential_[imagn];
         auto &ps_atom_pot = pdd.ps_potential_[imagn];
 
-        for (int irb2 = 0; irb2 < pp_desc.num_beta_radial_functions; irb2++){
+        for (int irb2 = 0; irb2 < atom_type.num_beta_radial_functions(); irb2++){
             for (int irb1 = 0; irb1 <= irb2; irb1++){
                 int iqij = (irb2 * (irb2 + 1)) / 2 + irb1;
 
-                Radial_grid<double> newgrid = atom_type.radial_grid().segment(pp_desc.cutoff_radius_index);
-
-                // create array for integration
-                std::vector<double> intdata(newgrid.num_points(),0);
+                /* create array for integration */
+                std::vector<double> intdata(rgrid.num_points());
 
                 for (int lm3 = 0; lm3 < lmsize_rho; lm3++) {
-                    // fill array
-                    for (int irad = 0; irad < newgrid.num_points(); irad++) {
-                        double ae_part = pp_desc.all_elec_wfc(irad,irb1) * pp_desc.all_elec_wfc(irad,irb2);
-                        double ps_part = pp_desc.pseudo_wfc(irad,irb1) * pp_desc.pseudo_wfc(irad,irb2)  + pp_desc.q_radial_functions_l(irad,iqij,l_by_lm[lm3]);
+                    /* fill array */
+                    for (int irad = 0; irad < rgrid.num_points(); irad++) {
+                        double ae_part = paw_ae_wfs(irad, irb1) * paw_ae_wfs(irad, irb2);
+                        double ps_part = paw_ps_wfs(irad, irb1) * paw_ps_wfs(irad, irb2) + 
+                                         atom_type.q_radial_function(irb1, irb2, l_by_lm[lm3])[irad];
 
-                        intdata[irad] = ae_atom_pot(lm3,irad) * ae_part - ps_atom_pot(lm3,irad) * ps_part;
+                        intdata[irad] = ae_atom_pot(lm3, irad) * ae_part - ps_atom_pot(lm3, irad) * ps_part;
                     }
 
-                    // create spline from data arrays
-                    Spline<double> dij_spl(newgrid,intdata);
+                    /* create spline from data arrays */
+                    Spline<double> dij_spl(rgrid, intdata);
 
-                    // integrate
+                    /* integrate */
                     integrals(lm3, iqij, imagn) = dij_spl.integrate(0);
                 }
-
             }
         }
     }

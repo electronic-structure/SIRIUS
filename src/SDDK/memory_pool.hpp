@@ -17,44 +17,64 @@
 // CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
 // OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-/** \file sirius.h
- *
- *  \brief "All-in-one" include file.
+/** \file memory_pool.hpp
+ *   
+ *  \brief Contains implementation of simple memory pool object.
  */
 
-#ifndef __SIRIUS_H__
-#define __SIRIUS_H__
+#ifndef __MEMORY_POOL_HPP__
+#define __MEMORY_POOL_HPP__
 
-#include "json.hpp"
-using json = nlohmann::json;
+#include <list>
+#include "mdarray.hpp"
 
-#include "sirius_internal.h"
-#include "input.h"
-#include "cmd_args.h"
-#include "constants.h"
-#include "radial_grid.h"
-#include "spline.h"
-#include "radial_solver.h"
-#include "sht.h"
-#include "gaunt.h"
-#include "sddk.hpp"
-#include "hdf5_tree.hpp" 
-#include "xc_functional.h"
-#include "sirius_io.h"
-#include "descriptors.h"
-#include "mixer.h"
-#include "Unit_cell/atom_type.h"
-#include "Unit_cell/atom_symmetry_class.h"
-#include "Unit_cell/atom.h"
-#include "Unit_cell/unit_cell.h"
-#include "step_function.h"
-#include "periodic_function.h"
-#include "k_point.h"
-#include "band.h"
-#include "potential.h"
-#include "k_point_set.h"
-#include "density.h"
-//#include "force.h"
-#include "dft_ground_state.h"
+namespace sddk {
 
-#endif // __SIRIUS_H__
+class memory_pool {
+  private:
+    size_t pos_;
+    
+    sddk::mdarray<int8_t, 1> pool_;
+
+    std::list<std::unique_ptr<sddk::mdarray<int8_t, 1>>> tmp_pool_;
+
+  public:
+    memory_pool()
+    {
+    }
+    
+    /// Allocate n elements of type T.
+    template <typename T>
+    T* allocate(size_t n__)
+    {
+        //static_assert(std::is_pod<T>::value, "not a simple data type");
+        
+        size_t sz = n__ * sizeof(T);
+        if (pos_ + sz <= pool_.size()) {
+            T* ptr = reinterpret_cast<T*>(&pool_[pos_]);
+            pos_ += sz;
+            return ptr;
+        } else {
+            tmp_pool_.emplace_back(new sddk::mdarray<int8_t, 1>(sz));
+            return reinterpret_cast<T*>(tmp_pool_.back()->template at<CPU>());
+        }
+    }
+
+    void reset()
+    {
+        size_t sz{0};
+        for (auto& e: tmp_pool_) {
+            sz += e->size();
+        }
+        if (sz != 0) {
+            sz += pool_.size();
+            tmp_pool_.clear();
+            pool_ = sddk::mdarray<int8_t, 1>(sz);
+        }
+        pos_ = 0;
+    }
+};
+
+}
+
+#endif  // __MEMORY_POOL_HPP__

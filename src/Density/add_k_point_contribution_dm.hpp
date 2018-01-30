@@ -154,7 +154,7 @@ inline void Density::add_k_point_contribution_dm(K_point* kp__, mdarray<double_c
                     int nbf  = bp_chunks(chunk).desc_(beta_desc_idx::nbf, ia);
                     int offs = bp_chunks(chunk).desc_(beta_desc_idx::offset, ia);
                     int ja   = bp_chunks(chunk).desc_(beta_desc_idx::ia, ia);
-                    if (ctx_.unit_cell().atom(ja).type().pp_desc().spin_orbit_coupling) {
+                    if (ctx_.unit_cell().atom(ja).type().spin_orbit_coupling()) {
                         mdarray<double_complex, 3> bp3(nbf, nbnd_loc, 2);
                         bp3.zero();
                         /* We already have the <beta|psi> but we need to rotate

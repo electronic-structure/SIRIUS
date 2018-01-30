@@ -11,8 +11,8 @@ inline void Band::initialize_subspace(K_point_set& kset__, Hamiltonian& H__) con
         for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
             auto& atom_type = unit_cell_.atom_type(iat);
             int n{0};
-            for (auto& wf: atom_type.pp_desc().atomic_pseudo_wfs_) {
-                n += (2 * wf.first + 1);
+            for (int i = 0; i < atom_type.num_ps_atomic_wf(); i++) {
+                n += (2 * atom_type.ps_atomic_wf(i).first + 1);
             }
             N += atom_type.num_atoms() * n;
         }
@@ -76,9 +76,7 @@ Band::initialize_subspace(K_point* kp__, Hamiltonian &H__, int num_ao__) const
     int lmax{0};
     for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
         auto& atom_type = unit_cell_.atom_type(iat);
-        for (auto& wf: atom_type.pp_desc().atomic_pseudo_wfs_) {
-            lmax = std::max(lmax, wf.first);
-        }
+        lmax = std::max(lmax, atom_type.lmax_ps_atomic_wf());
     }
     lmax = std::max(lmax, unit_cell_.lmax());
 
