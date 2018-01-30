@@ -46,6 +46,8 @@
 #endif
 #include "constants.h"
 #include "version.h"
+#include "simulation_context.h"
+#include "Beta_projectors/beta_projectors_base.h"
 
 #ifdef __PLASMA
 extern "C" void plasma_init(int num_cores);
@@ -96,6 +98,11 @@ namespace sirius {
         #ifdef __LIBSCI_ACC
         libsci_acc_finalize();
         #endif
+
+        Beta_projectors_base<1>::cleanup();
+        Beta_projectors_base<3>::cleanup();
+        Beta_projectors_base<9>::cleanup();
+
         #ifdef __GPU
         if (acc::num_devices()) {
             cublas::destroy_stream_handles();
@@ -117,6 +124,7 @@ namespace sirius {
         if (call_mpi_fin__) {
             Communicator::finalize();
         }
+
     }
 
      inline void terminate(int err_code__)

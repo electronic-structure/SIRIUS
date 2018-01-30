@@ -59,7 +59,7 @@ inline void Band::diag_pseudo_potential_exact(K_point* kp__,
     
     kp__->beta_projectors_row().prepare();
     kp__->beta_projectors_col().prepare();
-    for (int ichunk = 0; ichunk < ctx_.beta_projector_chunks().num_chunks(); ichunk++) {
+    for (int ichunk = 0; ichunk < bp_chunks.num_chunks(); ichunk++) {
         /* generate beta-projectors for a block of atoms */
         kp__->beta_projectors_row().generate(ichunk);
         kp__->beta_projectors_col().generate(ichunk);

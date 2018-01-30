@@ -107,7 +107,7 @@ class Non_local_functor
                             for (int jbf = 0; jbf < nbf; jbf++) {
 
                                 /* Qij exists only in the case of ultrasoft/PAW */
-                                double qij = unit_cell.atom(ia).type().pp_desc().augment ? ctx_.augmentation_op(iat).q_mtrx(ibf, jbf) : 0.0;
+                                double qij = unit_cell.atom(ia).type().augment() ? ctx_.augmentation_op(iat).q_mtrx(ibf, jbf) : 0.0;
                                 double_complex dij = 0.0;
 
                                 /* get non-magnetic or collinear spin parts of dij*/

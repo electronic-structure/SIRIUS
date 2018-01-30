@@ -434,8 +434,7 @@ class Broyden2: public Mixer<T>
 
             /* compute residual square sum */
             this->rss_ = 0;
-            for (int i = 0; i < this->local_size_; i++) 
-            {
+            for (int i = 0; i < this->local_size_; i++) {
                 /* curent residual f_k = x_k - g(x_k) */
                 residuals_(i, ipos) = this->vectors_(i, ipos) - this->input_buffer_(i);
                 this->rss_ += std::pow(std::abs(residuals_(i, ipos)), 2) * this->weights_(i);
@@ -480,7 +479,9 @@ class Broyden2: public Mixer<T>
                 mdarray<long double, 2> gamma_k(2 * N, N);
                 gamma_k.zero();
                 /* initial gamma_0 */
-                for (int i = 0; i < N; i++) gamma_k(i, i) = 0.25;
+                for (int i = 0; i < N; i++) {
+                    gamma_k(i, i) = 0.25;
+                }
 
                 std::vector<long double> v1(N);
                 std::vector<long double> v2(2 * N);

@@ -58,8 +58,8 @@ class Beta_projectors: public Beta_projectors_base<1>
                 /* vs = {r, theta, phi} */
                 auto vs = SHT::spherical_coordinates(gkvec_.gkvec_cart(igk));
                 /* compute real spherical harmonics for G+k vector */
-                std::vector<double> gkvec_rlm(Utils::lmmax(lmax_beta_));
-                SHT::spherical_harmonics(lmax_beta_, vs[1], vs[2], &gkvec_rlm[0]);
+                std::vector<double> gkvec_rlm(Utils::lmmax(ctx_.unit_cell().lmax()));
+                SHT::spherical_harmonics(ctx_.unit_cell().lmax(), vs[1], vs[2], &gkvec_rlm[0]);
                 for (int iat = 0; iat < ctx_.unit_cell().num_atom_types(); iat++) {
                     auto& atom_type = ctx_.unit_cell().atom_type(iat);
                     for (int xi = 0; xi < atom_type.mt_basis_size(); xi++) {
@@ -77,13 +77,16 @@ class Beta_projectors: public Beta_projectors_base<1>
                 auto c1 = pw_coeffs_t_[0].checksum();
                 comm.allreduce(&c1, 1);
                 if (comm.rank() == 0) {
-                    DUMP("checksum(beta_pw_coeffs_t) : %18.10f %18.10f", c1.real(), c1.imag())
+                    print_checksum("beta_pw_coeffs_t", c1);
                 }
             }
 
-            //if (ctx_.processing_unit() == GPU) {
-            //    pw_coeffs_t_[0].copy<memory_t::host, memory_t::device>();
-            //}
+            if (ctx_.processing_unit() == GPU) {
+                /* beta projectors for atom types will be stored on GPU for the entire run */
+                reallocate_pw_coeffs_t_on_gpu_ = false;
+                pw_coeffs_t_[0].allocate(memory_t::device);
+                pw_coeffs_t_[0].copy<memory_t::host, memory_t::device>();
+            }
         }
                     
     public:

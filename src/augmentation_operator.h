@@ -160,14 +160,14 @@ class Augmentation_operator
             , comm_(ctx__.comm())
             , atom_type_(ctx__.unit_cell().atom_type(iat__))
         {
-            if (atom_type_.pp_desc().augment) {
+            if (atom_type_.augment()) {
                 generate_pw_coeffs(ctx__.unit_cell().omega(), ctx__.gvec(), ri__);
             }
         }
 
         void prepare(int stream_id__)
         {
-            if (atom_type_.parameters().processing_unit() == GPU && atom_type_.pp_desc().augment) {
+            if (atom_type_.parameters().processing_unit() == GPU && atom_type_.augment()) {
                 sym_weight_.allocate(memory_t::device);
                 sym_weight_.async_copy<memory_t::host, memory_t::device>(stream_id__);
 
@@ -178,7 +178,7 @@ class Augmentation_operator
 
         void dismiss()
         {
-            if (atom_type_.parameters().processing_unit() == GPU && atom_type_.pp_desc().augment) {
+            if (atom_type_.parameters().processing_unit() == GPU && atom_type_.augment()) {
                 q_pw_.deallocate(memory_t::device);
                 sym_weight_.deallocate(memory_t::device);
             }

@@ -104,14 +104,16 @@ class Spline
         }
         
         /// Constructor of a new empty spline.
-        Spline(Radial_grid<U> const& radial_grid__) : radial_grid_(&radial_grid__)
+        Spline(Radial_grid<U> const& radial_grid__) 
+            : radial_grid_(&radial_grid__)
         {
             coeffs_ = mdarray<T, 2>(num_points(), 4);
             coeffs_.zero();
         }
 
         /// Constructor of a spline from a function.
-        Spline(Radial_grid<U> const& radial_grid__, std::function<T(U)> f__) : radial_grid_(&radial_grid__)
+        Spline(Radial_grid<U> const& radial_grid__, std::function<T(U)> f__)
+            : radial_grid_(&radial_grid__)
         {
             coeffs_ = mdarray<T, 2>(num_points(), 4);
             for (int i = 0; i < num_points(); i++) {
@@ -122,14 +124,17 @@ class Spline
         }
 
         /// Constructor of a spline from a list of values.
-        Spline(Radial_grid<U> const& radial_grid__, std::vector<T> const& y__) : radial_grid_(&radial_grid__)
+        Spline(Radial_grid<U> const& radial_grid__, std::vector<T> const& y__)
+            : radial_grid_(&radial_grid__)
         {
-            assert(radial_grid_->num_points() == (int)y__.size());
+            assert(static_cast<int>(y__.size()) <= num_points());
             coeffs_ = mdarray<T, 2>(num_points(), 4);
-            for (int i = 0; i < num_points(); i++) {
-                coeffs_(i, 0) = y__[i];
+            coeffs_.zero();
+            int i{0};
+            for (auto e: y__) {
+                this->coeffs_(i++, 0) = e;
             }
-            interpolate();
+            this->interpolate();
         }
 
         /// Move constructor.
@@ -156,6 +161,17 @@ class Spline
                 coeffs_(ir, 0) = f__(x);
             }
             return this->interpolate();
+        }
+
+        void operator=(std::vector<T> const& y__)
+        {
+            assert(static_cast<int>(y__.size()) <= num_points());
+            coeffs_.zero();
+            int i{0};
+            for (auto e: y__) {
+                this->coeffs_(i++, 0) = e;
+            }
+            this->interpolate();
         }
         
         /// Integrate with r^m weight.

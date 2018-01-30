@@ -698,7 +698,7 @@ inline void Simulation_context_base::initialize()
         MEMORY_USAGE_INFO();
     }
 
-    if (unit_cell_.num_atoms() != 0 && use_symmetry()) {
+    if (unit_cell_.num_atoms() != 0 && use_symmetry() && control().verification_ >= 1) {
         unit_cell_.symmetry().check_gvec_symmetry(gvec(), comm());
         if (!full_potential()) {
             unit_cell_.symmetry().check_gvec_symmetry(gvec_coarse(), comm());
