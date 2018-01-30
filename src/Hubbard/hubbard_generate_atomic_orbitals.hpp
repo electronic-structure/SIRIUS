@@ -95,12 +95,22 @@ void generate_atomic_orbitals(K_point& kp, Q_operator<double_complex>& q_op)
 
                 for (int m = -l; m <= l; m++) {
                     int lm = Utils::lm_by_l_m(l, m);
-                    for (int s = 0; s < ctx_.num_spins(); s++) {
+                    if (ctx_.num_mag_dims() == 3) {
+                      for (int s = 0; s < ctx_.num_spins(); s++) {
                         for (int igk_loc = 0; igk_loc < kp.num_gkvec_loc(); igk_loc++) {
-                            sphi.pw_coeffs(s).prime(igk_loc, this->offset[ia] + l + m + s * (2 * l + 1)) =
-                                z * phase_gk[igk_loc] * rlm_gk(igk_loc, lm) *
-                                ctx_.atomic_wf_ri().values(orb, atom_type.id())(idx_gk[igk_loc].first, idx_gk[igk_loc].second);
+                          sphi.pw_coeffs(s).prime(igk_loc, this->offset[ia] + l + m + s * (2 * l + 1)) =
+                            z * phase_gk[igk_loc] * rlm_gk(igk_loc, lm) *
+                            ctx_.atomic_wf_ri().values(orb, atom_type.id())(idx_gk[igk_loc].first, idx_gk[igk_loc].second);
                         }
+                      }
+                    } else {
+                      for (int s = 0; s < ctx_.num_spins(); s++) {
+                        for (int igk_loc = 0; igk_loc < kp.num_gkvec_loc(); igk_loc++) {
+                          sphi.pw_coeffs(s).prime(igk_loc, this->offset[ia] + l + m) =
+                            z * phase_gk[igk_loc] * rlm_gk(igk_loc, lm) *
+                            ctx_.atomic_wf_ri().values(orb, atom_type.id())(idx_gk[igk_loc].first, idx_gk[igk_loc].second);
+                        }
+                      }
                     }
                 }
             }
@@ -167,6 +177,9 @@ void generate_atomic_orbitals(K_point& kp, Q_operator<double_complex>& q_op)
                                   this->number_of_hubbard_orbitals(),
                                   S, 0, 0);
         } else {
+          // we do not need to treat both up and down spins for the
+          // colinear case because the up and down components are
+          // identical
             inner<double_complex>(ctx_.processing_unit(),
                                   ctx_.num_spins() - 1,
                                   kp.hubbard_wave_functions(),
@@ -222,13 +235,13 @@ void generate_atomic_orbitals(K_point& kp, Q_operator<double_complex>& q_op)
             }
          }
 
-         // printf("\n");
-         // for (int l = 0; l < this->number_of_hubbard_orbitals(); l++) {
-         //     for (int m = 0; m < this->number_of_hubbard_orbitals(); m++) {
-         //         printf("%.5lf ", sqrt((S(l, m) * conj(S(l,m))).real()));
-         //     }
-         //     printf("\n");
-         // }
+         printf("\n");
+         for (int l = 0; l < this->number_of_hubbard_orbitals(); l++) {
+             for (int m = 0; m < this->number_of_hubbard_orbitals(); m++) {
+                 printf("%.5lf ", sqrt((S(l, m) * conj(S(l,m))).real()));
+             }
+             printf("\n");
+         }
 
          // now apply the overlap matrix
          for (int s = 0; (s < ctx_.num_spins()) && augment; s++) {
@@ -249,8 +262,9 @@ void generate_atomic_orbitals(K_point& kp, Q_operator<double_complex>& q_op)
                                        0,
                                        this->number_of_hubbard_orbitals());
          } else {
+           for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
              transform<double_complex>(ctx_.processing_unit(),
-                                       ctx_.num_spins() - 1,
+                                       ispn,
                                        sphi,
                                        0,
                                        this->number_of_hubbard_orbitals(),
@@ -260,37 +274,37 @@ void generate_atomic_orbitals(K_point& kp, Q_operator<double_complex>& q_op)
                                        kp.hubbard_wave_functions(),
                                        0,
                                        this->number_of_hubbard_orbitals());
-
+           }
          }
 
-         // S.zero();
-         // if (ctx_.num_mag_dims() == 3) {
-         //     inner<double_complex>(ctx_.processing_unit(),
-         //                           2,
-         //                           kp.hubbard_wave_functions(),
-         //                           0,
-         //                           this->number_of_hubbard_orbitals(),
-         //                           kp.hubbard_wave_functions(),
-         //                           0,
-         //                           this->number_of_hubbard_orbitals(),
-         //                           S, 0, 0);
-         // } else {
-         //     inner<double_complex>(ctx_.processing_unit(),
-         //                           ctx_.num_spins() - 1,
-         //                           kp.hubbard_wave_functions(),
-         //                           0,
-         //                           this->number_of_hubbard_orbitals(),
-         //                           kp.hubbard_wave_functions(),
-         //                           0,
-         //                           this->number_of_hubbard_orbitals(),
-         //                           S, 0, 0);
-         // }
-         // printf("\n");
-         // for (int l = 0; l < this->number_of_hubbard_orbitals(); l++) {
-         //     for (int m = 0; m < this->number_of_hubbard_orbitals(); m++) {
-         //         printf("%.5lf ", sqrt((S(l, m)*conj(S(l, m))).real()));
-         //     }
-         //     printf("\n");
-         // }
+         S.zero();
+         if (ctx_.num_mag_dims() == 3) {
+             inner<double_complex>(ctx_.processing_unit(),
+                                   2,
+                                   kp.hubbard_wave_functions(),
+                                   0,
+                                   this->number_of_hubbard_orbitals(),
+                                   kp.hubbard_wave_functions(),
+                                   0,
+                                   this->number_of_hubbard_orbitals(),
+                                   S, 0, 0);
+         } else {
+             inner<double_complex>(ctx_.processing_unit(),
+                                   ctx_.num_spins() - 1,
+                                   kp.hubbard_wave_functions(),
+                                   0,
+                                   this->number_of_hubbard_orbitals(),
+                                   kp.hubbard_wave_functions(),
+                                   0,
+                                   this->number_of_hubbard_orbitals(),
+                                   S, 0, 0);
+         }
+         printf("\n");
+         for (int l = 0; l < this->number_of_hubbard_orbitals(); l++) {
+             for (int m = 0; m < this->number_of_hubbard_orbitals(); m++) {
+                 printf("%.5lf ", sqrt((S(l, m)*conj(S(l, m))).real()));
+             }
+             printf("\n");
+         }
     }
 }

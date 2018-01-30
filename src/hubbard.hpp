@@ -218,7 +218,6 @@ public:
         this->mixer_input();
         mixer_->initialize();
         calculate_hubbard_potential_and_energy();
-        printf("We are where we should be\n");
     }
 
     inline void mixer_input()
@@ -270,29 +269,27 @@ public:
                         // a wave function is hubbard if and only if the occupation
                         // number is positive and l corresponds to hubbard_lmax;
                         bool hubbard_wfc = (occ > 0);
-                        if (ctx_.num_mag_dims() == 3) {
-                            // non colinear case or s.o.
+                        if (hubbard_wfc && (offset[ia] < 0)) {
+                            offset[ia] = counter;
+                        }
 
-                            // note that for s.o. we should actually compute things
-                            // differently since we have j=l+-1/2 (2l or 2l + 2).
-
-                            // problem though right now the computation do not care
-                            // that much about j = l +- 1/2 since the orbitals used to
-                            // compute the projections are averaged. That's why there
-                            // is no switch for spin orbit
-
-                            if (hubbard_wfc && (offset[ia] < 0)) {
-                                offset[ia] = counter;
-                            }
-
-                            if (hubbard_wfc) {
-                                counter += (2 * l + 1);
-                            }
+                        // the atom has spin orbit coupling so we have
+                        // two wave functions with same l but different
+                        // j
+                        if (atom.type().pp_desc().spin_orbit_coupling && hubbard_wfc) {
+                            counter += (2 * l + 1);
                         } else {
-                            if (hubbard_wfc) {
-                                offset[ia] = counter;
-                                // colinear magnetism
-                                counter += 2 * l + 1;
+                            if (hubbard_wfc && (ctx_.num_mag_dims() == 3)) {
+                                // the pseudo potential does not include
+                                // spin orbit coupling but we do
+                                // calculation with non colinear
+                                // magnetism so we still have full
+                                // hubbard spinors
+                                counter += 2 * (2 * l + 1);
+                            }
+                            if (hubbard_wfc && (ctx_.num_mag_dims() != 3)) {
+                                // colinear or conventional LDA
+                                counter += (2 * l + 1);
                             }
                         }
                     }
