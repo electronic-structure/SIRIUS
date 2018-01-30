@@ -87,19 +87,15 @@ struct local_orbital_descriptor
 /// Descriptor of the pseudopotential.
 struct pseudopotential_descriptor
 {
-    /// Atomic wave-functions used to setup the initial subspace.
-    /** This are the chi wave-function in the USPP file. Pairs of [l, chi_l(r)] are stored. */
-    std::vector<std::pair<int, std::vector<double>>> atomic_pseudo_wfs_;
-
     /// Occubations of atomic states.
     /** Length of vector is the same as the number of beta projectors and all_elec_wfc and pseudo_wfc */
-    std::vector<double> occupations;
+    //std::vector<double> occupations;
 
     /// total angular momentum j of the (hubbard) wave functions
-    std::vector<double> total_angular_momentum_wfs;
+    //std::vector<double> total_angular_momentum_wfs;
 
     /// total angular momentum j of the (hubbard) wave functions
-    std::vector<double> occupation_wfs;
+    //std::vector<double> occupation_wfs;
 };
 
 /// Descriptor of an atom in a list of nearest neigbours for each atom.

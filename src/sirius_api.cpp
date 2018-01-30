@@ -2580,8 +2580,6 @@ void sirius_set_atom_type_paw_data(char* label__,
 {
     auto& type = sim_ctx->unit_cell().atom_type(std::string(label__));
 
-    auto& pp_desc = type.pp_desc();
-
     if (*num_wfc__ != type.num_beta_radial_functions()) {
         TERMINATE("PAW error: different number of projectors and wave functions!");
     }
@@ -2623,10 +2621,7 @@ void sirius_set_atom_type_paw_data(char* label__,
     type.paw_ps_wfs(pswfs);
     type.paw_ae_core_charge_density(std::vector<double>(ae_core_charge__, ae_core_charge__ + type.num_mt_points()));
 
-    // read occupations
-    pp_desc.occupations.resize(type.num_beta_radial_functions());
-
-    std::memcpy(pp_desc.occupations.data(), occupations__, type.num_beta_radial_functions() * sizeof(double));
+    type.paw_wf_occ(std::vector<double>(occupations__, occupations__ + type.num_beta_radial_functions()));
 }
 
 void sirius_get_paw_total_energy(double* tot_en__)
@@ -3233,7 +3228,7 @@ void sirius_add_atom_type_chi(ftn_char label__,
                               ftn_double* chi__)
 {
     auto& type = sim_ctx->unit_cell().atom_type(std::string(label__));
-    type.pp_desc().atomic_pseudo_wfs_.push_back(std::make_pair(*l__, std::vector<double>(chi__, chi__ + *num_points__)));
+    type.add_ps_atomic_wf(*l__, std::vector<double>(chi__, chi__ + *num_points__));
 }
 
 void sirius_set_processing_unit(ftn_char pu__)

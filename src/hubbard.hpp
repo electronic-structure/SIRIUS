@@ -243,7 +243,7 @@ public:
         return rms;
     }
 
-
+// TODO: put include statemsnts to the beginning
 #include "Hubbard/hubbard_generate_atomic_orbitals.hpp"
 #include "Hubbard/hubbard_potential_energy.hpp"
 #include "Hubbard/apply_hubbard_potential.hpp"
@@ -262,9 +262,9 @@ public:
                 // search for the orbital of given l corresponding to the
                 // hubbard l, with strickly positive occupation
 
-                for (size_t wfc = 0; wfc < atom.type().pp_desc().atomic_pseudo_wfs_.size(); wfc++) {
-                    int l      = atom.type().pp_desc().atomic_pseudo_wfs_[wfc].first;
-                    double occ = atom.type().pp_desc().occupation_wfs[wfc];
+                for (int wfc = 0; wfc < atom.type().num_ps_atomic_wf(); wfc++) {
+                    int l      = atom.type().ps_atomic_wf(wfc).first;
+                    double occ = atom.type().ps_atomic_wf_occ()[wfc];
                     if ((occ >= 0.0) && (l == atom.type().hubbard_l())) {
                         // a wave function is hubbard if and only if the occupation
                         // number is positive and l corresponds to hubbard_lmax;

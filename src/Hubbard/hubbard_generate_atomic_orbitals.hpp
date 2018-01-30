@@ -7,16 +7,14 @@ void generate_atomic_orbitals(K_point& kp, Q_operator<double_complex>& q_op)
 {
     int lmax{0};
     // return immediately if the wave functions are already allocated
-    if (kp.hubbard_wave_functions_calculated())
+    if (kp.hubbard_wave_functions_calculated()) {
         return;
+    }
     // printf("test\n");
     kp.allocate_hubbard_wave_functions(this->number_of_hubbard_orbitals());
 
     for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
-        auto& atom_type = unit_cell_.atom_type(iat);
-        for (auto& wf : atom_type.pp_desc().atomic_pseudo_wfs_) {
-            lmax = std::max(lmax, wf.first);
-        }
+        lmax = std::max(lmax, unit_cell_.atom_type(iat).lmax_ps_atomic_wf());
     }
     // we need the complex spherical harmonics for the spin orbit case
     // mdarray<double_complex, 2> ylm_gk;
@@ -64,8 +62,8 @@ void generate_atomic_orbitals(K_point& kp, Q_operator<double_complex>& q_op)
             if (atom_type.spin_orbit_coupling()) {
                 int orb[2];
                 int s = 0;
-                for (auto i = 0; i < static_cast<int>(atom_type.pp_desc().atomic_pseudo_wfs_.size()); i++) {
-                    if (atom_type.pp_desc().atomic_pseudo_wfs_[i].first == atom_type.hubbard_l()) {
+                for (auto i = 0; i < atom_type.num_ps_atomic_wf(); i++) {
+                    if (atom_type.ps_atomic_wf(i).first == atom_type.hubbard_l()) {
                         orb[s] = i;
                         s++;
                     }
@@ -88,8 +86,8 @@ void generate_atomic_orbitals(K_point& kp, Q_operator<double_complex>& q_op)
             } else {
                 // find the right hubbard orbital
                 int orb = -1;
-                for (auto i = 0; i < static_cast<int>(atom_type.pp_desc().atomic_pseudo_wfs_.size()); i++) {
-                    if (atom_type.pp_desc().atomic_pseudo_wfs_[i].first == atom_type.hubbard_l()) {
+                for (auto i = 0; i < atom_type.num_ps_atomic_wf(); i++) {
+                    if (atom_type.ps_atomic_wf(i).first == atom_type.hubbard_l()) {
                         orb = i;
                         break;
                     }

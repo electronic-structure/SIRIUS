@@ -107,8 +107,6 @@ class Atom_type
     /// Index of atomic basis functions (radial function * spherical harmonic).
     basis_functions_index indexb_;
 
-    pseudopotential_descriptor pp_desc_;
-    
     /// Radial functions of beta-projectors.
     std::vector<std::pair<int, Spline<double>>> beta_radial_functions_;
     
@@ -119,7 +117,10 @@ class Atom_type
 
     /// Atomic wave-functions used to setup the initial subspace and to apply U-correction.
     /** This are the chi wave-function in the USPP file. Pairs of [l, chi_l(r)] are stored. */
-    std::vector<std::pair<int, Spline<double>>> ps_atomic_wf_;
+    std::vector<std::pair<int, Spline<double>>> ps_atomic_wfs_;
+
+    /// Total occupancy of the (hubbard) wave functions.
+    std::vector<double> ps_atomic_wf_occ_;
 
     /// True if the pseudopotential is soft and charge augmentation is required.
     bool augment_{false};
@@ -149,6 +150,10 @@ class Atom_type
     /// Pseudo wave functions of the PAW method.
     /** The number of wave functions is equal to the number of beta-projectors. */
     mdarray<double, 2> paw_ps_wfs_;
+    
+    /// Occupations of PAW wave-functions.
+    /** Length of vector is the same as the number of beta projectors, paw_ae_wfs and paw_ps_wfs */
+    std::vector<double> paw_wf_occ_;
     
     /// Core electron contribution to all electron charge density in PAW method.
     std::vector<double> paw_ae_core_charge_density_;
@@ -396,6 +401,42 @@ class Atom_type
         lo_descriptors_.push_back(lod__);
     }
 
+    inline void add_ps_atomic_wf(int l__, std::vector<double> f__)
+    {
+        Spline<double> s(radial_grid_, f__);
+        ps_atomic_wfs_.push_back(std::move(std::make_pair(l__, std::move(s))));
+    }
+
+    std::pair<int, Spline<double>> const& ps_atomic_wf(int idx__) const
+    {
+        return ps_atomic_wfs_[idx__];
+    }
+
+    inline int lmax_ps_atomic_wf() const
+    {
+        int lmax{-1};
+        for (auto& e: ps_atomic_wfs_) {
+            lmax = std::max(lmax, e.first);
+        }
+        return lmax;
+    }
+
+    inline int num_ps_atomic_wf() const
+    {
+        return static_cast<int>(ps_atomic_wfs_.size());
+    }
+
+    inline std::vector<double> const& ps_atomic_wf_occ() const
+    {
+        return ps_atomic_wf_occ_;
+    }
+
+    inline std::vector<double>& ps_atomic_wf_occ(std::vector<double> inp__)
+    {
+        ps_atomic_wf_occ_ = inp__;
+        return ps_atomic_wf_occ_;
+    }
+
     /// Add a radial function of beta-projector to a list of functions.
     inline void add_beta_radial_function(int l__, std::vector<double> beta__)
     {
@@ -405,7 +446,7 @@ class Atom_type
         Spline<double> s(radial_grid_, beta__);
         beta_radial_functions_.push_back(std::move(std::make_pair(l__, std::move(s))));
     }
-    
+
     /// Return a radial beta functions.
     inline Spline<double> const& beta_radial_function(int idxrf__) const
     {
@@ -529,6 +570,17 @@ class Atom_type
     {
         paw_ae_core_charge_density_ = inp__;
         return paw_ae_core_charge_density_;
+    }
+
+    inline std::vector<double> const& paw_wf_occ() const
+    {
+        return paw_wf_occ_;
+    }
+
+    inline std::vector<double>& paw_wf_occ(std::vector<double> inp__)
+    {
+        paw_wf_occ_ = inp__;
+        return paw_wf_occ_;
     }
 
     inline void init_free_atom(bool smooth);
@@ -733,16 +785,6 @@ class Atom_type
                 return i - 1;
         }
         return -1;
-    }
-
-    inline pseudopotential_descriptor const& pp_desc() const
-    {
-        return pp_desc_;
-    }
-
-    inline pseudopotential_descriptor& pp_desc()
-    {
-        return pp_desc_;
     }
 
     inline void set_symbol(const std::string symbol__)
@@ -1845,31 +1887,30 @@ inline void Atom_type::read_pseudo_uspp(json const& parser)
     /* read starting wave functions ( UPF CHI ) */
     if (parser["pseudo_potential"].count("atomic_wave_functions")) {
         size_t nwf = parser["pseudo_potential"]["atomic_wave_functions"].size();
+        std::vector<double> occupancies;
         for (size_t k = 0; k < nwf; k++) {
-            std::pair<int, std::vector<double>> wf;
-            wf.second =
-                parser["pseudo_potential"]["atomic_wave_functions"][k]["radial_function"].get<std::vector<double>>();
+            //std::pair<int, std::vector<double>> wf;
+            auto v = parser["pseudo_potential"]["atomic_wave_functions"][k]["radial_function"].get<std::vector<double>>();
 
-            if ((int)wf.second.size() != num_mt_points_) {
+            if ((int)v.size() != num_mt_points_) {
                 std::stringstream s;
                 s << "wrong size of atomic functions for atom type " << symbol_ << " (label: " << label_ << ")"
                   << std::endl
-                  << "size of atomic radial functions in the file: " << wf.second.size() << std::endl
+                  << "size of atomic radial functions in the file: " << v.size() << std::endl
                   << "radial grid size: " << num_mt_points_;
                 TERMINATE(s);
             }
-            wf.first = parser["pseudo_potential"]["atomic_wave_functions"][k]["angular_momentum"];
-            pp_desc_.atomic_pseudo_wfs_.push_back(wf);
+            int l = parser["pseudo_potential"]["atomic_wave_functions"][k]["angular_momentum"];
+            add_ps_atomic_wf(l, v);
 
             if (spin_orbit_coupling() &&
                 parser["pseudo_potential"]["atomic_wave_functions"][k].count("total_angular_momentum") &&
                 parser["pseudo_potential"]["atomic_wave_functions"][k].count("occupation")) {
-                double jchi = parser["pseudo_potential"]["atomic_wave_functions"][k]["total_angular_momentum"];
-                double occ = parser["pseudo_potential"]["atomic_wave_functions"][k]["occupation"];
-                pp_desc_.total_angular_momentum_wfs.push_back(jchi);
-                pp_desc_.occupation_wfs.push_back(occ);
+                //double jchi = parser["pseudo_potential"]["atomic_wave_functions"][k]["total_angular_momentum"];
+                occupancies.push_back(parser["pseudo_potential"]["atomic_wave_functions"][k]["occupation"]);
             }
         }
+        ps_atomic_wf_occ(occupancies);
     }
 }
 
@@ -1887,7 +1928,7 @@ inline void Atom_type::read_pseudo_paw(json const& parser)
     paw_ae_core_charge_density(parser["pseudo_potential"]["paw_data"]["ae_core_charge_density"].get<std::vector<double>>());
 
     /* read occupations */
-    pp_desc_.occupations = parser["pseudo_potential"]["paw_data"]["occupations"].get<std::vector<double>>();
+    paw_wf_occ(parser["pseudo_potential"]["paw_data"]["occupations"].get<std::vector<double>>());
 
     /* setups for reading AE and PS basis wave functions */
     int num_wfc = num_beta_radial_functions();

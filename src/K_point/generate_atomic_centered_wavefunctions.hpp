@@ -11,9 +11,7 @@ inline void K_point::generate_atomic_centered_wavefunctions(const int num_ao__, 
     int lmax{0};
     for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
         auto& atom_type = unit_cell_.atom_type(iat);
-        for (auto& wf : atom_type.pp_desc().atomic_pseudo_wfs_) {
-            lmax = std::max(lmax, wf.first);
-        }
+        lmax = std::max(lmax, atom_type.lmax_ps_atomic_wf());
     }
     lmax = std::max(lmax, unit_cell_.lmax());
 
@@ -38,8 +36,8 @@ inline void K_point::generate_atomic_centered_wavefunctions(const int num_ao__, 
             auto phase_factor = std::exp(double_complex(0.0, phase));
             auto& atom_type   = unit_cell_.atom(ia).type();
 
-            for (int i = 0; i < static_cast<int>(atom_type.pp_desc().atomic_pseudo_wfs_.size()); i++) {
-                auto l = atom_type.pp_desc().atomic_pseudo_wfs_[i].first;
+            for (int i = 0; i < atom_type.num_ps_atomic_wf(); i++) {
+                auto l = atom_type.ps_atomic_wf(i).first;
                 auto z = std::pow(double_complex(0, -1), l) * fourpi / std::sqrt(unit_cell_.omega());
                 for (int m = -l; m <= l; m++) {
                     int lm = Utils::lm_by_l_m(l, m);

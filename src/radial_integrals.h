@@ -87,8 +87,8 @@ class Radial_integrals_base
 class Radial_integrals_atomic_wf : public Radial_integrals_base<2>
 {
   private:
-    std::vector<std::vector<int>> angular_momentum;
-    std::vector<std::vector<double>> total_angular_momentum;
+    //std::vector<std::vector<int>> angular_momentum;
+    //std::vector<std::vector<double>> total_angular_momentum;
 
     void generate()
     {
@@ -96,11 +96,11 @@ class Radial_integrals_atomic_wf : public Radial_integrals_base<2>
 
         /* spherical Bessel functions jl(qx) */
         mdarray<Spherical_Bessel_functions, 1> jl(nq());
-        angular_momentum.clear();
-        total_angular_momentum.clear();
+        //angular_momentum.clear();
+        //total_angular_momentum.clear();
 
-        angular_momentum.resize(unit_cell_.num_atom_types());
-        total_angular_momentum.resize(unit_cell_.num_atom_types());
+        //angular_momentum.resize(unit_cell_.num_atom_types());
+        //total_angular_momentum.resize(unit_cell_.num_atom_types());
 
         for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
 
@@ -111,38 +111,33 @@ class Radial_integrals_atomic_wf : public Radial_integrals_base<2>
                 jl(iq) = Spherical_Bessel_functions(atom_type.indexr().lmax(), atom_type.radial_grid(), grid_q_[iq]);
             }
 
-            int nwf = static_cast<int>(atom_type.pp_desc().atomic_pseudo_wfs_.size());
-            angular_momentum[iat].clear();
-            angular_momentum[iat].resize(nwf);
-            total_angular_momentum[iat].clear();
-            total_angular_momentum[iat].resize(nwf);
+            int nwf = atom_type.num_ps_atomic_wf();
+            //angular_momentum[iat].clear();
+            //angular_momentum[iat].resize(nwf);
+            //total_angular_momentum[iat].clear();
+            //total_angular_momentum[iat].resize(nwf);
 
             /* loop over all pseudo wave-functions */
             for (int i = 0; i < nwf; i++) {
                 values_(i, iat) = Spline<double>(grid_q_);
 
-                /* interpolate atomic_pseudo_wfs(r) */
-                Spline<double> wf(atom_type.radial_grid());
-                for (int ir = 0; ir < (int)atom_type.pp_desc().atomic_pseudo_wfs_[i].second.size(); ir++) {
-                    wf[ir] = atom_type.pp_desc().atomic_pseudo_wfs_[i].second[ir];
-                }
+                auto& wf = atom_type.ps_atomic_wf(i);
 
-                wf.interpolate();
-                double norm = inner(wf, wf, 0);
+                double norm = inner(wf.second, wf.second, 0);
 
-                int l = atom_type.pp_desc().atomic_pseudo_wfs_[i].first;
+                int l = wf.first;
                 
                 #pragma omp parallel for
                 for (int iq = 0; iq < nq(); iq++) {
-                    values_(i, iat)[iq] = sirius::inner(jl(iq)[l], wf, 1) / std::sqrt(norm);
+                    values_(i, iat)[iq] = sirius::inner(jl(iq)[l], wf.second, 1) / std::sqrt(norm);
                 }
 
                 values_(i, iat).interpolate();
-                angular_momentum[iat][i] = l;
-                if (atom_type.pp_desc().total_angular_momentum_wfs.size()) {
-                    // will need it for Hubbard + so
-                    total_angular_momentum[iat][i] = atom_type.pp_desc().total_angular_momentum_wfs[i];
-                }
+                //angular_momentum[iat][i] = l;
+                //if (atom_type.pp_desc().total_angular_momentum_wfs.size()) {
+                //    // will need it for Hubbard + so
+                //    total_angular_momentum[iat][i] = atom_type.pp_desc().total_angular_momentum_wfs[i];
+                //}
             }
         }
     }
@@ -153,7 +148,7 @@ class Radial_integrals_atomic_wf : public Radial_integrals_base<2>
     {
         int no_max{0};
         for (int iat = 0; iat < unit_cell__.num_atom_types(); iat++) {
-            no_max = std::max(no_max, static_cast<int>(unit_cell__.atom_type(iat).pp_desc().atomic_pseudo_wfs_.size()));
+            no_max = std::max(no_max, unit_cell__.atom_type(iat).num_ps_atomic_wf());
         }
 
         values_ = mdarray<Spline<double>, 2>(no_max, unit_cell_.num_atom_types());
@@ -172,8 +167,8 @@ class Radial_integrals_atomic_wf : public Radial_integrals_base<2>
     {
         auto idx        = iqdq(q__);
         auto& atom_type = unit_cell_.atom_type(iat__);
-        mdarray<double, 1> val(atom_type.pp_desc().atomic_pseudo_wfs_.size());
-        for (int i = 0; i < static_cast<int>(atom_type.pp_desc().atomic_pseudo_wfs_.size()); i++) {
+        mdarray<double, 1> val(atom_type.num_ps_atomic_wf());
+        for (int i = 0; i < atom_type.num_ps_atomic_wf(); i++) {
             val(i) = values_(i, iat__)(idx.first, idx.second);
         }
         return std::move(val);

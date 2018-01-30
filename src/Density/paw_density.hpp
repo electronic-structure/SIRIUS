@@ -50,14 +50,13 @@ inline void Density::init_density_matrix_for_paw()
 
         int nbf = atom_type.mt_basis_size();
 
-        auto& occupations = atom_type.pp_desc().occupations;
+        auto& occupations = atom_type.paw_wf_occ();
 
-        // magnetization vector
-        vector3d<double> magn = atom.vector_field();
+        /* magnetization vector */
+        auto magn = atom.vector_field();
 
-        for (int xi = 0; xi < nbf; xi++)
-        {
-            basis_function_index_descriptor const& basis_func_index_dsc = atom_type.indexb()[xi];
+        for (int xi = 0; xi < nbf; xi++) {
+            auto& basis_func_index_dsc = atom_type.indexb()[xi];
 
             int rad_func_index = basis_func_index_dsc.idxrf;
 
@@ -67,20 +66,18 @@ inline void Density::init_density_matrix_for_paw()
 
             switch (ctx_.num_mag_dims()){
                 case 0:{
-                    density_matrix_(xi,xi,0,ia) = occ / (double)( 2 * l + 1 );
+                    density_matrix_(xi, xi, 0, ia) = occ / double(2 * l + 1);
                     break;
                 }
 
                 case 3:
                 case 1:{
-                    double nm = ( std::abs(magn[2]) < 1. ) ? magn[2] :  std::copysign(1, magn[2] ) ;
-
-                    density_matrix_(xi,xi,0,ia) = 0.5 * (1.0 + nm ) * occ / (double)( 2 * l + 1 );
-                    density_matrix_(xi,xi,1,ia) = 0.5 * (1.0 - nm ) * occ / (double)( 2 * l + 1 );
+                    double nm = (std::abs(magn[2]) < 1.0) ? magn[2] : std::copysign(1, magn[2]) ;
+                    density_matrix_(xi, xi, 0, ia) = 0.5 * (1.0 + nm) * occ / double(2 * l + 1);
+                    density_matrix_(xi, xi, 1, ia) = 0.5 * (1.0 - nm) * occ / double(2 * l + 1);
                     break;
                 }
             }
-
         }
     }
 }
