@@ -98,9 +98,6 @@ struct pseudopotential_descriptor
     /** Length of vector is the same as the number of beta projectors and all_elec_wfc and pseudo_wfc */
     std::vector<double> occupations;
 
-    /// density of core electron contribution to all electron charge density
-    std::vector<double> all_elec_core_charge;
-
     /// total angular momentum j of the (hubbard) wave functions
     std::vector<double> total_angular_momentum_wfs;
 

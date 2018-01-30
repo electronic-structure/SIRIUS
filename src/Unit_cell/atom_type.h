@@ -121,12 +121,6 @@ class Atom_type
     /** This are the chi wave-function in the USPP file. Pairs of [l, chi_l(r)] are stored. */
     std::vector<std::pair<int, Spline<double>>> ps_atomic_wf_;
 
-    /// All electron basis wave functions, have the same dimensionality as uspp.beta_radial_functions.
-    mdarray<double, 2> all_elec_wfc;
-
-    /// pseudo basis wave functions, have the same dimensionality as uspp.beta_radial_functions
-    mdarray<double, 2> pseudo_wfc;
-    
     /// True if the pseudopotential is soft and charge augmentation is required.
     bool augment_{false};
     
@@ -156,6 +150,9 @@ class Atom_type
     /** The number of wave functions is equal to the number of beta-projectors. */
     mdarray<double, 2> paw_ps_wfs_;
     
+    /// Core electron contribution to all electron charge density in PAW method.
+    std::vector<double> paw_ae_core_charge_density_;
+
     /// starting magnetization // TODO: remove that
     double starting_magnetization_{0.0};
 
@@ -518,6 +515,17 @@ class Atom_type
     inline void paw_ps_wfs(mdarray<double, 2>& inp__)
     {
         return inp__ >> paw_ps_wfs_;
+    }
+
+    inline std::vector<double> const& paw_ae_core_charge_density() const
+    {
+        return paw_ae_core_charge_density_;
+    }
+
+    inline std::vector<double>& paw_ae_core_charge_density(std::vector<double> inp__)
+    {
+        paw_ae_core_charge_density_ = inp__;
+        return paw_ae_core_charge_density_;
     }
 
     inline void init_free_atom(bool smooth);
@@ -1870,8 +1878,7 @@ inline void Atom_type::read_pseudo_paw(json const& parser)
     int cutoff_radius_index = parser["pseudo_potential"]["header"]["cutoff_radius_index"];
 
     /* read core density and potential */
-    pp_desc_.all_elec_core_charge =
-        parser["pseudo_potential"]["paw_data"]["ae_core_charge_density"].get<std::vector<double>>();
+    paw_ae_core_charge_density(parser["pseudo_potential"]["paw_data"]["ae_core_charge_density"].get<std::vector<double>>());
 
     /* read occupations */
     pp_desc_.occupations = parser["pseudo_potential"]["paw_data"]["occupations"].get<std::vector<double>>();

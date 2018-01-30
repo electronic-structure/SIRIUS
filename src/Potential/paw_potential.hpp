@@ -355,8 +355,6 @@ inline void Potential::calc_PAW_local_potential(paw_potential_data_t &ppd,
                                                 std::vector<Spheric_function<spectral, double>> const& ae_density,
                                                 std::vector<Spheric_function<spectral, double>> const& ps_density)
 {
-    auto& pp_desc = ppd.atom_->type().pp_desc();
-
     //-----------------------------------------
     //---- Calculation of Hartree potential ---
     //-----------------------------------------
@@ -365,7 +363,6 @@ inline void Potential::calc_PAW_local_potential(paw_potential_data_t &ppd,
         ppd.ae_potential_[i].zero();
         ppd.ps_potential_[i].zero();
     }
-
 
     double ae_hartree_energy = calc_PAW_hartree_potential(*ppd.atom_,
                                                           ae_density[0],
@@ -381,25 +378,26 @@ inline void Potential::calc_PAW_local_potential(paw_potential_data_t &ppd,
     //---- Calculation of XC potential ---
     //-----------------------------------------
     auto& ps_core = ppd.atom_->type().ps_core_charge_density();
+    auto& ae_core = ppd.atom_->type().paw_ae_core_charge_density();
 
     double ae_xc_energy = 0.0;
     double ps_xc_energy = 0.0;
 
     switch (ctx_.num_mag_dims()) {
         case 0: {
-            ae_xc_energy = xc_mt_PAW_nonmagnetic(ppd.ae_potential_[0], ae_density[0], pp_desc.all_elec_core_charge);
+            ae_xc_energy = xc_mt_PAW_nonmagnetic(ppd.ae_potential_[0], ae_density[0], ae_core);
             ps_xc_energy = xc_mt_PAW_nonmagnetic(ppd.ps_potential_[0], ps_density[0], ps_core);
             break;
         }
 
         case 1: {
-            ae_xc_energy = xc_mt_PAW_collinear(ppd.ae_potential_, ae_density, pp_desc.all_elec_core_charge);
+            ae_xc_energy = xc_mt_PAW_collinear(ppd.ae_potential_, ae_density, ae_core);
             ps_xc_energy = xc_mt_PAW_collinear(ppd.ps_potential_, ps_density, ps_core);
             break;
         }
 
         case 3:{
-            ae_xc_energy = xc_mt_PAW_noncollinear(ppd.ae_potential_, ae_density, pp_desc.all_elec_core_charge);
+            ae_xc_energy = xc_mt_PAW_noncollinear(ppd.ae_potential_, ae_density, ae_core);
             ps_xc_energy = xc_mt_PAW_noncollinear(ppd.ps_potential_, ps_density, ps_core);
             break;
         }

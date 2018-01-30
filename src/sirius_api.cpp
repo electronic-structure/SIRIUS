@@ -2621,11 +2621,7 @@ void sirius_set_atom_type_paw_data(char* label__,
 
     type.paw_ae_wfs(aewfs);
     type.paw_ps_wfs(pswfs);
-
-    // read ae core charge
-    pp_desc.all_elec_core_charge.resize(type.num_mt_points());
-
-    std::memcpy(pp_desc.all_elec_core_charge.data(), ae_core_charge__, type.num_mt_points() * sizeof(double));
+    type.paw_ae_core_charge_density(std::vector<double>(ae_core_charge__, ae_core_charge__ + type.num_mt_points()));
 
     // read occupations
     pp_desc.occupations.resize(type.num_beta_radial_functions());
