@@ -244,7 +244,7 @@ class Unit_cell
     inline void init_paw()
     {
         for (int ia = 0; ia < num_atoms(); ia++) {
-            if (atom(ia).type().pp_desc().is_paw) {
+            if (atom(ia).type().is_paw()) {
                 paw_atom_index_.push_back(ia);
             }
         }

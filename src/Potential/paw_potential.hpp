@@ -35,7 +35,7 @@ inline void Potential::init_PAW()
             ppd.ps_potential_.push_back(Spheric_function<spectral, double>(lm_max_rho, ppd.atom_->radial_grid()));
         }
 
-        ppd.core_energy_ = atom_type.pp_desc().core_energy;
+        ppd.core_energy_ = atom_type.paw_core_energy();
 
         paw_potential_data_.push_back(std::move(ppd));
     }
@@ -380,28 +380,33 @@ inline void Potential::calc_PAW_local_potential(paw_potential_data_t &ppd,
     //-----------------------------------------
     //---- Calculation of XC potential ---
     //-----------------------------------------
+    auto& ps_core = ppd.atom_->type().ps_core_charge_density();
+
     double ae_xc_energy = 0.0;
     double ps_xc_energy = 0.0;
 
-    switch (ctx_.num_mag_dims()){
-        case 0:{
+    switch (ctx_.num_mag_dims()) {
+        case 0: {
             ae_xc_energy = xc_mt_PAW_nonmagnetic(ppd.ae_potential_[0], ae_density[0], pp_desc.all_elec_core_charge);
-            ps_xc_energy = xc_mt_PAW_nonmagnetic(ppd.ps_potential_[0], ps_density[0], pp_desc.core_charge_density);
-        }break;
+            ps_xc_energy = xc_mt_PAW_nonmagnetic(ppd.ps_potential_[0], ps_density[0], ps_core);
+            break;
+        }
 
-        case 1:{
+        case 1: {
             ae_xc_energy = xc_mt_PAW_collinear(ppd.ae_potential_, ae_density, pp_desc.all_elec_core_charge);
-            ps_xc_energy = xc_mt_PAW_collinear(ppd.ps_potential_, ps_density, pp_desc.core_charge_density);
-        }break;
+            ps_xc_energy = xc_mt_PAW_collinear(ppd.ps_potential_, ps_density, ps_core);
+            break;
+        }
 
         case 3:{
             ae_xc_energy = xc_mt_PAW_noncollinear(ppd.ae_potential_, ae_density, pp_desc.all_elec_core_charge);
-            ps_xc_energy = xc_mt_PAW_noncollinear(ppd.ps_potential_, ps_density, pp_desc.core_charge_density);
-        }break;
+            ps_xc_energy = xc_mt_PAW_noncollinear(ppd.ps_potential_, ps_density, ps_core);
+            break;
+        }
 
         default:{
             TERMINATE("PAW local potential error! Wrong number of spins!")
-        }break;
+        }
     }
 
     /* save xc energy in pdd structure */

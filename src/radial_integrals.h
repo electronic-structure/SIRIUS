@@ -292,11 +292,7 @@ class Radial_integrals_rho_pseudo : public Radial_integrals_base<1>
             auto& atom_type = unit_cell_.atom_type(iat);
             values_(iat)    = Spline<double>(grid_q_);
 
-            Spline<double> rho(atom_type.radial_grid());
-            for (int ir = 0; ir < atom_type.num_mt_points(); ir++) {
-                rho[ir] = atom_type.pp_desc().total_charge_density[ir];
-            }
-            rho.interpolate();
+            Spline<double> rho(atom_type.radial_grid(), atom_type.ps_total_charge_density());
 
             #pragma omp parallel for
             for (int iq_loc = 0; iq_loc < spl_q_.local_size(); iq_loc++) {
@@ -331,11 +327,7 @@ class Radial_integrals_rho_core_pseudo : public Radial_integrals_base<1>
             auto& atom_type = unit_cell_.atom_type(iat);
             values_(iat)    = Spline<double>(grid_q_);
 
-            Spline<double> ps_core(atom_type.radial_grid());
-            for (int ir = 0; ir < atom_type.num_mt_points(); ir++) {
-                ps_core[ir] = atom_type.pp_desc().core_charge_density[ir];
-            }
-            ps_core.interpolate();
+            Spline<double> ps_core(atom_type.radial_grid(), atom_type.ps_core_charge_density());
 
             #pragma omp parallel for
             for (int iq_loc = 0; iq_loc < spl_q_.local_size(); iq_loc++) {

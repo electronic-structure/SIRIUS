@@ -90,15 +90,6 @@ struct pseudopotential_descriptor
     /// The pseudo potential includes spin orbit coupling
     bool spin_orbit_coupling{false};
 
-    /// True if the pseudopotential is used for PAW.
-    bool is_paw{false};
-
-    std::vector<double> core_charge_density;
-
-    std::vector<double> total_charge_density;
-
-    mdarray<double, 2> d_mtrx_ion;
-
     /// Atomic wave-functions used to setup the initial subspace.
     /** This are the chi wave-function in the USPP file. Pairs of [l, chi_l(r)] are stored. */
     std::vector<std::pair<int, std::vector<double>>> atomic_pseudo_wfs_;
@@ -109,18 +100,12 @@ struct pseudopotential_descriptor
     /// pseudo basis wave functions, have the same dimensionality as uspp.beta_radial_functions
     mdarray<double, 2> pseudo_wfc;
 
-    /// Core energy of PAW.
-    double core_energy; // TODO: proper desciption comment
-
     /// Occubations of atomic states.
     /** Length of vector is the same as the number of beta projectors and all_elec_wfc and pseudo_wfc */
     std::vector<double> occupations;
 
     /// density of core electron contribution to all electron charge density
     std::vector<double> all_elec_core_charge;
-
-    /// electrostatic potential of all electron core charge
-    std::vector<double> all_elec_loc_potential;
 
     /// total angular momentum j of the (hubbard) wave functions
     std::vector<double> total_angular_momentum_wfs;
@@ -186,15 +171,15 @@ struct radial_function_index_descriptor
 
 struct basis_function_index_descriptor
 {
-    /// angular momentum
+    /// Angular momentum.
     int l;
-    /// projection of the angular momentum
+    /// Projection of the angular momentum.
     int m;
-    /// composite index
+    /// Composite index.
     int lm;
-    /// total angular momemtum
+    /// Total angular momemtum. // TODO: replace with positive and negative integer in l
     double j;
-    /// order of the radial function for a given l (j)
+    /// Order of the radial function for a given l (j).
     int order;
     /// indice of local orbital
     int idxlo;

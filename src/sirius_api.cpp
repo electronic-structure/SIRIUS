@@ -2108,8 +2108,8 @@ void sirius_set_atom_type_dion(char* label__,
                                double* dion__)
 {
     auto& type = sim_ctx->unit_cell().atom_type(std::string(label__));
-    matrix<double> d_mtrx_ion(dion__, *num_beta__, *num_beta__);
-    type.set_d_mtrx_ion(d_mtrx_ion);
+    matrix<double> dion(dion__, *num_beta__, *num_beta__);
+    type.d_mtrx_ion(dion);
 }
 
 // This must be called prior to sirius_set_atom_type_q_rf
@@ -2127,12 +2127,8 @@ void sirius_set_atom_type_beta_rf(ftn_char     label__,
     type.pp_desc().spin_orbit_coupling = *spin_orbit__;
 
     for (int i = 0; i < *num_beta__; i++) {
-        // TODO: use std::copy
-        std::vector<double> v(num_mesh_points__[i]);
-        for (int ir = 0; ir < num_mesh_points__[i]; ir++) {
-            v[ir] = beta_rf(ir, i);
-        }
-        type.add_beta_radial_function(beta_l__[i], v);
+        double* ptr = &beta_rf(0, i);
+        type.add_beta_radial_function(beta_l__[i], std::vector<double>(ptr, ptr + num_mesh_points__[i]));
     }
 }
 
@@ -2160,12 +2156,8 @@ void sirius_set_atom_type_q_rf(char* label__,
             /* combined index */
             int ijv = (mb + 1) * mb / 2 + nb;
             for (int l = 0; l <= 2 * type.lmax_beta(); l++) {
-                // TODO: use std::copy
-                std::vector<double> v(type.num_mt_points());
-                for (int ir = 0; ir < type.num_mt_points(); ir++) {
-                    v[ir] = q_rf(ir, ijv, l);
-                }
-                type.add_q_radial_function(nb, mb, l, v);
+                double* ptr = &q_rf(0, ijv, l);
+                type.add_q_radial_function(nb, mb, l, std::vector<double>(ptr, ptr + type.num_mt_points()));
             }
         }
     }
@@ -2176,8 +2168,7 @@ void sirius_set_atom_type_rho_core(char const* label__,
                                    double* rho_core__)
 {
     auto& type = sim_ctx->unit_cell().atom_type(std::string(label__));
-    type.pp_desc().core_charge_density = std::vector<double>(*num_points__);
-    for (int i = 0; i < *num_points__; i++) type.pp_desc().core_charge_density[i] = rho_core__[i];
+    type.ps_core_charge_density(std::vector<double>(rho_core__, rho_core__ + (*num_points__)));
 }
 
 void sirius_set_atom_type_rho_tot(char const* label__,
@@ -2185,8 +2176,7 @@ void sirius_set_atom_type_rho_tot(char const* label__,
                                   double* rho_tot__)
 {
     auto& type = sim_ctx->unit_cell().atom_type(std::string(label__));
-    type.pp_desc().total_charge_density = std::vector<double>(*num_points__);
-    for (int i = 0; i < *num_points__; i++) type.pp_desc().total_charge_density[i] = rho_tot__[i];
+    type.ps_total_charge_density(std::vector<double>(rho_tot__, rho_tot__ + (*num_points__)));
 }
 
 void sirius_set_atom_type_vloc(char const* label__,
@@ -2609,10 +2599,10 @@ void sirius_set_atom_type_paw_data(char* label__,
     }
 
     // we load PAW, so we set is_paw to true
-    pp_desc.is_paw = true;
+    type.is_paw(true);
 
     // load parameters
-    pp_desc.core_energy = (*core_energy__) * 0.5; // convert Ry to Ha
+    type.paw_core_energy((*core_energy__) * 0.5); // convert Ry to Ha
 
     pp_desc.cutoff_radius_index = *cutoff_radius_index__;
 

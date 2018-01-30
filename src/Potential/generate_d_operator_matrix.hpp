@@ -254,6 +254,8 @@ inline void Potential::generate_D_operator_matrix()
         auto& atom_type = unit_cell_.atom(ia).type();
         int nbf         = unit_cell_.atom(ia).mt_basis_size();
 
+        auto& dion      = atom_type.d_mtrx_ion();
+
         if (atom_type.pp_desc().spin_orbit_coupling) {
             // spin orbit coupling mixes this term
 
@@ -271,15 +273,15 @@ inline void Potential::generate_D_operator_matrix()
                     if ((l1 == l2) && (std::abs(j1 - j2) < 1e-8)) {
                         // up-up down-down
                         unit_cell_.atom(ia).d_mtrx_so(xi1, xi2, 0) +=
-                            atom_type.pp_desc().d_mtrx_ion(idxrf1, idxrf2) * atom_type.f_coefficients(xi1, xi2, 0, 0);
+                            dion(idxrf1, idxrf2) * atom_type.f_coefficients(xi1, xi2, 0, 0);
                         unit_cell_.atom(ia).d_mtrx_so(xi1, xi2, 1) +=
-                            atom_type.pp_desc().d_mtrx_ion(idxrf1, idxrf2) * atom_type.f_coefficients(xi1, xi2, 1, 1);
+                            dion(idxrf1, idxrf2) * atom_type.f_coefficients(xi1, xi2, 1, 1);
 
                         // up-down down-up
                         unit_cell_.atom(ia).d_mtrx_so(xi1, xi2, 2) +=
-                            atom_type.pp_desc().d_mtrx_ion(idxrf1, idxrf2) * atom_type.f_coefficients(xi1, xi2, 0, 1);
+                            dion(idxrf1, idxrf2) * atom_type.f_coefficients(xi1, xi2, 0, 1);
                         unit_cell_.atom(ia).d_mtrx_so(xi1, xi2, 3) +=
-                            atom_type.pp_desc().d_mtrx_ion(idxrf1, idxrf2) * atom_type.f_coefficients(xi1, xi2, 1, 0);
+                            dion(idxrf1, idxrf2) * atom_type.f_coefficients(xi1, xi2, 1, 0);
                     }
                 }
             }
@@ -292,7 +294,7 @@ inline void Potential::generate_D_operator_matrix()
                     int idxrf1 = atom_type.indexb(xi1).idxrf;
 
                     if (lm1 == lm2) {
-                        unit_cell_.atom(ia).d_mtrx(xi1, xi2, 0) += atom_type.pp_desc().d_mtrx_ion(idxrf1, idxrf2);
+                        unit_cell_.atom(ia).d_mtrx(xi1, xi2, 0) += dion(idxrf1, idxrf2);
                     }
                 }
             }
