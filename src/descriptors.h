@@ -84,19 +84,19 @@ struct local_orbital_descriptor
     radial_solution_descriptor_set rsd_set;
 };
 
-/// Descriptor of the pseudopotential.
-struct pseudopotential_descriptor
-{
-    /// Occubations of atomic states.
-    /** Length of vector is the same as the number of beta projectors and all_elec_wfc and pseudo_wfc */
-    //std::vector<double> occupations;
-
-    /// total angular momentum j of the (hubbard) wave functions
-    //std::vector<double> total_angular_momentum_wfs;
-
-    /// total angular momentum j of the (hubbard) wave functions
-    //std::vector<double> occupation_wfs;
-};
+///// Descriptor of the pseudopotential.
+//struct pseudopotential_descriptor
+//{
+//    /// Occubations of atomic states.
+//    /** Length of vector is the same as the number of beta projectors and all_elec_wfc and pseudo_wfc */
+//    //std::vector<double> occupations;
+//
+//    /// total angular momentum j of the (hubbard) wave functions
+//    //std::vector<double> total_angular_momentum_wfs;
+//
+//    /// total angular momentum j of the (hubbard) wave functions
+//    //std::vector<double> occupation_wfs;
+//};
 
 /// Descriptor of an atom in a list of nearest neigbours for each atom.
 /** See sirius::Unit_cell::find_nearest_neighbours() for the details of usage. */
