@@ -76,8 +76,9 @@ inline void Potential::generate_D_operator_matrix()
                     for (int xi2 = 0; xi2 < nbf; xi2++) {
                         for (int xi1 = 0; xi1 < nbf; xi1++) {
                             atom.d_mtrx(xi1, xi2, iv) = 0;
-                            if (atom_type.pp_desc().spin_orbit_coupling)
+                            if (atom_type.spin_orbit_coupling()) {
                                 atom.d_mtrx_so(xi1, xi2, iv) = 0;
+                            }
                         }
                     }
                 }
@@ -177,7 +178,7 @@ inline void Potential::generate_D_operator_matrix()
         }
 
         // Now compute the d operator for atoms with so interactions
-        if (atom_type.pp_desc().spin_orbit_coupling) {
+        if (atom_type.spin_orbit_coupling()) {
             #pragma omp parallel for schedule(static)
             for (int i = 0; i < atom_type.num_atoms(); i++) {
                 int ia     = atom_type.atom_id(i);
@@ -256,7 +257,7 @@ inline void Potential::generate_D_operator_matrix()
 
         auto& dion      = atom_type.d_mtrx_ion();
 
-        if (atom_type.pp_desc().spin_orbit_coupling) {
+        if (atom_type.spin_orbit_coupling()) {
             // spin orbit coupling mixes this term
 
             // keep the order of the indices because it is crucial

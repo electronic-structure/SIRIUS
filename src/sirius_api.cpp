@@ -2120,11 +2120,11 @@ void sirius_set_atom_type_beta_rf(ftn_char     label__,
                                   ftn_int*     num_mesh_points__,
                                   ftn_double*  beta_rf__,
                                   ftn_int*     ld__,
-                                  ftn_bool*    spin_orbit__)
+                                  ftn_bool*    spin_orbit__) // TODO: this is not the proper place to pass so_coupling flag
 {
     auto& type = sim_ctx->unit_cell().atom_type(std::string(label__));
     mdarray<double, 2> beta_rf(beta_rf__, *ld__, *num_beta__);
-    type.pp_desc().spin_orbit_coupling = *spin_orbit__;
+    type.spin_orbit_coupling(*spin_orbit__);
 
     for (int i = 0; i < *num_beta__; i++) {
         double* ptr = &beta_rf(0, i);

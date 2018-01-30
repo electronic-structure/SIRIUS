@@ -152,6 +152,9 @@ class Atom_type
     
     /// Core electron contribution to all electron charge density in PAW method.
     std::vector<double> paw_ae_core_charge_density_;
+    
+    /// True if the pseudo potential includes spin orbit coupling.
+    bool spin_orbit_coupling_{false};
 
     /// starting magnetization // TODO: remove that
     double starting_magnetization_{0.0};
@@ -899,11 +902,6 @@ class Atom_type
         return f_coefficients_(xi1, xi2, s1, s2);
     }
 
-    //inline Spline<double> const& q_radial_function(int idx__, int l__) const
-    //{
-    //    return q_radial_functions_l_(idx__, l__);
-    //}
-
     inline Spline<double> const& q_radial_function(int idxrf1__, int idxrf2__, int l__) const
     {
         if (idxrf1__ > idxrf2__) {
@@ -913,6 +911,17 @@ class Atom_type
         int ijv = idxrf2__ * (idxrf2__ + 1) / 2 + idxrf1__;
 
         return q_radial_functions_l_(ijv, l__);
+    }
+
+    inline bool spin_orbit_coupling() const
+    {
+        return spin_orbit_coupling_;
+    }
+
+    inline bool spin_orbit_coupling(bool so__)
+    {
+        spin_orbit_coupling_ = so__;
+        return spin_orbit_coupling_;
     }
 
     bool const& hubbard_correction() const
@@ -1505,7 +1514,7 @@ inline void Atom_type::init(int offset_lo__)
         compute_hubbard_matrix();
     }
 
-    if (this->pp_desc().spin_orbit_coupling) {
+    if (this->spin_orbit_coupling()) {
         this->generate_f_coefficients();
     }
     initialized_ = true;
@@ -1790,7 +1799,7 @@ inline void Atom_type::read_pseudo_uspp(json const& parser)
     set_radial_grid(num_mt_points_, rgrid.data());
 
     if (parser["pseudo_potential"]["header"].count("spin_orbit")) {
-        pp_desc_.spin_orbit_coupling = true;
+        spin_orbit_coupling(true);
     }
 
     int nbf = parser["pseudo_potential"]["header"]["number_of_proj"];
@@ -1852,7 +1861,7 @@ inline void Atom_type::read_pseudo_uspp(json const& parser)
             wf.first = parser["pseudo_potential"]["atomic_wave_functions"][k]["angular_momentum"];
             pp_desc_.atomic_pseudo_wfs_.push_back(wf);
 
-            if (pp_desc_.spin_orbit_coupling &&
+            if (spin_orbit_coupling() &&
                 parser["pseudo_potential"]["atomic_wave_functions"][k].count("total_angular_momentum") &&
                 parser["pseudo_potential"]["atomic_wave_functions"][k].count("occupation")) {
                 double jchi = parser["pseudo_potential"]["atomic_wave_functions"][k]["total_angular_momentum"];
@@ -1860,9 +1869,6 @@ inline void Atom_type::read_pseudo_uspp(json const& parser)
                 pp_desc_.total_angular_momentum_wfs.push_back(jchi);
                 pp_desc_.occupation_wfs.push_back(occ);
             }
-            ///* read occupation of the function */
-            // double occ = parser["pseudo_potential"]["atomic_wave_functions"][k]["occupation"];
-            // pp_desc_.atomic_pseudo_wfs_occ_.push_back(occ);
         }
     }
 }
@@ -2074,7 +2080,7 @@ void Atom_type::generate_f_coefficients(void)
     // They are defined by Eq.9 of Ref PRB 71, 115106
     // and correspond to transformations of the
     // spherical harmonics
-    if (!this->pp_desc().spin_orbit_coupling) {
+    if (!this->spin_orbit_coupling()) {
         return;
     }
 

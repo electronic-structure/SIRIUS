@@ -61,7 +61,7 @@ void generate_atomic_orbitals(K_point& kp, Q_operator<double_complex>& q_op)
         if (atom_type.hubbard_correction()) {
             const int l      = atom_type.hubbard_l();
             const double_complex z = std::pow(double_complex(0, -1), l) * fourpi / std::sqrt(unit_cell_.omega());
-            if (atom_type.pp_desc().spin_orbit_coupling) {
+            if (atom_type.spin_orbit_coupling()) {
                 int orb[2];
                 int s = 0;
                 for (auto i = 0; i < static_cast<int>(atom_type.pp_desc().atomic_pseudo_wfs_.size()); i++) {

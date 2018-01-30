@@ -87,9 +87,6 @@ struct local_orbital_descriptor
 /// Descriptor of the pseudopotential.
 struct pseudopotential_descriptor
 {
-    /// The pseudo potential includes spin orbit coupling
-    bool spin_orbit_coupling{false};
-
     /// Atomic wave-functions used to setup the initial subspace.
     /** This are the chi wave-function in the USPP file. Pairs of [l, chi_l(r)] are stored. */
     std::vector<std::pair<int, std::vector<double>>> atomic_pseudo_wfs_;
