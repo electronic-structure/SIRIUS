@@ -3,6 +3,45 @@
 
 namespace sirius {
 
+/// Descriptor for the atomic radial functions.
+/** The radial functions \f$ f_{\ell \nu}(r) \f$ are labeled by two indices: orbital quantum number \f$ \ell \f$ and
+ *  an order \f$ \nu \f$ for a given $\f \ell \f$.
+ */
+struct radial_function_index_descriptor
+{
+    /// Orbital quantum number \f$ \ell \f$.
+    int l;
+
+    /// Total angular momentum
+    double j;
+
+    /// Order of a function for a given \f$ \ell \f$.
+    int order;
+
+    /// If this is a local orbital radial function, idxlo is it's index in the list of local orbital descriptors.
+    int idxlo;
+
+    /// Constructor.
+    radial_function_index_descriptor(int l, int order, int idxlo = -1)
+        : l(l)
+        , order(order)
+        , idxlo(idxlo)
+    {
+        assert(l >= 0);
+        assert(order >= 0);
+    }
+
+    radial_function_index_descriptor(int l, double j, int order, int idxlo = -1)
+        : l(l)
+        , j(j)
+        , order(order)
+        , idxlo(idxlo)
+    {
+        assert(l >= 0);
+        assert(order >= 0);
+    }
+};
+
 /// A helper class to establish various index mappings for the atomic radial functions.
 class radial_functions_index
 {

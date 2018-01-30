@@ -148,6 +148,14 @@ class Atom_type
     /// Core energy of PAW.
     bool paw_core_energy_{0};
     
+    /// All electron wave functions of the PAW method.
+    /** The number of wave functions is equal to the number of beta-projectors. */
+    mdarray<double, 2> paw_ae_wfs_;
+
+    /// Pseudo wave functions of the PAW method.
+    /** The number of wave functions is equal to the number of beta-projectors. */
+    mdarray<double, 2> paw_ps_wfs_;
+    
     /// starting magnetization // TODO: remove that
     double starting_magnetization_{0.0};
 
@@ -490,6 +498,26 @@ class Atom_type
     inline std::vector<double> const& ps_total_charge_density() const
     {
         return ps_total_charge_density_;
+    }
+
+    inline mdarray<double, 2> const& paw_ae_wfs() const
+    {
+        return paw_ae_wfs_;
+    }
+
+    inline void paw_ae_wfs(mdarray<double, 2>& inp__)
+    {
+        return inp__ >> paw_ae_wfs_;
+    }
+
+    inline mdarray<double, 2> const& paw_ps_wfs() const
+    {
+        return paw_ps_wfs_;
+    }
+
+    inline void paw_ps_wfs(mdarray<double, 2>& inp__)
+    {
+        return inp__ >> paw_ps_wfs_;
     }
 
     inline void init_free_atom(bool smooth);
@@ -1839,26 +1867,23 @@ inline void Atom_type::read_pseudo_paw(json const& parser)
     paw_core_energy(parser["pseudo_potential"]["header"]["paw_core_energy"]);
 
     /* cutoff index */
-    pp_desc_.cutoff_radius_index = parser["pseudo_potential"]["header"]["cutoff_radius_index"];
+    int cutoff_radius_index = parser["pseudo_potential"]["header"]["cutoff_radius_index"];
 
     /* read core density and potential */
     pp_desc_.all_elec_core_charge =
         parser["pseudo_potential"]["paw_data"]["ae_core_charge_density"].get<std::vector<double>>();
-
-    //pp_desc_.all_elec_loc_potential =
-    //    parser["pseudo_potential"]["paw_data"]["ae_local_potential"].get<std::vector<double>>();
 
     /* read occupations */
     pp_desc_.occupations = parser["pseudo_potential"]["paw_data"]["occupations"].get<std::vector<double>>();
 
     /* setups for reading AE and PS basis wave functions */
     int num_wfc = num_beta_radial_functions();
+    
+    paw_ae_wfs_ = mdarray<double, 2>(num_mt_points_, num_wfc);
+    paw_ae_wfs_.zero();
 
-    pp_desc_.all_elec_wfc = mdarray<double, 2>(num_mt_points_, num_wfc);
-    pp_desc_.pseudo_wfc   = mdarray<double, 2>(num_mt_points_, num_wfc);
-
-    pp_desc_.all_elec_wfc.zero();
-    pp_desc_.pseudo_wfc.zero();
+    paw_ps_wfs_ = mdarray<double, 2>(num_mt_points_, num_wfc);
+    paw_ps_wfs_.zero();
 
     /* read ae and ps wave functions */
     for (int i = 0; i < num_wfc; i++) {
@@ -1867,27 +1892,24 @@ inline void Atom_type::read_pseudo_paw(json const& parser)
 
         if ((int)wfc.size() > num_mt_points_) {
             std::stringstream s;
-            s << "wrong size of beta functions for atom type " << symbol_ << " (label: " << label_ << ")" << std::endl
-              << "size of beta radial functions in the file: " << wfc.size() << std::endl
+            s << "wrong size of ae_wfc functions for atom type " << symbol_ << " (label: " << label_ << ")" << std::endl
+              << "size of ae_wfc radial functions in the file: " << wfc.size() << std::endl
               << "radial grid size: " << num_mt_points_;
             TERMINATE(s);
         }
 
-        std::memcpy(&pp_desc_.all_elec_wfc(0, i), wfc.data(), (pp_desc_.cutoff_radius_index) * sizeof(double));
-
-        /* read ps wave func */
-        wfc.clear();
+        std::memcpy(&paw_ae_wfs_(0, i), wfc.data(), cutoff_radius_index * sizeof(double));
 
         wfc = parser["pseudo_potential"]["paw_data"]["ps_wfc"][i]["radial_function"].get<std::vector<double>>();
 
         if ((int)wfc.size() > num_mt_points_) {
             std::stringstream s;
-            s << "wrong size of beta functions for atom type " << symbol_ << " (label: " << label_ << ")" << std::endl
-              << "size of beta radial functions in the file: " << wfc.size() << std::endl
+            s << "wrong size of ps_wfc functions for atom type " << symbol_ << " (label: " << label_ << ")" << std::endl
+              << "size of ps_wfc radial functions in the file: " << wfc.size() << std::endl
               << "radial grid size: " << num_mt_points_;
             TERMINATE(s);
         }
-        std::memcpy(&pp_desc_.pseudo_wfc(0, i), wfc.data(), (pp_desc_.cutoff_radius_index) * sizeof(double));
+        std::memcpy(&paw_ps_wfs_(0, i), wfc.data(), cutoff_radius_index * sizeof(double));
     }
 }
 

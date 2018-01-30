@@ -3,6 +3,56 @@
 
 namespace sirius {
 
+struct basis_function_index_descriptor
+{
+    /// Angular momentum.
+    int l;
+    /// Projection of the angular momentum.
+    int m;
+    /// Composite index.
+    int lm;
+    /// Total angular momemtum. // TODO: replace with positive and negative integer in l
+    double j;
+    /// Order of the radial function for a given l (j).
+    int order;
+    /// indice of local orbital
+    int idxlo;
+    /// index of the radial function or beta projector in the case of
+    /// pseudo potential
+    int idxrf;
+
+    basis_function_index_descriptor(int l, int m, int order, int idxlo, int idxrf)
+        : l(l)
+        , m(m)
+        , order(order)
+        , idxlo(idxlo)
+        , idxrf(idxrf)
+    {
+        assert(l >= 0);
+        assert(m >= -l && m <= l);
+        assert(order >= 0);
+        assert(idxrf >= 0);
+
+        lm = Utils::lm_by_l_m(l, m);
+    }
+
+    basis_function_index_descriptor(int l, int m, double j, int order, int idxlo, int idxrf)
+        : l(l)
+        , m(m)
+        , j(j)
+        , order(order)
+        , idxlo(idxlo)
+        , idxrf(idxrf)
+    {
+        assert(l >= 0);
+        assert(m >= -l && m <= l);
+        assert(order >= 0);
+        assert(idxrf >= 0);
+
+        lm = Utils::lm_by_l_m(l, m);
+    }
+};
+
 /// A helper class to establish various index mappings for the atomic basis functions.
 /** Atomic basis function is a radial function multiplied by a spherical harmonic:
     \f[

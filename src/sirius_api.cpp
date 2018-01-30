@@ -2604,25 +2604,23 @@ void sirius_set_atom_type_paw_data(char* label__,
     // load parameters
     type.paw_core_energy((*core_energy__) * 0.5); // convert Ry to Ha
 
-    pp_desc.cutoff_radius_index = *cutoff_radius_index__;
+    /* load ae and ps wave functions */
+    mdarray<double, 2> aewfs_inp(ae_wfc_rf__, type.num_mt_points(), type.num_beta_radial_functions());
+    mdarray<double, 2> pswfs_inp(ps_wfc_rf__, type.num_mt_points(), type.num_beta_radial_functions());
 
-    // load ae and ps wave functions
-    mdarray<double, 2> aewfcs(ae_wfc_rf__, type.num_mt_points(), type.num_beta_radial_functions());
-    mdarray<double, 2> pswfcs(ps_wfc_rf__, type.num_mt_points(), type.num_beta_radial_functions());
+    mdarray<double, 2> aewfs(type.num_mt_points(), type.num_beta_radial_functions());
+    aewfs.zero();
 
-    pp_desc.all_elec_wfc = mdarray<double, 2>(type.num_mt_points(), type.num_beta_radial_functions());
-    pp_desc.pseudo_wfc   = mdarray<double, 2>(type.num_mt_points(), type.num_beta_radial_functions());
-
-    pp_desc.all_elec_wfc.zero();
-    pp_desc.pseudo_wfc.zero();
-
-    aewfcs >> pp_desc.all_elec_wfc;
-    pswfcs >> pp_desc.pseudo_wfc;
+    mdarray<double, 2> pswfs(type.num_mt_points(), type.num_beta_radial_functions());
+    pswfs.zero();
 
     for (int i = 0; i < type.num_beta_radial_functions(); i++) {
-        std::memcpy(&pp_desc.all_elec_wfc(0, i), &aewfcs(0, i), pp_desc.cutoff_radius_index * sizeof(double));
-        std::memcpy(&pp_desc.pseudo_wfc(0, i),   &pswfcs(0, i), pp_desc.cutoff_radius_index * sizeof(double));
+        std::memcpy(&aewfs(0, i), &aewfs_inp(0, i), (*cutoff_radius_index__) * sizeof(double));
+        std::memcpy(&pswfs(0, i), &pswfs_inp(0, i), (*cutoff_radius_index__) * sizeof(double));
     }
+
+    type.paw_ae_wfs(aewfs);
+    type.paw_ps_wfs(pswfs);
 
     // read ae core charge
     pp_desc.all_elec_core_charge.resize(type.num_mt_points());
