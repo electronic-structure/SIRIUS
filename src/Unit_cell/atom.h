@@ -192,7 +192,7 @@ class Atom
         for (int i = 0; i < nrf; i++) {
             rf_spline[i] = Spline<double>(type().radial_grid());
             for (int ir = 0; ir < nmtp; ir++) {
-                rf_spline[i][ir] = symmetry_class().radial_function(ir, i);
+                rf_spline[i](ir) = symmetry_class().radial_function(ir, i);
             }
         }
 
@@ -202,13 +202,13 @@ class Atom
         for (int lm = 0; lm < lmmax; lm++) {
             v_spline[lm] = Spline<double>(type().radial_grid());
             for (int ir = 0; ir < nmtp; ir++) {
-                v_spline[lm][ir] = veff_(lm, ir);
+                v_spline[lm](ir) = veff_(lm, ir);
             }
 
             for (int j = 0; j < num_mag_dims; j++) {
                 v_spline[lm + (j + 1) * lmmax] = Spline<double>(type().radial_grid());
                 for (int ir = 0; ir < nmtp; ir++) {
-                    v_spline[lm + (j + 1) * lmmax][ir] = beff_[j](lm, ir);
+                    v_spline[lm + (j + 1) * lmmax](ir) = beff_[j](lm, ir);
                 }
             }
         }

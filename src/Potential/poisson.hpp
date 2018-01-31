@@ -337,7 +337,7 @@ inline void Potential::poisson(Periodic_function<double> const& rho)
             for (int ir = 0; ir < atom.num_mt_points(); ir++) {
                 double r = atom.radial_grid(ir);
                 hartree_potential_->f_mt<index_domain_t::local>(0, ir, ialoc) -= atom.zn() / r / y00;
-                srho[ir] = rho.f_mt<index_domain_t::local>(0, ir, ialoc);
+                srho(ir) = rho.f_mt<index_domain_t::local>(0, ir, ialoc);
             }
             evha_nuc -= atom.zn() * srho.interpolate().integrate(1) / y00;
         }

@@ -649,7 +649,7 @@ class Radial_solver
             ve_ = Spline<double>(radial_grid__);
 
             for (int i = 0; i < num_points(); i++) {
-                ve_[i] = v__[i] + zn_ * radial_grid_.x_inv(i);
+                ve_(i) = v__[i] + zn_ * radial_grid_.x_inv(i);
             }
             ve_.interpolate();
         }
@@ -681,7 +681,7 @@ class Radial_solver
                 if (j) {
                     if (rel__ == relativity_t::none || rel__ == relativity_t::zora) {
                         for (int i = 0; i < nr; i++) {
-                            chi_q[i] = -j * p[j - 1][i];
+                            chi_q(i) = -j * p[j - 1][i];
                         }
                         chi_q.interpolate();
                     } else if (rel__ == relativity_t::iora) {
@@ -693,17 +693,17 @@ class Radial_solver
                                 double V = ve_[i] - zn_ * radial_grid_.x_inv(i);
                                 double M = 1 - 0.5 * sq_alpha * V;
                                 double x = radial_grid_[i];
-                                chi_p[i] = q[j - 1][i] * sq_alpha / std::pow(1 - sq_alpha * enu__ / 2 / M, 2);
-                                chi_q[i] = -p[j - 1][i] * (1 + 0.5 * sq_alpha * ll_half / std::pow(M * x, 2));
+                                chi_p(i) = q[j - 1][i] * sq_alpha / std::pow(1 - sq_alpha * enu__ / 2 / M, 2);
+                                chi_q(i) = -p[j - 1][i] * (1 + 0.5 * sq_alpha * ll_half / std::pow(M * x, 2));
                             }
                         } else if (j == 2) {
                             for (int i = 0; i < nr; i++) {
                                 double V = ve_[i] - zn_ * radial_grid_.x_inv(i);
                                 double M = 1 - 0.5 * sq_alpha * V;
                                 double x = radial_grid_[i];
-                                chi_p[i] = q[j - 1][i] * 2 * sq_alpha / std::pow(1 - sq_alpha * enu__ / 2 / M, 2) + 
+                                chi_p(i) = q[j - 1][i] * 2 * sq_alpha / std::pow(1 - sq_alpha * enu__ / 2 / M, 2) + 
                                            q[j - 2][i] * std::pow(sq_alpha, 2) / 2 / M / std::pow(1 - sq_alpha * enu__ / 2 / M, 3);
-                                chi_q[i] = -p[j - 1][i] * 2 * (1 + 0.5 * sq_alpha * ll_half / std::pow(M * x, 2));
+                                chi_q(i) = -p[j - 1][i] * 2 * (1 + 0.5 * sq_alpha * ll_half / std::pow(M * x, 2));
                             }
                         } else {
                             TERMINATE_NOT_IMPLEMENTED
@@ -941,10 +941,10 @@ class Bound_state: public Radial_solver
             }
 
             for (int i = 0; i < np; i++) {
-                p_[i] = p[i];
-                q_[i] = q[i];
-                u_[i] = p[i] * radial_grid_.x_inv(i);
-                rdudr_[i] = rdudr[i];
+                p_(i) = p[i];
+                q_(i) = q[i];
+                u_(i) = p[i] * radial_grid_.x_inv(i);
+                rdudr_(i) = rdudr[i];
             }
             p_.interpolate();
             q_.interpolate();
@@ -987,9 +987,9 @@ class Bound_state: public Radial_solver
             }
 
             for (int i = 0; i < np - 1; i++) {
-                rho_[i] += std::pow(u_[i], 2);
+                rho_(i) += std::pow(u_[i], 2);
                 if (rel__ == relativity_t::dirac) {
-                    rho_[i] += std::pow(q_[i] * radial_grid_.x_inv(i), 2);
+                    rho_(i) += std::pow(q_(i) * radial_grid_.x_inv(i), 2);
                 }
             }
         }
