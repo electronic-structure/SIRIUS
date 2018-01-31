@@ -674,7 +674,7 @@ class Atom_type
 
     inline double free_atom_density(const int idx) const
     {
-        return free_atom_density_spline_[idx];
+        return free_atom_density_spline_(idx);
     }
 
     inline double free_atom_density(double x) const
@@ -1578,7 +1578,7 @@ inline void Atom_type::init_free_atom(bool smooth)
         A(1, 0) = 2 * R;
         A(1, 1) = 3 * std::pow(R, 2);
 
-        b(0) = free_atom_density_spline_[irmt];
+        b(0) = free_atom_density_spline_(irmt);
         b(1) = free_atom_density_spline_.deriv(1, irmt);
 
         linalg<CPU>::gesv<double>(2, 1, A.at<CPU>(), 2, b.at<CPU>(), 2);
@@ -1596,7 +1596,7 @@ inline void Atom_type::init_free_atom(bool smooth)
 
         /* make smooth free atom density inside muffin-tin */
         for (int i = 0; i <= irmt; i++) {
-            free_atom_density_spline_[i] =
+            free_atom_density_spline_(i) =
                 b(0) * std::pow(free_atom_radial_grid(i), 2) + b(1) * std::pow(free_atom_radial_grid(i), 3);
         }
 
@@ -1824,6 +1824,8 @@ inline void Atom_type::read_pseudo_uspp(json const& parser)
     if (static_cast<int>(rgrid.size()) != num_mt_points_) {
         TERMINATE("wrong mesh size");
     }
+    /* set the radial grid */
+    set_radial_grid(num_mt_points_, rgrid.data());
 
     local_potential(parser["pseudo_potential"]["local_potential"].get<std::vector<double>>());
 
@@ -1837,8 +1839,6 @@ inline void Atom_type::read_pseudo_uspp(json const& parser)
                   << ps_total_charge_density().size() << std::endl;
         TERMINATE("wrong array size");
     }
-
-    set_radial_grid(num_mt_points_, rgrid.data());
 
     if (parser["pseudo_potential"]["header"].count("spin_orbit")) {
         spin_orbit_coupling(true);

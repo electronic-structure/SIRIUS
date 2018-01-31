@@ -2664,7 +2664,7 @@ void sirius_fderiv(ftn_int* m__,
     sirius::Radial_grid_ext<double> rgrid(np, x__);
     sirius::Spline<double> s(rgrid);
     for (int i = 0; i < np; i++) {
-        s[i] = f__[i];
+        s(i) = f__[i];
     }
     s.interpolate();
     switch (*m__) {
@@ -2692,7 +2692,7 @@ void sirius_integrate_(ftn_int* m__,
     sirius::Radial_grid_ext<double> rgrid(np, x__);
     sirius::Spline<double> s(rgrid);
     for (int i = 0; i < np; i++) {
-        s[i] = f__[i];
+        s(i) = f__[i];
     }
     s.interpolate();
     *result__ = s.integrate(*m__);

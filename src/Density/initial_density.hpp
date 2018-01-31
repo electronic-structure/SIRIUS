@@ -349,7 +349,7 @@ inline void Density::initial_density_full_pot()
             double R = unit_cell_.atom(ia).mt_radius();
             for (int ir = 0; ir < nmtp; ir++) {
                 double x = unit_cell_.atom(ia).type().radial_grid(ir);
-                rho[ir] = rho_->f_mt<index_domain_t::local>(0, ir, ialoc) * y00 * (1 - 3 * std::pow(x / R, 2) + 2 * std::pow(x / R, 3));
+                rho(ir) = rho_->f_mt<index_domain_t::local>(0, ir, ialoc) * y00 * (1 - 3 * std::pow(x / R, 2) + 2 * std::pow(x / R, 3));
             }
             
             /* maximum magnetization which can be achieved if we smooth density towards MT boundary */
@@ -366,13 +366,13 @@ inline void Density::initial_density_full_pot()
             
             if (len > 1e-8) {
                 for (int ir = 0; ir < nmtp; ir++) {
-                    magnetization_[0]->f_mt<index_domain_t::local>(0, ir, ialoc) = rho[ir] * v[2] / q / y00;
+                    magnetization_[0]->f_mt<index_domain_t::local>(0, ir, ialoc) = rho(ir) * v[2] / q / y00;
                 }
                 
                 if (ctx_.num_mag_dims() == 3) {
                     for (int ir = 0; ir < nmtp; ir++) {
-                        magnetization_[1]->f_mt<index_domain_t::local>(0, ir, ialoc) = rho[ir] * v[0] / q / y00;
-                        magnetization_[2]->f_mt<index_domain_t::local>(0, ir, ialoc) = rho[ir] * v[1] / q / y00;
+                        magnetization_[1]->f_mt<index_domain_t::local>(0, ir, ialoc) = rho(ir) * v[0] / q / y00;
+                        magnetization_[2]->f_mt<index_domain_t::local>(0, ir, ialoc) = rho(ir) * v[1] / q / y00;
                     }
                 }
             }

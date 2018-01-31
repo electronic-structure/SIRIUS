@@ -167,7 +167,7 @@ inline void Density::generate_paw_atom_density(paw_density_data_t& pdd)
                          * dm_ij * GauntCoef * ( phi_i phi_j  +  Q_ij) */
                         ae_dens(lm3coef.lm3, irad) += dm[imagn] * inv_r2 * lm3coef.coef * paw_ae_wfs(irad, irb1) * paw_ae_wfs(irad, irb2);
                         ps_dens(lm3coef.lm3, irad) += dm[imagn] * inv_r2 * lm3coef.coef *
-                                (paw_ps_wfs(irad, irb1) * paw_ps_wfs(irad, irb2) + atom_type.q_radial_function(irb1, irb2, l_by_lm[lm3coef.lm3])[irad]);
+                                (paw_ps_wfs(irad, irb1) * paw_ps_wfs(irad, irb2) + atom_type.q_radial_function(irb1, irb2, l_by_lm[lm3coef.lm3])(irad));
                     }
                 }
             }
