@@ -59,7 +59,7 @@ extern "C" {
     integer ierr
     call mpi_init(ierr)
     ! initialize low-level stuff and don't call MPI_Init() from SIRIUS
-    call sirius_initialize(0)
+    call sirius_initialize(.false.)
     \endcode
  */
 void sirius_initialize(ftn_bool* call_mpi_init__)

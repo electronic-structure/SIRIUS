@@ -76,7 +76,7 @@ struct local_orbital_descriptor
     int l;
 
     /// Total angular momentum used in pseudopotential SO code.
-    double total_angular_momentum;
+    double total_angular_momentum; // TODO: is this neccessary?
 
     /// Set of radial solution descriptors.
     /** Local orbital is constructed from at least two radial functions in order to make it zero at the
