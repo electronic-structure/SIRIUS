@@ -87,13 +87,13 @@ class Atom_type
     /// Default augmented wave configuration.
     radial_solution_descriptor_set aw_default_l_;
 
-    /// augmented wave configuration for specific l
+    /// Augmented wave configuration for specific l.
     std::vector<radial_solution_descriptor_set> aw_specific_l_;
 
-    /// list of radial descriptor sets used to construct augmented waves
+    /// List of radial descriptor sets used to construct augmented waves.
     std::vector<radial_solution_descriptor_set> aw_descriptors_;
 
-    /// list of radial descriptor sets used to construct local orbitals
+    /// List of radial descriptor sets used to construct local orbitals.
     std::vector<local_orbital_descriptor> lo_descriptors_;
 
     /// Maximum number of AW radial functions across angular momentums.
