@@ -679,7 +679,7 @@ class Atom_type
 
     inline double free_atom_density(double x) const
     {
-        return free_atom_density_spline_(x);
+        return free_atom_density_spline_.at_point(x);
     }
 
     inline int num_aw_descriptors() const

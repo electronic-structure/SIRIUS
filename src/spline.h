@@ -174,7 +174,16 @@ class Spline: public Radial_grid<U>
         return coeffs_(i, 0) + dx * (coeffs_(i, 1) + dx * (coeffs_(i, 2) + dx * coeffs_(i, 3)));
     }
 
-    inline T operator()(U x) const
+    //inline T operator()(double x) const
+    //{
+    //    int j = this->index_of(x);
+    //    if (j == -1) {
+    //        TERMINATE("point not found");
+    //    }
+    //    U dx = x - (*this)[j];
+    //    return (*this)(j, dx);
+    //}
+    inline T at_point(U x) const
     {
         int j = this->index_of(x);
         if (j == -1) {
@@ -488,6 +497,14 @@ class Spline: public Radial_grid<U>
         coeffs_.template copy<memory_t::host, memory_t::device>();
     }
 
+    std::vector<T> values() const
+    {
+        std::vector<T> val(this->num_points());
+        for (int ir = 0; ir < this->num_points(); ir++) {
+            val[ir] = coeffs_(ir, 0);
+        }
+        return std::move(val);
+    } 
 };
 
 template <typename T, typename U = double>
