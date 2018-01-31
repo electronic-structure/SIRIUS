@@ -556,7 +556,7 @@ class Radial_integrals_vloc : public Radial_integrals_base<1>
                     } else {
                         for (int ir = 0; ir < rg.num_points(); ir++) {
                             double x = rg[ir];
-                            s(ir) = (x * vloc[ir] + atom_type.zn() * gsl_sf_erf(x)) * std::sin(g * x);
+                            s(ir)    = (x * vloc[ir] + atom_type.zn() * gsl_sf_erf(x)) * std::sin(g * x);
                         }
                     }
                 }
@@ -582,7 +582,7 @@ class Radial_integrals_vloc : public Radial_integrals_base<1>
             if (jl_deriv) {
                 return 0;
             } else {
-                return values_(iat__)[0];
+                return values_(iat__)(0);
             }
         } else {
             auto& atom_type = unit_cell_.atom_type(iat__);

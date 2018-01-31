@@ -214,7 +214,7 @@ class Radial_solver
             /* try to find classical turning point */
             int idx_ctp{-1};
             for (int ir = 0; ir < nr; ir++) {
-                if (ve_[ir] - zn_ * radial_grid_.x_inv(ir) > enu__) {
+                if (ve_(ir) - zn_ * radial_grid_.x_inv(ir) > enu__) {
                     idx_ctp = ir;
                     break;
                 }
@@ -234,10 +234,10 @@ class Radial_solver
             /* here and below var0 means var(x), var2 means var(x+h) and var1 means var(x+h/2) */
             double x2     = radial_grid_[0];
             double xinv2  = radial_grid_.x_inv(0);
-            double v2     = ve_[0] - zn_ / x2;
+            double v2     = ve_(0) - zn_ / x2;
             double M2     = rel_mass(enu__, v2);
-            double chi_p2 = chi_p__[0];
-            double chi_q2 = chi_q__[0];
+            double chi_p2 = chi_p__(0);
+            double chi_q2 = chi_q__(0);
 
             /* r->0 asymptotics */
             if (rel != relativity_t::dirac) {
@@ -296,9 +296,9 @@ class Radial_solver
                 /* next point */
                 x2            = radial_grid_[i + 1];
                 xinv2         = radial_grid_.x_inv(i + 1);
-                chi_p2        = chi_p__[i + 1];
-                chi_q2        = chi_q__[i + 1];
-                v2            = ve_[i + 1] - zn_ * xinv2;
+                chi_p2        = chi_p__(i + 1);
+                chi_q2        = chi_q__(i + 1);
+                v2            = ve_(i + 1) - zn_ * xinv2;
                 M2            = rel_mass(enu__, v2);
                 
                 if (rel == relativity_t::none || rel == relativity_t::koelling_harmon || rel == relativity_t::zora) {
@@ -428,7 +428,7 @@ class Radial_solver
 
             for (int i = 0; i < nr; i++) {
                 if (rel == relativity_t::none || rel == relativity_t::koelling_harmon || rel == relativity_t::zora) {
-                    double V = ve_[i] - zn_ * radial_grid_.x_inv(i); 
+                    double V = ve_(i) - zn_ * radial_grid_.x_inv(i); 
                     double M = rel_mass(enu__, V);
                     double v1 = ll_half / M / std::pow(radial_grid_[i], 2);
 
@@ -436,23 +436,23 @@ class Radial_solver
                     dpdr__[i] = 2 * M * q__[i] + p__[i] * radial_grid_.x_inv(i);
 
                     /* Q' = (V - E + \frac{\ell(\ell + 1)}{2 M r^2}) P - \frac{Q}{r} */
-                    dqdr__[i] = (V - enu__ + v1) * p__[i] - q__[i] * radial_grid_.x_inv(i) + chi_q__[i];
+                    dqdr__[i] = (V - enu__ + v1) * p__[i] - q__[i] * radial_grid_.x_inv(i) + chi_q__(i);
                 }
                 if (rel == relativity_t::iora) {
-                    double V = ve_[i] - zn_ * radial_grid_.x_inv(i); 
+                    double V = ve_(i) - zn_ * radial_grid_.x_inv(i); 
                     double M = rel_mass(enu__, V);
                     double M0 = 1 - sq_alpha_half * V;
                     double v1 = ll_half / M0 / std::pow(radial_grid_[i], 2);
                     double v2 = sq_alpha_half * ll_half * enu__ / std::pow(radial_grid_[i] * M0, 2);
 
                     /* P' = 2MQ + \frac{P}{r} */
-                    dpdr__[i] = 2 * M * q__[i] + p__[i] * radial_grid_.x_inv(i) + chi_p__[i];
+                    dpdr__[i] = 2 * M * q__[i] + p__[i] * radial_grid_.x_inv(i) + chi_p__(i);
 
                     /* Q' = (V - E + \frac{\ell(\ell + 1)}{2 M r^2}) P - \frac{Q}{r} */
-                    dqdr__[i] = (V - enu__ + v1 - v2) * p__[i] - q__[i] * radial_grid_.x_inv(i) + chi_q__[i];
+                    dqdr__[i] = (V - enu__ + v1 - v2) * p__[i] - q__[i] * radial_grid_.x_inv(i) + chi_q__(i);
                 }
                 if (rel == relativity_t::dirac) {
-                    double V = ve_[i] - zn_ * radial_grid_.x_inv(i);
+                    double V = ve_(i) - zn_ * radial_grid_.x_inv(i);
                     /* P' = ... */
                     dpdr__[i] = alpha * (2 * rest_energy + enu__ - V) * q__[i] - kappa * p__[i] * radial_grid_.x_inv(i);
                     /* Q' = ... */
@@ -690,7 +690,7 @@ class Radial_solver
 
                         if (j == 1) {
                             for (int i = 0; i < nr; i++) {
-                                double V = ve_[i] - zn_ * radial_grid_.x_inv(i);
+                                double V = ve_(i) - zn_ * radial_grid_.x_inv(i);
                                 double M = 1 - 0.5 * sq_alpha * V;
                                 double x = radial_grid_[i];
                                 chi_p(i) = q[j - 1][i] * sq_alpha / std::pow(1 - sq_alpha * enu__ / 2 / M, 2);
@@ -698,7 +698,7 @@ class Radial_solver
                             }
                         } else if (j == 2) {
                             for (int i = 0; i < nr; i++) {
-                                double V = ve_[i] - zn_ * radial_grid_.x_inv(i);
+                                double V = ve_(i) - zn_ * radial_grid_.x_inv(i);
                                 double M = 1 - 0.5 * sq_alpha * V;
                                 double x = radial_grid_[i];
                                 chi_p(i) = q[j - 1][i] * 2 * sq_alpha / std::pow(1 - sq_alpha * enu__ / 2 / M, 2) + 
@@ -921,7 +921,7 @@ class Bound_state: public Radial_solver
             /* search for the turning point */
             int idxtp = np - 1;
             for (int i = 0; i < np; i++) {
-                if (ve_[i] - zn_ * radial_grid_.x_inv(i) > enu_) {
+                if (ve_(i) - zn_ * radial_grid_.x_inv(i) > enu_) {
                     idxtp = i;
                     break;
                 }
@@ -966,15 +966,14 @@ class Bound_state: public Radial_solver
             /* count number of nodes of the function */
             int nn{0};
             for (int i = 0; i < np - 1; i++) {
-                if (p_[i] * p_[i + 1] < 0.0) nn++;
+                if (p_(i) * p_(i + 1) < 0.0) nn++;
             }
 
             if (nn != (n_ - l_ - 1)) {
                 FILE* fout = fopen("p.dat", "w");
-                for (int ir = 0; ir < np; ir++) 
-                {
+                for (int ir = 0; ir < np; ir++) {
                     double x = radial_grid(ir);
-                    fprintf(fout, "%12.6f %16.8f\n", x, p_[ir]);
+                    fprintf(fout, "%12.6f %16.8f\n", x, p_(ir));
                 }
                 fclose(fout);
 
@@ -987,7 +986,7 @@ class Bound_state: public Radial_solver
             }
 
             for (int i = 0; i < np - 1; i++) {
-                rho_(i) += std::pow(u_[i], 2);
+                rho_(i) += std::pow(u_(i), 2);
                 if (rel__ == relativity_t::dirac) {
                     rho_(i) += std::pow(q_(i) * radial_grid_.x_inv(i), 2);
                 }

@@ -366,13 +366,13 @@ inline void Density::initial_density_full_pot()
             
             if (len > 1e-8) {
                 for (int ir = 0; ir < nmtp; ir++) {
-                    magnetization_[0]->f_mt<index_domain_t::local>(0, ir, ialoc) = rho[ir] * v[2] / q / y00;
+                    magnetization_[0]->f_mt<index_domain_t::local>(0, ir, ialoc) = rho(ir) * v[2] / q / y00;
                 }
                 
                 if (ctx_.num_mag_dims() == 3) {
                     for (int ir = 0; ir < nmtp; ir++) {
-                        magnetization_[1]->f_mt<index_domain_t::local>(0, ir, ialoc) = rho[ir] * v[0] / q / y00;
-                        magnetization_[2]->f_mt<index_domain_t::local>(0, ir, ialoc) = rho[ir] * v[1] / q / y00;
+                        magnetization_[1]->f_mt<index_domain_t::local>(0, ir, ialoc) = rho(ir) * v[0] / q / y00;
+                        magnetization_[2]->f_mt<index_domain_t::local>(0, ir, ialoc) = rho(ir) * v[1] / q / y00;
                     }
                 }
             }

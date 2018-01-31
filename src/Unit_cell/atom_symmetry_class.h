@@ -969,7 +969,7 @@ inline void Atom_symmetry_class::generate_core_charge_density(relativity_t core_
     svmt.interpolate();
     /* fit tail to alpha/r + beta */
     double alpha = -(std::pow(atom_type_.mt_radius(), 2) * svmt.deriv(1, nmtp - 1) + atom_type_.zn());
-    double beta = svmt[nmtp - 1] - (atom_type_.zn() + alpha) / atom_type_.mt_radius();
+    double beta = svmt(nmtp - 1) - (atom_type_.zn() + alpha) / atom_type_.mt_radius();
 
     /* cook an effective potential from muffin-tin part and a tail */
     std::vector<double> veff(rgrid.num_points());
@@ -1016,7 +1016,7 @@ inline void Atom_symmetry_class::generate_core_charge_density(relativity_t core_
 
                 auto& rho = bs.rho();
                 for (int i = 0; i < rgrid.num_points(); i++) {
-                    rho_t[i] += atom_type_.atomic_level(ist).occupancy * rho[i] / fourpi;
+                    rho_t[i] += atom_type_.atomic_level(ist).occupancy * rho(i) / fourpi;
                 }
 
                 level_energy[ist] = bs.enu();
@@ -1030,7 +1030,7 @@ inline void Atom_symmetry_class::generate_core_charge_density(relativity_t core_
     }
 
     for (int ir = 0; ir < atom_type_.num_mt_points(); ir++) {
-        ae_core_charge_density_[ir] = rho[ir];
+        ae_core_charge_density_[ir] = rho(ir);
     }
 
     /* interpolate muffin-tin part of core density */

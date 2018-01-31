@@ -674,7 +674,7 @@ class Atom_type
 
     inline double free_atom_density(const int idx) const
     {
-        return free_atom_density_spline_[idx];
+        return free_atom_density_spline_(idx);
     }
 
     inline double free_atom_density(double x) const
@@ -1578,7 +1578,7 @@ inline void Atom_type::init_free_atom(bool smooth)
         A(1, 0) = 2 * R;
         A(1, 1) = 3 * std::pow(R, 2);
 
-        b(0) = free_atom_density_spline_[irmt];
+        b(0) = free_atom_density_spline_(irmt);
         b(1) = free_atom_density_spline_.deriv(1, irmt);
 
         linalg<CPU>::gesv<double>(2, 1, A.at<CPU>(), 2, b.at<CPU>(), 2);

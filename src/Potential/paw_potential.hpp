@@ -132,29 +132,26 @@ inline double Potential::xc_mt_PAW_nonmagnetic(Spheric_function<spectral, double
     full_rho_lm_sf_new.zero();
     full_rho_lm_sf_new += full_density;
 
-    double invY00 = 1. / y00 ;
+    double invY00 = 1.0 / y00 ;
 
     /* adding core part */
-    for(int ir = 0; ir < rgrid.num_points(); ir++ )
-    {
+    for (int ir = 0; ir < rgrid.num_points(); ir++) {
         full_rho_lm_sf_new(0,ir) += invY00 * rho_core[ir];
     }
 
     Spheric_function<spatial,double> full_rho_tp_sf = transform(sht_.get(), full_rho_lm_sf_new);
 
-    // create potential in theta phi
+    /* create potential in theta phi */
     Spheric_function<spatial,double> vxc_tp_sf(sht_->num_points(), rgrid);
 
-    // create energy in theta phi
+    /* create energy in theta phi */
     Spheric_function<spatial,double> exc_tp_sf(sht_->num_points(), rgrid);
 
     xc_mt_nonmagnetic(rgrid, xc_func_, full_rho_lm_sf_new, full_rho_tp_sf, vxc_tp_sf, exc_tp_sf);
 
     full_potential += transform(sht_.get(), vxc_tp_sf);
 
-    //------------------------
-    //--- calculate energy ---
-    //------------------------
+    /* calculate energy */
     Spheric_function<spectral,double> exc_lm_sf = transform(sht_.get(), exc_tp_sf );
 
     return inner(exc_lm_sf, full_rho_lm_sf_new);
@@ -450,7 +447,7 @@ inline void Potential::calc_PAW_local_Dij(paw_potential_data_t& pdd, mdarray<dou
                     for (int irad = 0; irad < rgrid.num_points(); irad++) {
                         double ae_part = paw_ae_wfs(irad, irb1) * paw_ae_wfs(irad, irb2);
                         double ps_part = paw_ps_wfs(irad, irb1) * paw_ps_wfs(irad, irb2) + 
-                                         atom_type.q_radial_function(irb1, irb2, l_by_lm[lm3])[irad];
+                                         atom_type.q_radial_function(irb1, irb2, l_by_lm[lm3])(irad);
 
                         intdata[irad] = ae_atom_pot(lm3, irad) * ae_part - ps_atom_pot(lm3, irad) * ps_part;
                     }
@@ -465,23 +462,22 @@ inline void Potential::calc_PAW_local_Dij(paw_potential_data_t& pdd, mdarray<dou
         }
     }
 
-    //---- calc Dij ----
+    /* calculate Dij */
     for (int ib2 = 0; ib2 < atom_type.mt_lo_basis_size(); ib2++) {
         for (int ib1 = 0; ib1 <= ib2; ib1++) {
-            //int idij = (ib2 * (ib2 + 1)) / 2 + ib1;
 
-            // get lm quantum numbers (lm index) of the basis functions
+            /* get lm quantum numbers (lm index) of the basis functions */
             int lm1 = atom_type.indexb(ib1).lm;
             int lm2 = atom_type.indexb(ib2).lm;
 
-            //get radial basis functions indices
+            /* get radial basis functions indices */
             int irb1 = atom_type.indexb(ib1).idxrf;
             int irb2 = atom_type.indexb(ib2).idxrf;
 
-            // common index
+            /* common index */
             int iqij = (irb2 * (irb2 + 1)) / 2 + irb1;
 
-            // get num of non-zero GC
+            /* get num of non-zero GC */
             int num_non_zero_gk = GC.num_gaunt(lm1,lm2);
 
             for (int imagn = 0; imagn < ctx_.num_mag_dims() + 1; imagn++ ){
