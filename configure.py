@@ -111,32 +111,32 @@ def configure_package(package_name, platform):
     if (package_name == "xc"):
         retval = ["-I" + cwdlibs + package_dir + "/src" + " -I" + cwdlibs + package_dir,
                   cwdlibs + package_dir + "/src/.libs/libxc.a",
-                  "\tcd ./libs/" + package_dir + "/src; make; ar -r ./.libs/libxc.a *.o\n",
-                  "\tcd ./libs/" + package_dir + "; make clean\n"]
+                  "\tcd ./libs/" + package_dir + "/src && $(MAKE) && ar -r ./.libs/libxc.a *.o\n",
+                  "\tcd ./libs/" + package_dir + " && $(MAKE) clean\n"]
 
     if (package_name == "spg"):
         retval = ["-I" + cwdlibs + package_dir + "/src",
                   cwdlibs + package_dir + "/src/.libs/libsymspg.a",
-                  "\tcd ./libs/" + package_dir + "; make\n",
-                  "\tcd ./libs/" + package_dir + "; make clean\n"]
+                  "\tcd ./libs/" + package_dir + " && $(MAKE)\n",
+                  "\tcd ./libs/" + package_dir + " && $(MAKE) clean\n"]
 
     if (package_name == "gsl"):
         retval = ["-I" + cwdlibs + package_dir,
                   cwdlibs + package_dir + "/.libs/libgsl.a",
-                  "\tcd ./libs/" + package_dir + "; make\n",
-                  "\tcd ./libs/" + package_dir + "; make clean\n"]
+                  "\tcd ./libs/" + package_dir + "&& $(MAKE)\n",
+                  "\tcd ./libs/" + package_dir + " && $(MAKE) clean\n"]
 
     if (package_name == "fftw"):
         retval = ["-I" + cwdlibs + package_dir + "/api",
                   cwdlibs + package_dir + "/.libs/libfftw3.a",
-                  "\tcd ./libs/" + package_dir + "; make\n",
-                  "\tcd ./libs/" + package_dir + "; make clean\n"]
+                  "\tcd ./libs/" + package_dir + "&& $(MAKE)\n",
+                  "\tcd ./libs/" + package_dir + "&& $(MAKE) clean\n"]
 
     if (package_name == "hdf5"):
         retval = ["-I" + cwdlibs + package_dir + "/src",
                   cwdlibs + package_dir + "/src/.libs/libhdf5.a",
-                  "\tcd ./libs/" + package_dir + "; make\n",
-                  "\tcd ./libs/" + package_dir + "; make clean\n"]
+                  "\tcd ./libs/" + package_dir + "&& $(MAKE)\n",
+                  "\tcd ./libs/" + package_dir + "&& $(MAKE) clean\n"]
 
     return retval
 
@@ -261,13 +261,13 @@ endif'''+"\n")
     makef.write("\n")
     makef.write(".PHONY: apps\n")
     makef.write("\n")
-    makef.write("all: packages sirius apps\n")
+    makef.write("all: apps\n")
     makef.write("\n")
-    makef.write("sirius:\n")
-    makef.write("\tcd src; make\n")
+    makef.write("sirius: packages\n")
+    makef.write("\tcd src && $(MAKE)\n")
     makef.write("\n")
-    makef.write("apps:\n")
-    makef.write("\tcd apps; make\n")
+    makef.write("apps: sirius\n")
+    makef.write("\tcd apps && $(MAKE)\n")
     makef.write("\n")
     makef.write("packages:\n")
     for i in range(len(make_packages)):
@@ -279,8 +279,8 @@ endif'''+"\n")
 
     makef.write("\n")
     makef.write("clean:\n")
-    makef.write("\tcd src; make clean\n")
-    makef.write("\tcd apps; make clean\n")
+    makef.write("\tcd src && $(MAKE) clean\n")
+    makef.write("\tcd apps && $(MAKE) clean\n")
 
     makef.close()
 
