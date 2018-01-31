@@ -106,22 +106,21 @@ class Free_atom: public sirius::Atom_type
             bool converged = false;
             
             /* starting values for E_{nu} */
-            for (int ist = 0; ist < num_atomic_levels(); ist++)
+            for (int ist = 0; ist < num_atomic_levels(); ist++) {
                 enu[ist] = -1.0 * zn() / 2 / std::pow(double(atomic_level(ist).n), 2);
+            }
             
-            for (int iter = 0; iter < 200; iter++)
-            {
+            for (int iter = 0; iter < 200; iter++) {
                 rho_old = rho.values();
                 
-                std::memset(&rho[0], 0, rho.num_points() * sizeof(double));
+                std::memset(&rho(0), 0, rho.num_points() * sizeof(double));
                 #pragma omp parallel default(shared)
                 {
                     std::vector<double> rho_t(rho.num_points());
                     std::memset(&rho_t[0], 0, rho.num_points() * sizeof(double));
                 
                     #pragma omp for
-                    for (int ist = 0; ist < num_atomic_levels(); ist++)
-                    {
+                    for (int ist = 0; ist < num_atomic_levels(); ist++) {
                         //relativity_t rt = (rel) ? relativity_t::koelling_harmon : relativity_t::none;
                         relativity_t rt = (rel) ? relativity_t::dirac : relativity_t::none;
                         sirius::Bound_state bound_state(rt, zn(), atomic_level(ist).n, atomic_level(ist).l,
@@ -131,21 +130,24 @@ class Free_atom: public sirius::Atom_type
                         auto& bs_u = bound_state.u();
                         
                         /* assume a spherical symmetry */
-                        for (int i = 0; i < np; i++)
-                        {
-                            free_atom_orbital_density_(i, ist) = bs_rho[i];
-                            free_atom_wave_functions_(i, ist) = bs_u[i];
+                        for (int i = 0; i < np; i++) {
+                            free_atom_orbital_density_(i, ist) = bs_rho(i);
+                            free_atom_wave_functions_(i, ist) = bs_u(i);
                             /* sum of squares of spherical harmonics for angular momentm l is (2l+1)/4pi */
                             rho_t[i] += atomic_level(ist).occupancy * free_atom_orbital_density_(i, ist) / fourpi;
                         }
                     }
         
                     #pragma omp critical
-                    for (int i = 0; i < rho.num_points(); i++) rho[i] += rho_t[i];
+                    for (int i = 0; i < rho.num_points(); i++) {
+                        rho(i) += rho_t[i];
+                    }
                 } 
                 
                 charge_rms = 0.0;
-                for (int i = 0; i < np; i++) charge_rms += pow(rho[i] - rho_old[i], 2);
+                for (int i = 0; i < np; i++) {
+                    charge_rms += std::pow(rho(i) - rho_old[i], 2);
+                }
                 charge_rms = sqrt(charge_rms / np);
                 
                 rho.interpolate();
@@ -154,13 +156,14 @@ class Free_atom: public sirius::Atom_type
                 rho.integrate(g2, 2);
                 double t1 = rho.integrate(g1, 1);
         
-                for (int i = 0; i < np; i++) vh[i] = fourpi * (g2[i] / radial_grid(i) + t1 - g1[i]);
+                for (int i = 0; i < np; i++) {
+                    vh[i] = fourpi * (g2[i] / radial_grid(i) + t1 - g1[i]);
+                }
                 
                 /* compute XC potential and energy */
-                Ex.get_lda(rho.num_points(), &rho[0], &vx[0], &ex[0]);
-                Ec.get_lda(rho.num_points(), &rho[0], &vc[0], &ec[0]);
-                for (int ir = 0; ir < rho.num_points(); ir++)
-                {
+                Ex.get_lda(rho.num_points(), &rho(0), &vx[0], &ex[0]);
+                Ec.get_lda(rho.num_points(), &rho(0), &vc[0], &ec[0]);
+                for (int ir = 0; ir < rho.num_points(); ir++) {
                    vxc[ir] = (vx[ir] + vc[ir]);
                    exc[ir] = (ex[ir] + ec[ir]);
                 }
@@ -185,19 +188,25 @@ class Free_atom: public sirius::Atom_type
                     eval_sum += atomic_level(ist).occupancy * enu[ist];
                 }
         
-                for (int i = 0; i < np; i++) f[i] = (veff[i] - vnuc[i]) * rho[i];
+                for (int i = 0; i < np; i++) {
+                    f(i) = (veff[i] - vnuc[i]) * rho(i);
+                }
                 /* kinetic energy */
                 energy_kin = eval_sum - fourpi * (f.interpolate().integrate(2) - zn() * rho.integrate(1));
                 
                 /* XC energy */
-                for (int i = 0; i < np; i++) f[i] = exc[i] * rho[i];
+                for (int i = 0; i < np; i++) {
+                    f(i) = exc[i] * rho(i);
+                }
                 energy_xc = fourpi * f.interpolate().integrate(2); 
                 
                 /* electron-nuclear energy: \int vnuc(r) * rho(r) r^2 dr */
                 energy_enuc = -fourpi * zn() * rho.integrate(1); 
         
                 /* Coulomb energy */
-                for (int i = 0; i < np; i++) f[i] = vh[i] * rho[i];
+                for (int i = 0; i < np; i++) {
+                    f(i) = vh[i] * rho(i);
+                }
                 energy_coul = 0.5 * fourpi * f.interpolate().integrate(2);
                 
                 energy_tot_old = energy_tot;
@@ -206,16 +215,14 @@ class Free_atom: public sirius::Atom_type
                 
                 energy_diff = std::abs(energy_tot - energy_tot_old);
                 
-                if (energy_diff < energy_tol && charge_rms < charge_tol) 
-                { 
+                if (energy_diff < energy_tol && charge_rms < charge_tol) { 
                     converged = true;
                     printf("Converged in %i iterations.\n", iter);
                     break;
                 }
             }
         
-            if (!converged)
-            {
+            if (!converged) {
                 printf("energy_diff : %18.10f   charge_rms : %18.10f\n", energy_diff, charge_rms);
                 std::stringstream s;
                 s << "atom " << symbol() << " is not converged" << std::endl
@@ -266,7 +273,7 @@ class Free_atom: public sirius::Atom_type
 
         inline double free_atom_potential(double x)
         {
-            return free_atom_potential_(x);
+            return free_atom_potential_.at_point(x);
         }
 };
 
@@ -364,8 +371,8 @@ void generate_atom_file(Free_atom& a,
         
         /* total density */
         for (int ir = 0; ir < a.radial_grid().num_points(); ir++) {
-            s[ir] = a.free_atom_orbital_density(ir, ist);
-            rho[ir] += a.atomic_level(ist).occupancy * s[ir] / fourpi;
+            s(ir) = a.free_atom_orbital_density(ir, ist);
+            rho(ir) += a.atomic_level(ist).occupancy * s(ir) / fourpi;
         }
 
         std::vector<double> g;
@@ -386,7 +393,7 @@ void generate_atom_file(Free_atom& a,
             printf("  => core (rc = %f)\n", rc);
 
             for (int ir = 0; ir < a.radial_grid().num_points(); ir++) {
-                rho_c[ir] += a.atomic_level(ist).occupancy * a.free_atom_orbital_density(ir, ist) / fourpi;
+                rho_c(ir) += a.atomic_level(ist).occupancy * a.free_atom_orbital_density(ir, ist) / fourpi;
             }
 
             nl_c[n][l]++;
