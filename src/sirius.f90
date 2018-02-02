@@ -3,24 +3,27 @@ module sirius
     use, intrinsic :: ISO_C_BINDING
 
     interface
-
+        
         subroutine sirius_initialize(call_mpi_init)&
             &bind(C, name="sirius_initialize")
-            logical(1),              intent(in) :: call_mpi_init
+            use, intrinsic :: ISO_C_BINDING
+            logical(C_BOOL),         intent(in) :: call_mpi_init
         end subroutine
 
         subroutine sirius_finalize(call_mpi_fin)&
             &bind(C, name="sirius_finalize")
-            logical(1),              intent(in) :: call_mpi_fin
+            use, intrinsic :: ISO_C_BINDING
+            logical(C_BOOL),         intent(in) :: call_mpi_fin
         end subroutine
 
         subroutine sirius_clear()&
             &bind(C, name="sirius_clear")
         end subroutine
 
-        subroutine sirius_create_simulation_context(config_file_name)&
+        subroutine sirius_create_simulation_context(config_file_name, method_type)&
             &bind(C, name="sirius_create_simulation_context")
             character, dimension(*), intent(in) :: config_file_name
+            character, dimension(*), intent(in) :: method_type
         end subroutine
 
         subroutine sirius_initialize_simulation_context()&
@@ -33,39 +36,46 @@ module sirius
 
         subroutine sirius_set_lattice_vectors(a1, a2, a3)&
             &bind(C, name="sirius_set_lattice_vectors")
-            real(8),                 intent(in) :: a1
-            real(8),                 intent(in) :: a2
-            real(8),                 intent(in) :: a3
+            use, intrinsic :: ISO_C_BINDING
+            real(C_DOUBLE),          intent(in) :: a1
+            real(C_DOUBLE),          intent(in) :: a2
+            real(C_DOUBLE),          intent(in) :: a3
         end subroutine
 
         subroutine sirius_set_pw_cutoff(pw_cutoff)&
             &bind(C, name="sirius_set_pw_cutoff")
-            real(8),                 intent(in) :: pw_cutoff
+            use, intrinsic :: ISO_C_BINDING
+            real(C_DOUBLE),          intent(in) :: pw_cutoff
         end subroutine
 
         subroutine sirius_set_gk_cutoff(gk_cutoff)&
             &bind(C, name="sirius_set_gk_cutoff")
-            real(8),                 intent(in) :: gk_cutoff
+            use, intrinsic :: ISO_C_BINDING
+            real(C_DOUBLE),          intent(in) :: gk_cutoff
         end subroutine
 
         subroutine sirius_set_aw_cutoff(aw_cutoff)&
             &bind(C, name="sirius_set_aw_cutoff")
-            real(8),                 intent(in) :: aw_cutoff
+            use, intrinsic :: ISO_C_BINDING
+            real(C_DOUBLE),          intent(in) :: aw_cutoff
         end subroutine
 
         subroutine sirius_set_num_fv_states(num_fv_states)&
             &bind(C, name="sirius_set_num_fv_states")
-            integer,                 intent(in) :: num_fv_states
+            use, intrinsic :: ISO_C_BINDING
+            integer(C_INT),          intent(in) :: num_fv_states
         end subroutine
 
         subroutine sirius_set_auto_rmt(auto_rmt)&
             &bind(C, name="sirius_set_auto_rmt")
-            integer,                 intent(in) :: auto_rmt
+            use, intrinsic :: ISO_C_BINDING
+            integer(C_INT),          intent(in) :: auto_rmt
         end subroutine
 
         subroutine sirius_set_lmax_apw(lmax_apw)&
             &bind(C, name="sirius_set_lmax_apw")
-            integer,                 intent(in) :: lmax_apw
+            use, intrinsic :: ISO_C_BINDING
+            integer(C_INT),          intent(in) :: lmax_apw
         end subroutine
 
         subroutine sirius_set_lmax_pot(lmax_pot)&
@@ -88,11 +98,6 @@ module sirius
             character, dimension(*), intent(in) :: xc_name
         end subroutine
 
-        subroutine sirius_set_esm_type(esm_name)&
-            &bind(C, name="sirius_set_esm_type")
-            character, dimension(*), intent(in) :: esm_name
-        end subroutine
-
         subroutine sirius_set_gamma_point(gamma_point)&
             &bind(C, name="sirius_set_gamma_point")
             logical(1),              intent(in) :: gamma_point
@@ -112,16 +117,6 @@ module sirius
         subroutine sirius_set_core_relativity(str)&
             &bind(C, name="sirius_set_core_relativity")
             character, dimension(*), intent(in) :: str
-        end subroutine
-
-        subroutine sirius_set_atom_type_properties(label, symbol, zn, mass, mt_radius, num_mt_points)&
-            &bind(C, name="sirius_set_atom_type_properties")
-            character, dimension(*), intent(in) :: label
-            character, dimension(*), intent(in) :: symbol
-            integer,                 intent(in) :: zn
-            real(8),                 intent(in) :: mass
-            real(8),                 intent(in) :: mt_radius
-            integer,                 intent(in) :: num_mt_points
         end subroutine
 
         subroutine sirius_set_atom_type_configuration(label, n, l, k, occupancy, core)&
@@ -153,16 +148,12 @@ module sirius
             integer,                  intent(in) :: eqatoms
         end subroutine
 
-        subroutine sirius_set_atom_type_beta_rf(label, num_beta, beta_l, beta_j, num_mesh_points, beta_rf, ld, has_so)&
-            &bind(C, name="sirius_set_atom_type_beta_rf")
+        subroutine sirius_add_atom_type_beta_radial_function(label, l, beta, num_points)&
+            &bind(C, name="sirius_add_atom_type_beta_radial_function")
             character, dimension(*), intent(in) :: label
-            integer,                 intent(in) :: num_beta
-            integer,                 intent(in) :: beta_l
-            real(8),                 intent(in) :: beta_j
-            integer,                 intent(in) :: num_mesh_points
-            real(8),                 intent(in) :: beta_rf
-            integer,                 intent(in) :: ld
-            logical(1),              intent(in) :: has_so
+            integer,                 intent(in) :: l
+            real(8),                 intent(in) :: beta
+            integer,                 intent(in) :: num_points
         end subroutine
 
         subroutine sirius_set_atom_type_dion(label, num_beta, dion)&
@@ -999,12 +990,12 @@ module sirius
             integer,                 intent(in)  :: flg
         end subroutine
 
-        subroutine sirius_add_atom_type_chi(atom_type, l, num_points, chi)&
-            &bind(C, name="sirius_add_atom_type_chi")
+        subroutine sirius_add_atom_type_ps_atomic_wf(atom_type, l, chi, num_points)&
+            &bind(C, name="sirius_add_atom_type_ps_atomic_wf")
             character,         target, dimension(*), intent(in)  :: atom_type
             integer,                                 intent(in)  :: l
-            integer,                                 intent(in)  :: num_points
             real(8),                                 intent(in)  :: chi
+            integer,                                 intent(in)  :: num_points
         end subroutine
 
         subroutine sirius_set_esm(enable_esm, esm_bc)&
@@ -1146,24 +1137,48 @@ contains
 
     end subroutine
 
-    subroutine sirius_add_atom_type(label, fname)
+    subroutine sirius_add_atom_type(label, fname, symbol, zn, mass, spin_orbit)
         implicit none
         character,           target, dimension(*), intent(in) :: label
         character, optional, target, dimension(*), intent(in) :: fname
-        type(C_PTR) label_ptr, fname_ptr
+        character, optional, target, dimension(*), intent(in) :: symbol
+        integer,   optional, target,               intent(in) :: zn
+        real(8),   optional, target,               intent(in) :: mass
+        logical(C_BOOL), optional, target,         intent(in) :: spin_orbit
+
+        type(C_PTR) label_ptr, fname_ptr, symbol_ptr, zn_ptr, mass_ptr, spin_orbit_ptr
         interface
-            subroutine sirius_add_atom_type_aux(label, fname)&
+            subroutine sirius_add_atom_type_aux(label, fname, symbol, zn, mass, spin_orbit)&
                 &bind(C, name="sirius_add_atom_type")
                 use, intrinsic :: ISO_C_BINDING
                 type(C_PTR), value, intent(in) :: label
                 type(C_PTR), value, intent(in) :: fname
+                type(C_PTR), value, intent(in) :: symbol
+                type(C_PTR), value, intent(in) :: zn
+                type(C_PTR), value, intent(in) :: mass
+                type(C_PTR), value, intent(in) :: spin_orbit
             end subroutine
         end interface
+        
         label_ptr = C_LOC(label(1))
+        
         fname_ptr = C_NULL_PTR
+        if (present(fname)) fname_ptr = C_LOC(fname)
 
-        call sirius_add_atom_type_aux(label_ptr, fname_ptr)
+        symbol_ptr = C_NULL_PTR
+        if (present(symbol)) symbol_ptr = C_LOC(symbol)
 
+        zn_ptr = C_NULL_PTR
+        if (present(zn)) zn_ptr = C_LOC(zn)
+
+        mass_ptr = C_NULL_PTR
+        if (present(mass)) mass_ptr = C_LOC(mass)
+
+        spin_orbit_ptr = C_NULL_PTR
+        if (present(spin_orbit)) spin_orbit_ptr = C_LOC(spin_orbit)
+
+        call sirius_add_atom_type_aux(label_ptr, fname_ptr, symbol_ptr, zn_ptr, mass_ptr, spin_orbit_ptr)
+                          
     end subroutine
 
     subroutine sirius_add_atom(label, pos, vfield)
