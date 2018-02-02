@@ -133,27 +133,19 @@ void generate_atomic_orbitals(K_point& kp, Q_operator<double_complex>& q_op)
             /* generate beta-projectors for a block of atoms */
             kp.beta_projectors().generate(i);
             /* non-collinear case */
-            if (ctx_.num_mag_dims() == 3) {
-                for (int ispn = 0; ispn < 2; ispn++) {
+            for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
 
-                    auto beta_phi = kp.beta_projectors().inner<double_complex>(i, sphi, ispn, 0,
-                                                                               this->number_of_hubbard_orbitals());
+              auto beta_phi = kp.beta_projectors().inner<double_complex>(i, sphi, ispn, 0,
+                                                                         this->number_of_hubbard_orbitals());
 
-                    /* apply Q operator (diagonal in spin) */
-                    q_op.apply(i, ispn, kp.hubbard_wave_functions(), 0, this->number_of_hubbard_orbitals(), kp.beta_projectors(),
-                               beta_phi);
-                    /* apply non-diagonal spin blocks */
-                    if (ctx_.so_correction()) {
-                        q_op.apply(i, ispn ^ 3, kp.hubbard_wave_functions(), 0, this->number_of_hubbard_orbitals(), kp.beta_projectors(),
-                                   beta_phi);
-                    }
-
-                }
-            } else { /* non-magnetic or collinear case */
-                auto beta_phi = kp.beta_projectors().inner<double_complex>(i, kp.hubbard_wave_functions(), 0, 0,
-                                                                           this->number_of_hubbard_orbitals());
-
-                q_op.apply(i, 0, kp.hubbard_wave_functions(), 0, this->number_of_hubbard_orbitals(), kp.beta_projectors(), beta_phi);
+              /* apply Q operator (diagonal in spin) */
+              q_op.apply(i, ispn, kp.hubbard_wave_functions(), 0, this->number_of_hubbard_orbitals(), kp.beta_projectors(),
+                         beta_phi);
+              /* apply non-diagonal spin blocks */
+              if (ctx_.so_correction()) {
+                q_op.apply(i, ispn ^ 3, kp.hubbard_wave_functions(), 0, this->number_of_hubbard_orbitals(), kp.beta_projectors(),
+                           beta_phi);
+              }
             }
         }
         kp.beta_projectors().dismiss();
@@ -179,7 +171,7 @@ void generate_atomic_orbitals(K_point& kp, Q_operator<double_complex>& q_op)
           // colinear case because the up and down components are
           // identical
             inner<double_complex>(ctx_.processing_unit(),
-                                  ctx_.num_spins() - 1,
+                                  0,
                                   kp.hubbard_wave_functions(),
                                   0,
                                   this->number_of_hubbard_orbitals(),

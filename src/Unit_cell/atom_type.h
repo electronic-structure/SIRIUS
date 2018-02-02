@@ -466,8 +466,11 @@ class Atom_type
     inline int lmax_beta() const
     {
         int lmax{-1};
+
+        // need to take |l| since the total angular momentum is encoded
+        // in the sign of l
         for (auto& e: beta_radial_functions_) {
-            lmax = std::max(lmax, e.first);
+            lmax = std::max(lmax, std::abs(e.first));
         }
         return lmax;
     }
@@ -1514,7 +1517,15 @@ inline void Atom_type::init(int offset_lo__)
         for (auto& e: beta_radial_functions_) {
             /* think of |beta> functions as of local orbitals */
             local_orbital_descriptor lod;
-            lod.l = e.first;
+            lod.l = std::abs(e.first);
+
+            // for spin orbit coupling. We can always do that there is
+            // no insidence on the reset when calculations exclude SO
+            if (e.first < 0) {
+                lod.total_angular_momentum = lod.l - 0.5;
+            } else {
+                lod.total_angular_momentum = lod.l + 0.5;
+            }
             lo_descriptors_.push_back(lod);
         }
     }
@@ -1882,6 +1893,15 @@ inline void Atom_type::read_pseudo_uspp(json const& parser)
             TERMINATE(s);
         }
         int l = parser["pseudo_potential"]["beta_projectors"][i]["angular_momentum"];
+        if (spin_orbit_coupling_) {
+            // we encode the fact that the total angular momentum j = l
+            // -1/2 or l + 1/2 by changing the sign of l
+
+            double j = parser["pseudo_potential"]["beta_projectors"][i]["total_angular_momentum"];
+            if (j < (double)l) {
+                l *= -1;
+            }
+        }
         add_beta_radial_function(l, beta);
     }
 
