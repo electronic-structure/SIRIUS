@@ -159,7 +159,7 @@ void generate_atomic_orbitals(K_point& kp, Q_operator<double_complex>& q_op)
         if(ctx_.num_mag_dims() == 3) {
             inner<double_complex>(ctx_.processing_unit(),
                                   2,
-                                  kp.hubbard_wave_functions(),
+                                  sphi,
                                   0,
                                   this->number_of_hubbard_orbitals(),
                                   kp.hubbard_wave_functions(),
@@ -172,7 +172,7 @@ void generate_atomic_orbitals(K_point& kp, Q_operator<double_complex>& q_op)
           // identical
             inner<double_complex>(ctx_.processing_unit(),
                                   0,
-                                  kp.hubbard_wave_functions(),
+                                  sphi,
                                   0,
                                   this->number_of_hubbard_orbitals(),
                                   kp.hubbard_wave_functions(),
@@ -183,118 +183,73 @@ void generate_atomic_orbitals(K_point& kp, Q_operator<double_complex>& q_op)
 
         // diagonalize the all stuff
 
-        // for (int l = 0; l < this->number_of_hubbard_orbitals(); l++) {
-        //     for (int m = 0; m < this->number_of_hubbard_orbitals(); m++) {
-        //         printf("%.5lf ", sqrt(std::norm(S(l, m))));
-        //     }
-        //     printf("\n");
-        // }
-
         if (this->orthogonalize_hubbard_orbitals_) {
-             dmatrix<double_complex> Z(this->number_of_hubbard_orbitals(), this->number_of_hubbard_orbitals());
+          dmatrix<double_complex> Z(this->number_of_hubbard_orbitals(), this->number_of_hubbard_orbitals());
 
-             auto ev_solver = Eigensolver_factory<double_complex>(ev_solver_t::lapack);
+          auto ev_solver = Eigensolver_factory<double_complex>(ev_solver_t::lapack);
 
-             std::vector<double> eigenvalues(this->number_of_hubbard_orbitals(), 0.0);
+          std::vector<double> eigenvalues(this->number_of_hubbard_orbitals(), 0.0);
 
-             ev_solver->solve(number_of_hubbard_orbitals(), S, &eigenvalues[0], Z);
+          ev_solver->solve(number_of_hubbard_orbitals(), S, &eigenvalues[0], Z);
 
-             // build the O^{-1/2} operator
-             for (int i = 0; i < static_cast<int>(eigenvalues.size()); i++) {
-                 eigenvalues[i] = 1.0 / std::sqrt(eigenvalues[i]);
-             }
+          // build the O^{-1/2} operator
+          for (int i = 0; i < static_cast<int>(eigenvalues.size()); i++) {
+            eigenvalues[i] = 1.0 / std::sqrt(eigenvalues[i]);
+          }
 
-             // First compute S_{nm} = E_m Z_{nm}
-             S.zero();
-             for (int l = 0; l < this->number_of_hubbard_orbitals(); l++) {
-                 for (int m = 0; m < this->number_of_hubbard_orbitals(); m++) {
-                     for (int n = 0; n < this->number_of_hubbard_orbitals(); n++) {
-                         S(n, m) += eigenvalues[l] * Z(n, l) * std::conj(Z(m, l));
-                     }
-                 }
-             }
-         } else {
-            for (int l = 0; l < this->number_of_hubbard_orbitals(); l++) {
-                for (int m = 0; m < this->number_of_hubbard_orbitals(); m++) {
-                    if (l == m) {
-                        S(l, m) = 1.0 / sqrt((S(l, l) * conj(S(l, l))).real());
-                    } else {
-                        S(l, m) = 0.0;
-                    }
-                }
+          // First compute S_{nm} = E_m Z_{nm}
+          S.zero();
+          for (int l = 0; l < this->number_of_hubbard_orbitals(); l++) {
+            for (int m = 0; m < this->number_of_hubbard_orbitals(); m++) {
+              for (int n = 0; n < this->number_of_hubbard_orbitals(); n++) {
+                S(n, m) += eigenvalues[l] * Z(n, l) * std::conj(Z(m, l));
+              }
             }
-         }
+          }
+        } else {
+          for (int l = 0; l < this->number_of_hubbard_orbitals(); l++) {
+            for (int m = 0; m < this->number_of_hubbard_orbitals(); m++) {
+              if (l == m) {
+                S(l, m) = 1.0 / sqrt((S(l, l) * conj(S(l, l))).real());
+              } else {
+                S(l, m) = 0.0;
+              }
+            }
+          }
+        }
 
-         printf("\n");
-         for (int l = 0; l < this->number_of_hubbard_orbitals(); l++) {
-             for (int m = 0; m < this->number_of_hubbard_orbitals(); m++) {
-                 printf("%.5lf ", sqrt((S(l, m) * conj(S(l,m))).real()));
-             }
-             printf("\n");
-         }
+        // now apply the overlap matrix
+        for (int s = 0; (s < ctx_.num_spins()) && augment; s++) {
+          sphi.copy_from(ctx_.processing_unit(), this->number_of_hubbard_orbitals(), kp.hubbard_wave_functions(),
+                         s, 0, s, 0);
+        }
 
-         // now apply the overlap matrix
-         for (int s = 0; (s < ctx_.num_spins()) && augment; s++) {
-             sphi.copy_from(ctx_.processing_unit(), this->number_of_hubbard_orbitals(), kp.hubbard_wave_functions(),
-                            s, 0, s, 0);
-         }
-
-         if(ctx_.num_mag_dims() == 3) {
-             transform<double_complex>(ctx_.processing_unit(),
-                                       2,
-                                       sphi,
-                                       0,
-                                       this->number_of_hubbard_orbitals(),
-                                       S,
-                                       0,
-                                       0,
-                                       kp.hubbard_wave_functions(),
-                                       0,
-                                       this->number_of_hubbard_orbitals());
-         } else {
-           for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-             transform<double_complex>(ctx_.processing_unit(),
-                                       ispn,
-                                       sphi,
-                                       0,
-                                       this->number_of_hubbard_orbitals(),
-                                       S,
-                                       0,
-                                       0,
-                                       kp.hubbard_wave_functions(),
-                                       0,
-                                       this->number_of_hubbard_orbitals());
-           }
-         }
-
-         S.zero();
-         if (ctx_.num_mag_dims() == 3) {
-             inner<double_complex>(ctx_.processing_unit(),
-                                   2,
-                                   kp.hubbard_wave_functions(),
-                                   0,
-                                   this->number_of_hubbard_orbitals(),
-                                   kp.hubbard_wave_functions(),
-                                   0,
-                                   this->number_of_hubbard_orbitals(),
-                                   S, 0, 0);
-         } else {
-             inner<double_complex>(ctx_.processing_unit(),
-                                   ctx_.num_spins() - 1,
-                                   kp.hubbard_wave_functions(),
-                                   0,
-                                   this->number_of_hubbard_orbitals(),
-                                   kp.hubbard_wave_functions(),
-                                   0,
-                                   this->number_of_hubbard_orbitals(),
-                                   S, 0, 0);
-         }
-         printf("\n");
-         for (int l = 0; l < this->number_of_hubbard_orbitals(); l++) {
-             for (int m = 0; m < this->number_of_hubbard_orbitals(); m++) {
-                 printf("%.5lf ", sqrt((S(l, m)*conj(S(l, m))).real()));
-             }
-             printf("\n");
-         }
+        if(ctx_.num_mag_dims() == 3) {
+          transform<double_complex>(ctx_.processing_unit(),
+                                    2,
+                                    sphi,
+                                    0,
+                                    this->number_of_hubbard_orbitals(),
+                                    S,
+                                    0,
+                                    0,
+                                    kp.hubbard_wave_functions(),
+                                    0,
+                                    this->number_of_hubbard_orbitals());
+        } else {
+          for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
+            transform<double_complex>(ctx_.processing_unit(),
+                                      ispn,
+                                      sphi,
+                                      0,
+                                      this->number_of_hubbard_orbitals(),
+                                      S,
+                                      0,
+                                      0,
+                                      kp.hubbard_wave_functions(),
+                                      0,
+                                      this->number_of_hubbard_orbitals());
+          }
+        }
     }
 }

@@ -13,6 +13,12 @@ void apply_hubbard_potential(K_point& kp,
     // First calculate the local part of the projections
     // dm(i, n)  = <phi_i | psi_{nk}>
 
+
+    // for colinear magnetism the wavefunctions of the up and down block
+    // are stored in the up and down part of the "spinor" so we
+    // calculate Overlap ^ up = <phi_i^up | phi_j^up> stored in the
+    // first half of dm the down part in the other half
+
     int Nfc = 1;
     if (ctx_.num_mag_dims() == 1)
         Nfc *= 2;
@@ -35,22 +41,10 @@ void apply_hubbard_potential(K_point& kp,
               0,
               0);
     } else {
-        inner(ctx_.processing_unit(),
-              0,
-              hub_wf,
-              0,
-              this->number_of_hubbard_orbitals(),
-              phi,
-              idx__,
-              n__,
-              dm,
-              0,
-              0);
-
-        // colinear case
-        if (ctx_.num_spins() == 2) {
+        // compute the overlaps
+        for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
             inner(ctx_.processing_unit(),
-                  1,
+                  ispn,
                   hub_wf,
                   0,
                   this->number_of_hubbard_orbitals(),
@@ -59,10 +53,9 @@ void apply_hubbard_potential(K_point& kp,
                   n__,
                   dm,
                   0,
-                  n__);
+                  ispn * n__);
         }
     }
-
 
     for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ++ia) {
         const auto& atom = ctx_.unit_cell().atom(ia);
@@ -74,26 +67,43 @@ void apply_hubbard_potential(K_point& kp,
             if (ctx_.num_mag_dims() == 3) {
                 dmatrix<double_complex> Up(lmax_at * ctx_.num_spins(), n__);
                 Up.zero();
-#pragma omp parallel for
-                for (int nbnd = 0; nbnd < n__; nbnd++) {
-                    for (int s1 = 0; s1 < ctx_.num_spins(); s1++) {
-                        for (int m1 = 0; m1 < lmax_at; m1++) {
-                            double_complex temp = linalg_const<double_complex>::zero();
-
-                            // computes \f[
-                            // \sum_{\sigma,m} V^{\sigma\sigma'}_{m,m'} \left<\phi_m^\sigma|\Psi_{nk}\right>
-                            // \f]
-                            for (int s2 = 0; s2 < ctx_.num_spins(); s2++) {
-                                const int ind = (s1 == s2) * s1 + (1 + 2 * s2 + s1) * (s1 != s2);
-                                for (int m2 = 0; m2 < lmax_at; m2++) {
-                                    temp += this->hubbard_potential_(m1, m2, ind, ia, 0) *
-                                        dm(this->offset[ia] + s2 * lmax_at + m2, nbnd);
-                                }
-                            }
-                            Up(s1 * lmax_at + m1, nbnd) = temp;
-                        }
+                for (int s1 = 0; s1 < ctx_.num_spins(); s1++) {
+                    for (int s2 = 0; s2 < ctx_.num_spins(); s2++) {
+                        const int ind = (s1 == s2) * s1 + (1 + 2 * s2 + s1) * (s1 != s2);
+                        linalg<ctx_.processing_unit()>::gemm(0, 0,
+                                                             lmax_at,
+                                                             n__,
+                                                             lmax_at,
+                                                             linalg_const<double_complex>::one(),
+                                                             this->hubbard_potential_.template at<CPU>(0, 0, ind, ia, 0),
+                                                             this->hubbard_potential_.ld(),
+                                                             dm.template at<ctx_.processing_unit()>(this->offset[ia] + s2 * lmax_at, 0),
+                                                             dm.ld(),
+                                                             linalg_const<double_complex>::one(),
+                                                             Up.template at<ctx_.processing_unit()>(s1 * lmax_at, 0), Up.ld());
                     }
                 }
+
+// #pragma omp parallel for
+//                 for (int nbnd = 0; nbnd < n__; nbnd++) {
+//                     for (int s1 = 0; s1 < ctx_.num_spins(); s1++) {
+//                         for (int m1 = 0; m1 < lmax_at; m1++) {
+//                             double_complex temp = linalg_const<double_complex>::zero();
+
+//                             // computes \f[
+//                             // \sum_{\sigma,m} V^{\sigma\sigma'}_{m,m'} \left<\phi_m^\sigma|\Psi_{nk}\right>
+//                             // \f]
+//                             for (int s2 = 0; s2 < ctx_.num_spins(); s2++) {
+//                                 const int ind = (s1 == s2) * s1 + (1 + 2 * s2 + s1) * (s1 != s2);
+//                                 for (int m2 = 0; m2 < lmax_at; m2++) {
+//                                     temp += this->hubbard_potential_(m1, m2, ind, ia, 0) *
+//                                         dm(this->offset[ia] + s2 * lmax_at + m2, nbnd);
+//                                 }
+//                             }
+//                             Up(s1 * lmax_at + m1, nbnd) = temp;
+//                         }
+//                     }
+//                 }
 
                 transform<double_complex>(ctx_.processing_unit(),
                                           2,
@@ -111,8 +121,9 @@ void apply_hubbard_potential(K_point& kp,
             } else {
                 //Conventional LDA or colinear magnetism
                 dmatrix<double_complex> Up(lmax_at, n__);
-                Up.zero();
                 for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
+                    Up.zero();
+
 #pragma omp parallel for
                     for (int nbnd = 0; nbnd < n__; nbnd++) {
                         for (int m1 = 0; m1 < lmax_at; m1++) {
