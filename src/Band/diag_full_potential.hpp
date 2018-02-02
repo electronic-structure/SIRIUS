@@ -384,7 +384,7 @@ inline void Band::get_singular_components(K_point* kp__, Hamiltonian& H__) const
     #endif
 
     if (ctx_.control().verbosity_ >= 2 && kp__->comm().rank() == 0) {
-        printf("lowest and highest eigen-values of the singluar components: %20.16f %20.16f\n", eval.front(), eval.back());
+        printf("lowest and highest eigen-values of the singular components: %20.16f %20.16f\n", eval.front(), eval.back());
     }
 
     kp__->comm().barrier();

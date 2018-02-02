@@ -126,7 +126,7 @@ class Spheric_function: public mdarray<T, 2>
 
             Spline<T> s(radial_grid());
             for (int ir = 0; ir < radial_grid_->num_points(); ir++) {
-                s[ir] = (*this)(lm__, ir);
+                s(ir) = (*this)(lm__, ir);
             }
             return std::move(s.interpolate());
         }
@@ -248,7 +248,7 @@ T inner(Spheric_function<domain_t, T> const& f1, Spheric_function<domain_t, T> c
         int lmmax = std::min(f1.angular_domain_size(), f2.angular_domain_size());
         for (int ir = 0; ir < s.num_points(); ir++) {
             for (int lm = 0; lm < lmmax; lm++) {
-                s[ir] += type_wrapper<T>::bypass(std::conj(f1(lm, ir))) * f2(lm, ir);
+                s(ir) += type_wrapper<T>::bypass(std::conj(f1(lm, ir))) * f2(lm, ir);
             }
         }
     } else {
@@ -281,12 +281,12 @@ Spheric_function<spectral, T> laplacian(Spheric_function<spectral, T> const& f__
             auto s = f__.component(lm);
             /* compute 1st derivative */
             for (int ir = 0; ir < s.num_points(); ir++) {
-                s1[ir] = s.deriv(1, ir);
+                s1(ir) = s.deriv(1, ir);
             }
             s1.interpolate();
             
             for (int ir = 0; ir < s.num_points(); ir++) {
-                g(lm, ir) = 2 * s1[ir] * rgrid.x_inv(ir) + s1.deriv(1, ir) - s[ir] * ll / std::pow(rgrid[ir], 2);
+                g(lm, ir) = 2 * s1(ir) * rgrid.x_inv(ir) + s1.deriv(1, ir) - s(ir) * ll / std::pow(rgrid[ir], 2);
             }
         }
     }

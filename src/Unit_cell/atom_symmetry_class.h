@@ -362,7 +362,7 @@ inline void Atom_symmetry_class::generate_aw_radial_functions(relativity_t rel__
 
                 /* normalize */
                 for (int ir = 0; ir < nmtp; ir++) {
-                    s[ir] = std::pow(p[ir], 2);
+                    s(ir) = std::pow(p[ir], 2);
                 }
                 double norm = 1.0 / std::sqrt(s.interpolate().integrate(0));
 
@@ -380,7 +380,7 @@ inline void Atom_symmetry_class::generate_aw_radial_functions(relativity_t rel__
                     int idxrf1 = atom_type_.indexr().index_by_l_order(l, order1);
 
                     for (int ir = 0; ir < nmtp; ir++) {
-                        s[ir] = radial_functions_(ir, idxrf, 0) * radial_functions_(ir, idxrf1, 0);
+                        s(ir) = radial_functions_(ir, idxrf, 0) * radial_functions_(ir, idxrf1, 0);
                     }
                     
                     /* <u_{\nu'}|u_{\nu}> */
@@ -397,7 +397,7 @@ inline void Atom_symmetry_class::generate_aw_radial_functions(relativity_t rel__
 
                 /* normalize again */
                 for (int ir = 0; ir < nmtp; ir++) {
-                    s[ir] = std::pow(radial_functions_(ir, idxrf, 0), 2);
+                    s(ir) = std::pow(radial_functions_(ir, idxrf, 0), 2);
                 }
                 norm = s.interpolate().integrate(0);
 
@@ -455,7 +455,7 @@ inline void Atom_symmetry_class::generate_lo_radial_functions(relativity_t rel__
 
                 /* find norm of the radial solution */
                 for (int ir = 0; ir < nmtp; ir++) {
-                    s[ir] = std::pow(p[order][ir], 2);
+                    s(ir) = std::pow(p[order][ir], 2);
                 }
                 double norm = 1.0 / std::sqrt(s.interpolate().integrate(0));
 
@@ -507,7 +507,7 @@ inline void Atom_symmetry_class::generate_lo_radial_functions(relativity_t rel__
 
             /* find norm of constructed local orbital */
             for (int ir = 0; ir < nmtp; ir++) {
-                s[ir] = std::pow(radial_functions_(ir, idxrf, 0), 2);
+                s(ir) = std::pow(radial_functions_(ir, idxrf, 0), 2);
             }
             double norm = 1.0 / std::sqrt(s.interpolate().integrate(2));
 
@@ -556,7 +556,7 @@ inline std::vector<int> Atom_symmetry_class::check_lo_linear_independence(double
             if (lo_descriptor(idxlo1).l == lo_descriptor(idxlo2).l) {
             
                 for (int ir = 0; ir < nmtp; ir++) {
-                    s[ir] = radial_functions_(ir, idxrf1, 0) * radial_functions_(ir, idxrf2, 0);
+                    s(ir) = radial_functions_(ir, idxrf1, 0) * radial_functions_(ir, idxrf2, 0);
                 }
                 loprod(idxlo1, idxlo2) = s.interpolate().integrate(2);
             }
@@ -805,7 +805,7 @@ inline void Atom_symmetry_class::generate_radial_integrals(relativity_t rel__)
                         double t0 = radial_functions_(ir, i1, 0) * radial_functions_(ir, i2, 0);
                         /* r*u'_1(r) * r*u'_2(r) */
                         double t1 = radial_functions_(ir, i1, 1) * radial_functions_(ir, i2, 1);
-                        s[ir] = 0.5 * t1 * Minv + t0 * (0.5 * ll * Minv + spherical_potential_[ir] * std::pow(atom_type_.radial_grid(ir), 2));
+                        s(ir) = 0.5 * t1 * Minv + t0 * (0.5 * ll * Minv + spherical_potential_[ir] * std::pow(atom_type_.radial_grid(ir), 2));
                     }
                     h_spherical_integrals_(i1, i2) = s.interpolate().integrate(0) / y00;
                 }
@@ -829,7 +829,7 @@ inline void Atom_symmetry_class::generate_radial_integrals(relativity_t rel__)
                         o_radial_integrals_(l, order1, order2) = 1.0;
                     } else {
                         for (int ir = 0; ir < nmtp; ir++) {
-                            s[ir] = radial_functions_(ir, idxrf1, 0) * radial_functions_(ir, idxrf2, 0);
+                            s(ir) = radial_functions_(ir, idxrf1, 0) * radial_functions_(ir, idxrf2, 0);
                         }
                         o_radial_integrals_(l, order1, order2) = s.interpolate().integrate(2);
                     }
@@ -854,7 +854,7 @@ inline void Atom_symmetry_class::generate_radial_integrals(relativity_t rel__)
                             double t0 = radial_functions_(ir, i1, 0) * radial_functions_(ir, i2, 0);
                             /* r*u'_1(r) * r*u'_2(r) */
                             double t1 = radial_functions_(ir, i1, 1) * radial_functions_(ir, i2, 1);
-                            s[ir] = sq_alpha_half * 0.5 * Minv * (t1 + t0 * 0.5 * ll);
+                            s(ir) = sq_alpha_half * 0.5 * Minv * (t1 + t0 * 0.5 * ll);
                         }
                         o1_radial_integrals_(i1, i2) = s.interpolate().integrate(0);
                     }
@@ -871,7 +871,9 @@ inline void Atom_symmetry_class::generate_radial_integrals(relativity_t rel__)
         Spline<double> s1(atom_type_.radial_grid()); 
         Spline<double> ve(atom_type_.radial_grid()); 
         
-        for (int i = 0; i < nmtp; i++) ve[i] = spherical_potential_[i] + atom_type_.zn() / atom_type_.radial_grid(i);
+        for (int i = 0; i < nmtp; i++) {
+            ve(i) = spherical_potential_[i] + atom_type_.zn() / atom_type_.radial_grid(i);
+        }
         ve.interpolate();
 
         so_radial_integrals_.zero();
@@ -890,11 +892,11 @@ inline void Atom_symmetry_class::generate_radial_integrals(relativity_t rel__)
                     {
                         double M = 1.0 - 2 * soc * spherical_potential_[ir];
                         /* first part <f| dVe / dr |f'> */
-                        s[ir] = radial_functions_(ir, idxrf1, 0) * radial_functions_(ir, idxrf2, 0) * 
+                        s(ir) = radial_functions_(ir, idxrf1, 0) * radial_functions_(ir, idxrf2, 0) * 
                                 soc * ve.deriv(1, ir) / pow(M, 2);
 
                         /* second part <f| d(z/r) / dr |f'> */
-                        s1[ir] = radial_functions_(ir, idxrf1, 0) * radial_functions_(ir, idxrf2, 0) *
+                        s1(ir) = radial_functions_(ir, idxrf1, 0) * radial_functions_(ir, idxrf2, 0) *
                                  soc * atom_type_.zn() / pow(M, 2);
                     }
                     s.interpolate();
@@ -962,12 +964,12 @@ inline void Atom_symmetry_class::generate_core_charge_density(relativity_t core_
     Spline<double> svmt(atom_type_.radial_grid());
     /* remove nucleus contribution from Vmt */
     for (int ir = 0; ir < nmtp; ir++) {
-        svmt[ir] = spherical_potential_[ir] + atom_type_.zn() * atom_type_.radial_grid().x_inv(ir);
+        svmt(ir) = spherical_potential_[ir] + atom_type_.zn() * atom_type_.radial_grid().x_inv(ir);
     }
     svmt.interpolate();
     /* fit tail to alpha/r + beta */
     double alpha = -(std::pow(atom_type_.mt_radius(), 2) * svmt.deriv(1, nmtp - 1) + atom_type_.zn());
-    double beta = svmt[nmtp - 1] - (atom_type_.zn() + alpha) / atom_type_.mt_radius();
+    double beta = svmt(nmtp - 1) - (atom_type_.zn() + alpha) / atom_type_.mt_radius();
 
     /* cook an effective potential from muffin-tin part and a tail */
     std::vector<double> veff(rgrid.num_points());
@@ -1014,7 +1016,7 @@ inline void Atom_symmetry_class::generate_core_charge_density(relativity_t core_
 
                 auto& rho = bs.rho();
                 for (int i = 0; i < rgrid.num_points(); i++) {
-                    rho_t[i] += atom_type_.atomic_level(ist).occupancy * rho[i] / fourpi;
+                    rho_t[i] += atom_type_.atomic_level(ist).occupancy * rho(i) / fourpi;
                 }
 
                 level_energy[ist] = bs.enu();
@@ -1023,12 +1025,12 @@ inline void Atom_symmetry_class::generate_core_charge_density(relativity_t core_
 
         #pragma omp critical
         for (int i = 0; i < rho.num_points(); i++) {
-            rho[i] += rho_t[i];
+            rho(i) += rho_t[i];
         }
     }
 
     for (int ir = 0; ir < atom_type_.num_mt_points(); ir++) {
-        ae_core_charge_density_[ir] = rho[ir];
+        ae_core_charge_density_[ir] = rho(ir);
     }
 
     /* interpolate muffin-tin part of core density */

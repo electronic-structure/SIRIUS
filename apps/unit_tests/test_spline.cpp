@@ -8,10 +8,10 @@ void check_spline(Spline<double> const& s__, std::function<double(double)> f__, 
     for (int ir = 0; ir < 10000; ir++)
     {
         double x = rgrid[ir];
-        if (std::abs(s__(x) - f__(x)) > 1e-10)
+        if (std::abs(s__.at_point(x) - f__(x)) > 1e-10)
         {
             printf("wrong spline interpolation at x = %18.12f\n", x);
-            printf("true value: %18.12f, spline value: %18.12f\n", f__(x), s__(x));
+            printf("true value: %18.12f, spline value: %18.12f\n", f__(x), s__.at_point(x));
             exit(1);
         }
     }
@@ -87,9 +87,9 @@ void test_spline_4()
 
     for (int ir = 0; ir < 2000; ir++)
     {
-        s1[ir] = std::sin(rgrid[ir] * 2) / rgrid[ir];
-        s2[ir] = std::exp(rgrid[ir]);
-        s3[ir] = s1[ir] * s2[ir];
+        s1(ir) = std::sin(rgrid[ir] * 2) / rgrid[ir];
+        s2(ir) = std::exp(rgrid[ir]);
+        s3(ir) = s1(ir) * s2(ir);
     }
     s1.interpolate();
     s2.interpolate();
@@ -102,7 +102,7 @@ void test_spline_4()
     for (int ir = 0; ir < rlin.num_points(); ir++)
     {
         double x = rlin[ir];
-        d += std::pow(s3(x) - s12(x), 2);
+        d += std::pow(s3.at_point(x) - s12.at_point(x), 2);
     }
     d = std::sqrt(d / rlin.num_points());
 
@@ -137,8 +137,8 @@ void test_spline_5()
         s2[i] = Spline<double>(rgrid);
         for (int ir = 0; ir < N; ir++)
         {
-            s1[i][ir] = std::sin(rgrid[ir] * (1 + n * 0.01)) / rgrid[ir];
-            s2[i][ir] = std::exp((1 + n * 0.01) * rgrid[ir]);
+            s1[i](ir) = std::sin(rgrid[ir] * (1 + n * 0.01)) / rgrid[ir];
+            s2[i](ir) = std::exp((1 + n * 0.01) * rgrid[ir]);
         }
         s1[i].interpolate();
         s2[i].interpolate();
@@ -166,7 +166,7 @@ void test_spline_6()
     for (int i = 0; i < 20; i++)
     {
         array(i) = Spline<double>(rgrid);
-        for (int ir = 0; ir < rgrid.num_points(); ir++) array(i)[ir] = std::exp(-rgrid[ir]);
+        for (int ir = 0; ir < rgrid.num_points(); ir++) array(i)(ir) = std::exp(-rgrid[ir]);
         array(i).interpolate();
     }
 }
@@ -179,7 +179,9 @@ void test1(double x0, double x1, int m, double exact_result)
     Radial_grid_exp<double> r(5000, x0, x1);
     Spline<double> s(r);
     
-    for (int i = 0; i < 5000; i++) s[i] = std::sin(r[i]);
+    for (int i = 0; i < 5000; i++) {
+        s(i) = std::sin(r[i]);
+    }
     
     double d = s.interpolate().integrate(m);
     double err = std::abs(1 - d / exact_result);
@@ -228,9 +230,9 @@ void test3(int m, double x0, double x1, double exact_val)
 
     for (int i = 0; i < 2000; i++)
     {
-        s1[i] = std::sin(r[i]) / r[i];
-        s2[i] = std::exp(-r[i]) * std::pow(r[i], 8.0 / 3.0);
-        s3[i] = s1[i] * s2[i];
+        s1(i) = std::sin(r[i]) / r[i];
+        s2(i) = std::exp(-r[i]) * std::pow(r[i], 8.0 / 3.0);
+        s3(i) = s1(i) * s2(i);
     }
     s1.interpolate();
     s2.interpolate();
@@ -278,10 +280,10 @@ void test6()
     std::vector<double> x = {0, 1, 2, 3};
     Radial_grid_ext<double> r(4, x.data());
     Spline<double> s(r);
-    s[0] = 0;
-    s[1] = 1;
-    s[2] = 0;
-    s[3] = 0;
+    s(0) = 0;
+    s(1) = 1;
+    s(2) = 0;
+    s(3) = 0;
     double val = s.interpolate().integrate(0);
     if (std::abs(val - 1.125) > 1e-13)
     {
@@ -312,7 +314,7 @@ void test7()
 
     Spline<double> s1(r);
     for (int ir = 0; ir < r.num_points(); ir++) {
-        s1[ir] = s.deriv(1, ir);
+        s1(ir) = s.deriv(1, ir);
     }
     s1.interpolate();
 

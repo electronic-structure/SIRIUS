@@ -524,7 +524,7 @@ class Potential
                     } else {
                         for (int ir = 0; ir < nmtp; ir++) {
                             double r = atom__.radial_grid(ir);
-                            rholm[ir] *= std::pow(r, l + 2);
+                            rholm(ir) *= std::pow(r, l + 2);
                         }
                         qmt[lm] = rholm.interpolate().integrate(g1, 0);
                     }
@@ -537,7 +537,7 @@ class Potential
                             rholm = rho_mt__.component(lm);
                             for (int ir = 0; ir < nmtp; ir++) {
                                 double r = atom__.radial_grid(ir);
-                                rholm[ir] *= std::pow(r, 1 - l);
+                                rholm(ir) *= std::pow(r, 1 - l);
                             }
                             rholm.interpolate().integrate(g2, 0);
                         }

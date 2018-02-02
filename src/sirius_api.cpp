@@ -59,7 +59,7 @@ extern "C" {
     integer ierr
     call mpi_init(ierr)
     ! initialize low-level stuff and don't call MPI_Init() from SIRIUS
-    call sirius_initialize(0)
+    call sirius_initialize(.false.)
     \endcode
  */
 void sirius_initialize(ftn_bool* call_mpi_init__)
@@ -2665,7 +2665,7 @@ void sirius_fderiv(ftn_int* m__,
     sirius::Radial_grid_ext<double> rgrid(np, x__);
     sirius::Spline<double> s(rgrid);
     for (int i = 0; i < np; i++) {
-        s[i] = f__[i];
+        s(i) = f__[i];
     }
     s.interpolate();
     switch (*m__) {
@@ -2693,7 +2693,7 @@ void sirius_integrate_(ftn_int* m__,
     sirius::Radial_grid_ext<double> rgrid(np, x__);
     sirius::Spline<double> s(rgrid);
     for (int i = 0; i < np; i++) {
-        s[i] = f__[i];
+        s(i) = f__[i];
     }
     s.interpolate();
     *result__ = s.integrate(*m__);

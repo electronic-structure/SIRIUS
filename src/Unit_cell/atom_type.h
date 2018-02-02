@@ -87,13 +87,13 @@ class Atom_type
     /// Default augmented wave configuration.
     radial_solution_descriptor_set aw_default_l_;
 
-    /// augmented wave configuration for specific l
+    /// Augmented wave configuration for specific l.
     std::vector<radial_solution_descriptor_set> aw_specific_l_;
 
-    /// list of radial descriptor sets used to construct augmented waves
+    /// List of radial descriptor sets used to construct augmented waves.
     std::vector<radial_solution_descriptor_set> aw_descriptors_;
 
-    /// list of radial descriptor sets used to construct local orbitals
+    /// List of radial descriptor sets used to construct local orbitals.
     std::vector<local_orbital_descriptor> lo_descriptors_;
 
     /// Maximum number of AW radial functions across angular momentums.
@@ -683,12 +683,12 @@ class Atom_type
 
     inline double free_atom_density(const int idx) const
     {
-        return free_atom_density_spline_[idx];
+        return free_atom_density_spline_(idx);
     }
 
     inline double free_atom_density(double x) const
     {
-        return free_atom_density_spline_(x);
+        return free_atom_density_spline_.at_point(x);
     }
 
     inline int num_aw_descriptors() const
@@ -1604,7 +1604,7 @@ inline void Atom_type::init_free_atom(bool smooth)
         A(1, 0) = 2 * R;
         A(1, 1) = 3 * std::pow(R, 2);
 
-        b(0) = free_atom_density_spline_[irmt];
+        b(0) = free_atom_density_spline_(irmt);
         b(1) = free_atom_density_spline_.deriv(1, irmt);
 
         linalg<CPU>::gesv<double>(2, 1, A.at<CPU>(), 2, b.at<CPU>(), 2);
@@ -1622,7 +1622,7 @@ inline void Atom_type::init_free_atom(bool smooth)
 
         /* make smooth free atom density inside muffin-tin */
         for (int i = 0; i <= irmt; i++) {
-            free_atom_density_spline_[i] =
+            free_atom_density_spline_(i) =
                 b(0) * std::pow(free_atom_radial_grid(i), 2) + b(1) * std::pow(free_atom_radial_grid(i), 3);
         }
 
@@ -1850,6 +1850,8 @@ inline void Atom_type::read_pseudo_uspp(json const& parser)
     if (static_cast<int>(rgrid.size()) != num_mt_points_) {
         TERMINATE("wrong mesh size");
     }
+    /* set the radial grid */
+    set_radial_grid(num_mt_points_, rgrid.data());
 
     local_potential(parser["pseudo_potential"]["local_potential"].get<std::vector<double>>());
 
@@ -1863,8 +1865,6 @@ inline void Atom_type::read_pseudo_uspp(json const& parser)
                   << ps_total_charge_density().size() << std::endl;
         TERMINATE("wrong array size");
     }
-
-    set_radial_grid(num_mt_points_, rgrid.data());
 
     if (parser["pseudo_potential"]["header"].count("spin_orbit")) {
         spin_orbit_coupling(true);

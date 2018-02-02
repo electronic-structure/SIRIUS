@@ -1,0 +1,39 @@
+{
+    "comment"     : "MPI C++ compiler and options",
+    "MPI_CXX"     : "mpic++",
+    "MPI_CXX_OPT" : "-std=c++11 -Wall -Wconversion -fopenmp -D__SCALAPACK -D__ELPA -D__GPU",
+    
+    "comment"     : "MPI Fortran compiler and oprions",
+    "MPI_FC"      : "mpif90",
+    "MPI_FC_OPT"  : "-O3 -fopenmp -cpp",
+   
+    "comment"     : "plain C compler",
+    "CC"          : "gcc-mp-7",
+    
+    "comment"     : "plain C++ compiler",
+    "CXX"         : "c++-mp-7",
+
+    "comment"     : "plain Fortran compiler",
+    "FC"          : "gfortran-mp-7",
+
+    "comment"     : "Fortran preprocessor",
+    "FCCPP"       : "cpp-mp-7",
+    
+    "comment"     : "location of CUDA toolkit",
+    "CUDA_ROOT"   : "/Developer/NVIDIA/CUDA-7.5",
+
+    "comment"     : "CUDA compiler and options",
+    "CUDA_CC"     : "clang-mp-5.0",
+    "CUDA_OPT"    : "--cuda-gpu-arch=sm_30 --cuda-path=/Developer/NVIDIA/CUDA-7.5 -DNDEBUG",
+    
+    "comment"     : "location of MAGMA library",
+    "MAGMA_ROOT"  : "/Users/antonk/src/magma-2.0.0-beta3",
+
+    "ELPA_ROOT"   : "/Users/antonk/src/elpa",
+
+    "SYSTEM_LIBS" : "~/src/LAPACK/scalapack-2.0.2/libscalapack.a ~/src/LAPACK/lapack-3.4.2/liblapack.a ~/src/LAPACK/lapack-3.4.2/librefblas.a ~/local/lib/libmpi_mpifh.a -L/opt/local/lib -lz -lgfortran -lstdc++ -lc++",
+
+    "install"     : ["spg", "gsl", "fftw", "xc", "hdf5"]
+}
+
+

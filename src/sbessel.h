@@ -65,7 +65,7 @@ class Spherical_Bessel_functions
                 double t = rgrid__[ir] * q__;
                 gsl_sf_bessel_jl_array(lmax__ + 1, t, &jl[0]);
                 for (int l = 0; l <= lmax__ + 1; l++) {
-                    sbessel_[l][ir] = jl[l];
+                    sbessel_[l](ir) = jl[l];
                 }
             }
             
@@ -115,12 +115,12 @@ class Spherical_Bessel_functions
             Spline<double> s(*rgrid_);
             if (q_ != 0) {
                 for (int ir = 0; ir < rgrid_->num_points(); ir++) {
-                    s[ir] = (l__ / q_) * sbessel_[l__][ir] - (*rgrid_)[ir] * sbessel_[l__ + 1][ir];
+                    s(ir) = (l__ / q_) * sbessel_[l__](ir) - (*rgrid_)[ir] * sbessel_[l__ + 1](ir);
                 }
             } else {
                 if (l__ == 1) {
                     for (int ir = 0; ir < rgrid_->num_points(); ir++) {
-                        s[ir] = (*rgrid_)[ir] / 3;
+                        s(ir) = (*rgrid_)[ir] / 3;
                     }
                 }
             }

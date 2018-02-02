@@ -111,32 +111,32 @@ def configure_package(package_name, platform):
     if (package_name == "xc"):
         retval = ["-I" + cwdlibs + package_dir + "/src" + " -I" + cwdlibs + package_dir,
                   cwdlibs + package_dir + "/src/.libs/libxc.a",
-                  "\tcd ./libs/" + package_dir + "/src; make; ar -r ./.libs/libxc.a *.o\n",
-                  "\tcd ./libs/" + package_dir + "; make clean\n"]
+                  "\tcd ./libs/" + package_dir + "/src && $(MAKE) && ar -r ./.libs/libxc.a *.o\n",
+                  "\tcd ./libs/" + package_dir + " && $(MAKE) clean\n"]
 
     if (package_name == "spg"):
         retval = ["-I" + cwdlibs + package_dir + "/src",
                   cwdlibs + package_dir + "/src/.libs/libsymspg.a",
-                  "\tcd ./libs/" + package_dir + "; make\n",
-                  "\tcd ./libs/" + package_dir + "; make clean\n"]
+                  "\tcd ./libs/" + package_dir + " && $(MAKE)\n",
+                  "\tcd ./libs/" + package_dir + " && $(MAKE) clean\n"]
 
     if (package_name == "gsl"):
         retval = ["-I" + cwdlibs + package_dir,
                   cwdlibs + package_dir + "/.libs/libgsl.a",
-                  "\tcd ./libs/" + package_dir + "; make\n",
-                  "\tcd ./libs/" + package_dir + "; make clean\n"]
+                  "\tcd ./libs/" + package_dir + "&& $(MAKE)\n",
+                  "\tcd ./libs/" + package_dir + " && $(MAKE) clean\n"]
 
     if (package_name == "fftw"):
         retval = ["-I" + cwdlibs + package_dir + "/api",
                   cwdlibs + package_dir + "/.libs/libfftw3.a",
-                  "\tcd ./libs/" + package_dir + "; make\n",
-                  "\tcd ./libs/" + package_dir + "; make clean\n"]
+                  "\tcd ./libs/" + package_dir + "&& $(MAKE)\n",
+                  "\tcd ./libs/" + package_dir + "&& $(MAKE) clean\n"]
 
     if (package_name == "hdf5"):
         retval = ["-I" + cwdlibs + package_dir + "/src",
                   cwdlibs + package_dir + "/src/.libs/libhdf5.a",
-                  "\tcd ./libs/" + package_dir + "; make\n",
-                  "\tcd ./libs/" + package_dir + "; make clean\n"]
+                  "\tcd ./libs/" + package_dir + "&& $(MAKE)\n",
+                  "\tcd ./libs/" + package_dir + "&& $(MAKE) clean\n"]
 
     return retval
 
@@ -181,21 +181,27 @@ endif'''+"\n")
     else:
         makeinc.write("CXX_OPT = $(BASIC_CXX_OPT) %s\n"%platform['CXX_OPT'])
     
+    # add main include paths
     makeinc.write("CXX_OPT := $(CXX_OPT) -I%s/src\n"%os.getcwd())
     makeinc.write("CXX_OPT := $(CXX_OPT) -I%s/src/SDDK\n"%os.getcwd())
+    # add cuda include path
     if 'CUDA_ROOT' in platform:
         makeinc.write("CXX_OPT := $(CXX_OPT) -I%s/include\n"%platform['CUDA_ROOT']);
-
+    # add magma include paths
     if 'MAGMA_ROOT' in platform:
         makeinc.write("CXX_OPT := $(CXX_OPT) -I%s/include\n"%platform['MAGMA_ROOT']);
         makeinc.write("CXX_OPT := $(CXX_OPT) -I%s/control\n"%platform['MAGMA_ROOT']);
-
-
+    # add elpa include path
+    if 'ELPA_ROOT' in platform:
+        makeinc.write("CXX_OPT := $(CXX_OPT) -I%s/elpa\n"%platform['ELPA_ROOT']);
+    # cuda compiler
     if 'CUDA_ROOT' in platform:
-        if 'NVCC' in platform: 
-            makeinc.write("NVCC = %s/bin/%s\n"%(platform['CUDA_ROOT'], platform['NVCC']))
-        if 'NVCC_OPT' in platform: 
-            makeinc.write("NVCC_OPT = %s\n"%platform['NVCC_OPT'])
+        if 'CUDA_CC' in platform: 
+            makeinc.write("NVCC = %s\n"%(platform['CUDA_CC']))
+        else:
+            makeinc.write("NVCC = %s/bin/nvcc\n"%(platform['CUDA_ROOT']))
+        if 'CUDA_OPT' in platform: 
+            makeinc.write("NVCC_OPT = %s\n"%platform['CUDA_OPT'])
 
     if 'MPI_FC' in platform:
         makeinc.write("MPI_FC = %s\n"%platform['MPI_FC'])
@@ -214,11 +220,22 @@ endif'''+"\n")
             clean_packages.append(opts[3])
 
     if 'CUDA_ROOT' in platform:
-        makeinc.write("LIBS := $(LIBS) -L%s/lib -lcublas -lcudart -lcufft -lcusparse -lnvToolsExt -Wl,-rpath,%s/lib  \n"%(platform['CUDA_ROOT'], platform['CUDA_ROOT']))
+        if os.path.exists(platform['CUDA_ROOT'] + '/lib'):
+            lib_path = '/lib'
+        elif os.path.exists(platform['CUDA_ROOT'] + '/lib64'):
+            lib_path = '/lib64'
+        else:
+            raise RuntimeError('path to CUDA libraries is not found')
+        lib_path = platform['CUDA_ROOT'] + lib_path
+        makeinc.write("LIBS := $(LIBS) -L%s -lcublas -lcudart -lcufft -lcusparse -lnvToolsExt -Wl,-rpath,%s  \n"%(lib_path, lib_path))
+
     if 'MAGMA_ROOT' in platform:
         makeinc.write("LIBS := $(LIBS) %s/lib/libmagma_sparse.a\n"%platform['MAGMA_ROOT']) 
         makeinc.write("LIBS := $(LIBS) %s/lib/libmagma.a\n"%platform['MAGMA_ROOT']) 
         
+    if 'ELPA_ROOT' in platform:
+        makeinc.write("LIBS := $(LIBS) -L%s/.libs/ -lelpa_openmp -Wl,-rpath,%s\n"%(platform['ELPA_ROOT'], platform['ELPA_ROOT']))
+
     makeinc.write("LIBS := $(LIBS) " + platform["SYSTEM_LIBS"] + "\n")
 
     dbg_conf = False
@@ -244,13 +261,13 @@ endif'''+"\n")
     makef.write("\n")
     makef.write(".PHONY: apps\n")
     makef.write("\n")
-    makef.write("all: packages sirius apps\n")
+    makef.write("all: apps\n")
     makef.write("\n")
-    makef.write("sirius:\n")
-    makef.write("\tcd src; make\n")
+    makef.write("sirius: packages\n")
+    makef.write("\tcd src && $(MAKE)\n")
     makef.write("\n")
-    makef.write("apps:\n")
-    makef.write("\tcd apps; make\n")
+    makef.write("apps: sirius\n")
+    makef.write("\tcd apps && $(MAKE)\n")
     makef.write("\n")
     makef.write("packages:\n")
     for i in range(len(make_packages)):
@@ -262,8 +279,8 @@ endif'''+"\n")
 
     makef.write("\n")
     makef.write("clean:\n")
-    makef.write("\tcd src; make clean\n")
-    makef.write("\tcd apps; make clean\n")
+    makef.write("\tcd src && $(MAKE) clean\n")
+    makef.write("\tcd apps && $(MAKE) clean\n")
 
     makef.close()
 
