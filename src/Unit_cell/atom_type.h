@@ -452,6 +452,7 @@ class Atom_type
         if (augment_) {
             TERMINATE("can't add more beta projectors");
         }
+        std::cout << l__ << std::endl;
         Spline<double> s(radial_grid_, beta__);
         beta_radial_functions_.push_back(std::move(std::make_pair(l__, std::move(s))));
     }

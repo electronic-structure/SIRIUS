@@ -2131,7 +2131,7 @@ void sirius_set_atom_type_beta_rf(ftn_char     label__,
         double* ptr = &beta_rf(0, i);
         int l = beta_l__[i];
         if (*spin_orbit__) {
-            if (beta_j__[i] < beta_l__[l])
+            if (beta_j__[i] < beta_l__[i])
                 l *= -1;
         }
         type.add_beta_radial_function(l, std::vector<double>(ptr, ptr + num_mesh_points__[i]));
