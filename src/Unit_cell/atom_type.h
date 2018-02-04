@@ -454,13 +454,17 @@ class Atom_type
 
     inline void add_q_radial_function(int idxrf1__, int idxrf2__, int l__, std::vector<double> qrf__)
     {
+        if (l__ > 2 * lmax_beta()) {
+            TERMINATE("wrong l for Q radial functions");
+        }
+
         if (!augment_) {
             augment_ = true;
             /* number of radial beta-functions */
             int nbrf = num_beta_radial_functions();
             q_radial_functions_l_ = mdarray<Spline<double>, 2>(nbrf * (nbrf + 1) / 2, 2 * lmax_beta() + 1);
 
-            for (int l = 0; l <= 2* lmax_beta(); l++) {
+            for (int l = 0; l <= 2 * lmax_beta(); l++) {
                 for (int idx = 0; idx < nbrf * (nbrf + 1) / 2; idx++) {
                     q_radial_functions_l_(idx, l) = Spline<double>(radial_grid_);
                 }

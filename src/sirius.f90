@@ -156,6 +156,17 @@ module sirius
             integer,                 intent(in) :: num_points
         end subroutine
 
+        subroutine sirius_add_atom_type_q_radial_function(label, l, mb, nb, q_rf, num_points)&
+            &bind(C, name="sirius_add_atom_type_q_radial_function")
+            use, intrinsic :: ISO_C_BINDING
+            character, dimension(*), intent(in) :: label
+            integer(C_INT),          intent(in) :: l
+            integer(C_INT),          intent(in) :: mb
+            integer(C_INT),          intent(in) :: nb
+            real(C_DOUBLE),          intent(in) :: q_rf
+            integer(C_INT),          intent(in) :: num_points
+        end subroutine
+
         subroutine sirius_set_atom_type_dion(label, num_beta, dion)&
             &bind(C, name="sirius_set_atom_type_dion")
             character, dimension(*), intent(in) :: label
@@ -163,12 +174,12 @@ module sirius
             real(8),                 intent(in) :: dion
         end subroutine
 
-        subroutine sirius_set_atom_type_q_rf(label, q_rf, lmax)&
-            &bind(C, name="sirius_set_atom_type_q_rf")
-            character, dimension(*), intent(in) :: label
-            real(8),                 intent(in) :: q_rf
-            integer,                 intent(in) :: lmax
-        end subroutine
+        !subroutine sirius_set_atom_type_q_rf(label, q_rf, lmax)&
+        !    &bind(C, name="sirius_set_atom_type_q_rf")
+        !    character, dimension(*), intent(in) :: label
+        !    real(8),                 intent(in) :: q_rf
+        !    integer,                 intent(in) :: lmax
+        !end subroutine
 
         subroutine sirius_set_atom_type_rho_core(label, num_points, rho_core)&
             &bind(C, name="sirius_set_atom_type_rho_core")
