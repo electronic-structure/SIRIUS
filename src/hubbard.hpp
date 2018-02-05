@@ -49,7 +49,7 @@ class Hubbard_potential
     bool orthogonalize_hubbard_orbitals_{false};
 
     /// by default we just normalize them
-    bool normalize_orbitals_only_{true};
+    bool normalize_orbitals_only_{false};
 
     /// hubbard correction with next nearest neighbors
     bool hubbard_U_plus_V_{false};
@@ -74,19 +74,19 @@ public:
         hubbard_U_plus_V_ = true;
     }
 
-    void set_hubbard_simple_method(const bool approx)
+    void set_hubbard_simple_correction()
     {
-        approximation_ = approx;
+        approximation_ = true;
     }
 
     void set_orthogonalize_hubbard_orbitals(const bool test)
     {
-        this->orthogonalize_hubbard_orbitals_ = true;
+        this->orthogonalize_hubbard_orbitals_ = test;
     }
 
-    void set_normalize_hubbard_orbitals_only(const bool test)
+    void set_normalize_hubbard_orbitals(const bool test)
     {
-        this->normalize_orbitals_only_ = true;
+        this->normalize_orbitals_only_ = test;
     }
 
     double_complex U(int m1, int m2, int m3, int m4) const
@@ -114,7 +114,7 @@ public:
         return this->orthogonalize_hubbard_orbitals_;
     }
 
-    const bool& normalize_hubbard_orbitals_only() const
+    const bool& normalize_hubbard_orbitals() const
     {
         return this->normalize_orbitals_only_;
     }
@@ -178,8 +178,8 @@ public:
     {
         if (!ctx_.hubbard_correction())
             return;
-        this->orthogonalize_hubbard_orbitals_ = ctx_.Hubbard().hubbard_orthogonalization_;
-        this->normalize_orbitals_only_        = ctx_.Hubbard().hubbard_normalization_;
+        this->orthogonalize_hubbard_orbitals_ = ctx_.Hubbard().orthogonalize_hubbard_orbitals_;
+        this->normalize_orbitals_only_        = ctx_.Hubbard().normalize_hubbard_orbitals_;
         this->projection_method_ = ctx_.Hubbard().projection_method_;
 
         // if the projectors are defined externaly then we need the file
@@ -263,35 +263,33 @@ public:
                 // hubbard l, with strickly positive occupation
 
                 for (int wfc = 0; wfc < atom.type().num_ps_atomic_wf(); wfc++) {
-                    int l      = atom.type().ps_atomic_wf(wfc).first;
-                    double occ = atom.type().ps_atomic_wf_occ()[wfc];
+                    const int l      = std::abs(atom.type().ps_atomic_wf(wfc).first);
+                    const double occ = atom.type().ps_atomic_wf_occ()[wfc];
                     if ((occ >= 0.0) && (l == atom.type().hubbard_l())) {
                         // a wave function is hubbard if and only if the occupation
                         // number is positive and l corresponds to hubbard_lmax;
                         bool hubbard_wfc = (occ > 0);
-                        if (ctx_.num_mag_dims() == 3) {
-                            // non colinear case or s.o.
+                        if (hubbard_wfc && (offset[ia] < 0)) {
+                            offset[ia] = counter;
+                        }
 
-                            // note that for s.o. we should actually compute things
-                            // differently since we have j=l+-1/2 (2l or 2l + 2).
-
-                            // problem though right now the computation do not care
-                            // that much about j = l +- 1/2 since the orbitals used to
-                            // compute the projections are averaged. That's why there
-                            // is no switch for spin orbit
-
-                            if (hubbard_wfc && (offset[ia] < 0)) {
-                                offset[ia] = counter;
-                            }
-
-                            if (hubbard_wfc) {
-                                counter += (2 * l + 1);
-                            }
+                        // the atom has spin orbit coupling so we have
+                        // two wave functions with same l but different
+                        // j
+                        if (atom.type().spin_orbit_coupling() && hubbard_wfc) {
+                            counter += (2 * l + 1);
                         } else {
-                            if (hubbard_wfc) {
-                                offset[ia] = counter;
-                                // colinear magnetism
-                                counter += 2 * l + 1;
+                            if (hubbard_wfc && (ctx_.num_mag_dims() == 3)) {
+                                // the pseudo potential does not include
+                                // spin orbit coupling but we do
+                                // calculation with non colinear
+                                // magnetism so we still have full
+                                // hubbard spinors
+                                counter += 2 * (2 * l + 1);
+                            }
+                            if (hubbard_wfc && (ctx_.num_mag_dims() != 3)) {
+                                // colinear or conventional LDA
+                                counter += (2 * l + 1);
                             }
                         }
                     }

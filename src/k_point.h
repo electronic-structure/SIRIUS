@@ -54,7 +54,7 @@ class K_point
 
         /// List of G-vectors with |G+k| < cutoff.
         std::unique_ptr<Gvec> gkvec_;
-        
+
         /// G-vector distribution for the FFT transformation.
         std::unique_ptr<Gvec_partition> gkvec_partition_;
 
@@ -66,10 +66,10 @@ class K_point
 
         /// First-variational eigen vectors, distributed in slabs.
         std::unique_ptr<Wave_functions> fv_eigen_vectors_slab_;
-        
+
         /// Lowest eigen-vectors of the LAPW overlap matrix with small aigen-values.
         std::unique_ptr<Wave_functions> singular_components_;
-        
+
         /// Second-variational eigen vectors.
         /** Second-variational eigen-vectors are stored as one or two \f$ N_{fv} \times N_{fv} \f$ matrices in
          *  case of non-magnetic or collinear magnetic case or as a single \f$ 2 N_{fv} \times 2 N_{fv} \f$
@@ -93,7 +93,7 @@ class K_point
 
         /// Band energies.
         std::vector<double> band_energies_;
- 
+
         /// LAPW matching coefficients for the row G+k vectors.
         /** Used to setup the distributed LAPW Hamiltonian and overlap matrices. */
         std::unique_ptr<Matching_coefficients> alm_coeffs_row_{nullptr};
@@ -171,7 +171,7 @@ class K_point
 
         /// Preconditioner matrix for Chebyshev solver.
         mdarray<double_complex, 3> p_mtrx_;
-        
+
         /// Communicator for parallelization inside k-point.
         /** This communicator is used to split G+k vectors and wave-functions. */
         Communicator const& comm_;
@@ -181,7 +181,7 @@ class K_point
 
         /// Communicator between(!!) columns.
         Communicator const& comm_col_;
-        
+
         /// Generate G+k and local orbital basis sets.
         inline void generate_gklo_basis();
 
@@ -385,6 +385,12 @@ class K_point
             assert(j__ >= 0 && j__ < static_cast<int>(band_occupancies_.size()));
             return band_occupancies_[j__];
         }
+
+        inline std::vector<double>& band_occupancy()
+        {
+            return band_occupancies_;
+        }
+
 
         inline double band_energy(int j__) const
         {

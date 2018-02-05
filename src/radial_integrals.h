@@ -112,6 +112,7 @@ class Radial_integrals_atomic_wf : public Radial_integrals_base<2>
             }
 
             /* create jl(qx) */
+
             #pragma omp parallel for
             for (int iq = 0; iq < nq(); iq++) {
                 jl(iq) = Spherical_Bessel_functions(atom_type.lmax_ps_atomic_wf(), atom_type.radial_grid(), grid_q_[iq]);
@@ -122,16 +123,15 @@ class Radial_integrals_atomic_wf : public Radial_integrals_base<2>
             //total_angular_momentum[iat].clear();
             //total_angular_momentum[iat].resize(nwf);
 
+
             /* loop over all pseudo wave-functions */
             for (int i = 0; i < nwf; i++) {
                 values_(i, iat) = Spline<double>(grid_q_);
-
                 auto& wf = atom_type.ps_atomic_wf(i);
+                const int l = std::abs(wf.first);
 
-                double norm = inner(wf.second, wf.second, 0);
+                const double norm = inner(wf.second, wf.second, 0);
 
-                int l = wf.first;
-                
                 #pragma omp parallel for
                 for (int iq = 0; iq < nq(); iq++) {
                     values_(i, iat)(iq) = sirius::inner(jl(iq)[l], wf.second, 1) / std::sqrt(norm);
@@ -330,7 +330,7 @@ class Radial_integrals_rho_core_pseudo : public Radial_integrals_base<1>
 
         for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
             auto& atom_type = unit_cell_.atom_type(iat);
-            
+
             if (atom_type.ps_core_charge_density().empty()) {
                 continue;
             }
@@ -417,7 +417,7 @@ class Radial_integrals_beta : public Radial_integrals_base<2>
         values_ = mdarray<Spline<double>, 2>(unit_cell_.max_mt_radial_basis_size(), unit_cell_.num_atom_types());
         generate();
     }
-    
+
     /// Get all values for a given atom type and q-point.
     inline mdarray<double, 1> values(int iat__, double q__) const
     {

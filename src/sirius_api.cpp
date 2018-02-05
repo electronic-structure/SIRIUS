@@ -394,7 +394,7 @@ void sirius_set_atom_type_radial_grid(ftn_char          label__,
  *  \param [in] J0_ : J0 for the simple hubbard treatment
  */
 void sirius_set_atom_type_hubbard(char const* label__,
-                                  int32_t const* hub_correction,
+                                  double const* U_,
                                   double const* J_,
                                   double const* theta_,
                                   double const* phi_,
@@ -403,17 +403,15 @@ void sirius_set_atom_type_hubbard(char const* label__,
                                   double const* J0_)
 {
     auto& type = sim_ctx->unit_cell().atom_type(std::string(label__));
-    if (*hub_correction > 0) {
-        type.set_hubbard_correction(true);
-        type.set_hubbard_alpha(*alpha_);
-        type.set_hubbard_beta(*alpha_);
-        type.set_hubbard_coefficients(J_);
-        type.set_starting_magnetization_theta(*theta_);
-        type.set_starting_magnetization_phi(*phi_);
-        type.set_hubbard_J0(*J0_);
-    }
-
-    type.set_hubbard_correction(false);
+    type.set_hubbard_U(*U_ * 0.5);
+    type.set_hubbard_J(J_[1] * 0.5);
+    type.set_hubbard_correction(true);
+    type.set_hubbard_alpha(*alpha_);
+    type.set_hubbard_beta(*alpha_);
+    type.set_hubbard_coefficients(J_);
+    type.set_starting_magnetization_theta(*theta_);
+    type.set_starting_magnetization_phi(*phi_);
+    type.set_hubbard_J0(*J0_);
 }
 
 void sirius_set_free_atom_density(char const* label__,
@@ -812,12 +810,15 @@ void sirius_set_band_occupancies(ftn_int*    kset_id__,
     for (int i = 0; i < *num_bands__; i++) {
         (*kset_list[*kset_id__])[ik]->band_occupancy(i) = band_occupancies__[i];
     }
+    for (int i = *num_bands__; i < (*kset_list[*kset_id__])[ik]->band_occupancy().size(); i++) {
+        (*kset_list[*kset_id__])[ik]->band_occupancy(i) = 0.0;
+    }
 }
 
 void sirius_get_band_energies(ftn_int*    kset_id__,
                               ftn_int*    ik__,
                               ftn_double* band_energies__,
-                              ftn_int*    num_bands__) 
+                              ftn_int*    num_bands__)
 {
     int ik = *ik__ - 1;
     for (int i = 0; i < *num_bands__; i++) {
@@ -2102,7 +2103,7 @@ void sirius_set_atom_type_dion(ftn_char    label__,
     type.d_mtrx_ion(dion);
 }
 
-/// Add beta-radial functions 
+/// Add beta-radial functions
 /* This function must be called prior to sirius_set_atom_type_q_rf */
 void sirius_add_atom_type_beta_radial_function(ftn_char    label__,
                                                ftn_int*    l__,
@@ -2116,10 +2117,11 @@ void sirius_add_atom_type_beta_radial_function(ftn_char    label__,
 void sirius_add_atom_type_ps_atomic_wf(ftn_char    label__,
                                        ftn_int*    l__,
                                        ftn_double* chi__,
+                                       ftn_double* occ__,
                                        ftn_int*    num_points__)
 {
     auto& type = sim_ctx->unit_cell().atom_type(std::string(label__));
-    type.add_ps_atomic_wf(*l__, std::vector<double>(chi__, chi__ + *num_points__));
+    type.add_ps_atomic_wf(*l__, std::vector<double>(chi__, chi__ + *num_points__), *occ__);
 }
 
 void sirius_add_atom_type_q_radial_function(ftn_char    label__,
@@ -2130,7 +2132,7 @@ void sirius_add_atom_type_q_radial_function(ftn_char    label__,
                                             ftn_int*    num_points__)
 {
     auto& type = sim_ctx->unit_cell().atom_type(std::string(label__));
-    
+
     type.add_q_radial_function(*idxrf1__, *idxrf2__, *l__, std::vector<double>(q_rf__, q_rf__ + (*num_points__)));
 }
 
@@ -3258,23 +3260,66 @@ void sirius_set_esm(ftn_bool* enable_esm__, ftn_char esm_bc__)
     sim_ctx->parameters_input().esm_bc_ = std::string(esm_bc__);
 }
 
-} // extern "C"
-
-void sirius_set_hubbard_correction(int32_t *hubbard_correction_)
-{
-    if (*hubbard_correction_ != 0) {
+    void sirius_set_hubbard_correction()
+    {
         sim_ctx->set_hubbard_correction(true);
-    } else {
-        sim_ctx->set_hubbard_correction(false);
     }
+
+    void sirius_set_hubbard_occupancies(ftn_double *occ, ftn_int *ld)
+    {
+        hamiltonian->U().set_hubbard_occupancies_matrix(occ, *ld);
+    }
+
+    void sirius_get_hubbard_occupancies(ftn_double *occ, ftn_int *ld)
+    {
+        hamiltonian->U().get_hubbard_occupancies_matrix(occ, *ld);
+    }
+
+
+    void sirius_set_hubbard_occupancies_nc(ftn_double_complex *occ, ftn_int *ld)
+    {
+        hamiltonian->U().set_hubbard_occupancies_matrix_nc(occ, *ld);
+    }
+
+    void sirius_get_hubbard_occupancies_nc(ftn_double_complex *occ, ftn_int *ld)
+    {
+        hamiltonian->U().get_hubbard_occupancies_matrix_nc(occ, *ld);
+    }
+
+
+    void sirius_set_hubbard_potential(ftn_double *occ, ftn_int *ld)
+    {
+        hamiltonian->U().set_hubbard_potential(occ, *ld);
+    }
+
+    void sirius_set_hubbard_potential_nc(ftn_double_complex *occ, ftn_int *ld)
+    {
+        hamiltonian->U().set_hubbard_potential_nc(occ, *ld);
+    }
+
+    void sirius_calculate_hubbard_occupancies()
+    {
+        hamiltonian->U().hubbard_compute_occupation_numbers(*kset_list[0]);
+    }
+
+    void sirius_calculate_hubbard_potential()
+    {
+        hamiltonian->U().calculate_hubbard_potential_and_energy();
+    }
+
+    void sirius_set_orthogonalize_hubbard_orbitals()
+    {
+        sim_ctx->set_orthogonalize_hubbard_orbitals(true);
+    }
+
+    void sirius_set_normalize_hubbard_orbitals()
+    {
+        sim_ctx->set_normalize_hubbard_orbitals(true);
+    }
+
+void sirius_set_hubbard_simplified_method()
+{
+    sim_ctx->set_hubbard_simplified_version();
 }
 
-void sirius_set_hubbard_occupations(ftn_double_complex *occ, ftn_int *ld)
-{
-    hamiltonian->U().set_hubbard_occupation_matrix(occ, *ld);
-}
-
-void sirius_set_hubbard_potential(ftn_double_complex *occ, ftn_int *ld)
-{
-    hamiltonian->U().set_hubbard_potential(occ, *ld);
-}
+} // extern "C"

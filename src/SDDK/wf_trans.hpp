@@ -23,8 +23,8 @@ inline void transform(device_t                     pu__,
     assert(m__ != 0);
     assert(wf_in__.size() == wf_out__.size());
 
-    int nwf = static_cast<int>(wf_in__.size()); 
-    auto& comm = mtrx__.blacs_grid().comm();
+    int nwf = static_cast<int>(wf_in__.size());
+    auto& comm = mtrx__.comm();
 
     double ngop{0};
     if (std::is_same<T, double>::value) {
@@ -41,7 +41,7 @@ inline void transform(device_t                     pu__,
     int sddk_block_size = (sddk_bs_raw == NULL) ? sddk_default_block_size : std::atoi(sddk_bs_raw);
 
     T alpha = alpha__;
-    
+
     /* perform a local {d,z}gemm; in case of GPU transformation is done in the stream#0 (not in the null stream!) */
     auto local_transform = [&](T*              alpha,
                                Wave_functions* wf_in__,
@@ -61,10 +61,10 @@ inline void transform(device_t                     pu__,
         }
         for (int s = s0; s <= s1; s++) {
             /* input wave-functions may be scalar (this is the case of transformation of first-variational states
-               into spinor wave-functions or transforamtion of scalar auxiliary wave-functions into spin-dependent 
+               into spinor wave-functions or transforamtion of scalar auxiliary wave-functions into spin-dependent
                wave-fucntions; in this case we set spin index of input wave-function to 0 */
             int in_s = (wf_in__->num_sc() == 1) ? 0 : s;
-            
+
             if (pu__ == CPU) {
                 if (std::is_same<T, double_complex>::value) {
                     /* transform plane-wave part */
@@ -139,7 +139,7 @@ inline void transform(device_t                     pu__,
             #endif
         }
     };
-    
+
     sddk::timer t1("sddk::wave_functions::transform|init");
     /* initial values for the resulting wave-functions */
     for (int iv = 0; iv < nwf; iv++) {
@@ -150,14 +150,14 @@ inline void transform(device_t                     pu__,
         }
     }
     t1.stop();
-    
+
     if (sddk_pp) {
         comm.barrier();
     }
     double time = -omp_get_wtime();
-    
+
     /* trivial case */
-    if (mtrx__.blacs_grid().comm().size() == 1) {
+    if (comm.size() == 1) {
         #ifdef __GPU
         if (pu__ == GPU) {
             acc::copyin(mtrx__.template at<GPU>(irow0__, jcol0__), mtrx__.ld(),
@@ -175,7 +175,7 @@ inline void transform(device_t                     pu__,
                 break;
             }
         }
-                
+
         for (int iv = 0; iv < nwf; iv++) {
             local_transform(&alpha, wf_in__[iv], i0__, m__, ptr, mtrx__.ld(), wf_out__[iv], j0__, n__, 0);
         }
@@ -219,7 +219,7 @@ inline void transform(device_t                     pu__,
     block_data_descriptor sd(comm.size());
 
     double time_mpi{0};
-    
+
     for (int ibr = 0; ibr < nbr; ibr++) {
         /* global index of row */
         int i0 = ibr * BS;
@@ -241,7 +241,7 @@ inline void transform(device_t                     pu__,
             int ncol = std::min(n__, (ibc + 1) * BS) - j0;
 
             assert(ncol != 0);
-            
+
             splindex<block_cyclic> spl_col_begin(jcol0__ + j0,        mtrx__.num_ranks_col(), mtrx__.rank_col(), mtrx__.bs_col());
             splindex<block_cyclic>   spl_col_end(jcol0__ + j0 + ncol, mtrx__.num_ranks_col(), mtrx__.rank_col(), mtrx__.bs_col());
 
@@ -278,7 +278,7 @@ inline void transform(device_t                     pu__,
                 acc::sync_stream(s % num_streams);
             }
             #endif
-            
+
             /* unpack data */
             std::vector<int> counts(comm.size(), 0);
             for (int jcol = 0; jcol < ncol; jcol++) {
@@ -319,7 +319,7 @@ inline void transform(device_t                     pu__,
         } /* loop over ibc */
         #ifdef __GPU
         if (pu__ == GPU) {
-            /* wait for the full block of columns (update of different wave-functions); 
+            /* wait for the full block of columns (update of different wave-functions);
              * otherwise cuda streams can start updating the same block of output wave-functions */
             for (int s = 0; s < num_streams; s++) {
                 acc::sync_stream(s);
@@ -413,7 +413,7 @@ inline void transform(device_t        pu__,
 //== {
 //==     transform<T>(pu__, alpha__, {&wf_in__}, i0__, m__, mtrx__, irow0__, jcol0__, beta__, {&wf_out__}, j0__, n__);
 //== }
-//== 
+//==
 //== template <typename T>
 //== inline void transform(device_t        pu__,
 //==                       wave_functions& wf_in__,
@@ -428,7 +428,7 @@ inline void transform(device_t        pu__,
 //== {
 //==     transform<T>(pu__, 1.0, {&wf_in__}, i0__, m__, mtrx__, irow0__, jcol0__, 0.0, {&wf_out__}, j0__, n__);
 //== }
-//== 
+//==
 //== template <typename T>
 //== inline void transform(device_t                     pu__,
 //==                       double                       alpha__,

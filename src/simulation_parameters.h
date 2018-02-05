@@ -138,6 +138,22 @@ class Simulation_parameters
     inline void set_hubbard_correction(bool hubbard_correction__)
     {
         parameters_input_.hubbard_correction_ = hubbard_correction__;
+        hubbard_input_.simplified_hubbard_correction_ = false;
+    }
+
+    inline void set_hubbard_simplified_version()
+    {
+        hubbard_input_.simplified_hubbard_correction_ = true;
+    }
+
+    inline void set_orthogonalize_hubbard_orbitals(const bool test)
+    {
+        hubbard_input_.orthogonalize_hubbard_orbitals_ = true;
+    }
+
+    inline void set_normalize_hubbard_orbitals(const bool test)
+    {
+        hubbard_input_.normalize_hubbard_orbitals_ = true;
     }
 
     inline void set_gamma_point(bool gamma_point__)

@@ -91,7 +91,7 @@ class Atom_type
     int max_aw_order_{0};
 
     int offset_lo_{-1}; // TODO: better name
-    
+
     /// Index of radial basis functions.
     radial_functions_index indexr_;
 
@@ -100,7 +100,7 @@ class Atom_type
 
     /// Radial functions of beta-projectors.
     std::vector<std::pair<int, Spline<double>>> beta_radial_functions_;
-    
+
     /// Radial functions of the Q-operator.
     /** The dimension of this array is fully determined by the number and lmax of beta-projectors.
         Beta-projectors must be loaded before loading the Q radial functions. */
@@ -115,10 +115,10 @@ class Atom_type
 
     /// True if the pseudopotential is soft and charge augmentation is required.
     bool augment_{false};
-    
+
     /// Local part of pseudopotential.
     std::vector<double> local_potential_;
-   
+
     /// Pseudo-core charge density (used by PP-PW method in non-linear core correction).
     std::vector<double> ps_core_charge_density_;
 
@@ -133,7 +133,7 @@ class Atom_type
 
     /// Core energy of PAW.
     bool paw_core_energy_{0};
-    
+
     /// All electron wave functions of the PAW method.
     /** The number of wave functions is equal to the number of beta-projectors. */
     mdarray<double, 2> paw_ae_wfs_;
@@ -141,14 +141,14 @@ class Atom_type
     /// Pseudo wave functions of the PAW method.
     /** The number of wave functions is equal to the number of beta-projectors. */
     mdarray<double, 2> paw_ps_wfs_;
-    
+
     /// Occupations of PAW wave-functions.
     /** Length of vector is the same as the number of beta projectors, paw_ae_wfs and paw_ps_wfs */
     std::vector<double> paw_wf_occ_;
-    
+
     /// Core electron contribution to all electron charge density in PAW method.
     std::vector<double> paw_ae_core_charge_density_;
-    
+
     /// True if the pseudo potential includes spin orbit coupling.
     bool spin_orbit_coupling_{false};
 
@@ -179,6 +179,8 @@ class Atom_type
     ///   hubbard_coefficients[4] = U_alpha
     ///   hubbard_coefficients[5] = U_beta
 
+    double hubbard_J_{0.0};
+    double hubbard_U_{0.0};
     double hubbard_coefficients_[4];
 
     mdarray<double, 4> hubbard_matrix_;
@@ -195,7 +197,7 @@ class Atom_type
     /// f_coefficients defined in Ref. PRB 71 115106 Eq.9 only
     /// valid when SO interactions are on
     mdarray<double_complex, 4> f_coefficients_;
-    
+
     /// List of atom indices (global) for a given type.
     std::vector<int> atom_id_;
 
@@ -390,6 +392,13 @@ class Atom_type
         ps_atomic_wfs_.push_back(std::move(std::make_pair(l__, std::move(s))));
     }
 
+    inline void add_ps_atomic_wf(int l__, std::vector<double> f__, double occ_)
+    {
+        Spline<double> s(radial_grid_, f__);
+        ps_atomic_wfs_.push_back(std::move(std::make_pair(l__, std::move(s))));
+        ps_atomic_wf_occ_.push_back(occ_);
+    }
+
     std::pair<int, Spline<double>> const& ps_atomic_wf(int idx__) const
     {
         return ps_atomic_wfs_[idx__];
@@ -399,7 +408,7 @@ class Atom_type
     {
         int lmax{-1};
         for (auto& e: ps_atomic_wfs_) {
-            lmax = std::max(lmax, e.first);
+            lmax = std::max(lmax, std::abs(e.first));
         }
         return lmax;
     }
@@ -416,6 +425,7 @@ class Atom_type
 
     inline std::vector<double>& ps_atomic_wf_occ(std::vector<double> inp__)
     {
+        ps_atomic_wf_occ_.clear();
         ps_atomic_wf_occ_ = inp__;
         return ps_atomic_wf_occ_;
     }
@@ -440,12 +450,15 @@ class Atom_type
     inline int lmax_beta() const
     {
         int lmax{-1};
+
+        // need to take |l| since the total angular momentum is encoded
+        // in the sign of l
         for (auto& e: beta_radial_functions_) {
-            lmax = std::max(lmax, e.first);
+            lmax = std::max(lmax, std::abs(e.first));
         }
         return lmax;
     }
-    
+
     /// Number of beta-radial functions.
     inline int num_beta_radial_functions() const
     {
@@ -481,7 +494,7 @@ class Atom_type
 
            i, j are the indices of radial beta-functions
          */
-        
+
         /* combined index */
         if (idxrf1__ > idxrf2__) {
             std::swap(idxrf1__, idxrf2__);
@@ -605,18 +618,18 @@ class Atom_type
     {
         return mass_;
     }
-    
+
     /// Return muffin-tin radius.
     /** This is the last point of the radial grid. */
     inline double mt_radius() const
     {
         return radial_grid_.last();
     }
-    
+
     /// Return number of muffin-tin radial grid points.
     inline int num_mt_points() const
     {
-        assert(radial_grid_.num_points_ > 0);
+        assert(radial_grid_.num_points() > 0);
         return radial_grid_.num_points();
     }
 
@@ -759,7 +772,7 @@ class Atom_type
     {
         return indexb_.size();
     }
-    
+
     /// Total number of radial basis functions.
     inline int mt_radial_basis_size() const
     {
@@ -946,12 +959,22 @@ class Atom_type
 
     inline double Hubbard_U() const
     {
-        return hubbard_coefficients_[0];
+        return hubbard_U_;
     }
 
     inline double Hubbard_J() const
     {
-        return hubbard_coefficients_[1];
+        return hubbard_J_;
+    }
+
+    inline void set_hubbard_U(double U__)
+    {
+        hubbard_U_ = U__;
+    }
+
+    inline void set_hubbard_J(double J__)
+    {
+        hubbard_J_ = J__;
     }
 
     inline double Hubbard_U_minus_J() const
@@ -1065,6 +1088,8 @@ class Atom_type
         F[0] = Hubbard_U();
 
         switch(hubbard_l_) {
+        case 0:
+            F[1] = Hubbard_J();
         case 1:
             F[1] = 5.0 * Hubbard_J();
             break;
@@ -1078,16 +1103,10 @@ class Atom_type
             F[3] = (7361.640 / 594.0) * Hubbard_J() + (36808.20 / 66.0) * Hubbard_E2()  - 111.54 * Hubbard_E3();
             break;
         default:
-            printf("%d\n", hubbard_l_);
+            printf("Hubbard lmax %d\n", hubbard_l_);
             TERMINATE("Hubbard correction not implemented for l > 3");
             break;
         }
-
-        printf("U = %.5lf\n", Hubbard_U());
-        printf("F[0] = %.5lf\n", F[0]);
-        printf("F[1] = %.5lf\n", F[1]);
-        printf("F[2] = %.5lf\n", F[2]);
-        printf("F[3] = %.5lf\n", F[3]);
     }
 
     /// compare the angular, total angular momentum and radial part of
@@ -1172,13 +1191,14 @@ class Atom_type
         nl_orb.push_back(std::make_pair("Hg", 5));
 
         nl_orb.push_back(std::make_pair("H", 1));
+        nl_orb.push_back(std::make_pair("He", 1));
 
         nl_orb.push_back(std::make_pair("C", 2));
         nl_orb.push_back(std::make_pair("N", 2));
         nl_orb.push_back(std::make_pair("O", 2));
 
         for(size_t i = 0; i < nl_orb.size(); i++) {
-            if(nl_orb[i].first == symbol_) {
+            if(nl_orb[i].first == label_) {
                 hubbard_n_ = nl_orb[i].second;
                 break;
             }
@@ -1254,21 +1274,24 @@ class Atom_type
 
         // s orbitals
         nl_orb.push_back(std::make_pair("H", 0));
+        nl_orb.push_back(std::make_pair("He", 0));
 
         // p orbitals
         nl_orb.push_back(std::make_pair("C", 1));
         nl_orb.push_back(std::make_pair("N", 1));
         nl_orb.push_back(std::make_pair("O", 1));
 
+
         for(size_t i = 0; i < nl_orb.size(); i++) {
-            if(nl_orb[i].first == symbol_) {
+            if(nl_orb[i].first == label_) {
                 hubbard_l_ = nl_orb[i].second;
                 break;
             }
         }
 
         if (hubbard_l_ < 0) {
-            TERMINATE("The atom %s is not included in the list of atoms with hubbard correction\n");
+            printf("Atom %s\n", symbol_.c_str());
+            TERMINATE("The atom is not included in the list of atoms with hubbard correction\n");
         }
 
     }
@@ -1288,6 +1311,8 @@ class Atom_type
 
         std::vector<std::pair<std::string, double>> occ;
         occ.clear();
+
+        occ.push_back(std::make_pair("He", 2.0));
 
         // transition metals
         occ.push_back(std::make_pair("Ti", 2.0));
@@ -1353,7 +1378,7 @@ class Atom_type
         occ.push_back(std::make_pair("In", 10.0));
 
         for(size_t i = 0; i < occ.size(); i++) {
-            if (occ[i].first == symbol_) {
+            if (occ[i].first == label_) {
                 hubbard_occupancy_orbital_  = occ[i].second;
                 occ.clear();
                 break;
@@ -1450,13 +1475,21 @@ inline void Atom_type::init(int offset_lo__)
             TERMINATE("maximum aw order > 3");
         }
     }
-    
+
     if (!parameters_.full_potential()) {
         /* add beta projectors to a list of atom's local orbitals */
         for (auto& e: beta_radial_functions_) {
             /* think of |beta> functions as of local orbitals */
             local_orbital_descriptor lod;
-            lod.l = e.first;
+            lod.l = std::abs(e.first);
+
+            // for spin orbit coupling. We can always do that there is
+            // no insidence on the reset when calculations exclude SO
+            if (e.first < 0) {
+                lod.total_angular_momentum = lod.l - 0.5;
+            } else {
+                lod.total_angular_momentum = lod.l + 0.5;
+            }
             lo_descriptors_.push_back(lod);
         }
     }
@@ -1824,6 +1857,15 @@ inline void Atom_type::read_pseudo_uspp(json const& parser)
             TERMINATE(s);
         }
         int l = parser["pseudo_potential"]["beta_projectors"][i]["angular_momentum"];
+        if (spin_orbit_coupling_) {
+            // we encode the fact that the total angular momentum j = l
+            // -1/2 or l + 1/2 by changing the sign of l
+
+            double j = parser["pseudo_potential"]["beta_projectors"][i]["total_angular_momentum"];
+            if (j < (double)l) {
+                l *= -1;
+            }
+        }
         add_beta_radial_function(l, beta);
     }
 
@@ -1900,7 +1942,6 @@ inline void Atom_type::read_pseudo_paw(json const& parser)
 
     /* setups for reading AE and PS basis wave functions */
     int num_wfc = num_beta_radial_functions();
-    
     paw_ae_wfs_ = mdarray<double, 2>(num_mt_points(), num_wfc);
     paw_ae_wfs_.zero();
 
@@ -1976,16 +2017,6 @@ inline void Atom_type::read_input(const std::string& fname)
     // different constants
 
     read_hubbard_input();
-
-    if(parameters_.hubbard_correction()) {
-        hubbard_correction_ = true;
-        printf("Hubbard correction is included in the calculations");
-        printf("\n");
-        printf("Angular momentum : %d\n", hubbard_l());
-        printf("principal quantum number : %d\n", hubbard_n());
-        printf("Occupancy : %f\n", hubbard_occupancy_orbital_);
-    }
-
 }
 
 inline double Atom_type::ClebschGordan(const int l, const double j, const double mj, const int spin)
@@ -2181,37 +2212,34 @@ void Atom_type::calculate_ak_coefficients(mdarray<double, 5> &ak)
 
 void Atom_type::compute_hubbard_matrix()
 {
-  this->hubbard_matrix_ = mdarray<double, 4>(2 * this->hubbard_l_ + 1,
-                                             2 * this->hubbard_l_ + 1,
-                                             2 * this->hubbard_l_ + 1,
-                                             2 * this->hubbard_l_ + 1);
-  mdarray<double, 5> ak(this->hubbard_l_,
-                        2 * this->hubbard_l_ + 1,
-                        2 * this->hubbard_l_ + 1,
-                        2 * this->hubbard_l_ + 1,
-                        2 * this->hubbard_l_ + 1);
-  std::vector<double> F(4);
-  hubbard_F_coefficients(&F[0]);
-  calculate_ak_coefficients(ak);
+    this->hubbard_matrix_ = mdarray<double, 4>(2 * this->hubbard_l_ + 1,
+                                               2 * this->hubbard_l_ + 1,
+                                               2 * this->hubbard_l_ + 1,
+                                               2 * this->hubbard_l_ + 1);
+    mdarray<double, 5> ak(this->hubbard_l_,
+                          2 * this->hubbard_l_ + 1,
+                          2 * this->hubbard_l_ + 1,
+                          2 * this->hubbard_l_ + 1,
+                          2 * this->hubbard_l_ + 1);
+    std::vector<double> F(4);
+    hubbard_F_coefficients(&F[0]);
+    calculate_ak_coefficients(ak);
 
 
-  // the indices are rotated around
+    // the indices are rotated around
 
-  // <m, m |vee| m'', m'''> = hubbard_matrix(m, m'', m', m''')
-  this->hubbard_matrix_.zero();
-  for(int m1 = 0; m1 < 2 * this->hubbard_l_ + 1; m1++) {
-    for(int m2 = 0; m2 < 2 * this->hubbard_l_ + 1; m2++) {
-      for(int m3 = 0; m3 < 2 * this->hubbard_l_ + 1; m3++) {
-        for(int m4 = 0; m4 < 2 * this->hubbard_l_ + 1; m4++) {
-          for(int k = 0; k < hubbard_l_; k++)
-            this->hubbard_matrix(m1, m3, m2, m4) += ak (k, m1, m2, m3, m4) * F[k];
+    // <m, m |vee| m'', m'''> = hubbard_matrix(m, m'', m', m''')
+    this->hubbard_matrix_.zero();
+    for(int m1 = 0; m1 < 2 * this->hubbard_l_ + 1; m1++) {
+        for(int m2 = 0; m2 < 2 * this->hubbard_l_ + 1; m2++) {
+            for(int m3 = 0; m3 < 2 * this->hubbard_l_ + 1; m3++) {
+                for(int m4 = 0; m4 < 2 * this->hubbard_l_ + 1; m4++) {
+                    for(int k = 0; k < hubbard_l_; k++)
+                        this->hubbard_matrix(m1, m2, m3, m4) += ak (k, m1, m3, m2, m4) * F[k];
+                }
+            }
         }
-      }
     }
-  }
-
-  set_hubbard_l_and_n_orbital();
-  set_occupancy_hubbard_orbital(-1.0);
 }
 
 void Atom_type::read_hubbard_input()
@@ -2222,6 +2250,8 @@ void Atom_type::read_hubbard_input()
 
     for(auto &d: parameters_.Hubbard().species) {
         if (d.first == symbol_) {
+            hubbard_U_ = d.second[0];
+            hubbard_J_ = d.second[1];
             hubbard_coefficients_[0] = d.second[0];
             hubbard_coefficients_[1] = d.second[1];
             hubbard_coefficients_[2] = d.second[2];
