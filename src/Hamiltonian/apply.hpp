@@ -127,7 +127,7 @@ void Hamiltonian::apply_h_s(K_point* kp__,
                 std::stringstream s;
                 s << "phi_" << ispn;
                 print_checksum(s.str(), cs1);
-                s = std::stringstream();
+                s.str("");
                 s << "hphi_" << ispn;
                 print_checksum(s.str(), cs2);
             }
@@ -191,7 +191,7 @@ void Hamiltonian::apply_h_s(K_point* kp__,
                 std::stringstream s;
                 s << "hphi_" << ispn;
                 print_checksum(s.str(), cs1);
-                s = std::stringstream();
+                s.str("");
                 s << "sphi_" << ispn;
                 print_checksum(s.str(), cs2);
             }

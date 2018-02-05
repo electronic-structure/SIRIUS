@@ -406,10 +406,10 @@ inline int Band::residuals(K_point*             kp__,
                 std::stringstream s;
                 s << "res_" << ispn;
                 print_checksum(s.str(), cs);
-                s = std::stringstream();
+                s.str("");
                 s << "hpsi_" << ispn;
                 print_checksum(s.str(), cs1);
-                s = std::stringstream();
+                s.str("");
                 s << "opsi_" << ispn;
                 print_checksum(s.str(), cs2);
             }
