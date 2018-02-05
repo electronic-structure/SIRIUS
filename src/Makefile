@@ -1,6 +1,8 @@
 include ../make.inc
 
-.SUFFIXES: .cpp .cu .f90
+.SUFFIXES: .cpp .cu .f90 .mod
+
+%.o : %.mod
 
 SRC = sirius_api.cpp
 
@@ -43,6 +45,8 @@ OBJ_DBG = $(OBJ:%.o=%.o)
 all: log $(OBJ) sirius.o
 	ar -r libsirius.a $(OBJ)
 	ar -r libsirius_f.a $(OBJ) sirius.o
+
+sirius.o: sirius.f90
 
 debug: CXX_OPT=$(CXX_OPT_DBG)
 debug: $(OBJ_DBG) sirius_api.o sirius.o
