@@ -629,8 +629,6 @@ void generate_atom_file(Free_atom& a,
         x.push_back(rg[ir]);
         veff.push_back(a.free_atom_potential(rg[ir]) - a.zn() * rg.x_inv(ir));
     }
-    a.set_mt_radius(2.0);
-    a.set_num_mt_points(1500);
     a.set_radial_grid(1500, &x[0]);
     
     printf("=== initializing atom ===\n");
