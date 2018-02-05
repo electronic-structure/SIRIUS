@@ -105,13 +105,18 @@ class Radial_integrals_atomic_wf : public Radial_integrals_base<2>
         for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
 
             auto& atom_type = unit_cell_.atom_type(iat);
+
+            int nwf = atom_type.num_ps_atomic_wf();
+            if (!nwf) {
+                continue;
+            }
+
             /* create jl(qx) */
             #pragma omp parallel for
             for (int iq = 0; iq < nq(); iq++) {
-                jl(iq) = Spherical_Bessel_functions(atom_type.indexr().lmax(), atom_type.radial_grid(), grid_q_[iq]);
+                jl(iq) = Spherical_Bessel_functions(atom_type.lmax_ps_atomic_wf(), atom_type.radial_grid(), grid_q_[iq]);
             }
 
-            int nwf = atom_type.num_ps_atomic_wf();
             //angular_momentum[iat].clear();
             //angular_momentum[iat].resize(nwf);
             //total_angular_momentum[iat].clear();
@@ -285,7 +290,12 @@ class Radial_integrals_rho_pseudo : public Radial_integrals_base<1>
 
         for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
             auto& atom_type = unit_cell_.atom_type(iat);
-            values_(iat)    = Spline<double>(grid_q_);
+
+            if (atom_type.ps_total_charge_density().empty()) {
+                continue;
+            }
+
+            values_(iat) = Spline<double>(grid_q_);
 
             Spline<double> rho(atom_type.radial_grid(), atom_type.ps_total_charge_density());
 
@@ -320,7 +330,12 @@ class Radial_integrals_rho_core_pseudo : public Radial_integrals_base<1>
 
         for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
             auto& atom_type = unit_cell_.atom_type(iat);
-            values_(iat)    = Spline<double>(grid_q_);
+            
+            if (atom_type.ps_core_charge_density().empty()) {
+                continue;
+            }
+
+            values_(iat) = Spline<double>(grid_q_);
 
             Spline<double> ps_core(atom_type.radial_grid(), atom_type.ps_core_charge_density());
 
@@ -360,7 +375,11 @@ class Radial_integrals_beta : public Radial_integrals_base<2>
 
         for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
             auto& atom_type = unit_cell_.atom_type(iat);
-            int nrb         = atom_type.mt_radial_basis_size();
+            int nrb = atom_type.num_beta_radial_functions();
+
+            if (!nrb) {
+                continue;
+            }
 
             for (int idxrf = 0; idxrf < nrb; idxrf++) {
                 values_(idxrf, iat) = Spline<double>(grid_q_);
@@ -423,7 +442,11 @@ class Radial_integrals_beta_jl : public Radial_integrals_base<3>
 
         for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
             auto& atom_type = unit_cell_.atom_type(iat);
-            int nrb         = atom_type.mt_radial_basis_size();
+            int nrb = atom_type.num_beta_radial_functions();
+
+            if (!nrb) {
+                continue;
+            }
 
             for (int idxrf = 0; idxrf < nrb; idxrf++) {
                 for (int l = 0; l <= lmax_; l++) {
@@ -517,7 +540,12 @@ class Radial_integrals_vloc : public Radial_integrals_base<1>
 
         for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
             auto& atom_type = unit_cell_.atom_type(iat);
-            values_(iat)    = Spline<double>(grid_q_);
+
+            if (atom_type.local_potential().empty()) {
+                continue;
+            }
+
+            values_(iat) = Spline<double>(grid_q_);
 
             auto& vloc = atom_type.local_potential();
 

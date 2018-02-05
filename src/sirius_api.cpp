@@ -84,19 +84,24 @@ void sirius_clear(void)
     kset_list.clear();
 }
 
+/// Finalize the usage of the library.
 void sirius_finalize(ftn_bool* call_mpi_fin__)
 {
     sirius::finalize(*call_mpi_fin__);
 }
 
-void sirius_create_simulation_context(const char* config_file_name__)
+/// Create context of the simulation.
+void sirius_create_simulation_context(ftn_char config_file_name__, // TODO: pass a communicator
+                                      ftn_char method_type__)
 {
     std::string config_file_name(config_file_name__);
+    std::string method_type(method_type__);
     if (config_file_name.length() == 0) {
         sim_ctx = std::unique_ptr<sirius::Simulation_context>(new sirius::Simulation_context(mpi_comm_world()));
     } else {
         sim_ctx = std::unique_ptr<sirius::Simulation_context>(new sirius::Simulation_context(config_file_name, mpi_comm_world()));
     }
+    sim_ctx->set_esm_type(method_type);
 }
 
 /// Initialize the global variables.
@@ -108,6 +113,7 @@ void sirius_initialize_simulation_context()
     sim_ctx->initialize();
 }
 
+/// Delete simulation context.
 void sirius_delete_simulation_context()
 {
     sim_ctx = nullptr;
@@ -310,6 +316,10 @@ void sirius_set_auto_rmt(int32_t* auto_rmt__)
 /// Add atom type to the unit cell.
 /** \param [in] label unique label of atom type
  *  \param [in] fname name of .json atomic file
+ *  \param [in] symbol symbol of the element
+ *  \param [in] zn positive integer charge
+ *  \param [in] mass atomic mass
+ *  \param [in] spin_orbit true if this pseudopotential is generated for the spin-orbit correction
  *
  *  Atom type (species in the terminology of Exciting/Elk) is a class which holds information
  *  common to the atoms of the same element: charge, number of core and valence electrons, muffin-tin
@@ -326,45 +336,30 @@ void sirius_set_auto_rmt(int32_t* auto_rmt__)
     enddo
     \endcode
  */
-void sirius_add_atom_type(ftn_char label__,
-                          ftn_char fname__)
+void sirius_add_atom_type(ftn_char    label__,
+                          ftn_char    fname__,
+                          ftn_char    symbol__,
+                          ftn_int*    zn__,
+                          ftn_double* mass__,
+                          ftn_bool*   spin_orbit__)
 {
+    std::string label = std::string(label__);
     std::string fname = (fname__ == NULL) ? std::string("") : std::string(fname__);
-    sim_ctx->unit_cell().add_atom_type(std::string(label__), fname);
-}
+    sim_ctx->unit_cell().add_atom_type(label, fname);
 
-/// Set basic properties of the atom type.
-/** \param [in] label unique label of the atom type
- *  \param [in] symbol symbol of the element
- *  \param [in] zn positive integer charge
- *  \param [in] mass atomic mass
- *  \param [in] mt_radius muffin-tin radius
- *  \param [in] num_mt_points number of muffin-tin points
- *  \param [in] radial_grid_origin origin of radial grid
- *  \param [in] radial_grid_infinity effective infinity
- *
- *  Example:
-    \code{.F90}
-    do is=1,nspecies
-      call sirius_set_atom_type_properties(trim(spfname(is)), trim(spsymb(is)),  &
-                                          &nint(-spzn(is)), spmass(is), rmt(is), &
-                                          &nrmt(is), sprmin(is), sprmax(is))
-    enddo
-    \endcode
- */
-void sirius_set_atom_type_properties(ftn_char label__,
-                                     ftn_char symbol__,
-                                     int32_t* zn__,
-                                     double* mass__,
-                                     double* mt_radius__,
-                                     int32_t* num_mt_points__)
-{
-    auto& type = sim_ctx->unit_cell().atom_type(std::string(label__));
-    type.set_symbol(std::string(symbol__));
-    type.set_zn(*zn__);
-    type.set_mass(*mass__);
-    type.set_num_mt_points(*num_mt_points__);
-    type.set_mt_radius(*mt_radius__);
+    auto& type = sim_ctx->unit_cell().atom_type(label);
+    if (symbol__ != NULL) {
+        type.set_symbol(std::string(symbol__));
+    }
+    if (zn__ != NULL) {
+        type.set_zn(*zn__);
+    }
+    if (mass__ != NULL) {
+        type.set_mass(*mass__);
+    }
+    if (spin_orbit__ != NULL) {
+        type.spin_orbit_coupling(*spin_orbit__);
+    }
 }
 
 /// Set the radial grid of atom type.
@@ -379,13 +374,13 @@ void sirius_set_atom_type_properties(ftn_char label__,
     enddo
     \endcode
  */
-void sirius_set_atom_type_radial_grid(char const* label__,
-                                      int32_t const* num_radial_points__,
-                                      double const* radial_points__)
+void sirius_set_atom_type_radial_grid(ftn_char          label__,
+                                      ftn_int    const* num_radial_points__,
+                                      ftn_double const* radial_points__)
 {
     auto& type = sim_ctx->unit_cell().atom_type(std::string(label__));
-    type.set_radial_grid(type.num_mt_points(), radial_points__);
-    type.set_free_atom_radial_grid(*num_radial_points__, radial_points__);
+    type.set_radial_grid(*num_radial_points__, radial_points__);
+    //type.set_free_atom_radial_grid(*num_radial_points__, radial_points__);
 }
 
 /// set the hubbard correction for the atomic type.
@@ -526,12 +521,6 @@ void sirius_add_xc_functional(char const* name__)
 {
     assert(name__ != NULL);
     sim_ctx->add_xc_functional(name__);
-}
-
-void sirius_set_esm_type(char const* name__)
-{
-    assert(name__ != NULL);
-    sim_ctx->set_esm_type(name__);
 }
 
 void sirius_set_gamma_point(ftn_bool* gamma_point__)
@@ -2103,65 +2092,78 @@ void sirius_mix_density(double* rms)
     sim_ctx->comm().bcast(rms, 1, 0);
 }
 
-void sirius_set_atom_type_dion(char* label__,
-                               int32_t* num_beta__,
-                               double* dion__)
+/// Set ionic part of D-operator matrix.
+void sirius_set_atom_type_dion(ftn_char    label__,
+                               ftn_int*    num_beta__,
+                               ftn_double* dion__)
 {
     auto& type = sim_ctx->unit_cell().atom_type(std::string(label__));
     matrix<double> dion(dion__, *num_beta__, *num_beta__);
     type.d_mtrx_ion(dion);
 }
 
-// This must be called prior to sirius_set_atom_type_q_rf
-void sirius_set_atom_type_beta_rf(ftn_char     label__,
-                                  ftn_int*     num_beta__,
-                                  ftn_int*     beta_l__,
-                                  ftn_double*  beta_j__,
-                                  ftn_int*     num_mesh_points__,
-                                  ftn_double*  beta_rf__,
-                                  ftn_int*     ld__,
-                                  ftn_bool*    spin_orbit__) // TODO: this is not the proper place to pass so_coupling flag
+/// Add beta-radial functions 
+/* This function must be called prior to sirius_set_atom_type_q_rf */
+void sirius_add_atom_type_beta_radial_function(ftn_char    label__,
+                                               ftn_int*    l__,
+                                               ftn_double* beta__,
+                                               ftn_int*    num_points__)
 {
     auto& type = sim_ctx->unit_cell().atom_type(std::string(label__));
-    mdarray<double, 2> beta_rf(beta_rf__, *ld__, *num_beta__);
-    type.spin_orbit_coupling(*spin_orbit__);
-
-    for (int i = 0; i < *num_beta__; i++) {
-        double* ptr = &beta_rf(0, i);
-        type.add_beta_radial_function(beta_l__[i], std::vector<double>(ptr, ptr + num_mesh_points__[i]));
-    }
+    type.add_beta_radial_function(*l__, std::vector<double>(beta__, beta__ + (*num_points__)));
 }
 
-void sirius_set_atom_type_q_rf(char* label__,
-                               double* q_rf__,
-                               int32_t* lmax__)
+void sirius_add_atom_type_ps_atomic_wf(ftn_char    label__,
+                                       ftn_int*    l__,
+                                       ftn_double* chi__,
+                                       ftn_int*    num_points__)
 {
     auto& type = sim_ctx->unit_cell().atom_type(std::string(label__));
-
-    int nbeta = type.num_beta_radial_functions();
-
-    if (*lmax__ != type.lmax_beta()) {
-        std::stringstream s;
-        s << "wrong lmax for " << std::string(label__) << " " << std::endl
-          << "lmax: " << *lmax__ << std::endl
-          << "lmax_beta: " << type.lmax_beta();
-        TERMINATE(s);
-    }
-
-    /* temporary wrapper */
-    mdarray<double, 3> q_rf(q_rf__, type.num_mt_points(), nbeta * (nbeta + 1) / 2, 2 * (*lmax__) + 1);
-
-    for (int nb = 0; nb < nbeta; nb++) {
-        for (int mb = nb; mb < nbeta; mb++) {
-            /* combined index */
-            int ijv = (mb + 1) * mb / 2 + nb;
-            for (int l = 0; l <= 2 * type.lmax_beta(); l++) {
-                double* ptr = &q_rf(0, ijv, l);
-                type.add_q_radial_function(nb, mb, l, std::vector<double>(ptr, ptr + type.num_mt_points()));
-            }
-        }
-    }
+    type.add_ps_atomic_wf(*l__, std::vector<double>(chi__, chi__ + *num_points__));
 }
+
+void sirius_add_atom_type_q_radial_function(ftn_char    label__,
+                                            ftn_int*    l__,
+                                            ftn_int*    idxrf1__,
+                                            ftn_int*    idxrf2__,
+                                            ftn_double* q_rf__,
+                                            ftn_int*    num_points__)
+{
+    auto& type = sim_ctx->unit_cell().atom_type(std::string(label__));
+    
+    type.add_q_radial_function(*idxrf1__, *idxrf2__, *l__, std::vector<double>(q_rf__, q_rf__ + (*num_points__)));
+}
+
+//void sirius_set_atom_type_q_rf(char* label__,
+//                               double* q_rf__,
+//                               int32_t* lmax__)
+//{
+//    auto& type = sim_ctx->unit_cell().atom_type(std::string(label__));
+//
+//    int nbeta = type.num_beta_radial_functions();
+//
+//    if (*lmax__ != type.lmax_beta()) {
+//        std::stringstream s;
+//        s << "wrong lmax for " << std::string(label__) << " " << std::endl
+//          << "lmax: " << *lmax__ << std::endl
+//          << "lmax_beta: " << type.lmax_beta();
+//        TERMINATE(s);
+//    }
+//
+//    /* temporary wrapper */
+//    mdarray<double, 3> q_rf(q_rf__, type.num_mt_points(), nbeta * (nbeta + 1) / 2, 2 * (*lmax__) + 1);
+//
+//    for (int nb = 0; nb < nbeta; nb++) {
+//        for (int mb = nb; mb < nbeta; mb++) {
+//            /* combined index */
+//            int ijv = (mb + 1) * mb / 2 + nb;
+//            for (int l = 0; l <= 2 * type.lmax_beta(); l++) {
+//                double* ptr = &q_rf(0, ijv, l);
+//                type.add_q_radial_function(nb, mb, l, std::vector<double>(ptr, ptr + type.num_mt_points()));
+//            }
+//        }
+//    }
+//}
 
 void sirius_set_atom_type_rho_core(char const* label__,
                                    int32_t* num_points__,
@@ -3220,15 +3222,6 @@ void sirius_get_stress_tensor(ftn_char label__, ftn_double* stress_tensor__)
             stress_tensor__[nu + mu * 3] = s(mu, nu);
         }
     }
-}
-
-void sirius_add_atom_type_chi(ftn_char label__,
-                              ftn_int* l__,
-                              ftn_int* num_points__,
-                              ftn_double* chi__)
-{
-    auto& type = sim_ctx->unit_cell().atom_type(std::string(label__));
-    type.add_ps_atomic_wf(*l__, std::vector<double>(chi__, chi__ + *num_points__));
 }
 
 void sirius_set_processing_unit(ftn_char pu__)
