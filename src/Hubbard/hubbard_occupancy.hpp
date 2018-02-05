@@ -118,7 +118,6 @@ void hubbard_compute_occupation_numbers(K_point_set& kset_)
                                         kp->band_occupancy(nband) * kp->weight();
                                 }
                             }
-                            printf("%.3lf %.3lf\n", kp->band_occupancy(nband), kp->weight());
                         }
                     }
                 }
@@ -148,9 +147,7 @@ void hubbard_compute_occupation_numbers(K_point_set& kset_)
                 for (int m = 0; m < lmax_at; m++) {
                     for (int mp = 0; mp < lmax_at; mp++) {
                         this->occupancy_number_(mp, m, s1, ia, 0) = std::conj(this->occupancy_number_(m, mp, s1, ia, 0));
-                        printf("%.3lf ", std::abs(this->occupancy_number_(mp, m, s1, ia, 0)));
                     }
-                    printf("\n");
                 }
             }
 
@@ -356,8 +353,10 @@ inline void print_occupancies()
     if (ctx_.control().verbosity_ > 1) {
         if (ctx_.comm().rank() == 0) {
             printf("\n");
+            for(int ci = 0; ci < 10; ci++)
+                printf("--------");
+            printf("\n");
             printf("hubbard occupancies\n");
-            printf("----------------------------------------------------------------------\n");
             for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
                 printf("Atom : %d\n", ia);
                 const auto& atom = unit_cell_.atom(ia);
@@ -412,18 +411,20 @@ inline void print_occupancies()
                     } else {
                         printf("Atom charge (total) %.5lf\n", 2.0 * n_total);
                     }
+
+                    printf("\n");
+                    for(int ci = 0; ci < 10; ci++)
+                        printf("--------");
+                    printf("\n");
+
                 }
             }
-            printf("-------------------------------------------------------------\n");
         }
     }
 }
 
 inline void symmetrize_occupancy_matrix_noncolinear_case()
 {
-
-#warning "We need to review this"
-
     auto& sym = unit_cell_.symmetry();
 
     // check if we have some symmetries

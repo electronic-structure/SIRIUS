@@ -10,7 +10,7 @@ void generate_atomic_orbitals(K_point& kp, Q_operator<double_complex>& q_op)
     if (kp.hubbard_wave_functions_calculated()) {
         return;
     }
-    // printf("test\n");
+
     kp.allocate_hubbard_wave_functions(this->number_of_hubbard_orbitals());
 
     for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
