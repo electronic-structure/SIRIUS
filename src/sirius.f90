@@ -1006,8 +1006,8 @@ module sirius
             character,         target, dimension(*), intent(in)  :: atom_type
             integer,                                 intent(in)  :: l
             real(8),                                 intent(in)  :: chi
-            real(8),                                 intent(in)  :: occ
-           integer,                                 intent(in)  :: num_points
+            real(8),                                 intent(in)  :: occ   ! swap order with chi
+            integer,                                 intent(in)  :: num_points
         end subroutine
 
         subroutine sirius_set_esm(enable_esm, esm_bc)&

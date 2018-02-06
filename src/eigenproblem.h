@@ -128,6 +128,8 @@ class Eigensolver_lapack: public Eigensolver<T>
     /// Solve a standard eigen-value problem for all eigen-pairs.
     int solve(ftn_int matrix_size__, dmatrix<T>& A__, double* eval__, dmatrix<T>& Z__)
     {
+        sddk::timer t0("Eigensolver_lapack::solve_std");
+
         auto work_sizes = get_work_sizes(matrix_size__);
 
         ftn_int info;
@@ -138,6 +140,7 @@ class Eigensolver_lapack: public Eigensolver<T>
             std::vector<double> rwork(work_sizes[1]);
             std::vector<ftn_int> iwork(work_sizes[2]);
 
+            sddk::timer t1("Eigensolver_lapack::solve_std|zheevd");
             FORTRAN(zheevd)("V", "U", &matrix_size__, reinterpret_cast<double_complex*>(A__.template at<CPU>()),
                             &lda, eval__, &work[0], &work_sizes[0], &rwork[0], &work_sizes[1], 
                             &iwork[0], &work_sizes[2], &info, (ftn_int)1, (ftn_int)1);
@@ -157,6 +160,7 @@ class Eigensolver_lapack: public Eigensolver<T>
             std::vector<double> work(lwork);
             std::vector<int32_t> iwork(liwork);
 
+            sddk::timer t1("Eigensolver_lapack::solve_std|dsyevd");
             FORTRAN(dsyevd)("V", "U", &matrix_size__, reinterpret_cast<double*>(A__.template at<CPU>()), &lda,
                             eval__, &work[0], &lwork, 
                             &iwork[0], &liwork, &info, (ftn_int)1, (ftn_int)1);
@@ -178,6 +182,8 @@ class Eigensolver_lapack: public Eigensolver<T>
     /// Solve a standard eigen-value problem for N lowest eigen-pairs.
     int solve(ftn_int matrix_size__, ftn_int nev__, dmatrix<T>& A__, double* eval__, dmatrix<T>& Z__)
     {
+        sddk::timer t0("Eigensolver_lapack::solve_std");
+
         int32_t lwork{-1};
         double lwork1, vl, vu;
         int32_t il{1};
@@ -202,6 +208,7 @@ class Eigensolver_lapack: public Eigensolver<T>
             lwork = static_cast<int32_t>(lwork1 + 1);
             std::vector<double> work(lwork);
 
+            sddk::timer t1("Eigensolver_lapack::solve_std|dsyevx");
             FORTRAN(dsyevx)("V", "I", "U", &matrix_size__, reinterpret_cast<double*>(A__.template at<CPU>()), &lda,
                             &vl, &vu, &il, &nev__, &abs_tol, &m, &w[0], reinterpret_cast<double*>(Z__.template at<CPU>()),
                             &ldz, &work[0], &lwork, &iwork[0], &ifail[0], &info, (ftn_int)1, (ftn_int)1, (ftn_int)1);
@@ -225,6 +232,7 @@ class Eigensolver_lapack: public Eigensolver<T>
             lwork = static_cast<int32_t>(work[0].real()) + 1;
             work.resize(lwork);
 
+            sddk::timer t1("Eigensolver_lapack::solve_std|zheevx");
             FORTRAN(zheevx)("V", "I", "U", &matrix_size__, reinterpret_cast<double_complex*>(A__.template at<CPU>()), &lda,
                             &vl, &vu, &il, &nev__, &abs_tol, &m, 
                             &w[0], reinterpret_cast<double_complex*>(Z__.template at<CPU>()), &ldz, &work[0], &lwork,
