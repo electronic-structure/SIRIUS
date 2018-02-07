@@ -197,7 +197,7 @@ class Eigensolver_lapack: public Eigensolver<T>
         ftn_int lda = A__.ld();
         ftn_int ldz = Z__.ld();
 
-        double abs_tol{1e-12};
+        double abs_tol = 2 * linalg_base::dlamch('S');
 
         if (std::is_same<T, double>::value) {
 
@@ -268,7 +268,7 @@ class Eigensolver_lapack: public Eigensolver<T>
         ftn_int ldb = B__.ld();
         ftn_int ldz = Z__.ld();
 
-        double abs_tol{1e-12};
+        double abs_tol = 2 * linalg_base::dlamch('S');
         double vl{0};
         double vu{0};
         ftn_int ione{1};

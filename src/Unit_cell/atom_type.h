@@ -467,11 +467,13 @@ class Atom_type
 
     inline void add_q_radial_function(int idxrf1__, int idxrf2__, int l__, std::vector<double> qrf__)
     {
+        /* sanity check */
         if (l__ > 2 * lmax_beta()) {
             TERMINATE("wrong l for Q radial functions");
         }
 
         if (!augment_) {
+            /* once we add a Q-radial function, we need to augment the charge */
             augment_ = true;
             /* number of radial beta-functions */
             int nbrf = num_beta_radial_functions();
@@ -487,8 +489,8 @@ class Atom_type
         /* pack Q-radial functions in a triangular matrix (Q_{ij} matrix is symmetric):
                j
            +-------+
-           | +     |
-          i|   +   |   -> idx = j * (j + 1) / 2 + i  for  i <= j
+           | + + + |
+          i|   + + |   -> idx = j * (j + 1) / 2 + i  for  i <= j
            |     + |
            +-------+
 
