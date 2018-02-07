@@ -184,63 +184,66 @@ class Eigensolver_lapack: public Eigensolver<T>
     {
         sddk::timer t0("Eigensolver_lapack::solve_std");
 
-        int32_t lwork{-1};
-        double lwork1, vl, vu;
+        double  vl, vu;
         int32_t il{1};
         int32_t m{-1};
         int32_t info;
 
         std::vector<double> w(matrix_size__);
-        std::vector<int32_t> iwork(5 * matrix_size__);
-        std::vector<int32_t> ifail(matrix_size__);
+        std::vector<ftn_int> isuppz(2 * matrix_size__);
 
         ftn_int lda = A__.ld();
         ftn_int ldz = Z__.ld();
 
         double abs_tol = 2 * linalg_base::dlamch('S');
 
+        ftn_int liwork = 10 * matrix_size__;
+        std::vector<ftn_int> iwork(liwork);
+
         if (std::is_same<T, double>::value) {
 
-            FORTRAN(dsyevx)("V", "I", "U", &matrix_size__, reinterpret_cast<double*>(A__.template at<CPU>()), &lda, 
-                            &vl, &vu, &il, &nev__, &abs_tol, &m, &w[0], reinterpret_cast<double*>(Z__.template at<CPU>()),
-                            &ldz, &lwork1, &lwork, &iwork[0], &ifail[0], &info, (ftn_int)1, (ftn_int)1, (ftn_int)1);
-
-            lwork = static_cast<int32_t>(lwork1 + 1);
+            int nb = linalg_base::ilaenv(1, "DSYTRD", "U", matrix_size__, -1, -1, -1);
+            ftn_int lwork = (nb + 6) * matrix_size__;
             std::vector<double> work(lwork);
-
-            sddk::timer t1("Eigensolver_lapack::solve_std|dsyevx");
-            FORTRAN(dsyevx)("V", "I", "U", &matrix_size__, reinterpret_cast<double*>(A__.template at<CPU>()), &lda,
-                            &vl, &vu, &il, &nev__, &abs_tol, &m, &w[0], reinterpret_cast<double*>(Z__.template at<CPU>()),
-                            &ldz, &work[0], &lwork, &iwork[0], &ifail[0], &info, (ftn_int)1, (ftn_int)1, (ftn_int)1);
             
+            sddk::timer t1("Eigensolver_lapack::solve_std|dsyevr");
+            FORTRAN(dsyevr)("V", "I", "U", &matrix_size__, reinterpret_cast<double*>(A__.template at<CPU>()), &lda, 
+                            &vl, &vu, &il, &nev__, &abs_tol, &m, &w[0], reinterpret_cast<double*>(Z__.template at<CPU>()),
+                            &ldz, 
+                            &isuppz[0],
+                            &work[0], &lwork,
+                            &iwork[0], &liwork,
+                            &info, (ftn_int)1, (ftn_int)1, (ftn_int)1);
             if (info) {
                 std::stringstream s;
-                s << "dsyevx returned " << info; 
+                s << "dsyevr returned " << info; 
                 TERMINATE(s);
             }
         }
 
         if (std::is_same<T, double_complex>::value) {
-            std::vector<double> rwork(7 * matrix_size__);
-            std::vector<double_complex> work(3);
 
-            FORTRAN(zheevx)("V", "I", "U", &matrix_size__, reinterpret_cast<double_complex*>(A__.template at<CPU>()), &lda,
+            int nb = linalg_base::ilaenv(1, "ZHETRD", "U", matrix_size__, -1, -1, -1);
+
+            ftn_int lwork = (nb + 1) * matrix_size__;
+            std::vector<double_complex> work(lwork);
+
+            ftn_int lrwork = 24 * matrix_size__;
+            std::vector<double> rwork(lrwork);
+
+            sddk::timer t1("Eigensolver_lapack::solve_std|zheevr");
+            FORTRAN(zheevr)("V", "I", "U", &matrix_size__, reinterpret_cast<double_complex*>(A__.template at<CPU>()), &lda,
                             &vl, &vu, &il, &nev__, &abs_tol, &m, 
-                            &w[0], reinterpret_cast<double_complex*>(Z__.template at<CPU>()), &ldz, &work[0], &lwork,
-                            &rwork[0], &iwork[0], &ifail[0], &info, (ftn_int)1, (ftn_int)1, (ftn_int)1);
-
-            lwork = static_cast<int32_t>(work[0].real()) + 1;
-            work.resize(lwork);
-
-            sddk::timer t1("Eigensolver_lapack::solve_std|zheevx");
-            FORTRAN(zheevx)("V", "I", "U", &matrix_size__, reinterpret_cast<double_complex*>(A__.template at<CPU>()), &lda,
-                            &vl, &vu, &il, &nev__, &abs_tol, &m, 
-                            &w[0], reinterpret_cast<double_complex*>(Z__.template at<CPU>()), &ldz, &work[0], &lwork,
-                            &rwork[0], &iwork[0], &ifail[0], &info, (ftn_int)1, (ftn_int)1, (ftn_int)1);
+                            &w[0], reinterpret_cast<double_complex*>(Z__.template at<CPU>()), &ldz,
+                            &isuppz[0],
+                            &work[0], &lwork,
+                            &rwork[0], &lrwork, 
+                            &iwork[0], &liwork,
+                            &info, (ftn_int)1, (ftn_int)1, (ftn_int)1);
 
             if (info) {
                 std::stringstream s;
-                s << "zheevx returned " << info; 
+                s << "zheevr returned " << info; 
                 TERMINATE(s);
             }
         }
