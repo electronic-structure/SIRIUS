@@ -1,3 +1,5 @@
+.PHONY: atoms tests
+
 all: atoms dft-loop tests unit-tests
 
 atoms:
