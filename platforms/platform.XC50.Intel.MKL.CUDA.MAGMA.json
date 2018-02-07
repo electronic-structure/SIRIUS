@@ -1,0 +1,55 @@
+{
+    "comment"     : [
+        "the following modules are loaded:",
+        
+        "module swap PrgEnv-cray PrgEnv-intel",
+        "module unload cray-libsci",
+        "module load cray-hdf5",
+        "module load cudatoolkit",
+        "module load intel",
+        "module load gcc",
+
+        "ELPA and MAGMA are compiled manually"
+    ],
+
+    "MPI_CXX"     : "CC",
+    "comment"     : "your MPI C++ compiler",
+    
+    "MPI_CXX_OPT" : "-O3 -qopenmp -std=c++11 -DNDEBUG -D__SCALAPACK -D__ELPA -D__GPU -D__MAGMA -I$(MKLROOT)/include/fftw/",
+    "comment"     : "compiler options for the SIRIUS library",
+    
+    "MPI_FC"      : "ftn",
+    "MPI_FC_OPT"  : "-O3 -qopenmp -cpp",
+
+    "CC"          : "cc",
+    "comment"     : "plain C compiler for the supplementary libraries",
+    
+    "CXX"         : "CC",
+    "comment"     : "plain C++ compiler for the supplementary libraries",
+    
+    "FC"          : "ftn",
+    "comment"     : "plain Fortran compiler for the supplementary libraries",
+    
+    "FCCPP"       : "cpp",
+    "comment"     : "Fortran preprocessor",
+
+    "comment"     : "location of CUDA toolkit",
+    "CUDA_ROOT"   : "/opt/nvidia/cudatoolkit8.0/default",
+
+    "comment"     : "CUDA compiler and options",
+    "NVCC"        : "nvcc",
+    "CUDA_OPT"    : "-arch=sm_60 -m64 -DNDEBUG",
+    
+    "comment"     : "location of MAGMA library",
+    "MAGMA_ROOT"  : "$(HOME)/src/daint/magma-2.3.0",
+
+    "ELPA_ROOT"   : "$(HOME)/src/daint/elpa",
+
+    "SYSTEM_LIBS" : "$(MKLROOT)/lib/intel64/libmkl_scalapack_lp64.a -Wl,--start-group  $(MKLROOT)/lib/intel64/libmkl_intel_lp64.a $(MKLROOT)/lib/intel64/libmkl_intel_thread.a $(MKLROOT)/lib/intel64/libmkl_core.a $(MKLROOT)/lib/intel64/libmkl_blacs_intelmpi_lp64.a -Wl,--end-group -lpthread -ldl",
+    "comment"     : "CUDA, cuFFT & MAGMA libraries",
+    
+    "install"     : ["xc", "spg", "gsl"],
+    "comment"     : "additional libraries to download and configure"
+}
+
+
