@@ -172,7 +172,8 @@ void test_diag2(BLACS_grid const& blacs_grid__,
         {"lapack", ev_solver_t::lapack},
         {"scalapack", ev_solver_t::scalapack},
         {"elpa1", ev_solver_t::elpa1},
-        {"elpa2", ev_solver_t::elpa2}
+        {"elpa2", ev_solver_t::elpa2},
+        {"magma", ev_solver_t::magma}
     };
 
     auto solver = Eigensolver_factory<double_complex>(map_name_to_type[name__]);
