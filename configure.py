@@ -234,7 +234,7 @@ endif'''+"\n")
         makeinc.write("LIBS := $(LIBS) %s/lib/libmagma.a\n"%platform['MAGMA_ROOT']) 
         
     if 'ELPA_ROOT' in platform:
-        makeinc.write("LIBS := $(LIBS) -L%s/.libs/ -lelpa_openmp -Wl,-rpath,%s\n"%(platform['ELPA_ROOT'], platform['ELPA_ROOT']))
+        makeinc.write("LIBS := $(LIBS) -L%s/.libs/ -lelpa_openmp -Wl,-rpath,%s/.libs/\n"%(platform['ELPA_ROOT'], platform['ELPA_ROOT']))
 
     makeinc.write("LIBS := $(LIBS) " + platform["SYSTEM_LIBS"] + "\n")
 
