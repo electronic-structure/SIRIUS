@@ -46,7 +46,7 @@ all: log $(OBJ) sirius.o
 	ar -r libsirius.a $(OBJ)
 	ar -r libsirius_f.a $(OBJ) sirius.o
 
-sirius.o: sirius.f90
+sirius.o: sirius.f90 sirius_api.cpp
 
 debug: CXX_OPT=$(CXX_OPT_DBG)
 debug: $(OBJ_DBG) sirius_api.o sirius.o

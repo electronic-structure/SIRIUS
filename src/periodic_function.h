@@ -255,7 +255,7 @@ class Periodic_function: public Smooth_periodic_function<T>
         {
             auto v = this->gather_f_pw();
             if (ctx_.comm().rank() == 0) {
-                HDF5_tree fout(storage_file_name, false);
+                HDF5_tree fout(storage_file_name, hdf5_access_t::read_write);
                 fout[path__].write("f_pw", reinterpret_cast<double*>(v.data()), static_cast<int>(v.size() * 2));
                 if (ctx_.full_potential()) {
                     fout[path__].write("f_mt", f_mt_);

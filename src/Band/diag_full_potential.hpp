@@ -616,6 +616,8 @@ inline void Band::diag_sv(K_point*     kp__,
         return;
     }
 
+    hamiltonian__.local_op().prepare(kp__->gkvec_partition());
+
     std::vector<double> band_energies(ctx_.num_bands());
 
     /* product of the second-variational Hamiltonian and a first-variational wave-function */

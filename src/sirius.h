@@ -40,7 +40,6 @@ using json = nlohmann::json;
 #include "sddk.hpp"
 #include "hdf5_tree.hpp" 
 #include "xc_functional.h"
-#include "sirius_io.h"
 #include "descriptors.h"
 #include "mixer.h"
 #include "Unit_cell/atom_type.h"

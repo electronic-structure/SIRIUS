@@ -68,7 +68,7 @@ class basis_functions_index
 
     mdarray<int, 2> index_by_lm_order_;
 
-    mdarray<int, 1> index_by_idxrf_;
+    mdarray<int, 1> index_by_idxrf_; // TODO: rename to first_lm_index_by_idxrf_ or similar
 
     /// Number of augmented wave basis functions.
     int size_aw_{0};
@@ -91,9 +91,10 @@ class basis_functions_index
 
             index_by_idxrf_(idxrf) = (int)basis_function_index_descriptors_.size();
 
-            for (int m = -l; m <= l; m++)
+            for (int m = -l; m <= l; m++) {
                 basis_function_index_descriptors_.push_back(
                     basis_function_index_descriptor(l, m, indexr[idxrf].j, order, idxlo, idxrf));
+            }
         }
         index_by_lm_order_ = mdarray<int, 2>(Utils::lmmax(indexr.lmax()), indexr.max_num_rf());
 
@@ -102,9 +103,10 @@ class basis_functions_index
             int order = basis_function_index_descriptors_[i].order;
             index_by_lm_order_(lm, order) = i;
 
-            // get number of aw basis functions
-            if (basis_function_index_descriptors_[i].idxlo < 0)
+            /* get number of aw basis functions */
+            if (basis_function_index_descriptors_[i].idxlo < 0) {
                 size_aw_ = i + 1;
+            }
         }
 
         size_lo_ = (int)basis_function_index_descriptors_.size() - size_aw_;

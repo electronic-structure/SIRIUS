@@ -31,6 +31,12 @@
 
 namespace sddk {
 
+enum class hdf5_access_t {
+    truncate,
+    read_write,
+    read_only
+};
+
 template <typename T>
 struct hdf5_type_wrapper;
 
@@ -245,7 +251,7 @@ class HDF5_tree
   public:
 
     /// Constructor to create the HDF5 tree.
-    HDF5_tree(const std::string& file_name__, bool truncate)
+    HDF5_tree(const std::string& file_name__, hdf5_access_t access__)
         : file_name_(file_name__)
     {
         if (H5open() < 0) {
@@ -256,19 +262,25 @@ class HDF5_tree
             H5Eset_auto(H5E_DEFAULT, NULL, NULL);
         }
 
-        if (!truncate && std::ifstream(file_name_).good()) {
-            /* try to open existing file */
-            file_id_ = H5Fopen(file_name_.c_str(), H5F_ACC_RDWR, H5P_DEFAULT);
-
-            if (file_id_ < 0) {
-                TERMINATE("H5Fopen() failed");
+        switch (access__) {
+            case hdf5_access_t::truncate: {
+                file_id_ = H5Fcreate(file_name_.c_str(), H5F_ACC_TRUNC | H5F_ACC_SWMR_WRITE, H5P_DEFAULT, H5P_DEFAULT);
+                if (file_id_ < 0) {
+                    TERMINATE("error in H5Fcreate()");
+                }
+                break;
             }
-        } else {
-            /* create a new file */
-            file_id_ = H5Fcreate(file_name_.c_str(), H5F_ACC_TRUNC, H5P_DEFAULT, H5P_DEFAULT);
-            if (file_id_ < 0) {
-                TERMINATE("error in H5Fcreate()");
+            case hdf5_access_t::read_write: {
+                file_id_ = H5Fopen(file_name_.c_str(), H5F_ACC_RDWR | H5F_ACC_SWMR_WRITE, H5P_DEFAULT);
+                break;
             }
+            case hdf5_access_t::read_only: {
+                file_id_ = H5Fopen(file_name_.c_str(), H5F_ACC_RDONLY | H5F_ACC_SWMR_READ, H5P_DEFAULT);
+                break;
+            }
+        }
+        if (file_id_ < 0) {
+            TERMINATE("H5Fopen() failed");
         }
 
         path_ = "/";
