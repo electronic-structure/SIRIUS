@@ -362,7 +362,13 @@ class Density
                 rho_pseudo_core_ = std::unique_ptr<Smooth_periodic_function<double>>(new Smooth_periodic_function<double>(ctx_.fft(), ctx_.gvec_partition()));
                 rho_pseudo_core_->zero();
 
-                generate_pseudo_core_charge_density();
+                bool is_empty{true};
+                for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
+                    is_empty &= unit_cell_.atom_type(iat).ps_core_charge_density().empty();
+                }
+                if (!is_empty) {
+                    generate_pseudo_core_charge_density();
+                }
             }
 
             if (ctx_.full_potential()) {
@@ -625,7 +631,7 @@ class Density
 
         void load()
         {
-            HDF5_tree fin(storage_file_name, false);
+            HDF5_tree fin(storage_file_name, hdf5_access_t::read_only);
 
             int ngv;
             fin.read("/parameters/num_gvec", &ngv, 1);
@@ -666,6 +672,36 @@ class Density
             //==     fprintf(fout, "%i %18.12f %18.12f %18.12f\n", unit_cell_.atom(ia).zn(), pos[0], pos[1], pos[2]);
             //== }
             //== fclose(fout);
+        }
+
+        void save_to_ted()
+        {
+
+        //== void write_periodic_function()
+        //== {
+        //==     //== mdarray<double, 3> vloc_3d_map(&vloc_it[0], fft_->size(0), fft_->size(1), fft_->size(2));
+        //==     //== int nx = fft_->size(0);
+        //==     //== int ny = fft_->size(1);
+        //==     //== int nz = fft_->size(2);
+
+        //==     //== auto p = parameters_.unit_cell()->unit_cell_parameters();
+
+        //==     //== FILE* fout = fopen("potential.ted", "w");
+        //==     //== fprintf(fout, "%s\n", parameters_.unit_cell()->chemical_formula().c_str());
+        //==     //== fprintf(fout, "%16.10f %16.10f %16.10f  %16.10f %16.10f %16.10f\n", p.a, p.b, p.c, p.alpha, p.beta, p.gamma);
+        //==     //== fprintf(fout, "%i %i %i\n", nx + 1, ny + 1, nz + 1);
+        //==     //== for (int i0 = 0; i0 <= nx; i0++)
+        //==     //== {
+        //==     //==     for (int i1 = 0; i1 <= ny; i1++)
+        //==     //==     {
+        //==     //==         for (int i2 = 0; i2 <= nz; i2++)
+        //==     //==         {
+        //==     //==             fprintf(fout, "%14.8f\n", vloc_3d_map(i0 % nx, i1 % ny, i2 % nz));
+        //==     //==         }
+        //==     //==     }
+        //==     //== }
+        //==     //== fclose(fout);
+        //== }
         }
 
         void save_to_xdmf()

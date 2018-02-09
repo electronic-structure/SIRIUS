@@ -810,7 +810,7 @@ void sirius_set_band_occupancies(ftn_int*    kset_id__,
     for (int i = 0; i < *num_bands__; i++) {
         (*kset_list[*kset_id__])[ik]->band_occupancy(i) = band_occupancies__[i];
     }
-    for (int i = *num_bands__; i < (*kset_list[*kset_id__])[ik]->band_occupancy().size(); i++) {
+    for (int i = *num_bands__; i < (int)(*kset_list[*kset_id__])[ik]->band_occupancy().size(); i++) {
         (*kset_list[*kset_id__])[ik]->band_occupancy(i) = 0.0;
     }
 }
@@ -1506,7 +1506,7 @@ void sirius_get_energy_vha(double* energy_vha)
     *energy_vha = dft_ground_state->energy_vha();
 }
 
-void sirius_get_energy_enuc(double* energy_enuc)
+void sirius_get_energy_enuc(ftn_double* energy_enuc)
 {
     *energy_enuc = dft_ground_state->energy_enuc();
 }
@@ -2207,10 +2207,9 @@ void sirius_use_internal_mixer(int32_t* use_internal_mixer__)
     *use_internal_mixer__ = (sim_ctx->mixer_input().exist_) ? 1 : 0;
 }
 
-void sirius_set_iterative_solver_tolerance(double* tol__)
+void sirius_set_iterative_solver_tolerance(ftn_double* tol__)
 {
-    /* convert tolerance to Ha */
-    sim_ctx->set_iterative_solver_tolerance(*tol__ / 2);
+    sim_ctx->set_iterative_solver_tolerance(*tol__);
 }
 
 void sirius_set_iterative_solver_type(ftn_char type__)
@@ -2735,29 +2734,36 @@ void sirius_get_wave_functions(ftn_int* kset_id__,
     }
 }
 
-void sirius_get_beta_projectors(ftn_int* kset_id__,
-                                ftn_int* ik__,
-                                ftn_int* npw__,
-                                ftn_int* gvec_k__,
+void sirius_get_beta_projectors(ftn_int*            kset_id__,
+                                ftn_int*            ik__,
+                                ftn_int*            npw__,
+                                ftn_int*            gvec_k__,
                                 ftn_double_complex* vkb__,
-                                ftn_int* ld__,
-                                ftn_int* nkb__)
+                                ftn_int*            ld__,
+                                ftn_int*            nkb__)
 {
     PROFILE("sirius_api::sirius_get_beta_projectors");
 
-    STOP();
+    if (*nkb__ != sim_ctx->unit_cell().mt_lo_basis_size()) {
+        TERMINATE("wrong number of beta-projectors");
+    }
 
-    //if (*nkb__ != sim_ctx->unit_cell().mt_lo_basis_size()) {
-    //    TERMINATE("wrong number of beta-projectors");
-    //}
-
-    //auto kset = kset_list[*kset_id__];
-    //auto kp = (*kset)[*ik__ - 1];
+    auto kset = kset_list[*kset_id__];
+    auto kp = (*kset)[*ik__ - 1];
     //auto& beta_gk = kp->beta_projectors().beta_gk_total();
 
-    //mdarray<int, 2> gvec_k(gvec_k__, 3, *npw__);
-    //mdarray<double_complex, 2> vkb(vkb__, *ld__, *nkb__);
-    //vkb.zero();
+    mdarray<int, 2> gvec_k(gvec_k__, 3, *npw__);
+    mdarray<double_complex, 2> vkb(vkb__, *ld__, *nkb__);
+    vkb.zero();
+
+    auto& gkvec = kp->gkvec();
+    
+    std::vector<int> idxg;
+    for (int i = 0; i < *npw__; i++) {
+        idxg.push_back(gkvec.index_by_gvec({gvec_k(0, i), gvec_k(1, i), gvec_k(2, i)}));
+    }
+
+
     //
     //std::vector<double_complex> wf_tmp(kp->num_gkvec());
     //int gkvec_count = kp->gkvec().gvec_count(kp->comm().rank());
@@ -2984,6 +2990,10 @@ void sirius_set_pw_coeffs(ftn_char label__,
         #pragma omp parallel for schedule(static)
         for (int i = 0; i < *ngv__; i++) {
             vector3d<int> G(gvec(0, i), gvec(1, i), gvec(2, i));
+            auto gvc = sim_ctx->unit_cell().reciprocal_lattice_vectors() * vector3d<double>(G[0], G[1], G[2]);
+            if (gvc.length() > sim_ctx->pw_cutoff()) {
+                continue;
+            }
             int ig = sim_ctx->gvec().index_by_gvec(G);
             if (ig >= 0) {
                 v[ig] = pw_coeffs__[i];

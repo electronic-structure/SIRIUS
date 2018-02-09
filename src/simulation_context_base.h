@@ -382,7 +382,7 @@ class Simulation_context_base: public Simulation_parameters
         {
             if (comm_.rank() == 0) {
                 /* create new hdf5 file */
-                HDF5_tree fout(storage_file_name, true);
+                HDF5_tree fout(storage_file_name, hdf5_access_t::truncate);
                 fout.create_node("parameters");
                 fout.create_node("effective_potential");
                 fout.create_node("effective_magnetic_field");

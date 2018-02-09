@@ -20,22 +20,32 @@ dmatrix<T> random_symmetric(int N__, int bs__, BLACS_grid const& blacs_grid__)
             A(i, j) = 0.5 * (A(i, j) + B(i, j));
         }
     }
+    
+    for (int i = 0; i < N__; i++) {
+        A.set(i, i, 50.0);
+    }
+    
     return std::move(A);
 }
 
 template <typename T>
 dmatrix<T> random_positive_definite(int N__, int bs__, BLACS_grid const& blacs_grid__)
 {
+    double p = 1.0 / N__;
     dmatrix<T> A(N__, N__, blacs_grid__, bs__, bs__);
     dmatrix<T> B(N__, N__, blacs_grid__, bs__, bs__);
     for (int j = 0; j < A.num_cols_local(); j++) {
         for (int i = 0; i < A.num_rows_local(); i++) {
-            A(i, j) = type_wrapper<T>::random();
+            A(i, j) = p * type_wrapper<T>::random();
         }
     }
 
     linalg<CPU>::tranc(N__, N__, A, 0, 0, B, 0, 0);
     linalg<CPU>::gemm(2, 0, N__, N__, N__, linalg_const<T>::one(), A, A, linalg_const<T>::zero(), B);
+
+    for (int i = 0; i < N__; i++) {
+        B.set(i, i, N__);
+    }
 
     return std::move(B);
 }
@@ -68,7 +78,8 @@ void test_diag(BLACS_grid const& blacs_grid__,
         {"lapack", ev_solver_t::lapack},
         {"scalapack", ev_solver_t::scalapack},
         {"elpa1", ev_solver_t::elpa1},
-        {"elpa2", ev_solver_t::elpa2}
+        {"elpa2", ev_solver_t::elpa2},
+        {"magma", ev_solver_t::magma}
     };
 
     auto solver = Eigensolver_factory<T>(map_name_to_type[name__]);
@@ -92,6 +103,7 @@ void test_diag(BLACS_grid const& blacs_grid__,
             printf("complex data type\n");
         }
     }
+    sddk::timer t1("evp");
     if (test_gen__) {
         if (n__ == nev__) {
             solver->solve(n__, A, B, eval.data(), Z);
@@ -105,9 +117,11 @@ void test_diag(BLACS_grid const& blacs_grid__,
             solver->solve(n__, nev__, A, eval.data(), Z);
         }
     }
+    double t = t1.stop();
     
     if (blacs_grid__.comm().rank() == 0) {
         printf("eigen-values (min, max): %18.12f %18.12f\n", eval.front(), eval.back());
+        printf("time: %f sec.\n", t);
     }
 
     /* check residuals */
@@ -141,8 +155,12 @@ void test_diag(BLACS_grid const& blacs_grid__,
     if (blacs_grid__.comm().rank() == 0) {
         printf("maximum difference: %22.18f\n", diff);
     }
-    if (diff > 1e-10) {
-        TERMINATE("wrong residual");
+    if (blacs_grid__.comm().rank() == 0) {
+        if (diff > 1e-10) {
+            printf("\x1b[31m" "Wrong residual\n" "\x1b[0m" "\n");
+        } else {
+            printf("\x1b[32m" "OK\n" "\x1b[0m" "\n");
+        }
     }
 }
 
@@ -155,7 +173,8 @@ void test_diag2(BLACS_grid const& blacs_grid__,
         {"lapack", ev_solver_t::lapack},
         {"scalapack", ev_solver_t::scalapack},
         {"elpa1", ev_solver_t::elpa1},
-        {"elpa2", ev_solver_t::elpa2}
+        {"elpa2", ev_solver_t::elpa2},
+        {"magma", ev_solver_t::magma}
     };
 
     auto solver = Eigensolver_factory<double_complex>(map_name_to_type[name__]);
@@ -209,13 +228,17 @@ void call_test(std::vector<int> mpi_grid__,
                bool test_gen__,
                std::string name__,
                std::string fname__,
-               int repeat__)
+               int repeat__,
+               int type__)
 {
     BLACS_grid blacs_grid(mpi_comm_world(), mpi_grid__[0], mpi_grid__[1]);
     if (fname__.length() == 0) {
         for (int i = 0; i < repeat__; i++) {
-            test_diag<double>(blacs_grid, N__, n__, nev__, bs__, test_gen__, name__);
-            test_diag<double_complex>(blacs_grid, N__, n__, nev__, bs__, test_gen__, name__);
+            if (type__ == 0) {
+                test_diag<double>(blacs_grid, N__, n__, nev__, bs__, test_gen__, name__);
+            } else {
+                test_diag<double_complex>(blacs_grid, N__, n__, nev__, bs__, test_gen__, name__);
+            }
         }
     } else {
         test_diag2(blacs_grid, bs__, name__, fname__);
@@ -234,6 +257,7 @@ int main(int argn, char** argv)
     args.register_key("--gen", "test generalized problem");
     args.register_key("--name=", "{string} name of the solver");
     args.register_key("--file=", "{string} input file name");
+    args.register_key("--type=", "{int} data type: 0-real, 1-complex");
 
     args.parse_args(argn, argv);
     if (args.exist("help")) {
@@ -247,13 +271,16 @@ int main(int argn, char** argv)
     auto nev      = args.value<int>("nev", 50);
     auto bs       = args.value<int>("bs", 32);
     auto repeat   = args.value<int>("repeat", 2);
+    auto type     = args.value<int>("type", 0);
     auto test_gen = args.exist("gen");
     auto name     = args.value<std::string>("name", "lapack");
     auto fname    = args.value<std::string>("file", "");
 
     sirius::initialize(1);
-    call_test(mpi_grid_dims, N, n, nev, bs, test_gen, name, fname, repeat);
+    call_test(mpi_grid_dims, N, n, nev, bs, test_gen, name, fname, repeat, type);
     mpi_comm_world().barrier();
-    sddk::timer::print();
+    if (mpi_comm_world().rank() == 0) {
+        sddk::timer::print();
+    }
     sirius::finalize();
 }

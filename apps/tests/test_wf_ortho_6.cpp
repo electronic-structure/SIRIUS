@@ -91,7 +91,7 @@ void test_wf_ortho(BLACS_grid const& blacs_grid__,
         }
     }
     if (err) {
-        printf("\x1b[31m" "OK\n" "\x1b[0m" "\n");
+        printf("\x1b[31m" "Failed\n" "\x1b[0m" "\n");
     } else {
         printf("\x1b[32m" "OK\n" "\x1b[0m" "\n");
     }

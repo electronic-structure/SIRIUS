@@ -897,6 +897,10 @@ class Local_operator
         {
             PROFILE("sirius::Local_operator::apply_b");
 
+            if (!gkvec_p_) {
+                TERMINATE("Local operator is not prepared");
+            }
+
             fft_coarse_.prepare(*gkvec_p_);
 
             /* components of H|psi> to which H is applied */
