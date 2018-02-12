@@ -108,11 +108,6 @@ class Simulation_parameters
         parameters_input_.num_mag_dims_ = num_mag_dims__;
     }
 
-    //inline void set_num_fv_states(int num_fv_states__)
-    //{
-    //    parameters_input_.num_fv_states_ = num_fv_states__;
-    //}
-
     inline void set_aw_cutoff(double aw_cutoff__)
     {
         parameters_input_.aw_cutoff_ = aw_cutoff__;

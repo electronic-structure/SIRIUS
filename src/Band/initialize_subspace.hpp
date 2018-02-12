@@ -58,8 +58,10 @@ Band::initialize_subspace(K_point* kp__, Hamiltonian &H__, int num_ao__) const
 {
     PROFILE("sirius::Band::initialize_subspace|kp");
 
+    int nbnd = (ctx_.num_mag_dims() == 3) ? ctx_.num_bands() / 2 : ctx_.num_bands();
+
     /* number of basis functions */
-    int num_phi = std::max(num_ao__, ctx_.num_bands());
+    int num_phi = std::max(num_ao__, nbnd);
 
     const int num_sc = (ctx_.num_mag_dims() == 3) ? 2 : 1;
 

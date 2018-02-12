@@ -262,11 +262,11 @@ inline int Band::diag_pseudo_potential_davidson(K_point*       kp__,
     for (int ispin_step = 0; ispin_step < ctx_.num_spin_dims(); ispin_step++) {
 
         std::vector<double> eval(num_bands);
-        std::vector<double> eval_old(num_bands);
+        std::vector<double> eval_old(num_bands, 1e100);
 
-        for (int j = 0; j < num_bands; j++) {
-            eval_old[j] = kp__->band_energy(j, ispin_step);
-        }
+        //for (int j = 0; j < num_bands; j++) {
+        //    eval_old[j] = kp__->band_energy(j, ispin_step);
+        //}
 
         /* trial basis functions */
         for (int ispn = 0; ispn < num_sc; ispn++) {
