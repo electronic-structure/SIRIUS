@@ -68,7 +68,6 @@ class Non_local_functor
                 bp_base_.generate(icnk, x);
 
                 for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-                    int spin_bnd_offset = ctx_.num_mag_dims() == 1 ? ispn * ctx_.num_fv_states() : 0 ;
                     int spin_factor = (ispn == 0 ? 1 : -1);
 
                     int nbnd = kpoint__.num_occupied_bands(ispn);
@@ -94,9 +93,9 @@ class Non_local_functor
                             for (int ibnd_loc = 0; ibnd_loc < nbnd_loc; ibnd_loc++) {
                                 int ibnd = spl_nbnd[ibnd_loc];
 
-                                double_complex scalar_part = main_two_factor * kpoint__.band_occupancy(ibnd + spin_bnd_offset) * kpoint__.weight() *
+                                double_complex scalar_part = main_two_factor * kpoint__.band_occupancy(ibnd, ispn) * kpoint__.weight() *
                                         std::conj(beta_phi_chunk(offs + jbf, ibnd)) * bp_base_phi_chunk(offs + ibf, ibnd) *
-                                        (dij - kpoint__.band_energy(ibnd + spin_bnd_offset) * qij);
+                                        (dij - kpoint__.band_energy(ibnd, ispn) * qij);
 
                                 /* get real part and add to the result array*/
                                 collect_res__(x, ia) += scalar_part.real();

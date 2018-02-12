@@ -280,7 +280,7 @@ inline int Band::residuals(K_point*             kp__,
             std::vector<int> ev_idx;
             int s = ispn__ == 2 ? 0 : ispn__;
             for (int i = 0; i < num_bands__; i++) {
-                double tol = tol__ + empty_tol * std::abs(1 - kp__->band_occupancy(i + s * ctx_.num_fv_states()) / ctx_.max_occupancy());
+                double tol = tol__ + empty_tol * std::abs(1 - kp__->band_occupancy(i, s) / ctx_.max_occupancy());
                 if (std::abs(eval__[i] - eval_old__[i]) > tol) {
                     ev_idx.push_back(i);
                 }

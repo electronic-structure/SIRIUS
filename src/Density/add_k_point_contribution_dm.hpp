@@ -21,7 +21,7 @@ inline void Density::add_k_point_contribution_dm(K_point* kp__, mdarray<double_c
                         for (int xi = 0; xi < mt_basis_size; xi++) {
                             auto c = kp__->spinor_wave_functions().mt_coeffs(ispn).prime(offset_wf + xi, i);
                             wf1(xi, i) = std::conj(c);
-                            wf2(xi, i) = c * kp__->band_occupancy(i + ispn * ctx_.num_fv_states()) * kp__->weight();
+                            wf2(xi, i) = c * kp__->band_occupancy(i, ispn) * kp__->weight();
                         }
                     }
                     /* add |psi_j> n_j <psi_j| to density matrix */
@@ -47,7 +47,7 @@ inline void Density::add_k_point_contribution_dm(K_point* kp__, mdarray<double_c
                         for (int xi = 0; xi < mt_basis_size; xi++) {
                             auto c = kp__->spinor_wave_functions().mt_coeffs(ispn).prime(offset_wf + xi, i);
                             wf1(xi, i, ispn) = std::conj(c);
-                            wf2(xi, i, ispn) = c * kp__->band_occupancy(i) * kp__->weight();
+                            wf2(xi, i, ispn) = c * kp__->band_occupancy(i, 0) * kp__->weight();
                         }
                     }
                 }
@@ -106,7 +106,7 @@ inline void Density::add_k_point_contribution_dm(K_point* kp__, mdarray<double_c
                                     for (int xi = 0; xi < nbf; xi++) {
                                         bp1(xi, i) = beta_psi(offs + xi, j);
                                         bp2(xi, i) = std::conj(bp1(xi, i)) * kp__->weight() *
-                                                     kp__->band_occupancy(j + ispn * ctx_.num_fv_states());
+                                                     kp__->band_occupancy(j, ispn);
                                     }
                                 }
 
@@ -146,7 +146,7 @@ inline void Density::add_k_point_contribution_dm(K_point* kp__, mdarray<double_c
 
                         for (int m = 0; m < nbeta; m++) {
                             bp1(m, i, ispn) = beta_psi(m, j);
-                            bp2(m, i, ispn) = std::conj(beta_psi(m, j)) * kp__->weight() * kp__->band_occupancy(j);
+                            bp2(m, i, ispn) = std::conj(beta_psi(m, j)) * kp__->weight() * kp__->band_occupancy(j, 0);
                         }
                     }
                 }

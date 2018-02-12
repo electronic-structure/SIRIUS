@@ -47,7 +47,7 @@ void hubbard_compute_occupation_numbers(K_point_set& kset_)
                   dm,
                   0,
                   0);
-        } else {
+        } else { // TODO: can this be combined into one loop over spins?
             inner(ctx_.processing_unit(),
                   0,
                   kp->hubbard_wave_functions(),
@@ -79,7 +79,7 @@ void hubbard_compute_occupation_numbers(K_point_set& kset_)
 
         if (ctx_.num_mag_dims() == 3) {
             // there must be a way to do that with matrix multiplication
-#pragma omp parallel for schedule(static)
+            #pragma omp parallel for schedule(static)
             for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
                 const auto& atom = unit_cell_.atom(ia);
                 const int lmax_at = 2 * atom.type().hubbard_l() + 1;
@@ -93,7 +93,7 @@ void hubbard_compute_occupation_numbers(K_point_set& kset_)
                                         this->occupancy_number_(m, mp, s, ia, 0) +=
                                             std::conj(dm(this->offset[ia] + m + s1 * lmax_at, nband)) *
                                             dm(this->offset[ia] + mp + s2 * lmax_at, nband) *
-                                            kp->band_occupancy(nband) * kp->weight();
+                                            kp->band_occupancy(nband, 0) * kp->weight();
                                     }
                                 }
                             }
@@ -104,7 +104,7 @@ void hubbard_compute_occupation_numbers(K_point_set& kset_)
         } else {
             for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
                 const int nb = (ispn == 1) * kp->num_occupied_bands(0);
-#pragma omp parallel for schedule(static)
+                #pragma omp parallel for schedule(static)
                 for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
                     const auto& atom = unit_cell_.atom(ia);
                     const int lmax_at = 2 * atom.type().hubbard_l() + 1;
@@ -115,7 +115,7 @@ void hubbard_compute_occupation_numbers(K_point_set& kset_)
                                     this->occupancy_number_(m, mp, ispn, ia, 0) +=
                                         std::conj(dm(this->offset[ia] + m, nband + nb)) *
                                         dm(this->offset[ia] + mp, nband + nb) *
-                                        kp->band_occupancy(nband) * kp->weight();
+                                        kp->band_occupancy(nband, ispn) * kp->weight();
                                 }
                             }
                         }

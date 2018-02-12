@@ -752,16 +752,23 @@ inline void Simulation_context_base::initialize()
         }
     }
     
-    /* take 10% of empty non-magnetic states */
-    if (num_fv_states() < 0) {
-        set_num_fv_states(static_cast<int>(unit_cell_.num_valence_electrons() / 2.0) +
-                                           std::max(10, static_cast<int>(0.1 * unit_cell_.num_valence_electrons())));
-    }
-    
-    if (num_fv_states() < static_cast<int>(unit_cell_.num_valence_electrons() / 2.0)) {
-        std::stringstream s;
-        s << "not enough first-variational states : " << num_fv_states();
-        TERMINATE(s);
+    int nbnd = static_cast<int>(unit_cell_.num_valence_electrons() / 2.0) +
+                                std::max(10, static_cast<int>(0.1 * unit_cell_.num_valence_electrons()));
+    if (full_potential()) {
+        /* take 10% of empty non-magnetic states */
+        if (num_fv_states() < 0) {
+            num_fv_states(nbnd);
+        } 
+        if (num_fv_states() < static_cast<int>(unit_cell_.num_valence_electrons() / 2.0)) {
+            std::stringstream s;
+            s << "not enough first-variational states : " << num_fv_states();
+            TERMINATE(s);
+        }
+    } else {
+        if (num_mag_dims() == 3) {
+            nbnd *= 2;
+        }
+        num_bands(nbnd);
     }
     
     std::string evsn[] = {std_evp_solver_name(), gen_evp_solver_name()};
@@ -838,8 +845,8 @@ inline void Simulation_context_base::initialize()
 
     /* setup the cyclic block size */
     if (cyclic_block_size() < 0) {
-        double a = std::min(std::log2(double(num_fv_states()) / blacs_grid_->num_ranks_col()),
-                            std::log2(double(num_fv_states()) / blacs_grid_->num_ranks_row()));
+        double a = std::min(std::log2(double(num_bands()) / blacs_grid_->num_ranks_col()),
+                            std::log2(double(num_bands()) / blacs_grid_->num_ranks_row()));
         if (a < 1) {
             control_input_.cyclic_block_size_ = 2;
         } else {

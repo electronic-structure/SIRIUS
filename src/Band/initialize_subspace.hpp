@@ -43,9 +43,11 @@ inline void Band::initialize_subspace(K_point_set& kset__, Hamiltonian& H__) con
 
     /* reset the energies for the iterative solver to do at least two steps */
     for (int ik = 0; ik < kset__.num_kpoints(); ik++) {
-        for (int i = 0; i < ctx_.num_bands(); i++) {
-            kset__[ik]->band_energy(i)    = 0;
-            kset__[ik]->band_occupancy(i) = ctx_.max_occupancy();
+        for (int ispn = 0; ispn < ctx_.num_spin_dims(); ispn++) {
+            for (int i = 0; i < ctx_.num_bands(); i++) {
+                kset__[ik]->band_energy(i, ispn)    = 0;
+                kset__[ik]->band_occupancy(i, ispn) = ctx_.max_occupancy();
+            }
         }
     }
 }
@@ -57,11 +59,9 @@ Band::initialize_subspace(K_point* kp__, Hamiltonian &H__, int num_ao__) const
     PROFILE("sirius::Band::initialize_subspace|kp");
 
     /* number of basis functions */
-    int num_phi = std::max(num_ao__, ctx_.num_fv_states());
+    int num_phi = std::max(num_ao__, ctx_.num_bands());
 
     const int num_sc = (ctx_.num_mag_dims() == 3) ? 2 : 1;
-
-    const int num_spin_steps = (ctx_.num_mag_dims() == 3) ? 1 : ctx_.num_spins();
 
     int num_phi_tot = (ctx_.num_mag_dims() == 3) ? num_phi * 2 : num_phi;
 
@@ -140,7 +140,7 @@ Band::initialize_subspace(K_point* kp__, Hamiltonian &H__, int num_ao__) const
     t1.stop();
 
     /* short notation for number of target wave-functions */
-    int num_bands = (ctx_.num_mag_dims() == 3) ? ctx_.num_bands() : ctx_.num_fv_states();
+    int num_bands = ctx_.num_bands();
 
     ctx_.fft_coarse().prepare(kp__->gkvec_partition());
     H__.local_op().prepare(kp__->gkvec_partition());
@@ -204,7 +204,7 @@ Band::initialize_subspace(K_point* kp__, Hamiltonian &H__, int num_ao__) const
         }
     }
 
-    for (int ispn_step = 0; ispn_step < num_spin_steps; ispn_step++) {
+    for (int ispn_step = 0; ispn_step < ctx_.num_spin_dims(); ispn_step++) {
         /* apply Hamiltonian and overlap operators to the new basis functions */
         H__.apply_h_s<T>(kp__, (ctx_.num_mag_dims() == 3) ? 2 : ispn_step, 0, num_phi_tot, phi, hphi, ophi);
 
@@ -278,7 +278,7 @@ Band::initialize_subspace(K_point* kp__, Hamiltonian &H__, int num_ao__) const
                     {&kp__->spinor_wave_functions()}, 0, num_bands);
 
         for (int j = 0; j < num_bands; j++) {
-            kp__->band_energy(j + ispn_step * ctx_.num_fv_states()) = eval[j];
+            kp__->band_energy(j, ispn_step) = eval[j];
         }
     }
 

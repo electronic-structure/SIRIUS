@@ -806,13 +806,14 @@ void sirius_set_band_occupancies(ftn_int*    kset_id__,
                                  ftn_double* band_occupancies__,
                                  ftn_int*    num_bands__)
 {
-    int ik = *ik__ - 1;
-    for (int i = 0; i < *num_bands__; i++) {
-        (*kset_list[*kset_id__])[ik]->band_occupancy(i) = band_occupancies__[i];
-    }
-    for (int i = *num_bands__; i < (int)(*kset_list[*kset_id__])[ik]->band_occupancy().size(); i++) {
-        (*kset_list[*kset_id__])[ik]->band_occupancy(i) = 0.0;
-    }
+    STOP();
+    //int ik = *ik__ - 1;
+    //for (int i = 0; i < *num_bands__; i++) {
+    //    (*kset_list[*kset_id__])[ik]->band_occupancy(i) = band_occupancies__[i];
+    //}
+    //for (int i = *num_bands__; i < (int)(*kset_list[*kset_id__])[ik]->band_occupancy().size(); i++) {
+    //    (*kset_list[*kset_id__])[ik]->band_occupancy(i) = 0.0;
+    //}
 }
 
 void sirius_get_band_energies(ftn_int*    kset_id__,
@@ -820,16 +821,18 @@ void sirius_get_band_energies(ftn_int*    kset_id__,
                               ftn_double* band_energies__,
                               ftn_int*    num_bands__)
 {
-    int ik = *ik__ - 1;
-    for (int i = 0; i < *num_bands__; i++) {
-        band_energies__[i] = (*kset_list[*kset_id__])[ik]->band_energy(i);
-    }
+    STOP();
+    //int ik = *ik__ - 1;
+    //for (int i = 0; i < *num_bands__; i++) {
+    //    band_energies__[i] = (*kset_list[*kset_id__])[ik]->band_energy(i);
+    //}
 }
 
 void sirius_get_band_occupancies(int32_t* kset_id, int32_t* ik_, double* band_occupancies)
 {
-    int ik = *ik_ - 1;
-    kset_list[*kset_id]->get_band_occupancies(ik, band_occupancies);
+    STOP();
+    //int ik = *ik_ - 1;
+    //kset_list[*kset_id]->get_band_occupancies(ik, band_occupancies);
 }
 
 void sirius_print_timers(void)
@@ -2015,9 +2018,14 @@ void sirius_get_num_fv_states(int32_t* num_fv_states__)
     *num_fv_states__ = sim_ctx->num_fv_states();
 }
 
-void sirius_set_num_fv_states(int32_t* num_fv_states__)
+void sirius_set_num_fv_states(ftn_int* num_fv_states__)
 {
-    sim_ctx->set_num_fv_states(*num_fv_states__);
+    sim_ctx->num_fv_states(*num_fv_states__);
+}
+
+void sirius_set_num_bands(ftn_int* num_bands__)
+{
+    sim_ctx->num_bands(*num_bands__);
 }
 
 //void sirius_get_mpi_comm(int32_t* directions__, int32_t* fcomm__)

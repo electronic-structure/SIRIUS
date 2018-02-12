@@ -111,8 +111,8 @@ inline void Band::diag_pseudo_potential_exact(K_point* kp__,
         TERMINATE(s);
     }
 
-    for (int j = 0; j < ctx_.num_fv_states(); j++) {
-        kp__->band_energy(j + ispn__ * ctx_.num_fv_states()) = eval[j];
+    for (int j = 0; j < ctx_.num_bands(); j++) {
+        kp__->band_energy(j, ispn__) = eval[j];
     }
 
     kp__->spinor_wave_functions().pw_coeffs(0).remap_from(evec, 0);
@@ -145,15 +145,8 @@ inline int Band::diag_pseudo_potential_davidson(K_point*       kp__,
      */
     const int num_sc = nc_mag ? 2 : 1;
 
-    /* number of steps in spin index
-     * 1 - in case of non-magnetic calculation
-     * 2 - in case of collinear calculation (up, dn)
-     * 1 - in case of non-collinear calculation (two spin components are treated simultaneously)
-     */
-    const int num_spin_steps = nc_mag ? 1 : ctx_.num_spins();
-
     /* short notation for number of target wave-functions */
-    const int num_bands = nc_mag ? ctx_.num_bands() : ctx_.num_fv_states();
+    const int num_bands = ctx_.num_bands();
 
     /* short notation for target wave-functions */
     auto& psi = kp__->spinor_wave_functions();
@@ -266,10 +259,14 @@ inline int Band::diag_pseudo_potential_davidson(K_point*       kp__,
     int niter{0};
 
     sddk::timer t3("sirius::Band::diag_pseudo_potential_davidson|iter");
-    for (int ispin_step = 0; ispin_step < num_spin_steps; ispin_step++) {
+    for (int ispin_step = 0; ispin_step < ctx_.num_spin_dims(); ispin_step++) {
 
         std::vector<double> eval(num_bands);
-        std::vector<double> eval_old(num_bands, 1e100);
+        std::vector<double> eval_old(num_bands);
+
+        for (int j = 0; j < num_bands; j++) {
+            eval_old[j] = kp__->band_energy(j, ispin_step);
+        }
 
         /* trial basis functions */
         for (int ispn = 0; ispn < num_sc; ispn++) {
@@ -353,7 +350,7 @@ inline int Band::diag_pseudo_potential_davidson(K_point*       kp__,
                                  {&psi}, 0, num_bands);
                     /* update eigen-values */
                     for (int j = 0; j < num_bands; j++) {
-                        kp__->band_energy(j + ispin_step * ctx_.num_fv_states()) = eval[j];
+                        kp__->band_energy(j, ispin_step) = eval[j];
                     }
                 } else {
                     if (ctx_.control().verbosity_ >= 2 && kp__->comm().rank() == 0) {
@@ -465,7 +462,7 @@ inline int Band::diag_pseudo_potential_davidson(K_point*       kp__,
                 if (ctx_.control().verbosity_ >= 4) {
                     for (int i = 0; i < num_bands; i++) {
                         printf("eval[%i]=%20.16f, diff=%20.16f, occ=%20.16f\n", i, eval[i], std::abs(eval[i] - eval_old[i]),
-                             kp__->band_occupancy(i + ispin_step * ctx_.num_fv_states()));
+                             kp__->band_occupancy(i, ispin_step));
                     }
                 }
             }
@@ -480,7 +477,7 @@ inline int Band::diag_pseudo_potential_davidson(K_point*       kp__,
             printf("checking residuals\n");
         }
         /* compute residuals */
-        for (int ispin_step = 0; ispin_step < num_spin_steps; ispin_step++) {
+        for (int ispin_step = 0; ispin_step < ctx_.num_spin_dims(); ispin_step++) {
             /* apply Hamiltonian and S operators to the wave-functions */
             H__.apply_h_s<T>(kp__, nc_mag ? 2 : ispin_step, 0, num_bands, psi, hpsi, spsi);
             
@@ -490,7 +487,7 @@ inline int Band::diag_pseudo_potential_davidson(K_point*       kp__,
                     for (int ig = 0; ig < kp__->num_gkvec_loc(); ig++) {
                         res.pw_coeffs(ispn).prime(ig, j) = hpsi.pw_coeffs(ispn).prime(ig, j) -
                                                            spsi.pw_coeffs(ispn).prime(ig, j) * 
-                                                           kp__->band_energy(j + ispin_step * ctx_.num_fv_states());
+                                                           kp__->band_energy(j, ispin_step);
                     }
                 }
             }

@@ -11,6 +11,11 @@ inline void K_point::initialize()
 
     int bs = ctx_.cyclic_block_size();
 
+    if (use_second_variation && ctx_.full_potential()) {
+        assert(ctx_.num_fv_states() > 0);
+        fv_eigen_values_.resize(ctx_.num_fv_states());
+    }
+
     /* In case of collinear magnetism we store only non-zero spinor components.
      *
      * non magnetic case: 
@@ -32,7 +37,7 @@ inline void K_point::initialize()
      * |       |
      * .-------.
      */
-    int nst = (ctx_.num_mag_dims() == 3) ? ctx_.num_bands() : ctx_.num_fv_states();
+    int nst = ctx_.num_bands();
 
     auto mem_type_evp = (ctx_.std_evp_solver_type() == ev_solver_t::magma) ? memory_t::host_pinned : memory_t::host;
     auto mem_type_gevp = (ctx_.gen_evp_solver_type() == ev_solver_t::magma) ? memory_t::host_pinned : memory_t::host;
@@ -43,10 +48,6 @@ inline void K_point::initialize()
         if (ctx_.num_mag_dims() == 1) {
             sv_eigen_vectors_[1] = dmatrix<double_complex>(nst, nst, ctx_.blacs_grid(), bs, bs, mem_type_evp);
         }
-    }
-
-    if (use_second_variation) {
-        fv_eigen_values_.resize(ctx_.num_fv_states());
     }
 
     /* build a full list of G+k vectors for all MPI ranks */
@@ -198,8 +199,6 @@ inline void K_point::initialize()
             TERMINATE_NOT_IMPLEMENTED
         }
     } else {
-        assert(ctx_.num_fv_states() < num_gkvec());
-
         spinor_wave_functions_ = std::unique_ptr<Wave_functions>(new Wave_functions(gkvec_partition(), nst, ctx_.num_spins()));
     }
     if (ctx_.processing_unit() == GPU && keep_wf_on_gpu) {

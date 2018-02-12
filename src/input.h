@@ -370,6 +370,10 @@ struct Parameters_input
     std::vector<std::string> xc_functionals_;
     std::string core_relativity_{"dirac"};
     std::string valence_relativity_{"zora"};
+    
+    /// Number of bands.
+    /** In spin-collinear case this is the number of bands for each spin channel. */ 
+    int num_bands_{-1};
 
     /// Number of first-variational states.
     int num_fv_states_{-1};

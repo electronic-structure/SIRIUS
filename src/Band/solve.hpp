@@ -168,15 +168,15 @@ inline void Band::solve_for_kset(K_point_set& kset__, Hamiltonian& Hamiltonian__
             printf("ik : %2i, ", ik);
             if (ctx_.num_mag_dims() != 1) {
                 for (int j = 0; j < std::min(ctx_.control().num_bands_to_print_, ctx_.num_bands()); j++) {
-                    printf("%12.6f", kset__[ik]->band_energy(j));
+                    printf("%12.6f", kset__[ik]->band_energy(j, 0));
                 }
             } else {
-                for (int j = 0; j < std::min(ctx_.control().num_bands_to_print_, ctx_.num_fv_states()); j++) {
-                    printf("%12.6f", kset__[ik]->band_energy(j));
+                for (int j = 0; j < std::min(ctx_.control().num_bands_to_print_, ctx_.num_bands()); j++) {
+                    printf("%12.6f", kset__[ik]->band_energy(j, 0));
                 }
                 printf("\n         ");
-                for (int j = 0; j < std::min(ctx_.control().num_bands_to_print_, ctx_.num_fv_states()); j++) {
-                    printf("%12.6f", kset__[ik]->band_energy(ctx_.num_fv_states() + j));
+                for (int j = 0; j < std::min(ctx_.control().num_bands_to_print_, ctx_.num_bands()); j++) {
+                    printf("%12.6f", kset__[ik]->band_energy(j, 1));
                 }
             }
             printf("\n");
