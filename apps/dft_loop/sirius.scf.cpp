@@ -291,8 +291,8 @@ void run_tasks(cmd_args const& args)
                 for (int x = 0; x < 3; x++) {
                     bnd_k["kpoint"][x] = ks[ik]->vk()[x];
                 }
-                ks.get_band_energies(ik, bnd_e.data());
-                bnd_k["values"] = bnd_e;
+                //ks.get_band_energies(ik, bnd_e.data());
+                //bnd_k["values"] = bnd_e;
                 dict["bands"].push_back(bnd_k);
             }
             std::ofstream ofs("bands.json", std::ofstream::out | std::ofstream::trunc);
