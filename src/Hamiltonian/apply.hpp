@@ -90,6 +90,10 @@ void Hamiltonian::apply_h_s(K_point* kp__,
 {
     PROFILE("sirius::Hamiltonian::apply_h_s");
 
+    if ((phi__.num_sc() != hphi__.num_sc()) || (phi__.num_sc() != sphi__.num_sc())) {
+        TERMINATE("wrong number of spin components");
+    }
+
     double t1 = -omp_get_wtime();
 
 /* for the data remapping we need phi on CPU */

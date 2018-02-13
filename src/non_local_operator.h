@@ -309,8 +309,7 @@ class D_operator : public Non_local_operator<T>
                                 break;
                             }
                             case 0: {
-                                this->op_(this->packed_mtrx_offset_(ia) + idx, 0) =
-                                    type_wrapper<T>::bypass(uc.atom(ia).d_mtrx(xi1, xi2, 0));
+                                this->op_(this->packed_mtrx_offset_(ia) + idx, 0) = uc.atom(ia).d_mtrx(xi1, xi2, 0);
                                 break;
                             }
                             default: {

@@ -32,6 +32,16 @@ inline void Band::diag_pseudo_potential_exact(K_point* kp__,
     }
 
     auto veff = H__.potential().effective_potential()->gather_f_pw();
+    std::vector<double_complex> beff;
+    if (ctx_.num_mag_dims() == 1) {
+        beff = H__.potential().effective_magnetic_field(0)->gather_f_pw();
+        for (int ig = 0; ig < ctx_.gvec().num_gvec(); ig++) {
+            auto z1 = veff[ig];
+            auto z2 = beff[ig];
+            veff[ig] = z1 + z2;
+            beff[ig] = z1 - z2;
+        }
+    }
 
     #pragma omp parallel for schedule(static)
     for (int igk_col = 0; igk_col < kp__->num_gkvec_col(); igk_col++) {
@@ -42,10 +52,18 @@ inline void Band::diag_pseudo_potential_exact(K_point* kp__,
             auto gvec_row = kp__->gkvec().gvec(ig_row);
             auto ig12 = ctx_.gvec().index_g12_safe(gvec_row, gvec_col);
             
-            if (ig12.second) {
-                hmlt(igk_row, igk_col) += std::conj(veff[ig12.first]);
+            if (ispn__ == 0) {
+                if (ig12.second) {
+                    hmlt(igk_row, igk_col) += std::conj(veff[ig12.first]);
+                } else {
+                    hmlt(igk_row, igk_col) += veff[ig12.first];
+                }
             } else {
-                hmlt(igk_row, igk_col) += veff[ig12.first];
+                if (ig12.second) {
+                    hmlt(igk_row, igk_col) += std::conj(beff[ig12.first]);
+                } else {
+                    hmlt(igk_row, igk_col) += beff[ig12.first];
+                }
             }
         }
     }
@@ -75,7 +93,16 @@ inline void Band::diag_pseudo_potential_exact(K_point* kp__,
 
             for (int xi1 = 0; xi1 < nbf; xi1++) {
                 for (int xi2 = 0; xi2 < nbf; xi2++) {
-                    dop(xi1, xi2) = ctx_.unit_cell().atom(ia).d_mtrx(xi1, xi2, 0);
+                    if (ctx_.num_mag_dims() == 1) {
+                        if (ispn__ == 0) {
+                            dop(xi1, xi2) = ctx_.unit_cell().atom(ia).d_mtrx(xi1, xi2, 0) + ctx_.unit_cell().atom(ia).d_mtrx(xi1, xi2, 1);
+                        } else {
+                            dop(xi1, xi2) = ctx_.unit_cell().atom(ia).d_mtrx(xi1, xi2, 0) - ctx_.unit_cell().atom(ia).d_mtrx(xi1, xi2, 1);
+                        }
+                    } else {
+                        dop(xi1, xi2) = ctx_.unit_cell().atom(ia).d_mtrx(xi1, xi2, 0);
+                    }
+
                     qop(xi1, xi2) = ctx_.augmentation_op(ctx_.unit_cell().atom(ia).type_id()).q_mtrx(xi1, xi2);
                 }
             }
@@ -115,7 +142,7 @@ inline void Band::diag_pseudo_potential_exact(K_point* kp__,
         kp__->band_energy(j, ispn__) = eval[j];
     }
 
-    kp__->spinor_wave_functions().pw_coeffs(0).remap_from(evec, 0);
+    kp__->spinor_wave_functions().pw_coeffs(ispn__).remap_from(evec, 0);
 }
 
 template <typename T>
@@ -264,9 +291,9 @@ inline int Band::diag_pseudo_potential_davidson(K_point*       kp__,
         std::vector<double> eval(num_bands);
         std::vector<double> eval_old(num_bands, 1e100);
 
-        //for (int j = 0; j < num_bands; j++) {
-        //    eval_old[j] = kp__->band_energy(j, ispin_step);
-        //}
+        for (int j = 0; j < num_bands; j++) {
+            eval_old[j] = kp__->band_energy(j, ispin_step);
+        }
 
         /* trial basis functions */
         for (int ispn = 0; ispn < num_sc; ispn++) {
@@ -470,38 +497,6 @@ inline int Band::diag_pseudo_potential_davidson(K_point*       kp__,
         }
     } /* loop over ispin_step */
     t3.stop();
-    
-    /* check residuals */
-    if (ctx_.control().verification_ >= 1) {
-        if (kp__->comm().rank() == 0) {
-            printf("checking residuals\n");
-        }
-        /* compute residuals */
-        for (int ispin_step = 0; ispin_step < ctx_.num_spin_dims(); ispin_step++) {
-            /* apply Hamiltonian and S operators to the wave-functions */
-            H__.apply_h_s<T>(kp__, nc_mag ? 2 : ispin_step, 0, num_bands, psi, hpsi, spsi);
-            
-            for (int ispn = 0; ispn < num_sc; ispn++) {
-                #pragma omp parallel for schedule(static)
-                for (int j = 0; j < num_bands; j++) {
-                    for (int ig = 0; ig < kp__->num_gkvec_loc(); ig++) {
-                        res.pw_coeffs(ispn).prime(ig, j) = hpsi.pw_coeffs(ispn).prime(ig, j) -
-                                                           spsi.pw_coeffs(ispn).prime(ig, j) * 
-                                                           kp__->band_energy(j, ispin_step);
-                    }
-                }
-            }
-            /* get the norm */
-            auto l2norm = res.l2norm(ctx_.processing_unit(), nc_mag ? 2 : ispin_step, num_bands);
-
-            for (int j = 0; j < num_bands; j++) {
-                if (kp__->comm().rank() == 0) {
-                    printf("band: %i, residual l2norm: %18.12f\n", j, l2norm[j]);
-                }
-            }
-        }
-
-    }
 
     kp__->beta_projectors().dismiss();
 
