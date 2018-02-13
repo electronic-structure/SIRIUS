@@ -768,7 +768,9 @@ inline void Simulation_context_base::initialize()
         if (num_mag_dims() == 3) {
             nbnd *= 2;
         }
-        num_bands(nbnd);
+        if (num_bands() < 0) {
+            num_bands(nbnd);
+        }
     }
     
     std::string evsn[] = {std_evp_solver_name(), gen_evp_solver_name()};

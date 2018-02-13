@@ -66,6 +66,12 @@ module sirius
             integer(C_INT),          intent(in) :: num_fv_states
         end subroutine
 
+        subroutine sirius_set_num_bands(num_bands)&
+            &bind(C, name="sirius_set_num_bands")
+            use, intrinsic :: ISO_C_BINDING
+            integer(C_INT),          intent(in) :: num_bands
+        end subroutine
+
         subroutine sirius_set_auto_rmt(auto_rmt)&
             &bind(C, name="sirius_set_auto_rmt")
             use, intrinsic :: ISO_C_BINDING
@@ -427,12 +433,12 @@ module sirius
             integer,                 intent(in) :: kset_id
         end subroutine
 
-        subroutine sirius_get_band_energies(kset_id, ik, band_energies, num_bands)&
+        subroutine sirius_get_band_energies(kset_id, ik, ispn, band_energies)&
             &bind(C, name="sirius_get_band_energies")
             integer,                 intent(in)  :: kset_id
             integer,                 intent(in)  :: ik
+            integer,                 intent(in)  :: ispn
             real(8),                 intent(out) :: band_energies
-            integer,                 intent(in)  :: num_bands
         end subroutine
 
         subroutine sirius_get_energy_fermi(kset_id, efermi)&
@@ -441,12 +447,12 @@ module sirius
             real(8),                 intent(out) :: efermi
         end subroutine
 
-        subroutine sirius_set_band_occupancies(kset_id, ik, band_occupancies, num_bands)&
+        subroutine sirius_set_band_occupancies(kset_id, ik, ispn, band_occupancies)&
             &bind(C, name="sirius_set_band_occupancies")
             integer,                 intent(in) :: kset_id
             integer,                 intent(in) :: ik
+            integer,                 intent(in) :: ispn
             real(8),                 intent(in) :: band_occupancies
-            integer,                 intent(in) :: num_bands
         end subroutine
 
         subroutine sirius_get_gvec_index(gvec, ig)&

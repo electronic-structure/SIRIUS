@@ -803,37 +803,32 @@ void sirius_get_energy_fermi(int32_t* kset_id__, double* efermi__)
 
 void sirius_set_band_occupancies(ftn_int*    kset_id__,
                                  ftn_int*    ik__,
-                                 ftn_double* band_occupancies__,
-                                 ftn_int*    num_bands__)
+                                 ftn_int*    ispn__,
+                                 ftn_double* band_occupancies__)
 {
-    STOP();
-    //int ik = *ik__ - 1;
-    //for (int i = 0; i < *num_bands__; i++) {
-    //    (*kset_list[*kset_id__])[ik]->band_occupancy(i) = band_occupancies__[i];
-    //}
-    //for (int i = *num_bands__; i < (int)(*kset_list[*kset_id__])[ik]->band_occupancy().size(); i++) {
-    //    (*kset_list[*kset_id__])[ik]->band_occupancy(i) = 0.0;
-    //}
+    int ik = *ik__ - 1;
+    for (int i = 0; i < sim_ctx->num_bands(); i++) {
+        (*kset_list[*kset_id__])[ik]->band_occupancy(i, *ispn__) = band_occupancies__[i];
+    }
 }
 
 void sirius_get_band_energies(ftn_int*    kset_id__,
                               ftn_int*    ik__,
-                              ftn_double* band_energies__,
-                              ftn_int*    num_bands__)
+                              ftn_int*    ispn__,
+                              ftn_double* band_energies__)
 {
-    STOP();
-    //int ik = *ik__ - 1;
-    //for (int i = 0; i < *num_bands__; i++) {
-    //    band_energies__[i] = (*kset_list[*kset_id__])[ik]->band_energy(i);
-    //}
+    int ik = *ik__ - 1;
+    for (int i = 0; i < sim_ctx->num_bands(); i++) {
+        band_energies__[i] = (*kset_list[*kset_id__])[ik]->band_energy(i, *ispn__);
+    }
 }
 
-void sirius_get_band_occupancies(int32_t* kset_id, int32_t* ik_, double* band_occupancies)
-{
-    STOP();
-    //int ik = *ik_ - 1;
-    //kset_list[*kset_id]->get_band_occupancies(ik, band_occupancies);
-}
+//void sirius_get_band_occupancies(int32_t* kset_id, int32_t* ik_, double* band_occupancies)
+//{
+//    STOP();
+//    //int ik = *ik_ - 1;
+//    //kset_list[*kset_id]->get_band_occupancies(ik, band_occupancies);
+//}
 
 void sirius_print_timers(void)
 {

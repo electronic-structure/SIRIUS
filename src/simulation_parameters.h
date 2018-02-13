@@ -347,16 +347,14 @@ class Simulation_parameters
     /// Total number of bands.
     inline int num_bands() const
     {
-        /* if the number of bands is set explicitly */
-        if (parameters_input_.num_bands_ != -1) {
-            return parameters_input_.num_bands_;
-        } else {
-            assert(num_fv_states() != -1);
+        if (num_fv_states() != -1) {
             if (num_mag_dims() != 3) {
                 return num_fv_states();
             } else {
                 return num_spins() * num_fv_states();
             }
+        } else {
+            return parameters_input_.num_bands_;
         }
     }
 
