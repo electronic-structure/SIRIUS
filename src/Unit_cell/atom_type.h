@@ -550,6 +550,8 @@ class Atom_type
 
     inline void paw_ae_wfs(mdarray<double, 2>& inp__)
     {
+        
+        paw_ae_wfs_ = mdarray<double, 2>(num_mt_points(), num_beta_radial_functions());
         return inp__ >> paw_ae_wfs_;
     }
 
@@ -560,6 +562,7 @@ class Atom_type
 
     inline void paw_ps_wfs(mdarray<double, 2>& inp__)
     {
+        paw_ps_wfs_ = mdarray<double, 2>(num_mt_points(), num_beta_radial_functions());
         return inp__ >> paw_ps_wfs_;
     }
 
