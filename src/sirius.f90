@@ -930,6 +930,29 @@ module sirius
             integer,                  intent(in)  :: ld
         end subroutine
 
+        subroutine sirius_get_q_operator_matrix(label, q_mtrx, ld)&
+            &bind(C, name="sirius_get_q_operator_matrix")
+            character, dimension(*),  intent(in)  :: label
+            real(8),                  intent(out) :: q_mtrx
+            integer,                  intent(in)  :: ld
+        end subroutine
+
+        subroutine sirius_get_q_operator(label, xi1, xi2, ngv, gvl, q_pw)&
+            &bind(C, name="sirius_get_q_operator")
+            character, dimension(*),  intent(in)  :: label
+            integer,                  intent(in)  :: xi1
+            integer,                  intent(in)  :: xi2
+            integer,                  intent(in)  :: ngv
+            integer,                  intent(in)  :: gvl
+            complex(8),               intent(out) :: q_pw
+        end subroutine
+
+        subroutine sirius_get_num_beta_projectors(label, num_beta_projectors)&
+            &bind(C, name="sirius_get_num_beta_projectors")
+            character, dimension(*),  intent(in)  :: label
+            integer,                  intent(out) :: num_beta_projectors
+        end subroutine
+
         !subroutine sirius_get_q_operator_matrix(iat, q_mtrx, ld)&
         !    &bind(C, name="sirius_get_q_operator_matrix")
         !    integer,                  intent(in)  :: iat
