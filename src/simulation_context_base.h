@@ -774,8 +774,9 @@ inline void Simulation_context_base::initialize()
     }
     
     std::string evsn[] = {std_evp_solver_name(), gen_evp_solver_name()};
-
-    if (comm_band().size() == 1) {
+    
+    /* deduce the default eigen-value solver */
+    if (comm_band().size() == 1 || npc == 1 || npr == 1) {
         if (evsn[0] == "") {
             #if defined(__GPU) && defined(__MAGMA)
             evsn[0] = "magma";
