@@ -1469,9 +1469,9 @@ void sirius_get_gkvec_cart(int32_t* kset_id, int32_t* ik, double* gkvec_cart__)
     }
 }
 
-void sirius_get_evalsum(double* evalsum)
+void sirius_get_evalsum(ftn_double* evalsum__)
 {
-    *evalsum = dft_ground_state->eval_sum();
+    *evalsum__ = dft_ground_state->eval_sum();
 }
 
 void sirius_get_energy_exc(double* energy_exc)
@@ -2748,12 +2748,19 @@ void sirius_get_wave_functions(ftn_int*            kset_id__,
     std::vector<double_complex> wf_tmp(kp->num_gkvec());
     int gkvec_count = kp->gkvec().count();
     int gkvec_offset = kp->gkvec().offset();
+    
+    // TODO: create G-mapping once here
 
     for (int i = 0; i < sim_ctx->num_bands(); i++) {
         std::memcpy(&wf_tmp[gkvec_offset], &kp->spinor_wave_functions().pw_coeffs(0).prime(0, i), gkvec_count * sizeof(double_complex));
         kp->comm().allgather(wf_tmp.data(), gkvec_offset, gkvec_count);
 
         for (int ig = 0; ig < *npw__; ig++) {
+            auto gvc = sim_ctx->unit_cell().reciprocal_lattice_vectors() * (vector3d<double>(gvec_k(0, ig), gvec_k(1, ig), gvec_k(2, ig)) + kp->vk());
+            if (gvc.length() > sim_ctx->gk_cutoff()) {
+                evc(ig, i) = 0;
+                continue;
+            }
             int ig1 = kp->gkvec().index_by_gvec({gvec_k(0, ig), gvec_k(1, ig), gvec_k(2, ig)});
             if (ig1 < 0 || ig1 >= kp->num_gkvec()) {
                 TERMINATE("G-vector is out of range");
@@ -2779,7 +2786,6 @@ void sirius_get_beta_projectors(ftn_int*            kset_id__,
 
     auto kset = kset_list[*kset_id__];
     auto kp = (*kset)[*ik__ - 1];
-    //auto& beta_gk = kp->beta_projectors().beta_gk_total();
 
     mdarray<int, 2> gvec_k(gvec_k__, 3, *npw__);
     mdarray<double_complex, 2> vkb(vkb__, *ld__, *nkb__);
@@ -2788,11 +2794,18 @@ void sirius_get_beta_projectors(ftn_int*            kset_id__,
     auto& gkvec = kp->gkvec();
     
     std::vector<int> idxg;
+    std::vector<int> idxg1(*npw__, -1);
     for (int i = 0; i < *npw__; i++) {
+        auto gvc = sim_ctx->unit_cell().reciprocal_lattice_vectors() * (vector3d<double>(gvec_k(0, i), gvec_k(1, i), gvec_k(2, i)) + kp->vk());
+        if (gvc.length() > sim_ctx->gk_cutoff()) {
+            continue;
+        }
+
         int ig = gkvec.index_by_gvec({gvec_k(0, i), gvec_k(1, i), gvec_k(2, i)});
         if (ig == -1) {
             TERMINATE("index of G-vector is not found");
         }
+        idxg1[i] = static_cast<int>(idxg.size());
         idxg.push_back(ig);
     }
 
@@ -2809,7 +2822,11 @@ void sirius_get_beta_projectors(ftn_int*            kset_id__,
 
         for (int xi = 0; xi < nbf; xi++) {
             for (int ig = 0; ig < *npw__; ig++) {
-                vkb(ig, atom.offset_lo() + qe_order[xi]) = beta_a(ig, atom.offset_lo() + xi);
+                if (idxg1[ig] != -1) {
+                    vkb(ig, atom.offset_lo() + qe_order[xi]) = beta_a(idxg1[ig], atom.offset_lo() + xi);
+                } else {
+                    vkb(ig, atom.offset_lo() + qe_order[xi]) = 0;
+                }
             }
         }
     }
@@ -3003,6 +3020,12 @@ void sirius_get_q_operator(ftn_char            label__,
     for (int i = 0; i < *ngv__; i++) {
         vector3d<int> G(gvl(0, i), gvl(1, i), gvl(2, i));
 
+        auto gvc = sim_ctx->unit_cell().reciprocal_lattice_vectors() * vector3d<double>(G[0], G[1], G[2]);
+        if (gvc.length() > sim_ctx->pw_cutoff()) {
+            q_pw__[i] = 0;
+            continue;
+        }
+
         bool is_inverse{false};
         int ig = sim_ctx->gvec().index_by_gvec(G);
         if (ig == -1 && sim_ctx->gvec().reduced()) {
@@ -3010,21 +3033,17 @@ void sirius_get_q_operator(ftn_char            label__,
             is_inverse = true;
         }
         if (ig == -1) {
-            q_pw__[i] = 0;
             std::stringstream s;
             auto gvc = sim_ctx->unit_cell().reciprocal_lattice_vectors() * vector3d<double>(G[0], G[1], G[2]);
             s << "wrong index of G-vector" << std::endl
               << "input G-vector: " << G << " (length: " << gvc.length() << " [a.u.^-1])" << std::endl;
-            WARNING(s);
+            TERMINATE(s);
         } else {
             if (is_inverse) {
                 q_pw__[i] = std::conj(q_pw[ig]);
             } else {
                 q_pw__[i] = q_pw[ig];
             }
-        }
-        if (q_pw__[i] != q_pw__[i]) {
-            TERMINATE("NaN");
         }
     }
 }
