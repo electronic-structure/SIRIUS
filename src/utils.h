@@ -360,12 +360,24 @@ class Utils
         return (T(0) < val) - (val < T(0));
     }
 
-    inline static int packed_index(int idx1__, int idx2__)
+    /// Pack two indices into one for symmetric matrices.
+    inline static int packed_index(int i__, int j__)
     {
-        if (idx1__ > idx2__) {
-            std::swap(idx1__, idx2__);
+        /* suppose we have a symmetric matrix: M_{ij} = M_{ji}
+               j
+           +-------+
+           | + + + |
+          i|   + + |   -> idx = j * (j + 1) / 2 + i  for  i <= j
+           |     + |
+           +-------+
+
+           i, j are row and column indices 
+        */
+
+        if (i__ > j__) {
+            std::swap(i__, j__);
         }
-        return idx2__ * (idx2__ + 1) / 2 + idx1__;
+        return j__ * (j__ + 1) / 2 + i__;
     }
 };
 
