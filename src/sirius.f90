@@ -917,12 +917,19 @@ module sirius
             integer,                  intent(in)  :: ld
         end subroutine
 
-        subroutine sirius_get_q_operator_matrix(iat, q_mtrx, ld)&
-            &bind(C, name="sirius_get_q_operator_matrix")
-            integer,                  intent(in)  :: iat
-            real(8),                  intent(out) :: q_mtrx
+        subroutine sirius_set_q_operator_matrix(label, q_mtrx, ld)&
+            &bind(C, name="sirius_set_q_operator_matrix")
+            character, dimension(*),  intent(in)  :: label
+            real(8),                  intent(in)  :: q_mtrx
             integer,                  intent(in)  :: ld
         end subroutine
+
+        !subroutine sirius_get_q_operator_matrix(iat, q_mtrx, ld)&
+        !    &bind(C, name="sirius_get_q_operator_matrix")
+        !    integer,                  intent(in)  :: iat
+        !    real(8),                  intent(out) :: q_mtrx
+        !    integer,                  intent(in)  :: ld
+        !end subroutine
 
         subroutine sirius_get_density_matrix(ia, dm, nhm)&
             &bind(C, name="sirius_get_density_matrix")

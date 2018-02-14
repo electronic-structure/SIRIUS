@@ -199,6 +199,11 @@ class Augmentation_operator
             return q_mtrx_(xi1__, xi2__);
         }
 
+        double& q_mtrx(int xi1__, int xi2__)
+        {
+            return q_mtrx_(xi1__, xi2__);
+        }
+
         inline mdarray<double, 1> const& sym_weight() const
         {
             return sym_weight_;

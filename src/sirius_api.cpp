@@ -2701,14 +2701,40 @@ void sirius_integrate_(ftn_int* m__,
     *result__ = s.integrate(*m__);
 }
 
-
-void sirius_get_wave_functions(ftn_int* kset_id__,
-                               ftn_int* ik__,
-                               ftn_int* npw__,
-                               ftn_int* gvec_k__,
-                               ftn_double_complex* evc__,
-                               ftn_int* ld__)
+/// Mapping of atomic indices from SIRIUS to QE order.
+static std::vector<int> atomic_orbital_index_map_QE(sirius::Atom_type const& type__)
 {
+    int nbf = type__.mt_basis_size();
+
+    /* index of Rlm in QE in the block of lm coefficients for a given l */
+    auto idx_m_QE = [](int m)
+    {
+        return (m > 0) ? 2 * m - 1 : -2 * m;
+    };
+
+    std::vector<int> idx_map(nbf);
+    for (int xi = 0; xi < nbf; xi++) {
+        int m       = type__.indexb(xi).m;
+        int idxrf   = type__.indexb(xi).idxrf;
+        idx_map[xi] = type__.indexb().index_by_idxrf(idxrf) + idx_m_QE(m); /* beginning of lm-block + new offset in lm block */
+    }
+    return std::move(idx_map);
+}
+
+static inline int phase_Rlm_QE(sirius::Atom_type const& type__, int xi__)
+{
+    return (type__.indexb(xi__).m >= 1 && type__.indexb(xi__).m % 2 == 0) ? -1 : 1;
+}
+
+void sirius_get_wave_functions(ftn_int*            kset_id__,
+                               ftn_int*            ik__,
+                               ftn_int*            npw__,
+                               ftn_int*            gvec_k__,
+                               ftn_double_complex* evc__,
+                               ftn_int*            ld__)
+{
+    PROFILE("sirius_api::sirius_get_wave_functions");
+
     auto kset = kset_list[*kset_id__];
     auto kp = (*kset)[*ik__ - 1];
 
@@ -2717,8 +2743,8 @@ void sirius_get_wave_functions(ftn_int* kset_id__,
     evc.zero();
 
     std::vector<double_complex> wf_tmp(kp->num_gkvec());
-    int gkvec_count = kp->gkvec().gvec_count(kp->comm().rank());
-    int gkvec_offset = kp->gkvec().gvec_offset(kp->comm().rank());
+    int gkvec_count = kp->gkvec().count();
+    int gkvec_offset = kp->gkvec().offset();
 
     for (int i = 0; i < sim_ctx->num_bands(); i++) {
         std::memcpy(&wf_tmp[gkvec_offset], &kp->spinor_wave_functions().pw_coeffs(0).prime(0, i), gkvec_count * sizeof(double_complex));
@@ -2760,8 +2786,31 @@ void sirius_get_beta_projectors(ftn_int*            kset_id__,
     
     std::vector<int> idxg;
     for (int i = 0; i < *npw__; i++) {
-        idxg.push_back(gkvec.index_by_gvec({gvec_k(0, i), gvec_k(1, i), gvec_k(2, i)}));
+        int ig = gkvec.index_by_gvec({gvec_k(0, i), gvec_k(1, i), gvec_k(2, i)});
+        if (ig == -1) {
+            TERMINATE("index of G-vector is not found");
+        }
+        idxg.push_back(ig);
     }
+
+    sirius::Beta_projectors bp(*sim_ctx, gkvec, idxg);
+    bp.prepare();
+    bp.generate(0);
+    auto& beta_a = bp.pw_coeffs_a();
+
+    for (int ia = 0; ia < sim_ctx->unit_cell().num_atoms(); ia++) {
+        auto& atom = sim_ctx->unit_cell().atom(ia);
+        int nbf = atom.mt_basis_size();
+        
+        auto qe_order = atomic_orbital_index_map_QE(atom.type());
+
+        for (int xi = 0; xi < nbf; xi++) {
+            for (int ig = 0; ig < *npw__; ig++) {
+                vkb(ig, atom.offset_lo() + qe_order[xi]) = beta_a(ig, atom.offset_lo() + xi);
+            }
+        }
+    }
+
 
 
     //
@@ -2802,13 +2851,13 @@ void sirius_get_beta_projectors(ftn_int*            kset_id__,
     //}
 }
 
-void sirius_get_beta_projectors_by_kp(ftn_int* kset_id__,
-                                      ftn_double* vk__,
-                                      ftn_int* npw__,
-                                      ftn_int* gvec_k__,
+void sirius_get_beta_projectors_by_kp(ftn_int*            kset_id__,
+                                      ftn_double*         vk__,
+                                      ftn_int*            npw__,
+                                      ftn_int*            gvec_k__,
                                       ftn_double_complex* vkb__,
-                                      ftn_int* ld__,
-                                      ftn_int* nkb__)
+                                      ftn_int*            ld__,
+                                      ftn_int*            nkb__)
 {
     PROFILE("sirius_api::sirius_get_beta_projectors_by_kp");
 
@@ -2819,38 +2868,14 @@ void sirius_get_beta_projectors_by_kp(ftn_int* kset_id__,
         int ik = kset->spl_num_kpoints(ikloc);
         auto kp = (*kset)[ik];
         if ((kp->vk() - vk).length() < 1e-12) {
-            sirius_get_beta_projectors(kset_id__, &ik, npw__, gvec_k__, vkb__, ld__, nkb__);
+            int k = ik + 1;
+            sirius_get_beta_projectors(kset_id__, &k, npw__, gvec_k__, vkb__, ld__, nkb__);
             return;
         }
     }
     std::stringstream s;
     s << "k-point " << vk << " is not found";
     TERMINATE(s);
-}
-
-/// Mapping of atomic indices from SIRIUS to QE order.
-static std::vector<int> atomic_orbital_index_map_QE(sirius::Atom_type const& type__)
-{
-    int nbf = type__.mt_basis_size();
-
-    /* index of Rlm in QE in the block of lm coefficients for a given l */
-    auto idx_m_QE = [](int m)
-    {
-        return (m > 0) ? 2 * m - 1 : -2 * m;
-    };
-
-    std::vector<int> idx_map(nbf);
-    for (int xi = 0; xi < nbf; xi++) {
-        int m       = type__.indexb(xi).m;
-        int idxrf   = type__.indexb(xi).idxrf;
-        idx_map[xi] = type__.indexb().index_by_idxrf(idxrf) + idx_m_QE(m); /* beginning of lm-block + new offset in lm block */
-    }
-    return std::move(idx_map);
-}
-
-static inline int phase_Rlm_QE(sirius::Atom_type const& type__, int xi__)
-{
-    return (type__.indexb(xi__).m >= 1 && type__.indexb(xi__).m % 2 == 0) ? -1 : 1;
 }
 
 void sirius_get_d_operator_matrix(ftn_int*    ia__,
@@ -2891,6 +2916,25 @@ void sirius_set_d_operator_matrix(ftn_int*    ia__,
         for (int xi2 = 0; xi2 < nbf; xi2++) {
             int p2 = phase_Rlm_QE(atom.type(), xi2);
             atom.d_mtrx(xi1, xi2, *ispn__ - 1) = d_mtrx(idx_map[xi1], idx_map[xi2]) * p1 * p2;
+        }
+    }
+}
+
+void sirius_set_q_operator_matrix(ftn_char    label__,
+                                  ftn_double* q_mtrx__,
+                                  ftn_int*    ld__)
+{
+    auto& type = sim_ctx->unit_cell().atom_type(std::string(label__));
+    mdarray<double, 2> q_mtrx(q_mtrx__, *ld__, *ld__);
+
+    auto idx_map = atomic_orbital_index_map_QE(type);
+    int nbf = type.mt_basis_size();
+
+    for (int xi1 = 0; xi1 < nbf; xi1++) {
+        int p1 = phase_Rlm_QE(type, xi1);
+        for (int xi2 = 0; xi2 < nbf; xi2++) {
+            int p2 = phase_Rlm_QE(type, xi2);
+            sim_ctx->augmentation_op(type.id()).q_mtrx(xi1, xi2) = q_mtrx(idx_map[xi1], idx_map[xi2]) * p1 * p2;
         }
     }
 }
