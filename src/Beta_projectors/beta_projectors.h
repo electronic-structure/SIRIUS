@@ -51,6 +51,11 @@ class Beta_projectors: public Beta_projectors_base<1>
 
             auto& beta_radial_integrals = ctx_.beta_ri();
 
+            std::vector<double_complex> z(ctx_.unit_cell().lmax() + 1);
+            for (int l = 0; l <= ctx_.unit_cell().lmax(); l++) {
+                z[l] = std::pow(double_complex(0, -1), l) * fourpi / std::sqrt(ctx_.unit_cell().omega());
+            }
+
             /* compute <G+k|beta> */
             #pragma omp parallel for
             for (int igkloc = 0; igkloc < num_gkvec_loc(); igkloc++) {
@@ -62,13 +67,14 @@ class Beta_projectors: public Beta_projectors_base<1>
                 SHT::spherical_harmonics(ctx_.unit_cell().lmax(), vs[1], vs[2], &gkvec_rlm[0]);
                 for (int iat = 0; iat < ctx_.unit_cell().num_atom_types(); iat++) {
                     auto& atom_type = ctx_.unit_cell().atom_type(iat);
+                    /* get all values of radial integrals */
+                    auto ri_val = beta_radial_integrals.values(iat, vs[0]);
                     for (int xi = 0; xi < atom_type.mt_basis_size(); xi++) {
                         int l     = atom_type.indexb(xi).l;
                         int lm    = atom_type.indexb(xi).lm;
                         int idxrf = atom_type.indexb(xi).idxrf;
 
-                        auto z = std::pow(double_complex(0, -1), l) * fourpi / std::sqrt(ctx_.unit_cell().omega());
-                        pw_coeffs_t_[0](igkloc, atom_type.offset_lo() + xi) = z * gkvec_rlm[lm] * beta_radial_integrals.value<int, int>(idxrf, iat, vs[0]);
+                        pw_coeffs_t_[0](igkloc, atom_type.offset_lo() + xi) = z[l] * gkvec_rlm[lm] * ri_val(idxrf);
                     }
                 }
             }

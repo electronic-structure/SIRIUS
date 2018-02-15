@@ -2688,19 +2688,14 @@ void sirius_fderiv(ftn_int* m__,
     }
 }
 
-void sirius_integrate_(ftn_int* m__,
-                      ftn_int* np__,
+void sirius_integrate(ftn_int*    m__,
+                      ftn_int*    np__,
                       ftn_double* x__,
                       ftn_double* f__,
                       ftn_double* result__)
 {
-    int np = *np__;
-    sirius::Radial_grid_ext<double> rgrid(np, x__);
-    sirius::Spline<double> s(rgrid);
-    for (int i = 0; i < np; i++) {
-        s(i) = f__[i];
-    }
-    s.interpolate();
+    sirius::Radial_grid_ext<double> rgrid(*np__, x__);
+    sirius::Spline<double> s(rgrid, std::vector<double>(f__, f__ + *np__));
     *result__ = s.integrate(*m__);
 }
 
@@ -2793,19 +2788,24 @@ void sirius_get_beta_projectors(ftn_int*            kset_id__,
 
     auto& gkvec = kp->gkvec();
     
+    /* list of sirius G-vector indices which fall into cutoff |G+k| < Gmax */
     std::vector<int> idxg;
-    std::vector<int> idxg1(*npw__, -1);
+    /* mapping  between QE and sirius indices */
+    std::vector<int> idxg_map(*npw__, -1);
+    /* loop over all input G-vectors */
     for (int i = 0; i < *npw__; i++) {
+        /* take input G-vector + k-vector */
         auto gvc = sim_ctx->unit_cell().reciprocal_lattice_vectors() * (vector3d<double>(gvec_k(0, i), gvec_k(1, i), gvec_k(2, i)) + kp->vk());
+        /* skip it if its length is larger than the cutoff */
         if (gvc.length() > sim_ctx->gk_cutoff()) {
             continue;
         }
-
+        /* get index of G-vector */
         int ig = gkvec.index_by_gvec({gvec_k(0, i), gvec_k(1, i), gvec_k(2, i)});
         if (ig == -1) {
             TERMINATE("index of G-vector is not found");
         }
-        idxg1[i] = static_cast<int>(idxg.size());
+        idxg_map[i] = static_cast<int>(idxg.size());
         idxg.push_back(ig);
     }
 
@@ -2818,57 +2818,18 @@ void sirius_get_beta_projectors(ftn_int*            kset_id__,
         auto& atom = sim_ctx->unit_cell().atom(ia);
         int nbf = atom.mt_basis_size();
         
-        auto qe_order = atomic_orbital_index_map_QE(atom.type()); // TODO: add phase
+        auto qe_order = atomic_orbital_index_map_QE(atom.type());
 
         for (int xi = 0; xi < nbf; xi++) {
-            for (int ig = 0; ig < *npw__; ig++) {
-                if (idxg1[ig] != -1) {
-                    vkb(ig, atom.offset_lo() + qe_order[xi]) = beta_a(idxg1[ig], atom.offset_lo() + xi);
+            for (int i = 0; i < *npw__; i++) {
+                if (idxg_map[i] != -1) {
+                    vkb(i, atom.offset_lo() + qe_order[xi]) = beta_a(idxg_map[i], atom.offset_lo() + xi) * static_cast<double>(phase_Rlm_QE(atom.type(), xi));
                 } else {
-                    vkb(ig, atom.offset_lo() + qe_order[xi]) = 0;
+                    vkb(i, atom.offset_lo() + qe_order[xi]) = 0;
                 }
             }
         }
     }
-
-
-
-    //
-    //std::vector<double_complex> wf_tmp(kp->num_gkvec());
-    //int gkvec_count = kp->gkvec().gvec_count(kp->comm().rank());
-    //int gkvec_offset = kp->gkvec().gvec_offset(kp->comm().rank());
-
-    //for (int ia = 0; ia < sim_ctx->unit_cell().num_atoms(); ia++) {
-    //    auto& atom = sim_ctx->unit_cell().atom(ia);
-    //
-    //    int nbf = atom.mt_basis_size();
-
-    //    /* index of Rlm of QE */
-    //    auto idx_Rlm = [](int lm)
-    //    {
-    //        int l = static_cast<int>(std::sqrt(static_cast<double>(lm) + 1e-12));
-    //        int m = lm - l * l - l;
-    //        return (m > 0) ? 2 * m - 1 : -2 * m;
-    //    };
-
-    //    for (int xi = 0; xi < nbf; xi++) {
-    //        int lm     = atom.type().indexb(xi).lm;
-    //        int idxrf  = atom.type().indexb(xi).idxrf;
-    //        /* position in QE array */
-    //        int xi1 = atom.type().indexb().index_by_idxrf(idxrf) + idx_Rlm(lm);
-
-    //        std::memcpy(&wf_tmp[gkvec_offset], &beta_gk(0, atom.offset_lo() + xi), gkvec_count * sizeof(double_complex));
-    //        kp->comm().allgather(wf_tmp.data(), gkvec_offset, gkvec_count);
-
-    //        for (int ig = 0; ig < *npw__; ig++) {
-    //            int ig1 = kp->gkvec().index_by_gvec({gvec_k(0, ig), gvec_k(1, ig), gvec_k(2, ig)});
-    //            if (ig1 < 0 || ig1 >= kp->num_gkvec()) {
-    //                TERMINATE("G-vector is out of range");
-    //            }
-    //            vkb(ig, atom.offset_lo() + xi1) = wf_tmp[ig1];
-    //        }
-    //    }
-    //}
 }
 
 void sirius_get_beta_projectors_by_kp(ftn_int*            kset_id__,

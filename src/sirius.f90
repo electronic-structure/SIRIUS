@@ -1144,6 +1144,16 @@ module sirius
           &bind(C, name="sirius_load_density")
         end subroutine sirius_load_density
 
+        subroutine sirius_integrate(m, np, x, f, res)&
+            &bind(C, name="sirius_integrate")
+            use, intrinsic :: ISO_C_BINDING
+            integer(C_INT),                   intent(in)  :: m
+            integer(C_INT),                   intent(in)  :: np
+            real(C_DOUBLE),                   intent(in)  :: x
+            real(C_DOUBLE),                   intent(in)  :: f
+            real(C_DOUBLE),                   intent(out) :: res
+        end subroutine sirius_integrate
+
      end interface
 
 contains
