@@ -236,10 +236,9 @@ struct Iterative_solver_input
     /// Tolerance for the residual L2 norm.
     double residual_tolerance_{1e-6};
     
-    /// Additional tolerance for empty states.
-    /** Acts as a multiplier for occupied states tolereance. Setting this variable to 0 will treat empty states with
-     *  the same tolerance as occupied states. */
-    double empty_states_tolerance_{5};
+    /// Tolerance for empty states.
+    /** Setting this variable to 0 will treat empty states with the same tolerance as occupied states. */
+    double empty_states_tolerance_{1e-5};
 
     /// Defines the flavour of the iterative solver.
     /** If converge_by_energy is set to 0, then the residuals are estimated by their norm. If converge_by_energy
