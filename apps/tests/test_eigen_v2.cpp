@@ -182,7 +182,7 @@ void test_diag2(BLACS_grid const& blacs_grid__,
     matrix<double_complex> full_mtrx;
     int n;
     if (blacs_grid__.comm().rank() == 0) {
-        HDF5_tree h5(fname__, false);
+        HDF5_tree h5(fname__, hdf5_access_t::read_only);
         h5.read("/nrow", &n, 1);
         int m;
         h5.read("/ncol", &m, 1);

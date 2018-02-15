@@ -2,7 +2,7 @@
 
 void test1()
 {
-    sddk::HDF5_tree f("f.h5", true);
+    sddk::HDF5_tree f("f.h5", hdf5_access_t::truncate);
     
     mdarray<double, 2> dat(2, 4);
     dat.zero();
@@ -28,7 +28,7 @@ void test1()
 
 void test2()
 {
-    sddk::HDF5_tree f("f.h5", true);
+    sddk::HDF5_tree f("f.h5", hdf5_access_t::truncate);
     f.create_node("node1");
 
     mdarray<double, 2> md1(2, 4);
@@ -49,7 +49,7 @@ void test2()
 
 void test3()
 {
-    sddk::HDF5_tree f("f.h5", false);
+    sddk::HDF5_tree f("f.h5", hdf5_access_t::read_only);
 
     mdarray<double, 2> md1(2, 4);
     f["node1"].read("md1", md1);
