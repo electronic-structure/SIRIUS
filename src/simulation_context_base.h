@@ -31,7 +31,6 @@
 #include "simulation_parameters.h"
 #include "mpi_grid.hpp"
 #include "radial_integrals.h"
-#include "Beta_projectors/beta_projector_chunks.h"
 
 #ifdef __GPU
 extern "C" void generate_phase_factors_gpu(int num_gvec_loc__,
@@ -120,13 +119,11 @@ class Simulation_context_base: public Simulation_parameters
 
         std::vector<std::vector<std::pair<int, double>>> atoms_to_grid_idx_;
 
-        std::unique_ptr<Beta_projector_chunks> beta_projector_chunks_;
-
         // TODO remove to somewhere
         const double av_atom_radius_{2.0};
 
         double time_active_;
-        
+
         bool initialized_{false};
 
         inline void init_fft()
@@ -593,11 +590,6 @@ class Simulation_context_base: public Simulation_parameters
         {
             return sym_phase_factors_;
         }
-
-        inline Beta_projector_chunks const& beta_projector_chunks() const
-        {
-            return *beta_projector_chunks_;
-        }
 };
 
 inline void Simulation_context_base::initialize()
@@ -881,7 +873,7 @@ inline void Simulation_context_base::initialize()
             atom_coord_.back().copy<memory_t::host, memory_t::device>();
         }
     }
-    
+
     if (!full_potential()) {
 
         /* some extra length is added to cutoffs in order to interface with QE which may require ri(q) for q>cutoff */
@@ -889,15 +881,10 @@ inline void Simulation_context_base::initialize()
         beta_ri_ = std::unique_ptr<Radial_integrals_beta<false>>(new Radial_integrals_beta<false>(unit_cell(), gk_cutoff() + 1, settings().nprii_beta_));
 
         beta_ri_djl_ = std::unique_ptr<Radial_integrals_beta<true>>(new Radial_integrals_beta<true>(unit_cell(), gk_cutoff() + 1, settings().nprii_beta_));
-        
+
         aug_ri_ = std::unique_ptr<Radial_integrals_aug<false>>(new Radial_integrals_aug<false>(unit_cell(), pw_cutoff() + 1, settings().nprii_aug_));
 
         atomic_wf_ri_ = std::unique_ptr<Radial_integrals_atomic_wf>(new Radial_integrals_atomic_wf(unit_cell(), gk_cutoff(), 20));
-
-        beta_projector_chunks_ = std::unique_ptr<Beta_projector_chunks>(new Beta_projector_chunks(unit_cell()));
-        if (control().verbosity_ > 1 && comm().rank() == 0) {
-            beta_projector_chunks_->print_info();
-        }
     }
 
     //time_active_ = -runtime::wtime();

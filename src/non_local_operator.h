@@ -116,8 +116,7 @@ inline void Non_local_operator<double_complex>::apply(int chunk__,
 
     auto& beta_gk     = beta_.pw_coeffs_a();
     int num_gkvec_loc = beta_.num_gkvec_loc();
-    auto& bp_chunks   = beta_.beta_projector_chunks();
-    int nbeta         = bp_chunks(chunk__).num_beta_;
+    int nbeta         = beta_.chunk(chunk__).num_beta_;
 
     if (static_cast<size_t>(nbeta * n__) > work_.size()) {
         work_ = mdarray<double_complex, 1>(nbeta * n__);
@@ -127,11 +126,11 @@ inline void Non_local_operator<double_complex>::apply(int chunk__,
     }
     /* compute O * <beta|phi> for atoms in a chunk */
     #pragma omp parallel for
-    for (int i = 0; i < bp_chunks(chunk__).num_atoms_; i++) {
+    for (int i = 0; i < beta_.chunk(chunk__).num_atoms_; i++) {
         /* number of beta functions for a given atom */
-        int nbf  = bp_chunks(chunk__).desc_(beta_desc_idx::nbf, i);
-        int offs = bp_chunks(chunk__).desc_(beta_desc_idx::offset, i);
-        int ia   = bp_chunks(chunk__).desc_(beta_desc_idx::ia, i);
+        int nbf  = beta_.chunk(chunk__).desc_(beta_desc_idx::nbf, i);
+        int offs = beta_.chunk(chunk__).desc_(beta_desc_idx::offset, i);
+        int ia   = beta_.chunk(chunk__).desc_(beta_desc_idx::ia, i);
         switch (pu_) {
             case CPU: {
                 linalg<CPU>::gemm(0, 0, nbf, n__, nbf, op_.at<CPU>(packed_mtrx_offset_(ia), ispn_block__), nbf,
@@ -194,8 +193,7 @@ inline void Non_local_operator<double>::apply(int chunk__,
 
     auto& beta_gk     = beta_.pw_coeffs_a();
     int num_gkvec_loc = beta_.num_gkvec_loc();
-    auto& bp_chunks   = beta_.beta_projector_chunks();
-    int nbeta         = bp_chunks(chunk__).num_beta_;
+    int nbeta         = beta_.chunk(chunk__).num_beta_;
 
     if (static_cast<size_t>(nbeta * n__) > work_.size()) {
         work_ = mdarray<double, 1>(nbeta * n__);
@@ -206,11 +204,11 @@ inline void Non_local_operator<double>::apply(int chunk__,
 
     /* compute O * <beta|phi> */
     #pragma omp parallel for
-    for (int i = 0; i < bp_chunks(chunk__).num_atoms_; i++) {
+    for (int i = 0; i < beta_.chunk(chunk__).num_atoms_; i++) {
         /* number of beta functions for a given atom */
-        int nbf  = bp_chunks(chunk__).desc_(beta_desc_idx::nbf, i);
-        int offs = bp_chunks(chunk__).desc_(beta_desc_idx::offset, i);
-        int ia   = bp_chunks(chunk__).desc_(beta_desc_idx::ia, i);
+        int nbf  = beta_.chunk(chunk__).desc_(beta_desc_idx::nbf, i);
+        int offs = beta_.chunk(chunk__).desc_(beta_desc_idx::offset, i);
+        int ia   = beta_.chunk(chunk__).desc_(beta_desc_idx::ia, i);
 
         switch (pu_) {
             case CPU: {

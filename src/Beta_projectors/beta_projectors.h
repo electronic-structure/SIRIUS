@@ -42,8 +42,7 @@ class Beta_projectors: public Beta_projectors_base<1>
         void generate_pw_coefs_t(std::vector<int>& igk__)
         {
             PROFILE("sirius::Beta_projectors::generate_pw_coefs_t");
-            auto& bchunk = ctx_.beta_projector_chunks();
-            if (!bchunk.num_beta_t()) {
+            if (!num_beta_t()) {
                 return;
             }
             
@@ -109,11 +108,6 @@ class Beta_projectors: public Beta_projectors_base<1>
         void generate(int chunk__)
         {
             Beta_projectors_base<1>::generate(chunk__, 0);
-        }
-
-        inline Beta_projector_chunks const& beta_projector_chunks() const
-        {
-            return ctx_.beta_projector_chunks();
         }
 };
 

@@ -68,8 +68,6 @@ inline void Band::diag_pseudo_potential_exact(K_point* kp__,
         }
     }
 
-    auto& bp_chunks = ctx_.beta_projector_chunks();
-
     mdarray<double_complex, 2> dop(ctx_.unit_cell().max_mt_basis_size(), ctx_.unit_cell().max_mt_basis_size());
     mdarray<double_complex, 2> qop(ctx_.unit_cell().max_mt_basis_size(), ctx_.unit_cell().max_mt_basis_size());
 
@@ -77,7 +75,7 @@ inline void Band::diag_pseudo_potential_exact(K_point* kp__,
     
     kp__->beta_projectors_row().prepare();
     kp__->beta_projectors_col().prepare();
-    for (int ichunk = 0; ichunk < bp_chunks.num_chunks(); ichunk++) {
+    for (int ichunk = 0; ichunk <  kp__->beta_projectors_row().num_chunks(); ichunk++) {
         /* generate beta-projectors for a block of atoms */
         kp__->beta_projectors_row().generate(ichunk);
         kp__->beta_projectors_col().generate(ichunk);
@@ -85,11 +83,11 @@ inline void Band::diag_pseudo_potential_exact(K_point* kp__,
         auto& beta_row = kp__->beta_projectors_row().pw_coeffs_a();
         auto& beta_col = kp__->beta_projectors_col().pw_coeffs_a();
 
-        for (int i = 0; i < bp_chunks(ichunk).num_atoms_; i++) {
+        for (int i = 0; i <  kp__->beta_projectors_row().chunk(ichunk).num_atoms_; i++) {
             /* number of beta functions for a given atom */
-            int nbf  = bp_chunks(ichunk).desc_(beta_desc_idx::nbf, i);
-            int offs = bp_chunks(ichunk).desc_(beta_desc_idx::offset, i);
-            int ia   = bp_chunks(ichunk).desc_(beta_desc_idx::ia, i);
+            int nbf  = kp__->beta_projectors_row().chunk(ichunk).desc_(beta_desc_idx::nbf, i);
+            int offs = kp__->beta_projectors_row().chunk(ichunk).desc_(beta_desc_idx::offset, i);
+            int ia   = kp__->beta_projectors_row().chunk(ichunk).desc_(beta_desc_idx::ia, i);
 
             for (int xi1 = 0; xi1 < nbf; xi1++) {
                 for (int xi2 = 0; xi2 < nbf; xi2++) {

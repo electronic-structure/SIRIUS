@@ -42,14 +42,12 @@ class Non_local_functor
 
         Beta_projectors& bp = kpoint__.beta_projectors();
 
-        auto& bp_chunks = bp.beta_projector_chunks();
-
         double main_two_factor = -2.0;
 
         bp_base_.prepare();
         bp.prepare();
 
-        for (int icnk = 0; icnk < bp_chunks.num_chunks(); icnk++) {
+        for (int icnk = 0; icnk < bp_base_.num_chunks(); icnk++) {
             /* generate chunk for inner product of beta */
             bp.generate(icnk);
 
@@ -80,10 +78,10 @@ class Non_local_functor
                     int nbnd_loc = spl_nbnd.local_size();
 
                     #pragma omp parallel for
-                    for (int ia_chunk = 0; ia_chunk < bp_chunks(icnk).num_atoms_; ia_chunk++) {
-                        int ia   = bp_chunks(icnk).desc_(beta_desc_idx::ia, ia_chunk);
-                        int offs = bp_chunks(icnk).desc_(beta_desc_idx::offset, ia_chunk);
-                        int nbf  = bp_chunks(icnk).desc_(beta_desc_idx::nbf, ia_chunk);
+                    for (int ia_chunk = 0; ia_chunk < bp_base_.chunk(icnk).num_atoms_; ia_chunk++) {
+                        int ia   = bp_base_.chunk(icnk).desc_(beta_desc_idx::ia, ia_chunk);
+                        int offs = bp_base_.chunk(icnk).desc_(beta_desc_idx::offset, ia_chunk);
+                        int nbf  = bp_base_.chunk(icnk).desc_(beta_desc_idx::nbf, ia_chunk);
                         int iat  = unit_cell.atom(ia).type_id();
 
                         /* helper lambda to calculate for sum loop over bands for different beta_phi and dij combinations*/
