@@ -104,6 +104,12 @@ class Local_operator
             }
         }
 
+        static int& num_applied()
+        {
+            static int num_applied_{0};
+            return num_applied_;
+        }
+
         ///// This constructor is used internally in the debug and performance tests only.
         //Local_operator(Simulation_parameters const& param__,
         //               FFT3D&                       fft_coarse__,
@@ -353,6 +359,8 @@ class Local_operator
             if (!gkvec_p_) {
                 TERMINATE("Local operator is not prepared");
             }
+
+            num_applied() += n__;
 
             /* remap wave-functions */
             for (int ispn = 0; ispn < phi__.num_sc(); ispn++) {

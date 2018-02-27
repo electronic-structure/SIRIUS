@@ -361,60 +361,6 @@ class K_point
         //    }
         //}
 
-        //inline void get_band_occupancies(double* band_occupancies) const
-        //{
-        //    assert(static_cast<int>(band_occupancies_.size()) == ctx_.num_bands());
-
-        //    std::memcpy(band_occupancies, &band_occupancies_[0], ctx_.num_bands() * sizeof(double));
-        //}
-
-        //inline void set_band_occupancies(double* band_occupancies)
-        //{
-        //    band_occupancies_.resize(ctx_.num_bands());
-        //    std::memcpy(&band_occupancies_[0], band_occupancies, ctx_.num_bands() * sizeof(double));
-        //}
-
-        //inline void get_band_energies(double* band_energies) const
-        //{
-        //    assert(static_cast<int>(band_energies_.size()) == ctx_.num_bands());
-        //    std::memcpy(band_energies, &band_energies_[0], ctx_.num_bands() * sizeof(double));
-        //}
-
-        //inline void set_band_energies(double* band_energies)
-        //{
-        //    band_energies_.resize(ctx_.num_bands());
-        //    std::memcpy(&band_energies_[0], band_energies, ctx_.num_bands() * sizeof(double));
-        //}
-
-        //inline double band_occupancy(int j__) const
-        //{
-        //    assert(j__ >= 0 && j__ < static_cast<int>(band_occupancies_.size()));
-        //    return band_occupancies_[j__];
-        //}
-
-        //inline double& band_occupancy(int j__)
-        //{
-        //    assert(j__ >= 0 && j__ < static_cast<int>(band_occupancies_.size()));
-        //    return band_occupancies_[j__];
-        //}
-
-        //inline std::vector<double>& band_occupancy()
-        //{
-        //    return band_occupancies_;
-        //}
-
-        //inline double band_energy(int j__) const
-        //{
-        //    assert(j__ >= 0 && j__ < static_cast<int>(band_energies_.size()));
-        //    return band_energies_[j__];
-        //}
-
-        //inline double& band_energy(int j__)
-        //{
-        //    assert(j__ >= 0 && j__ < static_cast<int>(band_energies_.size()));
-        //    return band_energies_[j__];
-        //}
-
         inline double& band_energy(int j__, int ispn__)
         {
             return band_energy_aux(j__, ispn__);

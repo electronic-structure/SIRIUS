@@ -339,6 +339,12 @@ class Band
     /// Initialize the wave-functions subspace.
     template <typename T>
     inline void initialize_subspace(K_point* kp__, Hamiltonian& hamiltonian__, int num_ao__) const;
+
+    static size_t& evp_job_size()
+    {
+        static size_t evp_job_size_{0};
+        return evp_job_size_;
+    }
 };
 
 #include "Band/residuals.hpp"

@@ -236,7 +236,7 @@ struct Iterative_solver_input
     /// Tolerance for the residual L2 norm.
     double residual_tolerance_{1e-6};
     
-    /// Tolerance for empty states.
+    /// Additional tolerance for empty states.
     /** Setting this variable to 0 will treat empty states with the same tolerance as occupied states. */
     double empty_states_tolerance_{1e-5};
 
@@ -261,6 +261,8 @@ struct Iterative_solver_input
      *  as they are and solve generalized eigen-value problem. */
     bool orthogonalize_{true};
 
+    bool init_eval_old_{true};
+
     /// Tell how to initialize the subspace.
     /** It can be either "lcao", i.e. start from the linear combination of atomic orbitals or "random" –- start from
      *  the randomized wave functions. */
@@ -282,6 +284,7 @@ struct Iterative_solver_input
             mask_alpha_             = parser["iterative_solver"].value("mask_alpha", mask_alpha_);
             num_singular_           = parser["iterative_solver"].value("num_singular", num_singular_);
             orthogonalize_          = parser["iterative_solver"].value("orthogonalize", orthogonalize_);
+            init_eval_old_          = parser["iterative_solver"].value("init_eval_old", init_eval_old_);
             init_subspace_          = parser["iterative_solver"].value("init_subspace", init_subspace_);
             std::transform(init_subspace_.begin(), init_subspace_.end(), init_subspace_.begin(), ::tolower);
         }

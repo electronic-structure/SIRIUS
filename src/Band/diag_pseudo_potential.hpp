@@ -289,8 +289,10 @@ inline int Band::diag_pseudo_potential_davidson(K_point*       kp__,
         std::vector<double> eval(num_bands);
         std::vector<double> eval_old(num_bands, 1e100);
 
-        for (int j = 0; j < num_bands; j++) {
-            eval_old[j] = kp__->band_energy(j, ispin_step);
+        if (itso.init_eval_old_) {
+            for (int j = 0; j < num_bands; j++) {
+                eval_old[j] = kp__->band_energy(j, ispin_step);
+            }
         }
 
         /* trial basis functions */
@@ -344,6 +346,8 @@ inline int Band::diag_pseudo_potential_davidson(K_point*       kp__,
             TERMINATE(s);
         }
         t1.stop();
+
+        evp_job_size() += (N * N * N);
 
         if (ctx_.control().verbosity_ >= 4 && kp__->comm().rank() == 0) {
             for (int i = 0; i < num_bands; i++) {
@@ -481,6 +485,8 @@ inline int Band::diag_pseudo_potential_davidson(K_point*       kp__,
                 }
             }
             t1.stop();
+
+            evp_job_size() += (N * N * N);
 
             if (ctx_.control().verbosity_ >= 2 && kp__->comm().rank() == 0) {
                 DUMP("step: %i, current subspace size: %i, maximum subspace size: %i", k, N, num_phi);
