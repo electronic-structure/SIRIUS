@@ -144,6 +144,10 @@ double ground_state(Simulation_context& ctx,
         dict["task"] = static_cast<int>(task);
         dict["ground_state"] = dft.serialize();
         dict["timers"] = sddk::timer::serialize_timers();
+        dict["counters"] = json::object();
+        dict["counters"]["local_operator_num_applied"] = Local_operator::num_applied();
+        dict["counters"]["band_evp_work_count"] = Band::evp_work_count();
+
         if (ctx.comm().rank() == 0) {
             std::ofstream ofs(std::string("output_") + ctx.start_time_tag() + std::string(".json"),
                               std::ofstream::out | std::ofstream::trunc);
