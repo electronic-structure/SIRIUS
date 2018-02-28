@@ -2,7 +2,6 @@ inline void Density::add_k_point_contribution_rg(K_point* kp__)
 {
     PROFILE("sirius::Density::add_k_point_contribution_rg");
 
-    int nfv = ctx_.num_fv_states();
     double omega = unit_cell_.omega();
 
     auto& fft = ctx_.fft_coarse();
@@ -31,7 +30,7 @@ inline void Density::add_k_point_contribution_rg(K_point* kp__)
 
             for (int i = 0; i < kp__->spinor_wave_functions().pw_coeffs(ispn).spl_num_col().local_size(); i++) {
                 int j = kp__->spinor_wave_functions().pw_coeffs(ispn).spl_num_col()[i];
-                double w = kp__->band_occupancy(j + ispn * nfv) * kp__->weight() / omega;
+                double w = kp__->band_occupancy(j, ispn) * kp__->weight() / omega;
 
                 ///* transform to real space; in case of GPU wave-function stays in GPU memory */
                 fft.transform<1>(kp__->spinor_wave_functions().pw_coeffs(ispn).extra().template at<CPU>(0, i));
@@ -78,7 +77,7 @@ inline void Density::add_k_point_contribution_rg(K_point* kp__)
 
         for (int i = 0; i < kp__->spinor_wave_functions().pw_coeffs(0).spl_num_col().local_size(); i++) {
             int j = kp__->spinor_wave_functions().pw_coeffs(0).spl_num_col()[i];
-            double w = kp__->band_occupancy(j) * kp__->weight() / omega;
+            double w = kp__->band_occupancy(j, 0) * kp__->weight() / omega;
 
             /* transform up- component of spinor function to real space; in case of GPU wave-function stays in GPU memory */
             fft.transform<1>(kp__->spinor_wave_functions().pw_coeffs(0).extra().template at<CPU>(0, i));

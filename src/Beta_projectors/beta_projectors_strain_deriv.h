@@ -13,8 +13,7 @@ class Beta_projectors_strain_deriv : public Beta_projectors_base<9>
     {
         PROFILE("sirius::Beta_projectors_strain_deriv::generate_pw_coefs_t");
 
-        auto& bchunk = ctx_.beta_projector_chunks();
-        if (!bchunk.num_beta_t()) {
+        if (!num_beta_t()) {
             return;
         }
 

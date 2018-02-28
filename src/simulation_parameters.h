@@ -27,7 +27,6 @@
 
 #include "typedefs.h"
 #include "utils.h"
-//#include "sirius_internal.h"
 #include "input.h"
 
 namespace sirius {
@@ -107,11 +106,6 @@ class Simulation_parameters
         assert(num_mag_dims__ == 0 || num_mag_dims__ == 1 || num_mag_dims__ == 3);
 
         parameters_input_.num_mag_dims_ = num_mag_dims__;
-    }
-
-    inline void set_num_fv_states(int num_fv_states__)
-    {
-        parameters_input_.num_fv_states_ = num_fv_states__;
     }
 
     inline void set_aw_cutoff(double aw_cutoff__)
@@ -322,6 +316,20 @@ class Simulation_parameters
     {
         return (num_mag_dims() == 3) ? 3 : num_spins();
     }
+    
+    /// Number of spin dimensions of some arrays in case of magnetic calculation.
+    /** Returns 1 for non magnetic claculation, 2 for spin-collinear case and 1 for non colllinear case. */
+    inline int num_spin_dims()
+    {
+        return (num_mag_dims() == 3) ? 1 : num_spins();
+    }
+    
+    /// Set the number of first-variational states.
+    inline int num_fv_states(int num_fv_states__)
+    {
+        parameters_input_.num_fv_states_ = num_fv_states__;
+        return parameters_input_.num_fv_states_;
+    }
 
     /// Number of first-variational states.
     inline int num_fv_states() const
@@ -329,10 +337,25 @@ class Simulation_parameters
         return parameters_input_.num_fv_states_;
     }
 
+    /// Set the number of bands.
+    inline int num_bands(int num_bands__)
+    {
+        parameters_input_.num_bands_ = num_bands__;
+        return parameters_input_.num_bands_;
+    }
+
     /// Total number of bands.
     inline int num_bands() const
     {
-        return num_spins() * num_fv_states();
+        if (num_fv_states() != -1) {
+            if (num_mag_dims() != 3) {
+                return num_fv_states();
+            } else {
+                return num_spins() * num_fv_states();
+            }
+        } else {
+            return parameters_input_.num_bands_;
+        }
     }
 
     inline int max_occupancy() const

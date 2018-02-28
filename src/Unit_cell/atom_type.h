@@ -486,22 +486,7 @@ class Atom_type
             }
         }
 
-        /* pack Q-radial functions in a triangular matrix (Q_{ij} matrix is symmetric):
-               j
-           +-------+
-           | + + + |
-          i|   + + |   -> idx = j * (j + 1) / 2 + i  for  i <= j
-           |     + |
-           +-------+
-
-           i, j are the indices of radial beta-functions
-         */
-
-        /* combined index */
-        if (idxrf1__ > idxrf2__) {
-            std::swap(idxrf1__, idxrf2__);
-        }
-        int ijv = idxrf2__ * (idxrf2__ + 1) / 2 + idxrf1__;
+        int ijv = Utils::packed_index(idxrf1__, idxrf2__); 
         q_radial_functions_l_(ijv, l__) = Spline<double>(radial_grid_, qrf__);
     }
 

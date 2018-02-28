@@ -31,14 +31,6 @@
 #include "version.h"
 #include "augmentation_operator.h"
 
-#ifdef __GPU
-extern "C" void generate_phase_factors_gpu(int num_gvec_loc__,
-                                           int num_atoms__,
-                                           int const* gvec__,
-                                           double const* atom_pos__,
-                                           double_complex* phase_factors__);
-#endif
-
 namespace sirius {
 
 /// Simulation context is a set of parameters and objects describing a single simulation.
@@ -46,88 +38,85 @@ namespace sirius {
  *  values are set in the constructor, then (optionally) import() method is called and the parameters are
  *  overwritten with the those from the input file, and finally, the user sets the values with set_...() metods.
  *  Then the unit cell can be populated and the context can be initialized. */
-class Simulation_context: public Simulation_context_base
+class Simulation_context : public Simulation_context_base
 {
-    private:
-        /// Step function is used in full-potential methods.
-        std::unique_ptr<Step_function> step_function_;
+  private:
+    /// Step function is used in full-potential methods.
+    std::unique_ptr<Step_function> step_function_;
 
-        std::vector<Augmentation_operator> augmentation_op_;
+    std::vector<Augmentation_operator> augmentation_op_;
 
-        /* copy constructor is forbidden */
-        Simulation_context(Simulation_context const&) = delete;
+    /* copy constructor is forbidden */
+    Simulation_context(Simulation_context const&) = delete;
 
-    public:
+  public:
+    Simulation_context(std::string const& fname__, Communicator const& comm__)
+        : Simulation_context_base(fname__, comm__)
+    {
+    }
 
-        Simulation_context(std::string const& fname__,
-                           Communicator const& comm__)
-            : Simulation_context_base(fname__, comm__)
-        {
+    Simulation_context(Communicator const& comm__)
+        : Simulation_context_base(comm__)
+    {
+    }
+    Simulation_context(Communicator const& comm__, std::string method__)
+        : Simulation_context_base(comm__)
+    {
+        this->set_esm_type(method__);
+    }
+
+    ~Simulation_context()
+    {
+    }
+
+    /// Initialize the similation (can only be called once).
+    void initialize()
+    {
+        PROFILE("sirius::Simulation_context::initialize");
+
+        Simulation_context_base::initialize();
+
+        if (full_potential()) {
+            step_function_ = std::unique_ptr<Step_function>(new Step_function(*this));
         }
 
-        Simulation_context(Communicator const& comm__)
-            : Simulation_context_base(comm__)
-        {
-        }
-        Simulation_context(Communicator const& comm__,
-                           std::string method__)
-            : Simulation_context_base(comm__)
-        {
-            this->set_esm_type(method__);
-        }
-
-        ~Simulation_context()
-        {
-        }
-
-        /// Initialize the similation (can only be called once).
-        void initialize()
-        {
-            PROFILE("sirius::Simulation_context::initialize");
-
-            Simulation_context_base::initialize();
-
-            if (full_potential()) {
-                step_function_ = std::unique_ptr<Step_function>(new Step_function(*this));
-            }
-
-            if (!full_potential()) {
-
-                if (comm().rank() == 0 && control().print_memory_usage_) {
-                    MEMORY_USAGE_INFO();
-                }
-
-                /* create augmentation operator Q_{xi,xi'}(G) here */
-                for (int iat = 0; iat < unit_cell().num_atom_types(); iat++) {
-                    augmentation_op_.push_back(std::move(Augmentation_operator(*this, iat, aug_ri())));
-
-                    if (comm().rank() == 0 && control().print_memory_usage_) {
-                        MEMORY_USAGE_INFO();
-                    }
-                }
-            }
+        if (!full_potential()) {
 
             if (comm().rank() == 0 && control().print_memory_usage_) {
                 MEMORY_USAGE_INFO();
             }
+
+            /* create augmentation operator Q_{xi,xi'}(G) here */
+            for (int iat = 0; iat < unit_cell().num_atom_types(); iat++) {
+                augmentation_op_.push_back(std::move(Augmentation_operator(*this, iat)));
+
+                if (comm().rank() == 0 && control().print_memory_usage_) {
+                    MEMORY_USAGE_INFO();
+                }
+            }
         }
 
-        Step_function const& step_function() const
-        {
-            return *step_function_;
+        if (comm().rank() == 0 && control().print_memory_usage_) {
+            MEMORY_USAGE_INFO();
         }
+    }
 
-        inline Augmentation_operator const& augmentation_op(int iat__) const
-        {
-            return augmentation_op_[iat__];
-        }
+    Step_function const& step_function() const
+    {
+        return *step_function_;
+    }
 
-        inline Augmentation_operator& augmentation_op(int iat__)
-        {
-            return augmentation_op_[iat__];
-        }
+    inline Augmentation_operator const& augmentation_op(int iat__) const
+    {
+        return augmentation_op_[iat__];
+    }
+
+    inline Augmentation_operator& augmentation_op(int iat__)
+    {
+        return augmentation_op_[iat__];
+    }
 };
 
-} // namespace
+} // namespace sirius
 
 #endif

@@ -42,14 +42,12 @@ class Non_local_functor
 
         Beta_projectors& bp = kpoint__.beta_projectors();
 
-        auto& bp_chunks = bp.beta_projector_chunks();
-
         double main_two_factor = -2.0;
 
         bp_base_.prepare();
         bp.prepare();
 
-        for (int icnk = 0; icnk < bp_chunks.num_chunks(); icnk++) {
+        for (int icnk = 0; icnk < bp_base_.num_chunks(); icnk++) {
             /* generate chunk for inner product of beta */
             bp.generate(icnk);
 
@@ -68,7 +66,6 @@ class Non_local_functor
                 bp_base_.generate(icnk, x);
 
                 for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-                    int spin_bnd_offset = ctx_.num_mag_dims() == 1 ? ispn * ctx_.num_fv_states() : 0 ;
                     int spin_factor = (ispn == 0 ? 1 : -1);
 
                     int nbnd = kpoint__.num_occupied_bands(ispn);
@@ -81,10 +78,10 @@ class Non_local_functor
                     int nbnd_loc = spl_nbnd.local_size();
 
                     #pragma omp parallel for
-                    for (int ia_chunk = 0; ia_chunk < bp_chunks(icnk).num_atoms_; ia_chunk++) {
-                        int ia   = bp_chunks(icnk).desc_(beta_desc_idx::ia, ia_chunk);
-                        int offs = bp_chunks(icnk).desc_(beta_desc_idx::offset, ia_chunk);
-                        int nbf  = bp_chunks(icnk).desc_(beta_desc_idx::nbf, ia_chunk);
+                    for (int ia_chunk = 0; ia_chunk < bp_base_.chunk(icnk).num_atoms_; ia_chunk++) {
+                        int ia   = bp_base_.chunk(icnk).desc_(beta_desc_idx::ia, ia_chunk);
+                        int offs = bp_base_.chunk(icnk).desc_(beta_desc_idx::offset, ia_chunk);
+                        int nbf  = bp_base_.chunk(icnk).desc_(beta_desc_idx::nbf, ia_chunk);
                         int iat  = unit_cell.atom(ia).type_id();
 
                         /* helper lambda to calculate for sum loop over bands for different beta_phi and dij combinations*/
@@ -94,9 +91,9 @@ class Non_local_functor
                             for (int ibnd_loc = 0; ibnd_loc < nbnd_loc; ibnd_loc++) {
                                 int ibnd = spl_nbnd[ibnd_loc];
 
-                                double_complex scalar_part = main_two_factor * kpoint__.band_occupancy(ibnd + spin_bnd_offset) * kpoint__.weight() *
+                                double_complex scalar_part = main_two_factor * kpoint__.band_occupancy(ibnd, ispn) * kpoint__.weight() *
                                         std::conj(beta_phi_chunk(offs + jbf, ibnd)) * bp_base_phi_chunk(offs + ibf, ibnd) *
-                                        (dij - kpoint__.band_energy(ibnd + spin_bnd_offset) * qij);
+                                        (dij - kpoint__.band_energy(ibnd, ispn) * qij);
 
                                 /* get real part and add to the result array*/
                                 collect_res__(x, ia) += scalar_part.real();

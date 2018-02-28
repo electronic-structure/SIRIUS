@@ -31,7 +31,6 @@
 #include "simulation_parameters.h"
 #include "mpi_grid.hpp"
 #include "radial_integrals.h"
-#include "Beta_projectors/beta_projector_chunks.h"
 
 #ifdef __GPU
 extern "C" void generate_phase_factors_gpu(int num_gvec_loc__,
@@ -120,13 +119,11 @@ class Simulation_context_base: public Simulation_parameters
 
         std::vector<std::vector<std::pair<int, double>>> atoms_to_grid_idx_;
 
-        std::unique_ptr<Beta_projector_chunks> beta_projector_chunks_;
-
         // TODO remove to somewhere
         const double av_atom_radius_{2.0};
 
         double time_active_;
-        
+
         bool initialized_{false};
 
         inline void init_fft()
@@ -593,11 +590,6 @@ class Simulation_context_base: public Simulation_parameters
         {
             return sym_phase_factors_;
         }
-
-        inline Beta_projector_chunks const& beta_projector_chunks() const
-        {
-            return *beta_projector_chunks_;
-        }
 };
 
 inline void Simulation_context_base::initialize()
@@ -752,21 +744,31 @@ inline void Simulation_context_base::initialize()
         }
     }
     
-    /* take 10% of empty non-magnetic states */
-    if (num_fv_states() < 0) {
-        set_num_fv_states(static_cast<int>(unit_cell_.num_valence_electrons() / 2.0) +
-                                           std::max(10, static_cast<int>(0.1 * unit_cell_.num_valence_electrons())));
-    }
-    
-    if (num_fv_states() < static_cast<int>(unit_cell_.num_valence_electrons() / 2.0)) {
-        std::stringstream s;
-        s << "not enough first-variational states : " << num_fv_states();
-        TERMINATE(s);
+    int nbnd = static_cast<int>(unit_cell_.num_valence_electrons() / 2.0) +
+                                std::max(10, static_cast<int>(0.1 * unit_cell_.num_valence_electrons()));
+    if (full_potential()) {
+        /* take 10% of empty non-magnetic states */
+        if (num_fv_states() < 0) {
+            num_fv_states(nbnd);
+        } 
+        if (num_fv_states() < static_cast<int>(unit_cell_.num_valence_electrons() / 2.0)) {
+            std::stringstream s;
+            s << "not enough first-variational states : " << num_fv_states();
+            TERMINATE(s);
+        }
+    } else {
+        if (num_mag_dims() == 3) {
+            nbnd *= 2;
+        }
+        if (num_bands() < 0) {
+            num_bands(nbnd);
+        }
     }
     
     std::string evsn[] = {std_evp_solver_name(), gen_evp_solver_name()};
-
-    if (comm_band().size() == 1) {
+    
+    /* deduce the default eigen-value solver */
+    if (comm_band().size() == 1 || npc == 1 || npr == 1) {
         if (evsn[0] == "") {
             #if defined(__GPU) && defined(__MAGMA)
             evsn[0] = "magma";
@@ -838,8 +840,8 @@ inline void Simulation_context_base::initialize()
 
     /* setup the cyclic block size */
     if (cyclic_block_size() < 0) {
-        double a = std::min(std::log2(double(num_fv_states()) / blacs_grid_->num_ranks_col()),
-                            std::log2(double(num_fv_states()) / blacs_grid_->num_ranks_row()));
+        double a = std::min(std::log2(double(num_bands()) / blacs_grid_->num_ranks_col()),
+                            std::log2(double(num_bands()) / blacs_grid_->num_ranks_row()));
         if (a < 1) {
             control_input_.cyclic_block_size_ = 2;
         } else {
@@ -871,7 +873,7 @@ inline void Simulation_context_base::initialize()
             atom_coord_.back().copy<memory_t::host, memory_t::device>();
         }
     }
-    
+
     if (!full_potential()) {
 
         /* some extra length is added to cutoffs in order to interface with QE which may require ri(q) for q>cutoff */
@@ -879,15 +881,10 @@ inline void Simulation_context_base::initialize()
         beta_ri_ = std::unique_ptr<Radial_integrals_beta<false>>(new Radial_integrals_beta<false>(unit_cell(), gk_cutoff() + 1, settings().nprii_beta_));
 
         beta_ri_djl_ = std::unique_ptr<Radial_integrals_beta<true>>(new Radial_integrals_beta<true>(unit_cell(), gk_cutoff() + 1, settings().nprii_beta_));
-        
+
         aug_ri_ = std::unique_ptr<Radial_integrals_aug<false>>(new Radial_integrals_aug<false>(unit_cell(), pw_cutoff() + 1, settings().nprii_aug_));
 
         atomic_wf_ri_ = std::unique_ptr<Radial_integrals_atomic_wf>(new Radial_integrals_atomic_wf(unit_cell(), gk_cutoff(), 20));
-
-        beta_projector_chunks_ = std::unique_ptr<Beta_projector_chunks>(new Beta_projector_chunks(unit_cell()));
-        if (control().verbosity_ > 1 && comm().rank() == 0) {
-            beta_projector_chunks_->print_info();
-        }
     }
 
     //time_active_ = -runtime::wtime();

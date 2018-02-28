@@ -201,7 +201,9 @@ class K_point_set
             for (int ik = 0; ik < num_kpoints(); ik++) {
                 double wk = kpoints_[ik]->weight();
                 for (int j = 0; j < ctx_.num_bands(); j++) {
-                    eval_sum += wk * kpoints_[ik]->band_energy(j) * kpoints_[ik]->band_occupancy(j);
+                    for (int ispn = 0; ispn < ctx_.num_spin_dims(); ispn++) {
+                        eval_sum += wk * kpoints_[ik]->band_energy(j, ispn) * kpoints_[ik]->band_occupancy(j, ispn);
+                    }
                 }
             }
 
@@ -263,20 +265,20 @@ class K_point_set
             return spl_num_kpoints_[ikloc];
         }
 
-        void set_band_occupancies(int ik, double* band_occupancies)
-        {
-            kpoints_[ik]->set_band_occupancies(band_occupancies);
-        }
+        //void set_band_occupancies(int ik, double* band_occupancies)
+        //{
+        //    kpoints_[ik]->set_band_occupancies(band_occupancies);
+        //}
 
-        void get_band_occupancies(int ik, double* band_occupancies)
-        {
-            kpoints_[ik]->get_band_occupancies(band_occupancies);
-        }
+        //void get_band_occupancies(int ik, double* band_occupancies)
+        //{
+        //    kpoints_[ik]->get_band_occupancies(band_occupancies);
+        //}
 
-        void get_band_energies(int ik, double* band_energies)
-        {
-            kpoints_[ik]->get_band_energies(band_energies);
-        }
+        //void get_band_energies(int ik, double* band_energies)
+        //{
+        //    kpoints_[ik]->get_band_energies(band_energies);
+        //}
         
         inline double energy_fermi() const
         {
@@ -324,18 +326,26 @@ inline void K_point_set::sync_band_energies()
 {
     PROFILE("sirius::K_point_set::sync_band_energies");
 
-    mdarray<double, 2> band_energies(ctx_.num_bands(), num_kpoints());
+    mdarray<double, 3> band_energies(ctx_.num_bands(), ctx_.num_spin_dims(), num_kpoints());
 
     for (int ikloc = 0; ikloc < spl_num_kpoints_.local_size(); ikloc++) {
         int ik = spl_num_kpoints_[ikloc];
-        kpoints_[ik]->get_band_energies(&band_energies(0, ik));
+        for (int ispn = 0; ispn < ctx_.num_spin_dims(); ispn++) {
+            for (int j = 0; j < ctx_.num_bands(); j++) {
+                band_energies(j, ispn, ik) = kpoints_[ik]->band_energy(j, ispn);
+            }
+        }
     }
     comm_k_.allgather(band_energies.at<CPU>(), 
-                      ctx_.num_bands() * spl_num_kpoints_.global_offset(),
-                      ctx_.num_bands() * spl_num_kpoints_.local_size());
+                      ctx_.num_bands() * ctx_.num_spin_dims() * spl_num_kpoints_.global_offset(),
+                      ctx_.num_bands() * ctx_.num_spin_dims() * spl_num_kpoints_.local_size());
 
     for (int ik = 0; ik < num_kpoints(); ik++) {
-        kpoints_[ik]->set_band_energies(&band_energies(0, ik));
+        for (int ispn = 0; ispn < ctx_.num_spin_dims(); ispn++) {
+            for (int j = 0; j < ctx_.num_bands(); j++) {
+                kpoints_[ik]->band_energy(j, ispn) = band_energies(j, ispn, ik);
+            }
+        }
     }
 }
 
@@ -349,9 +359,9 @@ inline void K_point_set::find_band_occupancies()
     int s{1};
     int sp;
 
-    double ne{0};
+    mdarray<double, 3> bnd_occ(ctx_.num_bands(), ctx_.num_spin_dims(), num_kpoints());
 
-    mdarray<double, 2> bnd_occ(ctx_.num_bands(), num_kpoints());
+    double ne{0};
     
     int step{0};
     /* calculate occupations */
@@ -361,10 +371,12 @@ inline void K_point_set::find_band_occupancies()
         /* compute total number of electrons */
         ne = 0.0;
         for (int ik = 0; ik < num_kpoints(); ik++) {
-            for (int j = 0; j < ctx_.num_bands(); j++) {
-                bnd_occ(j, ik) = Utils::gaussian_smearing(kpoints_[ik]->band_energy(j) - ef, ctx_.smearing_width()) * 
-                                 ctx_.max_occupancy();
-                ne += bnd_occ(j, ik) * kpoints_[ik]->weight();
+            for (int ispn = 0; ispn < ctx_.num_spin_dims(); ispn++) {
+                for (int j = 0; j < ctx_.num_bands(); j++) {
+                    bnd_occ(j, ispn, ik) = Utils::gaussian_smearing(kpoints_[ik]->band_energy(j, ispn) - ef, ctx_.smearing_width()) * 
+                                           ctx_.max_occupancy();
+                    ne += bnd_occ(j, ispn, ik) * kpoints_[ik]->weight();
+                }
             }
         }
 
@@ -376,19 +388,19 @@ inline void K_point_set::find_band_occupancies()
         if (step > 10000) {
             std::stringstream s;
             s << "search of band occupancies failed after 10000 steps";
-            WARNING(s);
+            TERMINATE(s);
 
-            ef = 0;
+            //ef = 0;
 
-            for (int ik = 0; ik < num_kpoints(); ik++) {
-                ne = unit_cell_.num_valence_electrons();
-                for (int j = 0; j < ctx_.num_bands(); j++) {
-                    bnd_occ(j, ik) = std::min(ne, static_cast<double>(ctx_.max_occupancy()));
-                    ne = std::max(ne - ctx_.max_occupancy(), 0.0);
-                }
-            }
+            //for (int ik = 0; ik < num_kpoints(); ik++) {
+            //    ne = unit_cell_.num_valence_electrons();
+            //    for (int j = 0; j < ctx_.num_bands(); j++) {
+            //        bnd_occ(j, ik) = std::min(ne, static_cast<double>(ctx_.max_occupancy()));
+            //        ne = std::max(ne - ctx_.max_occupancy(), 0.0);
+            //    }
+            //}
 
-            break;
+            //break;
         }
         step++;
     }
@@ -396,7 +408,11 @@ inline void K_point_set::find_band_occupancies()
     energy_fermi_ = ef;
 
     for (int ik = 0; ik < num_kpoints(); ik++) {
-        kpoints_[ik]->set_band_occupancies(&bnd_occ(0, ik));
+        for (int ispn = 0; ispn < ctx_.num_spin_dims(); ispn++) {
+            for (int j = 0; j < ctx_.num_bands(); j++) {
+                kpoints_[ik]->band_occupancy(j, ispn) = bnd_occ(j, ispn, ik);
+            }
+        }
     }
 
     band_gap_ = 0.0;
@@ -405,19 +421,21 @@ inline void K_point_set::find_band_occupancies()
     if (ctx_.num_spins() == 2 || 
         (std::abs(nve - unit_cell_.num_valence_electrons()) < 1e-12 && nve % 2 == 0)) {
         /* find band gap */
-        std::vector< std::pair<double, double> > eband;
+        std::vector<std::pair<double, double>> eband;
         std::pair<double, double> eminmax;
+        
+        for (int ispn = 0; ispn < ctx_.num_spin_dims(); ispn++) {
+            for (int j = 0; j < ctx_.num_bands(); j++) {
+                eminmax.first = 1e10;
+                eminmax.second = -1e10;
 
-        for (int j = 0; j < ctx_.num_bands(); j++) {
-            eminmax.first = 1e10;
-            eminmax.second = -1e10;
+                for (int ik = 0; ik < num_kpoints(); ik++) {
+                    eminmax.first = std::min(eminmax.first, kpoints_[ik]->band_energy(j, ispn));
+                    eminmax.second = std::max(eminmax.second, kpoints_[ik]->band_energy(j, ispn));
+                }
 
-            for (int ik = 0; ik < num_kpoints(); ik++) {
-                eminmax.first = std::min(eminmax.first, kpoints_[ik]->band_energy(j));
-                eminmax.second = std::max(eminmax.second, kpoints_[ik]->band_energy(j));
+                eband.push_back(eminmax);
             }
-
-            eband.push_back(eminmax);
         }
         
         std::sort(eband.begin(), eband.end());

@@ -235,7 +235,9 @@ struct Iterative_solver_input
 
     /// Tolerance for the residual L2 norm.
     double residual_tolerance_{1e-6};
-
+    
+    /// Additional tolerance for empty states.
+    /** Setting this variable to 0 will treat empty states with the same tolerance as occupied states. */
     double empty_states_tolerance_{1e-5};
 
     /// Defines the flavour of the iterative solver.
@@ -259,6 +261,8 @@ struct Iterative_solver_input
      *  as they are and solve generalized eigen-value problem. */
     bool orthogonalize_{true};
 
+    bool init_eval_old_{true};
+
     /// Tell how to initialize the subspace.
     /** It can be either "lcao", i.e. start from the linear combination of atomic orbitals or "random" –- start from
      *  the randomized wave functions. */
@@ -267,20 +271,21 @@ struct Iterative_solver_input
     void read(json const& parser)
     {
         if (parser.count("iterative_solver")) {
-            type_               = parser["iterative_solver"].value("type", type_);
-            num_steps_          = parser["iterative_solver"].value("num_steps", num_steps_);
-            subspace_size_      = parser["iterative_solver"].value("subspace_size", subspace_size_);
-            energy_tolerance_   = parser["iterative_solver"].value("energy_tolerance", energy_tolerance_);
-            residual_tolerance_ = parser["iterative_solver"].value("residual_tolerance", residual_tolerance_);
+            type_                   = parser["iterative_solver"].value("type", type_);
+            num_steps_              = parser["iterative_solver"].value("num_steps", num_steps_);
+            subspace_size_          = parser["iterative_solver"].value("subspace_size", subspace_size_);
+            energy_tolerance_       = parser["iterative_solver"].value("energy_tolerance", energy_tolerance_);
+            residual_tolerance_     = parser["iterative_solver"].value("residual_tolerance", residual_tolerance_);
             empty_states_tolerance_ = parser["iterative_solver"].value("empty_states_tolerance", empty_states_tolerance_);
-            converge_by_energy_ = parser["iterative_solver"].value("converge_by_energy", converge_by_energy_);
-            min_num_res_        = parser["iterative_solver"].value("min_num_res", min_num_res_);
-            real_space_prj_     = parser["iterative_solver"].value("real_space_prj", real_space_prj_);
-            R_mask_scale_       = parser["iterative_solver"].value("R_mask_scale", R_mask_scale_);
-            mask_alpha_         = parser["iterative_solver"].value("mask_alpha", mask_alpha_);
-            num_singular_       = parser["iterative_solver"].value("num_singular", num_singular_);
-            orthogonalize_      = parser["iterative_solver"].value("orthogonalize", orthogonalize_);
-            init_subspace_      = parser["iterative_solver"].value("init_subspace", init_subspace_);
+            converge_by_energy_     = parser["iterative_solver"].value("converge_by_energy", converge_by_energy_);
+            min_num_res_            = parser["iterative_solver"].value("min_num_res", min_num_res_);
+            real_space_prj_         = parser["iterative_solver"].value("real_space_prj", real_space_prj_);
+            R_mask_scale_           = parser["iterative_solver"].value("R_mask_scale", R_mask_scale_);
+            mask_alpha_             = parser["iterative_solver"].value("mask_alpha", mask_alpha_);
+            num_singular_           = parser["iterative_solver"].value("num_singular", num_singular_);
+            orthogonalize_          = parser["iterative_solver"].value("orthogonalize", orthogonalize_);
+            init_eval_old_          = parser["iterative_solver"].value("init_eval_old", init_eval_old_);
+            init_subspace_          = parser["iterative_solver"].value("init_subspace", init_subspace_);
             std::transform(init_subspace_.begin(), init_subspace_.end(), init_subspace_.begin(), ::tolower);
         }
     }
@@ -370,6 +375,10 @@ struct Parameters_input
     std::vector<std::string> xc_functionals_;
     std::string core_relativity_{"dirac"};
     std::string valence_relativity_{"zora"};
+    
+    /// Number of bands.
+    /** In spin-collinear case this is the number of bands for each spin channel. */ 
+    int num_bands_{-1};
 
     /// Number of first-variational states.
     int num_fv_states_{-1};

@@ -148,9 +148,8 @@ class Stress {
 
                 double d{0};
                 for (int ispin = 0; ispin < ctx_.num_spins(); ispin++ ) {
-                    int spin_bnd_offset = ctx_.num_mag_dims() == 1 ? ispin * ctx_.num_fv_states() : 0;
                     for (int i = 0; i < kp->num_occupied_bands(ispin); i++) {
-                        double f = kp->band_occupancy(i + spin_bnd_offset);
+                        double f = kp->band_occupancy(i, ispin);
                         auto z = kp->spinor_wave_functions().pw_coeffs(ispin).prime(igloc, i);
                         d += f * (std::pow(z.real(), 2) + std::pow(z.imag(), 2));
                     }
@@ -530,7 +529,7 @@ class Stress {
 
             #ifdef __GPU
             if (ctx_.processing_unit() == GPU && !keep_wf_on_gpu) {
-                int nbnd = (ctx_.num_mag_dims() == 3) ? ctx_.num_bands() : ctx_.num_fv_states();
+                int nbnd = ctx_.num_bands();
                 for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
                     /* allocate GPU memory */
                     kp->spinor_wave_functions().pw_coeffs(ispn).allocate_on_device();

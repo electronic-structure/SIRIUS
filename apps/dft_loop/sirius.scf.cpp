@@ -144,6 +144,10 @@ double ground_state(Simulation_context& ctx,
         dict["task"] = static_cast<int>(task);
         dict["ground_state"] = dft.serialize();
         dict["timers"] = sddk::timer::serialize_timers();
+        dict["counters"] = json::object();
+        dict["counters"]["local_operator_num_applied"] = Local_operator::num_applied();
+        dict["counters"]["band_evp_work_count"] = Band::evp_work_count();
+
         if (ctx.comm().rank() == 0) {
             std::ofstream ofs(std::string("output_") + ctx.start_time_tag() + std::string(".json"),
                               std::ofstream::out | std::ofstream::trunc);
@@ -275,6 +279,7 @@ void run_tasks(cmd_args const& args)
             dict["header"]["x_axis"] = x_axis;
             dict["header"]["x_ticks"] = std::vector<json>();
             dict["header"]["num_bands"] = ctx->num_bands();
+            dict["header"]["num_mag_dims"] = ctx->num_mag_dims();
             for (auto& e: x_ticks) {
                 json j;
                 j["x"] = e.first;
@@ -283,15 +288,20 @@ void run_tasks(cmd_args const& args)
             }
             dict["bands"] = std::vector<json>();
 
-            std::vector<double> bnd_e(ctx->num_bands());
-
             for (int ik = 0; ik < ks.num_kpoints(); ik++) {
                 json bnd_k;
                 bnd_k["kpoint"] = std::vector<double>(3, 0);
                 for (int x = 0; x < 3; x++) {
                     bnd_k["kpoint"][x] = ks[ik]->vk()[x];
                 }
-                ks.get_band_energies(ik, bnd_e.data());
+                std::vector<double> bnd_e;
+
+                for (int ispn = 0; ispn < ctx->num_spin_dims(); ispn++) {
+                    for (int j = 0; j < ctx->num_bands(); j++) {
+                        bnd_e.push_back(ks[ik]->band_energy(j, ispn));
+                    }
+                }
+                //ks.get_band_energies(ik, bnd_e.data());
                 bnd_k["values"] = bnd_e;
                 dict["bands"].push_back(bnd_k);
             }

@@ -67,7 +67,7 @@ class Force
 
         #ifdef __GPU
         if (ctx_.processing_unit() == GPU && !keep_wf_on_gpu) {
-            int nbnd = (ctx_.num_mag_dims() == 3) ? ctx_.num_bands() : ctx_.num_fv_states();
+            int nbnd = ctx_.num_bands();
             for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
                 /* allocate GPU memory */
                 kpoint.spinor_wave_functions().pw_coeffs(ispn).allocate_on_device();

@@ -6,8 +6,10 @@ inline void Density::generate_valence(K_point_set& ks__)
     double occ_val{0};
     for (int ik = 0; ik < ks__.num_kpoints(); ik++) {
         wt += ks__[ik]->weight();
-        for (int j = 0; j < ctx_.num_bands(); j++) {
-            occ_val += ks__[ik]->weight() * ks__[ik]->band_occupancy(j);
+        for (int ispn = 0; ispn < ctx_.num_spin_dims(); ispn++) { 
+            for (int j = 0; j < ctx_.num_bands(); j++) {
+                occ_val += ks__[ik]->weight() * ks__[ik]->band_occupancy(j, ispn);
+            }
         }
     }
 

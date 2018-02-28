@@ -36,15 +36,13 @@ class Beta_projectors_gradient: public Beta_projectors_base<3>
   private:
     void generate_pw_coefs_t(Beta_projectors& beta__, std::vector<int> const& igk__)
     {
-        auto& bchunk = ctx_.beta_projector_chunks();
-
-        if (!bchunk.num_beta_t()) {
+        if (!num_beta_t()) {
             return;
         }
         
         for (int x = 0; x < 3; x++) {
             #pragma omp parallel for
-            for (int i = 0; i < bchunk.num_beta_t(); i++) {
+            for (int i = 0; i < num_beta_t(); i++) {
                 for (int igkloc = 0; igkloc < num_gkvec_loc(); igkloc++) {
                     int igk = igk__[igkloc];
                     auto vgc = gkvec_.gkvec_cart(igk);
