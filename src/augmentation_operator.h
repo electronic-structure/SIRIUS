@@ -154,14 +154,13 @@ class Augmentation_operator
     public:
        
         Augmentation_operator(Simulation_context_base const& ctx__,
-                              int iat__,
-                              Radial_integrals_aug<false> const& ri__)
+                              int iat__)
             : ctx_(ctx__)
             , comm_(ctx__.comm())
             , atom_type_(ctx__.unit_cell().atom_type(iat__))
         {
             if (atom_type_.augment()) {
-                generate_pw_coeffs(ctx__.unit_cell().omega(), ctx__.gvec(), ri__);
+                generate_pw_coeffs(ctx__.unit_cell().omega(), ctx__.gvec(), ctx__.aug_ri());
             }
         }
 

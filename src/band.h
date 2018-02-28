@@ -340,10 +340,10 @@ class Band
     template <typename T>
     inline void initialize_subspace(K_point* kp__, Hamiltonian& hamiltonian__, int num_ao__) const;
 
-    static size_t& evp_job_size()
+    static double& evp_work_count()
     {
-        static size_t evp_job_size_{0};
-        return evp_job_size_;
+        static double evp_work_count_{0};
+        return evp_work_count_;
     }
 };
 
