@@ -832,6 +832,11 @@ class Eigensolver_scalapack: public Eigensolver<T>
 template <typename T>
 class Eigensolver_scalapack: public Eigensolver<T>
 {
+  public:
+    inline bool is_parallel()
+    {
+        return true;
+    }
 };
 #endif
 
