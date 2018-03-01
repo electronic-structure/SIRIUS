@@ -11,6 +11,10 @@
         "print_forces" : true,
         "print_stress" : true
     },
+    
+    "!settings" : {
+      "always_update_wf" : false
+    },
 
     "parameters" : {
         "electronic_structure_method" : "pseudopotential",
@@ -46,7 +50,8 @@
         "type" : "davidson",
         "converge_by_energy" : 1,
         "!orthogonalize" : false,
-        "!init_subspace" : "lcao"
+        "!init_subspace" : "lcao",
+        "init_eval_old" : false
     },
 
 
