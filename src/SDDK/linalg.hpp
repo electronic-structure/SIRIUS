@@ -831,6 +831,58 @@ inline void linalg<CPU>::geqrf<ftn_double>(ftn_int m, ftn_int n, dmatrix<ftn_dou
 
 #else
 template<>
+inline ftn_int linalg<CPU>::potrf<ftn_double>(ftn_int n, dmatrix<ftn_double>& A)
+{
+    return linalg<CPU>::potrf<ftn_double>(n, A.at<CPU>(), A.ld());
+}
+
+template<>
+inline ftn_int linalg<CPU>::potrf<ftn_double_complex>(ftn_int n, dmatrix<ftn_double_complex>& A)
+{
+    return linalg<CPU>::potrf<ftn_double_complex>(n, A.at<CPU>(), A.ld());
+}
+
+template<>
+inline ftn_int linalg<CPU>::trtri<ftn_double>(ftn_int n, dmatrix<ftn_double>& A)
+{
+    return linalg<CPU>::trtri<ftn_double>(n, A.at<CPU>(), A.ld());
+}
+
+template<>
+inline ftn_int linalg<CPU>::trtri<ftn_double_complex>(ftn_int n, dmatrix<ftn_double_complex>& A)
+{
+    return linalg<CPU>::trtri<ftn_double_complex>(n, A.at<CPU>(), A.ld());
+}
+
+template <>
+inline void linalg<CPU>::geqrf<ftn_double_complex>(ftn_int m, ftn_int n, dmatrix<ftn_double_complex>& A, ftn_int ia, ftn_int ja)
+{
+    ftn_int lwork = -1;
+    ftn_double_complex z;
+    ftn_int info;
+    ftn_int lda = A.ld();
+    FORTRAN(zgeqrf)(&m, &n, A.at<CPU>(ia, ja), &lda, &z, &z, &lwork, &info);
+    lwork = static_cast<int>(z.real() + 1);
+    std::vector<ftn_double_complex> work(lwork);
+    std::vector<ftn_double_complex> tau(std::max(m, n));
+    FORTRAN(zgeqrf)(&m, &n, A.at<CPU>(ia, ja), &lda, tau.data(), work.data(), &lwork, &info);
+}
+
+template <>
+inline void linalg<CPU>::geqrf<ftn_double>(ftn_int m, ftn_int n, dmatrix<ftn_double>& A, ftn_int ia, ftn_int ja)
+{
+    ftn_int lwork = -1;
+    ftn_double z;
+    ftn_int info;
+    ftn_int lda = A.ld();
+    FORTRAN(dgeqrf)(&m, &n, A.at<CPU>(ia, ja), &lda, &z, &z, &lwork, &info);
+    lwork = static_cast<int>(z + 1);
+    std::vector<ftn_double> work(lwork);
+    std::vector<ftn_double> tau(std::max(m, n));
+    FORTRAN(dgeqrf)(&m, &n, A.at<CPU>(ia, ja), &lda, tau.data(), work.data(), &lwork, &info);
+}
+
+template<>
 inline void linalg<CPU>::gemm<ftn_double_complex>(int transa, int transb, ftn_int m, ftn_int n, ftn_int k,
                                                   ftn_double_complex alpha,
                                                   dmatrix<ftn_double_complex>& A, ftn_int ia, ftn_int ja,
@@ -846,6 +898,26 @@ inline void linalg<CPU>::gemm<ftn_double_complex>(int transa, int transb, ftn_in
                                                   ftn_double_complex alpha,
                                                   dmatrix<ftn_double_complex>& A, dmatrix<ftn_double_complex>& B,
                                                   ftn_double_complex beta, dmatrix<ftn_double_complex>& C)
+{
+    gemm(transa, transb, m, n, k, alpha, A.at<CPU>(), A.ld(), B.at<CPU>(), B.ld(), beta, C.at<CPU>(), C.ld());
+}
+
+template<>
+inline void linalg<CPU>::gemm<ftn_double>(int transa, int transb, ftn_int m, ftn_int n, ftn_int k,
+                                          ftn_double alpha,
+                                          dmatrix<ftn_double>& A, ftn_int ia, ftn_int ja,
+                                          dmatrix<ftn_double>& B, ftn_int ib, ftn_int jb,
+                                          ftn_double beta,
+                                          dmatrix<ftn_double>& C, ftn_int ic, ftn_int jc)
+{
+    gemm(transa, transb, m, n, k, alpha, A.at<CPU>(ia, ja), A.ld(), B.at<CPU>(ib, jb), B.ld(), beta, C.at<CPU>(ic, jc), C.ld());
+}
+
+template<>
+inline void linalg<CPU>::gemm<ftn_double>(int transa, int transb, ftn_int m, ftn_int n, ftn_int k,
+                                          ftn_double alpha,
+                                          dmatrix<ftn_double>& A, dmatrix<ftn_double>& B,
+                                          ftn_double beta, dmatrix<ftn_double>& C)
 {
     gemm(transa, transb, m, n, k, alpha, A.at<CPU>(), A.ld(), B.at<CPU>(), B.ld(), beta, C.at<CPU>(), C.ld());
 }
@@ -1045,25 +1117,23 @@ static void check_hermitian(const std::string& name, matrix<T> const& mtrx, int 
 template <typename T>
 static double check_hermitian(dmatrix<T>& mtrx__, int n__)
 {
+    double max_diff{0};
+#ifdef __SCALAPACK
     dmatrix<T> tmp(n__, n__, mtrx__.blacs_grid(), mtrx__.bs_row(), mtrx__.bs_col());
     linalg<CPU>::tranc(n__, n__, mtrx__, 0, 0, tmp, 0, 0);
-
-    //splindex<block_cyclic> spl_r(n__, mtrx__.blacs_grid().num_ranks_row(), mtrx__.blacs_grid().rank_row(), mtrx__.bs_row());
-    //splindex<block_cyclic> spl_c(n__, mtrx__.blacs_grid().num_ranks_col(), mtrx__.blacs_grid().rank_col(), mtrx__.bs_col());
-    //
-    //double max_diff{0};
-    //for (int i = 0; i < spl_c.local_size(); i++) {
-    //    for (int j = 0; j < spl_r.local_size(); j++) {
-    //        max_diff = std::max(max_diff, std::abs(mtrx__(j, i) - tmp(j, i)));
-    //    }
-    //}
-    double max_diff{0};
     for (int i = 0; i < tmp.num_cols_local(); i++) {
         for (int j = 0; j < tmp.num_rows_local(); j++) {
             max_diff = std::max(max_diff, std::abs(mtrx__(j, i) - tmp(j, i)));
         }
     }
     mtrx__.blacs_grid().comm().template allreduce<double, mpi_op_t::max>(&max_diff, 1);
+#else
+    for (int i = 0; i < n__; i++) {
+        for (int j = 0; j < n__; j++) {
+            max_diff = std::max(max_diff, std::abs(mtrx__(j, i) - std::conj(mtrx__(i, j))));
+        }
+    }
+#endif
     return max_diff;
 }
 

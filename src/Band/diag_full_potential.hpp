@@ -728,7 +728,11 @@ inline void Band::diag_sv(K_point*     kp__,
                 }
             }
         } else {
+#ifdef __SCALAPACK
             linalg<CPU>::tranc(nfv, nfv, h, 0, nfv, h, nfv, 0);
+#else
+            TERMINATE_NO_SCALAPACK
+#endif
         }
 
         for (int i = 0; i < nfv; i++) {

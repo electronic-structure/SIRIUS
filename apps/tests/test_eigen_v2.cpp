@@ -13,7 +13,15 @@ dmatrix<T> random_symmetric(int N__, int bs__, BLACS_grid const& blacs_grid__)
         }
     }
 
+#ifdef __SCALAPACK
     linalg<CPU>::tranc(N__, N__, A, 0, 0, B, 0, 0);
+#else
+    for (int i = 0; i < N__; i++) {
+        for (int j = 0; j < N__; j++) {
+            B(i, j) = type_wrapper<T>::bypass(std::conj(A(j, i)));
+        }
+    }
+#endif
 
     for (int j = 0; j < A.num_cols_local(); j++) {
         for (int i = 0; i < A.num_rows_local(); i++) {
@@ -40,7 +48,15 @@ dmatrix<T> random_positive_definite(int N__, int bs__, BLACS_grid const& blacs_g
         }
     }
 
+#ifdef __SCALAPACK
     linalg<CPU>::tranc(N__, N__, A, 0, 0, B, 0, 0);
+#else
+    for (int i = 0; i < N__; i++) {
+        for (int j = 0; j < N__; j++) {
+            B(i, j) = type_wrapper<T>::bypass(std::conj(A(j, i)));
+        }
+    }
+#endif
     linalg<CPU>::gemm(2, 0, N__, N__, N__, linalg_const<T>::one(), A, A, linalg_const<T>::zero(), B);
 
     for (int i = 0; i < N__; i++) {
