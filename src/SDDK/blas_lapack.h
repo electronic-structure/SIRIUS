@@ -1010,6 +1010,42 @@ void FORTRAN(zheevr)(ftn_char            JOBZ,
                      ftn_len             RANGE_len,
                      ftn_len             UPLO_len);
 
+void FORTRAN(sgeqrf)(ftn_int*            M,
+                     ftn_int*            N,
+                     ftn_single*         A,
+                     ftn_int*            LDA,
+                     ftn_single*         TAU,
+                     ftn_single*         WORK,
+                     ftn_int*            LWORK,
+                     ftn_int*            INFO);
+
+void FORTRAN(dgeqrf)(ftn_int*            M,
+                     ftn_int*            N,
+                     ftn_double*         A,
+                     ftn_int*            LDA,
+                     ftn_double*         TAU,
+                     ftn_double*         WORK,
+                     ftn_int*            LWORK,
+                     ftn_int*            INFO);
+
+void FORTRAN(cgeqrf)(ftn_int*            M,
+                     ftn_int*            N,
+                     ftn_complex*        A,
+                     ftn_int*            LDA,
+                     ftn_complex*        TAU,
+                     ftn_complex*        WORK,
+                     ftn_int*            LWORK,
+                     ftn_int*            INFO);
+
+void FORTRAN(zgeqrf)(ftn_int*            M,
+                     ftn_int*            N,
+                     ftn_double_complex* A,
+                     ftn_int*            LDA,
+                     ftn_double_complex* TAU,
+                     ftn_double_complex* WORK,
+                     ftn_int*            LWORK,
+                     ftn_int*            INFO);
+
 }
 
 #endif

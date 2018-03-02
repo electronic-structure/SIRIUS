@@ -19,7 +19,7 @@
     "comment"     : "Fortran preprocessor",
     "FCCPP"       : "cpp-mp-7",
     
-    "SYSTEM_LIBS" : "~/src/LAPACK/scalapack-2.0.2/libscalapack.a ~/src/LAPACK/lapack-3.4.2/liblapack.a ~/src/LAPACK/lapack-3.4.2/librefblas.a ~/local/lib/libmpi_mpifh.a -L/opt/local/lib -lz -lgfortran -lstdc++ -lc++",
+    "SYSTEM_LIBS" : "~/src/LAPACK/lapack-3.4.2/liblapack.a ~/src/LAPACK/lapack-3.4.2/librefblas.a ~/local/lib/libmpi_mpifh.a -L/opt/local/lib -lz -lgfortran -lstdc++ -lc++",
 
     "install"     : ["spg", "gsl", "fftw", "xc", "hdf5"]
 }

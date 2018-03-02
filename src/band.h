@@ -180,7 +180,11 @@ class Band
                     }
                 }
             } else {
+#ifdef __SCALAPACK
                 linalg<CPU>::tranc(n__, N__, mtrx__, 0, N__, mtrx__, N__, 0);
+#else
+                TERMINATE_NO_SCALAPACK
+#endif
             }
         }
 
