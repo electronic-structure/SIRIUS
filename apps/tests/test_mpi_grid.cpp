@@ -14,18 +14,6 @@ void test_grid(std::vector<int> grid__)
 
     pout.printf("rank(flat): %3i, coordinate: %3i %3i %3i, hostname: %s\n", mpi_comm_world().rank(),
         mpi_grid.coordinate(0), mpi_grid.coordinate(1), mpi_grid.coordinate(2), runtime::hostname().c_str());
-
-    //for (int i0 = 0; i0 < mpi_grid.dimension_size(0); i0++)
-    //{
-    //    for (int i1 = 0; i1 < mpi_grid.dimension_size(1); i1++)
-    //    {
-    //        if (i0 == mpi_grid.communicator(1 << 0).rank() && i1 == mpi_grid.communicator(1 << 1).rank())
-    //        {
-    //            printf("rank(flat): %i, rank(cart): %i, i0: %i, i1: %i\n", mpi_comm_world().rank(), mpi_grid.communicator().rank(), i0, i1);
-    //        }
-    //        mpi_comm_world().barrier();
-    //    }
-    //}
 }
 
 int main(int argn, char** argv)
