@@ -29,7 +29,7 @@
 #include "density.h"
 #include "k_point_set.h"
 #include "Geometry/force.hpp"
-#include "Geometry/stress.h"
+#include "Geometry/stress.hpp"
 #include "json.hpp"
 #include "hubbard.hpp"
 

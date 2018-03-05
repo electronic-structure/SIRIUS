@@ -3209,6 +3209,12 @@ void sirius_get_pw_coeffs(ftn_char        label__,
         for (int i = 0; i < *ngv__; i++) {
             vector3d<int> G(gvec(0, i), gvec(1, i), gvec(2, i));
 
+            auto gvc = sim_ctx->unit_cell().reciprocal_lattice_vectors() * vector3d<double>(G[0], G[1], G[2]);
+            if (gvc.length() > sim_ctx->pw_cutoff()) {
+                pw_coeffs__[i] = 0;
+                continue;
+            }
+
             bool is_inverse{false};
             int ig = sim_ctx->gvec().index_by_gvec(G);
             if (ig == -1 && sim_ctx->gvec().reduced()) {
@@ -3294,21 +3300,37 @@ void sirius_get_forces(ftn_char label__, ftn_double* forces__)
     };
 
     if (label == "vloc") {
-        get_forces(forces->local_forces());
-    } else if (label == "nlcc") {
-        get_forces(forces->nlcc_forces());
+        forces->calc_forces_vloc();
+        get_forces(forces->forces_vloc());
+    } else if (label == "core") {
+        forces->calc_forces_core();
+        get_forces(forces->forces_core());
     } else if (label == "ewald") {
-        get_forces(forces->ewald_forces());
-    } else if (label == "nl") {
-        get_forces(forces->nonlocal_forces());
+        forces->calc_forces_ewald();
+        get_forces(forces->forces_ewald());
+    } else if (label == "nonloc") {
+        forces->calc_forces_nonloc();
+        get_forces(forces->forces_nonloc());
     } else if (label == "us") {
-        get_forces(forces->ultrasoft_forces());
+        forces->calc_forces_us();
+        get_forces(forces->forces_us());
     } else if (label == "usnl") {
-        get_forces(forces->us_nl_forces());
+        forces->calc_forces_us();
+        forces->calc_forces_nonloc();
+        auto& fnl = forces->forces_nonloc();
+        auto& fus = forces->forces_us();
+        mdarray<double, 2> forces(forces__, 3, sim_ctx->unit_cell().num_atoms());
+        for (int ia = 0; ia < sim_ctx->unit_cell().num_atoms(); ia++) {
+            for (int x: {0, 1, 2}) {
+                forces(x, ia) = fnl(x, ia) + fus(x, ia);
+            }
+        }
     } else if (label == "tot") {
-        get_forces(forces->total_forces());
+        forces->calc_forces_total();
+        get_forces(forces->forces_total());
     } else if (label == "scf_corr") {
-        get_forces(forces->scf_corr_forces());
+        forces->calc_forces_scf_corr();
+        get_forces(forces->forces_scf_corr());
     } else {
         TERMINATE("wrong label");
     }
@@ -3325,20 +3347,28 @@ void sirius_get_stress_tensor(ftn_char label__, ftn_double* stress_tensor__)
     std::string label(label__);
     matrix3d<double> s;
     if (label == "vloc") {
+        stress_tensor->calc_stress_vloc();
         s = stress_tensor->stress_vloc();
     } else if (label == "har") {
+        stress_tensor->calc_stress_har();
         s = stress_tensor->stress_har();
     } else if (label == "ewald") {
+        stress_tensor->calc_stress_ewald();
         s = stress_tensor->stress_ewald();
     } else if (label == "kin") {
+        stress_tensor->calc_stress_kin();
         s = stress_tensor->stress_kin();
     } else if (label == "nonloc") {
+        stress_tensor->calc_stress_nonloc();
         s = stress_tensor->stress_nonloc();
     } else if (label == "us") {
+        stress_tensor->calc_stress_us();
         s = stress_tensor->stress_us();
     } else if (label == "xc") {
+        stress_tensor->calc_stress_xc();
         s = stress_tensor->stress_xc();
     } else if (label == "core") {
+        stress_tensor->calc_stress_core();
         s = stress_tensor->stress_core();
     } else {
         TERMINATE("wrong label");

@@ -1,12 +1,29 @@
-/*
- * Non_local_functor.h
+// Copyright (c) 2013-2017 Anton Kozhevnikov, Ilia Sivkov, Thomas Schulthess
+// All rights reserved.
+// 
+// Redistribution and use in source and binary forms, with or without modification, are permitted provided that 
+// the following conditions are met:
+// 
+// 1. Redistributions of source code must retain the above copyright notice, this list of conditions and the 
+//    following disclaimer.
+// 2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions 
+//    and the following disclaimer in the documentation and/or other materials provided with the distribution.
+// 
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED 
+// WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A 
+// PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR 
+// ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, 
+// PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER 
+// CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR 
+// OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+/** \file non_local_functor.hpp
  *
- *  Created on: Mar 13, 2017
- *      Author: isivkov
+ *  \brief Common operation for forces and stress tensor.
  */
 
-#ifndef __NON_LOCAL_FUNCTOR_H__
-#define __NON_LOCAL_FUNCTOR_H__
+#ifndef __NON_LOCAL_FUNCTOR_HPP__
+#define __NON_LOCAL_FUNCTOR_HPP__
 
 #include "../simulation_context.h"
 #include "../periodic_function.h"
@@ -30,10 +47,8 @@ class Non_local_functor
                       Beta_projectors_base<N>& bp_base__)
         : ctx_(ctx__)
         , bp_base_(bp_base__)
-    {}
-
-    /// Dimension of the beta-projector array.
-    static const int N_ = N;
+    {
+    }
 
     /// collect summation result in an array
     void add_k_point_contribution(K_point& kpoint__, mdarray<double, 2>& collect_res__)
@@ -151,4 +166,4 @@ class Non_local_functor
 
 }
 
-#endif /* __NON_LOCAL_FUNCTOR_H__ */
+#endif /* __NON_LOCAL_FUNCTOR_HPP__ */
