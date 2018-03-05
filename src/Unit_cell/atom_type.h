@@ -469,7 +469,13 @@ class Atom_type
     {
         /* sanity check */
         if (l__ > 2 * lmax_beta()) {
-            TERMINATE("wrong l for Q radial functions");
+            std::stringstream s;
+            s << "wrong l for Q radial functions of atom type " << label_ << std::endl
+              << "current l: " << l__ << std::endl
+              << "lmax_beta: " << lmax_beta() << std::endl
+              << "maximum allowed l: " << 2 * lmax_beta();
+
+            TERMINATE(s);
         }
 
         if (!augment_) {

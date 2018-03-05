@@ -3332,7 +3332,9 @@ void sirius_get_forces(ftn_char label__, ftn_double* forces__)
         forces->calc_forces_scf_corr();
         get_forces(forces->forces_scf_corr());
     } else {
-        TERMINATE("wrong label");
+        std::stringstream s;
+        s << "wrong label (" << label <<") for the component of forces";
+        TERMINATE(s);
     }
 }
 
