@@ -320,13 +320,17 @@ class matrix3d
         return *this;
     }
 
-
     /// Return determinant of a matrix.
     inline T det() const
     {
         return (mtrx_[0][2] * (mtrx_[1][0] * mtrx_[2][1] - mtrx_[1][1] * mtrx_[2][0]) +
                 mtrx_[0][1] * (mtrx_[1][2] * mtrx_[2][0] - mtrx_[1][0] * mtrx_[2][2]) +
                 mtrx_[0][0] * (mtrx_[1][1] * mtrx_[2][2] - mtrx_[1][2] * mtrx_[2][1]));
+    }
+
+    inline void zero()
+    {
+        std::fill(&mtrx_[0][0], &mtrx_[0][0] + 9, 0);
     }
 };
 

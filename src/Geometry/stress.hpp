@@ -17,16 +17,16 @@
 // CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR 
 // OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-/** \file stress.h
+/** \file stress.hpp
  *
  *  \brief Stress tensor calculation.
  */
 
-#ifndef __STRESS_H__
-#define __STRESS_H__
+#ifndef __STRESS_HPP__
+#define __STRESS_HPP__
 
 #include "../Beta_projectors/beta_projectors_strain_deriv.h"
-#include "non_local_functor.h"
+#include "non_local_functor.hpp"
 
 namespace sirius {
 
@@ -117,321 +117,6 @@ class Stress {
 
     matrix3d<double> stress_core_;
     
-    /// Kinetic energy contribution to stress.
-    /** Kinetic energy:
-     *  \f[
-     *    E^{kin} = \sum_{{\bf k}} w_{\bf k} \sum_j f_j \frac{1}{2} |{\bf G+k}|^2 |\psi_j({\bf G + k})|^2
-     *  \f]
-     *  Contribution to the stress tensor
-     *  \f[
-     *    \sigma_{\mu \nu}^{kin} = \frac{1}{\Omega} \frac{\partial E^{kin}}{\partial \varepsilon_{\mu \nu}} = 
-     *     \frac{1}{\Omega} \sum_{{\bf k}} w_{\bf k} \sum_j f_j \frac{1}{2} 2 |{\bf G+k}| \Big( -\frac{1}{|{\bf G+k}|}  (G+k)_{\mu} (G+k)_{\nu} \Big)  |\psi_j({\bf G + k})|^2 =\\
-     *     -\frac{1}{\Omega} \sum_{{\bf k}} w_{\bf k} (G+k)_{\mu} (G+k)_{\nu} \sum_j f_j  |\psi_j({\bf G + k})|^2 
-     *  \f]
-     */
-    inline matrix3d<double> calc_stress_kin() const
-    {
-        PROFILE("sirius::Stress|kin");
-
-        matrix3d<double> s;
-
-        for (int ikloc = 0; ikloc < kset_.spl_num_kpoints().local_size(); ikloc++) {
-            int ik = kset_.spl_num_kpoints(ikloc);
-            auto kp = kset_[ik];
-            if (kp->gkvec().reduced()) {
-                TERMINATE("fix this");
-            }
-
-            for (int igloc = 0; igloc < kp->num_gkvec_loc(); igloc++) {
-                int ig = kp->idxgk(igloc);
-                auto Gk = kp->gkvec().gkvec_cart(ig);
-
-                double d{0};
-                for (int ispin = 0; ispin < ctx_.num_spins(); ispin++ ) {
-                    for (int i = 0; i < kp->num_occupied_bands(ispin); i++) {
-                        double f = kp->band_occupancy(i, ispin);
-                        auto z = kp->spinor_wave_functions().pw_coeffs(ispin).prime(igloc, i);
-                        d += f * (std::pow(z.real(), 2) + std::pow(z.imag(), 2));
-                    }
-                }
-                d *= kp->weight();
-                for (int mu: {0, 1, 2}) {
-                    for (int nu: {0, 1, 2}) {
-                        s(mu, nu) += Gk[mu] * Gk[nu] * d;
-                    }
-                }
-            } // igloc
-        } // ikloc
-
-        ctx_.comm().allreduce(&s(0, 0), 9);
-
-        s *= (-1.0 / ctx_.unit_cell().omega());
-
-        symmetrize(s);
-
-        return s;
-    }
-
-    /// Hartree energy contribution to stress.
-    /** Hartree energy:
-     *  \f[
-     *    E^{H} = \frac{1}{2} \int_{\Omega} \rho({\bf r}) V^{H}({\bf r}) d{\bf r} = 
-     *      \frac{1}{2} \frac{1}{\Omega} \sum_{\bf G} \langle \rho | {\bf G} \rangle \langle {\bf G}| V^{H} \rangle = 
-     *      \frac{2 \pi}{\Omega} \sum_{\bf G} \frac{|\tilde \rho({\bf G})|^2}{G^2}
-     *  \f]
-     *  where 
-     *  \f[
-     *    \langle {\bf G} | \rho \rangle = \int e^{-i{\bf Gr}}\rho({\bf r}) d {\bf r} = \tilde \rho({\bf G})
-     *  \f]
-     *  and
-     *  \f[
-     *    \langle {\bf G} | V^{H} \rangle = \int e^{-i{\bf Gr}}V^{H}({\bf r}) d {\bf r} = \frac{4\pi}{G^2} \tilde \rho({\bf G})
-     *  \f]
-     *  
-     *  Hartree energy contribution to stress tensor:
-     *  \f[
-     *     \sigma_{\mu \nu}^{H} = \frac{1}{\Omega} \frac{\partial  E^{H}}{\partial \varepsilon_{\mu \nu}} = 
-     *        \frac{1}{\Omega} 2\pi \Big( \big( \frac{\partial}{\partial \varepsilon_{\mu \nu}} \frac{1}{\Omega} \big) 
-     *          \sum_{{\bf G}} \frac{|\tilde \rho({\bf G})|^2}{G^2} + 
-     *          \frac{1}{\Omega} \sum_{{\bf G}} |\tilde \rho({\bf G})|^2 \frac{\partial}{\partial \varepsilon_{\mu \nu}} \frac{1}{G^2} \Big) = \\
-     *     \frac{1}{\Omega} 2\pi \Big( -\frac{1}{\Omega} \delta_{\mu \nu} \sum_{{\bf G}} \frac{|\tilde \rho({\bf G})|^2}{G^2} + 
-     *       \frac{1}{\Omega} \sum_{\bf G} |\tilde \rho({\bf G})|^2 \sum_{\tau} \frac{-2 G_{\tau}}{G^4} \frac{\partial G_{\tau}}{\partial \varepsilon_{\mu \nu}} \Big) = \\
-     *     2\pi \sum_{\bf G} \frac{|\rho({\bf G})|^2}{G^2} \Big( -\delta_{\mu \nu} + \frac{2}{G^2} G_{\nu} G_{\mu} \Big)
-     *  \f]
-     */
-    inline void calc_stress_har()
-    {
-        PROFILE("sirius::Stress|har");
-        
-        int ig0 = (ctx_.comm().rank() == 0) ? 1 : 0;
-        for (int igloc = ig0; igloc < ctx_.gvec().count(); igloc++) {
-            int ig = ctx_.gvec().offset() + igloc;
-
-            auto G = ctx_.gvec().gvec_cart(ig);
-            double g2 = std::pow(G.length(), 2);
-            auto z = density_.rho().f_pw_local(igloc);
-            double d = twopi * (std::pow(z.real(), 2) + std::pow(z.imag(), 2)) / g2;
-
-            for (int mu: {0, 1, 2}) {
-                for (int nu: {0, 1, 2}) {
-                    stress_har_(mu, nu) += d * 2 * G[mu] * G[nu] / g2;
-                }
-            }
-            for (int mu: {0, 1, 2}) {
-                stress_har_(mu, mu) -= d;
-            }
-        }
-
-        if (ctx_.gvec().reduced()) {
-            stress_har_ *= 2;
-        } 
-
-        ctx_.comm().allreduce(&stress_har_(0, 0), 9);
-
-        symmetrize(stress_har_);
-    }
-
-    /// Ewald energy contribution to stress.
-    /** Ewald energy:
-     *  \f[
-     *    E^{ion-ion} = \frac{1}{2} \sideset{}{'} \sum_{\alpha \beta {\bf T}} Z_{\alpha} Z_{\beta} 
-     *      \frac{{\rm erfc}(\sqrt{\lambda} |{\bf r}_{\alpha} - {\bf r}_{\beta} + {\bf T}|)}{|{\bf r}_{\alpha} - {\bf r}_{\beta} + {\bf T}|} +
-     *      \frac{2 \pi}{\Omega} \sum_{{\bf G}} \frac{e^{-\frac{G^2}{4 \lambda}}}{G^2} \Big| \sum_{\alpha} Z_{\alpha} e^{-i{\bf r}_{\alpha}{\bf G}} \Big|^2 -
-     *      \sum_{\alpha} Z_{\alpha}^2 \sqrt{\frac{\lambda}{\pi}} - \frac{2\pi}{\Omega}\frac{N_{el}^2}{4 \lambda}
-     *  \f]
-     * (check sirius::DFT_ground_state::ewald_energy for details).\n
-     *  Contribution to stress tensor:
-     *  \f[
-     *    \sigma_{\mu \nu}^{ion-ion} = \frac{1}{\Omega} \frac{\partial  E^{ion-ion}}{\partial \varepsilon_{\mu \nu}} 
-     *  \f]
-     *  Derivative of the first part:
-     *  \f[
-     *    \frac{1}{\Omega}\frac{\partial}{\partial \varepsilon_{\mu \nu}} \frac{1}{2} \sideset{}{'} \sum_{\alpha \beta {\bf T}} Z_{\alpha} Z_{\beta} 
-     *      \frac{{\rm erfc}(\sqrt{\lambda} |{\bf r}_{\alpha} - {\bf r}_{\beta} + {\bf T}|)}{|{\bf r}_{\alpha} - {\bf r}_{\beta} + {\bf T}|}  = 
-     *      \frac{1}{2\Omega} \sideset{}{'} \sum_{\alpha \beta {\bf T}} Z_{\alpha} Z_{\beta} \Big( -2e^{-\lambda |{\bf r'}|^2} 
-     *      \sqrt{\frac{\lambda}{\pi}} \frac{1}{|{\bf r'}|^2} - {\rm erfc}(\sqrt{\lambda} |{\bf r'}|) \frac{1}{|{\bf r'}|^3} \Big) r'_{\mu} r'_{\nu}
-     *  \f]
-     *  where \f$ {\bf r'} = {\bf r}_{\alpha} - {\bf r}_{\beta} + {\bf T} \f$.
-     *  
-     *  Derivative of the second part:
-     *  \f[
-     *    \frac{1}{\Omega}\frac{\partial}{\partial \varepsilon_{\mu \nu}} \frac{2\pi}{\Omega} \sum_{{\bf G}} \frac{e^{-\frac{G^2}{4 \lambda}}}{G^2} 
-     *    \Big| \sum_{\alpha} Z_{\alpha} e^{-i{\bf r}_{\alpha}{\bf G}} \Big|^2 = 
-     *    -\frac{2\pi}{\Omega^2} \delta_{\mu \nu} \sum_{{\bf G}} \frac{e^{-\frac{G^2}{4 \lambda}}}{G^2} \Big| 
-     *    \sum_{\alpha} Z_{\alpha} e^{-i{\bf r}_{\alpha}{\bf G}} \Big|^2 + 
-     *    \frac{2\pi}{\Omega^2} \sum_{\bf G} G_{\mu} G_{\nu} \frac{e^{-\frac{G^2}{4 \lambda}}}{G^2} 2 \frac{\frac{G^2}{4\lambda} + 1}{G^2}  
-     *    \Big| \sum_{\alpha} Z_{\alpha} e^{-i{\bf r}_{\alpha}{\bf G}} \Big|^2 
-     *  \f]
-     *  
-     *  Derivative of the fourth part:
-     *  \f[
-     *    -\frac{1}{\Omega}\frac{\partial}{\partial \varepsilon_{\mu \nu}} \frac{2\pi}{\Omega}\frac{N_{el}^2}{4 \lambda} = 
-     *       \frac{2\pi}{\Omega^2}\frac{N_{el}^2}{4 \lambda} \delta_{\mu \nu}
-     *  \f]
-     */
-    inline void calc_stress_ewald()
-    {
-        PROFILE("sirius::Stress|ewald");
-
-        double lambda = ctx_.ewald_lambda();
-
-        auto& uc = ctx_.unit_cell();
-
-        int ig0 = (ctx_.comm().rank() == 0) ? 1 : 0;
-        for (int igloc = ig0; igloc < ctx_.gvec().count(); igloc++) {
-            int ig = ctx_.gvec().offset() + igloc;
-
-            auto G = ctx_.gvec().gvec_cart(ig);
-            double g2 = std::pow(G.length(), 2);
-            double g2lambda = g2 / 4.0 / lambda;
-
-            double_complex rho(0, 0);
-
-            for (int ia = 0; ia < uc.num_atoms(); ia++) {
-                rho += ctx_.gvec_phase_factor(ig, ia) * static_cast<double>(uc.atom(ia).zn());
-            }
-
-            double a1 = twopi * std::pow(std::abs(rho) / uc.omega(), 2) * std::exp(-g2lambda) / g2;
-            
-            for (int mu: {0, 1, 2}) {
-                for (int nu: {0, 1, 2}) {
-                    stress_ewald_(mu, nu) += a1 * G[mu] * G[nu] * 2 * (g2lambda + 1) / g2;
-                }
-            }
-
-            for (int mu: {0, 1, 2}) {
-                stress_ewald_(mu, mu) -= a1;
-            }
-        }
-
-        if (ctx_.gvec().reduced()) {
-            stress_ewald_ *= 2;
-        } 
-
-        ctx_.comm().allreduce(&stress_ewald_(0, 0), 9);
-        
-        for (int mu: {0, 1, 2}) {
-            stress_ewald_(mu, mu) += twopi * std::pow(uc.num_electrons() / uc.omega(), 2) / 4 / lambda;
-        }
-
-        for (int ia = 0; ia < uc.num_atoms(); ia++) {
-            for (int i = 1; i < uc.num_nearest_neighbours(ia); i++) {
-                int ja = uc.nearest_neighbour(i, ia).atom_id;
-                double d = uc.nearest_neighbour(i, ia).distance;
-
-                vector3d<double> v1 = uc.atom(ja).position() - uc.atom(ia).position() + uc.nearest_neighbour(i, ia).translation;
-                auto r1 = uc.get_cartesian_coordinates(v1);
-                double len = r1.length();
-
-                if (std::abs(d - len) > 1e-12) {
-                    STOP(); 
-                }
-
-                double a1 = (0.5 * uc.atom(ia).zn() * uc.atom(ja).zn() / uc.omega() / std::pow(len, 3)) *
-                            (-2 * std::exp(-lambda * std::pow(len, 2)) * std::sqrt(lambda / pi) * len - gsl_sf_erfc(std::sqrt(lambda) * len));
-
-                for (int mu: {0, 1, 2}) {
-                    for (int nu: {0, 1, 2}) {
-                        stress_ewald_(mu, nu) += a1 * r1[mu] * r1[nu];
-                    }
-                }
-            }
-        }
-
-        symmetrize(stress_ewald_);
-    }
-
-    /// Local potential contribution to stress.
-    /** Energy contribution from the local part of pseudopotential:
-     *  \f[
-     *    E^{loc} = \int \rho({\bf r}) V^{loc}({\bf r}) d{\bf r} = \frac{1}{\Omega} \sum_{\bf G} \langle \rho | {\bf G} \rangle \langle {\bf G}| V^{loc} \rangle = 
-     *      \frac{1}{\Omega} \sum_{\bf G} \tilde \rho^{*}({\bf G}) \tilde V^{loc}({\bf G})
-     *  \f]
-     *  where
-     *  \f[
-     *    \tilde \rho({\bf G}) = \langle {\bf G} | \rho \rangle = \int e^{-i{\bf Gr}}\rho({\bf r}) d {\bf r}
-     *  \f]
-     *  and
-     *  \f[
-     *    \tilde V^{loc}({\bf G}) = \langle {\bf G} | V^{loc} \rangle = \int e^{-i{\bf Gr}}V^{loc}({\bf r}) d {\bf r} 
-     *  \f]
-     *  Using the expression for \f$ \tilde V^{loc}({\bf G}) \f$, the local contribution to the total energy is rewritten as
-     *  \f[
-     *    E^{loc} = \frac{1}{\Omega} \sum_{\bf G} \tilde \rho^{*}({\bf G}) \sum_{\alpha} e^{-{\bf G\tau}_{\alpha}} 4 \pi 
-     *      \int V_{\alpha}^{loc}(r)\frac{\sin(Gr)}{Gr} r^2 dr = 
-     *      \frac{4\pi}{\Omega}\sum_{\bf G}\tilde \rho^{*}({\bf G})\sum_{\alpha} e^{-{\bf G\tau}_{\alpha}} 
-     *      \Bigg( \int \Big(V_{\alpha}(r) r + Z_{\alpha}^p {\rm erf}(r) \Big) \frac{\sin(Gr)}{G} dr -  Z_{\alpha}^p \frac{e^{-\frac{G^2}{4}}}{G^2} \Bigg)
-     *  \f]
-     *  (see \link sirius::Potential::generate_local_potential \endlink for details).
-     *  
-     *  Contribution to stress tensor:
-     *  \f[
-     *     \sigma_{\mu \nu}^{loc} = \frac{1}{\Omega} \frac{\partial  E^{loc}}{\partial \varepsilon_{\mu \nu}} =
-     *       \frac{1}{\Omega} \frac{-1}{\Omega} \delta_{\mu \nu} \sum_{\bf G}\tilde \rho^{*}({\bf G}) \tilde V^{loc}({\bf G}) + 
-     *       \frac{4\pi}{\Omega^2} \sum_{\bf G}\tilde \rho^{*}({\bf G}) \sum_{\alpha} e^{-{\bf G\tau}_{\alpha}}
-     *       \Bigg( \int \Big(V_{\alpha}(r) r + Z_{\alpha}^p {\rm erf}(r) \Big) \Big( \frac{r \cos (G r)}{G}-\frac{\sin (G r)}{G^2} \Big)
-     *       \Big( -\frac{G_{\mu}G_{\nu}}{G} \Big) dr -  Z_{\alpha}^p \Big( -\frac{e^{-\frac{G^2}{4}}}{2 G}-\frac{2 e^{-\frac{G^2}{4}}}{G^3} \Big) 
-     *       \Big( -\frac{G_{\mu}G_{\nu}}{G} \Big)  \Bigg) = \\
-     *       -\delta_{\mu \nu} \sum_{\bf G}\rho^{*}({\bf G}) V^{loc}({\bf G}) + \sum_{\bf G} \rho^{*}({\bf G}) \Delta V^{loc}({\bf G}) G_{\mu}G_{\nu}
-     *  \f]
-     *  where \f$ \Delta V^{loc}({\bf G}) \f$ is built from the following radial integrals:
-     *  \f[
-     *    \int \Big(V_{\alpha}(r) r + Z_{\alpha}^p {\rm erf}(r) \Big) \Big( \frac{\sin (G r)}{G^3} - \frac{r \cos (G r)}{G^2}\Big) dr - 
-     *      Z_{\alpha}^p \Big( \frac{e^{-\frac{G^2}{4}}}{2 G^2} + \frac{2 e^{-\frac{G^2}{4}}}{G^4} \Big)  
-     *  \f]
-     */
-    inline void calc_stress_vloc()
-    {
-        PROFILE("sirius::Stress|vloc");
-
-        Radial_integrals_vloc<false> ri_vloc(ctx_.unit_cell(), ctx_.pw_cutoff(), ctx_.settings().nprii_vloc_);
-        Radial_integrals_vloc<true> ri_vloc_dg(ctx_.unit_cell(), ctx_.pw_cutoff(), ctx_.settings().nprii_vloc_);
-
-        auto v = ctx_.make_periodic_function<index_domain_t::local>([&ri_vloc](int iat, double g)
-                                                                    {
-                                                                        return ri_vloc.value(iat, g);
-                                                                    });
-
-        auto dv = ctx_.make_periodic_function<index_domain_t::local>([&ri_vloc_dg](int iat, double g)
-                                                                     {
-                                                                         return ri_vloc_dg.value(iat, g);
-                                                                     });
-        
-        double sdiag{0};
-
-        int ig0 = (ctx_.comm().rank() == 0) ? 1 : 0;
-        for (int igloc = ig0; igloc < ctx_.gvec().count(); igloc++) {
-
-            int ig = ctx_.gvec().offset() + igloc;
-            
-            auto G = ctx_.gvec().gvec_cart(ig);
-
-            for (int mu: {0, 1, 2}) {
-                for (int nu: {0, 1, 2}) {
-                    stress_vloc_(mu, nu) += std::real(std::conj(density_.rho().f_pw_local(igloc)) * dv[igloc]) * G[mu] * G[nu];
-                }
-            }
-
-            sdiag += std::real(std::conj(density_.rho().f_pw_local(igloc)) * v[igloc]);
-        }
-        
-        if (ctx_.gvec().reduced()) {
-            stress_vloc_ *= 2;
-            sdiag *= 2;
-        }
-        if (ctx_.comm().rank() == 0) {
-            sdiag += std::real(std::conj(density_.rho().f_pw_local(0)) * v[0]);
-        }
-
-        for (int mu: {0, 1, 2}) {
-            stress_vloc_(mu, mu) -= sdiag;
-        }
-
-        ctx_.comm().allreduce(&stress_vloc_(0, 0), 9);
-
-        symmetrize(stress_vloc_);
-    }
-
     /// Non-local contribution to stress.
     /** Energy contribution from the non-local part of pseudopotential:
      *  \f[
@@ -513,12 +198,14 @@ class Stress {
      * \f]
      */
     template <typename T>
-    inline void calc_stress_nonloc()
+    inline void calc_stress_nonloc_aux()
     {
         PROFILE("sirius::Stress|nonloc");
 
         mdarray<double, 2> collect_result(9, ctx_.unit_cell().num_atoms());
         collect_result.zero();
+
+        stress_nonloc_.zero();
 
         for (int ikloc = 0; ikloc < kset_.spl_num_kpoints().local_size(); ikloc++) {
             int ik = kset_.spl_num_kpoints(ikloc);
@@ -527,7 +214,7 @@ class Stress {
                 TERMINATE("reduced G+k vectors are not implemented for non-local stress: fix this");
             }
 
-            #ifdef __GPU
+#ifdef __GPU
             if (ctx_.processing_unit() == GPU && !keep_wf_on_gpu) {
                 int nbnd = ctx_.num_bands();
                 for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
@@ -536,7 +223,7 @@ class Stress {
                     kp->spinor_wave_functions().pw_coeffs(ispn).copy_to_device(0, nbnd);
                 }
             }
-            #endif
+#endif
 
             Beta_projectors_strain_deriv bp_strain_deriv(ctx_, kp->gkvec(), kp->igk_loc());
 
@@ -544,14 +231,14 @@ class Stress {
 
             nlf.add_k_point_contribution(*kp, collect_result);
 
-            #ifdef __GPU
+#ifdef __GPU
             if (ctx_.processing_unit() == GPU && !keep_wf_on_gpu) {
                 for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
                     /* deallocate GPU memory */
                     kp->spinor_wave_functions().pw_coeffs(ispn).deallocate_on_device();
                 }
             }
-            #endif
+#endif
         }
 
         #pragma omp parallel
@@ -576,6 +263,393 @@ class Stress {
         stress_nonloc_ *= (1.0 / ctx_.unit_cell().omega());
 
         symmetrize(stress_nonloc_);
+    }
+
+    inline void symmetrize(matrix3d<double>& mtrx__) const
+    {
+        if (!ctx_.use_symmetry()) {
+            return;
+        }
+
+        matrix3d<double> result;
+
+        for (int i = 0; i < ctx_.unit_cell().symmetry().num_mag_sym(); i++) {
+            auto R = ctx_.unit_cell().symmetry().magnetic_group_symmetry(i).spg_op.rotation;
+            result = result + transpose(R) * mtrx__ * R;
+        }
+
+        mtrx__ = result * (1.0 / ctx_.unit_cell().symmetry().num_mag_sym());
+
+        std::vector<std::array<int, 2>> idx = {{0, 1}, {0, 2}, {1, 2}};
+        for (auto e: idx) {
+            mtrx__(e[0], e[1]) = mtrx__(e[1], e[0]) = 0.5 * (mtrx__(e[0], e[1]) + mtrx__(e[1], e[0]));
+        }
+    }
+
+  public:
+    Stress(Simulation_context& ctx__,
+           K_point_set& kset__,
+           Density& density__,
+           Potential& potential__)
+        : ctx_(ctx__)
+        , kset_(kset__)
+        , density_(density__)
+        , potential_(potential__)
+    {
+    }
+
+    /// Local potential contribution to stress.
+    /** Energy contribution from the local part of pseudopotential:
+     *  \f[
+     *    E^{loc} = \int \rho({\bf r}) V^{loc}({\bf r}) d{\bf r} = \frac{1}{\Omega} \sum_{\bf G} \langle \rho | {\bf G} \rangle \langle {\bf G}| V^{loc} \rangle = 
+     *      \frac{1}{\Omega} \sum_{\bf G} \tilde \rho^{*}({\bf G}) \tilde V^{loc}({\bf G})
+     *  \f]
+     *  where
+     *  \f[
+     *    \tilde \rho({\bf G}) = \langle {\bf G} | \rho \rangle = \int e^{-i{\bf Gr}}\rho({\bf r}) d {\bf r}
+     *  \f]
+     *  and
+     *  \f[
+     *    \tilde V^{loc}({\bf G}) = \langle {\bf G} | V^{loc} \rangle = \int e^{-i{\bf Gr}}V^{loc}({\bf r}) d {\bf r} 
+     *  \f]
+     *  Using the expression for \f$ \tilde V^{loc}({\bf G}) \f$, the local contribution to the total energy is rewritten as
+     *  \f[
+     *    E^{loc} = \frac{1}{\Omega} \sum_{\bf G} \tilde \rho^{*}({\bf G}) \sum_{\alpha} e^{-{\bf G\tau}_{\alpha}} 4 \pi 
+     *      \int V_{\alpha}^{loc}(r)\frac{\sin(Gr)}{Gr} r^2 dr = 
+     *      \frac{4\pi}{\Omega}\sum_{\bf G}\tilde \rho^{*}({\bf G})\sum_{\alpha} e^{-{\bf G\tau}_{\alpha}} 
+     *      \Bigg( \int \Big(V_{\alpha}(r) r + Z_{\alpha}^p {\rm erf}(r) \Big) \frac{\sin(Gr)}{G} dr -  Z_{\alpha}^p \frac{e^{-\frac{G^2}{4}}}{G^2} \Bigg)
+     *  \f]
+     *  (see \link sirius::Potential::generate_local_potential \endlink for details).
+     *  
+     *  Contribution to stress tensor:
+     *  \f[
+     *     \sigma_{\mu \nu}^{loc} = \frac{1}{\Omega} \frac{\partial  E^{loc}}{\partial \varepsilon_{\mu \nu}} =
+     *       \frac{1}{\Omega} \frac{-1}{\Omega} \delta_{\mu \nu} \sum_{\bf G}\tilde \rho^{*}({\bf G}) \tilde V^{loc}({\bf G}) + 
+     *       \frac{4\pi}{\Omega^2} \sum_{\bf G}\tilde \rho^{*}({\bf G}) \sum_{\alpha} e^{-{\bf G\tau}_{\alpha}}
+     *       \Bigg( \int \Big(V_{\alpha}(r) r + Z_{\alpha}^p {\rm erf}(r) \Big) \Big( \frac{r \cos (G r)}{G}-\frac{\sin (G r)}{G^2} \Big)
+     *       \Big( -\frac{G_{\mu}G_{\nu}}{G} \Big) dr -  Z_{\alpha}^p \Big( -\frac{e^{-\frac{G^2}{4}}}{2 G}-\frac{2 e^{-\frac{G^2}{4}}}{G^3} \Big) 
+     *       \Big( -\frac{G_{\mu}G_{\nu}}{G} \Big)  \Bigg) = \\
+     *       -\delta_{\mu \nu} \sum_{\bf G}\rho^{*}({\bf G}) V^{loc}({\bf G}) + \sum_{\bf G} \rho^{*}({\bf G}) \Delta V^{loc}({\bf G}) G_{\mu}G_{\nu}
+     *  \f]
+     *  where \f$ \Delta V^{loc}({\bf G}) \f$ is built from the following radial integrals:
+     *  \f[
+     *    \int \Big(V_{\alpha}(r) r + Z_{\alpha}^p {\rm erf}(r) \Big) \Big( \frac{\sin (G r)}{G^3} - \frac{r \cos (G r)}{G^2}\Big) dr - 
+     *      Z_{\alpha}^p \Big( \frac{e^{-\frac{G^2}{4}}}{2 G^2} + \frac{2 e^{-\frac{G^2}{4}}}{G^4} \Big)  
+     *  \f]
+     */
+    inline void calc_stress_vloc()
+    {
+        PROFILE("sirius::Stress|vloc");
+
+        stress_vloc_.zero();
+
+        Radial_integrals_vloc<false> ri_vloc(ctx_.unit_cell(), ctx_.pw_cutoff(), ctx_.settings().nprii_vloc_);
+        Radial_integrals_vloc<true> ri_vloc_dg(ctx_.unit_cell(), ctx_.pw_cutoff(), ctx_.settings().nprii_vloc_);
+
+        auto v = ctx_.make_periodic_function<index_domain_t::local>([&ri_vloc](int iat, double g)
+                                                                    {
+                                                                        return ri_vloc.value(iat, g);
+                                                                    });
+
+        auto dv = ctx_.make_periodic_function<index_domain_t::local>([&ri_vloc_dg](int iat, double g)
+                                                                     {
+                                                                         return ri_vloc_dg.value(iat, g);
+                                                                     });
+        
+        double sdiag{0};
+
+        int ig0 = (ctx_.comm().rank() == 0) ? 1 : 0;
+        for (int igloc = ig0; igloc < ctx_.gvec().count(); igloc++) {
+
+            int ig = ctx_.gvec().offset() + igloc;
+            
+            auto G = ctx_.gvec().gvec_cart(ig);
+
+            for (int mu: {0, 1, 2}) {
+                for (int nu: {0, 1, 2}) {
+                    stress_vloc_(mu, nu) += std::real(std::conj(density_.rho().f_pw_local(igloc)) * dv[igloc]) * G[mu] * G[nu];
+                }
+            }
+
+            sdiag += std::real(std::conj(density_.rho().f_pw_local(igloc)) * v[igloc]);
+        }
+        
+        if (ctx_.gvec().reduced()) {
+            stress_vloc_ *= 2;
+            sdiag *= 2;
+        }
+        if (ctx_.comm().rank() == 0) {
+            sdiag += std::real(std::conj(density_.rho().f_pw_local(0)) * v[0]);
+        }
+
+        for (int mu: {0, 1, 2}) {
+            stress_vloc_(mu, mu) -= sdiag;
+        }
+
+        ctx_.comm().allreduce(&stress_vloc_(0, 0), 9);
+
+        symmetrize(stress_vloc_);
+    }
+
+    inline matrix3d<double> stress_vloc() const
+    {
+        return stress_vloc_;
+    }
+
+    /// Hartree energy contribution to stress.
+    /** Hartree energy:
+     *  \f[
+     *    E^{H} = \frac{1}{2} \int_{\Omega} \rho({\bf r}) V^{H}({\bf r}) d{\bf r} = 
+     *      \frac{1}{2} \frac{1}{\Omega} \sum_{\bf G} \langle \rho | {\bf G} \rangle \langle {\bf G}| V^{H} \rangle = 
+     *      \frac{2 \pi}{\Omega} \sum_{\bf G} \frac{|\tilde \rho({\bf G})|^2}{G^2}
+     *  \f]
+     *  where 
+     *  \f[
+     *    \langle {\bf G} | \rho \rangle = \int e^{-i{\bf Gr}}\rho({\bf r}) d {\bf r} = \tilde \rho({\bf G})
+     *  \f]
+     *  and
+     *  \f[
+     *    \langle {\bf G} | V^{H} \rangle = \int e^{-i{\bf Gr}}V^{H}({\bf r}) d {\bf r} = \frac{4\pi}{G^2} \tilde \rho({\bf G})
+     *  \f]
+     *  
+     *  Hartree energy contribution to stress tensor:
+     *  \f[
+     *     \sigma_{\mu \nu}^{H} = \frac{1}{\Omega} \frac{\partial  E^{H}}{\partial \varepsilon_{\mu \nu}} = 
+     *        \frac{1}{\Omega} 2\pi \Big( \big( \frac{\partial}{\partial \varepsilon_{\mu \nu}} \frac{1}{\Omega} \big) 
+     *          \sum_{{\bf G}} \frac{|\tilde \rho({\bf G})|^2}{G^2} + 
+     *          \frac{1}{\Omega} \sum_{{\bf G}} |\tilde \rho({\bf G})|^2 \frac{\partial}{\partial \varepsilon_{\mu \nu}} \frac{1}{G^2} \Big) = \\
+     *     \frac{1}{\Omega} 2\pi \Big( -\frac{1}{\Omega} \delta_{\mu \nu} \sum_{{\bf G}} \frac{|\tilde \rho({\bf G})|^2}{G^2} + 
+     *       \frac{1}{\Omega} \sum_{\bf G} |\tilde \rho({\bf G})|^2 \sum_{\tau} \frac{-2 G_{\tau}}{G^4} \frac{\partial G_{\tau}}{\partial \varepsilon_{\mu \nu}} \Big) = \\
+     *     2\pi \sum_{\bf G} \frac{|\rho({\bf G})|^2}{G^2} \Big( -\delta_{\mu \nu} + \frac{2}{G^2} G_{\nu} G_{\mu} \Big)
+     *  \f]
+     */
+    inline void calc_stress_har()
+    {
+        PROFILE("sirius::Stress|har");
+
+        stress_har_.zero();
+        
+        int ig0 = (ctx_.comm().rank() == 0) ? 1 : 0;
+        for (int igloc = ig0; igloc < ctx_.gvec().count(); igloc++) {
+            int ig = ctx_.gvec().offset() + igloc;
+
+            auto G = ctx_.gvec().gvec_cart(ig);
+            double g2 = std::pow(G.length(), 2);
+            auto z = density_.rho().f_pw_local(igloc);
+            double d = twopi * (std::pow(z.real(), 2) + std::pow(z.imag(), 2)) / g2;
+
+            for (int mu: {0, 1, 2}) {
+                for (int nu: {0, 1, 2}) {
+                    stress_har_(mu, nu) += d * 2 * G[mu] * G[nu] / g2;
+                }
+            }
+            for (int mu: {0, 1, 2}) {
+                stress_har_(mu, mu) -= d;
+            }
+        }
+
+        if (ctx_.gvec().reduced()) {
+            stress_har_ *= 2;
+        } 
+
+        ctx_.comm().allreduce(&stress_har_(0, 0), 9);
+
+        symmetrize(stress_har_);
+    }
+
+
+    inline matrix3d<double> stress_har() const
+    {
+        return stress_har_;
+    }
+
+    /// Ewald energy contribution to stress.
+    /** Ewald energy:
+     *  \f[
+     *    E^{ion-ion} = \frac{1}{2} \sideset{}{'} \sum_{\alpha \beta {\bf T}} Z_{\alpha} Z_{\beta} 
+     *      \frac{{\rm erfc}(\sqrt{\lambda} |{\bf r}_{\alpha} - {\bf r}_{\beta} + {\bf T}|)}{|{\bf r}_{\alpha} - {\bf r}_{\beta} + {\bf T}|} +
+     *      \frac{2 \pi}{\Omega} \sum_{{\bf G}} \frac{e^{-\frac{G^2}{4 \lambda}}}{G^2} \Big| \sum_{\alpha} Z_{\alpha} e^{-i{\bf r}_{\alpha}{\bf G}} \Big|^2 -
+     *      \sum_{\alpha} Z_{\alpha}^2 \sqrt{\frac{\lambda}{\pi}} - \frac{2\pi}{\Omega}\frac{N_{el}^2}{4 \lambda}
+     *  \f]
+     * (check sirius::DFT_ground_state::ewald_energy for details).\n
+     *  Contribution to stress tensor:
+     *  \f[
+     *    \sigma_{\mu \nu}^{ion-ion} = \frac{1}{\Omega} \frac{\partial  E^{ion-ion}}{\partial \varepsilon_{\mu \nu}} 
+     *  \f]
+     *  Derivative of the first part:
+     *  \f[
+     *    \frac{1}{\Omega}\frac{\partial}{\partial \varepsilon_{\mu \nu}} \frac{1}{2} \sideset{}{'} \sum_{\alpha \beta {\bf T}} Z_{\alpha} Z_{\beta} 
+     *      \frac{{\rm erfc}(\sqrt{\lambda} |{\bf r}_{\alpha} - {\bf r}_{\beta} + {\bf T}|)}{|{\bf r}_{\alpha} - {\bf r}_{\beta} + {\bf T}|}  = 
+     *      \frac{1}{2\Omega} \sideset{}{'} \sum_{\alpha \beta {\bf T}} Z_{\alpha} Z_{\beta} \Big( -2e^{-\lambda |{\bf r'}|^2} 
+     *      \sqrt{\frac{\lambda}{\pi}} \frac{1}{|{\bf r'}|^2} - {\rm erfc}(\sqrt{\lambda} |{\bf r'}|) \frac{1}{|{\bf r'}|^3} \Big) r'_{\mu} r'_{\nu}
+     *  \f]
+     *  where \f$ {\bf r'} = {\bf r}_{\alpha} - {\bf r}_{\beta} + {\bf T} \f$.
+     *  
+     *  Derivative of the second part:
+     *  \f[
+     *    \frac{1}{\Omega}\frac{\partial}{\partial \varepsilon_{\mu \nu}} \frac{2\pi}{\Omega} \sum_{{\bf G}} \frac{e^{-\frac{G^2}{4 \lambda}}}{G^2} 
+     *    \Big| \sum_{\alpha} Z_{\alpha} e^{-i{\bf r}_{\alpha}{\bf G}} \Big|^2 = 
+     *    -\frac{2\pi}{\Omega^2} \delta_{\mu \nu} \sum_{{\bf G}} \frac{e^{-\frac{G^2}{4 \lambda}}}{G^2} \Big| 
+     *    \sum_{\alpha} Z_{\alpha} e^{-i{\bf r}_{\alpha}{\bf G}} \Big|^2 + 
+     *    \frac{2\pi}{\Omega^2} \sum_{\bf G} G_{\mu} G_{\nu} \frac{e^{-\frac{G^2}{4 \lambda}}}{G^2} 2 \frac{\frac{G^2}{4\lambda} + 1}{G^2}  
+     *    \Big| \sum_{\alpha} Z_{\alpha} e^{-i{\bf r}_{\alpha}{\bf G}} \Big|^2 
+     *  \f]
+     *  
+     *  Derivative of the fourth part:
+     *  \f[
+     *    -\frac{1}{\Omega}\frac{\partial}{\partial \varepsilon_{\mu \nu}} \frac{2\pi}{\Omega}\frac{N_{el}^2}{4 \lambda} = 
+     *       \frac{2\pi}{\Omega^2}\frac{N_{el}^2}{4 \lambda} \delta_{\mu \nu}
+     *  \f]
+     */
+    inline void calc_stress_ewald()
+    {
+        PROFILE("sirius::Stress|ewald");
+
+        stress_ewald_.zero();
+
+        double lambda = ctx_.ewald_lambda();
+
+        auto& uc = ctx_.unit_cell();
+
+        int ig0 = (ctx_.comm().rank() == 0) ? 1 : 0;
+        for (int igloc = ig0; igloc < ctx_.gvec().count(); igloc++) {
+            int ig = ctx_.gvec().offset() + igloc;
+
+            auto G = ctx_.gvec().gvec_cart(ig);
+            double g2 = std::pow(G.length(), 2);
+            double g2lambda = g2 / 4.0 / lambda;
+
+            double_complex rho(0, 0);
+
+            for (int ia = 0; ia < uc.num_atoms(); ia++) {
+                rho += ctx_.gvec_phase_factor(ig, ia) * static_cast<double>(uc.atom(ia).zn());
+            }
+
+            double a1 = twopi * std::pow(std::abs(rho) / uc.omega(), 2) * std::exp(-g2lambda) / g2;
+            
+            for (int mu: {0, 1, 2}) {
+                for (int nu: {0, 1, 2}) {
+                    stress_ewald_(mu, nu) += a1 * G[mu] * G[nu] * 2 * (g2lambda + 1) / g2;
+                }
+            }
+
+            for (int mu: {0, 1, 2}) {
+                stress_ewald_(mu, mu) -= a1;
+            }
+        }
+
+        if (ctx_.gvec().reduced()) {
+            stress_ewald_ *= 2;
+        } 
+
+        ctx_.comm().allreduce(&stress_ewald_(0, 0), 9);
+        
+        for (int mu: {0, 1, 2}) {
+            stress_ewald_(mu, mu) += twopi * std::pow(uc.num_electrons() / uc.omega(), 2) / 4 / lambda;
+        }
+
+        for (int ia = 0; ia < uc.num_atoms(); ia++) {
+            for (int i = 1; i < uc.num_nearest_neighbours(ia); i++) {
+                int ja = uc.nearest_neighbour(i, ia).atom_id;
+                double d = uc.nearest_neighbour(i, ia).distance;
+
+                vector3d<double> v1 = uc.atom(ja).position() - uc.atom(ia).position() + uc.nearest_neighbour(i, ia).translation;
+                auto r1 = uc.get_cartesian_coordinates(v1);
+                double len = r1.length();
+
+                if (std::abs(d - len) > 1e-12) {
+                    STOP(); 
+                }
+
+                double a1 = (0.5 * uc.atom(ia).zn() * uc.atom(ja).zn() / uc.omega() / std::pow(len, 3)) *
+                            (-2 * std::exp(-lambda * std::pow(len, 2)) * std::sqrt(lambda / pi) * len - gsl_sf_erfc(std::sqrt(lambda) * len));
+
+                for (int mu: {0, 1, 2}) {
+                    for (int nu: {0, 1, 2}) {
+                        stress_ewald_(mu, nu) += a1 * r1[mu] * r1[nu];
+                    }
+                }
+            }
+        }
+
+        symmetrize(stress_ewald_);
+    }
+
+    inline matrix3d<double> stress_ewald() const
+    {
+        return stress_ewald_;
+    }
+
+    /// Kinetic energy contribution to stress.
+    /** Kinetic energy:
+     *  \f[
+     *    E^{kin} = \sum_{{\bf k}} w_{\bf k} \sum_j f_j \frac{1}{2} |{\bf G+k}|^2 |\psi_j({\bf G + k})|^2
+     *  \f]
+     *  Contribution to the stress tensor
+     *  \f[
+     *    \sigma_{\mu \nu}^{kin} = \frac{1}{\Omega} \frac{\partial E^{kin}}{\partial \varepsilon_{\mu \nu}} = 
+     *     \frac{1}{\Omega} \sum_{{\bf k}} w_{\bf k} \sum_j f_j \frac{1}{2} 2 |{\bf G+k}| \Big( -\frac{1}{|{\bf G+k}|}  (G+k)_{\mu} (G+k)_{\nu} \Big)  |\psi_j({\bf G + k})|^2 =\\
+     *     -\frac{1}{\Omega} \sum_{{\bf k}} w_{\bf k} (G+k)_{\mu} (G+k)_{\nu} \sum_j f_j  |\psi_j({\bf G + k})|^2 
+     *  \f]
+     */
+    inline void calc_stress_kin()
+    {
+        PROFILE("sirius::Stress|kin");
+
+        stress_kin_.zero();
+
+        for (int ikloc = 0; ikloc < kset_.spl_num_kpoints().local_size(); ikloc++) {
+            int ik = kset_.spl_num_kpoints(ikloc);
+            auto kp = kset_[ik];
+            if (kp->gkvec().reduced()) {
+                TERMINATE("fix this");
+            }
+
+            for (int igloc = 0; igloc < kp->num_gkvec_loc(); igloc++) {
+                int ig = kp->idxgk(igloc);
+                auto Gk = kp->gkvec().gkvec_cart(ig);
+
+                double d{0};
+                for (int ispin = 0; ispin < ctx_.num_spins(); ispin++ ) {
+                    for (int i = 0; i < kp->num_occupied_bands(ispin); i++) {
+                        double f = kp->band_occupancy(i, ispin);
+                        auto z = kp->spinor_wave_functions().pw_coeffs(ispin).prime(igloc, i);
+                        d += f * (std::pow(z.real(), 2) + std::pow(z.imag(), 2));
+                    }
+                }
+                d *= kp->weight();
+                for (int mu: {0, 1, 2}) {
+                    for (int nu: {0, 1, 2}) {
+                        stress_kin_(mu, nu) += Gk[mu] * Gk[nu] * d;
+                    }
+                }
+            } // igloc
+        } // ikloc
+
+        ctx_.comm().allreduce(&stress_kin_(0, 0), 9);
+
+        stress_kin_ *= (-1.0 / ctx_.unit_cell().omega());
+
+        symmetrize(stress_kin_);
+    }
+
+    inline matrix3d<double> stress_kin() const
+    {
+        return stress_kin_;
+    }
+
+    inline void calc_stress_nonloc()
+    {
+        if (ctx_.gamma_point()) {
+            calc_stress_nonloc_aux<double>();
+        } else {
+            calc_stress_nonloc_aux<double_complex>();
+        }
+    }
+
+    inline matrix3d<double> stress_nonloc() const
+    {
+        return stress_nonloc_;
     }
 
     /// Contribution to the stress tensor from the augmentation operator.
@@ -613,6 +687,8 @@ class Stress {
     inline void calc_stress_us()
     {
         PROFILE("sirius::Stress|us");
+
+        stress_us_.zero();
 
         potential_.effective_potential()->fft_transform(-1);
 
@@ -653,7 +729,6 @@ class Stress {
                 }
             }
             t0.stop();
-            //mdarray<double, 2> q_tmp(nbf * (nbf + 1) / 2, ctx_.gvec().count() * 2);
             mdarray<double, 2> v_tmp(atom_type.num_atoms(), ctx_.gvec().count() * 2);
             mdarray<double, 2> tmp(nbf * (nbf + 1) / 2, atom_type.num_atoms());
             /* over spin components, can be from 1 to 4*/
@@ -685,42 +760,6 @@ class Stress {
                         }
                         t2.stop();
 
-                        //tmp.zero();
-                        //for (int ia = 0; ia < atom_type.num_atoms(); ia++) {
-                        //    int iaglob = atom_type.atom_id(ia);
-                        //    for (int i = 0; i < nbf * (nbf + 1) / 2; i++) {
-                        //        for (int igloc = igloc0; igloc < ctx_.gvec().count(); igloc++) {
-                        //            int ig = ctx_.gvec().offset() + igloc;
-                        //            auto gvc = ctx_.gvec().gvec_cart(ig);
-                        //            double g = gvc.length();
-                        //            tmp(i, ia) += std::real(
-                        //                    double_complex(q_deriv.q_pw(i, 2 * igloc), q_deriv.q_pw(i, 2 * igloc + 1)) *
-                        //                    std::conj(potential_.effective_potential()->f_pw_local(igloc)) * (-gvc[mu] / g) *
-                        //                    double_complex(phase_factors(ia, 2 * igloc), phase_factors(ia, 2 * igloc + 1))
-                        //                    );
-                        //        }
-                        //    }
-                        //}
-
-                        /* canonical code */
-                        //for (int igloc = igloc0; igloc < ctx_.gvec().count(); igloc++) {
-                        //    int ig = ctx_.gvec().offset() + igloc;
-                        //    auto gvc = ctx_.gvec().gvec_cart(ig);
-                        //    double g = gvc.length();
-                        //    for (int ia = 0; ia < atom_type.num_atoms(); ia++) {
-                        //        int iaglob = atom_type.atom_id(ia);
-                        //        for (int i = 0; i < nbf * (nbf + 1) / 2; i++) {
-                        //            stress_us_(mu, nu) += std::real(
-                        //                double_complex(q_deriv.q_pw(i, 2 * igloc), q_deriv.q_pw(i, 2 * igloc + 1)) *
-                        //                std::conj(potential_.effective_potential()->f_pw_local(igloc)) * (-gvc[mu] / g) *
-                        //                double_complex(phase_factors(ia, 2 * igloc), phase_factors(ia, 2 * igloc + 1)) *
-                        //                dm(i, ia, 0) * q_deriv.sym_weight(i)
-                        //            );
-
-                        //        }
-                        //    }
-                        //}
-
                         sddk::timer t1("sirius::Stress|us|gemm");
                         linalg<CPU>::gemm(0, 1, nbf * (nbf + 1) / 2, atom_type.num_atoms(), 2 * ctx_.gvec().count(),
                                           q_deriv.q_pw(), v_tmp, tmp);
@@ -746,6 +785,16 @@ class Stress {
         symmetrize(stress_us_);
     }
 
+    inline matrix3d<double> stress_us() const
+    {
+        return stress_us_;
+    }
+
+    inline matrix3d<double> stress_us_nl() const
+    {
+        return stress_nonloc_ + stress_us_;
+    }
+
     /// XC contribution to stress.
     /** XC contribution has the following expression:
      *  \f[
@@ -755,6 +804,8 @@ class Stress {
      */
     void calc_stress_xc()
     {
+        stress_xc_.zero();
+
         double e = potential_.energy_exc(density_) - potential_.energy_vxc(density_);
 
         for (int l = 0; l < 3; l++) {
@@ -796,8 +847,16 @@ class Stress {
         symmetrize(stress_xc_);
     }
 
+    inline matrix3d<double> stress_xc() const
+    {
+        return stress_xc_;
+    }
+    
+    /// Non-linear core correction to stress tensor.
     void calc_stress_core()
     {
+        stress_core_.zero();
+
         potential_.xc_potential()->fft_transform(-1);
 
         Radial_integrals_rho_core_pseudo<true> ri_dg(ctx_.unit_cell(), ctx_.pw_cutoff(), ctx_.settings().nprii_rho_core_);
@@ -841,136 +900,63 @@ class Stress {
         symmetrize(stress_core_);
     }
 
-    inline void symmetrize(matrix3d<double>& mtrx__) const
-    {
-        if (!ctx_.use_symmetry()) {
-            return;
-        }
-
-        matrix3d<double> result;
-
-        for (int i = 0; i < ctx_.unit_cell().symmetry().num_mag_sym(); i++) {
-            auto R = ctx_.unit_cell().symmetry().magnetic_group_symmetry(i).spg_op.rotation;
-            result = result + transpose(R) * mtrx__ * R;
-        }
-
-        mtrx__ = result * (1.0 / ctx_.unit_cell().symmetry().num_mag_sym());
-
-        std::vector<std::array<int, 2>> idx = {{0, 1}, {0, 2}, {1, 2}};
-        for (auto e: idx) {
-            mtrx__(e[0], e[1]) = mtrx__(e[1], e[0]) = 0.5 * (mtrx__(e[0], e[1]) + mtrx__(e[1], e[0]));
-        }
-    }
-
-  public:
-    Stress(Simulation_context& ctx__,
-           K_point_set& kset__,
-           Density& density__,
-           Potential& potential__)
-        : ctx_(ctx__)
-        , kset_(kset__)
-        , density_(density__)
-        , potential_(potential__)
-    {
-        stress_kin_ = calc_stress_kin();
-        calc_stress_har();
-        calc_stress_ewald();
-        calc_stress_vloc();
-        if (ctx_.gamma_point()) {
-            calc_stress_nonloc<double>();
-        } else {
-            calc_stress_nonloc<double_complex>();
-        }
-        calc_stress_us();
-        calc_stress_xc();
-        calc_stress_core();
-    }
-
-    inline matrix3d<double> stress_vloc() const
-    {
-        return stress_vloc_;
-    }
-
-    inline matrix3d<double> stress_har() const
-    {
-        return stress_har_;
-    }
-
-    inline matrix3d<double> stress_ewald() const
-    {
-        return stress_ewald_;
-    }
-
-    inline matrix3d<double> stress_kin() const
-    {
-        return stress_kin_;
-    }
-
-    //inline matrix3d<double> stress_nl() const
-    //{
-    //    return stress_nonloc_ + stress_us_;
-    //}
-
-    inline matrix3d<double> stress_nonloc() const
-    {
-        return stress_nonloc_;
-    }
-
-    inline matrix3d<double> stress_us() const
-    {
-        return stress_us_;
-    }
-
-    inline matrix3d<double> stress_xc() const
-    {
-        return stress_xc_;
-    }
-
     inline matrix3d<double> stress_core() const
     {
         return stress_core_;
     }
 
+    inline void calc_stress_total()
+    {
+        calc_stress_kin();
+        calc_stress_har();
+        calc_stress_ewald();
+        calc_stress_vloc();
+        calc_stress_core();
+        calc_stress_xc();
+        calc_stress_us();
+        calc_stress_nonloc();
+    }
+
     inline void print_info() const
     {
         if (ctx_.comm().rank() == 0) {
+            
+            auto print_stress = [&](matrix3d<double> const& s)
+            {
+                for (int mu: {0, 1, 2}) {
+                    printf("%12.6f %12.6f %12.6f\n", s(mu, 0), s(mu, 1), s(mu, 2));
+                }
+            };
+
             const double au2kbar = 2.94210119E5;
-            auto stress_kin    = stress_kin_ * au2kbar;
-            auto stress_har    = stress_har_ * au2kbar;
-            auto stress_ewald  = stress_ewald_ * au2kbar;
-            auto stress_vloc   = stress_vloc_ * au2kbar;
+            auto stress_kin    = stress_kin_    * au2kbar;
+            auto stress_har    = stress_har_    * au2kbar;
+            auto stress_ewald  = stress_ewald_  * au2kbar;
+            auto stress_vloc   = stress_vloc_   * au2kbar;
             auto stress_nonloc = stress_nonloc_ * au2kbar;
-            auto stress_us     = stress_us_ * au2kbar;
+            auto stress_us     = stress_us_     * au2kbar;
 
             printf("== stress_kin ==\n");
-            for (int mu: {0, 1, 2}) {
-                printf("%12.6f %12.6f %12.6f\n", stress_kin(mu, 0), stress_kin(mu, 1), stress_kin(mu, 2));
-            }
+            print_stress(stress_kin);
+
             printf("== stress_har ==\n");
-            for (int mu: {0, 1, 2}) {
-                printf("%12.6f %12.6f %12.6f\n", stress_har(mu, 0), stress_har(mu, 1), stress_har(mu, 2));
-            }
+            print_stress(stress_har);
+
             printf("== stress_ewald ==\n");
-            for (int mu: {0, 1, 2}) {
-                printf("%12.6f %12.6f %12.6f\n", stress_ewald(mu, 0), stress_ewald(mu, 1), stress_ewald(mu, 2));
-            }
+            print_stress(stress_ewald);
+
             printf("== stress_vloc ==\n");
-            for (int mu: {0, 1, 2}) {
-                printf("%12.6f %12.6f %12.6f\n", stress_vloc(mu, 0), stress_vloc(mu, 1), stress_vloc(mu, 2));
-            }
+            print_stress(stress_vloc);
+
             printf("== stress_nonloc ==\n");
-            for (int mu: {0, 1, 2}) {
-                printf("%12.6f %12.6f %12.6f\n", stress_nonloc(mu, 0), stress_nonloc(mu, 1), stress_nonloc(mu, 2));
-            }
+            print_stress(stress_nonloc);
+
             printf("== stress_us ==\n");
-            for (int mu: {0, 1, 2}) {
-                printf("%12.6f %12.6f %12.6f\n", stress_us(mu, 0), stress_us(mu, 1), stress_us(mu, 2));
-            }
+            print_stress(stress_us);
+
             stress_us = stress_us + stress_nonloc;
-            printf("== stress_us_tot ==\n");
-            for (int mu: {0, 1, 2}) {
-                printf("%12.6f %12.6f %12.6f\n", stress_us(mu, 0), stress_us(mu, 1), stress_us(mu, 2));
-            }
+            printf("== stress_us_nl ==\n");
+            print_stress(stress_us);
         }
     }
 };
