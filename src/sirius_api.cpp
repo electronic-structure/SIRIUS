@@ -2855,7 +2855,14 @@ void sirius_get_beta_projectors_by_kp(ftn_int*            kset_id__,
         }
     }
     std::stringstream s;
-    s << "k-point " << vk << " is not found";
+    s << "k-point " << vk << " is not found" << std::endl
+      << "mpi rank: " << kset->comm().rank() << std::endl
+      << "list of local k-points : " << std::endl;
+    for (int ikloc = 0; ikloc < kset->spl_num_kpoints().local_size(); ikloc++) {
+        int ik = kset->spl_num_kpoints(ikloc);
+        auto kp = (*kset)[ik];
+        s << kp->vk() << std::endl;
+    }
     TERMINATE(s);
 }
 
