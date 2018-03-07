@@ -103,7 +103,11 @@ class Step_function
         }
         step_function_pw_[0] += 1.0;
 
-        ctx__.fft().transform<1>(&step_function_pw_[ctx__.gvec_partition().gvec_offset_fft()]);
+        std::vector<double_complex> ftmp(ctx__.gvec_partition().gvec_count_fft());
+        for (int i = 0; i < ctx__.gvec_partition().gvec_count_fft(); i++) {
+            ftmp[i] = step_function_pw_[ctx__.gvec_partition().idx_gvec(i)];
+        }
+        ctx__.fft().transform<1>(ftmp.data());
         ctx__.fft().output(&step_function_[0]);
 
         double vit{0};

@@ -301,7 +301,7 @@ class Local_operator
             }
             for (int ig_loc = 0; ig_loc < ngv_fft; ig_loc++) {
                 /* global index of G-vector */
-                int ig = gkvec_p__.gvec_offset_fft() + ig_loc;
+                int ig = gkvec_p__.idx_gvec(ig_loc);
                 /* get G+k in Cartesian coordinates */
                 auto gv = gkvec_p__.gvec().gkvec_cart(ig);
                 pw_ekin_[ig_loc] = 0.5 * dot(gv, gv);
@@ -763,7 +763,7 @@ class Local_operator
                 for (int x: {0, 1, 2}) {
                     for (int igloc = 0; igloc < gkvec_p_->gvec_count_fft(); igloc++) {
                         /* global index of G-vector */
-                        int ig = gkvec_p_->gvec_offset_fft() + igloc;
+                        int ig = gkvec_p_->idx_gvec(igloc);
                         /* \hat P phi = phi(G+k) * (G+k), \hat P is momentum operator */ 
                         buf_pw[igloc] = phi__.pw_coeffs(0).extra()(igloc, j) * gkvec_p_->gvec().gkvec_cart(ig)[x];
                     }
@@ -789,7 +789,7 @@ class Local_operator
                     /* transform back to PW domain */
                     fft_coarse_.transform<-1>(&buf_pw[0]);
                     for (int igloc = 0; igloc < gkvec_p_->gvec_count_fft(); igloc++) {
-                        int ig = gkvec_p_->gvec_offset_fft() + igloc;
+                        int ig = gkvec_p_->idx_gvec(igloc);
                         hphi__.pw_coeffs(0).extra()(igloc, j) += 0.5 * buf_pw[igloc] * gkvec_p_->gvec().gkvec_cart(ig)[x];
                     }
                 }

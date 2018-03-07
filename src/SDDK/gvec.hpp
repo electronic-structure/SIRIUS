@@ -689,23 +689,25 @@ class Gvec_partition
     /** Global index of z-column is expected */
     mdarray<int, 1> zcol_offs_;
 
+    mdarray<int, 2> rank_map_;
+
+    /// Global index of z-column in new (fat-slab) distrubution.
+    /** This is a mapping between new and original ordering of z-columns. */
+    mdarray<int, 1> idx_zcol_;
+
+    /// Global index of G-vector by local index inside fat-salb.
+    mdarray<int, 1> idx_gvec_;
+
     inline void build_fft_distr()
     {
         /* calculate distribution of G-vectors and z-columns for the FFT communicator */
         gvec_distr_fft_ = block_data_descriptor(fft_comm().size());
         zcol_distr_fft_ = block_data_descriptor(fft_comm().size());
 
-        /* number of extra ranks that will do the same FFT */
-        int nrc = gvec().comm().size() / fft_comm().size();
-
-        if (gvec().comm().size() != nrc * fft_comm().size()) {
-            TERMINATE("wrong number of MPI ranks");
-        }
-
         for (int rank = 0; rank < fft_comm().size(); rank++) {
-            for (int i = 0; i < nrc; i++) {
+            for (int i = 0; i < comm_ortho_fft().size(); i++) {
                 /* fine-grained rank */
-                int r = rank * nrc + i;
+                int r = rank_map_(rank, i);
                 gvec_distr_fft_.counts[rank] += gvec().gvec_count(r);
                 zcol_distr_fft_.counts[rank] += gvec().zcol_count(r);
             }
@@ -723,9 +725,9 @@ class Gvec_partition
         for (int rank = 0; rank < fft_comm().size(); rank++) {
             int offs{0};
             /* loop over local number of z-columns */
-            for (int i = 0; i < zcol_distr_fft_.counts[rank]; i++) {
+            for (int i = 0; i < zcol_count_fft(rank); i++) {
                 /* global index of z-column */
-                int icol         = zcol_distr_fft_.offsets[rank] + i;
+                int icol         = idx_zcol_[zcol_distr_fft_.offsets[rank] + i];
                 zcol_offs_[icol] = offs;
                 offs += static_cast<int>(gvec().zcol(icol).z.size());
             }
@@ -748,20 +750,13 @@ class Gvec_partition
          *
          * i.e. we will make G-vector slabs more fat (pile-of-slabs) and at the same time reshulffle wave-functions
          * between columns of the 2D MPI grid */
-        int rank_row = fft_comm().rank();
-
-        int nrc = gvec().comm().size() / fft_comm().size();
-        if (gvec().comm().size() != nrc * fft_comm().size()) {
-            TERMINATE("wrong number of MPI ranks");
-        }
-
-        gvec_fft_slab_ = block_data_descriptor(nrc);
-        for (int i = 0; i < nrc; i++) {
-            gvec_fft_slab_.counts[i] = gvec().gvec_count(rank_row * nrc + i);
+        gvec_fft_slab_ = block_data_descriptor(comm_ortho_fft_.size());
+        for (int i = 0; i < comm_ortho_fft_.size(); i++) {
+            gvec_fft_slab_.counts[i] = gvec().gvec_count(rank_map_(fft_comm_.rank(), i));
         }
         gvec_fft_slab_.calc_offsets();
 
-        assert(gvec_fft_slab_.offsets.back() + gvec_fft_slab_.counts.back() == gvec_distr_fft_.counts[rank_row]);
+        assert(gvec_fft_slab_.offsets.back() + gvec_fft_slab_.counts.back() == gvec_distr_fft_.counts[fft_comm().rank()]);
     }
 
   public:
@@ -770,7 +765,39 @@ class Gvec_partition
         , fft_comm_(fft_comm__)
         , comm_ortho_fft_(comm_ortho_fft__)
     {
+        if (fft_comm_.size() * comm_ortho_fft_.size() != gvec_.comm().size()) {
+            TERMINATE("wrong size of communicators");
+        }
+        rank_map_ = mdarray<int, 2>(fft_comm_.size(), comm_ortho_fft_.size());
+        rank_map_.zero();
+        /* get a global rank */
+        rank_map_(fft_comm_.rank(), comm_ortho_fft_.rank()) = gvec_.comm().rank();
+        gvec_.comm().allreduce(&rank_map_(0, 0), gvec_.comm().size());
+
         build_fft_distr();
+        
+        idx_zcol_ = mdarray<int, 1>(gvec().num_zcol());
+        int icol{0};
+        for (int rank = 0; rank < fft_comm().size(); rank++) {
+            for (int i = 0; i < comm_ortho_fft().size(); i++) {
+                for (int k = 0; k < gvec_.zcol_count(rank_map_(rank, i)); k++) {
+                    idx_zcol_(icol) = gvec_.zcol_offset(rank_map_(rank, i)) + k;
+                    icol++;
+                }
+            }
+            assert(icol == zcol_distr_fft_.counts[rank] + zcol_distr_fft_.offsets[rank]);
+        }
+        assert(icol == gvec().num_zcol());
+
+        idx_gvec_ = mdarray<int, 1>(gvec_count_fft());
+        int ig{0};
+        for (int i = 0; i < comm_ortho_fft_.size(); i++) {
+            for (int k = 0; k < gvec_.gvec_count(rank_map_(fft_comm_.rank(), i)); k++) {
+                idx_gvec_(ig) = gvec_.gvec_offset(rank_map_(fft_comm_.rank(), i)) + k;
+                ig++;
+            }
+        }
+
         calc_offsets();
         pile_gvec();
     }
@@ -786,33 +813,46 @@ class Gvec_partition
         return comm_ortho_fft_;
     }
 
+    inline int gvec_count_fft(int rank__) const
+    {
+        return gvec_distr_fft_.counts[rank__];
+    }
+
     /// Local number of G-vectors for FFT-friendly distibution.
     inline int gvec_count_fft() const
     {
-        return gvec_distr_fft_.counts[fft_comm().rank()];
-    }
-
-    /// Offset of G-vector index for FFT-friendly distibution.
-    /** Global index of G-vector can be obtained by adding offset to a local G-vector index. */
-    inline int gvec_offset_fft() const
-    {
-        return gvec_distr_fft_.offsets[fft_comm().rank()];
+        return gvec_count_fft(fft_comm().rank());
     }
 
     /// Return local number of z-columns.
+    inline int zcol_count_fft(int rank__) const
+    {
+        return zcol_distr_fft_.counts[rank__];
+    }
+
     inline int zcol_count_fft() const
     {
-        return zcol_distr_fft_.counts[fft_comm().rank()];
+        return zcol_count_fft(fft_comm().rank());
+    }
+    
+    template <index_domain_t index_domain>
+    inline int idx_zcol(int idx__) const
+    {
+        switch (index_domain) {
+            case index_domain_t::local: {
+                return idx_zcol_(zcol_distr_fft_.offsets[fft_comm().rank()] + idx__);
+                break;
+            }
+            case index_domain_t::global: {
+                return idx_zcol_(idx__);
+                break;
+            }
+        }
     }
 
-    inline int zcol_offset_fft() const
+    inline int idx_gvec(int idx_local__) const
     {
-        return zcol_distr_fft_.offsets[fft_comm().rank()];
-    }
-
-    inline block_data_descriptor const& zcol_distr_fft() const
-    {
-        return zcol_distr_fft_;
+        return idx_gvec_(idx_local__);
     }
 
     inline block_data_descriptor const& gvec_fft_slab() const
@@ -828,6 +868,24 @@ class Gvec_partition
     inline Gvec const& gvec() const
     {
         return gvec_;
+    }
+
+    void gather_pw_fft(double_complex* f_pw_local__, double_complex* f_pw_fft__) const
+    {
+        int rank = gvec().comm().rank();
+        /* collect scattered PW coefficients */
+        comm_ortho_fft().allgather(f_pw_local__, gvec().gvec_count(rank), f_pw_fft__,
+                                   gvec_fft_slab().counts.data(), gvec_fft_slab().offsets.data());
+    }
+
+    void gather_pw_global(double_complex* f_pw_fft__, double_complex* f_pw_global__) const
+    {
+        for (int ig = 0; ig < gvec().count(); ig++) {
+            /* position inside fft buffer */
+            int ig1 = gvec_fft_slab().offsets[comm_ortho_fft().rank()] + ig;
+            f_pw_global__[gvec().offset() + ig] = f_pw_fft__[ig1];
+        }
+        gvec().comm().allgather(&f_pw_global__[0], gvec().offset(), gvec().count());
     }
 };
 
