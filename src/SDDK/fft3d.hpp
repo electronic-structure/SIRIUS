@@ -265,7 +265,7 @@ class FFT3D
                     #pragma omp for schedule(dynamic, 1)
                     for (int i = 0; i < num_zcol_local; i++) {
                         /* global index of column */
-                        int icol = gvec_partition_->zcol_offset_fft() + i;
+                        int icol = gvec_partition_->idx_zcol<index_domain_t::local>(i);
                         /* offset of the PW coeffs in the input/output data buffer */
                         int data_offset = gvec_partition_->zcol_offs(icol);
 
@@ -358,8 +358,8 @@ class FFT3D
                     block_data_descriptor send(comm_.size());
                     block_data_descriptor recv(comm_.size());
                     for (int r = 0; r < comm_.size(); r++) {
-                        send.counts[r] = spl_z_.local_size(rank) * gvec_partition_->zcol_distr_fft().counts[r];
-                        recv.counts[r] = spl_z_.local_size(r)    * gvec_partition_->zcol_distr_fft().counts[rank];
+                        send.counts[r] = spl_z_.local_size(rank) * gvec_partition_->zcol_count_fft(r);
+                        recv.counts[r] = spl_z_.local_size(r)    * gvec_partition_->zcol_count_fft(rank);
                     }
                     send.calc_offsets();
                     recv.calc_offsets();
@@ -414,8 +414,8 @@ class FFT3D
                     block_data_descriptor send(comm_.size());
                     block_data_descriptor recv(comm_.size());
                     for (int r = 0; r < comm_.size(); r++) {
-                        send.counts[r] = spl_z_.local_size(r)    * gvec_partition_->zcol_distr_fft().counts[rank];
-                        recv.counts[r] = spl_z_.local_size(rank) * gvec_partition_->zcol_distr_fft().counts[r];
+                        send.counts[r] = spl_z_.local_size(r)    * gvec_partition_->zcol_count_fft(rank);
+                        recv.counts[r] = spl_z_.local_size(rank) * gvec_partition_->zcol_count_fft(r);
                     }
                     send.calc_offsets();
                     recv.calc_offsets();
@@ -907,14 +907,15 @@ class FFT3D
             z_col_pos_ = mdarray<int, 2>(gvec__.gvec().num_zcol(), nc, memory_t::host, "FFT3D.z_col_pos_");
             #pragma omp parallel for schedule(static)
             for (int i = 0; i < gvec__.gvec().num_zcol(); i++) {
-                int x = grid().coord_by_gvec(gvec__.gvec().zcol(i).x, 0);
-                int y = grid().coord_by_gvec(gvec__.gvec().zcol(i).y, 1);
+                int icol = gvec__.idx_zcol<index_domain_t::global>(i);
+                int x = grid().coord_by_gvec(gvec__.gvec().zcol(icol).x, 0);
+                int y = grid().coord_by_gvec(gvec__.gvec().zcol(icol).y, 1);
                 assert(x >= 0 && x < grid().size(0));
                 assert(y >= 0 && y < grid().size(1));
                 z_col_pos_(i, 0) = x + y * grid_.size(0);
                 if (gvec__.gvec().reduced()) {
-                    x = grid().coord_by_gvec(-gvec__.gvec().zcol(i).x, 0);
-                    y = grid().coord_by_gvec(-gvec__.gvec().zcol(i).y, 1);
+                    x = grid().coord_by_gvec(-gvec__.gvec().zcol(icol).x, 0);
+                    y = grid().coord_by_gvec(-gvec__.gvec().zcol(icol).y, 1);
                     assert(x >= 0 && x < grid().size(0));
                     assert(y >= 0 && y < grid().size(1));
                     z_col_pos_(i, 1) = x + y * grid_.size(0);
@@ -932,7 +933,7 @@ class FFT3D
                 #pragma omp parallel for schedule(static)
                 for (int i = 0; i < gvec__.zcol_count_fft(); i++) {
                     /* global index of z-column */
-                    int icol = gvec__.zcol_offset_fft() + i;
+                    int icol = gvec_partition_->idx_zcol<index_domain_t::local>(i);
                     /* loop over z-colmn */
                     for (size_t j = 0; j < gvec__.gvec().zcol(icol).z.size(); j++) {
                         /* local index of the G-vector */
@@ -1025,7 +1026,7 @@ class FFT3D
             size_t sz_max;
             if (comm_.size() > 1) {
                 int rank = comm_.rank();
-                int num_zcol_local = gvec_partition_->zcol_distr_fft().counts[rank];
+                int num_zcol_local = gvec_partition_->zcol_count_fft(rank);
                 /* we need this buffer size for mpi_alltoall */
                 sz_max = std::max(grid_.size(2) * num_zcol_local, local_size());
             } else {
@@ -1073,7 +1074,7 @@ class FFT3D
             size_t sz_max;
             if (comm_.size() > 1) {
                 int rank = comm_.rank();
-                int num_zcol_local = gvec_partition_->zcol_distr_fft().counts[rank];
+                int num_zcol_local = gvec_partition_->zcol_count_fft(rank);
                 /* we need this buffer for mpi_alltoall */
                 sz_max = std::max(grid_.size(2) * num_zcol_local, local_size());
             } else {

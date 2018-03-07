@@ -2855,7 +2855,14 @@ void sirius_get_beta_projectors_by_kp(ftn_int*            kset_id__,
         }
     }
     std::stringstream s;
-    s << "k-point " << vk << " is not found";
+    s << "k-point " << vk << " is not found" << std::endl
+      << "mpi rank: " << kset->comm().rank() << std::endl
+      << "list of local k-points : " << std::endl;
+    for (int ikloc = 0; ikloc < kset->spl_num_kpoints().local_size(); ikloc++) {
+        int ik = kset->spl_num_kpoints(ikloc);
+        auto kp = (*kset)[ik];
+        s << kp->vk() << std::endl;
+    }
     TERMINATE(s);
 }
 
@@ -3332,7 +3339,9 @@ void sirius_get_forces(ftn_char label__, ftn_double* forces__)
         forces->calc_forces_scf_corr();
         get_forces(forces->forces_scf_corr());
     } else {
-        TERMINATE("wrong label");
+        std::stringstream s;
+        s << "wrong label (" << label <<") for the component of forces";
+        TERMINATE(s);
     }
 }
 

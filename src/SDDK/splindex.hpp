@@ -39,6 +39,12 @@ enum splindex_t // TODO: enum class
     chunk
 };
 
+enum class index_domain_t
+{
+    global,
+    local
+};
+
 /// Base class for split index.
 template <typename T>
 class splindex_base

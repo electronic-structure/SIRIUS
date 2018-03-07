@@ -129,10 +129,12 @@ double ground_state(Simulation_context& ctx,
     if (!ctx.full_potential()) {
         if (ctx.control().print_stress_) {
             Stress s(ctx, ks, density, potential);
+            s.calc_stress_total();
             s.print_info();
         }
         if (ctx.control().print_forces_) {
             Force f(ctx, density, potential, ks);
+            f.calc_forces_total();
             f.print_info();
         }
     }

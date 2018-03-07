@@ -63,8 +63,6 @@ enum class electronic_structure_method_t
     pseudopotential
 };
 
-enum class index_domain_t {global, local};
-
 enum function_domain_t {spatial, spectral};
 
 inline uint32_t rnd()

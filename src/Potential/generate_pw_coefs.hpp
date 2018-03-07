@@ -5,7 +5,9 @@ inline void Potential::generate_pw_coefs()
     double sq_alpha_half = 0.5 * std::pow(speed_of_light, -2);
 
     int gv_count  = ctx_.gvec_partition().gvec_count_fft();
-    int gv_offset = ctx_.gvec_partition().gvec_offset_fft();
+    
+    /* temporaty output buffer */
+    mdarray<double_complex, 1> fpw_fft(gv_count);
 
     switch (ctx_.valence_relativity()) {
         case relativity_t::iora: {
@@ -16,8 +18,8 @@ inline void Potential::generate_pw_coefs()
             if (ctx_.fft().pu() == GPU) {
                 ctx_.fft().buffer().copy<memory_t::host, memory_t::device>();
             }
-            ctx_.fft().transform<-1>(&rm2_inv_pw_[gv_offset]);
-            ctx_.fft().comm().allgather(&rm2_inv_pw_[0], gv_offset, gv_count);
+            ctx_.fft().transform<-1>(&fpw_fft[0]);
+            ctx_.gvec_partition().gather_pw_global(&fpw_fft[0], &rm2_inv_pw_[0]);
         }
         case relativity_t::zora: {
             for (int ir = 0; ir < ctx_.fft().local_size(); ir++) {
@@ -27,8 +29,8 @@ inline void Potential::generate_pw_coefs()
             if (ctx_.fft().pu() == GPU) {
                 ctx_.fft().buffer().copy<memory_t::host, memory_t::device>();
             }
-            ctx_.fft().transform<-1>(&rm_inv_pw_[gv_offset]);
-            ctx_.fft().comm().allgather(&rm_inv_pw_[0], gv_offset, gv_count);
+            ctx_.fft().transform<-1>(&fpw_fft[0]);
+            ctx_.gvec_partition().gather_pw_global(&fpw_fft[0], &rm_inv_pw_[0]);
         }
         default: {
             for (int ir = 0; ir < ctx_.fft().local_size(); ir++) {
@@ -37,8 +39,8 @@ inline void Potential::generate_pw_coefs()
             if (ctx_.fft().pu() == GPU) {
                 ctx_.fft().buffer().copy<memory_t::host, memory_t::device>();
             }
-            ctx_.fft().transform<-1>(&veff_pw_[gv_offset]);
-            ctx_.fft().comm().allgather(&veff_pw_[0], gv_offset, gv_count);
+            ctx_.fft().transform<-1>(&fpw_fft[0]);
+            ctx_.gvec_partition().gather_pw_global(&fpw_fft[0], &veff_pw_[0]);
         }
     }
 
