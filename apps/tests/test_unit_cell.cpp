@@ -46,11 +46,9 @@ void test1()
 
     printf("num_gkvec: %i\n", kp.num_gkvec());
 
-    auto& bp_chunks = ctx.beta_projector_chunks();
-    
     for (int k = 0; k < 10; k++) {
         kp.beta_projectors().prepare();
-        for (int ichunk = 0; ichunk < bp_chunks.num_chunks(); ichunk++) {
+        for (int ichunk = 0; ichunk < kp.beta_projectors().num_chunks(); ichunk++) {
             kp.beta_projectors().generate(ichunk);
         }
         kp.beta_projectors().dismiss();
