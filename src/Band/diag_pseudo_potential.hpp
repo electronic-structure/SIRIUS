@@ -522,6 +522,22 @@ inline int Band::diag_pseudo_potential_davidson(K_point*       kp__,
     }
     #endif
 
+    //== std::cout << "checking psi" << std::endl;
+    //== for (int i = 0; i < ctx_.num_bands(); i++) {
+    //==     for (int j = 0; j < ctx_.num_bands(); j++) {
+    //==         double_complex z(0, 0);
+    //==         for (int ig = 0; ig < kp__->num_gkvec(); ig++) {
+    //==             z += std::conj(psi.pw_coeffs(0).prime(ig, i)) * psi.pw_coeffs(0).prime(ig, j);
+    //==         }
+    //==         if (i == j) {
+    //==             z -= 1.0;
+    //==         }
+    //==         if (std::abs(z) > 1e-10) {
+    //==             std::cout << "non-orthogonal  wave-functions " << i << " " << j << ", diff: " << z << std::endl;
+    //==         }
+    //==     }
+    //== }
+
     return niter;
 }
 

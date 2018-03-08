@@ -92,14 +92,16 @@ void sirius_finalize(ftn_bool* call_mpi_fin__)
 
 /// Create context of the simulation.
 void sirius_create_simulation_context(ftn_char config_file_name__, // TODO: pass a communicator
-                                      ftn_char method_type__)
+                                      ftn_char method_type__,
+                                      ftn_int* fcomm__)
 {
+    auto& comm = map_fcomm(*fcomm__);
     std::string config_file_name(config_file_name__);
     std::string method_type(method_type__);
     if (config_file_name.length() == 0) {
-        sim_ctx = std::unique_ptr<sirius::Simulation_context>(new sirius::Simulation_context(mpi_comm_world()));
+        sim_ctx = std::unique_ptr<sirius::Simulation_context>(new sirius::Simulation_context(comm));
     } else {
-        sim_ctx = std::unique_ptr<sirius::Simulation_context>(new sirius::Simulation_context(config_file_name, mpi_comm_world()));
+        sim_ctx = std::unique_ptr<sirius::Simulation_context>(new sirius::Simulation_context(config_file_name, comm));
     }
     sim_ctx->set_esm_type(method_type);
 }
