@@ -91,7 +91,7 @@ void sirius_finalize(ftn_bool* call_mpi_fin__)
 }
 
 /// Create context of the simulation.
-void sirius_create_simulation_context(ftn_char config_file_name__, // TODO: pass a communicator
+void sirius_create_simulation_context(ftn_char config_file_name__,
                                       ftn_char method_type__,
                                       ftn_int* fcomm__)
 {
