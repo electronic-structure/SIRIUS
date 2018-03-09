@@ -851,7 +851,8 @@ class Atom_type
 
     inline void d_mtrx_ion(matrix<double> const& d_mtrx_ion__)
     {
-        d_mtrx_ion_ = matrix<double>(num_beta_radial_functions(), num_beta_radial_functions());
+        d_mtrx_ion_ = matrix<double>(num_beta_radial_functions(), num_beta_radial_functions(),
+                                     memory_t::host, "Atom_type::d_mtrx_ion_");
         d_mtrx_ion__ >> d_mtrx_ion_;
     }
 

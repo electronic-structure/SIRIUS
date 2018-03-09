@@ -296,7 +296,6 @@ class K_point
         /// Generate two-component spinor wave functions
         inline void generate_spinor_wave_functions();
 
-        //Periodic_function<double_complex>* spinor_wave_function_component(int lmax, int ispn, int j);
         inline void generate_atomic_centered_wavefunctions(const int num_ao__, Wave_functions &phi);
 
         void save(int id);

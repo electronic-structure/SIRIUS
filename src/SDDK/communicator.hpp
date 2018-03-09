@@ -695,6 +695,19 @@ inline Communicator const& mpi_comm_null()
     return comm;
 }
 
+using ftn_int = int32_t;
+/// Mapping between Fortran and SIRIUS MPI communicators.
+inline Communicator const& map_fcomm(ftn_int fcomm__)
+{
+    static std::map<int, std::unique_ptr<Communicator>> fcomm_map;
+    if (!fcomm_map.count(fcomm__)) {
+        fcomm_map[fcomm__] = std::unique_ptr<Communicator>(new Communicator(MPI_Comm_f2c(fcomm__)));
+    }
+
+    auto& comm = *fcomm_map[fcomm__];
+    return comm;
+}
+
 } // namespace sddk
 
 #endif // __COMMUNICATOR_HPP__
