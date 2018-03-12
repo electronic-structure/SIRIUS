@@ -3,7 +3,7 @@
  *  \brief CUDA kernel for the hphi update.
  */
 
-#include "../SDDK/GPU/cuda_common.h"
+#include "../SDDK/GPU/cuda_common.hpp"
 
 __global__ void add_pw_ekin_gpu_kernel(int num_gvec__,
                                        double alpha__,

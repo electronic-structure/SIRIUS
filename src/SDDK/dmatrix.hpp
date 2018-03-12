@@ -27,6 +27,7 @@
 
 #include "blacs_grid.hpp"
 #include "splindex.hpp"
+#include "hdf5_tree.hpp"
 
 namespace sddk {
 
@@ -40,13 +41,16 @@ class dmatrix : public matrix<T>
 
     /// Global number of matrix columns.
     int num_cols_{0};
-    
+
     /// Row block size.
     int bs_row_{0};
-    
+
     /// Column block size.
     int bs_col_{0};
-    
+
+    /// the matrix is distributed or not
+    bool is_distributed_{false};
+
     /// BLACS grid.
     BLACS_grid const* blacs_grid_{nullptr};
 
@@ -61,10 +65,14 @@ class dmatrix : public matrix<T>
 
     void init()
     {
+        is_distributed_ = false;
         #ifdef __SCALAPACK
         if (blacs_grid_ != nullptr) {
             linalg_base::descinit(descriptor_, num_rows_, num_cols_, bs_row_, bs_col_, 0, 0, blacs_grid_->context(),
                                   spl_row_.local_size());
+            if (blacs_grid_->comm().size() > 1) {
+                is_distributed_ = true;
+            }
         }
         #endif
     }
@@ -134,6 +142,20 @@ class dmatrix : public matrix<T>
         init();
     }
 
+    dmatrix(T* ptr__,
+            int num_rows__,
+            int num_cols__)
+        : matrix<T>(ptr__, num_rows__, num_cols__)
+        , num_rows_(num_rows__)
+        , num_cols_(num_cols__)
+        , bs_row_(1)
+        , bs_col_(1)
+        , spl_row_(num_rows_, 1, 0, bs_row_)
+        , spl_col_(num_cols_, 1, 0, bs_col_)
+    {
+        init();
+    }
+
     dmatrix(dmatrix<T>&& src) = default;
 
     dmatrix<T>& operator=(dmatrix<T>&& src) = default;
@@ -194,6 +216,27 @@ class dmatrix : public matrix<T>
         return descriptor_;
     }
 
+    //void zero(int ir0__, int ic0__, int nr__, int nc__)
+    //{
+    //    splindex<block_cyclic> spl_r0(ir0__, blacs_grid().num_ranks_row(), blacs_grid().rank_row(), bs_row_);
+    //    splindex<block_cyclic> spl_r1(ir0__ + nr__, blacs_grid().num_ranks_row(), blacs_grid().rank_row(), bs_row_);
+
+    //    splindex<block_cyclic> spl_c0(ic0__, blacs_grid().num_ranks_col(), blacs_grid().rank_col(), bs_col_);
+    //    splindex<block_cyclic> spl_c1(ic0__ + nc__, blacs_grid().num_ranks_col(), blacs_grid().rank_col(), bs_col_);
+
+    //    int m0 = spl_r0.local_size();
+    //    int m1 = spl_r1.local_size();
+    //    int n0 = spl_c0.local_size();
+    //    int n1 = spl_c1.local_size();
+    //    for (int j = n0; j < n1; j++) {
+    //        std::fill(this->template at<CPU>(m0, j), this->template at<CPU>(m1, j), 0);
+    //    }
+
+    //    if (this->on_device()) {
+    //        acc::zero(this->template at<GPU>(m0, n0), this->ld(), m1 - m0, n1 - n0);
+    //    }
+    //}
+
     inline void set(const int irow_glob, const int icol_glob, T val)
     {
         auto r = spl_row_.location(irow_glob);
@@ -235,7 +278,6 @@ class dmatrix : public matrix<T>
                 auto c = spl_col_.location(i);
                 if (blacs_grid_->rank_col() == c.rank) {
                     T v = (*this)(r.local_index, c.local_index);
-                    //(*this)(r.local_index, c.local_index) = sddk_type_wrapper<T>::real(v);
                     (*this)(r.local_index, c.local_index) = std::real(v);
                 }
             }
@@ -252,7 +294,7 @@ class dmatrix : public matrix<T>
             if (blacs_grid_->rank_row() == r.rank) {
                 auto c = spl_col_.location(i);
                 if (blacs_grid_->rank_col() == c.rank) {
-                    d(i) = (*this)(r.local_index, c.local_index);
+                    d[i] = (*this)(r.local_index, c.local_index);
                 }
             }
         }
@@ -306,7 +348,42 @@ class dmatrix : public matrix<T>
         return *blacs_grid_;
     }
 
+    void save_to_hdf5(std::string name__, int m__, int n__)
+    {
+        mdarray<T, 2> full_mtrx(m__, n__);
+        full_mtrx.zero();
+
+        for (int j = 0; j < this->num_cols_local(); j++) {
+            for (int i = 0; i < this->num_rows_local(); i++) {
+                if (this->irow(i) < m__ &&  this->icol(j) < n__) {
+                    full_mtrx(this->irow(i), this->icol(j)) = (*this)(i, j);
+                }
+            }
+        }
+        this->comm().allreduce(full_mtrx.template at<CPU>(), static_cast<int>(full_mtrx.size()));
+
+        if (this->blacs_grid().comm().rank() == 0) {
+            HDF5_tree h5(name__, true);
+            h5.write("nrow", m__);
+            h5.write("ncol", n__);
+            h5.write("mtrx", full_mtrx);
+        }
+    }
+
     inline void serialize(std::string name__, int n__) const;
+
+    inline bool is_distributed() const {
+        return is_distributed_;
+    }
+
+    inline const Communicator &comm() const {
+        if (is_distributed_) {
+            return blacs_grid().comm();
+        } else {
+            static Communicator comm_ = Communicator(MPI_COMM_SELF);
+            return comm_;
+        }
+    }
 };
 
 template <>
@@ -334,7 +411,7 @@ inline void dmatrix<double_complex>::serialize(std::string name__, int n__) cons
     if (blacs_grid_->comm().rank() == 0) {
         //std::cout << "mtrx: " << name__ << std::endl;
         // std::cout << dict.dump(4);
-        
+
         printf("matrix label: %s\n", name__.c_str());
         printf("{\n");
         for (int i = 0; i < n__; i++) {

@@ -1,58 +1,18 @@
-inline void Band::initialize_subspace(K_point_set& kset__, Potential& potential__) const
+inline void Band::initialize_subspace(K_point_set& kset__, Hamiltonian& H__) const
 {
     PROFILE("sirius::Band::initialize_subspace");
 
     int N{0};
-    /* interpolate I_{\alpha,n}(q) = <j_{l_n}(q*x) | wf_{n,l_n}(x) > with splines */
-    std::vector<std::vector<Spline<double>>> rad_int(unit_cell_.num_atom_types());
-
-    int nq = static_cast<int>(ctx_.gk_cutoff() * 10);
-    /* this is the regular grid in reciprocal space in the range [0, |G+k|_max ] */
-    Radial_grid_lin<double> qgrid(nq, 0, ctx_.gk_cutoff());
 
     if (ctx_.iterative_solver_input().init_subspace_ == "lcao") {
-        /* spherical Bessel functions jl(qx) */
-        mdarray<Spherical_Bessel_functions, 1> jl(nq);
-
-        for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
-            auto& atom_type = unit_cell_.atom_type(iat);
-            /* create jl(qx) */
-            #pragma omp parallel for
-             for (int iq = 0; iq < nq; iq++) {
-                jl(iq) = Spherical_Bessel_functions(atom_type.indexr().lmax(), atom_type.radial_grid(), qgrid[iq]);
-            }
-
-            int nwf = static_cast<int>(atom_type.pp_desc().atomic_pseudo_wfs_.size());
-
-            rad_int[iat].resize(nwf);
-            /* loop over all pseudo wave-functions */
-            for (int i = 0; i < nwf; i++) {
-                rad_int[iat][i] = Spline<double>(qgrid);
-
-                /* interpolate atomic_pseudo_wfs(r) */
-                Spline<double> wf(atom_type.radial_grid());
-                for (int ir = 0; ir < (int)atom_type.pp_desc().atomic_pseudo_wfs_[i].second.size(); ir++) {
-                    wf[ir] = atom_type.pp_desc().atomic_pseudo_wfs_[i].second[ir];
-                }
-                wf.interpolate();
-                double norm = inner(wf, wf, 0);
-                
-                int l = atom_type.pp_desc().atomic_pseudo_wfs_[i].first;
-                #pragma omp parallel for
-                for (int iq = 0; iq < nq; iq++) {
-                    rad_int[iat][i][iq] = sirius::inner(jl(iq)[l], wf, 1) / std::sqrt(norm);
-                }
-
-                rad_int[iat][i].interpolate();
-            }
-        }
+        // it is already calculated during the initialization procedure
 
         /* get the total number of atomic-centered orbitals */
         for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
             auto& atom_type = unit_cell_.atom_type(iat);
             int n{0};
-            for (auto& wf: atom_type.pp_desc().atomic_pseudo_wfs_) {
-                n += (2 * wf.first + 1);
+            for (int i = 0; i < atom_type.num_ps_atomic_wf(); i++) {
+                n += (2 * atom_type.ps_atomic_wf(i).first + 1);
             }
             N += atom_type.num_atoms() * n;
         }
@@ -62,48 +22,55 @@ inline void Band::initialize_subspace(K_point_set& kset__, Potential& potential_
         }
     }
 
-    local_op_->prepare(ctx_.gvec_coarse(), ctx_.num_mag_dims(), potential__);
+    H__.local_op().prepare(H__.potential());
+    if (ctx_.gamma_point() && (ctx_.so_correction() == false)) {
+        H__.prepare<double>();
+    } else {
+        H__.prepare<double_complex>();
+    }
 
     for (int ikloc = 0; ikloc < kset__.spl_num_kpoints().local_size(); ikloc++) {
         int ik  = kset__.spl_num_kpoints(ikloc);
         auto kp = kset__[ik];
-
         if (ctx_.gamma_point() && (ctx_.so_correction() == false)) {
-            initialize_subspace<double>(kp, N, qgrid, rad_int);
+            initialize_subspace<double>(kp, H__, N);
         } else {
-            initialize_subspace<double_complex>(kp, N, qgrid, rad_int);
+            initialize_subspace<double_complex>(kp, H__, N);
         }
     }
-    local_op_->dismiss();
+    H__.dismiss();
+    H__.local_op().dismiss();
 
     /* reset the energies for the iterative solver to do at least two steps */
     for (int ik = 0; ik < kset__.num_kpoints(); ik++) {
-        for (int i = 0; i < ctx_.num_bands(); i++) {
-            kset__[ik]->band_energy(i)    = 0;
-            kset__[ik]->band_occupancy(i) = ctx_.max_occupancy();
+        for (int ispn = 0; ispn < ctx_.num_spin_dims(); ispn++) {
+            for (int i = 0; i < ctx_.num_bands(); i++) {
+                kset__[ik]->band_energy(i, ispn)    = 0;
+                kset__[ik]->band_occupancy(i, ispn) = ctx_.max_occupancy();
+            }
         }
     }
 }
 
 template <typename T>
 inline void
-Band::initialize_subspace(K_point* kp__, int num_ao__, Radial_grid_lin<double>& qgrid__, std::vector<std::vector<Spline<double>>> const& rad_int__) const
+Band::initialize_subspace(K_point* kp__, Hamiltonian &H__, int num_ao__) const
 {
     PROFILE("sirius::Band::initialize_subspace|kp");
 
+    int nbnd = (ctx_.num_mag_dims() == 3) ? ctx_.num_bands() / 2 : ctx_.num_bands();
+
     /* number of basis functions */
-    int num_phi = std::max(num_ao__, ctx_.num_fv_states());
+    int num_phi = std::max(num_ao__, nbnd);
 
-    int num_sc = (ctx_.num_mag_dims() == 3) ? 2 : 1;
-
-    int num_spin_steps = (ctx_.num_mag_dims() == 3) ? 1 : ctx_.num_spins();
+    const int num_sc = (ctx_.num_mag_dims() == 3) ? 2 : 1;
 
     int num_phi_tot = (ctx_.num_mag_dims() == 3) ? num_phi * 2 : num_phi;
 
     /* initial basis functions */
-    Wave_functions phi(ctx_.processing_unit(), kp__->gkvec(), num_phi_tot, num_sc);
+    Wave_functions phi(kp__->gkvec_partition(), num_phi_tot, num_sc);
     for (int ispn = 0; ispn < num_sc; ispn++) {
-        phi.component(ispn).pw_coeffs().prime().zero();
+        phi.pw_coeffs(ispn).prime().zero();
     }
 
     sddk::timer t1("sirius::Band::initialize_subspace|kp|wf");
@@ -111,83 +78,12 @@ Band::initialize_subspace(K_point* kp__, int num_ao__, Radial_grid_lin<double>& 
     int lmax{0};
     for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
         auto& atom_type = unit_cell_.atom_type(iat);
-        for (auto& wf: atom_type.pp_desc().atomic_pseudo_wfs_) {
-            lmax = std::max(lmax, wf.first);
-        }
+        lmax = std::max(lmax, atom_type.lmax_ps_atomic_wf());
     }
     lmax = std::max(lmax, unit_cell_.lmax());
 
     if (num_ao__ > 0) {
-        mdarray<double, 2> rlm_gk(kp__->num_gkvec_loc(), Utils::lmmax(lmax));
-        mdarray<std::pair<int, double>, 1> idx_gk(kp__->num_gkvec_loc());
-        #pragma omp parallel for schedule(static)
-        for (int igk_loc = 0; igk_loc < kp__->num_gkvec_loc(); igk_loc++) {
-            int igk = kp__->idxgk(igk_loc);
-            /* vs = {r, theta, phi} */
-            auto vs = SHT::spherical_coordinates(kp__->gkvec().gkvec_cart(igk));
-            /* compute real spherical harmonics for G+k vector */
-            std::vector<double> rlm(Utils::lmmax(lmax));
-            SHT::spherical_harmonics(lmax, vs[1], vs[2], &rlm[0]);
-            for (int lm = 0; lm < Utils::lmmax(lmax); lm++) {
-                rlm_gk(igk_loc, lm) = rlm[lm];
-            }
-            int i = static_cast<int>((vs[0] / ctx_.gk_cutoff()) * (qgrid__.num_points() - 1));
-            double dgk = vs[0] - qgrid__[i];
-            idx_gk(igk_loc) = std::pair<int, double>(i, dgk);
-        }
-    
-        /* starting index of atomic orbital block for each atom */
-        std::vector<int> idxao;
-        int n{0};
-        for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
-            auto& atom_type = unit_cell_.atom(ia).type();
-            idxao.push_back(n);
-            /* increment index of atomic orbitals */
-            for (size_t i = 0; i < atom_type.pp_desc().atomic_pseudo_wfs_.size(); i++) {
-                int l = atom_type.pp_desc().atomic_pseudo_wfs_[i].first;
-                n += (2 * l + 1);
-            }
-        }
-
-        //mdarray<double, 3> ri(kp__->num_gkvec_loc(), unit_cell_.lmax() + 1, unit_cell_.num_atom_types());
-        //for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
-        //    for (size_t i = 0; i < atom_type.pp_desc().atomic_pseudo_wfs_.size(); i++) {
-        //    for (int l = 0; l <= unit_cell_.atom_type(iat).indexr().lmax(); l++) {
-        //        #pragma omp parallel for
-        //        for (int igk_loc = 0; igk_loc < kp__->num_gkvec_loc(); igk_loc++) {
-        //            ri(igk_loc, l, iat) = rad_int__[iat][l](idx_gk[igk_loc].first, idx_gk[igk_loc].second);
-        //        }
-        //    }
-        //}
-
-        #pragma omp parallel for schedule(static)
-        for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
-            double phase = twopi * dot(kp__->gkvec().vk(), unit_cell_.atom(ia).position());
-            double_complex phase_k = std::exp(double_complex(0.0, phase));
-
-            std::vector<double_complex> phase_gk(kp__->num_gkvec_loc());
-            for (int igk_loc = 0; igk_loc < kp__->num_gkvec_loc(); igk_loc++) {
-                int igk = kp__->idxgk(igk_loc);
-                auto G = kp__->gkvec().gvec(igk);
-                phase_gk[igk_loc] = std::conj(ctx_.gvec_phase_factor(G, ia) * phase_k);
-            }
-            auto& atom_type = unit_cell_.atom(ia).type();
-            int n{0};
-            for (size_t i = 0; i < atom_type.pp_desc().atomic_pseudo_wfs_.size(); i++) {
-                int l = atom_type.pp_desc().atomic_pseudo_wfs_[i].first;
-                double_complex z = std::pow(double_complex(0, -1), l) * fourpi / std::sqrt(unit_cell_.omega());
-                for (int m = -l; m <= l; m++) {
-                    int lm = Utils::lm_by_l_m(l, m);
-                    for (int igk_loc = 0; igk_loc < kp__->num_gkvec_loc(); igk_loc++) {
-                        phi.component(0).pw_coeffs().prime(igk_loc, idxao[ia] + n) = 
-                            z * phase_gk[igk_loc] * rlm_gk(igk_loc, lm) * rad_int__[atom_type.id()][i](idx_gk[igk_loc].first, idx_gk[igk_loc].second);
-                        //phi.component(0).pw_coeffs().prime(igk_loc, idxao[ia] + n) =
-                        //    z * phase_gk[igk_loc] * rlm_gk(igk_loc, lm) * ri(igk_loc, l, atom_type.id());
-                    }
-                    n++;
-                }
-            }
-        }
+        kp__->generate_atomic_centered_wavefunctions(num_ao__, phi);
     }
 
     /* fill remaining wave-functions with pseudo-random guess */
@@ -198,13 +94,13 @@ Band::initialize_subspace(K_point* kp__, int num_ao__, Radial_grid_lin<double>& 
             /* global index of G+k vector */
             int igk = kp__->idxgk(igk_loc);
             if (igk == i + 1) {
-                phi.component(0).pw_coeffs().prime(igk_loc, num_ao__ + i) = 1.0;
+                phi.pw_coeffs(0).prime(igk_loc, num_ao__ + i) = 1.0;
             }
             if (igk == i + 2) {
-                phi.component(0).pw_coeffs().prime(igk_loc, num_ao__ + i) = 0.5;
+                phi.pw_coeffs(0).prime(igk_loc, num_ao__ + i) = 0.5;
             }
             if (igk == i + 3) {
-                phi.component(0).pw_coeffs().prime(igk_loc, num_ao__ + i) = 0.25;
+                phi.pw_coeffs(0).prime(igk_loc, num_ao__ + i) = 0.25;
             }
         }
         // for (int igk_loc = 0; igk_loc < kp__->num_gkvec_loc(); igk_loc++) {
@@ -236,32 +132,32 @@ Band::initialize_subspace(K_point* kp__, int num_ao__, Radial_grid_lin<double>& 
         for (int igk_loc = igk0; igk_loc < kp__->num_gkvec_loc(); igk_loc++) {
             /* global index of G+k vector */
             int igk = kp__->idxgk(igk_loc);
-            phi.component(0).pw_coeffs().prime(igk_loc, i) += tmp[igk & 0xFFF] * 1e-5;
+            phi.pw_coeffs(0).prime(igk_loc, i) += tmp[igk & 0xFFF] * 1e-5;
         }
     }
 
     if (ctx_.num_mag_dims() == 3) {
-        phi.component(1).copy_from(phi.component(0), 0, num_phi, num_phi, CPU);
+        phi.copy_from(CPU, num_phi, phi, 0, 0, 1, num_phi);
     }
     t1.stop();
 
     /* short notation for number of target wave-functions */
-    int num_bands = (ctx_.num_mag_dims() == 3) ? ctx_.num_bands() : ctx_.num_fv_states();
+    int num_bands = ctx_.num_bands();
 
-    ctx_.fft_coarse().prepare(kp__->gkvec().partition());
-    local_op_->prepare(kp__->gkvec());
-
-    D_operator<T> d_op(ctx_, kp__->beta_projectors());
-    Q_operator<T> q_op(ctx_, kp__->beta_projectors());
+    ctx_.fft_coarse().prepare(kp__->gkvec_partition());
+    H__.local_op().prepare(kp__->gkvec_partition());
 
     /* allocate wave-functions */
-    Wave_functions hphi(ctx_.processing_unit(), kp__->gkvec(), num_phi_tot, num_sc);
-    Wave_functions ophi(ctx_.processing_unit(), kp__->gkvec(), num_phi_tot, num_sc);
+    Wave_functions hphi(kp__->gkvec_partition(), num_phi_tot, num_sc);
+    Wave_functions ophi(kp__->gkvec_partition(), num_phi_tot, num_sc);
     /* temporary wave-functions required as a storage during orthogonalization */
-    wave_functions wf_tmp(ctx_.processing_unit(), kp__->gkvec(), num_phi_tot);
+    Wave_functions wf_tmp(kp__->gkvec_partition(), num_phi_tot, num_sc);
 
     int bs        = ctx_.cyclic_block_size();
-    auto mem_type = (std_evp_solver().type() == ev_magma) ? memory_t::host_pinned : memory_t::host;
+    auto mem_type = (ctx_.std_evp_solver_type() == ev_solver_t::magma) ? memory_t::host_pinned : memory_t::host;
+
+    auto gen_solver = Eigensolver_factory<T>(ctx_.gen_evp_solver_type());
+
     dmatrix<T> hmlt(num_phi_tot, num_phi_tot, ctx_.blacs_grid(), bs, bs, mem_type);
     dmatrix<T> ovlp(num_phi_tot, num_phi_tot, ctx_.blacs_grid(), bs, bs, mem_type);
     dmatrix<T> evec(num_phi_tot, num_phi_tot, ctx_.blacs_grid(), bs, bs, mem_type);
@@ -279,16 +175,16 @@ Band::initialize_subspace(K_point* kp__, int num_ao__, Radial_grid_lin<double>& 
     if (ctx_.processing_unit() == GPU) {
         if (!keep_wf_on_gpu) {
             for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-                kp__->spinor_wave_functions(ispn).pw_coeffs().allocate_on_device();
+                kp__->spinor_wave_functions().pw_coeffs(ispn).allocate_on_device();
             }
         }
         for (int ispn = 0; ispn < num_sc; ispn++) {
-            phi.component(ispn).allocate_on_device();
-            phi.component(ispn).copy_to_device(0, num_phi_tot);
-            hphi.component(ispn).allocate_on_device();
-            ophi.component(ispn).allocate_on_device();
+            phi.pw_coeffs(ispn).allocate_on_device();
+            phi.pw_coeffs(ispn).copy_to_device(0, num_phi_tot);
+            hphi.pw_coeffs(ispn).allocate_on_device();
+            ophi.pw_coeffs(ispn).allocate_on_device();
+            wf_tmp.pw_coeffs(ispn).allocate_on_device();
         }
-        wf_tmp.allocate_on_device();
         evec.allocate(memory_t::device);
         hmlt.allocate(memory_t::device);
         ovlp.allocate(memory_t::device);
@@ -301,14 +197,18 @@ Band::initialize_subspace(K_point* kp__, int num_ao__, Radial_grid_lin<double>& 
 
     if (ctx_.control().print_checksum_) {
         for (int ispn = 0; ispn < num_sc; ispn++) {
-            auto cs = phi.component(ispn).checksum(0, num_phi_tot);
-            DUMP("checksum(phi%i): %18.10f %18.10f", ispn, cs.real(), cs.imag());
+            auto cs = phi.checksum_pw(ctx_.processing_unit(), ispn, 0, num_phi_tot);
+            if (kp__->comm().rank() == 0) {
+                std::stringstream s;
+                s << "initial_phi" << ispn;
+                print_checksum(s.str(), cs);
+            }
         }
     }
 
-    for (int ispn_step = 0; ispn_step < num_spin_steps; ispn_step++) {
+    for (int ispn_step = 0; ispn_step < ctx_.num_spin_dims(); ispn_step++) {
         /* apply Hamiltonian and overlap operators to the new basis functions */
-        apply_h_o<T>(kp__, ispn_step, 0, num_phi_tot, phi, hphi, ophi, d_op, q_op);
+        H__.apply_h_s<T>(kp__, (ctx_.num_mag_dims() == 3) ? 2 : ispn_step, 0, num_phi_tot, phi, hphi, ophi);
 
         /* do some checks */
         if (ctx_.control().verification_ >= 1) {
@@ -325,9 +225,8 @@ Band::initialize_subspace(K_point* kp__, int num_ao__, Radial_grid_lin<double>& 
                 TERMINATE(s);
             }
             std::vector<double> eo(num_phi_tot);
-            if (std_evp_solver().solve(num_phi_tot, num_phi_tot, hmlt.template at<CPU>(), hmlt.ld(), eo.data(),
-                                       evec.template at<CPU>(), evec.ld(), hmlt.num_rows_local(),
-                                       hmlt.num_cols_local())) {
+            auto std_solver = Eigensolver_factory<T>(ctx_.std_evp_solver_type());
+            if (std_solver->solve(num_phi_tot, num_phi_tot, hmlt, eo.data(), evec)) {
                 std::stringstream s;
                 s << "error in diagonalziation";
                 TERMINATE(s);
@@ -340,8 +239,6 @@ Band::initialize_subspace(K_point* kp__, int num_ao__, Radial_grid_lin<double>& 
             }
         }
 
-        //orthogonalize<T>(ctx_.processing_unit(), num_sc, 0, num_phi_tot, phi, hphi, ophi, hmlt, wf_tmp);
-
         /* setup eigen-value problem */
         set_subspace_mtrx<T>(0, num_phi_tot, phi, hphi, hmlt, hmlt_old);
         set_subspace_mtrx<T>(0, num_phi_tot, phi, ophi, ovlp, hmlt_old);
@@ -351,21 +248,8 @@ Band::initialize_subspace(K_point* kp__, int num_ao__, Radial_grid_lin<double>& 
             ovlp.serialize("ovlp", num_phi_tot);
         }
 
-
-        ///* solve generalized eigen-value problem with the size N */
-        //if (std_evp_solver().solve(num_phi_tot, num_bands, hmlt.template at<CPU>(), hmlt.ld(), eval.data(),
-        //                           evec.template at<CPU>(), evec.ld(), hmlt.num_rows_local(), hmlt.num_cols_local())) {
-        //    std::stringstream s;
-        //    s << "error in diagonalization";
-        //    TERMINATE(s);
-        //}
-
         /* solve generalized eigen-value problem with the size N and get lowest num_bands eigen-vectors */
-        if (gen_evp_solver().solve(num_phi_tot, num_bands,
-                                   hmlt.template at<CPU>(), hmlt.ld(),
-                                   ovlp.template at<CPU>(), ovlp.ld(),
-                                   eval.data(), evec.template at<CPU>(), evec.ld(),
-                                   hmlt.num_rows_local(), hmlt.num_cols_local())) {
+        if (gen_solver->solve(num_phi_tot, num_bands, hmlt, ovlp, eval.data(), evec)) {
             std::stringstream s;
             s << "error in diagonalziation";
             TERMINATE(s);
@@ -373,49 +257,50 @@ Band::initialize_subspace(K_point* kp__, int num_ao__, Radial_grid_lin<double>& 
 
         if (ctx_.control().print_checksum_) {
             auto cs = evec.checksum();
-            kp__->comm().allreduce(&cs, 1);
-            DUMP("checksum(evec): %18.10f", std::abs(cs));
+            evec.blacs_grid().comm().allreduce(&cs, 1);
             double cs1{0};
             for (int i = 0; i < num_bands; i++) {
                 cs1 += eval[i];
             }
-            DUMP("checksum(eval): %18.10f", cs1);
+            if (kp__->comm().rank() == 0) {
+                print_checksum("evec", cs);
+                print_checksum("eval", cs1);
+            }
         }
 
         if (ctx_.control().verbosity_ >= 3 && kp__->comm().rank() == 0) {
             for (int i = 0; i < num_bands; i++) {
-                DUMP("eval[%i]=%20.16f", i, eval[i]);
+                printf("eval[%i]=%20.16f\n", i, eval[i]);
             }
         }
 
         /* compute wave-functions */
         /* \Psi_{i} = \sum_{mu} \phi_{mu} * Z_{mu, i} */
-        if (ctx_.num_mag_dims() == 3) {
-            transform<T>(ctx_.processing_unit(), 1.0, {&phi}, 0, num_phi_tot, evec, 0, 0, 0.0,
-                         {&kp__->spinor_wave_functions()}, 0, num_bands);
-        } else {
-            transform<T>(ctx_.processing_unit(), phi.component(0), 0, num_phi, evec, 0, 0,
-                         kp__->spinor_wave_functions(ispn_step), 0, num_bands);
-        }
+        transform<T>(ctx_.processing_unit(), (ctx_.num_mag_dims() == 3) ? 2 : ispn_step, {&phi}, 0, num_phi_tot, evec, 0, 0,
+                    {&kp__->spinor_wave_functions()}, 0, num_bands);
 
         for (int j = 0; j < num_bands; j++) {
-            kp__->band_energy(j + ispn_step * ctx_.num_fv_states()) = eval[j];
+            kp__->band_energy(j, ispn_step) = eval[j];
         }
     }
 
     if (ctx_.control().print_checksum_) {
         for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-            auto cs = kp__->spinor_wave_functions(ispn).checksum(0, num_bands);
-            DUMP("checksum(spinor_wave_functions_%i): %18.10f %18.10f", ispn, cs.real(), cs.imag());
+            auto cs = kp__->spinor_wave_functions().checksum_pw(ctx_.processing_unit(), ispn, 0, num_bands);
+            std::stringstream s;
+            s << "initial_spinor_wave_functions_" << ispn;
+            if (kp__->comm().rank() == 0) {
+                print_checksum(s.str(), cs);
+            }
         }
     }
 
 #ifdef __GPU
     if (ctx_.processing_unit() == GPU) {
         for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-            kp__->spinor_wave_functions(ispn).pw_coeffs().copy_to_host(0, num_bands);
+            kp__->spinor_wave_functions().pw_coeffs(ispn).copy_to_host(0, num_bands);
             if (!keep_wf_on_gpu) {
-                kp__->spinor_wave_functions(ispn).pw_coeffs().deallocate_on_device();
+                kp__->spinor_wave_functions().pw_coeffs(ispn).deallocate_on_device();
             }
         }
     }

@@ -34,40 +34,32 @@ namespace sirius {
 class Beta_projectors_gradient: public Beta_projectors_base<3>
 {
   private:
-    void generate_pw_coefs_t(Beta_projectors& beta__)
+    void generate_pw_coefs_t(Beta_projectors& beta__, std::vector<int> const& igk__)
     {
-        auto& bchunk = ctx_.beta_projector_chunks();
-
-        if (!bchunk.num_beta_t()) {
+        if (!num_beta_t()) {
             return;
         }
         
-        auto& comm = gkvec_.comm();
-
         for (int x = 0; x < 3; x++) {
             #pragma omp parallel for
-            for (int i = 0; i < bchunk.num_beta_t(); i++) {
-                for (int igkloc = 0; igkloc < gkvec_.gvec_count(comm.rank()); igkloc++) {
-                    int igk = gkvec_.gvec_offset(comm.rank()) + igkloc;
+            for (int i = 0; i < num_beta_t(); i++) {
+                for (int igkloc = 0; igkloc < num_gkvec_loc(); igkloc++) {
+                    int igk = igk__[igkloc];
                     auto vgc = gkvec_.gkvec_cart(igk);
                     pw_coeffs_t_[x](igkloc, i) = double_complex(0, -vgc[x]) * beta__.pw_coeffs_t(0)(igkloc, i);
                 }
             }
         }
-        //if (ctx_.processing_unit() == GPU) {
-        //    for (int x = 0; x < 3; x++) {
-        //        pw_coeffs_t_[x].copy<memory_t::host, memory_t::device>();
-        //    }
-        //}
     }
 
   public:
-    Beta_projectors_gradient(Simulation_context& ctx__,
-                             Gvec const&         gkvec__,
-                             Beta_projectors&    beta__)
-        : Beta_projectors_base<3>(ctx__, gkvec__)
+    Beta_projectors_gradient(Simulation_context&     ctx__,
+                             Gvec const&             gkvec__,
+                             std::vector<int> const& igk__,
+                             Beta_projectors&        beta__)
+        : Beta_projectors_base<3>(ctx__, gkvec__, igk__)
     {
-        generate_pw_coefs_t(beta__);
+        generate_pw_coefs_t(beta__, igk__);
     }
 };
 

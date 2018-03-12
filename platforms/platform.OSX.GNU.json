@@ -1,0 +1,27 @@
+{
+    "comment"     : "MPI C++ compiler and options",
+    "MPI_CXX"     : "mpic++",
+    "MPI_CXX_OPT" : "-std=c++11 -Wall -Wconversion -fopenmp",
+    
+    "comment"     : "MPI Fortran compiler and oprions",
+    "MPI_FC"      : "mpif90",
+    "MPI_FC_OPT"  : "-O3 -fopenmp -cpp",
+   
+    "comment"     : "plain C compler",
+    "CC"          : "gcc-mp-7",
+    
+    "comment"     : "plain C++ compiler",
+    "CXX"         : "c++-mp-7",
+
+    "comment"     : "plain Fortran compiler",
+    "FC"          : "gfortran-mp-7",
+
+    "comment"     : "Fortran preprocessor",
+    "FCCPP"       : "cpp-mp-7",
+    
+    "SYSTEM_LIBS" : "~/src/LAPACK/lapack-3.4.2/liblapack.a ~/src/LAPACK/lapack-3.4.2/librefblas.a ~/local/lib/libmpi_mpifh.a -L/opt/local/lib -lz -lgfortran -lstdc++ -lc++",
+
+    "install"     : ["spg", "gsl", "fftw", "xc", "hdf5"]
+}
+
+

@@ -3,7 +3,7 @@ inline void Density::generate_valence_mt(K_point_set& ks)
     PROFILE("sirius::Density::generate_valence_mt");
 
     /* compute occupation matrix */
-    if (ctx_.uj_correction())
+    if (ctx_.hubbard_correction())
     {
         STOP();
 

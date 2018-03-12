@@ -103,9 +103,9 @@ class Augmentation_operator
                         int idxrf1 = atom_type_.indexb(xi1).idxrf;
                         
                         /* packed orbital index */
-                        int idx12 = xi2 * (xi2 + 1) / 2 + xi1;
+                        int idx12 = Utils::packed_index(xi1, xi2); //xi2 * (xi2 + 1) / 2 + xi1;
                         /* packed radial-function index */
-                        int idxrf12 = idxrf2 * (idxrf2 + 1) / 2 + idxrf1;
+                        int idxrf12 = Utils::packed_index(idxrf1, idxrf2); //idxrf2 * (idxrf2 + 1) / 2 + idxrf1;
                         
                         for (int lm3 = 0; lm3 < lmmax; lm3++) {
                             v[lm3] = std::conj(zilm[lm3]) * gvec_rlm(lm3, igloc) * ri(idxrf12, l_by_lm[lm3]);
@@ -122,7 +122,7 @@ class Augmentation_operator
             for (int xi2 = 0; xi2 < nbf; xi2++) {
                 for (int xi1 = 0; xi1 <= xi2; xi1++) {
                     /* packed orbital index */
-                    int idx12 = xi2 * (xi2 + 1) / 2 + xi1;
+                    int idx12 = Utils::packed_index(xi1, xi2); //xi2 * (xi2 + 1) / 2 + xi1;
                     sym_weight_(idx12) = (xi1 == xi2) ? 1 : 2;
                 }
             }
@@ -134,7 +134,7 @@ class Augmentation_operator
                 for (int xi2 = 0; xi2 < nbf; xi2++) {
                     for (int xi1 = 0; xi1 <= xi2; xi1++) {
                         /* packed orbital index */
-                        int idx12 = xi2 * (xi2 + 1) / 2 + xi1;
+                        int idx12 = Utils::packed_index(xi1, xi2); //xi2 * (xi2 + 1) / 2 + xi1;
                         q_mtrx_(xi1, xi2) = q_mtrx_(xi2, xi1) = omega__ * q_pw_(idx12, 0);
                     }
                 }
@@ -154,38 +154,33 @@ class Augmentation_operator
     public:
        
         Augmentation_operator(Simulation_context_base const& ctx__,
-                              int iat__,
-                              Radial_integrals_aug<false> const& ri__)
+                              int iat__)
             : ctx_(ctx__)
             , comm_(ctx__.comm())
             , atom_type_(ctx__.unit_cell().atom_type(iat__))
         {
-            if (atom_type_.pp_desc().augment) {
-                generate_pw_coeffs(ctx__.unit_cell().omega(), ctx__.gvec(), ri__);
+            if (atom_type_.augment()) {
+                generate_pw_coeffs(ctx__.unit_cell().omega(), ctx__.gvec(), ctx__.aug_ri());
             }
         }
 
-        void prepare(int stream_id__) const
+        void prepare(int stream_id__)
         {
-            #ifdef __GPU
-            if (atom_type_.parameters().processing_unit() == GPU && atom_type_.pp_desc().augment) {
+            if (atom_type_.parameters().processing_unit() == GPU && atom_type_.augment()) {
                 sym_weight_.allocate(memory_t::device);
-                sym_weight_.async_copy_to_device(stream_id__);
+                sym_weight_.async_copy<memory_t::host, memory_t::device>(stream_id__);
 
                 q_pw_.allocate(memory_t::device);
-                q_pw_.async_copy_to_device(stream_id__);
+                q_pw_.async_copy<memory_t::host, memory_t::device>(stream_id__);
             }
-            #endif
         }
 
-        void dismiss() const
+        void dismiss()
         {
-            #ifdef __GPU
-            if (atom_type_.parameters().processing_unit() == GPU && atom_type_.pp_desc().augment) {
-                q_pw_.deallocate_on_device();
-                sym_weight_.deallocate_on_device();
+            if (atom_type_.parameters().processing_unit() == GPU && atom_type_.augment()) {
+                q_pw_.deallocate(memory_t::device);
+                sym_weight_.deallocate(memory_t::device);
             }
-            #endif
         }
 
         mdarray<double, 2> const& q_pw() const
@@ -199,6 +194,11 @@ class Augmentation_operator
         }
 
         double const& q_mtrx(int xi1__, int xi2__) const
+        {
+            return q_mtrx_(xi1__, xi2__);
+        }
+
+        double& q_mtrx(int xi1__, int xi2__)
         {
             return q_mtrx_(xi1__, xi2__);
         }

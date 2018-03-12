@@ -37,7 +37,7 @@ def parse_header(upf_dict, root):
     upf_dict['header']['mesh_size'] = int(node.attrib['mesh_size'])
     upf_dict['header']['is_ultrasoft'] = str2bool(node.attrib['is_ultrasoft'])
     upf_dict['header']['number_of_wfc'] = int(node.attrib['number_of_wfc'])
-    upf_dict['header']['SpinOrbit'] = str2bool(node.attrib['has_so'])
+    upf_dict['header']['spin_orbit'] = str2bool(node.attrib['has_so'])
 
 def parse_radial_grid(upf_dict, root):
     # radial grid
@@ -69,16 +69,18 @@ def parse_non_local(upf_dict, root):
         upf_dict['beta_projectors'].append({})
         beta = [float(e) for e in str.split(node.text)]
         upf_dict['beta_projectors'][i]['radial_function'] = beta[0:nr]
-        upf_dict['beta_projectors'][i]['label'] = node.attrib['label']
+        if node.findall('label') :
+          upf_dict['beta_projectors'][i]['label'] = node.attrib['label']
         upf_dict['beta_projectors'][i]['angular_momentum'] = int(node.attrib['angular_momentum'])
         #upf_dict['beta_projectors'][i]['cutoff_radius_index'] = int(node.attrib['cutoff_radius_index'])
         upf_dict['beta_projectors'][i]['cutoff_radius'] = float(node.attrib['cutoff_radius'])
-        upf_dict['beta_projectors'][i]['ultrasoft_cutoff_radius'] = float(node.attrib['ultrasoft_cutoff_radius'])
-        #if upf_dict['header']['SpinOrbit']: 
-        #  node1 = root.findall("./PP_SPIN_ORB/PP_RELBETA.%i"%(i+1))[0]
-        #  upf_dict['beta_projectors'][i]['total_angular_momentum'] = float(node1.attrib['jjj'])
-          
-          
+        if upf_dict['header']['is_ultrasoft']:
+          upf_dict['beta_projectors'][i]['ultrasoft_cutoff_radius'] = float(node.attrib['ultrasoft_cutoff_radius'])
+        if upf_dict['header']['spin_orbit']:
+          node1 = root.findall("./PP_SPIN_ORB/PP_RELBETA.%i"%(i+1))[0]
+          upf_dict['beta_projectors'][i]['total_angular_momentum'] = float(node1.attrib['jjj'])
+
+
     #--------------------------
     #------- Dij matrix -------
     #--------------------------
@@ -134,7 +136,7 @@ def parse_PAW(upf_dict, root):
     node = root.findall('./PP_NONLOCAL/PP_AUGMENTATION')[0]
     upf_dict['header']['cutoff_radius_index'] = int(node.attrib['cutoff_r_index'])
 
-    
+
     upf_dict["paw_data"] = {}
 
 
@@ -221,15 +223,17 @@ def parse_pswfc(upf_dict, root):
         wfc['angular_momentum'] = int(node.attrib['l'])
         wfc['label'] = node.attrib['label']
         wfc['occupation'] = float(node.attrib['occupation'])
+        if upf_dict['header']['spin_orbit']:
+          node = root.findall("./PP_SPIN_ORB/PP_RELWFC.%i"%(i+1))[0]
+          wfc['total_angular_momentum'] = float(node.attrib['jchi'])
         upf_dict['atomic_wave_functions'].append(wfc)
-
 
 ####################################################
 ############# Spin orbit coupling #################
 ####################################################
 
 def parse_SpinOrbit(upf_dict, root):
-    if not upf_dict['header']['SpinOrbit']: return
+    if not upf_dict['header']['spin_orbit']: return
 
     ### Spin orbit informations for the projectors
 
@@ -246,7 +250,7 @@ def parse_SpinOrbit(upf_dict, root):
 #      upf_dict['paw_data']['ae_wfc']['ae_wfc_rel'] = float(node)
 #      upf_dict['paw_data']['ae_wfc']['total_angular_momentum'] = float(node('jchi'))
 #      upf_dict['paw_data']['ps_wfc']['total_angular_momentum'] = float(node('jchi'))
- 
+
 
 ######################################################
 ################## MAIN ##############################
@@ -289,7 +293,7 @@ def main():
 
     # parse data for spin orbit coupling
     parse_SpinOrbit(upf_dict, root)
-    
+
     # rho
     node = root.findall("./PP_RHOATOM")[0]
     rho = [float(e) for e in str.split(node.text)]

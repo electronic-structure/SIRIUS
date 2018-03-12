@@ -70,7 +70,7 @@ inline void Density::initial_density_pseudo()
     if (ctx_.control().print_checksum_) {
         auto cs = rho_->checksum_rg();
         if (ctx_.comm().rank() == 0) {
-            DUMP("checksum(rho_rg) : %18.10f", cs);
+            print_checksum("rho_rg", cs);
         }
     }
 
@@ -101,7 +101,7 @@ inline void Density::initial_density_pseudo()
             vector3d<double> v = unit_cell_.atom(ia).vector_field();
 
             for (auto coord: atom_to_grid_map) {
-                int ir = coord.first;
+                int ir   = coord.first;
                 double a = coord.second;
                 magnetization_[0]->f_rg(ir) += v[2] * w(a);
                 if (ctx_.num_mag_dims() == 3) {
@@ -116,7 +116,9 @@ inline void Density::initial_density_pseudo()
         for (int i = 0; i < ctx_.num_mag_dims() + 1; i++) {
             auto cs = rho_vec_[i]->checksum_rg();
             if (ctx_.comm().rank() == 0) {
-                DUMP("checksum(rho_vec[%i]_rg) : %18.10f", i, cs);
+                std::stringstream s;
+                s << "rho_vec[" << i << "]";
+                print_checksum(s.str(), cs);
             }
         }
     }
@@ -150,9 +152,9 @@ inline void Density::initial_density_full_pot()
     
     /* compute contribution from free atoms to the interstitial density */
     auto v = ctx_.make_periodic_function<index_domain_t::local>([&ri](int iat, double g)
-                                                                 {
-                                                                     return ri.value<int>(iat, g);
-                                                                 });
+                                                                {
+                                                                    return ri.value<int>(iat, g);
+                                                                });
     
     double v0{0};
     if (ctx_.comm().rank() == 0) {
@@ -349,7 +351,7 @@ inline void Density::initial_density_full_pot()
             double R = unit_cell_.atom(ia).mt_radius();
             for (int ir = 0; ir < nmtp; ir++) {
                 double x = unit_cell_.atom(ia).type().radial_grid(ir);
-                rho[ir] = rho_->f_mt<index_domain_t::local>(0, ir, ialoc) * y00 * (1 - 3 * std::pow(x / R, 2) + 2 * std::pow(x / R, 3));
+                rho(ir) = rho_->f_mt<index_domain_t::local>(0, ir, ialoc) * y00 * (1 - 3 * std::pow(x / R, 2) + 2 * std::pow(x / R, 3));
             }
             
             /* maximum magnetization which can be achieved if we smooth density towards MT boundary */
@@ -366,13 +368,13 @@ inline void Density::initial_density_full_pot()
             
             if (len > 1e-8) {
                 for (int ir = 0; ir < nmtp; ir++) {
-                    magnetization_[0]->f_mt<index_domain_t::local>(0, ir, ialoc) = rho[ir] * v[2] / q / y00;
+                    magnetization_[0]->f_mt<index_domain_t::local>(0, ir, ialoc) = rho(ir) * v[2] / q / y00;
                 }
                 
                 if (ctx_.num_mag_dims() == 3) {
                     for (int ir = 0; ir < nmtp; ir++) {
-                        magnetization_[1]->f_mt<index_domain_t::local>(0, ir, ialoc) = rho[ir] * v[0] / q / y00;
-                        magnetization_[2]->f_mt<index_domain_t::local>(0, ir, ialoc) = rho[ir] * v[1] / q / y00;
+                        magnetization_[1]->f_mt<index_domain_t::local>(0, ir, ialoc) = rho(ir) * v[0] / q / y00;
+                        magnetization_[2]->f_mt<index_domain_t::local>(0, ir, ialoc) = rho(ir) * v[1] / q / y00;
                     }
                 }
             }

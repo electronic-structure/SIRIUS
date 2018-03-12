@@ -8,22 +8,25 @@ void test_fft(double cutoff__, device_t pu__)
 
     FFT3D fft(find_translations(cutoff__, M), mpi_comm_world(), pu__);
 
-    Gvec gvec(M, cutoff__, mpi_comm_world(), mpi_comm_world(), false);
+    Gvec gvec(M, cutoff__, mpi_comm_world(), false);
+    Gvec_partition gvecp(gvec, mpi_comm_world(), mpi_comm_self());
 
     if (mpi_comm_world().rank() == 0) {
         printf("num_gvec: %i\n", gvec.num_gvec());
     }
     MPI_grid mpi_grid(mpi_comm_world());
 
-    printf("num_gvec_fft: %i\n", gvec.partition().gvec_count_fft());
-    printf("offset_gvec_fft: %i\n", gvec.partition().gvec_offset_fft());
+    printf("num_gvec_fft: %i\n", gvecp.gvec_count_fft());
+    //printf("offset_gvec_fft: %i\n", gvecp.gvec_offset_fft());
 
-    fft.prepare(gvec.partition());
+    fft.prepare(gvecp);
 
     mdarray<double_complex, 1> f(gvec.num_gvec());
     if (pu__ == GPU) {
         f.allocate(memory_t::device);
     }
+    mdarray<double_complex, 1> ftmp(gvecp.gvec_count_fft());
+
     for (int ig = 0; ig < gvec.num_gvec(); ig++) {
         auto v = gvec.gvec(ig);
         if (mpi_comm_world().rank() == 0) {
@@ -31,15 +34,18 @@ void test_fft(double cutoff__, device_t pu__)
         }
         f.zero();
         f[ig] = 1.0;
+        for (int igloc = 0; igloc < gvecp.gvec_count_fft(); igloc++) {
+            ftmp[igloc] = f[gvecp.idx_gvec(igloc)];
+        }
         switch (pu__) {
             case CPU: {
-                fft.transform<1>(&f[gvec.partition().gvec_offset_fft()]);
+                fft.transform<1>(&ftmp[0]);
                 break;
             }
             case GPU: {
                 f.copy<memory_t::host, memory_t::device>();
                 //fft.transform<1, GPU>(gvec.partition(), f.at<GPU>(gvec.partition().gvec_offset_fft()));
-                fft.transform<1, CPU>(f.at<CPU>(gvec.partition().gvec_offset_fft()));
+                fft.transform<1, CPU>(ftmp.at<CPU>(0));
                 fft.buffer().copy<memory_t::device, memory_t::host>();
                 break;
             }
@@ -65,10 +71,9 @@ void test_fft(double cutoff__, device_t pu__)
         if (mpi_comm_world().rank() == 0) {
             printf("error : %18.10e", diff);
             if (diff < 1e-10) {
-                printf("  OK\n");
+                printf("\x1b[32m" " OK" "\x1b[0m" "\n");
             } else {
-                printf("  Fail\n");
-                exit(1);
+                printf("\x1b[31m" " Fail" "\x1b[0m" "\n");
             }
         }
     }
@@ -96,8 +101,10 @@ int main(int argn, char **argv)
     #ifdef __GPU
     test_fft(cutoff, GPU);
     #endif
-
-    sddk::timer::print();
+    if (mpi_comm_world().rank() == 0) {
+        sddk::timer::print();
+    }
+    mpi_comm_world().barrier();
     
     sirius::finalize();
     return 0;

@@ -9,23 +9,25 @@ void test_fft_complex(double cutoff__, device_t fft_pu__)
 
     FFT3D fft(find_translations(cutoff__, M), mpi_comm_world(), fft_pu__);
 
-    Gvec gvec(M, cutoff__, mpi_comm_world(), mpi_comm_world(), false);
+    Gvec gvec(M, cutoff__, mpi_comm_world(), false);
+
+    Gvec_partition gvp(gvec, fft.comm(), mpi_comm_self());
 
     if (mpi_comm_world().rank() == 0) {
         printf("num_gvec: %i\n", gvec.num_gvec());
     }
     MPI_grid mpi_grid(mpi_comm_world());
 
-    printf("num_gvec_fft: %i\n", gvec.partition().gvec_count_fft());
-    printf("offset_gvec_fft: %i\n", gvec.partition().gvec_offset_fft());
+    printf("num_gvec_fft: %i\n", gvp.gvec_count_fft());
+    //printf("offset_gvec_fft: %i\n", gvec.partition().gvec_offset_fft());
 
-    fft.prepare(gvec.partition());
+    fft.prepare(gvp);
 
-    mdarray<double_complex, 1> f(gvec.partition().gvec_count_fft());
-    for (int ig = 0; ig < gvec.partition().gvec_count_fft(); ig++) {
+    mdarray<double_complex, 1> f(gvp.gvec_count_fft());
+    for (int ig = 0; ig < gvp.gvec_count_fft(); ig++) {
         f[ig] = type_wrapper<double_complex>::random();
     }
-    mdarray<double_complex, 1> g(gvec.partition().gvec_count_fft());
+    mdarray<double_complex, 1> g(gvp.gvec_count_fft());
     #ifdef __GPU
     if (ptr_pu == GPU) {
         f.allocate(memory_t::device);
@@ -34,8 +36,8 @@ void test_fft_complex(double cutoff__, device_t fft_pu__)
     }
     #endif
 
-    fft.transform<1, ptr_pu>(gvec.partition(), f.at<ptr_pu>());
-    fft.transform<-1, ptr_pu>(gvec.partition(), g.at<ptr_pu>());
+    fft.transform<1, ptr_pu>(f.at<ptr_pu>());
+    fft.transform<-1, ptr_pu>(g.at<ptr_pu>());
 
     #ifdef __GPU
     if (ptr_pu == GPU) {
@@ -44,7 +46,7 @@ void test_fft_complex(double cutoff__, device_t fft_pu__)
     #endif
 
     double diff = 0;
-    for (int ig = 0; ig < gvec.partition().gvec_count_fft(); ig++) {
+    for (int ig = 0; ig < gvp.gvec_count_fft(); ig++) {
         diff += std::pow(std::abs(f[ig] - g[ig]), 2);
     }
     mpi_comm_world().allreduce(&diff, 1);
@@ -83,8 +85,11 @@ int main(int argn, char **argv)
     test_fft_complex<CPU>(cutoff, GPU);
     test_fft_complex<GPU>(cutoff, GPU);
     #endif
-
-    sddk::timer::print();
+    
+    if (mpi_comm_world().rank() == 0) {
+        sddk::timer::print();
+    }
+    mpi_comm_world().barrier();
     
     sirius::finalize();
     return 0;

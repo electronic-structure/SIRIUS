@@ -6,21 +6,25 @@ module sirius
 
         subroutine sirius_initialize(call_mpi_init)&
             &bind(C, name="sirius_initialize")
-            integer,                 intent(in) :: call_mpi_init
+            use, intrinsic :: ISO_C_BINDING
+            logical(C_BOOL),         intent(in) :: call_mpi_init
         end subroutine
 
         subroutine sirius_finalize(call_mpi_fin)&
             &bind(C, name="sirius_finalize")
-            integer,                 intent(in) :: call_mpi_fin
+            use, intrinsic :: ISO_C_BINDING
+            logical(C_BOOL),         intent(in) :: call_mpi_fin
         end subroutine
 
         subroutine sirius_clear()&
             &bind(C, name="sirius_clear")
         end subroutine
 
-        subroutine sirius_create_simulation_context(config_file_name)&
+        subroutine sirius_create_simulation_context(config_file_name, method_type, fcomm)&
             &bind(C, name="sirius_create_simulation_context")
             character, dimension(*), intent(in) :: config_file_name
+            character, dimension(*), intent(in) :: method_type
+            integer,                 intent(in) :: fcomm
         end subroutine
 
         subroutine sirius_initialize_simulation_context()&
@@ -33,39 +37,52 @@ module sirius
 
         subroutine sirius_set_lattice_vectors(a1, a2, a3)&
             &bind(C, name="sirius_set_lattice_vectors")
-            real(8),                 intent(in) :: a1
-            real(8),                 intent(in) :: a2
-            real(8),                 intent(in) :: a3
+            use, intrinsic :: ISO_C_BINDING
+            real(C_DOUBLE),          intent(in) :: a1
+            real(C_DOUBLE),          intent(in) :: a2
+            real(C_DOUBLE),          intent(in) :: a3
         end subroutine
 
         subroutine sirius_set_pw_cutoff(pw_cutoff)&
             &bind(C, name="sirius_set_pw_cutoff")
-            real(8),                 intent(in) :: pw_cutoff
+            use, intrinsic :: ISO_C_BINDING
+            real(C_DOUBLE),          intent(in) :: pw_cutoff
         end subroutine
 
         subroutine sirius_set_gk_cutoff(gk_cutoff)&
             &bind(C, name="sirius_set_gk_cutoff")
-            real(8),                 intent(in) :: gk_cutoff
+            use, intrinsic :: ISO_C_BINDING
+            real(C_DOUBLE),          intent(in) :: gk_cutoff
         end subroutine
 
         subroutine sirius_set_aw_cutoff(aw_cutoff)&
             &bind(C, name="sirius_set_aw_cutoff")
-            real(8),                 intent(in) :: aw_cutoff
+            use, intrinsic :: ISO_C_BINDING
+            real(C_DOUBLE),          intent(in) :: aw_cutoff
         end subroutine
 
         subroutine sirius_set_num_fv_states(num_fv_states)&
             &bind(C, name="sirius_set_num_fv_states")
-            integer,                 intent(in) :: num_fv_states
+            use, intrinsic :: ISO_C_BINDING
+            integer(C_INT),          intent(in) :: num_fv_states
+        end subroutine
+
+        subroutine sirius_set_num_bands(num_bands)&
+            &bind(C, name="sirius_set_num_bands")
+            use, intrinsic :: ISO_C_BINDING
+            integer(C_INT),          intent(in) :: num_bands
         end subroutine
 
         subroutine sirius_set_auto_rmt(auto_rmt)&
             &bind(C, name="sirius_set_auto_rmt")
-            integer,                 intent(in) :: auto_rmt
+            use, intrinsic :: ISO_C_BINDING
+            integer(C_INT),          intent(in) :: auto_rmt
         end subroutine
 
         subroutine sirius_set_lmax_apw(lmax_apw)&
             &bind(C, name="sirius_set_lmax_apw")
-            integer,                 intent(in) :: lmax_apw
+            use, intrinsic :: ISO_C_BINDING
+            integer(C_INT),          intent(in) :: lmax_apw
         end subroutine
 
         subroutine sirius_set_lmax_pot(lmax_pot)&
@@ -88,11 +105,6 @@ module sirius
             character, dimension(*), intent(in) :: xc_name
         end subroutine
 
-        subroutine sirius_set_esm_type(esm_name)&
-            &bind(C, name="sirius_set_esm_type")
-            character, dimension(*), intent(in) :: esm_name
-        end subroutine
-
         subroutine sirius_set_gamma_point(gamma_point)&
             &bind(C, name="sirius_set_gamma_point")
             logical(1),              intent(in) :: gamma_point
@@ -112,16 +124,6 @@ module sirius
         subroutine sirius_set_core_relativity(str)&
             &bind(C, name="sirius_set_core_relativity")
             character, dimension(*), intent(in) :: str
-        end subroutine
-
-        subroutine sirius_set_atom_type_properties(label, symbol, zn, mass, mt_radius, num_mt_points)&
-            &bind(C, name="sirius_set_atom_type_properties")
-            character, dimension(*), intent(in) :: label
-            character, dimension(*), intent(in) :: symbol
-            integer,                 intent(in) :: zn
-            real(8),                 intent(in) :: mass
-            real(8),                 intent(in) :: mt_radius
-            integer,                 intent(in) :: num_mt_points
         end subroutine
 
         subroutine sirius_set_atom_type_configuration(label, n, l, k, occupancy, core)&
@@ -153,16 +155,23 @@ module sirius
             integer,                  intent(in) :: eqatoms
         end subroutine
 
-        subroutine sirius_set_atom_type_beta_rf(label, num_beta, beta_l, beta_j, num_mesh_points, beta_rf, ld, has_so)&
-            &bind(C, name="sirius_set_atom_type_beta_rf")
+        subroutine sirius_add_atom_type_beta_radial_function(label, l, beta, num_points)&
+            &bind(C, name="sirius_add_atom_type_beta_radial_function")
             character, dimension(*), intent(in) :: label
-            integer,                 intent(in) :: num_beta
-            integer,                 intent(in) :: beta_l
-            real(8),                 intent(in) :: beta_j
-            integer,                 intent(in) :: num_mesh_points
-            real(8),                 intent(in) :: beta_rf
-            integer,                 intent(in) :: ld
-            logical(1),              intent(in) :: has_so
+            integer,                 intent(in) :: l
+            real(8),                 intent(in) :: beta
+            integer,                 intent(in) :: num_points
+        end subroutine
+
+        subroutine sirius_add_atom_type_q_radial_function(label, l, mb, nb, q_rf, num_points)&
+            &bind(C, name="sirius_add_atom_type_q_radial_function")
+            use, intrinsic :: ISO_C_BINDING
+            character, dimension(*), intent(in) :: label
+            integer(C_INT),          intent(in) :: l
+            integer(C_INT),          intent(in) :: mb
+            integer(C_INT),          intent(in) :: nb
+            real(C_DOUBLE),          intent(in) :: q_rf
+            integer(C_INT),          intent(in) :: num_points
         end subroutine
 
         subroutine sirius_set_atom_type_dion(label, num_beta, dion)&
@@ -172,12 +181,12 @@ module sirius
             real(8),                 intent(in) :: dion
         end subroutine
 
-        subroutine sirius_set_atom_type_q_rf(label, q_rf, lmax)&
-            &bind(C, name="sirius_set_atom_type_q_rf")
-            character, dimension(*), intent(in) :: label
-            real(8),                 intent(in) :: q_rf
-            integer,                 intent(in) :: lmax
-        end subroutine
+        !subroutine sirius_set_atom_type_q_rf(label, q_rf, lmax)&
+        !    &bind(C, name="sirius_set_atom_type_q_rf")
+        !    character, dimension(*), intent(in) :: label
+        !    real(8),                 intent(in) :: q_rf
+        !    integer,                 intent(in) :: lmax
+        !end subroutine
 
         subroutine sirius_set_atom_type_rho_core(label, num_points, rho_core)&
             &bind(C, name="sirius_set_atom_type_rho_core")
@@ -420,26 +429,16 @@ module sirius
             &bind(C, name="sirius_symmetrize_density")
         end subroutine
 
-        !subroutine sirius_create_kset_aux(num_kpoints, kpoints, kpoint_weights, init_kset, kset_id, nk_loc_ptr)&
-        !    &bind(C, name="sirius_create_kset")
-        !    use, intrinsic :: ISO_C_BINDING
-        !    integer,                 intent(in)  :: num_kpoints
-        !    real(8),                 intent(in)  :: kpoints
-        !    real(8),                 intent(in)  :: kpoint_weights
-        !    integer,                 intent(in)  :: init_kset
-        !    integer,                 intent(out) :: kset_id
-        !    type(C_PTR), value,      intent(in)  :: nk_loc_ptr
-        !end subroutine
-
         subroutine sirius_delete_kset(kset_id)&
             &bind(C, name="sirius_delete_kset")
             integer,                 intent(in) :: kset_id
         end subroutine
 
-        subroutine sirius_get_band_energies(kset_id, ik, band_energies)&
+        subroutine sirius_get_band_energies(kset_id, ik, ispn, band_energies)&
             &bind(C, name="sirius_get_band_energies")
-            integer,                 intent(in) :: kset_id
-            integer,                 intent(in) :: ik
+            integer,                 intent(in)  :: kset_id
+            integer,                 intent(in)  :: ik
+            integer,                 intent(in)  :: ispn
             real(8),                 intent(out) :: band_energies
         end subroutine
 
@@ -449,10 +448,11 @@ module sirius
             real(8),                 intent(out) :: efermi
         end subroutine
 
-        subroutine sirius_set_band_occupancies(kset_id, ik, band_occupancies)&
+        subroutine sirius_set_band_occupancies(kset_id, ik, ispn, band_occupancies)&
             &bind(C, name="sirius_set_band_occupancies")
             integer,                 intent(in) :: kset_id
             integer,                 intent(in) :: ik
+            integer,                 intent(in) :: ispn
             real(8),                 intent(in) :: band_occupancies
         end subroutine
 
@@ -760,7 +760,7 @@ module sirius
             &bind(C, name="sirius_get_fft_comm")
             integer,                 intent(out) :: fcomm
         end subroutine
-        
+
         subroutine sirius_get_kpoint_inner_comm(fcomm)&
             &bind(C, name="sirius_get_kpoint_inner_comm")
             integer,                 intent(out) :: fcomm
@@ -924,12 +924,42 @@ module sirius
             integer,                  intent(in)  :: ld
         end subroutine
 
-        subroutine sirius_get_q_operator_matrix(iat, q_mtrx, ld)&
+        subroutine sirius_set_q_operator_matrix(label, q_mtrx, ld)&
+            &bind(C, name="sirius_set_q_operator_matrix")
+            character, dimension(*),  intent(in)  :: label
+            real(8),                  intent(in)  :: q_mtrx
+            integer,                  intent(in)  :: ld
+        end subroutine
+
+        subroutine sirius_get_q_operator_matrix(label, q_mtrx, ld)&
             &bind(C, name="sirius_get_q_operator_matrix")
-            integer,                  intent(in)  :: iat
+            character, dimension(*),  intent(in)  :: label
             real(8),                  intent(out) :: q_mtrx
             integer,                  intent(in)  :: ld
         end subroutine
+
+        subroutine sirius_get_q_operator(label, xi1, xi2, ngv, gvl, q_pw)&
+            &bind(C, name="sirius_get_q_operator")
+            character, dimension(*),  intent(in)  :: label
+            integer,                  intent(in)  :: xi1
+            integer,                  intent(in)  :: xi2
+            integer,                  intent(in)  :: ngv
+            integer,                  intent(in)  :: gvl
+            complex(8),               intent(out) :: q_pw
+        end subroutine
+
+        subroutine sirius_get_num_beta_projectors(label, num_beta_projectors)&
+            &bind(C, name="sirius_get_num_beta_projectors")
+            character, dimension(*),  intent(in)  :: label
+            integer,                  intent(out) :: num_beta_projectors
+        end subroutine
+
+        !subroutine sirius_get_q_operator_matrix(iat, q_mtrx, ld)&
+        !    &bind(C, name="sirius_get_q_operator_matrix")
+        !    integer,                  intent(in)  :: iat
+        !    real(8),                  intent(out) :: q_mtrx
+        !    integer,                  intent(in)  :: ld
+        !end subroutine
 
         subroutine sirius_get_density_matrix(ia, dm, nhm)&
             &bind(C, name="sirius_get_density_matrix")
@@ -1008,12 +1038,13 @@ module sirius
             integer,                 intent(in)  :: flg
         end subroutine
 
-        subroutine sirius_add_atom_type_chi(atom_type, l, num_points, chi)&
-            &bind(C, name="sirius_add_atom_type_chi")
+        subroutine sirius_add_atom_type_ps_atomic_wf(atom_type, l, chi, occ, num_points)&
+            &bind(C, name="sirius_add_atom_type_ps_atomic_wf")
             character,         target, dimension(*), intent(in)  :: atom_type
             integer,                                 intent(in)  :: l
-            integer,                                 intent(in)  :: num_points
             real(8),                                 intent(in)  :: chi
+            real(8),                                 intent(in)  :: occ   ! swap order with chi
+            integer,                                 intent(in)  :: num_points
         end subroutine
 
         subroutine sirius_set_esm(enable_esm, esm_bc)&
@@ -1022,7 +1053,109 @@ module sirius
             character,         target, dimension(*), intent(in)  :: esm_bc
         end subroutine
 
-    end interface
+                subroutine sirius_set_hubbard_correction()&
+          &bind(C, name="sirius_set_hubbard_correction")
+        end subroutine sirius_set_hubbard_correction
+
+        subroutine sirius_set_hubbard_occupancies(occ, ld)&
+          &bind(C, name="sirius_set_hubbard_occupancies")
+          real(8),             target, dimension(*),                  intent(in) :: occ
+          integer,                                   intent(in) :: ld
+        end subroutine sirius_set_hubbard_occupancies
+
+        subroutine sirius_get_hubbard_occupancies(occ, ld)&
+             &bind(C, name="sirius_get_hubbard_occupancies")
+          real(8),                                   intent(out) :: occ
+          integer,                                   intent(in) :: ld
+        end subroutine sirius_get_hubbard_occupancies
+
+        subroutine sirius_set_hubbard_occupancies_nc(occ, ld)&
+             &bind(C, name="sirius_set_hubbard_occupancies_nc")
+          complex(8),                                intent(in) :: occ
+          integer,                                   intent(in) :: ld
+        end subroutine sirius_set_hubbard_occupancies_nc
+
+        subroutine sirius_set_hubbard_potential(occ, ld)&
+          &bind(C, name="sirius_set_hubbard_potential")
+          real(8),                                   intent(in) :: occ
+          integer,                                   intent(in) :: ld
+        end subroutine sirius_set_hubbard_potential
+
+        subroutine sirius_set_hubbard_potential_nc(occ, ld)&
+             &bind(C, name="sirius_set_hubbard_potential_nc")
+          complex(8),                                intent(in) :: occ
+          integer,                                   intent(in) :: ld
+        end subroutine sirius_set_hubbard_potential_nc
+
+        subroutine sirius_get_hubbard_occupancies_nc(occ, ld)&
+             &bind(C, name="sirius_get_hubbard_occupancies_nc")
+          complex(8),                                intent(out) :: occ
+          integer,                                   intent(in) :: ld
+        end subroutine sirius_get_hubbard_occupancies_nc
+
+        subroutine sirius_calculate_hubbard_potential()&
+             &bind(C, name="sirius_calculate_hubbard_potential")
+        end subroutine sirius_calculate_hubbard_potential
+
+        subroutine sirius_set_hubbard_simplified_method()&
+             &bind(C, name="sirius_set_hubbard_simplified_method")
+        end subroutine sirius_set_hubbard_simplified_method
+
+        subroutine sirius_set_orthogonalize_hubbard_orbitals()&
+             &bind(C, name="sirius_set_orthogonalize_hubbard_orbitals")
+        end subroutine sirius_set_orthogonalize_hubbard_orbitals
+
+        subroutine sirius_set_normalize_hubbard_orbitals()&
+             &bind(C, name="sirius_set_normalize_hubbard_orbitals")
+        end subroutine sirius_set_normalize_hubbard_orbitals
+
+        subroutine sirius_set_atom_type_hubbard(label__, U_, J_, theta_, phi_, alpha_, beta_, J0_)&
+          &bind(C, name="sirius_set_atom_type_hubbard")
+          character, dimension(*), intent(in) :: label__
+          real(8),                intent(in) :: U_
+          real(8),                intent(in) :: J_
+          real(8),                intent(in) :: theta_
+          real(8),                intent(in) :: phi_
+          real(8),                intent(in) :: alpha_
+          real(8),                intent(in) :: beta_
+          real(8),                intent(in) :: J0_
+        end subroutine sirius_set_atom_type_hubbard
+
+        subroutine sirius_calculate_hubbard_occupancies()&
+             &bind(C, name="sirius_calculate_hubbard_occupancies")
+        end subroutine sirius_calculate_hubbard_occupancies
+
+        subroutine sirius_create_storage_file()&
+          &bind(C, name="sirius_create_storage_file")
+        end subroutine sirius_create_storage_file
+
+        subroutine sirius_save_potential()&
+          &bind(C, name="sirius_save_potential")
+        end subroutine sirius_save_potential
+
+        subroutine sirius_load_potential()&
+          &bind(C, name="sirius_load_potential")
+        end subroutine sirius_load_potential
+
+        subroutine sirius_save_density()&
+          &bind(C, name="sirius_save_density")
+        end subroutine sirius_save_density
+
+        subroutine sirius_load_density()&
+          &bind(C, name="sirius_load_density")
+        end subroutine sirius_load_density
+
+        subroutine sirius_integrate(m, np, x, f, res)&
+            &bind(C, name="sirius_integrate")
+            use, intrinsic :: ISO_C_BINDING
+            integer(C_INT),                   intent(in)  :: m
+            integer(C_INT),                   intent(in)  :: np
+            real(C_DOUBLE),                   intent(in)  :: x
+            real(C_DOUBLE),                   intent(in)  :: f
+            real(C_DOUBLE),                   intent(out) :: res
+        end subroutine sirius_integrate
+
+     end interface
 
 contains
 
@@ -1057,13 +1190,13 @@ contains
 
         rhoit_ptr = C_NULL_PTR
         if (present(rhoit)) rhoit_ptr = C_LOC(rhoit)
-        
+
         magit_ptr = C_NULL_PTR
         if (present(magit)) magit_ptr = C_LOC(magit)
-        
+
         rhomt_ptr = C_NULL_PTR
         if (present(rhomt)) rhomt_ptr = C_LOC(rhomt)
-        
+
         magmt_ptr = C_NULL_PTR
         if (present(magmt)) magmt_ptr = C_LOC(magmt)
 
@@ -1105,23 +1238,47 @@ contains
 
     end subroutine
 
-    subroutine sirius_add_atom_type(label, fname)
+    subroutine sirius_add_atom_type(label, fname, symbol, zn, mass, spin_orbit)
         implicit none
         character,           target, dimension(*), intent(in) :: label
         character, optional, target, dimension(*), intent(in) :: fname
-        type(C_PTR) label_ptr, fname_ptr
+        character, optional, target, dimension(*), intent(in) :: symbol
+        integer,   optional, target,               intent(in) :: zn
+        real(8),   optional, target,               intent(in) :: mass
+        logical(C_BOOL), optional, target,         intent(in) :: spin_orbit
+
+        type(C_PTR) label_ptr, fname_ptr, symbol_ptr, zn_ptr, mass_ptr, spin_orbit_ptr
         interface
-            subroutine sirius_add_atom_type_aux(label, fname)&
+            subroutine sirius_add_atom_type_aux(label, fname, symbol, zn, mass, spin_orbit)&
                 &bind(C, name="sirius_add_atom_type")
                 use, intrinsic :: ISO_C_BINDING
                 type(C_PTR), value, intent(in) :: label
                 type(C_PTR), value, intent(in) :: fname
+                type(C_PTR), value, intent(in) :: symbol
+                type(C_PTR), value, intent(in) :: zn
+                type(C_PTR), value, intent(in) :: mass
+                type(C_PTR), value, intent(in) :: spin_orbit
             end subroutine
         end interface
-        label_ptr = C_LOC(label(1))
-        fname_ptr = C_NULL_PTR
 
-        call sirius_add_atom_type_aux(label_ptr, fname_ptr)
+        label_ptr = C_LOC(label(1))
+
+        fname_ptr = C_NULL_PTR
+        if (present(fname)) fname_ptr = C_LOC(fname)
+
+        symbol_ptr = C_NULL_PTR
+        if (present(symbol)) symbol_ptr = C_LOC(symbol)
+
+        zn_ptr = C_NULL_PTR
+        if (present(zn)) zn_ptr = C_LOC(zn)
+
+        mass_ptr = C_NULL_PTR
+        if (present(mass)) mass_ptr = C_LOC(mass)
+
+        spin_orbit_ptr = C_NULL_PTR
+        if (present(spin_orbit)) spin_orbit_ptr = C_LOC(spin_orbit)
+
+        call sirius_add_atom_type_aux(label_ptr, fname_ptr, symbol_ptr, zn_ptr, mass_ptr, spin_orbit_ptr)
 
     end subroutine
 
@@ -1172,7 +1329,7 @@ contains
 
         nk_loc_ptr = C_NULL_PTR
         if (present(nk_loc)) nk_loc_ptr = C_LOC(nk_loc)
-        
+
         call sirius_create_kset_aux(num_kpoints, kpoints, kpoint_weights, init_kset, kset_id, nk_loc_ptr)
 
     end subroutine

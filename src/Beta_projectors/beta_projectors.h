@@ -36,16 +36,13 @@ namespace sirius {
 /// Stores <G+k | beta> expansion
 class Beta_projectors: public Beta_projectors_base<1>
 {
-    friend class Beta_projectors_gradient;
-
     protected:
 
         /// Generate plane-wave coefficients for beta-projectors of atom types.
-        void generate_pw_coefs_t()
+        void generate_pw_coefs_t(std::vector<int>& igk__)
         {
             PROFILE("sirius::Beta_projectors::generate_pw_coefs_t");
-            auto& bchunk = ctx_.beta_projector_chunks();
-            if (!bchunk.num_beta_t()) {
+            if (!num_beta_t()) {
                 return;
             }
             
@@ -53,24 +50,30 @@ class Beta_projectors: public Beta_projectors_base<1>
 
             auto& beta_radial_integrals = ctx_.beta_ri();
 
+            std::vector<double_complex> z(ctx_.unit_cell().lmax() + 1);
+            for (int l = 0; l <= ctx_.unit_cell().lmax(); l++) {
+                z[l] = std::pow(double_complex(0, -1), l) * fourpi / std::sqrt(ctx_.unit_cell().omega());
+            }
+
             /* compute <G+k|beta> */
             #pragma omp parallel for
-            for (int igkloc = 0; igkloc < gkvec_.gvec_count(comm.rank()); igkloc++) {
-                int igk = gkvec_.gvec_offset(comm.rank()) + igkloc;
+            for (int igkloc = 0; igkloc < num_gkvec_loc(); igkloc++) {
+                int igk = igk__[igkloc];
                 /* vs = {r, theta, phi} */
                 auto vs = SHT::spherical_coordinates(gkvec_.gkvec_cart(igk));
                 /* compute real spherical harmonics for G+k vector */
-                std::vector<double> gkvec_rlm(Utils::lmmax(lmax_beta_));
-                SHT::spherical_harmonics(lmax_beta_, vs[1], vs[2], &gkvec_rlm[0]);
+                std::vector<double> gkvec_rlm(Utils::lmmax(ctx_.unit_cell().lmax()));
+                SHT::spherical_harmonics(ctx_.unit_cell().lmax(), vs[1], vs[2], &gkvec_rlm[0]);
                 for (int iat = 0; iat < ctx_.unit_cell().num_atom_types(); iat++) {
                     auto& atom_type = ctx_.unit_cell().atom_type(iat);
+                    /* get all values of radial integrals */
+                    auto ri_val = beta_radial_integrals.values(iat, vs[0]);
                     for (int xi = 0; xi < atom_type.mt_basis_size(); xi++) {
                         int l     = atom_type.indexb(xi).l;
                         int lm    = atom_type.indexb(xi).lm;
                         int idxrf = atom_type.indexb(xi).idxrf;
 
-                        auto z = std::pow(double_complex(0, -1), l) * fourpi / std::sqrt(ctx_.unit_cell().omega());
-                        pw_coeffs_t_[0](igkloc, atom_type.offset_lo() + xi) = z * gkvec_rlm[lm] * beta_radial_integrals.value<int, int>(idxrf, iat, vs[0]);
+                        pw_coeffs_t_[0](igkloc, atom_type.offset_lo() + xi) = z[l] * gkvec_rlm[lm] * ri_val(idxrf);
                     }
                 }
             }
@@ -79,33 +82,32 @@ class Beta_projectors: public Beta_projectors_base<1>
                 auto c1 = pw_coeffs_t_[0].checksum();
                 comm.allreduce(&c1, 1);
                 if (comm.rank() == 0) {
-                    DUMP("checksum(beta_pw_coeffs_t) : %18.10f %18.10f", c1.real(), c1.imag())
+                    print_checksum("beta_pw_coeffs_t", c1);
                 }
             }
 
-            //if (ctx_.processing_unit() == GPU) {
-            //    pw_coeffs_t_[0].copy<memory_t::host, memory_t::device>();
-            //}
+            if (ctx_.processing_unit() == GPU) {
+                /* beta projectors for atom types will be stored on GPU for the entire run */
+                reallocate_pw_coeffs_t_on_gpu_ = false;
+                pw_coeffs_t_[0].allocate(memory_t::device);
+                pw_coeffs_t_[0].copy<memory_t::host, memory_t::device>();
+            }
         }
                     
     public:
 
         Beta_projectors(Simulation_context& ctx__,
-                        Gvec const&         gkvec__)
-            : Beta_projectors_base<1>(ctx__, gkvec__)
+                        Gvec const&         gkvec__,
+                        std::vector<int>&   igk__)
+            : Beta_projectors_base<1>(ctx__, gkvec__, igk__)
         {
             PROFILE("sirius::Beta_projectors::Beta_projectors");
-            generate_pw_coefs_t();
+            generate_pw_coefs_t(igk__);
         }
 
         void generate(int chunk__)
         {
             Beta_projectors_base<1>::generate(chunk__, 0);
-        }
-
-        inline Beta_projector_chunks const& beta_projector_chunks() const
-        {
-            return ctx_.beta_projector_chunks();
         }
 };
 

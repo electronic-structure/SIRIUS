@@ -49,6 +49,14 @@ class Simulation_context_base: public Simulation_parameters
 
         /// Communicator for this simulation.
         Communicator const& comm_;
+
+        /// Auxiliary communicator for the fine-grid FFT transformation.
+        Communicator comm_ortho_fft_;
+
+        /// Auxiliary communicator for the coarse-grid FFT transformation.
+        Communicator comm_ortho_fft_coarse_;
+
+        Communicator comm_band_ortho_fft_coarse_;
         
         /// Unit cell of the simulation.
         Unit_cell unit_cell_;
@@ -68,10 +76,14 @@ class Simulation_context_base: public Simulation_parameters
         std::unique_ptr<FFT3D> fft_coarse_;
 
         /// G-vectors within the Gmax cutoff.
-        Gvec gvec_;
+        std::unique_ptr<Gvec> gvec_;
+
+        std::unique_ptr<Gvec_partition> gvec_partition_;
         
         /// G-vectors within the 2 * |Gmax^{WF}| cutoff.
-        Gvec gvec_coarse_;
+        std::unique_ptr<Gvec> gvec_coarse_;
+
+        std::unique_ptr<Gvec_partition> gvec_coarse_partition_;
 
         std::unique_ptr<remap_gvec_to_shells> remap_gvec_; 
 
@@ -80,13 +92,16 @@ class Simulation_context_base: public Simulation_parameters
 
         std::string start_time_tag_;
 
-        ev_solver_t std_evp_solver_type_{ev_lapack};
+        ev_solver_t std_evp_solver_type_{ev_solver_t::lapack};
 
-        ev_solver_t gen_evp_solver_type_{ev_lapack};
+        ev_solver_t gen_evp_solver_type_{ev_solver_t::lapack};
 
         mdarray<double_complex, 3> phase_factors_;
 
         mdarray<double_complex, 3> sym_phase_factors_;
+        
+        /// Phase factors for atom types.
+        mdarray<double_complex, 2> phase_factors_t_;
         
         mdarray<int, 2> gvec_coord_;
 
@@ -100,16 +115,48 @@ class Simulation_context_base: public Simulation_parameters
 
         std::unique_ptr<Radial_integrals_aug<false>> aug_ri_;
 
-        std::vector<std::vector<std::pair<int,double>>> atoms_to_grid_idx_;
+        std::unique_ptr<Radial_integrals_atomic_wf> atomic_wf_ri_;
+
+        std::vector<std::vector<std::pair<int, double>>> atoms_to_grid_idx_;
 
         // TODO remove to somewhere
         const double av_atom_radius_{2.0};
 
         double time_active_;
-        
+
         bool initialized_{false};
 
-        void init_fft();
+        inline void init_fft()
+        {
+            auto rlv = unit_cell_.reciprocal_lattice_vectors();
+
+            if (!(control().fft_mode_ == "serial" || control().fft_mode_ == "parallel")) {
+                TERMINATE("wrong FFT mode");
+            }
+
+            /* create FFT driver for dense mesh (density and potential) */
+            fft_ = std::unique_ptr<FFT3D>(new FFT3D(find_translations(pw_cutoff(), rlv), comm_fft(), processing_unit())); 
+
+            /* create FFT driver for coarse mesh */
+            auto fft_coarse_grid = FFT3D_grid(find_translations(2 * gk_cutoff(), rlv));
+            fft_coarse_ = std::unique_ptr<FFT3D>(new FFT3D(fft_coarse_grid, comm_fft_coarse(), processing_unit()));
+
+            /* create a list of G-vectors for corase FFT grid */
+            gvec_coarse_ = std::unique_ptr<Gvec>(new Gvec(rlv, gk_cutoff() * 2, comm(), control().reduce_gvec_));
+
+            gvec_coarse_partition_ = std::unique_ptr<Gvec_partition>(new Gvec_partition(*gvec_coarse_, comm_fft_coarse(), comm_ortho_fft_coarse()));
+
+            /* create a list of G-vectors for dense FFT grid; G-vectors are divided between all available MPI ranks.*/
+            //gvec_ = std::unique_ptr<Gvec>(new Gvec(rlv, pw_cutoff(), comm(), control().reduce_gvec_));
+            gvec_ = std::unique_ptr<Gvec>(new Gvec(pw_cutoff(), *gvec_coarse_));
+
+            gvec_partition_ = std::unique_ptr<Gvec_partition>(new Gvec_partition(*gvec_, comm_fft(), comm_ortho_fft()));
+
+            remap_gvec_ = std::unique_ptr<remap_gvec_to_shells>(new remap_gvec_to_shells(comm(), gvec()));
+
+            /* prepare fine-grained FFT driver for the entire simulation */
+            fft_->prepare(*gvec_partition_);
+        }
 
         /* copy constructor is forbidden */
         Simulation_context_base(Simulation_context_base const&) = delete;
@@ -211,15 +258,6 @@ class Simulation_context_base: public Simulation_parameters
             start();
         }
 
-        ~Simulation_context_base()
-        {
-            //time_active_ += runtime::wtime();
-
-            //if (mpi_comm_world().rank() == 0 && initialized_) {
-            //    printf("Simulation_context active time: %.4f sec.\n", time_active_);
-            //}
-        }
-
         /// Initialize the similation (can only be called once).
         void initialize();
 
@@ -257,12 +295,22 @@ class Simulation_context_base: public Simulation_parameters
 
         Gvec const& gvec() const
         {
-            return gvec_;
+            return *gvec_;
+        }
+
+        Gvec_partition const& gvec_partition() const
+        {
+            return *gvec_partition_;
         }
 
         Gvec const& gvec_coarse() const
         {
-            return gvec_coarse_;
+            return *gvec_coarse_;
+        }
+
+        Gvec_partition const& gvec_coarse_partition() const
+        {
+            return *gvec_coarse_partition_;
         }
 
         remap_gvec_to_shells const& remap_gvec() const
@@ -284,22 +332,27 @@ class Simulation_context_base: public Simulation_parameters
         /// Communicator between k-points.
         Communicator const& comm_k() const
         {
-            /* 3rd dimension of the MPI grid is used for k-point distribution */
-            return mpi_grid_->communicator(1 << 2);
+            /* 1st dimension of the MPI grid is used for k-point distribution */
+            return mpi_grid_->communicator(1 << 0);
         }
 
         /// Band and BLACS grid communicator.
         Communicator const& comm_band() const
         {
-            /* 1st and 2nd dimensions of the MPI grid are used for parallelization inside k-point */
-            return mpi_grid_->communicator(1 << 0 | 1 << 1);
+            /* 2nd and 3rd dimensions of the MPI grid are used for parallelization inside k-point */
+            return mpi_grid_->communicator(1 << 1 | 1 << 2);
         }
 
         /// Communicator of the dense FFT grid.
         Communicator const& comm_fft() const
         {
-            /* 1st dimension of MPI grid is used */
-            return mpi_grid_->communicator(1 << 0);
+            /* 3rd dimension of MPI grid is used */
+            return mpi_grid_->communicator(1 << 2);
+        }
+
+        Communicator const& comm_ortho_fft() const
+        {
+            return comm_ortho_fft_;
         }
 
         /// Communicator of the coarse FFT grid.
@@ -312,11 +365,21 @@ class Simulation_context_base: public Simulation_parameters
             }
         }
 
+        Communicator const& comm_ortho_fft_coarse() const
+        {
+            return comm_ortho_fft_coarse_;
+        }
+
+        Communicator const& comm_band_ortho_fft_coarse() const
+        {
+            return comm_band_ortho_fft_coarse_;
+        }
+
         void create_storage_file() const
         {
             if (comm_.rank() == 0) {
                 /* create new hdf5 file */
-                HDF5_tree fout(storage_file_name, true);
+                HDF5_tree fout(storage_file_name, hdf5_access_t::truncate);
                 fout.create_node("parameters");
                 fout.create_node("effective_potential");
                 fout.create_node("effective_magnetic_field");
@@ -332,15 +395,22 @@ class Simulation_context_base: public Simulation_parameters
                 fout["parameters"].write("num_mag_dims", num_mag_dims());
                 fout["parameters"].write("num_bands", num_bands());
 
-                mdarray<int, 2> gv(3, gvec_.num_gvec());
-                for (int ig = 0; ig < gvec_.num_gvec(); ig++) {
-                    auto G = gvec_.gvec(ig);
+                mdarray<int, 2> gv(3, gvec().num_gvec());
+                for (int ig = 0; ig < gvec().num_gvec(); ig++) {
+                    auto G = gvec().gvec(ig);
                     for (int x: {0, 1, 2}) {
                         gv(x, ig) = G[x];
                     }
                 }
-                fout["parameters"].write("num_gvec", gvec_.num_gvec());
+                fout["parameters"].write("num_gvec", gvec().num_gvec());
                 fout["parameters"].write("gvec", gv);
+
+                fout.create_node("unit_cell");
+                fout["unit_cell"].create_node("atoms");
+                for (int j = 0; j < unit_cell().num_atoms(); j++) {
+                    fout["unit_cell"]["atoms"].create_node(j);
+                    fout["unit_cell"]["atoms"][j].write("mt_basis_size", unit_cell().atom(j).mt_basis_size());
+                }
             }
             comm_.barrier();
         }
@@ -359,6 +429,18 @@ class Simulation_context_base: public Simulation_parameters
         {
             return gen_evp_solver_type_;
         }
+        
+        template <typename T>
+        inline std::unique_ptr<Eigensolver<T>> std_evp_solver()
+        {
+            return std::move(Eigensolver_factory<T>(std_evp_solver_type_));
+        }
+
+        template <typename T>
+        inline std::unique_ptr<Eigensolver<T>> gen_evp_solver()
+        {
+            return std::move(Eigensolver_factory<T>(gen_evp_solver_type_));
+        }
 
         /// Phase factors \f$ e^{i {\bf G} {\bf r}_{\alpha}} \f$
         inline double_complex gvec_phase_factor(vector3d<int> G__, int ia__) const
@@ -371,7 +453,7 @@ class Simulation_context_base: public Simulation_parameters
         /// Phase factors \f$ e^{i {\bf G} {\bf r}_{\alpha}} \f$
         inline double_complex gvec_phase_factor(int ig__, int ia__) const
         {
-            return gvec_phase_factor(gvec_.gvec(ig__), ia__);
+            return gvec_phase_factor(gvec().gvec(ig__), ia__);
         }
 
         inline mdarray<int, 2> const& gvec_coord() const
@@ -393,10 +475,10 @@ class Simulation_context_base: public Simulation_parameters
             switch (processing_unit_) {
                 case CPU: {
                     #pragma omp parallel for
-                    for (int igloc = 0; igloc < gvec_.count(); igloc++) {
-                        int ig = gvec_.offset() + igloc;
+                    for (int igloc = 0; igloc < gvec().count(); igloc++) {
+                        int ig = gvec().offset() + igloc;
                         for (int i = 0; i < na; i++) {
-                            int ia = unit_cell_.atom_type(iat__).atom_id(i);
+                            int ia = unit_cell().atom_type(iat__).atom_id(i);
                             phase_factors__(igloc, i) = gvec_phase_factor(ig, ia);
                         }
                     }
@@ -404,7 +486,7 @@ class Simulation_context_base: public Simulation_parameters
                 }
                 case GPU: {
                     #ifdef __GPU
-                    generate_phase_factors_gpu(gvec_.count(), na, gvec_coord().at<GPU>(), atom_coord(iat__).at<GPU>(),
+                    generate_phase_factors_gpu(gvec().count(), na, gvec_coord().at<GPU>(), atom_coord(iat__).at<GPU>(),
                                                phase_factors__.at<GPU>());
                     #else
                     TERMINATE_NO_GPU
@@ -423,24 +505,23 @@ class Simulation_context_base: public Simulation_parameters
 
             double fourpi_omega = fourpi / unit_cell_.omega();
 
-            int ngv = (index_domain == index_domain_t::local) ? gvec_.count() : gvec().num_gvec();
+            int ngv = (index_domain == index_domain_t::local) ? gvec().count() : gvec().num_gvec();
             std::vector<double_complex> f_pw(ngv, double_complex(0, 0));
 
             #pragma omp parallel for schedule(static)
-            for (int igloc = 0; igloc < gvec_.count(); igloc++) {
+            for (int igloc = 0; igloc < gvec().count(); igloc++) {
                 /* global index of G-vector */
-                int ig = gvec_.offset() + igloc;
+                int ig = gvec().offset() + igloc;
                 double g = gvec().gvec_len(ig);
 
                 int j = (index_domain == index_domain_t::local) ? igloc : ig;
-                for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
-                    int iat = unit_cell_.atom(ia).type_id();
-                    f_pw[j] += fourpi_omega * std::conj(gvec_phase_factor(ig, ia)) * form_factors__(iat, g);
+                for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
+                    f_pw[j] += fourpi_omega * std::conj(phase_factors_t_(igloc, iat)) * form_factors__(iat, g);
                 }
             }
 
             if (index_domain == index_domain_t::global) {
-                comm_.allgather(&f_pw[0], gvec_.offset(), gvec_.count());
+                comm_.allgather(&f_pw[0], gvec().offset(), gvec().count());
             }
 
             return std::move(f_pw);
@@ -470,6 +551,11 @@ class Simulation_context_base: public Simulation_parameters
         inline Radial_integrals_aug<false> const& aug_ri() const
         {
             return *aug_ri_;
+        }
+
+        inline Radial_integrals_atomic_wf const& atomic_wf_ri() const
+        {
+            return *atomic_wf_ri_;
         }
         
         /// Find the lambda parameter used in the Ewald summation.
@@ -505,38 +591,6 @@ class Simulation_context_base: public Simulation_parameters
             return sym_phase_factors_;
         }
 };
-
-inline void Simulation_context_base::init_fft()
-{
-    auto rlv = unit_cell_.reciprocal_lattice_vectors();
-
-    if (!(control().fft_mode_ == "serial" || control().fft_mode_ == "parallel")) {
-        TERMINATE("wrong FFT mode");
-    }
-
-    /* create FFT driver for dense mesh (density and potential) */
-    fft_ = std::unique_ptr<FFT3D>(new FFT3D(find_translations(pw_cutoff(), rlv), comm_fft(), processing_unit())); 
-
-    /* create a list of G-vectors for dense FFT grid; G-vectors are divided between all available MPI ranks.*/
-    gvec_ = Gvec(rlv, pw_cutoff(), comm(), comm_fft(), control().reduce_gvec_);
-
-    remap_gvec_ = std::unique_ptr<remap_gvec_to_shells>(new remap_gvec_to_shells(comm(), gvec()));
-
-    /* prepare fine-grained FFT driver for the entire simulation */
-    fft_->prepare(gvec_.partition());
-
-    /* create FFT driver for coarse mesh */
-    auto fft_coarse_grid = FFT3D_grid(find_translations(2 * gk_cutoff(), rlv));
-    //auto pu = (fft_coarse_grid.size() < std::pow(64, 3)) ? CPU : processing_unit(); 
-    //if (full_potential()) {
-    //    pu = processing_unit();
-    //}
-    auto pu = processing_unit();
-    fft_coarse_ = std::unique_ptr<FFT3D>(new FFT3D(fft_coarse_grid, comm_fft_coarse(), pu));
-
-    /* create a list of G-vectors for corase FFT grid */
-    gvec_coarse_ = Gvec(rlv, gk_cutoff() * 2, comm(), comm_fft_coarse(), control().reduce_gvec_);
-}
 
 inline void Simulation_context_base::initialize()
 {
@@ -592,11 +646,14 @@ inline void Simulation_context_base::initialize()
     }
 
     /* setup MPI grid */
-    mpi_grid_ = std::unique_ptr<MPI_grid>(new MPI_grid({npr, npc, npk}, comm_));
-    
-    /* setup BLACS grid */
-    blacs_grid_ = std::unique_ptr<BLACS_grid>(new BLACS_grid(comm_band(), npr, npc));
+    mpi_grid_ = std::unique_ptr<MPI_grid>(new MPI_grid({npk, npc, npr}, comm_));
 
+    comm_ortho_fft_ = comm().split(comm_fft().rank());
+
+    comm_ortho_fft_coarse_ = comm().split(comm_fft_coarse().rank());
+
+    comm_band_ortho_fft_coarse_ = comm_band().split(comm_fft_coarse().rank());
+    
     /* can't use reduced G-vectors in LAPW code */
     if (full_potential()) {
         control_input_.reduce_gvec_ = false;
@@ -633,10 +690,10 @@ inline void Simulation_context_base::initialize()
         MEMORY_USAGE_INFO();
     }
 
-    if (unit_cell_.num_atoms() != 0 && use_symmetry()) {
-        unit_cell_.symmetry().check_gvec_symmetry(gvec_, comm_);
+    if (unit_cell_.num_atoms() != 0 && use_symmetry() && control().verification_ >= 1) {
+        unit_cell_.symmetry().check_gvec_symmetry(gvec(), comm());
         if (!full_potential()) {
-            unit_cell_.symmetry().check_gvec_symmetry(gvec_coarse_, comm_);
+            unit_cell_.symmetry().check_gvec_symmetry(gvec_coarse(), comm());
         }
     }
 
@@ -658,7 +715,21 @@ inline void Simulation_context_base::initialize()
             }
         }
     }
-    
+
+    phase_factors_t_ = mdarray<double_complex, 2>(gvec().count(), unit_cell().num_atom_types());
+    #pragma omp parallel for schedule(static)
+    for (int igloc = 0; igloc < gvec().count(); igloc++) {
+        /* global index of G-vector */
+        int ig = gvec().offset() + igloc;
+        for (int iat = 0; iat < unit_cell().num_atom_types(); iat++) {
+            double_complex z(0, 0);
+            for (int ia = 0; ia < unit_cell().atom_type(iat).num_atoms(); ia++) {
+                z += gvec_phase_factor(ig, unit_cell().atom_type(iat).atom_id(ia));
+            }
+            phase_factors_t_(igloc, iat) = z;
+        }
+    }
+
     if (use_symmetry()) {
         sym_phase_factors_ = mdarray<double_complex, 3>(3, limits, unit_cell().symmetry().num_mag_sym());
 
@@ -673,32 +744,31 @@ inline void Simulation_context_base::initialize()
         }
     }
     
-    /* take 10% of empty non-magnetic states */
-    if (num_fv_states() < 0) {
-        set_num_fv_states(static_cast<int>(unit_cell_.num_valence_electrons() / 2.0) +
-                                           std::max(10, static_cast<int>(0.1 * unit_cell_.num_valence_electrons())));
-    }
-    
-    if (num_fv_states() < static_cast<int>(unit_cell_.num_valence_electrons() / 2.0)) {
-        std::stringstream s;
-        s << "not enough first-variational states : " << num_fv_states();
-        TERMINATE(s);
-    }
-    
-    /* setup the cyclic block size */
-    if (cyclic_block_size() < 0) {
-        double a = std::min(std::log2(double(num_fv_states()) / blacs_grid_->num_ranks_col()),
-                            std::log2(double(num_fv_states()) / blacs_grid_->num_ranks_row()));
-        if (a < 1) {
-            control_input_.cyclic_block_size_ = 2;
-        } else {
-            control_input_.cyclic_block_size_ = static_cast<int>(std::min(128.0, std::pow(2.0, static_cast<int>(a))) + 1e-12);
+    int nbnd = static_cast<int>(unit_cell_.num_valence_electrons() / 2.0) +
+                                std::max(10, static_cast<int>(0.1 * unit_cell_.num_valence_electrons()));
+    if (full_potential()) {
+        /* take 10% of empty non-magnetic states */
+        if (num_fv_states() < 0) {
+            num_fv_states(nbnd);
+        } 
+        if (num_fv_states() < static_cast<int>(unit_cell_.num_valence_electrons() / 2.0)) {
+            std::stringstream s;
+            s << "not enough first-variational states : " << num_fv_states();
+            TERMINATE(s);
+        }
+    } else {
+        if (num_mag_dims() == 3) {
+            nbnd *= 2;
+        }
+        if (num_bands() < 0) {
+            num_bands(nbnd);
         }
     }
     
     std::string evsn[] = {std_evp_solver_name(), gen_evp_solver_name()};
-
-    if (comm_band().size() == 1) {
+    
+    /* deduce the default eigen-value solver */
+    if (comm_band().size() == 1 || npc == 1 || npr == 1) {
         if (evsn[0] == "") {
             #if defined(__GPU) && defined(__MAGMA)
             evsn[0] = "magma";
@@ -734,16 +804,14 @@ inline void Simulation_context_base::initialize()
 
     ev_solver_t* evst[] = {&std_evp_solver_type_, &gen_evp_solver_type_};
 
-    std::map<std::string, ev_solver_t> str_to_ev_solver_t;
-
-    str_to_ev_solver_t["lapack"]    = ev_lapack;
-    str_to_ev_solver_t["scalapack"] = ev_scalapack;
-    str_to_ev_solver_t["elpa1"]     = ev_elpa1;
-    str_to_ev_solver_t["elpa2"]     = ev_elpa2;
-    str_to_ev_solver_t["magma"]     = ev_magma;
-    str_to_ev_solver_t["plasma"]    = ev_plasma;
-    str_to_ev_solver_t["rs_cpu"]    = ev_rs_cpu;
-    str_to_ev_solver_t["rs_gpu"]    = ev_rs_gpu;
+    std::map<std::string, ev_solver_t> str_to_ev_solver_t = {
+        {"lapack",    ev_solver_t::lapack},
+        {"scalapack", ev_solver_t::scalapack},
+        {"elpa1",     ev_solver_t::elpa1},
+        {"elpa2",     ev_solver_t::elpa2},
+        {"magma",     ev_solver_t::magma},
+        {"plasma",    ev_solver_t::plasma}
+    };
 
     for (int i: {0, 1}) {
         auto name = evsn[i];
@@ -756,11 +824,37 @@ inline void Simulation_context_base::initialize()
         *evst[i] = str_to_ev_solver_t[name];
     }
 
+    auto std_solver = std_evp_solver<double>();
+    auto gen_solver = gen_evp_solver<double>();
+
+    if (std_solver->is_parallel() != gen_solver->is_parallel()) {
+        TERMINATE("both solvers must be sequential or parallel");
+    }
+
+    /* setup BLACS grid */
+    if (std_solver->is_parallel()) {
+        blacs_grid_ = std::unique_ptr<BLACS_grid>(new BLACS_grid(comm_band(), npr, npc));
+    } else {
+        blacs_grid_ = std::unique_ptr<BLACS_grid>(new BLACS_grid(mpi_comm_self(), 1, 1));
+    }
+
+    /* setup the cyclic block size */
+    if (cyclic_block_size() < 0) {
+        double a = std::min(std::log2(double(num_bands()) / blacs_grid_->num_ranks_col()),
+                            std::log2(double(num_bands()) / blacs_grid_->num_ranks_row()));
+        if (a < 1) {
+            control_input_.cyclic_block_size_ = 2;
+        } else {
+            control_input_.cyclic_block_size_ = static_cast<int>(std::min(128.0, std::pow(2.0, static_cast<int>(a))) + 1e-12);
+        }
+    }
+    
+
     if (processing_unit() == GPU) {
-        gvec_coord_ = mdarray<int, 2>(gvec_.count(), 3, memory_t::host | memory_t::device, "gvec_coord_");
-        for (int igloc = 0; igloc < gvec_.count(); igloc++) {
-            int ig = gvec_.offset() + igloc;
-            auto G = gvec_.gvec(ig);
+        gvec_coord_ = mdarray<int, 2>(gvec().count(), 3, memory_t::host | memory_t::device, "gvec_coord_");
+        for (int igloc = 0; igloc < gvec().count(); igloc++) {
+            int ig = gvec().offset() + igloc;
+            auto G = gvec().gvec(ig);
             for (int x: {0, 1, 2}) {
                 gvec_coord_(igloc, x) = G[x];
             }
@@ -779,22 +873,28 @@ inline void Simulation_context_base::initialize()
             atom_coord_.back().copy<memory_t::host, memory_t::device>();
         }
     }
-    
+
     if (!full_potential()) {
-
         /* some extra length is added to cutoffs in order to interface with QE which may require ri(q) for q>cutoff */
-
-        beta_ri_ = std::unique_ptr<Radial_integrals_beta<false>>(new Radial_integrals_beta<false>(unit_cell(), gk_cutoff() + 1, settings().nprii_beta_));
-
-        beta_ri_djl_ = std::unique_ptr<Radial_integrals_beta<true>>(new Radial_integrals_beta<true>(unit_cell(), gk_cutoff() + 1, settings().nprii_beta_));
-        
-        aug_ri_ = std::unique_ptr<Radial_integrals_aug<false>>(new Radial_integrals_aug<false>(unit_cell(), pw_cutoff() + 1, settings().nprii_aug_));
+        beta_ri_      = std::unique_ptr<Radial_integrals_beta<false>>(new Radial_integrals_beta<false>(unit_cell(), gk_cutoff() + 1, settings().nprii_beta_));
+        beta_ri_djl_  = std::unique_ptr<Radial_integrals_beta<true>>(new Radial_integrals_beta<true>(unit_cell(), gk_cutoff() + 1, settings().nprii_beta_));
+        aug_ri_       = std::unique_ptr<Radial_integrals_aug<false>>(new Radial_integrals_aug<false>(unit_cell(), pw_cutoff() + 1, settings().nprii_aug_));
+        atomic_wf_ri_ = std::unique_ptr<Radial_integrals_atomic_wf>(new Radial_integrals_atomic_wf(unit_cell(), gk_cutoff(), 20));
     }
 
     //time_active_ = -runtime::wtime();
 
-    if (control().verbosity_ > 0 && comm_.rank() == 0) {
+    if (control().verbosity_ >= 1 && comm().rank() == 0) {
         print_info();
+    }
+
+    if (control().verbosity_ >= 3) {
+        runtime::pstdout pout(comm());
+        if (comm().rank() == 0) {
+            pout.printf("--- MPI rank placement ---\n");
+        }
+        pout.printf("rank: %3i, comm_band_rank: %3i, comm_k_rank: %3i, hostname: %s\n",
+                    comm().rank(), comm_band().rank(), comm_k().rank(), runtime::hostname().c_str());
     }
 
     if (comm_.rank() == 0 && control().print_memory_usage_) {
@@ -824,44 +924,33 @@ inline void Simulation_context_base::print_info()
     printf("\n");
     printf("maximum number of OMP threads : %i\n", omp_get_max_threads());
 
+    std::string headers[]         = {"FFT context for density and potential", "FFT context for coarse grid"};
+    double cutoffs[]              = {pw_cutoff(), 2 * gk_cutoff()};
+    Communicator const* comms[]   = {&comm_fft(), &comm_fft_coarse()};
+    FFT3D_grid const* fft_grids[] = {&fft_->grid(), &fft_coarse_->grid()};
+    Gvec const* gvecs[]           = {&gvec(), &gvec_coarse()};
+
     printf("\n");
-    printf("FFT context for density and potential\n");
-    printf("=====================================\n");
-    printf("  comm size                             : %i\n", comm_fft().size());
-    printf("  plane wave cutoff                     : %f\n", pw_cutoff());
-    auto fft_grid = fft_->grid();
-    printf("  grid size                             : %i %i %i   total : %i\n", fft_grid.size(0),
-                                                                                fft_grid.size(1),
-                                                                                fft_grid.size(2),
-                                                                                fft_grid.size());
-    printf("  grid limits                           : %i %i   %i %i   %i %i\n", fft_grid.limits(0).first,
-                                                                                fft_grid.limits(0).second,
-                                                                                fft_grid.limits(1).first,
-                                                                                fft_grid.limits(1).second,
-                                                                                fft_grid.limits(2).first,
-                                                                                fft_grid.limits(2).second);
-    printf("  number of G-vectors within the cutoff : %i\n", gvec_.num_gvec());
-    printf("  local number of G-vectors             : %i\n", gvec_.gvec_count(0));
-    printf("  number of G-shells                    : %i\n", gvec_.num_shells());
-    printf("\n");
-    printf("FFT context for coarse grid\n");
-    printf("===========================\n");
-    printf("  comm size                             : %i\n", comm_fft_coarse().size());
-    printf("  plane wave cutoff                     : %f\n", 2 * gk_cutoff());
-    fft_grid = fft_coarse_->grid();
-    printf("  grid size                             : %i %i %i   total : %i\n", fft_grid.size(0),
-                                                                                fft_grid.size(1),
-                                                                                fft_grid.size(2),
-                                                                                fft_grid.size());
-    printf("  grid limits                           : %i %i   %i %i   %i %i\n", fft_grid.limits(0).first,
-                                                                                fft_grid.limits(0).second,
-                                                                                fft_grid.limits(1).first,
-                                                                                fft_grid.limits(1).second,
-                                                                                fft_grid.limits(2).first,
-                                                                                fft_grid.limits(2).second);
-    printf("  number of G-vectors within the cutoff : %i\n", gvec_coarse_.num_gvec());
-    printf("  number of G-shells                    : %i\n", gvec_coarse_.num_shells());
-    printf("\n");
+    for (int i = 0; i < 2; i++) {
+        printf("%s\n", headers[i].c_str());
+        printf("=====================================\n");
+        printf("  comm size                             : %i\n", comms[i]->size());
+        printf("  plane wave cutoff                     : %f\n", cutoffs[i]);
+        printf("  grid size                             : %i %i %i   total : %i\n", fft_grids[i]->size(0),
+                                                                                    fft_grids[i]->size(1),
+                                                                                    fft_grids[i]->size(2),
+                                                                                    fft_grids[i]->size());
+        printf("  grid limits                           : %i %i   %i %i   %i %i\n", fft_grids[i]->limits(0).first,
+                                                                                    fft_grids[i]->limits(0).second,
+                                                                                    fft_grids[i]->limits(1).first,
+                                                                                    fft_grids[i]->limits(1).second,
+                                                                                    fft_grids[i]->limits(2).first,
+                                                                                    fft_grids[i]->limits(2).second);
+        printf("  number of G-vectors within the cutoff : %i\n", gvecs[i]->num_gvec());
+        printf("  local number of G-vectors             : %i\n", gvecs[i]->count());
+        printf("  number of G-shells                    : %i\n", gvecs[i]->num_shells());
+        printf("\n");
+    }
 
     unit_cell_.print_info(control().verbosity_);
     for (int i = 0; i < unit_cell_.num_atom_types(); i++) {
@@ -869,12 +958,12 @@ inline void Simulation_context_base::print_info()
     }
 
     printf("\n");
-    printf("total nuclear charge               : %i\n", unit_cell_.total_nuclear_charge());
-    printf("number of core electrons           : %f\n", unit_cell_.num_core_electrons());
-    printf("number of valence electrons        : %f\n", unit_cell_.num_valence_electrons());
-    printf("total number of electrons          : %f\n", unit_cell_.num_electrons());
-    printf("total number of aw basis functions : %i\n", unit_cell_.mt_aw_basis_size());
-    printf("total number of lo basis functions : %i\n", unit_cell_.mt_lo_basis_size());
+    printf("total nuclear charge               : %i\n", unit_cell().total_nuclear_charge());
+    printf("number of core electrons           : %f\n", unit_cell().num_core_electrons());
+    printf("number of valence electrons        : %f\n", unit_cell().num_valence_electrons());
+    printf("total number of electrons          : %f\n", unit_cell().num_electrons());
+    printf("total number of aw basis functions : %i\n", unit_cell().mt_aw_basis_size());
+    printf("total number of lo basis functions : %i\n", unit_cell().mt_lo_basis_size());
     printf("number of first-variational states : %i\n", num_fv_states());
     printf("number of bands                    : %i\n", num_bands());
     printf("number of spins                    : %i\n", num_spins());
@@ -924,37 +1013,37 @@ inline void Simulation_context_base::print_info()
     for (int i = 0; i < 2; i++) {
         printf("%s", evsn[i].c_str());
         switch (evst[i]) {
-            case ev_lapack: {
+            case ev_solver_t::lapack: {
                 printf("LAPACK\n");
                 break;
             }
             #ifdef __SCALAPACK
-            case ev_scalapack: {
+            case ev_solver_t::scalapack: {
                 printf("ScaLAPACK\n");
                 break;
             }
-            case ev_elpa1: {
+            case ev_solver_t::elpa1: {
                 printf("ELPA1\n");
                 break;
             }
-            case ev_elpa2: {
+            case ev_solver_t::elpa2: {
                 printf("ELPA2\n");
                 break;
             }
-            case ev_rs_gpu: {
-                printf("RS_gpu\n");
-                break;
-            }
-            case ev_rs_cpu: {
-                printf("RS_cpu\n");
-                break;
-            }
+            //case ev_rs_gpu: {
+            //    printf("RS_gpu\n");
+            //    break;
+            //}
+            //case ev_rs_cpu: {
+            //    printf("RS_cpu\n");
+            //    break;
+            //}
             #endif
-            case ev_magma: {
+            case ev_solver_t::magma: {
                 printf("MAGMA\n");
                 break;
             }
-            case ev_plasma: {
+            case ev_solver_t::plasma: {
                 printf("PLASMA\n");
                 break;
             }

@@ -25,10 +25,10 @@
 #ifndef __INPUT_H__
 #define __INPUT_H__
 
-#include "geometry3d.hpp"
-#include "runtime.h"
 #include "constants.h"
-#include "utils.h"
+#include "sddk.hpp"
+
+using namespace geometry3d;
 
 namespace sirius {
 
@@ -235,7 +235,9 @@ struct Iterative_solver_input
 
     /// Tolerance for the residual L2 norm.
     double residual_tolerance_{1e-6};
-
+    
+    /// Additional tolerance for empty states.
+    /** Setting this variable to 0 will treat empty states with the same tolerance as occupied states. */
     double empty_states_tolerance_{1e-5};
 
     /// Defines the flavour of the iterative solver.
@@ -259,6 +261,8 @@ struct Iterative_solver_input
      *  as they are and solve generalized eigen-value problem. */
     bool orthogonalize_{true};
 
+    bool init_eval_old_{true};
+
     /// Tell how to initialize the subspace.
     /** It can be either "lcao", i.e. start from the linear combination of atomic orbitals or "random" –- start from
      *  the randomized wave functions. */
@@ -267,20 +271,21 @@ struct Iterative_solver_input
     void read(json const& parser)
     {
         if (parser.count("iterative_solver")) {
-            type_               = parser["iterative_solver"].value("type", type_);
-            num_steps_          = parser["iterative_solver"].value("num_steps", num_steps_);
-            subspace_size_      = parser["iterative_solver"].value("subspace_size", subspace_size_);
-            energy_tolerance_   = parser["iterative_solver"].value("energy_tolerance", energy_tolerance_);
-            residual_tolerance_ = parser["iterative_solver"].value("residual_tolerance", residual_tolerance_);
+            type_                   = parser["iterative_solver"].value("type", type_);
+            num_steps_              = parser["iterative_solver"].value("num_steps", num_steps_);
+            subspace_size_          = parser["iterative_solver"].value("subspace_size", subspace_size_);
+            energy_tolerance_       = parser["iterative_solver"].value("energy_tolerance", energy_tolerance_);
+            residual_tolerance_     = parser["iterative_solver"].value("residual_tolerance", residual_tolerance_);
             empty_states_tolerance_ = parser["iterative_solver"].value("empty_states_tolerance", empty_states_tolerance_);
-            converge_by_energy_ = parser["iterative_solver"].value("converge_by_energy", converge_by_energy_);
-            min_num_res_        = parser["iterative_solver"].value("min_num_res", min_num_res_);
-            real_space_prj_     = parser["iterative_solver"].value("real_space_prj", real_space_prj_);
-            R_mask_scale_       = parser["iterative_solver"].value("R_mask_scale", R_mask_scale_);
-            mask_alpha_         = parser["iterative_solver"].value("mask_alpha", mask_alpha_);
-            num_singular_       = parser["iterative_solver"].value("num_singular", num_singular_);
-            orthogonalize_      = parser["iterative_solver"].value("orthogonalize", orthogonalize_);
-            init_subspace_      = parser["iterative_solver"].value("init_subspace", init_subspace_);
+            converge_by_energy_     = parser["iterative_solver"].value("converge_by_energy", converge_by_energy_);
+            min_num_res_            = parser["iterative_solver"].value("min_num_res", min_num_res_);
+            real_space_prj_         = parser["iterative_solver"].value("real_space_prj", real_space_prj_);
+            R_mask_scale_           = parser["iterative_solver"].value("R_mask_scale", R_mask_scale_);
+            mask_alpha_             = parser["iterative_solver"].value("mask_alpha", mask_alpha_);
+            num_singular_           = parser["iterative_solver"].value("num_singular", num_singular_);
+            orthogonalize_          = parser["iterative_solver"].value("orthogonalize", orthogonalize_);
+            init_eval_old_          = parser["iterative_solver"].value("init_eval_old", init_eval_old_);
+            init_subspace_          = parser["iterative_solver"].value("init_subspace", init_subspace_);
             std::transform(init_subspace_.begin(), init_subspace_.end(), init_subspace_.begin(), ::tolower);
         }
     }
@@ -328,6 +333,7 @@ struct Control_input
     bool print_stress_{false};
     bool print_forces_{false};
     bool print_timers_{true};
+    bool print_neighbors_{false};
 
     void read(json const& parser)
     {
@@ -351,6 +357,7 @@ struct Control_input
             print_stress_        = parser["control"].value("print_stress", print_stress_);
             print_forces_        = parser["control"].value("print_forces", print_forces_);
             print_timers_        = parser["control"].value("print_timers", print_timers_);
+            print_neighbors_     = parser["control"].value("print_neighbors", print_neighbors_);
 
             auto strings = {&std_evp_solver_name_, &gen_evp_solver_name_, &fft_mode_, &processing_unit_};
             for (auto s : strings) {
@@ -368,6 +375,10 @@ struct Parameters_input
     std::vector<std::string> xc_functionals_;
     std::string core_relativity_{"dirac"};
     std::string valence_relativity_{"zora"};
+    
+    /// Number of bands.
+    /** In spin-collinear case this is the number of bands for each spin channel. */ 
+    int num_bands_{-1};
 
     /// Number of first-variational states.
     int num_fv_states_{-1};
@@ -414,17 +425,17 @@ struct Parameters_input
     /// True if spin-orbit correction is applied.
     bool so_correction_{false};
 
-    /// True if UJ correction is applied.
-    bool uj_correction_{false};
+    /// True if Hubbard (or U) correction is applied.
+    bool hubbard_correction_{false};
 
     /// True if symmetry is used.
     bool use_symmetry_{true};
 
     double nn_radius_{-1};
-    
+
     /// Effective screening medium.
     bool enable_esm_{false};
-    
+
     /// Type of periodic boundary conditions.
     std::string esm_bc_{"pbc"};
 
@@ -468,10 +479,15 @@ struct Parameters_input
             potential_tol_  = parser["parameters"].value("potential_tol", potential_tol_);
             molecule_       = parser["parameters"].value("molecule", molecule_);
             nn_radius_      = parser["parameters"].value("nn_radius", nn_radius_);
-            if (parser["parameters"].count("so_correction")) {
-                so_correction_ = parser["parameters"].value("so_correction", so_correction_);
+            if (parser["parameters"].count("spin_orbit")) {
+                so_correction_ = parser["parameters"].value("spin_orbit", so_correction_);
                 num_mag_dims_  = 3;
             }
+
+            if (parser["parameters"].count("hubbard_correction")) {
+                hubbard_correction_ = parser["parameters"].value("hubbard_correction", hubbard_correction_);
+            }
+
         }
     }
 };
@@ -497,6 +513,153 @@ struct Settings_input
             always_update_wf_ = parser["settings"].value("always_update_wf", always_update_wf_);
             mixer_rss_min_    = parser["settings"].value("mixer_rss_min", mixer_rss_min_);
         }
+    }
+};
+
+struct Hubbard_input
+{
+    int number_of_species{1};
+    bool hubbard_correction_{false};
+    bool simplified_hubbard_correction_{false};
+    bool orthogonalize_hubbard_orbitals_{false};
+    bool normalize_hubbard_orbitals_{false};
+    bool hubbard_starting_magnetization_{false};
+    bool hubbard_U_plus_V_{false};
+    int projection_method_{0};
+    std::string wave_function_file_;
+    std::vector<std::pair<std::string, std::vector<double>>> species;
+
+    bool hubbard_correction() const
+    {
+        return hubbard_correction_;
+    }
+
+    void read(json const& parser)
+    {
+        if (!parser.count("hubbard"))
+            return;
+
+        orthogonalize_hubbard_orbitals_ = false;
+        if (parser["hubbard"].count("orthogonalize_hubbard_wave_functions")) {
+            orthogonalize_hubbard_orbitals_ = parser["hubbard"].value("orthogonalize_hubbard_wave_functions", orthogonalize_hubbard_orbitals_);
+        }
+
+        normalize_hubbard_orbitals_ = false;
+        if (parser["hubbard"].count("normalize_hubbard_wave_functions")) {
+            normalize_hubbard_orbitals_ = parser["hubbard"].value("normalize_hubbard_wave_functions", normalize_hubbard_orbitals_);
+        }
+
+        if (parser["hubbard"].count("simplified_hubbard_correction")) {
+            simplified_hubbard_correction_ = parser["hubbard"].value("simplified_hubbard_correction",
+                                                                     simplified_hubbard_correction_);
+        }
+        std::vector<double> coef_;
+        std::vector<std::string> labels_;
+        coef_.clear();
+        coef_.resize(9, 0.0);
+        species.clear();
+        labels_.clear();
+
+        for (auto& label : parser["unit_cell"]["atom_types"]) {
+            if (std::find(std::begin(labels_), std::end(labels_), label) != std::end(labels_)) {
+                TERMINATE("duplicate atom type label");
+            }
+            labels_.push_back(label);
+        }
+
+        // by default we use the atomic orbitals given in the pseudo potentials
+        this->projection_method_ = 0;
+
+        if (parser["hubbard"].count("projection_method")) {
+            std::string projection_method__ = parser["hubbard"]["projection_method"].get<std::string>();
+            if (projection_method__ == "file") {
+                // they are provided by a external file
+                if (parser["hubbard"].count("wave_function_file")) {
+                    this->wave_function_file_ = parser["hubbard"]["wave_function_file"].get<std::string>();
+                    this->projection_method_ = 1;
+                } else {
+                    TERMINATE("The hubbard projection method 'file' requires the option 'wave_function_file' to be defined");
+                }
+            }
+
+            if (projection_method__ == "pseudo") {
+                this->projection_method_ = 2;
+            }
+        }
+
+        for (auto &label : labels_) {
+            for(size_t d = 0; d < coef_.size(); d++)
+                coef_[d] = 0.0;
+
+            if(parser["hubbard"][label].count("U")) {
+                coef_[0] = parser["hubbard"][label]["U"].get<double>();
+                hubbard_correction_ = true;
+            }
+
+            if(parser["hubbard"][label].count("J")) {
+                coef_[1] = parser["hubbard"][label]["J"].get<double>();
+                hubbard_correction_ = true;
+            }
+
+            if(parser["hubbard"][label].count("B")) {
+                coef_[2] = parser["hubbard"][label]["B"].get<double>();
+                hubbard_correction_ = true;
+            }
+
+            if(parser["hubbard"][label].count("E2")) {
+                coef_[2] = parser["hubbard"][label]["E2"].get<double>();
+                hubbard_correction_ = true;
+            }
+
+            if(parser["hubbard"][label].count("E3")) {
+                coef_[3] = parser["hubbard"][label]["E3"].get<double>();
+                hubbard_correction_ = true;
+            }
+
+            if(parser["hubbard"][label].count("alpha")) {
+                coef_[4] = parser["hubbard"][label]["alpha"].get<double>();
+                hubbard_correction_ = true;
+            }
+
+            if(parser["hubbard"][label].count("beta")) {
+                coef_[5] = parser["hubbard"][label]["beta"].get<double>();
+                hubbard_correction_ = true;
+            }
+
+            // angle for the starting magnetization in deg, convert it
+            // in radian
+
+            if(parser["hubbard"][label].count("starting_magnetization")) {
+                coef_[6] = parser["hubbard"][label]["starting_magnetization"].get<double>();
+                hubbard_starting_magnetization_ = true;
+            }
+
+            if(parser["hubbard"][label].count("starting_magnetization_theta_angle")) {
+                coef_[7] = parser["hubbard"][label]["starting_magnetization_theta_angle"].get<double>() * M_PI / 180.0 ;
+                hubbard_starting_magnetization_ = true;
+            }
+
+            if(parser["hubbard"][label].count("starting_magnetization_phi_angle")) {
+                coef_[8] = parser["hubbard"][label]["starting_magnetization_phi_angle"].get<double>() * M_PI/ 180.0 ;
+                hubbard_starting_magnetization_ = true;
+            }
+
+            // now convert eV in Ha
+            for (int s = 0; s < static_cast<int>(coef_.size() - 3); s++) {
+                coef_[s] /= ha2ev;
+            }
+
+            species.push_back(std::make_pair(label, coef_));
+        }
+        if (parser["hubbard"].count("hubbard_u_plus_v")) {
+            hubbard_U_plus_V_ = true;
+        }
+
+
+        if (!hubbard_correction_) {
+            TERMINATE("The hubbard section is empty");
+        }
+
     }
 };
 };

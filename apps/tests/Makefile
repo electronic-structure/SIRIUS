@@ -10,7 +10,8 @@ LIB_SIRIUS_DBG = ../../src/libsirius.dbg.a
 	$(CXX) $(CXX_OPT) $(INCLUDE) $< $(LIB_SIRIUS) $(LIBS) -o $@
 
 all: test_hdf5 test_allgather mt_function splindex hydrogen read_atom \
-     test_mdarray test_xc test_hloc test_mpi_grid test_mixer test_enu test_gemm
+     test_mdarray test_xc test_hloc test_mpi_grid test_mixer test_enu test_gemm \
+     test_eigen_v2
 
 %: %.cpp $(LIB_SIRIUS)
 	$(CXX) $(CXX_OPT) $(INCLUDE) $< $(LIB_SIRIUS) $(LIBS) -o $@
@@ -29,4 +30,4 @@ clean:
 	test_pstdout test_zgemm test_init test_blacs test_enu test_allreduce test_alltoall test_bcast \
 	test_copy_gpu test_diag *dSYM test_xc test_dgemm test_zgemm test_hloc test_complex_exp \
 	test_fft_correctness test_memop test_mixer test_mpi_grid test_mutable test_sht test_splne \
-	test_transpose test_spline test_transpose test_unit_cell
+	test_transpose test_spline test_transpose test_unit_cell test_eigen_v2

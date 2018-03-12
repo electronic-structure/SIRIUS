@@ -1,4 +1,4 @@
-#include "../SDDK/GPU/cuda_common.h"
+#include "../SDDK/GPU/cuda_common.hpp"
 #include "../SDDK/GPU/cuda.hpp"
 #include "../SDDK/GPU/cublas.hpp"
 

@@ -4,7 +4,9 @@ using namespace sirius;
 
 void allreduce_func(mdarray<double_complex, 2>& buf)
 {
+    mpi_comm_world().barrier();
     mpi_comm_world().allreduce(buf.at<CPU>(), static_cast<int>(buf.size()));
+    mpi_comm_world().barrier();
 }
 
 void test1()
@@ -21,7 +23,7 @@ void test1()
     buf.zero();
     allreduce_func(buf);
 
-    for (int repeat = 0; repeat < 10; repeat++) {
+    for (int repeat = 0; repeat < 30; repeat++) {
         sddk::timer t1("allreduce_func");
         for (int i = 0; i < n * n; i++) {
             allreduce_func(buf);

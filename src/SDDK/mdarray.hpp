@@ -18,7 +18,7 @@
 // OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 /** \file mdarray.hpp
- *   
+ *
  *  \brief Contains implementation of multidimensional array class.
  */
 
@@ -202,7 +202,7 @@ struct mdarray_mem_mgr
 {
     /// Number of elements of the current allocation.
     size_t size_{0};
-    
+
     /// Type of allocated memory.
     memory_t mode_{memory_t::none};
 
@@ -236,20 +236,20 @@ struct mdarray_mem_mgr
 
         /* host memory can be of two types */
         if ((mode_ & memory_t::host) == memory_t::host) {
-            /* check if the memory is host pinned */ 
+            /* check if the memory is host pinned */
             if ((mode_ & memory_t::host_pinned) == memory_t::host_pinned) {
-                #ifdef __GPU
+#ifdef __GPU
                 acc::deallocate_host(p__);
-                #endif
+#endif
             } else {
                 free(p__);
             }
         }
 
         if ((mode_ & memory_t::device) == memory_t::device) {
-            #ifdef __GPU
+#ifdef __GPU
             acc::deallocate(p__);
-            #endif
+#endif
         }
     }
 };
@@ -263,18 +263,18 @@ class mdarray_base
     std::string label_;
 
     /// Unique pointer to the allocated memory.
-    mutable std::unique_ptr<T[], mdarray_mem_mgr<T>> unique_ptr_{nullptr};
+    std::unique_ptr<T[], mdarray_mem_mgr<T>> unique_ptr_{nullptr};
 
     /// Raw pointer.
-    mutable T* raw_ptr_{nullptr};
+    T* raw_ptr_{nullptr};
 
-    #ifdef __GPU
+#ifdef __GPU
     /// Unique pointer to the allocated GPU memory.
-    mutable std::unique_ptr<T[], mdarray_mem_mgr<T>> unique_ptr_device_{nullptr};
+    std::unique_ptr<T[], mdarray_mem_mgr<T>> unique_ptr_device_{nullptr};
 
     /// Raw pointer to GPU memory
-    mutable T* raw_ptr_device_{nullptr};
-    #endif
+    T* raw_ptr_device_{nullptr};
+#endif
 
     /// Array dimensions.
     std::array<mdarray_index_descriptor, N> dims_;
@@ -338,6 +338,19 @@ class mdarray_base
         return i;
     }
 
+    inline int64_t idx(int64_t const i0, int64_t const i1, int64_t const i2, int64_t const i3, int64_t const i4) const
+    {
+        static_assert(N == 5, "wrong number of dimensions");
+        mdarray_assert(i0 >= dims_[0].begin() && i0 <= dims_[0].end());
+        mdarray_assert(i1 >= dims_[1].begin() && i1 <= dims_[1].end());
+        mdarray_assert(i2 >= dims_[2].begin() && i2 <= dims_[2].end());
+        mdarray_assert(i3 >= dims_[3].begin() && i3 <= dims_[3].end());
+        mdarray_assert(i4 >= dims_[4].begin() && i4 <= dims_[4].end());
+        size_t i = offsets_[0] + i0 + i1 * offsets_[1] + i2 * offsets_[2] + i3 * offsets_[3] + i4 * offsets_[4];
+        mdarray_assert(i >= 0 && i < size());
+        return i;
+    }
+
     template <device_t pu>
     inline T* at_idx(int64_t const idx__)
     {
@@ -347,13 +360,13 @@ class mdarray_base
                 return &raw_ptr_[idx__];
             }
             case GPU: {
-                #ifdef __GPU
+#ifdef __GPU
                 mdarray_assert(raw_ptr_device_ != nullptr);
                 return &raw_ptr_device_[idx__];
-                #else
+#else
                 printf("error at line %i of file %s: not compiled with GPU support\n", __LINE__, __FILE__);
                 exit(0);
-                #endif
+#endif
             }
         }
         return nullptr;
@@ -368,13 +381,13 @@ class mdarray_base
                 return &raw_ptr_[idx__];
             }
             case GPU: {
-                #ifdef __GPU
+#ifdef __GPU
                 mdarray_assert(raw_ptr_device_ != nullptr);
                 return &raw_ptr_device_[idx__];
-                #else
+#else
                 printf("error at line %i of file %s: not compiled with GPU support\n", __LINE__, __FILE__);
                 exit(0);
-                #endif
+#endif
             }
         }
         return nullptr;
@@ -402,19 +415,19 @@ class mdarray_base
         : label_(src.label_)
         , unique_ptr_(std::move(src.unique_ptr_))
         , raw_ptr_(src.raw_ptr_)
-        #ifdef __GPU
+#ifdef __GPU
         , unique_ptr_device_(std::move(src.unique_ptr_device_))
         , raw_ptr_device_(src.raw_ptr_device_)
-        #endif
+#endif
     {
         for (int i = 0; i < N; i++) {
             dims_[i]    = src.dims_[i];
             offsets_[i] = src.offsets_[i];
         }
         src.raw_ptr_ = nullptr;
-        #ifdef __GPU
+#ifdef __GPU
         src.raw_ptr_device_ = nullptr;
-        #endif
+#endif
     }
 
     /// Move assigment operator
@@ -425,11 +438,11 @@ class mdarray_base
             unique_ptr_  = std::move(src.unique_ptr_);
             raw_ptr_     = src.raw_ptr_;
             src.raw_ptr_ = nullptr;
-            #ifdef __GPU
+#ifdef __GPU
             unique_ptr_device_  = std::move(src.unique_ptr_device_);
             raw_ptr_device_     = src.raw_ptr_device_;
             src.raw_ptr_device_ = nullptr;
-            #endif
+#endif
             for (int i = 0; i < N; i++) {
                 dims_[i]    = src.dims_[i];
                 offsets_[i] = src.offsets_[i];
@@ -439,13 +452,13 @@ class mdarray_base
     }
 
     /// Allocate memory for array.
-    void allocate(memory_t memory__) const
+    void allocate(memory_t memory__)
     {
-        #ifndef __GPU
+#ifndef __GPU
         if ((memory__ & memory_t::host_pinned) == memory_t::host_pinned) {
             memory__ = memory_t::host;
         }
-        #endif
+#endif
 
         size_t sz = size();
 
@@ -453,10 +466,10 @@ class mdarray_base
         if ((memory__ & memory_t::host) == memory_t::host) {
             /* page-locked memory */
             if ((memory__ & memory_t::host_pinned) == memory_t::host_pinned) {
-                #ifdef __GPU
+#ifdef __GPU
                 raw_ptr_    = acc::allocate_host<T>(sz);
                 unique_ptr_ = std::unique_ptr<T[], mdarray_mem_mgr<T>>(raw_ptr_, mdarray_mem_mgr<T>(sz, memory_t::host_pinned));
-                #endif
+#endif
             } else { /* regular mameory */
                 raw_ptr_    = static_cast<T*>(malloc(sz * sizeof(T)));
                 unique_ptr_ = std::unique_ptr<T[], mdarray_mem_mgr<T>>(raw_ptr_, mdarray_mem_mgr<T>(sz, memory_t::host));
@@ -471,12 +484,30 @@ class mdarray_base
         }
 
         /* device allocation */
+#ifdef __GPU
         if ((memory__ & memory_t::device) == memory_t::device) {
-            #ifdef __GPU
             raw_ptr_device_    = acc::allocate<T>(sz);
             unique_ptr_device_ = std::unique_ptr<T[], mdarray_mem_mgr<T>>(raw_ptr_device_, mdarray_mem_mgr<T>(sz, memory_t::device));
-            #endif
         }
+#endif
+    }
+
+    void deallocate(memory_t memory__)
+    {
+        if ((memory__ & memory_t::host) == memory_t::host) {
+            if (unique_ptr_) {
+                unique_ptr_.reset(nullptr);
+                raw_ptr_ = nullptr;
+            }
+        }
+#ifdef __GPU
+        if ((memory__ & memory_t::device) == memory_t::device) {
+            if (unique_ptr_device_) {
+                unique_ptr_device_.reset(nullptr);
+                raw_ptr_device_ = nullptr;
+            }
+        }
+#endif
     }
 
     inline T& operator()(int64_t const i0)
@@ -525,6 +556,18 @@ class mdarray_base
     {
         mdarray_assert(raw_ptr_ != nullptr);
         return raw_ptr_[idx(i0, i1, i2, i3)];
+    }
+
+    inline T& operator()(int64_t const i0, int64_t const i1, int64_t const i2, int64_t const i3, int64_t const i4)
+    {
+        mdarray_assert(raw_ptr_ != nullptr);
+        return raw_ptr_[idx(i0, i1, i2, i3, i4)];
+    }
+
+    inline T const& operator()(int64_t const i0, int64_t const i1, int64_t const i2, int64_t const i3, int64_t const i4) const
+    {
+        mdarray_assert(raw_ptr_ != nullptr);
+        return raw_ptr_[idx(i0, i1, i2, i3, i4)];
     }
 
     inline T& operator[](size_t const idx__)
@@ -587,6 +630,12 @@ class mdarray_base
         return at_idx<pu>(idx(i0, i1, i2, i3));
     }
 
+    template <device_t pu>
+    inline T* at(int64_t const i0, int64_t const i1, int64_t const i2, int64_t const i3, int64_t const i4)
+    {
+        return at_idx<pu>(idx(i0, i1, i2, i3, i4));
+    }
+
     /// Return total size (number of elements) of the array.
     inline size_t size() const
     {
@@ -616,15 +665,13 @@ class mdarray_base
 
     /// Compute hash of the array
     /** Example: printf("hash(h) : %16llX\n", h.hash()); */
-    inline uint64_t hash() const
+    inline uint64_t hash(uint64_t h__ = 5381) const
     {
-        uint64_t h{5381};
-
         for (size_t i = 0; i < size() * sizeof(T); i++) {
-            h = ((h << 5) + h) + ((unsigned char*)raw_ptr_)[i];
+            h__ = ((h__ << 5) + h__) + ((unsigned char*)raw_ptr_)[i];
         }
 
-        return h;
+        return h__;
     }
 
     inline T checksum_w(size_t idx0__, size_t size__) const
@@ -681,24 +728,32 @@ class mdarray_base
         }
         std::memcpy(dest__.raw_ptr_, raw_ptr_, size() * sizeof(T));
     }
-    
+
     /// Copy n elements starting from idx0.
     template <memory_t from__, memory_t to__>
-    inline void copy(size_t idx0__, size_t n__)
+    inline void copy(size_t idx0__, size_t n__, int stream_id__ = -1)
     {
-        #ifdef __GPU
+#ifdef __GPU
         mdarray_assert(raw_ptr_ != nullptr);
         mdarray_assert(raw_ptr_device_ != nullptr);
         mdarray_assert(idx0__ + n__ <= size());
 
         if ((from__ & memory_t::host) == memory_t::host && (to__ & memory_t::device) == memory_t::device) {
-            acc::copyin(&raw_ptr_device_[idx0__], &raw_ptr_[idx0__], n__);
+            if (stream_id__ == -1) {
+                acc::copyin(&raw_ptr_device_[idx0__], &raw_ptr_[idx0__], n__);
+            } else {
+                acc::copyin(&raw_ptr_device_[idx0__], &raw_ptr_[idx0__], n__, stream_id__);
+            }
         }
 
         if ((from__ & memory_t::device) == memory_t::device && (to__ & memory_t::host) == memory_t::host) {
-            acc::copyout(&raw_ptr_[idx0__], &raw_ptr_device_[idx0__], n__);
+            if (stream_id__ == -1) {
+                acc::copyout(&raw_ptr_[idx0__], &raw_ptr_device_[idx0__], n__);
+            } else {
+                acc::copyout(&raw_ptr_[idx0__], &raw_ptr_device_[idx0__], n__, stream_id__);
+            }
         }
-        #endif
+#endif
     }
 
     template <memory_t from__, memory_t to__>
@@ -708,9 +763,21 @@ class mdarray_base
     }
 
     template <memory_t from__, memory_t to__>
+    inline void async_copy(size_t n__, int stream_id__)
+    {
+        copy<from__, to__>(0, n__, stream_id__);
+    }
+
+    template <memory_t from__, memory_t to__>
     inline void copy()
     {
         copy<from__, to__>(0, size());
+    }
+
+    template <memory_t from__, memory_t to__>
+    inline void async_copy(int stream_id__)
+    {
+        copy<from__, to__>(0, size(), stream_id__);
     }
 
     /// Zero n elements starting from idx0.
@@ -722,11 +789,12 @@ class mdarray_base
             mdarray_assert(raw_ptr_ != nullptr);
             std::memset(&raw_ptr_[idx0__], 0, n__ * sizeof(T));
         }
-        #ifdef __GPU
+#ifdef __GPU
         if (((mem_type__ & memory_t::device) == memory_t::device) && on_device() && n__) {
+            mdarray_assert(raw_ptr_device_ != nullptr);
             acc::zero(&raw_ptr_device_[idx0__], n__);
         }
-        #endif
+#endif
     }
 
     template <memory_t mem_type__ = memory_t::host>
@@ -735,67 +803,17 @@ class mdarray_base
         zero<mem_type__>(0, size());
     }
 
-    #ifdef __GPU
-    void deallocate_on_device() const
-    {
-        unique_ptr_device_.reset(nullptr);
-        raw_ptr_device_ = nullptr;
-    }
-
-    void copy_to_device() const
-    {
-        mdarray_assert(raw_ptr_ != nullptr);
-        mdarray_assert(raw_ptr_device_ != nullptr);
-
-        acc::copyin(raw_ptr_device_, raw_ptr_, size());
-    }
-
-    void copy_to_device(size_t n__) const
-    {
-        mdarray_assert(raw_ptr_ != nullptr);
-        mdarray_assert(raw_ptr_device_ != nullptr);
-
-        acc::copyin(raw_ptr_device_, raw_ptr_, n__);
-    }
-
-    void copy_to_host()
-    {
-        mdarray_assert(raw_ptr_ != nullptr);
-        mdarray_assert(raw_ptr_device_ != nullptr);
-
-        acc::copyout(raw_ptr_, raw_ptr_device_, size());
-    }
-
-    void copy_to_host(size_t n__)
-    {
-        mdarray_assert(raw_ptr_ != nullptr);
-        mdarray_assert(raw_ptr_device_ != nullptr);
-
-        acc::copyout(raw_ptr_, raw_ptr_device_, n__);
-    }
-
-    void async_copy_to_device(int stream_id__ = -1) const
-    {
-        acc::copyin(raw_ptr_device_, raw_ptr_, size(), stream_id__);
-    }
-
-    void async_copy_to_host(int stream_id__ = -1)
-    {
-        acc::copyout(raw_ptr_, raw_ptr_device_, size(), stream_id__);
-    }
-    #endif
-
     inline bool on_device() const
     {
-        #ifdef __GPU
+#ifdef __GPU
         return (raw_ptr_device_ != nullptr);
-        #else
+#else
         return false;
-        #endif
+#endif
     }
 };
 
-/// Multidimensional array.
+/// Multidimensional array with the column-major (Fortran) order.
 template <typename T, int N>
 class mdarray : public mdarray_base<T, N>
 {
@@ -809,7 +827,7 @@ class mdarray : public mdarray_base<T, N>
             std::string label__ = "")
     {
         static_assert(N == 1, "wrong number of dimensions");
-        
+
         this->label_ = label__;
         this->init_dimensions({d0});
         this->allocate(memory__);
@@ -854,6 +872,21 @@ class mdarray : public mdarray_base<T, N>
         this->allocate(memory__);
     }
 
+    mdarray(mdarray_index_descriptor const& d0,
+            mdarray_index_descriptor const& d1,
+            mdarray_index_descriptor const& d2,
+            mdarray_index_descriptor const& d3,
+            mdarray_index_descriptor const& d4,
+            memory_t memory__   = memory_t::host,
+            std::string label__ = "")
+    {
+        static_assert(N == 5, "wrong number of dimensions");
+
+        this->label_ = label__;
+        this->init_dimensions({d0, d1, d2, d3, d4});
+        this->allocate(memory__);
+    }
+
     mdarray(T* ptr__,
             mdarray_index_descriptor const& d0,
             std::string label__ = "")
@@ -875,9 +908,9 @@ class mdarray : public mdarray_base<T, N>
         this->label_ = label__;
         this->init_dimensions({d0});
         this->raw_ptr_ = ptr__;
-        #ifdef __GPU
+#ifdef __GPU
         this->raw_ptr_device_ = ptr_device__;
-        #endif
+#endif
     }
 
     mdarray(T* ptr__,
@@ -903,9 +936,9 @@ class mdarray : public mdarray_base<T, N>
         this->label_ = label__;
         this->init_dimensions({d0, d1});
         this->raw_ptr_ = ptr__;
-        #ifdef __GPU
+#ifdef __GPU
         this->raw_ptr_device_ = ptr_device__;
-        #endif
+#endif
     }
 
     mdarray(T* ptr__,
@@ -933,9 +966,9 @@ class mdarray : public mdarray_base<T, N>
         this->label_ = label__;
         this->init_dimensions({d0, d1, d2});
         this->raw_ptr_ = ptr__;
-        #ifdef __GPU
+#ifdef __GPU
         this->raw_ptr_device_ = ptr_device__;
-        #endif
+#endif
     }
 
     mdarray(T* ptr__,
@@ -949,6 +982,21 @@ class mdarray : public mdarray_base<T, N>
 
         this->label_ = label__;
         this->init_dimensions({d0, d1, d2, d3});
+        this->raw_ptr_ = ptr__;
+    }
+
+    mdarray(T* ptr__,
+            mdarray_index_descriptor const& d0,
+            mdarray_index_descriptor const& d1,
+            mdarray_index_descriptor const& d2,
+            mdarray_index_descriptor const& d3,
+            mdarray_index_descriptor const& d4,
+            std::string label__ = "")
+    {
+        static_assert(N == 5, "wrong number of dimensions");
+
+        this->label_ = label__;
+        this->init_dimensions({d0, d1, d2, d3, d4});
         this->raw_ptr_ = ptr__;
     }
 

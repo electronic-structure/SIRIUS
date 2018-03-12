@@ -172,7 +172,7 @@ inline vector3d<T> cross(vector3d<T> const a, vector3d<T> const b)
 }
 
 template <typename T>
-std::ostream& operator<<(std::ostream& out, vector3d<T>& v)
+std::ostream& operator<<(std::ostream& out, vector3d<T> const& v)
 {
     out << v[0] << " " << v[1] << " " << v[2];
     return out;
@@ -320,13 +320,17 @@ class matrix3d
         return *this;
     }
 
-
     /// Return determinant of a matrix.
     inline T det() const
     {
         return (mtrx_[0][2] * (mtrx_[1][0] * mtrx_[2][1] - mtrx_[1][1] * mtrx_[2][0]) +
                 mtrx_[0][1] * (mtrx_[1][2] * mtrx_[2][0] - mtrx_[1][0] * mtrx_[2][2]) +
                 mtrx_[0][0] * (mtrx_[1][1] * mtrx_[2][2] - mtrx_[1][2] * mtrx_[2][1]));
+    }
+
+    inline void zero()
+    {
+        std::fill(&mtrx_[0][0], &mtrx_[0][0] + 9, 0);
     }
 };
 

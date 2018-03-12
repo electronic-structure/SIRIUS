@@ -50,14 +50,13 @@ inline void Density::init_density_matrix_for_paw()
 
         int nbf = atom_type.mt_basis_size();
 
-        auto& occupations = atom_type.pp_desc().occupations;
+        auto& occupations = atom_type.paw_wf_occ();
 
-        // magnetization vector
-        vector3d<double> magn = atom.vector_field();
+        /* magnetization vector */
+        auto magn = atom.vector_field();
 
-        for (int xi = 0; xi < nbf; xi++)
-        {
-            basis_function_index_descriptor const& basis_func_index_dsc = atom_type.indexb()[xi];
+        for (int xi = 0; xi < nbf; xi++) {
+            auto& basis_func_index_dsc = atom_type.indexb()[xi];
 
             int rad_func_index = basis_func_index_dsc.idxrf;
 
@@ -67,30 +66,27 @@ inline void Density::init_density_matrix_for_paw()
 
             switch (ctx_.num_mag_dims()){
                 case 0:{
-                    density_matrix_(xi,xi,0,ia) = occ / (double)( 2 * l + 1 );
+                    density_matrix_(xi, xi, 0, ia) = occ / double(2 * l + 1);
                     break;
                 }
 
                 case 3:
                 case 1:{
-                    double nm = ( std::abs(magn[2]) < 1. ) ? magn[2] :  std::copysign(1, magn[2] ) ;
-
-                    density_matrix_(xi,xi,0,ia) = 0.5 * (1.0 + nm ) * occ / (double)( 2 * l + 1 );
-                    density_matrix_(xi,xi,1,ia) = 0.5 * (1.0 - nm ) * occ / (double)( 2 * l + 1 );
+                    double nm = (std::abs(magn[2]) < 1.0) ? magn[2] : std::copysign(1, magn[2]) ;
+                    density_matrix_(xi, xi, 0, ia) = 0.5 * (1.0 + nm) * occ / double(2 * l + 1);
+                    density_matrix_(xi, xi, 1, ia) = 0.5 * (1.0 - nm) * occ / double(2 * l + 1);
                     break;
                 }
             }
-
         }
     }
 }
 
-inline void Density::generate_paw_atom_density(paw_density_data_t &pdd)
+inline void Density::generate_paw_atom_density(paw_density_data_t& pdd)
 {
     int ia = pdd.ia;
 
     auto& atom_type = pdd.atom_->type();
-    auto& pp_desc = atom_type.pp_desc();
 
     auto l_by_lm = Utils::l_by_lm(2 * atom_type.indexr().lmax_lo());
 
@@ -106,7 +102,10 @@ inline void Density::generate_paw_atom_density(paw_density_data_t &pdd)
     }
 
     /* get radial grid to divide density over r^2 */
-    auto &grid = atom_type.radial_grid();
+    auto& grid = atom_type.radial_grid();
+
+    auto& paw_ae_wfs = atom_type.paw_ae_wfs();
+    auto& paw_ps_wfs = atom_type.paw_ps_wfs();
 
     /* iterate over local basis functions (or over lm1 and lm2) */
     for (int ib2 = 0; ib2 < atom_type.indexb().size(); ib2++){
@@ -121,7 +120,7 @@ inline void Density::generate_paw_atom_density(paw_density_data_t &pdd)
             int irb1 = atom_type.indexb(ib1).idxrf;
 
             // index to iterate Qij,
-            int iqij = irb2 * (irb2 + 1) / 2 + irb1;
+            //int iqij = irb2 * (irb2 + 1) / 2 + irb1;
 
             // get num of non-zero GC
             int num_non_zero_gk = GC.num_gaunt(lm1,lm2);
@@ -129,7 +128,7 @@ inline void Density::generate_paw_atom_density(paw_density_data_t &pdd)
             double diag_coef = ib1 == ib2 ? 1. : 2. ;
 
             /* store density matrix in aux form */
-            double dm[4]={0,0,0,0};
+            double dm[4] = {0, 0, 0, 0};
             switch (ctx_.num_mag_dims()) {
                 case 3: {
                     dm[2] =  2 * std::real(density_matrix_(ib1, ib2, 2, ia));
@@ -159,16 +158,16 @@ inline void Density::generate_paw_atom_density(paw_density_data_t &pdd)
                     auto& lm3coef = GC.gaunt(lm1,lm2,inz);
 
                     /* iterate over radial points */
-                    for(int irad = 0; irad < (int)grid.num_points(); irad++){
+                    for(int irad = 0; irad < grid.num_points(); irad++){
 
                         /* we need to divide density over r^2 since wave functions are stored multiplied by r */
                         double inv_r2 = diag_coef /(grid[irad] * grid[irad]);
 
                         /* calculate unified density/magnetization
                          * dm_ij * GauntCoef * ( phi_i phi_j  +  Q_ij) */
-                        ae_dens(lm3coef.lm3, irad) += dm[imagn] * inv_r2 * lm3coef.coef * pp_desc.all_elec_wfc(irad,irb1) * pp_desc.all_elec_wfc(irad,irb2);
+                        ae_dens(lm3coef.lm3, irad) += dm[imagn] * inv_r2 * lm3coef.coef * paw_ae_wfs(irad, irb1) * paw_ae_wfs(irad, irb2);
                         ps_dens(lm3coef.lm3, irad) += dm[imagn] * inv_r2 * lm3coef.coef *
-                                (pp_desc.pseudo_wfc(irad,irb1) * pp_desc.pseudo_wfc(irad,irb2) + pp_desc.q_radial_functions_l(irad,iqij,l_by_lm[lm3coef.lm3]));
+                                (paw_ps_wfs(irad, irb1) * paw_ps_wfs(irad, irb2) + atom_type.q_radial_function(irb1, irb2, l_by_lm[lm3coef.lm3])(irad));
                     }
                 }
             }

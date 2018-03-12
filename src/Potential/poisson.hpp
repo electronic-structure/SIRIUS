@@ -44,12 +44,12 @@ inline void Potential::poisson_sum_G(int lmmax__,
             }
             case GPU: {
                 #ifdef __GPU
-                zm.copy_to_device();
+                zm.copy<memory_t::host, memory_t::device>();
                 linalg<GPU>::gemm(0, 0, lmmax__, na, ngv_loc,
                                   zm.at<GPU>(), zm.ld(),
                                   phase_factors.at<GPU>(), phase_factors.ld(),
                                   tmp.at<GPU>(), tmp.ld());
-                tmp.copy_to_host();
+                tmp.copy<memory_t::device, memory_t::host>();
                 #endif
                 break;
             }
@@ -135,12 +135,12 @@ inline void Potential::poisson_add_pseudo_pw(mdarray<double_complex, 2>& qmt__,
             }
             case GPU: {
                 #ifdef __GPU
-                qa.copy_to_device();
+                qa.copy<memory_t::host, memory_t::device>();
                 linalg<GPU>::gemm(0, 2, ctx_.lmmax_rho(), ctx_.gvec().count(), unit_cell_.atom_type(iat).num_atoms(),
                                   qa.at<GPU>(), qa.ld(),
                                   pf.at<GPU>(), pf.ld(),
                                   qapf.at<GPU>(), qapf.ld());
-                qapf.copy_to_host();
+                qapf.copy<memory_t::device, memory_t::host>();
                 #endif
                 break;
             }
@@ -337,7 +337,7 @@ inline void Potential::poisson(Periodic_function<double> const& rho)
             for (int ir = 0; ir < atom.num_mt_points(); ir++) {
                 double r = atom.radial_grid(ir);
                 hartree_potential_->f_mt<index_domain_t::local>(0, ir, ialoc) -= atom.zn() / r / y00;
-                srho[ir] = rho.f_mt<index_domain_t::local>(0, ir, ialoc);
+                srho(ir) = rho.f_mt<index_domain_t::local>(0, ir, ialoc);
             }
             evha_nuc -= atom.zn() * srho.interpolate().integrate(1) / y00;
         }

@@ -12,17 +12,17 @@ std::vector<void*> sddk_objects;
 /// Mapping between object id and its class name.
 std::map<int, std::string> sddk_objects_class_name;
 
-/// Mapping between Fortran and SIRIUS MPI communicators.
-inline Communicator const& map_fcomm(ftn_int fcomm__)
-{
-    static std::map<int, std::unique_ptr<Communicator>> fcomm_map;
-    if (!fcomm_map.count(fcomm__)) {
-        fcomm_map[fcomm__] = std::unique_ptr<Communicator>(new Communicator(MPI_Comm_f2c(fcomm__)));
-    }
-
-    auto& comm = *fcomm_map[fcomm__];
-    return comm;
-}
+///// Mapping between Fortran and SIRIUS MPI communicators.
+//inline Communicator const& map_fcomm(ftn_int fcomm__)
+//{
+//    static std::map<int, std::unique_ptr<Communicator>> fcomm_map;
+//    if (!fcomm_map.count(fcomm__)) {
+//        fcomm_map[fcomm__] = std::unique_ptr<Communicator>(new Communicator(MPI_Comm_f2c(fcomm__)));
+//    }
+//
+//    auto& comm = *fcomm_map[fcomm__];
+//    return comm;
+//}
 
 /// Get a free slot int the list of sddk objects.
 inline int get_next_free_object_id()
@@ -55,8 +55,8 @@ void sddk_delete_object(ftn_int* object_id__)
         delete reinterpret_cast<Gvec*>(ptr);
     } else if (sddk_objects_class_name[id] == "FFT3D") {
         delete reinterpret_cast<FFT3D*>(ptr);
-    } else if (sddk_objects_class_name[id] == "wave_functions") {
-        delete reinterpret_cast<wave_functions*>(ptr);
+    } else if (sddk_objects_class_name[id] == "Wave_functions") {
+        delete reinterpret_cast<Wave_functions*>(ptr);
     } else {
         std::stringstream s;
         s << "wrong class name (" << sddk_objects_class_name[id] << ") for object id " << id;
@@ -127,62 +127,70 @@ void sddk_create_wave_functions(ftn_int* gkvec_id__,
     int id = get_next_free_object_id();
     auto& gkvec = *reinterpret_cast<Gvec*>(sddk_objects[*gkvec_id__]);
 
-    sddk_objects[id] = new wave_functions(CPU, gkvec, *num_wf__);
-    sddk_objects_class_name[id] = "wave_functions";
+    TERMINATE("pass number of spins");
+    sddk_objects[id] = new Wave_functions(gkvec, *num_wf__, 1);
+    sddk_objects_class_name[id] = "Wave_functions";
     *new_object_id__ = id;
-    //auto& wf = *reinterpret_cast<wave_functions*>(sddk_objects[id]);
+    //auto& wf = *reinterpret_cast<Wave_functions*>(sddk_objects[id]);
     //wf.pw_coeffs().prime(0, 0) = double_complex(12.13, 14.15);
     //wf.pw_coeffs().prime(0, 1) = double_complex(1, 2);
 }
 
 void sddk_remap_wave_functions_forward(ftn_int* wf_id__, ftn_int* n__, ftn_int* idx0__)
 {
-    auto& wf = *reinterpret_cast<wave_functions*>(sddk_objects[*wf_id__]);
-    wf.pw_coeffs().remap_forward(CPU, wf.gkvec().partition().gvec_fft_slab(), *n__, *idx0__ - 1);
+    //auto& wf = *reinterpret_cast<Wave_functions*>(sddk_objects[*wf_id__]);
+    STOP();
+    //wf.pw_coeffs().remap_forward(CPU, wf.gkvec().partition().gvec_fft_slab(), *n__, *idx0__ - 1);
 }
 
 void sddk_remap_wave_functions_backward(ftn_int* wf_id__, ftn_int* n__, ftn_int* idx0__)
 {
-    auto& wf = *reinterpret_cast<wave_functions*>(sddk_objects[*wf_id__]);
-    wf.pw_coeffs().remap_backward(CPU, wf.gkvec().partition().gvec_fft_slab(), *n__, *idx0__ - 1);
+    //auto& wf = *reinterpret_cast<Wave_functions*>(sddk_objects[*wf_id__]);
+    STOP();
+    //wf.pw_coeffs().remap_backward(CPU, wf.gkvec().partition().gvec_fft_slab(), *n__, *idx0__ - 1);
 }
 
 void sddk_get_num_wave_functions(ftn_int* wf_id__, ftn_int* num_wf__)
 {
-    auto& wf = *reinterpret_cast<wave_functions*>(sddk_objects[*wf_id__]);
+    auto& wf = *reinterpret_cast<Wave_functions*>(sddk_objects[*wf_id__]);
     *num_wf__ = wf.num_wf();
 }
 
 void sddk_get_num_wave_functions_local(ftn_int* wf_id__, ftn_int* num_wf__)
 {
-    auto& wf = *reinterpret_cast<wave_functions*>(sddk_objects[*wf_id__]);
-    *num_wf__ = wf.pw_coeffs().spl_num_col().local_size();
+    STOP();
+    //auto& wf = *reinterpret_cast<Wave_functions*>(sddk_objects[*wf_id__]);
+    //*num_wf__ = wf.pw_coeffs().spl_num_col().local_size();
 }
 
 void sddk_get_wave_functions_prime_ld(ftn_int* wf_id__, ftn_int* ld__)
 {
-    auto& wf = *reinterpret_cast<wave_functions*>(sddk_objects[*wf_id__]);
-    *ld__ = wf.pw_coeffs().prime().ld();
+    //auto& wf = *reinterpret_cast<Wave_functions*>(sddk_objects[*wf_id__]);
+    STOP();
+    //*ld__ = wf.pw_coeffs().prime().ld();
 }
 
 void sddk_get_wave_functions_extra_ld(ftn_int* wf_id__, ftn_int* ld__)
 {
-    auto& wf = *reinterpret_cast<wave_functions*>(sddk_objects[*wf_id__]);
-    *ld__ = wf.pw_coeffs().extra().ld();
+    STOP();
+    //auto& wf = *reinterpret_cast<Wave_functions*>(sddk_objects[*wf_id__]);
+    //*ld__ = wf.pw_coeffs().extra().ld();
 }
 
 void sddk_get_wave_functions_prime_ptr(ftn_int* wf_id__,
                                        ftn_double_complex** ptr__)
 {
-    auto& wf = *reinterpret_cast<wave_functions*>(sddk_objects[*wf_id__]);
-    *ptr__ = wf.pw_coeffs().prime().at<CPU>();
+    STOP();
+    //auto& wf = *reinterpret_cast<Wave_functions*>(sddk_objects[*wf_id__]);
+    //*ptr__ = wf.pw_coeffs().prime().at<CPU>();
 }
 
 void sddk_get_wave_functions_extra_ptr(ftn_int* wf_id__,
                                        ftn_double_complex** ptr__)
 {
-    auto& wf = *reinterpret_cast<wave_functions*>(sddk_objects[*wf_id__]);
-    *ptr__ = wf.pw_coeffs().extra().at<CPU>();
+    STOP();
+    //auto& wf = *reinterpret_cast<Wave_functions*>(sddk_objects[*wf_id__]);
+    //*ptr__ = wf.pw_coeffs().extra().at<CPU>();
 }
 
 /// Get total number of G-vectors.

@@ -34,7 +34,24 @@
 
 using double_complex = std::complex<double>;
 
-enum class spin_block_t {nm, uu, ud, dd, du};
+/// Spin-blocks of the Hamiltonian.
+enum class spin_block_t 
+{
+    /// Non-magnetic case.
+    nm,
+
+    /// Up-up block.
+    uu,
+
+    /// Down-donw block.
+    dd,
+
+    ///Up-down block.
+    ud, 
+
+    /// Down-up block.
+    du
+};
 
 /// Type of electronic structure methods.
 enum class electronic_structure_method_t 
@@ -45,8 +62,6 @@ enum class electronic_structure_method_t
     /// Pseudopotential (ultrasoft, norm-conserving, PAW).
     pseudopotential
 };
-
-enum class index_domain_t {global, local};
 
 enum function_domain_t {spatial, spectral};
 
@@ -71,11 +86,6 @@ class type_wrapper<double>
     public:
         typedef std::complex<double> complex_t;
         typedef double real_t;
-        
-        static hid_t hdf5_type_id()
-        {
-            return H5T_NATIVE_DOUBLE;
-        }
         
         static bool is_complex()
         {
@@ -132,11 +142,6 @@ class type_wrapper<double_complex>
         typedef double_complex complex_t;
         typedef double real_t;
         
-        static hid_t hdf5_type_id()
-        {
-            return H5T_NATIVE_LDOUBLE;
-        }
-        
         static bool is_complex()
         {
             return true;
@@ -161,27 +166,6 @@ class type_wrapper<double_complex>
         }
 };
 
-template<> 
-class type_wrapper<int>
-{
-    public:
-        static hid_t hdf5_type_id()
-        {
-            return H5T_NATIVE_INT;
-        }
-};
-
-//template<> 
-//class type_wrapper<char>
-//{
-//    public:
-//
-//        static inline char random()
-//        {
-//            return static_cast<char>(255 * (double(std::rand()) / RAND_MAX));
-//        }
-//};
-
 enum class relativity_t
 {
     none,
@@ -194,6 +178,5 @@ enum class relativity_t
 
     dirac
 };
-
 
 #endif // __TYPEDEFS_H__

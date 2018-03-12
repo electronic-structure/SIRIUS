@@ -1,0 +1,27 @@
+{
+    "comment"     : "MPI C++ compiler and options",
+    "MPI_CXX"     : "mpic++",
+    "MPI_CXX_OPT" : "-std=c++11 -Wall -Wconversion -fopenmp",
+    
+    "comment"     : "MPI Fortran compiler and oprions",
+    "MPI_FC"      : "mpif90",
+    "MPI_FC_OPT"  : "-O3 -fopenmp -cpp",
+   
+    "comment"     : "plain C compler",
+    "CC"          : "gcc",
+    
+    "comment"     : "plain C++ compiler",
+    "CXX"         : "c++",
+
+    "comment"     : "plain Fortran compiler",
+    "FC"          : "gfortran",
+
+    "comment"     : "Fortran preprocessor",
+    "FCCPP"       : "cpp",
+    
+    "SYSTEM_LIBS" : "-llapack -lblas -lz -lgfortran -lstdc++",
+
+    "install"     : ["spg", "gsl", "fftw", "xc", "hdf5"]
+}
+
+

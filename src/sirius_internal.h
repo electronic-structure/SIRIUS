@@ -46,6 +46,8 @@
 #endif
 #include "constants.h"
 #include "version.h"
+#include "simulation_context.h"
+#include "Beta_projectors/beta_projectors_base.h"
 
 #ifdef __PLASMA
 extern "C" void plasma_init(int num_cores);
@@ -59,7 +61,7 @@ extern "C" void libsci_acc_finalize();
 /// Namespace of the SIRIUS library.
 namespace sirius {
 
-    inline void initialize(bool call_mpi_init__)
+    inline void initialize(bool call_mpi_init__ = true)
     {
         if (call_mpi_init__) {
             Communicator::initialize();
@@ -84,8 +86,6 @@ namespace sirius {
         libsci_acc_init();
         #endif
 
-        sddk::start_global_timer();
-
         assert(sizeof(int) == 4);
         assert(sizeof(double) == 8);
     }
@@ -98,6 +98,11 @@ namespace sirius {
         #ifdef __LIBSCI_ACC
         libsci_acc_finalize();
         #endif
+
+        Beta_projectors_base<1>::cleanup();
+        Beta_projectors_base<3>::cleanup();
+        Beta_projectors_base<9>::cleanup();
+
         #ifdef __GPU
         if (acc::num_devices()) {
             cublas::destroy_stream_handles();
@@ -106,7 +111,7 @@ namespace sirius {
         }
         #endif
         fftw_cleanup();
-        sddk::stop_global_timer();
+
         json dict;
         dict["flat"] = sddk::timer::serialize_timers();
         dict["tree"] = sddk::timer::serialize_timers_tree();
@@ -114,11 +119,12 @@ namespace sirius {
             std::ofstream ofs("timers.json", std::ofstream::out | std::ofstream::trunc);
             ofs << dict.dump(4);
         }
-            
+
         //sddk::timer::print_tree();
         if (call_mpi_fin__) {
             Communicator::finalize();
         }
+
     }
 
      inline void terminate(int err_code__)

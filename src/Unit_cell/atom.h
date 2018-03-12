@@ -93,7 +93,7 @@ class Atom
      */
     mdarray<double, 3> d_mtrx_;
 
-    /// d matrix for spin orbit coupling. see Ref. PRB 71 115106 eq.19
+    /// D-operator matrix for spin orbit coupling. see Ref. PRB 71 115106 eq.19
     mdarray<double_complex, 3> d_mtrx_so_;
 
   public:
@@ -141,44 +141,11 @@ class Atom
 
         if (!type().parameters().full_potential()) {
             int nbf = type().mt_lo_basis_size();
-            d_mtrx_ = mdarray<double, 3>(nbf, nbf, type().parameters().num_mag_dims() + 1);
+            d_mtrx_ = mdarray<double, 3>(nbf, nbf, type().parameters().num_mag_dims() + 1, memory_t::host, "Atom::d_mtrx_");
             d_mtrx_.zero();
-            if (!type().pp_desc().spin_orbit_coupling) {
-                for (int xi2 = 0; xi2 < nbf; xi2++) {
-                    int lm2    = type().indexb(xi2).lm;
-                    int idxrf2 = type().indexb(xi2).idxrf;
-                    for (int xi1 = 0; xi1 < nbf; xi1++) {
-                        int lm1    = type().indexb(xi1).lm;
-                        int idxrf1 = type().indexb(xi1).idxrf;
-                        if (lm1 == lm2) {
-                            d_mtrx_(xi1, xi2, 0) = type().pp_desc().d_mtrx_ion(idxrf1, idxrf2);
-                        }
-                    }
-                }
-            } else {
+            if (type().spin_orbit_coupling()) {
                 d_mtrx_so_ = mdarray<double_complex, 3>(nbf, nbf, type().parameters().num_mag_dims() + 1);
                 d_mtrx_so_.zero();
-
-                for (int xi2 = 0; xi2 < nbf; xi2++) {
-                    int l2     = type().indexb(xi2).l;
-                    int idxrf2 = type().indexb(xi2).idxrf;
-                    double j2  = type().indexb(xi2).j;
-                    for (int xi1 = 0; xi1 < nbf; xi1++) {
-                        int l1     = type().indexb(xi1).l;
-                        int idxrf1 = type().indexb(xi1).idxrf;
-                        double j1  = type().indexb(xi1).j;
-                        if ((l1 == l2) && (fabs(j1 - j2) < 1e-8)) {
-                            d_mtrx_so_(xi1, xi2, 0) =
-                                type().pp_desc().d_mtrx_ion(idxrf1, idxrf2) * type().f_coefficients(xi1, xi2, 0, 0);
-                            d_mtrx_so_(xi1, xi2, 1) =
-                                type().pp_desc().d_mtrx_ion(idxrf1, idxrf2) * type().f_coefficients(xi1, xi2, 1, 1);
-                            d_mtrx_so_(xi1, xi2, 2) =
-                                type().pp_desc().d_mtrx_ion(idxrf1, idxrf2) * type().f_coefficients(xi1, xi2, 1, 0);
-                            d_mtrx_so_(xi1, xi2, 3) =
-                                type().pp_desc().d_mtrx_ion(idxrf1, idxrf2) * type().f_coefficients(xi1, xi2, 0, 1);
-                        }
-                    }
-                }
             }
         }
     }
@@ -225,7 +192,7 @@ class Atom
         for (int i = 0; i < nrf; i++) {
             rf_spline[i] = Spline<double>(type().radial_grid());
             for (int ir = 0; ir < nmtp; ir++) {
-                rf_spline[i][ir] = symmetry_class().radial_function(ir, i);
+                rf_spline[i](ir) = symmetry_class().radial_function(ir, i);
             }
         }
 
@@ -235,13 +202,13 @@ class Atom
         for (int lm = 0; lm < lmmax; lm++) {
             v_spline[lm] = Spline<double>(type().radial_grid());
             for (int ir = 0; ir < nmtp; ir++) {
-                v_spline[lm][ir] = veff_(lm, ir);
+                v_spline[lm](ir) = veff_(lm, ir);
             }
 
             for (int j = 0; j < num_mag_dims; j++) {
                 v_spline[lm + (j + 1) * lmmax] = Spline<double>(type().radial_grid());
                 for (int ir = 0; ir < nmtp; ir++) {
-                    v_spline[lm + (j + 1) * lmmax][ir] = beff_[j](lm, ir);
+                    v_spline[lm + (j + 1) * lmmax](ir) = beff_[j](lm, ir);
                 }
             }
         }
@@ -262,7 +229,7 @@ class Atom
             sddk::timer t1("sirius::Atom::generate_radial_integrals|interp");
             #pragma omp parallel
             {
-// int tid = Platform::thread_id();
+                // int tid = Platform::thread_id();
                 #pragma omp for
                 for (int i = 0; i < nrf; i++) {
                     rf_spline[i].interpolate();
@@ -275,7 +242,7 @@ class Atom
                     v_spline[i].interpolate();
                 }
             }
-            rf_coef.async_copy_to_device();
+            rf_coef.async_copy<memory_t::host, memory_t::device>(-1);
 
             #pragma omp parallel for
             for (int lm = 0; lm < lmmax; lm++) {
@@ -290,7 +257,7 @@ class Atom
                     }
                 }
             }
-            vrf_coef.copy_to_device();
+            vrf_coef.copy<memory_t::host, memory_t::device>();
             t1.stop();
 
             result.allocate(memory_t::device);
@@ -303,8 +270,8 @@ class Atom
                 DUMP("spline GPU integration performance: %12.6f GFlops",
                      1e-9 * double(idx_ri.size(1)) * nmtp * 85 / tval);
             }
-            result.copy_to_host();
-            result.deallocate_on_device();
+            result.copy<memory_t::device, memory_t::host>();
+            result.deallocate(memory_t::device);
 #else
             TERMINATE_NO_GPU
 #endif
@@ -618,6 +585,11 @@ class Atom
     }
 
     inline mdarray<double, 3> const& d_mtrx() const
+    {
+        return d_mtrx_;
+    }
+
+    inline mdarray<double, 3>& d_mtrx()
     {
         return d_mtrx_;
     }
