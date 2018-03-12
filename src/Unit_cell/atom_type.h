@@ -469,7 +469,13 @@ class Atom_type
     {
         /* sanity check */
         if (l__ > 2 * lmax_beta()) {
-            TERMINATE("wrong l for Q radial functions");
+            std::stringstream s;
+            s << "wrong l for Q radial functions of atom type " << label_ << std::endl
+              << "current l: " << l__ << std::endl
+              << "lmax_beta: " << lmax_beta() << std::endl
+              << "maximum allowed l: " << 2 * lmax_beta();
+
+            TERMINATE(s);
         }
 
         if (!augment_) {
@@ -845,7 +851,8 @@ class Atom_type
 
     inline void d_mtrx_ion(matrix<double> const& d_mtrx_ion__)
     {
-        d_mtrx_ion_ = matrix<double>(num_beta_radial_functions(), num_beta_radial_functions());
+        d_mtrx_ion_ = matrix<double>(num_beta_radial_functions(), num_beta_radial_functions(),
+                                     memory_t::host, "Atom_type::d_mtrx_ion_");
         d_mtrx_ion__ >> d_mtrx_ion_;
     }
 

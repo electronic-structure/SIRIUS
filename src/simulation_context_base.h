@@ -332,22 +332,22 @@ class Simulation_context_base: public Simulation_parameters
         /// Communicator between k-points.
         Communicator const& comm_k() const
         {
-            /* 3rd dimension of the MPI grid is used for k-point distribution */
-            return mpi_grid_->communicator(1 << 2);
+            /* 1st dimension of the MPI grid is used for k-point distribution */
+            return mpi_grid_->communicator(1 << 0);
         }
 
         /// Band and BLACS grid communicator.
         Communicator const& comm_band() const
         {
-            /* 1st and 2nd dimensions of the MPI grid are used for parallelization inside k-point */
-            return mpi_grid_->communicator(1 << 0 | 1 << 1);
+            /* 2nd and 3rd dimensions of the MPI grid are used for parallelization inside k-point */
+            return mpi_grid_->communicator(1 << 1 | 1 << 2);
         }
 
         /// Communicator of the dense FFT grid.
         Communicator const& comm_fft() const
         {
-            /* 1st dimension of MPI grid is used */
-            return mpi_grid_->communicator(1 << 0);
+            /* 3rd dimension of MPI grid is used */
+            return mpi_grid_->communicator(1 << 2);
         }
 
         Communicator const& comm_ortho_fft() const
@@ -646,7 +646,7 @@ inline void Simulation_context_base::initialize()
     }
 
     /* setup MPI grid */
-    mpi_grid_ = std::unique_ptr<MPI_grid>(new MPI_grid({npr, npc, npk}, comm_));
+    mpi_grid_ = std::unique_ptr<MPI_grid>(new MPI_grid({npk, npc, npr}, comm_));
 
     comm_ortho_fft_ = comm().split(comm_fft().rank());
 
@@ -875,22 +875,26 @@ inline void Simulation_context_base::initialize()
     }
 
     if (!full_potential()) {
-
         /* some extra length is added to cutoffs in order to interface with QE which may require ri(q) for q>cutoff */
-
-        beta_ri_ = std::unique_ptr<Radial_integrals_beta<false>>(new Radial_integrals_beta<false>(unit_cell(), gk_cutoff() + 1, settings().nprii_beta_));
-
-        beta_ri_djl_ = std::unique_ptr<Radial_integrals_beta<true>>(new Radial_integrals_beta<true>(unit_cell(), gk_cutoff() + 1, settings().nprii_beta_));
-
-        aug_ri_ = std::unique_ptr<Radial_integrals_aug<false>>(new Radial_integrals_aug<false>(unit_cell(), pw_cutoff() + 1, settings().nprii_aug_));
-
+        beta_ri_      = std::unique_ptr<Radial_integrals_beta<false>>(new Radial_integrals_beta<false>(unit_cell(), gk_cutoff() + 1, settings().nprii_beta_));
+        beta_ri_djl_  = std::unique_ptr<Radial_integrals_beta<true>>(new Radial_integrals_beta<true>(unit_cell(), gk_cutoff() + 1, settings().nprii_beta_));
+        aug_ri_       = std::unique_ptr<Radial_integrals_aug<false>>(new Radial_integrals_aug<false>(unit_cell(), pw_cutoff() + 1, settings().nprii_aug_));
         atomic_wf_ri_ = std::unique_ptr<Radial_integrals_atomic_wf>(new Radial_integrals_atomic_wf(unit_cell(), gk_cutoff(), 20));
     }
 
     //time_active_ = -runtime::wtime();
 
-    if (control().verbosity_ > 0 && comm_.rank() == 0) {
+    if (control().verbosity_ >= 1 && comm().rank() == 0) {
         print_info();
+    }
+
+    if (control().verbosity_ >= 3) {
+        runtime::pstdout pout(comm());
+        if (comm().rank() == 0) {
+            pout.printf("--- MPI rank placement ---\n");
+        }
+        pout.printf("rank: %3i, comm_band_rank: %3i, comm_k_rank: %3i, hostname: %s\n",
+                    comm().rank(), comm_band().rank(), comm_k().rank(), runtime::hostname().c_str());
     }
 
     if (comm_.rank() == 0 && control().print_memory_usage_) {

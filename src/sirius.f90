@@ -20,10 +20,11 @@ module sirius
             &bind(C, name="sirius_clear")
         end subroutine
 
-        subroutine sirius_create_simulation_context(config_file_name, method_type)&
+        subroutine sirius_create_simulation_context(config_file_name, method_type, fcomm)&
             &bind(C, name="sirius_create_simulation_context")
             character, dimension(*), intent(in) :: config_file_name
             character, dimension(*), intent(in) :: method_type
+            integer,                 intent(in) :: fcomm
         end subroutine
 
         subroutine sirius_initialize_simulation_context()&

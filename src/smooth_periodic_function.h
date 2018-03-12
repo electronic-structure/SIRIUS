@@ -60,13 +60,7 @@ class Smooth_periodic_function
         /// Gather plane-wave coefficients for the subsequent FFT call.
         inline void gather_f_pw_fft()
         {
-            int rank = fft_->comm().rank() * gvecp_->comm_ortho_fft().size() + gvecp_->comm_ortho_fft().rank();
-            /* collect scattered PW coefficients */
-            gvecp_->comm_ortho_fft().allgather(f_pw_local_.at<CPU>(),
-                                               gvecp_->gvec().gvec_count(rank),
-                                               f_pw_fft_.at<CPU>(),
-                                               gvecp_->gvec_fft_slab().counts.data(), 
-                                               gvecp_->gvec_fft_slab().offsets.data());
+            gvecp_->gather_pw_fft(f_pw_local_.at<CPU>(), f_pw_fft_.at<CPU>());
         }
 
     public:
@@ -83,12 +77,6 @@ class Smooth_periodic_function
             f_rg_       = mdarray<T, 1>(fft_->local_size(), memory_t::host, "Smooth_periodic_function.f_rg_");
             f_pw_fft_   = mdarray<double_complex, 1>(gvecp_->gvec_count_fft(), memory_t::host, "Smooth_periodic_function.f_pw_fft_");
             f_pw_local_ = mdarray<double_complex, 1>(gvecp_->gvec().count(), memory_t::host, "Smooth_periodic_function.f_pw_local_");
-
-            /* check ordering of mpi ranks */
-            int rank = fft_->comm().rank() * gvecp_->comm_ortho_fft().size() + gvecp_->comm_ortho_fft().rank();
-            if (rank != gvecp_->gvec().comm().rank()) {
-                TERMINATE("wrong order of MPI ranks");
-            }
         }
 
         inline void zero()
@@ -196,10 +184,8 @@ class Smooth_periodic_function
         {
             PROFILE("sirius::Smooth_periodic_function::gather_f_pw");
 
-            gather_f_pw_fft();
-
             std::vector<double_complex> fpw(gvecp_->gvec().num_gvec());
-            fft_->comm().allgather(f_pw_fft_.at<CPU>(), fpw.data(), gvecp_->gvec_offset_fft(), gvecp_->gvec_count_fft());
+            gvec().comm().allgather(&f_pw_local_[0], fpw.data(), gvec().offset(), gvec().count());
 
             return std::move(fpw);
         }

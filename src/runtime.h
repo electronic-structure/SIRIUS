@@ -40,7 +40,8 @@ class pstdout
 
     public:
 
-        pstdout(Communicator const& comm__) : comm_(comm__)
+        pstdout(Communicator const& comm__)
+            : comm_(comm__)
         {
             buffer_.resize(10240);
         }
@@ -179,6 +180,16 @@ inline int get_num_threads()
 
     return num_threads;
 }
+
+inline std::string hostname()
+{
+    const int len{1024};
+    char nm[len];
+    gethostname(nm, len);
+    nm[len - 1] = 0;
+    return std::string(nm);
+}
+
 
 //inline double wtime()
 //{
