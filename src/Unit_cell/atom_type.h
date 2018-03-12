@@ -486,7 +486,7 @@ class Atom_type
             }
         }
 
-        int ijv = Utils::packed_index(idxrf1__, idxrf2__); 
+        int ijv = Utils::packed_index(idxrf1__, idxrf2__);
         q_radial_functions_l_(ijv, l__) = Spline<double>(radial_grid_, qrf__);
     }
 
@@ -535,7 +535,7 @@ class Atom_type
 
     inline void paw_ae_wfs(mdarray<double, 2>& inp__)
     {
-        
+
         paw_ae_wfs_ = mdarray<double, 2>(num_mt_points(), num_beta_radial_functions());
         return inp__ >> paw_ae_wfs_;
     }
@@ -1273,7 +1273,7 @@ class Atom_type
 
 
         for(size_t i = 0; i < nl_orb.size(); i++) {
-            if(nl_orb[i].first == label_) {
+            if(nl_orb[i].first == symbol_) {
                 hubbard_l_ = nl_orb[i].second;
                 break;
             }
@@ -1368,7 +1368,7 @@ class Atom_type
         occ.push_back(std::make_pair("In", 10.0));
 
         for(size_t i = 0; i < occ.size(); i++) {
-            if (occ[i].first == label_) {
+            if (occ[i].first == symbol_) {
                 hubbard_occupancy_orbital_  = occ[i].second;
                 occ.clear();
                 break;
