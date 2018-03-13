@@ -132,6 +132,9 @@ class FFT3D
 
         /// Handler for z-transform cuFFT plan.
         cufftHandle cufft_plan_z_;
+        
+        /// True if the cufft_plan_z handler was created and has to be destroyed.
+        bool cufft_plan_z_created_{false};
 
         /// offsets  for z-buffer
         mdarray<int,1> z_offsets_;
@@ -773,7 +776,9 @@ class FFT3D
             #ifdef __GPU
             if (pu_ == GPU) {
                 cufft::destroy_plan_handle(cufft_plan_xy_);
-                cufft::destroy_plan_handle(cufft_plan_z_);
+                if (cufft_plan_z_created_) {
+                    cufft::destroy_plan_handle(cufft_plan_z_);
+                }
             }
             #endif
         }
@@ -963,12 +968,17 @@ class FFT3D
 
                 /* check if we need to create a batch cuFFT plan for larger number of z-columns */
                 if (gvec__.zcol_count_fft() > zcol_count_max_) {
+                    if (cufft_plan_z_created_) {
+                        cufft::destroy_plan_handle(cufft_plan_z_);
+                        cufft_plan_z_created_ = false;
+                    }
                     /* now this is the maximum number of columns */
                     zcol_count_max_ = gvec__.zcol_count_fft();
                     cufft::create_plan_handle(&cufft_plan_z_);
                     cufft::set_stream(cufft_plan_z_, cufft_stream_id);
 
                     cufft::create_batch_plan(cufft_plan_z_, 1, dim_z, dim_z, 1, grid_.size(2), zcol_count_max_, 0);
+                    cufft_plan_z_created_ = true;
                 }
 
                 /* maximum worksize of z and xy transforms */

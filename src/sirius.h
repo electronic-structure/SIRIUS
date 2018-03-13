@@ -53,7 +53,6 @@ using json = nlohmann::json;
 #include "potential.h"
 #include "k_point_set.h"
 #include "density.h"
-//#include "force.h"
 #include "dft_ground_state.h"
 
 #endif // __SIRIUS_H__
