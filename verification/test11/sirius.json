@@ -1,0 +1,58 @@
+{
+    "control" : {
+	"processing_unit" : "cpu",
+	"std_evp_solver_type" : "lapack",
+	"gen_evp_solver_type" : "lapack",
+	"verbosity" : 1,
+	"!print_checksum" : true,
+	"!verification" : 1
+    },
+    "iterative_solver" : {
+        "tolerance" : 1e-12,
+        "num_steps" : 25,
+        "subspace_size" : 4,
+        "type" : "davidson",
+        "converge_by_energy" : 1,
+	"!init_subspace" : "random"
+    },
+
+    "parameters" : {
+	    "cyclic_block_size" : 32,
+	    "electronic_structure_method" : "pseudopotential",
+
+	    "fft_mode" : "serial",
+
+	    "xc_functionals" : ["XC_LDA_X", "XC_LDA_C_PZ"],
+
+
+	    "smearing_width" : 0.01,
+
+	    "use_symmetry" : false,
+	    "num_mag_dims" : 3,
+	    "spin_orbit" : true,
+	    "gk_cutoff" : 8.36,
+	    "pw_cutoff" : 26.4575,
+
+	    "energy_tol" : 1e-10,
+
+	    "num_dft_iter" : 100,
+
+	    "ngridk" : [2, 2, 2]
+    },
+
+    "unit_cell" : {
+        "lattice_vectors" : [
+            [-3.85500000000000000000, 0.0, 3.85500000000000000000],
+            [0.0, 3.85500000000000000000, 3.85500000000000000000],
+            [-3.85500000000000000000, 3.85500000000000000000, 0.0]],
+        "atom_types" : [ "Au" ],
+        "atom_files" : {
+            "Au" : "Au.rel-pbe-dn-rrkjus_psl.0.1.UPF.json"
+        },
+	"atoms" : {
+            "Au" : [
+                [0.0, 0.0 , 0.0]
+            ]
+        }
+    }
+}
