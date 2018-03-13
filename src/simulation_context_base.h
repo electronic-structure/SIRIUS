@@ -200,8 +200,8 @@ class Simulation_context_base: public Simulation_parameters
                 size_t size = verts.size();
                 for (int x: {0, 1, 2}) {
                     std::sort(verts.begin(), verts.end(), [x](vector3d<double>& a, vector3d<double>& b){return a[x] < b[x];});
-                    bounds_ind.first[x]  = std::max((int)(verts[0][x] / delta[x]) - 1, grid_beg[i]);
-                    bounds_ind.second[x] = std::min((int)(verts[size - 1][x] / delta[x]) + 1, grid_end[i]);
+                    bounds_ind.first[x]  = std::max((int)(verts[0][x] / delta[x]) - 1, grid_beg[x]);
+                    bounds_ind.second[x] = std::min((int)(verts[size - 1][x] / delta[x]) + 1, grid_end[x]);
                 }
 
                 return bounds_ind;
