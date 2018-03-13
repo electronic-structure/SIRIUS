@@ -790,7 +790,7 @@ void sirius_find_eigen_states(int32_t* kset_id__,
                               int32_t* precompute__)
 {
     bool precompute = (*precompute__) ? true : false;
-    dft_ground_state->band().solve_for_kset(*kset_list[*kset_id__], *hamiltonian, precompute);
+    dft_ground_state->band().solve(*kset_list[*kset_id__], *hamiltonian, precompute);
 }
 
 void sirius_find_band_occupancies(int32_t* kset_id__)

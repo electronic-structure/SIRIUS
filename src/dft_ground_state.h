@@ -596,7 +596,7 @@ inline int DFT_ground_state::find(double potential_tol, double energy_tol, int n
         }
 
         /* find new wave-functions */
-        band_.solve_for_kset(kset_, H_, true);
+        band_.solve(kset_, H_, true);
         /* find band occupancies */
         kset_.find_band_occupancies();
         /* generate new density from the occupied wave-functions */
