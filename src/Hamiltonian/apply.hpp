@@ -184,7 +184,25 @@ void Hamiltonian::apply_h_s(K_point* kp__,
         // return immediately if the wave functions already exist
         this->U().generate_atomic_orbitals(*kp__, Q<T>());
 
+        #ifdef __GPU
+        if (ctx_.processing_unit() == GPU) {
+            for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
+                kp__->hubbard_wave_functions().pw_coeffs(ispn).prime().allocate(memory_t::device);
+                kp__->hubbard_wave_functions().pw_coeffs(ispn).copy_to_device(0, this->U().number_of_hubbard_orbitals());
+
+            }
+        }
+        #endif
+
         this->U().apply_hubbard_potential(*kp__, N__, n__, phi__, hphi__);
+
+        #ifdef __GPU
+        if (ctx_.processing_unit() == GPU) {
+            for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
+                kp__->hubbard_wave_functions().deallocate_on_device(ispn);
+            }
+        }
+        #endif
     }
 
     if (ctx_.control().print_checksum_) {
