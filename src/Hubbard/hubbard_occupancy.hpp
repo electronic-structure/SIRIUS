@@ -35,6 +35,20 @@ void hubbard_compute_occupation_numbers(K_point_set& kset_)
 
         dm.zero();
 
+        #ifdef __GPU
+        if (ctx_.processing_unit() == GPU) {
+            for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
+                /* allocate GPU memory */
+                kp->spinor_wave_functions().pw_coeffs(ispn).prime().allocate(memory_t::device);
+                kp->spinor_wave_functions().pw_coeffs(ispn).copy_to_device(0, nbnd);
+
+                kp->hubbard_wave_functions().pw_coeffs(ispn).prime().allocate(memory_t::device);
+                kp->hubbard_wave_functions().pw_coeffs(ispn).copy_to_device(0, this->number_of_hubbard_orbitals());
+
+            }
+        }
+        #endif
+
         if (ctx_.num_mag_dims() == 3) {
             inner(ctx_.processing_unit(),
                   2,
@@ -47,7 +61,7 @@ void hubbard_compute_occupation_numbers(K_point_set& kset_)
                   dm,
                   0,
                   0);
-        } else { // TODO: can this be combined into one loop over spins?
+        } else { // TODO: can this be combined into one loop over spins
             inner(ctx_.processing_unit(),
                   0,
                   kp->hubbard_wave_functions(),
@@ -75,6 +89,15 @@ void hubbard_compute_occupation_numbers(K_point_set& kset_)
             }
         }
 
+#ifdef __GPU
+        if (ctx_.processing_unit() == GPU) {
+            for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
+                /* deallocate GPU memory */
+                kp->spinor_wave_functions().pw_coeffs(ispn).deallocate_on_device();
+                kp->hubbard_wave_functions().pw_coeffs(ispn).deallocate_on_device();
+            }
+        }
+#endif
         // now compute O_{ij}^{sigma,sigma'} = \sum_{nk} <psi_nk|phi_{i,sigma}><phi_{j,sigma^'}|psi_nk> f_{nk}
 
         if (ctx_.num_mag_dims() == 3) {

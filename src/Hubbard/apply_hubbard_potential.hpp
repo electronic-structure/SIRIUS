@@ -19,6 +19,7 @@ void apply_hubbard_potential(K_point& kp,
     // calculate Overlap ^ up = <phi_i^up | phi_j^up> stored in the
     // first half of dm the down part in the other half
 
+    // the overlaps are then contiguous
     int Nfc = 1;
     if (ctx_.num_mag_dims() == 1)
         Nfc *= 2;
