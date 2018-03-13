@@ -9,8 +9,9 @@
 /// We need to symmetrize them
 void hubbard_compute_occupation_numbers(K_point_set& kset_)
 {
-    if (!ctx_.hubbard_correction())
+    if (!ctx_.hubbard_correction()) {
         return;
+    }
 
     this->occupancy_number_.zero();
 
@@ -25,8 +26,9 @@ void hubbard_compute_occupation_numbers(K_point_set& kset_)
         // down-down blocks are decoupled but the wave-functions are up
         // and down are still stored as a spinor to conserve space.
         int HowManyBands = kp->num_occupied_bands(0);
-        if (ctx_.num_mag_dims() == 1)
+        if (ctx_.num_mag_dims() == 1) {
             HowManyBands += kp->num_occupied_bands(1);
+        }
 
         // now for each spin components and each atom we need to calculate
         // <psi_{nk}|phi^I_m'><phi^I_m|psi_{nk}>
@@ -40,7 +42,7 @@ void hubbard_compute_occupation_numbers(K_point_set& kset_)
             for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
                 /* allocate GPU memory */
                 kp->spinor_wave_functions().pw_coeffs(ispn).prime().allocate(memory_t::device);
-                kp->spinor_wave_functions().pw_coeffs(ispn).copy_to_device(0, nbnd);
+                kp->spinor_wave_functions().pw_coeffs(ispn).copy_to_device(0, kp->num_occupied_bands(ispn));
 
                 kp->hubbard_wave_functions().pw_coeffs(ispn).prime().allocate(memory_t::device);
                 kp->hubbard_wave_functions().pw_coeffs(ispn).copy_to_device(0, this->number_of_hubbard_orbitals());

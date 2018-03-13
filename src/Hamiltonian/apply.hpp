@@ -188,7 +188,7 @@ void Hamiltonian::apply_h_s(K_point* kp__,
         if (ctx_.processing_unit() == GPU) {
             for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
                 kp__->hubbard_wave_functions().pw_coeffs(ispn).prime().allocate(memory_t::device);
-                kp__->hubbard_wave_functions().pw_coeffs(ispn).copy_to_device(0, this->number_of_hubbard_orbitals());
+                kp__->hubbard_wave_functions().pw_coeffs(ispn).copy_to_device(0, this->U().number_of_hubbard_orbitals());
 
             }
         }
@@ -199,7 +199,7 @@ void Hamiltonian::apply_h_s(K_point* kp__,
         #ifdef __GPU
         if (ctx_.processing_unit() == GPU) {
             for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-                kp__->hubbard_wave_functions().pw_coeffs(ispn).prime().deallocate_on_device();
+                kp__->hubbard_wave_functions().deallocate_on_device(ispn);
             }
         }
         #endif
