@@ -145,7 +145,7 @@ class Gvec
         int z = z_columns_[i].z[j];
         return vector3d<int>(x, y, z);
     }
-    
+
     /// Find z-columns of G-vectors inside a sphere with Gmax radius.
     /** This function also computes the total number of G-vectors. */
     inline void find_z_columns(double Gmax__, FFT3D_grid const& fft_box__)
@@ -227,7 +227,7 @@ class Gvec
         zcol_distr_ = block_data_descriptor(comm().size());
         /* local number of z-columns for each rank */
         std::vector<std::vector<z_column_descriptor>> zcols_local(comm().size());
-        
+
         /* use already existing distribution of base G-vector set */
         if (gvec_base_) {
             for (int rank = 0; rank < comm().size(); rank++) {
@@ -326,7 +326,7 @@ class Gvec
         gvec_shell_len_ = mdarray<double, 1>(num_gvec_shells_);
         std::copy(tmp_len.begin(), tmp_len.end(), gvec_shell_len_.at<CPU>());
     }
-    
+
     /// Initialize everything.
     void init()
     {
@@ -448,6 +448,18 @@ class Gvec
     {
         init();
     }
+
+    /// Constructor for G-vectors with mpi_comm_self()
+    Gvec(matrix3d<double> M__, double Gmax__, bool reduce_gvec__)
+        : vk_({0, 0, 0})
+        , Gmax_(Gmax__)
+        , lattice_vectors_(M__)
+        , comm_(mpi_comm_self())
+        , reduce_gvec_(reduce_gvec__)
+    {
+        init();
+    }
+
 
     vector3d<double> const& vk() const
     {
@@ -596,7 +608,7 @@ class Gvec
     }
 
     /// Return a global G-vector index in the range [0, num_gvec) by the G-vector.
-    /** The information about a G-vector index is encoded by two numbers: a starting index for the 
+    /** The information about a G-vector index is encoded by two numbers: a starting index for the
      *  column of G-vectors and column's size. Depending on the geometry of the reciprocal lattice,
      *  z-columns may have only negative, only positive or both negative and positive frequencies for
      *  a given x and y. This information is used to compute the offset which is added to the starting index
@@ -617,11 +629,11 @@ class Gvec
         int col_size = gvec_index_by_xy_(1, G__[0], G__[1]) >> 20;
 
         /* three possible options for the z-column location
-           
+
               frequency                ... -4, -3, -2, -1, 0, 1, 2, 3, 4 ...
            -----------------------------------------------------------------------------
               G-vec ordering
-           #1 (all negative)           ___  0   1   2   3 __________________               
+           #1 (all negative)           ___  0   1   2   3 __________________
            #2 (negative and positive)  ____________ 3   4  0  1  2 _________
            #3 (all positive)           _____________________  0  1  2  3 ___
 
@@ -775,7 +787,7 @@ class Gvec_partition
         gvec_.comm().allreduce(&rank_map_(0, 0), gvec_.comm().size());
 
         build_fft_distr();
-        
+
         idx_zcol_ = mdarray<int, 1>(gvec().num_zcol());
         int icol{0};
         for (int rank = 0; rank < fft_comm().size(); rank++) {
@@ -834,7 +846,7 @@ class Gvec_partition
     {
         return zcol_count_fft(fft_comm().rank());
     }
-    
+
     template <index_domain_t index_domain>
     inline int idx_zcol(int idx__) const
     {
