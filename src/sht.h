@@ -733,14 +733,14 @@ class SHT // TODO: better name
         {
             assert(lmax <= 8);
 
+            data[0]=0;
+
+            if (lmax==0) return;
+
             auto cos_theta = SHT::cosxn(lmax, theta);
             auto sin_theta = SHT::sinxn(lmax, theta);
             auto cos_phi = SHT::cosxn(lmax, phi);
             auto sin_phi = SHT::sinxn(lmax, phi);
-
-            data[0]=0;
-
-            if (lmax==0) return;
 
             data[1]=-(std::sqrt(3/pi)*cos_theta[0]*sin_phi[0])/2.;
 
@@ -922,14 +922,14 @@ class SHT // TODO: better name
         {
             assert(lmax <= 8);
 
+            data[0]=0;
+
+            if (lmax==0) return;
+
             auto cos_theta = SHT::cosxn(lmax, theta);
             auto sin_theta = SHT::sinxn(lmax, theta);
             auto cos_phi = SHT::cosxn(lmax, phi);
             auto sin_phi = SHT::sinxn(lmax, phi);
-
-            data[0]=0;
-
-            if (lmax==0) return;
 
             data[1]=-(std::sqrt(3/pi)*cos_phi[0])/2.;
 
