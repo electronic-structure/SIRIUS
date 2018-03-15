@@ -1,10 +1,10 @@
 template <typename T>
-inline void set_subspace_mtrx(int N__,
-                              int n__,
-                              Wave_functions& phi__,
-                              Wave_functions& op_phi__,
-                              dmatrix<T>& mtrx__,
-                              dmatrix<T>& mtrx_old__) const
+inline void Band::set_subspace_mtrx(int N__,
+                                    int n__,
+                                    Wave_functions& phi__,
+                                    Wave_functions& op_phi__,
+                                    dmatrix<T>& mtrx__,
+                                    dmatrix<T>& mtrx_old__) const
 {
     PROFILE("sirius::Band::set_subspace_mtrx");
 
