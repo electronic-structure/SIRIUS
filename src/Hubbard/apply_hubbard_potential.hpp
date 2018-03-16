@@ -63,6 +63,14 @@ void apply_hubbard_potential(K_point& kp,
         }
     }
 
+    dmatrix<double_complex> Up((2 * this->lmax_ + 1) * ctx_.num_spins(), n__);
+    Up.zero();
+
+    if (ctx_.processing_unit() == GPU) {
+        Up.allocate(memory_t::device);
+    }
+
+
     for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ++ia) {
         const auto& atom = ctx_.unit_cell().atom(ia);
         const int lmax_at = 2 * atom.type().hubbard_l() + 1;
@@ -71,8 +79,6 @@ void apply_hubbard_potential(K_point& kp,
             // giving me the formula for the SO case so I rely on QE for it
             // but I do not like it at all
             if (ctx_.num_mag_dims() == 3) {
-                dmatrix<double_complex> Up(lmax_at * ctx_.num_spins(), n__);
-                Up.zero();
                 for (int s1 = 0; s1 < ctx_.num_spins(); s1++) {
                     for (int s2 = 0; s2 < ctx_.num_spins(); s2++) {
                         const int ind = (s1 == s2) * s1 + (1 + 2 * s2 + s1) * (s1 != s2);
@@ -105,7 +111,6 @@ void apply_hubbard_potential(K_point& kp,
                                           n__);
             } else {
                 //Conventional LDA or colinear magnetism
-                dmatrix<double_complex> Up(lmax_at, n__);
                 for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
                     Up.zero();
                     linalg<CPU>::gemm(0, 0,
@@ -138,4 +143,6 @@ void apply_hubbard_potential(K_point& kp,
             }
         }
     }
+
+    Up.deallocate(memory_t::device);
 }
