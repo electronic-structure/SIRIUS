@@ -133,7 +133,7 @@ double ground_state(Simulation_context& ctx,
             s.print_info();
         }
         if (ctx.control().print_forces_) {
-            Force f(ctx, density, potential, ks);
+            Force f(ctx, density, potential, H, ks);
             f.calc_forces_total();
             f.print_info();
         }
