@@ -203,13 +203,13 @@ class matrix3d
     }
 
     ///Construct matrix from std::vector.
-    matrix3d(std::vector<std::std::vector<T>> mtrx)
+    matrix3d(std::vector<std::vector<T>> src)
     {
       for(int i = 0; i < 3; ++i)
       {
         for(int j = 0; j < 3; ++j)
         {
-          mtrx_[i][j] = mtrx[i][j];
+          mtrx_[i][j] = src[i][j];
         }
       }
     }
