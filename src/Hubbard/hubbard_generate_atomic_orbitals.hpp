@@ -54,8 +54,8 @@ void generate_atomic_orbitals(K_point& kp, Q_operator<double_complex>& q_op)
     if (ctx_.processing_unit() == GPU) {
         for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
             /* allocate GPU memory */
-            kp->hubbard_wave_functions().pw_coeffs(ispn).prime().allocate(memory_t::device);
-            kp->hubbard_wave_functions().pw_coeffs(ispn).copy_to_device(0, this->number_of_hubbard_orbitals());
+            kp.hubbard_wave_functions().pw_coeffs(ispn).prime().allocate(memory_t::device);
+            kp.hubbard_wave_functions().pw_coeffs(ispn).copy_to_device(0, this->number_of_hubbard_orbitals());
 
             sphi.pw_coeffs(ispn).prime().allocate(memory_t::device);
             sphi.pw_coeffs(ispn).copy_to_device(0, this->number_of_hubbard_orbitals());
@@ -100,7 +100,7 @@ void generate_atomic_orbitals(K_point& kp, Q_operator<double_complex>& q_op)
     if (ctx_.processing_unit() == GPU) {
         for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
             /* allocate GPU memory */
-            kp->hubbard_wave_functions().deallocate_on_device(ispn);
+            kp.hubbard_wave_functions().deallocate_on_device(ispn);
             sphi.deallocate_on_device(ispn);
         }
     }
