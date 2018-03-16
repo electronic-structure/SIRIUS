@@ -29,6 +29,10 @@ void apply_hubbard_potential(K_point& kp,
 
     dm.zero();
 
+    if (ctx_.processing_unit() == GPU) {
+        dm.allocate(memory_t::device);
+    }
+
     if (ctx_.num_mag_dims() == 3) {
         inner(ctx_.processing_unit(),
               2,
