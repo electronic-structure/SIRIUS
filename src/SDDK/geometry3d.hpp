@@ -53,7 +53,7 @@ class vector3d: public std::array<T, 3>
     {
         (*this) = {x, y, z};
     }
-    
+
     /// Create from std::initializer_list.
     vector3d(std::initializer_list<T> v__)
     {
@@ -62,7 +62,7 @@ class vector3d: public std::array<T, 3>
             (*this)[x] = v__.begin()[x];
         }
     }
-    
+
     /// Create from std::vector.
     vector3d(std::vector<T> v__)
     {
@@ -71,7 +71,7 @@ class vector3d: public std::array<T, 3>
             (*this)[x] = v__[x];
         }
     }
-    
+
     /// Create from raw pointer.
     vector3d(T const* ptr__)
     {
@@ -91,7 +91,7 @@ class vector3d: public std::array<T, 3>
     {
         return std::sqrt(static_cast<double>(std::pow((*this)[0], 2) + std::pow((*this)[1], 2) + std::pow((*this)[2], 2)));
     }
-    
+
     template <typename U>
     inline vector3d<decltype(T{} + U{})> operator+(vector3d<U> const& b) const
     {
@@ -200,6 +200,18 @@ class matrix3d
     matrix3d(T mtrx__[3][3])
     {
         std::memcpy(&mtrx_[0][0], &mtrx__[0][0], 9 * sizeof(T));
+    }
+
+    ///Construct matrix from std::vector.
+    matrix3d(std::vector<std::std::vector<T>> mtrx)
+    {
+      for(int i = 0; i < 3; ++i)
+      {
+        for(int j = 0; j < 3; ++j)
+        {
+          mtrx_[i][j] = mtrx[i][j];
+        }
+      }
     }
 
     /// Copy constructor.
@@ -400,8 +412,8 @@ inline std::pair<vector3d<double>, vector3d<int>> reduce_coordinates(vector3d<do
 {
     const double eps{1e-6};
 
-    std::pair<vector3d<double>, vector3d<int>> v; 
-    
+    std::pair<vector3d<double>, vector3d<int>> v;
+
     v.first = coord;
     for (int i = 0; i < 3; i++) {
         v.second[i] = (int)floor(v.first[i]);
@@ -437,7 +449,7 @@ inline std::pair<vector3d<double>, vector3d<int>> reduce_coordinates(vector3d<do
 /** Serach for the translation limits (N1, N2, N3) such that the resulting supercell with the lattice
  *  vectors a1 * N1, a2 * N2, a3 * N3 fully contains the sphere with a given radius. This is done
  *  by equating the expressions for the volume of the supercell:
- *   Volume = |(A1 x A2) * A3| = N1 * N2 * N3 * |(a1 x a2) * a3| 
+ *   Volume = |(A1 x A2) * A3| = N1 * N2 * N3 * |(a1 x a2) * a3|
  *   Volume = h * S = 2 * R * |a_i x a_j| * N_i * N_j */
 inline vector3d<int> find_translations(double radius__, matrix3d<double> const& lattice_vectors__)
 {
