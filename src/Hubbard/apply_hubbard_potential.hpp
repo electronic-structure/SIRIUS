@@ -24,10 +24,10 @@ void apply_hubbard_potential(K_point& kp,
     if (ctx_.num_mag_dims() == 1)
         Nfc *= 2;
 
-    dmatrix<double_complex> dm(this->number_of_hubbard_orbitals(), n__ * Nfc);
+    dmatrix<double_complex> dm(this->number_of_hubbard_orbitals(),
+                               n__ * Nfc);
 
     dm.zero();
-    dm.allocate_on_device();
 
     if (ctx_.num_mag_dims() == 3) {
         inner(ctx_.processing_unit(),
@@ -58,8 +58,6 @@ void apply_hubbard_potential(K_point& kp,
                   ispn * n__);
         }
     }
-
-    dm.deallocate_on_device();
 
     for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ++ia) {
         const auto& atom = ctx_.unit_cell().atom(ia);
