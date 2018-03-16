@@ -2244,7 +2244,6 @@ void Atom_type::read_hubbard_input()
     if(!parameters_.Hubbard().hubbard_correction_) {
         return;
     }
-
     for(auto &d: parameters_.Hubbard().species) {
         if (d.first == symbol_) {
             hubbard_U_ = d.second[0];
@@ -2258,6 +2257,7 @@ void Atom_type::read_hubbard_input()
             starting_magnetization_theta_ = d.second[7];
             starting_magnetization_phi_ = d.second[8];
             starting_magnetization_ = d.second[6];
+            this->hubbard_correction_ = true;
         }
     }
 }

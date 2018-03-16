@@ -42,84 +42,27 @@ void generate_atomic_orbitals(K_point& kp, Q_operator<double_complex>& q_op)
     // temporary wave functions
     Wave_functions sphi(kp.gkvec_partition(), this->number_of_hubbard_orbitals(), ctx_.num_spins());
 
-    #pragma omp parallel for schedule(static)
-    for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
-        const auto& atom             = unit_cell_.atom(ia);
-        const double phase           = twopi * geometry3d::dot(kp.gkvec().vk(), unit_cell_.atom(ia).position());
-        const double_complex phase_k = double_complex(cos(phase), sin(phase));
-
-        std::vector<double_complex> phase_gk(kp.num_gkvec_loc());
-        for (int igk_loc = 0; igk_loc < kp.num_gkvec_loc(); igk_loc++) {
-            int igk           = kp.idxgk(igk_loc);
-            auto G            = kp.gkvec().gvec(igk);
-            phase_gk[igk_loc] = std::conj(ctx_.gvec_phase_factor(G, ia) * phase_k);
-        }
-        const auto& atom_type = atom.type();
-        if (atom_type.hubbard_correction()) {
-            const int l      = atom_type.hubbard_l();
-            const double_complex z = std::pow(double_complex(0, -1), l) * fourpi / std::sqrt(unit_cell_.omega());
-            if (atom_type.spin_orbit_coupling()) {
-                int orb[2];
-                int s = 0;
-                for (auto i = 0; i < atom_type.num_ps_atomic_wf(); i++) {
-                    if (atom_type.ps_atomic_wf(i).first == atom_type.hubbard_l()) {
-                        orb[s] = i;
-                        s++;
-                    }
-                }
-                for (int m = -l; m <= l; m++) {
-                    int lm = Utils::lm_by_l_m(l, m);
-                    for (int igk_loc = 0; igk_loc < kp.num_gkvec_loc(); igk_loc++) {
-                        const double_complex temp = (ctx_.atomic_wf_ri().values(orb[0], atom_type.id())(
-                                                     idx_gk[igk_loc].first, idx_gk[igk_loc].second) +
-                                                     ctx_.atomic_wf_ri().values(orb[1], atom_type.id())(
-                                                     idx_gk[igk_loc].first, idx_gk[igk_loc].second)) * 0.5;
-                        sphi.pw_coeffs(0).prime(igk_loc, this->offset[ia] + l + m) =
-                            z * phase_gk[igk_loc] * rlm_gk(igk_loc, lm) * temp;
-
-                        sphi.pw_coeffs(1).prime(igk_loc, this->offset[ia] + l + m + 2 * l + 1) =
-                            z * phase_gk[igk_loc] * rlm_gk(igk_loc, lm) * temp;
-                    }
-                }
-            } else {
-                // find the right hubbard orbital
-                int orb = -1;
-                for (auto i = 0; i < atom_type.num_ps_atomic_wf(); i++) {
-                    if (atom_type.ps_atomic_wf(i).first == atom_type.hubbard_l()) {
-                        orb = i;
-                        break;
-                    }
-                }
-
-                for (int m = -l; m <= l; m++) {
-                    int lm = Utils::lm_by_l_m(l, m);
-                    if (ctx_.num_mag_dims() == 3) {
-                      for (int s = 0; s < ctx_.num_spins(); s++) {
-                        for (int igk_loc = 0; igk_loc < kp.num_gkvec_loc(); igk_loc++) {
-                          sphi.pw_coeffs(s).prime(igk_loc, this->offset[ia] + l + m + s * (2 * l + 1)) =
-                            z * phase_gk[igk_loc] * rlm_gk(igk_loc, lm) *
-                            ctx_.atomic_wf_ri().values(orb, atom_type.id())(idx_gk[igk_loc].first, idx_gk[igk_loc].second);
-                        }
-                      }
-                    } else {
-                      for (int s = 0; s < ctx_.num_spins(); s++) {
-                        for (int igk_loc = 0; igk_loc < kp.num_gkvec_loc(); igk_loc++) {
-                          sphi.pw_coeffs(s).prime(igk_loc, this->offset[ia] + l + m) =
-                            z * phase_gk[igk_loc] * rlm_gk(igk_loc, lm) *
-                            ctx_.atomic_wf_ri().values(orb, atom_type.id())(idx_gk[igk_loc].first, idx_gk[igk_loc].second);
-                        }
-                      }
-                    }
-                }
-            }
-        }
-    }
+    this->GenerateAtomicOrbitals(kp, sphi);
 
     // check if we have a norm conserving pseudo potential only
     bool augment = false;
     for (auto ia = 0; (ia < ctx_.unit_cell().num_atom_types()) && (!augment); ia++) {
         augment = ctx_.unit_cell().atom_type(ia).augment();
     }
+
+#ifdef __GPU
+    if (ctx_.processing_unit() == GPU) {
+        for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
+            /* allocate GPU memory */
+            kp->hubbard_wave_functions().pw_coeffs(ispn).prime().allocate(memory_t::device);
+            kp->hubbard_wave_functions().pw_coeffs(ispn).copy_to_device(0, this->number_of_hubbard_orbitals());
+
+            sphi.pw_coeffs(ispn).prime().allocate(memory_t::device);
+            sphi.pw_coeffs(ispn).copy_to_device(0, this->number_of_hubbard_orbitals());
+        }
+    }
+#endif
+
 
     for (int s = 0; s < ctx_.num_spins(); s++) {
         // I need to consider the case where all atoms are norm
@@ -151,9 +94,34 @@ void generate_atomic_orbitals(K_point& kp, Q_operator<double_complex>& q_op)
         kp.beta_projectors().dismiss();
     }
 
+    orthogonalize_atomic_orbitals(kp, sphi);
+
+#ifdef __GPU
+    if (ctx_.processing_unit() == GPU) {
+        for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
+            /* allocate GPU memory */
+            kp->hubbard_wave_functions().deallocate_on_device(ispn);
+            sphi.deallocate_on_device(ispn);
+        }
+    }
+#endif
+}
+
+void orthogonalize_atomic_orbitals(K_point& kp, Wave_functions &sphi)
+{
     // do we orthogonalize the all thing
 
+
+
     if (this->orthogonalize_hubbard_orbitals_ || this->normalize_hubbard_orbitals()) {
+
+        // check if we have a norm conserving pseudo potential only
+        bool augment = false;
+        for (auto ia = 0; (ia < ctx_.unit_cell().num_atom_types()) && (!augment); ia++) {
+            augment = ctx_.unit_cell().atom_type(ia).augment();
+        }
+
+
         dmatrix<double_complex> S(this->number_of_hubbard_orbitals(), this->number_of_hubbard_orbitals());
         S.zero();
         if(ctx_.num_mag_dims() == 3) {
@@ -218,6 +186,8 @@ void generate_atomic_orbitals(K_point& kp, Q_operator<double_complex>& q_op)
           }
         }
 
+
+
         // now apply the overlap matrix
         for (int s = 0; (s < ctx_.num_spins()) && augment; s++) {
           sphi.copy_from(ctx_.processing_unit(), this->number_of_hubbard_orbitals(), kp.hubbard_wave_functions(),
@@ -252,4 +222,155 @@ void generate_atomic_orbitals(K_point& kp, Q_operator<double_complex>& q_op)
           }
         }
     }
+}
+
+void GenerateAtomicOrbitals(K_point& kp, Wave_functions &phi)
+{
+    int lmax{0};
+
+    for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
+        lmax = std::max(lmax, unit_cell_.atom_type(iat).lmax_ps_atomic_wf());
+    }
+    // we need the complex spherical harmonics for the spin orbit case
+    // mdarray<double_complex, 2> ylm_gk;
+    // if (ctx_.so_correction())
+    //   ylm_gk = mdarray<double_complex, 2>(this->num_gkvec_loc(), Utils::lmmax(lmax));
+
+    mdarray<double, 2> rlm_gk(kp.num_gkvec_loc(), Utils::lmmax(lmax));
+    mdarray<std::pair<int, double>, 1> idx_gk(kp.num_gkvec_loc());
+
+    for (int igk_loc = 0; igk_loc < kp.num_gkvec_loc(); igk_loc++) {
+        int igk = kp.idxgk(igk_loc);
+        /* vs = {r, theta, phi} */
+        auto vs = SHT::spherical_coordinates(kp.gkvec().gkvec_cart(igk));
+        /* compute real spherical harmonics for G+k vector */
+        std::vector<double> rlm(Utils::lmmax(lmax));
+        SHT::spherical_harmonics(lmax, vs[1], vs[2], &rlm[0]);
+
+        for (int lm = 0; lm < Utils::lmmax(lmax); lm++) {
+            rlm_gk(igk_loc, lm) = rlm[lm];
+        }
+
+        idx_gk(igk_loc) = ctx_.atomic_wf_ri().iqdq(vs[0]);
+    }
+
+    #pragma omp parallel for schedule(static)
+    for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
+        const auto& atom             = unit_cell_.atom(ia);
+        const double phase           = twopi * geometry3d::dot(kp.gkvec().vk(), unit_cell_.atom(ia).position());
+        const double_complex phase_k = double_complex(cos(phase), sin(phase));
+
+        std::vector<double_complex> phase_gk(kp.num_gkvec_loc());
+        for (int igk_loc = 0; igk_loc < kp.num_gkvec_loc(); igk_loc++) {
+            int igk           = kp.idxgk(igk_loc);
+            auto G            = kp.gkvec().gvec(igk);
+            phase_gk[igk_loc] = std::conj(ctx_.gvec_phase_factor(G, ia) * phase_k);
+        }
+        const auto& atom_type = atom.type();
+        if (atom_type.hubbard_correction()) {
+            const int l      = atom_type.hubbard_l();
+            const double_complex z = std::pow(double_complex(0, -1), l) * fourpi / std::sqrt(unit_cell_.omega());
+            if (atom_type.spin_orbit_coupling()) {
+                int orb[2];
+                int s = 0;
+                for (auto i = 0; i < atom_type.num_ps_atomic_wf(); i++) {
+                    if (atom_type.ps_atomic_wf(i).first == atom_type.hubbard_l()) {
+                        orb[s] = i;
+                        s++;
+                    }
+                }
+                for (int m = -l; m <= l; m++) {
+                    int lm = Utils::lm_by_l_m(l, m);
+                    for (int igk_loc = 0; igk_loc < kp.num_gkvec_loc(); igk_loc++) {
+                        const double_complex temp = (ctx_.atomic_wf_ri().values(orb[0], atom_type.id())(
+                                                     idx_gk[igk_loc].first, idx_gk[igk_loc].second) +
+                                                     ctx_.atomic_wf_ri().values(orb[1], atom_type.id())(
+                                                     idx_gk[igk_loc].first, idx_gk[igk_loc].second)) * 0.5;
+                        phi.pw_coeffs(0).prime(igk_loc, this->offset[ia] + l + m) =
+                            z * phase_gk[igk_loc] * rlm_gk(igk_loc, lm) * temp;
+
+                        phi.pw_coeffs(1).prime(igk_loc, this->offset[ia] + l + m + 2 * l + 1) =
+                            z * phase_gk[igk_loc] * rlm_gk(igk_loc, lm) * temp;
+                    }
+                }
+            } else {
+                // find the right hubbard orbital
+                int orb = -1;
+                for (auto i = 0; i < atom_type.num_ps_atomic_wf(); i++) {
+                    if (atom_type.ps_atomic_wf(i).first == atom_type.hubbard_l()) {
+                        orb = i;
+                        break;
+                    }
+                }
+
+                for (int m = -l; m <= l; m++) {
+                    int lm = Utils::lm_by_l_m(l, m);
+                    if (ctx_.num_mag_dims() == 3) {
+                      for (int s = 0; s < ctx_.num_spins(); s++) {
+                        for (int igk_loc = 0; igk_loc < kp.num_gkvec_loc(); igk_loc++) {
+                          phi.pw_coeffs(s).prime(igk_loc, this->offset[ia] + l + m + s * (2 * l + 1)) =
+                            z * phase_gk[igk_loc] * rlm_gk(igk_loc, lm) *
+                            ctx_.atomic_wf_ri().values(orb, atom_type.id())(idx_gk[igk_loc].first, idx_gk[igk_loc].second);
+                        }
+                      }
+                    } else {
+                      for (int s = 0; s < ctx_.num_spins(); s++) {
+                        for (int igk_loc = 0; igk_loc < kp.num_gkvec_loc(); igk_loc++) {
+                          phi.pw_coeffs(s).prime(igk_loc, this->offset[ia] + l + m) =
+                            z * phase_gk[igk_loc] * rlm_gk(igk_loc, lm) *
+                            ctx_.atomic_wf_ri().values(orb, atom_type.id())(idx_gk[igk_loc].first, idx_gk[igk_loc].second);
+                        }
+                      }
+                    }
+                }
+            }
+        }
+    }
+}
+
+void ComputeDerivatives(K_point& kp, Wave_functions &phi, Wave_functions &dphi, const int direction)
+{
+#pragma omp parallel for schedule(static)
+  for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
+    const auto& atom             = unit_cell_.atom(ia);
+    std::vector<double_complex> qalpha(kp.num_gkvec_loc());
+
+    for (int igk_loc = 0; igk_loc < kp.num_gkvec_loc(); igk_loc++) {
+      int igk           = kp.idxgk(igk_loc);
+      auto G            = kp.gkvec().gvec(igk);
+      qalpha[igk_loc] = G[direction];
+    }
+
+    const auto& atom_type = atom.type();
+    if (atom_type.hubbard_correction()) {
+      const int l      = atom_type.hubbard_l();
+      if (atom_type.spin_orbit_coupling()) {
+
+        for (int m = -l; m <= l; m++) {
+          for (int igk_loc = 0; igk_loc < kp.num_gkvec_loc(); igk_loc++) {
+            dphi.pw_coeffs(0).prime(igk_loc, this->offset[ia] + l + m) = qalpha[igk_loc] * phi.pw_coeffs(0).prime(igk_loc, this->offset[ia] + l + m);
+            dphi.pw_coeffs(1).prime(igk_loc, this->offset[ia] + l + m + 2 * l + 1) = qalpha[igk_loc] * phi.pw_coeffs(1).prime(igk_loc, this->offset[ia] + l + m + 2 * l + 1);
+          }
+        }
+      } else {
+        if (ctx_.num_mag_dims() == 3) {
+          for (int s = 0; s < ctx_.num_spins(); s++) {
+              for (int m = -l; m <= l; m++) {
+                  for (int igk_loc = 0; igk_loc < kp.num_gkvec_loc(); igk_loc++) {
+                      dphi.pw_coeffs(s).prime(igk_loc, this->offset[ia] + l + m + s * (2 * l + 1)) = qalpha[igk_loc] * phi.pw_coeffs(s).prime(igk_loc, this->offset[ia] + l + m + s * (2 * l + 1));
+                  }
+              }
+          }
+        } else {
+          for (int s = 0; s < ctx_.num_spins(); s++) {
+              for (int m = -l; m <= l; m++) {
+                  for (int igk_loc = 0; igk_loc < kp.num_gkvec_loc(); igk_loc++) {
+                      dphi.pw_coeffs(s).prime(igk_loc, this->offset[ia] + l + m) = qalpha[igk_loc] * phi.pw_coeffs(s).prime(igk_loc, this->offset[ia] + l + m);
+                  }
+              }
+          }
+        }
+      }
+    }
+  }
 }

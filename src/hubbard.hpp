@@ -30,7 +30,6 @@ class Hubbard_potential
 
     mdarray<double_complex, 5> occupancy_number_;
 
-    std::vector<int> offset;
 
     double hubbard_energy_{0.0};
     double hubbard_energy_u_{0.0};
@@ -69,6 +68,8 @@ class Hubbard_potential
     ///std::unique_ptr<Radial_integrals_centered_atomic_wfc> wfc_;
 
 public:
+    std::vector<int> offset;
+
     void set_hubbard_U_plus_V(const bool U_plus_V_)
     {
         hubbard_U_plus_V_ = true;
@@ -79,6 +80,10 @@ public:
         approximation_ = true;
     }
 
+    inline int hubbard_lmax() const
+    {
+        return lmax_;
+    }
     void set_orthogonalize_hubbard_orbitals(const bool test)
     {
         this->orthogonalize_hubbard_orbitals_ = test;
@@ -261,7 +266,6 @@ public:
             if (atom.type().hubbard_correction()) {
                 // search for the orbital of given l corresponding to the
                 // hubbard l, with strickly positive occupation
-
                 for (int wfc = 0; wfc < atom.type().num_ps_atomic_wf(); wfc++) {
                     const int l      = std::abs(atom.type().ps_atomic_wf(wfc).first);
                     const double occ = atom.type().ps_atomic_wf_occ()[wfc];
@@ -298,6 +302,7 @@ public:
         }
         // compute the number of orbitals
         this->number_of_hubbard_orbitals_ = counter;
+        std::cout << this->number_of_hubbard_orbitals_ << std::endl;
     }
 };
 }
