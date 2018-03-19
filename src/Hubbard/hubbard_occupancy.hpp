@@ -15,27 +15,44 @@ void hubbard_compute_occupation_numbers(K_point_set& kset_)
 
     this->occupancy_number_.zero();
 
+    int HowManyBands = -1;
+    // if we are doing calculations for non colinear magnetism or
+    // simple LDA then do not change the number of bands. the factor
+    // two is important for colinear magnetism since the up-up and
+    // down-down blocks are decoupled but the wave-functions are up
+    // and down are still stored as a spinor to conserve space.
+
+    for (int ikloc = 0; ikloc < kset_.spl_num_kpoints().local_size(); ikloc++) {
+        int ik  = kset_.spl_num_kpoints(ikloc);
+        auto kp = kset_[ik];
+
+        int tmp = kp->num_occupied_bands(0);
+        if (ctx_.num_mag_dims() == 1) {
+            tmp += kp->num_occupied_bands(1);
+        }
+
+        HowManyBands = max(HowManyBands, tmp);
+    }
+
+    // now for each spin components and each atom we need to calculate
+    // <psi_{nk}|phi^I_m'><phi^I_m|psi_{nk}>
+    dmatrix<double_complex> dm(this->number_of_hubbard_orbitals(),
+                               HowManyBands);
+
+    dm.zero();
+
+#ifdef __GPU
+    if (ctx_.processing_unit() == GPU) {
+        // the communicator is always of size 1.  I need to allocate memory
+        // on the device manually
+        dm.allocate(memory_t::device);
+    }
+#endif
+
     for (int ikloc = 0; ikloc < kset_.spl_num_kpoints().local_size(); ikloc++) {
 
         int ik  = kset_.spl_num_kpoints(ikloc);
         auto kp = kset_[ik];
-
-        // if we are doing calculations for non colinear magnetism or
-        // simple LDA then do not change the number of bands. the factor
-        // two is important for colinear magnetism since the up-up and
-        // down-down blocks are decoupled but the wave-functions are up
-        // and down are still stored as a spinor to conserve space.
-        int HowManyBands = kp->num_occupied_bands(0);
-        if (ctx_.num_mag_dims() == 1) {
-            HowManyBands += kp->num_occupied_bands(1);
-        }
-
-        // now for each spin components and each atom we need to calculate
-        // <psi_{nk}|phi^I_m'><phi^I_m|psi_{nk}>
-        dmatrix<double_complex> dm(this->number_of_hubbard_orbitals(),
-                                   HowManyBands);
-
-        dm.zero();
 
         #ifdef __GPU
         if (ctx_.processing_unit() == GPU) {
@@ -46,7 +63,6 @@ void hubbard_compute_occupation_numbers(K_point_set& kset_)
 
                 kp->hubbard_wave_functions().pw_coeffs(ispn).prime().allocate(memory_t::device);
                 kp->hubbard_wave_functions().pw_coeffs(ispn).copy_to_device(0, this->number_of_hubbard_orbitals());
-
             }
         }
         #endif
@@ -64,30 +80,18 @@ void hubbard_compute_occupation_numbers(K_point_set& kset_)
                   0,
                   0);
         } else { // TODO: can this be combined into one loop over spins
-            inner(ctx_.processing_unit(),
-                  0,
-                  kp->hubbard_wave_functions(),
-                  0,
-                  this->number_of_hubbard_orbitals(),
-                  kp->spinor_wave_functions(),
-                  0,
-                  kp->num_occupied_bands(0),
-                  dm,
-                  0,
-                  0);
-
-            if (ctx_.num_spins() == 2) {
+            for (int ispn_ = 0; ispn_ < ctx_.num_spins(); ispn_++) {
                 inner(ctx_.processing_unit(),
-                      1,
+                      0,
                       kp->hubbard_wave_functions(),
                       0,
                       this->number_of_hubbard_orbitals(),
                       kp->spinor_wave_functions(),
                       0,
-                      kp->num_occupied_bands(1),
+                      kp->num_occupied_bands(ispn_),
                       dm,
                       0,
-                      kp->num_occupied_bands(0));
+                      ispn_ * kp->num_occupied_bands(0));
             }
         }
 
@@ -149,6 +153,13 @@ void hubbard_compute_occupation_numbers(K_point_set& kset_)
             }
         }
     }
+
+#ifdef __GPU
+    if (ctx_.processing_unit() == GPU) {
+        dm.deallocate_on_device();
+    }
+#endif
+
     // global reduction
     ctx_.comm().allreduce<double_complex, mpi_op_t::sum>(this->occupancy_number_.at<CPU>(),
                                                          static_cast<int>(this->occupancy_number_.size()));

@@ -66,10 +66,14 @@ void apply_hubbard_potential(K_point& kp,
     dmatrix<double_complex> Up((2 * this->lmax_ + 1) * ctx_.num_spins(), n__);
     Up.zero();
 
+    #ifdef __GPU
+    // the communicator is always of size 1.  I need to allocate memory
+    // on the device manually
+
     if (ctx_.processing_unit() == GPU) {
         Up.allocate(memory_t::device);
     }
-
+    #endif
 
     for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ++ia) {
         const auto& atom = ctx_.unit_cell().atom(ia);
