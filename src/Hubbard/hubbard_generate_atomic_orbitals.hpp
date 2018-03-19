@@ -125,9 +125,11 @@ void orthogonalize_atomic_orbitals(K_point& kp, Wave_functions &sphi)
         dmatrix<double_complex> S(this->number_of_hubbard_orbitals(), this->number_of_hubbard_orbitals());
         S.zero();
 
+#ifdef __GPU
         if (ctx_.processing_unit()) {
             S.allocate(memory_t::device);
         }
+#endif
 
         if(ctx_.num_mag_dims() == 3) {
             inner<double_complex>(ctx_.processing_unit(),
@@ -227,9 +229,11 @@ void orthogonalize_atomic_orbitals(K_point& kp, Wave_functions &sphi)
           }
         }
 
+#ifdef __GPU
         if (ctx_.processing_unit() == GPU) {
             S.deallocate(memory_t::device);
         }
+#endif
     }
 }
 
