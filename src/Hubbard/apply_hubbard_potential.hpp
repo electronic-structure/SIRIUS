@@ -110,7 +110,7 @@ void apply_hubbard_potential(K_point& kp,
 
 #ifdef __GPU
                 if (ctx_.processing_unit() == GPU) {
-                    Up.copy<CPU, GPU>(Up.size());
+                    Up.copy<memory_t::host, memory_t::device>(Up.size());
                 }
 #endif
 
@@ -157,7 +157,7 @@ void apply_hubbard_potential(K_point& kp,
 
 #ifdef __GPU
                     if (ctx_.processing_unit() == GPU) {
-                        Up.copy<CPU, GPU>(Up.size());
+                        Up.copy<memory_t::host, memory_t::device>(Up.size());
                     }
 #endif
 
