@@ -302,7 +302,6 @@ public:
         }
         // compute the number of orbitals
         this->number_of_hubbard_orbitals_ = counter;
-        std::cout << this->number_of_hubbard_orbitals_ << std::endl;
     }
 };
 }

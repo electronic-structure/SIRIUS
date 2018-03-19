@@ -9,33 +9,33 @@ void generate_atomic_orbitals(K_point& kp, Q_operator<double_complex>& q_op)
     // return immediately if the wave functions are already allocated
     if (kp.hubbard_wave_functions_calculated()) {
 
-      // the hubbard orbitals are already calculated but are stored on the CPU memory.
-      // when the GPU is used, we need to do an explicit copy of them after allocation
-#ifdef __GPU
-      if (ctx_.processing_unit() == GPU) {
-        for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-	  /* allocate GPU memory */
-	  kp.hubbard_wave_functions().pw_coeffs(ispn).prime().allocate(memory_t::device);
-	  kp.hubbard_wave_functions().pw_coeffs(ispn).copy_to_device(0, this->number_of_hubbard_orbitals());
-        }    
-      }
-#endif
-      return;
+       // the hubbard orbitals are already calculated but are stored on the CPU memory.
+       // when the GPU is used, we need to do an explicit copy of them after allocation
+       #ifdef __GPU
+       if (ctx_.processing_unit() == GPU) {
+          for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
+              /* allocate GPU memory */
+              kp.hubbard_wave_functions().pw_coeffs(ispn).prime().allocate(memory_t::device);
+	          kp.hubbard_wave_functions().pw_coeffs(ispn).copy_to_device(0, this->number_of_hubbard_orbitals());
+          }
+       }
+       #endif
+       return;
     }
-    
+
     kp.allocate_hubbard_wave_functions(this->number_of_hubbard_orbitals());
-    
+
     for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
-      lmax = std::max(lmax, unit_cell_.atom_type(iat).lmax_ps_atomic_wf());
+        lmax = std::max(lmax, unit_cell_.atom_type(iat).lmax_ps_atomic_wf());
     }
     // we need the complex spherical harmonics for the spin orbit case
     // mdarray<double_complex, 2> ylm_gk;
     // if (ctx_.so_correction())
     //   ylm_gk = mdarray<double_complex, 2>(this->num_gkvec_loc(), Utils::lmmax(lmax));
-    
+
     mdarray<double, 2> rlm_gk(kp.num_gkvec_loc(), Utils::lmmax(lmax));
     mdarray<std::pair<int, double>, 1> idx_gk(kp.num_gkvec_loc());
-    
+
     for (int igk_loc = 0; igk_loc < kp.num_gkvec_loc(); igk_loc++) {
       int igk = kp.idxgk(igk_loc);
       /* vs = {r, theta, phi} */
@@ -67,8 +67,9 @@ void generate_atomic_orbitals(K_point& kp, Q_operator<double_complex>& q_op)
         for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
             /* allocate GPU memory */
             sphi.pw_coeffs(ispn).prime().allocate(memory_t::device);
+            // can do async copy
             sphi.pw_coeffs(ispn).copy_to_device(0, this->number_of_hubbard_orbitals());
-	    kp.hubbard_wave_functions().pw_coeffs(ispn).prime().allocate(memory_t::device);
+	        kp.hubbard_wave_functions().pw_coeffs(ispn).prime().allocate(memory_t::device);
         }
     }
 #endif
@@ -107,8 +108,11 @@ void generate_atomic_orbitals(K_point& kp, Q_operator<double_complex>& q_op)
     orthogonalize_atomic_orbitals(kp, sphi);
 
 #ifdef __GPU
-    for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-        kp.hubbard_wave_functions().pw_coeffs(ispn).copy_to_host(0, this->number_of_hubbard_orbitals());
+    // All calculations on GPU then we need to copy the final result back to the cpus
+    if (ctx_.processing_unit() == GPU) {
+       for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
+           kp.hubbard_wave_functions().pw_coeffs(ispn).copy_to_host(0, this->number_of_hubbard_orbitals());
+       }
     }
 #endif
 }
@@ -161,45 +165,54 @@ void orthogonalize_atomic_orbitals(K_point& kp, Wave_functions &sphi)
                                   this->number_of_hubbard_orbitals(),
                                   S, 0, 0);
         }
+#ifdef __GPU
+        if (ctx_.processing_unit()) {
+           S.copy<memory_t::device, memory_t::host>();
+        }
+#endif
 
         // diagonalize the all stuff
 
         if (this->orthogonalize_hubbard_orbitals_) {
-          dmatrix<double_complex> Z(this->number_of_hubbard_orbitals(), this->number_of_hubbard_orbitals());
+           dmatrix<double_complex> Z(this->number_of_hubbard_orbitals(), this->number_of_hubbard_orbitals());
 
-          auto ev_solver = Eigensolver_factory<double_complex>(ev_solver_t::lapack);
+           auto ev_solver = Eigensolver_factory<double_complex>(ev_solver_t::lapack);
 
-          std::vector<double> eigenvalues(this->number_of_hubbard_orbitals(), 0.0);
+           std::vector<double> eigenvalues(this->number_of_hubbard_orbitals(), 0.0);
 
-          ev_solver->solve(number_of_hubbard_orbitals(), S, &eigenvalues[0], Z);
+           ev_solver->solve(number_of_hubbard_orbitals(), S, &eigenvalues[0], Z);
 
-          // build the O^{-1/2} operator
-          for (int i = 0; i < static_cast<int>(eigenvalues.size()); i++) {
-            eigenvalues[i] = 1.0 / std::sqrt(eigenvalues[i]);
-          }
+           // build the O^{-1/2} operator
+           for (int i = 0; i < static_cast<int>(eigenvalues.size()); i++) {
+               eigenvalues[i] = 1.0 / std::sqrt(eigenvalues[i]);
+           }
 
-          // First compute S_{nm} = E_m Z_{nm}
-          S.zero();
-          for (int l = 0; l < this->number_of_hubbard_orbitals(); l++) {
-            for (int m = 0; m < this->number_of_hubbard_orbitals(); m++) {
-              for (int n = 0; n < this->number_of_hubbard_orbitals(); n++) {
-                S(n, m) += eigenvalues[l] * Z(n, l) * std::conj(Z(m, l));
-              }
-            }
-          }
+           // First compute S_{nm} = E_m Z_{nm}
+           S.zero();
+           for (int l = 0; l < this->number_of_hubbard_orbitals(); l++) {
+               for (int m = 0; m < this->number_of_hubbard_orbitals(); m++) {
+                   for (int n = 0; n < this->number_of_hubbard_orbitals(); n++) {
+                       S(n, m) += eigenvalues[l] * Z(n, l) * std::conj(Z(m, l));
+                   }
+               }
+           }
         } else {
           for (int l = 0; l < this->number_of_hubbard_orbitals(); l++) {
-            for (int m = 0; m < this->number_of_hubbard_orbitals(); m++) {
-              if (l == m) {
-                S(l, m) = 1.0 / sqrt((S(l, l) * conj(S(l, l))).real());
-              } else {
-                S(l, m) = 0.0;
+              for (int m = 0; m < this->number_of_hubbard_orbitals(); m++) {
+                  if (l == m) {
+                     S(l, m) = 1.0 / sqrt((S(l, l) * conj(S(l, l))).real());
+                  } else {
+                     S(l, m) = 0.0;
+                  }
               }
-            }
           }
         }
 
-
+#ifdef __GPU
+        if (ctx_.processing_unit()) {
+          S.copy<memory_t::host, memory_t::device>();
+        }
+#endif
 
         // now apply the overlap matrix
         for (int s = 0; (s < ctx_.num_spins()) && augment; s++) {
@@ -293,15 +306,20 @@ void GenerateAtomicOrbitals(K_point& kp, Wave_functions &phi)
                 int orb[2];
                 int s = 0;
                 for (auto i = 0; i < atom_type.num_ps_atomic_wf(); i++) {
-                    if (atom_type.ps_atomic_wf(i).first == atom_type.hubbard_l()) {
+                  // this is very ugly but we encode the j = l +- 1/2
+                  // directly in the sign of l.
+
+                  // Ideally we should also check the orbital level
+                  if (std::abs(atom_type.ps_atomic_wf(i).first) == atom_type.hubbard_l()) {
                         orb[s] = i;
                         s++;
                     }
                 }
+
                 for (int m = -l; m <= l; m++) {
-                    int lm = Utils::lm_by_l_m(l, m);
-                    for (int igk_loc = 0; igk_loc < kp.num_gkvec_loc(); igk_loc++) {
-                        const double_complex temp = (ctx_.atomic_wf_ri().values(orb[0], atom_type.id())(
+                  int lm = Utils::lm_by_l_m(l, m);
+                  for (int igk_loc = 0; igk_loc < kp.num_gkvec_loc(); igk_loc++) {
+                    const double_complex temp = (ctx_.atomic_wf_ri().values(orb[0], atom_type.id())(
                                                      idx_gk[igk_loc].first, idx_gk[igk_loc].second) +
                                                      ctx_.atomic_wf_ri().values(orb[1], atom_type.id())(
                                                      idx_gk[igk_loc].first, idx_gk[igk_loc].second)) * 0.5;
