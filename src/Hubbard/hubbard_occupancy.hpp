@@ -31,7 +31,7 @@ void hubbard_compute_occupation_numbers(K_point_set& kset_)
             tmp += kp->num_occupied_bands(1);
         }
 
-        HowManyBands = max(HowManyBands, tmp);
+        HowManyBands = std::max(HowManyBands, tmp);
     }
 
     // now for each spin components and each atom we need to calculate
@@ -102,6 +102,7 @@ void hubbard_compute_occupation_numbers(K_point_set& kset_)
                 kp->spinor_wave_functions().pw_coeffs(ispn).deallocate_on_device();
                 kp->hubbard_wave_functions().pw_coeffs(ispn).deallocate_on_device();
             }
+	    dm.copy<memory_t::device, memory_t::host>();
         }
 #endif
         // now compute O_{ij}^{sigma,sigma'} = \sum_{nk} <psi_nk|phi_{i,sigma}><phi_{j,sigma^'}|psi_nk> f_{nk}
@@ -156,7 +157,7 @@ void hubbard_compute_occupation_numbers(K_point_set& kset_)
 
 #ifdef __GPU
     if (ctx_.processing_unit() == GPU) {
-        dm.deallocate_on_device();
+        dm.deallocate(memory_t::device);
     }
 #endif
 
