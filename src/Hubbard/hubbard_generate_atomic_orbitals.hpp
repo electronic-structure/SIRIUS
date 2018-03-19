@@ -8,26 +8,38 @@ void generate_atomic_orbitals(K_point& kp, Q_operator<double_complex>& q_op)
     int lmax{0};
     // return immediately if the wave functions are already allocated
     if (kp.hubbard_wave_functions_calculated()) {
-        return;
+
+      // the hubbard orbitals are already calculated but are stored on the CPU memory.
+      // when the GPU is used, we need to do an explicit copy of them after allocation
+#ifdef __GPU
+      if (ctx_.processing_unit() == GPU) {
+        for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
+	  /* allocate GPU memory */
+	  kp.hubbard_wave_functions().pw_coeffs(ispn).prime().allocate(memory_t::device);
+	  kp.hubbard_wave_functions().pw_coeffs(ispn).copy_to_device(0, this->number_of_hubbard_orbitals());
+        }    
+      }
+#endif
+      return;
     }
-
+    
     kp.allocate_hubbard_wave_functions(this->number_of_hubbard_orbitals());
-
+    
     for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
-        lmax = std::max(lmax, unit_cell_.atom_type(iat).lmax_ps_atomic_wf());
+      lmax = std::max(lmax, unit_cell_.atom_type(iat).lmax_ps_atomic_wf());
     }
     // we need the complex spherical harmonics for the spin orbit case
     // mdarray<double_complex, 2> ylm_gk;
     // if (ctx_.so_correction())
     //   ylm_gk = mdarray<double_complex, 2>(this->num_gkvec_loc(), Utils::lmmax(lmax));
-
+    
     mdarray<double, 2> rlm_gk(kp.num_gkvec_loc(), Utils::lmmax(lmax));
     mdarray<std::pair<int, double>, 1> idx_gk(kp.num_gkvec_loc());
-
+    
     for (int igk_loc = 0; igk_loc < kp.num_gkvec_loc(); igk_loc++) {
-        int igk = kp.idxgk(igk_loc);
-        /* vs = {r, theta, phi} */
-        auto vs = SHT::spherical_coordinates(kp.gkvec().gkvec_cart(igk));
+      int igk = kp.idxgk(igk_loc);
+      /* vs = {r, theta, phi} */
+      auto vs = SHT::spherical_coordinates(kp.gkvec().gkvec_cart(igk));
         /* compute real spherical harmonics for G+k vector */
         std::vector<double> rlm(Utils::lmmax(lmax));
         SHT::spherical_harmonics(lmax, vs[1], vs[2], &rlm[0]);
@@ -54,11 +66,9 @@ void generate_atomic_orbitals(K_point& kp, Q_operator<double_complex>& q_op)
     if (ctx_.processing_unit() == GPU) {
         for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
             /* allocate GPU memory */
-            kp.hubbard_wave_functions().pw_coeffs(ispn).prime().allocate(memory_t::device);
-            kp.hubbard_wave_functions().pw_coeffs(ispn).copy_to_device(0, this->number_of_hubbard_orbitals());
-
             sphi.pw_coeffs(ispn).prime().allocate(memory_t::device);
             sphi.pw_coeffs(ispn).copy_to_device(0, this->number_of_hubbard_orbitals());
+	    kp.hubbard_wave_functions().pw_coeffs(ispn).prime().allocate(memory_t::device);
         }
     }
 #endif
@@ -81,7 +91,7 @@ void generate_atomic_orbitals(K_point& kp, Q_operator<double_complex>& q_op)
               auto beta_phi = kp.beta_projectors().inner<double_complex>(i, sphi, ispn, 0,
                                                                          this->number_of_hubbard_orbitals());
 
-              /* apply Q operator (diagonal in spin) */
+	                    /* apply Q operator (diagonal in spin) */
               q_op.apply(i, ispn, kp.hubbard_wave_functions(), 0, this->number_of_hubbard_orbitals(), kp.beta_projectors(),
                          beta_phi);
               /* apply non-diagonal spin blocks */
@@ -97,12 +107,8 @@ void generate_atomic_orbitals(K_point& kp, Q_operator<double_complex>& q_op)
     orthogonalize_atomic_orbitals(kp, sphi);
 
 #ifdef __GPU
-    if (ctx_.processing_unit() == GPU) {
-        for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-            /* allocate GPU memory */
-            kp.hubbard_wave_functions().deallocate_on_device(ispn);
-            sphi.deallocate_on_device(ispn);
-        }
+    for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
+        kp.hubbard_wave_functions().pw_coeffs(ispn).copy_to_host(0, this->number_of_hubbard_orbitals());
     }
 #endif
 }

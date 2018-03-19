@@ -45,7 +45,6 @@ void apply_hubbard_potential(K_point& kp,
               dm,
               0,
               0);
-
     } else {
         // compute the overlaps
         for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
@@ -62,6 +61,10 @@ void apply_hubbard_potential(K_point& kp,
                   ispn * n__);
         }
     }
+
+#ifdef __GPU
+    dm.copy<memory_t::device, memory_t::host>();
+#endif
 
     dmatrix<double_complex> Up((2 * this->lmax_ + 1) * ctx_.num_spins(), n__);
     Up.zero();
@@ -113,7 +116,7 @@ void apply_hubbard_potential(K_point& kp,
 
 #ifdef __GPU
                 if (ctx_.processing_unit() == GPU) {
-                    Up.copy<memory_t::host, memory_t::device>(Up.size());
+                    Up.copy<memory_t::host, memory_t::device>();
                 }
 #endif
 
@@ -160,7 +163,7 @@ void apply_hubbard_potential(K_point& kp,
 
 #ifdef __GPU
                     if (ctx_.processing_unit() == GPU) {
-                        Up.copy<memory_t::host, memory_t::device>(Up.size());
+                        Up.copy<memory_t::host, memory_t::device>();
                     }
 #endif
 
