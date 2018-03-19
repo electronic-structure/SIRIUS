@@ -82,19 +82,37 @@ void apply_hubbard_potential(K_point& kp,
                 for (int s1 = 0; s1 < ctx_.num_spins(); s1++) {
                     for (int s2 = 0; s2 < ctx_.num_spins(); s2++) {
                         const int ind = (s1 == s2) * s1 + (1 + 2 * s2 + s1) * (s1 != s2);
-                        linalg<CPU>::gemm(0, 0,
-                                          lmax_at,
-                                          n__,
-                                          lmax_at,
-                                          linalg_const<double_complex>::one(),
-                                          this->hubbard_potential_.template at<CPU>(0, 0, ind, ia, 0),
-                                          this->hubbard_potential_.ld(),
-                                          dm.template at<CPU>(this->offset[ia] + s2 * lmax_at, 0),
-                                          dm.ld(),
-                                          linalg_const<double_complex>::one(),
-                                          Up.template at<CPU>(s1 * lmax_at, 0), Up.ld());
+                        for (int nbd = 0; nbd < n__; nbd++) {
+                            for (int m1 = 0; m1 < lmax_at; m1++) {
+                                for (int m2 = 0; m2 < lmax_at; m2++) {
+                                    Up(s1 * lmax_at + m1, nbd) += this->hubbard_potential_(m1, m2, ind, ia, 0) *
+                                        dm(this->offset[ia] + s2 * lmax_at + m2, nbd);
+                                }
+                            }
+                        }
                     }
+
+                    // something is wrong with this call
+
+                    // linalg<CPU>::gemm(0, 0,
+                    //                   lmax_at, // row of op(A)
+                    //                   n__, // col of C col of op(B)
+                    //                   lmax_at, // row op(B) col op(A)
+                    //                   linalg_const<double_complex>::one(),
+                    //                   this->hubbard_potential_.template at<CPU>(0, 0, ind, ia, 0),
+                    //                   this->hubbard_potential_.ld(),
+                    //                   dm.template at<CPU>(this->offset[ia] + s2 * lmax_at, 0),
+                    //                   n__,
+                    //                   linalg_const<double_complex>::one(),
+                    //                   Up.template at<CPU>(s1 * lmax_at, 0),
+                    //                   Up.ld());
                 }
+
+#ifdef __GPU
+                if (ctx_.processing_unit() == GPU) {
+                    Up.copy<CPU, GPU>(Up.size());
+                }
+#endif
 
                 transform<double_complex>(ctx_.processing_unit(),
                                           2,
@@ -113,18 +131,35 @@ void apply_hubbard_potential(K_point& kp,
                 //Conventional LDA or colinear magnetism
                 for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
                     Up.zero();
-                    linalg<CPU>::gemm(0, 0,
-                                      lmax_at,
-                                      n__,
-                                      lmax_at,
-                                      linalg_const<double_complex>::one(),
-                                      this->hubbard_potential_.template at<CPU>(0, 0, ispn, ia, 0),
-                                      this->hubbard_potential_.ld(),
-                                      dm.template at<CPU>(this->offset[ia], ispn * n__),
-                                      dm.ld(),
-                                      linalg_const<double_complex>::one(),
-                                      Up.template at<CPU>(0, 0),
-                                      Up.ld());
+                    for (int nbd = 0; nbd < n__; nbd++) {
+                        for (int m1 = 0; m1 < lmax_at; m1++) {
+                            for (int m2 = 0; m2 < lmax_at; m2++) {
+                                Up(ispn * lmax_at + m1, nbd) += this->hubbard_potential_(m1, m2, ispn, ia, 0) *
+                                    dm(this->offset[ia] + ispn * lmax_at + m2, nbd);
+                            }
+                        }
+                    }
+
+                    // same here something is wrong
+
+                    // linalg<CPU>::gemm(0, 0,
+                    //                   lmax_at,
+                    //                   n__,
+                    //                   lmax_at,
+                    //                   linalg_const<double_complex>::one(),
+                    //                   this->hubbard_potential_.template at<CPU>(0, 0, ispn, ia, 0),
+                    //                   this->hubbard_potential_.ld(),
+                    //                   dm.template at<CPU>(this->offset[ia], ispn * n__),
+                    //                   dm.ld(),
+                    //                   linalg_const<double_complex>::one(),
+                    //                   Up.template at<CPU>(0, 0),
+                    //                   Up.ld());
+
+#ifdef __GPU
+                    if (ctx_.processing_unit() == GPU) {
+                        Up.copy<CPU, GPU>(Up.size());
+                    }
+#endif
 
                     transform<double_complex>(ctx_.processing_unit(),
                                               ispn,
@@ -144,5 +179,9 @@ void apply_hubbard_potential(K_point& kp,
         }
     }
 
-    Up.deallocate(memory_t::device);
+#ifdef __GPU
+    if (ctx_.processing_unit() == GPU) {
+        Up.deallocate(memory_t::device);
+    }
+#endif
 }
