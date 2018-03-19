@@ -70,13 +70,13 @@ void calculate_hubbard_potential_and_energy_colinear_case()
                 }
             }
         }
-        if (ctx_.num_spins() == 1)
+
+        // boring DFT.
+        if (ctx_.num_mag_dims() != 1)
             this->hubbard_energy_ *= 2.0;
 
     } else {
         // full hubbard correction
-        //        #pragma omp parallel for reduction(+ : hubbard_energy_dc_contribution_) reduction(+ :
-        //        hubbard_energy_u_)
         for (int ia = 0; ia < this->unit_cell_.num_atoms(); ia++) {
 
             auto& atom = this->unit_cell_.atom(ia);
@@ -102,7 +102,7 @@ void calculate_hubbard_potential_and_energy_colinear_case()
             }
             double magnetization = 0.0;
 
-            if (ctx_.num_spins() == 1) {
+            if (ctx_.num_mag_dims() != 1) {
                 n_total *= 2.0;
             } else {
                 for (int m = 0; m < 2 * atom.type().hubbard_l() + 1; m++) {
@@ -131,7 +131,7 @@ void calculate_hubbard_potential_and_energy_colinear_case()
 
                                 // why should we consider the spinless case
 
-                                if (ctx_.num_spins() == 1) {
+                                if (ctx_.num_mag_dims() != 1) {
                                     this->U(m1, m2, is, ia) += 2.0 * atom.type().hubbard_matrix(m1, m3, m2, m4) *
                                         this->occupancy_number_(m3, m4, is, ia, 0);
                                 } else {
@@ -161,7 +161,8 @@ void calculate_hubbard_potential_and_energy_colinear_case()
             }
         }
 
-        if (ctx_.num_spins() == 1) {
+        // boring DFT
+        if (ctx_.num_mag_dims() != 1) {
             this->hubbard_energy_u_ *= 2.0;
         }
 

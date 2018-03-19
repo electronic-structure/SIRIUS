@@ -36,8 +36,14 @@ void hubbard_compute_occupation_numbers(K_point_set& kset_)
 
     // now for each spin components and each atom we need to calculate
     // <psi_{nk}|phi^I_m'><phi^I_m|psi_{nk}>
-    dmatrix<double_complex> dm(this->number_of_hubbard_orbitals(),
-                               HowManyBands);
+
+    int Ncf = 1;
+    if (ctx_.num_mag_dims() == 1) {
+        // !!! colinear magnetism. We need to have 2 times more space.
+        Ncf = 2;
+    }
+
+    dmatrix<double_complex> dm(this->number_of_hubbard_orbitals() * Ncf, HowManyBands);
 
     dm.zero();
 
@@ -79,10 +85,12 @@ void hubbard_compute_occupation_numbers(K_point_set& kset_)
                   dm,
                   0,
                   0);
-        } else { // TODO: can this be combined into one loop over spins
+        } else {
+            // This is annoying to have to keep track of this factor 2
+
             for (int ispn_ = 0; ispn_ < ctx_.num_spins(); ispn_++) {
                 inner(ctx_.processing_unit(),
-                      0,
+                      ispn_,
                       kp->hubbard_wave_functions(),
                       0,
                       this->number_of_hubbard_orbitals(),
@@ -90,8 +98,8 @@ void hubbard_compute_occupation_numbers(K_point_set& kset_)
                       0,
                       kp->num_occupied_bands(ispn_),
                       dm,
-                      0,
-                      ispn_ * kp->num_occupied_bands(0));
+                      ispn_ * this->number_of_hubbard_orbitals(),
+                      0);
             }
         }
 
@@ -102,7 +110,7 @@ void hubbard_compute_occupation_numbers(K_point_set& kset_)
                 kp->spinor_wave_functions().pw_coeffs(ispn).deallocate_on_device();
                 kp->hubbard_wave_functions().pw_coeffs(ispn).deallocate_on_device();
             }
-	    dm.copy<memory_t::device, memory_t::host>();
+            dm.copy<memory_t::device, memory_t::host>();
         }
 #endif
         // now compute O_{ij}^{sigma,sigma'} = \sum_{nk} <psi_nk|phi_{i,sigma}><phi_{j,sigma^'}|psi_nk> f_{nk}
@@ -132,8 +140,13 @@ void hubbard_compute_occupation_numbers(K_point_set& kset_)
                 }
             }
         } else {
+
+            // Well we need to apply a factor 1/2 when we compute the
+            // occupancies for the boring LDA + U. It is because the
+            // calculations of E and U consider occupancies <= 1.
+
+            const double scal = 1.0 - 0.5 * (ctx_.num_mag_dims() != 1);
             for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-                const int nb = (ispn == 1) * kp->num_occupied_bands(0);
                 #pragma omp parallel for schedule(static)
                 for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
                     const auto& atom = unit_cell_.atom(ia);
@@ -142,9 +155,9 @@ void hubbard_compute_occupation_numbers(K_point_set& kset_)
                         for (int nband = 0; nband < kp->num_occupied_bands(ispn); nband++) {
                             for (int m = 0; m < lmax_at; m++) {
                                 for (int mp = 0; mp < lmax_at; mp++) {
-                                    this->occupancy_number_(m, mp, ispn, ia, 0) +=
-                                        std::conj(dm(this->offset[ia] + m, nband + nb)) *
-                                        dm(this->offset[ia] + mp, nband + nb) *
+                                    this->occupancy_number_(m, mp, ispn, ia, 0) += scal *
+                                        std::conj(dm(this->offset[ia] + m + ispn * this->number_of_hubbard_orbitals(), nband)) *
+                                        dm(this->offset[ia] + mp + ispn * this->number_of_hubbard_orbitals(), nband) *
                                         kp->band_occupancy(nband, ispn) * kp->weight();
                                 }
                             }
@@ -350,7 +363,7 @@ inline void get_hubbard_occupancies_matrix(double *occ, int ld)
     // we have a factor 1/2 to apply because sirius in the basic LDA
     // case add up the spin degenary to the band occupation
     assert(ctx_.num_mag_dims() != 3);
-    const double scal = (ctx_.num_mag_dims() != 1) * 0.5 + (ctx_.num_mag_dims() == 1);
+    const double scal = 1.0 - 0.5 * (ctx_.num_mag_dims() != 1);
 
     for(int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {
         const int l = ctx_.unit_cell().atom(ia).type().hubbard_l();
@@ -396,6 +409,7 @@ inline void print_occupancies()
             printf("hubbard occupancies\n");
             for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
                 printf("Atom : %d\n", ia);
+                printf("Mag Dim : %d\n", ctx_.num_mag_dims());
                 const auto& atom = unit_cell_.atom(ia);
                 const int lmax_at = 2 * atom.type().hubbard_l() + 1;
 
@@ -413,16 +427,17 @@ inline void print_occupancies()
                         }
                         printf("\n");
                     }
+
                     if (ctx_.num_spins() == 2) {
                         for (int m1 = 0; m1 < lmax_at; m1++) {
-                            for (int m2 = 0; m2 < lmax_at; m2++) {
-                                printf("%.3lf ", std::abs(this->occupancy_number_(m1, m2, 3, ia, 0)));
-                            }
                             if (ctx_.num_mag_dims() == 3) {
-                                printf(" ");
                                 for (int m2 = 0; m2 < lmax_at; m2++) {
-                                    printf("%.3lf ", std::abs(this->occupancy_number_(m1, m2, 1, ia, 0)));
+                                    printf("%.3lf ", std::abs(this->occupancy_number_(m1, m2, 3, ia, 0)));
                                 }
+                                printf(" ");
+                            }
+                            for (int m2 = 0; m2 < lmax_at; m2++) {
+                                printf("%.3lf ", std::abs(this->occupancy_number_(m1, m2, 1, ia, 0)));
                             }
                             printf("\n");
                         }
