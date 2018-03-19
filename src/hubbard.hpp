@@ -194,10 +194,10 @@ public:
             this->wave_function_file_ = ctx_.Hubbard().wave_function_file_;
         }
 
-        int lmax_                             = -1;
+        this->lmax_                             = -1;
         for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {
             if (ctx__.unit_cell().atom(ia).type().hubbard_correction()) {
-                lmax_ = std::max(lmax_, ctx_.unit_cell().atom(ia).type().hubbard_l());
+                this->lmax_ = std::max(this->lmax_, ctx_.unit_cell().atom(ia).type().hubbard_l());
             }
         }
 

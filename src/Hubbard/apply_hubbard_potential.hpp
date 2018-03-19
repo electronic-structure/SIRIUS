@@ -90,22 +90,21 @@ void apply_hubbard_potential(K_point& kp,
                                 }
                             }
                         }
+
+
+                        // linalg<CPU>::gemm(0, 0,
+                        //                   lmax_at, // row of op(A)
+                        //                   n__, // col of C col of op(B)
+                        //                   lmax_at, // row op(B) col op(A)
+                        //                   linalg_const<double_complex>::one(),
+                        //                   this->hubbard_potential_.template at<CPU>(0, 0, ind, ia, 0),
+                        //                   this->hubbard_potential_.ld(),
+                        //                   dm.template at<CPU>(this->offset[ia] + s2 * lmax_at, 0),
+                        //                   n__,
+                        //                   linalg_const<double_complex>::one(),
+                        //                   Up.template at<CPU>(s1 * lmax_at, 0),
+                        //                   Up.ld());
                     }
-
-                    // something is wrong with this call
-
-                    // linalg<CPU>::gemm(0, 0,
-                    //                   lmax_at, // row of op(A)
-                    //                   n__, // col of C col of op(B)
-                    //                   lmax_at, // row op(B) col op(A)
-                    //                   linalg_const<double_complex>::one(),
-                    //                   this->hubbard_potential_.template at<CPU>(0, 0, ind, ia, 0),
-                    //                   this->hubbard_potential_.ld(),
-                    //                   dm.template at<CPU>(this->offset[ia] + s2 * lmax_at, 0),
-                    //                   n__,
-                    //                   linalg_const<double_complex>::one(),
-                    //                   Up.template at<CPU>(s1 * lmax_at, 0),
-                    //                   Up.ld());
                 }
 
 #ifdef __GPU
