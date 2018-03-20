@@ -549,10 +549,18 @@ class Radial_integrals_vloc : public Radial_integrals_base<1>
 
             auto& vloc = atom_type.local_potential();
 
-            int np = atom_type.radial_grid().index_of(10);
-            if (np == -1) {
-                np = atom_type.num_mt_points();
+            int np = atom_type.num_mt_points();
+            if (std::abs(vloc.back() * atom_type.radial_grid().last() + atom_type.zn()) > 1e-10) {
+                std::stringstream s;
+                s << "Wrong asymptotics of local potential for atom type " << iat << std::endl
+                  << "hack with 10 a.u. cutoff is activated";
+                WARNING(s);
+                int np1 = atom_type.radial_grid().index_of(10);
+                if (np1 != -1) {
+                    np = np1;
+                }
             }
+
             auto rg = atom_type.radial_grid().segment(np);
 
             #pragma omp parallel for
