@@ -144,8 +144,12 @@ void hubbard_compute_occupation_numbers(K_point_set& kset_)
             // Well we need to apply a factor 1/2 when we compute the
             // occupancies for the boring LDA + U. It is because the
             // calculations of E and U consider occupancies <= 1.
+            // Sirius for the boring lda+U has a factor 2 in the kp band
+            // occupancies. We need to compenssate for it.
 
             const double scal = 1.0 - 0.5 * (ctx_.num_mag_dims() != 1);
+
+
             for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
                 #pragma omp parallel for schedule(static)
                 for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
@@ -321,8 +325,6 @@ inline void set_hubbard_occupancies_matrix(double *occ, int ld)
 {
     mdarray<double, 4> occupation_(occ, ld, ld, ctx_.num_spins(), ctx_.unit_cell().num_atoms());
     this->occupancy_number_.zero();
-    const double scal = 1.0 + (ctx_.num_mag_dims() != 1);
-
     for(int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {
         const int l = ctx_.unit_cell().atom(ia).type().hubbard_l();
         for (int m1 = -l; m1 <= l; m1++) {
@@ -330,7 +332,7 @@ inline void set_hubbard_occupancies_matrix(double *occ, int ld)
             for (int m2 = -l; m2 <= l ; m2++) {
                 const int mm2 = natural_lm_to_qe(m2, l);
                 for(int s = 0; s < ctx_.num_spins(); s++) {
-                    this->occupancy_number_(l + m1, l + m2, s, ia, 0) = scal * occupation_(mm1, mm2, s, ia);
+                    this->occupancy_number_(l + m1, l + m2, s, ia, 0) = occupation_(mm1, mm2, s, ia);
                 }
             }
         }
@@ -363,8 +365,6 @@ inline void get_hubbard_occupancies_matrix(double *occ, int ld)
     // we have a factor 1/2 to apply because sirius in the basic LDA
     // case add up the spin degenary to the band occupation
     assert(ctx_.num_mag_dims() != 3);
-    const double scal = 1.0 - 0.5 * (ctx_.num_mag_dims() != 1);
-
     for(int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {
         const int l = ctx_.unit_cell().atom(ia).type().hubbard_l();
         for (int m1 = -l; m1 <= l; m1++) {
@@ -372,7 +372,7 @@ inline void get_hubbard_occupancies_matrix(double *occ, int ld)
             for (int m2 = -l; m2 <= l; m2++) {
                 const int mm2 = natural_lm_to_qe(m2, l);
                 for (int s = 0; s < ctx_.num_spins(); s++) {
-                    occupation_(mm1, mm2, s, ia) = scal * this->occupancy_number_(l + m1, l + m2, s, ia, 0).real();
+                    occupation_(mm1, mm2, s, ia) = this->occupancy_number_(l + m1, l + m2, s, ia, 0).real();
                 }
             }
         }
