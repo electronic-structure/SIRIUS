@@ -147,8 +147,7 @@ void hubbard_compute_occupation_numbers(K_point_set& kset_)
             // Sirius for the boring lda+U has a factor 2 in the kp band
             // occupancies. We need to compenssate for it.
 
-            const double scal = 1.0 - 0.5 * (ctx_.num_mag_dims() != 1);
-
+            const double scal = (ctx_.num_mag_dims() == 0) ? 0.5 : 1.0;
 
             for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
                 #pragma omp parallel for schedule(static)
@@ -178,9 +177,8 @@ void hubbard_compute_occupation_numbers(K_point_set& kset_)
     }
 #endif
 
-    // global reduction
-    ctx_.comm().allreduce<double_complex, mpi_op_t::sum>(this->occupancy_number_.at<CPU>(),
-                                                         static_cast<int>(this->occupancy_number_.size()));
+    // global reduction over k points
+    ctx_.comm_k().allreduce<double_complex, mpi_op_t::sum>(this->occupancy_number_.at<CPU>(), static_cast<int>(this->occupancy_number_.size()));
 
     // Now symmetrization procedure. We need to review that
 
