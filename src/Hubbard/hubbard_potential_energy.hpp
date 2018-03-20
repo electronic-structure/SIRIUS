@@ -103,7 +103,7 @@ void calculate_hubbard_potential_and_energy_colinear_case()
             double magnetization = 0.0;
 
             if (ctx_.num_mag_dims() != 1) {
-                n_total *= 2.0;
+                n_total *= 2.0; // factor two here because the occupations are <= 1
             } else {
                 for (int m = 0; m < 2 * atom.type().hubbard_l() + 1; m++) {
                     magnetization +=
@@ -152,7 +152,7 @@ void calculate_hubbard_potential_and_energy_colinear_case()
                                      this->occupancy_number_(m2, m4, is, ia, 0) +
                                      atom.type().hubbard_matrix(m1, m2, m3, m4) *
                                      this->occupancy_number_(m1, m3, is, ia, 0) *
-                                     this->occupancy_number_(m2, m4, (is + 1) % 2, ia, 0))
+                                     this->occupancy_number_(m2, m4, (ctx_.num_mag_dims() == 1) ? ((is + 1) % 2) : (0), ia, 0))
                                     .real();
                             }
                         }
