@@ -53,14 +53,14 @@ inline void orthogonalize(device_t                     pu__,
     }
 
     if (sddk_debug >= 2) {
-        if (o__.blacs_grid().comm().rank() == 0) {
+        if (o__.comm().rank() == 0) {
             printf("check QR decomposition, matrix size : %i\n", n__);
         }
         inner(pu__, ispn__, *wfs__[idx_bra__], N__, n__, *wfs__[idx_ket__], N__, n__, o__, 0, 0);
 
         linalg<CPU>::geqrf(n__, n__, o__, 0, 0);
         auto diag = o__.get_diag(n__);
-        if (o__.blacs_grid().comm().rank() == 0) {
+        if (o__.comm().rank() == 0) {
             for (int i = 0; i < n__; i++) {
                 if (std::abs(diag[i]) < 1e-6) {
                     std::cout << "small norm: " << i << " " << diag[i] << std::endl;
@@ -68,7 +68,7 @@ inline void orthogonalize(device_t                     pu__,
             }
         }
 
-        if (o__.blacs_grid().comm().rank() == 0) {
+        if (o__.comm().rank() == 0) {
             printf("check eigen-values, matrix size : %i\n", n__);
         }
         inner(pu__, ispn__, *wfs__[idx_bra__], N__, n__, *wfs__[idx_ket__], N__, n__, o__, 0, 0);
@@ -83,7 +83,7 @@ inline void orthogonalize(device_t                     pu__,
         auto solver = Eigensolver_factory<T>(ev_solver_t::scalapack);
         solver->solve(n__, o__, eo.data(), evec);
 
-        if (o__.blacs_grid().comm().rank() == 0) {
+        if (o__.comm().rank() == 0) {
             for (int i = 0; i < n__; i++) {
                 if (eo[i] < 1e-6) {
                     std::cout << "small eigen-value " << i << " " << eo[i] << std::endl;
@@ -96,7 +96,7 @@ inline void orthogonalize(device_t                     pu__,
     inner(pu__, ispn__, *wfs__[idx_bra__], N__, n__, *wfs__[idx_ket__], N__, n__, o__, 0, 0);
 
     if (sddk_debug >= 1) {
-        if (o__.blacs_grid().comm().rank() == 0) {
+        if (o__.comm().rank() == 0) {
             printf("check diagonal\n");
         }
         auto diag = o__.get_diag(n__);
@@ -105,11 +105,11 @@ inline void orthogonalize(device_t                     pu__,
                 std::cout << "wrong diagonal: " << i << " " << diag[i] << std::endl;
             }
         }
-        if (o__.blacs_grid().comm().rank() == 0) {
+        if (o__.comm().rank() == 0) {
             printf("check hermitian\n");
         }
         double d = check_hermitian(o__, n__);
-        if (d > 1e-12 && o__.blacs_grid().comm().rank() == 0) {
+        if (d > 1e-12 && o__.comm().rank() == 0) {
             std::stringstream s;
             s << "matrix is not hermitian, max diff = " << d;
             WARNING(s);
@@ -121,7 +121,7 @@ inline void orthogonalize(device_t                     pu__,
     }
 
     /* single MPI rank */
-    if (o__.blacs_grid().comm().size() == 1) {
+    if (o__.comm().size() == 1) {
         bool use_magma{false};
         #if defined(__GPU) && defined(__MAGMA)
         if (pu__ == GPU) {

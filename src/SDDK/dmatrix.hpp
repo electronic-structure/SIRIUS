@@ -48,9 +48,6 @@ class dmatrix : public matrix<T>
     /// Column block size.
     int bs_col_{0};
 
-    /// the matrix is distributed or not
-    bool is_distributed_{false};
-
     /// BLACS grid.
     BLACS_grid const* blacs_grid_{nullptr};
 
@@ -65,14 +62,10 @@ class dmatrix : public matrix<T>
 
     void init()
     {
-        is_distributed_ = false;
         #ifdef __SCALAPACK
         if (blacs_grid_ != nullptr) {
             linalg_base::descinit(descriptor_, num_rows_, num_cols_, bs_row_, bs_col_, 0, 0, blacs_grid_->context(),
                                   spl_row_.local_size());
-            if (blacs_grid_->comm().size() > 1) {
-                is_distributed_ = true;
-            }
         }
         #endif
     }
@@ -372,16 +365,11 @@ class dmatrix : public matrix<T>
 
     inline void serialize(std::string name__, int n__) const;
 
-    inline bool is_distributed() const {
-        return is_distributed_;
-    }
-
-    inline const Communicator &comm() const {
-        if (is_distributed_) {
+    inline Communicator const& comm() const {
+        if (blacs_grid_ != nullptr) {
             return blacs_grid().comm();
         } else {
-            static Communicator comm_ = Communicator(MPI_COMM_SELF);
-            return comm_;
+            return mpi_comm_self();
         }
     }
 };
