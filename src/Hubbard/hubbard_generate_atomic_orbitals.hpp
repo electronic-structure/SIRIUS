@@ -69,7 +69,7 @@ void generate_atomic_orbitals(K_point& kp, Q_operator<double_complex>& q_op)
             sphi.pw_coeffs(ispn).prime().allocate(memory_t::device);
             // can do async copy
             sphi.pw_coeffs(ispn).copy_to_device(0, this->number_of_hubbard_orbitals());
-	        kp.hubbard_wave_functions().pw_coeffs(ispn).prime().allocate(memory_t::device);
+            kp.hubbard_wave_functions().pw_coeffs(ispn).prime().allocate(memory_t::device);
         }
     }
 #endif
@@ -82,6 +82,7 @@ void generate_atomic_orbitals(K_point& kp, Q_operator<double_complex>& q_op)
     }
 
     if (!ctx_.full_potential() && augment) {
+        kp.beta_projectors().prepare();
         /* need to apply the matrix here on the orbitals (ultra soft pseudo potential) */
         for (int i = 0; i < kp.beta_projectors().num_chunks(); i++) {
             /* generate beta-projectors for a block of atoms */
@@ -91,8 +92,7 @@ void generate_atomic_orbitals(K_point& kp, Q_operator<double_complex>& q_op)
 
               auto beta_phi = kp.beta_projectors().inner<double_complex>(i, sphi, ispn, 0,
                                                                          this->number_of_hubbard_orbitals());
-
-	                    /* apply Q operator (diagonal in spin) */
+              /* apply Q operator (diagonal in spin) */
               q_op.apply(i, ispn, kp.hubbard_wave_functions(), 0, this->number_of_hubbard_orbitals(), kp.beta_projectors(),
                          beta_phi);
               /* apply non-diagonal spin blocks */
