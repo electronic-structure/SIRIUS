@@ -24,10 +24,26 @@ void apply_hubbard_potential(K_point& kp,
     if (ctx_.num_mag_dims() == 1)
         Nfc *= 2;
 
-    dmatrix<double_complex> dm(this->number_of_hubbard_orbitals(),
-                               n__ * Nfc);
 
+    // this stuff is a little odd. When we are doing calculation with
+    // colinear magnetism, the up and down components are independent
+    // but still stored in the same wavefunction. The same is true for
+    // the hubbard wave functions to minimize the amount of memory used.
+
+    // so for colinear magnetism, the spin index of the hubbard
+    // wavefunctions should treated differently from the non colinear
+    // magnetic case since the up and down component are stored in the
+    // same wavefunction.  So the overlap matrix is twice as large as
+    // the number of hubbard orbitals.
+
+    dmatrix<double_complex> dm(Nfc * this->number_of_hubbard_orbitals(), n__);
     dm.zero();
+
+    #ifdef __GPU
+    if (ctx_.processing_unit() == GPU) {
+        dm.allocate(memory_t::device);
+    }
+    #endif
 
     if (ctx_.num_mag_dims() == 3) {
         inner(ctx_.processing_unit(),
@@ -41,7 +57,6 @@ void apply_hubbard_potential(K_point& kp,
               dm,
               0,
               0);
-
     } else {
         // compute the overlaps
         for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
@@ -54,10 +69,34 @@ void apply_hubbard_potential(K_point& kp,
                   idx__,
                   n__,
                   dm,
-                  0,
-                  ispn * n__);
+                  ispn * this->number_of_hubbard_orbitals(),
+                  0);
         }
     }
+
+    // free memory on GPU
+    #ifdef __GPU
+    if (ctx_.processing_unit() == GPU) {
+        dm.copy<memory_t::device, memory_t::host>();
+    }
+    #endif
+
+    dmatrix<double_complex> Up;
+
+    if (ctx_.num_mag_dims() == 3)
+        Up = dmatrix<double_complex>((2 * this->lmax_ + 1) * ctx_.num_spins(), n__);
+    else
+        Up = dmatrix<double_complex>((2 * this->lmax_ + 1), n__);
+    Up.zero();
+
+    #ifdef __GPU
+    // the communicator is always of size 1.  I need to allocate memory
+    // on the device manually
+
+    if (ctx_.processing_unit() == GPU) {
+        Up.allocate(memory_t::device);
+    }
+    #endif
 
     for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ++ia) {
         const auto& atom = ctx_.unit_cell().atom(ia);
@@ -67,24 +106,28 @@ void apply_hubbard_potential(K_point& kp,
             // giving me the formula for the SO case so I rely on QE for it
             // but I do not like it at all
             if (ctx_.num_mag_dims() == 3) {
-                dmatrix<double_complex> Up(lmax_at * ctx_.num_spins(), n__);
-                Up.zero();
                 for (int s1 = 0; s1 < ctx_.num_spins(); s1++) {
                     for (int s2 = 0; s2 < ctx_.num_spins(); s2++) {
                         const int ind = (s1 == s2) * s1 + (1 + 2 * s2 + s1) * (s1 != s2);
-                        linalg<CPU>::gemm(0, 0,
-                                          lmax_at,
-                                          n__,
-                                          lmax_at,
-                                          linalg_const<double_complex>::one(),
-                                          this->hubbard_potential_.template at<CPU>(0, 0, ind, ia, 0),
-                                          this->hubbard_potential_.ld(),
-                                          dm.template at<CPU>(this->offset[ia] + s2 * lmax_at, 0),
-                                          dm.ld(),
-                                          linalg_const<double_complex>::one(),
-                                          Up.template at<CPU>(s1 * lmax_at, 0), Up.ld());
+
+                        // !!! Replace this with matrix matrix multiplication
+
+                        for (int nbd = 0; nbd < n__; nbd++) {
+                            for (int m2 = 0; m2 < lmax_at; m2++) {
+                                for (int m1 = 0; m1 < lmax_at; m1++) {
+                                    Up(s1 * lmax_at + m1, nbd) += this->hubbard_potential_(m1, m2, ind, ia, 0) *
+                                        dm(this->offset[ia] + s2 * lmax_at + m2, nbd);
+                                }
+                            }
+                        }
                     }
                 }
+
+                #ifdef __GPU
+                if (ctx_.processing_unit() == GPU) {
+                    Up.copy<memory_t::host, memory_t::device>();
+                }
+                #endif
 
                 transform<double_complex>(ctx_.processing_unit(),
                                           2,
@@ -101,21 +144,22 @@ void apply_hubbard_potential(K_point& kp,
                                           n__);
             } else {
                 //Conventional LDA or colinear magnetism
-                dmatrix<double_complex> Up(lmax_at, n__);
                 for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
                     Up.zero();
-                    linalg<CPU>::gemm(0, 0,
-                                      lmax_at,
-                                      n__,
-                                      lmax_at,
-                                      linalg_const<double_complex>::one(),
-                                      this->hubbard_potential_.template at<CPU>(0, 0, ispn, ia, 0),
-                                      this->hubbard_potential_.ld(),
-                                      dm.template at<CPU>(this->offset[ia], ispn * n__),
-                                      dm.ld(),
-                                      linalg_const<double_complex>::one(),
-                                      Up.template at<CPU>(0, 0),
-                                      Up.ld());
+                    for (int nbd = 0; nbd < n__; nbd++) {
+                        for (int m2 = 0; m2 < lmax_at; m2++) {
+                            for (int m1 = 0; m1 < lmax_at; m1++) {
+                                Up(m1, nbd) += this->hubbard_potential_(m1, m2, ispn, ia, 0) *
+                                    dm(this->offset[ia] + m2 + ispn * this->number_of_hubbard_orbitals(), nbd);
+                            }
+                        }
+                    }
+
+                    #ifdef __GPU
+                    if (ctx_.processing_unit() == GPU) {
+                        Up.copy<memory_t::host, memory_t::device>();
+                    }
+                    #endif
 
                     transform<double_complex>(ctx_.processing_unit(),
                                               ispn,
@@ -134,4 +178,10 @@ void apply_hubbard_potential(K_point& kp,
             }
         }
     }
+
+    #ifdef __GPU
+    if (ctx_.processing_unit() == GPU) {
+        Up.deallocate(memory_t::device);
+    }
+    #endif
 }

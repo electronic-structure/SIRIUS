@@ -2745,7 +2745,7 @@ void sirius_get_wave_functions(ftn_int*            kset_id__,
     std::vector<double_complex> wf_tmp(kp->num_gkvec());
     int gkvec_count = kp->gkvec().count();
     int gkvec_offset = kp->gkvec().offset();
-    
+
     // TODO: create G-mapping once here
 
     for (int i = 0; i < sim_ctx->num_bands(); i++) {
@@ -2789,7 +2789,7 @@ void sirius_get_beta_projectors(ftn_int*            kset_id__,
     vkb.zero();
 
     auto& gkvec = kp->gkvec();
-    
+
     /* list of sirius G-vector indices which fall into cutoff |G+k| < Gmax */
     std::vector<int> idxg;
     /* mapping  between QE and sirius indices */
@@ -2819,7 +2819,7 @@ void sirius_get_beta_projectors(ftn_int*            kset_id__,
     for (int ia = 0; ia < sim_ctx->unit_cell().num_atoms(); ia++) {
         auto& atom = sim_ctx->unit_cell().atom(ia);
         int nbf = atom.mt_basis_size();
-        
+
         auto qe_order = atomic_orbital_index_map_QE(atom.type());
 
         for (int xi = 0; xi < nbf; xi++) {
@@ -2973,7 +2973,7 @@ void sirius_get_q_operator(ftn_char            label__,
             xi2 = xi;
         }
     }
-    
+
     auto p1 = phase_Rlm_QE(type, xi1);
     auto p2 = phase_Rlm_QE(type, xi2);
 
@@ -3293,7 +3293,7 @@ void sirius_get_pw_coeffs_real(ftn_char    atom_type__,
 void sirius_calculate_forces(ftn_int* kset_id__)
 {
     auto& kset = *kset_list[*kset_id__];
-    forces = std::unique_ptr<sirius::Force>(new sirius::Force(*sim_ctx, *density, *potential, kset));
+    forces = std::unique_ptr<sirius::Force>(new sirius::Force(*sim_ctx, *density, *potential, *hamiltonian, kset));
 }
 
 void sirius_get_forces(ftn_char label__, ftn_double* forces__)
