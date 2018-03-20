@@ -82,6 +82,7 @@ void generate_atomic_orbitals(K_point& kp, Q_operator<double_complex>& q_op)
     }
 
     if (!ctx_.full_potential() && augment) {
+        kp.beta_projectors().prepare();
         /* need to apply the matrix here on the orbitals (ultra soft pseudo potential) */
         for (int i = 0; i < kp.beta_projectors().num_chunks(); i++) {
             /* generate beta-projectors for a block of atoms */
