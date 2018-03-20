@@ -1839,7 +1839,7 @@ inline void Atom_type::read_pseudo_uspp(json const& parser)
     }
 
     if (parser["pseudo_potential"]["header"].count("spin_orbit")) {
-        spin_orbit_coupling(true);
+        spin_orbit_coupling_ = parser["pseudo_potential"]["header"].value("spin_orbit", spin_orbit_coupling_);
     }
 
     int nbf = parser["pseudo_potential"]["header"]["number_of_proj"];
@@ -1907,15 +1907,21 @@ inline void Atom_type::read_pseudo_uspp(json const& parser)
                   << "radial grid size: " << num_mt_points();
                 TERMINATE(s);
             }
-            int l = parser["pseudo_potential"]["atomic_wave_functions"][k]["angular_momentum"];
-            add_ps_atomic_wf(l, v);
 
-            if (spin_orbit_coupling() &&
-                parser["pseudo_potential"]["atomic_wave_functions"][k].count("total_angular_momentum") &&
-                parser["pseudo_potential"]["atomic_wave_functions"][k].count("occupation")) {
-                //double jchi = parser["pseudo_potential"]["atomic_wave_functions"][k]["total_angular_momentum"];
+            int l = parser["pseudo_potential"]["atomic_wave_functions"][k]["angular_momentum"];
+
+            if (parser["pseudo_potential"]["atomic_wave_functions"][k].count("occupation")) {
                 occupancies.push_back(parser["pseudo_potential"]["atomic_wave_functions"][k]["occupation"]);
             }
+
+            if (spin_orbit_coupling() &&
+                parser["pseudo_potential"]["atomic_wave_functions"][k].count("total_angular_momentum")) {
+                // check if j = l +- 1/2
+                if (parser["pseudo_potential"]["atomic_wave_functions"][k]["total_angular_momentum"] < l) {
+                    l = -l;
+                }
+            }
+            add_ps_atomic_wf(l, v);
         }
         ps_atomic_wf_occ(occupancies);
     }
@@ -2244,7 +2250,6 @@ void Atom_type::read_hubbard_input()
     if(!parameters_.Hubbard().hubbard_correction_) {
         return;
     }
-
     for(auto &d: parameters_.Hubbard().species) {
         if (d.first == symbol_) {
             hubbard_U_ = d.second[0];
@@ -2258,6 +2263,7 @@ void Atom_type::read_hubbard_input()
             starting_magnetization_theta_ = d.second[7];
             starting_magnetization_phi_ = d.second[8];
             starting_magnetization_ = d.second[6];
+            this->hubbard_correction_ = true;
         }
     }
 }
