@@ -37,7 +37,7 @@ inline void K_point::generate_atomic_centered_wavefunctions(const int num_ao__, 
             auto& atom_type   = unit_cell_.atom(ia).type();
 
             for (int i = 0; i < atom_type.num_ps_atomic_wf(); i++) {
-                auto l = atom_type.ps_atomic_wf(i).first;
+                auto l = std::abs(atom_type.ps_atomic_wf(i).first);
                 auto z = std::pow(double_complex(0, -1), l) * fourpi / std::sqrt(unit_cell_.omega());
                 for (int m = -l; m <= l; m++) {
                     int lm = Utils::lm_by_l_m(l, m);
