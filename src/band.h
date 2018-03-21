@@ -69,7 +69,7 @@ class Band
     /// Diagonalize a pseudo-potential Hamiltonian.
     template <typename T>
     int diag_pseudo_potential(K_point* kp__, Hamiltonian& H__) const;
-    
+
     /// Exact (not iterative) diagonalization of the Hamiltonian.
     template <typename T>
     inline void diag_pseudo_potential_exact(K_point* kp__, int ispn__, Hamiltonian& H__) const;
@@ -77,6 +77,7 @@ class Band
     /// Iterative Davidson diagonalization.
     template <typename T>
     inline int diag_pseudo_potential_davidson(K_point* kp__, Hamiltonian& H__) const;
+
     /// RMM-DIIS diagonalization.
     template <typename T>
     inline void diag_pseudo_potential_rmm_diis(K_point* kp__, int ispn__, Hamiltonian& H__) const;

@@ -370,7 +370,7 @@ struct Control_input
 struct Parameters_input
 {
     /// Electronic structure method.
-    std::string esm_{"none"};
+    std::string electronic_structure_method_{"none"};
 
     std::vector<std::string> xc_functionals_;
     std::string core_relativity_{"dirac"};
@@ -442,8 +442,10 @@ struct Parameters_input
     void read(json const& parser)
     {
         if (parser.count("parameters")) {
-            esm_ = parser["parameters"].value("electronic_structure_method", esm_);
-            std::transform(esm_.begin(), esm_.end(), esm_.begin(), ::tolower);
+            electronic_structure_method_ = parser["parameters"].value("electronic_structure_method",
+                                                                      electronic_structure_method_);
+            std::transform(electronic_structure_method_.begin(), electronic_structure_method_.end(),
+                           electronic_structure_method_.begin(), ::tolower);
 
             /* read list of XC functionals */
             if (parser["parameters"].count("xc_functionals")) {
