@@ -57,11 +57,11 @@ inline void Density::generate_valence(K_point_set& ks__)
             kp->spinor_wave_functions().pw_coeffs(ispn).remap_forward(CPU, nbnd);
         }
         
-        if (ctx_.esm_type() == electronic_structure_method_t::full_potential_lapwlo) {
+        if (ctx_.electronic_structure_method() == electronic_structure_method_t::full_potential_lapwlo) {
             add_k_point_contribution_dm<double_complex>(kp, density_matrix_);
         }
         
-        if (ctx_.esm_type() == electronic_structure_method_t::pseudopotential) {
+        if (ctx_.electronic_structure_method() == electronic_structure_method_t::pseudopotential) {
             if (ctx_.gamma_point() && (ctx_.so_correction() == false)) {
                 add_k_point_contribution_dm<double>(kp, density_matrix_);
             } else {

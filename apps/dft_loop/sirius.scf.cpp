@@ -268,11 +268,12 @@ void run_tasks(cmd_args const& args)
         if (!ctx->full_potential()) {
             band.initialize_subspace(ks, H);
             if (ctx->hubbard_correction()) {
+                TERMINATE("fix me");
                 H.U().hubbard_compute_occupation_numbers(ks); // TODO: this is wrong; U matrix should come form the saved file
                 H.U().calculate_hubbard_potential_and_energy();
             }
         }
-        band.solve_for_kset(ks, H, true);
+        band.solve(ks, H, true);
 
         ks.sync_band_energies();
         if (mpi_comm_world().rank() == 0) {
