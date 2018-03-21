@@ -66,32 +66,41 @@ double ground_state(Simulation_context& ctx,
         MEMORY_USAGE_INFO();
     }
 
-    Potential potential(ctx);
-    potential.allocate();
+    //Potential potential(ctx);
+    //potential.allocate();
 
-    Density density(ctx);
-    density.allocate();
+    //Density density(ctx);
+    //density.allocate();
 
-    Hamiltonian H(ctx, potential);
+    //Hamiltonian H(ctx, potential);
 
-    if (ctx.comm().rank() == 0 && ctx.control().print_memory_usage_) {
-        MEMORY_USAGE_INFO();
-    }
+    //if (ctx.comm().rank() == 0 && ctx.control().print_memory_usage_) {
+    //    MEMORY_USAGE_INFO();
+    //}
 
     auto& inp = ctx.parameters_input();
 
-    K_point_set ks(ctx, inp.ngridk_, inp.shiftk_, ctx.use_symmetry());
-    ks.initialize();
+    //K_point_set ks(ctx, inp.ngridk_, inp.shiftk_, ctx.use_symmetry());
+    //ks.initialize();
 
-    if (ctx.comm().rank() == 0 && ctx.control().print_memory_usage_) {
-        MEMORY_USAGE_INFO();
-    }
+    //if (ctx.comm().rank() == 0 && ctx.control().print_memory_usage_) {
+    //    MEMORY_USAGE_INFO();
+    //}
 
     std::string ref_file = args.value<std::string>("test_against", "");
     /* don't write output if we compare against the reference calculation */
     bool write_state = (ref_file.size() == 0);
 
-    DFT_ground_state dft(ctx, H, density, ks);
+    //DFT_ground_state dft(ctx, H, density, ks);
+
+    DFT_ground_state dft(ctx);
+
+    if (ctx.comm().rank() == 0 && ctx.control().print_memory_usage_) {
+        MEMORY_USAGE_INFO();
+    }
+
+    auto& potential = dft.potential();
+    auto& density = dft.density();
 
     if (task == task_t::ground_state_restart) {
         if (!Utils::file_exists(storage_file_name)) {
@@ -103,7 +112,7 @@ double ground_state(Simulation_context& ctx,
         density.initial_density();
         potential.generate(density);
         if (!ctx.full_potential()) {
-            dft.band().initialize_subspace(ks, H);
+            dft.band().initialize_subspace(dft.k_point_set(), dft.hamiltonian());
         }
     }
 
@@ -128,12 +137,12 @@ double ground_state(Simulation_context& ctx,
 
     if (!ctx.full_potential()) {
         if (ctx.control().print_stress_) {
-            Stress s(ctx, ks, density, potential);
+            Stress s(ctx, dft.k_point_set(), density, potential);
             s.calc_stress_total();
             s.print_info();
         }
         if (ctx.control().print_forces_) {
-            Force f(ctx, density, potential, H, ks);
+            Force f(ctx, density, potential, dft.hamiltonian(), dft.k_point_set());
             f.calc_forces_total();
             f.print_info();
         }
