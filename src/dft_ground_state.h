@@ -219,6 +219,15 @@ class DFT_ground_state
             }
         }
 
+        void initial_state()
+        {
+            density_.initial_density();
+            potential_.generate(density_);
+            if (!ctx_.full_potential()) {
+                band_.initialize_subspace(kset_, hamiltonian_);
+            }
+        }
+
         int find(double potential_tol, double energy_tol, int num_dft_iter, bool write_state);
 
         void print_info();

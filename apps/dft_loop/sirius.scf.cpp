@@ -109,11 +109,12 @@ double ground_state(Simulation_context& ctx,
         density.load();
         potential.load();
     } else {
-        density.initial_density();
-        potential.generate(density);
-        if (!ctx.full_potential()) {
-            dft.band().initialize_subspace(dft.k_point_set(), dft.hamiltonian());
-        }
+        dft.initial_state();
+        //density.initial_density();
+        //potential.generate(density);
+        //if (!ctx.full_potential()) {
+        //    dft.band().initialize_subspace(dft.k_point_set(), dft.hamiltonian());
+        //}
     }
 
     /* launch the calculation */
