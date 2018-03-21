@@ -80,6 +80,14 @@ class vector3d: public std::array<T, 3>
         }
     }
 
+    /// Copy constructor.
+    vector3d(const vector3d<T>& vec__)
+    {
+      for(int j: {0,1,2}){
+        (*this)[j] = vec__[j];
+      }
+    }
+
     /// Return L1 norm of the vector.
     inline T l1norm() const
     {
@@ -153,6 +161,7 @@ class vector3d: public std::array<T, 3>
         }
         return a;
     }
+    
 };
 
 template <typename T, typename U>
