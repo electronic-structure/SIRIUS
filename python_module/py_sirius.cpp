@@ -57,6 +57,13 @@ void finalizer()
 
 
 PYBIND11_MODULE(sirius, m){
+  py::class_<Atom_type>(m, "Atom_type")
+    .def(py::init([](Atom_type& src){std::cout<<"Constructor";}))
+    //.def("set_radial_grid", )set_radial_grid(radial_grid_t grid_type__, int num_points__, double rmin__, double rmax__)
+    .def("zn", (int (Atom_type::*)(int)) &Atom_type::zn)
+    .def("add_beta_radial_function", &Atom_type::add_beta_radial_function)
+    .def("num_mt_points", &Atom_type::num_mt_points);
+
   py::class_<Unit_cell>(m, "Unit_cell")
     .def("add_atom", (void (Unit_cell::*)(const std::string, vector3d<double>)) &Unit_cell::add_atom)
     .def("get_symmetry", &Unit_cell::get_symmetry)
@@ -69,12 +76,13 @@ PYBIND11_MODULE(sirius, m){
     .def("set_pw_cutoff", &Simulation_parameters::set_pw_cutoff);
 
   py::class_<Simulation_context_base, Simulation_parameters>(m, "Simulation_context_base")
+    .def("gvec", &Simulation_context_base::gvec)
+    .def("fft", &Simulation_context_base::fft)
     .def("unit_cell", (Unit_cell& (Simulation_context_base::*)()) &Simulation_context_base::unit_cell, py::return_value_policy::reference);
 
   py::class_<Simulation_context, Simulation_context_base>(m, "Simulation_context")
     .def(py::init<std::string const&>())
-    .def("initialize", &Simulation_context::initialize)
-    .def(py::init<std::string, bool>());
+    .def("initialize", &Simulation_context::initialize);
 
    py::class_<Gvec>(m, "Gvec")
      .def(py::init<matrix3d<double>, double, bool>())
