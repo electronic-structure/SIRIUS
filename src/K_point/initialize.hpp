@@ -55,7 +55,7 @@ inline void K_point::initialize()
     /* build a list of basis functions */
     generate_gklo_basis();
 
-    if (ctx_.esm_type() == electronic_structure_method_t::full_potential_lapwlo) {
+    if (ctx_.electronic_structure_method() == electronic_structure_method_t::full_potential_lapwlo) {
         if (ctx_.iterative_solver_input().type_ == "exact") {
             alm_coeffs_row_ = std::unique_ptr<Matching_coefficients>(
                 new Matching_coefficients(unit_cell_, ctx_.lmax_apw(), num_gkvec_row(), igk_row_, gkvec()));
