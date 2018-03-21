@@ -50,8 +50,13 @@ class Simulation_context : public Simulation_context_base
     Simulation_context(Simulation_context const&) = delete;
 
   public:
-    Simulation_context(std::string const& fname__, Communicator const& comm__)
-        : Simulation_context_base(fname__, comm__)
+    Simulation_context()
+        : Simulation_context_base(mpi_comm_world())
+    {
+    }
+
+    Simulation_context(std::string const& str__)
+        : Simulation_context_base(str__, mpi_comm_world())
     {
     }
 
@@ -59,15 +64,21 @@ class Simulation_context : public Simulation_context_base
         : Simulation_context_base(comm__)
     {
     }
-    Simulation_context(Communicator const& comm__, std::string method__)
-        : Simulation_context_base(comm__)
+
+    Simulation_context(std::string const& str__, Communicator const& comm__)
+        : Simulation_context_base(str__, comm__)
     {
-        this->set_esm_type(method__);
     }
 
-    ~Simulation_context()
-    {
-    }
+    //Simulation_context(Communicator const& comm__, std::string method__)
+    //    : Simulation_context_base(comm__)
+    //{
+    //    this->set_esm_type(method__);
+    //}
+
+    //~Simulation_context()
+    //{
+    //}
 
     /// Initialize the similation (can only be called once).
     void initialize()

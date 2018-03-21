@@ -349,7 +349,7 @@ class DFT_ground_state
         {
             double tot_en{0};
 
-            switch (ctx_.esm_type()) {
+            switch (ctx_.electronic_structure_method()) {
                 case electronic_structure_method_t::full_potential_lapwlo: {
                     tot_en = (energy_kin() + energy_exc() + 0.5 * energy_vha() + energy_enuc());
                     break;
@@ -596,7 +596,7 @@ inline int DFT_ground_state::find(double potential_tol, double energy_tol, int n
         }
 
         /* find new wave-functions */
-        band_.solve_for_kset(kset_, H_, true);
+        band_.solve(kset_, H_, true);
         /* find band occupancies */
         kset_.find_band_occupancies();
         /* generate new density from the occupied wave-functions */
@@ -605,7 +605,7 @@ inline int DFT_ground_state::find(double potential_tol, double energy_tol, int n
         if (ctx_.use_symmetry()) {
             symmetrize(&density_.rho(), &density_.magnetization(0), &density_.magnetization(1),
                        &density_.magnetization(2));
-            if (ctx_.esm_type() == electronic_structure_method_t::pseudopotential) {
+            if (ctx_.electronic_structure_method() == electronic_structure_method_t::pseudopotential) {
                 density_.symmetrize_density_matrix();
             }
         }
@@ -745,7 +745,7 @@ inline void DFT_ground_state::print_magnetic_moment()
 
     double one_elec_en = evalsum1 - (evxc + evha);
 
-    if (ctx_.esm_type() == electronic_structure_method_t::pseudopotential) {
+    if (ctx_.electronic_structure_method() == electronic_structure_method_t::pseudopotential) {
         one_elec_en -= potential_.PAW_one_elec_energy();
     }
 

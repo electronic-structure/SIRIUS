@@ -1,4 +1,4 @@
-// Copyright (c) 2013-2017 Anton Kozhevnikov, Thomas Schulthess
+// Copyright (c) 2013-2018 Anton Kozhevnikov, Thomas Schulthess
 // All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without modification, are permitted provided that
@@ -22,114 +22,98 @@
  *   \brief Contains interfaces to the sirius::Band solvers.
  */
 
-inline void Band::solve_with_second_variation(K_point& kp__, Hamiltonian& hamiltonian__) const
+inline void Band::solve_full_potential(K_point& kp__, Hamiltonian& hamiltonian__) const
 {
-    /* solve non-magnetic Hamiltonian (so-called first variation) */
-    auto& itso = ctx_.iterative_solver_input();
-    if (itso.type_ == "exact") {
-        diag_fv_exact(&kp__, hamiltonian__);
-    } else if (itso.type_ == "davidson") {
-        diag_fv_davidson(&kp__, hamiltonian__);
+    if (use_second_variation) {
+        /* solve non-magnetic Hamiltonian (so-called first variation) */
+        auto& itso = ctx_.iterative_solver_input();
+        if (itso.type_ == "exact") {
+            diag_full_potential_first_variation_exact(kp__, hamiltonian__);
+        } else if (itso.type_ == "davidson") {
+            diag_full_potential_first_variation_davidson(kp__, hamiltonian__);
+        }
+        /* generate first-variational states */
+        kp__.generate_fv_states();
+        /* solve magnetic Hamiltonian */
+        diag_full_potential_second_variation(kp__, hamiltonian__);
+        /* generate spinor wave-functions */
+        kp__.generate_spinor_wave_functions();
+    } else {
+        TERMINATE_NOT_IMPLEMENTED
+        //diag_full_potential_single_variation();
     }
-    /* generate first-variational states */
-    kp__.generate_fv_states();
-    /* solve magnetic Hamiltonian */
-    diag_sv(&kp__, hamiltonian__);
-    /* generate spinor wave-functions */
-    kp__.generate_spinor_wave_functions();
 }
 
-inline int Band::solve_with_single_variation(K_point& kp__, Hamiltonian& hamiltonian__) const
+template <typename T>
+inline int Band::solve_pseudo_potential(K_point& kp__, Hamiltonian& hamiltonian__) const
 {
+    hamiltonian__.local_op().prepare(kp__.gkvec_partition());
+    ctx_.fft_coarse().prepare(kp__.gkvec_partition());
+
     int niter{0};
-    switch (ctx_.esm_type()) {
-        case electronic_structure_method_t::pseudopotential: {
-            if (ctx_.gamma_point() && (ctx_.so_correction() == false)) {
-                niter = diag_pseudo_potential<double>(&kp__, hamiltonian__);
-            } else {
-                niter = diag_pseudo_potential<double_complex>(&kp__, hamiltonian__);
+
+    auto& itso = ctx_.iterative_solver_input();
+    if (itso.type_ == "exact") {
+        if (ctx_.num_mag_dims() != 3) {
+            for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
+                diag_pseudo_potential_exact<double_complex>(&kp__, ispn, hamiltonian__);
             }
-            break;
+        } else {
+            STOP();
         }
-        default: {
-            TERMINATE_NOT_IMPLEMENTED
+    } else if (itso.type_ == "davidson") {
+        niter = diag_pseudo_potential_davidson<T>(&kp__, hamiltonian__);
+    } else if (itso.type_ == "rmm-diis") {
+        if (ctx_.num_mag_dims() != 3) {
+            for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
+                diag_pseudo_potential_rmm_diis<T>(&kp__, ispn, hamiltonian__);
+            }
+        } else {
+            STOP();
         }
+    } else if (itso.type_ == "chebyshev") {
+        P_operator<T> p_op(ctx_, kp__.p_mtrx());
+        if (ctx_.num_mag_dims() != 3) {
+            for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
+                diag_pseudo_potential_chebyshev<T>(&kp__, ispn, hamiltonian__, p_op);
+            }
+        } else {
+            STOP();
+        }
+    } else {
+        TERMINATE("unknown iterative solver type");
     }
-    //== if (kp->num_ranks() > 1 && !parameters_.gen_evp_solver()->parallel())
-    //==     error_local(__FILE__, __LINE__, "eigen-value solver is not parallel");
 
-    //== mdarray<double_complex, 2> h(kp->gklo_basis_size_row(), kp->gklo_basis_size_col());
-    //== mdarray<double_complex, 2> o(kp->gklo_basis_size_row(), kp->gklo_basis_size_col());
-    //==
-    //== set_o(kp, o);
+    /* check residuals */
+    if (ctx_.control().verification_ >= 1) {
+        check_residuals<T>(&kp__, hamiltonian__); 
+    }
 
-    //== std::vector<double> eval(parameters_.num_bands());
-    //== mdarray<double_complex, 2>& fd_evec = kp->fd_eigen_vectors();
-
-    //== if (parameters_.num_mag_dims() == 0)
-    //== {
-    //==     assert(kp->gklo_basis_size() >= parameters_.num_fv_states());
-    //==     set_h<nm>(kp, effective_potential, effective_magnetic_field, h);
-    //==
-    //==     Timer t2("sirius::Band::solve_fd|diag");
-    //==     parameters_.gen_evp_solver()->solve(kp->gklo_basis_size(), kp->gklo_basis_size_row(),
-    // kp->gklo_basis_size_col(),
-    //==                                         parameters_.num_fv_states(), h.ptr(), h.ld(), o.ptr(), o.ld(),
-    //==                                         &eval[0], fd_evec.ptr(), fd_evec.ld());
-    //== }
-    //==
-    //== if (parameters_.num_mag_dims() == 1)
-    //== {
-    //==     assert(kp->gklo_basis_size() >= parameters_.num_fv_states());
-
-    //==     mdarray<double_complex, 2> o1(kp->gklo_basis_size_row(), kp->gklo_basis_size_col());
-    //==     memcpy(&o1(0, 0), &o(0, 0), o.size() * sizeof(double_complex));
-
-    //==     set_h<uu>(kp, effective_potential, effective_magnetic_field, h);
-    //==
-    //==     Timer t2("sirius::Band::solve_fd|diag");
-    //==     parameters_.gen_evp_solver()->solve(kp->gklo_basis_size(), kp->gklo_basis_size_row(),
-    // kp->gklo_basis_size_col(),
-    //==                                         parameters_.num_fv_states(), h.ptr(), h.ld(), o.ptr(), o.ld(),
-    //==                                         &eval[0], &fd_evec(0, 0), fd_evec.ld());
-    //==     t2.stop();
-
-    //==     set_h<dd>(kp, effective_potential, effective_magnetic_field, h);
-    //==
-    //==     t2.start();
-    //==     parameters_.gen_evp_solver()->solve(kp->gklo_basis_size(), kp->gklo_basis_size_row(),
-    // kp->gklo_basis_size_col(),
-    //==                                         parameters_.num_fv_states(), h.ptr(), h.ld(), o1.ptr(), o1.ld(),
-    //==                                         &eval[parameters_.num_fv_states()],
-    //==                                         &fd_evec(0, parameters_.spl_fv_states().local_size()), fd_evec.ld());
-    //==     t2.stop();
-    //== }
-
-    //== kp->set_band_energies(&eval[0]);
+    ctx_.fft_coarse().dismiss();
     return niter;
 }
 
-inline void Band::solve_for_kset(K_point_set& kset__, Hamiltonian& Hamiltonian__, bool precompute__) const
+inline void Band::solve(K_point_set& kset__, Hamiltonian& hamiltonian__, bool precompute__) const
 {
-    PROFILE("sirius::Band::solve_for_kset");
+    PROFILE("sirius::Band::solve");
 
     if (precompute__ && ctx_.full_potential()) {
-        Hamiltonian__.potential().generate_pw_coefs();
-        Hamiltonian__.potential().update_atomic_potential();
+        hamiltonian__.potential().generate_pw_coefs();
+        hamiltonian__.potential().update_atomic_potential();
         unit_cell_.generate_radial_functions();
         unit_cell_.generate_radial_integrals();
     }
     
     /* map local potential to a coarse grid */
     if (ctx_.full_potential()) {
-        Hamiltonian__.local_op().prepare(Hamiltonian__.potential(), ctx_.step_function());
+        hamiltonian__.local_op().prepare(hamiltonian__.potential(), ctx_.step_function());
     } else {
-        Hamiltonian__.local_op().prepare(Hamiltonian__.potential());
+        hamiltonian__.local_op().prepare(hamiltonian__.potential());
         /* prepare non-local operators */
         if (ctx_.gamma_point() && (ctx_.so_correction() == false)) {
-            Hamiltonian__.prepare<double>();
+            hamiltonian__.prepare<double>();
         } else {
-            Hamiltonian__.prepare<double_complex>();
+            hamiltonian__.prepare<double_complex>();
         }
     }
 
@@ -143,10 +127,14 @@ inline void Band::solve_for_kset(K_point_set& kset__, Hamiltonian& Hamiltonian__
         int ik  = kset__.spl_num_kpoints(ikloc);
         auto kp = kset__[ik];
 
-        if (ctx_.full_potential() && use_second_variation) {
-            solve_with_second_variation(*kp, Hamiltonian__);
+        if (ctx_.full_potential()) {
+            solve_full_potential(*kp, hamiltonian__);
         } else {
-            num_dav_iter += solve_with_single_variation(*kp, Hamiltonian__);
+            if (ctx_.gamma_point() && (ctx_.so_correction() == false)) {
+                num_dav_iter += solve_pseudo_potential<double>(*kp, hamiltonian__);
+            } else {
+                num_dav_iter += solve_pseudo_potential<double_complex>(*kp, hamiltonian__);
+            }
         }
     }
     kset__.comm().allreduce(&num_dav_iter, 1);
@@ -154,9 +142,9 @@ inline void Band::solve_for_kset(K_point_set& kset__, Hamiltonian& Hamiltonian__
         printf("Average number of iterations: %12.6f\n", static_cast<double>(num_dav_iter) / kset__.num_kpoints());
     }
 
-    Hamiltonian__.local_op().dismiss();
+    hamiltonian__.local_op().dismiss();
     if (!ctx_.full_potential()) {
-        Hamiltonian__.dismiss();
+        hamiltonian__.dismiss();
     }
 
     /* synchronize eigen-values */
@@ -166,14 +154,10 @@ inline void Band::solve_for_kset(K_point_set& kset__, Hamiltonian& Hamiltonian__
         printf("Lowest band energies\n");
         for (int ik = 0; ik < kset__.num_kpoints(); ik++) {
             printf("ik : %2i, ", ik);
-            if (ctx_.num_mag_dims() != 1) {
-                for (int j = 0; j < std::min(ctx_.control().num_bands_to_print_, ctx_.num_bands()); j++) {
-                    printf("%12.6f", kset__[ik]->band_energy(j, 0));
-                }
-            } else {
-                for (int j = 0; j < std::min(ctx_.control().num_bands_to_print_, ctx_.num_bands()); j++) {
-                    printf("%12.6f", kset__[ik]->band_energy(j, 0));
-                }
+            for (int j = 0; j < std::min(ctx_.control().num_bands_to_print_, ctx_.num_bands()); j++) {
+                printf("%12.6f", kset__[ik]->band_energy(j, 0));
+            }
+            if (ctx_.num_mag_dims() == 1) {
                 printf("\n         ");
                 for (int j = 0; j < std::min(ctx_.control().num_bands_to_print_, ctx_.num_bands()); j++) {
                     printf("%12.6f", kset__[ik]->band_energy(j, 1));

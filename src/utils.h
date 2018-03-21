@@ -68,11 +68,13 @@ class Utils
     static inline double fermi_dirac_distribution(double e)
     {
         double kT = 0.001;
-        if (e > 100 * kT)
+        if (e > 100 * kT) {
             return 0.0;
-        if (e < -100 * kT)
+        }
+        if (e < -100 * kT) {
             return 1.0;
-        return (1.0 / (exp(e / kT) + 1.0));
+        }
+        return (1.0 / (std::exp(e / kT) + 1.0));
     }
 
     static inline double gaussian_smearing(double e, double delta)
@@ -84,12 +86,14 @@ class Utils
     {
         double a = -0.5634;
 
-        if (e < -10.0)
+        if (e < -10.0) {
             return 1.0;
-        if (e > 10.0)
+        }
+        if (e > 10.0) {
             return 0.0;
+        }
 
-        return 0.5 * (1 - gsl_sf_erf(e)) - 1 - 0.25 * exp(-e * e) * (a + 2 * e - 2 * a * e * e) / sqrt(pi);
+        return 0.5 * (1 - gsl_sf_erf(e)) - 1 - 0.25 * std::exp(-e * e) * (a + 2 * e - 2 * a * e * e) / std::sqrt(pi);
     }
 
     static std::string double_to_string(double val, int precision = -1)

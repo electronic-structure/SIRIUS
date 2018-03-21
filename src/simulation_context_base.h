@@ -242,13 +242,13 @@ class Simulation_context_base: public Simulation_parameters
 
     public:
 
-        Simulation_context_base(std::string const& fname__,
+        Simulation_context_base(std::string const& str__,
                                 Communicator const& comm__)
             : comm_(comm__)
             , unit_cell_(*this, comm_)
         {
             start();
-            import(fname__);
+            import(str__);
             unit_cell_.import(unit_cell_input_);
         }
 
@@ -606,7 +606,7 @@ inline void Simulation_context_base::initialize()
         set_gamma_point(false);
     }
 
-    set_esm_type(parameters_input().esm_);
+    electronic_structure_method(parameters_input().electronic_structure_method_);
     set_core_relativity(parameters_input().core_relativity_);
     set_valence_relativity(parameters_input().valence_relativity_);
 
