@@ -73,7 +73,6 @@ class Simulation_parameters
         }
 
         json dict;
-        
         if (str__.find("{") == std::string::npos) { /* this is a file */
             if (Utils::file_exists(str__)) {
                 try {
