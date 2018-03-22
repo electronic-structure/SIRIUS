@@ -73,17 +73,18 @@ class Simulation_parameters
         }
 
         json dict;
-
-        if (Utils::file_exists(str__)) {
-            try {
-                std::ifstream(str__) >> dict;
-            } catch(std::exception& e) {
-                std::stringstream s;
-                s << "wrong input json file" << std::endl
-                  << e.what();
-                TERMINATE(s);
+        if (str__.find("{") == std::string::npos) { /* this is a file */
+            if (Utils::file_exists(str__)) {
+                try {
+                    std::ifstream(str__) >> dict;
+                } catch(std::exception& e) {
+                    std::stringstream s;
+                    s << "wrong input json file" << std::endl
+                      << e.what();
+                    TERMINATE(s);
+                }
             }
-        } else {
+        } else { /* this is a json string */
             try {
                 std::istringstream(str__) >> dict;
             } catch (std::exception& e) {

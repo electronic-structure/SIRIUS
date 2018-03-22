@@ -79,13 +79,12 @@ class vector3d: public std::array<T, 3>
             (*this)[x] = ptr__[x];
         }
     }
-
-    /// Copy constructor.
-    vector3d(const vector3d<T>& vec__)
-    {
-      for(int j: {0,1,2}){
-        (*this)[j] = vec__[j];
-      }
+    
+    /// Create from array.
+    vector3d(std::array<T, 3> v__) {
+        for (int x : {0, 1, 2}) {
+            (*this)[x] = v__[x];
+        }
     }
 
     /// Copy constructor.
