@@ -39,6 +39,10 @@ void finalizer()
 }
 
 PYBIND11_MODULE(sirius, m){
+
+   m.def("initialize", &initializer);
+   m.def("finalize", &finalizer);
+
   py::class_<Atom_type>(m, "Atom_type")
     .def("zn", (int (Atom_type::*)(int)) &Atom_type::zn)
     .def("add_beta_radial_function", &Atom_type::add_beta_radial_function)
@@ -66,12 +70,11 @@ PYBIND11_MODULE(sirius, m){
 
    py::class_<Gvec>(m, "Gvec")
      .def(py::init<matrix3d<double>, double, bool>())
+     .def("num_gvec", &Gvec::num_gvec)
      .def("count", &Gvec::count)
      .def("offset", &Gvec::offset)
      .def("gvec", &Gvec::gvec)
      .def("index_by_gvec", &Gvec::index_by_gvec);
-   m.def("initialize", &initializer);
-   m.def("finalize", &finalizer);
 
   py::class_<matrix3d<double>>(m, "matrix3d") //py::class_ constructor
     //.def(py::init(&factory))
