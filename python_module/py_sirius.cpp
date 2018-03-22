@@ -92,7 +92,8 @@ PYBIND11_MODULE(sirius, m){
    m.def("finalize", &finalizer);
 
   py::class_<matrix3d<double>>(m, "matrix3d") //py::class_ constructor
-    .def(py::init(&factory))
+    //.def(py::init(&factory))
+    .def(py::init<std::vector<std::vector<double>>>())
     .def(py::init<>()) //to create a zero matrix
     .def("__call__", [](const matrix3d<double> &obj, int x, int y){return obj(x,y);})
     .def(py::self * py::self)
