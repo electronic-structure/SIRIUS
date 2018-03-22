@@ -553,7 +553,8 @@ class Stress {
                 int ja = uc.nearest_neighbour(i, ia).atom_id;
                 double d = uc.nearest_neighbour(i, ia).distance;
 
-                vector3d<double> v1 = uc.atom(ja).position() - uc.atom(ia).position() + uc.nearest_neighbour(i, ia).translation;
+                vector3d<double> v1 = uc.atom(ja).position() - uc.atom(ia).position() +
+                                      vector3d<int>(uc.nearest_neighbour(i, ia).translation);
                 auto r1 = uc.get_cartesian_coordinates(v1);
                 double len = r1.length();
 

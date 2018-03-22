@@ -6,6 +6,8 @@ fin = open("atoms.in", "r")
 
 fout = open("run.x", "w")
 
+header_file = open("atomic_conf.h", "w")
+
 atoms = {}
 
 while True:
@@ -38,16 +40,21 @@ while True:
         s1 = line.split()
         nst = int(s1[0])
         
+        header_file.write("{ // %s, z = %i\n"%(symbol, zn))
         levels = []
         for i in range(nst):
+            if (i != 0):
+                header_file.write(",\n")
             line = fin.readline() # n l k occ
             s1 = line.split()
             n = int(s1[0]);
             l = int(s1[1]);
             k = int(s1[2]);
-            occ = int(s1[3]);
+            occ = float(s1[3]);
             levels.append([n, l, k, occ])
+            header_file.write("    {%i, %i, %i, %f}"%(n, l, k, occ))
         atoms[symbol]["levels"] = levels
+        header_file.write("\n},\n")
         
         line = fin.readline() # NIST LDA Etot
         line = line.strip()
@@ -69,6 +76,8 @@ os.chmod("run.x", os.stat("run.x").st_mode | stat.S_IEXEC)
 fout = open("atoms.json", "w")
 fout.write(re.sub(r"(?<=[0-9]),\s\n\s*(?=[-|0-9])", r", ", json.dumps(atoms, indent=2)))
 fout.close()
+
+header_file.close()
 
 
 

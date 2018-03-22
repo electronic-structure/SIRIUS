@@ -1,4 +1,4 @@
-// Copyright (c) 2013-2017 Anton Kozhevnikov, Thomas Schulthess
+// Copyright (c) 2013-2018 Anton Kozhevnikov, Thomas Schulthess
 // All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without modification, are permitted provided that
@@ -36,6 +36,8 @@
 using json = nlohmann::json;
 
 namespace sirius {
+
+// TODO: let DFT_ground_state class crate and store density, potential, k_set, Hamiltonain, forces, stress
 
 class DFT_ground_state
 {

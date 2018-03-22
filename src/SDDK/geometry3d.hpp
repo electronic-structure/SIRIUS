@@ -79,6 +79,13 @@ class vector3d: public std::array<T, 3>
             (*this)[x] = ptr__[x];
         }
     }
+    
+    /// Create from array.
+    vector3d(std::array<T, 3> v__) {
+        for (int x : {0, 1, 2}) {
+            (*this)[x] = v__[x];
+        }
+    }
 
     /// Return L1 norm of the vector.
     inline T l1norm() const
