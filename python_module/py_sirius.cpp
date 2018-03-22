@@ -12,24 +12,6 @@ namespace py = pybind11;
 using namespace sirius;
 using namespace geometry3d;
 
-void vector_wrapper(std::vector<std::vector<double>> a, double (&x)[3][3])
-{
-  for(int i = 0; i < 3; ++i)
-  {
-    for(int j = 0; j < 3; ++j)
-    {
-      x[i][j] = a[i][j];
-    }
-  }
-}
-
-matrix3d<double> factory(std::vector<std::vector<double>> x)
-{
-    double arr[3][3];//empty array
-    vector_wrapper(x, arr);
-    return matrix3d<double>(arr);
-}
-
 
 std::string show_mat(const matrix3d<double>& mat)
 {
