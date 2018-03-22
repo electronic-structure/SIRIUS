@@ -268,13 +268,13 @@ class Atom_type
     Radial_grid<double> free_atom_radial_grid_;
 
   public:
-    Atom_type(Simulation_parameters const& parameters__,
-              std::string symbol__,
-              std::string name__,
-              int zn__,
-              double mass__,
-              std::vector<atomic_level_descriptor>& levels__,
-              radial_grid_t grid_type__)
+    Atom_type(Simulation_parameters const&                parameters__,
+              std::string                                 symbol__,
+              std::string                                 name__,
+              int                                         zn__,
+              double                                      mass__,
+              std::vector<atomic_level_descriptor> const& levels__,
+              radial_grid_t                               grid_type__)
         : parameters_(parameters__)
         , symbol_(symbol__)
         , name_(name__)
@@ -1422,27 +1422,21 @@ inline void Atom_type::init(int offset_lo__)
         TERMINATE("zero atom charge");
     }
 
-    /* add valence levels to the list of core levels */
+    /* add valence levels to the list of atom's levels */
     if (parameters_.full_potential()) {
-        atomic_level_descriptor level;
-        for (int ist = 0; ist < 28; ist++) {
-            bool found      = false;
-            level.n         = atomic_conf[zn_ - 1][ist][0];
-            level.l         = atomic_conf[zn_ - 1][ist][1];
-            level.k         = atomic_conf[zn_ - 1][ist][2];
-            level.occupancy = double(atomic_conf[zn_ - 1][ist][3]);
-            level.core      = false;
-
-            if (level.n != -1) {
-                for (size_t jst = 0; jst < atomic_levels_.size(); jst++) {
-                    if (atomic_levels_[jst].n == level.n && atomic_levels_[jst].l == level.l &&
-                        atomic_levels_[jst].k == level.k) {
-                        found = true;
-                    }
+        for (auto& e : atomic_conf[zn_ - 1]) {
+            /* check if this level is already in the list */
+            bool in_list{false};
+            for (auto& c : atomic_levels_) {
+                if (c.n == e.n && c.l == e.l && c.k == e.k) {
+                    in_list = true;
+                    break;
                 }
-                if (!found) {
-                    atomic_levels_.push_back(level);
-                }
+            }
+            if (!in_list) {
+                auto level = e;
+                level.core = false;
+                atomic_levels_.push_back(level);
             }
         }
         /* get the number of core electrons */
@@ -1692,7 +1686,8 @@ inline void Atom_type::read_input_core(json const& parser)
     std::string core_str = parser["core"];
     if (int size = (int)core_str.size()) {
         if (size % 2) {
-            std::string s = std::string("wrong core configuration string : ") + core_str;
+            std::stringstream s;
+            s << "wrong core configuration string : " << core_str;
             TERMINATE(s);
         }
         int j = 0;
@@ -1707,7 +1702,8 @@ inline void Atom_type::read_input_core(json const& parser)
             iss >> n;
 
             if (n <= 0 || iss.fail()) {
-                std::string s = std::string("wrong principal quantum number : ") + std::string(1, c1);
+                std::stringstream s;
+                s << "wrong principal quantum number : " << std::string(1, c1);
                 TERMINATE(s);
             }
 
@@ -1729,19 +1725,16 @@ inline void Atom_type::read_input_core(json const& parser)
                     break;
                 }
                 default: {
-                    std::string s = std::string("wrong angular momentum label : ") + std::string(1, c2);
+                    std::stringstream s;
+                    s << "wrong angular momentum label : " << std::string(1, c2);
                     TERMINATE(s);
                 }
             }
 
-            atomic_level_descriptor level;
-            level.n    = n;
-            level.l    = l;
-            level.core = true;
-            for (int ist = 0; ist < 28; ist++) {
-                if ((level.n == atomic_conf[zn_ - 1][ist][0]) && (level.l == atomic_conf[zn_ - 1][ist][1])) {
-                    level.k         = atomic_conf[zn_ - 1][ist][2];
-                    level.occupancy = double(atomic_conf[zn_ - 1][ist][3]);
+            for (auto& e: atomic_conf[zn_ - 1]) {
+                if (e.n == n && e.l == l) {
+                    auto level = e;
+                    level.core = true;
                     atomic_levels_.push_back(level);
                 }
             }
