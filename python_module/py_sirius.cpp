@@ -56,20 +56,8 @@ void finalizer()
   sirius::finalize(1);
 }
 
-/*
-Atom_type atom_type_wrapper(Atom_type&& src)
-{
-  return Atom_type(src);
-}
-*/
 PYBIND11_MODULE(sirius, m){
   py::class_<Atom_type>(m, "Atom_type")
-    //.def(py::init([](Atom_type src){return atom_type_wrapper(std::move(src));}))
-    //.def("set_radial_grid", )set_radial_grid(radial_grid_t grid_type__, int num_points__, double rmin__, double rmax__)
-    //.def("zn", (int (Atom_type::*)(int)) &Atom_type::zn)
-    //.def("zn", [](Simulation_context& ctx, const int id, const int charge){
-      //Atom_type& atype = ctx.unit_cell().atom_type(0);
-      //atype.zn(charge);})
     .def("zn", (int (Atom_type::*)(int)) &Atom_type::zn)
     .def("add_beta_radial_function", &Atom_type::add_beta_radial_function)
     .def("num_mt_points", &Atom_type::num_mt_points);
@@ -78,8 +66,6 @@ PYBIND11_MODULE(sirius, m){
     .def("add_atom", (void (Unit_cell::*)(const std::string, vector3d<double>)) &Unit_cell::add_atom)
     .def("get_symmetry", &Unit_cell::get_symmetry)
     .def("add_atom_type", (void (Unit_cell::*)(const std::string, const std::string)) &Unit_cell::add_atom_type)
-    //.def("atom_type", (Atom_type& (Unit_cell::*)(int)) &Unit_cell::atom_type, py::return_value_policy::reference)
-    //.def("atom_type", &Unit_cell::atom_type, py::return_value_policy::reference)
     .def("atom_type", (Atom_type& (Unit_cell::*)(int)) &Unit_cell::atom_type, py::return_value_policy::reference)
     .def("set_lattice_vectors", (void (Unit_cell::*)(matrix3d<double>)) &Unit_cell::set_lattice_vectors);
 
