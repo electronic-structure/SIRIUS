@@ -94,17 +94,27 @@ PYBIND11_MODULE(sirius, m){
      //.def("__repr__", [](const z_column_descriptor &obj){return show_z_colum_descriptor(obj);)
      .def(py::init<int, int , std::vector<int>>());
 
+
+
    py::class_<Gvec>(m, "Gvec")
      .def(py::init<matrix3d<double>, double, bool>())
-     .def("num_gvec", &Gvec::num_gvec)
-     .def("count", &Gvec::count)
-     .def("offset", &Gvec::offset)
-     .def("gvec", &Gvec::gvec)
+     .def("num_gvec", &sddk::Gvec::num_gvec)
+     .def("count", &sddk::Gvec::count)
+     .def("offset", &sddk::Gvec::offset)
+     .def("gvec", &sddk::Gvec::gvec)
+     .def("gvec_alt", [](Gvec &obj, int idx){vector3d<int> vec(obj.gvec(idx)); //alternative solution: returns an array.
+       std::vector<int> retr;
+       retr.push_back(vec[0]);
+       retr.push_back(vec[1]);
+       retr.push_back(vec[2]);
+       return retr;})
+     .def("index_by_gvec", [](Gvec &obj, std::vector<int> vec){vector3d<int> vec3d(vec);
+       return obj.index_by_gvec(vec3d);})
      .def("zcol", [](Gvec &gvec, int idx){ //Error on Python side: TypeError: zcol(): incompatible function arguments. The following argument types are supported:
        z_column_descriptor obj(gvec.zcol(idx));
        py::dict dict("x"_a = obj.x, "y"_a = obj.y, "z"_a = obj.z);
        return dict;})
-     .def("zcol", &Gvec::zcol)
+     .def("zcol", &sddk::Gvec::zcol)
      //.def("__repr__", [](int idx, const Gvec &gvec){std::cout<<idx;})
      .def("index_by_gvec", &Gvec::index_by_gvec);
      //.def("index_by_gvec", py::overload_cast<>);

@@ -1,11 +1,11 @@
 {
     "flat": {
         "+global_timer": {
-            "avg": 0.025613,
+            "avg": 0.029585,
             "count": 1,
-            "max": 0.025613,
-            "min": 0.025613,
-            "total": 0.025613
+            "max": 0.029585,
+            "min": 0.029585,
+            "total": 0.029585
         },
         "sddk::Gvec::find_gvec_shells": {
             "avg": 0.000506,
@@ -15,35 +15,35 @@
             "total": 0.000506
         },
         "sddk::Gvec::init": {
-            "avg": 0.00122,
+            "avg": 0.001282,
             "count": 1,
-            "max": 0.00122,
-            "min": 0.00122,
-            "total": 0.00122
+            "max": 0.001282,
+            "min": 0.001282,
+            "total": 0.001282
         }
     },
     "tree": {
         "+global_timer": {
             "call": {
                 "sddk::Gvec::init": {
-                    "percent_of_parent": 4.7632061843595,
-                    "time": 0.00122
+                    "percent_of_parent": 4.33327699847896,
+                    "time": 0.001282
                 }
             },
-            "cumulitive_time": 0.025613,
+            "cumulitive_time": 0.029585,
             "percent_of_global_time": 100.0,
-            "self_time": 0.024393
+            "self_time": 0.028303
         },
         "sddk::Gvec::init": {
             "call": {
                 "sddk::Gvec::find_gvec_shells": {
-                    "percent_of_parent": 41.4754098360656,
+                    "percent_of_parent": 39.4695787831513,
                     "time": 0.000506
                 }
             },
-            "cumulitive_time": 0.00122,
-            "percent_of_global_time": 4.7632061843595,
-            "self_time": 0.000714
+            "cumulitive_time": 0.001282,
+            "percent_of_global_time": 4.33327699847896,
+            "self_time": 0.000776
         }
     }
 }
