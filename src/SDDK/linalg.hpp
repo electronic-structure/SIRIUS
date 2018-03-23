@@ -268,6 +268,9 @@ inline void linalg<CPU>::gemm<ftn_double>(int transa, int transb, ftn_int m, ftn
     assert(lda != 0);
     assert(ldb != 0);
     assert(ldc != 0);
+    assert(m != 0);
+    assert(n != 0);
+    assert(k != 0);
 
     const char *trans[] = {"N", "T", "C"};
 
@@ -287,6 +290,9 @@ inline void linalg<CPU>::gemm<ftn_double_complex>(int transa, int transb, ftn_in
     assert(lda != 0);
     assert(ldb != 0);
     assert(ldc != 0);
+    assert(m != 0);
+    assert(n != 0);
+    assert(k != 0);
 
     const char *trans[] = {"N", "T", "C"};
 
