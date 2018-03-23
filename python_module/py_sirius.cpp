@@ -44,7 +44,9 @@ PYBIND11_MODULE(sirius, m){
    m.def("finalize", &finalizer);
 
   py::class_<Atom_type>(m, "Atom_type")
-    .def("zn", (int (Atom_type::*)(int)) &Atom_type::zn)
+    //.def("zn", (int (Atom_type::*)(int)) &Atom_type::zn, "Set zn")
+    .def("zn", py::overload_cast<int>(&Atom_type::zn))
+    .def("zn", py::overload_cast<>(&Atom_type::zn, py::const_))
     .def("add_beta_radial_function", &Atom_type::add_beta_radial_function)
     .def("num_mt_points", &Atom_type::num_mt_points);
 
@@ -65,8 +67,11 @@ PYBIND11_MODULE(sirius, m){
     .def("unit_cell", (Unit_cell& (Simulation_context_base::*)()) &Simulation_context_base::unit_cell, py::return_value_policy::reference);
 
   py::class_<Simulation_context, Simulation_context_base>(m, "Simulation_context")
+    .def(py::init<>())
     .def(py::init<std::string const&>())
-    .def("initialize", &Simulation_context::initialize);
+    .def("initialize", &Simulation_context::initialize)
+    .def("num_bands", py::overload_cast<>(&Simulation_context::num_bands, py::const_))
+    .def("num_bands", py::overload_cast<int>(&Simulation_context::num_bands));
 
    py::class_<Gvec>(m, "Gvec")
      .def(py::init<matrix3d<double>, double, bool>())
