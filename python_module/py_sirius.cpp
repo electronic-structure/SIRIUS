@@ -8,6 +8,7 @@
 #include <vector>
 #include <utility>
 
+using namespace pybind11::literals; // to bring in the `_a` literal
 namespace py = pybind11;
 using namespace sirius;
 using namespace geometry3d;
@@ -22,7 +23,8 @@ std::string show_mat(const matrix3d<double>& mat)
   return str;
 }
 
-std::string show_vec(const vector3d<double>& vec)
+template<class T>
+std::string show_vec(const vector3d<T>& vec)
 {
   std::string str = "[" + std::to_string(vec[0]) + "," + std::to_string(vec[1]) + "," + std::to_string(vec[2]) + "]";
   return str;
@@ -37,6 +39,7 @@ void finalizer()
 {
   sirius::finalize(1);
 }
+
 
 PYBIND11_MODULE(sirius, m){
 
@@ -83,13 +86,38 @@ PYBIND11_MODULE(sirius, m){
     .def("num_bands", py::overload_cast<>(&Simulation_context::num_bands, py::const_))
     .def("num_bands", py::overload_cast<int>(&Simulation_context::num_bands));
 
+  py::class_<z_column_descriptor> (m, "z_column_descriptor")
+     .def_readwrite("x", &z_column_descriptor::x)
+     .def_readwrite("y", &z_column_descriptor::y)
+     .def_readwrite("z", &z_column_descriptor::z)
+     //.def(py::init<>())
+     //.def("__repr__", [](const z_column_descriptor &obj){return show_z_colum_descriptor(obj);)
+     .def(py::init<int, int , std::vector<int>>());
+
+
+
    py::class_<Gvec>(m, "Gvec")
      .def(py::init<matrix3d<double>, double, bool>())
-     .def("num_gvec", &Gvec::num_gvec)
-     .def("count", &Gvec::count)
-     .def("offset", &Gvec::offset)
-     .def("gvec", &Gvec::gvec)
+     .def("num_gvec", &sddk::Gvec::num_gvec)
+     .def("count", &sddk::Gvec::count)
+     .def("offset", &sddk::Gvec::offset)
+     .def("gvec", &sddk::Gvec::gvec)
+     .def("gvec_alt", [](Gvec &obj, int idx){vector3d<int> vec(obj.gvec(idx)); //alternative solution: returns an array.
+       std::vector<int> retr;
+       retr.push_back(vec[0]);
+       retr.push_back(vec[1]);
+       retr.push_back(vec[2]);
+       return retr;})
+     .def("index_by_gvec", [](Gvec &obj, std::vector<int> vec){vector3d<int> vec3d(vec);
+       return obj.index_by_gvec(vec3d);})
+     .def("zcol", [](Gvec &gvec, int idx){ //Error on Python side: TypeError: zcol(): incompatible function arguments. The following argument types are supported:
+       z_column_descriptor obj(gvec.zcol(idx));
+       py::dict dict("x"_a = obj.x, "y"_a = obj.y, "z"_a = obj.z);
+       return dict;})
+     .def("zcol", &sddk::Gvec::zcol)
+     //.def("__repr__", [](int idx, const Gvec &gvec){std::cout<<idx;})
      .def("index_by_gvec", &Gvec::index_by_gvec);
+     //.def("index_by_gvec", py::overload_cast<>);
 
   py::class_<matrix3d<double>>(m, "matrix3d") //py::class_ constructor
     .def(py::init<std::vector<std::vector<double>>>())
@@ -100,7 +128,13 @@ PYBIND11_MODULE(sirius, m){
     .def(py::init<matrix3d<double>>())
     .def("det", &matrix3d<double>::det);
 
-  py::class_<vector3d<double>>(m, "vector3d")
+  py::class_<vector3d<int>>(m, "vector3d_int")
+    .def(py::init<std::vector<int>>())
+    .def("__call__", [](const vector3d<int> &obj, int x){return obj[x];})
+    .def("__repr__", [](const vector3d<int> &vec){return show_vec(vec);})
+    .def(py::init<vector3d<int>>());
+
+  py::class_<vector3d<double>>(m, "vector3d_double")
     .def(py::init<std::vector<double>>())
     .def("__call__", [](const vector3d<double> &obj, int x){return obj[x];})
     .def("__repr__", [](const vector3d<double> &vec){return show_vec(vec);})
@@ -122,6 +156,9 @@ PYBIND11_MODULE(sirius, m){
     .def(py::init<Simulation_context&>())
     .def("print_info", &DFT_ground_state::print_info)
     .def("initial_state", &DFT_ground_state::initial_state)
+    .def("print_magnetic_moment", &DFT_ground_state::print_magnetic_moment)
+    .def("total_energy", &DFT_ground_state::total_energy)
+    //.def("serialize", &DFT_ground_state::serialize, py::return_value_policy::reference)
     .def("density", &DFT_ground_state::density, py::return_value_policy::reference)
     .def("find", &DFT_ground_state::find)
     .def("potential", &DFT_ground_state::potential, py::return_value_policy::reference);

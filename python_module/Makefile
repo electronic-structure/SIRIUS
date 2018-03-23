@@ -1,7 +1,7 @@
 include ../make.inc
 LIB_SIRIUS = ../src/libsirius.a
 
-PYTHON = python
+PYTHON = python3
 CXXFLAGS += -shared -undefined dynamic_lookup
 CXXFLAGS += `$(PYTHON) -m pybind11 --includes`
 CXXEND = `$(PYTHON)-config --extension-suffix`
