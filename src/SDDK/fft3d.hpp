@@ -116,14 +116,19 @@ class FFT3D
         /// Internal buffer for independent {xy}-transforms.
         std::vector<double_complex*> fftw_buffer_xy_;
 
+        /// FFTW plan for 1D backward transformation.
         std::vector<fftw_plan> plan_backward_z_;
 
+        /// FFTW plan for 2D backward transformation.
         std::vector<fftw_plan> plan_backward_xy_;
 
+        /// FFTW plan for 1D forward transformation.
         std::vector<fftw_plan> plan_forward_z_;
 
+        /// FFTW plan for 2D forward transformation.
         std::vector<fftw_plan> plan_forward_xy_;
 
+        /// True if GPU-direct is enabled.
         bool is_gpu_direct_{false};
 
         #ifdef __GPU
@@ -136,10 +141,10 @@ class FFT3D
         /// True if the cufft_plan_z handler was created and has to be destroyed.
         bool cufft_plan_z_created_{false};
 
-        /// offsets  for z-buffer
+        /// Offsets  for z-buffer.
         mdarray<int,1> z_offsets_;
 
-        /// local sizes for z-buffer
+        /// Local sizes for z-buffer.
         mdarray<int,1> z_sizes_;
 
         /// max local z size
@@ -207,8 +212,11 @@ class FFT3D
                         /* transform all columns */
                         cufft::backward_transform(cufft_plan_z_, (cuDoubleComplex*)fft_buffer_aux__.at<GPU>());
 
+                        assert(cufft_work_buf_.size() >= sizeof(double_complex) * fft_buffer_aux__.size());
+
                         /* copy to temp buffer*/
-                        acc::copy<char>((char*)cufft_work_buf_.at<GPU>(), (char*)fft_buffer_aux__.at<GPU>(), sizeof(double_complex)*fft_buffer_aux__.size());
+                        acc::copy<char>(cufft_work_buf_.at<GPU>(), (char*)fft_buffer_aux__.at<GPU>(),
+                                        sizeof(double_complex) * fft_buffer_aux__.size());
 
                         /* repack the buffer */
                         cufft_repack_z_buffer(direction,
@@ -224,8 +232,12 @@ class FFT3D
                         break;
                     }
                     case -1: {
+
+                        assert(cufft_work_buf_.size() >= sizeof(double_complex) * fft_buffer_aux__.size());
+                        
                         /* copy to temp buffer*/
-                        acc::copy<char>((char*)cufft_work_buf_.at<GPU>(), (char*)fft_buffer_aux__.at<GPU>(), sizeof(double_complex)*fft_buffer_aux__.size());
+                        acc::copy<char>(cufft_work_buf_.at<GPU>(), (char*)fft_buffer_aux__.at<GPU>(),
+                                        sizeof(double_complex) * fft_buffer_aux__.size());
 
                         /* repack the buffer back*/
                         cufft_repack_z_buffer(direction,
