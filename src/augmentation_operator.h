@@ -103,9 +103,9 @@ class Augmentation_operator
                         int idxrf1 = atom_type_.indexb(xi1).idxrf;
                         
                         /* packed orbital index */
-                        int idx12 = Utils::packed_index(xi1, xi2); //xi2 * (xi2 + 1) / 2 + xi1;
+                        int idx12 = Utils::packed_index(xi1, xi2);
                         /* packed radial-function index */
-                        int idxrf12 = Utils::packed_index(idxrf1, idxrf2); //idxrf2 * (idxrf2 + 1) / 2 + idxrf1;
+                        int idxrf12 = Utils::packed_index(idxrf1, idxrf2);
                         
                         for (int lm3 = 0; lm3 < lmmax; lm3++) {
                             v[lm3] = std::conj(zilm[lm3]) * gvec_rlm(lm3, igloc) * ri(idxrf12, l_by_lm[lm3]);
@@ -122,7 +122,7 @@ class Augmentation_operator
             for (int xi2 = 0; xi2 < nbf; xi2++) {
                 for (int xi1 = 0; xi1 <= xi2; xi1++) {
                     /* packed orbital index */
-                    int idx12 = Utils::packed_index(xi1, xi2); //xi2 * (xi2 + 1) / 2 + xi1;
+                    int idx12 = Utils::packed_index(xi1, xi2);
                     sym_weight_(idx12) = (xi1 == xi2) ? 1 : 2;
                 }
             }
@@ -134,7 +134,7 @@ class Augmentation_operator
                 for (int xi2 = 0; xi2 < nbf; xi2++) {
                     for (int xi1 = 0; xi1 <= xi2; xi1++) {
                         /* packed orbital index */
-                        int idx12 = Utils::packed_index(xi1, xi2); //xi2 * (xi2 + 1) / 2 + xi1;
+                        int idx12 = Utils::packed_index(xi1, xi2);
                         q_mtrx_(xi1, xi2) = q_mtrx_(xi2, xi1) = omega__ * q_pw_(idx12, 0);
                     }
                 }

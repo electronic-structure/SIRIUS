@@ -5,7 +5,9 @@ inline void Density::generate_rho_aug(mdarray<double_complex, 2>& rho_aug__)
 
     rho_aug__.zero<(pu == CPU) ? memory_t::host : memory_t::device>();
     
-    ctx_.augmentation_op(0).prepare(0);
+    if (ctx_.unit_cell().atom_type(0).augment() && ctx_.unit_cell().atom_type(0).num_atoms() > 0) {
+        ctx_.augmentation_op(0).prepare(0);
+    }
 
     for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
         auto& atom_type = unit_cell_.atom_type(iat);
@@ -13,13 +15,14 @@ inline void Density::generate_rho_aug(mdarray<double_complex, 2>& rho_aug__)
         #ifdef __GPU
         if (ctx_.processing_unit() == GPU) {
             acc::sync_stream(0);
-            if (iat + 1 != unit_cell_.num_atom_types()) {
+            if (iat + 1 != unit_cell_.num_atom_types() && ctx_.unit_cell().atom_type(iat + 1).augment() &&
+                ctx_.unit_cell().atom_type(iat + 1).num_atoms() > 0) {
                 ctx_.augmentation_op(iat + 1).prepare(0);
             }
         }
         #endif
 
-        if (!atom_type.augment()) {
+        if (!atom_type.augment() || atom_type.num_atoms() == 0) {
             continue;
         }
 

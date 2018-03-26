@@ -20,7 +20,7 @@ inline void Density::generate_valence(K_point_set& ks__)
         TERMINATE(s);
     }
 
-    if (std::abs(occ_val - unit_cell_.num_valence_electrons()) > 1e-8) {
+    if (std::abs(occ_val - unit_cell_.num_valence_electrons()) > 1e-8 && ctx_.comm().rank() == 0) {
         std::stringstream s;
         s << "wrong band occupancies" << std::endl
           << "  computed : " << occ_val << std::endl

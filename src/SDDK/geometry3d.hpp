@@ -88,11 +88,11 @@ class vector3d: public std::array<T, 3>
     }
 
     /// Copy constructor.
-    vector3d(const vector3d<T>& vec__)
+    vector3d(vector3d<T> const& vec__)
     {
-      for(int j: {0,1,2}){
-        (*this)[j] = vec__[j];
-      }
+        for(int x: {0, 1, 2}) {
+            (*this)[x] = vec__[x];
+        }
     }
 
     /// Return L1 norm of the vector.
@@ -218,16 +218,14 @@ class matrix3d
         std::memcpy(&mtrx_[0][0], &mtrx__[0][0], 9 * sizeof(T));
     }
 
-    ///Construct matrix from std::vector.
-    matrix3d(std::vector<std::vector<T>> src)
+    /// Construct matrix from std::vector.
+    matrix3d(std::vector<std::vector<T>> src__)
     {
-      for(int i = 0; i < 3; ++i)
-      {
-        for(int j = 0; j < 3; ++j)
-        {
-          mtrx_[i][j] = src[i][j];
+        for(int i = 0; i < 3; i++) {
+            for(int j = 0; j < 3; j++) {
+                mtrx_[i][j] = src__[i][j];
+            }
         }
-      }
     }
 
     /// Copy constructor.
