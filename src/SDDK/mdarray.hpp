@@ -488,6 +488,11 @@ class mdarray_base
         if ((memory__ & memory_t::device) == memory_t::device) {
             raw_ptr_device_    = acc::allocate<T>(sz);
             unique_ptr_device_ = std::unique_ptr<T[], mdarray_mem_mgr<T>>(raw_ptr_device_, mdarray_mem_mgr<T>(sz, memory_t::device));
+            
+            //printf("GPU memory [%p, %p) is allocated for array %s\n", raw_ptr_device_, raw_ptr_device_ + sz, label_.c_str());
+            //for (int i = 0; i < N; i++) {
+            //    printf("dim[%i].size = %li\n", i, dims_[i].size());
+            //}
         }
 #endif
     }
