@@ -9,9 +9,17 @@ void test_hloc(std::vector<int> mpi_grid_dims__, double cutoff__, int num_bands_
 
     MPI_grid mpi_grid(mpi_grid_dims__, mpi_comm_world()); 
     
-    matrix3d<double> M = {{1, 0, 0}, {0, 1, 0}, {0, 0, 1}};
+    //matrix3d<double> M = {{1, 0, 0}, {0, 1, 0}, {0, 0, 1}};
 
-    FFT3D_grid fft_box(find_translations(2.01 * cutoff__, M));
+    matrix3d<double> M = transpose(matrix3d<double>({{0.1876146971, 0.1083182969, -0.0001874171},
+                                                     {0.0003106919, 0.2160983064, -0.0000921806},
+                                                     {-0.0000819370, -0.0000453654, 0.1171347286}}));
+    
+    for (int i = 0; i < 3; i++) {
+        printf("  b%1i : %18.10f %18.10f %18.10f \n", i + 1, M(0, i), M(1, i), M(2, i));
+    }
+    
+    FFT3D_grid fft_box(find_translations(2 * cutoff__, M));
 
     FFT3D fft(fft_box, mpi_grid.communicator(1 << 0), pu);
 
