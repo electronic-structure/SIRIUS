@@ -87,15 +87,15 @@ inline void Density::generate_valence(K_point_set& ks__)
         ctx_.comm().allreduce(density_matrix_.at<CPU>(), static_cast<int>(density_matrix_.size()));
     }
 
-    ctx_.fft_coarse_rho().prepare(ctx_.gvec_coarse_partition());
+    ctx_.fft_coarse().prepare(ctx_.gvec_coarse_partition());
     auto& comm = ctx_.gvec_coarse_partition().comm_ortho_fft();
     for (int j = 0; j < ctx_.num_mag_dims() + 1; j++) {
         /* reduce arrays; assume that each rank did its own fraction of the density */
         /* comm_ortho_fft is idential to a product of column communicator inside k-point with k-point communicator */
-        comm.allreduce(&rho_mag_coarse_[j]->f_rg(0), ctx_.fft_coarse_rho().local_size()); 
+        comm.allreduce(&rho_mag_coarse_[j]->f_rg(0), ctx_.fft_coarse().local_size()); 
         if (ctx_.control().print_checksum_) {
-            auto cs = mdarray<double, 1>(&rho_mag_coarse_[j]->f_rg(0), ctx_.fft_coarse_rho().local_size()).checksum();
-            ctx_.fft_coarse_rho().comm().allreduce(&cs, 1);
+            auto cs = mdarray<double, 1>(&rho_mag_coarse_[j]->f_rg(0), ctx_.fft_coarse().local_size()).checksum();
+            ctx_.fft_coarse().comm().allreduce(&cs, 1);
             if (ctx_.comm().rank() == 0) {
                 print_checksum("rho_mag_coarse_rg", cs);
             }
@@ -107,7 +107,7 @@ inline void Density::generate_valence(K_point_set& ks__)
             rho_vec_[j]->f_pw_local(ctx_.gvec().gvec_base_mapping(igloc)) = rho_mag_coarse_[j]->f_pw_local(igloc);
         }
     }
-    ctx_.fft_coarse_rho().dismiss();
+    ctx_.fft_coarse().dismiss();
 
     if (!ctx_.full_potential()) {
         augment(ks__);

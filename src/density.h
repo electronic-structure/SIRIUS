@@ -356,7 +356,7 @@ class Density
             
             /*  allocate charge density and magnetization on a coarse grid */
             for (int i = 0; i < ctx_.num_mag_dims() + 1; i++) {
-                rho_mag_coarse_[i] = std::unique_ptr<spf>(new spf(ctx_.fft_coarse_rho(), ctx_.gvec_coarse_partition()));
+                rho_mag_coarse_[i] = std::unique_ptr<spf>(new spf(ctx_.fft_coarse(), ctx_.gvec_coarse_partition()));
             }
 
             /* core density of the pseudopotential method */
