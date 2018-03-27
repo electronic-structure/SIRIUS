@@ -75,6 +75,8 @@ class Simulation_context_base: public Simulation_parameters
         /// Coarse-grained FFT for application of local potential and density summation.
         std::unique_ptr<FFT3D> fft_coarse_;
 
+        std::unique_ptr<FFT3D> fft_coarse_rho_;
+
         /// G-vectors within the Gmax cutoff.
         std::unique_ptr<Gvec> gvec_;
 
@@ -140,6 +142,8 @@ class Simulation_context_base: public Simulation_parameters
             /* create FFT driver for coarse mesh */
             auto fft_coarse_grid = FFT3D_grid(find_translations(2 * gk_cutoff(), rlv));
             fft_coarse_ = std::unique_ptr<FFT3D>(new FFT3D(fft_coarse_grid, comm_fft_coarse(), processing_unit()));
+
+            fft_coarse_rho_ = std::unique_ptr<FFT3D>(new FFT3D(fft_coarse_grid, comm_fft_coarse(), processing_unit()));
 
             /* create a list of G-vectors for corase FFT grid */
             gvec_coarse_ = std::unique_ptr<Gvec>(new Gvec(rlv, gk_cutoff() * 2, comm(), control().reduce_gvec_));
@@ -291,6 +295,11 @@ class Simulation_context_base: public Simulation_parameters
         inline FFT3D& fft_coarse() const
         {
             return *fft_coarse_;
+        }
+
+        inline FFT3D& fft_coarse_rho() const
+        {
+            return *fft_coarse_rho_;
         }
 
         Gvec const& gvec() const
