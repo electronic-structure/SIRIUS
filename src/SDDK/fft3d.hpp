@@ -182,8 +182,11 @@ class FFT3D
         /// Defines the distribution of G-vectors between the MPI ranks of FFT communicator.
         Gvec_partition const* gvec_partition_{nullptr};
 
-        inline void init_cufft_plan_z(Gvec_partition const& gvp__, int& zcol_count_max__, bool& cufft_plan_z_created__,
-                                      cufftHandle& cufft_plan_z__)
+        /// Initialize cuFFT plan for z-transformation of G-vector columns.
+        inline void init_cufft_plan_z(Gvec_partition const& gvp__,
+                                      int&                  zcol_count_max__,
+                                      bool&                 cufft_plan_z_created__,
+                                      cufftHandle&          cufft_plan_z__)
         {
             /* check if we need to create a batch cuFFT plan for larger number of z-columns */
             if (gvp__.zcol_count_fft() > zcol_count_max__) {
@@ -199,6 +202,34 @@ class FFT3D
                 int dim_z[] = {grid_.size(2)};
                 cufft::create_batch_plan(cufft_plan_z__, 1, dim_z, dim_z, 1, grid_.size(2), zcol_count_max__, 0);
                 cufft_plan_z_created__ = true;
+            }
+        }
+
+        inline void reallocate_fft_buffer_aux(mdarray<double_complex, 1>& fft_buffer_aux__)
+        {
+            int zcol_count_max{0};
+            if (gvec_partition_->gvec().bare()) {
+                zcol_count_max = zcol_gvec_count_max_;
+            } else {
+                zcol_count_max = zcol_gkvec_count_max_;
+            }
+
+            /* reallocate auxiliary buffer if needed */
+            //size_t sz_max;
+            //if (comm_.size() > 1) {
+            //    int rank = comm_.rank();
+            //    int num_zcol_local = gvec_partition_->zcol_count_fft(rank);
+            //    /* we need this buffer size for mpi_alltoall */
+            //    sz_max = std::max(grid_.size(2) * num_zcol_local, local_size());
+            //} else {
+            //    sz_max = grid_.size(2) * gvec_partition_->gvec().num_zcol();
+            //}
+            size_t sz_max = std::max(grid_.size(2) * zcol_count_max, local_size());
+            if (sz_max > fft_buffer_aux__.size()) {
+                fft_buffer_aux__ = mdarray<double_complex, 1>(sz_max, host_memory_type_, "fft_buffer_aux_");
+                if (pu_ == GPU) {
+                    fft_buffer_aux__.allocate(memory_t::device);
+                }
             }
         }
 
@@ -1018,7 +1049,6 @@ class FFT3D
                 } else {
                     init_cufft_plan_z(gvp__, zcol_gkvec_count_max_, cufft_plan_z_gkvec_created_, cufft_plan_z_gkvec_);
                     zcol_count_max = zcol_gkvec_count_max_;
-
                 }
 
                 /* maximum worksize of z and xy transforms */
@@ -1074,22 +1104,32 @@ class FFT3D
                 TERMINATE("FFT3D is not ready");
             }
 
-            /* reallocate auxiliary buffer if needed */
-            size_t sz_max;
-            if (comm_.size() > 1) {
-                int rank = comm_.rank();
-                int num_zcol_local = gvec_partition_->zcol_count_fft(rank);
-                /* we need this buffer size for mpi_alltoall */
-                sz_max = std::max(grid_.size(2) * num_zcol_local, local_size());
-            } else {
-                sz_max = grid_.size(2) * gvec_partition_->gvec().num_zcol();
-            }
-            if (sz_max > fft_buffer_aux1_.size()) {
-                fft_buffer_aux1_ = mdarray<double_complex, 1>(sz_max, host_memory_type_, "fft_buffer_aux1_");
-                if (pu_ == GPU) {
-                    fft_buffer_aux1_.allocate(memory_t::device);
-                }
-            }
+            reallocate_fft_buffer_aux(fft_buffer_aux1_);
+
+            //int zcol_count_max{0};
+            //if (gvec_partition_->gvec().bare()) {
+            //    zcol_count_max = zcol_gvec_count_max_;
+            //} else {
+            //    zcol_count_max = zcol_gkvec_count_max_;
+            //}
+
+            ///* reallocate auxiliary buffer if needed */
+            ////size_t sz_max;
+            ////if (comm_.size() > 1) {
+            ////    int rank = comm_.rank();
+            ////    int num_zcol_local = gvec_partition_->zcol_count_fft(rank);
+            ////    /* we need this buffer size for mpi_alltoall */
+            ////    sz_max = std::max(grid_.size(2) * num_zcol_local, local_size());
+            ////} else {
+            ////    sz_max = grid_.size(2) * gvec_partition_->gvec().num_zcol();
+            ////}
+            //size_t sz_max = std::max(grid_.size(2) * zcol_count_max, local_size());
+            //if (sz_max > fft_buffer_aux1_.size()) {
+            //    fft_buffer_aux1_ = mdarray<double_complex, 1>(sz_max, host_memory_type_, "fft_buffer_aux1_");
+            //    if (pu_ == GPU) {
+            //        fft_buffer_aux1_.allocate(memory_t::device);
+            //    }
+            //}
 
             switch (direction) {
                 case 1: {
@@ -1130,29 +1170,41 @@ class FFT3D
                 TERMINATE("reduced set of G-vectors is required");
             }
 
-            /* reallocate auxiliary buffers if needed */
-            size_t sz_max;
-            if (comm_.size() > 1) {
-                int rank = comm_.rank();
-                int num_zcol_local = gvec_partition_->zcol_count_fft(rank);
-                /* we need this buffer for mpi_alltoall */
-                sz_max = std::max(grid_.size(2) * num_zcol_local, local_size());
-            } else {
-                sz_max = grid_.size(2) * gvec_partition_->gvec().num_zcol();
-            }
+            reallocate_fft_buffer_aux(fft_buffer_aux1_);
+            reallocate_fft_buffer_aux(fft_buffer_aux2_);
 
-            if (sz_max > fft_buffer_aux1_.size()) {
-                fft_buffer_aux1_ = mdarray<double_complex, 1>(sz_max, host_memory_type_, "fft_buffer_aux1_");
-                if (pu_ == GPU) {
-                    fft_buffer_aux1_.allocate(memory_t::device);
-                }
-            }
-            if (sz_max > fft_buffer_aux2_.size()) {
-                fft_buffer_aux2_ = mdarray<double_complex, 1>(sz_max, host_memory_type_, "fft_buffer_aux2_");
-                if (pu_ == GPU) {
-                    fft_buffer_aux2_.allocate(memory_t::device);
-                }
-            }
+            //int zcol_count_max{0};
+            //if (gvec_partition_->gvec().bare()) {
+            //    zcol_count_max = zcol_gvec_count_max_;
+            //} else {
+            //    zcol_count_max = zcol_gkvec_count_max_;
+            //}
+            //size_t sz_max = std::max(grid_.size(2) * zcol_count_max, local_size());
+
+            /////* reallocate auxiliary buffers if needed */
+            ////size_t sz_max;
+            ////if (comm_.size() > 1) {
+            ////    int rank = comm_.rank();
+            ////    int num_zcol_local = gvec_partition_->zcol_count_fft(rank);
+            ////    /* we need this buffer for mpi_alltoall */
+            ////    sz_max = std::max(grid_.size(2) * num_zcol_local, local_size());
+            ////} else {
+            ////    sz_max = grid_.size(2) * gvec_partition_->gvec().num_zcol();
+            ////}
+
+            //if (sz_max > fft_buffer_aux1_.size()) {
+            //    fft_buffer_aux1_ = mdarray<double_complex, 1>(sz_max, host_memory_type_, "fft_buffer_aux1_");
+            //    if (pu_ == GPU) {
+            //        fft_buffer_aux1_.allocate(memory_t::device);
+            //    }
+            //}
+            //if (sz_max > fft_buffer_aux2_.size()) {
+            //    fft_buffer_aux2_ = mdarray<double_complex, 1>(sz_max, host_memory_type_, "fft_buffer_aux2_");
+            //    if (pu_ == GPU) {
+            //        fft_buffer_aux2_.allocate(memory_t::device);
+            //    }
+            //}
+
             switch (direction) {
                 case 1: {
                     if (gvec_partition_->gvec().bare()) {
