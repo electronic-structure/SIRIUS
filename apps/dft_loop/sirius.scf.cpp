@@ -254,6 +254,7 @@ void run_tasks(cmd_args const& args)
         ks.add_kpoint(&vertex[0].second[0], 1.0);
 
         double t{0};
+        std::cout<<"vertex.size = " << vertex.size();
         for (size_t i = 0; i < vertex.size() - 1; i++) {
             vector3d<double> v0 = vector3d<double>(vertex[i].second);
             vector3d<double> v1 = vector3d<double>(vertex[i + 1].second);

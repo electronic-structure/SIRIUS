@@ -1,49 +1,49 @@
 {
     "flat": {
         "+global_timer": {
-            "avg": 0.029585,
+            "avg": 0.037917,
             "count": 1,
-            "max": 0.029585,
-            "min": 0.029585,
-            "total": 0.029585
+            "max": 0.037917,
+            "min": 0.037917,
+            "total": 0.037917
         },
         "sddk::Gvec::find_gvec_shells": {
-            "avg": 0.000506,
+            "avg": 0.000828,
             "count": 1,
-            "max": 0.000506,
-            "min": 0.000506,
-            "total": 0.000506
+            "max": 0.000828,
+            "min": 0.000828,
+            "total": 0.000828
         },
         "sddk::Gvec::init": {
-            "avg": 0.001282,
+            "avg": 0.001833,
             "count": 1,
-            "max": 0.001282,
-            "min": 0.001282,
-            "total": 0.001282
+            "max": 0.001833,
+            "min": 0.001833,
+            "total": 0.001833
         }
     },
     "tree": {
         "+global_timer": {
             "call": {
                 "sddk::Gvec::init": {
-                    "percent_of_parent": 4.33327699847896,
-                    "time": 0.001282
+                    "percent_of_parent": 4.83424321544426,
+                    "time": 0.001833
                 }
             },
-            "cumulitive_time": 0.029585,
+            "cumulitive_time": 0.037917,
             "percent_of_global_time": 100.0,
-            "self_time": 0.028303
+            "self_time": 0.036084
         },
         "sddk::Gvec::init": {
             "call": {
                 "sddk::Gvec::find_gvec_shells": {
-                    "percent_of_parent": 39.4695787831513,
-                    "time": 0.000506
+                    "percent_of_parent": 45.1718494271686,
+                    "time": 0.000828
                 }
             },
-            "cumulitive_time": 0.001282,
-            "percent_of_global_time": 4.33327699847896,
-            "self_time": 0.000776
+            "cumulitive_time": 0.001833,
+            "percent_of_global_time": 4.83424321544426,
+            "self_time": 0.001005
         }
     }
 }
