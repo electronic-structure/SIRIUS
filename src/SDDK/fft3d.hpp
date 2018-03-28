@@ -182,6 +182,7 @@ class FFT3D
         /// Defines the distribution of G-vectors between the MPI ranks of FFT communicator.
         Gvec_partition const* gvec_partition_{nullptr};
 
+#ifdef __GPU
         /// Initialize cuFFT plan for z-transformation of G-vector columns.
         inline void init_cufft_plan_z(Gvec_partition const& gvp__,
                                       int&                  zcol_count_max__,
@@ -204,6 +205,7 @@ class FFT3D
                 cufft_plan_z_created__ = true;
             }
         }
+#endif
 
         inline void reallocate_fft_buffer_aux(mdarray<double_complex, 1>& fft_buffer_aux__)
         {
@@ -1087,9 +1089,11 @@ class FFT3D
                 fft_buffer_aux2_.deallocate(memory_t::device);
                 z_col_pos_.deallocate(memory_t::device);
                 fft_buffer_.deallocate(memory_t::device);
+#ifdef __GPU
                 cufft_work_buf_.deallocate(memory_t::device);
                 map_gvec_to_fft_buffer_.deallocate(memory_t::device);
                 map_gvec_to_fft_buffer_x0y0_.deallocate(memory_t::device);
+#endif
             }
             gvec_partition_ = nullptr;
         }
@@ -1105,31 +1109,6 @@ class FFT3D
             }
 
             reallocate_fft_buffer_aux(fft_buffer_aux1_);
-
-            //int zcol_count_max{0};
-            //if (gvec_partition_->gvec().bare()) {
-            //    zcol_count_max = zcol_gvec_count_max_;
-            //} else {
-            //    zcol_count_max = zcol_gkvec_count_max_;
-            //}
-
-            ///* reallocate auxiliary buffer if needed */
-            ////size_t sz_max;
-            ////if (comm_.size() > 1) {
-            ////    int rank = comm_.rank();
-            ////    int num_zcol_local = gvec_partition_->zcol_count_fft(rank);
-            ////    /* we need this buffer size for mpi_alltoall */
-            ////    sz_max = std::max(grid_.size(2) * num_zcol_local, local_size());
-            ////} else {
-            ////    sz_max = grid_.size(2) * gvec_partition_->gvec().num_zcol();
-            ////}
-            //size_t sz_max = std::max(grid_.size(2) * zcol_count_max, local_size());
-            //if (sz_max > fft_buffer_aux1_.size()) {
-            //    fft_buffer_aux1_ = mdarray<double_complex, 1>(sz_max, host_memory_type_, "fft_buffer_aux1_");
-            //    if (pu_ == GPU) {
-            //        fft_buffer_aux1_.allocate(memory_t::device);
-            //    }
-            //}
 
             switch (direction) {
                 case 1: {
@@ -1172,38 +1151,6 @@ class FFT3D
 
             reallocate_fft_buffer_aux(fft_buffer_aux1_);
             reallocate_fft_buffer_aux(fft_buffer_aux2_);
-
-            //int zcol_count_max{0};
-            //if (gvec_partition_->gvec().bare()) {
-            //    zcol_count_max = zcol_gvec_count_max_;
-            //} else {
-            //    zcol_count_max = zcol_gkvec_count_max_;
-            //}
-            //size_t sz_max = std::max(grid_.size(2) * zcol_count_max, local_size());
-
-            /////* reallocate auxiliary buffers if needed */
-            ////size_t sz_max;
-            ////if (comm_.size() > 1) {
-            ////    int rank = comm_.rank();
-            ////    int num_zcol_local = gvec_partition_->zcol_count_fft(rank);
-            ////    /* we need this buffer for mpi_alltoall */
-            ////    sz_max = std::max(grid_.size(2) * num_zcol_local, local_size());
-            ////} else {
-            ////    sz_max = grid_.size(2) * gvec_partition_->gvec().num_zcol();
-            ////}
-
-            //if (sz_max > fft_buffer_aux1_.size()) {
-            //    fft_buffer_aux1_ = mdarray<double_complex, 1>(sz_max, host_memory_type_, "fft_buffer_aux1_");
-            //    if (pu_ == GPU) {
-            //        fft_buffer_aux1_.allocate(memory_t::device);
-            //    }
-            //}
-            //if (sz_max > fft_buffer_aux2_.size()) {
-            //    fft_buffer_aux2_ = mdarray<double_complex, 1>(sz_max, host_memory_type_, "fft_buffer_aux2_");
-            //    if (pu_ == GPU) {
-            //        fft_buffer_aux2_.allocate(memory_t::device);
-            //    }
-            //}
 
             switch (direction) {
                 case 1: {
