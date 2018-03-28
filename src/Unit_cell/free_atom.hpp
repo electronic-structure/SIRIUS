@@ -39,28 +39,38 @@ class Free_atom : public Atom_type
     mdarray<double, 2> free_atom_wave_functions_;
     /// Atomic potential.
     sirius::Spline<double> free_atom_potential_;
+    /// NIST total energy for LDA calculation.
+    double NIST_LDA_Etot_{0};
+    /// NIST total energy for scalar-relativistic LDA calculation.
+    double NIST_ScRLDA_Etot_{0};
+    /// Energies of atomic levels
+    std::vector<double> enu_;
 
   public:
-    /// NIST total energy for LDA calculation.
-    double NIST_LDA_Etot{0};
-    /// NIST total energy for scalar-relativistic LDA calculation.
-    double NIST_ScRLDA_Etot{0};
 
     Free_atom(Free_atom&& src) = default;
     
     /// Constructor.
     Free_atom(sirius::Simulation_parameters const& param__,
-              const std::string symbol,
-              const std::string name,
-              int zn,
-              double mass,
-              std::vector<atomic_level_descriptor> const& levels_nl)
-        : Atom_type(param__, symbol, name, zn, mass, levels_nl, sirius::lin_exp_grid)
+              std::string                          symbol__)
+        : Atom_type(param__, symbol__, atomic_name[atomic_zn.at(symbol__) - 1], atomic_zn.at(symbol__), 0.0,
+                    atomic_conf[atomic_zn.at(symbol__) - 1], sirius::lin_exp_grid)
+        , NIST_LDA_Etot_(atomic_energy_NIST_LDA[atomic_zn.at(symbol__) - 1])
     {
-        radial_grid_ = sirius::Radial_grid_exp<double>(2000 + 150 * zn, 1e-7, 20.0 + 0.25 * zn);
+        radial_grid_ = sirius::Radial_grid_exp<double>(2000 + 150 * zn(), 1e-7, 20.0 + 0.25 * zn());
     }
 
-    double ground_state(double solver_tol, double energy_tol, double charge_tol, std::vector<double>& enu, bool rel)
+    /// Constructor.
+    Free_atom(sirius::Simulation_parameters const& param__,
+              int                                  zn__)
+        : Atom_type(param__, atomic_symb[zn__ - 1], atomic_name[zn__ - 1], zn__, 0.0,
+                    atomic_conf[zn__ - 1], sirius::lin_exp_grid)
+        , NIST_LDA_Etot_(atomic_energy_NIST_LDA[zn__ - 1])
+    {
+        radial_grid_ = sirius::Radial_grid_exp<double>(2000 + 150 * zn(), 1e-7, 20.0 + 0.25 * zn());
+    }
+
+    double ground_state(double solver_tol, double energy_tol, double charge_tol, bool rel)
     {
         PROFILE("sirius::Free_atom::ground_state");
 
@@ -104,7 +114,7 @@ class Free_atom : public Atom_type
         std::vector<double> g2;
         std::vector<double> rho_old;
 
-        enu.resize(num_atomic_levels());
+        enu_.resize(num_atomic_levels());
 
         double energy_tot = 0.0;
         double energy_tot_old;
@@ -119,7 +129,7 @@ class Free_atom : public Atom_type
 
         /* starting values for E_{nu} */
         for (int ist = 0; ist < num_atomic_levels(); ist++) {
-            enu[ist] = -1.0 * zn() / 2 / std::pow(double(atomic_level(ist).n), 2);
+            enu_[ist] = -1.0 * zn() / 2 / std::pow(double(atomic_level(ist).n), 2);
         }
 
         for (int iter = 0; iter < 200; iter++) {
@@ -136,10 +146,10 @@ class Free_atom : public Atom_type
                     // relativity_t rt = (rel) ? relativity_t::koelling_harmon : relativity_t::none;
                     relativity_t rt = (rel) ? relativity_t::dirac : relativity_t::none;
                     sirius::Bound_state bound_state(rt, zn(), atomic_level(ist).n, atomic_level(ist).l, atomic_level(ist).k, radial_grid(),
-                                                    veff, enu[ist]);
-                    enu[ist]     = bound_state.enu();
-                    auto& bs_rho = bound_state.rho();
-                    auto& bs_u   = bound_state.u();
+                                                    veff, enu_[ist]);
+                    enu_[ist]     = bound_state.enu();
+                    auto& bs_rho  = bound_state.rho();
+                    auto& bs_u    = bound_state.u();
 
                     /* assume a spherical symmetry */
                     for (int i = 0; i < np; i++) {
@@ -197,7 +207,7 @@ class Free_atom : public Atom_type
             /* sum of occupied eigen values */
             double eval_sum = 0.0;
             for (int ist = 0; ist < num_atomic_levels(); ist++) {
-                eval_sum += atomic_level(ist).occupancy * enu[ist];
+                eval_sum += atomic_level(ist).occupancy * enu_[ist];
             }
 
             for (int i = 0; i < np; i++) {
@@ -247,7 +257,7 @@ class Free_atom : public Atom_type
 
         free_atom_potential_ = sirius::Spline<double>(radial_grid_, vrho);
 
-        double Eref = (rel) ? NIST_ScRLDA_Etot : NIST_LDA_Etot;
+        double Eref = (rel) ? NIST_ScRLDA_Etot_ : NIST_LDA_Etot_;
 
         printf("\n");
         printf("Radial gird\n");
