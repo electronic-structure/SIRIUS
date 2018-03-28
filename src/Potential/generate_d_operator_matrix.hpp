@@ -43,14 +43,14 @@ inline void Potential::generate_D_operator_matrix()
         veff_vec[1 + j] = effective_magnetic_field_[j];
     }
 
-#ifdef __GPU
     mdarray<double_complex, 1> veff_tmp(nullptr, ctx_.gvec().count());
     if (ctx_.processing_unit() == GPU) {
         veff_tmp.allocate(memory_t::device);
     }
-#endif
-
-    ctx_.augmentation_op(0).prepare(0);
+    
+    if (ctx_.unit_cell().atom_type(0).augment() && ctx_.unit_cell().atom_type(0).num_atoms() > 0) {
+        ctx_.augmentation_op(0).prepare(0);
+    }
 
     for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
         auto& atom_type = unit_cell_.atom_type(iat);
@@ -60,14 +60,15 @@ inline void Potential::generate_D_operator_matrix()
         /* start copy of Q(G) for the next atom type */
         if (ctx_.processing_unit() == GPU) {
             acc::sync_stream(0);
-            if (iat + 1 != unit_cell_.num_atom_types()) {
+            if (iat + 1 != unit_cell_.num_atom_types() && ctx_.unit_cell().atom_type(iat + 1).augment() &&
+                ctx_.unit_cell().atom_type(iat + 1).num_atoms() > 0) {
                 ctx_.augmentation_op(iat + 1).prepare(0);
             }
         }
 #endif
 
         /* trivial case */
-        if (!atom_type.augment()) {
+        if (!atom_type.augment() || atom_type.num_atoms() == 0) {
             for (int iv = 0; iv < ctx_.num_mag_dims() + 1; iv++) {
                 for (int i = 0; i < atom_type.num_atoms(); i++) {
                     int ia     = atom_type.atom_id(i);

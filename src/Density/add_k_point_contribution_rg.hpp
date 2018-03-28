@@ -1,3 +1,6 @@
+//TODO: in case of Gamma-point transfrom two wave functions at once
+//TODO: use GPU pointer
+
 inline void Density::add_k_point_contribution_rg(K_point* kp__)
 {
     PROFILE("sirius::Density::add_k_point_contribution_rg");
@@ -58,11 +61,11 @@ inline void Density::add_k_point_contribution_rg(K_point* kp__)
                         break;
                     }
                     case GPU: {
-                        #ifdef __GPU
+#ifdef __GPU
                         update_density_rg_1_gpu(fft.local_size(), fft.buffer().at<GPU>(), w, density_rg.at<GPU>(0, ispn));
-                        #else
+#else
                         TERMINATE_NO_GPU
-                        #endif
+#endif
                         break;
                     }
                 }
@@ -76,7 +79,7 @@ inline void Density::add_k_point_contribution_rg(K_point* kp__)
         mdarray<double_complex, 1> psi_r(fft.local_size(), ctx_.main_memory_t());
 
         for (int i = 0; i < kp__->spinor_wave_functions().pw_coeffs(0).spl_num_col().local_size(); i++) {
-            int j = kp__->spinor_wave_functions().pw_coeffs(0).spl_num_col()[i];
+            int j    = kp__->spinor_wave_functions().pw_coeffs(0).spl_num_col()[i];
             double w = kp__->band_occupancy(j, 0) * kp__->weight() / omega;
 
             /* transform up- component of spinor function to real space; in case of GPU wave-function stays in GPU memory */
@@ -88,9 +91,9 @@ inline void Density::add_k_point_contribution_rg(K_point* kp__)
                     break;
                 }
                 case GPU: {
-                    #ifdef __GPU
+#ifdef __GPU
                     acc::copyout(psi_r.at<GPU>(), fft.buffer().at<GPU>(), fft.local_size());
-                    #endif
+#endif
                     break;
                 }
             }
@@ -115,7 +118,7 @@ inline void Density::add_k_point_contribution_rg(K_point* kp__)
                     break;
                 }
                 case GPU: {
-                    #ifdef __GPU
+#ifdef __GPU
                     /* add up-up contribution */
                     update_density_rg_1_gpu(fft.local_size(), psi_r.at<GPU>(), w, density_rg.at<GPU>(0, 0));
                     /* add dn-dn contribution */
@@ -123,7 +126,7 @@ inline void Density::add_k_point_contribution_rg(K_point* kp__)
                     /* add off-diagonal contribution */
                     update_density_rg_2_gpu(fft.local_size(), psi_r.at<GPU>(), fft.buffer().at<GPU>(), w,
                                             density_rg.at<GPU>(0, 2), density_rg.at<GPU>(0, 3));
-                    #endif
+#endif
                     break;
                 }
             }

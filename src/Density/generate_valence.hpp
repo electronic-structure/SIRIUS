@@ -2,6 +2,7 @@ inline void Density::generate_valence(K_point_set& ks__)
 {
     PROFILE("sirius::Density::generate_valence");
 
+    /* check weights */
     double wt{0};
     double occ_val{0};
     for (int ik = 0; ik < ks__.num_kpoints(); ik++) {
@@ -20,7 +21,7 @@ inline void Density::generate_valence(K_point_set& ks__)
         TERMINATE(s);
     }
 
-    if (std::abs(occ_val - unit_cell_.num_valence_electrons()) > 1e-8) {
+    if (std::abs(occ_val - unit_cell_.num_valence_electrons()) > 1e-8 && ctx_.comm().rank() == 0) {
         std::stringstream s;
         s << "wrong band occupancies" << std::endl
           << "  computed : " << occ_val << std::endl
@@ -45,14 +46,14 @@ inline void Density::generate_valence(K_point_set& ks__)
         for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
             int nbnd = kp->num_occupied_bands(ispn);
             
-            #ifdef __GPU
+#ifdef __GPU
             if (ctx_.processing_unit() == GPU && !keep_wf_on_gpu) {
                 /* allocate GPU memory */
                 kp->spinor_wave_functions().pw_coeffs(ispn).prime().allocate(memory_t::device);
-                kp->spinor_wave_functions().pw_coeffs(ispn).copy_to_device(0, nbnd);
+                kp->spinor_wave_functions().pw_coeffs(ispn).copy_to_device(0, nbnd); // TODO: copy this asynchronously
             }
-            #endif
-            /* swap wave functions */
+#endif
+            /* swap wave functions for the FFT transformation */
             //kp->spinor_wave_functions(ispn).pw_coeffs().remap_forward(ctx_.processing_unit(), kp->gkvec().partition().gvec_fft_slab(), nbnd);
             kp->spinor_wave_functions().pw_coeffs(ispn).remap_forward(CPU, nbnd);
         }
@@ -72,14 +73,14 @@ inline void Density::generate_valence(K_point_set& ks__)
         /* add contribution from regular space grid */
         add_k_point_contribution_rg(kp);
 
-        #ifdef __GPU
+#ifdef __GPU
         if (ctx_.processing_unit() == GPU && !keep_wf_on_gpu) {
             for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
                 /* deallocate GPU memory */
                 kp->spinor_wave_functions().pw_coeffs(ispn).deallocate_on_device();
             }
         }
-        #endif
+#endif
     }
 
     if (density_matrix_.size()) {
@@ -90,6 +91,7 @@ inline void Density::generate_valence(K_point_set& ks__)
     auto& comm = ctx_.gvec_coarse_partition().comm_ortho_fft();
     for (int j = 0; j < ctx_.num_mag_dims() + 1; j++) {
         /* reduce arrays; assume that each rank did its own fraction of the density */
+        /* comm_ortho_fft is idential to a product of column communicator inside k-point with k-point communicator */
         comm.allreduce(&rho_mag_coarse_[j]->f_rg(0), ctx_.fft_coarse().local_size()); 
         if (ctx_.control().print_checksum_) {
             auto cs = mdarray<double, 1>(&rho_mag_coarse_[j]->f_rg(0), ctx_.fft_coarse().local_size()).checksum();

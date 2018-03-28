@@ -26,7 +26,7 @@
 #ifndef __ATOM_TYPE_H__
 #define __ATOM_TYPE_H__
 
-#include "atomic_conf.h"
+#include "atomic_data.hpp"
 #include "descriptors.h"
 #include "geometry3d.hpp"
 #include "utils.h"
@@ -299,7 +299,7 @@ class Atom_type
 
     inline void set_radial_grid(radial_grid_t grid_type__, int num_points__, double rmin__, double rmax__)
     {
-        radial_grid_        = Radial_grid_factory<double>(grid_type__, num_points__, rmin__, rmax__);
+        radial_grid_ = Radial_grid_factory<double>(grid_type__, num_points__, rmin__, rmax__);
         if (parameters_.processing_unit() == GPU) {
             radial_grid_.copy_to_device();
         }
@@ -307,7 +307,7 @@ class Atom_type
 
     inline void set_radial_grid(int num_points__, double const* points__)
     {
-        radial_grid_        = Radial_grid_ext<double>(num_points__, points__);
+        radial_grid_ = Radial_grid_ext<double>(num_points__, points__);
         if (parameters_.processing_unit() == GPU) {
             radial_grid_.copy_to_device();
         }
@@ -316,7 +316,7 @@ class Atom_type
     /// Add augmented-wave descriptor.
     inline void add_aw_descriptor(int n, int l, double enu, int dme, int auto_enu)
     {
-        if ((int)aw_descriptors_.size() < (l + 1)) {
+        if (static_cast<int>(aw_descriptors_.size()) < (l + 1)) {
             aw_descriptors_.resize(l + 1, radial_solution_descriptor_set());
         }
 
