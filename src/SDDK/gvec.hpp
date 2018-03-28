@@ -75,6 +75,9 @@ class Gvec
     /// Indicates that G-vectors are reduced by inversion symmetry.
     bool reduce_gvec_;
 
+    /// True if this a list of G-vectors without k-point shift.
+    bool bare_gvec_{true};
+
     /// Total number of G-vectors.
     int num_gvec_;
 
@@ -421,6 +424,7 @@ class Gvec
         , lattice_vectors_(M__)
         , comm_(comm__)
         , reduce_gvec_(reduce_gvec__)
+        , bare_gvec_(false)
     {
         init();
     }
@@ -654,6 +658,11 @@ class Gvec
     inline bool reduced() const
     {
         return reduce_gvec_;
+    }
+
+    inline bool bare() const
+    {
+        return bare_gvec_;
     }
 
     inline int num_zcol() const

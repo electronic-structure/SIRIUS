@@ -28,25 +28,6 @@
 #include <vector>
 #include <array>
 
-/// Describes single atomic level.
-struct atomic_level_descriptor
-{
-    /// Principal quantum number.
-    int n;
-
-    /// Angular momentum quantum number.
-    int l;
-
-    /// Quantum number k.
-    int k;
-
-    /// Level occupancy.
-    double occupancy;
-
-    /// True if this is a core level.
-    bool core;
-};
-
 /// Describes radial solution.
 struct radial_solution_descriptor
 {

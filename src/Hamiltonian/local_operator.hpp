@@ -87,7 +87,7 @@ class Local_operator
         /// Constructor.
         Local_operator(Simulation_parameters const& param__,
                        FFT3D&                       fft_coarse__,
-                       Gvec_partition const&        gvec_coarse_p__)
+                       Gvec_partition        const& gvec_coarse_p__)
             : param_(param__)
             , fft_coarse_(fft_coarse__)
             , gvec_coarse_p_(gvec_coarse_p__)
@@ -101,6 +101,14 @@ class Local_operator
             }
             if (param__.full_potential()) {
                 theta_ = Smooth_periodic_function<double>(fft_coarse__, gvec_coarse_p__);
+            }
+
+            if (fft_coarse_.pu() == GPU) {
+                for (int j = 0; j < param_.num_mag_dims() + 1; j++) {
+                    veff_vec_[j].f_rg().allocate(memory_t::device);
+                    veff_vec_[j].f_rg().copy<memory_t::host, memory_t::device>();
+                }
+                buf_rg_.allocate(memory_t::device);
             }
         }
 
