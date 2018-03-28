@@ -1,5 +1,5 @@
 import sys
-sys.path.insert(0, '../../')
+sys.path.insert(0, '../../bin')
 
 import sirius
 import json
@@ -159,37 +159,12 @@ H = sirius.Hamiltonian(ctx, potential)
 density = sirius.Density(ctx)
 density.allocate()
 
-
-print("Checkpoint 2 reached")
-
-#ctx.parameters_input() #not needed acutally, just for debugging.
-print("Checkpoint 3 reached")
-
-#dft = sirius.DFT_ground_state(ctx)
-print("Checkpoint 4 reached")
-
-#potential = sirius.Potential(dft.potential())
-print("Checkpoint 5 reached")
-
-#density = sirius.Density(dft.density())
-print("Checkpoint 6 reached")
-
-#dft.initial_state()
-print("Checkpoint 7 reached")
-
-#result = dft.find(ctx.parameters_input().potential_tol_, ctx.parameters_input().energy_tol_, ctx.parameters_input().num_dft_iter_, True)
-#dft.print_magnetic_moment()
-print("Checkpoint 8 reached")
-
 ks = sirius.K_point_set(ctx)
 
-# vertex = [["X",[0,0,0]]]
+
 x_axis = []
 x_ticks = []
-#
-#
-# vertex.append(["Y", [0.5,0.5,0.5]])
-# vertex.append(["Z", [1.0,1.0,1.0]])
+
 
 index = param["kpoints_path"]
 
@@ -199,7 +174,7 @@ for i in enumerate(index):
     v = param["kpoints_rel"][i[1]]
     print(i[1])
     vertex.append((i[1],v))
-#print("vertex=", vertex)
+
 x_axis.append(0)
 x_ticks.append((0, vertex[0][0]))
 print("vertex[0][1] =", vertex[0][1])
@@ -210,8 +185,8 @@ ks.add_kpoint(vertex[0][1], 1.0)
 t = 0
 print(vertex)
 for i in range(len(vertex)-1):
-    v0 = sirius.vector3d_double(vertex[i][1])#i=0
-    v1 = sirius.vector3d_double(vertex[i+1][1])#i=0, i+1 = 1
+    v0 = sirius.vector3d_double(vertex[i][1])
+    v1 = sirius.vector3d_double(vertex[i+1][1])
     dv = v1 - v0
     dv_cart = ctx.unit_cell().reciprocal_lattice_vectors() * dv
     np = max(10, int(30*dv_cart.length()))
@@ -222,22 +197,18 @@ for i in range(len(vertex)-1):
         x_axis.append(t)
     x_ticks.append((t, vertex[i+1][0]))
 
-#ks.add_kpoint([0,0,0][0], 1.0)
-#ks.add_kpoint([0.1,0.1,0.1][0], 1.0)
-#ks.add_kpoint([0.5,0.5,0.5][0], 1.0)
+
 counts = []
 ks.initialize()
-print("Checkpoint 9 reached")
+
 density.load()
 potential.generate(density)
 
-band = sirius.Band(ctx) #why not Band band(ctx) ?
+band = sirius.Band(ctx)
 band.initialize_subspace(ks, H)
 band.solve(ks, H, True)
-print("Checkpoint 10 reached")
 
-ks.sync_band_energies()
-print("Checkpoint 11 reached")
+#ks.sync_band_energies()
 
 dict = {}
 dict["header"] = {}
@@ -246,10 +217,7 @@ dict["header"]["x_ticks"]=[]
 dict["header"]["num_bands"]=ctx.num_bands()
 dict["header"]["num_mag_dims"] = ctx.num_mag_dims()
 
-print("Checkpoint 12 reached")
-#print(x_ticks)
 for e in enumerate(x_ticks):
-    #print(e)
     j = {}
     j["x"] = e[1][0]
     j["label"] = e[1][1]
@@ -257,12 +225,10 @@ for e in enumerate(x_ticks):
 
 dict["bands"] = []
 
-print("Checkpoint 13 reached")
 for ik in range(ks.num_kpoints()):
     bnd_k = {}
     bnd_k["kpoint"] = [0.0,0.0,0.0]
     for x in range(3):
-        #ksvk = sirius.vector3d_double(ks(ik).vk())
         bnd_k["kpoint"][x] = ks(ik).vk()(x)
         if ik == 32:
             print(bnd_k["kpoint"][x])
@@ -272,17 +238,17 @@ for ik in range(ks.num_kpoints()):
         for j in range(ctx.num_bands()):
             bnd_e.append(ks(ik).band_energy(j, ispn))
 
-    print("Checkpoint 14 reached")
+
     bnd_k["values"] = bnd_e
     dict["bands"].append(bnd_k)
-    #print(dict["bands"])
 
-print("Checkpoint 15 reached")
-plotter(dict)
+dict2 = dict
+#plotter(dict) #if I only want to plot
+plotter(dict, dict2, True)
+
+#plotter(dict2)
 
 dft = None
 ctx = None
 
-
 sirius.finalize()
-print("Final Checkpoint reached")
