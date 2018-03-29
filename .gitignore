@@ -5,6 +5,7 @@ libs/libxc*
 libs/spglib*
 Makefile
 platform.json
+platform.local.json
 make.inc
 
 bin/
@@ -23,6 +24,7 @@ latex/
 .o
 .mod
 .plist
+.a
 
 *.dSYM/
 
