@@ -6,9 +6,7 @@ import json
 from bands import plotter
 
 
-
-
-param = {
+parameters1 = {
     "control" : {
         "cyclic_block_size" : 16,
         "processing_unit" : "cpu",
@@ -143,13 +141,140 @@ param = {
   "kpoints_path" : ["GAMMA", "K", "L"]
 
 }
+
+
+parameters2 = {
+    "control" : {
+        "processing_unit" : "cpu",
+        "std_evp_solver_type" : "lapack",
+        "gen_evp_solver_type" : "lapack",
+        "verbosity" : 2
+    },
+
+    "parameters" : {
+
+        "electronic_structure_method" : "full_potential_lapwlo",
+        "xc_functionals" : ["XC_LDA_X", "XC_LDA_C_VWN"],
+        "smearing_width" : 0.05,
+        "valence_relativity" : "none",
+        "core_relativity" : "none",
+        "num_fv_states" : 10,
+        "aw_cutoff" : 8,
+        "pw_cutoff" : 20.00,
+        "auto_rmt" : 0,
+        "use_symmetry": True,
+        "ngridk" : [1,1,1],
+        "potential_tol" : 1e-7,
+        "energy_tol" : 1e-7,
+        "num_dft_iter" : 20,
+        "lmax_apw"     : 8,
+        "lmax_pot"     : 8,
+        "lmax_rho"     : 8,
+        "molecule"     : True
+
+
+    },
+
+
+    "iterative_solver" : {
+        "!energy_tolerance" : 1e-4,
+        "!residual_tolerance" : 1e-5,
+        "num_steps" : 8,
+        "subspace_size" : 8,
+        "type" : "davidson",
+        "converge_by_energy" : 1,
+        "min_occupancy" : 0
+    },
+
+
+    "unit_cell" : {
+
+        "lattice_vectors" : [ [1, 0, 0],
+                              [0, 1, 0],
+                              [0, 0, 1]
+                            ],
+        "lattice_vectors_scale" : 10,
+
+        "atom_types" : ["Sr", "V", "O"],
+
+        "atom_files" : {
+            "Sr" : "sr_lda_v1.uspp.F.UPF.json",
+            "V"  : "v_lda_v1.4.uspp.F.UPF.json",
+            "O"  : "o_lda_v1.2.uspp.F.UPF.json"
+        },
+
+        "atoms" : {
+            "Sr" : [
+                [0.5, 0.5, 0.5]
+            ],
+            "V" : [
+                [0, 0, 0, 0, 0, 4]
+            ],
+            "O" : [
+                [0.5, 0.0, 0.0],
+                [0.0, 0.5, 0.0],
+                [0.0, 0.0, 0.5]
+            ]
+        }
+    },
+
+    "mixer" : {
+        "beta" : 0.95,
+        "type" : "broyden1",
+        "max_history" : 8
+    },
+
+    "kpoints_rel": {
+    "K": [
+      0.375,
+      0.375,
+      0.75
+    ],
+    "L": [
+      0.5,
+      0.5,
+      0.5
+    ],
+    "U": [
+      0.625,
+      0.25,
+      0.625
+    ],
+    "W": [
+      0.5,
+      0.25,
+      0.75
+    ],
+    "X": [
+      0.5,
+      0.0,
+      0.5
+    ],
+    "GAMMA": [
+      0.0,
+      0.0,
+      0.0
+    ],
+    "W_2": [
+      0.75,
+      0.25,
+      0.5
+    ]
+  },
+
+  "kpoints_path" : ["GAMMA", "K", "L"]
+
+}
+
 def calculate_bands(param):
-    sirius.initialize()
 
     ctx = sirius.Simulation_context(json.dumps(param))
+    print("Checkpoint 1 reached.")
     ctx.set_iterative_solver_tolerance(1e-12)
     ctx.set_gamma_point(False)
+    print("Checkpoint 2 reached.")
     ctx.initialize()
+    print("Checkpoint 3 reached.")
 
     potential = sirius.Potential(ctx)
     potential.allocate()
@@ -243,12 +368,14 @@ def calculate_bands(param):
         dict["bands"].append(bnd_k)
     return dict
 
-dict = calculate_bands(param)
-dict2 = dict
-#plotter(dict) #if I only want to plot
-plotter(dict, dict2, True)
+sirius.initialize()
 
-#plotter(dict2)
+#dict = calculate_bands(parameters1)
+dict2 = calculate_bands(parameters2)
+#plotter(dict) #if I only want to plot
+#plotter(dict, dict2, True)
+
+plotter(dict2)
 
 dft = None
 ctx = None
