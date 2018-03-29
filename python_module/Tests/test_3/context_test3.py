@@ -8,7 +8,7 @@ param = {
         "processing_unit" : "cpu",
         "std_evp_solver_type" : "lapack",
         "gen_evp_solver_type" : "lapack",
-        "verbosity" : 2,
+        "verbosity" : 0,
         "print_forces" : True,
         "print_stress" : True
     },
@@ -32,7 +32,7 @@ param = {
         "energy_tol" : 1e-8,
         "potential_tol" : 1e-8,
 
-        "num_dft_iter" : 100,
+        "num_dft_iter" : 4,
 
         "ngridk" : [2,2,2]
     },
@@ -107,8 +107,26 @@ result = dft.find(ctx.parameters_input().potential_tol_, ctx.parameters_input().
 dft.print_magnetic_moment()
 print("Checkpoint 8 reached")
 
-dict = {}
-dict["ground_state"] = dft.serialize()
+ks = sirius.K_point_set(ctx)
+ks.add_kpoint([0,0,0])
+ks.add_kpoint([0.1,0.1,0.1])
+ks.add_kpoint([0.5,0.5,0.5])
+ks.initialize()
+
+band = dft.band()
+band.solve(ks, dft.Hamiltonian(), True)
+
+e = ks.get_energies()
+
+plot(e)
+
+dft = None
+ctx = None
+#dict = {}
+#dict["ground_state"] = dft.serialize()
+
+#print(dict)
 
 
 sirius.finalize()
+print("Checkpoint 9 reached")

@@ -9,20 +9,25 @@ Gmax = 10
 gvec = sirius.Gvec(Mcpp, Gmax, False)
 
 
-v = gvec.gvec(1111)
+v = gvec.gvec(1111) #find via index. return
 print(v)
 print(type(v))
 
-idx = gvec.index_by_gvec([1,3,7])
-#print(idx)
+idx = gvec.index_by_gvec([1,3,7]) #find via list
+print(idx)
 
-v_alt = gvec.gvec_alt(1111)
+v_alt = gvec.gvec_alt(1111) #find via index. return
 print(v_alt)
 print(type(v_alt))
 
-#gvec.zcol(gvec, 123)
+print("num_zcol = ", gvec.num_zcol()) #just for testing
 
-for j in range(gvec.count()):
+print(gvec.num_gvec()) #just for testing
+
+zcolu = gvec.zcol(0) #return a dictionary
+print("zcol =", zcolu)
+
+for j in range(gvec.count()): #test just as in the examples.
     ig = gvec.offset() + j
     G = sirius.vector3d_int(gvec.gvec(ig))
     jg = gvec.index_by_gvec(G)
