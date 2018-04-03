@@ -25,27 +25,8 @@
 #ifndef __DESCRIPTORS_H__
 #define __DESCRIPTORS_H__
 
-#include "mdarray.hpp"
-#include "utils.h"
-
-/// Describes single atomic level.
-struct atomic_level_descriptor
-{
-    /// Principal quantum number.
-    int n;
-
-    /// Angular momentum quantum number.
-    int l;
-
-    /// Quantum number k.
-    int k;
-
-    /// Level occupancy.
-    double occupancy;
-
-    /// True if this is a core level.
-    bool core;
-};
+#include <vector>
+#include <array>
 
 /// Describes radial solution.
 struct radial_solution_descriptor
@@ -84,20 +65,6 @@ struct local_orbital_descriptor
     radial_solution_descriptor_set rsd_set;
 };
 
-///// Descriptor of the pseudopotential.
-//struct pseudopotential_descriptor
-//{
-//    /// Occubations of atomic states.
-//    /** Length of vector is the same as the number of beta projectors and all_elec_wfc and pseudo_wfc */
-//    //std::vector<double> occupations;
-//
-//    /// total angular momentum j of the (hubbard) wave functions
-//    //std::vector<double> total_angular_momentum_wfs;
-//
-//    /// total angular momentum j of the (hubbard) wave functions
-//    //std::vector<double> occupation_wfs;
-//};
-
 /// Descriptor of an atom in a list of nearest neigbours for each atom.
 /** See sirius::Unit_cell::find_nearest_neighbours() for the details of usage. */
 struct nearest_neighbour_descriptor
@@ -106,7 +73,7 @@ struct nearest_neighbour_descriptor
     int atom_id;
 
     /// Translation in fractional coordinates.
-    geometry3d::vector3d<int> translation;
+    std::array<int, 3> translation;
 
     /// Distance from the central atom.
     double distance;

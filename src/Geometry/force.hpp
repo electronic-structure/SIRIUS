@@ -110,7 +110,7 @@ namespace sirius {
 
             sym_forces.zero();
 
-#pragma omp parallel for
+            #pragma omp parallel for
             for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {
                 vector3d<double> cart_force(&forces__(0, ia));
                 vector3d<double> lat_force =
@@ -121,13 +121,13 @@ namespace sirius {
                     auto& R                    = ctx_.unit_cell().symmetry().magnetic_group_symmetry(isym).spg_op.R;
                     vector3d<double> rot_force = lattice_vectors * (R * lat_force);
 
-#pragma omp atomic update
+                    #pragma omp atomic update
                     sym_forces(0, ja) += rot_force[0];
 
-#pragma omp atomic update
+                    #pragma omp atomic update
                     sym_forces(1, ja) += rot_force[1];
 
-#pragma omp atomic update
+                    #pragma omp atomic update
                     sym_forces(2, ja) += rot_force[2];
                 }
             }
@@ -445,7 +445,7 @@ namespace sirius {
                 mdarray<double_complex, 4> dn (2 * hamiltonian_.U().hubbard_lmax() + 1,
                                                2 * hamiltonian_.U().hubbard_lmax() + 1,
                                                ctx_.num_spins(), ctx_.unit_cell().num_atoms());
-#pragma omp parallel for
+                #pragma omp parallel for
                 for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ++ia) {
                     const auto& atom = ctx_.unit_cell().atom(ia);
                     const int lmax_at = 2 * atom.type().hubbard_l() + 1;
@@ -468,7 +468,7 @@ namespace sirius {
                         }
                     }
                 }
-#pragma omp parallel for
+                #pragma omp parallel for
                 for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ++ia) {
                     const auto& atom = ctx_.unit_cell().atom(ia);
                     const int lmax_at = 2 * atom.type().hubbard_l() + 1;
@@ -670,7 +670,7 @@ namespace sirius {
             double fact = valence_rho.gvec().reduced() ? 2.0 : 1.0;
 
             /* here the calculations are in lattice vectors space */
-#pragma omp parallel for
+            #pragma omp parallel for
             for (int ia = 0; ia < unit_cell.num_atoms(); ia++) {
                 Atom& atom = unit_cell.atom(ia);
 
@@ -756,7 +756,7 @@ namespace sirius {
             Radial_integrals_rho_core_pseudo<false> ri(ctx_.unit_cell(), ctx_.pw_cutoff(), ctx_.settings().nprii_rho_core_);
 
             /* here the calculations are in lattice vectors space */
-#pragma omp parallel for
+            #pragma omp parallel for
             for (int ia = 0; ia < unit_cell.num_atoms(); ia++) {
                 Atom& atom = unit_cell.atom(ia);
 
@@ -813,7 +813,7 @@ namespace sirius {
 
             Radial_integrals_rho_pseudo ri(ctx_.unit_cell(), ctx_.pw_cutoff(), 20);
 
-#pragma omp parallel for
+            #pragma omp parallel for
             for (int ia = 0; ia < unit_cell.num_atoms(); ia++) {
                 Atom& atom = unit_cell.atom(ia);
 
@@ -867,7 +867,7 @@ namespace sirius {
             for (int iat = 0; iat < unit_cell.num_atom_types(); iat++){
                 auto& atom_type = unit_cell.atom_type(iat);
 
-                if (!atom_type.augment()) {
+                if (!atom_type.augment() || atom_type.num_atoms() == 0) {
                     continue;
                 }
 
@@ -878,7 +878,6 @@ namespace sirius {
                 /* get auxiliary density matrix */
                 auto dm = density_.density_matrix_aux(iat);
 
-                //mdarray<double, 2> q_tmp(nbf * (nbf + 1) / 2, ctx_.gvec().count() * 2);
                 mdarray<double, 2> v_tmp(atom_type.num_atoms(), ctx_.gvec().count() * 2);
                 mdarray<double, 2> tmp(nbf * (nbf + 1) / 2, atom_type.num_atoms());
 
@@ -887,7 +886,7 @@ namespace sirius {
                     /* over 3 components of the force/G - vectors */
                     for (int ivec = 0; ivec < 3; ivec++ ){
                         /* over local rank G vectors */
-#pragma omp parallel for schedule(static)
+                        #pragma omp parallel for schedule(static)
                         for (int igloc = 0; igloc < ctx_.gvec().count(); igloc++) {
                             int ig = ctx_.gvec().offset() + igloc;
                             auto gvc = ctx_.gvec().gvec_cart(ig);
@@ -908,12 +907,11 @@ namespace sirius {
                                           aug_op.q_pw(), v_tmp, tmp);
 
 
-#pragma omp parallel for
+                        #pragma omp parallel for
                         for (int ia = 0; ia < atom_type.num_atoms(); ia++) {
                             for (int i = 0; i < nbf * (nbf + 1) / 2; i++) {
                                 forces_us_(ivec, atom_type.atom_id(ia)) += ctx_.unit_cell().omega() * reduce_g_fact *
-                                    dm(i, ia, ispin) * aug_op.sym_weight(i) *
-                                    tmp(i, ia);
+                                    dm(i, ia, ispin) * aug_op.sym_weight(i) * tmp(i, ia);
                             }
                         }
                     }
@@ -948,7 +946,7 @@ namespace sirius {
 
             mdarray<double_complex, 1> rho_tmp(ctx_.gvec().count());
             rho_tmp.zero();
-#pragma omp parallel for schedule(static)
+            #pragma omp parallel for schedule(static)
             for (int igloc = ig0; igloc < ctx_.gvec().count(); igloc++) {
                 int ig = ctx_.gvec().offset() + igloc;
 
@@ -961,7 +959,7 @@ namespace sirius {
                 rho_tmp[igloc] = std::conj(rho);
             }
 
-#pragma omp parallel for
+            #pragma omp parallel for
             for (int ja = 0; ja < unit_cell.num_atoms(); ja++) {
                 for (int igloc = ig0; igloc < ctx_.gvec().count(); igloc++) {
                     int ig = ctx_.gvec().offset() + igloc;
@@ -985,7 +983,7 @@ namespace sirius {
 
             double invpi = 1. / pi;
 
-#pragma omp parallel for
+            #pragma omp parallel for
             for (int ia = 0; ia < unit_cell.num_atoms(); ia++) {
                 for (int i = 1; i < unit_cell.num_nearest_neighbours(ia); i++) {
                     int ja = unit_cell.nearest_neighbour(i, ia).atom_id;
@@ -993,7 +991,7 @@ namespace sirius {
                     double d  = unit_cell.nearest_neighbour(i, ia).distance;
                     double d2 = d * d;
 
-                    vector3d<double> t = unit_cell.lattice_vectors() * unit_cell.nearest_neighbour(i, ia).translation;
+                    vector3d<double> t = unit_cell.lattice_vectors() * vector3d<int>(unit_cell.nearest_neighbour(i, ia).translation);
 
                     double scalar_part =
                         static_cast<double>(unit_cell.atom(ia).zn() * unit_cell.atom(ja).zn()) / d2 *

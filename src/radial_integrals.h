@@ -81,14 +81,11 @@ class Radial_integrals_base
     }
 };
 
-/// Radial integrals of the atomic centered orbitals. It is used in
-/// initialize_subspace and in the hubbard correction
-
+/// Radial integrals of the atomic centered orbitals.
+/** Used in initialize_subspace and in the hubbard correction. */
 class Radial_integrals_atomic_wf : public Radial_integrals_base<2>
 {
   private:
-    //std::vector<std::vector<int>> angular_momentum;
-    //std::vector<std::vector<double>> total_angular_momentum;
 
     void generate()
     {
@@ -96,11 +93,6 @@ class Radial_integrals_atomic_wf : public Radial_integrals_base<2>
 
         /* spherical Bessel functions jl(qx) */
         mdarray<Spherical_Bessel_functions, 1> jl(nq());
-        //angular_momentum.clear();
-        //total_angular_momentum.clear();
-
-        //angular_momentum.resize(unit_cell_.num_atom_types());
-        //total_angular_momentum.resize(unit_cell_.num_atom_types());
 
         for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
 
@@ -112,17 +104,10 @@ class Radial_integrals_atomic_wf : public Radial_integrals_base<2>
             }
 
             /* create jl(qx) */
-
             #pragma omp parallel for
             for (int iq = 0; iq < nq(); iq++) {
                 jl(iq) = Spherical_Bessel_functions(atom_type.lmax_ps_atomic_wf(), atom_type.radial_grid(), grid_q_[iq]);
             }
-
-            //angular_momentum[iat].clear();
-            //angular_momentum[iat].resize(nwf);
-            //total_angular_momentum[iat].clear();
-            //total_angular_momentum[iat].resize(nwf);
-
 
             /* loop over all pseudo wave-functions */
             for (int i = 0; i < nwf; i++) {
@@ -138,11 +123,6 @@ class Radial_integrals_atomic_wf : public Radial_integrals_base<2>
                 }
 
                 values_(i, iat).interpolate();
-                //angular_momentum[iat][i] = l;
-                //if (atom_type.pp_desc().total_angular_momentum_wfs.size()) {
-                //    // will need it for Hubbard + so
-                //    total_angular_momentum[iat][i] = atom_type.pp_desc().total_angular_momentum_wfs[i];
-                //}
             }
         }
     }
@@ -482,8 +462,8 @@ class Radial_integrals_beta_jl : public Radial_integrals_base<3>
     {
         lmax_ = unit_cell__.lmax() + 2;
         /* create space for <j_l(qr)|beta> radial integrals */
-        values_ =
-            mdarray<Spline<double>, 3>(unit_cell_.max_mt_radial_basis_size(), lmax_ + 1, unit_cell_.num_atom_types());
+        values_ = mdarray<Spline<double>, 3>(unit_cell_.max_mt_radial_basis_size(), lmax_ + 1,
+                                             unit_cell_.num_atom_types());
         generate();
     }
 };
@@ -549,10 +529,19 @@ class Radial_integrals_vloc : public Radial_integrals_base<1>
 
             auto& vloc = atom_type.local_potential();
 
-            int np = atom_type.radial_grid().index_of(10);
-            if (np == -1) {
-                np = atom_type.num_mt_points();
+            int np = atom_type.num_mt_points();
+            //if (std::abs(vloc.back() * atom_type.radial_grid().last() + atom_type.zn()) > 1e-10) {
+            //    std::stringstream s;
+            //    s << "Wrong asymptotics of local potential for atom type " << iat << std::endl
+            //      << "hack with 10 a.u. cutoff is activated";
+            //    WARNING(s);
+            if (true) {
+                int np1 = atom_type.radial_grid().index_of(10);
+                if (np1 != -1) {
+                    np = np1;
+                }
             }
+
             auto rg = atom_type.radial_grid().segment(np);
 
             #pragma omp parallel for

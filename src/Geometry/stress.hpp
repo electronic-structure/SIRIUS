@@ -210,10 +210,6 @@ class Stress {
         for (int ikloc = 0; ikloc < kset_.spl_num_kpoints().local_size(); ikloc++) {
             int ik = kset_.spl_num_kpoints(ikloc);
             auto kp = kset_[ik];
-            if (kp->gkvec().reduced()) {
-                TERMINATE("reduced G+k vectors are not implemented for non-local stress: fix this");
-            }
-
 #ifdef __GPU
             if (ctx_.processing_unit() == GPU && !keep_wf_on_gpu) {
                 int nbnd = ctx_.num_bands();
@@ -224,13 +220,11 @@ class Stress {
                 }
             }
 #endif
-
             Beta_projectors_strain_deriv bp_strain_deriv(ctx_, kp->gkvec(), kp->igk_loc());
 
             Non_local_functor<T, 9> nlf(ctx_, bp_strain_deriv);
 
             nlf.add_k_point_contribution(*kp, collect_result);
-
 #ifdef __GPU
             if (ctx_.processing_unit() == GPU && !keep_wf_on_gpu) {
                 for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
@@ -553,7 +547,8 @@ class Stress {
                 int ja = uc.nearest_neighbour(i, ia).atom_id;
                 double d = uc.nearest_neighbour(i, ia).distance;
 
-                vector3d<double> v1 = uc.atom(ja).position() - uc.atom(ia).position() + uc.nearest_neighbour(i, ia).translation;
+                vector3d<double> v1 = uc.atom(ja).position() - uc.atom(ia).position() +
+                                      vector3d<int>(uc.nearest_neighbour(i, ia).translation);
                 auto r1 = uc.get_cartesian_coordinates(v1);
                 double len = r1.length();
 
@@ -601,9 +596,6 @@ class Stress {
         for (int ikloc = 0; ikloc < kset_.spl_num_kpoints().local_size(); ikloc++) {
             int ik = kset_.spl_num_kpoints(ikloc);
             auto kp = kset_[ik];
-            if (kp->gkvec().reduced()) {
-                TERMINATE("fix this");
-            }
 
             for (int igloc = 0; igloc < kp->num_gkvec_loc(); igloc++) {
                 int ig = kp->idxgk(igloc);
@@ -618,6 +610,9 @@ class Stress {
                     }
                 }
                 d *= kp->weight();
+                if (kp->gkvec().reduced()) {
+                    d *= 2;
+                }
                 for (int mu: {0, 1, 2}) {
                     for (int nu: {0, 1, 2}) {
                         stress_kin_(mu, nu) += Gk[mu] * Gk[nu] * d;
@@ -708,7 +703,7 @@ class Stress {
 
         for (int iat = 0; iat < ctx_.unit_cell().num_atom_types(); iat++) {
             auto& atom_type = ctx_.unit_cell().atom_type(iat);
-            if (!atom_type.augment()) {
+            if (!atom_type.augment() || atom_type.num_atoms() == 0) {
                 continue;
             }
 

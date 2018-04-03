@@ -45,7 +45,7 @@ class Simulation_parameters
     relativity_t core_relativity_{relativity_t::dirac};
 
     /// Type of electronic structure method.
-    electronic_structure_method_t esm_type_{electronic_structure_method_t::full_potential_lapwlo};
+    electronic_structure_method_t electronic_structure_method_{electronic_structure_method_t::full_potential_lapwlo};
 
     Iterative_solver_input iterative_solver_input_;
 
@@ -61,13 +61,39 @@ class Simulation_parameters
 
     Hubbard_input hubbard_input_;
 
-    /// Import data from initial input parameters.
-    void import(std::string const& fname__)
+  public:
+
+    /// Import parameters from a file or a serialized json string.
+    void import(std::string const& str__)
     {
         PROFILE("sirius::Simulation_parameters::import");
 
+        if (str__.size() == 0) {
+            return;
+        }
+
         json dict;
-        std::ifstream(fname__) >> dict;
+        if (str__.find("{") == std::string::npos) { /* this is a file */
+            if (Utils::file_exists(str__)) {
+                try {
+                    std::ifstream(str__) >> dict;
+                } catch(std::exception& e) {
+                    std::stringstream s;
+                    s << "wrong input json file" << std::endl
+                      << e.what();
+                    TERMINATE(s);
+                }
+            }
+        } else { /* this is a json string */
+            try {
+                std::istringstream(str__) >> dict;
+            } catch (std::exception& e) {
+                std::stringstream s;
+                s << "wrong input json string" << std::endl
+                  << e.what();
+                TERMINATE(s);
+            }
+        }
 
         /* read unit cell */
         unit_cell_input_.read(dict);
@@ -85,7 +111,6 @@ class Simulation_parameters
         hubbard_input_.read(dict);
     }
 
-  public:
     inline void set_lmax_apw(int lmax_apw__)
     {
         parameters_input_.lmax_apw_ = lmax_apw__;
@@ -165,9 +190,9 @@ class Simulation_parameters
         parameters_input_.xc_functionals_.push_back(name__);
     }
 
-    inline void set_esm_type(std::string name__)
+    inline void electronic_structure_method(std::string name__)
     {
-        parameters_input_.esm_ = name__;
+        parameters_input_.electronic_structure_method_ = name__;
 
         std::map<std::string, electronic_structure_method_t> m = {
             {"full_potential_lapwlo", electronic_structure_method_t::full_potential_lapwlo},
@@ -179,7 +204,12 @@ class Simulation_parameters
             s << "wrong type of electronic structure method: " << name__;
             TERMINATE(s);
         }
-        esm_type_ = m[name__];
+        electronic_structure_method_ = m[name__];
+    }
+
+    inline electronic_structure_method_t electronic_structure_method() const
+    {
+        return electronic_structure_method_;
     }
 
     inline void set_core_relativity(std::string name__)
@@ -418,14 +448,9 @@ class Simulation_parameters
         return control_input_.cyclic_block_size_;
     }
 
-    inline electronic_structure_method_t esm_type() const
-    {
-        return esm_type_;
-    }
-
     inline bool full_potential() const
     {
-        return (esm_type_ == electronic_structure_method_t::full_potential_lapwlo);
+        return (electronic_structure_method_ == electronic_structure_method_t::full_potential_lapwlo);
     }
 
     inline std::vector<std::string> const& xc_functionals() const

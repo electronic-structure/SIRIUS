@@ -1,4 +1,4 @@
-// Copyright (c) 2013-2017 Anton Kozhevnikov, Thomas Schulthess
+// Copyright (c) 2013-2018 Anton Kozhevnikov, Thomas Schulthess
 // All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without modification, are permitted provided that
@@ -37,6 +37,8 @@ using json = nlohmann::json;
 
 namespace sirius {
 
+// TODO: let DFT_ground_state class crate and store density, potential, k_set, Hamiltonain, forces, stress
+
 class DFT_ground_state
 {
     private:
@@ -45,12 +47,16 @@ class DFT_ground_state
 
         Unit_cell& unit_cell_;
 
-        Hamiltonian &H_;
-
+        std::unique_ptr<Potential> potential_ptr_{nullptr};
         Potential& potential_;
 
+        std::unique_ptr<Hamiltonian> hamiltonian_ptr_{nullptr};
+        Hamiltonian& hamiltonian_;
+
+        std::unique_ptr<Density> density_ptr_{nullptr};
         Density& density_;
 
+        std::unique_ptr<K_point_set> kset_ptr_{nullptr};
         K_point_set& kset_;
 
         Band band_;
@@ -178,19 +184,49 @@ class DFT_ground_state
     public:
 
         DFT_ground_state(Simulation_context& ctx__,
-                         Hamiltonian& H__,
-                         Density& density__,
-                         K_point_set& kset__)
+                         Hamiltonian&        hamiltonian__,
+                         Density&            density__,
+                         K_point_set&        kset__)
             : ctx_(ctx__)
             , unit_cell_(ctx__.unit_cell())
-            , H_(H__)
-            , potential_(H__.potential())
+            , potential_(hamiltonian__.potential())
+            , hamiltonian_(hamiltonian__)
             , density_(density__)
             , kset_(kset__)
             , band_(ctx_)
         {
             if (!ctx_.full_potential()) {
                 ewald_energy_ = ewald_energy();
+            }
+        }
+
+        DFT_ground_state(Simulation_context& ctx__)
+            : ctx_(ctx__)
+            , unit_cell_(ctx__.unit_cell())
+            , potential_ptr_(new Potential(ctx__))
+            , potential_(*potential_ptr_)
+            , hamiltonian_ptr_(new Hamiltonian(ctx__, potential_))
+            , hamiltonian_(*hamiltonian_ptr_)
+            , density_ptr_(new Density(ctx__))
+            , density_(*density_ptr_)
+            , kset_ptr_(new K_point_set(ctx__, ctx__.parameters_input().ngridk_, ctx_.parameters_input().shiftk_, ctx_.use_symmetry()))
+            , kset_(*kset_ptr_)
+            , band_(ctx_)
+        {
+            potential_.allocate();
+            density_.allocate();
+            kset_.initialize();
+            if (!ctx_.full_potential()) {
+                ewald_energy_ = ewald_energy();
+            }
+        }
+
+        void initial_state()
+        {
+            density_.initial_density();
+            potential_.generate(density_);
+            if (!ctx_.full_potential()) {
+                band_.initialize_subspace(kset_, hamiltonian_);
             }
         }
 
@@ -349,7 +385,7 @@ class DFT_ground_state
         {
             double tot_en{0};
 
-            switch (ctx_.esm_type()) {
+            switch (ctx_.electronic_structure_method()) {
                 case electronic_structure_method_t::full_potential_lapwlo: {
                     tot_en = (energy_kin() + energy_exc() + 0.5 * energy_vha() + energy_enuc());
                     break;
@@ -365,7 +401,7 @@ class DFT_ground_state
             }
 
             if (ctx_.hubbard_correction()) {
-                tot_en += H_.U().hubbard_energy();
+                tot_en += hamiltonian_.U().hubbard_energy();
             }
 
             return tot_en;
@@ -449,9 +485,29 @@ class DFT_ground_state
             }
         }
 
-        Band & band()
+        inline Band& band()
         {
             return band_;
+        }
+
+        inline Density& density()
+        {
+            return density_;
+        }
+
+        inline Potential& potential()
+        {
+            return potential_;
+        }
+
+        inline K_point_set& k_point_set()
+        {
+            return kset_;
+        }
+
+        inline Hamiltonian& hamiltonian()
+        {
+            return hamiltonian_;
         }
 
         json serialize()
@@ -581,8 +637,8 @@ inline int DFT_ground_state::find(double potential_tol, double energy_tol, int n
     int result{-1};
 
     if (ctx_.hubbard_correction()) {
-        H_.U().hubbard_compute_occupation_numbers(kset_);
-        H_.U().calculate_hubbard_potential_and_energy();
+        hamiltonian_.U().hubbard_compute_occupation_numbers(kset_);
+        hamiltonian_.U().calculate_hubbard_potential_and_energy();
     }
 
     for (int iter = 0; iter < num_dft_iter; iter++) {
@@ -596,7 +652,7 @@ inline int DFT_ground_state::find(double potential_tol, double energy_tol, int n
         }
 
         /* find new wave-functions */
-        band_.solve_for_kset(kset_, H_, true);
+        band_.solve(kset_, hamiltonian_, true);
         /* find band occupancies */
         kset_.find_band_occupancies();
         /* generate new density from the occupied wave-functions */
@@ -605,7 +661,7 @@ inline int DFT_ground_state::find(double potential_tol, double energy_tol, int n
         if (ctx_.use_symmetry()) {
             symmetrize(&density_.rho(), &density_.magnetization(0), &density_.magnetization(1),
                        &density_.magnetization(2));
-            if (ctx_.esm_type() == electronic_structure_method_t::pseudopotential) {
+            if (ctx_.electronic_structure_method() == electronic_structure_method_t::pseudopotential) {
                 density_.symmetrize_density_matrix();
             }
         }
@@ -684,9 +740,9 @@ inline int DFT_ground_state::find(double potential_tol, double energy_tol, int n
 
         /* Compute the hubbard correction */
         if(ctx_.hubbard_correction()) {
-            H_.U().hubbard_compute_occupation_numbers(kset_);
-            H_.U().mix();
-            H_.U().calculate_hubbard_potential_and_energy();
+            hamiltonian_.U().hubbard_compute_occupation_numbers(kset_);
+            hamiltonian_.U().mix();
+            hamiltonian_.U().calculate_hubbard_potential_and_energy();
         }
 
         eold = etot;
@@ -745,7 +801,7 @@ inline void DFT_ground_state::print_magnetic_moment()
 
     double one_elec_en = evalsum1 - (evxc + evha);
 
-    if (ctx_.esm_type() == electronic_structure_method_t::pseudopotential) {
+    if (ctx_.electronic_structure_method() == electronic_structure_method_t::pseudopotential) {
         one_elec_en -= potential_.PAW_one_elec_energy();
     }
 
@@ -844,7 +900,7 @@ inline void DFT_ground_state::print_magnetic_moment()
             printf("PAW contribution          : %18.8f\n", potential_.PAW_total_energy());
         }
         if(ctx_.hubbard_correction()) {
-            printf("Hubbard energy            : %18.8f (Ha), %18.8f (Ry)\n", H_.U().hubbard_energy(), H_.U().hubbard_energy() * 2.0);
+            printf("Hubbard energy            : %18.8f (Ha), %18.8f (Ry)\n", hamiltonian_.U().hubbard_energy(), hamiltonian_.U().hubbard_energy() * 2.0);
         }
 
         printf("Total energy              : %18.8f (Ha), %18.8f (Ry)\n", etot, etot * 2);

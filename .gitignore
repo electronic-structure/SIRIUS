@@ -5,7 +5,13 @@ libs/libxc*
 libs/spglib*
 Makefile
 platform.json
+platform.local.json
 make.inc
+
+bin/
+__pycache__
+
+timers.json
 
 src/version.h
 
@@ -18,6 +24,7 @@ latex/
 .o
 .mod
 .plist
+.a
 
 *.dSYM/
 

@@ -265,9 +265,12 @@ inline void linalg<CPU>::gemm<ftn_double>(int transa, int transb, ftn_int m, ftn
                                           ftn_double beta,
                                           ftn_double* C, ftn_int ldc)
 {
-    assert(lda != 0);
-    assert(ldb != 0);
-    assert(ldc != 0);
+    assert(lda > 0);
+    assert(ldb > 0);
+    assert(ldc > 0);
+    assert(m > 0);
+    assert(n > 0);
+    assert(k > 0);
 
     const char *trans[] = {"N", "T", "C"};
 
@@ -284,9 +287,12 @@ inline void linalg<CPU>::gemm<ftn_double_complex>(int transa, int transb, ftn_in
                                                   ftn_double_complex beta,
                                                   ftn_double_complex* C, ftn_int ldc)
 {
-    assert(lda != 0);
-    assert(ldb != 0);
-    assert(ldc != 0);
+    assert(lda > 0);
+    assert(ldb > 0);
+    assert(ldc > 0);
+    assert(m > 0);
+    assert(n > 0);
+    assert(k > 0);
 
     const char *trans[] = {"N", "T", "C"};
 
@@ -940,6 +946,12 @@ inline void linalg<GPU>::gemm<ftn_double_complex>(int transa, int transb, ftn_in
                                                   ftn_double_complex const* B, ftn_int ldb, ftn_double_complex const* beta,
                                                   ftn_double_complex* C, ftn_int ldc, int stream_id)
 {
+    assert(lda > 0);
+    assert(ldb > 0);
+    assert(ldc > 0);
+    assert(m > 0);
+    assert(n > 0);
+    assert(k > 0);
     cublas::zgemm(transa, transb, m, n, k, (cuDoubleComplex*)alpha, (cuDoubleComplex*)A, lda, (cuDoubleComplex*)B, ldb, (cuDoubleComplex*)beta, (cuDoubleComplex*)C, ldc, stream_id);
 }
 
@@ -950,6 +962,12 @@ inline void linalg<GPU>::gemm<ftn_double>(int transa, int transb, ftn_int m, ftn
                                           ftn_double const* B, ftn_int ldb, ftn_double const* beta,
                                           ftn_double* C, ftn_int ldc, int stream_id)
 {
+    assert(lda > 0);
+    assert(ldb > 0);
+    assert(ldc > 0);
+    assert(m > 0);
+    assert(n > 0);
+    assert(k > 0);
     cublas::dgemm(transa, transb, m, n, k, alpha, A, lda, B, ldb, beta, C, ldc, stream_id);
 }
 
