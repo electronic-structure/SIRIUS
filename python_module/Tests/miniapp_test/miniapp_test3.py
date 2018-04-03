@@ -3,10 +3,11 @@ sys.path.insert(0, '../../bin')
 
 import sirius
 import json
+import copy
 from bands import plotter
 
 
-parameters1 = {
+baseparameters = {
     "control" : {
         "cyclic_block_size" : 16,
         "processing_unit" : "cpu",
@@ -25,7 +26,6 @@ parameters1 = {
     },
 
     "parameters" : {
-        "electronic_structure_method" : "pseudopotential",
 
         "num_fv_states" : 40,
 
@@ -43,25 +43,11 @@ parameters1 = {
         "energy_tol" : 1e-8,
         "potential_tol" : 1e-8,
 
-        "num_dft_iter" : 100,
+        "num_dft_iter" : 4,
 
         "ngridk" : [2,2,2],
         "gamma_point" : False
     },
-
-
-    "iterative_solver" : {
-        "!energy_tolerance" : 1e-2,
-        "!residual_tolerance" : 1e-6,
-        "num_steps" : 20,
-        "subspace_size" : 4,
-        "type" : "davidson",
-        "converge_by_energy" : 1,
-        "!orthogonalize" : False,
-        "!init_subspace" : "lcao",
-        "init_eval_old" : False
-    },
-
 
     "unit_cell" : {
 
@@ -72,12 +58,6 @@ parameters1 = {
         "lattice_vectors_scale" : 7.260327248,
 
         "atom_types" : ["Sr", "V", "O"],
-
-        "atom_files" : {
-            "Sr" : "sr_lda_v1.uspp.F.UPF.json",
-            "V"  : "v_lda_v1.4.uspp.F.UPF.json",
-            "O"  : "o_lda_v1.2.uspp.F.UPF.json"
-        },
 
         "atoms" : {
             "Sr" : [
@@ -142,130 +122,19 @@ parameters1 = {
 
 }
 
-parameters2 = {
-    "control" : {
-        "processing_unit" : "cpu",
-        "std_evp_solver_type" : "lapack",
-        "gen_evp_solver_type" : "lapack",
-        "verbosity" : 2,
-        "print_forces" : True,
-        "print_stress" : True
-    },
-
-    "parameters" : {
-        "electronic_structure_method" : "full_potential_lapwlo",
-
-        "num_fv_states" : 56,
-
-        "xc_functionals" : ["XC_LDA_X", "XC_LDA_C_PZ"],
-
-        "smearing_width" : 0.025,
-
-        "use_symmetry" : True,
-
-        "num_mag_dims" : 0,
-
-        "gk_cutoff" : 6.0,
-        "pw_cutoff" : 20.00,
-
-        "energy_tol" : 1e-8,
-        "potential_tol" : 1e-8,
-
-        "num_dft_iter" : 100,
-
-        "ngridk" : [2,2,2]
-    },
-
-
-   "unit_cell" : {
-
-        "lattice_vectors" : [ [1, 0, 0],
-                              [0, 1, 0],
-                              [0, 0, 1]
-                            ],
-        "lattice_vectors_scale" : 7.260327248,
-
-        "atom_types" : ["Sr", "V", "O"],
-
-        "atom_files" : {
-            "Sr" : "/Users/colinkalin/my_SIRIUS/examples/old/2.SrVO3_fp/Sr.json",
-            "V"  : "/Users/colinkalin/my_SIRIUS/examples/old/2.SrVO3_fp/V.json",
-            "O"  : "/Users/colinkalin/my_SIRIUS/examples/old/2.SrVO3_fp/O.json"
-        },
-
-        "atoms" : {
-            "Sr" : [
-                [0.5, 0.5, 0.5]
-            ],
-            "V" : [
-                [0, 0, 0, 0, 0, 4]
-            ],
-            "O" : [
-                [0.5, 0.0, 0.0],
-                [0.0, 0.5, 0.0],
-                [0.0, 0.0, 0.5]
-            ]
-        }
-    },
-
-    "mixer" : {
-        "beta" : 0.95,
-        "type" : "broyden1",
-        "max_history" : 8
-    },
-
-"kpoints_rel": {
-    "K": [
-      0.375,
-      0.375,
-      0.75
-    ],
-    "L": [
-      0.5,
-      0.5,
-      0.5
-    ],
-    "U": [
-      0.625,
-      0.25,
-      0.625
-    ],
-    "W": [
-      0.5,
-      0.25,
-      0.75
-    ],
-    "X": [
-      0.5,
-      0.0,
-      0.5
-    ],
-    "GAMMA": [
-      0.0,
-      0.0,
-      0.0
-    ],
-    "W_2": [
-      0.75,
-      0.25,
-      0.5
-    ]
-  },
-
-  "kpoints_path" : ["GAMMA", "K", "L"]
-}
-
 def calculate_bands(param):
-
     ctx = sirius.Simulation_context(json.dumps(param))
-    print("Checkpoint 1 reached.")
+    ctx.set_gamma_point(False)
+    ctx.initialize()
+
+    dft = sirius.DFT_ground_state(ctx)
+    dft.initial_state()
+
+    result = dft.find(ctx.parameters_input().potential_tol_, ctx.parameters_input().energy_tol_, ctx.parameters_input().num_dft_iter_, True)
+    dft.print_magnetic_moment()
+
     if param["parameters"]["electronic_structure_method"] == "pseudopotential":
         ctx.set_iterative_solver_tolerance(1e-12)
-
-    ctx.set_gamma_point(False)
-    print("Checkpoint 2 reached.")
-    ctx.initialize()
-    print("Checkpoint 3 reached.")
 
     potential = sirius.Potential(ctx)
     potential.allocate()
@@ -276,6 +145,7 @@ def calculate_bands(param):
     density.allocate()
 
     ks = sirius.K_point_set(ctx)
+    print("Total Energy = ", dft.total_energy())
 
 
     x_axis = []
@@ -325,7 +195,7 @@ def calculate_bands(param):
         band.initialize_subspace(ks, H)
 
     band.solve(ks, H, True)
-
+    #print("Fermi-Energy = ", ks.energy_fermi())
     #ks.sync_band_energies()
 
     dict = {}
@@ -361,12 +231,40 @@ def calculate_bands(param):
         dict["bands"].append(bnd_k)
     return dict
 
+param_pp = copy.deepcopy(baseparameters)
+param_pp["parameters"]["electronic_structure_method"] = "pseudopotential"
+param_pp["iterative_solver"] = {
+    "!energy_tolerance" : 1e-2,
+    "!residual_tolerance" : 1e-6,
+    "num_steps" : 20,
+    "subspace_size" : 4,
+    "type" : "davidson",
+    "converge_by_energy" : 1,
+    "!orthogonalize" : False,
+    "!init_subspace" : "lcao",
+    "init_eval_old" : False
+}
+param_pp["unit_cell"]["atom_files"] = {
+    "Sr" : "sr_lda_v1.uspp.F.UPF.json",
+    "V"  : "v_lda_v1.4.uspp.F.UPF.json",
+    "O"  : "o_lda_v1.2.uspp.F.UPF.json"
+}
+
+
+param_fp = copy.deepcopy(baseparameters)
+param_fp["parameters"]["electronic_structure_method"] = "full_potential_lapwlo"
+param_fp["unit_cell"]["atom_files"] = {
+    "Sr" : "/Users/colinkalin/my_SIRIUS/examples/old/2.SrVO3_fp/Sr.json",
+    "V"  : "/Users/colinkalin/my_SIRIUS/examples/old/2.SrVO3_fp/V.json",
+    "O"  : "/Users/colinkalin/my_SIRIUS/examples/old/2.SrVO3_fp/O.json"
+}
+
 sirius.initialize()
 
-dict = calculate_bands(parameters1)
-dict2 = calculate_bands(parameters2)
-#plotter(dict) #if I only want to plot
-plotter(dict, dict2, True)
+dict1 = calculate_bands(param_pp)
+dict2 = calculate_bands(param_fp)
+
+plotter(dict1, dict2, True)
 
 #plotter(dict2)
 

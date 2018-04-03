@@ -1,9 +1,9 @@
-//Last update: 21.03.2018, 12:39 pm
 #include <pybind11/pybind11.h>
 #include <sirius.h>
 #include <pybind11/stl.h>
 #include <pybind11/operators.h>
 #include <iostream>
+#include <fstream>
 #include <string>
 #include <vector>
 #include <utility>
@@ -15,6 +15,78 @@ namespace py = pybind11;
 using namespace sirius;
 using namespace geometry3d;
 using json = nlohmann::json;
+using nlohmann::basic_json;
+
+py::object pj_convert(json& node)
+  {
+
+      if(node.is_null())
+      {
+        return py::object(Py_None, true);
+      }
+
+      else if(node.is_number_integer())
+      {
+        int i(node);
+        return py::int_(i);
+      }
+
+      else if(node.is_number_unsigned())
+      {
+        unsigned int u(node);
+        return py::int_(u);
+      }
+
+      else if(node.is_number_float())
+      {
+        float f(node);
+        return py::float_(f);
+      }
+
+      else if(node.is_string())
+      {
+        std::string s;
+        s = static_cast<std::string const&>(node);
+        return py::str(s);
+      }
+
+      else if(node.is_boolean())
+      {
+        bool b(node);
+        return py::bool_(b);
+      }
+
+      else if(node.is_array())
+      {
+        py::list result;
+
+        for (auto it = node.begin(); it != node.end(); ++it)
+          {
+            result.append(pj_convert(*it));
+          }
+
+        return result;
+      }
+
+      else if(node.is_object())
+      {
+        py::dict result;
+
+        for (auto it = node.begin(); it != node.end(); ++it)
+          {
+            json my_key(it.key());
+            result[pj_convert(my_key)] = pj_convert(*it);
+          }
+
+        return result;
+      }
+
+      else
+      {
+        throw std::runtime_error("undefined json value");
+      }
+
+}
 
 
 std::string show_mat(const matrix3d<double>& mat)
@@ -121,6 +193,7 @@ PYBIND11_MODULE(sirius, m){
   py::class_<vector3d<int>>(m, "vector3d_int")
     .def(py::init<std::vector<int>>())
     .def("__call__", [](const vector3d<int> &obj, int x){return obj[x];})
+    .def("__getitem__", [](const vector3d<int> &obj, int x){return obj[x];})
     .def("__repr__", [](const vector3d<int> &vec){return show_vec(vec);})
     .def(py::init<vector3d<int>>());
 
@@ -128,6 +201,7 @@ PYBIND11_MODULE(sirius, m){
     .def(py::init<std::vector<double>>())
     .def("__call__", [](const vector3d<double> &obj, int x){return obj[x];})
     .def("__repr__", [](const vector3d<double> &vec){return show_vec(vec);})
+    .def("__getitem__", [](const vector3d<double> &obj, int x){return obj[x];})
     .def("length", &vector3d<double>::length)
     .def(py::self - py::self)
     .def(py::self * float())
@@ -139,6 +213,7 @@ PYBIND11_MODULE(sirius, m){
     .def(py::init<>()) //to create a zero matrix
     .def("__call__", [](const matrix3d<double> &obj, int x, int y){return obj(x,y);})
     .def(py::self * py::self)
+    .def("__getitem__", [](const matrix3d<double> &obj, int x, int y){return obj(x,y);})
     .def("__mul__", [](const matrix3d<double> & obj, vector3d<double> const& b){
       vector3d<double> res = obj * b;
       return res;})
@@ -187,6 +262,7 @@ PYBIND11_MODULE(sirius, m){
     //.def("initialize", &K_point_set::initialize)
     .def("initialize", py::overload_cast<>(&K_point_set::initialize))
     .def("num_kpoints", &K_point_set::num_kpoints)
+    .def("energy_fermi", &K_point_set::energy_fermi)
     .def("sync_band_energies", &K_point_set::sync_band_energies)
     //.def("__call__", [](const K_point_set &obj, int x){return obj[x];})
     .def("__call__", &K_point_set::operator[], py::return_value_policy::reference)

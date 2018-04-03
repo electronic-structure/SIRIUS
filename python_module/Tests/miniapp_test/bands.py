@@ -19,6 +19,7 @@ def plotter(jin1, jin2 = [], both = False):
     x_ticks = jin1["header"]["x_ticks"]
 
     num_bands = jin1["header"]["num_bands"]
+    print("num_bands1=", num_bands)
 
     for i in range(num_bands):
         bnd_e = [e["values"][i] for e in bands]
@@ -30,9 +31,10 @@ def plotter(jin1, jin2 = [], both = False):
         x_ticks = jin2["header"]["x_ticks"]
 
         num_bands2 = jin2["header"]["num_bands"]
+        print("num_bands2=", num_bands2)
 
         for i in range(num_bands2):
-            bnd_e = [e["values"][i] for e in bands]
+            bnd_e = [e["values"][i] for e in bands2]
             plt.plot(x_axis, bnd_e, "-.", color = "red", linewidth = 1.0)
 
     x_ticks_pos = [e["x"] for e in x_ticks]
