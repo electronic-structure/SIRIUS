@@ -590,6 +590,11 @@ class Simulation_context_base: public Simulation_parameters
         {
             return sym_phase_factors_;
         }
+
+        inline bool initialized() const
+        {
+            return initialized_;
+        }
 };
 
 inline void Simulation_context_base::initialize()
