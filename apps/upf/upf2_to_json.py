@@ -73,9 +73,9 @@ def parse_non_local(upf_dict, root):
           upf_dict['beta_projectors'][i]['label'] = node.attrib['label']
         upf_dict['beta_projectors'][i]['angular_momentum'] = int(node.attrib['angular_momentum'])
         #upf_dict['beta_projectors'][i]['cutoff_radius_index'] = int(node.attrib['cutoff_radius_index'])
-        upf_dict['beta_projectors'][i]['cutoff_radius'] = float(node.attrib['cutoff_radius'])
-        if upf_dict['header']['is_ultrasoft']:
-          upf_dict['beta_projectors'][i]['ultrasoft_cutoff_radius'] = float(node.attrib['ultrasoft_cutoff_radius'])
+        #upf_dict['beta_projectors'][i]['cutoff_radius'] = float(node.attrib['cutoff_radius'])
+        #if upf_dict['header']['is_ultrasoft']:
+        #  upf_dict['beta_projectors'][i]['ultrasoft_cutoff_radius'] = float(node.attrib['ultrasoft_cutoff_radius'])
         if upf_dict['header']['spin_orbit']:
           node1 = root.findall("./PP_SPIN_ORB/PP_RELBETA.%i"%(i+1))[0]
           upf_dict['beta_projectors'][i]['total_angular_momentum'] = float(node1.attrib['jjj'])
@@ -163,8 +163,8 @@ def parse_PAW(upf_dict, root):
         node = root.findall("./PP_FULL_WFC/PP_AEWFC.%i"%(i+1))[0]
         wfc['radial_function'] = [float(e) for e in str.split(node.text)]
         wfc['angular_momentum'] = int(node.attrib['l'])
-        wfc['label'] = node.attrib['label']
-        wfc['index'] =  int(node.attrib['index']) - 1
+        #wfc['label'] = node.attrib['label']
+        #wfc['index'] =  int(node.attrib['index']) - 1
         upf_dict['paw_data']['ae_wfc'].append(wfc)
 
 
@@ -176,14 +176,15 @@ def parse_PAW(upf_dict, root):
         node = root.findall("./PP_FULL_WFC/PP_PSWFC.%i"%(i+1))[0]
         wfc['radial_function'] = [float(e) for e in str.split(node.text)]
         wfc['angular_momentum'] = int(node.attrib['l'])
-        wfc['label'] = node.attrib['label']
-        wfc['index'] =  int(node.attrib['index']) - 1
+        #wfc['label'] = node.attrib['label']
+        #wfc['index'] =  int(node.attrib['index']) - 1
         upf_dict['paw_data']['ps_wfc'].append(wfc)
 
 
     #------ Read PP_PAW section: occupation, AE_NLCC, AE_VLOC
     node = root.findall("./PP_PAW")[0]
-    upf_dict['header']["paw_core_energy"] = float(node.attrib['core_energy']) / 2 # convert to Ha
+    if node.findall('core_energy') :
+        upf_dict['header']["paw_core_energy"] = float(node.attrib['core_energy']) / 2 # convert to Ha
 
     node = root.findall("./PP_PAW/PP_OCCUPATIONS")[0]
     size = int(node.attrib['size'])
@@ -221,7 +222,7 @@ def parse_pswfc(upf_dict, root):
         node = root.findall("./PP_PSWFC/PP_CHI.%i"%(i+1))[0]
         wfc['radial_function'] = [float(e) for e in str.split(node.text)]
         wfc['angular_momentum'] = int(node.attrib['l'])
-        wfc['label'] = node.attrib['label']
+        #wfc['label'] = node.attrib['label']
         wfc['occupation'] = float(node.attrib['occupation'])
         if upf_dict['header']['spin_orbit']:
           node = root.findall("./PP_SPIN_ORB/PP_RELWFC.%i"%(i+1))[0]
@@ -251,14 +252,12 @@ def parse_SpinOrbit(upf_dict, root):
 #      upf_dict['paw_data']['ae_wfc']['total_angular_momentum'] = float(node('jchi'))
 #      upf_dict['paw_data']['ps_wfc']['total_angular_momentum'] = float(node('jchi'))
 
+def parse_upf2_from_string(upf2_str):
+    
+    # fix string
+    upf2_str = upf2_str.replace("&", "")
 
-######################################################
-################## MAIN ##############################
-######################################################
-def main():
-
-    tree = ET.parse(sys.argv[1])
-    root = tree.getroot()
+    root = ET.fromstring(upf2_str)
 
     upf_dict = {}
 
@@ -304,6 +303,21 @@ def main():
 
     pp_dict = {}
     pp_dict["pseudo_potential"] = upf_dict
+    
+    return pp_dict
+
+def parse_upf2_from_file(upf2_fname):
+    with open(upf2_fname) as inpf:
+        upf2_str = inpf.read()
+    return parse_upf2_from_string(upf2_str)
+
+
+######################################################
+################## MAIN ##############################
+######################################################
+def main():
+
+    pp_dict = parse_upf2_from_file(sys.argv[1])
 
     fout = open(sys.argv[1] + ".json", "w")
 
