@@ -89,7 +89,8 @@ PYBIND11_MODULE(sirius, m){
     .def(py::init<std::string const&>())
     .def("initialize", &Simulation_context::initialize)
     .def("num_bands", py::overload_cast<>(&Simulation_context::num_bands, py::const_))
-    .def("num_bands", py::overload_cast<int>(&Simulation_context::num_bands));
+    .def("num_bands", py::overload_cast<int>(&Simulation_context::num_bands))
+    .def("set_verbosity", &Simulation_context::set_verbosity);
 
   py::class_<z_column_descriptor> (m, "z_column_descriptor")
      .def_readwrite("x", &z_column_descriptor::x)

@@ -28,8 +28,6 @@
 #include "potential.h"
 #include "density.h"
 #include "k_point_set.h"
-#include "Geometry/force.hpp"
-#include "Geometry/stress.hpp"
 #include "json.hpp"
 #include "hubbard.hpp"
 
@@ -37,8 +35,7 @@ using json = nlohmann::json;
 
 namespace sirius {
 
-// TODO: let DFT_ground_state class crate and store density, potential, k_set, Hamiltonain, forces, stress
-
+/// The whole DFT ground state calculation.
 class DFT_ground_state
 {
     private:
@@ -644,7 +641,7 @@ inline int DFT_ground_state::find(double potential_tol, double energy_tol, int n
     for (int iter = 0; iter < num_dft_iter; iter++) {
         sddk::timer t1("sirius::DFT_ground_state::scf_loop|iteration");
 
-        if (ctx_.comm().rank() == 0) {
+        if (ctx_.comm().rank() == 0 && ctx_.control().verbosity_ >= 1) {
             printf("\n");
             printf("+------------------------------+\n");
             printf("| SCF iteration %3i out of %3i |\n", iter, num_dft_iter);
@@ -671,7 +668,7 @@ inline int DFT_ground_state::find(double potential_tol, double energy_tol, int n
             rms = density_.mix();
             double tol = std::max(1e-12, 0.1 * density_.dr2() / ctx_.unit_cell().num_valence_electrons());
             /* print dr2 of mixer and current iterative solver tolerance */
-            if (ctx_.comm().rank() == 0) {
+            if (ctx_.comm().rank() == 0 && ctx_.control().verbosity_ >= 1) {
                 printf("dr2: %18.12E, tol: %18.12E\n",  density_.dr2(), tol);
             }
             ctx_.set_iterative_solver_tolerance(std::min(ctx_.iterative_solver_tolerance(), tol));
@@ -705,16 +702,12 @@ inline int DFT_ground_state::find(double potential_tol, double energy_tol, int n
         if (ctx_.full_potential()) {
             rms = potential_.mix();
             double tol = std::max(1e-12, 0.001 * rms);
-            //if (ctx_.comm().rank() == 0) {
-            //    printf("tol: %18.10f\n", tol);
-            //}
             ctx_.set_iterative_solver_tolerance(std::min(ctx_.iterative_solver_tolerance(), tol));
         }
 
-        /* write some information */
-        print_info();
-
-        if (ctx_.comm().rank() == 0) {
+        if (ctx_.comm().rank() == 0 && ctx_.control().verbosity_ >= 1) {
+            /* write some information */
+            print_info();
             printf("iteration : %3i, RMS %18.12E, energy difference : %18.12E\n", iter, rms, etot - eold);
         }
 
@@ -727,7 +720,7 @@ inline int DFT_ground_state::find(double potential_tol, double energy_tol, int n
 
         if (!ctx_.full_potential()) {
             if (std::abs(eold - etot) < energy_tol && density_.dr2() < potential_tol) {
-                if (ctx_.comm().rank() == 0) {
+                if (ctx_.comm().rank() == 0 && ctx_.control().verbosity_ >= 1) {
                     printf("\n");
                     printf("converged after %i SCF iterations!\n", iter + 1);
                     printf("energy difference  : %18.12E < %18.12E\n", std::abs(eold - etot), energy_tol);

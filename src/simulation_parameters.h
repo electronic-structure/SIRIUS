@@ -72,28 +72,7 @@ class Simulation_parameters
             return;
         }
 
-        json dict;
-        if (str__.find("{") == std::string::npos) { /* this is a file */
-            if (Utils::file_exists(str__)) {
-                try {
-                    std::ifstream(str__) >> dict;
-                } catch(std::exception& e) {
-                    std::stringstream s;
-                    s << "wrong input json file" << std::endl
-                      << e.what();
-                    TERMINATE(s);
-                }
-            }
-        } else { /* this is a json string */
-            try {
-                std::istringstream(str__) >> dict;
-            } catch (std::exception& e) {
-                std::stringstream s;
-                s << "wrong input json string" << std::endl
-                  << e.what();
-                TERMINATE(s);
-            }
-        }
+        json dict = Utils::read_json_from_file_or_string(str__);
 
         /* read unit cell */
         unit_cell_input_.read(dict);

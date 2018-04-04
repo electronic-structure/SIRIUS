@@ -37,11 +37,11 @@
 
 namespace sirius {
 
-    using namespace geometry3d;
+using namespace geometry3d;
 
-    /// Compute atomic forces.
-    class Force
-    {
+/// Compute atomic forces.
+class Force
+{
     private:
         Simulation_context& ctx_;
 
