@@ -54,7 +54,7 @@ class Free_atom : public Atom_type
     Free_atom(Simulation_parameters const& param__,
               std::string                          symbol__)
         : Atom_type(param__, symbol__, atomic_name[atomic_zn.at(symbol__) - 1], atomic_zn.at(symbol__), 0.0,
-                    atomic_conf[atomic_zn.at(symbol__) - 1], lin_exp_grid)
+                    atomic_conf[atomic_zn.at(symbol__) - 1], radial_grid_t::lin_exp_grid)
         , NIST_LDA_Etot_(atomic_energy_NIST_LDA[atomic_zn.at(symbol__) - 1])
     {
         radial_grid_ = Radial_grid_exp<double>(2000 + 150 * zn(), 1e-7, 20.0 + 0.25 * zn());
@@ -64,13 +64,13 @@ class Free_atom : public Atom_type
     Free_atom(Simulation_parameters const& param__,
               int                                  zn__)
         : Atom_type(param__, atomic_symb[zn__ - 1], atomic_name[zn__ - 1], zn__, 0.0,
-                    atomic_conf[zn__ - 1], lin_exp_grid)
+                    atomic_conf[zn__ - 1], radial_grid_t::lin_exp_grid)
         , NIST_LDA_Etot_(atomic_energy_NIST_LDA[zn__ - 1])
     {
         radial_grid_ = Radial_grid_exp<double>(2000 + 150 * zn(), 1e-7, 20.0 + 0.25 * zn());
     }
 
-    json ground_state(double solver_tol, double energy_tol, double charge_tol, bool rel)
+    json ground_state(double energy_tol, double charge_tol, bool rel)
     {
         PROFILE("sirius::Free_atom::ground_state");
 
