@@ -103,6 +103,8 @@ class K_point_set
                 }
             }
 
+
+
             //if (use_symmetry__)
             //{
             //    mdarray<int, 2> kmap(parameters_.unit_cell()->symmetry()->num_sym_op(), nk);
@@ -166,6 +168,21 @@ class K_point_set
             }
         }
 
+
+        K_point_set(Simulation_context& ctx__, std::vector<vector3d<double>> vec__)
+                  : ctx_(ctx__)
+                  , unit_cell_(ctx__.unit_cell())
+                  , comm_k_(ctx__.comm_k())
+        {
+          PROFILE("sirius::K_point_set::K_point_set");
+          double weight = 1.0;
+          for(std::vector< vector3d<double> >::iterator it=vec__.begin(); it != vec__.end(); it++){
+              vector3d<double>::iterator iter = it->begin();
+              add_kpoint(&(*iter), weight);
+            }
+            initialize();
+        }
+
         /// Initialize the k-point set
         void initialize(std::vector<int> counts)
         {
@@ -194,6 +211,17 @@ class K_point_set
             initialize(std::vector<int>());
           }
 
+        std::vector<double> get_energies(Simulation_context& ctx, int ik){
+          int max_ispn = ctx.num_spin_dims();
+          int max_j = ctx.num_bands();
+          std::vector<double> bnd_e;
+          for(int ispn = 0; ispn < max_ispn; ispn++){
+            for(int j = 0; j < max_j; j++){
+              bnd_e.push_back(this->operator[](ik)->band_energy(j,ispn));
+            }
+          }
+          return bnd_e;
+        }
 
         /// Find Fermi energy and band occupation numbers
         void find_band_occupancies();

@@ -43,7 +43,7 @@ baseparameters = {
         "energy_tol" : 1e-8,
         "potential_tol" : 1e-8,
 
-        "num_dft_iter" : 4,
+        "num_dft_iter" : 100,
 
         "ngridk" : [2,2,2],
         "gamma_point" : False
@@ -224,7 +224,7 @@ def calculate_bands(param):
 
         for ispn in range(ctx.num_spin_dims()):
             for j in range(ctx.num_bands()):
-                bnd_e.append(ks(ik).band_energy(j, ispn))
+                bnd_e.append(ks(ik).band_energy(j, ispn) - 0.3)
 
 
         bnd_k["values"] = bnd_e
@@ -264,7 +264,7 @@ sirius.initialize()
 dict1 = calculate_bands(param_pp)
 dict2 = calculate_bands(param_fp)
 
-plotter(dict1, dict2, True)
+plotter(dict1, "pseudopotential", dict2, "full_potential", True)
 
 #plotter(dict2)
 
