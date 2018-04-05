@@ -4,7 +4,7 @@ using namespace sirius;
 
 void test_enu(int zn__, int n__, int l__, double R__)
 {
-    auto rgrid = Radial_grid_factory<double>(lin_exp_grid, 1500, 1e-7, R__);
+    auto rgrid = Radial_grid_factory<double>(radial_grid_t::lin_exp_grid, 1500, 1e-7, R__);
     std::vector<double> v(rgrid.num_points());
     for (int ir = 0; ir < rgrid.num_points(); ir++) {
         v[ir] = -double(zn__) / rgrid[ir];

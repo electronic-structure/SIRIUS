@@ -28,7 +28,7 @@
 namespace sirius {
 
 /// Types of radial grid.
-enum radial_grid_t
+enum class radial_grid_t
 {
     linear_grid = 0,
 
@@ -301,23 +301,23 @@ Radial_grid<T> Radial_grid_factory(radial_grid_t grid_type__,
     Radial_grid<T> rgrid;
 
     switch (grid_type__) {
-        case linear_grid: {
+        case radial_grid_t::linear_grid: {
             rgrid = Radial_grid_lin<T>(num_points__, rmin__, rmax__);
             break;
         }
-        case exponential_grid: {
+        case radial_grid_t::exponential_grid: {
             rgrid = Radial_grid_exp<T>(num_points__, rmin__, rmax__, p__);
             break;
         }
-        case pow2_grid: {
+        case radial_grid_t::pow2_grid: {
             rgrid = Radial_grid_pow<T>(num_points__, rmin__, rmax__, 2.0);
             break;
         }
-        case pow3_grid: {
+        case radial_grid_t::pow3_grid: {
             rgrid = Radial_grid_pow<T>(num_points__, rmin__, rmax__, 3.0);
             break;
         }
-        case lin_exp_grid: {
+        case radial_grid_t::lin_exp_grid: {
             rgrid = Radial_grid_lin_exp<T>(num_points__, rmin__, rmax__);
             break;
         }
