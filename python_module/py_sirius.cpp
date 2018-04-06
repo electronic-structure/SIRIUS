@@ -84,41 +84,36 @@ std::string show_vec(const vector3d<T>& vec)
   return str;
 }
 
-void initializer()
-{
-  sirius::initialize(1);
-}
+PYBIND11_MODULE(py_sirius, m){
 
-void finalizer()
-{
-  sirius::finalize(1);
-}
+    m.def("initialize", []()
+                        {
+                            sirius::initialize();
+                        });
+    m.def("finalize", []()
+                      {
+                          sirius::finalize();
+                      });
 
+    py::class_<Atom_type>(m, "Atom_type")
+        .def("zn", py::overload_cast<int>(&Atom_type::zn))
+        .def("zn", py::overload_cast<>(&Atom_type::zn, py::const_))
+        .def("add_beta_radial_function", &Atom_type::add_beta_radial_function)
+        .def("num_mt_points", &Atom_type::num_mt_points);
 
-PYBIND11_MODULE(sirius, m){
+    py::class_<Unit_cell>(m, "Unit_cell")
+        .def("add_atom", (void (Unit_cell::*)(const std::string, vector3d<double>)) &Unit_cell::add_atom)
+        .def("get_symmetry", &Unit_cell::get_symmetry)
+        .def("reciprocal_lattice_vectors", &Unit_cell::reciprocal_lattice_vectors)
+        .def("add_atom_type", (void (Unit_cell::*)(const std::string, const std::string)) &Unit_cell::add_atom_type)
+        .def("atom_type", (Atom_type& (Unit_cell::*)(int)) &Unit_cell::atom_type, py::return_value_policy::reference)
+        .def("set_lattice_vectors", (void (Unit_cell::*)(matrix3d<double>)) &Unit_cell::set_lattice_vectors);
 
-   m.def("initialize", &initializer);
-   m.def("finalize", &finalizer);
-
-  py::class_<Atom_type>(m, "Atom_type")
-    .def("zn", py::overload_cast<int>(&Atom_type::zn))
-    .def("zn", py::overload_cast<>(&Atom_type::zn, py::const_))
-    .def("add_beta_radial_function", &Atom_type::add_beta_radial_function)
-    .def("num_mt_points", &Atom_type::num_mt_points);
-
-  py::class_<Unit_cell>(m, "Unit_cell")
-    .def("add_atom", (void (Unit_cell::*)(const std::string, vector3d<double>)) &Unit_cell::add_atom)
-    .def("get_symmetry", &Unit_cell::get_symmetry)
-    .def("reciprocal_lattice_vectors", &Unit_cell::reciprocal_lattice_vectors)
-    .def("add_atom_type", (void (Unit_cell::*)(const std::string, const std::string)) &Unit_cell::add_atom_type)
-    .def("atom_type", (Atom_type& (Unit_cell::*)(int)) &Unit_cell::atom_type, py::return_value_policy::reference)
-    .def("set_lattice_vectors", (void (Unit_cell::*)(matrix3d<double>)) &Unit_cell::set_lattice_vectors);
-
-  py::class_<Parameters_input>(m, "Parameters_input")
-    .def_readwrite("potential_tol_", &Parameters_input::potential_tol_)
-    .def_readwrite("energy_tol_", &Parameters_input::energy_tol_)
-    .def_readwrite("num_dft_iter_", &Parameters_input::num_dft_iter_)
-    .def(py::init<>());
+    py::class_<Parameters_input>(m, "Parameters_input")
+        .def(py::init<>())
+        .def_readwrite("potential_tol_", &Parameters_input::potential_tol_)
+        .def_readwrite("energy_tol_", &Parameters_input::energy_tol_)
+        .def_readwrite("num_dft_iter_", &Parameters_input::num_dft_iter_);
 
   py::class_<Simulation_parameters>(m, "Simulation_parameters")
     .def(py::init<>())

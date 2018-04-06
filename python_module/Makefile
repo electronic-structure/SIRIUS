@@ -7,10 +7,10 @@ CXXFLAGS += `$(PYTHON) -m pybind11 --includes`
 CXXEND = `$(PYTHON)-config --extension-suffix`
 
 .PHONY: all
-all: sirius
+all: py_sirius
 
-sirius: py_sirius.cpp
-	 $(CXX) $(CXXFLAGS) $(CXX_OPT) -std=c++14 $(INCLUDE) $< $(LIB_SIRIUS) $(LIBS) -o $@$(CXXEND)
+py_sirius: py_sirius.cpp
+	 $(CXX) $(CXXFLAGS) $(CXX_OPT) -std=c++14 $(INCLUDE) $< $(LIB_SIRIUS) $(LIBS) -o ./sirius/$@$(CXXEND)
 
 .PHONY: clean
 clean:
