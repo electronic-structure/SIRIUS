@@ -1,12 +1,9 @@
 import sys
 sys.path.insert(0, '../../')
-sys.path.insert(0, '../miniapp_test')
 
-import sirius
 import json
 import copy
-from bands import plotter
-from bands import get_kpoint_path
+from sirius import *
 
 baseparameters = {
   "control" : {
@@ -192,42 +189,6 @@ def calculate_bands(param):
 
     return ctx, ks, x_ticks, x_axis
 
-
-
-
-def make_dict(ctx, ks, x_ticks, x_axis):
-    dict = {}
-    dict["header"] = {}
-    dict["header"]["x_axis"] = x_axis
-    dict["header"]["x_ticks"]=[]
-    dict["header"]["num_bands"]=ctx.num_bands()
-    dict["header"]["num_mag_dims"] = ctx.num_mag_dims()
-
-    for e in enumerate(x_ticks):
-        j = {}
-        j["x"] = e[1][0]
-        j["label"] = e[1][1]
-        dict["header"]["x_ticks"].append(j)
-
-    dict["bands"] = []
-
-    for ik in range(ks.num_kpoints()):
-        bnd_k = {}
-        bnd_k["kpoint"] = [0.0,0.0,0.0]
-        for x in range(3):
-            bnd_k["kpoint"][x] = ks(ik).vk()(x)
-            #if ik == 32:
-                #print(bnd_k["kpoint"][x])
-        bnd_e = []
-
-        # TODO: simplify to bnd_e = new_ks.get_energies(ctx, ik)
-        bnd_e = ks.get_band_energies(ik, 0)
-        print(bnd_e)
-
-        bnd_k["values"] = bnd_e
-        dict["bands"].append(bnd_k)
-    return dict
-
 param_pp = copy.deepcopy(baseparameters)
 param_pp["parameters"]["electronic_structure_method"] = "pseudopotential"
 param_pp["iterative_solver"] = {
@@ -256,11 +217,14 @@ ctx2, ks2, x_ticks2, x_axis2 = calculate_bands(param_fp)
 dict1 = make_dict(ctx, ks, x_ticks, x_axis)
 dict2 = make_dict(ctx2, ks2, x_ticks2, x_axis2)
 
-plotter(dict1, "pseudopotential", dict2, "full_potential", True)
+my_plot = plotter()
+my_plot.add(dict1, "pseudopotential")
+my_plot.add(dict2, "full_potential")
+my_plot.plot()
+#plotter(dict1, "pseudopotential", dict2, "full_potential", True)
 #plotter(dict2, "full_potential")
 dft = None
 ctx = None
 ctx2 = None
-
 
 sirius.finalize()
