@@ -16,7 +16,7 @@ namespace py = pybind11;
 using namespace sirius;
 using namespace geometry3d;
 using json = nlohmann::json;
-using nlohmann::basic_json; //NEW
+using nlohmann::basic_json;
 
 py::object pj_convert(json& node)
 {
@@ -101,7 +101,6 @@ PYBIND11_MODULE(sirius, m){
    m.def("finalize", &finalizer);
 
   py::class_<Atom_type>(m, "Atom_type")
-    //.def("zn", (int (Atom_type::*)(int)) &Atom_type::zn, "Set zn")
     .def("zn", py::overload_cast<int>(&Atom_type::zn))
     .def("zn", py::overload_cast<>(&Atom_type::zn, py::const_))
     .def("add_beta_radial_function", &Atom_type::add_beta_radial_function)
@@ -188,7 +187,7 @@ PYBIND11_MODULE(sirius, m){
     .def(py::self + py::self)
     .def(py::init<vector3d<double>>());
 
-  py::class_<matrix3d<double>>(m, "matrix3d") //py::class_ constructor
+  py::class_<matrix3d<double>>(m, "matrix3d")
     .def(py::init<std::vector<std::vector<double>>>())
     .def(py::init<>()) //to create a zero matrix
     .def("__call__", [](const matrix3d<double> &obj, int x, int y){return obj(x,y);})
@@ -215,7 +214,6 @@ PYBIND11_MODULE(sirius, m){
 
   py::class_<Band>(m, "Band")
     .def(py::init<Simulation_context&>())
-    //.def("initialize_subspace", &Band::initialize_subspace)
     .def("initialize_subspace", py::overload_cast<K_point_set&, Hamiltonian&>(&Band::initialize_subspace, py::const_))
     .def("solve", &Band::solve);
 
@@ -227,7 +225,6 @@ PYBIND11_MODULE(sirius, m){
     .def("total_energy", &DFT_ground_state::total_energy)
     .def("band", &DFT_ground_state::band)
     .def("density", &DFT_ground_state::density, py::return_value_policy::reference)
-    //.def("find", &DFT_ground_state::find)
     .def("find", [](DFT_ground_state& dft, double potential_tol, double energy_tol, int num_dft_iter, bool write_state){
       json js = dft.find(potential_tol, energy_tol, num_dft_iter, write_state);
       return pj_convert(js);})
@@ -236,23 +233,18 @@ PYBIND11_MODULE(sirius, m){
     .def("potential", &DFT_ground_state::potential, py::return_value_policy::reference);
 
   py::class_<K_point>(m, "K_point")
-    //.def("band_energy", &K_point::band_energy)
     .def("band_energy", py::overload_cast<int, int>(&K_point::band_energy))
     .def("vk", &K_point::vk, py::return_value_policy::reference);
 
   py::class_<K_point_set>(m, "K_point_set")
     .def(py::init<Simulation_context&>())
     .def(py::init<Simulation_context&, std::vector<vector3d<double>>>())
-    //.def(py::init([](Simulation_context& ctx, std::vector<vector3d<double>> vec) ->K_point_set& {return K_point_set(ctx, vec);}))
-    //.def("initialize", &K_point_set::initialize)
     .def("initialize", py::overload_cast<>(&K_point_set::initialize))
     .def("num_kpoints", &K_point_set::num_kpoints)
     .def("energy_fermi", &K_point_set::energy_fermi)
     .def("get_band_energies", &K_point_set::get_band_energies)
     .def("sync_band_energies", &K_point_set::sync_band_energies)
-    //.def("__call__", [](const K_point_set &obj, int x){return obj[x];})
     .def("__call__", &K_point_set::operator[], py::return_value_policy::reference)
-    //.def("add_kpoint", &K_point_set::add_kpoint)
     .def("add_kpoint", [](K_point_set &ks, std::vector<double> &v, double weight){
       vector3d<double> vec3d(v);
       ks.add_kpoint(&vec3d[0], weight);})
