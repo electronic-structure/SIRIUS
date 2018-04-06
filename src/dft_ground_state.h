@@ -28,8 +28,6 @@
 #include "potential.h"
 #include "density.h"
 #include "k_point_set.h"
-#include "Geometry/force.hpp"
-#include "Geometry/stress.hpp"
 #include "json.hpp"
 #include "hubbard.hpp"
 
@@ -37,8 +35,7 @@ using json = nlohmann::json;
 
 namespace sirius {
 
-// TODO: let DFT_ground_state class crate and store density, potential, k_set, Hamiltonain, forces, stress
-
+/// The whole DFT ground state calculation.
 class DFT_ground_state
 {
     private:
@@ -230,7 +227,7 @@ class DFT_ground_state
             }
         }
 
-        int find(double potential_tol, double energy_tol, int num_dft_iter, bool write_state);
+        json find(double potential_tol, double energy_tol, int num_dft_iter, bool write_state);
 
         void print_info();
 
@@ -521,12 +518,10 @@ class DFT_ground_state
                 fftgrid[i] = ctx_.fft().grid().size(i);
             }
             dict["fft_grid"] = fftgrid;
-            if (!ctx_.full_potential()) {
-                for (int i = 0; i < 3; i++) {
-                    fftgrid[i] = ctx_.fft_coarse().grid().size(i);
-                }
-                dict["fft_coarse_grid"] = fftgrid;
+            for (int i = 0; i < 3; i++) {
+                fftgrid[i] = ctx_.fft_coarse().grid().size(i);
             }
+            dict["fft_coarse_grid"] = fftgrid;
             dict["num_fv_states"] = ctx_.num_fv_states();
             dict["num_bands"] = ctx_.num_bands();
             dict["aw_cutoff"] = ctx_.aw_cutoff();
@@ -622,7 +617,7 @@ inline double DFT_ground_state::ewald_energy()
     return (ewald_g + ewald_r);
 }
 
-inline int DFT_ground_state::find(double potential_tol, double energy_tol, int num_dft_iter, bool write_state)
+inline json DFT_ground_state::find(double potential_tol, double energy_tol, int num_dft_iter, bool write_state)
 {
     PROFILE("sirius::DFT_ground_state::scf_loop");
 
@@ -634,7 +629,7 @@ inline int DFT_ground_state::find(double potential_tol, double energy_tol, int n
         density_.mixer_init();
     }
 
-    int result{-1};
+    int num_iter{-1};
 
     if (ctx_.hubbard_correction()) {
         hamiltonian_.U().hubbard_compute_occupation_numbers(kset_);
@@ -644,7 +639,7 @@ inline int DFT_ground_state::find(double potential_tol, double energy_tol, int n
     for (int iter = 0; iter < num_dft_iter; iter++) {
         sddk::timer t1("sirius::DFT_ground_state::scf_loop|iteration");
 
-        if (ctx_.comm().rank() == 0) {
+        if (ctx_.comm().rank() == 0 && ctx_.control().verbosity_ >= 1) {
             printf("\n");
             printf("+------------------------------+\n");
             printf("| SCF iteration %3i out of %3i |\n", iter, num_dft_iter);
@@ -671,7 +666,7 @@ inline int DFT_ground_state::find(double potential_tol, double energy_tol, int n
             rms = density_.mix();
             double tol = std::max(1e-12, 0.1 * density_.dr2() / ctx_.unit_cell().num_valence_electrons());
             /* print dr2 of mixer and current iterative solver tolerance */
-            if (ctx_.comm().rank() == 0) {
+            if (ctx_.comm().rank() == 0 && ctx_.control().verbosity_ >= 1) {
                 printf("dr2: %18.12E, tol: %18.12E\n",  density_.dr2(), tol);
             }
             ctx_.set_iterative_solver_tolerance(std::min(ctx_.iterative_solver_tolerance(), tol));
@@ -705,35 +700,30 @@ inline int DFT_ground_state::find(double potential_tol, double energy_tol, int n
         if (ctx_.full_potential()) {
             rms = potential_.mix();
             double tol = std::max(1e-12, 0.001 * rms);
-            //if (ctx_.comm().rank() == 0) {
-            //    printf("tol: %18.10f\n", tol);
-            //}
             ctx_.set_iterative_solver_tolerance(std::min(ctx_.iterative_solver_tolerance(), tol));
         }
 
-        /* write some information */
-        print_info();
-
-        if (ctx_.comm().rank() == 0) {
+        if (ctx_.comm().rank() == 0 && ctx_.control().verbosity_ >= 1) {
+            /* write some information */
+            print_info();
             printf("iteration : %3i, RMS %18.12E, energy difference : %18.12E\n", iter, rms, etot - eold);
         }
 
+        // TODO: improve this part
         if (ctx_.full_potential()) {
             if (std::abs(eold - etot) < energy_tol && rms < potential_tol) {
-                result = iter;
+                num_iter = iter;
                 break;
             }
-        }
-
-        if (!ctx_.full_potential()) {
+        } else {
             if (std::abs(eold - etot) < energy_tol && density_.dr2() < potential_tol) {
-                if (ctx_.comm().rank() == 0) {
+                if (ctx_.comm().rank() == 0 && ctx_.control().verbosity_ >= 1) {
                     printf("\n");
                     printf("converged after %i SCF iterations!\n", iter + 1);
                     printf("energy difference  : %18.12E < %18.12E\n", std::abs(eold - etot), energy_tol);
                     printf("density difference : %18.12E < %18.12E\n", density_.dr2(), potential_tol);
                 }
-                result = iter;
+                num_iter = iter;
                 break;
             }
         }
@@ -760,7 +750,20 @@ inline int DFT_ground_state::find(double potential_tol, double energy_tol, int n
         density_.save();
     }
 
-    return result;
+    json dict = serialize();
+    if (num_iter >= 0) {
+        dict["converged"] = true;
+        dict["num_scf_iterations"] = num_iter;
+    } else {
+        dict["converged"] = false;
+    }
+
+    //dict["volume"] = ctx.unit_cell().omega() * std::pow(bohr_radius, 3);
+    //dict["volume_units"] = "angstrom^3";
+    //dict["energy"] = dft.total_energy() * ha2ev;
+    //dict["energy_units"] = "eV";
+
+    return std::move(dict);
 }
 
 inline void DFT_ground_state::print_magnetic_moment()

@@ -161,10 +161,11 @@ using double_complex = std::complex<double>;
 
 inline void terminate(const char* file_name__, int line_number__, const std::string& message__)
 {
-    printf("\n=== Fatal error at line %i of file %s ===\n", line_number__, file_name__);
-    printf("%s\n\n", message__.c_str());
+    std::stringstream s;
+    s << "\n=== Fatal error at line " << line_number__ << " of file " << file_name__ << " ===\n";
+    s << message__ << "\n\n";
     // raise(SIGTERM);
-    throw std::runtime_error("terminating...");
+    throw std::runtime_error(s.str());
 }
 
 inline void terminate(const char* file_name__, int line_number__, const std::stringstream& message__)

@@ -38,7 +38,7 @@ class Free_atom : public Atom_type
     /// Radial wave-functions.
     mdarray<double, 2> free_atom_wave_functions_;
     /// Atomic potential.
-    sirius::Spline<double> free_atom_potential_;
+    Spline<double> free_atom_potential_;
     /// NIST total energy for LDA calculation.
     double NIST_LDA_Etot_{0};
     /// NIST total energy for scalar-relativistic LDA calculation.
@@ -51,26 +51,26 @@ class Free_atom : public Atom_type
     Free_atom(Free_atom&& src) = default;
     
     /// Constructor.
-    Free_atom(sirius::Simulation_parameters const& param__,
+    Free_atom(Simulation_parameters const& param__,
               std::string                          symbol__)
         : Atom_type(param__, symbol__, atomic_name[atomic_zn.at(symbol__) - 1], atomic_zn.at(symbol__), 0.0,
-                    atomic_conf[atomic_zn.at(symbol__) - 1], sirius::lin_exp_grid)
+                    atomic_conf[atomic_zn.at(symbol__) - 1], radial_grid_t::lin_exp_grid)
         , NIST_LDA_Etot_(atomic_energy_NIST_LDA[atomic_zn.at(symbol__) - 1])
     {
-        radial_grid_ = sirius::Radial_grid_exp<double>(2000 + 150 * zn(), 1e-7, 20.0 + 0.25 * zn());
+        radial_grid_ = Radial_grid_exp<double>(2000 + 150 * zn(), 1e-7, 20.0 + 0.25 * zn());
     }
 
     /// Constructor.
-    Free_atom(sirius::Simulation_parameters const& param__,
+    Free_atom(Simulation_parameters const& param__,
               int                                  zn__)
         : Atom_type(param__, atomic_symb[zn__ - 1], atomic_name[zn__ - 1], zn__, 0.0,
-                    atomic_conf[zn__ - 1], sirius::lin_exp_grid)
+                    atomic_conf[zn__ - 1], radial_grid_t::lin_exp_grid)
         , NIST_LDA_Etot_(atomic_energy_NIST_LDA[zn__ - 1])
     {
-        radial_grid_ = sirius::Radial_grid_exp<double>(2000 + 150 * zn(), 1e-7, 20.0 + 0.25 * zn());
+        radial_grid_ = Radial_grid_exp<double>(2000 + 150 * zn(), 1e-7, 20.0 + 0.25 * zn());
     }
 
-    double ground_state(double solver_tol, double energy_tol, double charge_tol, bool rel)
+    json ground_state(double energy_tol, double charge_tol, bool rel)
     {
         PROFILE("sirius::Free_atom::ground_state");
 
@@ -80,8 +80,8 @@ class Free_atom : public Atom_type
         free_atom_orbital_density_ = mdarray<double, 2>(np, num_atomic_levels());
         free_atom_wave_functions_  = mdarray<double, 2>(np, num_atomic_levels());
 
-        sirius::XC_functional Ex("XC_LDA_X", 1);
-        sirius::XC_functional Ec("XC_LDA_C_VWN", 1);
+        XC_functional Ex("XC_LDA_X", 1);
+        XC_functional Ec("XC_LDA_C_VWN", 1);
         Ex.set_relativistic(rel);
 
         std::vector<double> veff(np);
@@ -93,15 +93,15 @@ class Free_atom : public Atom_type
             vrho[i] = 0;
         }
 
-        sirius::Mixer<double>* mixer = new sirius::Broyden1<double>(0, np, 12, 0.8, mpi_comm_self());
+        Mixer<double>* mixer = new Broyden1<double>(0, np, 12, 0.8, mpi_comm_self());
         for (int i = 0; i < np; i++) {
             mixer->input_local(i, vrho[i]);
         }
         mixer->initialize();
 
-        sirius::Spline<double> rho(radial_grid());
+        Spline<double> rho(radial_grid());
 
-        sirius::Spline<double> f(radial_grid());
+        Spline<double> f(radial_grid());
 
         std::vector<double> vh(np);
         std::vector<double> vxc(np);
@@ -125,12 +125,12 @@ class Free_atom : public Atom_type
         double energy_kin  = 0;
         double energy_coul = 0;
 
-        bool converged = false;
-
         /* starting values for E_{nu} */
         for (int ist = 0; ist < num_atomic_levels(); ist++) {
             enu_[ist] = -1.0 * zn() / 2 / std::pow(double(atomic_level(ist).n), 2);
         }
+
+        int num_iter{-1};
 
         for (int iter = 0; iter < 200; iter++) {
             rho_old = rho.values();
@@ -145,11 +145,11 @@ class Free_atom : public Atom_type
                 for (int ist = 0; ist < num_atomic_levels(); ist++) {
                     // relativity_t rt = (rel) ? relativity_t::koelling_harmon : relativity_t::none;
                     relativity_t rt = (rel) ? relativity_t::dirac : relativity_t::none;
-                    sirius::Bound_state bound_state(rt, zn(), atomic_level(ist).n, atomic_level(ist).l, atomic_level(ist).k, radial_grid(),
-                                                    veff, enu_[ist]);
-                    enu_[ist]     = bound_state.enu();
-                    auto& bs_rho  = bound_state.rho();
-                    auto& bs_u    = bound_state.u();
+                    Bound_state bound_state(rt, zn(), atomic_level(ist).n, atomic_level(ist).l, atomic_level(ist).k,
+                                            radial_grid(), veff, enu_[ist]);
+                    enu_[ist]    = bound_state.enu();
+                    auto& bs_rho = bound_state.rho();
+                    auto& bs_u   = bound_state.u();
 
                     /* assume a spherical symmetry */
                     for (int i = 0; i < np; i++) {
@@ -238,49 +238,52 @@ class Free_atom : public Atom_type
             energy_diff = std::abs(energy_tot - energy_tot_old);
 
             if (energy_diff < energy_tol && charge_rms < charge_tol) {
-                converged = true;
-                printf("Converged in %i iterations.\n", iter);
+                num_iter = iter;
                 break;
             }
         }
 
-        if (!converged) {
-            printf("energy_diff : %18.10f   charge_rms : %18.10f\n", energy_diff, charge_rms);
-            std::stringstream s;
-            s << "atom " << symbol() << " is not converged" << std::endl
-              << "  energy difference : " << energy_diff << std::endl
-              << "  charge difference : " << charge_rms;
-            TERMINATE(s);
-        }
+        json dict;
+        if (num_iter >= 0) {
+            dict["converged"] = true;
+            dict["num_scf_iterations"] = num_iter;
+        } else {
+            dict["converged"] = false;
+        } 
+        dict["energy_diff"] = energy_diff;
+        dict["charge_rms"] = charge_rms;
+        dict["energy_tot"] = energy_tot;
 
-        free_atom_density_spline_ = sirius::Spline<double>(radial_grid_, rho.values());
+        free_atom_density_spline_ = Spline<double>(radial_grid_, rho.values());
 
-        free_atom_potential_ = sirius::Spline<double>(radial_grid_, vrho);
+        free_atom_potential_ = Spline<double>(radial_grid_, vrho);
 
-        double Eref = (rel) ? NIST_ScRLDA_Etot_ : NIST_LDA_Etot_;
+        return std::move(dict);
 
-        printf("\n");
-        printf("Radial gird\n");
-        printf("-----------\n");
-        printf("type             : %s\n", radial_grid().name().c_str());
-        printf("number of points : %i\n", np);
-        printf("origin           : %20.12f\n", radial_grid(0));
-        printf("infinity         : %20.12f\n", radial_grid(np - 1));
-        printf("\n");
-        printf("Energy\n");
-        printf("------\n");
-        printf("Ekin  : %20.12f\n", energy_kin);
-        printf("Ecoul : %20.12f\n", energy_coul);
-        printf("Eenuc : %20.12f\n", energy_enuc);
-        printf("Eexc  : %20.12f\n", energy_xc);
-        printf("Total : %20.12f\n", energy_tot);
-        printf("NIST  : %20.12f\n", Eref);
+        //double Eref = (rel) ? NIST_ScRLDA_Etot_ : NIST_LDA_Etot_;
 
-        /* difference between NIST and computed total energy. Comparison is valid only for VWN XC functional. */
-        double dE = (Utils::round(energy_tot, 6) - Eref);
-        std::cerr << zn() << " " << dE << " # " << symbol() << std::endl;
+        //printf("\n");
+        //printf("Radial gird\n");
+        //printf("-----------\n");
+        //printf("type             : %s\n", radial_grid().name().c_str());
+        //printf("number of points : %i\n", np);
+        //printf("origin           : %20.12f\n", radial_grid(0));
+        //printf("infinity         : %20.12f\n", radial_grid(np - 1));
+        //printf("\n");
+        //printf("Energy\n");
+        //printf("------\n");
+        //printf("Ekin  : %20.12f\n", energy_kin);
+        //printf("Ecoul : %20.12f\n", energy_coul);
+        //printf("Eenuc : %20.12f\n", energy_enuc);
+        //printf("Eexc  : %20.12f\n", energy_xc);
+        //printf("Total : %20.12f\n", energy_tot);
+        //printf("NIST  : %20.12f\n", Eref);
 
-        return energy_tot;
+        ///* difference between NIST and computed total energy. Comparison is valid only for VWN XC functional. */
+        //double dE = (Utils::round(energy_tot, 6) - Eref);
+        //std::cerr << zn() << " " << dE << " # " << symbol() << std::endl;
+
+        //return energy_tot;
     }
 
     inline double free_atom_orbital_density(int ir, int ist)

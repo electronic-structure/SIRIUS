@@ -221,8 +221,9 @@ class Atom_type
     inline void read_pseudo_uspp(json const& parser);
 
     inline void read_pseudo_paw(json const& parser);
-
-    inline void read_input(const std::string& fname);
+    
+    /// Read atomic parameters from json file or string. 
+    inline void read_input(std::string const& str__);
 
     inline void init_aw_descriptors(int lmax)
     {
@@ -1407,15 +1408,7 @@ inline void Atom_type::init(int offset_lo__)
     offset_lo_ = offset_lo__;
 
     /* read data from file if it exists */
-    if (file_name_.length() > 0) {
-        if (!Utils::file_exists(file_name_)) {
-            std::stringstream s;
-            s << "file " + file_name_ + " doesn't exist";
-            TERMINATE(s);
-        } else {
-            read_input(file_name_);
-        }
-    }
+    read_input(file_name_);
 
     /* check the nuclear charge */
     if (zn_ == 0) {
@@ -1972,10 +1965,13 @@ inline void Atom_type::read_pseudo_paw(json const& parser)
     }
 }
 
-inline void Atom_type::read_input(const std::string& fname)
+inline void Atom_type::read_input(std::string const& str__)
 {
-    json parser;
-    std::ifstream(fname) >> parser;
+    json parser = Utils::read_json_from_file_or_string(str__);
+
+    if (parser.empty()) {
+        return;
+    }
 
     if (!parameters_.full_potential()) {
         read_pseudo_uspp(parser);

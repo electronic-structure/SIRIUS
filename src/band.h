@@ -135,6 +135,9 @@ class Band
         , unit_cell_(ctx__.unit_cell())
         , blacs_grid_(ctx__.blacs_grid())
     {
+        if (!ctx_.initialized()) {
+            TERMINATE("Simulation_context is not initialized");
+        }
     }
 
     /// Solve \f$ \hat H \psi = E \psi \f$ and find eigen-states of the Hamiltonian.

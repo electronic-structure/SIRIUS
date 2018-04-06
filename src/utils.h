@@ -383,6 +383,45 @@ class Utils
         }
         return j__ * (j__ + 1) / 2 + i__;
     }
+
+    /// Read json dictionary from file or string.
+    /** Terminate if file doesn't exist. */
+    inline static json read_json_from_file_or_string(std::string const& str__)
+    {
+        json dict = {};
+        if (str__.size() == 0) {
+            return std::move(dict);
+        }
+
+        if (str__.find("{") == std::string::npos) { /* this is a file */
+            if (Utils::file_exists(str__)) {
+                try {
+                    std::ifstream(str__) >> dict;
+                } catch(std::exception& e) {
+                    std::stringstream s;
+                    s << "wrong input json file" << std::endl
+                      << e.what();
+                    TERMINATE(s);
+                }
+            } 
+            else {
+                std::stringstream s;
+                s << "file " << str__ << " doesn't exist";
+                TERMINATE(s);
+            }
+        } else { /* this is a json string */
+            try {
+                std::istringstream(str__) >> dict;
+            } catch (std::exception& e) {
+                std::stringstream s;
+                s << "wrong input json string" << std::endl
+                  << e.what();
+                TERMINATE(s);
+            }
+        }
+
+        return std::move(dict);
+    }
 };
 
 #endif

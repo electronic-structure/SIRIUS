@@ -323,7 +323,11 @@ struct Control_input
      *    - 1: basic output (low level of output) \n
      *    - 2: extended output (medium level of output) \n
      *    - 3: extensive output (hi level of output) */
+#if defined(__VERBOSITY)
+    int verbosity_{__VERBOSITY};
+#else
     int verbosity_{0};
+#endif
     int verification_{0};
     int num_bands_to_print_{10};
     bool print_performance_{false};
