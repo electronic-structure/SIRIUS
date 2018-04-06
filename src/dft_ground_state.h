@@ -212,7 +212,6 @@ class DFT_ground_state
         {
             potential_.allocate();
             density_.allocate();
-            kset_.initialize();
             if (!ctx_.full_potential()) {
                 ewald_energy_ = ewald_energy();
             }
