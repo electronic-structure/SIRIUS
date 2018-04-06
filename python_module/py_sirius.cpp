@@ -17,7 +17,7 @@ using namespace sirius;
 using namespace geometry3d;
 using json = nlohmann::json;
 using nlohmann::basic_json; //NEW
-/*
+
 py::object pj_convert(json& node)
   {
 
@@ -89,7 +89,6 @@ py::object pj_convert(json& node)
 
 }
 
-*/
 std::string show_mat(const matrix3d<double>& mat)
 {
   std::string str = "[";
@@ -116,18 +115,7 @@ void finalizer()
   sirius::finalize(1);
 }
 
-/*
-std::vector<double> get_energies(K_point_set& ks, Simulation_context& ctx, int ik){
-  std::vector<double> bnd_e;
-  for(int ispn = 0; ispn < ctx.num_spin_dims(); ispn++){
-            for(int j=0; j < ctx.num_bands(); j++){
-                bnd_e.push_back(ks[ik]->band_energy(j, ispn));}
-              }
-  return bnd_e;
-}
 
-
-*/
 PYBIND11_MODULE(sirius, m){
 
    m.def("initialize", &initializer);
@@ -260,7 +248,10 @@ PYBIND11_MODULE(sirius, m){
     .def("total_energy", &DFT_ground_state::total_energy)
     .def("band", &DFT_ground_state::band)
     .def("density", &DFT_ground_state::density, py::return_value_policy::reference)
-    .def("find", &DFT_ground_state::find)
+    //.def("find", &DFT_ground_state::find)
+    .def("find", [](DFT_ground_state& dft, double potential_tol, double energy_tol, int num_dft_iter, bool write_state){
+      json js = dft.find(potential_tol, energy_tol, num_dft_iter, write_state);
+      return pj_convert(js);})
     .def("k_point_set", &DFT_ground_state::k_point_set, py::return_value_policy::reference_internal)
     .def("hamiltonian", &DFT_ground_state::hamiltonian, py::return_value_policy::reference)
     .def("potential", &DFT_ground_state::potential, py::return_value_policy::reference);
