@@ -1,12 +1,13 @@
-//Last update: 21.03.2018, 12:39 pm
 #include <pybind11/pybind11.h>
 #include <sirius.h>
 #include <pybind11/stl.h>
 #include <pybind11/operators.h>
 #include <iostream>
+#include <fstream>
 #include <string>
 #include <vector>
 #include <utility>
+#include <memory>
 #include "json.hpp"
 
 
@@ -15,8 +16,80 @@ namespace py = pybind11;
 using namespace sirius;
 using namespace geometry3d;
 using json = nlohmann::json;
+using nlohmann::basic_json; //NEW
+/*
+py::object pj_convert(json& node)
+  {
 
+      if(node.is_null())
+      {
+        return py::object(Py_None, true);
+      }
 
+      else if(node.is_number_integer())
+      {
+        int i(node);
+        return py::int_(i);
+      }
+
+      else if(node.is_number_unsigned())
+      {
+        unsigned int u(node);
+        return py::int_(u);
+      }
+
+      else if(node.is_number_float())
+      {
+        float f(node);
+        return py::float_(f);
+      }
+
+      else if(node.is_string())
+      {
+        std::string s;
+        s = static_cast<std::string const&>(node);
+        return py::str(s);
+      }
+
+      else if(node.is_boolean())
+      {
+        bool b(node);
+        return py::bool_(b);
+      }
+
+      else if(node.is_array())
+      {
+        py::list result;
+
+        for (auto it = node.begin(); it != node.end(); ++it)
+          {
+            result.append(pj_convert(*it));
+          }
+
+        return result;
+      }
+
+      else if(node.is_object())
+      {
+        py::dict result;
+
+        for (auto it = node.begin(); it != node.end(); ++it)
+          {
+            json my_key(it.key());
+            result[pj_convert(my_key)] = pj_convert(*it);
+          }
+
+        return result;
+      }
+
+      else
+      {
+        throw std::runtime_error("undefined json value");
+      }
+
+}
+
+*/
 std::string show_mat(const matrix3d<double>& mat)
 {
   std::string str = "[";
@@ -43,7 +116,18 @@ void finalizer()
   sirius::finalize(1);
 }
 
+/*
+std::vector<double> get_energies(K_point_set& ks, Simulation_context& ctx, int ik){
+  std::vector<double> bnd_e;
+  for(int ispn = 0; ispn < ctx.num_spin_dims(); ispn++){
+            for(int j=0; j < ctx.num_bands(); j++){
+                bnd_e.push_back(ks[ik]->band_energy(j, ispn));}
+              }
+  return bnd_e;
+}
 
+
+*/
 PYBIND11_MODULE(sirius, m){
 
    m.def("initialize", &initializer);
@@ -122,6 +206,7 @@ PYBIND11_MODULE(sirius, m){
   py::class_<vector3d<int>>(m, "vector3d_int")
     .def(py::init<std::vector<int>>())
     .def("__call__", [](const vector3d<int> &obj, int x){return obj[x];})
+    //.def("__getitem__", [](const vector3d<int> &obj, int x){return obj[x];}) //NEW
     .def("__repr__", [](const vector3d<int> &vec){return show_vec(vec);})
     .def(py::init<vector3d<int>>());
 
@@ -129,6 +214,7 @@ PYBIND11_MODULE(sirius, m){
     .def(py::init<std::vector<double>>())
     .def("__call__", [](const vector3d<double> &obj, int x){return obj[x];})
     .def("__repr__", [](const vector3d<double> &vec){return show_vec(vec);})
+    //.def("__getitem__", [](const vector3d<double> &obj, int x){return obj[x];}) //NEW
     .def("length", &vector3d<double>::length)
     .def(py::self - py::self)
     .def(py::self * float())
@@ -140,6 +226,7 @@ PYBIND11_MODULE(sirius, m){
     .def(py::init<>()) //to create a zero matrix
     .def("__call__", [](const matrix3d<double> &obj, int x, int y){return obj(x,y);})
     .def(py::self * py::self)
+    .def("__getitem__", [](const matrix3d<double> &obj, int x, int y){return obj(x,y);})
     .def("__mul__", [](const matrix3d<double> & obj, vector3d<double> const& b){
       vector3d<double> res = obj * b;
       return res;})
@@ -185,19 +272,22 @@ PYBIND11_MODULE(sirius, m){
 
   py::class_<K_point_set>(m, "K_point_set")
     .def(py::init<Simulation_context&>())
+    .def(py::init<Simulation_context&, std::vector<vector3d<double>>>())
+    //.def(py::init([](Simulation_context& ctx, std::vector<vector3d<double>> vec) ->K_point_set& {return K_point_set(ctx, vec);}))
     //.def("initialize", &K_point_set::initialize)
     .def("initialize", py::overload_cast<>(&K_point_set::initialize))
     .def("num_kpoints", &K_point_set::num_kpoints)
+    .def("energy_fermi", &K_point_set::energy_fermi)
+    .def("get_energies", &K_point_set::get_energies)
     .def("sync_band_energies", &K_point_set::sync_band_energies)
     //.def("__call__", [](const K_point_set &obj, int x){return obj[x];})
     .def("__call__", &K_point_set::operator[], py::return_value_policy::reference)
-    //.def("get_energies", /K_point_set::get_energies)
     //.def("add_kpoint", &K_point_set::add_kpoint)
     .def("add_kpoint", [](K_point_set &ks, std::vector<double> &v, double weight){
       vector3d<double> vec3d(v);
       ks.add_kpoint(&vec3d[0], weight);})
     .def("add_kpoint", [](K_point_set &ks, vector3d<double> &v, double weight){
-      ks.add_kpoint(&v[0], weight);});;
+      ks.add_kpoint(&v[0], weight);});
 
   py::class_<Hamiltonian>(m, "Hamiltonian")
     .def(py::init<Simulation_context&, Potential&>());

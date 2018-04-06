@@ -1,12 +1,7 @@
-import sys
-sys.path.insert(0, '../../bin')
-
 import sirius
 import json
-from bands import plotter
 
-
-parameters1 = {
+param = {
     "control" : {
         "cyclic_block_size" : 16,
         "processing_unit" : "cpu",
@@ -255,122 +250,21 @@ parameters2 = {
   "kpoints_path" : ["GAMMA", "K", "L"]
 }
 
-def calculate_bands(param):
-
-    ctx = sirius.Simulation_context(json.dumps(param))
-    print("Checkpoint 1 reached.")
-    if param["parameters"]["electronic_structure_method"] == "pseudopotential":
-        ctx.set_iterative_solver_tolerance(1e-12)
-
-    ctx.set_gamma_point(False)
-    print("Checkpoint 2 reached.")
-    ctx.initialize()
-    print("Checkpoint 3 reached.")
-
-    potential = sirius.Potential(ctx)
-    potential.allocate()
-
-    H = sirius.Hamiltonian(ctx, potential)
-
-    density = sirius.Density(ctx)
-    density.allocate()
-
-    ks = sirius.K_point_set(ctx)
-
-
-    x_axis = []
-    x_ticks = []
-
-
-    index = param["kpoints_path"]
-
-    vertex = []
-
-    for i in enumerate(index):
-        v = param["kpoints_rel"][i[1]]
-        print(i[1])
-        vertex.append((i[1],v))
-
-    x_axis.append(0)
-    x_ticks.append((0, vertex[0][0]))
-    print("vertex[0][1] =", vertex[0][1])
-    print("type(vertex[0][1]) = ", type(vertex[0][1]))
-    print("len(vertex)=", len(vertex))
-    ks.add_kpoint(vertex[0][1], 1.0)
-
-    t = 0
-    print(vertex)
-    for i in range(len(vertex)-1):
-        v0 = sirius.vector3d_double(vertex[i][1])
-        v1 = sirius.vector3d_double(vertex[i+1][1])
-        dv = v1 - v0
-        dv_cart = ctx.unit_cell().reciprocal_lattice_vectors() * dv
-        np = max(10, int(30*dv_cart.length()))
-        for j in range(1, np+1):
-            v = sirius.vector3d_double(v0 + dv*(float(j)/np))
-            ks.add_kpoint(v, 1.0)
-            t += dv_cart.length()/np
-            x_axis.append(t)
-        x_ticks.append((t, vertex[i+1][0]))
-
-
-    counts = []
-    ks.initialize()
-
-    density.load()
-    potential.generate(density)
-
-    band = sirius.Band(ctx)
-    if param["parameters"]["electronic_structure_method"] == "pseudopotential":
-        band.initialize_subspace(ks, H)
-
-    band.solve(ks, H, True)
-
-    #ks.sync_band_energies()
-
-    dict = {}
-    dict["header"] = {}
-    dict["header"]["x_axis"] = x_axis
-    dict["header"]["x_ticks"]=[]
-    dict["header"]["num_bands"]=ctx.num_bands()
-    dict["header"]["num_mag_dims"] = ctx.num_mag_dims()
-
-    for e in enumerate(x_ticks):
-        j = {}
-        j["x"] = e[1][0]
-        j["label"] = e[1][1]
-        dict["header"]["x_ticks"].append(j)
-
-    dict["bands"] = []
-
-    for ik in range(ks.num_kpoints()):
-        bnd_k = {}
-        bnd_k["kpoint"] = [0.0,0.0,0.0]
-        for x in range(3):
-            bnd_k["kpoint"][x] = ks(ik).vk()(x)
-            if ik == 32:
-                print(bnd_k["kpoint"][x])
-        bnd_e = []
-
-        for ispn in range(ctx.num_spin_dims()):
-            for j in range(ctx.num_bands()):
-                bnd_e.append(ks(ik).band_energy(j, ispn))
-
-
-        bnd_k["values"] = bnd_e
-        dict["bands"].append(bnd_k)
-    return dict
-
 sirius.initialize()
+x = [1,2,3]
+y = [55, 55, 55]
+vec = sirius.vector3d_double(x)
+vec3 = sirius.vector3d_double(y)
 
-dict = calculate_bands(parameters1)
-dict2 = calculate_bands(parameters2)
-#plotter(dict) #if I only want to plot
-plotter(dict, dict2, True)
+print(type(vec(0)))
 
-#plotter(dict2)
-
-dft = None
-ctx = None
+l = []
+l.append(vec)
+l.append(vec3)
+ctx = sirius.Simulation_context(json.dumps(param))
+ctx.initialize()
+print(l)
+ks = sirius.K_point_set(ctx, l)
+print(ks)
 
 sirius.finalize()
