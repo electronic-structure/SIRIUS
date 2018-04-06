@@ -122,6 +122,7 @@ PYBIND11_MODULE(sirius, m){
     .def(py::init<>());
 
   py::class_<Simulation_parameters>(m, "Simulation_parameters")
+    .def(py::init<>())
     .def("pw_cutoff", &Simulation_parameters::pw_cutoff)
     .def("parameters_input", (Parameters_input& (Simulation_parameters::*)()) &Simulation_parameters::parameters_input, py::return_value_policy::reference)
     .def("num_spin_dims", &Simulation_parameters::num_spin_dims)
@@ -271,4 +272,13 @@ PYBIND11_MODULE(sirius, m){
     .def(py::init<Simulation_context&, Density&, Potential&, Hamiltonian&, K_point_set&>())
     .def("calc_forces_total", &Force::calc_forces_total, py::return_value_policy::reference_internal)
     .def("print_info", &Force::print_info);
+
+  py::class_<Free_atom>(m, "Free_atom")
+    .def(py::init<Simulation_parameters&, std::string>())
+    .def(py::init<Simulation_parameters&, int>())
+    .def("ground_state", [](Free_atom& atom, double energy_tol, double charge_tol, bool rel)
+                         {
+                             json js = atom.ground_state(energy_tol, charge_tol, rel);
+                             return pj_convert(js);
+                         });
 }
