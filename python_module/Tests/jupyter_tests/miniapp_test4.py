@@ -147,6 +147,7 @@ def calculate_bands(param):
 
     print("Checkpoint 3 reached")
     result = dft.find(1e-6, 1e-6, 100, False) #enter the tolerances directly.
+    #print("result_dict=", result)
     dft.print_magnetic_moment()
 
     if param["parameters"]["electronic_structure_method"] == "pseudopotential":
@@ -159,7 +160,7 @@ def calculate_bands(param):
     density = dft.density()
 
     print("Checkpoint 5 reached")
-    print("Total Energy = ", dft.total_energy())
+    #print("Total Energy = ", dft.total_energy())
 
 
     print("Checkpoint 6 reached")
@@ -215,8 +216,8 @@ def make_dict(ctx, ks, x_ticks, x_axis):
         bnd_k["kpoint"] = [0.0,0.0,0.0]
         for x in range(3):
             bnd_k["kpoint"][x] = ks(ik).vk()(x)
-            if ik == 32:
-                print(bnd_k["kpoint"][x])
+            #if ik == 32:
+                #print(bnd_k["kpoint"][x])
         bnd_e = []
 
         # TODO: simplify to bnd_e = new_ks.get_energies(ctx, ik)
@@ -259,5 +260,7 @@ plotter(dict1, "pseudopotential", dict2, "full_potential", True)
 #plotter(dict2, "full_potential")
 dft = None
 ctx = None
+ctx2 = None
+
 
 sirius.finalize()
