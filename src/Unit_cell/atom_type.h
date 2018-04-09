@@ -152,13 +152,6 @@ class Atom_type
     /// True if the pseudo potential includes spin orbit coupling.
     bool spin_orbit_coupling_{false};
 
-    /// starting magnetization // TODO: remove that
-    double starting_magnetization_{0.0};
-
-    // direction of the starting magnetization // TODO: remove that
-    double starting_magnetization_theta_{0.0};
-    double starting_magnetization_phi_{0.0};
-
     /// Hubbard correction
     bool hubbard_correction_{false};
 
@@ -1014,16 +1007,6 @@ class Atom_type
         hubbard_beta_ = beta_;
     }
 
-    inline void set_starting_magnetization_theta(const double theta_)
-    {
-        starting_magnetization_theta_ = theta_;
-    }
-
-    inline void set_starting_magnetization_phi(const double phi_)
-    {
-        starting_magnetization_phi_ = phi_;;
-    }
-
     inline void set_hubbard_coefficients(double const * J_)
     {
         this->hubbard_coefficients_[0] = J_[0];
@@ -1048,21 +1031,6 @@ class Atom_type
     inline int hubbard_l() const
     {
         return hubbard_l_;
-    }
-
-    inline double starting_magnetization_theta() const
-    {
-        return starting_magnetization_theta_;
-    }
-
-    inline double starting_magnetization_phi() const
-    {
-        return starting_magnetization_phi_;
-    }
-
-    inline double starting_magnetization() const
-    {
-        return starting_magnetization_;
     }
 
     inline int hubbard_n() const
@@ -1115,277 +1083,22 @@ class Atom_type
                 (std::abs(indexb(xi).j - indexb(xj).j) < 1e-8));
     }
 
-    inline void set_hubbard_occupancy_orbital(double occ)
-    {
-        if ((occ < 0) && (hubbard_correction_))
+    inline void set_hubbard_orbital(const int n_, const int l_, const double occ_) {
+        if ((occ_ < 0) && (hubbard_correction_))
             TERMINATE("this atom has hubbard correction but the orbital occupancy is negative\n");
-        hubbard_occupancy_orbital_ = occ;
+        hubbard_occupancy_orbital_ = occ_;
+        if ((n_ < 0) || (l_ < 0)) {
+            TERMINATE("this atom has hubbard correction but the orbital level is not specified\n");
+        }
+        hubbard_l_ = l_;
+        hubbard_n_ = n_;
     }
-
-    inline void set_hubbard_l_and_n_orbital()
-    {
-        std::vector<std::pair<std::string, int>> nl_orb; // TODO: is there a way to get rid of this harcoded values?
-
-        nl_orb.push_back(std::make_pair("Ti", 3));
-        nl_orb.push_back(std::make_pair("V", 3));
-        nl_orb.push_back(std::make_pair("Cr", 3));
-        nl_orb.push_back(std::make_pair("Mn", 3));
-        nl_orb.push_back(std::make_pair("Fe", 3));
-        nl_orb.push_back(std::make_pair("Co", 3));
-        nl_orb.push_back(std::make_pair("Ni", 3));
-        nl_orb.push_back(std::make_pair("Cu", 3));
-        nl_orb.push_back(std::make_pair("Zn", 3));
-        nl_orb.push_back(std::make_pair("As", 3));
-        nl_orb.push_back(std::make_pair("Ga", 3));
-
-        nl_orb.push_back(std::make_pair("Zr", 4));
-        nl_orb.push_back(std::make_pair("Nb", 4));
-        nl_orb.push_back(std::make_pair("Mo", 4));
-        nl_orb.push_back(std::make_pair("Tc", 4));
-        nl_orb.push_back(std::make_pair("Ru", 4));
-        nl_orb.push_back(std::make_pair("Rh", 4));
-        nl_orb.push_back(std::make_pair("Pd", 4));
-        nl_orb.push_back(std::make_pair("Ag", 4));
-        nl_orb.push_back(std::make_pair("Cd", 4));
-        nl_orb.push_back(std::make_pair("Ce", 4));
-        nl_orb.push_back(std::make_pair("Pr", 4));
-        nl_orb.push_back(std::make_pair("Nd", 4));
-        nl_orb.push_back(std::make_pair("Pm", 4));
-        nl_orb.push_back(std::make_pair("Sm", 4));
-        nl_orb.push_back(std::make_pair("Eu", 4));
-        nl_orb.push_back(std::make_pair("Gd", 4));
-        nl_orb.push_back(std::make_pair("Tb", 4));
-        nl_orb.push_back(std::make_pair("Dy", 4));
-        nl_orb.push_back(std::make_pair("Ho", 4));
-        nl_orb.push_back(std::make_pair("Er", 4));
-        nl_orb.push_back(std::make_pair("Tm", 4));
-        nl_orb.push_back(std::make_pair("Yb", 4));
-        nl_orb.push_back(std::make_pair("Lu", 4));
-        nl_orb.push_back(std::make_pair("In", 4));
-
-        nl_orb.push_back(std::make_pair("Th", 5));
-        nl_orb.push_back(std::make_pair("Pa", 5));
-        nl_orb.push_back(std::make_pair("U", 5));
-        nl_orb.push_back(std::make_pair("Np", 5));
-        nl_orb.push_back(std::make_pair("Pu", 5));
-        nl_orb.push_back(std::make_pair("Am", 5));
-        nl_orb.push_back(std::make_pair("Cm", 5));
-        nl_orb.push_back(std::make_pair("Bk", 5));
-        nl_orb.push_back(std::make_pair("Cf", 5));
-        nl_orb.push_back(std::make_pair("Es", 5));
-        nl_orb.push_back(std::make_pair("Fm", 5));
-        nl_orb.push_back(std::make_pair("Md", 5));
-        nl_orb.push_back(std::make_pair("No", 5));
-        nl_orb.push_back(std::make_pair("Lr", 5));
-        nl_orb.push_back(std::make_pair("Hf", 5));
-        nl_orb.push_back(std::make_pair("Ta", 5));
-        nl_orb.push_back(std::make_pair("W", 5));
-        nl_orb.push_back(std::make_pair("Re", 5));
-        nl_orb.push_back(std::make_pair("Os", 5));
-        nl_orb.push_back(std::make_pair("Ir", 5));
-        nl_orb.push_back(std::make_pair("Pt", 5));
-        nl_orb.push_back(std::make_pair("Au", 5));
-        nl_orb.push_back(std::make_pair("Hg", 5));
-
-        nl_orb.push_back(std::make_pair("H", 1));
-        nl_orb.push_back(std::make_pair("He", 1));
-
-        nl_orb.push_back(std::make_pair("C", 2));
-        nl_orb.push_back(std::make_pair("N", 2));
-        nl_orb.push_back(std::make_pair("O", 2));
-
-        for(size_t i = 0; i < nl_orb.size(); i++) {
-            if(nl_orb[i].first == label_) {
-                hubbard_n_ = nl_orb[i].second;
-                break;
-            }
-        }
-
-        if (hubbard_n_ < 0) {
-            TERMINATE("The atom %s is not included in the list of atoms with hubbard correction\n");
-        }
-
-        // same with orbital momentum
-        nl_orb.clear();
-        // d orbitals
-        nl_orb.push_back(std::make_pair("Ti", 2));
-        nl_orb.push_back(std::make_pair("V", 2));
-        nl_orb.push_back(std::make_pair("Cr", 2));
-        nl_orb.push_back(std::make_pair("Mn", 2));
-        nl_orb.push_back(std::make_pair("Fe", 2));
-        nl_orb.push_back(std::make_pair("Co", 2));
-        nl_orb.push_back(std::make_pair("Ni", 2));
-        nl_orb.push_back(std::make_pair("Cu", 2));
-        nl_orb.push_back(std::make_pair("Zn", 2));
-        nl_orb.push_back(std::make_pair("Zr", 2));
-        nl_orb.push_back(std::make_pair("Nb", 2));
-        nl_orb.push_back(std::make_pair("Mo", 2));
-        nl_orb.push_back(std::make_pair("Tc", 2));
-        nl_orb.push_back(std::make_pair("Ru", 2));
-        nl_orb.push_back(std::make_pair("Rh", 2));
-        nl_orb.push_back(std::make_pair("Pd", 2));
-        nl_orb.push_back(std::make_pair("Ag", 2));
-        nl_orb.push_back(std::make_pair("Cd", 2));
-        nl_orb.push_back(std::make_pair("Hf", 2));
-        nl_orb.push_back(std::make_pair("Ta", 2));
-        nl_orb.push_back(std::make_pair("W", 2));
-        nl_orb.push_back(std::make_pair("Re", 2));
-        nl_orb.push_back(std::make_pair("Os", 2));
-        nl_orb.push_back(std::make_pair("Ir", 2));
-        nl_orb.push_back(std::make_pair("Pt", 2));
-        nl_orb.push_back(std::make_pair("Au", 2));
-        nl_orb.push_back(std::make_pair("Hg", 2));
-        nl_orb.push_back(std::make_pair("As", 2));
-        nl_orb.push_back(std::make_pair("Ga", 2));
-        nl_orb.push_back(std::make_pair("In", 2));
-
-        // f orbitals
-        nl_orb.push_back(std::make_pair("Ce", 3));
-        nl_orb.push_back(std::make_pair("Pr", 3));
-        nl_orb.push_back(std::make_pair("Nd", 3));
-        nl_orb.push_back(std::make_pair("Pm", 3));
-        nl_orb.push_back(std::make_pair("Sm", 3));
-        nl_orb.push_back(std::make_pair("Eu", 3));
-        nl_orb.push_back(std::make_pair("Gd", 3));
-        nl_orb.push_back(std::make_pair("Tb", 3));
-        nl_orb.push_back(std::make_pair("Dy", 3));
-        nl_orb.push_back(std::make_pair("Ho", 3));
-        nl_orb.push_back(std::make_pair("Er", 3));
-        nl_orb.push_back(std::make_pair("Tm", 3));
-        nl_orb.push_back(std::make_pair("Yb", 3));
-        nl_orb.push_back(std::make_pair("Lu", 3));
-        nl_orb.push_back(std::make_pair("Th", 3));
-        nl_orb.push_back(std::make_pair("Pa", 3));
-        nl_orb.push_back(std::make_pair("U", 3));
-        nl_orb.push_back(std::make_pair("Np", 3));
-        nl_orb.push_back(std::make_pair("Pu", 3));
-        nl_orb.push_back(std::make_pair("Am", 3));
-        nl_orb.push_back(std::make_pair("Cm", 3));
-        nl_orb.push_back(std::make_pair("Bk", 3));
-        nl_orb.push_back(std::make_pair("Cf", 3));
-        nl_orb.push_back(std::make_pair("Es", 3));
-        nl_orb.push_back(std::make_pair("Fm", 3));
-        nl_orb.push_back(std::make_pair("Md", 3));
-        nl_orb.push_back(std::make_pair("No", 3));
-        nl_orb.push_back(std::make_pair("Lr", 3));
-
-        // s orbitals
-        nl_orb.push_back(std::make_pair("H", 0));
-        nl_orb.push_back(std::make_pair("He", 0));
-
-        // p orbitals
-        nl_orb.push_back(std::make_pair("C", 1));
-        nl_orb.push_back(std::make_pair("N", 1));
-        nl_orb.push_back(std::make_pair("O", 1));
-
-
-        for(size_t i = 0; i < nl_orb.size(); i++) {
-            if(nl_orb[i].first == symbol_) {
-                hubbard_l_ = nl_orb[i].second;
-                break;
-            }
-        }
-
-        if (hubbard_l_ < 0) {
-            printf("Atom %s\n", symbol_.c_str());
-            TERMINATE("The atom is not included in the list of atoms with hubbard correction\n");
-        }
-
-    }
-
 
     inline double get_occupancy_hubbard_orbital() const
     {
         return hubbard_occupancy_orbital_;
     }
 
-    inline void set_occupancy_hubbard_orbital(double oc)
-    {
-        if (oc > 0.0) {
-            hubbard_occupancy_orbital_ = oc;
-            return;
-        }
-
-        std::vector<std::pair<std::string, double>> occ;
-        occ.clear();
-
-        occ.push_back(std::make_pair("He", 2.0));
-
-        // transition metals
-        occ.push_back(std::make_pair("Ti", 2.0));
-        occ.push_back(std::make_pair("Zr", 2.0));
-        occ.push_back(std::make_pair("Hf", 2.0));
-        occ.push_back(std::make_pair("V", 3.0));
-        occ.push_back(std::make_pair("Nb", 3.0));
-        occ.push_back(std::make_pair("Ta", 3.0));
-        occ.push_back(std::make_pair("Cr", 5.0));
-        occ.push_back(std::make_pair("Mo", 5.0));
-        occ.push_back(std::make_pair("W", 5.0));
-        occ.push_back(std::make_pair("Mn", 5.0));
-        occ.push_back(std::make_pair("Tc", 5.0));
-        occ.push_back(std::make_pair("re", 5.0));
-        occ.push_back(std::make_pair("Fe", 6.0));
-        occ.push_back(std::make_pair("Ru", 6.0));
-        occ.push_back(std::make_pair("Os", 6.0));
-        occ.push_back(std::make_pair("Co", 7.0));
-        occ.push_back(std::make_pair("Rh", 7.0));
-        occ.push_back(std::make_pair("Ir", 7.0));
-        occ.push_back(std::make_pair("Ni", 8.0));
-        occ.push_back(std::make_pair("Pd", 8.0));
-        occ.push_back(std::make_pair("Pt", 8.0));
-        occ.push_back(std::make_pair("Cu", 10.0));
-        occ.push_back(std::make_pair("Ag", 10.0));
-        occ.push_back(std::make_pair("Au", 10.0));
-        occ.push_back(std::make_pair("Zn", 10.0));
-        occ.push_back(std::make_pair("Cd", 10.0));
-        occ.push_back(std::make_pair("Hg", 10.0));
-        occ.push_back(std::make_pair("Ce", 2.0));
-        occ.push_back(std::make_pair("Th", 2.0));
-        occ.push_back(std::make_pair("Pr", 3.0));
-        occ.push_back(std::make_pair("Pa", 3.0));
-        occ.push_back(std::make_pair("Nd", 4.0));
-        occ.push_back(std::make_pair("U", 4.0));
-        occ.push_back(std::make_pair("Pm", 5.0));
-        occ.push_back(std::make_pair("Np", 5.0));
-        occ.push_back(std::make_pair("Sm", 6.0));
-        occ.push_back(std::make_pair("Pu", 6.0));
-        occ.push_back(std::make_pair("Eu", 6.0));
-        occ.push_back(std::make_pair("Am", 6.0));
-        occ.push_back(std::make_pair("Gd", 7.0));
-        occ.push_back(std::make_pair("Cm", 7.0));
-        occ.push_back(std::make_pair("Tb", 8.0));
-        occ.push_back(std::make_pair("Bk", 8.0));
-        occ.push_back(std::make_pair("Dy", 9.0));
-        occ.push_back(std::make_pair("Cf", 9.0));
-        occ.push_back(std::make_pair("Ho", 10.0));
-        occ.push_back(std::make_pair("Es", 10.0));
-        occ.push_back(std::make_pair("Er", 11.0));
-        occ.push_back(std::make_pair("Fm", 11.0));
-        occ.push_back(std::make_pair("Tm", 12.0));
-        occ.push_back(std::make_pair("Md", 12.0));
-        occ.push_back(std::make_pair("Yb", 13.0));
-        occ.push_back(std::make_pair("No", 13.0));
-        occ.push_back(std::make_pair("Lu", 14.0));
-        occ.push_back(std::make_pair("Lr", 14.0));
-        occ.push_back(std::make_pair("C", 2.0));
-        occ.push_back(std::make_pair("N", 3.0));
-        occ.push_back(std::make_pair("O", 4.0));
-        occ.push_back(std::make_pair("H", 1.0));
-        occ.push_back(std::make_pair("Ga", 10.0));
-        occ.push_back(std::make_pair("In", 10.0));
-
-        for(size_t i = 0; i < occ.size(); i++) {
-            if (occ[i].first == symbol_) {
-                hubbard_occupancy_orbital_  = occ[i].second;
-                occ.clear();
-                break;
-            }
-        }
-
-        if (hubbard_occupancy_orbital_ < 0.0) {
-            TERMINATE("this atom is not in the list of atoms with hubbard corrections\n");
-        }
-    }
   private:
     void read_hubbard_input();
     void generate_f_coefficients(void);
@@ -1543,8 +1256,6 @@ inline void Atom_type::init(int offset_lo__)
     }
 
     if (this->hubbard_correction_) {
-        set_hubbard_l_and_n_orbital();
-        set_occupancy_hubbard_orbital(-1.0);
         compute_hubbard_matrix();
     }
 
@@ -2245,17 +1956,52 @@ void Atom_type::read_hubbard_input()
     }
     for(auto &d: parameters_.Hubbard().species) {
         if (d.first == symbol_) {
-            hubbard_U_ = d.second[0];
-            hubbard_J_ = d.second[1];
-            hubbard_coefficients_[0] = d.second[0];
-            hubbard_coefficients_[1] = d.second[1];
-            hubbard_coefficients_[2] = d.second[2];
-            hubbard_coefficients_[3] = d.second[3];
-            hubbard_alpha_ = d.second[4];
-            hubbard_beta_ = d.second[5];
-            starting_magnetization_theta_ = d.second[7];
-            starting_magnetization_phi_ = d.second[8];
-            starting_magnetization_ = d.second[6];
+            hubbard_U_ = d.second.coeff_[0];
+            hubbard_J_ = d.second.coeff_[1];
+            hubbard_coefficients_[0] = d.second.coeff_[0];
+            hubbard_coefficients_[1] = d.second.coeff_[1];
+            hubbard_coefficients_[2] = d.second.coeff_[2];
+            hubbard_coefficients_[3] = d.second.coeff_[3];
+            hubbard_alpha_ = d.second.coeff_[4];
+            hubbard_beta_ = d.second.coeff_[5];
+            hubbard_occupancy_orbital_ = d.second.occupancy_;
+            hubbard_l_ = d.second.l;
+            hubbard_n_ = d.second.n;
+
+            if (hubbard_l_ < 0) {
+                std::istringstream iss(std::string(1, d.second.level[0]));
+                iss >> hubbard_n_;
+
+                if (hubbard_n_ <= 0 || iss.fail()) {
+                    std::stringstream s;
+                    s << "wrong principal quantum number : " << std::string(1, d.second.level[0]);
+                    TERMINATE(s);
+                }
+
+                switch (d.second.level[1]) {
+                case 's': {
+                    hubbard_l_ = 0;
+                    break;
+                }
+                case 'p': {
+                    hubbard_l_ = 1;
+                    break;
+                }
+                case 'd': {
+                    hubbard_l_ = 2;
+                    break;
+                }
+                case 'f': {
+                    hubbard_l_ = 3;
+                    break;
+                }
+                default: {
+                    std::stringstream s;
+                    s << "wrong angular momentum label : " << std::string(1, d.second.level[1]);
+                    TERMINATE(s);
+                }
+                }
+            }
             this->hubbard_correction_ = true;
         }
     }

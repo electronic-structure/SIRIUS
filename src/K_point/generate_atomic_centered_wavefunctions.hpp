@@ -2,7 +2,7 @@
 //       this list should contain: index of atom, index of wave-function and some flag to indicate if we average
 //       wave-functions in case of spin-orbit; this should be sufficient to generate a desired sub-set of atomic wave-functions
 
-inline void K_point::generate_atomic_centered_wavefunctions(const int num_ao__, Wave_functions& phi)
+inline void K_point::generate_atomic_centered_wavefunctions_(const int num_ao__, Wave_functions& phi, std::vector<int> &offset, const bool hubbard)
 {
     if (!num_ao__) {
         return;
@@ -35,18 +35,43 @@ inline void K_point::generate_atomic_centered_wavefunctions(const int num_ao__, 
             auto phase        = twopi * dot(gkvec().gkvec(igk), unit_cell_.atom(ia).position());
             auto phase_factor = std::exp(double_complex(0.0, phase));
             auto& atom_type   = unit_cell_.atom(ia).type();
-
-            for (int i = 0; i < atom_type.num_ps_atomic_wf(); i++) {
-                auto l = std::abs(atom_type.ps_atomic_wf(i).first);
-                auto z = std::pow(double_complex(0, -1), l) * fourpi / std::sqrt(unit_cell_.omega());
-                for (int m = -l; m <= l; m++) {
-                    int lm = Utils::lm_by_l_m(l, m);
-                    phi.pw_coeffs(0).prime(igk_loc, n) = z * std::conj(phase_factor) * rlm[lm] * ri_values[atom_type.id()][i];
-                    n++;
+            if (!hubbard) {
+                for (int i = 0; i < atom_type.num_ps_atomic_wf(); i++) {
+                    auto l = std::abs(atom_type.ps_atomic_wf(i).first);
+                    auto z = std::pow(double_complex(0, -1), l) * fourpi / std::sqrt(unit_cell_.omega());
+                    for (int m = -l; m <= l; m++) {
+                        int lm = Utils::lm_by_l_m(l, m);
+                        phi.pw_coeffs(0).prime(igk_loc, n) = z * std::conj(phase_factor) * rlm[lm] * ri_values[atom_type.id()][i];
+                        n++;
+                    }
+                } // i
+            } else {
+                for (int i = 0; i < atom_type.num_ps_atomic_wf(); i++) {
+                    auto l = std::abs(atom_type.ps_atomic_wf(i).first);
+                    auto z = std::pow(double_complex(0, -1), l) * fourpi / std::sqrt(unit_cell_.omega());
+                    if (l == atom_type.hubbard_l()) {
+                        for (int m = -l; m <= l; m++) {
+                            int lm = Utils::lm_by_l_m(l, m);
+                            if (atom_type.spin_orbit_coupling()) {
+                                phi.pw_coeffs(0).prime(igk_loc, offset[ia] + l + m) += 0.5 * z * std::conj(phase_factor) * rlm[lm] * ri_values[atom_type.id()][i];
+                                phi.pw_coeffs(1).prime(igk_loc, offset[ia] + 3 * l + m + 1) += 0.5 * z * std::conj(phase_factor) * rlm[lm] * ri_values[atom_type.id()][i];
+                            } else {
+                                phi.pw_coeffs(0).prime(igk_loc, offset[ia] + l + m) = z * std::conj(phase_factor) * rlm[lm] * ri_values[atom_type.id()][i];
+                                if (ctx_.num_mag_dims() == 3) {
+                                    phi.pw_coeffs(1).prime(igk_loc, offset[ia] + 3 * l + m + 1) = z * std::conj(phase_factor) * rlm[lm] * ri_values[atom_type.id()][i];
+                                }
+                            }
+                        }
+                    }
                 }
-            } // i
+            }
         } // ia
     } // igk_loc
+}
+
+inline void K_point::generate_atomic_centered_wavefunctions(const int num_ao__, Wave_functions& phi) {
+    std::vector<int> vs(1,0);
+    generate_atomic_centered_wavefunctions_(num_ao__, phi, vs, false);
 }
 
 //inline void K_point::generate_atomic_centered_wavefunctions(const int num_ao__, Wave_functions& phi)

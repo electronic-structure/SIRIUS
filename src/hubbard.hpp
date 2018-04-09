@@ -141,30 +141,30 @@ public:
             calculate_hubbard_potential_and_energy_non_colinear_case();
         }
 
-        // The potential should be hermitian from the calculations but
-        // by security I make it hermitian again
+        // // The potential should be hermitian from the calculations but
+        // // by security I make it hermitian again
 
-        for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
-            auto& atom = unit_cell_.atom(ia);
-            if (atom.type().hubbard_correction()) {
-                // diagonal up up down down blocks
-                for (int is = 0; is < ctx_.num_spins(); is++) {
-                    for (int m1 = 0; m1 < 2 * atom.type().hubbard_l() + 1; ++m1) {
-                        for (int m2 = m1 + 1; m2 < 2 * atom.type().hubbard_l() + 1; ++m2) {
-                            this->U(m1, m2, is, ia) = std::conj(this->U(m2, m1, is, ia));
-                        }
-                    }
-                }
+        // for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
+        //     auto& atom = unit_cell_.atom(ia);
+        //     if (atom.type().hubbard_correction()) {
+        //         // diagonal up up down down blocks
+        //         for (int is = 0; is < ctx_.num_spins(); is++) {
+        //             for (int m1 = 0; m1 < 2 * atom.type().hubbard_l() + 1; ++m1) {
+        //                 for (int m2 = m1 + 1; m2 < 2 * atom.type().hubbard_l() + 1; ++m2) {
+        //                     this->U(m1, m2, is, ia) = std::conj(this->U(m2, m1, is, ia));
+        //                 }
+        //             }
+        //         }
 
-                if(ctx_.num_mag_dims() == 3) {
-                    for (int m1 = 0; m1 < 2 * atom.type().hubbard_l() + 1; ++m1) {
-                        for (int m2 = 0; m2 < 2 * atom.type().hubbard_l() + 1; ++m2) {
-                            this->U(m1, m2, 3, ia) = std::conj(this->U(m2, m1, 2, ia));
-                        }
-                    }
-                }
-            }
-        }
+        //         if(ctx_.num_mag_dims() == 3) {
+        //             for (int m1 = 0; m1 < 2 * atom.type().hubbard_l() + 1; ++m1) {
+        //                 for (int m2 = 0; m2 < 2 * atom.type().hubbard_l() + 1; ++m2) {
+        //                     this->U(m1, m2, 3, ia) = std::conj(this->U(m2, m1, 2, ia));
+        //                 }
+        //             }
+        //         }
+        //     }
+        // }
     }
 
     inline double hubbard_energy() const

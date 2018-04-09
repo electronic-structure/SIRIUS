@@ -395,10 +395,11 @@ void sirius_set_atom_type_radial_grid(ftn_char          label__,
  *  \param [in] J0_ : J0 for the simple hubbard treatment
  */
 void sirius_set_atom_type_hubbard(char const* label__,
+                                  int const* l_,
+                                  int const* n_,
+                                  double const *occ,
                                   double const* U_,
                                   double const* J_,
-                                  double const* theta_,
-                                  double const* phi_,
                                   double const* alpha_,
                                   double const* beta_,
                                   double const* J0_)
@@ -410,9 +411,8 @@ void sirius_set_atom_type_hubbard(char const* label__,
     type.set_hubbard_alpha(*alpha_);
     type.set_hubbard_beta(*alpha_);
     type.set_hubbard_coefficients(J_);
-    type.set_starting_magnetization_theta(*theta_);
-    type.set_starting_magnetization_phi(*phi_);
     type.set_hubbard_J0(*J0_);
+    type.set_hubbard_orbital(*n_, *l_, *occ);
 }
 
 void sirius_set_free_atom_density(char const* label__,

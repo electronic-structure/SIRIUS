@@ -295,9 +295,8 @@ class K_point
 
         /// Generate two-component spinor wave functions
         inline void generate_spinor_wave_functions();
-
         inline void generate_atomic_centered_wavefunctions(const int num_ao__, Wave_functions &phi);
-
+        inline void generate_atomic_centered_wavefunctions_(const int num_ao__, Wave_functions &phi, std::vector<int> &offset, bool hubbard);
         void save(int id);
 
         void load(HDF5_tree h5in, int id);
@@ -422,9 +421,10 @@ class K_point
             if (hubbard_wave_functions_ != nullptr) {
                 return;
             }
+            const int num_sc = ctx_.num_mag_dims() == 3 ?  2 : 1;
             hubbard_wave_functions_ = std::unique_ptr<Wave_functions>(new Wave_functions(gkvec_partition(),
                                                                                          size,
-                                                                                         ctx_.num_spins()));
+                                                                                         num_sc));
         }
 
         inline bool hubbard_wave_functions_calculated()

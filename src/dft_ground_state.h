@@ -637,7 +637,6 @@ inline int DFT_ground_state::find(double potential_tol, double energy_tol, int n
     int result{-1};
 
     if (ctx_.hubbard_correction()) {
-        hamiltonian_.U().hubbard_compute_occupation_numbers(kset_);
         hamiltonian_.U().calculate_hubbard_potential_and_energy();
     }
 
@@ -725,6 +724,18 @@ inline int DFT_ground_state::find(double potential_tol, double energy_tol, int n
             }
         }
 
+        /* Compute the hubbard correction */
+        if(ctx_.hubbard_correction()) {
+
+            // I keep the same hubbard potential and occupancy matrices
+            // for the first and second itterations.
+            //            if (iter != 0) {
+            hamiltonian_.U().hubbard_compute_occupation_numbers(kset_);
+            hamiltonian_.U().calculate_hubbard_potential_and_energy();
+            //}
+            //            hamiltonian_.U().mix();
+        }
+
         if (!ctx_.full_potential()) {
             if (std::abs(eold - etot) < energy_tol && density_.dr2() < potential_tol) {
                 if (ctx_.comm().rank() == 0) {
@@ -738,12 +749,7 @@ inline int DFT_ground_state::find(double potential_tol, double energy_tol, int n
             }
         }
 
-        /* Compute the hubbard correction */
-        if(ctx_.hubbard_correction()) {
-            hamiltonian_.U().hubbard_compute_occupation_numbers(kset_);
-            hamiltonian_.U().mix();
-            hamiltonian_.U().calculate_hubbard_potential_and_energy();
-        }
+        print_magnetic_moment();
 
         eold = etot;
     }

@@ -66,7 +66,9 @@ void hubbard_compute_occupation_numbers(K_point_set& kset_)
                 /* allocate GPU memory */
                 kp->spinor_wave_functions().pw_coeffs(ispn).prime().allocate(memory_t::device);
                 kp->spinor_wave_functions().pw_coeffs(ispn).copy_to_device(0, kp->num_occupied_bands(ispn));
+            }
 
+            for (int ispn = 0; ispn < kp->hubbard_wave_functions().num_sc(); ispn++) {
                 kp->hubbard_wave_functions().pw_coeffs(ispn).prime().allocate(memory_t::device);
                 kp->hubbard_wave_functions().pw_coeffs(ispn).copy_to_device(0, this->number_of_hubbard_orbitals());
             }
@@ -86,8 +88,10 @@ void hubbard_compute_occupation_numbers(K_point_set& kset_)
                   0,
                   0);
         } else {
-            // This is annoying to have to keep track of this factor 2
-
+            // SLDA + U, we need to do the explicit calculation. The
+            // hubbard orbitals only have one component while the bloch
+            // wave functions have two. The inner product takes care of
+            // this case internally.
             for (int ispn_ = 0; ispn_ < ctx_.num_spins(); ispn_++) {
                 inner(ctx_.processing_unit(),
                       ispn_,
@@ -103,13 +107,17 @@ void hubbard_compute_occupation_numbers(K_point_set& kset_)
             }
         }
 
-#ifdef __GPU
+        #ifdef __GPU
         if (ctx_.processing_unit() == GPU) {
             for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
                 /* deallocate GPU memory */
                 kp->spinor_wave_functions().pw_coeffs(ispn).deallocate_on_device();
+            }
+
+            for (int ispn = 0; ispn < kp->hubbard_wave_functions().num_sc(); ispn++) {
                 kp->hubbard_wave_functions().pw_coeffs(ispn).deallocate_on_device();
             }
+
             dm.copy<memory_t::device, memory_t::host>();
         }
 #endif
@@ -140,17 +148,18 @@ void hubbard_compute_occupation_numbers(K_point_set& kset_)
                 }
             }
         } else {
-
             // Well we need to apply a factor 1/2 when we compute the
             // occupancies for the boring LDA + U. It is because the
             // calculations of E and U consider occupancies <= 1.
             // Sirius for the boring lda+U has a factor 2 in the kp band
-            // occupancies. We need to compenssate for it.
+            // occupancies. We need to compensate for it because it is
+            // taken into account in the calculation of the hubbard
+            // potential
 
             const double scal = (ctx_.num_mag_dims() == 0) ? 0.5 : 1.0;
 
+            #pragma omp parallel for schedule(static)
             for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-                #pragma omp parallel for schedule(static)
                 for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
                     const auto& atom = unit_cell_.atom(ia);
                     const int lmax_at = 2 * atom.type().hubbard_l() + 1;
@@ -197,7 +206,7 @@ void hubbard_compute_occupation_numbers(K_point_set& kset_)
             for (int s1 = 0; s1 < ctx_.num_spins(); s1++) {
                 // diagonal blocks
                 for (int m = 0; m < lmax_at; m++) {
-                    for (int mp = 0; mp < lmax_at; mp++) {
+                    for (int mp = m + 1; mp < lmax_at; mp++) {
                         this->occupancy_number_(mp, m, s1, ia, 0) = std::conj(this->occupancy_number_(m, mp, s1, ia, 0));
                     }
                 }
@@ -224,7 +233,6 @@ void hubbard_compute_occupation_numbers(K_point_set& kset_)
 void calculate_initial_occupation_numbers()
 {
     this->occupancy_number_.zero();
-
 #pragma omp parallel for schedule(static)
     for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
         const auto& atom = unit_cell_.atom(ia);
@@ -235,13 +243,12 @@ void calculate_initial_occupation_numbers()
             double charge = atom.type().get_occupancy_hubbard_orbital();
             bool nm       = true; // true if the atom is non magnetic
             int majs, mins;
-
             if(ctx_.num_spins() != 1) {
-                if (atom.type().starting_magnetization() > 0.0) {
+                if (atom.vector_field()[2] > 0.0) {
                     nm   = false;
                     majs = 0;
                     mins = 1;
-                } else if (atom.type().starting_magnetization() < 0.0) {
+                } else if (atom.vector_field()[2] < 0.0) {
                     nm   = false;
                     majs = 1;
                     mins = 0;
@@ -268,9 +275,8 @@ void calculate_initial_occupation_numbers()
                 } else {
                     //double c1, s1;
                     //sincos(atom.type().starting_magnetization_theta(), &s1, &c1);
-                    double c1 = std::cos(atom.type().starting_magnetization_theta());
-                    double_complex cs =
-                        double_complex(cos(atom.type().starting_magnetization_phi()), sin(atom.type().starting_magnetization_phi()));
+                    double c1 = atom.vector_field()[2];
+                    double_complex cs = double_complex(atom.vector_field()[0], atom.vector_field()[1])/sqrt(1.0-c1*c1);
                     double_complex ns[4];
 
                     if (charge > (lmax_at)) {
@@ -316,7 +322,7 @@ void calculate_initial_occupation_numbers()
 
 inline int natural_lm_to_qe(int m, int l)
 {
-    return (m > 0) ? 2 * m - 1 : -2 * m;
+    return (m > 0) ? 2 * m - 1 : - 2 * m;
 }
 
 inline void set_hubbard_occupancies_matrix(double *occ, int ld)
@@ -324,6 +330,7 @@ inline void set_hubbard_occupancies_matrix(double *occ, int ld)
     mdarray<double, 4> occupation_(occ, ld, ld, ctx_.num_spins(), ctx_.unit_cell().num_atoms());
     this->occupancy_number_.zero();
     for(int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {
+
         const int l = ctx_.unit_cell().atom(ia).type().hubbard_l();
         for (int m1 = -l; m1 <= l; m1++) {
             const int mm1 = natural_lm_to_qe(m1, l);
@@ -342,15 +349,18 @@ inline void set_hubbard_occupancies_matrix_nc(double_complex *occ, int ld)
     mdarray<double_complex, 4> occupation_(occ, ld, ld, 4, ctx_.unit_cell().num_atoms());
     this->occupancy_number_.zero();
     for(int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {
-        const int l = ctx_.unit_cell().atom(ia).type().hubbard_l();
-        for (int m1 = -l; m1 <= l; m1++) {
-            const int mm1 = natural_lm_to_qe(m1, l);
-            for (int m2 = -l; m2 <= l; m2++) {
-                const int mm2 = natural_lm_to_qe(m2, l);
-                this->occupancy_number_(l + m1, l + m2, 0, ia, 0) = occupation_(mm1, mm2, 0, ia);
-                this->occupancy_number_(l + m1, l + m2, 1, ia, 0) = occupation_(mm1, mm2, 3, ia);
-                this->occupancy_number_(l + m1, l + m2, 2, ia, 0) = occupation_(mm1, mm2, 1, ia);
-                this->occupancy_number_(l + m1, l + m2, 3, ia, 0) = occupation_(mm1, mm2, 2, ia);
+        auto &atom = ctx_.unit_cell().atom(ia);
+        if (atom.type().hubbard_correction()) {
+            const int l = ctx_.unit_cell().atom(ia).type().hubbard_l();
+            for (int m1 = -l; m1 <= l; m1++) {
+                const int mm1 = natural_lm_to_qe(m1, l);
+                for (int m2 = -l; m2 <= l; m2++) {
+                    const int mm2 = natural_lm_to_qe(m2, l);
+                    this->occupancy_number_(l + m1, l + m2, 0, ia, 0) = occupation_(mm1, mm2, 0, ia);
+                    this->occupancy_number_(l + m1, l + m2, 1, ia, 0) = occupation_(mm1, mm2, 3, ia);
+                    this->occupancy_number_(l + m1, l + m2, 2, ia, 0) = occupation_(mm1, mm2, 1, ia);
+                    this->occupancy_number_(l + m1, l + m2, 3, ia, 0) = occupation_(mm1, mm2, 2, ia);
+                }
             }
         }
     }
@@ -364,33 +374,40 @@ inline void get_hubbard_occupancies_matrix(double *occ, int ld)
     // case add up the spin degenary to the band occupation
     assert(ctx_.num_mag_dims() != 3);
     for(int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {
-        const int l = ctx_.unit_cell().atom(ia).type().hubbard_l();
-        for (int m1 = -l; m1 <= l; m1++) {
-            const int mm1 = natural_lm_to_qe(m1, l);
-            for (int m2 = -l; m2 <= l; m2++) {
-                const int mm2 = natural_lm_to_qe(m2, l);
-                for (int s = 0; s < ctx_.num_spins(); s++) {
-                    occupation_(mm1, mm2, s, ia) = this->occupancy_number_(l + m1, l + m2, s, ia, 0).real();
+        auto &atom = ctx_.unit_cell().atom(ia);
+        if (atom.type().hubbard_correction()) {
+            const int l = ctx_.unit_cell().atom(ia).type().hubbard_l();
+            for (int m1 = -l; m1 <= l; m1++) {
+                const int mm1 = natural_lm_to_qe(m1, l);
+                for (int m2 = -l; m2 <= l; m2++) {
+                    const int mm2 = natural_lm_to_qe(m2, l);
+                    for (int s = 0; s < ctx_.num_spins(); s++) {
+                        occupation_(mm1, mm2, s, ia) = this->occupancy_number_(l + m1, l + m2, s, ia, 0).real();
+                    }
                 }
             }
         }
     }
 }
 
+
 inline void get_hubbard_occupancies_matrix_nc(double_complex *occ, int ld)
 {
     mdarray<double_complex, 4> occupation_(occ, ld, ld, 4, ctx_.unit_cell().num_atoms());
 
     for(int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {
-        const int l = ctx_.unit_cell().atom(ia).type().hubbard_l();
-        for (int m1 = -l; m1 <= l; m1++) {
-            const int mm1 = natural_lm_to_qe(m1, l);
-            for (int m2 = -l; m2 <= l; m2++) {
-                const int mm2 = natural_lm_to_qe(m2, l);
-                occupation_(mm1, mm2, 0, ia) = this->occupancy_number_(l + m1, l + m2, 0, ia, 0);
-                occupation_(mm1, mm2, 3, ia) = this->occupancy_number_(l + m1, l + m2, 1, ia, 0);
-                occupation_(mm1, mm2, 1, ia) = this->occupancy_number_(l + m1, l + m2, 2, ia, 0);
-                occupation_(mm1, mm2, 2, ia) = this->occupancy_number_(l + m1, l + m2, 3, ia, 0);
+        auto &atom = ctx_.unit_cell().atom(ia);
+        if (atom.type().hubbard_correction()) {
+            const int l = ctx_.unit_cell().atom(ia).type().hubbard_l();
+            for (int m1 = -l; m1 <= l; m1++) {
+                const int mm1 = natural_lm_to_qe(m1, l);
+                for (int m2 = -l; m2 <= l; m2++) {
+                    const int mm2 = natural_lm_to_qe(m2, l);
+                    occupation_(mm1, mm2, 0, ia) = this->occupancy_number_(l + m1, l + m2, 0, ia, 0);
+                    occupation_(mm1, mm2, 3, ia) = this->occupancy_number_(l + m1, l + m2, 1, ia, 0);
+                    occupation_(mm1, mm2, 1, ia) = this->occupancy_number_(l + m1, l + m2, 2, ia, 0);
+                    occupation_(mm1, mm2, 2, ia) = this->occupancy_number_(l + m1, l + m2, 3, ia, 0);
+                }
             }
         }
     }

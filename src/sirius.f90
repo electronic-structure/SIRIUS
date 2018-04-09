@@ -1115,13 +1115,14 @@ module sirius
              &bind(C, name="sirius_set_normalize_hubbard_orbitals")
         end subroutine sirius_set_normalize_hubbard_orbitals
 
-        subroutine sirius_set_atom_type_hubbard(label__, U_, J_, theta_, phi_, alpha_, beta_, J0_)&
+        subroutine sirius_set_atom_type_hubbard(label__, n_, l_, occ_, U_, J_, alpha_, beta_, J0_)&
           &bind(C, name="sirius_set_atom_type_hubbard")
           character, dimension(*), intent(in) :: label__
+          integer(4),                intent(in) :: n_
+          integer(4),                intent(in) :: l_
+          real(8),                intent(in) :: occ_
           real(8),                intent(in) :: U_
           real(8),                intent(in) :: J_
-          real(8),                intent(in) :: theta_
-          real(8),                intent(in) :: phi_
           real(8),                intent(in) :: alpha_
           real(8),                intent(in) :: beta_
           real(8),                intent(in) :: J0_
