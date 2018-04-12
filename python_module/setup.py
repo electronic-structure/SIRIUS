@@ -1,20 +1,10 @@
 from distutils.core import setup
-from setuptools import setup, Extension
-import glob
+from setuptools import find_packages
 
-ext_modules = [
-  Extension(
-    "cppmodule",
-    glob.glob('src/*.cpp'),
-    include_dirs       = ['lib/include', 'lib/pybind11/'],
-    language           = 'c++',
-    extra_compile_args = ['-std=c++17'],
-    define_macros      = [('DOCTEST_CONFIG_DISABLE',None)]
-  )
+setup(
+    name = 'sirius',
+    version = '0.0.1',
+    description = 'Python binding for the SIRIUS library - a domain specific library for electronic structure calculations',
+    packages = find_packages('sirius'),
 
-
-setup(name='py_sirius',
-      version='0.1',
-      py_modules=['sirius', 'bands', '__init__'],
-      ext_modules = ext_modules
-      )
+)
