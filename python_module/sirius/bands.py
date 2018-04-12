@@ -17,20 +17,18 @@ class plotter:
     x_axis_ = []
     x_ticks_ = []
     filename_ = ""
-    emin_ = 0
-    emax_ = 0
-    energy_scale_ = 0
     counter = 0
     colors = {1 : "black", 2 : "red", 3 : "green", 4 : "blue", 5 : "orange"}
     line_style = {1 : "-", 2 : "-.", 3 : "--", 4 : ".", 5 : ":"}
 
     def __init__(self, filename = "band_plot.pdf"):
-        plt.figure(1, figsize=(8, 12))
+        #self.fig = plt.figure(1, figsize=(8, 12))
+        #self.sp =  self.fig.add_subplot(111, label = "subplot")
+        self.fig, self.sp = plt.subplots(1)
         self.emin_ = -0.5
         self.emax_ = 1
         self.energy_scale_ = 27.21138505
         self.filename_ = filename
-
 
 
     def add(self, new_dict, new_label):
@@ -42,27 +40,29 @@ class plotter:
         num_bands = new_dict["header"]["num_bands"]
 
         bnd_e = [e["values"][0] for e in bands]
-        plt.plot(self.x_axis_, bnd_e, self.line_style[self.counter], color = self.colors[self.counter], linewidth = 1.0, label = new_label)
+        self.sp.plot(self.x_axis_, bnd_e, self.line_style[self.counter], color = self.colors[self.counter], linewidth = 1.0, label = new_label)
         for i in range(num_bands-1):
             bnd_e = [e["values"][i+1] for e in bands]
-            plt.plot(self.x_axis_, bnd_e, self.line_style[self.counter], color = self.colors[self.counter], linewidth = 1.0)
+            self.sp.plot(self.x_axis_, bnd_e, self.line_style[self.counter], color = self.colors[self.counter], linewidth = 1.0)
         print("Checkpoint 1 reached.")
 
-    def plot(self):
+    def plotting(self):
         x_ticks_pos = [e["x"] for e in self.x_ticks_]
         x_ticks_label = [e["label"] for e in self.x_ticks_]
-        plt.legend(loc = 'best')
-        plt.xticks(x_ticks_pos, x_ticks_label, rotation=0)
+        self.sp.legend(loc = 'best')
+        self.sp.set_xticks(x_ticks_pos)
+        self.sp.set_xticklabels(x_ticks_label)
 
-        plt.ylabel("Energy (Ha)")
-        plt.grid(which = "major", axis = "both")
+        self.sp.set_ylabel("Energy (Ha)")
+        self.sp.grid(which = "major", axis = "both")
 
         # setup x and y limits
         print("Checkpoint 2 reached.")
         #ax = plt.axis()
-        plt.axis([0, self.x_axis_[-1], self.emin_, self.emax_])
+        self.sp.axis([0, self.x_axis_[-1], self.emin_, self.emax_])
         print("Checkpoint 3 reached.")
-        plt.savefig(self.filename_, format="pdf")
+
+        self.fig.savefig(self.filename_, format="pdf")
 
 
 
