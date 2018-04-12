@@ -44,7 +44,7 @@ class plotter:
         for i in range(num_bands-1):
             bnd_e = [e["values"][i+1] for e in bands]
             self.sp.plot(self.x_axis_, bnd_e, self.line_style[self.counter], color = self.colors[self.counter], linewidth = 1.0)
-        print("Checkpoint 1 reached.")
+
 
     def plotting(self):
         x_ticks_pos = [e["x"] for e in self.x_ticks_]
@@ -56,11 +56,7 @@ class plotter:
         self.sp.set_ylabel("Energy (Ha)")
         self.sp.grid(which = "major", axis = "both")
 
-        # setup x and y limits
-        print("Checkpoint 2 reached.")
-        #ax = plt.axis()
         self.sp.axis([0, self.x_axis_[-1], self.emin_, self.emax_])
-        print("Checkpoint 3 reached.")
 
         self.fig.savefig(self.filename_, format="pdf")
 
