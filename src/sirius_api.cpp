@@ -3252,6 +3252,8 @@ void sirius_get_pw_coeffs_real(ftn_char    atom_type__,
                                ftn_int*    gvl__,
                                ftn_int*    comm__)
 {
+    PROFILE("sirius_api::sirius_get_pw_coeffs_real");
+
     std::string label(label__);
     std::string atom_label(atom_type__);
     int iat = sim_ctx->unit_cell().atom_type(atom_label).id();
@@ -3286,6 +3288,11 @@ void sirius_get_pw_coeffs_real(ftn_char    atom_type__,
                        {
                            return ri.value(iat, g);
                        });
+    } else {
+        std::stringstream s;
+        s << "wrong label in sirius_get_pw_coeffs_real()" << std::endl
+          << "  label : " << label; 
+        TERMINATE(s);
     }
 }
 

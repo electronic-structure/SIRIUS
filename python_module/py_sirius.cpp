@@ -95,8 +95,6 @@ PYBIND11_MODULE(py_sirius, m){
                           sirius::finalize();
                       });
 
-PYBIND11_MODULE(py_sirius, m){
-
     py::class_<Unit_cell>(m, "Unit_cell")
         .def("add_atom", (void (Unit_cell::*)(const std::string, vector3d<double>)) &Unit_cell::add_atom)
         .def("get_symmetry", &Unit_cell::get_symmetry)
