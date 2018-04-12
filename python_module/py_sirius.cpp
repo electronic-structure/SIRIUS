@@ -95,11 +95,7 @@ PYBIND11_MODULE(py_sirius, m){
                           sirius::finalize();
                       });
 
-    py::class_<Atom_type>(m, "Atom_type")
-        .def("zn", py::overload_cast<int>(&Atom_type::zn))
-        .def("zn", py::overload_cast<>(&Atom_type::zn, py::const_))
-        .def("add_beta_radial_function", &Atom_type::add_beta_radial_function)
-        .def("num_mt_points", &Atom_type::num_mt_points);
+PYBIND11_MODULE(py_sirius, m){
 
     py::class_<Unit_cell>(m, "Unit_cell")
         .def("add_atom", (void (Unit_cell::*)(const std::string, vector3d<double>)) &Unit_cell::add_atom)
@@ -238,7 +234,7 @@ PYBIND11_MODULE(py_sirius, m){
     .def("initialize", py::overload_cast<>(&K_point_set::initialize))
     .def("num_kpoints", &K_point_set::num_kpoints)
     .def("energy_fermi", &K_point_set::energy_fermi)
-    .def("get_band_energies", &K_point_set::get_band_energies)
+    .def("get_band_energies", &K_point_set::get_band_energies, py::return_value_policy::reference)
     .def("sync_band_energies", &K_point_set::sync_band_energies)
     .def("__call__", &K_point_set::operator[], py::return_value_policy::reference)
     .def("add_kpoint", [](K_point_set &ks, std::vector<double> &v, double weight){
