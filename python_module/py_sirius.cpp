@@ -18,6 +18,7 @@ using namespace geometry3d;
 using json = nlohmann::json;
 using nlohmann::basic_json;
 
+//inspired by: https://github.com/mdcb/python-jsoncpp11/blob/master/extension.cpp
 py::object pj_convert(json& node)
 {
     switch (node.type()) {
@@ -162,7 +163,6 @@ PYBIND11_MODULE(py_sirius, m){
   py::class_<vector3d<int>>(m, "vector3d_int")
     .def(py::init<std::vector<int>>())
     .def("__call__", [](const vector3d<int> &obj, int x){return obj[x];})
-    //.def("__getitem__", [](const vector3d<int> &obj, int x){return obj[x];}) //NEW
     .def("__repr__", [](const vector3d<int> &vec){return show_vec(vec);})
     .def(py::init<vector3d<int>>());
 
@@ -170,7 +170,6 @@ PYBIND11_MODULE(py_sirius, m){
     .def(py::init<std::vector<double>>())
     .def("__call__", [](const vector3d<double> &obj, int x){return obj[x];})
     .def("__repr__", [](const vector3d<double> &vec){return show_vec(vec);})
-    //.def("__getitem__", [](const vector3d<double> &obj, int x){return obj[x];}) //NEW
     .def("length", &vector3d<double>::length)
     .def(py::self - py::self)
     .def(py::self * float())
