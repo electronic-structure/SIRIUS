@@ -523,6 +523,13 @@ class Simulation_parameters
         iterative_solver_input_.type_ = type__;
     }
 
+    /// Set the tolerance for empty states.
+    inline double empty_states_tolerance(double tolerance__)
+    {
+        iterative_solver_input_.empty_states_tolerance_ = tolerance__;
+        return iterative_solver_input_.empty_states_tolerance_;
+    }
+
     inline Control_input const& control() const
     {
         return control_input_;
