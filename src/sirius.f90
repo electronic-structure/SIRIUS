@@ -578,6 +578,11 @@ module sirius
             real(8),                 intent(in) :: tol
         end subroutine
 
+        subroutine sirius_set_empty_states_tolerance(tol)&
+            &bind(C, name="sirius_set_empty_states_tolerance")
+            real(8),                 intent(in) :: tol
+        end subroutine
+
         subroutine sirius_set_iterative_solver_type(str)&
             &bind(C, name="sirius_set_iterative_solver_type")
             character, dimension(*), intent(in) :: str
