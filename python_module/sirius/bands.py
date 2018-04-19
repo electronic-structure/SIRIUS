@@ -10,8 +10,7 @@ import os
 import copy
 import sirius
 
-
-
+#inspired by bands.py in SIRIUS/apps/bands
 class plotter:
     data_ = []
     x_axis_ = []
@@ -22,8 +21,6 @@ class plotter:
     line_style = {1 : "-", 2 : "-.", 3 : "--", 4 : ".", 5 : ":"}
 
     def __init__(self, filename = "band_plot.pdf"):
-        #self.fig = plt.figure(1, figsize=(8, 12))
-        #self.sp =  self.fig.add_subplot(111, label = "subplot")
         self.fig, self.sp = plt.subplots(1)
         self.emin_ = -0.5
         self.emax_ = 1
@@ -44,7 +41,7 @@ class plotter:
         for i in range(num_bands-1):
             bnd_e = [e["values"][i+1] for e in bands]
             self.sp.plot(self.x_axis_, bnd_e, self.line_style[self.counter], color = self.colors[self.counter], linewidth = 1.0)
-        print("Checkpoint 1 reached.")
+
 
     def plotting(self):
         x_ticks_pos = [e["x"] for e in self.x_ticks_]
@@ -56,69 +53,12 @@ class plotter:
         self.sp.set_ylabel("Energy (Ha)")
         self.sp.grid(which = "major", axis = "both")
 
-        # setup x and y limits
-        print("Checkpoint 2 reached.")
-        #ax = plt.axis()
         self.sp.axis([0, self.x_axis_[-1], self.emin_, self.emax_])
-        print("Checkpoint 3 reached.")
 
         self.fig.savefig(self.filename_, format="pdf")
 
 
-
-#def plotter(jin1, label1, jin2 = [], label2 = "", both = False, filename = "band_plot.pdf"):
-    #plt.figure(1, figsize=(8, 12))
-
-    #emin = -0.5
-    #emax = 1
-
-    #energy_scale = 27.21138505
-
-    #bands = jin1["bands"]
-    #x_axis = jin1["header"]["x_axis"]
-    #x_ticks = jin1["header"]["x_ticks"]
-
-    #num_bands = jin1["header"]["num_bands"]
-    #print("num_bands1=", num_bands)
-
-
-
-    #bnd_e = [e["values"][0] for e in bands]
-    #plt.plot(x_axis, bnd_e, "-", color = "black", linewidth = 1.0, label = label1)
-    #for i in range(num_bands-1):
-        #bnd_e = [e["values"][i+1] for e in bands]
-        #plt.plot(x_axis, bnd_e, "-", color = "black", linewidth = 1.0)
-
-    #if both == True:
-        #bands2 = jin2["bands"]
-        #x_axis = jin2["header"]["x_axis"]
-        #x_ticks = jin2["header"]["x_ticks"]
-
-        #num_bands2 = jin2["header"]["num_bands"]
-        #print("num_bands2=", num_bands2)
-
-        #bnd_e = [e["values"][0] for e in bands2]
-        #plt.plot(x_axis, bnd_e, "-.", color = "red", linewidth = 1.0, label = label2)
-        #for i in range(num_bands2-1):
-            #bnd_e = [e["values"][i+1] for e in bands2]
-            #plt.plot(x_axis, bnd_e, "-.", color = "red", linewidth = 1.0)
-
-    #x_ticks_pos = [e["x"] for e in x_ticks]
-
-    #x_ticks_label = [e["label"] for e in x_ticks]
-    #plt.legend(loc = 'best')
-    #plt.xticks(x_ticks_pos, x_ticks_label, rotation=0)
-
-    #plt.ylabel("Energy (Ha)")
-    #plt.grid(which = "major", axis = "both")
-
-    # setup x and y limits
-    #ax = plt.axis()
-    #plt.axis([0, x_axis[-1], emin, emax])
-    #plt.savefig(filename, format="pdf")
-
-
-def get_kpoint_path(k_point_list, rec_vec, ctx): #return list of vectors and xticks
+def get_kpoint_path(k_point_list, rec_vec, ctx):
     x_axis = []
     x_ticks = []
     vertex = []
@@ -133,8 +73,7 @@ def get_kpoint_path(k_point_list, rec_vec, ctx): #return list of vectors and xti
     kpoints.append(sirius.vector3d_double(vertex[0][1]))
 
     t = 0
-    #print("vertex_type ="  + str(type(vertex)))
-    #print("vertex_length =" + str(len(vertex)))
+
     for i in range(len(vertex)-1):
         v0 = sirius.vector3d_double(vertex[i][1])
         v1 = sirius.vector3d_double(vertex[i+1][1])
@@ -150,6 +89,4 @@ def get_kpoint_path(k_point_list, rec_vec, ctx): #return list of vectors and xti
     return_dict = {"k_points" : kpoints, "x_ticks" : x_ticks}
     for i in range(len(kpoints)):
         x = kpoints[i]
-        #print("Type of kpoints elements is:", type(x))
-        #print(x(0))
     return kpoints, x_ticks, x_axis
