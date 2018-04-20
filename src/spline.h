@@ -68,7 +68,7 @@ namespace sirius {
  *  Not-a-knot boundary condition (counting segments and points from 1):
  *  \f[
  *    S_1'''(x_2) = S_2'''(x_2) \longrightarrow d_1 = d_2 \\
- *    S_{n-3}'''(x_{n-2}) = S_{n-2}'''(x_{n-2}) \longrightarrow d_{n-3} = d_{n-2}
+ *    S_{n-2}'''(x_{n-1}) = S_{n-1}'''(x_{n-1}) \longrightarrow d_{n-2} = d_{n-1}
  *  \f]
  */
 template <typename T, typename U = double> 
@@ -276,83 +276,74 @@ class Spline: public Radial_grid<U>
 
     Spline<T, U>& interpolate()
     {
-        int np = this->num_points();
-
-        /* lower diagonal */
-        std::vector<T> dl(np - 1);
+        /* number of segments; in principle we have n-1 segments, but the equations for spline are built in such a
+           way that one extra m_i coefficient of a segment is necessary */
+        int ns = this->num_points();
+        assert(ns >= 4);
+        /* lower diagonal (use coeffs as temporary storage) */
+        T* dl = coeffs_.template at<CPU>(0, 1);
         /* main diagonal */
-        std::vector<T> d(np);
+        T* d = coeffs_.template at<CPU>(0, 2);
         /* upper diagonal */
-        std::vector<T> du(np - 1);
-
-        std::vector<T> x(np);
-        std::vector<T> dy(np - 1);
-        
-        /* derivative of y */
-        for (int i = 0; i < np - 1; i++) {
+        T* du = coeffs_.template at<CPU>(0, 3);
+        /* m_i = 2 c_i */
+        std::vector<T> m(ns);
+        /* derivatives of function */
+        std::vector<T> dy(ns - 1);
+        for (int i = 0; i < ns - 1; i++) {
             dy[i] = (coeffs_(i + 1, 0) - coeffs_(i, 0)) / this->dx(i);
         }
-        
         /* setup "B" vector of AX=B equation */
-        for (int i = 0; i < np - 2; i++) {
-            x[i + 1] = (dy[i + 1] - dy[i]) * 6.0;
+        for (int i = 0; i < ns - 2; i++) {
+            m[i + 1] = (dy[i + 1] - dy[i]) * 6.0;
         }
+        /* this is derived from n-a-k boundary condition */
+        m[0] = m[1]; m[ns - 1] = m[ns - 2];
+
         /* main diagonal of "A" matrix */
-        for (int i = 0; i < np - 2; i++) {
-            d[i + 1] = static_cast<T>(2) * (static_cast<T>(this->dx(i) + this->dx(i + 1)));
+        for (int i = 0; i < ns - 2; i++) {
+            d[i + 1] = static_cast<T>(this->x(i + 2) - this->x(i)) * 2.0;
         }
         /* subdiagonals of "A" matrix */
-        for (int i = 0; i < np - 1; i++) {
+        for (int i = 0; i < ns - 1; i++) {
             du[i] = this->dx(i);
             dl[i] = this->dx(i);
         }
 
-        /* not-a-knot boundary condition */
-        //x[0] = this->dx(0) * x[1];
-        //x[np - 1] = this->dx(np - 2) * x[np - 2];
-
-        //U h0 = this->dx(0);
-        //U h1 = this->dx(1);
-        //U h2 = this->dx(np - 2);
-        //U h3 = this->dx(np - 3);
-        //d[0] = std::pow(h0, 2) - std::pow(h1, 2);
-        //du[0] = std::pow(h1, 2) + 2 * (h0 + h1) * h0 + h0 * h1;
-
-        //d[np - 1] = std::pow(h3, 2) - std::pow(h2, 2);
-        //dl[np - 2] = std::pow(h2, 2) + 2 * (h2 + h3) * h3 + h3 * h2;
-
-        x[0] = -x[1];
-        x[np - 1] = -x[np - 2];
-        
+        /* last part of n-a-k boundary condition */
         U h0 = this->dx(0);
         U h1 = this->dx(1);
-        U h2 = this->dx(np - 2);
-        U h3 = this->dx(np - 3);
-        d[0] = (h1 / h0) * h1 - h0;
-        d[np - 1] = (h3 / h2) * h3 - h2;
+        d[0]  = h0 - (h1 / h0) * h1;
+        du[0] = h1 * ((h1 / h0) + 1) + 2 * (h0 + h1);
 
-        du[0]      = -(h1 * (1.0 + h1 / h0) + d[1]);
-        dl[np - 2] = -(h3 * (1.0 + h3 / h2) + d[np - 2]); 
+        h0 = this->dx(ns - 2);
+        h1 = this->dx(ns - 3);
+        d[ns - 1]  = h0 - (h1 / h0) * h1;
+        dl[ns - 2] =  h1 * ((h1 / h0) + 1) + 2 * (h0 + h1);
 
         /* solve tridiagonal system */
-        //int info = linalg<CPU>::gtsv(np, 1, &dl[0], &d[0], &du[0], &x[0], np);
-        int info = solve(&dl[0], &d[0], &du[0], &x[0], np);
-        
+        //int info = linalg<CPU>::gtsv(ns, 1, &dl[0], &d[0], &du[0], &m[0], ns);
+        int info = solve(dl, d, du, &m[0], ns);
+
         if (info) {
             std::stringstream s;
             s << "error in tridiagonal solver: " << info;
             TERMINATE(s);
         }
         
-        for (int i = 0; i < np - 1; i++) {
-            coeffs_(i, 2) = x[i] / 2.0;
-            T t = (x[i + 1] - x[i]) / 6.0;
+        for (int i = 0; i < ns - 1; i++) {
+            /* this is c_i coefficient */
+            coeffs_(i, 2) = m[i] / 2.0;
+            /* this is why one extra segment was considered: we need m_{i+1} */
+            T t = (m[i + 1] - m[i]) / 6.0;
+            /* b_i coefficient */
             coeffs_(i, 1) = dy[i] - (coeffs_(i, 2) + t) * this->dx(i);
+            /* d_i coefficient */
             coeffs_(i, 3) = t / this->dx(i);
         }
-        coeffs_(np - 1, 1) = 0;
-        coeffs_(np - 1, 2) = 0;
-        coeffs_(np - 1, 3) = 0;
+        coeffs_(ns - 1, 1) = 0;
+        coeffs_(ns - 1, 2) = 0;
+        coeffs_(ns - 1, 3) = 0;
 
         return *this;
     }
