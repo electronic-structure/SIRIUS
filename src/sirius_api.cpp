@@ -3517,4 +3517,21 @@ void sirius_get_num_beta_projectors(ftn_char label__,
     *num_beta_projectors__ = type.mt_basis_size();
 }
 
+void sirius_spline_(ftn_int* n__, ftn_double* x__, ftn_double* f__, ftn_double* cf__)
+{
+    int np = *n__;
+
+    sirius::Radial_grid_ext<double> rgrid(np, x__);
+    sirius::Spline<double> s(rgrid, std::vector<double>(f__, f__ + np));
+
+    mdarray<double, 2> cf(cf__, 3, np);
+
+    for (int i = 0; i < np - 1; i++) {
+        auto c = s.coeffs(i);
+        cf(0, i) = c[1];
+        cf(1, i) = c[2];
+        cf(2, i) = c[3];
+    }
+}
+
 } // extern "C"
