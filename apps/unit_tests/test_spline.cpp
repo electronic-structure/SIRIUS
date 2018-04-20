@@ -273,6 +273,53 @@ void test5()
     }
 }
 
+void test6a()
+{
+    printf("\n");
+    printf("test6: 5 points interpolation\n");
+    std::vector<double> x = {0, 1, 2, 3, 4};
+    Radial_grid_ext<double> r(5, x.data());
+    Spline<double> s(r);
+    s(0) = 0;
+    s(1) = 1;
+    s(2) = 0;
+    s(3) = 0;
+    s(4) = 5;
+    s.interpolate();
+
+    //Radial_grid_lin<double> rgrid(10000, 0, 4);
+    //FILE* fout = fopen("val.dat", "w+");
+    //for (int ir = 0; ir < 10000; ir++)
+    //{
+    //    double x = rgrid[ir];
+    //    double val = s.at_point(x);
+    //    fprintf(fout, "%18.10f %18.10f\n", x, val);
+    //}
+    //fclose(fout);
+
+
+    double val = s.interpolate().integrate(0);
+    if (std::abs(val - 3) > 1e-13)
+    {
+        printf("wrong result: %18.12f\n", val);
+        exit(1);
+    }
+    else
+    {
+        printf("OK\n");
+    }
+    
+    //== int N = 4000;
+    //== FILE* fout = fopen("spline_test.dat", "w");
+    //== for (int i = 0; i < N; i++)
+    //== {
+    //==     double t = 3.0 * i / (N - 1);
+    //==     fprintf(fout, "%18.12f %18.12f\n", t, s(t));
+    //== }
+    //== fclose(fout);
+}
+
+
 void test6()
 {
     printf("\n");
@@ -424,6 +471,9 @@ void test7()
 int main(int argn, char** argv)
 {
     sirius::initialize(1);
+    
+    test6a();
+    test6();
 
 
     test1(0.1, 7.13, 0, 0.3326313127230704);
@@ -455,8 +505,6 @@ int main(int argn, char** argv)
     test3(2, 0.0001, 2.0, 1.0365460153117974);
 
     test5();
-
-    test6();
 
     test7();
     
