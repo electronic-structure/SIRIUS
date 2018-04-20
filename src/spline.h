@@ -30,9 +30,46 @@
 namespace sirius {
 
 /// Cubic spline with a not-a-knot boundary conditions.
-/** The following convention for spline coefficients is used: between points 
- *  \f$ x_i \f$ and \f$ x_{i+1} \f$ the value of the spline is equal to 
- *  \f$ a_i + b_i(x_{i+1} - x_i) + c_i(x_{i+1}-x_i)^2 + d_i(x_{i+1}-x_i)^3 \f$. 
+/** The following convention for spline coefficients is used: for \f$ x \f$ in  
+ *  \f$ [x_i, x_{i+1}] \f$ the value of the spline is equal to 
+ *  \f$ a_i + b_i(x - x_i) + c_i(x - x_i)^2 + d_i(x - x_i)^3 \f$.
+ *
+ *  Suppose we have \f$ n \f$ value points \f$ y_i = f(x_i) \f$ and \f$ n - 1 \f$ segments:
+ *  \f[
+ *   S_i(x) = y_i + b_i(x - x_i) + c_i(x - x_i)^2 + d_i(x - x_i)^3 
+ *  \f]
+ *  Segment derivatives:
+ *  \f[
+ *    \begin{eqnarray}
+ *      S_i'(x) &=& b_i + 2c_i(x - x_i) + 3d_i(x - x_i)^2 \\ 
+ *      S_i''(x) &=& 2c_i + 6d_i(x-x_i) \\
+ *      S_i'''(x) &=& 6d_i
+ *    \end{eqnarray}
+ *  \f]
+ *  The following substitutions are made:
+ *  \f[
+ *    m_i = 2 c_i \\ 
+ *    h_i = x_{i+1} - x_i \\
+ *    y_i' = \frac{y_{i+1} - y_i}{h_i}
+ *  \f]
+ *  Now we can equate the derivatives at the end points of segments. From the 3rd derivative we get
+ *  \f[
+ *    d_i = \frac{1}{6h_i}(m_{i+1} -  m_i)
+ *  \f]
+ *  From the 1st derivative we get
+ *  \f[
+ *    b_i = y_i' - \frac{h_i}{2} m_i - \frac{h_i}{6}(m_{i+1} - m_i)
+ *  \f]
+ *  Using 2nd derivative condition we get
+ *  \f[
+ *    h_i m_i + 2(h_{i} + h_{i+1})m_{i+1} + h_{i+1}m_{i+2} = 6(y_{i+1}' - y_{i}')
+ *  \f]
+ *  So far we got \f$ n - 3 \f$ equations for \f$ n - 1 \f$ coefficients \f$ m_i \f$. We need two extra conditions.
+ *  Not-a-knot boundary condition (counting segments and points from 1):
+ *  \f[
+ *    S_1'''(x_2) = S_2'''(x_2) \longrightarrow d_1 = d_2 \\
+ *    S_{n-3}'''(x_{n-2}) = S_{n-2}'''(x_{n-2}) \longrightarrow d_{n-3} = d_{n-2}
+ *  \f]
  */
 template <typename T, typename U = double> 
 class Spline: public Radial_grid<U>
@@ -260,14 +297,33 @@ class Spline: public Radial_grid<U>
         for (int i = 0; i < np - 2; i++) {
             x[i + 1] = (dy[i + 1] - dy[i]) * 6.0;
         }
-        
-        x[0] = -x[1];
-        x[np - 1] = -x[np - 2];
-        
         /* main diagonal of "A" matrix */
         for (int i = 0; i < np - 2; i++) {
             d[i + 1] = static_cast<T>(2) * (static_cast<T>(this->dx(i) + this->dx(i + 1)));
         }
+        /* subdiagonals of "A" matrix */
+        for (int i = 0; i < np - 1; i++) {
+            du[i] = this->dx(i);
+            dl[i] = this->dx(i);
+        }
+
+        /* not-a-knot boundary condition */
+        //x[0] = this->dx(0) * x[1];
+        //x[np - 1] = this->dx(np - 2) * x[np - 2];
+
+        //U h0 = this->dx(0);
+        //U h1 = this->dx(1);
+        //U h2 = this->dx(np - 2);
+        //U h3 = this->dx(np - 3);
+        //d[0] = std::pow(h0, 2) - std::pow(h1, 2);
+        //du[0] = std::pow(h1, 2) + 2 * (h0 + h1) * h0 + h0 * h1;
+
+        //d[np - 1] = std::pow(h3, 2) - std::pow(h2, 2);
+        //dl[np - 2] = std::pow(h2, 2) + 2 * (h2 + h3) * h3 + h3 * h2;
+
+        x[0] = -x[1];
+        x[np - 1] = -x[np - 2];
+        
         U h0 = this->dx(0);
         U h1 = this->dx(1);
         U h2 = this->dx(np - 2);
@@ -275,19 +331,11 @@ class Spline: public Radial_grid<U>
         d[0] = (h1 / h0) * h1 - h0;
         d[np - 1] = (h3 / h2) * h3 - h2;
 
-        /* subdiagonals of "A" matrix */
-        for (int i = 0; i < np - 1; i++) {
-            du[i] = this->dx(i);
-            dl[i] = this->dx(i);
-        }
-        du[0] = -(h1 * (1.0 + h1 / h0) + d[1]);
+        du[0]      = -(h1 * (1.0 + h1 / h0) + d[1]);
         dl[np - 2] = -(h3 * (1.0 + h3 / h2) + d[np - 2]); 
 
         /* solve tridiagonal system */
-        //solve(a.data(), b.data(), c.data(), d.data(), np);
-        //auto& x = d;
-        //int info = linalg<CPU>::gtsv(np, 1, &a[0], &b[0], &c[0], &d[0], np);
-        
+        //int info = linalg<CPU>::gtsv(np, 1, &dl[0], &d[0], &du[0], &x[0], np);
         int info = solve(&dl[0], &d[0], &du[0], &x[0], np);
         
         if (info) {
