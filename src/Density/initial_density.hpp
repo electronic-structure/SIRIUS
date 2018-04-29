@@ -172,7 +172,7 @@ inline void Density::initial_density_full_pot()
     
     /* set plane-wave coefficients of the charge density */
     std::memcpy(&rho_->f_pw_local(0), &v[0], ctx_.gvec().count() * sizeof(double_complex));
-    /* convert charge deisnty to real space mesh */
+    /* convert charge density to real space mesh */
     rho_->fft_transform(1);
     
     if (ctx_.control().print_checksum_) {

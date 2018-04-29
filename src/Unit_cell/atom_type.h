@@ -26,7 +26,7 @@
 #ifndef __ATOM_TYPE_H__
 #define __ATOM_TYPE_H__
 
-#include "atomic_conf.h"
+#include "atomic_data.hpp"
 #include "descriptors.h"
 #include "geometry3d.hpp"
 #include "utils.h"
@@ -221,8 +221,9 @@ class Atom_type
     inline void read_pseudo_uspp(json const& parser);
 
     inline void read_pseudo_paw(json const& parser);
-
-    inline void read_input(const std::string& fname);
+    
+    /// Read atomic parameters from json file or string. 
+    inline void read_input(std::string const& str__);
 
     inline void init_aw_descriptors(int lmax)
     {
@@ -268,13 +269,13 @@ class Atom_type
     Radial_grid<double> free_atom_radial_grid_;
 
   public:
-    Atom_type(Simulation_parameters const& parameters__,
-              std::string symbol__,
-              std::string name__,
-              int zn__,
-              double mass__,
-              std::vector<atomic_level_descriptor>& levels__,
-              radial_grid_t grid_type__)
+    Atom_type(Simulation_parameters const&                parameters__,
+              std::string                                 symbol__,
+              std::string                                 name__,
+              int                                         zn__,
+              double                                      mass__,
+              std::vector<atomic_level_descriptor> const& levels__,
+              radial_grid_t                               grid_type__)
         : parameters_(parameters__)
         , symbol_(symbol__)
         , name_(name__)
@@ -299,7 +300,7 @@ class Atom_type
 
     inline void set_radial_grid(radial_grid_t grid_type__, int num_points__, double rmin__, double rmax__)
     {
-        radial_grid_        = Radial_grid_factory<double>(grid_type__, num_points__, rmin__, rmax__);
+        radial_grid_ = Radial_grid_factory<double>(grid_type__, num_points__, rmin__, rmax__);
         if (parameters_.processing_unit() == GPU) {
             radial_grid_.copy_to_device();
         }
@@ -307,7 +308,7 @@ class Atom_type
 
     inline void set_radial_grid(int num_points__, double const* points__)
     {
-        radial_grid_        = Radial_grid_ext<double>(num_points__, points__);
+        radial_grid_ = Radial_grid_ext<double>(num_points__, points__);
         if (parameters_.processing_unit() == GPU) {
             radial_grid_.copy_to_device();
         }
@@ -316,7 +317,7 @@ class Atom_type
     /// Add augmented-wave descriptor.
     inline void add_aw_descriptor(int n, int l, double enu, int dme, int auto_enu)
     {
-        if ((int)aw_descriptors_.size() < (l + 1)) {
+        if (static_cast<int>(aw_descriptors_.size()) < (l + 1)) {
             aw_descriptors_.resize(l + 1, radial_solution_descriptor_set());
         }
 
@@ -1407,42 +1408,28 @@ inline void Atom_type::init(int offset_lo__)
     offset_lo_ = offset_lo__;
 
     /* read data from file if it exists */
-    if (file_name_.length() > 0) {
-        if (!Utils::file_exists(file_name_)) {
-            std::stringstream s;
-            s << "file " + file_name_ + " doesn't exist";
-            TERMINATE(s);
-        } else {
-            read_input(file_name_);
-        }
-    }
+    read_input(file_name_);
 
     /* check the nuclear charge */
     if (zn_ == 0) {
         TERMINATE("zero atom charge");
     }
 
-    /* add valence levels to the list of core levels */
+    /* add valence levels to the list of atom's levels */
     if (parameters_.full_potential()) {
-        atomic_level_descriptor level;
-        for (int ist = 0; ist < 28; ist++) {
-            bool found      = false;
-            level.n         = atomic_conf[zn_ - 1][ist][0];
-            level.l         = atomic_conf[zn_ - 1][ist][1];
-            level.k         = atomic_conf[zn_ - 1][ist][2];
-            level.occupancy = double(atomic_conf[zn_ - 1][ist][3]);
-            level.core      = false;
-
-            if (level.n != -1) {
-                for (size_t jst = 0; jst < atomic_levels_.size(); jst++) {
-                    if (atomic_levels_[jst].n == level.n && atomic_levels_[jst].l == level.l &&
-                        atomic_levels_[jst].k == level.k) {
-                        found = true;
-                    }
+        for (auto& e : atomic_conf[zn_ - 1]) {
+            /* check if this level is already in the list */
+            bool in_list{false};
+            for (auto& c : atomic_levels_) {
+                if (c.n == e.n && c.l == e.l && c.k == e.k) {
+                    in_list = true;
+                    break;
                 }
-                if (!found) {
-                    atomic_levels_.push_back(level);
-                }
+            }
+            if (!in_list) {
+                auto level = e;
+                level.core = false;
+                atomic_levels_.push_back(level);
             }
         }
         /* get the number of core electrons */
@@ -1692,7 +1679,8 @@ inline void Atom_type::read_input_core(json const& parser)
     std::string core_str = parser["core"];
     if (int size = (int)core_str.size()) {
         if (size % 2) {
-            std::string s = std::string("wrong core configuration string : ") + core_str;
+            std::stringstream s;
+            s << "wrong core configuration string : " << core_str;
             TERMINATE(s);
         }
         int j = 0;
@@ -1707,7 +1695,8 @@ inline void Atom_type::read_input_core(json const& parser)
             iss >> n;
 
             if (n <= 0 || iss.fail()) {
-                std::string s = std::string("wrong principal quantum number : ") + std::string(1, c1);
+                std::stringstream s;
+                s << "wrong principal quantum number : " << std::string(1, c1);
                 TERMINATE(s);
             }
 
@@ -1729,19 +1718,16 @@ inline void Atom_type::read_input_core(json const& parser)
                     break;
                 }
                 default: {
-                    std::string s = std::string("wrong angular momentum label : ") + std::string(1, c2);
+                    std::stringstream s;
+                    s << "wrong angular momentum label : " << std::string(1, c2);
                     TERMINATE(s);
                 }
             }
 
-            atomic_level_descriptor level;
-            level.n    = n;
-            level.l    = l;
-            level.core = true;
-            for (int ist = 0; ist < 28; ist++) {
-                if ((level.n == atomic_conf[zn_ - 1][ist][0]) && (level.l == atomic_conf[zn_ - 1][ist][1])) {
-                    level.k         = atomic_conf[zn_ - 1][ist][2];
-                    level.occupancy = double(atomic_conf[zn_ - 1][ist][3]);
+            for (auto& e: atomic_conf[zn_ - 1]) {
+                if (e.n == n && e.l == l) {
+                    auto level = e;
+                    level.core = true;
                     atomic_levels_.push_back(level);
                 }
             }
@@ -1839,7 +1825,7 @@ inline void Atom_type::read_pseudo_uspp(json const& parser)
     }
 
     if (parser["pseudo_potential"]["header"].count("spin_orbit")) {
-        spin_orbit_coupling(true);
+        spin_orbit_coupling_ = parser["pseudo_potential"]["header"].value("spin_orbit", spin_orbit_coupling_);
     }
 
     int nbf = parser["pseudo_potential"]["header"]["number_of_proj"];
@@ -1907,15 +1893,21 @@ inline void Atom_type::read_pseudo_uspp(json const& parser)
                   << "radial grid size: " << num_mt_points();
                 TERMINATE(s);
             }
-            int l = parser["pseudo_potential"]["atomic_wave_functions"][k]["angular_momentum"];
-            add_ps_atomic_wf(l, v);
 
-            if (spin_orbit_coupling() &&
-                parser["pseudo_potential"]["atomic_wave_functions"][k].count("total_angular_momentum") &&
-                parser["pseudo_potential"]["atomic_wave_functions"][k].count("occupation")) {
-                //double jchi = parser["pseudo_potential"]["atomic_wave_functions"][k]["total_angular_momentum"];
+            int l = parser["pseudo_potential"]["atomic_wave_functions"][k]["angular_momentum"];
+
+            if (parser["pseudo_potential"]["atomic_wave_functions"][k].count("occupation")) {
                 occupancies.push_back(parser["pseudo_potential"]["atomic_wave_functions"][k]["occupation"]);
             }
+
+            if (spin_orbit_coupling() &&
+                parser["pseudo_potential"]["atomic_wave_functions"][k].count("total_angular_momentum")) {
+                // check if j = l +- 1/2
+                if (parser["pseudo_potential"]["atomic_wave_functions"][k]["total_angular_momentum"] < l) {
+                    l = -l;
+                }
+            }
+            add_ps_atomic_wf(l, v);
         }
         ps_atomic_wf_occ(occupancies);
     }
@@ -1973,10 +1965,13 @@ inline void Atom_type::read_pseudo_paw(json const& parser)
     }
 }
 
-inline void Atom_type::read_input(const std::string& fname)
+inline void Atom_type::read_input(std::string const& str__)
 {
-    json parser;
-    std::ifstream(fname) >> parser;
+    json parser = Utils::read_json_from_file_or_string(str__);
+
+    if (parser.empty()) {
+        return;
+    }
 
     if (!parameters_.full_potential()) {
         read_pseudo_uspp(parser);
@@ -2244,7 +2239,6 @@ void Atom_type::read_hubbard_input()
     if(!parameters_.Hubbard().hubbard_correction_) {
         return;
     }
-
     for(auto &d: parameters_.Hubbard().species) {
         if (d.first == symbol_) {
             hubbard_U_ = d.second[0];
@@ -2258,6 +2252,7 @@ void Atom_type::read_hubbard_input()
             starting_magnetization_theta_ = d.second[7];
             starting_magnetization_phi_ = d.second[8];
             starting_magnetization_ = d.second[6];
+            this->hubbard_correction_ = true;
         }
     }
 }

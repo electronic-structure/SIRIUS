@@ -342,6 +342,10 @@ class Density
             : ctx_(ctx__)
             , unit_cell_(ctx_.unit_cell())
         {
+            if (!ctx_.initialized()) {
+                TERMINATE("Simulation_context is not initialized");
+            }
+
             /* allocate charge density */
             rho_ = std::unique_ptr<Periodic_function<double>>(new Periodic_function<double>(ctx_, ctx_.lmmax_rho()));
             rho_vec_[0] = rho_.get();
@@ -352,14 +356,16 @@ class Density
                 rho_vec_[i + 1] = magnetization_[i].get();
             }
             
+            using spf = Smooth_periodic_function<double>;
+            
             /*  allocate charge density and magnetization on a coarse grid */
             for (int i = 0; i < ctx_.num_mag_dims() + 1; i++) {
-                rho_mag_coarse_[i] = std::unique_ptr<Smooth_periodic_function<double>>(new Smooth_periodic_function<double>(ctx_.fft_coarse(), ctx_.gvec_coarse_partition()));
+                rho_mag_coarse_[i] = std::unique_ptr<spf>(new spf(ctx_.fft_coarse(), ctx_.gvec_coarse_partition()));
             }
 
             /* core density of the pseudopotential method */
             if (!ctx_.full_potential()) {
-                rho_pseudo_core_ = std::unique_ptr<Smooth_periodic_function<double>>(new Smooth_periodic_function<double>(ctx_.fft(), ctx_.gvec_partition()));
+                rho_pseudo_core_ = std::unique_ptr<spf>(new spf(ctx_.fft(), ctx_.gvec_partition()));
                 rho_pseudo_core_->zero();
 
                 bool is_empty{true};

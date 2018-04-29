@@ -13,8 +13,6 @@ enum class task_t : int
     k_point_path         = 2
 };
 
-const double au2angs = 0.5291772108;
-
 void json_output_common(json& dict__)
 {
     dict__["git_hash"] = git_hash;
@@ -66,32 +64,20 @@ double ground_state(Simulation_context& ctx,
         MEMORY_USAGE_INFO();
     }
 
-    Potential potential(ctx);
-    potential.allocate();
-
-    Density density(ctx);
-    density.allocate();
-
-    Hamiltonian H(ctx, potential);
-
-    if (ctx.comm().rank() == 0 && ctx.control().print_memory_usage_) {
-        MEMORY_USAGE_INFO();
-    }
-
     auto& inp = ctx.parameters_input();
-
-    K_point_set ks(ctx, inp.ngridk_, inp.shiftk_, ctx.use_symmetry());
-    ks.initialize();
-
-    if (ctx.comm().rank() == 0 && ctx.control().print_memory_usage_) {
-        MEMORY_USAGE_INFO();
-    }
 
     std::string ref_file = args.value<std::string>("test_against", "");
     /* don't write output if we compare against the reference calculation */
     bool write_state = (ref_file.size() == 0);
 
-    DFT_ground_state dft(ctx, H, density, ks);
+    DFT_ground_state dft(ctx);
+
+    if (ctx.comm().rank() == 0 && ctx.control().print_memory_usage_) {
+        MEMORY_USAGE_INFO();
+    }
+
+    auto& potential = dft.potential();
+    auto& density = dft.density();
 
     if (task == task_t::ground_state_restart) {
         if (!Utils::file_exists(storage_file_name)) {
@@ -100,24 +86,19 @@ double ground_state(Simulation_context& ctx,
         density.load();
         potential.load();
     } else {
-        density.initial_density();
-        potential.generate(density);
-        if (!ctx.full_potential()) {
-            dft.band().initialize_subspace(ks, H);
-        }
+        dft.initial_state();
     }
 
     /* launch the calculation */
-    int result = dft.find(inp.potential_tol_, inp.energy_tol_, inp.num_dft_iter_, write_state);
+    auto result = dft.find(inp.potential_tol_, inp.energy_tol_, inp.num_dft_iter_, write_state);
 
     dft.print_magnetic_moment();
 
     if (ref_file.size() != 0) {
-        auto dict = dft.serialize();
         json dict_ref;
         std::ifstream(ref_file) >> dict_ref;
 
-        double e1 = dict["energy"]["total"];
+        double e1 = result["energy"]["total"];
         double e2 = dict_ref["ground_state"]["energy"]["total"];
 
         if (std::abs(e1 - e2) > 1e-6) {
@@ -128,12 +109,12 @@ double ground_state(Simulation_context& ctx,
 
     if (!ctx.full_potential()) {
         if (ctx.control().print_stress_) {
-            Stress s(ctx, ks, density, potential);
+            Stress s(ctx, dft.k_point_set(), density, potential);
             s.calc_stress_total();
             s.print_info();
         }
         if (ctx.control().print_forces_) {
-            Force f(ctx, density, potential, ks);
+            Force f(ctx, density, potential, dft.hamiltonian(), dft.k_point_set());
             f.calc_forces_total();
             f.print_info();
         }
@@ -144,7 +125,7 @@ double ground_state(Simulation_context& ctx,
         json_output_common(dict);
 
         dict["task"] = static_cast<int>(task);
-        dict["ground_state"] = dft.serialize();
+        dict["ground_state"] = result;
         dict["timers"] = sddk::timer::serialize_timers();
         dict["counters"] = json::object();
         dict["counters"]["local_operator_num_applied"] = Local_operator::num_applied();
@@ -156,25 +137,25 @@ double ground_state(Simulation_context& ctx,
             ofs << dict.dump(4);
         }
 
-        if (args.exist("aiida_output")) {
-            json dict;
-            json_output_common(dict);
-            dict["task"] = static_cast<int>(task);
-            if (result >= 0) {
-                dict["task_status"] = "converged";
-                dict["num_scf_iterations"] =  result;
-            } else {
-                dict["task_status"] = "unconverged";
-            }
-            dict["volume"] = ctx.unit_cell().omega() * std::pow(au2angs, 3);
-            dict["volume_units"] = "angstrom^3";
-            dict["energy"] = dft.total_energy() * ha2ev;
-            dict["energy_units"] = "eV";
-            if (ctx.comm().rank() == 0) {
-                std::ofstream ofs(aiida_output_file, std::ofstream::out | std::ofstream::trunc);
-                ofs << dict.dump(4);
-            }
-        }
+        //if (args.exist("aiida_output")) {
+        //    json dict;
+        //    json_output_common(dict);
+        //    dict["task"] = static_cast<int>(task);
+        //    if (result >= 0) {
+        //        dict["task_status"] = "converged";
+        //        dict["num_scf_iterations"] =  result;
+        //    } else {
+        //        dict["task_status"] = "unconverged";
+        //    }
+        //    dict["volume"] = ctx.unit_cell().omega() * std::pow(bohr_radius, 3);
+        //    dict["volume_units"] = "angstrom^3";
+        //    dict["energy"] = dft.total_energy() * ha2ev;
+        //    dict["energy_units"] = "eV";
+        //    if (ctx.comm().rank() == 0) {
+        //        std::ofstream ofs(aiida_output_file, std::ofstream::out | std::ofstream::trunc);
+        //        ofs << dict.dump(4);
+        //    }
+        //}
     }
 
     /* wait for all */
@@ -268,11 +249,12 @@ void run_tasks(cmd_args const& args)
         if (!ctx->full_potential()) {
             band.initialize_subspace(ks, H);
             if (ctx->hubbard_correction()) {
+                TERMINATE("fix me");
                 H.U().hubbard_compute_occupation_numbers(ks); // TODO: this is wrong; U matrix should come form the saved file
                 H.U().calculate_hubbard_potential_and_energy();
             }
         }
-        band.solve_for_kset(ks, H, true);
+        band.solve(ks, H, true);
 
         ks.sync_band_energies();
         if (mpi_comm_world().rank() == 0) {

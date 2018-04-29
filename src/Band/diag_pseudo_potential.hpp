@@ -1,3 +1,27 @@
+// Copyright (c) 2013-2018 Anton Kozhevnikov, Thomas Schulthess
+// All rights reserved.
+//
+// Redistribution and use in source and binary forms, with or without modification, are permitted provided that
+// the following conditions are met:
+//
+// 1. Redistributions of source code must retain the above copyright notice, this list of conditions and the
+//    following disclaimer.
+// 2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions
+//    and the following disclaimer in the documentation and/or other materials provided with the distribution.
+//
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED
+// WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A
+// PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
+// ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+// PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+// CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
+// OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+/** \file diag_pseudo_potential.hpp
+ *
+ *   \brief Diagonalization of pseudopotential Hamiltonian.
+ */
+
 #ifdef __GPU
 extern "C" void compute_chebyshev_polynomial_gpu(int num_gkvec,
                                                  int n,
@@ -7,6 +31,57 @@ extern "C" void compute_chebyshev_polynomial_gpu(int num_gkvec,
                                                  cuDoubleComplex* phi1,
                                                  cuDoubleComplex* phi2);
 #endif
+
+template <typename T>
+int Band::diag_pseudo_potential(K_point* kp__, Hamiltonian& H__) const
+{
+    PROFILE("sirius::Band::diag_pseudo_potential");
+
+    H__.local_op().prepare(kp__->gkvec_partition());
+    ctx_.fft_coarse().prepare(kp__->gkvec_partition());
+
+    int niter{0};
+
+    auto& itso = ctx_.iterative_solver_input();
+    if (itso.type_ == "exact") {
+        if (ctx_.num_mag_dims() != 3) {
+            for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
+                diag_pseudo_potential_exact<double_complex>(kp__, ispn, H__);
+            }
+        } else {
+            STOP();
+        }
+    } else if (itso.type_ == "davidson") {
+        niter = diag_pseudo_potential_davidson<T>(kp__, H__);
+    } else if (itso.type_ == "rmm-diis") {
+        if (ctx_.num_mag_dims() != 3) {
+            for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
+                diag_pseudo_potential_rmm_diis<T>(kp__, ispn, H__);
+            }
+        } else {
+            STOP();
+        }
+    } else if (itso.type_ == "chebyshev") {
+        P_operator<T> p_op(ctx_, kp__->p_mtrx());
+        if (ctx_.num_mag_dims() != 3) {
+            for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
+                diag_pseudo_potential_chebyshev<T>(kp__, ispn, H__, p_op);
+            }
+        } else {
+            STOP();
+        }
+    } else {
+        TERMINATE("unknown iterative solver type");
+    }
+
+    /* check residuals */
+    if (ctx_.control().verification_ >= 1) {
+        check_residuals<T>(kp__, H__); 
+    }
+
+    ctx_.fft_coarse().dismiss();
+    return niter;
+}
 
 template <typename T>
 inline void Band::diag_pseudo_potential_exact(K_point* kp__,

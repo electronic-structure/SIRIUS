@@ -2,7 +2,7 @@ inline void Potential::init()
 {
     PROFILE("sirius::Potential::init");
 
-    if (ctx_.esm_type() == electronic_structure_method_t::full_potential_lapwlo) {
+    if (ctx_.electronic_structure_method() == electronic_structure_method_t::full_potential_lapwlo) {
         /* compute values of spherical Bessel functions at MT boundary */
         sbessel_mt_ = mdarray<double, 3>(lmax_ + pseudo_density_order_ + 2, unit_cell_.num_atom_types(), 
                                          ctx_.gvec().num_shells(), memory_t::host, "sbessel_mt_");

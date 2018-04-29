@@ -1,0 +1,9 @@
+recursive-include src *.h
+recursive-include src *.hpp
+recursive-include src *.cpp
+recursive-include src *.a
+recursive-include libs *.a
+recursive-include libs *.h
+recursive-include libs/gsl-2.4/.libs/ *.a
+
+recursive-include python_module *.cpp

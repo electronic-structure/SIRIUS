@@ -91,19 +91,18 @@ void sirius_finalize(ftn_bool* call_mpi_fin__)
 }
 
 /// Create context of the simulation.
-void sirius_create_simulation_context(ftn_char config_file_name__,
-                                      ftn_char method_type__,
+void sirius_create_simulation_context(ftn_char str__,
                                       ftn_int* fcomm__)
 {
     auto& comm = map_fcomm(*fcomm__);
-    std::string config_file_name(config_file_name__);
-    std::string method_type(method_type__);
-    if (config_file_name.length() == 0) {
-        sim_ctx = std::unique_ptr<sirius::Simulation_context>(new sirius::Simulation_context(comm));
-    } else {
-        sim_ctx = std::unique_ptr<sirius::Simulation_context>(new sirius::Simulation_context(config_file_name, comm));
-    }
-    sim_ctx->set_esm_type(method_type);
+    std::string str(str__);
+    sim_ctx = std::unique_ptr<sirius::Simulation_context>(new sirius::Simulation_context(str, comm));
+}
+
+void sirius_import_simulation_context_parameters(ftn_char str__)
+{
+    std::string str(str__);
+    sim_ctx->import(str);
 }
 
 /// Initialize the global variables.
@@ -790,7 +789,7 @@ void sirius_find_eigen_states(int32_t* kset_id__,
                               int32_t* precompute__)
 {
     bool precompute = (*precompute__) ? true : false;
-    dft_ground_state->band().solve_for_kset(*kset_list[*kset_id__], *hamiltonian, precompute);
+    dft_ground_state->band().solve(*kset_list[*kset_id__], *hamiltonian, precompute);
 }
 
 void sirius_find_band_occupancies(int32_t* kset_id__)
@@ -2217,6 +2216,11 @@ void sirius_set_iterative_solver_tolerance(ftn_double* tol__)
     sim_ctx->set_iterative_solver_tolerance(*tol__);
 }
 
+void sirius_set_empty_states_tolerance(ftn_double* tol__)
+{
+    sim_ctx->empty_states_tolerance(*tol__);
+}
+
 void sirius_set_iterative_solver_type(ftn_char type__)
 {
     sim_ctx->set_iterative_solver_type(std::string(type__));
@@ -2723,7 +2727,8 @@ static std::vector<int> atomic_orbital_index_map_QE(sirius::Atom_type const& typ
 
 static inline int phase_Rlm_QE(sirius::Atom_type const& type__, int xi__)
 {
-    return (type__.indexb(xi__).m >= 1 && type__.indexb(xi__).m % 2 == 0) ? -1 : 1;
+    //return (type__.indexb(xi__).m >= 1 && type__.indexb(xi__).m % 2 == 0) ? -1 : 1;
+    return (type__.indexb(xi__).m < 0 && (-type__.indexb(xi__).m) % 2 == 0) ? -1 : 1;
 }
 
 void sirius_get_wave_functions(ftn_int*            kset_id__,
@@ -2745,7 +2750,7 @@ void sirius_get_wave_functions(ftn_int*            kset_id__,
     std::vector<double_complex> wf_tmp(kp->num_gkvec());
     int gkvec_count = kp->gkvec().count();
     int gkvec_offset = kp->gkvec().offset();
-    
+
     // TODO: create G-mapping once here
 
     for (int i = 0; i < sim_ctx->num_bands(); i++) {
@@ -2789,7 +2794,7 @@ void sirius_get_beta_projectors(ftn_int*            kset_id__,
     vkb.zero();
 
     auto& gkvec = kp->gkvec();
-    
+
     /* list of sirius G-vector indices which fall into cutoff |G+k| < Gmax */
     std::vector<int> idxg;
     /* mapping  between QE and sirius indices */
@@ -2819,7 +2824,7 @@ void sirius_get_beta_projectors(ftn_int*            kset_id__,
     for (int ia = 0; ia < sim_ctx->unit_cell().num_atoms(); ia++) {
         auto& atom = sim_ctx->unit_cell().atom(ia);
         int nbf = atom.mt_basis_size();
-        
+
         auto qe_order = atomic_orbital_index_map_QE(atom.type());
 
         for (int xi = 0; xi < nbf; xi++) {
@@ -2973,7 +2978,7 @@ void sirius_get_q_operator(ftn_char            label__,
             xi2 = xi;
         }
     }
-    
+
     auto p1 = phase_Rlm_QE(type, xi1);
     auto p2 = phase_Rlm_QE(type, xi2);
 
@@ -3046,6 +3051,8 @@ void sirius_set_density_matrix(ftn_int*            ia__,
                                ftn_double_complex* dm__,
                                ftn_int*            ld__)
 {
+    PROFILE("sirius_api::sirius_set_density_matrix");
+
     mdarray<double_complex, 3> dm(dm__, *ld__, *ld__, 3);
     auto& atom = sim_ctx->unit_cell().atom(*ia__ - 1);
     auto idx_map = atomic_orbital_index_map_QE(atom.type());
@@ -3253,6 +3260,8 @@ void sirius_get_pw_coeffs_real(ftn_char    atom_type__,
                                ftn_int*    gvl__,
                                ftn_int*    comm__)
 {
+    PROFILE("sirius_api::sirius_get_pw_coeffs_real");
+
     std::string label(label__);
     std::string atom_label(atom_type__);
     int iat = sim_ctx->unit_cell().atom_type(atom_label).id();
@@ -3287,13 +3296,18 @@ void sirius_get_pw_coeffs_real(ftn_char    atom_type__,
                        {
                            return ri.value(iat, g);
                        });
+    } else {
+        std::stringstream s;
+        s << "wrong label in sirius_get_pw_coeffs_real()" << std::endl
+          << "  label : " << label; 
+        TERMINATE(s);
     }
 }
 
 void sirius_calculate_forces(ftn_int* kset_id__)
 {
     auto& kset = *kset_list[*kset_id__];
-    forces = std::unique_ptr<sirius::Force>(new sirius::Force(*sim_ctx, *density, *potential, kset));
+    forces = std::unique_ptr<sirius::Force>(new sirius::Force(*sim_ctx, *density, *potential, *hamiltonian, kset));
 }
 
 void sirius_get_forces(ftn_char label__, ftn_double* forces__)
@@ -3414,6 +3428,15 @@ void sirius_ri_beta_(ftn_int* idx__, ftn_int* iat__, ftn_double* q__, ftn_double
 {
     if (sim_ctx) {
         *val__ = sim_ctx->beta_ri().value<int, int>(*idx__ - 1, *iat__ - 1, *q__);
+    } else {
+        *val__ = 0;
+    }
+}
+
+void sirius_ri_beta_djl_(ftn_int* idx__, ftn_int* iat__, ftn_double* q__, ftn_double* val__)
+{
+    if (sim_ctx) {
+        *val__ = sim_ctx->beta_ri_djl().value<int, int>(*idx__ - 1, *iat__ - 1, *q__);
     } else {
         *val__ = 0;
     }

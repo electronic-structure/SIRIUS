@@ -336,6 +336,10 @@ class Potential
         {
             PROFILE("sirius::Potential::Potential");
 
+            if (!ctx_.initialized()) {
+                TERMINATE("Simulation_context is not initialized");
+            }
+
             lmax_ = std::max(ctx_.lmax_rho(), ctx_.lmax_pot());
             sht_ = std::unique_ptr<SHT>(new SHT(lmax_));
 

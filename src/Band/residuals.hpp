@@ -421,3 +421,49 @@ inline int Band::residuals(K_point*             kp__,
     return n;
 }
 
+template <typename T>
+void Band::check_residuals(K_point* kp__, Hamiltonian& H__) const
+{
+    if (kp__->comm().rank() == 0) {
+        printf("checking residuals\n");
+    }
+
+    const bool nc_mag = (ctx_.num_mag_dims() == 3);
+    const int num_sc = nc_mag ? 2 : 1;
+
+    auto& psi = kp__->spinor_wave_functions();
+    Wave_functions hpsi(kp__->gkvec_partition(), ctx_.num_bands(), num_sc);
+    Wave_functions spsi(kp__->gkvec_partition(), ctx_.num_bands(), num_sc);
+    Wave_functions res(kp__->gkvec_partition(), ctx_.num_bands(), num_sc);
+
+    /* compute residuals */
+    for (int ispin_step = 0; ispin_step < ctx_.num_spin_dims(); ispin_step++) {
+        if (nc_mag) {
+            /* apply Hamiltonian and S operators to the wave-functions */
+            H__.apply_h_s<T>(kp__, 2, 0, ctx_.num_bands(), psi, hpsi, spsi);
+        } else {
+            Wave_functions phi(&psi.pw_coeffs(ispin_step).prime(0, 0), kp__->gkvec_partition(), ctx_.num_bands(), 1);
+            /* apply Hamiltonian and S operators to the wave-functions */
+            H__.apply_h_s<T>(kp__, ispin_step, 0, ctx_.num_bands(), phi, hpsi, spsi);
+        }
+        
+        for (int ispn = 0; ispn < num_sc; ispn++) {
+            #pragma omp parallel for schedule(static)
+            for (int j = 0; j < ctx_.num_bands(); j++) {
+                for (int ig = 0; ig < kp__->num_gkvec_loc(); ig++) {
+                    res.pw_coeffs(ispn).prime(ig, j) = hpsi.pw_coeffs(ispn).prime(ig, j) -
+                                                       spsi.pw_coeffs(ispn).prime(ig, j) * 
+                                                       kp__->band_energy(j, ispin_step);
+                }
+            }
+        }
+        /* get the norm */
+        auto l2norm = res.l2norm(ctx_.processing_unit(), nc_mag ? 2 : 0, ctx_.num_bands());
+
+        if (kp__->comm().rank() == 0) {
+            for (int j = 0; j < ctx_.num_bands(); j++) {
+                printf("band: %3i, residual l2norm: %18.12f\n", j, l2norm[j]);
+            }
+        }
+    }
+}

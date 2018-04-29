@@ -29,20 +29,18 @@ class Free_atom: public sirius::Atom_type
 
     public:
     
-        double NIST_LDA_Etot;
-        double NIST_ScRLDA_Etot;
+        double NIST_LDA_Etot{0};
+        double NIST_ScRLDA_Etot{0};
 
         Free_atom(Free_atom&& src) = default;
     
-        Free_atom(sirius::Simulation_parameters const& param__,
-                  const std::string symbol, 
-                  const std::string name, 
-                  int zn, 
-                  double mass, 
-                  std::vector<atomic_level_descriptor>& levels_nl) 
-            : Atom_type(param__, symbol, name, zn, mass, levels_nl, sirius::lin_exp_grid), 
-              NIST_LDA_Etot(0),
-              NIST_ScRLDA_Etot(0)
+        Free_atom(sirius::Simulation_parameters        const& param__,
+                  const                                       std::string symbol, 
+                  const                                       std::string name, 
+                  int                                         zn, 
+                  double                                      mass, 
+                  std::vector<atomic_level_descriptor> const& levels_nl) 
+            : Atom_type(param__, symbol, name, zn, mass, levels_nl, sirius::radial_grid_t::lin_exp_grid)
         {
             radial_grid_ = sirius::Radial_grid_exp<double>(2000 + 150 * zn, 1e-7, 20.0 + 0.25 * zn); 
         }
@@ -64,8 +62,7 @@ class Free_atom: public sirius::Atom_type
             std::vector<double> veff(np);
             std::vector<double> vrho(np);
             std::vector<double> vnuc(np);
-            for (int i = 0; i < np; i++)
-            {
+            for (int i = 0; i < np; i++) {
                 vnuc[i] = -zn() * radial_grid().x_inv(i);
                 veff[i] = vnuc[i];
                 vrho[i] = 0;

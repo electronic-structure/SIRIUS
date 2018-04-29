@@ -123,8 +123,7 @@ class Non_local_functor
                                 double_complex dij = 0.0;
 
                                 /* get non-magnetic or collinear spin parts of dij*/
-                                switch (ctx_.num_spins())
-                                {
+                                switch (ctx_.num_spins()) {
                                     case 1: {
                                         dij = unit_cell.atom(ia).d_mtrx(ibf, jbf, 0);
                                         break;
@@ -143,7 +142,7 @@ class Non_local_functor
                                 }
 
                                 /* add non-magnetic or diagonal spin components ( or collinear part) */
-                                for_bnd(ibf, jbf, dij, double_complex(qij, 0.0), beta_phi_chunks[ispn] );
+                                for_bnd(ibf, jbf, dij, double_complex(qij, 0.0), beta_phi_chunks[ispn]);
 
                                 /* for non-collinear case*/
                                 if (ctx_.num_mag_dims() == 3) {
@@ -152,11 +151,11 @@ class Non_local_functor
                                     /* add non-diagonal spin components*/
                                     for_bnd(ibf, jbf, dij, double_complex(0.0, 0.0), beta_phi_chunks[ispn + spin_factor] );
                                 }
-                            }
-                        }
-                    }
-                }
-            }
+                            } // jbf
+                        } // ibf
+                    } // ia_chunk
+                } // ispn
+            } // x
         }
 
         bp.dismiss();

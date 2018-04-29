@@ -25,7 +25,7 @@ def read_until(fin, tag):
     while True:
         line = fin.readline()
         if not line:
-            print "Unexpected end of file"
+            print ("Unexpected end of file")
             sys.exit(-1)
         if tag in line: return
         
@@ -37,13 +37,13 @@ def read_mesh_data(in_file, npoints):
         if len(out_data) == npoints: break
     return out_data
 
-def parse_header(upf_dict):
+def parse_header(upf_dict, fname):
 
-    print "parsing header"
+    #print "parsing header"
 
     upf_dict["header"] = {}
     
-    upf = open(sys.argv[1], "r")
+    upf = open(fname, "r")
     
     read_until(upf, "<PP_HEADER>")
 
@@ -97,11 +97,11 @@ def parse_header(upf_dict):
 # 
 # QE subroutine read_pseudo_mesh
 #
-def parse_mesh(upf_dict):
+def parse_mesh(upf_dict, fname):
     
-    print "parsing mesh"
+    #print "parsing mesh"
 
-    upf = open(sys.argv[1], "r")
+    upf = open(fname, "r")
 
     read_until(upf, "<PP_R>")
 
@@ -126,11 +126,11 @@ def parse_mesh(upf_dict):
 #
 # QE subroutine read_pseudo_nlcc
 #
-def parse_nlcc(upf_dict):
+def parse_nlcc(upf_dict, fname):
 
-    print "parsing nlcc"
+    #print "parsing nlcc"
     
-    upf = open(sys.argv[1], "r")
+    upf = open(fname, "r")
 
     read_until(upf, "<PP_NLCC>")
 
@@ -145,13 +145,13 @@ def parse_nlcc(upf_dict):
 #
 # QE subroutine read_pseudo_local
 #
-def parse_local(upf_dict):
+def parse_local(upf_dict, fname):
 
-    print "parsing local"
+    #print "parsing local"
 
     upf_dict['local_potential'] = []
 
-    upf = open(sys.argv[1], "r")
+    upf = open(fname, "r")
 
     read_until(upf, "<PP_LOCAL>")
 
@@ -167,14 +167,14 @@ def parse_local(upf_dict):
 #
 # QE subroutine read_pseudo_nl 
 #
-def parse_non_local(upf_dict):
+def parse_non_local(upf_dict, fname):
 
-    print "parsing non-local"
+    #print "parsing non-local"
 
     upf_dict['beta_projectors'] = []
     upf_dict['D_ion'] = []
         
-    upf = open(sys.argv[1], "r")
+    upf = open(fname, "r")
 
     read_until(upf, "<PP_NONLOCAL>")
 
@@ -209,13 +209,13 @@ def parse_non_local(upf_dict):
         upf_dict['beta_projectors'][i]['cutoff_radius'] = 0.0
         upf_dict['beta_projectors'][i]['ultrasoft_cutoff_radius'] = 0.0
         
-        line = upf.readline()
-        if not "</PP_BETA>" in line:
-            s = line.split()
-            upf_dict['beta_projectors'][i]['cutoff_radius'] = float(s[0])
-            upf_dict['beta_projectors'][i]['ultrasoft_cutoff_radius'] = float(s[1])
-            s = upf.readline().split()
-            if not "</PP_BETA>" in line: upf_dict['beta_projectors'][i]['els_beta'] = float(s[0])
+        #line = upf.readline()
+        #if not "</PP_BETA>" in line:
+            #s = line.split()
+            #upf_dict['beta_projectors'][i]['cutoff_radius'] = float(s[0])
+            #upf_dict['beta_projectors'][i]['ultrasoft_cutoff_radius'] = float(s[1])
+            #s = upf.readline().split()
+            #if not "</PP_BETA>" in line: upf_dict['beta_projectors'][i]['els_beta'] = float(s[0])
 
     # ================================================================
     # call scan_begin (iunps, "DIJ", .false.)  
@@ -304,11 +304,11 @@ def parse_non_local(upf_dict):
             
             s = upf.readline().split()
             if int(s[2]) != lj:
-                print "inconsistent angular momentum"
+                print("inconsistent angular momentum")
                 sys.exit(-1)
 
             if int(s[0]) != i + 1 or int(s[1]) != j + 1: 
-                print "inconsistent ij indices"
+                print("inconsistent ij indices")
                 sys.exit(-1)
             
             s = upf.readline().split()
@@ -336,26 +336,27 @@ def parse_non_local(upf_dict):
 
                 read_until(upf, "</PP_QFCOEF>")
             
-            # constuct Qij(r) for each l
-            for l in range(abs(li-lj), li+lj+1):
-                if (li + lj + l) % 2 == 0:
-                    qij_fixed = [qij[k] for k in range(upf_dict['header']['mesh_size'])]
+            if num_q_coef > 0:
+                # constuct Qij(r) for each l
+                for l in range(abs(li-lj), li+lj+1):
+                    if (li + lj + l) % 2 == 0:
+                        qij_fixed = [qij[k] for k in range(upf_dict['header']['mesh_size'])]
 
-                    for ir in range(upf_dict['header']['mesh_size']):
-                        x = upf_dict['radial_grid'][ir]
-                        x2 = x * x
-                        if x < R_inner[l]:
-                            qij_fixed[ir] = q_coefs[0 + l * num_q_coef]
-                            for n in range(1, num_q_coef):
-                                qij_fixed[ir] += q_coefs[n + l * num_q_coef] * x2**n;
-                            qij_fixed[ir] *= x**(l + 2);
+                        for ir in range(upf_dict['header']['mesh_size']):
+                            x = upf_dict['radial_grid'][ir]
+                            x2 = x * x
+                            if x < R_inner[l]:
+                                qij_fixed[ir] = q_coefs[0 + l * num_q_coef]
+                                for n in range(1, num_q_coef):
+                                    qij_fixed[ir] += q_coefs[n + l * num_q_coef] * x2**n;
+                                qij_fixed[ir] *= x**(l + 2);
 
-                    qij_dict = {}
-                    qij_dict['radial_function'] = qij_fixed
-                    qij_dict['i'] = i
-                    qij_dict['j'] = j
-                    qij_dict['angular_momentum'] = l
-                    upf_dict['augmentation'].append(qij_dict)
+                        qij_dict = {}
+                        qij_dict['radial_function'] = qij_fixed
+                        qij_dict['i'] = i
+                        qij_dict['j'] = j
+                        qij_dict['angular_momentum'] = l
+                        upf_dict['augmentation'].append(qij_dict)
             
             
     upf.close()
@@ -364,13 +365,13 @@ def parse_non_local(upf_dict):
 #
 # QE subroutine read_pseudo_pswfc
 #
-def parse_pswfc(upf_dict):
+def parse_pswfc(upf_dict, fname):
     
-    print "parsing wfc"
+    #print "parsing wfc"
 
     upf_dict['atomic_wave_functions'] = []
 
-    upf = open(sys.argv[1], "r")
+    upf = open(fname, "r")
 
     read_until(upf, "<PP_PSWFC>")
 
@@ -396,11 +397,11 @@ def parse_pswfc(upf_dict):
 #
 # QE subroutine read_pseudo_rhoatom
 #
-def parse_rhoatom(upf_dict):
+def parse_rhoatom(upf_dict, fname):
 
-    print "parsing rhoatm"
+    #print "parsing rhoatm"
 
-    upf = open(sys.argv[1], "r")
+    upf = open(fname, "r")
 
     read_until(upf, "<PP_RHOATOM>")
 
@@ -413,20 +414,25 @@ def parse_rhoatom(upf_dict):
     upf.close()
 
     
-def main():
-
+def parse_upf1_from_file(upf1_fname):
     upf_dict = {}
 
-    parse_header(upf_dict)
-    parse_mesh(upf_dict)
-    if upf_dict['header']['core_correction'] == 1: parse_nlcc(upf_dict)
-    parse_local(upf_dict)
-    parse_non_local(upf_dict)
-    parse_pswfc(upf_dict)
-    parse_rhoatom(upf_dict)
+    parse_header(upf_dict, upf1_fname)
+    parse_mesh(upf_dict, upf1_fname)
+    if upf_dict['header']['core_correction'] == 1: parse_nlcc(upf_dict, upf1_fname)
+    parse_local(upf_dict, upf1_fname)
+    parse_non_local(upf_dict, upf1_fname)
+    parse_pswfc(upf_dict, upf1_fname)
+    parse_rhoatom(upf_dict, upf1_fname)
 
     pp_dict = {}
     pp_dict['pseudo_potential'] = upf_dict
+
+    return pp_dict
+
+def main():
+    
+    pp_dict = parse_upf1_from_file(sys.argv[1])
 
     fout = open(sys.argv[1] + ".json", "w")
 

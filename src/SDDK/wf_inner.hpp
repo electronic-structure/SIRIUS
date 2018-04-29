@@ -215,7 +215,7 @@ inline void inner(device_t        pu__,
             printf("inner() performance: %12.6f GFlops/rank, [m,n,k=%i %i %i, time=%f (sec)]\n", ngop * m__ * n__ * k / time, m__, n__, k, time);
         }
         return;
-    } else if (result__.blacs_grid().comm().size() == 1) {
+    } else if (result__.comm().size() == 1) {
         mdarray<T, 2> tmp(m__, n__);
         if (pu__ == GPU) {
             tmp.allocate(memory_t::device);

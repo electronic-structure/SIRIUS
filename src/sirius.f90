@@ -20,11 +20,17 @@ module sirius
             &bind(C, name="sirius_clear")
         end subroutine
 
-        subroutine sirius_create_simulation_context(config_file_name, method_type, fcomm)&
+        subroutine sirius_create_simulation_context(str, fcomm)&
             &bind(C, name="sirius_create_simulation_context")
-            character, dimension(*), intent(in) :: config_file_name
-            character, dimension(*), intent(in) :: method_type
-            integer,                 intent(in) :: fcomm
+            use, intrinsic :: ISO_C_BINDING
+            character(C_CHAR), dimension(*), intent(in) :: str
+            integer(C_INT),                  intent(in) :: fcomm
+        end subroutine
+
+        subroutine sirius_import_simulation_context_parameters(str)&
+            &bind(C, name="sirius_import_simulation_context_parameters")
+            use, intrinsic :: ISO_C_BINDING
+            character(C_CHAR), dimension(*), intent(in) :: str
         end subroutine
 
         subroutine sirius_initialize_simulation_context()&
@@ -569,6 +575,11 @@ module sirius
 
         subroutine sirius_set_iterative_solver_tolerance(tol)&
             &bind(C, name="sirius_set_iterative_solver_tolerance")
+            real(8),                 intent(in) :: tol
+        end subroutine
+
+        subroutine sirius_set_empty_states_tolerance(tol)&
+            &bind(C, name="sirius_set_empty_states_tolerance")
             real(8),                 intent(in) :: tol
         end subroutine
 

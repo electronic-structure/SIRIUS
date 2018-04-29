@@ -1,20 +1,20 @@
 // Copyright (c) 2013-2016 Anton Kozhevnikov, Thomas Schulthess
 // All rights reserved.
-// 
-// Redistribution and use in source and binary forms, with or without modification, are permitted provided that 
+//
+// Redistribution and use in source and binary forms, with or without modification, are permitted provided that
 // the following conditions are met:
-// 
-// 1. Redistributions of source code must retain the above copyright notice, this list of conditions and the 
+//
+// 1. Redistributions of source code must retain the above copyright notice, this list of conditions and the
 //    following disclaimer.
-// 2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions 
+// 2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions
 //    and the following disclaimer in the documentation and/or other materials provided with the distribution.
-// 
-// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED 
-// WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A 
-// PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR 
-// ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, 
-// PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER 
-// CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR 
+//
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED
+// WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A
+// PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
+// ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+// PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+// CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
 // OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 /** \file k_point_set.h
@@ -43,7 +43,7 @@ struct kq
 class K_point_set
 {
     private:
-    
+
         Simulation_context& ctx_;
 
         std::vector<std::unique_ptr<K_point>> kpoints_;
@@ -73,7 +73,7 @@ class K_point_set
         K_point_set(Simulation_context& ctx__,
                     vector3d<int> k_grid__,
                     vector3d<int> k_shift__,
-                    int use_symmetry__) 
+                    int use_symmetry__)
                   : ctx_(ctx__)
                   , unit_cell_(ctx__.unit_cell())
                   , comm_k_(ctx_.comm_k())
@@ -110,7 +110,7 @@ class K_point_set
             //    {
             //        for (int isym = 0; isym < parameters_.unit_cell()->symmetry()->num_sym_op(); isym++)
             //        {
-            //            auto vk_rot = matrix3d<double>(transpose(parameters_.unit_cell()->symmetry()->rot_mtrx(isym))) * 
+            //            auto vk_rot = matrix3d<double>(transpose(parameters_.unit_cell()->symmetry()->rot_mtrx(isym))) *
             //                          vector3d<double>(vk(0, ik), vk(1, ik), vk(2, ik));
             //            for (int x = 0; x < 3; x++)
             //            {
@@ -133,7 +133,7 @@ class K_point_set
             //    //== std::cout << "sym.table" << std::endl;
             //    //== for (int isym = 0; isym < parameters_.unit_cell()->symmetry().num_sym_op(); isym++)
             //    //== {
-            //    //==     printf("sym: %2i, ", isym); 
+            //    //==     printf("sym: %2i, ", isym);
             //    //==     for (int ik = 0; ik < nk; ik++) printf(" %2i", kmap(isym, ik));
             //    //==     printf("\n");
             //    //== }
@@ -164,10 +164,23 @@ class K_point_set
             for (int ik = 0; ik < nk; ik++) {
                 add_kpoint(&kp(0, ik), wk[ik]);
             }
+            initialize();
+        }
+
+        K_point_set(Simulation_context& ctx__, std::vector<vector3d<double>> vec__)
+                  : ctx_(ctx__)
+                  , unit_cell_(ctx__.unit_cell())
+                  , comm_k_(ctx__.comm_k())
+        {
+            PROFILE("sirius::K_point_set::K_point_set");
+            for (auto& v: vec__) {
+                add_kpoint(&v[0], 1.0);
+            }
+            initialize();
         }
 
         /// Initialize the k-point set
-        void initialize(std::vector<int> counts = std::vector<int>())
+        void initialize(std::vector<int> counts)
         {
             /* distribute k-points along the 1-st dimension of the MPI grid */
             if (counts.empty()) {
@@ -188,6 +201,21 @@ class K_point_set
             if (ctx_.comm().rank() == 0 && ctx_.control().print_memory_usage_) {
                 MEMORY_USAGE_INFO();
             }
+        }
+
+        void initialize()
+        {
+            initialize(std::vector<int>());
+        }
+
+        /// Get a list of band energies for a given k-point index.
+        std::vector<double> get_band_energies(int ik__, int ispn__)
+        {
+            std::vector<double> bnd_e(ctx_.num_bands());
+            for (int j = 0; j < ctx_.num_bands(); j++) {
+                bnd_e[j] = (*this)[ik__]->band_energy(j, ispn__);
+            }
+            return std::move(bnd_e);
         }
 
         /// Find Fermi energy and band occupation numbers
@@ -213,7 +241,7 @@ class K_point_set
         void print_info();
 
         void sync_band_energies();
-        
+
         void save();
 
         void load();
@@ -246,7 +274,7 @@ class K_point_set
         inline K_point* operator[](int i)
         {
             assert(i >= 0 && i < (int)kpoints_.size());
-            
+
             return kpoints_[i].get();
         }
 
@@ -259,27 +287,12 @@ class K_point_set
         {
             return spl_num_kpoints_;
         }
-        
+
         inline int spl_num_kpoints(int ikloc) const
         {
             return spl_num_kpoints_[ikloc];
         }
 
-        //void set_band_occupancies(int ik, double* band_occupancies)
-        //{
-        //    kpoints_[ik]->set_band_occupancies(band_occupancies);
-        //}
-
-        //void get_band_occupancies(int ik, double* band_occupancies)
-        //{
-        //    kpoints_[ik]->get_band_occupancies(band_occupancies);
-        //}
-
-        //void get_band_energies(int ik, double* band_energies)
-        //{
-        //    kpoints_[ik]->get_band_energies(band_energies);
-        //}
-        
         inline double energy_fermi() const
         {
             return energy_fermi_;
@@ -308,8 +321,8 @@ class K_point_set
         //    {
         //        // reduce k+q to first BZ: k+q=k"+K; k"=k+q-K
         //        std::pair< vector3d<double>, vector3d<int> > vkqr = reduce_coordinates(kpoints_[ik]->vk() + vq);
-        //        
-        //        if ((kpq[ik].jk = find_kpoint(vkqr.first)) == -1) 
+        //
+        //        if ((kpq[ik].jk = find_kpoint(vkqr.first)) == -1)
         //            TERMINATE("index of reduced k+q point is not found");
 
         //        kpq[ik].K = vkqr.second;
@@ -336,7 +349,7 @@ inline void K_point_set::sync_band_energies()
             }
         }
     }
-    comm_k_.allgather(band_energies.at<CPU>(), 
+    comm_k_.allgather(band_energies.at<CPU>(),
                       ctx_.num_bands() * ctx_.num_spin_dims() * spl_num_kpoints_.global_offset(),
                       ctx_.num_bands() * ctx_.num_spin_dims() * spl_num_kpoints_.local_size());
 
@@ -362,7 +375,7 @@ inline void K_point_set::find_band_occupancies()
     mdarray<double, 3> bnd_occ(ctx_.num_bands(), ctx_.num_spin_dims(), num_kpoints());
 
     double ne{0};
-    
+
     int step{0};
     /* calculate occupations */
     while (std::abs(ne - unit_cell_.num_valence_electrons()) >= 1e-11) {
@@ -373,7 +386,7 @@ inline void K_point_set::find_band_occupancies()
         for (int ik = 0; ik < num_kpoints(); ik++) {
             for (int ispn = 0; ispn < ctx_.num_spin_dims(); ispn++) {
                 for (int j = 0; j < ctx_.num_bands(); j++) {
-                    bnd_occ(j, ispn, ik) = Utils::gaussian_smearing(kpoints_[ik]->band_energy(j, ispn) - ef, ctx_.smearing_width()) * 
+                    bnd_occ(j, ispn, ik) = Utils::gaussian_smearing(kpoints_[ik]->band_energy(j, ispn) - ef, ctx_.smearing_width()) *
                                            ctx_.max_occupancy();
                     ne += bnd_occ(j, ispn, ik) * kpoints_[ik]->weight();
                 }
@@ -383,7 +396,7 @@ inline void K_point_set::find_band_occupancies()
         sp = s;
         s = (ne > unit_cell_.num_valence_electrons()) ? -1 : 1;
         /* reduce de step if we change the direction, otherwise increase the step */
-        de = (s != sp) ? (-de * 0.5) : (de * 1.25); 
+        de = (s != sp) ? (-de * 0.5) : (de * 1.25);
 
         if (step > 10000) {
             std::stringstream s;
@@ -416,14 +429,14 @@ inline void K_point_set::find_band_occupancies()
     }
 
     band_gap_ = 0.0;
-    
+
     int nve = static_cast<int>(unit_cell_.num_valence_electrons() + 1e-12);
-    if (ctx_.num_spins() == 2 || 
+    if (ctx_.num_spins() == 2 ||
         (std::abs(nve - unit_cell_.num_valence_electrons()) < 1e-12 && nve % 2 == 0)) {
         /* find band gap */
         std::vector<std::pair<double, double>> eband;
         std::pair<double, double> eminmax;
-        
+
         for (int ispn = 0; ispn < ctx_.num_spin_dims(); ispn++) {
             for (int j = 0; j < ctx_.num_bands(); j++) {
                 eminmax.first = 1e10;
@@ -437,12 +450,12 @@ inline void K_point_set::find_band_occupancies()
                 eband.push_back(eminmax);
             }
         }
-        
+
         std::sort(eband.begin(), eband.end());
 
         int ist = nve;
         if (ctx_.num_spins() == 1) {
-            ist /= 2; 
+            ist /= 2;
         }
 
         if (eband[ist].first > eband[ist - 1].second) {
@@ -475,14 +488,14 @@ inline void K_point_set::print_info()
         runtime::pstdout pout(comm_k_);
         for (int ikloc = 0; ikloc < spl_num_kpoints().local_size(); ikloc++) {
             int ik = spl_num_kpoints(ikloc);
-            pout.printf("%4i   %8.4f %8.4f %8.4f   %12.6f     %6i", 
-                        ik, kpoints_[ik]->vk()[0], kpoints_[ik]->vk()[1], kpoints_[ik]->vk()[2], 
+            pout.printf("%4i   %8.4f %8.4f %8.4f   %12.6f     %6i",
+                        ik, kpoints_[ik]->vk()[0], kpoints_[ik]->vk()[1], kpoints_[ik]->vk()[2],
                         kpoints_[ik]->weight(), kpoints_[ik]->num_gkvec());
 
             if (ctx_.full_potential()) {
                 pout.printf("            %6i", kpoints_[ik]->gklo_basis_size());
             }
-            
+
             pout.printf("\n");
         }
     }
@@ -506,9 +519,9 @@ inline void K_point_set::save()
     //==    for (int ik = 0; ik < num_kpoints(); ik++)
     //==    {
     //==        int rank = spl_num_kpoints_.local_rank(ik);
-    //==        
+    //==
     //==        if (ctx_.mpi_grid().coordinate(_dim_k_) == rank) kpoints_[ik]->save(ik);
-    //==        
+    //==
     //==        ctx_.mpi_grid().barrier(1 << _dim_k_ | 1 << _dim_col_);
     //==    }
     //==}
@@ -524,7 +537,7 @@ inline void K_point_set::load()
     //== int num_kpoints_in;
     //== fin["K_point_set"].read("num_kpoints", &num_kpoints_in);
 
-    //== std::vector<int> ikidx(num_kpoints(), -1); 
+    //== std::vector<int> ikidx(num_kpoints(), -1);
     //== // read available k-points
     //== double vk_in[3];
     //== for (int jk = 0; jk < num_kpoints_in; jk++)
@@ -532,7 +545,7 @@ inline void K_point_set::load()
     //==     fin["K_point_set"][jk].read("coordinates", vk_in, 3);
     //==     for (int ik = 0; ik < num_kpoints(); ik++)
     //==     {
-    //==         vector3d<double> dvk; 
+    //==         vector3d<double> dvk;
     //==         for (int x = 0; x < 3; x++) dvk[x] = vk_in[x] - kpoints_[ik]->vk(x);
     //==         if (dvk.length() < 1e-12)
     //==         {
@@ -545,7 +558,7 @@ inline void K_point_set::load()
     //== for (int ik = 0; ik < num_kpoints(); ik++)
     //== {
     //==     int rank = spl_num_kpoints_.local_rank(ik);
-    //==     
+    //==
     //==     if (comm_.rank() == rank) kpoints_[ik]->load(fin["K_point_set"], ikidx[ik]);
     //== }
 }
@@ -559,39 +572,39 @@ inline void K_point_set::load()
 //==         fout["parameters"].write("num_bands", ctx_.num_bands());
 //==         fout["parameters"].write("num_spins", ctx_.num_spins());
 //==     }
-//== 
+//==
 //==     if (ctx_.mpi_grid().side(1 << _dim_k_ | 1 << _dim_col_))
 //==     {
 //==         for (int ik = 0; ik < num_kpoints(); ik++)
 //==         {
 //==             int rank = spl_num_kpoints_.location(_splindex_rank_, ik);
-//==             
+//==
 //==             if (ctx_.mpi_grid().coordinate(_dim_k_) == rank) kpoints_[ik]->save_wave_functions(ik);
-//==             
+//==
 //==             ctx_.mpi_grid().barrier(1 << _dim_k_ | 1 << _dim_col_);
 //==         }
 //==     }
 //== }
-//== 
+//==
 //== void K_point_set::load_wave_functions()
 //== {
 //==     HDF5_tree fin(storage_file_name, false);
 //==     int num_spins;
 //==     fin["parameters"].read("num_spins", &num_spins);
 //==     if (num_spins != ctx_.num_spins()) error_local(__FILE__, __LINE__, "wrong number of spins");
-//== 
+//==
 //==     int num_bands;
 //==     fin["parameters"].read("num_bands", &num_bands);
 //==     if (num_bands != ctx_.num_bands()) error_local(__FILE__, __LINE__, "wrong number of bands");
-//==     
+//==
 //==     int num_kpoints_in;
 //==     fin["parameters"].read("num_kpoints", &num_kpoints_in);
-//== 
+//==
 //==     // ==================================================================
-//==     // index of current k-points in the hdf5 file, which (in general) may 
-//==     // contain a different set of k-points 
+//==     // index of current k-points in the hdf5 file, which (in general) may
+//==     // contain a different set of k-points
 //==     // ==================================================================
-//==     std::vector<int> ikidx(num_kpoints(), -1); 
+//==     std::vector<int> ikidx(num_kpoints(), -1);
 //==     // read available k-points
 //==     double vk_in[3];
 //==     for (int jk = 0; jk < num_kpoints_in; jk++)
@@ -599,7 +612,7 @@ inline void K_point_set::load()
 //==         fin["kpoints"][jk].read("coordinates", vk_in, 3);
 //==         for (int ik = 0; ik < num_kpoints(); ik++)
 //==         {
-//==             vector3d<double> dvk; 
+//==             vector3d<double> dvk;
 //==             for (int x = 0; x < 3; x++) dvk[x] = vk_in[x] - kpoints_[ik]->vk(x);
 //==             if (dvk.length() < 1e-12)
 //==             {
@@ -608,11 +621,11 @@ inline void K_point_set::load()
 //==             }
 //==         }
 //==     }
-//== 
+//==
 //==     for (int ik = 0; ik < num_kpoints(); ik++)
 //==     {
 //==         int rank = spl_num_kpoints_.location(_splindex_rank_, ik);
-//==         
+//==
 //==         if (ctx_.mpi_grid().coordinate(0) == rank) kpoints_[ik]->load_wave_functions(ikidx[ik]);
 //==     }
 //== }
@@ -620,15 +633,15 @@ inline void K_point_set::load()
 //== void K_point_set::fixed_band_occupancies()
 //== {
 //==     Timer t("sirius::K_point_set::fixed_band_occupancies");
-//== 
+//==
 //==     if (ctx_.num_mag_dims() != 1) error_local(__FILE__, __LINE__, "works only for collinear magnetism");
-//== 
+//==
 //==     double n_up = (ctx_.num_valence_electrons() + ctx_.fixed_moment()) / 2.0;
 //==     double n_dn = (ctx_.num_valence_electrons() - ctx_.fixed_moment()) / 2.0;
-//==     
+//==
 //==     mdarray<double, 2> bnd_occ(ctx_.num_bands(), num_kpoints());
 //==     bnd_occ.zero();
-//== 
+//==
 //==     int j = 0;
 //==     while (n_up > 0)
 //==     {
@@ -636,7 +649,7 @@ inline void K_point_set::load()
 //==         j++;
 //==         n_up -= ctx_.max_occupancy();
 //==     }
-//==             
+//==
 //==     j = ctx_.num_fv_states();
 //==     while (n_dn > 0)
 //==     {
@@ -644,44 +657,43 @@ inline void K_point_set::load()
 //==         j++;
 //==         n_dn -= ctx_.max_occupancy();
 //==     }
-//==             
+//==
 //==     for (int ik = 0; ik < num_kpoints(); ik++) kpoints_[ik]->set_band_occupancies(&bnd_occ(0, ik));
-//== 
+//==
 //==     double gap = 0.0;
-//==     
+//==
 //==     int nve = int(ctx_.num_valence_electrons() + 1e-12);
-//==     if ((ctx_.num_spins() == 2) || 
+//==     if ((ctx_.num_spins() == 2) ||
 //==         ((fabs(nve - ctx_.num_valence_electrons()) < 1e-12) && nve % 2 == 0))
 //==     {
 //==         // find band gap
 //==         std::vector< std::pair<double, double> > eband;
 //==         std::pair<double, double> eminmax;
-//== 
+//==
 //==         for (int j = 0; j < ctx_.num_bands(); j++)
 //==         {
 //==             eminmax.first = 1e10;
 //==             eminmax.second = -1e10;
-//== 
+//==
 //==             for (int ik = 0; ik < num_kpoints(); ik++)
 //==             {
 //==                 eminmax.first = std::min(eminmax.first, kpoints_[ik]->band_energy(j));
 //==                 eminmax.second = std::max(eminmax.second, kpoints_[ik]->band_energy(j));
 //==             }
-//== 
+//==
 //==             eband.push_back(eminmax);
 //==         }
-//==         
+//==
 //==         std::sort(eband.begin(), eband.end());
-//== 
+//==
 //==         int ist = nve;
-//==         if (ctx_.num_spins() == 1) ist /= 2; 
-//== 
+//==         if (ctx_.num_spins() == 1) ist /= 2;
+//==
 //==         if (eband[ist].first > eband[ist - 1].second) gap = eband[ist].first - eband[ist - 1].second;
-//== 
+//==
 //==         band_gap_ = gap;
 //==     }
 //== }
 };
 
 #endif // __K_POINT_SET_H__
-

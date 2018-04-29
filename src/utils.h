@@ -68,11 +68,13 @@ class Utils
     static inline double fermi_dirac_distribution(double e)
     {
         double kT = 0.001;
-        if (e > 100 * kT)
+        if (e > 100 * kT) {
             return 0.0;
-        if (e < -100 * kT)
+        }
+        if (e < -100 * kT) {
             return 1.0;
-        return (1.0 / (exp(e / kT) + 1.0));
+        }
+        return (1.0 / (std::exp(e / kT) + 1.0));
     }
 
     static inline double gaussian_smearing(double e, double delta)
@@ -84,12 +86,14 @@ class Utils
     {
         double a = -0.5634;
 
-        if (e < -10.0)
+        if (e < -10.0) {
             return 1.0;
-        if (e > 10.0)
+        }
+        if (e > 10.0) {
             return 0.0;
+        }
 
-        return 0.5 * (1 - gsl_sf_erf(e)) - 1 - 0.25 * exp(-e * e) * (a + 2 * e - 2 * a * e * e) / sqrt(pi);
+        return 0.5 * (1 - gsl_sf_erf(e)) - 1 - 0.25 * std::exp(-e * e) * (a + 2 * e - 2 * a * e * e) / std::sqrt(pi);
     }
 
     static std::string double_to_string(double val, int precision = -1)
@@ -378,6 +382,45 @@ class Utils
             std::swap(i__, j__);
         }
         return j__ * (j__ + 1) / 2 + i__;
+    }
+
+    /// Read json dictionary from file or string.
+    /** Terminate if file doesn't exist. */
+    inline static json read_json_from_file_or_string(std::string const& str__)
+    {
+        json dict = {};
+        if (str__.size() == 0) {
+            return std::move(dict);
+        }
+
+        if (str__.find("{") == std::string::npos) { /* this is a file */
+            if (Utils::file_exists(str__)) {
+                try {
+                    std::ifstream(str__) >> dict;
+                } catch(std::exception& e) {
+                    std::stringstream s;
+                    s << "wrong input json file" << std::endl
+                      << e.what();
+                    TERMINATE(s);
+                }
+            } 
+            else {
+                std::stringstream s;
+                s << "file " << str__ << " doesn't exist";
+                TERMINATE(s);
+            }
+        } else { /* this is a json string */
+            try {
+                std::istringstream(str__) >> dict;
+            } catch (std::exception& e) {
+                std::stringstream s;
+                s << "wrong input json string" << std::endl
+                  << e.what();
+                TERMINATE(s);
+            }
+        }
+
+        return std::move(dict);
     }
 };
 
