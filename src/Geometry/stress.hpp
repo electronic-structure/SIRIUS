@@ -688,7 +688,7 @@ class Stress {
         potential_.effective_potential()->fft_transform(-1);
 
         Radial_integrals_aug<false> const& ri = ctx_.aug_ri();
-        Radial_integrals_aug<true> ri_dq(ctx_.unit_cell(), ctx_.pw_cutoff(), ctx_.settings().nprii_aug_);
+        Radial_integrals_aug<true> const& ri_dq = ctx_.aug_ri_djl(); // (ctx_.unit_cell(), ctx_.pw_cutoff(), ctx_.settings().nprii_aug_);
 
         /* pack v effective in one array of pointers*/
         Periodic_function<double>* vfield_eff[4];
