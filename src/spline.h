@@ -30,9 +30,46 @@
 namespace sirius {
 
 /// Cubic spline with a not-a-knot boundary conditions.
-/** The following convention for spline coefficients is used: between points 
- *  \f$ x_i \f$ and \f$ x_{i+1} \f$ the value of the spline is equal to 
- *  \f$ a_i + b_i(x_{i+1} - x_i) + c_i(x_{i+1}-x_i)^2 + d_i(x_{i+1}-x_i)^3 \f$. 
+/** The following convention for spline coefficients is used: for \f$ x \f$ in  
+ *  \f$ [x_i, x_{i+1}] \f$ the value of the spline is equal to 
+ *  \f$ a_i + b_i(x - x_i) + c_i(x - x_i)^2 + d_i(x - x_i)^3 \f$.
+ *
+ *  Suppose we have \f$ n \f$ value points \f$ y_i = f(x_i) \f$ and \f$ n - 1 \f$ segments:
+ *  \f[
+ *   S_i(x) = y_i + b_i(x - x_i) + c_i(x - x_i)^2 + d_i(x - x_i)^3 
+ *  \f]
+ *  Segment derivatives:
+ *  \f[
+ *    \begin{eqnarray}
+ *      S_i'(x) &=& b_i + 2c_i(x - x_i) + 3d_i(x - x_i)^2 \\ 
+ *      S_i''(x) &=& 2c_i + 6d_i(x-x_i) \\
+ *      S_i'''(x) &=& 6d_i
+ *    \end{eqnarray}
+ *  \f]
+ *  The following substitutions are made:
+ *  \f[
+ *    m_i = 2 c_i \\ 
+ *    h_i = x_{i+1} - x_i \\
+ *    y_i' = \frac{y_{i+1} - y_i}{h_i}
+ *  \f]
+ *  Now we can equate the derivatives at the end points of segments. From the 3rd derivative we get
+ *  \f[
+ *    d_i = \frac{1}{6h_i}(m_{i+1} -  m_i)
+ *  \f]
+ *  From the 1st derivative we get
+ *  \f[
+ *    b_i = y_i' - \frac{h_i}{2} m_i - \frac{h_i}{6}(m_{i+1} - m_i)
+ *  \f]
+ *  Using 2nd derivative condition we get
+ *  \f[
+ *    h_i m_i + 2(h_{i} + h_{i+1})m_{i+1} + h_{i+1}m_{i+2} = 6(y_{i+1}' - y_{i}')
+ *  \f]
+ *  So far we got \f$ n - 3 \f$ equations for \f$ n - 1 \f$ coefficients \f$ m_i \f$. We need two extra conditions.
+ *  Not-a-knot boundary condition (counting segments and points from 1):
+ *  \f[
+ *    S_1'''(x_2) = S_2'''(x_2) \longrightarrow d_1 = d_2 \\
+ *    S_{n-2}'''(x_{n-1}) = S_{n-1}'''(x_{n-1}) \longrightarrow d_{n-2} = d_{n-1}
+ *  \f]
  */
 template <typename T, typename U = double> 
 class Spline: public Radial_grid<U>
@@ -239,72 +276,74 @@ class Spline: public Radial_grid<U>
 
     Spline<T, U>& interpolate()
     {
-        int np = this->num_points();
-
-        /* lower diagonal */
-        std::vector<T> dl(np - 1);
+        /* number of segments; in principle we have n-1 segments, but the equations for spline are built in such a
+           way that one extra m_i coefficient of a segment is necessary */
+        int ns = this->num_points();
+        assert(ns >= 4);
+        /* lower diagonal (use coeffs as temporary storage) */
+        T* dl = coeffs_.template at<CPU>(0, 1);
         /* main diagonal */
-        std::vector<T> d(np);
+        T* d = coeffs_.template at<CPU>(0, 2);
         /* upper diagonal */
-        std::vector<T> du(np - 1);
-
-        std::vector<T> x(np);
-        std::vector<T> dy(np - 1);
-        
-        /* derivative of y */
-        for (int i = 0; i < np - 1; i++) {
+        T* du = coeffs_.template at<CPU>(0, 3);
+        /* m_i = 2 c_i */
+        std::vector<T> m(ns);
+        /* derivatives of function */
+        std::vector<T> dy(ns - 1);
+        for (int i = 0; i < ns - 1; i++) {
             dy[i] = (coeffs_(i + 1, 0) - coeffs_(i, 0)) / this->dx(i);
         }
-        
         /* setup "B" vector of AX=B equation */
-        for (int i = 0; i < np - 2; i++) {
-            x[i + 1] = (dy[i + 1] - dy[i]) * 6.0;
+        for (int i = 0; i < ns - 2; i++) {
+            m[i + 1] = (dy[i + 1] - dy[i]) * 6.0;
         }
-        
-        x[0] = -x[1];
-        x[np - 1] = -x[np - 2];
-        
-        /* main diagonal of "A" matrix */
-        for (int i = 0; i < np - 2; i++) {
-            d[i + 1] = static_cast<T>(2) * (static_cast<T>(this->dx(i) + this->dx(i + 1)));
-        }
-        U h0 = this->dx(0);
-        U h1 = this->dx(1);
-        U h2 = this->dx(np - 2);
-        U h3 = this->dx(np - 3);
-        d[0] = (h1 / h0) * h1 - h0;
-        d[np - 1] = (h3 / h2) * h3 - h2;
+        /* this is derived from n-a-k boundary condition */
+        m[0] = m[1]; m[ns - 1] = m[ns - 2];
 
+        /* main diagonal of "A" matrix */
+        for (int i = 0; i < ns - 2; i++) {
+            d[i + 1] = static_cast<T>(this->x(i + 2) - this->x(i)) * 2.0;
+        }
         /* subdiagonals of "A" matrix */
-        for (int i = 0; i < np - 1; i++) {
+        for (int i = 0; i < ns - 1; i++) {
             du[i] = this->dx(i);
             dl[i] = this->dx(i);
         }
-        du[0] = -(h1 * (1.0 + h1 / h0) + d[1]);
-        dl[np - 2] = -(h3 * (1.0 + h3 / h2) + d[np - 2]); 
+
+        /* last part of n-a-k boundary condition */
+        U h0 = this->dx(0);
+        U h1 = this->dx(1);
+        d[0]  = h0 - (h1 / h0) * h1;
+        du[0] = h1 * ((h1 / h0) + 1) + 2 * (h0 + h1);
+
+        h0 = this->dx(ns - 2);
+        h1 = this->dx(ns - 3);
+        d[ns - 1]  = h0 - (h1 / h0) * h1;
+        dl[ns - 2] =  h1 * ((h1 / h0) + 1) + 2 * (h0 + h1);
 
         /* solve tridiagonal system */
-        //solve(a.data(), b.data(), c.data(), d.data(), np);
-        //auto& x = d;
-        //int info = linalg<CPU>::gtsv(np, 1, &a[0], &b[0], &c[0], &d[0], np);
-        
-        int info = solve(&dl[0], &d[0], &du[0], &x[0], np);
-        
+        //int info = linalg<CPU>::gtsv(ns, 1, &dl[0], &d[0], &du[0], &m[0], ns);
+        int info = solve(dl, d, du, &m[0], ns);
+
         if (info) {
             std::stringstream s;
             s << "error in tridiagonal solver: " << info;
             TERMINATE(s);
         }
         
-        for (int i = 0; i < np - 1; i++) {
-            coeffs_(i, 2) = x[i] / 2.0;
-            T t = (x[i + 1] - x[i]) / 6.0;
+        for (int i = 0; i < ns - 1; i++) {
+            /* this is c_i coefficient */
+            coeffs_(i, 2) = m[i] / 2.0;
+            /* this is why one extra segment was considered: we need m_{i+1} */
+            T t = (m[i + 1] - m[i]) / 6.0;
+            /* b_i coefficient */
             coeffs_(i, 1) = dy[i] - (coeffs_(i, 2) + t) * this->dx(i);
+            /* d_i coefficient */
             coeffs_(i, 3) = t / this->dx(i);
         }
-        coeffs_(np - 1, 1) = 0;
-        coeffs_(np - 1, 2) = 0;
-        coeffs_(np - 1, 3) = 0;
+        coeffs_(ns - 1, 1) = 0;
+        coeffs_(ns - 1, 2) = 0;
+        coeffs_(ns - 1, 3) = 0;
 
         return *this;
     }

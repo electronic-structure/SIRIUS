@@ -115,6 +115,8 @@ class Simulation_context_base: public Simulation_parameters
 
         std::unique_ptr<Radial_integrals_aug<false>> aug_ri_;
 
+        std::unique_ptr<Radial_integrals_aug<true>> aug_ri_djl_;
+
         std::unique_ptr<Radial_integrals_atomic_wf> atomic_wf_ri_;
 
         std::vector<std::vector<std::pair<int, double>>> atoms_to_grid_idx_;
@@ -553,6 +555,11 @@ class Simulation_context_base: public Simulation_parameters
             return *aug_ri_;
         }
 
+        inline Radial_integrals_aug<true> const& aug_ri_djl() const
+        {
+            return *aug_ri_djl_;
+        }
+
         inline Radial_integrals_atomic_wf const& atomic_wf_ri() const
         {
             return *atomic_wf_ri_;
@@ -897,6 +904,7 @@ inline void Simulation_context_base::initialize()
         beta_ri_      = std::unique_ptr<Radial_integrals_beta<false>>(new Radial_integrals_beta<false>(unit_cell(), gk_cutoff() + 1, settings().nprii_beta_));
         beta_ri_djl_  = std::unique_ptr<Radial_integrals_beta<true>>(new Radial_integrals_beta<true>(unit_cell(), gk_cutoff() + 1, settings().nprii_beta_));
         aug_ri_       = std::unique_ptr<Radial_integrals_aug<false>>(new Radial_integrals_aug<false>(unit_cell(), pw_cutoff() + 1, settings().nprii_aug_));
+        aug_ri_djl_   = std::unique_ptr<Radial_integrals_aug<true>>(new Radial_integrals_aug<true>(unit_cell(), pw_cutoff() + 1, settings().nprii_aug_));
         atomic_wf_ri_ = std::unique_ptr<Radial_integrals_atomic_wf>(new Radial_integrals_atomic_wf(unit_cell(), gk_cutoff(), 20));
     }
 

@@ -84,6 +84,15 @@ void sirius_clear(void)
     kset_list.clear();
 }
 
+bool sirius_initialized()
+{
+    if (sim_ctx && sim_ctx->initialized()) {
+        return true;
+    } else {
+        return false;
+    }
+}
+
 /// Finalize the usage of the library.
 void sirius_finalize(ftn_bool* call_mpi_fin__)
 {
@@ -3417,29 +3426,21 @@ void sirius_set_use_symmetry(ftn_int* flg__)
 
 void sirius_ri_aug_(ftn_int* idx__, ftn_int* l__, ftn_int* iat__, ftn_double* q__, ftn_double* val__)
 {
-    if (sim_ctx) {
-        *val__ = sim_ctx->aug_ri().value<int, int, int>(*idx__ - 1, *l__, *iat__ - 1, *q__);
-    } else {
-        *val__ = 0;
-    }
+    *val__ = sim_ctx->aug_ri().value<int, int, int>(*idx__ - 1, *l__, *iat__ - 1, *q__);
+}
+void sirius_ri_aug_djl_(ftn_int* idx__, ftn_int* l__, ftn_int* iat__, ftn_double* q__, ftn_double* val__)
+{
+    *val__ = sim_ctx->aug_ri_djl().value<int, int, int>(*idx__ - 1, *l__, *iat__ - 1, *q__);
 }
 
 void sirius_ri_beta_(ftn_int* idx__, ftn_int* iat__, ftn_double* q__, ftn_double* val__)
 {
-    if (sim_ctx) {
-        *val__ = sim_ctx->beta_ri().value<int, int>(*idx__ - 1, *iat__ - 1, *q__);
-    } else {
-        *val__ = 0;
-    }
+    *val__ = sim_ctx->beta_ri().value<int, int>(*idx__ - 1, *iat__ - 1, *q__);
 }
 
 void sirius_ri_beta_djl_(ftn_int* idx__, ftn_int* iat__, ftn_double* q__, ftn_double* val__)
 {
-    if (sim_ctx) {
-        *val__ = sim_ctx->beta_ri_djl().value<int, int>(*idx__ - 1, *iat__ - 1, *q__);
-    } else {
-        *val__ = 0;
-    }
+    *val__ = sim_ctx->beta_ri_djl().value<int, int>(*idx__ - 1, *iat__ - 1, *q__);
 }
 
 void sirius_set_esm(ftn_bool* enable_esm__, ftn_char esm_bc__)
@@ -3515,6 +3516,23 @@ void sirius_get_num_beta_projectors(ftn_char label__,
 {
     auto& type = sim_ctx->unit_cell().atom_type(std::string(label__));
     *num_beta_projectors__ = type.mt_basis_size();
+}
+
+void sirius_spline_(ftn_int* n__, ftn_double* x__, ftn_double* f__, ftn_double* cf__)
+{
+    int np = *n__;
+
+    sirius::Radial_grid_ext<double> rgrid(np, x__);
+    sirius::Spline<double> s(rgrid, std::vector<double>(f__, f__ + np));
+
+    mdarray<double, 2> cf(cf__, 3, np);
+
+    for (int i = 0; i < np - 1; i++) {
+        auto c = s.coeffs(i);
+        cf(0, i) = c[1];
+        cf(1, i) = c[2];
+        cf(2, i) = c[3];
+    }
 }
 
 } // extern "C"
