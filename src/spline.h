@@ -321,6 +321,12 @@ class Spline: public Radial_grid<U>
         d[ns - 1]  = h0 - (h1 / h0) * h1;
         dl[ns - 2] =  h1 * ((h1 / h0) + 1) + 2 * (h0 + h1);
 
+        ///* this should be boundary conditions for natural spline (with zero second derivatives at boundaries) */
+        //m[0] = m[ns-1] = 0;
+        //du[0] = 0;
+        //dl[ns - 2] = 0;
+        //d[0] = d[ns-1] = 1;
+
         /* solve tridiagonal system */
         //int info = linalg<CPU>::gtsv(ns, 1, &dl[0], &d[0], &du[0], &m[0], ns);
         int info = solve(dl, d, du, &m[0], ns);
@@ -330,7 +336,7 @@ class Spline: public Radial_grid<U>
             s << "error in tridiagonal solver: " << info;
             TERMINATE(s);
         }
-        
+
         for (int i = 0; i < ns - 1; i++) {
             /* this is c_i coefficient */
             coeffs_(i, 2) = m[i] / 2.0;
