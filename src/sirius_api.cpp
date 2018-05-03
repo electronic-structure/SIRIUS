@@ -3159,6 +3159,12 @@ void sirius_get_pw_coeffs_real(ftn_char    atom_type__,
                        {
                            return ri.value(iat, g);
                        });
+    } else if (label == "rho") {
+        sirius::Radial_integrals_rho_pseudo ri(sim_ctx->unit_cell(), sim_ctx->pw_cutoff(), 20);
+        make_pw_coeffs([&ri, iat](double g)
+                       {
+                           return ri.value<int>(iat, g);
+                       });
     } else {
         std::stringstream s;
         s << "wrong label in sirius_get_pw_coeffs_real()" << std::endl
