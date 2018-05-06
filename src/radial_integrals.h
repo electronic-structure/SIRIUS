@@ -115,11 +115,9 @@ class Radial_integrals_atomic_wf : public Radial_integrals_base<2>
                 auto& wf = atom_type.ps_atomic_wf(i);
                 const int l = std::abs(wf.first);
 
-                const double norm = inner(wf.second, wf.second, 0);
-
                 #pragma omp parallel for
                 for (int iq = 0; iq < nq(); iq++) {
-                    values_(i, iat)(iq) = sirius::inner(jl(iq)[l], wf.second, 1) / std::sqrt(norm);
+                    values_(i, iat)(iq) = sirius::inner(jl(iq)[l], wf.second, 1);
                 }
 
                 values_(i, iat).interpolate();
