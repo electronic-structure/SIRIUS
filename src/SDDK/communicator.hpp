@@ -96,7 +96,7 @@ struct mpi_type_wrapper<std::complex<double>>
 {
     static MPI_Datatype kind()
     {
-        return MPI_COMPLEX16;
+        return MPI_CXX_DOUBLE_COMPLEX;
     }
 };
 
@@ -128,6 +128,15 @@ struct mpi_type_wrapper<char>
 };
 
 template <>
+struct mpi_type_wrapper<unsigned char>
+{
+    static MPI_Datatype kind()
+    {
+        return MPI_UNSIGNED_CHAR;
+    }
+};
+
+template <>
 struct mpi_type_wrapper<unsigned long long>
 {
     static MPI_Datatype kind()
@@ -142,6 +151,24 @@ struct mpi_type_wrapper<unsigned long>
     static MPI_Datatype kind()
     {
         return MPI_UNSIGNED_LONG;
+    }
+};
+
+template <>
+struct mpi_type_wrapper<bool>
+{
+    static MPI_Datatype kind()
+    {
+        return MPI_CXX_BOOL;
+    }
+};
+
+template <>
+struct mpi_type_wrapper<uint32_t>
+{
+    static MPI_Datatype kind()
+    {
+        return MPI_UINT32_T;
     }
 };
 
@@ -180,6 +207,22 @@ struct block_data_descriptor
     inline int size() const
     {
         return counts.back() + offsets.back();
+    }
+};
+
+class Request
+{
+  private:
+    MPI_Request handler_;
+  public:
+    void wait()
+    {
+        CALL_MPI(MPI_Wait, (&handler_, MPI_STATUS_IGNORE));
+    }
+
+    MPI_Request& handler()
+    {
+        return handler_;
     }
 };
 
@@ -266,6 +309,14 @@ class Communicator
     static void finalize()
     {
         MPI_Finalize();
+    }
+
+    static int get_tag(int i__, int j__)
+    {
+        if (i__ > j__) {
+            std::swap(i__, j__);
+        }
+        return (j__ * (j__ + 1) / 2 + i__ + 1) << 6;
     }
 
     /// Return reference to raw MPI communicator.
@@ -493,17 +544,29 @@ class Communicator
     }
 
     template <typename T>
-    void isend(T const* buffer__, int count__, int dest__, int tag__) const
+    void send(T const* buffer__, int count__, int dest__, int tag__) const
     {
-        MPI_Request request;
-
 #if defined(__GPU_NVTX_MPI)
-        acc::begin_range_marker("MPI_Isend");
+        acc::begin_range_marker("MPI_Send");
 #endif
-        CALL_MPI(MPI_Isend, (buffer__, count__, mpi_type_wrapper<T>::kind(), dest__, tag__, mpi_comm_, &request));
+        CALL_MPI(MPI_Send, (buffer__, count__, mpi_type_wrapper<T>::kind(), dest__, tag__, mpi_comm_));
 #if defined(__GPU_NVTX_MPI)
         acc::end_range_marker();
 #endif
+    }
+
+    template <typename T>
+    Request isend(T const* buffer__, int count__, int dest__, int tag__) const
+    {
+        Request req;
+#if defined(__GPU_NVTX_MPI)
+        acc::begin_range_marker("MPI_Isend");
+#endif
+        CALL_MPI(MPI_Isend, (buffer__, count__, mpi_type_wrapper<T>::kind(), dest__, tag__, mpi_comm_, &req.handler()));
+#if defined(__GPU_NVTX_MPI)
+        acc::end_range_marker();
+#endif
+        return std::move(req);
     }
 
     template <typename T>
@@ -520,15 +583,17 @@ class Communicator
     }
 
     template <typename T>
-    void irecv(T* buffer__, int count__, int source__, int tag__, MPI_Request* request__) const
+    Request irecv(T* buffer__, int count__, int source__, int tag__) const
     {
+        Request req;
 #if defined(__GPU_NVTX_MPI)
         acc::begin_range_marker("MPI_Irecv");
 #endif
-        CALL_MPI(MPI_Irecv, (buffer__, count__, mpi_type_wrapper<T>::kind(), source__, tag__, mpi_comm_, request__));
+        CALL_MPI(MPI_Irecv, (buffer__, count__, mpi_type_wrapper<T>::kind(), source__, tag__, mpi_comm_, &req.handler()));
 #if defined(__GPU_NVTX_MPI)
         acc::end_range_marker();
 #endif
+        return std::move(req);
     }
 
     template <typename T>
