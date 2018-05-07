@@ -198,4 +198,19 @@ inline void warning(const char* file_name__, int line_number__, const std::strin
 
 #define TERMINATE_NOT_IMPLEMENTED TERMINATE("feature is not implemented");
 
+template <typename T>
+inline std::ostream& operator<<(std::ostream& out, std::vector<T>& v)
+{
+    if (v.size() == 0) {
+        out << "{}";
+    } else {
+        out << "{";
+        for (size_t i = 0; i < v.size() - 1; i++) {
+            out << v[i] << ", ";
+        }
+        out << v.back() << "}";
+    }
+    return out;
+}
+
 #endif // __SDDK_INTERNAL_HPP__
