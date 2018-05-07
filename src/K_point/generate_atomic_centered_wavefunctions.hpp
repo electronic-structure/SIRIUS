@@ -46,19 +46,21 @@ inline void K_point::generate_atomic_centered_wavefunctions_(const int num_ao__,
                     }
                 } // i
             } else {
-                for (int i = 0; i < atom_type.num_ps_atomic_wf(); i++) {
-                    auto l = std::abs(atom_type.ps_atomic_wf(i).first);
-                    auto z = std::pow(double_complex(0, -1), l) * fourpi / std::sqrt(unit_cell_.omega());
-                    if (l == atom_type.hubbard_l()) {
-                        for (int m = -l; m <= l; m++) {
-                            int lm = Utils::lm_by_l_m(l, m);
-                            if (atom_type.spin_orbit_coupling()) {
-                                phi.pw_coeffs(0).prime(igk_loc, offset[ia] + l + m) += 0.5 * z * std::conj(phase_factor) * rlm[lm] * ri_values[atom_type.id()][i];
-                                phi.pw_coeffs(1).prime(igk_loc, offset[ia] + 3 * l + m + 1) += 0.5 * z * std::conj(phase_factor) * rlm[lm] * ri_values[atom_type.id()][i];
-                            } else {
-                                phi.pw_coeffs(0).prime(igk_loc, offset[ia] + l + m) = z * std::conj(phase_factor) * rlm[lm] * ri_values[atom_type.id()][i];
-                                if (ctx_.num_mag_dims() == 3) {
-                                    phi.pw_coeffs(1).prime(igk_loc, offset[ia] + 3 * l + m + 1) = z * std::conj(phase_factor) * rlm[lm] * ri_values[atom_type.id()][i];
+                if (atom_type.hubbard_correction()) {
+                    for (int i = 0; i < atom_type.num_ps_atomic_wf(); i++) {
+                        auto l = std::abs(atom_type.ps_atomic_wf(i).first);
+                        auto z = std::pow(double_complex(0, -1), l) * fourpi / std::sqrt(unit_cell_.omega());
+                        if (l == atom_type.hubbard_l()) {
+                            for (int m = -l; m <= l; m++) {
+                                int lm = Utils::lm_by_l_m(l, m);
+                                if (atom_type.spin_orbit_coupling()) {
+                                    phi.pw_coeffs(0).prime(igk_loc, offset[ia] + l + m) += 0.5 * z * std::conj(phase_factor) * rlm[lm] * ri_values[atom_type.id()][i];
+                                    phi.pw_coeffs(1).prime(igk_loc, offset[ia] + 3 * l + m + 1) += 0.5 * z * std::conj(phase_factor) * rlm[lm] * ri_values[atom_type.id()][i];
+                                } else {
+                                    phi.pw_coeffs(0).prime(igk_loc, offset[ia] + l + m) = z * std::conj(phase_factor) * rlm[lm] * ri_values[atom_type.id()][i];
+                                    if (ctx_.num_mag_dims() == 3) {
+                                        phi.pw_coeffs(1).prime(igk_loc, offset[ia] + 3 * l + m + 1) = z * std::conj(phase_factor) * rlm[lm] * ri_values[atom_type.id()][i];
+                                    }
                                 }
                             }
                         }

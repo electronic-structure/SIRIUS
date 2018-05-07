@@ -9,10 +9,10 @@ void generate_atomic_orbitals(K_point& kp, Q_operator<double_complex>& q_op)
   const int num_sc = (ctx_.num_mag_dims() == 3) ? 2 : 1;
 
   // return immediately if the wave functions are already allocated
-    if (kp.hubbard_wave_functions_calculated()) {
+  if (kp.hubbard_wave_functions_calculated()) {
 
-       // the hubbard orbitals are already calculated but are stored on the CPU memory.
-       // when the GPU is used, we need to do an explicit copy of them after allocation
+    // the hubbard orbitals are already calculated but are stored on the CPU memory.
+    // when the GPU is used, we need to do an explicit copy of them after allocation
        #ifdef __GPU
        if (ctx_.processing_unit() == GPU) {
           for (int ispn = 0; ispn < num_sc; ispn++) {
@@ -58,7 +58,6 @@ void generate_atomic_orbitals(K_point& kp, Q_operator<double_complex>& q_op)
     }
 
     if (!ctx_.full_potential() && augment) {
-        kp.beta_projectors().prepare();
         /* need to apply the matrix here on the orbitals (ultra soft pseudo potential) */
         for (int i = 0; i < kp.beta_projectors().num_chunks(); i++) {
             /* generate beta-projectors for a block of atoms */
@@ -78,7 +77,7 @@ void generate_atomic_orbitals(K_point& kp, Q_operator<double_complex>& q_op)
               }
             }
         }
-        kp.beta_projectors().dismiss();
+        // kp.beta_projectors().dismiss();
     }
 
     orthogonalize_atomic_orbitals(kp, sphi);
@@ -104,7 +103,6 @@ void orthogonalize_atomic_orbitals(K_point& kp, Wave_functions &sphi)
     for (auto ia = 0; (ia < ctx_.unit_cell().num_atom_types()) && (!augment); ia++) {
       augment = ctx_.unit_cell().atom_type(ia).augment();
     }
-
 
     dmatrix<double_complex> S(this->number_of_hubbard_orbitals(), this->number_of_hubbard_orbitals());
     S.zero();
@@ -138,7 +136,15 @@ void orthogonalize_atomic_orbitals(K_point& kp, Wave_functions &sphi)
                             0,
                             this->number_of_hubbard_orbitals(),
                             S, 0, 0);
+
+      for (int m = 0; m < this->number_of_hubbard_orbitals(); m++) {
+        for (int n = 0; n < this->number_of_hubbard_orbitals(); n++) {
+          printf("%.5lf ", std::abs(S(m, n)));
+        }
+        printf("\n");
+      }
     }
+
     #ifdef __GPU
     if (ctx_.processing_unit()) {
       S.copy<memory_t::device, memory_t::host>();
@@ -190,13 +196,18 @@ void orthogonalize_atomic_orbitals(K_point& kp, Wave_functions &sphi)
 
     // only need to do that when in the ultra soft case
     if (augment) {
-      // now apply the overlap matrix
       for (int s = 0; (s < num_sc) && augment; s++) {
-        sphi.copy_from(ctx_.processing_unit(), this->number_of_hubbard_orbitals(), kp.hubbard_wave_functions(),
-                       s, 0, s, 0);
+        sphi.copy_from(ctx_.processing_unit(),
+                       this->number_of_hubbard_orbitals(),
+                       kp.hubbard_wave_functions(),
+                       s,
+                       0,
+                       s,
+                       0);
       }
     }
 
+    // now apply the overlap matrix
     // Apply the transform on the wave functions
     transform<double_complex>(ctx_.processing_unit(),
                               (ctx_.num_mag_dims() == 3) ? 2 : 0,
@@ -218,35 +229,24 @@ void orthogonalize_atomic_orbitals(K_point& kp, Wave_functions &sphi)
   }
 }
 
+// kind of specialized to hubbard.
+// TODO :: Need to do that more generically
+
 void ComputeDerivatives(K_point& kp, Wave_functions &phi, Wave_functions &dphi, const int direction)
 {
-#pragma omp parallel for schedule(static)
-  for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
-    const auto& atom             = unit_cell_.atom(ia);
-    std::vector<double_complex> qalpha(kp.num_gkvec_loc());
+  std::vector<double_complex> qalpha(kp.num_gkvec_loc());
 
-    for (int igk_loc = 0; igk_loc < kp.num_gkvec_loc(); igk_loc++) {
-      int igk           = kp.idxgk(igk_loc);
-      auto G            = kp.gkvec().gvec(igk);
-      qalpha[igk_loc] = G[direction];
-    }
+  for (int igk_loc = 0; igk_loc < kp.num_gkvec_loc(); igk_loc++) {
+    int igk           = kp.idxgk(igk_loc);
+    auto G            = kp.gkvec().gkvec_cart(igk);
+    qalpha[igk_loc] = double_complex(0, -G[direction]);
+  }
 
-    const auto& atom_type = atom.type();
-    if (atom_type.hubbard_correction()) {
-      const int l      = atom_type.hubbard_l();
-      if (ctx_.num_mag_dims() == 3) {
-        for (int m = -l; m <= l; m++) {
-          for (int igk_loc = 0; igk_loc < kp.num_gkvec_loc(); igk_loc++) {
-            dphi.pw_coeffs(0).prime(igk_loc, this->offset[ia] + l + m) = qalpha[igk_loc] * phi.pw_coeffs(0).prime(igk_loc, this->offset[ia] + l + m);
-            dphi.pw_coeffs(1).prime(igk_loc, this->offset[ia] + l + m + 2 * l + 1) = qalpha[igk_loc] * phi.pw_coeffs(1).prime(igk_loc, this->offset[ia] + l + m + 2 * l + 1);
-          }
-        }
-      } else {
-        for (int m = -l; m <= l; m++) {
-          for (int igk_loc = 0; igk_loc < kp.num_gkvec_loc(); igk_loc++) {
-            dphi.pw_coeffs(0).prime(igk_loc, this->offset[ia] + l + m) = qalpha[igk_loc] * phi.pw_coeffs(0).prime(igk_loc, this->offset[ia] + l + m);
-          }
-        }
+  #pragma omp parallel for schedule(static)
+  for (int nphi = 0 ; nphi < phi.num_wf(); nphi++) {
+    for (int ispn = 0; ispn < phi.num_sc(); ispn++) {
+      for (int igk_loc = 0; igk_loc < kp.num_gkvec_loc(); igk_loc++) {
+        dphi.pw_coeffs(ispn).prime(igk_loc, nphi) = qalpha[igk_loc] * phi.pw_coeffs(ispn).prime(igk_loc, nphi);
       }
     }
   }

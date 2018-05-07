@@ -25,11 +25,7 @@ class Hubbard_potential
 
     int number_of_hubbard_orbitals_{0};
 
-    ///  mixer for the hubbard occupancies.
-    std::unique_ptr<Mixer<double_complex>> mixer_{nullptr};
-
     mdarray<double_complex, 5> occupancy_number_;
-
 
     double hubbard_energy_{0.0};
     double hubbard_energy_u_{0.0};
@@ -216,37 +212,31 @@ public:
 
         calculate_wavefunction_with_U_offset();
         calculate_initial_occupation_numbers();
-
-
-        mixer_ = Mixer_factory<double_complex>(ctx_.mixer_input().type_, static_cast<int>(occupancy_number_.size()), 0,
-                                               ctx_.mixer_input(), ctx_.comm());
-        this->mixer_input();
-        mixer_->initialize();
         calculate_hubbard_potential_and_energy();
     }
 
-    inline void mixer_input()
-    {
-        for (int i = 0; i < static_cast<int>(occupancy_number_.size()); i++) {
-            mixer_->input_shared(i, occupancy_number_[i], 1.0);
-        }
-    }
+    // inline void mixer_input()
+    // {
+    //     for (int i = 0; i < static_cast<int>(occupancy_number_.size()); i++) {
+    //         mixer_->input_shared(i, occupancy_number_[i], 1.0);
+    //     }
+    // }
 
-    inline void mixer_output()
-    {
-        for (int i = 0; i < static_cast<int>(occupancy_number_.size()); i++) {
-            occupancy_number_[i] = mixer_->output_shared(i);
-        }
-    }
+    // inline void mixer_output()
+    // {
+    //     for (int i = 0; i < static_cast<int>(occupancy_number_.size()); i++) {
+    //         occupancy_number_[i] = mixer_->output_shared(i);
+    //     }
+    // }
 
-    double mix()
-    {
-        double rms;
-        mixer_input();
-        rms = mixer_->mix(ctx_.settings().mixer_rss_min_);
-        mixer_output();
-        return rms;
-    }
+    // double mix()
+    // {
+    //     double rms;
+    //     mixer_input();
+    //     rms = mixer_->mix(ctx_.settings().mixer_rss_min_);
+    //     mixer_output();
+    //     return rms;
+    // }
 
 // TODO: put include statemsnts to the beginning
 #include "Hubbard/hubbard_generate_atomic_orbitals.hpp"
