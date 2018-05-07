@@ -30,6 +30,7 @@
 #include <iostream>
 #include "fft3d_grid.hpp"
 #include "geometry3d.hpp"
+#include "serializer.hpp"
 
 using namespace geometry3d;
 
@@ -52,7 +53,43 @@ struct z_column_descriptor
         , z(z__)
     {
     }
+
+    z_column_descriptor()
+    {
+    }
 };
+
+inline void serialize(serializer& s__, z_column_descriptor const& zcol__)
+{
+    serialize(s__, zcol__.x);
+    serialize(s__, zcol__.y);
+    serialize(s__, zcol__.z);
+}
+
+inline void deserialize(serializer& s__, z_column_descriptor& zcol__)
+{
+    deserialize(s__, zcol__.x);
+    deserialize(s__, zcol__.y);
+    deserialize(s__, zcol__.z);
+}
+
+inline void serialize(serializer& s__, std::vector<z_column_descriptor> const& zcol__)
+{
+    serialize(s__, zcol__.size());
+    for (auto& e: zcol__) {
+        serialize(s__, e);
+    }
+}
+
+inline void deserialize(serializer& s__, std::vector<z_column_descriptor>& zcol__)
+{
+    size_t sz;
+    deserialize(s__, sz);
+    zcol__.resize(sz);
+    for (size_t i = 0; i < sz; i++) {
+        deserialize(s__, zcol__[i]);
+    }
+}
 
 /// A set of G-vectors for FFTs and G+k basis functions.
 /** Current implemntation supports up to 2^12 (4096) z-dimension of the FFT grid and 2^20 (1048576) number of
@@ -61,10 +98,10 @@ class Gvec
 {
   private:
     /// k-vector of G+k.
-    vector3d<double> vk_;
+    vector3d<double> vk_{0, 0, 0};
 
     /// Cutoff for |G+k| vectors.
-    double Gmax_;
+    double Gmax_{0};
 
     /// Reciprocal lattice vectors.
     matrix3d<double> lattice_vectors_;
@@ -73,13 +110,13 @@ class Gvec
     Communicator const& comm_;
 
     /// Indicates that G-vectors are reduced by inversion symmetry.
-    bool reduce_gvec_;
+    bool reduce_gvec_{false};
 
     /// True if this a list of G-vectors without k-point shift.
     bool bare_gvec_{true};
 
     /// Total number of G-vectors.
-    int num_gvec_;
+    int num_gvec_{0};
 
     /// Mapping between G-vector index [0:num_gvec_) and a full index.
     /** Full index is used to store x,y,z coordinates in a packed form in a single integer number.
@@ -407,8 +444,6 @@ class Gvec
         // TODO: add a check for gvec_base (there is already a test for this).
     }
 
-    Gvec& operator=(Gvec&& src__) = delete;
-
   public:
     /// Constructor for G+k vectors.
     /** \param [in] vk          K-point vector of G+k
@@ -431,8 +466,7 @@ class Gvec
 
     /// Constructor for G-vectors.
     Gvec(matrix3d<double> M__, double Gmax__, Communicator const& comm__, bool reduce_gvec__)
-        : vk_({0, 0, 0})
-        , Gmax_(Gmax__)
+        : Gmax_(Gmax__)
         , lattice_vectors_(M__)
         , comm_(comm__)
         , reduce_gvec_(reduce_gvec__)
@@ -443,8 +477,7 @@ class Gvec
     /// Constructor for G-vector distribution based on a previous set.
     /** Previous set of G-vectors must be a subset of the current set. */
     Gvec(double Gmax__, Gvec const& gvec_base__)
-        : vk_({0, 0, 0})
-        , Gmax_(Gmax__)
+        : Gmax_(Gmax__)
         , lattice_vectors_(gvec_base__.lattice_vectors())
         , comm_(gvec_base__.comm())
         , reduce_gvec_(gvec_base__.reduced())
@@ -455,8 +488,7 @@ class Gvec
 
     /// Constructor for G-vectors with mpi_comm_self()
     Gvec(matrix3d<double> M__, double Gmax__, bool reduce_gvec__)
-        : vk_({0, 0, 0})
-        , Gmax_(Gmax__)
+        : Gmax_(Gmax__)
         , lattice_vectors_(M__)
         , comm_(mpi_comm_self())
         , reduce_gvec_(reduce_gvec__)
@@ -464,8 +496,35 @@ class Gvec
         init();
     }
 
+    Gvec(Communicator const& comm__)
+        : comm_(comm__)
+    {
+    }
 
-    vector3d<double> const& vk() const
+    /// Move assigment operator.
+    Gvec& operator=(Gvec&& src__)
+    {
+        if (this != &src__) {
+            vk_                = src__.vk_;
+            Gmax_              = src__.Gmax_;
+            lattice_vectors_   = src__.lattice_vectors_;
+            reduce_gvec_       = src__.reduce_gvec_;
+            bare_gvec_         = src__.bare_gvec_;
+            num_gvec_          = src__.num_gvec_;
+            gvec_full_index_   = std::move(src__.gvec_full_index_);
+            gvec_shell_        = std::move(src__.gvec_shell_);
+            num_gvec_shells_   = std::move(src__.num_gvec_shells_);
+            gvec_shell_len_    = std::move(src__.gvec_shell_len_);
+            gvec_index_by_xy_  = std::move(src__.gvec_index_by_xy_);
+            z_columns_         = std::move(src__.z_columns_);
+            gvec_distr_        = std::move(src__.gvec_distr_);
+            zcol_distr_        = std::move(src__.zcol_distr_);
+            gvec_base_mapping_ = std::move(src__.gvec_base_mapping_);
+        }
+        return *this;
+    }
+
+    inline vector3d<double> const& vk() const
     {
         return vk_;
     }
@@ -680,6 +739,58 @@ class Gvec
         assert(gvec_base_ != nullptr);
         return gvec_base_mapping_(igloc_base__);
     }
+
+    inline void send_recv(Communicator const& comm__, int source__, int dest__, Gvec& gv__) const
+    {
+        serializer s;
+
+        if (comm__.rank() == source__) {
+            serialize(s, vk_);
+            serialize(s, Gmax_);
+            serialize(s, lattice_vectors_);
+            serialize(s, reduce_gvec_);
+            serialize(s, bare_gvec_);
+            serialize(s, num_gvec_);
+            serialize(s, num_gvec_shells_);
+            serialize(s, gvec_full_index_);
+            serialize(s, gvec_shell_);
+            serialize(s, gvec_shell_len_);
+            serialize(s, gvec_index_by_xy_);
+            serialize(s, z_columns_);
+            serialize(s, gvec_distr_);
+            serialize(s, zcol_distr_);
+            if (gvec_base_ != nullptr) {
+                serialize(s, true);
+                serialize(s, gvec_base_mapping_);
+            } else {
+                serialize(s, false);
+            }
+        }
+
+        s.send_recv(comm__, source__, dest__);
+
+        if (comm__.rank() == dest__) {
+            deserialize(s, gv__.vk_);
+            deserialize(s, gv__.Gmax_);
+            deserialize(s, gv__.lattice_vectors_);
+            deserialize(s, gv__.reduce_gvec_);
+            deserialize(s, gv__.bare_gvec_);
+            deserialize(s, gv__.num_gvec_);
+            deserialize(s, gv__.num_gvec_shells_);
+            deserialize(s, gv__.gvec_full_index_);
+            deserialize(s, gv__.gvec_shell_);
+            deserialize(s, gv__.gvec_shell_len_);
+            deserialize(s, gv__.gvec_index_by_xy_);
+            deserialize(s, gv__.z_columns_);
+            deserialize(s, gv__.gvec_distr_);
+            deserialize(s, gv__.zcol_distr_);
+            bool base_mapping;
+            deserialize(s, base_mapping);
+            if (base_mapping) {
+                deserialize(s, gv__.gvec_base_mapping_);
+            }
+        }
+    }
 };
 
 /// Stores information about G-vector partitioning between MPI ranks for the FFT transformation.
@@ -787,7 +898,12 @@ class Gvec_partition
         , comm_ortho_fft_(comm_ortho_fft__)
     {
         if (fft_comm_.size() * comm_ortho_fft_.size() != gvec_.comm().size()) {
-            TERMINATE("wrong size of communicators");
+            std::stringstream s;
+            s << "wrong size of communicators" << std::endl
+              << "  fft_comm_.size()       = " << fft_comm_.size() << std::endl
+              << "  comm_ortho_fft_.size() = " << comm_ortho_fft_.size()  << std::endl
+              << "  gvec_.comm().size()    = " << gvec_.comm().size();
+            TERMINATE(s);
         }
         rank_map_ = mdarray<int, 2>(fft_comm_.size(), comm_ortho_fft_.size());
         rank_map_.zero();
