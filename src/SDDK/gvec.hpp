@@ -759,12 +759,7 @@ class Gvec
             serialize(s, z_columns_);
             serialize(s, gvec_distr_);
             serialize(s, zcol_distr_);
-            if (gvec_base_ != nullptr) {
-                serialize(s, true);
-                serialize(s, gvec_base_mapping_);
-            } else {
-                serialize(s, false);
-            }
+            serialize(s, gvec_base_mapping_);
         }
 
         s.send_recv(comm__, source__, dest__);
@@ -784,14 +779,60 @@ class Gvec
             deserialize(s, gv__.z_columns_);
             deserialize(s, gv__.gvec_distr_);
             deserialize(s, gv__.zcol_distr_);
-            bool base_mapping;
-            deserialize(s, base_mapping);
-            if (base_mapping) {
-                deserialize(s, gv__.gvec_base_mapping_);
-            }
+            deserialize(s, gv__.gvec_base_mapping_);
         }
     }
+
+    //friend std::unique_ptr<Gvec> send_recv(Gvec const& gv__, Communicator const& comm__, int source__, int dest__);
 };
+
+//inline std::unique_ptr<Gvec> send_recv(Gvec const& gv__, Communicator const& comm__, int source__, int dest__)
+//{
+//    std::unique_ptr<Gvec> gvout(new Gvec(gv__.comm()));
+//
+//    serializer s;
+//
+//    if (comm__.rank() == source__) {
+//        std::cout << "address of gv: " << &gv__ << "\n";
+//        serialize(s, gv__.vk_);
+//        serialize(s, gv__.Gmax_);
+//        serialize(s, gv__.lattice_vectors_);
+//        serialize(s, gv__.reduce_gvec_);
+//        serialize(s, gv__.bare_gvec_);
+//        serialize(s, gv__.num_gvec_);
+//        serialize(s, gv__.num_gvec_shells_);
+//        serialize(s, gv__.gvec_full_index_);
+//        serialize(s, gv__.gvec_shell_);
+//        serialize(s, gv__.gvec_shell_len_);
+//        serialize(s, gv__.gvec_index_by_xy_);
+//        serialize(s, gv__.z_columns_);
+//        serialize(s, gv__.gvec_distr_);
+//        serialize(s, gv__.zcol_distr_);
+//        serialize(s, gv__.gvec_base_mapping_);
+//    }
+//    
+//    s.send_recv(comm__, source__, dest__);
+//
+//    if (comm__.rank() == dest__) {
+//        deserialize(s, gvout->vk_);
+//        deserialize(s, gvout->Gmax_);
+//        deserialize(s, gvout->lattice_vectors_);
+//        deserialize(s, gvout->reduce_gvec_);
+//        deserialize(s, gvout->bare_gvec_);
+//        deserialize(s, gvout->num_gvec_);
+//        deserialize(s, gvout->num_gvec_shells_);
+//        deserialize(s, gvout->gvec_full_index_);
+//        deserialize(s, gvout->gvec_shell_);
+//        deserialize(s, gvout->gvec_shell_len_);
+//        deserialize(s, gvout->gvec_index_by_xy_);
+//        deserialize(s, gvout->z_columns_);
+//        deserialize(s, gvout->gvec_distr_);
+//        deserialize(s, gvout->zcol_distr_);
+//        deserialize(s, gvout->gvec_base_mapping_);
+//    }
+//
+//    return std::move(gvout);
+//}
 
 /// Stores information about G-vector partitioning between MPI ranks for the FFT transformation.
 /** FFT driver works with a small communicator. G-vectors are distributed over the entire communicator which is
