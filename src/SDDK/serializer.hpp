@@ -113,6 +113,10 @@ inline void deserialize(serializer& s__, std::vector<T>& vec__)
 template <typename T, int N>
 void serialize(serializer& s__, mdarray<T, N> const& array__)
 {
+    serialize(s__, array__.size());
+    if (array__.size() == 0) {
+        return;
+    }
     for (int i = 0; i < N; i++) {
         serialize(s__, array__.dim(i).begin());
         serialize(s__, array__.dim(i).end());
@@ -125,6 +129,12 @@ void serialize(serializer& s__, mdarray<T, N> const& array__)
 template <typename T, int N>
 void deserialize(serializer& s__, mdarray<T, N>& array__)
 {
+    size_t sz;
+    deserialize(s__, sz);
+    if (sz == 0) {
+        array__ = mdarray<T, N>();
+        return;
+    }
     std::array<mdarray_index_descriptor, N> dims;
     for (int i = 0; i < N; i++) {
         mdarray_index_descriptor::index_type begin, end;
@@ -133,7 +143,7 @@ void deserialize(serializer& s__, mdarray<T, N>& array__)
         dims[i] = mdarray_index_descriptor(begin, end);
     }
     array__ = mdarray<T, N>(dims);
-    size_t sz = sizeof(T) * array__.size();
+    sz = sizeof(T) * array__.size();
     std::memcpy(&array__[0], &s__.stream[s__.pos], sz);
     s__.pos += sz;
 }
