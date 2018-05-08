@@ -247,15 +247,13 @@ class Communicator_bundle
     Communicator comm_;
 
     /// Total number of communicators.
-    int size_;
+    int size_{-1};
 
     /// ID of a communication subgroup.
-    int id_;
+    int id_{-1};
 
   public:
     Communicator_bundle()
-        : size_(-1)
-        , id_(-1)
     {
     }
 
