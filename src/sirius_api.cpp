@@ -2624,6 +2624,65 @@ void sirius_get_wave_functions(ftn_int*            kset_id__,
 
     int my_rank = kset->comm().rank();
 
+    std::vector<int> igmap;
+
+    auto gvec_mapping = [&](Gvec const& gkvec)
+    {
+        std::vector<int> igm(*npw__, std::numeric_limits<int>::max());
+
+        mdarray<int, 2> gvec_k(gvec_k__, 3, *npw__);
+
+        for (int ig = 0; ig < *npw__; ig++) {
+            /* G vector of host code */
+            auto gvc = sim_ctx->unit_cell().reciprocal_lattice_vectors() * 
+                       (vector3d<double>(gvec_k(0, ig), gvec_k(1, ig), gvec_k(2, ig)) + gkvec.vk());
+            if (gvc.length() > sim_ctx->gk_cutoff()) {
+                continue;
+            }
+            int ig1 = gkvec.index_by_gvec({gvec_k(0, ig), gvec_k(1, ig), gvec_k(2, ig)});
+            /* vector is out of bounds */
+            if (ig1 >= gkvec.num_gvec()) {
+                continue;
+            }
+            /* index of G was not found */
+            if (ig1 < 0) {
+                /* try -G */
+                ig1 = gkvec.index_by_gvec({-gvec_k(0, ig), -gvec_k(1, ig), -gvec_k(2, ig)});
+                /* index of -G was not found */
+                if (ig1 < 0) {
+                    continue;
+                } else {
+                    /* this will tell co conjugate PW coefficients as we take them from -G index */
+                    igm[ig] = -ig1;
+                }
+            } else {
+                igm[ig] = ig1;
+            }
+        }
+        return igm;
+    };
+
+    auto store_wf = [&](std::vector<double_complex>& wf_tmp, int i, int s, mdarray<double_complex, 3>& evc)
+    {
+        int ispn = s;
+        if (sim_ctx->num_mag_dims() == 1) {
+            ispn = 0;
+        }
+        for (int ig = 0; ig < *npw__; ig++) {
+            int ig1 = igmap[ig];
+            /* if this is a valid index */
+            if (ig1 != std::numeric_limits<int>::max()) {
+                double_complex z;
+                if (ig1 < 0) {
+                    z = std::conj(wf_tmp[-ig1]);
+                } else {
+                    z = wf_tmp[ig1];
+                }
+                evc(ig, ispn, i) = z;
+            }
+        }
+    };
+
     for (int r = 0; r < kset->comm().size(); r++) {
         /* if this is a rank wich need jk or a rank which stores jk */
         if ((my_rank == r && jk >= 0) || my_rank == rank_with_jk[r]) {
@@ -2631,6 +2690,7 @@ void sirius_get_wave_functions(ftn_int*            kset_id__,
             int this_jk = jk_of_rank[r];
             /* placeholder for G+k vectors of kpoint jk */
             Gvec gkvec(sim_ctx->comm_band());
+
             /* if this rank stores the k-point, then send it */
             if (rank_with_jk[r] == my_rank) {
                 auto kp = (*kset)[this_jk];
@@ -2642,40 +2702,10 @@ void sirius_get_wave_functions(ftn_int*            kset_id__,
             }
 
             /* build G-vector mapping */
-            std::vector<int> igmap;
             if (my_rank == r) {
-                igmap = std::vector<int>(*npw__, std::numeric_limits<int>::max());
-                mdarray<int, 2> gvec_k(gvec_k__, 3, *npw__);
-
-                for (int ig = 0; ig < *npw__; ig++) {
-                    /* G vector of host code */
-                    auto gvc = sim_ctx->unit_cell().reciprocal_lattice_vectors() * 
-                               (vector3d<double>(gvec_k(0, ig), gvec_k(1, ig), gvec_k(2, ig)) + gkvec.vk());
-                    if (gvc.length() > sim_ctx->gk_cutoff()) {
-                        continue;
-                    }
-                    int ig1 = gkvec.index_by_gvec({gvec_k(0, ig), gvec_k(1, ig), gvec_k(2, ig)});
-                    /* vector is out of bounds */
-                    if (ig1 >= gkvec.num_gvec()) {
-                        continue;
-                    }
-                    /* index of G was not found */
-                    if (ig1 < 0) {
-                        /* try -G */
-                        ig1 = gkvec.index_by_gvec({-gvec_k(0, ig), -gvec_k(1, ig), -gvec_k(2, ig)});
-                        /* index of -G was not found */
-                        if (ig1 < 0) {
-                            continue;
-                        } else {
-                            /* this will tell co conjugate PW coefficients as we take them from -G index */
-                            igmap[ig] = -ig1;
-                        }
-                    } else {
-                        igmap[ig] = ig1;
-                    }
-                }
+                igmap = gvec_mapping(gkvec);
             }
-
+                
             /* target array of wave-functions */
             mdarray<double_complex, 3> evc;
             if (my_rank == r) {
@@ -2693,56 +2723,33 @@ void sirius_get_wave_functions(ftn_int*            kset_id__,
                 wf = std::unique_ptr<Wave_functions>(new Wave_functions(*gvp, sim_ctx->num_bands()));
             }
 
-            auto get_tag = [](int i__, int j__)
-            {
-                if (i__ > j__) {
-                    std::swap(i__, j__);
-                }
-                return j__ * (j__ + 1) / 2 + i__ + 1;
-            };
-
             int ispn0{0};
             int ispn1{1};
             /* fetch two components in non-collinear case, otherwise fetch only one component */
             if (sim_ctx->num_mag_dims() != 3) {
                 ispn0 = ispn1 = jspn_of_rank[r];
             }
-            /* send wave-functions */
+            /* send wave-functions for each spin channel */
             for (int s = ispn0; s <= ispn1; s++) {
-                int tag = get_tag(r, rank_with_jk[r]) * 100 + s;
+                int tag = Communicator::get_tag(r, rank_with_jk[r]) + s;
                 Request req;
                 if (my_rank == rank_with_jk[r]) {
                     auto kp = (*kset)[this_jk];
                     int gkvec_count = kp->gkvec().count();
+                    /* send wave-functions */
                     req = kset->comm().isend(&kp->spinor_wave_functions().pw_coeffs(s).prime(0, 0), gkvec_count * sim_ctx->num_bands(), r, tag);
                 }
                 if (my_rank == r) {
                     int gkvec_count = gkvec.count();
                     int gkvec_offset = gkvec.offset();
+                    /* recieve the array with wave-functions */
                     kset->comm().recv(&wf->pw_coeffs(0).prime(0, 0), gkvec_count * sim_ctx->num_bands(), rank_with_jk[r], tag);
                     std::vector<double_complex> wf_tmp(gkvec.num_gvec());
                     /* store wave-functions */
                     for (int i = 0; i < sim_ctx->num_bands(); i++) {
-                        std::memcpy(&wf_tmp[gkvec_offset], &wf->pw_coeffs(0).prime(0, i), gkvec_count * sizeof(double_complex));
-                        sim_ctx->comm_band().allgather(wf_tmp.data(), gkvec_offset, gkvec_count);
-                        for (int ig = 0; ig < *npw__; ig++) {
-                            int ig1 = igmap[ig];
-                            /* if this is a valid index */
-                            if (ig1 != std::numeric_limits<int>::max()) {
-                                double_complex z;
-                                if (ig1 < 0) {
-                                    z = std::conj(wf_tmp[-ig1]);
-                                } else {
-                                    z = wf_tmp[ig1];
-                                }
-
-                                if (sim_ctx->num_mag_dims() == 1) {
-                                    evc(ig, 0, i) = z;
-                                } else {
-                                    evc(ig, s, i) = z;
-                                }
-                            }
-                        }
+                        /* gather full column of PW coefficients */
+                        sim_ctx->comm_band().allgather(&wf->pw_coeffs(0).prime(0, i), wf_tmp.data(), gkvec_offset, gkvec_count);
+                        store_wf(wf_tmp, i, s, evc);
                     }
                 }
                 if (my_rank == rank_with_jk[r]) {
@@ -2751,327 +2758,6 @@ void sirius_get_wave_functions(ftn_int*            kset_id__,
             }
         }
     }
-
-//== //    int tag{0};
-//== //
-//== //    Request req1, req2;
-//== //    std::vector<int> igmap;
-//== //
-//== //
-//== //    if (jk >= 0) {
-//== //        tag = (Utils::packed_index(my_rank, rank_with_jk[my_rank]) + 1) * 100;
-//== //        /* send jk */
-//== //        kset->comm().isend(&jk, 1, rank_with_jk[my_rank], tag++);
-//== //        /* send jspn */
-//== //        kset->comm().isend(&jspn, 1, rank_with_jk[my_rank], tag++);
-//== //        /* send wave-function size on the host code */
-//== //        kset->comm().isend(npw__, 1, rank_with_jk[my_rank], tag++);
-//== //        /* send the G-vector list on the host code */
-//== //        kset->comm().isend(gvec_k__, 3 * (*npw__), rank_with_jk[my_rank], tag++);
-//== //
-//== //        /* receive G-vector mapping */
-//== //        igmap.resize(*npw__);
-//== //        req1 = kset->comm().irecv(igmap.data(), *npw__, rank_with_jk[my_rank], tag++);
-//== //        /* receive the size of wave-functions */
-//== //        int ngk;
-//== //        req2 = kset->comm().irecv(&ngk, 1, rank_with_jk[my_rank], tag++);
-//== //    }
-//== //
-//== //    for (int r = 0; r < kset->comm().size(); r++) {
-//== //        /* if this ranks stores the k-point for rank r */
-//== //        if (rank_with_jk[r] == my_rank) {
-//== //            /* receive jk */
-//== //            int ik;
-//== //            tag = (Utils::packed_index(r, rank_with_jk[r]) + 1) * 100;
-//== //            kset->comm().recv(&ik, 1, r, tag++);
-//== //            /* receive jspn */
-//== //            int ispn;
-//== //            kset->comm().recv(&ispn, 1, r, tag++);
-//== //            /* receive wave-function size on the host code */
-//== //            int npw;
-//== //            kset->comm().recv(&npw, 1, r, tag++);
-//== //            /* receive the G-vector list on the host code */
-//== //            mdarray<int, 2> gvec_k(3, npw);
-//== //            kset->comm().recv(gvec_k.at<CPU>(), 3 * npw, r, tag++);
-//== //   
-//== //            auto kp = (*kset)[ik];
-//== //            /* build a G-vector mapping */
-//== //            std::vector<int> igmap(npw, std::numeric_limits<int>::max());
-//== //
-//== //            for (int ig = 0; ig < npw; ig++) {
-//== //                /* G vector of host code */
-//== //                auto gvc = sim_ctx->unit_cell().reciprocal_lattice_vectors() * (vector3d<double>(gvec_k(0, ig), gvec_k(1, ig), gvec_k(2, ig)) + kp->vk());
-//== //                if (gvc.length() > sim_ctx->gk_cutoff()) {
-//== //                    continue;
-//== //                }
-//== //                int ig1 = kp->gkvec().index_by_gvec({gvec_k(0, ig), gvec_k(1, ig), gvec_k(2, ig)});
-//== //                /* vector is out of bounds */
-//== //                if (ig1 >= kp->num_gkvec()) {
-//== //                    continue;
-//== //                }
-//== //                /* index of G was not found */
-//== //                if (ig1 < 0) {
-//== //                    /* try -G */
-//== //                    ig1 = kp->gkvec().index_by_gvec({-gvec_k(0, ig), -gvec_k(1, ig), -gvec_k(2, ig)});
-//== //                    /* index of -G was not found */
-//== //                    if (ig1 < 0) {
-//== //                        continue;
-//== //                    } else {
-//== //                        /* this will tell co conjugate PW coefficients as we take them from -G index */
-//== //                        igmap[ig] = -ig1;
-//== //                    }
-//== //                } else {
-//== //                    igmap[ig] = ig1;
-//== //                }
-//== //            }
-//== //            /* send G-vector mapping */
-//== //            kset->comm().send(igmap.data(), npw, r, tag++);
-//== //            /* send wave-function size */
-//== //            int ngk = kp->num_gkvec();
-//== //            kset->comm().send(&ngk, 1, r, tag++);
-//== //        }
-//== //    }
-//== //
-//== //    if (jk >= 0) {
-//== //        /* wait for G-vector mapping */
-//== //        req1.wait();
-//== //        req2.wait();
-//== //
-//== //
-//== //
-//== //
-//== //    }
-//==     
-//==     std::vector<int> ngk_tmp;
-//==     for (int r = 0; r < kset->comm().size(); r++) {
-//==         int jk = jk_of_rank[r];
-//==         if (jk >= 0 && my_rank == kset->spl_num_kpoints().local_rank(jk)) {
-//==             auto kp = (*kset)[jk];
-//==             int ngk = kp->num_gkvec();
-//==             ngk_tmp.push_back(ngk);
-//== 
-//== 
-//==         }
-//== 
-//==     }
-//== 
-//== 
-//== 
-//== 
-//==     for (int r = 0; r < kset->comm().size(); r++) {
-//==         /* rank r needs k-point jk */
-//==         if (rank_with_jk[r] >= 0) {
-//== 
-//==             /* if this is the current rank */
-//==             if (my_rank == r) {
-//==                 int tag = (Utils::packed_index(my_rank, rank_with_jk[my_rank]) + 1) * 100;
-//==                 /* send jk */
-//==                 //== std::cout << "rank " << my_rank << " sending to " << rank_with_jk[r] << "\n";
-//==                 //== kset->comm().isend(&jk, 1, rank_with_jk[r], tag++);
-//==                 //== std::cout << "rank " << my_rank << " sending to " << rank_with_jk[r] << " done\n";
-//==                 //= /* send jspn */
-//==                 //= kset->comm().isend(&jspn, 1, rank_with_jk[r], tag++);
-//==                 //= /* send wave-function size on the host code */
-//==                 //= kset->comm().isend(npw__, 1, rank_with_jk[r], tag++);
-//==                 //= /* send the G-vector list on the host code */
-//==                 //= kset->comm().isend(gvec_k__, 3 * (*npw__), rank_with_jk[r], tag++);
-//==                 //= 
-//==                 //= /* receive G-vector mapping */
-//==                 //= std::vector<int> igmap(*npw__);
-//==                 //= kset->comm().recv(igmap.data(), *npw__, rank_with_jk[r], tag++);
-//== 
-//==                 //= /* receive the size of wave-functions */
-//==                 //= int ngk;
-//==                 //= kset->comm().recv(&ngk, 1, rank_with_jk[r], tag++);
-//== 
-//==                 //= int ispn0{0};
-//==                 //= int ispn1{1};
-//==                 //= /* fetch two components in non-collinear case, otherwise fetch only one component */
-//==                 //= if (sim_ctx->num_mag_dims() != 3) {
-//==                 //=     ispn0 = ispn1 = jspn;
-//==                 //= }
-//== 
-//==                 //= mdarray<double_complex, 3> evc(evc__, *ld1__, *ld2__, sim_ctx->num_bands());
-//==                 //= evc.zero();
-//== 
-//==                 //= std::vector<double_complex> wf_tmp(ngk);
-//==                 //= for (int s = ispn0; s <= ispn1; s++) {
-//==                 //=     for (int i = 0; i < sim_ctx->num_bands(); i++) {
-//==                 //=         kset->comm().recv(wf_tmp.data(), ngk, rank_with_jk[r], tag++);
-//==                 //=         for (int ig = 0; ig < *npw__; ig++) {
-//==                 //=             int ig1 = igmap[ig];
-//==                 //=             /* if this is a valid index */
-//==                 //=             if (ig1 != std::numeric_limits<int>::max()) {
-//==                 //=                 double_complex z;
-//==                 //=                 if (ig1 < 0) {
-//==                 //=                     z = std::conj(wf_tmp[-ig1]);
-//==                 //=                 } else {
-//==                 //=                     z = wf_tmp[ig1];
-//==                 //=                 }
-//== 
-//==                 //=                 if (sim_ctx->num_mag_dims() == 1) {
-//==                 //=                     evc(ig, 0, i) = z;
-//==                 //=                 } else {
-//==                 //=                     evc(ig, s, i) = z;
-//==                 //=                 }
-//==                 //=             }
-//==                 //=         }
-//==                 //=     }
-//==                 //= }
-//==             }
-//== 
-//==             /* if this is a rank that stores jk */
-//==             if (my_rank == rank_with_jk[r]) {
-//==                 int tag = (Utils::packed_index(my_rank, rank_with_jk[my_rank]) + 1) * 100;
-//==                 ///* receive jk */
-//==                 //int ik;
-//==                 //std::cout << "rank " << kset->comm().rank() << " receiving from " << r << "\n";
-//==                 //kset->comm().recv(&ik, 1, r, tag++);
-//==                 //std::cout << "rank " << kset->comm().rank() << " receiving from " << r << " done\n";
-//==                 //= /* receive jspn */
-//==                 //= int ispn;
-//==                 //= kset->comm().recv(&ispn, 1, r, tag++);
-//==                 //= /* receive wave-function size on the host code */
-//==                 //= int npw;
-//==                 //= kset->comm().recv(&npw, 1, r, tag++);
-//==                 //= /* receive the G-vector list on the host code */
-//==                 //= mdarray<int, 2> gvec_k(3, npw);
-//==                 //= kset->comm().recv(gvec_k.at<CPU>(), 3 * npw, r, tag++);
-//==                
-//==                 //= auto kp = (*kset)[ik];
-//== 
-//==                 //= /* build a G-vector mapping */
-//==                 //= std::vector<int> igmap(npw, std::numeric_limits<int>::max());
-//== 
-//==                 //= for (int ig = 0; ig < npw; ig++) {
-//==                 //=     /* G vector of host code */
-//==                 //=     auto gvc = sim_ctx->unit_cell().reciprocal_lattice_vectors() * (vector3d<double>(gvec_k(0, ig), gvec_k(1, ig), gvec_k(2, ig)) + kp->vk());
-//==                 //=     if (gvc.length() > sim_ctx->gk_cutoff()) {
-//==                 //=         continue;
-//==                 //=     }
-//==                 //=     int ig1 = kp->gkvec().index_by_gvec({gvec_k(0, ig), gvec_k(1, ig), gvec_k(2, ig)});
-//==                 //=     /* vector is out of bounds */
-//==                 //=     if (ig1 >= kp->num_gkvec()) {
-//==                 //=         continue;
-//==                 //=     }
-//==                 //=     /* index of G was not found */
-//==                 //=     if (ig1 < 0) {
-//==                 //=         /* try -G */
-//==                 //=         ig1 = kp->gkvec().index_by_gvec({-gvec_k(0, ig), -gvec_k(1, ig), -gvec_k(2, ig)});
-//==                 //=         /* index of -G was not found */
-//==                 //=         if (ig1 < 0) {
-//==                 //=             continue;
-//==                 //=         } else {
-//==                 //=             /* this will tell co conjugate PW coefficients as we take them from -G index */
-//==                 //=             igmap[ig] = -ig1;
-//==                 //=         }
-//==                 //=     } else {
-//==                 //=         igmap[ig] = ig1;
-//==                 //=     }
-//==                 //= }
-//==                 //= /* send G-vector mapping */
-//==                 //= kset->comm().isend(igmap.data(), npw, r, tag++);
-//== 
-//==                 //= int ispn0{0};
-//==                 //= int ispn1{1};
-//==                 //= /* fetch two components in non-collinear case, otherwise fetch only one component */
-//==                 //= if (sim_ctx->num_mag_dims() != 3) {
-//==                 //=     ispn0 = ispn1 = ispn;
-//==                 //= }
-//== 
-//==                 //= int gkvec_count = kp->gkvec().count();
-//==                 //= int gkvec_offset = kp->gkvec().offset();
-//==                 //= /* send the size of wave-functions */
-//==                 //= int ngk = kp->num_gkvec();
-//==                 //= kset->comm().isend(&ngk, 1, r, tag++);
-//== 
-//==                 //= std::vector<double_complex> wf_tmp(ngk);
-//==                 //= for (int s = ispn0; s <= ispn1; s++) {
-//==                 //=     for (int i = 0; i < sim_ctx->num_bands(); i++) {
-//==                 //=         /* collect the full wave-function */
-//==                 //=         std::memcpy(&wf_tmp[gkvec_offset], &kp->spinor_wave_functions().pw_coeffs(ispn).prime(0, i), gkvec_count * sizeof(double_complex));
-//==                 //=         kp->comm().allgather(wf_tmp.data(), gkvec_offset, gkvec_count);
-//==                 //=         kset->comm().isend(wf_tmp.data(), ngk, r, tag++);
-//==                 //=     }
-//==                 //= }
-//==             }
-//== 
-//==         }
-//==         //std::cout << "rank " << kset->comm().rank() << " has reached the barrier\n";
-//==         //kset->comm().barrier();
-//==     }
-//== 
-//== //    auto kp = (*kset)[jk];
-//== //
-//== //    mdarray<int, 2> gvec_k(gvec_k__, 3, *npw__);
-//== //    /* [npwx, npol, nbnd] array dimensions */
-//== //    mdarray<double_complex, 3> evc(evc__, *ld1__, *ld2__, sim_ctx->num_bands());
-//== //    evc.zero();
-//== //
-//== //    std::vector<double_complex> wf_tmp(kp->num_gkvec());
-//== //    int gkvec_count = kp->gkvec().count();
-//== //    int gkvec_offset = kp->gkvec().offset();
-//== //
-//== //    int ispn0{0};
-//== //    int ispn1{1};
-//== //    /* fetch two components in non-collinear case, otherwise fetch only one component */
-//== //    if (sim_ctx->num_mag_dims() != 3) {
-//== //        ispn0 = ispn1 = jspn;
-//== //    }
-//== //
-//== //    std::vector<int> igmap(*npw__, std::numeric_limits<int>::max());
-//== //
-//== //    for (int ig = 0; ig < *npw__; ig++) {
-//== //        /* G vector of host code */
-//== //        auto gvc = sim_ctx->unit_cell().reciprocal_lattice_vectors() * (vector3d<double>(gvec_k(0, ig), gvec_k(1, ig), gvec_k(2, ig)) + kp->vk());
-//== //        if (gvc.length() > sim_ctx->gk_cutoff()) {
-//== //            continue;
-//== //        }
-//== //        int ig1 = kp->gkvec().index_by_gvec({gvec_k(0, ig), gvec_k(1, ig), gvec_k(2, ig)});
-//== //        /* vector is out of bounds */
-//== //        if (ig1 >= kp->num_gkvec()) {
-//== //            continue;
-//== //        }
-//== //        /* index of G was not found */
-//== //        if (ig1 < 0) {
-//== //            /* try -G */
-//== //            ig1 = kp->gkvec().index_by_gvec({-gvec_k(0, ig), -gvec_k(1, ig), -gvec_k(2, ig)});
-//== //            /* index of -G was not found */
-//== //            if (ig1 < 0) {
-//== //                continue;
-//== //            } else {
-//== //                /* this will tell co conjugate PW coefficients as we take them from -G index */
-//== //                igmap[ig] = -ig1;
-//== //            }
-//== //        } else {
-//== //            igmap[ig] = ig1;
-//== //        }
-//== //    }
-//== //
-//== //    for (int ispn = ispn0; ispn <= ispn1; ispn++) {
-//== //        for (int i = 0; i < sim_ctx->num_bands(); i++) {
-//== //            std::memcpy(&wf_tmp[gkvec_offset], &kp->spinor_wave_functions().pw_coeffs(ispn).prime(0, i), gkvec_count * sizeof(double_complex));
-//== //            kp->comm().allgather(wf_tmp.data(), gkvec_offset, gkvec_count);
-//== //            for (int ig = 0; ig < *npw__; ig++) {
-//== //                int ig1 = igmap[ig];
-//== //                /* if this is a valid index */
-//== //                if (ig1 != std::numeric_limits<int>::max()) {
-//== //                    double_complex z;
-//== //                    if (ig1 < 0) {
-//== //                        z = std::conj(wf_tmp[-ig1]);
-//== //                    } else {
-//== //                        z = wf_tmp[ig1];
-//== //                    }
-//== //
-//== //                    if (sim_ctx->num_mag_dims() == 1) {
-//== //                        evc(ig, 0, i) = z;
-//== //                    } else {
-//== //                        evc(ig, ispn, i) = z;
-//== //                    }
-//== //                }
-//== //            }
-//== //        }
-//== //    }
 }
 
 void sirius_get_beta_projectors(ftn_int*            kset_id__,
