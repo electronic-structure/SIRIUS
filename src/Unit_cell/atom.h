@@ -103,14 +103,14 @@ class Atom
         , position_(position__)
         , vector_field_(vector_field__)
     {
-        for (int x : {0, 1, 2}) {
-            if (position_[x] < 0 || position_[x] >= 1) {
-                std::stringstream s;
-                s << "Wrong atomic position for atom " << type__.label() << ": " << position_[0] << " " << position_[1]
-                  << " " << position_[2];
-                TERMINATE(s);
-            }
-        }
+        //for (int x : {0, 1, 2}) {
+        //    if (position_[x] < 0 || position_[x] >= 1) {
+        //        std::stringstream s;
+        //        s << "Wrong atomic position for atom " << type__.label() << ": " << position_[0] << " " << position_[1]
+        //          << " " << position_[2];
+        //        TERMINATE(s);
+        //    }
+        //}
     }
 
     /// Initialize atom.

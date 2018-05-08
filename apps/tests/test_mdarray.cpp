@@ -87,6 +87,18 @@ void f5()
     }
 }
 
+template <typename T, int N>
+void f6(mdarray<T, N>& a)
+{
+    std::array<mdarray_index_descriptor, N> dims;
+    for (int i = 0; i < N; i++) {
+        dims[i] = mdarray_index_descriptor(0, 10);
+    }
+    a = mdarray<T, N>(dims);
+    a[0] = 100;
+    a[a.size() - 1] = 200;
+}
+
 int main(int argn, char **argv)
 {
     sirius::initialize(1);
@@ -98,6 +110,9 @@ int main(int argn, char **argv)
     f4();
 
     f5();
+    
+    mdarray<double, 2> a;
+    f6(a);
 
     #ifndef NDEBUG
     std::cout << "Allocated memory : " << mdarray_mem_count::allocated().load() << std::endl;

@@ -150,7 +150,6 @@ class splindex<block, T> : public splindex_base<T>
         int rank = int(idxglob__ / block_size_);
         T idxloc = idxglob__ - rank * block_size_;
 
-        //return std::pair<T, int>(idxloc, rank);
         return typename splindex_base<T>::location_t(idxloc, rank);
     }
 
