@@ -232,6 +232,8 @@ class Communicator
   private:
     /// Raw MPI communicator.
     MPI_Comm mpi_comm_{MPI_COMM_NULL};
+    /// True if MPI_Comm_free has to be called on this communicator.
+    bool need_to_free_{true};
     /* copy is not allowed */
     Communicator(Communicator const& src__) = delete;
     /* assigment is not allowed */
@@ -240,7 +242,7 @@ class Communicator
     /// Free communicator.
     void free()
     {
-        if (!(mpi_comm_ == MPI_COMM_NULL || mpi_comm_ == MPI_COMM_WORLD || mpi_comm_ == MPI_COMM_SELF)) {
+        if (!(mpi_comm_ == MPI_COMM_NULL || mpi_comm_ == MPI_COMM_WORLD || mpi_comm_ == MPI_COMM_SELF) && need_to_free_) {
             CALL_MPI(MPI_Comm_free, (&mpi_comm_));
             mpi_comm_ = MPI_COMM_NULL;
         }
@@ -255,6 +257,7 @@ class Communicator
     /// Constructor for existing communicator.
     Communicator(MPI_Comm mpi_comm__)
         : mpi_comm_(mpi_comm__)
+        , need_to_free_(false)
     {
     }
 
@@ -276,7 +279,9 @@ class Communicator
         if (this != &src__) {
             this->free();
             this->mpi_comm_     = src__.mpi_comm_;
-            src__.mpi_comm_ = MPI_COMM_NULL;
+            this->need_to_free_ = src__.need_to_free_;
+            src__.mpi_comm_     = MPI_COMM_NULL;
+            src__.need_to_free_ = false;
         }
         return *this;
     }
