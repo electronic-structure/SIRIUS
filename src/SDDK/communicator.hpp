@@ -1,4 +1,4 @@
-// Copyright (c) 2013-2017 Anton Kozhevnikov, Thomas Schulthess
+// Copyright (c) 2013-2018 Anton Kozhevnikov, Thomas Schulthess
 // All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without modification, are permitted provided that
@@ -35,13 +35,13 @@
 
 namespace sddk {
 
-#define CALL_MPI(func__, args__)                                                                                       \
-    {                                                                                                                  \
-        if (func__ args__ != MPI_SUCCESS) {                                                                            \
-            printf("error in %s at line %i of file %s\n", #func__, __LINE__, __FILE__);                                \
-            MPI_Abort(MPI_COMM_WORLD, -1);                                                                             \
-        }                                                                                                              \
-    }
+#define CALL_MPI(func__, args__)                                                     \
+{                                                                                    \
+    if (func__ args__ != MPI_SUCCESS) {                                              \
+        printf("error in %s at line %i of file %s\n", #func__, __LINE__, __FILE__);  \
+        MPI_Abort(MPI_COMM_WORLD, -1);                                               \
+    }                                                                                \
+}
 
 enum class mpi_op_t
 {
@@ -226,16 +226,12 @@ class Request
     }
 };
 
-// TODO: proper way of controlling who owns comm and who needs to free it
-
 /// MPI communicator wrapper.
 class Communicator
 {
   private:
     /// Raw MPI communicator.
     MPI_Comm mpi_comm_{MPI_COMM_NULL};
-    /// True if this class instance is responsible for freeing raw MPI communicator.
-    bool need_to_free_{true};
     /* copy is not allowed */
     Communicator(Communicator const& src__) = delete;
     /* assigment is not allowed */
@@ -244,8 +240,7 @@ class Communicator
     /// Free communicator.
     void free()
     {
-        if (!(mpi_comm_ == MPI_COMM_NULL || mpi_comm_ == MPI_COMM_WORLD || mpi_comm_ == MPI_COMM_SELF) &&
-            need_to_free_) {
+        if (!(mpi_comm_ == MPI_COMM_NULL || mpi_comm_ == MPI_COMM_WORLD || mpi_comm_ == MPI_COMM_SELF)) {
             CALL_MPI(MPI_Comm_free, (&mpi_comm_));
             mpi_comm_ = MPI_COMM_NULL;
         }
@@ -260,7 +255,6 @@ class Communicator
     /// Constructor for existing communicator.
     Communicator(MPI_Comm mpi_comm__)
         : mpi_comm_(mpi_comm__)
-        , need_to_free_(false)
     {
     }
 
@@ -273,19 +267,17 @@ class Communicator
     /// Move constructor.
     Communicator(Communicator&& src__)
     {
-        this->free();
-        this->mpi_comm_     = src__.mpi_comm_;
-        this->need_to_free_ = src__.need_to_free_;
-        src__.need_to_free_ = false;
+        *this = std::move(src__);
     }
 
     /// Move assigment operator.
     Communicator& operator=(Communicator&& src__)
     {
-        this->free();
-        this->mpi_comm_     = src__.mpi_comm_;
-        this->need_to_free_ = src__.need_to_free_;
-        src__.need_to_free_ = false;
+        if (this != &src__) {
+            this->free();
+            this->mpi_comm_     = src__.mpi_comm_;
+            src__.mpi_comm_ = MPI_COMM_NULL;
+        }
         return *this;
     }
 
@@ -311,6 +303,12 @@ class Communicator
         MPI_Finalize();
     }
 
+    /// Return raw MPI communicator handler.
+    MPI_Comm mpi_comm() const
+    {
+        return mpi_comm_;
+    }
+
     static int get_tag(int i__, int j__)
     {
         if (i__ > j__) {
@@ -318,17 +316,23 @@ class Communicator
         }
         return (j__ * (j__ + 1) / 2 + i__ + 1) << 6;
     }
-
-    /// Return reference to raw MPI communicator.
-    inline MPI_Comm& mpi_comm()
+    
+    static Communicator const& self()
     {
-        return mpi_comm_;
+        static Communicator comm(MPI_COMM_SELF);
+        return comm;
     }
 
-    /// Return const reference to raw MPI communicator.
-    inline MPI_Comm const& mpi_comm() const
+    static Communicator const& world()
     {
-        return mpi_comm_;
+        static Communicator comm(MPI_COMM_WORLD);
+        return comm;
+    }
+
+    static Communicator const& null()
+    {
+        static Communicator comm(MPI_COMM_NULL);
+        return comm;
     }
 
     /// Rank of MPI process inside communicator.
@@ -339,6 +343,16 @@ class Communicator
         int r;
         CALL_MPI(MPI_Comm_rank, (mpi_comm_, &r));
         return r;
+    }
+
+    /// Size of the communicator (number of ranks). 
+    inline int size() const
+    {
+        assert(mpi_comm_ != MPI_COMM_NULL);
+
+        int s;
+        CALL_MPI(MPI_Comm_size, (mpi_comm_, &s));
+        return s;
     }
 
     /// Rank of MPI process inside communicator with associated Cartesian partitioning.
@@ -353,13 +367,18 @@ class Communicator
         return r;
     }
 
-    inline int size() const
+    inline Communicator cart_create(int ndims__, int const* dims__, int const* periods__) const
     {
-        assert(mpi_comm_ != MPI_COMM_NULL);
+        Communicator new_comm;
+        CALL_MPI(MPI_Cart_create, (mpi_comm(), ndims__, dims__, periods__, 0, &new_comm.mpi_comm_));
+        return std::move(new_comm);
+    }
 
-        int s;
-        CALL_MPI(MPI_Comm_size, (mpi_comm_, &s));
-        return s;
+    inline Communicator cart_sub(int const* remain_dims__) const
+    {
+        Communicator new_comm;
+        CALL_MPI(MPI_Cart_sub, (mpi_comm(), remain_dims__, &new_comm.mpi_comm_));
+        return std::move(new_comm);
     }
 
     inline void barrier() const
@@ -659,14 +678,14 @@ class Communicator
     Communicator split(int color__) const
     {
         Communicator new_comm;
-        MPI_Comm_split(mpi_comm(), color__, rank(), &new_comm.mpi_comm());
+        CALL_MPI(MPI_Comm_split, (mpi_comm(), color__, rank(), &new_comm.mpi_comm_));
         return std::move(new_comm);
     }
 
     Communicator duplicate() const
     {
         Communicator new_comm;
-        MPI_Comm_dup(mpi_comm(), &new_comm.mpi_comm());
+        CALL_MPI(MPI_Comm_dup, (mpi_comm(), &new_comm.mpi_comm_));
         return std::move(new_comm);
     }
 
