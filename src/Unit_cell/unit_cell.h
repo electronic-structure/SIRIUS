@@ -159,8 +159,6 @@ class Unit_cell
     /// Maximum orbital quantum number of radial functions between all atom types.
     int lmax_{-1};
 
-    Communicator_bundle comm_bundle_atoms_;
-
     std::unique_ptr<Unit_cell_symmetry> symmetry_;
 
     Communicator const& comm_;

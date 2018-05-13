@@ -945,7 +945,7 @@ inline void Simulation_context_base::print_info()
     printf("number of MPI ranks           : %i\n", comm_.size());
     printf("MPI grid                      :");
     for (int i = 0; i < mpi_grid_->num_dimensions(); i++) {
-        printf(" %i", mpi_grid_->dimension_size(i));
+        printf(" %i", mpi_grid_->communicator(1 << i).size());
     }
     printf("\n");
     printf("maximum number of OMP threads : %i\n", omp_get_max_threads());
