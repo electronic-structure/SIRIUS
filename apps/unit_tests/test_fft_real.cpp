@@ -9,13 +9,13 @@ void test1(vector3d<int> const& dims__, double cutoff__, device_t pu__)
     matrix3d<double> M;
     M(0, 0) = M(1, 1) = M(2, 2) = 1.0;
 
-    FFT3D fft(find_translations(cutoff__, M), mpi_comm_world(), pu__);
+    FFT3D fft(find_translations(cutoff__, M), Communicator::world(), pu__);
 
-    Gvec gvec(M, cutoff__, mpi_comm_world(), false);
-    Gvec_partition gvecp(gvec, mpi_comm_world(), mpi_comm_self());
+    Gvec gvec(M, cutoff__, Communicator::world(), false);
+    Gvec_partition gvecp(gvec, Communicator::world(), Communicator::self());
 
-    Gvec gvec_r(M, cutoff__, mpi_comm_world(), true);
-    Gvec_partition gvecp_r(gvec_r, mpi_comm_world(), mpi_comm_self());
+    Gvec gvec_r(M, cutoff__, Communicator::world(), true);
+    Gvec_partition gvecp_r(gvec_r, Communicator::world(), Communicator::self());
 
     if (gvec_r.num_gvec() != gvec.num_gvec() / 2 + 1) {
         printf("wrong number of reduced G-vectors");
@@ -25,7 +25,7 @@ void test1(vector3d<int> const& dims__, double cutoff__, device_t pu__)
     fft.prepare(gvecp_r);
 
     printf("num_gvec: %i, num_gvec_reduced: %i\n", gvec.num_gvec(), gvec_r.num_gvec());
-    printf("num_gvec_loc: %i %i\n", gvec.gvec_count(mpi_comm_world().rank()), gvec_r.gvec_count(mpi_comm_world().rank()));
+    printf("num_gvec_loc: %i %i\n", gvec.gvec_count(Communicator::world().rank()), gvec_r.gvec_count(Communicator::world().rank()));
     printf("num_z_col: %i, num_z_col_reduced: %i\n", gvec.num_zcol(), gvec_r.num_zcol());
 
     mdarray<double_complex, 1> phi(gvecp_r.gvec_count_fft());
@@ -67,10 +67,10 @@ void test2(vector3d<int> const& dims__, double cutoff__, device_t pu__)
     matrix3d<double> M;
     M(0, 0) = M(1, 1) = M(2, 2) = 1.0;
 
-    FFT3D fft(find_translations(cutoff__, M), mpi_comm_world(), pu__);
+    FFT3D fft(find_translations(cutoff__, M), Communicator::world(), pu__);
 
-    Gvec gvec_r(M, cutoff__, mpi_comm_world(), true);
-    Gvec_partition gvecp_r(gvec_r, mpi_comm_world(), mpi_comm_self());
+    Gvec gvec_r(M, cutoff__, Communicator::world(), true);
+    Gvec_partition gvecp_r(gvec_r, Communicator::world(), Communicator::self());
 
     fft.prepare(gvecp_r);
 
@@ -147,10 +147,10 @@ void test3(vector3d<int> const& dims__, double cutoff__)
     matrix3d<double> M;
     M(0, 0) = M(1, 1) = M(2, 2) = 1.0;
 
-    FFT3D fft(find_translations(cutoff__, M), mpi_comm_world(), GPU);
+    FFT3D fft(find_translations(cutoff__, M), Communicator::world(), GPU);
 
-    Gvec gvec_r(M, cutoff__, mpi_comm_world(), true);
-    Gvec_partition gvecp_r(gvec_r, mpi_comm_world(), mpi_comm_self());
+    Gvec gvec_r(M, cutoff__, Communicator::world(), true);
+    Gvec_partition gvecp_r(gvec_r, Communicator::world(), Communicator::self());
 
     fft.prepare(gvecp_r);
 

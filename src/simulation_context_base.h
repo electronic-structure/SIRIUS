@@ -361,7 +361,7 @@ class Simulation_context_base: public Simulation_parameters
         Communicator const& comm_fft_coarse() const
         {
             if (control().fft_mode_ == "serial") {
-                return mpi_comm_self();
+                return Communicator::self();
             } else {
                 return comm_fft();
             }
@@ -856,7 +856,7 @@ inline void Simulation_context_base::initialize()
     if (std_solver->is_parallel()) {
         blacs_grid_ = std::unique_ptr<BLACS_grid>(new BLACS_grid(comm_band(), npr, npc));
     } else {
-        blacs_grid_ = std::unique_ptr<BLACS_grid>(new BLACS_grid(mpi_comm_self(), 1, 1));
+        blacs_grid_ = std::unique_ptr<BLACS_grid>(new BLACS_grid(Communicator::self(), 1, 1));
     }
 
     /* setup the cyclic block size */
@@ -945,7 +945,7 @@ inline void Simulation_context_base::print_info()
     printf("number of MPI ranks           : %i\n", comm_.size());
     printf("MPI grid                      :");
     for (int i = 0; i < mpi_grid_->num_dimensions(); i++) {
-        printf(" %i", mpi_grid_->dimension_size(i));
+        printf(" %i", mpi_grid_->communicator(1 << i).size());
     }
     printf("\n");
     printf("maximum number of OMP threads : %i\n", omp_get_max_threads());

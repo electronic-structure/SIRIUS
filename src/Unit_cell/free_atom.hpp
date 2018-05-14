@@ -93,7 +93,7 @@ class Free_atom : public Atom_type
             vrho[i] = 0;
         }
 
-        Mixer<double>* mixer = new Broyden1<double>(0, np, 12, 0.8, mpi_comm_self());
+        Mixer<double>* mixer = new Broyden1<double>(0, np, 12, 0.8, Communicator::self());
         for (int i = 0; i < np; i++) {
             mixer->input_local(i, vrho[i]);
         }
@@ -284,6 +284,35 @@ class Free_atom : public Atom_type
         //std::cerr << zn() << " " << dE << " # " << symbol() << std::endl;
 
         //return energy_tot;
+    }
+
+    inline void generate_local_orbitals(std::string const& recipe__)
+    {
+        //json dict;
+        //std::istringstream(recipe__) >> dict;
+
+        //int idxlo{0};
+        //for (auto& e: dict) {
+        //    for (auto& lo_desc: e) {
+        //        if (lo_desc.count("enu")) {
+        //        }
+        //        int n = lo_desc["n"];
+        //        int o = lo_desc["o"];
+        //        
+        //        //std::cout << r << "\n";
+
+        //    }
+
+        //}
+
+//    for (int n = 1; n <= 7; n++) {
+//        for (int l = 0; l < 4; l++) {
+//            if (nl_v[n][l]) {
+//                if (lo_type.find("lo1") != std::string::npos) {
+//                    a.add_lo_descriptor(idxlo, n, l, e_nl_v[n][l], 0, 1);
+//                    a.add_lo_descriptor(idxlo, n, l, e_nl_v[n][l], 1, 1);
+//                    idxlo++;
+//
     }
 
     inline double free_atom_orbital_density(int ir, int ist)

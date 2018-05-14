@@ -103,7 +103,7 @@ void sirius_finalize(ftn_bool* call_mpi_fin__)
 void sirius_create_simulation_context(ftn_char str__,
                                       ftn_int* fcomm__)
 {
-    auto& comm = map_fcomm(*fcomm__);
+    auto& comm = Communicator::map_fcomm(*fcomm__);
     std::string str(str__);
     sim_ctx = std::unique_ptr<sirius::Simulation_context>(new sirius::Simulation_context(str, comm));
 }
@@ -1074,12 +1074,12 @@ void sirius_write_json_output(void)
     json dict;
     dict["git_hash"] = git_hash;
     dict["build_date"] = build_date;
-    dict["comm_world_size"] = mpi_comm_world().size();
+    dict["comm_world_size"] = Communicator::world().size();
     dict["threads_per_rank"] = omp_get_max_threads();
     dict["ground_state"] = dft_ground_state->serialize();
     dict["timers"] = sddk::timer::serialize_timers();
 
-    if (mpi_comm_world().rank() == 0) {
+    if (Communicator::world().rank() == 0) {
         std::ofstream ofs(std::string("output_") + sim_ctx->start_time_tag() + std::string(".json"),
                           std::ofstream::out | std::ofstream::trunc);
         ofs << dict.dump(4);

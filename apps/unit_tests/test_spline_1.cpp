@@ -20,25 +20,29 @@ double check_spline(Spline<double> const& s__, std::function<double(double)> f__
     l2norm = std::sqrt(l2norm * (x1__ - x0__) / rgrid.num_points());
 
 
-    //FILE* fout = fopen("spline.dat", "w");
+    FILE* fout = fopen("spline.dat", "w");
     double max_diff{0};
+    double rel_diff{0};
     double l2norm_delta{0};
     for (int ir = 0; ir < rgrid.num_points(); ir++) {
         double x = rgrid[ir];
         l2norm_delta += std::pow(s__.at_point(x) - f__(x), 2);
         max_diff = std::max(max_diff, std::abs(s__.at_point(x) - f__(x)));
+        rel_diff = std::max(rel_diff, std::abs(s__.at_point(x) - f__(x)) / (std::abs(s__.at_point(x)) + std::abs(f__(x)) + 1e-12));
         //fprintf(fout, "%18.14f %18.14f %18.14f %18.14f\n", x, f__(x), s__.at_point(x), std::abs(s__.at_point(x) - f__(x)));
+        fprintf(fout, "%18.14f %18.14f %18.14f %18.14f\n", x, std::abs(s__.at_point(x) - f__(x)), f__(x), s__.at_point(x));
     }
+    fclose(fout);
     l2norm_delta = std::sqrt(l2norm_delta * (x1__ - x0__) / rgrid.num_points());
-    return l2norm_delta / l2norm;
+    //return l2norm_delta / l2norm;
+    //return rel_diff;
     //max_diff = l2norm_delta;
-    //fclose(fout);
-    //return max_diff;
+    return max_diff;
 }
 
 void test_function(std::function<double(double)> f__)
 {
-    Radial_grid_lin_exp<double> rgrid(2000, 1e-7, 8);
+    Radial_grid_lin_exp<double> rgrid(3000, 1e-7, 8);
 
     Spline<double> s(rgrid, f__);
     double diff = check_spline(s, f__, rgrid.first(), rgrid.last());

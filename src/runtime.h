@@ -203,8 +203,7 @@ inline std::string hostname()
 #define DUMP(...)                                                                     \
 {                                                                                     \
     char str__[1024];                                                                 \
-    /* int x__ = snprintf(str__, 1024, "[%s:%04i] ", __func__, mpi_comm_world().rank()); */ \
-    int x__ = snprintf(str__, 1024, "[rank%04i] ", mpi_comm_world().rank()); \
+    int x__ = snprintf(str__, 1024, "[rank%04i] ", Communicator::world().rank());     \
     x__ += snprintf(&str__[x__], 1024, __VA_ARGS__ );                                 \
     printf("%s\n", str__);                                                            \
 }
@@ -230,7 +229,7 @@ inline void print_memory_usage(const char* file__, int line__)
     runtime::get_proc_status(&VmHWM, &VmRSS);
 
     std::vector<char> str(2048);
-    int n = snprintf(&str[0], 2048, "[rank%04i at line %i of file %s]", mpi_comm_world().rank(), line__, file__);
+    int n = snprintf(&str[0], 2048, "[rank%04i at line %i of file %s]", Communicator::world().rank(), line__, file__);
 
     n += snprintf(&str[n], 2048, " VmHWM: %i Mb, VmRSS: %i Mb", static_cast<int>(VmHWM >> 20), static_cast<int>(VmRSS >> 20));
 

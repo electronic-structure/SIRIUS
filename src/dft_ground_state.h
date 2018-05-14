@@ -702,9 +702,9 @@ inline json DFT_ground_state::find(double potential_tol, double energy_tol, int 
             ctx_.set_iterative_solver_tolerance(std::min(ctx_.iterative_solver_tolerance(), tol));
         }
 
+        /* write some information */
+        print_info();
         if (ctx_.comm().rank() == 0 && ctx_.control().verbosity_ >= 1) {
-            /* write some information */
-            print_info();
             printf("iteration : %3i, RMS %18.12E, energy difference : %18.12E\n", iter, rms, etot - eold);
         }
 
@@ -823,7 +823,7 @@ inline void DFT_ground_state::print_magnetic_moment()
         mmom = compute_atomic_mag_mom();
     }
 
-    if (ctx_.comm().rank() == 0) {
+    if (ctx_.comm().rank() == 0 && ctx_.control().verbosity_ >= 1) {
         if (ctx_.full_potential()) {
             double total_core_leakage = 0.0;
             printf("\n");

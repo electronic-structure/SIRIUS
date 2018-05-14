@@ -10,13 +10,13 @@ void test_wf_ortho(std::vector<int> mpi_grid_dims__,
 {
     device_t pu = static_cast<device_t>(use_gpu__);
 
-    BLACS_grid blacs_grid(mpi_comm_world(), mpi_grid_dims__[0], mpi_grid_dims__[1]);
+    BLACS_grid blacs_grid(Communicator::world(), mpi_grid_dims__[0], mpi_grid_dims__[1]);
 
     matrix3d<double> M = {{1, 0, 0}, {0, 1, 0}, {0, 0, 1}};
     
     /* create G-vectors */
-    Gvec gvec(M, cutoff__, mpi_comm_world(), false);
-    Gvec_partition gvecp(gvec, mpi_comm_world(), mpi_comm_self());
+    Gvec gvec(M, cutoff__, Communicator::world(), false);
+    Gvec_partition gvecp(gvec, Communicator::world(), Communicator::self());
 
     int num_atoms = 10;
     auto nmt = [](int i) {
@@ -75,7 +75,7 @@ int main(int argn, char** argv)
             test_wf_ortho(mpi_grid_dims, cutoff, i, use_gpu, bs);
         }
     }
-    mpi_comm_world().barrier();
+    Communicator::world().barrier();
     sirius::finalize();
 
     return 0;

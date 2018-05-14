@@ -1,4 +1,4 @@
-// Copyright (c) 2013-2017 Anton Kozhevnikov, Thomas Schulthess
+// Copyright (c) 2013-2018 Anton Kozhevnikov, Thomas Schulthess
 // All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without modification, are permitted provided that
@@ -39,14 +39,6 @@ class BLACS_grid
 
     std::unique_ptr<MPI_grid> mpi_grid_;
 
-    int num_ranks_row_{-1};
-
-    int num_ranks_col_{-1};
-
-    int rank_row_{-1};
-
-    int rank_col_{-1};
-
     int blacs_handler_{-1};
 
     int blacs_context_{-1};
@@ -59,13 +51,8 @@ class BLACS_grid
   public:
     BLACS_grid(Communicator const& comm__, int num_ranks_row__, int num_ranks_col__)
         : comm_(comm__)
-        , num_ranks_row_(num_ranks_row__)
-        , num_ranks_col_(num_ranks_col__)
     {
         mpi_grid_ = std::unique_ptr<MPI_grid>(new MPI_grid({num_ranks_row__, num_ranks_col__}, comm_));
-
-        rank_row_ = mpi_grid_->coordinate(0);
-        rank_col_ = mpi_grid_->coordinate(1);
 
 #ifdef __SCALAPACK
         /* create handler first */
@@ -86,11 +73,11 @@ class BLACS_grid
         int nrow1, ncol1, irow1, icol1;
         linalg_base::gridinfo(blacs_context_, &nrow1, &ncol1, &irow1, &icol1);
 
-        if (rank_row_ != irow1 || rank_col_ != icol1 || num_ranks_row__ != nrow1 || num_ranks_col__ != ncol1) {
+        if (rank_row() != irow1 || rank_col() != icol1 || num_ranks_row() != nrow1 || num_ranks_col() != ncol1) {
             std::stringstream s;
             s << "wrong grid" << std::endl
               << "            row | col | nrow | ncol " << std::endl
-              << " mpi_grid " << rank_row_ << " " << rank_col_ << " " << num_ranks_row__ << " " << num_ranks_col__
+              << " mpi_grid " << rank_row() << " " << rank_col() << " " << num_ranks_row() << " " << num_ranks_col()
               << std::endl
               << " blacs    " << irow1 << " " << icol1 << " " << nrow1 << " " << ncol1;
             TERMINATE(s);
@@ -128,22 +115,22 @@ class BLACS_grid
 
     inline int num_ranks_row() const
     {
-        return num_ranks_row_;
+        return comm_row().size();
     }
 
     inline int rank_row() const
     {
-        return rank_row_;
+        return comm_row().rank();
     }
 
     inline int num_ranks_col() const
     {
-        return num_ranks_col_;
+        return comm_col().size();
     }
 
     inline int rank_col() const
     {
-        return rank_col_;
+        return comm_col().rank();
     }
 
     inline int cart_rank(int irow__, int icol__) const
