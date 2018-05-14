@@ -4,16 +4,18 @@ using namespace sirius;
 
 void test_grid(std::vector<int> grid__)
 {
-    MPI_grid mpi_grid(grid__, mpi_comm_world());
+    MPI_grid mpi_grid(grid__, Communicator::world());
 
-    runtime::pstdout pout(mpi_comm_world());
+    runtime::pstdout pout(Communicator::world());
 
-    if (mpi_comm_world().rank() == 0) {
-        pout.printf("dimensions: %i %i %i\n", mpi_grid.dimension_size(0), mpi_grid.dimension_size(1), mpi_grid.dimension_size(2));
+    if (Communicator::world().rank() == 0) {
+        pout.printf("dimensions: %i %i %i\n", mpi_grid.communicator(1 << 0).size(), mpi_grid.communicator(1 << 1).size(),
+                    mpi_grid.communicator(1 << 2).size());
     }
 
-    pout.printf("rank(flat): %3i, coordinate: %3i %3i %3i, hostname: %s\n", mpi_comm_world().rank(),
-        mpi_grid.coordinate(0), mpi_grid.coordinate(1), mpi_grid.coordinate(2), runtime::hostname().c_str());
+    pout.printf("rank(flat): %3i, coordinate: %3i %3i %3i, hostname: %s\n", Communicator::world().rank(),
+        mpi_grid.communicator(1 << 0).size(), mpi_grid.communicator(1 << 1).size(),
+        mpi_grid.communicator(1 << 2).size(), runtime::hostname().c_str());
 }
 
 int main(int argn, char** argv)
