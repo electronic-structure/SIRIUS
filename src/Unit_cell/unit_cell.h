@@ -1311,7 +1311,7 @@ inline void Unit_cell::generate_radial_integrals()
 
     for (int ialoc = 0; ialoc < spl_num_atoms_.local_size(); ialoc++) {
         int ia = spl_num_atoms_[ialoc];
-        atom(ia).generate_radial_integrals(parameters_.processing_unit(), mpi_comm_self());
+        atom(ia).generate_radial_integrals(parameters_.processing_unit(), Communicator::self());
     }
 
     for (int ia = 0; ia < num_atoms(); ia++) {

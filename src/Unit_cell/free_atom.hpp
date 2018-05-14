@@ -93,7 +93,7 @@ class Free_atom : public Atom_type
             vrho[i] = 0;
         }
 
-        Mixer<double>* mixer = new Broyden1<double>(0, np, 12, 0.8, mpi_comm_self());
+        Mixer<double>* mixer = new Broyden1<double>(0, np, 12, 0.8, Communicator::self());
         for (int i = 0; i < np; i++) {
             mixer->input_local(i, vrho[i]);
         }
