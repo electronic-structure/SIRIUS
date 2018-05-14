@@ -109,7 +109,7 @@ void test3()
 {
     int bs = 32;
 
-    int num_ranks = mpi_comm_world().size();
+    int num_ranks = Communicator::world().size();
     int nrc = (int)std::sqrt(0.1 + num_ranks);
     if (nrc * nrc != num_ranks)
     {
@@ -118,7 +118,7 @@ void test3()
     }
 
     int N = 400;
-    BLACS_grid blacs_grid(mpi_comm_world(), nrc, nrc);
+    BLACS_grid blacs_grid(Communicator::world(), nrc, nrc);
 
     dmatrix<T> A(N, N, blacs_grid, bs, bs);
     dmatrix<T> B(N, N, blacs_grid, bs, bs);
