@@ -490,7 +490,7 @@ class Gvec
     Gvec(matrix3d<double> M__, double Gmax__, bool reduce_gvec__)
         : Gmax_(Gmax__)
         , lattice_vectors_(M__)
-        , comm_(mpi_comm_self())
+        , comm_(Communicator::self())
         , reduce_gvec_(reduce_gvec__)
     {
         init();
