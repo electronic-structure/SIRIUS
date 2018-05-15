@@ -68,7 +68,7 @@ class Free_atom: public sirius::Atom_type
                 vrho[i] = 0;
             }
 
-            sirius::Mixer<double>* mixer = new sirius::Broyden1<double>(0, np, 12, 0.8, mpi_comm_self());
+            sirius::Mixer<double>* mixer = new sirius::Broyden1<double>(0, np, 12, 0.8, Communicator::self());
             for (int i = 0; i < np; i++) {
                 mixer->input_local(i, vrho[i]);
             }
@@ -633,7 +633,7 @@ void generate_atom_file(Free_atom& a,
     sirius::Atom_symmetry_class atom_class(0, a);
     atom_class.set_spherical_potential(veff);
     atom_class.generate_radial_functions(relativity_t::none);
-    runtime::pstdout pout(mpi_comm_self());
+    runtime::pstdout pout(Communicator::self());
     atom_class.write_enu(pout);
     pout.flush();
     

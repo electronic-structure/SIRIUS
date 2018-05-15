@@ -6,7 +6,7 @@ import json
 
 packages = {
     "spg"  : {
-        "url"     : "https://github.com/atztogo/spglib/archive/v1.9.9.tar.gz",
+        "url"     : "https://github.com/atztogo/spglib/archive/v1.10.3.tar.gz",
         "options" : []
     },
     "fftw" : {
