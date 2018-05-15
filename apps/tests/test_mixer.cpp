@@ -45,13 +45,13 @@ int main(int argn, char** argv)
     int N = 10;
     double beta = 0.05;
     
-    Linear_mixer<double> mixer1(N, 0, beta, mpi_comm_world());
+    Linear_mixer<double> mixer1(N, 0, beta, Communicator::world());
     test_mixer(mixer1);
     
-    Broyden1<double> mixer2(N, 0, 8, beta, mpi_comm_world());
+    Broyden1<double> mixer2(N, 0, 8, beta, Communicator::world());
     test_mixer(mixer2);
 
-    Broyden2<double> mixer3(N, 0, 8, beta, 0.15, 100.0, mpi_comm_world());
+    Broyden2<double> mixer3(N, 0, 8, beta, 0.15, 100.0, Communicator::world());
     test_mixer(mixer3);
 
     sirius::finalize();

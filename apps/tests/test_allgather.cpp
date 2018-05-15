@@ -7,17 +7,17 @@ void test_allgather()
     int N = 11;
     std::vector<double> vec(N, 0.0);
 
-    splindex<block> spl(N, mpi_comm_world().size(), mpi_comm_world().rank());
+    splindex<block> spl(N, Communicator::world().size(), Communicator::world().rank());
 
     for (int i = 0; i < spl.local_size(); i++)
     {
-        vec[spl[i]] = mpi_comm_world().rank() + 1.0;
+        vec[spl[i]] = Communicator::world().rank() + 1.0;
     }
 
     {
-        runtime::pstdout pout(mpi_comm_world());
-        if (mpi_comm_world().rank() == 0) pout.printf("before\n");
-        pout.printf("rank : %i array : ", mpi_comm_world().rank());
+        runtime::pstdout pout(Communicator::world());
+        if (Communicator::world().rank() == 0) pout.printf("before\n");
+        pout.printf("rank : %i array : ", Communicator::world().rank());
         for (int i = 0; i < N; i++)
         {
             pout.printf("%f ", vec[i]);
@@ -25,10 +25,10 @@ void test_allgather()
         pout.printf("\n");
         pout.flush();
 
-        mpi_comm_world().allgather(&vec[0], spl.global_offset(), spl.local_size()); 
+        Communicator::world().allgather(&vec[0], spl.global_offset(), spl.local_size()); 
  
-        if (mpi_comm_world().rank() == 0) pout.printf("after\n");
-        pout.printf("rank : %i array : ", mpi_comm_world().rank());
+        if (Communicator::world().rank() == 0) pout.printf("after\n");
+        pout.printf("rank : %i array : ", Communicator::world().rank());
         for (int i = 0; i < N; i++)
         {
             pout.printf("%f ", vec[i]);
@@ -36,7 +36,7 @@ void test_allgather()
         pout.printf("\n");
         pout.flush();
     }
-    mpi_comm_world().barrier();
+    Communicator::world().barrier();
 }
 
 int main(int argn, char** argv)

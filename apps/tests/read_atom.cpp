@@ -44,7 +44,7 @@ int main(int argn, char **argv)
     //uc.initialize();
 
     {
-        Simulation_context ctx(mpi_comm_world());
+        Simulation_context ctx(Communicator::world());
         ctx.unit_cell().add_atom_type("Si", "Si.json");
         ctx.unit_cell().add_atom("Si", vector3d<double>(0, 0, 0));
 

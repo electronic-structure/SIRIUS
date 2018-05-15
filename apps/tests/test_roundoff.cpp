@@ -12,7 +12,7 @@ double rounded(double a, int n)
 
 int main(int argn, char** argv)
 {
-    Platform::initialize(1);
+    sirius::initialize(1);
     double a = 124.144555443334;
     printf("a: %18.10f\n", a);
     printf("rounded(a, 1): %18.10f\n", rounded(a, 1));
@@ -26,5 +26,5 @@ int main(int argn, char** argv)
     printf("rounded(a, 6): %20.16f\n", rounded(a, 6));
     printf("rounded(a, 12): %20.16f\n", rounded(a, 12));
 
-    Platform::finalize();
+    sirius::finalize();
 }

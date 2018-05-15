@@ -17,14 +17,14 @@ void json_output_common(json& dict__)
 {
     dict__["git_hash"] = git_hash;
     dict__["build_date"] = build_date;
-    dict__["comm_world_size"] = mpi_comm_world().size();
+    dict__["comm_world_size"] = Communicator::world().size();
     dict__["threads_per_rank"] = omp_get_max_threads();
 }
 
 std::unique_ptr<Simulation_context> create_sim_ctx(std::string     fname__,
                                                    cmd_args const& args__)
 {
-    auto ctx_ptr = std::unique_ptr<Simulation_context>(new Simulation_context(fname__, mpi_comm_world()));
+    auto ctx_ptr = std::unique_ptr<Simulation_context>(new Simulation_context(fname__, Communicator::world()));
     Simulation_context& ctx = *ctx_ptr;
 
     auto& inp = ctx.parameters_input();
@@ -176,7 +176,7 @@ void run_tasks(cmd_args const& args)
     /* get the input file name */
     std::string fname = args.value<std::string>("input", "sirius.json");
     if (!Utils::file_exists(fname)) {
-        if (mpi_comm_world().rank() == 0) {
+        if (Communicator::world().rank() == 0) {
             printf("input file does not exist\n");
         }
         return;
@@ -257,7 +257,7 @@ void run_tasks(cmd_args const& args)
         band.solve(ks, H, true);
 
         ks.sync_band_energies();
-        if (mpi_comm_world().rank() == 0) {
+        if (Communicator::world().rank() == 0) {
             json dict;
             dict["header"] = {};
             dict["header"]["x_axis"] = x_axis;

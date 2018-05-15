@@ -103,7 +103,7 @@ void sirius_finalize(ftn_bool* call_mpi_fin__)
 void sirius_create_simulation_context(ftn_char str__,
                                       ftn_int* fcomm__)
 {
-    auto& comm = map_fcomm(*fcomm__);
+    auto& comm = Communicator::map_fcomm(*fcomm__);
     std::string str(str__);
     sim_ctx = std::unique_ptr<sirius::Simulation_context>(new sirius::Simulation_context(str, comm));
 }
@@ -1074,12 +1074,12 @@ void sirius_write_json_output(void)
     json dict;
     dict["git_hash"] = git_hash;
     dict["build_date"] = build_date;
-    dict["comm_world_size"] = mpi_comm_world().size();
+    dict["comm_world_size"] = Communicator::world().size();
     dict["threads_per_rank"] = omp_get_max_threads();
     dict["ground_state"] = dft_ground_state->serialize();
     dict["timers"] = sddk::timer::serialize_timers();
 
-    if (mpi_comm_world().rank() == 0) {
+    if (Communicator::world().rank() == 0) {
         std::ofstream ofs(std::string("output_") + sim_ctx->start_time_tag() + std::string(".json"),
                           std::ofstream::out | std::ofstream::trunc);
         ofs << dict.dump(4);
@@ -2684,76 +2684,69 @@ void sirius_get_wave_functions(ftn_int*            kset_id__,
     };
 
     for (int r = 0; r < kset->comm().size(); r++) {
-        /* if this is a rank wich need jk or a rank which stores jk */
-        if ((my_rank == r && jk >= 0) || my_rank == rank_with_jk[r]) {
-            /* index of k-point we need to pass */
-            int this_jk = jk_of_rank[r];
-            /* placeholder for G+k vectors of kpoint jk */
-            Gvec gkvec(sim_ctx->comm_band());
+        /* index of k-point we need to pass */
+        int this_jk = jk_of_rank[r];
 
-            /* if this rank stores the k-point, then send it */
-            if (rank_with_jk[r] == my_rank) {
-                auto kp = (*kset)[this_jk];
-                kp->gkvec().send_recv(kset->comm(), rank_with_jk[r], r, gkvec);
-            }
-            else {
-                /* otherwise this rank receives the k-point */
-                gkvec.send_recv(kset->comm(), rank_with_jk[r], r, gkvec);
-            }
+        if (this_jk >= 0) {
+            auto gkvec = kset->send_recv_gkvec(this_jk, r);
 
-            /* build G-vector mapping */
-            if (my_rank == r) {
-                igmap = gvec_mapping(gkvec);
-            }
-                
-            /* target array of wave-functions */
-            mdarray<double_complex, 3> evc;
-            if (my_rank == r) {
-                /* [npwx, npol, nbnd] array dimensions */
-                evc = mdarray<double_complex, 3>(evc__, *ld1__, *ld2__, sim_ctx->num_bands());
-                evc.zero();
-            }
+            /* if this is a rank wich need jk or a rank which stores jk */
+            if (my_rank == r || my_rank == rank_with_jk[r]) {
 
-            std::unique_ptr<Gvec_partition> gvp;
-            std::unique_ptr<Wave_functions> wf;
-
-            if (my_rank == r) {
-                gvp = std::unique_ptr<Gvec_partition>(new Gvec_partition(gkvec, sim_ctx->comm_fft_coarse(),
-                                                                         sim_ctx->comm_band_ortho_fft_coarse()));
-                wf = std::unique_ptr<Wave_functions>(new Wave_functions(*gvp, sim_ctx->num_bands()));
-            }
-
-            int ispn0{0};
-            int ispn1{1};
-            /* fetch two components in non-collinear case, otherwise fetch only one component */
-            if (sim_ctx->num_mag_dims() != 3) {
-                ispn0 = ispn1 = jspn_of_rank[r];
-            }
-            /* send wave-functions for each spin channel */
-            for (int s = ispn0; s <= ispn1; s++) {
-                int tag = Communicator::get_tag(r, rank_with_jk[r]) + s;
-                Request req;
-                if (my_rank == rank_with_jk[r]) {
-                    auto kp = (*kset)[this_jk];
-                    int gkvec_count = kp->gkvec().count();
-                    /* send wave-functions */
-                    req = kset->comm().isend(&kp->spinor_wave_functions().pw_coeffs(s).prime(0, 0), gkvec_count * sim_ctx->num_bands(), r, tag);
-                }
+                /* build G-vector mapping */
                 if (my_rank == r) {
-                    int gkvec_count = gkvec.count();
-                    int gkvec_offset = gkvec.offset();
-                    /* recieve the array with wave-functions */
-                    kset->comm().recv(&wf->pw_coeffs(0).prime(0, 0), gkvec_count * sim_ctx->num_bands(), rank_with_jk[r], tag);
-                    std::vector<double_complex> wf_tmp(gkvec.num_gvec());
-                    /* store wave-functions */
-                    for (int i = 0; i < sim_ctx->num_bands(); i++) {
-                        /* gather full column of PW coefficients */
-                        sim_ctx->comm_band().allgather(&wf->pw_coeffs(0).prime(0, i), wf_tmp.data(), gkvec_offset, gkvec_count);
-                        store_wf(wf_tmp, i, s, evc);
-                    }
+                    igmap = gvec_mapping(gkvec);
                 }
-                if (my_rank == rank_with_jk[r]) {
-                    req.wait();
+                    
+                /* target array of wave-functions */
+                mdarray<double_complex, 3> evc;
+                if (my_rank == r) {
+                    /* [npwx, npol, nbnd] array dimensions */
+                    evc = mdarray<double_complex, 3>(evc__, *ld1__, *ld2__, sim_ctx->num_bands());
+                    evc.zero();
+                }
+
+                std::unique_ptr<Gvec_partition> gvp;
+                std::unique_ptr<Wave_functions> wf;
+
+                if (my_rank == r) {
+                    gvp = std::unique_ptr<Gvec_partition>(new Gvec_partition(gkvec, sim_ctx->comm_fft_coarse(),
+                                                                             sim_ctx->comm_band_ortho_fft_coarse()));
+                    wf = std::unique_ptr<Wave_functions>(new Wave_functions(*gvp, sim_ctx->num_bands()));
+                }
+
+                int ispn0{0};
+                int ispn1{1};
+                /* fetch two components in non-collinear case, otherwise fetch only one component */
+                if (sim_ctx->num_mag_dims() != 3) {
+                    ispn0 = ispn1 = jspn_of_rank[r];
+                }
+                /* send wave-functions for each spin channel */
+                for (int s = ispn0; s <= ispn1; s++) {
+                    int tag = Communicator::get_tag(r, rank_with_jk[r]) + s;
+                    Request req;
+                    if (my_rank == rank_with_jk[r]) {
+                        auto kp = (*kset)[this_jk];
+                        int gkvec_count = kp->gkvec().count();
+                        /* send wave-functions */
+                        req = kset->comm().isend(&kp->spinor_wave_functions().pw_coeffs(s).prime(0, 0), gkvec_count * sim_ctx->num_bands(), r, tag);
+                    }
+                    if (my_rank == r) {
+                        int gkvec_count = gkvec.count();
+                        int gkvec_offset = gkvec.offset();
+                        /* recieve the array with wave-functions */
+                        kset->comm().recv(&wf->pw_coeffs(0).prime(0, 0), gkvec_count * sim_ctx->num_bands(), rank_with_jk[r], tag);
+                        std::vector<double_complex> wf_tmp(gkvec.num_gvec());
+                        /* store wave-functions */
+                        for (int i = 0; i < sim_ctx->num_bands(); i++) {
+                            /* gather full column of PW coefficients */
+                            sim_ctx->comm_band().allgather(&wf->pw_coeffs(0).prime(0, i), wf_tmp.data(), gkvec_offset, gkvec_count);
+                            store_wf(wf_tmp, i, s, evc);
+                        }
+                    }
+                    if (my_rank == rank_with_jk[r]) {
+                        req.wait();
+                    }
                 }
             }
         }

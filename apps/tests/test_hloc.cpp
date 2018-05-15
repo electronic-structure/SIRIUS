@@ -7,7 +7,7 @@ void test_hloc(std::vector<int> mpi_grid_dims__, double cutoff__, int num_bands_
 {
     device_t pu = static_cast<device_t>(use_gpu__);
 
-    MPI_grid mpi_grid(mpi_grid_dims__, mpi_comm_world()); 
+    MPI_grid mpi_grid(mpi_grid_dims__, Communicator::world()); 
     
     //matrix3d<double> M = {{1, 0, 0}, {0, 1, 0}, {0, 0, 1}};
 
@@ -23,19 +23,19 @@ void test_hloc(std::vector<int> mpi_grid_dims__, double cutoff__, int num_bands_
 
     FFT3D fft(fft_box, mpi_grid.communicator(1 << 0), pu);
 
-    Communicator comm_ortho_fft = mpi_comm_world().split(fft.comm().rank());
+    Communicator comm_ortho_fft = Communicator::world().split(fft.comm().rank());
 
-    Gvec gvec(M, cutoff__, mpi_comm_world(), reduce_gvec__);
+    Gvec gvec(M, cutoff__, Communicator::world(), reduce_gvec__);
 
     Gvec_partition gvecp(gvec,  fft.comm(), comm_ortho_fft);
 
-    if (mpi_comm_world().rank() == 0) {
+    if (Communicator::world().rank() == 0) {
         printf("total number of G-vectors: %i\n", gvec.num_gvec());
         printf("local number of G-vectors: %i\n", gvec.gvec_count(0));
         printf("FFT grid size: %i %i %i\n", fft_box.size(0), fft_box.size(1), fft_box.size(2));
         printf("number of FFT threads: %i\n", omp_get_max_threads());
-        printf("number of FFT groups: %i\n", mpi_grid.dimension_size(1));
-        printf("MPI grid: %i %i\n", mpi_grid.dimension_size(0), mpi_grid.dimension_size(1));
+        printf("number of FFT groups: %i\n", mpi_grid.communicator(1 << 1).size());
+        printf("MPI grid: %i %i\n", mpi_grid.communicator(1 << 0).size(), mpi_grid.communicator(1 << 1).size());
         printf("number of z-columns: %i\n", gvec.num_zcol());
     }
 
@@ -63,12 +63,12 @@ void test_hloc(std::vector<int> mpi_grid_dims__, double cutoff__, int num_bands_
     }
     #endif
     hloc.prepare(gvecp); 
-    mpi_comm_world().barrier();
+    Communicator::world().barrier();
     sddk::timer t1("h_loc");
     for (int i = 0; i < 4; i++) {
         hloc.apply_h(0, phi, hphi, i * num_bands__, num_bands__);
     }
-    mpi_comm_world().barrier();
+    Communicator::world().barrier();
     t1.stop();
     hloc.dismiss();
 
@@ -94,9 +94,9 @@ void test_hloc(std::vector<int> mpi_grid_dims__, double cutoff__, int num_bands_
     if (diff != diff) {
         TERMINATE("NaN");
     }
-    mpi_comm_world().allreduce(&diff, 1);
+    Communicator::world().allreduce(&diff, 1);
     diff = std::sqrt(diff / 4 / num_bands__ / gvec.num_gvec());
-    if (mpi_comm_world().rank() == 0) {
+    if (Communicator::world().rank() == 0) {
         printf("RMS: %18.16f\n", diff);
     }
     if (diff > 1e-12) {
@@ -135,11 +135,11 @@ int main(int argn, char** argv)
     for (int i = 0; i < repeat; i++) {
         test_hloc(mpi_grid_dims, cutoff, num_bands, reduce_gvec, use_gpu, gpu_ptr);
     }
-    mpi_comm_world().barrier();
-    if (mpi_comm_world().rank() == 0) {
+    Communicator::world().barrier();
+    if (Communicator::world().rank() == 0) {
         sddk::timer::print();
     }
-    mpi_comm_world().barrier();
+    Communicator::world().barrier();
     //runtime::Timer::print_all();
     sirius::finalize();
 }
