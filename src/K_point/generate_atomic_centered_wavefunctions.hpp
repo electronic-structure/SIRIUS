@@ -76,6 +76,24 @@ inline void K_point::generate_atomic_centered_wavefunctions(const int num_ao__, 
     generate_atomic_centered_wavefunctions_(num_ao__, phi, vs, false);
 }
 
+inline void K_point::compute_gradient_wavefunctions(Wave_functions &phi, Wave_functions &dphi, const int direction) {
+    std::vector<double_complex> qalpha(this->num_gkvec_loc());
+
+    for (int igk_loc = 0; igk_loc < this->num_gkvec_loc(); igk_loc++) {
+        int igk           = this->idxgk(igk_loc);
+        auto G            = this->gkvec().gkvec_cart(igk);
+        qalpha[igk_loc] = double_complex(0.0, -G[direction]);
+    }
+
+    #pragma omp parallel for schedule(static)
+    for (int nphi = 0 ; nphi < phi.num_wf(); nphi++) {
+        for (int ispn = 0; ispn < phi.num_sc(); ispn++) {
+            for (int igk_loc = 0; igk_loc < this->num_gkvec_loc(); igk_loc++) {
+                dphi.pw_coeffs(ispn).prime(igk_loc, nphi) = qalpha[igk_loc] * phi.pw_coeffs(ispn).prime(igk_loc, nphi);
+            }
+        }
+    }
+}
 //inline void K_point::generate_atomic_centered_wavefunctions(const int num_ao__, Wave_functions& phi)
 //{
 //    int lmax{0};

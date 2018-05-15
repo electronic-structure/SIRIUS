@@ -297,6 +297,8 @@ class K_point
         inline void generate_spinor_wave_functions();
         inline void generate_atomic_centered_wavefunctions(const int num_ao__, Wave_functions &phi);
         inline void generate_atomic_centered_wavefunctions_(const int num_ao__, Wave_functions &phi, std::vector<int> &offset, bool hubbard);
+        inline void compute_gradient_wavefunctions(Wave_functions &phi, Wave_functions &dphi, const int direction);
+
         void save(int id);
 
         void load(HDF5_tree h5in, int id);

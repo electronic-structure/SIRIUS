@@ -50,7 +50,6 @@ void generate_atomic_orbitals(K_point& kp, Q_operator<double_complex>& q_op)
     }
 #endif
 
-
     for (int s = 0; s < num_sc; s++) {
         // I need to consider the case where all atoms are norm
         // conserving. In that case the S operator is diagonal in orbital space
@@ -77,7 +76,6 @@ void generate_atomic_orbitals(K_point& kp, Q_operator<double_complex>& q_op)
               }
             }
         }
-        // kp.beta_projectors().dismiss();
     }
 
     orthogonalize_atomic_orbitals(kp, sphi);
@@ -137,12 +135,12 @@ void orthogonalize_atomic_orbitals(K_point& kp, Wave_functions &sphi)
                             this->number_of_hubbard_orbitals(),
                             S, 0, 0);
 
-      for (int m = 0; m < this->number_of_hubbard_orbitals(); m++) {
-        for (int n = 0; n < this->number_of_hubbard_orbitals(); n++) {
-          printf("%.5lf ", std::abs(S(m, n)));
-        }
-        printf("\n");
-      }
+      // for (int m = 0; m < this->number_of_hubbard_orbitals(); m++) {
+      //   for (int n = 0; n < this->number_of_hubbard_orbitals(); n++) {
+      //     printf("%.5lf ", std::abs(S(m, n)));
+      //   }
+      //   printf("\n");
+      // }
     }
 
     #ifdef __GPU
@@ -229,7 +227,6 @@ void orthogonalize_atomic_orbitals(K_point& kp, Wave_functions &sphi)
   }
 }
 
-// kind of specialized to hubbard.
 // TODO :: Need to do that more generically
 
 void ComputeDerivatives(K_point& kp, Wave_functions &phi, Wave_functions &dphi, const int direction)
@@ -239,7 +236,7 @@ void ComputeDerivatives(K_point& kp, Wave_functions &phi, Wave_functions &dphi, 
   for (int igk_loc = 0; igk_loc < kp.num_gkvec_loc(); igk_loc++) {
     int igk           = kp.idxgk(igk_loc);
     auto G            = kp.gkvec().gkvec_cart(igk);
-    qalpha[igk_loc] = double_complex(0, -G[direction]);
+    qalpha[igk_loc] = double_complex(0.0, -G[direction]);
   }
 
   #pragma omp parallel for schedule(static)
