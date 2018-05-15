@@ -169,7 +169,7 @@ class Gvec
     /* copy assigment operator is forbidden */
     Gvec& operator=(Gvec const& src__) = delete;
     /* move constructor is forbidden */
-    Gvec(Gvec&& src__) = delete;
+    //Gvec(Gvec&& src__) = delete;
 
     /// Return corresponding G-vector for an index in the range [0, num_gvec).
     inline vector3d<int> gvec_by_full_index(uint32_t idx__) const
@@ -511,6 +511,7 @@ class Gvec
             reduce_gvec_       = src__.reduce_gvec_;
             bare_gvec_         = src__.bare_gvec_;
             num_gvec_          = src__.num_gvec_;
+            //comm_              = std::move(src__.comm_);
             gvec_full_index_   = std::move(src__.gvec_full_index_);
             gvec_shell_        = std::move(src__.gvec_shell_);
             num_gvec_shells_   = std::move(src__.num_gvec_shells_);
@@ -522,6 +523,12 @@ class Gvec
             gvec_base_mapping_ = std::move(src__.gvec_base_mapping_);
         }
         return *this;
+    }
+
+    Gvec(Gvec&& src__)
+        : comm_(src__.comm_)
+    {
+        *this = std::move(src__);
     }
 
     inline vector3d<double> const& vk() const
