@@ -369,7 +369,7 @@ class dmatrix : public matrix<T>
         if (blacs_grid_ != nullptr) {
             return blacs_grid().comm();
         } else {
-            return mpi_comm_self();
+            return Communicator::self();
         }
     }
 };

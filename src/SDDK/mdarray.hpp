@@ -120,17 +120,21 @@ inline constexpr bool on_device(memory_t mem_type__)
 /// Index descriptor of mdarray.
 class mdarray_index_descriptor
 {
+  public:
+    typedef int64_t index_type;
+
   private:
     /// Beginning of index.
-    int64_t begin_{0};
+    index_type begin_{0};
 
     /// End of index.
-    int64_t end_{-1};
+    index_type end_{-1};
 
     /// Size of index.
     size_t size_{0};
 
   public:
+
     /// Constructor of empty descriptor.
     mdarray_index_descriptor()
     {
@@ -138,14 +142,13 @@ class mdarray_index_descriptor
 
     /// Constructor for index range [0, size).
     mdarray_index_descriptor(size_t const size__)
-        : begin_(0)
-        , end_(size__ - 1)
+        : end_(size__ - 1)
         , size_(size__)
     {
     }
 
     /// Constructor for index range [begin, end]
-    mdarray_index_descriptor(int64_t const begin__, int64_t const end__)
+    mdarray_index_descriptor(index_type const begin__, index_type const end__)
         : begin_(begin__)
         , end_(end__)
         , size_(end_ - begin_ + 1)
@@ -163,13 +166,13 @@ class mdarray_index_descriptor
     };
 
     /// Return first index value.
-    inline int64_t begin() const
+    inline index_type begin() const
     {
         return begin_;
     }
 
     /// Return last index value.
-    inline int64_t end() const
+    inline index_type end() const
     {
         return end_;
     }
@@ -258,6 +261,9 @@ struct mdarray_mem_mgr
 template <typename T, int N>
 class mdarray_base
 {
+  public:
+    typedef mdarray_index_descriptor::index_type index_type;
+
   protected:
     /// Optional array label.
     std::string label_;
@@ -280,7 +286,7 @@ class mdarray_base
     std::array<mdarray_index_descriptor, N> dims_;
 
     /// List of offsets to compute the element location by dimension indices.
-    std::array<int64_t, N> offsets_;
+    std::array<index_type, N> offsets_;
 
     void init_dimensions(std::array<mdarray_index_descriptor, N> const dims__)
     {
@@ -296,7 +302,7 @@ class mdarray_base
     }
 
   private:
-    inline int64_t idx(int64_t const i0) const
+    inline index_type idx(index_type const i0) const
     {
         static_assert(N == 1, "wrong number of dimensions");
         mdarray_assert(i0 >= dims_[0].begin() && i0 <= dims_[0].end());
@@ -305,7 +311,7 @@ class mdarray_base
         return i;
     }
 
-    inline int64_t idx(int64_t const i0, int64_t const i1) const
+    inline index_type idx(index_type const i0, index_type const i1) const
     {
         static_assert(N == 2, "wrong number of dimensions");
         mdarray_assert(i0 >= dims_[0].begin() && i0 <= dims_[0].end());
@@ -315,7 +321,7 @@ class mdarray_base
         return i;
     }
 
-    inline int64_t idx(int64_t const i0, int64_t const i1, int64_t const i2) const
+    inline index_type idx(index_type const i0, index_type const i1, index_type const i2) const
     {
         static_assert(N == 3, "wrong number of dimensions");
         mdarray_assert(i0 >= dims_[0].begin() && i0 <= dims_[0].end());
@@ -326,7 +332,7 @@ class mdarray_base
         return i;
     }
 
-    inline int64_t idx(int64_t const i0, int64_t const i1, int64_t const i2, int64_t const i3) const
+    inline index_type idx(index_type const i0, index_type const i1, index_type const i2, index_type const i3) const
     {
         static_assert(N == 4, "wrong number of dimensions");
         mdarray_assert(i0 >= dims_[0].begin() && i0 <= dims_[0].end());
@@ -338,7 +344,7 @@ class mdarray_base
         return i;
     }
 
-    inline int64_t idx(int64_t const i0, int64_t const i1, int64_t const i2, int64_t const i3, int64_t const i4) const
+    inline index_type idx(index_type const i0, index_type const i1, index_type const i2, index_type const i3, index_type const i4) const
     {
         static_assert(N == 5, "wrong number of dimensions");
         mdarray_assert(i0 >= dims_[0].begin() && i0 <= dims_[0].end());
@@ -352,7 +358,7 @@ class mdarray_base
     }
 
     template <device_t pu>
-    inline T* at_idx(int64_t const idx__)
+    inline T* at_idx(index_type const idx__)
     {
         switch (pu) {
             case CPU: {
@@ -373,7 +379,7 @@ class mdarray_base
     }
 
     template <device_t pu>
-    inline T const* at_idx(int64_t const idx__) const
+    inline T const* at_idx(index_type const idx__) const
     {
         switch (pu) {
             case CPU: {
@@ -515,61 +521,61 @@ class mdarray_base
 #endif
     }
 
-    inline T& operator()(int64_t const i0)
+    inline T& operator()(index_type const i0)
     {
         mdarray_assert(raw_ptr_ != nullptr);
         return raw_ptr_[idx(i0)];
     }
 
-    inline T const& operator()(int64_t const i0) const
+    inline T const& operator()(index_type const i0) const
     {
         mdarray_assert(raw_ptr_ != nullptr);
         return raw_ptr_[idx(i0)];
     }
 
-    inline T& operator()(int64_t const i0, int64_t const i1)
+    inline T& operator()(index_type const i0, index_type const i1)
     {
         mdarray_assert(raw_ptr_ != nullptr);
         return raw_ptr_[idx(i0, i1)];
     }
 
-    inline T const& operator()(int64_t const i0, int64_t const i1) const
+    inline T const& operator()(index_type const i0, index_type const i1) const
     {
         mdarray_assert(raw_ptr_ != nullptr);
         return raw_ptr_[idx(i0, i1)];
     }
 
-    inline T& operator()(int64_t const i0, int64_t const i1, int64_t const i2)
+    inline T& operator()(index_type const i0, index_type const i1, index_type const i2)
     {
         mdarray_assert(raw_ptr_ != nullptr);
         return raw_ptr_[idx(i0, i1, i2)];
     }
 
-    inline T const& operator()(int64_t const i0, int64_t const i1, int64_t const i2) const
+    inline T const& operator()(index_type const i0, index_type const i1, index_type const i2) const
     {
         mdarray_assert(raw_ptr_ != nullptr);
         return raw_ptr_[idx(i0, i1, i2)];
     }
 
-    inline T& operator()(int64_t const i0, int64_t const i1, int64_t const i2, int64_t const i3)
+    inline T& operator()(index_type const i0, index_type const i1, index_type const i2, index_type const i3)
     {
         mdarray_assert(raw_ptr_ != nullptr);
         return raw_ptr_[idx(i0, i1, i2, i3)];
     }
 
-    inline T const& operator()(int64_t const i0, int64_t const i1, int64_t const i2, int64_t const i3) const
+    inline T const& operator()(index_type const i0, index_type const i1, index_type const i2, index_type const i3) const
     {
         mdarray_assert(raw_ptr_ != nullptr);
         return raw_ptr_[idx(i0, i1, i2, i3)];
     }
 
-    inline T& operator()(int64_t const i0, int64_t const i1, int64_t const i2, int64_t const i3, int64_t const i4)
+    inline T& operator()(index_type const i0, index_type const i1, index_type const i2, index_type const i3, index_type const i4)
     {
         mdarray_assert(raw_ptr_ != nullptr);
         return raw_ptr_[idx(i0, i1, i2, i3, i4)];
     }
 
-    inline T const& operator()(int64_t const i0, int64_t const i1, int64_t const i2, int64_t const i3, int64_t const i4) const
+    inline T const& operator()(index_type const i0, index_type const i1, index_type const i2, index_type const i3, index_type const i4) const
     {
         mdarray_assert(raw_ptr_ != nullptr);
         return raw_ptr_[idx(i0, i1, i2, i3, i4)];
@@ -600,43 +606,43 @@ class mdarray_base
     }
 
     template <device_t pu>
-    inline T* at(int64_t const i0)
+    inline T* at(index_type const i0)
     {
         return at_idx<pu>(idx(i0));
     }
 
     template <device_t pu>
-    inline T const* at(int64_t const i0) const
+    inline T const* at(index_type const i0) const
     {
         return at_idx<pu>(idx(i0));
     }
 
     template <device_t pu>
-    inline T* at(int64_t const i0, int64_t const i1)
+    inline T* at(index_type const i0, index_type const i1)
     {
         return at_idx<pu>(idx(i0, i1));
     }
 
     template <device_t pu>
-    inline T const* at(int64_t const i0, int64_t const i1) const
+    inline T const* at(index_type const i0, index_type const i1) const
     {
         return at_idx<pu>(idx(i0, i1));
     }
 
     template <device_t pu>
-    inline T* at(int64_t const i0, int64_t const i1, int64_t const i2)
+    inline T* at(index_type const i0, index_type const i1, index_type const i2)
     {
         return at_idx<pu>(idx(i0, i1, i2));
     }
 
     template <device_t pu>
-    inline T* at(int64_t const i0, int64_t const i1, int64_t const i2, int64_t const i3)
+    inline T* at(index_type const i0, index_type const i1, index_type const i2, index_type const i3)
     {
         return at_idx<pu>(idx(i0, i1, i2, i3));
     }
 
     template <device_t pu>
-    inline T* at(int64_t const i0, int64_t const i1, int64_t const i2, int64_t const i3, int64_t const i4)
+    inline T* at(index_type const i0, index_type const i1, index_type const i2, index_type const i3, index_type const i4)
     {
         return at_idx<pu>(idx(i0, i1, i2, i3, i4));
     }
@@ -658,6 +664,12 @@ class mdarray_base
     {
         mdarray_assert(i < N);
         return dims_[i].size();
+    }
+
+    inline mdarray_index_descriptor dim(int i) const
+    {
+        mdarray_assert(i < N);
+        return dims_[i];
     }
 
     /// Return leading dimension size.
@@ -823,10 +835,21 @@ template <typename T, int N>
 class mdarray : public mdarray_base<T, N>
 {
   public:
+    typedef mdarray_index_descriptor::index_type index_type;
+
     mdarray()
     {
     }
 
+    mdarray(std::array<mdarray_index_descriptor, N> const dims__,
+            memory_t memory__   = memory_t::host,
+            std::string label__ = "")
+    {
+        this->label_ = label__;
+        this->init_dimensions(dims__);
+        this->allocate(memory__);
+    }
+
     mdarray(mdarray_index_descriptor const& d0,
             memory_t memory__   = memory_t::host,
             std::string label__ = "")
@@ -1005,22 +1028,22 @@ class mdarray : public mdarray_base<T, N>
         this->raw_ptr_ = ptr__;
     }
 
-    mdarray<T, N>& operator=(std::function<T(int64_t)> f__)
+    mdarray<T, N>& operator=(std::function<T(index_type)> f__)
     {
         static_assert(N == 1, "wrong number of dimensions");
 
-        for (int64_t i0 = this->dims_[0].begin(); i0 <= this->dims_[0].end(); i0++) {
+        for (index_type i0 = this->dims_[0].begin(); i0 <= this->dims_[0].end(); i0++) {
             (*this)(i0) = f__(i0);
         }
         return *this;
     }
 
-    mdarray<T, N>& operator=(std::function<T(int64_t, int64_t)> f__)
+    mdarray<T, N>& operator=(std::function<T(index_type, index_type)> f__)
     {
         static_assert(N == 2, "wrong number of dimensions");
 
-        for (int64_t i1 = this->dims_[1].begin(); i1 <= this->dims_[1].end(); i1++) {
-            for (int64_t i0 = this->dims_[0].begin(); i0 <= this->dims_[0].end(); i0++) {
+        for (index_type i1 = this->dims_[1].begin(); i1 <= this->dims_[1].end(); i1++) {
+            for (index_type i0 = this->dims_[0].begin(); i0 <= this->dims_[0].end(); i0++) {
                 (*this)(i0, i1) = f__(i0, i1);
             }
         }

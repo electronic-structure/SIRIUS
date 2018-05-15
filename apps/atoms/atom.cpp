@@ -40,7 +40,7 @@ class Free_atom: public sirius::Atom_type
                   int                                         zn, 
                   double                                      mass, 
                   std::vector<atomic_level_descriptor> const& levels_nl) 
-            : Atom_type(param__, symbol, name, zn, mass, levels_nl, sirius::lin_exp_grid)
+            : Atom_type(param__, symbol, name, zn, mass, levels_nl, sirius::radial_grid_t::lin_exp_grid)
         {
             radial_grid_ = sirius::Radial_grid_exp<double>(2000 + 150 * zn, 1e-7, 20.0 + 0.25 * zn); 
         }

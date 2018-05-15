@@ -43,7 +43,7 @@ void test1_angular_radial()
     SHT sht(7);
     int lmmax = 64;
 
-    auto r = Radial_grid_factory<double>(exponential_grid, 1000, 0.01, 2.0);
+    auto r = Radial_grid_factory<double>(radial_grid_t::exponential_grid, 1000, 0.01, 2.0);
 
     Spheric_function<spectral, T> f1(lmmax, r);
 
@@ -69,7 +69,7 @@ template <typename T>
 void test2(int lmax, int nr)
 { 
     int lmmax = Utils::lmmax(lmax);
-    auto r = Radial_grid_factory<double>(exponential_grid, nr, 0.01, 2.0);
+    auto r = Radial_grid_factory<double>(radial_grid_t::exponential_grid, nr, 0.01, 2.0);
 
     SHT sht(lmax);
     Spheric_function<spectral, T> f1(lmmax, r);
@@ -96,7 +96,7 @@ void test2(int lmax, int nr)
 void test3(int lmax, int nr)
 { 
     int lmmax = Utils::lmmax(lmax);
-    auto r = Radial_grid_factory<double>(exponential_grid, nr, 0.01, 2.0);
+    auto r = Radial_grid_factory<double>(radial_grid_t::exponential_grid, nr, 0.01, 2.0);
     SHT sht(lmax);
 
     Spheric_function<spectral, double> f1(lmmax, r);
@@ -205,7 +205,7 @@ void test3(int lmax, int nr)
 */
 void test5()
 {
-    auto r = Radial_grid_factory<double>(exponential_grid, 1000, 0.01, 2.0);
+    auto r = Radial_grid_factory<double>(radial_grid_t::exponential_grid, 1000, 0.01, 2.0);
 
     int lmmax = 64;
     Spheric_function<spectral, double_complex> f(lmmax, r);
@@ -232,7 +232,7 @@ void test6()
 {
     int nr = 2000;
 
-    auto r = Radial_grid_factory<double>(exponential_grid, nr, 0.01, 2.0);
+    auto r = Radial_grid_factory<double>(radial_grid_t::exponential_grid, nr, 0.01, 2.0);
 
     Spheric_function<spectral, double> f(64, r);
 
@@ -437,7 +437,7 @@ void test6()
 void test10()
 {
     printf("test10: gradients\n");
-    auto rgrid = Radial_grid_factory<double>(exponential_grid, 2000, 1e-7, 2.0);
+    auto rgrid = Radial_grid_factory<double>(radial_grid_t::exponential_grid, 2000, 1e-7, 2.0);
     Spheric_function<spectral, double> rho_up_lm(64, rgrid);
     Spheric_function<spectral, double> rho_dn_lm(64, rgrid);
 

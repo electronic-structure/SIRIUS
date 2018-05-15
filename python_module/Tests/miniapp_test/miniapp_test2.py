@@ -142,65 +142,55 @@ parameters1 = {
 
 }
 
-
 parameters2 = {
     "control" : {
         "processing_unit" : "cpu",
         "std_evp_solver_type" : "lapack",
         "gen_evp_solver_type" : "lapack",
-        "verbosity" : 2
+        "verbosity" : 2,
+        "print_forces" : True,
+        "print_stress" : True
     },
 
     "parameters" : {
-
         "electronic_structure_method" : "full_potential_lapwlo",
-        "xc_functionals" : ["XC_LDA_X", "XC_LDA_C_VWN"],
-        "smearing_width" : 0.05,
-        "valence_relativity" : "none",
-        "core_relativity" : "none",
-        "num_fv_states" : 10,
-        "aw_cutoff" : 8,
+
+        "num_fv_states" : 56,
+
+        "xc_functionals" : ["XC_LDA_X", "XC_LDA_C_PZ"],
+
+        "smearing_width" : 0.025,
+
+        "use_symmetry" : True,
+
+        "num_mag_dims" : 0,
+
+        "gk_cutoff" : 6.0,
         "pw_cutoff" : 20.00,
-        "auto_rmt" : 0,
-        "use_symmetry": True,
-        "ngridk" : [1,1,1],
-        "potential_tol" : 1e-7,
-        "energy_tol" : 1e-7,
-        "num_dft_iter" : 20,
-        "lmax_apw"     : 8,
-        "lmax_pot"     : 8,
-        "lmax_rho"     : 8,
-        "molecule"     : True
 
+        "energy_tol" : 1e-8,
+        "potential_tol" : 1e-8,
 
+        "num_dft_iter" : 100,
+
+        "ngridk" : [2,2,2]
     },
 
 
-    "iterative_solver" : {
-        "!energy_tolerance" : 1e-4,
-        "!residual_tolerance" : 1e-5,
-        "num_steps" : 8,
-        "subspace_size" : 8,
-        "type" : "davidson",
-        "converge_by_energy" : 1,
-        "min_occupancy" : 0
-    },
-
-
-    "unit_cell" : {
+   "unit_cell" : {
 
         "lattice_vectors" : [ [1, 0, 0],
                               [0, 1, 0],
                               [0, 0, 1]
                             ],
-        "lattice_vectors_scale" : 10,
+        "lattice_vectors_scale" : 7.260327248,
 
         "atom_types" : ["Sr", "V", "O"],
 
         "atom_files" : {
-            "Sr" : "sr_lda_v1.uspp.F.UPF.json",
-            "V"  : "v_lda_v1.4.uspp.F.UPF.json",
-            "O"  : "o_lda_v1.2.uspp.F.UPF.json"
+            "Sr" : "/Users/colinkalin/my_SIRIUS/examples/old/2.SrVO3_fp/Sr.json",
+            "V"  : "/Users/colinkalin/my_SIRIUS/examples/old/2.SrVO3_fp/V.json",
+            "O"  : "/Users/colinkalin/my_SIRIUS/examples/old/2.SrVO3_fp/O.json"
         },
 
         "atoms" : {
@@ -224,7 +214,7 @@ parameters2 = {
         "max_history" : 8
     },
 
-    "kpoints_rel": {
+"kpoints_rel": {
     "K": [
       0.375,
       0.375,
@@ -263,14 +253,15 @@ parameters2 = {
   },
 
   "kpoints_path" : ["GAMMA", "K", "L"]
-
 }
 
 def calculate_bands(param):
 
     ctx = sirius.Simulation_context(json.dumps(param))
     print("Checkpoint 1 reached.")
-    ctx.set_iterative_solver_tolerance(1e-12)
+    if param["parameters"]["electronic_structure_method"] == "pseudopotential":
+        ctx.set_iterative_solver_tolerance(1e-12)
+
     ctx.set_gamma_point(False)
     print("Checkpoint 2 reached.")
     ctx.initialize()
@@ -330,7 +321,9 @@ def calculate_bands(param):
     potential.generate(density)
 
     band = sirius.Band(ctx)
-    band.initialize_subspace(ks, H)
+    if param["parameters"]["electronic_structure_method"] == "pseudopotential":
+        band.initialize_subspace(ks, H)
+
     band.solve(ks, H, True)
 
     #ks.sync_band_energies()
@@ -370,12 +363,12 @@ def calculate_bands(param):
 
 sirius.initialize()
 
-#dict = calculate_bands(parameters1)
+dict = calculate_bands(parameters1)
 dict2 = calculate_bands(parameters2)
 #plotter(dict) #if I only want to plot
-#plotter(dict, dict2, True)
+plotter(dict, dict2, True)
 
-plotter(dict2)
+#plotter(dict2)
 
 dft = None
 ctx = None

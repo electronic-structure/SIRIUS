@@ -342,6 +342,10 @@ class Density
             : ctx_(ctx__)
             , unit_cell_(ctx_.unit_cell())
         {
+            if (!ctx_.initialized()) {
+                TERMINATE("Simulation_context is not initialized");
+            }
+
             /* allocate charge density */
             rho_ = std::unique_ptr<Periodic_function<double>>(new Periodic_function<double>(ctx_, ctx_.lmmax_rho()));
             rho_vec_[0] = rho_.get();

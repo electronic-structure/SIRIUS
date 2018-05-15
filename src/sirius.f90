@@ -20,6 +20,11 @@ module sirius
             &bind(C, name="sirius_clear")
         end subroutine
 
+        logical(C_BOOL) function sirius_initialized()&
+            &bind(C, name="sirius_initialized")
+            use, intrinsic :: ISO_C_BINDING
+        end function 
+
         subroutine sirius_create_simulation_context(str, fcomm)&
             &bind(C, name="sirius_create_simulation_context")
             use, intrinsic :: ISO_C_BINDING
@@ -578,6 +583,11 @@ module sirius
             real(8),                 intent(in) :: tol
         end subroutine
 
+        subroutine sirius_set_empty_states_tolerance(tol)&
+            &bind(C, name="sirius_set_empty_states_tolerance")
+            real(8),                 intent(in) :: tol
+        end subroutine
+
         subroutine sirius_set_iterative_solver_type(str)&
             &bind(C, name="sirius_set_iterative_solver_type")
             character, dimension(*), intent(in) :: str
@@ -882,14 +892,16 @@ module sirius
         end subroutine
 
 
-        subroutine sirius_get_wave_functions(kset_id, ik, npw, gvec_k, evc, ld)&
+        subroutine sirius_get_wave_functions(kset_id, ik, ispn, npw, gvec_k, evc, ld1, ld2)&
             &bind(C, name="sirius_get_wave_functions")
             integer,                  intent(in)  :: kset_id
             integer,                  intent(in)  :: ik
+            integer,                  intent(in)  :: ispn
             integer,                  intent(in)  :: npw
             integer,                  intent(in)  :: gvec_k
             complex(8),               intent(out) :: evc
-            integer,                  intent(in)  :: ld
+            integer,                  intent(in)  :: ld1
+            integer,                  intent(in)  :: ld2
         end subroutine
 
         subroutine sirius_get_beta_projectors(kset_id, ik, npw, gvec_k, vkb, ld, nkb)&

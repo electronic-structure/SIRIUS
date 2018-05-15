@@ -161,10 +161,11 @@ using double_complex = std::complex<double>;
 
 inline void terminate(const char* file_name__, int line_number__, const std::string& message__)
 {
-    printf("\n=== Fatal error at line %i of file %s ===\n", line_number__, file_name__);
-    printf("%s\n\n", message__.c_str());
+    std::stringstream s;
+    s << "\n=== Fatal error at line " << line_number__ << " of file " << file_name__ << " ===\n";
+    s << message__ << "\n\n";
     // raise(SIGTERM);
-    throw std::runtime_error("terminating...");
+    throw std::runtime_error(s.str());
 }
 
 inline void terminate(const char* file_name__, int line_number__, const std::stringstream& message__)
@@ -196,5 +197,20 @@ inline void warning(const char* file_name__, int line_number__, const std::strin
 #define TERMINATE_NO_SCALAPACK TERMINATE("not compiled with ScaLAPACK support");
 
 #define TERMINATE_NOT_IMPLEMENTED TERMINATE("feature is not implemented");
+
+template <typename T>
+inline std::ostream& operator<<(std::ostream& out, std::vector<T>& v)
+{
+    if (v.size() == 0) {
+        out << "{}";
+    } else {
+        out << "{";
+        for (size_t i = 0; i < v.size() - 1; i++) {
+            out << v[i] << ", ";
+        }
+        out << v.back() << "}";
+    }
+    return out;
+}
 
 #endif // __SDDK_INTERNAL_HPP__

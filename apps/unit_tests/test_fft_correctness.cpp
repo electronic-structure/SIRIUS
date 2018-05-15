@@ -6,15 +6,15 @@ void test_fft(double cutoff__, device_t pu__)
 {
     matrix3d<double> M = {{1, 0, 0}, {0, 1, 0}, {0, 0, 1}};
 
-    FFT3D fft(find_translations(cutoff__, M), mpi_comm_world(), pu__);
+    FFT3D fft(find_translations(cutoff__, M), Communicator::world(), pu__);
 
-    Gvec gvec(M, cutoff__, mpi_comm_world(), false);
-    Gvec_partition gvecp(gvec, mpi_comm_world(), mpi_comm_self());
+    Gvec gvec(M, cutoff__, Communicator::world(), false);
+    Gvec_partition gvecp(gvec, Communicator::world(), Communicator::self());
 
-    if (mpi_comm_world().rank() == 0) {
+    if (Communicator::world().rank() == 0) {
         printf("num_gvec: %i\n", gvec.num_gvec());
     }
-    MPI_grid mpi_grid(mpi_comm_world());
+    MPI_grid mpi_grid({Communicator::world().size()}, Communicator::world());
 
     printf("num_gvec_fft: %i\n", gvecp.gvec_count_fft());
     //printf("offset_gvec_fft: %i\n", gvecp.gvec_offset_fft());
@@ -29,7 +29,7 @@ void test_fft(double cutoff__, device_t pu__)
 
     for (int ig = 0; ig < gvec.num_gvec(); ig++) {
         auto v = gvec.gvec(ig);
-        if (mpi_comm_world().rank() == 0) {
+        if (Communicator::world().rank() == 0) {
             printf("ig: %6i, gvec: %4i %4i %4i   ", ig, v[0], v[1], v[2]);
         }
         f.zero();
@@ -66,9 +66,9 @@ void test_fft(double cutoff__, device_t pu__)
                 }
             }
         }
-        mpi_comm_world().allreduce(&diff, 1);
+        Communicator::world().allreduce(&diff, 1);
         diff = std::sqrt(diff / fft.size());
-        if (mpi_comm_world().rank() == 0) {
+        if (Communicator::world().rank() == 0) {
             printf("error : %18.10e", diff);
             if (diff < 1e-10) {
                 printf("\x1b[32m" " OK" "\x1b[0m" "\n");
@@ -101,10 +101,10 @@ int main(int argn, char **argv)
     #ifdef __GPU
     test_fft(cutoff, GPU);
     #endif
-    if (mpi_comm_world().rank() == 0) {
+    if (Communicator::world().rank() == 0) {
         sddk::timer::print();
     }
-    mpi_comm_world().barrier();
+    Communicator::world().barrier();
     
     sirius::finalize();
     return 0;

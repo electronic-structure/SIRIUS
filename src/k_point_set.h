@@ -164,6 +164,19 @@ class K_point_set
             for (int ik = 0; ik < nk; ik++) {
                 add_kpoint(&kp(0, ik), wk[ik]);
             }
+            initialize();
+        }
+
+        K_point_set(Simulation_context& ctx__, std::vector<vector3d<double>> vec__)
+                  : ctx_(ctx__)
+                  , unit_cell_(ctx__.unit_cell())
+                  , comm_k_(ctx__.comm_k())
+        {
+            PROFILE("sirius::K_point_set::K_point_set");
+            for (auto& v: vec__) {
+                add_kpoint(&v[0], 1.0);
+            }
+            initialize();
         }
 
         /// Initialize the k-point set
@@ -190,10 +203,20 @@ class K_point_set
             }
         }
 
-        void initialize(){
+        void initialize()
+        {
             initialize(std::vector<int>());
-          }
+        }
 
+        /// Get a list of band energies for a given k-point index.
+        std::vector<double> get_band_energies(int ik__, int ispn__)
+        {
+            std::vector<double> bnd_e(ctx_.num_bands());
+            for (int j = 0; j < ctx_.num_bands(); j++) {
+                bnd_e[j] = (*this)[ik__]->band_energy(j, ispn__);
+            }
+            return std::move(bnd_e);
+        }
 
         /// Find Fermi energy and band occupation numbers
         void find_band_occupancies();
@@ -269,21 +292,6 @@ class K_point_set
         {
             return spl_num_kpoints_[ikloc];
         }
-
-        //void set_band_occupancies(int ik, double* band_occupancies)
-        //{
-        //    kpoints_[ik]->set_band_occupancies(band_occupancies);
-        //}
-
-        //void get_band_occupancies(int ik, double* band_occupancies)
-        //{
-        //    kpoints_[ik]->get_band_occupancies(band_occupancies);
-        //}
-
-        //void get_band_energies(int ik, double* band_energies)
-        //{
-        //    kpoints_[ik]->get_band_energies(band_energies);
-        //}
 
         inline double energy_fermi() const
         {

@@ -79,14 +79,13 @@ class SHT // TODO: better name
         mdarray<double, 2> rlm_forward_;
 
         /// Type of spherical grid (0: Lebedev-Laikov, 1: uniform).
-        int mesh_type_;
+        int mesh_type_{0};
 
     public:
 
         /// Default constructor.
         SHT(int lmax__)
             : lmax_(lmax__)
-            , mesh_type_(0)
         {
             lmmax_ = (lmax_ + 1) * (lmax_ + 1);
 
@@ -622,6 +621,11 @@ class SHT // TODO: better name
         inline double phi(int idx__) const
         {
             return tp_(1, idx__);
+        }
+
+        inline double weight(int idx__) const
+        {
+            return w_[idx__];
         }
 
         inline int num_points() const

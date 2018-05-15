@@ -115,6 +115,8 @@ class Simulation_context_base: public Simulation_parameters
 
         std::unique_ptr<Radial_integrals_aug<false>> aug_ri_;
 
+        std::unique_ptr<Radial_integrals_aug<true>> aug_ri_djl_;
+
         std::unique_ptr<Radial_integrals_atomic_wf> atomic_wf_ri_;
 
         std::vector<std::vector<std::pair<int, double>>> atoms_to_grid_idx_;
@@ -359,7 +361,7 @@ class Simulation_context_base: public Simulation_parameters
         Communicator const& comm_fft_coarse() const
         {
             if (control().fft_mode_ == "serial") {
-                return mpi_comm_self();
+                return Communicator::self();
             } else {
                 return comm_fft();
             }
@@ -553,6 +555,11 @@ class Simulation_context_base: public Simulation_parameters
             return *aug_ri_;
         }
 
+        inline Radial_integrals_aug<true> const& aug_ri_djl() const
+        {
+            return *aug_ri_djl_;
+        }
+
         inline Radial_integrals_atomic_wf const& atomic_wf_ri() const
         {
             return *atomic_wf_ri_;
@@ -589,6 +596,11 @@ class Simulation_context_base: public Simulation_parameters
         mdarray<double_complex, 3> const& sym_phase_factors() const
         {
             return sym_phase_factors_;
+        }
+
+        inline bool initialized() const
+        {
+            return initialized_;
         }
 };
 
@@ -844,7 +856,7 @@ inline void Simulation_context_base::initialize()
     if (std_solver->is_parallel()) {
         blacs_grid_ = std::unique_ptr<BLACS_grid>(new BLACS_grid(comm_band(), npr, npc));
     } else {
-        blacs_grid_ = std::unique_ptr<BLACS_grid>(new BLACS_grid(mpi_comm_self(), 1, 1));
+        blacs_grid_ = std::unique_ptr<BLACS_grid>(new BLACS_grid(Communicator::self(), 1, 1));
     }
 
     /* setup the cyclic block size */
@@ -892,6 +904,7 @@ inline void Simulation_context_base::initialize()
         beta_ri_      = std::unique_ptr<Radial_integrals_beta<false>>(new Radial_integrals_beta<false>(unit_cell(), gk_cutoff() + 1, settings().nprii_beta_));
         beta_ri_djl_  = std::unique_ptr<Radial_integrals_beta<true>>(new Radial_integrals_beta<true>(unit_cell(), gk_cutoff() + 1, settings().nprii_beta_));
         aug_ri_       = std::unique_ptr<Radial_integrals_aug<false>>(new Radial_integrals_aug<false>(unit_cell(), pw_cutoff() + 1, settings().nprii_aug_));
+        aug_ri_djl_   = std::unique_ptr<Radial_integrals_aug<true>>(new Radial_integrals_aug<true>(unit_cell(), pw_cutoff() + 1, settings().nprii_aug_));
         atomic_wf_ri_ = std::unique_ptr<Radial_integrals_atomic_wf>(new Radial_integrals_atomic_wf(unit_cell(), gk_cutoff(), 20));
     }
 
@@ -932,7 +945,7 @@ inline void Simulation_context_base::print_info()
     printf("number of MPI ranks           : %i\n", comm_.size());
     printf("MPI grid                      :");
     for (int i = 0; i < mpi_grid_->num_dimensions(); i++) {
-        printf(" %i", mpi_grid_->dimension_size(i));
+        printf(" %i", mpi_grid_->communicator(1 << i).size());
     }
     printf("\n");
     printf("maximum number of OMP threads : %i\n", omp_get_max_threads());

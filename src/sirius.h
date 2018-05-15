@@ -45,6 +45,7 @@ using json = nlohmann::json;
 #include "Unit_cell/atom_type.h"
 #include "Unit_cell/atom_symmetry_class.h"
 #include "Unit_cell/atom.h"
+#include "Unit_cell/free_atom.hpp"
 #include "Unit_cell/unit_cell.h"
 #include "step_function.h"
 #include "periodic_function.h"
@@ -53,6 +54,8 @@ using json = nlohmann::json;
 #include "potential.h"
 #include "k_point_set.h"
 #include "density.h"
+#include "Geometry/stress.hpp"
+#include "Geometry/force.hpp"
 #include "dft_ground_state.h"
 
 #endif // __SIRIUS_H__

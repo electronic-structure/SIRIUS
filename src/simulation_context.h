@@ -51,12 +51,12 @@ class Simulation_context : public Simulation_context_base
 
   public:
     Simulation_context()
-        : Simulation_context_base(mpi_comm_world())
+        : Simulation_context_base(Communicator::world())
     {
     }
 
     Simulation_context(std::string const& str__)
-        : Simulation_context_base(str__, mpi_comm_world())
+        : Simulation_context_base(str__, Communicator::world())
     {
     }
 

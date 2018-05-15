@@ -247,7 +247,7 @@ void call_test(std::vector<int> mpi_grid__,
                int repeat__,
                int type__)
 {
-    BLACS_grid blacs_grid(mpi_comm_world(), mpi_grid__[0], mpi_grid__[1]);
+    BLACS_grid blacs_grid(Communicator::world(), mpi_grid__[0], mpi_grid__[1]);
     if (fname__.length() == 0) {
         for (int i = 0; i < repeat__; i++) {
             if (type__ == 0) {
@@ -294,8 +294,8 @@ int main(int argn, char** argv)
 
     sirius::initialize(1);
     call_test(mpi_grid_dims, N, n, nev, bs, test_gen, name, fname, repeat, type);
-    mpi_comm_world().barrier();
-    if (mpi_comm_world().rank() == 0) {
+    Communicator::world().barrier();
+    if (Communicator::world().rank() == 0) {
         sddk::timer::print();
     }
     sirius::finalize();
