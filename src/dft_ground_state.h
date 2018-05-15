@@ -940,7 +940,7 @@ inline void DFT_ground_state::print_magnetic_moment()
 
 #endif // __DFT_GROUND_STATE_H__
 
-/** \page DFT Spin-polarized DFT
+/** \page dft Spin-polarized DFT
  *  \section section1 Preliminary notes
  *
  *  \note Here and below sybol \f$ {\boldsymbol \sigma} \f$ is reserved for the vector of Pauli matrices. Spin components
