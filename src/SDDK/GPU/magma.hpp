@@ -7,7 +7,7 @@
 #include <magma.h>
 #include <magma_z.h>
 #include <magma_d.h>
-#include <magma_threadsetting.h>
+#include <../control/magma_threadsetting.h>
 #include <cstring>
 
 namespace magma {
