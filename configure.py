@@ -190,7 +190,6 @@ endif'''+"\n")
     # add magma include paths
     if 'MAGMA_ROOT' in platform:
         makeinc.write("CXX_OPT := $(CXX_OPT) -I%s/include\n"%platform['MAGMA_ROOT']);
-        makeinc.write("CXX_OPT := $(CXX_OPT) -I%s/control\n"%platform['MAGMA_ROOT']);
     # add elpa include path
     if 'ELPA_ROOT' in platform:
         makeinc.write("CXX_OPT := $(CXX_OPT) -I%s/elpa\n"%platform['ELPA_ROOT']);

@@ -61,14 +61,14 @@ class timer
     {
         return timer_values()[label__];
     }
-    
+
     /// Mapping between parent timer and child timers.
     /** This map is needed to build a call tree of timers with the information about "self" time
         and time spent in calling other timers. */
     static std::map<std::string, std::map<std::string, double>>& timer_values_ex()
     {
         /* the following map is stored:
-           
+
            parent_timer_label1  |--- child_timer_label1, time1a
                                 |--- child timer_label2, time2
                                 |--- child_timer_label3, time3
@@ -83,7 +83,7 @@ class timer
     }
 
   public:
-    
+
     /// Constructor.
     timer(std::string label__)
         : label_(label__)
@@ -94,7 +94,7 @@ class timer
         stack().push_back(label_);
         active_ = true;
     }
-    
+
     /// Destructor.
     ~timer()
     {
@@ -105,7 +105,7 @@ class timer
             stop();
         }
     }
-    
+
     /// Stop the timer and update the statistics.
     double stop()
     {
@@ -116,7 +116,7 @@ class timer
         /* remove this timer name from the list; now last element contains
            the name of the parent timer */
         stack().pop_back();
-        
+
         /* measure the time difference */
         auto t2    = std::chrono::high_resolution_clock::now();
         auto tdiff = std::chrono::duration_cast<std::chrono::duration<double>>(t2 - starting_time_);
@@ -315,4 +315,4 @@ class timer
 /* this is needed only to call timer::global_timer() at the beginning */
 static timer* global_timer_init__ = &timer::global_timer();
 
-#endif // __SDDK_INTERNAL_HPP__
+#endif

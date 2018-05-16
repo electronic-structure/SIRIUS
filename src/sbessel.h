@@ -22,8 +22,8 @@
  *  \brief Contains implementation of sirius::Spherical_Bessel_functions and sirius::sbessel_approx classes.
  */
 
-#ifndef __SBESSEL_PW_H__
-#define __SBESSEL_PW_H__
+#ifndef __SBESSEL_H__
+#define __SBESSEL_H__
 
 #include <gsl/gsl_sf_bessel.h>
 #include "eigenproblem.h"
