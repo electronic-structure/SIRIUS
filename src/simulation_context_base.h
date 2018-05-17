@@ -1,4 +1,4 @@
-// Copyright (c) 2013-2017 Anton Kozhevnikov, Thomas Schulthess
+// Copyright (c) 2013-2018 Anton Kozhevnikov, Thomas Schulthess
 // All rights reserved.
 // 
 // Redistribution and use in source and binary forms, with or without modification, are permitted provided that 
@@ -787,42 +787,43 @@ inline void Simulation_context_base::initialize()
     }
     
     std::string evsn[] = {std_evp_solver_name(), gen_evp_solver_name()};
-    
+#if defined(__MAGMA)
+    bool is_magma{true};
+#else
+    bool is_magma{false};
+#endif
+#if defined(__SCALAPACK)
+    bool is_scalapack{true};
+#else
+    bool is_scalapack{false};
+#endif
+#if defined(__ELPA)
+    bool is_elpa{true};
+#else
+    bool is_elpa{false};
+#endif
+
     /* deduce the default eigen-value solver */
-    if (comm_band().size() == 1 || npc == 1 || npr == 1) {
-        if (evsn[0] == "") {
-            #if defined(__GPU) && defined(__MAGMA)
-            evsn[0] = "magma";
-            #else
-            evsn[0] = "lapack";
-            #endif
-        }
-        if (evsn[1] == "") {
-            #if defined(__GPU) && defined(__MAGMA)
-            evsn[1] = "magma";
-            #else
-            evsn[1] = "lapack";
-            #endif
-        }
-    } else {
-        if (evsn[0] == "") {
-            #ifdef __SCALAPACK
-            evsn[0] = "scalapack";
-            #endif
-            #ifdef __ELPA
-            evsn[0] = "elpa1";
-            #endif
-        }
-        if (evsn[1] == "") {
-            #ifdef __SCALAPACK
-            evsn[1] = "scalapack";
-            #endif
-            #ifdef __ELPA
-            evsn[1] = "elpa1";
-            #endif
+    for (int i: {0, 1}) {
+        if (evsn[i] == "") {
+            /* conditions for sequential diagonalization */
+            if (comm_band().size() == 1 || npc == 1 || npr == 1 || !is_scalapack) {
+                if (is_magma) {
+                    evsn[i] = "magma";
+                } else {
+                    evsn[i] = "lapack";
+                }
+            } else {
+                if (is_scalapack) {
+                    evsn[i] = "scalapack";
+                }
+                if (is_elpa) {
+                    evsn[i] = "elpa1";
+                }
+            }
         }
     }
-
+        
     ev_solver_t* evst[] = {&std_evp_solver_type_, &gen_evp_solver_type_};
 
     std::map<std::string, ev_solver_t> str_to_ev_solver_t = {
