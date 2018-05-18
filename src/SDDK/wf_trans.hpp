@@ -1,5 +1,9 @@
 /// Linear transformation of the wave-functions.
-/** The transformation matrix is expected in the CPU memory. */
+/** The transformation matrix is expected in the CPU memory. The following operation is performed:
+ *  \f[
+ *     \psi^{out}_{j} = \alpha \sum_{i} \psi^{in}_{i} Z_{ij} + \beta \psi^{out}_{j}
+ *  \f]
+ */
 template <typename T>
 inline void transform(device_t                     pu__,
                       int                          ispn__,
@@ -15,7 +19,7 @@ inline void transform(device_t                     pu__,
                       int                          j0__,
                       int                          n__)
 {
-    PROFILE("sddk::wave_functions::transform");
+    PROFILE("sddk::Wave_functions::transform");
 
     static_assert(std::is_same<T, double>::value || std::is_same<T, double_complex>::value, "wrong type");
 
@@ -140,7 +144,7 @@ inline void transform(device_t                     pu__,
         }
     };
 
-    sddk::timer t1("sddk::wave_functions::transform|init");
+    sddk::timer t1("sddk::Wave_functions::transform|init");
     /* initial values for the resulting wave-functions */
     for (int iv = 0; iv < nwf; iv++) {
         if (beta__ == 0) {
@@ -370,7 +374,6 @@ inline void transform(device_t        pu__,
                       int             j0__,
                       int             n__)
 {
-
     transform<T>(pu__, ispn__, alpha__, {&wf_in__}, i0__, m__, mtrx__, irow0__, jcol0__, beta__, {&wf_out__}, j0__, n__);
 }
 
@@ -387,75 +390,6 @@ inline void transform(device_t        pu__,
                       int             j0__,
                       int             n__)
 {
-
     transform<T>(pu__, ispn__, 1.0, {&wf_in__}, i0__, m__, mtrx__, irow0__, jcol0__, 0.0, {&wf_out__}, j0__, n__);
 }
 
-//== /// Linear transformation of wave-functions.
-//== /** The following operation is performed:
-//==  *  \f[
-//==  *     \psi^{out}_{j} = \alpha \sum_{i} \psi^{in}_{i} Z_{ij} + \beta \psi^{out}_{j}
-//==  *  \f]
-//==  */
-//== template <typename T>
-//== inline void transform(device_t pu__,
-//==                       double          alpha__,
-//==                       wave_functions& wf_in__,
-//==                       int             i0__,
-//==                       int             m__,
-//==                       dmatrix<T>&     mtrx__,
-//==                       int             irow0__,
-//==                       int             jcol0__,
-//==                       double          beta__,
-//==                       wave_functions& wf_out__,
-//==                       int             j0__,
-//==                       int             n__)
-//== {
-//==     transform<T>(pu__, alpha__, {&wf_in__}, i0__, m__, mtrx__, irow0__, jcol0__, beta__, {&wf_out__}, j0__, n__);
-//== }
-//==
-//== template <typename T>
-//== inline void transform(device_t        pu__,
-//==                       wave_functions& wf_in__,
-//==                       int             i0__,
-//==                       int             m__,
-//==                       dmatrix<T>&     mtrx__,
-//==                       int             irow0__,
-//==                       int             jcol0__,
-//==                       wave_functions& wf_out__,
-//==                       int             j0__,
-//==                       int             n__)
-//== {
-//==     transform<T>(pu__, 1.0, {&wf_in__}, i0__, m__, mtrx__, irow0__, jcol0__, 0.0, {&wf_out__}, j0__, n__);
-//== }
-//==
-//== template <typename T>
-//== inline void transform(device_t                     pu__,
-//==                       double                       alpha__,
-//==                       std::vector<Wave_functions*> wf_in__,
-//==                       int                          i0__,
-//==                       int                          m__,
-//==                       dmatrix<T>&                  mtrx__,
-//==                       int                          irow0__,
-//==                       int                          jcol0__,
-//==                       double                       beta__,
-//==                       std::vector<Wave_functions*> wf_out__,
-//==                       int                          j0__,
-//==                       int                          n__)
-//== {
-//==     assert(wf_in__.size() == wf_out__.size());
-//==     for (size_t i = 0; i < wf_in__.size(); i++) {
-//==         assert(wf_in__[i]->num_components() == wf_in__[0]->num_components());
-//==         assert(wf_in__[i]->num_components() == wf_out__[i]->num_components());
-//==     }
-//==     int num_sc = wf_in__[0]->num_components();
-//==     for (int is = 0; is < num_sc; is++) {
-//==         std::vector<wave_functions*> wf_in;
-//==         std::vector<wave_functions*> wf_out;
-//==         for (size_t i = 0; i < wf_in__.size(); i++) {
-//==             wf_in.push_back(&wf_in__[i]->component(is));
-//==             wf_out.push_back(&wf_out__[i]->component(is));
-//==         }
-//==         transform(pu__, alpha__, wf_in, i0__, m__, mtrx__, irow0__, jcol0__, beta__, wf_out, j0__, n__);
-//==     }
-//== }

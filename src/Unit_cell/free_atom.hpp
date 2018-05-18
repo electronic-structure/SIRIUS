@@ -38,7 +38,7 @@ class Free_atom : public Atom_type
     /// Radial wave-functions.
     mdarray<double, 2> free_atom_wave_functions_;
     /// Atomic potential.
-    Spline<double> free_atom_potential_;
+    Spline<double> free_atom_potential_; // TODO: rename. this is potential of electronic density
     /// NIST total energy for LDA calculation.
     double NIST_LDA_Etot_{0};
     /// NIST total energy for scalar-relativistic LDA calculation.
@@ -211,7 +211,7 @@ class Free_atom : public Atom_type
             }
 
             for (int i = 0; i < np; i++) {
-                f(i) = (veff[i] - vnuc[i]) * rho(i);
+                f(i) = vrho[i] * rho(i);
             }
             /* kinetic energy */
             energy_kin = eval_sum - fourpi * (f.interpolate().integrate(2) - zn() * rho.integrate(1));
@@ -328,6 +328,11 @@ class Free_atom : public Atom_type
     inline double free_atom_potential(double x)
     {
         return free_atom_potential_.at_point(x);
+    }
+
+    inline Spline<double>& free_atom_potential()
+    {
+        return free_atom_potential_;
     }
 };
 } // namespace sirius
