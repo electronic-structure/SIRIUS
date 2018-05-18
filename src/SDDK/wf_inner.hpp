@@ -57,7 +57,7 @@ inline void inner(device_t        pu__,
                   int             irow0__,
                   int             jcol0__)
 {
-    PROFILE("sddk::wave_functions::inner");
+    PROFILE("sddk::Wave_functions::inner");
 
     static_assert(std::is_same<T, double>::value || std::is_same<T, double_complex>::value, "wrong type");
     
