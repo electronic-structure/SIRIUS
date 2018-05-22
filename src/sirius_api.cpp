@@ -602,7 +602,7 @@ void sirius_find_fft_grid_size(ftn_double* cutoff__,
 void sirius_get_fft_grid_size(ftn_int* grid_size__)
 {
     for (int x: {0, 1, 2}) {
-        grid_size__[x] = sim_ctx->fft().grid().size(x);
+        grid_size__[x] = sim_ctx->fft().size(x);
     }
 }
 
@@ -621,8 +621,8 @@ void sirius_get_fft_grid_size(ftn_int* grid_size__)
 void sirius_get_fft_grid_limits(int32_t const* d, int32_t* lower, int32_t* upper)
 {
     assert((*d >= 1) && (*d <= 3));
-    *lower = sim_ctx->fft().grid().limits(*d - 1).first;
-    *upper = sim_ctx->fft().grid().limits(*d - 1).second;
+    *lower = sim_ctx->fft().limits(*d - 1).first;
+    *upper = sim_ctx->fft().limits(*d - 1).second;
 }
 
 /// Get mapping between G-vector index and FFT index
@@ -630,7 +630,7 @@ void sirius_get_fft_index(int32_t* fft_index__)
 {
     for (int ig = 0; ig < sim_ctx->gvec().num_gvec(); ig++) {
         auto G = sim_ctx->gvec().gvec(ig);
-        fft_index__[ig] = sim_ctx->fft().grid().index_by_gvec(G[0], G[1], G[2]) + 1;
+        fft_index__[ig] = sim_ctx->fft().index_by_freq(G[0], G[1], G[2]) + 1;
     }
 }
 
@@ -668,9 +668,9 @@ void sirius_get_gvec_len(double* gvec_len__)
 
 void sirius_get_index_by_gvec(int32_t* index_by_gvec__)
 {
-    auto d0 = sim_ctx->fft().grid().limits(0);
-    auto d1 = sim_ctx->fft().grid().limits(1);
-    auto d2 = sim_ctx->fft().grid().limits(2);
+    auto d0 = sim_ctx->fft().limits(0);
+    auto d1 = sim_ctx->fft().limits(1);
+    auto d2 = sim_ctx->fft().limits(2);
 
     mdarray<int, 3> index_by_gvec(index_by_gvec__, d0, d1, d2);
     std::fill(index_by_gvec.at<CPU>(), index_by_gvec.at<CPU>() + index_by_gvec.size(), -1);
