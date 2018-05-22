@@ -221,7 +221,7 @@ inline void Potential::poisson(Periodic_function<double> const& rho)
         /* add contribution from the pseudo-charge */
         poisson_add_pseudo_pw(qmt, qit, const_cast<double_complex*>(&rho.f_pw_local(0)));
         
-        if (check_pseudo_charge) {
+        if (ctx_.control().verification_ >= 2) {
             poisson_sum_G(ctx_.lmmax_rho(), &rho.f_pw_local(0), sbessel_mom_, qit);
 
             double d = 0.0;

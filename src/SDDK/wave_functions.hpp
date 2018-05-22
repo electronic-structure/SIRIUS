@@ -19,7 +19,7 @@
 
 /** \file wave_functions.hpp
  *
- *  \brief Contains declaration and implementation of wave_functions class.
+ *  \brief Contains declaration and implementation of Wave_functions class.
  */
 
 #ifndef __WAVE_FUNCTIONS_HPP__

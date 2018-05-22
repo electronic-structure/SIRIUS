@@ -56,8 +56,6 @@ class K_point_set
 
         Unit_cell& unit_cell_;
 
-        Communicator const& comm_k_;
-
         K_point_set(K_point_set& src) = delete;
 
     public:
@@ -65,7 +63,6 @@ class K_point_set
         K_point_set(Simulation_context& ctx__)
                   : ctx_(ctx__)
                   , unit_cell_(ctx__.unit_cell())
-                  , comm_k_(ctx__.comm_k())
         {
             PROFILE("sirius::K_point_set::K_point_set");
         }
@@ -76,7 +73,6 @@ class K_point_set
                     int use_symmetry__)
                   : ctx_(ctx__)
                   , unit_cell_(ctx__.unit_cell())
-                  , comm_k_(ctx_.comm_k())
         {
             PROFILE("sirius::K_point_set::K_point_set");
 
@@ -170,7 +166,6 @@ class K_point_set
         K_point_set(Simulation_context& ctx__, std::vector<vector3d<double>> vec__)
                   : ctx_(ctx__)
                   , unit_cell_(ctx__.unit_cell())
-                  , comm_k_(ctx__.comm_k())
         {
             PROFILE("sirius::K_point_set::K_point_set");
             for (auto& v: vec__) {
@@ -184,10 +179,10 @@ class K_point_set
         {
             /* distribute k-points along the 1-st dimension of the MPI grid */
             if (counts.empty()) {
-                splindex<block> spl_tmp(num_kpoints(), comm_k_.size(), comm_k_.rank());
-                spl_num_kpoints_ = splindex<chunk>(num_kpoints(), comm_k_.size(), comm_k_.rank(), spl_tmp.counts());
+                splindex<block> spl_tmp(num_kpoints(), comm().size(), comm().rank());
+                spl_num_kpoints_ = splindex<chunk>(num_kpoints(), comm().size(), comm().rank(), spl_tmp.counts());
             } else {
-                spl_num_kpoints_ = splindex<chunk>(num_kpoints(), comm_k_.size(), comm_k_.rank(), counts);
+                spl_num_kpoints_ = splindex<chunk>(num_kpoints(), comm().size(), comm().rank(), counts);
             }
 
             for (int ikloc = 0; ikloc < spl_num_kpoints_.local_size(); ikloc++) {
@@ -253,7 +248,7 @@ class K_point_set
                 auto ik = spl_num_kpoints_[ikloc];
                 max_num_gkvec = std::max(max_num_gkvec, kpoints_[ik]->num_gkvec());
             }
-            comm_k_.allreduce<int, mpi_op_t::max>(&max_num_gkvec, 1);
+            comm().allreduce<int, mpi_op_t::max>(&max_num_gkvec, 1);
             return max_num_gkvec;
         }
 
@@ -331,7 +326,32 @@ class K_point_set
 
         inline Communicator const& comm() const
         {
-            return comm_k_;
+            return ctx_.comm_k();
+        }
+
+        /// Send G+k vectors of k-point jk to a given rank.
+        /** Other ranks receive an empty Gvec placeholder */
+        inline Gvec send_recv_gkvec(int jk__, int rank__)
+        {
+            /* rank in the k-point communicator */
+            int my_rank = comm().rank();
+            
+            /* rank that stores jk */
+            int jrank = spl_num_kpoints().local_rank(jk__);
+
+            /* placeholder for G+k vectors of kpoint jk */
+            Gvec gkvec(ctx_.comm_band());
+
+            /* if this rank stores the k-point, then send it */
+            if (jrank == my_rank) {
+                auto kp = kpoints_[jk__].get();
+                kp->gkvec().send_recv(comm(), jrank, rank__, gkvec);
+            }
+            /* this rank receives the k-point */
+            if (rank__ == my_rank) {
+                gkvec.send_recv(comm(), jrank, rank__, gkvec);
+            }
+            return std::move(gkvec);
         }
 };
 
@@ -349,9 +369,9 @@ inline void K_point_set::sync_band_energies()
             }
         }
     }
-    comm_k_.allgather(band_energies.at<CPU>(),
-                      ctx_.num_bands() * ctx_.num_spin_dims() * spl_num_kpoints_.global_offset(),
-                      ctx_.num_bands() * ctx_.num_spin_dims() * spl_num_kpoints_.local_size());
+    comm().allgather(band_energies.at<CPU>(),
+                     ctx_.num_bands() * ctx_.num_spin_dims() * spl_num_kpoints_.global_offset(),
+                     ctx_.num_bands() * ctx_.num_spin_dims() * spl_num_kpoints_.local_size());
 
     for (int ik = 0; ik < num_kpoints(); ik++) {
         for (int ispn = 0; ispn < ctx_.num_spin_dims(); ispn++) {
@@ -466,7 +486,7 @@ inline void K_point_set::find_band_occupancies()
 
 inline void K_point_set::print_info()
 {
-    if (comm_k_.rank() == 0 && ctx_.comm_band().rank() == 0) {
+    if (ctx_.comm().rank() == 0) {
         printf("\n");
         printf("total number of k-points : %i\n", num_kpoints());
         for (int i = 0; i < 80; i++) {
@@ -485,7 +505,7 @@ inline void K_point_set::print_info()
     }
 
     if (ctx_.comm_band().rank() == 0) {
-        runtime::pstdout pout(comm_k_);
+        runtime::pstdout pout(comm());
         for (int ikloc = 0; ikloc < spl_num_kpoints().local_size(); ikloc++) {
             int ik = spl_num_kpoints(ikloc);
             pout.printf("%4i   %8.4f %8.4f %8.4f   %12.6f     %6i",

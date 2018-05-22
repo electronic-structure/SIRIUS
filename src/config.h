@@ -73,10 +73,7 @@ const bool test_spinor_wf = false;
 
 const bool hdf5_trace_errors = false;
 
-/// True if pseudocharge moments in LAPW Poisson solver have to be checked and compared with true multipole moments.
-const bool check_pseudo_charge = false;
-
-/// Tru if LAPW Hamiltonian is diagonalized with second-variational approach.
+/// True if LAPW Hamiltonian is diagonalized with second-variational approach.
 const bool use_second_variation = true;
 
 /// True if wave-functions are permanently kept on a GPU and not allocated/deallocated.

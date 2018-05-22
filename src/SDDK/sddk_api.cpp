@@ -87,8 +87,8 @@ void sddk_create_gvec(ftn_double* vk__,
                       ftn_int*    fcomm_fft__,
                       ftn_int*    new_object_id__)
 {
-    auto& comm = map_fcomm(*fcomm__);
-    auto& comm_fft = map_fcomm(*fcomm_fft__);
+    auto& comm = Communicator::map_fcomm(*fcomm__);
+    auto& comm_fft = Communicator::map_fcomm(*fcomm_fft__);
 
     bool reduce_gvec = (*reduce_gvec__ == 0) ? false : true;
 

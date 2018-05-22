@@ -88,7 +88,7 @@ class Matching_coefficients
             /* invert matrix of radial derivatives */
             switch (N) {
                 case 1: {
-                    if (unit_cell_.parameters().control().verification_ > 0) {
+                    if (unit_cell_.parameters().control().verification_ >= 1) {
                         if (std::abs(A(0, 0)) < 1.0 / std::sqrt(unit_cell_.omega())) {   
                             std::stringstream s;
                             s << "Ill defined plane wave matching problem for atom type " << iat << ", l = " << l << std::endl
@@ -103,7 +103,7 @@ class Matching_coefficients
                 case 2: {
                     double det = A(0, 0) * A(1, 1) - A(0, 1) * A(1, 0);
                     
-                    if (unit_cell_.parameters().control().verification_ > 0) {
+                    if (unit_cell_.parameters().control().verification_ >= 1) {
                         if (std::abs(det) < 1.0 / std::sqrt(unit_cell_.omega())) {   
                             std::stringstream s;
                             s << "Ill defined plane wave matching problem for atom type " << iat << ", l = " << l << std::endl
