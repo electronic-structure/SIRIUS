@@ -76,7 +76,7 @@ inline void K_point::generate_atomic_centered_wavefunctions(const int num_ao__, 
     generate_atomic_centered_wavefunctions_(num_ao__, phi, vs, false);
 }
 
-inline void K_point::compute_gradient_wavefunctions(Wave_functions &phi, Wave_functions &dphi, const int direction) {
+inline void K_point::compute_gradient_wavefunctions(Wave_functions &phi, const int starting_position_i, const int num_wf, Wave_functions &dphi, const int starting_position_j, const int direction) {
     std::vector<double_complex> qalpha(this->num_gkvec_loc());
 
     for (int igk_loc = 0; igk_loc < this->num_gkvec_loc(); igk_loc++) {
@@ -86,10 +86,10 @@ inline void K_point::compute_gradient_wavefunctions(Wave_functions &phi, Wave_fu
     }
 
     #pragma omp parallel for schedule(static)
-    for (int nphi = 0 ; nphi < phi.num_wf(); nphi++) {
+    for (int nphi = 0; nphi < num_wf; nphi++) {
         for (int ispn = 0; ispn < phi.num_sc(); ispn++) {
             for (int igk_loc = 0; igk_loc < this->num_gkvec_loc(); igk_loc++) {
-                dphi.pw_coeffs(ispn).prime(igk_loc, nphi) = qalpha[igk_loc] * phi.pw_coeffs(ispn).prime(igk_loc, nphi);
+                dphi.pw_coeffs(ispn).prime(igk_loc, nphi + starting_position_j) = qalpha[igk_loc] * phi.pw_coeffs(ispn).prime(igk_loc, nphi + starting_position_i);
             }
         }
     }

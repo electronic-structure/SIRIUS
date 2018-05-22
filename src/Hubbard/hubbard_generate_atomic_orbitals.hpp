@@ -1,9 +1,9 @@
-void generate_atomic_orbitals(K_point& kp, Q_operator<double>& q_op)
+void Hubbard_potential::generate_atomic_orbitals(K_point& kp, Q_operator<double>& q_op)
 {
     TERMINATE("Not implemented for gamma point only");
 }
 
-void generate_atomic_orbitals(K_point& kp, Q_operator<double_complex>& q_op)
+void Hubbard_potential::generate_atomic_orbitals(K_point& kp, Q_operator<double_complex>& q_op)
 {
 
   const int num_sc = (ctx_.num_mag_dims() == 3) ? 2 : 1;
@@ -90,7 +90,7 @@ void generate_atomic_orbitals(K_point& kp, Q_operator<double_complex>& q_op)
 #endif
 }
 
-void orthogonalize_atomic_orbitals(K_point& kp, Wave_functions &sphi)
+void Hubbard_potential::orthogonalize_atomic_orbitals(K_point& kp, Wave_functions &sphi)
 {
     // do we orthogonalize the all thing
 
@@ -224,27 +224,5 @@ void orthogonalize_atomic_orbitals(K_point& kp, Wave_functions &sphi)
       S.deallocate(memory_t::device);
     }
     #endif
-  }
-}
-
-// TODO :: Need to do that more generically
-
-void ComputeDerivatives(K_point& kp, Wave_functions &phi, Wave_functions &dphi, const int direction)
-{
-  std::vector<double_complex> qalpha(kp.num_gkvec_loc());
-
-  for (int igk_loc = 0; igk_loc < kp.num_gkvec_loc(); igk_loc++) {
-    int igk           = kp.idxgk(igk_loc);
-    auto G            = kp.gkvec().gkvec_cart(igk);
-    qalpha[igk_loc] = double_complex(0.0, -G[direction]);
-  }
-
-  #pragma omp parallel for schedule(static)
-  for (int nphi = 0 ; nphi < phi.num_wf(); nphi++) {
-    for (int ispn = 0; ispn < phi.num_sc(); ispn++) {
-      for (int igk_loc = 0; igk_loc < kp.num_gkvec_loc(); igk_loc++) {
-        dphi.pw_coeffs(ispn).prime(igk_loc, nphi) = qalpha[igk_loc] * phi.pw_coeffs(ispn).prime(igk_loc, nphi);
-      }
-    }
   }
 }

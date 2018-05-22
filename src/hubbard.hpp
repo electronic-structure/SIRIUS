@@ -7,6 +7,8 @@
 #include "k_point.h"
 #include "wave_functions.hpp"
 #include "non_local_operator.h"
+#include "../Beta_projectors/beta_projectors.h"
+#include "../Beta_projectors/beta_projectors_gradient.h"
 #include "radial_integrals.h"
 #include "mixer.h"
 
@@ -120,6 +122,40 @@ public:
         return this->normalize_orbitals_only_;
     }
 
+    void apply_hubbard_potential(K_point& kp,
+                                 const int ispn_,
+                                 const int idx__,
+                                 const int n__,
+                                 Wave_functions& phi,
+                                 Wave_functions& ophi);
+
+    void generate_atomic_orbitals(K_point& kp, Q_operator<double_complex>& q_op);
+    void generate_atomic_orbitals(K_point& kp, Q_operator<double>& q_op);
+
+    // Maybe put this one private
+    void orthogonalize_atomic_orbitals(K_point& kp, Wave_functions &sphi);
+
+    void hubbard_compute_occupation_numbers(K_point_set& kset_);
+
+    inline void set_hubbard_occupancies_matrix(double *occ, int ld);
+    inline void set_hubbard_occupancies_matrix_nc(double_complex *occ, int ld);
+    inline void get_hubbard_occupancies_matrix(double *occ, int ld);
+    inline void get_hubbard_occupancies_matrix_nc(double_complex *occ, int ld);
+
+    inline void set_hubbard_potential_nc(double_complex *occ, int ld);
+    inline void set_hubbard_potential(double *occ, int ld);
+
+
+
+    void compute_occupancies_derivatives(K_point &kp,
+                                         Wave_functions &phi,
+                                         Beta_projectors_gradient &bp_grad_,
+                                         Q_operator<double_complex>& q_op,
+                                         mdarray<double_complex, 5> &dn_,
+                                         const int atom_id);
+
+    void calculate_hubbard_potential_and_energy_colinear_case();
+    void calculate_hubbard_potential_and_energy_non_colinear_case();
     void calculate_hubbard_potential_and_energy()
     {
         this->hubbard_energy_                 = 0.0;
@@ -237,13 +273,18 @@ public:
     //     mixer_output();
     //     return rms;
     // }
+private:
+    void calculate_initial_occupation_numbers();
 
-// TODO: put include statemsnts to the beginning
-#include "Hubbard/hubbard_generate_atomic_orbitals.hpp"
-#include "Hubbard/hubbard_potential_energy.hpp"
-#include "Hubbard/apply_hubbard_potential.hpp"
-#include "Hubbard/hubbard_occupancy.hpp"
-  private:
+    inline int natural_lm_to_qe(int m, int l)
+    {
+        return (m > 0) ? 2 * m - 1 : - 2 * m;
+    }
+
+    inline void symmetrize_occupancy_matrix_noncolinear_case();
+    inline void symmetrize_occupancy_matrix();
+    inline void print_occupancies();
+
     inline void calculate_wavefunction_with_U_offset()
     {
         offset.clear();
@@ -294,5 +335,10 @@ public:
         this->number_of_hubbard_orbitals_ = counter;
     }
 };
+    #include "Hubbard/hubbard_generate_atomic_orbitals.hpp"
+    #include "Hubbard/hubbard_potential_energy.hpp"
+    #include "Hubbard/apply_hubbard_potential.hpp"
+    #include "Hubbard/hubbard_occupancy.hpp"
+    #include "Hubbard/hubbard_occupancies_derivatives.hpp"
 }
 #endif

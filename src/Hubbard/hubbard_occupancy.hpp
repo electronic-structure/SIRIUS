@@ -7,7 +7,7 @@
 /// where \f[m=-l\cdot l$ (same for m')\f], I is the a.
 
 /// We need to symmetrize them
-void hubbard_compute_occupation_numbers(K_point_set& kset_)
+void Hubbard_potential::hubbard_compute_occupation_numbers(K_point_set& kset_)
 {
     if (!ctx_.hubbard_correction()) {
         return;
@@ -230,7 +230,7 @@ void hubbard_compute_occupation_numbers(K_point_set& kset_)
 // fill the d (f) states according to the hund's rules and with majority
 // spin first and the remaining electrons distributed among the minority
 // states.
-void calculate_initial_occupation_numbers()
+void Hubbard_potential::calculate_initial_occupation_numbers()
 {
     this->occupancy_number_.zero();
 #pragma omp parallel for schedule(static)
@@ -319,13 +319,7 @@ void calculate_initial_occupation_numbers()
     print_occupancies();
 }
 
-
-inline int natural_lm_to_qe(int m, int l)
-{
-    return (m > 0) ? 2 * m - 1 : - 2 * m;
-}
-
-inline void set_hubbard_occupancies_matrix(double *occ, int ld)
+inline void Hubbard_potential::set_hubbard_occupancies_matrix(double *occ, int ld)
 {
     mdarray<double, 4> occupation_(occ, ld, ld, ctx_.num_spins(), ctx_.unit_cell().num_atoms());
     this->occupancy_number_.zero();
@@ -344,7 +338,7 @@ inline void set_hubbard_occupancies_matrix(double *occ, int ld)
     }
 }
 
-inline void set_hubbard_occupancies_matrix_nc(double_complex *occ, int ld)
+inline void Hubbard_potential::set_hubbard_occupancies_matrix_nc(double_complex *occ, int ld)
 {
     mdarray<double_complex, 4> occupation_(occ, ld, ld, 4, ctx_.unit_cell().num_atoms());
     this->occupancy_number_.zero();
@@ -366,7 +360,7 @@ inline void set_hubbard_occupancies_matrix_nc(double_complex *occ, int ld)
     }
 }
 
-inline void get_hubbard_occupancies_matrix(double *occ, int ld)
+inline void Hubbard_potential::get_hubbard_occupancies_matrix(double *occ, int ld)
 {
     mdarray<double, 4> occupation_(occ, ld, ld, ctx_.num_spins(), ctx_.unit_cell().num_atoms());
 
@@ -391,7 +385,7 @@ inline void get_hubbard_occupancies_matrix(double *occ, int ld)
 }
 
 
-inline void get_hubbard_occupancies_matrix_nc(double_complex *occ, int ld)
+inline void Hubbard_potential::get_hubbard_occupancies_matrix_nc(double_complex *occ, int ld)
 {
     mdarray<double_complex, 4> occupation_(occ, ld, ld, 4, ctx_.unit_cell().num_atoms());
 
@@ -413,7 +407,7 @@ inline void get_hubbard_occupancies_matrix_nc(double_complex *occ, int ld)
     }
 }
 
-inline void print_occupancies()
+inline void Hubbard_potential::print_occupancies()
 {
     if (ctx_.control().verbosity_ > 1) {
         if (ctx_.comm().rank() == 0) {
@@ -490,7 +484,7 @@ inline void print_occupancies()
     }
 }
 
-inline void symmetrize_occupancy_matrix_noncolinear_case()
+inline void Hubbard_potential::symmetrize_occupancy_matrix_noncolinear_case()
 {
     auto& sym = unit_cell_.symmetry();
 
@@ -583,7 +577,7 @@ inline void symmetrize_occupancy_matrix_noncolinear_case()
     }
 }
 
-inline void symmetrize_occupancy_matrix()
+inline void Hubbard_potential::symmetrize_occupancy_matrix()
 {
     auto& sym = unit_cell_.symmetry();
 
