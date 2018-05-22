@@ -53,14 +53,14 @@ void test_fft(double cutoff__, device_t pu__)
 
         double diff = 0;
         /* loop over 3D array (real space) */
-        for (int j0 = 0; j0 < fft.grid().size(0); j0++) {
-            for (int j1 = 0; j1 < fft.grid().size(1); j1++) {
+        for (int j0 = 0; j0 < fft.size(0); j0++) {
+            for (int j1 = 0; j1 < fft.size(1); j1++) {
                 for (int j2 = 0; j2 < fft.local_size_z(); j2++) {
                     /* get real space fractional coordinate */
-                    auto rl = vector3d<double>(double(j0) / fft.grid().size(0), 
-                                               double(j1) / fft.grid().size(1), 
-                                               double(fft.offset_z() + j2) / fft.grid().size(2));
-                    int idx = fft.grid().index_by_coord(j0, j1, j2);
+                    auto rl = vector3d<double>(double(j0) / fft.size(0), 
+                                               double(j1) / fft.size(1), 
+                                               double(fft.offset_z() + j2) / fft.size(2));
+                    int idx = fft.index_by_coord(j0, j1, j2);
 
                     diff += std::pow(std::abs(fft.buffer(idx) - std::exp(double_complex(0.0, twopi * dot(rl, v)))), 2);
                 }
