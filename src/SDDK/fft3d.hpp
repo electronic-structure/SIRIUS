@@ -79,7 +79,7 @@ namespace sddk {
  *  \todo GPU input ponter for parallel FFT
  *  \todo decompose 3D fft into three consecutive 1D ffts
  */
-class FFT3D
+class FFT3D: public FFT3D_grid
 {
     protected:
 
@@ -91,9 +91,6 @@ class FFT3D
 
         /// Split z-direction.
         splindex<block> spl_z_;
-
-        /// Definition of the FFT grid.
-        FFT3D_grid grid_;
 
         /// Local size of z-dimension of FFT buffer.
         int local_size_z_;
@@ -222,7 +219,7 @@ class FFT3D
             //} else {
             //    sz_max = grid_.size(2) * gvec_partition_->gvec().num_zcol();
             //}
-            size_t sz_max = std::max(grid_.size(2) * zcol_count_max, local_size());
+            size_t sz_max = std::max(size(2) * zcol_count_max, local_size());
             if (sz_max > fft_buffer_aux__.size()) {
                 fft_buffer_aux__ = mdarray<double_complex, 1>(sz_max, host_memory_type_, "fft_buffer_aux_");
                 if (pu_ == GPU) {
@@ -345,10 +342,10 @@ class FFT3D
                         switch (direction) {
                             case 1: {
                                 /* clear z buffer */
-                                std::fill(fftw_buffer_z_[tid], fftw_buffer_z_[tid] + grid_.size(2), 0);
+                                std::fill(fftw_buffer_z_[tid], fftw_buffer_z_[tid] + size(2), 0);
                                 /* load z column  of PW coefficients into buffer */
                                 for (size_t j = 0; j < gvec_partition_->gvec().zcol(icol).z.size(); j++) {
-                                    int z = grid().coord_by_freq<2>(gvec_partition_->gvec().zcol(icol).z[j]);
+                                    int z = coord_by_freq<2>(gvec_partition_->gvec().zcol(icol).z[j]);
                                     fftw_buffer_z_[tid][z] = data__[data_offset + j];
                                 }
 
@@ -356,7 +353,7 @@ class FFT3D
                                 if (is_reduced && !icol) {
                                     /* load remaining part of {0,0,z} column */
                                     for (size_t j = 0; j < gvec_partition_->gvec().zcol(icol).z.size(); j++) {
-                                        int z = grid().coord_by_freq<2>(-gvec_partition_->gvec().zcol(icol).z[j]);
+                                        int z = coord_by_freq<2>(-gvec_partition_->gvec().zcol(icol).z[j]);
                                         fftw_buffer_z_[tid][z] = std::conj(data__[data_offset + j]);
                                     }
                                 }
@@ -393,7 +390,7 @@ class FFT3D
 
                                 /* save z column of PW coefficients */
                                 for (size_t j = 0; j < gvec_partition_->gvec().zcol(icol).z.size(); j++) {
-                                    int z = grid().coord_by_freq<2>(gvec_partition_->gvec().zcol(icol).z[j]);
+                                    int z = coord_by_freq<2>(gvec_partition_->gvec().zcol(icol).z[j]);
                                     data__[data_offset + j] = fftw_buffer_z_[tid][z] * norm;
                                 }
 
@@ -535,7 +532,7 @@ class FFT3D
         {
             PROFILE("sddk::FFT3D::transform_xy");
 
-            int size_xy = grid_.size(0) * grid_.size(1);
+            int size_xy = size(0) * size(1);
 
             int is_reduced = gvec_partition_->gvec().reduced();
 
@@ -638,7 +635,7 @@ class FFT3D
                 TERMINATE("reduced set of G-vectors is required");
             }
 
-            int size_xy = grid_.size(0) * grid_.size(1);
+            int size_xy = size(0) * size(1);
 
 #ifdef __GPU
             if (pu_ == GPU) {
@@ -743,17 +740,17 @@ class FFT3D
     public:
 
         /// Constructor.
-        FFT3D(FFT3D_grid          grid__,
+        FFT3D(std::array<int, 3>  initial_dims__,
               Communicator const& comm__,
               device_t            pu__)
-            : comm_(comm__)
+            : FFT3D_grid(initial_dims__)
+            , comm_(comm__)
             , pu_(pu__)
-            , grid_(grid__)
         {
             PROFILE("sddk::FFT3D::FFT3D");
 
             /* split z-direction */
-            spl_z_ = splindex<block>(grid_.size(2), comm_.size(), comm_.rank());
+            spl_z_        = splindex<block>(size(2), comm_.size(), comm_.rank());
             local_size_z_ = spl_z_.local_size();
             offset_z_     = spl_z_.global_offset();
 
@@ -768,8 +765,8 @@ class FFT3D
 
             /* allocate 1d and 2d buffers */
             for (int i = 0; i < omp_get_max_threads(); i++) {
-                fftw_buffer_z_.push_back((double_complex*)fftw_malloc(grid_.size(2) * sizeof(double_complex)));
-                fftw_buffer_xy_.push_back((double_complex*)fftw_malloc(grid_.size(0) * grid_.size(1) * sizeof(double_complex)));
+                fftw_buffer_z_.push_back((double_complex*)fftw_malloc(size(2) * sizeof(double_complex)));
+                fftw_buffer_xy_.push_back((double_complex*)fftw_malloc(size(0) * size(1) * sizeof(double_complex)));
             }
 
             plan_forward_z_   = std::vector<fftw_plan>(omp_get_max_threads());
@@ -778,16 +775,16 @@ class FFT3D
             plan_backward_xy_ = std::vector<fftw_plan>(omp_get_max_threads());
 
             for (int i = 0; i < omp_get_max_threads(); i++) {
-                plan_forward_z_[i] = fftw_plan_dft_1d(grid_.size(2), (fftw_complex*)fftw_buffer_z_[i],
+                plan_forward_z_[i] = fftw_plan_dft_1d(size(2), (fftw_complex*)fftw_buffer_z_[i],
                                                       (fftw_complex*)fftw_buffer_z_[i], FFTW_FORWARD, FFTW_ESTIMATE);
 
-                plan_backward_z_[i] = fftw_plan_dft_1d(grid_.size(2), (fftw_complex*)fftw_buffer_z_[i],
+                plan_backward_z_[i] = fftw_plan_dft_1d(size(2), (fftw_complex*)fftw_buffer_z_[i],
                                                        (fftw_complex*)fftw_buffer_z_[i], FFTW_BACKWARD, FFTW_ESTIMATE);
 
-                plan_forward_xy_[i] = fftw_plan_dft_2d(grid_.size(1), grid_.size(0), (fftw_complex*)fftw_buffer_xy_[i],
+                plan_forward_xy_[i] = fftw_plan_dft_2d(size(1), size(0), (fftw_complex*)fftw_buffer_xy_[i],
                                                        (fftw_complex*)fftw_buffer_xy_[i], FFTW_FORWARD, FFTW_ESTIMATE);
 
-                plan_backward_xy_[i] = fftw_plan_dft_2d(grid_.size(1), grid_.size(0), (fftw_complex*)fftw_buffer_xy_[i],
+                plan_backward_xy_[i] = fftw_plan_dft_2d(size(1), size(0), (fftw_complex*)fftw_buffer_xy_[i],
                                                         (fftw_complex*)fftw_buffer_xy_[i], FFTW_BACKWARD, FFTW_ESTIMATE);
             }
 
@@ -900,22 +897,10 @@ class FFT3D
             }
         }
 
-        /// Informational about the FFT grid.
-        FFT3D_grid const& grid() const
-        {
-            return grid_;
-        }
-
-        /// Total size of the FFT grid.
-        inline int size() const
-        {
-            return grid_.size();
-        }
-
         /// Size of the local part of FFT buffer.
         inline int local_size() const
         {
-            return grid_.size(0) * grid_.size(1) * local_size_z_;
+            return size(0) * size(1) * local_size_z_;
         }
 
         inline int local_size_z() const
@@ -926,16 +911,6 @@ class FFT3D
         inline int offset_z() const
         {
             return offset_z_;
-        }
-
-        inline int size_x() const
-        {
-            return grid_.size(0);
-        }
-
-        inline int size_y() const
-        {
-            return grid_.size(1);
         }
 
         /// Direct access to the FFT buffer
@@ -987,17 +962,17 @@ class FFT3D
             #pragma omp parallel for schedule(static)
             for (int i = 0; i < gvp__.gvec().num_zcol(); i++) {
                 int icol = gvp__.idx_zcol<index_domain_t::global>(i);
-                int x = grid().coord_by_freq<0>(gvp__.gvec().zcol(icol).x);
-                int y = grid().coord_by_freq<1>(gvp__.gvec().zcol(icol).y);
-                assert(x >= 0 && x < grid().size(0));
-                assert(y >= 0 && y < grid().size(1));
-                z_col_pos_(i, 0) = x + y * grid_.size(0);
+                int x = coord_by_freq<0>(gvp__.gvec().zcol(icol).x);
+                int y = coord_by_freq<1>(gvp__.gvec().zcol(icol).y);
+                assert(x >= 0 && x < size(0));
+                assert(y >= 0 && y < size(1));
+                z_col_pos_(i, 0) = x + y * size(0);
                 if (gvp__.gvec().reduced()) {
-                    x = grid().coord_by_freq<0>(-gvp__.gvec().zcol(icol).x);
-                    y = grid().coord_by_freq<1>(-gvp__.gvec().zcol(icol).y);
-                    assert(x >= 0 && x < grid().size(0));
-                    assert(y >= 0 && y < grid().size(1));
-                    z_col_pos_(i, 1) = x + y * grid_.size(0);
+                    x = coord_by_freq<0>(-gvp__.gvec().zcol(icol).x);
+                    y = coord_by_freq<1>(-gvp__.gvec().zcol(icol).y);
+                    assert(x >= 0 && x < size(0));
+                    assert(y >= 0 && y < size(1));
+                    z_col_pos_(i, 1) = x + y * size(0);
                 }
             }
             t1.stop();

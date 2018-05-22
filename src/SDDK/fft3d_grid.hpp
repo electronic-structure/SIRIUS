@@ -1,4 +1,4 @@
-// Copyright (c) 2013-2016 Anton Kozhevnikov, Thomas Schulthess
+// Copyright (c) 2013-2018 Anton Kozhevnikov, Thomas Schulthess
 // All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without modification, are permitted provided that
@@ -83,10 +83,8 @@ class FFT3D_grid
     }
 
   public:
-    FFT3D_grid()
-    {
-    }
 
+    /// Create FFT grid with initial dimensions.
     FFT3D_grid(std::array<int, 3> initial_dims__)
     {
         find_grid_size(initial_dims__);
@@ -138,6 +136,7 @@ class FFT3D_grid
         return x__;
     }
 
+    /// Return 3d vector of frequencies corresponding to {x, y, z} position in the FFT buffer.
     inline std::array<int, 3> freq_by_coord(int x__, int y__, int z__) const
     {
         return {freq_by_coord<0>(x__), freq_by_coord<1>(y__), freq_by_coord<2>(z__)};

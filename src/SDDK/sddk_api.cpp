@@ -97,13 +97,14 @@ void sddk_create_fft(ftn_int* fft_grid_id__,
                      ftn_int* fcomm__,
                      ftn_int* new_object_id__)
 {
-    auto& comm = Communicator::map_fcomm(*fcomm__);
-    auto& fft_grid = *reinterpret_cast<FFT3D_grid*>(sddk_objects[*fft_grid_id__]);
-    
-    int id = get_next_free_object_id();
-    sddk_objects[id] = new FFT3D(fft_grid, comm, device_t::CPU);
-    sddk_objects_class_name[id] = "FFT3D";
-    *new_object_id__ = id;
+    STOP();
+    //auto& comm = Communicator::map_fcomm(*fcomm__);
+    //auto& fft_grid = *reinterpret_cast<FFT3D_grid*>(sddk_objects[*fft_grid_id__]);
+    //
+    //int id = get_next_free_object_id();
+    //sddk_objects[id] = new FFT3D(fft_grid, comm, device_t::CPU);
+    //sddk_objects_class_name[id] = "FFT3D";
+    //*new_object_id__ = id;
 }
 
 /// Create wave functions.
