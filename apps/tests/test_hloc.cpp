@@ -21,7 +21,7 @@ void test_hloc(std::vector<int> mpi_grid_dims__, double cutoff__, int num_bands_
     
     FFT3D_grid fft_box(find_translations(2 * cutoff__, M));
 
-    FFT3D fft(fft_box, mpi_grid.communicator(1 << 0), pu);
+    FFT3D fft(find_translations(2 * cutoff__, M), mpi_grid.communicator(1 << 0), pu);
 
     Communicator comm_ortho_fft = Communicator::world().split(fft.comm().rank());
 
