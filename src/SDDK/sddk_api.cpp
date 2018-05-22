@@ -12,18 +12,6 @@ std::vector<void*> sddk_objects;
 /// Mapping between object id and its class name.
 std::map<int, std::string> sddk_objects_class_name;
 
-///// Mapping between Fortran and SIRIUS MPI communicators.
-//inline Communicator const& map_fcomm(ftn_int fcomm__)
-//{
-//    static std::map<int, std::unique_ptr<Communicator>> fcomm_map;
-//    if (!fcomm_map.count(fcomm__)) {
-//        fcomm_map[fcomm__] = std::unique_ptr<Communicator>(new Communicator(MPI_Comm_f2c(fcomm__)));
-//    }
-//
-//    auto& comm = *fcomm_map[fcomm__];
-//    return comm;
-//}
-
 /// Get a free slot int the list of sddk objects.
 inline int get_next_free_object_id()
 {
@@ -88,7 +76,6 @@ void sddk_create_gvec(ftn_double* vk__,
                       ftn_int*    new_object_id__)
 {
     auto& comm = Communicator::map_fcomm(*fcomm__);
-    auto& comm_fft = Communicator::map_fcomm(*fcomm_fft__);
 
     bool reduce_gvec = (*reduce_gvec__ == 0) ? false : true;
 
@@ -100,7 +87,7 @@ void sddk_create_gvec(ftn_double* vk__,
     }
 
     int id = get_next_free_object_id();
-    sddk_objects[id] = new Gvec({vk__[0], vk__[1], vk__[2]}, lat_vec, *gmax__, comm, comm_fft, reduce_gvec);
+    sddk_objects[id] = new Gvec({vk__[0], vk__[1], vk__[2]}, lat_vec, *gmax__, comm, reduce_gvec);
     sddk_objects_class_name[id] = "Gvec";
     *new_object_id__ = id;
 }
@@ -110,7 +97,7 @@ void sddk_create_fft(ftn_int* fft_grid_id__,
                      ftn_int* fcomm__,
                      ftn_int* new_object_id__)
 {
-    auto& comm = map_fcomm(*fcomm__);
+    auto& comm = Communicator::map_fcomm(*fcomm__);
     auto& fft_grid = *reinterpret_cast<FFT3D_grid*>(sddk_objects[*fft_grid_id__]);
     
     int id = get_next_free_object_id();
@@ -124,13 +111,13 @@ void sddk_create_wave_functions(ftn_int* gkvec_id__,
                                 ftn_int* num_wf__,
                                 ftn_int* new_object_id__)
 {
-    int id = get_next_free_object_id();
-    auto& gkvec = *reinterpret_cast<Gvec*>(sddk_objects[*gkvec_id__]);
+    //int id = get_next_free_object_id();
+    //auto& gkvec = *reinterpret_cast<Gvec*>(sddk_objects[*gkvec_id__]);
 
     TERMINATE("pass number of spins");
-    sddk_objects[id] = new Wave_functions(gkvec, *num_wf__, 1);
-    sddk_objects_class_name[id] = "Wave_functions";
-    *new_object_id__ = id;
+    //sddk_objects[id] = new Wave_functions(gkvec, *num_wf__, 1);
+    //sddk_objects_class_name[id] = "Wave_functions";
+    //*new_object_id__ = id;
     //auto& wf = *reinterpret_cast<Wave_functions*>(sddk_objects[id]);
     //wf.pw_coeffs().prime(0, 0) = double_complex(12.13, 14.15);
     //wf.pw_coeffs().prime(0, 1) = double_complex(1, 2);
@@ -215,19 +202,19 @@ void sddk_get_gvec_offset(ftn_int* gvec_id__,
     *gvec_offset__ = reinterpret_cast<Gvec*>(sddk_objects[*gvec_id__])->gvec_offset(*rank__);
 }
 
-/// Get local number of G-vectors for the FFT.
-void sddk_get_gvec_count_fft(ftn_int* gvec_id__,
-                             ftn_int* gvec_count__)
-{
-    *gvec_count__ = reinterpret_cast<Gvec*>(sddk_objects[*gvec_id__])->partition().gvec_count_fft();
-}
-
-/// Get index offset of G-vectors for the FFT.
-void sddk_get_gvec_offset_fft(ftn_int* gvec_id__,
-                              ftn_int* gvec_offset__)
-{
-    *gvec_offset__ = reinterpret_cast<Gvec*>(sddk_objects[*gvec_id__])->partition().gvec_offset_fft();
-}
+///// Get local number of G-vectors for the FFT.
+//void sddk_get_gvec_count_fft(ftn_int* gvec_id__,
+//                             ftn_int* gvec_count__)
+//{
+//    *gvec_count__ = reinterpret_cast<Gvec*>(sddk_objects[*gvec_id__])->partition().gvec_count_fft();
+//}
+//
+///// Get index offset of G-vectors for the FFT.
+//void sddk_get_gvec_offset_fft(ftn_int* gvec_id__,
+//                              ftn_int* gvec_offset__)
+//{
+//    *gvec_offset__ = reinterpret_cast<Gvec*>(sddk_objects[*gvec_id__])->partition().gvec_offset_fft();
+//}
 
 void sddk_fft(ftn_int*            fft_id__,
               ftn_int*            direction__,
@@ -251,13 +238,13 @@ void sddk_fft(ftn_int*            fft_id__,
 void sddk_fft_prepare(ftn_int* fft_id__,
                       ftn_int* gvec_id__)
 {
-    auto gv = reinterpret_cast<Gvec*>(sddk_objects[*gvec_id__]);
-    reinterpret_cast<FFT3D*>(sddk_objects[*fft_id__])->prepare(gv->partition());
+    //auto gv = reinterpret_cast<Gvec*>(sddk_objects[*gvec_id__]);
+    //reinterpret_cast<FFT3D*>(sddk_objects[*fft_id__])->prepare(gv->partition());
 }
 
 void sddk_fft_dismiss(ftn_int* fft_id__)
 {
-    reinterpret_cast<FFT3D*>(sddk_objects[*fft_id__])->dismiss();
+    //reinterpret_cast<FFT3D*>(sddk_objects[*fft_id__])->dismiss();
 }
 
 void sddk_print_timers()
