@@ -50,7 +50,7 @@ struct space_group_symmetry_descriptor
 
     /// Fractional translation.
     vector3d<double> t;
-    
+
     /// Proper (+1) or improper (-1) rotation.
     int proper;
 
@@ -101,7 +101,7 @@ class Unit_cell_symmetry
         /** For each atom ia and symmetry isym sym_table_(ia, isym) stores index of atom ja to which original atom
          *  transforms under symmetry operation. */
         mdarray<int, 2> sym_table_;
-        
+
         /// List of all space group symmetry operations.
         std::vector<space_group_symmetry_descriptor> space_group_symmetry_;
 
@@ -116,7 +116,7 @@ class Unit_cell_symmetry
          *      - about \f$ \hat e_z \f$ through the angle \f$ \gamma \f$ (\f$ 0 \le \gamma < 2\pi \f$)
          *      - about \f$ \hat e_y \f$ through the angle \f$ \beta \f$ (\f$ 0 \le \beta \le \pi \f$) 
          *      - about \f$ \hat e_z \f$ through the angle \f$ \alpha \f$ (\f$ 0 \le \gamma < 2\pi \f$)
-         *  
+         *
          *  The total rotation matrix is defined as a product of three rotation matrices:
          *  \f[
          *      R(\alpha, \beta, \gamma) = 

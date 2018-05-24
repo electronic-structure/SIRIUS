@@ -403,84 +403,6 @@ class DFT_ground_state
             return tot_en;
         }
 
-        void symmetrize(Periodic_function<double>* f__,
-                        Periodic_function<double>* gz__,
-                        Periodic_function<double>* gx__,
-                        Periodic_function<double>* gy__)
-        {
-            PROFILE("sirius::DFT_ground_state::symmetrize");
-
-            auto& comm = ctx_.comm();
-
-            auto& remap_gvec = ctx_.remap_gvec();
-
-            if (ctx_.control().print_hash_) {
-                auto h = f__->hash_f_pw();
-                if (ctx_.comm().rank() == 0) {
-                    print_hash("f_unsymmetrized(G)", h);
-                }
-            }
-
-            unit_cell_.symmetry().symmetrize_function(&f__->f_pw_local(0), remap_gvec, ctx_.sym_phase_factors());
-
-            if (ctx_.control().print_hash_) {
-                auto h = f__->hash_f_pw();
-                if (ctx_.comm().rank() == 0) {
-                    print_hash("f_symmetrized(G)", h);
-                }
-            }
-
-            /* symmetrize PW components */
-            switch (ctx_.num_mag_dims()) {
-                case 1: {
-                    unit_cell_.symmetry().symmetrize_vector_function(&gz__->f_pw_local(0), remap_gvec, ctx_.sym_phase_factors());
-                    break;
-                }
-                case 3: {
-                    if (ctx_.control().print_hash_) {
-                        auto h1 = gx__->hash_f_pw();
-                        auto h2 = gy__->hash_f_pw();
-                        auto h3 = gz__->hash_f_pw();
-                        if (ctx_.comm().rank() == 0) {
-                            print_hash("fx_unsymmetrized(G)", h1);
-                            print_hash("fy_unsymmetrized(G)", h2);
-                            print_hash("fz_unsymmetrized(G)", h3);
-                        }
-                    }
-
-                    unit_cell_.symmetry().symmetrize_vector_function(&gx__->f_pw_local(0), &gy__->f_pw_local(0), &gz__->f_pw_local(0),
-                                                                     remap_gvec, ctx_.sym_phase_factors());
-
-                    if (ctx_.control().print_hash_) {
-                        auto h1 = gx__->hash_f_pw();
-                        auto h2 = gy__->hash_f_pw();
-                        auto h3 = gz__->hash_f_pw();
-                        if (ctx_.comm().rank() == 0) {
-                            print_hash("fx_symmetrized(G)", h1);
-                            print_hash("fy_symmetrized(G)", h2);
-                            print_hash("fz_symmetrized(G)", h3);
-                        }
-                    }
-                    break;
-                }
-            }
-
-            if (ctx_.full_potential()) {
-                /* symmetrize MT components */
-                unit_cell_.symmetry().symmetrize_function(f__->f_mt(), comm);
-                switch (ctx_.num_mag_dims()) {
-                    case 1: {
-                        unit_cell_.symmetry().symmetrize_vector_function(gz__->f_mt(), comm);
-                        break;
-                    }
-                    case 3: {
-                        unit_cell_.symmetry().symmetrize_vector_function(gx__->f_mt(), gy__->f_mt(), gz__->f_mt(), comm);
-                        break;
-                    }
-                }
-            }
-        }
-
         inline Band& band()
         {
             return band_;
@@ -653,8 +575,7 @@ inline json DFT_ground_state::find(double potential_tol, double energy_tol, int 
         density_.generate(kset_);
         /* symmetrize density and magnetization */
         if (ctx_.use_symmetry()) {
-            symmetrize(&density_.rho(), &density_.magnetization(0), &density_.magnetization(1),
-                       &density_.magnetization(2));
+            density_.symmetrize();
             if (ctx_.electronic_structure_method() == electronic_structure_method_t::pseudopotential) {
                 density_.symmetrize_density_matrix();
             }
@@ -686,8 +607,7 @@ inline json DFT_ground_state::find(double potential_tol, double energy_tol, int 
 
         /* symmetrize potential and effective magnetic field */
         if (ctx_.use_symmetry()) {
-            symmetrize(potential_.effective_potential(), potential_.effective_magnetic_field(0),
-                       potential_.effective_magnetic_field(1), potential_.effective_magnetic_field(2));
+            potential_.symmetrize();
         }
 
         /* transform potential to real space after symmetrization */
