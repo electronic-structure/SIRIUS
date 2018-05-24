@@ -27,8 +27,7 @@
 
 
 namespace sirius {
-// TODO: add scalar and vector components
-//       add symmetrize_scalar, symmetrize_vector
+// TODO: add symmetrize_scalar, symmetrize_vector
 class Field4D
 {
   private:
@@ -132,10 +131,33 @@ class Field4D
         return *(components_[0]);
     }
 
+    Periodic_function<double> const& scalar() const
+    {
+        return *(components_[0]);
+    }
+
     Periodic_function<double>& vector(int i)
     {
         assert(i >= 0 && i <= 2);
         return *(components_[i + 1]);
+    }
+
+    Periodic_function<double> const& vector(int i) const
+    {
+        assert(i >= 0 && i <= 2);
+        return *(components_[i + 1]);
+    }
+
+    Periodic_function<double>& component(int i)
+    {
+        assert(i >= 0 && i <= 3);
+        return *(components_[i]);
+    }
+
+    Periodic_function<double> const& component(int i) const
+    {
+        assert(i >= 0 && i <= 3);
+        return *(components_[i]);
     }
 
     void allocate()

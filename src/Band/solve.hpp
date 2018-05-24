@@ -95,7 +95,6 @@ inline int Band::solve_pseudo_potential(K_point& kp__, Hamiltonian& hamiltonian_
 
 inline void Band::solve(K_point_set& kset__, Hamiltonian& hamiltonian__, bool precompute__) const
 {
-    ctx_.comm().barrier();
     PROFILE("sirius::Band::solve");
 
     if (precompute__ && ctx_.full_potential()) {
@@ -167,6 +166,4 @@ inline void Band::solve(K_point_set& kset__, Hamiltonian& hamiltonian__, bool pr
             printf("\n");
         }
     }
-
-    ctx_.comm().barrier();
 }
