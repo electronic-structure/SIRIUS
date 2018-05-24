@@ -191,13 +191,6 @@ inline std::string hostname()
 }
 
 
-//inline double wtime()
-//{
-//    timeval t;
-//    gettimeofday(&t, NULL);
-//    return double(t.tv_sec) + double(t.tv_usec) / 1e6;
-//}
-
 }
 
 #define DUMP(...)                                                                     \

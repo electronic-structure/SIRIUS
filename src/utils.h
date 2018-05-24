@@ -36,7 +36,7 @@
 using namespace sddk;
 
 /// Utility class.
-class Utils
+class Utils // TODO: namespace utils
 {
   public:
     /// Maximum number of \f$ \ell, m \f$ combinations for a given \f$ \ell_{max} \f$
@@ -45,12 +45,12 @@ class Utils
         return (lmax + 1) * (lmax + 1);
     }
 
-    static inline int lm_by_l_m(int l, int m)
+    static inline int lm_by_l_m(int l, int m) // TODO lm_by_l_m(l, m) -> lm(l, m)
     {
         return (l * l + l + m);
     }
 
-    static inline int lmax_by_lmmax(int lmmax__)
+    static inline int lmax_by_lmmax(int lmmax__) // TODO: lmax_by_lmmax(lmmax) -> lmax(lmmax)
     {
         int lmax = int(std::sqrt(double(lmmax__)) + 1e-8) - 1;
         if (lmmax(lmax) != lmmax__) {
@@ -65,7 +65,7 @@ class Utils
         return ifs.is_open();
     }
 
-    static inline double fermi_dirac_distribution(double e)
+    static inline double fermi_dirac_distribution(double e) // TODO: namespace smearing
     {
         double kT = 0.001;
         if (e > 100 * kT) {
@@ -79,7 +79,7 @@ class Utils
 
     static inline double gaussian_smearing(double e, double delta)
     {
-        return 0.5 * (1 - gsl_sf_erf(e / delta));
+        return 0.5 * (1 - gsl_sf_erf(e / delta)); // TODO std::erf
     }
 
     static inline double cold_smearing(double e)
@@ -421,6 +421,29 @@ class Utils
         }
 
         return std::move(dict);
+    }
+
+    inline static std::string timestamp(bool full = false)
+    {
+        timeval t;
+        gettimeofday(&t, NULL);
+    
+        char buf[128];
+    
+        tm* ptm = localtime(&t.tv_sec);
+        if (full) {
+            strftime(buf, sizeof(buf), "%Y-%m-%d %H:%M:%S", ptm);
+        } else {
+            strftime(buf, sizeof(buf), "%H:%M:%S", ptm);
+        }
+        return std::string(buf);
+    }
+
+    inline double wtime()
+    {
+        timeval t;
+        gettimeofday(&t, NULL);
+        return double(t.tv_sec) + double(t.tv_usec) / 1e6;
     }
 };
 

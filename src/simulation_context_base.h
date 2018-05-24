@@ -337,7 +337,9 @@ class Simulation_context_base: public Simulation_parameters
             return mpi_grid_->communicator(1 << 0);
         }
 
-        /// Band and BLACS grid communicator.
+        /// Band parallelization communicator.
+        /** This communicator is used to parallelize the band problem. However it is not necessarily used
+            to create the BLACS grid. Diagonalization might be sequential. */
         Communicator const& comm_band() const
         {
             /* 2nd and 3rd dimensions of the MPI grid are used for parallelization inside k-point */
