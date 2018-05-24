@@ -44,19 +44,6 @@ class Profiler
     /// Profiler's timer.
     std::unique_ptr<timer> timer_;
 
-// std::string timestamp()
-//{
-//    timeval t;
-//    gettimeofday(&t, NULL);
-//
-//    char buf[100];
-//
-//    tm* ptm = localtime(&t.tv_sec);
-//    //strftime(buf, sizeof(buf), "%Y-%m-%d %H:%M:%S", ptm);
-//    strftime(buf, sizeof(buf), "%H:%M:%S", ptm);
-//    return std::string(buf);
-//}
-
     #ifdef __PROFILE_STACK
     static std::vector<std::string>& call_stack()
     {

@@ -14,6 +14,7 @@ integer :: comm_fft, i, nbnd, ig
 complex(8), allocatable :: psi(:), psi_out(:)
 complex(8), pointer :: wf_ptr(:, :), wf_extra_ptr(:, :)
 complex(8), allocatable :: wf(:, :)
+type(C_PTR) gvec_h, fft_h
 
 !--------------------------!
 ! basic MPI initialization !
@@ -60,9 +61,13 @@ call mpi_comm_rank(comm_fft, rank_fft, ierr)
 !== ! create FFT grid object
 !== call sddk_create_fft_grid(fft_grid(1), fft_grid_id)
 !== 
-!== ! create G-vector object
-!== call sddk_create_gvec((/0.d0, 0.d0, 0.d0/), recip_lat(:, 1), recip_lat(:, 2), recip_lat(:, 3), gmax,&
-!==                       &0, MPI_COMM_WORLD, comm_fft, gvec_id)
+
+! create G-vector object
+call sddk_create_gkvec((/0.d0, 0.d0, 0.d0/), recip_lat(:, 1), recip_lat(:, 2), recip_lat(:, 3), gmax,&
+                      &c_logical(.false.), MPI_COMM_WORLD, gvec_h)
+
+call sddk_delete_object(gvec_h)
+
 !== call sddk_get_num_gvec(gvec_id, num_gvec)
 !== if (rank.eq.0) then
 !==   write(*,*)'num_gvec: ', num_gvec
@@ -79,9 +84,10 @@ call mpi_comm_rank(comm_fft, rank_fft, ierr)
 !== call sddk_get_gvec_offset_fft(gvec_id, gvec_offset_fft)
 !== !write(*,*)"local number of G-vectors and offset for FFT: ", gvec_count_fft, gvec_offset_fft
 !== 
-!== ! create FFT driver
-!== call sddk_create_fft(fft_grid_id, comm_fft, fft_id)
-!== 
+! create FFT driver
+call sddk_create_fft(fft_grid(1), comm_fft, fft_h)
+call sddk_delete_object(fft_h)
+
 !== ! create wave-functions
 !== call sddk_create_wave_functions(gvec_id, nbnd, wf_id)
 !== 
@@ -153,16 +159,16 @@ call mpi_comm_rank(comm_fft, rank_fft, ierr)
 !deallocate(psi)
 !deallocate(psi_out)
 
-! destroy FFT driver
-call sddk_delete_object(fft_id)
-! destroy G-vecgtors
-call sddk_delete_object(gvec_id)
-! destroy FFT grid
-call sddk_delete_object(fft_grid_id)
-! destroy wave functions
-call sddk_delete_object(wf_id)
-
-call sddk_print_timers()
+!! destroy FFT driver
+!call sddk_delete_object(fft_id)
+!! destroy G-vecgtors
+!call sddk_delete_object(gvec_id)
+!! destroy FFT grid
+!call sddk_delete_object(fft_grid_id)
+!! destroy wave functions
+!call sddk_delete_object(wf_id)
+!
+!call sddk_print_timers()
 
 call mpi_finalize(ierr)
 
