@@ -29,6 +29,7 @@
 #include "k_point_set.h"
 #include "simulation_context.h"
 #include "mixer.h"
+#include "field4d.hpp"
 
 #ifdef __GPU
 extern "C" void generate_dm_pw_gpu(int num_atoms__,
@@ -139,12 +140,12 @@ namespace sirius {
  *  quadratic forms in radial functions. 
  *
  *  \note density and potential are allocated as global function because it's easier to load and save them. */
-class Density
+class Density: public Field4D
 {
     private:
 
         /// Context of the simulation.
-        Simulation_context& ctx_;
+        //Simulation_context& ctx_;
         
         /// Alias to ctx_.unit_cell()
         Unit_cell& unit_cell_;
@@ -339,7 +340,7 @@ class Density
 
         /// Constructor
         Density(Simulation_context& ctx__)
-            : ctx_(ctx__)
+            : Field4D(ctx__, ctx_.lmmax_rho())
             , unit_cell_(ctx_.unit_cell())
         {
             if (!ctx_.initialized()) {
@@ -852,16 +853,6 @@ class Density
             return paw_density_data_[spl_paw_ind].ps_density_;
         }
 
-//        mdarray<double, 3> const& ae_paw_atom_magn(int spl_paw_ind) const
-//        {
-//            return paw_density_data_[spl_paw_ind].ae_magnetization_;
-//        }
-//
-//        mdarray<double, 3> const& ps_paw_atom_magn(int spl_paw_ind) const
-//        {
-//            return paw_density_data_[spl_paw_ind].ps_magnetization_;
-//        }
-
         void allocate()
         {
             rho_->allocate_mt(true);
@@ -1121,6 +1112,11 @@ class Density
          *  \f]
          */
         void symmetrize_density_matrix();
+
+        void symmetrize()
+        {
+            Field4D::symmetrize(&rho(), &magnetization(0), &magnetization(1), &magnetization(2));
+        }
 };
 
 #include "Density/initial_density.hpp"

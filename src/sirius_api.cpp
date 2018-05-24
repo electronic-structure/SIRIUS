@@ -2206,7 +2206,7 @@ void sirius_set_atom_type_vloc(char const* label__,
 
 void sirius_symmetrize_density()
 {
-    dft_ground_state->symmetrize(&density->rho(), &density->magnetization(0), &density->magnetization(1), &density->magnetization(2));
+    density->symmetrize();
 }
 
 void sirius_get_gvec_index(int32_t* gvec__, int32_t* ig__)

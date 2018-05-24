@@ -51,7 +51,7 @@ class Periodic_function: public Smooth_periodic_function<T>
     private:
        
         /// Complex counterpart for a given type T.
-        typedef typename type_wrapper<T>::complex_t complex_t;
+        //typedef typename type_wrapper<T>::complex_t complex_t;
 
         Simulation_context const& ctx_;
         

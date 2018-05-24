@@ -36,11 +36,11 @@ namespace sirius {
 /** \note At some point we need to update the atomic potential with the new MT potential. This is simple if the 
           effective potential is a global function. Otherwise we need to pass the effective potential between MPI ranks.
           This is also simple, but requires some time. It is also easier to mix the global functions.  */
-class Potential 
+class Potential: public Field4D
 {
     private:
 
-        Simulation_context& ctx_;
+        //Simulation_context& ctx_;
 
         Unit_cell& unit_cell_;
 
@@ -330,7 +330,7 @@ class Potential
 
         /// Constructor
         Potential(Simulation_context& ctx__)
-            : ctx_(ctx__)
+            : Field4D(ctx__, ctx__.lmmax_pot())
             , unit_cell_(ctx__.unit_cell())
             , comm_(ctx__.comm())
         {
@@ -1236,6 +1236,12 @@ class Potential
         inline double vha_el(int ia__) const
         {
             return vh_el_(ia__);
+        }
+
+        void symmetrize()
+        {
+            Field4D::symmetrize(effective_potential(), effective_magnetic_field(0),
+                                effective_magnetic_field(1), effective_magnetic_field(2));
         }
 };
 
