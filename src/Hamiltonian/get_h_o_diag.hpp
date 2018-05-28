@@ -130,7 +130,7 @@ Hamiltonian::get_h_diag(K_point* kp__) const
 
                 for (int xi2 = 0; xi2 < nbf; xi2++) {
                     for (int xi1 = 0; xi1 < nbf; xi1++) {
-                        d_sum(xi1, xi2) += this->D<T>().operator()(xi1, xi2, ispn, ia);
+                        d_sum(xi1, xi2) += this->D<T>().template operator()(xi1, xi2, ispn, ia);
                     }
                 }
             }

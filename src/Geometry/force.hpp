@@ -206,29 +206,15 @@ class Force
 
         // It is based on this reference : PRB 84, 161102(R) (2011)
 
-        void hubbard_force_add_k_contribution_colinear(K_point &kp__, mdarray<double, 2>& force__)
+        void hubbard_force_add_k_contribution_colinear(K_point &kp__, mdarray<double, 2>& forceh_)
         {
-            if (ctx_.so_correction() || (ctx_.num_mag_dims() == 3)) {
-                TERMINATE("Hubbard forces are yet implemented for the full lda+U corrections");
-            }
+            mdarray<double_complex, 5> dn_(2 * hamiltonian_.U().hubbard_lmax() + 1,
+                                           2 * hamiltonian_.U().hubbard_lmax() + 1,
+                                           2,
+                                           ctx_.unit_cell().num_atoms(),
+                                           3);
 
-            // temporary wave functions
-            Wave_functions phi(kp__.gkvec_partition(), hamiltonian_.U().number_of_hubbard_orbitals(), ctx_.num_spins());
-            Wave_functions phitmp(kp__.gkvec_partition(), hamiltonian_.U().number_of_hubbard_orbitals(), ctx_.num_spins());
-            Wave_functions dphi(kp__.gkvec_partition(), hamiltonian_.U().number_of_hubbard_orbitals(), ctx_.num_spins());
-
-            // We generate the atomic orbitals again since there is no waranty
-            // that atomic orbitals of different atoms are not mixed
-            // together. Since we need the gradient of these guys compared to the
-            // positions of the atoms better calculate them again
-
-            hamiltonian_.U().GenerateAtomicOrbitals(kp__, phi);
-
-            // check if we have a norm conserving pseudo potential only
-            bool augment = false;
-            for (auto ia = 0; (ia < ctx_.unit_cell().num_atom_types()) && (!augment); ia++) {
-                augment = ctx_.unit_cell().atom_type(ia).augment();
-            }
+            Wave_functions phi(kp__.gkvec_partition(), hamiltonian_.U().number_of_hubbard_orbitals(), 1);
 
             if (ctx_.gamma_point() && (ctx_.so_correction() == false)) {
                 hamiltonian_.prepare<double>();
@@ -236,254 +222,50 @@ class Force
                 hamiltonian_.prepare<double_complex>();
             }
 
-#ifdef __GPU
-            if (ctx_.processing_unit() == GPU) {
-                for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-                    /* allocate GPU memory */
-                    phi.pw_coeffs(ispn).prime().allocate(memory_t::device);
-                    phi.pw_coeffs(ispn).copy_to_device(0, hamiltonian_.U().number_of_hubbard_orbitals());
-                }
-            }
-#endif
+            kp__.beta_projectors().prepare();
+            Beta_projectors_gradient bp_grad_(ctx_, kp__.gkvec(), kp__.igk_loc(), kp__.beta_projectors());
+            bp_grad_.prepare();
 
-            auto &q_op = hamiltonian_.Q<double_complex>();
 
-            if (!ctx_.full_potential() && augment) {
-                /* apply the s matrix here on the orbitals (ultra soft pseudo potential) */
-                /* Not the block functions. */
-                // Put it in dphi
-                for (int i = 0; i < kp__.beta_projectors().num_chunks(); i++) {
-                    /* generate beta-projectors for a block of atoms */
-                    kp__.beta_projectors().generate(i);
-                    /* non-collinear case */
-                    for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
+            kp__.generate_atomic_centered_wavefunctions_(hamiltonian_.U().number_of_hubbard_orbitals(),
+                                                         phi,
+                                                         hamiltonian_.U().offset,
+                                                         true);
 
-                        auto beta_phi = kp__.beta_projectors().inner<double_complex>(i, phi, ispn, 0, hamiltonian_.U().number_of_hubbard_orbitals());
+            //                #pragma omp parallel for
+            for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {
+                // compute the derivative of the occupancies numbers
+                dn_.zero();
 
-                        /* apply Q operator (diagonal in spin) */
-                        q_op.apply(i, ispn, dphi, 0, hamiltonian_.U().number_of_hubbard_orbitals(), kp__.beta_projectors(),
-                                   beta_phi);
-                        /* apply non-diagonal spin blocks */
-                        if (ctx_.so_correction()) {
-                            q_op.apply(i, ispn ^ 3, dphi, 0, hamiltonian_.U().number_of_hubbard_orbitals(), kp__.beta_projectors(), beta_phi);
-                        }
-                    }
-                }
-            }
+                hamiltonian_.U().compute_occupancies_derivatives(kp__,
+                                                                 phi,
+                                                                 bp_grad_,
+                                                                 hamiltonian_.Q<double_complex>(),
+                                                                 dn_,
+                                                                 ia);
 
-            // I will need to multiply by the conjugate because I compute
-            // <psi | S | phi> instead.
-
-            int HowManyBands = kp__.num_occupied_bands(0);
-            if (ctx_.num_spins() == 2)
-                HowManyBands = kp__.num_occupied_bands(1);
-
-            dmatrix<double_complex> PhiSPsi(hamiltonian_.U().number_of_hubbard_orbitals(), HowManyBands);
-
-            // now we compute the derivative of <phi | S | psi> compared to r_alpha
-            // we have two terms <d phi| S | psi> + <phi | d S | psi>
-
-            // the second term is split into two terms (only present for the ultra soft case)
-            //<phi | d S | psi> = \sum_ij q_ij (<phi | dbeta_i > < beta_j|psi> + <phi | beta_i > < dbeta_j|psi>
-
-            dmatrix<double_complex> dPhiSPsi(hamiltonian_.U().number_of_hubbard_orbitals(), HowManyBands);
-
-            // I need now the derivatives of the beta projectors
-            Beta_projectors_gradient bp_grad(ctx_, kp__.gkvec(), kp__.igk_loc(), kp__.beta_projectors());
-
-            for (int dir = 0; dir < 3; dir++) {
-                // Ultra soft case
-
-                // compute \partial phi/\partial_{r_a}
-
-                hamiltonian_.U().ComputeDerivatives(kp__, phi, dphi, dir);
-
-                // compute  S | dphi>
-
-                if (!ctx_.full_potential() && augment) {
-#ifdef __GPU
-                    if (ctx_.processing_unit() == GPU) {
-                        for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-                            phitmp.pw_coeffs(ispn).prime().allocate(memory_t::device);
-                            phitmp.pw_coeffs(ispn).copy_to_device(0, hamiltonian_.U().number_of_hubbard_orbitals());
-                        }
-                    }
-#endif
-                    for (int s = 0; s < ctx_.num_spins(); s++) {
-                        // I need to consider the case where all atoms are norm
-                        // conserving. In that case the S operator is diagonal in orbital space
-                        phitmp.copy_from(ctx_.processing_unit(), hamiltonian_.U().number_of_hubbard_orbitals(), dphi, s, 0, s, 0);
-                    }
-
-                    // Now add the contribution from the beta projectors
-                    for (int i = 0; i < kp__.beta_projectors().num_chunks(); i++) {
-                        // Ultra soft case
-                        for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-                            auto beta_dphi = kp__.beta_projectors().inner<double_complex>(i, phitmp, ispn, 0, hamiltonian_.U().number_of_hubbard_orbitals());
-
-                            // compute  S | dphi>
-
-                            /* apply Q operator (diagonal in spin) */
-                            q_op.apply(i, ispn, dphi, 0, hamiltonian_.U().number_of_hubbard_orbitals(), kp__.beta_projectors(),
-                                       beta_dphi);
-
-                            // compute dS | phi> and add it it d(S|phi>)
-                            // dS contains two terms Q_ij (|d \beta_i><beta_j| + |beta_i><d beta_j|)
-
-                            // first term Q_{ij} |d beta_i><beta_j|
-
-                            // compute the derivatives of the beta projectors and compute
-                            // the overlap with the atomic orbitals.
-                            bp_grad.generate(i, dir);
-                            auto dbeta_phi = bp_grad.template inner<double_complex>(i, phi, ispn, 0, hamiltonian_.U().number_of_hubbard_orbitals());
-
-                            // Q_ij <d\beta_i|phi> |beta_j>
-                            // add it to dphi
-
-                            /* apply Q operator (diagonal in spin) */
-                            q_op.apply(i, ispn, dphi, 0, hamiltonian_.U().number_of_hubbard_orbitals(), kp__.beta_projectors(), dbeta_phi);
-
-                            //second term Q_{ij} |beta_i><d beta_j|
-
-                            // Q_ij <\beta_i|phi> |d beta_j>
-
-                            /* apply Q operator (diagonal in spin) */
-                            q_op.apply(i, ispn, dphi, 0, hamiltonian_.U().number_of_hubbard_orbitals(), kp__.beta_projectors(),
-                                       beta_dphi);
-                        }
-                    }
-                }
-
-#ifdef __GPU
-                if (ctx_.processing_unit() == GPU) {
-                    for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-                        kp__.hubbard_wave_functions().pw_coeffs(ispn).prime().allocate(memory_t::device);
-                        kp__.hubbard_wave_functions().pw_coeffs(ispn).copy_to_device(0, hamiltonian_.U().number_of_hubbard_orbitals());
-                    }
-                }
-#endif
-
-                // now compute the product with psi and add it to <psi | d (S | phi>)
-                dPhiSPsi.zero();
-                for (int ispn = 0; ispn < 2; ispn++) {
-                    inner(ctx_.processing_unit(),
-                          ispn,
-                          kp__.spinor_wave_functions(),
-                          0,
-                          kp__.num_occupied_bands(ispn),
-                          dphi,
-                          0,
-                          hamiltonian_.U().number_of_hubbard_orbitals(),
-                          dPhiSPsi,
-                          0,
-                          (ispn == 1) * kp__.num_occupied_bands(1));
-                }
-
-#ifdef __GPU
-                if (ctx_.processing_unit() == GPU) {
-                    for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-                        dphi.deallocate_on_device(ispn);
-                    }
-
-                    for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-                        phi.pw_coeffs(ispn).prime().allocate(memory_t::device);
-                        phi.pw_coeffs(ispn).copy_to_device(0, hamiltonian_.U().number_of_hubbard_orbitals());
-                    }
-                }
-#endif
-
-                if (!ctx_.full_potential() && augment) {
-
-                    for (int s = 0; s < ctx_.num_spins(); s++) {
-                        // I need to consider the case where all atoms are norm
-                        // conserving. In that case the S operator is diagonal in orbital space
-                        phitmp.copy_from(ctx_.processing_unit(), hamiltonian_.U().number_of_hubbard_orbitals(), phi, s, 0, s, 0);
-                    }
-
-                    for (int i = 0; i < kp__.beta_projectors().num_chunks(); i++) {
-                        // Ultra soft case
-                        for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-                            auto beta_dphi = kp__.beta_projectors().template inner<double_complex>(i, phitmp, ispn,
-                                                                                                   0, hamiltonian_.U().number_of_hubbard_orbitals());
-                            // compute  S | phi>
-
-                            /* apply Q operator (diagonal in spin) */
-                            hamiltonian_.Q<double_complex>().apply(i, ispn, phi, 0, hamiltonian_.U().number_of_hubbard_orbitals(), kp__.beta_projectors(),
-                                                                   beta_dphi);
-                        }
-                    }
-                }
-
-                // compute <phi|S|psi>
-                PhiSPsi.zero();
-                for (int ispn = 0; ispn < 2; ispn++) {
-                    inner(ctx_.processing_unit(),
-                          ispn,
-                          kp__.spinor_wave_functions(),
-                          0,
-                          kp__.num_occupied_bands(ispn),
-                          phi,
-                          0,
-                          hamiltonian_.U().number_of_hubbard_orbitals(),
-                          PhiSPsi,
-                          0,
-                          (ispn == 1) * kp__.num_occupied_bands(1));
-                }
-
-#ifdef __GPU
-                if (ctx_.processing_unit() == GPU) {
-                    for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-                        kp__.hubbard_wave_functions().deallocate_on_device(ispn);
-                        phi.deallocate_on_device(ispn);
-                        phitmp.deallocate_on_device(ispn);
-                    }
-                }
-#endif
-                // compute d ns. See Eq.3 of ref PRB 84, 161102(R) (2011)
-                // https://journals.aps.org/prb/pdf/10.1103/PhysRevB.84.161102
-
-                mdarray<double_complex, 4> dn (2 * hamiltonian_.U().hubbard_lmax() + 1,
-                                               2 * hamiltonian_.U().hubbard_lmax() + 1,
-                                               ctx_.num_spins(), ctx_.unit_cell().num_atoms());
-                #pragma omp parallel for
-                for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ++ia) {
-                    const auto& atom = ctx_.unit_cell().atom(ia);
-                    const int lmax_at = 2 * atom.type().hubbard_l() + 1;
-                    if (atom.type().hubbard_correction()) {
-                        for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-                            size_t bnd_offset = 0;
-                            if (ispn == 1)
-                                bnd_offset = kp__.num_occupied_bands(0);
-                            for (int m1 = 0; m1 < lmax_at; m1++) {
-                                for (int m2 = 0; m2 < lmax_at; m2++) {
-                                    for (int nbnd = 0; nbnd < kp__.num_occupied_bands(ispn); nbnd++) {
-                                        dn(m1, m2, ispn, ia) += (std::conj(PhiSPsi(hamiltonian_.U().offset[ia] + m1, nbnd + bnd_offset)) *
-                                                                 dPhiSPsi(hamiltonian_.U().offset[ia] + m2, nbnd + bnd_offset) +
-                                                                 std::conj(dPhiSPsi(hamiltonian_.U().offset[ia] + m1, nbnd + bnd_offset)) *
-                                                                 PhiSPsi(hamiltonian_.U().offset[ia] + m2, nbnd + bnd_offset)) *
-                                            kp__.weight() * kp__.band_occupancy(nbnd, ispn);
+                for (int dir = 0; dir < 3; dir++) {
+                    for (int ia1 = 0; ia1 < ctx_.unit_cell().num_atoms(); ia1++) {
+                        const auto& atom = ctx_.unit_cell().atom(ia1);
+                        if (atom.type().hubbard_correction()) {
+                            const int lmax_at = 2 * atom.type().hubbard_l() + 1;
+                            for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
+                                for (int m1 = 0; m1 < lmax_at; m1++) {
+                                    for (int m2 = 0; m2 < lmax_at; m2++) {
+                                        forceh_(dir, ia) -= (hamiltonian_.U().U(m2, m1, ispn, ia1) *
+                                                             dn_(m1, m2, ispn, ia1, dir)).real() * kp__.weight();
                                     }
                                 }
                             }
                         }
                     }
                 }
-                #pragma omp parallel for
-                for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ++ia) {
-                    const auto& atom = ctx_.unit_cell().atom(ia);
-                    const int lmax_at = 2 * atom.type().hubbard_l() + 1;
-                    if (atom.type().hubbard_correction()) {
-                        for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-                            for (int m1 = 0; m1 < lmax_at; m1++) {
-                                for (int m2 = 0; m2 < lmax_at; m2++) {
-                                    force__(dir, ia) -= (hamiltonian_.U().U(m2, m1, ispn, ia).real() * dn(m1, m2, ispn, ia)).real();
-                                }
-                            }
-                        }
-                    }
-                }
             }
+            kp__.beta_projectors().dismiss();
+            bp_grad_.dismiss();
+            hamiltonian_.dismiss();
         }
+
 
         void ibs_force(K_point* kp__,
                        mdarray<double, 2>& ffac__,
@@ -1010,6 +792,14 @@ class Force
             forces_hubbard_ = mdarray<double, 2>(3, ctx_.unit_cell().num_atoms());
             forces_hubbard_.zero();
 
+            auto print_forces = [&](mdarray<double, 2> const& forces)
+                {
+                    for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {
+                        printf("atom %4i    force = %15.7f  %15.7f  %15.7f \n", ctx_.unit_cell().atom(ia).type_id(),
+                               forces(0, ia), forces(1, ia), forces(2, ia));
+                    }
+                };
+
             for (int ikloc = 0; ikloc < kset_.spl_num_kpoints().local_size(); ikloc++) {
 
                 int ik  = kset_.spl_num_kpoints(ikloc);
@@ -1020,6 +810,7 @@ class Force
                 hubbard_force_add_k_contribution_colinear(*kp, forces_hubbard_);
             }
 
+            print_forces(forces_hubbard());
             // global reduction
             ctx_.comm().allreduce<double, mpi_op_t::sum>(forces_hubbard_.at<CPU>(),
                                                          static_cast<int>(forces_hubbard_.size()));

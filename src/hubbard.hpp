@@ -7,6 +7,9 @@
 #include "k_point.h"
 #include "wave_functions.hpp"
 #include "non_local_operator.h"
+#include "../Beta_projectors/beta_projectors.h"
+#include "../Beta_projectors/beta_projectors_gradient.h"
+#include "../Beta_projectors/beta_projectors_strain_deriv.h"
 #include "radial_integrals.h"
 #include "mixer.h"
 
@@ -25,11 +28,7 @@ class Hubbard_potential
 
     int number_of_hubbard_orbitals_{0};
 
-    ///  mixer for the hubbard occupancies.
-    std::unique_ptr<Mixer<double_complex>> mixer_{nullptr};
-
     mdarray<double_complex, 5> occupancy_number_;
-
 
     double hubbard_energy_{0.0};
     double hubbard_energy_u_{0.0};
@@ -124,6 +123,53 @@ public:
         return this->normalize_orbitals_only_;
     }
 
+    void apply_hubbard_potential(K_point& kp,
+                                 const int ispn_,
+                                 const int idx__,
+                                 const int n__,
+                                 Wave_functions& phi,
+                                 Wave_functions& ophi);
+
+    void generate_atomic_orbitals(K_point& kp, Q_operator<double_complex>& q_op);
+    void generate_atomic_orbitals(K_point& kp, Q_operator<double>& q_op);
+
+    // Maybe put this one private
+    void orthogonalize_atomic_orbitals(K_point& kp, Wave_functions &sphi);
+
+    void hubbard_compute_occupation_numbers(K_point_set& kset_);
+
+    inline void set_hubbard_occupancies_matrix(double *occ, int ld);
+    inline void set_hubbard_occupancies_matrix_nc(double_complex *occ, int ld);
+    inline void get_hubbard_occupancies_matrix(double *occ, int ld);
+    inline void get_hubbard_occupancies_matrix_nc(double_complex *occ, int ld);
+
+    inline void set_hubbard_potential_nc(double_complex *occ, int ld);
+    inline void set_hubbard_potential(double *occ, int ld);
+
+
+
+    void compute_occupancies_derivatives(K_point &kp,
+                                         Wave_functions &phi,
+                                         Beta_projectors_gradient &bp_grad_,
+                                         Q_operator<double_complex>& q_op,
+                                         mdarray<double_complex, 5> &dn_,
+                                         const int atom_id);
+
+    void compute_gradient_strain_wavefunctions(K_point &kp__,
+                                               Wave_functions &dphi,
+                                               const mdarray<double, 2> &rlm_g,
+                                               const mdarray<double, 3> &rlm_dg,
+                                               const int mu,
+                                               const int nu);
+
+    void compute_occupancies_stress_derivatives(K_point &kp,
+                                                Beta_projectors_strain_deriv &bp_grad_,
+                                                Q_operator<double_complex>& q_op, // Compensnation operator or overlap operator
+                                                mdarray<double_complex, 5> &dn_); // derivative of the occupation number compared to displacement of atom aton_id
+
+
+    void calculate_hubbard_potential_and_energy_colinear_case();
+    void calculate_hubbard_potential_and_energy_non_colinear_case();
     void calculate_hubbard_potential_and_energy()
     {
         this->hubbard_energy_                 = 0.0;
@@ -141,30 +187,30 @@ public:
             calculate_hubbard_potential_and_energy_non_colinear_case();
         }
 
-        // The potential should be hermitian from the calculations but
-        // by security I make it hermitian again
+        // // The potential should be hermitian from the calculations but
+        // // by security I make it hermitian again
 
-        for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
-            auto& atom = unit_cell_.atom(ia);
-            if (atom.type().hubbard_correction()) {
-                // diagonal up up down down blocks
-                for (int is = 0; is < ctx_.num_spins(); is++) {
-                    for (int m1 = 0; m1 < 2 * atom.type().hubbard_l() + 1; ++m1) {
-                        for (int m2 = m1 + 1; m2 < 2 * atom.type().hubbard_l() + 1; ++m2) {
-                            this->U(m1, m2, is, ia) = std::conj(this->U(m2, m1, is, ia));
-                        }
-                    }
-                }
+        // for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
+        //     auto& atom = unit_cell_.atom(ia);
+        //     if (atom.type().hubbard_correction()) {
+        //         // diagonal up up down down blocks
+        //         for (int is = 0; is < ctx_.num_spins(); is++) {
+        //             for (int m1 = 0; m1 < 2 * atom.type().hubbard_l() + 1; ++m1) {
+        //                 for (int m2 = m1 + 1; m2 < 2 * atom.type().hubbard_l() + 1; ++m2) {
+        //                     this->U(m1, m2, is, ia) = std::conj(this->U(m2, m1, is, ia));
+        //                 }
+        //             }
+        //         }
 
-                if(ctx_.num_mag_dims() == 3) {
-                    for (int m1 = 0; m1 < 2 * atom.type().hubbard_l() + 1; ++m1) {
-                        for (int m2 = 0; m2 < 2 * atom.type().hubbard_l() + 1; ++m2) {
-                            this->U(m1, m2, 3, ia) = std::conj(this->U(m2, m1, 2, ia));
-                        }
-                    }
-                }
-            }
-        }
+        //         if(ctx_.num_mag_dims() == 3) {
+        //             for (int m1 = 0; m1 < 2 * atom.type().hubbard_l() + 1; ++m1) {
+        //                 for (int m2 = 0; m2 < 2 * atom.type().hubbard_l() + 1; ++m2) {
+        //                     this->U(m1, m2, 3, ia) = std::conj(this->U(m2, m1, 2, ia));
+        //                 }
+        //             }
+        //         }
+        //     }
+        // }
     }
 
     inline double hubbard_energy() const
@@ -216,44 +262,43 @@ public:
 
         calculate_wavefunction_with_U_offset();
         calculate_initial_occupation_numbers();
-
-
-        mixer_ = Mixer_factory<double_complex>(ctx_.mixer_input().type_, static_cast<int>(occupancy_number_.size()), 0,
-                                               ctx_.mixer_input(), ctx_.comm());
-        this->mixer_input();
-        mixer_->initialize();
         calculate_hubbard_potential_and_energy();
     }
 
-    inline void mixer_input()
+    // inline void mixer_input()
+    // {
+    //     for (int i = 0; i < static_cast<int>(occupancy_number_.size()); i++) {
+    //         mixer_->input_shared(i, occupancy_number_[i], 1.0);
+    //     }
+    // }
+
+    // inline void mixer_output()
+    // {
+    //     for (int i = 0; i < static_cast<int>(occupancy_number_.size()); i++) {
+    //         occupancy_number_[i] = mixer_->output_shared(i);
+    //     }
+    // }
+
+    // double mix()
+    // {
+    //     double rms;
+    //     mixer_input();
+    //     rms = mixer_->mix(ctx_.settings().mixer_rss_min_);
+    //     mixer_output();
+    //     return rms;
+    // }
+private:
+    void calculate_initial_occupation_numbers();
+
+    inline int natural_lm_to_qe(int m, int l)
     {
-        for (int i = 0; i < static_cast<int>(occupancy_number_.size()); i++) {
-            mixer_->input_shared(i, occupancy_number_[i], 1.0);
-        }
+        return (m > 0) ? 2 * m - 1 : - 2 * m;
     }
 
-    inline void mixer_output()
-    {
-        for (int i = 0; i < static_cast<int>(occupancy_number_.size()); i++) {
-            occupancy_number_[i] = mixer_->output_shared(i);
-        }
-    }
+    inline void symmetrize_occupancy_matrix_noncolinear_case();
+    inline void symmetrize_occupancy_matrix();
+    inline void print_occupancies();
 
-    double mix()
-    {
-        double rms;
-        mixer_input();
-        rms = mixer_->mix(ctx_.settings().mixer_rss_min_);
-        mixer_output();
-        return rms;
-    }
-
-// TODO: put include statemsnts to the beginning
-#include "Hubbard/hubbard_generate_atomic_orbitals.hpp"
-#include "Hubbard/hubbard_potential_energy.hpp"
-#include "Hubbard/apply_hubbard_potential.hpp"
-#include "Hubbard/hubbard_occupancy.hpp"
-  private:
     inline void calculate_wavefunction_with_U_offset()
     {
         offset.clear();
@@ -304,5 +349,10 @@ public:
         this->number_of_hubbard_orbitals_ = counter;
     }
 };
+    #include "Hubbard/hubbard_generate_atomic_orbitals.hpp"
+    #include "Hubbard/hubbard_potential_energy.hpp"
+    #include "Hubbard/apply_hubbard_potential.hpp"
+    #include "Hubbard/hubbard_occupancy.hpp"
+    #include "Hubbard/hubbard_occupancies_derivatives.hpp"
 }
 #endif

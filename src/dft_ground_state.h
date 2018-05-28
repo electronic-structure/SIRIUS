@@ -730,7 +730,7 @@ inline json DFT_ground_state::find(double potential_tol, double energy_tol, int 
         /* Compute the hubbard correction */
         if(ctx_.hubbard_correction()) {
             hamiltonian_.U().hubbard_compute_occupation_numbers(kset_);
-            hamiltonian_.U().mix();
+            //hamiltonian_.U().mix();
             hamiltonian_.U().calculate_hubbard_potential_and_energy();
         }
 
