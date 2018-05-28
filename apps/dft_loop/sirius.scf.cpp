@@ -1,5 +1,5 @@
 #include <sirius.h>
-#include <json.hpp>
+#include <utils/json.hpp>
 
 using namespace sirius;
 using json = nlohmann::json;
@@ -69,8 +69,9 @@ double ground_state(Simulation_context& ctx,
     std::string ref_file = args.value<std::string>("test_against", "");
     /* don't write output if we compare against the reference calculation */
     bool write_state = (ref_file.size() == 0);
-
-    DFT_ground_state dft(ctx);
+    
+    K_point_set kset(ctx, ctx.parameters_input().ngridk_, ctx.parameters_input().shiftk_, ctx.use_symmetry());
+    DFT_ground_state dft(ctx, kset);
 
     if (ctx.comm().rank() == 0 && ctx.control().print_memory_usage_) {
         MEMORY_USAGE_INFO();
@@ -78,6 +79,9 @@ double ground_state(Simulation_context& ctx,
 
     auto& potential = dft.potential();
     auto& density = dft.density();
+
+    density.allocate();
+    potential.allocate();
 
     if (task == task_t::ground_state_restart) {
         if (!Utils::file_exists(storage_file_name)) {
@@ -109,12 +113,12 @@ double ground_state(Simulation_context& ctx,
 
     if (!ctx.full_potential()) {
         if (ctx.control().print_stress_) {
-            Stress s(ctx, dft.k_point_set(), density, potential);
+            Stress& s = dft.stress();
             s.calc_stress_total();
             s.print_info();
         }
         if (ctx.control().print_forces_) {
-            Force f(ctx, density, potential, dft.hamiltonian(), dft.k_point_set());
+            Force& f = dft.forces();
             f.calc_forces_total();
             f.print_info();
         }
@@ -126,7 +130,7 @@ double ground_state(Simulation_context& ctx,
 
         dict["task"] = static_cast<int>(task);
         dict["ground_state"] = result;
-        dict["timers"] = sddk::timer::serialize_timers();
+        dict["timers"] = utils::timer::serialize_timers();
         dict["counters"] = json::object();
         dict["counters"]["local_operator_num_applied"] = Local_operator::num_applied();
         dict["counters"]["band_evp_work_count"] = Band::evp_work_count();
@@ -162,7 +166,7 @@ double ground_state(Simulation_context& ctx,
     ctx.comm().barrier();
 
     if (ctx.control().print_timers_ && ctx.comm().rank() == 0)  {
-        sddk::timer::print();
+        utils::timer::print();
     }
 
     return dft.total_energy();
