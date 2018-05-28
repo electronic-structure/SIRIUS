@@ -101,6 +101,9 @@ class Stress {
 
     Potential& potential_;
 
+    // for the hubbard correction
+    Hamiltonian &hamiltonian_;
+
     matrix3d<double> stress_kin_;
 
     matrix3d<double> stress_har_;
@@ -285,10 +288,12 @@ class Stress {
   public:
     Stress(Simulation_context& ctx__,
            K_point_set& kset__,
+           Hamiltonian &h__,
            Density& density__,
            Potential& potential__)
         : ctx_(ctx__)
         , kset_(kset__)
+        , hamiltonian_(h__)
         , density_(density__)
         , potential_(potential__)
     {
@@ -897,9 +902,72 @@ class Stress {
         symmetrize(stress_core_);
     }
 
+    void calc_stress_hubbard()
+    {
+        stress_hubbard_.zero();
+
+        mdarray<double_complex, 5> dn_(2 * hamiltonian_.U().hubbard_lmax() + 1,
+                                       2 * hamiltonian_.U().hubbard_lmax() + 1,
+                                       2,
+                                       ctx_.unit_cell().num_atoms(),
+                                       9);
+
+        for (int ikloc = 0; ikloc < kset_.spl_num_kpoints().local_size(); ikloc++) {
+
+            int ik  = kset_.spl_num_kpoints(ikloc);
+            auto kp__ = kset_[ik];
+            if (ctx_.num_mag_dims() == 3)
+                TERMINATE("Hubbard stress correction is only implemented for the simple hubbard correction.");
+            Wave_functions phi(kp__->gkvec_partition(), hamiltonian_.U().number_of_hubbard_orbitals(), 1);
+
+            hamiltonian_.prepare<double_complex>();
+
+            kp__->beta_projectors().prepare();
+            Beta_projectors_strain_deriv bp_strain_deriv(ctx_, kp__->gkvec(), kp__->igk_loc());
+            bp_strain_deriv.prepare();
+
+            // compute the derivative of the occupancies numbers
+            hamiltonian_.U().compute_occupancies_stress_derivatives(*kp__,
+                                                                    bp_strain_deriv,
+                                                                    hamiltonian_.Q<double_complex>(),
+                                                                    dn_);
+
+            for (int dir1 = 0; dir1 < 3; dir1++) {
+                for (int dir2 = 0; dir2 < 3; dir2++) {
+                    for (int ia1 = 0; ia1 < ctx_.unit_cell().num_atoms(); ia1++) {
+                        const auto& atom = ctx_.unit_cell().atom(ia1);
+                        if (atom.type().hubbard_correction()) {
+                            const int lmax_at = 2 * atom.type().hubbard_l() + 1;
+                            for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
+                                for (int m1 = 0; m1 < lmax_at; m1++) {
+                                    for (int m2 = 0; m2 < lmax_at; m2++) {
+                                        stress_hubbard_(dir1, dir2) -= (hamiltonian_.U().U(m2, m1, ispn, ia1) *
+                                                                        dn_(m1, m2, ispn, ia1, 3 * dir1 + dir2)).real();
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            kp__->beta_projectors().dismiss();
+            bp_strain_deriv.dismiss();
+            hamiltonian_.dismiss();
+        }
+
+        // global reduction
+        ctx_.comm().allreduce<double, mpi_op_t::sum>(&stress_hubbard_(0, 0), 9);
+        symmetrize(stress_hubbard_);
+    }
+
     inline matrix3d<double> stress_core() const
     {
         return stress_core_;
+    }
+
+    inline matrix3d<double> stress_hubbard() const
+    {
+        return stress_hubbard_;
     }
 
     inline void calc_stress_total()
@@ -912,6 +980,9 @@ class Stress {
         calc_stress_xc();
         calc_stress_us();
         calc_stress_nonloc();
+        if (ctx_.hubbard_correction()) {
+            calc_stress_hubbard();
+        }
     }
 
     inline void print_info() const
@@ -932,6 +1003,7 @@ class Stress {
             auto stress_vloc   = stress_vloc_   * au2kbar;
             auto stress_nonloc = stress_nonloc_ * au2kbar;
             auto stress_us     = stress_us_     * au2kbar;
+            auto stress_hubbard     = stress_hubbard_     * au2kbar;
 
             printf("== stress_kin ==\n");
             print_stress(stress_kin);
@@ -954,6 +1026,11 @@ class Stress {
             stress_us = stress_us + stress_nonloc;
             printf("== stress_us_nl ==\n");
             print_stress(stress_us);
+
+            if (ctx_.hubbard_correction()) {
+                printf("== stress_hubbard ==\n");
+                print_stress(stress_hubbard);
+            }
         }
     }
 };

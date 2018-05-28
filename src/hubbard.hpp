@@ -9,6 +9,7 @@
 #include "non_local_operator.h"
 #include "../Beta_projectors/beta_projectors.h"
 #include "../Beta_projectors/beta_projectors_gradient.h"
+#include "../Beta_projectors/beta_projectors_strain_deriv.h"
 #include "radial_integrals.h"
 #include "mixer.h"
 
@@ -153,6 +154,19 @@ public:
                                          Q_operator<double_complex>& q_op,
                                          mdarray<double_complex, 5> &dn_,
                                          const int atom_id);
+
+    void compute_gradient_strain_wavefunctions(K_point &kp__,
+                                               Wave_functions &dphi,
+                                               const mdarray<double, 2> &rlm_g,
+                                               const mdarray<double, 3> &rlm_dg,
+                                               const int mu,
+                                               const int nu);
+
+    void compute_occupancies_stress_derivatives(K_point &kp,
+                                                Beta_projectors_strain_deriv &bp_grad_,
+                                                Q_operator<double_complex>& q_op, // Compensnation operator or overlap operator
+                                                mdarray<double_complex, 5> &dn_); // derivative of the occupation number compared to displacement of atom aton_id
+
 
     void calculate_hubbard_potential_and_energy_colinear_case();
     void calculate_hubbard_potential_and_energy_non_colinear_case();

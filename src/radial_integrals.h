@@ -83,7 +83,8 @@ class Radial_integrals_base
 
 /// Radial integrals of the atomic centered orbitals.
 /** Used in initialize_subspace and in the hubbard correction. */
-class Radial_integrals_atomic_wf : public Radial_integrals_base<2>
+template <bool jl_deriv>
+ class Radial_integrals_atomic_wf : public Radial_integrals_base<2>
 {
   private:
 
@@ -117,7 +118,12 @@ class Radial_integrals_atomic_wf : public Radial_integrals_base<2>
 
                 #pragma omp parallel for
                 for (int iq = 0; iq < nq(); iq++) {
-                    values_(i, iat)(iq) = sirius::inner(jl(iq)[l], wf.second, 1);
+                    if (jl_deriv) {
+                        auto s = jl(iq).deriv_q(l);
+                        values_(i, iat)(iq) = sirius::inner(s, wf.second, 1);
+                    } else {
+                        values_(i, iat)(iq) = sirius::inner(jl(iq)[l], wf.second, 1);
+                    }
                 }
 
                 values_(i, iat).interpolate();

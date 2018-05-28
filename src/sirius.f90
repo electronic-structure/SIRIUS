@@ -23,7 +23,7 @@ module sirius
         logical(C_BOOL) function sirius_initialized()&
             &bind(C, name="sirius_initialized")
             use, intrinsic :: ISO_C_BINDING
-        end function 
+        end function
 
         subroutine sirius_create_simulation_context(str, fcomm)&
             &bind(C, name="sirius_create_simulation_context")
