@@ -8,19 +8,19 @@ module sirius
 
         !> @brief Initialize the SIRIUS library
         !> @param call_mpi_init If .true. then MPI_Init must be called prior to initialization.
-        subroutine sirius_initialize(call_mpi_init)&
-            &bind(C, name="sirius_initialize")
-            use, intrinsic :: ISO_C_BINDING
-            logical(C_BOOL),         intent(in) :: call_mpi_init
-        end subroutine
+        !subroutine sirius_initialize(call_mpi_init)&
+        !    &bind(C, name="sirius_initialize")
+        !    use, intrinsic :: ISO_C_BINDING
+        !    logical(C_BOOL),         intent(in) :: call_mpi_init
+        !end subroutine
 
         !> @brief Shut down the SIRIUS library
         !> @param call_mpi_fin If .true. then MPI_Finalize must be called after the shutdown.
-        subroutine sirius_finalize(call_mpi_fin)&
-            &bind(C, name="sirius_finalize")
-            use, intrinsic :: ISO_C_BINDING
-            logical(C_BOOL),         intent(in) :: call_mpi_fin
-        end subroutine
+        !subroutine sirius_finalize(call_mpi_fin)&
+        !    &bind(C, name="sirius_finalize")
+        !    use, intrinsic :: ISO_C_BINDING
+        !    logical(C_BOOL),         intent(in) :: call_mpi_fin
+        !end subroutine
 
         subroutine sirius_clear()&
             &bind(C, name="sirius_clear")
@@ -29,7 +29,7 @@ module sirius
         logical(C_BOOL) function sirius_initialized()&
             &bind(C, name="sirius_initialized")
             use, intrinsic :: ISO_C_BINDING
-        end function 
+        end function
 
         subroutine sirius_create_simulation_context(str, fcomm)&
             &bind(C, name="sirius_create_simulation_context")
@@ -1147,13 +1147,14 @@ module sirius
              &bind(C, name="sirius_set_normalize_hubbard_orbitals")
         end subroutine sirius_set_normalize_hubbard_orbitals
 
-        subroutine sirius_set_atom_type_hubbard(label__, U_, J_, theta_, phi_, alpha_, beta_, J0_)&
+        subroutine sirius_set_atom_type_hubbard(label__, n_, l_, occ_, U_, J_, alpha_, beta_, J0_)&
           &bind(C, name="sirius_set_atom_type_hubbard")
           character, dimension(*), intent(in) :: label__
+          integer(4),                intent(in) :: n_
+          integer(4),                intent(in) :: l_
+          real(8),                intent(in) :: occ_
           real(8),                intent(in) :: U_
           real(8),                intent(in) :: J_
-          real(8),                intent(in) :: theta_
-          real(8),                intent(in) :: phi_
           real(8),                intent(in) :: alpha_
           real(8),                intent(in) :: beta_
           real(8),                intent(in) :: J0_

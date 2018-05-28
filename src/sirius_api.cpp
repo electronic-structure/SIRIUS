@@ -39,23 +39,17 @@ std::unique_ptr<sirius::DFT_ground_state> dft_ground_state{nullptr};
 
 extern "C" {
 
-/// Initialize the library.
-/** \param [in] call_mpi_init .true. if the library needs to call MPI_Init()
- *
- *  Example:
-    \code{.F90}
-    integer ierr
-    call mpi_init(ierr)
-    ! initialize low-level stuff and don't call MPI_Init() from SIRIUS
-    call sirius_initialize(.false.)
-    \endcode
- */
+/* @fortran begin function void sirius_initialize       Initialize the library.
+   @fortran argument in required bool call_mpi_init     If .true. then MPI_Init must be called prior to initialization.
+   @fortran end */ 
 void sirius_initialize(bool* call_mpi_init__)
 {
     sirius::initialize(*call_mpi_init__);
 }
 
-/// Finalize the usage of the library.
+/* @fortran begin function void sirius_finalize         Shut down the SIRIUS library
+   @fortran argument in required bool call_mpi_fin      If .true. then MPI_Finalize must be called after the shutdown.
+   @fortran end */ 
 void sirius_finalize(bool* call_mpi_fin__)
 {
     sirius::finalize(*call_mpi_fin__);
@@ -94,17 +88,10 @@ void sirius_create_simulation_context(ftn_char str__,
     sim_ctx = std::unique_ptr<sirius::Simulation_context>(new sirius::Simulation_context(str, comm));
 }
 
-/* 
-  @fortran begin comment
-!> @brief Create context of simulation.
-!> @param fcomm Entire communicator of the simulation.
-!> @param handler Simulation context handler.
-  @fortran end
-  @fortran begin function void sirius_create_context_v2
-  @fortran argument int    in  required fcomm
-  @fortran argument void*  out required handler
-  @fortran end
-*/ 
+/* @fortran begin function void sirius_create_context_v2         Create context of the simulation.
+   @fortran argument in required int fcomm                       Entire communicator of the simulation. 
+   @fortran argument out required void* handler                  Simulation context handler.
+   @fortran end */ 
 void sirius_create_context_v2(int const* fcomm__,
                               void**     handler__)
 {
@@ -118,35 +105,26 @@ void sirius_import_simulation_context_parameters(ftn_char str__)
     sim_ctx->import(std::string(str__));
 }
 
-/*
-  @fortran begin comment
-!> @brief Import parameters of simulation from a JSON string
-!> @param handler Simulation context handler.
-!> @param json_str JSON string with parameters.
-  @fortran end
-  @fortran begin function void sirius_import_parameters_v2
-  @fortran argument void*  in required handler
-  @fortran argument string in required json_str
-  @fortran end
-*/ 
+/* @fortran begin function void sirius_import_parameters_v2        Import parameters of simulation from a JSON string
+   @fortran argument in required void* handler                     Simulation context handler.
+   @fortran argument in required string json_str                   JSON string with parameters.
+   @fortran end */ 
 void sirius_import_parameters_v2(void* const* handler__, char const* str__)
 {
     GET_SIM_CTX(handler__);
     sim_ctx.import(std::string(str__));
 }
 
-/* 
-  @fortran begin function void sirius_set_parameters
-  @fortran argument void*  in required handler
-  @fortran argument int    in optional lmax_apw
-  @fortran argument int    in optional lmax_rho
-  @fortran argument int    in optional lmax_pot
-  @fortran argument int    in optional num_bands
-  @fortran argument int    in optional num_mag_dims
-  @fortran argument double in optional pw_cutoff
-  @fortran argument double in optional gk_cutoff
-  @fortran end
-*/ 
+/* @fortran begin function void sirius_set_parameters  Set parameters of the simulation.
+   @fortran argument in required void* handler       Simulation context handler
+   @fortran argument in optional int lmax_apw        Maximum orbital quantum number for APW functions.
+   @fortran argument in optional int lmax_rho        Maximum orbital quantum number for density. 
+   @fortran argument in optional int lmax_pot        Maximum orbital quantum number for potential.
+   @fortran argument in optional int num_bands       Number of bands.
+   @fortran argument in optional int num_mag_dims    Number of magnetic dimensions. 
+   @fortran argument in optional double pw_cutoff    Cutoff for G-vectors.
+   @fortran argument in optional double gk_cutoff    Cutoff for G+k-vectors.
+   @fortran end */ 
 void sirius_set_parameters(void*  const* handler__,
                            int    const* lmax_apw__,
                            int    const* lmax_rho__,
@@ -481,10 +459,11 @@ void sirius_set_atom_type_radial_grid(ftn_char          label__,
  *  \param [in] J0_ : J0 for the simple hubbard treatment
  */
 void sirius_set_atom_type_hubbard(char const* label__,
+                                  int const* l_,
+                                  int const* n_,
+                                  double const *occ,
                                   double const* U_,
                                   double const* J_,
-                                  double const* theta_,
-                                  double const* phi_,
                                   double const* alpha_,
                                   double const* beta_,
                                   double const* J0_)
@@ -496,9 +475,8 @@ void sirius_set_atom_type_hubbard(char const* label__,
     type.set_hubbard_alpha(*alpha_);
     type.set_hubbard_beta(*alpha_);
     type.set_hubbard_coefficients(J_);
-    type.set_starting_magnetization_theta(*theta_);
-    type.set_starting_magnetization_phi(*phi_);
     type.set_hubbard_J0(*J0_);
+    type.set_hubbard_orbital(*n_, *l_, *occ);
 }
 
 void sirius_set_free_atom_density(char const* label__,
@@ -2676,12 +2654,12 @@ void sirius_get_wave_functions(ftn_int*            kset_id__,
                                ftn_int*            ld2__)
 {
     PROFILE("sirius_api::sirius_get_wave_functions");
- 
+
     auto kset = kset_list[*kset_id__];
- 
+
     int jk = *ik__ - 1;
     int jspn = *ispn__ - 1;
- 
+
     int jrank{-1};
     if (jk >= 0) {
          /* find the rank where this k-point is stored */
@@ -2709,7 +2687,7 @@ void sirius_get_wave_functions(ftn_int*            kset_id__,
 
         for (int ig = 0; ig < *npw__; ig++) {
             /* G vector of host code */
-            auto gvc = sim_ctx->unit_cell().reciprocal_lattice_vectors() * 
+            auto gvc = sim_ctx->unit_cell().reciprocal_lattice_vectors() *
                        (vector3d<double>(gvec_k(0, ig), gvec_k(1, ig), gvec_k(2, ig)) + gkvec.vk());
             if (gvc.length() > sim_ctx->gk_cutoff()) {
                 continue;
@@ -2772,7 +2750,7 @@ void sirius_get_wave_functions(ftn_int*            kset_id__,
                 if (my_rank == r) {
                     igmap = gvec_mapping(gkvec);
                 }
-                    
+
                 /* target array of wave-functions */
                 mdarray<double_complex, 3> evc;
                 if (my_rank == r) {
@@ -3364,16 +3342,10 @@ void sirius_get_pw_coeffs_real(ftn_char    atom_type__,
     } else {
         std::stringstream s;
         s << "wrong label in sirius_get_pw_coeffs_real()" << std::endl
-          << "  label : " << label; 
+          << "  label : " << label;
         TERMINATE(s);
     }
 }
-
-//void sirius_calculate_forces(ftn_int* kset_id__)
-//{
-//    auto& kset = *kset_list[*kset_id__];
-//    forces = std::unique_ptr<sirius::Force>(new sirius::Force(*sim_ctx, *density, *potential, *hamiltonian, kset));
-//}
 
 void sirius_get_forces(ftn_char label__, ftn_double* forces__)
 {
@@ -3421,18 +3393,15 @@ void sirius_get_forces(ftn_char label__, ftn_double* forces__)
     } else if (label == "scf_corr") {
         forces->calc_forces_scf_corr();
         get_forces(forces->forces_scf_corr());
+    } else if (label == "hubbard") {
+        forces->calc_forces_hubbard();
+        get_forces(forces->forces_hubbard());
     } else {
         std::stringstream s;
         s << "wrong label (" << label <<") for the component of forces";
         TERMINATE(s);
     }
 }
-
-//void sirius_calculate_stress_tensor(ftn_int* kset_id__)
-//{
-//    auto& kset = *kset_list[*kset_id__];
-//    stress_tensor = std::unique_ptr<sirius::Stress>(new sirius::Stress(*sim_ctx, kset, *density, *potential));
-//}
 
 void sirius_get_stress_tensor(ftn_char label__, ftn_double* stress_tensor__)
 {
@@ -3463,6 +3432,9 @@ void sirius_get_stress_tensor(ftn_char label__, ftn_double* stress_tensor__)
     } else if (label == "core") {
         stress_tensor->calc_stress_core();
         s = stress_tensor->stress_core();
+    }  else if (label == "hubbard") {
+        stress_tensor->calc_stress_hubbard();
+        s = stress_tensor->stress_hubbard();
     } else {
         TERMINATE("wrong label");
     }

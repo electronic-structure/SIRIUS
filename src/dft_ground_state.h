@@ -194,7 +194,7 @@ class DFT_ground_state
             , density_(ctx__)
             , hamiltonian_(ctx_, potential_)
             , band_(ctx_)
-            , stress_(ctx__, kset__, density_, potential_)
+            , stress_(ctx__, density_, potential_, hamiltonian_, kset__)
             , forces_(ctx__, density_, potential_, hamiltonian_, kset__) 
 
         {
@@ -646,7 +646,7 @@ inline json DFT_ground_state::find(double potential_tol, double energy_tol, int 
         /* Compute the hubbard correction */
         if(ctx_.hubbard_correction()) {
             hamiltonian_.U().hubbard_compute_occupation_numbers(kset_);
-            hamiltonian_.U().mix();
+            //hamiltonian_.U().mix();
             hamiltonian_.U().calculate_hubbard_potential_and_energy();
         }
 

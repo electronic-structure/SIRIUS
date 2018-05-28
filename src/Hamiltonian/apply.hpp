@@ -187,9 +187,9 @@ void Hamiltonian::apply_h_s(K_point* kp__,
 
         this->U().generate_atomic_orbitals(*kp__, Q<T>());
 
-	// Apply the hubbard potential and deallocate the hubbard wave
-	// functions on GPU (if needed)
-        this->U().apply_hubbard_potential(*kp__, N__, n__, phi__, hphi__);
+        // Apply the hubbard potential and deallocate the hubbard wave
+        // functions on GPU (if needed)
+        this->U().apply_hubbard_potential(*kp__, ispn__, N__, n__, phi__, hphi__);
 
         #ifdef __GPU
         if (ctx_.processing_unit() == GPU) {
