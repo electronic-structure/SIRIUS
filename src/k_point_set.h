@@ -27,6 +27,7 @@
 
 #include "k_point.h"
 #include "geometry3d.hpp"
+#include "smearing.hpp"
 
 namespace sirius {
 
@@ -61,8 +62,8 @@ class K_point_set
     public:
 
         K_point_set(Simulation_context& ctx__)
-                  : ctx_(ctx__)
-                  , unit_cell_(ctx__.unit_cell())
+            : ctx_(ctx__)
+            , unit_cell_(ctx__.unit_cell())
         {
             PROFILE("sirius::K_point_set::K_point_set");
         }
@@ -71,8 +72,8 @@ class K_point_set
                     vector3d<int> k_grid__,
                     vector3d<int> k_shift__,
                     int use_symmetry__)
-                  : ctx_(ctx__)
-                  , unit_cell_(ctx__.unit_cell())
+            : ctx_(ctx__)
+            , unit_cell_(ctx__.unit_cell())
         {
             PROFILE("sirius::K_point_set::K_point_set");
 
@@ -406,7 +407,7 @@ inline void K_point_set::find_band_occupancies()
         for (int ik = 0; ik < num_kpoints(); ik++) {
             for (int ispn = 0; ispn < ctx_.num_spin_dims(); ispn++) {
                 for (int j = 0; j < ctx_.num_bands(); j++) {
-                    bnd_occ(j, ispn, ik) = Utils::gaussian_smearing(kpoints_[ik]->band_energy(j, ispn) - ef, ctx_.smearing_width()) *
+                    bnd_occ(j, ispn, ik) = smearing::gaussian(kpoints_[ik]->band_energy(j, ispn) - ef, ctx_.smearing_width()) *
                                            ctx_.max_occupancy();
                     ne += bnd_occ(j, ispn, ik) * kpoints_[ik]->weight();
                 }

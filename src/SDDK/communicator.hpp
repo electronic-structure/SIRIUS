@@ -277,18 +277,15 @@ class Communicator
     }
 
     /// MPI initialization.
-    static void initialize()
+    static void initialize(int required__)
     {
-        int required = MPI_THREAD_MULTIPLE;
         int provided;
 
-        // MPI_Init_thread(NULL, NULL, MPI_THREAD_FUNNELED, &provided);
-        MPI_Init_thread(NULL, NULL, required, &provided);
+        MPI_Init_thread(NULL, NULL, required__, &provided);
 
         MPI_Query_thread(&provided);
-        if (provided < required) {
-            // printf("Warning! MPI_THREAD_FUNNELED level of thread support is not provided.\n");
-            printf("Warning! MPI_THREAD_MULTIPLE level of thread support is not provided.\n");
+        if (provided < required__) {
+            printf("Warning! Required level of thread support is not provided.\n");
         }
     }
 

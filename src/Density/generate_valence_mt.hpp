@@ -77,7 +77,7 @@ inline void Density::generate_valence_mt(K_point_set& ks)
         int nmtp = atom_type.num_mt_points();
         int num_rf_pairs = atom_type.mt_radial_basis_size() * (atom_type.mt_radial_basis_size() + 1) / 2;
         
-        sddk::timer t1("sirius::Density::generate|sum_zdens");
+        utils::timer t1("sirius::Density::generate|sum_zdens");
         switch (ctx_.num_mag_dims()) {
             case 3: {
                 reduce_density_matrix<3>(atom_type, ia, density_matrix_, *gaunt_coefs_, mt_density_matrix);
@@ -94,7 +94,7 @@ inline void Density::generate_valence_mt(K_point_set& ks)
         }
         t1.stop();
         
-        sddk::timer t2("sirius::Density::generate|expand_lm");
+        utils::timer t2("sirius::Density::generate|expand_lm");
         /* collect radial functions */
         for (int idxrf2 = 0; idxrf2 < atom_type.mt_radial_basis_size(); idxrf2++) {
             int offs = idxrf2 * (idxrf2 + 1) / 2;

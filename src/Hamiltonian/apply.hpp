@@ -257,7 +257,7 @@ inline void Hamiltonian::apply_fv_o(K_point* kp__,
         int nlo = atom.mt_lo_basis_size();
         kp__->alm_coeffs_loc().generate(ia, alm);
 
-        sddk::timer t1("sirius::Hamiltonian::apply_fv_o|apw-apw");
+        utils::timer t1("sirius::Hamiltonian::apply_fv_o|apw-apw");
 
         switch (ctx_.processing_unit()) {
             case CPU: {
@@ -327,7 +327,7 @@ inline void Hamiltonian::apply_fv_o(K_point* kp__,
         }
         kp__->comm().bcast(phi_lo_ia.at<CPU>(), static_cast<int>(phi_lo_ia.size()), ia_location.rank);
 
-        sddk::timer t2("sirius::Hamiltonian::apply_fv_o|apw-lo");
+        utils::timer t2("sirius::Hamiltonian::apply_fv_o|apw-lo");
         oalm.zero();
         #pragma omp parallel for
         for (int ilo = 0; ilo < nlo; ilo++) {
@@ -349,7 +349,7 @@ inline void Hamiltonian::apply_fv_o(K_point* kp__,
                           ophi__.pw_coeffs(0).prime().at<CPU>(0, N__), ophi__.pw_coeffs(0).prime().ld());
         t2.stop();
 
-        sddk::timer t3("sirius::Hamiltonian::apply_fv_o|lo-apw");
+        utils::timer t3("sirius::Hamiltonian::apply_fv_o|lo-apw");
         /* lo-APW contribution */
         for (int i = 0; i < n__; i++) {
             for (int ilo = 0; ilo < type.mt_lo_basis_size(); ilo++) {
@@ -482,7 +482,7 @@ inline void Hamiltonian::apply_fv_h_o(K_point* kp__,
             }
         }
 
-        sddk::timer t1("sirius::Hamiltonian::apply_fv_h_o|apw-apw");
+        utils::timer t1("sirius::Hamiltonian::apply_fv_h_o|apw-apw");
 
         if (ctx_.processing_unit() == CPU) {
             /* tmp(lm, i) = A(G, lm)^{T} * C(G, i) */
@@ -573,7 +573,7 @@ inline void Hamiltonian::apply_fv_h_o(K_point* kp__,
 
         matrix<double_complex> hmt(naw, nlo, ctx_.dual_memory_t());
 
-        sddk::timer t2("sirius::Hamiltonian::apply_fv_h_o|apw-lo");
+        utils::timer t2("sirius::Hamiltonian::apply_fv_h_o|apw-lo");
         halm.zero();
         #pragma omp parallel for
         for (int ilo = 0; ilo < nlo; ilo++) {
@@ -630,7 +630,7 @@ inline void Hamiltonian::apply_fv_h_o(K_point* kp__,
 #endif
         t2.stop();
 
-        sddk::timer t3("sirius::Band::apply_fv_h_o|lo-apw");
+        utils::timer t3("sirius::Band::apply_fv_h_o|lo-apw");
         /* lo-APW contribution */
         for (int i = 0; i < n__; i++) {
             for (int ilo = 0; ilo < type.mt_lo_basis_size(); ilo++) {

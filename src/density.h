@@ -798,11 +798,6 @@ class Density: public Field4D
             return *rho_pseudo_core_;
         }
 
-        //std::array<Periodic_function<double>*, 3> magnetization()
-        //{
-        //    return {magnetization_[0].get(), magnetization_[1].get(), magnetization_[2].get()};
-        //}
-
         Periodic_function<double>& magnetization(int i)
         {
             return this->vector(i);

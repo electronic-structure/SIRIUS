@@ -1,5 +1,5 @@
 #include "sddk.hpp"
-#include "any_ptr.hpp"
+#include "../utils/any_ptr.hpp"
 
 using namespace sddk;
 
@@ -58,8 +58,7 @@ void sddk_init()
 
 void sddk_delete_object(void** handler__)
 {
-    any_ptr* p = static_cast<any_ptr*>(*handler__);
-    delete p;
+    delete static_cast<utils::any_ptr*>(*handler__);
 }
 
 ///// Create FFT grid.
@@ -89,7 +88,7 @@ void sddk_create_gvec(double const* b1__,
         lat_vec(x, 1) = b2__[x];
         lat_vec(x, 2) = b3__[x];
     }
-    *handler__ = new any_ptr(new Gvec(lat_vec, *gmax__, comm, *reduce_gvec__));
+    *handler__ = new utils::any_ptr(new Gvec(lat_vec, *gmax__, comm, *reduce_gvec__));
 }
 
 /// Create list of G+k-vectors.
@@ -110,7 +109,7 @@ void sddk_create_gkvec(double const* vk__,
         lat_vec(x, 1) = b2__[x];
         lat_vec(x, 2) = b3__[x];
     }
-    *handler__ = new any_ptr(new Gvec({vk__[0], vk__[1], vk__[2]}, lat_vec, *gmax__, comm, *reduce_gvec__));
+    *handler__ = new utils::any_ptr(new Gvec({vk__[0], vk__[1], vk__[2]}, lat_vec, *gmax__, comm, *reduce_gvec__));
 }
 
 void sddk_create_gvec_partition(void* const* gvec_handler__,
@@ -118,11 +117,11 @@ void sddk_create_gvec_partition(void* const* gvec_handler__,
                                 int   const* comm_ortho_fft__,
                                 void**       handler__)
 {
-    auto& gv = static_cast<any_ptr*>(*gvec_handler__)->get<Gvec>();
+    auto& gv = static_cast<utils::any_ptr*>(*gvec_handler__)->get<Gvec>();
     auto& fft_comm = Communicator::map_fcomm(*fft_comm__);
     auto& comm_ortho_fft = Communicator::map_fcomm(*comm_ortho_fft__);
 
-    *handler__ = new any_ptr(new Gvec_partition(gv, fft_comm, comm_ortho_fft));
+    *handler__ = new utils::any_ptr(new Gvec_partition(gv, fft_comm, comm_ortho_fft));
 }
 
 /// Create FFT driver.
@@ -131,7 +130,7 @@ void sddk_create_fft(int const* initial_dims__,
                      void**     handler__)
 {
     auto& comm = Communicator::map_fcomm(*fcomm__);
-    *handler__ = new any_ptr(new FFT3D({initial_dims__[0], initial_dims__[1], initial_dims__[2]}, comm, device_t::CPU));
+    *handler__ = new utils::any_ptr(new FFT3D({initial_dims__[0], initial_dims__[1], initial_dims__[2]}, comm, device_t::CPU));
 }
 
 /// Create wave functions.
@@ -277,7 +276,7 @@ void sddk_fft_dismiss(ftn_int* fft_id__)
 
 void sddk_print_timers()
 {
-    timer::print();
+    utils::timer::print();
 }
 
 

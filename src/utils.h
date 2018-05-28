@@ -65,87 +65,6 @@ class Utils // TODO: namespace utils
         return ifs.is_open();
     }
 
-    static inline double fermi_dirac_distribution(double e) // TODO: namespace smearing
-    {
-        double kT = 0.001;
-        if (e > 100 * kT) {
-            return 0.0;
-        }
-        if (e < -100 * kT) {
-            return 1.0;
-        }
-        return (1.0 / (std::exp(e / kT) + 1.0));
-    }
-
-    static inline double gaussian_smearing(double e, double delta)
-    {
-        return 0.5 * (1 - gsl_sf_erf(e / delta)); // TODO std::erf
-    }
-
-    static inline double cold_smearing(double e)
-    {
-        double a = -0.5634;
-
-        if (e < -10.0) {
-            return 1.0;
-        }
-        if (e > 10.0) {
-            return 0.0;
-        }
-
-        return 0.5 * (1 - gsl_sf_erf(e)) - 1 - 0.25 * std::exp(-e * e) * (a + 2 * e - 2 * a * e * e) / std::sqrt(pi);
-    }
-
-    static std::string double_to_string(double val, int precision = -1)
-    {
-        char buf[100];
-
-        double abs_val = std::abs(val);
-
-        if (precision == -1) {
-            if (abs_val > 1.0) {
-                precision = 6;
-            } else if (abs_val > 1e-14) {
-                precision = int(-std::log(abs_val) / std::log(10.0)) + 7;
-            } else {
-                return std::string("0.0");
-            }
-        }
-
-        std::stringstream fmt;
-        fmt << "%." << precision << "f";
-
-        int len = snprintf(buf, 100, fmt.str().c_str(), val);
-        for (int i = len - 1; i >= 1; i--) {
-            if (buf[i] == '0' && buf[i - 1] == '0') {
-                buf[i] = 0;
-            } else {
-                break;
-            }
-        }
-        return std::string(buf);
-    }
-
-    static inline double phi_by_sin_cos(double sinp, double cosp)
-    {
-        double phi = std::atan2(sinp, cosp);
-        if (phi < 0) {
-            phi += twopi;
-        }
-        return phi;
-    }
-
-    static inline long double factorial(int n)
-    {
-        assert(n >= 0);
-
-        long double result = 1.0L;
-        for (int i = 1; i <= n; i++) {
-            result *= i;
-        }
-        return result;
-    }
-
     /// Simple hash function.
     /** Example: printf("hash: %16llX\n", hash()); */
     static uint64_t hash(void const* buff, size_t size, uint64_t h = 5381)
@@ -358,32 +277,6 @@ class Utils // TODO: namespace utils
         return double_complex(round(a__.real(), n__), round(a__.imag(), n__));
     }
 
-    template <typename T>
-    inline static int sign(T val)
-    {
-        return (T(0) < val) - (val < T(0));
-    }
-
-    /// Pack two indices into one for symmetric matrices.
-    inline static int packed_index(int i__, int j__)
-    {
-        /* suppose we have a symmetric matrix: M_{ij} = M_{ji}
-               j
-           +-------+
-           | + + + |
-          i|   + + |   -> idx = j * (j + 1) / 2 + i  for  i <= j
-           |     + |
-           +-------+
-
-           i, j are row and column indices 
-        */
-
-        if (i__ > j__) {
-            std::swap(i__, j__);
-        }
-        return j__ * (j__ + 1) / 2 + i__;
-    }
-
     /// Read json dictionary from file or string.
     /** Terminate if file doesn't exist. */
     inline static json read_json_from_file_or_string(std::string const& str__)
@@ -423,28 +316,6 @@ class Utils // TODO: namespace utils
         return std::move(dict);
     }
 
-    inline static std::string timestamp(bool full = false)
-    {
-        timeval t;
-        gettimeofday(&t, NULL);
-    
-        char buf[128];
-    
-        tm* ptm = localtime(&t.tv_sec);
-        if (full) {
-            strftime(buf, sizeof(buf), "%Y-%m-%d %H:%M:%S", ptm);
-        } else {
-            strftime(buf, sizeof(buf), "%H:%M:%S", ptm);
-        }
-        return std::string(buf);
-    }
-
-    inline double wtime()
-    {
-        timeval t;
-        gettimeofday(&t, NULL);
-        return double(t.tv_sec) + double(t.tv_usec) / 1e6;
-    }
 };
 
 #endif

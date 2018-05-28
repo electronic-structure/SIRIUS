@@ -32,7 +32,7 @@ inline void Density::generate_rho_aug(mdarray<double_complex, 2>& rho_aug__)
         auto dm = density_matrix_aux(iat);
         
         if (pu == CPU) {
-            sddk::timer t2("sirius::Density::generate_rho_aug|phase_fac");
+            utils::timer t2("sirius::Density::generate_rho_aug|phase_fac");
             /* treat phase factors as real array with x2 size */
             mdarray<double, 2> phase_factors(atom_type.num_atoms(), ctx_.gvec().count() * 2);
 
@@ -52,7 +52,7 @@ inline void Density::generate_rho_aug(mdarray<double_complex, 2>& rho_aug__)
             mdarray<double, 2> dm_pw(nbf * (nbf + 1) / 2, ctx_.gvec().count() * 2);
 
             for (int iv = 0; iv < ctx_.num_mag_dims() + 1; iv++) {
-                sddk::timer t3("sirius::Density::generate_rho_aug|gemm");
+                utils::timer t3("sirius::Density::generate_rho_aug|gemm");
                 linalg<CPU>::gemm(0, 0, nbf * (nbf + 1) / 2, 2 * ctx_.gvec().count(), atom_type.num_atoms(), 
                                   &dm(0, 0, iv), dm.ld(),
                                   &phase_factors(0, 0), phase_factors.ld(), 
@@ -67,7 +67,7 @@ inline void Density::generate_rho_aug(mdarray<double_complex, 2>& rho_aug__)
                 }
                 #endif
 
-                sddk::timer t4("sirius::Density::generate_rho_aug|sum");
+                utils::timer t4("sirius::Density::generate_rho_aug|sum");
                 #pragma omp parallel for
                 for (int igloc = 0; igloc < ctx_.gvec().count(); igloc++) {
                     double_complex zsum(0, 0);

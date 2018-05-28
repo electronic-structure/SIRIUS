@@ -14,6 +14,8 @@
 #include <algorithm>
 #include "json.hpp"
 
+namespace utils {
+
 struct timer_stats_t
 {
     double min_val{1e10};
@@ -82,28 +84,39 @@ class timer
         return timer_values_ex_;
     }
 
+    timer(timer const& src) = delete;
+    timer& operator=(timer const& src) = delete;
+
   public:
 
     /// Constructor.
     timer(std::string label__)
         : label_(label__)
+        , active_(true)
     {
         /* measure the starting time */
         starting_time_ = std::chrono::high_resolution_clock::now();
         /* add timer label to the list of called timers */
         stack().push_back(label_);
-        active_ = true;
     }
 
     /// Destructor.
     ~timer()
     {
-        /* global timer can't be stopped in the destructor: this happens when the program shuts down 
-           (static global_timer object is destroyed after exit from the main program) and it causes a crash 
-           in case of C++/Fortran interface; pure C++ program works fine */
-        if (label_ != main_timer_label) {
-            stop();
-        }
+        ///* global timer can't be stopped in the destructor: this happens when the program shuts down 
+        //   (static global_timer object is destroyed after exit from the main program) and it causes a crash 
+        //   in case of C++/Fortran interface; pure C++ program works fine */
+        //if (label_ != main_timer_label) {
+        //    stop();
+        //}
+    }
+
+    timer(timer&& src__)
+    {
+        this->label_         = src__.label_;
+        this->starting_time_ = src__.starting_time_;
+        this->active_        = src__.active_;
+        src__.active_        = false;
     }
 
     /// Stop the timer and update the statistics.
@@ -310,9 +323,27 @@ class timer
         static timer global_timer__(main_timer_label);
         return global_timer__;
     }
+    
+    /// List of timers created on the Fortran side.
+    inline static std::map<std::string, timer>& ftimers()
+    {
+        static std::map<std::string, timer> ftimers__;
+        return ftimers__;
+    }
 };
 
+inline void start_global_timer()
+{
+    timer::global_timer();
+}
+
+inline void stop_global_timer()
+{
+    timer::global_timer().stop();
+}
+
+}
 /* this is needed only to call timer::global_timer() at the beginning */
-static timer* global_timer_init__ = &timer::global_timer();
+//static timer* global_timer_init__ = &timer::global_timer();
 
 #endif

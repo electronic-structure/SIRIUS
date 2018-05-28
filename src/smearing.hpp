@@ -17,41 +17,51 @@
 // CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR 
 // OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-/** \file any_ptr.hpp
+/** \file smearing.hpp
  *
- *  \brief Implementation of pointer to any object.
+ *  \brief Smearing functions used in finding the band occupancies.
  */
 
-#ifndef __ANY_PTR_HPP__
-#define __ANY_PTR_HPP__
+#ifndef __SMEARING_HPP__
+#define __SMEARING_HPP__
 
-/// Handle deallocation of poiniter to any object. 
-class any_ptr
+#include <cmath>
+
+namespace smearing {
+
+inline double fermi_dirac(double e)
 {
-  private:
-    /// Untyped pointer to a stored object.
-    void* ptr_;
-    /// Deleter for the stored object.
-    std::function<void(void*)> deleter_;
-  public:
-    /// Constructor.
-    template <typename T>
-    any_ptr(T* ptr__)
-        : ptr_(ptr__)
-    {
-        deleter_ = [](void* p){delete static_cast<T*>(p);};
+    double kT = 0.001;
+    if (e > 100 * kT) {
+        return 0.0;
     }
-    /// Destructor.
-    ~any_ptr()
-    {
-        deleter_(ptr_);
+    if (e < -100 * kT) {
+        return 1.0;
     }
-    /// Cast pointer to a given type and return a const reference. 
-    template <typename T>
-    T const& get() const
-    {
-        return *static_cast<T*>(ptr_);
+    return (1.0 / (std::exp(e / kT) + 1.0));
+}
+
+inline double gaussian(double e, double delta)
+{
+    return 0.5 * (1 - std::erf(e / delta));
+}
+
+inline double cold(double e)
+{
+    const double pi = 3.1415926535897932385;
+    
+    double a = -0.5634;
+
+    if (e < -10.0) {
+        return 1.0;
     }
-};
+    if (e > 10.0) {
+        return 0.0;
+    }
+
+    return 0.5 * (1 - std::erf(e)) - 1 - 0.25 * std::exp(-e * e) * (a + 2 * e - 2 * a * e * e) / std::sqrt(pi);
+}
+
+}
 
 #endif

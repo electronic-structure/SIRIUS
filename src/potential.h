@@ -40,17 +40,9 @@ class Potential: public Field4D
 {
     private:
 
-        //Simulation_context& ctx_;
-
         Unit_cell& unit_cell_;
 
         Communicator const& comm_;
-        
-        ///// Total effective potential.
-        //std::unique_ptr<Periodic_function<double>> effective_potential_;
-        //
-        ///// Total effective magnetic field.
-        //Periodic_function<double>* effective_magnetic_field_[3];
         
         /// Hartree potential.
         std::unique_ptr<Periodic_function<double>> hartree_potential_;
@@ -292,7 +284,6 @@ class Potential: public Field4D
                 }
             }
         }
-        
 
         /// Generate non-spin polarized XC potential in the muffin-tins.
         inline void xc_mt_nonmagnetic(Radial_grid<double> const& rgrid,
@@ -360,12 +351,6 @@ class Potential: public Field4D
                 }
             }
 
-            //effective_potential_ = std::unique_ptr<Periodic_function<double>>(new Periodic_function<double>(ctx_, ctx_.lmmax_pot()));
-            //
-            //for (int j = 0; j < ctx_.num_mag_dims(); j++) {
-            //    effective_magnetic_field_[j] = new Periodic_function<double>(ctx_, ctx_.lmmax_pot());
-            //}
-            
             hartree_potential_ = std::unique_ptr<Periodic_function<double>>(new Periodic_function<double>(ctx_, ctx_.lmmax_pot()));
             hartree_potential_->allocate_mt(false);
             
@@ -431,9 +416,6 @@ class Potential: public Field4D
 
         ~Potential()
         {
-            //for (int j = 0; j < ctx_.num_mag_dims(); j++) {
-            //    delete effective_magnetic_field_[j];
-            //}
             delete xc_potential_;
             delete xc_energy_density_;
         }
@@ -1074,7 +1056,7 @@ class Potential: public Field4D
             return xc_energy_density_;
         }
         
-        inline double vh_el(int ia)
+        inline double vh_el(int ia) const
         {
             return vh_el_(ia);
         }

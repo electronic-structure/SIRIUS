@@ -31,6 +31,7 @@
 #include "simulation_parameters.h"
 #include "mpi_grid.hpp"
 #include "radial_integrals.h"
+#include "utils/utils.hpp"
 
 #ifdef __GPU
 extern "C" void generate_phase_factors_gpu(int num_gvec_loc__,
@@ -161,14 +162,11 @@ class Simulation_context_base: public Simulation_parameters
         /* copy constructor is forbidden */
         Simulation_context_base(Simulation_context_base const&) = delete;
 
+        /// Get the stsrting time stamp. //TODO: use utilities, rename
         void start()
         {
             gettimeofday(&start_time_, NULL);
-
-            tm const* ptm = localtime(&start_time_.tv_sec); 
-            char buf[100];
-            strftime(buf, sizeof(buf), "%Y%m%d_%H%M%S", ptm);
-            start_time_tag_ = std::string(buf);
+            start_time_tag_ = utils::timestamp("%Y%m%d_%H%M%S");
         }
 
         void init_atoms_to_grid_idx()
@@ -921,7 +919,7 @@ inline void Simulation_context_base::initialize()
             pout.printf("--- MPI rank placement ---\n");
         }
         pout.printf("rank: %3i, comm_band_rank: %3i, comm_k_rank: %3i, hostname: %s\n",
-                    comm().rank(), comm_band().rank(), comm_k().rank(), runtime::hostname().c_str());
+                    comm().rank(), comm_band().rank(), comm_k().rank(), utils::hostname().c_str());
     }
 
     if (comm_.rank() == 0 && control().print_memory_usage_) {

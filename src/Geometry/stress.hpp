@@ -714,7 +714,7 @@ class Stress {
 
             mdarray<double_complex, 2> phase_factors(atom_type.num_atoms(), ctx_.gvec().count());
 
-            sddk::timer t0("sirius::Stress|us|phase_fac");
+            utils::timer t0("sirius::Stress|us|phase_fac");
             #pragma omp parallel for schedule(static)
             for (int igloc = 0; igloc < ctx_.gvec().count(); igloc++) {
                 int ig = ctx_.gvec().offset() + igloc;
@@ -732,7 +732,7 @@ class Stress {
                     q_deriv.generate_pw_coeffs(iat, ri, ri_dq, nu);
 
                     for (int mu = 0; mu < 3; mu++) {
-                        sddk::timer t2("sirius::Stress|us|prepare");
+                        utils::timer t2("sirius::Stress|us|prepare");
                         int igloc0{0};
                         if (ctx_.comm().rank() == 0) {
                             for (int ia = 0; ia < atom_type.num_atoms(); ia++) {
@@ -755,7 +755,7 @@ class Stress {
                         }
                         t2.stop();
 
-                        sddk::timer t1("sirius::Stress|us|gemm");
+                        utils::timer t1("sirius::Stress|us|gemm");
                         linalg<CPU>::gemm(0, 1, nbf * (nbf + 1) / 2, atom_type.num_atoms(), 2 * ctx_.gvec().count(),
                                           q_deriv.q_pw(), v_tmp, tmp);
                         t1.stop();

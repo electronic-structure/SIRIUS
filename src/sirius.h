@@ -25,7 +25,7 @@
 #ifndef __SIRIUS_H__
 #define __SIRIUS_H__
 
-#include "json.hpp"
+#include "utils/json.hpp"
 using json = nlohmann::json;
 
 #include "sirius_internal.h"

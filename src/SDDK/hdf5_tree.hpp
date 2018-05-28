@@ -50,7 +50,7 @@ struct hdf5_type_wrapper<double>
 };
 
 template<> 
-struct hdf5_type_wrapper<double_complex>
+struct hdf5_type_wrapper<std::complex<double>>
 {
     static hid_t type_id()
     {
@@ -318,7 +318,7 @@ class HDF5_tree
     }
 
     template <int N>
-    void write(const std::string& name, mdarray<double_complex, N> const& data)
+    void write(const std::string& name, mdarray<std::complex<double>, N> const& data)
     {
         std::vector<int> dims(N + 1);
         dims[0] = 2;
@@ -381,7 +381,7 @@ class HDF5_tree
     }
 
     template <int N>
-    void read(const std::string& name, mdarray<double_complex, N>& data)
+    void read(const std::string& name, mdarray<std::complex<double>, N>& data)
     {
         std::vector<int> dims(N + 1);
         dims[0] = 2;

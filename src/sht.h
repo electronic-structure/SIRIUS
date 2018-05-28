@@ -653,10 +653,10 @@ class SHT // TODO: better name
                     long double d = 0;
                     for (int j = 0; j <= std::min(l + m1, l - m2); j++) {
                         if ((l - m2 - j) >= 0 && (l + m1 - j) >= 0 && (j + m2 - m1) >= 0) {
-                            long double g = (std::sqrt(Utils::factorial(l + m1)) / Utils::factorial(l - m2 - j)) *
-                                            (std::sqrt(Utils::factorial(l - m1)) / Utils::factorial(l + m1 - j)) *
-                                            (std::sqrt(Utils::factorial(l - m2)) / Utils::factorial(j + m2 - m1)) *
-                                            (std::sqrt(Utils::factorial(l + m2)) / Utils::factorial(j));
+                            long double g = (std::sqrt(utils::factorial(l + m1)) / utils::factorial(l - m2 - j)) *
+                                            (std::sqrt(utils::factorial(l - m1)) / utils::factorial(l + m1 - j)) *
+                                            (std::sqrt(utils::factorial(l - m2)) / utils::factorial(j + m2 - m1)) *
+                                            (std::sqrt(utils::factorial(l + m2)) / utils::factorial(j));
                             d += g * std::pow(-1, j) * std::pow(cos_b2, 2 * l + m1 - m2 - 2 * j) * std::pow(sin_b2, 2 * j + m2 - m1);
                         }
                     }

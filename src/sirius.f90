@@ -1,15 +1,21 @@
+!> @file sirius.f90
+!! @brierf SIRIUS interface to Fortran
 module sirius
 
     use, intrinsic :: ISO_C_BINDING
 
     interface
 
+        !> @brief Initialize the SIRIUS library
+        !> @param call_mpi_init If .true. then MPI_Init must be called prior to initialization.
         subroutine sirius_initialize(call_mpi_init)&
             &bind(C, name="sirius_initialize")
             use, intrinsic :: ISO_C_BINDING
             logical(C_BOOL),         intent(in) :: call_mpi_init
         end subroutine
 
+        !> @brief Shut down the SIRIUS library
+        !> @param call_mpi_fin If .true. then MPI_Finalize must be called after the shutdown.
         subroutine sirius_finalize(call_mpi_fin)&
             &bind(C, name="sirius_finalize")
             use, intrinsic :: ISO_C_BINDING
@@ -32,11 +38,25 @@ module sirius
             integer(C_INT),                  intent(in) :: fcomm
         end subroutine
 
+        !subroutine sirius_create_context_v2(fcomm, handler)&
+        !    &bind(C, name="sirius_create_context_v2")
+        !    use, intrinsic :: ISO_C_BINDING
+        !    integer(C_INT),                  intent(in)  :: fcomm
+        !    type(C_PTR),                     intent(out) :: handler
+        !end subroutine
+
         subroutine sirius_import_simulation_context_parameters(str)&
             &bind(C, name="sirius_import_simulation_context_parameters")
             use, intrinsic :: ISO_C_BINDING
             character(C_CHAR), dimension(*), intent(in) :: str
         end subroutine
+
+        !subroutine sirius_import_parameters_v2(handler, str)&
+        !    &bind(C, name="sirius_import_parameters_v2")
+        !    use, intrinsic :: ISO_C_BINDING
+        !    type(C_PTR),                     intent(in) :: handler
+        !    character(C_CHAR), dimension(*), intent(in) :: str
+        !end subroutine
 
         subroutine sirius_initialize_simulation_context()&
             &bind(C, name="sirius_initialize_simulation_context")
@@ -1188,6 +1208,13 @@ contains
         c_string(len_trim(f_string) + 1) = C_NULL_CHAR
     end function c_str
 
+    function c_logical(val) result(c_val)
+        implicit none
+        logical, intent(in) :: val
+        logical(C_BOOL)     :: c_val
+        c_val = val
+    end function c_logical
+
     subroutine sirius_create_density(rhoit, magit, rhomt, magmt)
         implicit none
         real(8), optional, target, intent(in) :: rhoit
@@ -1415,5 +1442,54 @@ contains
         call sirius_get_pw_coeffs_aux(label, pw_coeffs, ngv_ptr, gvl_ptr, comm_ptr)
 
     end subroutine
+
+    include 'generated.f90'
+
+    !subroutine sirius_set_parameters(handler, lmax_apw, lmax_rho, lmax_pot, num_bands, num_mag_dims,&
+    !                                &pw_cutoff, gk_cutoff)
+    !    type(C_PTR),                                    intent(in)  :: handler
+    !    integer(C_INT), optional, target,               intent(in)  :: lmax_apw
+    !    integer(C_INT), optional, target,               intent(in)  :: lmax_rho
+    !    integer(C_INT), optional, target,               intent(in)  :: lmax_pot
+    !    integer(C_INT), optional, target,               intent(in)  :: num_bands
+    !    integer(C_INT), optional, target,               intent(in)  :: num_mag_dims
+    !    real(C_DOUBLE), optional, target,               intent(in)  :: pw_cutoff
+    !    real(C_DOUBLE), optional, target,               intent(in)  :: gk_cutoff
+    !    type(C_PTR) :: lmax_apw_ptr = C_NULL_PTR
+    !    type(C_PTR) :: lmax_rho_ptr = C_NULL_PTR
+    !    type(C_PTR) :: lmax_pot_ptr = C_NULL_PTR
+    !    type(C_PTR) :: num_bands_ptr = C_NULL_PTR
+    !    type(C_PTR) :: num_mag_dims_ptr = C_NULL_PTR
+    !    type(C_PTR) :: pw_cutoff_ptr = C_NULL_PTR
+    !    type(C_PTR) :: gk_cutoff_ptr = C_NULL_PTR
+    !    interface
+    !        subroutine sirius_set_parameters_aux(handler, lmax_apw, lmax_rho, lmax_pot, num_bands, num_mag_dims,&
+    !                                             pw_cutoff, gk_cutoff)&
+    !            &bind(C, name="sirius_set_parameters")
+    !            use, intrinsic :: ISO_C_BINDING
+    !            type(C_PTR),                     intent(in) :: handler
+    !            type(C_PTR), value,              intent(in) :: lmax_apw
+    !            type(C_PTR), value,              intent(in) :: lmax_rho
+    !            type(C_PTR), value,              intent(in) :: lmax_pot
+    !            type(C_PTR), value,              intent(in) :: num_bands
+    !            type(C_PTR), value,              intent(in) :: num_mag_dims
+    !            type(C_PTR), value,              intent(in) :: pw_cutoff
+    !            type(C_PTR), value,              intent(in) :: gk_cutoff
+    !        end subroutine
+    !    end interface
+
+    !    if (present(lmax_apw)) lmax_apw_ptr = C_LOC(lmax_apw)
+    !    if (present(lmax_rho)) lmax_rho_ptr = C_LOC(lmax_rho)
+    !    if (present(lmax_pot)) lmax_pot_ptr = C_LOC(lmax_pot)
+    !    if (present(num_bands)) num_bands_ptr = C_LOC(num_bands)
+    !    if (present(num_mag_dims)) num_mag_dims_ptr = C_LOC(num_mag_dims)
+    !    if (present(pw_cutoff)) pw_cutoff_ptr = C_LOC(pw_cutoff)
+    !    if (present(gk_cutoff)) gk_cutoff_ptr = C_LOC(gk_cutoff)
+
+    !    call sirius_set_parameters_aux(handler, lmax_apw_ptr, lmax_rho_ptr, lmax_pot_ptr, num_bands_ptr,&
+    !                                   &num_mag_dims_ptr, pw_cutoff_ptr, gk_cutoff_ptr)
+
+    !end subroutine
+
 
 end module

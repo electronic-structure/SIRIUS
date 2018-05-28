@@ -64,7 +64,7 @@ namespace sirius {
     inline void initialize(bool call_mpi_init__ = true)
     {
         if (call_mpi_init__) {
-            Communicator::initialize();
+            Communicator::initialize(MPI_THREAD_MULTIPLE);
         }
         if (Communicator::world().rank() == 0) {
             printf("SIRIUS %i.%i, git hash: %s\n", major_version, minor_version, git_hash);
@@ -113,14 +113,14 @@ namespace sirius {
         fftw_cleanup();
 
         json dict;
-        dict["flat"] = sddk::timer::serialize_timers();
-        dict["tree"] = sddk::timer::serialize_timers_tree();
+        dict["flat"] = utils::timer::serialize_timers();
+        dict["tree"] = utils::timer::serialize_timers_tree();
         if (Communicator::world().rank() == 0) {
             std::ofstream ofs("timers.json", std::ofstream::out | std::ofstream::trunc);
             ofs << dict.dump(4);
         }
 
-        //sddk::timer::print_tree();
+        //utils::timer::print_tree();
         if (call_mpi_fin__) {
             Communicator::finalize();
         }

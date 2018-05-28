@@ -144,7 +144,7 @@ inline void transform(device_t                     pu__,
         }
     };
 
-    sddk::timer t1("sddk::Wave_functions::transform|init");
+    utils::timer t1("sddk::Wave_functions::transform|init");
     /* initial values for the resulting wave-functions */
     for (int iv = 0; iv < nwf; iv++) {
         if (beta__ == 0) {

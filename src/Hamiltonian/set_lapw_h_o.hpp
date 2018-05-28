@@ -55,7 +55,7 @@ inline void Hamiltonian::set_fv_h_o<CPU, electronic_structure_method_t::full_pot
         oalm_col = mdarray<double_complex, 2>(alm_col.at<CPU>(), kp__->num_gkvec_col(), max_mt_aw);
     }
 
-    sddk::timer t1("sirius::Band::set_fv_h_o|zgemm");
+    utils::timer t1("sirius::Band::set_fv_h_o|zgemm");
     /* loop over blocks of atoms */
     for (int iblk = 0; iblk < nblk; iblk++) {
         /* number of matching AW coefficients in the block */
@@ -155,7 +155,7 @@ inline void Hamiltonian::set_fv_h_o<GPU, electronic_structure_method_t::full_pot
 {
     PROFILE("sirius::Band::set_fv_h_o");
 
-    sddk::timer t2("sirius::Band::set_fv_h_o|alloc");
+    utils::timer t2("sirius::Band::set_fv_h_o|alloc");
     h__.allocate(memory_t::device);
     h__.zero<memory_t::host | memory_t::device>();
 
@@ -186,7 +186,7 @@ inline void Hamiltonian::set_fv_h_o<GPU, electronic_structure_method_t::full_pot
         MEMORY_USAGE_INFO();
     }
 
-    sddk::timer t1("sirius::Band::set_fv_h_o|zgemm");
+    utils::timer t1("sirius::Band::set_fv_h_o|zgemm");
     for (int iblk = 0; iblk < nblk; iblk++) {
         int num_mt_aw = 0;
         std::vector<int> offsets(num_atoms_in_block);

@@ -245,7 +245,7 @@ class FFT3D: public FFT3D_grid
 
             /* input/output data buffer is on GPU */
             if (data_ptr_type == GPU) {
-                sddk::timer t("sddk::FFT3D::transform_z_serial|gpu");
+                utils::timer t("sddk::FFT3D::transform_z_serial|gpu");
 #ifdef __GPU
                 switch (direction) {
                     case 1: {
@@ -328,7 +328,7 @@ class FFT3D: public FFT3D_grid
             }
 
             if (data_ptr_type == CPU) {
-                sddk::timer t("sddk::FFT3D::transform_z_serial|cpu");
+                utils::timer t("sddk::FFT3D::transform_z_serial|cpu");
                 #pragma omp parallel
                 {
                     int tid = omp_get_thread_num();
@@ -418,13 +418,13 @@ class FFT3D: public FFT3D_grid
             if (direction == -1) {
                 /* copy z-sticks to CPU */
                 if ((data_ptr_type == CPU && pu_ == GPU) || (data_ptr_type == GPU && !is_gpu_direct_ && comm_.size() > 1)) {
-                    sddk::timer t("sddk::FFT3D::transform_z|comm|d-1|DtoH");
+                    utils::timer t("sddk::FFT3D::transform_z|comm|d-1|DtoH");
                     fft_buffer_aux__.copy<memory_t::device, memory_t::host>(local_size_z_ * gvec_partition_->gvec().num_zcol());
                 }
 
                 /* collect full sticks */
                 if (comm_.size() > 1) {
-                    sddk::timer t("sddk::FFT3D::transform_z|d-1|comm");
+                    utils::timer t("sddk::FFT3D::transform_z|d-1|comm");
 
                     block_data_descriptor send(comm_.size());
                     block_data_descriptor recv(comm_.size());
@@ -441,7 +441,7 @@ class FFT3D: public FFT3D_grid
                                   &fft_buffer_[0]);
 
                         comm_.barrier();
-                        sddk::timer t("sddk::FFT3D::transform_z|comm|d-1|a2a_cpu");
+                        utils::timer t("sddk::FFT3D::transform_z|comm|d-1|a2a_cpu");
                         comm_.alltoall(&fft_buffer_[0], &send.counts[0], &send.offsets[0], &fft_buffer_aux__[0], &recv.counts[0], &recv.offsets[0]);
                         comm_.barrier();
                     }
@@ -452,7 +452,7 @@ class FFT3D: public FFT3D_grid
                         acc::copy<double_complex>(fft_buffer_.at<GPU>(), fft_buffer_aux__.at<GPU>(), gvec_partition_->gvec().num_zcol() * local_size_z_);
 
                         comm_.barrier();
-                        sddk::timer t("sddk::FFT3D::transform_z|comm|d-1|a2a_gpu");
+                        utils::timer t("sddk::FFT3D::transform_z|comm|d-1|a2a_gpu");
                         comm_.alltoall(fft_buffer_.at<GPU>(), &send.counts[0], &send.offsets[0], fft_buffer_aux__.at<GPU>(), &recv.counts[0], &recv.offsets[0]);
                         comm_.barrier();
                     }
@@ -480,7 +480,7 @@ class FFT3D: public FFT3D_grid
                     }
 #endif
 
-                    sddk::timer t("sddk::FFT3D::transform_z|d1|comm");
+                    utils::timer t("sddk::FFT3D::transform_z|d1|comm");
 
                     block_data_descriptor send(comm_.size());
                     block_data_descriptor recv(comm_.size());
@@ -494,7 +494,7 @@ class FFT3D: public FFT3D_grid
 
                     if (data_ptr_type == CPU || !is_gpu_direct_){
                         comm_.barrier();
-                        sddk::timer t("sddk::FFT3D::transform_z|comm|d1|a2a_cpu");
+                        utils::timer t("sddk::FFT3D::transform_z|comm|d1|a2a_cpu");
                         /* scatter z-columns */
                         comm_.alltoall(&fft_buffer_aux__[0], &send.counts[0], &send.offsets[0], &fft_buffer_[0], &recv.counts[0], &recv.offsets[0]);
                         comm_.barrier();
@@ -956,7 +956,7 @@ class FFT3D: public FFT3D_grid
 
             int nc = gvp__.gvec().reduced() ? 2 : 1;
 
-            sddk::timer t1("sddk::FFT3D::prepare|cpu");
+            utils::timer t1("sddk::FFT3D::prepare|cpu");
             /* get positions of z-columns in xy plane */
             z_col_pos_ = mdarray<int, 2>(gvp__.gvec().num_zcol(), nc, memory_t::host, "FFT3D.z_col_pos_");
             #pragma omp parallel for schedule(static)
