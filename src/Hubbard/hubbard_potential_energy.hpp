@@ -1,4 +1,4 @@
-void calculate_hubbard_potential_and_energy_colinear_case()
+void Hubbard_potential::calculate_hubbard_potential_and_energy_colinear_case()
 {
     this->hubbard_energy_u_               = 0.0;
     this->hubbard_energy_dc_contribution_ = 0.0;
@@ -8,7 +8,7 @@ void calculate_hubbard_potential_and_energy_colinear_case()
             const auto& atom = this->unit_cell_.atom(ia);
             if (atom.type().hubbard_correction()) {
                 double U_effective = 0.0;
-
+                const int lmax_at = 2 * atom.type().hubbard_l() + 1;
                 if ((atom.type().Hubbard_U() != 0.0) || (atom.type().Hubbard_alpha() != 0.0)) {
 
                     U_effective = atom.type().Hubbard_U();
@@ -21,12 +21,12 @@ void calculate_hubbard_potential_and_energy_colinear_case()
                         // is = 0 up-up
                         // is = 1 down-down
 
-                        for (int m1 = 0; m1 < 2 * atom.type().hubbard_l() + 1; m1++) {
+                        for (int m1 = 0; m1 < lmax_at; m1++) {
                             this->hubbard_energy_ += (atom.type().Hubbard_alpha() + 0.5 * U_effective) *
                                 this->occupancy_number_(m1, m1, is, ia, 0).real();
-                            this->U(m1, m1, is, ia) += (atom.type().Hubbard_alpha() + 0.5 * U_effective);
+                            this->hubbard_potential_(m1, m1, is, ia, 0) += (atom.type().Hubbard_alpha() + 0.5 * U_effective);
 
-                            for (int m2 = 0; m2 < 2 * atom.type().hubbard_l() + 1; m2++) {
+                            for (int m2 = 0; m2 < lmax_at; m2++) {
 
                                 this->hubbard_energy_ -=
                                     0.5 * U_effective *
@@ -34,23 +34,22 @@ void calculate_hubbard_potential_and_energy_colinear_case()
                                         .real();
 
                                 // POTENTIAL
-
-                                this->U(m1, m2, is, ia) -= U_effective * this->occupancy_number_(m2, m1, is, ia, 0);
+                                this->hubbard_potential_(m1, m2, is, ia, 0) -= U_effective * this->occupancy_number_(m2, m1, is, ia, 0);
                             }
                         }
                     }
                 }
 
-                if ((atom.type().Hubbard_J0() != 0.0) || (atom.type().Hubbard_beta() != 0.0)) {
+                if ((std::abs(atom.type().Hubbard_J0()) > 1e-8) || (std::abs(atom.type().Hubbard_beta()) > 1e-8)) {
                     for (int is = 0; is < ctx_.num_spins(); is++) {
 
                         // s = 0 -> s_opposite = 1
                         // s= 1 -> s_opposite = 0
-                        int s_opposite = (is + 1) % 2;
+                        const int s_opposite = (is + 1) % 2;
 
-                        double sign = (is == 0) - (is == 1);
+                        const double sign = (is == 0) - (is == 1);
 
-                        for (int m1 = 0; m1 < 2 * atom.type().hubbard_l() + 1; m1++) {
+                        for (int m1 = 0; m1 <  lmax_at; m1++) {
 
                             this->hubbard_energy_ +=
                                 sign * atom.type().Hubbard_beta() * this->occupancy_number_(m1, m1, is, ia, 0).real();
@@ -68,6 +67,7 @@ void calculate_hubbard_potential_and_energy_colinear_case()
                         }
                     }
                 }
+
             }
         }
 
@@ -91,21 +91,23 @@ void calculate_hubbard_potential_and_energy_colinear_case()
             // n_up and n_down spins
             double n_updown[2] = {0.0, 0.0};
 
+            const int lmax_at = 2 * atom.type().hubbard_l() + 1;
+
             for (int s = 0; s < ctx_.num_spins(); s++) {
-                for (int m = 0; m < 2 * atom.type().hubbard_l() + 1; m++) {
+                for (int m = 0; m < lmax_at; m++) {
                     n_total += this->occupancy_number_(m, m, s, ia, 0).real();
                 }
 
-                for (int m = 0; m < 2 * atom.type().hubbard_l() + 1; m++) {
+                for (int m = 0; m < lmax_at; m++) {
                     n_updown[s] += this->occupancy_number_(m, m, s, ia, 0).real();
                 }
             }
             double magnetization = 0.0;
 
-            if (ctx_.num_mag_dims() != 1) {
+            if (ctx_.num_mag_dims() == 0) {
                 n_total *= 2.0; // factor two here because the occupations are <= 1
             } else {
-                for (int m = 0; m < 2 * atom.type().hubbard_l() + 1; m++) {
+                for (int m = 0; m < lmax_at; m++) {
                     magnetization +=
                         (this->occupancy_number_(m, m, 0, ia, 0) - this->occupancy_number_(m, m, 1, ia, 0)).real();
                 }
@@ -120,6 +122,8 @@ void calculate_hubbard_potential_and_energy_colinear_case()
 
             for (int is = 0; is < ctx_.num_spins(); is++) {
                 for (int m1 = 0; m1 < 2 * atom.type().hubbard_l() + 1; m1++) {
+
+                    // dc contribution
                     this->U(m1, m1, is, ia) += atom.type().Hubbard_J() * n_updown[is] +
                                                0.5 * (atom.type().Hubbard_U() - atom.type().Hubbard_J()) -
                                                atom.type().Hubbard_U() * n_total;
@@ -131,7 +135,7 @@ void calculate_hubbard_potential_and_energy_colinear_case()
 
                                 // why should we consider the spinless case
 
-                                if (ctx_.num_mag_dims() != 1) {
+                                if (ctx_.num_mag_dims() == 0) {
                                     this->U(m1, m2, is, ia) += 2.0 * atom.type().hubbard_matrix(m1, m3, m2, m4) *
                                         this->occupancy_number_(m3, m4, is, ia, 0);
                                 } else {
@@ -152,7 +156,9 @@ void calculate_hubbard_potential_and_energy_colinear_case()
                                      this->occupancy_number_(m2, m4, is, ia, 0) +
                                      atom.type().hubbard_matrix(m1, m2, m3, m4) *
                                      this->occupancy_number_(m1, m3, is, ia, 0) *
-                                     this->occupancy_number_(m2, m4, (ctx_.num_mag_dims() == 1) ? ((is + 1) % 2) : (0), ia, 0))
+                                     this->occupancy_number_(m2, m4,
+                                                             (ctx_.num_mag_dims() == 1) ? ((is + 1) % 2) : (0),
+                                                             ia, 0))
                                     .real();
                             }
                         }
@@ -162,19 +168,20 @@ void calculate_hubbard_potential_and_energy_colinear_case()
         }
 
         // boring DFT
-        if (ctx_.num_mag_dims() != 1) {
+        if (ctx_.num_mag_dims() == 0) {
             this->hubbard_energy_u_ *= 2.0;
         }
-
         this->hubbard_energy_ = this->hubbard_energy_u_ - this->hubbard_energy_dc_contribution_;
-        if ((ctx_.control().verbosity_ >= 1) && (ctx_.comm().rank() == 0)) {
-            printf("\n hub Energy (total) %.5lf (no-flip) %.5lf (flip) %.5lf (dc) %.5lf\n", this->hubbard_energy_,
-                   this->hubbard_energy_noflip_, this->hubbard_energy_flip_, this->hubbard_energy_dc_contribution_);
-        }
+    }
+
+
+    if ((ctx_.control().verbosity_ >= 1) && (ctx_.comm().rank() == 0)) {
+        printf("\n hub Energy (total) %.5lf  (dc) %.5lf\n", this->hubbard_energy_,
+               this->hubbard_energy_dc_contribution_);
     }
 }
 
-void calculate_hubbard_potential_and_energy_non_colinear_case()
+void Hubbard_potential::calculate_hubbard_potential_and_energy_non_colinear_case()
 {
     this->hubbard_potential_.zero();
     this->hubbard_energy_dc_contribution_ = 0.0;
@@ -316,19 +323,16 @@ void calculate_hubbard_potential_and_energy_non_colinear_case()
         }
     }
 
-    // this->hubbard_energy_noflip_ *= 0.5;
-    // this->hubbard_energy_flip_ *= 0.5;
-    // this->hubbard_energy_dc_contribution_ *= 0.5;
     this->hubbard_energy_ =
         this->hubbard_energy_noflip_ + this->hubbard_energy_flip_ - this->hubbard_energy_dc_contribution_;
 
-    //    if ((ctx_.control().verbosity_ >= 1) && (ctx_.comm().rank() == 0)) {
+    if ((ctx_.control().verbosity_ >= 1) && (ctx_.comm().rank() == 0)) {
         printf("\n hub Energy (total) %.5lf (no-flip) %.5lf (flip) %.5lf (dc) %.5lf\n", this->hubbard_energy_,
                this->hubbard_energy_noflip_, this->hubbard_energy_flip_, this->hubbard_energy_dc_contribution_);
-        // }
+    }
 }
 
-inline void set_hubbard_potential(double *occ, int ld)
+inline void Hubbard_potential::set_hubbard_potential(double *occ, int ld)
 {
     mdarray<double, 4> occupation_(occ, ld, ld, ctx_.num_spins(), ctx_.unit_cell().num_atoms());
 
@@ -336,9 +340,9 @@ inline void set_hubbard_potential(double *occ, int ld)
     for(int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {
         const int l = ctx_.unit_cell().atom(ia).type().hubbard_l();
         for (int m1 = -l; m1 <= l; m1++) {
-            const int mm1 = natural_lm_to_qe(m1, l);
+            const int mm1 = this->natural_lm_to_qe(m1, l);
             for (int m2 = -l; m2 <= l ; m2++) {
-                const int mm2 = natural_lm_to_qe(m2, l);
+                const int mm2 = this->natural_lm_to_qe(m2, l);
                 for (int ispn = 0; ispn < ctx_.num_spins(); ispn++)
                     this->hubbard_potential_(l + m1, l + m2, ispn, ia, 0) = 0.5 * occupation_(mm1, mm2, ispn, ia);
             }
@@ -346,7 +350,7 @@ inline void set_hubbard_potential(double *occ, int ld)
     }
 }
 
-inline void set_hubbard_potential_nc(double_complex *occ, int ld)
+inline void Hubbard_potential::set_hubbard_potential_nc(double_complex *occ, int ld)
 {
     mdarray<double_complex, 4> occupation_(occ, ld, ld, 4, ctx_.unit_cell().num_atoms());
     //this->calculate_hubbard_potential_and_energy();
@@ -354,9 +358,9 @@ inline void set_hubbard_potential_nc(double_complex *occ, int ld)
     for(int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {
         const int l = ctx_.unit_cell().atom(ia).type().hubbard_l();
         for (int m1 = -l; m1 <= l; m1++) {
-            const int mm1 = natural_lm_to_qe(m1, l);
+            const int mm1 = this->natural_lm_to_qe(m1, l);
             for (int m2 = -l; m2 <= l; m2++) {
-                const int mm2 = natural_lm_to_qe(m2, l);
+                const int mm2 = this->natural_lm_to_qe(m2, l);
                 this->hubbard_potential_(l + m1, l + m2, 0, ia, 0) = 0.5 * occupation_(mm1, mm2, 0, ia);
                 this->hubbard_potential_(l + m1, l + m2, 1, ia, 0) = 0.5 * occupation_(mm1, mm2, 3, ia);
                 this->hubbard_potential_(l + m1, l + m2, 2, ia, 0) = 0.5 * occupation_(mm1, mm2, 1, ia);

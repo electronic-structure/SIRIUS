@@ -404,10 +404,11 @@ void sirius_set_atom_type_radial_grid(ftn_char          label__,
  *  \param [in] J0_ : J0 for the simple hubbard treatment
  */
 void sirius_set_atom_type_hubbard(char const* label__,
+                                  int const* l_,
+                                  int const* n_,
+                                  double const *occ,
                                   double const* U_,
                                   double const* J_,
-                                  double const* theta_,
-                                  double const* phi_,
                                   double const* alpha_,
                                   double const* beta_,
                                   double const* J0_)
@@ -419,9 +420,8 @@ void sirius_set_atom_type_hubbard(char const* label__,
     type.set_hubbard_alpha(*alpha_);
     type.set_hubbard_beta(*alpha_);
     type.set_hubbard_coefficients(J_);
-    type.set_starting_magnetization_theta(*theta_);
-    type.set_starting_magnetization_phi(*phi_);
     type.set_hubbard_J0(*J0_);
+    type.set_hubbard_orbital(*n_, *l_, *occ);
 }
 
 void sirius_set_free_atom_density(char const* label__,
@@ -2601,12 +2601,12 @@ void sirius_get_wave_functions(ftn_int*            kset_id__,
                                ftn_int*            ld2__)
 {
     PROFILE("sirius_api::sirius_get_wave_functions");
- 
+
     auto kset = kset_list[*kset_id__];
- 
+
     int jk = *ik__ - 1;
     int jspn = *ispn__ - 1;
- 
+
     int jrank{-1};
     if (jk >= 0) {
          /* find the rank where this k-point is stored */
@@ -2634,7 +2634,7 @@ void sirius_get_wave_functions(ftn_int*            kset_id__,
 
         for (int ig = 0; ig < *npw__; ig++) {
             /* G vector of host code */
-            auto gvc = sim_ctx->unit_cell().reciprocal_lattice_vectors() * 
+            auto gvc = sim_ctx->unit_cell().reciprocal_lattice_vectors() *
                        (vector3d<double>(gvec_k(0, ig), gvec_k(1, ig), gvec_k(2, ig)) + gkvec.vk());
             if (gvc.length() > sim_ctx->gk_cutoff()) {
                 continue;
@@ -2697,7 +2697,7 @@ void sirius_get_wave_functions(ftn_int*            kset_id__,
                 if (my_rank == r) {
                     igmap = gvec_mapping(gkvec);
                 }
-                    
+
                 /* target array of wave-functions */
                 mdarray<double_complex, 3> evc;
                 if (my_rank == r) {
@@ -3289,7 +3289,7 @@ void sirius_get_pw_coeffs_real(ftn_char    atom_type__,
     } else {
         std::stringstream s;
         s << "wrong label in sirius_get_pw_coeffs_real()" << std::endl
-          << "  label : " << label; 
+          << "  label : " << label;
         TERMINATE(s);
     }
 }
@@ -3344,6 +3344,9 @@ void sirius_get_forces(ftn_char label__, ftn_double* forces__)
     } else if (label == "scf_corr") {
         forces->calc_forces_scf_corr();
         get_forces(forces->forces_scf_corr());
+    } else if (label == "hubbard") {
+        forces->calc_forces_hubbard();
+        get_forces(forces->forces_hubbard());
     } else {
         std::stringstream s;
         s << "wrong label (" << label <<") for the component of forces";
@@ -3354,7 +3357,7 @@ void sirius_get_forces(ftn_char label__, ftn_double* forces__)
 void sirius_calculate_stress_tensor(ftn_int* kset_id__)
 {
     auto& kset = *kset_list[*kset_id__];
-    stress_tensor = std::unique_ptr<sirius::Stress>(new sirius::Stress(*sim_ctx, kset, *density, *potential));
+    stress_tensor = std::unique_ptr<sirius::Stress>(new sirius::Stress(*sim_ctx, kset, *hamiltonian, *density, *potential));
 }
 
 void sirius_get_stress_tensor(ftn_char label__, ftn_double* stress_tensor__)
@@ -3385,6 +3388,9 @@ void sirius_get_stress_tensor(ftn_char label__, ftn_double* stress_tensor__)
     } else if (label == "core") {
         stress_tensor->calc_stress_core();
         s = stress_tensor->stress_core();
+    }  else if (label == "hubbard") {
+        stress_tensor->calc_stress_hubbard();
+        s = stress_tensor->stress_hubbard();
     } else {
         TERMINATE("wrong label");
     }
