@@ -64,7 +64,7 @@ void test_hloc(std::vector<int> mpi_grid_dims__, double cutoff__, int num_bands_
     #endif
     hloc.prepare(gvecp); 
     Communicator::world().barrier();
-    sddk::timer t1("h_loc");
+    utils::timer t1("h_loc");
     for (int i = 0; i < 4; i++) {
         hloc.apply_h(0, phi, hphi, i * num_bands__, num_bands__);
     }
@@ -137,7 +137,7 @@ int main(int argn, char** argv)
     }
     Communicator::world().barrier();
     if (Communicator::world().rank() == 0) {
-        sddk::timer::print();
+        utils::timer::print();
     }
     Communicator::world().barrier();
     //runtime::Timer::print_all();

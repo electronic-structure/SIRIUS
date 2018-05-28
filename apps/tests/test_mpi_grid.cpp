@@ -15,7 +15,7 @@ void test_grid(std::vector<int> grid__)
 
     pout.printf("rank(flat): %3i, coordinate: %3i %3i %3i, hostname: %s\n", Communicator::world().rank(),
         mpi_grid.communicator(1 << 0).size(), mpi_grid.communicator(1 << 1).size(),
-        mpi_grid.communicator(1 << 2).size(), runtime::hostname().c_str());
+        mpi_grid.communicator(1 << 2).size(), utils::hostname().c_str());
 }
 
 int main(int argn, char** argv)
