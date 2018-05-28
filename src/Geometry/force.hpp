@@ -253,7 +253,7 @@ class Force
                                 for (int m1 = 0; m1 < lmax_at; m1++) {
                                     for (int m2 = 0; m2 < lmax_at; m2++) {
                                         forceh_(dir, ia) -= (hamiltonian_.U().U(m2, m1, ispn, ia1) *
-                                                             dn_(m1, m2, ispn, ia1, dir)).real();
+                                                             dn_(m1, m2, ispn, ia1, dir)).real() * kp__.weight();
                                     }
                                 }
                             }
