@@ -102,7 +102,7 @@ int main(int argn, char **argv)
     test_fft(cutoff, GPU);
     #endif
     if (Communicator::world().rank() == 0) {
-        sddk::timer::print();
+        utils::timer::print();
     }
     Communicator::world().barrier();
     
