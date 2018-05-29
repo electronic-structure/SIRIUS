@@ -105,7 +105,7 @@ inline void Potential::generate_D_operator_matrix()
                 case GPU: {
 #ifdef __GPU
                     /* copy plane wave coefficients of effective potential to GPU */
-                    mdarray<double_complex, 1> veff(&veff_vec[iv]->f_pw_local(0), veff_tmp.at<GPU>(),
+                    mdarray<double_complex, 1> veff(&component(iv).f_pw_local(0), veff_tmp.at<GPU>(),
                                                     ctx_.gvec().count());
                     veff.copy<memory_t::host, memory_t::device>();
 

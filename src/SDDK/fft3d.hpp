@@ -460,7 +460,7 @@ class FFT3D: public FFT3D_grid
                     /* buffer is on CPU after mpi_a2a and has to be copied to GPU */
                     if (data_ptr_type == GPU && !is_gpu_direct_) {
 //                        comm_.barrier();
-                        sddk::timer t("sddk::FFT3D::transform_z|comm|d-1|HtoD");
+                        utils::timer t("sddk::FFT3D::transform_z|comm|d-1|HtoD");
                         fft_buffer_aux__.copy<memory_t::host, memory_t::device>(gvec_partition_->zcol_count_fft() * size(2));
 //                        comm_.barrier();
                     }
@@ -475,7 +475,7 @@ class FFT3D: public FFT3D_grid
                 if (comm_.size() > 1) {
 #ifdef __GPU
                     if (data_ptr_type == GPU && !is_gpu_direct_) {
-                        sddk::timer t("sddk::FFT3D::transform_z|comm|d1|DtoH");
+                        utils::timer t("sddk::FFT3D::transform_z|comm|d1|DtoH");
                         fft_buffer_aux__.copy<memory_t::device, memory_t::host>(gvec_partition_->zcol_count_fft() * size(2));
                     }
 #endif
@@ -507,7 +507,7 @@ class FFT3D: public FFT3D_grid
 #ifdef __GPU
                     if (data_ptr_type == GPU && is_gpu_direct_) {
                         comm_.barrier();
-                        sddk::timer t("sddk::FFT3D::transform_z|comm|d1|a2a_gpu");
+                        utils::timer t("sddk::FFT3D::transform_z|comm|d1|a2a_gpu");
                         /* scatter z-columns */
                         comm_.alltoall(fft_buffer_aux__.at<GPU>(), &send.counts[0], &send.offsets[0], fft_buffer_.at<GPU>(), &recv.counts[0], &recv.offsets[0]);
                         comm_.barrier();
@@ -519,7 +519,7 @@ class FFT3D: public FFT3D_grid
                 }
 #ifdef __GPU
                 if ((data_ptr_type == CPU && pu_ == GPU) || (comm_.size() > 1 && data_ptr_type == GPU && !is_gpu_direct_ ) ) {
-                    sddk::timer t("sddk::FFT3D::transform_z|comm|d1|HtoD");
+                    utils::timer t("sddk::FFT3D::transform_z|comm|d1|HtoD");
                     fft_buffer_aux__.copy<memory_t::host, memory_t::device>(local_size_z_ * gvec_partition_->gvec().num_zcol());
                 }
 #endif
@@ -979,7 +979,7 @@ class FFT3D: public FFT3D_grid
 
 #ifdef __GPU
             if (pu_ == GPU) {
-                sddk::timer t2("sddk::FFT3D::prepare|gpu");
+                utils::timer t2("sddk::FFT3D::prepare|gpu");
                 size_t work_size;
                 map_gvec_to_fft_buffer_ = mdarray<int, 1>(gvp__.gvec_count_fft(), memory_t::host | memory_t::device,
                                                           "FFT3D.map_zcol_to_fft_buffer_");
