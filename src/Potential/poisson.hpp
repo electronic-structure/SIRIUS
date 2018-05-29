@@ -270,7 +270,7 @@ inline void Potential::poisson(Periodic_function<double> const& rho)
         poisson_sum_G(ctx_.lmmax_pot(), &hartree_potential_->f_pw_local(0), sbessel_mt_, vmtlm);
         
         /* add boundary condition and convert to Rlm */
-        sddk::timer t1("sirius::Potential::poisson|bc");
+        utils::timer t1("sirius::Potential::poisson|bc");
         mdarray<double, 2> rRl(unit_cell_.max_num_mt_points(), ctx_.lmax_pot() + 1);
         int type_id_prev = -1;
 

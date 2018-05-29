@@ -25,7 +25,6 @@
 #ifndef __MPI_GRID_HPP__
 #define __MPI_GRID_HPP__
 
-#include "sddk_internal.hpp"
 #include "communicator.hpp"
 
 namespace sddk {

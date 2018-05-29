@@ -85,7 +85,7 @@ inline void Band::diag_full_potential_first_variation_exact(K_point& kp, Hamilto
 
     std::vector<double> eval(ctx_.num_fv_states());
 
-    sddk::timer t("sirius::Band::diag_fv_exact|genevp");
+    utils::timer t("sirius::Band::diag_fv_exact|genevp");
     auto solver = ctx_.gen_evp_solver<double_complex>();
 
     if (solver->solve(kp.gklo_basis_size(), ctx_.num_fv_states(), h, o, eval.data(), kp.fv_eigen_vectors())) {
@@ -363,7 +363,7 @@ inline void Band::get_singular_components(K_point& kp__, Hamiltonian& H__) const
 
         /* check if we run out of variational space or eigen-vectors are converged or it's a last iteration */
         if (N + n > num_phi || n <= itso.min_num_res_ || k == (itso.num_steps_ - 1)) {
-            sddk::timer t1("sirius::Band::diag_fv_full_potential_davidson|update_phi");
+            utils::timer t1("sirius::Band::diag_fv_full_potential_davidson|update_phi");
             /* recompute wave-functions */
             /* \Psi_{i} = \sum_{mu} \phi_{mu} * Z_{mu, i} */
             transform(ctx_.processing_unit(), 0, phi, 0, N, evec, 0, 0, psi, 0, ncomp);
@@ -585,7 +585,7 @@ inline void Band::diag_full_potential_first_variation_davidson(K_point& kp__, Ha
 
         /* check if we run out of variational space or eigen-vectors are converged or it's a last iteration */
         if (N + n > num_phi || n <= itso.min_num_res_ || k == (itso.num_steps_ - 1)) {
-            sddk::timer t1("sirius::Band::diag_fv_davidson|update_phi");
+            utils::timer t1("sirius::Band::diag_fv_davidson|update_phi");
             /* recompute wave-functions */
             /* \Psi_{i} = \sum_{mu} \phi_{mu} * Z_{mu, i} */
             transform(ctx_.processing_unit(), 0, phi, 0, N, evec, 0, 0, psi, 0, num_bands);
@@ -722,7 +722,7 @@ inline void Band::diag_full_potential_second_variation(K_point& kp__, Hamiltonia
             //auto z1 = h.checksum();
             //DUMP("checksum(h): %18.10f %18.10f", std::real(z1), std::imag(z1));
             //#endif
-            sddk::timer t1("sirius::Band::diag_sv|stdevp");
+            utils::timer t1("sirius::Band::diag_sv|stdevp");
             std_solver->solve(nfv, nfv, h, &band_energies(0, ispn), kp__.sv_eigen_vectors(ispn));
         }
     } else {
@@ -760,7 +760,7 @@ inline void Band::diag_full_potential_second_variation(K_point& kp__, Hamiltonia
         //auto z1 = h.checksum();
         //DUMP("checksum(h): %18.10f %18.10f", std::real(z1), std::imag(z1));
         //#endif
-        sddk::timer t1("sirius::Band::diag_sv|stdevp");
+        utils::timer t1("sirius::Band::diag_sv|stdevp");
         std_solver->solve(nb, nb, h, &band_energies(0, 0), kp__.sv_eigen_vectors(0));
     }
 

@@ -50,7 +50,7 @@ struct space_group_symmetry_descriptor
 
     /// Fractional translation.
     vector3d<double> t;
-    
+
     /// Proper (+1) or improper (-1) rotation.
     int proper;
 
@@ -101,7 +101,7 @@ class Unit_cell_symmetry
         /** For each atom ia and symmetry isym sym_table_(ia, isym) stores index of atom ja to which original atom
          *  transforms under symmetry operation. */
         mdarray<int, 2> sym_table_;
-        
+
         /// List of all space group symmetry operations.
         std::vector<space_group_symmetry_descriptor> space_group_symmetry_;
 
@@ -116,7 +116,7 @@ class Unit_cell_symmetry
          *      - about \f$ \hat e_z \f$ through the angle \f$ \gamma \f$ (\f$ 0 \le \gamma < 2\pi \f$)
          *      - about \f$ \hat e_y \f$ through the angle \f$ \beta \f$ (\f$ 0 \le \beta \le \pi \f$) 
          *      - about \f$ \hat e_z \f$ through the angle \f$ \alpha \f$ (\f$ 0 \le \gamma < 2\pi \f$)
-         *  
+         *
          *  The total rotation matrix is defined as a product of three rotation matrices:
          *  \f[
          *      R(\alpha, \beta, \gamma) = 
@@ -155,7 +155,7 @@ class Unit_cell_symmetry
             double sint = u.length() / 2.0;
             double cost = (R__(0, 0) + R__(1, 1) + R__(2, 2) - 1) / 2.0;
 
-            double theta = Utils::phi_by_sin_cos(sint, cost);
+            double theta = utils::phi_by_sin_cos(sint, cost);
 
             /* rotation angle is zero */
             if (std::abs(theta) < 1e-12) {
@@ -385,7 +385,7 @@ inline Unit_cell_symmetry::Unit_cell_symmetry(matrix3d<double>&   lattice_vector
         }
     }
     
-    sddk::timer t1("sirius::Unit_cell_symmetry::Unit_cell_symmetry|spg");
+    utils::timer t1("sirius::Unit_cell_symmetry::Unit_cell_symmetry|spg");
     spg_dataset_ = spg_get_dataset(lattice, (double(*)[3])&positions_(0, 0), &types_[0], num_atoms_, tolerance_);
     if (spg_dataset_ == NULL) {
         TERMINATE("spg_get_dataset() returned NULL");
@@ -405,7 +405,7 @@ inline Unit_cell_symmetry::Unit_cell_symmetry(matrix3d<double>&   lattice_vector
 
     inverse_lattice_vectors_ = inverse(lattice_vectors_);
 
-    sddk::timer t2("sirius::Unit_cell_symmetry::Unit_cell_symmetry|sym1");
+    utils::timer t2("sirius::Unit_cell_symmetry::Unit_cell_symmetry|sym1");
     for (int isym = 0; isym < spg_dataset_->n_operations; isym++) {
         space_group_symmetry_descriptor sym_op;
 
@@ -438,7 +438,7 @@ inline Unit_cell_symmetry::Unit_cell_symmetry(matrix3d<double>&   lattice_vector
     }
     t2.stop();
 
-    sddk::timer t3("sirius::Unit_cell_symmetry::Unit_cell_symmetry|sym2");
+    utils::timer t3("sirius::Unit_cell_symmetry::Unit_cell_symmetry|sym2");
     sym_table_ = mdarray<int, 2>(num_atoms_, num_spg_sym());
     /* loop over spatial symmetries */
     #pragma omp parallel for schedule(static)
@@ -468,7 +468,7 @@ inline Unit_cell_symmetry::Unit_cell_symmetry(matrix3d<double>&   lattice_vector
     }
     t3.stop();
     
-    sddk::timer t4("sirius::Unit_cell_symmetry::Unit_cell_symmetry|sym3");
+    utils::timer t4("sirius::Unit_cell_symmetry::Unit_cell_symmetry|sym3");
     /* loop over spatial symmetries */
     for (int isym = 0; isym < num_spg_sym(); isym++) {
         /* loop over spin symmetries */
@@ -528,28 +528,22 @@ inline vector3d<double> Unit_cell_symmetry::euler_angles(matrix3d<double> const&
 {
     vector3d<double> angles(0, 0, 0);
     
-    if (std::abs(rot__.det() - 1) > 1e-10)
-    {
+    if (std::abs(rot__.det() - 1) > 1e-10) {
         std::stringstream s;
         s << "determinant of rotation matrix is " << rot__.det();
         TERMINATE(s);
     }
 
-    if (std::abs(rot__(2, 2) - 1.0) < 1e-10) // cos(beta) == 1, beta = 0
-    {
-        angles[0] = Utils::phi_by_sin_cos(rot__(1, 0), rot__(0, 0));
-    }
-    else if (std::abs(rot__(2, 2) + 1.0) < 1e-10) // cos(beta) == -1, beta = Pi
-    {
-        angles[0] = Utils::phi_by_sin_cos(-rot__(0, 1), rot__(1, 1));
+    if (std::abs(rot__(2, 2) - 1.0) < 1e-10) { // cos(beta) == 1, beta = 0
+        angles[0] = utils::phi_by_sin_cos(rot__(1, 0), rot__(0, 0));
+    } else if (std::abs(rot__(2, 2) + 1.0) < 1e-10) { // cos(beta) == -1, beta = Pi
+        angles[0] = utils::phi_by_sin_cos(-rot__(0, 1), rot__(1, 1));
         angles[1] = pi;
-    }
-    else             
-    {
+    } else {
         double beta = std::acos(rot__(2, 2));
-        angles[0] = Utils::phi_by_sin_cos(rot__(1, 2) / std::sin(beta), rot__(0, 2) / std::sin(beta));
+        angles[0] = utils::phi_by_sin_cos(rot__(1, 2) / std::sin(beta), rot__(0, 2) / std::sin(beta));
         angles[1] = beta;
-        angles[2] = Utils::phi_by_sin_cos(rot__(2, 1) / std::sin(beta), -rot__(2, 0) / std::sin(beta));
+        angles[2] = utils::phi_by_sin_cos(rot__(2, 1) / std::sin(beta), -rot__(2, 0) / std::sin(beta));
     }
 
     auto rm1 = rot_mtrx_cart(angles);
@@ -697,7 +691,7 @@ inline void Unit_cell_symmetry::symmetrize_function(double_complex* f_pw__,
 
     std::vector<double_complex> sym_f_pw(v.size(), 0);
 
-    sddk::timer t1("sirius::Unit_cell_symmetry::symmetrize_function_pw|local");
+    utils::timer t1("sirius::Unit_cell_symmetry::symmetrize_function_pw|local");
     #pragma omp parallel
     {
         int nt = omp_get_max_threads();
@@ -774,7 +768,7 @@ inline void Unit_cell_symmetry::symmetrize_function(double_complex* f_pw__,
 //               sym_phase_factors__(2, G[2], isym);
 //    };
 //
-//    sddk::timer t1("sirius::Unit_cell_symmetry::symmetrize_function_pw|local");
+//    utils::timer t1("sirius::Unit_cell_symmetry::symmetrize_function_pw|local");
 //    #pragma omp parallel
 //    {
 //        int nt = omp_get_max_threads();
@@ -877,7 +871,7 @@ inline void Unit_cell_symmetry::symmetrize_function(double_complex* f_pw__,
 //    
 //    double* ptr = (double*)&sym_f_pw(0);
 //
-//    sddk::timer t1("sirius::Unit_cell_symmetry::symmetrize_function_pw|local");
+//    utils::timer t1("sirius::Unit_cell_symmetry::symmetrize_function_pw|local");
 //    #pragma omp parallel for
 //    for (int i = 0; i < num_mag_sym(); i++) {
 //        /* full space-group symmetry operation is {R|t} */
@@ -923,7 +917,7 @@ inline void Unit_cell_symmetry::symmetrize_function(double_complex* f_pw__,
 //    }
 //    t1.stop();
 //
-//    sddk::timer t2("sirius::Unit_cell_symmetry::symmetrize_function_pw|mpi");
+//    utils::timer t2("sirius::Unit_cell_symmetry::symmetrize_function_pw|mpi");
 //    comm__.allreduce(&sym_f_pw(0), gvec__.num_gvec());
 //    t2.stop();
 //    

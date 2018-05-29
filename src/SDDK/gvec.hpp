@@ -208,7 +208,7 @@ class Gvec
             /* loop over z-coordinates of FFT grid */
             for (int iz = 0; iz <= zmax; iz++) {
                 /* get z-coordinate of G-vector */
-                int k = fft_box__.gvec_by_coord(iz, 2);
+                int k = fft_box__.freq_by_coord<2>(iz);
                 /* take G+k */
                 auto vgk = lattice_vectors_ * (vector3d<double>(i, j, k) + vk_);
                 /* add z-coordinate of G-vector to the list */

@@ -33,7 +33,7 @@
 #include "mpi_grid.hpp"
 #include "unit_cell_symmetry.h"
 #include "simulation_parameters.h"
-#include "json.hpp"
+#include "utils/json.hpp"
 
 namespace sirius {
 

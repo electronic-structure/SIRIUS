@@ -1,4 +1,4 @@
-// Copyright (c) 2013-2016 Anton Kozhevnikov, Thomas Schulthess
+// Copyright (c) 2013-2018 Anton Kozhevnikov, Thomas Schulthess
 // All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without modification, are permitted provided that
@@ -32,10 +32,10 @@ class FFT3D_grid
 {
   private:
     /// Size of each dimension.
-    int grid_size_[3];
+    std::array<int, 3> grid_size_;
 
     /// Reciprocal space range.
-    std::pair<int, int> grid_limits_[3];
+    std::array<std::pair<int, int>, 3> grid_limits_;
 
     /// Find smallest optimal grid size starting from n.
     int find_grid_size(int n)
@@ -55,6 +55,7 @@ class FFT3D_grid
         }
     }
 
+    /// Find grid sizes and limits for all three dimensions.
     void find_grid_size(std::array<int, 3> initial_dims__)
     {
         for (int i = 0; i < 3; i++) {
@@ -64,20 +65,26 @@ class FFT3D_grid
             grid_limits_[i].first  = grid_limits_[i].second - grid_size_[i] + 1;
         }
 
-        for (int i = 0; i < 3; i++) {
-            for (int x = 0; x < size(i); x++) {
-                if (coord_by_gvec(gvec_by_coord(x, i), i) != x) {
-                    throw std::runtime_error("find_grid_size: wrong mapping of coordinates");
-                }
+        for (int x = 0; x < size(0); x++) {
+            if (coord_by_freq<0>(freq_by_coord<0>(x)) != x) {
+                throw std::runtime_error("FFT3D_grid::find_grid_size(): wrong mapping of x-coordinates");
+            }
+        }
+        for (int x = 0; x < size(1); x++) {
+            if (coord_by_freq<1>(freq_by_coord<1>(x)) != x) {
+                throw std::runtime_error("FFT3D_grid::find_grid_size(): wrong mapping of y-coordinates");
+            }
+        }
+        for (int x = 0; x < size(2); x++) {
+            if (coord_by_freq<2>(freq_by_coord<2>(x)) != x) {
+                throw std::runtime_error("FFT3D_grid::find_grid_size(): wrong mapping of z-coordinates");
             }
         }
     }
 
   public:
-    FFT3D_grid()
-    {
-    }
 
+    /// Create FFT grid with initial dimensions.
     FFT3D_grid(std::array<int, 3> initial_dims__)
     {
         find_grid_size(initial_dims__);
@@ -103,50 +110,36 @@ class FFT3D_grid
         return grid_size_[0] * grid_size_[1] * grid_size_[2];
     }
 
-    inline std::array<int, 3> coord_by_gvec(int i0__, int i1__, int i2__) const
-    {
-        if (i0__ < 0) {
-            i0__ += grid_size_[0];
-        }
-        if (i1__ < 0) {
-            i1__ += grid_size_[1];
-        }
-        if (i2__ < 0) {
-            i2__ += grid_size_[2];
-        }
-
-        return {i0__, i1__, i2__};
-    }
-
-    inline int coord_by_gvec(int i__, int idim__) const
+    /// Get coordinate in range [0, N_d) by the frequency index.
+    template <int d>
+    inline int coord_by_freq(int i__) const
     {
         if (i__ < 0) {
-            i__ += grid_size_[idim__];
+            i__ += grid_size_[d];
         }
         return i__;
     }
 
-    inline std::array<int, 3> gvec_by_coord(int x__, int y__, int z__) const
+    /// Return {x, y, z} coordinates by frequency indices.
+    inline std::array<int, 3> coord_by_freq(int i0__, int i1__, int i2__) const
     {
-        if (x__ > grid_limits_[0].second) {
-            x__ -= grid_size_[0];
-        }
-        if (y__ > grid_limits_[1].second) {
-            y__ -= grid_size_[1];
-        }
-        if (z__ > grid_limits_[2].second) {
-            z__ -= grid_size_[2];
-        }
-
-        return {x__, y__, z__};
+        return {coord_by_freq<0>(i0__), coord_by_freq<1>(i1__), coord_by_freq<2>(i2__)};
     }
 
-    inline int gvec_by_coord(int x__, int idim__) const
+    /// Get frequency by coordinate.
+    template <int d>
+    inline int freq_by_coord(int x__) const
     {
-        if (x__ > limits(idim__).second) {
-            x__ -= size(idim__);
+        if (x__ > grid_limits_[d].second) {
+            x__ -= grid_size_[d];
         }
         return x__;
+    }
+
+    /// Return 3d vector of frequencies corresponding to {x, y, z} position in the FFT buffer.
+    inline std::array<int, 3> freq_by_coord(int x__, int y__, int z__) const
+    {
+        return {freq_by_coord<0>(x__), freq_by_coord<1>(y__), freq_by_coord<2>(z__)};
     }
 
     /// Linear index inside FFT buffer by grid coordinates.
@@ -156,9 +149,9 @@ class FFT3D_grid
     }
 
     /// Return linear index of a plane-wave harmonic with fractional coordinates (i0, i1, i2) inside FFT buffer.
-    inline int index_by_gvec(int i0__, int i1__, int i2__) const
+    inline int index_by_freq(int i0__, int i1__, int i2__) const
     {
-        auto coord = coord_by_gvec(i0__, i1__, i2__);
+        auto coord = coord_by_freq(i0__, i1__, i2__);
         return index_by_coord(coord[0], coord[1], coord[2]);
     }
 };

@@ -251,7 +251,7 @@ inline int Band::diag_pseudo_potential_davidson(K_point*       kp__,
     /* short notation for target wave-functions */
     auto& psi = kp__->spinor_wave_functions();
 
-    sddk::timer t1("sirius::Band::diag_pseudo_potential_davidson|wf");
+    utils::timer t1("sirius::Band::diag_pseudo_potential_davidson|wf");
 
     /* maximum subspace size */
     int num_phi = itso.subspace_size_ * num_bands;
@@ -293,7 +293,7 @@ inline int Band::diag_pseudo_potential_davidson(K_point*       kp__,
     Wave_functions res(mem_buf_ptr, kp__->gkvec_partition(), num_bands, num_sc);
     t1.stop();
 
-    sddk::timer t2("sirius::Band::diag_pseudo_potential_davidson|alloc");
+    utils::timer t2("sirius::Band::diag_pseudo_potential_davidson|alloc");
     auto mem_type = (ctx_.std_evp_solver_type() == ev_solver_t::magma) ? memory_t::host_pinned : memory_t::host;
 
     const int bs = ctx_.cyclic_block_size();
@@ -358,7 +358,7 @@ inline int Band::diag_pseudo_potential_davidson(K_point*       kp__,
 
     int niter{0};
 
-    sddk::timer t3("sirius::Band::diag_pseudo_potential_davidson|iter");
+    utils::timer t3("sirius::Band::diag_pseudo_potential_davidson|iter");
     for (int ispin_step = 0; ispin_step < ctx_.num_spin_dims(); ispin_step++) {
 
         std::vector<double> eval(num_bands);
@@ -413,7 +413,7 @@ inline int Band::diag_pseudo_potential_davidson(K_point*       kp__,
         /* current subspace size */
         int N = num_bands;
 
-        sddk::timer t1("sirius::Band::diag_pseudo_potential_davidson|evp");
+        utils::timer t1("sirius::Band::diag_pseudo_potential_davidson|evp");
         /* solve generalized eigen-value problem with the size N and get lowest num_bands eigen-vectors */
         if (gen_solver->solve(N, num_bands, hmlt, ovlp, eval.data(), evec)) {
             std::stringstream s;
@@ -445,7 +445,7 @@ inline int Band::diag_pseudo_potential_davidson(K_point*       kp__,
 
             /* check if we run out of variational space or eigen-vectors are converged or it's a last iteration */
             if (N + n > num_phi || n <= itso.min_num_res_ || k == (itso.num_steps_ - 1)) {
-                sddk::timer t1("sirius::Band::diag_pseudo_potential_davidson|update_phi");
+                utils::timer t1("sirius::Band::diag_pseudo_potential_davidson|update_phi");
                 /* recompute wave-functions */
                 /* \Psi_{i} = \sum_{mu} \phi_{mu} * Z_{mu, i} */
                 if (ctx_.settings().always_update_wf_ || k + n > 0) {
@@ -543,7 +543,7 @@ inline int Band::diag_pseudo_potential_davidson(K_point*       kp__,
 
             eval_old = eval;
 
-            sddk::timer t1("sirius::Band::diag_pseudo_potential_davidson|evp");
+            utils::timer t1("sirius::Band::diag_pseudo_potential_davidson|evp");
             if (itso.orthogonalize_) {
                 /* solve standard eigen-value problem with the size N */
                 if (std_solver->solve(N, num_bands, hmlt, eval.data(), evec)) {
@@ -947,7 +947,7 @@ inline void Band::diag_pseudo_potential_rmm_diis(K_point* kp__,
 //    auto update_res = [kp__, num_bands, &phi, &res, &hphi, &ophi, &last, &conv_band]
 //                      (std::vector<double>& res_norm__, std::vector<double>& eval__) -> void
 //    {
-//        sddk::timer t("sirius::Band::diag_pseudo_potential_rmm_diis|res");
+//        utils::timer t("sirius::Band::diag_pseudo_potential_rmm_diis|res");
 //        std::vector<double> e_tmp(num_bands, 0), d_tmp(num_bands, 0);
 //
 //        #pragma omp parallel for
@@ -984,7 +984,7 @@ inline void Band::diag_pseudo_potential_rmm_diis(K_point* kp__,
 //    auto apply_h_o = [this, kp__, num_bands, &phi, &phi_tmp, &hphi, &hphi_tmp, &ophi, &ophi_tmp, &conv_band, &last,
 //                      &d_op__, &q_op__, ispn__]() -> int
 //    {
-//        sddk::timer t("sirius::Band::diag_pseudo_potential_rmm_diis|h_o");
+//        utils::timer t("sirius::Band::diag_pseudo_potential_rmm_diis|h_o");
 //        int n{0};
 //        for (int i = 0; i < num_bands; i++) {
 //            if (!conv_band[i]) {
@@ -1019,7 +1019,7 @@ inline void Band::diag_pseudo_potential_rmm_diis(K_point* kp__,
 //    //                             double alpha,
 //    //                             wave_functions& kres__) -> void
 //    //{
-//    //    sddk::timer t("sirius::Band::diag_pseudo_potential_rmm_diis|pre");
+//    //    utils::timer t("sirius::Band::diag_pseudo_potential_rmm_diis|pre");
 //    //    #pragma omp parallel for
 //    //    for (int i = 0; i < num_bands; i++) {
 //    //        if (!conv_band[i]) {
@@ -1135,7 +1135,7 @@ inline void Band::diag_pseudo_potential_rmm_diis(K_point* kp__,
 //
 //    /* start adjusting residuals */
 //    for (int iter = 2; iter < niter; iter++) {
-//        sddk::timer t1("sirius::Band::diag_pseudo_potential_rmm_diis|AB");
+//        utils::timer t1("sirius::Band::diag_pseudo_potential_rmm_diis|AB");
 //        A.zero();
 //        B.zero();
 //        for (int i = 0; i < num_bands; i++) {
@@ -1152,7 +1152,7 @@ inline void Band::diag_pseudo_potential_rmm_diis(K_point* kp__,
 //        kp__->comm().allreduce(B.template at<CPU>(), (int)B.size());
 //        t1.stop();
 //
-//        sddk::timer t2("sirius::Band::diag_pseudo_potential_rmm_diis|phi");
+//        utils::timer t2("sirius::Band::diag_pseudo_potential_rmm_diis|phi");
 //        for (int i = 0; i < num_bands; i++) {
 //            if (!conv_band[i]) {
 //                if (evp_solver.solve(iter, 1, &A(0, 0, i), A.ld(), &B(0, 0, i), B.ld(), &ev[0], &V(0, i), V.ld()) == 0) {

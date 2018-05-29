@@ -128,7 +128,7 @@ class Eigensolver_lapack: public Eigensolver<T>
     /// Solve a standard eigen-value problem for all eigen-pairs.
     int solve(ftn_int matrix_size__, dmatrix<T>& A__, double* eval__, dmatrix<T>& Z__)
     {
-        sddk::timer t0("Eigensolver_lapack::solve_std");
+        utils::timer t0("Eigensolver_lapack::solve_std");
 
         auto work_sizes = get_work_sizes(matrix_size__);
 
@@ -140,7 +140,7 @@ class Eigensolver_lapack: public Eigensolver<T>
             std::vector<double> rwork(work_sizes[1]);
             std::vector<ftn_int> iwork(work_sizes[2]);
 
-            sddk::timer t1("Eigensolver_lapack::solve_std|zheevd");
+            utils::timer t1("Eigensolver_lapack::solve_std|zheevd");
             FORTRAN(zheevd)("V", "U", &matrix_size__, reinterpret_cast<double_complex*>(A__.template at<CPU>()),
                             &lda, eval__, &work[0], &work_sizes[0], &rwork[0], &work_sizes[1], 
                             &iwork[0], &work_sizes[2], &info, (ftn_int)1, (ftn_int)1);
@@ -160,7 +160,7 @@ class Eigensolver_lapack: public Eigensolver<T>
             std::vector<double> work(lwork);
             std::vector<int32_t> iwork(liwork);
 
-            sddk::timer t1("Eigensolver_lapack::solve_std|dsyevd");
+            utils::timer t1("Eigensolver_lapack::solve_std|dsyevd");
             FORTRAN(dsyevd)("V", "U", &matrix_size__, reinterpret_cast<double*>(A__.template at<CPU>()), &lda,
                             eval__, &work[0], &lwork, 
                             &iwork[0], &liwork, &info, (ftn_int)1, (ftn_int)1);
@@ -182,7 +182,7 @@ class Eigensolver_lapack: public Eigensolver<T>
     /// Solve a standard eigen-value problem for N lowest eigen-pairs.
     int solve(ftn_int matrix_size__, ftn_int nev__, dmatrix<T>& A__, double* eval__, dmatrix<T>& Z__)
     {
-        sddk::timer t0("Eigensolver_lapack::solve_std");
+        utils::timer t0("Eigensolver_lapack::solve_std");
 
         double  vl, vu;
         int32_t il{1};
@@ -206,7 +206,7 @@ class Eigensolver_lapack: public Eigensolver<T>
             ftn_int lwork = (nb + 6) * matrix_size__;
             std::vector<double> work(lwork);
             
-            sddk::timer t1("Eigensolver_lapack::solve_std|dsyevr");
+            utils::timer t1("Eigensolver_lapack::solve_std|dsyevr");
             FORTRAN(dsyevr)("V", "I", "U", &matrix_size__, reinterpret_cast<double*>(A__.template at<CPU>()), &lda, 
                             &vl, &vu, &il, &nev__, &abs_tol, &m, &w[0], reinterpret_cast<double*>(Z__.template at<CPU>()),
                             &ldz, 
@@ -231,7 +231,7 @@ class Eigensolver_lapack: public Eigensolver<T>
             ftn_int lrwork = 24 * matrix_size__;
             std::vector<double> rwork(lrwork);
 
-            sddk::timer t1("Eigensolver_lapack::solve_std|zheevr");
+            utils::timer t1("Eigensolver_lapack::solve_std|zheevr");
             FORTRAN(zheevr)("V", "I", "U", &matrix_size__, reinterpret_cast<double_complex*>(A__.template at<CPU>()), &lda,
                             &vl, &vu, &il, &nev__, &abs_tol, &m, 
                             &w[0], reinterpret_cast<double_complex*>(Z__.template at<CPU>()), &ldz,
@@ -380,7 +380,7 @@ class Eigensolver_elpa: public Eigensolver<T>
             TERMINATE("wrong block size");
         }
         
-        sddk::timer t1("Eigensolver_elpa|to_std");
+        utils::timer t1("Eigensolver_elpa|to_std");
         /* Cholesky factorization B = U^{H}*U */
         linalg<CPU>::potrf(matrix_size__, B__);
         /* inversion of the triangular matrix */
@@ -406,7 +406,7 @@ class Eigensolver_elpa: public Eigensolver<T>
             return result;
         }
 
-        sddk::timer t3("Eigensolver_elpa|bt");
+        utils::timer t3("Eigensolver_elpa|bt");
         /* back-transform of eigen-vectors */
         linalg<CPU>::gemm(0, 0, matrix_size__, nev__, matrix_size__, linalg_const<T>::one(), B__, Z__,
                           linalg_const<T>::zero(), A__);
@@ -437,7 +437,7 @@ class Eigensolver_elpa: public Eigensolver<T>
         int mpi_comm_col = MPI_Comm_c2f(A__.blacs_grid().comm_col().mpi_comm());
         int mpi_comm_all = MPI_Comm_c2f(A__.blacs_grid().comm().mpi_comm());
         std::vector<double> w(matrix_size__);
-        sddk::timer t2("Eigensolver_elpa|solve");
+        utils::timer t2("Eigensolver_elpa|solve");
         int success{-1};
         /* solve standard eigen-value problem with ELPA */
         if (std::is_same<T, double_complex>::value) {
@@ -2291,7 +2291,7 @@ std::unique_ptr<Eigensolver<T>> Eigensolver_factory(ev_solver_t ev_solver_type__
 //==             transform_to_standard(matrix_size, A, lda, B, ldb, num_rows_loc, num_cols_loc, tmp1, tmp2);
 //== 
 //==             std::vector<double> w(matrix_size);
-//==             sddk::timer t("Eigenproblem_elpa1|diag");
+//==             utils::timer t("Eigenproblem_elpa1|diag");
 //==             FORTRAN(elpa_solve_evp_complex)(&matrix_size, &nevec, A, &lda, &w[0], tmp1.at<CPU>(), &num_rows_loc, 
 //==                                             &block_size_, &num_cols_loc, &mpi_comm_rows_, &mpi_comm_cols_, &mpi_comm_all_);
 //==             t.stop();
@@ -2319,7 +2319,7 @@ std::unique_ptr<Eigensolver<T>> Eigensolver_factory(ev_solver_t ev_solver_type__
 //==             transform_to_standard(matrix_size, A, lda, B, ldb, num_rows_loc, num_cols_loc, tmp1, tmp2);
 //== 
 //==             std::vector<double> w(matrix_size);
-//==             sddk::timer t("Eigenproblem_elpa1|diag");
+//==             utils::timer t("Eigenproblem_elpa1|diag");
 //==             FORTRAN(elpa_solve_evp_real)(&matrix_size, &nevec, A, &lda, &w[0], tmp1.at<CPU>(), &num_rows_loc, 
 //==                                          &block_size_, &num_cols_loc, &mpi_comm_rows_, &mpi_comm_cols_, &mpi_comm_all_);
 //==             t.stop();
@@ -2340,7 +2340,7 @@ std::unique_ptr<Eigensolver<T>> Eigensolver_factory(ev_solver_t ev_solver_type__
 //==             assert(nevec <= matrix_size);
 //== 
 //==             std::vector<double> w(matrix_size);
-//==             sddk::timer t("Eigenproblem_elpa1|diag");
+//==             utils::timer t("Eigenproblem_elpa1|diag");
 //==             FORTRAN(elpa_solve_evp_real)(&matrix_size, &nevec, A, &lda, &w[0], Z, &ldz, 
 //==                                          &block_size_, &num_cols_loc, &mpi_comm_rows_, &mpi_comm_cols_, &mpi_comm_all_);
 //==             t.stop();
@@ -2358,7 +2358,7 @@ std::unique_ptr<Eigensolver<T>> Eigensolver_factory(ev_solver_t ev_solver_type__
 //==             assert(nevec <= matrix_size);
 //== 
 //==             std::vector<double> w(matrix_size);
-//==             sddk::timer t("Eigenproblem_elpa1|diag");
+//==             utils::timer t("Eigenproblem_elpa1|diag");
 //==             FORTRAN(elpa_solve_evp_complex)(&matrix_size, &nevec, A, &lda, &w[0], Z, &ldz, 
 //==                                             &block_size_, &num_cols_loc, &mpi_comm_rows_, &mpi_comm_cols_, &mpi_comm_all_);
 //==             t.stop();
@@ -2404,7 +2404,7 @@ std::unique_ptr<Eigensolver<T>> Eigensolver_factory(ev_solver_t ev_solver_type__
 //==             transform_to_standard(matrix_size, A, lda, B, ldb, num_rows_loc, num_cols_loc, tmp1, tmp2);
 //== 
 //==             std::vector<double> w(matrix_size);
-//==             sddk::timer t("Eigenproblem_elpa2|diag");
+//==             utils::timer t("Eigenproblem_elpa2|diag");
 //==             FORTRAN(elpa_solve_evp_complex_2stage)(&matrix_size, &nevec, A, &lda, &w[0], tmp1.at<CPU>(), &num_rows_loc, 
 //==                                                    &block_size_, &num_cols_loc, &mpi_comm_rows_, &mpi_comm_cols_, &mpi_comm_all_);
 //==             t.stop();
@@ -2430,7 +2430,7 @@ std::unique_ptr<Eigensolver<T>> Eigensolver_factory(ev_solver_t ev_solver_type__
 //==             transform_to_standard(matrix_size, A, lda, B, ldb, num_rows_loc, num_cols_loc, tmp1, tmp2);
 //== 
 //==             std::vector<double> w(matrix_size);
-//==             sddk::timer t("Eigenproblem_elpa2|diag");
+//==             utils::timer t("Eigenproblem_elpa2|diag");
 //==             FORTRAN(elpa_solve_evp_real_2stage)(&matrix_size, &nevec, A, &lda, &w[0], tmp1.at<CPU>(), &num_rows_loc, 
 //==                                                 &block_size_, &num_cols_loc, &mpi_comm_rows_, &mpi_comm_cols_, &mpi_comm_all_);
 //==             t.stop();
@@ -2450,7 +2450,7 @@ std::unique_ptr<Eigensolver<T>> Eigensolver_factory(ev_solver_t ev_solver_type__
 //==             assert(nevec <= matrix_size);
 //== 
 //==             std::vector<double> w(matrix_size);
-//==             sddk::timer t("Eigenproblem_elpa2|diag");
+//==             utils::timer t("Eigenproblem_elpa2|diag");
 //==             FORTRAN(elpa_solve_evp_real_2stage)(&matrix_size, &nevec, A, &lda, &w[0], Z, &ldz, 
 //==                                                 &block_size_, &num_cols_loc, &mpi_comm_rows_, &mpi_comm_cols_, &mpi_comm_all_);
 //==             t.stop();

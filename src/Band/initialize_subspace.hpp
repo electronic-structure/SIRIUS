@@ -73,7 +73,7 @@ Band::initialize_subspace(K_point* kp__, Hamiltonian &H__, int num_ao__) const
         phi.pw_coeffs(ispn).prime().zero();
     }
 
-    sddk::timer t1("sirius::Band::initialize_subspace|kp|wf");
+    utils::timer t1("sirius::Band::initialize_subspace|kp|wf");
     /* get proper lmax */
     int lmax{0};
     for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {

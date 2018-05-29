@@ -239,7 +239,7 @@ inline void orthogonalize(device_t                     pu__,
             #endif
         }
     } else { /* parallel transformation */
-        sddk::timer t1("sddk::Wave_functions::orthogonalize|potrf");
+        utils::timer t1("sddk::Wave_functions::orthogonalize|potrf");
         mdarray<T, 1> diag;
         o__.make_real_diag(n__);
         if (sddk_debug >= 1) {
@@ -255,7 +255,7 @@ inline void orthogonalize(device_t                     pu__,
         }
         t1.stop();
 
-        sddk::timer t2("sddk::Wave_functions::orthogonalize|trtri");
+        utils::timer t2("sddk::Wave_functions::orthogonalize|trtri");
         if (linalg<CPU>::trtri(n__, o__)) {
             TERMINATE("error in inversion");
         }

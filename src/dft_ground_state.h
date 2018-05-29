@@ -28,50 +28,55 @@
 #include "potential.h"
 #include "density.h"
 #include "k_point_set.h"
-#include "json.hpp"
+#include "utils/json.hpp"
 #include "hubbard.hpp"
 
 using json = nlohmann::json;
 
 namespace sirius {
 
-/// The whole DFT ground state calculation.
+/// The whole DFT ground state implementation.
 class DFT_ground_state
 {
     private:
 
+        /// Context of simulation.
         Simulation_context& ctx_;
+
+        K_point_set& kset_;
 
         Unit_cell& unit_cell_;
 
-        std::unique_ptr<Potential> potential_ptr_{nullptr};
-        Potential& potential_;
+        Potential potential_;
 
-        std::unique_ptr<Hamiltonian> hamiltonian_ptr_{nullptr};
-        Hamiltonian& hamiltonian_;
+        Density density_;
 
-        std::unique_ptr<Density> density_ptr_{nullptr};
-        Density& density_;
-
-        std::unique_ptr<K_point_set> kset_ptr_{nullptr};
-        K_point_set& kset_;
+        Hamiltonian hamiltonian_;
 
         Band band_;
 
+        Stress stress_;
+
+        Force forces_;
+
+        /// Store Ewald energy which is computed once and which doesn't change during the run.
         double ewald_energy_{0};
 
         /// Compute the ion-ion electrostatic energy using Ewald method.
         /** The following contribution (per unit cell) to the total energy has to be computed:
          *  \f[
          *    E^{ion-ion} = \frac{1}{N} \frac{1}{2} \sum_{i \neq j} \frac{Z_i Z_j}{|{\bf r}_i - {\bf r}_j|} =
-         *      \frac{1}{2} \sideset{}{'} \sum_{\alpha \beta {\bf T}} \frac{Z_{\alpha} Z_{\beta}}{|{\bf r}_{\alpha} - {\bf r}_{\beta} + {\bf T}|}
+         *      \frac{1}{2} \sideset{}{'} \sum_{\alpha \beta {\bf T}} \frac{Z_{\alpha} Z_{\beta}}{|{\bf r}_{\alpha} -
+         *      {\bf r}_{\beta} + {\bf T}|}
          *  \f]
          *  where \f$ N \f$ is the number of unit cells in the crystal.
          *  Following the idea of Ewald the Coulomb interaction is split into two terms:
          *  \f[
          *     \frac{1}{|{\bf r}_{\alpha} - {\bf r}_{\beta} + {\bf T}|} =
-         *       \frac{{\rm erf}(\sqrt{\lambda} |{\bf r}_{\alpha} - {\bf r}_{\beta} + {\bf T}|)}{|{\bf r}_{\alpha} - {\bf r}_{\beta} + {\bf T}|} +
-         *       \frac{{\rm erfc}(\sqrt{\lambda} |{\bf r}_{\alpha} - {\bf r}_{\beta} + {\bf T}|)}{|{\bf r}_{\alpha} - {\bf r}_{\beta} + {\bf T}|}
+         *       \frac{{\rm erf}(\sqrt{\lambda} |{\bf r}_{\alpha} - {\bf r}_{\beta} + {\bf T}|)}{|{\bf r}_{\alpha} -
+         *       {\bf r}_{\beta} + {\bf T}|} +
+         *       \frac{{\rm erfc}(\sqrt{\lambda} |{\bf r}_{\alpha} - {\bf r}_{\beta} + {\bf T}|)}{|{\bf r}_{\alpha} - 
+         *       {\bf r}_{\beta} + {\bf T}|}
          *  \f]
          *  Second term is computed directly. First term is computed in the reciprocal space. Remembering that
          *  \f[
@@ -143,15 +148,15 @@ class DFT_ground_state
 
             #pragma omp parallel for
             for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
-                for (int j0 = 0; j0 < ctx_.fft().grid().size(0); j0++) {
-                    for (int j1 = 0; j1 < ctx_.fft().grid().size(1); j1++) {
+                for (int j0 = 0; j0 < ctx_.fft().size(0); j0++) {
+                    for (int j1 = 0; j1 < ctx_.fft().size(1); j1++) {
                         for (int j2 = 0; j2 < ctx_.fft().local_size_z(); j2++) {
                             /* get real space fractional coordinate */
-                            auto v0 = vector3d<double>(double(j0) / ctx_.fft().grid().size(0),
-                                                       double(j1) / ctx_.fft().grid().size(1),
-                                                       double(ctx_.fft().offset_z() + j2) / ctx_.fft().grid().size(2));
+                            auto v0 = vector3d<double>(double(j0) / ctx_.fft().size(0),
+                                                       double(j1) / ctx_.fft().size(1),
+                                                       double(ctx_.fft().offset_z() + j2) / ctx_.fft().size(2));
                             /* index of real space point */
-                            int ir = ctx_.fft().grid().index_by_coord(j0, j1, j2);
+                            int ir = ctx_.fft().index_by_coord(j0, j1, j2);
 
                             for (int t0 = -1; t0 <= 1; t0++) {
                                 for (int t1 = -1; t1 <= 1; t1++) {
@@ -179,39 +184,20 @@ class DFT_ground_state
             return std::move(mmom);
         }
     public:
-
+        /// Constructor.
         DFT_ground_state(Simulation_context& ctx__,
-                         Hamiltonian&        hamiltonian__,
-                         Density&            density__,
                          K_point_set&        kset__)
             : ctx_(ctx__)
-            , unit_cell_(ctx__.unit_cell())
-            , potential_(hamiltonian__.potential())
-            , hamiltonian_(hamiltonian__)
-            , density_(density__)
             , kset_(kset__)
-            , band_(ctx_)
-        {
-            if (!ctx_.full_potential()) {
-                ewald_energy_ = ewald_energy();
-            }
-        }
-
-        DFT_ground_state(Simulation_context& ctx__)
-            : ctx_(ctx__)
             , unit_cell_(ctx__.unit_cell())
-            , potential_ptr_(new Potential(ctx__))
-            , potential_(*potential_ptr_)
-            , hamiltonian_ptr_(new Hamiltonian(ctx__, potential_))
-            , hamiltonian_(*hamiltonian_ptr_)
-            , density_ptr_(new Density(ctx__))
-            , density_(*density_ptr_)
-            , kset_ptr_(new K_point_set(ctx__, ctx__.parameters_input().ngridk_, ctx_.parameters_input().shiftk_, ctx_.use_symmetry()))
-            , kset_(*kset_ptr_)
+            , potential_(ctx__)
+            , density_(ctx__)
+            , hamiltonian_(ctx_, potential_)
             , band_(ctx_)
+            , stress_(ctx__, density_, potential_, hamiltonian_, kset__)
+            , forces_(ctx__, density_, potential_, hamiltonian_, kset__) 
+
         {
-            potential_.allocate();
-            density_.allocate();
             if (!ctx_.full_potential()) {
                 ewald_energy_ = ewald_energy();
             }
@@ -403,84 +389,6 @@ class DFT_ground_state
             return tot_en;
         }
 
-        void symmetrize(Periodic_function<double>* f__,
-                        Periodic_function<double>* gz__,
-                        Periodic_function<double>* gx__,
-                        Periodic_function<double>* gy__)
-        {
-            PROFILE("sirius::DFT_ground_state::symmetrize");
-
-            auto& comm = ctx_.comm();
-
-            auto& remap_gvec = ctx_.remap_gvec();
-
-            if (ctx_.control().print_hash_) {
-                auto h = f__->hash_f_pw();
-                if (ctx_.comm().rank() == 0) {
-                    print_hash("f_unsymmetrized(G)", h);
-                }
-            }
-
-            unit_cell_.symmetry().symmetrize_function(&f__->f_pw_local(0), remap_gvec, ctx_.sym_phase_factors());
-
-            if (ctx_.control().print_hash_) {
-                auto h = f__->hash_f_pw();
-                if (ctx_.comm().rank() == 0) {
-                    print_hash("f_symmetrized(G)", h);
-                }
-            }
-
-            /* symmetrize PW components */
-            switch (ctx_.num_mag_dims()) {
-                case 1: {
-                    unit_cell_.symmetry().symmetrize_vector_function(&gz__->f_pw_local(0), remap_gvec, ctx_.sym_phase_factors());
-                    break;
-                }
-                case 3: {
-                    if (ctx_.control().print_hash_) {
-                        auto h1 = gx__->hash_f_pw();
-                        auto h2 = gy__->hash_f_pw();
-                        auto h3 = gz__->hash_f_pw();
-                        if (ctx_.comm().rank() == 0) {
-                            print_hash("fx_unsymmetrized(G)", h1);
-                            print_hash("fy_unsymmetrized(G)", h2);
-                            print_hash("fz_unsymmetrized(G)", h3);
-                        }
-                    }
-
-                    unit_cell_.symmetry().symmetrize_vector_function(&gx__->f_pw_local(0), &gy__->f_pw_local(0), &gz__->f_pw_local(0),
-                                                                     remap_gvec, ctx_.sym_phase_factors());
-
-                    if (ctx_.control().print_hash_) {
-                        auto h1 = gx__->hash_f_pw();
-                        auto h2 = gy__->hash_f_pw();
-                        auto h3 = gz__->hash_f_pw();
-                        if (ctx_.comm().rank() == 0) {
-                            print_hash("fx_symmetrized(G)", h1);
-                            print_hash("fy_symmetrized(G)", h2);
-                            print_hash("fz_symmetrized(G)", h3);
-                        }
-                    }
-                    break;
-                }
-            }
-
-            if (ctx_.full_potential()) {
-                /* symmetrize MT components */
-                unit_cell_.symmetry().symmetrize_function(f__->f_mt(), comm);
-                switch (ctx_.num_mag_dims()) {
-                    case 1: {
-                        unit_cell_.symmetry().symmetrize_vector_function(gz__->f_mt(), comm);
-                        break;
-                    }
-                    case 3: {
-                        unit_cell_.symmetry().symmetrize_vector_function(gx__->f_mt(), gy__->f_mt(), gz__->f_mt(), comm);
-                        break;
-                    }
-                }
-            }
-        }
-
         inline Band& band()
         {
             return band_;
@@ -506,6 +414,16 @@ class DFT_ground_state
             return hamiltonian_;
         }
 
+        inline Force& forces()
+        {
+            return forces_;
+        }
+
+        inline Stress& stress()
+        {
+            return stress_;
+        }
+
         json serialize()
         {
             json dict;
@@ -514,11 +432,11 @@ class DFT_ground_state
 
             std::vector<int> fftgrid(3);
             for (int i = 0; i < 3; i++) {
-                fftgrid[i] = ctx_.fft().grid().size(i);
+                fftgrid[i] = ctx_.fft().size(i);
             }
             dict["fft_grid"] = fftgrid;
             for (int i = 0; i < 3; i++) {
-                fftgrid[i] = ctx_.fft_coarse().grid().size(i);
+                fftgrid[i] = ctx_.fft_coarse().size(i);
             }
             dict["fft_coarse_grid"] = fftgrid;
             dict["num_fv_states"] = ctx_.num_fv_states();
@@ -636,7 +554,7 @@ inline json DFT_ground_state::find(double potential_tol, double energy_tol, int 
     }
 
     for (int iter = 0; iter < num_dft_iter; iter++) {
-        sddk::timer t1("sirius::DFT_ground_state::scf_loop|iteration");
+        utils::timer t1("sirius::DFT_ground_state::scf_loop|iteration");
 
         if (ctx_.comm().rank() == 0 && ctx_.control().verbosity_ >= 1) {
             printf("\n");
@@ -653,8 +571,7 @@ inline json DFT_ground_state::find(double potential_tol, double energy_tol, int 
         density_.generate(kset_);
         /* symmetrize density and magnetization */
         if (ctx_.use_symmetry()) {
-            symmetrize(&density_.rho(), &density_.magnetization(0), &density_.magnetization(1),
-                       &density_.magnetization(2));
+            density_.symmetrize();
             if (ctx_.electronic_structure_method() == electronic_structure_method_t::pseudopotential) {
                 density_.symmetrize_density_matrix();
             }
@@ -686,8 +603,7 @@ inline json DFT_ground_state::find(double potential_tol, double energy_tol, int 
 
         /* symmetrize potential and effective magnetic field */
         if (ctx_.use_symmetry()) {
-            symmetrize(potential_.effective_potential(), potential_.effective_magnetic_field(0),
-                       potential_.effective_magnetic_field(1), potential_.effective_magnetic_field(2));
+            potential_.symmetrize();
         }
 
         /* transform potential to real space after symmetrization */

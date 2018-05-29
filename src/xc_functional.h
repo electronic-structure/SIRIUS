@@ -534,7 +534,7 @@ class XC_functional
             for (int i = 0; i < size; i++) {
                 if (rho[i] < 0) {
                     std::stringstream s;
-                    s << "rho is negative : " << Utils::double_to_string(rho[i]);
+                    s << "rho is negative : " << utils::double_to_string(rho[i]);
                     TERMINATE(s);
                 }
             }
@@ -559,8 +559,8 @@ class XC_functional
             for (int i = 0; i < size; i++) {
                 if (rho_up[i] < 0 || rho_dn[i] < 0) {
                     std::stringstream s;
-                    s << "rho is negative : " << Utils::double_to_string(rho_up[i]) 
-                      << " " << Utils::double_to_string(rho_dn[i]);
+                    s << "rho is negative : " << utils::double_to_string(rho_up[i]) 
+                      << " " << utils::double_to_string(rho_dn[i]);
                     TERMINATE(s);
                 }
                 
@@ -595,8 +595,8 @@ class XC_functional
             for (int i = 0; i < size; i++) {
                 if (rho_up[i] < 0 || rho_dn[i] < 0) {
                     std::stringstream s;
-                    s << "rho is negative : " << Utils::double_to_string(rho_up[i]) 
-                      << " " << Utils::double_to_string(rho_dn[i]);
+                    s << "rho is negative : " << utils::double_to_string(rho_up[i]) 
+                      << " " << utils::double_to_string(rho_dn[i]);
                     TERMINATE(s);
                 }
                 
@@ -633,7 +633,7 @@ class XC_functional
                 if (rho[i] < 0.0)
                 {
                     std::stringstream s;
-                    s << "rho is negative : " << Utils::double_to_string(rho[i]);
+                    s << "rho is negative : " << utils::double_to_string(rho[i]);
                     TERMINATE(s);
                 }
             }
@@ -666,8 +666,8 @@ class XC_functional
                 if (rho_up[i] < 0 || rho_dn[i] < 0)
                 {
                     std::stringstream s;
-                    s << "rho is negative : " << Utils::double_to_string(rho_up[i]) 
-                      << " " << Utils::double_to_string(rho_dn[i]);
+                    s << "rho is negative : " << utils::double_to_string(rho_up[i]) 
+                      << " " << utils::double_to_string(rho_dn[i]);
                     TERMINATE(s);
                 }
                 

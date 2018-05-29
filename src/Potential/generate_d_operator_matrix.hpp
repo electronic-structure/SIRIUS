@@ -36,13 +36,6 @@ inline void Potential::generate_D_operator_matrix()
 {
     PROFILE("sirius::Potential::generate_D_operator_matrix");
 
-    /* store effective potential and magnetic field in a vector */
-    std::vector<Periodic_function<double>*> veff_vec(ctx_.num_mag_dims() + 1);
-    veff_vec[0] = effective_potential_.get();
-    for (int j = 0; j < ctx_.num_mag_dims(); j++) {
-        veff_vec[1 + j] = effective_magnetic_field_[j];
-    }
-
     mdarray<double_complex, 1> veff_tmp(nullptr, ctx_.gvec().count());
     if (ctx_.processing_unit() == GPU) {
         veff_tmp.allocate(memory_t::device);
@@ -99,7 +92,7 @@ inline void Potential::generate_D_operator_matrix()
                         for (int igloc = 0; igloc < ctx_.gvec().count(); igloc++) {
                             int ig = ctx_.gvec().offset() + igloc;
                             /* V(G) * exp(i * G * r_{alpha}) */
-                            auto z = veff_vec[iv]->f_pw_local(igloc) * ctx_.gvec_phase_factor(ig, ia);
+                            auto z = component(iv).f_pw_local(igloc) * ctx_.gvec_phase_factor(ig, ia);
                             veff_a(2 * igloc, i)     = z.real();
                             veff_a(2 * igloc + 1, i) = z.imag();
                         }
@@ -138,7 +131,7 @@ inline void Potential::generate_D_operator_matrix()
                     for (int i = 0; i < atom_type.num_atoms(); i++) {
                         for (int j = 0; j < nbf * (nbf + 1) / 2; j++) {
                             d_tmp(j, i) = 2 * d_tmp(j, i) -
-                                          veff_vec[iv]->f_pw_local(0).real() * ctx_.augmentation_op(iat).q_pw(j, 0);
+                                          component(iv).f_pw_local(0).real() * ctx_.augmentation_op(iat).q_pw(j, 0);
                         }
                     }
                 } else {

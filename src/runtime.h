@@ -16,7 +16,8 @@
 #include <cstdarg>
 #include "config.h"
 #include "communicator.hpp"
-#include "json.hpp"
+#include "utils/json.hpp"
+#include "utils/utils.hpp"
 #ifdef __GPU
 #include "GPU/cuda.hpp"
 #endif
@@ -121,83 +122,6 @@ class pstdout
 //    warning(file_name__, line_number__, message__.str());
 //}
 
-inline void get_proc_status(size_t* VmHWM__, size_t* VmRSS__)
-{
-    *VmHWM__ = 0;
-    *VmRSS__ = 0;
-
-    std::ifstream ifs("/proc/self/status");
-    if (ifs.is_open()) {
-        size_t tmp;
-        std::string str; 
-        std::string units;
-        while (std::getline(ifs, str)) {
-            auto p = str.find("VmHWM:");
-            if (p != std::string::npos) {
-                std::stringstream s(str.substr(p + 7));
-                s >> tmp;
-                s >> units;
-
-                if (units != "kB") {
-                    printf("runtime::get_proc_status(): wrong units");
-                } else {
-                    *VmHWM__ = tmp * 1024;
-                }
-            }
-
-            p = str.find("VmRSS:");
-            if (p != std::string::npos) {
-                std::stringstream s(str.substr(p + 7));
-                s >> tmp;
-                s >> units;
-
-                if (units != "kB") {
-                    printf("runtime::get_proc_status(): wrong units");
-                } else {
-                    *VmRSS__ = tmp * 1024;
-                }
-            }
-        } 
-    }
-}
-
-inline int get_num_threads()
-{
-    int num_threads = -1;
-    
-    std::ifstream ifs("/proc/self/status");
-    if (ifs.is_open()) {
-        std::string str; 
-        while (std::getline(ifs, str)) {
-            auto p = str.find("Threads:");
-            if (p != std::string::npos) {
-                std::stringstream s(str.substr(p + 9));
-                s >> num_threads;
-                break;
-            }
-        }
-    }
-
-    return num_threads;
-}
-
-inline std::string hostname()
-{
-    const int len{1024};
-    char nm[len];
-    gethostname(nm, len);
-    nm[len - 1] = 0;
-    return std::string(nm);
-}
-
-
-//inline double wtime()
-//{
-//    timeval t;
-//    gettimeofday(&t, NULL);
-//    return double(t.tv_sec) + double(t.tv_usec) / 1e6;
-//}
-
 }
 
 #define DUMP(...)                                                                     \
@@ -226,7 +150,7 @@ inline void print_hash(std::string label__, unsigned long long int hash__)
 inline void print_memory_usage(const char* file__, int line__)
 {
     size_t VmRSS, VmHWM;
-    runtime::get_proc_status(&VmHWM, &VmRSS);
+    utils::get_proc_status(&VmHWM, &VmRSS);
 
     std::vector<char> str(2048);
     int n = snprintf(&str[0], 2048, "[rank%04i at line %i of file %s]", Communicator::world().rank(), line__, file__);

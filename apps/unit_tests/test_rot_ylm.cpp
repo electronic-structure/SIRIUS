@@ -65,10 +65,10 @@ void test_symmetry()
 
             mdarray<double_complex, 2> ylm_rot_mtrx(Utils::lmmax(lmax), Utils::lmmax(lmax));
             mdarray<double, 2> rlm_rot_mtrx(Utils::lmmax(lmax), Utils::lmmax(lmax));
-            sddk::timer t0("rotation_matrix_Ylm");
+            utils::timer t0("rotation_matrix_Ylm");
             SHT::rotation_matrix(lmax, ang, proper_rotation, ylm_rot_mtrx);
             t0.stop();
-            sddk::timer t1("rotation_matrix_Rlm");
+            utils::timer t1("rotation_matrix_Rlm");
             SHT::rotation_matrix(lmax, ang, proper_rotation, rlm_rot_mtrx);
             t1.stop();
 
@@ -106,7 +106,7 @@ int main(int argn, char** argv)
 {
     sirius::initialize(1);
     test_symmetry();
-    sddk::timer::print();
+    utils::timer::print();
     sirius::finalize();
 
     return 0;

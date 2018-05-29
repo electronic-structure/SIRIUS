@@ -486,7 +486,7 @@ class Atom_type
             }
         }
 
-        int ijv = Utils::packed_index(idxrf1__, idxrf2__);
+        int ijv = utils::packed_index(idxrf1__, idxrf2__);
         q_radial_functions_l_(ijv, l__) = Spline<double>(radial_grid_, qrf__);
     }
 

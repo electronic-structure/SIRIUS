@@ -31,6 +31,7 @@
 #include "simulation_parameters.h"
 #include "mpi_grid.hpp"
 #include "radial_integrals.h"
+#include "utils/utils.hpp"
 
 #ifdef __GPU
 extern "C" void generate_phase_factors_gpu(int num_gvec_loc__,
@@ -142,8 +143,7 @@ class Simulation_context_base: public Simulation_parameters
             fft_ = std::unique_ptr<FFT3D>(new FFT3D(find_translations(pw_cutoff(), rlv), comm_fft(), processing_unit()));
 
             /* create FFT driver for coarse mesh */
-            auto fft_coarse_grid = FFT3D_grid(find_translations(2 * gk_cutoff(), rlv));
-            fft_coarse_ = std::unique_ptr<FFT3D>(new FFT3D(fft_coarse_grid, comm_fft_coarse(), processing_unit()));
+            fft_coarse_ = std::unique_ptr<FFT3D>(new FFT3D(find_translations(2 * gk_cutoff(), rlv), comm_fft_coarse(), processing_unit()));
 
             /* create a list of G-vectors for corase FFT grid */
             gvec_coarse_ = std::unique_ptr<Gvec>(new Gvec(rlv, gk_cutoff() * 2, comm(), control().reduce_gvec_));
@@ -164,14 +164,11 @@ class Simulation_context_base: public Simulation_parameters
         /* copy constructor is forbidden */
         Simulation_context_base(Simulation_context_base const&) = delete;
 
+        /// Get the stsrting time stamp.
         void start()
         {
             gettimeofday(&start_time_, NULL);
-
-            tm const* ptm = localtime(&start_time_.tv_sec);
-            char buf[100];
-            strftime(buf, sizeof(buf), "%Y%m%d_%H%M%S", ptm);
-            start_time_tag_ = std::string(buf);
+            start_time_tag_ = utils::timestamp("%Y%m%d_%H%M%S");
         }
 
         void init_atoms_to_grid_idx()
@@ -180,12 +177,11 @@ class Simulation_context_base: public Simulation_parameters
 
             atoms_to_grid_idx_.resize(unit_cell_.num_atoms());
 
-            vector3d<double> delta(1.0 / fft_->grid().size(0), 1.0 / fft_->grid().size(1), 1.0 / fft_->grid().size(2));
+            vector3d<double> delta(1.0 / fft_->size(0), 1.0 / fft_->size(1), 1.0 / fft_->size(2));
 
             int z_off = fft_->offset_z();
             vector3d<int> grid_beg(0, 0, z_off);
-            vector3d<int> grid_end(fft_->grid().size(0), fft_->grid().size(1), z_off + fft_->local_size_z());
-
+            vector3d<int> grid_end(fft_->size(0), fft_->size(1), z_off + fft_->local_size_z());
             /* approximate atom radius in bohr */
             double R = av_atom_radius_;
             std::vector<vector3d<double>> verts_cart{{-R,-R,-R},{R,-R,-R},{-R,R,-R},{R,R,-R},{-R,-R,R},{R,-R,R},{-R,R,R},{R,R,R}};
@@ -227,7 +223,7 @@ class Simulation_context_base: public Simulation_parameters
                                     for (int j2 = box.first[2]; j2 < box.second[2]; j2++) {
                                         auto dist = position - vector3d<double>(delta[0] * j0, delta[1] * j1, delta[2] * j2);
                                         auto r    = unit_cell_.get_cartesian_coordinates(dist).length();
-                                        auto ir   = fft_->grid().index_by_coord(j0, j1, j2 - z_off);
+                                        auto ir   = fft_->index_by_coord(j0, j1, j2 - z_off);
 
                                         if (r <= R) {
                                             atom_to_inds_map.push_back({ir, r});
@@ -340,7 +336,9 @@ class Simulation_context_base: public Simulation_parameters
             return mpi_grid_->communicator(1 << 0);
         }
 
-        /// Band and BLACS grid communicator.
+        /// Band parallelization communicator.
+        /** This communicator is used to parallelize the band problem. However it is not necessarily used
+            to create the BLACS grid. Diagonalization might be sequential. */
         Communicator const& comm_band() const
         {
             /* 2nd and 3rd dimensions of the MPI grid are used for parallelization inside k-point */
@@ -725,11 +723,10 @@ inline void Simulation_context_base::initialize()
         }
     }
 
-    auto& fft_grid = fft().grid();
     std::pair<int, int> limits(0, 0);
     for (int x: {0, 1, 2}) {
-        limits.first  = std::min(limits.first,  fft_grid.limits(x).first);
-        limits.second = std::max(limits.second, fft_grid.limits(x).second);
+        limits.first  = std::min(limits.first,  fft().limits(x).first); 
+        limits.second = std::max(limits.second, fft().limits(x).second); 
     }
 
     phase_factors_ = mdarray<double_complex, 3>(3, limits, unit_cell().num_atoms(), memory_t::host, "phase_factors_");
@@ -929,7 +926,7 @@ inline void Simulation_context_base::initialize()
             pout.printf("--- MPI rank placement ---\n");
         }
         pout.printf("rank: %3i, comm_band_rank: %3i, comm_k_rank: %3i, hostname: %s\n",
-                    comm().rank(), comm_band().rank(), comm_k().rank(), runtime::hostname().c_str());
+                    comm().rank(), comm_band().rank(), comm_k().rank(), utils::hostname().c_str());
     }
 
     if (comm_.rank() == 0 && control().print_memory_usage_) {
@@ -962,7 +959,7 @@ inline void Simulation_context_base::print_info()
     std::string headers[]         = {"FFT context for density and potential", "FFT context for coarse grid"};
     double cutoffs[]              = {pw_cutoff(), 2 * gk_cutoff()};
     Communicator const* comms[]   = {&comm_fft(), &comm_fft_coarse()};
-    FFT3D_grid const* fft_grids[] = {&fft_->grid(), &fft_coarse_->grid()};
+    FFT3D_grid const* fft_grids[] = {&fft(), &fft_coarse()};
     Gvec const* gvecs[]           = {&gvec(), &gvec_coarse()};
 
     printf("\n");
