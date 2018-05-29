@@ -107,7 +107,7 @@ double ground_state(Simulation_context& ctx,
 
         if (std::abs(e1 - e2) > 1e-6) {
             printf("total energy is different: %18.7f computed vs. %18.7f reference\n", e1, e2);
-            sirius::terminate(1);
+            ctx.comm().abort(1);
         }
     }
 
