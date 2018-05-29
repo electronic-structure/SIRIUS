@@ -881,8 +881,9 @@ inline std::vector<double> Unit_cell::find_mt_radii()
                 int id2     = atom(ja).type_id();
                 double dist = nearest_neighbours_[ia][1].distance;
 
-                if (scale_Rmt[id1]) {
+                if (scale_Rmt[id1] && !scale_Rmt[id2]) {
                     Rmt[id1] = std::min(parameters_.rmt_max(), 0.95 * (dist - Rmt[id2]));
+                    scale_Rmt[id1] = false;
                 }
             }
         }
