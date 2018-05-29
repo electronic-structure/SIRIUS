@@ -51,21 +51,21 @@ res = sirius_context_initialized_aux(handler)
 end function sirius_context_initialized
 
 !> @brief Create context of the simulation.
-!> @param [in] fcomm Entire communicator of the simulation.
 !> @param [out] handler Simulation context handler.
-subroutine sirius_create_context_v2(fcomm,handler)
+!> @param [in] fcomm Entire communicator of the simulation.
+subroutine sirius_create_context_v2(handler,fcomm)
 implicit none
-integer(C_INT), intent(in) :: fcomm
 type(C_PTR), intent(out) :: handler
+integer(C_INT), intent(in) :: fcomm
 interface
-subroutine sirius_create_context_v2_aux(fcomm,handler)&
+subroutine sirius_create_context_v2_aux(handler,fcomm)&
 &bind(C, name="sirius_create_context_v2")
 use, intrinsic :: ISO_C_BINDING
-integer(C_INT), intent(in) :: fcomm
 type(C_PTR), intent(out) :: handler
+integer(C_INT), intent(in) :: fcomm
 end subroutine
 end interface
-call sirius_create_context_v2_aux(fcomm,handler)
+call sirius_create_context_v2_aux(handler,fcomm)
 end subroutine sirius_create_context_v2
 
 !> @brief Import parameters of simulation from a JSON string
@@ -197,4 +197,37 @@ end subroutine
 end interface
 call sirius_set_periodic_function_ptr_aux(handler,label,f_mt,f_rg)
 end subroutine sirius_set_periodic_function_ptr
+
+!> @brief Create k-point set from the list of k-points.
+!> @param [in] handler Simulation context handler.
+!> @param [out] kset_handler Handler of the created k-point set.
+!> @param [in] num_kpoints Total number of k-points in the set.
+!> @param [in] kpoints List of k-points in lattice coordinates.
+!> @param [in] kpoint_weights Weights of k-points.
+!> @param [in] init_kset If .true. k-set will be initialized.
+subroutine sirius_create_kset_v2(handler,kset_handler,num_kpoints,kpoints,kpoint&
+&_weights,init_kset)
+implicit none
+type(C_PTR), intent(in) :: handler
+type(C_PTR), intent(out) :: kset_handler
+integer(C_INT), intent(in) :: num_kpoints
+real(C_DOUBLE), intent(in) :: kpoints
+real(C_DOUBLE), intent(in) :: kpoint_weights
+logical(C_BOOL), intent(in) :: init_kset
+interface
+subroutine sirius_create_kset_v2_aux(handler,kset_handler,num_kpoints,kpoints,kp&
+&oint_weights,init_kset)&
+&bind(C, name="sirius_create_kset_v2")
+use, intrinsic :: ISO_C_BINDING
+type(C_PTR), intent(in) :: handler
+type(C_PTR), intent(out) :: kset_handler
+integer(C_INT), intent(in) :: num_kpoints
+real(C_DOUBLE), intent(in) :: kpoints
+real(C_DOUBLE), intent(in) :: kpoint_weights
+logical(C_BOOL), intent(in) :: init_kset
+end subroutine
+end interface
+call sirius_create_kset_v2_aux(handler,kset_handler,num_kpoints,kpoints,kpoint_w&
+&eights,init_kset)
+end subroutine sirius_create_kset_v2
 

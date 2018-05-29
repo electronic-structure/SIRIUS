@@ -42,7 +42,7 @@ extern "C" {
 /* @fortran begin function void sirius_initialize       Initialize the SIRIUS library.
    @fortran argument in required bool call_mpi_init     If .true. then MPI_Init must be called prior to initialization.
    @fortran end */ 
-void sirius_initialize(bool* call_mpi_init__)
+void sirius_initialize(bool const* call_mpi_init__)
 {
     sirius::initialize(*call_mpi_init__);
 }
@@ -50,7 +50,7 @@ void sirius_initialize(bool* call_mpi_init__)
 /* @fortran begin function void sirius_finalize         Shut down the SIRIUS library
    @fortran argument in required bool call_mpi_fin      If .true. then MPI_Finalize must be called after the shutdown.
    @fortran end */ 
-void sirius_finalize(bool* call_mpi_fin__)
+void sirius_finalize(bool const* call_mpi_fin__)
 {
     sirius::finalize(*call_mpi_fin__);
 }
@@ -73,7 +73,7 @@ void sirius_clear(void)
 /* @fortran begin function bool sirius_context_initialized      Check if the simulation context is initialized. 
    @fortran argument in required void* handler                  Simulation context handler.
    @fortran end */ 
-bool sirius_context_initialized(void** handler__)
+bool sirius_context_initialized(void* const* handler__)
 {
     if (*handler__ == nullptr) {
         return false;
@@ -101,11 +101,11 @@ void sirius_create_simulation_context(ftn_char str__,
 }
 
 /* @fortran begin function void sirius_create_context_v2         Create context of the simulation.
-   @fortran argument in required int fcomm                       Entire communicator of the simulation. 
    @fortran argument out required void* handler                  Simulation context handler.
+   @fortran argument in  required int   fcomm                    Entire communicator of the simulation. 
    @fortran end */ 
-void sirius_create_context_v2(int const* fcomm__,
-                              void**     handler__)
+void sirius_create_context_v2(void**     handler__,
+                              int const* fcomm__)
 {
     auto& comm = Communicator::map_fcomm(*fcomm__);
     *handler__ = new utils::any_ptr(new sirius::Simulation_context(comm));
@@ -121,7 +121,8 @@ void sirius_import_simulation_context_parameters(ftn_char str__)
    @fortran argument in required void* handler                     Simulation context handler.
    @fortran argument in required string json_str                   JSON string with parameters.
    @fortran end */ 
-void sirius_import_parameters_v2(void* const* handler__, char const* str__)
+void sirius_import_parameters_v2(void* const* handler__,
+                                 char  const* str__)
 {
     GET_SIM_CTX(handler__);
     sim_ctx.import(std::string(str__));
@@ -214,19 +215,19 @@ void sirius_delete_object(void** handler__)
    @fortran argument in required double f_mt                       Pointer to the muffin-tin part of the function.
    @fortran argument in required double f_rg                       Pointer to the regualr-grid part of the function.
    @fortran end */ 
-void sirius_set_periodic_function_ptr(void** handler__,
-                                      char const* label__,
-                                      ftn_double* f_mt__,
-                                      ftn_double* f_rg__)
+void sirius_set_periodic_function_ptr(void*  const* handler__,
+                                      char   const* label__,
+                                      double*       f_mt__,
+                                      double*       f_rg__)
 {
     auto& dft = static_cast<utils::any_ptr*>(*handler__)->get<sirius::DFT_ground_state>();
     std::string label(label__);
 
     std::map<std::string, sirius::Periodic_function<double>*> func_map = {
-        {"rho",    &dft.density().component(0)},
-        {"mz",     &dft.density().component(1)},
-        {"mx",     &dft.density().component(2)},
-        {"my",     &dft.density().component(3)},
+        {"rho",  &dft.density().component(0)},
+        {"magz", &dft.density().component(1)},
+        {"magx", &dft.density().component(2)},
+        {"magy", &dft.density().component(3)},
         {"veff", &dft.potential().component(0)},
         {"bz",   &dft.potential().component(1)},
         {"bx",   &dft.potential().component(2)},
@@ -292,6 +293,35 @@ void sirius_delete_density()
     //density = nullptr;
 }
 
+/* @fortran begin function void sirius_create_kset_v2      Create k-point set from the list of k-points.
+   @fortran argument in  required void*  handler           Simulation context handler.
+   @fortran argument out required void*  kset_handler      Handler of the created k-point set.
+   @fortran argument in  required int    num_kpoints       Total number of k-points in the set.
+   @fortran argument in  required double kpoints           List of k-points in lattice coordinates.
+   @fortran argument in  required double kpoint_weights    Weights of k-points.
+   @fortran argument in  required bool   init_kset         If .true. k-set will be initialized.
+   @fortran end */ 
+void sirius_create_kset_v2(void* const*  handler__,
+                           void**        kset_handler__,
+                           int    const* num_kpoints__,
+                           double*       kpoints__,
+                           double const* kpoint_weights__,
+                           bool   const* init_kset__)
+{
+    GET_SIM_CTX(handler__);
+
+    mdarray<double, 2> kpoints(kpoints__, 3, *num_kpoints__);
+
+    sirius::K_point_set* new_kset = new sirius::K_point_set(sim_ctx);
+    new_kset->add_kpoints(kpoints, kpoint_weights__);
+    if (*init_kset__) {
+        std::vector<int> counts;
+        new_kset->initialize(counts);
+    }
+
+    *kset_handler__ = new utils::any_ptr(new_kset);
+}
+
 /// Create the k-point set from the list of k-points and return it's id
 void sirius_create_kset(ftn_int*    num_kpoints__,
                         ftn_double* kpoints__,
@@ -318,26 +348,26 @@ void sirius_create_kset(ftn_int*    num_kpoints__,
     *kset_id__ = (int)kset_list.size() - 1;
 }
 
-void sirius_create_irreducible_kset_(int32_t* mesh__, int32_t* is_shift__, int32_t* use_sym__, int32_t* kset_id__)
-{
-    for (int x = 0; x < 3; x++) {
-        if (!(is_shift__[x] == 0 || is_shift__[x] == 1)) {
-            std::stringstream s;
-            s << "wrong k-shift " << is_shift__[0] << " " << is_shift__[1] << " " << is_shift__[2];
-            TERMINATE(s);
-        }
-    }
-
-    sirius::K_point_set* new_kset = new sirius::K_point_set(*sim_ctx,
-                                                            vector3d<int>(mesh__[0], mesh__[1], mesh__[2]),
-                                                            vector3d<int>(is_shift__[0], is_shift__[1], is_shift__[2]),
-                                                            *use_sym__);
-
-    new_kset->initialize();
-
-    kset_list.push_back(new_kset);
-    *kset_id__ = (int)kset_list.size() - 1;
-}
+//void sirius_create_irreducible_kset_(int32_t* mesh__, int32_t* is_shift__, int32_t* use_sym__, int32_t* kset_id__)
+//{
+//    for (int x = 0; x < 3; x++) {
+//        if (!(is_shift__[x] == 0 || is_shift__[x] == 1)) {
+//            std::stringstream s;
+//            s << "wrong k-shift " << is_shift__[0] << " " << is_shift__[1] << " " << is_shift__[2];
+//            TERMINATE(s);
+//        }
+//    }
+//
+//    sirius::K_point_set* new_kset = new sirius::K_point_set(*sim_ctx,
+//                                                            vector3d<int>(mesh__[0], mesh__[1], mesh__[2]),
+//                                                            vector3d<int>(is_shift__[0], is_shift__[1], is_shift__[2]),
+//                                                            *use_sym__);
+//
+//    new_kset->initialize();
+//
+//    kset_list.push_back(new_kset);
+//    *kset_id__ = (int)kset_list.size() - 1;
+//}
 
 void sirius_delete_kset(int32_t* kset_id__)
 {
