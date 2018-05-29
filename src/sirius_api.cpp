@@ -23,7 +23,7 @@
  */
 
 #include "sirius.h"
-#include "sirius_internal.h"
+//#include "sirius_internal.h"
 #include "utils/any_ptr.hpp"
 
 /// Simulation context.
@@ -39,7 +39,7 @@ std::unique_ptr<sirius::DFT_ground_state> dft_ground_state{nullptr};
 
 extern "C" {
 
-/* @fortran begin function void sirius_initialize       Initialize the library.
+/* @fortran begin function void sirius_initialize       Initialize the SIRIUS library.
    @fortran argument in required bool call_mpi_init     If .true. then MPI_Init must be called prior to initialization.
    @fortran end */ 
 void sirius_initialize(bool* call_mpi_init__)
@@ -68,6 +68,18 @@ void sirius_clear(void)
     sim_ctx = nullptr;
 
     kset_list.clear();
+}
+
+/* @fortran begin function bool sirius_context_initialized      Check if the simulation context is initialized. 
+   @fortran argument in required void* handler                  Simulation context handler.
+   @fortran end */ 
+bool sirius_context_initialized(void** handler__)
+{
+    if (*handler__ == nullptr) {
+        return false;
+    }
+    GET_SIM_CTX(handler__);
+    return sim_ctx.initialized();
 }
 
 bool sirius_initialized()
@@ -124,6 +136,7 @@ void sirius_import_parameters_v2(void* const* handler__, char const* str__)
    @fortran argument in optional int num_mag_dims    Number of magnetic dimensions. 
    @fortran argument in optional double pw_cutoff    Cutoff for G-vectors.
    @fortran argument in optional double gk_cutoff    Cutoff for G+k-vectors.
+   @fortran argument in optional int auto_rmt        Set the automatic search of muffin-tin radii.
    @fortran end */ 
 void sirius_set_parameters(void*  const* handler__,
                            int    const* lmax_apw__,
@@ -132,7 +145,8 @@ void sirius_set_parameters(void*  const* handler__,
                            int    const* num_bands__,
                            int    const* num_mag_dims__,
                            double const* pw_cutoff__,
-                           double const* gk_cutoff__)
+                           double const* gk_cutoff__,
+                           int    const* auto_rmt__)
 {
     GET_SIM_CTX(handler__);
     if (lmax_apw__ != nullptr) {
@@ -156,7 +170,9 @@ void sirius_set_parameters(void*  const* handler__,
     if (gk_cutoff__ != nullptr) {
         sim_ctx.set_gk_cutoff(*gk_cutoff__);
     }
-
+    if (auto_rmt__ != nullptr) {
+        sim_ctx.set_auto_rmt(*auto_rmt__);
+    }
 }
 
 /// Initialize the global variables.
@@ -168,9 +184,11 @@ void sirius_initialize_simulation_context()
     sim_ctx->initialize();
 }
 
+/* @fortran begin function void sirius_initialize_context_v2     Initialize simulation context.
+   @fortran argument in required void* handler                   Simulation context handler.
+   @fortran end */ 
 void sirius_initialize_context_v2(void* const* handler__)
 {
-    //auto& sim_ctx = static_cast<utils::any_ptr*>(*handler__)->get<sirius::Simulation_context>();
     GET_SIM_CTX(handler__)
     sim_ctx.initialize();
 }
@@ -181,9 +199,13 @@ void sirius_delete_simulation_context()
     sim_ctx = nullptr;
 }
 
+/* @fortran begin function void sirius_delete_object     Delete any object created by SIRIUS.
+   @fortran argument inout required void* handler        Handler of the object.
+   @fortran end */ 
 void sirius_delete_object(void** handler__)
 {
     delete static_cast<utils::any_ptr*>(*handler__);
+    *handler__ = nullptr;
 }
 
 /// Initialize the Potential object.

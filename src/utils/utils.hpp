@@ -31,6 +31,7 @@
 #include <fstream>
 #include <sstream>
 #include <sys/time.h>
+#include <unistd.h>
 
 namespace utils {
 

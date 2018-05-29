@@ -33,7 +33,10 @@ def write_function(o, func_name, func_type, func_args, func_doc):
     va = [a['name'] for a in func_args]
     string = string + ','.join(va)
     string = string + ')'
+    if func_type != 'void':
+        string = string + ' result(res)'
     write_str_to_f90(o, string)
+    o.write('implicit none\n')
 
     for a in func_args:
         o.write(in_type_map[a['type']])
@@ -43,6 +46,9 @@ def write_function(o, func_name, func_type, func_args, func_doc):
             o.write(', dimension(*)')
         o.write(', intent(' + a['intent'] + ') :: ' + a['name'])
         o.write('\n')
+    
+    if func_type != 'void':
+        o.write(in_type_map[func_type] + ' :: res\n')
 
     for a in func_args:
         if not a['required']:
@@ -56,7 +62,11 @@ def write_function(o, func_name, func_type, func_args, func_doc):
     string = string + func_name + '_aux('
     va = [a['name'] for a in func_args]
     string = string + ','.join(va)
-    string = string + (')&')
+    string = string + (')')
+    if (func_type == 'void'):
+        string = string + '&'
+    else:
+        string = string + ' result(res)&'
     write_str_to_f90(o, string)
     o.write('&bind(C, name="'+func_name+'")\n')
 
@@ -71,9 +81,14 @@ def write_function(o, func_name, func_type, func_args, func_doc):
                 o.write(', dimension(*)')
         o.write(', intent(' + a['intent'] + ') :: ' + a['name'])
         o.write('\n')
+    
+    if func_type != 'void':
+        o.write(in_type_map[func_type] + ' :: res\n')
 
-    if (func_type == 'void'):
+    if func_type == 'void':
         o.write('end subroutine\n')
+    else:
+        o.write('end function\n')
     o.write('end interface\n')
 
     for a in func_args:
@@ -83,7 +98,7 @@ def write_function(o, func_name, func_type, func_args, func_doc):
     if (func_type == 'void'):
         string = 'call '
     else:
-        string = 'result = '
+        string = 'res = '
     string = string + func_name + '_aux('
     va = []
     for a in func_args:
@@ -95,8 +110,10 @@ def write_function(o, func_name, func_type, func_args, func_doc):
     string = string + ')'
     write_str_to_f90(o, string)
 
-    if (func_type == 'void'):
+    if func_type == 'void':
         o.write('end subroutine ')
+    else:
+        o.write('end function ')
     o.write(func_name + '\n\n')
 
 def main():
@@ -119,25 +136,20 @@ def main():
 
                 while (True):
                     line = f.readline()
-                    if not line: break
                     
                     i = line.find('@fortran')
                     if i > 0:
                         v = line[i:].split()
                         if v[1] == 'argument':
-                            
-                            arg_type = v[4]
-                            arg_intent = v[2]
                             if v[3] == 'required':
                                 arg_required = True
                             else:
                                 arg_required = False
-                            arg_name = v[5]
                             arg_doc = ' '.join(v[6:])
-                            func_args.append({'type'     : arg_type,
-                                              'intent'   : arg_intent,
+                            func_args.append({'type'     : v[4],
+                                              'intent'   : v[2],
                                               'required' : arg_required, 
-                                              'name'     : arg_name,
+                                              'name'     : v[5],
                                               'doc'      : arg_doc})
                         if v[1] == 'end': break
                 

@@ -313,6 +313,11 @@ class Communicator
         return comm;
     }
 
+    void abort(int errcode__) const
+    {
+        CALL_MPI(MPI_Abort, (mpi_comm(), errcode__));
+    }
+
     inline Communicator cart_create(int ndims__, int const* dims__, int const* periods__) const
     {
         Communicator new_comm;
