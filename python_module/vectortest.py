@@ -250,7 +250,6 @@ parameters2 = {
   "kpoints_path" : ["GAMMA", "K", "L"]
 }
 
-sirius.initialize()
 x = [1,2,3]
 y = [55, 55, 55]
 vec = sirius.vector3d_double(x)
@@ -266,5 +265,3 @@ ctx.initialize()
 print(l)
 ks = sirius.K_point_set(ctx, l)
 print(ks)
-
-sirius.finalize()
