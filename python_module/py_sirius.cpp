@@ -87,15 +87,10 @@ std::string show_vec(const vector3d<T>& vec)
 
 PYBIND11_MODULE(py_sirius, m){
 
-m.def("initialize", []()
-                    {
-                        sirius::initialize();
-                    });
-
-m.def("finalize", []()
-                  {
-                      sirius::finalize();
-                  });
+// MPI_Init/Finalize
+sirius::initialize();
+auto atexit = py::module::import("atexit");
+atexit.attr("register")(py::cpp_function([](){ sirius::finalize(); }));
 
 py::class_<Parameters_input>(m, "Parameters_input")
     .def(py::init<>())
