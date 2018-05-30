@@ -295,7 +295,7 @@ class Unit_cell_symmetry
          *    f(\tilde{\bf G}) = e^{i{\bf G t}} f({\bf G})
          *  \f]
          */
-        void symmetrize_function(double_complex* f_pw__, 
+        void symmetrize_function(double_complex* f_pw__,
                                  remap_gvec_to_shells const& remap_gvec__,
                                  mdarray<double_complex, 3> const& sym_phase_factors__) const;
         
@@ -921,7 +921,7 @@ inline void Unit_cell_symmetry::symmetrize_function(double_complex* f_pw__,
 //    utils::timer t2("sirius::Unit_cell_symmetry::symmetrize_function_pw|mpi");
 //    comm__.allreduce(&sym_f_pw(0), gvec__.num_gvec());
 //    t2.stop();
-//    
+//
 //    double nrm = 1 / double(num_mag_sym());
 //    #pragma omp parallel for
 //    for (int ig = 0; ig < gvec__.num_gvec(); ig++) {
