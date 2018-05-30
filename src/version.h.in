@@ -1,6 +1,6 @@
-#ifndef __VERSION_H__
-#define __VERSION_H__
+#ifndef __SIRIUS_VERSION_H__
+#define __SIRIUS_VERSION_H__
 const char* const git_hash = "@GIT_VERSION_SHA1@";
 const char* const git_branchname = "@GIT_BRANCHNAME@";
 const char* const build_date = "@BUILD_DATE@";
-#endif // __VERSION_H__
+#endif // __SIRIUS_VERSION_H__
