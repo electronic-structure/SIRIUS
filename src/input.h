@@ -186,7 +186,7 @@ struct Mixer_input
     /// Mixing paramter.
     double beta_{0.7};
 
-    /// Mixin ratio in case of initial linear mixing.
+    /// Mixing ratio in case of initial linear mixing.
     double beta0_{0.15};
 
     /// RMS tolerance above which the linear mixing is triggered.
@@ -199,6 +199,9 @@ struct Mixer_input
     /// Number of history steps for Broyden-type mixers.
     int max_history_{8};
 
+    /// Scaling factor for mixing parameter.
+    double beta_scaling_factor_{1};
+
     /// True if this section exists in the input file.
     bool exist_{false};
 
@@ -206,13 +209,14 @@ struct Mixer_input
     void read(json const& parser)
     {
         if (parser.count("mixer")) {
-            exist_              = true;
-            auto section        = parser["mixer"];
-            beta_               = section.value("beta", beta_);
-            beta0_              = section.value("beta0", beta0_);
-            linear_mix_rms_tol_ = section.value("linear_mix_rms_tol", linear_mix_rms_tol_);
-            max_history_        = section.value("max_history", max_history_);
-            type_               = section.value("type", type_);
+            exist_               = true;
+            auto section         = parser["mixer"];
+            beta_                = section.value("beta", beta_);
+            beta0_               = section.value("beta0", beta0_);
+            linear_mix_rms_tol_  = section.value("linear_mix_rms_tol", linear_mix_rms_tol_);
+            max_history_         = section.value("max_history", max_history_);
+            type_                = section.value("type", type_);
+            beta_scaling_factor_ = section.value("beta_scaling_factor", beta_scaling_factor_);
         }
     }
 };

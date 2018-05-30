@@ -185,17 +185,16 @@ class DFT_ground_state
         }
     public:
         /// Constructor.
-        DFT_ground_state(Simulation_context& ctx__,
-                         K_point_set&        kset__)
-            : ctx_(ctx__)
+        DFT_ground_state(K_point_set& kset__)
+            : ctx_(kset__.ctx())
             , kset_(kset__)
-            , unit_cell_(ctx__.unit_cell())
-            , potential_(ctx__)
-            , density_(ctx__)
-            , hamiltonian_(ctx_, potential_)
-            , band_(ctx_)
-            , stress_(ctx__, density_, potential_, hamiltonian_, kset__)
-            , forces_(ctx__, density_, potential_, hamiltonian_, kset__) 
+            , unit_cell_(kset__.ctx().unit_cell())
+            , potential_(kset__.ctx())
+            , density_(kset__.ctx())
+            , hamiltonian_(kset__.ctx(), potential_)
+            , band_(kset__.ctx())
+            , stress_(kset__.ctx(), density_, potential_, hamiltonian_, kset__)
+            , forces_(kset__.ctx(), density_, potential_, hamiltonian_, kset__) 
 
         {
             if (!ctx_.full_potential()) {
@@ -621,7 +620,8 @@ inline json DFT_ground_state::find(double potential_tol, double energy_tol, int 
         /* write some information */
         print_info();
         if (ctx_.comm().rank() == 0 && ctx_.control().verbosity_ >= 1) {
-            printf("iteration : %3i, RMS %18.12E, energy difference : %18.12E\n", iter, rms, etot - eold);
+            printf("iteration : %3i, RMS %18.12E, energy difference : %18.12E, mixing beta: %12.6F\n",
+                   iter, rms, etot - eold, potential_.mixer().beta());
         }
 
         // TODO: improve this part

@@ -1121,6 +1121,11 @@ class Potential: public Field4D
             return rms;
         }
 
+        Mixer<double>& mixer()
+        {
+            return *mixer_;
+        }
+
         double_complex const& veff_pw(int ig__) const
         {
             return veff_pw_(ig__);

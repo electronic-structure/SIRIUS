@@ -176,6 +176,21 @@ void sirius_set_parameters(void*  const* handler__,
     }
 }
 
+/* @fortran begin function void sirius_set_lattice_vectors_v2   Set vectors of the unit cell.
+   @fortran argument in required void* handler       Simulation context handler
+   @fortran argument in required double a1           1st vector
+   @fortran argument in required double a2           2nd vector
+   @fortran argument in required double a3           3er vector
+   @fortran end */ 
+void sirius_set_lattice_vectors_v2(void*  const* handler__,
+                                   double const* a1__,
+                                   double const* a2__,
+                                   double const* a3__)
+{
+    GET_SIM_CTX(handler__);
+    sim_ctx.unit_cell().set_lattice_vectors(vector3d<double>(a1__), vector3d<double>(a2__), vector3d<double>(a3__));
+}
+
 /// Initialize the global variables.
 /** The function must be called after setting up the lattice vectors, plane wave-cutoff, autormt flag and loading
  *  atom types and atoms into the unit cell.
@@ -295,14 +310,14 @@ void sirius_delete_density()
 
 /* @fortran begin function void sirius_create_kset_v2      Create k-point set from the list of k-points.
    @fortran argument in  required void*  handler           Simulation context handler.
-   @fortran argument out required void*  kset_handler      Handler of the created k-point set.
+   @fortran argument out required void*  ks_handler        Handler of the created k-point set.
    @fortran argument in  required int    num_kpoints       Total number of k-points in the set.
    @fortran argument in  required double kpoints           List of k-points in lattice coordinates.
    @fortran argument in  required double kpoint_weights    Weights of k-points.
    @fortran argument in  required bool   init_kset         If .true. k-set will be initialized.
    @fortran end */ 
 void sirius_create_kset_v2(void* const*  handler__,
-                           void**        kset_handler__,
+                           void**        ks_handler__,
                            int    const* num_kpoints__,
                            double*       kpoints__,
                            double const* kpoint_weights__,
@@ -319,7 +334,7 @@ void sirius_create_kset_v2(void* const*  handler__,
         new_kset->initialize(counts);
     }
 
-    *kset_handler__ = new utils::any_ptr(new_kset);
+    *ks_handler__ = new utils::any_ptr(new_kset);
 }
 
 /// Create the k-point set from the list of k-points and return it's id
@@ -383,7 +398,19 @@ void sirius_create_ground_state(int32_t* kset_id__)
         TERMINATE("dft_ground_state object is already allocate");
     }
 
-    dft_ground_state = std::unique_ptr<sirius::DFT_ground_state>(new sirius::DFT_ground_state(*sim_ctx, *kset_list[*kset_id__]));
+    dft_ground_state = std::unique_ptr<sirius::DFT_ground_state>(new sirius::DFT_ground_state(*kset_list[*kset_id__]));
+}
+
+/* @fortran begin function void sirius_create_ground_state_v2     Create k-point set from the list of k-points.
+   @fortran argument in  required void*  ks_handler               Handler of the created k-point set.
+   @fortran argument out required void*  gs_handler               Handler of the ground state object.
+   @fortran end */ 
+void sirius_create_ground_state_v2(void* const* ks_handler__,
+                                   void**       gs_handler__)
+{
+    auto& ks = static_cast<utils::any_ptr*>(*ks_handler__)->get<sirius::K_point_set>();
+
+    *gs_handler__ = new utils::any_ptr(new sirius::DFT_ground_state(ks));
 }
 
 void sirius_delete_ground_state()

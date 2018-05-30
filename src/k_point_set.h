@@ -330,6 +330,11 @@ class K_point_set
             return ctx_.comm_k();
         }
 
+        inline Simulation_context& ctx()
+        {
+            return ctx_;
+        }
+
         /// Send G+k vectors of k-point jk to a given rank.
         /** Other ranks receive an empty Gvec placeholder */
         inline Gvec send_recv_gkvec(int jk__, int rank__)
