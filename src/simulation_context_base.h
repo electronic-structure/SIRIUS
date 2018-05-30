@@ -538,13 +538,13 @@ class Simulation_context_base: public Simulation_parameters
         /// Compute values of spherical Bessel functions at MT boundary.
         mdarray<double, 3> generate_sbessel_mt(int lmax__) const
         {
-            mdarray<double, 3> sbessel_mt(lmax__ + 1, unit_cell_.num_atom_types(), 
+            mdarray<double, 3> sbessel_mt(lmax__ + 1, unit_cell_.num_atom_types(),
                                           gvec().num_shells(), memory_t::host, "sbessel_mt");
 
             #pragma omp parallel for schedule(static)
             for (int igs = 0; igs < gvec().num_shells(); igs++) {
                 for (int iat = 0; iat < unit_cell().num_atom_types(); iat++) {
-                    gsl_sf_bessel_jl_array(lmax__, gvec().shell_len(igs) * unit_cell().atom_type(iat).mt_radius(), 
+                    gsl_sf_bessel_jl_array(lmax__, gvec().shell_len(igs) * unit_cell().atom_type(iat).mt_radius(),
                                            &sbessel_mt(0, iat, igs));
                 }
             }
@@ -572,16 +572,16 @@ class Simulation_context_base: public Simulation_parameters
                                  matrix<double_complex>& flm__)
         {
             PROFILE("sirius::Simulation_context_base::sum_fg_fl_yg");
-        
+
             int ngv_loc = gvec().count();
-        
+
             int na_max{0};
             for (int iat = 0; iat < unit_cell().num_atom_types(); iat++) {
                 na_max = std::max(na_max, unit_cell().atom_type(iat).num_atoms());
             }
 
             int lmmax = utils::lmmax(lmax__);
-        
+
             matrix<double_complex> phase_factors(ngv_loc, na_max, main_memory_t());
             matrix<double_complex> zm(lmmax, ngv_loc, dual_memory_t());
             matrix<double_complex> tmp(lmmax, na_max, dual_memory_t());
@@ -590,7 +590,7 @@ class Simulation_context_base: public Simulation_parameters
             for (int l = 0; l <= lmax__; l++) {
                 zil[l] = std::pow(double_complex(0, 1), l);
             }
-        
+
             for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
                 double t = -omp_get_wtime();
                 int na = unit_cell().atom_type(iat).num_atoms();
@@ -640,7 +640,7 @@ class Simulation_context_base: public Simulation_parameters
                     }
                 }
             }
-            
+
             comm().allreduce(&flm__(0, 0), (int)flm__.size());
         }
 
@@ -1056,6 +1056,7 @@ inline void Simulation_context_base::print_info()
     printf("\n");
     printf("SIRIUS version : %2i.%02i\n", major_version, minor_version);
     printf("git hash       : %s\n", git_hash);
+    printf("git branch     : %s\n", git_branchname);
     printf("build date     : %s\n", build_date);
     printf("start time     : %s\n", buf);
     printf("\n");
