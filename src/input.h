@@ -513,6 +513,7 @@ struct Settings_input
     int nprii_rho_core_{20};
     bool always_update_wf_{true};
     double mixer_rss_min_{1e-12};
+    double auto_enu_tol_{0};
 
     void read(json const& parser)
     {
@@ -523,6 +524,7 @@ struct Settings_input
             nprii_rho_core_   = parser["settings"].value("nprii_rho_core", nprii_rho_core_);
             always_update_wf_ = parser["settings"].value("always_update_wf", always_update_wf_);
             mixer_rss_min_    = parser["settings"].value("mixer_rss_min", mixer_rss_min_);
+            auto_enu_tol_     = parser["settings"].value("auto_enu_tol", auto_enu_tol_);
         }
     }
 };

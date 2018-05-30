@@ -709,7 +709,14 @@ inline void Atom_symmetry_class::find_enu(relativity_t rel__)
     #pragma omp parallel for
     for (size_t i = 0; i < rs_with_auto_enu.size(); i++) {
         auto rsd = rs_with_auto_enu[i];
-        rsd->enu = Enu_finder(rel__, atom_type_.zn(), rsd->n, rsd->l, atom_type_.radial_grid(), spherical_potential_, rsd->enu).enu();
+        double new_enu = Enu_finder(rel__, atom_type_.zn(), rsd->n, rsd->l, atom_type_.radial_grid(), spherical_potential_, rsd->enu).enu();
+        /* update linearization energy only if its change is above a threshold */
+        if (std::abs(new_enu - rsd->enu) > atom_type_.parameters().settings().auto_enu_tol_) {
+            rsd->enu = new_enu;
+            rsd->new_enu_found = true;
+        } else {
+            rsd->new_enu_found = false;
+        }
     }
 }
 
@@ -917,7 +924,12 @@ inline void Atom_symmetry_class::write_enu(runtime::pstdout& pout) const
         for (size_t order = 0; order < aw_descriptor(l).size(); order++) {
             auto& rsd = aw_descriptor(l)[order];
             if (rsd.auto_enu) {
-                pout.printf("n = %2i   l = %2i   order = %i   enu = %12.6f\n", rsd.n, rsd.l, order, rsd.enu);
+                pout.printf("n = %2i   l = %2i   order = %i   enu = %12.6f", rsd.n, rsd.l, order, rsd.enu);
+                if (rsd.new_enu_found) {
+                    pout.printf("  +\n");
+                } else {
+                    pout.printf("\n");
+                }
             }
         }
     }
@@ -927,7 +939,12 @@ inline void Atom_symmetry_class::write_enu(runtime::pstdout& pout) const
         for (size_t order = 0; order < lo_descriptor(idxlo).rsd_set.size(); order++) {
             auto& rsd = lo_descriptor(idxlo).rsd_set[order];
             if (rsd.auto_enu) {
-                pout.printf("n = %2i   l = %2i   order = %i   enu = %12.6f\n", rsd.n, rsd.l, order, rsd.enu);
+                pout.printf("n = %2i   l = %2i   order = %i   enu = %12.6f", rsd.n, rsd.l, order, rsd.enu);
+                if (rsd.new_enu_found) {
+                    pout.printf("  +\n");
+                } else {
+                    pout.printf("\n");
+                }
             }
         }
     }
