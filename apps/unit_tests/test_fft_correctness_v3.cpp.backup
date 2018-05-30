@@ -6,16 +6,16 @@ void test_fft(double cutoff__, device_t pu__)
 {
     matrix3d<double> M = {{1, 0, 0}, {0, 1, 0}, {0, 0, 1}};
 
-    FFT3D fft(find_translations(cutoff__, M), mpi_comm_world(), pu__);
+    FFT3D fft(find_translations(cutoff__, M), Communicator::world(), pu__);
 
-    Gvec gvec(M, cutoff__, mpi_comm_world(), false);
+    Gvec gvec(M, cutoff__, Communicator::world(), false);
 
-    Gvec_partition gvp(gvec, mpi_comm_world(), mpi_comm_self());
+    Gvec_partition gvp(gvec, Communicator::world(), mpi_comm_self());
 
-    if (mpi_comm_world().rank() == 0) {
+    if (Communicator::world().rank() == 0) {
         printf("num_gvec: %i\n", gvec.num_gvec());
     }
-    MPI_grid mpi_grid(mpi_comm_world());
+    MPI_grid mpi_grid(Communicator::world());
 
     printf("num_gvec_fft: %i\n", gvp.gvec_count_fft());
     //printf("offset_gvec_fft: %i\n", gvec.partition().gvec_offset_fft());
@@ -73,7 +73,7 @@ int main(int argn, char **argv)
     #endif
 
     sddk::timer::print();
-    
+
     sirius::finalize();
     return 0;
 }
