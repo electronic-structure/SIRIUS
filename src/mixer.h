@@ -454,18 +454,25 @@ class Broyden2: public Mixer<T>
             double rms = this->rms_deviation();
 
             /* check for previous RMS values and adjust linear mixing parameter "beta" */
-            if (rms_history_.size() > (size_t)this->max_history_) {
+            if (rms_history_.size() >= (size_t)this->max_history_) {
                 double rms_avg{0};
                 //double rms_max{0};
+                std::vector<double> prev_rms;
                 for (int i = 0; i < this->max_history_; i++) {
-                    rms_avg += rms_history_[rms_history_.size() - 1 - i];
-                    //rms_max = std::max(rms_max, rms_history_[rms_history_.size() - 1 - i]);
+                    double v = rms_history_[rms_history_.size() - this->max_history_ + i];
+                    rms_avg += v;
+                    prev_rms.push_back(v);
                 }
                 rms_avg /= this->max_history_;
+
+                if (this->comm_.rank() == 0) {
+                    std::cout << "[mixer] prev_rms: " << prev_rms << ", rmv_avg: " << rms_avg << ", rms: " << rms << "\n";
+                }
 
                 if (rms > rms_avg) {
                     this->beta_ = std::max(beta0_, this->beta_ * beta_scaling_factor_);
                     rms_history_.clear();
+                    this->count_ = 0;
                 }
             }
 
