@@ -471,8 +471,8 @@ class Broyden2: public Mixer<T>
 
                 if (rms > rms_avg) {
                     this->beta_ = std::max(beta0_, this->beta_ * beta_scaling_factor_);
-                    rms_history_.clear();
-                    this->count_ = 0;
+                    //rms_history_.clear();
+                    //this->count_ = 0;
                 }
             }
 
