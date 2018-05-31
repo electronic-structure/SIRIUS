@@ -208,6 +208,48 @@ void sirius_delete_object(void** handler__)
     *handler__ = nullptr;
 }
 
+/* @fortran begin function void sirius_set_periodic_function_ptr   Set pointer to density or megnetization.
+   @fortran argument in required void* handler                     Handler of the DFT ground state object.
+   @fortran argument in required string label                      Label of the function.
+   @fortran argument in required double f_mt                       Pointer to the muffin-tin part of the function.
+   @fortran argument in required double f_rg                       Pointer to the regualr-grid part of the function.
+   @fortran end */ 
+void sirius_set_periodic_function_ptr(void** handler__,
+                                      char const* label__,
+                                      ftn_double* f_mt__,
+                                      ftn_double* f_rg__)
+{
+    auto& dft = static_cast<utils::any_ptr*>(*handler__)->get<sirius::DFT_ground_state>();
+    std::string label(label__);
+
+    std::map<std::string, sirius::Periodic_function<double>*> func_map = {
+        {"rho",    &dft.density().component(0)},
+        {"mz",     &dft.density().component(1)},
+        {"mx",     &dft.density().component(2)},
+        {"my",     &dft.density().component(3)},
+        {"veff", &dft.potential().component(0)},
+        {"bz",   &dft.potential().component(1)},
+        {"bx",   &dft.potential().component(2)},
+        {"by",   &dft.potential().component(3)}
+    };
+    
+    sirius::Periodic_function<double>* f;
+    try {
+        f = func_map.at(label);
+    } catch(...) {
+        std::stringstream s;
+        s << "wrong label: " << label;
+        TERMINATE(s);
+    }
+
+    if (f_mt__) {
+        f->set_mt_ptr(f_mt__);
+    }
+    if (f_rg__) {
+        f->set_rg_ptr(f_rg__);
+    }
+}
+
 /// Initialize the Potential object.
 /** \param [in] veffmt pointer to the muffin-tin part of the effective potential
  *  \param [in] veffit pointer to the interstitial part of the effective potential
