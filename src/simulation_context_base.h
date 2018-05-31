@@ -34,6 +34,8 @@
 #include "utils/utils.hpp"
 
 #ifdef __GPU
+#include "SDDK/GPU/cuda.hpp"
+
 extern "C" void generate_phase_factors_gpu(int num_gvec_loc__,
                                            int num_atoms__,
                                            int const* gvec__,
@@ -640,7 +642,15 @@ inline void Simulation_context_base::initialize()
     /* check if we can use a GPU device */
     if (processing_unit() == GPU) {
         #ifndef __GPU
-        TERMINATE_NO_GPU
+        TERMINATE_NO_GPU;
+        #else
+        int num_devices = acc::num_devices();
+        if (num_devices > 1) {
+            int rank;
+            MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+            // assign one GPU to one rank in a periodic boundary fashion
+            cudaSetDevice(rank % num_devices);
+        }
         #endif
     }
 
@@ -725,8 +735,8 @@ inline void Simulation_context_base::initialize()
 
     std::pair<int, int> limits(0, 0);
     for (int x: {0, 1, 2}) {
-        limits.first  = std::min(limits.first,  fft().limits(x).first); 
-        limits.second = std::max(limits.second, fft().limits(x).second); 
+        limits.first  = std::min(limits.first,  fft().limits(x).first);
+        limits.second = std::max(limits.second, fft().limits(x).second);
     }
 
     phase_factors_ = mdarray<double_complex, 3>(3, limits, unit_cell().num_atoms(), memory_t::host, "phase_factors_");
