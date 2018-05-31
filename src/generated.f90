@@ -51,21 +51,21 @@ res = sirius_context_initialized_aux(handler)
 end function sirius_context_initialized
 
 !> @brief Create context of the simulation.
-!> @param [in] fcomm Entire communicator of the simulation.
 !> @param [out] handler Simulation context handler.
-subroutine sirius_create_context_v2(fcomm,handler)
+!> @param [in] fcomm Entire communicator of the simulation.
+subroutine sirius_create_context_v2(handler,fcomm)
 implicit none
-integer(C_INT), intent(in) :: fcomm
 type(C_PTR), intent(out) :: handler
+integer(C_INT), intent(in) :: fcomm
 interface
-subroutine sirius_create_context_v2_aux(fcomm,handler)&
+subroutine sirius_create_context_v2_aux(handler,fcomm)&
 &bind(C, name="sirius_create_context_v2")
 use, intrinsic :: ISO_C_BINDING
-integer(C_INT), intent(in) :: fcomm
 type(C_PTR), intent(out) :: handler
+integer(C_INT), intent(in) :: fcomm
 end subroutine
 end interface
-call sirius_create_context_v2_aux(fcomm,handler)
+call sirius_create_context_v2_aux(handler,fcomm)
 end subroutine sirius_create_context_v2
 
 !> @brief Import parameters of simulation from a JSON string
@@ -144,6 +144,30 @@ call sirius_set_parameters_aux(handler,lmax_apw_ptr,lmax_rho_ptr,lmax_pot_ptr,nu
 &m_bands_ptr,num_mag_dims_ptr,pw_cutoff_ptr,gk_cutoff_ptr,auto_rmt_ptr)
 end subroutine sirius_set_parameters
 
+!> @brief Set vectors of the unit cell.
+!> @param [in] handler Simulation context handler
+!> @param [in] a1 1st vector
+!> @param [in] a2 2nd vector
+!> @param [in] a3 3er vector
+subroutine sirius_set_lattice_vectors_v2(handler,a1,a2,a3)
+implicit none
+type(C_PTR), intent(in) :: handler
+real(C_DOUBLE), intent(in) :: a1
+real(C_DOUBLE), intent(in) :: a2
+real(C_DOUBLE), intent(in) :: a3
+interface
+subroutine sirius_set_lattice_vectors_v2_aux(handler,a1,a2,a3)&
+&bind(C, name="sirius_set_lattice_vectors_v2")
+use, intrinsic :: ISO_C_BINDING
+type(C_PTR), intent(in) :: handler
+real(C_DOUBLE), intent(in) :: a1
+real(C_DOUBLE), intent(in) :: a2
+real(C_DOUBLE), intent(in) :: a3
+end subroutine
+end interface
+call sirius_set_lattice_vectors_v2_aux(handler,a1,a2,a3)
+end subroutine sirius_set_lattice_vectors_v2
+
 !> @brief Initialize simulation context.
 !> @param [in] handler Simulation context handler.
 subroutine sirius_initialize_context_v2(handler)
@@ -197,4 +221,55 @@ end subroutine
 end interface
 call sirius_set_periodic_function_ptr_aux(handler,label,f_mt,f_rg)
 end subroutine sirius_set_periodic_function_ptr
+
+!> @brief Create k-point set from the list of k-points.
+!> @param [in] handler Simulation context handler.
+!> @param [out] ks_handler Handler of the created k-point set.
+!> @param [in] num_kpoints Total number of k-points in the set.
+!> @param [in] kpoints List of k-points in lattice coordinates.
+!> @param [in] kpoint_weights Weights of k-points.
+!> @param [in] init_kset If .true. k-set will be initialized.
+subroutine sirius_create_kset_v2(handler,ks_handler,num_kpoints,kpoints,kpoint_w&
+&eights,init_kset)
+implicit none
+type(C_PTR), intent(in) :: handler
+type(C_PTR), intent(out) :: ks_handler
+integer(C_INT), intent(in) :: num_kpoints
+real(C_DOUBLE), intent(in) :: kpoints
+real(C_DOUBLE), intent(in) :: kpoint_weights
+logical(C_BOOL), intent(in) :: init_kset
+interface
+subroutine sirius_create_kset_v2_aux(handler,ks_handler,num_kpoints,kpoints,kpoi&
+&nt_weights,init_kset)&
+&bind(C, name="sirius_create_kset_v2")
+use, intrinsic :: ISO_C_BINDING
+type(C_PTR), intent(in) :: handler
+type(C_PTR), intent(out) :: ks_handler
+integer(C_INT), intent(in) :: num_kpoints
+real(C_DOUBLE), intent(in) :: kpoints
+real(C_DOUBLE), intent(in) :: kpoint_weights
+logical(C_BOOL), intent(in) :: init_kset
+end subroutine
+end interface
+call sirius_create_kset_v2_aux(handler,ks_handler,num_kpoints,kpoints,kpoint_wei&
+&ghts,init_kset)
+end subroutine sirius_create_kset_v2
+
+!> @brief Create k-point set from the list of k-points.
+!> @param [in] ks_handler Handler of the created k-point set.
+!> @param [out] gs_handler Handler of the ground state object.
+subroutine sirius_create_ground_state_v2(ks_handler,gs_handler)
+implicit none
+type(C_PTR), intent(in) :: ks_handler
+type(C_PTR), intent(out) :: gs_handler
+interface
+subroutine sirius_create_ground_state_v2_aux(ks_handler,gs_handler)&
+&bind(C, name="sirius_create_ground_state_v2")
+use, intrinsic :: ISO_C_BINDING
+type(C_PTR), intent(in) :: ks_handler
+type(C_PTR), intent(out) :: gs_handler
+end subroutine
+end interface
+call sirius_create_ground_state_v2_aux(ks_handler,gs_handler)
+end subroutine sirius_create_ground_state_v2
 

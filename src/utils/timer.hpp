@@ -100,15 +100,9 @@ class timer
         stack().push_back(label_);
     }
 
-    /// Destructor.
     ~timer()
     {
-        ///* global timer can't be stopped in the destructor: this happens when the program shuts down 
-        //   (static global_timer object is destroyed after exit from the main program) and it causes a crash 
-        //   in case of C++/Fortran interface; pure C++ program works fine */
-        //if (label_ != main_timer_label) {
-        //    stop();
-        //}
+        stop();
     }
 
     timer(timer&& src__)
@@ -167,8 +161,6 @@ class timer
 
     static void print()
     {
-        global_timer().stop();
-
         for (int i = 0; i < 140; i++) {
             printf("-");
         }
@@ -203,8 +195,6 @@ class timer
 
     static void print_tree()
     {
-        global_timer().stop();
-
         if (!timer_values().count(main_timer_label)) {
             return;
         }
@@ -243,8 +233,6 @@ class timer
 
     static nlohmann::json serialize_timers()
     {
-        global_timer().stop();
-
         nlohmann::json dict;
 
 #ifdef __TIMER_SEQUENCE
@@ -272,8 +260,6 @@ class timer
 
     static nlohmann::json serialize_timers_tree()
     {
-        global_timer().stop();
-
         nlohmann::json dict;
 
         if (!timer_values().count(main_timer_label)) {
@@ -343,7 +329,5 @@ inline void stop_global_timer()
 }
 
 }
-/* this is needed only to call timer::global_timer() at the beginning */
-//static timer* global_timer_init__ = &timer::global_timer();
 
 #endif

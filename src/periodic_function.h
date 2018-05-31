@@ -323,12 +323,13 @@ class Periodic_function: public Smooth_periodic_function<T>
                 }
                 return p;
             } else {
-                STOP();
                 double p{0};
-                //for (int ig = 0; ig < gvec_.num_gvec(); ig++) {
-                //    vector3d<double> vgc = gvec_.gvec_cart(ig);
-                //    p += std::real(f_pw_(ig) * std::exp(double_complex(0.0, vc * vgc)));
-                //}
+                for (int igloc = 0; igloc < gvec_.count(); igloc++) {
+                    int ig = gvec_.offset() + igloc;
+                    vector3d<double> vgc = gvec_.gvec_cart(ig);
+                    p += std::real(this->f_pw_local_(igloc) * std::exp(double_complex(0.0, dot(vc, vgc))));
+                }
+                gvec_.comm().allreduce(&p, 1);
                 return p;
             }
         }

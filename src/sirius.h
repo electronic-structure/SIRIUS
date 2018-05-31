@@ -96,10 +96,14 @@ inline void initialize(bool call_mpi_init__ = true)
     /* for the fortran interface to blas/lapack */
     assert(sizeof(int) == 4);
     assert(sizeof(double) == 8);
+
+    utils::start_global_timer();
 }
 
 inline void finalize(bool call_mpi_fin__ = true)
 {
+    utils::stop_global_timer();
+
 #if defined(__MAGMA)
     magma::finalize();
 #endif

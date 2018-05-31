@@ -26,6 +26,7 @@
 #define __PROFILER_HPP__
 
 #include <string>
+#include "communicator.hpp"
 #include "../utils/timer.hpp"
 
 #define __PROFILE
@@ -85,7 +86,7 @@ class profiler
         for (int i = 0; i < tab; i++) {
             printf(" ");
         }
-        printf("[rank%04i] + %s\n", mpi_comm_world().rank(), label_.c_str());
+        printf("[rank%04i] + %s\n", Communicator::world().rank(), label_.c_str());
 #endif
 
 #if defined(__PROFILE_TIME)
@@ -107,7 +108,7 @@ class profiler
         for (int i = 0; i < tab; i++) {
             printf(" ");
         }
-        printf("[rank%04i] - %s\n", mpi_comm_world().rank(), label_.c_str());
+        printf("[rank%04i] - %s\n", Communicator::world().rank(), label_.c_str());
 #endif
 
 #ifdef __PROFILE_STACK

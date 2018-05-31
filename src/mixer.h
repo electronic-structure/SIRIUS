@@ -405,9 +405,12 @@ class Broyden2: public Mixer<T>
     private:
         
         double beta0_;
+        double beta_scaling_factor_;
         double linear_mix_rms_tol_;
 
         mdarray<T, 2> residuals_;
+
+        std::vector<double> rms_history_;
     
     public:
 
@@ -417,9 +420,11 @@ class Broyden2: public Mixer<T>
                  double              beta__,
                  double              beta0__,
                  double              linear_mix_rms_tol__,
+                 double              beta_scaling_factor__,
                  Communicator const& comm__) 
             : Mixer<T>(shared_vector_size__, local_vector_size__, max_history__, beta__, comm__)
             , beta0_(beta0__)
+            , beta_scaling_factor_(beta_scaling_factor__)
             , linear_mix_rms_tol_(linear_mix_rms_tol__)
         {
             residuals_ = mdarray<T, 2>(this->local_size_, max_history__);
@@ -447,6 +452,31 @@ class Broyden2: public Mixer<T>
             }
 
             double rms = this->rms_deviation();
+
+            /* check for previous RMS values and adjust linear mixing parameter "beta" */
+            if (rms_history_.size() >= (size_t)this->max_history_) {
+                double rms_avg{0};
+                //double rms_max{0};
+                std::vector<double> prev_rms;
+                for (int i = 0; i < this->max_history_; i++) {
+                    double v = rms_history_[rms_history_.size() - this->max_history_ + i];
+                    rms_avg += v;
+                    prev_rms.push_back(v);
+                }
+                rms_avg /= this->max_history_;
+
+                if (this->comm_.rank() == 0) {
+                    std::cout << "[mixer] prev_rms: " << prev_rms << ", rmv_avg: " << rms_avg << ", rms: " << rms << "\n";
+                }
+
+                if (rms > rms_avg) {
+                    this->beta_ = std::max(beta0_, this->beta_ * beta_scaling_factor_);
+                    //rms_history_.clear();
+                    //this->count_ = 0;
+                }
+            }
+
+            rms_history_.push_back(rms);
 
             /* increment the history step */
             this->count_++;
@@ -554,7 +584,7 @@ inline std::unique_ptr<Mixer<T>> Mixer_factory(std::string  const& type__,
     }
     else if (type__ == "broyden2") {
         mixer = std::unique_ptr<Mixer<T>>(new Broyden2<T>(shared_size__, local_size__, mix_cfg__.max_history_, mix_cfg__.beta_,
-                                                          mix_cfg__.beta0_, mix_cfg__.linear_mix_rms_tol_,
+                                                          mix_cfg__.beta0_, mix_cfg__.linear_mix_rms_tol_, mix_cfg__.beta_scaling_factor_,
                                                           comm__));
     } else {
         TERMINATE("wrong type of mixer");

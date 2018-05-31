@@ -216,7 +216,7 @@ class K_point
 
         /// Constructor
         K_point(Simulation_context& ctx__,
-                double* vk__,
+                double const* vk__,
                 double weight__)
             : ctx_(ctx__)
             , unit_cell_(ctx_.unit_cell())

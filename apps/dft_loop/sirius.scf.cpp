@@ -71,7 +71,7 @@ double ground_state(Simulation_context& ctx,
     bool write_state = (ref_file.size() == 0);
     
     K_point_set kset(ctx, ctx.parameters_input().ngridk_, ctx.parameters_input().shiftk_, ctx.use_symmetry());
-    DFT_ground_state dft(ctx, kset);
+    DFT_ground_state dft(kset);
 
     if (ctx.comm().rank() == 0 && ctx.control().print_memory_usage_) {
         MEMORY_USAGE_INFO();
@@ -164,10 +164,6 @@ double ground_state(Simulation_context& ctx,
 
     /* wait for all */
     ctx.comm().barrier();
-
-    if (ctx.control().print_timers_ && ctx.comm().rank() == 0)  {
-        utils::timer::print();
-    }
 
     return dft.total_energy();
 }
@@ -323,6 +319,13 @@ int main(int argn, char** argv)
 
     run_tasks(args);
 
+    int my_rank = Communicator::world().rank();
+
     sirius::finalize(1);
+
+    if (my_rank == 0)  {
+        utils::timer::print();
+    }
+
     return 0;
 }
