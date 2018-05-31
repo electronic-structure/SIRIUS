@@ -402,7 +402,13 @@ inline void Atom_symmetry_class::generate_aw_radial_functions(relativity_t rel__
                 norm = s.interpolate().integrate(0);
 
                 if (std::abs(norm) < 1e-10) {
-                    TERMINATE("aw radial functions are linearly dependent");
+                    std::stringstream s;
+                    s << "AW radial function for atom " << atom_type_.label() << " is linearly dependent" << std::endl
+                      << "  order: " << order << std::endl
+                      << "      l: " << l << std::endl
+                      << "    dme: " << rsd.dme << std::endl
+                      << "    enu: " << rsd.enu;
+                    TERMINATE(s);
                 }
 
                 norm = 1.0 / std::sqrt(norm);
