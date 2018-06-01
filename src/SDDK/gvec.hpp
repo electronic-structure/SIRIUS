@@ -417,6 +417,20 @@ class Gvec
             TERMINATE("first G-vector is not zero");
         }
 
+#if defined(__CACHE_GVEC_CART)
+        gvec_cart_ = mdarray<double, 2>(3, num_gvec());
+        gkvec_cart_ = mdarray<double, 2>(3, num_gvec());
+
+        for (int ig = 0; ig < num_gvec(); ig++) {
+            auto G = gvec_by_full_index(gvec_full_index_(ig));
+            auto gc = lattice_vectors_ * vector3d<double>(G[0], G[1], G[2]);
+            auto gkc = lattice_vectors_ * (vector3d<double>(G[0], G[1], G[2]) + vk_);
+            for (int x: {0, 1, 2}) {
+                gvec_cart_(x, ig) = gc[x];
+                gkvec_cart_(x, ig) = gkc[x];
+            }
+        }
+#endif
         find_gvec_shells();
 
         if (gvec_base_) {
@@ -445,20 +459,6 @@ class Gvec
                 }
             }
         }
-#if defined(__CACHE_GVEC_CART)
-        gvec_cart_ = mdarray<double, 2>(3, num_gvec());
-        gkvec_cart_ = mdarray<double, 2>(3, num_gvec());
-
-        for (int ig = 0; ig < num_gvec(); ig++) {
-            auto G = gvec_by_full_index(gvec_full_index_(ig));
-            auto gc = lattice_vectors_ * vector3d<double>(G[0], G[1], G[2]);
-            auto gkc = lattice_vectors_ * (vector3d<double>(G[0], G[1], G[2]) + vk_);
-            for (int x: {0, 1, 2}) {
-                gvec_cart_(x, ig) = gc[x];
-                gkvec_cart_(x, ig) = gkc[x];
-            }
-        }
-#endif
         // TODO: add a check for gvec_base (there is already a test for this).
     }
 
