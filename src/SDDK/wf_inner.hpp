@@ -69,6 +69,12 @@ inline void inner(device_t        pu__,
 
     auto& comm = bra__.comm();
     
+    #ifdef __GPU
+    if (pu__ == GPU) {
+        acc::set_device();
+    }
+    #endif
+
     const char* sddk_pp_raw = std::getenv("SDDK_PRINT_PERFORMANCE");
     int sddk_pp = (sddk_pp_raw == NULL) ? 0 : std::atoi(sddk_pp_raw);
 

@@ -81,6 +81,25 @@ inline void stack_backtrace()
 
 namespace acc {
 
+/// return the gpu id
+inline int &device_id()
+{
+	static int dev_id_;
+	return dev_id_;
+}
+
+/// set the gpu id
+inline int set_device_id(int dev_id)
+{
+       device_id() = dev_id;
+       cudaSetDevice(device_id());
+}
+
+/// run calculations on the initial gpu
+inline int set_device()
+{
+	cudaSetDevice(device_id());
+}
 /// Vector of CUDA streams.
 inline std::vector<cudaStream_t>& streams()
 {
@@ -325,6 +344,7 @@ inline void check_last_error()
 
 inline bool check_device_ptr(void const* ptr__)
 {
+    set_device();
     cudaPointerAttributes attr;
     cudaError_t error = cudaPointerGetAttributes(&attr, ptr__);
     cudaGetLastError();

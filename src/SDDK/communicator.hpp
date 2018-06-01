@@ -402,6 +402,14 @@ class Communicator
         return s;
     }
 
+    /// returns the gpu id associated to the rank in mpi_world
+    static int device_id() 
+    {
+	#ifdef __GPU
+	return world().rank()%acc::num_devices();
+	#endif
+    }
+
     /// Rank of MPI process inside communicator with associated Cartesian partitioning.
     inline int cart_rank(std::vector<int> const& coords__) const
     {

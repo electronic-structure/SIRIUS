@@ -133,6 +133,8 @@ class Simulation_context_base: public Simulation_parameters
 
         bool initialized_{false};
 
+	int DeviceId_{-1};
+
         inline void init_fft()
         {
             auto rlv = unit_cell_.reciprocal_lattice_vectors();
@@ -474,7 +476,7 @@ class Simulation_context_base: public Simulation_parameters
         inline void generate_phase_factors(int iat__, mdarray<double_complex, 2>& phase_factors__) const
         {
             PROFILE("sirius::Simulation_context_base::generate_phase_factors");
-
+	    acc::set_device();
             int na = unit_cell_.atom_type(iat__).num_atoms();
             switch (processing_unit_) {
                 case CPU: {
@@ -643,14 +645,6 @@ inline void Simulation_context_base::initialize()
     if (processing_unit() == GPU) {
         #ifndef __GPU
         TERMINATE_NO_GPU;
-        #else
-        int num_devices = acc::num_devices();
-        if (num_devices > 1) {
-            int rank;
-            MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-            // assign one GPU to one rank in a periodic boundary fashion
-            cudaSetDevice(rank % num_devices);
-        }
         #endif
     }
 
@@ -887,7 +881,9 @@ inline void Simulation_context_base::initialize()
 
 
     if (processing_unit() == GPU) {
-        gvec_coord_ = mdarray<int, 2>(gvec().count(), 3, memory_t::host | memory_t::device, "gvec_coord_");
+        acc::set_device();
+	std::cout << this->comm().rank() << " " << DeviceId_ << std::endl;
+	gvec_coord_ = mdarray<int, 2>(gvec().count(), 3, memory_t::host | memory_t::device, "gvec_coord_");
         for (int igloc = 0; igloc < gvec().count(); igloc++) {
             int ig = gvec().offset() + igloc;
             auto G = gvec().gvec(ig);

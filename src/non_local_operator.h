@@ -291,6 +291,11 @@ inline void Non_local_operator<double>::apply(int chunk__,
         }
     }
 
+#ifdef __GPU
+    if (pu_ == GPU)
+    assert(beta_phi__.comm().device_id() == op_phi__.comm().device_id());
+#endif
+
     /* compute O * <beta|phi> */
     #pragma omp parallel for
     for (int i = 0; i < beta_.chunk(chunk__).num_atoms_; i++) {
