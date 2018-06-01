@@ -249,7 +249,7 @@ inline void Band::get_singular_components(K_point& kp__, Hamiltonian& H__) const
         res.pw_coeffs(0).allocate_on_device();
         ophi.pw_coeffs(0).allocate_on_device();
         opsi.pw_coeffs(0).allocate_on_device();
-        if (kp__.comm().size() == 1) {
+        if (ctx_.blacs_grid().comm().size() == 1) {
             evec.allocate(memory_t::device);
             ovlp.allocate(memory_t::device);
         }
@@ -502,7 +502,7 @@ inline void Band::diag_full_potential_first_variation_davidson(K_point& kp__, Ha
         hpsi.allocate_on_device(0);
         opsi.allocate_on_device(0);
     
-        if (kp__.comm().size() == 1) {
+        if (ctx_.blacs_grid().comm().size() == 1) {
             evec.allocate(memory_t::device);
             ovlp.allocate(memory_t::device);
             hmlt.allocate(memory_t::device);

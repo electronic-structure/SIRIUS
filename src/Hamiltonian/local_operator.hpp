@@ -727,7 +727,7 @@ class Local_operator
             ophi__.pw_coeffs(0).set_num_extra(CPU, n__, N__);
 
             for (int j = 0; j < phi__.pw_coeffs(0).spl_num_col().local_size(); j++) {
-                switch (fft_coarse_.pu() == CPU) {
+                switch (fft_coarse_.pu()) {
                     case CPU: {
                         /* phi(G) -> phi(r) */
                         fft_coarse_.transform<1>(phi__.pw_coeffs(0).extra().at<CPU>(0, j));
