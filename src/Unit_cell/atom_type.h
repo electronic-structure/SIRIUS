@@ -267,8 +267,7 @@ class Atom_type
               std::string                                 name__,
               int                                         zn__,
               double                                      mass__,
-              std::vector<atomic_level_descriptor> const& levels__,
-              radial_grid_t                               grid_type__)
+              std::vector<atomic_level_descriptor> const& levels__)
         : parameters_(parameters__)
         , symbol_(symbol__)
         , name_(name__)
@@ -276,7 +275,7 @@ class Atom_type
         , mass_(mass__)
         , atomic_levels_(levels__)
     {
-        radial_grid_ = Radial_grid_factory<double>(grid_type__, 2000 + zn__ * 50, 1e-6 / zn_, 20.0 + 0.25 * zn_);
+        //radial_grid_ = Radial_grid_factory<double>(grid_type__, 2000 + zn__ * 50, 1e-6 / zn_, 20.0 + 0.25 * zn_);
     }
 
     Atom_type(Simulation_parameters const& parameters__, int id__, std::string label__, std::string file_name__)
@@ -291,9 +290,9 @@ class Atom_type
 
     inline void init(int offset_lo__);
 
-    inline void set_radial_grid(radial_grid_t grid_type__, int num_points__, double rmin__, double rmax__)
+    inline void set_radial_grid(radial_grid_t grid_type__, int num_points__, double rmin__, double rmax__, double p__)
     {
-        radial_grid_ = Radial_grid_factory<double>(grid_type__, num_points__, rmin__, rmax__);
+        radial_grid_ = Radial_grid_factory<double>(grid_type__, num_points__, rmin__, rmax__, p__);
         if (parameters_.processing_unit() == GPU) {
             radial_grid_.copy_to_device();
         }
@@ -1702,7 +1701,9 @@ inline void Atom_type::read_input(std::string const& str__)
         double R  = parser["rmt"];
         int nmtp  = parser["nrmt"];
 
-        set_radial_grid(radial_grid_t::exponential_grid, nmtp, r0, R);
+        auto rg = get_radial_grid_t(parameters_.settings().radial_grid_);
+
+        set_radial_grid(rg.first, nmtp, r0, R, rg.second);
 
         read_input_core(parser);
 
@@ -1723,7 +1724,8 @@ inline void Atom_type::read_input(std::string const& str__)
     read_hubbard_input();
 }
 
-inline double Atom_type::ClebschGordan(const int l, const double j, const double mj, const int spin)
+// TODO: this is not an atom type property, move to SHT or utils class
+inline double Atom_type::ClebschGordan(const int l, const double j, const double mj, const int spin) 
 {
     // l : orbital angular momentum
     // m:  projection of the total angular momentum $m \pm /frac12$

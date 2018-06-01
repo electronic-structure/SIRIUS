@@ -51,7 +51,7 @@ int main(int argn, char** argv)
     Broyden1<double> mixer2(N, 0, 8, beta, Communicator::world());
     test_mixer(mixer2);
 
-    Broyden2<double> mixer3(N, 0, 8, beta, 0.15, 100.0, Communicator::world());
+    Broyden2<double> mixer3(N, 0, 8, beta, 0.15, 100.0, 1.0, Communicator::world());
     test_mixer(mixer3);
 
     sirius::finalize();
