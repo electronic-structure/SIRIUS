@@ -774,6 +774,7 @@ class Local_operator
                 utils::timer t2("sirius::Local_operator::apply_h_o|kin");
                 /* add kinetic energy */
                 for (int x: {0, 1, 2}) {
+                    #pragma omp parallel for schedule(static)
                     for (int igloc = 0; igloc < gkvec_p_->gvec_count_fft(); igloc++) {
                         /* global index of G-vector */
                         int ig = gkvec_p_->idx_gvec(igloc);
@@ -801,6 +802,7 @@ class Local_operator
                     }
                     /* transform back to PW domain */
                     fft_coarse_.transform<-1>(&buf_pw[0]);
+                    #pragma omp parallel for schedule(static)
                     for (int igloc = 0; igloc < gkvec_p_->gvec_count_fft(); igloc++) {
                         int ig = gkvec_p_->idx_gvec(igloc);
                         hphi__.pw_coeffs(0).extra()(igloc, j) += 0.5 * buf_pw[igloc] * gkvec_p_->gvec().gkvec_cart(ig)[x];

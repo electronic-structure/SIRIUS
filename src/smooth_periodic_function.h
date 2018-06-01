@@ -315,6 +315,8 @@ class Smooth_periodic_function_gradient
 /// Gradient of the function in the plane-wave domain.
 inline Smooth_periodic_function_gradient<double> gradient(Smooth_periodic_function<double>& f__)
 {
+    utils::timer t1("sirius::Smooth_periodic_function_gradient|gradient");
+
     Smooth_periodic_function_gradient<double> g(f__.fft(), f__.gvec_partition());
 
     #pragma omp parallel for schedule(static)
@@ -331,6 +333,8 @@ inline Smooth_periodic_function_gradient<double> gradient(Smooth_periodic_functi
 /// Laplacian of the function in the plane-wave domain.
 inline Smooth_periodic_function<double> laplacian(Smooth_periodic_function<double>& f__)
 {
+    utils::timer t1("sirius::Smooth_periodic_function_gradient|laplacian");
+
     Smooth_periodic_function<double> g(f__.fft(), f__.gvec_partition());
 
     #pragma omp parallel for schedule(static)
@@ -348,6 +352,8 @@ inline Smooth_periodic_function<T> dot(Smooth_periodic_function_gradient<T>& gra
                                        Smooth_periodic_function_gradient<T>& grad_g__)
 
 {
+    utils::timer t1("sirius::Smooth_periodic_function_gradient|dot");
+
     assert(&grad_f__.fft() == &grad_g__.fft());
     assert(&grad_f__.gvec_partition() == &grad_g__.gvec_partition());
 
