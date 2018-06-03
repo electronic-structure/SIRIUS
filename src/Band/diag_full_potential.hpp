@@ -706,7 +706,7 @@ inline void Band::diag_full_potential_second_variation(K_point& kp__, Hamiltonia
 
     if (ctx_.num_mag_dims() != 3) {
         dmatrix<double_complex> h(nfv, nfv, ctx_.blacs_grid(), bs, bs);
-        if (kp__.num_ranks() == 1 && ctx_.processing_unit() == GPU) {
+        if (ctx_.blacs_grid().comm().size() == 1 && ctx_.processing_unit() == GPU) {
             h.allocate(memory_t::device);
         }
         /* perform one or two consecutive diagonalizations */
@@ -728,7 +728,7 @@ inline void Band::diag_full_potential_second_variation(K_point& kp__, Hamiltonia
     } else {
         int nb = ctx_.num_bands();
         dmatrix<double_complex> h(nb, nb, ctx_.blacs_grid(), bs, bs);
-        if (kp__.num_ranks() == 1 && ctx_.processing_unit() == GPU) {
+        if (ctx_.blacs_grid().comm().size() == 1 && ctx_.processing_unit() == GPU) {
             h.allocate(memory_t::device);
         }
         /* compute <wf_i | h * wf_j> for up-up block */
