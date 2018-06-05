@@ -28,6 +28,7 @@
 #include <cassert>
 #include <cmath>
 #include <string>
+#include <vector>
 #include <fstream>
 #include <sstream>
 #include <sys/time.h>
@@ -182,51 +183,30 @@ inline double phi_by_sin_cos(double sinp, double cosp)
     return phi;
 }
 
-inline long double factorial(int n)
+//inline long double factorial(int n)
+//{
+//    assert(n >= 0);
+//
+//    long double result = 1.0L;
+//    for (int i = 1; i <= n; i++) {
+//        result *= i;
+//    }
+//    return result;
+//}
+
+template <typename T>
+inline T factorial(int n)
 {
     assert(n >= 0);
 
-    long double result = 1.0L;
+    T result{1};
     for (int i = 1; i <= n; i++) {
         result *= i;
     }
     return result;
 }
 
-//== 
-//== 
-//==     static inline double fermi_dirac_distribution(double e) // TODO: namespace smearing
-//==     {
-//==         double kT = 0.001;
-//==         if (e > 100 * kT) {
-//==             return 0.0;
-//==         }
-//==         if (e < -100 * kT) {
-//==             return 1.0;
-//==         }
-//==         return (1.0 / (std::exp(e / kT) + 1.0));
-//==     }
-//== 
-//==     static inline double gaussian_smearing(double e, double delta)
-//==     {
-//==         return 0.5 * (1 - gsl_sf_erf(e / delta)); // TODO std::erf
-//==     }
-//== 
-//==     static inline double cold_smearing(double e)
-//==     {
-//==         double a = -0.5634;
-//== 
-//==         if (e < -10.0) {
-//==             return 1.0;
-//==         }
-//==         if (e > 10.0) {
-//==             return 0.0;
-//==         }
-//== 
-//==         return 0.5 * (1 - gsl_sf_erf(e)) - 1 - 0.25 * std::exp(-e * e) * (a + 2 * e - 2 * a * e * e) / std::sqrt(pi);
-//==     }
-//== 
-//== 
+
 //==     /// Simple hash function.
 //==     /** Example: printf("hash: %16llX\n", hash()); */
 //==     static uint64_t hash(void const* buff, size_t size, uint64_t h = 5381)

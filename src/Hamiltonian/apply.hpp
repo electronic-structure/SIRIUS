@@ -234,6 +234,12 @@ inline void Hamiltonian::apply_fv_o(K_point* kp__,
     /* interstitial part */
     local_op_->apply_o(N__, n__, phi__, ophi__);
 
+#ifdef __GPU
+    if (ctx_.processing_unit() == GPU) {
+        ophi__.pw_coeffs(0).copy_to_device(N__, n__);
+    }
+#endif
+
     matrix<double_complex> alm(kp__->num_gkvec_loc(), unit_cell_.max_mt_aw_basis_size());
     matrix<double_complex> oalm(kp__->num_gkvec_loc(), unit_cell_.max_mt_aw_basis_size());
     matrix<double_complex> tmp(unit_cell_.max_mt_aw_basis_size(), n__);
