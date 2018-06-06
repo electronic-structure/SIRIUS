@@ -183,17 +183,6 @@ inline double phi_by_sin_cos(double sinp, double cosp)
     return phi;
 }
 
-//inline long double factorial(int n)
-//{
-//    assert(n >= 0);
-//
-//    long double result = 1.0L;
-//    for (int i = 1; i <= n; i++) {
-//        result *= i;
-//    }
-//    return result;
-//}
-
 template <typename T>
 inline T factorial(int n)
 {
@@ -206,6 +195,10 @@ inline T factorial(int n)
     return result;
 }
 
+inline int num_blocks(int length__, int block_size__)
+{
+    return (length__ / block_size__) + std::min(length__ % block_size__, 1);
+}
 
 //==     /// Simple hash function.
 //==     /** Example: printf("hash: %16llX\n", hash()); */
@@ -547,19 +540,19 @@ inline std::ostream& operator<<(std::ostream& out, std::vector<T>& v)
     return out;
 }
 
-std::string& ltrim(std::string& str, const std::string& chars = "\t\n\v\f\r ")
+inline std::string& ltrim(std::string& str, const std::string& chars = "\t\n\v\f\r ")
 {
     str.erase(0, str.find_first_not_of(chars));
     return str;
 }
  
-std::string& rtrim(std::string& str, const std::string& chars = "\t\n\v\f\r ")
+inline std::string& rtrim(std::string& str, const std::string& chars = "\t\n\v\f\r ")
 {
     str.erase(str.find_last_not_of(chars) + 1);
     return str;
 }
  
-std::string& trim(std::string& str, const std::string& chars = "\t\n\v\f\r ")
+inline std::string& trim(std::string& str, const std::string& chars = "\t\n\v\f\r ")
 {
     return ltrim(rtrim(str, chars), chars);
 }
