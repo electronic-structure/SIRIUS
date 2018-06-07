@@ -685,7 +685,7 @@ class Local_operator
             mdarray<double_complex, 1> buf_pw(gkvec_p_->gvec_count_fft());
 
 #if defined(__GPU)
-            if (fft_coarse_.pu() == GPU) {
+            if (param_.processing_unit() == GPU) {
                 phi__.pw_coeffs(0).copy_to_host(N__, n__);
             }
 #endif
@@ -696,7 +696,6 @@ class Local_operator
             //    }
             //}
 
-             //phi__.pw_coeffs(0).remap_forward(param_.processing_unit(), n__, N__);
             phi__.pw_coeffs(0).remap_forward(CPU, n__, N__);
 
             if (hphi__ != nullptr) {
@@ -827,7 +826,7 @@ class Local_operator
             fft_coarse_.dismiss();
 
 #ifdef __GPU
-            if (fft_coarse_.pu() == GPU) {
+            if (param_.processing_unit() == GPU) {
                 if (hphi__ != nullptr) {
                     hphi__->pw_coeffs(0).copy_to_device(N__, n__);
                 }

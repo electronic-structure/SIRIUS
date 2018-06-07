@@ -124,7 +124,7 @@ inline void Band::diag_full_potential_first_variation_exact(K_point& kp, Hamilto
         }
         #endif
 
-        hamiltonian__.apply_fv_o(&kp, false, false, 0, ctx_.num_fv_states(), kp.fv_eigen_vectors_slab(), ofv);
+        hamiltonian__.apply_fv_h_o(&kp, false, false, 0, ctx_.num_fv_states(), kp.fv_eigen_vectors_slab(), nullptr, &ofv);
 
         #ifdef __GPU
         if (ctx_.processing_unit() == GPU) {
@@ -287,7 +287,8 @@ inline void Band::get_singular_components(K_point& kp__, Hamiltonian& H__) const
     /* start iterative diagonalization */
     for (int k = 0; k < itso.num_steps_; k++) {
         /* apply Hamiltonian and overlap operators to the new basis functions */
-        H__.apply_fv_o(&kp__, true, true, N, n, phi, ophi);
+        //H__.apply_fv_o(&kp__, true, true, N, n, phi, ophi);
+        H__.apply_fv_h_o(&kp__, true, false, N, n, phi, nullptr, &ophi);
 
         if (ctx_.control().verification_ >= 1) {
             dmatrix<double_complex> tmp;
@@ -429,12 +430,15 @@ inline void Band::diag_full_potential_first_variation_davidson(K_point& kp__, Ha
     /* short notation for target wave-functions */
     auto& psi = kp__.fv_eigen_vectors_slab();
 
+    /* total number of local orbitals */
     int nlo = ctx_.unit_cell().mt_lo_basis_size();
 
+    /* number of singular components */
     int ncomp = kp__.singular_components().num_wf();
 
     /* number of auxiliary basis functions */
     int num_phi = nlo + ncomp + itso.subspace_size_ * num_bands;
+    /* sanity check */
     if (num_phi >= kp__.num_gkvec()) {
         TERMINATE("subspace is too big");
     }
@@ -466,6 +470,7 @@ inline void Band::diag_full_potential_first_variation_davidson(K_point& kp__, Ha
     dmatrix<double_complex> evec(num_phi, num_phi, ctx_.blacs_grid(), bs, bs);
     dmatrix<double_complex> hmlt_old(num_phi, num_phi, ctx_.blacs_grid(), bs, bs);
 
+    /* add pure local orbitals to the basis */
     if (nlo) {
         phi.pw_coeffs(0).zero<memory_t::host>(0, nlo);
         phi.mt_coeffs(0).zero<memory_t::host>(0, nlo);
@@ -477,6 +482,7 @@ inline void Band::diag_full_potential_first_variation_davidson(K_point& kp__, Ha
         }
     }
 
+    /* add singular components to the basis */
     if (ncomp != 0) {
         phi.mt_coeffs(0).zero<memory_t::host>(nlo, ncomp);
         for (int j = 0; j < ncomp; j++) {
@@ -486,7 +492,7 @@ inline void Band::diag_full_potential_first_variation_davidson(K_point& kp__, Ha
         }
     }
 
-    #ifdef __GPU
+#if defined(__GPU)
     if (ctx_.processing_unit() == GPU) {
         psi.allocate_on_device(0);
         psi.copy_to_device(0, 0, num_bands);
@@ -508,7 +514,7 @@ inline void Band::diag_full_potential_first_variation_davidson(K_point& kp__, Ha
             hmlt.allocate(memory_t::device);
         }
     }
-    #endif
+#endif
 
     std::vector<double> eval(num_bands);
     for (int i = 0; i < num_bands; i++) {
@@ -547,7 +553,12 @@ inline void Band::diag_full_potential_first_variation_davidson(K_point& kp__, Ha
     /* start iterative diagonalization */
     for (int k = 0; k < itso.num_steps_; k++) {
         /* apply Hamiltonian and overlap operators to the new basis functions */
-        H__.apply_fv_h_o(&kp__, nlo, N, n, phi, hphi, ophi);
+        if (k == 0) {
+            H__.apply_fv_h_o(&kp__, false, true, 0, nlo, phi, &hphi, &ophi);
+            H__.apply_fv_h_o(&kp__, false, false, nlo, ncomp + num_bands, phi, &hphi, &ophi);
+        } else {
+            H__.apply_fv_h_o(&kp__, false, false, N, n, phi, &hphi, &ophi);
+        }
         
         orthogonalize(ctx_.processing_unit(), 0, phi, hphi, ophi, N, n, ovlp, res);
 
@@ -596,10 +607,11 @@ inline void Band::diag_full_potential_first_variation_davidson(K_point& kp__, Ha
             }
             else { /* otherwise, set Psi as a new trial basis */
                 if (ctx_.control().verbosity_ >= 3 && kp__.comm().rank() == 0) {
-                    DUMP("subspace size limit reached");
+                    printf("subspace size limit reached\n");
                 }
 
                 /* update basis functions */
+                /* first nlo + ncomp functions are fixed, don't update them */
                 phi.copy_from(ctx_.processing_unit(), num_bands, psi, 0, 0, 0, nlo + ncomp);
                 phi.copy_from(ctx_.processing_unit(), n, res, 0, 0, 0, nlo + ncomp + num_bands);
                 /* number of basis functions that we already have */

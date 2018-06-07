@@ -120,14 +120,6 @@ class Hamiltonian
     }
 
     template <typename T>
-    inline void apply_h(K_point*        kp__,
-                        int             ispn__,
-                        int             N__,
-                        int             n__,
-                        Wave_functions& phi__,
-                        Wave_functions& hphi__) const;
-
-    template <typename T>
     inline void apply_h_s(K_point*        kp__,
                           int             ispn__,
                           int             N__,
@@ -136,13 +128,13 @@ class Hamiltonian
                           Wave_functions& hphi__,
                           Wave_functions& ophi__) const;
 
-    inline void apply_fv_o(K_point*        kp__,
-                           bool            apw_only__,
-                           bool            add_o1__,
-                           int             N__,
-                           int             n__,
-                           Wave_functions& phi__,
-                           Wave_functions& ophi__) const;
+    //inline void apply_fv_o(K_point*        kp__,
+    //                       bool            apw_only__,
+    //                       bool            add_o1__,
+    //                       int             N__,
+    //                       int             n__,
+    //                       Wave_functions& phi__,
+    //                       Wave_functions& ophi__) const;
 
     inline void apply_magnetic_field(K_point*                     kp__,
                                      Wave_functions&              fv_states__,
@@ -462,13 +454,22 @@ class Hamiltonian
      *            \delta_{\alpha_j \alpha_{j'}} \delta_{\ell_j \ell_{j'}} \delta_{m_j m_{j'}}
      *  \f]
      */
-    inline void apply_fv_h_o(K_point* kp__,
-                             int nlo,
-                             int N,
-                             int n,
+    //inline void apply_fv_h_o(K_point* kp__,
+    //                         int nlo,
+    //                         int N,
+    //                         int n,
+    //                         Wave_functions& phi__,
+    //                         Wave_functions& hphi__,
+    //                         Wave_functions& ophi__) const;
+
+    inline void apply_fv_h_o(K_point*        kp__,
+                             bool            apw_only__,
+                             bool            phi_is_lo__,
+                             int             N__,
+                             int             n__,
                              Wave_functions& phi__,
-                             Wave_functions& hphi__,
-                             Wave_functions& ophi__) const;
+                             Wave_functions* hphi__,
+                             Wave_functions* ophi__) const;
 
     /// Get diagonal elements of LAPW Hamiltonian.
     inline mdarray<double, 2> get_h_diag(K_point* kp__, double v0__, double theta0__) const;
