@@ -157,6 +157,8 @@ inline void Hamiltonian::apply_fv_h_o(K_point*        kp__,
                                       Wave_functions* hphi__,
                                       Wave_functions* ophi__) const
 {
+    PROFILE("sirius::Hamiltonian::apply_fv_h_o");
+
     /* trivial case */
     if (hphi__ == nullptr && ophi__ == nullptr) {
         return;
@@ -295,7 +297,7 @@ inline void Hamiltonian::apply_fv_h_o(K_point*        kp__,
                     }
 #endif
                     if (hphi__ != nullptr) {
-                        apply_hmt_to_apw<spin_block_t::nm>(atom,  ngv, alm_tmp, halm_tmp);
+                        apply_hmt_to_apw<spin_block_t::nm>(atom, ngv, alm_tmp, halm_tmp);
 #if defined(__GPU)
                         if (ctx_.processing_unit() == GPU) {
                             halm_tmp.async_copy<memory_t::host, memory_t::device>(tid);
@@ -587,6 +589,7 @@ inline void Hamiltonian::apply_fv_h_o(K_point*        kp__,
                 }
                 case GPU: {
 #if defined(__GPU)
+                    halm_block.copy<memory_t::host, memory_t::device>(ngv * num_mt_lo);
                     linalg<GPU>::gemm(0, 0, ngv, n__, num_mt_lo,
                                       &linalg_const<double_complex>::one(),
                                       halm_block.at<GPU>(), halm_block.ld(),
