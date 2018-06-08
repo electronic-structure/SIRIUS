@@ -166,8 +166,6 @@ inline void Hamiltonian::apply_fv_h_o(K_point*        kp__,
         return;
     }
 
-    utils::timer t0("sirius::Hamiltonian::apply_fv_h_o|init");
-
     if (!apw_only__) {
         if (hphi__ != nullptr) {
             /* zero the local-orbital part */
@@ -223,6 +221,8 @@ inline void Hamiltonian::apply_fv_h_o(K_point*        kp__,
     int max_mt_aw = num_atoms_in_block * unit_cell_.max_mt_aw_basis_size();
     /* maximum number of LO radial functions in a block of atoms */
     int max_mt_lo = num_atoms_in_block * unit_cell_.max_mt_lo_basis_size();
+
+    utils::timer t0("sirius::Hamiltonian::apply_fv_h_o|alloc");
 
     /* matching coefficients for a block of atoms */
     matrix<double_complex> alm_block;
