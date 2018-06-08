@@ -27,10 +27,8 @@
 
 #include "periodic_function.h"
 #include "k_point_set.h"
-#include "Hamiltonian/local_operator.hpp"
-#include "non_local_operator.h"
-#include "hubbard.hpp"
-#include "Hamiltonian.h"
+#include "Hamiltonian/hamiltonian.hpp"
+//#include "hubbard.hpp"
 
 namespace sirius {
 
