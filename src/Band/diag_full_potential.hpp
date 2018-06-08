@@ -364,7 +364,7 @@ inline void Band::get_singular_components(K_point& kp__, Hamiltonian& H__) const
 
         /* check if we run out of variational space or eigen-vectors are converged or it's a last iteration */
         if (N + n > num_phi || n <= itso.min_num_res_ || k == (itso.num_steps_ - 1)) {
-            utils::timer t1("sirius::Band::diag_fv_full_potential_davidson|update_phi");
+            utils::timer t1("sirius::Band::get_singular_components|update_phi");
             /* recompute wave-functions */
             /* \Psi_{i} = \sum_{mu} \phi_{mu} * Z_{mu, i} */
             transform(ctx_.processing_unit(), 0, phi, 0, N, evec, 0, 0, psi, 0, ncomp);
