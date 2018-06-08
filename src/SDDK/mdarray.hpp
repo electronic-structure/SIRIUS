@@ -460,7 +460,6 @@ class mdarray_base
     /// Allocate memory for array.
     void allocate(memory_t memory__)
     {
-        utils::timer t1("sddk::mdarray::allocate");
 #ifndef __GPU
         if ((memory__ & memory_t::host_pinned) == memory_t::host_pinned) {
             memory__ = memory_t::host;
