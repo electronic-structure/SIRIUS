@@ -157,12 +157,16 @@ inline void Hamiltonian::apply_fv_h_o(K_point*        kp__,
                                       Wave_functions* hphi__,
                                       Wave_functions* ophi__) const
 {
+    kp__->comm().barrier();
+
     PROFILE("sirius::Hamiltonian::apply_fv_h_o");
 
     /* trivial case */
     if (hphi__ == nullptr && ophi__ == nullptr) {
         return;
     }
+
+    utils::timer t0("sirius::Hamiltonian::apply_fv_h_o|init");
 
     if (!apw_only__) {
         if (hphi__ != nullptr) {
@@ -250,6 +254,7 @@ inline void Hamiltonian::apply_fv_h_o(K_point*        kp__,
     if (hphi__ != nullptr) {
         halm_phi_buf = mdarray<double_complex, 1>(max_mt_aw * n__, ctx_.dual_memory_t());
     }
+    t0.stop();
 
     auto generate_alm = [&](int atom_begin, int atom_end, std::vector<int>& offsets_aw)
     {
@@ -609,6 +614,7 @@ inline void Hamiltonian::apply_fv_h_o(K_point*        kp__,
         }
     };
 
+    utils::timer t2("sirius::Hamiltonian::apply_fv_h_o|mt");
     /* loop over blocks of atoms */
     for (int iblk = 0; iblk < nblk; iblk++) {
         int atom_begin = iblk * num_atoms_in_block;
@@ -726,6 +732,7 @@ inline void Hamiltonian::apply_fv_h_o(K_point*        kp__,
             t3.stop();
         }
     }
+    t2.stop();
 #if defined(__GPU)
     if (ctx_.processing_unit() == GPU && !apw_only__) {
         if (hphi__ != nullptr) {
@@ -754,6 +761,7 @@ inline void Hamiltonian::apply_fv_h_o(K_point*        kp__,
             }
         }
     }
+    kp__->comm().barrier();
 }
 
 // TODO: port to GPU
