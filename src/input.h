@@ -518,6 +518,7 @@ struct Settings_input
     bool always_update_wf_{true};
     double mixer_rss_min_{1e-12};
     double auto_enu_tol_{0};
+    std::string radial_grid_{"exponential, 1.0"};
 
     void read(json const& parser)
     {
@@ -529,6 +530,7 @@ struct Settings_input
             always_update_wf_ = parser["settings"].value("always_update_wf", always_update_wf_);
             mixer_rss_min_    = parser["settings"].value("mixer_rss_min", mixer_rss_min_);
             auto_enu_tol_     = parser["settings"].value("auto_enu_tol", auto_enu_tol_);
+            radial_grid_      = parser["settings"].value("radial_grid", radial_grid_);
         }
     }
 };

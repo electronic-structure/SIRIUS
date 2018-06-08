@@ -1,16 +1,41 @@
-#ifndef __HAMILTONIAN_H__
-#define __HAMILTONIAN_H__
+// Copyright (c) 2013-2018 Anton Kozhevnikov, Mathieu Taillefumier, Thomas Schulthess
+// All rights reserved.
+// 
+// Redistribution and use in source and binary forms, with or without modification, are permitted provided that 
+// the following conditions are met:
+// 
+// 1. Redistributions of source code must retain the above copyright notice, this list of conditions and the 
+//    following disclaimer.
+// 2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions 
+//    and the following disclaimer in the documentation and/or other materials provided with the distribution.
+// 
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED 
+// WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A 
+// PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR 
+// ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, 
+// PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER 
+// CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR 
+// OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+/** \file hamiltonian.hpp
+ *
+ *  \brief Contains declaration and definition of sirius::Hamiltonian class.
+ */
+
+#ifndef __HAMILTONIAN_HPP__
+#define __HAMILTONIAN_HPP__
 
 #include <typeinfo>
 #include "simulation_context.h"
 #include "hubbard.hpp"
 #include "potential.h"
 #include "k_point.h"
-#include "Hamiltonian/local_operator.hpp"
-#include "non_local_operator.h"
+#include "local_operator.hpp"
+#include "non_local_operator.hpp"
 
 namespace sirius {
 
+/// Representation of Kohn-Sham Hamiltonian.
 class Hamiltonian
 {
   private:
@@ -40,6 +65,23 @@ class Hamiltonian
     std::type_info const* type_of_T_{nullptr};
 
   public:
+    /// Constructor.
+    Hamiltonian(Simulation_context& ctx__, Potential& potential__)
+        : ctx_(ctx__)
+        , unit_cell_(ctx__.unit_cell())
+        , potential_(potential__)
+    {
+        using gc_z = Gaunt_coefficients<double_complex>;
+
+        gaunt_coefs_ = std::unique_ptr<gc_z>(new gc_z(ctx_.lmax_apw(), ctx_.lmax_pot(), ctx_.lmax_apw(), SHT::gaunt_hybrid));
+
+        local_op_ = std::unique_ptr<Local_operator>(new Local_operator(ctx_, ctx_.fft_coarse(), ctx_.gvec_coarse_partition()));
+
+        if (ctx_.hubbard_correction()) {
+            U_ = std::unique_ptr<Hubbard_potential>(new Hubbard_potential(ctx_));
+        }
+    }
+
     Hubbard_potential& U() const
     {
         return *U_;
@@ -63,22 +105,6 @@ class Hamiltonian
     Local_operator& local_op() const
     {
         return *local_op_;
-    }
-
-    Hamiltonian(Simulation_context& ctx__, Potential& potential__)
-        : ctx_(ctx__)
-        , unit_cell_(ctx__.unit_cell())
-        , potential_(potential__)
-    {
-
-        gaunt_coefs_ = std::unique_ptr<Gaunt_coefficients<double_complex>>(new Gaunt_coefficients<double_complex>(
-            ctx_.lmax_apw(), ctx_.lmax_pot(), ctx_.lmax_apw(), SHT::gaunt_hybrid));
-
-        local_op_ = std::unique_ptr<Local_operator>(new Local_operator(ctx_, ctx_.fft_coarse(), ctx_.gvec_coarse_partition()));
-
-        if (ctx_.hubbard_correction()) {
-            U_ = std::unique_ptr<Hubbard_potential>(new Hubbard_potential(ctx_));
-        }
     }
     
     /// Prepare k-point independent operators.
@@ -120,14 +146,6 @@ class Hamiltonian
     }
 
     template <typename T>
-    inline void apply_h(K_point*        kp__,
-                        int             ispn__,
-                        int             N__,
-                        int             n__,
-                        Wave_functions& phi__,
-                        Wave_functions& hphi__) const;
-
-    template <typename T>
     inline void apply_h_s(K_point*        kp__,
                           int             ispn__,
                           int             N__,
@@ -135,14 +153,6 @@ class Hamiltonian
                           Wave_functions& phi__,
                           Wave_functions& hphi__,
                           Wave_functions& ophi__) const;
-
-    inline void apply_fv_o(K_point*        kp__,
-                           bool            apw_only__,
-                           bool            add_o1__,
-                           int             N__,
-                           int             n__,
-                           Wave_functions& phi__,
-                           Wave_functions& ophi__) const;
 
     inline void apply_magnetic_field(K_point*                     kp__,
                                      Wave_functions&              fv_states__,
@@ -462,13 +472,14 @@ class Hamiltonian
      *            \delta_{\alpha_j \alpha_{j'}} \delta_{\ell_j \ell_{j'}} \delta_{m_j m_{j'}}
      *  \f]
      */
-    inline void apply_fv_h_o(K_point* kp__,
-                             int nlo,
-                             int N,
-                             int n,
+    inline void apply_fv_h_o(K_point*        kp__,
+                             bool            apw_only__,
+                             bool            phi_is_lo__,
+                             int             N__,
+                             int             n__,
                              Wave_functions& phi__,
-                             Wave_functions& hphi__,
-                             Wave_functions& ophi__) const;
+                             Wave_functions* hphi__,
+                             Wave_functions* ophi__) const;
 
     /// Get diagonal elements of LAPW Hamiltonian.
     inline mdarray<double, 2> get_h_diag(K_point* kp__, double v0__, double theta0__) const;
@@ -485,10 +496,10 @@ class Hamiltonian
     inline mdarray<double, 1> get_o_diag(K_point* kp__) const;
 };
 
-#include "Hamiltonian/apply.hpp"
-#include "Hamiltonian/set_lapw_h_o.hpp"
-#include "Hamiltonian/get_h_o_diag.hpp"
-#include "Hamiltonian/set_pwlo_h_o.hpp"
+#include "apply.hpp"
+#include "set_lapw_h_o.hpp"
+#include "get_h_o_diag.hpp"
+
 }
 
 #endif

@@ -6,7 +6,7 @@
 #include "simulation_context.h"
 #include "k_point.h"
 #include "wave_functions.hpp"
-#include "non_local_operator.h"
+#include "Hamiltonian/non_local_operator.hpp"
 #include "../Beta_projectors/beta_projectors.h"
 #include "../Beta_projectors/beta_projectors_gradient.h"
 #include "../Beta_projectors/beta_projectors_strain_deriv.h"
