@@ -202,10 +202,16 @@ inline void Hamiltonian::apply_fv_h_o(K_point*        kp__,
         }
     }
 
+#if defined(__GPU)
+    if (ctx_.processing_unit() == GPU && !apw_only__) {
+        phi__.mt_coeffs(0).copy_to_host(N__, n__);
+    }
+#endif
+
+    /* short name for local number of G+k vectors */
     int ngv = kp__->num_gkvec_loc();
 
-    /* contribution from the interstitial part is done; now do the muffin-tin part */
-
+    /* split atoms in blocks */
     int num_atoms_in_block = 2 * omp_get_max_threads();
     int nblk = utils::num_blocks(unit_cell_.num_atoms(), num_atoms_in_block);
 
