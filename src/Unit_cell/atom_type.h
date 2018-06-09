@@ -1051,6 +1051,7 @@ class Atom_type
         switch(hubbard_l_) {
         case 0:
             F[1] = Hubbard_J();
+            break;
         case 1:
             F[1] = 5.0 * Hubbard_J();
             break;
