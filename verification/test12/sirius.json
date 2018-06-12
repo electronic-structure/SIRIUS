@@ -62,7 +62,11 @@
        "orthogonalize_hubbard_wave_functions": true,
         "Au" : {
             "U": 4.4,
-            "J": 0.0
+            "J": 0.0,
+	    "l": 2,
+	    "n" : 4,
+	    "hubbard_orbital": "4d",
+	    "occupancy" : 10
         }
     }
 }

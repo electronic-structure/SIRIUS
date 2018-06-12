@@ -83,7 +83,6 @@ inline void initialize(bool call_mpi_init__ = true)
 	if (acc::num_devices() > 1) {
             acc::set_device_id(Communicator::device_id());
         }
- 	std::cout << Communicator::world().rank() << " " << Communicator::device_id() << std::endl;
         acc::create_streams(omp_get_max_threads() + 1);
         cublas::create_stream_handles();
     }
