@@ -216,12 +216,6 @@ class Force
 
             Wave_functions phi(kp__.gkvec_partition(), hamiltonian_.U().number_of_hubbard_orbitals(), 1);
 
-            if (ctx_.gamma_point() && (ctx_.so_correction() == false)) {
-                hamiltonian_.prepare<double>();
-            } else {
-                hamiltonian_.prepare<double_complex>();
-            }
-
             kp__.beta_projectors().prepare();
             Beta_projectors_gradient bp_grad_(ctx_, kp__.gkvec(), kp__.igk_loc(), kp__.beta_projectors());
             bp_grad_.prepare();
@@ -263,7 +257,6 @@ class Force
             }
             kp__.beta_projectors().dismiss();
             bp_grad_.dismiss();
-            hamiltonian_.dismiss();
         }
 
 
@@ -464,7 +457,7 @@ class Force
                     /* cartesian form for getting cartesian force components */
                     vector3d<double> gvec_cart = gvecs.gvec_cart(ig);
 
-                    /* scalar part of a force without multipying by G-vector */
+                    /* scalar part of a force without multiplying by G-vector */
                     double_complex z = fact * fourpi * ri.value(iat, gvecs.gvec_len(ig)) *
                         std::conj(valence_rho.f_pw_local(igloc)) *
                         std::conj(ctx_.gvec_phase_factor(ig, ia));
@@ -799,6 +792,11 @@ class Force
                                forces(0, ia), forces(1, ia), forces(2, ia));
                     }
                 };
+            if (ctx_.gamma_point() && (ctx_.so_correction() == false)) {
+                hamiltonian_.prepare<double>();
+            } else {
+                hamiltonian_.prepare<double_complex>();
+            }
 
             for (int ikloc = 0; ikloc < kset_.spl_num_kpoints().local_size(); ikloc++) {
 
@@ -809,6 +807,7 @@ class Force
 
                 hubbard_force_add_k_contribution_colinear(*kp, forces_hubbard_);
             }
+            hamiltonian_.dismiss();
 
             print_forces(forces_hubbard());
             // global reduction

@@ -26,12 +26,10 @@ void Hubbard_potential::hubbard_compute_occupation_numbers(K_point_set& kset_)
         int ik  = kset_.spl_num_kpoints(ikloc);
         auto kp = kset_[ik];
 
-        int tmp = kp->num_occupied_bands(0);
+        HowManyBands = std::max(kp->num_occupied_bands(0), HowManyBands);
         if (ctx_.num_mag_dims() == 1) {
-            tmp += kp->num_occupied_bands(1);
+            HowManyBands = std::max(kp->num_occupied_bands(1), HowManyBands);
         }
-
-        HowManyBands = std::max(HowManyBands, tmp);
     }
 
     // now for each spin components and each atom we need to calculate
@@ -43,7 +41,7 @@ void Hubbard_potential::hubbard_compute_occupation_numbers(K_point_set& kset_)
         Ncf = 2;
     }
 
-    dmatrix<double_complex> dm(this->number_of_hubbard_orbitals() * Ncf, HowManyBands);
+    dmatrix<double_complex> dm(HowManyBands, this->number_of_hubbard_orbitals() * Ncf);
 
     dm.zero();
 
@@ -56,10 +54,8 @@ void Hubbard_potential::hubbard_compute_occupation_numbers(K_point_set& kset_)
 #endif
 
     for (int ikloc = 0; ikloc < kset_.spl_num_kpoints().local_size(); ikloc++) {
-
         int ik  = kset_.spl_num_kpoints(ikloc);
         auto kp = kset_[ik];
-
         #ifdef __GPU
         if (ctx_.processing_unit() == GPU) {
             for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
@@ -74,16 +70,16 @@ void Hubbard_potential::hubbard_compute_occupation_numbers(K_point_set& kset_)
             }
         }
         #endif
-
+        dm.zero();
         if (ctx_.num_mag_dims() == 3) {
             inner(ctx_.processing_unit(),
                   2,
-                  kp->hubbard_wave_functions(),
-                  0,
-                  this->number_of_hubbard_orbitals(),
                   kp->spinor_wave_functions(),
                   0,
                   kp->num_occupied_bands(),
+                  kp->hubbard_wave_functions(),
+                  0,
+                  this->number_of_hubbard_orbitals(),
                   dm,
                   0,
                   0);
@@ -95,15 +91,15 @@ void Hubbard_potential::hubbard_compute_occupation_numbers(K_point_set& kset_)
             for (int ispn_ = 0; ispn_ < ctx_.num_spins(); ispn_++) {
                 inner(ctx_.processing_unit(),
                       ispn_,
-                      kp->hubbard_wave_functions(),
-                      0,
-                      this->number_of_hubbard_orbitals(),
                       kp->spinor_wave_functions(),
                       0,
                       kp->num_occupied_bands(ispn_),
+                      kp->hubbard_wave_functions(),
+                      0,
+                      this->number_of_hubbard_orbitals(),
                       dm,
-                      ispn_ * this->number_of_hubbard_orbitals(),
-                      0);
+                      0,
+                      ispn_ * this->number_of_hubbard_orbitals());
             }
         }
 
@@ -120,7 +116,7 @@ void Hubbard_potential::hubbard_compute_occupation_numbers(K_point_set& kset_)
 
             dm.copy<memory_t::device, memory_t::host>();
         }
-#endif
+        #endif
         // now compute O_{ij}^{sigma,sigma'} = \sum_{nk} <psi_nk|phi_{i,sigma}><phi_{j,sigma^'}|psi_nk> f_{nk}
 
         if (ctx_.num_mag_dims() == 3) {
@@ -133,14 +129,16 @@ void Hubbard_potential::hubbard_compute_occupation_numbers(K_point_set& kset_)
                     for (int s1 = 0; s1 < ctx_.num_spins(); s1++) {
                         for (int s2 = 0; s2 < ctx_.num_spins(); s2++) {
                             int s = (s1 == s2) * s1 + (s1 != s2) * (1 + 2 * s2 + s1);
-                            for (int nband = 0; nband < kp->num_occupied_bands(0); nband++) {
-                                for (int m = 0; m < lmax_at; m++) {
-                                    for (int mp = 0; mp < lmax_at; mp++) {
-                                        this->occupancy_number_(m, mp, s, ia, 0) +=
-                                            std::conj(dm(this->offset[ia] + m + s1 * lmax_at, nband)) *
-                                            dm(this->offset[ia] + mp + s2 * lmax_at, nband) *
-                                            kp->band_occupancy(nband, 0) * kp->weight();
+                            for (int m = 0; m < lmax_at; m++) {
+                                for (int mp = 0; mp < lmax_at; mp++) {
+                                    double_complex tmp = double_complex(0.0, 0.0);
+                                    for (int nband = 0; nband < kp->num_occupied_bands(0); nband++) {
+                                        tmp +=
+                                            std::conj(dm(nband, this->offset[ia] + m + s1 * lmax_at)) *
+                                            dm(nband, this->offset[ia] + mp + s2 * lmax_at) *
+                                            kp->band_occupancy(nband, 0);
                                     }
+                                    this->occupancy_number_(m, mp, s, ia, 0) += tmp * kp->weight();
                                 }
                             }
                         }
@@ -159,19 +157,21 @@ void Hubbard_potential::hubbard_compute_occupation_numbers(K_point_set& kset_)
             const double scal = (ctx_.num_mag_dims() == 0) ? 0.5 : 1.0;
 
             #pragma omp parallel for schedule(static)
-            for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-                for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
-                    const auto& atom = unit_cell_.atom(ia);
-                    const int lmax_at = 2 * atom.type().hubbard_l() + 1;
-                    if (atom.type().hubbard_correction()) {
-                        for (int nband = 0; nband < kp->num_occupied_bands(ispn); nband++) {
-                            for (int m = 0; m < lmax_at; m++) {
-                                for (int mp = 0; mp < lmax_at; mp++) {
-                                    this->occupancy_number_(m, mp, ispn, ia, 0) += scal *
-                                        std::conj(dm(this->offset[ia] + m + ispn * this->number_of_hubbard_orbitals(), nband)) *
-                                        dm(this->offset[ia] + mp + ispn * this->number_of_hubbard_orbitals(), nband) *
-                                        kp->band_occupancy(nband, ispn) * kp->weight();
+            for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
+                const auto& atom = unit_cell_.atom(ia);
+                const int lmax_at = 2 * atom.type().hubbard_l() + 1;
+                if (atom.type().hubbard_correction()) {
+                    for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
+                        for (int m = 0; m < lmax_at; m++) {
+                            const int mm = this->offset[ia] + m + ispn * this->number_of_hubbard_orbitals();
+                            for (int mp = 0; mp < lmax_at; mp++) {
+                                const int mmp = this->offset[ia] + mp + ispn * this->number_of_hubbard_orbitals();
+                                double_complex tmp = double_complex(0.0, 0.0);
+                                for (int nband = 0; nband < kp->num_occupied_bands(ispn); nband++) {
+                                    tmp += std::conj(dm(nband, mm)) * dm(nband, mmp) *
+                                        kp->band_occupancy(nband, ispn);
                                 }
+                                this->occupancy_number_(m, mp, ispn, ia, 0) += tmp * scal * kp->weight();
                             }
                         }
                     }

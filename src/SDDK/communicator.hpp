@@ -363,7 +363,7 @@ class Communicator
             //fcomm_map[fcomm__] = std::unique_ptr<Communicator>(new Communicator(MPI_Comm_f2c(fcomm__)));
             fcomm_map[fcomm__] = Communicator(MPI_Comm_f2c(fcomm__));
         }
-    
+
         auto& comm = fcomm_map[fcomm__];
         return comm;
     }
@@ -381,7 +381,7 @@ class Communicator
         }
         return (j__ * (j__ + 1) / 2 + i__ + 1) << 6;
     }
-    
+
     /// Rank of MPI process inside communicator.
     inline int rank() const
     {
@@ -392,7 +392,7 @@ class Communicator
         return r;
     }
 
-    /// Size of the communicator (number of ranks). 
+    /// Size of the communicator (number of ranks).
     inline int size() const
     {
         assert(mpi_comm() != MPI_COMM_NULL);
@@ -403,11 +403,13 @@ class Communicator
     }
 
     /// returns the gpu id associated to the rank in mpi_world
-    static int device_id() 
+    static int device_id()
     {
-	#ifdef __GPU
-	return world().rank()%acc::num_devices();
-	#endif
+        #ifdef __GPU
+        return world().rank()%acc::num_devices();
+        #else
+        return 0;
+        #endif
     }
 
     /// Rank of MPI process inside communicator with associated Cartesian partitioning.

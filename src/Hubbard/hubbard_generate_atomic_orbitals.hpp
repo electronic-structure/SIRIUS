@@ -83,7 +83,8 @@ void Hubbard_potential::generate_atomic_orbitals(K_point& kp, Q_operator<double_
 #ifdef __GPU
     // All calculations on GPU then we need to copy the final result back to the cpus
     if (ctx_.processing_unit() == GPU) {
-       for (int ispn = 0; ispn < num_sc; ispn++) {
+      sphi.pw_coeffs(ispn).prime().deallocate(memory_t::device);
+      for (int ispn = 0; ispn < num_sc; ispn++) {
            kp.hubbard_wave_functions().pw_coeffs(ispn).copy_to_host(0, this->number_of_hubbard_orbitals());
        }
     }
