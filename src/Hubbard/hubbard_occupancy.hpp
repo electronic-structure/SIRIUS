@@ -65,7 +65,11 @@ void Hubbard_potential::hubbard_compute_occupation_numbers(K_point_set& kset_)
             }
 
             for (int ispn = 0; ispn < kp->hubbard_wave_functions().num_sc(); ispn++) {
-                kp->hubbard_wave_functions().pw_coeffs(ispn).prime().allocate(memory_t::device);
+
+                if (!kp->hubbard_wave_functions().pw_coeffs(ispn).prime().on_device()) {
+                    kp->hubbard_wave_functions().pw_coeffs(ispn).prime().allocate(memory_t::device);
+                }
+
                 kp->hubbard_wave_functions().pw_coeffs(ispn).copy_to_device(0, this->number_of_hubbard_orbitals());
             }
         }
