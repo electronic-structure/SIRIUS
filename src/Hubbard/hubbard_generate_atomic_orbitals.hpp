@@ -16,7 +16,7 @@ void Hubbard_potential::generate_atomic_orbitals(K_point& kp, Q_operator<double_
     // of them after allocation if not already allocated
     #ifdef __GPU
 
-    if ((ctx_.processing_unit() == GPU) && (!kp.hubbard_wave_functions().pw_coeffs(ispn).on_device())){
+    if (ctx_.processing_unit() == GPU){
       for (int ispn = 0; ispn < num_sc; ispn++) {
         /* allocate GPU memory */
         kp.hubbard_wave_functions().pw_coeffs(ispn).prime().allocate(memory_t::device);
