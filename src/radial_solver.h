@@ -1238,13 +1238,13 @@ class Enu_finder: public Radial_solver
     public:
 
         /// Constructor 
-        Enu_finder(relativity_t rel__,
-                   int zn__,
-                   int n__,
-                   int l__,
+        Enu_finder(relativity_t               rel__,
+                   int                        zn__,
+                   int                        n__,
+                   int                        l__,
                    Radial_grid<double> const& radial_grid__,
                    std::vector<double> const& v__,
-                   double enu_start__)
+                   double                     enu_start__)
             : Radial_solver(zn__, v__, radial_grid__),
               n_(n__),
               l_(l__)

@@ -29,8 +29,7 @@
 #include "eigenproblem.h"
 #include "Unit_cell/unit_cell.h"
 
-namespace sirius
-{
+namespace sirius {
 
 /// Spherical Bessel functions \f$ j_{\ell}(q x) \f$ up to lmax.
 class Spherical_Bessel_functions

@@ -682,12 +682,12 @@ inline void Unit_cell::initialize()
     if (parameters_.full_potential()) {
         /* find new MT radii and initialize radial grid */
         if (parameters_.auto_rmt()) {
+            auto rg = get_radial_grid_t(parameters_.settings().radial_grid_);
             std::vector<double> Rmt = find_mt_radii();
             for (int iat = 0; iat < num_atom_types(); iat++) {
-                //atom_type(iat).set_mt_radius(Rmt[iat]);
                 double r0 = atom_type(iat).radial_grid().first();
-                atom_type(iat).set_radial_grid(radial_grid_t::exponential_grid, atom_type(iat).num_mt_points(),
-                                               r0, Rmt[iat]);
+
+                atom_type(iat).set_radial_grid(rg.first, atom_type(iat).num_mt_points(), r0, Rmt[iat], rg.second);
             }
         }
 

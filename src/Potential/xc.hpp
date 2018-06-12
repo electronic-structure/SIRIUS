@@ -617,6 +617,7 @@ inline void Potential::xc_rg_magnetic(Density const& density__)
     Smooth_periodic_function<double> rho_up(ctx_.fft(), ctx_.gvec_partition());
     Smooth_periodic_function<double> rho_dn(ctx_.fft(), ctx_.gvec_partition());
 
+    utils::timer t1("sirius::Potential::xc_rg_magnetic|up_dn");
     /* compute "up" and "dn" components and also check for negative values of density */
     double rhomin{0};
     for (int ir = 0; ir < num_points; ir++) {
@@ -643,6 +644,7 @@ inline void Potential::xc_rg_magnetic(Density const& density__)
         rho_up.f_rg(ir) = 0.5 * (rho + mag);
         rho_dn.f_rg(ir) = 0.5 * (rho - mag);
     }
+    t1.stop();
 
     if (rhomin < 0.0) {
         std::stringstream s;
@@ -669,6 +671,7 @@ inline void Potential::xc_rg_magnetic(Density const& density__)
     Smooth_periodic_function<double> grad_rho_dn_grad_rho_dn;
 
     if (is_gga) {
+        utils::timer t2("sirius::Potential::xc_rg_magnetic|grad1");
         /* get plane-wave coefficients of densities */
         rho_up.fft_transform(-1);
         rho_dn.fft_transform(-1);
@@ -736,6 +739,7 @@ inline void Potential::xc_rg_magnetic(Density const& density__)
         vsigma_dd_tmp.zero();
     }
 
+    utils::timer t3("sirius::Potential::xc_rg_magnetic|libxc");
     /* loop over XC functionals */
     for (auto& ixc: xc_func_) {
         #pragma omp parallel
@@ -803,8 +807,10 @@ inline void Potential::xc_rg_magnetic(Density const& density__)
             }
         }
     }
+    t3.stop();
 
     if (is_gga) {
+        utils::timer t4("sirius::Potential::xc_rg_magnetic|grad2");
         /* gather vsigma */
         Smooth_periodic_function<double> vsigma_uu(ctx_.fft(), ctx_.gvec_partition());
         Smooth_periodic_function<double> vsigma_ud(ctx_.fft(), ctx_.gvec_partition());

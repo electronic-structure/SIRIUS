@@ -267,8 +267,7 @@ class Atom_type
               std::string                                 name__,
               int                                         zn__,
               double                                      mass__,
-              std::vector<atomic_level_descriptor> const& levels__,
-              radial_grid_t                               grid_type__)
+              std::vector<atomic_level_descriptor> const& levels__)
         : parameters_(parameters__)
         , symbol_(symbol__)
         , name_(name__)
@@ -276,7 +275,7 @@ class Atom_type
         , mass_(mass__)
         , atomic_levels_(levels__)
     {
-        radial_grid_ = Radial_grid_factory<double>(grid_type__, 2000 + zn__ * 50, 1e-6 / zn_, 20.0 + 0.25 * zn_);
+        //radial_grid_ = Radial_grid_factory<double>(grid_type__, 2000 + zn__ * 50, 1e-6 / zn_, 20.0 + 0.25 * zn_);
     }
 
     Atom_type(Simulation_parameters const& parameters__, int id__, std::string label__, std::string file_name__)
@@ -291,9 +290,9 @@ class Atom_type
 
     inline void init(int offset_lo__);
 
-    inline void set_radial_grid(radial_grid_t grid_type__, int num_points__, double rmin__, double rmax__)
+    inline void set_radial_grid(radial_grid_t grid_type__, int num_points__, double rmin__, double rmax__, double p__)
     {
-        radial_grid_ = Radial_grid_factory<double>(grid_type__, num_points__, rmin__, rmax__);
+        radial_grid_ = Radial_grid_factory<double>(grid_type__, num_points__, rmin__, rmax__, p__);
         if (parameters_.processing_unit() == GPU) {
             radial_grid_.copy_to_device();
         }
@@ -769,15 +768,11 @@ class Atom_type
         return indexr_.size();
     }
 
-    /// Return index of a free atom grid point close to the muffin-tin radius.
-    inline int idx_rmt_free_atom() const
-    {
-        for (int i = 0; i < free_atom_radial_grid().num_points(); i++) {
-            if (free_atom_radial_grid(i) > mt_radius())
-                return i - 1;
-        }
-        return -1;
-    }
+    ///// Return index of a free atom grid point close to the muffin-tin radius.
+    //inline int idx_rmt_free_atom() const
+    //{
+    //    return free_atom_radial_grid_.index_of(mt_radius());
+    //}
 
     inline void set_symbol(const std::string symbol__)
     {
@@ -1264,20 +1259,24 @@ inline void Atom_type::init_free_atom(bool smooth)
     /* smooth free atom density inside the muffin-tin sphere */
     if (smooth) {
         /* find point on the grid close to the muffin-tin radius */
-        int irmt = idx_rmt_free_atom();
+        int irmt = free_atom_radial_grid_.index_of(mt_radius());
 
-        mdarray<double, 1> b(2);
-        mdarray<double, 2> A(2, 2);
+        //mdarray<double, 1> b(2);
+        //mdarray<double, 2> A(2, 2);
         double R = free_atom_radial_grid_[irmt];
-        A(0, 0) = std::pow(R, 2);
-        A(0, 1) = std::pow(R, 3);
-        A(1, 0) = 2 * R;
-        A(1, 1) = 3 * std::pow(R, 2);
+        ////A(0, 0) = std::pow(R, 2);
+        ////A(0, 1) = std::pow(R, 3);
+        ////A(1, 0) = 2 * R;
+        ////A(1, 1) = 3 * std::pow(R, 2);
+        //A(0, 0) = 4; //std::pow(R, 1);
+        //A(0, 1) = std::pow(R, 1);
+        //A(1, 0) = 0;
+        //A(1, 1) = 1; //2 * std::pow(R, 1);
 
-        b(0) = free_atom_density_spline_(irmt);
-        b(1) = free_atom_density_spline_.deriv(1, irmt);
+        //b(0) = free_atom_density_spline_(irmt);
+        //b(1) = free_atom_density_spline_.deriv(1, irmt);
 
-        linalg<CPU>::gesv<double>(2, 1, A.at<CPU>(), 2, b.at<CPU>(), 2);
+        //linalg<CPU>::gesv<double>(2, 1, A.at<CPU>(), 2, b.at<CPU>(), 2);
 
         //== /* write initial density */
         //== std::stringstream sstr;
@@ -1292,23 +1291,24 @@ inline void Atom_type::init_free_atom(bool smooth)
 
         /* make smooth free atom density inside muffin-tin */
         for (int i = 0; i <= irmt; i++) {
-            free_atom_density_spline_(i) =
-                b(0) * std::pow(free_atom_radial_grid(i), 2) + b(1) * std::pow(free_atom_radial_grid(i), 3);
+            double x = free_atom_radial_grid(i);
+            //free_atom_density_spline_(i) = 4 + b(1) * free_atom_radial_grid(i);
+                //b(0) * std::pow(free_atom_radial_grid(i), 1) + b(1) * std::pow(free_atom_radial_grid(i), 2);
+            free_atom_density_spline_(i) = free_atom_density_[i] * 0.5 * (1 + std::erf((x / R - 0.5) * 10));
         }
 
         /* interpolate new smooth density */
         free_atom_density_spline_.interpolate();
 
-        //== /* write smoothed density */
-        //== sstr.str("");
-        //== sstr << "free_density_modified_" << id_ << ".dat";
-        //== fout = fopen(sstr.str().c_str(), "w");
+        ///* write smoothed density */
+        //sstr.str("");
+        //sstr << "free_density_modified_" << id_ << ".dat";
+        //FILE* fout = fopen(sstr.str().c_str(), "w");
 
-        //== for (int ir = 0; ir < free_atom_radial_grid().num_points(); ir++)
-        //== {
-        //==     fprintf(fout, "%f %f \n", free_atom_radial_grid(ir), free_atom_density_[ir]);
-        //== }
-        //== fclose(fout);
+        //for (int ir = 0; ir < free_atom_radial_grid().num_points(); ir++) {
+        //    fprintf(fout, "%18.12f %18.12f \n", free_atom_radial_grid(ir), free_atom_density(ir));
+        //}
+        //fclose(fout);
     }
 }
 
@@ -1701,7 +1701,9 @@ inline void Atom_type::read_input(std::string const& str__)
         double R  = parser["rmt"];
         int nmtp  = parser["nrmt"];
 
-        set_radial_grid(radial_grid_t::exponential_grid, nmtp, r0, R);
+        auto rg = get_radial_grid_t(parameters_.settings().radial_grid_);
+
+        set_radial_grid(rg.first, nmtp, r0, R, rg.second);
 
         read_input_core(parser);
 
@@ -1722,7 +1724,8 @@ inline void Atom_type::read_input(std::string const& str__)
     read_hubbard_input();
 }
 
-inline double Atom_type::ClebschGordan(const int l, const double j, const double mj, const int spin)
+// TODO: this is not an atom type property, move to SHT or utils class
+inline double Atom_type::ClebschGordan(const int l, const double j, const double mj, const int spin) 
 {
     // l : orbital angular momentum
     // m:  projection of the total angular momentum $m \pm /frac12$

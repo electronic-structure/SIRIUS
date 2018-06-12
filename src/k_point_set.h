@@ -253,13 +253,13 @@ class K_point_set
             return max_num_gkvec;
         }
 
-        void add_kpoint(double* vk__, double weight__)
+        void add_kpoint(double const* vk__, double weight__)
         {
             PROFILE("sirius::K_point_set::add_kpoint");
             kpoints_.push_back(std::unique_ptr<K_point>(new K_point(ctx_, vk__, weight__)));
         }
 
-        void add_kpoints(mdarray<double, 2>& kpoints__, double* weights__)
+        void add_kpoints(mdarray<double, 2> const& kpoints__, double const* weights__)
         {
             PROFILE("sirius::K_point_set::add_kpoints");
             for (size_t ik = 0; ik < kpoints__.size(1); ik++) {
@@ -328,6 +328,11 @@ class K_point_set
         inline Communicator const& comm() const
         {
             return ctx_.comm_k();
+        }
+
+        inline Simulation_context& ctx()
+        {
+            return ctx_;
         }
 
         /// Send G+k vectors of k-point jk to a given rank.

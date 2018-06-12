@@ -45,6 +45,8 @@ struct radial_solution_descriptor
 
     /// Automatically determine energy.
     int auto_enu;
+
+    bool new_enu_found{false};
 };
 
 /// Set of radial solution descriptors, used to construct augmented waves or local orbitals.

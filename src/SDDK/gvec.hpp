@@ -164,6 +164,11 @@ class Gvec
     */
     mdarray<int, 1> gvec_base_mapping_;
 
+#if defined(__CACHE_GVEC_CART)
+    mdarray<double, 2> gvec_cart_;
+    mdarray<double, 2> gkvec_cart_;
+#endif
+
     /* copy constructor is forbidden */
     Gvec(Gvec const& src__) = delete;
     /* copy assigment operator is forbidden */
@@ -412,6 +417,20 @@ class Gvec
             TERMINATE("first G-vector is not zero");
         }
 
+#if defined(__CACHE_GVEC_CART)
+        gvec_cart_ = mdarray<double, 2>(3, num_gvec());
+        gkvec_cart_ = mdarray<double, 2>(3, num_gvec());
+
+        for (int ig = 0; ig < num_gvec(); ig++) {
+            auto G = gvec_by_full_index(gvec_full_index_(ig));
+            auto gc = lattice_vectors_ * vector3d<double>(G[0], G[1], G[2]);
+            auto gkc = lattice_vectors_ * (vector3d<double>(G[0], G[1], G[2]) + vk_);
+            for (int x: {0, 1, 2}) {
+                gvec_cart_(x, ig) = gc[x];
+                gkvec_cart_(x, ig) = gkc[x];
+            }
+        }
+#endif
         find_gvec_shells();
 
         if (gvec_base_) {
@@ -440,7 +459,6 @@ class Gvec
                 }
             }
         }
-
         // TODO: add a check for gvec_base (there is already a test for this).
     }
 
@@ -615,15 +633,23 @@ class Gvec
     /// Return G vector in Cartesian coordinates.
     inline vector3d<double> gvec_cart(int ig__) const
     {
+#if defined(__CACHE_GVEC_CART)
+        return vector3d<double>(gvec_cart_(0, ig__), gvec_cart_(1, ig__), gvec_cart_(2, ig__));
+#else
         auto G = gvec_by_full_index(gvec_full_index_(ig__));
         return lattice_vectors_ * vector3d<double>(G[0], G[1], G[2]);
+#endif
     }
 
     /// Return G+k vector in Cartesian coordinates.
     inline vector3d<double> gkvec_cart(int ig__) const
     {
+#if defined(__CACHE_GVEC_CART)
+        return vector3d<double>(gkvec_cart_(0, ig__), gkvec_cart_(1, ig__), gkvec_cart_(2, ig__));
+#else
         auto G = gvec_by_full_index(gvec_full_index_(ig__));
         return lattice_vectors_ * (vector3d<double>(G[0], G[1], G[2]) + vk_);
+#endif
     }
 
     inline int shell(int ig__) const

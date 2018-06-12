@@ -306,7 +306,19 @@ class Periodic_function: public Smooth_periodic_function<T>
             return f_mt_local_(ialoc__);
         }
 
-        double value(vector3d<double>& vc)
+        double value_rg(vector3d<double> const& vc)
+        {
+            double p{0};
+            for (int igloc = 0; igloc < gvec_.count(); igloc++) {
+                int ig = gvec_.offset() + igloc;
+                vector3d<double> vgc = gvec_.gvec_cart(ig);
+                p += std::real(this->f_pw_local_(igloc) * std::exp(double_complex(0.0, dot(vc, vgc))));
+            }
+            gvec_.comm().allreduce(&p, 1);
+            return p;
+        }
+
+        double value(vector3d<double> const& vc)
         {
             int ja{-1}, jr{-1};
             double dr{0}, tp[2];
@@ -323,13 +335,7 @@ class Periodic_function: public Smooth_periodic_function<T>
                 }
                 return p;
             } else {
-                STOP();
-                double p{0};
-                //for (int ig = 0; ig < gvec_.num_gvec(); ig++) {
-                //    vector3d<double> vgc = gvec_.gvec_cart(ig);
-                //    p += std::real(f_pw_(ig) * std::exp(double_complex(0.0, vc * vgc)));
-                //}
-                return p;
+                return value_rg(vc);
             }
         }
 

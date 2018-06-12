@@ -19,6 +19,8 @@
 
 #include <sirius.h>
 
+double const rmin{1e-5};
+
 class Free_atom: public sirius::Atom_type
 {
     private:
@@ -40,9 +42,9 @@ class Free_atom: public sirius::Atom_type
                   int                                         zn, 
                   double                                      mass, 
                   std::vector<atomic_level_descriptor> const& levels_nl) 
-            : Atom_type(param__, symbol, name, zn, mass, levels_nl, sirius::radial_grid_t::lin_exp_grid)
+            : Atom_type(param__, symbol, name, zn, mass, levels_nl)
         {
-            radial_grid_ = sirius::Radial_grid_exp<double>(2000 + 150 * zn, 1e-7, 20.0 + 0.25 * zn); 
+            radial_grid_ = sirius::Radial_grid_exp<double>(2000 + 150 * zn, rmin, 20.0 + 0.25 * zn, 1.0); 
         }
 
         double ground_state(double solver_tol, double energy_tol, double charge_tol, std::vector<double>& enu, bool rel)
@@ -504,9 +506,10 @@ void generate_atom_file(Free_atom& a,
     }
 
     /* good number of MT points */
-    int nrmt{1500};
+    int nrmt{1000};
 
     printf("minimum MT radius : %f\n", core_radius);
+    //printf("approximate number of MT points : %i\n", a.radial_grid().index_of(2.0));
     dict["rmt"] = core_radius;
     dict["nrmt"] = nrmt;
     dict["rinf"] = rinf;
@@ -619,7 +622,7 @@ void generate_atom_file(Free_atom& a,
         fa_r[i] = a.radial_grid(i);
     }
 
-    sirius::Radial_grid_lin_exp<double> rg(1500, 1e-7, 2.0);
+    sirius::Radial_grid_lin_exp<double> rg(1500, rmin, 2.0);
     std::vector<double> x;
     std::vector<double> veff;
     for (int ir = 0; ir < rg.num_points(); ir++) {

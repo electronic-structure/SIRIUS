@@ -17,16 +17,16 @@
 // CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
 // OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-/** \file non_local_operator.h
+/** \file non_local_operator.hpp
  *
  *  \brief Contains declaration and implementation of sirius::Non_local_operator class.
  */
 
-#ifndef __NON_LOCAL_OPERATOR_H__
-#define __NON_LOCAL_OPERATOR_H__
+#ifndef __NON_LOCAL_OPERATOR_HPP__
+#define __NON_LOCAL_OPERATOR_HPP__
 
-#include "Beta_projectors/beta_projectors.h"
-#include "simulation_context.h"
+#include "../Beta_projectors/beta_projectors.h"
+#include "../simulation_context.h"
 
 namespace sirius {
 

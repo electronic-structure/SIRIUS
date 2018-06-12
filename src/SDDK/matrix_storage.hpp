@@ -237,7 +237,7 @@ class matrix_storage<T, matrix_storage_t::slab>
             }
         }
         /*  copy extra storage to the device if needed */
-        if (pu__ == GPU) {
+        if (pu__ == GPU && extra_.on_device()) {
             extra_.template copy<memory_t::host, memory_t::device>();
         }
     }

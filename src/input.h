@@ -186,7 +186,7 @@ struct Mixer_input
     /// Mixing paramter.
     double beta_{0.7};
 
-    /// Mixin ratio in case of initial linear mixing.
+    /// Mixing ratio in case of initial linear mixing.
     double beta0_{0.15};
 
     /// RMS tolerance above which the linear mixing is triggered.
@@ -199,6 +199,9 @@ struct Mixer_input
     /// Number of history steps for Broyden-type mixers.
     int max_history_{8};
 
+    /// Scaling factor for mixing parameter.
+    double beta_scaling_factor_{1};
+
     /// True if this section exists in the input file.
     bool exist_{false};
 
@@ -206,13 +209,14 @@ struct Mixer_input
     void read(json const& parser)
     {
         if (parser.count("mixer")) {
-            exist_              = true;
-            auto section        = parser["mixer"];
-            beta_               = section.value("beta", beta_);
-            beta0_              = section.value("beta0", beta0_);
-            linear_mix_rms_tol_ = section.value("linear_mix_rms_tol", linear_mix_rms_tol_);
-            max_history_        = section.value("max_history", max_history_);
-            type_               = section.value("type", type_);
+            exist_               = true;
+            auto section         = parser["mixer"];
+            beta_                = section.value("beta", beta_);
+            beta0_               = section.value("beta0", beta0_);
+            linear_mix_rms_tol_  = section.value("linear_mix_rms_tol", linear_mix_rms_tol_);
+            max_history_         = section.value("max_history", max_history_);
+            type_                = section.value("type", type_);
+            beta_scaling_factor_ = section.value("beta_scaling_factor", beta_scaling_factor_);
         }
     }
 };
@@ -513,6 +517,8 @@ struct Settings_input
     int nprii_rho_core_{20};
     bool always_update_wf_{true};
     double mixer_rss_min_{1e-12};
+    double auto_enu_tol_{0};
+    std::string radial_grid_{"exponential, 1.0"};
 
     void read(json const& parser)
     {
@@ -523,6 +529,8 @@ struct Settings_input
             nprii_rho_core_   = parser["settings"].value("nprii_rho_core", nprii_rho_core_);
             always_update_wf_ = parser["settings"].value("always_update_wf", always_update_wf_);
             mixer_rss_min_    = parser["settings"].value("mixer_rss_min", mixer_rss_min_);
+            auto_enu_tol_     = parser["settings"].value("auto_enu_tol", auto_enu_tol_);
+            radial_grid_      = parser["settings"].value("radial_grid", radial_grid_);
         }
     }
 };
