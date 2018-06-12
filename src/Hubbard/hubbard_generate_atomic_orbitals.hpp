@@ -90,7 +90,7 @@ void Hubbard_potential::generate_atomic_orbitals(K_point& kp, Q_operator<double_
             sphi.pw_coeffs(ispn).prime().deallocate(memory_t::device);
             // copy the hubbard wave functions on the host and then deallocate on GPU
             kp.hubbard_wave_functions().pw_coeffs(ispn).copy_to_host(0, this->number_of_hubbard_orbitals());
-            kp.hubbard_wave_functions().pw_coeffs(ispn).prime().deallocate(memory_t::device);
+    //        kp.hubbard_wave_functions().pw_coeffs(ispn).prime().deallocate(memory_t::device);
         }
     }
     #endif
