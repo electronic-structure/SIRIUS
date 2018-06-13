@@ -157,8 +157,6 @@ inline void Hamiltonian::apply_fv_h_o(K_point*        kp__,
                                       Wave_functions* hphi__,
                                       Wave_functions* ophi__) const
 {
-    kp__->comm().barrier();
-
     PROFILE("sirius::Hamiltonian::apply_fv_h_o");
 
     /* trivial case */
@@ -228,31 +226,66 @@ inline void Hamiltonian::apply_fv_h_o(K_point*        kp__,
     matrix<double_complex> alm_block;
     matrix<double_complex> halm_block;
 
+    auto& mp = const_cast<memory_pool&>(memory_pool_);
+
     switch (ctx_.processing_unit()) {
         case CPU: {
-            alm_block = matrix<double_complex>(ngv, max_mt_aw, memory_t::host);
+            size_t sz = ngv * max_mt_aw;
+            alm_block = matrix<double_complex>(mp.allocate<double_complex, memory_t::host>(sz),
+                                               ngv, max_mt_aw);
             if (hphi__ != nullptr) {
-                halm_block = matrix<double_complex>(ngv, std::max(max_mt_aw, max_mt_lo), memory_t::host);
+                size_t sz = ngv * std::max(max_mt_aw, max_mt_lo);
+                halm_block = matrix<double_complex>(mp.allocate<double_complex, memory_t::host>(sz), 
+                                                    ngv, std::max(max_mt_aw, max_mt_lo));
             }
             break;
         }
         case GPU: {
-            alm_block = matrix<double_complex>(ngv, max_mt_aw, memory_t::host_pinned | memory_t::device);
+            size_t sz = ngv * max_mt_aw;
+            alm_block = matrix<double_complex>(mp.allocate<double_complex, memory_t::host_pinned>(sz),
+                                               mp.allocate<double_complex, memory_t::device>(sz),
+                                               ngv, max_mt_aw);
             if (hphi__ != nullptr) {
-                halm_block = matrix<double_complex>(ngv, std::max(max_mt_aw, max_mt_lo),
-                                                    memory_t::host_pinned | memory_t::device);
+                size_t sz = ngv * std::max(max_mt_aw, max_mt_lo);
+                halm_block = matrix<double_complex>(mp.allocate<double_complex, memory_t::host_pinned>(sz),
+                                                    mp.allocate<double_complex, memory_t::device>(sz),
+                                                    ngv, std::max(max_mt_aw, max_mt_lo));
             }
             break;
         }
     }
+    size_t sz = max_mt_aw * n__;
     /* buffers for alm_phi and halm_phi */
     mdarray<double_complex, 1> alm_phi_buf;
     if (ophi__ != nullptr) {
-        alm_phi_buf = mdarray<double_complex, 1>(max_mt_aw * n__, ctx_.dual_memory_t());
+        switch (ctx_.processing_unit()) {
+            case CPU: {
+                alm_phi_buf = mdarray<double_complex, 1>(mp.allocate<double_complex, memory_t::host>(sz), sz);
+                break;
+            }
+            case GPU: {
+                alm_phi_buf = mdarray<double_complex, 1>(mp.allocate<double_complex, memory_t::host_pinned>(sz),
+                                                         mp.allocate<double_complex, memory_t::device>(sz),
+                                                         sz);
+                break;
+            }
+        }
     }
     mdarray<double_complex, 1> halm_phi_buf;
     if (hphi__ != nullptr) {
-        halm_phi_buf = mdarray<double_complex, 1>(max_mt_aw * n__, ctx_.dual_memory_t());
+        switch (ctx_.processing_unit()) {
+            case CPU: {
+                halm_phi_buf = mdarray<double_complex, 1>(mp.allocate<double_complex, memory_t::host>(sz), sz);
+                break;
+            }
+            case GPU: {
+                size_t sz = max_mt_aw * n__;
+                halm_phi_buf = mdarray<double_complex, 1>(mp.allocate<double_complex, memory_t::host_pinned>(sz),
+                                                          mp.allocate<double_complex, memory_t::device>(sz),
+                                                          sz);
+                break;
+            }
+        }
     }
     t0.stop();
 
@@ -761,7 +794,18 @@ inline void Hamiltonian::apply_fv_h_o(K_point*        kp__,
             }
         }
     }
-    kp__->comm().barrier();
+
+    switch (ctx_.processing_unit()) {
+        case CPU: {
+            mp.reset<memory_t::host>();
+            break;
+        }
+        case GPU: {
+            mp.reset<memory_t::host_pinned>();
+            mp.reset<memory_t::device>();
+            break;
+        }
+    }
 }
 
 // TODO: port to GPU

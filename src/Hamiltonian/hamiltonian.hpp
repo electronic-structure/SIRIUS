@@ -32,6 +32,7 @@
 #include "k_point.h"
 #include "local_operator.hpp"
 #include "non_local_operator.hpp"
+#include "memory_pool.hpp"
 
 namespace sirius {
 
@@ -63,6 +64,8 @@ class Hamiltonian
     void* q_op_{nullptr};
 
     std::type_info const* type_of_T_{nullptr};
+
+    memory_pool memory_pool_;
 
   public:
     /// Constructor.
