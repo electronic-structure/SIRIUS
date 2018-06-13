@@ -8,7 +8,7 @@
 #include <vector>
 #include <utility>
 #include <memory>
-#include "json.hpp"
+#include "utils/json.hpp"
 
 
 using namespace pybind11::literals; // to bring in the `_a` literal
@@ -207,7 +207,7 @@ PYBIND11_MODULE(py_sirius, m){
     .def("solve", &Band::solve);
 
   py::class_<DFT_ground_state>(m, "DFT_ground_state")
-    .def(py::init<Simulation_context&>())
+    .def(py::init<K_point_set&>())
     .def("print_info", &DFT_ground_state::print_info)
     .def("initial_state", &DFT_ground_state::initial_state)
     .def("print_magnetic_moment", &DFT_ground_state::print_magnetic_moment)
@@ -244,12 +244,12 @@ PYBIND11_MODULE(py_sirius, m){
     .def(py::init<Simulation_context&, Potential&>());
 
   py::class_<Stress>(m, "Stress")
-    .def(py::init<Simulation_context&, K_point_set&, Density&, Potential&>())
+    //.def(py::init<Simulation_context&, K_point_set&, Density&, Potential&>())
     .def("calc_stress_total", &Stress::calc_stress_total, py::return_value_policy::reference_internal)
     .def("print_info", &Stress::print_info);
 
   py::class_<Force>(m, "Force")
-    .def(py::init<Simulation_context&, Density&, Potential&, Hamiltonian&, K_point_set&>())
+    //.def(py::init<Simulation_context&, Density&, Potential&, Hamiltonian&, K_point_set&>())
     .def("calc_forces_total", &Force::calc_forces_total, py::return_value_policy::reference_internal)
     .def("print_info", &Force::print_info);
 
