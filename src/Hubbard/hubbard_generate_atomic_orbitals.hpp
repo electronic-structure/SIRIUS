@@ -15,8 +15,7 @@ void Hubbard_potential::generate_atomic_orbitals(K_point& kp, Q_operator<double_
     // CPU memory.  when the GPU is used, we need to do an explicit copy
     // of them after allocation if not already allocated
     #ifdef __GPU
-
-    if (ctx_.processing_unit() == GPU){
+    if (ctx_.processing_unit() == GPU) {
       for (int ispn = 0; ispn < num_sc; ispn++) {
         /* allocate GPU memory */
         kp.hubbard_wave_functions().pw_coeffs(ispn).prime().allocate(memory_t::device);
@@ -90,7 +89,6 @@ void Hubbard_potential::generate_atomic_orbitals(K_point& kp, Q_operator<double_
             sphi.pw_coeffs(ispn).prime().deallocate(memory_t::device);
             // copy the hubbard wave functions on the host and then deallocate on GPU
             kp.hubbard_wave_functions().pw_coeffs(ispn).copy_to_host(0, this->number_of_hubbard_orbitals());
-            kp.hubbard_wave_functions().pw_coeffs(ispn).prime().deallocate(memory_t::device);
         }
     }
     #endif
