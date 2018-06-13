@@ -140,6 +140,8 @@ class Potential: public Field4D
 
         int max_paw_basis_size_{0};
 
+        mdarray<double, 2> aux_bf_;
+
         void init_PAW();
 
         double xc_mt_PAW_nonmagnetic(Spheric_function<spectral, double>& full_potential,
@@ -412,6 +414,17 @@ class Potential: public Field4D
 
             /* in case of PAW */
             init_PAW();
+
+            aux_bf_ = mdarray<double, 2>(3, ctx_.unit_cell().num_atoms());
+            aux_bf_.zero();
+
+            if (ctx_.parameters_input().reduce_aux_bf_ > 0 && ctx_.parameters_input().reduce_aux_bf_ < 1) {
+                for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {
+                    for (int x: {0, 1, 2}) {
+                        aux_bf_(x, ia) = 1;
+                    }
+                }
+            }
         }
 
         ~Potential()
@@ -471,7 +484,7 @@ class Potential: public Field4D
                 }
             }
         }
-         
+
         /// Zero effective potential and magnetic field.
         inline void zero()
         {
@@ -846,6 +859,14 @@ class Potential: public Field4D
             if (!ctx_.full_potential()) {
                 generate_D_operator_matrix();
                 generate_PAW_effective_potential(density__);
+            }
+
+            if (ctx_.parameters_input().reduce_aux_bf_ > 0 && ctx_.parameters_input().reduce_aux_bf_ < 1) {
+                for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {
+                    for (int x: {0, 1, 2}) {
+                        aux_bf_(x, ia) *= ctx_.parameters_input().reduce_aux_bf_;
+                    }
+                }
             }
         }
 
