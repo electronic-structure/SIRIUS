@@ -241,7 +241,7 @@ inline void Band::get_singular_components(K_point& kp__, Hamiltonian& H__) const
     dmatrix<double_complex> ovlp_old(num_phi, num_phi, ctx_.blacs_grid(), bs, bs);
     dmatrix<double_complex> evec(num_phi, num_phi, ctx_.blacs_grid(), bs, bs);
 
-    #ifdef __GPU
+#if defined(__GPU)
     if (ctx_.processing_unit() == GPU) {
         psi.pw_coeffs(0).allocate_on_device();
         psi.pw_coeffs(0).copy_to_device(0, ncomp);
@@ -254,7 +254,7 @@ inline void Band::get_singular_components(K_point& kp__, Hamiltonian& H__) const
             ovlp.allocate(memory_t::device);
         }
     }
-    #endif
+#endif
 
     std::vector<double> eval(ncomp, 1e10);
     std::vector<double> eval_old(ncomp);
@@ -287,7 +287,6 @@ inline void Band::get_singular_components(K_point& kp__, Hamiltonian& H__) const
     /* start iterative diagonalization */
     for (int k = 0; k < itso.num_steps_; k++) {
         /* apply Hamiltonian and overlap operators to the new basis functions */
-        //H__.apply_fv_o(&kp__, true, true, N, n, phi, ophi);
         H__.apply_fv_h_o(&kp__, true, false, N, n, phi, nullptr, &ophi);
 
         if (ctx_.control().verification_ >= 1) {
@@ -397,18 +396,16 @@ inline void Band::get_singular_components(K_point& kp__, Hamiltonian& H__) const
         phi.copy_from(ctx_.processing_unit(), n, res, 0, 0, 0, N);
     }
 
-    #ifdef __GPU
+#if defined(__GPU)
     if (ctx_.processing_unit() == GPU) {
         psi.pw_coeffs(0).copy_to_host(0, ncomp);
         psi.pw_coeffs(0).deallocate_on_device();
     }
-    #endif
+#endif
 
     if (ctx_.control().verbosity_ >= 2 && kp__.comm().rank() == 0) {
         printf("lowest and highest eigen-values of the singular components: %20.16f %20.16f\n", eval.front(), eval.back());
     }
-
-    kp__.comm().barrier();
 }
 
 inline void Band::diag_full_potential_first_variation_davidson(K_point& kp__, Hamiltonian& H__) const
@@ -624,16 +621,14 @@ inline void Band::diag_full_potential_first_variation_davidson(K_point& kp__, Ha
         }
     }
 
-    #ifdef __GPU
+#if defined(__GPU)
     if (ctx_.processing_unit() == GPU) {
         psi.pw_coeffs(0).copy_to_host(0, num_bands);
         psi.mt_coeffs(0).copy_to_host(0, num_bands);
         psi.deallocate_on_device(0);
     }
-    #endif
-
+#endif
     kp__.set_fv_eigen_values(&eval[0]);
-    kp__.comm().barrier();
 }
 
 inline void Band::diag_full_potential_second_variation(K_point& kp__, Hamiltonian& hamiltonian__) const
