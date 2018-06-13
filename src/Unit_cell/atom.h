@@ -131,8 +131,10 @@ class Atom
             h_radial_integrals_ = mdarray<double, 3>(lmmax, nrf, nrf);
             h_radial_integrals_.zero();
 
-            b_radial_integrals_ = mdarray<double, 4>(lmmax, nrf, nrf, type().parameters().num_mag_dims());
-            b_radial_integrals_.zero();
+            if (type().parameters().num_mag_dims()) {
+                b_radial_integrals_ = mdarray<double, 4>(lmmax, nrf, nrf, type().parameters().num_mag_dims());
+                b_radial_integrals_.zero();
+            }
 
             occupation_matrix_ = mdarray<double_complex, 4>(16, 16, 2, 2);
 
