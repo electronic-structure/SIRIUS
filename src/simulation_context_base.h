@@ -32,6 +32,7 @@
 #include "mpi_grid.hpp"
 #include "radial_integrals.h"
 #include "utils/utils.hpp"
+#include "memory_pool.hpp"
 
 #ifdef __GPU
 extern "C" void generate_phase_factors_gpu(int num_gvec_loc__,
@@ -108,8 +109,6 @@ class Simulation_context_base: public Simulation_parameters
 
         std::vector<mdarray<double, 2>> atom_coord_;
 
-        mdarray<char, 1> memory_buffer_;
-
         std::unique_ptr<Radial_integrals_beta<false>> beta_ri_;
 
         std::unique_ptr<Radial_integrals_beta<true>> beta_ri_djl_;
@@ -123,6 +122,9 @@ class Simulation_context_base: public Simulation_parameters
         std::unique_ptr<Radial_integrals_atomic_wf<true>> atomic_wf_ri_djl_;
 
         std::vector<std::vector<std::pair<int, double>>> atoms_to_grid_idx_;
+
+        /// Storage for various memory pools.
+        memory_pool memory_pool_;
 
         // TODO remove to somewhere
         const double av_atom_radius_{2.0};
@@ -638,18 +640,6 @@ class Simulation_context_base: public Simulation_parameters
             comm().allreduce(&flm__(0, 0), (int)flm__.size());
         }
 
-
-        /// Return pointer to already allocated temporary memory buffer.
-        /** Buffer can only grow in size. The requested buffer length is in bytes. */
-        inline void* memory_buffer(size_t size__)
-        {
-            /* reallocate if needed */
-            if (memory_buffer_.size() < size__) {
-                memory_buffer_ = mdarray<char, 1>(size__);
-            }
-            return memory_buffer_.at<CPU>();
-        }
-
         inline Radial_integrals_beta<false> const& beta_ri() const
         {
             return *beta_ri_;
@@ -711,6 +701,11 @@ class Simulation_context_base: public Simulation_parameters
         mdarray<double_complex, 3> const& sym_phase_factors() const
         {
             return sym_phase_factors_;
+        }
+
+        memory_pool& mem_pool()
+        {
+            return memory_pool_;
         }
 
         inline bool initialized() const
