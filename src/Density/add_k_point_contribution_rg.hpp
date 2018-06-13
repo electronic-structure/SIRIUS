@@ -10,9 +10,8 @@ inline void Density::add_k_point_contribution_rg(K_point* kp__)
     auto& fft = ctx_.fft_coarse();
     
     /* get preallocated memory */
-    double* ptr = static_cast<double*>(ctx_.memory_buffer(fft.local_size() * (ctx_.num_mag_dims() + 1) * sizeof(double)));
-
-    mdarray<double, 2> density_rg(ptr, fft.local_size(), ctx_.num_mag_dims() + 1, "density_rg");
+    mdarray<double, 2> density_rg(ctx_.mem_pool().allocate<double, memory_t::host>(fft.local_size() * (ctx_.num_mag_dims() + 1)),
+                                  fft.local_size(), ctx_.num_mag_dims() + 1, "density_rg");
     density_rg.zero();
 
     if (fft.pu() == GPU) {
@@ -163,5 +162,6 @@ inline void Density::add_k_point_contribution_rg(K_point* kp__)
     }
 
     fft.dismiss();
+    ctx_.mem_pool().reset<memory_t::host>();
 }
 
