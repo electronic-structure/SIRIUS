@@ -30,7 +30,7 @@
 	    "use_symmetry" : false,
 	    "num_mag_dims" : 3,
 	    "spin_orbit" : true,
-	    "gk_cutoff" : 8.36,
+        "gk_cutoff" : 8.36,
 	    "pw_cutoff" : 26.4575,
 
 	    "energy_tol" : 1e-10,
