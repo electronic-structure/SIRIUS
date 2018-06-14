@@ -80,6 +80,9 @@ inline void initialize(bool call_mpi_init__ = true)
 
 #if defined(__GPU)
     if (acc::num_devices()) {
+	if (acc::num_devices() > 1) {
+            acc::set_device_id(Communicator::device_id());
+        }
         acc::create_streams(omp_get_max_threads() + 1);
         cublas::create_stream_handles();
     }
@@ -117,6 +120,7 @@ inline void finalize(bool call_mpi_fin__ = true)
 
 #if defined(__GPU)
     if (acc::num_devices()) {
+	acc::set_device();
         cublas::destroy_stream_handles();
         acc::destroy_streams();
         acc::reset();

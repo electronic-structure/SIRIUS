@@ -22,7 +22,7 @@ void Hubbard_potential::apply_hubbard_potential(K_point& kp,
     #endif
 
     // First calculate the local part of the projections
-    // dm(i, n)  = <phi_i | psi_{nk}>
+    // dm(i, n)  = <S phi_i | psi_{nk}>
 
     inner(ctx_.processing_unit(),
           ispn_,
@@ -57,6 +57,7 @@ void Hubbard_potential::apply_hubbard_potential(K_point& kp,
     }
     #endif
 
+    #pragma omp parallel for schedule(static)
     for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ++ia) {
         const auto& atom = ctx_.unit_cell().atom(ia);
         const int lmax_at = 2 * atom.type().hubbard_l() + 1;
@@ -72,8 +73,8 @@ void Hubbard_potential::apply_hubbard_potential(K_point& kp,
                         // !!! Replace this with matrix matrix multiplication
 
                         for (int nbd = 0; nbd < n__; nbd++) {
-                            for (int m2 = 0; m2 < lmax_at; m2++) {
-                                for (int m1 = 0; m1 < lmax_at; m1++) {
+                            for (int m1 = 0; m1 < lmax_at; m1++) {
+                                for (int m2 = 0; m2 < lmax_at; m2++) {
                                     Up(this->offset[ia] + s1 * lmax_at + m1, nbd) += this->hubbard_potential_(m2, m1, ind, ia, 0) *
                                         dm(this->offset[ia] + s2 * lmax_at + m2, nbd);
                                 }

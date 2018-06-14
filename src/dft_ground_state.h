@@ -75,7 +75,7 @@ class DFT_ground_state
          *     \frac{1}{|{\bf r}_{\alpha} - {\bf r}_{\beta} + {\bf T}|} =
          *       \frac{{\rm erf}(\sqrt{\lambda} |{\bf r}_{\alpha} - {\bf r}_{\beta} + {\bf T}|)}{|{\bf r}_{\alpha} -
          *       {\bf r}_{\beta} + {\bf T}|} +
-         *       \frac{{\rm erfc}(\sqrt{\lambda} |{\bf r}_{\alpha} - {\bf r}_{\beta} + {\bf T}|)}{|{\bf r}_{\alpha} - 
+         *       \frac{{\rm erfc}(\sqrt{\lambda} |{\bf r}_{\alpha} - {\bf r}_{\beta} + {\bf T}|)}{|{\bf r}_{\alpha} -
          *       {\bf r}_{\beta} + {\bf T}|}
          *  \f]
          *  Second term is computed directly. First term is computed in the reciprocal space. Remembering that
@@ -194,7 +194,7 @@ class DFT_ground_state
             , hamiltonian_(kset__.ctx(), potential_)
             , band_(kset__.ctx())
             , stress_(kset__.ctx(), density_, potential_, hamiltonian_, kset__)
-            , forces_(kset__.ctx(), density_, potential_, hamiltonian_, kset__) 
+            , forces_(kset__.ctx(), density_, potential_, hamiltonian_, kset__)
 
         {
             if (!ctx_.full_potential()) {
@@ -620,8 +620,13 @@ inline json DFT_ground_state::find(double potential_tol, double energy_tol, int 
         /* write some information */
         print_info();
         if (ctx_.comm().rank() == 0 && ctx_.control().verbosity_ >= 1) {
-            printf("iteration : %3i, RMS %18.12E, energy difference : %18.12E, mixing beta: %12.6F\n",
-                   iter, rms, etot - eold, potential_.mixer().beta());
+            if (!ctx_.full_potential()) {
+                printf("iteration : %3i, RMS %18.12E, energy difference : %18.12E\n",
+                   iter, rms, etot - eold);
+            } else {
+                printf("iteration : %3i, RMS %18.12E, energy difference : %18.12E, mixing beta: %12.6F\n",
+                       iter, rms, etot - eold, potential_.mixer().beta());
+            }
         }
 
         // TODO: improve this part

@@ -15,6 +15,11 @@ inline void orthogonalize(device_t                     pu__,
 
     auto& comm = wfs__[0]->comm();
 
+#ifdef __GPU
+    if (pu__ == GPU) {
+        acc::set_device();
+    }
+#endif
     int K{0};
     if (sddk_pp) {
         K = wfs__[0]->gkvec().num_gvec() + wfs__[0]->num_mt_coeffs();

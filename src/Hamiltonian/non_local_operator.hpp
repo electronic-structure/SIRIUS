@@ -77,7 +77,7 @@ class Non_local_operator
         {
         }
 
-        template <int N> 
+        template <int N>
         inline void apply(int chunk__,
                           int ispn_block__,
                           Wave_functions& op_phi__,
@@ -131,9 +131,11 @@ inline void Non_local_operator<double_complex>::apply(int chunk__,
 
     if (static_cast<size_t>(nbeta * n__) > work_.size()) {
         work_ = mdarray<double_complex, 1>(nbeta * n__);
+        #ifdef __GPU
         if (pu_ == GPU) {
             work_.allocate(memory_t::device);
         }
+        #endif
     }
     /* compute O * <beta|phi> for atoms in a chunk */
     #pragma omp parallel for
@@ -203,9 +205,11 @@ inline void Non_local_operator<double_complex>::apply_one_atom(int chunk__,
 
     if (static_cast<size_t>(nbeta * n__) > work_.size()) {
         work_ = mdarray<double_complex, 1>(nbeta * n__);
+        #ifdef __GPU
         if (pu_ == GPU) {
             work_.allocate(memory_t::device);
         }
+        #endif
     }
 
     int nbf  = beta_.chunk(chunk__).desc_(beta_desc_idx::nbf, i);
@@ -291,6 +295,12 @@ inline void Non_local_operator<double>::apply(int chunk__,
         }
     }
 
+#ifdef __GPU
+    if (pu_ == GPU) {
+        assert(beta_phi__.comm().device_id() == op_phi__.comm().device_id());
+    }
+#endif
+
     /* compute O * <beta|phi> */
     #pragma omp parallel for
     for (int i = 0; i < beta_.chunk(chunk__).num_atoms_; i++) {
@@ -361,15 +371,15 @@ class D_operator : public Non_local_operator<T>
         void initialize()
         {
             auto& uc = this->ctx__.unit_cell();
-    
+
             for (int ia = 0; ia < uc.num_atoms(); ia++) {
                 int nbf = uc.atom(ia).mt_basis_size();
                 if (uc.atom(ia).type().spin_orbit_coupling()) {
-    
+
                     // the pseudo potential contains information about
                     // spin orbit coupling so we use a different formula
                     // Eq.19 PRB 71 115106 for calculating the D matrix
-    
+
                     // Note that the D matrices are stored and
                     // calculated in the up-down basis already not the
                     // (Veff,Bx,By,Bz) one.
@@ -418,18 +428,18 @@ class D_operator : public Non_local_operator<T>
                     }
                 }
             }
-    
+
             if (this->ctx__.control().print_checksum_ && this->ctx__.comm().rank() == 0) {
                 auto cs = this->op_.checksum();
                 print_checksum("D_operator", cs);
             }
-    
+
             if (this->pu_ == GPU) {
                 this->op_.allocate(memory_t::device);
                 this->op_.template copy<memory_t::host, memory_t::device>();
             }
         }
-    
+
     public:
         D_operator(Simulation_context const& ctx_)
             : Non_local_operator<T>(ctx_)
@@ -442,7 +452,7 @@ class D_operator : public Non_local_operator<T>
             }
             initialize();
         }
-        
+
 };
 
 template <typename T>
@@ -467,9 +477,9 @@ class Q_operator : public Non_local_operator<T>
                             /* this is nothing else than Eq.18 of Ref PRB 71, 115106 */
                             for (auto si = 0; si < 2; si++) {
                                 for (auto sj = 0; sj < 2; sj++) {
-    
+
                                     double_complex result(0, 0);
-    
+
                                     for (int xi2p = 0; xi2p < nbf; xi2p++) {
                                         if (uc.atom(ia).type().compare_index_beta_functions(xi2, xi2p)) {
                                             for (int xi1p = 0; xi1p < nbf; xi1p++) {
@@ -485,7 +495,7 @@ class Q_operator : public Non_local_operator<T>
                                             }
                                         }
                                     }
-    
+
                                     /* the order of the index is important */
                                     const int ind = (si == sj) ? si : sj + 2;
                                     /* this gives
@@ -510,13 +520,13 @@ class Q_operator : public Non_local_operator<T>
                 auto cs = this->op_.checksum();
                 print_checksum("Q_operator", cs);
             }
-    
+
             if (this->pu_ == GPU) {
                 this->op_.allocate(memory_t::device);
                 this->op_.template copy<memory_t::host, memory_t::device>();
             }
         }
-    
+
     public:
         Q_operator(Simulation_context const& ctx_)
             : Non_local_operator<T>(ctx_)
@@ -539,7 +549,7 @@ class P_operator : public Non_local_operator<T>
             /* Q-operator is independent of spin */
             this->op_ = mdarray<T, 2>(this->packed_mtrx_size_, 1);
             this->op_.zero();
-    
+
             auto& uc = ctx_.unit_cell();
             for (int ia = 0; ia < uc.num_atoms(); ia++) {
                 int iat = uc.atom(ia).type().id();

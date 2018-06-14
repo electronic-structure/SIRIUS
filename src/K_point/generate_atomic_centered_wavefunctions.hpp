@@ -31,11 +31,11 @@ inline void K_point::generate_atomic_centered_wavefunctions_(const int num_ao__,
         }
 
         int n{0};
-        for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
-            auto phase        = twopi * dot(gkvec().gkvec(igk), unit_cell_.atom(ia).position());
-            auto phase_factor = std::exp(double_complex(0.0, phase));
-            auto& atom_type   = unit_cell_.atom(ia).type();
-            if (!hubbard) {
+        if (!hubbard) {
+            for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
+                auto phase        = twopi * dot(gkvec().gkvec(igk), unit_cell_.atom(ia).position());
+                auto phase_factor = std::exp(double_complex(0.0, phase));
+                auto& atom_type   = unit_cell_.atom(ia).type();
                 for (int i = 0; i < atom_type.num_ps_atomic_wf(); i++) {
                     auto l = std::abs(atom_type.ps_atomic_wf(i).first);
                     auto z = std::pow(double_complex(0, -1), l) * fourpi / std::sqrt(unit_cell_.omega());
@@ -45,7 +45,12 @@ inline void K_point::generate_atomic_centered_wavefunctions_(const int num_ao__,
                         n++;
                     }
                 } // i
-            } else {
+            }
+        } else {
+            for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
+                auto phase        = twopi * dot(gkvec().gkvec(igk), unit_cell_.atom(ia).position());
+                auto phase_factor = double_complex(std::cos(phase), std::sin(phase));
+                auto& atom_type   = unit_cell_.atom(ia).type();
                 if (atom_type.hubbard_correction()) {
                     for (int i = 0; i < atom_type.num_ps_atomic_wf(); i++) {
                         auto l = std::abs(atom_type.ps_atomic_wf(i).first);
@@ -67,7 +72,7 @@ inline void K_point::generate_atomic_centered_wavefunctions_(const int num_ao__,
                     }
                 }
             }
-        } // ia
+        }
     } // igk_loc
 }
 
@@ -132,8 +137,7 @@ inline void K_point::compute_gradient_wavefunctions(Wave_functions &phi, const i
 //            for (auto e : atom_type.pp_desc().atomic_pseudo_wfs_) {
 //                int l = e.first;
 //                n += (2 * l + 1);
-//            }
-//        }
+//           //        }
 //
 //        #pragma omp parallel for schedule(static)
 //        for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {

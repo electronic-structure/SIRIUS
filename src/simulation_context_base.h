@@ -34,6 +34,8 @@
 #include "utils/utils.hpp"
 
 #ifdef __GPU
+#include "SDDK/GPU/cuda.hpp"
+
 extern "C" void generate_phase_factors_gpu(int num_gvec_loc__,
                                            int num_atoms__,
                                            int const* gvec__,
@@ -130,6 +132,8 @@ class Simulation_context_base: public Simulation_parameters
         double time_active_;
 
         bool initialized_{false};
+
+	int DeviceId_{-1};
 
         inline void init_fft()
         {
@@ -472,7 +476,6 @@ class Simulation_context_base: public Simulation_parameters
         inline void generate_phase_factors(int iat__, mdarray<double_complex, 2>& phase_factors__) const
         {
             PROFILE("sirius::Simulation_context_base::generate_phase_factors");
-
             int na = unit_cell_.atom_type(iat__).num_atoms();
             switch (processing_unit_) {
                 case CPU: {
@@ -488,6 +491,7 @@ class Simulation_context_base: public Simulation_parameters
                 }
                 case GPU: {
                     #ifdef __GPU
+                    acc::set_device();
                     generate_phase_factors_gpu(gvec().count(), na, gvec_coord().at<GPU>(), atom_coord(iat__).at<GPU>(),
                                                phase_factors__.at<GPU>());
                     #else
@@ -750,7 +754,7 @@ inline void Simulation_context_base::initialize()
     /* check if we can use a GPU device */
     if (processing_unit() == GPU) {
         #ifndef __GPU
-        TERMINATE_NO_GPU
+        TERMINATE_NO_GPU;
         #endif
     }
 
@@ -835,8 +839,8 @@ inline void Simulation_context_base::initialize()
 
     std::pair<int, int> limits(0, 0);
     for (int x: {0, 1, 2}) {
-        limits.first  = std::min(limits.first,  fft().limits(x).first); 
-        limits.second = std::max(limits.second, fft().limits(x).second); 
+        limits.first  = std::min(limits.first,  fft().limits(x).first);
+        limits.second = std::max(limits.second, fft().limits(x).second);
     }
 
     phase_factors_ = mdarray<double_complex, 3>(3, limits, unit_cell().num_atoms(), memory_t::host, "phase_factors_");
@@ -985,8 +989,9 @@ inline void Simulation_context_base::initialize()
         }
     }
 
-
+#ifdef __GPU
     if (processing_unit() == GPU) {
+        acc::set_device();
         gvec_coord_ = mdarray<int, 2>(gvec().count(), 3, memory_t::host | memory_t::device, "gvec_coord_");
         for (int igloc = 0; igloc < gvec().count(); igloc++) {
             int ig = gvec().offset() + igloc;
@@ -1013,6 +1018,7 @@ inline void Simulation_context_base::initialize()
             }
         }
     }
+#endif
 
     if (!full_potential()) {
         /* some extra length is added to cutoffs in order to interface with QE which may require ri(q) for q>cutoff */
