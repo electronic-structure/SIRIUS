@@ -25,6 +25,7 @@ inline void Potential::poisson_sum_G(int lmmax__,
         double t = -omp_get_wtime();
         int na = unit_cell_.atom_type(iat).num_atoms();
         ctx_.generate_phase_factors(iat, phase_factors);
+        utils::timer t1("sirius::Potential::poisson_sum_G|zm");
         #pragma omp parallel for schedule(static)
         for (int igloc = 0; igloc < ngv_loc; igloc++) {
             int ig = ctx_.gvec().offset() + igloc;
@@ -34,6 +35,8 @@ inline void Potential::poisson_sum_G(int lmmax__,
                                 fl__(l, iat, ctx_.gvec().shell(ig)) * std::conj(gvec_ylm_(lm, igloc));
             }
         }
+        t1.stop();
+        utils::timer t2("sirius::Potential::poisson_sum_G|mul");
         switch (ctx_.processing_unit()) {
             case CPU: {
                 linalg<CPU>::gemm(0, 0, lmmax__, na, ngv_loc,
@@ -54,6 +57,7 @@ inline void Potential::poisson_sum_G(int lmmax__,
                 break;
             }
         }
+        t2.stop();
 
         if (ctx_.control().print_performance_) {
             t += omp_get_wtime();
