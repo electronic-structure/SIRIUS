@@ -1,4 +1,4 @@
-// Copyright (c) 2013-2018 Anton Kozhevnikov, Ilia Sivkov, Thomas Schulthess
+vv// Copyright (c) 2013-2018 Anton Kozhevnikov, Ilia Sivkov, Thomas Schulthess
 // All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without modification, are permitted provided that
@@ -785,13 +785,6 @@ class Force
             forces_hubbard_ = mdarray<double, 2>(3, ctx_.unit_cell().num_atoms());
             forces_hubbard_.zero();
 
-            auto print_forces = [&](mdarray<double, 2> const& forces)
-                {
-                    for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {
-                        printf("atom %4i    force = %15.7f  %15.7f  %15.7f \n", ctx_.unit_cell().atom(ia).type_id(),
-                               forces(0, ia), forces(1, ia), forces(2, ia));
-                    }
-                };
             if (ctx_.gamma_point() && (ctx_.so_correction() == false)) {
                 hamiltonian_.prepare<double>();
             } else {
@@ -809,8 +802,7 @@ class Force
             }
             hamiltonian_.dismiss();
 
-            print_forces(forces_hubbard());
-            // global reduction
+            /* global reduction */
             ctx_.comm().allreduce<double, mpi_op_t::sum>(forces_hubbard_.at<CPU>(),
                                                          static_cast<int>(forces_hubbard_.size()));
         }
