@@ -220,40 +220,78 @@ inline void Hamiltonian::apply_fv_h_o(K_point*        kp__,
     /* maximum number of LO radial functions in a block of atoms */
     int max_mt_lo = num_atoms_in_block * unit_cell_.max_mt_lo_basis_size();
 
+    utils::timer t0("sirius::Hamiltonian::apply_fv_h_o|alloc");
+
     /* matching coefficients for a block of atoms */
     matrix<double_complex> alm_block;
     matrix<double_complex> halm_block;
 
+    auto& mp = const_cast<memory_pool&>(memory_pool_);
+
     switch (ctx_.processing_unit()) {
         case CPU: {
-            alm_block = matrix<double_complex>(ngv, max_mt_aw, memory_t::host);
+            size_t sz = ngv * max_mt_aw;
+            alm_block = matrix<double_complex>(mp.allocate<double_complex, memory_t::host>(sz),
+                                               ngv, max_mt_aw);
             if (hphi__ != nullptr) {
-                halm_block = matrix<double_complex>(ngv, std::max(max_mt_aw, max_mt_lo), memory_t::host);
+                size_t sz = ngv * std::max(max_mt_aw, max_mt_lo);
+                halm_block = matrix<double_complex>(mp.allocate<double_complex, memory_t::host>(sz), 
+                                                    ngv, std::max(max_mt_aw, max_mt_lo));
             }
             break;
         }
         case GPU: {
-            alm_block = matrix<double_complex>(ngv, max_mt_aw, memory_t::host_pinned | memory_t::device);
+            size_t sz = ngv * max_mt_aw;
+            alm_block = matrix<double_complex>(mp.allocate<double_complex, memory_t::host_pinned>(sz),
+                                               mp.allocate<double_complex, memory_t::device>(sz),
+                                               ngv, max_mt_aw);
             if (hphi__ != nullptr) {
-                halm_block = matrix<double_complex>(ngv, std::max(max_mt_aw, max_mt_lo),
-                                                    memory_t::host_pinned | memory_t::device);
+                size_t sz = ngv * std::max(max_mt_aw, max_mt_lo);
+                halm_block = matrix<double_complex>(mp.allocate<double_complex, memory_t::host_pinned>(sz),
+                                                    mp.allocate<double_complex, memory_t::device>(sz),
+                                                    ngv, std::max(max_mt_aw, max_mt_lo));
             }
             break;
         }
     }
+    size_t sz = max_mt_aw * n__;
     /* buffers for alm_phi and halm_phi */
     mdarray<double_complex, 1> alm_phi_buf;
     if (ophi__ != nullptr) {
-        alm_phi_buf = mdarray<double_complex, 1>(max_mt_aw * n__, ctx_.dual_memory_t());
+        switch (ctx_.processing_unit()) {
+            case CPU: {
+                alm_phi_buf = mdarray<double_complex, 1>(mp.allocate<double_complex, memory_t::host>(sz), sz);
+                break;
+            }
+            case GPU: {
+                alm_phi_buf = mdarray<double_complex, 1>(mp.allocate<double_complex, memory_t::host_pinned>(sz),
+                                                         mp.allocate<double_complex, memory_t::device>(sz),
+                                                         sz);
+                break;
+            }
+        }
     }
     mdarray<double_complex, 1> halm_phi_buf;
     if (hphi__ != nullptr) {
-        halm_phi_buf = mdarray<double_complex, 1>(max_mt_aw * n__, ctx_.dual_memory_t());
+        switch (ctx_.processing_unit()) {
+            case CPU: {
+                halm_phi_buf = mdarray<double_complex, 1>(mp.allocate<double_complex, memory_t::host>(sz), sz);
+                break;
+            }
+            case GPU: {
+                size_t sz = max_mt_aw * n__;
+                halm_phi_buf = mdarray<double_complex, 1>(mp.allocate<double_complex, memory_t::host_pinned>(sz),
+                                                          mp.allocate<double_complex, memory_t::device>(sz),
+                                                          sz);
+                break;
+            }
+        }
     }
+    t0.stop();
 
     auto generate_alm = [&](int atom_begin, int atom_end, std::vector<int>& offsets_aw)
     {
-        utils::timer t1("sirius::Hamiltonian::apply_fv_o|alm");
+        utils::timer t1("sirius::Hamiltonian::apply_fv_h_o|alm");
         #pragma omp parallel
         {
             int tid = omp_get_thread_num();
@@ -322,7 +360,7 @@ inline void Hamiltonian::apply_fv_h_o(K_point*        kp__,
 
     auto compute_alm_phi = [&](matrix<double_complex>& alm_phi, matrix<double_complex>& halm_phi, int num_mt_aw)
     {
-        utils::timer t1("sirius::Hamiltonian::apply_fv_o|alm_phi");
+        utils::timer t1("sirius::Hamiltonian::apply_fv_h_o|alm_phi");
 
         /* first zgemm: A(G, lm)^{T} * C(G, i) and  hA(G, lm)^{T} * C(G, i) */
         switch (ctx_.processing_unit()) {
@@ -392,7 +430,7 @@ inline void Hamiltonian::apply_fv_h_o(K_point*        kp__,
 
     auto compute_apw_apw = [&](matrix<double_complex>& alm_phi, matrix<double_complex>& halm_phi, int num_mt_aw)
     {
-        utils::timer t1("sirius::Hamiltonian::apply_fv_o|apw-apw");
+        utils::timer t1("sirius::Hamiltonian::apply_fv_h_o|apw-apw");
         /* second zgemm: Alm^{*} (Alm * C) */
         switch (ctx_.processing_unit()) {
             case CPU: {
@@ -446,7 +484,7 @@ inline void Hamiltonian::apply_fv_h_o(K_point*        kp__,
 
     auto collect_lo = [&](int atom_begin, int atom_end, std::vector<int>& offsets_lo, matrix<double_complex>& phi_lo_block)
     {
-        utils::timer t1("sirius::Hamiltonian::apply_fv_o|phi_lo");
+        utils::timer t1("sirius::Hamiltonian::apply_fv_h_o|phi_lo");
         /* broadcast local orbital coefficients */
         for (int ia = atom_begin; ia < atom_end; ia++) {
             int ialoc = ia - atom_begin;
@@ -484,7 +522,7 @@ inline void Hamiltonian::apply_fv_h_o(K_point*        kp__,
                               std::vector<int>& offsets_aw, std::vector<int> offsets_lo,
                               matrix<double_complex>& phi_lo_block)
     {
-        utils::timer t1("sirius::Hamiltonian::apply_fv_o|apw-lo");
+        utils::timer t1("sirius::Hamiltonian::apply_fv_h_o|apw-lo");
         /* apw-lo block for hphi */
         if (hphi__ != nullptr) {
             for (int ia = atom_begin; ia < atom_end; ia++) {
@@ -609,6 +647,7 @@ inline void Hamiltonian::apply_fv_h_o(K_point*        kp__,
         }
     };
 
+    utils::timer t2("sirius::Hamiltonian::apply_fv_h_o|mt");
     /* loop over blocks of atoms */
     for (int iblk = 0; iblk < nblk; iblk++) {
         int atom_begin = iblk * num_atoms_in_block;
@@ -648,7 +687,7 @@ inline void Hamiltonian::apply_fv_h_o(K_point*        kp__,
 
             compute_apw_lo(atom_begin, atom_end, num_mt_lo, offsets_aw, offsets_lo, phi_lo_block);
 
-            utils::timer t3("sirius::Hamiltonian::apply_fv_o|lo-lo-apw");
+            utils::timer t3("sirius::Hamiltonian::apply_fv_h_o|lo-lo-apw");
             /* lo-APW contribution */
             for (int ia = atom_begin; ia < atom_end; ia++) {
                 int ialoc = ia - atom_begin;
@@ -726,6 +765,7 @@ inline void Hamiltonian::apply_fv_h_o(K_point*        kp__,
             t3.stop();
         }
     }
+    t2.stop();
 #if defined(__GPU)
     if (ctx_.processing_unit() == GPU && !apw_only__) {
         if (hphi__ != nullptr) {
@@ -752,6 +792,18 @@ inline void Hamiltonian::apply_fv_h_o(K_point*        kp__,
                 print_checksum("ophi_pw", cs1);
                 print_checksum("ophi", cs2);
             }
+        }
+    }
+
+    switch (ctx_.processing_unit()) {
+        case CPU: {
+            mp.reset<memory_t::host>();
+            break;
+        }
+        case GPU: {
+            mp.reset<memory_t::host_pinned>();
+            mp.reset<memory_t::device>();
+            break;
         }
     }
 }

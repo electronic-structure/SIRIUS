@@ -407,10 +407,14 @@ inline void Potential::xc_mt(Density const& density__)
                     vxc_tp(itp, ir) = 0.5 * (vxc_up_tp(itp, ir) + vxc_dn_tp(itp, ir));
                 }       
             }
+            /* z, x, y order */
+            std::array<int, 3> comp_map = {2, 0, 1};
             /* convert magnetic field back to Rlm */
             for (int j = 0; j < ctx_.num_mag_dims(); j++) {
                 auto bxcrlm = transform(sht_.get(), vecmagtp[j]);
                 for (int ir = 0; ir < nmtp; ir++) {
+                    /* add auxiliary magnetic field antiparallel to starting magnetization */
+                    bxcrlm(0, ir) -= aux_bf_(j, ia) * ctx_.unit_cell().atom(ia).vector_field()[comp_map[j]]; 
                     for (int lm = 0; lm < ctx_.lmmax_pot(); lm++) {
                         effective_magnetic_field(j)->f_mt<index_domain_t::local>(lm, ir, ialoc) = bxcrlm(lm, ir);
                     }

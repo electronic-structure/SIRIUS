@@ -620,12 +620,12 @@ inline json DFT_ground_state::find(double potential_tol, double energy_tol, int 
         /* write some information */
         print_info();
         if (ctx_.comm().rank() == 0 && ctx_.control().verbosity_ >= 1) {
-            if (!ctx_.full_potential()) {
-                printf("iteration : %3i, RMS %18.12E, energy difference : %18.12E\n",
-                   iter, rms, etot - eold);
-            } else {
+            if (ctx_.full_potential()) {
                 printf("iteration : %3i, RMS %18.12E, energy difference : %18.12E, mixing beta: %12.6F\n",
                        iter, rms, etot - eold, potential_.mixer().beta());
+            } else {
+                printf("iteration : %3i, RMS %18.12E, energy difference : %18.12E\n",
+                       iter, rms, etot - eold);
             }
         }
 

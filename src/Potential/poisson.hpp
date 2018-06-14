@@ -99,21 +99,20 @@ inline void Potential::poisson_add_pseudo_pw(mdarray<double_complex, 2>& qmt__,
 
         switch (ctx_.processing_unit()) {
             case CPU: {
-                double_complex* buf_ptr = (double_complex*)ctx_.memory_buffer(sizeof(double_complex) * (ngv * (lmmax + na) + lmmax * na));
-                pf = mdarray<double_complex, 2>(buf_ptr, ngv, na);
-                qa = mdarray<double_complex, 2>(buf_ptr + pf.size(), lmmax, na);
-                qapf = mdarray<double_complex, 2>(buf_ptr + pf.size() + qa.size(), lmmax, ngv);
+                pf   = mdarray<double_complex, 2>(ctx_.mem_pool().allocate<double_complex, memory_t::host>(ngv * na),    ngv,   na);
+                qa   = mdarray<double_complex, 2>(ctx_.mem_pool().allocate<double_complex, memory_t::host>(lmmax * na),  lmmax, na);
+                qapf = mdarray<double_complex, 2>(ctx_.mem_pool().allocate<double_complex, memory_t::host>(lmmax * ngv), lmmax, ngv);
                 break;
             }
             case GPU: {
                 /* allocate on GPU */
-                pf = mdarray<double_complex, 2>(ngv, na, memory_t::device);
+                pf   = mdarray<double_complex, 2>(nullptr, ctx_.mem_pool().allocate<double_complex, memory_t::device>(ngv * na), ngv, na);
                 /* allocate on CPU & GPU */
-                qa = mdarray<double_complex, 2>(lmmax, na, ctx_.dual_memory_t());
-                double_complex* buf_ptr = (double_complex*)ctx_.memory_buffer(sizeof(double_complex) * ngv * lmmax);
-                /* create on CPU and allocate on GPU */
-                qapf = mdarray<double_complex, 2>(buf_ptr, lmmax, ngv);
-                qapf.allocate(memory_t::device);
+                qa   = mdarray<double_complex, 2>(ctx_.mem_pool().allocate<double_complex, memory_t::host>(lmmax * na),
+                                                  ctx_.mem_pool().allocate<double_complex, memory_t::device>(lmmax * na), lmmax, na);
+                /* allocate on CPU & GPU */
+                qapf = mdarray<double_complex, 2>(ctx_.mem_pool().allocate<double_complex, memory_t::host>(ngv * lmmax), 
+                                                  ctx_.mem_pool().allocate<double_complex, memory_t::device>(ngv * lmmax), lmmax, ngv);
                 break;
             }
         }
@@ -173,6 +172,10 @@ inline void Potential::poisson_add_pseudo_pw(mdarray<double_complex, 2>& qmt__,
                 }
             }
             rho_pw__[igloc] += rho_G;
+        }
+        ctx_.mem_pool().reset<memory_t::host>();
+        if (ctx_.processing_unit() == GPU) {
+            ctx_.mem_pool().reset<memory_t::device>();
         }
     }
 }

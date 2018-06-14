@@ -102,20 +102,59 @@ enum class memory_t : unsigned int
     device      = 0b100
 };
 
-inline constexpr memory_t operator&(memory_t a__, memory_t b__)
+inline constexpr memory_t operator&(memory_t a__, memory_t b__) noexcept
 {
     return static_cast<memory_t>(static_cast<unsigned int>(a__) & static_cast<unsigned int>(b__));
 }
 
-inline constexpr memory_t operator|(memory_t a__, memory_t b__)
+inline constexpr memory_t operator|(memory_t a__, memory_t b__) noexcept
 {
     return static_cast<memory_t>(static_cast<unsigned int>(a__) | static_cast<unsigned int>(b__));
 }
 
-inline constexpr bool on_device(memory_t mem_type__)
+inline constexpr bool on_device(memory_t mem_type__) noexcept
 {
     return (mem_type__ & memory_t::device) == memory_t::device ? true : false;
 }
+
+template <memory_t mem_type>
+struct device;
+
+template<>
+struct device<memory_t::host> {
+    static const device_t type{device_t::CPU};
+};
+
+template<>
+struct device<memory_t::host_pinned> {
+    static const device_t type{device_t::CPU};
+};
+
+template<>
+struct device<memory_t::device> {
+    static const device_t type{device_t::GPU};
+};
+
+//template <memory_t mem_type>
+//inline constexpr device_t get_device_t() noexcept;
+//
+//template<>
+//inline constexpr device_t get_device_t<memory_t::host>() noexcept
+//{
+//    return device_t::CPU;
+//}
+//
+//template<>
+//inline constexpr device_t get_device_t<memory_t::host_pinned>() noexcept
+//{
+//    return device_t::CPU;
+//}
+//
+//template<>
+//inline constexpr device_t get_device_t<memory_t::device>() noexcept
+//{
+//    return device_t::GPU;
+//}
 
 /// Index descriptor of mdarray.
 class mdarray_index_descriptor
@@ -460,14 +499,16 @@ class mdarray_base
     /// Allocate memory for array.
     void allocate(memory_t memory__)
     {
+        size_t sz = size();
+        /* do nothing for zero-sized array */
+        if (!sz) {
+            return;
+        }
 #ifndef __GPU
         if ((memory__ & memory_t::host_pinned) == memory_t::host_pinned) {
             memory__ = memory_t::host;
         }
 #endif
-
-        size_t sz = size();
-
         /* host allocation */
         if ((memory__ & memory_t::host) == memory_t::host) {
             /* page-locked memory */
@@ -494,11 +535,6 @@ class mdarray_base
         if ((memory__ & memory_t::device) == memory_t::device) {
             raw_ptr_device_    = acc::allocate<T>(sz);
             unique_ptr_device_ = std::unique_ptr<T[], mdarray_mem_mgr<T>>(raw_ptr_device_, mdarray_mem_mgr<T>(sz, memory_t::device));
-            
-            //printf("GPU memory [%p, %p) is allocated for array %s\n", raw_ptr_device_, raw_ptr_device_ + sz, label_.c_str());
-            //for (int i = 0; i < N; i++) {
-            //    printf("dim[%i].size = %li\n", i, dims_[i].size());
-            //}
         }
 #endif
     }

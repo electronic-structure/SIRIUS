@@ -237,7 +237,7 @@ inline void Density::initial_density_full_pot()
         zil[l] = std::pow(double_complex(0, 1), l);
     }
     
-    utils::timer t3("sirius::Density::initial_density|znulm");
+    //utils::timer t3("sirius::Density::initial_density|znulm");
     
     //mdarray<double_complex, 3> znulm(sba.nqnu_max(), lmmax, unit_cell_.num_atoms());
     //znulm.zero();

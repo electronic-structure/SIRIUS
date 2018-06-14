@@ -114,8 +114,10 @@ class Mixer
                 vectors_(i, ipos) = beta__ * input_buffer_(i) + (1 - beta__) * vectors_(i, ipos1);
             }
 
+            T* ptr = (this->output_buffer_.size() == 0) ? nullptr : this->output_buffer_.template at<CPU>();
+
             /* collect shared data */
-            comm_.allgather(&vectors_(0, ipos), output_buffer_.template at<CPU>(), spl_shared_size_.global_offset(), 
+            comm_.allgather(&vectors_(0, ipos), ptr, spl_shared_size_.global_offset(), 
                             spl_shared_size_.local_size());
         }
 
@@ -384,7 +386,9 @@ class Broyden1: public Mixer<T>
                 this->vectors_(i, i1) = this->vectors_(i, ipos) + this->beta_ * residuals_(i, ipos) + this->input_buffer_(i);
             }
 
-            this->comm_.allgather(&this->vectors_(0, i1), this->output_buffer_.template at<CPU>(),
+            T* ptr = (this->output_buffer_.size() == 0) ? nullptr : this->output_buffer_.template at<CPU>();
+
+            this->comm_.allgather(&this->vectors_(0, i1), ptr,
                                   this->spl_shared_size_.global_offset(), this->spl_shared_size_.local_size());
             
             /* increment the history step */

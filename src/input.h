@@ -447,6 +447,8 @@ struct Parameters_input
     /// Type of periodic boundary conditions.
     std::string esm_bc_{"pbc"};
 
+    double reduce_aux_bf_{0.0};
+
     void read(json const& parser)
     {
         if (parser.count("parameters")) {
@@ -489,6 +491,8 @@ struct Parameters_input
             potential_tol_  = parser["parameters"].value("potential_tol", potential_tol_);
             molecule_       = parser["parameters"].value("molecule", molecule_);
             nn_radius_      = parser["parameters"].value("nn_radius", nn_radius_);
+            reduce_aux_bf_  = parser["parameters"].value("reduce_aux_bf", reduce_aux_bf_);
+
             if (parser["parameters"].count("spin_orbit")) {
                 so_correction_ = parser["parameters"].value("spin_orbit", so_correction_);
 
