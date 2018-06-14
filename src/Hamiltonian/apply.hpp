@@ -291,7 +291,7 @@ inline void Hamiltonian::apply_fv_h_o(K_point*        kp__,
 
     auto generate_alm = [&](int atom_begin, int atom_end, std::vector<int>& offsets_aw)
     {
-        utils::timer t1("sirius::Hamiltonian::apply_fv_o|alm");
+        utils::timer t1("sirius::Hamiltonian::apply_fv_h_o|alm");
         #pragma omp parallel
         {
             int tid = omp_get_thread_num();
@@ -360,7 +360,7 @@ inline void Hamiltonian::apply_fv_h_o(K_point*        kp__,
 
     auto compute_alm_phi = [&](matrix<double_complex>& alm_phi, matrix<double_complex>& halm_phi, int num_mt_aw)
     {
-        utils::timer t1("sirius::Hamiltonian::apply_fv_o|alm_phi");
+        utils::timer t1("sirius::Hamiltonian::apply_fv_h_o|alm_phi");
 
         /* first zgemm: A(G, lm)^{T} * C(G, i) and  hA(G, lm)^{T} * C(G, i) */
         switch (ctx_.processing_unit()) {
@@ -430,7 +430,7 @@ inline void Hamiltonian::apply_fv_h_o(K_point*        kp__,
 
     auto compute_apw_apw = [&](matrix<double_complex>& alm_phi, matrix<double_complex>& halm_phi, int num_mt_aw)
     {
-        utils::timer t1("sirius::Hamiltonian::apply_fv_o|apw-apw");
+        utils::timer t1("sirius::Hamiltonian::apply_fv_h_o|apw-apw");
         /* second zgemm: Alm^{*} (Alm * C) */
         switch (ctx_.processing_unit()) {
             case CPU: {
@@ -484,7 +484,7 @@ inline void Hamiltonian::apply_fv_h_o(K_point*        kp__,
 
     auto collect_lo = [&](int atom_begin, int atom_end, std::vector<int>& offsets_lo, matrix<double_complex>& phi_lo_block)
     {
-        utils::timer t1("sirius::Hamiltonian::apply_fv_o|phi_lo");
+        utils::timer t1("sirius::Hamiltonian::apply_fv_h_o|phi_lo");
         /* broadcast local orbital coefficients */
         for (int ia = atom_begin; ia < atom_end; ia++) {
             int ialoc = ia - atom_begin;
@@ -522,7 +522,7 @@ inline void Hamiltonian::apply_fv_h_o(K_point*        kp__,
                               std::vector<int>& offsets_aw, std::vector<int> offsets_lo,
                               matrix<double_complex>& phi_lo_block)
     {
-        utils::timer t1("sirius::Hamiltonian::apply_fv_o|apw-lo");
+        utils::timer t1("sirius::Hamiltonian::apply_fv_h_o|apw-lo");
         /* apw-lo block for hphi */
         if (hphi__ != nullptr) {
             for (int ia = atom_begin; ia < atom_end; ia++) {
@@ -687,7 +687,7 @@ inline void Hamiltonian::apply_fv_h_o(K_point*        kp__,
 
             compute_apw_lo(atom_begin, atom_end, num_mt_lo, offsets_aw, offsets_lo, phi_lo_block);
 
-            utils::timer t3("sirius::Hamiltonian::apply_fv_o|lo-lo-apw");
+            utils::timer t3("sirius::Hamiltonian::apply_fv_h_o|lo-lo-apw");
             /* lo-APW contribution */
             for (int ia = atom_begin; ia < atom_end; ia++) {
                 int ialoc = ia - atom_begin;
