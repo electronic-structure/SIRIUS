@@ -259,6 +259,7 @@ class Unit_cell_symmetry
             assert(isym__ >= 0 && isym__ < num_spg_sym());
             return space_group_symmetry_[isym__];
         }
+
         inline int num_mag_sym() const
         {
             return static_cast<int>(magnetic_group_symmetry_.size());

@@ -43,6 +43,11 @@ class Field4D
     {
         PROFILE("sirius::Field4D::symmetrize");
 
+        /* quick exit: the only symmetry operation is identity */
+        if (ctx_.unit_cell().symmetry().num_mag_sym() == 1) {
+            return;
+        }
+
         auto& comm = ctx_.comm();
 
         auto& remap_gvec = ctx_.remap_gvec();

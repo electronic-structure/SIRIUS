@@ -135,8 +135,6 @@ class Simulation_context_base: public Simulation_parameters
 
         bool initialized_{false};
 
-	int DeviceId_{-1};
-
         inline void init_fft()
         {
             auto rlv = unit_cell_.reciprocal_lattice_vectors();
