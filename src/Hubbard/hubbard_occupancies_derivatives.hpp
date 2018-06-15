@@ -94,7 +94,7 @@ void Hubbard_potential::compute_occupancies_derivatives(K_point& kp,
 
                 #ifdef __GPU
                 if (ctx_.processing_unit() == GPU) {
-                    phitmp.pw_coeffs(ispn).prime().allocate(memory_t::device);
+                    phitmp.pw_coeffs(0).prime().allocate(memory_t::device);
                 }
                 #endif
 
@@ -114,7 +114,7 @@ void Hubbard_potential::compute_occupancies_derivatives(K_point& kp,
 
                 #ifdef __GPU
                 if (ctx_.processing_unit() == GPU) {
-                    phitmp.pw_coeffs(ispn).prime().deallocate(memory_t::device);
+                    phitmp.pw_coeffs(0).prime().deallocate(memory_t::device);
                 }
                 #endif
             }

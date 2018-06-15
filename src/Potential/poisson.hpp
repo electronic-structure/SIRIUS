@@ -17,23 +17,53 @@ inline void Potential::poisson_sum_G(int lmmax__,
         na_max = std::max(na_max, unit_cell_.atom_type(iat).num_atoms());
     }
 
-    matrix<double_complex> phase_factors(ngv_loc, na_max, ctx_.main_memory_t());
-    matrix<double_complex> zm(lmmax__, ngv_loc, ctx_.dual_memory_t());
-    matrix<double_complex> tmp(lmmax__, na_max, ctx_.dual_memory_t());
+    int lmax = utils::lmax(lmmax__);
+
+    matrix<double_complex> phase_factors;
+    matrix<double_complex> zm;
+    matrix<double_complex> tmp;
+    switch (ctx_.processing_unit()) {
+        case CPU: {
+            phase_factors = matrix<double_complex>(ctx_.mem_pool().allocate<double_complex, memory_t::host>(ngv_loc * na_max),
+                                                   ngv_loc, na_max);
+            zm = matrix<double_complex>(ctx_.mem_pool().allocate<double_complex, memory_t::host>(lmmax__ * ngv_loc),
+                                        lmmax__, ngv_loc);
+            tmp = matrix<double_complex>(ctx_.mem_pool().allocate<double_complex, memory_t::host>(lmmax__ * na_max),
+                                         lmmax__, na_max);
+            break;
+        }
+        case GPU: {
+            phase_factors = matrix<double_complex>(nullptr, ctx_.mem_pool().allocate<double_complex, memory_t::device>(ngv_loc * na_max),
+                                                   ngv_loc, na_max);
+            zm = matrix<double_complex>(ctx_.mem_pool().allocate<double_complex, memory_t::host>(lmmax__ * ngv_loc),
+                                        ctx_.mem_pool().allocate<double_complex, memory_t::device>(lmmax__ * ngv_loc),
+                                        lmmax__, ngv_loc);
+            tmp = matrix<double_complex>(ctx_.mem_pool().allocate<double_complex, memory_t::host>(lmmax__ * na_max),
+                                         ctx_.mem_pool().allocate<double_complex, memory_t::device>(lmmax__ * na_max),
+                                         lmmax__, na_max);
+            break;
+        }
+    }
 
     for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
         double t = -omp_get_wtime();
         int na = unit_cell_.atom_type(iat).num_atoms();
         ctx_.generate_phase_factors(iat, phase_factors);
+        utils::timer t1("sirius::Potential::poisson_sum_G|zm");
         #pragma omp parallel for schedule(static)
         for (int igloc = 0; igloc < ngv_loc; igloc++) {
             int ig = ctx_.gvec().offset() + igloc;
+            std::vector<double> fl_tmp(lmax + 1);
+            for (int l = 0; l <= lmax; l++) {
+                fl_tmp[l] = fourpi * fl__(l, iat, ctx_.gvec().shell(ig));
+            }
             for (int lm = 0; lm < lmmax__; lm++) {
                 int l = l_by_lm_[lm];
-                zm(lm, igloc) = fourpi * fpw__[igloc] * zilm_[lm] *
-                                fl__(l, iat, ctx_.gvec().shell(ig)) * std::conj(gvec_ylm_(lm, igloc));
+                zm(lm, igloc) = fpw__[igloc] * zilm_[lm] * fl_tmp[l] * std::conj(gvec_ylm_(lm, igloc));
             }
         }
+        t1.stop();
+        utils::timer t2("sirius::Potential::poisson_sum_G|mul");
         switch (ctx_.processing_unit()) {
             case CPU: {
                 linalg<CPU>::gemm(0, 0, lmmax__, na, ngv_loc,
@@ -43,17 +73,18 @@ inline void Potential::poisson_sum_G(int lmmax__,
                 break;
             }
             case GPU: {
-                #ifdef __GPU
+#if defined(__GPU)
                 zm.copy<memory_t::host, memory_t::device>();
                 linalg<GPU>::gemm(0, 0, lmmax__, na, ngv_loc,
                                   zm.at<GPU>(), zm.ld(),
                                   phase_factors.at<GPU>(), phase_factors.ld(),
                                   tmp.at<GPU>(), tmp.ld());
                 tmp.copy<memory_t::device, memory_t::host>();
-                #endif
+#endif
                 break;
             }
         }
+        t2.stop();
 
         if (ctx_.control().print_performance_) {
             t += omp_get_wtime();
@@ -71,6 +102,11 @@ inline void Potential::poisson_sum_G(int lmmax__,
     }
     
     ctx_.comm().allreduce(&flm__(0, 0), (int)flm__.size());
+
+    ctx_.mem_pool().reset<memory_t::host>();
+    if (ctx_.processing_unit() == GPU) {
+        ctx_.mem_pool().reset<memory_t::device>();
+    }
 }
 
 inline void Potential::poisson_add_pseudo_pw(mdarray<double_complex, 2>& qmt__,
@@ -133,14 +169,14 @@ inline void Potential::poisson_add_pseudo_pw(mdarray<double_complex, 2>& qmt__,
                 break;
             }
             case GPU: {
-                #ifdef __GPU
+#if defined(__GPU)
                 qa.copy<memory_t::host, memory_t::device>();
                 linalg<GPU>::gemm(0, 2, ctx_.lmmax_rho(), ctx_.gvec().count(), unit_cell_.atom_type(iat).num_atoms(),
                                   qa.at<GPU>(), qa.ld(),
                                   pf.at<GPU>(), pf.ld(),
                                   qapf.at<GPU>(), qapf.ld());
                 qapf.copy<memory_t::device, memory_t::host>();
-                #endif
+#endif
                 break;
             }
         }

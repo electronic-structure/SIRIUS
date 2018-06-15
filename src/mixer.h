@@ -110,6 +110,7 @@ class Mixer
             int ipos = idx_hist(count_); 
             int ipos1 = idx_hist(count_ - 1); 
 
+            #pragma omp parallel for schedule(static)
             for (int i = 0; i < local_size_; i++) {
                 vectors_(i, ipos) = beta__ * input_buffer_(i) + (1 - beta__) * vectors_(i, ipos1);
             }
@@ -442,13 +443,15 @@ class Broyden2: public Mixer<T>
             int ipos = this->idx_hist(this->count_);
 
             /* compute residual square sum */
-            this->rss_ = 0;
+            double rss{0};
+            #pragma omp parallel for schedule(static) reduction(+:rss)
             for (int i = 0; i < this->local_size_; i++) {
                 /* curent residual f_k = x_k - g(x_k) */
                 residuals_(i, ipos) = this->vectors_(i, ipos) - this->input_buffer_(i);
-                this->rss_ += std::pow(std::abs(residuals_(i, ipos)), 2) * this->weights_(i);
+                rss += std::pow(std::abs(residuals_(i, ipos)), 2) * this->weights_(i);
             }
-            this->comm_.allreduce(&this->rss_, 1);
+            this->comm_.allreduce(&rss, 1);
+            this->rss_ = rss;
 
             /* exit if the vector has converged */
             if (this->rss_ < rss_min__) {
@@ -497,10 +500,12 @@ class Broyden2: public Mixer<T>
                     int i1 = this->idx_hist(this->count_ - N + j1);
                     for (int j2 = 0; j2 <= j1; j2++) {
                         int i2 = this->idx_hist(this->count_ - N + j2);
+                        long double t{0};
+                        #pragma omp parallel for schedule(static) reduction(+:t)
                         for (int i = 0; i < this->local_size_; i++) {
-                            S(j1, j2) += std::real(std::conj(residuals_(i, i1)) * residuals_(i, i2));
+                            t += std::real(std::conj(residuals_(i, i1)) * residuals_(i, i2));
                         }
-                        S(j2, j1) = S(j1, j2);
+                        S(j2, j1) = S(j1, j2) = t;
                     }
                 }
                 this->comm_.allreduce(S.at<CPU>(), (int)S.size());
@@ -556,6 +561,7 @@ class Broyden2: public Mixer<T>
                 /* make linear combination of vectors and residuals; this is the update vector \tilda x */
                 for (int j = 0; j < N; j++) {
                     int i1 = this->idx_hist(this->count_ - N + j);
+                    #pragma omp parallel for schedule(static)
                     for (int i = 0; i < this->local_size_; i++) {
                         this->input_buffer_(i) += ((double)v2[j] * residuals_(i, i1) + (double)v2[j + N] * this->vectors_(i, i1));
                     }
