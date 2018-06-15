@@ -587,7 +587,9 @@ inline json DFT_ground_state::find(double potential_tol, double energy_tol, int 
             ctx_.set_iterative_solver_tolerance(std::min(ctx_.iterative_solver_tolerance(), tol));
         }
 
-        if (!ctx_.full_potential()) {
+        if (!ctx_.full_potential()) { // TODO: this is horrible when PAW density is generated from the mixed
+                                      //       density matrix here; better solution: generate in Density and
+                                      //       then mix
             density_.generate_paw_loc_density();
         }
 

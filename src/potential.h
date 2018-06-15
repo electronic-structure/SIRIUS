@@ -43,7 +43,7 @@ class Potential: public Field4D
         Unit_cell& unit_cell_;
 
         Communicator const& comm_;
-        
+
         /// Hartree potential.
         std::unique_ptr<Periodic_function<double>> hartree_potential_;
 
@@ -305,10 +305,10 @@ class Potential: public Field4D
                                    Spheric_function<spatial, double>& vxc_up_tp, 
                                    Spheric_function<spatial, double>& vxc_dn_tp, 
                                    Spheric_function<spatial, double>& exc_tp);
-        
+
         /// Generate XC potential in the muffin-tins.
         inline void xc_mt(Density const& density__);
-    
+
         /// Generate non-magnetic XC potential on the regular real-space grid.
         template <bool add_pseudo_core__>
         inline void xc_rg_nonmagnetic(Density const& density__);
@@ -344,7 +344,7 @@ class Potential: public Field4D
                 for (int l = 0; l <= lmax_; l++) {
                     zil_[l] = std::pow(double_complex(0, 1), l);
                 }
-                
+
                 zilm_.resize(Utils::lmmax(lmax_));
                 for (int l = 0, lm = 0; l <= lmax_; l++) {
                     for (int m = -l; m <= l; m++, lm++) {
@@ -355,10 +355,10 @@ class Potential: public Field4D
 
             hartree_potential_ = std::unique_ptr<Periodic_function<double>>(new Periodic_function<double>(ctx_, ctx_.lmmax_pot()));
             hartree_potential_->allocate_mt(false);
-            
+
             xc_potential_ = new Periodic_function<double>(ctx_, ctx_.lmmax_pot());
             xc_potential_->allocate_mt(false);
-            
+
             xc_energy_density_ = new Periodic_function<double>(ctx_, ctx_.lmmax_pot());
             xc_energy_density_->allocate_mt(false);
 
