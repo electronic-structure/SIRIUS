@@ -19,9 +19,6 @@ inline void Potential::poisson_sum_G(int lmmax__,
 
     int lmax = utils::lmax(lmmax__);
 
-    //matrix<double_complex> phase_factors(ngv_loc, na_max, ctx_.main_memory_t());
-    //matrix<double_complex> zm(lmmax__, ngv_loc, ctx_.dual_memory_t());
-    //matrix<double_complex> tmp(lmmax__, na_max, ctx_.dual_memory_t());
     matrix<double_complex> phase_factors;
     matrix<double_complex> zm;
     matrix<double_complex> tmp;
