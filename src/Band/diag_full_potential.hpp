@@ -440,6 +440,10 @@ inline void Band::diag_full_potential_first_variation_davidson(K_point& kp__, Ha
         TERMINATE("subspace is too big");
     }
 
+    if (ctx_.control().verbosity_ >= 2 && kp__.comm().rank() == 0) {
+        printf("iterative solver tolerance: %18.12f\n", ctx_.iterative_solver_tolerance());
+    }
+
     /* allocate wave-functions */
     Wave_functions  phi(kp__.gkvec_partition(), unit_cell_.num_atoms(),
                         [this](int ia){return unit_cell_.atom(ia).mt_lo_basis_size();}, num_phi);
