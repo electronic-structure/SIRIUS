@@ -25,7 +25,6 @@
 #ifndef __ATOM_SYMMETRY_CLASS_H__
 #define __ATOM_SYMMETRY_CLASS_H__
 
-//#include "sirius_io.h"
 #include "runtime.h"
 #include "atom_type.h"
 #include "communicator.hpp"
