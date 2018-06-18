@@ -30,7 +30,7 @@ namespace sirius {
 
 /// Abstract mixer
 template <typename T>
-class Mixer
+class Mixer // TODO: review mixer implementation, it's too obscure
 {
   protected:
     /// Size of the vector which is global to (in other words, shared between) all MPI ranks.
@@ -139,7 +139,7 @@ class Mixer
         assert(shared_vector_size__ >= 0);
         assert(local_vector_size__ >= 0);
 
-        unsigned long long n = local_vector_size__;
+        size_t n = local_vector_size__;
         comm_.allreduce(&n, 1);
         total_size_ = n + shared_vector_size_;
 
@@ -148,9 +148,6 @@ class Mixer
             spl_shared_local_size_ = spl_shared_size_.local_size();
         }
         local_size_ = spl_shared_local_size_ + local_vector_size_;
-        if (local_size_ == 0) {
-            TERMINATE("Ratio between gk_cutoff and pw_cutoff is exactly 2\n");
-        }
         /* allocate input buffer */
         input_buffer_ = mdarray<T, 1>(local_size_, memory_t::host, "Mixer::input_buffer_");
         /* allocate output bffer */
@@ -602,7 +599,8 @@ class Broyden2 : public Mixer<T>
             /* mix last vector with the update vector \tilda x */
             this->mix_linear(this->beta_);
         } else {
-            this->mix_linear(beta0_);
+            //this->mix_linear(beta0_);
+            this->mix_linear(this->beta_);
         }
 
         return rms;
@@ -610,21 +608,20 @@ class Broyden2 : public Mixer<T>
 };
 
 template <typename T>
-inline std::unique_ptr<Mixer<T>> Mixer_factory(std::string const&  type__,
-                                               int                 shared_size__,
+inline std::unique_ptr<Mixer<T>> Mixer_factory(int                 shared_size__,
                                                int                 local_size__,
                                                Mixer_input         mix_cfg__,
                                                Communicator const& comm__)
 {
     std::unique_ptr<Mixer<T>> mixer;
 
-    if (type__ == "linear") {
+    if (mix_cfg__.type_ == "linear") {
         mixer = std::unique_ptr<Mixer<T>>(new Linear_mixer<T>(shared_size__, local_size__, mix_cfg__.beta_, comm__));
-    } else if (type__ == "broyden1") {
+    } else if (mix_cfg__.type_ == "broyden1") {
         mixer = std::unique_ptr<Mixer<T>>(new Broyden1<T>(shared_size__, local_size__, mix_cfg__.max_history_,
                                                           mix_cfg__.beta_, mix_cfg__.beta0_, mix_cfg__.beta_scaling_factor_,
                                                           comm__));
-    } else if (type__ == "broyden2") {
+    } else if (mix_cfg__.type_ == "broyden2") {
         mixer = std::unique_ptr<Mixer<T>>(new Broyden2<T>(shared_size__, local_size__, mix_cfg__.max_history_, mix_cfg__.beta_,
                                                           mix_cfg__.beta0_, mix_cfg__.linear_mix_rms_tol_, mix_cfg__.beta_scaling_factor_,
                                                           comm__));
