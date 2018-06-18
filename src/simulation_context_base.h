@@ -55,6 +55,8 @@ class Simulation_context_base: public Simulation_parameters
         Communicator const& comm_;
 
         /// Auxiliary communicator for the fine-grid FFT transformation.
+        /** This communicator is orthogonal to the FFT communicator for density and potential within the full
+            communicator of the simulation context. In other words, comm_ortho_fft_ \otimes comm_fft() = ctx_.comm() */
         Communicator comm_ortho_fft_;
 
         /// Auxiliary communicator for the coarse-grid FFT transformation.
