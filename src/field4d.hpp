@@ -181,8 +181,11 @@ class Field4D
         }
     }
 
-    void mixer_input() // TODO: split f_rg(i) between comm_ortho_fft communicator
+    void mixer_input()
     {
+        /* split real-space points between available ranks */
+        splindex<block> spl_np(ctx_.fft().local_size(), ctx_.comm_ortho_fft().size(), ctx_.comm_ortho_fft().rank());
+
         int k{0};
 
         for (int j = 0; j < ctx_.num_mag_dims() + 1; j++) {
@@ -191,14 +194,18 @@ class Field4D
                     mixer_->input_local(k++, component(j).f_mt(ialoc)[i]);
                 }
             }
-            for (int i = 0; i < ctx_.fft().local_size(); i++) {
-                mixer_->input_local(k++, component(j).f_rg(i));
+            //for (int i = 0; i < ctx_.fft().local_size(); i++) {
+            for (int i = 0; i < spl_np.local_size(); i++) {
+                mixer_->input_local(k++, component(j).f_rg(spl_np[i]));
             }
         }
     }
 
     void mixer_output()
     {
+        /* split real-space points between available ranks */
+        splindex<block> spl_np(ctx_.fft().local_size(), ctx_.comm_ortho_fft().size(), ctx_.comm_ortho_fft().rank());
+
         int k{0};
 
         for (int j = 0; j < ctx_.num_mag_dims() + 1; j++) {
@@ -208,9 +215,11 @@ class Field4D
                     f_mt[i] = mixer_->output_local(k++);
                 }
             }
-            for (int i = 0; i < ctx_.fft().local_size(); i++) {
-                component(j).f_rg(i) = mixer_->output_local(k++);
+            //for (int i = 0; i < ctx_.fft().local_size(); i++) {
+            for (int i = 0; i < spl_np.local_size(); i++) {
+                component(j).f_rg(spl_np[i]) = mixer_->output_local(k++);
             }
+            ctx_.comm_ortho_fft().allgather(&component(j).f_rg(0), spl_np.global_offset(), spl_np.local_size());
             component(j).sync_mt();
         }
     }
