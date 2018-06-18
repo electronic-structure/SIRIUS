@@ -8,7 +8,7 @@
 void Hubbard_potential::compute_occupancies_derivatives(K_point& kp,
                                                         Wave_functions& phi, // hubbard derivatives
                                                         Beta_projectors_gradient& bp_grad_,
-                                                        Q_operator<double_complex>& q_op, // Compensnation operator or overlap operator
+                                                        Q_operator<double_complex>& q_op, // overlap operator
                                                         mdarray<double_complex, 5>& dn_,  // derivative of the occupation number compared to displacement of atom aton_id
                                                         const int atom_id)                // Atom we shift
 {
@@ -46,16 +46,17 @@ void Hubbard_potential::compute_occupancies_derivatives(K_point& kp,
 
     dmatrix<double_complex> dPhi_S_Psi(HowManyBands, this->number_of_hubbard_orbitals() * ctx_.num_spins());
     dmatrix<double_complex> Phi_S_Psi(HowManyBands, this->number_of_hubbard_orbitals() * ctx_.num_spins());
-    matrix<double_complex> dm(this->number_of_hubbard_orbitals() * ctx_.num_spins(), this->number_of_hubbard_orbitals() * ctx_.num_spins());
+    matrix<double_complex> dm(this->number_of_hubbard_orbitals() * ctx_.num_spins(),
+                              this->number_of_hubbard_orbitals() * ctx_.num_spins());
     Phi_S_Psi.zero();
     dphi.copy_from(ctx_.processing_unit(), this->number_of_hubbard_orbitals(), phi, 0, 0, 0, 0);
 
     // computes the S|phi^I_ia>
     if (!ctx_.full_potential() && augment) {
+        // note that I do *not* update phi but dphi instead since I need
+        // to have the original wavefunctions later on
         for (int i = 0; i < kp.beta_projectors().num_chunks(); i++) {
-            /* generate beta-projectors for a block of atoms */
             kp.beta_projectors().generate(i);
-            /* non-collinear case */
             auto beta_phi = kp.beta_projectors().inner<double_complex>(i, phi, 0, 0, this->number_of_hubbard_orbitals());
             /* apply Q operator (diagonal in spin) */
             q_op.apply(i, 0, dphi, 0, this->number_of_hubbard_orbitals(), kp.beta_projectors(), beta_phi);
@@ -67,6 +68,13 @@ void Hubbard_potential::compute_occupancies_derivatives(K_point& kp,
         inner(ctx_.processing_unit(), ispn, kp.spinor_wave_functions(), 0, kp.num_occupied_bands(ispn), dphi, 0,
               this->number_of_hubbard_orbitals(), Phi_S_Psi, 0, ispn * this->number_of_hubbard_orbitals());
     }
+
+    #ifdef __GPU
+    if ((ctx_.processing_unit() == GPU) && !ctx_.full_potential() && augment) {
+        phitmp.pw_coeffs(0).prime().allocate(memory_t::device);
+    }
+    #endif
+
 
     for (int dir = 0; dir < 3; dir++) {
         // reset dphi
@@ -92,12 +100,6 @@ void Hubbard_potential::compute_occupancies_derivatives(K_point& kp,
             if (!ctx_.full_potential() && augment) {
                 Wave_functions phitmp(kp.gkvec_partition(), lmax_at, 1);
 
-                #ifdef __GPU
-                if (ctx_.processing_unit() == GPU) {
-                    phitmp.pw_coeffs(0).prime().allocate(memory_t::device);
-                }
-                #endif
-
                 phitmp.copy_from(ctx_.processing_unit(), lmax_at, dphi, 0, this->offset[atom_id], 0, 0);
                 // for the ppus potential we have an additional term coming from the
                 // derivatives of the overlap matrix.
@@ -111,12 +113,6 @@ void Hubbard_potential::compute_occupancies_derivatives(K_point& kp,
                     /* apply Q operator (diagonal in spin) */
                     q_op.apply(chunk__, 0, dphi, this->offset[atom_id], lmax_at, kp.beta_projectors(), beta_phi);
                 }
-
-                #ifdef __GPU
-                if (ctx_.processing_unit() == GPU) {
-                    phitmp.pw_coeffs(0).prime().deallocate(memory_t::device);
-                }
-                #endif
             }
         }
 
@@ -131,15 +127,15 @@ void Hubbard_potential::compute_occupancies_derivatives(K_point& kp,
                         kp.beta_projectors().generate(chunk__);
                         bp_grad_.generate(chunk__, dir);
 
+                        // compute Q_ij <\beta_i|\phi> |d \beta_j> and add it to d\phi
                         {
                             // < beta | phi> for this chunk
                             auto beta_phi =
                                 kp.beta_projectors().inner<double_complex>(chunk__, phi, 0, 0, this->number_of_hubbard_orbitals());
-
-                            /* apply Q operator (diagonal in spin) */
-                            /* compute Q_ij <beta_i|phi> |d beta_j> and add it to dphi */
                             q_op.apply_one_atom(chunk__, 0, dphi, 0, this->number_of_hubbard_orbitals(), bp_grad_, beta_phi, i);
                         }
+
+                        // compute Q_ij <d \beta_i|\phi> |\beta_j> and add it to d\phi
                         {
                             // < dbeta | phi> for this chunk
                             auto dbeta_phi = bp_grad_.inner<double_complex>(chunk__, phi, 0, 0, this->number_of_hubbard_orbitals());
@@ -173,15 +169,20 @@ void Hubbard_potential::compute_occupancies_derivatives(K_point& kp,
             }
         }
 
-        linalg<CPU>::gemm(2, 0, this->number_of_hubbard_orbitals() * ctx_.num_spins(),
-                          this->number_of_hubbard_orbitals() * ctx_.num_spins(), HowManyBands, double_complex(kp.weight(), 0.0),
-                          dynamic_cast<matrix<double_complex>&>(dPhi_S_Psi), dynamic_cast<matrix<double_complex>&>(Phi_S_Psi),
-                          linalg_const<double_complex>::zero(), dm);
+        dm.zero();
 
-        linalg<CPU>::gemm(2, 0, this->number_of_hubbard_orbitals() * ctx_.num_spins(),
-                          this->number_of_hubbard_orbitals() * ctx_.num_spins(), HowManyBands, double_complex(kp.weight(), 0.0),
-                          dynamic_cast<matrix<double_complex>&>(Phi_S_Psi), dynamic_cast<matrix<double_complex>&>(dPhi_S_Psi),
-                          linalg_const<double_complex>::one(), dm);
+        // TODO use matrix matrix multiplication
+
+        // compute dm = \sum_{i,j} <\phi_i|S|\psi> <\psi|d(S|\phi>)_j
+        #pragma omp parallel for schedule(static)
+        for (int m1 = 0; m1 < this->number_of_hubbard_orbitals() * ctx_.num_spins(); m1++) {
+            for (int m2 = 0; m2 < this->number_of_hubbard_orbitals() * ctx_.num_spins(); m2++) {
+                for (int nbnd = 0; nbnd < HowManyBands; nbnd++) {
+                    dm(m1, m2) += Phi_S_Psi(nbnd, m1) * std::conj(dPhi_S_Psi(nbnd, m2)) +
+                        dPhi_S_Psi(nbnd, m1) * std::conj(Phi_S_Psi(nbnd, m2));
+                }
+            }
+        }
 
         #pragma omp parallel for schedule(static)
         for (int ia1 = 0; ia1 < ctx_.unit_cell().num_atoms(); ++ia1) {
@@ -190,10 +191,9 @@ void Hubbard_potential::compute_occupancies_derivatives(K_point& kp,
                 const int lmax_at = 2 * atom.type().hubbard_l() + 1;
                 for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
                     const size_t ispn_offset = ispn * this->number_of_hubbard_orbitals() + this->offset[ia1];
-                    // TODO : should be douable to do that with matrix-matrix multiplcation
-                    for (int m1 = 0; m1 < lmax_at; m1++) {
-                        for (int m2 = 0; m2 < lmax_at; m2++) {
-                            dn_(m1, m2, ispn, ia1, dir) = dm(ispn_offset + m1, ispn_offset + m2);
+                    for (int m2 = 0; m2 < lmax_at; m2++) {
+                        for (int m1 = 0; m1 < lmax_at; m1++) {
+                            dn_(m1, m2, ispn, ia1, dir) = dm(ispn_offset + m1, ispn_offset + m2) * kp.weight();
                         }
                     }
                 }
@@ -202,8 +202,7 @@ void Hubbard_potential::compute_occupancies_derivatives(K_point& kp,
     }
 }
 
-void Hubbard_potential::compute_occupancies_stress_derivatives(
-                                                               K_point& kp,
+void Hubbard_potential::compute_occupancies_stress_derivatives(K_point& kp,
                                                                Beta_projectors_strain_deriv& bp_grad_,
                                                                Q_operator<double_complex>& q_op, // Compensnation operator or overlap operator
                                                                mdarray<double_complex, 5>& dn_)  // derivative of the occupation number compared to displacement of atom aton_id
@@ -417,8 +416,11 @@ void Hubbard_potential::compute_occupancies_stress_derivatives(
     }                 // mu
 }
 
-void Hubbard_potential::compute_gradient_strain_wavefunctions(
-                                                              K_point& kp__, Wave_functions& dphi, const mdarray<double, 2>& rlm_g, const mdarray<double, 3>& rlm_dg, const int mu, const int nu)
+void Hubbard_potential::compute_gradient_strain_wavefunctions(K_point& kp__,
+                                                              Wave_functions& dphi,
+                                                              const mdarray<double, 2>& rlm_g,
+                                                              const mdarray<double, 3>& rlm_dg,
+                                                              const int mu, const int nu)
 {
     //  #pragma omp parallel for schedule(static)
     for (int igkloc = 0; igkloc < kp__.num_gkvec_loc(); igkloc++) {
@@ -449,7 +451,7 @@ void Hubbard_potential::compute_gradient_strain_wavefunctions(
 
                         if (gvs[0] < 1e-10) {
                             if (l == 0) {
-                                auto d1                                           = ri_values[atom_type.id()][i] * p * y00;
+                                auto d1 = ri_values[atom_type.id()][i] * p * y00;
                                 dphi.pw_coeffs(0).prime(igkloc, this->offset[ia]) = -z * d1;
                             } else {
                                 for (int m = -l; m <= l; m++) {
