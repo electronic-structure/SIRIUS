@@ -10,8 +10,8 @@ CXXEND = `$(PYTHON)-config --extension-suffix`
 all: py_sirius
 
 py_sirius: py_sirius.cpp
-	 $(CXX) $(CXXFLAGS) $(CXX_OPT) -std=c++14 $(INCLUDE) $< $(LIB_SIRIUS) $(LIBS) -o $@$(CXXEND)
+	 $(CXX) $(CXXFLAGS) $(CXX_OPT) -std=c++14 $(INCLUDE) $< $(LIB_SIRIUS) $(LIBS) -o sirius/$@$(CXXEND)
 
 .PHONY: clean
 clean:
-	rm -f py_sirius$(CXXEND)
+	rm -f sirius/py_sirius$(CXXEND)
