@@ -564,7 +564,7 @@ inline int Band::diag_pseudo_potential_davidson(K_point*       kp__,
             evp_work_count() += std::pow(static_cast<double>(N) / num_bands, 3);
 
             if (ctx_.control().verbosity_ >= 2 && kp__->comm().rank() == 0) {
-                DUMP("step: %i, current subspace size: %i, maximum subspace size: %i", k, N, num_phi);
+                printf("step: %i, current subspace size: %i, maximum subspace size: %i\n", k, N, num_phi);
                 if (ctx_.control().verbosity_ >= 4) {
                     for (int i = 0; i < num_bands; i++) {
                         printf("eval[%i]=%20.16f, diff=%20.16f, occ=%20.16f\n", i, eval[i], std::abs(eval[i] - eval_old[i]),
