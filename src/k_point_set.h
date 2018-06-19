@@ -43,322 +43,336 @@ struct kq
 /// Set of k-points.
 class K_point_set
 {
-    private:
+  private:
+    Simulation_context& ctx_;
 
-        Simulation_context& ctx_;
+    std::vector<std::unique_ptr<K_point>> kpoints_;
 
-        std::vector<std::unique_ptr<K_point>> kpoints_;
+    splindex<chunk> spl_num_kpoints_;
 
-        splindex<chunk> spl_num_kpoints_;
+    double energy_fermi_{0};
 
-        double energy_fermi_{0};
+    double band_gap_{0};
 
-        double band_gap_{0};
+    Unit_cell& unit_cell_;
 
-        Unit_cell& unit_cell_;
+    K_point_set(K_point_set& src) = delete;
 
-        K_point_set(K_point_set& src) = delete;
+    void create_k_mesh(vector3d<int> k_grid__,
+                       vector3d<int> k_shift__,
+                       int           use_symmetry__)
+    {
+        PROFILE("sirius::K_point_set::create_k_mesh");
 
-    public:
+        int                 nk;
+        mdarray<double, 2>  kp;
+        std::vector<double> wk;
+        if (use_symmetry__) {
+            nk = unit_cell_.symmetry().get_irreducible_reciprocal_mesh(k_grid__, k_shift__, kp, wk);
+        } else {
+            nk = k_grid__[0] * k_grid__[1] * k_grid__[2];
+            wk = std::vector<double>(nk, 1.0 / nk);
+            kp = mdarray<double, 2>(3, nk);
 
-        K_point_set(Simulation_context& ctx__)
-            : ctx_(ctx__)
-            , unit_cell_(ctx__.unit_cell())
-        {
-            PROFILE("sirius::K_point_set::K_point_set");
-        }
-
-        K_point_set(Simulation_context& ctx__,
-                    vector3d<int> k_grid__,
-                    vector3d<int> k_shift__,
-                    int use_symmetry__)
-            : ctx_(ctx__)
-            , unit_cell_(ctx__.unit_cell())
-        {
-            PROFILE("sirius::K_point_set::K_point_set");
-
-            int nk;
-            mdarray<double, 2> kp;
-            std::vector<double> wk;
-            if (use_symmetry__) {
-                nk = unit_cell_.symmetry().get_irreducible_reciprocal_mesh(k_grid__, k_shift__, kp, wk);
-            } else {
-                nk = k_grid__[0] * k_grid__[1] * k_grid__[2];
-                wk = std::vector<double>(nk, 1.0 / nk);
-                kp = mdarray<double, 2>(3, nk);
-
-                int ik = 0;
-                for (int i0 = 0; i0 < k_grid__[0]; i0++) {
-                    for (int i1 = 0; i1 < k_grid__[1]; i1++) {
-                        for (int i2 = 0; i2 < k_grid__[2]; i2++) {
-                            kp(0, ik) = double(i0 + k_shift__[0] / 2.0) / k_grid__[0];
-                            kp(1, ik) = double(i1 + k_shift__[1] / 2.0) / k_grid__[1];
-                            kp(2, ik) = double(i2 + k_shift__[2] / 2.0) / k_grid__[2];
-                            ik++;
-                        }
+            int ik = 0;
+            for (int i0 = 0; i0 < k_grid__[0]; i0++) {
+                for (int i1 = 0; i1 < k_grid__[1]; i1++) {
+                    for (int i2 = 0; i2 < k_grid__[2]; i2++) {
+                        kp(0, ik) = double(i0 + k_shift__[0] / 2.0) / k_grid__[0];
+                        kp(1, ik) = double(i1 + k_shift__[1] / 2.0) / k_grid__[1];
+                        kp(2, ik) = double(i2 + k_shift__[2] / 2.0) / k_grid__[2];
+                        ik++;
                     }
                 }
             }
-
-            //if (use_symmetry__)
-            //{
-            //    mdarray<int, 2> kmap(parameters_.unit_cell()->symmetry()->num_sym_op(), nk);
-            //    for (int ik = 0; ik < nk; ik++)
-            //    {
-            //        for (int isym = 0; isym < parameters_.unit_cell()->symmetry()->num_sym_op(); isym++)
-            //        {
-            //            auto vk_rot = matrix3d<double>(transpose(parameters_.unit_cell()->symmetry()->rot_mtrx(isym))) *
-            //                          vector3d<double>(vk(0, ik), vk(1, ik), vk(2, ik));
-            //            for (int x = 0; x < 3; x++)
-            //            {
-            //                if (vk_rot[x] < 0) vk_rot[x] += 1;
-            //                if (vk_rot[x] < 0 || vk_rot[x] >= 1) TERMINATE("wrong rotated k-point");
-            //            }
-
-            //            for (int jk = 0; jk < nk; jk++)
-            //            {
-            //                if (std::abs(vk_rot[0] - vk(0, jk)) < 1e-10 &&
-            //                    std::abs(vk_rot[1] - vk(1, jk)) < 1e-10 &&
-            //                    std::abs(vk_rot[2] - vk(2, jk)) < 1e-10)
-            //                {
-            //                    kmap(isym, ik) = jk;
-            //                }
-            //            }
-            //        }
-            //    }
-
-            //    //== std::cout << "sym.table" << std::endl;
-            //    //== for (int isym = 0; isym < parameters_.unit_cell()->symmetry().num_sym_op(); isym++)
-            //    //== {
-            //    //==     printf("sym: %2i, ", isym);
-            //    //==     for (int ik = 0; ik < nk; ik++) printf(" %2i", kmap(isym, ik));
-            //    //==     printf("\n");
-            //    //== }
-
-            //    std::vector<int> flag(nk, 1);
-            //    for (int ik = 0; ik < nk; ik++)
-            //    {
-            //        if (flag[ik])
-            //        {
-            //            int ndeg = 0;
-            //            for (int isym = 0; isym < parameters_.unit_cell()->symmetry()->num_sym_op(); isym++)
-            //            {
-            //                if (flag[kmap(isym, ik)])
-            //                {
-            //                    flag[kmap(isym, ik)] = 0;
-            //                    ndeg++;
-            //                }
-            //            }
-            //            add_kpoint(&vk(0, ik), double(ndeg) / nk);
-            //        }
-            //    }
-            //}
-            //else
-            //{
-            //    for (int ik = 0; ik < nk; ik++) add_kpoint(&vk(0, ik), wk[ik]);
-            //}
-
-            for (int ik = 0; ik < nk; ik++) {
-                add_kpoint(&kp(0, ik), wk[ik]);
-            }
-            initialize();
         }
 
-        K_point_set(Simulation_context& ctx__, std::vector<vector3d<double>> vec__)
-                  : ctx_(ctx__)
-                  , unit_cell_(ctx__.unit_cell())
-        {
-            PROFILE("sirius::K_point_set::K_point_set");
-            for (auto& v: vec__) {
-                add_kpoint(&v[0], 1.0);
-            }
-            initialize();
-        }
-
-        /// Initialize the k-point set
-        void initialize(std::vector<int> counts)
-        {
-            /* distribute k-points along the 1-st dimension of the MPI grid */
-            if (counts.empty()) {
-                splindex<block> spl_tmp(num_kpoints(), comm().size(), comm().rank());
-                spl_num_kpoints_ = splindex<chunk>(num_kpoints(), comm().size(), comm().rank(), spl_tmp.counts());
-            } else {
-                spl_num_kpoints_ = splindex<chunk>(num_kpoints(), comm().size(), comm().rank(), counts);
-            }
-
-            for (int ikloc = 0; ikloc < spl_num_kpoints_.local_size(); ikloc++) {
-                kpoints_[spl_num_kpoints_[ikloc]]->initialize();
-            }
-
-            if (ctx_.control().verbosity_ > 0) {
-                print_info();
-            }
-
-            if (ctx_.comm().rank() == 0 && ctx_.control().print_memory_usage_) {
-                MEMORY_USAGE_INFO();
-            }
-        }
-
-        void initialize()
-        {
-            initialize(std::vector<int>());
-        }
-
-        /// Get a list of band energies for a given k-point index.
-        std::vector<double> get_band_energies(int ik__, int ispn__)
-        {
-            std::vector<double> bnd_e(ctx_.num_bands());
-            for (int j = 0; j < ctx_.num_bands(); j++) {
-                bnd_e[j] = (*this)[ik__]->band_energy(j, ispn__);
-            }
-            return std::move(bnd_e);
-        }
-
-        /// Find Fermi energy and band occupation numbers
-        void find_band_occupancies();
-
-        /// Return sum of valence eigen-values
-        double valence_eval_sum()
-        {
-            double eval_sum{0};
-
-            for (int ik = 0; ik < num_kpoints(); ik++) {
-                double wk = kpoints_[ik]->weight();
-                for (int j = 0; j < ctx_.num_bands(); j++) {
-                    for (int ispn = 0; ispn < ctx_.num_spin_dims(); ispn++) {
-                        eval_sum += wk * kpoints_[ik]->band_energy(j, ispn) * kpoints_[ik]->band_occupancy(j, ispn);
-                    }
-                }
-            }
-
-            return eval_sum;
-        }
-
-        void print_info();
-
-        void sync_band_energies();
-
-        void save();
-
-        void load();
-
-        int max_num_gkvec()
-        {
-            int max_num_gkvec{0};
-            for (int ikloc = 0; ikloc < spl_num_kpoints_.local_size(); ikloc++) {
-                auto ik = spl_num_kpoints_[ikloc];
-                max_num_gkvec = std::max(max_num_gkvec, kpoints_[ik]->num_gkvec());
-            }
-            comm().allreduce<int, mpi_op_t::max>(&max_num_gkvec, 1);
-            return max_num_gkvec;
-        }
-
-        void add_kpoint(double const* vk__, double weight__)
-        {
-            PROFILE("sirius::K_point_set::add_kpoint");
-            kpoints_.push_back(std::unique_ptr<K_point>(new K_point(ctx_, vk__, weight__)));
-        }
-
-        void add_kpoints(mdarray<double, 2> const& kpoints__, double const* weights__)
-        {
-            PROFILE("sirius::K_point_set::add_kpoints");
-            for (size_t ik = 0; ik < kpoints__.size(1); ik++) {
-                add_kpoint(&kpoints__(0, ik), weights__[ik]);
-            }
-        }
-
-        inline K_point* operator[](int i)
-        {
-            assert(i >= 0 && i < (int)kpoints_.size());
-
-            return kpoints_[i].get();
-        }
-
-        inline int num_kpoints() const
-        {
-            return static_cast<int>(kpoints_.size());
-        }
-
-        inline splindex<chunk> const& spl_num_kpoints() const
-        {
-            return spl_num_kpoints_;
-        }
-
-        inline int spl_num_kpoints(int ikloc) const
-        {
-            return spl_num_kpoints_[ikloc];
-        }
-
-        inline double energy_fermi() const
-        {
-            return energy_fermi_;
-        }
-
-        inline double band_gap() const
-        {
-            return band_gap_;
-        }
-
-        /// Find index of k-point.
-        inline int find_kpoint(vector3d<double> vk__)
-        {
-            for (int ik = 0; ik < num_kpoints(); ik++) {
-                if ((kpoints_[ik]->vk() - vk__).length() < 1e-12) {
-                    return ik;
-                }
-            }
-            return -1;
-        }
-
-        //void generate_Gq_matrix_elements(vector3d<double> vq)
+        //if (use_symmetry__)
         //{
-        //    std::vector<kq> kpq(num_kpoints());
-        //    for (int ik = 0; ik < num_kpoints(); ik++)
+        //    mdarray<int, 2> kmap(parameters_.unit_cell()->symmetry()->num_sym_op(), nk);
+        //    for (int ik = 0; ik < nk; ik++)
         //    {
-        //        // reduce k+q to first BZ: k+q=k"+K; k"=k+q-K
-        //        std::pair< vector3d<double>, vector3d<int> > vkqr = reduce_coordinates(kpoints_[ik]->vk() + vq);
-        //
-        //        if ((kpq[ik].jk = find_kpoint(vkqr.first)) == -1)
-        //            TERMINATE("index of reduced k+q point is not found");
+        //        for (int isym = 0; isym < parameters_.unit_cell()->symmetry()->num_sym_op(); isym++)
+        //        {
+        //            auto vk_rot = matrix3d<double>(transpose(parameters_.unit_cell()->symmetry()->rot_mtrx(isym))) *
+        //                          vector3d<double>(vk(0, ik), vk(1, ik), vk(2, ik));
+        //            for (int x = 0; x < 3; x++)
+        //            {
+        //                if (vk_rot[x] < 0) vk_rot[x] += 1;
+        //                if (vk_rot[x] < 0 || vk_rot[x] >= 1) TERMINATE("wrong rotated k-point");
+        //            }
 
-        //        kpq[ik].K = vkqr.second;
+        //            for (int jk = 0; jk < nk; jk++)
+        //            {
+        //                if (std::abs(vk_rot[0] - vk(0, jk)) < 1e-10 &&
+        //                    std::abs(vk_rot[1] - vk(1, jk)) < 1e-10 &&
+        //                    std::abs(vk_rot[2] - vk(2, jk)) < 1e-10)
+        //                {
+        //                    kmap(isym, ik) = jk;
+        //                }
+        //            }
+        //        }
+        //    }
+
+        //    //== std::cout << "sym.table" << std::endl;
+        //    //== for (int isym = 0; isym < parameters_.unit_cell()->symmetry().num_sym_op(); isym++)
+        //    //== {
+        //    //==     printf("sym: %2i, ", isym);
+        //    //==     for (int ik = 0; ik < nk; ik++) printf(" %2i", kmap(isym, ik));
+        //    //==     printf("\n");
+        //    //== }
+
+        //    std::vector<int> flag(nk, 1);
+        //    for (int ik = 0; ik < nk; ik++)
+        //    {
+        //        if (flag[ik])
+        //        {
+        //            int ndeg = 0;
+        //            for (int isym = 0; isym < parameters_.unit_cell()->symmetry()->num_sym_op(); isym++)
+        //            {
+        //                if (flag[kmap(isym, ik)])
+        //                {
+        //                    flag[kmap(isym, ik)] = 0;
+        //                    ndeg++;
+        //                }
+        //            }
+        //            add_kpoint(&vk(0, ik), double(ndeg) / nk);
+        //        }
         //    }
         //}
+        //else
+        //{
+        //    for (int ik = 0; ik < nk; ik++) add_kpoint(&vk(0, ik), wk[ik]);
+        //}
 
-        inline Communicator const& comm() const
-        {
-            return ctx_.comm_k();
+        for (int ik = 0; ik < nk; ik++) {
+            add_kpoint(&kp(0, ik), wk[ik]);
+        }
+        initialize();
+    }
+
+  public:
+    K_point_set(Simulation_context& ctx__)
+        : ctx_(ctx__)
+        , unit_cell_(ctx__.unit_cell())
+    {
+    }
+
+    K_point_set(Simulation_context& ctx__,
+                std::vector<int>    k_grid__,
+                std::vector<int>    k_shift__,
+                int                 use_symmetry__)
+        : ctx_(ctx__)
+        , unit_cell_(ctx__.unit_cell())
+    {
+        create_k_mesh(k_grid__, k_shift__, use_symmetry__);
+    }
+
+    K_point_set(Simulation_context& ctx__,
+                vector3d<int>       k_grid__,
+                vector3d<int>       k_shift__,
+                int                 use_symmetry__)
+        : ctx_(ctx__)
+        , unit_cell_(ctx__.unit_cell())
+    {
+        create_k_mesh(k_grid__, k_shift__, use_symmetry__);
+    }
+
+    K_point_set(Simulation_context& ctx__, std::vector<vector3d<double>> vec__)
+        : ctx_(ctx__)
+        , unit_cell_(ctx__.unit_cell())
+    {
+        for (auto& v : vec__) {
+            add_kpoint(&v[0], 1.0);
+        }
+        initialize();
+    }
+
+    /// Initialize the k-point set
+    void initialize(std::vector<int> counts)
+    {
+        PROFILE("sirius::K_point_set::initialize");
+        /* distribute k-points along the 1-st dimension of the MPI grid */
+        if (counts.empty()) {
+            splindex<block> spl_tmp(num_kpoints(), comm().size(), comm().rank());
+            spl_num_kpoints_ = splindex<chunk>(num_kpoints(), comm().size(), comm().rank(), spl_tmp.counts());
+        } else {
+            spl_num_kpoints_ = splindex<chunk>(num_kpoints(), comm().size(), comm().rank(), counts);
         }
 
-        inline Simulation_context& ctx()
-        {
-            return ctx_;
+        for (int ikloc = 0; ikloc < spl_num_kpoints_.local_size(); ikloc++) {
+            kpoints_[spl_num_kpoints_[ikloc]]->initialize();
         }
 
-        /// Send G+k vectors of k-point jk to a given rank.
-        /** Other ranks receive an empty Gvec placeholder */
-        inline Gvec send_recv_gkvec(int jk__, int rank__)
-        {
-            /* rank in the k-point communicator */
-            int my_rank = comm().rank();
-            
-            /* rank that stores jk */
-            int jrank = spl_num_kpoints().local_rank(jk__);
+        if (ctx_.control().verbosity_ > 0) {
+            print_info();
+        }
 
-            /* placeholder for G+k vectors of kpoint jk */
-            Gvec gkvec(ctx_.comm_band());
+        if (ctx_.comm().rank() == 0 && ctx_.control().print_memory_usage_) {
+            MEMORY_USAGE_INFO();
+        }
+    }
 
-            /* if this rank stores the k-point, then send it */
-            if (jrank == my_rank) {
-                auto kp = kpoints_[jk__].get();
-                kp->gkvec().send_recv(comm(), jrank, rank__, gkvec);
+    void initialize()
+    {
+        initialize(std::vector<int>());
+    }
+
+    /// Get a list of band energies for a given k-point index.
+    std::vector<double> get_band_energies(int ik__, int ispn__)
+    {
+        std::vector<double> bnd_e(ctx_.num_bands());
+        for (int j = 0; j < ctx_.num_bands(); j++) {
+            bnd_e[j] = (*this)[ik__]->band_energy(j, ispn__);
+        }
+        return std::move(bnd_e);
+    }
+
+    /// Find Fermi energy and band occupation numbers
+    void find_band_occupancies();
+
+    /// Return sum of valence eigen-values
+    double valence_eval_sum()
+    {
+        double eval_sum{0};
+
+        for (int ik = 0; ik < num_kpoints(); ik++) {
+            double wk = kpoints_[ik]->weight();
+            for (int j = 0; j < ctx_.num_bands(); j++) {
+                for (int ispn = 0; ispn < ctx_.num_spin_dims(); ispn++) {
+                    eval_sum += wk * kpoints_[ik]->band_energy(j, ispn) * kpoints_[ik]->band_occupancy(j, ispn);
+                }
             }
-            /* this rank receives the k-point */
-            if (rank__ == my_rank) {
-                gkvec.send_recv(comm(), jrank, rank__, gkvec);
-            }
-            return std::move(gkvec);
         }
+
+        return eval_sum;
+    }
+
+    void print_info();
+
+    void sync_band_energies();
+
+    void save();
+
+    void load();
+
+    int max_num_gkvec()
+    {
+        int max_num_gkvec{0};
+        for (int ikloc = 0; ikloc < spl_num_kpoints_.local_size(); ikloc++) {
+            auto ik       = spl_num_kpoints_[ikloc];
+            max_num_gkvec = std::max(max_num_gkvec, kpoints_[ik]->num_gkvec());
+        }
+        comm().allreduce<int, mpi_op_t::max>(&max_num_gkvec, 1);
+        return max_num_gkvec;
+    }
+
+    void add_kpoint(double const* vk__, double weight__)
+    {
+        PROFILE("sirius::K_point_set::add_kpoint");
+        kpoints_.push_back(std::unique_ptr<K_point>(new K_point(ctx_, vk__, weight__)));
+    }
+
+    void add_kpoints(mdarray<double, 2> const& kpoints__, double const* weights__)
+    {
+        PROFILE("sirius::K_point_set::add_kpoints");
+        for (size_t ik = 0; ik < kpoints__.size(1); ik++) {
+            add_kpoint(&kpoints__(0, ik), weights__[ik]);
+        }
+    }
+
+    inline K_point* operator[](int i)
+    {
+        assert(i >= 0 && i < (int)kpoints_.size());
+
+        return kpoints_[i].get();
+    }
+
+    inline int num_kpoints() const
+    {
+        return static_cast<int>(kpoints_.size());
+    }
+
+    inline splindex<chunk> const& spl_num_kpoints() const
+    {
+        return spl_num_kpoints_;
+    }
+
+    inline int spl_num_kpoints(int ikloc) const
+    {
+        return spl_num_kpoints_[ikloc];
+    }
+
+    inline double energy_fermi() const
+    {
+        return energy_fermi_;
+    }
+
+    inline double band_gap() const
+    {
+        return band_gap_;
+    }
+
+    /// Find index of k-point.
+    inline int find_kpoint(vector3d<double> vk__)
+    {
+        for (int ik = 0; ik < num_kpoints(); ik++) {
+            if ((kpoints_[ik]->vk() - vk__).length() < 1e-12) {
+                return ik;
+            }
+        }
+        return -1;
+    }
+
+    //void generate_Gq_matrix_elements(vector3d<double> vq)
+    //{
+    //    std::vector<kq> kpq(num_kpoints());
+    //    for (int ik = 0; ik < num_kpoints(); ik++)
+    //    {
+    //        // reduce k+q to first BZ: k+q=k"+K; k"=k+q-K
+    //        std::pair< vector3d<double>, vector3d<int> > vkqr = reduce_coordinates(kpoints_[ik]->vk() + vq);
+    //
+    //        if ((kpq[ik].jk = find_kpoint(vkqr.first)) == -1)
+    //            TERMINATE("index of reduced k+q point is not found");
+
+    //        kpq[ik].K = vkqr.second;
+    //    }
+    //}
+
+    inline Communicator const& comm() const
+    {
+        return ctx_.comm_k();
+    }
+
+    inline Simulation_context& ctx()
+    {
+        return ctx_;
+    }
+
+    /// Send G+k vectors of k-point jk to a given rank.
+    /** Other ranks receive an empty Gvec placeholder */
+    inline Gvec send_recv_gkvec(int jk__, int rank__)
+    {
+        /* rank in the k-point communicator */
+        int my_rank = comm().rank();
+
+        /* rank that stores jk */
+        int jrank = spl_num_kpoints().local_rank(jk__);
+
+        /* placeholder for G+k vectors of kpoint jk */
+        Gvec gkvec(ctx_.comm_band());
+
+        /* if this rank stores the k-point, then send it */
+        if (jrank == my_rank) {
+            auto kp = kpoints_[jk__].get();
+            kp->gkvec().send_recv(comm(), jrank, rank__, gkvec);
+        }
+        /* this rank receives the k-point */
+        if (rank__ == my_rank) {
+            gkvec.send_recv(comm(), jrank, rank__, gkvec);
+        }
+        return std::move(gkvec);
+    }
 };
 
 inline void K_point_set::sync_band_energies()
@@ -420,7 +434,7 @@ inline void K_point_set::find_band_occupancies()
         }
 
         sp = s;
-        s = (ne > unit_cell_.num_valence_electrons()) ? -1 : 1;
+        s  = (ne > unit_cell_.num_valence_electrons()) ? -1 : 1;
         /* reduce de step if we change the direction, otherwise increase the step */
         de = (s != sp) ? (-de * 0.5) : (de * 1.25);
 
@@ -461,15 +475,15 @@ inline void K_point_set::find_band_occupancies()
         (std::abs(nve - unit_cell_.num_valence_electrons()) < 1e-12 && nve % 2 == 0)) {
         /* find band gap */
         std::vector<std::pair<double, double>> eband;
-        std::pair<double, double> eminmax;
+        std::pair<double, double>              eminmax;
 
         for (int ispn = 0; ispn < ctx_.num_spin_dims(); ispn++) {
             for (int j = 0; j < ctx_.num_bands(); j++) {
-                eminmax.first = 1e10;
+                eminmax.first  = 1e10;
                 eminmax.second = -1e10;
 
                 for (int ik = 0; ik < num_kpoints(); ik++) {
-                    eminmax.first = std::min(eminmax.first, kpoints_[ik]->band_energy(j, ispn));
+                    eminmax.first  = std::min(eminmax.first, kpoints_[ik]->band_energy(j, ispn));
                     eminmax.second = std::max(eminmax.second, kpoints_[ik]->band_energy(j, ispn));
                 }
 
@@ -720,6 +734,6 @@ inline void K_point_set::load()
 //==         band_gap_ = gap;
 //==     }
 //== }
-};
+}; // namespace sirius
 
 #endif // __K_POINT_SET_H__

@@ -2276,18 +2276,18 @@ void sirius_create_storage_file()
 //     kset_list[*kset_id]->generate_Gq_matrix_elements(vector3d<double>(vq[0], vq[1], vq[2]));
 //}
 
-void sirius_density_mixer_initialize(void)
-{
-    dft_ground_state->density().mixer_init();
-}
-
-void sirius_mix_density(double* rms)
-{
-    *rms = dft_ground_state->density().mix();
-    dft_ground_state->density().fft_transform(1);
-    sim_ctx->comm().bcast(rms, 1, 0);
-}
-
+//void sirius_density_mixer_initialize(void)
+//{
+//    dft_ground_state->density().mixer_init(sim_ctx->mixer_input());
+//}
+//
+//void sirius_mix_density(double* rms)
+//{
+//    *rms = dft_ground_state->density().mix();
+//    dft_ground_state->density().fft_transform(1);
+//    sim_ctx->comm().bcast(rms, 1, 0);
+//}
+//
 /// Set ionic part of D-operator matrix.
 void sirius_set_atom_type_dion(ftn_char    label__,
                                ftn_int*    num_beta__,

@@ -50,16 +50,20 @@ inline void Potential::poisson_sum_G(int lmmax__,
         int na = unit_cell_.atom_type(iat).num_atoms();
         ctx_.generate_phase_factors(iat, phase_factors);
         utils::timer t1("sirius::Potential::poisson_sum_G|zm");
-        #pragma omp parallel for schedule(static)
-        for (int igloc = 0; igloc < ngv_loc; igloc++) {
-            int ig = ctx_.gvec().offset() + igloc;
-            std::vector<double> fl_tmp(lmax + 1);
-            for (int l = 0; l <= lmax; l++) {
-                fl_tmp[l] = fourpi * fl__(l, iat, ctx_.gvec().shell(ig));
-            }
-            for (int lm = 0; lm < lmmax__; lm++) {
-                int l = l_by_lm_[lm];
-                zm(lm, igloc) = fpw__[igloc] * zilm_[lm] * fl_tmp[l] * std::conj(gvec_ylm_(lm, igloc));
+        #pragma omp parallel
+        {
+            std::vector<double_complex> fl_tmp(lmax + 1);
+            #pragma omp for schedule(static)
+            for (int igloc = 0; igloc < ngv_loc; igloc++) {
+                int ig = ctx_.gvec().offset() + igloc;
+                int igs = ctx_.gvec().shell(ig);
+                for (int l = 0; l <= lmax; l++) {
+                    fl_tmp[l] = fourpi * fl__(l, iat, igs) * zil_[l] * fpw__[igloc];
+                }
+                for (int lm = 0; lm < lmmax__; lm++) {
+                    int l = l_by_lm_[lm];
+                    zm(lm, igloc) = fl_tmp[l] * std::conj(gvec_ylm_(lm, igloc));
+                }
             }
         }
         t1.stop();
