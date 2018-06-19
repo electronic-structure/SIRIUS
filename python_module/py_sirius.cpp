@@ -129,13 +129,13 @@ py::class_<Simulation_context, Simulation_context_base>(m, "Simulation_context")
     .def("unit_cell", (Unit_cell& (Simulation_context::*)()) &Simulation_context::unit_cell, py::return_value_policy::reference);
 
 py::class_<Unit_cell>(m, "Unit_cell")
-    .def("add_atom", (void (Unit_cell::*)(const std::string, vector3d<double>)) &Unit_cell::add_atom)
-    .def("get_symmetry", &Unit_cell::get_symmetry)
+    .def("add_atom_type",              static_cast<void (Unit_cell::*)(const std::string, const std::string)>(&Unit_cell::add_atom_type))
+    .def("add_atom",                   static_cast<void (Unit_cell::*)(const std::string, std::vector<double>)>(&Unit_cell::add_atom))
+    .def("atom_type",                  static_cast<Atom_type& (Unit_cell::*)(int)>(&Unit_cell::atom_type), py::return_value_policy::reference)
+    .def("set_lattice_vectors",        static_cast<void (Unit_cell::*)(matrix3d<double>)>(&Unit_cell::set_lattice_vectors))
+    .def("get_symmetry",               &Unit_cell::get_symmetry)
     .def("reciprocal_lattice_vectors", &Unit_cell::reciprocal_lattice_vectors)
-    .def("add_atom_type",             static_cast<void (Unit_cell::*)(const std::string, const std::string)>(&Unit_cell::add_atom_type))
-    .def("atom_type",                 static_cast<Atom_type& (Unit_cell::*)(int)>(&Unit_cell::atom_type), py::return_value_policy::reference)
-    .def("set_lattice_vectors",       static_cast<void (Unit_cell::*)(matrix3d<double>)>(&Unit_cell::set_lattice_vectors))
-    .def("generate_radial_functions", &Unit_cell::generate_radial_functions);
+    .def("generate_radial_functions",  &Unit_cell::generate_radial_functions);
 
 py::class_<z_column_descriptor> (m, "z_column_descriptor")
     .def_readwrite("x", &z_column_descriptor::x)
@@ -200,9 +200,15 @@ py::class_<vector3d<double>>(m, "vector3d_double")
 py::class_<matrix3d<double>>(m, "matrix3d")
     .def(py::init<std::vector<std::vector<double>>>())
     .def(py::init<>())
-    .def("__call__", [](const matrix3d<double> &obj, int x, int y){return obj(x,y);})
+    .def("__call__", [](const matrix3d<double> &obj, int x, int y)
+                     {
+                         return obj(x,y);
+                     })
     .def(py::self * py::self)
-    .def("__getitem__", [](const matrix3d<double> &obj, int x, int y){return obj(x,y);})
+    .def("__getitem__", [](const matrix3d<double> &obj, int x, int y)
+                        {
+                            return obj(x,y);
+                        })
     .def("__mul__", [](const matrix3d<double> & obj, vector3d<double> const& b)
                     {
                         vector3d<double> res = obj * b;
