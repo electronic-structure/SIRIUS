@@ -545,8 +545,8 @@ inline json DFT_ground_state::find(double potential_tol, double energy_tol, int 
         potential_.mixer_init(ctx_.mixer_input());
         if (mix_density_and_potential) {
             Mixer_input i1 = ctx_.mixer_input();
-            i1.type_ = "linear";
-            i1.beta_ = 0.5;
+            //i1.type_ = "linear";
+            //i1.beta_ = 0.5;
             density_.mixer_init(i1);
         }
     } else {
