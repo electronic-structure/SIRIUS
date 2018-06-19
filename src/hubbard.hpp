@@ -289,6 +289,13 @@ public:
     // }
 private:
     void calculate_initial_occupation_numbers();
+    void compute_occupancies(K_point& kp,
+                             dmatrix<double_complex> &Phi_S_Psi,
+                             dmatrix<double_complex> &dPhi_S_Psi,
+                             Wave_functions& dphi,
+                             mdarray<double_complex, 5>& dn_,
+                             matrix<double_complex> &dm,
+                             const int index);
 
     inline int natural_lm_to_qe(int m, int l)
     {
@@ -348,6 +355,13 @@ private:
         // compute the number of orbitals
         this->number_of_hubbard_orbitals_ = counter;
     }
+
+    void Apply_S_operator(K_point &kp,
+                          Q_operator<double_complex>& q_op,
+                          Wave_functions& phi,
+                          Wave_functions& ophi,
+                          const int idx0,
+                          const int num_phi);
 };
     #include "Hubbard/hubbard_generate_atomic_orbitals.hpp"
     #include "Hubbard/hubbard_potential_energy.hpp"
