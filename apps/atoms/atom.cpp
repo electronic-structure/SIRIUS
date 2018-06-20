@@ -68,7 +68,13 @@ class Free_atom : public sirius::Atom_type
             vrho[i] = 0;
         }
 
-        sirius::Mixer<double>* mixer = new sirius::Broyden1<double>(0, np, 12, 0.8, Communicator::self());
+        auto mixer = std::make_shared<sirius::Broyden1<double>>(0,   // shared vector size
+                                                                np,  // local vector size
+                                                                12,  // max history
+                                                                0.8, // beta
+                                                                0.1, // beta0
+                                                                1.0, // beta scaling factor
+                                                                Communicator::self());
         for (int i = 0; i < np; i++) {
             mixer->input_local(i, vrho[i]);
         }
