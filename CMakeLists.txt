@@ -166,5 +166,5 @@ if(BUILD_TESTS)
   add_subdirectory(apps/unit_tests)
 endif(BUILD_TESTS)
 # add_subdirectory(apps/utils) # not compiling..
-# add_subdirectory(python_module)
+add_subdirectory(python_module)
 add_subdirectory(doc)

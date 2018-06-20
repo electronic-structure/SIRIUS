@@ -85,7 +85,7 @@ std::string show_vec(const vector3d<T>& vec)
   return str;
 }
 
-PYBIND11_MODULE(py_sirius, m) {
+PYBIND11_MODULE(py_sirius, m){
 
 m.def("initialize", []()
                     {
