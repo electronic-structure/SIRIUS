@@ -27,10 +27,7 @@ if (NOT CMAKE_BUILD_TYPE)
   set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS "debug" "release" "relwithdebinfo")
 endif()
 
-# TODO: add_compile_options command not working, nvcc complains
-# add_compile_options("-Wall")
-# add_compile_options("-Wextra")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall")
 set(CMAKE_CXX_FLAGS_DEBUG "-O0 -g -ggdb -DDEBUG")
 set(CMAKE_CXX_FLAGS_RELEASE "-ftree-vectorize -O3 -DNDEBUG")
 set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-g -ggdb -O1 -DDEBUG")
