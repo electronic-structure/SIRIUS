@@ -35,6 +35,7 @@ class Field4D
 
     /// Default mixer.
     std::unique_ptr<Mixer<double>> mixer_{nullptr};
+
   protected:
     Simulation_context& ctx_;
 
@@ -167,6 +168,13 @@ class Field4D
         return *(components_[i]);
     }
 
+    void zero()
+    {
+        for (int i = 0; i < ctx_.num_mag_dims() + 1; i++) {
+            component(i).zero();
+        }
+    }
+
     void allocate()
     {
         for (int i = 0; i < ctx_.num_mag_dims() + 1; i++) {
@@ -249,7 +257,6 @@ class Field4D
     {
         return *mixer_;
     }
-
 };
 
 } // namespace sirius
