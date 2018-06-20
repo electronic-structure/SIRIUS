@@ -211,6 +211,11 @@ class DFT_ground_state
             }
         }
 
+        Simulation_context const& ctx() const
+        {
+            return ctx_;
+        }
+
         json find(double potential_tol, double energy_tol, int num_dft_iter, bool write_state);
 
         void print_info();

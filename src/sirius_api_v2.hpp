@@ -17,6 +17,32 @@ void sirius_finalize(bool const* call_mpi_fin__)
     sirius::finalize(*call_mpi_fin__);
 }
 
+/* @fortran begin function void sirius_start_timer      Start the timer.
+   @fortran argument in required string name            Timer label.
+   @fortran end */
+void sirius_start_timer(char const* name__)
+{
+    std::string name(name__);
+    if (!utils::timer::ftimers().count(name)) {
+        utils::timer::ftimers().insert(std::make_pair(name, utils::timer(name)));
+    } else {
+        std::stringstream s;
+        s << "timer " << name__ << " is already active";
+        TERMINATE(s);
+    }
+}
+
+/* @fortran begin function void sirius_stop_timer       Stop the running timer.
+   @fortran argument in required string name            Timer label.
+   @fortran end */
+void sirius_stop_timer(char const* name__)
+{
+    std::string name(name__);
+    if (utils::timer::ftimers().count(name)) {
+        utils::timer::ftimers().erase(name);
+    }
+}
+
 /* @fortran begin function bool sirius_context_initialized      Check if the simulation context is initialized. 
    @fortran argument in required void* handler                  Simulation context handler.
    @fortran end */
@@ -62,6 +88,9 @@ void sirius_import_parameters_v2(void* const* handler__,
    @fortran argument in optional double gk_cutoff    Cutoff for G+k-vectors.
    @fortran argument in optional double aw_cutoff    This is R_{mt} * gk_cutoff.
    @fortran argument in optional int auto_rmt        Set the automatic search of muffin-tin radii.
+   @fortran argument in optional bool gamma_point    True if this is a Gamma-point calculation.
+   @fortran argument in optional string valence_rel  Valence relativity treatment.
+   @fortran argument in optional string core_rel     Core relativity treatment.
    @fortran end */ 
 void sirius_set_parameters(void*  const* handler__,
                            int    const* lmax_apw__,
@@ -72,7 +101,10 @@ void sirius_set_parameters(void*  const* handler__,
                            double const* pw_cutoff__,
                            double const* gk_cutoff__,
                            double const* aw_cutoff__,
-                           int    const* auto_rmt__)
+                           int    const* auto_rmt__,
+                           bool   const* gamma_point__,
+                           char   const* valence_rel__,
+                           char   const* core_rel__)
 {
     GET_SIM_CTX(handler__);
     if (lmax_apw__ != nullptr) {
@@ -101,6 +133,15 @@ void sirius_set_parameters(void*  const* handler__,
     }
     if (auto_rmt__ != nullptr) {
         sim_ctx.set_auto_rmt(*auto_rmt__);
+    }
+    if (gamma_point__ != nullptr) {
+        sim_ctx.set_gamma_point(*gamma_point__);
+    }
+    if (valence_rel__ != nullptr) {
+        sim_ctx.set_valence_relativity(valence_rel__);
+    }
+    if (core_rel__ != nullptr) {
+        sim_ctx.set_core_relativity(core_rel__);
     }
 }
 
@@ -161,7 +202,7 @@ void sirius_set_periodic_function_ptr(void*  const* handler__,
         {"bx",   &dft.potential().component(2)},
         {"by",   &dft.potential().component(3)}
     };
-    
+
     sirius::Periodic_function<double>* f;
     try {
         f = func_map.at(label);
@@ -326,6 +367,113 @@ void sirius_add_atom_v2(void*  const* handler__,
         sim_ctx.unit_cell().add_atom(std::string(label__), position__, vector_field__);
     } else {
         sim_ctx.unit_cell().add_atom(std::string(label__), position__);
+    }
+}
+
+/* @fortran begin function void sirius_set_pw_coeffs_v2      Set plane-wave coefficients of a periodic function.
+   @fortran argument in  required void*   handler            Ground state handler.
+   @fortran argument in  required string  label              Label of the function.
+   @fortran argument in  required complex pw_coeffs          Local array of plane-wave coefficients.
+   @fortran argument in  optional int     ngv                Local number of G-vectors.
+   @fortran end */
+void sirius_set_pw_coeffs_v2(void*                const* handler__,
+                             char                 const* label__,
+                             std::complex<double> const* pw_coeffs__,
+                             int                  const* ngv__,
+                             int*                        gvl__,
+                             int                  const* comm__)
+{
+    PROFILE("sirius_api::sirius_set_pw_coeffs");
+
+    auto& gs = static_cast<utils::any_ptr*>(*handler__)->get<sirius::DFT_ground_state>();
+
+    std::string label(label__);
+
+    if (gs.ctx().full_potential()) {
+        if (label == "veff") {
+            gs.potential().set_veff_pw(pw_coeffs__);
+        } else if (label == "rm_inv") {
+            gs.potential().set_rm_inv_pw(pw_coeffs__);
+        } else if (label == "rm2_inv") {
+            gs.potential().set_rm2_inv_pw(pw_coeffs__);
+        } else {
+            TERMINATE("wrong label");
+        }
+    } else {
+        assert(ngv__ != nullptr);
+        assert(gvl__ != nullptr);
+        assert(comm__ != nullptr);
+
+        Communicator comm(MPI_Comm_f2c(*comm__));
+        mdarray<int, 2> gvec(gvl__, 3, *ngv__);
+
+        std::vector<double_complex> v(gs.ctx().gvec().num_gvec(), 0);
+        #pragma omp parallel for schedule(static)
+        for (int i = 0; i < *ngv__; i++) {
+            vector3d<int> G(gvec(0, i), gvec(1, i), gvec(2, i));
+            auto gvc = gs.ctx().unit_cell().reciprocal_lattice_vectors() * vector3d<double>(G[0], G[1], G[2]);
+            if (gvc.length() > gs.ctx().pw_cutoff()) {
+                continue;
+            }
+            int ig = gs.ctx().gvec().index_by_gvec(G);
+            if (ig >= 0) {
+                v[ig] = pw_coeffs__[i];
+            } else {
+                if (gs.ctx().gamma_point()) {
+                    ig = gs.ctx().gvec().index_by_gvec(G * (-1));
+                    if (ig == -1) {
+                        std::stringstream s;
+                        auto gvc = gs.ctx().unit_cell().reciprocal_lattice_vectors() * vector3d<double>(G[0], G[1], G[2]);
+                        s << "wrong index of G-vector" << std::endl
+                          << "input G-vector: " << G << " (length: " << gvc.length() << " [a.u.^-1])" << std::endl;
+                        TERMINATE(s);
+                    } else {
+                        v[ig] = std::conj(pw_coeffs__[i]);
+                    }
+                }
+            }
+        }
+        comm.allreduce(v.data(), gs.ctx().gvec().num_gvec());
+
+        // TODO: check if FFT transformation is necessary
+        if (label == "rho") {
+            gs.density().rho().scatter_f_pw(v);
+            gs.density().rho().fft_transform(1);
+        } else if (label == "magz") {
+            gs.density().magnetization(0).scatter_f_pw(v);
+            gs.density().magnetization(0).fft_transform(1);
+        } else if (label == "magx") {
+            gs.density().magnetization(1).scatter_f_pw(v);
+            gs.density().magnetization(1).fft_transform(1);
+        } else if (label == "magy") {
+            gs.density().magnetization(2).scatter_f_pw(v);
+            gs.density().magnetization(2).fft_transform(1);
+        } else if (label == "veff") {
+            gs.potential().effective_potential()->scatter_f_pw(v);
+            gs.potential().effective_potential()->fft_transform(1);
+        } else if (label == "bz") {
+            gs.potential().effective_magnetic_field(0)->scatter_f_pw(v);
+            gs.potential().effective_magnetic_field(0)->fft_transform(1);
+        } else if (label == "bx") {
+            gs.potential().effective_magnetic_field(1)->scatter_f_pw(v);
+            gs.potential().effective_magnetic_field(1)->fft_transform(1);
+        } else if (label == "by") {
+            gs.potential().effective_magnetic_field(2)->scatter_f_pw(v);
+            gs.potential().effective_magnetic_field(2)->fft_transform(1);
+        } else if (label == "vxc") {
+            gs.potential().xc_potential()->scatter_f_pw(v);
+            gs.potential().xc_potential()->fft_transform(1);
+        } else if (label == "vloc") {
+            gs.potential().local_potential().scatter_f_pw(v);
+            gs.potential().local_potential().fft_transform(1);
+        } else if (label == "dveff") {
+            gs.potential().dveff().scatter_f_pw(v);
+        } else {
+            std::stringstream s;
+            s << "wrong label in sirius_set_pw_coeffs()" << std::endl
+              << "  label: " << label;
+            TERMINATE(s);
+        }
     }
 }
 

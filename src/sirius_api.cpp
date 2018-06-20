@@ -808,26 +808,6 @@ void sirius_print_timers(void)
     }
 }
 
-void sirius_start_timer(ftn_char name__)
-{
-    std::string name(name__);
-    if (!utils::timer::ftimers().count(name)) {
-        utils::timer::ftimers().insert(std::make_pair(name, utils::timer(name)));
-    } else {
-        std::stringstream s;
-        s << "timer " << name__ << " is already active";
-        TERMINATE(s);
-    }
-}
-
-void sirius_stop_timer(ftn_char name__)
-{
-    std::string name(name__);
-    if (utils::timer::ftimers().count(name)) {
-        utils::timer::ftimers().erase(name);
-    }
-}
-
 void sirius_save_potential(void)
 {
     dft_ground_state->potential().save();

@@ -1082,7 +1082,7 @@ class Potential : public Field4D
         return veff_pw_(ig__);
     }
 
-    inline void set_veff_pw(double_complex* veff_pw__)
+    inline void set_veff_pw(double_complex const* veff_pw__)
     {
         std::copy(veff_pw__, veff_pw__ + ctx_.gvec().num_gvec(), veff_pw_.at<CPU>());
     }
@@ -1092,7 +1092,7 @@ class Potential : public Field4D
         return rm_inv_pw_(ig__);
     }
 
-    inline void set_rm_inv_pw(double_complex* rm_inv_pw__)
+    inline void set_rm_inv_pw(double_complex const* rm_inv_pw__)
     {
         std::copy(rm_inv_pw__, rm_inv_pw__ + ctx_.gvec().num_gvec(), rm_inv_pw_.at<CPU>());
     }
@@ -1102,7 +1102,7 @@ class Potential : public Field4D
         return rm2_inv_pw_(ig__);
     }
 
-    inline void set_rm2_inv_pw(double_complex* rm2_inv_pw__)
+    inline void set_rm2_inv_pw(double_complex const* rm2_inv_pw__)
     {
         std::copy(rm2_inv_pw__, rm2_inv_pw__ + ctx_.gvec().num_gvec(), rm2_inv_pw_.at<CPU>());
     }
