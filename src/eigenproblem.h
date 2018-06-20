@@ -29,7 +29,7 @@
 #include "linalg.hpp"
 
 #ifdef __ELPA
-#include <elpa_constants.h>
+#include <elpa/elpa_constants.h>
 extern "C" {
 #include "elpa.h"
 }

@@ -135,11 +135,13 @@ class Field4D
 
     Periodic_function<double>& scalar()
     {
+        assert(bool(components_[0]));
         return *(components_[0]);
     }
 
     Periodic_function<double> const& scalar() const
     {
+        assert(bool(components_[0]));
         return *(components_[0]);
     }
 
@@ -170,6 +172,7 @@ class Field4D
     void allocate()
     {
         for (int i = 0; i < ctx_.num_mag_dims() + 1; i++) {
+            assert(bool(components_[i]));
             components_[i]->allocate_mt(true);
         }
     }

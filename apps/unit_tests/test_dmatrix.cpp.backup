@@ -4,11 +4,11 @@ using namespace sirius;
 
 void test_dmatrix(std::vector<int> mpi_grid_dims__)
 {
-    BLACS_grid blacs_grid(mpi_comm_world(), mpi_grid_dims__[0], mpi_grid_dims__[1]);
+    BLACS_grid blacs_grid(Communicator::world(), mpi_grid_dims__[0], mpi_grid_dims__[1]);
 
     int bs{16};
     int N{4};
-    
+
     dmatrix<double_complex> mtrx(4, 4, blacs_grid, bs, bs);
     mtrx.zero();
 
