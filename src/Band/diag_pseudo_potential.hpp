@@ -106,10 +106,10 @@ inline void Band::diag_pseudo_potential_exact(K_point* kp__,
         ovlp.set(ig, ig, 1);
     }
 
-    auto veff = H__.potential().effective_potential()->gather_f_pw();
+    auto veff = H__.potential().effective_potential().gather_f_pw();
     std::vector<double_complex> beff;
     if (ctx_.num_mag_dims() == 1) {
-        beff = H__.potential().effective_magnetic_field(0)->gather_f_pw();
+        beff = H__.potential().effective_magnetic_field(0).gather_f_pw();
         for (int ig = 0; ig < ctx_.gvec().num_gvec(); ig++) {
             auto z1 = veff[ig];
             auto z2 = beff[ig];

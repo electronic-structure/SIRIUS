@@ -375,6 +375,8 @@ void sirius_add_atom_v2(void*  const* handler__,
    @fortran argument in  required string  label              Label of the function.
    @fortran argument in  required complex pw_coeffs          Local array of plane-wave coefficients.
    @fortran argument in  optional int     ngv                Local number of G-vectors.
+   @fortran argument in  optional int     gvl                List of G-vectors in lattice coordinates (Miller indices).
+   @fortran argument in  optional int     comm               MPI communicator used in distribution of G-vectors
    @fortran end */
 void sirius_set_pw_coeffs_v2(void*                const* handler__,
                              char                 const* label__,
@@ -449,20 +451,20 @@ void sirius_set_pw_coeffs_v2(void*                const* handler__,
             gs.density().magnetization(2).scatter_f_pw(v);
             gs.density().magnetization(2).fft_transform(1);
         } else if (label == "veff") {
-            gs.potential().effective_potential()->scatter_f_pw(v);
-            gs.potential().effective_potential()->fft_transform(1);
+            gs.potential().effective_potential().scatter_f_pw(v);
+            gs.potential().effective_potential().fft_transform(1);
         } else if (label == "bz") {
-            gs.potential().effective_magnetic_field(0)->scatter_f_pw(v);
-            gs.potential().effective_magnetic_field(0)->fft_transform(1);
+            gs.potential().effective_magnetic_field(0).scatter_f_pw(v);
+            gs.potential().effective_magnetic_field(0).fft_transform(1);
         } else if (label == "bx") {
-            gs.potential().effective_magnetic_field(1)->scatter_f_pw(v);
-            gs.potential().effective_magnetic_field(1)->fft_transform(1);
+            gs.potential().effective_magnetic_field(1).scatter_f_pw(v);
+            gs.potential().effective_magnetic_field(1).fft_transform(1);
         } else if (label == "by") {
-            gs.potential().effective_magnetic_field(2)->scatter_f_pw(v);
-            gs.potential().effective_magnetic_field(2)->fft_transform(1);
+            gs.potential().effective_magnetic_field(2).scatter_f_pw(v);
+            gs.potential().effective_magnetic_field(2).fft_transform(1);
         } else if (label == "vxc") {
-            gs.potential().xc_potential()->scatter_f_pw(v);
-            gs.potential().xc_potential()->fft_transform(1);
+            gs.potential().xc_potential().scatter_f_pw(v);
+            gs.potential().xc_potential().fft_transform(1);
         } else if (label == "vloc") {
             gs.potential().local_potential().scatter_f_pw(v);
             gs.potential().local_potential().fft_transform(1);
@@ -477,4 +479,81 @@ void sirius_set_pw_coeffs_v2(void*                const* handler__,
     }
 }
 
+/* @fortran begin function void sirius_get_pw_coeffs_v2      Set plane-wave coefficients of a periodic function.
+   @fortran argument in  required void*   handler            Ground state handler.
+   @fortran argument in  required string  label              Label of the function.
+   @fortran argument in  required complex pw_coeffs          Local array of plane-wave coefficients.
+   @fortran argument in  optional int     ngv                Local number of G-vectors.
+   @fortran argument in  optional int     gvl                List of G-vectors in lattice coordinates (Miller indices).
+   @fortran argument in  optional int     comm               MPI communicator used in distribution of G-vectors
+   @fortran end */
+void sirius_get_pw_coeffs_v2(void*                const* handler__,
+                             char                 const* label__,
+                             std::complex<double>*       pw_coeffs__,
+                             int                  const* ngv__,
+                             int*                        gvl__,
+                             int                  const* comm__)
+{
+    PROFILE("sirius_api::sirius_get_pw_coeffs");
+
+    auto& gs = static_cast<utils::any_ptr*>(*handler__)->get<sirius::DFT_ground_state>();
+
+    std::string label(label__);
+    if (gs.ctx().full_potential()) {
+        STOP();
+    } else {
+        assert(ngv__ != NULL);
+        assert(gvl__ != NULL);
+        assert(comm__ != NULL);
+
+        Communicator comm(MPI_Comm_f2c(*comm__));
+        mdarray<int, 2> gvec(gvl__, 3, *ngv__);
+
+        std::map<std::string, sirius::Smooth_periodic_function<double>*> func = {
+            {"rho", &gs.density().rho()},
+            {"magz", &gs.density().magnetization(0)},
+            {"magx", &gs.density().magnetization(1)},
+            {"magy", &gs.density().magnetization(2)},
+            {"veff", &gs.potential().effective_potential()},
+            {"vloc", &gs.potential().local_potential()},
+            {"rhoc", &gs.density().rho_pseudo_core()}
+        };
+
+        std::vector<double_complex> v;
+        try {
+            v = func.at(label)->gather_f_pw();
+        } catch(...) {
+            TERMINATE("wrong label");
+        }
+
+        for (int i = 0; i < *ngv__; i++) {
+            vector3d<int> G(gvec(0, i), gvec(1, i), gvec(2, i));
+
+            auto gvc = gs.ctx().unit_cell().reciprocal_lattice_vectors() * vector3d<double>(G[0], G[1], G[2]);
+            if (gvc.length() > gs.ctx().pw_cutoff()) {
+                pw_coeffs__[i] = 0;
+                continue;
+            }
+
+            bool is_inverse{false};
+            int ig = gs.ctx().gvec().index_by_gvec(G);
+            if (ig == -1 && gs.ctx().gvec().reduced()) {
+                ig = gs.ctx().gvec().index_by_gvec(G * (-1));
+                is_inverse = true;
+            }
+            if (ig == -1) {
+                std::stringstream s;
+                auto gvc = gs.ctx().unit_cell().reciprocal_lattice_vectors() * vector3d<double>(G[0], G[1], G[2]);
+                s << "wrong index of G-vector" << std::endl
+                  << "input G-vector: " << G << " (length: " << gvc.length() << " [a.u.^-1])" << std::endl;
+                TERMINATE(s);
+            }
+            if (is_inverse) {
+                pw_coeffs__[i] = std::conj(v[ig]);
+            } else {
+                pw_coeffs__[i] = v[ig];
+            }
+        }
+    }
+}
 

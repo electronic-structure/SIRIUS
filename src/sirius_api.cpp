@@ -98,41 +98,41 @@ void sirius_delete_simulation_context()
  *  \param [in] beffmt pointer to the muffin-tin part of effective magnetic field
  *  \param [in] beffit pointer to the interstitial part of the effective magnetic field
  */
-void sirius_create_potential(ftn_double* veffit__,
-                             ftn_double* veffmt__,
-                             ftn_double* beffit__,
-                             ftn_double* beffmt__)
-{
-    //potential = std::unique_ptr<sirius::Potential>(new sirius::Potential(*sim_ctx));
-    dft_ground_state->potential().set_effective_potential_ptr(veffmt__, veffit__);
-    dft_ground_state->potential().set_effective_magnetic_field_ptr(beffmt__, beffit__);
-}
-
-void sirius_delete_potential()
-{
-    //potential = nullptr;
-}
-
-/// Initialize the Density object.
-/** \param [in] rhomt pointer to the muffin-tin part of the density
- *  \param [in] rhoit pointer to the interstitial part of the denssity
- *  \param [in] magmt pointer to the muffin-tin part of the magnetization
- *  \param [in] magit pointer to the interstitial part of the magnetization
- */
-void sirius_create_density(ftn_double* rhoit__,
-                           ftn_double* rhomt__,
-                           ftn_double* magit__,
-                           ftn_double* magmt__)
-{
-    //density = std::unique_ptr<sirius::Density>(new sirius::Density(*sim_ctx));
-    dft_ground_state->density().set_charge_density_ptr(rhomt__, rhoit__);
-    dft_ground_state->density().set_magnetization_ptr(magmt__, magit__);
-}
-
-void sirius_delete_density()
-{
-    //density = nullptr;
-}
+//void sirius_create_potential(ftn_double* veffit__,
+//                             ftn_double* veffmt__,
+//                             ftn_double* beffit__,
+//                             ftn_double* beffmt__)
+//{
+//    //potential = std::unique_ptr<sirius::Potential>(new sirius::Potential(*sim_ctx));
+//    dft_ground_state->potential().set_effective_potential_ptr(veffmt__, veffit__);
+//    dft_ground_state->potential().set_effective_magnetic_field_ptr(beffmt__, beffit__);
+//}
+//
+//void sirius_delete_potential()
+//{
+//    //potential = nullptr;
+//}
+//
+///// Initialize the Density object.
+///** \param [in] rhomt pointer to the muffin-tin part of the density
+// *  \param [in] rhoit pointer to the interstitial part of the denssity
+// *  \param [in] magmt pointer to the muffin-tin part of the magnetization
+// *  \param [in] magit pointer to the interstitial part of the magnetization
+// */
+//void sirius_create_density(ftn_double* rhoit__,
+//                           ftn_double* rhomt__,
+//                           ftn_double* magit__,
+//                           ftn_double* magmt__)
+//{
+//    //density = std::unique_ptr<sirius::Density>(new sirius::Density(*sim_ctx));
+//    dft_ground_state->density().set_charge_density_ptr(rhomt__, rhoit__);
+//    dft_ground_state->density().set_magnetization_ptr(magmt__, magit__);
+//}
+//
+//void sirius_delete_density()
+//{
+//    //density = nullptr;
+//}
 
 /// Create the k-point set from the list of k-points and return it's id
 void sirius_create_kset(ftn_int*    num_kpoints__,
@@ -991,7 +991,7 @@ void FORTRAN(sirius_plot_potential)(void)
 {
     int N{10000};
 
-    dft_ground_state->potential().effective_potential()->fft_transform(-1);
+    dft_ground_state->potential().effective_potential().fft_transform(-1);
 
     std::vector<double> p(N);
     std::vector<double> x(N);
@@ -1005,7 +1005,7 @@ void FORTRAN(sirius_plot_potential)(void)
         auto vf = vf1 + (vf2 - vf1) * t;
 
         auto vc = sim_ctx->unit_cell().get_cartesian_coordinates(vf);
-        p[i] = dft_ground_state->potential().effective_potential()->value(vc);
+        p[i] = dft_ground_state->potential().effective_potential().value(vc);
         x[i] = vc.length();
     }
 
@@ -1480,7 +1480,7 @@ void sirius_generate_xc_potential(ftn_double* vxcmt__,
 
     dft_ground_state->potential().xc(dft_ground_state->density());
 
-    dft_ground_state->potential().xc_potential()->copy_to_global_ptr(vxcmt__, vxcit__);
+    dft_ground_state->potential().xc_potential().copy_to_global_ptr(vxcmt__, vxcit__);
 
     if (sim_ctx->num_mag_dims() == 0) {
         return;
@@ -1494,14 +1494,14 @@ void sirius_generate_xc_potential(ftn_double* vxcmt__,
 
     if (sim_ctx->num_mag_dims() == 1) {
         /* z component */
-        dft_ground_state->potential().effective_magnetic_field(0)->copy_to_global_ptr(&bxcmt(0, 0, 0, 0), &bxcit(0, 0));
+        dft_ground_state->potential().effective_magnetic_field(0).copy_to_global_ptr(&bxcmt(0, 0, 0, 0), &bxcit(0, 0));
     } else {
         /* z component */
-        dft_ground_state->potential().effective_magnetic_field(0)->copy_to_global_ptr(&bxcmt(0, 0, 0, 2), &bxcit(0, 2));
+        dft_ground_state->potential().effective_magnetic_field(0).copy_to_global_ptr(&bxcmt(0, 0, 0, 2), &bxcit(0, 2));
         /* x component */
-        dft_ground_state->potential().effective_magnetic_field(1)->copy_to_global_ptr(&bxcmt(0, 0, 0, 0), &bxcit(0, 0));
+        dft_ground_state->potential().effective_magnetic_field(1).copy_to_global_ptr(&bxcmt(0, 0, 0, 0), &bxcit(0, 0));
         /* y component */
-        dft_ground_state->potential().effective_magnetic_field(2)->copy_to_global_ptr(&bxcmt(0, 0, 0, 1), &bxcit(0, 1));
+        dft_ground_state->potential().effective_magnetic_field(2).copy_to_global_ptr(&bxcmt(0, 0, 0, 1), &bxcit(0, 1));
     }
 }
 
@@ -3070,20 +3070,20 @@ void sirius_set_pw_coeffs(ftn_char label__,
             dft_ground_state->density().rho().scatter_f_pw(v);
             dft_ground_state->density().rho().fft_transform(1);
         } else if (label == "veff") {
-            dft_ground_state->potential().effective_potential()->scatter_f_pw(v);
-            dft_ground_state->potential().effective_potential()->fft_transform(1);
+            dft_ground_state->potential().effective_potential().scatter_f_pw(v);
+            dft_ground_state->potential().effective_potential().fft_transform(1);
         } else if (label == "bz") {
-            dft_ground_state->potential().effective_magnetic_field(0)->scatter_f_pw(v);
-            dft_ground_state->potential().effective_magnetic_field(0)->fft_transform(1);
+            dft_ground_state->potential().effective_magnetic_field(0).scatter_f_pw(v);
+            dft_ground_state->potential().effective_magnetic_field(0).fft_transform(1);
         } else if (label == "bx") {
-            dft_ground_state->potential().effective_magnetic_field(1)->scatter_f_pw(v);
-            dft_ground_state->potential().effective_magnetic_field(1)->fft_transform(1);
+            dft_ground_state->potential().effective_magnetic_field(1).scatter_f_pw(v);
+            dft_ground_state->potential().effective_magnetic_field(1).fft_transform(1);
         } else if (label == "by") {
-            dft_ground_state->potential().effective_magnetic_field(2)->scatter_f_pw(v);
-            dft_ground_state->potential().effective_magnetic_field(2)->fft_transform(1);
+            dft_ground_state->potential().effective_magnetic_field(2).scatter_f_pw(v);
+            dft_ground_state->potential().effective_magnetic_field(2).fft_transform(1);
         } else if (label == "vxc") {
-            dft_ground_state->potential().xc_potential()->scatter_f_pw(v);
-            dft_ground_state->potential().xc_potential()->fft_transform(1);
+            dft_ground_state->potential().xc_potential().scatter_f_pw(v);
+            dft_ground_state->potential().xc_potential().fft_transform(1);
         } else if (label == "magz") {
             dft_ground_state->density().magnetization(0).scatter_f_pw(v);
             dft_ground_state->density().magnetization(0).fft_transform(1);
@@ -3131,7 +3131,7 @@ void sirius_get_pw_coeffs(ftn_char        label__,
             {"magz", &dft_ground_state->density().magnetization(0)},
             {"magx", &dft_ground_state->density().magnetization(1)},
             {"magy", &dft_ground_state->density().magnetization(2)},
-            {"veff", dft_ground_state->potential().effective_potential()},
+            {"veff", &dft_ground_state->potential().effective_potential()},
             {"vloc", &dft_ground_state->potential().local_potential()},
             {"rhoc", &dft_ground_state->density().rho_pseudo_core()}
         };

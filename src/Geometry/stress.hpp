@@ -692,19 +692,12 @@ class Stress {
 
         stress_us_.zero();
 
-        potential_.effective_potential()->fft_transform(-1);
+        potential_.effective_potential().fft_transform(-1);
 
-        Radial_integrals_aug<false> const& ri = ctx_.aug_ri();
-        Radial_integrals_aug<true> const& ri_dq = ctx_.aug_ri_djl(); // (ctx_.unit_cell(), ctx_.pw_cutoff(), ctx_.settings().nprii_aug_);
+        Radial_integrals_aug<false> const& ri    = ctx_.aug_ri();
+        Radial_integrals_aug<true>  const& ri_dq = ctx_.aug_ri_djl();
 
-        /* pack v effective in one array of pointers*/
-        Periodic_function<double>* vfield_eff[4];
-        vfield_eff[0] = potential_.effective_potential();
-        vfield_eff[0]->fft_transform(-1);
-        for (int imag = 0; imag < ctx_.num_mag_dims(); imag++){
-            vfield_eff[imag + 1] = potential_.effective_magnetic_field(imag);
-            vfield_eff[imag + 1]->fft_transform(-1);
-        }
+        potential_.fft_transform(-1);
 
         Augmentation_operator_gvec_deriv q_deriv(ctx_);
 
@@ -733,7 +726,7 @@ class Stress {
             t0.stop();
             mdarray<double, 2> v_tmp(atom_type.num_atoms(), ctx_.gvec().count() * 2);
             mdarray<double, 2> tmp(nbf * (nbf + 1) / 2, atom_type.num_atoms());
-            /* over spin components, can be from 1 to 4*/
+            /* over spin components, can be from 1 to 4 */
             for (int ispin = 0; ispin < ctx_.num_mag_dims() + 1; ispin++ ){
                 for (int nu = 0; nu < 3; nu++) {
                     q_deriv.generate_pw_coeffs(iat, ri, ri_dq, nu);
@@ -755,7 +748,7 @@ class Stress {
 
                             for (int ia = 0; ia < atom_type.num_atoms(); ia++) {
                                 //auto z = phase_factors(ia, igloc) * std::conj(potential_.effective_potential()->f_pw_local(igloc));
-                                auto z = phase_factors(ia, igloc) * vfield_eff[ispin]->f_pw_local(igloc) * (-gvc[mu] / g);
+                                auto z = phase_factors(ia, igloc) * potential_.component(ispin).f_pw_local(igloc) * (-gvc[mu] / g);
                                 v_tmp(ia, 2 * igloc)     = z.real();
                                 v_tmp(ia, 2 * igloc + 1) = z.imag();
                             }
@@ -859,7 +852,7 @@ class Stress {
     {
         stress_core_.zero();
 
-        potential_.xc_potential()->fft_transform(-1);
+        potential_.xc_potential().fft_transform(-1);
 
         Radial_integrals_rho_core_pseudo<true> ri_dg(ctx_.unit_cell(), ctx_.pw_cutoff(), ctx_.settings().nprii_rho_core_);
 
@@ -878,11 +871,11 @@ class Stress {
 
             for (int mu: {0, 1, 2}) {
                 for (int nu: {0, 1, 2}) {
-                    stress_core_(mu, nu) -= std::real(std::conj(potential_.xc_potential()->f_pw_local(igloc)) * drhoc[igloc]) * G[mu] * G[nu] / g;
+                    stress_core_(mu, nu) -= std::real(std::conj(potential_.xc_potential().f_pw_local(igloc)) * drhoc[igloc]) * G[mu] * G[nu] / g;
                 }
             }
 
-            sdiag += std::real(std::conj(potential_.xc_potential()->f_pw_local(igloc)) * density_.rho_pseudo_core().f_pw_local(igloc));
+            sdiag += std::real(std::conj(potential_.xc_potential().f_pw_local(igloc)) * density_.rho_pseudo_core().f_pw_local(igloc));
         }
 
         if (ctx_.gvec().reduced()) {
@@ -890,7 +883,7 @@ class Stress {
             sdiag *= 2;
         }
         if (ctx_.comm().rank() == 0) {
-            sdiag += std::real(std::conj(potential_.xc_potential()->f_pw_local(0)) * density_.rho_pseudo_core().f_pw_local(0));
+            sdiag += std::real(std::conj(potential_.xc_potential().f_pw_local(0)) * density_.rho_pseudo_core().f_pw_local(0));
         }
 
         for (int mu: {0, 1, 2}) {

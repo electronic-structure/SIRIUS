@@ -432,15 +432,6 @@ class Density : public Field4D
         }
     }
 
-    /// Zero density and magnetization
-    void zero()
-    {
-        rho().zero();
-        for (int i = 0; i < ctx_.num_mag_dims(); i++) {
-            magnetization(i).zero();
-        }
-    }
-
     /// Find the total leakage of the core states out of the muffin-tins
     double core_leakage()
     {

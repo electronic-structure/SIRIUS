@@ -367,7 +367,7 @@ inline void Potential::poisson(Periodic_function<double> const& rho)
     }
     
     /* compute contribution from the smooth part of Hartree potential */
-    energy_vha_ = rho.inner(hartree_potential_.get());
+    energy_vha_ = rho.inner(hartree_potential());
         
     #ifndef __VHA_AUX
     /* add nucleus potential and contribution to Hartree energy */

@@ -281,7 +281,7 @@ class DFT_ground_state
 
         double energy_vloc()
         {
-            return potential_.local_potential().inner(density_.rho());
+            return inner(potential_.local_potential(), density_.rho());
         }
 
         /// Full eigen-value sum (core + valence)
