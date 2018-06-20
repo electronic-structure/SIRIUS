@@ -149,11 +149,8 @@ public:
 
 
     void compute_occupancies_derivatives(K_point &kp,
-                                         Wave_functions &phi,
-                                         Beta_projectors_gradient &bp_grad_,
                                          Q_operator<double_complex>& q_op,
-                                         mdarray<double_complex, 5> &dn_,
-                                         const int atom_id);
+                                         mdarray<double_complex, 6> &dn_);
 
     void compute_gradient_strain_wavefunctions(K_point &kp__,
                                                Wave_functions &dphi,

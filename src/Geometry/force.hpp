@@ -208,35 +208,20 @@ class Force
 
         void hubbard_force_add_k_contribution_colinear(K_point &kp__, mdarray<double, 2>& forceh_)
         {
-            mdarray<double_complex, 5> dn_(2 * hamiltonian_.U().hubbard_lmax() + 1,
+            mdarray<double_complex, 6> dn_(2 * hamiltonian_.U().hubbard_lmax() + 1,
                                            2 * hamiltonian_.U().hubbard_lmax() + 1,
                                            2,
                                            ctx_.unit_cell().num_atoms(),
-                                           3);
+                                           3,
+                                           ctx_.unit_cell().num_atoms());
 
-            Wave_functions phi(kp__.gkvec_partition(), hamiltonian_.U().number_of_hubbard_orbitals(), 1);
-
-            kp__.beta_projectors().prepare();
-            Beta_projectors_gradient bp_grad_(ctx_, kp__.gkvec(), kp__.igk_loc(), kp__.beta_projectors());
-            bp_grad_.prepare();
-
-
-            kp__.generate_atomic_centered_wavefunctions_(hamiltonian_.U().number_of_hubbard_orbitals(),
-                                                         phi,
-                                                         hamiltonian_.U().offset,
-                                                         true);
+            hamiltonian_.U().compute_occupancies_derivatives(kp__,
+                                                             hamiltonian_.Q<double_complex>(),
+                                                             dn_);
 
             //                #pragma omp parallel for
             for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {
                 // compute the derivative of the occupancies numbers
-                dn_.zero();
-
-                hamiltonian_.U().compute_occupancies_derivatives(kp__,
-                                                                 phi,
-                                                                 bp_grad_,
-                                                                 hamiltonian_.Q<double_complex>(),
-                                                                 dn_,
-                                                                 ia);
 
                 for (int dir = 0; dir < 3; dir++) {
                     for (int ia1 = 0; ia1 < ctx_.unit_cell().num_atoms(); ia1++) {
@@ -247,7 +232,7 @@ class Force
                                 for (int m1 = 0; m1 < lmax_at; m1++) {
                                     for (int m2 = 0; m2 < lmax_at; m2++) {
                                         forceh_(dir, ia) -= (hamiltonian_.U().U(m2, m1, ispn, ia1) *
-                                                             dn_(m1, m2, ispn, ia1, dir)).real();
+                                                             dn_(m1, m2, ispn, ia1, dir, ia)).real();
                                     }
                                 }
                             }
@@ -255,8 +240,6 @@ class Force
                     }
                 }
             }
-            kp__.beta_projectors().dismiss();
-            bp_grad_.dismiss();
         }
 
 

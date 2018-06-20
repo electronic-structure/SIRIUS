@@ -6,15 +6,22 @@
 // gradient of beta projectors. Needed for the computations of the forces
 
 void Hubbard_potential::compute_occupancies_derivatives(K_point& kp,
-                                                        Wave_functions& phi, // hubbard derivatives
-                                                        Beta_projectors_gradient& bp_grad_,
                                                         Q_operator<double_complex>& q_op, // overlap operator
-                                                        mdarray<double_complex, 5>& dn_,  // derivative of the occupation number compared to displacement of atom aton_id
-                                                        const int atom_id)                // Atom we shift
+                                                        mdarray<double_complex, 6>& dn_)                // Atom we shift
 {
     dn_.zero();
     // check if we have a norm conserving pseudo potential only. OOnly
     // derivatives of the hubbard wave functions are needed.
+    auto &phi = kp.hubbard_wave_functions();
+
+    kp.generate_atomic_centered_wavefunctions_(this->number_of_hubbard_orbitals(),
+                                               phi,
+                                               this->offset,
+                                               true);
+
+    Beta_projectors_gradient bp_grad_(ctx_, kp.gkvec(), kp.igk_loc(), kp.beta_projectors());
+    kp.beta_projectors().prepare();
+    bp_grad_.prepare();
 
     bool augment = false;
 
@@ -22,10 +29,6 @@ void Hubbard_potential::compute_occupancies_derivatives(K_point& kp,
         augment = ctx_.unit_cell().atom_type(ia).augment();
     }
 
-    if ((ctx_.full_potential() || !augment) && (!ctx_.unit_cell().atom(atom_id).type().hubbard_correction())) {
-        // return immediatly if the atom has no hubbard correction and is norm conserving pp.
-        return;
-    }
 
     // Compute the derivatives of the occupancies in two cases.
 
@@ -52,6 +55,19 @@ void Hubbard_potential::compute_occupancies_derivatives(K_point& kp,
                               this->number_of_hubbard_orbitals() * ctx_.num_spins());
     Phi_S_Psi.zero();
 
+    #ifdef __GPU
+    if (ctx_.processing_unit() == GPU) {
+        phi.allocate_on_device(0);
+        phi.copy_to_device(0, 0, this->number_of_hubbard_orbitals());
+        dphi.allocate_on_device(0);
+        kp.spinor_wave_functions().allocate_on_device(ctx_.num_spins());
+        for (int ispn = 0; ispn < ctx_.num_spins(); ispn) {
+            kp.spinor_wave_functions().copy_to_device(ispn, 0, kp.num_occupied_bands(ispn));
+        }
+        phitmp.allocate_on_device(0);
+    }
+    #endif
+
     Apply_S_operator(kp, q_op, phi, dphi, 0, this->number_of_hubbard_orbitals());
 
     // compute <phi^I_m| S | psi_{nk}>
@@ -67,79 +83,121 @@ void Hubbard_potential::compute_occupancies_derivatives(K_point& kp,
     #endif
 
 
-    for (int dir = 0; dir < 3; dir++) {
-        // reset dphi
-        dphi.pw_coeffs(0).prime().zero();
+    mdarray<double_complex, 5> dn__(2 * this->hubbard_lmax() + 1,
+                                    2 * this->hubbard_lmax() + 1,
+                                    ctx_.num_spins(),
+                                    ctx_.unit_cell().num_atoms(),
+                                    3);
 
-        if (ctx_.unit_cell().atom(atom_id).type().hubbard_correction()) {
-            // atom atom_id has hubbard correction so we need to compute the
-            // derivatives of the hubbard orbitals associated to the atom
-            // atom_id, the derivatives of the others hubbard orbitals been
-            // zero compared to the displacement of atom atom_id
+    for (int atom_id = 0; atom_id < ctx_.unit_cell().num_atoms(); atom_id++) {
+        dn__.zero();
+        for (int dir = 0; dir < 3; dir++) {
+            // reset dphi
+            dphi.pw_coeffs(0).prime().zero();
 
-            // compute the derivative of |phi> corresponding to the
-            // atom atom_id
-            const int lmax_at = 2 * ctx_.unit_cell().atom(atom_id).type().hubbard_l() + 1;
+            if (ctx_.unit_cell().atom(atom_id).type().hubbard_correction()) {
+                // atom atom_id has hubbard correction so we need to compute the
+                // derivatives of the hubbard orbitals associated to the atom
+                // atom_id, the derivatives of the others hubbard orbitals been
+                // zero compared to the displacement of atom atom_id
 
-            // compute the derivatives of the hubbard wave functions
-            // |phi_m^J> (J = atom_id) compared to a displacement of atom J.
+                // compute the derivative of |phi> corresponding to the
+                // atom atom_id
+                const int lmax_at = 2 * ctx_.unit_cell().atom(atom_id).type().hubbard_l() + 1;
 
-            kp.compute_gradient_wavefunctions(phi, this->offset[atom_id], lmax_at, phitmp, this->offset[atom_id], dir);
-            // For norm conserving pp, it is enough to have the derivatives
-            // of |phi^J_m> (J = atom_id)
-            Apply_S_operator(kp, q_op, phitmp, dphi, this->offset[atom_id], lmax_at);
-        }
+                // compute the derivatives of the hubbard wave functions
+                // |phi_m^J> (J = atom_id) compared to a displacement of atom J.
 
-        // compute d S/ dr^I_a |phi> and add to dphi
-        if (!ctx_.full_potential() && augment) {
-            // it is equal to
-            // \sum Q^I_ij <d \beta^I_i|phi> |\beta^I_j> + < \beta^I_i|phi> |d\beta^I_j>
-            for (int chunk__ = 0; chunk__ < kp.beta_projectors().num_chunks(); chunk__++) {
-                for (int i = 0; i < kp.beta_projectors().chunk(chunk__).num_atoms_; i++) {
-                    // need to find the right atom in the chunks.
-                    if (kp.beta_projectors().chunk(chunk__).desc_(beta_desc_idx::ia, i) == atom_id) {
-                        kp.beta_projectors().generate(chunk__);
-                        bp_grad_.generate(chunk__, dir);
+                kp.compute_gradient_wavefunctions(phi, this->offset[atom_id], lmax_at, phitmp, this->offset[atom_id], dir);
+                // For norm conserving pp, it is enough to have the derivatives
+                // of |phi^J_m> (J = atom_id)
+                Apply_S_operator(kp, q_op, phitmp, dphi, this->offset[atom_id], lmax_at);
+            }
 
-                        // compute Q_ij <\beta_i|\phi> |d \beta_j> and add it to d\phi
-                        {
-                            // < beta | phi> for this chunk
-                            auto beta_phi =
-                                kp.beta_projectors().inner<double_complex>(chunk__, phi, 0, 0, this->number_of_hubbard_orbitals());
-                            q_op.apply_one_atom(chunk__, 0, dphi, 0, this->number_of_hubbard_orbitals(), bp_grad_, beta_phi, i);
+            // compute d S/ dr^I_a |phi> and add to dphi
+            if (!ctx_.full_potential() && augment) {
+                // it is equal to
+                // \sum Q^I_ij <d \beta^I_i|phi> |\beta^I_j> + < \beta^I_i|phi> |d\beta^I_j>
+                for (int chunk__ = 0; chunk__ < kp.beta_projectors().num_chunks(); chunk__++) {
+                    for (int i = 0; i < kp.beta_projectors().chunk(chunk__).num_atoms_; i++) {
+                        // need to find the right atom in the chunks.
+                        if (kp.beta_projectors().chunk(chunk__).desc_(beta_desc_idx::ia, i) == atom_id) {
+                            kp.beta_projectors().generate(chunk__);
+                            bp_grad_.generate(chunk__, dir);
+
+                            // compute Q_ij <\beta_i|\phi> |d \beta_j> and add it to d\phi
+                            {
+                                // < beta | phi> for this chunk
+                                auto beta_phi =
+                                    kp.beta_projectors().inner<double_complex>(chunk__, phi, 0, 0, this->number_of_hubbard_orbitals());
+                                q_op.apply_one_atom(chunk__, 0, dphi, 0, this->number_of_hubbard_orbitals(), bp_grad_, beta_phi, i);
+                            }
+
+                            // compute Q_ij <d \beta_i|\phi> |\beta_j> and add it to d\phi
+                            {
+                                // < dbeta | phi> for this chunk
+                                auto dbeta_phi = bp_grad_.inner<double_complex>(chunk__, phi, 0, 0, this->number_of_hubbard_orbitals());
+
+                                /* apply Q operator (diagonal in spin) */
+                                /* Effectively compute Q_ij <d beta_i| phi> |beta_j> and add it dphi */
+                                q_op.apply_one_atom(chunk__, 0, dphi, 0, this->number_of_hubbard_orbitals(), kp.beta_projectors(), dbeta_phi,
+                                                    i);
+                            }
                         }
+                    }
+                }
+            }
 
-                        // compute Q_ij <d \beta_i|\phi> |\beta_j> and add it to d\phi
-                        {
-                            // < dbeta | phi> for this chunk
-                            auto dbeta_phi = bp_grad_.inner<double_complex>(chunk__, phi, 0, 0, this->number_of_hubbard_orbitals());
+            compute_occupancies(kp,
+                                Phi_S_Psi,
+                                dPhi_S_Psi,
+                                dphi,
+                                dn__,
+                                dm, // temporary table
+                                dir);
+        } // direction x, y, z
 
-                            /* apply Q operator (diagonal in spin) */
-                            /* Effectively compute Q_ij <d beta_i| phi> |beta_j> and add it dphi */
-                            q_op.apply_one_atom(chunk__, 0, dphi, 0, this->number_of_hubbard_orbitals(), kp.beta_projectors(), dbeta_phi,
-                                                i);
+        // use a memcopy here
+        for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {
+            // compute the derivative of the occupancies numbers
+            for (int dir = 0; dir < 3; dir++) {
+                for (int ia1 = 0; ia1 < ctx_.unit_cell().num_atoms(); ia1++) {
+                    const auto& atom = ctx_.unit_cell().atom(ia1);
+                    if (atom.type().hubbard_correction()) {
+                        const int lmax_at = 2 * atom.type().hubbard_l() + 1;
+                        for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
+                            for (int m1 = 0; m1 < lmax_at; m1++) {
+                                for (int m2 = 0; m2 < lmax_at; m2++) {
+                                    dn_(m1, m2, ispn, ia, dir, atom_id) = dn__(m1, m2, ispn, ia, dir);
+                                }
+                            }
                         }
                     }
                 }
             }
         }
+    } // atom_id
 
-        compute_occupancies(kp,
-                            Phi_S_Psi,
-                            dPhi_S_Psi,
-                            dphi,
-                            dn_,
-                            dm,
-                            dir);
+    #ifdef __GPU
+    if (ctx_.processing_unit() == GPU) {
+        phi.deallocate_on_device(0);
+        phitmp.deallocate_on_device(0);
+        dphi.deallocate_on_device(0);
+        kp.spinor_wave_functions().deallocate_on_device(ctx_.num_spins());
     }
+    #endif
+
+    kp.beta_projectors().dismiss();
+    bp_grad_.dismiss();
 }
 
 void Hubbard_potential::compute_occupancies_stress_derivatives(K_point& kp,
                                                                Q_operator<double_complex>& q_op, // Compensnation operator or overlap operator
                                                                mdarray<double_complex, 5>& dn_)  // derivative of the occupation number compared to displacement of atom aton_id
 {
+    auto &phi = kp.hubbard_wave_functions();
+
     Wave_functions dphi(kp.gkvec_partition(), this->number_of_hubbard_orbitals(), 1);
-    Wave_functions phi(kp.gkvec_partition(), this->number_of_hubbard_orbitals(), 1);
     Wave_functions phitmp(kp.gkvec_partition(), this->number_of_hubbard_orbitals(), 1);
 
     Beta_projectors_strain_deriv bp_strain_deriv(ctx_, kp.gkvec(), kp.igk_loc());
@@ -177,6 +235,18 @@ void Hubbard_potential::compute_occupancies_stress_derivatives(K_point& kp,
     // compute the hubbard orbitals
     kp.generate_atomic_centered_wavefunctions_(this->number_of_hubbard_orbitals(), phi, this->offset, true);
 
+    #ifdef __GPU
+    if (ctx_.processing_unit() == GPU) {
+        phi.allocate_on_device(0);
+        phi.copy_to_device(0, 0, this->number_of_hubbard_orbitals());
+        dphi.allocate_on_device(0);
+        kp.spinor_wave_functions().allocate_on_device(ctx_.num_spins());
+        for (int ispn = 0; ispn < ctx_.num_spins(); ispn) {
+            kp.spinor_wave_functions().copy_to_device(ispn, 0, kp.num_occupied_bands(ispn));
+        }
+        phitmp.allocate_on_device(0);
+    }
+    #endif
     // computes the S|phi^I_ia>
     Apply_S_operator(kp,
                      q_op,
@@ -281,6 +351,15 @@ void Hubbard_potential::compute_occupancies_stress_derivatives(K_point& kp,
         }
     }
 
+    #ifdef __GPU
+    if (ctx_.processing_unit() == GPU) {
+        phi.deallocate_on_device(0);
+        phitmp.deallocate_on_device(0);
+        dphi.deallocate_on_device(0);
+        kp.spinor_wave_functions().deallocate_on_device(ctx_.num_spins());
+    }
+    #endif
+
     kp.beta_projectors().dismiss();
     bp_strain_deriv.dismiss();
 }
@@ -377,7 +456,6 @@ void Hubbard_potential::compute_occupancies(K_point& kp,
 
     dm.zero();
 
-
     linalg<CPU>::gemm(2, 0,
                       this->number_of_hubbard_orbitals() * ctx_.num_spins(),
                       this->number_of_hubbard_orbitals() * ctx_.num_spins(),
@@ -398,17 +476,6 @@ void Hubbard_potential::compute_occupancies(K_point& kp,
                       dynamic_cast<matrix<double_complex>&>(dPhi_S_Psi),
                       linalg_const<double_complex>::one(),
                       dm);
-
-    // compute dm = \sum_{i,j} <\phi_i|S|\psi> <\psi|d(S|\phi>)_j
-    // #pragma omp parallel for schedule(static)
-    // for (int m1 = 0; m1 < this->number_of_hubbard_orbitals() * ctx_.num_spins(); m1++) {
-    //     for (int m2 = 0; m2 < this->number_of_hubbard_orbitals() * ctx_.num_spins(); m2++) {
-    //         for (int nbnd = 0; nbnd < HowManyBands; nbnd++) {
-    //             dm(m1, m2) += Phi_S_Psi(nbnd, m1) * std::conj(dPhi_S_Psi(nbnd, m2)) +
-    //                 dPhi_S_Psi(nbnd, m1) * std::conj(Phi_S_Psi(nbnd, m2));
-    //         }
-    //     }
-    // }
 
     #pragma omp parallel for schedule(static)
     for (int ia1 = 0; ia1 < ctx_.unit_cell().num_atoms(); ++ia1) {
