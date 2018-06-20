@@ -163,7 +163,6 @@ public:
                                                const int nu);
 
     void compute_occupancies_stress_derivatives(K_point &kp,
-                                                Beta_projectors_strain_deriv &bp_grad_,
                                                 Q_operator<double_complex>& q_op, // Compensnation operator or overlap operator
                                                 mdarray<double_complex, 5> &dn_); // derivative of the occupation number compared to displacement of atom aton_id
 
