@@ -377,18 +377,38 @@ void Hubbard_potential::compute_occupancies(K_point& kp,
 
     dm.zero();
 
-    // TODO use matrix matrix multiplication
+
+    linalg<CPU>::gemm(2, 0,
+                      this->number_of_hubbard_orbitals() * ctx_.num_spins(),
+                      this->number_of_hubbard_orbitals() * ctx_.num_spins(),
+                      HowManyBands,
+                      double_complex(kp.weight(), 0.0),
+                      dynamic_cast<matrix<double_complex>&>(dPhi_S_Psi),
+                      dynamic_cast<matrix<double_complex>&>(Phi_S_Psi),
+                      linalg_const<double_complex>::zero(),
+                      dm);
+
+
+    linalg<CPU>::gemm(2, 0,
+                      this->number_of_hubbard_orbitals() * ctx_.num_spins(),
+                      this->number_of_hubbard_orbitals() * ctx_.num_spins(),
+                      HowManyBands,
+                      double_complex(kp.weight(), 0.0),
+                      dynamic_cast<matrix<double_complex>&>(Phi_S_Psi),
+                      dynamic_cast<matrix<double_complex>&>(dPhi_S_Psi),
+                      linalg_const<double_complex>::one(),
+                      dm);
 
     // compute dm = \sum_{i,j} <\phi_i|S|\psi> <\psi|d(S|\phi>)_j
-    #pragma omp parallel for schedule(static)
-    for (int m1 = 0; m1 < this->number_of_hubbard_orbitals() * ctx_.num_spins(); m1++) {
-        for (int m2 = 0; m2 < this->number_of_hubbard_orbitals() * ctx_.num_spins(); m2++) {
-            for (int nbnd = 0; nbnd < HowManyBands; nbnd++) {
-                dm(m1, m2) += Phi_S_Psi(nbnd, m1) * std::conj(dPhi_S_Psi(nbnd, m2)) +
-                    dPhi_S_Psi(nbnd, m1) * std::conj(Phi_S_Psi(nbnd, m2));
-            }
-        }
-    }
+    // #pragma omp parallel for schedule(static)
+    // for (int m1 = 0; m1 < this->number_of_hubbard_orbitals() * ctx_.num_spins(); m1++) {
+    //     for (int m2 = 0; m2 < this->number_of_hubbard_orbitals() * ctx_.num_spins(); m2++) {
+    //         for (int nbnd = 0; nbnd < HowManyBands; nbnd++) {
+    //             dm(m1, m2) += Phi_S_Psi(nbnd, m1) * std::conj(dPhi_S_Psi(nbnd, m2)) +
+    //                 dPhi_S_Psi(nbnd, m1) * std::conj(Phi_S_Psi(nbnd, m2));
+    //         }
+    //     }
+    // }
 
     #pragma omp parallel for schedule(static)
     for (int ia1 = 0; ia1 < ctx_.unit_cell().num_atoms(); ++ia1) {
@@ -399,7 +419,7 @@ void Hubbard_potential::compute_occupancies(K_point& kp,
                 const size_t ispn_offset = ispn * this->number_of_hubbard_orbitals() + this->offset[ia1];
                 for (int m2 = 0; m2 < lmax_at; m2++) {
                     for (int m1 = 0; m1 < lmax_at; m1++) {
-                        dn_(m1, m2, ispn, ia1, index) = dm(ispn_offset + m1, ispn_offset + m2) * kp.weight();
+                        dn_(m1, m2, ispn, ia1, index) = dm(ispn_offset + m1, ispn_offset + m2);
                     }
                 }
             }

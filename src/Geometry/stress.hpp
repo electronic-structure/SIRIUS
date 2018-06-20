@@ -922,7 +922,6 @@ class Stress {
 
             // compute the derivative of the occupancies numbers
             hamiltonian_.U().compute_occupancies_stress_derivatives(*kp__,
-                                                                    bp_strain_deriv,
                                                                     hamiltonian_.Q<double_complex>(),
                                                                     dn_);
             for (int dir1 = 0; dir1 < 3; dir1++) {
