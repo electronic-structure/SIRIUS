@@ -210,36 +210,6 @@ class Smooth_periodic_function
             return cs;
         }
 
-        /// Compute inner product <f|g>
-        T inner(Smooth_periodic_function<T> const& g__) const
-        {
-            PROFILE("sirius::Periodic_function::inner");
-
-            assert(this->fft_ == g__.fft_);
-
-            T result_rg{0};
-
-            #pragma omp parallel
-            {
-                T rt{0};
-
-                #pragma omp for schedule(static)
-                for (int irloc = 0; irloc < this->fft_->local_size(); irloc++) {
-                    rt += type_wrapper<T>::bypass(std::conj(this->f_rg(irloc))) * g__.f_rg(irloc);
-                }
-
-                #pragma omp critical
-                result_rg += rt;
-            }
-            double omega = std::pow(twopi, 3) / std::abs(this->gvec().lattice_vectors().det());
-
-            result_rg *= (omega / this->fft_->size());
-
-            this->fft_->comm().allreduce(&result_rg, 1);
-
-            return result_rg;
-        }
-
         inline uint64_t hash_f_pw() const
         {
             auto h = f_pw_local_.hash();
@@ -369,6 +339,30 @@ inline Smooth_periodic_function<T> dot(Smooth_periodic_function_gradient<T>& gra
     }
 
     return std::move(result);
+}
+
+/// Compute inner product <f|g>
+template <typename T>
+T inner(Smooth_periodic_function<T> const& f__, Smooth_periodic_function<T> const& g__)
+{
+    utils::timer t1("sirius::Smooth_periodic_function|inner");
+
+    assert(&f__.fft() == &g__.fft());
+
+    T result_rg{0};
+
+    #pragma omp parallel for schedule(static) reduction(+:result_rg)
+    for (int irloc = 0; irloc < f__.fft().local_size(); irloc++) {
+        result_rg += type_wrapper<T>::bypass(std::conj(f__.f_rg(irloc))) * g__.f_rg(irloc);
+    }
+
+    double omega = std::pow(twopi, 3) / std::abs(f__.gvec().lattice_vectors().det());
+
+    result_rg *= (omega / f__.fft().size());
+
+    f__.fft().comm().allreduce(&result_rg, 1);
+
+    return result_rg;
 }
 
 } // namespace sirius

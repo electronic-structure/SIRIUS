@@ -50,19 +50,12 @@ inline void Potential::poisson_sum_G(int lmmax__,
         int na = unit_cell_.atom_type(iat).num_atoms();
         ctx_.generate_phase_factors(iat, phase_factors);
         utils::timer t1("sirius::Potential::poisson_sum_G|zm");
-        #pragma omp parallel
-        {
-            std::vector<double_complex> fl_tmp(lmax + 1);
-            #pragma omp for schedule(static)
-            for (int igloc = 0; igloc < ngv_loc; igloc++) {
-                int ig = ctx_.gvec().offset() + igloc;
-                int igs = ctx_.gvec().shell(ig);
-                for (int l = 0; l <= lmax; l++) {
-                    fl_tmp[l] = fourpi * fl__(l, iat, igs) * zil_[l] * fpw__[igloc];
-                }
-                for (int lm = 0; lm < lmmax__; lm++) {
-                    int l = l_by_lm_[lm];
-                    zm(lm, igloc) = fl_tmp[l] * std::conj(gvec_ylm_(lm, igloc));
+        #pragma omp parallel for schedule(static)
+        for (int igloc = 0; igloc < ngv_loc; igloc++) {
+            for (int l = 0, lm = 0; l <= lmax; l++) {
+                double_complex z = fourpi * fl__(l, igloc, iat) * zil_[l] * fpw__[igloc];
+                for (int m = -l; m <= l; m++, lm++) {
+                    zm(lm, igloc) = z * std::conj(gvec_ylm_(lm, igloc));
                 }
             }
         }
@@ -203,7 +196,7 @@ inline void Potential::poisson_add_pseudo_pw(mdarray<double_complex, 2>& qmt__,
                         zt1 += gvec_ylm_(lm, igloc) * qapf(lm, igloc);
                     }
                     rho_G += (fourpi / unit_cell_.omega()) * std::conj(zil_[l]) * zt1 * gamma_factors_R_(l, iat) * 
-                             sbessel_mt_(l + pseudo_density_order_ + 1, iat, ctx_.gvec().shell(ig)) * gRn;
+                             sbessel_mt_(l + pseudo_density_order_ + 1, igloc, iat) * gRn;
                 } // l
             } else { // G=0
                 for (int i = 0; i < unit_cell_.atom_type(iat).num_atoms(); i++) {
@@ -367,7 +360,7 @@ inline void Potential::poisson(Periodic_function<double> const& rho)
     }
     
     /* compute contribution from the smooth part of Hartree potential */
-    energy_vha_ = rho.inner(hartree_potential_.get());
+    energy_vha_ = rho.inner(hartree_potential());
         
     #ifndef __VHA_AUX
     /* add nucleus potential and contribution to Hartree energy */

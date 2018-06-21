@@ -132,11 +132,11 @@ class Local_operator
             PROFILE("sirius::Local_operator::prepare");
 
             /* group effective fields into single vector */
-            std::vector<Periodic_function<double>*> veff_vec(param_.num_mag_dims() + 1);
-            veff_vec[0] = potential__.effective_potential();
-            for (int j = 0; j < param_.num_mag_dims(); j++) {
-                veff_vec[1 + j] = potential__.effective_magnetic_field(j);
-            }
+            //std::vector<Periodic_function<double>*> veff_vec(param_.num_mag_dims() + 1);
+            //veff_vec[0] = potential__.effective_potential();
+            //for (int j = 0; j < param_.num_mag_dims(); j++) {
+            //    veff_vec[1 + j] = potential__.effective_magnetic_field(j);
+            //}
             
             if (!buf_rg_.size() && param_.num_mag_dims() == 3) {
                 buf_rg_ = mdarray<double_complex, 1>(fft_coarse_.local_size(), memory_t::host, "Local_operator::buf_rg_");
@@ -148,7 +148,7 @@ class Local_operator
                 #pragma omp parallel for schedule(static)
                 for (int igloc = 0; igloc < gvec_coarse_p_.gvec().count(); igloc++) {
                     /* map from fine to coarse set of G-vectors */
-                    veff_vec_[j].f_pw_local(igloc) = veff_vec[j]->f_pw_local(veff_vec[j]->gvec().gvec_base_mapping(igloc));
+                    veff_vec_[j].f_pw_local(igloc) = potential__.component(j).f_pw_local(potential__.component(j).gvec().gvec_base_mapping(igloc));
                 }
                 /* transform to real space */
                 veff_vec_[j].fft_transform(1);
@@ -163,14 +163,14 @@ class Local_operator
                     veff_vec_[1].f_rg(ir) = v0 - v1; // v - Bz
                 }
             }
-            
+
             if (param_.num_mag_dims() == 0) {
-                v0_[0] = veff_vec[0]->f_0().real();
+                v0_[0] = potential__.component(0).f_0().real();
             } else {
-                v0_[0] = veff_vec[0]->f_0().real() + veff_vec[1]->f_0().real();
-                v0_[1] = veff_vec[0]->f_0().real() - veff_vec[1]->f_0().real();
+                v0_[0] = potential__.component(0).f_0().real() + potential__.component(1).f_0().real();
+                v0_[1] = potential__.component(0).f_0().real() - potential__.component(1).f_0().real();
             }
-            
+
             /* copy veff to device */
             if (fft_coarse_.pu() == GPU) {
                 for (int j = 0; j < param_.num_mag_dims() + 1; j++) {
@@ -201,25 +201,25 @@ class Local_operator
             PROFILE("sirius::Local_operator::prepare");
 
             /* group effective fields into single vector */
-            std::vector<Periodic_function<double>*> veff_vec(param_.num_mag_dims() + 1);
-            veff_vec[0] = potential__.effective_potential();
-            for (int j = 0; j < param_.num_mag_dims(); j++) {
-                veff_vec[1 + j] = potential__.effective_magnetic_field(j);
-            }
+            //std::vector<Periodic_function<double>*> veff_vec(param_.num_mag_dims() + 1);
+            //veff_vec[0] = potential__.effective_potential();
+            //for (int j = 0; j < param_.num_mag_dims(); j++) {
+            //    veff_vec[1 + j] = potential__.effective_magnetic_field(j);
+            //}
 
             if (!buf_rg_.size()) {
                 buf_rg_ = mdarray<double_complex, 1>(fft_coarse_.local_size(), memory_t::host, "Local_operator::buf_rg_");
             }
 
-            auto& fft_dense    = potential__.effective_potential()->fft();
-            auto& gvec_dense_p = potential__.effective_potential()->gvec_partition();
+            auto& fft_dense    = potential__.effective_potential().fft();
+            auto& gvec_dense_p = potential__.effective_potential().gvec_partition();
 
             fft_coarse_.prepare(gvec_coarse_p_);
 
             Smooth_periodic_function<double> ftmp(fft_dense, gvec_dense_p);
             for (int j = 0; j < param_.num_mag_dims() + 1; j++) {
                 for (int ir = 0; ir < fft_dense.local_size(); ir++) {
-                    ftmp.f_rg(ir) = veff_vec[j]->f_rg(ir) * step_function__.theta_r(ir);
+                    ftmp.f_rg(ir) = potential__.component(j).f_rg(ir) * step_function__.theta_r(ir);
                 }
                 ftmp.fft_transform(-1);
                 if (j == 0) {

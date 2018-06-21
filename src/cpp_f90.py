@@ -5,11 +5,12 @@ import sys
 # @fortran end
 
 in_type_map = {
-    'void*'  : 'type(C_PTR)',
-    'int'    : 'integer(C_INT)',
-    'double' : 'real(C_DOUBLE)',
-    'string' : 'character(C_CHAR)',
-    'bool'   : 'logical(C_BOOL)'
+    'void*'   : 'type(C_PTR)',
+    'int'     : 'integer(C_INT)',
+    'double'  : 'real(C_DOUBLE)',
+    'string'  : 'character(C_CHAR)',
+    'bool'    : 'logical(C_BOOL)',
+    'complex' : 'complex(C_DOUBLE)'
 }
 
 def write_str_to_f90(o, string):
@@ -24,7 +25,7 @@ def write_function(o, func_name, func_type, func_args, func_doc):
     o.write('!> @brief ' + func_doc + '\n')
     for a in func_args:
         o.write('!> @param [' + a['intent'] + '] ' + a['name'] + ' ' + a['doc'] + '\n')
-    
+
     if func_type == 'void':
         string = 'subroutine '
     else:
@@ -46,7 +47,7 @@ def write_function(o, func_name, func_type, func_args, func_doc):
             o.write(', dimension(*)')
         o.write(', intent(' + a['intent'] + ') :: ' + a['name'])
         o.write('\n')
-    
+
     if func_type != 'void':
         o.write(in_type_map[func_type] + ' :: res\n')
 
@@ -81,7 +82,7 @@ def write_function(o, func_name, func_type, func_args, func_doc):
                 o.write(', dimension(*)')
         o.write(', intent(' + a['intent'] + ') :: ' + a['name'])
         o.write('\n')
-    
+
     if func_type != 'void':
         o.write(in_type_map[func_type] + ' :: res\n')
 
@@ -94,7 +95,7 @@ def write_function(o, func_name, func_type, func_args, func_doc):
     for a in func_args:
         if not a['required']:
             o.write('if (present('+a['name']+')) ' + a['name'] + '_ptr = C_LOC(' + a['name'] + ')\n')
-     
+
     if (func_type == 'void'):
         string = 'call '
     else:
@@ -139,7 +140,7 @@ def main():
 
                 while (True):
                     line = f.readline()
-                    
+
                     i = line.find('@fortran')
                     if i > 0:
                         v = line[i:].split()
@@ -155,10 +156,10 @@ def main():
                                               'name'     : v[5],
                                               'doc'      : arg_doc})
                         if v[1] == 'end': break
-                
+
             if v[1] == 'end':
                 write_function(o, func_name, func_type, func_args, func_doc)
-                
+
 
     f.close()
     o.close()

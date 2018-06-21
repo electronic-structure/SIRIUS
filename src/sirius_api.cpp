@@ -23,7 +23,6 @@
  */
 
 #include "sirius.h"
-//#include "sirius_internal.h"
 #include "utils/any_ptr.hpp"
 
 /// Simulation context.
@@ -35,25 +34,9 @@ std::vector<sirius::K_point_set*> kset_list;
 /// DFT ground state wrapper
 std::unique_ptr<sirius::DFT_ground_state> dft_ground_state{nullptr};
 
-#define GET_SIM_CTX(h) auto& sim_ctx = static_cast<utils::any_ptr*>(*h)->get<sirius::Simulation_context>();
-
 extern "C" {
 
-/* @fortran begin function void sirius_initialize       Initialize the SIRIUS library.
-   @fortran argument in required bool call_mpi_init     If .true. then MPI_Init must be called prior to initialization.
-   @fortran end */ 
-void sirius_initialize(bool const* call_mpi_init__)
-{
-    sirius::initialize(*call_mpi_init__);
-}
-
-/* @fortran begin function void sirius_finalize         Shut down the SIRIUS library
-   @fortran argument in required bool call_mpi_fin      If .true. then MPI_Finalize must be called after the shutdown.
-   @fortran end */ 
-void sirius_finalize(bool const* call_mpi_fin__)
-{
-    sirius::finalize(*call_mpi_fin__);
-}
+#include "sirius_api_v2.hpp"
 
 /// Clear global variables and destroy all objects
 void sirius_clear(void)
@@ -68,18 +51,6 @@ void sirius_clear(void)
     sim_ctx = nullptr;
 
     kset_list.clear();
-}
-
-/* @fortran begin function bool sirius_context_initialized      Check if the simulation context is initialized. 
-   @fortran argument in required void* handler                  Simulation context handler.
-   @fortran end */ 
-bool sirius_context_initialized(void* const* handler__)
-{
-    if (*handler__ == nullptr) {
-        return false;
-    }
-    GET_SIM_CTX(handler__);
-    return sim_ctx.initialized();
 }
 
 bool sirius_initialized()
@@ -100,95 +71,10 @@ void sirius_create_simulation_context(ftn_char str__,
     sim_ctx = std::unique_ptr<sirius::Simulation_context>(new sirius::Simulation_context(str, comm));
 }
 
-/* @fortran begin function void sirius_create_context_v2         Create context of the simulation.
-   @fortran argument out required void* handler                  Simulation context handler.
-   @fortran argument in  required int   fcomm                    Entire communicator of the simulation. 
-   @fortran end */ 
-void sirius_create_context_v2(void**     handler__,
-                              int const* fcomm__)
-{
-    auto& comm = Communicator::map_fcomm(*fcomm__);
-    *handler__ = new utils::any_ptr(new sirius::Simulation_context(comm));
-}
-
 /// Input parameters from a JSON string.
 void sirius_import_simulation_context_parameters(ftn_char str__)
 {
     sim_ctx->import(std::string(str__));
-}
-
-/* @fortran begin function void sirius_import_parameters_v2        Import parameters of simulation from a JSON string
-   @fortran argument in required void* handler                     Simulation context handler.
-   @fortran argument in required string json_str                   JSON string with parameters.
-   @fortran end */ 
-void sirius_import_parameters_v2(void* const* handler__,
-                                 char  const* str__)
-{
-    GET_SIM_CTX(handler__);
-    sim_ctx.import(std::string(str__));
-}
-
-/* @fortran begin function void sirius_set_parameters  Set parameters of the simulation.
-   @fortran argument in required void* handler       Simulation context handler
-   @fortran argument in optional int lmax_apw        Maximum orbital quantum number for APW functions.
-   @fortran argument in optional int lmax_rho        Maximum orbital quantum number for density. 
-   @fortran argument in optional int lmax_pot        Maximum orbital quantum number for potential.
-   @fortran argument in optional int num_bands       Number of bands.
-   @fortran argument in optional int num_mag_dims    Number of magnetic dimensions. 
-   @fortran argument in optional double pw_cutoff    Cutoff for G-vectors.
-   @fortran argument in optional double gk_cutoff    Cutoff for G+k-vectors.
-   @fortran argument in optional int auto_rmt        Set the automatic search of muffin-tin radii.
-   @fortran end */ 
-void sirius_set_parameters(void*  const* handler__,
-                           int    const* lmax_apw__,
-                           int    const* lmax_rho__,
-                           int    const* lmax_pot__,
-                           int    const* num_bands__,
-                           int    const* num_mag_dims__,
-                           double const* pw_cutoff__,
-                           double const* gk_cutoff__,
-                           int    const* auto_rmt__)
-{
-    GET_SIM_CTX(handler__);
-    if (lmax_apw__ != nullptr) {
-        sim_ctx.set_lmax_apw(*lmax_apw__);
-    }
-    if (lmax_rho__ != nullptr) {
-        sim_ctx.set_lmax_rho(*lmax_rho__);
-    }
-    if (lmax_pot__ != nullptr) {
-        sim_ctx.set_lmax_pot(*lmax_pot__);
-    }
-    if (num_bands__ != nullptr) {
-        sim_ctx.num_bands(*num_bands__);
-    }
-    if (num_mag_dims__ != nullptr) {
-        sim_ctx.set_num_mag_dims(*num_mag_dims__);
-    }
-    if (pw_cutoff__ != nullptr) {
-        sim_ctx.set_pw_cutoff(*pw_cutoff__);
-    }
-    if (gk_cutoff__ != nullptr) {
-        sim_ctx.set_gk_cutoff(*gk_cutoff__);
-    }
-    if (auto_rmt__ != nullptr) {
-        sim_ctx.set_auto_rmt(*auto_rmt__);
-    }
-}
-
-/* @fortran begin function void sirius_set_lattice_vectors_v2   Set vectors of the unit cell.
-   @fortran argument in required void* handler       Simulation context handler
-   @fortran argument in required double a1           1st vector
-   @fortran argument in required double a2           2nd vector
-   @fortran argument in required double a3           3er vector
-   @fortran end */ 
-void sirius_set_lattice_vectors_v2(void*  const* handler__,
-                                   double const* a1__,
-                                   double const* a2__,
-                                   double const* a3__)
-{
-    GET_SIM_CTX(handler__);
-    sim_ctx.unit_cell().set_lattice_vectors(vector3d<double>(a1__), vector3d<double>(a2__), vector3d<double>(a3__));
 }
 
 /// Initialize the global variables.
@@ -200,70 +86,10 @@ void sirius_initialize_simulation_context()
     sim_ctx->initialize();
 }
 
-/* @fortran begin function void sirius_initialize_context_v2     Initialize simulation context.
-   @fortran argument in required void* handler                   Simulation context handler.
-   @fortran end */ 
-void sirius_initialize_context_v2(void* const* handler__)
-{
-    GET_SIM_CTX(handler__)
-    sim_ctx.initialize();
-}
-
 /// Delete simulation context.
 void sirius_delete_simulation_context()
 {
     sim_ctx = nullptr;
-}
-
-/* @fortran begin function void sirius_delete_object     Delete any object created by SIRIUS.
-   @fortran argument inout required void* handler        Handler of the object.
-   @fortran end */ 
-void sirius_delete_object(void** handler__)
-{
-    delete static_cast<utils::any_ptr*>(*handler__);
-    *handler__ = nullptr;
-}
-
-/* @fortran begin function void sirius_set_periodic_function_ptr   Set pointer to density or megnetization.
-   @fortran argument in required void* handler                     Handler of the DFT ground state object.
-   @fortran argument in required string label                      Label of the function.
-   @fortran argument in required double f_mt                       Pointer to the muffin-tin part of the function.
-   @fortran argument in required double f_rg                       Pointer to the regualr-grid part of the function.
-   @fortran end */ 
-void sirius_set_periodic_function_ptr(void*  const* handler__,
-                                      char   const* label__,
-                                      double*       f_mt__,
-                                      double*       f_rg__)
-{
-    auto& dft = static_cast<utils::any_ptr*>(*handler__)->get<sirius::DFT_ground_state>();
-    std::string label(label__);
-
-    std::map<std::string, sirius::Periodic_function<double>*> func_map = {
-        {"rho",  &dft.density().component(0)},
-        {"magz", &dft.density().component(1)},
-        {"magx", &dft.density().component(2)},
-        {"magy", &dft.density().component(3)},
-        {"veff", &dft.potential().component(0)},
-        {"bz",   &dft.potential().component(1)},
-        {"bx",   &dft.potential().component(2)},
-        {"by",   &dft.potential().component(3)}
-    };
-    
-    sirius::Periodic_function<double>* f;
-    try {
-        f = func_map.at(label);
-    } catch(...) {
-        std::stringstream s;
-        s << "wrong label: " << label;
-        TERMINATE(s);
-    }
-
-    if (f_mt__) {
-        f->set_mt_ptr(f_mt__);
-    }
-    if (f_rg__) {
-        f->set_rg_ptr(f_rg__);
-    }
 }
 
 /// Initialize the Potential object.
@@ -272,70 +98,41 @@ void sirius_set_periodic_function_ptr(void*  const* handler__,
  *  \param [in] beffmt pointer to the muffin-tin part of effective magnetic field
  *  \param [in] beffit pointer to the interstitial part of the effective magnetic field
  */
-void sirius_create_potential(ftn_double* veffit__,
-                             ftn_double* veffmt__,
-                             ftn_double* beffit__,
-                             ftn_double* beffmt__)
-{
-    //potential = std::unique_ptr<sirius::Potential>(new sirius::Potential(*sim_ctx));
-    dft_ground_state->potential().set_effective_potential_ptr(veffmt__, veffit__);
-    dft_ground_state->potential().set_effective_magnetic_field_ptr(beffmt__, beffit__);
-}
-
-void sirius_delete_potential()
-{
-    //potential = nullptr;
-}
-
-/// Initialize the Density object.
-/** \param [in] rhomt pointer to the muffin-tin part of the density
- *  \param [in] rhoit pointer to the interstitial part of the denssity
- *  \param [in] magmt pointer to the muffin-tin part of the magnetization
- *  \param [in] magit pointer to the interstitial part of the magnetization
- */
-void sirius_create_density(ftn_double* rhoit__,
-                           ftn_double* rhomt__,
-                           ftn_double* magit__,
-                           ftn_double* magmt__)
-{
-    //density = std::unique_ptr<sirius::Density>(new sirius::Density(*sim_ctx));
-    dft_ground_state->density().set_charge_density_ptr(rhomt__, rhoit__);
-    dft_ground_state->density().set_magnetization_ptr(magmt__, magit__);
-}
-
-void sirius_delete_density()
-{
-    //density = nullptr;
-}
-
-/* @fortran begin function void sirius_create_kset_v2      Create k-point set from the list of k-points.
-   @fortran argument in  required void*  handler           Simulation context handler.
-   @fortran argument out required void*  ks_handler        Handler of the created k-point set.
-   @fortran argument in  required int    num_kpoints       Total number of k-points in the set.
-   @fortran argument in  required double kpoints           List of k-points in lattice coordinates.
-   @fortran argument in  required double kpoint_weights    Weights of k-points.
-   @fortran argument in  required bool   init_kset         If .true. k-set will be initialized.
-   @fortran end */ 
-void sirius_create_kset_v2(void* const*  handler__,
-                           void**        ks_handler__,
-                           int    const* num_kpoints__,
-                           double*       kpoints__,
-                           double const* kpoint_weights__,
-                           bool   const* init_kset__)
-{
-    GET_SIM_CTX(handler__);
-
-    mdarray<double, 2> kpoints(kpoints__, 3, *num_kpoints__);
-
-    sirius::K_point_set* new_kset = new sirius::K_point_set(sim_ctx);
-    new_kset->add_kpoints(kpoints, kpoint_weights__);
-    if (*init_kset__) {
-        std::vector<int> counts;
-        new_kset->initialize(counts);
-    }
-
-    *ks_handler__ = new utils::any_ptr(new_kset);
-}
+//void sirius_create_potential(ftn_double* veffit__,
+//                             ftn_double* veffmt__,
+//                             ftn_double* beffit__,
+//                             ftn_double* beffmt__)
+//{
+//    //potential = std::unique_ptr<sirius::Potential>(new sirius::Potential(*sim_ctx));
+//    dft_ground_state->potential().set_effective_potential_ptr(veffmt__, veffit__);
+//    dft_ground_state->potential().set_effective_magnetic_field_ptr(beffmt__, beffit__);
+//}
+//
+//void sirius_delete_potential()
+//{
+//    //potential = nullptr;
+//}
+//
+///// Initialize the Density object.
+///** \param [in] rhomt pointer to the muffin-tin part of the density
+// *  \param [in] rhoit pointer to the interstitial part of the denssity
+// *  \param [in] magmt pointer to the muffin-tin part of the magnetization
+// *  \param [in] magit pointer to the interstitial part of the magnetization
+// */
+//void sirius_create_density(ftn_double* rhoit__,
+//                           ftn_double* rhomt__,
+//                           ftn_double* magit__,
+//                           ftn_double* magmt__)
+//{
+//    //density = std::unique_ptr<sirius::Density>(new sirius::Density(*sim_ctx));
+//    dft_ground_state->density().set_charge_density_ptr(rhomt__, rhoit__);
+//    dft_ground_state->density().set_magnetization_ptr(magmt__, magit__);
+//}
+//
+//void sirius_delete_density()
+//{
+//    //density = nullptr;
+//}
 
 /// Create the k-point set from the list of k-points and return it's id
 void sirius_create_kset(ftn_int*    num_kpoints__,
@@ -399,18 +196,6 @@ void sirius_create_ground_state(int32_t* kset_id__)
     }
 
     dft_ground_state = std::unique_ptr<sirius::DFT_ground_state>(new sirius::DFT_ground_state(*kset_list[*kset_id__]));
-}
-
-/* @fortran begin function void sirius_create_ground_state_v2     Create k-point set from the list of k-points.
-   @fortran argument in  required void*  ks_handler               Handler of the created k-point set.
-   @fortran argument out required void*  gs_handler               Handler of the ground state object.
-   @fortran end */ 
-void sirius_create_ground_state_v2(void* const* ks_handler__,
-                                   void**       gs_handler__)
-{
-    auto& ks = static_cast<utils::any_ptr*>(*ks_handler__)->get<sirius::K_point_set>();
-
-    *gs_handler__ = new utils::any_ptr(new sirius::DFT_ground_state(ks));
 }
 
 void sirius_delete_ground_state()
@@ -1023,26 +808,6 @@ void sirius_print_timers(void)
     }
 }
 
-void sirius_start_timer(ftn_char name__)
-{
-    std::string name(name__);
-    if (!utils::timer::ftimers().count(name)) {
-        utils::timer::ftimers().insert(std::make_pair(name, utils::timer(name)));
-    } else {
-        std::stringstream s;
-        s << "timer " << name__ << " is already active";
-        TERMINATE(s);
-    }
-}
-
-void sirius_stop_timer(ftn_char name__)
-{
-    std::string name(name__);
-    if (utils::timer::ftimers().count(name)) {
-        utils::timer::ftimers().erase(name);
-    }
-}
-
 void sirius_save_potential(void)
 {
     dft_ground_state->potential().save();
@@ -1226,7 +991,7 @@ void FORTRAN(sirius_plot_potential)(void)
 {
     int N{10000};
 
-    dft_ground_state->potential().effective_potential()->fft_transform(-1);
+    dft_ground_state->potential().effective_potential().fft_transform(-1);
 
     std::vector<double> p(N);
     std::vector<double> x(N);
@@ -1240,7 +1005,7 @@ void FORTRAN(sirius_plot_potential)(void)
         auto vf = vf1 + (vf2 - vf1) * t;
 
         auto vc = sim_ctx->unit_cell().get_cartesian_coordinates(vf);
-        p[i] = dft_ground_state->potential().effective_potential()->value(vc);
+        p[i] = dft_ground_state->potential().effective_potential().value(vc);
         x[i] = vc.length();
     }
 
@@ -1715,7 +1480,7 @@ void sirius_generate_xc_potential(ftn_double* vxcmt__,
 
     dft_ground_state->potential().xc(dft_ground_state->density());
 
-    dft_ground_state->potential().xc_potential()->copy_to_global_ptr(vxcmt__, vxcit__);
+    dft_ground_state->potential().xc_potential().copy_to_global_ptr(vxcmt__, vxcit__);
 
     if (sim_ctx->num_mag_dims() == 0) {
         return;
@@ -1729,14 +1494,14 @@ void sirius_generate_xc_potential(ftn_double* vxcmt__,
 
     if (sim_ctx->num_mag_dims() == 1) {
         /* z component */
-        dft_ground_state->potential().effective_magnetic_field(0)->copy_to_global_ptr(&bxcmt(0, 0, 0, 0), &bxcit(0, 0));
+        dft_ground_state->potential().effective_magnetic_field(0).copy_to_global_ptr(&bxcmt(0, 0, 0, 0), &bxcit(0, 0));
     } else {
         /* z component */
-        dft_ground_state->potential().effective_magnetic_field(0)->copy_to_global_ptr(&bxcmt(0, 0, 0, 2), &bxcit(0, 2));
+        dft_ground_state->potential().effective_magnetic_field(0).copy_to_global_ptr(&bxcmt(0, 0, 0, 2), &bxcit(0, 2));
         /* x component */
-        dft_ground_state->potential().effective_magnetic_field(1)->copy_to_global_ptr(&bxcmt(0, 0, 0, 0), &bxcit(0, 0));
+        dft_ground_state->potential().effective_magnetic_field(1).copy_to_global_ptr(&bxcmt(0, 0, 0, 0), &bxcit(0, 0));
         /* y component */
-        dft_ground_state->potential().effective_magnetic_field(2)->copy_to_global_ptr(&bxcmt(0, 0, 0, 1), &bxcit(0, 1));
+        dft_ground_state->potential().effective_magnetic_field(2).copy_to_global_ptr(&bxcmt(0, 0, 0, 1), &bxcit(0, 1));
     }
 }
 
@@ -3305,20 +3070,20 @@ void sirius_set_pw_coeffs(ftn_char label__,
             dft_ground_state->density().rho().scatter_f_pw(v);
             dft_ground_state->density().rho().fft_transform(1);
         } else if (label == "veff") {
-            dft_ground_state->potential().effective_potential()->scatter_f_pw(v);
-            dft_ground_state->potential().effective_potential()->fft_transform(1);
+            dft_ground_state->potential().effective_potential().scatter_f_pw(v);
+            dft_ground_state->potential().effective_potential().fft_transform(1);
         } else if (label == "bz") {
-            dft_ground_state->potential().effective_magnetic_field(0)->scatter_f_pw(v);
-            dft_ground_state->potential().effective_magnetic_field(0)->fft_transform(1);
+            dft_ground_state->potential().effective_magnetic_field(0).scatter_f_pw(v);
+            dft_ground_state->potential().effective_magnetic_field(0).fft_transform(1);
         } else if (label == "bx") {
-            dft_ground_state->potential().effective_magnetic_field(1)->scatter_f_pw(v);
-            dft_ground_state->potential().effective_magnetic_field(1)->fft_transform(1);
+            dft_ground_state->potential().effective_magnetic_field(1).scatter_f_pw(v);
+            dft_ground_state->potential().effective_magnetic_field(1).fft_transform(1);
         } else if (label == "by") {
-            dft_ground_state->potential().effective_magnetic_field(2)->scatter_f_pw(v);
-            dft_ground_state->potential().effective_magnetic_field(2)->fft_transform(1);
+            dft_ground_state->potential().effective_magnetic_field(2).scatter_f_pw(v);
+            dft_ground_state->potential().effective_magnetic_field(2).fft_transform(1);
         } else if (label == "vxc") {
-            dft_ground_state->potential().xc_potential()->scatter_f_pw(v);
-            dft_ground_state->potential().xc_potential()->fft_transform(1);
+            dft_ground_state->potential().xc_potential().scatter_f_pw(v);
+            dft_ground_state->potential().xc_potential().fft_transform(1);
         } else if (label == "magz") {
             dft_ground_state->density().magnetization(0).scatter_f_pw(v);
             dft_ground_state->density().magnetization(0).fft_transform(1);
@@ -3366,7 +3131,7 @@ void sirius_get_pw_coeffs(ftn_char        label__,
             {"magz", &dft_ground_state->density().magnetization(0)},
             {"magx", &dft_ground_state->density().magnetization(1)},
             {"magy", &dft_ground_state->density().magnetization(2)},
-            {"veff", dft_ground_state->potential().effective_potential()},
+            {"veff", &dft_ground_state->potential().effective_potential()},
             {"vloc", &dft_ground_state->potential().local_potential()},
             {"rhoc", &dft_ground_state->density().rho_pseudo_core()}
         };

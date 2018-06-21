@@ -47,10 +47,10 @@ class Potential : public Field4D
     std::unique_ptr<Periodic_function<double>> hartree_potential_;
 
     /// XC potential.
-    Periodic_function<double>* xc_potential_;
+    std::unique_ptr<Periodic_function<double>> xc_potential_;
 
     /// XC energy per unit particle.
-    Periodic_function<double>* xc_energy_density_;
+    std::unique_ptr<Periodic_function<double>> xc_energy_density_;
 
     /// Local part of pseudopotential.
     std::unique_ptr<Smooth_periodic_function<double>> local_potential_;
@@ -349,10 +349,10 @@ class Potential : public Field4D
         hartree_potential_ = std::unique_ptr<Periodic_function<double>>(new Periodic_function<double>(ctx_, ctx_.lmmax_pot()));
         hartree_potential_->allocate_mt(false);
 
-        xc_potential_ = new Periodic_function<double>(ctx_, ctx_.lmmax_pot());
+        xc_potential_ = std::unique_ptr<Periodic_function<double>>(new Periodic_function<double>(ctx_, ctx_.lmmax_pot()));
         xc_potential_->allocate_mt(false);
 
-        xc_energy_density_ = new Periodic_function<double>(ctx_, ctx_.lmmax_pot());
+        xc_energy_density_ = std::unique_ptr<Periodic_function<double>>(new Periodic_function<double>(ctx_, ctx_.lmmax_pot()));
         xc_energy_density_->allocate_mt(false);
 
         for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
@@ -420,72 +420,57 @@ class Potential : public Field4D
         }
     }
 
-    ~Potential()
-    {
-        delete xc_potential_;
-        delete xc_energy_density_;
-    }
+    //inline void set_effective_potential_ptr(double* veffmt, double* veffit)
+    //{
+    //    if (ctx_.full_potential() && veffmt) {
+    //        effective_potential().set_mt_ptr(veffmt);
+    //    }
+    //    if (veffit) {
+    //        effective_potential().set_rg_ptr(veffit);
+    //    }
+    //}
 
-    inline void set_effective_potential_ptr(double* veffmt, double* veffit)
-    {
-        if (ctx_.full_potential() && veffmt) {
-            effective_potential()->set_mt_ptr(veffmt);
-        }
-        if (veffit) {
-            effective_potential()->set_rg_ptr(veffit);
-        }
-    }
+    //inline void set_effective_magnetic_field_ptr(double* beffmt, double* beffit)
+    //{
+    //    if (ctx_.num_mag_dims() == 0) {
+    //        return;
+    //    }
+    //    assert(ctx_.num_spins() == 2);
 
-    inline void set_effective_magnetic_field_ptr(double* beffmt, double* beffit)
-    {
-        if (ctx_.num_mag_dims() == 0) {
-            return;
-        }
-        assert(ctx_.num_spins() == 2);
+    //    /* set temporary array wrapper */
+    //    mdarray<double, 4> beffmt_tmp(beffmt, ctx_.lmmax_pot(), unit_cell_.max_num_mt_points(),
+    //                                  unit_cell_.num_atoms(), ctx_.num_mag_dims());
+    //    mdarray<double, 2> beffit_tmp(beffit, ctx_.fft().size(), ctx_.num_mag_dims());
 
-        /* set temporary array wrapper */
-        mdarray<double, 4> beffmt_tmp(beffmt, ctx_.lmmax_pot(), unit_cell_.max_num_mt_points(),
-                                      unit_cell_.num_atoms(), ctx_.num_mag_dims());
-        mdarray<double, 2> beffit_tmp(beffit, ctx_.fft().size(), ctx_.num_mag_dims());
+    //    if (ctx_.num_mag_dims() == 1) {
+    //        /* z-component */
+    //        if (beffmt) {
+    //            effective_magnetic_field(0)->set_mt_ptr(&beffmt_tmp(0, 0, 0, 0));
+    //        }
+    //        if (beffit) {
+    //            effective_magnetic_field(0)->set_rg_ptr(&beffit_tmp(0, 0));
+    //        }
+    //    }
 
-        if (ctx_.num_mag_dims() == 1) {
-            /* z-component */
-            if (beffmt) {
-                effective_magnetic_field(0)->set_mt_ptr(&beffmt_tmp(0, 0, 0, 0));
-            }
-            if (beffit) {
-                effective_magnetic_field(0)->set_rg_ptr(&beffit_tmp(0, 0));
-            }
-        }
-
-        if (ctx_.num_mag_dims() == 3) {
-            if (beffmt) {
-                /* z-component */
-                effective_magnetic_field(0)->set_mt_ptr(&beffmt_tmp(0, 0, 0, 2));
-                /* x-component */
-                effective_magnetic_field(1)->set_mt_ptr(&beffmt_tmp(0, 0, 0, 0));
-                /* y-component */
-                effective_magnetic_field(2)->set_mt_ptr(&beffmt_tmp(0, 0, 0, 1));
-            }
-            if (beffit) {
-                /* z-component */
-                effective_magnetic_field(0)->set_rg_ptr(&beffit_tmp(0, 2));
-                /* x-component */
-                effective_magnetic_field(1)->set_rg_ptr(&beffit_tmp(0, 0));
-                /* y-component */
-                effective_magnetic_field(2)->set_rg_ptr(&beffit_tmp(0, 1));
-            }
-        }
-    }
-
-    /// Zero effective potential and magnetic field.
-    inline void zero()
-    {
-        effective_potential()->zero();
-        for (int j = 0; j < ctx_.num_mag_dims(); j++) {
-            effective_magnetic_field(j)->zero();
-        }
-    }
+    //    if (ctx_.num_mag_dims() == 3) {
+    //        if (beffmt) {
+    //            /* z-component */
+    //            effective_magnetic_field(0)->set_mt_ptr(&beffmt_tmp(0, 0, 0, 2));
+    //            /* x-component */
+    //            effective_magnetic_field(1)->set_mt_ptr(&beffmt_tmp(0, 0, 0, 0));
+    //            /* y-component */
+    //            effective_magnetic_field(2)->set_mt_ptr(&beffmt_tmp(0, 0, 0, 1));
+    //        }
+    //        if (beffit) {
+    //            /* z-component */
+    //            effective_magnetic_field(0)->set_rg_ptr(&beffit_tmp(0, 2));
+    //            /* x-component */
+    //            effective_magnetic_field(1)->set_rg_ptr(&beffit_tmp(0, 0));
+    //            /* y-component */
+    //            effective_magnetic_field(2)->set_rg_ptr(&beffit_tmp(0, 1));
+    //        }
+    //    }
+    //}
 
     /// Solve Poisson equation for a single atom.
     template <bool free_atom, typename T>
@@ -798,10 +783,10 @@ class Potential : public Field4D
         poisson(density__.rho());
 
         /* add Hartree potential to the total potential */
-        effective_potential()->add(hartree_potential_.get());
+        effective_potential().add(hartree_potential());
 
         if (ctx_.control().print_hash_) {
-            auto h = effective_potential()->hash_f_rg();
+            auto h = effective_potential().hash_f_rg();
             if (ctx_.comm().rank() == 0) {
                 print_hash("Vha", h);
             }
@@ -811,24 +796,24 @@ class Potential : public Field4D
             xc(density__);
         } else {
             /* add local ionic potential to the effective potential */
-            effective_potential()->add(local_potential());
+            effective_potential().add(local_potential());
             /* construct XC potentials from rho + rho_core */
             xc<true>(density__);
         }
         /* add XC potential to the effective potential */
-        effective_potential()->add(xc_potential_);
+        effective_potential().add(xc_potential());
 
         if (ctx_.control().print_hash_) {
-            auto h = effective_potential()->hash_f_rg();
+            auto h = effective_potential().hash_f_rg();
             if (ctx_.comm().rank() == 0) {
                 print_hash("Vha+Vxc", h);
             }
         }
 
         if (ctx_.full_potential()) {
-            effective_potential()->sync_mt();
+            effective_potential().sync_mt();
             for (int j = 0; j < ctx_.num_mag_dims(); j++) {
-                effective_magnetic_field(j)->sync_mt();
+                effective_magnetic_field(j).sync_mt();
             }
         }
 
@@ -840,7 +825,7 @@ class Potential : public Field4D
         fft_transform(-1);
 
         if (ctx_.control().print_hash_) {
-            auto h = effective_potential()->hash_f_pw();
+            auto h = effective_potential().hash_f_pw();
             if (ctx_.comm().rank() == 0) {
                 print_hash("V(G)", h);
             }
@@ -862,11 +847,11 @@ class Potential : public Field4D
 
     inline void save()
     {
-        effective_potential()->hdf5_write(storage_file_name, "effective_potential");
+        effective_potential().hdf5_write(storage_file_name, "effective_potential");
         for (int j = 0; j < ctx_.num_mag_dims(); j++) {
             std::stringstream s;
             s << "effective_magnetic_field/" << j;
-            effective_magnetic_field(j)->hdf5_write(storage_file_name, s.str());
+            effective_magnetic_field(j).hdf5_write(storage_file_name, s.str());
         }
         if (ctx_.comm().rank() == 0 && !ctx_.full_potential()) {
             HDF5_tree fout(storage_file_name, hdf5_access_t::read_write);
@@ -889,10 +874,10 @@ class Potential : public Field4D
         mdarray<int, 2> gv(3, ngv);
         fin.read("/parameters/gvec", gv);
 
-        effective_potential()->hdf5_read(fin["effective_potential"], gv);
+        effective_potential().hdf5_read(fin["effective_potential"], gv);
 
         for (int j = 0; j < ctx_.num_mag_dims(); j++) {
-            effective_magnetic_field(j)->hdf5_read(fin["effective_magnetic_field"][j], gv);
+            effective_magnetic_field(j).hdf5_read(fin["effective_magnetic_field"][j], gv);
         }
 
         if (ctx_.full_potential()) {
@@ -916,18 +901,18 @@ class Potential : public Field4D
             std::vector<double> veff(nmtp);
 
             for (int ir = 0; ir < nmtp; ir++) {
-                veff[ir] = y00 * effective_potential()->f_mt<index_domain_t::global>(0, ir, ia);
+                veff[ir] = y00 * effective_potential().f_mt<index_domain_t::global>(0, ir, ia);
             }
 
             unit_cell_.atom_symmetry_class(ic).set_spherical_potential(veff);
         }
 
         for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
-            double* veff = &effective_potential()->f_mt<index_domain_t::global>(0, 0, ia);
+            double* veff = &effective_potential().f_mt<index_domain_t::global>(0, 0, ia);
 
             double* beff[] = {nullptr, nullptr, nullptr};
             for (int i = 0; i < ctx_.num_mag_dims(); i++) {
-                beff[i] = &effective_magnetic_field(i)->f_mt<index_domain_t::global>(0, 0, ia);
+                beff[i] = &effective_magnetic_field(i).f_mt<index_domain_t::global>(0, 0, ia);
             }
 
             unit_cell_.atom(ia).set_nonspherical_potential(veff, beff);
@@ -1022,9 +1007,9 @@ class Potential : public Field4D
 
     void check_potential_continuity_at_mt();
 
-    Periodic_function<double>* effective_potential()
+    Periodic_function<double>& effective_potential()
     {
-        return &this->scalar();
+        return this->scalar();
     }
 
     Smooth_periodic_function<double>& local_potential()
@@ -1042,9 +1027,9 @@ class Potential : public Field4D
         return this->scalar().f_mt(ialoc);
     }
 
-    Periodic_function<double>* effective_magnetic_field(int i)
+    Periodic_function<double>& effective_magnetic_field(int i)
     {
-        return &this->vector(i);
+        return this->vector(i);
     }
 
     Periodic_function<double>& hartree_potential()
@@ -1057,14 +1042,14 @@ class Potential : public Field4D
         return hartree_potential_->f_mt(ialoc);
     }
 
-    Periodic_function<double>* xc_potential()
+    Periodic_function<double>& xc_potential()
     {
-        return xc_potential_;
+        return *xc_potential_;
     }
 
-    Periodic_function<double>* xc_energy_density()
+    Periodic_function<double>& xc_energy_density()
     {
-        return xc_energy_density_;
+        return *xc_energy_density_;
     }
 
     inline double vh_el(int ia) const
@@ -1082,7 +1067,7 @@ class Potential : public Field4D
         return veff_pw_(ig__);
     }
 
-    inline void set_veff_pw(double_complex* veff_pw__)
+    inline void set_veff_pw(double_complex const* veff_pw__)
     {
         std::copy(veff_pw__, veff_pw__ + ctx_.gvec().num_gvec(), veff_pw_.at<CPU>());
     }
@@ -1092,7 +1077,7 @@ class Potential : public Field4D
         return rm_inv_pw_(ig__);
     }
 
-    inline void set_rm_inv_pw(double_complex* rm_inv_pw__)
+    inline void set_rm_inv_pw(double_complex const* rm_inv_pw__)
     {
         std::copy(rm_inv_pw__, rm_inv_pw__ + ctx_.gvec().num_gvec(), rm_inv_pw_.at<CPU>());
     }
@@ -1102,7 +1087,7 @@ class Potential : public Field4D
         return rm2_inv_pw_(ig__);
     }
 
-    inline void set_rm2_inv_pw(double_complex* rm2_inv_pw__)
+    inline void set_rm2_inv_pw(double_complex const* rm2_inv_pw__)
     {
         std::copy(rm2_inv_pw__, rm2_inv_pw__ + ctx_.gvec().num_gvec(), rm2_inv_pw_.at<CPU>());
     }
@@ -1118,7 +1103,7 @@ class Potential : public Field4D
     {
         double exc = density__.rho().inner(xc_energy_density());
         if (!ctx_.full_potential()) {
-            exc += density__.rho_pseudo_core().inner(*xc_energy_density());
+            exc += inner(density__.rho_pseudo_core(), xc_energy_density());
         }
         return exc;
     }
@@ -1146,8 +1131,8 @@ class Potential : public Field4D
 
     void symmetrize()
     {
-        Field4D::symmetrize(effective_potential(), effective_magnetic_field(0),
-                            effective_magnetic_field(1), effective_magnetic_field(2));
+        Field4D::symmetrize(&effective_potential(), &effective_magnetic_field(0),
+                            &effective_magnetic_field(1), &effective_magnetic_field(2));
     }
 };
 
