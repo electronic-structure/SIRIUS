@@ -953,7 +953,7 @@ inline void Unit_cell_symmetry::symmetrize_vector_function(double_complex* fx_pw
                     if (ig_rot == -1) {
                         /* skip */
                     } else {
-                        assert(ig_rot >= 0 && ig_rot < int(v.size()));
+                        assert(ig_rot >= 0 && ig_rot < int(vz.size()));
                         sym_fx_pw[ig_rot] = v_rot[0] * phase;
                         sym_fy_pw[ig_rot] = v_rot[1] * phase;
                         sym_fz_pw[ig_rot] = v_rot[2] * phase;
