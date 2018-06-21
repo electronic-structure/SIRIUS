@@ -85,17 +85,12 @@ std::string show_vec(const vector3d<T>& vec)
   return str;
 }
 
-PYBIND11_MODULE(py_sirius, m) {
+PYBIND11_MODULE(py_sirius, m){
 
-m.def("initialize", []()
-                    {
-                        sirius::initialize();
-                    });
-
-m.def("finalize", []()
-                  {
-                      sirius::finalize();
-                  });
+// MPI_Init/Finalize
+sirius::initialize();
+auto atexit = py::module::import("atexit");
+atexit.attr("register")(py::cpp_function([](){ sirius::finalize(); }));
 
 py::class_<Parameters_input>(m, "Parameters_input")
     .def(py::init<>())
@@ -286,12 +281,12 @@ py::class_<Hamiltonian>(m, "Hamiltonian")
     .def(py::init<Simulation_context&, Potential&>());
 
 py::class_<Stress>(m, "Stress")
-    //.def(py::init<Simulation_context&, K_point_set&, Density&, Potential&>())
+    .def(py::init<Simulation_context&, Density&, Potential&, Hamiltonian&, K_point_set&>())
     .def("calc_stress_total", &Stress::calc_stress_total, py::return_value_policy::reference_internal)
     .def("print_info", &Stress::print_info);
 
 py::class_<Force>(m, "Force")
-    //.def(py::init<Simulation_context&, Density&, Potential&, Hamiltonian&, K_point_set&>())
+    .def(py::init<Simulation_context&, Density&, Potential&, Hamiltonian&, K_point_set&>())
     .def("calc_forces_total", &Force::calc_forces_total, py::return_value_policy::reference_internal)
     .def("print_info", &Force::print_info);
 

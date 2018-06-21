@@ -1,37 +1,43 @@
 import sirius
-sirius.initialize()
 
-#test 1
-M = [[1,0,0],[0,1,0],[0,0,1]]
+# test 1
+M = [[1, 0, 0],
+     [0, 1, 0],
+     [0, 0, 1]]
 
 Mcpp = sirius.matrix3d(M)
 Gmax = 10
 gvec = sirius.Gvec(Mcpp, Gmax, False)
 
-
-v = gvec.gvec(1111) #find via index. return
+# find via index. return
+v = gvec.gvec(1111)
 print(v)
 print(type(v))
 
-idx = gvec.index_by_gvec([1,3,7]) #find via list
+# find via list
+idx = gvec.index_by_gvec([1, 3, 7])
 print(idx)
 
-v_alt = gvec.gvec_alt(1111) #find via index. return
+# find via index. return
+v_alt = gvec.gvec_alt(1111)
 print(v_alt)
 print(type(v_alt))
 
-print("num_zcol = ", gvec.num_zcol()) #just for testing
+# just for testing
+print("num_zcol = ", gvec.num_zcol())
 
-print(gvec.num_gvec()) #just for testing
+# just for testing
+print(gvec.num_gvec())
 
-zcolu = gvec.zcol(0) #return a dictionary
+
+# return a dictionary
+zcolu = gvec.zcol(0)
 print("zcol =", zcolu)
 
-for j in range(gvec.count()): #test just as in the examples.
+# test just as in the examples.
+for j in range(gvec.count()):
     ig = gvec.offset() + j
     G = sirius.vector3d_int(gvec.gvec(ig))
     jg = gvec.index_by_gvec(G)
-    if(jg != ig):
+    if (jg != ig):
         print("wrong index!")
-
-sirius.finalize()
