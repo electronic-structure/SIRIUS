@@ -338,7 +338,7 @@ class Stress {
      *      Z_{\alpha}^p \Big( \frac{e^{-\frac{G^2}{4}}}{2 G^2} + \frac{2 e^{-\frac{G^2}{4}}}{G^4} \Big)
      *  \f]
      */
-    inline void calc_stress_vloc()
+    inline matrix3d<double> calc_stress_vloc()
     {
         PROFILE("sirius::Stress|vloc");
 
@@ -390,6 +390,8 @@ class Stress {
         ctx_.comm().allreduce(&stress_vloc_(0, 0), 9);
 
         symmetrize(stress_vloc_);
+
+        return stress_vloc_;
     }
 
     inline matrix3d<double> stress_vloc() const
@@ -424,7 +426,7 @@ class Stress {
      *     2\pi \sum_{\bf G} \frac{|\rho({\bf G})|^2}{G^2} \Big( -\delta_{\mu \nu} + \frac{2}{G^2} G_{\nu} G_{\mu} \Big)
      *  \f]
      */
-    inline void calc_stress_har()
+    inline matrix3d<double> calc_stress_har()
     {
         PROFILE("sirius::Stress|har");
 
@@ -456,8 +458,9 @@ class Stress {
         ctx_.comm().allreduce(&stress_har_(0, 0), 9);
 
         symmetrize(stress_har_);
-    }
 
+        return stress_har_;
+    }
 
     inline matrix3d<double> stress_har() const
     {
@@ -502,7 +505,7 @@ class Stress {
      *       \frac{2\pi}{\Omega^2}\frac{N_{el}^2}{4 \lambda} \delta_{\mu \nu}
      *  \f]
      */
-    inline void calc_stress_ewald()
+    inline matrix3d<double> calc_stress_ewald()
     {
         PROFILE("sirius::Stress|ewald");
 
@@ -575,6 +578,8 @@ class Stress {
         }
 
         symmetrize(stress_ewald_);
+
+        return stress_ewald_;
     }
 
     inline matrix3d<double> stress_ewald() const
@@ -594,7 +599,7 @@ class Stress {
      *     -\frac{1}{\Omega} \sum_{{\bf k}} w_{\bf k} (G+k)_{\mu} (G+k)_{\nu} \sum_j f_j  |\psi_j({\bf G + k})|^2
      *  \f]
      */
-    inline void calc_stress_kin()
+    inline matrix3d<double> calc_stress_kin()
     {
         PROFILE("sirius::Stress|kin");
 
@@ -633,6 +638,8 @@ class Stress {
         stress_kin_ *= (-1.0 / ctx_.unit_cell().omega());
 
         symmetrize(stress_kin_);
+
+        return stress_kin_;
     }
 
     inline matrix3d<double> stress_kin() const
@@ -640,13 +647,15 @@ class Stress {
         return stress_kin_;
     }
 
-    inline void calc_stress_nonloc()
+    inline matrix3d<double> calc_stress_nonloc()
     {
         if (ctx_.gamma_point()) {
             calc_stress_nonloc_aux<double>();
         } else {
             calc_stress_nonloc_aux<double_complex>();
         }
+
+        return stress_nonloc_;
     }
 
     inline matrix3d<double> stress_nonloc() const
@@ -686,7 +695,7 @@ class Stress {
      *       R_{\ell m}(\hat{\bf G}) \int Q_{\ell_{\xi} \ell_{\xi'}}^{\ell}(r) \frac{\partial j_{\ell}(Gr)}{\partial G} G_{\nu} r^2 dr \Big)
      *  \f]
      */
-    inline void calc_stress_us()
+    inline matrix3d<double> calc_stress_us()
     {
         PROFILE("sirius::Stress|us");
 
@@ -778,6 +787,8 @@ class Stress {
         stress_us_ *= (1.0 / ctx_.unit_cell().omega());
 
         symmetrize(stress_us_);
+
+        return stress_us_;
     }
 
     inline matrix3d<double> stress_us() const
@@ -797,7 +808,7 @@ class Stress {
      *      \int \frac{\partial \epsilon_{xc} \big( \rho({\bf r}), \nabla \rho({\bf r})\big) }{\nabla_{\beta} \rho({\bf r})} \nabla_{\alpha}\rho({\bf r}) d{\bf r}
      *  \f]
      */
-    void calc_stress_xc()
+    inline matrix3d<double> calc_stress_xc()
     {
         stress_xc_.zero();
 
@@ -840,6 +851,8 @@ class Stress {
         }
 
         symmetrize(stress_xc_);
+
+        return stress_xc_;
     }
 
     inline matrix3d<double> stress_xc() const
@@ -848,7 +861,7 @@ class Stress {
     }
 
     /// Non-linear core correction to stress tensor.
-    void calc_stress_core()
+    matrix3d<double> calc_stress_core()
     {
         stress_core_.zero();
 
@@ -893,9 +906,16 @@ class Stress {
         ctx_.comm().allreduce(&stress_core_(0, 0), 9);
 
         symmetrize(stress_core_);
+
+        return stress_core_;
     }
 
-    void calc_stress_hubbard()
+    inline matrix3d<double> stress_core() const
+    {
+        return stress_core_;
+    }
+
+    inline matrix3d<double> calc_stress_hubbard()
     {
         stress_hubbard_.zero();
 
@@ -942,11 +962,8 @@ class Stress {
         /* global reduction */
         ctx_.comm().allreduce<double, mpi_op_t::sum>(&stress_hubbard_(0, 0), 9);
         symmetrize(stress_hubbard_);
-    }
 
-    inline matrix3d<double> stress_core() const
-    {
-        return stress_core_;
+        return stress_hubbard_;
     }
 
     inline matrix3d<double> stress_hubbard() const
@@ -954,20 +971,20 @@ class Stress {
         return stress_hubbard_;
     }
 
-    inline void calc_stress_total()
-    {
-        calc_stress_kin();
-        calc_stress_har();
-        calc_stress_ewald();
-        calc_stress_vloc();
-        calc_stress_core();
-        calc_stress_xc();
-        calc_stress_us();
-        calc_stress_nonloc();
-        if (ctx_.hubbard_correction()) {
-            calc_stress_hubbard();
-        }
-    }
+    //inline matrix3d<double> calc_stress_total()
+    //{
+    //    calc_stress_kin();
+    //    calc_stress_har();
+    //    calc_stress_ewald();
+    //    calc_stress_vloc();
+    //    calc_stress_core();
+    //    calc_stress_xc();
+    //    calc_stress_us();
+    //    calc_stress_nonloc();
+    //    if (ctx_.hubbard_correction()) {
+    //        calc_stress_hubbard();
+    //    }
+    //}
 
     inline void print_info() const
     {
