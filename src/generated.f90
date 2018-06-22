@@ -33,6 +33,63 @@ end interface
 call sirius_finalize_aux(call_mpi_fin)
 end subroutine sirius_finalize
 
+!> @brief Start the timer.
+!> @param [in] name Timer label.
+subroutine sirius_start_timer(name)
+implicit none
+character(C_CHAR), dimension(*), intent(in) :: name
+interface
+subroutine sirius_start_timer_aux(name)&
+&bind(C, name="sirius_start_timer")
+use, intrinsic :: ISO_C_BINDING
+character(C_CHAR), dimension(*), intent(in) :: name
+end subroutine
+end interface
+call sirius_start_timer_aux(name)
+end subroutine sirius_start_timer
+
+!> @brief Stop the running timer.
+!> @param [in] name Timer label.
+subroutine sirius_stop_timer(name)
+implicit none
+character(C_CHAR), dimension(*), intent(in) :: name
+interface
+subroutine sirius_stop_timer_aux(name)&
+&bind(C, name="sirius_stop_timer")
+use, intrinsic :: ISO_C_BINDING
+character(C_CHAR), dimension(*), intent(in) :: name
+end subroutine
+end interface
+call sirius_stop_timer_aux(name)
+end subroutine sirius_stop_timer
+
+!> @brief Spline integration of f(x)*x^m.
+!> @param [in] m Defines the x^{m} factor.
+!> @param [in] np Number of x-points.
+!> @param [in] x List of x-points.
+!> @param [in] f List of function values.
+!> @param [out] result Resulting value.
+subroutine sirius_integrate(m,np,x,f,result)
+implicit none
+integer(C_INT), intent(in) :: m
+integer(C_INT), intent(in) :: np
+real(C_DOUBLE), intent(in) :: x
+real(C_DOUBLE), intent(in) :: f
+real(C_DOUBLE), intent(out) :: result
+interface
+subroutine sirius_integrate_aux(m,np,x,f,result)&
+&bind(C, name="sirius_integrate")
+use, intrinsic :: ISO_C_BINDING
+integer(C_INT), intent(in) :: m
+integer(C_INT), intent(in) :: np
+real(C_DOUBLE), intent(in) :: x
+real(C_DOUBLE), intent(in) :: f
+real(C_DOUBLE), intent(out) :: result
+end subroutine
+end interface
+call sirius_integrate_aux(m,np,x,f,result)
+end subroutine sirius_integrate
+
 !> @brief Check if the simulation context is initialized.
 !> @param [in] handler Simulation context handler.
 function sirius_context_initialized(handler) result(res)
@@ -95,9 +152,17 @@ end subroutine sirius_import_parameters_v2
 !> @param [in] num_mag_dims Number of magnetic dimensions.
 !> @param [in] pw_cutoff Cutoff for G-vectors.
 !> @param [in] gk_cutoff Cutoff for G+k-vectors.
+!> @param [in] aw_cutoff This is R_{mt} * gk_cutoff.
 !> @param [in] auto_rmt Set the automatic search of muffin-tin radii.
+!> @param [in] gamma_point True if this is a Gamma-point calculation.
+!> @param [in] use_symmetry True if crystal symmetry is taken into account.
+!> @param [in] so_correction True if spin-orbit correnctio is enabled.
+!> @param [in] valence_rel Valence relativity treatment.
+!> @param [in] core_rel Core relativity treatment.
+!> @param [in] esm_bc Type of boundary condition for effective screened medium.
 subroutine sirius_set_parameters(handler,lmax_apw,lmax_rho,lmax_pot,num_bands,nu&
-&m_mag_dims,pw_cutoff,gk_cutoff,auto_rmt)
+&m_mag_dims,pw_cutoff,gk_cutoff,aw_cutoff,auto_rmt,gamma_point,use_symmetry,so_co&
+&rrection,valence_rel,core_rel,esm_bc)
 implicit none
 type(C_PTR), intent(in) :: handler
 integer(C_INT), optional, target, intent(in) :: lmax_apw
@@ -107,7 +172,14 @@ integer(C_INT), optional, target, intent(in) :: num_bands
 integer(C_INT), optional, target, intent(in) :: num_mag_dims
 real(C_DOUBLE), optional, target, intent(in) :: pw_cutoff
 real(C_DOUBLE), optional, target, intent(in) :: gk_cutoff
+real(C_DOUBLE), optional, target, intent(in) :: aw_cutoff
 integer(C_INT), optional, target, intent(in) :: auto_rmt
+logical(C_BOOL), optional, target, intent(in) :: gamma_point
+logical(C_BOOL), optional, target, intent(in) :: use_symmetry
+logical(C_BOOL), optional, target, intent(in) :: so_correction
+character(C_CHAR), optional, target, dimension(*), intent(in) :: valence_rel
+character(C_CHAR), optional, target, dimension(*), intent(in) :: core_rel
+character(C_CHAR), optional, target, dimension(*), intent(in) :: esm_bc
 type(C_PTR) :: lmax_apw_ptr = C_NULL_PTR
 type(C_PTR) :: lmax_rho_ptr = C_NULL_PTR
 type(C_PTR) :: lmax_pot_ptr = C_NULL_PTR
@@ -115,10 +187,18 @@ type(C_PTR) :: num_bands_ptr = C_NULL_PTR
 type(C_PTR) :: num_mag_dims_ptr = C_NULL_PTR
 type(C_PTR) :: pw_cutoff_ptr = C_NULL_PTR
 type(C_PTR) :: gk_cutoff_ptr = C_NULL_PTR
+type(C_PTR) :: aw_cutoff_ptr = C_NULL_PTR
 type(C_PTR) :: auto_rmt_ptr = C_NULL_PTR
+type(C_PTR) :: gamma_point_ptr = C_NULL_PTR
+type(C_PTR) :: use_symmetry_ptr = C_NULL_PTR
+type(C_PTR) :: so_correction_ptr = C_NULL_PTR
+type(C_PTR) :: valence_rel_ptr = C_NULL_PTR
+type(C_PTR) :: core_rel_ptr = C_NULL_PTR
+type(C_PTR) :: esm_bc_ptr = C_NULL_PTR
 interface
 subroutine sirius_set_parameters_aux(handler,lmax_apw,lmax_rho,lmax_pot,num_band&
-&s,num_mag_dims,pw_cutoff,gk_cutoff,auto_rmt)&
+&s,num_mag_dims,pw_cutoff,gk_cutoff,aw_cutoff,auto_rmt,gamma_point,use_symmetry,s&
+&o_correction,valence_rel,core_rel,esm_bc)&
 &bind(C, name="sirius_set_parameters")
 use, intrinsic :: ISO_C_BINDING
 type(C_PTR), intent(in) :: handler
@@ -129,7 +209,14 @@ type(C_PTR), value, intent(in) :: num_bands
 type(C_PTR), value, intent(in) :: num_mag_dims
 type(C_PTR), value, intent(in) :: pw_cutoff
 type(C_PTR), value, intent(in) :: gk_cutoff
+type(C_PTR), value, intent(in) :: aw_cutoff
 type(C_PTR), value, intent(in) :: auto_rmt
+type(C_PTR), value, intent(in) :: gamma_point
+type(C_PTR), value, intent(in) :: use_symmetry
+type(C_PTR), value, intent(in) :: so_correction
+type(C_PTR), value, intent(in) :: valence_rel
+type(C_PTR), value, intent(in) :: core_rel
+type(C_PTR), value, intent(in) :: esm_bc
 end subroutine
 end interface
 if (present(lmax_apw)) lmax_apw_ptr = C_LOC(lmax_apw)
@@ -139,10 +226,59 @@ if (present(num_bands)) num_bands_ptr = C_LOC(num_bands)
 if (present(num_mag_dims)) num_mag_dims_ptr = C_LOC(num_mag_dims)
 if (present(pw_cutoff)) pw_cutoff_ptr = C_LOC(pw_cutoff)
 if (present(gk_cutoff)) gk_cutoff_ptr = C_LOC(gk_cutoff)
+if (present(aw_cutoff)) aw_cutoff_ptr = C_LOC(aw_cutoff)
 if (present(auto_rmt)) auto_rmt_ptr = C_LOC(auto_rmt)
+if (present(gamma_point)) gamma_point_ptr = C_LOC(gamma_point)
+if (present(use_symmetry)) use_symmetry_ptr = C_LOC(use_symmetry)
+if (present(so_correction)) so_correction_ptr = C_LOC(so_correction)
+if (present(valence_rel)) valence_rel_ptr = C_LOC(valence_rel)
+if (present(core_rel)) core_rel_ptr = C_LOC(core_rel)
+if (present(esm_bc)) esm_bc_ptr = C_LOC(esm_bc)
 call sirius_set_parameters_aux(handler,lmax_apw_ptr,lmax_rho_ptr,lmax_pot_ptr,nu&
-&m_bands_ptr,num_mag_dims_ptr,pw_cutoff_ptr,gk_cutoff_ptr,auto_rmt_ptr)
+&m_bands_ptr,num_mag_dims_ptr,pw_cutoff_ptr,gk_cutoff_ptr,aw_cutoff_ptr,auto_rmt_&
+&ptr,gamma_point_ptr,use_symmetry_ptr,so_correction_ptr,valence_rel_ptr,core_rel_&
+&ptr,esm_bc_ptr)
 end subroutine sirius_set_parameters
+
+!> @brief Set tolerance of the iterative solver.
+!> @param [in] handler Simulation context handler
+!> @param [in] tol New tolerance.
+subroutine sirius_set_iterative_solver_tolerance_v2(handler,tol)
+implicit none
+type(C_PTR), intent(in) :: handler
+real(C_DOUBLE), optional, target, intent(in) :: tol
+type(C_PTR) :: tol_ptr = C_NULL_PTR
+interface
+subroutine sirius_set_iterative_solver_tolerance_v2_aux(handler,tol)&
+&bind(C, name="sirius_set_iterative_solver_tolerance_v2")
+use, intrinsic :: ISO_C_BINDING
+type(C_PTR), intent(in) :: handler
+type(C_PTR), value, intent(in) :: tol
+end subroutine
+end interface
+if (present(tol)) tol_ptr = C_LOC(tol)
+call sirius_set_iterative_solver_tolerance_v2_aux(handler,tol_ptr)
+end subroutine sirius_set_iterative_solver_tolerance_v2
+
+!> @brief Set tolerance for the empty states..
+!> @param [in] handler Simulation context handler
+!> @param [in] tol New tolerance.
+subroutine sirius_set_empty_states_tolerance_v2(handler,tol)
+implicit none
+type(C_PTR), intent(in) :: handler
+real(C_DOUBLE), optional, target, intent(in) :: tol
+type(C_PTR) :: tol_ptr = C_NULL_PTR
+interface
+subroutine sirius_set_empty_states_tolerance_v2_aux(handler,tol)&
+&bind(C, name="sirius_set_empty_states_tolerance_v2")
+use, intrinsic :: ISO_C_BINDING
+type(C_PTR), intent(in) :: handler
+type(C_PTR), value, intent(in) :: tol
+end subroutine
+end interface
+if (present(tol)) tol_ptr = C_LOC(tol)
+call sirius_set_empty_states_tolerance_v2_aux(handler,tol_ptr)
+end subroutine sirius_set_empty_states_tolerance_v2
 
 !> @brief Set vectors of the unit cell.
 !> @param [in] handler Simulation context handler
@@ -183,20 +319,20 @@ end interface
 call sirius_initialize_context_v2_aux(handler)
 end subroutine sirius_initialize_context_v2
 
-!> @brief Delete any object created by SIRIUS.
+!> @brief Free any handler of object created by SIRIUS.
 !> @param [inout] handler Handler of the object.
-subroutine sirius_delete_object(handler)
+subroutine sirius_free_handler(handler)
 implicit none
 type(C_PTR), intent(inout) :: handler
 interface
-subroutine sirius_delete_object_aux(handler)&
-&bind(C, name="sirius_delete_object")
+subroutine sirius_free_handler_aux(handler)&
+&bind(C, name="sirius_free_handler")
 use, intrinsic :: ISO_C_BINDING
 type(C_PTR), intent(inout) :: handler
 end subroutine
 end interface
-call sirius_delete_object_aux(handler)
-end subroutine sirius_delete_object
+call sirius_free_handler_aux(handler)
+end subroutine sirius_free_handler
 
 !> @brief Set pointer to density or megnetization.
 !> @param [in] handler Handler of the DFT ground state object.
@@ -255,7 +391,7 @@ call sirius_create_kset_v2_aux(handler,ks_handler,num_kpoints,kpoints,kpoint_wei
 &ghts,init_kset)
 end subroutine sirius_create_kset_v2
 
-!> @brief Create k-point set from the list of k-points.
+!> @brief Create a ground state object.
 !> @param [in] ks_handler Handler of the created k-point set.
 !> @param [out] gs_handler Handler of the ground state object.
 subroutine sirius_create_ground_state_v2(ks_handler,gs_handler)
@@ -272,4 +408,862 @@ end subroutine
 end interface
 call sirius_create_ground_state_v2_aux(ks_handler,gs_handler)
 end subroutine sirius_create_ground_state_v2
+
+!> @brief Add new atom type to the unit cell.
+!> @param [in] handler Simulation context handler.
+!> @param [in] label Atom type unique label.
+!> @param [in] fname Species file name (in JSON format).
+!> @param [in] zn Nucleus charge.
+!> @param [in] symbol Atomic symbol.
+!> @param [in] mass Atomic mass.
+!> @param [in] spin_orbit True if spin-orbit correction is enabled for this atom type.
+subroutine sirius_add_atom_type_v2(handler,label,fname,zn,symbol,mass,spin_orbit&
+&)
+implicit none
+type(C_PTR), intent(in) :: handler
+character(C_CHAR), dimension(*), intent(in) :: label
+character(C_CHAR), optional, target, dimension(*), intent(in) :: fname
+integer(C_INT), optional, target, intent(in) :: zn
+character(C_CHAR), optional, target, dimension(*), intent(in) :: symbol
+real(C_DOUBLE), optional, target, intent(in) :: mass
+logical(C_BOOL), optional, target, intent(in) :: spin_orbit
+type(C_PTR) :: fname_ptr = C_NULL_PTR
+type(C_PTR) :: zn_ptr = C_NULL_PTR
+type(C_PTR) :: symbol_ptr = C_NULL_PTR
+type(C_PTR) :: mass_ptr = C_NULL_PTR
+type(C_PTR) :: spin_orbit_ptr = C_NULL_PTR
+interface
+subroutine sirius_add_atom_type_v2_aux(handler,label,fname,zn,symbol,mass,spin_o&
+&rbit)&
+&bind(C, name="sirius_add_atom_type_v2")
+use, intrinsic :: ISO_C_BINDING
+type(C_PTR), intent(in) :: handler
+character(C_CHAR), dimension(*), intent(in) :: label
+type(C_PTR), value, intent(in) :: fname
+type(C_PTR), value, intent(in) :: zn
+type(C_PTR), value, intent(in) :: symbol
+type(C_PTR), value, intent(in) :: mass
+type(C_PTR), value, intent(in) :: spin_orbit
+end subroutine
+end interface
+if (present(fname)) fname_ptr = C_LOC(fname)
+if (present(zn)) zn_ptr = C_LOC(zn)
+if (present(symbol)) symbol_ptr = C_LOC(symbol)
+if (present(mass)) mass_ptr = C_LOC(mass)
+if (present(spin_orbit)) spin_orbit_ptr = C_LOC(spin_orbit)
+call sirius_add_atom_type_v2_aux(handler,label,fname_ptr,zn_ptr,symbol_ptr,mass_&
+&ptr,spin_orbit_ptr)
+end subroutine sirius_add_atom_type_v2
+
+!> @brief Set radial grid of the atom type.
+!> @param [in] handler Simulation context handler.
+!> @param [in] label Atom type label.
+!> @param [in] num_radial_points Number of radial grid points.
+!> @param [in] radial_points List of radial grid points.
+subroutine sirius_set_atom_type_radial_grid_v2(handler,label,num_radial_points,r&
+&adial_points)
+implicit none
+type(C_PTR), intent(in) :: handler
+character(C_CHAR), dimension(*), intent(in) :: label
+integer(C_INT), intent(in) :: num_radial_points
+real(C_DOUBLE), intent(in) :: radial_points
+interface
+subroutine sirius_set_atom_type_radial_grid_v2_aux(handler,label,num_radial_poin&
+&ts,radial_points)&
+&bind(C, name="sirius_set_atom_type_radial_grid_v2")
+use, intrinsic :: ISO_C_BINDING
+type(C_PTR), intent(in) :: handler
+character(C_CHAR), dimension(*), intent(in) :: label
+integer(C_INT), intent(in) :: num_radial_points
+real(C_DOUBLE), intent(in) :: radial_points
+end subroutine
+end interface
+call sirius_set_atom_type_radial_grid_v2_aux(handler,label,num_radial_points,rad&
+&ial_points)
+end subroutine sirius_set_atom_type_radial_grid_v2
+
+!> @brief Add beta-radial functions.
+!> @param [in] handler Simulation context handler.
+!> @param [in] label Atom type label.
+!> @param [in] l Orbital quantum number of the beta-projector.
+!> @param [in] beta Array of beta-projector values on a radial grid.
+!> @param [in] num_points Number of points in beta-projector array.
+subroutine sirius_add_atom_type_beta_radial_function_v2(handler,label,l,beta,num&
+&_points)
+implicit none
+type(C_PTR), intent(in) :: handler
+character(C_CHAR), dimension(*), intent(in) :: label
+integer(C_INT), intent(in) :: l
+real(C_DOUBLE), intent(in) :: beta
+integer(C_INT), intent(in) :: num_points
+interface
+subroutine sirius_add_atom_type_beta_radial_function_v2_aux(handler,label,l,beta&
+&,num_points)&
+&bind(C, name="sirius_add_atom_type_beta_radial_function_v2")
+use, intrinsic :: ISO_C_BINDING
+type(C_PTR), intent(in) :: handler
+character(C_CHAR), dimension(*), intent(in) :: label
+integer(C_INT), intent(in) :: l
+real(C_DOUBLE), intent(in) :: beta
+integer(C_INT), intent(in) :: num_points
+end subroutine
+end interface
+call sirius_add_atom_type_beta_radial_function_v2_aux(handler,label,l,beta,num_p&
+&oints)
+end subroutine sirius_add_atom_type_beta_radial_function_v2
+
+!> @brief Set the hubbard correction for the atomic type.
+!> @param [in] handler Simulation context handler.
+!> @param [in] label Atom type label.
+!> @param [in] l Orbital quantum number.
+!> @param [in] n ?
+!> @param [in] occ Atomic shell occupancy.
+!> @param [in] U Hubbard U parameter.
+!> @param [in] J Exchange J parameter for the full interaction treatment.
+!> @param [in] alpha J_alpha for the simple interaction treatment.
+!> @param [in] beta J_beta for the simple interaction treatment.
+!> @param [in] J0 J0 for the simple interaction treatment.
+subroutine sirius_set_atom_type_hubbard_v2(handler,label,l,n,occ,U,J,alpha,beta,&
+&J0)
+implicit none
+type(C_PTR), intent(in) :: handler
+character(C_CHAR), dimension(*), intent(in) :: label
+integer(C_INT), intent(in) :: l
+integer(C_INT), intent(in) :: n
+real(C_DOUBLE), intent(in) :: occ
+real(C_DOUBLE), intent(in) :: U
+real(C_DOUBLE), intent(in) :: J
+real(C_DOUBLE), intent(in) :: alpha
+real(C_DOUBLE), intent(in) :: beta
+real(C_DOUBLE), intent(in) :: J0
+interface
+subroutine sirius_set_atom_type_hubbard_v2_aux(handler,label,l,n,occ,U,J,alpha,b&
+&eta,J0)&
+&bind(C, name="sirius_set_atom_type_hubbard_v2")
+use, intrinsic :: ISO_C_BINDING
+type(C_PTR), intent(in) :: handler
+character(C_CHAR), dimension(*), intent(in) :: label
+integer(C_INT), intent(in) :: l
+integer(C_INT), intent(in) :: n
+real(C_DOUBLE), intent(in) :: occ
+real(C_DOUBLE), intent(in) :: U
+real(C_DOUBLE), intent(in) :: J
+real(C_DOUBLE), intent(in) :: alpha
+real(C_DOUBLE), intent(in) :: beta
+real(C_DOUBLE), intent(in) :: J0
+end subroutine
+end interface
+call sirius_set_atom_type_hubbard_v2_aux(handler,label,l,n,occ,U,J,alpha,beta,J0&
+&)
+end subroutine sirius_set_atom_type_hubbard_v2
+
+!> @brief Add atomic wave functions.
+!> @param [in] handler Simulation context handler.
+!> @param [in] label Atom type label.
+!> @param [in] l Orbital quantum number of the wave-function.
+!> @param [in] chi Array of wave-fucntion values on a radial grid.
+!> @param [in] num_points Number of points in wave-function array.
+!> @param [in] occ Orbital occupancy.
+subroutine sirius_add_atom_type_ps_atomic_wf_v2(handler,label,l,chi,num_points,o&
+&cc)
+implicit none
+type(C_PTR), intent(in) :: handler
+character(C_CHAR), dimension(*), intent(in) :: label
+integer(C_INT), intent(in) :: l
+real(C_DOUBLE), intent(in) :: chi
+integer(C_INT), intent(in) :: num_points
+real(C_DOUBLE), optional, target, intent(in) :: occ
+type(C_PTR) :: occ_ptr = C_NULL_PTR
+interface
+subroutine sirius_add_atom_type_ps_atomic_wf_v2_aux(handler,label,l,chi,num_poin&
+&ts,occ)&
+&bind(C, name="sirius_add_atom_type_ps_atomic_wf_v2")
+use, intrinsic :: ISO_C_BINDING
+type(C_PTR), intent(in) :: handler
+character(C_CHAR), dimension(*), intent(in) :: label
+integer(C_INT), intent(in) :: l
+real(C_DOUBLE), intent(in) :: chi
+integer(C_INT), intent(in) :: num_points
+type(C_PTR), value, intent(in) :: occ
+end subroutine
+end interface
+if (present(occ)) occ_ptr = C_LOC(occ)
+call sirius_add_atom_type_ps_atomic_wf_v2_aux(handler,label,l,chi,num_points,occ&
+&_ptr)
+end subroutine sirius_add_atom_type_ps_atomic_wf_v2
+
+!> @brief Add radial functions of ultrasoft Q-operator.
+!> @param [in] handler Simulation context handler.
+!> @param [in] label Atom type label.
+!> @param [in] l Orbital quantum number.
+!> @param [in] idxrf1 Radial function index.
+!> @param [in] idxrf2 Radial function index.
+!> @param [in] q_rf Array of Q^{l}_{i1,i2}(r) values on a radial grid.
+!> @param [in] num_points Number of points in Q-function array.
+subroutine sirius_add_atom_type_q_radial_function_v2(handler,label,l,idxrf1,idxr&
+&f2,q_rf,num_points)
+implicit none
+type(C_PTR), intent(in) :: handler
+character(C_CHAR), dimension(*), intent(in) :: label
+integer(C_INT), intent(in) :: l
+integer(C_INT), intent(in) :: idxrf1
+integer(C_INT), intent(in) :: idxrf2
+real(C_DOUBLE), intent(in) :: q_rf
+integer(C_INT), intent(in) :: num_points
+interface
+subroutine sirius_add_atom_type_q_radial_function_v2_aux(handler,label,l,idxrf1,&
+&idxrf2,q_rf,num_points)&
+&bind(C, name="sirius_add_atom_type_q_radial_function_v2")
+use, intrinsic :: ISO_C_BINDING
+type(C_PTR), intent(in) :: handler
+character(C_CHAR), dimension(*), intent(in) :: label
+integer(C_INT), intent(in) :: l
+integer(C_INT), intent(in) :: idxrf1
+integer(C_INT), intent(in) :: idxrf2
+real(C_DOUBLE), intent(in) :: q_rf
+integer(C_INT), intent(in) :: num_points
+end subroutine
+end interface
+call sirius_add_atom_type_q_radial_function_v2_aux(handler,label,l,idxrf1,idxrf2&
+&,q_rf,num_points)
+end subroutine sirius_add_atom_type_q_radial_function_v2
+
+!> @brief Set ionic part of D-operator matrix.
+!> @param [in] handler Simulation context handler.
+!> @param [in] label Atom type label.
+!> @param [in] num_beta Number of beta-projectors.
+!> @param [in] dion Ionic part of D-operator matrix.
+subroutine sirius_set_atom_type_dion_v2(handler,label,num_beta,dion)
+implicit none
+type(C_PTR), intent(in) :: handler
+character(C_CHAR), dimension(*), intent(in) :: label
+integer(C_INT), intent(in) :: num_beta
+real(C_DOUBLE), intent(in) :: dion
+interface
+subroutine sirius_set_atom_type_dion_v2_aux(handler,label,num_beta,dion)&
+&bind(C, name="sirius_set_atom_type_dion_v2")
+use, intrinsic :: ISO_C_BINDING
+type(C_PTR), intent(in) :: handler
+character(C_CHAR), dimension(*), intent(in) :: label
+integer(C_INT), intent(in) :: num_beta
+real(C_DOUBLE), intent(in) :: dion
+end subroutine
+end interface
+call sirius_set_atom_type_dion_v2_aux(handler,label,num_beta,dion)
+end subroutine sirius_set_atom_type_dion_v2
+
+!> @brief Set PAW related data.
+!> @param [in] handler Simulation context handler.
+!> @param [in] label Atom type label.
+!> @param [in] ae_wfc_rf__ All-electron radial wave-functions.
+!> @param [in] ps_wfc_rf__ Pseudo radial wave-functions.
+!> @param [in] num_wfc Number of wave-functions.
+!> @param [in] ld ld
+!> @param [in] cutoff_radius_index Point at which the wave-functions are truncated.
+!> @param [in] core_energy Core-electrons energy contribution.
+!> @param [in] ae_core_charge All-electron core charge.
+!> @param [in] num_ae_core_charge ?
+!> @param [in] occupations ?
+!> @param [in] num_occ ?
+subroutine sirius_set_atom_type_paw_data_v2(handler,label,ae_wfc_rf__,ps_wfc_rf_&
+&_,num_wfc,ld,cutoff_radius_index,core_energy,ae_core_charge,num_ae_core_charge,o&
+&ccupations,num_occ)
+implicit none
+type(C_PTR), intent(in) :: handler
+character(C_CHAR), dimension(*), intent(in) :: label
+real(C_DOUBLE), intent(in) :: ae_wfc_rf__
+real(C_DOUBLE), intent(in) :: ps_wfc_rf__
+integer(C_INT), intent(in) :: num_wfc
+integer(C_INT), intent(in) :: ld
+integer(C_INT), intent(in) :: cutoff_radius_index
+real(C_DOUBLE), intent(in) :: core_energy
+real(C_DOUBLE), intent(in) :: ae_core_charge
+integer(C_INT), intent(in) :: num_ae_core_charge
+real(C_DOUBLE), intent(in) :: occupations
+integer(C_INT), intent(in) :: num_occ
+interface
+subroutine sirius_set_atom_type_paw_data_v2_aux(handler,label,ae_wfc_rf__,ps_wfc&
+&_rf__,num_wfc,ld,cutoff_radius_index,core_energy,ae_core_charge,num_ae_core_char&
+&ge,occupations,num_occ)&
+&bind(C, name="sirius_set_atom_type_paw_data_v2")
+use, intrinsic :: ISO_C_BINDING
+type(C_PTR), intent(in) :: handler
+character(C_CHAR), dimension(*), intent(in) :: label
+real(C_DOUBLE), intent(in) :: ae_wfc_rf__
+real(C_DOUBLE), intent(in) :: ps_wfc_rf__
+integer(C_INT), intent(in) :: num_wfc
+integer(C_INT), intent(in) :: ld
+integer(C_INT), intent(in) :: cutoff_radius_index
+real(C_DOUBLE), intent(in) :: core_energy
+real(C_DOUBLE), intent(in) :: ae_core_charge
+integer(C_INT), intent(in) :: num_ae_core_charge
+real(C_DOUBLE), intent(in) :: occupations
+integer(C_INT), intent(in) :: num_occ
+end subroutine
+end interface
+call sirius_set_atom_type_paw_data_v2_aux(handler,label,ae_wfc_rf__,ps_wfc_rf__,&
+&num_wfc,ld,cutoff_radius_index,core_energy,ae_core_charge,num_ae_core_charge,occ&
+&upations,num_occ)
+end subroutine sirius_set_atom_type_paw_data_v2
+
+!> @brief Set radial function of pseudo-core charge density.
+!> @param [in] handler Simulation context handler.
+!> @param [in] label Atom type label.
+!> @param [in] num_points Number of points.
+!> @param [in] rho_core Core charge density.
+subroutine sirius_set_atom_type_rho_core_v2(handler,label,num_points,rho_core)
+implicit none
+type(C_PTR), intent(in) :: handler
+character(C_CHAR), dimension(*), intent(in) :: label
+integer(C_INT), intent(in) :: num_points
+real(C_DOUBLE), intent(in) :: rho_core
+interface
+subroutine sirius_set_atom_type_rho_core_v2_aux(handler,label,num_points,rho_cor&
+&e)&
+&bind(C, name="sirius_set_atom_type_rho_core_v2")
+use, intrinsic :: ISO_C_BINDING
+type(C_PTR), intent(in) :: handler
+character(C_CHAR), dimension(*), intent(in) :: label
+integer(C_INT), intent(in) :: num_points
+real(C_DOUBLE), intent(in) :: rho_core
+end subroutine
+end interface
+call sirius_set_atom_type_rho_core_v2_aux(handler,label,num_points,rho_core)
+end subroutine sirius_set_atom_type_rho_core_v2
+
+!> @brief Set radial function of total pseudo charge density.
+!> @param [in] handler Simulation context handler.
+!> @param [in] label Atom type label.
+!> @param [in] num_points Number of points.
+!> @param [in] rho_core Pseudo harge density.
+subroutine sirius_set_atom_type_rho_tot_v2(handler,label,num_points,rho_core)
+implicit none
+type(C_PTR), intent(in) :: handler
+character(C_CHAR), dimension(*), intent(in) :: label
+integer(C_INT), intent(in) :: num_points
+real(C_DOUBLE), intent(in) :: rho_core
+interface
+subroutine sirius_set_atom_type_rho_tot_v2_aux(handler,label,num_points,rho_core&
+&)&
+&bind(C, name="sirius_set_atom_type_rho_tot_v2")
+use, intrinsic :: ISO_C_BINDING
+type(C_PTR), intent(in) :: handler
+character(C_CHAR), dimension(*), intent(in) :: label
+integer(C_INT), intent(in) :: num_points
+real(C_DOUBLE), intent(in) :: rho_core
+end subroutine
+end interface
+call sirius_set_atom_type_rho_tot_v2_aux(handler,label,num_points,rho_core)
+end subroutine sirius_set_atom_type_rho_tot_v2
+
+!> @brief Set radial function of local part of pseudopotential.
+!> @param [in] handler Simulation context handler.
+!> @param [in] label Atom type label.
+!> @param [in] num_points Number of points.
+!> @param [in] vloc Radial function of the local part of pseudopotential.
+subroutine sirius_set_atom_type_vloc_v2(handler,label,num_points,vloc)
+implicit none
+type(C_PTR), intent(in) :: handler
+character(C_CHAR), dimension(*), intent(in) :: label
+integer(C_INT), intent(in) :: num_points
+real(C_DOUBLE), intent(in) :: vloc
+interface
+subroutine sirius_set_atom_type_vloc_v2_aux(handler,label,num_points,vloc)&
+&bind(C, name="sirius_set_atom_type_vloc_v2")
+use, intrinsic :: ISO_C_BINDING
+type(C_PTR), intent(in) :: handler
+character(C_CHAR), dimension(*), intent(in) :: label
+integer(C_INT), intent(in) :: num_points
+real(C_DOUBLE), intent(in) :: vloc
+end subroutine
+end interface
+call sirius_set_atom_type_vloc_v2_aux(handler,label,num_points,vloc)
+end subroutine sirius_set_atom_type_vloc_v2
+
+!> @brief Add atom to the unit cell.
+!> @param [in] handler Simulation context handler.
+!> @param [in] label Atom type label.
+!> @param [in] position Atom position in lattice coordinates.
+!> @param [in] vector_field Starting magnetization.
+subroutine sirius_add_atom_v2(handler,label,position,vector_field)
+implicit none
+type(C_PTR), intent(in) :: handler
+character(C_CHAR), dimension(*), intent(in) :: label
+real(C_DOUBLE), intent(in) :: position
+real(C_DOUBLE), optional, target, intent(in) :: vector_field
+type(C_PTR) :: vector_field_ptr = C_NULL_PTR
+interface
+subroutine sirius_add_atom_v2_aux(handler,label,position,vector_field)&
+&bind(C, name="sirius_add_atom_v2")
+use, intrinsic :: ISO_C_BINDING
+type(C_PTR), intent(in) :: handler
+character(C_CHAR), dimension(*), intent(in) :: label
+real(C_DOUBLE), intent(in) :: position
+type(C_PTR), value, intent(in) :: vector_field
+end subroutine
+end interface
+if (present(vector_field)) vector_field_ptr = C_LOC(vector_field)
+call sirius_add_atom_v2_aux(handler,label,position,vector_field_ptr)
+end subroutine sirius_add_atom_v2
+
+!> @brief Set plane-wave coefficients of a periodic function.
+!> @param [in] handler Ground state handler.
+!> @param [in] label Label of the function.
+!> @param [in] pw_coeffs Local array of plane-wave coefficients.
+!> @param [in] transform_to_rg True if function has to be transformed to real-space grid.
+!> @param [in] ngv Local number of G-vectors.
+!> @param [in] gvl List of G-vectors in lattice coordinates (Miller indices).
+!> @param [in] comm MPI communicator used in distribution of G-vectors
+subroutine sirius_set_pw_coeffs_v2(handler,label,pw_coeffs,transform_to_rg,ngv,g&
+&vl,comm)
+implicit none
+type(C_PTR), intent(in) :: handler
+character(C_CHAR), dimension(*), intent(in) :: label
+complex(C_DOUBLE), intent(in) :: pw_coeffs
+logical(C_BOOL), optional, target, intent(in) :: transform_to_rg
+integer(C_INT), optional, target, intent(in) :: ngv
+integer(C_INT), optional, target, intent(in) :: gvl
+integer(C_INT), optional, target, intent(in) :: comm
+type(C_PTR) :: transform_to_rg_ptr = C_NULL_PTR
+type(C_PTR) :: ngv_ptr = C_NULL_PTR
+type(C_PTR) :: gvl_ptr = C_NULL_PTR
+type(C_PTR) :: comm_ptr = C_NULL_PTR
+interface
+subroutine sirius_set_pw_coeffs_v2_aux(handler,label,pw_coeffs,transform_to_rg,n&
+&gv,gvl,comm)&
+&bind(C, name="sirius_set_pw_coeffs_v2")
+use, intrinsic :: ISO_C_BINDING
+type(C_PTR), intent(in) :: handler
+character(C_CHAR), dimension(*), intent(in) :: label
+complex(C_DOUBLE), intent(in) :: pw_coeffs
+type(C_PTR), value, intent(in) :: transform_to_rg
+type(C_PTR), value, intent(in) :: ngv
+type(C_PTR), value, intent(in) :: gvl
+type(C_PTR), value, intent(in) :: comm
+end subroutine
+end interface
+if (present(transform_to_rg)) transform_to_rg_ptr = C_LOC(transform_to_rg)
+if (present(ngv)) ngv_ptr = C_LOC(ngv)
+if (present(gvl)) gvl_ptr = C_LOC(gvl)
+if (present(comm)) comm_ptr = C_LOC(comm)
+call sirius_set_pw_coeffs_v2_aux(handler,label,pw_coeffs,transform_to_rg_ptr,ngv&
+&_ptr,gvl_ptr,comm_ptr)
+end subroutine sirius_set_pw_coeffs_v2
+
+!> @brief Get plane-wave coefficients of a periodic function.
+!> @param [in] handler Ground state handler.
+!> @param [in] label Label of the function.
+!> @param [in] pw_coeffs Local array of plane-wave coefficients.
+!> @param [in] ngv Local number of G-vectors.
+!> @param [in] gvl List of G-vectors in lattice coordinates (Miller indices).
+!> @param [in] comm MPI communicator used in distribution of G-vectors
+subroutine sirius_get_pw_coeffs_v2(handler,label,pw_coeffs,ngv,gvl,comm)
+implicit none
+type(C_PTR), intent(in) :: handler
+character(C_CHAR), dimension(*), intent(in) :: label
+complex(C_DOUBLE), intent(in) :: pw_coeffs
+integer(C_INT), optional, target, intent(in) :: ngv
+integer(C_INT), optional, target, intent(in) :: gvl
+integer(C_INT), optional, target, intent(in) :: comm
+type(C_PTR) :: ngv_ptr = C_NULL_PTR
+type(C_PTR) :: gvl_ptr = C_NULL_PTR
+type(C_PTR) :: comm_ptr = C_NULL_PTR
+interface
+subroutine sirius_get_pw_coeffs_v2_aux(handler,label,pw_coeffs,ngv,gvl,comm)&
+&bind(C, name="sirius_get_pw_coeffs_v2")
+use, intrinsic :: ISO_C_BINDING
+type(C_PTR), intent(in) :: handler
+character(C_CHAR), dimension(*), intent(in) :: label
+complex(C_DOUBLE), intent(in) :: pw_coeffs
+type(C_PTR), value, intent(in) :: ngv
+type(C_PTR), value, intent(in) :: gvl
+type(C_PTR), value, intent(in) :: comm
+end subroutine
+end interface
+if (present(ngv)) ngv_ptr = C_LOC(ngv)
+if (present(gvl)) gvl_ptr = C_LOC(gvl)
+if (present(comm)) comm_ptr = C_LOC(comm)
+call sirius_get_pw_coeffs_v2_aux(handler,label,pw_coeffs,ngv_ptr,gvl_ptr,comm_pt&
+&r)
+end subroutine sirius_get_pw_coeffs_v2
+
+!> @brief Get atom type contribution to plane-wave coefficients of a periodic function.
+!> @param [in] handler Simulation context handler.
+!> @param [in] atom_type Label of the atom type.
+!> @param [in] label Label of the function.
+!> @param [in] pw_coeffs Local array of plane-wave coefficients.
+!> @param [in] ngv Local number of G-vectors.
+!> @param [in] gvl List of G-vectors in lattice coordinates (Miller indices).
+!> @param [in] comm MPI communicator used in distribution of G-vectors
+subroutine sirius_get_pw_coeffs_real_v2(handler,atom_type,label,pw_coeffs,ngv,gv&
+&l,comm)
+implicit none
+type(C_PTR), intent(in) :: handler
+character(C_CHAR), dimension(*), intent(in) :: atom_type
+character(C_CHAR), dimension(*), intent(in) :: label
+real(C_DOUBLE), intent(in) :: pw_coeffs
+integer(C_INT), optional, target, intent(in) :: ngv
+integer(C_INT), optional, target, intent(in) :: gvl
+integer(C_INT), optional, target, intent(in) :: comm
+type(C_PTR) :: ngv_ptr = C_NULL_PTR
+type(C_PTR) :: gvl_ptr = C_NULL_PTR
+type(C_PTR) :: comm_ptr = C_NULL_PTR
+interface
+subroutine sirius_get_pw_coeffs_real_v2_aux(handler,atom_type,label,pw_coeffs,ng&
+&v,gvl,comm)&
+&bind(C, name="sirius_get_pw_coeffs_real_v2")
+use, intrinsic :: ISO_C_BINDING
+type(C_PTR), intent(in) :: handler
+character(C_CHAR), dimension(*), intent(in) :: atom_type
+character(C_CHAR), dimension(*), intent(in) :: label
+real(C_DOUBLE), intent(in) :: pw_coeffs
+type(C_PTR), value, intent(in) :: ngv
+type(C_PTR), value, intent(in) :: gvl
+type(C_PTR), value, intent(in) :: comm
+end subroutine
+end interface
+if (present(ngv)) ngv_ptr = C_LOC(ngv)
+if (present(gvl)) gvl_ptr = C_LOC(gvl)
+if (present(comm)) comm_ptr = C_LOC(comm)
+call sirius_get_pw_coeffs_real_v2_aux(handler,atom_type,label,pw_coeffs,ngv_ptr,&
+&gvl_ptr,comm_ptr)
+end subroutine sirius_get_pw_coeffs_real_v2
+
+!> @brief Find eigen-states of the Hamiltonian/
+!> @param [in] gs_handler Ground state handler.
+!> @param [in] ks_handler K-point set handler.
+!> @param [in] precompute True if neccessary data to setup eigen-value problem must be automatically precomputed.
+subroutine sirius_find_eigen_states_v2(gs_handler,ks_handler,precompute)
+implicit none
+type(C_PTR), intent(in) :: gs_handler
+type(C_PTR), intent(in) :: ks_handler
+logical(C_BOOL), intent(in) :: precompute
+interface
+subroutine sirius_find_eigen_states_v2_aux(gs_handler,ks_handler,precompute)&
+&bind(C, name="sirius_find_eigen_states_v2")
+use, intrinsic :: ISO_C_BINDING
+type(C_PTR), intent(in) :: gs_handler
+type(C_PTR), intent(in) :: ks_handler
+logical(C_BOOL), intent(in) :: precompute
+end subroutine
+end interface
+call sirius_find_eigen_states_v2_aux(gs_handler,ks_handler,precompute)
+end subroutine sirius_find_eigen_states_v2
+
+!> @brief Generate D-operator matrix.
+!> @param [in] handler Ground state handler.
+subroutine sirius_generate_d_operator_matrix_v2(handler)
+implicit none
+type(C_PTR), intent(in) :: handler
+interface
+subroutine sirius_generate_d_operator_matrix_v2_aux(handler)&
+&bind(C, name="sirius_generate_d_operator_matrix_v2")
+use, intrinsic :: ISO_C_BINDING
+type(C_PTR), intent(in) :: handler
+end subroutine
+end interface
+call sirius_generate_d_operator_matrix_v2_aux(handler)
+end subroutine sirius_generate_d_operator_matrix_v2
+
+!> @brief Generate initial density.
+!> @param [in] handler Ground state handler.
+subroutine sirius_generate_initial_density_v2(handler)
+implicit none
+type(C_PTR), intent(in) :: handler
+interface
+subroutine sirius_generate_initial_density_v2_aux(handler)&
+&bind(C, name="sirius_generate_initial_density_v2")
+use, intrinsic :: ISO_C_BINDING
+type(C_PTR), intent(in) :: handler
+end subroutine
+end interface
+call sirius_generate_initial_density_v2_aux(handler)
+end subroutine sirius_generate_initial_density_v2
+
+!> @brief Generate effective potential and magnetic field.
+!> @param [in] handler Ground state handler.
+subroutine sirius_generate_effective_potential_v2(handler)
+implicit none
+type(C_PTR), intent(in) :: handler
+interface
+subroutine sirius_generate_effective_potential_v2_aux(handler)&
+&bind(C, name="sirius_generate_effective_potential_v2")
+use, intrinsic :: ISO_C_BINDING
+type(C_PTR), intent(in) :: handler
+end subroutine
+end interface
+call sirius_generate_effective_potential_v2_aux(handler)
+end subroutine sirius_generate_effective_potential_v2
+
+!> @brief Generate charge density and magnetization.
+!> @param [in] gs_handler Ground state handler.
+!> @param [in] ks_handler K-point set handler.
+subroutine sirius_generate_density_v2(gs_handler,ks_handler)
+implicit none
+type(C_PTR), intent(in) :: gs_handler
+type(C_PTR), intent(in) :: ks_handler
+interface
+subroutine sirius_generate_density_v2_aux(gs_handler,ks_handler)&
+&bind(C, name="sirius_generate_density_v2")
+use, intrinsic :: ISO_C_BINDING
+type(C_PTR), intent(in) :: gs_handler
+type(C_PTR), intent(in) :: ks_handler
+end subroutine
+end interface
+call sirius_generate_density_v2_aux(gs_handler,ks_handler)
+end subroutine sirius_generate_density_v2
+
+!> @brief Initialize the subspace of wave-functions.
+!> @param [in] gs_handler Ground state handler.
+!> @param [in] ks_handler K-point set handler.
+subroutine sirius_initialize_subspace_v2(gs_handler,ks_handler)
+implicit none
+type(C_PTR), intent(in) :: gs_handler
+type(C_PTR), intent(in) :: ks_handler
+interface
+subroutine sirius_initialize_subspace_v2_aux(gs_handler,ks_handler)&
+&bind(C, name="sirius_initialize_subspace_v2")
+use, intrinsic :: ISO_C_BINDING
+type(C_PTR), intent(in) :: gs_handler
+type(C_PTR), intent(in) :: ks_handler
+end subroutine
+end interface
+call sirius_initialize_subspace_v2_aux(gs_handler,ks_handler)
+end subroutine sirius_initialize_subspace_v2
+
+!> @brief Set band occupancies.
+!> @param [in] ks_handler K-point set handler.
+!> @param [in] ik Global index of k-point.
+!> @param [in] ispn Spin component.
+!> @param [in] band_occupancies Array of band occupancies.
+subroutine sirius_set_band_occupancies_v2(ks_handler,ik,ispn,band_occupancies)
+implicit none
+type(C_PTR), intent(in) :: ks_handler
+integer(C_INT), intent(in) :: ik
+integer(C_INT), intent(in) :: ispn
+real(C_DOUBLE), intent(in) :: band_occupancies
+interface
+subroutine sirius_set_band_occupancies_v2_aux(ks_handler,ik,ispn,band_occupancie&
+&s)&
+&bind(C, name="sirius_set_band_occupancies_v2")
+use, intrinsic :: ISO_C_BINDING
+type(C_PTR), intent(in) :: ks_handler
+integer(C_INT), intent(in) :: ik
+integer(C_INT), intent(in) :: ispn
+real(C_DOUBLE), intent(in) :: band_occupancies
+end subroutine
+end interface
+call sirius_set_band_occupancies_v2_aux(ks_handler,ik,ispn,band_occupancies)
+end subroutine sirius_set_band_occupancies_v2
+
+!> @brief Get band energies.
+!> @param [in] ks_handler K-point set handler.
+!> @param [in] ik Global index of k-point.
+!> @param [in] ispn Spin component.
+!> @param [out] band_energies Array of band energies.
+subroutine sirius_get_band_energies_v2(ks_handler,ik,ispn,band_energies)
+implicit none
+type(C_PTR), intent(in) :: ks_handler
+integer(C_INT), intent(in) :: ik
+integer(C_INT), intent(in) :: ispn
+real(C_DOUBLE), intent(out) :: band_energies
+interface
+subroutine sirius_get_band_energies_v2_aux(ks_handler,ik,ispn,band_energies)&
+&bind(C, name="sirius_get_band_energies_v2")
+use, intrinsic :: ISO_C_BINDING
+type(C_PTR), intent(in) :: ks_handler
+integer(C_INT), intent(in) :: ik
+integer(C_INT), intent(in) :: ispn
+real(C_DOUBLE), intent(out) :: band_energies
+end subroutine
+end interface
+call sirius_get_band_energies_v2_aux(ks_handler,ik,ispn,band_energies)
+end subroutine sirius_get_band_energies_v2
+
+!> @brief Get D-operator matrix
+!> @param [in] handler Simulation context handler.
+!> @param [in] ia Global index of atom.
+!> @param [in] ispn Spin component.
+!> @param [out] d_mtrx D-matrix.
+!> @param [in] ld Leading dimention of D-matrix.
+subroutine sirius_get_d_operator_matrix_v2(handler,ia,ispn,d_mtrx,ld)
+implicit none
+type(C_PTR), intent(in) :: handler
+integer(C_INT), intent(in) :: ia
+integer(C_INT), intent(in) :: ispn
+real(C_DOUBLE), intent(out) :: d_mtrx
+integer(C_INT), intent(in) :: ld
+interface
+subroutine sirius_get_d_operator_matrix_v2_aux(handler,ia,ispn,d_mtrx,ld)&
+&bind(C, name="sirius_get_d_operator_matrix_v2")
+use, intrinsic :: ISO_C_BINDING
+type(C_PTR), intent(in) :: handler
+integer(C_INT), intent(in) :: ia
+integer(C_INT), intent(in) :: ispn
+real(C_DOUBLE), intent(out) :: d_mtrx
+integer(C_INT), intent(in) :: ld
+end subroutine
+end interface
+call sirius_get_d_operator_matrix_v2_aux(handler,ia,ispn,d_mtrx,ld)
+end subroutine sirius_get_d_operator_matrix_v2
+
+!> @brief Set D-operator matrix
+!> @param [in] handler Simulation context handler.
+!> @param [in] ia Global index of atom.
+!> @param [in] ispn Spin component.
+!> @param [out] d_mtrx D-matrix.
+!> @param [in] ld Leading dimention of D-matrix.
+subroutine sirius_set_d_operator_matrix_v2(handler,ia,ispn,d_mtrx,ld)
+implicit none
+type(C_PTR), intent(in) :: handler
+integer(C_INT), intent(in) :: ia
+integer(C_INT), intent(in) :: ispn
+real(C_DOUBLE), intent(out) :: d_mtrx
+integer(C_INT), intent(in) :: ld
+interface
+subroutine sirius_set_d_operator_matrix_v2_aux(handler,ia,ispn,d_mtrx,ld)&
+&bind(C, name="sirius_set_d_operator_matrix_v2")
+use, intrinsic :: ISO_C_BINDING
+type(C_PTR), intent(in) :: handler
+integer(C_INT), intent(in) :: ia
+integer(C_INT), intent(in) :: ispn
+real(C_DOUBLE), intent(out) :: d_mtrx
+integer(C_INT), intent(in) :: ld
+end subroutine
+end interface
+call sirius_set_d_operator_matrix_v2_aux(handler,ia,ispn,d_mtrx,ld)
+end subroutine sirius_set_d_operator_matrix_v2
+
+!> @brief Get all components of complex density matrix.
+!> @param [in] handler DFT ground state handler.
+!> @param [in] ia Global index of atom.
+!> @param [out] dm Complex density matrix.
+!> @param [in] ld Leading dimention of the density matrix.
+subroutine sirius_get_density_matrix_v2(handler,ia,dm,ld)
+implicit none
+type(C_PTR), intent(in) :: handler
+integer(C_INT), intent(in) :: ia
+complex(C_DOUBLE), intent(out) :: dm
+integer(C_INT), intent(in) :: ld
+interface
+subroutine sirius_get_density_matrix_v2_aux(handler,ia,dm,ld)&
+&bind(C, name="sirius_get_density_matrix_v2")
+use, intrinsic :: ISO_C_BINDING
+type(C_PTR), intent(in) :: handler
+integer(C_INT), intent(in) :: ia
+complex(C_DOUBLE), intent(out) :: dm
+integer(C_INT), intent(in) :: ld
+end subroutine
+end interface
+call sirius_get_density_matrix_v2_aux(handler,ia,dm,ld)
+end subroutine sirius_get_density_matrix_v2
+
+!> @brief Set all components of complex density matrix.
+!> @param [in] handler DFT ground state handler.
+!> @param [in] ia Global index of atom.
+!> @param [out] dm Complex density matrix.
+!> @param [in] ld Leading dimention of the density matrix.
+subroutine sirius_set_density_matrix_v2(handler,ia,dm,ld)
+implicit none
+type(C_PTR), intent(in) :: handler
+integer(C_INT), intent(in) :: ia
+complex(C_DOUBLE), intent(out) :: dm
+integer(C_INT), intent(in) :: ld
+interface
+subroutine sirius_set_density_matrix_v2_aux(handler,ia,dm,ld)&
+&bind(C, name="sirius_set_density_matrix_v2")
+use, intrinsic :: ISO_C_BINDING
+type(C_PTR), intent(in) :: handler
+integer(C_INT), intent(in) :: ia
+complex(C_DOUBLE), intent(out) :: dm
+integer(C_INT), intent(in) :: ld
+end subroutine
+end interface
+call sirius_set_density_matrix_v2_aux(handler,ia,dm,ld)
+end subroutine sirius_set_density_matrix_v2
+
+!> @brief Get one of the total energy components.
+!> @param [in] handler DFT ground state handler.
+!> @param [in] label Label of the energy component to get.
+!> @param [out] energy Total energy component.
+subroutine sirius_get_energy(handler,label,energy)
+implicit none
+type(C_PTR), intent(in) :: handler
+character(C_CHAR), dimension(*), intent(in) :: label
+real(C_DOUBLE), intent(out) :: energy
+interface
+subroutine sirius_get_energy_aux(handler,label,energy)&
+&bind(C, name="sirius_get_energy")
+use, intrinsic :: ISO_C_BINDING
+type(C_PTR), intent(in) :: handler
+character(C_CHAR), dimension(*), intent(in) :: label
+real(C_DOUBLE), intent(out) :: energy
+end subroutine
+end interface
+call sirius_get_energy_aux(handler,label,energy)
+end subroutine sirius_get_energy
+
+!> @brief Get one of the total force components.
+!> @param [in] handler DFT ground state handler.
+!> @param [in] label Label of the force component to get.
+!> @param [out] forces Total force component for each atom.
+subroutine sirius_get_forces_v2(handler,label,forces)
+implicit none
+type(C_PTR), intent(in) :: handler
+character(C_CHAR), dimension(*), intent(in) :: label
+real(C_DOUBLE), intent(out) :: forces
+interface
+subroutine sirius_get_forces_v2_aux(handler,label,forces)&
+&bind(C, name="sirius_get_forces_v2")
+use, intrinsic :: ISO_C_BINDING
+type(C_PTR), intent(in) :: handler
+character(C_CHAR), dimension(*), intent(in) :: label
+real(C_DOUBLE), intent(out) :: forces
+end subroutine
+end interface
+call sirius_get_forces_v2_aux(handler,label,forces)
+end subroutine sirius_get_forces_v2
+
+!> @brief Get one of the stress tensor components.
+!> @param [in] handler DFT ground state handler.
+!> @param [in] label Label of the stress tensor component to get.
+!> @param [out] stress_tensor Component of the total stress tensor.
+subroutine sirius_get_stress_tensor_v2(handler,label,stress_tensor)
+implicit none
+type(C_PTR), intent(in) :: handler
+character(C_CHAR), dimension(*), intent(in) :: label
+real(C_DOUBLE), intent(out) :: stress_tensor
+interface
+subroutine sirius_get_stress_tensor_v2_aux(handler,label,stress_tensor)&
+&bind(C, name="sirius_get_stress_tensor_v2")
+use, intrinsic :: ISO_C_BINDING
+type(C_PTR), intent(in) :: handler
+character(C_CHAR), dimension(*), intent(in) :: label
+real(C_DOUBLE), intent(out) :: stress_tensor
+end subroutine
+end interface
+call sirius_get_stress_tensor_v2_aux(handler,label,stress_tensor)
+end subroutine sirius_get_stress_tensor_v2
+
+!> @brief Get the number of beta-projectors for an atom type.
+!> @param [in] handler Simulation context handler.
+!> @param [in] label Atom type label.
+!> @param [out] num_beta_projectors Number of beta-projectors.
+subroutine sirius_get_num_beta_projectors_v2(handler,label,num_beta_projectors)
+implicit none
+type(C_PTR), intent(in) :: handler
+character(C_CHAR), dimension(*), intent(in) :: label
+integer(C_INT), intent(out) :: num_beta_projectors
+interface
+subroutine sirius_get_num_beta_projectors_v2_aux(handler,label,num_beta_projecto&
+&rs)&
+&bind(C, name="sirius_get_num_beta_projectors_v2")
+use, intrinsic :: ISO_C_BINDING
+type(C_PTR), intent(in) :: handler
+character(C_CHAR), dimension(*), intent(in) :: label
+integer(C_INT), intent(out) :: num_beta_projectors
+end subroutine
+end interface
+call sirius_get_num_beta_projectors_v2_aux(handler,label,num_beta_projectors)
+end subroutine sirius_get_num_beta_projectors_v2
 
