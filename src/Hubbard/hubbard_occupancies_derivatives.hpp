@@ -83,7 +83,7 @@ void Hubbard_potential::compute_occupancies_derivatives(K_point& kp,
 
     #ifdef __GPU
     if (ctx_.processing_unit() == GPU) {
-        phitmp.pw_coeffs(0).prime().allocate(memory_t::device);
+        phitmp.allocate_on_device(0);
     }
     #endif
 
@@ -171,7 +171,7 @@ void Hubbard_potential::compute_occupancies_derivatives(K_point& kp,
 
     #ifdef __GPU
     if (ctx_.processing_unit() == GPU) {
-        dm.dellocate(memory_t::device);
+        dm.deallocate(memory_t::device);
         phi.deallocate_on_device(0);
         phitmp.deallocate_on_device(0);
         dphi.deallocate_on_device(0);
@@ -345,6 +345,7 @@ void Hubbard_potential::compute_occupancies_stress_derivatives(K_point& kp,
 
     #ifdef __GPU
     if (ctx_.processing_unit() == GPU) {
+        dm.deallocate(memory_t::device);
         phi.deallocate_on_device(0);
         phitmp.deallocate_on_device(0);
         dphi.deallocate_on_device(0);
@@ -457,10 +458,10 @@ void Hubbard_potential::compute_occupancies(K_point& kp,
                           this->number_of_hubbard_orbitals() * ctx_.num_spins(),
                           HowManyBands,
                           double_complex(kp.weight(), 0.0),
-                          dynamic_cast<matrix<double_complex>&>(dPhi_S_Psi),
-                          dynamic_cast<matrix<double_complex>&>(Phi_S_Psi),
+                          dPhi_S_Psi.template at<GPU>(),
+                          Phi_S_Psi.template at<GPU>(),
                           linalg_const<double_complex>::zero(),
-                          dm);
+                          dm.template at<GPU>());
 
 
         linalg<GPU>::gemm(2, 0,
@@ -468,10 +469,10 @@ void Hubbard_potential::compute_occupancies(K_point& kp,
                           this->number_of_hubbard_orbitals() * ctx_.num_spins(),
                           HowManyBands,
                           double_complex(kp.weight(), 0.0),
-                          dynamic_cast<matrix<double_complex>&>(Phi_S_Psi),
-                          dynamic_cast<matrix<double_complex>&>(dPhi_S_Psi),
+                          Phi_S_Psi.template at<GPU>(),
+                          dPhi_S_Psi.template at<GPU>(),
                           linalg_const<double_complex>::one(),
-                          dm);
+                          dm.template at<GPU>());
 
         dm.copy<memory_t::device, memory_t::host>();
     } else {
