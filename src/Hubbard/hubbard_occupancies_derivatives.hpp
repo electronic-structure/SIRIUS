@@ -425,6 +425,9 @@ void Hubbard_potential::compute_occupancies(K_point& kp,
                                             matrix<double_complex> &dm,
                                             const int index)
 {
+    const double_complex weight = double_complex(kp.weight(), 0.0);
+    const double_complex one = double_complex(1.0, 0.0);
+    const double_complex zero = double_complex(0.0, 0.0);
     // it is actually <psi | d(S|phi>)
     dPhi_S_Psi.zero();
     int HowManyBands = kp.num_occupied_bands(0);
@@ -457,22 +460,22 @@ void Hubbard_potential::compute_occupancies(K_point& kp,
                           this->number_of_hubbard_orbitals() * ctx_.num_spins(),
                           this->number_of_hubbard_orbitals() * ctx_.num_spins(),
                           HowManyBands,
-                          double_complex(kp.weight(), 0.0),
-                          dPhi_S_Psi.template at<GPU>(),
-                          Phi_S_Psi.template at<GPU>(),
-                          linalg_const<double_complex>::zero(),
-                          dm.template at<GPU>());
+                          &weight,
+                          dynamic_cast<matrix<double_complex>&>(dPhi_S_Psi),
+                          dynamic_cast<matrix<double_complex>&>(Phi_S_Psi),
+                          &zero,
+                          dm);
 
 
         linalg<GPU>::gemm(2, 0,
                           this->number_of_hubbard_orbitals() * ctx_.num_spins(),
                           this->number_of_hubbard_orbitals() * ctx_.num_spins(),
                           HowManyBands,
-                          double_complex(kp.weight(), 0.0),
-                          Phi_S_Psi.template at<GPU>(),
-                          dPhi_S_Psi.template at<GPU>(),
-                          linalg_const<double_complex>::one(),
-                          dm.template at<GPU>());
+                          &weight,
+                          dynamic_cast<matrix<double_complex>&>(Phi_S_Psi),
+                          dynamic_cast<matrix<double_complex>&>(dPhi_S_Psi),
+                          &one,
+                          dm);
 
         dm.copy<memory_t::device, memory_t::host>();
     } else {
