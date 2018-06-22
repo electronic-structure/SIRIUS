@@ -219,10 +219,8 @@ class Force
                                                              hamiltonian_.Q<double_complex>(),
                                                              dn_);
 
-            //                #pragma omp parallel for
             for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {
                 // compute the derivative of the occupancies numbers
-
                 for (int dir = 0; dir < 3; dir++) {
                     for (int ia1 = 0; ia1 < ctx_.unit_cell().num_atoms(); ia1++) {
                         const auto& atom = ctx_.unit_cell().atom(ia1);
@@ -764,7 +762,7 @@ class Force
 
         inline void calc_forces_hubbard()
         {
-
+            PROFILE("sirius::Force::hubbard_force");
             forces_hubbard_ = mdarray<double, 2>(3, ctx_.unit_cell().num_atoms());
             forces_hubbard_.zero();
 
@@ -773,6 +771,7 @@ class Force
             } else {
                 hamiltonian_.prepare<double_complex>();
             }
+            /* we can probably task run this in a task fashion */
 
             for (int ikloc = 0; ikloc < kset_.spl_num_kpoints().local_size(); ikloc++) {
 
