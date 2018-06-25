@@ -329,7 +329,8 @@ class Local_operator
         }
 
 #ifdef __GPU
-        mdarray<double*, 1> vptr(4, memory_t::host | memory_t::device);
+        memory_t vptr_mem = acc::num_devices() > 0 ? memory_t::host | memory_t::device : memory_t::host;
+        mdarray<double*, 1> vptr(4, vptr_mem);
         vptr.zero();
         if (fft_coarse_.pu() == GPU) {
             for (int j = 0; j < ctx_.num_mag_dims() + 1; j++) {

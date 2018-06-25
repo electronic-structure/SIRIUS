@@ -210,6 +210,8 @@ inline void sync_stream(int stream_id__)
 template <typename T>
 inline void copy(T* target__, T const* source__, size_t n__)
 {
+    assert(source__ != nullptr);
+    assert(target__ != nullptr);
     CALL_CUDA(cudaMemcpy, (target__, source__, n__ * sizeof(T), cudaMemcpyDeviceToDevice));
 }
 
