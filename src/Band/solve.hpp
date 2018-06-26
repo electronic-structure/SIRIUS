@@ -103,7 +103,7 @@ inline void Band::solve(K_point_set& kset__, Hamiltonian& hamiltonian__, bool pr
         unit_cell_.generate_radial_functions();
         unit_cell_.generate_radial_integrals();
     }
-    
+
     /* map local potential to a coarse grid */
     if (ctx_.full_potential()) {
         hamiltonian__.local_op().prepare(hamiltonian__.potential(), ctx_.step_function());

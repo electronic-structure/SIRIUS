@@ -1051,6 +1051,7 @@ class Atom_type
         switch(hubbard_l_) {
         case 0:
             F[1] = Hubbard_J();
+            break;
         case 1:
             F[1] = 5.0 * Hubbard_J();
             break;
@@ -1817,7 +1818,7 @@ Atom_type::calculate_U_sigma_m(const int l, const double j, const int mj, const 
     }
 }
 
-void Atom_type::generate_f_coefficients(void)
+inline void Atom_type::generate_f_coefficients(void)
 {
     // we consider Pseudo potentials with spin orbit couplings
 
@@ -1870,7 +1871,7 @@ void Atom_type::generate_f_coefficients(void)
     }
 }
 
-void Atom_type::calculate_ak_coefficients(mdarray<double, 5> &ak)
+inline void Atom_type::calculate_ak_coefficients(mdarray<double, 5> &ak)
 {
     // compute the ak coefficients appearing in the general treatment of
     // hubbard corrections.  expression taken from Liechtenstein {\it et
@@ -1916,7 +1917,7 @@ void Atom_type::calculate_ak_coefficients(mdarray<double, 5> &ak)
 
 
 
-void Atom_type::compute_hubbard_matrix()
+inline void Atom_type::compute_hubbard_matrix()
 {
     this->hubbard_matrix_ = mdarray<double, 4>(2 * this->hubbard_l_ + 1,
                                                2 * this->hubbard_l_ + 1,
@@ -1948,7 +1949,7 @@ void Atom_type::compute_hubbard_matrix()
     }
 }
 
-void Atom_type::read_hubbard_input()
+inline void Atom_type::read_hubbard_input()
 {
     if(!parameters_.Hubbard().hubbard_correction_) {
         return;

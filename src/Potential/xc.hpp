@@ -416,7 +416,7 @@ inline void Potential::xc_mt(Density const& density__)
                     /* add auxiliary magnetic field antiparallel to starting magnetization */
                     bxcrlm(0, ir) -= aux_bf_(j, ia) * ctx_.unit_cell().atom(ia).vector_field()[comp_map[j]]; 
                     for (int lm = 0; lm < ctx_.lmmax_pot(); lm++) {
-                        effective_magnetic_field(j)->f_mt<index_domain_t::local>(lm, ir, ialoc) = bxcrlm(lm, ir);
+                        effective_magnetic_field(j).f_mt<index_domain_t::local>(lm, ir, ialoc) = bxcrlm(lm, ir);
                     }
                 }
             }
@@ -863,11 +863,11 @@ inline void Potential::xc_rg_magnetic(Density const& density__)
         if (m > 1e-8) {
             double b = 0.5 * (vxc_up_tmp(irloc) - vxc_dn_tmp(irloc));
             for (int j = 0; j < ctx_.num_mag_dims(); j++) {
-               effective_magnetic_field(j)->f_rg(irloc) = b * density__.magnetization(j).f_rg(irloc) / m;
+               effective_magnetic_field(j).f_rg(irloc) = b * density__.magnetization(j).f_rg(irloc) / m;
             }
         } else {
             for (int j = 0; j < ctx_.num_mag_dims(); j++) {
-                effective_magnetic_field(j)->f_rg(irloc) = 0.0;
+                effective_magnetic_field(j).f_rg(irloc) = 0.0;
             }
         }
     }
@@ -882,7 +882,7 @@ inline void Potential::xc(Density const& density__)
         xc_potential_->zero();
         xc_energy_density_->zero();
         for (int i = 0; i < ctx_.num_mag_dims(); i++) {
-            effective_magnetic_field(i)->zero();
+            effective_magnetic_field(i).zero();
         }
         return;
     }

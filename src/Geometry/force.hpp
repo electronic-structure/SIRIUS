@@ -495,10 +495,10 @@ class Force
             forces_core_.zero();
 
             /* get main arrays */
-            auto xc_pot = potential_.xc_potential();
+            auto& xc_pot = potential_.xc_potential();
 
             /* transform from real space to reciprocal */
-            xc_pot->fft_transform(-1);
+            xc_pot.fft_transform(-1);
 
             Unit_cell& unit_cell = ctx_.unit_cell();
 
@@ -530,7 +530,7 @@ class Force
 
                     /* scalar part of a force without multipying by G-vector */
                     double_complex z = fact * fourpi * ri.value<int>(iat, gvecs.gvec_len(ig)) *
-                        std::conj(xc_pot->f_pw_local(igloc) * ctx_.gvec_phase_factor(ig, ia));
+                        std::conj(xc_pot.f_pw_local(igloc) * ctx_.gvec_phase_factor(ig, ia));
 
                     /* get force components multiplying by cartesian G-vector */
                     for (int x: {0, 1, 2}) {
@@ -606,14 +606,7 @@ class Force
             forces_us_ = mdarray<double, 2>(3, ctx_.unit_cell().num_atoms());
             forces_us_.zero();
 
-            /* pack v effective in one array of pointers*/
-            Periodic_function<double>* vfield_eff[4];
-            vfield_eff[0] = potential_.effective_potential();
-            vfield_eff[0]->fft_transform(-1);
-            for (int imagn = 0; imagn < ctx_.num_mag_dims(); imagn++){
-                vfield_eff[imagn + 1] = potential_.effective_magnetic_field(imagn);
-                vfield_eff[imagn + 1]->fft_transform(-1);
-            }
+            potential_.fft_transform(-1);
 
             Unit_cell& unit_cell = ctx_.unit_cell();
 
@@ -652,7 +645,7 @@ class Force
                                  * the differences because we unfold complex array in the real one
                                  * and need negative imagine part due to a multiplication law of complex numbers */
                                 auto z = double_complex(0, -gvc[ivec]) * ctx_.gvec_phase_factor(ig, atom_type.atom_id(ia)) *
-                                    vfield_eff[ispin]->f_pw_local(igloc);
+                                         potential_.component(ispin).f_pw_local(igloc);
                                 v_tmp(ia, 2 * igloc)     = z.real();
                                 v_tmp(ia, 2 * igloc + 1) = z.imag();
                             }

@@ -402,14 +402,14 @@ class Communicator
         return s;
     }
 
-    /// returns the gpu id associated to the rank in mpi_world
-    static int device_id()
+    /// Returns the gpu id associated to the rank in the mpi_world.
+    static int device_id() // TODO: this depends on the rank placement
     {
-        #ifdef __GPU
-        return world().rank()%acc::num_devices();
-        #else
+#if defined(__GPU)
+        return world().rank() % acc::num_devices();
+#else
         return 0;
-        #endif
+#endif
     }
 
     /// Rank of MPI process inside communicator with associated Cartesian partitioning.

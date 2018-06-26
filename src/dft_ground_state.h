@@ -211,6 +211,11 @@ class DFT_ground_state
             }
         }
 
+        Simulation_context const& ctx() const
+        {
+            return ctx_;
+        }
+
         json find(double potential_tol, double energy_tol, int num_dft_iter, bool write_state);
 
         void print_info();
@@ -276,7 +281,7 @@ class DFT_ground_state
 
         double energy_vloc()
         {
-            return potential_.local_potential().inner(density_.rho());
+            return inner(potential_.local_potential(), density_.rho());
         }
 
         /// Full eigen-value sum (core + valence)
@@ -539,10 +544,18 @@ inline json DFT_ground_state::find(double potential_tol, double energy_tol, int 
 
     double eold{0}, rms{0};
 
+    bool mix_density_and_potential{false};
+
     if (ctx_.full_potential()) {
-        potential_.mixer_init();
+        potential_.mixer_init(ctx_.mixer_input());
+        if (mix_density_and_potential) {
+            Mixer_input i1 = ctx_.mixer_input();
+            //i1.type_ = "linear";
+            //i1.beta_ = 0.5;
+            density_.mixer_init(i1);
+        }
     } else {
-        density_.mixer_init();
+        density_.mixer_init(ctx_.mixer_input());
     }
 
     int num_iter{-1};
@@ -576,18 +589,21 @@ inline json DFT_ground_state::find(double potential_tol, double energy_tol, int 
             }
         }
 
-        /* set new tolerance of iterative solver */
         if (!ctx_.full_potential()) {
+            /* mix density */
             rms = density_.mix();
+            /* estimate new tolerance of iterative solver */
             double tol = std::max(1e-12, 0.1 * density_.dr2() / ctx_.unit_cell().num_valence_electrons());
             /* print dr2 of mixer and current iterative solver tolerance */
             if (ctx_.comm().rank() == 0 && ctx_.control().verbosity_ >= 1) {
                 printf("dr2: %18.12E, tol: %18.12E\n",  density_.dr2(), tol);
             }
+            /* set new tolerance of iterative solver */
             ctx_.set_iterative_solver_tolerance(std::min(ctx_.iterative_solver_tolerance(), tol));
-        }
-
-        if (!ctx_.full_potential()) {
+            // TODO: this is horrible when PAW density is generated from the mixed
+            //       density matrix here; better solution: generate in Density and
+            //       then mix
+            /* generate PAW density from density matrix */
             density_.generate_paw_loc_density();
         }
 
@@ -596,6 +612,10 @@ inline json DFT_ground_state::find(double potential_tol, double energy_tol, int 
 
         /* check number of elctrons */
         density_.check_num_electrons();
+
+        if (ctx_.full_potential() && mix_density_and_potential) {
+            density_.mix();
+        }
 
         /* compute new potential */
         potential_.generate(density_);
@@ -612,7 +632,7 @@ inline json DFT_ground_state::find(double potential_tol, double energy_tol, int 
         double etot = total_energy();
 
         if (ctx_.full_potential()) {
-            rms = potential_.mix();
+            rms = potential_.mix(1e-12);
             double tol = std::max(1e-12, 0.001 * rms);
             ctx_.set_iterative_solver_tolerance(std::min(ctx_.iterative_solver_tolerance(), tol));
         }

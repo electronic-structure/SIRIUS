@@ -238,6 +238,12 @@ class Unit_cell
         add_atom(label, position, {0, 0, 0});
     }
 
+    /// Add new atom without vector field to the list of atom types.
+    inline void add_atom(const std::string label, std::vector<double> position)
+    {
+        add_atom(label, position, {0, 0, 0});
+    }
+
     /// Add PAW atoms.
     inline void init_paw()
     {
