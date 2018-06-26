@@ -1061,11 +1061,13 @@ inline void Simulation_context_base::print_info()
     printf("start time     : %s\n", buf);
     printf("\n");
     printf("number of MPI ranks           : %i\n", comm_.size());
-    printf("MPI grid                      :");
-    for (int i = 0; i < mpi_grid_->num_dimensions(); i++) {
-        printf(" %i", mpi_grid_->communicator(1 << i).size());
+    if (mpi_grid_) {
+        printf("MPI grid                      :");
+        for (int i = 0; i < mpi_grid_->num_dimensions(); i++) {
+            printf(" %i", mpi_grid_->communicator(1 << i).size());
+        }
+        printf("\n");
     }
-    printf("\n");
     printf("maximum number of OMP threads : %i\n", omp_get_max_threads());
 
     std::string headers[]         = {"FFT context for density and potential", "FFT context for coarse grid"};

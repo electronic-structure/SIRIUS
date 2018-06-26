@@ -138,6 +138,9 @@ class Atom_type
     /** The number of wave functions is equal to the number of beta-projectors. */
     mdarray<double, 2> paw_ae_wfs_;
 
+    std::vector<std::vector<double>> ae_paw_wfs_;
+    std::vector<std::vector<double>> ps_paw_wfs_;
+
     /// Pseudo wave functions of the PAW method.
     /** The number of wave functions is equal to the number of beta-projectors. */
     mdarray<double, 2> paw_ps_wfs_;
@@ -1316,11 +1319,12 @@ inline void Atom_type::init_free_atom(bool smooth)
 inline void Atom_type::print_info() const
 {
     printf("\n");
-    printf("symbol         : %s\n", symbol_.c_str());
+    printf("label          : %s\n", label().c_str());
     for (int i = 0; i < 80; i++) {
         printf("-");
     }
     printf("\n");
+    printf("symbol         : %s\n", symbol_.c_str());
     printf("name           : %s\n", name_.c_str());
     printf("zn             : %i\n", zn_);
     printf("mass           : %f\n", mass_);
@@ -1335,9 +1339,9 @@ inline void Atom_type::print_info() const
     if (parameters_.hubbard_correction() && this->hubbard_correction()) {
         printf("Hubbard correction is included in the calculations");
         printf("\n");
-        printf("Angular momentum : %d\n", hubbard_l());
-        printf("principal quantum number : %d\n", hubbard_n());
-        printf("Occupancy : %f\n", hubbard_occupancy_orbital_);
+        printf("angular momentum         : %i\n", hubbard_l());
+        printf("principal quantum number : %i\n", hubbard_n());
+        printf("occupancy                : %f\n", hubbard_occupancy_orbital_);
     }
 
     if (parameters_.full_potential()) {
@@ -1379,11 +1383,11 @@ inline void Atom_type::print_info() const
 
     printf("\n");
     printf("total number of radial functions : %i\n", indexr().size());
-    printf("lmax of radial functions : %i\n", indexr().lmax());
-    printf("maximum number of radial functions per orbital quantum number: %i\n", indexr().max_num_rf());
-    printf("total number of basis functions : %i\n", indexb().size());
-    printf("number of aw basis functions : %i\n", indexb().size_aw());
-    printf("number of lo basis functions : %i\n", indexb().size_lo());
+    printf("lmax of radial functions         : %i\n", indexr().lmax());
+    printf("max. number of radial functions  : %i\n", indexr().max_num_rf());
+    printf("total number of basis functions  : %i\n", indexb().size());
+    printf("number of aw basis functions     : %i\n", indexb().size_aw());
+    printf("number of lo basis functions     : %i\n", indexb().size_lo());
 }
 
 inline void Atom_type::read_input_core(json const& parser)

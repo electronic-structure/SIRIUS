@@ -112,7 +112,7 @@ class Local_operator
             }
         }
 
-        /// Keep track on the total number of wave-functions to which the local operator was applied.
+        /// Keep track of the total number of wave-functions to which the local operator was applied.
         static int num_applied(int n = 0)
         {
             static int num_applied_{0};
@@ -131,19 +131,14 @@ class Local_operator
         {
             PROFILE("sirius::Local_operator::prepare");
 
-            /* group effective fields into single vector */
-            //std::vector<Periodic_function<double>*> veff_vec(param_.num_mag_dims() + 1);
-            //veff_vec[0] = potential__.effective_potential();
-            //for (int j = 0; j < param_.num_mag_dims(); j++) {
-            //    veff_vec[1 + j] = potential__.effective_magnetic_field(j);
-            //}
-            
             if (!buf_rg_.size() && param_.num_mag_dims() == 3) {
                 buf_rg_ = mdarray<double_complex, 1>(fft_coarse_.local_size(), memory_t::host, "Local_operator::buf_rg_");
             }
 
             fft_coarse_.prepare(gvec_coarse_p_);
             for (int j = 0; j < param_.num_mag_dims() + 1; j++) {
+                std::cout << "j=" << j << " " << &potential__ << " " << &potential__.component(j) << " " << &potential__.component(j).gvec() << "\n";
+                std::cout << "before the omp loop\n";
                 /* loop over local set of coarse G-vectors */
                 #pragma omp parallel for schedule(static)
                 for (int igloc = 0; igloc < gvec_coarse_p_.gvec().count(); igloc++) {
