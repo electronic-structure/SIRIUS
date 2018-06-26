@@ -19,7 +19,7 @@ class Hubbard_potential
 {
 
     // Apply Hubbard correction in the colinear case
-  private:
+private:
     Simulation_context& ctx_;
 
     Unit_cell& unit_cell_;
