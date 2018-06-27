@@ -473,7 +473,9 @@ void sirius_add_atom_type_radial_function(void*  const* handler__,
         double occ = (occ__) ? *occ__ : 0.0;
         type.add_ps_atomic_wf(*l__, std::vector<double>(rf__, rf__ + *num_points__), occ);
     } else if (label == "ps_rho_core") {
+
         type.ps_core_charge_density(std::vector<double>(rf__, rf__ + *num_points__));
+
     } else if (label == "ps_rho_total") {
         type.ps_total_charge_density(std::vector<double>(rf__, rf__ + *num_points__));
     } else if (label == "vloc") {
@@ -486,6 +488,12 @@ void sirius_add_atom_type_radial_function(void*  const* handler__,
             TERMINATE("both radial-function indices must be provided for augmentation charge radial function");
         }
         type.add_q_radial_function(*idxrf1__, *idxrf2__, *l__, std::vector<double>(rf__, rf__ + *num_points__));
+    } else if (label == "ae_paw_wf") {
+        type.add_ae_paw_wf(std::vector<double>(rf__, rf__ + *num_points__));
+    } else  if (label == "ps_paw_wf") {
+        type.add_ps_paw_wf(std::vector<double>(rf__, rf__ + *num_points__));
+    } else if (label == "ae_paw_core") {
+        type.paw_ae_core_charge_density(std::vector<double>(rf__, rf__ + *num_points__));
     } else {
         std::stringstream s;
         s << "wrong label of radial function: " << label__;
@@ -545,77 +553,31 @@ void sirius_set_atom_type_dion(void*  const* handler__,
     type.d_mtrx_ion(dion);
 }
 
-/* @fortran begin function void sirius_set_atom_type_paw_data_v2   Set PAW related data.
-   @fortran argument in  required void*   handler                  Simulation context handler.
-   @fortran argument in  required string  label                    Atom type label.
-   @fortran argument in  required double  ae_wfc_rf__              All-electron radial wave-functions.
-   @fortran argument in  required double  ps_wfc_rf__              Pseudo radial wave-functions.
-   @fortran argument in  required int     num_wfc                  Number of wave-functions.
-   @fortran argument in  required int     ld                       ld
-   @fortran argument in  required int     cutoff_radius_index      Point at which the wave-functions are truncated.
-   @fortran argument in  required double  core_energy              Core-electrons energy contribution.
-   @fortran argument in  required double  ae_core_charge           All-electron core charge.
-   @fortran argument in  required int     num_ae_core_charge       ?
-   @fortran argument in  required double  occupations              ?
-   @fortran argument in  required int     num_occ                  ?
+/* @fortran begin function void sirius_set_atom_type_paw   Set PAW related data.
+   @fortran argument in  required void*   handler          Simulation context handler.
+   @fortran argument in  required string  label            Atom type label.
+   @fortran argument in  required double  core_energy      Core-electrons energy contribution.
+   @fortran argument in  required double  occupations      ?
+   @fortran argument in  required int     num_occ          ?
    @fortran end */
-void sirius_set_atom_type_paw_data_v2(void*  const* handler__,
-                                      char   const* label__,
-                                      double*       ae_wfc_rf__,
-                                      double*       ps_wfc_rf__,
-                                      int    const* num_wfc__,
-                                      int    const* ld__,
-                                      int    const* cutoff_radius_index__,
-                                      double const* core_energy__,
-                                      double const* ae_core_charge__,
-                                      int    const* num_ae_core_charge__,
-                                      double const* occupations__,
-                                      int    const* num_occ__)
+void sirius_set_atom_type_paw(void*  const* handler__,
+                              char   const* label__,
+                              double const* core_energy__,
+                              double const* occupations__,
+                              int    const* num_occ__)
 {
     GET_SIM_CTX(handler__);
 
     auto& type = sim_ctx.unit_cell().atom_type(std::string(label__));
 
-    if (*num_wfc__ != type.num_beta_radial_functions()) {
-        TERMINATE("PAW error: different number of projectors and wave functions!");
-    }
-
-    if (*ld__ != type.num_mt_points()) {
-        TERMINATE("PAW error: different number of grid points of projectors and wave functions!");
-    }
-
-    if (*num_ae_core_charge__ != type.num_mt_points()) {
-        TERMINATE("PAW error: different number of grid points of core charge and wave functions!");
-    }
-
     if (*num_occ__ != type.num_beta_radial_functions()) {
         TERMINATE("PAW error: different number of occupations and wave functions!");
     }
 
-    // we load PAW, so we set is_paw to true
+    /* we load PAW, so we set is_paw to true */
     type.is_paw(true);
 
-    // load parameters
-    type.paw_core_energy((*core_energy__) * 0.5); // convert Ry to Ha
-
-    /* load ae and ps wave functions */
-    mdarray<double, 2> aewfs_inp(ae_wfc_rf__, type.num_mt_points(), type.num_beta_radial_functions());
-    mdarray<double, 2> pswfs_inp(ps_wfc_rf__, type.num_mt_points(), type.num_beta_radial_functions());
-
-    mdarray<double, 2> aewfs(type.num_mt_points(), type.num_beta_radial_functions());
-    aewfs.zero();
-
-    mdarray<double, 2> pswfs(type.num_mt_points(), type.num_beta_radial_functions());
-    pswfs.zero();
-
-    for (int i = 0; i < type.num_beta_radial_functions(); i++) {
-        std::memcpy(&aewfs(0, i), &aewfs_inp(0, i), (*cutoff_radius_index__) * sizeof(double));
-        std::memcpy(&pswfs(0, i), &pswfs_inp(0, i), (*cutoff_radius_index__) * sizeof(double));
-    }
-
-    type.paw_ae_wfs(aewfs);
-    type.paw_ps_wfs(pswfs);
-    type.paw_ae_core_charge_density(std::vector<double>(ae_core_charge__, ae_core_charge__ + type.num_mt_points()));
+    type.paw_core_energy(*core_energy__);
 
     type.paw_wf_occ(std::vector<double>(occupations__, occupations__ + type.num_beta_radial_functions()));
 }

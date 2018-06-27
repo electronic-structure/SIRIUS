@@ -982,20 +982,20 @@ class Stress {
         return stress_hubbard_;
     }
 
-    //inline matrix3d<double> calc_stress_total()
-    //{
-    //    calc_stress_kin();
-    //    calc_stress_har();
-    //    calc_stress_ewald();
-    //    calc_stress_vloc();
-    //    calc_stress_core();
-    //    calc_stress_xc();
-    //    calc_stress_us();
-    //    calc_stress_nonloc();
-    //    if (ctx_.hubbard_correction()) {
-    //        calc_stress_hubbard();
-    //    }
-    //}
+    inline void calc_stress_total()
+    {
+        calc_stress_kin();
+        calc_stress_har();
+        calc_stress_ewald();
+        calc_stress_vloc();
+        calc_stress_core();
+        calc_stress_xc();
+        calc_stress_us();
+        calc_stress_nonloc();
+        if (ctx_.hubbard_correction()) {
+            calc_stress_hubbard();
+        }
+    }
 
     inline void print_info() const
     {
