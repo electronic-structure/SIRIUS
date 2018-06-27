@@ -134,20 +134,23 @@ class Atom_type
     /// Core energy of PAW.
     bool paw_core_energy_{0};
 
-    /// All electron wave functions of the PAW method.
-    /** The number of wave functions is equal to the number of beta-projectors. */
-    mdarray<double, 2> paw_ae_wfs_;
-
+    /// List of all-electron wave functions of the PAW method.
     std::vector<std::vector<double>> ae_paw_wfs_;
+
+    /// All-electron wave functions of the PAW method packed in a single array.
+    /** The number of wave functions is equal to the number of beta-projectors. */
+    mdarray<double, 2> ae_paw_wfs_array_;
+
+    /// List of pseudo wave functions of the PAW method.
     std::vector<std::vector<double>> ps_paw_wfs_;
 
-    /// Pseudo wave functions of the PAW method.
+    /// Pseudo wave functions of the PAW method packed in a single array.
     /** The number of wave functions is equal to the number of beta-projectors. */
-    mdarray<double, 2> paw_ps_wfs_;
+    mdarray<double, 2> ps_paw_wfs_array_;
 
     /// Occupations of PAW wave-functions.
-    /** Length of vector is the same as the number of beta projectors, paw_ae_wfs and paw_ps_wfs */
-    std::vector<double> paw_wf_occ_;
+    /** Length of vector is the same as the number of beta projectors */
+    std::vector<double> paw_wf_occ_; // TODO: is this ever used? remove if unnecessary
 
     /// Core electron contribution to all electron charge density in PAW method.
     std::vector<double> paw_ae_core_charge_density_;
@@ -158,13 +161,13 @@ class Atom_type
     /// Hubbard correction
     bool hubbard_correction_{false};
 
-    /// hubbard angular momentum s, p, d, f
+    /// Hubbard angular momentum s, p, d, f
     int hubbard_l_{-1};
 
-    /// hubbard orbital
+    /// Hubbard orbital
     int hubbard_n_{0};
 
-    // hubbard occupancy
+    // Hubbard occupancy
     double hubbard_occupancy_orbital_;
 
     /// different hubbard coefficients
@@ -278,7 +281,6 @@ class Atom_type
         , mass_(mass__)
         , atomic_levels_(levels__)
     {
-        //radial_grid_ = Radial_grid_factory<double>(grid_type__, 2000 + zn__ * 50, 1e-6 / zn_, 20.0 + 0.25 * zn_);
     }
 
     Atom_type(Simulation_parameters const& parameters__, int id__, std::string label__, std::string file_name__)
@@ -447,8 +449,7 @@ class Atom_type
     {
         int lmax{-1};
 
-        // need to take |l| since the total angular momentum is encoded
-        // in the sign of l
+        /* need to take |l| since the total angular momentum is encoded in the sign of l */
         for (auto& e: beta_radial_functions_) {
             lmax = std::max(lmax, std::abs(e.first));
         }
@@ -530,27 +531,47 @@ class Atom_type
         return ps_total_charge_density_;
     }
 
-    inline mdarray<double, 2> const& paw_ae_wfs() const
+    /// Add all-electron PAW wave-function.
+    inline void add_ae_paw_wf(std::vector<double> f__)
     {
-        return paw_ae_wfs_;
+        ae_paw_wfs_.push_back(f__);
     }
 
-    inline void paw_ae_wfs(mdarray<double, 2>& inp__)
+    /// Get all-electron PAW wave-function.
+    inline std::vector<double> const& ae_paw_wf(int i__) const
     {
-
-        paw_ae_wfs_ = mdarray<double, 2>(num_mt_points(), num_beta_radial_functions());
-        return inp__ >> paw_ae_wfs_;
+        return ae_paw_wfs_[i__];
     }
 
-    inline mdarray<double, 2> const& paw_ps_wfs() const
+    /// Get the number of all-electron PAW wave-functions.
+    inline int num_ae_paw_wf() const
     {
-        return paw_ps_wfs_;
+        return static_cast<int>(ae_paw_wfs_.size());
     }
 
-    inline void paw_ps_wfs(mdarray<double, 2>& inp__)
+    inline void add_ps_paw_wf(std::vector<double> f__)
     {
-        paw_ps_wfs_ = mdarray<double, 2>(num_mt_points(), num_beta_radial_functions());
-        return inp__ >> paw_ps_wfs_;
+        ps_paw_wfs_.push_back(f__);
+    }
+
+    inline std::vector<double> const& ps_paw_wf(int i__) const
+    {
+        return ps_paw_wfs_[i__];
+    }
+
+    inline int num_ps_paw_wf() const
+    {
+        return static_cast<int>(ps_paw_wfs_.size());
+    }
+
+    inline mdarray<double, 2> const& ae_paw_wfs_array() const
+    {
+        return ae_paw_wfs_array_;
+    }
+
+    inline mdarray<double, 2> const& ps_paw_wfs_array() const
+    {
+        return ps_paw_wfs_array_;
     }
 
     inline std::vector<double> const& paw_ae_core_charge_density() const
@@ -770,12 +791,6 @@ class Atom_type
     {
         return indexr_.size();
     }
-
-    ///// Return index of a free atom grid point close to the muffin-tin radius.
-    //inline int idx_rmt_free_atom() const
-    //{
-    //    return free_atom_radial_grid_.index_of(mt_radius());
-    //}
 
     inline void set_symbol(const std::string symbol__)
     {
@@ -1083,11 +1098,14 @@ class Atom_type
                 (std::abs(indexb(xi).j - indexb(xj).j) < 1e-8));
     }
 
-    inline void set_hubbard_orbital(const int n_, const int l_, const double occ_) {
-        if ((occ_ < 0) && (hubbard_correction_))
+    inline void set_hubbard_orbital(const int n_, const int l_, const double occ_)
+    {
+        if (occ_ < 0 && hubbard_correction_) {
             TERMINATE("this atom has hubbard correction but the orbital occupancy is negative\n");
+        }
         hubbard_occupancy_orbital_ = occ_;
-        if ((n_ < 0) || (l_ < 0)) {
+
+        if (n_ < 0 || l_ < 0) {
             TERMINATE("this atom has hubbard correction but the orbital level is not specified\n");
         }
         hubbard_l_ = l_;
@@ -1254,6 +1272,25 @@ inline void Atom_type::init(int offset_lo__)
     if (this->spin_orbit_coupling()) {
         this->generate_f_coefficients();
     }
+
+    if (is_paw()) {
+        if (num_beta_radial_functions() != num_ps_paw_wf()) {
+            TERMINATE("wrong number of pseudo wave-functions for PAW");
+        }
+        if (num_beta_radial_functions() != num_ae_paw_wf()) {
+            TERMINATE("wrong number of all-electron wave-functions for PAW");
+        }
+        ae_paw_wfs_array_ = mdarray<double, 2>(num_mt_points(), num_beta_radial_functions());
+        ae_paw_wfs_array_.zero();
+        ps_paw_wfs_array_ = mdarray<double, 2>(num_mt_points(), num_beta_radial_functions());
+        ps_paw_wfs_array_.zero();
+
+        for (int i = 0; i < num_beta_radial_functions(); i++) {
+            std::copy(ae_paw_wf(i).begin(), ae_paw_wf(i).end(), &ae_paw_wfs_array_(0, i));
+            std::copy(ps_paw_wf(i).begin(), ps_paw_wf(i).end(), &ps_paw_wfs_array_(0, i));
+        }
+    }
+
     initialized_ = true;
 }
 
@@ -1647,11 +1684,6 @@ inline void Atom_type::read_pseudo_paw(json const& parser)
 
     /* setups for reading AE and PS basis wave functions */
     int num_wfc = num_beta_radial_functions();
-    paw_ae_wfs_ = mdarray<double, 2>(num_mt_points(), num_wfc);
-    paw_ae_wfs_.zero();
-
-    paw_ps_wfs_ = mdarray<double, 2>(num_mt_points(), num_wfc);
-    paw_ps_wfs_.zero();
 
     /* read ae and ps wave functions */
     for (int i = 0; i < num_wfc; i++) {
@@ -1666,7 +1698,7 @@ inline void Atom_type::read_pseudo_paw(json const& parser)
             TERMINATE(s);
         }
 
-        std::memcpy(&paw_ae_wfs_(0, i), wfc.data(), cutoff_radius_index * sizeof(double));
+        add_ae_paw_wf(std::vector<double>(wfc.begin(), wfc.begin() + cutoff_radius_index));
 
         wfc = parser["pseudo_potential"]["paw_data"]["ps_wfc"][i]["radial_function"].get<std::vector<double>>();
 
@@ -1677,7 +1709,8 @@ inline void Atom_type::read_pseudo_paw(json const& parser)
               << "radial grid size: " << num_mt_points();
             TERMINATE(s);
         }
-        std::memcpy(&paw_ps_wfs_(0, i), wfc.data(), cutoff_radius_index * sizeof(double));
+
+        add_ps_paw_wf(std::vector<double>(wfc.begin(), wfc.begin() + cutoff_radius_index));
     }
 }
 

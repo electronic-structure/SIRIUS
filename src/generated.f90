@@ -610,56 +610,31 @@ end subroutine sirius_set_atom_type_dion
 !> @brief Set PAW related data.
 !> @param [in] handler Simulation context handler.
 !> @param [in] label Atom type label.
-!> @param [in] ae_wfc_rf__ All-electron radial wave-functions.
-!> @param [in] ps_wfc_rf__ Pseudo radial wave-functions.
-!> @param [in] num_wfc Number of wave-functions.
-!> @param [in] ld ld
-!> @param [in] cutoff_radius_index Point at which the wave-functions are truncated.
 !> @param [in] core_energy Core-electrons energy contribution.
-!> @param [in] ae_core_charge All-electron core charge.
-!> @param [in] num_ae_core_charge ?
 !> @param [in] occupations ?
 !> @param [in] num_occ ?
-subroutine sirius_set_atom_type_paw_data_v2(handler,label,ae_wfc_rf__,ps_wfc_rf_&
-&_,num_wfc,ld,cutoff_radius_index,core_energy,ae_core_charge,num_ae_core_charge,o&
-&ccupations,num_occ)
+subroutine sirius_set_atom_type_paw(handler,label,core_energy,occupations,num_oc&
+&c)
 implicit none
 type(C_PTR), intent(in) :: handler
 character(C_CHAR), dimension(*), intent(in) :: label
-real(C_DOUBLE), intent(in) :: ae_wfc_rf__
-real(C_DOUBLE), intent(in) :: ps_wfc_rf__
-integer(C_INT), intent(in) :: num_wfc
-integer(C_INT), intent(in) :: ld
-integer(C_INT), intent(in) :: cutoff_radius_index
 real(C_DOUBLE), intent(in) :: core_energy
-real(C_DOUBLE), intent(in) :: ae_core_charge
-integer(C_INT), intent(in) :: num_ae_core_charge
 real(C_DOUBLE), intent(in) :: occupations
 integer(C_INT), intent(in) :: num_occ
 interface
-subroutine sirius_set_atom_type_paw_data_v2_aux(handler,label,ae_wfc_rf__,ps_wfc&
-&_rf__,num_wfc,ld,cutoff_radius_index,core_energy,ae_core_charge,num_ae_core_char&
-&ge,occupations,num_occ)&
-&bind(C, name="sirius_set_atom_type_paw_data_v2")
+subroutine sirius_set_atom_type_paw_aux(handler,label,core_energy,occupations,nu&
+&m_occ)&
+&bind(C, name="sirius_set_atom_type_paw")
 use, intrinsic :: ISO_C_BINDING
 type(C_PTR), intent(in) :: handler
 character(C_CHAR), dimension(*), intent(in) :: label
-real(C_DOUBLE), intent(in) :: ae_wfc_rf__
-real(C_DOUBLE), intent(in) :: ps_wfc_rf__
-integer(C_INT), intent(in) :: num_wfc
-integer(C_INT), intent(in) :: ld
-integer(C_INT), intent(in) :: cutoff_radius_index
 real(C_DOUBLE), intent(in) :: core_energy
-real(C_DOUBLE), intent(in) :: ae_core_charge
-integer(C_INT), intent(in) :: num_ae_core_charge
 real(C_DOUBLE), intent(in) :: occupations
 integer(C_INT), intent(in) :: num_occ
 end subroutine
 end interface
-call sirius_set_atom_type_paw_data_v2_aux(handler,label,ae_wfc_rf__,ps_wfc_rf__,&
-&num_wfc,ld,cutoff_radius_index,core_energy,ae_core_charge,num_ae_core_charge,occ&
-&upations,num_occ)
-end subroutine sirius_set_atom_type_paw_data_v2
+call sirius_set_atom_type_paw_aux(handler,label,core_energy,occupations,num_occ)
+end subroutine sirius_set_atom_type_paw
 
 !> @brief Add atom to the unit cell.
 !> @param [in] handler Simulation context handler.

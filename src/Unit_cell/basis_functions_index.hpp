@@ -15,10 +15,9 @@ struct basis_function_index_descriptor
     double j;
     /// Order of the radial function for a given l (j).
     int order;
-    /// indice of local orbital
+    /// Indice of local orbital.
     int idxlo;
-    /// index of the radial function or beta projector in the case of
-    /// pseudo potential
+    /// Index of the radial function or beta projector in the case of pseudo potential.
     int idxrf;
 
     basis_function_index_descriptor(int l, int m, int order, int idxlo, int idxrf)
