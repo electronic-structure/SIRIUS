@@ -1,13 +1,16 @@
 #include <pybind11/pybind11.h>
+#include <pybind11/numpy.h>
 #include <sirius.h>
 #include <pybind11/stl.h>
 #include <pybind11/operators.h>
+#include <pybind11/complex.h>
 #include <iostream>
 #include <fstream>
 #include <string>
 #include <vector>
 #include <utility>
 #include <memory>
+#include <stdexcept>
 #include "utils/json.hpp"
 #include "Unit_cell/free_atom.hpp"
 
@@ -86,6 +89,11 @@ std::string show_vec(const vector3d<T>& vec)
     return str;
 }
 
+/* typedefs */
+template <typename T>
+using matrix_storage_slab = sddk::matrix_storage<T, sddk::matrix_storage_t::slab>;
+using complex_double      = std::complex<double>;
+
 PYBIND11_MODULE(py_sirius, m)
 {
 
@@ -93,6 +101,14 @@ PYBIND11_MODULE(py_sirius, m)
     sirius::initialize();
     auto atexit = py::module::import("atexit");
     atexit.attr("register")(py::cpp_function([]() { sirius::finalize(); }));
+
+    try {
+        py::module::import("numpy");
+    } catch (...) {
+        return;
+    }
+
+    m.def("timer_print", &utils::timer::print);
 
     py::class_<Parameters_input>(m, "Parameters_input")
         .def(py::init<>())
@@ -120,6 +136,7 @@ PYBIND11_MODULE(py_sirius, m)
         .def("num_bands", py::overload_cast<int>(&Simulation_context::num_bands))
         .def("set_verbosity", &Simulation_context::set_verbosity)
         .def("create_storage_file", &Simulation_context::create_storage_file)
+        .def("processing_unit", &Simulation_context::processing_unit)
         .def("gvec", &Simulation_context::gvec)
         .def("fft", &Simulation_context::fft)
         .def("unit_cell", py::overload_cast<>(&Simulation_context::unit_cell, py::const_), py::return_value_policy::reference);
@@ -243,7 +260,11 @@ PYBIND11_MODULE(py_sirius, m)
 
     py::class_<K_point>(m, "K_point")
         .def("band_energy", py::overload_cast<int, int>(&K_point::band_energy))
-        .def("vk", &K_point::vk, py::return_value_policy::reference);
+        .def("vk", &K_point::vk, py::return_value_policy::reference)
+        .def("generate_fv_states", &K_point::generate_fv_states)
+        .def("fv_states", &K_point::fv_states, py::return_value_policy::reference_internal)
+        .def("spinor_wave_functions", &K_point::spinor_wave_functions, py::return_value_policy::reference_internal);
+    // .def("hubbard_wave_functions", &K_point::hubbard_wave_functions, py::return_value_policy::reference_internal)
 
     py::class_<K_point_set>(m, "K_point_set")
         .def(py::init<Simulation_context&>())
@@ -255,17 +276,38 @@ PYBIND11_MODULE(py_sirius, m)
         .def("energy_fermi", &K_point_set::energy_fermi)
         .def("get_band_energies", &K_point_set::get_band_energies, py::return_value_policy::reference)
         .def("sync_band_energies", &K_point_set::sync_band_energies)
-        .def("__call__", &K_point_set::operator[], py::return_value_policy::reference)
-        .def("add_kpoint", [](K_point_set& ks, std::vector<double>& v, double weight) {
-            vector3d<double> vec3d(v);
-            ks.add_kpoint(&vec3d[0], weight);
+        .def("__getitem__", [](K_point_set& ks, int i) -> K_point& {
+            if (ks[i] == nullptr) {
+                throw std::runtime_error("oops");
+            }
+            return *ks[i];
+        },
+             py::return_value_policy::reference_internal)
+        .def("add_kpoint", [](K_point_set& ks, std::vector<double> v, double weight) {
+            ks.add_kpoint(v.data(), weight);
         })
         .def("add_kpoint", [](K_point_set& ks, vector3d<double>& v, double weight) {
             ks.add_kpoint(&v[0], weight);
         });
 
     py::class_<Hamiltonian>(m, "Hamiltonian")
-        .def(py::init<Simulation_context&, Potential&>());
+        .def(py::init<Simulation_context&, Potential&>())
+        .def("apply", [](Hamiltonian& hamiltonian, K_point& kp, int ispn, Wave_functions& wf) -> Wave_functions {
+            auto&          gkvec_partition = wf.gkvec_partition();
+            int            num_wf           = wf.num_wf();
+            int            num_sc           = wf.num_sc();
+            Wave_functions wf_out(gkvec_partition, num_wf, num_sc);
+            /* apply H to all wave functions */
+            int N = 0;
+            int n = num_wf;
+            auto& ctx = hamiltonian.ctx();
+            hamiltonian.local_op().dismiss();
+            hamiltonian.local_op().prepare(kp.gkvec_partition());
+            hamiltonian.prepare<double_complex>();
+            hamiltonian.apply_h_s<complex_double>(&kp, ispn, N, n, wf, &wf_out, nullptr);
+            hamiltonian.dismiss();
+            return wf_out;
+        });
 
     py::class_<Stress>(m, "Stress")
         .def(py::init<Simulation_context&, Density&, Potential&, Hamiltonian&, K_point_set&>())
@@ -318,4 +360,47 @@ py::class_<Free_atom>(m, "Free_atom")
         .def(py::init<Simulation_context&, Density&, Potential&, Hamiltonian&, K_point_set&>())
         .def("calc_forces_total", &Force::calc_forces_total, py::return_value_policy::reference_internal)
         .def("print_info", &Force::print_info);
+    // py::class_<matrix_storage_slab<double>>(m, "MatrixStorageSlabD", py::buffer_protocol())
+    //     .def_buffer([](matrix_storage_slab<double>& matrix_storage) -> py::buffer_info {
+    //         // Fortran storage order
+    //         int nrows = matrix_storage.prime().size(0);
+    //         int ncols = matrix_storage.prime().size(1);
+    //         return py::buffer_info(
+    //             (void*)matrix_storage.prime().data<CPU>(),
+    //             sizeof(double),
+    //             py::format_descriptor<double>::format(),
+    //             2,
+    //             {nrows, ncols},
+    //             {sizeof(double), sizeof(double) * nrows});
+    //     });
+
+    py::class_<matrix_storage_slab<complex_double>>(m, "MatrixStorageSlabC")
+        .def("is_remapped", &matrix_storage_slab<complex_double>::is_remapped);
+        // .def_buffer([](matrix_storage_slab<complex_double>& matrix_storage) -> py::array {
+        //     // Fortran storage order
+        //     int nrows = matrix_storage.prime().size(0);
+        //     int ncols = matrix_storage.prime().size(1);
+        //     return py::array(py::buffer_info((void*)matrix_storage.prime().data<CPU>(),
+        //                                      sizeof(complex_double),
+        //                                      py::format_descriptor<complex_double>::format(),
+        //                                      2,
+        //                                      {nrows, ncols},
+        //                                      {sizeof(complex_double), sizeof(complex_double) * nrows}));
+        // });
+
+    py::class_<Wave_functions>(m, "Wave_functions")
+        .def("num_sc", &Wave_functions::num_sc)
+        .def("num_wf", &Wave_functions::num_wf)
+        .def("has_mt", &Wave_functions::has_mt)
+        .def("pw_coeffs", [](py::object& obj, int i) -> py::array_t<complex_double> {
+            Wave_functions& wf             = obj.cast<Wave_functions&>();
+            auto&           matrix_storage = wf.pw_coeffs(i);
+            int             nrows          = matrix_storage.prime().size(0);
+            int             ncols          = matrix_storage.prime().size(1);
+            /* return underlying data as numpy.ndarray view, e.g. non-copying */
+            /* TODO this might be a distributed array, should/can we use dask? */
+            return py::array_t<complex_double>({nrows, ncols}, {1, nrows}, matrix_storage.prime().data<CPU>(), obj);
+        })
+        .def("pw_coeffs_obj", py::overload_cast<int>(&Wave_functions::pw_coeffs, py::const_));
+
 }
