@@ -480,6 +480,7 @@ class K_point
 
         inline Wave_functions& fv_states()
         {
+            assert(bool(fv_states_));
             return *fv_states_;
         }
 
