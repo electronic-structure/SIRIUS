@@ -325,14 +325,14 @@ class Simulation_parameters
     {
         return (num_mag_dims() == 3) ? 3 : num_spins();
     }
-    
+
     /// Number of spin dimensions of some arrays in case of magnetic calculation.
     /** Returns 1 for non magnetic calculation, 2 for spin-collinear case and 1 for non colllinear case. */
     inline int num_spin_dims()
     {
         return (num_mag_dims() == 3) ? 1 : num_spins();
     }
-    
+
     /// Set the number of first-variational states.
     inline int num_fv_states(int num_fv_states__)
     {
@@ -503,9 +503,10 @@ class Simulation_parameters
         return parameters_input_.use_symmetry_;
     }
 
-    inline void set_use_symmetry(bool use_symmetry__)
+    inline bool use_symmetry(bool use_symmetry__)
     {
         parameters_input_.use_symmetry_ = use_symmetry__;
+        return use_symmetry__;
     }
 
     inline double iterative_solver_tolerance() const

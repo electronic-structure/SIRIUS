@@ -59,6 +59,8 @@ class Force
 
         mdarray<double, 2> forces_nonloc_;
 
+        mdarray<double, 2> forces_usnl_;
+
         mdarray<double, 2> forces_core_;
 
         mdarray<double, 2> forces_ewald_;
@@ -405,7 +407,7 @@ class Force
         {
         }
 
-        inline void calc_forces_vloc()
+        inline mdarray<double, 2> const& calc_forces_vloc()
         {
             PROFILE("sirius::Force::calc_forces_vloc");
 
@@ -451,6 +453,8 @@ class Force
             }
 
             ctx_.comm().allreduce(&forces_vloc_(0, 0), 3 * ctx_.unit_cell().num_atoms());
+
+            return forces_vloc_;
         }
 
         inline mdarray<double, 2> const& forces_vloc() const
@@ -458,7 +462,7 @@ class Force
             return forces_vloc_;
         }
 
-        inline void calc_forces_nonloc()
+        inline mdarray<double, 2> const& calc_forces_nonloc()
         {
             PROFILE("sirius::Force::calc_forces_nonloc");
 
@@ -480,6 +484,8 @@ class Force
             ctx_.comm().allreduce(&forces_nonloc_(0, 0), 3 * ctx_.unit_cell().num_atoms());
 
             symmetrize(forces_nonloc_);
+
+            return forces_nonloc_;
         }
 
         inline mdarray<double, 2> const& forces_nonloc() const
@@ -487,7 +493,7 @@ class Force
             return forces_nonloc_;
         }
 
-        inline void calc_forces_core()
+        inline mdarray<double, 2> const& calc_forces_core()
         {
             PROFILE("sirius::Force::calc_forces_core");
 
@@ -539,6 +545,8 @@ class Force
                 }
             }
             ctx_.comm().allreduce(&forces_core_(0, 0), 3 * ctx_.unit_cell().num_atoms());
+
+            return forces_core_;
         }
 
         inline mdarray<double, 2> const& forces_core() const
@@ -546,7 +554,7 @@ class Force
             return forces_core_;
         }
 
-        inline void calc_forces_scf_corr()
+        inline mdarray<double, 2> const& calc_forces_scf_corr()
         {
             PROFILE("sirius::Force::calc_forces_scf_corr");
 
@@ -592,6 +600,8 @@ class Force
                 }
             }
             ctx_.comm().allreduce(&forces_scf_corr_(0, 0), 3 * ctx_.unit_cell().num_atoms());
+
+            return forces_scf_corr_;
         }
 
         inline mdarray<double, 2> const& forces_scf_corr() const
@@ -599,7 +609,7 @@ class Force
             return forces_scf_corr_;
         }
 
-        inline void calc_forces_us()
+        inline mdarray<double, 2> const& calc_forces_us()
         {
             PROFILE("sirius::Force::calc_forces_us");
 
@@ -668,6 +678,8 @@ class Force
             }
 
             ctx_.comm().allreduce(&forces_us_(0, 0), 3 * ctx_.unit_cell().num_atoms());
+
+            return forces_us_;
         }
 
         inline mdarray<double, 2> const& forces_us() const
@@ -675,7 +687,7 @@ class Force
             return forces_us_;
         }
 
-        inline void calc_forces_ewald()
+        inline mdarray<double, 2> const& calc_forces_ewald()
         {
             PROFILE("sirius::Force::calc_forces_ewald");
 
@@ -751,9 +763,16 @@ class Force
                     }
                 }
             }
+
+            return forces_ewald_;
         }
 
-        inline void calc_forces_hubbard()
+        inline mdarray<double, 2> const& forces_ewald() const
+        {
+            return forces_ewald_;
+        }
+
+        inline mdarray<double, 2> const& calc_forces_hubbard()
         {
             PROFILE("sirius::Force::hubbard_force");
             forces_hubbard_ = mdarray<double, 2>(3, ctx_.unit_cell().num_atoms());
@@ -778,16 +797,17 @@ class Force
             hamiltonian_.dismiss();
 
             /* global reduction */
-            ctx_.comm().allreduce<double, mpi_op_t::sum>(forces_hubbard_.at<CPU>(),
-                                                         static_cast<int>(forces_hubbard_.size()));
+            ctx_.comm().allreduce(forces_hubbard_.at<CPU>(), 3 * ctx_.unit_cell().num_atoms());
+
+            return forces_hubbard_;
         }
 
-        inline mdarray<double, 2> const& forces_ewald() const
+        inline mdarray<double, 2> const& forces_hubbard() const
         {
-            return forces_ewald_;
+            return forces_hubbard_;
         }
 
-        inline void calc_forces_total()
+        inline mdarray<double, 2> const& calc_forces_total()
         {
             calc_forces_vloc();
             calc_forces_us();
@@ -796,8 +816,9 @@ class Force
             calc_forces_ewald();
             calc_forces_scf_corr();
 
-            if (ctx_.hubbard_correction())
+            if (ctx_.hubbard_correction()) {
                 calc_forces_hubbard();
+            }
 
             forces_total_ = mdarray<double, 2>(3, ctx_.unit_cell().num_atoms());
             for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {
@@ -812,16 +833,28 @@ class Force
                     }
                 }
             }
+
+            return forces_total_;
+        }
+
+        inline mdarray<double, 2> const& calc_forces_usnl()
+        {
+            calc_forces_us();
+            calc_forces_nonloc();
+
+            forces_usnl_ = mdarray<double, 2>(3, ctx_.unit_cell().num_atoms());
+            for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {
+                for (int x: {0, 1, 2}) {
+                    forces_usnl_(x, ia) = forces_us_(x, ia) + forces_nonloc_(x, ia);
+                }
+            }
+
+            return forces_usnl_;
         }
 
         inline mdarray<double, 2> const& forces_total() const
         {
             return forces_total_;
-        }
-
-        inline mdarray<double, 2> const& forces_hubbard() const
-        {
-            return forces_hubbard_;
         }
 
         inline void print_info()

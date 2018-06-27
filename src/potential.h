@@ -975,7 +975,7 @@ class Potential : public Field4D
         return paw_core_energies_;
     }
 
-    std::vector<double> const& PAW_one_elec_energies()
+    std::vector<double> const& PAW_one_elec_energies() const
     {
         return paw_one_elec_energies_;
     }
@@ -995,12 +995,12 @@ class Potential : public Field4D
         return paw_total_core_energy_;
     }
 
-    double PAW_total_energy()
+    double PAW_total_energy() const
     {
         return paw_hartree_total_energy_ + paw_xc_total_energy_;
     }
 
-    double PAW_one_elec_energy()
+    double PAW_one_elec_energy() const
     {
         return paw_one_elec_energy_;
     }
@@ -1012,7 +1012,17 @@ class Potential : public Field4D
         return this->scalar();
     }
 
+    Periodic_function<double> const& effective_potential() const
+    {
+        return this->scalar();
+    }
+
     Smooth_periodic_function<double>& local_potential()
+    {
+        return *local_potential_;
+    }
+
+    Smooth_periodic_function<double> const& local_potential() const
     {
         return *local_potential_;
     }
@@ -1032,6 +1042,11 @@ class Potential : public Field4D
         return this->vector(i);
     }
 
+    Periodic_function<double> const& effective_magnetic_field(int i) const
+    {
+        return this->vector(i);
+    }
+
     Periodic_function<double>& hartree_potential()
     {
         return *hartree_potential_;
@@ -1047,7 +1062,17 @@ class Potential : public Field4D
         return *xc_potential_;
     }
 
+    Periodic_function<double> const& xc_potential() const
+    {
+        return *xc_potential_;
+    }
+
     Periodic_function<double>& xc_energy_density()
+    {
+        return *xc_energy_density_;
+    }
+
+    Periodic_function<double> const& xc_energy_density() const
     {
         return *xc_energy_density_;
     }
@@ -1057,7 +1082,7 @@ class Potential : public Field4D
         return vh_el_(ia);
     }
 
-    inline double energy_vha()
+    inline double energy_vha() const
     {
         return energy_vha_;
     }
@@ -1093,13 +1118,13 @@ class Potential : public Field4D
     }
 
     /// Integral of \f$ \rho({\bf r}) V^{XC}({\bf r}) \f$.
-    double energy_vxc(Density& density__)
+    double energy_vxc(Density const& density__) const
     {
         return density__.rho().inner(xc_potential());
     }
 
     /// Integral of \f$ \rho({\bf r}) \epsilon^{XC}({\bf r}) \f$.
-    double energy_exc(Density& density__)
+    double energy_exc(Density const& density__) const
     {
         double exc = density__.rho().inner(xc_energy_density());
         if (!ctx_.full_potential()) {

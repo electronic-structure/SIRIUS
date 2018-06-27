@@ -69,7 +69,7 @@ double ground_state(Simulation_context& ctx,
     std::string ref_file = args.value<std::string>("test_against", "");
     /* don't write output if we compare against the reference calculation */
     bool write_state = (ref_file.size() == 0);
-    
+
     K_point_set kset(ctx, ctx.parameters_input().ngridk_, ctx.parameters_input().shiftk_, ctx.use_symmetry());
     DFT_ground_state dft(kset);
 

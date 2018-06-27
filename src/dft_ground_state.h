@@ -250,22 +250,22 @@ class DFT_ground_state
             return sum;
         }
 
-        double energy_vha()
+        double energy_vha() const
         {
             return potential_.energy_vha();
         }
 
-        double energy_vxc()
+        double energy_vxc() const
         {
             return potential_.energy_vxc(density_);
         }
 
-        double energy_exc()
+        double energy_exc() const
         {
             return potential_.energy_exc(density_);
         }
 
-        double energy_bxc()
+        double energy_bxc() const
         {
             double ebxc{0};
             for (int j = 0; j < ctx_.num_mag_dims(); j++) {
@@ -274,18 +274,18 @@ class DFT_ground_state
             return ebxc;
         }
 
-        double energy_veff()
+        double energy_veff() const
         {
             return density_.rho().inner(potential_.effective_potential());
         }
 
-        double energy_vloc()
+        double energy_vloc() const
         {
             return inner(potential_.local_potential(), density_.rho());
         }
 
         /// Full eigen-value sum (core + valence)
-        double eval_sum()
+        double eval_sum() const
         {
             return (core_eval_sum() + kset_.valence_eval_sum());
         }
@@ -293,7 +293,7 @@ class DFT_ground_state
         /// Kinetic energy
         /** more doc here
         */
-        double energy_kin()
+        double energy_kin() const
         {
             return (eval_sum() - energy_veff() - energy_bxc());
         }
@@ -367,7 +367,7 @@ class DFT_ground_state
          *    E_{tot} = \sum_{i} f_i \varepsilon_i - \frac{1}{2} \int V^{H}({\bf r})\rho({\bf r})d{\bf r} - \int V^{XC}({\bf r})\rho({\bf r}) d{\bf r} + E^{XC}[\rho + \rho_{core}]
          *  \f]
          */
-        double total_energy()
+        double total_energy() const
         {
             double tot_en{0};
 

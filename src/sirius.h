@@ -49,7 +49,7 @@ using json = nlohmann::json;
 #include "step_function.h"
 #include "periodic_function.h"
 #include "k_point.h"
-#include "band.h"
+#include "Band/band.hpp"
 #include "potential.h"
 #include "k_point_set.h"
 #include "density.h"
@@ -383,6 +383,24 @@ make
 //!                   }
 //!           };
 //!       \endcode
+//!       However, the new style for setter methods is preferable:
+//!       \code{.cpp}
+//!           class A
+//!           {
+//!               private:
+//!                   int lmax_;
+//!               public:
+//!                   int lmax() const
+//!                   {
+//!                       return lmax_;
+//!                   }
+//!                   int lmax(int lmax__)
+//!                   {
+//!                       lmax_ = lmax__;
+//!                       return lmax_;
+//!                   }
+//!           };
+//!       \endcode
 //!     - Single-line functions should not be flattened:
 //!       \code{.cpp}
 //!           struct A
@@ -407,11 +425,25 @@ make
 //!           ...
 //!           #endif // __SIRIUS_INTERNAL_H__
 //!       \endcode
+//!     - Variable names are all in lowercase and underscore-separated (aka 'snake_case'):
+//!       \code{.cpp}
+//!           int num_bands;
+//!           std::complex<double> beta_psi;
+//!       \endcode
+//!       but not
+//!       \code{.cpp}
+//!           int NumBands;
+//!           /* or */
+//!           std::complex<double> BetaPsi;
+//!           /* or */
+//!           std::complex<double> Another_BetaPsi;
+//!       \endcode
+//!
 //! We use clang-format utility to enforce the basic formatting style. Please have a look at .clang-format config file 
-//! in the source root folder for the definitions.
-//!        
+//! in the source root folder for the definitions and use helper script 'clang_format.x'.
+//!
 //! Class naming convention.
-//!      
+//!
 //! Problem: all 'standard' naming conventions are not satisfactory. For example, we have a class 
 //! which does a DFT ground state. Following the common naming conventions it could be named like this:
 //! DFTGroundState, DftGroundState, dft_ground_state. Last two are bad, because DFT (and not Dft or dft)

@@ -414,8 +414,8 @@ inline void Potential::calc_PAW_local_Dij(paw_potential_data_t& pdd, mdarray<dou
 
     auto& atom_type = pdd.atom_->type();
 
-    auto& paw_ae_wfs = atom_type.paw_ae_wfs();
-    auto& paw_ps_wfs = atom_type.paw_ps_wfs();
+    auto& paw_ae_wfs = atom_type.ae_paw_wfs_array();
+    auto& paw_ps_wfs = atom_type.ps_paw_wfs_array();
 
     /* get lm size for density */
     int lmax = atom_type.indexr().lmax_lo();
