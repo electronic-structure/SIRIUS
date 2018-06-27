@@ -29,8 +29,8 @@ void Hamiltonian::apply_h_s(K_point* kp__,
                             int N__,
                             int n__,
                             Wave_functions& phi__,
-                            Wave_functions *hphi__,
-                            Wave_functions *sphi__) const
+                            Wave_functions* hphi__,
+                            Wave_functions* sphi__) const
 {
     PROFILE("sirius::Hamiltonian::apply_h_s");
 

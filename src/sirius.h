@@ -49,7 +49,7 @@ using json = nlohmann::json;
 #include "step_function.h"
 #include "periodic_function.h"
 #include "k_point.h"
-#include "band.h"
+#include "Band/band.hpp"
 #include "potential.h"
 #include "k_point_set.h"
 #include "density.h"

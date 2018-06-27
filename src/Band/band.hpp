@@ -17,18 +17,17 @@
 // CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
 // OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-/** \file band.h
+/** \file band.hpp
  *
  *   \brief Contains declaration and partial implementation of sirius::Band class.
  */
 
-#ifndef __BAND_H__
-#define __BAND_H__
+#ifndef __BAND_HPP__
+#define __BAND_HPP__
 
 #include "periodic_function.h"
 #include "k_point_set.h"
 #include "Hamiltonian/hamiltonian.hpp"
-//#include "hubbard.hpp"
 
 namespace sirius {
 
@@ -155,13 +154,13 @@ class Band
     }
 };
 
-#include "Band/residuals.hpp"
-#include "Band/diag_full_potential.hpp"
-#include "Band/diag_pseudo_potential.hpp"
-#include "Band/initialize_subspace.hpp"
-#include "Band/solve.hpp"
-#include "Band/set_subspace_mtrx.hpp"
+#include "residuals.hpp"
+#include "diag_full_potential.hpp"
+#include "diag_pseudo_potential.hpp"
+#include "initialize_subspace.hpp"
+#include "solve.hpp"
+#include "set_subspace_mtrx.hpp"
 
 }
 
-#endif // __BAND_H__
+#endif // __BAND_HPP__
