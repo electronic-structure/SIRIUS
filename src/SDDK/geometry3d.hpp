@@ -373,12 +373,38 @@ matrix3d<T> transpose(matrix3d<T> src)
     return mtrx;
 }
 
+template <typename T>
+matrix3d<T> inverse_aux(matrix3d<T> src, T d)
+{
+    matrix3d<T> mtrx;
+
+    mtrx(0, 0) = d * (src(1, 1) * src(2, 2) - src(1, 2) * src(2, 1));
+    mtrx(0, 1) = d * (src(0, 2) * src(2, 1) - src(0, 1) * src(2, 2));
+    mtrx(0, 2) = d * (src(0, 1) * src(1, 2) - src(0, 2) * src(1, 1));
+    mtrx(1, 0) = d * (src(1, 2) * src(2, 0) - src(1, 0) * src(2, 2));
+    mtrx(1, 1) = d * (src(0, 0) * src(2, 2) - src(0, 2) * src(2, 0));
+    mtrx(1, 2) = d * (src(0, 2) * src(1, 0) - src(0, 0) * src(1, 2));
+    mtrx(2, 0) = d * (src(1, 0) * src(2, 1) - src(1, 1) * src(2, 0));
+    mtrx(2, 1) = d * (src(0, 1) * src(2, 0) - src(0, 0) * src(2, 1));
+    mtrx(2, 2) = d * (src(0, 0) * src(1, 1) - src(0, 1) * src(1, 0));
+
+    return mtrx;
+}
+
+/// Return inverse of the integer matrix
+matrix3d<int> inverse(matrix3d<int> src)
+{
+    int t1 = src.det();
+    if (std::abs(t1) != 1) {
+        throw std::runtime_error("integer matrix can't be inverted");
+    }
+    return inverse_aux(src, t1);
+}
+
 /// Return inverse of the matrix.
 template <typename T>
 matrix3d<T> inverse(matrix3d<T> src)
 {
-    matrix3d<T> mtrx;
-
     T t1 = src.det();
 
     if (std::abs(t1) < 1e-10) {
@@ -386,18 +412,7 @@ matrix3d<T> inverse(matrix3d<T> src)
     }
 
     t1 = 1.0 / t1;
-
-    mtrx(0, 0) = t1 * (src(1, 1) * src(2, 2) - src(1, 2) * src(2, 1));
-    mtrx(0, 1) = t1 * (src(0, 2) * src(2, 1) - src(0, 1) * src(2, 2));
-    mtrx(0, 2) = t1 * (src(0, 1) * src(1, 2) - src(0, 2) * src(1, 1));
-    mtrx(1, 0) = t1 * (src(1, 2) * src(2, 0) - src(1, 0) * src(2, 2));
-    mtrx(1, 1) = t1 * (src(0, 0) * src(2, 2) - src(0, 2) * src(2, 0));
-    mtrx(1, 2) = t1 * (src(0, 2) * src(1, 0) - src(0, 0) * src(1, 2));
-    mtrx(2, 0) = t1 * (src(1, 0) * src(2, 1) - src(1, 1) * src(2, 0));
-    mtrx(2, 1) = t1 * (src(0, 1) * src(2, 0) - src(0, 0) * src(2, 1));
-    mtrx(2, 2) = t1 * (src(0, 0) * src(1, 1) - src(0, 1) * src(1, 0));
-
-    return mtrx;
+    return inverse_aux(src, t1);
 }
 
 template <typename T>
