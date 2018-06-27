@@ -396,6 +396,20 @@ class mdarray_base
         return i;
     }
 
+    inline index_type idx(index_type const i0, index_type const i1, index_type const i2, index_type const i3, index_type const i4, index_type const i5) const
+    {
+        static_assert(N == 6, "wrong number of dimensions");
+        mdarray_assert(i0 >= dims_[0].begin() && i0 <= dims_[0].end());
+        mdarray_assert(i1 >= dims_[1].begin() && i1 <= dims_[1].end());
+        mdarray_assert(i2 >= dims_[2].begin() && i2 <= dims_[2].end());
+        mdarray_assert(i3 >= dims_[3].begin() && i3 <= dims_[3].end());
+        mdarray_assert(i4 >= dims_[4].begin() && i4 <= dims_[4].end());
+        mdarray_assert(i5 >= dims_[5].begin() && i5 <= dims_[5].end());
+        size_t i = offsets_[0] + i0 + i1 * offsets_[1] + i2 * offsets_[2] + i3 * offsets_[3] + i4 * offsets_[4] + offsets_[5] * i5;
+        mdarray_assert(i >= 0 && i < size());
+        return i;
+    }
+
     template <device_t pu>
     inline T* at_idx(index_type const idx__)
     {
@@ -617,6 +631,18 @@ class mdarray_base
         return raw_ptr_[idx(i0, i1, i2, i3, i4)];
     }
 
+    inline T const& operator()(index_type const i0, index_type const i1, index_type const i2, index_type const i3, index_type const i4, index_type const i5) const
+    {
+        mdarray_assert(raw_ptr_ != nullptr);
+        return raw_ptr_[idx(i0, i1, i2, i3, i4, i5)];
+    }
+
+    inline T& operator()(index_type const i0, index_type const i1, index_type const i2, index_type const i3, index_type const i4, index_type const i5)
+    {
+        mdarray_assert(raw_ptr_ != nullptr);
+        return raw_ptr_[idx(i0, i1, i2, i3, i4, i5)];
+    }
+
     inline T& operator[](size_t const idx__)
     {
         mdarray_assert(idx__ >= 0 && idx__ < size());
@@ -681,6 +707,12 @@ class mdarray_base
     inline T* at(index_type const i0, index_type const i1, index_type const i2, index_type const i3, index_type const i4)
     {
         return at_idx<pu>(idx(i0, i1, i2, i3, i4));
+    }
+
+    template <device_t pu>
+    inline T* at(index_type const i0, index_type const i1, index_type const i2, index_type const i3, index_type const i4, index_type const i5)
+    {
+        return at_idx<pu>(idx(i0, i1, i2, i3, i4, i5));
     }
 
     /// Return total size (number of elements) of the array.
@@ -951,6 +983,22 @@ class mdarray : public mdarray_base<T, N>
         this->allocate(memory__);
     }
 
+    mdarray(mdarray_index_descriptor const& d0,
+            mdarray_index_descriptor const& d1,
+            mdarray_index_descriptor const& d2,
+            mdarray_index_descriptor const& d3,
+            mdarray_index_descriptor const& d4,
+            mdarray_index_descriptor const& d5,
+            memory_t memory__   = memory_t::host,
+            std::string label__ = "")
+    {
+        static_assert(N == 6, "wrong number of dimensions");
+
+        this->label_ = label__;
+        this->init_dimensions({d0, d1, d2, d3, d4, d5});
+        this->allocate(memory__);
+    }
+
     mdarray(T* ptr__,
             mdarray_index_descriptor const& d0,
             std::string label__ = "")
@@ -1061,6 +1109,22 @@ class mdarray : public mdarray_base<T, N>
 
         this->label_ = label__;
         this->init_dimensions({d0, d1, d2, d3, d4});
+        this->raw_ptr_ = ptr__;
+    }
+
+    mdarray(T* ptr__,
+            mdarray_index_descriptor const& d0,
+            mdarray_index_descriptor const& d1,
+            mdarray_index_descriptor const& d2,
+            mdarray_index_descriptor const& d3,
+            mdarray_index_descriptor const& d4,
+            mdarray_index_descriptor const& d5,
+            std::string label__ = "")
+    {
+        static_assert(N == 6, "wrong number of dimensions");
+
+        this->label_ = label__;
+        this->init_dimensions({d0, d1, d2, d3, d4, d5});
         this->raw_ptr_ = ptr__;
     }
 

@@ -906,40 +906,29 @@ class Stress {
                                        9);
         hamiltonian_.prepare<double_complex>();
 
-        dn_.zero();
-
         for (int ikloc = 0; ikloc < kset_.spl_num_kpoints().local_size(); ikloc++) {
-
+            dn_.zero();
             int ik  = kset_.spl_num_kpoints(ikloc);
             auto kp__ = kset_[ik];
             if (ctx_.num_mag_dims() == 3)
                 TERMINATE("Hubbard stress correction is only implemented for the simple hubbard correction.");
-            Wave_functions phi(kp__->gkvec_partition(), hamiltonian_.U().number_of_hubbard_orbitals(), 1);
-
-            kp__->beta_projectors().prepare();
-            Beta_projectors_strain_deriv bp_strain_deriv(ctx_, kp__->gkvec(), kp__->igk_loc());
-            bp_strain_deriv.prepare();
 
             // compute the derivative of the occupancies numbers
             hamiltonian_.U().compute_occupancies_stress_derivatives(*kp__,
-                                                                    bp_strain_deriv,
                                                                     hamiltonian_.Q<double_complex>(),
                                                                     dn_);
-            kp__->beta_projectors().dismiss();
-            bp_strain_deriv.dismiss();
-        }
-
-        for (int dir1 = 0; dir1 < 3; dir1++) {
-            for (int dir2 = 0; dir2 < 3; dir2++) {
-                for (int ia1 = 0; ia1 < ctx_.unit_cell().num_atoms(); ia1++) {
-                    const auto& atom = ctx_.unit_cell().atom(ia1);
-                    if (atom.type().hubbard_correction()) {
-                        const int lmax_at = 2 * atom.type().hubbard_l() + 1;
-                        for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-                            for (int m1 = 0; m1 < lmax_at; m1++) {
-                                for (int m2 = 0; m2 < lmax_at; m2++) {
-                                    stress_hubbard_(dir1, dir2) -= (hamiltonian_.U().U(m2, m1, ispn, ia1) *
-                                                                    dn_(m1, m2, ispn, ia1, dir1 + 3 * dir2)).real()/ctx_.unit_cell().omega();
+            for (int dir1 = 0; dir1 < 3; dir1++) {
+                for (int dir2 = 0; dir2 < 3; dir2++) {
+                    for (int ia1 = 0; ia1 < ctx_.unit_cell().num_atoms(); ia1++) {
+                        const auto& atom = ctx_.unit_cell().atom(ia1);
+                        if (atom.type().hubbard_correction()) {
+                            const int lmax_at = 2 * atom.type().hubbard_l() + 1;
+                            for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
+                                for (int m1 = 0; m1 < lmax_at; m1++) {
+                                    for (int m2 = 0; m2 < lmax_at; m2++) {
+                                        stress_hubbard_(dir1, dir2) -= (hamiltonian_.U().U(m2, m1, ispn, ia1) *
+                                                                        dn_(m1, m2, ispn, ia1, dir1 + 3 * dir2)).real()/ctx_.unit_cell().omega();
+                                    }
                                 }
                             }
                         }

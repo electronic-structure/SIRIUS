@@ -1,12 +1,12 @@
 inline void K_point::initialize()
 {
     PROFILE("sirius::K_point::initialize");
-    
+
     zil_.resize(ctx_.lmax_apw() + 1);
     for (int l = 0; l <= ctx_.lmax_apw(); l++) {
         zil_[l] = std::pow(double_complex(0, 1), l);
     }
-   
+
     l_by_lm_ = Utils::l_by_lm(ctx_.lmax_apw());
 
     int bs = ctx_.cyclic_block_size();
@@ -18,7 +18,7 @@ inline void K_point::initialize()
 
     /* In case of collinear magnetism we store only non-zero spinor components.
      *
-     * non magnetic case: 
+     * non magnetic case:
      * .---.
      * |   |
      * .---.
@@ -42,7 +42,7 @@ inline void K_point::initialize()
     auto mem_type_evp = (ctx_.std_evp_solver_type() == ev_solver_t::magma) ? memory_t::host_pinned : memory_t::host;
     auto mem_type_gevp = (ctx_.gen_evp_solver_type() == ev_solver_t::magma) ? memory_t::host_pinned : memory_t::host;
 
-    if (use_second_variation && ctx_.need_sv()) {
+    if (use_second_variation && ctx_.need_sv() && ctx_.full_potential()) {
         /* in case of collinear magnetism store pure up and pure dn components, otherwise store the full matrix */
         sv_eigen_vectors_[0] = dmatrix<double_complex>(nst, nst, ctx_.blacs_grid(), bs, bs, mem_type_evp);
         if (ctx_.num_mag_dims() == 1) {
@@ -96,11 +96,11 @@ inline void K_point::initialize()
         //            }
         //        }
         //        linalg<CPU>::geinv(nbf, qinv);
-        //        
+        //
         //        /* compute P^{+}*P */
         //        linalg<CPU>::gemm(2, 0, nbf, nbf, num_gkvec_loc(),
-        //                          beta_projectors_->beta_gk_t().at<CPU>(0, ofs), beta_projectors_->beta_gk_t().ld(), 
-        //                          beta_projectors_->beta_gk_t().at<CPU>(0, ofs), beta_projectors_->beta_gk_t().ld(), 
+        //                          beta_projectors_->beta_gk_t().at<CPU>(0, ofs), beta_projectors_->beta_gk_t().ld(),
+        //                          beta_projectors_->beta_gk_t().at<CPU>(0, ofs), beta_projectors_->beta_gk_t().ld(),
         //                          &p_mtrx_(0, 0, iat), p_mtrx_.ld());
         //        comm().allreduce(&p_mtrx_(0, 0, iat), unit_cell_.max_mt_basis_size() * unit_cell_.max_mt_basis_size());
 
@@ -186,7 +186,7 @@ inline void K_point::initialize()
                                                                                 return unit_cell_.atom(ia).mt_basis_size();
                                                                             },
                                                                             ctx_.num_fv_states()));
-            
+
             spinor_wave_functions_ = std::unique_ptr<Wave_functions>(new Wave_functions(gkvec_partition(),
                                                                                         unit_cell_.num_atoms(),
                                                                                         [this](int ia)
