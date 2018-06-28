@@ -226,14 +226,6 @@ class Hubbard_potential // TODO: rename to Hubbard
 
     void hubbard_compute_occupation_numbers(K_point_set& kset_);
 
-    inline void set_hubbard_occupancies_matrix(double* occ, int ld);
-    inline void set_hubbard_occupancies_matrix_nc(double_complex* occ, int ld);
-    inline void get_hubbard_occupancies_matrix(double* occ, int ld);
-    inline void get_hubbard_occupancies_matrix_nc(double_complex* occ, int ld);
-
-    inline void set_hubbard_potential_nc(double_complex* occ, int ld);
-    inline void set_hubbard_potential(double* occ, int ld);
-
     void compute_occupancies_derivatives(K_point&                    kp,
                                          Q_operator<double_complex>& q_op,
                                          mdarray<double_complex, 6>& dn_);
