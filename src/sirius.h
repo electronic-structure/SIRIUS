@@ -80,7 +80,7 @@ inline void initialize(bool call_mpi_init__ = true)
 
 #if defined(__GPU)
     if (acc::num_devices()) {
-	if (acc::num_devices() > 1) {
+        if (acc::num_devices() > 1) {
             acc::set_device_id(Communicator::device_id());
         }
         acc::create_streams(omp_get_max_threads() + 1);
@@ -255,12 +255,12 @@ make
 //!
 
 //! \page coding Coding style
-//!     
+//!
 //! Below are some basic style rules that we follow:
 //!     - Page width is approximately 120 characters. Screens are wide nowdays and 80 characters is an 
 //!       obsolete restriction. Going slightly over 120 characters is allowed if it is requird for the line continuity.
-//!     - Identation: 4 spaces (no tabs)
-//!     - Coments are inserted before the code with slash-star style starting with the lower case:
+//!     - Indentation: 4 spaces (no tabs)
+//!     - Comments are inserted before the code with slash-star style starting with the lower case:
 //!       \code{.cpp}
 //!           /* call a very important function */
 //!           do_something();
