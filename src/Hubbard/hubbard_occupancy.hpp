@@ -299,89 +299,93 @@ void Hubbard_potential::calculate_initial_occupation_numbers()
 
 inline void Hubbard_potential::set_hubbard_occupancies_matrix(double* occ, int ld)
 {
-    mdarray<double, 4> occupation_(occ, ld, ld, ctx_.num_spins(), ctx_.unit_cell().num_atoms());
-    this->occupancy_number_.zero();
-    for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {
+    STOP();
+    //mdarray<double, 4> occupation_(occ, ld, ld, ctx_.num_spins(), ctx_.unit_cell().num_atoms());
+    //this->occupancy_number_.zero();
+    //for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {
 
-        const int l = ctx_.unit_cell().atom(ia).type().hubbard_l();
-        for (int m1 = -l; m1 <= l; m1++) {
-            const int mm1 = natural_lm_to_qe(m1, l);
-            for (int m2 = -l; m2 <= l; m2++) {
-                const int mm2 = natural_lm_to_qe(m2, l);
-                for (int s = 0; s < ctx_.num_spins(); s++) {
-                    this->occupancy_number_(l + m1, l + m2, s, ia, 0) = occupation_(mm1, mm2, s, ia);
-                }
-            }
-        }
-    }
+    //    const int l = ctx_.unit_cell().atom(ia).type().hubbard_l();
+    //    for (int m1 = -l; m1 <= l; m1++) {
+    //        const int mm1 = natural_lm_to_qe(m1, l);
+    //        for (int m2 = -l; m2 <= l; m2++) {
+    //            const int mm2 = natural_lm_to_qe(m2, l);
+    //            for (int s = 0; s < ctx_.num_spins(); s++) {
+    //                this->occupancy_number_(l + m1, l + m2, s, ia, 0) = occupation_(mm1, mm2, s, ia);
+    //            }
+    //        }
+    //    }
+    //}
 }
 
 inline void Hubbard_potential::set_hubbard_occupancies_matrix_nc(double_complex* occ, int ld)
 {
-    mdarray<double_complex, 4> occupation_(occ, ld, ld, 4, ctx_.unit_cell().num_atoms());
-    this->occupancy_number_.zero();
-    for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {
-        auto& atom = ctx_.unit_cell().atom(ia);
-        if (atom.type().hubbard_correction()) {
-            const int l = ctx_.unit_cell().atom(ia).type().hubbard_l();
-            for (int m1 = -l; m1 <= l; m1++) {
-                const int mm1 = natural_lm_to_qe(m1, l);
-                for (int m2 = -l; m2 <= l; m2++) {
-                    const int mm2                                     = natural_lm_to_qe(m2, l);
-                    this->occupancy_number_(l + m1, l + m2, 0, ia, 0) = occupation_(mm1, mm2, 0, ia);
-                    this->occupancy_number_(l + m1, l + m2, 1, ia, 0) = occupation_(mm1, mm2, 3, ia);
-                    this->occupancy_number_(l + m1, l + m2, 2, ia, 0) = occupation_(mm1, mm2, 1, ia);
-                    this->occupancy_number_(l + m1, l + m2, 3, ia, 0) = occupation_(mm1, mm2, 2, ia);
-                }
-            }
-        }
-    }
+    STOP();
+    //mdarray<double_complex, 4> occupation_(occ, ld, ld, 4, ctx_.unit_cell().num_atoms());
+    //this->occupancy_number_.zero();
+    //for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {
+    //    auto& atom = ctx_.unit_cell().atom(ia);
+    //    if (atom.type().hubbard_correction()) {
+    //        const int l = ctx_.unit_cell().atom(ia).type().hubbard_l();
+    //        for (int m1 = -l; m1 <= l; m1++) {
+    //            const int mm1 = natural_lm_to_qe(m1, l);
+    //            for (int m2 = -l; m2 <= l; m2++) {
+    //                const int mm2                                     = natural_lm_to_qe(m2, l);
+    //                this->occupancy_number_(l + m1, l + m2, 0, ia, 0) = occupation_(mm1, mm2, 0, ia);
+    //                this->occupancy_number_(l + m1, l + m2, 1, ia, 0) = occupation_(mm1, mm2, 3, ia);
+    //                this->occupancy_number_(l + m1, l + m2, 2, ia, 0) = occupation_(mm1, mm2, 1, ia);
+    //                this->occupancy_number_(l + m1, l + m2, 3, ia, 0) = occupation_(mm1, mm2, 2, ia);
+    //            }
+    //        }
+    //    }
+    //}
 }
 
 inline void Hubbard_potential::get_hubbard_occupancies_matrix(double* occ, int ld)
 {
-    mdarray<double, 4> occupation_(occ, ld, ld, ctx_.num_spins(), ctx_.unit_cell().num_atoms());
+    STOP();
+    //mdarray<double, 4> occupation_(occ, ld, ld, ctx_.num_spins(), ctx_.unit_cell().num_atoms());
 
-    // we have a factor 1/2 to apply because sirius in the basic LDA
-    // case add up the spin degenary to the band occupation
-    assert(ctx_.num_mag_dims() != 3);
-    for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {
-        auto& atom = ctx_.unit_cell().atom(ia);
-        if (atom.type().hubbard_correction()) {
-            const int l = ctx_.unit_cell().atom(ia).type().hubbard_l();
-            for (int m1 = -l; m1 <= l; m1++) {
-                const int mm1 = natural_lm_to_qe(m1, l);
-                for (int m2 = -l; m2 <= l; m2++) {
-                    const int mm2 = natural_lm_to_qe(m2, l);
-                    for (int s = 0; s < ctx_.num_spins(); s++) {
-                        occupation_(mm1, mm2, s, ia) = this->occupancy_number_(l + m1, l + m2, s, ia, 0).real();
-                    }
-                }
-            }
-        }
-    }
+    //// we have a factor 1/2 to apply because sirius in the basic LDA
+    //// case add up the spin degenary to the band occupation
+    //assert(ctx_.num_mag_dims() != 3);
+    //for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {
+    //    auto& atom = ctx_.unit_cell().atom(ia);
+    //    if (atom.type().hubbard_correction()) {
+    //        const int l = ctx_.unit_cell().atom(ia).type().hubbard_l();
+    //        for (int m1 = -l; m1 <= l; m1++) {
+    //            const int mm1 = natural_lm_to_qe(m1, l);
+    //            for (int m2 = -l; m2 <= l; m2++) {
+    //                const int mm2 = natural_lm_to_qe(m2, l);
+    //                for (int s = 0; s < ctx_.num_spins(); s++) {
+    //                    occupation_(mm1, mm2, s, ia) = this->occupancy_number_(l + m1, l + m2, s, ia, 0).real();
+    //                }
+    //            }
+    //        }
+    //    }
+    //}
 }
 
 inline void Hubbard_potential::get_hubbard_occupancies_matrix_nc(double_complex* occ, int ld)
 {
-    mdarray<double_complex, 4> occupation_(occ, ld, ld, 4, ctx_.unit_cell().num_atoms());
+    STOP();
+    //mdarray<double_complex, 4> occupation_(occ, ld, ld, 4, ctx_.unit_cell().num_atoms());
 
-    for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {
-        auto& atom = ctx_.unit_cell().atom(ia);
-        if (atom.type().hubbard_correction()) {
-            const int l = ctx_.unit_cell().atom(ia).type().hubbard_l();
-            for (int m1 = -l; m1 <= l; m1++) {
-                const int mm1 = natural_lm_to_qe(m1, l);
-                for (int m2 = -l; m2 <= l; m2++) {
-                    const int mm2                = natural_lm_to_qe(m2, l);
-                    occupation_(mm1, mm2, 0, ia) = this->occupancy_number_(l + m1, l + m2, 0, ia, 0);
-                    occupation_(mm1, mm2, 3, ia) = this->occupancy_number_(l + m1, l + m2, 1, ia, 0);
-                    occupation_(mm1, mm2, 1, ia) = this->occupancy_number_(l + m1, l + m2, 2, ia, 0);
-                    occupation_(mm1, mm2, 2, ia) = this->occupancy_number_(l + m1, l + m2, 3, ia, 0);
-                }
-            }
-        }
-    }
+    //for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {
+    //    auto& atom = ctx_.unit_cell().atom(ia);
+    //    if (atom.type().hubbard_correction()) {
+    //        const int l = ctx_.unit_cell().atom(ia).type().hubbard_l();
+    //        for (int m1 = -l; m1 <= l; m1++) {
+    //            const int mm1 = natural_lm_to_qe(m1, l);
+    //            for (int m2 = -l; m2 <= l; m2++) {
+    //                const int mm2                = natural_lm_to_qe(m2, l);
+    //                occupation_(mm1, mm2, 0, ia) = this->occupancy_number_(l + m1, l + m2, 0, ia, 0);
+    //                occupation_(mm1, mm2, 3, ia) = this->occupancy_number_(l + m1, l + m2, 1, ia, 0);
+    //                occupation_(mm1, mm2, 1, ia) = this->occupancy_number_(l + m1, l + m2, 2, ia, 0);
+    //                occupation_(mm1, mm2, 2, ia) = this->occupancy_number_(l + m1, l + m2, 3, ia, 0);
+    //            }
+    //        }
+    //    }
+    //}
 }
 
 inline void Hubbard_potential::print_occupancies()
@@ -389,8 +393,9 @@ inline void Hubbard_potential::print_occupancies()
     if (ctx_.control().verbosity_ > 1) {
         if (ctx_.comm().rank() == 0) {
             printf("\n");
-            for (int ci = 0; ci < 10; ci++)
+            for (int ci = 0; ci < 10; ci++) {
                 printf("--------");
+            }
             printf("\n");
             printf("hubbard occupancies\n");
             for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
@@ -450,8 +455,9 @@ inline void Hubbard_potential::print_occupancies()
                     }
 
                     printf("\n");
-                    for (int ci = 0; ci < 10; ci++)
+                    for (int ci = 0; ci < 10; ci++) {
                         printf("--------");
+                    }
                     printf("\n");
                 }
             }

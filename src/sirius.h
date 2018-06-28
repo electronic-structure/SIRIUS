@@ -438,6 +438,22 @@ make
 //!           /* or */
 //!           std::complex<double> Another_BetaPsi;
 //!       \endcode
+//!     - Order of class members: private, protected, public
+//!       \code{.cpp}
+//!           class A
+//!           {
+//!               private:
+//!                   int lmax_;
+//!                   void bar();
+//!               protected:
+//!                   void foo();
+//!               public:
+//!                   int lmax() const
+//!                   {
+//!                       return lmax_;
+//!                   }
+//!           };
+//!       \endcode
 //!
 //! We use clang-format utility to enforce the basic formatting style. Please have a look at .clang-format config file 
 //! in the source root folder for the definitions and use helper script 'clang_format.x'.

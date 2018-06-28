@@ -319,37 +319,39 @@ void Hubbard_potential::calculate_hubbard_potential_and_energy_non_colinear_case
 
 inline void Hubbard_potential::set_hubbard_potential(double* occ, int ld)
 {
-    mdarray<double, 4> occupation_(occ, ld, ld, ctx_.num_spins(), ctx_.unit_cell().num_atoms());
+    STOP();
+    //mdarray<double, 4> occupation_(occ, ld, ld, ctx_.num_spins(), ctx_.unit_cell().num_atoms());
 
-    this->hubbard_potential_.zero();
-    for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {
-        const int l = ctx_.unit_cell().atom(ia).type().hubbard_l();
-        for (int m1 = -l; m1 <= l; m1++) {
-            const int mm1 = this->natural_lm_to_qe(m1, l);
-            for (int m2 = -l; m2 <= l; m2++) {
-                const int mm2 = this->natural_lm_to_qe(m2, l);
-                for (int ispn = 0; ispn < ctx_.num_spins(); ispn++)
-                    this->hubbard_potential_(l + m1, l + m2, ispn, ia, 0) = 0.5 * occupation_(mm1, mm2, ispn, ia);
-            }
-        }
-    }
+    //this->hubbard_potential_.zero();
+    //for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {
+    //    const int l = ctx_.unit_cell().atom(ia).type().hubbard_l();
+    //    for (int m1 = -l; m1 <= l; m1++) {
+    //        const int mm1 = this->natural_lm_to_qe(m1, l);
+    //        for (int m2 = -l; m2 <= l; m2++) {
+    //            const int mm2 = this->natural_lm_to_qe(m2, l);
+    //            for (int ispn = 0; ispn < ctx_.num_spins(); ispn++)
+    //                this->hubbard_potential_(l + m1, l + m2, ispn, ia, 0) = 0.5 * occupation_(mm1, mm2, ispn, ia);
+    //        }
+    //    }
+    //}
 }
 
 inline void Hubbard_potential::set_hubbard_potential_nc(double_complex* occ, int ld)
 {
-    mdarray<double_complex, 4> occupation_(occ, ld, ld, 4, ctx_.unit_cell().num_atoms());
-    this->hubbard_potential_.zero();
-    for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {
-        const int l = ctx_.unit_cell().atom(ia).type().hubbard_l();
-        for (int m1 = -l; m1 <= l; m1++) {
-            const int mm1 = this->natural_lm_to_qe(m1, l);
-            for (int m2 = -l; m2 <= l; m2++) {
-                const int mm2                                      = this->natural_lm_to_qe(m2, l);
-                this->hubbard_potential_(l + m1, l + m2, 0, ia, 0) = 0.5 * occupation_(mm1, mm2, 0, ia);
-                this->hubbard_potential_(l + m1, l + m2, 1, ia, 0) = 0.5 * occupation_(mm1, mm2, 3, ia);
-                this->hubbard_potential_(l + m1, l + m2, 2, ia, 0) = 0.5 * occupation_(mm1, mm2, 1, ia);
-                this->hubbard_potential_(l + m1, l + m2, 3, ia, 0) = 0.5 * occupation_(mm1, mm2, 2, ia);
-            }
-        }
-    }
+    STOP();
+    //mdarray<double_complex, 4> occupation_(occ, ld, ld, 4, ctx_.unit_cell().num_atoms());
+    //this->hubbard_potential_.zero();
+    //for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {
+    //    const int l = ctx_.unit_cell().atom(ia).type().hubbard_l();
+    //    for (int m1 = -l; m1 <= l; m1++) {
+    //        const int mm1 = this->natural_lm_to_qe(m1, l);
+    //        for (int m2 = -l; m2 <= l; m2++) {
+    //            const int mm2                                      = this->natural_lm_to_qe(m2, l);
+    //            this->hubbard_potential_(l + m1, l + m2, 0, ia, 0) = 0.5 * occupation_(mm1, mm2, 0, ia);
+    //            this->hubbard_potential_(l + m1, l + m2, 1, ia, 0) = 0.5 * occupation_(mm1, mm2, 3, ia);
+    //            this->hubbard_potential_(l + m1, l + m2, 2, ia, 0) = 0.5 * occupation_(mm1, mm2, 1, ia);
+    //            this->hubbard_potential_(l + m1, l + m2, 3, ia, 0) = 0.5 * occupation_(mm1, mm2, 2, ia);
+    //        }
+    //    }
+    //}
 }
