@@ -26,7 +26,6 @@
 #define __DFT_GROUND_STATE_H__
 
 #include "potential.h"
-#include "density.h"
 #include "k_point_set.h"
 #include "utils/json.hpp"
 #include "Hubbard/hubbard.hpp"

@@ -28,7 +28,7 @@
 #include "periodic_function.h"
 #include "spheric_function.h"
 #include "simulation_context.h"
-#include "density.h"
+#include "Density/density.hpp"
 
 namespace sirius {
 
