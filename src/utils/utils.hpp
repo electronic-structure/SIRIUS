@@ -200,6 +200,18 @@ inline int num_blocks(int length__, int block_size__)
     return (length__ / block_size__) + std::min(length__ % block_size__, 1);
 }
 
+inline double round(double a__, int n__)
+{
+    double a0 = std::floor(a__);
+    double b  = std::round((a__ - a0) * std::pow(10, n__)) / std::pow(10, n__);
+    return a0 + b;
+}
+
+inline std::complex<double> round(std::complex<double> a__, int n__)
+{
+    return std::complex<double>(round(a__.real(), n__), round(a__.imag(), n__));
+}
+
 //==     /// Simple hash function.
 //==     /** Example: printf("hash: %16llX\n", hash()); */
 //==     static uint64_t hash(void const* buff, size_t size, uint64_t h = 5381)
@@ -399,20 +411,6 @@ inline int num_blocks(int length__, int block_size__)
 //==         }
 //==         return std::move(v);
 //==     }
-//== 
-//==     inline static double round(double a__, int n__)
-//==     {
-//==         double a0 = std::floor(a__);
-//==         double b  = std::round((a__ - a0) * std::pow(10, n__)) / std::pow(10, n__);
-//==         return a0 + b;
-//==     }
-//== 
-//==     inline static double_complex round(double_complex a__, int n__)
-//==     {
-//==         return double_complex(round(a__.real(), n__), round(a__.imag(), n__));
-//==     }
-//== 
-//== 
 //== 
 //==     /// Read json dictionary from file or string.
 //==     /** Terminate if file doesn't exist. */

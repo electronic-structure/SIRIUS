@@ -265,17 +265,17 @@ class Utils // TODO: namespace utils
         return std::move(v);
     }
 
-    inline static double round(double a__, int n__)
-    {
-        double a0 = std::floor(a__);
-        double b  = std::round((a__ - a0) * std::pow(10, n__)) / std::pow(10, n__);
-        return a0 + b;
-    }
+    //inline static double round(double a__, int n__)
+    //{
+    //    double a0 = std::floor(a__);
+    //    double b  = std::round((a__ - a0) * std::pow(10, n__)) / std::pow(10, n__);
+    //    return a0 + b;
+    //}
 
-    inline static double_complex round(double_complex a__, int n__)
-    {
-        return double_complex(round(a__.real(), n__), round(a__.imag(), n__));
-    }
+    //inline static double_complex round(double_complex a__, int n__)
+    //{
+    //    return double_complex(round(a__.real(), n__), round(a__.imag(), n__));
+    //}
 
     /// Read json dictionary from file or string.
     /** Terminate if file doesn't exist. */
