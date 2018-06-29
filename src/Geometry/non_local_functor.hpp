@@ -29,7 +29,7 @@
 #include "../periodic_function.h"
 #include "../augmentation_operator.h"
 #include "../Beta_projectors/beta_projectors.h"
-#include "../potential.h"
+//#include "../potential.h"
 
 namespace sirius {
 

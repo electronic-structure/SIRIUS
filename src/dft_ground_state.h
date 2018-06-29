@@ -25,7 +25,7 @@
 #ifndef __DFT_GROUND_STATE_H__
 #define __DFT_GROUND_STATE_H__
 
-#include "potential.h"
+//#include "potential.h"
 #include "k_point_set.h"
 #include "utils/json.hpp"
 #include "Hubbard/hubbard.hpp"
