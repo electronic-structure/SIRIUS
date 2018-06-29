@@ -27,22 +27,22 @@
 
 #define GET_SIM_CTX(h) auto& sim_ctx = static_cast<utils::any_ptr*>(*h)->get<sirius::Simulation_context>();
 
+/// Index of Rlm in QE in the block of lm coefficients for a given l.
+static inline int idx_m_qe(int m__)
+{
+    return (m__ > 0) ? 2 * m__ - 1 : -2 * m__;
+}
+
 /// Mapping of atomic indices from SIRIUS to QE order.
 static inline std::vector<int> atomic_orbital_index_map_QE(sirius::Atom_type const& type__)
 {
     int nbf = type__.mt_basis_size();
 
-    /* index of Rlm in QE in the block of lm coefficients for a given l */
-    auto idx_m_QE = [](int m)
-    {
-        return (m > 0) ? 2 * m - 1 : -2 * m;
-    };
-
     std::vector<int> idx_map(nbf);
     for (int xi = 0; xi < nbf; xi++) {
         int m       = type__.indexb(xi).m;
         int idxrf   = type__.indexb(xi).idxrf;
-        idx_map[xi] = type__.indexb().index_by_idxrf(idxrf) + idx_m_QE(m); /* beginning of lm-block + new offset in lm block */
+        idx_map[xi] = type__.indexb().index_by_idxrf(idxrf) + idx_m_qe(m); /* beginning of lm-block + new offset in lm block */
     }
     return std::move(idx_map);
 }
@@ -155,31 +155,36 @@ void sirius_import_parameters(void* const* handler__,
     sim_ctx.import(std::string(str__));
 }
 
-/* @fortran begin function void sirius_set_parameters         Set parameters of the simulation.
-   @fortran argument in required void* handler                Simulation context handler
-   @fortran argument in optional int lmax_apw                 Maximum orbital quantum number for APW functions.
-   @fortran argument in optional int lmax_rho                 Maximum orbital quantum number for density. 
-   @fortran argument in optional int lmax_pot                 Maximum orbital quantum number for potential.
-   @fortran argument in optional int num_bands                Number of bands.
-   @fortran argument in optional int num_mag_dims             Number of magnetic dimensions. 
-   @fortran argument in optional double pw_cutoff             Cutoff for G-vectors.
-   @fortran argument in optional double gk_cutoff             Cutoff for G+k-vectors.
-   @fortran argument in optional double aw_cutoff             This is R_{mt} * gk_cutoff.
-   @fortran argument in optional int auto_rmt                 Set the automatic search of muffin-tin radii.
-   @fortran argument in optional bool gamma_point             True if this is a Gamma-point calculation.
-   @fortran argument in optional bool use_symmetry            True if crystal symmetry is taken into account.
-   @fortran argument in optional bool so_correction           True if spin-orbit correnctio is enabled.
-   @fortran argument in optional string valence_rel           Valence relativity treatment.
-   @fortran argument in optional string core_rel              Core relativity treatment.
-   @fortran argument in optional string esm_bc                Type of boundary condition for effective screened medium.
-   @fortran argument in optional double iter_solver_tol       Tolerance of the iterative solver.
-   @fortran argument in optional double iter_solver_tol_empty Tolerance for the empty states.
-   @fortran argument in optional int    verbosity             Verbosity level.
+/* @fortran begin function void sirius_set_parameters            Set parameters of the simulation.
+   @fortran argument in required void* handler                   Simulation context handler
+   @fortran argument in optional int lmax_apw                    Maximum orbital quantum number for APW functions.
+   @fortran argument in optional int lmax_rho                    Maximum orbital quantum number for density. 
+   @fortran argument in optional int lmax_pot                    Maximum orbital quantum number for potential.
+   @fortran argument in optional int num_fv_states               Number of first-variational states.
+   @fortran argument in optional int num_bands                   Number of bands.
+   @fortran argument in optional int num_mag_dims                Number of magnetic dimensions.
+   @fortran argument in optional double pw_cutoff                Cutoff for G-vectors.
+   @fortran argument in optional double gk_cutoff                Cutoff for G+k-vectors.
+   @fortran argument in optional double aw_cutoff                This is R_{mt} * gk_cutoff.
+   @fortran argument in optional int auto_rmt                    Set the automatic search of muffin-tin radii.
+   @fortran argument in optional bool gamma_point                True if this is a Gamma-point calculation.
+   @fortran argument in optional bool use_symmetry               True if crystal symmetry is taken into account.
+   @fortran argument in optional bool so_correction              True if spin-orbit correnctio is enabled.
+   @fortran argument in optional string valence_rel              Valence relativity treatment.
+   @fortran argument in optional string core_rel                 Core relativity treatment.
+   @fortran argument in optional string esm_bc                   Type of boundary condition for effective screened medium.
+   @fortran argument in optional double iter_solver_tol          Tolerance of the iterative solver.
+   @fortran argument in optional double iter_solver_tol_empty    Tolerance for the empty states.
+   @fortran argument in optional int    verbosity                Verbosity level.
+   @fortran argument in optional bool   hubbard_correction       True if LDA+U correction is enabled.
+   @fortran argument in optional int    hubbard_correction_kind  Type of LDA+U implementation (simplified or full).
+   @fortran argument in optional string hubbard_orbitals         Type of localized orbitals.
    @fortran end */
 void sirius_set_parameters(void*  const* handler__,
                            int    const* lmax_apw__,
                            int    const* lmax_rho__,
                            int    const* lmax_pot__,
+                           int    const* num_fv_states__,
                            int    const* num_bands__,
                            int    const* num_mag_dims__,
                            double const* pw_cutoff__,
@@ -194,7 +199,10 @@ void sirius_set_parameters(void*  const* handler__,
                            char   const* esm_bc__,
                            double const* iter_solver_tol__,
                            double const* iter_solver_tol_empty__,
-                           int    const* verbosity__)
+                           int    const* verbosity__,
+                           bool   const* hubbard_correction__,
+                           int    const* hubbard_correction_kind__,
+                           char   const* hubbard_orbitals__)
 {
     GET_SIM_CTX(handler__);
     if (lmax_apw__ != nullptr) {
@@ -205,6 +213,9 @@ void sirius_set_parameters(void*  const* handler__,
     }
     if (lmax_pot__ != nullptr) {
         sim_ctx.set_lmax_pot(*lmax_pot__);
+    }
+    if (num_fv_states__ != nullptr) {
+        sim_ctx.num_fv_states(*num_fv_states__);
     }
     if (num_bands__ != nullptr) {
         sim_ctx.num_bands(*num_bands__);
@@ -251,6 +262,23 @@ void sirius_set_parameters(void*  const* handler__,
     }
     if (verbosity__ != nullptr) {
         sim_ctx.set_verbosity(*verbosity__);
+    }
+    if (hubbard_correction__ != nullptr) {
+        sim_ctx.set_hubbard_correction(*hubbard_correction__);
+    }
+    if (hubbard_correction_kind__ != nullptr) {
+        if (*hubbard_correction_kind__ == 0) {
+            sim_ctx.set_hubbard_simplified_version();
+        }
+    }
+    if (hubbard_orbitals__ != nullptr) {
+        std::string s(hubbard_orbitals__);
+        if (s == "ortho-atomic") {
+            sim_ctx.set_orthogonalize_hubbard_orbitals(true);
+        }
+        if (s == "norm-atomic") {
+            sim_ctx.set_normalize_hubbard_orbitals(true);
+        }
     }
 }
 
@@ -1562,7 +1590,218 @@ double sirius_get_radial_integral(void*  const* handler__,
     }
 }
 
+/* @fortran begin function void sirius_calculate_hubbard_occupancies  Compute occupation matrix.
+   @fortran argument in required void* handler                        Ground state handler.
+   @fortran end */
+void sirius_calculate_hubbard_occupancies(void* const* handler__)
+{
+    auto& gs = static_cast<utils::any_ptr*>(*handler__)->get<sirius::DFT_ground_state>();
+    gs.hamiltonian().U().hubbard_compute_occupation_numbers(gs.k_point_set());
+}
 
+static inline void access_hubbard_occupancies(void* const* handler__,
+                                              char  const* what__,
+                                              double*      occ__,
+                                              int   const *ld__)
+{
+    /* this implementation is QE-specific at the moment */
+
+    std::string what(what__);
+
+    if (!(what == "get" || what == "set")) {
+        std::stringstream s;
+        s << "wrong access label: " << what;
+        TERMINATE(s);
+    }
+
+    mdarray<double, 5> occ_mtrx;
+    auto& gs = static_cast<utils::any_ptr*>(*handler__)->get<sirius::DFT_ground_state>();
+    /* in non-collinear case the occupancy matrix is complex */
+    if (gs.ctx().num_mag_dims() == 3) {
+        occ_mtrx = mdarray<double, 5>(occ__, 2, *ld__, *ld__, 4, gs.ctx().unit_cell().num_atoms());
+    } else {
+        occ_mtrx = mdarray<double, 5>(occ__, 1, *ld__, *ld__, gs.ctx().num_spins(), gs.ctx().unit_cell().num_atoms());
+    }
+    if (what == "get") {
+        occ_mtrx.zero();
+    }
+
+    auto& occupation_matrix = gs.hamiltonian().U().occupation_matrix();
+
+    for (int ia = 0; ia < gs.ctx().unit_cell().num_atoms(); ia++) {
+        auto& atom = gs.ctx().unit_cell().atom(ia);
+        if (atom.type().hubbard_correction()) {
+            const int l = gs.ctx().unit_cell().atom(ia).type().hubbard_l();
+            for (int m1 = -l; m1 <= l; m1++) {
+                const int mm1 = idx_m_qe(m1);
+                for (int m2 = -l; m2 <= l; m2++) {
+                    const int mm2 = idx_m_qe(m2);
+                    if (gs.ctx().num_mag_dims() == 3) {
+                        if (what == "get") {
+                            std::vector<double_complex> z = {
+                                occupation_matrix(l + m1, l + m2, 0, ia, 0),
+                                occupation_matrix(l + m1, l + m2, 2, ia, 0),
+                                occupation_matrix(l + m1, l + m2, 3, ia, 0),
+                                occupation_matrix(l + m1, l + m2, 1, ia, 0)};
+                            for (int j = 0; j < 4; j++) {
+                                occ_mtrx(0, mm1, mm2, j, ia) = z[j].real();
+                                occ_mtrx(1, mm1, mm2, j, ia) = z[j].imag();
+                            }
+                        } else {
+                            std::vector<double_complex> z(4);
+                            for (int j = 0; j < 4; j++) {
+                                z[j] = double_complex(occ_mtrx(0, mm1, mm2, j, ia), occ_mtrx(1, mm1, mm2, j, ia));
+                            }
+                            occupation_matrix(l + m1, l + m2, 0, ia, 0) = z[0];
+                            occupation_matrix(l + m1, l + m2, 2, ia, 0) = z[1];
+                            occupation_matrix(l + m1, l + m2, 3, ia, 0) = z[2];
+                            occupation_matrix(l + m1, l + m2, 1, ia, 0) = z[3];
+                        }
+                    } else {
+                        if (what == "get") {
+                            for (int j = 0; j < gs.ctx().num_spins(); j++) {
+                                occ_mtrx(0, mm1, mm2, j, ia) = occupation_matrix(l + m1, l + m2, j, ia, 0).real();
+                            }
+                        } else {
+                            for (int j = 0; j < gs.ctx().num_spins(); j++) {
+                                occupation_matrix(l + m1, l + m2, j, ia, 0) = double_complex(occ_mtrx(0, mm1, mm2, j, ia), 0);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+/* @fortran begin function void sirius_set_hubbard_occupancies _double Set occupation matrix for LDA+U.
+   @fortran argument in    required void* handler                      Ground state handler.
+   @fortran argument inout required double occ                         Occupation matrix.
+   @fortran argument in    required int    ld                          Leading dimensions of the occupation matrix.
+   @fortran end */
+
+/* @fortran begin function void sirius_set_hubbard_occupancies _complex Set occupation matrix for LDA+U.
+   @fortran argument in    required void* handler                       Ground state handler.
+   @fortran argument inout required complex occ                         Occupation matrix.
+   @fortran argument in    required int     ld                          Leading dimensions of the occupation matrix.
+   @fortran end */
+void sirius_set_hubbard_occupancies(void* const* handler__,
+                                    double*      occ__,
+                                    int   const *ld__)
+{
+    access_hubbard_occupancies(handler__, "set", occ__, ld__);
+}
+
+/* @fortran begin function void sirius_get_hubbard_occupancies _double Get occupation matrix for LDA+U.
+   @fortran argument in    required void* handler                      Ground state handler.
+   @fortran argument inout required double occ                         Occupation matrix.
+   @fortran argument in    required int    ld                          Leading dimensions of the occupation matrix.
+   @fortran end */
+
+/* @fortran begin function void sirius_get_hubbard_occupancies _complex Get occupation matrix for LDA+U.
+   @fortran argument in    required void* handler                       Ground state handler.
+   @fortran argument inout required complex occ                         Occupation matrix.
+   @fortran argument in    required int     ld                          Leading dimensions of the occupation matrix.
+   @fortran end */
+void sirius_get_hubbard_occupancies(void* const* handler__,
+                                    double*      occ__,
+                                    int   const *ld__)
+{
+    access_hubbard_occupancies(handler__, "get", occ__, ld__);
+}
+
+
+static inline void access_hubbard_potential(void* const* handler__,
+                                            char  const* what__,
+                                            double*      pot__,
+                                            int   const *ld__)
+{
+    /* this implementation is QE-specific at the moment */
+
+    std::string what(what__);
+
+    if (!(what == "get" || what == "set")) {
+        std::stringstream s;
+        s << "wrong access label: " << what;
+        TERMINATE(s);
+    }
+
+    mdarray<double, 5> pot_mtrx;
+    auto& gs = static_cast<utils::any_ptr*>(*handler__)->get<sirius::DFT_ground_state>();
+    /* in non-collinear case the occupancy matrix is complex */
+    if (gs.ctx().num_mag_dims() == 3) {
+        pot_mtrx = mdarray<double, 5>(pot__, 2, *ld__, *ld__, 4, gs.ctx().unit_cell().num_atoms());
+    } else {
+        pot_mtrx = mdarray<double, 5>(pot__, 1, *ld__, *ld__, gs.ctx().num_spins(), gs.ctx().unit_cell().num_atoms());
+    }
+    if (what == "get") {
+        pot_mtrx.zero();
+    }
+
+    auto& potential_matrix = gs.hamiltonian().U().potential_matrix();
+
+    for (int ia = 0; ia < gs.ctx().unit_cell().num_atoms(); ia++) {
+        auto& atom = gs.ctx().unit_cell().atom(ia);
+        if (atom.type().hubbard_correction()) {
+            const int l = gs.ctx().unit_cell().atom(ia).type().hubbard_l();
+            for (int m1 = -l; m1 <= l; m1++) {
+                const int mm1 = idx_m_qe(m1);
+                for (int m2 = -l; m2 <= l; m2++) {
+                    const int mm2 = idx_m_qe(m2);
+                    if (gs.ctx().num_mag_dims() == 3) {
+                        if (what == "get") {
+                            std::vector<double_complex> z = {
+                                potential_matrix(l + m1, l + m2, 0, ia, 0),
+                                potential_matrix(l + m1, l + m2, 2, ia, 0),
+                                potential_matrix(l + m1, l + m2, 3, ia, 0),
+                                potential_matrix(l + m1, l + m2, 1, ia, 0)};
+                            for (int j = 0; j < 4; j++) {
+                                pot_mtrx(0, mm1, mm2, j, ia) = z[j].real();
+                                pot_mtrx(1, mm1, mm2, j, ia) = z[j].imag();
+                            }
+                        } else {
+                            std::vector<double_complex> z(4);
+                            for (int j = 0; j < 4; j++) {
+                                z[j] = double_complex(pot_mtrx(0, mm1, mm2, j, ia), pot_mtrx(1, mm1, mm2, j, ia));
+                            }
+                            potential_matrix(l + m1, l + m2, 0, ia, 0) = z[0];
+                            potential_matrix(l + m1, l + m2, 2, ia, 0) = z[1];
+                            potential_matrix(l + m1, l + m2, 3, ia, 0) = z[2];
+                            potential_matrix(l + m1, l + m2, 1, ia, 0) = z[3];
+                        }
+                    } else {
+                        if (what == "get") {
+                            for (int j = 0; j < gs.ctx().num_spins(); j++) {
+                                pot_mtrx(0, mm1, mm2, j, ia) = potential_matrix(l + m1, l + m2, j, ia, 0).real();
+                            }
+                        } else {
+                            for (int j = 0; j < gs.ctx().num_spins(); j++) {
+                                potential_matrix(l + m1, l + m2, j, ia, 0) = double_complex(pot_mtrx(0, mm1, mm2, j, ia), 0);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+/* @fortran begin function void sirius_set_hubbard_potential _double      Set LDA+U potential matrix.
+   @fortran argument in    required void* handler                         Ground state handler.
+   @fortran argument inout required double pot                            Potential correction matrix.
+   @fortran argument in    required int    ld                             Leading dimensions of the matrix.
+   @fortran end */
+
+/* @fortran begin function void sirius_set_hubbard_potential _complex     Set LDA+U potential matrix.
+   @fortran argument in    required void* handler                         Ground state handler.
+   @fortran argument inout required complex pot                           Potential correction matrix.
+   @fortran argument in    required int    ld                             Leading dimensions of the matrix.
+   @fortran end */
+void sirius_set_hubbard_potential(void* const* handler__,
+                                  double*      pot__,
+                                  int   const *ld__)
+{
+    access_hubbard_potential(handler__, "set", pot__, ld__);
 }
 
 
@@ -1632,33 +1871,6 @@ double sirius_get_radial_integral(void*  const* handler__,
 //==     type.set_configuration(*n__, *l__, *k__, *occupancy__, *core__);
 //== }
 //== 
-//== /// Add atom to the unit cell.
-//== /** \param [in] label unique label of the atom type
-//==  *  \param [in] position atom position in fractional coordinates
-//==  *  \param [in] vector_field vector field associated with the given atom
-//==  *
-//==  *  Example:
-//==     \code{.F90}
-//==     do is = 1, nspecies
-//==       do ia = 1, natoms(is)
-//==         call sirius_add_atom(trim(spfname(is)), atposl(:, ia, is), bfcmt(:, ia, is))
-//==       enddo
-//==     enddo
-//==     \endcode
-//==  */
-//== void sirius_add_atom(char* label__,
-//==                      double* position__,
-//==                      double* vector_field__)
-//== {
-//==     if (vector_field__ != NULL) {
-//==         sim_ctx->unit_cell().add_atom(std::string(label__),
-//==                                       vector3d<double>(position__[0], position__[1], position__[2]),
-//==                                       vector3d<double>(vector_field__[0], vector_field__[1], vector_field__[2]));
-//==     } else {
-//==         sim_ctx->unit_cell().add_atom(std::string(label__),
-//==                                       vector3d<double>(position__[0], position__[1], position__[2]));
-//==     }
-//== }
 //== 
 //== /// Set the table of equivalent atoms.
 //== /** \param [in] equivalent_atoms table of equivalent atoms
@@ -1672,26 +1884,6 @@ double sirius_get_radial_integral(void*  const* handler__,
 //==     sim_ctx->unit_cell().set_equivalent_atoms(equivalent_atoms__);
 //== }
 //== 
-//== /// Set augmented-wave cutoff
-//== /** \param [in] aw_cutoff augmented-wave cutoff
-//== 
-//==      Augmented wave cutoff is used to setup the |G+k| cutoff which controls the size of the (L)APW basis.
-//==      The following simple relation is used:
-//==      \f[
-//==        |\mathbf{G}+\mathbf{k}| R^{MT}_{min} \leq \textrm{AW cutoff}
-//==      \f]
-//== 
-//==      Example:
-//==      \code{.F90}
-//==          real(8) rgkmax
-//==          rgkmax = 10.0
-//==          call sirius_set_aw_cutoff(rgkmax)
-//==      \endcode
-//== */
-//== void sirius_set_aw_cutoff(double* aw_cutoff__)
-//== {
-//==     sim_ctx->set_aw_cutoff(*aw_cutoff__);
-//== }
 //== 
 //== void sirius_add_xc_functional(char const* name__)
 //== {
@@ -1886,26 +2078,6 @@ double sirius_get_radial_integral(void*  const* handler__,
 //==     *num_core_electrons__ = sim_ctx->unit_cell().num_core_electrons();
 //== }
 //== 
-//== void sirius_generate_initial_density()
-//== {
-//==     dft_ground_state->density().initial_density();
-//== }
-//== 
-//== void sirius_generate_effective_potential()
-//== {
-//==     dft_ground_state->potential().generate(dft_ground_state->density());
-//== }
-//== 
-//== void sirius_initialize_subspace(ftn_int* kset_id__)
-//== {
-//==     dft_ground_state->band().initialize_subspace(*kset_list[*kset_id__], dft_ground_state->hamiltonian());
-//== }
-//== 
-//== void sirius_generate_density(int32_t* kset_id__)
-//== {
-//==     dft_ground_state->density().generate(*kset_list[*kset_id__]);
-//== }
-//== 
 //== void sirius_generate_valence_density(int32_t* kset_id__)
 //== {
 //==     dft_ground_state->density().generate_valence(*kset_list[*kset_id__]);
@@ -1931,35 +2103,6 @@ double sirius_get_radial_integral(void*  const* handler__,
 //==     kset_list[*kset_id__]->find_band_occupancies();
 //== }
 //== 
-//== 
-//== void sirius_set_band_occupancies(ftn_int*    kset_id__,
-//==                                  ftn_int*    ik__,
-//==                                  ftn_int*    ispn__,
-//==                                  ftn_double* band_occupancies__)
-//== {
-//==     int ik = *ik__ - 1;
-//==     for (int i = 0; i < sim_ctx->num_bands(); i++) {
-//==         (*kset_list[*kset_id__])[ik]->band_occupancy(i, *ispn__) = band_occupancies__[i];
-//==     }
-//== }
-//== 
-//== void sirius_get_band_energies(ftn_int*    kset_id__,
-//==                               ftn_int*    ik__,
-//==                               ftn_int*    ispn__,
-//==                               ftn_double* band_energies__)
-//== {
-//==     int ik = *ik__ - 1;
-//==     for (int i = 0; i < sim_ctx->num_bands(); i++) {
-//==         band_energies__[i] = (*kset_list[*kset_id__])[ik]->band_energy(i, *ispn__);
-//==     }
-//== }
-//== 
-//== //void sirius_get_band_occupancies(int32_t* kset_id, int32_t* ik_, double* band_occupancies)
-//== //{
-//== //    STOP();
-//== //    //int ik = *ik_ - 1;
-//== //    //kset_list[*kset_id]->get_band_occupancies(ik, band_occupancies);
-//== //}
 //== 
 //== void sirius_print_timers(void)
 //== {
@@ -1988,164 +2131,6 @@ double sirius_get_radial_integral(void*  const* handler__,
 //==     dft_ground_state->density().load();
 //== }
 //== 
-//== //== void FORTRAN(sirius_save_wave_functions)(int32_t* kset_id)
-//== //== {
-//== //==     kset_list[*kset_id]->save_wave_functions();
-//== //== }
-//== //==
-//== //== void FORTRAN(sirius_load_wave_functions)(int32_t* kset_id)
-//== //== {
-//== //==     kset_list[*kset_id]->load_wave_functions();
-//== //== }
-//== 
-//== void sirius_save_kset(int32_t* kset_id)
-//== {
-//==     kset_list[*kset_id]->save();
-//== }
-//== 
-//== void sirius_load_kset(int32_t* kset_id)
-//== {
-//==     kset_list[*kset_id]->load();
-//== }
-//== 
-//== /*  Relevant block in the input file:
-//== 
-//==     "bz_path" : {
-//==         "num_steps" : 100,
-//==         "points" : [["G", [0, 0, 0]], ["X", [0.5, 0.0, 0.5]], ["L", [0.5, 0.5, 0.5]]]
-//==     }
-//== */
-//== //== void FORTRAN(sirius_bands)(void)
-//== //== {
-//== //==     FORTRAN(sirius_read_state)();
-//== //==
-//== //==     std::vector<std::pair<std::string, std::vector<double> > > bz_path;
-//== //==     std::string fname("sirius.json");
-//== //==
-//== //==     int num_steps = 0;
-//== //==     if (Utils::file_exists(fname))
-//== //==     {
-//== //==         JSON_tree parser(fname);
-//== //==         if (!parser["bz_path"].empty())
-//== //==         {
-//== //==             parser["bz_path"]["num_steps"] >> num_steps;
-//== //==
-//== //==             for (int ipt = 0; ipt < parser["bz_path"]["points"].size(); ipt++)
-//== //==             {
-//== //==                 std::pair<std::string, std::vector<double> > pt;
-//== //==                 parser["bz_path"]["points"][ipt][0] >> pt.first;
-//== //==                 parser["bz_path"]["points"][ipt][1] >> pt.second;
-//== //==                 bz_path.push_back(pt);
-//== //==             }
-//== //==         }
-//== //==     }
-//== //==
-//== //==     if (bz_path.size() < 2) TERMINATE("at least two BZ points are required");
-//== //==
-//== //==     // compute length of segments
-//== //==     std::vector<double> segment_length;
-//== //==     double total_path_length = 0.0;
-//== //==     for (int ip = 0; ip < (int)bz_path.size() - 1; ip++)
-//== //==     {
-//== //==         double vf[3];
-//== //==         for (int x = 0; x < 3; x++) vf[x] = bz_path[ip + 1].second[x] - bz_path[ip].second[x];
-//== //==         double vc[3];
-//== //==         sim_ctx->get_coordinates<cartesian, reciprocal>(vf, vc);
-//== //==         double length = Utils::vector_length(vc);
-//== //==         total_path_length += length;
-//== //==         segment_length.push_back(length);
-//== //==     }
-//== //==
-//== //==     std::vector<double> xaxis;
-//== //==
-//== //==     sirius::K_point_set kset_(global_parameters);
-//== //==
-//== //==     double prev_seg_len = 0.0;
-//== //==
-//== //==     // segments
-//== //==     for (int ip = 0; ip < (int)bz_path.size() - 1; ip++)
-//== //==     {
-//== //==         std::vector<double> p0 = bz_path[ip].second;
-//== //==         std::vector<double> p1 = bz_path[ip + 1].second;
-//== //==
-//== //==         int n = int((segment_length[ip] * num_steps) / total_path_length);
-//== //==         int n0 = (ip == (int)bz_path.size() - 2) ? n - 1 : n;
-//== //==
-//== //==         double dvf[3];
-//== //==         for (int x = 0; x < 3; x++) dvf[x] = (p1[x] - p0[x]) / double(n0);
-//== //==
-//== //==         for (int i = 0; i < n; i++)
-//== //==         {
-//== //==             double vf[3];
-//== //==             for (int x = 0; x < 3; x++) vf[x] = p0[x] + dvf[x] * i;
-//== //==             kset_.add_kpoint(vf, 0.0);
-//== //==
-//== //==             xaxis.push_back(prev_seg_len + segment_length[ip] * i / double(n0));
-//== //==         }
-//== //==         prev_seg_len += segment_length[ip];
-//== //==     }
-//== //==
-//== //==     std::vector<double> xaxis_ticks;
-//== //==     std::vector<std::string> xaxis_tick_labels;
-//== //==     prev_seg_len = 0.0;
-//== //==     for (int ip = 0; ip < (int)bz_path.size(); ip++)
-//== //==     {
-//== //==         xaxis_ticks.push_back(prev_seg_len);
-//== //==         xaxis_tick_labels.push_back(bz_path[ip].first);
-//== //==         if (ip < (int)bz_path.size() - 1) prev_seg_len += segment_length[ip];
-//== //==     }
-//== //==
-//== //==     kset_.initialize();
-//== //==
-//== //==     sim_ctx->solve_free_atoms();
-//== //==
-//== //==     potential->update_atomic_potential();
-//== //==     sim_ctx->generate_radial_functions();
-//== //==     sim_ctx->generate_radial_integrals();
-//== //==
-//== //==     // generate plane-wave coefficients of the potential in the interstitial region
-//== //==     potential->generate_pw_coefs();
-//== //==
-//== //==     for (int ikloc = 0; ikloc < kset_.spl_num_kpoints().local_size(); ikloc++)
-//== //==     {
-//== //==         int ik = kset_.spl_num_kpoints(ikloc);
-//== //==         kset_[ik]->find_eigen_states(dft_ground_state->potential().effective_potential(), dft_ground_state->potential().effective_magnetic_field());
-//== //==     }
-//== //==     // synchronize eigen-values
-//== //==     kset_.sync_band_energies();
-//== //==
-//== //==     if (sim_ctx->mpi_grid().root())
-//== //==     {
-//== //==         JSON_write jw("bands.json");
-//== //==         jw.single("xaxis", xaxis);
-//== //==         //** jw.single("Ef", sim_ctx->rti().energy_fermi);
-//== //==
-//== //==         jw.single("xaxis_ticks", xaxis_ticks);
-//== //==         jw.single("xaxis_tick_labels", xaxis_tick_labels);
-//== //==
-//== //==         jw.begin_array("plot");
-//== //==         std::vector<double> yvalues(kset_.num_kpoints());
-//== //==         for (int i = 0; i < sim_ctx->num_bands(); i++)
-//== //==         {
-//== //==             jw.begin_set();
-//== //==             for (int ik = 0; ik < kset_.num_kpoints(); ik++) yvalues[ik] = kset_[ik]->band_energy(i);
-//== //==             jw.single("yvalues", yvalues);
-//== //==             jw.end_set();
-//== //==         }
-//== //==         jw.end_array();
-//== //==
-//== //==         //FILE* fout = fopen("bands.dat", "w");
-//== //==         //for (int i = 0; i < sim_ctx->num_bands(); i++)
-//== //==         //{
-//== //==         //    for (int ik = 0; ik < kpoint_set_.num_kpoints(); ik++)
-//== //==         //    {
-//== //==         //        fprintf(fout, "%f %f\n", xaxis[ik], kpoint_set_[ik]->band_energy(i));
-//== //==         //    }
-//== //==         //    fprintf(fout, "\n");
-//== //==         //}
-//== //==         //fclose(fout);
-//== //==     }
-//== //== }
 //== 
 //== void FORTRAN(sirius_plot_potential)(void)
 //== {
@@ -3076,16 +3061,6 @@ double sirius_get_radial_integral(void*  const* handler__,
 //==     *num_fv_states__ = sim_ctx->num_fv_states();
 //== }
 //== 
-//== void sirius_set_num_fv_states(ftn_int* num_fv_states__)
-//== {
-//==     sim_ctx->num_fv_states(*num_fv_states__);
-//== }
-//== 
-//== void sirius_set_num_bands(ftn_int* num_bands__)
-//== {
-//==     sim_ctx->num_bands(*num_bands__);
-//== }
-//== 
 //== //void sirius_get_mpi_comm(int32_t* directions__, int32_t* fcomm__)
 //== //{
 //== //    *fcomm__ = MPI_Comm_c2f(sim_ctx->mpi_grid().communicator(*directions__).mpi_comm());
@@ -3112,10 +3087,6 @@ double sirius_get_radial_integral(void*  const* handler__,
 //==     //dft_ground_state->forces(forces);
 //== }
 //== 
-//== void sirius_set_atom_pos(int32_t* atom_id, double* pos)
-//== {
-//==     sim_ctx->unit_cell().atom(*atom_id - 1).set_position(vector3d<double>(pos[0], pos[1], pos[2]));
-//== }
 //== 
 //== void sirius_core_leakage(double* core_leakage)
 //== {
@@ -3512,71 +3483,9 @@ double sirius_get_radial_integral(void*  const* handler__,
 //==     sim_ctx->set_processing_unit(pu__);
 //== }
 //== 
-//== void sirius_set_hubbard_correction()
-//== {
-//==     sim_ctx->set_hubbard_correction(true);
-//== }
-//== 
-//== void sirius_set_hubbard_occupancies(ftn_double *occ, ftn_int *ld)
-//== {
-//==     dft_ground_state->hamiltonian().U().set_hubbard_occupancies_matrix(occ, *ld);
-//== }
-//== 
-//== void sirius_get_hubbard_occupancies(ftn_double *occ, ftn_int *ld)
-//== {
-//==     dft_ground_state->hamiltonian().U().get_hubbard_occupancies_matrix(occ, *ld);
-//== }
-//== 
-//== void sirius_set_hubbard_occupancies_nc(ftn_double_complex *occ, ftn_int *ld)
-//== {
-//==     dft_ground_state->hamiltonian().U().set_hubbard_occupancies_matrix_nc(occ, *ld);
-//== }
-//== 
-//== void sirius_get_hubbard_occupancies_nc(ftn_double_complex *occ, ftn_int *ld)
-//== {
-//==     dft_ground_state->hamiltonian().U().get_hubbard_occupancies_matrix_nc(occ, *ld);
-//== }
-//== 
-//== void sirius_set_hubbard_potential(ftn_double *occ, ftn_int *ld)
-//== {
-//==     dft_ground_state->hamiltonian().U().set_hubbard_potential(occ, *ld);
-//== }
-//== 
-//== void sirius_set_hubbard_potential_nc(ftn_double_complex *occ, ftn_int *ld)
-//== {
-//==     dft_ground_state->hamiltonian().U().set_hubbard_potential_nc(occ, *ld);
-//== }
-//== 
-//== void sirius_calculate_hubbard_occupancies()
-//== {
-//==     dft_ground_state->hamiltonian().U().hubbard_compute_occupation_numbers(*kset_list[0]);
-//== }
-//== 
 //== void sirius_calculate_hubbard_potential()
 //== {
 //==     dft_ground_state->hamiltonian().U().calculate_hubbard_potential_and_energy();
-//== }
-//== 
-//== void sirius_set_orthogonalize_hubbard_orbitals()
-//== {
-//==     sim_ctx->set_orthogonalize_hubbard_orbitals(true);
-//== }
-//== 
-//== void sirius_set_normalize_hubbard_orbitals()
-//== {
-//==     sim_ctx->set_normalize_hubbard_orbitals(true);
-//== }
-//== 
-//== void sirius_set_hubbard_simplified_method()
-//== {
-//==     sim_ctx->set_hubbard_simplified_version();
-//== }
-//== 
-//== void sirius_get_num_beta_projectors(ftn_char label__,
-//==                                     ftn_int* num_beta_projectors__)
-//== {
-//==     auto& type = sim_ctx->unit_cell().atom_type(std::string(label__));
-//==     *num_beta_projectors__ = type.mt_basis_size();
 //== }
 //== 
 //== void sirius_spline_(ftn_int* n__, ftn_double* x__, ftn_double* f__, ftn_double* cf__)
@@ -3596,4 +3505,4 @@ double sirius_get_radial_integral(void*  const* handler__,
 //==     }
 //== }
 //== 
-//== } // extern "C"
+} // extern "C"

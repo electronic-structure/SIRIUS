@@ -126,7 +126,7 @@ class Augmentation_operator
                     sym_weight_(idx12) = (xi1 == xi2) ? 1 : 2;
                 }
             }
-    
+
             q_mtrx_ = mdarray<double, 2>(nbf, nbf);
             q_mtrx_.zero();
 
@@ -146,13 +146,13 @@ class Augmentation_operator
                 double cs = q_pw_.checksum();
                 comm_.allreduce(&cs, 1);
                 if (comm_.rank() == 0) {
-                    print_checksum("q_pw", cs);
+                    utils::print_checksum("q_pw", cs);
                 }
             }
         }
 
     public:
-       
+
         Augmentation_operator(Simulation_context_base const& ctx__,
                               int iat__)
             : ctx_(ctx__)

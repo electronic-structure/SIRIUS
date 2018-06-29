@@ -425,7 +425,7 @@ class D_operator : public Non_local_operator<T>
 
             if (this->ctx__.control().print_checksum_ && this->ctx__.comm().rank() == 0) {
                 auto cs = this->op_.checksum();
-                print_checksum("D_operator", cs);
+                utils::print_checksum("D_operator", cs);
             }
 
             if (this->pu_ == GPU) {
@@ -512,7 +512,7 @@ class Q_operator : public Non_local_operator<T>
             }
             if (this->ctx__.control().print_checksum_ && this->ctx__.comm().rank() == 0) {
                 auto cs = this->op_.checksum();
-                print_checksum("Q_operator", cs);
+                utils::print_checksum("Q_operator", cs);
             }
 
             if (this->pu_ == GPU) {

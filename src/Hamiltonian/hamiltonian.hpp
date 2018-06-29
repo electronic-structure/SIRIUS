@@ -27,7 +27,7 @@
 
 #include <typeinfo>
 #include "simulation_context.h"
-#include "hubbard.hpp"
+#include "Hubbard/hubbard.hpp"
 #include "potential.h"
 #include "k_point.h"
 #include "local_operator.hpp"

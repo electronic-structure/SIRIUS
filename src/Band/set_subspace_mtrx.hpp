@@ -34,7 +34,7 @@ inline void Band::set_subspace_mtrx(int N__,
             }
             mtrx__.blacs_grid().comm().allreduce(&cs, 1);
             if (ctx_.comm_band().rank() == 0) {
-                print_checksum("subspace_mtrx_old", cs);
+                utils::print_checksum("subspace_mtrx_old", cs);
             }
         }
     }
@@ -74,7 +74,7 @@ inline void Band::set_subspace_mtrx(int N__,
         }
         mtrx__.blacs_grid().comm().allreduce(&cs, 1);
         if (ctx_.comm_band().rank() == 0) {
-            print_checksum("subspace_mtrx", cs);
+            utils::print_checksum("subspace_mtrx", cs);
         }
     }
 

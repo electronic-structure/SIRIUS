@@ -32,7 +32,6 @@
 #include "../Beta_projectors/beta_projectors.h"
 #include "../Beta_projectors/beta_projectors_gradient.h"
 #include "../potential.h"
-#include "../density.h"
 #include "non_local_functor.hpp"
 
 namespace sirius {

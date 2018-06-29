@@ -159,6 +159,7 @@ end subroutine sirius_import_parameters
 !> @param [in] lmax_apw Maximum orbital quantum number for APW functions.
 !> @param [in] lmax_rho Maximum orbital quantum number for density.
 !> @param [in] lmax_pot Maximum orbital quantum number for potential.
+!> @param [in] num_fv_states Number of first-variational states.
 !> @param [in] num_bands Number of bands.
 !> @param [in] num_mag_dims Number of magnetic dimensions.
 !> @param [in] pw_cutoff Cutoff for G-vectors.
@@ -174,15 +175,19 @@ end subroutine sirius_import_parameters
 !> @param [in] iter_solver_tol Tolerance of the iterative solver.
 !> @param [in] iter_solver_tol_empty Tolerance for the empty states.
 !> @param [in] verbosity Verbosity level.
-subroutine sirius_set_parameters(handler,lmax_apw,lmax_rho,lmax_pot,num_bands,nu&
-&m_mag_dims,pw_cutoff,gk_cutoff,aw_cutoff,auto_rmt,gamma_point,use_symmetry,so_co&
-&rrection,valence_rel,core_rel,esm_bc,iter_solver_tol,iter_solver_tol_empty,verbo&
-&sity)
+!> @param [in] hubbard_correction True if LDA+U correction is enabled.
+!> @param [in] hubbard_correction_kind Type of LDA+U implementation (simplified or full).
+!> @param [in] hubbard_orbitals Type of localized orbitals.
+subroutine sirius_set_parameters(handler,lmax_apw,lmax_rho,lmax_pot,num_fv_state&
+&s,num_bands,num_mag_dims,pw_cutoff,gk_cutoff,aw_cutoff,auto_rmt,gamma_point,use_&
+&symmetry,so_correction,valence_rel,core_rel,esm_bc,iter_solver_tol,iter_solver_t&
+&ol_empty,verbosity,hubbard_correction,hubbard_correction_kind,hubbard_orbitals)
 implicit none
 type(C_PTR), intent(in) :: handler
 integer(C_INT), optional, target, intent(in) :: lmax_apw
 integer(C_INT), optional, target, intent(in) :: lmax_rho
 integer(C_INT), optional, target, intent(in) :: lmax_pot
+integer(C_INT), optional, target, intent(in) :: num_fv_states
 integer(C_INT), optional, target, intent(in) :: num_bands
 integer(C_INT), optional, target, intent(in) :: num_mag_dims
 real(C_DOUBLE), optional, target, intent(in) :: pw_cutoff
@@ -198,9 +203,13 @@ character(C_CHAR), optional, target, dimension(*), intent(in) :: esm_bc
 real(C_DOUBLE), optional, target, intent(in) :: iter_solver_tol
 real(C_DOUBLE), optional, target, intent(in) :: iter_solver_tol_empty
 integer(C_INT), optional, target, intent(in) :: verbosity
+logical(C_BOOL), optional, target, intent(in) :: hubbard_correction
+integer(C_INT), optional, target, intent(in) :: hubbard_correction_kind
+character(C_CHAR), optional, target, dimension(*), intent(in) :: hubbard_orbitals
 type(C_PTR) :: lmax_apw_ptr = C_NULL_PTR
 type(C_PTR) :: lmax_rho_ptr = C_NULL_PTR
 type(C_PTR) :: lmax_pot_ptr = C_NULL_PTR
+type(C_PTR) :: num_fv_states_ptr = C_NULL_PTR
 type(C_PTR) :: num_bands_ptr = C_NULL_PTR
 type(C_PTR) :: num_mag_dims_ptr = C_NULL_PTR
 type(C_PTR) :: pw_cutoff_ptr = C_NULL_PTR
@@ -216,17 +225,22 @@ type(C_PTR) :: esm_bc_ptr = C_NULL_PTR
 type(C_PTR) :: iter_solver_tol_ptr = C_NULL_PTR
 type(C_PTR) :: iter_solver_tol_empty_ptr = C_NULL_PTR
 type(C_PTR) :: verbosity_ptr = C_NULL_PTR
+type(C_PTR) :: hubbard_correction_ptr = C_NULL_PTR
+type(C_PTR) :: hubbard_correction_kind_ptr = C_NULL_PTR
+type(C_PTR) :: hubbard_orbitals_ptr = C_NULL_PTR
 interface
-subroutine sirius_set_parameters_aux(handler,lmax_apw,lmax_rho,lmax_pot,num_band&
-&s,num_mag_dims,pw_cutoff,gk_cutoff,aw_cutoff,auto_rmt,gamma_point,use_symmetry,s&
-&o_correction,valence_rel,core_rel,esm_bc,iter_solver_tol,iter_solver_tol_empty,v&
-&erbosity)&
+subroutine sirius_set_parameters_aux(handler,lmax_apw,lmax_rho,lmax_pot,num_fv_s&
+&tates,num_bands,num_mag_dims,pw_cutoff,gk_cutoff,aw_cutoff,auto_rmt,gamma_point,&
+&use_symmetry,so_correction,valence_rel,core_rel,esm_bc,iter_solver_tol,iter_solv&
+&er_tol_empty,verbosity,hubbard_correction,hubbard_correction_kind,hubbard_orbita&
+&ls)&
 &bind(C, name="sirius_set_parameters")
 use, intrinsic :: ISO_C_BINDING
 type(C_PTR), intent(in) :: handler
 type(C_PTR), value, intent(in) :: lmax_apw
 type(C_PTR), value, intent(in) :: lmax_rho
 type(C_PTR), value, intent(in) :: lmax_pot
+type(C_PTR), value, intent(in) :: num_fv_states
 type(C_PTR), value, intent(in) :: num_bands
 type(C_PTR), value, intent(in) :: num_mag_dims
 type(C_PTR), value, intent(in) :: pw_cutoff
@@ -242,11 +256,15 @@ type(C_PTR), value, intent(in) :: esm_bc
 type(C_PTR), value, intent(in) :: iter_solver_tol
 type(C_PTR), value, intent(in) :: iter_solver_tol_empty
 type(C_PTR), value, intent(in) :: verbosity
+type(C_PTR), value, intent(in) :: hubbard_correction
+type(C_PTR), value, intent(in) :: hubbard_correction_kind
+type(C_PTR), value, intent(in) :: hubbard_orbitals
 end subroutine
 end interface
 if (present(lmax_apw)) lmax_apw_ptr = C_LOC(lmax_apw)
 if (present(lmax_rho)) lmax_rho_ptr = C_LOC(lmax_rho)
 if (present(lmax_pot)) lmax_pot_ptr = C_LOC(lmax_pot)
+if (present(num_fv_states)) num_fv_states_ptr = C_LOC(num_fv_states)
 if (present(num_bands)) num_bands_ptr = C_LOC(num_bands)
 if (present(num_mag_dims)) num_mag_dims_ptr = C_LOC(num_mag_dims)
 if (present(pw_cutoff)) pw_cutoff_ptr = C_LOC(pw_cutoff)
@@ -262,10 +280,15 @@ if (present(esm_bc)) esm_bc_ptr = C_LOC(esm_bc)
 if (present(iter_solver_tol)) iter_solver_tol_ptr = C_LOC(iter_solver_tol)
 if (present(iter_solver_tol_empty)) iter_solver_tol_empty_ptr = C_LOC(iter_solver_tol_empty)
 if (present(verbosity)) verbosity_ptr = C_LOC(verbosity)
+if (present(hubbard_correction)) hubbard_correction_ptr = C_LOC(hubbard_correction)
+if (present(hubbard_correction_kind)) hubbard_correction_kind_ptr = C_LOC(hubbard_correction_kind)
+if (present(hubbard_orbitals)) hubbard_orbitals_ptr = C_LOC(hubbard_orbitals)
 call sirius_set_parameters_aux(handler,lmax_apw_ptr,lmax_rho_ptr,lmax_pot_ptr,nu&
-&m_bands_ptr,num_mag_dims_ptr,pw_cutoff_ptr,gk_cutoff_ptr,aw_cutoff_ptr,auto_rmt_&
-&ptr,gamma_point_ptr,use_symmetry_ptr,so_correction_ptr,valence_rel_ptr,core_rel_&
-&ptr,esm_bc_ptr,iter_solver_tol_ptr,iter_solver_tol_empty_ptr,verbosity_ptr)
+&m_fv_states_ptr,num_bands_ptr,num_mag_dims_ptr,pw_cutoff_ptr,gk_cutoff_ptr,aw_cu&
+&toff_ptr,auto_rmt_ptr,gamma_point_ptr,use_symmetry_ptr,so_correction_ptr,valence&
+&_rel_ptr,core_rel_ptr,esm_bc_ptr,iter_solver_tol_ptr,iter_solver_tol_empty_ptr,v&
+&erbosity_ptr,hubbard_correction_ptr,hubbard_correction_kind_ptr,hubbard_orbitals&
+&_ptr)
 end subroutine sirius_set_parameters
 
 !> @brief Set dimensions of the MPI grid.
@@ -1276,4 +1299,145 @@ end interface
 if (present(l)) l_ptr = C_LOC(l)
 res = sirius_get_radial_integral_aux(handler,atom_type,label,q,idx,l_ptr)
 end function sirius_get_radial_integral
+
+!> @brief Compute occupation matrix.
+!> @param [in] handler Ground state handler.
+subroutine sirius_calculate_hubbard_occupancies(handler)
+implicit none
+type(C_PTR), intent(in) :: handler
+interface
+subroutine sirius_calculate_hubbard_occupancies_aux(handler)&
+&bind(C, name="sirius_calculate_hubbard_occupancies")
+use, intrinsic :: ISO_C_BINDING
+type(C_PTR), intent(in) :: handler
+end subroutine
+end interface
+call sirius_calculate_hubbard_occupancies_aux(handler)
+end subroutine sirius_calculate_hubbard_occupancies
+
+!> @brief Set occupation matrix for LDA+U.
+!> @param [in] handler Ground state handler.
+!> @param [inout] occ Occupation matrix.
+!> @param [in] ld Leading dimensions of the occupation matrix.
+subroutine sirius_set_hubbard_occupancies_double(handler,occ,ld)
+implicit none
+type(C_PTR), intent(in) :: handler
+real(C_DOUBLE), intent(inout) :: occ
+integer(C_INT), intent(in) :: ld
+interface
+subroutine sirius_set_hubbard_occupancies_aux(handler,occ,ld)&
+&bind(C, name="sirius_set_hubbard_occupancies")
+use, intrinsic :: ISO_C_BINDING
+type(C_PTR), intent(in) :: handler
+real(C_DOUBLE), intent(inout) :: occ
+integer(C_INT), intent(in) :: ld
+end subroutine
+end interface
+call sirius_set_hubbard_occupancies_aux(handler,occ,ld)
+end subroutine sirius_set_hubbard_occupancies_double
+
+!> @brief Set occupation matrix for LDA+U.
+!> @param [in] handler Ground state handler.
+!> @param [inout] occ Occupation matrix.
+!> @param [in] ld Leading dimensions of the occupation matrix.
+subroutine sirius_set_hubbard_occupancies_complex(handler,occ,ld)
+implicit none
+type(C_PTR), intent(in) :: handler
+complex(C_DOUBLE), intent(inout) :: occ
+integer(C_INT), intent(in) :: ld
+interface
+subroutine sirius_set_hubbard_occupancies_aux(handler,occ,ld)&
+&bind(C, name="sirius_set_hubbard_occupancies")
+use, intrinsic :: ISO_C_BINDING
+type(C_PTR), intent(in) :: handler
+complex(C_DOUBLE), intent(inout) :: occ
+integer(C_INT), intent(in) :: ld
+end subroutine
+end interface
+call sirius_set_hubbard_occupancies_aux(handler,occ,ld)
+end subroutine sirius_set_hubbard_occupancies_complex
+
+!> @brief Get occupation matrix for LDA+U.
+!> @param [in] handler Ground state handler.
+!> @param [inout] occ Occupation matrix.
+!> @param [in] ld Leading dimensions of the occupation matrix.
+subroutine sirius_get_hubbard_occupancies_double(handler,occ,ld)
+implicit none
+type(C_PTR), intent(in) :: handler
+real(C_DOUBLE), intent(inout) :: occ
+integer(C_INT), intent(in) :: ld
+interface
+subroutine sirius_get_hubbard_occupancies_aux(handler,occ,ld)&
+&bind(C, name="sirius_get_hubbard_occupancies")
+use, intrinsic :: ISO_C_BINDING
+type(C_PTR), intent(in) :: handler
+real(C_DOUBLE), intent(inout) :: occ
+integer(C_INT), intent(in) :: ld
+end subroutine
+end interface
+call sirius_get_hubbard_occupancies_aux(handler,occ,ld)
+end subroutine sirius_get_hubbard_occupancies_double
+
+!> @brief Get occupation matrix for LDA+U.
+!> @param [in] handler Ground state handler.
+!> @param [inout] occ Occupation matrix.
+!> @param [in] ld Leading dimensions of the occupation matrix.
+subroutine sirius_get_hubbard_occupancies_complex(handler,occ,ld)
+implicit none
+type(C_PTR), intent(in) :: handler
+complex(C_DOUBLE), intent(inout) :: occ
+integer(C_INT), intent(in) :: ld
+interface
+subroutine sirius_get_hubbard_occupancies_aux(handler,occ,ld)&
+&bind(C, name="sirius_get_hubbard_occupancies")
+use, intrinsic :: ISO_C_BINDING
+type(C_PTR), intent(in) :: handler
+complex(C_DOUBLE), intent(inout) :: occ
+integer(C_INT), intent(in) :: ld
+end subroutine
+end interface
+call sirius_get_hubbard_occupancies_aux(handler,occ,ld)
+end subroutine sirius_get_hubbard_occupancies_complex
+
+!> @brief Set LDA+U potential matrix.
+!> @param [in] handler Ground state handler.
+!> @param [inout] pot Potential correction matrix.
+!> @param [in] ld Leading dimensions of the matrix.
+subroutine sirius_set_hubbard_potential_double(handler,pot,ld)
+implicit none
+type(C_PTR), intent(in) :: handler
+real(C_DOUBLE), intent(inout) :: pot
+integer(C_INT), intent(in) :: ld
+interface
+subroutine sirius_set_hubbard_potential_aux(handler,pot,ld)&
+&bind(C, name="sirius_set_hubbard_potential")
+use, intrinsic :: ISO_C_BINDING
+type(C_PTR), intent(in) :: handler
+real(C_DOUBLE), intent(inout) :: pot
+integer(C_INT), intent(in) :: ld
+end subroutine
+end interface
+call sirius_set_hubbard_potential_aux(handler,pot,ld)
+end subroutine sirius_set_hubbard_potential_double
+
+!> @brief Set LDA+U potential matrix.
+!> @param [in] handler Ground state handler.
+!> @param [inout] pot Potential correction matrix.
+!> @param [in] ld Leading dimensions of the matrix.
+subroutine sirius_set_hubbard_potential_complex(handler,pot,ld)
+implicit none
+type(C_PTR), intent(in) :: handler
+complex(C_DOUBLE), intent(inout) :: pot
+integer(C_INT), intent(in) :: ld
+interface
+subroutine sirius_set_hubbard_potential_aux(handler,pot,ld)&
+&bind(C, name="sirius_set_hubbard_potential")
+use, intrinsic :: ISO_C_BINDING
+type(C_PTR), intent(in) :: handler
+complex(C_DOUBLE), intent(inout) :: pot
+integer(C_INT), intent(in) :: ld
+end subroutine
+end interface
+call sirius_set_hubbard_potential_aux(handler,pot,ld)
+end subroutine sirius_set_hubbard_potential_complex
 

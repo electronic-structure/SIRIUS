@@ -82,7 +82,7 @@ class Beta_projectors: public Beta_projectors_base<1>
                 auto c1 = pw_coeffs_t_[0].checksum();
                 comm.allreduce(&c1, 1);
                 if (comm.rank() == 0) {
-                    print_checksum("beta_pw_coeffs_t", c1);
+                    utils::print_checksum("beta_pw_coeffs_t", c1);
                 }
             }
 
@@ -93,7 +93,7 @@ class Beta_projectors: public Beta_projectors_base<1>
                 pw_coeffs_t_[0].copy<memory_t::host, memory_t::device>();
             }
         }
-                    
+
     public:
 
         Beta_projectors(Simulation_context& ctx__,

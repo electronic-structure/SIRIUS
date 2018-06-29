@@ -21,7 +21,7 @@ def write_str_to_f90(o, string):
     o.write(string)
     o.write('\n')
 
-def write_function(o, func_name, func_type, func_args, func_doc):
+def write_function(o, func_name, func_suffix, func_type, func_args, func_doc):
     o.write('!> @brief ' + func_doc + '\n')
     for a in func_args:
         o.write('!> @param [' + a['intent'] + '] ' + a['name'] + ' ' + a['doc'] + '\n')
@@ -30,7 +30,7 @@ def write_function(o, func_name, func_type, func_args, func_doc):
         string = 'subroutine '
     else:
         string = 'function '
-    string = string + func_name + '('
+    string = string + func_name + func_suffix + '('
     va = [a['name'] for a in func_args]
     string = string + ','.join(va)
     string = string + ')'
@@ -115,7 +115,7 @@ def write_function(o, func_name, func_type, func_args, func_doc):
         o.write('end subroutine ')
     else:
         o.write('end function ')
-    o.write(func_name + '\n\n')
+    o.write(func_name + func_suffix + '\n\n')
 
 def main():
     f = open(sys.argv[1], 'r') 
@@ -135,7 +135,13 @@ def main():
             if v[1] == 'begin' and v[2] == 'function':
                 func_type = v[3]
                 func_name = v[4]
-                func_doc = ' '.join(v[5:])
+                if (v[5][0] == '_'):
+                    func_suffix = v[5]
+                    func_doc = ' '.join(v[6:])
+                else:
+                    func_suffix = ''
+                    func_doc = ' '.join(v[5:])
+
                 func_args = []
 
                 while (True):
@@ -158,7 +164,7 @@ def main():
                         if v[1] == 'end': break
 
             if v[1] == 'end':
-                write_function(o, func_name, func_type, func_args, func_doc)
+                write_function(o, func_name, func_suffix, func_type, func_args, func_doc)
 
 
     f.close()

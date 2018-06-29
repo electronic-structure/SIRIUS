@@ -17,13 +17,13 @@
 // CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
 // OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-/** \file density.h
+/** \file density.hpp
  *
  *  \brief Contains definition and partial implementation of sirius::Density class.
  */
 
-#ifndef __DENSITY_H__
-#define __DENSITY_H__
+#ifndef __DENSITY_HPP__
+#define __DENSITY_HPP__
 
 #include "periodic_function.h"
 #include "k_point_set.h"
@@ -1050,15 +1050,16 @@ class Density : public Field4D
     }
 };
 
-#include "Density/initial_density.hpp"
-#include "Density/add_k_point_contribution_rg.hpp"
-#include "Density/add_k_point_contribution_dm.hpp"
-#include "Density/generate_valence.hpp"
-#include "Density/generate_rho_aug.hpp"
-#include "Density/symmetrize_density_matrix.hpp"
-#include "Density/generate_valence_mt.hpp"
-#include "Density/check_density_continuity_at_mt.hpp"
-#include "Density/paw_density.hpp"
+#include "initial_density.hpp"
+#include "add_k_point_contribution_rg.hpp"
+#include "add_k_point_contribution_dm.hpp"
+#include "generate_valence.hpp"
+#include "generate_rho_aug.hpp"
+#include "symmetrize_density_matrix.hpp"
+#include "generate_valence_mt.hpp"
+#include "check_density_continuity_at_mt.hpp"
+#include "paw_density.hpp"
+
 } // namespace sirius
 
-#endif // __DENSITY_H__
+#endif // __DENSITY_HPP__

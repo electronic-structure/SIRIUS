@@ -150,10 +150,10 @@ inline void Potential::generate_D_operator_matrix()
                     std::stringstream s;
                     s << "D_mtrx_val(atom_t" << iat << "_i" << i << "_c" << iv << ")";
                     auto cs = mdarray<double, 1>(&d_tmp(0, i), nbf * (nbf + 1) / 2).checksum();
-                    print_checksum(s.str(), cs);
+                    utils::print_checksum(s.str(), cs);
                 }
                 //auto cs = d_tmp.checksum();
-                //print_checksum("D_mtrx_valence", cs);
+                //utils::print_checksum("D_mtrx_valence", cs);
             }
 
             #pragma omp parallel for schedule(static)
@@ -301,7 +301,7 @@ inline void Potential::generate_D_operator_matrix()
             auto cs = unit_cell_.atom(ia).d_mtrx().checksum();
             std::stringstream s;
             s << "D_mtrx_tot(atom_" << ia << ")";
-            print_checksum(s.str(), cs);
+            utils::print_checksum(s.str(), cs);
         }
     }
 }

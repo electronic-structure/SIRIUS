@@ -348,8 +348,8 @@ inline int Band::diag_pseudo_potential_davidson(K_point*       kp__,
         kp__->comm().allreduce(&cs1, 1);
         kp__->comm().allreduce(&cs2, 1);
         if (kp__->comm().rank() == 0) {
-            print_checksum("h_diag", cs1);
-            print_checksum("o_diag", cs2);
+            utils::print_checksum("h_diag", cs1);
+            utils::print_checksum("o_diag", cs2);
         }
     }
 

@@ -129,14 +129,14 @@ inline void Density::generate_rho_aug(mdarray<double_complex, 2>& rho_aug__)
          auto cs = rho_aug__.checksum();
          ctx_.comm().allreduce(&cs, 1);
          if (ctx_.comm().rank() == 0) {
-            print_checksum("rho_aug", cs);
+            utils::print_checksum("rho_aug", cs);
          }
     }
 
     if (ctx_.control().print_hash_) {
          auto h = rho_aug__.hash();
          if (ctx_.comm().rank() == 0) {
-            print_hash("rho_aug", h);
+            utils::print_hash("rho_aug", h);
          }
     }
 }

@@ -52,7 +52,6 @@ using json = nlohmann::json;
 #include "Band/band.hpp"
 #include "potential.h"
 #include "k_point_set.h"
-#include "density.h"
 #include "Geometry/stress.hpp"
 #include "Geometry/force.hpp"
 #include "dft_ground_state.h"
@@ -80,7 +79,7 @@ inline void initialize(bool call_mpi_init__ = true)
 
 #if defined(__GPU)
     if (acc::num_devices()) {
-	if (acc::num_devices() > 1) {
+        if (acc::num_devices() > 1) {
             acc::set_device_id(Communicator::device_id());
         }
         acc::create_streams(omp_get_max_threads() + 1);
@@ -120,7 +119,7 @@ inline void finalize(bool call_mpi_fin__ = true)
 
 #if defined(__GPU)
     if (acc::num_devices()) {
-	acc::set_device();
+        acc::set_device();
         cublas::destroy_stream_handles();
         acc::destroy_streams();
         acc::reset();
@@ -255,12 +254,12 @@ make
 //!
 
 //! \page coding Coding style
-//!     
+//!
 //! Below are some basic style rules that we follow:
 //!     - Page width is approximately 120 characters. Screens are wide nowdays and 80 characters is an 
 //!       obsolete restriction. Going slightly over 120 characters is allowed if it is requird for the line continuity.
-//!     - Identation: 4 spaces (no tabs)
-//!     - Coments are inserted before the code with slash-star style starting with the lower case:
+//!     - Indentation: 4 spaces (no tabs)
+//!     - Comments are inserted before the code with slash-star style starting with the lower case:
 //!       \code{.cpp}
 //!           /* call a very important function */
 //!           do_something();
@@ -437,6 +436,22 @@ make
 //!           std::complex<double> BetaPsi;
 //!           /* or */
 //!           std::complex<double> Another_BetaPsi;
+//!       \endcode
+//!     - Order of class members: private, protected, public
+//!       \code{.cpp}
+//!           class A
+//!           {
+//!               private:
+//!                   int lmax_;
+//!                   void bar();
+//!               protected:
+//!                   void foo();
+//!               public:
+//!                   int lmax() const
+//!                   {
+//!                       return lmax_;
+//!                   }
+//!           };
 //!       \endcode
 //!
 //! We use clang-format utility to enforce the basic formatting style. Please have a look at .clang-format config file 

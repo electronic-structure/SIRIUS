@@ -66,6 +66,21 @@ inline void warning(const char* file_name__, int line_number__, const std::strin
 
 #define STOP() TERMINATE("terminated by request")
 
+inline void print_checksum(std::string label__, double cs__)
+{
+    printf("checksum(%s): %18.12f\n", label__.c_str(), cs__);
+}
+
+inline void print_checksum(std::string label__, std::complex<double> cs__)
+{
+    printf("checksum(%s): %18.12f %18.12f\n", label__.c_str(), cs__.real(), cs__.imag());
+}
+
+inline void print_hash(std::string label__, unsigned long long int hash__)
+{
+    printf("hash(%s): %llx\n", label__.c_str(), hash__);
+}
+
 /// Maximum number of \f$ \ell, m \f$ combinations for a given \f$ \ell_{max} \f$
 inline int lmmax(int lmax)
 {
@@ -198,6 +213,18 @@ inline T factorial(int n)
 inline int num_blocks(int length__, int block_size__)
 {
     return (length__ / block_size__) + std::min(length__ % block_size__, 1);
+}
+
+inline double round(double a__, int n__)
+{
+    double a0 = std::floor(a__);
+    double b  = std::round((a__ - a0) * std::pow(10, n__)) / std::pow(10, n__);
+    return a0 + b;
+}
+
+inline std::complex<double> round(std::complex<double> a__, int n__)
+{
+    return std::complex<double>(round(a__.real(), n__), round(a__.imag(), n__));
 }
 
 //==     /// Simple hash function.
@@ -399,20 +426,6 @@ inline int num_blocks(int length__, int block_size__)
 //==         }
 //==         return std::move(v);
 //==     }
-//== 
-//==     inline static double round(double a__, int n__)
-//==     {
-//==         double a0 = std::floor(a__);
-//==         double b  = std::round((a__ - a0) * std::pow(10, n__)) / std::pow(10, n__);
-//==         return a0 + b;
-//==     }
-//== 
-//==     inline static double_complex round(double_complex a__, int n__)
-//==     {
-//==         return double_complex(round(a__.real(), n__), round(a__.imag(), n__));
-//==     }
-//== 
-//== 
 //== 
 //==     /// Read json dictionary from file or string.
 //==     /** Terminate if file doesn't exist. */

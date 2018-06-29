@@ -407,13 +407,13 @@ inline int Band::residuals(K_point*             kp__,
             if (kp__->comm().rank() == 0) {
                 std::stringstream s;
                 s << "res_" << ispn;
-                print_checksum(s.str(), cs);
+                utils::print_checksum(s.str(), cs);
                 s.str("");
                 s << "hpsi_" << ispn;
-                print_checksum(s.str(), cs1);
+                utils::print_checksum(s.str(), cs1);
                 s.str("");
                 s << "opsi_" << ispn;
-                print_checksum(s.str(), cs2);
+                utils::print_checksum(s.str(), cs2);
             }
         }
     }

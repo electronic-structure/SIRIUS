@@ -76,8 +76,8 @@ inline void Band::diag_full_potential_first_variation_exact(K_point& kp, Hamilto
         kp.comm().allreduce(&z1, 1);
         kp.comm().allreduce(&z2, 1);
         if (kp.comm().rank() == 0) {
-            print_checksum("h_lapw", z1);
-            print_checksum("o_lapw", z2);
+            utils::print_checksum("h_lapw", z1);
+            utils::print_checksum("o_lapw", z2);
         }
     }
 
@@ -262,7 +262,7 @@ inline void Band::get_singular_components(K_point& kp__, Hamiltonian& H__) const
     if (ctx_.control().print_checksum_) {
         auto cs2 = phi.checksum(ctx_.processing_unit(), 0, 0, ncomp);
         if (kp__.comm().rank() == 0) {
-            print_checksum("phi", cs2);
+            utils::print_checksum("phi", cs2);
         }
     }
 
@@ -529,8 +529,8 @@ inline void Band::diag_full_potential_first_variation_davidson(K_point& kp__, Ha
         auto cs1 = psi.checksum(ctx_.processing_unit(), 0, 0, num_bands);
         auto cs2 = phi.checksum(ctx_.processing_unit(), 0, 0, nlo + ncomp + num_bands);
         if (kp__.comm().rank() == 0) {
-            print_checksum("psi", cs1);
-            print_checksum("phi", cs2);
+            utils::print_checksum("psi", cs1);
+            utils::print_checksum("phi", cs2);
         }
     }
 
