@@ -1777,8 +1777,8 @@ inline double Atom_type::ClebschGordan(const int l, const double j, const double
 
     const double denom = sqrt(1.0 / (2.0 * l + 1.0));
 
-    if (std::abs(j - l - 0.5) < 1e-8) {
-        int m = static_cast<int>(mj - 0.5);
+    if (std::abs(j - l - 0.5) < 1e-8) { // check for j = l + 1/2
+        int m = static_cast<int>(mj - 0.5); // if mj is integer (2 * m), then int m = (mj-1) >> 1;
         if (spin == 0) {
             CG = sqrt(l + m + 1.0);
         }
@@ -1786,7 +1786,7 @@ inline double Atom_type::ClebschGordan(const int l, const double j, const double
             CG = sqrt((l - m));
         }
     } else {
-        if (std::abs(j - l + 0.5) < 1e-8) {
+        if (std::abs(j - l + 0.5) < 1e-8) { // check for j = l - 1/2
             int m = static_cast<int>(mj + 0.5);
             if (m < (1 - l)) {
                 CG = 0.0;
