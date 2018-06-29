@@ -166,15 +166,15 @@ class Density : public Field4D
 
     /// Density and magnetization on the coarse FFT mesh.
     /** Coarse FFT grid is enough to generate density and magnetization from the wave-functions. The components
-         *  of the <tt>rho_mag_coarse</tt> vector have the following order:
-         *  \f$ \{\rho({\bf r}), m_z({\bf r}), m_x({\bf r}), m_y({\bf r}) \} \f$. */
+     *  of the <tt>rho_mag_coarse</tt> vector have the following order:
+     *  \f$ \{\rho({\bf r}), m_z({\bf r}), m_x({\bf r}), m_y({\bf r}) \} \f$. */
     std::array<std::unique_ptr<Smooth_periodic_function<double>>, 4> rho_mag_coarse_;
 
     /// Pointer to pseudo core charge density
     /** In the case of pseudopotential we need to know the non-linear core correction to the 
-         *  exchange-correlation energy which is introduced trough the pseudo core density: 
-         *  \f$ E_{xc}[\rho_{val} + \rho_{core}] \f$. The 'pseudo' reflects the fact that 
-         *  this density integrated does not reproduce the total number of core elctrons. */
+     *  exchange-correlation energy which is introduced trough the pseudo core density: 
+     *  \f$ E_{xc}[\rho_{val} + \rho_{core}] \f$. The 'pseudo' reflects the fact that 
+     *  this density integrated does not reproduce the total number of core elctrons. */
     std::unique_ptr<Smooth_periodic_function<double>> rho_pseudo_core_{nullptr};
 
     /// Non-zero Gaunt coefficients.
@@ -208,12 +208,12 @@ class Density : public Field4D
 
     /// Reduce complex density matrix over magnetic quantum numbers
     /** The following operation is performed:
-         *  \f[
-         *      n_{\ell \lambda, \ell' \lambda', \ell_3 m_3}^{\alpha} = 
-         *          \sum_{mm'} D_{\ell \lambda m, \ell' \lambda' m'}^{\alpha} 
-         *          \langle Y_{\ell m} | R_{\ell_3 m_3} | Y_{\ell' m'} \rangle
-         *  \f] 
-         */
+     *  \f[
+     *      n_{\ell \lambda, \ell' \lambda', \ell_3 m_3}^{\alpha} = 
+     *          \sum_{mm'} D_{\ell \lambda m, \ell' \lambda' m'}^{\alpha} 
+     *          \langle Y_{\ell m} | R_{\ell_3 m_3} | Y_{\ell' m'} \rangle
+     *  \f]
+     */
     template <int num_mag_dims>
     void reduce_density_matrix(Atom_type const&                          atom_type__,
                                int                                       ia__,
@@ -258,28 +258,28 @@ class Density : public Field4D
 
     /// Add k-point contribution to the density matrix in the canonical form.
     /** In case of full-potential LAPW complex density matrix has the following expression:
-         *  \f[
-         *      d_{\xi \sigma, \xi' \sigma'}^{\alpha} = \sum_{j{\bf k}} n_{j{\bf k}}
-         *          S_{\xi}^{\sigma j {\bf k},\alpha*} S_{\xi'}^{\sigma' j {\bf k},\alpha}
-         *  \f]
-         * 
-         *  where \f$ S_{\xi}^{\sigma j {\bf k},\alpha} \f$ are the expansion coefficients of
-         *  spinor wave functions inside muffin-tin spheres.
-         *  
-         *  In case of LDA+U the occupation matrix is also computed. It has the following expression:
-         *  \f[
-         *      n_{\ell,mm'}^{\sigma \sigma'} = \sum_{i {\bf k}}^{occ} \int_{0}^{R_{MT}} r^2 dr 
-         *                \Psi_{\ell m}^{i{\bf k}\sigma *}({\bf r}) \Psi_{\ell m'}^{i{\bf k}\sigma'}({\bf r})
-         *  \f] 
-         *
-         * In case of ultrasoft pseudopotential the following density matrix has to be computed for each atom:
-         *  \f[
-         *      d_{\xi \xi'}^{\alpha} = \langle \beta_{\xi}^{\alpha} | \hat N | \beta_{\xi'}^{\alpha} \rangle = 
-         *        \sum_{j {\bf k}} \langle \beta_{\xi}^{\alpha} | \Psi_{j{\bf k}} \rangle n_{j{\bf k}} 
-         *        \langle \Psi_{j{\bf k}} | \beta_{\xi'}^{\alpha} \rangle
-         *  \f]
-         *  Here \f$ \hat N = \sum_{j{\bf k}} | \Psi_{j{\bf k}} \rangle n_{j{\bf k}} \langle \Psi_{j{\bf k}} | \f$ is 
-         *  the occupancy operator written in spectral representation. */
+     *  \f[
+     *      d_{\xi \sigma, \xi' \sigma'}^{\alpha} = \sum_{j{\bf k}} n_{j{\bf k}}
+     *          S_{\xi}^{\sigma j {\bf k},\alpha*} S_{\xi'}^{\sigma' j {\bf k},\alpha}
+     *  \f]
+     *
+     *  where \f$ S_{\xi}^{\sigma j {\bf k},\alpha} \f$ are the expansion coefficients of
+     *  spinor wave functions inside muffin-tin spheres.
+     *
+     *  In case of LDA+U the occupation matrix is also computed. It has the following expression:
+     *  \f[
+     *      n_{\ell,mm'}^{\sigma \sigma'} = \sum_{i {\bf k}}^{occ} \int_{0}^{R_{MT}} r^2 dr 
+     *                \Psi_{\ell m}^{i{\bf k}\sigma *}({\bf r}) \Psi_{\ell m'}^{i{\bf k}\sigma'}({\bf r})
+     *  \f] 
+     *
+     * In case of ultrasoft pseudopotential the following density matrix has to be computed for each atom:
+     *  \f[
+     *      d_{\xi \xi'}^{\alpha} = \langle \beta_{\xi}^{\alpha} | \hat N | \beta_{\xi'}^{\alpha} \rangle = 
+     *        \sum_{j {\bf k}} \langle \beta_{\xi}^{\alpha} | \Psi_{j{\bf k}} \rangle n_{j{\bf k}} 
+     *        \langle \Psi_{j{\bf k}} | \beta_{\xi'}^{\alpha} \rangle
+     *  \f]
+     *  Here \f$ \hat N = \sum_{j{\bf k}} | \Psi_{j{\bf k}} \rangle n_{j{\bf k}} \langle \Psi_{j{\bf k}} | \f$ is 
+     *  the occupancy operator written in spectral representation. */
     template <typename T>
     inline void add_k_point_contribution_dm(K_point*                    kp__,
                                             mdarray<double_complex, 4>& density_matrix__);
@@ -378,60 +378,6 @@ class Density : public Field4D
         }
     }
 
-    /// Set pointers to muffin-tin and interstitial charge density arrays
-    void set_charge_density_ptr(double* rhomt, double* rhorg)
-    {
-        if (ctx_.full_potential() && rhomt) {
-            rho().set_mt_ptr(rhomt);
-        }
-        if (rhorg) {
-            rho().set_rg_ptr(rhorg);
-        }
-    }
-
-    /// Set pointers to muffin-tin and interstitial magnetization arrays
-    void set_magnetization_ptr(double* magmt, double* magir)
-    {
-        if (ctx_.num_mag_dims() == 0) {
-            return;
-        }
-        assert(ctx_.num_spins() == 2);
-
-        // set temporary array wrapper
-        mdarray<double, 4> magmt_tmp(magmt, ctx_.lmmax_rho(), unit_cell_.max_num_mt_points(),
-                                     unit_cell_.num_atoms(), ctx_.num_mag_dims());
-        mdarray<double, 2> magir_tmp(magir, ctx_.fft().size(), ctx_.num_mag_dims());
-
-        if (ctx_.num_mag_dims() == 1) {
-            /* z component is the first and only one */
-            if (magmt) {
-                magnetization(0).set_mt_ptr(&magmt_tmp(0, 0, 0, 0));
-            }
-            if (magir) {
-                magnetization(0).set_rg_ptr(&magir_tmp(0, 0));
-            }
-        }
-
-        if (ctx_.num_mag_dims() == 3) {
-            if (magmt) {
-                /* z component is the first */
-                magnetization(0).set_mt_ptr(&magmt_tmp(0, 0, 0, 2));
-                /* x component is the second */
-                magnetization(1).set_mt_ptr(&magmt_tmp(0, 0, 0, 0));
-                /* y component is the third */
-                magnetization(2).set_mt_ptr(&magmt_tmp(0, 0, 0, 1));
-            }
-            if (magir) {
-                /* z component is the first */
-                magnetization(0).set_rg_ptr(&magir_tmp(0, 2));
-                /* x component is the second */
-                magnetization(1).set_rg_ptr(&magir_tmp(0, 0));
-                /* y component is the third */
-                magnetization(2).set_rg_ptr(&magir_tmp(0, 1));
-            }
-        }
-    }
-
     /// Find the total leakage of the core states out of the muffin-tins
     double core_leakage()
     {
@@ -487,7 +433,7 @@ class Density : public Field4D
 
     /// Generate full charge density (valence + core) and magnetization from the wave functions.
     /** This function calls generate_valence() and then in case of full-potential LAPW method adds a core density
-         *  to get the full charge density of the system. */
+     *  to get the full charge density of the system. */
     inline void generate(K_point_set& ks__)
     {
         PROFILE("sirius::Density::generate");
@@ -515,33 +461,33 @@ class Density : public Field4D
 
     /// Generate valence charge density and magnetization from the wave functions.
     /** The interstitial density is generated on the coarse FFT grid and then transformed to the PW domain.
-         *  After symmetrization and mixing and before the generation of the XC potential density is transformted to the
-         *  real-space domain and checked for the number of electrons. */
+     *  After symmetrization and mixing and before the generation of the XC potential density is transformted to the
+     *  real-space domain and checked for the number of electrons. */
     inline void generate_valence(K_point_set& ks__);
 
     /// Add augmentation charge Q(r).
     /** Restore valence density by adding the Q-operator constribution.
-         *  The following term is added to the valence density, generated by the pseudo wave-functions:
-         *  \f[
-         *      \tilde \rho({\bf G}) = \sum_{\alpha} \sum_{\xi \xi'} d_{\xi \xi'}^{\alpha} Q_{\xi' \xi}^{\alpha}({\bf G})
-         *  \f]
-         *  Plane-wave coefficients of the Q-operator for a given atom \f$ \alpha \f$ can be obtained from the 
-         *  corresponding coefficients of the Q-operator for a given atom \a type A:
-         *  \f[
-         *       Q_{\xi' \xi}^{\alpha(A)}({\bf G}) = e^{-i{\bf G}\tau_{\alpha(A)}} Q_{\xi' \xi}^{A}({\bf G})
-         *  \f]
-         *  We use this property to split the sum over atoms into sum over atom types and inner sum over atoms of the 
-         *  same type:
-         *  \f[
-         *       \tilde \rho({\bf G}) = \sum_{A} \sum_{\xi \xi'} Q_{\xi' \xi}^{A}({\bf G}) \sum_{\alpha(A)} 
-         *          d_{\xi \xi'}^{\alpha(A)} e^{-i{\bf G}\tau_{\alpha(A)}} = 
-         *          \sum_{A} \sum_{\xi \xi'} Q_{\xi' \xi}^{A}({\bf G}) d_{\xi \xi'}^{A}({\bf G})
-         *  \f]
-         *  where
-         *  \f[
-         *      d_{\xi \xi'}^{A}({\bf G}) = \sum_{\alpha(A)} d_{\xi \xi'}^{\alpha(A)} e^{-i{\bf G}\tau_{\alpha(A)}} 
-         *  \f]
-         */
+     *  The following term is added to the valence density, generated by the pseudo wave-functions:
+     *  \f[
+     *      \tilde \rho({\bf G}) = \sum_{\alpha} \sum_{\xi \xi'} d_{\xi \xi'}^{\alpha} Q_{\xi' \xi}^{\alpha}({\bf G})
+     *  \f]
+     *  Plane-wave coefficients of the Q-operator for a given atom \f$ \alpha \f$ can be obtained from the 
+     *  corresponding coefficients of the Q-operator for a given atom \a type A:
+     *  \f[
+     *       Q_{\xi' \xi}^{\alpha(A)}({\bf G}) = e^{-i{\bf G}\tau_{\alpha(A)}} Q_{\xi' \xi}^{A}({\bf G})
+     *  \f]
+     *  We use this property to split the sum over atoms into sum over atom types and inner sum over atoms of the 
+     *  same type:
+     *  \f[
+     *       \tilde \rho({\bf G}) = \sum_{A} \sum_{\xi \xi'} Q_{\xi' \xi}^{A}({\bf G}) \sum_{\alpha(A)} 
+     *          d_{\xi \xi'}^{\alpha(A)} e^{-i{\bf G}\tau_{\alpha(A)}} = 
+     *          \sum_{A} \sum_{\xi \xi'} Q_{\xi' \xi}^{A}({\bf G}) d_{\xi \xi'}^{A}({\bf G})
+     *  \f]
+     *  where
+     *  \f[
+     *      d_{\xi \xi'}^{A}({\bf G}) = \sum_{\alpha(A)} d_{\xi \xi'}^{\alpha(A)} e^{-i{\bf G}\tau_{\alpha(A)}} 
+     *  \f]
+     */
     void augment(K_point_set& ks__)
     {
         PROFILE("sirius::Density::augment");
@@ -1002,46 +948,46 @@ class Density : public Field4D
 
     /// Symmetrize density matrix.
     /** Initially, density matrix is obtained with summation over irreducible BZ:
-         *  \f[
-         *      \tilde n_{\ell \lambda m \sigma, \ell' \lambda' m' \sigma'}^{\alpha}  = 
-         *          \sum_{j} \sum_{{\bf k}}^{IBZ} \langle Y_{\ell m} u_{\ell \lambda}^{\alpha}| \Psi_{j{\bf k}}^{\sigma} \rangle w_{\bf k} n_{j{\bf k}}
-         *          \langle \Psi_{j{\bf k}}^{\sigma'} | u_{\ell' \lambda'}^{\alpha} Y_{\ell' m'} \rangle 
-         *  \f]
-         *  In order to symmetrize it, the following operation is performed:
-         *  \f[
-         *      n_{\ell \lambda m \sigma, \ell' \lambda' m' \sigma'}^{\alpha} = \sum_{{\bf P}} 
-         *          \sum_{j} \sum_{\bf k}^{IBZ} \langle Y_{\ell m} u_{\ell \lambda}^{\alpha}| \Psi_{j{\bf P}{\bf k}}^{\sigma} \rangle w_{\bf k} n_{j{\bf k}}
-         *          \langle \Psi_{j{\bf P}{\bf k}}^{\sigma'} | u_{\ell' \lambda'}^{\alpha} Y_{\ell' m'} \rangle 
-         *  \f]
-         *  where \f$ {\bf P} \f$ is the space-group symmetry operation. The inner product between wave-function and
-         *  local orbital is transformed as:
-         *  \f[
-         *      \langle \Psi_{j{\bf P}{\bf k}}^{\sigma} | u_{\ell \lambda}^{\alpha} Y_{\ell m} \rangle =
-         *          \int \Psi_{j{\bf P}{\bf k}}^{\sigma *}({\bf r}) u_{\ell \lambda}^{\alpha}(r) Y_{\ell m}(\hat {\bf r}) dr =
-         *          \int \Psi_{j{\bf k}}^{\sigma *}({\bf P}^{-1}{\bf r}) u_{\ell \lambda}^{\alpha}(r) Y_{\ell m}(\hat {\bf r}) dr =
-         *          \int \Psi_{j{\bf k}}^{\sigma *}({\bf r}) u_{\ell \lambda}^{{\bf P}\alpha}(r) Y_{\ell m}({\bf P} \hat{\bf r}) dr
-         *  \f]
-         *  Under rotation the spherical harmonic is transformed as:
-         *  \f[
-         *        Y_{\ell m}({\bf P} \hat{\bf r}) = {\bf P}^{-1}Y_{\ell m}(\hat {\bf r}) = \sum_{m'} D_{m'm}^{\ell}({\bf P}^{-1}) Y_{\ell m'}(\hat {\bf r}) = 
-         *          \sum_{m'} D_{mm'}^{\ell}({\bf P}) Y_{\ell m'}(\hat {\bf r})
-         *  \f]
-         *  The inner-product integral is then rewritten as:
-         *  \f[
-         *      \langle \Psi_{j{\bf P}{\bf k}}^{\sigma} | u_{\ell \lambda}^{\alpha} Y_{\ell m} \rangle  = 
-         *          \sum_{m'} D_{mm'}^{\ell}({\bf P}) \langle \Psi_{j{\bf k}}^{\sigma} | u_{\ell \lambda}^{{\bf P}\alpha} Y_{\ell m} \rangle 
-         *  \f]
-         *  and the final expression for density matrix gets the following form:
-         *  \f[
-         *      n_{\ell \lambda m \sigma, \ell' \lambda' m' \sigma'}^{\alpha} = \sum_{{\bf P}}
-         *          \sum_{j} \sum_{\bf k}^{IBZ} \sum_{m_1 m_2} D_{mm_1}^{\ell *}({\bf P}) D_{m'm_2}^{\ell'}({\bf P})  
-         *          \langle Y_{\ell m_1} u_{\ell \lambda}^{{\bf P} \alpha}| 
-         *          \Psi_{j{\bf k}}^{\sigma} \rangle w_{\bf k} n_{j{\bf k}} \langle \Psi_{j{\bf k}}^{\sigma'} | 
-         *          u_{\ell' \lambda'}^{{\bf P}\alpha} Y_{\ell' m_2} \rangle = \sum_{{\bf P}}
-         *          \sum_{m_1 m_2} D_{mm_1}^{\ell *}({\bf P}) D_{m'm_2}^{\ell'}({\bf P}) 
-         *          \tilde n_{\ell \lambda m_1 \sigma, \ell' \lambda' m_2 \sigma'}^{{\bf P}\alpha} 
-         *  \f]
-         */
+     *  \f[
+     *      \tilde n_{\ell \lambda m \sigma, \ell' \lambda' m' \sigma'}^{\alpha}  = 
+     *          \sum_{j} \sum_{{\bf k}}^{IBZ} \langle Y_{\ell m} u_{\ell \lambda}^{\alpha}| \Psi_{j{\bf k}}^{\sigma} \rangle w_{\bf k} n_{j{\bf k}}
+     *          \langle \Psi_{j{\bf k}}^{\sigma'} | u_{\ell' \lambda'}^{\alpha} Y_{\ell' m'} \rangle 
+     *  \f]
+     *  In order to symmetrize it, the following operation is performed:
+     *  \f[
+     *      n_{\ell \lambda m \sigma, \ell' \lambda' m' \sigma'}^{\alpha} = \sum_{{\bf P}} 
+     *          \sum_{j} \sum_{\bf k}^{IBZ} \langle Y_{\ell m} u_{\ell \lambda}^{\alpha}| \Psi_{j{\bf P}{\bf k}}^{\sigma} \rangle w_{\bf k} n_{j{\bf k}}
+     *          \langle \Psi_{j{\bf P}{\bf k}}^{\sigma'} | u_{\ell' \lambda'}^{\alpha} Y_{\ell' m'} \rangle 
+     *  \f]
+     *  where \f$ {\bf P} \f$ is the space-group symmetry operation. The inner product between wave-function and
+     *  local orbital is transformed as:
+     *  \f[
+     *      \langle \Psi_{j{\bf P}{\bf k}}^{\sigma} | u_{\ell \lambda}^{\alpha} Y_{\ell m} \rangle =
+     *          \int \Psi_{j{\bf P}{\bf k}}^{\sigma *}({\bf r}) u_{\ell \lambda}^{\alpha}(r) Y_{\ell m}(\hat {\bf r}) dr =
+     *          \int \Psi_{j{\bf k}}^{\sigma *}({\bf P}^{-1}{\bf r}) u_{\ell \lambda}^{\alpha}(r) Y_{\ell m}(\hat {\bf r}) dr =
+     *          \int \Psi_{j{\bf k}}^{\sigma *}({\bf r}) u_{\ell \lambda}^{{\bf P}\alpha}(r) Y_{\ell m}({\bf P} \hat{\bf r}) dr
+     *  \f]
+     *  Under rotation the spherical harmonic is transformed as:
+     *  \f[
+     *        Y_{\ell m}({\bf P} \hat{\bf r}) = {\bf P}^{-1}Y_{\ell m}(\hat {\bf r}) = \sum_{m'} D_{m'm}^{\ell}({\bf P}^{-1}) Y_{\ell m'}(\hat {\bf r}) = 
+     *          \sum_{m'} D_{mm'}^{\ell}({\bf P}) Y_{\ell m'}(\hat {\bf r})
+     *  \f]
+     *  The inner-product integral is then rewritten as:
+     *  \f[
+     *      \langle \Psi_{j{\bf P}{\bf k}}^{\sigma} | u_{\ell \lambda}^{\alpha} Y_{\ell m} \rangle  = 
+     *          \sum_{m'} D_{mm'}^{\ell}({\bf P}) \langle \Psi_{j{\bf k}}^{\sigma} | u_{\ell \lambda}^{{\bf P}\alpha} Y_{\ell m} \rangle 
+     *  \f]
+     *  and the final expression for density matrix gets the following form:
+     *  \f[
+     *      n_{\ell \lambda m \sigma, \ell' \lambda' m' \sigma'}^{\alpha} = \sum_{{\bf P}}
+     *          \sum_{j} \sum_{\bf k}^{IBZ} \sum_{m_1 m_2} D_{mm_1}^{\ell *}({\bf P}) D_{m'm_2}^{\ell'}({\bf P})  
+     *          \langle Y_{\ell m_1} u_{\ell \lambda}^{{\bf P} \alpha}| 
+     *          \Psi_{j{\bf k}}^{\sigma} \rangle w_{\bf k} n_{j{\bf k}} \langle \Psi_{j{\bf k}}^{\sigma'} | 
+     *          u_{\ell' \lambda'}^{{\bf P}\alpha} Y_{\ell' m_2} \rangle = \sum_{{\bf P}}
+     *          \sum_{m_1 m_2} D_{mm_1}^{\ell *}({\bf P}) D_{m'm_2}^{\ell'}({\bf P}) 
+     *          \tilde n_{\ell \lambda m_1 \sigma, \ell' \lambda' m_2 \sigma'}^{{\bf P}\alpha} 
+     *  \f]
+     */
     void symmetrize_density_matrix();
 
     void symmetrize()

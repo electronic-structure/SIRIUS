@@ -1289,7 +1289,6 @@ int sirius_get_num_beta_projectors(void* const* handler__,
     return type.mt_basis_size();
 }
 
-
 /* @fortran begin function void sirius_get_q_operator Get plane-wave coefficients of Q-operator
    @fortran argument in   required void*   handler    Simulation context handler.
    @fortran argument in   required string  label      Label of the atom type.
