@@ -37,15 +37,14 @@ class Hubbard_potential // TODO: rename to Hubbard
 
     mdarray<double_complex, 5> hubbard_potential_;
 
-    /// type of hubbard correction to be considered.  put to true if we
-    /// consider a simple hubbard correction. Not valid if spin orbit
-    /// coupling is included
+    /// Type of hubbard correction to be considered.
+    /** True if we consider a simple hubbard correction. Not valid if spin orbit coupling is included */
     bool approximation_{false};
 
-    /// orthogonalize and/or normalize the projectors
+    /// Orthogonalize and/or normalize the projectors.
     bool orthogonalize_hubbard_orbitals_{false};
 
-    /// by default we just normalize them
+    /// True if localized orbitals have to be normalized.
     bool normalize_orbitals_only_{false};
 
     /// hubbard correction with next nearest neighbors
@@ -61,10 +60,6 @@ class Hubbard_potential // TODO: rename to Hubbard
     /// file containing the hubbard wave functions
     std::string wave_function_file_;
 
-    /// pointer the radial integrals of the projectors. Only there for
-    /// future use.
-    ///std::unique_ptr<Radial_integrals_centered_atomic_wfc> wfc_;
-
     void calculate_initial_occupation_numbers();
 
     void compute_occupancies(K_point&                    kp,
@@ -74,11 +69,6 @@ class Hubbard_potential // TODO: rename to Hubbard
                              mdarray<double_complex, 5>& dn_,
                              matrix<double_complex>&     dm,
                              const int                   index);
-
-    //inline int natural_lm_to_qe(int m, int l)
-    //{
-    //    return (m > 0) ? 2 * m - 1 : -2 * m;
-    //}
 
     inline void symmetrize_occupancy_matrix_noncolinear_case();
     inline void symmetrize_occupancy_matrix();

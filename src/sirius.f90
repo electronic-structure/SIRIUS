@@ -4,12 +4,16 @@ module sirius
 
 use, intrinsic :: ISO_C_BINDING
 
-interface sirius_access_hubbard_occupancies
-  module procedure sirius_access_hubbard_occupancies_double, sirius_access_hubbard_occupancies_complex
+interface sirius_set_hubbard_occupancies
+  module procedure sirius_set_hubbard_occupancies_double, sirius_set_hubbard_occupancies_complex
 end interface
 
-interface sirius_access_hubbard_potential
-  module procedure sirius_access_hubbard_potential_double, sirius_access_hubbard_potential_complex
+interface sirius_get_hubbard_occupancies
+  module procedure sirius_get_hubbard_occupancies_double, sirius_get_hubbard_occupancies_complex
+end interface
+
+interface sirius_set_hubbard_potential
+  module procedure sirius_set_hubbard_potential_double, sirius_set_hubbard_potential_complex
 end interface
 
 contains

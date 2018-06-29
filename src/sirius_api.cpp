@@ -1599,23 +1599,10 @@ void sirius_calculate_hubbard_occupancies(void* const* handler__)
     gs.hamiltonian().U().hubbard_compute_occupation_numbers(gs.k_point_set());
 }
 
-/* @fortran begin function void sirius_access_hubbard_occupancies _double Get or set occupation matrix for LDA+U.
-   @fortran argument in    required void* handler                         Ground state handler.
-   @fortran argument in    required string what                           Set or get.
-   @fortran argument inout required double occ                            Occupation matrix.
-   @fortran argument in    required int    ld                             Leading dimensions of the occupation matrix.
-   @fortran end */
-
-/* @fortran begin function void sirius_access_hubbard_occupancies _complex Get or set occupation matrix for LDA+U.
-   @fortran argument in    required void*   handler                        Ground state handler.
-   @fortran argument in    required string  what                           Set or get.
-   @fortran argument inout required complex occ                            Occupation matrix.
-   @fortran argument in    required int     ld                             Leading dimensions of the occupation matrix.
-   @fortran end */
-void sirius_access_hubbard_occupancies(void* const* handler__,
-                                       char  const* what__,
-                                       double*      occ__,
-                                       int   const *ld__)
+static inline void access_hubbard_occupancies(void* const* handler__,
+                                              char  const* what__,
+                                              double*      occ__,
+                                              int   const *ld__)
 {
     /* this implementation is QE-specific at the moment */
 
@@ -1687,23 +1674,47 @@ void sirius_access_hubbard_occupancies(void* const* handler__,
     }
 }
 
-/* @fortran begin function void sirius_access_hubbard_potential _double   Get or set LDA+U potential matrix.
-   @fortran argument in    required void* handler                         Ground state handler.
-   @fortran argument in    required string what                           Set or get.
-   @fortran argument inout required double pot                            Potential correction matrix.
-   @fortran argument in    required int    ld                             Leading dimensions of the matrix.
+/* @fortran begin function void sirius_set_hubbard_occupancies _double Set occupation matrix for LDA+U.
+   @fortran argument in    required void* handler                      Ground state handler.
+   @fortran argument inout required double occ                         Occupation matrix.
+   @fortran argument in    required int    ld                          Leading dimensions of the occupation matrix.
    @fortran end */
 
-/* @fortran begin function void sirius_access_hubbard_potential _complex  Get or set LDA+U potential matrix.
-   @fortran argument in    required void*   handler                       Ground state handler.
-   @fortran argument in    required string  what                          Set or get.
-   @fortran argument inout required complex pot                           Potential correction matrix.
-   @fortran argument in    required int     ld                            Leading dimensions of the matrix.
+/* @fortran begin function void sirius_set_hubbard_occupancies _complex Set occupation matrix for LDA+U.
+   @fortran argument in    required void* handler                       Ground state handler.
+   @fortran argument inout required complex occ                         Occupation matrix.
+   @fortran argument in    required int     ld                          Leading dimensions of the occupation matrix.
    @fortran end */
-void sirius_access_hubbard_potential(void* const* handler__,
-                                     char  const* what__,
-                                     double*      pot__,
-                                     int   const *ld__)
+void sirius_set_hubbard_occupancies(void* const* handler__,
+                                    double*      occ__,
+                                    int   const *ld__)
+{
+    access_hubbard_occupancies(handler__, "set", occ__, ld__);
+}
+
+/* @fortran begin function void sirius_get_hubbard_occupancies _double Get occupation matrix for LDA+U.
+   @fortran argument in    required void* handler                      Ground state handler.
+   @fortran argument inout required double occ                         Occupation matrix.
+   @fortran argument in    required int    ld                          Leading dimensions of the occupation matrix.
+   @fortran end */
+
+/* @fortran begin function void sirius_get_hubbard_occupancies _complex Get occupation matrix for LDA+U.
+   @fortran argument in    required void* handler                       Ground state handler.
+   @fortran argument inout required complex occ                         Occupation matrix.
+   @fortran argument in    required int     ld                          Leading dimensions of the occupation matrix.
+   @fortran end */
+void sirius_get_hubbard_occupancies(void* const* handler__,
+                                    double*      occ__,
+                                    int   const *ld__)
+{
+    access_hubbard_occupancies(handler__, "get", occ__, ld__);
+}
+
+
+static inline void access_hubbard_potential(void* const* handler__,
+                                            char  const* what__,
+                                            double*      pot__,
+                                            int   const *ld__)
 {
     /* this implementation is QE-specific at the moment */
 
@@ -1775,8 +1786,22 @@ void sirius_access_hubbard_potential(void* const* handler__,
     }
 }
 
+/* @fortran begin function void sirius_set_hubbard_potential _double      Set LDA+U potential matrix.
+   @fortran argument in    required void* handler                         Ground state handler.
+   @fortran argument inout required double pot                            Potential correction matrix.
+   @fortran argument in    required int    ld                             Leading dimensions of the matrix.
+   @fortran end */
 
-
+/* @fortran begin function void sirius_set_hubbard_potential _complex     Set LDA+U potential matrix.
+   @fortran argument in    required void* handler                         Ground state handler.
+   @fortran argument inout required complex pot                           Potential correction matrix.
+   @fortran argument in    required int    ld                             Leading dimensions of the matrix.
+   @fortran end */
+void sirius_set_hubbard_potential(void* const* handler__,
+                                  double*      pot__,
+                                  int   const *ld__)
+{
+    access_hubbard_potential(handler__, "set", pot__, ld__);
 }
 
 
@@ -3480,4 +3505,4 @@ void sirius_access_hubbard_potential(void* const* handler__,
 //==     }
 //== }
 //== 
-//== } // extern "C"
+} // extern "C"
