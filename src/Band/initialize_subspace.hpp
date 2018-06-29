@@ -201,7 +201,7 @@ Band::initialize_subspace(K_point* kp__, Hamiltonian &H__, int num_ao__) const
             if (kp__->comm().rank() == 0) {
                 std::stringstream s;
                 s << "initial_phi" << ispn;
-                print_checksum(s.str(), cs);
+                utils::print_checksum(s.str(), cs);
             }
         }
     }
@@ -264,8 +264,8 @@ Band::initialize_subspace(K_point* kp__, Hamiltonian &H__, int num_ao__) const
                 cs1 += eval[i];
             }
             if (kp__->comm().rank() == 0) {
-                print_checksum("evec", cs);
-                print_checksum("eval", cs1);
+                utils::print_checksum("evec", cs);
+                utils::print_checksum("eval", cs1);
             }
         }
 
@@ -291,7 +291,7 @@ Band::initialize_subspace(K_point* kp__, Hamiltonian &H__, int num_ao__) const
             std::stringstream s;
             s << "initial_spinor_wave_functions_" << ispn;
             if (kp__->comm().rank() == 0) {
-                print_checksum(s.str(), cs);
+                utils::print_checksum(s.str(), cs);
             }
         }
     }

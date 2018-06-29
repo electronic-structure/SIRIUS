@@ -174,7 +174,7 @@ inline void K_point::initialize()
                 if (ctx_.control().print_checksum_) {
                     auto cs = singular_components_->checksum_pw(CPU, 0, 0, ncomp);
                     if (comm().rank() == 0) {
-                        print_checksum("singular_components", cs);
+                        utils::print_checksum("singular_components", cs);
                     }
                 }
             }

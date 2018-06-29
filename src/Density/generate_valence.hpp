@@ -97,7 +97,7 @@ inline void Density::generate_valence(K_point_set& ks__)
             auto cs = mdarray<double, 1>(&rho_mag_coarse_[j]->f_rg(0), ctx_.fft_coarse().local_size()).checksum();
             ctx_.fft_coarse().comm().allreduce(&cs, 1);
             if (ctx_.comm().rank() == 0) {
-                print_checksum("rho_mag_coarse_rg", cs);
+                utils::print_checksum("rho_mag_coarse_rg", cs);
             }
         }
         /* transform to PW domain */
@@ -114,7 +114,7 @@ inline void Density::generate_valence(K_point_set& ks__)
         
         if (ctx_.control().print_hash_ && ctx_.comm().rank() == 0) {
             auto h = mdarray<double_complex, 1>(&rho().f_pw_local(0), ctx_.gvec().count()).hash();
-            print_hash("rho", h);
+            utils::print_hash("rho", h);
         }
 
         double nel = rho().f_0().real() * unit_cell_.omega();

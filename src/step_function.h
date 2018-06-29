@@ -128,8 +128,8 @@ class Step_function
             double d1         = mdarray<double, 1>(&step_function_[0], ctx__.fft().local_size()).checksum();
             ctx__.fft().comm().allreduce(&d1, 1);
             if (ctx__.comm().rank() == 0) {
-                print_checksum("step_function", d1);
-                print_checksum("step_function_pw", z1);
+                utils::print_checksum("step_function", d1);
+                utils::print_checksum("step_function_pw", z1);
             }
         }
     }

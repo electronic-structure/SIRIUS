@@ -82,7 +82,7 @@ inline void Density::symmetrize_density_matrix()
 
     if (ctx_.control().print_checksum_ && ctx_.comm().rank() == 0) {
         auto cs = dm.checksum();
-        print_checksum("density_matrix", cs);
+        utils::print_checksum("density_matrix", cs);
         //for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
         //    auto cs = mdarray<double_complex, 1>(&dm(0, 0, 0, ia), dm.size(0) * dm.size(1) * dm.size(2)).checksum();
         //    DUMP("checksum(density_matrix(%i)): %20.14f %20.14f", ia, cs.real(), cs.imag());
@@ -91,6 +91,6 @@ inline void Density::symmetrize_density_matrix()
 
     if (ctx_.control().print_hash_ && ctx_.comm().rank() == 0) {
         auto h = dm.hash();
-        print_hash("density_matrix", h);
+        utils::print_hash("density_matrix", h);
     }
 }

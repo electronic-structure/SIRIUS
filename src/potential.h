@@ -276,7 +276,7 @@ class Potential : public Field4D
             auto cs1 = local_potential_->checksum_rg();
             if (ctx_.comm().rank() == 0) {
                 //DUMP("checksum(local_potential_pw): %18.10f %18.10f", cs.real(), cs.imag());
-                print_checksum("local_potential_rg", cs1);
+                utils::print_checksum("local_potential_rg", cs1);
             }
         }
     }
@@ -788,7 +788,7 @@ class Potential : public Field4D
         if (ctx_.control().print_hash_) {
             auto h = effective_potential().hash_f_rg();
             if (ctx_.comm().rank() == 0) {
-                print_hash("Vha", h);
+                utils::print_hash("Vha", h);
             }
         }
 
@@ -806,7 +806,7 @@ class Potential : public Field4D
         if (ctx_.control().print_hash_) {
             auto h = effective_potential().hash_f_rg();
             if (ctx_.comm().rank() == 0) {
-                print_hash("Vha+Vxc", h);
+                utils::print_hash("Vha+Vxc", h);
             }
         }
 
@@ -827,7 +827,7 @@ class Potential : public Field4D
         if (ctx_.control().print_hash_) {
             auto h = effective_potential().hash_f_pw();
             if (ctx_.comm().rank() == 0) {
-                print_hash("V(G)", h);
+                utils::print_hash("V(G)", h);
             }
         }
 

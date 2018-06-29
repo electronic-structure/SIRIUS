@@ -94,7 +94,7 @@ inline void Potential::generate_PAW_effective_potential(Density const& density)
 
     if (ctx_.control().print_checksum_ && comm_.rank() == 0) {
         auto cs = paw_dij_.checksum();
-        print_checksum("paw_dij", cs);
+        utils::print_checksum("paw_dij", cs);
     }
 
     // add paw Dij to uspp Dij

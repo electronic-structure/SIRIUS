@@ -58,7 +58,7 @@ class Field4D
         if (ctx_.control().print_hash_) {
             auto h = f__->hash_f_pw();
             if (ctx_.comm().rank() == 0) {
-                print_hash("f_unsymmetrized(G)", h);
+                utils::print_hash("f_unsymmetrized(G)", h);
             }
         }
 
@@ -67,7 +67,7 @@ class Field4D
         if (ctx_.control().print_hash_) {
             auto h = f__->hash_f_pw();
             if (ctx_.comm().rank() == 0) {
-                print_hash("f_symmetrized(G)", h);
+                utils::print_hash("f_symmetrized(G)", h);
             }
         }
 
@@ -83,9 +83,9 @@ class Field4D
                     auto h2 = gy__->hash_f_pw();
                     auto h3 = gz__->hash_f_pw();
                     if (ctx_.comm().rank() == 0) {
-                        print_hash("fx_unsymmetrized(G)", h1);
-                        print_hash("fy_unsymmetrized(G)", h2);
-                        print_hash("fz_unsymmetrized(G)", h3);
+                        utils::print_hash("fx_unsymmetrized(G)", h1);
+                        utils::print_hash("fy_unsymmetrized(G)", h2);
+                        utils::print_hash("fz_unsymmetrized(G)", h3);
                     }
                 }
 
@@ -100,9 +100,9 @@ class Field4D
                     auto h2 = gy__->hash_f_pw();
                     auto h3 = gz__->hash_f_pw();
                     if (ctx_.comm().rank() == 0) {
-                        print_hash("fx_symmetrized(G)", h1);
-                        print_hash("fy_symmetrized(G)", h2);
-                        print_hash("fz_symmetrized(G)", h3);
+                        utils::print_hash("fx_symmetrized(G)", h1);
+                        utils::print_hash("fy_symmetrized(G)", h2);
+                        utils::print_hash("fz_symmetrized(G)", h3);
                     }
                 }
                 break;

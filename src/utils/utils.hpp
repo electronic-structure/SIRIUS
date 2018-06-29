@@ -66,6 +66,21 @@ inline void warning(const char* file_name__, int line_number__, const std::strin
 
 #define STOP() TERMINATE("terminated by request")
 
+inline void print_checksum(std::string label__, double cs__)
+{
+    printf("checksum(%s): %18.12f\n", label__.c_str(), cs__);
+}
+
+inline void print_checksum(std::string label__, std::complex<double> cs__)
+{
+    printf("checksum(%s): %18.12f %18.12f\n", label__.c_str(), cs__.real(), cs__.imag());
+}
+
+inline void print_hash(std::string label__, unsigned long long int hash__)
+{
+    printf("hash(%s): %llx\n", label__.c_str(), hash__);
+}
+
 /// Maximum number of \f$ \ell, m \f$ combinations for a given \f$ \ell_{max} \f$
 inline int lmmax(int lmax)
 {

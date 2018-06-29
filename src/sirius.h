@@ -119,7 +119,7 @@ inline void finalize(bool call_mpi_fin__ = true)
 
 #if defined(__GPU)
     if (acc::num_devices()) {
-	acc::set_device();
+        acc::set_device();
         cublas::destroy_stream_handles();
         acc::destroy_streams();
         acc::reset();

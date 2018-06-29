@@ -29,7 +29,7 @@ inline void Density::initial_density_pseudo()
         auto z1 = mdarray<double_complex, 1>(&v[0], ctx_.gvec().count()).checksum();
         ctx_.comm().allreduce(&z1, 1);
         if (ctx_.comm().rank() == 0) {
-            print_checksum("rho_pw_init", z1);
+            utils::print_checksum("rho_pw_init", z1);
         }
     }
     std::copy(v.begin(), v.end(), &rho().f_pw_local(0));
@@ -70,7 +70,7 @@ inline void Density::initial_density_pseudo()
     if (ctx_.control().print_checksum_) {
         auto cs = rho().checksum_rg();
         if (ctx_.comm().rank() == 0) {
-            print_checksum("rho_rg", cs);
+            utils::print_checksum("rho_rg", cs);
         }
     }
 
@@ -111,14 +111,14 @@ inline void Density::initial_density_pseudo()
             }
         }
     }
-    
+
     if (ctx_.control().print_checksum_) {
         for (int i = 0; i < ctx_.num_mag_dims() + 1; i++) {
             auto cs = component(i).checksum_rg();
             if (ctx_.comm().rank() == 0) {
                 std::stringstream s;
                 s << "component[" << i << "]";
-                print_checksum(s.str(), cs);
+                utils::print_checksum(s.str(), cs);
             }
         }
     }
@@ -127,7 +127,7 @@ inline void Density::initial_density_pseudo()
     for (int j = 0; j < ctx_.num_mag_dims(); j++) {
         magnetization(j).fft_transform(-1);
     }
-    
+
     //== /* renormalize charge */
     //== charge = rho_->f_0().real() * unit_cell_.omega();
     //== if (ctx_.gvec().comm().rank() == 0) {
@@ -178,7 +178,7 @@ inline void Density::initial_density_full_pot()
         auto z = mdarray<double_complex, 1>(&v[0], ctx_.gvec().count()).checksum();
         ctx_.comm().allreduce(&z, 1);
         if (ctx_.comm().rank() == 0) {
-            print_checksum("rho_pw", z);
+            utils::print_checksum("rho_pw", z);
         }
     }
     
@@ -190,7 +190,7 @@ inline void Density::initial_density_full_pot()
     if (ctx_.control().print_checksum_) {
         auto cs = rho().checksum_rg();
         if (ctx_.comm().rank() == 0) {
-            print_checksum("rho_rg", cs);
+            utils::print_checksum("rho_rg", cs);
         }
     }
     

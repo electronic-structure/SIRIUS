@@ -233,7 +233,7 @@ inline void Potential::poisson(Periodic_function<double> const& rho)
 
         if (ctx_.control().print_checksum_) {
             if (ctx_.comm().rank() == 0) {
-                print_checksum("qmt", qmt.checksum());
+                utils::print_checksum("qmt", qmt.checksum());
             }
         }
 
@@ -250,7 +250,7 @@ inline void Potential::poisson(Periodic_function<double> const& rho)
 
         if (ctx_.control().print_checksum_) {
             if (ctx_.comm().rank() == 0) {
-                print_checksum("qit", qit.checksum());
+                utils::print_checksum("qit", qit.checksum());
             }
         }
 
@@ -355,7 +355,7 @@ inline void Potential::poisson(Periodic_function<double> const& rho)
     if (ctx_.control().print_checksum_) {
         auto cs = hartree_potential_->checksum_rg();
         if (ctx_.comm().rank() == 0) {
-            print_checksum("vha_rg", cs);
+            utils::print_checksum("vha_rg", cs);
         }
     }
     

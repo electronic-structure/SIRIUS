@@ -109,9 +109,9 @@ inline void Hamiltonian::set_fv_h_o<CPU, electronic_structure_method_t::full_pot
             double_complex z1 = alm_row.checksum();
             double_complex z2 = alm_col.checksum();
             double_complex z3 = halm_col.checksum();
-            print_checksum("alm_row", z1);
-            print_checksum("alm_col", z2);
-            print_checksum("halm_col", z3);
+            utils::print_checksum("alm_row", z1);
+            utils::print_checksum("alm_col", z2);
+            utils::print_checksum("halm_col", z3);
         }
         linalg<CPU>::gemm(0, 1, kp__->num_gkvec_row(), kp__->num_gkvec_col(), num_mt_aw,
                           linalg_const<double_complex>::one(),

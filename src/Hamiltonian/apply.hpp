@@ -86,10 +86,10 @@ void Hamiltonian::apply_h_s(K_point* kp__,
             if (kp__->comm().rank() == 0) {
                 std::stringstream s;
                 s << "phi_" << ispn;
-                print_checksum(s.str(), cs1);
+                utils::print_checksum(s.str(), cs1);
                 s.str("");
                 s << "hphi_" << ispn;
-                print_checksum(s.str(), cs2);
+                utils::print_checksum(s.str(), cs2);
             }
         }
     }
@@ -172,10 +172,10 @@ void Hamiltonian::apply_h_s(K_point* kp__,
             if (kp__->comm().rank() == 0) {
                 std::stringstream s;
                 s << "hphi_" << ispn;
-                print_checksum(s.str(), cs1);
+                utils::print_checksum(s.str(), cs1);
                 s.str("");
                 s << "sphi_" << ispn;
-                print_checksum(s.str(), cs2);
+                utils::print_checksum(s.str(), cs2);
             }
         }
     }
@@ -814,16 +814,16 @@ inline void Hamiltonian::apply_fv_h_o(K_point*        kp__,
             auto cs1 = hphi__->checksum_pw(ctx_.processing_unit(), 0, N__, n__);
             auto cs2 = hphi__->checksum(ctx_.processing_unit(), 0, N__, n__);
             if (kp__->comm().rank() == 0) {
-                print_checksum("hphi_pw", cs1);
-                print_checksum("hphi", cs2);
+                utils::print_checksum("hphi_pw", cs1);
+                utils::print_checksum("hphi", cs2);
             }
         }
         if (ophi__) {
             auto cs1 = ophi__->checksum_pw(ctx_.processing_unit(), 0, N__, n__);
             auto cs2 = ophi__->checksum(ctx_.processing_unit(), 0, N__, n__);
             if (kp__->comm().rank() == 0) {
-                print_checksum("ophi_pw", cs1);
-                print_checksum("ophi", cs2);
+                utils::print_checksum("ophi_pw", cs1);
+                utils::print_checksum("ophi", cs2);
             }
         }
     }

@@ -474,7 +474,7 @@ inline void Potential::xc_rg_nonmagnetic(Density const& density__)
     if (ctx_.control().print_hash_) {
         auto h = rho.hash_f_rg();
         if (ctx_.comm().rank() == 0) {
-            print_hash("rho", h);
+            utils::print_hash("rho", h);
         }
     }
     
@@ -505,8 +505,8 @@ inline void Potential::xc_rg_nonmagnetic(Density const& density__)
             auto h1 = lapl_rho.hash_f_rg();
             auto h2 = grad_rho_grad_rho.hash_f_rg();
             if (ctx_.comm().rank() == 0) {
-                print_hash("lapl_rho", h1);
-                print_hash("grad_rho_grad_rho", h2);
+                utils::print_hash("lapl_rho", h1);
+                utils::print_hash("grad_rho_grad_rho", h2);
             }
         }
     }
@@ -661,8 +661,8 @@ inline void Potential::xc_rg_magnetic(Density const& density__)
         auto h1 = rho_up.hash_f_rg();
         auto h2 = rho_dn.hash_f_rg();
         if (ctx_.comm().rank() == 0) {
-            print_hash("rho_up", h1);
-            print_hash("rho_dn", h2);
+            utils::print_hash("rho_up", h1);
+            utils::print_hash("rho_dn", h2);
         }
     }
 
@@ -710,11 +710,11 @@ inline void Potential::xc_rg_magnetic(Density const& density__)
             auto h5 = grad_rho_dn_grad_rho_dn.hash_f_rg();
 
             if (ctx_.comm().rank() == 0) {
-                print_hash("lapl_rho_up", h1);
-                print_hash("lapl_rho_dn", h2);
-                print_hash("grad_rho_up_grad_rho_up", h3);
-                print_hash("grad_rho_up_grad_rho_dn", h4);
-                print_hash("grad_rho_dn_grad_rho_dn", h5);
+                utils::print_hash("lapl_rho_up", h1);
+                utils::print_hash("lapl_rho_dn", h2);
+                utils::print_hash("grad_rho_up_grad_rho_up", h3);
+                utils::print_hash("grad_rho_up_grad_rho_dn", h4);
+                utils::print_hash("grad_rho_dn_grad_rho_dn", h5);
             }
         }
     }
@@ -900,7 +900,7 @@ inline void Potential::xc(Density const& density__)
     if (ctx_.control().print_hash_) {
         auto h = xc_energy_density_->hash_f_rg();
         if (ctx_.comm().rank() == 0) {
-            print_hash("Exc", h);
+            utils::print_hash("Exc", h);
         }
     }
 }
