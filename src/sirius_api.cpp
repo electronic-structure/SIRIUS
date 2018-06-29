@@ -1276,19 +1276,17 @@ void sirius_get_stress_tensor(void* const* handler__,
     }
 }
 
-/* @fortran begin function void sirius_get_num_beta_projectors     Get the number of beta-projectors for an atom type.
+/* @fortran begin function int sirius_get_num_beta_projectors     Get the number of beta-projectors for an atom type.
    @fortran argument in  required void*   handler                  Simulation context handler.
    @fortran argument in  required string  label                    Atom type label.
-   @fortran argument out required int     num_beta_projectors      Number of beta-projectors.
    @fortran end */
-void sirius_get_num_beta_projectors(void* const* handler__,
-                                    char  const* label__,
-                                    int*         num_beta_projectors__)
+int sirius_get_num_beta_projectors(void* const* handler__,
+                                   char  const* label__)
 {
     GET_SIM_CTX(handler__);
 
     auto& type = sim_ctx.unit_cell().atom_type(std::string(label__));
-    *num_beta_projectors__ = type.mt_basis_size();
+    return type.mt_basis_size();
 }
 
 

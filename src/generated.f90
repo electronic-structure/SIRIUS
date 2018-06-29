@@ -1176,24 +1176,22 @@ end subroutine sirius_get_stress_tensor
 !> @brief Get the number of beta-projectors for an atom type.
 !> @param [in] handler Simulation context handler.
 !> @param [in] label Atom type label.
-!> @param [out] num_beta_projectors Number of beta-projectors.
-subroutine sirius_get_num_beta_projectors(handler,label,num_beta_projectors)
+function sirius_get_num_beta_projectors(handler,label) result(res)
 implicit none
 type(C_PTR), intent(in) :: handler
 character(C_CHAR), dimension(*), intent(in) :: label
-integer(C_INT), intent(out) :: num_beta_projectors
+integer(C_INT) :: res
 interface
-subroutine sirius_get_num_beta_projectors_aux(handler,label,num_beta_projectors)&
-&&
+function sirius_get_num_beta_projectors_aux(handler,label) result(res)&
 &bind(C, name="sirius_get_num_beta_projectors")
 use, intrinsic :: ISO_C_BINDING
 type(C_PTR), intent(in) :: handler
 character(C_CHAR), dimension(*), intent(in) :: label
-integer(C_INT), intent(out) :: num_beta_projectors
-end subroutine
+integer(C_INT) :: res
+end function
 end interface
-call sirius_get_num_beta_projectors_aux(handler,label,num_beta_projectors)
-end subroutine sirius_get_num_beta_projectors
+res = sirius_get_num_beta_projectors_aux(handler,label)
+end function sirius_get_num_beta_projectors
 
 !> @brief Get plane-wave coefficients of Q-operator
 !> @param [in] handler Simulation context handler.
