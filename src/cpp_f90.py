@@ -53,7 +53,7 @@ def write_function(o, func_name, func_suffix, func_type, func_args, func_doc):
 
     for a in func_args:
         if not a['required']:
-            o.write('type(C_PTR) :: ' + a['name'] + '_ptr = C_NULL_PTR\n')
+            o.write('type(C_PTR) :: ' + a['name'] + '_ptr\n')
     o.write('interface\n')
 
     if func_type == 'void':
@@ -90,11 +90,12 @@ def write_function(o, func_name, func_suffix, func_type, func_args, func_doc):
         o.write('end subroutine\n')
     else:
         o.write('end function\n')
-    o.write('end interface\n')
+    o.write('end interface\n\n')
 
     for a in func_args:
         if not a['required']:
-            o.write('if (present('+a['name']+')) ' + a['name'] + '_ptr = C_LOC(' + a['name'] + ')\n')
+            o.write(a['name'] + '_ptr = C_NULL_PTR\n')
+            o.write('if (present('+a['name']+')) ' + a['name'] + '_ptr = C_LOC(' + a['name'] + ')\n\n')
 
     if (func_type == 'void'):
         string = 'call '
