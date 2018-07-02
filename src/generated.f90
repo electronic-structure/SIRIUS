@@ -15,6 +15,7 @@ use, intrinsic :: ISO_C_BINDING
 logical(C_BOOL), intent(in) :: call_mpi_init
 end subroutine
 end interface
+
 call sirius_initialize_aux(call_mpi_init)
 end subroutine sirius_initialize
 
@@ -30,6 +31,7 @@ use, intrinsic :: ISO_C_BINDING
 logical(C_BOOL), intent(in) :: call_mpi_fin
 end subroutine
 end interface
+
 call sirius_finalize_aux(call_mpi_fin)
 end subroutine sirius_finalize
 
@@ -45,6 +47,7 @@ use, intrinsic :: ISO_C_BINDING
 character(C_CHAR), dimension(*), intent(in) :: name
 end subroutine
 end interface
+
 call sirius_start_timer_aux(name)
 end subroutine sirius_start_timer
 
@@ -60,6 +63,7 @@ use, intrinsic :: ISO_C_BINDING
 character(C_CHAR), dimension(*), intent(in) :: name
 end subroutine
 end interface
+
 call sirius_stop_timer_aux(name)
 end subroutine sirius_stop_timer
 
@@ -72,6 +76,7 @@ subroutine sirius_print_timers_aux()&
 use, intrinsic :: ISO_C_BINDING
 end subroutine
 end interface
+
 call sirius_print_timers_aux()
 end subroutine sirius_print_timers
 
@@ -99,6 +104,7 @@ real(C_DOUBLE), intent(in) :: f
 real(C_DOUBLE), intent(out) :: result
 end subroutine
 end interface
+
 call sirius_integrate_aux(m,np,x,f,result)
 end subroutine sirius_integrate
 
@@ -116,6 +122,7 @@ type(C_PTR), intent(in) :: handler
 logical(C_BOOL) :: res
 end function
 end interface
+
 res = sirius_context_initialized_aux(handler)
 end function sirius_context_initialized
 
@@ -133,6 +140,7 @@ integer(C_INT), intent(in) :: fcomm
 type(C_PTR) :: res
 end function
 end interface
+
 res = sirius_create_context_aux(fcomm)
 end function sirius_create_context
 
@@ -151,6 +159,7 @@ type(C_PTR), intent(in) :: handler
 character(C_CHAR), dimension(*), intent(in) :: json_str
 end subroutine
 end interface
+
 call sirius_import_parameters_aux(handler,json_str)
 end subroutine sirius_import_parameters
 
@@ -206,28 +215,28 @@ integer(C_INT), optional, target, intent(in) :: verbosity
 logical(C_BOOL), optional, target, intent(in) :: hubbard_correction
 integer(C_INT), optional, target, intent(in) :: hubbard_correction_kind
 character(C_CHAR), optional, target, dimension(*), intent(in) :: hubbard_orbitals
-type(C_PTR) :: lmax_apw_ptr = C_NULL_PTR
-type(C_PTR) :: lmax_rho_ptr = C_NULL_PTR
-type(C_PTR) :: lmax_pot_ptr = C_NULL_PTR
-type(C_PTR) :: num_fv_states_ptr = C_NULL_PTR
-type(C_PTR) :: num_bands_ptr = C_NULL_PTR
-type(C_PTR) :: num_mag_dims_ptr = C_NULL_PTR
-type(C_PTR) :: pw_cutoff_ptr = C_NULL_PTR
-type(C_PTR) :: gk_cutoff_ptr = C_NULL_PTR
-type(C_PTR) :: aw_cutoff_ptr = C_NULL_PTR
-type(C_PTR) :: auto_rmt_ptr = C_NULL_PTR
-type(C_PTR) :: gamma_point_ptr = C_NULL_PTR
-type(C_PTR) :: use_symmetry_ptr = C_NULL_PTR
-type(C_PTR) :: so_correction_ptr = C_NULL_PTR
-type(C_PTR) :: valence_rel_ptr = C_NULL_PTR
-type(C_PTR) :: core_rel_ptr = C_NULL_PTR
-type(C_PTR) :: esm_bc_ptr = C_NULL_PTR
-type(C_PTR) :: iter_solver_tol_ptr = C_NULL_PTR
-type(C_PTR) :: iter_solver_tol_empty_ptr = C_NULL_PTR
-type(C_PTR) :: verbosity_ptr = C_NULL_PTR
-type(C_PTR) :: hubbard_correction_ptr = C_NULL_PTR
-type(C_PTR) :: hubbard_correction_kind_ptr = C_NULL_PTR
-type(C_PTR) :: hubbard_orbitals_ptr = C_NULL_PTR
+type(C_PTR) :: lmax_apw_ptr
+type(C_PTR) :: lmax_rho_ptr
+type(C_PTR) :: lmax_pot_ptr
+type(C_PTR) :: num_fv_states_ptr
+type(C_PTR) :: num_bands_ptr
+type(C_PTR) :: num_mag_dims_ptr
+type(C_PTR) :: pw_cutoff_ptr
+type(C_PTR) :: gk_cutoff_ptr
+type(C_PTR) :: aw_cutoff_ptr
+type(C_PTR) :: auto_rmt_ptr
+type(C_PTR) :: gamma_point_ptr
+type(C_PTR) :: use_symmetry_ptr
+type(C_PTR) :: so_correction_ptr
+type(C_PTR) :: valence_rel_ptr
+type(C_PTR) :: core_rel_ptr
+type(C_PTR) :: esm_bc_ptr
+type(C_PTR) :: iter_solver_tol_ptr
+type(C_PTR) :: iter_solver_tol_empty_ptr
+type(C_PTR) :: verbosity_ptr
+type(C_PTR) :: hubbard_correction_ptr
+type(C_PTR) :: hubbard_correction_kind_ptr
+type(C_PTR) :: hubbard_orbitals_ptr
 interface
 subroutine sirius_set_parameters_aux(handler,lmax_apw,lmax_rho,lmax_pot,num_fv_s&
 &tates,num_bands,num_mag_dims,pw_cutoff,gk_cutoff,aw_cutoff,auto_rmt,gamma_point,&
@@ -261,28 +270,73 @@ type(C_PTR), value, intent(in) :: hubbard_correction_kind
 type(C_PTR), value, intent(in) :: hubbard_orbitals
 end subroutine
 end interface
+
+lmax_apw_ptr = C_NULL_PTR
 if (present(lmax_apw)) lmax_apw_ptr = C_LOC(lmax_apw)
+
+lmax_rho_ptr = C_NULL_PTR
 if (present(lmax_rho)) lmax_rho_ptr = C_LOC(lmax_rho)
+
+lmax_pot_ptr = C_NULL_PTR
 if (present(lmax_pot)) lmax_pot_ptr = C_LOC(lmax_pot)
+
+num_fv_states_ptr = C_NULL_PTR
 if (present(num_fv_states)) num_fv_states_ptr = C_LOC(num_fv_states)
+
+num_bands_ptr = C_NULL_PTR
 if (present(num_bands)) num_bands_ptr = C_LOC(num_bands)
+
+num_mag_dims_ptr = C_NULL_PTR
 if (present(num_mag_dims)) num_mag_dims_ptr = C_LOC(num_mag_dims)
+
+pw_cutoff_ptr = C_NULL_PTR
 if (present(pw_cutoff)) pw_cutoff_ptr = C_LOC(pw_cutoff)
+
+gk_cutoff_ptr = C_NULL_PTR
 if (present(gk_cutoff)) gk_cutoff_ptr = C_LOC(gk_cutoff)
+
+aw_cutoff_ptr = C_NULL_PTR
 if (present(aw_cutoff)) aw_cutoff_ptr = C_LOC(aw_cutoff)
+
+auto_rmt_ptr = C_NULL_PTR
 if (present(auto_rmt)) auto_rmt_ptr = C_LOC(auto_rmt)
+
+gamma_point_ptr = C_NULL_PTR
 if (present(gamma_point)) gamma_point_ptr = C_LOC(gamma_point)
+
+use_symmetry_ptr = C_NULL_PTR
 if (present(use_symmetry)) use_symmetry_ptr = C_LOC(use_symmetry)
+
+so_correction_ptr = C_NULL_PTR
 if (present(so_correction)) so_correction_ptr = C_LOC(so_correction)
+
+valence_rel_ptr = C_NULL_PTR
 if (present(valence_rel)) valence_rel_ptr = C_LOC(valence_rel)
+
+core_rel_ptr = C_NULL_PTR
 if (present(core_rel)) core_rel_ptr = C_LOC(core_rel)
+
+esm_bc_ptr = C_NULL_PTR
 if (present(esm_bc)) esm_bc_ptr = C_LOC(esm_bc)
+
+iter_solver_tol_ptr = C_NULL_PTR
 if (present(iter_solver_tol)) iter_solver_tol_ptr = C_LOC(iter_solver_tol)
+
+iter_solver_tol_empty_ptr = C_NULL_PTR
 if (present(iter_solver_tol_empty)) iter_solver_tol_empty_ptr = C_LOC(iter_solver_tol_empty)
+
+verbosity_ptr = C_NULL_PTR
 if (present(verbosity)) verbosity_ptr = C_LOC(verbosity)
+
+hubbard_correction_ptr = C_NULL_PTR
 if (present(hubbard_correction)) hubbard_correction_ptr = C_LOC(hubbard_correction)
+
+hubbard_correction_kind_ptr = C_NULL_PTR
 if (present(hubbard_correction_kind)) hubbard_correction_kind_ptr = C_LOC(hubbard_correction_kind)
+
+hubbard_orbitals_ptr = C_NULL_PTR
 if (present(hubbard_orbitals)) hubbard_orbitals_ptr = C_LOC(hubbard_orbitals)
+
 call sirius_set_parameters_aux(handler,lmax_apw_ptr,lmax_rho_ptr,lmax_pot_ptr,nu&
 &m_fv_states_ptr,num_bands_ptr,num_mag_dims_ptr,pw_cutoff_ptr,gk_cutoff_ptr,aw_cu&
 &toff_ptr,auto_rmt_ptr,gamma_point_ptr,use_symmetry_ptr,so_correction_ptr,valence&
@@ -309,6 +363,7 @@ integer(C_INT), intent(in) :: ndims
 integer(C_INT), intent(in) :: dims
 end subroutine
 end interface
+
 call sirius_set_mpi_grid_dims_aux(handler,ndims,dims)
 end subroutine sirius_set_mpi_grid_dims
 
@@ -333,6 +388,7 @@ real(C_DOUBLE), intent(in) :: a2
 real(C_DOUBLE), intent(in) :: a3
 end subroutine
 end interface
+
 call sirius_set_lattice_vectors_aux(handler,a1,a2,a3)
 end subroutine sirius_set_lattice_vectors
 
@@ -348,6 +404,7 @@ use, intrinsic :: ISO_C_BINDING
 type(C_PTR), intent(in) :: handler
 end subroutine
 end interface
+
 call sirius_initialize_context_aux(handler)
 end subroutine sirius_initialize_context
 
@@ -363,6 +420,7 @@ use, intrinsic :: ISO_C_BINDING
 type(C_PTR), intent(inout) :: handler
 end subroutine
 end interface
+
 call sirius_free_handler_aux(handler)
 end subroutine sirius_free_handler
 
@@ -387,6 +445,7 @@ real(C_DOUBLE), intent(in) :: f_mt
 real(C_DOUBLE), intent(in) :: f_rg
 end subroutine
 end interface
+
 call sirius_set_periodic_function_ptr_aux(handler,label,f_mt,f_rg)
 end subroutine sirius_set_periodic_function_ptr
 
@@ -418,6 +477,7 @@ logical(C_BOOL), intent(in) :: init_kset
 type(C_PTR) :: res
 end function
 end interface
+
 res = sirius_create_kset_aux(handler,num_kpoints,kpoints,kpoint_weights,init_kse&
 &t)
 end function sirius_create_kset
@@ -436,6 +496,7 @@ type(C_PTR), intent(in) :: ks_handler
 type(C_PTR) :: res
 end function
 end interface
+
 res = sirius_create_ground_state_aux(ks_handler)
 end function sirius_create_ground_state
 
@@ -456,11 +517,11 @@ integer(C_INT), optional, target, intent(in) :: zn
 character(C_CHAR), optional, target, dimension(*), intent(in) :: symbol
 real(C_DOUBLE), optional, target, intent(in) :: mass
 logical(C_BOOL), optional, target, intent(in) :: spin_orbit
-type(C_PTR) :: fname_ptr = C_NULL_PTR
-type(C_PTR) :: zn_ptr = C_NULL_PTR
-type(C_PTR) :: symbol_ptr = C_NULL_PTR
-type(C_PTR) :: mass_ptr = C_NULL_PTR
-type(C_PTR) :: spin_orbit_ptr = C_NULL_PTR
+type(C_PTR) :: fname_ptr
+type(C_PTR) :: zn_ptr
+type(C_PTR) :: symbol_ptr
+type(C_PTR) :: mass_ptr
+type(C_PTR) :: spin_orbit_ptr
 interface
 subroutine sirius_add_atom_type_aux(handler,label,fname,zn,symbol,mass,spin_orbi&
 &t)&
@@ -475,11 +536,22 @@ type(C_PTR), value, intent(in) :: mass
 type(C_PTR), value, intent(in) :: spin_orbit
 end subroutine
 end interface
+
+fname_ptr = C_NULL_PTR
 if (present(fname)) fname_ptr = C_LOC(fname)
+
+zn_ptr = C_NULL_PTR
 if (present(zn)) zn_ptr = C_LOC(zn)
+
+symbol_ptr = C_NULL_PTR
 if (present(symbol)) symbol_ptr = C_LOC(symbol)
+
+mass_ptr = C_NULL_PTR
 if (present(mass)) mass_ptr = C_LOC(mass)
+
+spin_orbit_ptr = C_NULL_PTR
 if (present(spin_orbit)) spin_orbit_ptr = C_LOC(spin_orbit)
+
 call sirius_add_atom_type_aux(handler,label,fname_ptr,zn_ptr,symbol_ptr,mass_ptr&
 &,spin_orbit_ptr)
 end subroutine sirius_add_atom_type
@@ -507,6 +579,7 @@ integer(C_INT), intent(in) :: num_radial_points
 real(C_DOUBLE), intent(in) :: radial_points
 end subroutine
 end interface
+
 call sirius_set_atom_type_radial_grid_aux(handler,label,num_radial_points,radial&
 &_points)
 end subroutine sirius_set_atom_type_radial_grid
@@ -533,10 +606,10 @@ integer(C_INT), optional, target, intent(in) :: l
 integer(C_INT), optional, target, intent(in) :: idxrf1
 integer(C_INT), optional, target, intent(in) :: idxrf2
 real(C_DOUBLE), optional, target, intent(in) :: occ
-type(C_PTR) :: l_ptr = C_NULL_PTR
-type(C_PTR) :: idxrf1_ptr = C_NULL_PTR
-type(C_PTR) :: idxrf2_ptr = C_NULL_PTR
-type(C_PTR) :: occ_ptr = C_NULL_PTR
+type(C_PTR) :: l_ptr
+type(C_PTR) :: idxrf1_ptr
+type(C_PTR) :: idxrf2_ptr
+type(C_PTR) :: occ_ptr
 interface
 subroutine sirius_add_atom_type_radial_function_aux(handler,atom_type,label,rf,n&
 &um_points,l,idxrf1,idxrf2,occ)&
@@ -553,10 +626,19 @@ type(C_PTR), value, intent(in) :: idxrf2
 type(C_PTR), value, intent(in) :: occ
 end subroutine
 end interface
+
+l_ptr = C_NULL_PTR
 if (present(l)) l_ptr = C_LOC(l)
+
+idxrf1_ptr = C_NULL_PTR
 if (present(idxrf1)) idxrf1_ptr = C_LOC(idxrf1)
+
+idxrf2_ptr = C_NULL_PTR
 if (present(idxrf2)) idxrf2_ptr = C_LOC(idxrf2)
+
+occ_ptr = C_NULL_PTR
 if (present(occ)) occ_ptr = C_LOC(occ)
+
 call sirius_add_atom_type_radial_function_aux(handler,atom_type,label,rf,num_poi&
 &nts,l_ptr,idxrf1_ptr,idxrf2_ptr,occ_ptr)
 end subroutine sirius_add_atom_type_radial_function
@@ -601,6 +683,7 @@ real(C_DOUBLE), intent(in) :: beta
 real(C_DOUBLE), intent(in) :: J0
 end subroutine
 end interface
+
 call sirius_set_atom_type_hubbard_aux(handler,label,l,n,occ,U,J,alpha,beta,J0)
 end subroutine sirius_set_atom_type_hubbard
 
@@ -625,6 +708,7 @@ integer(C_INT), intent(in) :: num_beta
 real(C_DOUBLE), intent(in) :: dion
 end subroutine
 end interface
+
 call sirius_set_atom_type_dion_aux(handler,label,num_beta,dion)
 end subroutine sirius_set_atom_type_dion
 
@@ -654,6 +738,7 @@ real(C_DOUBLE), intent(in) :: occupations
 integer(C_INT), intent(in) :: num_occ
 end subroutine
 end interface
+
 call sirius_set_atom_type_paw_aux(handler,label,core_energy,occupations,num_occ)
 end subroutine sirius_set_atom_type_paw
 
@@ -668,7 +753,7 @@ type(C_PTR), intent(in) :: handler
 character(C_CHAR), dimension(*), intent(in) :: label
 real(C_DOUBLE), intent(in) :: position
 real(C_DOUBLE), optional, target, intent(in) :: vector_field
-type(C_PTR) :: vector_field_ptr = C_NULL_PTR
+type(C_PTR) :: vector_field_ptr
 interface
 subroutine sirius_add_atom_aux(handler,label,position,vector_field)&
 &bind(C, name="sirius_add_atom")
@@ -679,7 +764,10 @@ real(C_DOUBLE), intent(in) :: position
 type(C_PTR), value, intent(in) :: vector_field
 end subroutine
 end interface
+
+vector_field_ptr = C_NULL_PTR
 if (present(vector_field)) vector_field_ptr = C_LOC(vector_field)
+
 call sirius_add_atom_aux(handler,label,position,vector_field_ptr)
 end subroutine sirius_add_atom
 
@@ -701,10 +789,10 @@ logical(C_BOOL), optional, target, intent(in) :: transform_to_rg
 integer(C_INT), optional, target, intent(in) :: ngv
 integer(C_INT), optional, target, intent(in) :: gvl
 integer(C_INT), optional, target, intent(in) :: comm
-type(C_PTR) :: transform_to_rg_ptr = C_NULL_PTR
-type(C_PTR) :: ngv_ptr = C_NULL_PTR
-type(C_PTR) :: gvl_ptr = C_NULL_PTR
-type(C_PTR) :: comm_ptr = C_NULL_PTR
+type(C_PTR) :: transform_to_rg_ptr
+type(C_PTR) :: ngv_ptr
+type(C_PTR) :: gvl_ptr
+type(C_PTR) :: comm_ptr
 interface
 subroutine sirius_set_pw_coeffs_aux(handler,label,pw_coeffs,transform_to_rg,ngv,&
 &gvl,comm)&
@@ -719,10 +807,19 @@ type(C_PTR), value, intent(in) :: gvl
 type(C_PTR), value, intent(in) :: comm
 end subroutine
 end interface
+
+transform_to_rg_ptr = C_NULL_PTR
 if (present(transform_to_rg)) transform_to_rg_ptr = C_LOC(transform_to_rg)
+
+ngv_ptr = C_NULL_PTR
 if (present(ngv)) ngv_ptr = C_LOC(ngv)
+
+gvl_ptr = C_NULL_PTR
 if (present(gvl)) gvl_ptr = C_LOC(gvl)
+
+comm_ptr = C_NULL_PTR
 if (present(comm)) comm_ptr = C_LOC(comm)
+
 call sirius_set_pw_coeffs_aux(handler,label,pw_coeffs,transform_to_rg_ptr,ngv_pt&
 &r,gvl_ptr,comm_ptr)
 end subroutine sirius_set_pw_coeffs
@@ -742,9 +839,9 @@ complex(C_DOUBLE), intent(in) :: pw_coeffs
 integer(C_INT), optional, target, intent(in) :: ngv
 integer(C_INT), optional, target, intent(in) :: gvl
 integer(C_INT), optional, target, intent(in) :: comm
-type(C_PTR) :: ngv_ptr = C_NULL_PTR
-type(C_PTR) :: gvl_ptr = C_NULL_PTR
-type(C_PTR) :: comm_ptr = C_NULL_PTR
+type(C_PTR) :: ngv_ptr
+type(C_PTR) :: gvl_ptr
+type(C_PTR) :: comm_ptr
 interface
 subroutine sirius_get_pw_coeffs_aux(handler,label,pw_coeffs,ngv,gvl,comm)&
 &bind(C, name="sirius_get_pw_coeffs")
@@ -757,9 +854,16 @@ type(C_PTR), value, intent(in) :: gvl
 type(C_PTR), value, intent(in) :: comm
 end subroutine
 end interface
+
+ngv_ptr = C_NULL_PTR
 if (present(ngv)) ngv_ptr = C_LOC(ngv)
+
+gvl_ptr = C_NULL_PTR
 if (present(gvl)) gvl_ptr = C_LOC(gvl)
+
+comm_ptr = C_NULL_PTR
 if (present(comm)) comm_ptr = C_LOC(comm)
+
 call sirius_get_pw_coeffs_aux(handler,label,pw_coeffs,ngv_ptr,gvl_ptr,comm_ptr)
 end subroutine sirius_get_pw_coeffs
 
@@ -781,9 +885,9 @@ real(C_DOUBLE), intent(in) :: pw_coeffs
 integer(C_INT), optional, target, intent(in) :: ngv
 integer(C_INT), optional, target, intent(in) :: gvl
 integer(C_INT), optional, target, intent(in) :: comm
-type(C_PTR) :: ngv_ptr = C_NULL_PTR
-type(C_PTR) :: gvl_ptr = C_NULL_PTR
-type(C_PTR) :: comm_ptr = C_NULL_PTR
+type(C_PTR) :: ngv_ptr
+type(C_PTR) :: gvl_ptr
+type(C_PTR) :: comm_ptr
 interface
 subroutine sirius_get_pw_coeffs_real_aux(handler,atom_type,label,pw_coeffs,ngv,g&
 &vl,comm)&
@@ -798,9 +902,16 @@ type(C_PTR), value, intent(in) :: gvl
 type(C_PTR), value, intent(in) :: comm
 end subroutine
 end interface
+
+ngv_ptr = C_NULL_PTR
 if (present(ngv)) ngv_ptr = C_LOC(ngv)
+
+gvl_ptr = C_NULL_PTR
 if (present(gvl)) gvl_ptr = C_LOC(gvl)
+
+comm_ptr = C_NULL_PTR
 if (present(comm)) comm_ptr = C_LOC(comm)
+
 call sirius_get_pw_coeffs_real_aux(handler,atom_type,label,pw_coeffs,ngv_ptr,gvl&
 &_ptr,comm_ptr)
 end subroutine sirius_get_pw_coeffs_real
@@ -820,6 +931,7 @@ type(C_PTR), intent(in) :: gs_handler
 type(C_PTR), intent(in) :: ks_handler
 end subroutine
 end interface
+
 call sirius_initialize_subspace_aux(gs_handler,ks_handler)
 end subroutine sirius_initialize_subspace
 
@@ -835,7 +947,7 @@ type(C_PTR), intent(in) :: gs_handler
 type(C_PTR), intent(in) :: ks_handler
 logical(C_BOOL), intent(in) :: precompute
 real(C_DOUBLE), optional, target, intent(in) :: iter_solver_tol
-type(C_PTR) :: iter_solver_tol_ptr = C_NULL_PTR
+type(C_PTR) :: iter_solver_tol_ptr
 interface
 subroutine sirius_find_eigen_states_aux(gs_handler,ks_handler,precompute,iter_so&
 &lver_tol)&
@@ -847,7 +959,10 @@ logical(C_BOOL), intent(in) :: precompute
 type(C_PTR), value, intent(in) :: iter_solver_tol
 end subroutine
 end interface
+
+iter_solver_tol_ptr = C_NULL_PTR
 if (present(iter_solver_tol)) iter_solver_tol_ptr = C_LOC(iter_solver_tol)
+
 call sirius_find_eigen_states_aux(gs_handler,ks_handler,precompute,iter_solver_t&
 &ol_ptr)
 end subroutine sirius_find_eigen_states
@@ -864,6 +979,7 @@ use, intrinsic :: ISO_C_BINDING
 type(C_PTR), intent(in) :: handler
 end subroutine
 end interface
+
 call sirius_generate_d_operator_matrix_aux(handler)
 end subroutine sirius_generate_d_operator_matrix
 
@@ -879,6 +995,7 @@ use, intrinsic :: ISO_C_BINDING
 type(C_PTR), intent(in) :: handler
 end subroutine
 end interface
+
 call sirius_generate_initial_density_aux(handler)
 end subroutine sirius_generate_initial_density
 
@@ -894,6 +1011,7 @@ use, intrinsic :: ISO_C_BINDING
 type(C_PTR), intent(in) :: handler
 end subroutine
 end interface
+
 call sirius_generate_effective_potential_aux(handler)
 end subroutine sirius_generate_effective_potential
 
@@ -909,6 +1027,7 @@ use, intrinsic :: ISO_C_BINDING
 type(C_PTR), intent(in) :: gs_handler
 end subroutine
 end interface
+
 call sirius_generate_density_aux(gs_handler)
 end subroutine sirius_generate_density
 
@@ -933,6 +1052,7 @@ integer(C_INT), intent(in) :: ispn
 real(C_DOUBLE), intent(in) :: band_occupancies
 end subroutine
 end interface
+
 call sirius_set_band_occupancies_aux(ks_handler,ik,ispn,band_occupancies)
 end subroutine sirius_set_band_occupancies
 
@@ -957,6 +1077,7 @@ integer(C_INT), intent(in) :: ispn
 real(C_DOUBLE), intent(out) :: band_energies
 end subroutine
 end interface
+
 call sirius_get_band_energies_aux(ks_handler,ik,ispn,band_energies)
 end subroutine sirius_get_band_energies
 
@@ -984,6 +1105,7 @@ real(C_DOUBLE), intent(out) :: d_mtrx
 integer(C_INT), intent(in) :: ld
 end subroutine
 end interface
+
 call sirius_get_d_operator_matrix_aux(handler,ia,ispn,d_mtrx,ld)
 end subroutine sirius_get_d_operator_matrix
 
@@ -1011,6 +1133,7 @@ real(C_DOUBLE), intent(out) :: d_mtrx
 integer(C_INT), intent(in) :: ld
 end subroutine
 end interface
+
 call sirius_set_d_operator_matrix_aux(handler,ia,ispn,d_mtrx,ld)
 end subroutine sirius_set_d_operator_matrix
 
@@ -1035,6 +1158,7 @@ real(C_DOUBLE), intent(out) :: q_mtrx
 integer(C_INT), intent(in) :: ld
 end subroutine
 end interface
+
 call sirius_set_q_operator_matrix_aux(handler,label,q_mtrx,ld)
 end subroutine sirius_set_q_operator_matrix
 
@@ -1059,6 +1183,7 @@ real(C_DOUBLE), intent(out) :: q_mtrx
 integer(C_INT), intent(in) :: ld
 end subroutine
 end interface
+
 call sirius_get_q_operator_matrix_aux(handler,label,q_mtrx,ld)
 end subroutine sirius_get_q_operator_matrix
 
@@ -1083,6 +1208,7 @@ complex(C_DOUBLE), intent(out) :: dm
 integer(C_INT), intent(in) :: ld
 end subroutine
 end interface
+
 call sirius_get_density_matrix_aux(handler,ia,dm,ld)
 end subroutine sirius_get_density_matrix
 
@@ -1107,6 +1233,7 @@ complex(C_DOUBLE), intent(out) :: dm
 integer(C_INT), intent(in) :: ld
 end subroutine
 end interface
+
 call sirius_set_density_matrix_aux(handler,ia,dm,ld)
 end subroutine sirius_set_density_matrix
 
@@ -1128,6 +1255,7 @@ character(C_CHAR), dimension(*), intent(in) :: label
 real(C_DOUBLE), intent(out) :: energy
 end subroutine
 end interface
+
 call sirius_get_energy_aux(handler,label,energy)
 end subroutine sirius_get_energy
 
@@ -1149,6 +1277,7 @@ character(C_CHAR), dimension(*), intent(in) :: label
 real(C_DOUBLE), intent(out) :: forces
 end subroutine
 end interface
+
 call sirius_get_forces_aux(handler,label,forces)
 end subroutine sirius_get_forces
 
@@ -1170,6 +1299,7 @@ character(C_CHAR), dimension(*), intent(in) :: label
 real(C_DOUBLE), intent(out) :: stress_tensor
 end subroutine
 end interface
+
 call sirius_get_stress_tensor_aux(handler,label,stress_tensor)
 end subroutine sirius_get_stress_tensor
 
@@ -1190,6 +1320,7 @@ character(C_CHAR), dimension(*), intent(in) :: label
 integer(C_INT) :: res
 end function
 end interface
+
 res = sirius_get_num_beta_projectors_aux(handler,label)
 end function sirius_get_num_beta_projectors
 
@@ -1223,6 +1354,7 @@ integer(C_INT), intent(in) :: gvl
 complex(C_DOUBLE), intent(out) :: q_pw
 end subroutine
 end interface
+
 call sirius_get_q_operator_aux(handler,label,xi1,xi2,ngv,gvl,q_pw)
 end subroutine sirius_get_q_operator
 
@@ -1260,6 +1392,7 @@ integer(C_INT), intent(in) :: ld1
 integer(C_INT), intent(in) :: ld2
 end subroutine
 end interface
+
 call sirius_get_wave_functions_aux(ks_handler,ik,ispn,npw,gvec_k,evc,ld1,ld2)
 end subroutine sirius_get_wave_functions
 
@@ -1279,7 +1412,7 @@ real(C_DOUBLE), intent(in) :: q
 integer(C_INT), intent(in) :: idx
 integer(C_INT), optional, target, intent(in) :: l
 real(C_DOUBLE) :: res
-type(C_PTR) :: l_ptr = C_NULL_PTR
+type(C_PTR) :: l_ptr
 interface
 function sirius_get_radial_integral_aux(handler,atom_type,label,q,idx,l) result(&
 &res)&
@@ -1294,7 +1427,10 @@ type(C_PTR), value, intent(in) :: l
 real(C_DOUBLE) :: res
 end function
 end interface
+
+l_ptr = C_NULL_PTR
 if (present(l)) l_ptr = C_LOC(l)
+
 res = sirius_get_radial_integral_aux(handler,atom_type,label,q,idx,l_ptr)
 end function sirius_get_radial_integral
 
@@ -1310,6 +1446,7 @@ use, intrinsic :: ISO_C_BINDING
 type(C_PTR), intent(in) :: handler
 end subroutine
 end interface
+
 call sirius_calculate_hubbard_occupancies_aux(handler)
 end subroutine sirius_calculate_hubbard_occupancies
 
@@ -1331,6 +1468,7 @@ real(C_DOUBLE), intent(inout) :: occ
 integer(C_INT), intent(in) :: ld
 end subroutine
 end interface
+
 call sirius_set_hubbard_occupancies_aux(handler,occ,ld)
 end subroutine sirius_set_hubbard_occupancies_double
 
@@ -1352,6 +1490,7 @@ complex(C_DOUBLE), intent(inout) :: occ
 integer(C_INT), intent(in) :: ld
 end subroutine
 end interface
+
 call sirius_set_hubbard_occupancies_aux(handler,occ,ld)
 end subroutine sirius_set_hubbard_occupancies_complex
 
@@ -1373,6 +1512,7 @@ real(C_DOUBLE), intent(inout) :: occ
 integer(C_INT), intent(in) :: ld
 end subroutine
 end interface
+
 call sirius_get_hubbard_occupancies_aux(handler,occ,ld)
 end subroutine sirius_get_hubbard_occupancies_double
 
@@ -1394,6 +1534,7 @@ complex(C_DOUBLE), intent(inout) :: occ
 integer(C_INT), intent(in) :: ld
 end subroutine
 end interface
+
 call sirius_get_hubbard_occupancies_aux(handler,occ,ld)
 end subroutine sirius_get_hubbard_occupancies_complex
 
@@ -1415,6 +1556,7 @@ real(C_DOUBLE), intent(inout) :: pot
 integer(C_INT), intent(in) :: ld
 end subroutine
 end interface
+
 call sirius_set_hubbard_potential_aux(handler,pot,ld)
 end subroutine sirius_set_hubbard_potential_double
 
@@ -1436,6 +1578,7 @@ complex(C_DOUBLE), intent(inout) :: pot
 integer(C_INT), intent(in) :: ld
 end subroutine
 end interface
+
 call sirius_set_hubbard_potential_aux(handler,pot,ld)
 end subroutine sirius_set_hubbard_potential_complex
 
