@@ -232,11 +232,11 @@ class Unit_cell
         atom_type(label).add_atom_id(static_cast<int>(atoms_.size()) - 1);
     }
 
-    /// Add new atom without vector field to the list of atom types.
-    inline void add_atom(const std::string label, vector3d<double> position)
-    {
-        add_atom(label, position, {0, 0, 0});
-    }
+    ///// Add new atom without vector field to the list of atom types.
+    //inline void add_atom(const std::string label, vector3d<double> position)
+    //{
+    //    add_atom(label, position, {0, 0, 0});
+    //}
 
     /// Add new atom without vector field to the list of atom types.
     inline void add_atom(const std::string label, std::vector<double> position)

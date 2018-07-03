@@ -623,9 +623,9 @@ void sirius_add_atom(void*  const* handler__,
 {
     GET_SIM_CTX(handler__);
     if (vector_field__ != nullptr) {
-        sim_ctx.unit_cell().add_atom(std::string(label__), position__, vector_field__);
+        sim_ctx.unit_cell().add_atom(std::string(label__), std::vector<double>(position__, position__ + 3), vector_field__);
     } else {
-        sim_ctx.unit_cell().add_atom(std::string(label__), position__);
+        sim_ctx.unit_cell().add_atom(std::string(label__), std::vector<double>(position__, position__ + 3));
     }
 }
 

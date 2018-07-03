@@ -356,7 +356,7 @@ class dmatrix : public matrix<T>
         this->comm().allreduce(full_mtrx.template at<CPU>(), static_cast<int>(full_mtrx.size()));
 
         if (this->blacs_grid().comm().rank() == 0) {
-            HDF5_tree h5(name__, true);
+            HDF5_tree h5(name__, hdf5_access_t::truncate);
             h5.write("nrow", m__);
             h5.write("ncol", n__);
             h5.write("mtrx", full_mtrx);
