@@ -84,7 +84,7 @@ double ground_state(Simulation_context& ctx,
     potential.allocate();
 
     if (task == task_t::ground_state_restart) {
-        if (!Utils::file_exists(storage_file_name)) {
+        if (!utils::file_exists(storage_file_name)) {
             TERMINATE("storage file is not found");
         }
         density.load();
@@ -175,7 +175,7 @@ void run_tasks(cmd_args const& args)
     task_t task = static_cast<task_t>(args.value<int>("task", 0));
     /* get the input file name */
     std::string fname = args.value<std::string>("input", "sirius.json");
-    if (!Utils::file_exists(fname)) {
+    if (!utils::file_exists(fname)) {
         if (Communicator::world().rank() == 0) {
             printf("input file does not exist\n");
         }
