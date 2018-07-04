@@ -326,7 +326,9 @@ void sirius_initialize_context(void* const* handler__)
    @fortran end */
 void sirius_free_handler(void** handler__)
 {
-    delete static_cast<utils::any_ptr*>(*handler__);
+    if (*handler__ != nullptr) {
+        delete static_cast<utils::any_ptr*>(*handler__);
+    }
     *handler__ = nullptr;
 }
 
