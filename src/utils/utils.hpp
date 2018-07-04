@@ -227,16 +227,17 @@ inline std::complex<double> round(std::complex<double> a__, int n__)
     return std::complex<double>(round(a__.real(), n__), round(a__.imag(), n__));
 }
 
-//==     /// Simple hash function.
-//==     /** Example: printf("hash: %16llX\n", hash()); */
-//==     static uint64_t hash(void const* buff, size_t size, uint64_t h = 5381)
-//==     {
-//==         unsigned char const* p = static_cast<unsigned char const*>(buff);
-//==         for (size_t i = 0; i < size; i++) {
-//==             h = ((h << 5) + h) + p[i];
-//==         }
-//==         return h;
-//==     }
+/// Simple hash function.
+/** Example: printf("hash: %16llX\n", hash()); */
+inline uint64_t hash(void const* buff, size_t size, uint64_t h = 5381)
+{
+    unsigned char const* p = static_cast<unsigned char const*>(buff);
+    for (size_t i = 0; i < size; i++) {
+        h = ((h << 5) + h) + p[i];
+    }
+    return h;
+}
+
 //== 
 //==     static void write_matrix(const std::string& fname,
 //==                              mdarray<double_complex, 2>& matrix,

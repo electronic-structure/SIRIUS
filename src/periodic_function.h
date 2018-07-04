@@ -315,7 +315,7 @@ class Periodic_function : public Smooth_periodic_function<T>
         double dr{0}, tp[2];
 
         if (unit_cell_.is_point_in_mt(vc, ja, jr, dr, tp)) {
-            int                 lmax = Utils::lmax_by_lmmax(angular_domain_size_);
+            int lmax = utils::lmax(angular_domain_size_);
             std::vector<double> rlm(angular_domain_size_);
             SHT::spherical_harmonics(lmax, tp[0], tp[1], &rlm[0]);
             double p{0};

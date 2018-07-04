@@ -50,31 +50,14 @@ class Utils // TODO: namespace utils
         return (l * l + l + m);
     }
 
-    static inline int lmax_by_lmmax(int lmmax__) // TODO: lmax_by_lmmax(lmmax) -> lmax(lmmax)
-    {
-        int lmax = int(std::sqrt(double(lmmax__)) + 1e-8) - 1;
-        if (lmmax(lmax) != lmmax__) {
-            TERMINATE("wrong lmmax");
-        }
-        return lmax;
-    }
-
-    static inline bool file_exists(const std::string file_name)
-    {
-        std::ifstream ifs(file_name.c_str());
-        return ifs.is_open();
-    }
-
-    /// Simple hash function.
-    /** Example: printf("hash: %16llX\n", hash()); */
-    static uint64_t hash(void const* buff, size_t size, uint64_t h = 5381)
-    {
-        unsigned char const* p = static_cast<unsigned char const*>(buff);
-        for (size_t i = 0; i < size; i++) {
-            h = ((h << 5) + h) + p[i];
-        }
-        return h;
-    }
+    //static inline int lmax_by_lmmax(int lmmax__) // TODO: lmax_by_lmmax(lmmax) -> lmax(lmmax)
+    //{
+    //    int lmax = int(std::sqrt(double(lmmax__)) + 1e-8) - 1;
+    //    if (lmmax(lmax) != lmmax__) {
+    //        TERMINATE("wrong lmmax");
+    //    }
+    //    return lmax;
+    //}
 
     static void write_matrix(const std::string& fname,
                              mdarray<double_complex, 2>& matrix,
@@ -265,18 +248,6 @@ class Utils // TODO: namespace utils
         return std::move(v);
     }
 
-    //inline static double round(double a__, int n__)
-    //{
-    //    double a0 = std::floor(a__);
-    //    double b  = std::round((a__ - a0) * std::pow(10, n__)) / std::pow(10, n__);
-    //    return a0 + b;
-    //}
-
-    //inline static double_complex round(double_complex a__, int n__)
-    //{
-    //    return double_complex(round(a__.real(), n__), round(a__.imag(), n__));
-    //}
-
     /// Read json dictionary from file or string.
     /** Terminate if file doesn't exist. */
     inline static json read_json_from_file_or_string(std::string const& str__)
@@ -287,7 +258,7 @@ class Utils // TODO: namespace utils
         }
 
         if (str__.find("{") == std::string::npos) { /* this is a file */
-            if (Utils::file_exists(str__)) {
+            if (utils::file_exists(str__)) {
                 try {
                     std::ifstream(str__) >> dict;
                 } catch(std::exception& e) {
