@@ -46,11 +46,11 @@ int main(int argn, char **argv)
     {
         Simulation_context ctx(Communicator::world());
         ctx.unit_cell().add_atom_type("Si", "Si.json");
-        ctx.unit_cell().add_atom("Si", vector3d<double>(0, 0, 0));
+        ctx.unit_cell().add_atom("Si", {0, 0, 0});
 
         ctx.unit_cell().add_atom_type("C", "C.json");
-        ctx.unit_cell().add_atom("C", vector3d<double>(0.5, 0, 0));
-        ctx.unit_cell().add_atom("C", vector3d<double>(0, 0.5, 0));
+        ctx.unit_cell().add_atom("C", {0.5, 0, 0});
+        ctx.unit_cell().add_atom("C", {0, 0.5, 0});
         ctx.unit_cell().set_lattice_vectors({4,0,0}, {0,4,0}, {0,0,4});
 
         ctx.initialize();
