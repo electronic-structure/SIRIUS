@@ -100,9 +100,7 @@ void sirius_stop_timer(char const* name__)
    @fortran end */
 void sirius_print_timers(void)
 {
-    if (Communicator::world().rank() == 0) {
-        utils::timer::print();
-    }
+    utils::timer::print();
 }
 
 /* @fortran begin function void sirius_integrate        Spline integration of f(x)*x^m.
