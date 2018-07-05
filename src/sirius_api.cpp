@@ -103,6 +103,18 @@ void sirius_print_timers(void)
     utils::timer::print();
 }
 
+/* @fortran begin function void sirius_serialize_timers    Save all timers to JSON file.
+   @fortran argument in required string fname              Name of the output JSON file.
+   @fortran end */
+void sirius_serialize_timers(char const* fname__)
+{
+    json dict;
+    dict["flat"] = utils::timer::serialize();
+    dict["tree"] = utils::timer::serialize_tree();
+    std::ofstream ofs(fname__, std::ofstream::out | std::ofstream::trunc);
+    ofs << dict.dump(4);
+}
+
 /* @fortran begin function void sirius_integrate        Spline integration of f(x)*x^m.
    @fortran argument in  required int    m              Defines the x^{m} factor.
    @fortran argument in  required int    np             Number of x-points.
