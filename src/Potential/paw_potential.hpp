@@ -315,7 +315,7 @@ inline double Potential::calc_PAW_hartree_potential(Atom& atom,
 
     const Radial_grid<double>& grid = full_density.radial_grid();
 
-    // array passed to poisson solver
+    /* array passed to poisson solver */
     Spheric_function<spectral, double> atom_pot_sf(lmsize_rho, grid);
     atom_pot_sf.zero();
 
@@ -324,23 +324,22 @@ inline double Potential::calc_PAW_hartree_potential(Atom& atom,
     /* add hartree contribution */
     full_potential += atom_pot_sf;
 
-    //---------------------
-    //--- calc energy ---
-    //---------------------
-    auto l_by_lm = Utils::l_by_lm( Utils::lmax_by_lmmax(lmsize_rho) );
+    /* calculate energy */
 
-    // create array for integration
+    auto l_by_lm = Utils::l_by_lm(utils::lmax(lmsize_rho));
+
+    /* create array for integration */
     std::vector<double> intdata(grid.num_points(),0);
 
-    double hartree_energy=0.0;
+    double hartree_energy{0};
 
     for (int lm=0; lm < lmsize_rho; lm++){
-        // fill data to integrate
+        /* fill data to integrate */
         for (int irad = 0; irad < grid.num_points(); irad++){
             intdata[irad] = full_density(lm,irad) * full_potential(lm, irad) * grid[irad] * grid[irad];
         }
 
-        // create spline from the data
+        /* create spline from the data */
         Spline<double> h_spl(grid,intdata);
         hartree_energy += 0.5 * h_spl.integrate(0);
     }

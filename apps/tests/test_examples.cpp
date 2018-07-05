@@ -16,7 +16,7 @@ double Gmax = 10;
    last boolean parameter switches
    off the reduction of G-vectors by 
    inversion symmetry */
-Gvec gvec(M, Gmax, mpi_comm_world(), false);
+Gvec gvec(M, Gmax, Communicator::world(), false);
 /* loop over local number of G-vectors
    for current MPI rank */
 for (int j = 0; j < gvec.count(); j++) {
@@ -50,14 +50,14 @@ double Gmax = 10;
    last boolean parameter switches
    off the reduction of G-vectors by 
    inversion symmetry */
-Gvec gvec(M, Gmax, mpi_comm_world(), false);
+Gvec gvec(M, Gmax, Communicator::world(), false);
 /* dimensions of the FFT box */
 std::array<int, 3> dims = {20, 20, 20};
 /* create parallel FFT driver with CPU backend */
-FFT3D fft(dims, mpi_comm_world(), CPU);
+FFT3D fft(dims, Communicator::world(), CPU);
 /* create G-vector partition; second communicator 
    is used in remappting data for FFT */
-Gvec_partition gvp(gvec, fft.comm(), mpi_comm_self());
+Gvec_partition gvp(gvec, fft.comm(), Communicator::self());
 /* create data buffer with local number of G-vectors
    and fill with random numbers */
 mdarray<double_complex, 1> f(gvp.gvec_count_fft());
@@ -69,10 +69,10 @@ fft.prepare(gvp);
 /* transform to real-space domain */
 fft.transform<1>(f.at<CPU>());
 /* now the fft buffer contains the real space values */
-for (int j0 = 0; j0 < fft.size_x(); j0++) {
-    for (int j1 = 0; j1 < fft.size_y(); j1++) {
+for (int j0 = 0; j0 < fft.size(0); j0++) {
+    for (int j1 = 0; j1 < fft.size(1); j1++) {
         for (int j2 = 0; j2 < fft.local_size_z(); j2++) {
-            int idx = fft.grid().index_by_coord(j0, j1, j2);
+            int idx = fft.index_by_coord(j0, j1, j2);
             /* get the value at (j0, j1, j2) point of the grid */
             auto val = fft.buffer(idx);
         }
@@ -101,10 +101,10 @@ double Gmax = 10;
    last boolean parameter switches
    off the reduction of G-vectors by 
    inversion symmetry */
-Gvec gvec(M, Gmax, mpi_comm_world(), false);
+Gvec gvec(M, Gmax, Communicator::world(), false);
 /* create G-vector partition; second communicator 
    is used in remappting data for FFT */
-Gvec_partition gvp(gvec, mpi_comm_world(), mpi_comm_self());
+Gvec_partition gvp(gvec, Communicator::world(), Communicator::self());
 /* number of wave-functions */
 int N = 100;
 /* create scalar wave-functions for N bands */
@@ -116,7 +116,7 @@ wf.pw_coeffs(ispn).prime() = [](int64_t, int64_t){
     return type_wrapper<double_complex>::random();
 };
 /* create a 2x2 BLACS grid */
-BLACS_grid grid(mpi_comm_world(), 2, 2);
+BLACS_grid grid(Communicator::world(), 2, 2);
 /* cyclic block size */
 int bs = 16;
 /* create a distributed overlap matrix */
@@ -154,14 +154,14 @@ double Gmax = 10;
    last boolean parameter switches
    off the reduction of G-vectors by 
    inversion symmetry */
-Gvec gvec(M, Gmax, mpi_comm_world(), false);
+Gvec gvec(M, Gmax, Communicator::world(), false);
 /* create sequential FFT driver with CPU backend */
-FFT3D fft(dims, mpi_comm_self(), CPU);
+FFT3D fft(dims, Communicator::self(), CPU);
 /* potential on a real-space grid */
 std::vector<double> v(fft.local_size(), 1);
 /* create G-vector partition; second communicator 
    is used in remappting wave-functions */
-Gvec_partition gvp(gvec, fft.comm(), mpi_comm_world());
+Gvec_partition gvp(gvec, fft.comm(), Communicator::world());
 /* prepare FFT driver */
 fft.prepare(gvp);
 /* number of wave-functions */
@@ -201,7 +201,10 @@ fft.dismiss();
 void test5()
 {
 /* create simulation context */
-Simulation_context ctx(mpi_comm_world(), "pseudopotential");
+Simulation_context ctx("{\"parameters\" : "
+    "{\"electronic_structure_method\":"
+    "\"pseudopotential\"}}",
+     Communicator::world());
 /* lattice constant */
 double a{5};
 /* set lattice vectors */
@@ -215,8 +218,8 @@ auto& atype = ctx.unit_cell().atom_type(0);
 /* set charge */
 atype.zn(1);
 /* set radial grid */
-atype.set_radial_grid(radial_grid_t::lin_exp_grid,
-                      1000, 0, 2);
+atype.set_radial_grid(radial_grid_t::lin_exp,
+                      1000, 0, 2, 6);
 /* create beta radial function */
 std::vector<double> beta(atype.num_mt_points());
 for (int i = 0; i < atype.num_mt_points(); i++) {

@@ -135,7 +135,7 @@ class Spheric_function: public mdarray<T, 2>
         {
             assert(domain_t == spectral);
 
-            int lmax = Utils::lmax_by_lmmax(angular_domain_size_);
+            int lmax = utils::lmax(angular_domain_size_);
             std::vector<T> ylm(angular_domain_size_);
             SHT::spherical_harmonics(lmax, theta__, phi__, &ylm[0]);
             T p = 0.0;
@@ -269,9 +269,9 @@ Spheric_function<spectral, T> laplacian(Spheric_function<spectral, T> const& f__
     Spheric_function<spectral, T> g;
     auto& rgrid = f__.radial_grid();
     int lmmax = f__.angular_domain_size();
-    int lmax = Utils::lmax_by_lmmax(lmmax);
+    int lmax = utils::lmax(lmmax);
     g = Spheric_function<spectral, T>(lmmax, rgrid);
-    
+
     Spline<T> s1(rgrid);
     for (int l = 0; l <= lmax; l++) {
         int ll = l * (l + 1);
@@ -284,7 +284,7 @@ Spheric_function<spectral, T> laplacian(Spheric_function<spectral, T> const& f__
                 s1(ir) = s.deriv(1, ir);
             }
             s1.interpolate();
-            
+
             for (int ir = 0; ir < s.num_points(); ir++) {
                 g(lm, ir) = 2 * s1(ir) * rgrid.x_inv(ir) + s1.deriv(1, ir) - s(ir) * ll / std::pow(rgrid[ir], 2);
             }
@@ -297,7 +297,7 @@ Spheric_function<spectral, T> laplacian(Spheric_function<spectral, T> const& f__
 /// Convert from Ylm to Rlm representation.
 inline Spheric_function<spectral, double> convert(Spheric_function<spectral, double_complex> const& f__)
 {
-    int lmax = Utils::lmax_by_lmmax(f__.angular_domain_size());
+    int lmax = utils::lmax(f__.angular_domain_size());
 
     /* cache transformation arrays */
     std::vector<double_complex> tpp(f__.angular_domain_size());
@@ -333,7 +333,7 @@ inline Spheric_function<spectral, double> convert(Spheric_function<spectral, dou
 /// Convert from Rlm to Ylm representation.
 inline Spheric_function<spectral, double_complex> convert(Spheric_function<spectral, double> const& f__)
 {
-    int lmax = Utils::lmax_by_lmmax(f__.angular_domain_size());
+    int lmax = utils::lmax(f__.angular_domain_size());
 
     /* cache transformation arrays */
     std::vector<double_complex> tpp(f__.angular_domain_size());
@@ -436,39 +436,33 @@ class Spheric_function_gradient
 inline Spheric_function_gradient<spectral, double_complex> gradient(Spheric_function<spectral, double_complex>& f)
 {
     Spheric_function_gradient<spectral, double_complex> g(f.angular_domain_size(), f.radial_grid());
-    for (int i = 0; i < 3; i++)
-    {
+    for (int i = 0; i < 3; i++) {
         g[i] = Spheric_function<spectral, double_complex>(f.angular_domain_size(), f.radial_grid());
         g[i].zero();
     }
-            
-    int lmax = Utils::lmax_by_lmmax(f.angular_domain_size());
+
+    int lmax = utils::lmax(f.angular_domain_size());
 
     //Spline<double_complex> s(f.radial_grid());
 
-    for (int l = 0; l <= lmax; l++)
-    {
+    for (int l = 0; l <= lmax; l++) {
         double d1 = sqrt(double(l + 1) / double(2 * l + 3));
         double d2 = sqrt(double(l) / double(2 * l - 1));
 
-        for (int m = -l; m <= l; m++)
-        {
+        for (int m = -l; m <= l; m++) {
             int lm = Utils::lm_by_l_m(l, m);
             auto s = f.component(lm);
 
-            for (int mu = -1; mu <= 1; mu++)
-            {
+            for (int mu = -1; mu <= 1; mu++) {
                 int j = (mu + 2) % 3; // map -1,0,1 to 1,2,0
 
-                if ((l + 1) <= lmax && abs(m + mu) <= l + 1)
-                {
+                if ((l + 1) <= lmax && abs(m + mu) <= l + 1) {
                     int lm1 = Utils::lm_by_l_m(l + 1, m + mu); 
                     double d = d1 * SHT::clebsch_gordan(l, 1, l + 1, m, mu, m + mu);
                     for (int ir = 0; ir < f.radial_grid().num_points(); ir++)
                         g[j](lm1, ir) += (s.deriv(1, ir) - f(lm, ir) * f.radial_grid().x_inv(ir) * double(l)) * d;  
                 }
-                if ((l - 1) >= 0 && abs(m + mu) <= l - 1)
-                {
+                if ((l - 1) >= 0 && abs(m + mu) <= l - 1) {
                     int lm1 = Utils::lm_by_l_m(l - 1, m + mu); 
                     double d = d2 * SHT::clebsch_gordan(l, 1, l - 1, m, mu, m + mu); 
                     for (int ir = 0; ir < f.radial_grid().num_points(); ir++)
@@ -481,10 +475,8 @@ inline Spheric_function_gradient<spectral, double_complex> gradient(Spheric_func
     double_complex d1(1.0 / sqrt(2.0), 0);
     double_complex d2(0, 1.0 / sqrt(2.0));
 
-    for (int ir = 0; ir < f.radial_grid().num_points(); ir++)
-    {
-        for (int lm = 0; lm < f.angular_domain_size(); lm++)
-        {
+    for (int ir = 0; ir < f.radial_grid().num_points(); ir++) {
+        for (int lm = 0; lm < f.angular_domain_size(); lm++) {
             double_complex g_p = g[0](lm, ir);
             double_complex g_m = g[1](lm, ir);
             g[0](lm, ir) = d1 * (g_m - g_p);
@@ -498,7 +490,7 @@ inline Spheric_function_gradient<spectral, double_complex> gradient(Spheric_func
 /// Gradient of the function in real spherical harmonics.
 inline Spheric_function_gradient<spectral, double> gradient(Spheric_function<spectral, double> const& f)
 {
-    int lmax = Utils::lmax_by_lmmax(f.angular_domain_size());
+    int lmax = utils::lmax(f.angular_domain_size());
     SHT sht(lmax);
     auto zf = convert(f);
     auto zg = gradient(zf);
@@ -514,10 +506,6 @@ inline Spheric_function<spatial, double> operator*(Spheric_function_gradient<spa
                                                    Spheric_function_gradient<spatial, double> const& g)
 {
     for (int x: {0, 1, 2}) {
-        //if (f[x].radial_grid().hash() != g[x].radial_grid().hash()) {
-        //    TERMINATE("wrong radial grids");
-        //}
-        
         if (f[x].angular_domain_size() != g[x].angular_domain_size()) {
             TERMINATE("wrong number of angular points");
         }
