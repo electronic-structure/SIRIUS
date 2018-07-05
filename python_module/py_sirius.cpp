@@ -109,6 +109,9 @@ PYBIND11_MODULE(py_sirius, m)
     }
 
     m.def("timer_print", &utils::timer::print);
+#ifdef __GPU
+    m.def("num_devices", &acc::num_devices);
+#endif
 
     py::class_<Parameters_input>(m, "Parameters_input")
         .def(py::init<>())
@@ -137,6 +140,7 @@ PYBIND11_MODULE(py_sirius, m)
         .def("set_verbosity", &Simulation_context::set_verbosity)
         .def("create_storage_file", &Simulation_context::create_storage_file)
         .def("processing_unit", &Simulation_context::processing_unit)
+        .def("set_processing_unit", py::overload_cast<device_t>(&Simulation_context::set_processing_unit))
         .def("gvec", &Simulation_context::gvec)
         .def("fft", &Simulation_context::fft)
         .def("unit_cell", py::overload_cast<>(&Simulation_context::unit_cell, py::const_), py::return_value_policy::reference);
@@ -297,12 +301,33 @@ PYBIND11_MODULE(py_sirius, m)
             int            num_wf           = wf.num_wf();
             int            num_sc           = wf.num_sc();
             Wave_functions wf_out(gkvec_partition, num_wf, num_sc);
+            #ifdef __GPU
+            if(hamiltonian.ctx().processing_unit() == GPU) {
+                for (int i = 0; i < num_sc; ++i) {
+                    wf_out.pw_coeffs(i).allocate_on_device();
+                }
+                if(!wf.pw_coeffs(0).prime().on_device()) {
+                    for (int i = 0; i < num_sc; ++i) {
+                        wf.pw_coeffs(i).allocate_on_device();
+                        wf.pw_coeffs(i).copy_to_device(0, num_wf);
+                    }
+                } else {
+                    // copy input wf to device (assuming it is located on CPU)
+                    for (int i = 0; i < num_sc; ++i) {
+                        wf.pw_coeffs(i).copy_to_device(0, num_wf);
+                    }
+                }
+            }
+            #endif
+
             /* apply H to all wave functions */
             int N = 0;
             int n = num_wf;
             auto& ctx = hamiltonian.ctx();
-            hamiltonian.local_op().dismiss();
+            // hamiltonian.local_op().dismiss();
+            hamiltonian.local_op().prepare(hamiltonian.potential());
             hamiltonian.local_op().prepare(kp.gkvec_partition());
+            hamiltonian.ctx().fft_coarse().prepare(kp.gkvec_partition());
             hamiltonian.prepare<double_complex>();
             hamiltonian.apply_h_s<complex_double>(&kp, ispn, N, n, wf, &wf_out, nullptr);
             hamiltonian.dismiss();
@@ -375,7 +400,8 @@ py::class_<Free_atom>(m, "Free_atom")
     //     });
 
     py::class_<matrix_storage_slab<complex_double>>(m, "MatrixStorageSlabC")
-        .def("is_remapped", &matrix_storage_slab<complex_double>::is_remapped);
+        .def("is_remapped", &matrix_storage_slab<complex_double>::is_remapped)
+        .def("prime", py::overload_cast<>(&matrix_storage_slab<complex_double>::prime), py::return_value_policy::reference_internal);
         // .def_buffer([](matrix_storage_slab<complex_double>& matrix_storage) -> py::array {
         //     // Fortran storage order
         //     int nrows = matrix_storage.prime().size(0);
@@ -388,19 +414,88 @@ py::class_<Free_atom>(m, "Free_atom")
         //                                      {sizeof(complex_double), sizeof(complex_double) * nrows}));
         // });
 
+    py::class_<mdarray<complex_double,2>>(m, "mdarray2c")
+        .def("on_device", &mdarray<complex_double,2>::on_device);
+
+    py::enum_<sddk::device_t>(m, "DeviceEnum")
+        .value("CPU", sddk::device_t::CPU)
+        .value("GPU", sddk::device_t::GPU);
+
     py::class_<Wave_functions>(m, "Wave_functions")
         .def("num_sc", &Wave_functions::num_sc)
         .def("num_wf", &Wave_functions::num_wf)
         .def("has_mt", &Wave_functions::has_mt)
         .def("pw_coeffs", [](py::object& obj, int i) -> py::array_t<complex_double> {
-            Wave_functions& wf             = obj.cast<Wave_functions&>();
-            auto&           matrix_storage = wf.pw_coeffs(i);
-            int             nrows          = matrix_storage.prime().size(0);
-            int             ncols          = matrix_storage.prime().size(1);
+            Wave_functions& wf = obj.cast<Wave_functions&>();
+            // coefficients are _always_ (i.e. usually ;) ) on GPU; copy to host
+            bool is_on_device = wf.pw_coeffs(0).prime().on_device();
+            if (is_on_device) {
+                /* on device, assume this is primary storage ... */
+                for (int ispn = 0; ispn < wf.num_sc(); ispn++) {
+                    wf.copy_to_host(ispn, 0, wf.num_wf());
+                }
+            }
+            auto& matrix_storage = wf.pw_coeffs(i);
+            int   nrows          = matrix_storage.prime().size(0);
+            int   ncols          = matrix_storage.prime().size(1);
             /* return underlying data as numpy.ndarray view, e.g. non-copying */
             /* TODO this might be a distributed array, should/can we use dask? */
-            return py::array_t<complex_double>({nrows, ncols}, {1, nrows}, matrix_storage.prime().data<CPU>(), obj);
+            return py::array_t<complex_double>({nrows, ncols},
+                                               {1 * sizeof(complex_double), nrows * sizeof(complex_double)},
+                                               matrix_storage.prime().data<CPU>(),
+                                               obj);
         })
-        .def("pw_coeffs_obj", py::overload_cast<int>(&Wave_functions::pw_coeffs, py::const_));
+        .def("copy_to_gpu", [](Wave_functions& wf) {
+            /* is_on_device -> true if all internal storage is allocated on device */
+            bool is_on_device = true;
+            for (int i = 0; i < wf.num_sc(); ++i) {
+                is_on_device = is_on_device && wf.pw_coeffs(i).prime().on_device();
+            }
+            if (!is_on_device) {
+                for (int ispn = 0; ispn < wf.num_sc(); ispn++) {
+                    std::cerr << "allocating storage for spin-component " << ispn << "\n";
+                    wf.pw_coeffs(ispn).prime().allocate(memory_t::device);
+                }
+            } else {
+                std::cerr << "wave function is already on device, possibly loosing data...\n";
+            }
 
+            for (int ispn = 0; ispn < wf.num_sc(); ispn++) {
+                std::cerr << "wave function copying sc=" << ispn << " to device...\n";
+                wf.copy_to_device(ispn, 0, wf.num_wf());
+            }
+        })
+        .def("copy_to_cpu", [](Wave_functions& wf) {
+            /* is_on_device -> true if all internal storage is allocated on device */
+            bool is_on_device = true;
+            for (int i = 0; i < wf.num_sc(); ++i) {
+                is_on_device = is_on_device && wf.pw_coeffs(i).prime().on_device();
+            }
+            if (!is_on_device) {
+                std::cerr << "not on device" << "\n";
+            } else {
+                for (int ispn = 0; ispn < wf.num_sc(); ispn++) {
+                    std::cerr << "wave function copying sc=" << ispn << " to device...\n";
+                    wf.copy_to_host(ispn, 0, wf.num_wf());
+                }
+            }
+        })
+        .def("on_device", [](Wave_functions& wf) {
+            bool is_on_device = true;
+            for (int i = 0; i < wf.num_sc(); ++i) {
+                is_on_device = is_on_device && wf.pw_coeffs(i).prime().on_device();
+            }
+            return is_on_device;
+        })
+        .def("pw_coeffs_obj", py::overload_cast<int>(&Wave_functions::pw_coeffs, py::const_), py::return_value_policy::reference_internal);
+
+    m.def("wf_inner", [](device_t pu, int ispn, Wave_functions& bra, int i0, int m, Wave_functions& ket, int j0, int n) {
+        dmatrix<complex_double> S(m, n, pu == device_t::GPU ? memory_t::device | memory_t::host : memory_t::host);
+        /* S holds the result in the CPU pointer */
+        inner(pu, ispn, bra, i0, m, ket, j0, n, S, 0, 0);
+
+        return py::array_t<complex_double>({m, n},
+                                           {1 * sizeof(complex_double), m * sizeof(complex_double)},
+                                           S.data<CPU>());
+    });
 }
