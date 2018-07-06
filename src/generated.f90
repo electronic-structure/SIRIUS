@@ -80,6 +80,22 @@ end interface
 call sirius_print_timers_aux()
 end subroutine sirius_print_timers
 
+!> @brief Save all timers to JSON file.
+!> @param [in] fname Name of the output JSON file.
+subroutine sirius_serialize_timers(fname)
+implicit none
+character(C_CHAR), dimension(*), intent(in) :: fname
+interface
+subroutine sirius_serialize_timers_aux(fname)&
+&bind(C, name="sirius_serialize_timers")
+use, intrinsic :: ISO_C_BINDING
+character(C_CHAR), dimension(*), intent(in) :: fname
+end subroutine
+end interface
+
+call sirius_serialize_timers_aux(fname)
+end subroutine sirius_serialize_timers
+
 !> @brief Spline integration of f(x)*x^m.
 !> @param [in] m Defines the x^{m} factor.
 !> @param [in] np Number of x-points.

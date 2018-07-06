@@ -130,7 +130,7 @@ double ground_state(Simulation_context& ctx,
 
         dict["task"] = static_cast<int>(task);
         dict["ground_state"] = result;
-        dict["timers"] = utils::timer::serialize_timers();
+        dict["timers"] = utils::timer::serialize();
         dict["counters"] = json::object();
         dict["counters"]["local_operator_num_applied"] = Local_operator::num_applied();
         dict["counters"]["band_evp_work_count"] = Band::evp_work_count();
@@ -325,6 +325,11 @@ int main(int argn, char** argv)
 
     if (my_rank == 0)  {
         utils::timer::print();
+        json dict;
+        dict["flat"] = utils::timer::serialize();
+        dict["tree"] = utils::timer::serialize_tree();
+        std::ofstream ofs("timers.json", std::ofstream::out | std::ofstream::trunc);
+        ofs << dict.dump(4);
     }
 
     return 0;

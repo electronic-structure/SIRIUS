@@ -70,6 +70,8 @@ namespace sirius {
 
 inline void initialize(bool call_mpi_init__ = true)
 {
+    utils::start_global_timer();
+
     if (call_mpi_init__) {
         Communicator::initialize(MPI_THREAD_MULTIPLE);
     }
@@ -98,14 +100,10 @@ inline void initialize(bool call_mpi_init__ = true)
     /* for the fortran interface to blas/lapack */
     assert(sizeof(int) == 4);
     assert(sizeof(double) == 8);
-
-    utils::start_global_timer();
 }
 
 inline void finalize(bool call_mpi_fin__ = true)
 {
-    utils::stop_global_timer();
-
 #if defined(__MAGMA)
     magma::finalize();
 #endif
@@ -127,13 +125,15 @@ inline void finalize(bool call_mpi_fin__ = true)
 #endif
     fftw_cleanup();
 
-    json dict;
-    dict["flat"] = utils::timer::serialize_timers();
-    dict["tree"] = utils::timer::serialize_timers_tree();
-    if (Communicator::world().rank() == 0) {
-        std::ofstream ofs("timers.json", std::ofstream::out | std::ofstream::trunc);
-        ofs << dict.dump(4);
-    }
+    utils::stop_global_timer();
+
+    //json dict;
+    //dict["flat"] = utils::timer::serialize();
+    //dict["tree"] = utils::timer::serialize_tree();
+    //if (Communicator::world().rank() == 0) {
+    //    std::ofstream ofs("timers.json", std::ofstream::out | std::ofstream::trunc);
+    //    ofs << dict.dump(4);
+    //}
 
     //utils::timer::print_tree();
     if (call_mpi_fin__) {

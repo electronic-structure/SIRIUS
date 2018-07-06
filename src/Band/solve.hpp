@@ -138,7 +138,7 @@ inline void Band::solve(K_point_set& kset__, Hamiltonian& hamiltonian__, bool pr
         }
     }
     kset__.comm().allreduce(&num_dav_iter, 1);
-    if (ctx_.comm().rank() == 0 && !ctx_.full_potential()) {
+    if (ctx_.comm().rank() == 0 && !ctx_.full_potential() && ctx_.control().verbosity_ >= 1) {
         printf("Average number of iterations: %12.6f\n", static_cast<double>(num_dav_iter) / kset__.num_kpoints());
     }
 
@@ -150,7 +150,7 @@ inline void Band::solve(K_point_set& kset__, Hamiltonian& hamiltonian__, bool pr
     /* synchronize eigen-values */
     kset__.sync_band_energies();
 
-    if (ctx_.control().verbosity_ >= 1 && ctx_.comm().rank() == 0) {
+    if (ctx_.control().verbosity_ >= 2 && ctx_.comm().rank() == 0) {
         printf("Lowest band energies\n");
         for (int ik = 0; ik < kset__.num_kpoints(); ik++) {
             printf("ik : %2i, ", ik);
