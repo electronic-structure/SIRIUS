@@ -921,7 +921,7 @@ inline void Simulation_context_base::initialize()
         if (evsn[i] == "") {
             /* conditions for sequential diagonalization */
             if (comm_band().size() == 1 || npc == 1 || npr == 1 || !is_scalapack) {
-                if (is_magma) {
+                if (is_magma && num_bands() > 200) {
                     evsn[i] = "magma";
                 } else {
                     evsn[i] = "lapack";
