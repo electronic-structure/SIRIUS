@@ -37,7 +37,7 @@
 #include "sht.h"
 #include "radial_functions_index.hpp"
 #include "basis_functions_index.hpp"
-
+#include "hubbard_orbitals_info.hpp"
 namespace sirius {
 
 /// Defines the properties of atom type.
@@ -113,6 +113,9 @@ class Atom_type
     /// Total occupancy of the (hubbard) wave functions.
     std::vector<double> ps_atomic_wf_occ_;
 
+    /// atomic level associated to the atomic wave functions
+    std::vector<int> ps_atomic_wf_level_;
+
     /// True if the pseudopotential is soft and charge augmentation is required.
     bool augment_{false};
 
@@ -158,36 +161,14 @@ class Atom_type
     /// True if the pseudo potential includes spin orbit coupling.
     bool spin_orbit_coupling_{false};
 
+    /// vector containing all orbitals informations that are relevant
+    /// for the hubbard correction
+
+    std::vector<hubbard_orbital_info_> hubbard_orbitals_;
+
     /// Hubbard correction
     bool hubbard_correction_{false};
 
-    /// Hubbard angular momentum s, p, d, f
-    int hubbard_l_{-1};
-
-    /// Hubbard orbital
-    int hubbard_n_{0};
-
-    // Hubbard occupancy
-    double hubbard_occupancy_orbital_;
-
-    /// different hubbard coefficients
-    //  s: U = hubbard_coefficients_[0]
-    //  p: U = hubbard_coefficients_[0], J = hubbard_coefficients_[1]
-    //  d: U = hubbard_coefficients_[0], J = hubbard_coefficients_[1],  B  = hubbard_coefficients_[2]
-    //  f: U = hubbard_coefficients_[0], J = hubbard_coefficients_[1],  E2 = hubbard_coefficients_[2], E3 = hubbard_coefficients_[3]
-    ///   hubbard_coefficients[4] = U_alpha
-    ///   hubbard_coefficients[5] = U_beta
-
-    double hubbard_J_{0.0};
-    double hubbard_U_{0.0};
-    double hubbard_coefficients_[4];
-
-    mdarray<double, 4> hubbard_matrix_;
-
-    // simplifed hubbard theory
-    double hubbard_alpha_{0.0};
-    double hubbard_beta_{0.0};
-    double hubbard_J0_{0.0};
 
     /// Inverse of (Q_{\xi \xi'j}^{-1} + beta_pw^{H}_{\xi} * beta_pw_{xi'})
     /** Used in Chebyshev iterative solver as a block-diagonal preconditioner */
@@ -220,8 +201,8 @@ class Atom_type
     inline void read_pseudo_uspp(json const& parser);
 
     inline void read_pseudo_paw(json const& parser);
-    
-    /// Read atomic parameters from json file or string. 
+
+    /// Read atomic parameters from json file or string.
     inline void read_input(std::string const& str__);
 
     inline void init_aw_descriptors(int lmax)
@@ -384,17 +365,19 @@ class Atom_type
         lo_descriptors_.push_back(lod__);
     }
 
-    inline void add_ps_atomic_wf(int l__, std::vector<double> f__)
+    inline void add_ps_atomic_wf(int n__, int l__, std::vector<double> f__)
     {
         Spline<double> s(radial_grid_, f__);
         ps_atomic_wfs_.push_back(std::move(std::make_pair(l__, std::move(s))));
+        ps_atomic_wf_level_.push_back(n__);
     }
 
-    inline void add_ps_atomic_wf(int l__, std::vector<double> f__, double occ_)
+    inline void add_ps_atomic_wf(int n__, int l__, std::vector<double> f__, double occ_)
     {
         Spline<double> s(radial_grid_, f__);
         ps_atomic_wfs_.push_back(std::move(std::make_pair(l__, std::move(s))));
         ps_atomic_wf_occ_.push_back(occ_);
+        ps_atomic_wf_level_.push_back(n__);
     }
 
     std::pair<int, Spline<double>> const& ps_atomic_wf(int idx__) const
@@ -594,6 +577,102 @@ class Atom_type
     {
         paw_wf_occ_ = inp__;
         return paw_wf_occ_;
+    }
+
+    void add_hubbard_orbital(int n,
+                             int l,
+                             double occ,
+                             double U,
+                             double J,
+                             const double *hub_coef_,
+                             double alpha_,
+                             double beta_,
+                             double J0_)
+    {
+
+
+        for (int s = 0; s < ps_atomic_wf_level_.size(); s++) {
+
+            if (ps_atomic_wf_level_[s] > 0) {
+                if (ps_atomic_wf_level_[s] ==  n) {
+                    hubbard_orbital_info_ hub;
+                    hub.hubbard_n_ = n;
+                    hub.hubbard_l_ = l;
+                    hub.hubbard_occ_ = occ;
+
+                    hub.hubbard_J_ = J;
+                    hub.hubbard_U_ = U;
+
+                    if (hub_coef_) {
+                        for (int s = 0; s < 4; s++) {
+                            hub.hubbard_coefficients_[s] = hub_coef_[s];
+                        }
+
+                        hub.initialize_hubbard_matrix();
+                    }
+
+                    hub.hubbard_alpha_ = alpha_;
+                    hub.hubbard_beta_ = beta_;
+                    hub.hubbard_J0_ = J0_;
+                    hub.radial_orbital_index_ = s;
+                    hubbard_orbitals_.push_back(std::move(hub));
+
+                    // we nedd to consider the case where spin orbit
+                    // coupling is included. if so is included then we need
+                    // to search for its partner with same n, l, but
+                    // different j. if not we can stop the for loop
+
+                    if (!this->spin_orbit_coupling_)
+                        break;
+                }
+            } else {
+                auto &wfc = ps_atomic_wfs_[s];
+                // we do a search per angular momentum
+                // we pick the first atomic wave function we
+                // find with the right l. It is to deal with
+                // codes that do not store all info about wave
+                // functions.
+                if (wfc.first == l) {
+                    hubbard_orbital_info_ hub;
+                    hub.hubbard_n_ = n;
+                    hub.hubbard_l_ = l;
+                    hub.hubbard_occ_ = occ;
+
+                    hub.hubbard_J_ = J;
+                    hub.hubbard_U_ = U;
+
+                    if (hub_coef_) {
+                        for (int s = 0; s < 4; s++) {
+                            hub.hubbard_coefficients_[s] = hub_coef_[s];
+                        }
+
+                        hub.initialize_hubbard_matrix();
+                    }
+
+                    hub.hubbard_alpha_ = alpha_;
+                    hub.hubbard_beta_ = beta_;
+                    hub.hubbard_J0_ = J0_;
+                    hub.radial_orbital_index_ = s;
+                    hubbard_orbitals_.push_back(std::move(hub));
+
+                    if (!this->spin_orbit_coupling_)
+                        break;
+                }
+            }
+        }
+    }
+
+    inline int number_of_hubbard_channels() const {
+        return hubbard_orbitals_.size();
+    }
+
+    inline hubbard_orbital_info_ const &hubbard_orbital(const int channel_) const {
+        assert(hubbard_orbitals_.size() > 0);
+        return hubbard_orbitals_[channel_];
+    }
+
+    inline const std::vector<hubbard_orbital_info_> &hubbard_orbital() const {
+        return hubbard_orbitals_;
     }
 
     inline void init_free_atom(bool smooth);
@@ -956,138 +1035,12 @@ class Atom_type
         return hubbard_correction_;
     }
 
-    inline double Hubbard_J0() const
+
+    inline void set_hubbard_correction()
     {
-        return hubbard_J0_;
+        this->hubbard_correction_ = true;
     }
 
-    inline double Hubbard_U() const
-    {
-        return hubbard_U_;
-    }
-
-    inline double Hubbard_J() const
-    {
-        return hubbard_J_;
-    }
-
-    inline void set_hubbard_U(double U__)
-    {
-        hubbard_U_ = U__;
-    }
-
-    inline void set_hubbard_J(double J__)
-    {
-        hubbard_J_ = J__;
-    }
-
-    inline double Hubbard_U_minus_J() const
-    {
-        return Hubbard_U() - Hubbard_J();
-    }
-
-    inline double Hubbard_B() const
-    {
-        return hubbard_coefficients_[2];
-    }
-
-    inline double Hubbard_E2() const
-    {
-        return hubbard_coefficients_[2];
-    }
-
-    inline double Hubbard_E3() const
-    {
-        return hubbard_coefficients_[3];
-    }
-
-    inline double Hubbard_alpha() const
-    {
-        return hubbard_alpha_;
-    }
-
-    inline double Hubbard_beta() const
-    {
-        return hubbard_beta_;
-    }
-
-    inline void set_hubbard_alpha(const double alpha)
-    {
-        hubbard_alpha_ = alpha;
-    }
-
-    inline void set_hubbard_beta(const double beta_)
-    {
-        hubbard_beta_ = beta_;
-    }
-
-    inline void set_hubbard_coefficients(double const * J_)
-    {
-        this->hubbard_coefficients_[0] = J_[0];
-        this->hubbard_coefficients_[1] = J_[1];
-        this->hubbard_coefficients_[2] = J_[2];
-        this->hubbard_coefficients_[3] = J_[3];
-    }
-
-    inline void set_hubbard_J0(double const J0_)
-    {
-        this->hubbard_J0_ = J0_;
-    }
-
-    inline void set_hubbard_correction(const int co_)
-    {
-        if(co_ > 0)
-            this->hubbard_correction_ = true;
-        else
-            this->hubbard_correction_ = false;
-    }
-
-    inline int hubbard_l() const
-    {
-        return hubbard_l_;
-    }
-
-    inline int hubbard_n() const
-    {
-        return hubbard_n_;
-    }
-
-    inline double hubbard_matrix(const int m1, const int m2, const int m3, const int m4) const
-    {
-        return hubbard_matrix_(m1, m2, m3, m4);
-    }
-
-    inline double& hubbard_matrix(const int m1, const int m2, const int m3, const int m4)
-    {
-        return hubbard_matrix_(m1, m2, m3, m4);
-    }
-
-    void hubbard_F_coefficients(double *F)
-    {
-        F[0] = Hubbard_U();
-
-        switch(hubbard_l_) {
-        case 0:
-            F[1] = Hubbard_J();
-            break;
-        case 1:
-            F[1] = 5.0 * Hubbard_J();
-            break;
-        case 2:
-            F[1] = 5.0 * Hubbard_J() + 31.5 * Hubbard_B();
-            F[2] = 9.0 * Hubbard_J() - 31.5 * Hubbard_B();
-            break;
-        case 3:
-            F[1] = (225.0 / 54.0) * Hubbard_J()     + (32175.0 / 42.0) * Hubbard_E2()   + (2475.0 / 42.0) * Hubbard_E3();
-            F[2] = 11.0 * Hubbard_J()            - (141570.0 / 77.0) * Hubbard_E2()  + (4356.0 / 77.0) * Hubbard_E3();
-            F[3] = (7361.640 / 594.0) * Hubbard_J() + (36808.20 / 66.0) * Hubbard_E2()  - 111.54 * Hubbard_E3();
-            break;
-        default:
-            printf("Hubbard lmax %d\n", hubbard_l_);
-            TERMINATE("Hubbard correction not implemented for l > 3");
-            break;
-        }
-    }
 
     /// compare the angular, total angular momentum and radial part of
     /// the beta projectors, leaving the m index free. Only useful
@@ -1098,32 +1051,11 @@ class Atom_type
                 (std::abs(indexb(xi).j - indexb(xj).j) < 1e-8));
     }
 
-    inline void set_hubbard_orbital(const int n_, const int l_, const double occ_)
-    {
-        if (occ_ < 0 && hubbard_correction_) {
-            TERMINATE("this atom has hubbard correction but the orbital occupancy is negative\n");
-        }
-        hubbard_occupancy_orbital_ = occ_;
-
-        if (n_ < 0 || l_ < 0) {
-            TERMINATE("this atom has hubbard correction but the orbital level is not specified\n");
-        }
-        hubbard_l_ = l_;
-        hubbard_n_ = n_;
-    }
-
-    inline double get_occupancy_hubbard_orbital() const
-    {
-        return hubbard_occupancy_orbital_;
-    }
-
   private:
     void read_hubbard_input();
     void generate_f_coefficients(void);
     inline double ClebschGordan(const int l, const double j, const double m, const int spin);
     inline double_complex calculate_U_sigma_m(const int l, const double j, const int mj, const int m, const int sigma);
-    inline void calculate_ak_coefficients(mdarray<double, 5> &ak);
-    inline void compute_hubbard_matrix();
 };
 
 inline void Atom_type::init(int offset_lo__)
@@ -1265,10 +1197,6 @@ inline void Atom_type::init(int offset_lo__)
                                        memory_t::host_pinned | memory_t::device, "Atom_type::vrf_coef_");
     }
 
-    if (this->hubbard_correction_) {
-        compute_hubbard_matrix();
-    }
-
     if (this->spin_orbit_coupling()) {
         this->generate_f_coefficients();
     }
@@ -1376,9 +1304,9 @@ inline void Atom_type::print_info() const
     if (parameters_.hubbard_correction() && this->hubbard_correction()) {
         printf("Hubbard correction is included in the calculations");
         printf("\n");
-        printf("angular momentum         : %i\n", hubbard_l());
-        printf("principal quantum number : %i\n", hubbard_n());
-        printf("occupancy                : %f\n", hubbard_occupancy_orbital_);
+        printf("angular momentum         : %i\n", hubbard_orbitals_[0].hubbard_l());
+        printf("principal quantum number : %i\n", hubbard_orbitals_[0].hubbard_n());
+        printf("occupancy                : %f\n", hubbard_orbitals_[0].hubbard_occupancy());
     }
 
     if (parameters_.full_potential()) {
@@ -1648,9 +1576,16 @@ inline void Atom_type::read_pseudo_uspp(json const& parser)
             }
 
             int l = parser["pseudo_potential"]["atomic_wave_functions"][k]["angular_momentum"];
-
+            int n = -1;
             if (parser["pseudo_potential"]["atomic_wave_functions"][k].count("occupation")) {
                 occupancies.push_back(parser["pseudo_potential"]["atomic_wave_functions"][k]["occupation"]);
+            }
+
+            if (parser["pseudo_potential"]["atomic_wave_functions"][k].count("label")) {
+                std::string c1 = parser["pseudo_potential"]["atomic_wave_functions"][k]["label"];
+                std::istringstream iss(std::string(1, c1[0]));
+                iss >> n;
+                ps_atomic_wf_level_.push_back(n);
             }
 
             if (spin_orbit_coupling() &&
@@ -1660,7 +1595,7 @@ inline void Atom_type::read_pseudo_uspp(json const& parser)
                     l = -l;
                 }
             }
-            add_ps_atomic_wf(l, v);
+            add_ps_atomic_wf(n, l, v);
         }
         ps_atomic_wf_occ(occupancies);
     }
@@ -1763,7 +1698,7 @@ inline void Atom_type::read_input(std::string const& str__)
 }
 
 // TODO: this is not an atom type property, move to SHT or utils class
-inline double Atom_type::ClebschGordan(const int l, const double j, const double mj, const int spin) 
+inline double Atom_type::ClebschGordan(const int l, const double j, const double mj, const int spin)
 {
     // l : orbital angular momentum
     // m:  projection of the total angular momentum $m \pm /frac12$
@@ -1908,102 +1843,17 @@ inline void Atom_type::generate_f_coefficients(void)
     }
 }
 
-inline void Atom_type::calculate_ak_coefficients(mdarray<double, 5> &ak)
-{
-    // compute the ak coefficients appearing in the general treatment of
-    // hubbard corrections.  expression taken from Liechtenstein {\it et
-    // al}, PRB 52, R5467 (1995)
-
-    // Note that for consistency, the ak are calculated with complex
-    // harmonics in the gaunt coefficients <R_lm|Y_l'm'|R_l''m''>.
-    // we need to keep it that way because of the hubbard potential
-  // With a spherical one it does not really matter-
-    ak.zero();
-
-    for (int m1 = -this->hubbard_l_; m1 <= this->hubbard_l_; m1++) {
-        for (int m2 = -this->hubbard_l_; m2 <= this->hubbard_l_; m2++) {
-            for (int m3 = -this->hubbard_l_; m3 <= this->hubbard_l_; m3++) {
-                for (int m4 = -this->hubbard_l_; m4 <= this->hubbard_l_; m4++) {
-                    for (int k = 0; k < 2*this->hubbard_l_; k += 2) {
-                        double sum = 0.0;
-                        for (int q = -k; q <= k; q++) {
-                            sum += SHT::gaunt_rlm_ylm_rlm(this->hubbard_l_, k, this->hubbard_l_, m1, q, m2) *
-                                SHT::gaunt_rlm_ylm_rlm(this->hubbard_l_, k, this->hubbard_l_, m3, q, m4);
-                        }
-                        // hmmm according to PRB 52, R5467 it is 4
-                        // \pi/(2 k + 1) -> 4 \pi / (4 * k + 1) because
-                        // I only consider a_{k=0} a_{k=2}, a_{k=4}
-                        ak(k/2,
-                           m1 + this->hubbard_l_,
-                           m2 + this->hubbard_l_,
-                           m3 + this->hubbard_l_,
-                           m4 + this->hubbard_l_) = 4.0 * sum * M_PI / static_cast<double>(2 * k + 1);
-                    }
-                }
-            }
-        }
-    }
-}
-
-/// this function computes the matrix elements of the orbital part of
-/// the electron-electron interactions. we effectively compute
-
-/// \f[ u(m,m'',m',m''') = \left<m,m''|V_{e-e}|m',m'''\right> \sum_k
-/// a_k(m,m',m'',m''') F_k \f] where the F_k are calculated for real
-/// spherical harmonics
-
-
-
-inline void Atom_type::compute_hubbard_matrix()
-{
-    this->hubbard_matrix_ = mdarray<double, 4>(2 * this->hubbard_l_ + 1,
-                                               2 * this->hubbard_l_ + 1,
-                                               2 * this->hubbard_l_ + 1,
-                                               2 * this->hubbard_l_ + 1);
-    mdarray<double, 5> ak(this->hubbard_l_,
-                          2 * this->hubbard_l_ + 1,
-                          2 * this->hubbard_l_ + 1,
-                          2 * this->hubbard_l_ + 1,
-                          2 * this->hubbard_l_ + 1);
-    std::vector<double> F(4);
-    hubbard_F_coefficients(&F[0]);
-    calculate_ak_coefficients(ak);
-
-
-    // the indices are rotated around
-
-    // <m, m |vee| m'', m'''> = hubbard_matrix(m, m'', m', m''')
-    this->hubbard_matrix_.zero();
-    for(int m1 = 0; m1 < 2 * this->hubbard_l_ + 1; m1++) {
-        for(int m2 = 0; m2 < 2 * this->hubbard_l_ + 1; m2++) {
-            for(int m3 = 0; m3 < 2 * this->hubbard_l_ + 1; m3++) {
-                for(int m4 = 0; m4 < 2 * this->hubbard_l_ + 1; m4++) {
-                    for(int k = 0; k < hubbard_l_; k++)
-                        this->hubbard_matrix(m1, m2, m3, m4) += ak (k, m1, m3, m2, m4) * F[k];
-                }
-            }
-        }
-    }
-}
 
 inline void Atom_type::read_hubbard_input()
 {
     if(!parameters_.Hubbard().hubbard_correction_) {
         return;
     }
+
     for(auto &d: parameters_.Hubbard().species) {
         if (d.first == symbol_) {
-            hubbard_U_ = d.second.coeff_[0];
-            hubbard_J_ = d.second.coeff_[1];
-            hubbard_coefficients_[0] = d.second.coeff_[0];
-            hubbard_coefficients_[1] = d.second.coeff_[1];
-            hubbard_coefficients_[2] = d.second.coeff_[2];
-            hubbard_coefficients_[3] = d.second.coeff_[3];
-            hubbard_alpha_ = d.second.coeff_[4];
-            hubbard_beta_ = d.second.coeff_[5];
-            hubbard_occupancy_orbital_ = d.second.occupancy_;
-            hubbard_l_ = d.second.l;
-            hubbard_n_ = d.second.n;
+            int hubbard_l_ = d.second.l;
+            int hubbard_n_ = d.second.n;
 
             if (hubbard_l_ < 0) {
                 std::istringstream iss(std::string(1, d.second.level[0]));
@@ -2039,10 +1889,21 @@ inline void Atom_type::read_hubbard_input()
                 }
                 }
             }
+
+            add_hubbard_orbital(hubbard_n_,
+                                hubbard_l_,
+                                d.second.occupancy_,
+                                d.second.coeff_[1],
+                                d.second.coeff_[1],
+                                &d.second.coeff_[0],
+                                d.second.coeff_[4],
+                                d.second.coeff_[5],
+                                0.0);
+            }
+
             this->hubbard_correction_ = true;
         }
     }
-}
 } // namespace
 
 #endif // __ATOM_TYPE_H__

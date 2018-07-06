@@ -590,29 +590,32 @@ end subroutine sirius_set_atom_type_radial_grid
 !> @param [in] label Label of the radial function.
 !> @param [in] rf Array with radial function values.
 !> @param [in] num_points Length of radial function array.
-!> @param [in] l Orbital quantum number.
+!> @param [in] n Orbital quantum number.
+!> @param [in] l angular momentum.
 !> @param [in] idxrf1 First index of radial function (for Q-operator).
 !> @param [in] idxrf2 Second index of radial function (for Q-operator).
 !> @param [in] occ Occupancy of the wave-function.
 subroutine sirius_add_atom_type_radial_function(handler,atom_type,label,rf,num_p&
-&oints,l,idxrf1,idxrf2,occ)
+&oints,n,l,idxrf1,idxrf2,occ)
 implicit none
 type(C_PTR), intent(in) :: handler
 character(C_CHAR), dimension(*), intent(in) :: atom_type
 character(C_CHAR), dimension(*), intent(in) :: label
 real(C_DOUBLE), intent(in) :: rf
 integer(C_INT), intent(in) :: num_points
+integer(C_INT), optional, target, intent(in) :: n
 integer(C_INT), optional, target, intent(in) :: l
 integer(C_INT), optional, target, intent(in) :: idxrf1
 integer(C_INT), optional, target, intent(in) :: idxrf2
 real(C_DOUBLE), optional, target, intent(in) :: occ
+type(C_PTR) :: n_ptr
 type(C_PTR) :: l_ptr
 type(C_PTR) :: idxrf1_ptr
 type(C_PTR) :: idxrf2_ptr
 type(C_PTR) :: occ_ptr
 interface
 subroutine sirius_add_atom_type_radial_function_aux(handler,atom_type,label,rf,n&
-&um_points,l,idxrf1,idxrf2,occ)&
+&um_points,n,l,idxrf1,idxrf2,occ)&
 &bind(C, name="sirius_add_atom_type_radial_function")
 use, intrinsic :: ISO_C_BINDING
 type(C_PTR), intent(in) :: handler
@@ -620,12 +623,16 @@ character(C_CHAR), dimension(*), intent(in) :: atom_type
 character(C_CHAR), dimension(*), intent(in) :: label
 real(C_DOUBLE), intent(in) :: rf
 integer(C_INT), intent(in) :: num_points
+type(C_PTR), value, intent(in) :: n
 type(C_PTR), value, intent(in) :: l
 type(C_PTR), value, intent(in) :: idxrf1
 type(C_PTR), value, intent(in) :: idxrf2
 type(C_PTR), value, intent(in) :: occ
 end subroutine
 end interface
+
+n_ptr = C_NULL_PTR
+if (present(n)) n_ptr = C_LOC(n)
 
 l_ptr = C_NULL_PTR
 if (present(l)) l_ptr = C_LOC(l)
@@ -640,7 +647,7 @@ occ_ptr = C_NULL_PTR
 if (present(occ)) occ_ptr = C_LOC(occ)
 
 call sirius_add_atom_type_radial_function_aux(handler,atom_type,label,rf,num_poi&
-&nts,l_ptr,idxrf1_ptr,idxrf2_ptr,occ_ptr)
+&nts,n_ptr,l_ptr,idxrf1_ptr,idxrf2_ptr,occ_ptr)
 end subroutine sirius_add_atom_type_radial_function
 
 !> @brief Set the hubbard correction for the atomic type.

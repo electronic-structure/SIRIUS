@@ -60,8 +60,8 @@ void Hubbard_potential::apply_hubbard_potential(K_point& kp,
     #pragma omp parallel for schedule(static)
     for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ++ia) {
         const auto& atom = ctx_.unit_cell().atom(ia);
-        const int lmax_at = 2 * atom.type().hubbard_l() + 1;
         if (atom.type().hubbard_correction()) {
+            const int lmax_at = 2 * atom.type().hubbard_orbital(0).hubbard_l() + 1;
             // we apply the hubbard correction. For now I have no papers
             // giving me the formula for the SO case so I rely on QE for it
             // but I do not like it at all

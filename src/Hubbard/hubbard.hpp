@@ -80,47 +80,21 @@ class Hubbard_potential // TODO: rename to Hubbard
         offset.resize(ctx_.unit_cell().num_atoms(), -1);
 
         int counter = 0;
+
+        // we loop over atoms to check which atom has hubbard orbitals
+        // and then compute the number of hubbard orbitals associated to
+        // it.
         for (auto ia = 0; ia < unit_cell_.num_atoms(); ia++) {
             auto& atom = unit_cell_.atom(ia);
-
             if (atom.type().hubbard_correction()) {
-                // search for the orbital of given l corresponding to the
-                // hubbard l, with strickly positive occupation
-                for (int wfc = 0; wfc < atom.type().num_ps_atomic_wf(); wfc++) {
-                    const int    l   = std::abs(atom.type().ps_atomic_wf(wfc).first);
-                    const double occ = atom.type().ps_atomic_wf_occ()[wfc];
-                    if ((occ >= 0.0) && (l == atom.type().hubbard_l())) {
-                        // a wave function is hubbard if and only if the occupation
-                        // number is positive and l corresponds to hubbard_lmax;
-                        bool hubbard_wfc = (occ > 0);
-                        if (hubbard_wfc && (offset[ia] < 0)) {
-                            offset[ia] = counter;
-                        }
-
-                        // the atom has spin orbit coupling so we have
-                        // two wave functions with same l but different
-                        // j
-                        if (atom.type().spin_orbit_coupling() && hubbard_wfc) {
-                            counter += (2 * l + 1);
-                        } else {
-                            if (hubbard_wfc && (ctx_.num_mag_dims() == 3)) {
-                                // the pseudo potential does not include
-                                // spin orbit coupling but we do
-                                // calculation with non colinear
-                                // magnetism so we still have full
-                                // hubbard spinors
-                                counter += 2 * (2 * l + 1);
-                            }
-                            if (hubbard_wfc && (ctx_.num_mag_dims() != 3)) {
-                                // colinear or conventional LDA
-                                counter += (2 * l + 1);
-                            }
-                        }
-                    }
+                offset[ia] = counter;
+                for (auto && orb : atom.type().hubbard_orbital()) {
+                    counter += (2 * orb.hubbard_l_ + 1);
                 }
+
             }
         }
-        // compute the number of orbitals
+
         this->number_of_hubbard_orbitals_ = counter;
     }
 
@@ -278,8 +252,13 @@ class Hubbard_potential // TODO: rename to Hubbard
 
         this->lmax_ = -1;
         for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {
+            auto &atom_type = ctx_.unit_cell().atom(ia).type();
             if (ctx__.unit_cell().atom(ia).type().hubbard_correction()) {
-                this->lmax_ = std::max(this->lmax_, ctx_.unit_cell().atom(ia).type().hubbard_l());
+                for (unsigned int channel = 0;
+                     channel < atom_type.number_of_hubbard_channels();
+                     channel++) {
+                    this->lmax_ = std::max(this->lmax_, atom_type.hubbard_orbital(channel).hubbard_l());
+                }
             }
         }
 

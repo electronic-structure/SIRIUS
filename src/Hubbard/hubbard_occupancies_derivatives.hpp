@@ -108,7 +108,7 @@ void Hubbard_potential::compute_occupancies_derivatives(K_point& kp,
 
                 // compute the derivative of |phi> corresponding to the
                 // atom atom_id
-                const int lmax_at = 2 * ctx_.unit_cell().atom(atom_id).type().hubbard_l() + 1;
+                const int lmax_at = 2 * ctx_.unit_cell().atom(atom_id).type().hubbard_orbital(0).hubbard_l() + 1;
 
                 // compute the derivatives of the hubbard wave functions
                 // |phi_m^J> (J = atom_id) compared to a displacement of atom J.
@@ -384,33 +384,34 @@ void Hubbard_potential::compute_gradient_strain_wavefunctions(K_point& kp__,
         for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
             auto& atom_type = ctx_.unit_cell().atom(ia).type();
             if (atom_type.hubbard_correction()) {
-                for (int i = 0; i < atom_type.num_ps_atomic_wf(); i++) {
-                    auto l = std::abs(atom_type.ps_atomic_wf(i).first);
-                    if (l == atom_type.hubbard_l()) {
-                        auto phase        = twopi * dot(kp__.gkvec().gkvec(igk), unit_cell_.atom(ia).position());
-                        auto phase_factor = std::exp(double_complex(0.0, phase));
-                        auto z            = std::pow(double_complex(0, -1), l) * fourpi / std::sqrt(unit_cell_.omega());
+                int offset__ = this->offset[ia];
+                for (auto &&orb : atom_type.hubbard_orbital()) {
+                    const int i = orb.rindex();
+                    const int l = orb.hubbard_l();
+                    auto phase        = twopi * dot(kp__.gkvec().gkvec(igk), unit_cell_.atom(ia).position());
+                    auto phase_factor = std::exp(double_complex(0.0, phase));
+                    auto z            = std::pow(double_complex(0, -1), l) * fourpi / std::sqrt(unit_cell_.omega());
 
-                        // case |g+k| = 0
-                        if (gvs[0] < 1e-10) {
-                            if (l == 0) {
-                                auto d1 = ri_values[atom_type.id()][i] * p * y00;
-                                dphi.pw_coeffs(0).prime(igkloc, this->offset[ia]) = -z * d1 * phase_factor;
-                            } else {
-                                for (int m = -l; m <= l; m++) {
-                                    dphi.pw_coeffs(0).prime(igkloc, this->offset[ia] + l + m) = 0.0;
-                                }
-                            }
+                    // case |g+k| = 0
+                    if (gvs[0] < 1e-10) {
+                        if (l == 0) {
+                            auto d1 = ri_values[atom_type.id()][i] * p * y00;
+                            dphi.pw_coeffs(0).prime(igkloc, offset__) = -z * d1 * phase_factor;
                         } else {
                             for (int m = -l; m <= l; m++) {
-                                int lm  = Utils::lm_by_l_m(l, m);
-                                auto d1 = ri_values[atom_type.id()][i] * (gvc[mu] * rlm_dg(lm, nu, igkloc) +
-                                                                          p * rlm_g(lm, igkloc));
-                                auto d2 = ridjl_values[atom_type.id()][i] * rlm_g(lm, igkloc) * gvc[mu] * gvc[nu] / gvs[0];
-                                dphi.pw_coeffs(0).prime(igkloc, this->offset[ia] + l + m) = -z * (d1 + d2) * std::conj(phase_factor);
+                                dphi.pw_coeffs(0).prime(igkloc, offset__ + l + m) = 0.0;
                             }
                         }
+                    } else {
+                        for (int m = -l; m <= l; m++) {
+                            int lm  = Utils::lm_by_l_m(l, m);
+                            auto d1 = ri_values[atom_type.id()][i] * (gvc[mu] * rlm_dg(lm, nu, igkloc) +
+                                                                      p * rlm_g(lm, igkloc));
+                            auto d2 = ridjl_values[atom_type.id()][i] * rlm_g(lm, igkloc) * gvc[mu] * gvc[nu] / gvs[0];
+                            dphi.pw_coeffs(0).prime(igkloc, offset__ + l + m) = -z * (d1 + d2) * std::conj(phase_factor);
+                        }
                     }
+                    offset__ += 2 * l + 1;
                 }
             }
         }
@@ -510,7 +511,7 @@ void Hubbard_potential::compute_occupancies(K_point& kp,
     for (int ia1 = 0; ia1 < ctx_.unit_cell().num_atoms(); ++ia1) {
         const auto& atom = ctx_.unit_cell().atom(ia1);
         if (atom.type().hubbard_correction()) {
-            const int lmax_at = 2 * atom.type().hubbard_l() + 1;
+            const int lmax_at = 2 * atom.type().hubbard_orbital(0).hubbard_l() + 1;
             for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
                 const size_t ispn_offset = ispn * this->number_of_hubbard_orbitals() + this->offset[ia1];
                 for (int m2 = 0; m2 < lmax_at; m2++) {
