@@ -353,6 +353,7 @@ PYBIND11_MODULE(py_sirius, m)
             hamiltonian.prepare<double_complex>();
             hamiltonian.apply_h_s<complex_double>(&kp, ispn, N, n, wf, &wf_out, nullptr);
             hamiltonian.dismiss();
+            hamiltonian.ctx().fft_coarse().dismiss();
             return wf_out;
         });
 
