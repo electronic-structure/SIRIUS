@@ -98,9 +98,27 @@ PYBIND11_MODULE(py_sirius, m)
 {
 
     // MPI_Init/Finalize
-    sirius::initialize();
+    int mpi_init_flag;
+    MPI_Initialized(&mpi_init_flag);
+    if (mpi_init_flag == true) {
+        std::cout << "loading SIRIUS python module, MPI already initialized" << "\n";
+        sirius::initialize(false);
+    } else {
+        std::cout << "loading SIRIUS python module, initialize MPI" << "\n";
+        sirius::initialize(true);
+    }
     auto atexit = py::module::import("atexit");
-    atexit.attr("register")(py::cpp_function([]() { sirius::finalize(); }));
+    atexit.attr("register")(py::cpp_function([]() {
+        int mpi_finalized_flag;
+        MPI_Finalized(&mpi_finalized_flag);
+        if(mpi_finalized_flag == true) {
+            std::cout << "pyAtExit:: MPI already finalized" << "\n";
+            sirius::finalize(false);
+        } else {
+            std::cout << "pyAtExit:: let SIRIUS call MPI finalize" << "\n";
+            sirius::finalize(true);
+        }
+    }));
 
     try {
         py::module::import("numpy");
