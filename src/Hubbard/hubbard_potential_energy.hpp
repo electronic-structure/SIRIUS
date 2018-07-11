@@ -318,3 +318,74 @@ void Hubbard_potential::calculate_hubbard_potential_and_energy_non_colinear_case
                this->hubbard_energy_flip_, this->hubbard_energy_dc_contribution_);
     }
 }
+
+/**
+ * retrieve or initialize the hubbard potential
+ *
+ * this functions helps retrieving or setting up the hubbard potential
+ * tensors from an external tensor. Retrieving it is done by specifying
+ * "get" in the first argument of the method while setting it is done
+ * with the parameter set up to "set". The second parameter is the
+ * output pointer and the last parameter is the leading dimension of the
+ * tensor.
+ *
+ * The returned result has the same layout than SIRIUS layout, * i.e.,
+ * the harmonic orbitals are stored from m_z = -l..l. The occupancy
+ * matrix can also be accessed through the method occupation_matrix()
+ *
+ *
+ * @param what__ string to set to "set" for initializing sirius
+ * occupancy tensor and "get" for retrieving it
+ * @param pointer to external potential tensor
+ * @param leading dimension of the outside tensor
+ * @return
+ * return the potential if the first parameter is set to "get"
+ */
+
+void Hubbard_potential::access_hubbard_potential(char  const* what__,
+                                                 double*      occ__,
+                                                 int   const *ld__)
+{
+    /* this implementation is QE-specific at the moment */
+
+    std::string what(what__);
+
+    if (!(what == "get" || what == "set")) {
+        std::stringstream s;
+        s << "wrong access label: " << what;
+        TERMINATE(s);
+    }
+
+    mdarray<double_complex, 4> pot_mtrx;
+
+    if (ctx_.num_mag_dims() == 3) {
+        pot_mtrx = mdarray<double_complex, 4>(reinterpret_cast<double_complex *>(occ__), *ld__, *ld__, 4, ctx_.unit_cell().num_atoms());
+    } else {
+        pot_mtrx = mdarray<double_complex, 4>(reinterpret_cast<double_complex *>(occ__), *ld__, *ld__, ctx_.num_spins(), ctx_.unit_cell().num_atoms());
+    }
+    if (what == "get") {
+        pot_mtrx.zero();
+    }
+
+    auto& potential_matrix = this->potential_matrix();
+
+    for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {
+        auto& atom = ctx_.unit_cell().atom(ia);
+        if (atom.type().hubbard_correction()) {
+            const int l = ctx_.unit_cell().atom(ia).type().hubbard_orbital(0).hubbard_l();
+            for (int m1 = -l; m1 <= l; m1++) {
+                for (int m2 = -l; m2 <= l; m2++) {
+                    if (what == "get") {
+                        for (int j = 0; j < ((ctx_.num_mag_dims() == 3) ? 4 :  ctx_.num_spins()); j++) {
+                            pot_mtrx(l + m1, l + m2, j, ia) = potential_matrix(l + m1, l + m2, j, ia, 0);
+                        }
+                    } else {
+                        for (int j = 0; j <  ((ctx_.num_mag_dims() == 3) ? 4 :  ctx_.num_spins()); j++) {
+                            potential_matrix(l + m1, l + m2, j, ia, 0) = pot_mtrx(l + m1, l + m2, j, ia);
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

@@ -500,13 +500,12 @@ void sirius_add_atom_type_radial_function(void*  const* handler__,
         if (l__ == nullptr) {
             TERMINATE("orbital quantum number must be provided for pseudo-atomic radial function");
         }
+
         int n = (n__) ? *n__ : -1;
         double occ = (occ__) ? *occ__ : 0.0;
         type.add_ps_atomic_wf(n, *l__, std::vector<double>(rf__, rf__ + *num_points__), occ);
     } else if (label == "ps_rho_core") {
-
         type.ps_core_charge_density(std::vector<double>(rf__, rf__ + *num_points__));
-
     } else if (label == "ps_rho_total") {
         type.ps_total_charge_density(std::vector<double>(rf__, rf__ + *num_points__));
     } else if (label == "vloc") {
@@ -1593,80 +1592,57 @@ void sirius_calculate_hubbard_occupancies(void* const* handler__)
     gs.hamiltonian().U().hubbard_compute_occupation_numbers(gs.k_point_set());
 }
 
-static inline void access_hubbard_occupancies(void* const* handler__,
-                                              char  const* what__,
-                                              double*      occ__,
-                                              int   const *ld__)
-{
-    /* this implementation is QE-specific at the moment */
+// static inline void access_hubbard_occupancies(void* const* handler__,
+//                                               char  const* what__,
+//                                               double*      occ__,
+//                                               int   const *ld__)
+// {
+//     /* this implementation is QE-specific at the moment */
 
-    std::string what(what__);
+//     std::string what(what__);
 
-    if (!(what == "get" || what == "set")) {
-        std::stringstream s;
-        s << "wrong access label: " << what;
-        TERMINATE(s);
-    }
+//     if (!(what == "get" || what == "set")) {
+//         std::stringstream s;
+//         s << "wrong access label: " << what;
+//         TERMINATE(s);
+//     }
 
-    mdarray<double, 5> occ_mtrx;
-    auto& gs = static_cast<utils::any_ptr*>(*handler__)->get<sirius::DFT_ground_state>();
-    /* in non-collinear case the occupancy matrix is complex */
-    if (gs.ctx().num_mag_dims() == 3) {
-        occ_mtrx = mdarray<double, 5>(occ__, 2, *ld__, *ld__, 4, gs.ctx().unit_cell().num_atoms());
-    } else {
-        occ_mtrx = mdarray<double, 5>(occ__, 1, *ld__, *ld__, gs.ctx().num_spins(), gs.ctx().unit_cell().num_atoms());
-    }
-    if (what == "get") {
-        occ_mtrx.zero();
-    }
+//     mdarray<double_complex, 4> occ_mtrx;
+//     auto& gs = static_cast<utils::any_ptr*>(*handler__)->get<sirius::DFT_ground_state>();
+//     /* in non-collinear case the occupancy matrix is complex */
+//     if (gs.ctx().num_mag_dims() == 3) {
+//         occ_mtrx = mdarray<double_complex, 4>(occ__, *ld__, *ld__, 4, gs.ctx().unit_cell().num_atoms());
+//     } else {
+//         occ_mtrx = mdarray<double_complex, 4>(occ__, *ld__, *ld__, gs.ctx().num_spins(), gs.ctx().unit_cell().num_atoms());
+//     }
+//     if (what == "get") {
+//         occ_mtrx.zero();
+//     }
 
-    auto& occupation_matrix = gs.hamiltonian().U().occupation_matrix();
+//     auto& occupation_matrix = gs.hamiltonian().U().occupation_matrix();
 
-    for (int ia = 0; ia < gs.ctx().unit_cell().num_atoms(); ia++) {
-        auto& atom = gs.ctx().unit_cell().atom(ia);
-        if (atom.type().hubbard_correction()) {
-            const int l = gs.ctx().unit_cell().atom(ia).type().hubbard_orbital(0).hubbard_l();
-            for (int m1 = -l; m1 <= l; m1++) {
-                const int mm1 = idx_m_qe(m1);
-                for (int m2 = -l; m2 <= l; m2++) {
-                    const int mm2 = idx_m_qe(m2);
-                    if (gs.ctx().num_mag_dims() == 3) {
-                        if (what == "get") {
-                            std::vector<double_complex> z = {
-                                occupation_matrix(l + m1, l + m2, 0, ia, 0),
-                                occupation_matrix(l + m1, l + m2, 2, ia, 0),
-                                occupation_matrix(l + m1, l + m2, 3, ia, 0),
-                                occupation_matrix(l + m1, l + m2, 1, ia, 0)};
-                            for (int j = 0; j < 4; j++) {
-                                occ_mtrx(0, mm1, mm2, j, ia) = z[j].real();
-                                occ_mtrx(1, mm1, mm2, j, ia) = z[j].imag();
-                            }
-                        } else {
-                            std::vector<double_complex> z(4);
-                            for (int j = 0; j < 4; j++) {
-                                z[j] = double_complex(occ_mtrx(0, mm1, mm2, j, ia), occ_mtrx(1, mm1, mm2, j, ia));
-                            }
-                            occupation_matrix(l + m1, l + m2, 0, ia, 0) = z[0];
-                            occupation_matrix(l + m1, l + m2, 2, ia, 0) = z[1];
-                            occupation_matrix(l + m1, l + m2, 3, ia, 0) = z[2];
-                            occupation_matrix(l + m1, l + m2, 1, ia, 0) = z[3];
-                        }
-                    } else {
-                        if (what == "get") {
-                            for (int j = 0; j < gs.ctx().num_spins(); j++) {
-                                occ_mtrx(0, mm1, mm2, j, ia) = occupation_matrix(l + m1, l + m2, j, ia, 0).real();
-                            }
-                        } else {
-                            for (int j = 0; j < gs.ctx().num_spins(); j++) {
-                                occupation_matrix(l + m1, l + m2, j, ia, 0) = double_complex(occ_mtrx(0, mm1, mm2, j, ia), 0);
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
+//     for (int ia = 0; ia < gs.ctx().unit_cell().num_atoms(); ia++) {
+//         auto& atom = gs.ctx().unit_cell().atom(ia);
+//         if (atom.type().hubbard_correction()) {
+//             const int l = gs.ctx().unit_cell().atom(ia).type().hubbard_orbital(0).hubbard_l();
+//             for (int m1 = -l; m1 <= l; m1++) {
+//                 const int mm1 = l + m1;
+//                 for (int m2 = -l; m2 <= l; m2++) {
+//                     const int mm2 = m2 + l;
+//                     if (what == "get") {
+//                         for (int j = 0; j < ((gs.ctx().num_mag_dims() == 3) ? 4 :  gs.ctx().num_spins()); j++) {
+//                             occ_mtrx(l + m1, l + m2, j, ia) = occupation_matrix(l + m1, l + m2, j, ia, 0);
+//                         }
+//                     } else {
+//                         for (int j = 0; j <  ((gs.ctx().num_mag_dims() == 3) ? 4 :  gs.ctx().num_spins()); j++) {
+//                             occupation_matrix(l + m1, l + m2, j, ia, 0) = occ_mtrx(l + m1, l + m2, j, ia);
+//                         }
+//                     }
+//                 }
+//             }
+//         }
+//     }
+// }
 
 /* @fortran begin function void sirius_set_hubbard_occupancies _double Set occupation matrix for LDA+U.
    @fortran argument in    required void* handler                      Ground state handler.
@@ -1683,7 +1659,8 @@ void sirius_set_hubbard_occupancies(void* const* handler__,
                                     double*      occ__,
                                     int   const *ld__)
 {
-    access_hubbard_occupancies(handler__, "set", occ__, ld__);
+    auto& gs = static_cast<utils::any_ptr*>(*handler__)->get<sirius::DFT_ground_state>();
+    gs.hamiltonian().U().access_hubbard_occupancies("set", occ__, ld__);
 }
 
 /* @fortran begin function void sirius_get_hubbard_occupancies _double Get occupation matrix for LDA+U.
@@ -1701,84 +1678,60 @@ void sirius_get_hubbard_occupancies(void* const* handler__,
                                     double*      occ__,
                                     int   const *ld__)
 {
-    access_hubbard_occupancies(handler__, "get", occ__, ld__);
-}
-
-
-static inline void access_hubbard_potential(void* const* handler__,
-                                            char  const* what__,
-                                            double*      pot__,
-                                            int   const *ld__)
-{
-    /* this implementation is QE-specific at the moment */
-
-    std::string what(what__);
-
-    if (!(what == "get" || what == "set")) {
-        std::stringstream s;
-        s << "wrong access label: " << what;
-        TERMINATE(s);
-    }
-
-    mdarray<double, 5> pot_mtrx;
     auto& gs = static_cast<utils::any_ptr*>(*handler__)->get<sirius::DFT_ground_state>();
-    /* in non-collinear case the occupancy matrix is complex */
-    if (gs.ctx().num_mag_dims() == 3) {
-        pot_mtrx = mdarray<double, 5>(pot__, 2, *ld__, *ld__, 4, gs.ctx().unit_cell().num_atoms());
-    } else {
-        pot_mtrx = mdarray<double, 5>(pot__, 1, *ld__, *ld__, gs.ctx().num_spins(), gs.ctx().unit_cell().num_atoms());
-    }
-    if (what == "get") {
-        pot_mtrx.zero();
-    }
-
-    auto& potential_matrix = gs.hamiltonian().U().potential_matrix();
-
-    for (int ia = 0; ia < gs.ctx().unit_cell().num_atoms(); ia++) {
-        auto& atom = gs.ctx().unit_cell().atom(ia);
-        if (atom.type().hubbard_correction()) {
-            const int l = gs.ctx().unit_cell().atom(ia).type().hubbard_orbital(0).hubbard_l();
-            for (int m1 = -l; m1 <= l; m1++) {
-                const int mm1 = idx_m_qe(m1);
-                for (int m2 = -l; m2 <= l; m2++) {
-                    const int mm2 = idx_m_qe(m2);
-                    if (gs.ctx().num_mag_dims() == 3) {
-                        if (what == "get") {
-                            std::vector<double_complex> z = {
-                                potential_matrix(l + m1, l + m2, 0, ia, 0),
-                                potential_matrix(l + m1, l + m2, 2, ia, 0),
-                                potential_matrix(l + m1, l + m2, 3, ia, 0),
-                                potential_matrix(l + m1, l + m2, 1, ia, 0)};
-                            for (int j = 0; j < 4; j++) {
-                                pot_mtrx(0, mm1, mm2, j, ia) = z[j].real();
-                                pot_mtrx(1, mm1, mm2, j, ia) = z[j].imag();
-                            }
-                        } else {
-                            std::vector<double_complex> z(4);
-                            for (int j = 0; j < 4; j++) {
-                                z[j] = double_complex(pot_mtrx(0, mm1, mm2, j, ia), pot_mtrx(1, mm1, mm2, j, ia));
-                            }
-                            potential_matrix(l + m1, l + m2, 0, ia, 0) = z[0];
-                            potential_matrix(l + m1, l + m2, 2, ia, 0) = z[1];
-                            potential_matrix(l + m1, l + m2, 3, ia, 0) = z[2];
-                            potential_matrix(l + m1, l + m2, 1, ia, 0) = z[3];
-                        }
-                    } else {
-                        if (what == "get") {
-                            for (int j = 0; j < gs.ctx().num_spins(); j++) {
-                                pot_mtrx(0, mm1, mm2, j, ia) = potential_matrix(l + m1, l + m2, j, ia, 0).real();
-                            }
-                        } else {
-                            for (int j = 0; j < gs.ctx().num_spins(); j++) {
-                                potential_matrix(l + m1, l + m2, j, ia, 0) = double_complex(pot_mtrx(0, mm1, mm2, j, ia), 0);
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
+    gs.hamiltonian().U().access_hubbard_occupancies("get", occ__, ld__);
 }
+
+
+// static inline void access_hubbard_potential(void* const* handler__,
+//                                             char  const* what__,
+//                                             double*      pot__,
+//                                             int   const *ld__)
+// {
+//     /* this implementation is QE-specific at the moment */
+
+//     std::string what(what__);
+
+//     if (!(what == "get" || what == "set")) {
+//         std::stringstream s;
+//         s << "wrong access label: " << what;
+//         TERMINATE(s);
+//     }
+
+//     mdarray<double_complex, 4> pot_mtrx;
+//     auto& gs = static_cast<utils::any_ptr*>(*handler__)->get<sirius::DFT_ground_state>();
+//     /* in non-collinear case the occupancy matrix is complex */
+//     if (gs.ctx().num_mag_dims() == 3) {
+//         pot_mtrx = mdarray<double, 5>(pot__, *ld__, *ld__, 4, gs.ctx().unit_cell().num_atoms());
+//     } else {
+//         pot_mtrx = mdarray<double, 5>(pot__, *ld__, *ld__, gs.ctx().num_spins(), gs.ctx().unit_cell().num_atoms());
+//     }
+//     if (what == "get") {
+//         pot_mtrx.zero();
+//     }
+
+//     auto& potential_matrix = gs.hamiltonian().U().potential_matrix();
+
+//     for (int ia = 0; ia < gs.ctx().unit_cell().num_atoms(); ia++) {
+//         auto& atom = gs.ctx().unit_cell().atom(ia);
+//         if (atom.type().hubbard_correction()) {
+//             const int l = gs.ctx().unit_cell().atom(ia).type().hubbard_orbital(0).hubbard_l();
+//             for (int m1 = -l; m1 <= l; m1++) {
+//                 for (int m2 = -l; m2 <= l; m2++) {
+//                     if (what == "get") {
+//                         for (int j = 0; j < ((gs.ctx().num_mag_dims() == 3) ? 4 : gs.ctx().num_spins()); j++) {
+//                             pot_mtrx(l + m1, l + m2, j, ia) = potential_matrix(l + m1, l + m2, j, ia, 0);
+//                         }
+//                     } else {
+//                         for (int j = 0; j < ((gs.ctx().num_mag_dims() == 3) ? 4 : gs.ctx().num_spins()); j++) {
+//                             potential_matrix(l + m1, l + m2, j, ia, 0) = pot_mtrx(l + m1, l + m2, j, ia);
+//                         }
+//                     }
+//                 }
+//             }
+//         }
+//     }
+// }
 
 /* @fortran begin function void sirius_set_hubbard_potential _double      Set LDA+U potential matrix.
    @fortran argument in    required void* handler                         Ground state handler.
@@ -1795,7 +1748,8 @@ void sirius_set_hubbard_potential(void* const* handler__,
                                   double*      pot__,
                                   int   const *ld__)
 {
-    access_hubbard_potential(handler__, "set", pot__, ld__);
+    auto& gs = static_cast<utils::any_ptr*>(*handler__)->get<sirius::DFT_ground_state>();
+    gs.hamiltonian().U().access_hubbard_potential("set", pot__, ld__);
 }
 
 

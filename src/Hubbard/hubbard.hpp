@@ -289,6 +289,14 @@ class Hubbard_potential // TODO: rename to Hubbard
     {
         return hubbard_potential_;
     }
+
+    void access_hubbard_potential(char  const* what__,
+                                  double*      occ__,
+                                  int   const *ld__);
+
+    void access_hubbard_occupancies(char  const* what__,
+                                    double*      occ__,
+                                    int   const *ld__);
 };
 
 #include "hubbard_generate_atomic_orbitals.hpp"
