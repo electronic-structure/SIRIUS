@@ -293,6 +293,12 @@ class K_point_set
     inline K_point* operator[](int i)
     {
         assert(i >= 0 && i < (int)kpoints_.size());
+        return kpoints_[i].get();
+    }
+
+    inline K_point* operator[](int i) const
+    {
+        assert(i >= 0 && i < (int)kpoints_.size());
 
         return kpoints_[i].get();
     }
