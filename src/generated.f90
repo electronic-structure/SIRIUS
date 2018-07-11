@@ -1577,6 +1577,7 @@ type(C_PTR), intent(in) :: handler
 complex(C_DOUBLE), intent(inout) :: pot
 integer(C_INT), intent(in) :: ld
 interface
+
 subroutine sirius_set_hubbard_potential_aux(handler,pot,ld)&
 &bind(C, name="sirius_set_hubbard_potential")
 use, intrinsic :: ISO_C_BINDING
@@ -1588,4 +1589,3 @@ end interface
 
 call sirius_set_hubbard_potential_aux(handler,pot,ld)
 end subroutine sirius_set_hubbard_potential_complex
-
