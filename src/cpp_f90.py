@@ -13,6 +13,7 @@ in_type_map = {
     'complex' : 'complex(C_DOUBLE)'
 }
 
+
 def write_str_to_f90(o, string):
     n = 80
     while len(string) > n:
@@ -21,8 +22,14 @@ def write_str_to_f90(o, string):
     o.write(string)
     o.write('\n')
 
-def write_function(o, func_name, func_suffix, func_type, func_args, func_doc):
+
+def write_function(o, func_name, func_suffix, func_type, func_args, func_doc, details):
     o.write('!> @brief ' + func_doc + '\n')
+    if details:
+        o.write('!> @details ' + details[0] + '\n')
+        for i in range(1, len(details)):
+            o.write('!> ' + details[i] + '\n')
+
     for a in func_args:
         o.write('!> @param [' + a['intent'] + '] ' + a['name'] + ' ' + a['doc'] + '\n')
 
@@ -118,6 +125,7 @@ def write_function(o, func_name, func_suffix, func_type, func_args, func_doc):
         o.write('end function ')
     o.write(func_name + func_suffix + '\n\n')
 
+
 def main():
     f = open(sys.argv[1], 'r') 
     o = open('generated.f90', 'w')
@@ -133,6 +141,7 @@ def main():
         i = line.find('@fortran')
         if i > 0:
             v = line[i:].split()
+            end_of_block = False
             if v[1] == 'begin' and v[2] == 'function':
                 func_type = v[3]
                 func_name = v[4]
@@ -144,6 +153,9 @@ def main():
                     func_doc = ' '.join(v[5:])
 
                 func_args = []
+
+                details = []
+
 
                 while (True):
                     line = f.readline()
@@ -162,10 +174,26 @@ def main():
                                               'required' : arg_required, 
                                               'name'     : v[5],
                                               'doc'      : arg_doc})
-                        if v[1] == 'end': break
+                        if v[1] == 'details':
+                            while (True):
+                                line = f.readline()
 
-            if v[1] == 'end':
-                write_function(o, func_name, func_suffix, func_type, func_args, func_doc)
+                                i = line.find('@fortran')
+                                if i > 0:
+                                    v = line[i:].split()
+                                    if v[1] == 'end':
+                                        end_of_block = True
+                                        break
+                                else:
+                                    details.append(line.strip())
+
+                        if v[1] == 'end':
+                            end_of_block = True
+                            break;
+
+
+            if end_of_block:
+                write_function(o, func_name, func_suffix, func_type, func_args, func_doc, details)
 
 
     f.close()

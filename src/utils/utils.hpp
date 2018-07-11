@@ -238,6 +238,19 @@ inline uint64_t hash(void const* buff, size_t size, uint64_t h = 5381)
     return h;
 }
 
+/// Simple pseudo-random generator.
+inline uint32_t rand()
+{
+    static uint32_t a = 123456;
+
+    a = (a ^ 61) ^ (a >> 16);
+    a = a + (a << 3);
+    a = a ^ (a >> 4);
+    a = a * 0x27d4eb2d;
+    a = a ^ (a >> 15);
+    return a;
+}
+
 //== 
 //==     static void write_matrix(const std::string& fname,
 //==                              mdarray<double_complex, 2>& matrix,
