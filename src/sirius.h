@@ -25,6 +25,10 @@
 #ifndef __SIRIUS_H__
 #define __SIRIUS_H__
 
+#if defined(__APEX)
+#include <apex_api.hpp>
+#endif
+
 #include "utils/json.hpp"
 using json = nlohmann::json;
 
@@ -70,14 +74,16 @@ namespace sirius {
 
 inline void initialize(bool call_mpi_init__ = true)
 {
-    utils::start_global_timer();
-
     if (call_mpi_init__) {
         Communicator::initialize(MPI_THREAD_MULTIPLE);
     }
     if (Communicator::world().rank() == 0) {
         printf("SIRIUS %i.%i, git hash: %s\n", major_version, minor_version, git_hash);
     }
+#if defined(__APEX)
+    apex::init("sirius", Communicator::world().rank(), Communicator::world().size());
+#endif
+    utils::start_global_timer();
 
 #if defined(__GPU)
     if (acc::num_devices()) {
@@ -126,16 +132,9 @@ inline void finalize(bool call_mpi_fin__ = true)
     fftw_cleanup();
 
     utils::stop_global_timer();
-
-    //json dict;
-    //dict["flat"] = utils::timer::serialize();
-    //dict["tree"] = utils::timer::serialize_tree();
-    //if (Communicator::world().rank() == 0) {
-    //    std::ofstream ofs("timers.json", std::ofstream::out | std::ofstream::trunc);
-    //    ofs << dict.dump(4);
-    //}
-
-    //utils::timer::print_tree();
+#if defined(__APEX)
+    apex::finalize();
+#endif
     if (call_mpi_fin__) {
         Communicator::finalize();
     }

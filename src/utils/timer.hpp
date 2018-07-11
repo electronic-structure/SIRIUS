@@ -3,6 +3,9 @@
 
 //#define __TIMER_SEQUENCE
 
+#if defined(__APEX)
+#include <apex_api.hpp>
+#endif
 #include <omp.h>
 #include <string>
 #include <sstream>
@@ -13,7 +16,6 @@
 #include <complex>
 #include <algorithm>
 #include "json.hpp"
-
 namespace utils {
 
 using time_point_t = std::chrono::high_resolution_clock::time_point;
@@ -44,7 +46,9 @@ class timer
 
     /// True if timer is active.
     bool active_{false};
-
+#if defined(__APEX)
+    apex::profiler* apex_p_;
+#endif
     /// List of child timers that we called inside another timer.
     static std::vector<std::string>& stack()
     {
@@ -112,6 +116,9 @@ class timer
         starting_time_ = std::chrono::high_resolution_clock::now();
         /* add timer label to the list of called timers */
         stack().push_back(label_);
+#if defined(__APEX)
+        apex_p_ = apex::start(label_);
+#endif
     }
 
     ~timer()
@@ -125,6 +132,9 @@ class timer
         this->starting_time_ = src__.starting_time_;
         this->active_        = src__.active_;
         src__.active_        = false;
+#if defined(__APEX)
+        this->apex_p_        = src__.apex_p_;
+#endif
     }
 
     /// Stop the timer and update the statistics.
@@ -165,6 +175,9 @@ class timer
             }
             timer_values_ex()[parent_label][label_] += val;
         }
+#if defined(__APEX)
+        apex::stop(apex_p_);
+#endif
         active_ = false;
         return val;
     }
