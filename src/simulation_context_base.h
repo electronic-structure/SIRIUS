@@ -33,6 +33,7 @@
 #include "radial_integrals.h"
 #include "utils/utils.hpp"
 #include "memory_pool.hpp"
+#include "step_function.h"
 
 #ifdef __GPU
 #include "SDDK/GPU/cuda.hpp"
@@ -129,6 +130,8 @@ class Simulation_context_base: public Simulation_parameters
 
         /// Storage for various memory pools.
         memory_pool memory_pool_;
+
+        std::unique_ptr<Step_function> step_function_;
 
         // TODO remove to somewhere
         const double av_atom_radius_{2.0};
@@ -716,6 +719,11 @@ class Simulation_context_base: public Simulation_parameters
         {
             return initialized_;
         }
+
+        Step_function const& step_function() const
+        {
+            return *step_function_;
+        }
 };
 
 inline void Simulation_context_base::initialize()
@@ -1042,6 +1050,18 @@ inline void Simulation_context_base::initialize()
 
     if (comm_.rank() == 0 && control().print_memory_usage_) {
         MEMORY_USAGE_INFO();
+    }
+
+    if (full_potential()) {
+        step_function_ = std::unique_ptr<Step_function>(new
+            Step_function(make_periodic_function<index_domain_t::global>([&](int iat, double g) {
+                auto R = unit_cell().atom_type(iat).mt_radius();
+                if (g < 1e-12) {
+                    return std::pow(R, 3) / 3.0;
+                } else {
+                    return (std::sin(g * R) - g * R * std::cos(g * R)) / std::pow(g, 3);
+                }
+            }), unit_cell(), gvec_partition(), fft()));
     }
 
     initialized_ = true;

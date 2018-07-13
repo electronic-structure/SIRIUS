@@ -25,8 +25,6 @@
 #ifndef __STEP_FUNCTION_H__
 #define __STEP_FUNCTION_H__
 
-#include "simulation_context_base.h"
-
 namespace sirius {
 
 /// Unit step function is defined to be 1 in the interstitial and 0 inside muffin-tins.
@@ -76,58 +74,61 @@ class Step_function
 
   public:
     /// Constructor
-    Step_function(Simulation_context_base& ctx__)
+    Step_function(std::vector<double_complex> f_pw__, Unit_cell const& unit_cell__, Gvec_partition const& gvp__, FFT3D& fft__)
     {
         PROFILE("sirius::Step_function::Step_function");
 
-        if (ctx__.unit_cell().num_atoms() == 0) {
+        if (unit_cell__.num_atoms() == 0) {
             return;
         }
 
-        step_function_pw_.resize(ctx__.gvec().num_gvec());
-        step_function_.resize(ctx__.fft().local_size());
+        step_function_pw_.resize(gvp__.gvec().num_gvec());
+        step_function_.resize(fft__.local_size());
 
-        auto ri = [&](int iat, double g) {
-            auto R = ctx__.unit_cell().atom_type(iat).mt_radius();
-            if (g < 1e-12) {
-                return std::pow(R, 3) / 3.0;
-            } else {
-                return (std::sin(g * R) - g * R * std::cos(g * R)) / std::pow(g, 3);
-            }
-        };
+        //auto ri = [&](int iat, double g) {
+        //    auto R = unit_cell__.atom_type(iat).mt_radius();
+        //    if (g < 1e-12) {
+        //        return std::pow(R, 3) / 3.0;
+        //    } else {
+        //        return (std::sin(g * R) - g * R * std::cos(g * R)) / std::pow(g, 3);
+        //    }
+        //};
 
-        auto f_pw = ctx__.make_periodic_function<index_domain_t::global>(ri);
+        step_function_pw_ = std::move(f_pw__);
 
-        for (int ig = 0; ig < ctx__.gvec().num_gvec(); ig++) {
-            step_function_pw_[ig] = -f_pw[ig];
+        //auto f_pw = ctx__.make_periodic_function<index_domain_t::global>(ri);
+
+        for (int ig = 0; ig < gvp__.gvec().num_gvec(); ig++) {
+            //step_function_pw_[ig] = -f_pw[ig];
+            step_function_pw_[ig] = -step_function_pw_[ig];
         }
         step_function_pw_[0] += 1.0;
 
-        std::vector<double_complex> ftmp(ctx__.gvec_partition().gvec_count_fft());
-        for (int i = 0; i < ctx__.gvec_partition().gvec_count_fft(); i++) {
-            ftmp[i] = step_function_pw_[ctx__.gvec_partition().idx_gvec(i)];
+        std::vector<double_complex> ftmp(gvp__.gvec_count_fft());
+        for (int i = 0; i < gvp__.gvec_count_fft(); i++) {
+            ftmp[i] = step_function_pw_[gvp__.idx_gvec(i)];
         }
-        ctx__.fft().transform<1>(ftmp.data());
-        ctx__.fft().output(&step_function_[0]);
+        fft__.transform<1>(ftmp.data());
+        fft__.output(&step_function_[0]);
 
         double vit{0};
-        for (int i = 0; i < ctx__.fft().local_size(); i++) {
+        for (int i = 0; i < fft__.local_size(); i++) {
             vit += step_function_[i];
         }
-        vit *= (ctx__.unit_cell().omega() / ctx__.fft().size());
-        ctx__.fft().comm().allreduce(&vit, 1);
+        vit *= (unit_cell__.omega() / fft__.size());
+        fft__.comm().allreduce(&vit, 1);
 
-        if (std::abs(vit - ctx__.unit_cell().volume_it()) > 1e-10) {
+        if (std::abs(vit - unit_cell__.volume_it()) > 1e-10) {
             std::stringstream s;
             s << "step function gives a wrong volume for IT region" << std::endl
-              << "  difference with exact value : " << std::abs(vit - ctx__.unit_cell().volume_it());
+              << "  difference with exact value : " << std::abs(vit - unit_cell__.volume_it());
             WARNING(s);
         }
-        if (ctx__.control().print_checksum_) {
-            double_complex z1 = mdarray<double_complex, 1>(&step_function_pw_[0], ctx__.gvec().num_gvec()).checksum();
-            double d1         = mdarray<double, 1>(&step_function_[0], ctx__.fft().local_size()).checksum();
-            ctx__.fft().comm().allreduce(&d1, 1);
-            if (ctx__.comm().rank() == 0) {
+        if (unit_cell__.parameters().control().print_checksum_) {
+            double_complex z1 = mdarray<double_complex, 1>(&step_function_pw_[0], gvp__.gvec().num_gvec()).checksum();
+            double d1         = mdarray<double, 1>(&step_function_[0], fft__.local_size()).checksum();
+            fft__.comm().allreduce(&d1, 1);
+            if (unit_cell__.comm().rank() == 0) {
                 utils::print_checksum("step_function", d1);
                 utils::print_checksum("step_function_pw", z1);
             }

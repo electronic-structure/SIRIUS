@@ -27,7 +27,7 @@
 
 #include "simulation_context_base.h"
 #include "mpi_grid.hpp"
-#include "step_function.h"
+//#include "step_function.h"
 #include "version.h"
 #include "augmentation_operator.h"
 
@@ -42,7 +42,7 @@ class Simulation_context : public Simulation_context_base
 {
   private:
     /// Step function is used in full-potential methods.
-    std::unique_ptr<Step_function> step_function_;
+    //std::unique_ptr<Step_function> step_function_;
 
     std::vector<Augmentation_operator> augmentation_op_;
 
@@ -87,9 +87,9 @@ class Simulation_context : public Simulation_context_base
 
         Simulation_context_base::initialize();
 
-        if (full_potential()) {
-            step_function_ = std::unique_ptr<Step_function>(new Step_function(*this));
-        }
+        //if (full_potential()) {
+        //    step_function_ = std::unique_ptr<Step_function>(new Step_function(*this));
+        //}
 
         if (!full_potential()) {
 
@@ -112,10 +112,10 @@ class Simulation_context : public Simulation_context_base
         }
     }
 
-    Step_function const& step_function() const
-    {
-        return *step_function_;
-    }
+    //Step_function const& step_function() const
+    //{
+    //    return *step_function_;
+    //}
 
     inline Augmentation_operator const& augmentation_op(int iat__) const
     {

@@ -50,7 +50,7 @@ using json = nlohmann::json;
 #include "Unit_cell/atom.h"
 #include "Unit_cell/free_atom.hpp"
 #include "Unit_cell/unit_cell.h"
-#include "step_function.h"
+//#include "step_function.h"
 #include "periodic_function.h"
 #include "k_point.h"
 #include "Band/band.hpp"
