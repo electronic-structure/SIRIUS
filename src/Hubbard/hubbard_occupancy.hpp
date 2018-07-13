@@ -560,11 +560,9 @@ inline void Hubbard_potential::symmetrize_occupancy_matrix()
  */
 
 void Hubbard_potential::access_hubbard_occupancies(char  const* what__,
-                                                   double*      occ__,
+                                                   double_complex*      occ__,
                                                    int   const *ld__)
 {
-    /* this implementation is QE-specific at the moment */
-
     std::string what(what__);
 
     if (!(what == "get" || what == "set")) {

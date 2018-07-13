@@ -398,6 +398,40 @@ void* sirius_create_kset(void* const*  handler__,
     return new utils::any_ptr(new_kset);
 }
 
+/* @fortran begin function void* sirius_create_kset_from_grid        Create k-point set from a grid.
+   @fortran argument in  required void*  handler                     Simulation context handler.
+   @fortran argument in  required int    k_grid                    dimensions of the k points grid.
+   @fortran argument in  required double k_shift                   k point shifts.
+   @fortran argument in  required bool   use_symmetry                If .true. k-set will be generate using symmetries.
+   @fortran end */
+
+void *sirius_create_kset_from_grid(void* const* handler__,
+                                   int const* k_grid__,
+                                   int const* k_shift__,
+                                   bool const* use_symmetry)
+{
+    GET_SIM_CTX(handler__);
+    std::vector<int> k_grid(3);
+    std::vector<int> k_shift(3);
+
+    k_grid[0] = k_grid__[0];
+    k_grid[1] = k_grid__[1];
+    k_grid[2] = k_grid__[2];
+
+    k_shift[0] = k_shift__[0];
+    k_shift[1] = k_shift__[1];
+    k_shift[2] = k_shift__[2];
+
+    sirius::K_point_set* new_kset = new sirius::K_point_set(sim_ctx,
+                                                            k_grid,
+                                                            k_shift,
+                                                            *use_symmetry);
+
+    new_kset->initialize();
+
+    return new utils::any_ptr(new_kset);
+}
+
 /* @fortran begin function void* sirius_create_ground_state    Create a ground state object.
    @fortran argument in  required void*  ks_handler            Handler of the k-point set.
    @fortran end */
@@ -406,6 +440,27 @@ void* sirius_create_ground_state(void* const* ks_handler__)
     auto& ks = static_cast<utils::any_ptr*>(*ks_handler__)->get<sirius::K_point_set>();
 
     return new utils::any_ptr(new sirius::DFT_ground_state(ks));
+}
+
+/* @fortran begin function void sirius_find_ground_state        find the ground state
+   @fortran argument in required void* gs_handler               handler of the ground state
+   @fortran argument in required double potential_tol        potential tolerance
+   @fortran argument in required double energy_tol           energy tolerance
+   @fortran argument in required int num_dft_iter           number of dft interactions
+   @fortran end */
+void sirius_find_ground_state(void* const* gs_handler__, double const* potential_tol__, double const* energy_tol_, int const* num_dft_iter__)
+{
+    auto& gs = static_cast<utils::any_ptr*>(*gs_handler__)->get<sirius::DFT_ground_state>();
+
+    auto &potential = gs.potential();
+    auto &density = gs. density();
+
+    gs.initial_state();
+
+    auto result = gs.find(*potential_tol__,
+                          *energy_tol_,
+                          *num_dft_iter__,
+                          false);
 }
 
 /* @fortran begin function void sirius_add_atom_type     Add new atom type to the unit cell.
@@ -1592,61 +1647,58 @@ void sirius_calculate_hubbard_occupancies(void* const* handler__)
     gs.hamiltonian().U().hubbard_compute_occupation_numbers(gs.k_point_set());
 }
 
-/* @fortran begin function void sirius_set_hubbard_occupancies _double Set occupation matrix for LDA+U.
-   @fortran argument in    required void* handler                      Ground state handler.
-   @fortran argument inout required double occ                         Occupation matrix.
-   @fortran argument in    required int    ld                          Leading dimensions of the occupation matrix.
-   @fortran end */
 
-/* @fortran begin function void sirius_set_hubbard_occupancies _complex Set occupation matrix for LDA+U.
+/* @fortran begin function void sirius_set_hubbard_occupancies          Set occupation matrix for LDA+U.
    @fortran argument in    required void* handler                       Ground state handler.
    @fortran argument inout required complex occ                         Occupation matrix.
    @fortran argument in    required int     ld                          Leading dimensions of the occupation matrix.
    @fortran end */
 void sirius_set_hubbard_occupancies(void* const* handler__,
-                                    double*      occ__,
+                                    std::complex<double>*      occ__,
                                     int   const *ld__)
 {
     auto& gs = static_cast<utils::any_ptr*>(*handler__)->get<sirius::DFT_ground_state>();
     gs.hamiltonian().U().access_hubbard_occupancies("set", occ__, ld__);
 }
 
-/* @fortran begin function void sirius_get_hubbard_occupancies _double Get occupation matrix for LDA+U.
-   @fortran argument in    required void* handler                      Ground state handler.
-   @fortran argument inout required double occ                         Occupation matrix.
-   @fortran argument in    required int    ld                          Leading dimensions of the occupation matrix.
-   @fortran end */
-
-/* @fortran begin function void sirius_get_hubbard_occupancies _complex Get occupation matrix for LDA+U.
+/* @fortran begin function void sirius_get_hubbard_occupancies          Get occupation matrix for LDA+U.
    @fortran argument in    required void* handler                       Ground state handler.
    @fortran argument inout required complex occ                         Occupation matrix.
    @fortran argument in    required int     ld                          Leading dimensions of the occupation matrix.
    @fortran end */
 void sirius_get_hubbard_occupancies(void* const* handler__,
-                                    double*      occ__,
+                                    std::complex<double>*      occ__,
                                     int   const *ld__)
 {
     auto& gs = static_cast<utils::any_ptr*>(*handler__)->get<sirius::DFT_ground_state>();
     gs.hamiltonian().U().access_hubbard_occupancies("get", occ__, ld__);
 }
 
-/* @fortran begin function void sirius_set_hubbard_potential _double      Set LDA+U potential matrix.
-   @fortran argument in    required void* handler                         Ground state handler.
-   @fortran argument inout required double pot                            Potential correction matrix.
-   @fortran argument in    required int    ld                             Leading dimensions of the matrix.
-   @fortran end */
-
-/* @fortran begin function void sirius_set_hubbard_potential _complex     Set LDA+U potential matrix.
+/* @fortran begin function void sirius_set_hubbard_potential              Set LDA+U potential matrix.
    @fortran argument in    required void* handler                         Ground state handler.
    @fortran argument inout required complex pot                           Potential correction matrix.
    @fortran argument in    required int    ld                             Leading dimensions of the matrix.
    @fortran end */
 void sirius_set_hubbard_potential(void* const* handler__,
-                                  double*      pot__,
+                                  std::complex<double>*      pot__,
                                   int   const *ld__)
 {
     auto& gs = static_cast<utils::any_ptr*>(*handler__)->get<sirius::DFT_ground_state>();
     gs.hamiltonian().U().access_hubbard_potential("set", pot__, ld__);
+}
+
+
+/* @fortran begin function void sirius_get_hubbard_potential              Set LDA+U potential matrix.
+   @fortran argument in    required void* handler                         Ground state handler.
+   @fortran argument inout required complex pot                           Potential correction matrix.
+   @fortran argument in    required int    ld                             Leading dimensions of the matrix.
+   @fortran end */
+void sirius_get_hubbard_potential(void* const* handler__,
+                                  std::complex<double>*      pot__,
+                                  int   const *ld__)
+{
+    auto& gs = static_cast<utils::any_ptr*>(*handler__)->get<sirius::DFT_ground_state>();
+    gs.hamiltonian().U().access_hubbard_potential("get", pot__, ld__);
 }
 
 } // extern "C"

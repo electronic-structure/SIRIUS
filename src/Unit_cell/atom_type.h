@@ -589,12 +589,9 @@ class Atom_type
                              double beta_,
                              double J0_)
     {
-
-
         for (int s = 0; s < ps_atomic_wf_level_.size(); s++) {
-
             if (ps_atomic_wf_level_[s] > 0) {
-                if (ps_atomic_wf_level_[s] ==  n) {
+                if ((ps_atomic_wf_level_[s] ==  n) && (std::abs(ps_atomic_wf(s).first) == l)) {
                     hubbard_orbital_info_ hub;
                     hub.hubbard_n_ = n;
                     hub.hubbard_l_ = l;
@@ -602,7 +599,6 @@ class Atom_type
 
                     hub.hubbard_J_ = J;
                     hub.hubbard_U_ = U;
-
                     if (hub_coef_) {
                         for (int s = 0; s < 4; s++) {
                             hub.hubbard_coefficients_[s] = hub_coef_[s];
@@ -626,13 +622,14 @@ class Atom_type
                         break;
                 }
             } else {
+
                 auto &wfc = ps_atomic_wfs_[s];
                 // we do a search per angular momentum
                 // we pick the first atomic wave function we
                 // find with the right l. It is to deal with
                 // codes that do not store all info about wave
                 // functions.
-                if (wfc.first == l) {
+                if (std::abs(wfc.first) == l) {
                     hubbard_orbital_info_ hub;
                     hub.hubbard_n_ = n;
                     hub.hubbard_l_ = l;
@@ -1854,7 +1851,7 @@ inline void Atom_type::read_hubbard_input()
         if (d.first == symbol_) {
             int hubbard_l_ = d.second.l;
             int hubbard_n_ = d.second.n;
-
+            std::cout << hubbard_n_ << hubbard_l_ << std::endl;
             if (hubbard_l_ < 0) {
                 std::istringstream iss(std::string(1, d.second.level[0]));
                 iss >> hubbard_n_;
@@ -1893,7 +1890,7 @@ inline void Atom_type::read_hubbard_input()
             add_hubbard_orbital(hubbard_n_,
                                 hubbard_l_,
                                 d.second.occupancy_,
-                                d.second.coeff_[1],
+                                d.second.coeff_[0],
                                 d.second.coeff_[1],
                                 &d.second.coeff_[0],
                                 d.second.coeff_[4],

@@ -482,6 +482,35 @@ res = sirius_create_kset_aux(handler,num_kpoints,kpoints,kpoint_weights,init_kse
 &t)
 end function sirius_create_kset
 
+!> @brief Create k-point set from a grid.
+!> @param [in] handler Simulation context handler.
+!> @param [in] k_grid dimensions of the k points grid.
+!> @param [in] k_shift k point shifts.
+!> @param [in] use_symmetry If .true. k-set will be generate using symmetries.
+function sirius_create_kset_from_grid(handler,k_grid,k_shift,use_symmetry) resul&
+&t(res)
+implicit none
+type(C_PTR), intent(in) :: handler
+integer(C_INT), intent(in) :: k_grid
+real(C_DOUBLE), intent(in) :: k_shift
+logical(C_BOOL), intent(in) :: use_symmetry
+type(C_PTR) :: res
+interface
+function sirius_create_kset_from_grid_aux(handler,k_grid,k_shift,use_symmetry) r&
+&esult(res)&
+&bind(C, name="sirius_create_kset_from_grid")
+use, intrinsic :: ISO_C_BINDING
+type(C_PTR), intent(in) :: handler
+integer(C_INT), intent(in) :: k_grid
+real(C_DOUBLE), intent(in) :: k_shift
+logical(C_BOOL), intent(in) :: use_symmetry
+type(C_PTR) :: res
+end function
+end interface
+
+res = sirius_create_kset_from_grid_aux(handler,k_grid,k_shift,use_symmetry)
+end function sirius_create_kset_from_grid
+
 !> @brief Create a ground state object.
 !> @param [in] ks_handler Handler of the k-point set.
 function sirius_create_ground_state(ks_handler) result(res)
@@ -499,6 +528,34 @@ end interface
 
 res = sirius_create_ground_state_aux(ks_handler)
 end function sirius_create_ground_state
+
+!> @brief find the ground state
+!> @param [in] gs_handler handler of the ground state
+!> @param [in] potential_tol potential tolerance
+!> @param [in] energy_tol energy tolerance
+!> @param [in] num_dft_iter number of dft interactions
+subroutine sirius_find_ground_state(gs_handler,potential_tol,energy_tol,num_dft_&
+&iter)
+implicit none
+type(C_PTR), intent(in) :: gs_handler
+real(C_DOUBLE), intent(in) :: potential_tol
+real(C_DOUBLE), intent(in) :: energy_tol
+integer(C_INT), intent(in) :: num_dft_iter
+interface
+subroutine sirius_find_ground_state_aux(gs_handler,potential_tol,energy_tol,num_&
+&dft_iter)&
+&bind(C, name="sirius_find_ground_state")
+use, intrinsic :: ISO_C_BINDING
+type(C_PTR), intent(in) :: gs_handler
+real(C_DOUBLE), intent(in) :: potential_tol
+real(C_DOUBLE), intent(in) :: energy_tol
+integer(C_INT), intent(in) :: num_dft_iter
+end subroutine
+end interface
+
+call sirius_find_ground_state_aux(gs_handler,potential_tol,energy_tol,num_dft_it&
+&er)
+end subroutine sirius_find_ground_state
 
 !> @brief Add new atom type to the unit cell.
 !> @param [in] handler Simulation context handler.
@@ -1461,29 +1518,7 @@ end subroutine sirius_calculate_hubbard_occupancies
 !> @param [in] handler Ground state handler.
 !> @param [inout] occ Occupation matrix.
 !> @param [in] ld Leading dimensions of the occupation matrix.
-subroutine sirius_set_hubbard_occupancies_double(handler,occ,ld)
-implicit none
-type(C_PTR), intent(in) :: handler
-real(C_DOUBLE), intent(inout) :: occ
-integer(C_INT), intent(in) :: ld
-interface
-subroutine sirius_set_hubbard_occupancies_aux(handler,occ,ld)&
-&bind(C, name="sirius_set_hubbard_occupancies")
-use, intrinsic :: ISO_C_BINDING
-type(C_PTR), intent(in) :: handler
-real(C_DOUBLE), intent(inout) :: occ
-integer(C_INT), intent(in) :: ld
-end subroutine
-end interface
-
-call sirius_set_hubbard_occupancies_aux(handler,occ,ld)
-end subroutine sirius_set_hubbard_occupancies_double
-
-!> @brief Set occupation matrix for LDA+U.
-!> @param [in] handler Ground state handler.
-!> @param [inout] occ Occupation matrix.
-!> @param [in] ld Leading dimensions of the occupation matrix.
-subroutine sirius_set_hubbard_occupancies_complex(handler,occ,ld)
+subroutine sirius_set_hubbard_occupancies(handler,occ,ld)
 implicit none
 type(C_PTR), intent(in) :: handler
 complex(C_DOUBLE), intent(inout) :: occ
@@ -1499,35 +1534,13 @@ end subroutine
 end interface
 
 call sirius_set_hubbard_occupancies_aux(handler,occ,ld)
-end subroutine sirius_set_hubbard_occupancies_complex
+end subroutine sirius_set_hubbard_occupancies
 
 !> @brief Get occupation matrix for LDA+U.
 !> @param [in] handler Ground state handler.
 !> @param [inout] occ Occupation matrix.
 !> @param [in] ld Leading dimensions of the occupation matrix.
-subroutine sirius_get_hubbard_occupancies_double(handler,occ,ld)
-implicit none
-type(C_PTR), intent(in) :: handler
-real(C_DOUBLE), intent(inout) :: occ
-integer(C_INT), intent(in) :: ld
-interface
-subroutine sirius_get_hubbard_occupancies_aux(handler,occ,ld)&
-&bind(C, name="sirius_get_hubbard_occupancies")
-use, intrinsic :: ISO_C_BINDING
-type(C_PTR), intent(in) :: handler
-real(C_DOUBLE), intent(inout) :: occ
-integer(C_INT), intent(in) :: ld
-end subroutine
-end interface
-
-call sirius_get_hubbard_occupancies_aux(handler,occ,ld)
-end subroutine sirius_get_hubbard_occupancies_double
-
-!> @brief Get occupation matrix for LDA+U.
-!> @param [in] handler Ground state handler.
-!> @param [inout] occ Occupation matrix.
-!> @param [in] ld Leading dimensions of the occupation matrix.
-subroutine sirius_get_hubbard_occupancies_complex(handler,occ,ld)
+subroutine sirius_get_hubbard_occupancies(handler,occ,ld)
 implicit none
 type(C_PTR), intent(in) :: handler
 complex(C_DOUBLE), intent(inout) :: occ
@@ -1543,41 +1556,18 @@ end subroutine
 end interface
 
 call sirius_get_hubbard_occupancies_aux(handler,occ,ld)
-end subroutine sirius_get_hubbard_occupancies_complex
+end subroutine sirius_get_hubbard_occupancies
 
 !> @brief Set LDA+U potential matrix.
 !> @param [in] handler Ground state handler.
 !> @param [inout] pot Potential correction matrix.
 !> @param [in] ld Leading dimensions of the matrix.
-subroutine sirius_set_hubbard_potential_double(handler,pot,ld)
-implicit none
-type(C_PTR), intent(in) :: handler
-real(C_DOUBLE), intent(inout) :: pot
-integer(C_INT), intent(in) :: ld
-interface
-subroutine sirius_set_hubbard_potential_aux(handler,pot,ld)&
-&bind(C, name="sirius_set_hubbard_potential")
-use, intrinsic :: ISO_C_BINDING
-type(C_PTR), intent(in) :: handler
-real(C_DOUBLE), intent(inout) :: pot
-integer(C_INT), intent(in) :: ld
-end subroutine
-end interface
-
-call sirius_set_hubbard_potential_aux(handler,pot,ld)
-end subroutine sirius_set_hubbard_potential_double
-
-!> @brief Set LDA+U potential matrix.
-!> @param [in] handler Ground state handler.
-!> @param [inout] pot Potential correction matrix.
-!> @param [in] ld Leading dimensions of the matrix.
-subroutine sirius_set_hubbard_potential_complex(handler,pot,ld)
+subroutine sirius_set_hubbard_potential(handler,pot,ld)
 implicit none
 type(C_PTR), intent(in) :: handler
 complex(C_DOUBLE), intent(inout) :: pot
 integer(C_INT), intent(in) :: ld
 interface
-
 subroutine sirius_set_hubbard_potential_aux(handler,pot,ld)&
 &bind(C, name="sirius_set_hubbard_potential")
 use, intrinsic :: ISO_C_BINDING
@@ -1588,4 +1578,27 @@ end subroutine
 end interface
 
 call sirius_set_hubbard_potential_aux(handler,pot,ld)
-end subroutine sirius_set_hubbard_potential_complex
+end subroutine sirius_set_hubbard_potential
+
+!> @brief Set LDA+U potential matrix.
+!> @param [in] handler Ground state handler.
+!> @param [inout] pot Potential correction matrix.
+!> @param [in] ld Leading dimensions of the matrix.
+subroutine sirius_get_hubbard_potential(handler,pot,ld)
+implicit none
+type(C_PTR), intent(in) :: handler
+complex(C_DOUBLE), intent(inout) :: pot
+integer(C_INT), intent(in) :: ld
+interface
+subroutine sirius_get_hubbard_potential_aux(handler,pot,ld)&
+&bind(C, name="sirius_get_hubbard_potential")
+use, intrinsic :: ISO_C_BINDING
+type(C_PTR), intent(in) :: handler
+complex(C_DOUBLE), intent(inout) :: pot
+integer(C_INT), intent(in) :: ld
+end subroutine
+end interface
+
+call sirius_get_hubbard_potential_aux(handler,pot,ld)
+end subroutine sirius_get_hubbard_potential
+

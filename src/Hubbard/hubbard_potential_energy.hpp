@@ -343,7 +343,7 @@ void Hubbard_potential::calculate_hubbard_potential_and_energy_non_colinear_case
  */
 
 void Hubbard_potential::access_hubbard_potential(char  const* what__,
-                                                 double*      occ__,
+                                                 double_complex*      occ__,
                                                  int   const *ld__)
 {
     /* this implementation is QE-specific at the moment */

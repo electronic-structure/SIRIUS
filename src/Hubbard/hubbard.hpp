@@ -88,11 +88,21 @@ class Hubbard_potential // TODO: rename to Hubbard
             auto& atom = unit_cell_.atom(ia);
             if (atom.type().hubbard_correction()) {
                 offset[ia] = counter;
-                for (auto && orb : atom.type().hubbard_orbital()) {
-                    counter += (2 * orb.hubbard_l_ + 1);
+                if (ctx_.num_mag_dims() == 3) {
+                    for (auto && orb : atom.type().hubbard_orbital()) {
+                        if (atom.type().spin_orbit_coupling()) {
+                            counter += (2 * orb.hubbard_l_ + 1);
+                        } else {
+                            counter += 2 * (2 * orb.hubbard_l_ + 1);
+                        }
+                    }
+                } else {
+                    for (auto && orb : atom.type().hubbard_orbital()) {
+                        counter += (2 * orb.hubbard_l_ + 1);
+                    }
                 }
-
             }
+            std::cout << counter << std::endl;
         }
 
         this->number_of_hubbard_orbitals_ = counter;
@@ -291,11 +301,11 @@ class Hubbard_potential // TODO: rename to Hubbard
     }
 
     void access_hubbard_potential(char  const* what__,
-                                  double*      occ__,
+                                  double_complex*      occ__,
                                   int   const *ld__);
 
     void access_hubbard_occupancies(char  const* what__,
-                                    double*      occ__,
+                                    double_complex*      occ__,
                                     int   const *ld__);
 };
 

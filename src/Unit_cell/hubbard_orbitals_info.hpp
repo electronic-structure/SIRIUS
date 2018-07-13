@@ -43,7 +43,7 @@ namespace sirius {
           hubbard_occ_(src.hubbard_occ_),
           radial_orbital_index_(src.radial_orbital_index_),
           hubbard_J_(src.hubbard_J_),
-          hubbard_U_(src.hubbard_J_),
+          hubbard_U_(src.hubbard_U_),
           hubbard_alpha_(src.hubbard_alpha_),
           hubbard_beta_(src.hubbard_beta_)
       {
