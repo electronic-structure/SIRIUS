@@ -1298,7 +1298,7 @@ inline void Atom_type::print_info() const
     printf("number of core electrons    : %f\n", num_core_electrons_);
     printf("number of valence electrons : %f\n", num_valence_electrons_);
 
-    if (parameters_.hubbard_correction() && this->hubbard_correction()) {
+    if (parameters_.hubbard_correction() && this->hubbard_correction_) {
         printf("Hubbard correction is included in the calculations");
         printf("\n");
         printf("angular momentum         : %i\n", hubbard_orbitals_[0].hubbard_l());
@@ -1582,7 +1582,6 @@ inline void Atom_type::read_pseudo_uspp(json const& parser)
                 std::string c1 = parser["pseudo_potential"]["atomic_wave_functions"][k]["label"];
                 std::istringstream iss(std::string(1, c1[0]));
                 iss >> n;
-                ps_atomic_wf_level_.push_back(n);
             }
 
             if (spin_orbit_coupling() &&
@@ -1847,11 +1846,12 @@ inline void Atom_type::read_hubbard_input()
         return;
     }
 
+    this->hubbard_correction_ = false;
+
     for(auto &d: parameters_.Hubbard().species) {
         if (d.first == symbol_) {
             int hubbard_l_ = d.second.l;
             int hubbard_n_ = d.second.n;
-            std::cout << hubbard_n_ << hubbard_l_ << std::endl;
             if (hubbard_l_ < 0) {
                 std::istringstream iss(std::string(1, d.second.level[0]));
                 iss >> hubbard_n_;
@@ -1896,11 +1896,11 @@ inline void Atom_type::read_hubbard_input()
                                 d.second.coeff_[4],
                                 d.second.coeff_[5],
                                 0.0);
-            }
 
             this->hubbard_correction_ = true;
         }
     }
+}
 } // namespace
 
 #endif // __ATOM_TYPE_H__
