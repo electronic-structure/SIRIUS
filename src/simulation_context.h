@@ -50,23 +50,33 @@ class Simulation_context : public Simulation_context_base
     Simulation_context(Simulation_context const&) = delete;
 
   public:
+    /// Create an empty simulation context with world communicator.
     Simulation_context()
         : Simulation_context_base(Communicator::world())
     {
     }
 
+    /// Create a simulation context with world communicator and load parameters from JSON string or JSON file.
     Simulation_context(std::string const& str__)
         : Simulation_context_base(str__, Communicator::world())
     {
     }
 
+    /// Create a simulation context with an explicit communicator.
     Simulation_context(Communicator const& comm__)
         : Simulation_context_base(comm__)
     {
     }
 
+    /// Create a simulation context with an explicit communicator and load parameters from JSON string or JSON file.
     Simulation_context(std::string const& str__, Communicator const& comm__)
         : Simulation_context_base(str__, comm__)
+    {
+    }
+
+    /// Create a simulation context with an explicit communicator and explicit G-vector list.
+    Simulation_context(Gvec const& gvec__, Communicator const& comm__)
+        : Simulation_context_base(comm__)
     {
     }
 

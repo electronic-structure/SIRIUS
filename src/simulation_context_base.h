@@ -167,9 +167,6 @@ class Simulation_context_base: public Simulation_parameters
             fft_->prepare(*gvec_partition_);
         }
 
-        /* copy constructor is forbidden */
-        Simulation_context_base(Simulation_context_base const&) = delete;
-
         /// Get the stsrting time stamp.
         void start()
         {
@@ -245,9 +242,12 @@ class Simulation_context_base: public Simulation_parameters
             }
         }
 
+        /* copy constructor is forbidden */
+        Simulation_context_base(Simulation_context_base const&) = delete;
+
     public:
 
-        Simulation_context_base(std::string const& str__,
+        Simulation_context_base(std::string  const& str__,
                                 Communicator const& comm__)
             : comm_(comm__)
             , unit_cell_(*this, comm_)
