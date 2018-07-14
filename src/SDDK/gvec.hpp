@@ -584,6 +584,12 @@ class Gvec
         return lattice_vectors_;
     }
 
+    /// Return the volume of the real space unit cell that corresponds to the reciprocal lattice of G-vectors.
+    inline double omega() const
+    {
+        return std::pow(twopi, 3) / std::abs(lattice_vectors().det());
+    }
+
     /// Return the total number of G-vectors within the cutoff.
     inline int num_gvec() const
     {
