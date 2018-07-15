@@ -56,8 +56,6 @@ class Periodic_function : public Smooth_periodic_function<T>
 
     Unit_cell const& unit_cell_;
 
-    Step_function const& step_function_;
-
     Communicator const& comm_;
 
     /// Local part of muffin-tin functions.
@@ -94,7 +92,6 @@ class Periodic_function : public Smooth_periodic_function<T>
         : Smooth_periodic_function<T>(ctx__.fft(), ctx__.gvec_partition())
         , ctx_(ctx__)
         , unit_cell_(ctx__.unit_cell())
-        , step_function_(ctx__.step_function())
         , comm_(ctx__.comm())
         , gvec_(ctx__.gvec())
         , angular_domain_size_(angular_domain_size__)
@@ -191,7 +188,7 @@ class Periodic_function : public Smooth_periodic_function<T>
         } else {
             #pragma omp parallel for schedule(static) reduction(+:it_val)
             for (int irloc = 0; irloc < this->fft_->local_size(); irloc++) {
-                it_val += this->f_rg_(irloc) * step_function_.theta_r(irloc);
+                it_val += this->f_rg_(irloc) * ctx_.theta(irloc);
             }
         }
         it_val *= (unit_cell_.omega() / this->fft_->size());
@@ -353,7 +350,7 @@ class Periodic_function : public Smooth_periodic_function<T>
         } else {
             for (int irloc = 0; irloc < this->fft_->local_size(); irloc++) {
                 result_rg += type_wrapper<T>::bypass(std::conj(this->f_rg(irloc))) * g__.f_rg(irloc) *
-                             this->step_function_.theta_r(irloc);
+                             this->ctx_.theta(irloc);
             }
             result_rg *= (unit_cell_.omega() / this->fft_->size());
             this->fft_->comm().allreduce(&result_rg, 1);

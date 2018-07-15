@@ -33,7 +33,6 @@
 #include "radial_integrals.h"
 #include "utils/utils.hpp"
 #include "memory_pool.hpp"
-#include "step_function.h"
 #include "augmentation_operator.h"
 
 #ifdef __GPU
@@ -136,7 +135,11 @@ class Simulation_context: public Simulation_parameters
         /// Storage for various memory pools.
         memory_pool memory_pool_;
 
-        std::unique_ptr<Step_function> step_function_;
+        /// Plane wave expansion coefficients of the step function.
+        mdarray<double_complex, 1> theta_pw_;
+
+        /// Step function on the real-space grid.
+        mdarray<double, 1> theta_;
 
         std::vector<Augmentation_operator> augmentation_op_;
 
@@ -175,6 +178,93 @@ class Simulation_context: public Simulation_parameters
 
             /* prepare fine-grained FFT driver for the entire simulation */
             fft_->prepare(*gvec_partition_);
+        }
+
+        /// Unit step function is defined to be 1 in the interstitial and 0 inside muffin-tins.
+        /** Unit step function is constructed from it's plane-wave expansion coefficients which are computed
+         *  analytically:
+         *  \f[
+         *      \Theta({\bf r}) = \sum_{\bf G} \Theta({\bf G}) e^{i{\bf Gr}},
+         *  \f]
+         *  where
+         *  \f[
+         *      \Theta({\bf G}) = \frac{1}{\Omega} \int \Theta({\bf r}) e^{-i{\bf Gr}} d{\bf r} =
+         *          \frac{1}{\Omega} \int_{\Omega} e^{-i{\bf Gr}} d{\bf r} - \frac{1}{\Omega} \int_{MT} e^{-i{\bf Gr}} d{\bf r} =
+         *          \delta_{\bf G, 0} - \sum_{\alpha} \frac{1}{\Omega} \int_{MT_{\alpha}} e^{-i{\bf Gr}} d{\bf r}
+         *  \f]
+         *  Integral of a plane-wave over the muffin-tin volume is taken using the spherical expansion of the plane-wave
+         *  around central point \f$ \tau_{\alpha} \f$:
+         *  \f[
+         *      \int_{MT_{\alpha}} e^{-i{\bf Gr}} d{\bf r} =
+         *          e^{-i{\bf G\tau_{\alpha}}} \int_{MT_{\alpha}} 4\pi \sum_{\ell m} (-i)^{\ell} j_{\ell}(Gr)
+         *          Y_{\ell m}(\hat {\bf G}) Y_{\ell m}^{*}(\hat {\bf r}) r^2 \sin \theta dr d\phi d\theta
+         *  \f]
+         *  In the above integral only \f$ \ell=m=0 \f$ term survives. So we have:
+         *  \f[
+         *      \int_{MT_{\alpha}} e^{-i{\bf Gr}} d{\bf r} = 4\pi e^{-i{\bf G\tau_{\alpha}}} \Theta(\alpha, G)
+         *  \f]
+         *  where
+         *  \f[
+         *      \Theta(\alpha, G) = \int_{0}^{R_{\alpha}} \frac{\sin(Gr)}{Gr} r^2 dr =
+         *          \left\{ \begin{array}{ll} \displaystyle R_{\alpha}^3 / 3 & G=0 \\
+         *          \Big( \sin(GR_{\alpha}) - GR_{\alpha}\cos(GR_{\alpha}) \Big) / G^3 & G \ne 0 \end{array} \right.
+         *  \f]
+         *  are the so-called step function form factors. With this we have a final expression for the plane-wave coefficients
+         *  of the unit step function:
+         *  \f[
+         *      \Theta({\bf G}) = \delta_{\bf G, 0} - \sum_{\alpha} \frac{4\pi}{\Omega} e^{-i{\bf G\tau_{\alpha}}}
+         *          \Theta(\alpha, G)
+         *  \f]
+         */
+        void init_step_function()
+        {
+            auto v = make_periodic_function<index_domain_t::global>([&](int iat, double g) {
+                auto R = unit_cell().atom_type(iat).mt_radius();
+                if (g < 1e-12) {
+                    return std::pow(R, 3) / 3.0;
+                } else {
+                    return (std::sin(g * R) - g * R * std::cos(g * R)) / std::pow(g, 3);
+                }});
+
+            theta_    = mdarray<double, 1>(fft().local_size());
+            theta_pw_ = mdarray<double_complex, 1>(gvec().num_gvec());
+
+            for (int ig = 0; ig < gvec().num_gvec(); ig++) {
+                theta_pw_[ig] = -v[ig];
+            }
+            theta_pw_[0] += 1.0;
+
+            std::vector<double_complex> ftmp(gvec_partition().gvec_count_fft());
+            for (int i = 0; i < gvec_partition().gvec_count_fft(); i++) {
+                ftmp[i] = theta_pw_[gvec_partition().idx_gvec(i)];
+            }
+            fft().transform<1>(ftmp.data());
+            fft().output(&theta_[0]);
+
+            double vit{0};
+            for (int i = 0; i < fft().local_size(); i++) {
+                vit += theta_[i];
+            }
+            vit *= (unit_cell().omega() / fft().size());
+            fft().comm().allreduce(&vit, 1);
+
+            if (std::abs(vit - unit_cell().volume_it()) > 1e-10) {
+                std::stringstream s;
+                s << "step function gives a wrong volume for IT region" << std::endl
+                  << "  difference with exact value : " << std::abs(vit - unit_cell().volume_it());
+                if (comm().rank() == 0) {
+                    WARNING(s);
+                }
+            }
+            if (control().print_checksum_) {
+                double_complex z1 = theta_pw_.checksum();
+                double d1         = theta_.checksum();
+                fft().comm().allreduce(&d1, 1);
+                if (comm().rank() == 0) {
+                    utils::print_checksum("theta", d1);
+                    utils::print_checksum("theta_pw", z1);
+                }
+            }
         }
 
         /// Get the stsrting time stamp.
@@ -535,7 +625,7 @@ class Simulation_context: public Simulation_parameters
         }
 
         /// Make periodic function out of form factors.
-        /** Return vector of plane-wave coefficients */
+        /** Return vector of plane-wave coefficients */ // TODO: return mdarray
         template <index_domain_t index_domain>
         inline std::vector<double_complex> make_periodic_function(std::function<double(int, double)> form_factors__) const
         {
@@ -655,7 +745,7 @@ class Simulation_context: public Simulation_parameters
                         break;
                     }
                 }
-        
+
                 if (control().print_performance_) {
                     t += omp_get_wtime();
                     if (comm().rank() == 0) {
@@ -747,9 +837,16 @@ class Simulation_context: public Simulation_parameters
             return initialized_;
         }
 
-        Step_function const& step_function() const
+        /// Return plane-wave coefficient of the step function.
+        inline double_complex const& theta_pw(int ig__) const
         {
-            return *step_function_;
+            return theta_pw_[ig__];
+        }
+
+        /// Return the value of the step function for the grid point ir.
+        inline double theta(int ir__) const
+        {
+            return theta_[ir__];
         }
 
         inline Augmentation_operator const& augmentation_op(int iat__) const
@@ -1090,15 +1187,7 @@ inline void Simulation_context::initialize()
     }
 
     if (full_potential()) {
-        step_function_ = std::unique_ptr<Step_function>(new
-            Step_function(make_periodic_function<index_domain_t::global>([&](int iat, double g) {
-                auto R = unit_cell().atom_type(iat).mt_radius();
-                if (g < 1e-12) {
-                    return std::pow(R, 3) / 3.0;
-                } else {
-                    return (std::sin(g * R) - g * R * std::cos(g * R)) / std::pow(g, 3);
-                }
-            }), unit_cell(), gvec_partition(), fft()));
+        init_step_function();
     }
 
     if (!full_potential()) {
