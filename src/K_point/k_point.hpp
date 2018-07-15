@@ -395,12 +395,11 @@ class K_point
         void test_spinor_wave_functions(int use_fft);
 
         /// Get the number of occupied bands for each spin channel.
-        int num_occupied_bands(int ispn__ = -1)
+        int num_occupied_bands(int ispn__ = -1) const
         {
             for (int j = ctx_.num_bands() - 1; j >= 0; j--) {
                 if (std::abs(band_occupancy(j, ispn__) * weight()) > 1e-14) {
                     return j + 1;
-                }
             }
             return 0;
         }

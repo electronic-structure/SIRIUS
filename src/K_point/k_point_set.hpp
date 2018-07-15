@@ -228,13 +228,13 @@ class K_point_set
     }
 
     /// Get a list of band energies for a given k-point index.
-    std::vector<double> get_band_energies(int ik__, int ispn__)
+    std::vector<double> get_band_energies(int ik__, int ispn__) const
     {
         std::vector<double> bnd_e(ctx_.num_bands());
         for (int j = 0; j < ctx_.num_bands(); j++) {
             bnd_e[j] = (*this)[ik__]->band_energy(j, ispn__);
         }
-        return std::move(bnd_e);
+        return bnd_e;
     }
 
     /// Find Fermi energy and band occupation numbers
