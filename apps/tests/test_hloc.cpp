@@ -41,7 +41,7 @@ void test_hloc(std::vector<int> mpi_grid_dims__, double cutoff__, int num_bands_
 
     fft.prepare(gvecp);
 
-    Simulation_parameters params;
+    Simulation_context params;
     params.set_processing_unit(pu);
     
     Local_operator hloc(params, fft, gvecp);
