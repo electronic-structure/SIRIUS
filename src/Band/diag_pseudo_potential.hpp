@@ -379,7 +379,7 @@ inline int Band::diag_pseudo_potential_davidson(K_point*       kp__,
          * this is done before the main itertive loop */
 
         /* apply Hamiltonian and S operators to the basis functions */
-        H__.apply_h_s<T>(kp__, nc_mag ? 2 : ispin_step, 0, num_bands, phi, hphi, sphi);
+        H__.apply_h_s<T>(kp__, nc_mag ? 2 : ispin_step, 0, num_bands, phi, &hphi, &sphi);
 
         /* setup eigen-value problem
          * N is the number of previous basis functions
@@ -504,7 +504,7 @@ inline int Band::diag_pseudo_potential_davidson(K_point*       kp__,
             }
 
             /* apply Hamiltonian and S operators to the new basis functions */
-            H__.apply_h_s<T>(kp__, nc_mag ? 2 : ispin_step, N, n, phi, hphi, sphi);
+            H__.apply_h_s<T>(kp__, nc_mag ? 2 : ispin_step, N, n, phi, &hphi, &sphi);
 
             if (itso.orthogonalize_) {
                 orthogonalize<T>(ctx_.processing_unit(), nc_mag ? 2 : 0, phi, hphi, sphi, N, n, ovlp, res);
