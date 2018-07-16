@@ -71,8 +71,17 @@ extern "C" void libsci_acc_finalize();
 /// Namespace of the SIRIUS library.
 namespace sirius {
 
+inline static bool& is_initialized()
+{
+    static bool b{false};
+    return b;
+}
+
 inline void initialize(bool call_mpi_init__ = true)
 {
+    if (is_initialized()) {
+        TERMINATE("SIRIUS library is already initialized");
+    }
     if (call_mpi_init__) {
         Communicator::initialize(MPI_THREAD_MULTIPLE);
     }
@@ -105,10 +114,15 @@ inline void initialize(bool call_mpi_init__ = true)
     /* for the fortran interface to blas/lapack */
     assert(sizeof(int) == 4);
     assert(sizeof(double) == 8);
+
+    is_initialized() = true;
 }
 
 inline void finalize(bool call_mpi_fin__ = true)
 {
+    if (!is_initialized()) {
+        TERMINATE("SIRIUS library was not initialized");
+    }
 #if defined(__MAGMA)
     magma::finalize();
 #endif
@@ -137,6 +151,8 @@ inline void finalize(bool call_mpi_fin__ = true)
     if (call_mpi_fin__) {
         Communicator::finalize();
     }
+
+    is_initialized() = false;
 }
 
 }
