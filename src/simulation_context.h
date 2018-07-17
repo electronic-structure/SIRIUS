@@ -103,10 +103,6 @@ class Simulation_context: public Simulation_parameters
 
         std::string start_time_tag_;
 
-        ev_solver_t std_evp_solver_type_{ev_solver_t::lapack};
-
-        ev_solver_t gen_evp_solver_type_{ev_solver_t::lapack};
-
         mdarray<double_complex, 3> phase_factors_;
 
         mdarray<double_complex, 3> sym_phase_factors_;
@@ -550,24 +546,24 @@ class Simulation_context: public Simulation_parameters
 
         inline ev_solver_t std_evp_solver_type() const
         {
-            return std_evp_solver_type_;
+            return get_ev_solver_t(std_evp_solver_name());
         }
 
         inline ev_solver_t gen_evp_solver_type() const
         {
-            return gen_evp_solver_type_;
+            return get_ev_solver_t(gen_evp_solver_name());
         }
 
         template <typename T>
         inline std::unique_ptr<Eigensolver<T>> std_evp_solver()
         {
-            return std::move(Eigensolver_factory<T>(std_evp_solver_type_));
+            return std::move(Eigensolver_factory<T>(std_evp_solver_type()));
         }
 
         template <typename T>
         inline std::unique_ptr<Eigensolver<T>> gen_evp_solver()
         {
-            return std::move(Eigensolver_factory<T>(gen_evp_solver_type_));
+            return std::move(Eigensolver_factory<T>(gen_evp_solver_type()));
         }
 
         /// Phase factors \f$ e^{i {\bf G} {\bf r}_{\alpha}} \f$
@@ -1079,27 +1075,8 @@ inline void Simulation_context::initialize()
         }
     }
 
-    ev_solver_t* evst[] = {&std_evp_solver_type_, &gen_evp_solver_type_};
-
-    std::map<std::string, ev_solver_t> str_to_ev_solver_t = {
-        {"lapack",    ev_solver_t::lapack},
-        {"scalapack", ev_solver_t::scalapack},
-        {"elpa1",     ev_solver_t::elpa1},
-        {"elpa2",     ev_solver_t::elpa2},
-        {"magma",     ev_solver_t::magma},
-        {"plasma",    ev_solver_t::plasma}
-    };
-
-    for (int i: {0, 1}) {
-        auto name = evsn[i];
-
-        if (str_to_ev_solver_t.count(name) == 0) {
-            std::stringstream s;
-            s << "wrong eigen value solver " << name;
-            TERMINATE(s);
-        }
-        *evst[i] = str_to_ev_solver_t[name];
-    }
+    std_evp_solver_name(evsn[0]);
+    gen_evp_solver_name(evsn[1]);
 
     auto std_solver = std_evp_solver<double>();
     auto gen_solver = gen_evp_solver<double>();
@@ -1308,7 +1285,7 @@ inline void Simulation_context::print_info()
     std::string evsn[] = {"standard eigen-value solver        : ",
                           "generalized eigen-value solver     : "};
 
-    ev_solver_t evst[] = {std_evp_solver_type_, gen_evp_solver_type_};
+    ev_solver_t evst[] = {std_evp_solver_type(), gen_evp_solver_type()};
     for (int i = 0; i < 2; i++) {
         printf("%s", evsn[i].c_str());
         switch (evst[i]) {

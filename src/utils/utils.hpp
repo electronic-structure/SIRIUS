@@ -87,6 +87,7 @@ inline int lmmax(int lmax)
     return (lmax + 1) * (lmax + 1);
 }
 
+/// Get composite lm index by angular index l and azimuthal index m.
 inline int lm(int l, int m)
 {
     return (l * l + l + m);

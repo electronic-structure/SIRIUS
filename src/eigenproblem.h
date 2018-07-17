@@ -63,6 +63,28 @@ enum class ev_solver_t
     plasma
 };
 
+inline ev_solver_t get_ev_solver_t(std::string name__)
+{
+    std::transform(name__.begin(), name__.end(), name__.begin(), ::tolower);
+
+    static const std::map<std::string, ev_solver_t> map_to_type = {
+        {"lapack",    ev_solver_t::lapack},
+        {"scalapack", ev_solver_t::scalapack},
+        {"elpa1",     ev_solver_t::elpa1},
+        {"elpa2",     ev_solver_t::elpa2},
+        {"magma",     ev_solver_t::magma},
+        {"plasma",    ev_solver_t::plasma}
+    };
+
+    if (map_to_type.count(name__) == 0) {
+        std::stringstream s;
+        s << "wrong label of eigen-solver : " << name__;
+        TERMINATE(s);
+    }
+
+    return map_to_type.at(name__);
+}
+
 template <typename T>
 class Eigensolver
 {
