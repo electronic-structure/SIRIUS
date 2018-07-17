@@ -109,9 +109,7 @@ py::class_<Simulation_parameters>(m, "Simulation_parameters")
     .def("set_pw_cutoff",                  &Simulation_parameters::set_pw_cutoff)
     .def("set_iterative_solver_tolerance", &Simulation_parameters::set_iterative_solver_tolerance);
 
-py::class_<Simulation_context_base, Simulation_parameters>(m, "Simulation_context_base");
-
-py::class_<Simulation_context, Simulation_context_base>(m, "Simulation_context")
+py::class_<Simulation_context, Simulation_parameters>(m, "Simulation_context")
     .def(py::init<>())
     .def(py::init<std::string const&>())
     .def("initialize", &Simulation_context::initialize)

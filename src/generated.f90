@@ -143,6 +143,9 @@ res = sirius_context_initialized_aux(handler)
 end function sirius_context_initialized
 
 !> @brief Create context of the simulation.
+!> @details Simulation context is the complex data structure that holds all the parameters of the individual simulation.
+!> The context must be created, populated with the correct parameters and initialized before using all subsequent
+!> SIRIUS functions.
 !> @param [in] fcomm Entire communicator of the simulation.
 function sirius_create_context(fcomm) result(res)
 implicit none

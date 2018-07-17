@@ -114,6 +114,8 @@ class Hamiltonian
     template <typename T>
     inline void prepare()
     {
+        PROFILE("sirius::Hamiltonian::prepare");
+
         if (type_of_T_) {
             TERMINATE("Operator is alredy prepared");
         }
@@ -156,15 +158,6 @@ class Hamiltonian
                           Wave_functions& phi__,
                           Wave_functions* hphi__,
                           Wave_functions* ophi__) const;
-
-    template <typename T>
-    inline void apply_h_s(K_point*        kp__,
-                          int             ispn__,
-                          int             N__,
-                          int             n__,
-                          Wave_functions& phi__,
-                          Wave_functions& hphi__,
-                          Wave_functions& ophi__) const;
 
     inline void apply_magnetic_field(K_point*                     kp__,
                                      Wave_functions&              fv_states__,

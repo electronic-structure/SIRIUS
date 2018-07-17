@@ -36,10 +36,10 @@ std::unique_ptr<Simulation_context> create_sim_ctx(std::string     fname__,
     ctx.set_mpi_grid_dims(mpi_grid_dims);
 
     auto std_evp_solver_name = args__.value<std::string>("std_evp_solver_name", ctx.control().std_evp_solver_name_);
-    ctx.set_std_evp_solver_name(std_evp_solver_name);
+    ctx.std_evp_solver_name(std_evp_solver_name);
 
     auto gen_evp_solver_name = args__.value<std::string>("gen_evp_solver_name", ctx.control().gen_evp_solver_name_);
-    ctx.set_gen_evp_solver_name(gen_evp_solver_name);
+    ctx.gen_evp_solver_name(gen_evp_solver_name);
 
     auto pu = args__.value<std::string>("processing_unit", ctx.control().processing_unit_);
     if (pu == "") {

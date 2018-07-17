@@ -708,7 +708,7 @@ class Stress {
 
         potential_.fft_transform(-1);
 
-        Augmentation_operator_gvec_deriv q_deriv(ctx_);
+        Augmentation_operator_gvec_deriv q_deriv(ctx_.unit_cell().lmax(), ctx_.gvec(), ctx_.comm());
 
         for (int iat = 0; iat < ctx_.unit_cell().num_atom_types(); iat++) {
             auto& atom_type = ctx_.unit_cell().atom_type(iat);
@@ -738,7 +738,7 @@ class Stress {
             /* over spin components, can be from 1 to 4 */
             for (int ispin = 0; ispin < ctx_.num_mag_dims() + 1; ispin++ ){
                 for (int nu = 0; nu < 3; nu++) {
-                    q_deriv.generate_pw_coeffs(iat, ri, ri_dq, nu);
+                    q_deriv.generate_pw_coeffs(atom_type, ri, ri_dq, nu);
 
                     for (int mu = 0; mu < 3; mu++) {
                         utils::timer t2("sirius::Stress|us|prepare");

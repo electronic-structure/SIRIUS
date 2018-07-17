@@ -87,6 +87,7 @@ inline int lmmax(int lmax)
     return (lmax + 1) * (lmax + 1);
 }
 
+/// Get composite lm index by angular index l and azimuthal index m.
 inline int lm(int l, int m)
 {
     return (l * l + l + m);
@@ -236,6 +237,19 @@ inline uint64_t hash(void const* buff, size_t size, uint64_t h = 5381)
         h = ((h << 5) + h) + p[i];
     }
     return h;
+}
+
+/// Simple pseudo-random generator.
+inline uint32_t rand()
+{
+    static uint32_t a = 123456;
+
+    a = (a ^ 61) ^ (a >> 16);
+    a = a + (a << 3);
+    a = a ^ (a >> 4);
+    a = a * 0x27d4eb2d;
+    a = a ^ (a >> 15);
+    return a;
 }
 
 //== 

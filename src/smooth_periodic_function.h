@@ -356,9 +356,7 @@ T inner(Smooth_periodic_function<T> const& f__, Smooth_periodic_function<T> cons
         result_rg += type_wrapper<T>::bypass(std::conj(f__.f_rg(irloc))) * g__.f_rg(irloc);
     }
 
-    double omega = std::pow(twopi, 3) / std::abs(f__.gvec().lattice_vectors().det());
-
-    result_rg *= (omega / f__.fft().size());
+    result_rg *= (f__.gvec().omega() / f__.fft().size());
 
     f__.fft().comm().allreduce(&result_rg, 1);
 

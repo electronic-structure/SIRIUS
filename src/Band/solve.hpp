@@ -105,10 +105,8 @@ inline void Band::solve(K_point_set& kset__, Hamiltonian& hamiltonian__, bool pr
     }
 
     /* map local potential to a coarse grid */
-    if (ctx_.full_potential()) {
-        hamiltonian__.local_op().prepare(hamiltonian__.potential(), ctx_.step_function());
-    } else {
-        hamiltonian__.local_op().prepare(hamiltonian__.potential());
+    hamiltonian__.local_op().prepare(hamiltonian__.potential());
+    if (!ctx_.full_potential()) {
         /* prepare non-local operators */
         if (ctx_.gamma_point() && (ctx_.so_correction() == false)) {
             hamiltonian__.prepare<double>();

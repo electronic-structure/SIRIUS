@@ -377,10 +377,10 @@ inline void Hamiltonian::set_fv_h_o_it(K_point* kp,
             double t1 = 0.5 * dot(gkvec_row_cart, gkvec_col_cart);
 
             h(igk_row, igk_col) += this->potential().veff_pw(ig12);
-            o(igk_row, igk_col) += ctx_.step_function().theta_pw(ig12);
+            o(igk_row, igk_col) += ctx_.theta_pw(ig12);
 
             if (ctx_.valence_relativity() == relativity_t::none) {
-                h(igk_row, igk_col) += t1 * ctx_.step_function().theta_pw(ig12);
+                h(igk_row, igk_col) += t1 * ctx_.theta_pw(ig12);
             } else {
                 h(igk_row, igk_col) += t1 * this->potential().rm_inv_pw(ig12);
             }
@@ -472,7 +472,7 @@ inline void Hamiltonian::set_o_it(K_point* kp,
             auto gvec_row = kp->gkvec().gvec(kp->igk_row(igk_row));
             int ig12 = ctx_.gvec().index_g12(gvec_row, gvec_col);
 
-            o(igk_row, igk_col) += ctx_.step_function().theta_pw(ig12);
+            o(igk_row, igk_col) += ctx_.theta_pw(ig12);
         }
     }
 }

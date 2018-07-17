@@ -147,6 +147,10 @@ bool sirius_context_initialized(void* const* handler__)
 
 /* @fortran begin function void* sirius_create_context        Create context of the simulation.
    @fortran argument in  required int   fcomm                 Entire communicator of the simulation.
+   @fortran details
+   Simulation context is the complex data structure that holds all the parameters of the individual simulation.
+   The context must be created, populated with the correct parameters and initialized before using all subsequent
+   SIRIUS functions.
    @fortran end */
 void* sirius_create_context(int const* fcomm__)
 {

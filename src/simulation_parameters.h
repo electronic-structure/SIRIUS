@@ -47,18 +47,25 @@ class Simulation_parameters
     /// Type of electronic structure method.
     electronic_structure_method_t electronic_structure_method_{electronic_structure_method_t::full_potential_lapwlo};
 
+    /// Parameters of the iterative solver.
     Iterative_solver_input iterative_solver_input_;
 
+    /// Parameters of the mixer.
     Mixer_input mixer_input_;
 
+    /// Description of the unit cell.
     Unit_cell_input unit_cell_input_;
 
+    /// Parameters controlling the execution.
     Control_input control_input_;
 
+    /// Basic input parameters of PP-PW and FP-LAPW methods.
     Parameters_input parameters_input_;
 
+    /// Internal parameters that control the numerical implementation.
     Settings_input settings_input_;
 
+    /// LDA+U input parameters.
     Hubbard_input hubbard_input_;
 
   public:
@@ -437,24 +444,30 @@ class Simulation_parameters
         return parameters_input_.xc_functionals_;
     }
 
+    /// Get the name of the standard eigen-value solver to use.
     inline std::string const& std_evp_solver_name() const
     {
         return control_input_.std_evp_solver_name_;
     }
 
-    inline void set_std_evp_solver_name(std::string name__)
+    /// Set the name of the standard eigen-value solver to use.
+    inline std::string& std_evp_solver_name(std::string name__)
     {
         control_input_.std_evp_solver_name_ = name__;
+        return control_input_.std_evp_solver_name_;
     }
 
+    /// Get the name of the generalized eigen-value solver to use.
     inline std::string const& gen_evp_solver_name() const
     {
         return control_input_.gen_evp_solver_name_;
     }
 
-    inline void set_gen_evp_solver_name(std::string name__)
+    /// Set the name of the generalized eigen-value solver to use.
+    inline std::string& gen_evp_solver_name(std::string name__)
     {
         control_input_.gen_evp_solver_name_ = name__;
+        return control_input_.gen_evp_solver_name_;
     }
 
     inline relativity_t valence_relativity() const
