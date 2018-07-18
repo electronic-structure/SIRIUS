@@ -144,7 +144,7 @@ class K_point
         std::vector<double_complex> zil_;
 
         /// Mapping between lm and l.
-        mdarray<int, 1> l_by_lm_;
+        std::vector<int> l_by_lm_;
 
         /// Column rank of the processors of ScaLAPACK/ELPA diagonalization grid.
         int rank_col_;
@@ -296,8 +296,11 @@ class K_point
 
         /// Generate two-component spinor wave functions
         inline void generate_spinor_wave_functions();
+
         inline void generate_atomic_centered_wavefunctions(const int num_ao__, Wave_functions &phi);
-        inline void generate_atomic_centered_wavefunctions_(const int num_ao__, Wave_functions &phi, std::vector<int> &offset, bool hubbard);
+
+        inline void generate_atomic_centered_wavefunctions_aux(const int num_ao__, Wave_functions &phi, std::vector<int> &offset, bool hubbard);
+
         void compute_gradient_wavefunctions(Wave_functions &phi,
                                             const int starting_position_i,
                                             const int num_wf,

@@ -26,7 +26,6 @@
 #define __SIMULATION_PARAMETERS_H__
 
 #include "typedefs.h"
-#include "utils.h"
 #include "input.h"
 
 namespace sirius {
@@ -79,7 +78,7 @@ class Simulation_parameters
             return;
         }
 
-        json dict = Utils::read_json_from_file_or_string(str__);
+        json dict = utils::read_json_from_file_or_string(str__);
 
         /* read unit cell */
         unit_cell_input_.read(dict);
@@ -269,7 +268,7 @@ class Simulation_parameters
 
     inline int lmmax_apw() const
     {
-        return Utils::lmmax(parameters_input_.lmax_apw_);
+        return utils::lmmax(parameters_input_.lmax_apw_);
     }
 
     inline int lmax_rho() const
@@ -279,7 +278,7 @@ class Simulation_parameters
 
     inline int lmmax_rho() const
     {
-        return Utils::lmmax(parameters_input_.lmax_rho_);
+        return utils::lmmax(parameters_input_.lmax_rho_);
     }
 
     inline int lmax_pot() const
@@ -289,7 +288,7 @@ class Simulation_parameters
 
     inline int lmmax_pot() const
     {
-        return Utils::lmmax(parameters_input_.lmax_pot_);
+        return utils::lmmax(parameters_input_.lmax_pot_);
     }
 
     inline double aw_cutoff() const

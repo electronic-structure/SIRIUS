@@ -276,7 +276,7 @@ Spheric_function<spectral, T> laplacian(Spheric_function<spectral, T> const& f__
     for (int l = 0; l <= lmax; l++) {
         int ll = l * (l + 1);
         for (int m = -l; m <= l; m++) {
-            int lm = Utils::lm_by_l_m(l, m);
+            int lm = utils::lm(l, m);
             /* get lm component */
             auto s = f__.component(lm);
             /* compute 1st derivative */
@@ -304,7 +304,7 @@ inline Spheric_function<spectral, double> convert(Spheric_function<spectral, dou
     std::vector<double_complex> tpm(f__.angular_domain_size());
     for (int l = 0; l <= lmax; l++) {
         for (int m = -l; m <= l; m++) {
-            int lm = Utils::lm_by_l_m(l, m);
+            int lm = utils::lm(l, m);
             tpp[lm] = SHT::rlm_dot_ylm(l, m, m);
             tpm[lm] = SHT::rlm_dot_ylm(l, m, -m);
         }
@@ -319,7 +319,7 @@ inline Spheric_function<spectral, double> convert(Spheric_function<spectral, dou
                 if (m == 0) {
                     g(lm, ir) = std::real(f__(lm, ir));
                 } else {
-                    int lm1 = Utils::lm_by_l_m(l, -m);
+                    int lm1 = utils::lm(l, -m);
                     g(lm, ir) = std::real(tpp[lm] * f__(lm, ir) + tpm[lm] * f__(lm1, ir));
                 }
                 lm++;
@@ -340,7 +340,7 @@ inline Spheric_function<spectral, double_complex> convert(Spheric_function<spect
     std::vector<double_complex> tpm(f__.angular_domain_size());
     for (int l = 0; l <= lmax; l++) {
         for (int m = -l; m <= l; m++) {
-            int lm = Utils::lm_by_l_m(l, m);
+            int lm = utils::lm(l, m);
             tpp[lm] = SHT::ylm_dot_rlm(l, m, m);
             tpm[lm] = SHT::ylm_dot_rlm(l, m, -m);
         }
@@ -355,7 +355,7 @@ inline Spheric_function<spectral, double_complex> convert(Spheric_function<spect
                 if (m == 0) {
                     g(lm, ir) = f__(lm, ir);
                 } else {
-                    int lm1 = Utils::lm_by_l_m(l, -m);
+                    int lm1 = utils::lm(l, -m);
                     g(lm, ir) = tpp[lm] * f__(lm, ir) + tpm[lm] * f__(lm1, ir);
                 }
                 lm++;
@@ -450,20 +450,20 @@ inline Spheric_function_gradient<spectral, double_complex> gradient(Spheric_func
         double d2 = sqrt(double(l) / double(2 * l - 1));
 
         for (int m = -l; m <= l; m++) {
-            int lm = Utils::lm_by_l_m(l, m);
+            int lm = utils::lm(l, m);
             auto s = f.component(lm);
 
             for (int mu = -1; mu <= 1; mu++) {
                 int j = (mu + 2) % 3; // map -1,0,1 to 1,2,0
 
                 if ((l + 1) <= lmax && abs(m + mu) <= l + 1) {
-                    int lm1 = Utils::lm_by_l_m(l + 1, m + mu); 
+                    int lm1 = utils::lm(l + 1, m + mu); 
                     double d = d1 * SHT::clebsch_gordan(l, 1, l + 1, m, mu, m + mu);
                     for (int ir = 0; ir < f.radial_grid().num_points(); ir++)
                         g[j](lm1, ir) += (s.deriv(1, ir) - f(lm, ir) * f.radial_grid().x_inv(ir) * double(l)) * d;  
                 }
                 if ((l - 1) >= 0 && abs(m + mu) <= l - 1) {
-                    int lm1 = Utils::lm_by_l_m(l - 1, m + mu); 
+                    int lm1 = utils::lm(l - 1, m + mu); 
                     double d = d2 * SHT::clebsch_gordan(l, 1, l - 1, m, mu, m + mu); 
                     for (int ir = 0; ir < f.radial_grid().num_points(); ir++)
                         g[j](lm1, ir) -= (s.deriv(1, ir) + f(lm, ir) * f.radial_grid().x_inv(ir) * double(l + 1)) * d;

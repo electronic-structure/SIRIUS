@@ -70,7 +70,7 @@ class Augmentation_operator
         int lmax_beta = atom_type_.indexr().lmax();
         int lmmax     = utils::lmmax(2 * lmax_beta);
 
-        auto l_by_lm = Utils::l_by_lm(2 * lmax_beta);
+        auto l_by_lm = utils::l_by_lm(2 * lmax_beta);
 
         std::vector<double_complex> zilm(lmmax);
         for (int l = 0, lm = 0; l <= 2 * lmax_beta; l++) {
@@ -87,7 +87,7 @@ class Augmentation_operator
         int gvec_offset = gvec_.offset();
 
         /* array of real spherical harmonics for each G-vector */
-        mdarray<double, 2> gvec_rlm(Utils::lmmax(2 * lmax_beta), gvec_count);
+        mdarray<double, 2> gvec_rlm(utils::lmmax(2 * lmax_beta), gvec_count);
         #pragma omp parallel for schedule(static)
         for (int igloc = 0; igloc < gvec_count; igloc++) {
             int  ig  = gvec_offset + igloc;
@@ -246,7 +246,7 @@ class Augmentation_operator_gvec_deriv
         PROFILE("sirius::Augmentation_operator_gvec_deriv|constructor");
 
         int lmax  = lmax__;
-        int lmmax = Utils::lmmax(2 * lmax);
+        int lmmax = utils::lmmax(2 * lmax);
 
         /* Gaunt coefficients of three real spherical harmonics */
         gaunt_coefs_ = std::unique_ptr<Gaunt_coefficients<double>>(new Gaunt_coefficients<double>(lmax, 2 * lmax, lmax, SHT::gaunt_rlm));
@@ -293,9 +293,9 @@ class Augmentation_operator_gvec_deriv
 
         /* maximum l of beta-projectors */
         int lmax_beta = atom_type__.indexr().lmax();
-        int lmmax     = Utils::lmmax(2 * lmax_beta);
+        int lmmax     = utils::lmmax(2 * lmax_beta);
 
-        auto l_by_lm = Utils::l_by_lm(2 * lmax_beta);
+        auto l_by_lm = utils::l_by_lm(2 * lmax_beta);
 
         std::vector<double_complex> zilm(lmmax);
         for (int l = 0, lm = 0; l <= 2 * lmax_beta; l++) {

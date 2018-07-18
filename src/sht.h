@@ -34,7 +34,6 @@
 #include <algorithm>
 
 #include "typedefs.h"
-#include "utils.h"
 #include "linalg.hpp"
 #include "lebedev_grids.hpp"
 
@@ -259,7 +258,7 @@ class SHT // TODO: better name
                     if (m == 0) {
                         f_ylm__[lm] = f_rlm__[lm];
                     } else {
-                        int lm1 = Utils::lm_by_l_m(l, -m);
+                        int lm1 = utils::lm(l, -m);
                         f_ylm__[lm] = ylm_dot_rlm(l, m, m) * f_rlm__[lm] + ylm_dot_rlm(l, m, -m) * f_rlm__[lm1];
                     }
                     lm++;
@@ -276,7 +275,7 @@ class SHT // TODO: better name
                     if (m == 0) {
                         f_rlm__[lm] = std::real(f_ylm__[lm]);
                     } else {
-                        int lm1 = Utils::lm_by_l_m(l, -m);
+                        int lm1 = utils::lm(l, -m);
                         f_rlm__[lm] = std::real(rlm_dot_ylm(l, m, m) * f_ylm__[lm] + rlm_dot_ylm(l, m, -m) * f_ylm__[lm1]);
                     }
                     lm++;
@@ -356,11 +355,11 @@ class SHT // TODO: better name
             for (int l = 0; l <= lmax; l++) {
                 for (int m = 0; m <= l; m++) {
                     double_complex z = std::exp(double_complex(0.0, m * phi));
-                    ylm[Utils::lm_by_l_m(l, m)] = gsl_sf_legendre_sphPlm(l, m, x) * z;
+                    ylm[utils::lm(l, m)] = gsl_sf_legendre_sphPlm(l, m, x) * z;
                     if (m % 2) {
-                        ylm[Utils::lm_by_l_m(l, -m)] = -std::conj(ylm[Utils::lm_by_l_m(l, m)]);
+                        ylm[utils::lm(l, -m)] = -std::conj(ylm[utils::lm(l, m)]);
                     } else {
-                        ylm[Utils::lm_by_l_m(l, -m)] = std::conj(ylm[Utils::lm_by_l_m(l, m)]);
+                        ylm[utils::lm(l, -m)] = std::conj(ylm[utils::lm(l, m)]);
                     }
                 }
             }
@@ -387,13 +386,13 @@ class SHT // TODO: better name
 
             for (int l = 1; l <= lmax; l++) {
                 for (int m = -l; m < 0; m++) {
-                    rlm[Utils::lm_by_l_m(l, m)] = t * ylm[Utils::lm_by_l_m(l, m)].imag();
+                    rlm[utils::lm(l, m)] = t * ylm[utils::lm(l, m)].imag();
                 }
 
-                rlm[Utils::lm_by_l_m(l, 0)] = ylm[Utils::lm_by_l_m(l, 0)].real();
+                rlm[utils::lm(l, 0)] = ylm[utils::lm(l, 0)].real();
 
                 for (int m = 1; m <= l; m++) {
-                    rlm[Utils::lm_by_l_m(l, m)] = t * ylm[Utils::lm_by_l_m(l, m)].real();
+                    rlm[utils::lm(l, m)] = t * ylm[utils::lm(l, m)].real();
                 }
             }
         }

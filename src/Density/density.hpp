@@ -181,7 +181,7 @@ class Density : public Field4D
     std::unique_ptr<Gaunt_coefficients<double_complex>> gaunt_coefs_{nullptr};
 
     /// Fast mapping between composite lm index and corresponding orbital quantum number.
-    mdarray<int, 1> l_by_lm_;
+    std::vector<int> l_by_lm_;
 
     /// High-frequency mixer for the pseudopotential density mixing.
     std::unique_ptr<Mixer<double_complex>> hf_mixer_{nullptr};
@@ -231,9 +231,9 @@ class Density : public Field4D
                 int l1   = atom_type__.indexr(idxrf1).l;
 
                 int xi2 = atom_type__.indexb().index_by_idxrf(idxrf2);
-                for (int lm2 = Utils::lm_by_l_m(l2, -l2); lm2 <= Utils::lm_by_l_m(l2, l2); lm2++, xi2++) {
+                for (int lm2 = utils::lm(l2, -l2); lm2 <= utils::lm(l2, l2); lm2++, xi2++) {
                     int xi1 = atom_type__.indexb().index_by_idxrf(idxrf1);
-                    for (int lm1 = Utils::lm_by_l_m(l1, -l1); lm1 <= Utils::lm_by_l_m(l1, l1); lm1++, xi1++) {
+                    for (int lm1 = utils::lm(l1, -l1); lm1 <= utils::lm(l1, l1); lm1++, xi1++) {
                         for (int k = 0; k < gaunt_coeffs__.num_gaunt(lm1, lm2); k++) {
                             int  lm3 = gaunt_coeffs__.gaunt(lm1, lm2, k).lm3;
                             auto gc  = gaunt_coeffs__.gaunt(lm1, lm2, k).coef;
@@ -355,7 +355,7 @@ class Density : public Field4D
             gaunt_coefs_ = std::unique_ptr<gc_z>(new gc_z(ctx_.lmax_apw(), ctx_.lmax_rho(), ctx_.lmax_apw(), SHT::gaunt_hybrid));
         }
 
-        l_by_lm_ = Utils::l_by_lm(ctx_.lmax_rho());
+        l_by_lm_ = utils::l_by_lm(ctx_.lmax_rho());
 
         density_matrix_ = mdarray<double_complex, 4>(unit_cell_.max_mt_basis_size(), unit_cell_.max_mt_basis_size(),
                                                      ctx_.num_mag_comp(), unit_cell_.num_atoms());

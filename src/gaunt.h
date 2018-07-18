@@ -26,7 +26,6 @@
 #define __GAUNT_H__
 
 #include "mdarray.hpp"
-#include "utils.h"
 
 namespace sirius {
 
@@ -89,9 +88,9 @@ class Gaunt_coefficients
             , lmax3_(lmax3__)
             , lmax2_(lmax2__)
         {
-            lmmax1_ = Utils::lmmax(lmax1_);
-            lmmax3_ = Utils::lmmax(lmax3_);
-            lmmax2_ = Utils::lmmax(lmax2_);
+            lmmax1_ = utils::lmmax(lmax1_);
+            lmmax3_ = utils::lmmax(lmax3_);
+            lmmax2_ = utils::lmmax(lmax2_);
 
             gaunt_packed_L1_L2_ = mdarray<std::vector<gaunt_L1_L2<T>>, 1>(lmmax3_);
             gaunt_L1_L2<T> g12;

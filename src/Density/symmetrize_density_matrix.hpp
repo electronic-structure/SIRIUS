@@ -11,7 +11,7 @@ inline void Density::symmetrize_density_matrix()
     dm.zero();
 
     int lmax  = unit_cell_.lmax();
-    int lmmax = Utils::lmmax(lmax);
+    int lmmax = utils::lmmax(lmax);
 
     mdarray<double, 2> rotm(lmmax, lmmax);
 
@@ -42,10 +42,10 @@ inline void Density::symmetrize_density_matrix()
 
                     for (int j = 0; j < ndm; j++) {
                         for (int m3 = -l1; m3 <= l1; m3++) {
-                            int lm3 = Utils::lm_by_l_m(l1, m3);
+                            int lm3 = utils::lm(l1, m3);
                             int xi3 = atom_type.indexb().index_by_lm_order(lm3, o1);
                             for (int m4 = -l2; m4 <= l2; m4++) {
-                                int lm4 = Utils::lm_by_l_m(l2, m4);
+                                int lm4 = utils::lm(l2, m4);
                                 int xi4 = atom_type.indexb().index_by_lm_order(lm4, o2);
                                 dm_rot_spatial[j] += density_matrix_(xi3, xi4, j, ja) * rotm(lm1, lm3) * rotm(lm2, lm4) * alpha;
                             }
