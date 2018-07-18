@@ -29,7 +29,6 @@
 #include "atomic_data.hpp"
 #include "descriptors.h"
 #include "geometry3d.hpp"
-#include "utils.h"
 #include "radial_grid.h"
 #include "radial_solver.h"
 #include "xc_functional.h"
@@ -1151,10 +1150,10 @@ inline void Atom_type::init(int offset_lo__)
     /* get number of valence electrons */
     num_valence_electrons_ = zn_ - num_core_electrons_;
 
-    int lmmax_pot = Utils::lmmax(parameters_.lmax_pot());
+    int lmmax_pot = utils::lmmax(parameters_.lmax_pot());
 
     if (parameters_.full_potential()) {
-        auto l_by_lm = Utils::l_by_lm(parameters_.lmax_pot());
+        auto l_by_lm = utils::l_by_lm(parameters_.lmax_pot());
 
         /* index the non-zero radial integrals */
         std::vector<std::pair<int, int>> non_zero_elements;
@@ -1647,7 +1646,7 @@ inline void Atom_type::read_pseudo_paw(json const& parser)
 
 inline void Atom_type::read_input(std::string const& str__)
 {
-    json parser = Utils::read_json_from_file_or_string(str__);
+    json parser = utils::read_json_from_file_or_string(str__);
 
     if (parser.empty()) {
         return;

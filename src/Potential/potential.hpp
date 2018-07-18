@@ -83,7 +83,7 @@ class Potential : public Field4D
 
     std::vector<double_complex> zilm_;
 
-    mdarray<int, 1> l_by_lm_;
+    std::vector<int> l_by_lm_;
 
     mdarray<double_complex, 2> gvec_ylm_;
 
@@ -332,7 +332,7 @@ class Potential : public Field4D
         sht_  = std::unique_ptr<SHT>(new SHT(lmax_));
 
         if (lmax_ >= 0) {
-            l_by_lm_ = Utils::l_by_lm(lmax_);
+            l_by_lm_ = utils::l_by_lm(lmax_);
 
             /* precompute i^l */
             zil_.resize(lmax_ + 1);
@@ -340,7 +340,7 @@ class Potential : public Field4D
                 zil_[l] = std::pow(double_complex(0, 1), l);
             }
 
-            zilm_.resize(Utils::lmmax(lmax_));
+            zilm_.resize(utils::lmmax(lmax_));
             for (int l = 0, lm = 0; l <= lmax_; l++) {
                 for (int m = -l; m <= l; m++, lm++) {
                     zilm_[lm] = zil_[l];

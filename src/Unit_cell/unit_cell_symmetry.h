@@ -35,7 +35,6 @@ extern "C" {
 
 #include "geometry3d.hpp"
 #include "constants.h"
-#include "utils.h"
 #include "gvec.hpp"
 
 namespace sirius {
@@ -982,7 +981,7 @@ inline void Unit_cell_symmetry::symmetrize_function(mdarray<double, 3>& frlm__,
 
     splindex<block> spl_atoms(num_atoms_, comm__.size(), comm__.rank());
 
-    int lmax = Utils::lmax_by_lmmax(lmmax);
+    int lmax = utils::lmax(lmmax);
 
     mdarray<double, 2> rotm(lmmax, lmmax);
 
@@ -1028,7 +1027,7 @@ inline void Unit_cell_symmetry::symmetrize_vector_function(mdarray<double, 3>& v
         TERMINATE("wrong number of atoms");
     }
 
-    int lmax = Utils::lmax_by_lmmax(lmmax);
+    int lmax = utils::lmax(lmmax);
 
     mdarray<double, 2> rotm(lmmax, lmmax);
 
@@ -1074,7 +1073,7 @@ inline void Unit_cell_symmetry::symmetrize_vector_function(mdarray<double, 3>& v
 
     splindex<block> spl_atoms(num_atoms_, comm__.size(), comm__.rank());
 
-    int lmax = Utils::lmax_by_lmmax(lmmax);
+    int lmax = utils::lmax(lmmax);
 
     mdarray<double, 2> rotm(lmmax, lmmax);
 

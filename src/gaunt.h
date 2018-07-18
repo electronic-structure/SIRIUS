@@ -26,7 +26,6 @@
 #define __GAUNT_H__
 
 #include "mdarray.hpp"
-#include "utils.h"
 
 namespace sirius {
 
@@ -89,9 +88,9 @@ class Gaunt_coefficients
             , lmax3_(lmax3__)
             , lmax2_(lmax2__)
         {
-            lmmax1_ = Utils::lmmax(lmax1_);
-            lmmax3_ = Utils::lmmax(lmax3_);
-            lmmax2_ = Utils::lmmax(lmax2_);
+            lmmax1_ = utils::lmmax(lmax1_);
+            lmmax3_ = utils::lmmax(lmax3_);
+            lmmax2_ = utils::lmmax(lmax2_);
 
             gaunt_packed_L1_L2_ = mdarray<std::vector<gaunt_L1_L2<T>>, 1>(lmmax3_);
             gaunt_L1_L2<T> g12;
@@ -142,7 +141,7 @@ class Gaunt_coefficients
          *          int lm1 = gaunt_coefs.gaunt(lm3, i).lm1;
          *          int lm2 = gaunt_coefs.gaunt(lm3, i).lm2;
          *          double coef = gaunt_coefs.gaunt(lm3, i).coef;
-         *          
+         *
          *          // do something with lm1,lm2,lm3 and coef
          *      }
          *  }
@@ -160,7 +159,7 @@ class Gaunt_coefficients
         {
             return static_cast<int>(gaunt_packed_L3_(lm1, lm2).size());
         }
-        
+
         /// Return a structure containing {lm3, coef} for a given lm1, lm2 and index
         inline gaunt_L3<T> const& gaunt(int lm1, int lm2, int idx) const
         {
@@ -182,7 +181,7 @@ class Gaunt_coefficients
             }
             return zsum;
         }
-        
+
         /// Return a sum over L3 (lm3) index of Gaunt coefficients and a real vector.
         /** The following operation is performed:
          *  \f[
@@ -198,7 +197,7 @@ class Gaunt_coefficients
             }
             return sum;
         }
-    
+
         /// Return vector of non-zero Gaunt coefficients for a given combination of lm1 and lm2
         inline std::vector<gaunt_L3<T>> const& gaunt_vector(int lm1, int lm2) const
         {

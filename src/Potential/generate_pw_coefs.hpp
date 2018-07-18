@@ -13,7 +13,7 @@ inline void Potential::generate_pw_coefs()
         case relativity_t::iora: {
             for (int ir = 0; ir < ctx_.fft().local_size(); ir++) {
                 double M = 1 - sq_alpha_half * effective_potential().f_rg(ir);
-                ctx_.fft().buffer(ir) = ctx_.step_function().theta_r(ir) / std::pow(M, 2);
+                ctx_.fft().buffer(ir) = ctx_.theta(ir) / std::pow(M, 2);
             }
             if (ctx_.fft().pu() == GPU) {
                 ctx_.fft().buffer().copy<memory_t::host, memory_t::device>();
@@ -24,7 +24,7 @@ inline void Potential::generate_pw_coefs()
         case relativity_t::zora: {
             for (int ir = 0; ir < ctx_.fft().local_size(); ir++) {
                 double M = 1 - sq_alpha_half * effective_potential().f_rg(ir);
-                ctx_.fft().buffer(ir) = ctx_.step_function().theta_r(ir) / M;
+                ctx_.fft().buffer(ir) = ctx_.theta(ir) / M;
             }
             if (ctx_.fft().pu() == GPU) {
                 ctx_.fft().buffer().copy<memory_t::host, memory_t::device>();
@@ -34,7 +34,7 @@ inline void Potential::generate_pw_coefs()
         }
         default: {
             for (int ir = 0; ir < ctx_.fft().local_size(); ir++) {
-                ctx_.fft().buffer(ir) = effective_potential().f_rg(ir) * ctx_.step_function().theta_r(ir);
+                ctx_.fft().buffer(ir) = effective_potential().f_rg(ir) * ctx_.theta(ir);
             }
             if (ctx_.fft().pu() == GPU) {
                 ctx_.fft().buffer().copy<memory_t::host, memory_t::device>();

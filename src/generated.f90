@@ -80,6 +80,22 @@ end interface
 call sirius_print_timers_aux()
 end subroutine sirius_print_timers
 
+!> @brief Save all timers to JSON file.
+!> @param [in] fname Name of the output JSON file.
+subroutine sirius_serialize_timers(fname)
+implicit none
+character(C_CHAR), dimension(*), intent(in) :: fname
+interface
+subroutine sirius_serialize_timers_aux(fname)&
+&bind(C, name="sirius_serialize_timers")
+use, intrinsic :: ISO_C_BINDING
+character(C_CHAR), dimension(*), intent(in) :: fname
+end subroutine
+end interface
+
+call sirius_serialize_timers_aux(fname)
+end subroutine sirius_serialize_timers
+
 !> @brief Spline integration of f(x)*x^m.
 !> @param [in] m Defines the x^{m} factor.
 !> @param [in] np Number of x-points.
@@ -127,6 +143,9 @@ res = sirius_context_initialized_aux(handler)
 end function sirius_context_initialized
 
 !> @brief Create context of the simulation.
+!> @details Simulation context is the complex data structure that holds all the parameters of the individual simulation.
+!> The context must be created, populated with the correct parameters and initialized before using all subsequent
+!> SIRIUS functions.
 !> @param [in] fcomm Entire communicator of the simulation.
 function sirius_create_context(fcomm) result(res)
 implicit none

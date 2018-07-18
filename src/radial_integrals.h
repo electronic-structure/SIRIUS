@@ -25,6 +25,7 @@
 #ifndef __RADIAL_INTEGRALS_H__
 #define __RADIAL_INTEGRALS_H__
 
+#include <gsl/gsl_sf_erf.h>
 #include "Unit_cell/unit_cell.h"
 #include "sbessel.h"
 
@@ -84,7 +85,7 @@ class Radial_integrals_base
 /// Radial integrals of the atomic centered orbitals.
 /** Used in initialize_subspace and in the hubbard correction. */
 template <bool jl_deriv>
- class Radial_integrals_atomic_wf : public Radial_integrals_base<2>
+class Radial_integrals_atomic_wf : public Radial_integrals_base<2>
 {
   private:
 
@@ -301,6 +302,16 @@ class Radial_integrals_rho_pseudo : public Radial_integrals_base<1>
     {
         values_ = mdarray<Spline<double>, 1>(unit_cell_.num_atom_types());
         generate();
+
+        if (unit_cell_.parameters().control().print_checksum_ && unit_cell_.comm().rank() == 0) {
+            double cs{0};
+            for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
+                for (int iq = 0; iq < grid_q_.num_points(); iq++) {
+                    cs += values_(iat)(iq);
+                }
+            }
+            utils::print_checksum("Radial_integrals_rho_pseudo", cs);
+        }
     }
 };
 
@@ -471,48 +482,6 @@ class Radial_integrals_beta_jl : public Radial_integrals_base<3>
         generate();
     }
 };
-
-/// Radial integrals for the step function of the LAPW method.
-/** Radial integrals have the following expression:
- *  \f[
- *      \Theta(\alpha, G) = \int_{0}^{R_{\alpha}} \frac{\sin(Gr)}{Gr} r^2 dr =
- *          \left\{ \begin{array}{ll} \displaystyle R_{\alpha}^3 / 3 & G=0 \\
- *          \Big( \sin(GR_{\alpha}) - GR_{\alpha}\cos(GR_{\alpha}) \Big) / G^3 & G \ne 0 \end{array} \right.
- *  \f]
- */
-//class Radial_integrals_theta : public Radial_integrals_base<1>
-//{
-//  private:
-//    void generate()
-//    {
-//        PROFILE("sirius::Radial_integrals|theta");
-//
-//        for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
-//            auto& atom_type = unit_cell_.atom_type(iat);
-//            auto R          = atom_type.mt_radius();
-//            values_(iat)    = Spline<double>(grid_q_);
-//
-//            #pragma omp parallel for
-//            for (int iq = 0; iq < grid_q_.num_points(); iq++) {
-//                if (iq == 0) {
-//                    values_(iat)[iq] = std::pow(R, 3) / 3.0;
-//                } else {
-//                    double g         = grid_q_[iq];
-//                    values_(iat)[iq] = (std::sin(g * R) - g * R * std::cos(g * R)) / std::pow(g, 3);
-//                }
-//            }
-//            values_(iat).interpolate();
-//        }
-//    }
-//
-//  public:
-//    Radial_integrals_theta(Unit_cell const& unit_cell__, double qmax__, int np__)
-//        : Radial_integrals_base<1>(unit_cell__, qmax__, np__)
-//    {
-//        values_ = mdarray<Spline<double>, 1>(unit_cell_.num_atom_types());
-//        generate();
-//    }
-//};
 
 template <bool jl_deriv>
 class Radial_integrals_vloc : public Radial_integrals_base<1>

@@ -372,6 +372,24 @@ class Gvec
         std::copy(tmp_len.begin(), tmp_len.end(), gvec_shell_len_.at<CPU>());
     }
 
+#if defined(__CACHE_GVEC_CART)
+    void cache_gvec_cart()
+    {
+        gvec_cart_ = mdarray<double, 2>(3, num_gvec());
+        gkvec_cart_ = mdarray<double, 2>(3, num_gvec());
+
+        for (int ig = 0; ig < num_gvec(); ig++) {
+            auto G = gvec_by_full_index(gvec_full_index_(ig));
+            auto gc = lattice_vectors_ * vector3d<double>(G[0], G[1], G[2]);
+            auto gkc = lattice_vectors_ * (vector3d<double>(G[0], G[1], G[2]) + vk_);
+            for (int x: {0, 1, 2}) {
+                gvec_cart_(x, ig) = gc[x];
+                gkvec_cart_(x, ig) = gkc[x];
+            }
+        }
+    }
+#endif
+
     /// Initialize everything.
     void init()
     {
@@ -418,18 +436,7 @@ class Gvec
         }
 
 #if defined(__CACHE_GVEC_CART)
-        gvec_cart_ = mdarray<double, 2>(3, num_gvec());
-        gkvec_cart_ = mdarray<double, 2>(3, num_gvec());
-
-        for (int ig = 0; ig < num_gvec(); ig++) {
-            auto G = gvec_by_full_index(gvec_full_index_(ig));
-            auto gc = lattice_vectors_ * vector3d<double>(G[0], G[1], G[2]);
-            auto gkc = lattice_vectors_ * (vector3d<double>(G[0], G[1], G[2]) + vk_);
-            for (int x: {0, 1, 2}) {
-                gvec_cart_(x, ig) = gc[x];
-                gkvec_cart_(x, ig) = gkc[x];
-            }
-        }
+        cache_gvec_cart();
 #endif
         find_gvec_shells();
 
@@ -559,9 +566,28 @@ class Gvec
         return comm_;
     }
 
+    /// Set the new reciprocal lattice vectors.
+    /** For the varibale-cell relaxation runs we need an option to preserve the number of G- and G+k vectors. 
+     *  Here we can set the new lattice vectors and update the relevant members of the Gvec class. */
+    inline matrix3d<double> const& lattice_vectors(matrix3d<double> lattice_vectors__)
+    {
+        lattice_vectors_ = lattice_vectors__;
+#if defined(__CACHE_GVEC_CART)
+        cache_gvec_cart();
+#endif
+        find_gvec_shells();
+        return lattice_vectors_;
+    }
+
     inline matrix3d<double> const& lattice_vectors() const
     {
         return lattice_vectors_;
+    }
+
+    /// Return the volume of the real space unit cell that corresponds to the reciprocal lattice of G-vectors.
+    inline double omega() const
+    {
+        return std::pow(twopi, 3) / std::abs(lattice_vectors().det());
     }
 
     /// Return the total number of G-vectors within the cutoff.

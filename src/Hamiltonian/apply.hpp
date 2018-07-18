@@ -17,18 +17,6 @@ void Hamiltonian::apply_h_s(K_point* kp__,
                             int N__,
                             int n__,
                             Wave_functions& phi__,
-                            Wave_functions& hphi__,
-                            Wave_functions& sphi__) const
-{
-    apply_h_s<T>(kp__, ispn__, N__, n__, phi__, &hphi__, &sphi__);
-}
-
-template <typename T>
-void Hamiltonian::apply_h_s(K_point* kp__,
-                            int ispn__,
-                            int N__,
-                            int n__,
-                            Wave_functions& phi__,
                             Wave_functions* hphi__,
                             Wave_functions* sphi__) const
 {

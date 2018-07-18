@@ -21,7 +21,7 @@ class Beta_projectors_strain_deriv : public Beta_projectors_base<9>
         auto& beta_ri1 = ctx_.beta_ri_djl();
 
         int lmax = ctx_.unit_cell().lmax();
-        int lmmax = Utils::lmmax(lmax);
+        int lmmax = utils::lmmax(lmax);
 
         mdarray<double, 2> rlm_g(lmmax, num_gkvec_loc());
         mdarray<double, 3> rlm_dg(lmmax, 3, num_gkvec_loc());
@@ -142,7 +142,7 @@ class Beta_projectors_strain_deriv : public Beta_projectors_base<9>
     //        auto gvs = SHT::spherical_coordinates(gvc);
 
     //        /* compute real spherical harmonics for G+k vector */
-    //        std::vector<double> gkvec_rlm(Utils::lmmax(lmax_beta_ + 2));
+    //        std::vector<double> gkvec_rlm(utils::lmmax(lmax_beta_ + 2));
     //        SHT::spherical_harmonics(lmax_beta_ + 2, gvs[1], gvs[2], &gkvec_rlm[0]);
 
     //        mdarray<double, 3> tmp(ctx_.unit_cell().max_mt_radial_basis_size(), lmax_beta_ + 3, ctx_.unit_cell().num_atom_types());

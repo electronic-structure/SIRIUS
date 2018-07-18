@@ -100,9 +100,19 @@ void sirius_stop_timer(char const* name__)
    @fortran end */
 void sirius_print_timers(void)
 {
-    if (Communicator::world().rank() == 0) {
-        utils::timer::print();
-    }
+    utils::timer::print();
+}
+
+/* @fortran begin function void sirius_serialize_timers    Save all timers to JSON file.
+   @fortran argument in required string fname              Name of the output JSON file.
+   @fortran end */
+void sirius_serialize_timers(char const* fname__)
+{
+    json dict;
+    dict["flat"] = utils::timer::serialize();
+    dict["tree"] = utils::timer::serialize_tree();
+    std::ofstream ofs(fname__, std::ofstream::out | std::ofstream::trunc);
+    ofs << dict.dump(4);
 }
 
 /* @fortran begin function void sirius_integrate        Spline integration of f(x)*x^m.
@@ -137,6 +147,10 @@ bool sirius_context_initialized(void* const* handler__)
 
 /* @fortran begin function void* sirius_create_context        Create context of the simulation.
    @fortran argument in  required int   fcomm                 Entire communicator of the simulation.
+   @fortran details
+   Simulation context is the complex data structure that holds all the parameters of the individual simulation.
+   The context must be created, populated with the correct parameters and initialized before using all subsequent
+   SIRIUS functions.
    @fortran end */
 void* sirius_create_context(int const* fcomm__)
 {
@@ -326,7 +340,9 @@ void sirius_initialize_context(void* const* handler__)
    @fortran end */
 void sirius_free_handler(void** handler__)
 {
-    delete static_cast<utils::any_ptr*>(*handler__);
+    if (*handler__ != nullptr) {
+        delete static_cast<utils::any_ptr*>(*handler__);
+    }
     *handler__ = nullptr;
 }
 

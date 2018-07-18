@@ -378,7 +378,7 @@ inline void Hubbard_potential::symmetrize_occupancy_matrix_noncolinear_case()
     // check if we have some symmetries
     if (sym.num_mag_sym()) {
         int lmax  = unit_cell_.lmax();
-        int lmmax = Utils::lmmax(lmax);
+        int lmmax = utils::lmmax(lmax);
 
         mdarray<double_complex, 2> rotm(lmmax, lmmax);
         mdarray<double_complex, 4> rotated_oc(lmmax, lmmax, ctx_.num_spins() * ctx_.num_spins(), unit_cell_.num_atoms());
@@ -399,9 +399,9 @@ inline void Hubbard_potential::symmetrize_occupancy_matrix_noncolinear_case()
                 if (atom.type().hubbard_correction()) {
                     const int lmax_at = 2 * atom.type().hubbard_orbital(0).hubbard_l() + 1;
                     for (int ii = 0; ii < lmax_at; ii++) {
-                        int l1 = Utils::lm_by_l_m(atom.type().hubbard_orbital(0).hubbard_l(), ii - atom.type().hubbard_orbital(0).hubbard_l());
+                        int l1 = Utils::lm(atom.type().hubbard_orbital(0).hubbard_l(), ii - atom.type().hubbard_orbital(0).hubbard_l());
                         for (int ll = 0; ll < lmax_at; ll++) {
-                            int l2 = Utils::lm_by_l_m(atom.type().hubbard_orbital(0).hubbard_l(), ll - atom.type().hubbard_orbital(0).hubbard_l());
+                            int l2 = Utils::lm(atom.type().hubbard_orbital(0).hubbard_l(), ll - atom.type().hubbard_orbital(0).hubbard_l());
                             mdarray<double_complex, 1> rot_spa(ctx_.num_spins() * ctx_.num_spins());
                             rot_spa.zero();
                             for (int s1 = 0; s1 < ctx_.num_spins(); s1++) {
@@ -410,9 +410,9 @@ inline void Hubbard_potential::symmetrize_occupancy_matrix_noncolinear_case()
                                     // A_ij B_jk C_kl
 
                                     for (int jj = 0; jj < lmax_at; jj++) {
-                                        int l3 = Utils::lm_by_l_m(atom.type().hubbard_orbital(0).hubbard_l(), jj - atom.type().hubbard_orbital(0).hubbard_l());
+                                        int l3 = Utils::lm(atom.type().hubbard_orbital(0).hubbard_l(), jj - atom.type().hubbard_orbital(0).hubbard_l());
                                         for (int kk = 0; kk < lmax_at; kk++) {
-                                            int l4 = Utils::lm_by_l_m(atom.type().hubbard_orbital(0).hubbard_l(), kk - atom.type().hubbard_orbital(0).hubbard_l());
+                                            int l4 = Utils::lm(atom.type().hubbard_orbital(0).hubbard_l(), kk - atom.type().hubbard_orbital(0).hubbard_l());
                                             rot_spa(2 * s1 + s2) +=
                                                 std::conj(rotm(l1, l3)) *
                                                 occupancy_number_(jj, kk, (s1 == s2) * s1 + (s1 != s2) * (1 + 2 * s1 + s2), ia, 0) *
@@ -468,7 +468,7 @@ inline void Hubbard_potential::symmetrize_occupancy_matrix()
     // check if we have some symmetries
     if (sym.num_mag_sym()) {
         int lmax  = unit_cell_.lmax();
-        int lmmax = Utils::lmmax(lmax);
+        int lmmax = utils::lmmax(lmax);
 
         mdarray<double_complex, 2> rotm(lmmax, lmmax);
         mdarray<double_complex, 4> rotated_oc(lmmax, lmmax, ctx_.num_spins() * ctx_.num_spins(), unit_cell_.num_atoms());
@@ -492,15 +492,15 @@ inline void Hubbard_potential::symmetrize_occupancy_matrix()
                     rot_spa.zero();
                     for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
                         for (int ii = 0; ii < lmax_at; ii++) {
-                            int l1 = Utils::lm_by_l_m(atom.type().hubbard_orbital(0).hubbard_l(), ii - atom.type().hubbard_orbital(0).hubbard_l());
+                            int l1 = Utils::lm(atom.type().hubbard_orbital(0).hubbard_l(), ii - atom.type().hubbard_orbital(0).hubbard_l());
                             for (int ll = 0; ll < lmax_at; ll++) {
-                                int l2 = Utils::lm_by_l_m(atom.type().hubbard_orbital(0).hubbard_l(), ll - atom.type().hubbard_orbital(0).hubbard_l());
+                                int l2 = Utils::lm(atom.type().hubbard_orbital(0).hubbard_l(), ll - atom.type().hubbard_orbital(0).hubbard_l());
                                 // symmetrization procedure
                                 // A_ij B_jk C_kl
                                 for (int kk = 0; kk < lmax_at; kk++) {
-                                    int l4 = Utils::lm_by_l_m(atom.type().hubbard_orbital(0).hubbard_l(), kk - atom.type().hubbard_orbital(0).hubbard_l());
+                                    int l4 = Utils::lm(atom.type().hubbard_orbital(0).hubbard_l(), kk - atom.type().hubbard_orbital(0).hubbard_l());
                                     for (int jj = 0; jj < lmax_at; jj++) {
-                                        int l3 = Utils::lm_by_l_m(atom.type().hubbard_orbital(0).hubbard_l(), jj - atom.type().hubbard_orbital(0).hubbard_l());
+                                        int l3 = Utils::lm(atom.type().hubbard_orbital(0).hubbard_l(), jj - atom.type().hubbard_orbital(0).hubbard_l());
                                         rot_spa(ii, kk) +=
                                             std::conj(rotm(l1, l3)) * occupancy_number_(jj, kk, ispn, ia, 0) * rotm(l2, l4) * alpha;
                                     }

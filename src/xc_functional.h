@@ -27,7 +27,6 @@
 
 #include <xc.h>
 #include <string.h>
-#include "utils.h"
 
 namespace sirius {
 

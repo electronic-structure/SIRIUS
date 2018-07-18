@@ -230,7 +230,7 @@ inline void Density::initial_density_full_pot()
     //}
     //sba.approximate(gvec_len);
     
-    auto l_by_lm = Utils::l_by_lm(lmax);
+    auto l_by_lm = utils::l_by_lm(lmax);
     
     std::vector<double_complex> zil(lmax + 1);
     for (int l = 0; l <= lmax; l++) {

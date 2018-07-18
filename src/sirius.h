@@ -25,6 +25,10 @@
 #ifndef __SIRIUS_H__
 #define __SIRIUS_H__
 
+#if defined(__APEX)
+#include <apex_api.hpp>
+#endif
+
 #include "utils/json.hpp"
 using json = nlohmann::json;
 
@@ -46,7 +50,6 @@ using json = nlohmann::json;
 #include "Unit_cell/atom.h"
 #include "Unit_cell/free_atom.hpp"
 #include "Unit_cell/unit_cell.h"
-#include "step_function.h"
 #include "periodic_function.h"
 #include "k_point.h"
 #include "Band/band.hpp"
@@ -68,14 +71,27 @@ extern "C" void libsci_acc_finalize();
 /// Namespace of the SIRIUS library.
 namespace sirius {
 
+inline static bool& is_initialized()
+{
+    static bool b{false};
+    return b;
+}
+
 inline void initialize(bool call_mpi_init__ = true)
 {
+    if (is_initialized()) {
+        TERMINATE("SIRIUS library is already initialized");
+    }
     if (call_mpi_init__) {
         Communicator::initialize(MPI_THREAD_MULTIPLE);
     }
     if (Communicator::world().rank() == 0) {
         printf("SIRIUS %i.%i, git hash: %s\n", major_version, minor_version, git_hash);
     }
+#if defined(__APEX)
+    apex::init("sirius", Communicator::world().rank(), Communicator::world().size());
+#endif
+    utils::start_global_timer();
 
 #if defined(__GPU)
     if (acc::num_devices()) {
@@ -99,13 +115,14 @@ inline void initialize(bool call_mpi_init__ = true)
     assert(sizeof(int) == 4);
     assert(sizeof(double) == 8);
 
-    utils::start_global_timer();
+    is_initialized() = true;
 }
 
 inline void finalize(bool call_mpi_fin__ = true)
 {
-    utils::stop_global_timer();
-
+    if (!is_initialized()) {
+        TERMINATE("SIRIUS library was not initialized");
+    }
 #if defined(__MAGMA)
     magma::finalize();
 #endif
@@ -127,18 +144,15 @@ inline void finalize(bool call_mpi_fin__ = true)
 #endif
     fftw_cleanup();
 
-    json dict;
-    dict["flat"] = utils::timer::serialize_timers();
-    dict["tree"] = utils::timer::serialize_timers_tree();
-    if (Communicator::world().rank() == 0) {
-        std::ofstream ofs("timers.json", std::ofstream::out | std::ofstream::trunc);
-        ofs << dict.dump(4);
-    }
-
-    //utils::timer::print_tree();
+    utils::stop_global_timer();
+#if defined(__APEX)
+    apex::finalize();
+#endif
     if (call_mpi_fin__) {
         Communicator::finalize();
     }
+
+    is_initialized() = false;
 }
 
 }

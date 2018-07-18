@@ -3,6 +3,9 @@
 
 //#define __TIMER_SEQUENCE
 
+#if defined(__APEX)
+#include <apex_api.hpp>
+#endif
 #include <omp.h>
 #include <string>
 #include <sstream>
@@ -13,8 +16,9 @@
 #include <complex>
 #include <algorithm>
 #include "json.hpp"
-
 namespace utils {
+
+using time_point_t = std::chrono::high_resolution_clock::time_point;
 
 struct timer_stats_t
 {
@@ -24,11 +28,9 @@ struct timer_stats_t
     double avg_val{0};
     int count{0};
 #ifdef __TIMER_SEQUENCE
-    std::vector<double> sequence;
+    std::vector<time_point_t> sequence;
 #endif
 };
-
-using time_point_t = std::chrono::high_resolution_clock::time_point;
 
 const std::string main_timer_label = "+global_timer";
 
@@ -44,7 +46,9 @@ class timer
 
     /// True if timer is active.
     bool active_{false};
-
+#if defined(__APEX)
+    apex::profiler* apex_p_;
+#endif
     /// List of child timers that we called inside another timer.
     static std::vector<std::string>& stack()
     {
@@ -59,6 +63,7 @@ class timer
         return timer_values_;
     }
 
+    /// Return a reference to values of a given timer.
     static timer_stats_t& timer_values(std::string label__)
     {
         return timer_values()[label__];
@@ -84,6 +89,19 @@ class timer
         return timer_values_ex_;
     }
 
+    /// Keep track of the starting time.
+    inline static time_point_t& global_starting_time()
+    {
+        static bool initialized{false};
+        static time_point_t t_;
+        /* record the starting time */
+        if (!initialized) {
+            t_ = std::chrono::high_resolution_clock::now();
+            initialized = true;
+        }
+        return t_;
+    }
+
     timer(timer const& src) = delete;
     timer& operator=(timer const& src) = delete;
 
@@ -98,6 +116,9 @@ class timer
         starting_time_ = std::chrono::high_resolution_clock::now();
         /* add timer label to the list of called timers */
         stack().push_back(label_);
+#if defined(__APEX)
+        apex_p_ = apex::start(label_);
+#endif
     }
 
     ~timer()
@@ -111,6 +132,9 @@ class timer
         this->starting_time_ = src__.starting_time_;
         this->active_        = src__.active_;
         src__.active_        = false;
+#if defined(__APEX)
+        this->apex_p_        = src__.apex_p_;
+#endif
     }
 
     /// Stop the timer and update the statistics.
@@ -131,12 +155,8 @@ class timer
 
         auto& ts = timer_values(label_);
 #ifdef __TIMER_SEQUENCE
-        auto abs_time = std::chrono::duration_cast<std::chrono::duration<double>>(starting_time_.time_since_epoch());
-        double abs_time_val = abs_time.count();
-        ts.sequence.push_back(abs_time_val);
-        abs_time = std::chrono::duration_cast<std::chrono::duration<double>>(t2.time_since_epoch());
-        abs_time_val = abs_time.count();
-        ts.sequence.push_back(abs_time_val);
+        ts.sequence.push_back(starting_time_);
+        ts.sequence.push_back(t2);
 #endif
         ts.min_val = std::min(ts.min_val, val);
         ts.max_val = std::max(ts.max_val, val);
@@ -155,6 +175,9 @@ class timer
             }
             timer_values_ex()[parent_label][label_] += val;
         }
+#if defined(__APEX)
+        apex::stop(apex_p_);
+#endif
         active_ = false;
         return val;
     }
@@ -231,34 +254,33 @@ class timer
         }
     }
 
-    static nlohmann::json serialize_timers()
+    static nlohmann::json serialize()
     {
         nlohmann::json dict;
 
-#ifdef __TIMER_SEQUENCE
-        double start_time = timer_values()[main_timer_label].sequence[0];
-#endif
         /* collect local timers */
         for (auto& it: timer::timer_values()) {
             timer_stats_t ts;
             nlohmann::json node;
             node["count"] = it.second.count;
             node["total"] = it.second.tot_val;
-            node["min"] = it.second.min_val;
-            node["max"] = it.second.max_val;
-            node["avg"] = it.second.tot_val / it.second.count;
+            node["min"]   = it.second.min_val;
+            node["max"]   = it.second.max_val;
+            node["avg"]   = it.second.tot_val / it.second.count;
 #ifdef __TIMER_SEQUENCE
-            for (size_t i = 0; i < it.second.sequence.size(); i++) {
-                it.second.sequence[i] -= start_time;
+            std::vector<double> tseq;
+            for (auto& s: it.second.sequence) {
+                auto tdiff = std::chrono::duration_cast<std::chrono::duration<double>>(s - global_starting_time());
+                tseq.push_back(tdiff.count());
             }
-            node["sequence"] = it.second.sequence;
+            node["sequence"] = tseq;
 #endif
             dict[it.first] = node;
         }
         return std::move(dict);
     }
 
-    static nlohmann::json serialize_timers_tree()
+    static nlohmann::json serialize_tree()
     {
         nlohmann::json dict;
 
@@ -306,23 +328,29 @@ class timer
 
     inline static timer& global_timer()
     {
+        global_starting_time();
         static timer global_timer__(main_timer_label);
         return global_timer__;
     }
-    
+
     /// List of timers created on the Fortran side.
     inline static std::map<std::string, timer>& ftimers()
     {
         static std::map<std::string, timer> ftimers__;
         return ftimers__;
     }
+
 };
 
+/// Triggers the creation of the global timer.
+/** The global timer is the parent for all other timers. */
 inline void start_global_timer()
 {
     timer::global_timer();
 }
 
+/// Stops the global timer.
+/** When global timer is stoped the timer tree can be build using timer::serialize_timers_tree() method. */
 inline void stop_global_timer()
 {
     timer::global_timer().stop();

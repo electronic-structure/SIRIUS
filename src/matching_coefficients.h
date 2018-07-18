@@ -162,7 +162,7 @@ class Matching_coefficients
               igk_(igk__),
               gkvec_(gkvec__)
         {
-            int lmmax_apw = Utils::lmmax(lmax_apw__);
+            int lmmax_apw = utils::lmmax(lmax_apw__);
 
             gkvec_ylm_ = mdarray<double_complex, 2>(num_gkvec_, lmmax_apw);
             

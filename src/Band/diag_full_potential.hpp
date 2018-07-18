@@ -202,7 +202,7 @@ inline void Band::get_singular_components(K_point& kp__, Hamiltonian& H__) const
 {
     PROFILE("sirius::Band::get_singular_components");
 
-    auto o_diag_tmp = H__.get_o_diag(&kp__, ctx_.step_function().theta_pw(0).real());
+    auto o_diag_tmp = H__.get_o_diag(&kp__, ctx_.theta_pw(0).real());
 
     mdarray<double, 2> o_diag(kp__.num_gkvec_loc(), 1, memory_t::host, "o_diag");
     mdarray<double, 1> diag1(kp__.num_gkvec_loc(), memory_t::host, "diag1");
@@ -415,8 +415,8 @@ inline void Band::diag_full_potential_first_variation_davidson(K_point& kp__, Ha
 
     get_singular_components(kp__, H__);
 
-    auto h_diag = H__.get_h_diag(&kp__, H__.local_op().v0(0), ctx_.step_function().theta_pw(0).real());
-    auto o_diag = H__.get_o_diag(&kp__, ctx_.step_function().theta_pw(0).real());
+    auto h_diag = H__.get_h_diag(&kp__, H__.local_op().v0(0), ctx_.theta_pw(0).real());
+    auto o_diag = H__.get_o_diag(&kp__, ctx_.theta_pw(0).real());
 
     /* short notation for number of target wave-functions */
     int num_bands = ctx_.num_fv_states();

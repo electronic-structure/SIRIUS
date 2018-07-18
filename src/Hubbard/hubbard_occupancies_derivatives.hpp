@@ -14,10 +14,10 @@ void Hubbard_potential::compute_occupancies_derivatives(K_point& kp,
     // derivatives of the hubbard wave functions are needed.
     auto &phi = kp.hubbard_wave_functions();
 
-    kp.generate_atomic_centered_wavefunctions_(this->number_of_hubbard_orbitals(),
-                                               phi,
-                                               this->offset,
-                                               true);
+    kp.generate_atomic_centered_wavefunctions_aux(this->number_of_hubbard_orbitals(),
+                                                  phi,
+                                                  this->offset,
+                                                  true);
 
     Beta_projectors_gradient bp_grad_(ctx_, kp.gkvec(), kp.igk_loc(), kp.beta_projectors());
     kp.beta_projectors().prepare();
@@ -205,7 +205,7 @@ void Hubbard_potential::compute_occupancies_stress_derivatives(K_point& kp,
     bool augment = false;
 
     const int lmax  = ctx_.unit_cell().lmax();
-    const int lmmax = Utils::lmmax(lmax);
+    const int lmmax = utils::lmmax(lmax);
 
     mdarray<double, 2> rlm_g(lmmax, kp.num_gkvec_loc());
     mdarray<double, 3> rlm_dg(lmmax, 3, kp.num_gkvec_loc());
@@ -225,7 +225,7 @@ void Hubbard_potential::compute_occupancies_stress_derivatives(K_point& kp,
     bp_strain_deriv.prepare();
 
     // compute the hubbard orbitals
-    kp.generate_atomic_centered_wavefunctions_(this->number_of_hubbard_orbitals(), phi, this->offset, true);
+    kp.generate_atomic_centered_wavefunctions_aux(this->number_of_hubbard_orbitals(), phi, this->offset, true);
 
     #ifdef __GPU
     if (ctx_.processing_unit() == GPU) {
@@ -404,7 +404,7 @@ void Hubbard_potential::compute_gradient_strain_wavefunctions(K_point& kp__,
                         }
                     } else {
                         for (int m = -l; m <= l; m++) {
-                            int lm  = Utils::lm_by_l_m(l, m);
+                            int lm  = Utils::lm(l, m);
                             auto d1 = ri_values[atom_type.id()][i] * (gvc[mu] * rlm_dg(lm, nu, igkloc) +
                                                                       p * rlm_g(lm, igkloc));
                             auto d2 = ridjl_values[atom_type.id()][i] * rlm_g(lm, igkloc) * gvc[mu] * gvc[nu] / gvs[0];
