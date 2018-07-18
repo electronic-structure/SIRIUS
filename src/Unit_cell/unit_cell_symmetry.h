@@ -35,7 +35,6 @@ extern "C" {
 
 #include "geometry3d.hpp"
 #include "constants.h"
-#include "utils.h"
 #include "gvec.hpp"
 
 namespace sirius {

@@ -20,7 +20,7 @@ inline void Density::init_paw()
         auto& atom_type = atom.type();
 
         int l_max      = 2 * atom_type.indexr().lmax_lo();
-        int lm_max_rho = Utils::lmmax(l_max);
+        int lm_max_rho = utils::lmmax(l_max);
 
         paw_density_data_t pdd;
 
@@ -88,7 +88,7 @@ inline void Density::generate_paw_atom_density(paw_density_data_t& pdd)
 
     auto& atom_type = pdd.atom_->type();
 
-    auto l_by_lm = Utils::l_by_lm(2 * atom_type.indexr().lmax_lo());
+    auto l_by_lm = utils::l_by_lm(2 * atom_type.indexr().lmax_lo());
 
     /* get gaunt coefficients */
     Gaunt_coefficients<double> GC(atom_type.indexr().lmax_lo(), 2 * atom_type.indexr().lmax_lo(),

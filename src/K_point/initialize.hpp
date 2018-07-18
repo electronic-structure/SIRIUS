@@ -7,7 +7,7 @@ inline void K_point::initialize()
         zil_[l] = std::pow(double_complex(0, 1), l);
     }
 
-    l_by_lm_ = Utils::l_by_lm(ctx_.lmax_apw());
+    l_by_lm_ = utils::l_by_lm(ctx_.lmax_apw());
 
     int bs = ctx_.cyclic_block_size();
 

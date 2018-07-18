@@ -19,7 +19,7 @@ inline void Potential::init_PAW()
         auto& atom_type = atom.type();
 
         int l_max = 2 * atom_type.indexr().lmax_lo();
-        int lm_max_rho = Utils::lmmax(l_max);
+        int lm_max_rho = utils::lmmax(l_max);
 
         paw_potential_data_t ppd;
 
@@ -293,15 +293,13 @@ inline double Potential::xc_mt_PAW_noncollinear(std::vector<Spheric_function<spe
         }
     }
 
-    // transform back in lm
+    /* transform back to lm- domain */
     for(size_t i = 0; i < density.size(); i++){
         potential[i] += transform(sht_.get(), vxc_tp[i]);
     }
 
-    //------------------------
-    //--- calculate energy ---
-    //------------------------
-    Spheric_function<spectral,double> exc_lm = transform(sht_.get(), exc_tp );
+    /* transform to lm- domain */
+    Spheric_function<spectral, double> exc_lm = transform(sht_.get(), exc_tp);
 
     return inner(exc_lm, rho_u_lm + rho_d_lm);
 }
@@ -326,7 +324,7 @@ inline double Potential::calc_PAW_hartree_potential(Atom& atom,
 
     /* calculate energy */
 
-    auto l_by_lm = Utils::l_by_lm(utils::lmax(lmsize_rho));
+    auto l_by_lm = utils::l_by_lm(utils::lmax(lmsize_rho));
 
     /* create array for integration */
     std::vector<double> intdata(grid.num_points(),0);
@@ -351,10 +349,7 @@ inline void Potential::calc_PAW_local_potential(paw_potential_data_t &ppd,
                                                 std::vector<Spheric_function<spectral, double>> const& ae_density,
                                                 std::vector<Spheric_function<spectral, double>> const& ps_density)
 {
-    //-----------------------------------------
-    //---- Calculation of Hartree potential ---
-    //-----------------------------------------
-
+    /* calculation of Hartree potential */
     for (int i = 0; i < ctx_.num_mag_dims() + 1; i++) {
         ppd.ae_potential_[i].zero();
         ppd.ps_potential_[i].zero();
@@ -370,9 +365,7 @@ inline void Potential::calc_PAW_local_potential(paw_potential_data_t &ppd,
 
     ppd.hartree_energy_ = ae_hartree_energy - ps_hartree_energy;
 
-    //-----------------------------------------
-    //---- Calculation of XC potential ---
-    //-----------------------------------------
+    /* calculation of XC potential */
     auto& ps_core = ppd.atom_->type().ps_core_charge_density();
     auto& ae_core = ppd.atom_->type().paw_ae_core_charge_density();
 
@@ -418,9 +411,9 @@ inline void Potential::calc_PAW_local_Dij(paw_potential_data_t& pdd, mdarray<dou
 
     /* get lm size for density */
     int lmax = atom_type.indexr().lmax_lo();
-    int lmsize_rho = Utils::lmmax(2 * lmax);
+    int lmsize_rho = utils::lmmax(2 * lmax);
 
-    auto l_by_lm = Utils::l_by_lm(2 * lmax);
+    auto l_by_lm = utils::l_by_lm(2 * lmax);
 
     Gaunt_coefficients<double> GC(lmax, 2 * lmax, lmax, SHT::gaunt_rlm);
 

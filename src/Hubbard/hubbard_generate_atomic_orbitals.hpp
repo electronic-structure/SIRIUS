@@ -32,7 +32,7 @@ void Hubbard_potential::generate_atomic_orbitals(K_point& kp, Q_operator<double_
     // temporary wave functions
     Wave_functions sphi(kp.gkvec_partition(), this->number_of_hubbard_orbitals(), num_sc);
 
-    kp.generate_atomic_centered_wavefunctions_(this->number_of_hubbard_orbitals(), sphi, this->offset, true);
+    kp.generate_atomic_centered_wavefunctions_aux(this->number_of_hubbard_orbitals(), sphi, this->offset, true);
 
     // check if we have a norm conserving pseudo potential only
     bool augment = false;

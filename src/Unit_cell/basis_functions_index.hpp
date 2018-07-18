@@ -96,7 +96,7 @@ class basis_functions_index
                     basis_function_index_descriptor(l, m, indexr__[idxrf].j, order, idxlo, idxrf));
             }
         }
-        index_by_lm_order_ = mdarray<int, 2>(Utils::lmmax(indexr__.lmax()), indexr__.max_num_rf());
+        index_by_lm_order_ = mdarray<int, 2>(utils::lmmax(indexr__.lmax()), indexr__.max_num_rf());
 
         for (int i = 0; i < (int)basis_function_index_descriptors_.size(); i++) {
             int lm    = basis_function_index_descriptors_[i].lm;

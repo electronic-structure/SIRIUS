@@ -125,7 +125,7 @@ class Atom
         lmax_pot_ = type().parameters().lmax_pot();
 
         if (type().parameters().full_potential()) {
-            int lmmax = Utils::lmmax(lmax_pot_);
+            int lmmax = utils::lmmax(lmax_pot_);
             int nrf   = type().indexr().size();
 
             h_radial_integrals_ = mdarray<double, 3>(lmmax, nrf, nrf);
@@ -170,7 +170,7 @@ class Atom
     {
         PROFILE("sirius::Atom::generate_radial_integrals");
 
-        int lmmax        = Utils::lmmax(lmax_pot_);
+        int lmmax        = utils::lmmax(lmax_pot_);
         int nmtp         = type().num_mt_points();
         int nrf          = type().indexr().size();
         int num_mag_dims = type().parameters().num_mag_dims();
@@ -181,7 +181,7 @@ class Atom
 
         splindex<block> spl_lm(lmmax, comm__.size(), comm__.rank());
 
-        auto l_by_lm = Utils::l_by_lm(lmax_pot_);
+        auto l_by_lm = utils::l_by_lm(lmax_pot_);
 
         h_radial_integrals_.zero();
         if (num_mag_dims) {
@@ -402,9 +402,9 @@ class Atom
     /// Set muffin-tin potential and magnetic field.
     inline void set_nonspherical_potential(double* veff__, double* beff__[3])
     {
-        veff_ = mdarray<double, 2>(veff__, Utils::lmmax(lmax_pot_), type().num_mt_points());
+        veff_ = mdarray<double, 2>(veff__, utils::lmmax(lmax_pot_), type().num_mt_points());
         for (int j = 0; j < 3; j++) {
-            beff_[j] = mdarray<double, 2>(beff__[j], Utils::lmmax(lmax_pot_), type().num_mt_points());
+            beff_[j] = mdarray<double, 2>(beff__[j], utils::lmmax(lmax_pot_), type().num_mt_points());
         }
     }
 
