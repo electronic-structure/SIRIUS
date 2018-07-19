@@ -427,6 +427,22 @@ end interface
 call sirius_initialize_context_aux(handler)
 end subroutine sirius_initialize_context
 
+!> @brief Update simulation context after changing lattice or atomic positions.
+!> @param [in] handler Simulation context handler.
+subroutine sirius_update_context(handler)
+implicit none
+type(C_PTR), intent(in) :: handler
+interface
+subroutine sirius_update_context_aux(handler)&
+&bind(C, name="sirius_update_context")
+use, intrinsic :: ISO_C_BINDING
+type(C_PTR), intent(in) :: handler
+end subroutine
+end interface
+
+call sirius_update_context_aux(handler)
+end subroutine sirius_update_context
+
 !> @brief Free any handler of object created by SIRIUS.
 !> @param [inout] handler Handler of the object.
 subroutine sirius_free_handler(handler)
@@ -548,21 +564,6 @@ end interface
 res = sirius_create_ground_state_aux(ks_handler)
 end function sirius_create_ground_state
 
-!> @brief find the ground state
-!> @param [in] gs_handler handler of the ground state
-subroutine sirius_find_ground_state(gs_handler)
-implicit none
-type(C_PTR), intent(in) :: gs_handler
-interface
-subroutine sirius_find_ground_state_aux(gs_handler)&
-&bind(C, name="sirius_find_ground_state")
-use, intrinsic :: ISO_C_BINDING
-type(C_PTR), intent(in) :: gs_handler
-end subroutine
-end interface
-
-call sirius_find_ground_state_aux(gs_handler)
-end subroutine sirius_find_ground_state
 
 !> @brief Add new atom type to the unit cell.
 !> @param [in] handler Simulation context handler.
@@ -841,6 +842,28 @@ if (present(vector_field)) vector_field_ptr = C_LOC(vector_field)
 
 call sirius_add_atom_aux(handler,label,position,vector_field_ptr)
 end subroutine sirius_add_atom
+
+!> @brief Set new atomic position.
+!> @param [in] handler Simulation context handler.
+!> @param [in] ia Index of atom.
+!> @param [in] position Atom position in lattice coordinates.
+subroutine sirius_set_atom_position(handler,ia,position)
+implicit none
+type(C_PTR), intent(in) :: handler
+integer(C_INT), intent(in) :: ia
+real(C_DOUBLE), intent(in) :: position
+interface
+subroutine sirius_set_atom_position_aux(handler,ia,position)&
+&bind(C, name="sirius_set_atom_position")
+use, intrinsic :: ISO_C_BINDING
+type(C_PTR), intent(in) :: handler
+integer(C_INT), intent(in) :: ia
+real(C_DOUBLE), intent(in) :: position
+end subroutine
+end interface
+
+call sirius_set_atom_position_aux(handler,ia,position)
+end subroutine sirius_set_atom_position
 
 !> @brief Set plane-wave coefficients of a periodic function.
 !> @param [in] handler Ground state handler.

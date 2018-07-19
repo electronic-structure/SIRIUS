@@ -313,7 +313,7 @@ class Potential : public Field4D
     template <bool add_pseudo_core__>
     inline void xc_rg_magnetic(Density const& density__);
 
-    inline void init();
+    //inline void init();
 
   public:
     /// Constructor
@@ -348,43 +348,36 @@ class Potential : public Field4D
             }
         }
 
-        hartree_potential_ = std::unique_ptr<Periodic_function<double>>(new Periodic_function<double>(ctx_, ctx_.lmmax_pot()));
+        /* create list of XC functionals */
+        for (auto& xc_label : ctx_.xc_functionals()) {
+            xc_func_.push_back(std::move(XC_functional(xc_label, ctx_.num_spins())));
+        }
+
+        using pf = Periodic_function<double>;
+        using spf = Smooth_periodic_function<double>;
+
+        hartree_potential_ = std::unique_ptr<pf>(new pf(ctx_, ctx_.lmmax_pot()));
         hartree_potential_->allocate_mt(false);
 
-        xc_potential_ = std::unique_ptr<Periodic_function<double>>(new Periodic_function<double>(ctx_, ctx_.lmmax_pot()));
+        xc_potential_ = std::unique_ptr<pf>(new pf(ctx_, ctx_.lmmax_pot()));
         xc_potential_->allocate_mt(false);
 
-        xc_energy_density_ = std::unique_ptr<Periodic_function<double>>(new Periodic_function<double>(ctx_, ctx_.lmmax_pot()));
+        xc_energy_density_ = std::unique_ptr<pf>(new pf(ctx_, ctx_.lmmax_pot()));
         xc_energy_density_->allocate_mt(false);
 
         for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-            vsigma_[ispn] = std::unique_ptr<Smooth_periodic_function<double>>(new Smooth_periodic_function<double>(ctx_.fft(), ctx_.gvec_partition()));
+            vsigma_[ispn] = std::unique_ptr<spf>(new spf(ctx_.fft(), ctx_.gvec_partition()));
         }
 
         if (!ctx_.full_potential()) {
-            local_potential_ = std::unique_ptr<Smooth_periodic_function<double>>(new Smooth_periodic_function<double>(ctx_.fft(), ctx_.gvec_partition()));
-            local_potential_->zero();
-
-            bool is_empty{true};
-            for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
-                is_empty &= unit_cell_.atom_type(iat).local_potential().empty();
-            }
-            if (!is_empty) {
-                generate_local_potential();
-            }
-
-            dveff_ = std::unique_ptr<Smooth_periodic_function<double>>(new Smooth_periodic_function<double>(ctx_.fft(), ctx_.gvec_partition()));
+            local_potential_ = std::unique_ptr<spf>(new spf(ctx_.fft(), ctx_.gvec_partition()));
+            dveff_ = std::unique_ptr<spf>(new spf(ctx_.fft(), ctx_.gvec_partition()));
         }
 
         vh_el_ = mdarray<double, 1>(unit_cell_.num_atoms());
 
         if (ctx_.full_potential()) {
             gvec_ylm_ = mdarray<double_complex, 2>(ctx_.lmmax_pot(), ctx_.gvec().count(), memory_t::host, "gvec_ylm_");
-            #pragma omp parallel for schedule(static)
-            for (int igloc = 0; igloc < ctx_.gvec().count(); igloc++) {
-                auto rtp = SHT::spherical_coordinates(ctx_.gvec().gvec_cart<index_domain_t::local>(igloc));
-                SHT::spherical_harmonics(ctx_.lmax_pot(), rtp[1], rtp[2], &gvec_ylm_(0, igloc));
-            }
 
             switch (ctx_.valence_relativity()) {
                 case relativity_t::iora: {
@@ -399,16 +392,6 @@ class Potential : public Field4D
             }
         }
 
-        init();
-
-        /* create list of XC functionals */
-        for (auto& xc_label : ctx_.xc_functionals()) {
-            xc_func_.push_back(std::move(XC_functional(xc_label, ctx_.num_spins())));
-        }
-
-        /* in case of PAW */
-        init_PAW();
-
         aux_bf_ = mdarray<double, 2>(3, ctx_.unit_cell().num_atoms());
         aux_bf_.zero();
 
@@ -416,6 +399,127 @@ class Potential : public Field4D
             for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {
                 for (int x : {0, 1, 2}) {
                     aux_bf_(x, ia) = 1;
+                }
+            }
+        }
+
+        /* in case of PAW */
+        init_PAW();
+
+        update();
+    }
+
+    void update()
+    {
+        PROFILE("sirius::Potential::update");
+
+        if (!ctx_.full_potential()) {
+            local_potential_->zero();
+
+            bool is_empty{true};
+            for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
+                is_empty &= unit_cell_.atom_type(iat).local_potential().empty();
+            }
+            if (!is_empty) {
+                generate_local_potential();
+            }
+        }
+
+        if (ctx_.full_potential()) {
+            #pragma omp parallel for schedule(static)
+            for (int igloc = 0; igloc < ctx_.gvec().count(); igloc++) {
+                auto rtp = SHT::spherical_coordinates(ctx_.gvec().gvec_cart<index_domain_t::local>(igloc));
+                SHT::spherical_harmonics(ctx_.lmax_pot(), rtp[1], rtp[2], &gvec_ylm_(0, igloc));
+            }
+
+            /* compute values of spherical Bessel functions at MT boundary */
+            mdarray<double, 3> sbessel_mt_tmp(lmax_ + pseudo_density_order_ + 2, unit_cell_.num_atom_types(), 
+                                              ctx_.gvec().num_shells(), memory_t::host, "sbessel_mt_tmp");
+
+            #pragma omp parallel for schedule(static)
+            for (int igs = 0; igs < ctx_.gvec().num_shells(); igs++) {
+                for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
+                    gsl_sf_bessel_jl_array(lmax_ + pseudo_density_order_ + 1, 
+                                           ctx_.gvec().shell_len(igs) * unit_cell_.atom_type(iat).mt_radius(), 
+                                           &sbessel_mt_tmp(0, iat, igs));
+                }
+            }
+
+            sbessel_mt_ = mdarray<double, 3>(lmax_ + pseudo_density_order_ + 2,
+                                             ctx_.gvec().count(),
+                                             unit_cell_.num_atom_types(),
+                                             memory_t::host, "sbessel_mt_");
+
+            for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
+                for (int igloc = 0; igloc < ctx_.gvec().count(); igloc++) {
+                    int ig = ctx_.gvec().offset() + igloc;
+                    for (int l = 0; l < lmax_ + pseudo_density_order_ + 2; l++) {
+                        sbessel_mt_(l, igloc, iat) = sbessel_mt_tmp(l, iat, ctx_.gvec().shell(ig));
+                    }
+                }
+            }
+
+            /* compute moments of spherical Bessel functions 
+             *
+             * In[]:= Integrate[SphericalBesselJ[l,G*x]*x^(2+l),{x,0,R},Assumptions->{R>0,G>0,l>=0}]
+             * Out[]= (Sqrt[\[Pi]/2] R^(3/2+l) BesselJ[3/2+l,G R])/G^(3/2)
+             *
+             * and use relation between Bessel and spherical Bessel functions: 
+             * Subscript[j, n](z)=Sqrt[\[Pi]/2]/Sqrt[z]Subscript[J, n+1/2](z) */
+            mdarray<double, 3> sbessel_mom_tmp(ctx_.lmax_rho() + 1, unit_cell_.num_atom_types(),
+                                               ctx_.gvec().num_shells(), memory_t::host, "sbessel_mom_");
+            sbessel_mom_tmp.zero();
+
+            /* for G=0 */
+            for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
+                sbessel_mom_tmp(0, iat, 0) = std::pow(unit_cell_.atom_type(iat).mt_radius(), 3) / 3.0; // for |G|=0
+            }
+
+            #pragma omp parallel for schedule(static)
+            for (int igs = 1; igs < ctx_.gvec().num_shells(); igs++) {
+                for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
+                    for (int l = 0; l <= ctx_.lmax_rho(); l++) {
+                        sbessel_mom_tmp(l, iat, igs) = std::pow(unit_cell_.atom_type(iat).mt_radius(), l + 2) * 
+                                                       sbessel_mt_tmp(l + 1, iat, igs) / ctx_.gvec().shell_len(igs);
+                    }
+                }
+            }
+
+            sbessel_mom_ = mdarray<double, 3>(ctx_.lmax_rho() + 1,
+                                              ctx_.gvec().count(),
+                                              unit_cell_.num_atom_types(),
+                                              memory_t::host, "sbessel_mom_");
+
+            for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
+                for (int igloc = 0; igloc < ctx_.gvec().count(); igloc++) {
+                    int ig = ctx_.gvec().offset() + igloc;
+                    for (int l = 0; l <= ctx_.lmax_rho(); l++) {
+                        sbessel_mom_(l, igloc, iat) = sbessel_mom_tmp(l, iat, ctx_.gvec().shell(ig));
+                    }
+                }
+            }
+
+            /* compute Gamma[5/2 + n + l] / Gamma[3/2 + l] / R^l
+             *
+             * use Gamma[1/2 + p] = (2p - 1)!!/2^p Sqrt[Pi] */
+            gamma_factors_R_ = mdarray<double, 2>(ctx_.lmax_rho() + 1, unit_cell_.num_atom_types(), memory_t::host, "gamma_factors_R_");
+            for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
+                for (int l = 0; l <= ctx_.lmax_rho(); l++) {
+                    long double Rl = std::pow(unit_cell_.atom_type(iat).mt_radius(), l);
+
+                    int n_min = (2 * l + 3);
+                    int n_max = (2 * l + 1) + (2 * pseudo_density_order_ + 2);
+                    /* split factorial product into two parts to avoid overflow */
+                    long double f1 = 1.0;
+                    long double f2 = 1.0;
+                    for (int n = n_min; n <= n_max; n += 2) {
+                        if (f1 < Rl) {
+                            f1 *= (n / 2.0);
+                        } else {
+                            f2 *= (n / 2.0);
+                        }
+                    }
+                    gamma_factors_R_(l, iat) = static_cast<double>((f1 / Rl) * f2);
                 }
             }
         }
@@ -1110,7 +1214,6 @@ class Potential : public Field4D
     }
 };
 
-#include "init.hpp"
 #include "generate_d_operator_matrix.hpp"
 #include "generate_pw_coefs.hpp"
 #include "xc.hpp"

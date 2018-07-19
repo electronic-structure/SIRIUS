@@ -465,22 +465,29 @@ void* sirius_create_ground_state(void* const* ks_handler__)
     return new utils::any_ptr(new sirius::DFT_ground_state(ks));
 }
 
-/* @fortran begin function void sirius_find_ground_state        find the ground state
-   @fortran argument in required void* gs_handler               handler of the ground state
+/* @fortran begin function void sirius_find_ground_state        Find the ground state
+   @fortran argument in required void* gs_handler               Handler of the ground state
    @fortran end */
 void sirius_find_ground_state(void* const* gs_handler__)
 {
     auto& gs = static_cast<utils::any_ptr*>(*gs_handler__)->get<sirius::DFT_ground_state>();
-    auto& ctx_ = gs.ctx();
-    auto &potential = gs.potential();
-    auto &density = gs. density();
-    auto &inp = ctx_.parameters_input();
+    auto& ctx = gs.ctx();
+    auto& inp = ctx.parameters_input();
     gs.initial_state();
 
     auto result = gs.find(inp.potential_tol_,
                           inp.energy_tol_,
                           inp.num_dft_iter_,
                           false);
+}
+
+/* @fortran begin function void sirius_update_ground_state   Update a ground state object after change of atomic coordinates or lattice vectors.
+   @fortran argument in  required void*  gs_handler          Ground-state handler.
+   @fortran end */
+void sirius_update_ground_state(void** handler__)
+{
+    auto& gs = static_cast<utils::any_ptr*>(*handler__)->get<sirius::DFT_ground_state>();
+    gs.update();
 }
 
 /* @fortran begin function void sirius_add_atom_type     Add new atom type to the unit cell.
@@ -966,7 +973,7 @@ void sirius_initialize_subspace(void* const* gs_handler__,
 {
     auto& gs = static_cast<utils::any_ptr*>(*gs_handler__)->get<sirius::DFT_ground_state>();
     auto& ks = static_cast<utils::any_ptr*>(*ks_handler__)->get<sirius::K_point_set>();
-    gs.band().initialize_subspace(ks, gs.hamiltonian());
+    sirius::Band(ks.ctx()).initialize_subspace(ks, gs.hamiltonian());
 }
 
 /* @fortran begin function void sirius_find_eigen_states     Find eigen-states of the Hamiltonian/
@@ -985,7 +992,7 @@ void sirius_find_eigen_states(void* const* gs_handler__,
     if (iter_solver_tol__ != nullptr) {
         ks.ctx().set_iterative_solver_tolerance(*iter_solver_tol__);
     }
-    gs.band().solve(ks, gs.hamiltonian(), *precompute__);
+    sirius::Band(ks.ctx()).solve(ks, gs.hamiltonian(), *precompute__);
 }
 
 /* @fortran begin function void sirius_generate_d_operator_matrix     Generate D-operator matrix.

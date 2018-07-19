@@ -332,7 +332,7 @@ class Simulation_parameters
         return (num_mag_dims() == 3) ? 3 : num_spins();
     }
 
-    /// Number of spin dimensions of some arrays in case of magnetic calculation.
+    /// Number of independent spin dimensions of some arrays in case of magnetic calculation.
     /** Returns 1 for non magnetic calculation, 2 for spin-collinear case and 1 for non colllinear case. */
     inline int num_spin_dims()
     {
