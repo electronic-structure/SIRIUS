@@ -56,36 +56,38 @@ def pp_total_energy(potential, density, k_point_set, ctx):
 
 
 class Energy:
-    def __init__(self, k_point_set, potential, density, ctx):
+    def __init__(self, kpointset, potential, density, ctx):
         """
         Keyword Arguments:
-        k_point_set --
+        kpointset --
         potential   --
         density     --
+        hamiltonian -- object of type Hamiltonian (c++ wrapper)
         ctx         --
         """
-
-        self.k_point_set = k_point_set
+        self.kpointset = kpointset
         self.potential = potential
         self.density = density
         self.ctx = ctx
 
-    def __call__(self, x, ki, c0):
+    def __call__(self, cn, ki):
         """
         Keyword Arguments:
-        x  --
-        ki --
+        cn  --
+        ki -- the index of the k-point
         """
-        cn = c(x, c0)
-        ki.spinor_wave_functions().pw_coeffs(0)[:] = cn
+        ispn = 0
+        k = self.kpointset[ki]
+        k.spinor_wave_functions().pw_coeffs(ispn)[:] = cn
 
-        self.density.generate(self.k_point_set)
+        # determine band energies ...
+        self.density.generate(self.kpointset)
         self.density.fft_transform(1)
 
         self.potential.generate(self.density)
         self.potential.fft_transform(1)
 
-        return pp_total_energy(self.potential, self.density, self.k_point_set,
+        return pp_total_energy(self.potential, self.density, self.kpointset,
                                self.ctx)
 
 
@@ -137,14 +139,14 @@ class ApplyHamiltonian:
 class EnergyGradient:
     def __init__(self, hamiltonian, c0):
         self.hamiltonian = hamiltonian
-        self.c0 = np.matrix(c0)
+        self.c0 = np.matrix(c0, copy=True)
 
     def __call__(self, x):
         """
         it takes a wave-function psi, which is stored inside the K_point class
         """
         # make sure x has type np.matrix
-        x = np.matrix(x)
+        x = np.matrix(x, copy=False)
 
         # check that x fulfills constraint condition
         assert (np.linalg.norm(np.dot(x.H, self.c0), 'fro') < 1e-7)
