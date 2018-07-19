@@ -17,21 +17,19 @@
 // CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
 // OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-/** \file unit_cell.h
+/** \file unit_cell.hpp
  *
  *  \brief Contains definition and partial implementation of sirius::Unit_cell class.
  */
 
-#ifndef __UNIT_CELL_H__
-#define __UNIT_CELL_H__
+#ifndef __UNIT_CELL_HPP__
+#define __UNIT_CELL_HPP__
 
 #include <algorithm>
 #include "descriptors.h"
-#include "atom_type.h"
-#include "atom_symmetry_class.h"
-#include "atom.h"
+#include "atom.hpp"
 #include "mpi_grid.hpp"
-#include "unit_cell_symmetry.h"
+#include "unit_cell_symmetry.hpp"
 #include "simulation_parameters.h"
 #include "utils/json.hpp"
 

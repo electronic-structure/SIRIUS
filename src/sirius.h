@@ -45,11 +45,8 @@ using json = nlohmann::json;
 #include "xc_functional.h"
 #include "descriptors.h"
 #include "mixer.h"
-#include "Unit_cell/atom_type.h"
-#include "Unit_cell/atom_symmetry_class.h"
-#include "Unit_cell/atom.h"
 #include "Unit_cell/free_atom.hpp"
-#include "Unit_cell/unit_cell.h"
+#include "Unit_cell/unit_cell.hpp"
 #include "periodic_function.h"
 #include "k_point.h"
 #include "Band/band.hpp"
@@ -77,6 +74,7 @@ inline static bool& is_initialized()
     return b;
 }
 
+/// Initialize the library.
 inline void initialize(bool call_mpi_init__ = true)
 {
     if (is_initialized()) {
@@ -118,6 +116,7 @@ inline void initialize(bool call_mpi_init__ = true)
     is_initialized() = true;
 }
 
+/// Shut down the library.
 inline void finalize(bool call_mpi_fin__ = true)
 {
     if (!is_initialized()) {

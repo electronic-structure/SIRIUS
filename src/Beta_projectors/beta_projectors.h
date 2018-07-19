@@ -26,7 +26,7 @@
 #define __BETA_PROJECTORS_H__
 
 #include "communicator.hpp"
-#include "Unit_cell/unit_cell.h"
+#include "Unit_cell/unit_cell.hpp"
 #include "wave_functions.hpp"
 #include "simulation_context.h"
 #include "beta_projectors_base.h"

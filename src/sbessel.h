@@ -27,7 +27,7 @@
 
 #include <gsl/gsl_sf_bessel.h>
 #include "eigenproblem.h"
-#include "Unit_cell/unit_cell.h"
+#include "Unit_cell/unit_cell.hpp"
 
 namespace sirius {
 
