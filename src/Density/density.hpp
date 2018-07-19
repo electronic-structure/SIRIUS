@@ -364,7 +364,7 @@ class Density : public Field4D
         /* split local G-vectors to low-frequency and high-frequency */
         for (int igloc = 0; igloc < ctx_.gvec().count(); igloc++) {
             int  ig = ctx_.gvec().offset() + igloc;
-            auto gv = ctx_.gvec().gvec_cart(ig);
+            auto gv = ctx_.gvec().gvec_cart<index_domain_t::local>(igloc);
             if (gv.length() <= 2 * ctx_.gk_cutoff()) {
                 lf_gvec_.push_back(igloc);
                 if (ig) {

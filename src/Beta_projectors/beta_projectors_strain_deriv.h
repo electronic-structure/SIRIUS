@@ -29,7 +29,7 @@ class Beta_projectors_strain_deriv : public Beta_projectors_base<9>
         /* array of real spherical harmonics and derivatives for each G-vector */
         #pragma omp parallel for schedule(static)
         for (int igkloc = 0; igkloc < num_gkvec_loc(); igkloc++) {
-            auto gvc = gkvec_.gkvec_cart(igk__[igkloc]);
+            auto gvc = gkvec_.gkvec_cart<index_domain_t::global>(igk__[igkloc]);
             auto rtp = SHT::spherical_coordinates(gvc);
 
             double theta = rtp[1];
@@ -43,7 +43,7 @@ class Beta_projectors_strain_deriv : public Beta_projectors_base<9>
         /* compute d <G+k|beta> / d epsilon_{mu, nu} */
         #pragma omp parallel for schedule(static)
         for (int igkloc = 0; igkloc < num_gkvec_loc(); igkloc++) {
-            auto gvc = gkvec_.gkvec_cart(igk__[igkloc]);
+            auto gvc = gkvec_.gkvec_cart<index_domain_t::global>(igk__[igkloc]);
             /* vs = {r, theta, phi} */
             auto gvs = SHT::spherical_coordinates(gvc);
 

@@ -274,10 +274,8 @@ void Hubbard::compute_occupancies_stress_derivatives(K_point&                   
 /* array of real spherical harmonics and derivatives for each G-vector */
     #pragma omp parallel for schedule(static)
     for (int igkloc = 0; igkloc < kp.num_gkvec_loc(); igkloc++) {
-        /* global index of G+k vector */
-        const int igk = kp.idxgk(igkloc);
         /* gvs = {r, theta, phi} */
-        auto gvc = kp.gkvec().gkvec_cart(igk);
+        auto gvc = kp.gkvec().gkvec_cart<index_domain_t::local>(igkloc);
         auto rtp = SHT::spherical_coordinates(gvc);
 
         SHT::spherical_harmonics(lmax, rtp[1], rtp[2], &rlm_g(0, igkloc));
@@ -387,9 +385,9 @@ void Hubbard::compute_gradient_strain_wavefunctions(K_point&                  kp
     for (int igkloc = 0; igkloc < kp__.num_gkvec_loc(); igkloc++) {
         /* global index of G+k vector */
         const int igk = kp__.idxgk(igkloc);
-        auto      gvc = kp__.gkvec().gkvec_cart(igk);
+        auto gvc = kp__.gkvec().gkvec_cart<index_domain_t::local>(igkloc);
         /* vs = {r, theta, phi} */
-        auto                            gvs = SHT::spherical_coordinates(gvc);
+        auto gvs = SHT::spherical_coordinates(gvc);
         std::vector<mdarray<double, 1>> ri_values(unit_cell_.num_atom_types());
         for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
             ri_values[iat] = ctx_.atomic_wf_ri().values(iat, gvs[0]);
@@ -415,7 +413,8 @@ void Hubbard::compute_gradient_strain_wavefunctions(K_point&                  kp
                     // case |g+k| = 0
                     if (gvs[0] < 1e-10) {
                         if (l == 0) {
-                            auto d1                                   = ri_values[atom_type.id()][i] * p * y00;
+                            auto d1 = ri_values[atom_type.id()][i] * p * y00;
+
                             dphi.pw_coeffs(0).prime(igkloc, offset__) = -z * d1 * phase_factor;
                         } else {
                             for (int m = -l; m <= l; m++) {
@@ -424,10 +423,11 @@ void Hubbard::compute_gradient_strain_wavefunctions(K_point&                  kp
                         }
                     } else {
                         for (int m = -l; m <= l; m++) {
-                            int  lm                                           = utils::lm(l, m);
-                            auto d1                                           = ri_values[atom_type.id()][i] * (gvc[mu] * rlm_dg(lm, nu, igkloc) +
-                                                                                                                p * rlm_g(lm, igkloc));
-                            auto d2                                           = ridjl_values[atom_type.id()][i] * rlm_g(lm, igkloc) * gvc[mu] * gvc[nu] / gvs[0];
+                            int  lm = utils::lm(l, m);
+                            auto d1 = ri_values[atom_type.id()][i] * (gvc[mu] * rlm_dg(lm, nu, igkloc) +
+                                                                      p * rlm_g(lm, igkloc));
+                            auto d2 = ridjl_values[atom_type.id()][i] * rlm_g(lm, igkloc) * gvc[mu] * gvc[nu] / gvs[0];
+
                             dphi.pw_coeffs(0).prime(igkloc, offset__ + l + m) = -z * (d1 + d2) * std::conj(phase_factor);
                         }
                     }
@@ -563,7 +563,6 @@ void Hubbard::compute_occupancies(K_point&                    kp,
 void Hubbard::apply_S_operator(K_point&                    kp,
                                Q_operator<double_complex>& q_op,
                                Wave_functions&             phi,
-
                                Wave_functions&             ophi,
                                const int                   idx0,
                                const int                   num_phi)

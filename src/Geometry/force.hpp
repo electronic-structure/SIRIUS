@@ -279,121 +279,120 @@ class Force
             mdarray<double_complex, 2> alm_col(kp__->num_gkvec_col(), uc.max_mt_aw_basis_size());
             mdarray<double_complex, 2> halm_col(kp__->num_gkvec_col(), uc.max_mt_aw_basis_size());
 
-            for (int ia = 0; ia < uc.num_atoms(); ia++)
-                {
-                    h.zero();
-                    o.zero();
+            for (int ia = 0; ia < uc.num_atoms(); ia++) {
+                h.zero();
+                o.zero();
 
-                    auto& atom = uc.atom(ia);
-                    auto& type = atom.type();
+                auto& atom = uc.atom(ia);
+                auto& type = atom.type();
 
-                    /* generate matching coefficients for current atom */
-                    kp__->alm_coeffs_row().generate(ia, alm_row);
-                    kp__->alm_coeffs_col().generate(ia, alm_col);
+                /* generate matching coefficients for current atom */
+                kp__->alm_coeffs_row().generate(ia, alm_row);
+                kp__->alm_coeffs_col().generate(ia, alm_col);
 
-                    /* setup apw-lo and lo-apw blocks */
-                    hamiltonian_.set_fv_h_o_apw_lo(kp__, type, atom, ia, alm_row, alm_col, h, o);
+                /* setup apw-lo and lo-apw blocks */
+                hamiltonian_.set_fv_h_o_apw_lo(kp__, type, atom, ia, alm_row, alm_col, h, o);
 
-                    /* apply MT Hamiltonian to column coefficients */
-                    hamiltonian_.apply_hmt_to_apw<spin_block_t::nm>(atom, kp__->num_gkvec_col(), alm_col, halm_col);
+                /* apply MT Hamiltonian to column coefficients */
+                hamiltonian_.apply_hmt_to_apw<spin_block_t::nm>(atom, kp__->num_gkvec_col(), alm_col, halm_col);
 
-                    /* conjugate row (<bra|) matching coefficients */
-                    for (int i = 0; i < type.mt_aw_basis_size(); i++) {
-                        for (int igk = 0; igk < kp__->num_gkvec_row(); igk++) {
-                            alm_row(igk, i) = std::conj(alm_row(igk, i));
-                        }
+                /* conjugate row (<bra|) matching coefficients */
+                for (int i = 0; i < type.mt_aw_basis_size(); i++) {
+                    for (int igk = 0; igk < kp__->num_gkvec_row(); igk++) {
+                        alm_row(igk, i) = std::conj(alm_row(igk, i));
                     }
+                }
 
-                    /* apw-apw block of the overlap matrix */
-                    linalg<CPU>::gemm(0, 1, kp__->num_gkvec_row(), kp__->num_gkvec_col(), type.mt_aw_basis_size(),
-                                      alm_row.at<CPU>(), alm_row.ld(), alm_col.at<CPU>(), alm_col.ld(), o.at<CPU>(), o.ld());
+                /* apw-apw block of the overlap matrix */
+                linalg<CPU>::gemm(0, 1, kp__->num_gkvec_row(), kp__->num_gkvec_col(), type.mt_aw_basis_size(),
+                                  alm_row.at<CPU>(), alm_row.ld(), alm_col.at<CPU>(), alm_col.ld(), o.at<CPU>(), o.ld());
 
-                    /* apw-apw block of the Hamiltonian matrix */
-                    linalg<CPU>::gemm(0, 1, kp__->num_gkvec_row(), kp__->num_gkvec_col(), type.mt_aw_basis_size(),
-                                      alm_row.at<CPU>(), alm_row.ld(), halm_col.at<CPU>(), halm_col.ld(), h.at<CPU>(), h.ld());
+                /* apw-apw block of the Hamiltonian matrix */
+                linalg<CPU>::gemm(0, 1, kp__->num_gkvec_row(), kp__->num_gkvec_col(), type.mt_aw_basis_size(),
+                                  alm_row.at<CPU>(), alm_row.ld(), halm_col.at<CPU>(), halm_col.ld(), h.at<CPU>(), h.ld());
 
-                    int iat = type.id();
+                int iat = type.id();
 
+                for (int igk_col = 0; igk_col < kp__->num_gkvec_col(); igk_col++) { // loop over columns
+                    auto gvec_col       = kp__->gkvec().gvec(kp__->igk_col(igk_col));
+                    auto gkvec_col_cart = kp__->gkvec().gkvec_cart<index_domain_t::global>(kp__->igk_col(igk_col));
+                    for (int igk_row = 0; igk_row < kp__->num_gkvec_row(); igk_row++) { // for each column loop over rows
+                        auto gvec_row       = kp__->gkvec().gvec(kp__->igk_row(igk_row));
+                        auto gkvec_row_cart = kp__->gkvec().gkvec_cart<index_domain_t::global>(kp__->igk_row(igk_row));
+
+                        int ig12 = ctx_.gvec().index_g12(gvec_row, gvec_col);
+
+                        int igs = ctx_.gvec().shell(ig12);
+
+                        double_complex zt = std::conj(ctx_.gvec_phase_factor(ig12, ia)) * ffac__(iat, igs) * fourpi / uc.omega();
+
+                        double t1 = 0.5 * dot(gkvec_row_cart, gkvec_col_cart);
+
+                        h(igk_row, igk_col) -= t1 * zt;
+                        o(igk_row, igk_col) -= zt;
+                    }
+                }
+
+                for (int x = 0; x < 3; x++) {
                     for (int igk_col = 0; igk_col < kp__->num_gkvec_col(); igk_col++) { // loop over columns
-                        auto gvec_col       = kp__->gkvec().gvec(kp__->igk_col(igk_col));
-                        auto gkvec_col_cart = kp__->gkvec().gkvec_cart(kp__->igk_col(igk_col));
+                        auto gvec_col = kp__->gkvec().gvec(kp__->igk_col(igk_col));
                         for (int igk_row = 0; igk_row < kp__->num_gkvec_row(); igk_row++) { // for each column loop over rows
-                            auto gvec_row       = kp__->gkvec().gvec(kp__->igk_row(igk_row));
-                            auto gkvec_row_cart = kp__->gkvec().gkvec_cart(kp__->igk_row(igk_row));
-
+                            auto gvec_row = kp__->gkvec().gvec(kp__->igk_row(igk_row));
                             int ig12 = ctx_.gvec().index_g12(gvec_row, gvec_col);
 
-                            int igs = ctx_.gvec().shell(ig12);
-
-                            double_complex zt = std::conj(ctx_.gvec_phase_factor(ig12, ia)) * ffac__(iat, igs) * fourpi / uc.omega();
-
-                            double t1 = 0.5 * dot(gkvec_row_cart, gkvec_col_cart);
-
-                            h(igk_row, igk_col) -= t1 * zt;
-                            o(igk_row, igk_col) -= zt;
+                            vector3d<double> vg = ctx_.gvec().gvec_cart<index_domain_t::global>(ig12);
+                            h1(igk_row, igk_col) = double_complex(0.0, vg[x]) * h(igk_row, igk_col);
+                            o1(igk_row, igk_col) = double_complex(0.0, vg[x]) * o(igk_row, igk_col);
                         }
                     }
 
-                    for (int x = 0; x < 3; x++) {
-                        for (int igk_col = 0; igk_col < kp__->num_gkvec_col(); igk_col++) { // loop over columns
-                            auto gvec_col = kp__->gkvec().gvec(kp__->igk_col(igk_col));
-                            for (int igk_row = 0; igk_row < kp__->num_gkvec_row(); igk_row++) { // for each column loop over rows
-                                auto gvec_row = kp__->gkvec().gvec(kp__->igk_row(igk_row));
-                                int ig12 = ctx_.gvec().index_g12(gvec_row, gvec_col);
-
-                                vector3d<double> vg = ctx_.gvec().gvec_cart(ig12);
-                                h1(igk_row, igk_col) = double_complex(0.0, vg[x]) * h(igk_row, igk_col);
-                                o1(igk_row, igk_col) = double_complex(0.0, vg[x]) * o(igk_row, igk_col);
-                            }
-                        }
-
-                        for (int icol = 0; icol < kp__->num_lo_col(); icol++) {
-                            for (int igk_row = 0; igk_row < kp__->num_gkvec_row(); igk_row++) {
-                                auto gkvec_row_cart = kp__->gkvec().gkvec_cart(kp__->igk_row(igk_row));
-                                h1(igk_row, icol + kp__->num_gkvec_col()) = double_complex(0.0, gkvec_row_cart[x]) * h(igk_row, icol + kp__->num_gkvec_col());
-                                o1(igk_row, icol + kp__->num_gkvec_col()) = double_complex(0.0, gkvec_row_cart[x]) * o(igk_row, icol + kp__->num_gkvec_col());
-                            }
-                        }
-
-                        for (int irow = 0; irow < kp__->num_lo_row(); irow++) {
-                            for (int igk_col = 0; igk_col < kp__->num_gkvec_col(); igk_col++) {
-                                auto gkvec_col_cart = kp__->gkvec().gkvec_cart(kp__->igk_col(igk_col));
-                                h1(irow + kp__->num_gkvec_row(), igk_col) = double_complex(0.0, -gkvec_col_cart[x]) * h(irow + kp__->num_gkvec_row(), igk_col);
-                                o1(irow + kp__->num_gkvec_row(), igk_col) = double_complex(0.0, -gkvec_col_cart[x]) * o(irow + kp__->num_gkvec_row(), igk_col);
-                            }
-                        }
-
-                        /* zm1 = H * V */
-                        linalg<CPU>::gemm(0, 0, kp__->gklo_basis_size(), ctx_.num_fv_states(), kp__->gklo_basis_size(),
-                                          linalg_const<double_complex>::one(), h1, fv_evec, linalg_const<double_complex>::zero(), zm1);
-
-                        /* F = V^{+} * zm1 = V^{+} * H * V */
-                        linalg<CPU>::gemm(2, 0, ctx_.num_fv_states(), ctx_.num_fv_states(), kp__->gklo_basis_size(),
-                                          linalg_const<double_complex>::one(), fv_evec, zm1, linalg_const<double_complex>::zero(), zf);
-
-                        /* zm1 = O * V */
-                        linalg<CPU>::gemm(0, 0, kp__->gklo_basis_size(), ctx_.num_fv_states(), kp__->gklo_basis_size(),
-                                          linalg_const<double_complex>::one(), o1, fv_evec, linalg_const<double_complex>::zero(), zm1);
-
-                        STOP();
-                        ///* multiply by energy */
-                        //for (int i = 0; i < (int)kp__->spl_fv_states().local_size(); i++)
-                        //{
-                        //    int ist = kp__->spl_fv_states(i);
-                        //    for (int j = 0; j < kp__->gklo_basis_size_row(); j++) zm1(j, i) = zm1(j, i) * kp__->fv_eigen_value(ist);
-                        //}
-
-                        /* F = F - V^{+} * zm1 = F - V^{+} * O * (E*V) */
-                        linalg<CPU>::gemm(2, 0, ctx_.num_fv_states(), ctx_.num_fv_states(), kp__->gklo_basis_size(),
-                                          double_complex(-1, 0), fv_evec, zm1, double_complex(1, 0), zf);
-
-                        for (int i = 0; i < dm.num_cols_local(); i++) {
-                            for (int j = 0; j < dm.num_rows_local(); j++) {
-                                forcek__(x, ia) += kp__->weight() * real(dm(j, i) * zf(j, i));
-                            }
+                    for (int icol = 0; icol < kp__->num_lo_col(); icol++) {
+                        for (int igk_row = 0; igk_row < kp__->num_gkvec_row(); igk_row++) {
+                            auto gkvec_row_cart = kp__->gkvec().gkvec_cart<index_domain_t::global>(kp__->igk_row(igk_row));
+                            h1(igk_row, icol + kp__->num_gkvec_col()) = double_complex(0.0, gkvec_row_cart[x]) * h(igk_row, icol + kp__->num_gkvec_col());
+                            o1(igk_row, icol + kp__->num_gkvec_col()) = double_complex(0.0, gkvec_row_cart[x]) * o(igk_row, icol + kp__->num_gkvec_col());
                         }
                     }
-                } //ia
+
+                    for (int irow = 0; irow < kp__->num_lo_row(); irow++) {
+                        for (int igk_col = 0; igk_col < kp__->num_gkvec_col(); igk_col++) {
+                            auto gkvec_col_cart = kp__->gkvec().gkvec_cart<index_domain_t::global>(kp__->igk_col(igk_col));
+                            h1(irow + kp__->num_gkvec_row(), igk_col) = double_complex(0.0, -gkvec_col_cart[x]) * h(irow + kp__->num_gkvec_row(), igk_col);
+                            o1(irow + kp__->num_gkvec_row(), igk_col) = double_complex(0.0, -gkvec_col_cart[x]) * o(irow + kp__->num_gkvec_row(), igk_col);
+                        }
+                    }
+
+                    /* zm1 = H * V */
+                    linalg<CPU>::gemm(0, 0, kp__->gklo_basis_size(), ctx_.num_fv_states(), kp__->gklo_basis_size(),
+                                      linalg_const<double_complex>::one(), h1, fv_evec, linalg_const<double_complex>::zero(), zm1);
+
+                    /* F = V^{+} * zm1 = V^{+} * H * V */
+                    linalg<CPU>::gemm(2, 0, ctx_.num_fv_states(), ctx_.num_fv_states(), kp__->gklo_basis_size(),
+                                      linalg_const<double_complex>::one(), fv_evec, zm1, linalg_const<double_complex>::zero(), zf);
+
+                    /* zm1 = O * V */
+                    linalg<CPU>::gemm(0, 0, kp__->gklo_basis_size(), ctx_.num_fv_states(), kp__->gklo_basis_size(),
+                                      linalg_const<double_complex>::one(), o1, fv_evec, linalg_const<double_complex>::zero(), zm1);
+
+                    STOP();
+                    ///* multiply by energy */
+                    //for (int i = 0; i < (int)kp__->spl_fv_states().local_size(); i++)
+                    //{
+                    //    int ist = kp__->spl_fv_states(i);
+                    //    for (int j = 0; j < kp__->gklo_basis_size_row(); j++) zm1(j, i) = zm1(j, i) * kp__->fv_eigen_value(ist);
+                    //}
+
+                    /* F = F - V^{+} * zm1 = F - V^{+} * O * (E*V) */
+                    linalg<CPU>::gemm(2, 0, ctx_.num_fv_states(), ctx_.num_fv_states(), kp__->gklo_basis_size(),
+                                      double_complex(-1, 0), fv_evec, zm1, double_complex(1, 0), zf);
+
+                    for (int i = 0; i < dm.num_cols_local(); i++) {
+                        for (int j = 0; j < dm.num_rows_local(); j++) {
+                            forcek__(x, ia) += kp__->weight() * real(dm(j, i) * zf(j, i));
+                        }
+                    }
+                }
+            } //ia
         }
 
     public:
@@ -437,7 +436,7 @@ class Force
                     int ig  = gvec_offset + igloc;
 
                     /* cartesian form for getting cartesian force components */
-                    vector3d<double> gvec_cart = gvecs.gvec_cart(ig);
+                    vector3d<double> gvec_cart = gvecs.gvec_cart<index_domain_t::local>(igloc);
 
                     /* scalar part of a force without multiplying by G-vector */
                     double_complex z = fact * fourpi * ri.value(iat, gvecs.gvec_len(ig)) *
@@ -531,7 +530,7 @@ class Force
                     }
 
                     /* cartesian form for getting cartesian force components */
-                    vector3d<double> gvec_cart = gvecs.gvec_cart(ig);
+                    vector3d<double> gvec_cart = gvecs.gvec_cart<index_domain_t::local>(igloc);
 
                     /* scalar part of a force without multipying by G-vector */
                     double_complex z = fact * fourpi * ri.value<int>(iat, gvecs.gvec_len(ig)) *
@@ -586,7 +585,7 @@ class Force
                     int ig = gvec_offset + igloc;
 
                     /* cartesian form for getting cartesian force components */
-                    vector3d<double> gvec_cart = gvec.gvec_cart(ig);
+                    vector3d<double> gvec_cart = gvec.gvec_cart<index_domain_t::local>(igloc);
 
                     /* scalar part of a force without multipying by G-vector */
                     double_complex z = fact * fourpi * ri.value<int>(iat, gvec.gvec_len(ig)) *
@@ -647,7 +646,7 @@ class Force
                         #pragma omp parallel for schedule(static)
                         for (int igloc = 0; igloc < ctx_.gvec().count(); igloc++) {
                             int ig = ctx_.gvec().offset() + igloc;
-                            auto gvc = ctx_.gvec().gvec_cart(ig);
+                            auto gvc = ctx_.gvec().gvec_cart<index_domain_t::local>(igloc);
                             for (int ia = 0; ia < atom_type.num_atoms(); ia++) {
                                 /* here we write in v_tmp  -i * G * exp[ iGRn] Veff(G)
                                  * but in formula we have   i * G * exp[-iGRn] Veff*(G)
@@ -727,7 +726,7 @@ class Force
                     double g2 = std::pow(ctx_.gvec().gvec_len(ig), 2);
 
                     /* cartesian form for getting cartesian force components */
-                    vector3d<double> gvec_cart = ctx_.gvec().gvec_cart(ig);
+                    vector3d<double> gvec_cart = ctx_.gvec().gvec_cart<index_domain_t::local>(igloc);
                     double_complex rho(0, 0);
 
                     double scalar_part = prefac * (rho_tmp[igloc] * ctx_.gvec_phase_factor(ig, ja)).imag() *

@@ -47,13 +47,8 @@ using json = nlohmann::json;
 #include "mixer.h"
 #include "Unit_cell/free_atom.hpp"
 #include "Unit_cell/unit_cell.hpp"
-#include "periodic_function.h"
-#include "k_point.h"
 #include "Band/band.hpp"
 #include "Potential/potential.hpp"
-#include "k_point_set.h"
-#include "Geometry/stress.hpp"
-#include "Geometry/force.hpp"
 #include "dft_ground_state.h"
 
 #if defined(__PLASMA)
@@ -94,7 +89,9 @@ inline void initialize(bool call_mpi_init__ = true)
 #if defined(__GPU)
     if (acc::num_devices()) {
         if (acc::num_devices() > 1) {
-            acc::set_device_id(Communicator::device_id());
+            // TODO: this depends on the rank placement
+            int dev_id = Communicator::world().rank() % acc::num_devices();
+            acc::set_device_id(dev_id);
         }
         acc::create_streams(omp_get_max_threads() + 1);
         cublas::create_stream_handles();

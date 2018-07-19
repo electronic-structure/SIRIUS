@@ -114,7 +114,7 @@ inline void Potential::generate_D_operator_matrix()
                     d_tmp.allocate(memory_t::device);
 
                     mul_veff_with_phase_factors_gpu(atom_type.num_atoms(), ctx_.gvec().count(), veff.at<GPU>(),
-                                                    ctx_.gvec_coord().at<GPU>(), ctx_.atom_coord(iat).at<GPU>(),
+                                                    ctx_.gvec_coord().at<GPU>(), ctx_.unit_cell().atom_coord(iat).at<GPU>(),
                                                     veff_a.at<GPU>(), 1);
 
                     linalg<GPU>::gemm(0, 0, nbf * (nbf + 1) / 2, atom_type.num_atoms(), 2 * ctx_.gvec().count(),

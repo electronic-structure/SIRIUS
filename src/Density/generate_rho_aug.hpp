@@ -101,7 +101,7 @@ inline void Density::generate_rho_aug(mdarray<double_complex, 2>& rho_aug__)
                 generate_dm_pw_gpu(atom_type.num_atoms(),
                                    ctx_.gvec().count(),
                                    nbf,
-                                   ctx_.atom_coord(iat).at<GPU>(),
+                                   ctx_.unit_cell().atom_coord(iat).at<GPU>(),
                                    ctx_.gvec_coord().at<GPU>(),
                                    phase_factors.at<GPU>(),
                                    dm.at<GPU>(0, 0, iv),

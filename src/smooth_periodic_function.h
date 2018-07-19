@@ -291,8 +291,7 @@ inline Smooth_periodic_function_gradient<double> gradient(Smooth_periodic_functi
 
     #pragma omp parallel for schedule(static)
     for (int igloc = 0; igloc < f__.gvec().count(); igloc++) {
-        int ig = f__.gvec().offset() + igloc;
-        auto G = f__.gvec().gvec_cart(ig);
+        auto G = f__.gvec().gvec_cart<index_domain_t::local>(igloc);
         for (int x: {0, 1, 2}) {
             g[x].f_pw_local(igloc) = f__.f_pw_local(igloc) * double_complex(0, G[x]);
         }
@@ -309,8 +308,7 @@ inline Smooth_periodic_function<double> laplacian(Smooth_periodic_function<doubl
 
     #pragma omp parallel for schedule(static)
     for (int igloc = 0; igloc < f__.gvec().count(); igloc++) {
-        int ig = f__.gvec().offset() + igloc;
-        auto G = f__.gvec().gvec_cart(ig);
+        auto G = f__.gvec().gvec_cart<index_domain_t::local>(igloc);
         g.f_pw_local(igloc) = f__.f_pw_local(igloc) * double_complex(-std::pow(G.length(), 2), 0);
     }
 

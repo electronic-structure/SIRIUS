@@ -102,7 +102,7 @@ inline void Band::diag_pseudo_potential_exact(K_point* kp__,
     auto gen_solver = ctx_.gen_evp_solver<T>();
 
     for (int ig = 0; ig < kp__->num_gkvec(); ig++) {
-        hmlt.set(ig, ig, 0.5 * std::pow(kp__->gkvec().gkvec_cart(ig).length(), 2));
+        hmlt.set(ig, ig, 0.5 * std::pow(kp__->gkvec().gkvec_cart<index_domain_t::global>(ig).length(), 2));
         ovlp.set(ig, ig, 1);
     }
 
