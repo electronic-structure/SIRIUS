@@ -23,7 +23,7 @@ inline void K_point::generate_atomic_centered_wavefunctions_aux(const int       
         /* global index of G+k vector */
         int igk = this->idxgk(igk_loc);
         /* vs = {r, theta, phi} */
-        auto vs = SHT::spherical_coordinates(this->gkvec().gkvec_cart(igk));
+        auto vs = SHT::spherical_coordinates(this->gkvec().gkvec_cart<index_domain_t::local>(igk_loc));
         /* compute real spherical harmonics for G+k vector */
         std::vector<double> rlm(utils::lmmax(lmax));
         SHT::spherical_harmonics(lmax, vs[1], vs[2], &rlm[0]);
@@ -94,8 +94,8 @@ inline void K_point::compute_gradient_wavefunctions(Wave_functions& phi,
     std::vector<double_complex> qalpha(this->num_gkvec_loc());
 
     for (int igk_loc = 0; igk_loc < this->num_gkvec_loc(); igk_loc++) {
-        int igk           = this->idxgk(igk_loc);
-        auto G            = this->gkvec().gkvec_cart(igk);
+        auto G = this->gkvec().gkvec_cart<index_domain_t::local>(igk_loc);
+
         qalpha[igk_loc] = double_complex(0.0, -G[direction]);
     }
 

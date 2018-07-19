@@ -13,9 +13,9 @@ Hamiltonian::get_h_diag(K_point* kp__,
 
     mdarray<double, 2> h_diag(kp__->num_gkvec_loc() + nlo, 1);
     for (int igloc = 0; igloc < kp__->num_gkvec_loc(); igloc++) {
-        int ig = kp__->gkvec().gvec_offset(kp__->comm().rank()) + igloc;
+        auto gvc = kp__->gkvec().gkvec_cart<index_domain_t::local>(igloc);
 
-        double ekin = 0.5 * dot(kp__->gkvec().gkvec_cart(ig), kp__->gkvec().gkvec_cart(ig));
+        double ekin = 0.5 * dot(gvc, gvc);
         h_diag[igloc] = v0__ + ekin * theta0__;
     }
 
@@ -110,8 +110,7 @@ Hamiltonian::get_h_diag(K_point* kp__) const
 
         /* local H contribution */
         for (int ig_loc = 0; ig_loc < kp__->num_gkvec_loc(); ig_loc++) {
-            int ig = kp__->igk_loc(ig_loc);
-            auto vgk = kp__->gkvec().gkvec_cart(ig);
+            auto vgk = kp__->gkvec().gkvec_cart<index_domain_t::local>(ig_loc);
             h_diag(ig_loc, ispn) = 0.5 * dot(vgk, vgk) + this->local_op().v0(ispn);
         }
 

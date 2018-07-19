@@ -81,27 +81,27 @@ inline void stack_backtrace()
 
 namespace acc {
 
-    /// return the gpu id
-    inline int &device_id()
-    {
-        static int dev_id_;
-        return dev_id_;
-    }
+/// Return the GPU id.
+inline int& device_id()
+{
+    static int dev_id_;
+    return dev_id_;
+}
 
-    /// set the gpu id
-    inline void set_device_id(int dev_id)
-    {
-        device_id() = dev_id;
-        cudaSetDevice(device_id());
-    }
+/// Set the GPU id.
+inline void set_device_id(int dev_id)
+{
+    device_id() = dev_id;
+    CALL_CUDA(cudaSetDevice, (device_id()));
+}
 
-    /// run calculations on the initial gpu
-    inline void set_device()
-    {
-        cudaSetDevice(device_id());
-    }
+/// Run calculations on the initial GPU.
+inline void set_device()
+{
+    CALL_CUDA(cudaSetDevice, (device_id()));
+}
 
-    /// Vector of CUDA streams.
+/// Vector of CUDA streams.
 inline std::vector<cudaStream_t>& streams()
 {
     static std::vector<cudaStream_t> streams_;

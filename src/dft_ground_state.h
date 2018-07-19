@@ -28,6 +28,8 @@
 #include "k_point_set.h"
 #include "utils/json.hpp"
 #include "Hubbard/hubbard.hpp"
+#include "Geometry/stress.hpp"
+#include "Geometry/force.hpp"
 
 using json = nlohmann::json;
 

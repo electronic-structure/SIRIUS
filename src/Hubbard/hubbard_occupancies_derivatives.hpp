@@ -258,10 +258,8 @@ void Hubbard_potential::compute_occupancies_stress_derivatives(K_point& kp,
     /* array of real spherical harmonics and derivatives for each G-vector */
     #pragma omp parallel for schedule(static)
     for (int igkloc = 0; igkloc < kp.num_gkvec_loc(); igkloc++) {
-        /* global index of G+k vector */
-        const int igk = kp.idxgk(igkloc);
         /* gvs = {r, theta, phi} */
-        auto gvc = kp.gkvec().gkvec_cart(igk);
+        auto gvc = kp.gkvec().gkvec_cart<index_domain_t::local>(igkloc);
         auto rtp = SHT::spherical_coordinates(gvc);
 
         SHT::spherical_harmonics(lmax, rtp[1], rtp[2], &rlm_g(0, igkloc));
@@ -367,7 +365,7 @@ void Hubbard_potential::compute_gradient_strain_wavefunctions(K_point& kp__,
     for (int igkloc = 0; igkloc < kp__.num_gkvec_loc(); igkloc++) {
         /* global index of G+k vector */
         const int igk = kp__.idxgk(igkloc);
-        auto gvc = kp__.gkvec().gkvec_cart(igk);
+        auto gvc = kp__.gkvec().gkvec_cart<index_domain_t::local>(igkloc);
         /* vs = {r, theta, phi} */
         auto gvs = SHT::spherical_coordinates(gvc);
         std::vector<mdarray<double, 1>> ri_values(unit_cell_.num_atom_types());

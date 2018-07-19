@@ -362,9 +362,7 @@ class Stress {
         int ig0 = (ctx_.comm().rank() == 0) ? 1 : 0;
         for (int igloc = ig0; igloc < ctx_.gvec().count(); igloc++) {
 
-            int ig = ctx_.gvec().offset() + igloc;
-
-            auto G = ctx_.gvec().gvec_cart(ig);
+            auto G = ctx_.gvec().gvec_cart<index_domain_t::local>(igloc);
 
             for (int mu: {0, 1, 2}) {
                 for (int nu: {0, 1, 2}) {
@@ -434,9 +432,7 @@ class Stress {
 
         int ig0 = (ctx_.comm().rank() == 0) ? 1 : 0;
         for (int igloc = ig0; igloc < ctx_.gvec().count(); igloc++) {
-            int ig = ctx_.gvec().offset() + igloc;
-
-            auto G = ctx_.gvec().gvec_cart(ig);
+            auto G = ctx_.gvec().gvec_cart<index_domain_t::local>(igloc);
             double g2 = std::pow(G.length(), 2);
             auto z = density_.rho().f_pw_local(igloc);
             double d = twopi * (std::pow(z.real(), 2) + std::pow(z.imag(), 2)) / g2;
@@ -519,7 +515,7 @@ class Stress {
         for (int igloc = ig0; igloc < ctx_.gvec().count(); igloc++) {
             int ig = ctx_.gvec().offset() + igloc;
 
-            auto G = ctx_.gvec().gvec_cart(ig);
+            auto G = ctx_.gvec().gvec_cart<index_domain_t::local>(igloc);
             double g2 = std::pow(G.length(), 2);
             double g2lambda = g2 / 4.0 / lambda;
 
@@ -610,8 +606,7 @@ class Stress {
             auto kp = kset_[ik];
 
             for (int igloc = 0; igloc < kp->num_gkvec_loc(); igloc++) {
-                int ig = kp->idxgk(igloc);
-                auto Gk = kp->gkvec().gkvec_cart(ig);
+                auto Gk = kp->gkvec().gkvec_cart<index_domain_t::local>(igloc);
 
                 double d{0};
                 for (int ispin = 0; ispin < ctx_.num_spins(); ispin++ ) {
@@ -751,8 +746,7 @@ class Stress {
                         }
                         #pragma omp parallel for schedule(static)
                         for (int igloc = igloc0; igloc < ctx_.gvec().count(); igloc++) {
-                            int ig = ctx_.gvec().offset() + igloc;
-                            auto gvc = ctx_.gvec().gvec_cart(ig);
+                            auto gvc = ctx_.gvec().gvec_cart<index_domain_t::local>(igloc);
                             double g = gvc.length();
 
                             for (int ia = 0; ia < atom_type.num_atoms(); ia++) {
@@ -877,9 +871,7 @@ class Stress {
         int ig0 = (ctx_.comm().rank() == 0) ? 1 : 0;
 
         for (int igloc = ig0; igloc < ctx_.gvec().count(); igloc++) {
-            int ig = ctx_.gvec().offset() + igloc;
-
-            auto G = ctx_.gvec().gvec_cart(ig);
+            auto G = ctx_.gvec().gvec_cart<index_domain_t::local>(igloc);
             auto g = G.length();
 
             for (int mu: {0, 1, 2}) {

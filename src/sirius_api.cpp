@@ -335,6 +335,15 @@ void sirius_initialize_context(void* const* handler__)
     sim_ctx.initialize();
 }
 
+/* @fortran begin function void sirius_update_context     Update simulation context after changing lattice or atomic positions.
+   @fortran argument in required void* handler            Simulation context handler.
+   @fortran end */
+void sirius_update_context(void* const* handler__)
+{
+    GET_SIM_CTX(handler__)
+    sim_ctx.update();
+}
+
 /* @fortran begin function void sirius_free_handler     Free any handler of object created by SIRIUS.
    @fortran argument inout required void* handler       Handler of the object.
    @fortran end */
@@ -643,6 +652,19 @@ void sirius_add_atom(void*  const* handler__,
     } else {
         sim_ctx.unit_cell().add_atom(std::string(label__), std::vector<double>(position__, position__ + 3));
     }
+}
+
+/* @fortran begin function void sirius_set_atom_position  Set new atomic position.
+   @fortran argument in  required void*   handler       Simulation context handler.
+   @fortran argument in  required int     ia            Index of atom.
+   @fortran argument in  required double  position      Atom position in lattice coordinates.
+   @fortran end */
+void sirius_set_atom_position(void*  const* handler__,
+                              int    const* ia__,
+                              double const* position__)
+{
+    GET_SIM_CTX(handler__);
+    sim_ctx.unit_cell().atom(*ia__ - 1).set_position(std::vector<double>(position__, position__ + 3));
 }
 
 /* @fortran begin function void sirius_set_pw_coeffs         Set plane-wave coefficients of a periodic function.

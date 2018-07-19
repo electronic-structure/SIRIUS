@@ -367,11 +367,11 @@ inline void Hamiltonian::set_fv_h_o_it(K_point* kp,
     for (int igk_col = 0; igk_col < kp->num_gkvec_col(); igk_col++) {
         int ig_col          = kp->igk_col(igk_col);
         auto gvec_col       = kp->gkvec().gvec(ig_col);
-        auto gkvec_col_cart = kp->gkvec().gkvec_cart(ig_col);
+        auto gkvec_col_cart = kp->gkvec().gkvec_cart<index_domain_t::global>(ig_col);
         for (int igk_row = 0; igk_row < kp->num_gkvec_row(); igk_row++) {
             int ig_row          = kp->igk_row(igk_row);
             auto gvec_row       = kp->gkvec().gvec(ig_row);
-            auto gkvec_row_cart = kp->gkvec().gkvec_cart(ig_row);
+            auto gkvec_row_cart = kp->gkvec().gkvec_cart<index_domain_t::global>(ig_row);
             int ig12 = ctx_.gvec().index_g12(gvec_row, gvec_col);
             /* pw kinetic energy */
             double t1 = 0.5 * dot(gkvec_row_cart, gkvec_col_cart);

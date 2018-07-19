@@ -279,6 +279,8 @@ class K_point
         /// Initialize the k-point related arrays and data.
         inline void initialize();
 
+        inline void update();
+
         /// Generate first-variational states from eigen-vectors.
         /** First-variational states are obtained from the first-variational eigen-vectors and
          *  LAPW matching coefficients.

@@ -60,7 +60,7 @@ class Beta_projectors: public Beta_projectors_base<1>
             for (int igkloc = 0; igkloc < num_gkvec_loc(); igkloc++) {
                 int igk = igk__[igkloc];
                 /* vs = {r, theta, phi} */
-                auto vs = SHT::spherical_coordinates(gkvec_.gkvec_cart(igk));
+                auto vs = SHT::spherical_coordinates(gkvec_.gkvec_cart<index_domain_t::global>(igk));
                 /* compute real spherical harmonics for G+k vector */
                 std::vector<double> gkvec_rlm(utils::lmmax(ctx_.unit_cell().lmax()));
                 SHT::spherical_harmonics(ctx_.unit_cell().lmax(), vs[1], vs[2], &gkvec_rlm[0]);

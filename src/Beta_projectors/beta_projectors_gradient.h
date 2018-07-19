@@ -45,7 +45,7 @@ class Beta_projectors_gradient: public Beta_projectors_base<3>
             for (int i = 0; i < num_beta_t(); i++) {
                 for (int igkloc = 0; igkloc < num_gkvec_loc(); igkloc++) {
                     int igk = igk__[igkloc];
-                    auto vgc = gkvec_.gkvec_cart(igk);
+                    auto vgc = gkvec_.gkvec_cart<index_domain_t::global>(igk);
                     pw_coeffs_t_[x](igkloc, i) = double_complex(0, -vgc[x]) * beta__.pw_coeffs_t(0)(igkloc, i);
                 }
             }

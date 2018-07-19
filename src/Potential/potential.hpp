@@ -382,8 +382,7 @@ class Potential : public Field4D
             gvec_ylm_ = mdarray<double_complex, 2>(ctx_.lmmax_pot(), ctx_.gvec().count(), memory_t::host, "gvec_ylm_");
             #pragma omp parallel for schedule(static)
             for (int igloc = 0; igloc < ctx_.gvec().count(); igloc++) {
-                int  ig  = ctx_.gvec().offset() + igloc;
-                auto rtp = SHT::spherical_coordinates(ctx_.gvec().gvec_cart(ig));
+                auto rtp = SHT::spherical_coordinates(ctx_.gvec().gvec_cart<index_domain_t::local>(igloc));
                 SHT::spherical_harmonics(ctx_.lmax_pot(), rtp[1], rtp[2], &gvec_ylm_(0, igloc));
             }
 

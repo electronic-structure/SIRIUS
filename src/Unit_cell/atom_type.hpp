@@ -1144,8 +1144,8 @@ inline void Atom_type::init(int offset_lo__)
         TERMINATE("zero atom charge");
     }
 
-    /* add valence levels to the list of atom's levels */
     if (parameters_.full_potential()) {
+        /* add valence levels to the list of atom's levels */
         for (auto& e : atomic_conf[zn_ - 1]) {
             /* check if this level is already in the list */
             bool in_list{false};
@@ -1167,9 +1167,7 @@ inline void Atom_type::init(int offset_lo__)
                 num_core_electrons_ += e.occupancy;
             }
         }
-    }
 
-    if (parameters_.full_potential()) {
         /* initialize aw descriptors if they were not set manually */
         if (aw_descriptors_.size() == 0) {
             init_aw_descriptors(parameters_.lmax_apw());
@@ -1196,8 +1194,8 @@ inline void Atom_type::init(int offset_lo__)
             local_orbital_descriptor lod;
             lod.l = std::abs(e.first);
 
-            // for spin orbit coupling. We can always do that there is
-            // no insidence on the reset when calculations exclude SO
+            /* for spin orbit coupling; we can always do that there is
+               no insidence on the reset when calculations exclude SO */
             if (e.first < 0) {
                 lod.total_angular_momentum = lod.l - 0.5;
             } else {
@@ -1755,9 +1753,7 @@ inline void Atom_type::read_input(std::string const& str__)
         free_atom_density_ = parser["free_atom"]["density"].get<std::vector<double>>();
     }
 
-    // it is already done in input.h. I just initialize the
-    // different constants
-
+    /* it is already done in input.h; here the different constans are initialized */
     read_hubbard_input();
 }
 
@@ -1907,7 +1903,7 @@ inline void Atom_type::generate_f_coefficients(void)
     }
 }
 
-inline void Atom_type::calculate_ak_coefficients(mdarray<double, 5> &ak)
+inline void Atom_type::calculate_ak_coefficients(mdarray<double, 5>& ak)
 {
     // compute the ak coefficients appearing in the general treatment of
     // hubbard corrections.  expression taken from Liechtenstein {\it et
@@ -1936,7 +1932,7 @@ inline void Atom_type::calculate_ak_coefficients(mdarray<double, 5> &ak)
                            m1 + this->hubbard_l_,
                            m2 + this->hubbard_l_,
                            m3 + this->hubbard_l_,
-                           m4 + this->hubbard_l_) = 4.0 * sum * M_PI / static_cast<double>(2 * k + 1);
+                           m4 + this->hubbard_l_) = 4.0 * sum * pi / static_cast<double>(2 * k + 1);
                     }
                 }
             }
