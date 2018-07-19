@@ -17,14 +17,14 @@
 // CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
 // OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-/** \file atom_type.h
+/** \file atom_type.hpp
  *
  *  \brief Contains definition of sirius::radial_functions_index and sirius::basis_functions_index classes
  *         and declaration and partial implementation of sirius::Atom_type class.
  */
 
-#ifndef __ATOM_TYPE_H__
-#define __ATOM_TYPE_H__
+#ifndef __ATOM_TYPE_HPP__
+#define __ATOM_TYPE_HPP__
 
 #include "atomic_data.hpp"
 #include "descriptors.h"

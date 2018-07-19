@@ -25,7 +25,7 @@
 #ifndef __FREE_ATOM_HPP__
 #define __FREE_ATOM_HPP__
 
-#include "atom_type.h"
+#include "atom_type.hpp"
 
 namespace sirius {
 
