@@ -45,7 +45,7 @@ class Beta_projectors: public Beta_projectors_base<1>
             if (!num_beta_t()) {
                 return;
             }
-            
+
             auto& comm = gkvec_.comm();
 
             auto& beta_radial_integrals = ctx_.beta_ri();

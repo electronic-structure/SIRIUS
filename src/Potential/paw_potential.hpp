@@ -45,7 +45,7 @@ inline void Potential::init_PAW()
         int bs = unit_cell_.atom(ia).mt_basis_size();
         max_paw_basis_size_ = std::max(max_paw_basis_size_, bs);
     }
-    
+
     /* initialize dij matrix */
     paw_dij_ = mdarray<double, 4>(max_paw_basis_size_, max_paw_basis_size_, ctx_.num_mag_dims() + 1, unit_cell_.num_paw_atoms(),
                                   memory_t::host, "paw_dij_");

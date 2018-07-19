@@ -32,7 +32,7 @@
 namespace sirius {
 
 /// Setup and solve the eigen value problem.
-class Band
+class Band // TODO: Band class is lightweight and in principle can be converted to a namespace
 {
   private:
     /// Simulation context.
