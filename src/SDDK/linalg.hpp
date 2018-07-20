@@ -1107,7 +1107,7 @@ inline void linalg<GPU>::axpy<ftn_double_complex>(ftn_int n__,
 #endif // __GPU
 
 template <typename T>
-static void check_hermitian(const std::string& name, matrix<T> const& mtrx, int n = -1)
+inline void check_hermitian(const std::string& name, matrix<T> const& mtrx, int n = -1)
 {
     assert(mtrx.size(0) == mtrx.size(1));
 
@@ -1140,7 +1140,7 @@ static void check_hermitian(const std::string& name, matrix<T> const& mtrx, int 
 }
 
 template <typename T>
-static double check_hermitian(dmatrix<T>& mtrx__, int n__)
+inline double check_hermitian(dmatrix<T>& mtrx__, int n__)
 {
     double max_diff{0};
 #ifdef __SCALAPACK
@@ -1159,6 +1159,25 @@ static double check_hermitian(dmatrix<T>& mtrx__, int n__)
         }
     }
 #endif
+    return max_diff;
+}
+
+template <typename T>
+inline double check_identity(dmatrix<T>& mtrx__, int n__)
+{
+    double max_diff{0};
+    for (int i = 0; i < mtrx__.num_cols_local(); i++) {
+        int icol = mtrx__.icol(i);
+        for (int j = 0; j < mtrx__.num_rows_local(); j++) {
+            int jrow = mtrx__.irow(j);
+            if (icol == jrow) {
+                max_diff = std::max(max_diff, std::abs(mtrx__(j, i) - 1.0));
+            } else {
+                max_diff = std::max(max_diff, std::abs(mtrx__(j, i)));
+            }
+        }
+    }
+    mtrx__.comm().template allreduce<double, mpi_op_t::max>(&max_diff, 1);
     return max_diff;
 }
 
