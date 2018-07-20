@@ -212,37 +212,6 @@ class K_point
             }
         }
 
-    public:
-
-        /// Constructor
-        K_point(Simulation_context& ctx__,
-                double const* vk__,
-                double weight__)
-            : ctx_(ctx__)
-            , unit_cell_(ctx_.unit_cell())
-            , weight_(weight__)
-            , comm_(ctx_.comm_band())
-            , comm_row_(ctx_.blacs_grid().comm_row())
-            , comm_col_(ctx_.blacs_grid().comm_col())
-        {
-            PROFILE("sirius::K_point::K_point");
-
-            for (int x = 0; x < 3; x++) {
-                vk_[x] = vk__[x];
-            }
-
-            band_occupancies_ = mdarray<double, 2>(ctx_.num_bands(), ctx_.num_spin_dims());
-            band_occupancies_.zero();
-            band_energies_ = mdarray<double, 2>(ctx_.num_bands(), ctx_.num_spin_dims());
-            band_energies_.zero();
-
-            num_ranks_row_ = comm_row_.size();
-            num_ranks_col_ = comm_col_.size();
-
-            rank_row_ = comm_row_.rank();
-            rank_col_ = comm_col_.rank();
-        }
-
         /// Find G+k vectors within the cutoff.
         inline void generate_gkvec(double gk_cutoff__)
         {
@@ -274,6 +243,37 @@ class K_point
                                                                                   ctx_.comm_band_ortho_fft_coarse()));
 
             gkvec_offset_ = gkvec().gvec_offset(comm().rank());
+        }
+
+    public:
+
+        /// Constructor
+        K_point(Simulation_context& ctx__,
+                double const* vk__,
+                double weight__)
+            : ctx_(ctx__)
+            , unit_cell_(ctx_.unit_cell())
+            , weight_(weight__)
+            , comm_(ctx_.comm_band())
+            , comm_row_(ctx_.blacs_grid().comm_row())
+            , comm_col_(ctx_.blacs_grid().comm_col())
+        {
+            PROFILE("sirius::K_point::K_point");
+
+            for (int x = 0; x < 3; x++) {
+                vk_[x] = vk__[x];
+            }
+
+            band_occupancies_ = mdarray<double, 2>(ctx_.num_bands(), ctx_.num_spin_dims());
+            band_occupancies_.zero();
+            band_energies_ = mdarray<double, 2>(ctx_.num_bands(), ctx_.num_spin_dims());
+            band_energies_.zero();
+
+            num_ranks_row_ = comm_row_.size();
+            num_ranks_col_ = comm_col_.size();
+
+            rank_row_ = comm_row_.rank();
+            rank_col_ = comm_col_.rank();
         }
 
         /// Initialize the k-point related arrays and data.
