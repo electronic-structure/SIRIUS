@@ -6,8 +6,8 @@
 // gradient of beta projectors. Needed for the computations of the forces
 
 void Hubbard::compute_occupancies_derivatives(K_point& kp,
-                                                        Q_operator<double_complex>& q_op, // overlap operator
-                                                        mdarray<double_complex, 6>& dn_)                // Atom we shift
+                                              Q_operator<double_complex>& q_op, // overlap operator
+                                              mdarray<double_complex, 6>& dn_)                // Atom we shift
 {
     dn_.zero();
     // check if we have a norm conserving pseudo potential only. OOnly
@@ -57,10 +57,11 @@ void Hubbard::compute_occupancies_derivatives(K_point& kp,
     dmatrix<double_complex> Phi_S_Psi(HowManyBands, this->number_of_hubbard_orbitals() * ctx_.num_spins());
     matrix<double_complex> dm(this->number_of_hubbard_orbitals() * ctx_.num_spins(),
                               this->number_of_hubbard_orbitals() * ctx_.num_spins());
-    Phi_S_Psi.zero();
 
     #ifdef __GPU
     if (ctx_.processing_unit() == GPU) {
+        Phi_S_Psi.allocate(memory_t::device);
+        dPhi_S_Psi.allocate(memory_t::device);
         dm.allocate(memory_t::device);
         phi.allocate_on_device(0);
         phi.copy_to_device(0, 0, this->number_of_hubbard_orbitals());
@@ -69,9 +70,9 @@ void Hubbard::compute_occupancies_derivatives(K_point& kp,
         for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
             kp.spinor_wave_functions().copy_to_device(ispn, 0, kp.num_occupied_bands(ispn));
         }
-        phitmp.allocate_on_device(0);
     }
     #endif
+    Phi_S_Psi.zero();
 
     Apply_S_operator(kp, q_op, phi, dphi, 0, this->number_of_hubbard_orbitals());
 
@@ -114,7 +115,11 @@ void Hubbard::compute_occupancies_derivatives(K_point& kp,
                 // |phi_m^J> (J = atom_id) compared to a displacement of atom J.
 
                 kp.compute_gradient_wavefunctions(phi, this->offset[atom_id], lmax_at, phitmp, this->offset[atom_id], dir);
-
+#if defined(__GPU)
+                if (ctx_.processing_unit() == GPU) {
+                    phitmp.copy_to_device(0, 0, this->number_of_hubbard_orbitals());
+                }
+#endif
                 // For norm conserving pp, it is enough to have the derivatives
                 // of |phi^J_m> (J = atom_id)
                 Apply_S_operator(kp, q_op, phitmp, dphi, this->offset[atom_id], lmax_at);
@@ -169,9 +174,11 @@ void Hubbard::compute_occupancies_derivatives(K_point& kp,
                sizeof(double_complex) * dn__.size());
     } // atom_id
 
-    #ifdef __GPU
+    #if defined(__GPU)
     if (ctx_.processing_unit() == GPU) {
         dm.deallocate(memory_t::device);
+        Phi_S_Psi.deallocate(memory_t::device);
+        dPhi_S_Psi.deallocate(memory_t::device);
         phi.deallocate_on_device(0);
         phitmp.deallocate_on_device(0);
         dphi.deallocate_on_device(0);
@@ -184,8 +191,8 @@ void Hubbard::compute_occupancies_derivatives(K_point& kp,
 }
 
 void Hubbard::compute_occupancies_stress_derivatives(K_point& kp,
-                                                               Q_operator<double_complex>& q_op, // Compensnation operator or overlap operator
-                                                               mdarray<double_complex, 5>& dn_)  // derivative of the occupation number compared to displacement of atom aton_id
+                                                     Q_operator<double_complex>& q_op, // Compensnation operator or overlap operator
+                                                     mdarray<double_complex, 5>& dn_)  // derivative of the occupation number compared to displacement of atom aton_id
 {
     auto &phi = kp.hubbard_wave_functions();
 
@@ -229,6 +236,8 @@ void Hubbard::compute_occupancies_stress_derivatives(K_point& kp,
 
     #ifdef __GPU
     if (ctx_.processing_unit() == GPU) {
+        Phi_S_Psi.allocate(memory_t::device);
+        dPhi_S_Psi.allocate(memory_t::device);
         phi.allocate_on_device(0);
         phi.copy_to_device(0, 0, this->number_of_hubbard_orbitals());
         dphi.allocate_on_device(0);
@@ -277,7 +286,11 @@ void Hubbard::compute_occupancies_stress_derivatives(K_point& kp,
             // |phi_m^J> compared to the strain
 
             compute_gradient_strain_wavefunctions(kp, phitmp, rlm_g, rlm_dg, nu, mu);
-
+#if defined(__GPU)
+            if (ctx_.processing_unit() == GPU) {
+                phi.copy_to_device(0, 0, this->number_of_hubbard_orbitals());
+            }
+#endif
             // computes the S|d phi^I_ia>. It just happens that doing
             // this is equivalent to
             dphi.copy_from(ctx_.processing_unit(), this->number_of_hubbard_orbitals(), phitmp, 0, 0, 0, 0);
@@ -346,6 +359,8 @@ void Hubbard::compute_occupancies_stress_derivatives(K_point& kp,
     #ifdef __GPU
     if (ctx_.processing_unit() == GPU) {
         dm.deallocate(memory_t::device);
+        Phi_S_Psi.deallocate(memory_t::device);
+        dPhi_S_Psi.deallocate(memory_t::device);
         phi.deallocate_on_device(0);
         phitmp.deallocate_on_device(0);
         dphi.deallocate_on_device(0);
@@ -358,10 +373,10 @@ void Hubbard::compute_occupancies_stress_derivatives(K_point& kp,
 }
 
 void Hubbard::compute_gradient_strain_wavefunctions(K_point& kp__,
-                                                              Wave_functions& dphi,
-                                                              const mdarray<double, 2>& rlm_g,
-                                                              const mdarray<double, 3>& rlm_dg,
-                                                              const int nu, const int mu)
+                                                    Wave_functions& dphi,
+                                                    const mdarray<double, 2>& rlm_g,
+                                                    const mdarray<double, 3>& rlm_dg,
+                                                    const int nu, const int mu)
 {
     #pragma omp parallel for schedule(static)
     for (int igkloc = 0; igkloc < kp__.num_gkvec_loc(); igkloc++) {
@@ -419,12 +434,12 @@ void Hubbard::compute_gradient_strain_wavefunctions(K_point& kp__,
 }
 
 void Hubbard::compute_occupancies(K_point& kp,
-                                            dmatrix<double_complex> &Phi_S_Psi,
-                                            dmatrix<double_complex> &dPhi_S_Psi,
-                                            Wave_functions& dphi,
-                                            mdarray<double_complex, 5>& dn_,
-                                            matrix<double_complex> &dm,
-                                            const int index)
+                                  dmatrix<double_complex> &Phi_S_Psi,
+                                  dmatrix<double_complex> &dPhi_S_Psi,
+                                  Wave_functions& dphi,
+                                  mdarray<double_complex, 5>& dn_,
+                                  matrix<double_complex> &dm,
+                                  const int index)
 {
 #if defined(__GPU)
     const double_complex weight = double_complex(kp.weight(), 0.0);
@@ -442,6 +457,11 @@ void Hubbard::compute_occupancies(K_point& kp,
               0, this->number_of_hubbard_orbitals(), dPhi_S_Psi, 0, ispn * this->number_of_hubbard_orbitals());
     }
 
+    #if defined(__GPU)
+    if (ctx_.processing_unit() == GPU) {
+        dPhi_S_Psi.copy<memory::device,memory_t::host>();
+    }
+    #endif
     /* include the occupancy directly in dPhi_S_Psi */
 
     for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
