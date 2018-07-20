@@ -7,6 +7,7 @@ inline void K_point::generate_atomic_centered_wavefunctions_aux(const int       
                                                                 std::vector<int>& offset,
                                                                 const bool        hubbard)
 {
+
     if (!num_ao__) {
         return;
     }
@@ -57,9 +58,8 @@ inline void K_point::generate_atomic_centered_wavefunctions_aux(const int       
                             const int l = std::abs(orb.hubbard_l());
                             auto z = std::pow(double_complex(0, -1), l) * fourpi / std::sqrt(unit_cell_.omega());
                             for (int m = -l; m <= l; m++) {
-                                int lm = Utils::lm(l, m);
+                                int lm = utils::lm(l, m);
                                 phi.pw_coeffs(0).prime(igk_loc, offset[ia] + l + m) += 0.5 * z * std::conj(phase_factor) * rlm[lm] * ri_values[atom_type.id()][orb.rindex()];
-
                                 phi.pw_coeffs(1).prime(igk_loc, offset[ia] + 3 * l + m + 1) += 0.5 * z * std::conj(phase_factor) * rlm[lm] * ri_values[atom_type.id()][orb.rindex()];
                             }
                         }
@@ -70,7 +70,7 @@ inline void K_point::generate_atomic_centered_wavefunctions_aux(const int       
                             const int l = std::abs(orb.hubbard_l());
                             auto z = std::pow(double_complex(0, -1), l) * fourpi / std::sqrt(unit_cell_.omega());
                             for (int m = -l; m <= l; m++) {
-                                int lm = Utils::lm(l, m);
+                                int lm = utils::lm(l, m);
                                 phi.pw_coeffs(0).prime(igk_loc, offset[ia] + offset__  + l + m) = z * std::conj(phase_factor) * rlm[lm] * ri_values[atom_type.id()][orb.rindex()];
                                 if (ctx_.num_mag_dims() == 3) {
                                     phi.pw_coeffs(1).prime(igk_loc, offset[ia] + offset__  + 3 * l + m + 1) = z * std::conj(phase_factor) * rlm[lm] * ri_values[atom_type.id()][orb.rindex()];

@@ -50,7 +50,7 @@ class Hamiltonian
     Potential& potential_;
 
     /// Alias for the hubbard potential (note it is a pointer)
-    std::unique_ptr<Hubbard_potential> U_;
+    std::unique_ptr<Hubbard> U_;
 
     /// Local part of the Hamiltonian operator.
     std::unique_ptr<Local_operator> local_op_;
@@ -81,11 +81,11 @@ class Hamiltonian
         local_op_ = std::unique_ptr<Local_operator>(new Local_operator(ctx_, ctx_.fft_coarse(), ctx_.gvec_coarse_partition()));
 
         if (ctx_.hubbard_correction()) {
-            U_ = std::unique_ptr<Hubbard_potential>(new Hubbard_potential(ctx_));
+            U_ = std::unique_ptr<Hubbard>(new Hubbard(ctx_));
         }
     }
 
-    Hubbard_potential& U() const
+    Hubbard& U() const
     {
         return *U_;
     }

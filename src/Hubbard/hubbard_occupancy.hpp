@@ -7,7 +7,7 @@
 /// where \f[m=-l\cdot l$ (same for m')\f], I is the atom.
 
 /// We need to symmetrize them
-void Hubbard_potential::hubbard_compute_occupation_numbers(K_point_set& kset_)
+void Hubbard::hubbard_compute_occupation_numbers(K_point_set& kset_)
 {
     if (!ctx_.hubbard_correction()) {
         return;
@@ -212,7 +212,7 @@ void Hubbard_potential::hubbard_compute_occupation_numbers(K_point_set& kset_)
 // fill the d (f) states according to the hund's rules and with majority
 // spin first and the remaining electrons distributed among the minority
 // states.
-void Hubbard_potential::calculate_initial_occupation_numbers()
+void Hubbard::calculate_initial_occupation_numbers()
 {
     this->occupancy_number_.zero();
     #pragma omp parallel for schedule(static)
@@ -296,7 +296,7 @@ void Hubbard_potential::calculate_initial_occupation_numbers()
     print_occupancies();
 }
 
-inline void Hubbard_potential::print_occupancies()
+inline void Hubbard::print_occupancies()
 {
     if (ctx_.control().verbosity_ > 1 && ctx_.comm().rank() == 0) {
         printf("\n");
@@ -371,7 +371,7 @@ inline void Hubbard_potential::print_occupancies()
     }
 }
 
-inline void Hubbard_potential::symmetrize_occupancy_matrix_noncolinear_case()
+inline void Hubbard::symmetrize_occupancy_matrix_noncolinear_case()
 {
     auto& sym = unit_cell_.symmetry();
 
@@ -399,9 +399,9 @@ inline void Hubbard_potential::symmetrize_occupancy_matrix_noncolinear_case()
                 if (atom.type().hubbard_correction()) {
                     const int lmax_at = 2 * atom.type().hubbard_orbital(0).hubbard_l() + 1;
                     for (int ii = 0; ii < lmax_at; ii++) {
-                        int l1 = Utils::lm(atom.type().hubbard_orbital(0).hubbard_l(), ii - atom.type().hubbard_orbital(0).hubbard_l());
+                        int l1 = utils::lm(atom.type().hubbard_orbital(0).hubbard_l(), ii - atom.type().hubbard_orbital(0).hubbard_l());
                         for (int ll = 0; ll < lmax_at; ll++) {
-                            int l2 = Utils::lm(atom.type().hubbard_orbital(0).hubbard_l(), ll - atom.type().hubbard_orbital(0).hubbard_l());
+                            int l2 = utils::lm(atom.type().hubbard_orbital(0).hubbard_l(), ll - atom.type().hubbard_orbital(0).hubbard_l());
                             mdarray<double_complex, 1> rot_spa(ctx_.num_spins() * ctx_.num_spins());
                             rot_spa.zero();
                             for (int s1 = 0; s1 < ctx_.num_spins(); s1++) {
@@ -410,9 +410,9 @@ inline void Hubbard_potential::symmetrize_occupancy_matrix_noncolinear_case()
                                     // A_ij B_jk C_kl
 
                                     for (int jj = 0; jj < lmax_at; jj++) {
-                                        int l3 = Utils::lm(atom.type().hubbard_orbital(0).hubbard_l(), jj - atom.type().hubbard_orbital(0).hubbard_l());
+                                        int l3 = utils::lm(atom.type().hubbard_orbital(0).hubbard_l(), jj - atom.type().hubbard_orbital(0).hubbard_l());
                                         for (int kk = 0; kk < lmax_at; kk++) {
-                                            int l4 = Utils::lm(atom.type().hubbard_orbital(0).hubbard_l(), kk - atom.type().hubbard_orbital(0).hubbard_l());
+                                            int l4 = utils::lm(atom.type().hubbard_orbital(0).hubbard_l(), kk - atom.type().hubbard_orbital(0).hubbard_l());
                                             rot_spa(2 * s1 + s2) +=
                                                 std::conj(rotm(l1, l3)) *
                                                 occupancy_number_(jj, kk, (s1 == s2) * s1 + (s1 != s2) * (1 + 2 * s1 + s2), ia, 0) *
@@ -461,7 +461,7 @@ inline void Hubbard_potential::symmetrize_occupancy_matrix_noncolinear_case()
     }
 }
 
-inline void Hubbard_potential::symmetrize_occupancy_matrix()
+inline void Hubbard::symmetrize_occupancy_matrix()
 {
     auto& sym = unit_cell_.symmetry();
 
@@ -492,15 +492,15 @@ inline void Hubbard_potential::symmetrize_occupancy_matrix()
                     rot_spa.zero();
                     for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
                         for (int ii = 0; ii < lmax_at; ii++) {
-                            int l1 = Utils::lm(atom.type().hubbard_orbital(0).hubbard_l(), ii - atom.type().hubbard_orbital(0).hubbard_l());
+                            int l1 = utils::lm(atom.type().hubbard_orbital(0).hubbard_l(), ii - atom.type().hubbard_orbital(0).hubbard_l());
                             for (int ll = 0; ll < lmax_at; ll++) {
-                                int l2 = Utils::lm(atom.type().hubbard_orbital(0).hubbard_l(), ll - atom.type().hubbard_orbital(0).hubbard_l());
+                                int l2 = utils::lm(atom.type().hubbard_orbital(0).hubbard_l(), ll - atom.type().hubbard_orbital(0).hubbard_l());
                                 // symmetrization procedure
                                 // A_ij B_jk C_kl
                                 for (int kk = 0; kk < lmax_at; kk++) {
-                                    int l4 = Utils::lm(atom.type().hubbard_orbital(0).hubbard_l(), kk - atom.type().hubbard_orbital(0).hubbard_l());
+                                    int l4 = utils::lm(atom.type().hubbard_orbital(0).hubbard_l(), kk - atom.type().hubbard_orbital(0).hubbard_l());
                                     for (int jj = 0; jj < lmax_at; jj++) {
-                                        int l3 = Utils::lm(atom.type().hubbard_orbital(0).hubbard_l(), jj - atom.type().hubbard_orbital(0).hubbard_l());
+                                        int l3 = utils::lm(atom.type().hubbard_orbital(0).hubbard_l(), jj - atom.type().hubbard_orbital(0).hubbard_l());
                                         rot_spa(ii, kk) +=
                                             std::conj(rotm(l1, l3)) * occupancy_number_(jj, kk, ispn, ia, 0) * rotm(l2, l4) * alpha;
                                     }
@@ -559,7 +559,7 @@ inline void Hubbard_potential::symmetrize_occupancy_matrix()
  * return the occupancy matrix if the first parameter is set to "get"
  */
 
-void Hubbard_potential::access_hubbard_occupancies(char  const* what__,
+void Hubbard::access_hubbard_occupancies(char  const* what__,
                                                    double_complex*      occ__,
                                                    int   const *ld__)
 {

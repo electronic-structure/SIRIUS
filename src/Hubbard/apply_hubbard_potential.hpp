@@ -3,7 +3,7 @@
 
 // the S matrix is already applied to phi_i
 
-void Hubbard_potential::apply_hubbard_potential(K_point& kp,
+void Hubbard::apply_hubbard_potential(K_point& kp,
                                                 const int ispn_,
                                                 const int idx__,
                                                 const int n__,

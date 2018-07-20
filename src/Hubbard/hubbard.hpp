@@ -16,7 +16,7 @@
 namespace sirius {
 
 /// Apply Hubbard correction in the colinear case
-class Hubbard_potential // TODO: rename to Hubbard
+class Hubbard
 {
   private:
     Simulation_context& ctx_;
@@ -121,7 +121,8 @@ class Hubbard_potential // TODO: rename to Hubbard
     /// apply the S operator in the us pp case. Otherwise it makes a simple copy
     void Apply_S_operator(K_point&                    kp,
                           Q_operator<double_complex>& q_op,
-                          Wave_functions&             phi,
+                          Wave_functions&
+                          phi,
                           Wave_functions&             ophi,
                           const int                   idx0,
                           const int                   num_phi);
@@ -243,7 +244,7 @@ class Hubbard_potential // TODO: rename to Hubbard
         return number_of_hubbard_orbitals_;
     }
 
-    Hubbard_potential(Simulation_context& ctx__)
+    Hubbard(Simulation_context& ctx__)
         : ctx_(ctx__)
         , unit_cell_(ctx__.unit_cell())
     {

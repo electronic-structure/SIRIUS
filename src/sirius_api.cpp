@@ -460,22 +460,19 @@ void* sirius_create_ground_state(void* const* ks_handler__)
 
 /* @fortran begin function void sirius_find_ground_state        find the ground state
    @fortran argument in required void* gs_handler               handler of the ground state
-   @fortran argument in required double potential_tol        potential tolerance
-   @fortran argument in required double energy_tol           energy tolerance
-   @fortran argument in required int num_dft_iter           number of dft interactions
    @fortran end */
-void sirius_find_ground_state(void* const* gs_handler__, double const* potential_tol__, double const* energy_tol_, int const* num_dft_iter__)
+void sirius_find_ground_state(void* const* gs_handler__)
 {
     auto& gs = static_cast<utils::any_ptr*>(*gs_handler__)->get<sirius::DFT_ground_state>();
-
+    auto& ctx_ = gs.ctx();
     auto &potential = gs.potential();
     auto &density = gs. density();
-
+    auto &inp = ctx_.parameters_input();
     gs.initial_state();
 
-    auto result = gs.find(*potential_tol__,
-                          *energy_tol_,
-                          *num_dft_iter__,
+    auto result = gs.find(inp.potential_tol_,
+                          inp.energy_tol_,
+                          inp.num_dft_iter_,
                           false);
 }
 

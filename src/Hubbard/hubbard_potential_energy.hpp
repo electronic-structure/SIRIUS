@@ -1,4 +1,4 @@
-void Hubbard_potential::calculate_hubbard_potential_and_energy_colinear_case()
+void Hubbard::calculate_hubbard_potential_and_energy_colinear_case()
 {
     this->hubbard_energy_u_               = 0.0;
     this->hubbard_energy_dc_contribution_ = 0.0;
@@ -170,7 +170,7 @@ void Hubbard_potential::calculate_hubbard_potential_and_energy_colinear_case()
     }
 }
 
-void Hubbard_potential::calculate_hubbard_potential_and_energy_non_colinear_case()
+void Hubbard::calculate_hubbard_potential_and_energy_non_colinear_case()
 {
     this->hubbard_potential_.zero();
     this->hubbard_energy_dc_contribution_ = 0.0;
@@ -342,7 +342,7 @@ void Hubbard_potential::calculate_hubbard_potential_and_energy_non_colinear_case
  * return the potential if the first parameter is set to "get"
  */
 
-void Hubbard_potential::access_hubbard_potential(char  const* what__,
+void Hubbard::access_hubbard_potential(char  const* what__,
                                                  double_complex*      occ__,
                                                  int   const *ld__)
 {

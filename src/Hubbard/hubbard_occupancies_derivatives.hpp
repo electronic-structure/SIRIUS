@@ -5,7 +5,7 @@
 
 // gradient of beta projectors. Needed for the computations of the forces
 
-void Hubbard_potential::compute_occupancies_derivatives(K_point& kp,
+void Hubbard::compute_occupancies_derivatives(K_point& kp,
                                                         Q_operator<double_complex>& q_op, // overlap operator
                                                         mdarray<double_complex, 6>& dn_)                // Atom we shift
 {
@@ -183,7 +183,7 @@ void Hubbard_potential::compute_occupancies_derivatives(K_point& kp,
     bp_grad_.dismiss();
 }
 
-void Hubbard_potential::compute_occupancies_stress_derivatives(K_point& kp,
+void Hubbard::compute_occupancies_stress_derivatives(K_point& kp,
                                                                Q_operator<double_complex>& q_op, // Compensnation operator or overlap operator
                                                                mdarray<double_complex, 5>& dn_)  // derivative of the occupation number compared to displacement of atom aton_id
 {
@@ -357,7 +357,7 @@ void Hubbard_potential::compute_occupancies_stress_derivatives(K_point& kp,
     bp_strain_deriv.dismiss();
 }
 
-void Hubbard_potential::compute_gradient_strain_wavefunctions(K_point& kp__,
+void Hubbard::compute_gradient_strain_wavefunctions(K_point& kp__,
                                                               Wave_functions& dphi,
                                                               const mdarray<double, 2>& rlm_g,
                                                               const mdarray<double, 3>& rlm_dg,
@@ -404,7 +404,7 @@ void Hubbard_potential::compute_gradient_strain_wavefunctions(K_point& kp__,
                         }
                     } else {
                         for (int m = -l; m <= l; m++) {
-                            int lm  = Utils::lm(l, m);
+                            int lm  = utils::lm(l, m);
                             auto d1 = ri_values[atom_type.id()][i] * (gvc[mu] * rlm_dg(lm, nu, igkloc) +
                                                                       p * rlm_g(lm, igkloc));
                             auto d2 = ridjl_values[atom_type.id()][i] * rlm_g(lm, igkloc) * gvc[mu] * gvc[nu] / gvs[0];
@@ -418,7 +418,7 @@ void Hubbard_potential::compute_gradient_strain_wavefunctions(K_point& kp__,
     }
 }
 
-void Hubbard_potential::compute_occupancies(K_point& kp,
+void Hubbard::compute_occupancies(K_point& kp,
                                             dmatrix<double_complex> &Phi_S_Psi,
                                             dmatrix<double_complex> &dPhi_S_Psi,
                                             Wave_functions& dphi,
@@ -528,7 +528,7 @@ void Hubbard_potential::compute_occupancies(K_point& kp,
 // possible. Problem right now is that the class hamiltonian is not
 // included in hubbard_potential.
 
-void Hubbard_potential::Apply_S_operator(K_point &kp,
+void Hubbard::Apply_S_operator(K_point &kp,
                                          Q_operator<double_complex>& q_op,
                                          Wave_functions& phi,
                                          Wave_functions& ophi,
