@@ -260,24 +260,22 @@ class Potential : public Field4D
     {
         PROFILE("sirius::Potential::generate_local_potential");
 
-        Radial_integrals_vloc<false> ri(ctx_.unit_cell(), ctx_.pw_cutoff(), ctx_.settings().nprii_vloc_);
-
         auto v = ctx_.make_periodic_function<index_domain_t::local>([&](int iat, double g) 
         {
             if (this->ctx_.unit_cell().atom_type(iat).local_potential().empty()) {
                 return 0.0;
             } else {
-                return ri.value(iat, g);
+                return ctx_.vloc_ri().value(iat, g);
             }
         });
         std::copy(v.begin(), v.end(), &local_potential_->f_pw_local(0));
         local_potential_->fft_transform(1);
 
         if (ctx_.control().print_checksum_) {
-            //auto cs = local_potential_->checksum_pw();
+            auto cs = local_potential_->checksum_pw();
             auto cs1 = local_potential_->checksum_rg();
             if (ctx_.comm().rank() == 0) {
-                //DUMP("checksum(local_potential_pw): %18.10f %18.10f", cs.real(), cs.imag());
+                utils::print_checksum("local_potential_pw", cs);
                 utils::print_checksum("local_potential_rg", cs1);
             }
         }

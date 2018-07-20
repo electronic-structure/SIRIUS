@@ -414,7 +414,7 @@ class Force
 
             auto& valence_rho = density_.rho();
 
-            Radial_integrals_vloc<false> ri(ctx_.unit_cell(), ctx_.pw_cutoff(), ctx_.settings().nprii_vloc_);
+            auto& ri = ctx_.vloc_ri();
 
             Unit_cell& unit_cell = ctx_.unit_cell();
 
@@ -513,7 +513,7 @@ class Force
 
             double fact = gvecs.reduced() ? 2.0 : 1.0;
 
-            Radial_integrals_rho_core_pseudo<false> ri(ctx_.unit_cell(), ctx_.pw_cutoff(), ctx_.settings().nprii_rho_core_);
+            auto& ri = ctx_.ps_core_ri();
 
             /* here the calculations are in lattice vectors space */
             #pragma omp parallel for
@@ -573,7 +573,7 @@ class Force
 
             int ig0 = (ctx_.comm().rank() == 0) ? 1 : 0;
 
-            Radial_integrals_rho_pseudo ri(ctx_.unit_cell(), ctx_.pw_cutoff(), 20);
+            auto& ri = ctx_.ps_rho_ri();
 
             #pragma omp parallel for
             for (int ia = 0; ia < unit_cell.num_atoms(); ia++) {

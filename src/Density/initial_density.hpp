@@ -19,10 +19,9 @@ inline void Density::initial_density()
 
 inline void Density::initial_density_pseudo()
 {
-    Radial_integrals_rho_pseudo ri(unit_cell_, ctx_.pw_cutoff(), 20);
-    auto v = ctx_.make_periodic_function<index_domain_t::local>([&ri](int iat, double g)
+    auto v = ctx_.make_periodic_function<index_domain_t::local>([&](int iat, double g)
                                                                 {
-                                                                    return ri.value<int>(iat, g);
+                                                                    return ctx_.ps_rho_ri().value<int>(iat, g);
                                                                 });
 
     if (ctx_.control().print_checksum_) {

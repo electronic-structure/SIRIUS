@@ -111,7 +111,7 @@ inline void Density::generate_valence(K_point_set& ks__)
 
     if (!ctx_.full_potential()) {
         augment(ks__);
-        
+
         if (ctx_.control().print_hash_ && ctx_.comm().rank() == 0) {
             auto h = mdarray<double_complex, 1>(&rho().f_pw_local(0), ctx_.gvec().count()).hash();
             utils::print_hash("rho", h);

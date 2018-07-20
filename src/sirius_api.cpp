@@ -344,6 +344,15 @@ void sirius_update_context(void* const* handler__)
     sim_ctx.update();
 }
 
+/* @fortran begin function void sirius_print_info      Print basic info
+   @fortran argument in required void* handler         Simulation context handler.
+   @fortran end */
+void sirius_print_info(void* const* handler__)
+{
+    GET_SIM_CTX(handler__);
+    sim_ctx.print_info();
+}
+
 /* @fortran begin function void sirius_free_handler     Free any handler of object created by SIRIUS.
    @fortran argument inout required void* handler       Handler of the object.
    @fortran end */
@@ -765,10 +774,10 @@ void sirius_set_pw_coeffs(void*                const* handler__,
         #pragma omp parallel for schedule(static)
         for (int i = 0; i < *ngv__; i++) {
             vector3d<int> G(gvec(0, i), gvec(1, i), gvec(2, i));
-            auto gvc = gs.ctx().unit_cell().reciprocal_lattice_vectors() * vector3d<double>(G[0], G[1], G[2]);
-            if (gvc.length() > gs.ctx().pw_cutoff()) {
-                continue;
-            }
+            //auto gvc = gs.ctx().unit_cell().reciprocal_lattice_vectors() * vector3d<double>(G[0], G[1], G[2]);
+            //if (gvc.length() > gs.ctx().pw_cutoff()) {
+            //    continue;
+            //}
             int ig = gs.ctx().gvec().index_by_gvec(G);
             if (ig >= 0) {
                 v[ig] = pw_coeffs__[i];
@@ -865,11 +874,11 @@ void sirius_get_pw_coeffs(void*                const* handler__,
         for (int i = 0; i < *ngv__; i++) {
             vector3d<int> G(gvec(0, i), gvec(1, i), gvec(2, i));
 
-            auto gvc = gs.ctx().unit_cell().reciprocal_lattice_vectors() * vector3d<double>(G[0], G[1], G[2]);
-            if (gvc.length() > gs.ctx().pw_cutoff()) {
-                pw_coeffs__[i] = 0;
-                continue;
-            }
+            //auto gvc = gs.ctx().unit_cell().reciprocal_lattice_vectors() * vector3d<double>(G[0], G[1], G[2]);
+            //if (gvc.length() > gs.ctx().pw_cutoff()) {
+            //    pw_coeffs__[i] = 0;
+            //    continue;
+            //}
 
             bool is_inverse{false};
             int ig = gs.ctx().gvec().index_by_gvec(G);
@@ -933,28 +942,24 @@ void sirius_get_pw_coeffs_real(void* const* handler__,
     // TODO: if radial integrals take considerable time, cache them in Simulation_context
 
     if (label == "rhoc") {
-        sirius::Radial_integrals_rho_core_pseudo<false> ri(sim_ctx.unit_cell(), sim_ctx.pw_cutoff(), sim_ctx.settings().nprii_rho_core_);
-        make_pw_coeffs([&ri, iat](double g)
+        make_pw_coeffs([&](double g)
                        {
-                           return ri.value<int>(iat, g);
+                           return sim_ctx.ps_core_ri().value<int>(iat, g);
                        });
     } else if (label == "rhoc_dg") {
-        sirius::Radial_integrals_rho_core_pseudo<true> ri(sim_ctx.unit_cell(), sim_ctx.pw_cutoff(), sim_ctx.settings().nprii_rho_core_);
-        make_pw_coeffs([&ri, iat](double g)
+        make_pw_coeffs([&](double g)
                        {
-                           return ri.value<int>(iat, g);
+                           return sim_ctx.ps_core_ri_djl().value<int>(iat, g);
                        });
     } else if (label == "vloc") {
-        sirius::Radial_integrals_vloc<false> ri(sim_ctx.unit_cell(), sim_ctx.pw_cutoff(), sim_ctx.settings().nprii_vloc_);
-        make_pw_coeffs([&ri, iat](double g)
+        make_pw_coeffs([&](double g)
                        {
-                           return ri.value(iat, g);
+                           return sim_ctx.vloc_ri().value(iat, g);
                        });
     } else if (label == "rho") {
-        sirius::Radial_integrals_rho_pseudo ri(sim_ctx.unit_cell(), sim_ctx.pw_cutoff(), 20);
-        make_pw_coeffs([&ri, iat](double g)
+        make_pw_coeffs([&](double g)
                        {
-                           return ri.value<int>(iat, g);
+                           return sim_ctx.ps_rho_ri().value<int>(iat, g);
                        });
     } else {
         std::stringstream s;
