@@ -210,6 +210,13 @@ class Smooth_periodic_function
             return cs;
         }
 
+        inline double_complex checksum_pw() const
+        {
+            double_complex cs = this->f_pw_local_.checksum();
+            this->gvecp_->gvec().comm().allreduce(&cs, 1);
+            return cs;
+        }
+
         inline uint64_t hash_f_pw() const
         {
             auto h = f_pw_local_.hash();
