@@ -459,7 +459,7 @@ void Hubbard::compute_occupancies(K_point& kp,
 
     #if defined(__GPU)
     if (ctx_.processing_unit() == GPU) {
-        dPhi_S_Psi.copy<memory::device,memory_t::host>();
+        dPhi_S_Psi.copy<memory_t::device,memory_t::host>();
     }
     #endif
     /* include the occupancy directly in dPhi_S_Psi */
