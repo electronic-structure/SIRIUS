@@ -61,6 +61,15 @@ class Radial_integrals_base
     /** The following condition is satisfied: q = grid_q[iq] + dq */
     inline std::pair<int, double> iqdq(double q__) const
     {
+        if (q__ > grid_q_.last()) {
+            std::stringstream s;
+            s << "[sirius::Radial_integrals_base::iddq] q-point is out of range" << std::endl
+              << "  q : " << q__ << std::endl
+              << "  last point of the q-grid : " << grid_q_.last();
+            std::cout << s.str() << "\n";
+            printf("%s\n", s.str().c_str());
+            TERMINATE(s);
+        }
         std::pair<int, double> result;
         /* find index of q-point */
         result.first = static_cast<int>((grid_q_.num_points() - 1) * q__ / grid_q_.last());
@@ -565,6 +574,7 @@ class Radial_integrals_vloc : public Radial_integrals_base<1>
         generate();
     }
 
+    /// Special implementation to recover the true radial integral value.
     inline double value(int iat__, double q__) const
     {
         auto idx = iqdq(q__);
