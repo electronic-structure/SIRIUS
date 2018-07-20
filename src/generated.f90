@@ -443,6 +443,22 @@ end interface
 call sirius_update_context_aux(handler)
 end subroutine sirius_update_context
 
+!> @brief Print basic info
+!> @param [in] handler Simulation context handler.
+subroutine sirius_print_info(handler)
+implicit none
+type(C_PTR), intent(in) :: handler
+interface
+subroutine sirius_print_info_aux(handler)&
+&bind(C, name="sirius_print_info")
+use, intrinsic :: ISO_C_BINDING
+type(C_PTR), intent(in) :: handler
+end subroutine
+end interface
+
+call sirius_print_info_aux(handler)
+end subroutine sirius_print_info
+
 !> @brief Free any handler of object created by SIRIUS.
 !> @param [inout] handler Handler of the object.
 subroutine sirius_free_handler(handler)

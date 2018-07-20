@@ -344,15 +344,15 @@ class Stress {
 
         stress_vloc_.zero();
 
-        Radial_integrals_vloc<false> ri_vloc(ctx_.unit_cell(), ctx_.pw_cutoff(), ctx_.settings().nprii_vloc_);
-        Radial_integrals_vloc<true> ri_vloc_dg(ctx_.unit_cell(), ctx_.pw_cutoff(), ctx_.settings().nprii_vloc_);
+        auto& ri_vloc = ctx_.vloc_ri();
+        auto& ri_vloc_dg = ctx_.vloc_ri_djl();
 
-        auto v = ctx_.make_periodic_function<index_domain_t::local>([&ri_vloc](int iat, double g)
+        auto v = ctx_.make_periodic_function<index_domain_t::local>([&](int iat, double g)
                                                                     {
                                                                         return ri_vloc.value(iat, g);
                                                                     });
 
-        auto dv = ctx_.make_periodic_function<index_domain_t::local>([&ri_vloc_dg](int iat, double g)
+        auto dv = ctx_.make_periodic_function<index_domain_t::local>([&](int iat, double g)
                                                                      {
                                                                          return ri_vloc_dg.value(iat, g);
                                                                      });
@@ -698,8 +698,8 @@ class Stress {
 
         potential_.effective_potential().fft_transform(-1);
 
-        Radial_integrals_aug<false> const& ri    = ctx_.aug_ri();
-        Radial_integrals_aug<true>  const& ri_dq = ctx_.aug_ri_djl();
+        auto& ri    = ctx_.aug_ri();
+        auto& ri_dq = ctx_.aug_ri_djl();
 
         potential_.fft_transform(-1);
 
@@ -861,7 +861,7 @@ class Stress {
 
         potential_.xc_potential().fft_transform(-1);
 
-        Radial_integrals_rho_core_pseudo<true> ri_dg(ctx_.unit_cell(), ctx_.pw_cutoff(), ctx_.settings().nprii_rho_core_);
+        auto& ri_dg = ctx_.ps_core_ri_djl();
 
         auto drhoc = ctx_.make_periodic_function<index_domain_t::local>([&ri_dg](int iat, double g)
                                                                         {

@@ -310,10 +310,13 @@ class Density : public Field4D
     {
         PROFILE("sirius::Density::generate_pseudo_core_charge_density");
 
-        auto ri = Radial_integrals_rho_core_pseudo<false>(ctx_.unit_cell(), ctx_.pw_cutoff(), ctx_.settings().nprii_rho_core_);
-
-        auto v = ctx_.make_periodic_function<index_domain_t::local>([&ri](int iat, double g) {
-            return ri.value<int>(iat, g);
+        auto v = ctx_.make_periodic_function<index_domain_t::local>([&](int iat, double g) 
+        {
+            if (this->ctx_.unit_cell().atom_type(iat).ps_core_charge_density().empty()) {
+                return 0.0;
+            } else {
+                return ctx_.ps_core_ri().value<int>(iat, g);
+            }
         });
         std::copy(v.begin(), v.end(), &rho_pseudo_core_->f_pw_local(0));
         rho_pseudo_core_->fft_transform(1);
