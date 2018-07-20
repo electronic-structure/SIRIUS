@@ -125,6 +125,16 @@ class Simulation_context: public Simulation_parameters
 
         std::unique_ptr<Radial_integrals_atomic_wf<true>> atomic_wf_ri_djl_;
 
+        std::unique_ptr<Radial_integrals_rho_core_pseudo<false>> ps_core_ri_;
+
+        std::unique_ptr<Radial_integrals_rho_core_pseudo<true>> ps_core_ri_djl_;
+
+        std::unique_ptr<Radial_integrals_rho_pseudo> ps_rho_ri_;
+
+        std::unique_ptr<Radial_integrals_vloc<false>> vloc_ri_;
+
+        std::unique_ptr<Radial_integrals_vloc<true>> vloc_ri_djl_;
+
         std::vector<std::vector<std::pair<int, double>>> atoms_to_grid_idx_;
 
         /// Storage for various memory pools.
@@ -874,6 +884,31 @@ class Simulation_context: public Simulation_parameters
             return *atomic_wf_ri_djl_;
         }
 
+        inline Radial_integrals_rho_core_pseudo<false> const& ps_core_ri() const
+        {
+            return *ps_core_ri_;
+        }
+
+        inline Radial_integrals_rho_core_pseudo<true> const& ps_core_ri_djl() const
+        {
+            return *ps_core_ri_djl_;
+        }
+
+        inline Radial_integrals_rho_pseudo const& ps_rho_ri() const
+        {
+            return *ps_rho_ri_;
+        }
+
+        inline Radial_integrals_vloc<false> const& vloc_ri() const
+        {
+            return *vloc_ri_;
+        }
+
+        inline Radial_integrals_vloc<true> const& vloc_ri_djl() const
+        {
+            return *vloc_ri_djl_;
+        }
+
         /// Find the lambda parameter used in the Ewald summation.
         /** lambda parameter scales the erfc function argument:
          *  \f[
@@ -1129,13 +1164,18 @@ inline void Simulation_context::initialize()
     }
 
     if (!full_potential()) {
-        /* some extra length is added to cutoffs in order to interface with QE which may require ri(q) for q>cutoff */
-        beta_ri_      = std::unique_ptr<Radial_integrals_beta<false>>(new Radial_integrals_beta<false>(unit_cell(), gk_cutoff() + 1, settings().nprii_beta_));
-        beta_ri_djl_  = std::unique_ptr<Radial_integrals_beta<true>>(new Radial_integrals_beta<true>(unit_cell(), gk_cutoff() + 1, settings().nprii_beta_));
-        aug_ri_       = std::unique_ptr<Radial_integrals_aug<false>>(new Radial_integrals_aug<false>(unit_cell(), pw_cutoff() + 1, settings().nprii_aug_));
-        aug_ri_djl_   = std::unique_ptr<Radial_integrals_aug<true>>(new Radial_integrals_aug<true>(unit_cell(), pw_cutoff() + 1, settings().nprii_aug_));
-        atomic_wf_ri_ = std::unique_ptr<Radial_integrals_atomic_wf<false>>(new Radial_integrals_atomic_wf<false>(unit_cell(), gk_cutoff(), 20));
-        atomic_wf_ri_djl_ = std::unique_ptr<Radial_integrals_atomic_wf<true>>(new Radial_integrals_atomic_wf<true>(unit_cell(), gk_cutoff(), 20));
+        /* add extra length to the cutoffs in order to interpolate radial integrals for q > cutoff */
+        beta_ri_          = std::unique_ptr<Radial_integrals_beta<false>>(new Radial_integrals_beta<false>(unit_cell(), 2 * gk_cutoff(), settings().nprii_beta_));
+        beta_ri_djl_      = std::unique_ptr<Radial_integrals_beta<true>>(new Radial_integrals_beta<true>(unit_cell(), 2 * gk_cutoff(), settings().nprii_beta_));
+        aug_ri_           = std::unique_ptr<Radial_integrals_aug<false>>(new Radial_integrals_aug<false>(unit_cell(), 2 * pw_cutoff(), settings().nprii_aug_));
+        aug_ri_djl_       = std::unique_ptr<Radial_integrals_aug<true>>(new Radial_integrals_aug<true>(unit_cell(), 2 * pw_cutoff(), settings().nprii_aug_));
+        atomic_wf_ri_     = std::unique_ptr<Radial_integrals_atomic_wf<false>>(new Radial_integrals_atomic_wf<false>(unit_cell(), 2 * gk_cutoff(), 20));
+        atomic_wf_ri_djl_ = std::unique_ptr<Radial_integrals_atomic_wf<true>>(new Radial_integrals_atomic_wf<true>(unit_cell(), 2 * gk_cutoff(), 20));
+        ps_core_ri_       = std::unique_ptr<Radial_integrals_rho_core_pseudo<false>>(new Radial_integrals_rho_core_pseudo<false>(unit_cell(), 2 * pw_cutoff(), settings().nprii_rho_core_));
+        ps_core_ri_djl_   = std::unique_ptr<Radial_integrals_rho_core_pseudo<true>>(new Radial_integrals_rho_core_pseudo<true>(unit_cell(), 2 * pw_cutoff(), settings().nprii_rho_core_));
+        ps_rho_ri_        = std::unique_ptr<Radial_integrals_rho_pseudo>(new Radial_integrals_rho_pseudo(unit_cell(), 2 * pw_cutoff(), 20));
+        vloc_ri_          = std::unique_ptr<Radial_integrals_vloc<false>>(new Radial_integrals_vloc<false>(unit_cell(), 2 * pw_cutoff(), settings().nprii_vloc_));
+        vloc_ri_djl_      = std::unique_ptr<Radial_integrals_vloc<true>>(new Radial_integrals_vloc<true>(unit_cell(), 2 * pw_cutoff(), settings().nprii_vloc_));
     }
 
     //time_active_ = -runtime::wtime();
