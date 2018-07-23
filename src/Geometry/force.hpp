@@ -754,7 +754,7 @@ class Force
 
                     double scalar_part =
                         static_cast<double>(unit_cell.atom(ia).zn() * unit_cell.atom(ja).zn()) / d2 *
-                        (gsl_sf_erfc(std::sqrt(alpha) * d) / d + 2.0 * std::sqrt(alpha * invpi) * std::exp(-d2 * alpha));
+                        (std::erfc(std::sqrt(alpha) * d) / d + 2.0 * std::sqrt(alpha * invpi) * std::exp(-d2 * alpha));
 
                     for (int x : {0, 1, 2}) {
                         forces_ewald_(x, ia) += scalar_part * t[x];
