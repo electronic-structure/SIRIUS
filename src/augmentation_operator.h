@@ -157,13 +157,15 @@ class Augmentation_operator
         /* broadcast from rank#0 */
         comm_.bcast(&q_mtrx_(0, 0), nbf * nbf, 0);
 
-        //if (ctx_.control().print_checksum_) {
-        //    double cs = q_pw_.checksum();
-        //    comm_.allreduce(&cs, 1);
-        //    if (comm_.rank() == 0) {
-        //        utils::print_checksum("q_pw", cs);
-        //    }
-        //}
+        if (atom_type_.parameters().control().print_checksum_) {
+            auto cs = q_pw_.checksum();
+            auto cs1 = q_mtrx_.checksum();
+            comm_.allreduce(&cs, 1);
+            if (comm_.rank() == 0) {
+                utils::print_checksum("q_pw", cs);
+                utils::print_checksum("q_mtrx", cs1);
+            }
+        }
     }
 
     void prepare(int stream_id__)
