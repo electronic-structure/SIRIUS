@@ -563,7 +563,7 @@ class Stress {
                 }
 
                 double a1 = (0.5 * uc.atom(ia).zn() * uc.atom(ja).zn() / uc.omega() / std::pow(len, 3)) *
-                            (-2 * std::exp(-lambda * std::pow(len, 2)) * std::sqrt(lambda / pi) * len - gsl_sf_erfc(std::sqrt(lambda) * len));
+                            (-2 * std::exp(-lambda * std::pow(len, 2)) * std::sqrt(lambda / pi) * len - std::erfc(std::sqrt(lambda) * len));
 
                 for (int mu: {0, 1, 2}) {
                     for (int nu: {0, 1, 2}) {

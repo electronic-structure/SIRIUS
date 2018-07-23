@@ -530,7 +530,7 @@ inline double DFT_ground_state::ewald_energy()
                 int ja = unit_cell_.nearest_neighbour(i, ia).atom_id;
                 double d = unit_cell_.nearest_neighbour(i, ia).distance;
                 ewald_r_pt += 0.5 * unit_cell_.atom(ia).zn() * unit_cell_.atom(ja).zn() *
-                              gsl_sf_erfc(std::sqrt(alpha) * d) / d;
+                              std::erfc(std::sqrt(alpha) * d) / d;
             }
         }
 

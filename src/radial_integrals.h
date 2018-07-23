@@ -25,7 +25,6 @@
 #ifndef __RADIAL_INTEGRALS_H__
 #define __RADIAL_INTEGRALS_H__
 
-#include <gsl/gsl_sf_erf.h>
 #include "Unit_cell/unit_cell.hpp"
 #include "sbessel.h"
 
@@ -535,7 +534,7 @@ class Radial_integrals_vloc : public Radial_integrals_base<1>
                 if (jl_deriv) { /* integral with derivative of j0(q*r) over q */
                     for (int ir = 0; ir < rg.num_points(); ir++) {
                         double x = rg[ir];
-                        s(ir)    = (x * vloc[ir] + atom_type.zn() * gsl_sf_erf(x)) *
+                        s(ir)    = (x * vloc[ir] + atom_type.zn() * std::erf(x)) *
                                    (std::sin(g * x) - g * x * std::cos(g * x));
                     }
                 } else {           /* integral with j0(q*r) */
@@ -544,7 +543,7 @@ class Radial_integrals_vloc : public Radial_integrals_base<1>
                             unit_cell_.parameters().parameters_input().esm_bc_ != "pbc") {
                             for (int ir = 0; ir < rg.num_points(); ir++) {
                                 double x = rg[ir];
-                                s(ir)    = (x * vloc[ir] + atom_type.zn() * gsl_sf_erf(x)) * x;
+                                s(ir)    = (x * vloc[ir] + atom_type.zn() * std::erf(x)) * x;
                             }
                         } else {
                             for (int ir = 0; ir < rg.num_points(); ir++) {
@@ -555,7 +554,7 @@ class Radial_integrals_vloc : public Radial_integrals_base<1>
                     } else {
                         for (int ir = 0; ir < rg.num_points(); ir++) {
                             double x = rg[ir];
-                            s(ir)    = (x * vloc[ir] + atom_type.zn() * gsl_sf_erf(x)) * std::sin(g * x);
+                            s(ir)    = (x * vloc[ir] + atom_type.zn() * std::erf(x)) * std::sin(g * x);
                         }
                     }
                 }

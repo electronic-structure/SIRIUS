@@ -926,7 +926,7 @@ class Simulation_context: public Simulation_parameters
             /* iterate to find lambda */
             do {
                 lambda += 0.1;
-                upper_bound = charge * charge * std::sqrt(2.0 * lambda / twopi) * gsl_sf_erfc(gmax * std::sqrt(1.0 / (4.0 * lambda)));
+                upper_bound = charge * charge * std::sqrt(2.0 * lambda / twopi) * std::erfc(gmax * std::sqrt(1.0 / (4.0 * lambda)));
             } while (upper_bound < 1.0e-8);
 
             if (lambda < 1.5) {
