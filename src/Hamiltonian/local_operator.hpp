@@ -231,13 +231,14 @@ class Local_operator
                 }
             }
 
-            //if (ctx_.control().print_checksum_) {
-            //    auto cs = veff_vec_.checksum();
-            //    fft_coarse_.comm().allreduce(&cs, 1);
-            //    if (gvec_coarse_p_.gvec().comm().rank() == 0) {
-            //        print_checksum("Local_operator::prepare::veff_vec", cs);
-            //    }
-            //}
+            if (ctx_.control().print_checksum_) {
+                for (int j = 0; j < ctx_.num_mag_dims() + 1; j++) {
+                    auto cs = veff_vec_[j].checksum_pw();
+                    if (gvec_coarse_p_.gvec().comm().rank() == 0) {
+                        utils::print_checksum("veff_vec", cs);
+                    }
+                }
+            }
         }
 
         fft_coarse_.dismiss();
