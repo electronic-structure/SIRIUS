@@ -271,7 +271,7 @@ void test1()
     {
         for (int m = -l; m <= l; m++)
         {
-            int lm = Utils::lm_by_l_m(l, m);
+            int lm = utils::lm(l, m);
             printf("l: %2i m: %2i ylm: %18.12f %18.12f\n", l, m, ylm[lm].real(), ylm[lm].imag());
         }
     }
@@ -309,7 +309,7 @@ void test2()
         for (int l = 0; l <= lmax; l++) {
             for (int m = -l; m <= l; m++) {
                 SphericalHarmonicY_(&l, &m, &theta, &phi, &val);
-                diff += std::abs(val - ylm[Utils::lm_by_l_m(l, m)]);
+                diff += std::abs(val - ylm[utils::lm(l, m)]);
             }
         }
         printf("theta, phi: %f, %f, diff: %f\n", theta, phi, diff);
