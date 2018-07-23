@@ -416,9 +416,9 @@ void* sirius_create_kset(void* const*  handler__,
 
 /* @fortran begin function void* sirius_create_kset_from_grid        Create k-point set from a grid.
    @fortran argument in  required void*  handler                     Simulation context handler.
-   @fortran argument in  required int    k_grid                    dimensions of the k points grid.
-   @fortran argument in  required double k_shift                   k point shifts.
-   @fortran argument in  required bool   use_symmetry                If .true. k-set will be generate using symmetries.
+   @fortran argument in  required int    k_grid                      dimensions of the k points grid.
+   @fortran argument in  required int k_shift                        k point shifts.
+   @fortran argument in  required bool   use_symmetry                If .true. k-set will be generated using symmetries.
    @fortran end */
 
 void *sirius_create_kset_from_grid(void* const* handler__,
@@ -442,8 +442,6 @@ void *sirius_create_kset_from_grid(void* const* handler__,
                                                             k_grid,
                                                             k_shift,
                                                             *use_symmetry);
-
-    new_kset->initialize();
 
     return new utils::any_ptr(new_kset);
 }

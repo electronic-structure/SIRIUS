@@ -95,6 +95,11 @@ void Hubbard::compute_occupancies_derivatives(K_point& kp,
                                     ctx_.unit_cell().num_atoms(),
                                     3);
 
+#if defined(__GPU)
+    if (ctx_.processing_unit() == GPU) {
+        dn__.allocate(memory_t::device);
+    }
+#endif
     for (int atom_id = 0; atom_id < ctx_.unit_cell().num_atoms(); atom_id++) {
         dn__.zero();
         for (int dir = 0; dir < 3; dir++) {
@@ -176,6 +181,7 @@ void Hubbard::compute_occupancies_derivatives(K_point& kp,
 
     #if defined(__GPU)
     if (ctx_.processing_unit() == GPU) {
+        dn__.deallocate(memory_t::device);
         dm.deallocate(memory_t::device);
         Phi_S_Psi.deallocate(memory_t::device);
         dPhi_S_Psi.deallocate(memory_t::device);
@@ -236,6 +242,7 @@ void Hubbard::compute_occupancies_stress_derivatives(K_point& kp,
 
     #ifdef __GPU
     if (ctx_.processing_unit() == GPU) {
+        dm.allocate(memory_t::device);
         Phi_S_Psi.allocate(memory_t::device);
         dPhi_S_Psi.allocate(memory_t::device);
         phi.allocate_on_device(0);
@@ -471,6 +478,11 @@ void Hubbard::compute_occupancies(K_point& kp,
             }
         }
     }
+#if defined(__GPU)
+    if (ctx_.processing_unit() == GPU) {
+        dPhi_S_Psi.copy<memory_t::host, memory_t::device>();
+    }
+#endif
 
     dm.zero();
 

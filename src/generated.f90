@@ -505,13 +505,13 @@ end function sirius_create_kset
 !> @param [in] handler Simulation context handler.
 !> @param [in] k_grid dimensions of the k points grid.
 !> @param [in] k_shift k point shifts.
-!> @param [in] use_symmetry If .true. k-set will be generate using symmetries.
+!> @param [in] use_symmetry If .true. k-set will be generated using symmetries.
 function sirius_create_kset_from_grid(handler,k_grid,k_shift,use_symmetry) resul&
 &t(res)
 implicit none
 type(C_PTR), intent(in) :: handler
 integer(C_INT), intent(in) :: k_grid
-real(C_DOUBLE), intent(in) :: k_shift
+integer(C_INT), intent(in) :: k_shift
 logical(C_BOOL), intent(in) :: use_symmetry
 type(C_PTR) :: res
 interface
@@ -521,7 +521,7 @@ function sirius_create_kset_from_grid_aux(handler,k_grid,k_shift,use_symmetry) r
 use, intrinsic :: ISO_C_BINDING
 type(C_PTR), intent(in) :: handler
 integer(C_INT), intent(in) :: k_grid
-real(C_DOUBLE), intent(in) :: k_shift
+integer(C_INT), intent(in) :: k_shift
 logical(C_BOOL), intent(in) :: use_symmetry
 type(C_PTR) :: res
 end function
@@ -550,30 +550,18 @@ end function sirius_create_ground_state
 
 !> @brief find the ground state
 !> @param [in] gs_handler handler of the ground state
-!> @param [in] potential_tol potential tolerance
-!> @param [in] energy_tol energy tolerance
-!> @param [in] num_dft_iter number of dft interactions
-subroutine sirius_find_ground_state(gs_handler,potential_tol,energy_tol,num_dft_&
-&iter)
+subroutine sirius_find_ground_state(gs_handler)
 implicit none
 type(C_PTR), intent(in) :: gs_handler
-real(C_DOUBLE), intent(in) :: potential_tol
-real(C_DOUBLE), intent(in) :: energy_tol
-integer(C_INT), intent(in) :: num_dft_iter
 interface
-subroutine sirius_find_ground_state_aux(gs_handler,potential_tol,energy_tol,num_&
-&dft_iter)&
+subroutine sirius_find_ground_state_aux(gs_handler)&
 &bind(C, name="sirius_find_ground_state")
 use, intrinsic :: ISO_C_BINDING
 type(C_PTR), intent(in) :: gs_handler
-real(C_DOUBLE), intent(in) :: potential_tol
-real(C_DOUBLE), intent(in) :: energy_tol
-integer(C_INT), intent(in) :: num_dft_iter
 end subroutine
 end interface
 
-call sirius_find_ground_state_aux(gs_handler,potential_tol,energy_tol,num_dft_it&
-&er)
+call sirius_find_ground_state_aux(gs_handler)
 end subroutine sirius_find_ground_state
 
 !> @brief Add new atom type to the unit cell.

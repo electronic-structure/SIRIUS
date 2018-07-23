@@ -29,7 +29,7 @@ packages = {
                      "--with-szlib=no"]
     },
     "xc"   : {
-        "url"     : "http://www.tddft.org/programs/octopus/down.php?file=libxc/libxc-3.0.0.tar.gz",
+        "url"     : "http://www.tddft.org/programs/octopus/down.php?file=libxc/4.2.3/libxc-4.2.3.tar.gz",
         "options" : []
     }
 }
@@ -64,7 +64,7 @@ def configure_package(package_name, platform):
                 print("Downloading %s"%file_url)
                 req = urllib.request.Request(file_url)
                 furl = urllib.request.urlopen(req)
-            
+
                 local_file = open("./libs/" + local_file_name, "wb")
                 local_file.write(furl.read())
                 local_file.close()
@@ -72,7 +72,7 @@ def configure_package(package_name, platform):
         except Exception as e:
             print("{0}".format(e));
             sys.exit(1)
-        
+
     tf = tarfile.open("./libs/" + local_file_name)
     tf.extractall("./libs/")
 
@@ -101,7 +101,7 @@ def configure_package(package_name, platform):
         p.wait()
         p = subprocess.Popen(["autoconf"], cwd = "./libs/" + package_dir, env = new_env)
         p.wait()
-            
+
 
     p = subprocess.Popen(["./configure"] + package["options"], cwd = "./libs/" + package_dir, env = new_env)
     p.wait()
@@ -180,7 +180,7 @@ endif'''+"\n")
         makeinc.write("CXX_OPT = $(BASIC_CXX_OPT) %s\n"%platform['MPI_CXX_OPT'])
     else:
         makeinc.write("CXX_OPT = $(BASIC_CXX_OPT) %s\n"%platform['CXX_OPT'])
-    
+
     # add main include paths
     makeinc.write("CXX_OPT := $(CXX_OPT) -I%s/src\n"%os.getcwd())
     makeinc.write("CXX_OPT := $(CXX_OPT) -I%s/src/SDDK\n"%os.getcwd())
@@ -195,11 +195,11 @@ endif'''+"\n")
         makeinc.write("CXX_OPT := $(CXX_OPT) -I%s/elpa\n"%platform['ELPA_ROOT']);
     # cuda compiler
     if 'CUDA_ROOT' in platform:
-        if 'CUDA_CC' in platform: 
+        if 'CUDA_CC' in platform:
             makeinc.write("NVCC = %s\n"%(platform['CUDA_CC']))
         else:
             makeinc.write("NVCC = %s/bin/nvcc\n"%(platform['CUDA_ROOT']))
-        if 'CUDA_OPT' in platform: 
+        if 'CUDA_OPT' in platform:
             makeinc.write("NVCC_OPT = %s\n"%platform['CUDA_OPT'])
 
     if 'MPI_FC' in platform:
@@ -229,9 +229,9 @@ endif'''+"\n")
         makeinc.write("LIBS := $(LIBS) -L%s -lcublas -lcudart -lcufft -lcusparse -lnvToolsExt -Wl,-rpath,%s  \n"%(lib_path, lib_path))
 
     if 'MAGMA_ROOT' in platform:
-        makeinc.write("LIBS := $(LIBS) %s/lib/libmagma_sparse.a\n"%platform['MAGMA_ROOT']) 
-        makeinc.write("LIBS := $(LIBS) %s/lib/libmagma.a\n"%platform['MAGMA_ROOT']) 
-        
+        makeinc.write("LIBS := $(LIBS) %s/lib/libmagma_sparse.a\n"%platform['MAGMA_ROOT'])
+        makeinc.write("LIBS := $(LIBS) %s/lib/libmagma.a\n"%platform['MAGMA_ROOT'])
+
     if 'ELPA_ROOT' in platform:
         makeinc.write("LIBS := $(LIBS) -L%s/.libs/ -lelpa_openmp -Wl,-rpath,%s/.libs/\n"%(platform['ELPA_ROOT'], platform['ELPA_ROOT']))
 
@@ -244,7 +244,7 @@ endif'''+"\n")
     if "CXX_OPT_DBG" in platform:
         makeinc.write("CXX_OPT_DBG = " + platform["CXX_OPT_DBG"] + "\n")
         dbg_conf = True
-    
+
     if dbg_conf:
         makeinc.write("CXX_OPT_DBG := $(CXX_OPT_DBG) -I" + os.getcwd() + "/src\n")
 
