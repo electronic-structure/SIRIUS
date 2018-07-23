@@ -68,7 +68,7 @@ void test1_angular_radial()
 template <typename T>
 void test2(int lmax, int nr)
 { 
-    int lmmax = Utils::lmmax(lmax);
+    int lmmax = utils::lmmax(lmax);
     auto r = Radial_grid_factory<double>(radial_grid_t::exponential, nr, 0.01, 2.0, 1.0);
 
     SHT sht(lmax);
@@ -95,7 +95,7 @@ void test2(int lmax, int nr)
 
 void test3(int lmax, int nr)
 { 
-    int lmmax = Utils::lmmax(lmax);
+    int lmmax = utils::lmmax(lmax);
     auto r = Radial_grid_factory<double>(radial_grid_t::exponential, nr, 0.01, 2.0, 1.0);
     SHT sht(lmax);
 
@@ -241,7 +241,7 @@ void test6()
         for (int m1 = -l1; m1 <= l1; m1++)
         {
             f.zero();
-            for (int ir = 0; ir < nr; ir++) f(Utils::lm_by_l_m(l1, m1), ir) = exp(-r[ir]) * cos(l1 * r[ir]) * sin(m1 + r[ir]);
+            for (int ir = 0; ir < nr; ir++) f(utils::lm(l1, m1), ir) = exp(-r[ir]) * cos(l1 * r[ir]) * sin(m1 + r[ir]);
             auto grad_f = gradient(f);
 
             for (int l2 = 0; l2 <= 5; l2++)
@@ -249,12 +249,12 @@ void test6()
                 for (int m2 = -l2; m2 <= l2; m2++)
                 {
                     f.zero();
-                    for (int ir = 0; ir < nr; ir++) f(Utils::lm_by_l_m(l2, m2), ir) = exp(-r[ir]) * cos(l2 * r[ir]) * sin(m2 + r[ir]);
+                    for (int ir = 0; ir < nr; ir++) f(utils::lm(l2, m2), ir) = exp(-r[ir]) * cos(l2 * r[ir]) * sin(m2 + r[ir]);
                     
                     vector3d<double> v;
                     for (int x = 0; x < 3; x++) v[x] = inner(f, grad_f[x]);
 
-                    std::cout << "<lm2=" << Utils::lm_by_l_m(l2, m2) << "|grad|lm1=" << Utils::lm_by_l_m(l1, m1) << "> : ";
+                    std::cout << "<lm2=" << utils::lm(l2, m2) << "|grad|lm1=" << utils::lm(l1, m1) << "> : ";
                     for (int i = 0; i < 3; i++) std::cout << v[i] << " ";
                     std::cout << std::endl;
                 }
