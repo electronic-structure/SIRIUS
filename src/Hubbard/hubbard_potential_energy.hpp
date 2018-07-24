@@ -7,8 +7,8 @@ void Hubbard::calculate_hubbard_potential_and_energy_colinear_case()
         for (int ia = 0; ia < this->unit_cell_.num_atoms(); ia++) {
             const auto& atom = this->unit_cell_.atom(ia);
             if (atom.type().hubbard_correction()) {
-                double U_effective = 0.0;
-                const int lmax_at  = 2 * atom.type().hubbard_orbital(0).hubbard_l() + 1;
+                double    U_effective = 0.0;
+                const int lmax_at     = 2 * atom.type().hubbard_orbital(0).hubbard_l() + 1;
                 if ((atom.type().hubbard_orbital(0).Hubbard_U() != 0.0) || (atom.type().hubbard_orbital(0).Hubbard_alpha() != 0.0)) {
 
                     U_effective = atom.type().hubbard_orbital(0).Hubbard_U();
@@ -121,8 +121,8 @@ void Hubbard::calculate_hubbard_potential_and_energy_colinear_case()
 
                     // dc contribution
                     this->U(m1, m1, is, ia) += atom.type().hubbard_orbital(0).Hubbard_J() * n_updown[is] +
-                        0.5 * (atom.type().hubbard_orbital(0).Hubbard_U() - atom.type().hubbard_orbital(0).Hubbard_J()) -
-                        atom.type().hubbard_orbital(0).Hubbard_U() * n_total;
+                                               0.5 * (atom.type().hubbard_orbital(0).Hubbard_U() - atom.type().hubbard_orbital(0).Hubbard_J()) -
+                                               atom.type().hubbard_orbital(0).Hubbard_U() * n_total;
 
                     // the u contributions
                     for (int m2 = 0; m2 < 2 * atom.type().hubbard_orbital(0).hubbard_l() + 1; m2++) {
@@ -178,7 +178,7 @@ void Hubbard::calculate_hubbard_potential_and_energy_non_colinear_case()
     this->hubbard_energy_flip_            = 0.0;
     this->hubbard_potential_.zero();
     for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
-        auto& atom        = unit_cell_.atom(ia);
+        auto& atom = unit_cell_.atom(ia);
         if (atom.type().hubbard_correction()) {
 
             const int lmax_at = 2 * atom.type().hubbard_orbital(0).hubbard_l() + 1;
@@ -187,9 +187,9 @@ void Hubbard::calculate_hubbard_potential_and_energy_non_colinear_case()
             // calculation of the double counting term in the hubbard correction
 
             double_complex n_total;
-            double mx;
-            double my;
-            double mz;
+            double         mx;
+            double         my;
+            double         mz;
 
             n_total = this->occupancy_number_(0, 0, 0, ia, 0) + this->occupancy_number_(0, 0, 1, ia, 0);
             mz      = (this->occupancy_number_(0, 0, 0, ia, 0) - this->occupancy_number_(0, 0, 1, ia, 0)).real();
@@ -342,9 +342,9 @@ void Hubbard::calculate_hubbard_potential_and_energy_non_colinear_case()
  * return the potential if the first parameter is set to "get"
  */
 
-void Hubbard::access_hubbard_potential(char  const* what__,
-                                                 double_complex*      occ__,
-                                                 int   const *ld__)
+void Hubbard::access_hubbard_potential(char const*     what__,
+                                       double_complex* occ__,
+                                       int const*      ld__)
 {
     /* this implementation is QE-specific at the moment */
 
@@ -359,9 +359,9 @@ void Hubbard::access_hubbard_potential(char  const* what__,
     mdarray<double_complex, 4> pot_mtrx;
 
     if (ctx_.num_mag_dims() == 3) {
-        pot_mtrx = mdarray<double_complex, 4>(reinterpret_cast<double_complex *>(occ__), *ld__, *ld__, 4, ctx_.unit_cell().num_atoms());
+        pot_mtrx = mdarray<double_complex, 4>(reinterpret_cast<double_complex*>(occ__), *ld__, *ld__, 4, ctx_.unit_cell().num_atoms());
     } else {
-        pot_mtrx = mdarray<double_complex, 4>(reinterpret_cast<double_complex *>(occ__), *ld__, *ld__, ctx_.num_spins(), ctx_.unit_cell().num_atoms());
+        pot_mtrx = mdarray<double_complex, 4>(reinterpret_cast<double_complex*>(occ__), *ld__, *ld__, ctx_.num_spins(), ctx_.unit_cell().num_atoms());
     }
     if (what == "get") {
         pot_mtrx.zero();
@@ -376,11 +376,11 @@ void Hubbard::access_hubbard_potential(char  const* what__,
             for (int m1 = -l; m1 <= l; m1++) {
                 for (int m2 = -l; m2 <= l; m2++) {
                     if (what == "get") {
-                        for (int j = 0; j < ((ctx_.num_mag_dims() == 3) ? 4 :  ctx_.num_spins()); j++) {
+                        for (int j = 0; j < ((ctx_.num_mag_dims() == 3) ? 4 : ctx_.num_spins()); j++) {
                             pot_mtrx(l + m1, l + m2, j, ia) = potential_matrix(l + m1, l + m2, j, ia, 0);
                         }
                     } else {
-                        for (int j = 0; j <  ((ctx_.num_mag_dims() == 3) ? 4 :  ctx_.num_spins()); j++) {
+                        for (int j = 0; j < ((ctx_.num_mag_dims() == 3) ? 4 : ctx_.num_spins()); j++) {
                             potential_matrix(l + m1, l + m2, j, ia, 0) = pot_mtrx(l + m1, l + m2, j, ia);
                         }
                     }

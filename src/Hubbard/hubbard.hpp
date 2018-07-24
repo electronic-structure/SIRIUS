@@ -23,7 +23,7 @@ class Hubbard
 
     Unit_cell& unit_cell_;
 
-    int lmax_{0};
+    int lmax_{-1};
 
     int number_of_hubbard_orbitals_{0};
 
@@ -63,8 +63,8 @@ class Hubbard
     void calculate_initial_occupation_numbers();
 
     void compute_occupancies(K_point&                    kp,
-                             dmatrix<double_complex>&    Phi_S_Psi,
-                             dmatrix<double_complex>&    dPhi_S_Psi,
+                             dmatrix<double_complex>&    phi_s_psi,
+                             dmatrix<double_complex>&    dphi_s_psi,
                              Wave_functions&             dphi,
                              mdarray<double_complex, 5>& dn_,
                              matrix<double_complex>&     dm,
@@ -89,20 +89,19 @@ class Hubbard
             if (atom.type().hubbard_correction()) {
                 offset[ia] = counter;
                 if (ctx_.num_mag_dims() == 3) {
-                    for (auto && orb : atom.type().hubbard_orbital()) {
+                    for (auto&& orb : atom.type().hubbard_orbital()) {
                         if (atom.type().spin_orbit_coupling()) {
-                            counter += (2 * orb.hubbard_l_ + 1);
+                            counter += (2 * orb.hubbard_l() + 1);
                         } else {
-                            counter += 2 * (2 * orb.hubbard_l_ + 1);
+                            counter += 2 * (2 * orb.hubbard_l() + 1);
                         }
                     }
                 } else {
-                    for (auto && orb : atom.type().hubbard_orbital()) {
-                        counter += (2 * orb.hubbard_l_ + 1);
+                    for (auto&& orb : atom.type().hubbard_orbital()) {
+                        counter += (2 * orb.hubbard_l() + 1);
                     }
                 }
             }
-            std::cout << counter << std::endl;
         }
 
         this->number_of_hubbard_orbitals_ = counter;
@@ -111,7 +110,7 @@ class Hubbard
     /// Compute the strain gradient of the hubbard wave functions.
     /// Unfortunately it is dependent of the pp.
 
-    void compute_gradient_strain_wavefunctions(K_point&                  kp__,
+    void compute_gradient_strain_wavefunctions(K_point&                  kp,
                                                Wave_functions&           dphi,
                                                const mdarray<double, 2>& rlm_g,
                                                const mdarray<double, 3>& rlm_dg,
@@ -119,10 +118,9 @@ class Hubbard
                                                const int                 nu);
 
     /// apply the S operator in the us pp case. Otherwise it makes a simple copy
-    void Apply_S_operator(K_point&                    kp,
+    void apply_S_operator(K_point&                    kp,
                           Q_operator<double_complex>& q_op,
-                          Wave_functions&
-                          phi,
+                          Wave_functions&             phi,
                           Wave_functions&             ophi,
                           const int                   idx0,
                           const int                   num_phi);
@@ -133,7 +131,7 @@ class Hubbard
   public:
     std::vector<int> offset;
 
-    void set_hubbard_U_plus_V(const bool U_plus_V_)
+    void set_hubbard_U_plus_V()
     {
         hubbard_U_plus_V_ = true;
     }
@@ -147,6 +145,7 @@ class Hubbard
     {
         return lmax_;
     }
+
     void set_orthogonalize_hubbard_orbitals(const bool test)
     {
         this->orthogonalize_hubbard_orbitals_ = test;
@@ -189,9 +188,9 @@ class Hubbard
 
     /// Apply the hubbard potential on wave functions
     void apply_hubbard_potential(K_point&        kp,
-                                 const int       ispn_,
-                                 const int       idx__,
-                                 const int       n__,
+                                 const int       ispn,
+                                 const int       idx,
+                                 const int       n,
                                  Wave_functions& phi,
                                  Wave_functions& ophi);
 
@@ -203,7 +202,7 @@ class Hubbard
 
     void compute_occupancies_derivatives(K_point&                    kp,
                                          Q_operator<double_complex>& q_op,
-                                         mdarray<double_complex, 6>& dn_);
+                                         mdarray<double_complex, 6>& dn);
 
     /// Compute derivatives of the occupancy matrix w.r.t.atomic displacement.
     /** \param [in]  kp   K-point.
@@ -212,7 +211,7 @@ class Hubbard
      */
     void compute_occupancies_stress_derivatives(K_point&                    kp,
                                                 Q_operator<double_complex>& q_op,
-                                                mdarray<double_complex, 5>& dn_);
+                                                mdarray<double_complex, 5>& dn);
 
     void calculate_hubbard_potential_and_energy_colinear_case();
     void calculate_hubbard_potential_and_energy_non_colinear_case();
@@ -261,9 +260,8 @@ class Hubbard
             this->wave_function_file_ = ctx_.Hubbard().wave_function_file_;
         }
 
-        this->lmax_ = -1;
         for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {
-            auto &atom_type = ctx_.unit_cell().atom(ia).type();
+            auto& atom_type = ctx_.unit_cell().atom(ia).type();
             if (ctx__.unit_cell().atom(ia).type().hubbard_correction()) {
                 for (unsigned int channel = 0;
                      channel < atom_type.number_of_hubbard_channels();
@@ -301,13 +299,13 @@ class Hubbard
         return hubbard_potential_;
     }
 
-    void access_hubbard_potential(char  const* what__,
-                                  double_complex*      occ__,
-                                  int   const *ld__);
+    void access_hubbard_potential(char const*     what,
+                                  double_complex* occ,
+                                  int const*      ld);
 
-    void access_hubbard_occupancies(char  const* what__,
-                                    double_complex*      occ__,
-                                    int   const *ld__);
+    void access_hubbard_occupancies(char const*     what,
+                                    double_complex* occ,
+                                    int const*      ld);
 };
 
 #include "hubbard_generate_atomic_orbitals.hpp"

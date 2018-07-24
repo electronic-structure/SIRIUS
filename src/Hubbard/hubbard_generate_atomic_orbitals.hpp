@@ -23,7 +23,6 @@ void Hubbard::generate_atomic_orbitals(K_point& kp, Q_operator<double_complex>& 
             }
         }
         #endif
-
         return;
     }
 

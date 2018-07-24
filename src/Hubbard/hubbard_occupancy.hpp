@@ -23,7 +23,7 @@ void Hubbard::hubbard_compute_occupation_numbers(K_point_set& kset_)
     // and down are still stored as a spinor to conserve space.
 
     for (int ikloc = 0; ikloc < kset_.spl_num_kpoints().local_size(); ikloc++) {
-        int ik  = kset_.spl_num_kpoints(ikloc);
+        int  ik = kset_.spl_num_kpoints(ikloc);
         auto kp = kset_[ik];
 
         HowManyBands = std::max(kp->num_occupied_bands(0), HowManyBands);
@@ -42,8 +42,8 @@ void Hubbard::hubbard_compute_occupation_numbers(K_point_set& kset_)
     }
 
     dmatrix<double_complex> dm(HowManyBands, this->number_of_hubbard_orbitals() * Ncf);
-    matrix<double_complex> dm1(HowManyBands, this->number_of_hubbard_orbitals() * Ncf);
-    matrix<double_complex> Op(this->number_of_hubbard_orbitals() * Ncf, this->number_of_hubbard_orbitals() * Ncf);
+    matrix<double_complex>  dm1(HowManyBands, this->number_of_hubbard_orbitals() * Ncf);
+    matrix<double_complex>  Op(this->number_of_hubbard_orbitals() * Ncf, this->number_of_hubbard_orbitals() * Ncf);
 
     dm.zero();
 
@@ -56,7 +56,7 @@ void Hubbard::hubbard_compute_occupation_numbers(K_point_set& kset_)
     #endif
 
     for (int ikloc = 0; ikloc < kset_.spl_num_kpoints().local_size(); ikloc++) {
-        int ik  = kset_.spl_num_kpoints(ikloc);
+        int  ik = kset_.spl_num_kpoints(ikloc);
         auto kp = kset_[ik];
         #ifdef __GPU
         if (ctx_.processing_unit() == GPU) {
@@ -141,7 +141,7 @@ void Hubbard::hubbard_compute_occupation_numbers(K_point_set& kset_)
             // there must be a way to do that with matrix multiplication
             #pragma omp parallel for schedule(static)
             for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
-                const auto& atom  = unit_cell_.atom(ia);
+                const auto& atom = unit_cell_.atom(ia);
                 if (atom.type().hubbard_correction()) {
                     const int lmax_at = 2 * atom.type().hubbard_orbital(0).hubbard_l() + 1;
                     for (int s1 = 0; s1 < ctx_.num_spins(); s1++) {
@@ -168,7 +168,7 @@ void Hubbard::hubbard_compute_occupation_numbers(K_point_set& kset_)
 
             #pragma omp parallel for schedule(static)
             for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
-                const auto& atom  = unit_cell_.atom(ia);
+                const auto& atom = unit_cell_.atom(ia);
                 if (atom.type().hubbard_correction()) {
                     const int lmax_at = 2 * atom.type().hubbard_orbital(0).hubbard_l() + 1;
                     for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
@@ -217,13 +217,13 @@ void Hubbard::calculate_initial_occupation_numbers()
     this->occupancy_number_.zero();
     #pragma omp parallel for schedule(static)
     for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
-        const auto& atom  = unit_cell_.atom(ia);
+        const auto& atom = unit_cell_.atom(ia);
         if (atom.type().hubbard_correction()) {
             const int lmax_at = 2 * atom.type().hubbard_orbital(0).hubbard_l() + 1;
             // compute the total charge for the hubbard orbitals
             double charge = atom.type().hubbard_orbital(0).hubbard_occupancy();
-            bool nm       = true; // true if the atom is non magnetic
-            int majs, mins;
+            bool   nm     = true; // true if the atom is non magnetic
+            int    majs, mins;
             if (ctx_.num_spins() != 1) {
                 if (atom.vector_field()[2] > 0.0) {
                     nm   = false;
@@ -254,7 +254,7 @@ void Hubbard::calculate_initial_occupation_numbers()
                 } else {
                     // double c1, s1;
                     // sincos(atom.type().starting_magnetization_theta(), &s1, &c1);
-                    double c1         = atom.vector_field()[2];
+                    double         c1 = atom.vector_field()[2];
                     double_complex cs = double_complex(atom.vector_field()[0], atom.vector_field()[1]) / sqrt(1.0 - c1 * c1);
                     double_complex ns[4];
 
@@ -308,7 +308,7 @@ inline void Hubbard::print_occupancies()
         for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
             printf("Atom : %d\n", ia);
             printf("Mag Dim : %d\n", ctx_.num_mag_dims());
-            const auto& atom  = unit_cell_.atom(ia);
+            const auto& atom = unit_cell_.atom(ia);
 
             if (atom.type().hubbard_correction()) {
                 const int lmax_at = 2 * atom.type().hubbard_orbital(0).hubbard_l() + 1;
@@ -387,7 +387,7 @@ inline void Hubbard::symmetrize_occupancy_matrix_noncolinear_case()
         rotated_oc.zero();
 
         for (int i = 0; i < sym.num_mag_sym(); i++) {
-            int pr    = sym.magnetic_group_symmetry(i).spg_op.proper;
+            int  pr   = sym.magnetic_group_symmetry(i).spg_op.proper;
             auto eang = sym.magnetic_group_symmetry(i).spg_op.euler_angles;
             // int isym  = sym.magnetic_group_symmetry(i).isym;
             SHT::rotation_matrix(lmax, eang, pr, rotm);
@@ -395,13 +395,13 @@ inline void Hubbard::symmetrize_occupancy_matrix_noncolinear_case()
 
             #pragma omp parallel for schedule(static)
             for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
-                const auto& atom  = unit_cell_.atom(ia);
+                const auto& atom = unit_cell_.atom(ia);
                 if (atom.type().hubbard_correction()) {
                     const int lmax_at = 2 * atom.type().hubbard_orbital(0).hubbard_l() + 1;
                     for (int ii = 0; ii < lmax_at; ii++) {
                         int l1 = utils::lm(atom.type().hubbard_orbital(0).hubbard_l(), ii - atom.type().hubbard_orbital(0).hubbard_l());
                         for (int ll = 0; ll < lmax_at; ll++) {
-                            int l2 = utils::lm(atom.type().hubbard_orbital(0).hubbard_l(), ll - atom.type().hubbard_orbital(0).hubbard_l());
+                            int                        l2 = utils::lm(atom.type().hubbard_orbital(0).hubbard_l(), ll - atom.type().hubbard_orbital(0).hubbard_l());
                             mdarray<double_complex, 1> rot_spa(ctx_.num_spins() * ctx_.num_spins());
                             rot_spa.zero();
                             for (int s1 = 0; s1 < ctx_.num_spins(); s1++) {
@@ -446,7 +446,7 @@ inline void Hubbard::symmetrize_occupancy_matrix_noncolinear_case()
         }
 
         for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
-            auto& atom        = unit_cell_.atom(ia);
+            auto& atom = unit_cell_.atom(ia);
             if (atom.type().hubbard_correction()) {
                 const int lmax_at = 2 * atom.type().hubbard_orbital(0).hubbard_l() + 1;
                 for (int ii = 0; ii < lmax_at; ii++) {
@@ -477,7 +477,7 @@ inline void Hubbard::symmetrize_occupancy_matrix()
         rotated_oc.zero();
 
         for (int i = 0; i < sym.num_mag_sym(); i++) {
-            int pr    = sym.magnetic_group_symmetry(i).spg_op.proper;
+            int  pr   = sym.magnetic_group_symmetry(i).spg_op.proper;
             auto eang = sym.magnetic_group_symmetry(i).spg_op.euler_angles;
             // int isym  = sym.magnetic_group_symmetry(i).isym;
             SHT::rotation_matrix(lmax, eang, pr, rotm);
@@ -485,9 +485,9 @@ inline void Hubbard::symmetrize_occupancy_matrix()
 
             #pragma omp parallel for schedule(static)
             for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
-                const auto& atom  = unit_cell_.atom(ia);
+                const auto& atom = unit_cell_.atom(ia);
                 if (atom.type().hubbard_correction()) {
-                    const int lmax_at = 2 * atom.type().hubbard_orbital(0).hubbard_l() + 1;
+                    const int               lmax_at = 2 * atom.type().hubbard_orbital(0).hubbard_l() + 1;
                     dmatrix<double_complex> rot_spa(lmax_at, lmax_at);
                     rot_spa.zero();
                     for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
@@ -521,7 +521,7 @@ inline void Hubbard::symmetrize_occupancy_matrix()
         }
 
         for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
-            auto& atom        = unit_cell_.atom(ia);
+            auto& atom = unit_cell_.atom(ia);
             if (atom.type().hubbard_correction()) {
                 const int lmax_at = 2 * atom.type().hubbard_orbital(0).hubbard_l() + 1;
                 for (int ii = 0; ii < lmax_at; ii++) {
@@ -559,9 +559,9 @@ inline void Hubbard::symmetrize_occupancy_matrix()
  * return the occupancy matrix if the first parameter is set to "get"
  */
 
-void Hubbard::access_hubbard_occupancies(char  const* what__,
-                                                   double_complex*      occ__,
-                                                   int   const *ld__)
+void Hubbard::access_hubbard_occupancies(char const*     what__,
+                                         double_complex* occ__,
+                                         int const*      ld__)
 {
     std::string what(what__);
 
@@ -591,11 +591,11 @@ void Hubbard::access_hubbard_occupancies(char  const* what__,
             for (int m1 = -l; m1 <= l; m1++) {
                 for (int m2 = -l; m2 <= l; m2++) {
                     if (what == "get") {
-                        for (int j = 0; j < ((ctx_.num_mag_dims() == 3) ? 4 :  ctx_.num_spins()); j++) {
+                        for (int j = 0; j < ((ctx_.num_mag_dims() == 3) ? 4 : ctx_.num_spins()); j++) {
                             occ_mtrx(l + m1, l + m2, j, ia) = occupation_matrix(l + m1, l + m2, j, ia, 0);
                         }
                     } else {
-                        for (int j = 0; j <  ((ctx_.num_mag_dims() == 3) ? 4 :  ctx_.num_spins()); j++) {
+                        for (int j = 0; j < ((ctx_.num_mag_dims() == 3) ? 4 : ctx_.num_spins()); j++) {
                             occupation_matrix(l + m1, l + m2, j, ia, 0) = occ_mtrx(l + m1, l + m2, j, ia);
                         }
                     }

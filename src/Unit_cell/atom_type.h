@@ -583,33 +583,15 @@ class Atom_type
                              double occ,
                              double U,
                              double J,
-                             const double *hub_coef_,
-                             double alpha_,
-                             double beta_,
-                             double J0_)
+                             const double *hub_coef__,
+                             double alpha__,
+                             double beta__,
+                             double J0__)
     {
         for (int s = 0; s < ps_atomic_wf_level_.size(); s++) {
             if (ps_atomic_wf_level_[s] > 0) {
                 if ((ps_atomic_wf_level_[s] ==  n) && (std::abs(ps_atomic_wf(s).first) == l)) {
-                    hubbard_orbital_info_ hub;
-                    hub.hubbard_n_ = n;
-                    hub.hubbard_l_ = l;
-                    hub.hubbard_occ_ = occ;
-
-                    hub.hubbard_J_ = J;
-                    hub.hubbard_U_ = U;
-                    if (hub_coef_) {
-                        for (int s = 0; s < 4; s++) {
-                            hub.hubbard_coefficients_[s] = hub_coef_[s];
-                        }
-
-                        hub.initialize_hubbard_matrix();
-                    }
-
-                    hub.hubbard_alpha_ = alpha_;
-                    hub.hubbard_beta_ = beta_;
-                    hub.hubbard_J0_ = J0_;
-                    hub.radial_orbital_index_ = s;
+                    hubbard_orbital_info_ hub(n, l, s, occ, J, U, hub_coef__, alpha__, beta__, J0__);
                     hubbard_orbitals_.push_back(std::move(hub));
 
                     // we nedd to consider the case where spin orbit
@@ -629,26 +611,7 @@ class Atom_type
                 // codes that do not store all info about wave
                 // functions.
                 if (std::abs(wfc.first) == l) {
-                    hubbard_orbital_info_ hub;
-                    hub.hubbard_n_ = n;
-                    hub.hubbard_l_ = l;
-                    hub.hubbard_occ_ = occ;
-
-                    hub.hubbard_J_ = J;
-                    hub.hubbard_U_ = U;
-
-                    if (hub_coef_) {
-                        for (int s = 0; s < 4; s++) {
-                            hub.hubbard_coefficients_[s] = hub_coef_[s];
-                        }
-
-                        hub.initialize_hubbard_matrix();
-                    }
-
-                    hub.hubbard_alpha_ = alpha_;
-                    hub.hubbard_beta_ = beta_;
-                    hub.hubbard_J0_ = J0_;
-                    hub.radial_orbital_index_ = s;
+                    hubbard_orbital_info_ hub(n, l, s, occ, J, U, hub_coef__, alpha__, beta__, J0__);
                     hubbard_orbitals_.push_back(std::move(hub));
 
                     if (!this->spin_orbit_coupling_)
