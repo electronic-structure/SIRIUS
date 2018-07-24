@@ -58,7 +58,7 @@ void Hubbard::compute_occupancies_derivatives(K_point&                    kp,
 
     #ifdef __GPU
     if (ctx_.processing_unit() == GPU) {
-        Phi_S_Psi.allocate(memory_t::device);
+        phi_s_psi.allocate(memory_t::device);
         dphi_s_psi.allocate(memory_t::device);
         dm.allocate(memory_t::device);
         phi.allocate_on_device(0);
