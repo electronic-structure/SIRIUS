@@ -54,10 +54,16 @@ class Free_atom : public sirius::Atom_type
 
         free_atom_orbital_density_ = mdarray<double, 2>(np, num_atomic_levels());
         free_atom_wave_functions_  = mdarray<double, 2>(np, num_atomic_levels());
-
-        sirius::XC_functional Ex("XC_LDA_X", 1);
+    
+        sirius::XC_functional *Ex;
         sirius::XC_functional Ec("XC_LDA_C_VWN", 1);
-        Ex.set_relativistic(rel);
+
+        if (rel) {
+            TERMINATE("Fixme : the libxc staring with version 4 changed the way to set relativitic LDA exchange");
+            Ex = new sirius::XC_functional("XC_LDA_X", 1);
+        } else {
+            Ex = new sirius::XC_functional("XC_LDA_X", 1);
+        }
 
         std::vector<double> veff(np);
         std::vector<double> vrho(np);
@@ -164,7 +170,7 @@ class Free_atom : public sirius::Atom_type
             }
 
             /* compute XC potential and energy */
-            Ex.get_lda(rho.num_points(), &rho(0), &vx[0], &ex[0]);
+            Ex->get_lda(rho.num_points(), &rho(0), &vx[0], &ex[0]);
             Ec.get_lda(rho.num_points(), &rho(0), &vc[0], &ec[0]);
             for (int ir = 0; ir < rho.num_points(); ir++) {
                 vxc[ir] = (vx[ir] + vc[ir]);
