@@ -144,19 +144,7 @@ PYBIND11_MODULE(py_sirius, m)
         .def_readwrite("energy_tol_", &Parameters_input::energy_tol_)
         .def_readwrite("num_dft_iter_", &Parameters_input::num_dft_iter_);
 
-    py::class_<Simulation_parameters>(m, "Simulation_parameters")
-        .def(py::init<>())
-        .def("pw_cutoff", &Simulation_parameters::pw_cutoff)
-        .def("parameters_input", py::overload_cast<>(&Simulation_parameters::parameters_input, py::const_), py::return_value_policy::reference)
-        .def("num_spin_dims", &Simulation_parameters::num_spin_dims)
-        .def("num_mag_dims", &Simulation_parameters::num_mag_dims)
-        .def("set_gamma_point", &Simulation_parameters::set_gamma_point)
-        .def("set_pw_cutoff", &Simulation_parameters::set_pw_cutoff)
-        .def("set_iterative_solver_tolerance", &Simulation_parameters::set_iterative_solver_tolerance);
-
-    py::class_<Simulation_context_base, Simulation_parameters>(m, "Simulation_context_base");
-
-    py::class_<Simulation_context, Simulation_context_base>(m, "Simulation_context")
+    py::class_<Simulation_context>(m, "Simulation_context")
         .def(py::init<>())
         .def(py::init<std::string const&>())
         .def("initialize", &Simulation_context::initialize)
@@ -170,7 +158,14 @@ PYBIND11_MODULE(py_sirius, m)
         .def("gvec", &Simulation_context::gvec, py::return_value_policy::reference_internal)
         .def("full_potential", &Simulation_context::full_potential)
         .def("fft", &Simulation_context::fft, py::return_value_policy::reference_internal)
-        .def("unit_cell", py::overload_cast<>(&Simulation_context::unit_cell, py::const_), py::return_value_policy::reference);
+        .def("unit_cell", py::overload_cast<>(&Simulation_context::unit_cell, py::const_), py::return_value_policy::reference)
+        .def("pw_cutoff", &Simulation_parameters::pw_cutoff)
+        .def("parameters_input", py::overload_cast<>(&Simulation_parameters::parameters_input, py::const_), py::return_value_policy::reference)
+        .def("num_spin_dims", &Simulation_parameters::num_spin_dims)
+        .def("num_mag_dims", &Simulation_parameters::num_mag_dims)
+        .def("set_gamma_point", &Simulation_parameters::set_gamma_point)
+        .def("set_pw_cutoff", &Simulation_parameters::set_pw_cutoff)
+        .def("set_iterative_solver_tolerance", &Simulation_parameters::set_iterative_solver_tolerance);
 
     py::class_<Unit_cell>(m, "Unit_cell")
         .def("add_atom_type", static_cast<void (Unit_cell::*)(const std::string, const std::string)>(&Unit_cell::add_atom_type))
