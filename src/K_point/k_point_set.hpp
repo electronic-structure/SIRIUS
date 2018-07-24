@@ -178,7 +178,7 @@ class K_point_set
         create_k_mesh(k_grid__, k_shift__, use_symmetry__);
     }
 
-    K_point_set(Simulation_context& ctx__, std::vector<vector3d<double>> vec__)
+    K_point_set(Simulation_context& ctx__, std::vector<vector3d<double>> const& vec__)
         : ctx_(ctx__)
         , unit_cell_(ctx__.unit_cell())
     {
@@ -186,6 +186,11 @@ class K_point_set
             add_kpoint(&v[0], 1.0);
         }
         initialize();
+    }
+
+    K_point_set(Simulation_context& ctx__, std::initializer_list<std::initializer_list<double>> vec__)
+        : K_point_set(ctx__, std::vector<vector3d<double>>(vec__.begin(), vec__.end()))
+    {
     }
 
     /// Initialize the k-point set
