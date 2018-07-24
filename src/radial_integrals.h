@@ -26,7 +26,7 @@
 #define __RADIAL_INTEGRALS_H__
 
 #include "Unit_cell/unit_cell.hpp"
-#include "sbessel.h"
+#include "sbessel.hpp"
 
 namespace sirius {
 
