@@ -162,6 +162,7 @@ PYBIND11_MODULE(py_sirius, m)
         .def("initialize", &Simulation_context::initialize)
         .def("num_bands", py::overload_cast<>(&Simulation_context::num_bands, py::const_))
         .def("num_bands", py::overload_cast<int>(&Simulation_context::num_bands))
+        .def("num_spins", &Simulation_context::num_spins)
         .def("set_verbosity", &Simulation_context::set_verbosity)
         .def("create_storage_file", &Simulation_context::create_storage_file)
         .def("processing_unit", &Simulation_context::processing_unit)
@@ -266,8 +267,7 @@ PYBIND11_MODULE(py_sirius, m)
         .def("energy_vxc", &Potential::energy_vxc)
         .def("energy_exc", &Potential::energy_exc)
         .def("PAW_total_energy", &Potential::PAW_total_energy)
-        .def("PAW_one_elec_energy", &Potential::PAW_one_elec_energy)
-        ;
+        .def("PAW_one_elec_energy", &Potential::PAW_one_elec_energy);
 
     py::class_<Density>(m, "Density")
         .def(py::init<Simulation_context&>(), py::keep_alive<1, 2>())
@@ -305,8 +305,26 @@ PYBIND11_MODULE(py_sirius, m)
 
     py::class_<K_point>(m, "K_point")
         .def("band_energy", py::overload_cast<int, int>(&K_point::band_energy))
-        .def("vk", &K_point::vk, py::return_value_policy::reference)
+        .def_property_readonly("vk", &K_point::vk, py::return_value_policy::copy)
         .def("generate_fv_states", &K_point::generate_fv_states)
+        .def("set_band_energy", [](K_point& kpoint, int j, int ispn, double val) {
+            kpoint.band_energy(j, ispn) = val;
+        })
+        .def("band_energies", [](K_point const& kpoint, int ispn) {
+            std::vector<double> energies(kpoint.num_bands());
+            for (int i = 0; i < kpoint.num_bands(); ++i) {
+                energies[i] = kpoint.band_energy(i, ispn);
+            }
+            return energies;
+        },
+             py::return_value_policy::copy)
+        .def("band_occupancy", [](K_point const& kpoint, int ispn) {
+            std::vector<double> occ(kpoint.num_bands());
+            for (int i = 0; i < kpoint.num_bands(); ++i) {
+                occ[i] = kpoint.band_occupancy(i, ispn);
+            }
+            return occ;
+        })
         .def("gkvec_partition", &K_point::gkvec_partition, py::return_value_policy::reference_internal)
         .def("fv_states", &K_point::fv_states, py::return_value_policy::reference_internal)
         .def("spinor_wave_functions", &K_point::spinor_wave_functions, py::return_value_policy::reference_internal);
@@ -314,12 +332,14 @@ PYBIND11_MODULE(py_sirius, m)
     py::class_<K_point_set>(m, "K_point_set")
         .def(py::init<Simulation_context&>(), py::keep_alive<1, 2>())
         .def(py::init<Simulation_context&, std::vector<vector3d<double>>>())
+        .def(py::init<Simulation_context&, std::initializer_list<std::initializer_list<double>>>())
         .def(py::init<Simulation_context&, vector3d<int>, vector3d<int>, bool>())
         .def(py::init<Simulation_context&, std::vector<int>, std::vector<int>, bool>())
-        .def("initialize", py::overload_cast<>(&K_point_set::initialize))
+        .def("initialize", &K_point_set::initialize, py::arg("counts") = std::vector<int>{})
         .def("num_kpoints", &K_point_set::num_kpoints)
         .def("energy_fermi", &K_point_set::energy_fermi)
         .def("get_band_energies", &K_point_set::get_band_energies)
+        .def("find_band_occupancies", &K_point_set::find_band_occupancies)
         .def("sync_band_energies", &K_point_set::sync_band_energies)
         .def("valence_eval_sum", &K_point_set::valence_eval_sum)
         .def("__getitem__", [](K_point_set& ks, int i) -> K_point& {
@@ -355,19 +375,14 @@ PYBIND11_MODULE(py_sirius, m)
             Wave_functions wf_out(gkvec_partition, num_wf, num_sc);
             #ifdef __GPU
             if (hamiltonian.ctx().processing_unit() == GPU) {
-                for (int i = 0; i < num_sc; ++i) {
-                    wf_out.pw_coeffs(i).allocate_on_device();
-                }
+                wf_out.allocate_on_device(ispn);
                 if (!wf.pw_coeffs(0).prime().on_device()) {
                     for (int i = 0; i < num_sc; ++i) {
                         wf.pw_coeffs(i).allocate_on_device();
                         wf.pw_coeffs(i).copy_to_device(0, num_wf);
                     }
                 } else {
-                    // copy input wf to device (assuming it is located on CPU)
-                    for (int i = 0; i < num_sc; ++i) {
-                        wf.pw_coeffs(i).copy_to_device(0, num_wf);
-                    }
+                  wf.copy_to_device(ispn, 0, num_wf);
                 }
             }
             #endif
@@ -388,6 +403,7 @@ PYBIND11_MODULE(py_sirius, m)
                 wf_out.copy_to_host(0, 0, n);
             }
             #endif // __GPU
+
             return wf_out;
         });
 
@@ -480,7 +496,7 @@ py::class_<Free_atom>(m, "Free_atom")
                                                {1 * sizeof(complex_double), nrows * sizeof(complex_double)},
                                                matrix_storage.prime().data<CPU>(),
                                                obj);
-        })
+            }, py::keep_alive<0, 1>())
         #ifdef __GPU
         .def("copy_to_gpu", [](Wave_functions& wf) {
             /* is_on_device -> true if all internal storage is allocated on device */
@@ -490,15 +506,10 @@ py::class_<Free_atom>(m, "Free_atom")
             }
             if (!is_on_device) {
                 for (int ispn = 0; ispn < wf.num_sc(); ispn++) {
-                    std::cerr << "pysirius: allocating storage for spin-component " << ispn << "\n";
                     wf.pw_coeffs(ispn).prime().allocate(memory_t::device);
                 }
-            } else {
-                std::cerr << "pysirius: wave function is already on device, possibly loosing data...\n";
             }
-
             for (int ispn = 0; ispn < wf.num_sc(); ispn++) {
-                std::cerr << "pysirius: wave function copying sc=" << ispn << " to device...\n";
                 wf.copy_to_device(ispn, 0, wf.num_wf());
             }
         })
@@ -509,16 +520,14 @@ py::class_<Free_atom>(m, "Free_atom")
                 is_on_device = is_on_device && wf.pw_coeffs(i).prime().on_device();
             }
             if (!is_on_device) {
-                std::cerr << "pysirius: not on device" << "\n";
             } else {
                 for (int ispn = 0; ispn < wf.num_sc(); ispn++) {
-                    std::cerr << "pysirius: wave function copying sc=" << ispn << " to device...\n";
                     wf.copy_to_host(ispn, 0, wf.num_wf());
                 }
             }
         })
         #endif // __GPU
-        .def("on_device", [](Wave_functions& wf) {
+        .def("allocated_on_device", [](Wave_functions& wf) {
             bool is_on_device = true;
             for (int i = 0; i < wf.num_sc(); ++i) {
                 is_on_device = is_on_device && wf.pw_coeffs(i).prime().on_device();
