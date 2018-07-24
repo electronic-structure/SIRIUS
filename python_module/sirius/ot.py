@@ -187,15 +187,21 @@ class EnergyGradient:
         #   http://dx.doi.org/10.1063/1.1543154
         v = np.sin(np.sqrt(Λ)) / np.sqrt(Λ)
         v = v[:, np.newaxis]
-        # TODO: mask diagonal elements (get rid of warning), they are computed later
+        # TODO: mask diagonal elements (get rid of warnings)
         diffL = (Λ[:, np.newaxis] - Λ[:, np.newaxis].T)
-        D1 = (v - v.T) / diffL
-        np.fill_diagonal(D1, 0.5*(np.cos(np.sqrt(Λ)) / Λ - np.sin(np.sqrt(Λ)) / (Λ**(1.5))))
+        mask = np.abs(diffL) < 1e-10
+        D1 = np.ma.masked_array((v - v.T) / diffL, mask=mask)
+        # fill masked entries with correct formula
+        irow, icol = np.where(mask)
+        # D1(x1,x2) = 1/2 ( cos(sqrt(x)) / x - sin(sqrt(x)) / x**(3/2) )  if x1==x2
+        D1[irow, icol] = 0.5*(np.cos(np.sqrt(Λ[irow])) / Λ[irow] - np.sin(np.sqrt(Λ[irow])) / (Λ[irow]**(1.5)))
+        # np.fill_diagonal(D1, 0.5*(np.cos(np.sqrt(Λ)) / Λ - np.sin(np.sqrt(Λ)) / (Λ**(1.5))))
         # D²: TODO insert formula
         v = np.cos(np.sqrt(Λ))
         v = v[:, np.newaxis]
-        D2 = (v - v.T) / diffL
-        np.fill_diagonal(D2, -0.5*np.sin(np.sqrt(Λ)) / np.sqrt(Λ))
+        D2 = np.ma.masked_array((v - v.T) / diffL, mask=mask)
+        # D2(x1, x2) = -1/2 sin(sqrt(x)) / sqrt(x) if x1==x2
+        D2[irow, icol] = -0.5*np.sin(np.sqrt(Λ[irow])) / np.sqrt(Λ[irow])
 
         # compute K: TODO copy/paste formula from the paper
         RtHCtxR = np.array(R.H * (Hc.H * x) * R)
