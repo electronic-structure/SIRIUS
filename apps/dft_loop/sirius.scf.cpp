@@ -195,12 +195,16 @@ void run_tasks(cmd_args const& args)
         ctx->initialize();
 
         Potential potential(*ctx);
-        potential.allocate();
+        if (ctx->full_potential()) {
+            potential.allocate();
+        }
 
         Hamiltonian H(*ctx, potential);
 
         Density density(*ctx);
-        density.allocate();
+        if (ctx->full_potential()) {
+            density.allocate();
+        }
 
         K_point_set ks(*ctx);
 
