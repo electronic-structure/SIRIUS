@@ -16,14 +16,14 @@
 namespace sirius {
 
 /// Apply Hubbard correction in the colinear case
-class Hubbard_potential // TODO: rename to Hubbard
+class Hubbard
 {
   private:
     Simulation_context& ctx_;
 
     Unit_cell& unit_cell_;
 
-    int lmax_{0};
+    int lmax_{-1};
 
     int number_of_hubbard_orbitals_{0};
 
@@ -63,8 +63,8 @@ class Hubbard_potential // TODO: rename to Hubbard
     void calculate_initial_occupation_numbers();
 
     void compute_occupancies(K_point&                    kp,
-                             dmatrix<double_complex>&    Phi_S_Psi,
-                             dmatrix<double_complex>&    dPhi_S_Psi,
+                             dmatrix<double_complex>&    phi_s_psi,
+                             dmatrix<double_complex>&    dphi_s_psi,
                              Wave_functions&             dphi,
                              mdarray<double_complex, 5>& dn_,
                              matrix<double_complex>&     dm,
@@ -80,54 +80,37 @@ class Hubbard_potential // TODO: rename to Hubbard
         offset.resize(ctx_.unit_cell().num_atoms(), -1);
 
         int counter = 0;
+
+        // we loop over atoms to check which atom has hubbard orbitals
+        // and then compute the number of hubbard orbitals associated to
+        // it.
         for (auto ia = 0; ia < unit_cell_.num_atoms(); ia++) {
             auto& atom = unit_cell_.atom(ia);
-
             if (atom.type().hubbard_correction()) {
-                // search for the orbital of given l corresponding to the
-                // hubbard l, with strickly positive occupation
-                for (int wfc = 0; wfc < atom.type().num_ps_atomic_wf(); wfc++) {
-                    const int    l   = std::abs(atom.type().ps_atomic_wf(wfc).first);
-                    const double occ = atom.type().ps_atomic_wf_occ()[wfc];
-                    if ((occ >= 0.0) && (l == atom.type().hubbard_l())) {
-                        // a wave function is hubbard if and only if the occupation
-                        // number is positive and l corresponds to hubbard_lmax;
-                        bool hubbard_wfc = (occ > 0);
-                        if (hubbard_wfc && (offset[ia] < 0)) {
-                            offset[ia] = counter;
-                        }
-
-                        // the atom has spin orbit coupling so we have
-                        // two wave functions with same l but different
-                        // j
-                        if (atom.type().spin_orbit_coupling() && hubbard_wfc) {
-                            counter += (2 * l + 1);
+                offset[ia] = counter;
+                if (ctx_.num_mag_dims() == 3) {
+                    for (auto&& orb : atom.type().hubbard_orbital()) {
+                        if (atom.type().spin_orbit_coupling()) {
+                            counter += (2 * orb.hubbard_l() + 1);
                         } else {
-                            if (hubbard_wfc && (ctx_.num_mag_dims() == 3)) {
-                                // the pseudo potential does not include
-                                // spin orbit coupling but we do
-                                // calculation with non colinear
-                                // magnetism so we still have full
-                                // hubbard spinors
-                                counter += 2 * (2 * l + 1);
-                            }
-                            if (hubbard_wfc && (ctx_.num_mag_dims() != 3)) {
-                                // colinear or conventional LDA
-                                counter += (2 * l + 1);
-                            }
+                            counter += 2 * (2 * orb.hubbard_l() + 1);
                         }
+                    }
+                } else {
+                    for (auto&& orb : atom.type().hubbard_orbital()) {
+                        counter += (2 * orb.hubbard_l() + 1);
                     }
                 }
             }
         }
-        // compute the number of orbitals
+
         this->number_of_hubbard_orbitals_ = counter;
     }
 
     /// Compute the strain gradient of the hubbard wave functions.
     /// Unfortunately it is dependent of the pp.
 
-    void compute_gradient_strain_wavefunctions(K_point&                  kp__,
+    void compute_gradient_strain_wavefunctions(K_point&                  kp,
                                                Wave_functions&           dphi,
                                                const mdarray<double, 2>& rlm_g,
                                                const mdarray<double, 3>& rlm_dg,
@@ -135,7 +118,7 @@ class Hubbard_potential // TODO: rename to Hubbard
                                                const int                 nu);
 
     /// apply the S operator in the us pp case. Otherwise it makes a simple copy
-    void Apply_S_operator(K_point&                    kp,
+    void apply_S_operator(K_point&                    kp,
                           Q_operator<double_complex>& q_op,
                           Wave_functions&             phi,
                           Wave_functions&             ophi,
@@ -148,7 +131,7 @@ class Hubbard_potential // TODO: rename to Hubbard
   public:
     std::vector<int> offset;
 
-    void set_hubbard_U_plus_V(const bool U_plus_V_)
+    void set_hubbard_U_plus_V()
     {
         hubbard_U_plus_V_ = true;
     }
@@ -162,6 +145,7 @@ class Hubbard_potential // TODO: rename to Hubbard
     {
         return lmax_;
     }
+
     void set_orthogonalize_hubbard_orbitals(const bool test)
     {
         this->orthogonalize_hubbard_orbitals_ = test;
@@ -204,9 +188,9 @@ class Hubbard_potential // TODO: rename to Hubbard
 
     /// Apply the hubbard potential on wave functions
     void apply_hubbard_potential(K_point&        kp,
-                                 const int       ispn_,
-                                 const int       idx__,
-                                 const int       n__,
+                                 const int       ispn,
+                                 const int       idx,
+                                 const int       n,
                                  Wave_functions& phi,
                                  Wave_functions& ophi);
 
@@ -218,7 +202,7 @@ class Hubbard_potential // TODO: rename to Hubbard
 
     void compute_occupancies_derivatives(K_point&                    kp,
                                          Q_operator<double_complex>& q_op,
-                                         mdarray<double_complex, 6>& dn_);
+                                         mdarray<double_complex, 6>& dn);
 
     /// Compute derivatives of the occupancy matrix w.r.t.atomic displacement.
     /** \param [in]  kp   K-point.
@@ -227,7 +211,7 @@ class Hubbard_potential // TODO: rename to Hubbard
      */
     void compute_occupancies_stress_derivatives(K_point&                    kp,
                                                 Q_operator<double_complex>& q_op,
-                                                mdarray<double_complex, 5>& dn_);
+                                                mdarray<double_complex, 5>& dn);
 
     void calculate_hubbard_potential_and_energy_colinear_case();
     void calculate_hubbard_potential_and_energy_non_colinear_case();
@@ -259,12 +243,13 @@ class Hubbard_potential // TODO: rename to Hubbard
         return number_of_hubbard_orbitals_;
     }
 
-    Hubbard_potential(Simulation_context& ctx__)
+    Hubbard(Simulation_context& ctx__)
         : ctx_(ctx__)
         , unit_cell_(ctx__.unit_cell())
     {
-        if (!ctx_.hubbard_correction())
+        if (!ctx_.hubbard_correction()) {
             return;
+        }
         this->orthogonalize_hubbard_orbitals_ = ctx_.Hubbard().orthogonalize_hubbard_orbitals_;
         this->normalize_orbitals_only_        = ctx_.Hubbard().normalize_hubbard_orbitals_;
         this->projection_method_              = ctx_.Hubbard().projection_method_;
@@ -276,10 +261,12 @@ class Hubbard_potential // TODO: rename to Hubbard
             this->wave_function_file_ = ctx_.Hubbard().wave_function_file_;
         }
 
-        this->lmax_ = -1;
         for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {
+            auto& atom_type = ctx_.unit_cell().atom(ia).type();
             if (ctx__.unit_cell().atom(ia).type().hubbard_correction()) {
-                this->lmax_ = std::max(this->lmax_, ctx_.unit_cell().atom(ia).type().hubbard_l());
+                for (int channel = 0; channel < atom_type.number_of_hubbard_channels(); channel++) {
+                    this->lmax_ = std::max(this->lmax_, atom_type.hubbard_orbital(channel).hubbard_l());
+                }
             }
         }
 
@@ -310,6 +297,14 @@ class Hubbard_potential // TODO: rename to Hubbard
     {
         return hubbard_potential_;
     }
+
+    void access_hubbard_potential(char const*     what,
+                                  double_complex* occ,
+                                  int const*      ld);
+
+    void access_hubbard_occupancies(char const*     what,
+                                    double_complex* occ,
+                                    int const*      ld);
 };
 
 #include "hubbard_generate_atomic_orbitals.hpp"

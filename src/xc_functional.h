@@ -1,24 +1,24 @@
 // Copyright (c) 2013-2016 Anton Kozhevnikov, Thomas Schulthess
 // All rights reserved.
-// 
-// Redistribution and use in source and binary forms, with or without modification, are permitted provided that 
+//
+// Redistribution and use in source and binary forms, with or without modification, are permitted provided that
 // the following conditions are met:
-// 
-// 1. Redistributions of source code must retain the above copyright notice, this list of conditions and the 
+//
+// 1. Redistributions of source code must retain the above copyright notice, this list of conditions and the
 //    following disclaimer.
-// 2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions 
+// 2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions
 //    and the following disclaimer in the documentation and/or other materials provided with the distribution.
-// 
-// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED 
-// WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A 
-// PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR 
-// ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, 
-// PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER 
-// CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR 
+//
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED
+// WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A
+// PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
+// ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+// PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+// CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
 // OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 /** \file xc_functional.h
- *   
+ *
  *  \brief Contains implementation of sirius::XC_functional class.
  */
 
@@ -371,19 +371,14 @@ const std::map<std::string, int> libxc_functionals = {
     {"XC_HYB_MGGA_X_MN12_SX", XC_HYB_MGGA_X_MN12_SX}, /* MN12-SX hybrid functional from Minnesota */
     {"XC_HYB_MGGA_X_SCAN0", XC_HYB_MGGA_X_SCAN0}, /* SCAN hybrid */
     {"XC_HYB_MGGA_X_MN15", XC_HYB_MGGA_X_MN15}, /* MN15 functional from Minnesota */
-    {"XC_HYB_MGGA_XC_M05", XC_HYB_MGGA_XC_M05}, /* M05 functional from Minnesota */
-    {"XC_HYB_MGGA_XC_M05_2X", XC_HYB_MGGA_XC_M05_2X}, /* M05-2X functional from Minnesota */
     {"XC_HYB_MGGA_XC_B88B95", XC_HYB_MGGA_XC_B88B95}, /* Mixture of B88 with BC95 (B1B95) */
     {"XC_HYB_MGGA_XC_B86B95", XC_HYB_MGGA_XC_B86B95}, /* Mixture of B86 with BC95 */
     {"XC_HYB_MGGA_XC_PW86B95", XC_HYB_MGGA_XC_PW86B95}, /* Mixture of PW86 with BC95 */
     {"XC_HYB_MGGA_XC_BB1K", XC_HYB_MGGA_XC_BB1K}, /* Mixture of B88 with BC95 from Zhao and Truhlar */
-    {"XC_HYB_MGGA_XC_M06_HF", XC_HYB_MGGA_XC_M06_HF}, /* M06-HF functional from Minnesota */
     {"XC_HYB_MGGA_XC_MPW1B95", XC_HYB_MGGA_XC_MPW1B95}, /* Mixture of mPW91 with BC95 from Zhao and Truhlar */
     {"XC_HYB_MGGA_XC_MPWB1K", XC_HYB_MGGA_XC_MPWB1K}, /* Mixture of mPW91 with BC95 for kinetics */
     {"XC_HYB_MGGA_XC_X1B95", XC_HYB_MGGA_XC_X1B95}, /* Mixture of X with BC95 */
     {"XC_HYB_MGGA_XC_XB1K", XC_HYB_MGGA_XC_XB1K}, /* Mixture of X with BC95 for kinetics */
-    {"XC_HYB_MGGA_XC_M06", XC_HYB_MGGA_XC_M06}, /* M06 functional from Minnesota */
-    {"XC_HYB_MGGA_XC_M06_2X", XC_HYB_MGGA_XC_M06_2X}, /* M06-2X functional from Minnesota */
     {"XC_HYB_MGGA_XC_PW6B95", XC_HYB_MGGA_XC_PW6B95}, /* Mixture of PW91 with BC95 from Zhao and Truhlar */
     {"XC_HYB_MGGA_XC_PWB6K", XC_HYB_MGGA_XC_PWB6K}, /* Mixture of PW91 with BC95 from Zhao and Truhlar for kinetics */
     {"XC_HYB_MGGA_XC_TPSSH", XC_HYB_MGGA_XC_TPSSH}, /* TPSS hybrid */
@@ -399,11 +394,11 @@ const std::map<std::string, int> libxc_functionals = {
 class XC_functional
 {
     private:
-        
+
         std::string libxc_name_;
 
         int num_spins_;
-        
+
         xc_func_type handler_;
 
         /* forbid copy constructor */
@@ -455,7 +450,7 @@ class XC_functional
         {
             return std::string(handler_.info->name);
         }
-        
+
         const std::string refs() const
         {
             std::stringstream s;
@@ -469,7 +464,7 @@ class XC_functional
                 }
                 s << std::endl;
             }
-            
+
             return s.str();
         }
 
@@ -508,21 +503,10 @@ class XC_functional
             return kind() == XC_EXCHANGE_CORRELATION;
         }
 
-        void set_relativistic(bool enabled__)
-        {
-            if (is_exchange()) {
-                if (enabled__) {
-                    xc_lda_x_set_params(&handler_, 4.0/3.0, XC_RELATIVISTIC, 0.0);
-                } else {
-                    xc_lda_x_set_params(&handler_, 4.0/3.0, XC_NON_RELATIVISTIC, 0.0);
-                }
-            }
-        }
-
         /// Get LDA contribution.
-        void get_lda(const int size, 
-                     const double* rho, 
-                     double* v, 
+        void get_lda(const int size,
+                     const double* rho,
+                     double* v,
                      double* e)
         {
             if (family() != XC_FAMILY_LDA) {
@@ -558,19 +542,19 @@ class XC_functional
             for (int i = 0; i < size; i++) {
                 if (rho_up[i] < 0 || rho_dn[i] < 0) {
                     std::stringstream s;
-                    s << "rho is negative : " << utils::double_to_string(rho_up[i]) 
+                    s << "rho is negative : " << utils::double_to_string(rho_up[i])
                       << " " << utils::double_to_string(rho_dn[i]);
                     TERMINATE(s);
                 }
-                
+
                 rho_ud[2 * i]     = rho_up[i];
                 rho_ud[2 * i + 1] = rho_dn[i];
             }
-            
+
             std::vector<double> v_ud(size * 2);
 
             xc_lda_exc_vxc(&handler_, size, &rho_ud[0], &e[0], &v_ud[0]);
-            
+
             /* extract potential */
             for (int i = 0; i < size; i++) {
                 v_up[i] = v_ud[2 * i];
@@ -594,20 +578,20 @@ class XC_functional
             for (int i = 0; i < size; i++) {
                 if (rho_up[i] < 0 || rho_dn[i] < 0) {
                     std::stringstream s;
-                    s << "rho is negative : " << utils::double_to_string(rho_up[i]) 
+                    s << "rho is negative : " << utils::double_to_string(rho_up[i])
                       << " " << utils::double_to_string(rho_dn[i]);
                     TERMINATE(s);
                 }
-                
+
                 rho_ud[2 * i]     = rho_up[i];
                 rho_ud[2 * i + 1] = rho_dn[i];
             }
-            
+
             std::vector<double> v_ud(size * 2);
             std::vector<double> e_tmp(size);
 
             xc_lda_exc_vxc(&handler_, size, &rho_ud[0], &e_tmp[0], &v_ud[0]);
-            
+
             /* extract potential */
             for (int i = 0; i < size; i++) {
                 v_up[i] += v_ud[2 * i];
@@ -641,15 +625,15 @@ class XC_functional
         }
 
         /// Get spin-resolved GGA contribution.
-        void get_gga(const int size, 
-                     const double* rho_up, 
-                     const double* rho_dn, 
-                     const double* sigma_uu, 
-                     const double* sigma_ud, 
-                     const double* sigma_dd, 
+        void get_gga(const int size,
+                     const double* rho_up,
+                     const double* rho_dn,
+                     const double* sigma_uu,
+                     const double* sigma_ud,
+                     const double* sigma_dd,
                      double* vrho_up,
-                     double* vrho_dn, 
-                     double* vsigma_uu, 
+                     double* vrho_dn,
+                     double* vsigma_uu,
                      double* vsigma_ud,
                      double* vsigma_dd,
                      double* e)
@@ -665,11 +649,11 @@ class XC_functional
                 if (rho_up[i] < 0 || rho_dn[i] < 0)
                 {
                     std::stringstream s;
-                    s << "rho is negative : " << utils::double_to_string(rho_up[i]) 
+                    s << "rho is negative : " << utils::double_to_string(rho_up[i])
                       << " " << utils::double_to_string(rho_dn[i]);
                     TERMINATE(s);
                 }
-                
+
                 rho[2 * i] = rho_up[i];
                 rho[2 * i + 1] = rho_dn[i];
 
@@ -677,7 +661,7 @@ class XC_functional
                 sigma[3 * i + 1] = sigma_ud[i];
                 sigma[3 * i + 2] = sigma_dd[i];
             }
-            
+
             std::vector<double> vrho(2 * size);
             std::vector<double> vsigma(3 * size);
 
