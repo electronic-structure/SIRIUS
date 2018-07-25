@@ -413,6 +413,28 @@ class Density : public Field4D
 
     void initial_density_full_pot();
 
+    inline void normalize()
+    {
+        std::vector<double> nel_mt;
+        double              nel_it;
+        double nel   = rho().integrate(nel_mt, nel_it);
+        double scale = unit_cell_.num_electrons() / nel;
+
+        /* renormalize interstitial part */
+        for (int ir = 0; ir < ctx_.fft().local_size(); ir++) {
+             rho().f_rg(ir) *= scale;
+        }
+        if (ctx_.full_potential()) {
+            for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
+                for (int ir = 0; ir < unit_cell_.atom(ia).num_mt_points(); ir++) {
+                    for (int lm = 0; lm < ctx_.lmmax_rho(); lm++) {
+                        rho().f_mt<index_domain_t::global>(lm, ir, ia) *= scale;
+                    }
+                }
+            }
+        }
+    }
+
     /// Check total density for the correct number of electrons.
     inline void check_num_electrons()
     {

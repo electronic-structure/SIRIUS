@@ -397,6 +397,16 @@ class SHT // TODO: better name
             }
         }
 
+        /// Generate real or complex spherical harmonics for a given Cartesian vectors.
+        template <typename T>
+        static std::vector<T> spherical_harmonics(int lmax__, vector3d<double> vc__)
+        {
+            auto rtp = spherical_coordinates(vc__);
+            std::vector<T> v(utils::lmmax(lmax__));
+            spherical_harmonics(lmax__, rtp[1], rtp[2], v.data());
+            return std::move(v);
+        }
+
         /// Compute element of the transformation matrix from complex to real spherical harmonics.
         /** Real spherical harmonic can be written as a linear combination of complex harmonics:
 

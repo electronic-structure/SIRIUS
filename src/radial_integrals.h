@@ -585,7 +585,8 @@ class Radial_integrals_vloc : public Radial_integrals_base<1>
             }
         } else {
             auto& atom_type = unit_cell_.atom_type(iat__);
-            auto q2         = std::pow(q__, 2);
+
+            auto q2 = std::pow(q__, 2);
             if (jl_deriv) {
                 if (!unit_cell_.parameters().parameters_input().enable_esm_ ||
                     unit_cell_.parameters().parameters_input().esm_bc_ == "pbc") {
@@ -628,7 +629,7 @@ class Radial_integrals_rho_free_atom : public Radial_integrals_base<1>
                     values_(iat)(iq) = s.interpolate().integrate(2);
                 } else {
                     for (int ir = 0; ir < s.num_points(); ir++) {
-                        s(ir) = atom_type.free_atom_density(ir) * std::sin(g * atom_type.free_atom_radial_grid(ir)) / g;
+                        s(ir) = atom_type.free_atom_density(ir) * std::sin(g * atom_type.free_atom_radial_grid(ir));// / g;
                     }
                     values_(iat)(iq) = s.interpolate().integrate(1);
                 }
@@ -643,6 +644,17 @@ class Radial_integrals_rho_free_atom : public Radial_integrals_base<1>
     {
         values_ = mdarray<Spline<double>, 1>(unit_cell_.num_atom_types());
         generate();
+    }
+
+    /// Special implementation to recover the true radial integral value.
+    inline double value(int iat__, double q__) const
+    {
+        auto idx = iqdq(q__);
+        if (std::abs(q__) < 1e-12) {
+            return values_(iat__)(0);
+        } else {
+            return values_(iat__)(idx.first, idx.second) / q__;
+        }
     }
 };
 
