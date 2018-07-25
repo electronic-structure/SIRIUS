@@ -17,17 +17,16 @@
 // CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
 // OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-/** \file atom.h
+/** \file atom.hpp
  *
  *  \brief Contains declaration and partial implementation of sirius::Atom class.
  */
 
-#ifndef __ATOM_H__
-#define __ATOM_H__
+#ifndef __ATOM_HPP__
+#define __ATOM_HPP__
 
 #include "gaunt.h"
-#include "atom_type.h"
-#include "atom_symmetry_class.h"
+#include "atom_symmetry_class.hpp"
 #include "sddk.hpp"
 #include "spheric_function.h"
 

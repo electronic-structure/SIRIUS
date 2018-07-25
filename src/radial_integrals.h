@@ -25,9 +25,8 @@
 #ifndef __RADIAL_INTEGRALS_H__
 #define __RADIAL_INTEGRALS_H__
 
-#include <gsl/gsl_sf_erf.h>
-#include "Unit_cell/unit_cell.h"
-#include "sbessel.h"
+#include "Unit_cell/unit_cell.hpp"
+#include "sbessel.hpp"
 
 namespace sirius {
 
@@ -61,6 +60,15 @@ class Radial_integrals_base
     /** The following condition is satisfied: q = grid_q[iq] + dq */
     inline std::pair<int, double> iqdq(double q__) const
     {
+        if (q__ > grid_q_.last()) {
+            std::stringstream s;
+            s << "[sirius::Radial_integrals_base::iddq] q-point is out of range" << std::endl
+              << "  q : " << q__ << std::endl
+              << "  last point of the q-grid : " << grid_q_.last();
+            std::cout << s.str() << "\n";
+            printf("%s\n", s.str().c_str());
+            TERMINATE(s);
+        }
         std::pair<int, double> result;
         /* find index of q-point */
         result.first = static_cast<int>((grid_q_.num_points() - 1) * q__ / grid_q_.last());
@@ -526,7 +534,7 @@ class Radial_integrals_vloc : public Radial_integrals_base<1>
                 if (jl_deriv) { /* integral with derivative of j0(q*r) over q */
                     for (int ir = 0; ir < rg.num_points(); ir++) {
                         double x = rg[ir];
-                        s(ir)    = (x * vloc[ir] + atom_type.zn() * gsl_sf_erf(x)) *
+                        s(ir)    = (x * vloc[ir] + atom_type.zn() * std::erf(x)) *
                                    (std::sin(g * x) - g * x * std::cos(g * x));
                     }
                 } else {           /* integral with j0(q*r) */
@@ -535,7 +543,7 @@ class Radial_integrals_vloc : public Radial_integrals_base<1>
                             unit_cell_.parameters().parameters_input().esm_bc_ != "pbc") {
                             for (int ir = 0; ir < rg.num_points(); ir++) {
                                 double x = rg[ir];
-                                s(ir)    = (x * vloc[ir] + atom_type.zn() * gsl_sf_erf(x)) * x;
+                                s(ir)    = (x * vloc[ir] + atom_type.zn() * std::erf(x)) * x;
                             }
                         } else {
                             for (int ir = 0; ir < rg.num_points(); ir++) {
@@ -546,7 +554,7 @@ class Radial_integrals_vloc : public Radial_integrals_base<1>
                     } else {
                         for (int ir = 0; ir < rg.num_points(); ir++) {
                             double x = rg[ir];
-                            s(ir)    = (x * vloc[ir] + atom_type.zn() * gsl_sf_erf(x)) * std::sin(g * x);
+                            s(ir)    = (x * vloc[ir] + atom_type.zn() * std::erf(x)) * std::sin(g * x);
                         }
                     }
                 }
@@ -565,6 +573,7 @@ class Radial_integrals_vloc : public Radial_integrals_base<1>
         generate();
     }
 
+    /// Special implementation to recover the true radial integral value.
     inline double value(int iat__, double q__) const
     {
         auto idx = iqdq(q__);
@@ -576,7 +585,8 @@ class Radial_integrals_vloc : public Radial_integrals_base<1>
             }
         } else {
             auto& atom_type = unit_cell_.atom_type(iat__);
-            auto q2         = std::pow(q__, 2);
+
+            auto q2 = std::pow(q__, 2);
             if (jl_deriv) {
                 if (!unit_cell_.parameters().parameters_input().enable_esm_ ||
                     unit_cell_.parameters().parameters_input().esm_bc_ == "pbc") {
@@ -619,7 +629,7 @@ class Radial_integrals_rho_free_atom : public Radial_integrals_base<1>
                     values_(iat)(iq) = s.interpolate().integrate(2);
                 } else {
                     for (int ir = 0; ir < s.num_points(); ir++) {
-                        s(ir) = atom_type.free_atom_density(ir) * std::sin(g * atom_type.free_atom_radial_grid(ir)) / g;
+                        s(ir) = atom_type.free_atom_density(ir) * std::sin(g * atom_type.free_atom_radial_grid(ir));// / g;
                     }
                     values_(iat)(iq) = s.interpolate().integrate(1);
                 }
@@ -634,6 +644,17 @@ class Radial_integrals_rho_free_atom : public Radial_integrals_base<1>
     {
         values_ = mdarray<Spline<double>, 1>(unit_cell_.num_atom_types());
         generate();
+    }
+
+    /// Special implementation to recover the true radial integral value.
+    inline double value(int iat__, double q__) const
+    {
+        auto idx = iqdq(q__);
+        if (std::abs(q__) < 1e-12) {
+            return values_(iat__)(0);
+        } else {
+            return values_(iat__)(idx.first, idx.second) / q__;
+        }
     }
 };
 

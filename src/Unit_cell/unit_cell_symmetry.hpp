@@ -17,13 +17,13 @@
 // CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
 // OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-/** \file unit_cell_symmetry.h
+/** \file unit_cell_symmetry.hpp
  *
  *  \brief Contains definition and implementation of sirius::Unit_cell_symmetry class.
  */
 
-#ifndef __UNIT_CELL_SYMMETRY_H__
-#define __UNIT_CELL_SYMMETRY_H__
+#ifndef __UNIT_CELL_SYMMETRY_HPP__
+#define __UNIT_CELL_SYMMETRY_HPP__
 
 extern "C" {
 #ifdef __SPGLIB_STD_INCLUDE_PATH

@@ -17,21 +17,19 @@
 // CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
 // OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-/** \file unit_cell.h
+/** \file unit_cell.hpp
  *
  *  \brief Contains definition and partial implementation of sirius::Unit_cell class.
  */
 
-#ifndef __UNIT_CELL_H__
-#define __UNIT_CELL_H__
+#ifndef __UNIT_CELL_HPP__
+#define __UNIT_CELL_HPP__
 
 #include <algorithm>
 #include "descriptors.h"
-#include "atom_type.h"
-#include "atom_symmetry_class.h"
-#include "atom.h"
+#include "atom.hpp"
 #include "mpi_grid.hpp"
-#include "unit_cell_symmetry.h"
+#include "unit_cell_symmetry.hpp"
 #include "simulation_parameters.h"
 #include "utils/json.hpp"
 
@@ -160,6 +158,9 @@ class Unit_cell
     int lmax_{-1};
 
     std::unique_ptr<Unit_cell_symmetry> symmetry_;
+
+    /// Atomic coordinates in GPU-friendly ordering packed in arrays for each atom type.
+    std::vector<mdarray<double, 2>> atom_coord_;
 
     Communicator const& comm_;
 
@@ -328,6 +329,82 @@ class Unit_cell
     inline void generate_radial_integrals();
 
     inline std::string chemical_formula();
+
+    /// Update the parameters that depend on atomic positions or lattice vectors.
+    inline void update()
+    {
+        PROFILE("sirius::Unit_cell::update");
+
+        auto v0 = lattice_vector(0);
+        auto v1 = lattice_vector(1);
+        auto v2 = lattice_vector(2);
+
+        double r = std::max(std::max(v0.length(), std::max(v1.length(), v2.length())),
+                            parameters_.parameters_input().nn_radius_);
+
+        find_nearest_neighbours(r);
+
+        if (parameters_.full_potential()) {
+            /* find new MT radii and initialize radial grid */
+            if (parameters_.auto_rmt()) {
+                auto rg = get_radial_grid_t(parameters_.settings().radial_grid_);
+                std::vector<double> Rmt = find_mt_radii();
+                for (int iat = 0; iat < num_atom_types(); iat++) {
+                    double r0 = atom_type(iat).radial_grid().first();
+
+                    atom_type(iat).set_radial_grid(rg.first, atom_type(iat).num_mt_points(), r0, Rmt[iat], rg.second);
+                }
+            }
+
+            int ia, ja;
+            if (check_mt_overlap(ia, ja)) {
+                std::stringstream s;
+                s << "overlaping muffin-tin spheres for atoms " << ia << "(" << atom(ia).type().symbol() << ")"
+                  << " and " << ja << "(" << atom(ja).type().symbol() << ")" << std::endl
+                  << "  radius of atom " << ia << " : " << atom(ia).mt_radius() << std::endl
+                  << "  radius of atom " << ja << " : " << atom(ja).mt_radius() << std::endl
+                  << "  distance : " << nearest_neighbours_[ia][1].distance << " " << nearest_neighbours_[ja][1].distance;
+                TERMINATE(s);
+            }
+
+            min_mt_radius_ = 1e100;
+            max_mt_radius_ = 0;
+            for (int i = 0; i < num_atom_types(); i++) {
+                min_mt_radius_ = std::min(min_mt_radius_, atom_type(i).mt_radius());
+                max_mt_radius_ = std::max(max_mt_radius_, atom_type(i).mt_radius());
+            }
+        }
+
+        if (parameters_.use_symmetry()) {
+            get_symmetry();
+        }
+
+        spl_num_atom_symmetry_classes_ = splindex<block>(num_atom_symmetry_classes(), comm_.size(), comm_.rank());
+
+        volume_mt_ = 0.0;
+        if (parameters_.full_potential()) {
+            for (int ia = 0; ia < num_atoms(); ia++) {
+                volume_mt_ += fourpi * std::pow(atom(ia).mt_radius(), 3) / 3.0;
+            }
+        }
+
+        volume_it_ = omega() - volume_mt_;
+
+        for (int iat = 0; iat < num_atom_types(); iat++) {
+            int nat = atom_type(iat).num_atoms();
+            if (nat > 0) {
+                for (int i = 0; i < nat; i++) {
+                    int ia = atom_type(iat).atom_id(i);
+                    for (int x: {0, 1, 2}) {
+                        atom_coord_[iat](i, x) = atom(ia).position()[x];
+                    }
+                }
+                if (parameters_.processing_unit() == GPU) {
+                    atom_coord_[iat].copy<memory_t::host, memory_t::device>();
+                }
+            }
+        }
+    }
 
     inline int atom_id_by_position(vector3d<double> position__)
     {
@@ -636,6 +713,11 @@ class Unit_cell
     {
         return comm_;
     }
+
+    inline mdarray<double, 2> const& atom_coord(int iat__) const
+    {
+        return atom_coord_[iat__];
+    }
 };
 
 inline void Unit_cell::initialize()
@@ -676,62 +758,20 @@ inline void Unit_cell::initialize()
 
     assert(mt_basis_size_ == mt_aw_basis_size_ + mt_lo_basis_size_);
 
-    auto v0 = lattice_vector(0);
-    auto v1 = lattice_vector(1);
-    auto v2 = lattice_vector(2);
-
-    double r = std::max(std::max(v0.length(), std::max(v1.length(), v2.length())),
-                        parameters_.parameters_input().nn_radius_);
-
-    find_nearest_neighbours(r);
-
-    if (parameters_.full_potential()) {
-        /* find new MT radii and initialize radial grid */
-        if (parameters_.auto_rmt()) {
-            auto rg = get_radial_grid_t(parameters_.settings().radial_grid_);
-            std::vector<double> Rmt = find_mt_radii();
-            for (int iat = 0; iat < num_atom_types(); iat++) {
-                double r0 = atom_type(iat).radial_grid().first();
-
-                atom_type(iat).set_radial_grid(rg.first, atom_type(iat).num_mt_points(), r0, Rmt[iat], rg.second);
-            }
-        }
-
-        int ia, ja;
-        if (check_mt_overlap(ia, ja)) {
-            std::stringstream s;
-            s << "overlaping muffin-tin spheres for atoms " << ia << "(" << atom(ia).type().symbol() << ")"
-              << " and " << ja << "(" << atom(ja).type().symbol() << ")" << std::endl
-              << "  radius of atom " << ia << " : " << atom(ia).mt_radius() << std::endl
-              << "  radius of atom " << ja << " : " << atom(ja).mt_radius() << std::endl
-              << "  distance : " << nearest_neighbours_[ia][1].distance << " " << nearest_neighbours_[ja][1].distance;
-            TERMINATE(s);
-        }
-
-        min_mt_radius_ = 1e100;
-        max_mt_radius_ = 0;
-        for (int i = 0; i < num_atom_types(); i++) {
-            min_mt_radius_ = std::min(min_mt_radius_, atom_type(i).mt_radius());
-            max_mt_radius_ = std::max(max_mt_radius_, atom_type(i).mt_radius());
-        }
-    }
-
-    if (parameters_.use_symmetry()) {
-        get_symmetry();
-    }
-
-    spl_num_atom_symmetry_classes_ = splindex<block>(num_atom_symmetry_classes(), comm_.size(), comm_.rank());
-
-    volume_mt_ = 0.0;
-    if (parameters_.full_potential()) {
-        for (int ia = 0; ia < num_atoms(); ia++) {
-            volume_mt_ += fourpi * std::pow(atom(ia).mt_radius(), 3) / 3.0;
-        }
-    }
-
-    volume_it_ = omega() - volume_mt_;
-
     init_paw();
+
+    for (int iat = 0; iat < num_atom_types(); iat++) {
+        int nat = atom_type(iat).num_atoms();
+        if (nat > 0) {
+            atom_coord_.push_back(std::move(mdarray<double, 2>(nat, 3, memory_t::host)));
+            if (parameters_.processing_unit() == GPU) {
+                atom_coord_.back().allocate(memory_t::device);
+            }
+        } else {
+            atom_coord_.push_back(std::move(mdarray<double, 2>()));
+        }
+    }
+    update();
 
     //== write_cif();
 
@@ -754,10 +794,6 @@ inline void Unit_cell::get_symmetry()
         for (int ia = 0; ia < num_atoms(); ia++) {
             atom(ia).set_symmetry_class(nullptr);
         }
-    }
-
-    if (symmetry_ != nullptr) {
-        TERMINATE("Symmetry() object is already allocated");
     }
 
     mdarray<double, 2> positions(3, num_atoms());

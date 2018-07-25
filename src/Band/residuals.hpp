@@ -375,7 +375,7 @@ inline int Band::residuals(K_point*             kp__,
             printf("number of residuals : %i\n", n);
         }
     }
-                                        
+
     /* prevent numerical noise */
     /* this only happens for real wave-functions (Gamma-point case), non-magnetic or collinear magnetic */
     if (std::is_same<T, double>::value && kp__->comm().rank() == 0 && n != 0) {
@@ -395,7 +395,7 @@ inline int Band::residuals(K_point*             kp__,
             }
         }
     }
-    
+
     /* print checksums */
     if (ctx_.control().print_checksum_ && n != 0) {
         int s0 = (ispn__ == 2) ? 0 : ispn__;

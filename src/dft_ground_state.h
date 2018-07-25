@@ -28,6 +28,8 @@
 #include "k_point_set.h"
 #include "utils/json.hpp"
 #include "Hubbard/hubbard.hpp"
+#include "Geometry/stress.hpp"
+#include "Geometry/force.hpp"
 
 using json = nlohmann::json;
 
@@ -50,8 +52,6 @@ class DFT_ground_state
         Density density_;
 
         Hamiltonian hamiltonian_;
-
-        Band band_;
 
         Stress stress_;
 
@@ -190,7 +190,6 @@ class DFT_ground_state
             , potential_(kset__.ctx())
             , density_(kset__.ctx())
             , hamiltonian_(kset__.ctx(), potential_)
-            , band_(kset__.ctx())
             , stress_(kset__.ctx(), density_, potential_, hamiltonian_, kset__)
             , forces_(kset__.ctx(), density_, potential_, hamiltonian_, kset__)
 
@@ -205,8 +204,19 @@ class DFT_ground_state
             density_.initial_density();
             potential_.generate(density_);
             if (!ctx_.full_potential()) {
-                band_.initialize_subspace(kset_, hamiltonian_);
+                Band(ctx_).initialize_subspace(kset_, hamiltonian_);
             }
+        }
+
+        /// Update the parameters after the change of lattice vectors or atomic positions.
+        void update()
+        {
+            PROFILE("sirius::DFT_ground_state::update");
+
+            ctx_.update();
+            kset_.update();
+            potential_.update();
+            density_.update();
         }
 
         Simulation_context const& ctx() const
@@ -391,11 +401,6 @@ class DFT_ground_state
             return tot_en;
         }
 
-        inline Band& band()
-        {
-            return band_;
-        }
-
         inline Density& density()
         {
             return density_;
@@ -525,7 +530,7 @@ inline double DFT_ground_state::ewald_energy()
                 int ja = unit_cell_.nearest_neighbour(i, ia).atom_id;
                 double d = unit_cell_.nearest_neighbour(i, ia).distance;
                 ewald_r_pt += 0.5 * unit_cell_.atom(ia).zn() * unit_cell_.atom(ja).zn() *
-                              gsl_sf_erfc(std::sqrt(alpha) * d) / d;
+                              std::erfc(std::sqrt(alpha) * d) / d;
             }
         }
 
@@ -574,7 +579,7 @@ inline json DFT_ground_state::find(double potential_tol, double energy_tol, int 
         }
 
         /* find new wave-functions */
-        band_.solve(kset_, hamiltonian_, true);
+        Band(ctx_).solve(kset_, hamiltonian_, true);
         /* find band occupancies */
         kset_.find_band_occupancies();
         /* generate new density from the occupied wave-functions */
@@ -767,12 +772,18 @@ inline void DFT_ground_state::print_magnetic_moment()
             double total_core_leakage = 0.0;
             printf("\n");
             printf("Charges and magnetic moments\n");
-            for (int i = 0; i < 80; i++) printf("-");
+            for (int i = 0; i < 80; i++) {
+                printf("-");
+            }
             printf("\n");
             printf("atom      charge    core leakage");
-            if (ctx_.num_mag_dims()) printf("              moment                |moment|");
+            if (ctx_.num_mag_dims()) {
+                printf("              moment                |moment|");
+            }
             printf("\n");
-            for (int i = 0; i < 80; i++) printf("-");
+            for (int i = 0; i < 80; i++) {
+                printf("-");
+            }
             printf("\n");
 
             for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
@@ -820,7 +831,9 @@ inline void DFT_ground_state::print_magnetic_moment()
 
         printf("\n");
         printf("Energy\n");
-        for (int i = 0; i < 80; i++) printf("-");
+        for (int i = 0; i < 80; i++) {
+            printf("-");
+        }
         printf("\n");
 
         printf("valence_eval_sum          : %18.8f\n", evalsum1);

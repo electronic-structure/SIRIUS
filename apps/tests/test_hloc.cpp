@@ -87,7 +87,7 @@ void test_hloc(std::vector<int> mpi_grid_dims__, double cutoff__, int num_bands_
     for (int i = 0; i < 4 * num_bands__; i++) {
         for (int j = 0; j < phi.pw_coeffs(0).num_rows_loc(); j++) {
             int ig = gvec.offset() + j;
-            auto gc = gvec.gvec_cart(ig);
+            auto gc = gvec.gvec_cart<index_domain_t::global>(ig);
             diff += std::pow(std::abs((2.71828 + 0.5 * dot(gc, gc)) * phi.pw_coeffs(0).prime(j, i) - hphi.pw_coeffs(0).prime(j, i)), 2);
         }
     }

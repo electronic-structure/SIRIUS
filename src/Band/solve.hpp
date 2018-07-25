@@ -86,7 +86,8 @@ inline int Band::solve_pseudo_potential(K_point& kp__, Hamiltonian& hamiltonian_
 
     /* check residuals */
     if (ctx_.control().verification_ >= 1) {
-        check_residuals<T>(&kp__, hamiltonian__); 
+        check_residuals<T>(&kp__, hamiltonian__);
+        check_wave_functions<T>(kp__, hamiltonian__);
     }
 
     ctx_.fft_coarse().dismiss();

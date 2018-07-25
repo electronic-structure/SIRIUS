@@ -1,111 +1,3 @@
-/** The following operation is performed:
- *  \f[
- *    q_{\ell m}^{\alpha} = \sum_{\bf G} 4\pi \rho({\bf G}) e^{i{\bf G}{\bf r}_{\alpha}}i^{\ell}f_{\ell}^{\alpha}(G) Y_{\ell m}^{*}(\hat{\bf G})
- *  \f]
- */
-inline void Potential::poisson_sum_G(int lmmax__,
-                                     double_complex const* fpw__,
-                                     mdarray<double, 3>& fl__,
-                                     matrix<double_complex>& flm__)
-{
-    PROFILE("sirius::Potential::poisson_sum_G");
-
-    int ngv_loc = ctx_.gvec().count();
-
-    int na_max{0};
-    for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
-        na_max = std::max(na_max, unit_cell_.atom_type(iat).num_atoms());
-    }
-
-    int lmax = utils::lmax(lmmax__);
-
-    matrix<double_complex> phase_factors;
-    matrix<double_complex> zm;
-    matrix<double_complex> tmp;
-    switch (ctx_.processing_unit()) {
-        case CPU: {
-            phase_factors = matrix<double_complex>(ctx_.mem_pool().allocate<double_complex, memory_t::host>(ngv_loc * na_max),
-                                                   ngv_loc, na_max);
-            zm = matrix<double_complex>(ctx_.mem_pool().allocate<double_complex, memory_t::host>(lmmax__ * ngv_loc),
-                                        lmmax__, ngv_loc);
-            tmp = matrix<double_complex>(ctx_.mem_pool().allocate<double_complex, memory_t::host>(lmmax__ * na_max),
-                                         lmmax__, na_max);
-            break;
-        }
-        case GPU: {
-            phase_factors = matrix<double_complex>(nullptr, ctx_.mem_pool().allocate<double_complex, memory_t::device>(ngv_loc * na_max),
-                                                   ngv_loc, na_max);
-            zm = matrix<double_complex>(ctx_.mem_pool().allocate<double_complex, memory_t::host>(lmmax__ * ngv_loc),
-                                        ctx_.mem_pool().allocate<double_complex, memory_t::device>(lmmax__ * ngv_loc),
-                                        lmmax__, ngv_loc);
-            tmp = matrix<double_complex>(ctx_.mem_pool().allocate<double_complex, memory_t::host>(lmmax__ * na_max),
-                                         ctx_.mem_pool().allocate<double_complex, memory_t::device>(lmmax__ * na_max),
-                                         lmmax__, na_max);
-            break;
-        }
-    }
-
-    for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
-        double t = -omp_get_wtime();
-        int na = unit_cell_.atom_type(iat).num_atoms();
-        ctx_.generate_phase_factors(iat, phase_factors);
-        utils::timer t1("sirius::Potential::poisson_sum_G|zm");
-        #pragma omp parallel for schedule(static)
-        for (int igloc = 0; igloc < ngv_loc; igloc++) {
-            for (int l = 0, lm = 0; l <= lmax; l++) {
-                double_complex z = fourpi * fl__(l, igloc, iat) * zil_[l] * fpw__[igloc];
-                for (int m = -l; m <= l; m++, lm++) {
-                    zm(lm, igloc) = z * std::conj(gvec_ylm_(lm, igloc));
-                }
-            }
-        }
-        t1.stop();
-        utils::timer t2("sirius::Potential::poisson_sum_G|mul");
-        switch (ctx_.processing_unit()) {
-            case CPU: {
-                linalg<CPU>::gemm(0, 0, lmmax__, na, ngv_loc,
-                                  zm.at<CPU>(), zm.ld(),
-                                  phase_factors.at<CPU>(), phase_factors.ld(),
-                                  tmp.at<CPU>(), tmp.ld());
-                break;
-            }
-            case GPU: {
-#if defined(__GPU)
-                zm.copy<memory_t::host, memory_t::device>();
-                linalg<GPU>::gemm(0, 0, lmmax__, na, ngv_loc,
-                                  zm.at<GPU>(), zm.ld(),
-                                  phase_factors.at<GPU>(), phase_factors.ld(),
-                                  tmp.at<GPU>(), tmp.ld());
-                tmp.copy<memory_t::device, memory_t::host>();
-#endif
-                break;
-            }
-        }
-        t2.stop();
-
-        if (ctx_.control().print_performance_) {
-            t += omp_get_wtime();
-            if (comm_.rank() == 0) {
-                printf("poisson_sum_G() performance: %12.6f GFlops/rank, [m,n,k=%i %i %i, time=%f (sec)]\n",
-                       8e-9 * lmmax__ * na * ctx_.gvec().num_gvec() / t / comm_.size(), lmmax__, na, ctx_.gvec().num_gvec(), t);
-            }
-        }
-        for (int i = 0; i < na; i++) {
-            int ia = unit_cell_.atom_type(iat).atom_id(i);
-            for (int lm = 0; lm < lmmax__; lm++) {
-                flm__(lm, ia) = tmp(lm, i);
-            }
-        }
-    }
-    
-    ctx_.comm().allreduce(&flm__(0, 0), (int)flm__.size());
-
-    ctx_.mem_pool().reset<memory_t::host>();
-    if (ctx_.processing_unit() == GPU) {
-        ctx_.mem_pool().reset<memory_t::device>();
-    }
-}
-
 inline void Potential::poisson_add_pseudo_pw(mdarray<double_complex, 2>& qmt__,
                                              mdarray<double_complex, 2>& qit__,
                                              double_complex* rho_pw__)
@@ -238,8 +130,9 @@ inline void Potential::poisson(Periodic_function<double> const& rho)
         }
 
         /* compute multipoles of interstitial density in MT region */
-        mdarray<double_complex, 2> qit(ctx_.lmmax_rho(), unit_cell_.num_atoms());
-        poisson_sum_G(ctx_.lmmax_rho(), &rho.f_pw_local(0), sbessel_mom_, qit);
+        //mdarray<double_complex, 2> qit(ctx_.lmmax_rho(), unit_cell_.num_atoms());
+        //poisson_sum_G(ctx_.lmmax_rho(), &rho.f_pw_local(0), sbessel_mom_, qit);
+        auto qit = ctx_.sum_fg_fl_yg(ctx_.lmax_rho(), &rho.f_pw_local(0), sbessel_mom_, gvec_ylm_);
 
         //== for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
         //==     for (int lm = 0; lm < ctx_.lmmax_rho(); lm++) {
@@ -256,9 +149,9 @@ inline void Potential::poisson(Periodic_function<double> const& rho)
 
         /* add contribution from the pseudo-charge */
         poisson_add_pseudo_pw(qmt, qit, const_cast<double_complex*>(&rho.f_pw_local(0)));
-        
+
         if (ctx_.control().verification_ >= 2) {
-            poisson_sum_G(ctx_.lmmax_rho(), &rho.f_pw_local(0), sbessel_mom_, qit);
+            auto qit = ctx_.sum_fg_fl_yg(ctx_.lmax_rho(), &rho.f_pw_local(0), sbessel_mom_, gvec_ylm_);
 
             double d = 0.0;
             for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
@@ -302,9 +195,9 @@ inline void Potential::poisson(Periodic_function<double> const& rho)
     /* boundary condition for muffin-tins */
     if (ctx_.full_potential()) {
         /* compute V_lm at the MT boundary */
-        mdarray<double_complex, 2> vmtlm(ctx_.lmmax_pot(), unit_cell_.num_atoms());
-        poisson_sum_G(ctx_.lmmax_pot(), &hartree_potential_->f_pw_local(0), sbessel_mt_, vmtlm);
-        
+        //mdarray<double_complex, 2> vmtlm(ctx_.lmmax_pot(), unit_cell_.num_atoms());
+        auto vmtlm = ctx_.sum_fg_fl_yg(ctx_.lmax_pot(), &hartree_potential_->f_pw_local(0), sbessel_mt_, gvec_ylm_);
+
         /* add boundary condition and convert to Rlm */
         utils::timer t1("sirius::Potential::poisson|bc");
         mdarray<double, 2> rRl(unit_cell_.max_num_mt_points(), ctx_.lmax_pot() + 1);

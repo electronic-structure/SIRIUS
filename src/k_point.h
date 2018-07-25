@@ -212,37 +212,6 @@ class K_point
             }
         }
 
-    public:
-
-        /// Constructor
-        K_point(Simulation_context& ctx__,
-                double const* vk__,
-                double weight__)
-            : ctx_(ctx__)
-            , unit_cell_(ctx_.unit_cell())
-            , weight_(weight__)
-            , comm_(ctx_.comm_band())
-            , comm_row_(ctx_.blacs_grid().comm_row())
-            , comm_col_(ctx_.blacs_grid().comm_col())
-        {
-            PROFILE("sirius::K_point::K_point");
-
-            for (int x = 0; x < 3; x++) {
-                vk_[x] = vk__[x];
-            }
-
-            band_occupancies_ = mdarray<double, 2>(ctx_.num_bands(), ctx_.num_spin_dims());
-            band_occupancies_.zero();
-            band_energies_ = mdarray<double, 2>(ctx_.num_bands(), ctx_.num_spin_dims());
-            band_energies_.zero();
-
-            num_ranks_row_ = comm_row_.size();
-            num_ranks_col_ = comm_col_.size();
-
-            rank_row_ = comm_row_.rank();
-            rank_col_ = comm_col_.rank();
-        }
-
         /// Find G+k vectors within the cutoff.
         inline void generate_gkvec(double gk_cutoff__)
         {
@@ -276,8 +245,112 @@ class K_point
             gkvec_offset_ = gkvec().gvec_offset(comm().rank());
         }
 
+    public:
+
+        /// Constructor
+        K_point(Simulation_context& ctx__,
+                double const* vk__,
+                double weight__)
+            : ctx_(ctx__)
+            , unit_cell_(ctx_.unit_cell())
+            , weight_(weight__)
+            , comm_(ctx_.comm_band())
+            , comm_row_(ctx_.blacs_grid().comm_row())
+            , comm_col_(ctx_.blacs_grid().comm_col())
+        {
+            PROFILE("sirius::K_point::K_point");
+
+            for (int x = 0; x < 3; x++) {
+                vk_[x] = vk__[x];
+            }
+
+            band_occupancies_ = mdarray<double, 2>(ctx_.num_bands(), ctx_.num_spin_dims());
+            band_occupancies_.zero();
+            band_energies_ = mdarray<double, 2>(ctx_.num_bands(), ctx_.num_spin_dims());
+            band_energies_.zero();
+
+            num_ranks_row_ = comm_row_.size();
+            num_ranks_col_ = comm_col_.size();
+
+            rank_row_ = comm_row_.rank();
+            rank_col_ = comm_col_.rank();
+        }
+
         /// Initialize the k-point related arrays and data.
         inline void initialize();
+
+        inline void update()
+        {
+            PROFILE("sirius::K_point::update");
+
+            gkvec_->lattice_vectors(ctx_.unit_cell().reciprocal_lattice_vectors());
+
+            if (ctx_.full_potential()) {
+                if (ctx_.iterative_solver_input().type_ == "exact") {
+                    alm_coeffs_row_ = std::unique_ptr<Matching_coefficients>(
+                        new Matching_coefficients(unit_cell_, ctx_.lmax_apw(), num_gkvec_row(), igk_row_, gkvec()));
+                    alm_coeffs_col_ = std::unique_ptr<Matching_coefficients>(
+                        new Matching_coefficients(unit_cell_, ctx_.lmax_apw(), num_gkvec_col(), igk_col_, gkvec()));
+                }
+                alm_coeffs_loc_ = std::unique_ptr<Matching_coefficients>(
+                    new Matching_coefficients(unit_cell_, ctx_.lmax_apw(), num_gkvec_loc(), igk_loc_, gkvec()));
+            }
+
+            if (!ctx_.full_potential()) {
+                /* compute |beta> projectors for atom types */
+                beta_projectors_ = std::unique_ptr<Beta_projectors>(new Beta_projectors(ctx_, gkvec(), igk_loc_));
+
+                if (ctx_.iterative_solver_input().type_ == "exact") {
+                    beta_projectors_row_ = std::unique_ptr<Beta_projectors>(new Beta_projectors(ctx_, gkvec(), igk_row_));
+                    beta_projectors_col_ = std::unique_ptr<Beta_projectors>(new Beta_projectors(ctx_, gkvec(), igk_col_));
+
+                }
+
+                //if (false) {
+                //    p_mtrx_ = mdarray<double_complex, 3>(unit_cell_.max_mt_basis_size(), unit_cell_.max_mt_basis_size(), unit_cell_.num_atom_types());
+                //    p_mtrx_.zero();
+
+                //    for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
+                //        auto& atom_type = unit_cell_.atom_type(iat);
+
+                //        if (!atom_type.pp_desc().augment) {
+                //            continue;
+                //        }
+                //        int nbf = atom_type.mt_basis_size();
+                //        int ofs = atom_type.offset_lo();
+
+                //        matrix<double_complex> qinv(nbf, nbf);
+                //        for (int xi1 = 0; xi1 < nbf; xi1++) {
+                //            for (int xi2 = 0; xi2 < nbf; xi2++) {
+                //                qinv(xi2, xi1) = ctx_.augmentation_op(iat).q_mtrx(xi2, xi1);
+                //            }
+                //        }
+                //        linalg<CPU>::geinv(nbf, qinv);
+                //
+                //        /* compute P^{+}*P */
+                //        linalg<CPU>::gemm(2, 0, nbf, nbf, num_gkvec_loc(),
+                //                          beta_projectors_->beta_gk_t().at<CPU>(0, ofs), beta_projectors_->beta_gk_t().ld(),
+                //                          beta_projectors_->beta_gk_t().at<CPU>(0, ofs), beta_projectors_->beta_gk_t().ld(),
+                //                          &p_mtrx_(0, 0, iat), p_mtrx_.ld());
+                //        comm().allreduce(&p_mtrx_(0, 0, iat), unit_cell_.max_mt_basis_size() * unit_cell_.max_mt_basis_size());
+
+                //        for (int xi1 = 0; xi1 < nbf; xi1++) {
+                //            for (int xi2 = 0; xi2 < nbf; xi2++) {
+                //                qinv(xi2, xi1) += p_mtrx_(xi2, xi1, iat);
+                //            }
+                //        }
+                //        /* compute (Q^{-1} + P^{+}*P)^{-1} */
+                //        linalg<CPU>::geinv(nbf, qinv);
+                //        for (int xi1 = 0; xi1 < nbf; xi1++) {
+                //            for (int xi2 = 0; xi2 < nbf; xi2++) {
+                //                p_mtrx_(xi2, xi1, iat) = qinv(xi2, xi1);
+                //            }
+                //        }
+                //    }
+                //}
+            }
+
+        }
 
         /// Generate first-variational states from eigen-vectors.
         /** First-variational states are obtained from the first-variational eigen-vectors and

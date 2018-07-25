@@ -17,14 +17,14 @@
 // CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
 // OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-/** \file atom_type.h
+/** \file atom_type.hpp
  *
  *  \brief Contains definition of sirius::radial_functions_index and sirius::basis_functions_index classes
  *         and declaration and partial implementation of sirius::Atom_type class.
  */
 
-#ifndef __ATOM_TYPE_H__
-#define __ATOM_TYPE_H__
+#ifndef __ATOM_TYPE_HPP__
+#define __ATOM_TYPE_HPP__
 
 #include "atomic_data.hpp"
 #include "descriptors.h"
@@ -242,6 +242,8 @@ class Atom_type
     /// Density of a free atom.
     Spline<double> free_atom_density_spline_;
 
+    /// Density of a free atom as read from the input file.
+    /** Does not contain 4 Pi and r^2 prefactors. */
     std::vector<double> free_atom_density_;
 
     /// Radial grid of a free atom.
@@ -578,6 +580,9 @@ class Atom_type
         return paw_wf_occ_;
     }
 
+    /// Initialize the free atom density (smooth or true).
+    inline void init_free_atom_density(bool smooth);
+
     void add_hubbard_orbital(int n,
                              int l,
                              double occ,
@@ -588,7 +593,7 @@ class Atom_type
                              double beta__,
                              double J0__)
     {
-        for (int s = 0; s < ps_atomic_wf_level_.size(); s++) {
+        for (int s = 0; s < static_cast<int>(ps_atomic_wf_level_.size()); s++) {
             if (ps_atomic_wf_level_[s] > 0) {
                 if ((ps_atomic_wf_level_[s] ==  n) && (std::abs(ps_atomic_wf(s).first) == l)) {
                     hubbard_orbital_descriptor_ hub(n, l, s, occ, J, U, hub_coef__, alpha__, beta__, J0__);
@@ -621,20 +626,21 @@ class Atom_type
         }
     }
 
-    inline int number_of_hubbard_channels() const {
-        return hubbard_orbitals_.size();
+    inline int number_of_hubbard_channels() const
+    {
+        return static_cast<int>(hubbard_orbitals_.size());
     }
 
-    inline hubbard_orbital_descriptor_ const &hubbard_orbital(const int channel_) const {
+    inline hubbard_orbital_descriptor_ const &hubbard_orbital(const int channel_) const
+    {
         assert(hubbard_orbitals_.size() > 0);
         return hubbard_orbitals_[channel_];
     }
 
-    inline const std::vector<hubbard_orbital_descriptor_> &hubbard_orbital() const {
+    inline const std::vector<hubbard_orbital_descriptor_> &hubbard_orbital() const 
+    {
         return hubbard_orbitals_;
     }
-
-    inline void init_free_atom(bool smooth);
 
     inline void print_info() const;
 
@@ -1036,8 +1042,8 @@ inline void Atom_type::init(int offset_lo__)
         TERMINATE("zero atom charge");
     }
 
-    /* add valence levels to the list of atom's levels */
     if (parameters_.full_potential()) {
+        /* add valence levels to the list of atom's levels */
         for (auto& e : atomic_conf[zn_ - 1]) {
             /* check if this level is already in the list */
             bool in_list{false};
@@ -1059,9 +1065,7 @@ inline void Atom_type::init(int offset_lo__)
                 num_core_electrons_ += e.occupancy;
             }
         }
-    }
 
-    if (parameters_.full_potential()) {
         /* initialize aw descriptors if they were not set manually */
         if (aw_descriptors_.size() == 0) {
             init_aw_descriptors(parameters_.lmax_apw());
@@ -1088,8 +1092,8 @@ inline void Atom_type::init(int offset_lo__)
             local_orbital_descriptor lod;
             lod.l = std::abs(e.first);
 
-            // for spin orbit coupling. We can always do that there is
-            // no insidence on the reset when calculations exclude SO
+            /* for spin orbit coupling; we can always do that there is
+               no insidence on the reset when calculations exclude SO */
             if (e.first < 0) {
                 lod.total_angular_momentum = lod.l - 0.5;
             } else {
@@ -1181,47 +1185,53 @@ inline void Atom_type::init(int offset_lo__)
     initialized_ = true;
 }
 
-inline void Atom_type::init_free_atom(bool smooth)
+inline void Atom_type::init_free_atom_density(bool smooth)
 {
     free_atom_density_spline_ = Spline<double>(free_atom_radial_grid_, free_atom_density_);
+
     /* smooth free atom density inside the muffin-tin sphere */
     if (smooth) {
         /* find point on the grid close to the muffin-tin radius */
         int irmt = free_atom_radial_grid_.index_of(mt_radius());
+        /* interpolate at this point near MT radius */
+        double R = free_atom_radial_grid_[irmt];
+
+        //std::vector<double> g;
+        //double nel = fourpi * free_atom_density_spline_.integrate(g, 2);
+
+        //std::cout << "number of electrons: " << nel << ", inside MT: " << g[irmt] * fourpi << "\n";
+
 
         //mdarray<double, 1> b(2);
         //mdarray<double, 2> A(2, 2);
-        double R = free_atom_radial_grid_[irmt];
-        ////A(0, 0) = std::pow(R, 2);
-        ////A(0, 1) = std::pow(R, 3);
-        ////A(1, 0) = 2 * R;
-        ////A(1, 1) = 3 * std::pow(R, 2);
-        //A(0, 0) = 4; //std::pow(R, 1);
-        //A(0, 1) = std::pow(R, 1);
-        //A(1, 0) = 0;
-        //A(1, 1) = 1; //2 * std::pow(R, 1);
+        //A(0, 0) = std::pow(R, 2);
+        //A(0, 1) = std::pow(R, 3);
+        //A(1, 0) = 2 * R;
+        //A(1, 1) = 3 * std::pow(R, 2);
+        ////A(0, 0) = 4; //std::pow(R, 1);
+        ////A(0, 1) = std::pow(R, 1);
+        ////A(1, 0) = 0;
+        ////A(1, 1) = 1; //2 * std::pow(R, 1);
 
         //b(0) = free_atom_density_spline_(irmt);
         //b(1) = free_atom_density_spline_.deriv(1, irmt);
 
         //linalg<CPU>::gesv<double>(2, 1, A.at<CPU>(), 2, b.at<CPU>(), 2);
 
-        //== /* write initial density */
-        //== std::stringstream sstr;
-        //== sstr << "free_density_" << id_ << ".dat";
-        //== FILE* fout = fopen(sstr.str().c_str(), "w");
+        //////== /* write initial density */
+        //std::stringstream sstr;
+        //sstr << "free_density_" << id_ << ".dat";
+        //FILE* fout = fopen(sstr.str().c_str(), "w");
 
-        //== for (int ir = 0; ir < free_atom_radial_grid().num_points(); ir++)
-        //== {
-        //==     fprintf(fout, "%f %f \n", free_atom_radial_grid(ir), free_atom_density_[ir]);
-        //== }
-        //== fclose(fout);
+        //for (int ir = 0; ir < free_atom_radial_grid().num_points(); ir++) {
+        //    fprintf(fout, "%18.12f %18.12f \n", free_atom_radial_grid(ir), free_atom_density_[ir]);
+        //}
+        //fclose(fout);
 
         /* make smooth free atom density inside muffin-tin */
         for (int i = 0; i <= irmt; i++) {
             double x = free_atom_radial_grid(i);
-            //free_atom_density_spline_(i) = 4 + b(1) * free_atom_radial_grid(i);
-                //b(0) * std::pow(free_atom_radial_grid(i), 1) + b(1) * std::pow(free_atom_radial_grid(i), 2);
+            //free_atom_density_spline_(i) = b(0) * std::pow(free_atom_radial_grid(i), 2) + b(1) * std::pow(free_atom_radial_grid(i), 3);
             free_atom_density_spline_(i) = free_atom_density_[i] * 0.5 * (1 + std::erf((x / R - 0.5) * 10));
         }
 
@@ -1231,7 +1241,7 @@ inline void Atom_type::init_free_atom(bool smooth)
         ///* write smoothed density */
         //sstr.str("");
         //sstr << "free_density_modified_" << id_ << ".dat";
-        //FILE* fout = fopen(sstr.str().c_str(), "w");
+        //fout = fopen(sstr.str().c_str(), "w");
 
         //for (int ir = 0; ir < free_atom_radial_grid().num_points(); ir++) {
         //    fprintf(fout, "%18.12f %18.12f \n", free_atom_radial_grid(ir), free_atom_density(ir));
@@ -1649,9 +1659,7 @@ inline void Atom_type::read_input(std::string const& str__)
         free_atom_density_ = parser["free_atom"]["density"].get<std::vector<double>>();
     }
 
-    // it is already done in input.h. I just initialize the
-    // different constants
-
+    /* it is already done in input.h; here the different constans are initialized */
     read_hubbard_input();
 }
 
@@ -1800,7 +1808,6 @@ inline void Atom_type::generate_f_coefficients(void)
         }
     }
 }
-
 
 inline void Atom_type::read_hubbard_input()
 {

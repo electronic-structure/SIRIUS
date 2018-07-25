@@ -218,6 +218,15 @@ class K_point_set
         initialize(std::vector<int>());
     }
 
+    void update()
+    {
+        /* update k-points */
+        for (int ikloc = 0; ikloc < spl_num_kpoints().local_size(); ikloc++) {
+            int ik = spl_num_kpoints(ikloc);
+            kpoints_[ik]->update();
+        }
+    }
+
     /// Get a list of band energies for a given k-point index.
     std::vector<double> get_band_energies(int ik__, int ispn__)
     {

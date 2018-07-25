@@ -90,8 +90,7 @@ class Augmentation_operator
         mdarray<double, 2> gvec_rlm(utils::lmmax(2 * lmax_beta), gvec_count);
         #pragma omp parallel for schedule(static)
         for (int igloc = 0; igloc < gvec_count; igloc++) {
-            int  ig  = gvec_offset + igloc;
-            auto rtp = SHT::spherical_coordinates(gvec_.gvec_cart(ig));
+            auto rtp = SHT::spherical_coordinates(gvec_.gvec_cart<index_domain_t::local>(igloc));
             SHT::spherical_harmonics(2 * lmax_beta, rtp[1], rtp[2], &gvec_rlm(0, igloc));
         }
 
@@ -158,13 +157,15 @@ class Augmentation_operator
         /* broadcast from rank#0 */
         comm_.bcast(&q_mtrx_(0, 0), nbf * nbf, 0);
 
-        //if (ctx_.control().print_checksum_) {
-        //    double cs = q_pw_.checksum();
-        //    comm_.allreduce(&cs, 1);
-        //    if (comm_.rank() == 0) {
-        //        utils::print_checksum("q_pw", cs);
-        //    }
-        //}
+        if (atom_type_.parameters().control().print_checksum_) {
+            auto cs = q_pw_.checksum();
+            auto cs1 = q_mtrx_.checksum();
+            comm_.allreduce(&cs, 1);
+            if (comm_.rank() == 0) {
+                utils::print_checksum("q_pw", cs);
+                utils::print_checksum("q_mtrx", cs1);
+            }
+        }
     }
 
     void prepare(int stream_id__)
@@ -253,7 +254,6 @@ class Augmentation_operator_gvec_deriv
 
         /* split G-vectors between ranks */
         int gvec_count  = gvec__.count();
-        int gvec_offset = gvec__.offset();
 
         rlm_g_  = mdarray<double, 2>(lmmax, gvec_count);
         rlm_dg_ = mdarray<double, 3>(lmmax, 3, gvec_count);
@@ -261,8 +261,7 @@ class Augmentation_operator_gvec_deriv
         /* array of real spherical harmonics and derivatives for each G-vector */
         #pragma omp parallel for schedule(static)
         for (int igloc = 0; igloc < gvec_count; igloc++) {
-            int  ig  = gvec_offset + igloc;
-            auto rtp = SHT::spherical_coordinates(gvec__.gvec_cart(ig));
+            auto rtp = SHT::spherical_coordinates(gvec__.gvec_cart<index_domain_t::local>(igloc));
 
             double           theta = rtp[1];
             double           phi   = rtp[2];
@@ -318,7 +317,7 @@ class Augmentation_operator_gvec_deriv
         for (int igloc = 0; igloc < gvec_count; igloc++) {
             int    ig  = gvec_offset + igloc;
             double g   = gvec_.gvec_len(ig);
-            auto   gvc = gvec_.gvec_cart(ig);
+            auto   gvc = gvec_.gvec_cart<index_domain_t::local>(igloc);
 
             std::vector<double_complex> v(lmmax);
 

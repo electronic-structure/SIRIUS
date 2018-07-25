@@ -231,13 +231,14 @@ class Local_operator
                 }
             }
 
-            //if (ctx_.control().print_checksum_) {
-            //    auto cs = veff_vec_.checksum();
-            //    fft_coarse_.comm().allreduce(&cs, 1);
-            //    if (gvec_coarse_p_.gvec().comm().rank() == 0) {
-            //        print_checksum("Local_operator::prepare::veff_vec", cs);
-            //    }
-            //}
+            if (ctx_.control().print_checksum_) {
+                for (int j = 0; j < ctx_.num_mag_dims() + 1; j++) {
+                    auto cs = veff_vec_[j].checksum_pw();
+                    if (gvec_coarse_p_.gvec().comm().rank() == 0) {
+                        utils::print_checksum("veff_vec", cs);
+                    }
+                }
+            }
         }
 
         fft_coarse_.dismiss();
@@ -260,7 +261,7 @@ class Local_operator
             /* global index of G-vector */
             int ig = gkvec_p__.idx_gvec(ig_loc);
             /* get G+k in Cartesian coordinates */
-            auto gv          = gkvec_p__.gvec().gkvec_cart(ig);
+            auto gv          = gkvec_p__.gvec().gkvec_cart<index_domain_t::global>(ig);
             pw_ekin_[ig_loc] = 0.5 * dot(gv, gv);
         }
 
@@ -757,7 +758,7 @@ class Local_operator
                         /* global index of G-vector */
                         int ig = gkvec_p_->idx_gvec(igloc);
                         /* \hat P phi = phi(G+k) * (G+k), \hat P is momentum operator */
-                        buf_pw[igloc] = phi__.pw_coeffs(0).extra()(igloc, j) * gkvec_p_->gvec().gkvec_cart(ig)[x];
+                        buf_pw[igloc] = phi__.pw_coeffs(0).extra()(igloc, j) * gkvec_p_->gvec().gkvec_cart<index_domain_t::global>(ig)[x];
                     }
                     /* transform Cartesian component of wave-function gradient to real space */
                     fft_coarse_.transform<1>(&buf_pw[0]);
@@ -783,7 +784,7 @@ class Local_operator
                     #pragma omp parallel for schedule(static)
                     for (int igloc = 0; igloc < gkvec_p_->gvec_count_fft(); igloc++) {
                         int ig = gkvec_p_->idx_gvec(igloc);
-                        hphi__->pw_coeffs(0).extra()(igloc, j) += 0.5 * buf_pw[igloc] * gkvec_p_->gvec().gkvec_cart(ig)[x];
+                        hphi__->pw_coeffs(0).extra()(igloc, j) += 0.5 * buf_pw[igloc] * gkvec_p_->gvec().gkvec_cart<index_domain_t::global>(ig)[x];
                     }
                 }
             }

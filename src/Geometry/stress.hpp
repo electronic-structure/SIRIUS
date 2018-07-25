@@ -344,15 +344,15 @@ class Stress {
 
         stress_vloc_.zero();
 
-        Radial_integrals_vloc<false> ri_vloc(ctx_.unit_cell(), ctx_.pw_cutoff(), ctx_.settings().nprii_vloc_);
-        Radial_integrals_vloc<true> ri_vloc_dg(ctx_.unit_cell(), ctx_.pw_cutoff(), ctx_.settings().nprii_vloc_);
+        auto& ri_vloc = ctx_.vloc_ri();
+        auto& ri_vloc_dg = ctx_.vloc_ri_djl();
 
-        auto v = ctx_.make_periodic_function<index_domain_t::local>([&ri_vloc](int iat, double g)
+        auto v = ctx_.make_periodic_function<index_domain_t::local>([&](int iat, double g)
                                                                     {
                                                                         return ri_vloc.value(iat, g);
                                                                     });
 
-        auto dv = ctx_.make_periodic_function<index_domain_t::local>([&ri_vloc_dg](int iat, double g)
+        auto dv = ctx_.make_periodic_function<index_domain_t::local>([&](int iat, double g)
                                                                      {
                                                                          return ri_vloc_dg.value(iat, g);
                                                                      });
@@ -362,9 +362,7 @@ class Stress {
         int ig0 = (ctx_.comm().rank() == 0) ? 1 : 0;
         for (int igloc = ig0; igloc < ctx_.gvec().count(); igloc++) {
 
-            int ig = ctx_.gvec().offset() + igloc;
-
-            auto G = ctx_.gvec().gvec_cart(ig);
+            auto G = ctx_.gvec().gvec_cart<index_domain_t::local>(igloc);
 
             for (int mu: {0, 1, 2}) {
                 for (int nu: {0, 1, 2}) {
@@ -434,9 +432,7 @@ class Stress {
 
         int ig0 = (ctx_.comm().rank() == 0) ? 1 : 0;
         for (int igloc = ig0; igloc < ctx_.gvec().count(); igloc++) {
-            int ig = ctx_.gvec().offset() + igloc;
-
-            auto G = ctx_.gvec().gvec_cart(ig);
+            auto G = ctx_.gvec().gvec_cart<index_domain_t::local>(igloc);
             double g2 = std::pow(G.length(), 2);
             auto z = density_.rho().f_pw_local(igloc);
             double d = twopi * (std::pow(z.real(), 2) + std::pow(z.imag(), 2)) / g2;
@@ -519,7 +515,7 @@ class Stress {
         for (int igloc = ig0; igloc < ctx_.gvec().count(); igloc++) {
             int ig = ctx_.gvec().offset() + igloc;
 
-            auto G = ctx_.gvec().gvec_cart(ig);
+            auto G = ctx_.gvec().gvec_cart<index_domain_t::local>(igloc);
             double g2 = std::pow(G.length(), 2);
             double g2lambda = g2 / 4.0 / lambda;
 
@@ -567,7 +563,7 @@ class Stress {
                 }
 
                 double a1 = (0.5 * uc.atom(ia).zn() * uc.atom(ja).zn() / uc.omega() / std::pow(len, 3)) *
-                            (-2 * std::exp(-lambda * std::pow(len, 2)) * std::sqrt(lambda / pi) * len - gsl_sf_erfc(std::sqrt(lambda) * len));
+                            (-2 * std::exp(-lambda * std::pow(len, 2)) * std::sqrt(lambda / pi) * len - std::erfc(std::sqrt(lambda) * len));
 
                 for (int mu: {0, 1, 2}) {
                     for (int nu: {0, 1, 2}) {
@@ -610,8 +606,7 @@ class Stress {
             auto kp = kset_[ik];
 
             for (int igloc = 0; igloc < kp->num_gkvec_loc(); igloc++) {
-                int ig = kp->idxgk(igloc);
-                auto Gk = kp->gkvec().gkvec_cart(ig);
+                auto Gk = kp->gkvec().gkvec_cart<index_domain_t::local>(igloc);
 
                 double d{0};
                 for (int ispin = 0; ispin < ctx_.num_spins(); ispin++ ) {
@@ -703,8 +698,8 @@ class Stress {
 
         potential_.effective_potential().fft_transform(-1);
 
-        Radial_integrals_aug<false> const& ri    = ctx_.aug_ri();
-        Radial_integrals_aug<true>  const& ri_dq = ctx_.aug_ri_djl();
+        auto& ri    = ctx_.aug_ri();
+        auto& ri_dq = ctx_.aug_ri_djl();
 
         potential_.fft_transform(-1);
 
@@ -751,8 +746,7 @@ class Stress {
                         }
                         #pragma omp parallel for schedule(static)
                         for (int igloc = igloc0; igloc < ctx_.gvec().count(); igloc++) {
-                            int ig = ctx_.gvec().offset() + igloc;
-                            auto gvc = ctx_.gvec().gvec_cart(ig);
+                            auto gvc = ctx_.gvec().gvec_cart<index_domain_t::local>(igloc);
                             double g = gvc.length();
 
                             for (int ia = 0; ia < atom_type.num_atoms(); ia++) {
@@ -867,7 +861,7 @@ class Stress {
 
         potential_.xc_potential().fft_transform(-1);
 
-        Radial_integrals_rho_core_pseudo<true> ri_dg(ctx_.unit_cell(), ctx_.pw_cutoff(), ctx_.settings().nprii_rho_core_);
+        auto& ri_dg = ctx_.ps_core_ri_djl();
 
         auto drhoc = ctx_.make_periodic_function<index_domain_t::local>([&ri_dg](int iat, double g)
                                                                         {
@@ -877,9 +871,7 @@ class Stress {
         int ig0 = (ctx_.comm().rank() == 0) ? 1 : 0;
 
         for (int igloc = ig0; igloc < ctx_.gvec().count(); igloc++) {
-            int ig = ctx_.gvec().offset() + igloc;
-
-            auto G = ctx_.gvec().gvec_cart(ig);
+            auto G = ctx_.gvec().gvec_cart<index_domain_t::local>(igloc);
             auto g = G.length();
 
             for (int mu: {0, 1, 2}) {

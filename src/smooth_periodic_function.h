@@ -210,6 +210,13 @@ class Smooth_periodic_function
             return cs;
         }
 
+        inline double_complex checksum_pw() const
+        {
+            double_complex cs = this->f_pw_local_.checksum();
+            this->gvecp_->gvec().comm().allreduce(&cs, 1);
+            return cs;
+        }
+
         inline uint64_t hash_f_pw() const
         {
             auto h = f_pw_local_.hash();
@@ -291,8 +298,7 @@ inline Smooth_periodic_function_gradient<double> gradient(Smooth_periodic_functi
 
     #pragma omp parallel for schedule(static)
     for (int igloc = 0; igloc < f__.gvec().count(); igloc++) {
-        int ig = f__.gvec().offset() + igloc;
-        auto G = f__.gvec().gvec_cart(ig);
+        auto G = f__.gvec().gvec_cart<index_domain_t::local>(igloc);
         for (int x: {0, 1, 2}) {
             g[x].f_pw_local(igloc) = f__.f_pw_local(igloc) * double_complex(0, G[x]);
         }
@@ -309,8 +315,7 @@ inline Smooth_periodic_function<double> laplacian(Smooth_periodic_function<doubl
 
     #pragma omp parallel for schedule(static)
     for (int igloc = 0; igloc < f__.gvec().count(); igloc++) {
-        int ig = f__.gvec().offset() + igloc;
-        auto G = f__.gvec().gvec_cart(ig);
+        auto G = f__.gvec().gvec_cart<index_domain_t::local>(igloc);
         g.f_pw_local(igloc) = f__.f_pw_local(igloc) * double_complex(-std::pow(G.length(), 2), 0);
     }
 

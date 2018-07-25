@@ -310,10 +310,13 @@ class Density : public Field4D
     {
         PROFILE("sirius::Density::generate_pseudo_core_charge_density");
 
-        auto ri = Radial_integrals_rho_core_pseudo<false>(ctx_.unit_cell(), ctx_.pw_cutoff(), ctx_.settings().nprii_rho_core_);
-
-        auto v = ctx_.make_periodic_function<index_domain_t::local>([&ri](int iat, double g) {
-            return ri.value<int>(iat, g);
+        auto v = ctx_.make_periodic_function<index_domain_t::local>([&](int iat, double g) 
+        {
+            if (this->ctx_.unit_cell().atom_type(iat).ps_core_charge_density().empty()) {
+                return 0.0;
+            } else {
+                return ctx_.ps_core_ri().value<int>(iat, g);
+            }
         });
         std::copy(v.begin(), v.end(), &rho_pseudo_core_->f_pw_local(0));
         rho_pseudo_core_->fft_transform(1);
@@ -339,15 +342,6 @@ class Density : public Field4D
         /* core density of the pseudopotential method */
         if (!ctx_.full_potential()) {
             rho_pseudo_core_ = std::unique_ptr<spf>(new spf(ctx_.fft(), ctx_.gvec_partition()));
-            rho_pseudo_core_->zero();
-
-            bool is_empty{true};
-            for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
-                is_empty &= unit_cell_.atom_type(iat).ps_core_charge_density().empty();
-            }
-            if (!is_empty) {
-                generate_pseudo_core_charge_density();
-            }
         }
 
         if (ctx_.full_potential()) {
@@ -364,7 +358,7 @@ class Density : public Field4D
         /* split local G-vectors to low-frequency and high-frequency */
         for (int igloc = 0; igloc < ctx_.gvec().count(); igloc++) {
             int  ig = ctx_.gvec().offset() + igloc;
-            auto gv = ctx_.gvec().gvec_cart(ig);
+            auto gv = ctx_.gvec().gvec_cart<index_domain_t::local>(igloc);
             if (gv.length() <= 2 * ctx_.gk_cutoff()) {
                 lf_gvec_.push_back(igloc);
                 if (ig) {
@@ -374,6 +368,24 @@ class Density : public Field4D
                 }
             } else {
                 hf_gvec_.push_back(igloc);
+            }
+        }
+
+        update();
+    }
+
+    void update()
+    {
+        PROFILE("sirius::Density::update");
+
+        if (!ctx_.full_potential()) {
+            rho_pseudo_core_->zero();
+            bool is_empty{true};
+            for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
+                is_empty &= unit_cell_.atom_type(iat).ps_core_charge_density().empty();
+            }
+            if (!is_empty) {
+                generate_pseudo_core_charge_density();
             }
         }
     }
@@ -400,6 +412,28 @@ class Density : public Field4D
     void initial_density_pseudo();
 
     void initial_density_full_pot();
+
+    inline void normalize()
+    {
+        std::vector<double> nel_mt;
+        double              nel_it;
+        double nel   = rho().integrate(nel_mt, nel_it);
+        double scale = unit_cell_.num_electrons() / nel;
+
+        /* renormalize interstitial part */
+        for (int ir = 0; ir < ctx_.fft().local_size(); ir++) {
+             rho().f_rg(ir) *= scale;
+        }
+        if (ctx_.full_potential()) {
+            for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
+                for (int ir = 0; ir < unit_cell_.atom(ia).num_mt_points(); ir++) {
+                    for (int lm = 0; lm < ctx_.lmmax_rho(); lm++) {
+                        rho().f_mt<index_domain_t::global>(lm, ir, ia) *= scale;
+                    }
+                }
+            }
+        }
+    }
 
     /// Check total density for the correct number of electrons.
     inline void check_num_electrons()

@@ -32,7 +32,7 @@
 namespace sirius {
 
 /// Setup and solve the eigen value problem.
-class Band
+class Band // TODO: Band class is lightweight and in principle can be converted to a namespace
 {
   private:
     /// Simulation context.
@@ -113,6 +113,48 @@ class Band
 
     template <typename T>
     void check_residuals(K_point* kp__, Hamiltonian& H__) const;
+
+    template <typename T>
+    void check_wave_functions(K_point& kp__, Hamiltonian& H__) const
+    {
+        if (kp__.comm().rank() == 0) {
+            printf("checking wave-functions\n");
+        }
+
+        if (!ctx_.full_potential()) {
+
+            dmatrix<T> ovlp(ctx_.num_bands(), ctx_.num_bands(), ctx_.blacs_grid(), ctx_.cyclic_block_size(), ctx_.cyclic_block_size());
+
+            const bool nc_mag = (ctx_.num_mag_dims() == 3);
+            const int num_sc = nc_mag ? 2 : 1;
+
+            auto& psi = kp__.spinor_wave_functions();
+            Wave_functions spsi(kp__.gkvec_partition(), ctx_.num_bands(), num_sc);
+
+            /* compute residuals */
+            for (int ispin_step = 0; ispin_step < ctx_.num_spin_dims(); ispin_step++) {
+                if (nc_mag) {
+                    /* apply Hamiltonian and S operators to the wave-functions */
+                    H__.apply_h_s<T>(&kp__, 2, 0, ctx_.num_bands(), psi, nullptr, &spsi);
+                    inner<T>(CPU, 2, psi, 0, ctx_.num_bands(), spsi, 0, ctx_.num_bands(), ovlp, 0, 0);
+                } else {
+                    Wave_functions phi(&psi.pw_coeffs(ispin_step).prime(0, 0), kp__.gkvec_partition(), ctx_.num_bands(), 1);
+                    /* apply Hamiltonian and S operators to the wave-functions */
+                    H__.apply_h_s<T>(&kp__, ispin_step, 0, ctx_.num_bands(), phi, 0, &spsi);
+                    inner<T>(CPU, 0, phi, 0, ctx_.num_bands(), spsi, 0, ctx_.num_bands(), ovlp, 0, 0);
+                }
+                double diff = check_identity(ovlp, ctx_.num_bands());
+
+                if (kp__.comm().rank() == 0) {
+                    if (diff > 1e-12) {
+                        printf("overlap matrix is not identity, maximum error : %f\n", diff);
+                    } else {
+                        printf("OK! Wave functions are orthonormal.\n");
+                    }
+                }
+            }
+        }
+    }
 
     /** Compute \f$ O_{ii'} = \langle \phi_i | \hat O | \phi_{i'} \rangle \f$ operator matrix
      *  for the subspace spanned by the wave-functions \f$ \phi_i \f$. The matrix is always returned

@@ -110,9 +110,8 @@ class Simulation_context: public Simulation_parameters
         /// Phase factors for atom types.
         mdarray<double_complex, 2> phase_factors_t_;
 
+        /// Lattice coordinats of G-vectors in a GPU-friendly ordering.
         mdarray<int, 2> gvec_coord_;
-
-        std::vector<mdarray<double, 2>> atom_coord_;
 
         std::unique_ptr<Radial_integrals_beta<false>> beta_ri_;
 
@@ -125,6 +124,16 @@ class Simulation_context: public Simulation_parameters
         std::unique_ptr<Radial_integrals_atomic_wf<false>> atomic_wf_ri_;
 
         std::unique_ptr<Radial_integrals_atomic_wf<true>> atomic_wf_ri_djl_;
+
+        std::unique_ptr<Radial_integrals_rho_core_pseudo<false>> ps_core_ri_;
+
+        std::unique_ptr<Radial_integrals_rho_core_pseudo<true>> ps_core_ri_djl_;
+
+        std::unique_ptr<Radial_integrals_rho_pseudo> ps_rho_ri_;
+
+        std::unique_ptr<Radial_integrals_vloc<false>> vloc_ri_;
+
+        std::unique_ptr<Radial_integrals_vloc<true>> vloc_ri_djl_;
 
         std::vector<std::vector<std::pair<int, double>>> atoms_to_grid_idx_;
 
@@ -383,6 +392,97 @@ class Simulation_context: public Simulation_parameters
         /// Initialize the similation (can only be called once).
         void initialize();
 
+        /// Update context after setting new lattice vectors or atomic coordinates.
+        void update()
+        {
+            PROFILE("sirius::Simulation_context::update");
+
+            gvec_->lattice_vectors(unit_cell().reciprocal_lattice_vectors());
+            gvec_coarse_->lattice_vectors(unit_cell().reciprocal_lattice_vectors());
+
+            unit_cell().update();
+
+            if (unit_cell_.num_atoms() != 0 && use_symmetry() && control().verification_ >= 1) {
+                unit_cell_.symmetry().check_gvec_symmetry(gvec(), comm());
+                if (!full_potential()) {
+                    unit_cell_.symmetry().check_gvec_symmetry(gvec_coarse(), comm());
+                }
+            }
+
+            init_atoms_to_grid_idx();
+
+            std::pair<int, int> limits(0, 0);
+            for (int x: {0, 1, 2}) {
+                limits.first  = std::min(limits.first,  fft().limits(x).first);
+                limits.second = std::max(limits.second, fft().limits(x).second);
+            }
+
+            phase_factors_ = mdarray<double_complex, 3>(3, limits, unit_cell().num_atoms(), memory_t::host, "phase_factors_");
+            #pragma omp parallel for
+            for (int i = limits.first; i <= limits.second; i++) {
+                for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
+                    auto pos = unit_cell_.atom(ia).position();
+                    for (int x: {0, 1, 2}) {
+                        phase_factors_(x, i, ia) = std::exp(double_complex(0.0, twopi * (i * pos[x])));
+                    }
+                }
+            }
+
+            phase_factors_t_ = mdarray<double_complex, 2>(gvec().count(), unit_cell().num_atom_types());
+            #pragma omp parallel for schedule(static)
+            for (int igloc = 0; igloc < gvec().count(); igloc++) {
+                /* global index of G-vector */
+                int ig = gvec().offset() + igloc;
+                for (int iat = 0; iat < unit_cell().num_atom_types(); iat++) {
+                    double_complex z(0, 0);
+                    for (int ia = 0; ia < unit_cell().atom_type(iat).num_atoms(); ia++) {
+                        z += gvec_phase_factor(ig, unit_cell().atom_type(iat).atom_id(ia));
+                    }
+                    phase_factors_t_(igloc, iat) = z;
+                }
+            }
+
+            if (use_symmetry()) {
+                sym_phase_factors_ = mdarray<double_complex, 3>(3, limits, unit_cell().symmetry().num_mag_sym());
+
+                #pragma omp parallel for
+                for (int i = limits.first; i <= limits.second; i++) {
+                    for (int isym = 0; isym < unit_cell().symmetry().num_mag_sym(); isym++) {
+                        auto t = unit_cell().symmetry().magnetic_group_symmetry(isym).spg_op.t;
+                        for (int x: {0, 1, 2}) {
+                            sym_phase_factors_(x, i, isym) = std::exp(double_complex(0.0, twopi * (i * t[x])));
+                        }
+                    }
+                }
+            }
+#if defined(__GPU)
+            if (processing_unit() == GPU) {
+                acc::set_device();
+                gvec_coord_ = mdarray<int, 2>(gvec().count(), 3, memory_t::host | memory_t::device, "gvec_coord_");
+                for (int igloc = 0; igloc < gvec().count(); igloc++) {
+                    int ig = gvec().offset() + igloc;
+                    auto G = gvec().gvec(ig);
+                    for (int x: {0, 1, 2}) {
+                        gvec_coord_(igloc, x) = G[x];
+                    }
+                }
+                gvec_coord_.copy<memory_t::host, memory_t::device>();
+            }
+#endif
+            if (full_potential()) {
+                init_step_function();
+            }
+
+            if (!full_potential()) {
+                augmentation_op_.clear();
+                /* create augmentation operator Q_{xi,xi'}(G) here */
+                for (int iat = 0; iat < unit_cell().num_atom_types(); iat++) {
+                    augmentation_op_.push_back(std::move(Augmentation_operator(unit_cell().atom_type(iat), gvec(), comm())));
+                    augmentation_op_.back().generate_pw_coeffs(aug_ri());
+                }
+            }
+        }
+
         std::vector<std::vector<std::pair<int,double>>> const& atoms_to_grid_idx_map()
         {
             return atoms_to_grid_idx_;
@@ -585,11 +685,6 @@ class Simulation_context: public Simulation_parameters
             return gvec_coord_;
         }
 
-        inline mdarray<double, 2> const& atom_coord(int iat__) const
-        {
-            return atom_coord_[iat__];
-        }
-
         /// Generate phase factors \f$ e^{i {\bf G} {\bf r}_{\alpha}} \f$ for all atoms of a given type.
         inline void generate_phase_factors(int iat__, mdarray<double_complex, 2>& phase_factors__) const
         {
@@ -610,7 +705,7 @@ class Simulation_context: public Simulation_parameters
                 case GPU: {
                     #ifdef __GPU
                     acc::set_device();
-                    generate_phase_factors_gpu(gvec().count(), na, gvec_coord().at<GPU>(), atom_coord(iat__).at<GPU>(),
+                    generate_phase_factors_gpu(gvec().count(), na, gvec_coord().at<GPU>(), unit_cell().atom_coord(iat__).at<GPU>(),
                                                phase_factors__.at<GPU>());
                     #else
                     TERMINATE_NO_GPU
@@ -652,21 +747,23 @@ class Simulation_context: public Simulation_parameters
         }
 
         /// Compute values of spherical Bessel functions at MT boundary.
-        mdarray<double, 3> generate_sbessel_mt(int lmax__) const
+        inline mdarray<double, 3> generate_sbessel_mt(int lmax__) const
         {
-            mdarray<double, 3> sbessel_mt(lmax__ + 1, unit_cell_.num_atom_types(),
-                                          gvec().num_shells(), memory_t::host, "sbessel_mt");
+            PROFILE("sirius::Simulation_context::generate_sbessel_mt");
 
-            #pragma omp parallel for schedule(static)
-            for (int igs = 0; igs < gvec().num_shells(); igs++) {
-                for (int iat = 0; iat < unit_cell().num_atom_types(); iat++) {
-                    gsl_sf_bessel_jl_array(lmax__, gvec().shell_len(igs) * unit_cell().atom_type(iat).mt_radius(),
-                                           &sbessel_mt(0, iat, igs));
+            mdarray<double, 3> sbessel_mt(lmax__ + 1, gvec().count(), unit_cell().num_atom_types());
+            for (int iat = 0; iat < unit_cell().num_atom_types(); iat++) {
+                #pragma omp parallel for schedule(static)
+                for (int igloc = 0; igloc < gvec().count(); igloc++) {
+                    auto gv = gvec().gvec_cart<index_domain_t::local>(igloc);
+                    gsl_sf_bessel_jl_array(lmax__, gv.length() * unit_cell().atom_type(iat).mt_radius(),
+                                           &sbessel_mt(0, igloc, iat));
                 }
             }
             return std::move(sbessel_mt);
         }
 
+        /// Generate complex spherical harmoics for the local set of G-vectors.
         inline matrix<double_complex> generate_gvec_ylm(int lmax__)
         {
             PROFILE("sirius::Simulation_context::generate_gvec_ylm");
@@ -674,33 +771,61 @@ class Simulation_context: public Simulation_parameters
             matrix<double_complex> gvec_ylm(utils::lmmax(lmax__), gvec().count(), memory_t::host, "gvec_ylm");
             #pragma omp parallel for schedule(static)
             for (int igloc = 0; igloc < gvec().count(); igloc++) {
-                int ig = gvec().offset() + igloc;
-                auto rtp = SHT::spherical_coordinates(gvec().gvec_cart(ig));
+                auto rtp = SHT::spherical_coordinates(gvec().gvec_cart<index_domain_t::local>(igloc));
                 SHT::spherical_harmonics(lmax__, rtp[1], rtp[2], &gvec_ylm(0, igloc));
             }
             return std::move(gvec_ylm);
         }
 
-        inline void sum_fg_fl_yg(int                     lmax__,
-                                 double_complex const*   fpw__,
-                                 mdarray<double, 3>&     fl__,
-                                 matrix<double_complex>& gvec_ylm__,
-                                 matrix<double_complex>& flm__)
+        /// Sum over the plane-wave coefficients and spherical harmonics that apperas in Poisson solver and finding of the MT boundary values.
+        /** The following operation is performed:
+         *  \f[
+         *    q_{\ell m}^{\alpha} = \sum_{\bf G} 4\pi \rho({\bf G}) e^{i{\bf G}{\bf r}_{\alpha}}i^{\ell}f_{\ell}^{\alpha}(G) Y_{\ell m}^{*}(\hat{\bf G})
+         *  \f]
+         */
+        inline mdarray<double_complex, 2> sum_fg_fl_yg(int                     lmax__,
+                                                       double_complex const*   fpw__,
+                                                       mdarray<double, 3>&     fl__,
+                                                       matrix<double_complex>& gvec_ylm__)
         {
             PROFILE("sirius::Simulation_context::sum_fg_fl_yg");
 
             int ngv_loc = gvec().count();
 
             int na_max{0};
-            for (int iat = 0; iat < unit_cell().num_atom_types(); iat++) {
-                na_max = std::max(na_max, unit_cell().atom_type(iat).num_atoms());
+            for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
+                na_max = std::max(na_max, unit_cell_.atom_type(iat).num_atoms());
             }
 
             int lmmax = utils::lmmax(lmax__);
+            /* resuling matrix */
+            mdarray<double_complex, 2> flm(lmmax, unit_cell().num_atoms());
 
-            matrix<double_complex> phase_factors(ngv_loc, na_max, main_memory_t());
-            matrix<double_complex> zm(lmmax, ngv_loc, dual_memory_t());
-            matrix<double_complex> tmp(lmmax, na_max, dual_memory_t());
+            matrix<double_complex> phase_factors;
+            matrix<double_complex> zm;
+            matrix<double_complex> tmp;
+            switch (processing_unit()) {
+                case CPU: {
+                    phase_factors = matrix<double_complex>(mem_pool().allocate<double_complex, memory_t::host>(ngv_loc * na_max),
+                                                           ngv_loc, na_max);
+                    zm = matrix<double_complex>(mem_pool().allocate<double_complex, memory_t::host>(lmmax * ngv_loc),
+                                                lmmax, ngv_loc);
+                    tmp = matrix<double_complex>(mem_pool().allocate<double_complex, memory_t::host>(lmmax * na_max),
+                                                 lmmax, na_max);
+                    break;
+                }
+                case GPU: {
+                    phase_factors = matrix<double_complex>(nullptr, mem_pool().allocate<double_complex, memory_t::device>(ngv_loc * na_max),
+                                                           ngv_loc, na_max);
+                    zm = matrix<double_complex>(mem_pool().allocate<double_complex, memory_t::host>(lmmax * ngv_loc),
+                                                mem_pool().allocate<double_complex, memory_t::device>(lmmax * ngv_loc),
+                                                lmmax, ngv_loc);
+                    tmp = matrix<double_complex>(mem_pool().allocate<double_complex, memory_t::host>(lmmax * na_max),
+                                                 mem_pool().allocate<double_complex, memory_t::device>(lmmax * na_max),
+                                                 lmmax, na_max);
+                    break;
+                }
+            }
 
             std::vector<double_complex> zil(lmax__ + 1);
             for (int l = 0; l <= lmax__; l++) {
@@ -708,19 +833,20 @@ class Simulation_context: public Simulation_parameters
             }
 
             for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
-                double t = -omp_get_wtime();
-                int na = unit_cell().atom_type(iat).num_atoms();
+                int na = unit_cell_.atom_type(iat).num_atoms();
                 generate_phase_factors(iat, phase_factors);
+                utils::timer t1("sirius::Simulation_context::sum_fg_fl_yg|zm");
                 #pragma omp parallel for schedule(static)
                 for (int igloc = 0; igloc < ngv_loc; igloc++) {
-                    int ig = gvec().offset() + igloc;
                     for (int l = 0, lm = 0; l <= lmax__; l++) {
+                        double_complex z = fourpi * fl__(l, igloc, iat) * zil[l] * fpw__[igloc];
                         for (int m = -l; m <= l; m++, lm++) {
-                            zm(lm, igloc) = fourpi * fpw__[igloc] * zil[l] *
-                                            fl__(l, iat, gvec().shell(ig)) * std::conj(gvec_ylm__(lm, igloc));
+                            zm(lm, igloc) = z * std::conj(gvec_ylm__(lm, igloc));
                         }
                     }
                 }
+                t1.stop();
+                utils::timer t2("sirius::Simulation_context::sum_fg_fl_yg|mul");
                 switch (processing_unit()) {
                     case CPU: {
                         linalg<CPU>::gemm(0, 0, lmmax, na, ngv_loc,
@@ -730,34 +856,32 @@ class Simulation_context: public Simulation_parameters
                         break;
                     }
                     case GPU: {
-                        #ifdef __GPU
+#if defined(__GPU)
                         zm.copy<memory_t::host, memory_t::device>();
                         linalg<GPU>::gemm(0, 0, lmmax, na, ngv_loc,
                                           zm.at<GPU>(), zm.ld(),
                                           phase_factors.at<GPU>(), phase_factors.ld(),
                                           tmp.at<GPU>(), tmp.ld());
                         tmp.copy<memory_t::device, memory_t::host>();
-                        #endif
+#endif
                         break;
                     }
                 }
+                t2.stop();
 
-                if (control().print_performance_) {
-                    t += omp_get_wtime();
-                    if (comm().rank() == 0) {
-                        printf("[sum_fg_fl_yg] performance: %12.6f GFlops/rank, [m,n,k=%i %i %i, time=%f (sec)]\n",
-                               8e-9 * lmmax * na * gvec().num_gvec() / t / comm_.size(), lmmax, na, gvec().num_gvec(), t);
-                    }
-                }
                 for (int i = 0; i < na; i++) {
-                    int ia = unit_cell().atom_type(iat).atom_id(i);
-                    for (int lm = 0; lm < lmmax; lm++) {
-                        flm__(lm, ia) = tmp(lm, i);
-                    }
+                    int ia = unit_cell_.atom_type(iat).atom_id(i);
+                    std::copy(&tmp(0, i), &tmp(0, i) + lmmax, &flm(0, ia));
                 }
             }
 
-            comm().allreduce(&flm__(0, 0), (int)flm__.size());
+            comm().allreduce(&flm(0, 0), (int)flm.size());
+
+            mem_pool().reset<memory_t::host>();
+            if (processing_unit() == GPU) {
+                mem_pool().reset<memory_t::device>();
+            }
+            return std::move(flm);
         }
 
         inline Radial_integrals_beta<false> const& beta_ri() const
@@ -790,6 +914,31 @@ class Simulation_context: public Simulation_parameters
             return *atomic_wf_ri_djl_;
         }
 
+        inline Radial_integrals_rho_core_pseudo<false> const& ps_core_ri() const
+        {
+            return *ps_core_ri_;
+        }
+
+        inline Radial_integrals_rho_core_pseudo<true> const& ps_core_ri_djl() const
+        {
+            return *ps_core_ri_djl_;
+        }
+
+        inline Radial_integrals_rho_pseudo const& ps_rho_ri() const
+        {
+            return *ps_rho_ri_;
+        }
+
+        inline Radial_integrals_vloc<false> const& vloc_ri() const
+        {
+            return *vloc_ri_;
+        }
+
+        inline Radial_integrals_vloc<true> const& vloc_ri_djl() const
+        {
+            return *vloc_ri_djl_;
+        }
+
         /// Find the lambda parameter used in the Ewald summation.
         /** lambda parameter scales the erfc function argument:
          *  \f[
@@ -807,7 +956,7 @@ class Simulation_context: public Simulation_parameters
             /* iterate to find lambda */
             do {
                 lambda += 0.1;
-                upper_bound = charge * charge * std::sqrt(2.0 * lambda / twopi) * gsl_sf_erfc(gmax * std::sqrt(1.0 / (4.0 * lambda)));
+                upper_bound = charge * charge * std::sqrt(2.0 * lambda / twopi) * std::erfc(gmax * std::sqrt(1.0 / (4.0 * lambda)));
             } while (upper_bound < 1.0e-8);
 
             if (lambda < 1.5) {
@@ -876,19 +1025,19 @@ inline void Simulation_context::initialize()
     /* get processing unit */
     std::string pu = control().processing_unit_;
     if (pu == "") {
-        #ifdef __GPU
+#if defined(__GPU)
         pu = "gpu";
-        #else
+#else
         pu = "cpu";
-        #endif
+#endif
     }
     set_processing_unit(pu);
 
     /* check if we can use a GPU device */
     if (processing_unit() == GPU) {
-        #ifndef __GPU
+#if !defined(__GPU)
         TERMINATE_NO_GPU;
-        #endif
+#endif
     }
 
     /* check MPI grid dimensions and set a default grid if needed */
@@ -956,65 +1105,6 @@ inline void Simulation_context::initialize()
 
     /* initialize FFT interface */
     init_fft();
-
-    init_atoms_to_grid_idx();
-
-    if (comm_.rank() == 0 && control().print_memory_usage_) {
-        MEMORY_USAGE_INFO();
-    }
-
-    if (unit_cell_.num_atoms() != 0 && use_symmetry() && control().verification_ >= 1) {
-        unit_cell_.symmetry().check_gvec_symmetry(gvec(), comm());
-        if (!full_potential()) {
-            unit_cell_.symmetry().check_gvec_symmetry(gvec_coarse(), comm());
-        }
-    }
-
-    std::pair<int, int> limits(0, 0);
-    for (int x: {0, 1, 2}) {
-        limits.first  = std::min(limits.first,  fft().limits(x).first);
-        limits.second = std::max(limits.second, fft().limits(x).second);
-    }
-
-    phase_factors_ = mdarray<double_complex, 3>(3, limits, unit_cell().num_atoms(), memory_t::host, "phase_factors_");
-
-    #pragma omp parallel for
-    for (int i = limits.first; i <= limits.second; i++) {
-        for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
-            auto pos = unit_cell_.atom(ia).position();
-            for (int x: {0, 1, 2}) {
-                phase_factors_(x, i, ia) = std::exp(double_complex(0.0, twopi * (i * pos[x])));
-            }
-        }
-    }
-
-    phase_factors_t_ = mdarray<double_complex, 2>(gvec().count(), unit_cell().num_atom_types());
-    #pragma omp parallel for schedule(static)
-    for (int igloc = 0; igloc < gvec().count(); igloc++) {
-        /* global index of G-vector */
-        int ig = gvec().offset() + igloc;
-        for (int iat = 0; iat < unit_cell().num_atom_types(); iat++) {
-            double_complex z(0, 0);
-            for (int ia = 0; ia < unit_cell().atom_type(iat).num_atoms(); ia++) {
-                z += gvec_phase_factor(ig, unit_cell().atom_type(iat).atom_id(ia));
-            }
-            phase_factors_t_(igloc, iat) = z;
-        }
-    }
-
-    if (use_symmetry()) {
-        sym_phase_factors_ = mdarray<double_complex, 3>(3, limits, unit_cell().symmetry().num_mag_sym());
-
-        #pragma omp parallel for
-        for (int i = limits.first; i <= limits.second; i++) {
-            for (int isym = 0; isym < unit_cell().symmetry().num_mag_sym(); isym++) {
-                auto t = unit_cell().symmetry().magnetic_group_symmetry(isym).spg_op.t;
-                for (int x: {0, 1, 2}) {
-                    sym_phase_factors_(x, i, isym) = std::exp(double_complex(0.0, twopi * (i * t[x])));
-                }
-            }
-        }
-    }
 
     int nbnd = static_cast<int>(unit_cell_.num_valence_electrons() / 2.0) +
                                 std::max(10, static_cast<int>(0.1 * unit_cell_.num_valence_electrons()));
@@ -1103,45 +1193,19 @@ inline void Simulation_context::initialize()
         }
     }
 
-#ifdef __GPU
-    if (processing_unit() == GPU) {
-        acc::set_device();
-        gvec_coord_ = mdarray<int, 2>(gvec().count(), 3, memory_t::host | memory_t::device, "gvec_coord_");
-        for (int igloc = 0; igloc < gvec().count(); igloc++) {
-            int ig = gvec().offset() + igloc;
-            auto G = gvec().gvec(ig);
-            for (int x: {0, 1, 2}) {
-                gvec_coord_(igloc, x) = G[x];
-            }
-        }
-        gvec_coord_.copy<memory_t::host, memory_t::device>();
-
-        for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
-            int nat = unit_cell_.atom_type(iat).num_atoms();
-            if (nat > 0) {
-                atom_coord_.push_back(std::move(mdarray<double, 2>(nat, 3, memory_t::host | memory_t::device)));
-                for (int i = 0; i < nat; i++) {
-                    int ia = unit_cell_.atom_type(iat).atom_id(i);
-                    for (int x: {0, 1, 2}) {
-                        atom_coord_.back()(i, x) = unit_cell_.atom(ia).position()[x];
-                    }
-                }
-                atom_coord_.back().copy<memory_t::host, memory_t::device>();
-            } else {
-                atom_coord_.push_back(std::move(mdarray<double, 2>()));
-            }
-        }
-    }
-#endif
-
     if (!full_potential()) {
-        /* some extra length is added to cutoffs in order to interface with QE which may require ri(q) for q>cutoff */
-        beta_ri_      = std::unique_ptr<Radial_integrals_beta<false>>(new Radial_integrals_beta<false>(unit_cell(), gk_cutoff() + 1, settings().nprii_beta_));
-        beta_ri_djl_  = std::unique_ptr<Radial_integrals_beta<true>>(new Radial_integrals_beta<true>(unit_cell(), gk_cutoff() + 1, settings().nprii_beta_));
-        aug_ri_       = std::unique_ptr<Radial_integrals_aug<false>>(new Radial_integrals_aug<false>(unit_cell(), pw_cutoff() + 1, settings().nprii_aug_));
-        aug_ri_djl_   = std::unique_ptr<Radial_integrals_aug<true>>(new Radial_integrals_aug<true>(unit_cell(), pw_cutoff() + 1, settings().nprii_aug_));
-        atomic_wf_ri_ = std::unique_ptr<Radial_integrals_atomic_wf<false>>(new Radial_integrals_atomic_wf<false>(unit_cell(), gk_cutoff(), 20));
-        atomic_wf_ri_djl_ = std::unique_ptr<Radial_integrals_atomic_wf<true>>(new Radial_integrals_atomic_wf<true>(unit_cell(), gk_cutoff(), 20));
+        /* add extra length to the cutoffs in order to interpolate radial integrals for q > cutoff */
+        beta_ri_          = std::unique_ptr<Radial_integrals_beta<false>>(new Radial_integrals_beta<false>(unit_cell(), 2 * gk_cutoff(), settings().nprii_beta_));
+        beta_ri_djl_      = std::unique_ptr<Radial_integrals_beta<true>>(new Radial_integrals_beta<true>(unit_cell(), 2 * gk_cutoff(), settings().nprii_beta_));
+        aug_ri_           = std::unique_ptr<Radial_integrals_aug<false>>(new Radial_integrals_aug<false>(unit_cell(), 2 * pw_cutoff(), settings().nprii_aug_));
+        aug_ri_djl_       = std::unique_ptr<Radial_integrals_aug<true>>(new Radial_integrals_aug<true>(unit_cell(), 2 * pw_cutoff(), settings().nprii_aug_));
+        atomic_wf_ri_     = std::unique_ptr<Radial_integrals_atomic_wf<false>>(new Radial_integrals_atomic_wf<false>(unit_cell(), 2 * gk_cutoff(), 20));
+        atomic_wf_ri_djl_ = std::unique_ptr<Radial_integrals_atomic_wf<true>>(new Radial_integrals_atomic_wf<true>(unit_cell(), 2 * gk_cutoff(), 20));
+        ps_core_ri_       = std::unique_ptr<Radial_integrals_rho_core_pseudo<false>>(new Radial_integrals_rho_core_pseudo<false>(unit_cell(), 2 * pw_cutoff(), settings().nprii_rho_core_));
+        ps_core_ri_djl_   = std::unique_ptr<Radial_integrals_rho_core_pseudo<true>>(new Radial_integrals_rho_core_pseudo<true>(unit_cell(), 2 * pw_cutoff(), settings().nprii_rho_core_));
+        ps_rho_ri_        = std::unique_ptr<Radial_integrals_rho_pseudo>(new Radial_integrals_rho_pseudo(unit_cell(), 2 * pw_cutoff(), 20));
+        vloc_ri_          = std::unique_ptr<Radial_integrals_vloc<false>>(new Radial_integrals_vloc<false>(unit_cell(), 2 * pw_cutoff(), settings().nprii_vloc_));
+        vloc_ri_djl_      = std::unique_ptr<Radial_integrals_vloc<true>>(new Radial_integrals_vloc<true>(unit_cell(), 2 * pw_cutoff(), settings().nprii_vloc_));
     }
 
     //time_active_ = -runtime::wtime();
@@ -1159,21 +1223,12 @@ inline void Simulation_context::initialize()
                     comm().rank(), comm_band().rank(), comm_k().rank(), utils::hostname().c_str());
     }
 
+    update();
+
     if (comm_.rank() == 0 && control().print_memory_usage_) {
         MEMORY_USAGE_INFO();
     }
 
-    if (full_potential()) {
-        init_step_function();
-    }
-
-    if (!full_potential()) {
-        /* create augmentation operator Q_{xi,xi'}(G) here */
-        for (int iat = 0; iat < unit_cell().num_atom_types(); iat++) {
-            augmentation_op_.push_back(std::move(Augmentation_operator(unit_cell().atom_type(iat), gvec(), comm())));
-            augmentation_op_.back().generate_pw_coeffs(aug_ri());
-        }
-    }
     initialized_ = true;
 }
 
