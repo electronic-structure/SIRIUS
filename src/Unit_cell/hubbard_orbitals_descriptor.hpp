@@ -3,7 +3,7 @@
 
 namespace sirius {
 // structure containing all informations about a specific hubbard orbital (including the index of the radial function)
-    class hubbard_orbital_info_ {
+    class hubbard_orbital_descriptor_ {
     private:
         int hubbard_n_{-1}; // atomic orbital_
         int hubbard_l_{-1}; // angular momentum
@@ -30,20 +30,20 @@ namespace sirius {
         double hubbard_J0_{0.0};
 
     public:
-        hubbard_orbital_info_()
+        hubbard_orbital_descriptor_()
         {
         }
 
-        hubbard_orbital_info_ (const int n__,
-                               const int l__,
-                               const int orbital_index__,
-                               const double occ__,
-                               const double J__,
-                               const double U__,
-                               const double *hub_coef__,
-                               const double alpha__,
-                               const double beta__,
-                               const double J0__)
+        hubbard_orbital_descriptor_ (const int n__,
+                                     const int l__,
+                                     const int orbital_index__,
+                                     const double occ__,
+                                     const double J__,
+                                     const double U__,
+                                     const double *hub_coef__,
+                                     const double alpha__,
+                                     const double beta__,
+                                     const double J0__)
             :hubbard_n_(n__),
              hubbard_l_(l__),
              radial_orbital_index_(orbital_index__),
@@ -63,11 +63,11 @@ namespace sirius {
             }
         }
 
-        ~hubbard_orbital_info_ ()
+        ~hubbard_orbital_descriptor_ ()
         {
         }
 
-        hubbard_orbital_info_ (hubbard_orbital_info_ && src)
+        hubbard_orbital_descriptor_ (hubbard_orbital_descriptor_ && src)
             : hubbard_n_(src.hubbard_n_),
               hubbard_l_(src.hubbard_l_),
               hubbard_occ_(src.hubbard_occ_),

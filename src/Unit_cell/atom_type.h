@@ -36,7 +36,7 @@
 #include "sht.h"
 #include "radial_functions_index.hpp"
 #include "basis_functions_index.hpp"
-#include "hubbard_orbitals_info.hpp"
+#include "hubbard_orbitals_descriptor.hpp"
 namespace sirius {
 
 /// Defines the properties of atom type.
@@ -163,7 +163,7 @@ class Atom_type
     /// vector containing all orbitals informations that are relevant
     /// for the hubbard correction
 
-    std::vector<hubbard_orbital_info_> hubbard_orbitals_;
+    std::vector<hubbard_orbital_descriptor_> hubbard_orbitals_;
 
     /// Hubbard correction
     bool hubbard_correction_{false};
@@ -591,7 +591,7 @@ class Atom_type
         for (int s = 0; s < ps_atomic_wf_level_.size(); s++) {
             if (ps_atomic_wf_level_[s] > 0) {
                 if ((ps_atomic_wf_level_[s] ==  n) && (std::abs(ps_atomic_wf(s).first) == l)) {
-                    hubbard_orbital_info_ hub(n, l, s, occ, J, U, hub_coef__, alpha__, beta__, J0__);
+                    hubbard_orbital_descriptor_ hub(n, l, s, occ, J, U, hub_coef__, alpha__, beta__, J0__);
                     hubbard_orbitals_.push_back(std::move(hub));
 
                     // we nedd to consider the case where spin orbit
@@ -611,7 +611,7 @@ class Atom_type
                 // codes that do not store all info about wave
                 // functions.
                 if (std::abs(wfc.first) == l) {
-                    hubbard_orbital_info_ hub(n, l, s, occ, J, U, hub_coef__, alpha__, beta__, J0__);
+                    hubbard_orbital_descriptor_ hub(n, l, s, occ, J, U, hub_coef__, alpha__, beta__, J0__);
                     hubbard_orbitals_.push_back(std::move(hub));
 
                     if (!this->spin_orbit_coupling_)
@@ -625,12 +625,12 @@ class Atom_type
         return hubbard_orbitals_.size();
     }
 
-    inline hubbard_orbital_info_ const &hubbard_orbital(const int channel_) const {
+    inline hubbard_orbital_descriptor_ const &hubbard_orbital(const int channel_) const {
         assert(hubbard_orbitals_.size() > 0);
         return hubbard_orbitals_[channel_];
     }
 
-    inline const std::vector<hubbard_orbital_info_> &hubbard_orbital() const {
+    inline const std::vector<hubbard_orbital_descriptor_> &hubbard_orbital() const {
         return hubbard_orbitals_;
     }
 

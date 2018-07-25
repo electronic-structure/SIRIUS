@@ -7,9 +7,9 @@
 
 void Hubbard::compute_occupancies_derivatives(K_point&                    kp,
                                               Q_operator<double_complex>& q_op, // overlap operator
-                                              mdarray<double_complex, 6>& dn_)  // Atom we shift
+                                              mdarray<double_complex, 6>& dn__)  // Atom we shift
 {
-    dn_.zero();
+    dn__.zero();
     // check if we have a norm conserving pseudo potential only. OOnly
     // derivatives of the hubbard wave functions are needed.
     auto& phi = kp.hubbard_wave_functions();
@@ -86,19 +86,19 @@ void Hubbard::compute_occupancies_derivatives(K_point&                    kp,
     }
     #endif
 
-    mdarray<double_complex, 5> dn__(2 * this->hubbard_lmax() + 1,
-                                    2 * this->hubbard_lmax() + 1,
-                                    ctx_.num_spins(),
-                                    ctx_.unit_cell().num_atoms(),
-                                    3);
+    mdarray<double_complex, 5> dn_tmp(2 * this->hubbard_lmax() + 1,
+                                      2 * this->hubbard_lmax() + 1,
+                                      ctx_.num_spins(),
+                                      ctx_.unit_cell().num_atoms(),
+                                      3);
 
     #if defined(__GPU)
     if (ctx_.processing_unit() == GPU) {
-        dn__.allocate(memory_t::device);
+        dn_tmp.allocate(memory_t::device);
     }
     #endif
     for (int atom_id = 0; atom_id < ctx_.unit_cell().num_atoms(); atom_id++) {
-        dn__.zero();
+        dn_tmp.zero();
         for (int dir = 0; dir < 3; dir++) {
             // reset dphi
             dphi.pw_coeffs(0).prime().zero();
@@ -167,20 +167,20 @@ void Hubbard::compute_occupancies_derivatives(K_point&                    kp,
                                 phi_s_psi,
                                 dphi_s_psi,
                                 dphi,
-                                dn__,
+                                dn_tmp,
                                 dm, // temporary table
                                 dir);
         } // direction x, y, z
 
         // use a memcpy here
-        memcpy(dn_.template at<CPU>(0, 0, 0, 0, 0, atom_id),
-               dn__.template at<CPU>(),
-               sizeof(double_complex) * dn__.size());
+        memcpy(dn__.template at<CPU>(0, 0, 0, 0, 0, atom_id),
+               dn_tmp.template at<CPU>(),
+               sizeof(double_complex) * dn_tmp.size());
     } // atom_id
 
     #if defined(__GPU)
     if (ctx_.processing_unit() == GPU) {
-        dn__.deallocate(memory_t::device);
+        dn_tmp.deallocate(memory_t::device);
         dm.deallocate(memory_t::device);
         phi_s_psi.deallocate(memory_t::device);
         dphi_s_psi.deallocate(memory_t::device);
@@ -197,7 +197,7 @@ void Hubbard::compute_occupancies_derivatives(K_point&                    kp,
 
 void Hubbard::compute_occupancies_stress_derivatives(K_point&                    kp,
                                                      Q_operator<double_complex>& q_op, // Compensnation operator or overlap operator
-                                                     mdarray<double_complex, 5>& dn_)  // derivative of the occupation number compared to displacement of atom aton_id
+                                                     mdarray<double_complex, 5>& dn__)  // derivative of the occupation number compared to displacement of atom aton_id
 {
     auto& phi = kp.hubbard_wave_functions();
 
@@ -355,7 +355,7 @@ void Hubbard::compute_occupancies_stress_derivatives(K_point&                   
                                 phi_s_psi,
                                 dphi_s_psi,
                                 dphi,
-                                dn_,
+                                dn__,
                                 dm,
                                 3 * nu + mu);
         }
@@ -558,7 +558,7 @@ void Hubbard::compute_occupancies(K_point&                    kp,
 
 // remove this when things are working and replace it with apply_h_s if
 // possible. Problem right now is that the class hamiltonian is not
-// included in hubbard_potential.
+// included in hubbard but the other way around.
 
 void Hubbard::apply_S_operator(K_point&                    kp,
                                Q_operator<double_complex>& q_op,
