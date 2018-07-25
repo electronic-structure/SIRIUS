@@ -242,6 +242,8 @@ class Atom_type
     /// Density of a free atom.
     Spline<double> free_atom_density_spline_;
 
+    /// Density of a free atom as read from the input file.
+    /** Does not contain 4 Pi and r^2 prefactors. */
     std::vector<double> free_atom_density_;
 
     /// Radial grid of a free atom.
@@ -621,20 +623,26 @@ class Atom_type
         }
     }
 
-    inline int number_of_hubbard_channels() const {
+    inline int number_of_hubbard_channels() const 
+    {
         return hubbard_orbitals_.size();
     }
 
-    inline hubbard_orbital_descriptor_ const &hubbard_orbital(const int channel_) const {
+    inline hubbard_orbital_descriptor_ const &hubbard_orbital(const int channel_) const 
+    {
         assert(hubbard_orbitals_.size() > 0);
         return hubbard_orbitals_[channel_];
     }
 
-    inline const std::vector<hubbard_orbital_descriptor_> &hubbard_orbital() const {
+    inline const std::vector<hubbard_orbital_descriptor_> &hubbard_orbital() const 
+    {
         return hubbard_orbitals_;
     }
 
     inline void init_free_atom(bool smooth);
+
+    /// Initialize the free atom density (smooth or true).
+    inline void init_free_atom_density(bool smooth);
 
     inline void print_info() const;
 
@@ -1179,47 +1187,53 @@ inline void Atom_type::init(int offset_lo__)
     initialized_ = true;
 }
 
-inline void Atom_type::init_free_atom(bool smooth)
+inline void Atom_type::init_free_atom_density(bool smooth)
 {
     free_atom_density_spline_ = Spline<double>(free_atom_radial_grid_, free_atom_density_);
+
     /* smooth free atom density inside the muffin-tin sphere */
     if (smooth) {
         /* find point on the grid close to the muffin-tin radius */
         int irmt = free_atom_radial_grid_.index_of(mt_radius());
+        /* interpolate at this point near MT radius */
+        double R = free_atom_radial_grid_[irmt];
+
+        //std::vector<double> g;
+        //double nel = fourpi * free_atom_density_spline_.integrate(g, 2);
+
+        //std::cout << "number of electrons: " << nel << ", inside MT: " << g[irmt] * fourpi << "\n";
+
 
         //mdarray<double, 1> b(2);
         //mdarray<double, 2> A(2, 2);
-        double R = free_atom_radial_grid_[irmt];
-        ////A(0, 0) = std::pow(R, 2);
-        ////A(0, 1) = std::pow(R, 3);
-        ////A(1, 0) = 2 * R;
-        ////A(1, 1) = 3 * std::pow(R, 2);
-        //A(0, 0) = 4; //std::pow(R, 1);
-        //A(0, 1) = std::pow(R, 1);
-        //A(1, 0) = 0;
-        //A(1, 1) = 1; //2 * std::pow(R, 1);
+        //A(0, 0) = std::pow(R, 2);
+        //A(0, 1) = std::pow(R, 3);
+        //A(1, 0) = 2 * R;
+        //A(1, 1) = 3 * std::pow(R, 2);
+        ////A(0, 0) = 4; //std::pow(R, 1);
+        ////A(0, 1) = std::pow(R, 1);
+        ////A(1, 0) = 0;
+        ////A(1, 1) = 1; //2 * std::pow(R, 1);
 
         //b(0) = free_atom_density_spline_(irmt);
         //b(1) = free_atom_density_spline_.deriv(1, irmt);
 
         //linalg<CPU>::gesv<double>(2, 1, A.at<CPU>(), 2, b.at<CPU>(), 2);
 
-        //== /* write initial density */
-        //== std::stringstream sstr;
-        //== sstr << "free_density_" << id_ << ".dat";
-        //== FILE* fout = fopen(sstr.str().c_str(), "w");
+        //////== /* write initial density */
+        //std::stringstream sstr;
+        //sstr << "free_density_" << id_ << ".dat";
+        //FILE* fout = fopen(sstr.str().c_str(), "w");
 
-        //== for (int ir = 0; ir < free_atom_radial_grid().num_points(); ir++)
-        //== {
-        //==     fprintf(fout, "%f %f \n", free_atom_radial_grid(ir), free_atom_density_[ir]);
-        //== }
-        //== fclose(fout);
+        //for (int ir = 0; ir < free_atom_radial_grid().num_points(); ir++) {
+        //    fprintf(fout, "%18.12f %18.12f \n", free_atom_radial_grid(ir), free_atom_density_[ir]);
+        //}
+        //fclose(fout);
 
         /* make smooth free atom density inside muffin-tin */
         for (int i = 0; i <= irmt; i++) {
             double x = free_atom_radial_grid(i);
-            //free_atom_density_spline_(i) = 4 + b(1) * free_atom_radial_grid(i);
-                //b(0) * std::pow(free_atom_radial_grid(i), 1) + b(1) * std::pow(free_atom_radial_grid(i), 2);
+            //free_atom_density_spline_(i) = b(0) * std::pow(free_atom_radial_grid(i), 2) + b(1) * std::pow(free_atom_radial_grid(i), 3);
             free_atom_density_spline_(i) = free_atom_density_[i] * 0.5 * (1 + std::erf((x / R - 0.5) * 10));
         }
 
@@ -1229,7 +1243,7 @@ inline void Atom_type::init_free_atom(bool smooth)
         ///* write smoothed density */
         //sstr.str("");
         //sstr << "free_density_modified_" << id_ << ".dat";
-        //FILE* fout = fopen(sstr.str().c_str(), "w");
+        //fout = fopen(sstr.str().c_str(), "w");
 
         //for (int ir = 0; ir < free_atom_radial_grid().num_points(); ir++) {
         //    fprintf(fout, "%18.12f %18.12f \n", free_atom_radial_grid(ir), free_atom_density(ir));

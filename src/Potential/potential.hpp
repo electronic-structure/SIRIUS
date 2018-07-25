@@ -189,12 +189,6 @@ class Potential : public Field4D
         ctx_.comm().allreduce(&qmt__(0, 0), (int)qmt__.size());
     }
 
-    /// Perform a G-vector summation of plane-wave coefficiens multiplied by radial integrals.
-    inline void poisson_sum_G(int                         lmmax__,
-                              double_complex const*       fpw__,
-                              mdarray<double, 3>&         fl__,
-                              mdarray<double_complex, 2>& flm__);
-
     /// Add contribution from the pseudocharge to the plane-wave expansion
     inline void poisson_add_pseudo_pw(mdarray<double_complex, 2>& qmt, mdarray<double_complex, 2>& qit, double_complex* rho_pw);
 
@@ -424,38 +418,8 @@ class Potential : public Field4D
         }
 
         if (ctx_.full_potential()) {
-            #pragma omp parallel for schedule(static)
-            for (int igloc = 0; igloc < ctx_.gvec().count(); igloc++) {
-                auto rtp = SHT::spherical_coordinates(ctx_.gvec().gvec_cart<index_domain_t::local>(igloc));
-                SHT::spherical_harmonics(ctx_.lmax_pot(), rtp[1], rtp[2], &gvec_ylm_(0, igloc));
-            }
-
-            /* compute values of spherical Bessel functions at MT boundary */
-            mdarray<double, 3> sbessel_mt_tmp(lmax_ + pseudo_density_order_ + 2, unit_cell_.num_atom_types(), 
-                                              ctx_.gvec().num_shells(), memory_t::host, "sbessel_mt_tmp");
-
-            #pragma omp parallel for schedule(static)
-            for (int igs = 0; igs < ctx_.gvec().num_shells(); igs++) {
-                for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
-                    gsl_sf_bessel_jl_array(lmax_ + pseudo_density_order_ + 1, 
-                                           ctx_.gvec().shell_len(igs) * unit_cell_.atom_type(iat).mt_radius(), 
-                                           &sbessel_mt_tmp(0, iat, igs));
-                }
-            }
-
-            sbessel_mt_ = mdarray<double, 3>(lmax_ + pseudo_density_order_ + 2,
-                                             ctx_.gvec().count(),
-                                             unit_cell_.num_atom_types(),
-                                             memory_t::host, "sbessel_mt_");
-
-            for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
-                for (int igloc = 0; igloc < ctx_.gvec().count(); igloc++) {
-                    int ig = ctx_.gvec().offset() + igloc;
-                    for (int l = 0; l < lmax_ + pseudo_density_order_ + 2; l++) {
-                        sbessel_mt_(l, igloc, iat) = sbessel_mt_tmp(l, iat, ctx_.gvec().shell(ig));
-                    }
-                }
-            }
+            gvec_ylm_ = ctx_.generate_gvec_ylm(ctx_.lmax_pot());
+            sbessel_mt_ = ctx_.generate_sbessel_mt(lmax_ + pseudo_density_order_ + 1);
 
             /* compute moments of spherical Bessel functions 
              *
@@ -464,35 +428,26 @@ class Potential : public Field4D
              *
              * and use relation between Bessel and spherical Bessel functions: 
              * Subscript[j, n](z)=Sqrt[\[Pi]/2]/Sqrt[z]Subscript[J, n+1/2](z) */
-            mdarray<double, 3> sbessel_mom_tmp(ctx_.lmax_rho() + 1, unit_cell_.num_atom_types(),
-                                               ctx_.gvec().num_shells(), memory_t::host, "sbessel_mom_");
-            sbessel_mom_tmp.zero();
-
-            /* for G=0 */
-            for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
-                sbessel_mom_tmp(0, iat, 0) = std::pow(unit_cell_.atom_type(iat).mt_radius(), 3) / 3.0; // for |G|=0
-            }
-
-            #pragma omp parallel for schedule(static)
-            for (int igs = 1; igs < ctx_.gvec().num_shells(); igs++) {
-                for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
-                    for (int l = 0; l <= ctx_.lmax_rho(); l++) {
-                        sbessel_mom_tmp(l, iat, igs) = std::pow(unit_cell_.atom_type(iat).mt_radius(), l + 2) * 
-                                                       sbessel_mt_tmp(l + 1, iat, igs) / ctx_.gvec().shell_len(igs);
-                    }
-                }
-            }
-
             sbessel_mom_ = mdarray<double, 3>(ctx_.lmax_rho() + 1,
                                               ctx_.gvec().count(),
                                               unit_cell_.num_atom_types(),
                                               memory_t::host, "sbessel_mom_");
-
+            sbessel_mom_.zero();
+            int ig0{0};
+            if (ctx_.comm().rank() == 0) {
+                /* for |G| = 0 */
+                for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
+                    sbessel_mom_(0, 0, iat) = std::pow(unit_cell_.atom_type(iat).mt_radius(), 3) / 3.0;
+                }
+                ig0 = 1;
+            }
             for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
-                for (int igloc = 0; igloc < ctx_.gvec().count(); igloc++) {
-                    int ig = ctx_.gvec().offset() + igloc;
+                #pragma omp parallel for schedule(static)
+                for (int igloc = ig0; igloc < ctx_.gvec().count(); igloc++) {
+                    auto len = ctx_.gvec().gvec_cart<index_domain_t::local>(igloc).length();
                     for (int l = 0; l <= ctx_.lmax_rho(); l++) {
-                        sbessel_mom_(l, igloc, iat) = sbessel_mom_tmp(l, iat, ctx_.gvec().shell(ig));
+                        sbessel_mom_(l, igloc, iat) = std::pow(unit_cell_.atom_type(iat).mt_radius(), l + 2) *
+                                                      sbessel_mt_(l + 1, igloc, iat) / len;
                     }
                 }
             }
