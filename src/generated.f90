@@ -580,6 +580,37 @@ end interface
 res = sirius_create_ground_state_aux(ks_handler)
 end function sirius_create_ground_state
 
+!> @brief Find the ground state
+!> @param [in] gs_handler Handler of the ground state
+subroutine sirius_find_ground_state(gs_handler)
+implicit none
+type(C_PTR), intent(in) :: gs_handler
+interface
+subroutine sirius_find_ground_state_aux(gs_handler)&
+&bind(C, name="sirius_find_ground_state")
+use, intrinsic :: ISO_C_BINDING
+type(C_PTR), intent(in) :: gs_handler
+end subroutine
+end interface
+
+call sirius_find_ground_state_aux(gs_handler)
+end subroutine sirius_find_ground_state
+
+!> @brief Update a ground state object after change of atomic coordinates or lattice vectors.
+!> @param [in] gs_handler Ground-state handler.
+subroutine sirius_update_ground_state(gs_handler)
+implicit none
+type(C_PTR), intent(in) :: gs_handler
+interface
+subroutine sirius_update_ground_state_aux(gs_handler)&
+&bind(C, name="sirius_update_ground_state")
+use, intrinsic :: ISO_C_BINDING
+type(C_PTR), intent(in) :: gs_handler
+end subroutine
+end interface
+
+call sirius_update_ground_state_aux(gs_handler)
+end subroutine sirius_update_ground_state
 
 !> @brief Add new atom type to the unit cell.
 !> @param [in] handler Simulation context handler.

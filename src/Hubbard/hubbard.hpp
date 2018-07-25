@@ -247,8 +247,9 @@ class Hubbard
         : ctx_(ctx__)
         , unit_cell_(ctx__.unit_cell())
     {
-        if (!ctx_.hubbard_correction())
+        if (!ctx_.hubbard_correction()) {
             return;
+        }
         this->orthogonalize_hubbard_orbitals_ = ctx_.Hubbard().orthogonalize_hubbard_orbitals_;
         this->normalize_orbitals_only_        = ctx_.Hubbard().normalize_hubbard_orbitals_;
         this->projection_method_              = ctx_.Hubbard().projection_method_;
@@ -263,9 +264,7 @@ class Hubbard
         for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {
             auto& atom_type = ctx_.unit_cell().atom(ia).type();
             if (ctx__.unit_cell().atom(ia).type().hubbard_correction()) {
-                for (unsigned int channel = 0;
-                     channel < atom_type.number_of_hubbard_channels();
-                     channel++) {
+                for (int channel = 0; channel < atom_type.number_of_hubbard_channels(); channel++) {
                     this->lmax_ = std::max(this->lmax_, atom_type.hubbard_orbital(channel).hubbard_l());
                 }
             }

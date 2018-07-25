@@ -2,8 +2,9 @@
 #define __HUBBARD_ORBITAL_INFO_HPP_
 
 namespace sirius {
-// structure containing all informations about a specific hubbard orbital (including the index of the radial function)
-    class hubbard_orbital_descriptor_ {
+
+/// Structure containing all informations about a specific hubbard orbital (including the index of the radial function).
+class hubbard_orbital_descriptor_ {
     private:
         int hubbard_n_{-1}; // atomic orbital_
         int hubbard_l_{-1}; // angular momentum
@@ -34,25 +35,25 @@ namespace sirius {
         {
         }
 
-        hubbard_orbital_descriptor_ (const int n__,
-                                     const int l__,
-                                     const int orbital_index__,
-                                     const double occ__,
-                                     const double J__,
-                                     const double U__,
-                                     const double *hub_coef__,
-                                     const double alpha__,
-                                     const double beta__,
-                                     const double J0__)
-            :hubbard_n_(n__),
-             hubbard_l_(l__),
-             radial_orbital_index_(orbital_index__),
-             hubbard_occ_(occ__),
-             hubbard_J_(J__),
-             hubbard_U_(U__),
-             hubbard_alpha_(alpha__),
-             hubbard_beta_(beta__),
-             hubbard_J0_(J0__)
+        hubbard_orbital_descriptor_(const int n__,
+                                    const int l__,
+                                    const int orbital_index__,
+                                    const double occ__,
+                                    const double J__,
+                                    const double U__,
+                                    const double *hub_coef__,
+                                    const double alpha__,
+                                    const double beta__,
+                                    const double J0__)
+            : hubbard_n_(n__)
+            , hubbard_l_(l__)
+            , hubbard_occ_(occ__)
+            , radial_orbital_index_(orbital_index__)
+            , hubbard_J_(J__)
+            , hubbard_U_(U__)
+            , hubbard_alpha_(alpha__)
+            , hubbard_beta_(beta__)
+            , hubbard_J0_(J0__)
         {
             if (hub_coef__) {
                 for (int s = 0; s < 4; s++) {

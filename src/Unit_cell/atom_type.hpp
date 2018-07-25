@@ -590,7 +590,7 @@ class Atom_type
                              double beta__,
                              double J0__)
     {
-        for (int s = 0; s < ps_atomic_wf_level_.size(); s++) {
+        for (int s = 0; s < static_cast<int>(ps_atomic_wf_level_.size()); s++) {
             if (ps_atomic_wf_level_[s] > 0) {
                 if ((ps_atomic_wf_level_[s] ==  n) && (std::abs(ps_atomic_wf(s).first) == l)) {
                     hubbard_orbital_descriptor_ hub(n, l, s, occ, J, U, hub_coef__, alpha__, beta__, J0__);
@@ -625,7 +625,7 @@ class Atom_type
 
     inline int number_of_hubbard_channels() const 
     {
-        return hubbard_orbitals_.size();
+        return static_cast<int>(hubbard_orbitals_.size());
     }
 
     inline hubbard_orbital_descriptor_ const &hubbard_orbital(const int channel_) const 
