@@ -51,7 +51,7 @@ class Free_atom : public Atom_type
   public:
 
     Free_atom(Free_atom&& src) = default;
-    
+
     /// Constructor.
     Free_atom(Simulation_parameters const& param__,
               std::string                  symbol__)
@@ -82,9 +82,14 @@ class Free_atom : public Atom_type
         free_atom_orbital_density_ = mdarray<double, 2>(np, num_atomic_levels());
         free_atom_wave_functions_  = mdarray<double, 2>(np, num_atomic_levels());
 
-        XC_functional Ex("XC_LDA_X", 1);
-        XC_functional Ec("XC_LDA_C_VWN", 1);
-        Ex.set_relativistic(rel);
+        XC_functional *Ex = nullptr;
+        XC_functional Ec("XC_LDA_C_VWN", 1);;
+        if (rel) {
+          TERMINATE("Fixme : the libxc staring with version 4 changed the way to set relativitic LDA exchange");
+          Ex = new XC_functional("XC_LDA_REL_X", 1);
+        } else {
+          Ex = new XC_functional("XC_LDA_X", 1);
+        }
 
         std::vector<double> veff(np);
         std::vector<double> vrho(np);
@@ -185,7 +190,7 @@ class Free_atom : public Atom_type
             }
 
             /* compute XC potential and energy */
-            Ex.get_lda(rho.num_points(), &rho(0), &vx[0], &ex[0]);
+            Ex->get_lda(rho.num_points(), &rho(0), &vx[0], &ex[0]);
             Ec.get_lda(rho.num_points(), &rho(0), &vc[0], &ec[0]);
             for (int ir = 0; ir < rho.num_points(); ir++) {
                 vxc[ir] = (vx[ir] + vc[ir]);
@@ -251,7 +256,7 @@ class Free_atom : public Atom_type
             dict["num_scf_iterations"] = num_iter;
         } else {
             dict["converged"] = false;
-        } 
+        }
         dict["energy_diff"] = energy_diff;
         dict["charge_rms"] = charge_rms;
         dict["energy_tot"] = energy_tot;
@@ -300,7 +305,7 @@ class Free_atom : public Atom_type
         //        }
         //        int n = lo_desc["n"];
         //        int o = lo_desc["o"];
-        //        
+        //
         //        //std::cout << r << "\n";
 
         //    }

@@ -7,6 +7,7 @@ inline void K_point::generate_atomic_centered_wavefunctions_aux(const int       
                                                                 std::vector<int>& offset,
                                                                 const bool        hubbard)
 {
+
     if (!num_ao__) {
         return;
     }
@@ -34,11 +35,11 @@ inline void K_point::generate_atomic_centered_wavefunctions_aux(const int       
         }
 
         int n{0};
-        if (!hubbard) {
-            for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
-                auto phase        = twopi * dot(gkvec().gkvec(igk), unit_cell_.atom(ia).position());
-                auto phase_factor = std::exp(double_complex(0.0, phase));
-                auto& atom_type   = unit_cell_.atom(ia).type();
+        for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
+            auto phase        = twopi * dot(gkvec().gkvec(igk), unit_cell_.atom(ia).position());
+            auto phase_factor = std::exp(double_complex(0.0, phase));
+            auto& atom_type   = unit_cell_.atom(ia).type();
+            if (!hubbard) {
                 for (int i = 0; i < atom_type.num_ps_atomic_wf(); i++) {
                     auto l = std::abs(atom_type.ps_atomic_wf(i).first);
                     auto z = std::pow(double_complex(0, -1), l) * fourpi / std::sqrt(unit_cell_.omega());
@@ -48,29 +49,34 @@ inline void K_point::generate_atomic_centered_wavefunctions_aux(const int       
                         n++;
                     }
                 } // i
-            }
-        } else {
-            for (int ia = 0; ia < unit_cell_.num_atoms(); ia++) {
-                auto phase        = twopi * dot(gkvec().gkvec(igk), unit_cell_.atom(ia).position());
-                auto phase_factor = double_complex(std::cos(phase), std::sin(phase));
-                auto& atom_type   = unit_cell_.atom(ia).type();
+            } else {
                 if (atom_type.hubbard_correction()) {
-                    for (int i = 0; i < atom_type.num_ps_atomic_wf(); i++) {
-                        auto l = std::abs(atom_type.ps_atomic_wf(i).first);
-                        auto z = std::pow(double_complex(0, -1), l) * fourpi / std::sqrt(unit_cell_.omega());
-                        if (l == atom_type.hubbard_l()) {
+                    if (atom_type.spin_orbit_coupling()) {
+                        // one channel only now
+                        for (int i = 0; i < 2; i++) {
+                            auto &orb = atom_type.hubbard_orbital(i);
+                            const int l = std::abs(orb.hubbard_l());
+                            auto z = std::pow(double_complex(0, -1), l) * fourpi / std::sqrt(unit_cell_.omega());
                             for (int m = -l; m <= l; m++) {
                                 int lm = utils::lm(l, m);
-                                if (atom_type.spin_orbit_coupling()) {
-                                    phi.pw_coeffs(0).prime(igk_loc, offset[ia] + l + m) += 0.5 * z * std::conj(phase_factor) * rlm[lm] * ri_values[atom_type.id()][i];
-                                    phi.pw_coeffs(1).prime(igk_loc, offset[ia] + 3 * l + m + 1) += 0.5 * z * std::conj(phase_factor) * rlm[lm] * ri_values[atom_type.id()][i];
-                                } else {
-                                    phi.pw_coeffs(0).prime(igk_loc, offset[ia] + l + m) = z * std::conj(phase_factor) * rlm[lm] * ri_values[atom_type.id()][i];
-                                    if (ctx_.num_mag_dims() == 3) {
-                                        phi.pw_coeffs(1).prime(igk_loc, offset[ia] + 3 * l + m + 1) = z * std::conj(phase_factor) * rlm[lm] * ri_values[atom_type.id()][i];
-                                    }
+                                phi.pw_coeffs(0).prime(igk_loc, offset[ia] + l + m) += 0.5 * z * std::conj(phase_factor) * rlm[lm] * ri_values[atom_type.id()][orb.rindex()];
+                                phi.pw_coeffs(1).prime(igk_loc, offset[ia] + 3 * l + m + 1) += 0.5 * z * std::conj(phase_factor) * rlm[lm] * ri_values[atom_type.id()][orb.rindex()];
+                            }
+                        }
+                    } else {
+                        // add the loop over different channels. need to compute the offsets accordingly
+                        for (int channel = 0, offset__ = 0; channel < atom_type.number_of_hubbard_channels(); channel++) {
+                            auto &orb = atom_type.hubbard_orbital(channel);
+                            const int l = std::abs(orb.hubbard_l());
+                            auto z = std::pow(double_complex(0, -1), l) * fourpi / std::sqrt(unit_cell_.omega());
+                            for (int m = -l; m <= l; m++) {
+                                int lm = utils::lm(l, m);
+                                phi.pw_coeffs(0).prime(igk_loc, offset[ia] + offset__  + l + m) = z * std::conj(phase_factor) * rlm[lm] * ri_values[atom_type.id()][orb.rindex()];
+                                if (ctx_.num_mag_dims() == 3) {
+                                    phi.pw_coeffs(1).prime(igk_loc, offset[ia] + offset__  + 3 * l + m + 1) = z * std::conj(phase_factor) * rlm[lm] * ri_values[atom_type.id()][orb.rindex()];
                                 }
                             }
+                            offset__ += (ctx_.num_mag_dims() == 3) ? (2 * (2 * l + 1)) : (2 * l + 1);
                         }
                     }
                 }

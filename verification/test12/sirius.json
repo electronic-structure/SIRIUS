@@ -64,8 +64,8 @@
             "U": 4.4,
             "J": 0.0,
 	    "l": 2,
-	    "n" : 4,
-	    "hubbard_orbital": "4d",
+	    "n" : 5,
+	    "hubbard_orbital": "5d",
 	    "occupancy" : 10
         }
     }

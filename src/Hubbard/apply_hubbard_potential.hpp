@@ -3,14 +3,14 @@
 
 // the S matrix is already applied to phi_i
 
-void Hubbard_potential::apply_hubbard_potential(K_point& kp,
-                                                const int ispn_,
-                                                const int idx__,
-                                                const int n__,
-                                                Wave_functions& phi,
-                                                Wave_functions& ophi)
+void Hubbard::apply_hubbard_potential(K_point&        kp__,
+                                      const int       ispn__,
+                                      const int       idx__,
+                                      const int       n__,
+                                      Wave_functions& phi,
+                                      Wave_functions& ophi)
 {
-    auto &hub_wf = kp.hubbard_wave_functions();
+    auto& hub_wf = kp__.hubbard_wave_functions();
 
     dmatrix<double_complex> dm(this->number_of_hubbard_orbitals(), n__);
     dm.zero();
@@ -25,7 +25,7 @@ void Hubbard_potential::apply_hubbard_potential(K_point& kp,
     // dm(i, n)  = <S phi_i | psi_{nk}>
 
     inner(ctx_.processing_unit(),
-          ispn_,
+          ispn__,
           hub_wf,
           0,
           this->number_of_hubbard_orbitals(),
@@ -36,7 +36,7 @@ void Hubbard_potential::apply_hubbard_potential(K_point& kp,
           0,
           0);
 
-    // free memory on GPU
+// free memory on GPU
     #ifdef __GPU
     if (ctx_.processing_unit() == GPU) {
         dm.copy<memory_t::device, memory_t::host>();
@@ -60,8 +60,8 @@ void Hubbard_potential::apply_hubbard_potential(K_point& kp,
     #pragma omp parallel for schedule(static)
     for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ++ia) {
         const auto& atom = ctx_.unit_cell().atom(ia);
-        const int lmax_at = 2 * atom.type().hubbard_l() + 1;
         if (atom.type().hubbard_correction()) {
+            const int lmax_at = 2 * atom.type().hubbard_orbital(0).hubbard_l() + 1;
             // we apply the hubbard correction. For now I have no papers
             // giving me the formula for the SO case so I rely on QE for it
             // but I do not like it at all
@@ -87,7 +87,7 @@ void Hubbard_potential::apply_hubbard_potential(K_point& kp,
                 for (int nbd = 0; nbd < n__; nbd++) {
                     for (int m1 = 0; m1 < lmax_at; m1++) {
                         for (int m2 = 0; m2 < lmax_at; m2++) {
-                            Up(this->offset[ia] + m1, nbd) += this->hubbard_potential_(m2, m1, ispn_, ia, 0) *
+                            Up(this->offset[ia] + m1, nbd) += this->hubbard_potential_(m2, m1, ispn__, ia, 0) *
                                 dm(this->offset[ia] + m2, nbd);
                         }
                     }
@@ -103,7 +103,7 @@ void Hubbard_potential::apply_hubbard_potential(K_point& kp,
     #endif
 
     transform<double_complex>(ctx_.processing_unit(),
-                              ispn_,
+                              ispn__,
                               1.0,
                               hub_wf,
                               0,

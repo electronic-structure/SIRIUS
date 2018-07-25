@@ -41,7 +41,7 @@ using json = nlohmann::json;
 #include "sht.h"
 #include "gaunt.h"
 #include "sddk.hpp"
-#include "hdf5_tree.hpp" 
+#include "hdf5_tree.hpp"
 #include "xc_functional.h"
 #include "descriptors.h"
 #include "mixer.h"
@@ -158,7 +158,7 @@ inline void finalize(bool call_mpi_fin__ = true)
 }
 #endif // __SIRIUS_H__
 
-/** 
+/**
 \mainpage Welcome to SIRIUS
 \section intro Introduction
 SIRIUS is a domain-specific library for electronic structure calculations. It supports full-potential linearized
@@ -168,7 +168,7 @@ such as Exciting, Elk and Quantum ESPRESSO.
 First, you need to clone the source code:
 \verbatim
 git clone https://github.com/electronic-structure/SIRIUS.git
-\endverbatim 
+\endverbatim
 
 Then you need to create a configuration \c json file where you specify your compiliers, compiler flags and libraries.
 Examples of such configuration files can be found in the <tt>./platforms/</tt> folder. The following variables have to be
@@ -181,7 +181,7 @@ provided:
   - \c CXX -- plain C++ compiler (used to build the external libraries)
   - \c FC -- plain Fortran compiler (used to build the external libraries)
   - \c FCCPP -- Fortran preprocessor (usually 'cpp', required by LibXC package)
-  - \c SYSTEM_LIBS -- list of the libraries, necessary for the linking (typically BLAS/LAPACK/ScaLAPACK, libstdc++ and Fortran run-time) 
+  - \c SYSTEM_LIBS -- list of the libraries, necessary for the linking (typically BLAS/LAPACK/ScaLAPACK, libstdc++ and Fortran run-time)
   - \c install -- list of packages to download, configure and build
 
 In addition, the following variables can also be specified:
@@ -190,7 +190,7 @@ In addition, the following variables can also be specified:
   - \c NVCC_OPT -- CUDA compiler options
   - \c MAGMA_ROOT -- location of the compiled MAGMA library (if you compile with MAGMA support)
 
-Below is an example of the configurtaion file for the Cray XC50 platform. Cray compiler wrappers for C/C++/Fortran are 
+Below is an example of the configurtaion file for the Cray XC50 platform. Cray compiler wrappers for C/C++/Fortran are
 ftn/cc/CC. The GNU compilers and MKL are used.
 \verbatim
 {
@@ -230,25 +230,25 @@ ftn/cc/CC. The GNU compilers and MKL are used.
 }
 \endverbatim
 FFT library is part of the MKL. The corresponding C++ include directory is passed to the compiler: -I\$(MKLROOT)/include/fftw/.
-The \c HDF5 library is installed as a module and handeled by the Cray wrappers. The remaining three libraries necessary for 
+The \c HDF5 library is installed as a module and handeled by the Cray wrappers. The remaining three libraries necessary for
 SIRIUS (spglib, GSL, libXC) are not available and have to be installed.
 
 Once the configuration \c json file is created, you can run
 \verbatim
 python configure.py path/to/config.json
-\endverbatim 
+\endverbatim
 
-The Python script will download and configure external packages, specified in the <tt>"install"</tt> list and create 
+The Python script will download and configure external packages, specified in the <tt>"install"</tt> list and create
 Makefile and make.inc files. That's it! The configuration is done and you can run
 \verbatim
 make
-\endverbatim 
+\endverbatim
 */
 
 //! \page stdvarname Standard variable names
-//!  
+//!
 //! Below is the list of standard names for some of the loop variables:
-//! 
+//!
 //! l - index of orbital quantum number \n
 //! m - index of azimutal quantum nuber \n
 //! lm - combined index of (l,m) quantum numbers \n
@@ -270,7 +270,7 @@ make
 //! \page coding Coding style
 //!
 //! Below are some basic style rules that we follow:
-//!     - Page width is approximately 120 characters. Screens are wide nowdays and 80 characters is an 
+//!     - Page width is approximately 120 characters. Screens are wide nowdays and 80 characters is an
 //!       obsolete restriction. Going slightly over 120 characters is allowed if it is requird for the line continuity.
 //!     - Indentation: 4 spaces (no tabs)
 //!     - Comments are inserted before the code with slash-star style starting with the lower case:
@@ -347,7 +347,7 @@ make
 //!           }
 //!       \endcode
 //!     - Even single line 'if' statements and 'for' loops must have the curly brackes:
-//!       \code{.cpp}  
+//!       \code{.cpp}
 //!           if (i == 4) {
 //!               some_variable = 5;
 //!           }
@@ -468,34 +468,34 @@ make
 //!           };
 //!       \endcode
 //!
-//! We use clang-format utility to enforce the basic formatting style. Please have a look at .clang-format config file 
+//! We use clang-format utility to enforce the basic formatting style. Please have a look at .clang-format config file
 //! in the source root folder for the definitions and use helper script 'clang_format.x'.
 //!
 //! Class naming convention.
 //!
-//! Problem: all 'standard' naming conventions are not satisfactory. For example, we have a class 
+//! Problem: all 'standard' naming conventions are not satisfactory. For example, we have a class
 //! which does a DFT ground state. Following the common naming conventions it could be named like this:
 //! DFTGroundState, DftGroundState, dft_ground_state. Last two are bad, because DFT (and not Dft or dft)
 //! is a well recognized abbreviation. First one is band because capital G adds to DFT and we automaticaly
 //! read DFTG round state.
-//! 
-//! Solution: we can propose the following: DFTgroundState or DFT_ground_state. The first variant still 
-//! doens't look very good because one of the words is captalized (State) and one (ground) - is not. So we pick 
+//!
+//! Solution: we can propose the following: DFTgroundState or DFT_ground_state. The first variant still
+//! doens't look very good because one of the words is captalized (State) and one (ground) - is not. So we pick
 //! the second variant: DFT_ground_state (by the way, this is close to the Bjarne Stroustrup's naiming convention,
 //! where he uses first capital letter and underscores, for example class Io_obj).
 //!
 //! Some other examples:
-//!     - class Ground_state (composed of two words) 
+//!     - class Ground_state (composed of two words)
 //!     - class FFT_interface (composed of an abbreviation and a word)
 //!     - class Interface_XC (composed of a word and abbreviation)
 //!     - class Spline (single word)
-//!     
+//!
 //! Exceptions are allowed if it makes sense. For example, low level utility classes like 'mdarray' (multi-dimentional
-//! array) or 'pstdout' (parallel standard output) are named with small letters. 
+//! array) or 'pstdout' (parallel standard output) are named with small letters.
 //!
 
 /** \page fderiv Functional derivatives
-    
+
     Definition:
     \f[
       \frac{dF[f+\epsilon \eta ]}{d \epsilon}\Bigg\rvert_{\epsilon = 0} := \int \frac{\delta F[f]}{\delta f(x')} \eta(x') dx'

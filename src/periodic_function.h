@@ -338,7 +338,6 @@ class Periodic_function : public Smooth_periodic_function<T>
         PROFILE("sirius::Periodic_function::inner");
 
         assert(this->fft_ == g__.fft_);
-        assert(&step_function_ == &g__.step_function_);
         assert(&unit_cell_ == &g__.unit_cell_);
         assert(&comm_ == &g__.comm_);
 
