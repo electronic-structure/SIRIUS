@@ -19,13 +19,10 @@ def pp_total_energy(potential, density, k_point_set, ctx):
     gvec = ctx.gvec()
     unit_cell = ctx.unit_cell()
 
-    return (k_point_set.valence_eval_sum()
-            - potential.energy_vxc(density)
-            - potential.PAW_one_elec_energy()
-            - 0.5 * potential.energy_vha()
-            + potential.energy_exc(density)
-            + potential.PAW_total_energy()
-            + ewald_energy(ctx, gvec, unit_cell))
+    return (k_point_set.valence_eval_sum() - potential.energy_vxc(density) -
+            potential.PAW_one_elec_energy() - 0.5 * potential.energy_vha() +
+            potential.energy_exc(density) + potential.PAW_total_energy() +
+            ewald_energy(ctx, gvec, unit_cell))
 
 
 class Energy:
@@ -70,11 +67,10 @@ class ApplyHamiltonian:
         self.kpoint = kpoint
         spinors = kpoint.spinor_wave_functions()
         self.num_wf = spinors.num_wf()
-        assert(spinors.num_sc() == 1)
+        assert (spinors.num_sc() == 1)
         self.num_sc = 1
         # input wave function
-        self.Psi_x = Wave_functions(kpoint.gkvec_partition(),
-                                    self.num_wf,
+        self.Psi_x = Wave_functions(kpoint.gkvec_partition(), self.num_wf,
                                     self.num_sc)
 
     def apply(self, c):
@@ -82,7 +78,7 @@ class ApplyHamiltonian:
         Keyword Arguments:
         x -- input coefficient array
         """
-        assert(c.shape[1] == self.num_wf)
+        assert (c.shape[1] == self.num_wf)
         # since assert(num_sc==1)
         ispn = 0
 
