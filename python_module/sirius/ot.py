@@ -96,7 +96,8 @@ class ApplyHamiltonian:
         # apply Hamiltonian
         Psi_y = self.hamiltonian.apply(self.kpoint, ispn, self.Psi_x)
 
-        return np.matrix(Psi_y.pw_coeffs(0))
+        return np.matrix(
+            Psi_y.pw_coeffs(0) * np.array(self.kpoint.band_occupancy(ispn)))
 
     def __mul__(self, x):
         return self.apply(x)
