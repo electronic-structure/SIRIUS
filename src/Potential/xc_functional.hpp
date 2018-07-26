@@ -17,13 +17,13 @@
 // CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
 // OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-/** \file xc_functional.h
+/** \file xc_functional.hpp
  *
  *  \brief Contains implementation of sirius::XC_functional class.
  */
 
-#ifndef __XC_FUNCTIONAL_H__
-#define __XC_FUNCTIONAL_H__
+#ifndef __XC_FUNCTIONAL_HPP__
+#define __XC_FUNCTIONAL_HPP__
 
 #include <xc.h>
 #include <string.h>

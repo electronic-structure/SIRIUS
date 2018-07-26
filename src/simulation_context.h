@@ -33,7 +33,7 @@
 #include "radial_integrals.h"
 #include "utils/utils.hpp"
 #include "memory_pool.hpp"
-#include "augmentation_operator.h"
+#include "Density/augmentation_operator.hpp"
 
 #ifdef __GPU
 #include "SDDK/GPU/cuda.hpp"

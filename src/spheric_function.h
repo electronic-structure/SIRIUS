@@ -30,7 +30,7 @@
 #include <typeinfo>
 #include "radial_grid.h"
 #include "spline.h"
-#include "sht.h"
+#include "SHT/sht.hpp"
 
 namespace sirius {
 
@@ -42,7 +42,7 @@ class Spheric_function: public mdarray<T, 2>
 
         /// Radial grid.
         Radial_grid<double> const* radial_grid_{nullptr};
-        
+
         int angular_domain_size_;
 
         Spheric_function(Spheric_function<domain_t, T> const& src__) = delete;

@@ -40,7 +40,7 @@ inline void Potential::generate_D_operator_matrix()
     if (ctx_.processing_unit() == GPU) {
         veff_tmp.allocate(memory_t::device);
     }
-    
+
     if (ctx_.unit_cell().atom_type(0).augment() && ctx_.unit_cell().atom_type(0).num_atoms() > 0) {
         ctx_.augmentation_op(0).prepare(0);
     }
