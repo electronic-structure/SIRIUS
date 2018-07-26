@@ -1,4 +1,4 @@
-// Copyright (c) 2013-2017 Anton Kozhevnikov, Thomas Schulthess
+// Copyright (c) 2013-2018 Anton Kozhevnikov, Thomas Schulthess
 // All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without modification, are permitted provided that
@@ -17,13 +17,13 @@
 // CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
 // OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-/** \file augmentation_operator.h
+/** \file augmentation_operator.hpp
  *
  *  \brief Contains implementation of sirius::Augmentation_operator class.
  */
 
-#ifndef __AUGMENTATION_OPERATOR_H__
-#define __AUGMENTATION_OPERATOR_H__
+#ifndef __AUGMENTATION_OPERATOR_HPP__
+#define __AUGMENTATION_OPERATOR_HPP__
 
 #include "radial_integrals.h"
 
@@ -220,6 +220,7 @@ class Augmentation_operator
     }
 };
 
+/// Derivative of augmentation operator PW coefficients with respect to the Cartesian component of G-vector.
 class Augmentation_operator_gvec_deriv
 {
   private:

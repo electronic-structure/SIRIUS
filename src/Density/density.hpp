@@ -26,7 +26,7 @@
 #define __DENSITY_HPP__
 
 #include "periodic_function.h"
-#include "k_point_set.h"
+#include "K_point/k_point_set.hpp"
 #include "simulation_context.h"
 #include "mixer.h"
 #include "field4d.hpp"

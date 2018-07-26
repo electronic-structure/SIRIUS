@@ -29,7 +29,7 @@
 #include "simulation_context.h"
 #include "Hubbard/hubbard.hpp"
 #include "Potential/potential.hpp"
-#include "k_point.h"
+#include "K_point/k_point.hpp"
 #include "local_operator.hpp"
 #include "non_local_operator.hpp"
 #include "memory_pool.hpp"

@@ -26,7 +26,7 @@
 #define __BAND_HPP__
 
 #include "periodic_function.h"
-#include "k_point_set.h"
+#include "K_point/k_point_set.hpp"
 #include "Hamiltonian/hamiltonian.hpp"
 
 namespace sirius {

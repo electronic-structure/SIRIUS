@@ -25,7 +25,7 @@
 #ifndef __DFT_GROUND_STATE_H__
 #define __DFT_GROUND_STATE_H__
 
-#include "k_point_set.h"
+#include "K_point/k_point_set.hpp"
 #include "utils/json.hpp"
 #include "Hubbard/hubbard.hpp"
 #include "Geometry/stress.hpp"

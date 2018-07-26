@@ -17,15 +17,15 @@
 // CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
 // OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-/** \file k_point_set.h
+/** \file k_point_set.hpp
  *
  *  \brief Contains declaration and partial implementation of sirius::K_point_set class.
  */
 
-#ifndef __K_POINT_SET_H__
-#define __K_POINT_SET_H__
+#ifndef __K_POINT_SET_HPP__
+#define __K_POINT_SET_HPP__
 
-#include "k_point.h"
+#include "k_point.hpp"
 #include "geometry3d.hpp"
 #include "smearing.hpp"
 

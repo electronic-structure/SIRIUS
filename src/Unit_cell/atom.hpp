@@ -25,7 +25,7 @@
 #ifndef __ATOM_HPP__
 #define __ATOM_HPP__
 
-#include "gaunt.h"
+#include "SHT/gaunt.hpp"
 #include "atom_symmetry_class.hpp"
 #include "sddk.hpp"
 #include "spheric_function.h"
