@@ -221,7 +221,7 @@ struct Mixer_input
     }
 };
 
-/** \todo real-space projectors are not part of iterative solver */
+/// Parse the parameters of iterative solver.
 struct Iterative_solver_input
 {
     /// Type of the iterative solver.
@@ -253,10 +253,6 @@ struct Iterative_solver_input
     /// Minimum number of residuals to continue iterative diagonalization process.
     int min_num_res_{0};
 
-    int    real_space_prj_{0}; // TODO: move it from here to parameters
-    double R_mask_scale_{1.5};
-    double mask_alpha_{3};
-
     /// Number of singular components for the LAPW Davidson solver.
     int num_singular_{-1};
 
@@ -265,6 +261,7 @@ struct Iterative_solver_input
      *  as they are and solve generalized eigen-value problem. */
     bool orthogonalize_{true};
 
+    /// Initialize eigen-values with previous (old) values.
     bool init_eval_old_{true};
 
     /// Tell how to initialize the subspace.
@@ -284,9 +281,6 @@ struct Iterative_solver_input
             empty_states_tolerance_ = section.value("empty_states_tolerance", empty_states_tolerance_);
             converge_by_energy_     = section.value("converge_by_energy", converge_by_energy_);
             min_num_res_            = section.value("min_num_res", min_num_res_);
-            real_space_prj_         = section.value("real_space_prj", real_space_prj_);
-            R_mask_scale_           = section.value("R_mask_scale", R_mask_scale_);
-            mask_alpha_             = section.value("mask_alpha", mask_alpha_);
             num_singular_           = section.value("num_singular", num_singular_);
             orthogonalize_          = section.value("orthogonalize", orthogonalize_);
             init_eval_old_          = section.value("init_eval_old", init_eval_old_);
@@ -310,14 +304,28 @@ struct Iterative_solver_input
  *      "fft_mode" : (string) serial or parallel FFT
  *    }
  *  \endcode
+ *  Parameters of the control input sections do not in generatl change the numerics, but instead control how the
+ *  results are obtained. Changing paremeters in control section should not change the significant digits in final
+ *  results.
  */
 struct Control_input
 {
+    /// Dimensions of the MPI grid (if used).
     std::vector<int> mpi_grid_dims_;
-    int              cyclic_block_size_{-1};
-    bool             reduce_gvec_{true};
-    std::string      std_evp_solver_name_{""};
-    std::string      gen_evp_solver_name_{""};
+
+    /// Block size for ScaLAPACK and ELPA.
+    int cyclic_block_size_{-1};
+
+    /// Reduce G-vectors by inversion symmetry.
+    /** For real-valued functions like density and potential it is sufficient to store only half of the G-vectors
+     *  and use the relation f(G) = f^{*}(-G) to recover second half of the plane-wave expansion coefficients. */
+    bool reduce_gvec_{true};
+
+    /// Standard eigen-value solver to use.
+    std::string std_evp_solver_name_{""};
+
+    /// Generalized eigen-value solver to use.
+    std::string gen_evp_solver_name_{""};
     std::string      fft_mode_{"serial"};
     std::string      processing_unit_{""};
     double           rmt_max_{2.2};
