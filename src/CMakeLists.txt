@@ -10,6 +10,9 @@ else()
   add_library(sirius "sirius_api.cpp;sirius.f90;${CUFILES_KERNELS};${CUFILES_SDDK}")
 endif()
 
+INSTALL (TARGETS sirius ARCHIVE DESTINATION
+  ${CMAKE_INSTALL_PREFIX}/lib/)
+
 set_target_properties(sirius PROPERTIES POSITION_INDEPENDENT_CODE ON)
 set_target_properties(sirius PROPERTIES Fortran_MODULE_DIRECTORY mod_files)
 
@@ -18,3 +21,4 @@ set_target_properties(sirius PROPERTIES Fortran_MODULE_DIRECTORY mod_files)
 INSTALL ( CODE
   "EXECUTE_PROCESS (COMMAND \"${CMAKE_COMMAND}\" -E copy_directory \"${PROJECT_BINARY_DIR}/src/mod_files\" \"${CMAKE_INSTALL_PREFIX}/fortran\")"
 )
+install(DIRECTORY ./ DESTINATION "${CMAKE_INSTALL_PREFIX}/include/sirius" FILES_MATCHING REGEX ".*(hpp|h)$")
