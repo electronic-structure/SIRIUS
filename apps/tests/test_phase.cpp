@@ -12,7 +12,7 @@ void test1()
         a[i] = {r, r, r};
     }
     std::vector<double_complex> phase(N, 0);
-    sddk::timer t1("phase");
+    utils::timer t1("phase");
     #pragma omp parallel for schedule(static)
     for (int i = 0; i < N; i++) {
         phase[i] = std::exp(double_complex(0, dot(a[i], a[i])));
@@ -35,6 +35,6 @@ int main(int argn, char** argv)
 
     sirius::initialize(1);
     test1();
-    sddk::timer::print();
+    utils::timer::print();
     sirius::finalize();
 }
