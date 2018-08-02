@@ -27,7 +27,7 @@ inline void Hamiltonian::set_fv_h_o<CPU, electronic_structure_method_t::full_pot
                                                                                                dmatrix<double_complex>& h__,
                                                                                                dmatrix<double_complex>& o__) const
 {
-    PROFILE("sirius::Band::set_fv_h_o");
+    PROFILE("sirius::Hamiltonian::set_fv_h_o");
 
     h__.zero();
     o__.zero();
@@ -48,7 +48,7 @@ inline void Hamiltonian::set_fv_h_o<CPU, electronic_structure_method_t::full_pot
         oalm_col = mdarray<double_complex, 2>(alm_col.at<CPU>(), kp__->num_gkvec_col(), max_mt_aw);
     }
 
-    utils::timer t1("sirius::Band::set_fv_h_o|zgemm");
+    utils::timer t1("sirius::Hamiltonian::set_fv_h_o|zgemm");
     /* loop over blocks of atoms */
     for (int iblk = 0; iblk < nblk; iblk++) {
         /* number of matching AW coefficients in the block */
@@ -146,9 +146,9 @@ inline void Hamiltonian::set_fv_h_o<GPU, electronic_structure_method_t::full_pot
                                                                                                dmatrix<double_complex>& h__,
                                                                                                dmatrix<double_complex>& o__) const
 {
-    PROFILE("sirius::Band::set_fv_h_o");
+    PROFILE("sirius::Hamiltonian::set_fv_h_o");
 
-    utils::timer t2("sirius::Band::set_fv_h_o|alloc");
+    utils::timer t2("sirius::Hamiltonian::set_fv_h_o|alloc");
     h__.allocate(memory_t::device);
     h__.zero<memory_t::host | memory_t::device>();
 
@@ -172,7 +172,7 @@ inline void Hamiltonian::set_fv_h_o<GPU, electronic_structure_method_t::full_pot
         MEMORY_USAGE_INFO();
     }
 
-    utils::timer t1("sirius::Band::set_fv_h_o|zgemm");
+    utils::timer t1("sirius::Hamiltonian::set_fv_h_o|zgemm");
     for (int iblk = 0; iblk < nblk; iblk++) {
         int num_mt_aw = 0;
         std::vector<int> offsets(num_atoms_in_block);
@@ -354,7 +354,7 @@ inline void Hamiltonian::set_fv_h_o_it(K_point* kp,
                                        mdarray<double_complex, 2>& h,
                                        mdarray<double_complex, 2>& o) const
 {
-    PROFILE("sirius::Band::set_fv_h_o_it");
+    PROFILE("sirius::Hamiltonian::set_fv_h_o_it");
 
     //#ifdef __PRINT_OBJECT_CHECKSUM
     //double_complex z1 = mdarray<double_complex, 1>(&effective_potential->f_pw(0), ctx_.gvec().num_gvec()).checksum();
@@ -395,7 +395,7 @@ inline void Hamiltonian::set_fv_h_o_lo_lo(K_point* kp,
                                           mdarray<double_complex, 2>& h,
                                           mdarray<double_complex, 2>& o) const
 {
-    PROFILE("sirius::Band::set_fv_h_o_lo_lo");
+    PROFILE("sirius::Hamiltonian::set_fv_h_o_lo_lo");
 
     /* lo-lo block */
     #pragma omp parallel for default(shared)
@@ -435,7 +435,7 @@ inline void Hamiltonian::set_fv_h_o_lo_lo(K_point* kp,
 inline void Hamiltonian::set_o_lo_lo(K_point* kp,
                                      mdarray<double_complex, 2>& o) const
 {
-    PROFILE("sirius::Band::set_o_lo_lo");
+    PROFILE("sirius::Hamiltonian::set_o_lo_lo");
 
     /* lo-lo block */
     #pragma omp parallel for default(shared)
@@ -463,7 +463,7 @@ inline void Hamiltonian::set_o_lo_lo(K_point* kp,
 inline void Hamiltonian::set_o_it(K_point* kp,
                                   mdarray<double_complex, 2>& o) const
 {
-    PROFILE("sirius::Band::set_o_it");
+    PROFILE("sirius::Hamiltonian::set_o_it");
 
     #pragma omp parallel for default(shared)
     for (int igk_col = 0; igk_col < kp->num_gkvec_col(); igk_col++) {
@@ -481,7 +481,7 @@ inline void Hamiltonian::set_o_it(K_point* kp,
 //void Band::set_h_apw_lo(K_point* kp, Atom_type* type, Atom* atom, int ia, mdarray<double_complex, 2>& alm,
 //                        mdarray<double_complex, 2>& h)
 //{
-//    Timer t("sirius::Band::set_h_apw_lo");
+//    Timer t("sirius::Hamiltonian::set_h_apw_lo");
 //
 //    int apw_offset_col = kp->apw_offset_col();
 //
@@ -548,7 +548,7 @@ template <spin_block_t sblock>
 void Hamiltonian::set_h_it(K_point* kp, Periodic_function<double>* effective_potential,
                            Periodic_function<double>* effective_magnetic_field[3], mdarray<double_complex, 2>& h) const
 {
-    PROFILE("sirius::Band::set_h_it");
+    PROFILE("sirius::Hamiltonian::set_h_it");
 
     STOP(); // effective potential is now stored in the veff_pw_ auxiliary array. Fix this.
 
@@ -598,7 +598,7 @@ void Hamiltonian::set_h_it(K_point* kp, Periodic_function<double>* effective_pot
 template <spin_block_t sblock>
 void Hamiltonian::set_h_lo_lo(K_point* kp, mdarray<double_complex, 2>& h) const
 {
-    PROFILE("sirius::Band::set_h_lo_lo");
+    PROFILE("sirius::Hamiltonian::set_h_lo_lo");
 
     /* lo-lo block */
     #pragma omp parallel for default(shared)
@@ -624,7 +624,7 @@ void Hamiltonian::set_h_lo_lo(K_point* kp, mdarray<double_complex, 2>& h) const
 //== void Band::set_h(K_point* kp, Periodic_function<double>* effective_potential,
 //==                  Periodic_function<double>* effective_magnetic_field[3], mdarray<double_complex, 2>& h)
 //== {
-//==     Timer t("sirius::Band::set_h");
+//==     Timer t("sirius::Hamiltonian::set_h");
 //==
 //==     // index of column apw coefficients in apw array
 //==     int apw_offset_col = kp->apw_offset_col();
@@ -664,7 +664,7 @@ void Hamiltonian::set_h_lo_lo(K_point* kp, mdarray<double_complex, 2>& h) const
 //void Band::set_o_apw_lo(K_point* kp, Atom_type* type, Atom* atom, int ia, mdarray<double_complex, 2>& alm,
 //                        mdarray<double_complex, 2>& o)
 //{
-//    Timer t("sirius::Band::set_o_apw_lo");
+//    Timer t("sirius::Hamiltonian::set_o_apw_lo");
 //
 //    int apw_offset_col = kp->apw_offset_col();
 //
@@ -710,7 +710,7 @@ void Hamiltonian::set_h_lo_lo(K_point* kp, mdarray<double_complex, 2>& h) const
 
 //== void Band::set_o(K_point* kp, mdarray<double_complex, 2>& o)
 //== {
-//==     Timer t("sirius::Band::set_o");
+//==     Timer t("sirius::Hamiltonian::set_o");
 //==
 //==     // index of column apw coefficients in apw array
 //==     int apw_offset_col = kp->apw_offset_col();
