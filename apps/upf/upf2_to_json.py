@@ -43,9 +43,12 @@ def parse_radial_grid(upf_dict, root):
     # radial grid
     node = root.findall("./PP_MESH/PP_R")[0]
     rg = [float(e) for e in str.split(node.text)]
-    np = int(node.attrib['size'])
-    if np != len(rg):
-        print("Wrong number of radial points")
+    try:
+        np = int(node.attrib['size'])
+        if np != len(rg):
+            print("Wrong number of radial points")
+    except KeyError:
+        print('Warning missing size field in attributes')
     upf_dict['radial_grid'] = rg
 
 
@@ -253,7 +256,7 @@ def parse_SpinOrbit(upf_dict, root):
 #      upf_dict['paw_data']['ps_wfc']['total_angular_momentum'] = float(node('jchi'))
 
 def parse_upf2_from_string(upf2_str):
-    
+
     # fix string
     upf2_str = upf2_str.replace("&", "")
 
@@ -276,9 +279,12 @@ def parse_upf2_from_string(upf2_str):
     # local part of potential
     node = root.findall("./PP_LOCAL")[0]
     vloc = [float(e) / 2 for e in str.split(node.text)] # convert to Ha
-    np = int(node.attrib['size'])
-    if np != len(vloc):
-        print("Wrong number of points")
+    try:
+        np = int(node.attrib['size'])
+        if np != len(vloc):
+            print("Wrong number of points")
+    except KeyError:
+        print('Warning missing size field in attributes ' + str(node))
     upf_dict['local_potential'] = vloc
 
     # non-local part of potential
@@ -296,14 +302,17 @@ def parse_upf2_from_string(upf2_str):
     # rho
     node = root.findall("./PP_RHOATOM")[0]
     rho = [float(e) for e in str.split(node.text)]
-    np = int(node.attrib['size'])
-    if np != len(rho):
-        print("Wrong number of points")
+    try:
+        np = int(node.attrib['size'])
+        if np != len(rho):
+            print("Wrong number of points")
+    except KeyError:
+        print('Warning: missing size field in attributes ' + str(node))
     upf_dict['total_charge_density'] = rho
 
     pp_dict = {}
     pp_dict["pseudo_potential"] = upf_dict
-    
+
     return pp_dict
 
 def parse_upf2_from_file(upf2_fname):
