@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.0)
 project(SIRIUS)
 
 # set language and standard
-enable_language(CXX CUDA Fortran)
+enable_language(CXX Fortran)
 set(CMAKE_CXX_STANDARD 11)
 
 # user variables
@@ -77,6 +77,7 @@ if(USE_ELPA)
 endif(USE_ELPA)
 
 if(USE_CUDA)
+  enable_language(CUDA)
   find_package(CUDA)
   add_definitions("-D__GPU")
   include_directories(BEFORE SYSTEM ${CUDA_INCLUDE_DIRS})
