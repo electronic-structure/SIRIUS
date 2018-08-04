@@ -246,10 +246,11 @@ class K_point_set
         double eval_sum{0};
 
         for (int ik = 0; ik < num_kpoints(); ik++) {
-            double wk = kpoints_[ik]->weight();
+            const auto& kp = kpoints_[ik];
+            double wk = kp->weight();
             for (int j = 0; j < ctx_.num_bands(); j++) {
                 for (int ispn = 0; ispn < ctx_.num_spin_dims(); ispn++) {
-                    eval_sum += wk * kpoints_[ik]->band_energy(j, ispn) * kpoints_[ik]->band_occupancy(j, ispn);
+                    eval_sum += wk * kp->band_energy(j, ispn) * kp->band_occupancy(j, ispn);
                 }
             }
         }
