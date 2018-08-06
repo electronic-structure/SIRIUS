@@ -1021,22 +1021,26 @@ class Simulation_context: public Simulation_parameters
         /// Return plane-wave coefficient of the step function.
         inline double_complex const& theta_pw(int ig__) const
         {
+            assert(ig__ < theta_pw_.size() && ig__ >= 0);
             return theta_pw_[ig__];
         }
 
         /// Return the value of the step function for the grid point ir.
         inline double theta(int ir__) const
         {
+            assert(ir__ < theta_.size() && ir__ >= 0);
             return theta_[ir__];
         }
 
         inline Augmentation_operator const& augmentation_op(int iat__) const
         {
+            assert(iat__ < augmentation_op_.size() && iat__ >= 0);
             return augmentation_op_[iat__];
         }
 
         inline Augmentation_operator& augmentation_op(int iat__)
         {
+            assert(iat__ < augmentation_op_.size() && iat__ >= 0);
             return augmentation_op_[iat__];
         }
 };
