@@ -328,6 +328,7 @@ PYBIND11_MODULE(py_sirius, m)
         })
         .def("gkvec_partition", &K_point::gkvec_partition, py::return_value_policy::reference_internal)
         .def("fv_states", &K_point::fv_states, py::return_value_policy::reference_internal)
+        .def("ctx", &K_point::ctx, py::return_value_policy::reference_internal)
         .def("spinor_wave_functions", &K_point::spinor_wave_functions, py::return_value_policy::reference_internal);
 
     py::class_<K_point_set>(m, "K_point_set")
@@ -360,6 +361,7 @@ PYBIND11_MODULE(py_sirius, m)
     py::class_<Hamiltonian>(m, "Hamiltonian")
         .def(py::init<Simulation_context&, Potential&>(), py::keep_alive<1, 2>())
         .def("potential", &Hamiltonian::potential, py::return_value_policy::reference_internal)
+        .def("ctx", &Hamiltonian::ctx, py::return_value_policy::reference_internal)
         .def("on_gpu", [](Hamiltonian& hamiltonian) -> bool {
             const auto& ctx = hamiltonian.ctx();
             auto        pu  = ctx.processing_unit();
