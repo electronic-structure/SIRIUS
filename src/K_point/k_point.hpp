@@ -203,7 +203,9 @@ class K_point
             if (ctx_.num_mag_dims() == 3) {
                 return band_occupancies_(j__, 0);
             } else {
-                if (!(ispn__ == 0 || ispn__ == 1)) {
+                if (!(ispn__ == 0 || ispn__ == 1) ||
+                    !(ispn__ <= ctx_.num_mag_dims())
+                   ) {
                     TERMINATE("wrong spin index");
                 }
                 return band_occupancies_(j__, ispn__);
