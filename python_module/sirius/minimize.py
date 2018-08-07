@@ -11,19 +11,13 @@ def inner(a, b):
 def beta_fletcher_reves(dfnext, df):
     """
     """
-    return np.asscalar(
-        np.inner(dfnext.reshape(-1, ), np.conj(dfnext.reshape(-1, ))) /
-        np.inner(df.reshape(-1, ), np.conj(df.reshape(-1, ))))
+    return np.asscalar(inner(dfnext, dfnext) / inner(df, df))
 
 
 def beta_polak_ribiere(dfnext, df):
     """
     """
-    dfnr = dfnext.reshape(-1, )
-    dfr = df.reshape(-1, )
-
-    return np.asscalar(
-        np.inner(np.conj(dfnr), dfnr - dfr) / np.linalg.norm(df, 'fro'))
+    return np.asscalar(inner(dfnr, dfnr-dfr) / inner(df, df))
 
 
 def beta_sd(dfnext, df):
@@ -32,7 +26,7 @@ def beta_sd(dfnext, df):
     return 0
 
 
-def ls_qinterp(x0, p, f, dfx0, s=0.4):
+def ls_qinterp(x0, p, f, dfx0, s=0.2):
     """
     Keyword Arguments:
     x0       -- starting point
@@ -42,8 +36,8 @@ def ls_qinterp(x0, p, f, dfx0, s=0.4):
     """
     f0 = f(x0)
     # TODO: remove hard-coded band occ numbers!
-    b = np.real(4 * inner(p, dfx0))
-    assert(b <= 0)
+    b = np.real(2 * inner(p, dfx0))
+    assert (b <= 0)
     f1 = f(x0 + s * p)
     # fit coefficients g(t) = a * t^2 + b * t + c
     c = f0
@@ -61,7 +55,7 @@ def ls_qinterp(x0, p, f, dfx0, s=0.4):
         print('ls_qinterp failed!!!')
         # revert coefficients to x0
         f0r = f(x0)  # never remove this, need side effects
-        assert(f0 == f0r)
+        assert (f0 == f0r)
 
         raise ValueError('qinterp did not improve the solution')
     return x
@@ -87,8 +81,9 @@ def ls_bracketing(x0, p, f, dfx0, tau=0.5, maxiter=40):
     """
     f0 = f(x0)
     c = 0.5
-    m = -1 * inner(p, dfx0)
-    ds = 1 / np.abs(m)
+    m = 2 * inner(p, dfx0)
+    assert (m < 0)
+    ds = 1024
     print('bracketing: ds initial = ', ds)
     assert (maxiter >= 1)
 
@@ -103,7 +98,8 @@ def ls_bracketing(x0, p, f, dfx0, tau=0.5, maxiter=40):
     else:
         if not fn < f0 and np.abs(fn - f0) > 1e-10:
             raise ValueError(
-                'failed to find a step length after maxiter=%d iterations.' % maxiter)
+                'failed to find a step length after maxiter=%d iterations.' %
+                maxiter)
     print('bracketing: step-length = : ', ds)
     return x0 + ds * p
 
@@ -184,7 +180,7 @@ def minimize(x0,
             print('current energy: ', i, fnext)
         x = xnext
 
-        res = np.sqrt(inner(pdfx, pdfx))
+        res = inner(pdfx, pdfx)
         print('residual: %.4g' % res)
         if res < tol:
             print('success after', i + 1, ' iterations')
