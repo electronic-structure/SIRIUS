@@ -1,3 +1,16 @@
+
+def store_pw_coeffs(kpoint, cn, ispn=0):
+    """
+    kpoint -- K_point
+    cn     -- numpy array
+    ispn   -- spin component
+    """
+    from .py_sirius import DeviceEnum
+    kpoint.spinor_wave_functions().pw_coeffs(ispn)[:] = cn
+    if kpoint.ctx().processing_unit() == DeviceEnum.GPU:
+        kpoint.spinor_wave_functions().copy_to_gpu()
+
+
 def make_dict(ctx, ks, x_ticks, x_axis):
     dict = {}
     dict["header"] = {}
