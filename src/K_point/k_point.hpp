@@ -774,6 +774,8 @@ class K_point
             assert(beta_projectors_ != nullptr);
             return *beta_projectors_col_;
         }
+
+        const Simulation_context& ctx() const;
 };
 
 //== void K_point::check_alm(int num_gkvec_loc, int ia, mdarray<double_complex, 2>& alm)
@@ -1281,6 +1283,11 @@ inline void K_point::get_sv_eigen_vectors(mdarray<double_complex, 2>& sv_evec)
     }
 
     comm_.allreduce(sv_evec.at<CPU>(), (int)sv_evec.size());
+}
+
+inline const Simulation_context& K_point::ctx() const
+{
+    return ctx_;
 }
 
 #include "generate_fv_states.hpp"
