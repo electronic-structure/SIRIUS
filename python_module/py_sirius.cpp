@@ -295,14 +295,14 @@ PYBIND11_MODULE(py_sirius, m)
         .def("print_magnetic_moment", &DFT_ground_state::print_magnetic_moment)
         .def("total_energy", &DFT_ground_state::total_energy)
         .def("density", &DFT_ground_state::density, py::return_value_policy::reference)
-        .def("find", [](DFT_ground_state& dft, double potential_tol, double energy_tol, int num_dft_iter, bool write_state)
-                    {
-                        json js = dft.find(potential_tol, energy_tol, num_dft_iter, write_state);
-                        return pj_convert(js);
-                    })
+        .def("find", [](DFT_ground_state& dft, double potential_tol, double energy_tol, int num_dft_iter, bool write_state) {
+            json js = dft.find(potential_tol, energy_tol, num_dft_iter, write_state);
+            return pj_convert(js);
+        }, "potential_tol"_a, "energy_tol"_a, "num_dft_iter"_a, "write_state"_a)
         .def("k_point_set", &DFT_ground_state::k_point_set, py::return_value_policy::reference_internal)
-        .def("hamiltonian", &DFT_ground_state::hamiltonian, py::return_value_policy::reference)
-        .def("potential",   &DFT_ground_state::potential, py::return_value_policy::reference);
+        .def("hamiltonian", &DFT_ground_state::hamiltonian, py::return_value_policy::reference_internal)
+        .def("potential", &DFT_ground_state::potential, py::return_value_policy::reference_internal)
+        .def("update", &DFT_ground_state::update);
 
     py::class_<K_point>(m, "K_point")
         .def("band_energy", py::overload_cast<int, int>(&K_point::band_energy))
@@ -317,8 +317,7 @@ PYBIND11_MODULE(py_sirius, m)
                 energies[i] = kpoint.band_energy(i, ispn);
             }
             return energies;
-        },
-             py::return_value_policy::copy)
+        }, py::return_value_policy::copy)
         .def("band_occupancy", [](K_point const& kpoint, int ispn) {
             std::vector<double> occ(kpoint.num_bands());
             for (int i = 0; i < kpoint.num_bands(); ++i) {
