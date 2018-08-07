@@ -8,8 +8,6 @@ def matview(x):
 
 def c(x, c0):
     """
-    TODO: optimize this
-
     Keyword Arguments:
     x --
     c0 --
@@ -41,7 +39,9 @@ class EnergyGradient:
 
     def __call__(self, x):
         """
-        it takes a wave-function psi, which is stored inside the K_point class
+        Computes ∂E/∂x
+
+        x -- OT coefficients, where PW-coefficients are given by c = c(x, c0)
         """
         # make sure x has type np.matrix
         x = np.matrix(x, copy=False)
@@ -88,16 +88,15 @@ class EnergyGradient:
         # TODO: mask diagonal elements (get rid of warnings)
         diffL = (Λ[:, np.newaxis] - Λ[:, np.newaxis].T)
         mask = np.abs(diffL) < 1e-10
-        D1 = np.ma.masked_array((v - v.T), mask=mask) / diffL
+        D1 = np.ma.masked_array(v - v.T, mask=mask) / diffL
         # fill masked entries with correct formula
         irow, icol = np.where(mask)
         # D1(x1,x2) = 1/2 ( cos(sqrt(x)) / x - sin(sqrt(x)) / x**(3/2) )  if x1==x2
         D1[irow, icol] = 0.5*(np.cos(np.sqrt(Λ[irow])) / Λ[irow] - np.sin(np.sqrt(Λ[irow])) / (Λ[irow]**(1.5)))
-        # np.fill_diagonal(D1, 0.5*(np.cos(np.sqrt(Λ)) / Λ - np.sin(np.sqrt(Λ)) / (Λ**(1.5))))
         # D²: TODO insert formula
         v = np.cos(np.sqrt(Λ))
         v = v[:, np.newaxis]
-        D2 = np.ma.masked_array((v - v.T), mask=mask) / diffL
+        D2 = np.ma.masked_array(v - v.T, mask=mask) / diffL
         # D2(x1, x2) = -1/2 sin(sqrt(x)) / sqrt(x) if x1==x2
         D2[irow, icol] = -0.5*np.sin(np.sqrt(Λ[irow])) / np.sqrt(Λ[irow])
 
