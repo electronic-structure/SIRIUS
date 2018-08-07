@@ -32,7 +32,7 @@ def c(x, c0):
     return np.dot(c0, cosU) + np.dot(np.dot(x, invU), sinU)
 
 
-class EnergyGradient:
+class ConstrainedGradient:
     def __init__(self, hamiltonian, c0):
         self.hamiltonian = hamiltonian
         self.c0 = np.matrix(c0, copy=True)
@@ -111,4 +111,4 @@ class EnergyGradient:
         lagrangeMult = solve(self.c0.H * self.c0, self.c0.H * dEdx)
         correction_term = -1 * self.c0 * lagrangeMult
 
-        return dEdx + correction_term
+        return dEdx + correction_term, dEdx
