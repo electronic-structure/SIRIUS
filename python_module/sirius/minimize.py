@@ -5,7 +5,12 @@ def inner(a, b):
     """
     complex inner product
     """
-    return np.einsum('ij,ij->', a, np.conj(b))
+    # TODO: find a better solution, not try except
+    try:
+        return np.sum(np.array(a, copy=False)*np.array(np.conj(b), copy=False))
+    except ValueError:
+        # is of type CoefficientArray (cannot convert to array)
+        return np.sum(a * np.conj(b), copy=False)
 
 
 def beta_fletcher_reves(dfnext, df):
@@ -17,7 +22,7 @@ def beta_fletcher_reves(dfnext, df):
 def beta_polak_ribiere(dfnext, df):
     """
     """
-    return np.asscalar(inner(dfnr, dfnr-dfr) / inner(df, df))
+    return np.asscalar(inner(dfnext, dfnext-df) / inner(df, df))
 
 
 def beta_sd(dfnext, df):

@@ -1,11 +1,14 @@
 import numpy as np
 
-class CoefficientArray:
-    def __init__(self, dtype=np.complex):
-        """
 
+class CoefficientArray:
+    def __init__(self, dtype=np.complex, ctype=np.matrix):
+        """
+        dtype -- number type
+        ctype -- container type (default np.matrix)
         """
         self.dtype = dtype
+        self.ctype = ctype
         self._data = {}
 
     def __getitem__(self, key):
@@ -17,30 +20,27 @@ class CoefficientArray:
 
     def __setitem__(self, key, item):
         """
-
         """
         if key in self._data:
             x = self._data[key]
             # make sure shapes don't change
-            x[:] = np.array(item, copy=False)
+            x[:] = self.ctype(item, copy=False)
         else:
-            self._data[key] = np.array(item, dtype=self.dtype, copy=True)
+            self._data[key] = self.ctype(item, dtype=self.dtype, copy=True)
 
-    def sum(self, axis=1, dtype=None, out=None):
+    def sum(self, **kwargs):
         """
-
         """
-        return 0
+        return sum([np.sum(v) for _, v in self.items()])
 
     def __mul__(self, other):
         """
         Returns a new object of type type(self)
         """
-        print('in mul:', self)
-        out = type(self)(self.dtype)
+        out = type(self)(dtype=self.dtype)
         if isinstance(other, CoefficientArray):
             for key in other._data.keys():
-                out[key] = self._data[key] * other._data[key]
+                out[key] = np.einsum('ij,ij->ij', self._data[key], other._data[key])
         elif np.isscalar(other):
             for key in self._data.keys():
                 out[key] = self._data[key] * other
@@ -51,8 +51,7 @@ class CoefficientArray:
     def __add__(self, other):
         """
         """
-
-        out = type(self)(self.dtype)
+        out = type(self)(dtype=self.dtype)
         if isinstance(other, CoefficientArray):
             for key in other._data.keys():
                 out[key] = self._data[key] + other._data[key]
@@ -64,10 +63,13 @@ class CoefficientArray:
     def abs(self):
         """
         """
-        out = type(self)(self.dtype)
+        out = type(self)(dtype=self.dtype)
         for key in self._data.keys():
             out[key] = np.abs(self._data[key])
         return out
+
+    def keys(self):
+        return self._data.keys()
 
     def __sub__(self, other):
         """
@@ -77,7 +79,7 @@ class CoefficientArray:
     def conjugate(self):
         """
         """
-        out = type(self)(self.dtype)
+        out = type(self)(dtype=self.dtype)
         for key, val in self._data.items():
             out[key] = np.conj(val)
         return out
@@ -96,8 +98,18 @@ class CoefficientArray:
 
 
 class PwCoeffs(CoefficientArray):
-    def __init__(self, dtype=np.complex):
+    def __init__(self, kpointset=None, dtype=np.complex):
         super().__init__(dtype)
+
+        # load plane wave-coefficients from kpointset
+        if kpointset is not None:
+            num_sc = kpointset.ctx().num_spins()
+            for ki in range(len(kpointset)):
+                k = kpointset[ki]
+                for ispn in range(num_sc):
+                    key = ki, ispn
+                    val = np.matrix(k.spinor_wave_functions().pw_coeffs(ispn))
+                    self.__setitem__(key, val)
 
     def __setitem__(self, key, item):
         """
@@ -108,9 +120,45 @@ class PwCoeffs(CoefficientArray):
         return super(PwCoeffs, self).__setitem__(key, item)
 
     def kview(self, k):
-        out = PwCoeffs(self.dtype)
-        out._data = {(ki, ispn): self._data[(ki, ispn)] for ki, ispn in self._data if ki == k}
+        """
+        """
+        out = PwCoeffs(dtype=self.dtype)
+        out._data = {(ki, ispn): self._data[(ki, ispn)]
+                     for ki, ispn in self._data if ki == k}
         return out
+
+    def kvalues(self):
+        """
+        TODO: make an iterator
+        """
+        ks, _ = zip(*self._data.keys())
+        return ks
+
+    def by_k(self):
+        """
+        returns a dictionary, where each element is a list of tuples:
+        {k: [(ispn, cn), ...]}
+        """
+        sdict = {k: [] for k in self.kvalues()}
+        for k, ispn in self._data:
+            sdict[k].append((ispn, self._data[(k, ispn)]))
+        return sdict
+
+    def __len__(self):
+        """
+        """
+        return len(self._data)
+
+    def items(self):
+        """
+        """
+        return self._data.items()
+
+    def __contains__(self, key):
+        """
+        """
+        return self._data.__contains(key)
+
 
 if __name__ == '__main__':
     shapes = [(10, 12), (3, 100), (4, 80), (5, 60)]
@@ -129,6 +177,10 @@ if __name__ == '__main__':
     CC = 2 + CC + 1
     CC = CC - 1j
     CC = np.conj(CC)
-    CC = np.abs(CC)
+    print('np.conj(CC) has type: ', type(CC))
+    # not working
+    # CC = abs(CC)
 
     CCv = CC.kview(1)
+    for k, item in CC.by_k().items():
+        print('list of k:', k, 'has ', len(item), ' entries')
