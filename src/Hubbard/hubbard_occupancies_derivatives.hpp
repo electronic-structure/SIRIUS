@@ -44,9 +44,9 @@ void Hubbard::compute_occupancies_derivatives(K_point&                    kp,
     Wave_functions phitmp(kp.gkvec_partition(), this->number_of_hubbard_orbitals(), 1);
 
     int HowManyBands = kp.num_occupied_bands(0);
-    if (ctx_.num_spins() == 2)
+    if (ctx_.num_spins() == 2) {
         HowManyBands = std::max(kp.num_occupied_bands(1), kp.num_occupied_bands(0));
-
+    }
     /*
       d_phitmp contains the derivatives of the hubbard wave functions
       corresponding to the displacement r^I_a.
@@ -92,15 +92,11 @@ void Hubbard::compute_occupancies_derivatives(K_point&                    kp,
     }
 
 
-    #if defined(__GPU)
-    if (ctx_.processing_unit() == GPU) {
-    }
-    #endif
     for (int atom_id = 0; atom_id < ctx_.unit_cell().num_atoms(); atom_id++) {
-        dn_tmp.zero();
+        dn_tmp.zero<memory_t::host | memory_t::device>();
         for (int dir = 0; dir < 3; dir++) {
             // reset dphi
-            dphi.pw_coeffs(0).prime().zero();
+            dphi.pw_coeffs(0).prime().zero<memory_t::host|memory_t::device>();
 
             if (ctx_.unit_cell().atom(atom_id).type().hubbard_correction()) {
                 // atom atom_id has hubbard correction so we need to compute the
@@ -291,7 +287,7 @@ void Hubbard::compute_occupancies_stress_derivatives(K_point&                   
             compute_gradient_strain_wavefunctions(kp, phitmp, rlm_g, rlm_dg, nu, mu);
             #if defined(__GPU)
             if (ctx_.processing_unit() == GPU) {
-                phi.copy_to_device(0, 0, this->number_of_hubbard_orbitals());
+                phitmp.copy_to_device(0, 0, this->number_of_hubbard_orbitals());
             }
             #endif
             // computes the S|d phi^I_ia>. It just happens that doing

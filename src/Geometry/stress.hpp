@@ -952,7 +952,7 @@ class Stress {
         hamiltonian_.dismiss();
 
         /* global reduction */
-        ctx_.comm().allreduce<double, mpi_op_t::sum>(&stress_hubbard_(0, 0), 9);
+        kset_.comm().allreduce<double, mpi_op_t::sum>(&stress_hubbard_(0, 0), 9);
         symmetrize(stress_hubbard_);
 
         return stress_hubbard_;
