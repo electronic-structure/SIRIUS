@@ -60,6 +60,15 @@ class CoefficientArray:
                 out[key] = self._data[key] + other
         return out
 
+    def __neg__(self):
+        """
+
+        """
+        out = type(self)(dtype=self.dtype)
+        for key, val in self._data.items():
+            out[key] = -val
+        return out
+
     def abs(self):
         """
         """
@@ -74,7 +83,7 @@ class CoefficientArray:
     def __sub__(self, other):
         """
         """
-        return self.__add__(-1*other)
+        return self.__add__(-1 * other)
 
     def conjugate(self):
         """
