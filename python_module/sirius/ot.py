@@ -28,7 +28,7 @@ class Energy:
     def __init__(self, kpointset, potential, density, hamiltonian, ctx=None):
         """
         Keyword Arguments:
-        kpointset --
+        kpointset   --
         potential   --
         density     --
         hamiltonian -- object of type ApplyHamiltonian (c++ wrapper)
@@ -41,7 +41,7 @@ class Energy:
         if ctx is None:
             self.ctx = kpointset.ctx()
         else:
-        self.ctx = ctx
+            self.ctx = ctx
 
     def __call__(self, cn, ki=None, ispn=0):
         """
@@ -72,15 +72,15 @@ class Energy:
             yn = self.H(cn)
             for key, val in yn.items():
                 k, ispn = key
+                w = self.kpointset[k].weight()
                 bnd_occ = np.array(self.kpointset[k].band_occupancy(ispn))
                 # scale columns by 1/bnd_occ
                 benergies = np.einsum('ij,ij,j->j', val, np.conj(cn[key]),
-                                      1 / bnd_occ)
+                                      1 / (bnd_occ * w))
                 # nn = val.shape[1]
                 # for j in range(nn):
                 #     ee = 1/bnd_occ[j] * val[:,j].H * cn[key][:,j]
                 #     assert(np.isclose(benergies[j], ee))
-                print('band energies:', np.real(benergies), 'at:', key)
                 # print('warning: not setting band energy')
                 for j, ek in enumerate(benergies):
                     assert(np.abs(np.imag(ek)) < 1e-10)
@@ -88,26 +88,26 @@ class Energy:
             return pp_total_energy(self.potential, self.density,
                                    self.kpointset, self.ctx)
         else:
-        k = self.kpointset[ki]
-        k.spinor_wave_functions().pw_coeffs(ispn)[:] = cn
-        if self.ctx.processing_unit() == DeviceEnum.GPU:
-            k.spinor_wave_functions().copy_to_gpu()
-        # update density and potential at point
-        self.density.generate(self.kpointset)
-        self.density.generate_paw_loc_density()
-        self.density.fft_transform(1)
-        self.potential.generate(self.density)
-        self.potential.fft_transform(1)
-        # after updating H to the new position, we can compute new band energies
-        bnd_occ = k.band_occupancy(ispn)
+            k = self.kpointset[ki]
+            k.spinor_wave_functions().pw_coeffs(ispn)[:] = cn
+            if self.ctx.processing_unit() == DeviceEnum.GPU:
+                k.spinor_wave_functions().copy_to_gpu()
+            # update density and potential at point
+            self.density.generate(self.kpointset)
+            self.density.generate_paw_loc_density()
+            self.density.fft_transform(1)
+            self.potential.generate(self.density)
+            self.potential.fft_transform(1)
+            # after updating H to the new position, we can compute new band energies
+            bnd_occ = k.band_occupancy(ispn)
+            w = k.weight()
             yn = self.H(cn, ki=ki, ispn=ispn)
-        # Hc is scaled by band occupancies, need to divide here to get correct band energies
-        yn = np.matrix(np.array(yn) / bnd_occ)
+            # Hc is scaled by band occupancies, need to divide here to get correct band energies
+            yn = np.matrix(np.array(yn) / bnd_occ / w)
             HH = yn.H * cn
             ek = np.diag(HH)
-            print('band energies:', np.real(ek))
-        for i, ek in enumerate(ek):
-            k.set_band_energy(i, ispn, ek)
+            for i, ek in enumerate(ek):
+                k.set_band_energy(i, ispn, ek)
             return pp_total_energy(self.potential, self.density,
                                    self.kpointset, self.ctx)
 
@@ -134,6 +134,7 @@ class ApplyHamiltonian:
                 # print('ApplyHamiltonian: k =', k)
                 num_wf = ispn_coeffs[0][1].shape[1]
                 kpoint = self.kpointset[k]
+                w = kpoint.weight()
                 Psi_x = Wave_functions(kpoint.gkvec_partition(), num_wf,
                                        num_sc)
                 Psi_y = Wave_functions(kpoint.gkvec_partition(), num_wf,
@@ -147,24 +148,25 @@ class ApplyHamiltonian:
                 for i, _ in ispn_coeffs:
                     # print('ApplyHamiltonian: spin_comp', i)
                     bnd_occ = np.array(kpoint.band_occupancy(i))
-                    out[(k, i)] = np.array(Psi_y.pw_coeffs(i), copy=False) * bnd_occ
+                    out[(k, i)] = np.array(Psi_y.pw_coeffs(i), copy=False) * bnd_occ * w
             # end for
             return out
         else:
             assert (ki in self.kpointset)
-        # since assert(num_sc==1)
+            # since assert(num_sc==1)
             kpoint = self.kpointset[ki]
+            w = kpoint.weight()
             num_wf = cn.shape[1]
             Psi_y = Wave_functions(kpoint.gkvec_partition(), num_wf, num_sc)
             Psi_x = Wave_functions(kpoint.gkvec_partition(), num_wf, num_sc)
             bnd_occ = np.array(kpoint.band_occupancy(ispn))
-        Psi_x.pw_coeffs(ispn)[:] = cn
-        # apply Hamiltonian
-        # TODO: note, applying to all ispn...
-        # hamiltonian.apply* copies to GPU
+            Psi_x.pw_coeffs(ispn)[:] = cn
+            # apply Hamiltonian
+            # TODO: note, applying to all ispn...
+            # hamiltonian.apply* copies to GPU
             self.hamiltonian.apply_ref(kpoint, Psi_y, Psi_x)
-        return np.matrix(
-                np.array(Psi_y.pw_coeffs(ispn), copy=False) * bnd_occ,
+            return np.matrix(
+                np.array(Psi_y.pw_coeffs(ispn), copy=False) * bnd_occ * w,
                 copy=True)
 
     def __call__(self, cn, ki=None, ispn=None):
