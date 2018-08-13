@@ -22,13 +22,13 @@ def beta_fletcher_reves(dfnext, df):
 def beta_polak_ribiere(dfnext, df):
     """
     """
-    return np.asscalar(inner(dfnext, dfnext-df) / inner(df, df))
+    return np.asscalar(np.real(inner(dfnext, dfnext-df)) / inner(df, df))
 
 
 def beta_sd(dfnext, df):
     """
     """
-    return 0
+    return dfnext
 
 
 def ls_qinterp(x0, p, f, dfx0, s=0.2):
@@ -36,33 +36,31 @@ def ls_qinterp(x0, p, f, dfx0, s=0.2):
     Keyword Arguments:
     x0       -- starting point
     p        -- search direction
-    f        -- f(x)
+    f        --f(x
     dfx0     -- grad f(x0)
     """
     f0 = f(x0)
-    # TODO: remove hard-coded band occ numbers!
     b = np.real(2 * inner(p, dfx0))
     assert (b <= 0)
     f1 = f(x0 + s * p)
-    # fit coefficients g(t) = a * t^2 + b * t + c
+    # g(t) = a * t^2 + b * t + c
     c = f0
     a = (f1 - b * s - c) / s**2
-    # min g(t)
+    # min_t g(t)
     tmin = -b / (2 * a)
+    print('ls_qinterp::tmin:', tmin)
 
     if a <= 0:
-        raise ValueError('quadratic interpolation: not convex!')
-
+        raise ValueError('ls_qinterp: not convex!')
     x = x0 + tmin * p
-    print('ls_qinterp::tmin:', tmin)
+
     fnext = f(x)
     if not fnext < f0:
         print('ls_qinterp failed!!!')
         # revert coefficients to x0
         f0r = f(x0)  # never remove this, need side effects
         assert (f0 == f0r)
-
-        raise ValueError('qinterp did not improve the solution')
+        raise ValueError('ls_qinterp did not improve the solution')
     return x
 
 
@@ -116,7 +114,7 @@ def minimize(x0,
              tol=1e-7,
              lstype='interp',
              mtype='FR',
-             restart=20,
+             restart=None,
              callback=None,
              verbose=False,
              log=False):
@@ -175,10 +173,10 @@ def minimize(x0,
             assert (linesearch is not ls_bracketing)
             xnext = ls_bracketing(x, p, f, dfx)
 
-        # TODO update k-point set, e.g. call f(x),
-        pdfx, dfx = df(xnext)
         # side effect (update coefficients, band energies, density, potential)
         fnext = f(xnext)
+        # TODO update k-point set, e.g. call f(x),
+        pdfx, dfx = df(xnext)
         if log:
             histf.append(fnext)
         if verbose:
@@ -192,19 +190,25 @@ def minimize(x0,
             break
 
         # conjugate search direction for next iteration
-        b = beta(-pdfx, p)
-        if i % restart == 0:
+        if restart is not None and i % restart == 0:
             p = -pdfx
+            assert(np.real(inner(p, dfx)) < 0)
         else:
+            b = beta(-pdfx, p)
+            print('ϐ:', b)
             p = -pdfx + b * p
+            if(inner(p, dfx) > 0):
+                print('minimize: RESTARTING')
+                p = -pdfx
+            assert(np.real(inner(p, dfx)) < 0)
 
         if callback is not None:
             callback(x)
     else:
         if log:
-            return (x, i, False, histf)
+            return (x, maxiter, False, histf)
         else:
-            return (x, i, False)
+            return (x, maxiter, False)
 
     if log:
         return (x, i, True, histf)
