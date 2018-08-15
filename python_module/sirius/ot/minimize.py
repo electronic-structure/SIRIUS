@@ -7,28 +7,36 @@ def inner(a, b):
     """
     # TODO: find a better solution, not try except
     try:
-        return np.sum(np.array(a, copy=False)*np.array(np.conj(b), copy=False))
+        return np.sum(
+            np.array(a, copy=False) * np.array(np.conj(b), copy=False))
     except ValueError:
         # is of type CoefficientArray (cannot convert to array)
         return np.sum(a * np.conj(b), copy=False)
 
 
-def beta_fletcher_reves(dfnext, df):
+def beta_fletcher_reves(dfnext, df, P=None):
     """
     """
-    return np.asscalar(inner(dfnext, dfnext) / inner(df, df))
+    if P is None:
+        return np.asscalar(inner(dfnext, dfnext) / inner(df, df))
+    else:
+        return np.real(inner(dfnext, P * dfnext) / inner(df, P * df))
 
 
-def beta_polak_ribiere(dfnext, df):
+def beta_polak_ribiere(dfnext, df, P=None):
     """
     """
-    return np.asscalar(np.real(inner(dfnext, dfnext-df)) / inner(df, df))
+
+    if P is None:
+        return np.asscalar(np.real(inner(dfnext, dfnext - df)) / inner(df, df))
+    else:
+        return np.real(inner(P * dfnext, dfnext - df) / inner(df, P * df))
 
 
-def beta_sd(dfnext, df):
+def beta_sd(dfnext, df, P=None):
     """
     """
-    return dfnext
+    return 0
 
 
 def ls_qinterp(x0, p, f, dfx0, s=0.2):
@@ -48,7 +56,7 @@ def ls_qinterp(x0, p, f, dfx0, s=0.2):
     a = (f1 - b * s - c) / s**2
     # min_t g(t)
     tmin = -b / (2 * a)
-    print('ls_qinterp::tmin:', tmin)
+    # print('ls_qinterp::tmin:', tmin)
 
     if a <= 0:
         raise ValueError('ls_qinterp: not convex!')
@@ -56,22 +64,78 @@ def ls_qinterp(x0, p, f, dfx0, s=0.2):
 
     fnext = f(x)
     if not fnext < f0:
-        print('ls_qinterp failed!!!')
+        # print('ls_qinterp failed!!!')
         # revert coefficients to x0
         f0r = f(x0)  # never remove this, need side effects
-        assert (f0 == f0r)
+        assert (np.isclose(f0, f0r))
         raise ValueError('ls_qinterp did not improve the solution')
-    return x
+    return x, fnext
 
 
-def ls_golden(x0, dfx0, f):
+def gss(f, a, b, tol=1e-5):
+    """
+    Golden section search.
+
+    Given a function f with a single local minimum in
+    the interval [a,b], gss returns a subset interval
+    [c,d] that contains the minimum with d-c <= tol.
+
+
+    """
+
+    (a, b) = (min(a, b), max(a, b))
+
+    h = b - a
+    if h <= tol:
+        return (a, b)
+
+    invphi = (np.sqrt(5) - 1) / 2  # 1/phi
+    invphi2 = (3 - np.sqrt(5)) / 2  # 1/phi^2
+    # required steps to achieve tolerance
+    n = int(np.ceil(np.log(tol / h) / np.log(invphi)))
+
+    c = a + invphi2 * h
+    d = a + invphi * h
+    yc = f(c)
+    yd = f(d)
+
+    for k in range(n - 1):
+        if yc < yd:
+            b = d
+            d = c
+            yd = yc
+            h = invphi * h
+            c = a + invphi2 * h
+            yc = f(c)
+        else:
+            a = c
+            c = d
+            yc = yd
+            h = invphi * h
+            d = a + invphi * h
+            yd = f(d)
+
+    if yc < yd:
+        # print('gss: a=%.2g, d=%.2g' % (a, d))
+        return (a, d)
+    else:
+        # print('gss: c=%.2g, b=%.2g' % (c, b))
+        return (c, b)
+
+
+def ls_golden(x0, p, f, **kwargs):
     """
     Golden-section search
     """
-    raise Exception('not yet implemented')
+    t1, t2 = gss(lambda t: f(x0 + t * p), **kwargs, tol=1e-5)
+    tmin = (t1 + t2) / 2
+    x = x0 + tmin * p
+    # important for side-effects
+    fn = f(x)
+    return x, fn
 
 
-def ls_bracketing(x0, p, f, dfx0, tau=0.5, maxiter=40):
+def ls_bracketing(x0, p, f, dfx0, tau=0.5, maxiter=40, **kwargs):
     """
     Bracketing line search algorithm
 
@@ -97,14 +161,14 @@ def ls_bracketing(x0, p, f, dfx0, tau=0.5, maxiter=40):
         else:
             ds *= tau
             fn = f(x0 + ds * p)
-            print('ls_bracketing: ds: %.4g' % ds)
+            # print('ls_bracketing: ds: %.4g' % ds)
     else:
         if not fn < f0 and np.abs(fn - f0) > 1e-10:
             raise ValueError(
                 'failed to find a step length after maxiter=%d iterations.' %
                 maxiter)
-    print('bracketing: step-length = : ', ds)
-    return x0 + ds * p
+    # print('bracketing: step-length = : ', ds)
+    return x0 + ds * p, fn
 
 
 def minimize(x0,
@@ -114,8 +178,9 @@ def minimize(x0,
              tol=1e-7,
              lstype='interp',
              mtype='FR',
+             M=None,
+             c0=None,
              restart=None,
-             callback=None,
              verbose=False,
              log=False):
     """
@@ -127,7 +192,7 @@ def minimize(x0,
     tol        -- (default 1e-7)
     lstype     -- (default 'interp')
     mtype      -- (default 'FR')
-    callback   -- (default None)
+    M          -- (default None) preconditioner
     verbose    -- (default False) debug output
     log        -- (default False) log values
 
@@ -145,7 +210,7 @@ def minimize(x0,
     elif mtype == 'SD':
         beta = beta_sd
     else:
-        raise Exception('invalid argument')
+        raise Exception('invalid argument for `mtype`')
 
     if lstype == 'interp':
         linesearch = ls_qinterp
@@ -154,56 +219,62 @@ def minimize(x0,
     elif lstype == 'bracketing':
         linesearch = ls_bracketing
     else:
-        raise Exception('invalid argument')
+        raise Exception('invalid argument for `lstype`')
 
     x = x0
     pdfx, dfx = df(x)
-    p = -1 * pdfx
+    if M is not None:
+        p = -M @ dfx
+    else:
+        p = -pdfx
 
     if log:
         histf = [f(x)]
 
     for i in range(maxiter):
-        print('---- minimize iteration ', i)
         try:
-            xnext = linesearch(x, p, f, dfx)
+            xnext, fnext = linesearch(x, p, f, dfx)
         except ValueError:
             # fall back to bracketing line-search
-            print('ls_qinterp failed')
+            print('%d line-search resort to fallback' % i)
             assert (linesearch is not ls_bracketing)
-            xnext = ls_bracketing(x, p, f, dfx)
+            xnext, fnext = ls_golden(x, p, f, a=0, b=5)
 
-        # side effect (update coefficients, band energies, density, potential)
-        fnext = f(xnext)
-        # TODO update k-point set, e.g. call f(x),
+        pdfprev = pdfx
         pdfx, dfx = df(xnext)
         if log:
             histf.append(fnext)
+
+        res = np.real(inner(pdfx, pdfx))
+
         if verbose:
-            print('current energy: ', i, fnext)
+            print('%4d %16.9f (Ha)  residual: %.3e' % (i, fnext, res))
         x = xnext
 
-        res = inner(pdfx, pdfx)
-        print('residual: %.4g' % res)
         if res < tol:
-            print('success after', i + 1, ' iterations')
+            print('minimization: success after', i + 1, ' iterations')
             break
 
         # conjugate search direction for next iteration
         if restart is not None and i % restart == 0:
-            p = -pdfx
-            assert(np.real(inner(p, dfx)) < 0)
-        else:
-            b = beta(-pdfx, p)
-            print('ϐ:', b)
-            p = -pdfx + b * p
-            if(inner(p, dfx) > 0):
-                print('minimize: RESTARTING')
+            if M is not None:
+                p = -M @ dfx
+            else:
                 p = -pdfx
-            assert(np.real(inner(p, dfx)) < 0)
+            assert (np.real(inner(p, dfx)) < 0)
+        else:
+            b = beta(pdfx, pdfprev, M)
+            if M is not None:
+                p = -M @ dfx + b * p
+            else:
+                p = -pdfx + b * p
+            if (inner(p, dfx) > 0):
+                if M is not None:
+                    p = -M @ dfx
+                else:
+                    p = -pdfx
+                assert (np.real(inner(p, dfx)) < 0)
 
-        if callback is not None:
-            callback(x)
     else:
         if log:
             return (x, maxiter, False, histf)

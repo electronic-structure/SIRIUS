@@ -23,7 +23,11 @@ if(CREATE_PYTHON_MODULE)
   install(TARGETS ${libname}
     LIBRARY
     DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/python${PYTHON_VERSION_MAJOR}.${PYTHON_VERSION_MINOR}/site-packages/sirius)
-  install(FILES ${_pyfiles}
-    DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/python${PYTHON_VERSION_MAJOR}.${PYTHON_VERSION_MINOR}/site-packages/sirius)
+  install(DIRECTORY sirius
+    DESTINATION
+    ${CMAKE_INSTALL_PREFIX}/lib/python${PYTHON_VERSION_MAJOR}.${PYTHON_VERSION_MINOR}/site-packages/
+    FILES_MATCHING REGEX
+    ".*py"
+    )
 
 endif(CREATE_PYTHON_MODULE)

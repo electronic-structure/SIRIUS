@@ -15,8 +15,12 @@ class CoefficientArray:
         """
         key -- (k, ispn)
         """
+
+        # # return as view, not required
+        # return self._data[key][:]
+
         # return as view
-        return self._data[key][:]
+        return self._data[key]
 
     def __setitem__(self, key, item):
         """
@@ -24,7 +28,12 @@ class CoefficientArray:
         if key in self._data:
             x = self._data[key]
             # make sure shapes don't change
-            x[:] = self.ctype(item, copy=False)
+            try:
+                # view, no copy needed
+                x[:] = self.ctype(item, copy=False)
+            except TypeError:
+                # not a view, make a copy
+                x = self.ctype(item, copy=True)
         else:
             self._data[key] = self.ctype(item, dtype=self.dtype, copy=True)
 
