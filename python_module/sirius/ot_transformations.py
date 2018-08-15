@@ -188,7 +188,7 @@ class ConstrainedGradient:
         v = np.sin(np.sqrt(Λ)) / np.sqrt(Λ)
         v = v[:, np.newaxis]
         # TODO: mask diagonal elements (get rid of warnings)
-        diffL = (Λ[:, np.newaxis] - Λ[:, np.newaxis].T)
+        diffL = Λ[:, np.newaxis] - Λ[:, np.newaxis].T
         mask = np.abs(diffL) < 1e-10
         D1 = np.ma.masked_array(v - v.T, mask=mask) / diffL
         # fill masked entries with correct formula
