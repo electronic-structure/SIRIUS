@@ -1,7 +1,7 @@
-from .py_sirius import ewald_energy, Wave_functions, DeviceEnum
-from .ot_transformations import ConstrainedGradient, c
-from .coefficient_array import CoefficientArray, PwCoeffs
+from ..py_sirius import ewald_energy, Wave_functions, DeviceEnum
+from .coefficient_array import PwCoeffs
 import numpy as np
+
 
 def matview(x):
     return np.matrix(x, copy=False)
