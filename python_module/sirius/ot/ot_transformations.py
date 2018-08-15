@@ -7,7 +7,7 @@ def matview(x):
     return np.matrix(x, copy=False)
 
 
-def constrain(p, c0):
+def lagrangeMult(p, c0, P=None):
     """
     Keyword Arguments:
     p  --
@@ -17,14 +17,21 @@ def constrain(p, c0):
     if isinstance(p, CoefficientArray):
         out = type(p)(dtype=p.dtype, ctype=p.ctype)
         for key, v in p.items():
-            out[key] = constrain(v, c0[key])
+            if P is not None:
+                out[key] = lagrangeMult(v, c0[key], P[key])
+            else:
+                out[key] = lagrangeMult(v, c0[key])
         return out
     else:
         c0 = matview(c0)
         p = matview(p)
-        oc = solve(c0.H * c0, c0.H * p)
-        correction = -1 * c0 * oc
-        return p + correction
+        if P is not None:
+            oc = solve(c0.H * P * c0, c0.H * P * p)
+            correction = -P * c0 * oc
+        else:
+            oc = solve(c0.H * c0, c0.H * p)
+            correction = -c0 * oc
+        return correction
 
 
 def c(x, c0):
