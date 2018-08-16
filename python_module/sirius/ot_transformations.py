@@ -13,11 +13,18 @@ def constrain(p, c0):
     p  --
     c0 --
     """
-    c0 = matview(c0)
-    p = matview(p)
-    oc = solve(c0.H * c0, c0.H * p)
-    correction = -1 * c0 * oc
-    return p + correction
+    from .coefficient_array import CoefficientArray
+    if isinstance(p, CoefficientArray):
+        out = type(p)(dtype=p.dtype, ctype=p.ctype)
+        for key, v in p.items():
+            out[key] = constrain(v, c0[key])
+        return out
+    else:
+        c0 = matview(c0)
+        p = matview(p)
+        oc = solve(c0.H * c0, c0.H * p)
+        correction = -1 * c0 * oc
+        return p + correction
 
 
 def c(x, c0):
