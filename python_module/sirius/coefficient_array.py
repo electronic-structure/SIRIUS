@@ -48,6 +48,23 @@ class CoefficientArray:
             raise TypeError('wrong type')
         return out
 
+    def __matmul__(self, other):
+        """
+        TODO
+        """
+        # TODO: complex | double -> complex, double | double -> double
+        out = type(self)(dtype=np.complex)
+        assert(self.ctype is np.matrix)
+        if isinstance(other, CoefficientArray):
+            for key in other._data.keys():
+                out[key] = self._data[key] * other._data[key]
+        elif np.isscalar(other):
+            for key in self._data.keys():
+                out[key] = self._data[key] * other
+        else:
+            raise TypeError('wrong type')
+        return out
+
     def __add__(self, other):
         """
         """
@@ -107,8 +124,8 @@ class CoefficientArray:
 
 
 class PwCoeffs(CoefficientArray):
-    def __init__(self, kpointset=None, dtype=np.complex):
-        super().__init__(dtype)
+    def __init__(self, kpointset=None, dtype=np.complex, ctype=np.matrix):
+        super().__init__(dtype=dtype, ctype=ctype)
 
         # load plane wave-coefficients from kpointset
         if kpointset is not None:
