@@ -492,18 +492,26 @@ void* sirius_create_ground_state(void* const* ks_handler__)
 
 /* @fortran begin function void sirius_find_ground_state        Find the ground state
    @fortran argument in required void* gs_handler               Handler of the ground state
+   @fortran argument in optional bool  save__                   boolean variable indicating if we want to save the ground state
    @fortran end */
-void sirius_find_ground_state(void* const* gs_handler__)
+void sirius_find_ground_state(void* const* gs_handler__, bool const *save__)
 {
     auto& gs = static_cast<utils::any_ptr*>(*gs_handler__)->get<sirius::DFT_ground_state>();
     auto& ctx = gs.ctx();
     auto& inp = ctx.parameters_input();
     gs.initial_state();
 
-    auto result = gs.find(inp.potential_tol_,
-                          inp.energy_tol_,
-                          inp.num_dft_iter_,
-                          false);
+    if (save__ != nullptr) {
+        auto result = gs.find(inp.potential_tol_,
+                              inp.energy_tol_,
+                              inp.num_dft_iter_,
+                              true);
+    } else {
+        auto result = gs.find(inp.potential_tol_,
+                              inp.energy_tol_,
+                              inp.num_dft_iter_,
+                              false);
+    }
 }
 
 /* @fortran begin function void sirius_update_ground_state   Update a ground state object after change of atomic coordinates or lattice vectors.
@@ -642,7 +650,7 @@ void sirius_add_atom_type_radial_function(void*  const* handler__,
    @fortran argument in  required void*   handler               Simulation context handler.
    @fortran argument in  required string  label                 Atom type label.
    @fortran argument in  required int     l                     Orbital quantum number.
-   @fortran argument in  required int     n                     ?
+   @fortran argument in  required int     n                     principal quantum number (s, p, d, f)
    @fortran argument in  required double  occ                   Atomic shell occupancy.
    @fortran argument in  required double  U                     Hubbard U parameter.
    @fortran argument in  required double  J                     Exchange J parameter for the full interaction treatment.
@@ -1360,6 +1368,7 @@ void sirius_get_stress_tensor(void* const* handler__,
     auto& stress_tensor = gs.stress();
 
     std::map<std::string, matrix3d<double> (sirius::Stress::*)(void)> func = {
+        {"total",    &sirius::Stress::calc_stress_total},
         {"vloc",    &sirius::Stress::calc_stress_vloc},
         {"har",     &sirius::Stress::calc_stress_har},
         {"ewald",   &sirius::Stress::calc_stress_ewald},
@@ -1884,6 +1893,4 @@ void sirius_generate_xc_potential(void* const* handler__,
         gs.potential().effective_magnetic_field(2).copy_to_global_ptr(&bxcmt(0, 0, 0, 1), &bxcrg(0, 1));
     }
 }
-
-
 } // extern "C"

@@ -122,6 +122,8 @@ class Stress {
 
     matrix3d<double> stress_hubbard_;
 
+    matrix3d<double> stress_total_;
+
     /// Non-local contribution to stress.
     /** Energy contribution from the non-local part of pseudopotential:
      *  \f[
@@ -963,7 +965,7 @@ class Stress {
         return stress_hubbard_;
     }
 
-    inline void calc_stress_total()
+    inline matrix3d<double> calc_stress_total()
     {
         calc_stress_kin();
         calc_stress_har();
@@ -973,9 +975,26 @@ class Stress {
         calc_stress_xc();
         calc_stress_us();
         calc_stress_nonloc();
+        stress_hubbard_.zero();
         if (ctx_.hubbard_correction()) {
             calc_stress_hubbard();
         }
+        stress_total_.zero();
+
+        for (int mu = 0; mu < 3; mu++) {
+            for (int nu = 0; nu < 3; nu++) {
+                stress_total_(mu, nu) = stress_kin_(mu, nu) +
+                    stress_har_(mu, nu) +
+                    stress_ewald_(mu, nu) +
+                    stress_vloc_(mu, nu) +
+                    stress_core_(mu, nu) +
+                    stress_xc_(mu, nu) +
+                    stress_us_(mu, nu) +
+                    stress_nonloc_(mu, nu) +
+                    stress_hubbard_(mu ,nu);
+            }
+        }
+        return stress_total_;
     }
 
     inline void print_info() const
