@@ -365,6 +365,11 @@ class K_point_set
         return ctx_;
     }
 
+    const Unit_cell& unit_cell()
+    {
+        return unit_cell_;
+    }
+
     /// Send G+k vectors of k-point jk to a given rank.
     /** Other ranks receive an empty Gvec placeholder */
     inline Gvec send_recv_gkvec(int jk__, int rank__)
