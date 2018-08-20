@@ -582,18 +582,25 @@ end function sirius_create_ground_state
 
 !> @brief Find the ground state
 !> @param [in] gs_handler Handler of the ground state
-subroutine sirius_find_ground_state(gs_handler)
+!> @param [in] save__ boolean variable indicating if we want to save the ground state
+subroutine sirius_find_ground_state(gs_handler,save__)
 implicit none
 type(C_PTR), intent(in) :: gs_handler
+logical(C_BOOL), optional, target, intent(in) :: save__
+type(C_PTR) :: save___ptr
 interface
-subroutine sirius_find_ground_state_aux(gs_handler)&
+subroutine sirius_find_ground_state_aux(gs_handler,save__)&
 &bind(C, name="sirius_find_ground_state")
 use, intrinsic :: ISO_C_BINDING
 type(C_PTR), intent(in) :: gs_handler
+type(C_PTR), value, intent(in) :: save__
 end subroutine
 end interface
 
-call sirius_find_ground_state_aux(gs_handler)
+save___ptr = C_NULL_PTR
+if (present(save__)) save___ptr = C_LOC(save__)
+
+call sirius_find_ground_state_aux(gs_handler,save___ptr)
 end subroutine sirius_find_ground_state
 
 !> @brief Update a ground state object after change of atomic coordinates or lattice vectors.
@@ -766,7 +773,7 @@ end subroutine sirius_add_atom_type_radial_function
 !> @param [in] handler Simulation context handler.
 !> @param [in] label Atom type label.
 !> @param [in] l Orbital quantum number.
-!> @param [in] n ?
+!> @param [in] n principal quantum number (s, p, d, f)
 !> @param [in] occ Atomic shell occupancy.
 !> @param [in] U Hubbard U parameter.
 !> @param [in] J Exchange J parameter for the full interaction treatment.
