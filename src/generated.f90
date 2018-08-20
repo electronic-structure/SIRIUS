@@ -202,6 +202,7 @@ end subroutine sirius_import_parameters
 !> @param [in] esm_bc Type of boundary condition for effective screened medium.
 !> @param [in] iter_solver_tol Tolerance of the iterative solver.
 !> @param [in] iter_solver_tol_empty Tolerance for the empty states.
+!> @param [in] iter_solver_type Type of iterative solver.
 !> @param [in] verbosity Verbosity level.
 !> @param [in] hubbard_correction True if LDA+U correction is enabled.
 !> @param [in] hubbard_correction_kind Type of LDA+U implementation (simplified or full).
@@ -209,7 +210,8 @@ end subroutine sirius_import_parameters
 subroutine sirius_set_parameters(handler,lmax_apw,lmax_rho,lmax_pot,num_fv_state&
 &s,num_bands,num_mag_dims,pw_cutoff,gk_cutoff,aw_cutoff,auto_rmt,gamma_point,use_&
 &symmetry,so_correction,valence_rel,core_rel,esm_bc,iter_solver_tol,iter_solver_t&
-&ol_empty,verbosity,hubbard_correction,hubbard_correction_kind,hubbard_orbitals)
+&ol_empty,iter_solver_type,verbosity,hubbard_correction,hubbard_correction_kind,h&
+&ubbard_orbitals)
 implicit none
 type(C_PTR), intent(in) :: handler
 integer(C_INT), optional, target, intent(in) :: lmax_apw
@@ -230,6 +232,7 @@ character(C_CHAR), optional, target, dimension(*), intent(in) :: core_rel
 character(C_CHAR), optional, target, dimension(*), intent(in) :: esm_bc
 real(C_DOUBLE), optional, target, intent(in) :: iter_solver_tol
 real(C_DOUBLE), optional, target, intent(in) :: iter_solver_tol_empty
+character(C_CHAR), optional, target, dimension(*), intent(in) :: iter_solver_type
 integer(C_INT), optional, target, intent(in) :: verbosity
 logical(C_BOOL), optional, target, intent(in) :: hubbard_correction
 integer(C_INT), optional, target, intent(in) :: hubbard_correction_kind
@@ -252,6 +255,7 @@ type(C_PTR) :: core_rel_ptr
 type(C_PTR) :: esm_bc_ptr
 type(C_PTR) :: iter_solver_tol_ptr
 type(C_PTR) :: iter_solver_tol_empty_ptr
+type(C_PTR) :: iter_solver_type_ptr
 type(C_PTR) :: verbosity_ptr
 type(C_PTR) :: hubbard_correction_ptr
 type(C_PTR) :: hubbard_correction_kind_ptr
@@ -260,8 +264,8 @@ interface
 subroutine sirius_set_parameters_aux(handler,lmax_apw,lmax_rho,lmax_pot,num_fv_s&
 &tates,num_bands,num_mag_dims,pw_cutoff,gk_cutoff,aw_cutoff,auto_rmt,gamma_point,&
 &use_symmetry,so_correction,valence_rel,core_rel,esm_bc,iter_solver_tol,iter_solv&
-&er_tol_empty,verbosity,hubbard_correction,hubbard_correction_kind,hubbard_orbita&
-&ls)&
+&er_tol_empty,iter_solver_type,verbosity,hubbard_correction,hubbard_correction_ki&
+&nd,hubbard_orbitals)&
 &bind(C, name="sirius_set_parameters")
 use, intrinsic :: ISO_C_BINDING
 type(C_PTR), intent(in) :: handler
@@ -283,6 +287,7 @@ type(C_PTR), value, intent(in) :: core_rel
 type(C_PTR), value, intent(in) :: esm_bc
 type(C_PTR), value, intent(in) :: iter_solver_tol
 type(C_PTR), value, intent(in) :: iter_solver_tol_empty
+type(C_PTR), value, intent(in) :: iter_solver_type
 type(C_PTR), value, intent(in) :: verbosity
 type(C_PTR), value, intent(in) :: hubbard_correction
 type(C_PTR), value, intent(in) :: hubbard_correction_kind
@@ -344,6 +349,9 @@ if (present(iter_solver_tol)) iter_solver_tol_ptr = C_LOC(iter_solver_tol)
 iter_solver_tol_empty_ptr = C_NULL_PTR
 if (present(iter_solver_tol_empty)) iter_solver_tol_empty_ptr = C_LOC(iter_solver_tol_empty)
 
+iter_solver_type_ptr = C_NULL_PTR
+if (present(iter_solver_type)) iter_solver_type_ptr = C_LOC(iter_solver_type)
+
 verbosity_ptr = C_NULL_PTR
 if (present(verbosity)) verbosity_ptr = C_LOC(verbosity)
 
@@ -359,10 +367,29 @@ if (present(hubbard_orbitals)) hubbard_orbitals_ptr = C_LOC(hubbard_orbitals)
 call sirius_set_parameters_aux(handler,lmax_apw_ptr,lmax_rho_ptr,lmax_pot_ptr,nu&
 &m_fv_states_ptr,num_bands_ptr,num_mag_dims_ptr,pw_cutoff_ptr,gk_cutoff_ptr,aw_cu&
 &toff_ptr,auto_rmt_ptr,gamma_point_ptr,use_symmetry_ptr,so_correction_ptr,valence&
-&_rel_ptr,core_rel_ptr,esm_bc_ptr,iter_solver_tol_ptr,iter_solver_tol_empty_ptr,v&
-&erbosity_ptr,hubbard_correction_ptr,hubbard_correction_kind_ptr,hubbard_orbitals&
-&_ptr)
+&_rel_ptr,core_rel_ptr,esm_bc_ptr,iter_solver_tol_ptr,iter_solver_tol_empty_ptr,i&
+&ter_solver_type_ptr,verbosity_ptr,hubbard_correction_ptr,hubbard_correction_kind&
+&_ptr,hubbard_orbitals_ptr)
 end subroutine sirius_set_parameters
+
+!> @brief Add one of the XC functionals.
+!> @param [in] handler Simulation context handler
+!> @param [in] name LibXC label of the functional.
+subroutine sirius_add_xc_functional(handler,name)
+implicit none
+type(C_PTR), intent(in) :: handler
+character(C_CHAR), dimension(*), intent(in) :: name
+interface
+subroutine sirius_add_xc_functional_aux(handler,name)&
+&bind(C, name="sirius_add_xc_functional")
+use, intrinsic :: ISO_C_BINDING
+type(C_PTR), intent(in) :: handler
+character(C_CHAR), dimension(*), intent(in) :: name
+end subroutine
+end interface
+
+call sirius_add_xc_functional_aux(handler,name)
+end subroutine sirius_add_xc_functional
 
 !> @brief Set dimensions of the MPI grid.
 !> @param [in] handler Simulation context handler
@@ -484,20 +511,28 @@ subroutine sirius_set_periodic_function_ptr(handler,label,f_mt,f_rg)
 implicit none
 type(C_PTR), intent(in) :: handler
 character(C_CHAR), dimension(*), intent(in) :: label
-real(C_DOUBLE), intent(in) :: f_mt
-real(C_DOUBLE), intent(in) :: f_rg
+real(C_DOUBLE), optional, target, intent(in) :: f_mt
+real(C_DOUBLE), optional, target, intent(in) :: f_rg
+type(C_PTR) :: f_mt_ptr
+type(C_PTR) :: f_rg_ptr
 interface
 subroutine sirius_set_periodic_function_ptr_aux(handler,label,f_mt,f_rg)&
 &bind(C, name="sirius_set_periodic_function_ptr")
 use, intrinsic :: ISO_C_BINDING
 type(C_PTR), intent(in) :: handler
 character(C_CHAR), dimension(*), intent(in) :: label
-real(C_DOUBLE), intent(in) :: f_mt
-real(C_DOUBLE), intent(in) :: f_rg
+type(C_PTR), value, intent(in) :: f_mt
+type(C_PTR), value, intent(in) :: f_rg
 end subroutine
 end interface
 
-call sirius_set_periodic_function_ptr_aux(handler,label,f_mt,f_rg)
+f_mt_ptr = C_NULL_PTR
+if (present(f_mt)) f_mt_ptr = C_LOC(f_mt)
+
+f_rg_ptr = C_NULL_PTR
+if (present(f_rg)) f_rg_ptr = C_LOC(f_rg)
+
+call sirius_set_periodic_function_ptr_aux(handler,label,f_mt_ptr,f_rg_ptr)
 end subroutine sirius_set_periodic_function_ptr
 
 !> @brief Create k-point set from the list of k-points.
@@ -1678,4 +1713,166 @@ end interface
 
 call sirius_get_hubbard_potential_aux(handler,pot,ld)
 end subroutine sirius_get_hubbard_potential
+
+!> @brief Add descriptor of the augmented wave radial function.
+!> @param [in] handler Simulation context handler.
+!> @param [in] label Atom type label.
+!> @param [in] n Principal quantum number.
+!> @param [in] l Orbital quantum number.
+!> @param [in] enu Linearization energy.
+!> @param [in] dme Order of energy derivative.
+!> @param [in] auto_enu True if automatic search of linearization energy is allowed for this radial solution.
+subroutine sirius_add_atom_type_aw_descriptor(handler,label,n,l,enu,dme,auto_enu&
+&)
+implicit none
+type(C_PTR), intent(in) :: handler
+character(C_CHAR), dimension(*), intent(in) :: label
+integer(C_INT), intent(in) :: n
+integer(C_INT), intent(in) :: l
+real(C_DOUBLE), intent(in) :: enu
+integer(C_INT), intent(in) :: dme
+logical(C_BOOL), intent(in) :: auto_enu
+interface
+subroutine sirius_add_atom_type_aw_descriptor_aux(handler,label,n,l,enu,dme,auto&
+&_enu)&
+&bind(C, name="sirius_add_atom_type_aw_descriptor")
+use, intrinsic :: ISO_C_BINDING
+type(C_PTR), intent(in) :: handler
+character(C_CHAR), dimension(*), intent(in) :: label
+integer(C_INT), intent(in) :: n
+integer(C_INT), intent(in) :: l
+real(C_DOUBLE), intent(in) :: enu
+integer(C_INT), intent(in) :: dme
+logical(C_BOOL), intent(in) :: auto_enu
+end subroutine
+end interface
+
+call sirius_add_atom_type_aw_descriptor_aux(handler,label,n,l,enu,dme,auto_enu)
+end subroutine sirius_add_atom_type_aw_descriptor
+
+!> @brief Add descriptor of the local orbital radial function.
+!> @param [in] handler Simulation context handler.
+!> @param [in] label Atom type label.
+!> @param [in] ilo Index of the local orbital to which the descriptro is added.
+!> @param [in] n Principal quantum number.
+!> @param [in] l Orbital quantum number.
+!> @param [in] enu Linearization energy.
+!> @param [in] dme Order of energy derivative.
+!> @param [in] auto_enu True if automatic search of linearization energy is allowed for this radial solution.
+subroutine sirius_add_atom_type_lo_descriptor(handler,label,ilo,n,l,enu,dme,auto&
+&_enu)
+implicit none
+type(C_PTR), intent(in) :: handler
+character(C_CHAR), dimension(*), intent(in) :: label
+integer(C_INT), intent(in) :: ilo
+integer(C_INT), intent(in) :: n
+integer(C_INT), intent(in) :: l
+real(C_DOUBLE), intent(in) :: enu
+integer(C_INT), intent(in) :: dme
+logical(C_BOOL), intent(in) :: auto_enu
+interface
+subroutine sirius_add_atom_type_lo_descriptor_aux(handler,label,ilo,n,l,enu,dme,&
+&auto_enu)&
+&bind(C, name="sirius_add_atom_type_lo_descriptor")
+use, intrinsic :: ISO_C_BINDING
+type(C_PTR), intent(in) :: handler
+character(C_CHAR), dimension(*), intent(in) :: label
+integer(C_INT), intent(in) :: ilo
+integer(C_INT), intent(in) :: n
+integer(C_INT), intent(in) :: l
+real(C_DOUBLE), intent(in) :: enu
+integer(C_INT), intent(in) :: dme
+logical(C_BOOL), intent(in) :: auto_enu
+end subroutine
+end interface
+
+call sirius_add_atom_type_lo_descriptor_aux(handler,label,ilo,n,l,enu,dme,auto_e&
+&nu)
+end subroutine sirius_add_atom_type_lo_descriptor
+
+!> @brief Set configuration of atomic levels.
+!> @param [in] handler Simulation context handler.
+!> @param [in] label Atom type label.
+!> @param [in] n Principal quantum number.
+!> @param [in] l Orbital quantum number.
+!> @param [in] k kappa (used in relativistic solver).
+!> @param [in] occupancy Level occupancy.
+!> @param [in] core Tru if this is a core state.
+subroutine sirius_set_atom_type_configuration(handler,label,n,l,k,occupancy,core&
+&)
+implicit none
+type(C_PTR), intent(in) :: handler
+character(C_CHAR), dimension(*), intent(in) :: label
+integer(C_INT), intent(in) :: n
+integer(C_INT), intent(in) :: l
+integer(C_INT), intent(in) :: k
+real(C_DOUBLE), intent(in) :: occupancy
+logical(C_BOOL), intent(in) :: core
+interface
+subroutine sirius_set_atom_type_configuration_aux(handler,label,n,l,k,occupancy,&
+&core)&
+&bind(C, name="sirius_set_atom_type_configuration")
+use, intrinsic :: ISO_C_BINDING
+type(C_PTR), intent(in) :: handler
+character(C_CHAR), dimension(*), intent(in) :: label
+integer(C_INT), intent(in) :: n
+integer(C_INT), intent(in) :: l
+integer(C_INT), intent(in) :: k
+real(C_DOUBLE), intent(in) :: occupancy
+logical(C_BOOL), intent(in) :: core
+end subroutine
+end interface
+
+call sirius_set_atom_type_configuration_aux(handler,label,n,l,k,occupancy,core)
+end subroutine sirius_set_atom_type_configuration
+
+!> @brief Generate Coulomb potential by solving Poisson equation
+!> @param [in] handler Ground state handler
+!> @param [out] vclmt Muffin-tin part of potential
+!> @param [out] vclrg Regular-grid part of potential
+subroutine sirius_generate_coulomb_potential(handler,vclmt,vclrg)
+implicit none
+type(C_PTR), intent(in) :: handler
+real(C_DOUBLE), intent(out) :: vclmt
+real(C_DOUBLE), intent(out) :: vclrg
+interface
+subroutine sirius_generate_coulomb_potential_aux(handler,vclmt,vclrg)&
+&bind(C, name="sirius_generate_coulomb_potential")
+use, intrinsic :: ISO_C_BINDING
+type(C_PTR), intent(in) :: handler
+real(C_DOUBLE), intent(out) :: vclmt
+real(C_DOUBLE), intent(out) :: vclrg
+end subroutine
+end interface
+
+call sirius_generate_coulomb_potential_aux(handler,vclmt,vclrg)
+end subroutine sirius_generate_coulomb_potential
+
+!> @brief Generate XC potential using LibXC
+!> @param [in] handler Ground state handler
+!> @param [out] vxcmt Muffin-tin part of potential
+!> @param [out] vxcrg Regular-grid part of potential
+!> @param [out] bxcmt Muffin-tin part of effective magentic field
+!> @param [out] bxcrg Regular-grid part of effective magnetic field
+subroutine sirius_generate_xc_potential(handler,vxcmt,vxcrg,bxcmt,bxcrg)
+implicit none
+type(C_PTR), intent(in) :: handler
+real(C_DOUBLE), intent(out) :: vxcmt
+real(C_DOUBLE), intent(out) :: vxcrg
+real(C_DOUBLE), intent(out) :: bxcmt
+real(C_DOUBLE), intent(out) :: bxcrg
+interface
+subroutine sirius_generate_xc_potential_aux(handler,vxcmt,vxcrg,bxcmt,bxcrg)&
+&bind(C, name="sirius_generate_xc_potential")
+use, intrinsic :: ISO_C_BINDING
+type(C_PTR), intent(in) :: handler
+real(C_DOUBLE), intent(out) :: vxcmt
+real(C_DOUBLE), intent(out) :: vxcrg
+real(C_DOUBLE), intent(out) :: bxcmt
+real(C_DOUBLE), intent(out) :: bxcrg
+end subroutine
+end interface
+
+call sirius_generate_xc_potential_aux(handler,vxcmt,vxcrg,bxcmt,bxcrg)
+end subroutine sirius_generate_xc_potential
 
