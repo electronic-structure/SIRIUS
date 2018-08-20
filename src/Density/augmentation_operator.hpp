@@ -218,6 +218,11 @@ class Augmentation_operator
     {
         return sym_weight_(idx__);
     }
+
+    Atom_type const& atom_type() const
+    {
+        return atom_type_;
+    }
 };
 
 /// Derivative of augmentation operator PW coefficients with respect to the Cartesian component of G-vector.
