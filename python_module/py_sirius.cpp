@@ -176,6 +176,7 @@ PYBIND11_MODULE(py_sirius, m)
         .def("add_atom", py::overload_cast<const std::string, std::vector<double>>(&Unit_cell::add_atom))
         .def("atom_type", py::overload_cast<int>(&Unit_cell::atom_type), py::return_value_policy::reference)
         .def("set_lattice_vectors", static_cast<void (Unit_cell::*)(matrix3d<double>)>(&Unit_cell::set_lattice_vectors))
+        .def("lattice_vectors", &Unit_cell::lattice_vectors)
         .def("get_symmetry", &Unit_cell::get_symmetry)
         .def("reciprocal_lattice_vectors", &Unit_cell::reciprocal_lattice_vectors)
         .def("generate_radial_functions", &Unit_cell::generate_radial_functions);
@@ -193,6 +194,7 @@ PYBIND11_MODULE(py_sirius, m)
         .def("offset", &sddk::Gvec::offset)
         .def("gvec", &sddk::Gvec::gvec)
         .def("gkvec", &sddk::Gvec::gkvec)
+        .def("gkvec_cart", &sddk::Gvec::gkvec_cart<index_domain_t::global>)
         .def("num_zcol", &sddk::Gvec::num_zcol)
         .def("gvec_alt", [](Gvec& obj, int idx) {
             vector3d<int>    vec(obj.gvec(idx));
@@ -258,6 +260,11 @@ PYBIND11_MODULE(py_sirius, m)
         .def("__call__", [](const matrix3d<double>& obj, int x, int y) {
             return obj(x, y);
         })
+        .def("__array__", [](const matrix3d<double>& mat) {
+            return py::array_t<double>({3, 3},
+                                       {3 * sizeof(double), sizeof(double)},
+                                       &mat(0, 0));
+        }, py::return_value_policy::reference_internal)
         .def(py::self * py::self)
         .def("__getitem__", [](const matrix3d<double>& obj, int x, int y) {
             return obj(x, y);
@@ -358,6 +365,7 @@ PYBIND11_MODULE(py_sirius, m)
         .def(py::init<Simulation_context&, std::vector<int>, std::vector<int>, bool>())
         .def("initialize", &K_point_set::initialize, py::arg("counts") = std::vector<int>{})
         .def("ctx", &K_point_set::ctx, py::return_value_policy::reference_internal)
+        .def("unit_cell", &K_point_set::unit_cell, py::return_value_policy::reference_internal)
         .def("num_kpoints", &K_point_set::num_kpoints)
         .def("energy_fermi", &K_point_set::energy_fermi)
         .def("get_band_energies", &K_point_set::get_band_energies)
@@ -650,8 +658,9 @@ py::class_<Free_atom>(m, "Free_atom")
                                                {1 * sizeof(complex_double), nrows * sizeof(complex_double)},
                                                matrix_storage.prime().data<CPU>(),
                                                obj);
-            }, py::keep_alive<0, 1>())
-        #ifdef __GPU
+        },
+             py::keep_alive<0, 1>())
+#ifdef __GPU
         .def("copy_to_gpu", [](Wave_functions& wf) {
             /* is_on_device -> true if all internal storage is allocated on device */
             bool is_on_device = true;
@@ -680,7 +689,7 @@ py::class_<Free_atom>(m, "Free_atom")
                 }
             }
         })
-        #endif // __GPU
+#endif // __GPU
         .def("allocated_on_device", [](Wave_functions& wf) {
             bool is_on_device = true;
             for (int i = 0; i < wf.num_sc(); ++i) {
@@ -690,15 +699,6 @@ py::class_<Free_atom>(m, "Free_atom")
         })
         .def("pw_coeffs_obj", py::overload_cast<int>(&Wave_functions::pw_coeffs, py::const_), py::return_value_policy::reference_internal);
 
-    m.def("wf_inner", [](device_t pu, int ispn, Wave_functions& bra, int i0, int m, Wave_functions& ket, int j0, int n) {
-        dmatrix<complex_double> S(m, n, pu == device_t::GPU ? memory_t::device | memory_t::host : memory_t::host);
-        /* S holds the result in the CPU pointer */
-        inner(pu, ispn, bra, i0, m, ket, j0, n, S, 0, 0);
-
-        return py::array_t<complex_double>({m, n},
-                                           {1 * sizeof(complex_double), m * sizeof(complex_double)},
-                                           S.data<CPU>());
-    });
 
     /* TODO: group this kind of functions somewhere */
     m.def("ewald_energy", &ewald_energy);
