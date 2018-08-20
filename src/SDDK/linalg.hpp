@@ -241,7 +241,7 @@ class linalg<GPU>: public linalg_base
         static void gemm(int transa, int transb, ftn_int m, ftn_int n, ftn_int k, const T *alpha, matrix<T> const& A, matrix<T> const& B, const T *beta,
                          matrix<T>& C, int stream_id = -1)
         {
-            gemm(transa, transb, m, n, k, A.template at<GPU>(), alpha, A.ld(), B.template at<GPU>(), B.ld(), beta, C.template at<GPU>(), C.ld(), stream_id);
+            gemm(transa, transb, m, n, k, alpha, A.template at<GPU>(), A.ld(), B.template at<GPU>(), B.ld(), beta, C.template at<GPU>(), C.ld(), stream_id);
         }
 
         /// Cholesky factorization
