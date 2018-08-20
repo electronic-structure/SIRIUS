@@ -1790,3 +1790,89 @@ call sirius_add_atom_type_lo_descriptor_aux(handler,label,ilo,n,l,enu,dme,auto_e
 &nu)
 end subroutine sirius_add_atom_type_lo_descriptor
 
+!> @brief Set configuration of atomic levels.
+!> @param [in] handler Simulation context handler.
+!> @param [in] label Atom type label.
+!> @param [in] n Principal quantum number.
+!> @param [in] l Orbital quantum number.
+!> @param [in] k kappa (used in relativistic solver).
+!> @param [in] occupancy Level occupancy.
+!> @param [in] core Tru if this is a core state.
+subroutine sirius_set_atom_type_configuration(handler,label,n,l,k,occupancy,core&
+&)
+implicit none
+type(C_PTR), intent(in) :: handler
+character(C_CHAR), dimension(*), intent(in) :: label
+integer(C_INT), intent(in) :: n
+integer(C_INT), intent(in) :: l
+integer(C_INT), intent(in) :: k
+real(C_DOUBLE), intent(in) :: occupancy
+logical(C_BOOL), intent(in) :: core
+interface
+subroutine sirius_set_atom_type_configuration_aux(handler,label,n,l,k,occupancy,&
+&core)&
+&bind(C, name="sirius_set_atom_type_configuration")
+use, intrinsic :: ISO_C_BINDING
+type(C_PTR), intent(in) :: handler
+character(C_CHAR), dimension(*), intent(in) :: label
+integer(C_INT), intent(in) :: n
+integer(C_INT), intent(in) :: l
+integer(C_INT), intent(in) :: k
+real(C_DOUBLE), intent(in) :: occupancy
+logical(C_BOOL), intent(in) :: core
+end subroutine
+end interface
+
+call sirius_set_atom_type_configuration_aux(handler,label,n,l,k,occupancy,core)
+end subroutine sirius_set_atom_type_configuration
+
+!> @brief Generate Coulomb potential by solving Poisson equation
+!> @param [in] handler Ground state handler
+!> @param [out] vclmt Muffin-tin part of potential
+!> @param [out] vclrg Regular-grid part of potential
+subroutine sirius_generate_coulomb_potential(handler,vclmt,vclrg)
+implicit none
+type(C_PTR), intent(in) :: handler
+real(C_DOUBLE), intent(out) :: vclmt
+real(C_DOUBLE), intent(out) :: vclrg
+interface
+subroutine sirius_generate_coulomb_potential_aux(handler,vclmt,vclrg)&
+&bind(C, name="sirius_generate_coulomb_potential")
+use, intrinsic :: ISO_C_BINDING
+type(C_PTR), intent(in) :: handler
+real(C_DOUBLE), intent(out) :: vclmt
+real(C_DOUBLE), intent(out) :: vclrg
+end subroutine
+end interface
+
+call sirius_generate_coulomb_potential_aux(handler,vclmt,vclrg)
+end subroutine sirius_generate_coulomb_potential
+
+!> @brief Generate XC potential using LibXC
+!> @param [in] handler Ground state handler
+!> @param [out] vxcmt Muffin-tin part of potential
+!> @param [out] vxcrg Regular-grid part of potential
+!> @param [out] bxcmt Muffin-tin part of effective magentic field
+!> @param [out] bxcrg Regular-grid part of effective magnetic field
+subroutine sirius_generate_xc_potential(handler,vxcmt,vxcrg,bxcmt,bxcrg)
+implicit none
+type(C_PTR), intent(in) :: handler
+real(C_DOUBLE), intent(out) :: vxcmt
+real(C_DOUBLE), intent(out) :: vxcrg
+real(C_DOUBLE), intent(out) :: bxcmt
+real(C_DOUBLE), intent(out) :: bxcrg
+interface
+subroutine sirius_generate_xc_potential_aux(handler,vxcmt,vxcrg,bxcmt,bxcrg)&
+&bind(C, name="sirius_generate_xc_potential")
+use, intrinsic :: ISO_C_BINDING
+type(C_PTR), intent(in) :: handler
+real(C_DOUBLE), intent(out) :: vxcmt
+real(C_DOUBLE), intent(out) :: vxcrg
+real(C_DOUBLE), intent(out) :: bxcmt
+real(C_DOUBLE), intent(out) :: bxcrg
+end subroutine
+end interface
+
+call sirius_generate_xc_potential_aux(handler,vxcmt,vxcrg,bxcmt,bxcrg)
+end subroutine sirius_generate_xc_potential
+

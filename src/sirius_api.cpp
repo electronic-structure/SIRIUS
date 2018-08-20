@@ -1808,4 +1808,82 @@ void sirius_add_atom_type_lo_descriptor(void*  const* handler__,
     type.add_lo_descriptor(*ilo__ - 1, *n__, *l__, *enu__, *dme__, *auto_enu__);
 }
 
+/* @fortran begin function void sirius_set_atom_type_configuration   Set configuration of atomic levels.
+   @fortran argument in required void*  handler    Simulation context handler.
+   @fortran argument in required string label      Atom type label.
+   @fortran argument in required int    n          Principal quantum number.
+   @fortran argument in required int    l          Orbital quantum number.
+   @fortran argument in required int    k          kappa (used in relativistic solver).
+   @fortran argument in required double occupancy  Level occupancy.
+   @fortran argument in required bool   core       Tru if this is a core state.
+   @fortran end */
+void sirius_set_atom_type_configuration(void*  const* handler__,
+                                        char   const* label__,
+                                        int    const* n__,
+                                        int    const* l__,
+                                        int    const* k__,
+                                        double const* occupancy__,
+                                        bool   const* core__)
+{
+    GET_SIM_CTX(handler__);
+    auto& type = sim_ctx.unit_cell().atom_type(std::string(label__));
+    type.set_configuration(*n__, *l__, *k__, *occupancy__, *core__);
+}
+
+/* @fortran begin function void sirius_generate_coulomb_potential    Generate Coulomb potential by solving Poisson equation
+   @fortran argument in required void*   handler   Ground state handler
+   @fortran argument out required double vclmt     Muffin-tin part of potential
+   @fortran argument out required double vclrg     Regular-grid part of potential
+   @fortran end */
+void sirius_generate_coulomb_potential(void* const* handler__,
+                                       double*      vclmt__,
+                                       double*      vclrg__)
+{
+    auto& gs = static_cast<utils::any_ptr*>(*handler__)->get<sirius::DFT_ground_state>();
+
+    gs.density().rho().fft_transform(-1);
+    gs.potential().poisson(gs.density().rho());
+    gs.potential().hartree_potential().copy_to_global_ptr(vclmt__, vclrg__);
+}
+
+/* @fortran begin function void sirius_generate_xc_potential    Generate XC potential using LibXC
+   @fortran argument in required void*   handler   Ground state handler
+   @fortran argument out required double vxcmt     Muffin-tin part of potential
+   @fortran argument out required double vxcrg     Regular-grid part of potential
+   @fortran argument out required double bxcmt     Muffin-tin part of effective magentic field
+   @fortran argument out required double bxcrg     Regular-grid part of effective magnetic field
+   @fortran end */
+void sirius_generate_xc_potential(void* const* handler__,
+                                  double*      vxcmt__,
+                                  double*      vxcrg__,
+                                  double*      bxcmt__,
+                                  double*      bxcrg__)
+{
+    auto& gs = static_cast<utils::any_ptr*>(*handler__)->get<sirius::DFT_ground_state>();
+    gs.potential().xc(gs.density());
+    gs.potential().xc_potential().copy_to_global_ptr(vxcmt__, vxcrg__);
+
+    if (gs.ctx().num_mag_dims() == 0) {
+        return;
+    }
+
+    /* set temporary array wrapper */
+    mdarray<double, 4> bxcmt(bxcmt__, gs.ctx().lmmax_pot(), gs.ctx().unit_cell().max_num_mt_points(),
+                             gs.ctx().unit_cell().num_atoms(), gs.ctx().num_mag_dims());
+    mdarray<double, 2> bxcrg(bxcrg__, gs.ctx().fft().local_size(), gs.ctx().num_mag_dims());
+
+    if (gs.ctx().num_mag_dims() == 1) {
+        /* z component */
+        gs.potential().effective_magnetic_field(0).copy_to_global_ptr(&bxcmt(0, 0, 0, 0), &bxcrg(0, 0));
+    } else {
+        /* z component */
+        gs.potential().effective_magnetic_field(0).copy_to_global_ptr(&bxcmt(0, 0, 0, 2), &bxcrg(0, 2));
+        /* x component */
+        gs.potential().effective_magnetic_field(1).copy_to_global_ptr(&bxcmt(0, 0, 0, 0), &bxcrg(0, 0));
+        /* y component */
+        gs.potential().effective_magnetic_field(2).copy_to_global_ptr(&bxcmt(0, 0, 0, 1), &bxcrg(0, 1));
+    }
+}
+
+
 } // extern "C"
