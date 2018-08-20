@@ -443,8 +443,6 @@ void Hubbard::compute_occupancies(K_point&                    kp,
 {
     #if defined(__GPU)
     const double_complex weight = double_complex(kp.weight(), 0.0);
-    const double_complex one    = double_complex(1.0, 0.0);
-    const double_complex zero   = double_complex(0.0, 0.0);
     #endif
     // it is actually <psi | d(S|phi>)
     dphi_s_psi.zero<memory_t::host | memory_t::device>();
@@ -484,56 +482,56 @@ void Hubbard::compute_occupancies(K_point&                    kp,
 
     /* maybe dispatch this on the GPU */
     switch (ctx_.processing_unit()) {
-    case CPU: {
-        dm.zero<memory_t::host>();
-        linalg<CPU>::gemm(2, 0,
-                          this->number_of_hubbard_orbitals() * ctx_.num_spins(),
-                          this->number_of_hubbard_orbitals() * ctx_.num_spins(),
-                          HowManyBands,
-                          double_complex(kp.weight(), 0.0),
-                          dynamic_cast<matrix<double_complex>&>(dphi_s_psi),
-                          dynamic_cast<matrix<double_complex>&>(phi_s_psi),
-                          linalg_const<double_complex>::zero(),
-                          dm);
+        case CPU: {
+            dm.zero<memory_t::host>();
+            linalg<CPU>::gemm(2, 0,
+                              this->number_of_hubbard_orbitals() * ctx_.num_spins(),
+                              this->number_of_hubbard_orbitals() * ctx_.num_spins(),
+                              HowManyBands,
+                              double_complex(kp.weight(), 0.0),
+                              dynamic_cast<matrix<double_complex>&>(dphi_s_psi),
+                              dynamic_cast<matrix<double_complex>&>(phi_s_psi),
+                              linalg_const<double_complex>::zero(),
+                              dm);
 
-        linalg<CPU>::gemm(2, 0,
-                          this->number_of_hubbard_orbitals() * ctx_.num_spins(),
-                          this->number_of_hubbard_orbitals() * ctx_.num_spins(),
-                          HowManyBands,
-                          double_complex(kp.weight(), 0.0),
-                          dynamic_cast<matrix<double_complex>&>(phi_s_psi),
-                          dynamic_cast<matrix<double_complex>&>(dphi_s_psi),
-                          linalg_const<double_complex>::one(),
-                          dm);
-        break;
-    }
-    case GPU: {
-        #if defined(__GPU)
-        dm.zero<memory_t::device>();
-        linalg<GPU>::gemm(2, 0,
-                          this->number_of_hubbard_orbitals() * ctx_.num_spins(),
-                          this->number_of_hubbard_orbitals() * ctx_.num_spins(),
-                          HowManyBands,
-                          &weight,
-                          dynamic_cast<matrix<double_complex>&>(dphi_s_psi),
-                          dynamic_cast<matrix<double_complex>&>(phi_s_psi),
-                          &linalg_const<double_complex>::zero(),
-                          dm);
+            linalg<CPU>::gemm(2, 0,
+                              this->number_of_hubbard_orbitals() * ctx_.num_spins(),
+                              this->number_of_hubbard_orbitals() * ctx_.num_spins(),
+                              HowManyBands,
+                              double_complex(kp.weight(), 0.0),
+                              dynamic_cast<matrix<double_complex>&>(phi_s_psi),
+                              dynamic_cast<matrix<double_complex>&>(dphi_s_psi),
+                              linalg_const<double_complex>::one(),
+                              dm);
+            break;
+        }
+        case GPU: {
+            #if defined(__GPU)
+            dm.zero<memory_t::device>();
+            linalg<GPU>::gemm(2, 0,
+                              this->number_of_hubbard_orbitals() * ctx_.num_spins(),
+                              this->number_of_hubbard_orbitals() * ctx_.num_spins(),
+                              HowManyBands,
+                              &weight,
+                              dynamic_cast<matrix<double_complex>&>(dphi_s_psi),
+                              dynamic_cast<matrix<double_complex>&>(phi_s_psi),
+                              &linalg_const<double_complex>::zero(),
+                              dm);
 
-        linalg<GPU>::gemm(2, 0,
-                          this->number_of_hubbard_orbitals() * ctx_.num_spins(),
-                          this->number_of_hubbard_orbitals() * ctx_.num_spins(),
-                          HowManyBands,
-                          &weight,
-                          dynamic_cast<matrix<double_complex>&>(phi_s_psi),
-                          dynamic_cast<matrix<double_complex>&>(dphi_s_psi),
-                          &linalg_const<double_complex>::one(),
-                          dm);
+            linalg<GPU>::gemm(2, 0,
+                              this->number_of_hubbard_orbitals() * ctx_.num_spins(),
+                              this->number_of_hubbard_orbitals() * ctx_.num_spins(),
+                              HowManyBands,
+                              &weight,
+                              dynamic_cast<matrix<double_complex>&>(phi_s_psi),
+                              dynamic_cast<matrix<double_complex>&>(dphi_s_psi),
+                              &linalg_const<double_complex>::one(),
+                              dm);
 
-        dm.copy<memory_t::device, memory_t::host>();
-        #endif
-        break;
-    }
+            dm.copy<memory_t::device, memory_t::host>();
+            #endif
+            break;
+        }
     }
 
     #pragma omp parallel for schedule(static)
