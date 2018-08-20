@@ -1368,7 +1368,7 @@ void sirius_get_stress_tensor(void* const* handler__,
     auto& stress_tensor = gs.stress();
 
     std::map<std::string, matrix3d<double> (sirius::Stress::*)(void)> func = {
-        {"total",    &sirius::Stress::calc_stress_total},
+        {"total",   &sirius::Stress::calc_stress_total},
         {"vloc",    &sirius::Stress::calc_stress_vloc},
         {"har",     &sirius::Stress::calc_stress_har},
         {"ewald",   &sirius::Stress::calc_stress_ewald},
@@ -1893,4 +1893,5 @@ void sirius_generate_xc_potential(void* const* handler__,
         gs.potential().effective_magnetic_field(2).copy_to_global_ptr(&bxcmt(0, 0, 0, 1), &bxcrg(0, 1));
     }
 }
+
 } // extern "C"
