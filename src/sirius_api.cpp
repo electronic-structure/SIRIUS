@@ -189,6 +189,7 @@ void sirius_import_parameters(void* const* handler__,
    @fortran argument in optional string esm_bc                   Type of boundary condition for effective screened medium.
    @fortran argument in optional double iter_solver_tol          Tolerance of the iterative solver.
    @fortran argument in optional double iter_solver_tol_empty    Tolerance for the empty states.
+   @fortran argument in optional string iter_solver_type         Type of iterative solver.
    @fortran argument in optional int    verbosity                Verbosity level.
    @fortran argument in optional bool   hubbard_correction       True if LDA+U correction is enabled.
    @fortran argument in optional int    hubbard_correction_kind  Type of LDA+U implementation (simplified or full).
@@ -213,6 +214,7 @@ void sirius_set_parameters(void*  const* handler__,
                            char   const* esm_bc__,
                            double const* iter_solver_tol__,
                            double const* iter_solver_tol_empty__,
+                           char   const* iter_solver_type__,
                            int    const* verbosity__,
                            bool   const* hubbard_correction__,
                            int    const* hubbard_correction_kind__,
@@ -274,6 +276,9 @@ void sirius_set_parameters(void*  const* handler__,
     if (iter_solver_tol_empty__ != nullptr) {
         sim_ctx.empty_states_tolerance(*iter_solver_tol_empty__);
     }
+    if (iter_solver_type__ != nullptr) {
+        sim_ctx.set_iterative_solver_type(std::string(iter_solver_type__));
+    }
     if (verbosity__ != nullptr) {
         sim_ctx.set_verbosity(*verbosity__);
     }
@@ -294,6 +299,17 @@ void sirius_set_parameters(void*  const* handler__,
             sim_ctx.set_normalize_hubbard_orbitals(true);
         }
     }
+}
+
+/* @fortran begin function void sirius_add_xc_functional         Add one of the XC functionals.
+   @fortran argument in required void* handler                   Simulation context handler
+   @fortran argument in required string name                     LibXC label of the functional.
+   @fortran end */
+void sirius_add_xc_functional(void* const* handler__,
+                              char  const* name__)
+{
+    GET_SIM_CTX(handler__);
+    sim_ctx.add_xc_functional(std::string(name__));
 }
 
 /* @fortran begin function void sirius_set_mpi_grid_dims      Set dimensions of the MPI grid.
@@ -367,8 +383,8 @@ void sirius_free_handler(void** handler__)
 /* @fortran begin function void sirius_set_periodic_function_ptr   Set pointer to density or megnetization.
    @fortran argument in required void* handler                     Handler of the DFT ground state object.
    @fortran argument in required string label                      Label of the function.
-   @fortran argument in required double f_mt                       Pointer to the muffin-tin part of the function.
-   @fortran argument in required double f_rg                       Pointer to the regualr-grid part of the function.
+   @fortran argument in optional double f_mt                       Pointer to the muffin-tin part of the function.
+   @fortran argument in optional double f_rg                       Pointer to the regualr-grid part of the function.
    @fortran end */
 void sirius_set_periodic_function_ptr(void*  const* handler__,
                                       char   const* label__,
@@ -1753,5 +1769,128 @@ void sirius_get_hubbard_potential(void* const* handler__,
 {
     auto& gs = static_cast<utils::any_ptr*>(*handler__)->get<sirius::DFT_ground_state>();
     gs.hamiltonian().U().access_hubbard_potential("get", pot__, ld__);
+}
+
+/* @fortran begin function void sirius_add_atom_type_aw_descriptor    Add descriptor of the augmented wave radial function.
+   @fortran argument in    required void*  handler                    Simulation context handler.
+   @fortran argument in    required string label                      Atom type label.
+   @fortran argument in    required int    n                          Principal quantum number.
+   @fortran argument in    required int    l                          Orbital quantum number.
+   @fortran argument in    required double enu                        Linearization energy.
+   @fortran argument in    required int    dme                        Order of energy derivative.
+   @fortran argument in    required bool   auto_enu                   True if automatic search of linearization energy is allowed for this radial solution.
+   @fortran end */
+void sirius_add_atom_type_aw_descriptor(void*  const* handler__,
+                                        char   const* label__,
+                                        int    const* n__,
+                                        int    const* l__,
+                                        double const* enu__,
+                                        int    const* dme__,
+                                        bool   const* auto_enu__)
+{
+    GET_SIM_CTX(handler__);
+    auto& type = sim_ctx.unit_cell().atom_type(std::string(label__));
+    type.add_aw_descriptor(*n__, *l__, *enu__, *dme__, *auto_enu__);
+}
+
+/* @fortran begin function void sirius_add_atom_type_lo_descriptor    Add descriptor of the local orbital radial function.
+   @fortran argument in    required void*  handler                    Simulation context handler.
+   @fortran argument in    required string label                      Atom type label.
+   @fortran argument in    required int    ilo                        Index of the local orbital to which the descriptro is added.
+   @fortran argument in    required int    n                          Principal quantum number.
+   @fortran argument in    required int    l                          Orbital quantum number.
+   @fortran argument in    required double enu                        Linearization energy.
+   @fortran argument in    required int    dme                        Order of energy derivative.
+   @fortran argument in    required bool   auto_enu                   True if automatic search of linearization energy is allowed for this radial solution.
+   @fortran end */
+void sirius_add_atom_type_lo_descriptor(void*  const* handler__,
+                                        char   const* label__,
+                                        int    const* ilo__,
+                                        int    const* n__,
+                                        int    const* l__,
+                                        double const* enu__,
+                                        int    const* dme__,
+                                        bool   const* auto_enu__)
+{
+    GET_SIM_CTX(handler__);
+    auto& type = sim_ctx.unit_cell().atom_type(std::string(label__));
+    type.add_lo_descriptor(*ilo__ - 1, *n__, *l__, *enu__, *dme__, *auto_enu__);
+}
+
+/* @fortran begin function void sirius_set_atom_type_configuration   Set configuration of atomic levels.
+   @fortran argument in required void*  handler    Simulation context handler.
+   @fortran argument in required string label      Atom type label.
+   @fortran argument in required int    n          Principal quantum number.
+   @fortran argument in required int    l          Orbital quantum number.
+   @fortran argument in required int    k          kappa (used in relativistic solver).
+   @fortran argument in required double occupancy  Level occupancy.
+   @fortran argument in required bool   core       Tru if this is a core state.
+   @fortran end */
+void sirius_set_atom_type_configuration(void*  const* handler__,
+                                        char   const* label__,
+                                        int    const* n__,
+                                        int    const* l__,
+                                        int    const* k__,
+                                        double const* occupancy__,
+                                        bool   const* core__)
+{
+    GET_SIM_CTX(handler__);
+    auto& type = sim_ctx.unit_cell().atom_type(std::string(label__));
+    type.set_configuration(*n__, *l__, *k__, *occupancy__, *core__);
+}
+
+/* @fortran begin function void sirius_generate_coulomb_potential    Generate Coulomb potential by solving Poisson equation
+   @fortran argument in required void*   handler   Ground state handler
+   @fortran argument out required double vclmt     Muffin-tin part of potential
+   @fortran argument out required double vclrg     Regular-grid part of potential
+   @fortran end */
+void sirius_generate_coulomb_potential(void* const* handler__,
+                                       double*      vclmt__,
+                                       double*      vclrg__)
+{
+    auto& gs = static_cast<utils::any_ptr*>(*handler__)->get<sirius::DFT_ground_state>();
+
+    gs.density().rho().fft_transform(-1);
+    gs.potential().poisson(gs.density().rho());
+    gs.potential().hartree_potential().copy_to_global_ptr(vclmt__, vclrg__);
+}
+
+/* @fortran begin function void sirius_generate_xc_potential    Generate XC potential using LibXC
+   @fortran argument in required void*   handler   Ground state handler
+   @fortran argument out required double vxcmt     Muffin-tin part of potential
+   @fortran argument out required double vxcrg     Regular-grid part of potential
+   @fortran argument out required double bxcmt     Muffin-tin part of effective magentic field
+   @fortran argument out required double bxcrg     Regular-grid part of effective magnetic field
+   @fortran end */
+void sirius_generate_xc_potential(void* const* handler__,
+                                  double*      vxcmt__,
+                                  double*      vxcrg__,
+                                  double*      bxcmt__,
+                                  double*      bxcrg__)
+{
+    auto& gs = static_cast<utils::any_ptr*>(*handler__)->get<sirius::DFT_ground_state>();
+    gs.potential().xc(gs.density());
+    gs.potential().xc_potential().copy_to_global_ptr(vxcmt__, vxcrg__);
+
+    if (gs.ctx().num_mag_dims() == 0) {
+        return;
+    }
+
+    /* set temporary array wrapper */
+    mdarray<double, 4> bxcmt(bxcmt__, gs.ctx().lmmax_pot(), gs.ctx().unit_cell().max_num_mt_points(),
+                             gs.ctx().unit_cell().num_atoms(), gs.ctx().num_mag_dims());
+    mdarray<double, 2> bxcrg(bxcrg__, gs.ctx().fft().local_size(), gs.ctx().num_mag_dims());
+
+    if (gs.ctx().num_mag_dims() == 1) {
+        /* z component */
+        gs.potential().effective_magnetic_field(0).copy_to_global_ptr(&bxcmt(0, 0, 0, 0), &bxcrg(0, 0));
+    } else {
+        /* z component */
+        gs.potential().effective_magnetic_field(0).copy_to_global_ptr(&bxcmt(0, 0, 0, 2), &bxcrg(0, 2));
+        /* x component */
+        gs.potential().effective_magnetic_field(1).copy_to_global_ptr(&bxcmt(0, 0, 0, 0), &bxcrg(0, 0));
+        /* y component */
+        gs.potential().effective_magnetic_field(2).copy_to_global_ptr(&bxcmt(0, 0, 0, 1), &bxcrg(0, 1));
+    }
 }
 } // extern "C"
