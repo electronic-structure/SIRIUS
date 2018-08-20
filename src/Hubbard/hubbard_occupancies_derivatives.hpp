@@ -44,9 +44,9 @@ void Hubbard::compute_occupancies_derivatives(K_point&                    kp,
     Wave_functions phitmp(kp.gkvec_partition(), this->number_of_hubbard_orbitals(), 1);
 
     int HowManyBands = kp.num_occupied_bands(0);
-    if (ctx_.num_spins() == 2)
+    if (ctx_.num_spins() == 2) {
         HowManyBands = std::max(kp.num_occupied_bands(1), kp.num_occupied_bands(0));
-
+    }
     /*
       d_phitmp contains the derivatives of the hubbard wave functions
       corresponding to the displacement r^I_a.
@@ -55,22 +55,33 @@ void Hubbard::compute_occupancies_derivatives(K_point&                    kp,
     dmatrix<double_complex> phi_s_psi(HowManyBands, this->number_of_hubbard_orbitals() * ctx_.num_spins());
     matrix<double_complex>  dm(this->number_of_hubbard_orbitals() * ctx_.num_spins(),
                                this->number_of_hubbard_orbitals() * ctx_.num_spins());
+    mdarray<double_complex, 5> dn_tmp(2 * this->hubbard_lmax() + 1,
+                                      2 * this->hubbard_lmax() + 1,
+                                      ctx_.num_spins(),
+                                      ctx_.unit_cell().num_atoms(),
+                                      3);
 
     #ifdef __GPU
     if (ctx_.processing_unit() == GPU) {
+        dm.allocate(memory_t::device);
+        dn_tmp.allocate(memory_t::device);
+
+        /* allocation of the overlap matrices on GPU */
         phi_s_psi.allocate(memory_t::device);
         dphi_s_psi.allocate(memory_t::device);
-        dm.allocate(memory_t::device);
+
+        /* wave functions */
+        phitmp.allocate_on_device(0);
         phi.allocate_on_device(0);
-        phi.copy_to_device(0, 0, this->number_of_hubbard_orbitals());
         dphi.allocate_on_device(0);
+        phi.copy_to_device(0, 0, this->number_of_hubbard_orbitals());
         kp.spinor_wave_functions().allocate_on_device(ctx_.num_spins());
         for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
             kp.spinor_wave_functions().copy_to_device(ispn, 0, kp.num_occupied_bands(ispn));
         }
     }
     #endif
-    phi_s_psi.zero();
+    phi_s_psi.zero<memory_t::host | memory_t::device>();
 
     apply_S_operator(kp, q_op, phi, dphi, 0, this->number_of_hubbard_orbitals());
 
@@ -80,28 +91,12 @@ void Hubbard::compute_occupancies_derivatives(K_point&                    kp,
               this->number_of_hubbard_orbitals(), phi_s_psi, 0, ispn * this->number_of_hubbard_orbitals());
     }
 
-    #ifdef __GPU
-    if (ctx_.processing_unit() == GPU) {
-        phitmp.allocate_on_device(0);
-    }
-    #endif
 
-    mdarray<double_complex, 5> dn_tmp(2 * this->hubbard_lmax() + 1,
-                                      2 * this->hubbard_lmax() + 1,
-                                      ctx_.num_spins(),
-                                      ctx_.unit_cell().num_atoms(),
-                                      3);
-
-    #if defined(__GPU)
-    if (ctx_.processing_unit() == GPU) {
-        dn_tmp.allocate(memory_t::device);
-    }
-    #endif
     for (int atom_id = 0; atom_id < ctx_.unit_cell().num_atoms(); atom_id++) {
-        dn_tmp.zero();
+        dn_tmp.zero<memory_t::host | memory_t::device>();
         for (int dir = 0; dir < 3; dir++) {
             // reset dphi
-            dphi.pw_coeffs(0).prime().zero();
+            dphi.pw_coeffs(0).prime().zero<memory_t::host|memory_t::device>();
 
             if (ctx_.unit_cell().atom(atom_id).type().hubbard_correction()) {
                 // atom atom_id has hubbard correction so we need to compute the
@@ -263,7 +258,7 @@ void Hubbard::compute_occupancies_stress_derivatives(K_point&                   
                      0,
                      this->number_of_hubbard_orbitals());
 
-    phi_s_psi.zero();
+    phi_s_psi.zero<memory_t::host | memory_t::device>();
 
     // compute <phi^I_m| S | psi_{nk}>
     for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
@@ -292,7 +287,7 @@ void Hubbard::compute_occupancies_stress_derivatives(K_point&                   
             compute_gradient_strain_wavefunctions(kp, phitmp, rlm_g, rlm_dg, nu, mu);
             #if defined(__GPU)
             if (ctx_.processing_unit() == GPU) {
-                phi.copy_to_device(0, 0, this->number_of_hubbard_orbitals());
+                phitmp.copy_to_device(0, 0, this->number_of_hubbard_orbitals());
             }
             #endif
             // computes the S|d phi^I_ia>. It just happens that doing
@@ -452,7 +447,7 @@ void Hubbard::compute_occupancies(K_point&                    kp,
     const double_complex zero   = double_complex(0.0, 0.0);
     #endif
     // it is actually <psi | d(S|phi>)
-    dphi_s_psi.zero();
+    dphi_s_psi.zero<memory_t::host | memory_t::device>();
     int HowManyBands = kp.num_occupied_bands(0);
     if (ctx_.num_spins() == 2) {
         HowManyBands = std::max(kp.num_occupied_bands(1), kp.num_occupied_bands(0));
@@ -485,11 +480,12 @@ void Hubbard::compute_occupancies(K_point&                    kp,
     }
     #endif
 
-    dm.zero();
+    dm.zero<memory_t::host | memory_t::device>();
 
     /* maybe dispatch this on the GPU */
     switch (ctx_.processing_unit()) {
     case CPU: {
+        dm.zero<memory_t::host>();
         linalg<CPU>::gemm(2, 0,
                           this->number_of_hubbard_orbitals() * ctx_.num_spins(),
                           this->number_of_hubbard_orbitals() * ctx_.num_spins(),
@@ -513,6 +509,7 @@ void Hubbard::compute_occupancies(K_point&                    kp,
     }
     case GPU: {
         #if defined(__GPU)
+        dm.zero<memory_t::device>();
         linalg<GPU>::gemm(2, 0,
                           this->number_of_hubbard_orbitals() * ctx_.num_spins(),
                           this->number_of_hubbard_orbitals() * ctx_.num_spins(),
@@ -520,7 +517,7 @@ void Hubbard::compute_occupancies(K_point&                    kp,
                           &weight,
                           dynamic_cast<matrix<double_complex>&>(dphi_s_psi),
                           dynamic_cast<matrix<double_complex>&>(phi_s_psi),
-                          &zero,
+                          &linalg_const<double_complex>::zero(),
                           dm);
 
         linalg<GPU>::gemm(2, 0,
@@ -530,7 +527,7 @@ void Hubbard::compute_occupancies(K_point&                    kp,
                           &weight,
                           dynamic_cast<matrix<double_complex>&>(phi_s_psi),
                           dynamic_cast<matrix<double_complex>&>(dphi_s_psi),
-                          &one,
+                          &linalg_const<double_complex>::one(),
                           dm);
 
         dm.copy<memory_t::device, memory_t::host>();

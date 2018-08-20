@@ -794,7 +794,7 @@ class Force
             hamiltonian_.dismiss();
 
             /* global reduction */
-            ctx_.comm().allreduce(forces_hubbard_.at<CPU>(), 3 * ctx_.unit_cell().num_atoms());
+            kset_.comm().allreduce(forces_hubbard_.at<CPU>(), 3 * ctx_.unit_cell().num_atoms());
 
             return forces_hubbard_;
         }
