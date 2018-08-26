@@ -623,8 +623,21 @@ py::class_<Free_atom>(m, "Free_atom")
         .def("is_remapped", &matrix_storage_slab<complex_double>::is_remapped)
         .def("prime", py::overload_cast<>(&matrix_storage_slab<complex_double>::prime), py::return_value_policy::reference_internal);
 
-    py::class_<mdarray<complex_double,2>>(m, "mdarray2c")
-        .def("on_device", &mdarray<complex_double,2>::on_device);
+    py::class_<mdarray<complex_double, 2>>(m, "mdarray2c")
+        .def("on_device", &mdarray<complex_double, 2>::on_device)
+        .def("copy_to_host", [](mdarray<complex_double, 2>& mdarray) {
+            mdarray.copy<memory_t::device, memory_t::host>(mdarray.size(1));
+        })
+        .def("__array__", [](py::object& obj) {
+            mdarray<complex_double, 2>& arr = obj.cast<mdarray<complex_double, 2>&>();
+            int nrows = arr.size(0);
+            int ncols = arr.size(1);
+            return py::array_t<complex_double>({nrows, ncols},
+                                               {1 * sizeof(complex_double), nrows * sizeof(complex_double)},
+                                               arr.data<CPU>(), obj);
+        });
+
+    py::class_<dmatrix<complex_double>, mdarray<complex_double,2>>(m, "dmatrix");
 
     py::enum_<sddk::device_t>(m, "DeviceEnum")
         .value("CPU", sddk::device_t::CPU)
