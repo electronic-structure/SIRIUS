@@ -963,8 +963,6 @@ void sirius_get_pw_coeffs_real(void* const* handler__,
         }
     };
 
-    // TODO: if radial integrals take considerable time, cache them in Simulation_context
-
     if (label == "rhoc") {
         make_pw_coeffs([&](double g)
                        {
@@ -1283,7 +1281,7 @@ void sirius_set_density_matrix(void*          const* handler__,
    @fortran end */
 void sirius_get_energy(void* const* handler__,
                        char  const* label__,
-                       double*      energy__)
+                       double*      energy__) // TODO: change to funtion returning a value
 {
     auto& gs = static_cast<utils::any_ptr*>(*handler__)->get<sirius::DFT_ground_state>();
 
@@ -1892,6 +1890,191 @@ void sirius_generate_xc_potential(void* const* handler__,
         /* y component */
         gs.potential().effective_magnetic_field(2).copy_to_global_ptr(&bxcmt(0, 0, 0, 1), &bxcrg(0, 1));
     }
+}
+
+/* @fortran begin function void sirius_get_kpoint_inter_comm  Get communicator which is used to split k-points
+   @fortran argument in required void* handler   Simulation context handler
+   @fortran argument out required int fcomm      Fortran communicator
+   @fortran end */
+void sirius_get_kpoint_inter_comm(void * const* handler__,
+                                  int*          fcomm__)
+{
+    GET_SIM_CTX(handler__);
+    *fcomm__ = MPI_Comm_c2f(sim_ctx.comm_k().mpi_comm());
+}
+
+/* @fortran begin function void sirius_get_kpoint_inner_comm  Get communicator which is used to parallise band problem
+   @fortran argument in required void* handler   Simulation context handler
+   @fortran argument out required int fcomm      Fortran communicator
+   @fortran end */
+void sirius_get_kpoint_inner_comm(void * const* handler__,
+                                  int*          fcomm__)
+{
+    GET_SIM_CTX(handler__);
+    *fcomm__ = MPI_Comm_c2f(sim_ctx.comm_band().mpi_comm());
+}
+
+/* @fortran begin function void sirius_get_fft_comm  Get communicator which is used to parallise FFT
+   @fortran argument in required void* handler   Simulation context handler
+   @fortran argument out required int fcomm      Fortran communicator
+   @fortran end */
+void sirius_get_fft_comm(void * const* handler__,
+                         int*          fcomm__)
+{
+    GET_SIM_CTX(handler__);
+    *fcomm__ = MPI_Comm_c2f(sim_ctx.fft().comm().mpi_comm());
+}
+
+/* @fortran begin function int sirius_get_num_gvec  Get total number of G-vectors
+   @fortran argument in required void* handler      Simulation context handler
+   @fortran end */
+int sirius_get_num_gvec(void* const* handler__)
+{
+    GET_SIM_CTX(handler__);
+    return sim_ctx.gvec().num_gvec();
+}
+
+/* @fortran begin function void sirius_get_gvec_arrays   Get G-vector arrays.
+   @fortran argument in required void*  handler          Simulation context handler
+   @fortran argument in optional int    gvec             G-vectors in lattice coordinates.
+   @fortran argument in optional double gvec_cart        G-vectors in Cartesian coordinates.
+   @fortran argument in optional double gvec_len         Length of G-vectors.
+   @fortran argument in optional int    index_by_gvec    G-vector index by lattice coordinates.
+   @fortran end */
+void sirius_get_gvec_arrays(void* const* handler__,
+                            int*         gvec__,
+                            double*      gvec_cart__,
+                            double*      gvec_len__,
+                            int*         index_by_gvec__)
+{
+    GET_SIM_CTX(handler__);
+
+    if (gvec__ != nullptr) {
+        mdarray<int, 2> gvec(gvec__, 3, sim_ctx.gvec().num_gvec());
+        for (int ig = 0; ig < sim_ctx.gvec().num_gvec(); ig++) {
+            auto gv = sim_ctx.gvec().gvec(ig);
+            for (int x: {0, 1, 2}) {
+                gvec(x, ig) = gv[x];
+            }
+        }
+    }
+    if (gvec_cart__ != nullptr) {
+        mdarray<double, 2> gvec_cart(gvec_cart__, 3, sim_ctx.gvec().num_gvec());
+        for (int ig = 0; ig < sim_ctx.gvec().num_gvec(); ig++) {
+            auto gvc = sim_ctx.gvec().gvec_cart<index_domain_t::global>(ig);
+            for (int x: {0, 1, 2}) {
+                gvec_cart(x, ig) = gvc[x];
+            }
+        }
+    }
+    if (gvec_len__ != nullptr) {
+        for (int ig = 0; ig < sim_ctx.gvec().num_gvec(); ig++) {
+            gvec_len__[ig] = sim_ctx.gvec().gvec_len(ig);
+        }
+    }
+    if (index_by_gvec__ != nullptr) {
+        auto d0 = sim_ctx.fft().limits(0);
+        auto d1 = sim_ctx.fft().limits(1);
+        auto d2 = sim_ctx.fft().limits(2);
+
+        mdarray<int, 3> index_by_gvec(index_by_gvec__, d0, d1, d2);
+        std::fill(index_by_gvec.at<CPU>(), index_by_gvec.at<CPU>() + index_by_gvec.size(), -1);
+
+        for (int ig = 0; ig < sim_ctx.gvec().num_gvec(); ig++) {
+            auto G = sim_ctx.gvec().gvec(ig);
+            index_by_gvec(G[0], G[1], G[2]) = ig + 1;
+        }
+    }
+}
+
+/* @fortran begin function int sirius_get_num_fft_grid_points Get local number of FFT grid points.
+   @fortran argument in required void* handler                Simulation context handler
+   @fortran end */
+int sirius_get_num_fft_grid_points(void* const* handler__)
+{
+    GET_SIM_CTX(handler__);
+    return sim_ctx.fft().local_size();
+}
+
+/* @fortran begin function void sirius_get_fft_index   Get mapping between G-vector index and FFT index
+   @fortran argument in  required void* handler        Simulation context handler
+   @fortran argument out required int   fft_index      Index inside FFT buffer
+   @fortran end */
+void sirius_get_fft_index(void* const* handler__,
+                          int*         fft_index__)
+{
+    GET_SIM_CTX(handler__);
+    for (int ig = 0; ig < sim_ctx.gvec().num_gvec(); ig++) {
+        auto G = sim_ctx.gvec().gvec(ig);
+        fft_index__[ig] = sim_ctx.fft().index_by_freq(G[0], G[1], G[2]) + 1;
+    }
+}
+
+/* @fortran begin function int sirius_get_max_num_gkvec    Get maximum number of G+k vectors across all k-points in the set
+   @fortran argument in required void*       ks_handler    K-point set handler.
+   @fortran end */
+int sirius_get_max_num_gkvec(void* const* ks_handler__)
+{
+    auto& ks = static_cast<utils::any_ptr*>(*ks_handler__)->get<sirius::K_point_set>();
+    return ks.max_num_gkvec();
+}
+
+/* @fortran begin function void sirius_get_gkvec_arrays  Get all G+k vector related arrays
+   @fortran argument in required void*   ks_handler    K-point set handler.
+   @fortran argument in required int     ik            Global index of k-point
+   @fortran argument out required int    num_gkvec     Number of G+k vectors.
+   @fortran argument out required int    gvec_index    Index of the G-vector part of G+k vector.
+   @fortran argument out required double gkvec         G+k vectors in fractional coordinates.
+   @fortran argument out required double gkvec_cart    G+k vectors in Cartesian coordinates.
+   @fortran argument out required double gkvec_len     Length of G+k vectors.
+   @fortran argument out required double gkvec_tp      Theta and Phi angles of G+k vectors.
+   @fortran end */
+void sirius_get_gkvec_arrays(void* const* ks_handler__,
+                             int*         ik__,
+                             int*         num_gkvec__,
+                             int*         gvec_index__,
+                             double*      gkvec__,
+                             double*      gkvec_cart__,
+                             double*      gkvec_len,
+                             double*      gkvec_tp__)
+{
+
+    auto& ks = static_cast<utils::any_ptr*>(*ks_handler__)->get<sirius::K_point_set>();
+
+    auto kp = ks[*ik__ - 1];
+
+    /* get rank that stores a given k-point */
+    int rank = ks.spl_num_kpoints().local_rank(*ik__ - 1);
+
+    auto& comm_k = ks.ctx().comm_k();
+
+    if (rank == comm_k.rank()) {
+        *num_gkvec__ = kp->num_gkvec();
+        mdarray<double, 2> gkvec(gkvec__, 3, kp->num_gkvec());
+        mdarray<double, 2> gkvec_cart(gkvec_cart__, 3, kp->num_gkvec());
+        mdarray<double, 2> gkvec_tp(gkvec_tp__, 2, kp->num_gkvec());
+
+        for (int igk = 0; igk < kp->num_gkvec(); igk++) {
+            auto gkc = kp->gkvec().gkvec_cart<index_domain_t::global>(igk);
+            auto G = kp->gkvec().gvec(igk);
+
+            gvec_index__[igk] = ks.ctx().gvec().index_by_gvec(G) + 1; // Fortran counts from 1
+            for (int x: {0, 1, 2}) {
+                gkvec(x, igk) = kp->gkvec().gkvec(igk)[x];
+                gkvec_cart(x, igk) = gkc[x];
+            }
+            auto rtp = sirius::SHT::spherical_coordinates(gkc);
+            gkvec_len[igk] = rtp[0];
+            gkvec_tp(0, igk) = rtp[1];
+            gkvec_tp(1, igk) = rtp[2];
+        }
+    }
+    comm_k.bcast(num_gkvec__,  1,                rank);
+    comm_k.bcast(gvec_index__, *num_gkvec__,     rank);
+    comm_k.bcast(gkvec__,      *num_gkvec__ * 3, rank);
+    comm_k.bcast(gkvec_cart__, *num_gkvec__ * 3, rank);
+    comm_k.bcast(gkvec_len,    *num_gkvec__,     rank);
+    comm_k.bcast(gkvec_tp__,   *num_gkvec__ * 2, rank);
 }
 
 } // extern "C"

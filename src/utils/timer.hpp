@@ -290,36 +290,31 @@ class timer
         /* total execution time */
         double ttot = timer_values()[main_timer_label].tot_val;
 
+        /* loop over the timer; iterator `it` is a <key, valu> pair */
         for (auto& it: timer_values()) {
-            if (timer_values_ex().count(it.first)) {
-                /* collect external times */
+            /* if this timer is a parent timer for somebody and timer has a non-negligible contribution */
+            if (timer_values_ex().count(it.first) && (it.second.tot_val / ttot) > 0.01) {
+                /* collect child (external) times */
                 double te{0};
                 for (auto& it2: timer_values_ex()[it.first]) {
                     te += it2.second;
                 }
                 nlohmann::json node;
 
-                double f = it.second.tot_val / ttot;
-                if (f > 0.01) {
-                    node["cumulitive_time"]        = it.second.tot_val;
-                    node["self_time"]              = it.second.tot_val - te;
-                    node["percent_of_global_time"] = f * 100;
+                node["total_time"]              = it.second.tot_val;
+                node["child_time"]              = te;
+                node["self_time"]               = it.second.tot_val - te;
+                node["fraction_of_global_time"] = it.second.tot_val / ttot;
+                node["call"] = {};
 
-                    std::vector<std::pair<double, std::string>> tmp;
-
-                    for (auto& it2: timer_values_ex()[it.first]) {
-                        tmp.push_back(std::make_pair(it2.second / it.second.tot_val, it2.first));
-                    }
-                    std::sort(tmp.rbegin(), tmp.rend());
-                    node["call"] = {};
-                    for (auto& e: tmp) {
-                        nlohmann::json n;
-                        n["time"]              = timer_values_ex()[it.first][e.second];
-                        n["percent_of_parent"] = e.first * 100;
-                        node["call"][e.second] = n;
-                    }
-                    dict[it.first] = node;
+                /* add all children values */
+                for (auto& it2: timer_values_ex()[it.first]) {
+                    nlohmann::json n;
+                    n["time"]               = timer_values_ex()[it.first][it2.first];
+                    n["fraction_of_parent"] = it2.second / it.second.tot_val;
+                    node["call"][it2.first] = n;
                 }
+                dict[it.first] = node;
             }
         }
 

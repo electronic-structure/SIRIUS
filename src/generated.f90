@@ -1883,3 +1883,219 @@ end interface
 call sirius_generate_xc_potential_aux(handler,vxcmt,vxcrg,bxcmt,bxcrg)
 end subroutine sirius_generate_xc_potential
 
+!> @brief Get communicator which is used to split k-points
+!> @param [in] handler Simulation context handler
+!> @param [out] fcomm Fortran communicator
+subroutine sirius_get_kpoint_inter_comm(handler,fcomm)
+implicit none
+type(C_PTR), intent(in) :: handler
+integer(C_INT), intent(out) :: fcomm
+interface
+subroutine sirius_get_kpoint_inter_comm_aux(handler,fcomm)&
+&bind(C, name="sirius_get_kpoint_inter_comm")
+use, intrinsic :: ISO_C_BINDING
+type(C_PTR), intent(in) :: handler
+integer(C_INT), intent(out) :: fcomm
+end subroutine
+end interface
+
+call sirius_get_kpoint_inter_comm_aux(handler,fcomm)
+end subroutine sirius_get_kpoint_inter_comm
+
+!> @brief Get communicator which is used to parallise band problem
+!> @param [in] handler Simulation context handler
+!> @param [out] fcomm Fortran communicator
+subroutine sirius_get_kpoint_inner_comm(handler,fcomm)
+implicit none
+type(C_PTR), intent(in) :: handler
+integer(C_INT), intent(out) :: fcomm
+interface
+subroutine sirius_get_kpoint_inner_comm_aux(handler,fcomm)&
+&bind(C, name="sirius_get_kpoint_inner_comm")
+use, intrinsic :: ISO_C_BINDING
+type(C_PTR), intent(in) :: handler
+integer(C_INT), intent(out) :: fcomm
+end subroutine
+end interface
+
+call sirius_get_kpoint_inner_comm_aux(handler,fcomm)
+end subroutine sirius_get_kpoint_inner_comm
+
+!> @brief Get communicator which is used to parallise FFT
+!> @param [in] handler Simulation context handler
+!> @param [out] fcomm Fortran communicator
+subroutine sirius_get_fft_comm(handler,fcomm)
+implicit none
+type(C_PTR), intent(in) :: handler
+integer(C_INT), intent(out) :: fcomm
+interface
+subroutine sirius_get_fft_comm_aux(handler,fcomm)&
+&bind(C, name="sirius_get_fft_comm")
+use, intrinsic :: ISO_C_BINDING
+type(C_PTR), intent(in) :: handler
+integer(C_INT), intent(out) :: fcomm
+end subroutine
+end interface
+
+call sirius_get_fft_comm_aux(handler,fcomm)
+end subroutine sirius_get_fft_comm
+
+!> @brief Get total number of G-vectors
+!> @param [in] handler Simulation context handler
+function sirius_get_num_gvec(handler) result(res)
+implicit none
+type(C_PTR), intent(in) :: handler
+integer(C_INT) :: res
+interface
+function sirius_get_num_gvec_aux(handler) result(res)&
+&bind(C, name="sirius_get_num_gvec")
+use, intrinsic :: ISO_C_BINDING
+type(C_PTR), intent(in) :: handler
+integer(C_INT) :: res
+end function
+end interface
+
+res = sirius_get_num_gvec_aux(handler)
+end function sirius_get_num_gvec
+
+!> @brief Get G-vector arrays.
+!> @param [in] handler Simulation context handler
+!> @param [in] gvec G-vectors in lattice coordinates.
+!> @param [in] gvec_cart G-vectors in Cartesian coordinates.
+!> @param [in] gvec_len Length of G-vectors.
+!> @param [in] index_by_gvec G-vector index by lattice coordinates.
+subroutine sirius_get_gvec_arrays(handler,gvec,gvec_cart,gvec_len,index_by_gvec)
+implicit none
+type(C_PTR), intent(in) :: handler
+integer(C_INT), optional, target, intent(in) :: gvec
+real(C_DOUBLE), optional, target, intent(in) :: gvec_cart
+real(C_DOUBLE), optional, target, intent(in) :: gvec_len
+integer(C_INT), optional, target, intent(in) :: index_by_gvec
+type(C_PTR) :: gvec_ptr
+type(C_PTR) :: gvec_cart_ptr
+type(C_PTR) :: gvec_len_ptr
+type(C_PTR) :: index_by_gvec_ptr
+interface
+subroutine sirius_get_gvec_arrays_aux(handler,gvec,gvec_cart,gvec_len,index_by_g&
+&vec)&
+&bind(C, name="sirius_get_gvec_arrays")
+use, intrinsic :: ISO_C_BINDING
+type(C_PTR), intent(in) :: handler
+type(C_PTR), value, intent(in) :: gvec
+type(C_PTR), value, intent(in) :: gvec_cart
+type(C_PTR), value, intent(in) :: gvec_len
+type(C_PTR), value, intent(in) :: index_by_gvec
+end subroutine
+end interface
+
+gvec_ptr = C_NULL_PTR
+if (present(gvec)) gvec_ptr = C_LOC(gvec)
+
+gvec_cart_ptr = C_NULL_PTR
+if (present(gvec_cart)) gvec_cart_ptr = C_LOC(gvec_cart)
+
+gvec_len_ptr = C_NULL_PTR
+if (present(gvec_len)) gvec_len_ptr = C_LOC(gvec_len)
+
+index_by_gvec_ptr = C_NULL_PTR
+if (present(index_by_gvec)) index_by_gvec_ptr = C_LOC(index_by_gvec)
+
+call sirius_get_gvec_arrays_aux(handler,gvec_ptr,gvec_cart_ptr,gvec_len_ptr,inde&
+&x_by_gvec_ptr)
+end subroutine sirius_get_gvec_arrays
+
+!> @brief Get local number of FFT grid points.
+!> @param [in] handler Simulation context handler
+function sirius_get_num_fft_grid_points(handler) result(res)
+implicit none
+type(C_PTR), intent(in) :: handler
+integer(C_INT) :: res
+interface
+function sirius_get_num_fft_grid_points_aux(handler) result(res)&
+&bind(C, name="sirius_get_num_fft_grid_points")
+use, intrinsic :: ISO_C_BINDING
+type(C_PTR), intent(in) :: handler
+integer(C_INT) :: res
+end function
+end interface
+
+res = sirius_get_num_fft_grid_points_aux(handler)
+end function sirius_get_num_fft_grid_points
+
+!> @brief Get mapping between G-vector index and FFT index
+!> @param [in] handler Simulation context handler
+!> @param [out] fft_index Index inside FFT buffer
+subroutine sirius_get_fft_index(handler,fft_index)
+implicit none
+type(C_PTR), intent(in) :: handler
+integer(C_INT), intent(out) :: fft_index
+interface
+subroutine sirius_get_fft_index_aux(handler,fft_index)&
+&bind(C, name="sirius_get_fft_index")
+use, intrinsic :: ISO_C_BINDING
+type(C_PTR), intent(in) :: handler
+integer(C_INT), intent(out) :: fft_index
+end subroutine
+end interface
+
+call sirius_get_fft_index_aux(handler,fft_index)
+end subroutine sirius_get_fft_index
+
+!> @brief Get maximum number of G+k vectors across all k-points in the set
+!> @param [in] ks_handler K-point set handler.
+function sirius_get_max_num_gkvec(ks_handler) result(res)
+implicit none
+type(C_PTR), intent(in) :: ks_handler
+integer(C_INT) :: res
+interface
+function sirius_get_max_num_gkvec_aux(ks_handler) result(res)&
+&bind(C, name="sirius_get_max_num_gkvec")
+use, intrinsic :: ISO_C_BINDING
+type(C_PTR), intent(in) :: ks_handler
+integer(C_INT) :: res
+end function
+end interface
+
+res = sirius_get_max_num_gkvec_aux(ks_handler)
+end function sirius_get_max_num_gkvec
+
+!> @brief Get all G+k vector related arrays
+!> @param [in] ks_handler K-point set handler.
+!> @param [in] ik Global index of k-point
+!> @param [out] num_gkvec Number of G+k vectors.
+!> @param [out] gvec_index Index of the G-vector part of G+k vector.
+!> @param [out] gkvec G+k vectors in fractional coordinates.
+!> @param [out] gkvec_cart G+k vectors in Cartesian coordinates.
+!> @param [out] gkvec_len Length of G+k vectors.
+!> @param [out] gkvec_tp Theta and Phi angles of G+k vectors.
+subroutine sirius_get_gkvec_arrays(ks_handler,ik,num_gkvec,gvec_index,gkvec,gkve&
+&c_cart,gkvec_len,gkvec_tp)
+implicit none
+type(C_PTR), intent(in) :: ks_handler
+integer(C_INT), intent(in) :: ik
+integer(C_INT), intent(out) :: num_gkvec
+integer(C_INT), intent(out) :: gvec_index
+real(C_DOUBLE), intent(out) :: gkvec
+real(C_DOUBLE), intent(out) :: gkvec_cart
+real(C_DOUBLE), intent(out) :: gkvec_len
+real(C_DOUBLE), intent(out) :: gkvec_tp
+interface
+subroutine sirius_get_gkvec_arrays_aux(ks_handler,ik,num_gkvec,gvec_index,gkvec,&
+&gkvec_cart,gkvec_len,gkvec_tp)&
+&bind(C, name="sirius_get_gkvec_arrays")
+use, intrinsic :: ISO_C_BINDING
+type(C_PTR), intent(in) :: ks_handler
+integer(C_INT), intent(in) :: ik
+integer(C_INT), intent(out) :: num_gkvec
+integer(C_INT), intent(out) :: gvec_index
+real(C_DOUBLE), intent(out) :: gkvec
+real(C_DOUBLE), intent(out) :: gkvec_cart
+real(C_DOUBLE), intent(out) :: gkvec_len
+real(C_DOUBLE), intent(out) :: gkvec_tp
+end subroutine
+end interface
+
+call sirius_get_gkvec_arrays_aux(ks_handler,ik,num_gkvec,gvec_index,gkvec,gkvec_&
+&cart,gkvec_len,gkvec_tp)
+end subroutine sirius_get_gkvec_arrays
+

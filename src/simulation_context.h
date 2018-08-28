@@ -155,8 +155,11 @@ class Simulation_context: public Simulation_parameters
 
         bool initialized_{false};
 
+        /// Initialize FFT drivers.
         inline void init_fft()
         {
+            PROFILE("sirius::Simulation_context::init_fft");
+
             auto rlv = unit_cell_.reciprocal_lattice_vectors();
 
             if (!(control().fft_mode_ == "serial" || control().fft_mode_ == "parallel")) {
@@ -183,6 +186,39 @@ class Simulation_context: public Simulation_parameters
 
             /* prepare fine-grained FFT driver for the entire simulation */
             fft_->prepare(*gvec_partition_);
+        }
+
+        /// Initialize communicators.
+        inline void init_comm()
+        {
+            PROFILE("sirius::Simulation_context::init_comm");
+
+            /* check MPI grid dimensions and set a default grid if needed */
+            if (!control().mpi_grid_dims_.size()) {
+                set_mpi_grid_dims({1, 1});
+            }
+            if (control().mpi_grid_dims_.size() != 2) {
+                TERMINATE("wrong MPI grid");
+            }
+
+            int npr = control_input_.mpi_grid_dims_[0];
+            int npc = control_input_.mpi_grid_dims_[1];
+            int npb = npr * npc;
+            int npk = comm_.size() / npb;
+            if (npk * npb != comm_.size()) {
+                std::stringstream s;
+                s << "Can't divide " << comm_.size() << " ranks into groups of size " << npb;
+                TERMINATE(s);
+            }
+
+            /* setup MPI grid */
+            mpi_grid_ = std::unique_ptr<MPI_grid>(new MPI_grid({npk, npc, npr}, comm_));
+
+            comm_ortho_fft_ = comm().split(comm_fft().rank());
+
+            comm_ortho_fft_coarse_ = comm().split(comm_fft_coarse().rank());
+
+            comm_band_ortho_fft_coarse_ = comm_band().split(comm_fft_coarse().rank());
         }
 
         /// Unit step function is defined to be 1 in the interstitial and 0 inside muffin-tins.
@@ -1040,32 +1076,7 @@ inline void Simulation_context::initialize()
 #endif
     }
 
-    /* check MPI grid dimensions and set a default grid if needed */
-    if (!control().mpi_grid_dims_.size()) {
-        set_mpi_grid_dims({1, 1});
-    }
-    if (control().mpi_grid_dims_.size() != 2) {
-        TERMINATE("wrong MPI grid");
-    }
-
-    int npr = control_input_.mpi_grid_dims_[0];
-    int npc = control_input_.mpi_grid_dims_[1];
-    int npb = npr * npc;
-    int npk = comm_.size() / npb;
-    if (npk * npb != comm_.size()) {
-        std::stringstream s;
-        s << "Can't divide " << comm_.size() << " ranks into groups of size " << npb;
-        TERMINATE(s);
-    }
-
-    /* setup MPI grid */
-    mpi_grid_ = std::unique_ptr<MPI_grid>(new MPI_grid({npk, npc, npr}, comm_));
-
-    comm_ortho_fft_ = comm().split(comm_fft().rank());
-
-    comm_ortho_fft_coarse_ = comm().split(comm_fft_coarse().rank());
-
-    comm_band_ortho_fft_coarse_ = comm_band().split(comm_fft_coarse().rank());
+    init_comm();
 
     /* can't use reduced G-vectors in LAPW code */
     if (full_potential()) {
@@ -1143,6 +1154,9 @@ inline void Simulation_context::initialize()
 #else
     bool is_elpa{false};
 #endif
+
+    int npr = control_input_.mpi_grid_dims_[0];
+    int npc = control_input_.mpi_grid_dims_[1];
 
     /* deduce the default eigen-value solver */
     for (int i: {0, 1}) {

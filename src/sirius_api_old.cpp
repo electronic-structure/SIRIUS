@@ -6,38 +6,6 @@
 //==     type.set_free_atom_density(*num_points__, dens__);
 //== }
 //==
-//== /// Set the atomic level configuration of the atom type.
-//== /** With each call to the function new atomic level is added to the list of atomic levels of the atom type.
-//==  *
-//==  *  \param [in] label unique label of the atom type
-//==  *  \param [in] n principal quantum number of the atomic level
-//==  *  \param [in] l angular quantum number of the atomic level
-//==  *  \param [in] k kappa quantum number of the atomic level
-//==  *  \param [in] occupancy occupancy of the atomic level
-//==  *  \param [in] core .true. if the atomic level belongs to the core
-//==  *
-//==  *  Example
-//==     \code{.F90}
-//==     do is=1,nspecies
-//==     do ist=occ1,spnst(is)
-//==         call sirius_set_atom_type_configuration(trim(spfname(is)), spn(ist, is), spl(ist, is),&
-//==                                                &spk(ist, is), spocc(ist, is),&
-//==                                                &spcore(ist, is))
-//==       enddo
-//==     enddo
-//==     \endcode
-//==  */
-//== void sirius_set_atom_type_configuration(ftn_char    label__,
-//==                                         ftn_int*    n__,
-//==                                         ftn_int*    l__,
-//==                                         ftn_int*    k__,
-//==                                         ftn_double* occupancy__,
-//==                                         ftn_bool*   core__)
-//== {
-//==     auto& type = sim_ctx->unit_cell().atom_type(std::string(label__));
-//==     type.set_configuration(*n__, *l__, *k__, *occupancy__, *core__);
-//== }
-//==
 //==
 //== /// Set the table of equivalent atoms.
 //== /** \param [in] equivalent_atoms table of equivalent atoms
@@ -135,15 +103,6 @@
 //==     assert((*d >= 1) && (*d <= 3));
 //==     *lower = sim_ctx->fft().limits(*d - 1).first;
 //==     *upper = sim_ctx->fft().limits(*d - 1).second;
-//== }
-//==
-//== /// Get mapping between G-vector index and FFT index
-//== void sirius_get_fft_index(int32_t* fft_index__)
-//== {
-//==     for (int ig = 0; ig < sim_ctx->gvec().num_gvec(); ig++) {
-//==         auto G = sim_ctx->gvec().gvec(ig);
-//==         fft_index__[ig] = sim_ctx->fft().index_by_freq(G[0], G[1], G[2]) + 1;
-//==     }
 //== }
 //==
 //== /// Get list of G-vectors in fractional corrdinates
@@ -505,77 +464,6 @@
 //==             indexb(2, j, ia) = sim_ctx->unit_cell().atom(ia).type().indexb(j).idxrf + 1; // Fortran counts from 1
 //==         }
 //==     }
-//== }
-//==
-//== /// Get number of G+k vectors for a given k-point in the set
-//== void sirius_get_num_gkvec(ftn_int* kset_id__,
-//==                           ftn_int* ik__,
-//==                           ftn_int* num_gkvec__)
-//== {
-//==     auto ks = kset_list[*kset_id__];
-//==     auto kp = (*kset_list[*kset_id__])[*ik__ - 1];
-//==     /* get rank that stores a given k-point */
-//==     int rank = ks->spl_num_kpoints().local_rank(*ik__ - 1);
-//==     auto& comm_k = sim_ctx->comm_k();
-//==     if (rank == comm_k.rank()) {
-//==         *num_gkvec__ = kp->num_gkvec();
-//==     }
-//==     comm_k.bcast(num_gkvec__, 1, rank);
-//== }
-//==
-//== /// Get maximum number of G+k vectors across all k-points in the set
-//== void sirius_get_max_num_gkvec(ftn_int* kset_id__,
-//==                               ftn_int* max_num_gkvec__)
-//== {
-//==     *max_num_gkvec__ = kset_list[*kset_id__]->max_num_gkvec();
-//== }
-//==
-//== /// Get all G+k vector related arrays
-//== void sirius_get_gkvec_arrays(ftn_int*    kset_id__,
-//==                              ftn_int*    ik__,
-//==                              ftn_int*    num_gkvec__,
-//==                              ftn_int*    gvec_index__,
-//==                              ftn_double* gkvec__,
-//==                              ftn_double* gkvec_cart__,
-//==                              ftn_double* gkvec_len,
-//==                              ftn_double* gkvec_tp__)
-//== {
-//==
-//==     auto ks = kset_list[*kset_id__];
-//==     auto kp = (*kset_list[*kset_id__])[*ik__ - 1];
-//==
-//==     /* get rank that stores a given k-point */
-//==     int rank = ks->spl_num_kpoints().local_rank(*ik__ - 1);
-//==
-//==     auto& comm_k = sim_ctx->comm_k();
-//==
-//==     if (rank == comm_k.rank()) {
-//==         *num_gkvec__ = kp->num_gkvec();
-//==         mdarray<double, 2> gkvec(gkvec__, 3, kp->num_gkvec());
-//==         mdarray<double, 2> gkvec_cart(gkvec_cart__, 3, kp->num_gkvec());
-//==         mdarray<double, 2> gkvec_tp(gkvec_tp__, 2, kp->num_gkvec());
-//==
-//==         for (int igk = 0; igk < kp->num_gkvec(); igk++) {
-//==             auto gkc = kp->gkvec().gkvec_cart(igk);
-//==             auto G = kp->gkvec().gvec(igk);
-//==
-//==             gvec_index__[igk] = sim_ctx->gvec().index_by_gvec(G) + 1; // Fortran counts from 1
-//==             for (int x: {0, 1, 2}) {
-//==                 gkvec(x, igk) = kp->gkvec().gkvec(igk)[x];
-//==                 gkvec_cart(x, igk) = gkc[x];
-//==             }
-//==             auto rtp = sirius::SHT::spherical_coordinates(gkc);
-//==             gkvec_len[igk] = rtp[0];
-//==             gkvec_tp(0, igk) = rtp[1];
-//==             gkvec_tp(1, igk) = rtp[2];
-//==         }
-//==     }
-//==     comm_k.bcast(num_gkvec__,  1,                rank);
-//==     comm_k.bcast(gvec_index__, *num_gkvec__,     rank);
-//==     comm_k.bcast(gkvec__,      *num_gkvec__ * 3, rank);
-//==     comm_k.bcast(gkvec_cart__, *num_gkvec__ * 3, rank);
-//==     comm_k.bcast(gkvec_len,    *num_gkvec__,     rank);
-//==     comm_k.bcast(gkvec_tp__,   *num_gkvec__ * 2, rank);
 //== }
 //==
 //== void sirius_get_matching_coefficients(int32_t const* kset_id__,
@@ -1233,20 +1121,6 @@
 //== //    *fcomm__ = MPI_Comm_c2f(sim_ctx->mpi_grid().communicator(*directions__).mpi_comm());
 //== //}
 //==
-//== void sirius_get_fft_comm(int32_t* fcomm__)
-//== {
-//==     *fcomm__ = MPI_Comm_c2f(sim_ctx->fft().comm().mpi_comm());
-//== }
-//==
-//== void sirius_get_kpoint_inner_comm(int32_t* fcomm__)
-//== {
-//==     *fcomm__ = MPI_Comm_c2f(sim_ctx->comm_band().mpi_comm());
-//== }
-//==
-//== void sirius_get_all_kpoints_comm(int32_t* fcomm__)
-//== {
-//==     *fcomm__ = MPI_Comm_c2f(sim_ctx->comm_k().mpi_comm());
-//== }
 //==
 //== void sirius_forces(double* forces__)
 //== {
@@ -1258,11 +1132,6 @@
 //== void sirius_core_leakage(double* core_leakage)
 //== {
 //==     *core_leakage = dft_ground_state->density().core_leakage();
-//== }
-//==
-//== void sirius_ground_state_print_info()
-//== {
-//==     dft_ground_state->print_info();
 //== }
 //==
 //== void sirius_create_storage_file()
@@ -1301,11 +1170,6 @@
 //==     *use_internal_mixer__ = (sim_ctx->mixer_input().exist_) ? 1 : 0;
 //== }
 //==
-//==
-//== void sirius_set_iterative_solver_type(ftn_char type__)
-//== {
-//==     sim_ctx->set_iterative_solver_type(std::string(type__));
-//== }
 //==
 //== void sirius_get_density_dr2(double* dr2__)
 //== {
@@ -1405,33 +1269,6 @@
 //==         for (int lm = 0; lm < *lmmax__; lm++) rlm(i, lm) = rlm_tmp[idxlm[lm]] * phase[lm];
 //==     }
 //== }
-//==
-//== //void sirius_get_vloc_(int32_t* size__, double* vloc__)
-//== //{
-//== //    TERMINATE("fix this");
-//== //    //if (!sim_ctx) return;
-//== //
-//== //    //auto fft_coarse = sim_ctx->fft_coarse();
-//== //    //if (*size__ != fft_coarse->size())
-//== //    //{
-//== //    //    TERMINATE("wrong size of coarse FFT mesh");
-//== //    //}
-//== //
-//== //    ///* map effective potential to a corase grid */
-//== //    //std::vector<double> veff_it_coarse(fft_coarse->size());
-//== //    //std::vector<double_complex> veff_pw_coarse(fft_coarse->num_gvec());
-//== //
-//== //    ///* take only first num_gvec_coarse plane-wave harmonics; this is enough to apply V_eff to \Psi */
-//== //    //for (int igc = 0; igc < fft_coarse->num_gvec(); igc++)
-//== //    //{
-//== //    //    int ig = sim_ctx->fft().gvec_index(fft_coarse->gvec(igc));
-//== //    //    veff_pw_coarse[igc] = dft_ground_state->potential().effective_potential()->f_pw(ig);
-//== //    //}
-//== //    //fft_coarse->input(fft_coarse->num_gvec(), fft_coarse->index_map(), &veff_pw_coarse[0]);
-//== //    //fft_coarse->transform(1);
-//== //    //fft_coarse->output(vloc__);
-//== //    //for (int i = 0; i < fft_coarse->size(); i++) vloc__[i] *= 2; // convert to Ry
-//== //}
 //==
 //==
 //== void sirius_get_fv_states_(int32_t* kset_id__, int32_t* ik__, int32_t* nfv__, int32_t* ngk__, int32_t* gvec_of_k__,

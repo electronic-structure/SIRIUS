@@ -69,7 +69,7 @@ namespace sirius {
  *      }
  *  \endcode
  *
- *  The "atom_coordinate_units" string is optional. By default it is set to "lattice" which means that the
+ *  The "atom_coordinate_units" string is optional. By default it is assumed to be "lattice" which means that the
  *  atomic coordinates are provided in lattice (fractional) units. It can also be specified in "A" or "au" which
  *  means that the input atomic coordinates are Cartesian and provided in Angstroms or atomic units of length.
  *  This is useful in setting up the molecule calculation.
@@ -304,7 +304,7 @@ struct Iterative_solver_input
  *      "fft_mode" : (string) serial or parallel FFT
  *    }
  *  \endcode
- *  Parameters of the control input sections do not in generatl change the numerics, but instead control how the
+ *  Parameters of the control input sections do not in general change the numerics, but instead control how the
  *  results are obtained. Changing paremeters in control section should not change the significant digits in final
  *  results.
  */
@@ -326,10 +326,19 @@ struct Control_input
 
     /// Generalized eigen-value solver to use.
     std::string gen_evp_solver_name_{""};
-    std::string      fft_mode_{"serial"};
-    std::string      processing_unit_{""};
-    double           rmt_max_{2.2};
-    double           spglib_tolerance_{1e-4};
+
+    /// Coarse grid FFT mode ("serial" or "parallel").
+    std::string fft_mode_{"serial"};
+
+    /// Main processing unit to run on.
+    std::string processing_unit_{""};
+
+    /// Maximum allowed muffin-tin radius in case of LAPW.
+    double rmt_max_{2.2};
+
+    /// Tolerance of the spglib in finding crystal symmetries.
+    double spglib_tolerance_{1e-4};
+
     /// Level of verbosity.
     /** The following convention in proposed:
      *    - 0: silent mode (no output is printed) \n
@@ -341,6 +350,8 @@ struct Control_input
 #else
     int verbosity_{0};
 #endif
+
+    /// Level of internal verification.
     int  verification_{0};
     int  num_bands_to_print_{10};
     bool print_performance_{false};
