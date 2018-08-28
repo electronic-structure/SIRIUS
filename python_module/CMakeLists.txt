@@ -1,8 +1,13 @@
 if(CREATE_PYTHON_MODULE)
   set(CMAKE_CXX_STANDARD 14)
 
-  find_package(pybind11 REQUIRED)
-  include_directories(BEFORE SYSTEM ${pybind11_INCLUDE_DIRS})
+  set(pb11_src_dir "${PROJECT_SOURCE_DIR}/python_module/pybind11")
+  check_git_submodule(pybind11 "${pb11_src_dir}")
+  if(NOT pybind11_avail)
+    message(FATAL_ERROR "The git submodule for pybind11 is not available, required for python support")
+  endif()
+
+  add_subdirectory(pybind11)
 
   set(libname py_sirius)
   pybind11_add_module(${libname} py_sirius.cpp)
