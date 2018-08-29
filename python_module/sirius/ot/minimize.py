@@ -18,7 +18,7 @@ def beta_fletcher_reves(dfnext, df, P=None):
     """
     """
     if P is None:
-        return np.asscalar(inner(dfnext, dfnext) / inner(df, df))
+        return np.real(np.asscalar(inner(dfnext, dfnext) / inner(df, df)))
     else:
         return np.real(inner(dfnext, P * dfnext) / inner(df, P * df))
 
@@ -28,7 +28,7 @@ def beta_polak_ribiere(dfnext, df, P=None):
     """
 
     if P is None:
-        return np.asscalar(np.real(inner(dfnext, dfnext - df)) / inner(df, df))
+        return np.asscalar(np.real(inner(dfnext, dfnext - df)) / np.real(inner(df, df)))
     else:
         return np.real(inner(P * dfnext, dfnext - df) / inner(df, P * df))
 
@@ -72,7 +72,7 @@ def ls_qinterp(x0, p, f, dfx0, s=0.2):
     return x, fnext
 
 
-def gss(f, a, b, tol=1e-5):
+def gss(f, a, b, tol=1e-3):
     """
     Golden section search.
 
@@ -127,7 +127,7 @@ def ls_golden(x0, p, f, **kwargs):
     """
     Golden-section search
     """
-    t1, t2 = gss(lambda t: f(x0 + t * p), **kwargs, tol=1e-5)
+    t1, t2 = gss(lambda t: f(x0 + t * p), **kwargs, tol=1e-3)
     tmin = (t1 + t2) / 2
     x = x0 + tmin * p
     # important for side-effects
@@ -150,7 +150,7 @@ def ls_bracketing(x0, p, f, dfx0, tau=0.5, maxiter=40, **kwargs):
     c = 0.5
     m = 2 * inner(p, dfx0)
     assert (m < 0)
-    ds = 1024
+    ds = 5
     print('bracketing: ds initial = ', ds)
     assert (maxiter >= 1)
 
