@@ -56,6 +56,7 @@ class Energy:
             for key, val in cn.items():
                 k, ispn = key
                 self.kpointset[k].spinor_wave_functions().pw_coeffs(ispn)[:] = val
+                assert(np.isclose(matview(val).H*val, np.eye(val.shape[1])).all())
                 # TODO: don't know if copy is required
                 # function below copies everything twice, TODO: loop over k-view
             if self.ctx.processing_unit() == DeviceEnum.GPU:
@@ -100,6 +101,7 @@ class Energy:
             self.potential.fft_transform(1)
             # after updating H to the new position, we can compute new band energies
             bnd_occ = k.band_occupancy(ispn)
+            assert(np.isclose(bnd_occ, (bnd_occ+1e-4).astype(int)).all())
             w = k.weight()
             yn = self.H(cn, ki=ki, ispn=ispn)
             # Hc is scaled by band occupancies, need to divide here to get correct band energies
@@ -148,6 +150,7 @@ class ApplyHamiltonian:
                 for i, _ in ispn_coeffs:
                     # print('ApplyHamiltonian: spin_comp', i)
                     bnd_occ = np.array(kpoint.band_occupancy(i))
+                    assert(np.isclose(bnd_occ, (bnd_occ+1e-4).astype(int)).all())
                     out[(k, i)] = np.array(Psi_y.pw_coeffs(i), copy=False) * bnd_occ * w
             # end for
             return out

@@ -9,6 +9,7 @@ def store_pw_coeffs(kpointset, cn, ki=None, ispn=None):
     """
     from .coefficient_array import PwCoeffs
     from ..py_sirius import DeviceEnum
+    import numpy as np
 
     on_device = kpointset.ctx().processing_unit() == DeviceEnum.GPU
 
@@ -17,6 +18,8 @@ def store_pw_coeffs(kpointset, cn, ki=None, ispn=None):
         assert(ispn is None)
         for key, v in cn.items():
             k, ispn = key
+            n, m = v.shape
+            assert(np.isclose(matview(v).H * v, np.eye(m, m)).all())
             kpointset[k].spinor_wave_functions().pw_coeffs(ispn)[:] = v
             if on_device:
                 kpointset[k].spinor_wave_functions().copy_to_gpu()
