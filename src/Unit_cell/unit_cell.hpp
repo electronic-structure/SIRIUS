@@ -605,7 +605,7 @@ class Unit_cell
     void set_equivalent_atoms(int const* equivalent_atoms__)
     {
         equivalent_atoms_.resize(num_atoms());
-        memcpy(&equivalent_atoms_[0], equivalent_atoms__, num_atoms() * sizeof(int));
+        std::memcpy(&equivalent_atoms_[0], equivalent_atoms__, num_atoms() * sizeof(int));
     }
 
     inline splindex<block> const& spl_num_atoms() const

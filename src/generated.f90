@@ -2099,3 +2099,300 @@ call sirius_get_gkvec_arrays_aux(ks_handler,ik,num_gkvec,gvec_index,gkvec,gkvec_
 &cart,gkvec_len,gkvec_tp)
 end subroutine sirius_get_gkvec_arrays
 
+!> @brief Get the unit-step function.
+!> @param [in] handler Simulation context handler
+!> @param [out] cfunig Plane-wave coefficients of step function.
+!> @param [out] cfunrg Values of the step function on the regular grid.
+subroutine sirius_get_step_function(handler,cfunig,cfunrg)
+implicit none
+type(C_PTR), intent(in) :: handler
+complex(C_DOUBLE), intent(out) :: cfunig
+real(C_DOUBLE), intent(out) :: cfunrg
+interface
+subroutine sirius_get_step_function_aux(handler,cfunig,cfunrg)&
+&bind(C, name="sirius_get_step_function")
+use, intrinsic :: ISO_C_BINDING
+type(C_PTR), intent(in) :: handler
+complex(C_DOUBLE), intent(out) :: cfunig
+real(C_DOUBLE), intent(out) :: cfunrg
+end subroutine
+end interface
+
+call sirius_get_step_function_aux(handler,cfunig,cfunrg)
+end subroutine sirius_get_step_function
+
+!> @brief Get electronic part of Hartree potential at atom origins.
+!> @param [in] handler DFT ground state handler.
+!> @param [out] vha_el Electronic part of Hartree potential at each atom's origin.
+subroutine sirius_get_vha_el(handler,vha_el)
+implicit none
+type(C_PTR), intent(in) :: handler
+real(C_DOUBLE), intent(out) :: vha_el
+interface
+subroutine sirius_get_vha_el_aux(handler,vha_el)&
+&bind(C, name="sirius_get_vha_el")
+use, intrinsic :: ISO_C_BINDING
+type(C_PTR), intent(in) :: handler
+real(C_DOUBLE), intent(out) :: vha_el
+end subroutine
+end interface
+
+call sirius_get_vha_el_aux(handler,vha_el)
+end subroutine sirius_get_vha_el
+
+!> @brief Set LAPW Hamiltonian radial integrals.
+!> @param [in] handler Simulation context handler.
+!> @param [in] ia Index of atom.
+!> @param [in] lmmax Number of lm-component of the potential.
+!> @param [in] val Values of the radial integrals.
+!> @param [in] l1 1st index of orbital quantum number.
+!> @param [in] o1 1st index of radial function order for l1.
+!> @param [in] ilo1 1st index or local orbital.
+!> @param [in] l2 2nd index of orbital quantum number.
+!> @param [in] o2 2nd index of radial function order for l2.
+!> @param [in] ilo2 2nd index or local orbital.
+subroutine sirius_set_h_radial_integrals(handler,ia,lmmax,val,l1,o1,ilo1,l2,o2,i&
+&lo2)
+implicit none
+type(C_PTR), intent(in) :: handler
+integer(C_INT), intent(in) :: ia
+integer(C_INT), intent(in) :: lmmax
+real(C_DOUBLE), intent(in) :: val
+integer(C_INT), optional, target, intent(in) :: l1
+integer(C_INT), optional, target, intent(in) :: o1
+integer(C_INT), optional, target, intent(in) :: ilo1
+integer(C_INT), optional, target, intent(in) :: l2
+integer(C_INT), optional, target, intent(in) :: o2
+integer(C_INT), optional, target, intent(in) :: ilo2
+type(C_PTR) :: l1_ptr
+type(C_PTR) :: o1_ptr
+type(C_PTR) :: ilo1_ptr
+type(C_PTR) :: l2_ptr
+type(C_PTR) :: o2_ptr
+type(C_PTR) :: ilo2_ptr
+interface
+subroutine sirius_set_h_radial_integrals_aux(handler,ia,lmmax,val,l1,o1,ilo1,l2,&
+&o2,ilo2)&
+&bind(C, name="sirius_set_h_radial_integrals")
+use, intrinsic :: ISO_C_BINDING
+type(C_PTR), intent(in) :: handler
+integer(C_INT), intent(in) :: ia
+integer(C_INT), intent(in) :: lmmax
+real(C_DOUBLE), intent(in) :: val
+type(C_PTR), value, intent(in) :: l1
+type(C_PTR), value, intent(in) :: o1
+type(C_PTR), value, intent(in) :: ilo1
+type(C_PTR), value, intent(in) :: l2
+type(C_PTR), value, intent(in) :: o2
+type(C_PTR), value, intent(in) :: ilo2
+end subroutine
+end interface
+
+l1_ptr = C_NULL_PTR
+if (present(l1)) l1_ptr = C_LOC(l1)
+
+o1_ptr = C_NULL_PTR
+if (present(o1)) o1_ptr = C_LOC(o1)
+
+ilo1_ptr = C_NULL_PTR
+if (present(ilo1)) ilo1_ptr = C_LOC(ilo1)
+
+l2_ptr = C_NULL_PTR
+if (present(l2)) l2_ptr = C_LOC(l2)
+
+o2_ptr = C_NULL_PTR
+if (present(o2)) o2_ptr = C_LOC(o2)
+
+ilo2_ptr = C_NULL_PTR
+if (present(ilo2)) ilo2_ptr = C_LOC(ilo2)
+
+call sirius_set_h_radial_integrals_aux(handler,ia,lmmax,val,l1_ptr,o1_ptr,ilo1_p&
+&tr,l2_ptr,o2_ptr,ilo2_ptr)
+end subroutine sirius_set_h_radial_integrals
+
+!> @brief Set LAPW overlap radial integral.
+!> @param [in] handler Simulation context handler.
+!> @param [in] ia Index of atom.
+!> @param [in] val Value of the radial integral.
+!> @param [in] l Orbital quantum number.
+!> @param [in] o1 1st index of radial function order.
+!> @param [in] ilo1 1st index or local orbital.
+!> @param [in] o2 2nd index of radial function order.
+!> @param [in] ilo2 2nd index or local orbital.
+subroutine sirius_set_o_radial_integral(handler,ia,val,l,o1,ilo1,o2,ilo2)
+implicit none
+type(C_PTR), intent(in) :: handler
+integer(C_INT), intent(in) :: ia
+real(C_DOUBLE), intent(in) :: val
+integer(C_INT), intent(in) :: l
+integer(C_INT), optional, target, intent(in) :: o1
+integer(C_INT), optional, target, intent(in) :: ilo1
+integer(C_INT), optional, target, intent(in) :: o2
+integer(C_INT), optional, target, intent(in) :: ilo2
+type(C_PTR) :: o1_ptr
+type(C_PTR) :: ilo1_ptr
+type(C_PTR) :: o2_ptr
+type(C_PTR) :: ilo2_ptr
+interface
+subroutine sirius_set_o_radial_integral_aux(handler,ia,val,l,o1,ilo1,o2,ilo2)&
+&bind(C, name="sirius_set_o_radial_integral")
+use, intrinsic :: ISO_C_BINDING
+type(C_PTR), intent(in) :: handler
+integer(C_INT), intent(in) :: ia
+real(C_DOUBLE), intent(in) :: val
+integer(C_INT), intent(in) :: l
+type(C_PTR), value, intent(in) :: o1
+type(C_PTR), value, intent(in) :: ilo1
+type(C_PTR), value, intent(in) :: o2
+type(C_PTR), value, intent(in) :: ilo2
+end subroutine
+end interface
+
+o1_ptr = C_NULL_PTR
+if (present(o1)) o1_ptr = C_LOC(o1)
+
+ilo1_ptr = C_NULL_PTR
+if (present(ilo1)) ilo1_ptr = C_LOC(ilo1)
+
+o2_ptr = C_NULL_PTR
+if (present(o2)) o2_ptr = C_LOC(o2)
+
+ilo2_ptr = C_NULL_PTR
+if (present(ilo2)) ilo2_ptr = C_LOC(ilo2)
+
+call sirius_set_o_radial_integral_aux(handler,ia,val,l,o1_ptr,ilo1_ptr,o2_ptr,il&
+&o2_ptr)
+end subroutine sirius_set_o_radial_integral
+
+!> @brief Set a correction to LAPW overlap radial integral.
+!> @param [in] handler Simulation context handler.
+!> @param [in] ia Index of atom.
+!> @param [in] val Value of the radial integral.
+!> @param [in] l1 1st index of orbital quantum number.
+!> @param [in] o1 1st index of radial function order for l1.
+!> @param [in] ilo1 1st index or local orbital.
+!> @param [in] l2 2nd index of orbital quantum number.
+!> @param [in] o2 2nd index of radial function order for l2.
+!> @param [in] ilo2 2nd index or local orbital.
+subroutine sirius_set_o1_radial_integral(handler,ia,val,l1,o1,ilo1,l2,o2,ilo2)
+implicit none
+type(C_PTR), intent(in) :: handler
+integer(C_INT), intent(in) :: ia
+real(C_DOUBLE), intent(in) :: val
+integer(C_INT), optional, target, intent(in) :: l1
+integer(C_INT), optional, target, intent(in) :: o1
+integer(C_INT), optional, target, intent(in) :: ilo1
+integer(C_INT), optional, target, intent(in) :: l2
+integer(C_INT), optional, target, intent(in) :: o2
+integer(C_INT), optional, target, intent(in) :: ilo2
+type(C_PTR) :: l1_ptr
+type(C_PTR) :: o1_ptr
+type(C_PTR) :: ilo1_ptr
+type(C_PTR) :: l2_ptr
+type(C_PTR) :: o2_ptr
+type(C_PTR) :: ilo2_ptr
+interface
+subroutine sirius_set_o1_radial_integral_aux(handler,ia,val,l1,o1,ilo1,l2,o2,ilo&
+&2)&
+&bind(C, name="sirius_set_o1_radial_integral")
+use, intrinsic :: ISO_C_BINDING
+type(C_PTR), intent(in) :: handler
+integer(C_INT), intent(in) :: ia
+real(C_DOUBLE), intent(in) :: val
+type(C_PTR), value, intent(in) :: l1
+type(C_PTR), value, intent(in) :: o1
+type(C_PTR), value, intent(in) :: ilo1
+type(C_PTR), value, intent(in) :: l2
+type(C_PTR), value, intent(in) :: o2
+type(C_PTR), value, intent(in) :: ilo2
+end subroutine
+end interface
+
+l1_ptr = C_NULL_PTR
+if (present(l1)) l1_ptr = C_LOC(l1)
+
+o1_ptr = C_NULL_PTR
+if (present(o1)) o1_ptr = C_LOC(o1)
+
+ilo1_ptr = C_NULL_PTR
+if (present(ilo1)) ilo1_ptr = C_LOC(ilo1)
+
+l2_ptr = C_NULL_PTR
+if (present(l2)) l2_ptr = C_LOC(l2)
+
+o2_ptr = C_NULL_PTR
+if (present(o2)) o2_ptr = C_LOC(o2)
+
+ilo2_ptr = C_NULL_PTR
+if (present(ilo2)) ilo2_ptr = C_LOC(ilo2)
+
+call sirius_set_o1_radial_integral_aux(handler,ia,val,l1_ptr,o1_ptr,ilo1_ptr,l2_&
+&ptr,o2_ptr,ilo2_ptr)
+end subroutine sirius_set_o1_radial_integral
+
+!> @brief Set LAPW radial functions
+!> @param [in] handler Simulation context handler.
+!> @param [in] ia Index of atom.
+!> @param [in] deriv_order Radial derivative order.
+!> @param [in] f Values of the radial function.
+!> @param [in] l Orbital quantum number.
+!> @param [in] o Order of radial function for l.
+!> @param [in] ilo Local orbital index.
+subroutine sirius_set_radial_function(handler,ia,deriv_order,f,l,o,ilo)
+implicit none
+type(C_PTR), intent(in) :: handler
+integer(C_INT), intent(in) :: ia
+integer(C_INT), intent(in) :: deriv_order
+real(C_DOUBLE), intent(in) :: f
+integer(C_INT), optional, target, intent(in) :: l
+integer(C_INT), optional, target, intent(in) :: o
+integer(C_INT), optional, target, intent(in) :: ilo
+type(C_PTR) :: l_ptr
+type(C_PTR) :: o_ptr
+type(C_PTR) :: ilo_ptr
+interface
+subroutine sirius_set_radial_function_aux(handler,ia,deriv_order,f,l,o,ilo)&
+&bind(C, name="sirius_set_radial_function")
+use, intrinsic :: ISO_C_BINDING
+type(C_PTR), intent(in) :: handler
+integer(C_INT), intent(in) :: ia
+integer(C_INT), intent(in) :: deriv_order
+real(C_DOUBLE), intent(in) :: f
+type(C_PTR), value, intent(in) :: l
+type(C_PTR), value, intent(in) :: o
+type(C_PTR), value, intent(in) :: ilo
+end subroutine
+end interface
+
+l_ptr = C_NULL_PTR
+if (present(l)) l_ptr = C_LOC(l)
+
+o_ptr = C_NULL_PTR
+if (present(o)) o_ptr = C_LOC(o)
+
+ilo_ptr = C_NULL_PTR
+if (present(ilo)) ilo_ptr = C_LOC(ilo)
+
+call sirius_set_radial_function_aux(handler,ia,deriv_order,f,l_ptr,o_ptr,ilo_ptr&
+&)
+end subroutine sirius_set_radial_function
+
+!> @brief Set equivalent atoms.
+!> @param [in] handler Simulation context handler.
+!> @param [in] equivalent_atoms Array with equivalent atom IDs.
+subroutine sirius_set_equivalent_atoms(handler,equivalent_atoms)
+implicit none
+type(C_PTR), intent(in) :: handler
+integer(C_INT), intent(in) :: equivalent_atoms
+interface
+subroutine sirius_set_equivalent_atoms_aux(handler,equivalent_atoms)&
+&bind(C, name="sirius_set_equivalent_atoms")
+use, intrinsic :: ISO_C_BINDING
+type(C_PTR), intent(in) :: handler
+integer(C_INT), intent(in) :: equivalent_atoms
+end subroutine
+end interface
+
+call sirius_set_equivalent_atoms_aux(handler,equivalent_atoms)
+end subroutine sirius_set_equivalent_atoms
+

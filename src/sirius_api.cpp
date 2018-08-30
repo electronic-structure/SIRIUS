@@ -639,6 +639,8 @@ void sirius_add_atom_type_radial_function(void*  const* handler__,
         type.add_ps_paw_wf(std::vector<double>(rf__, rf__ + *num_points__));
     } else if (label == "ae_paw_core") {
         type.paw_ae_core_charge_density(std::vector<double>(rf__, rf__ + *num_points__));
+    } else if (label == "ae_rho") {
+        type.free_atom_density(std::vector<double>(rf__, rf__ + *num_points__));
     } else {
         std::stringstream s;
         s << "wrong label of radial function: " << label__;
@@ -2075,6 +2077,249 @@ void sirius_get_gkvec_arrays(void* const* ks_handler__,
     comm_k.bcast(gkvec_cart__, *num_gkvec__ * 3, rank);
     comm_k.bcast(gkvec_len,    *num_gkvec__,     rank);
     comm_k.bcast(gkvec_tp__,   *num_gkvec__ * 2, rank);
+}
+
+/* @fortran begin function void sirius_get_step_function  Get the unit-step function.
+   @fortran argument in  required void* handler        Simulation context handler
+   @fortran argument out required complex cfunig       Plane-wave coefficients of step function.
+   @fortran argument out required double  cfunrg       Values of the step function on the regular grid.
+   @fortran end */
+void sirius_get_step_function(void* const*          handler__,
+                              std::complex<double>* cfunig__,
+                              double*               cfunrg__)
+{
+    GET_SIM_CTX(handler__);
+    for (int i = 0; i < sim_ctx.fft().local_size(); i++) {
+        cfunrg__[i] = sim_ctx.theta(i);
+    }
+    for (int ig = 0; ig < sim_ctx.gvec().num_gvec(); ig++) {
+        cfunig__[ig] = sim_ctx.theta_pw(ig);
+    }
+}
+
+/* @fortran begin function void sirius_get_vha_el   Get electronic part of Hartree potential at atom origins.
+   @fortran argument in required void* handler      DFT ground state handler.
+   @fortran argument out required double vha_el     Electronic part of Hartree potential at each atom's origin.
+   @fortran end */
+void sirius_get_vha_el(void* const* handler__,
+                       double*      vha_el__)
+{
+    auto& gs = static_cast<utils::any_ptr*>(*handler__)->get<sirius::DFT_ground_state>();
+    for (int ia = 0; ia < gs.ctx().unit_cell().num_atoms(); ia++) {
+        vha_el__[ia] = gs.potential().vha_el(ia);
+    }
+}
+
+/* @fortran begin function void sirius_set_h_radial_integrals   Set LAPW Hamiltonian radial integrals.
+   @fortran argument in required void*  handler    Simulation context handler.
+   @fortran argument in required int    ia         Index of atom.
+   @fortran argument in required int    lmmax      Number of lm-component of the potential.
+   @fortran argument in required double val        Values of the radial integrals.
+   @fortran argument in optional int    l1         1st index of orbital quantum number.
+   @fortran argument in optional int    o1         1st index of radial function order for l1.
+   @fortran argument in optional int    ilo1       1st index or local orbital.
+   @fortran argument in optional int    l2         2nd index of orbital quantum number.
+   @fortran argument in optional int    o2         2nd index of radial function order for l2.
+   @fortran argument in optional int    ilo2       2nd index or local orbital.
+   @fortran end */
+void sirius_set_h_radial_integrals(void* const* handler__,
+                                   int*         ia__,
+                                   int*         lmmax__,
+                                   double*      val__,
+                                   int*         l1__,
+                                   int*         o1__,
+                                   int*         ilo1__,
+                                   int*         l2__,
+                                   int*         o2__,
+                                   int*         ilo2__)
+{
+    GET_SIM_CTX(handler__);
+    int ia = *ia__ - 1;
+    int idxrf1{-1};
+    int idxrf2{-1};
+    if ((l1__ != nullptr && o1__ != nullptr && ilo1__ != nullptr) ||
+        (l2__ != nullptr && o2__ != nullptr && ilo2__ != nullptr)) {
+        TERMINATE("wrong combination of radial function indices");
+    }
+    if (l1__ != nullptr && o1__ != nullptr) {
+        idxrf1 = sim_ctx.unit_cell().atom(ia).type().indexr_by_l_order(*l1__, *o1__ - 1);
+    } else if (ilo1__ != nullptr) {
+        idxrf1 = sim_ctx.unit_cell().atom(ia).type().indexr_by_idxlo(*ilo1__ - 1);
+    } else {
+        TERMINATE("1st radial function index is not valid");
+    }
+
+    if (l2__ != nullptr && o2__ != nullptr) {
+        idxrf2 = sim_ctx.unit_cell().atom(ia).type().indexr_by_l_order(*l2__, *o2__ - 1);
+    } else if (ilo2__ != nullptr) {
+        idxrf2 = sim_ctx.unit_cell().atom(ia).type().indexr_by_idxlo(*ilo2__ - 1);
+    } else {
+        TERMINATE("2nd radial function index is not valid");
+    }
+
+    for (int lm = 0; lm < *lmmax__; lm++) {
+        sim_ctx.unit_cell().atom(ia).h_radial_integrals(idxrf1, idxrf2)[lm] = val__[lm];
+    }
+}
+
+/* @fortran begin function void sirius_set_o_radial_integral   Set LAPW overlap radial integral.
+   @fortran argument in required void*  handler    Simulation context handler.
+   @fortran argument in required int    ia         Index of atom.
+   @fortran argument in required double val        Value of the radial integral.
+   @fortran argument in required int    l          Orbital quantum number.
+   @fortran argument in optional int    o1         1st index of radial function order.
+   @fortran argument in optional int    ilo1       1st index or local orbital.
+   @fortran argument in optional int    o2         2nd index of radial function order.
+   @fortran argument in optional int    ilo2       2nd index or local orbital.
+   @fortran end */
+void sirius_set_o_radial_integral(void* const* handler__,
+                                  int*         ia__,
+                                  double*      val__,
+                                  int*         l__,
+                                  int*         o1__,
+                                  int*         ilo1__,
+                                  int*         o2__,
+                                  int*         ilo2__)
+{
+
+    GET_SIM_CTX(handler__);
+    int ia = *ia__ - 1;
+    if ((o1__ != nullptr && ilo1__ != nullptr) ||
+        (o2__ != nullptr && ilo2__ != nullptr)) {
+        TERMINATE("wrong combination of radial function indices");
+    }
+
+    if (o1__ != nullptr && ilo2__ != nullptr) {
+        int idxrf2 = sim_ctx.unit_cell().atom(ia).type().indexr_by_idxlo(*ilo2__ - 1);
+        int order2 = sim_ctx.unit_cell().atom(ia).type().indexr(idxrf2).order;
+        sim_ctx.unit_cell().atom(ia).symmetry_class().set_o_radial_integral(*l__, *o1__ - 1, order2, *val__);
+    }
+
+    if (o2__ != nullptr && ilo1__ != nullptr) {
+        int idxrf1 = sim_ctx.unit_cell().atom(ia).type().indexr_by_idxlo(*ilo1__ - 1);
+        int order1 = sim_ctx.unit_cell().atom(ia).type().indexr(idxrf1).order;
+        sim_ctx.unit_cell().atom(ia).symmetry_class().set_o_radial_integral(*l__, order1, *o2__ - 1, *val__);
+    }
+
+    if (ilo1__ != nullptr && ilo2__ != nullptr) {
+        int idxrf1 = sim_ctx.unit_cell().atom(ia).type().indexr_by_idxlo(*ilo1__ - 1);
+        int order1 = sim_ctx.unit_cell().atom(ia).type().indexr(idxrf1).order;
+        int idxrf2 = sim_ctx.unit_cell().atom(ia).type().indexr_by_idxlo(*ilo2__ - 1);
+        int order2 = sim_ctx.unit_cell().atom(ia).type().indexr(idxrf2).order;
+        sim_ctx.unit_cell().atom(ia).symmetry_class().set_o_radial_integral(*l__, order1, order2, *val__);
+    }
+}
+
+/* @fortran begin function void sirius_set_o1_radial_integral   Set a correction to LAPW overlap radial integral.
+   @fortran argument in required void*  handler    Simulation context handler.
+   @fortran argument in required int    ia         Index of atom.
+   @fortran argument in required double val        Value of the radial integral.
+   @fortran argument in optional int    l1         1st index of orbital quantum number.
+   @fortran argument in optional int    o1         1st index of radial function order for l1.
+   @fortran argument in optional int    ilo1       1st index or local orbital.
+   @fortran argument in optional int    l2         2nd index of orbital quantum number.
+   @fortran argument in optional int    o2         2nd index of radial function order for l2.
+   @fortran argument in optional int    ilo2       2nd index or local orbital.
+   @fortran end */
+void sirius_set_o1_radial_integral(void* const* handler__,
+                                   int*         ia__,
+                                   double*      val__,
+                                   int*         l1__,
+                                   int*         o1__,
+                                   int*         ilo1__,
+                                   int*         l2__,
+                                   int*         o2__,
+                                   int*         ilo2__)
+{
+    GET_SIM_CTX(handler__);
+    int ia = *ia__ - 1;
+    int idxrf1{-1};
+    int idxrf2{-1};
+    if ((l1__ != nullptr && o1__ != nullptr && ilo1__ != nullptr) ||
+        (l2__ != nullptr && o2__ != nullptr && ilo2__ != nullptr)) {
+        TERMINATE("wrong combination of radial function indices");
+    }
+    if (l1__ != nullptr && o1__ != nullptr) {
+        idxrf1 = sim_ctx.unit_cell().atom(ia).type().indexr_by_l_order(*l1__, *o1__ - 1);
+    } else if (ilo1__ != nullptr) {
+        idxrf1 = sim_ctx.unit_cell().atom(ia).type().indexr_by_idxlo(*ilo1__ - 1);
+    } else {
+        TERMINATE("1st radial function index is not valid");
+    }
+
+    if (l2__ != nullptr && o2__ != nullptr) {
+        idxrf2 = sim_ctx.unit_cell().atom(ia).type().indexr_by_l_order(*l2__, *o2__ - 1);
+    } else if (ilo2__ != nullptr) {
+        idxrf2 = sim_ctx.unit_cell().atom(ia).type().indexr_by_idxlo(*ilo2__ - 1);
+    } else {
+        TERMINATE("2nd radial function index is not valid");
+    }
+    sim_ctx.unit_cell().atom(ia).symmetry_class().set_o1_radial_integral(idxrf1, idxrf2, *val__);
+}
+
+/* @fortran begin function void sirius_set_radial_function   Set LAPW radial functions
+   @fortran argument in required void*  handler              Simulation context handler.
+   @fortran argument in required int    ia                   Index of atom.
+   @fortran argument in required int    deriv_order          Radial derivative order.
+   @fortran argument in required double f                    Values of the radial function.
+   @fortran argument in optional int    l                    Orbital quantum number.
+   @fortran argument in optional int    o                    Order of radial function for l.
+   @fortran argument in optional int    ilo                  Local orbital index.
+   @fortran end */
+void sirius_set_radial_function(void* const* handler__,
+                                int*         ia__,
+                                int*         deriv_order__,
+                                double*      f__,
+                                int*         l__,
+                                int*         o__,
+                                int*         ilo__)
+{
+    GET_SIM_CTX(handler__);
+
+    int ia = *ia__ - 1;
+
+    auto& atom = sim_ctx.unit_cell().atom(ia);
+
+    if (l__ != nullptr && o__ != nullptr && ilo__ != nullptr) {
+        TERMINATE("wrong combination of radial function indices");
+    }
+    if (!(*deriv_order__ == 0 || *deriv_order__ == 1)) {
+        TERMINATE("wrond radial derivative order");
+    }
+
+    int idxrf{-1};
+    if (l__ != nullptr && o__ != nullptr) {
+        idxrf = atom.type().indexr_by_l_order(*l__, *o__ - 1);
+    } else if (ilo__ != nullptr) {
+        idxrf = atom.type().indexr_by_idxlo(*ilo__ - 1);
+    } else {
+        TERMINATE("radial function index is not valid");
+    }
+
+    if (*deriv_order__ == 0) {
+        for (int ir = 0; ir < atom.num_mt_points(); ir++) {
+            atom.symmetry_class().radial_function(ir, idxrf) = f__[ir];
+        }
+    } else {
+        for (int ir = 0; ir < atom.num_mt_points(); ir++) {
+            atom.symmetry_class().radial_function_derivative(ir, idxrf) = f__[ir] * atom.type().radial_grid()[ir];
+        }
+    }
+    if (l__ != nullptr && o__ != nullptr) {
+        int n = atom.num_mt_points();
+        atom.symmetry_class().set_aw_surface_deriv(*l__, *o__ - 1, *deriv_order__, f__[n - 1]);
+    }
+}
+
+/* @fortran begin function void sirius_set_equivalent_atoms   Set equivalent atoms.
+   @fortran argument in required void*  handler               Simulation context handler.
+   @fortran argument in required int    equivalent_atoms      Array with equivalent atom IDs.
+   @fortran end */
+void sirius_set_equivalent_atoms(void* const* handler__,
+                                 int*         equivalent_atoms__)
+{
+    GET_SIM_CTX(handler__);
+    sim_ctx.unit_cell().set_equivalent_atoms(equivalent_atoms__);
 }
 
 } // extern "C"
