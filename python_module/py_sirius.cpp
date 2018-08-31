@@ -718,4 +718,5 @@ py::class_<Free_atom>(m, "Free_atom")
     m.def("energy_bxc", &energy_bxc);
     m.def("omp_set_num_threads", &omp_set_num_threads);
     m.def("omp_get_num_threads", &omp_get_num_threads);
+    // m.def("pseudopotential_hmatrix", &pseudopotential_hmatrix<complex_double>, "kpoint"_a, "ispn"_a, "H"_a);
 }
