@@ -27,23 +27,16 @@ inline void Hamiltonian::set_fv_h_o<CPU, electronic_structure_method_t::full_pot
                                                                                                dmatrix<double_complex>& h__,
                                                                                                dmatrix<double_complex>& o__) const
 {
-    PROFILE("sirius::Band::set_fv_h_o");
+    PROFILE("sirius::Hamiltonian::set_fv_h_o");
 
     h__.zero();
     o__.zero();
-
-    double_complex zone(1, 0);
 
     int num_atoms_in_block = 2 * omp_get_max_threads();
     int nblk = unit_cell_.num_atoms() / num_atoms_in_block +
                std::min(1, unit_cell_.num_atoms() % num_atoms_in_block);
 
     int max_mt_aw = num_atoms_in_block * unit_cell_.max_mt_aw_basis_size();
-
-    if (kp__->comm().rank() == 0 && ctx_.control().verbosity_ >= 2) {
-        DUMP("nblk: %i", nblk);
-        DUMP("max_mt_aw: %i", max_mt_aw);
-    }
 
     mdarray<double_complex, 2> alm_row(kp__->num_gkvec_row(), max_mt_aw);
     mdarray<double_complex, 2> alm_col(kp__->num_gkvec_col(), max_mt_aw);
@@ -55,7 +48,7 @@ inline void Hamiltonian::set_fv_h_o<CPU, electronic_structure_method_t::full_pot
         oalm_col = mdarray<double_complex, 2>(alm_col.at<CPU>(), kp__->num_gkvec_col(), max_mt_aw);
     }
 
-    sddk::timer t1("sirius::Band::set_fv_h_o|zgemm");
+    utils::timer t1("sirius::Hamiltonian::set_fv_h_o|zgemm");
     /* loop over blocks of atoms */
     for (int iblk = 0; iblk < nblk; iblk++) {
         /* number of matching AW coefficients in the block */
@@ -116,22 +109,22 @@ inline void Hamiltonian::set_fv_h_o<CPU, electronic_structure_method_t::full_pot
             double_complex z1 = alm_row.checksum();
             double_complex z2 = alm_col.checksum();
             double_complex z3 = halm_col.checksum();
-            print_checksum("alm_row", z1);
-            print_checksum("alm_col", z2);
-            print_checksum("halm_col", z3);
+            utils::print_checksum("alm_row", z1);
+            utils::print_checksum("alm_col", z2);
+            utils::print_checksum("halm_col", z3);
         }
         linalg<CPU>::gemm(0, 1, kp__->num_gkvec_row(), kp__->num_gkvec_col(), num_mt_aw,
-                          zone,
+                          linalg_const<double_complex>::one(),
                           alm_row.at<CPU>(), alm_row.ld(),
                           oalm_col.at<CPU>(), oalm_col.ld(),
-                          zone,
+                          linalg_const<double_complex>::one(),
                           o__.at<CPU>(), o__.ld());
 
         linalg<CPU>::gemm(0, 1, kp__->num_gkvec_row(), kp__->num_gkvec_col(), num_mt_aw,
-                          zone,
+                          linalg_const<double_complex>::one(),
                           alm_row.at<CPU>(), alm_row.ld(),
                           halm_col.at<CPU>(), halm_col.ld(),
-                          zone,
+                          linalg_const<double_complex>::one(),
                           h__.at<CPU>(), h__.ld());
     }
     double tval = t1.stop();
@@ -153,27 +146,20 @@ inline void Hamiltonian::set_fv_h_o<GPU, electronic_structure_method_t::full_pot
                                                                                                dmatrix<double_complex>& h__,
                                                                                                dmatrix<double_complex>& o__) const
 {
-    PROFILE("sirius::Band::set_fv_h_o");
+    PROFILE("sirius::Hamiltonian::set_fv_h_o");
 
-    sddk::timer t2("sirius::Band::set_fv_h_o|alloc");
+    utils::timer t2("sirius::Hamiltonian::set_fv_h_o|alloc");
     h__.allocate(memory_t::device);
     h__.zero<memory_t::host | memory_t::device>();
 
     o__.allocate(memory_t::device);
     o__.zero<memory_t::host | memory_t::device>();
 
-    double_complex zone(1, 0);
-
     int num_atoms_in_block = 2 * omp_get_max_threads();
     int nblk = unit_cell_.num_atoms() / num_atoms_in_block +
                std::min(1, unit_cell_.num_atoms() % num_atoms_in_block);
 
     int max_mt_aw = num_atoms_in_block * unit_cell_.max_mt_aw_basis_size();
-
-    if (kp__->comm().rank() == 0 && ctx_.control().verbosity_ >= 2) {
-        DUMP("nblk: %i", nblk);
-        DUMP("max_mt_aw: %i", max_mt_aw);
-    }
 
     mdarray<double_complex, 3> alm_row(kp__->num_gkvec_row(), max_mt_aw, 2, memory_t::host_pinned | memory_t::device);
 
@@ -186,7 +172,7 @@ inline void Hamiltonian::set_fv_h_o<GPU, electronic_structure_method_t::full_pot
         MEMORY_USAGE_INFO();
     }
 
-    sddk::timer t1("sirius::Band::set_fv_h_o|zgemm");
+    utils::timer t1("sirius::Hamiltonian::set_fv_h_o|zgemm");
     for (int iblk = 0; iblk < nblk; iblk++) {
         int num_mt_aw = 0;
         std::vector<int> offsets(num_atoms_in_block);
@@ -242,12 +228,12 @@ inline void Hamiltonian::set_fv_h_o<GPU, electronic_structure_method_t::full_pot
             acc::sync_stream(tid);
         }
         acc::sync_stream(omp_get_max_threads());
-        linalg<GPU>::gemm(0, 1, kp__->num_gkvec_row(), kp__->num_gkvec_col(), num_mt_aw, &zone,
-                          alm_row.at<GPU>(0, 0, s), alm_row.ld(), alm_col.at<GPU>(0, 0, s), alm_col.ld(), &zone,
+        linalg<GPU>::gemm(0, 1, kp__->num_gkvec_row(), kp__->num_gkvec_col(), num_mt_aw, &linalg_const<double_complex>::one(),
+                          alm_row.at<GPU>(0, 0, s), alm_row.ld(), alm_col.at<GPU>(0, 0, s), alm_col.ld(), &linalg_const<double_complex>::one(),
                           o__.at<GPU>(), o__.ld(), omp_get_max_threads());
 
-        linalg<GPU>::gemm(0, 1, kp__->num_gkvec_row(), kp__->num_gkvec_col(), num_mt_aw, &zone,
-                          alm_row.at<GPU>(0, 0, s), alm_row.ld(), halm_col.at<GPU>(0, 0, s), halm_col.ld(), &zone,
+        linalg<GPU>::gemm(0, 1, kp__->num_gkvec_row(), kp__->num_gkvec_col(), num_mt_aw, &linalg_const<double_complex>::one(),
+                          alm_row.at<GPU>(0, 0, s), alm_row.ld(), halm_col.at<GPU>(0, 0, s), halm_col.ld(), &linalg_const<double_complex>::one(),
                           h__.at<GPU>(), h__.ld(), omp_get_max_threads());
     }
 
@@ -368,7 +354,7 @@ inline void Hamiltonian::set_fv_h_o_it(K_point* kp,
                                        mdarray<double_complex, 2>& h,
                                        mdarray<double_complex, 2>& o) const
 {
-    PROFILE("sirius::Band::set_fv_h_o_it");
+    PROFILE("sirius::Hamiltonian::set_fv_h_o_it");
 
     //#ifdef __PRINT_OBJECT_CHECKSUM
     //double_complex z1 = mdarray<double_complex, 1>(&effective_potential->f_pw(0), ctx_.gvec().num_gvec()).checksum();
@@ -381,20 +367,20 @@ inline void Hamiltonian::set_fv_h_o_it(K_point* kp,
     for (int igk_col = 0; igk_col < kp->num_gkvec_col(); igk_col++) {
         int ig_col          = kp->igk_col(igk_col);
         auto gvec_col       = kp->gkvec().gvec(ig_col);
-        auto gkvec_col_cart = kp->gkvec().gkvec_cart(ig_col);
+        auto gkvec_col_cart = kp->gkvec().gkvec_cart<index_domain_t::global>(ig_col);
         for (int igk_row = 0; igk_row < kp->num_gkvec_row(); igk_row++) {
             int ig_row          = kp->igk_row(igk_row);
             auto gvec_row       = kp->gkvec().gvec(ig_row);
-            auto gkvec_row_cart = kp->gkvec().gkvec_cart(ig_row);
+            auto gkvec_row_cart = kp->gkvec().gkvec_cart<index_domain_t::global>(ig_row);
             int ig12 = ctx_.gvec().index_g12(gvec_row, gvec_col);
             /* pw kinetic energy */
             double t1 = 0.5 * dot(gkvec_row_cart, gkvec_col_cart);
 
             h(igk_row, igk_col) += this->potential().veff_pw(ig12);
-            o(igk_row, igk_col) += ctx_.step_function().theta_pw(ig12);
+            o(igk_row, igk_col) += ctx_.theta_pw(ig12);
 
             if (ctx_.valence_relativity() == relativity_t::none) {
-                h(igk_row, igk_col) += t1 * ctx_.step_function().theta_pw(ig12);
+                h(igk_row, igk_col) += t1 * ctx_.theta_pw(ig12);
             } else {
                 h(igk_row, igk_col) += t1 * this->potential().rm_inv_pw(ig12);
             }
@@ -409,7 +395,7 @@ inline void Hamiltonian::set_fv_h_o_lo_lo(K_point* kp,
                                           mdarray<double_complex, 2>& h,
                                           mdarray<double_complex, 2>& o) const
 {
-    PROFILE("sirius::Band::set_fv_h_o_lo_lo");
+    PROFILE("sirius::Hamiltonian::set_fv_h_o_lo_lo");
 
     /* lo-lo block */
     #pragma omp parallel for default(shared)
@@ -449,7 +435,7 @@ inline void Hamiltonian::set_fv_h_o_lo_lo(K_point* kp,
 inline void Hamiltonian::set_o_lo_lo(K_point* kp,
                                      mdarray<double_complex, 2>& o) const
 {
-    PROFILE("sirius::Band::set_o_lo_lo");
+    PROFILE("sirius::Hamiltonian::set_o_lo_lo");
 
     /* lo-lo block */
     #pragma omp parallel for default(shared)
@@ -477,7 +463,7 @@ inline void Hamiltonian::set_o_lo_lo(K_point* kp,
 inline void Hamiltonian::set_o_it(K_point* kp,
                                   mdarray<double_complex, 2>& o) const
 {
-    PROFILE("sirius::Band::set_o_it");
+    PROFILE("sirius::Hamiltonian::set_o_it");
 
     #pragma omp parallel for default(shared)
     for (int igk_col = 0; igk_col < kp->num_gkvec_col(); igk_col++) {
@@ -486,7 +472,7 @@ inline void Hamiltonian::set_o_it(K_point* kp,
             auto gvec_row = kp->gkvec().gvec(kp->igk_row(igk_row));
             int ig12 = ctx_.gvec().index_g12(gvec_row, gvec_col);
 
-            o(igk_row, igk_col) += ctx_.step_function().theta_pw(ig12);
+            o(igk_row, igk_col) += ctx_.theta_pw(ig12);
         }
     }
 }
@@ -495,7 +481,7 @@ inline void Hamiltonian::set_o_it(K_point* kp,
 //void Band::set_h_apw_lo(K_point* kp, Atom_type* type, Atom* atom, int ia, mdarray<double_complex, 2>& alm,
 //                        mdarray<double_complex, 2>& h)
 //{
-//    Timer t("sirius::Band::set_h_apw_lo");
+//    Timer t("sirius::Hamiltonian::set_h_apw_lo");
 //
 //    int apw_offset_col = kp->apw_offset_col();
 //
@@ -562,7 +548,7 @@ template <spin_block_t sblock>
 void Hamiltonian::set_h_it(K_point* kp, Periodic_function<double>* effective_potential,
                            Periodic_function<double>* effective_magnetic_field[3], mdarray<double_complex, 2>& h) const
 {
-    PROFILE("sirius::Band::set_h_it");
+    PROFILE("sirius::Hamiltonian::set_h_it");
 
     STOP(); // effective potential is now stored in the veff_pw_ auxiliary array. Fix this.
 
@@ -612,7 +598,7 @@ void Hamiltonian::set_h_it(K_point* kp, Periodic_function<double>* effective_pot
 template <spin_block_t sblock>
 void Hamiltonian::set_h_lo_lo(K_point* kp, mdarray<double_complex, 2>& h) const
 {
-    PROFILE("sirius::Band::set_h_lo_lo");
+    PROFILE("sirius::Hamiltonian::set_h_lo_lo");
 
     /* lo-lo block */
     #pragma omp parallel for default(shared)
@@ -638,7 +624,7 @@ void Hamiltonian::set_h_lo_lo(K_point* kp, mdarray<double_complex, 2>& h) const
 //== void Band::set_h(K_point* kp, Periodic_function<double>* effective_potential,
 //==                  Periodic_function<double>* effective_magnetic_field[3], mdarray<double_complex, 2>& h)
 //== {
-//==     Timer t("sirius::Band::set_h");
+//==     Timer t("sirius::Hamiltonian::set_h");
 //==
 //==     // index of column apw coefficients in apw array
 //==     int apw_offset_col = kp->apw_offset_col();
@@ -678,7 +664,7 @@ void Hamiltonian::set_h_lo_lo(K_point* kp, mdarray<double_complex, 2>& h) const
 //void Band::set_o_apw_lo(K_point* kp, Atom_type* type, Atom* atom, int ia, mdarray<double_complex, 2>& alm,
 //                        mdarray<double_complex, 2>& o)
 //{
-//    Timer t("sirius::Band::set_o_apw_lo");
+//    Timer t("sirius::Hamiltonian::set_o_apw_lo");
 //
 //    int apw_offset_col = kp->apw_offset_col();
 //
@@ -724,7 +710,7 @@ void Hamiltonian::set_h_lo_lo(K_point* kp, mdarray<double_complex, 2>& h) const
 
 //== void Band::set_o(K_point* kp, mdarray<double_complex, 2>& o)
 //== {
-//==     Timer t("sirius::Band::set_o");
+//==     Timer t("sirius::Hamiltonian::set_o");
 //==
 //==     // index of column apw coefficients in apw array
 //==     int apw_offset_col = kp->apw_offset_col();

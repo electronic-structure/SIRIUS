@@ -26,13 +26,11 @@
 #ifndef __FORCE_HPP__
 #define __FORCE_HPP__
 
-#include "../simulation_context.h"
-#include "../periodic_function.h"
-#include "../augmentation_operator.h"
-#include "../Beta_projectors/beta_projectors.h"
-#include "../Beta_projectors/beta_projectors_gradient.h"
-#include "../potential.h"
-#include "../density.h"
+#include "simulation_context.h"
+#include "periodic_function.h"
+#include "Density/augmentation_operator.hpp"
+#include "Beta_projectors/beta_projectors.h"
+#include "Beta_projectors/beta_projectors_gradient.h"
 #include "non_local_functor.hpp"
 
 namespace sirius {
@@ -58,6 +56,8 @@ class Force
         mdarray<double, 2> forces_us_;
 
         mdarray<double, 2> forces_nonloc_;
+
+        mdarray<double, 2> forces_usnl_;
 
         mdarray<double, 2> forces_core_;
 
@@ -206,277 +206,32 @@ class Force
 
         // It is based on this reference : PRB 84, 161102(R) (2011)
 
-        void hubbard_force_add_k_contribution_colinear(K_point &kp__, mdarray<double, 2>& force__)
+        void hubbard_force_add_k_contribution_colinear(K_point &kp__, mdarray<double, 2>& forceh_)
         {
-            if (ctx_.so_correction() || (ctx_.num_mag_dims() == 3)) {
-                TERMINATE("Hubbard forces are yet implemented for the full lda+U corrections");
-            }
+            mdarray<double_complex, 6> dn_(2 * hamiltonian_.U().hubbard_lmax() + 1,
+                                           2 * hamiltonian_.U().hubbard_lmax() + 1,
+                                           2,
+                                           ctx_.unit_cell().num_atoms(),
+                                           3,
+                                           ctx_.unit_cell().num_atoms());
 
-            // temporary wave functions
-            Wave_functions phi(kp__.gkvec_partition(), hamiltonian_.U().number_of_hubbard_orbitals(), ctx_.num_spins());
-            Wave_functions phitmp(kp__.gkvec_partition(), hamiltonian_.U().number_of_hubbard_orbitals(), ctx_.num_spins());
-            Wave_functions dphi(kp__.gkvec_partition(), hamiltonian_.U().number_of_hubbard_orbitals(), ctx_.num_spins());
+            hamiltonian_.U().compute_occupancies_derivatives(kp__,
+                                                             hamiltonian_.Q<double_complex>(),
+                                                             dn_);
 
-            // We generate the atomic orbitals again since there is no waranty
-            // that atomic orbitals of different atoms are not mixed
-            // together. Since we need the gradient of these guys compared to the
-            // positions of the atoms better calculate them again
-
-            hamiltonian_.U().GenerateAtomicOrbitals(kp__, phi);
-
-            // check if we have a norm conserving pseudo potential only
-            bool augment = false;
-            for (auto ia = 0; (ia < ctx_.unit_cell().num_atom_types()) && (!augment); ia++) {
-                augment = ctx_.unit_cell().atom_type(ia).augment();
-            }
-
-            if (ctx_.gamma_point() && (ctx_.so_correction() == false)) {
-                hamiltonian_.prepare<double>();
-            } else {
-                hamiltonian_.prepare<double_complex>();
-            }
-
-#ifdef __GPU
-            if (ctx_.processing_unit() == GPU) {
-                for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-                    /* allocate GPU memory */
-                    phi.pw_coeffs(ispn).prime().allocate(memory_t::device);
-                    phi.pw_coeffs(ispn).copy_to_device(0, hamiltonian_.U().number_of_hubbard_orbitals());
-                }
-            }
-#endif
-
-            auto &q_op = hamiltonian_.Q<double_complex>();
-
-            if (!ctx_.full_potential() && augment) {
-                /* apply the s matrix here on the orbitals (ultra soft pseudo potential) */
-                /* Not the block functions. */
-                // Put it in dphi
-                for (int i = 0; i < kp__.beta_projectors().num_chunks(); i++) {
-                    /* generate beta-projectors for a block of atoms */
-                    kp__.beta_projectors().generate(i);
-                    /* non-collinear case */
-                    for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-
-                        auto beta_phi = kp__.beta_projectors().inner<double_complex>(i, phi, ispn, 0, hamiltonian_.U().number_of_hubbard_orbitals());
-
-                        /* apply Q operator (diagonal in spin) */
-                        q_op.apply(i, ispn, dphi, 0, hamiltonian_.U().number_of_hubbard_orbitals(), kp__.beta_projectors(),
-                                   beta_phi);
-                        /* apply non-diagonal spin blocks */
-                        if (ctx_.so_correction()) {
-                            q_op.apply(i, ispn ^ 3, dphi, 0, hamiltonian_.U().number_of_hubbard_orbitals(), kp__.beta_projectors(), beta_phi);
-                        }
-                    }
-                }
-            }
-
-            // I will need to multiply by the conjugate because I compute
-            // <psi | S | phi> instead.
-
-            int HowManyBands = kp__.num_occupied_bands(0);
-            if (ctx_.num_spins() == 2)
-                HowManyBands = kp__.num_occupied_bands(1);
-
-            dmatrix<double_complex> PhiSPsi(hamiltonian_.U().number_of_hubbard_orbitals(), HowManyBands);
-
-            // now we compute the derivative of <phi | S | psi> compared to r_alpha
-            // we have two terms <d phi| S | psi> + <phi | d S | psi>
-
-            // the second term is split into two terms (only present for the ultra soft case)
-            //<phi | d S | psi> = \sum_ij q_ij (<phi | dbeta_i > < beta_j|psi> + <phi | beta_i > < dbeta_j|psi>
-
-            dmatrix<double_complex> dPhiSPsi(hamiltonian_.U().number_of_hubbard_orbitals(), HowManyBands);
-
-            // I need now the derivatives of the beta projectors
-            Beta_projectors_gradient bp_grad(ctx_, kp__.gkvec(), kp__.igk_loc(), kp__.beta_projectors());
-
-            for (int dir = 0; dir < 3; dir++) {
-                // Ultra soft case
-
-                // compute \partial phi/\partial_{r_a}
-
-                hamiltonian_.U().ComputeDerivatives(kp__, phi, dphi, dir);
-
-                // compute  S | dphi>
-
-                if (!ctx_.full_potential() && augment) {
-#ifdef __GPU
-                    if (ctx_.processing_unit() == GPU) {
-                        for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-                            phitmp.pw_coeffs(ispn).prime().allocate(memory_t::device);
-                            phitmp.pw_coeffs(ispn).copy_to_device(0, hamiltonian_.U().number_of_hubbard_orbitals());
-                        }
-                    }
-#endif
-                    for (int s = 0; s < ctx_.num_spins(); s++) {
-                        // I need to consider the case where all atoms are norm
-                        // conserving. In that case the S operator is diagonal in orbital space
-                        phitmp.copy_from(ctx_.processing_unit(), hamiltonian_.U().number_of_hubbard_orbitals(), dphi, s, 0, s, 0);
-                    }
-
-                    // Now add the contribution from the beta projectors
-                    for (int i = 0; i < kp__.beta_projectors().num_chunks(); i++) {
-                        // Ultra soft case
-                        for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-                            auto beta_dphi = kp__.beta_projectors().inner<double_complex>(i, phitmp, ispn, 0, hamiltonian_.U().number_of_hubbard_orbitals());
-
-                            // compute  S | dphi>
-
-                            /* apply Q operator (diagonal in spin) */
-                            q_op.apply(i, ispn, dphi, 0, hamiltonian_.U().number_of_hubbard_orbitals(), kp__.beta_projectors(),
-                                       beta_dphi);
-
-                            // compute dS | phi> and add it it d(S|phi>)
-                            // dS contains two terms Q_ij (|d \beta_i><beta_j| + |beta_i><d beta_j|)
-
-                            // first term Q_{ij} |d beta_i><beta_j|
-
-                            // compute the derivatives of the beta projectors and compute
-                            // the overlap with the atomic orbitals.
-                            bp_grad.generate(i, dir);
-                            auto dbeta_phi = bp_grad.template inner<double_complex>(i, phi, ispn, 0, hamiltonian_.U().number_of_hubbard_orbitals());
-
-                            // Q_ij <d\beta_i|phi> |beta_j>
-                            // add it to dphi
-
-                            /* apply Q operator (diagonal in spin) */
-                            q_op.apply(i, ispn, dphi, 0, hamiltonian_.U().number_of_hubbard_orbitals(), kp__.beta_projectors(), dbeta_phi);
-
-                            //second term Q_{ij} |beta_i><d beta_j|
-
-                            // Q_ij <\beta_i|phi> |d beta_j>
-
-                            /* apply Q operator (diagonal in spin) */
-                            q_op.apply(i, ispn, dphi, 0, hamiltonian_.U().number_of_hubbard_orbitals(), kp__.beta_projectors(),
-                                       beta_dphi);
-                        }
-                    }
-                }
-
-#ifdef __GPU
-                if (ctx_.processing_unit() == GPU) {
-                    for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-                        kp__.hubbard_wave_functions().pw_coeffs(ispn).prime().allocate(memory_t::device);
-                        kp__.hubbard_wave_functions().pw_coeffs(ispn).copy_to_device(0, hamiltonian_.U().number_of_hubbard_orbitals());
-                    }
-                }
-#endif
-
-                // now compute the product with psi and add it to <psi | d (S | phi>)
-                dPhiSPsi.zero();
-                for (int ispn = 0; ispn < 2; ispn++) {
-                    inner(ctx_.processing_unit(),
-                          ispn,
-                          kp__.spinor_wave_functions(),
-                          0,
-                          kp__.num_occupied_bands(ispn),
-                          dphi,
-                          0,
-                          hamiltonian_.U().number_of_hubbard_orbitals(),
-                          dPhiSPsi,
-                          0,
-                          (ispn == 1) * kp__.num_occupied_bands(1));
-                }
-
-#ifdef __GPU
-                if (ctx_.processing_unit() == GPU) {
-                    for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-                        dphi.deallocate_on_device(ispn);
-                    }
-
-                    for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-                        phi.pw_coeffs(ispn).prime().allocate(memory_t::device);
-                        phi.pw_coeffs(ispn).copy_to_device(0, hamiltonian_.U().number_of_hubbard_orbitals());
-                    }
-                }
-#endif
-
-                if (!ctx_.full_potential() && augment) {
-
-                    for (int s = 0; s < ctx_.num_spins(); s++) {
-                        // I need to consider the case where all atoms are norm
-                        // conserving. In that case the S operator is diagonal in orbital space
-                        phitmp.copy_from(ctx_.processing_unit(), hamiltonian_.U().number_of_hubbard_orbitals(), phi, s, 0, s, 0);
-                    }
-
-                    for (int i = 0; i < kp__.beta_projectors().num_chunks(); i++) {
-                        // Ultra soft case
-                        for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-                            auto beta_dphi = kp__.beta_projectors().template inner<double_complex>(i, phitmp, ispn,
-                                                                                                   0, hamiltonian_.U().number_of_hubbard_orbitals());
-                            // compute  S | phi>
-
-                            /* apply Q operator (diagonal in spin) */
-                            hamiltonian_.Q<double_complex>().apply(i, ispn, phi, 0, hamiltonian_.U().number_of_hubbard_orbitals(), kp__.beta_projectors(),
-                                                                   beta_dphi);
-                        }
-                    }
-                }
-
-                // compute <phi|S|psi>
-                PhiSPsi.zero();
-                for (int ispn = 0; ispn < 2; ispn++) {
-                    inner(ctx_.processing_unit(),
-                          ispn,
-                          kp__.spinor_wave_functions(),
-                          0,
-                          kp__.num_occupied_bands(ispn),
-                          phi,
-                          0,
-                          hamiltonian_.U().number_of_hubbard_orbitals(),
-                          PhiSPsi,
-                          0,
-                          (ispn == 1) * kp__.num_occupied_bands(1));
-                }
-
-#ifdef __GPU
-                if (ctx_.processing_unit() == GPU) {
-                    for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-                        kp__.hubbard_wave_functions().deallocate_on_device(ispn);
-                        phi.deallocate_on_device(ispn);
-                        phitmp.deallocate_on_device(ispn);
-                    }
-                }
-#endif
-                // compute d ns. See Eq.3 of ref PRB 84, 161102(R) (2011)
-                // https://journals.aps.org/prb/pdf/10.1103/PhysRevB.84.161102
-
-                mdarray<double_complex, 4> dn (2 * hamiltonian_.U().hubbard_lmax() + 1,
-                                               2 * hamiltonian_.U().hubbard_lmax() + 1,
-                                               ctx_.num_spins(), ctx_.unit_cell().num_atoms());
-                #pragma omp parallel for
-                for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ++ia) {
-                    const auto& atom = ctx_.unit_cell().atom(ia);
-                    const int lmax_at = 2 * atom.type().hubbard_l() + 1;
-                    if (atom.type().hubbard_correction()) {
-                        for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-                            size_t bnd_offset = 0;
-                            if (ispn == 1)
-                                bnd_offset = kp__.num_occupied_bands(0);
-                            for (int m1 = 0; m1 < lmax_at; m1++) {
-                                for (int m2 = 0; m2 < lmax_at; m2++) {
-                                    for (int nbnd = 0; nbnd < kp__.num_occupied_bands(ispn); nbnd++) {
-                                        dn(m1, m2, ispn, ia) += (std::conj(PhiSPsi(hamiltonian_.U().offset[ia] + m1, nbnd + bnd_offset)) *
-                                                                 dPhiSPsi(hamiltonian_.U().offset[ia] + m2, nbnd + bnd_offset) +
-                                                                 std::conj(dPhiSPsi(hamiltonian_.U().offset[ia] + m1, nbnd + bnd_offset)) *
-                                                                 PhiSPsi(hamiltonian_.U().offset[ia] + m2, nbnd + bnd_offset)) *
-                                            kp__.weight() * kp__.band_occupancy(nbnd, ispn);
+            for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {
+                // compute the derivative of the occupancies numbers
+                for (int dir = 0; dir < 3; dir++) {
+                    for (int ia1 = 0; ia1 < ctx_.unit_cell().num_atoms(); ia1++) {
+                        const auto& atom = ctx_.unit_cell().atom(ia1);
+                        if (atom.type().hubbard_correction()) {
+                            const int lmax_at = 2 * atom.type().hubbard_orbital(0).hubbard_l() + 1;
+                            for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
+                                for (int m1 = 0; m1 < lmax_at; m1++) {
+                                    for (int m2 = 0; m2 < lmax_at; m2++) {
+                                        forceh_(dir, ia) -= (hamiltonian_.U().U(m2, m1, ispn, ia1) *
+                                                             dn_(m1, m2, ispn, ia1, dir, ia)).real();
                                     }
-                                }
-                            }
-                        }
-                    }
-                }
-                #pragma omp parallel for
-                for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ++ia) {
-                    const auto& atom = ctx_.unit_cell().atom(ia);
-                    const int lmax_at = 2 * atom.type().hubbard_l() + 1;
-                    if (atom.type().hubbard_correction()) {
-                        for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
-                            for (int m1 = 0; m1 < lmax_at; m1++) {
-                                for (int m2 = 0; m2 < lmax_at; m2++) {
-                                    force__(dir, ia) -= (hamiltonian_.U().U(m2, m1, ispn, ia).real() * dn(m1, m2, ispn, ia)).real();
                                 }
                             }
                         }
@@ -484,6 +239,7 @@ class Force
                 }
             }
         }
+
 
         void ibs_force(K_point* kp__,
                        mdarray<double, 2>& ffac__,
@@ -522,121 +278,120 @@ class Force
             mdarray<double_complex, 2> alm_col(kp__->num_gkvec_col(), uc.max_mt_aw_basis_size());
             mdarray<double_complex, 2> halm_col(kp__->num_gkvec_col(), uc.max_mt_aw_basis_size());
 
-            for (int ia = 0; ia < uc.num_atoms(); ia++)
-                {
-                    h.zero();
-                    o.zero();
+            for (int ia = 0; ia < uc.num_atoms(); ia++) {
+                h.zero();
+                o.zero();
 
-                    auto& atom = uc.atom(ia);
-                    auto& type = atom.type();
+                auto& atom = uc.atom(ia);
+                auto& type = atom.type();
 
-                    /* generate matching coefficients for current atom */
-                    kp__->alm_coeffs_row().generate(ia, alm_row);
-                    kp__->alm_coeffs_col().generate(ia, alm_col);
+                /* generate matching coefficients for current atom */
+                kp__->alm_coeffs_row().generate(ia, alm_row);
+                kp__->alm_coeffs_col().generate(ia, alm_col);
 
-                    /* setup apw-lo and lo-apw blocks */
-                    hamiltonian_.set_fv_h_o_apw_lo(kp__, type, atom, ia, alm_row, alm_col, h, o);
+                /* setup apw-lo and lo-apw blocks */
+                hamiltonian_.set_fv_h_o_apw_lo(kp__, type, atom, ia, alm_row, alm_col, h, o);
 
-                    /* apply MT Hamiltonian to column coefficients */
-                    hamiltonian_.apply_hmt_to_apw<spin_block_t::nm>(atom, kp__->num_gkvec_col(), alm_col, halm_col);
+                /* apply MT Hamiltonian to column coefficients */
+                hamiltonian_.apply_hmt_to_apw<spin_block_t::nm>(atom, kp__->num_gkvec_col(), alm_col, halm_col);
 
-                    /* conjugate row (<bra|) matching coefficients */
-                    for (int i = 0; i < type.mt_aw_basis_size(); i++) {
-                        for (int igk = 0; igk < kp__->num_gkvec_row(); igk++) {
-                            alm_row(igk, i) = std::conj(alm_row(igk, i));
-                        }
+                /* conjugate row (<bra|) matching coefficients */
+                for (int i = 0; i < type.mt_aw_basis_size(); i++) {
+                    for (int igk = 0; igk < kp__->num_gkvec_row(); igk++) {
+                        alm_row(igk, i) = std::conj(alm_row(igk, i));
                     }
+                }
 
-                    /* apw-apw block of the overlap matrix */
-                    linalg<CPU>::gemm(0, 1, kp__->num_gkvec_row(), kp__->num_gkvec_col(), type.mt_aw_basis_size(),
-                                      alm_row.at<CPU>(), alm_row.ld(), alm_col.at<CPU>(), alm_col.ld(), o.at<CPU>(), o.ld());
+                /* apw-apw block of the overlap matrix */
+                linalg<CPU>::gemm(0, 1, kp__->num_gkvec_row(), kp__->num_gkvec_col(), type.mt_aw_basis_size(),
+                                  alm_row.at<CPU>(), alm_row.ld(), alm_col.at<CPU>(), alm_col.ld(), o.at<CPU>(), o.ld());
 
-                    /* apw-apw block of the Hamiltonian matrix */
-                    linalg<CPU>::gemm(0, 1, kp__->num_gkvec_row(), kp__->num_gkvec_col(), type.mt_aw_basis_size(),
-                                      alm_row.at<CPU>(), alm_row.ld(), halm_col.at<CPU>(), halm_col.ld(), h.at<CPU>(), h.ld());
+                /* apw-apw block of the Hamiltonian matrix */
+                linalg<CPU>::gemm(0, 1, kp__->num_gkvec_row(), kp__->num_gkvec_col(), type.mt_aw_basis_size(),
+                                  alm_row.at<CPU>(), alm_row.ld(), halm_col.at<CPU>(), halm_col.ld(), h.at<CPU>(), h.ld());
 
-                    int iat = type.id();
+                int iat = type.id();
 
+                for (int igk_col = 0; igk_col < kp__->num_gkvec_col(); igk_col++) { // loop over columns
+                    auto gvec_col       = kp__->gkvec().gvec(kp__->igk_col(igk_col));
+                    auto gkvec_col_cart = kp__->gkvec().gkvec_cart<index_domain_t::global>(kp__->igk_col(igk_col));
+                    for (int igk_row = 0; igk_row < kp__->num_gkvec_row(); igk_row++) { // for each column loop over rows
+                        auto gvec_row       = kp__->gkvec().gvec(kp__->igk_row(igk_row));
+                        auto gkvec_row_cart = kp__->gkvec().gkvec_cart<index_domain_t::global>(kp__->igk_row(igk_row));
+
+                        int ig12 = ctx_.gvec().index_g12(gvec_row, gvec_col);
+
+                        int igs = ctx_.gvec().shell(ig12);
+
+                        double_complex zt = std::conj(ctx_.gvec_phase_factor(ig12, ia)) * ffac__(iat, igs) * fourpi / uc.omega();
+
+                        double t1 = 0.5 * dot(gkvec_row_cart, gkvec_col_cart);
+
+                        h(igk_row, igk_col) -= t1 * zt;
+                        o(igk_row, igk_col) -= zt;
+                    }
+                }
+
+                for (int x = 0; x < 3; x++) {
                     for (int igk_col = 0; igk_col < kp__->num_gkvec_col(); igk_col++) { // loop over columns
-                        auto gvec_col       = kp__->gkvec().gvec(kp__->igk_col(igk_col));
-                        auto gkvec_col_cart = kp__->gkvec().gkvec_cart(kp__->igk_col(igk_col));
+                        auto gvec_col = kp__->gkvec().gvec(kp__->igk_col(igk_col));
                         for (int igk_row = 0; igk_row < kp__->num_gkvec_row(); igk_row++) { // for each column loop over rows
-                            auto gvec_row       = kp__->gkvec().gvec(kp__->igk_row(igk_row));
-                            auto gkvec_row_cart = kp__->gkvec().gkvec_cart(kp__->igk_row(igk_row));
-
+                            auto gvec_row = kp__->gkvec().gvec(kp__->igk_row(igk_row));
                             int ig12 = ctx_.gvec().index_g12(gvec_row, gvec_col);
 
-                            int igs = ctx_.gvec().shell(ig12);
-
-                            double_complex zt = std::conj(ctx_.gvec_phase_factor(ig12, ia)) * ffac__(iat, igs) * fourpi / uc.omega();
-
-                            double t1 = 0.5 * dot(gkvec_row_cart, gkvec_col_cart);
-
-                            h(igk_row, igk_col) -= t1 * zt;
-                            o(igk_row, igk_col) -= zt;
+                            vector3d<double> vg = ctx_.gvec().gvec_cart<index_domain_t::global>(ig12);
+                            h1(igk_row, igk_col) = double_complex(0.0, vg[x]) * h(igk_row, igk_col);
+                            o1(igk_row, igk_col) = double_complex(0.0, vg[x]) * o(igk_row, igk_col);
                         }
                     }
 
-                    for (int x = 0; x < 3; x++) {
-                        for (int igk_col = 0; igk_col < kp__->num_gkvec_col(); igk_col++) { // loop over columns
-                            auto gvec_col = kp__->gkvec().gvec(kp__->igk_col(igk_col));
-                            for (int igk_row = 0; igk_row < kp__->num_gkvec_row(); igk_row++) { // for each column loop over rows
-                                auto gvec_row = kp__->gkvec().gvec(kp__->igk_row(igk_row));
-                                int ig12 = ctx_.gvec().index_g12(gvec_row, gvec_col);
-
-                                vector3d<double> vg = ctx_.gvec().gvec_cart(ig12);
-                                h1(igk_row, igk_col) = double_complex(0.0, vg[x]) * h(igk_row, igk_col);
-                                o1(igk_row, igk_col) = double_complex(0.0, vg[x]) * o(igk_row, igk_col);
-                            }
-                        }
-
-                        for (int icol = 0; icol < kp__->num_lo_col(); icol++) {
-                            for (int igk_row = 0; igk_row < kp__->num_gkvec_row(); igk_row++) {
-                                auto gkvec_row_cart = kp__->gkvec().gkvec_cart(kp__->igk_row(igk_row));
-                                h1(igk_row, icol + kp__->num_gkvec_col()) = double_complex(0.0, gkvec_row_cart[x]) * h(igk_row, icol + kp__->num_gkvec_col());
-                                o1(igk_row, icol + kp__->num_gkvec_col()) = double_complex(0.0, gkvec_row_cart[x]) * o(igk_row, icol + kp__->num_gkvec_col());
-                            }
-                        }
-
-                        for (int irow = 0; irow < kp__->num_lo_row(); irow++) {
-                            for (int igk_col = 0; igk_col < kp__->num_gkvec_col(); igk_col++) {
-                                auto gkvec_col_cart = kp__->gkvec().gkvec_cart(kp__->igk_col(igk_col));
-                                h1(irow + kp__->num_gkvec_row(), igk_col) = double_complex(0.0, -gkvec_col_cart[x]) * h(irow + kp__->num_gkvec_row(), igk_col);
-                                o1(irow + kp__->num_gkvec_row(), igk_col) = double_complex(0.0, -gkvec_col_cart[x]) * o(irow + kp__->num_gkvec_row(), igk_col);
-                            }
-                        }
-
-                        /* zm1 = H * V */
-                        linalg<CPU>::gemm(0, 0, kp__->gklo_basis_size(), ctx_.num_fv_states(), kp__->gklo_basis_size(),
-                                          linalg_const<double_complex>::one(), h1, fv_evec, linalg_const<double_complex>::zero(), zm1);
-
-                        /* F = V^{+} * zm1 = V^{+} * H * V */
-                        linalg<CPU>::gemm(2, 0, ctx_.num_fv_states(), ctx_.num_fv_states(), kp__->gklo_basis_size(),
-                                          linalg_const<double_complex>::one(), fv_evec, zm1, linalg_const<double_complex>::zero(), zf);
-
-                        /* zm1 = O * V */
-                        linalg<CPU>::gemm(0, 0, kp__->gklo_basis_size(), ctx_.num_fv_states(), kp__->gklo_basis_size(),
-                                          linalg_const<double_complex>::one(), o1, fv_evec, linalg_const<double_complex>::zero(), zm1);
-
-                        STOP();
-                        ///* multiply by energy */
-                        //for (int i = 0; i < (int)kp__->spl_fv_states().local_size(); i++)
-                        //{
-                        //    int ist = kp__->spl_fv_states(i);
-                        //    for (int j = 0; j < kp__->gklo_basis_size_row(); j++) zm1(j, i) = zm1(j, i) * kp__->fv_eigen_value(ist);
-                        //}
-
-                        /* F = F - V^{+} * zm1 = F - V^{+} * O * (E*V) */
-                        linalg<CPU>::gemm(2, 0, ctx_.num_fv_states(), ctx_.num_fv_states(), kp__->gklo_basis_size(),
-                                          double_complex(-1, 0), fv_evec, zm1, double_complex(1, 0), zf);
-
-                        for (int i = 0; i < dm.num_cols_local(); i++) {
-                            for (int j = 0; j < dm.num_rows_local(); j++) {
-                                forcek__(x, ia) += kp__->weight() * real(dm(j, i) * zf(j, i));
-                            }
+                    for (int icol = 0; icol < kp__->num_lo_col(); icol++) {
+                        for (int igk_row = 0; igk_row < kp__->num_gkvec_row(); igk_row++) {
+                            auto gkvec_row_cart = kp__->gkvec().gkvec_cart<index_domain_t::global>(kp__->igk_row(igk_row));
+                            h1(igk_row, icol + kp__->num_gkvec_col()) = double_complex(0.0, gkvec_row_cart[x]) * h(igk_row, icol + kp__->num_gkvec_col());
+                            o1(igk_row, icol + kp__->num_gkvec_col()) = double_complex(0.0, gkvec_row_cart[x]) * o(igk_row, icol + kp__->num_gkvec_col());
                         }
                     }
-                } //ia
+
+                    for (int irow = 0; irow < kp__->num_lo_row(); irow++) {
+                        for (int igk_col = 0; igk_col < kp__->num_gkvec_col(); igk_col++) {
+                            auto gkvec_col_cart = kp__->gkvec().gkvec_cart<index_domain_t::global>(kp__->igk_col(igk_col));
+                            h1(irow + kp__->num_gkvec_row(), igk_col) = double_complex(0.0, -gkvec_col_cart[x]) * h(irow + kp__->num_gkvec_row(), igk_col);
+                            o1(irow + kp__->num_gkvec_row(), igk_col) = double_complex(0.0, -gkvec_col_cart[x]) * o(irow + kp__->num_gkvec_row(), igk_col);
+                        }
+                    }
+
+                    /* zm1 = H * V */
+                    linalg<CPU>::gemm(0, 0, kp__->gklo_basis_size(), ctx_.num_fv_states(), kp__->gklo_basis_size(),
+                                      linalg_const<double_complex>::one(), h1, fv_evec, linalg_const<double_complex>::zero(), zm1);
+
+                    /* F = V^{+} * zm1 = V^{+} * H * V */
+                    linalg<CPU>::gemm(2, 0, ctx_.num_fv_states(), ctx_.num_fv_states(), kp__->gklo_basis_size(),
+                                      linalg_const<double_complex>::one(), fv_evec, zm1, linalg_const<double_complex>::zero(), zf);
+
+                    /* zm1 = O * V */
+                    linalg<CPU>::gemm(0, 0, kp__->gklo_basis_size(), ctx_.num_fv_states(), kp__->gklo_basis_size(),
+                                      linalg_const<double_complex>::one(), o1, fv_evec, linalg_const<double_complex>::zero(), zm1);
+
+                    STOP();
+                    ///* multiply by energy */
+                    //for (int i = 0; i < (int)kp__->spl_fv_states().local_size(); i++)
+                    //{
+                    //    int ist = kp__->spl_fv_states(i);
+                    //    for (int j = 0; j < kp__->gklo_basis_size_row(); j++) zm1(j, i) = zm1(j, i) * kp__->fv_eigen_value(ist);
+                    //}
+
+                    /* F = F - V^{+} * zm1 = F - V^{+} * O * (E*V) */
+                    linalg<CPU>::gemm(2, 0, ctx_.num_fv_states(), ctx_.num_fv_states(), kp__->gklo_basis_size(),
+                                      double_complex(-1, 0), fv_evec, zm1, double_complex(1, 0), zf);
+
+                    for (int i = 0; i < dm.num_cols_local(); i++) {
+                        for (int j = 0; j < dm.num_rows_local(); j++) {
+                            forcek__(x, ia) += kp__->weight() * real(dm(j, i) * zf(j, i));
+                        }
+                    }
+                }
+            } //ia
         }
 
     public:
@@ -649,7 +404,7 @@ class Force
         {
         }
 
-        inline void calc_forces_vloc()
+        inline mdarray<double, 2> const& calc_forces_vloc()
         {
             PROFILE("sirius::Force::calc_forces_vloc");
 
@@ -658,7 +413,7 @@ class Force
 
             auto& valence_rho = density_.rho();
 
-            Radial_integrals_vloc<false> ri(ctx_.unit_cell(), ctx_.pw_cutoff(), ctx_.settings().nprii_vloc_);
+            auto& ri = ctx_.vloc_ri();
 
             Unit_cell& unit_cell = ctx_.unit_cell();
 
@@ -680,9 +435,9 @@ class Force
                     int ig  = gvec_offset + igloc;
 
                     /* cartesian form for getting cartesian force components */
-                    vector3d<double> gvec_cart = gvecs.gvec_cart(ig);
+                    vector3d<double> gvec_cart = gvecs.gvec_cart<index_domain_t::local>(igloc);
 
-                    /* scalar part of a force without multipying by G-vector */
+                    /* scalar part of a force without multiplying by G-vector */
                     double_complex z = fact * fourpi * ri.value(iat, gvecs.gvec_len(ig)) *
                         std::conj(valence_rho.f_pw_local(igloc)) *
                         std::conj(ctx_.gvec_phase_factor(ig, ia));
@@ -695,6 +450,8 @@ class Force
             }
 
             ctx_.comm().allreduce(&forces_vloc_(0, 0), 3 * ctx_.unit_cell().num_atoms());
+
+            return forces_vloc_;
         }
 
         inline mdarray<double, 2> const& forces_vloc() const
@@ -702,7 +459,7 @@ class Force
             return forces_vloc_;
         }
 
-        inline void calc_forces_nonloc()
+        inline mdarray<double, 2> const& calc_forces_nonloc()
         {
             PROFILE("sirius::Force::calc_forces_nonloc");
 
@@ -724,6 +481,8 @@ class Force
             ctx_.comm().allreduce(&forces_nonloc_(0, 0), 3 * ctx_.unit_cell().num_atoms());
 
             symmetrize(forces_nonloc_);
+
+            return forces_nonloc_;
         }
 
         inline mdarray<double, 2> const& forces_nonloc() const
@@ -731,7 +490,7 @@ class Force
             return forces_nonloc_;
         }
 
-        inline void calc_forces_core()
+        inline mdarray<double, 2> const& calc_forces_core()
         {
             PROFILE("sirius::Force::calc_forces_core");
 
@@ -739,10 +498,10 @@ class Force
             forces_core_.zero();
 
             /* get main arrays */
-            auto xc_pot = potential_.xc_potential();
+            auto& xc_pot = potential_.xc_potential();
 
             /* transform from real space to reciprocal */
-            xc_pot->fft_transform(-1);
+            xc_pot.fft_transform(-1);
 
             Unit_cell& unit_cell = ctx_.unit_cell();
 
@@ -753,7 +512,7 @@ class Force
 
             double fact = gvecs.reduced() ? 2.0 : 1.0;
 
-            Radial_integrals_rho_core_pseudo<false> ri(ctx_.unit_cell(), ctx_.pw_cutoff(), ctx_.settings().nprii_rho_core_);
+            auto& ri = ctx_.ps_core_ri();
 
             /* here the calculations are in lattice vectors space */
             #pragma omp parallel for
@@ -770,11 +529,11 @@ class Force
                     }
 
                     /* cartesian form for getting cartesian force components */
-                    vector3d<double> gvec_cart = gvecs.gvec_cart(ig);
+                    vector3d<double> gvec_cart = gvecs.gvec_cart<index_domain_t::local>(igloc);
 
                     /* scalar part of a force without multipying by G-vector */
                     double_complex z = fact * fourpi * ri.value<int>(iat, gvecs.gvec_len(ig)) *
-                        std::conj(xc_pot->f_pw_local(igloc) * ctx_.gvec_phase_factor(ig, ia));
+                        std::conj(xc_pot.f_pw_local(igloc) * ctx_.gvec_phase_factor(ig, ia));
 
                     /* get force components multiplying by cartesian G-vector */
                     for (int x: {0, 1, 2}) {
@@ -783,6 +542,8 @@ class Force
                 }
             }
             ctx_.comm().allreduce(&forces_core_(0, 0), 3 * ctx_.unit_cell().num_atoms());
+
+            return forces_core_;
         }
 
         inline mdarray<double, 2> const& forces_core() const
@@ -790,7 +551,7 @@ class Force
             return forces_core_;
         }
 
-        inline void calc_forces_scf_corr()
+        inline mdarray<double, 2> const& calc_forces_scf_corr()
         {
             PROFILE("sirius::Force::calc_forces_scf_corr");
 
@@ -811,7 +572,7 @@ class Force
 
             int ig0 = (ctx_.comm().rank() == 0) ? 1 : 0;
 
-            Radial_integrals_rho_pseudo ri(ctx_.unit_cell(), ctx_.pw_cutoff(), 20);
+            auto& ri = ctx_.ps_rho_ri();
 
             #pragma omp parallel for
             for (int ia = 0; ia < unit_cell.num_atoms(); ia++) {
@@ -823,7 +584,7 @@ class Force
                     int ig = gvec_offset + igloc;
 
                     /* cartesian form for getting cartesian force components */
-                    vector3d<double> gvec_cart = gvec.gvec_cart(ig);
+                    vector3d<double> gvec_cart = gvec.gvec_cart<index_domain_t::local>(igloc);
 
                     /* scalar part of a force without multipying by G-vector */
                     double_complex z = fact * fourpi * ri.value<int>(iat, gvec.gvec_len(ig)) *
@@ -836,6 +597,8 @@ class Force
                 }
             }
             ctx_.comm().allreduce(&forces_scf_corr_(0, 0), 3 * ctx_.unit_cell().num_atoms());
+
+            return forces_scf_corr_;
         }
 
         inline mdarray<double, 2> const& forces_scf_corr() const
@@ -843,21 +606,14 @@ class Force
             return forces_scf_corr_;
         }
 
-        inline void calc_forces_us()
+        inline mdarray<double, 2> const& calc_forces_us()
         {
             PROFILE("sirius::Force::calc_forces_us");
 
             forces_us_ = mdarray<double, 2>(3, ctx_.unit_cell().num_atoms());
             forces_us_.zero();
 
-            /* pack v effective in one array of pointers*/
-            Periodic_function<double>* vfield_eff[4];
-            vfield_eff[0] = potential_.effective_potential();
-            vfield_eff[0]->fft_transform(-1);
-            for (int imagn = 0; imagn < ctx_.num_mag_dims(); imagn++){
-                vfield_eff[imagn + 1] = potential_.effective_magnetic_field(imagn);
-                vfield_eff[imagn + 1]->fft_transform(-1);
-            }
+            potential_.fft_transform(-1);
 
             Unit_cell& unit_cell = ctx_.unit_cell();
 
@@ -889,14 +645,14 @@ class Force
                         #pragma omp parallel for schedule(static)
                         for (int igloc = 0; igloc < ctx_.gvec().count(); igloc++) {
                             int ig = ctx_.gvec().offset() + igloc;
-                            auto gvc = ctx_.gvec().gvec_cart(ig);
+                            auto gvc = ctx_.gvec().gvec_cart<index_domain_t::local>(igloc);
                             for (int ia = 0; ia < atom_type.num_atoms(); ia++) {
                                 /* here we write in v_tmp  -i * G * exp[ iGRn] Veff(G)
                                  * but in formula we have   i * G * exp[-iGRn] Veff*(G)
                                  * the differences because we unfold complex array in the real one
                                  * and need negative imagine part due to a multiplication law of complex numbers */
                                 auto z = double_complex(0, -gvc[ivec]) * ctx_.gvec_phase_factor(ig, atom_type.atom_id(ia)) *
-                                    vfield_eff[ispin]->f_pw_local(igloc);
+                                         potential_.component(ispin).f_pw_local(igloc);
                                 v_tmp(ia, 2 * igloc)     = z.real();
                                 v_tmp(ia, 2 * igloc + 1) = z.imag();
                             }
@@ -919,6 +675,8 @@ class Force
             }
 
             ctx_.comm().allreduce(&forces_us_(0, 0), 3 * ctx_.unit_cell().num_atoms());
+
+            return forces_us_;
         }
 
         inline mdarray<double, 2> const& forces_us() const
@@ -926,7 +684,7 @@ class Force
             return forces_us_;
         }
 
-        inline void calc_forces_ewald()
+        inline mdarray<double, 2> const& calc_forces_ewald()
         {
             PROFILE("sirius::Force::calc_forces_ewald");
 
@@ -967,7 +725,7 @@ class Force
                     double g2 = std::pow(ctx_.gvec().gvec_len(ig), 2);
 
                     /* cartesian form for getting cartesian force components */
-                    vector3d<double> gvec_cart = ctx_.gvec().gvec_cart(ig);
+                    vector3d<double> gvec_cart = ctx_.gvec().gvec_cart<index_domain_t::local>(igloc);
                     double_complex rho(0, 0);
 
                     double scalar_part = prefac * (rho_tmp[igloc] * ctx_.gvec_phase_factor(ig, ja)).imag() *
@@ -995,20 +753,34 @@ class Force
 
                     double scalar_part =
                         static_cast<double>(unit_cell.atom(ia).zn() * unit_cell.atom(ja).zn()) / d2 *
-                        (gsl_sf_erfc(std::sqrt(alpha) * d) / d + 2.0 * std::sqrt(alpha * invpi) * std::exp(-d2 * alpha));
+                        (std::erfc(std::sqrt(alpha) * d) / d + 2.0 * std::sqrt(alpha * invpi) * std::exp(-d2 * alpha));
 
                     for (int x : {0, 1, 2}) {
                         forces_ewald_(x, ia) += scalar_part * t[x];
                     }
                 }
             }
+
+            return forces_ewald_;
         }
 
-        inline void calc_forces_hubbard()
+        inline mdarray<double, 2> const& forces_ewald() const
         {
+            return forces_ewald_;
+        }
 
+        inline mdarray<double, 2> const& calc_forces_hubbard()
+        {
+            PROFILE("sirius::Force::hubbard_force");
             forces_hubbard_ = mdarray<double, 2>(3, ctx_.unit_cell().num_atoms());
             forces_hubbard_.zero();
+
+            if (ctx_.gamma_point() && (ctx_.so_correction() == false)) {
+                hamiltonian_.prepare<double>();
+            } else {
+                hamiltonian_.prepare<double_complex>();
+            }
+            /* we can probably task run this in a task fashion */
 
             for (int ikloc = 0; ikloc < kset_.spl_num_kpoints().local_size(); ikloc++) {
 
@@ -1019,18 +791,20 @@ class Force
 
                 hubbard_force_add_k_contribution_colinear(*kp, forces_hubbard_);
             }
+            hamiltonian_.dismiss();
 
-            // global reduction
-            ctx_.comm().allreduce<double, mpi_op_t::sum>(forces_hubbard_.at<CPU>(),
-                                                         static_cast<int>(forces_hubbard_.size()));
+            /* global reduction */
+            kset_.comm().allreduce(forces_hubbard_.at<CPU>(), 3 * ctx_.unit_cell().num_atoms());
+
+            return forces_hubbard_;
         }
 
-        inline mdarray<double, 2> const& forces_ewald() const
+        inline mdarray<double, 2> const& forces_hubbard() const
         {
-            return forces_ewald_;
+            return forces_hubbard_;
         }
 
-        inline void calc_forces_total()
+        inline mdarray<double, 2> const& calc_forces_total()
         {
             calc_forces_vloc();
             calc_forces_us();
@@ -1039,8 +813,9 @@ class Force
             calc_forces_ewald();
             calc_forces_scf_corr();
 
-            if (ctx_.hubbard_correction())
+            if (ctx_.hubbard_correction()) {
                 calc_forces_hubbard();
+            }
 
             forces_total_ = mdarray<double, 2>(3, ctx_.unit_cell().num_atoms());
             for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {
@@ -1055,16 +830,28 @@ class Force
                     }
                 }
             }
+
+            return forces_total_;
+        }
+
+        inline mdarray<double, 2> const& calc_forces_usnl()
+        {
+            calc_forces_us();
+            calc_forces_nonloc();
+
+            forces_usnl_ = mdarray<double, 2>(3, ctx_.unit_cell().num_atoms());
+            for (int ia = 0; ia < ctx_.unit_cell().num_atoms(); ia++) {
+                for (int x: {0, 1, 2}) {
+                    forces_usnl_(x, ia) = forces_us_(x, ia) + forces_nonloc_(x, ia);
+                }
+            }
+
+            return forces_usnl_;
         }
 
         inline mdarray<double, 2> const& forces_total() const
         {
             return forces_total_;
-        }
-
-        inline mdarray<double, 2> const& forces_hubbard() const
-        {
-            return forces_hubbard_;
         }
 
         inline void print_info()

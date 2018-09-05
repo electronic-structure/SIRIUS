@@ -164,12 +164,17 @@ class Gvec
     */
     mdarray<int, 1> gvec_base_mapping_;
 
+    /// Cartiesian coordinaes for a local set of G-vectors.
+    mdarray<double, 2> gvec_cart_;
+
+    /// Cartesian coordinaes for a local set of G+k-vectors.
+    mdarray<double, 2> gkvec_cart_;
+
     /* copy constructor is forbidden */
     Gvec(Gvec const& src__) = delete;
+
     /* copy assigment operator is forbidden */
     Gvec& operator=(Gvec const& src__) = delete;
-    /* move constructor is forbidden */
-    //Gvec(Gvec&& src__) = delete;
 
     /// Return corresponding G-vector for an index in the range [0, num_gvec).
     inline vector3d<int> gvec_by_full_index(uint32_t idx__) const
@@ -208,7 +213,7 @@ class Gvec
             /* loop over z-coordinates of FFT grid */
             for (int iz = 0; iz <= zmax; iz++) {
                 /* get z-coordinate of G-vector */
-                int k = fft_box__.gvec_by_coord(iz, 2);
+                int k = fft_box__.freq_by_coord<2>(iz);
                 /* take G+k */
                 auto vgk = lattice_vectors_ * (vector3d<double>(i, j, k) + vk_);
                 /* add z-coordinate of G-vector to the list */
@@ -336,7 +341,7 @@ class Gvec
         #pragma omp parallel for schedule(static)
         for (int ig = 0; ig < num_gvec(); ig++) {
             /* take G+k */
-            auto gk = gkvec_cart(ig);
+            auto gk = gkvec_cart<index_domain_t::global>(ig);
             /* make some reasonable roundoff */
             size_t len = size_t(gk.length() * 1e8);
             tmp[ig]    = std::pair<size_t, int>(len, ig);
@@ -365,6 +370,24 @@ class Gvec
         }
         gvec_shell_len_ = mdarray<double, 1>(num_gvec_shells_);
         std::copy(tmp_len.begin(), tmp_len.end(), gvec_shell_len_.at<CPU>());
+    }
+
+    /// Compute the Cartesian coordinates.
+    void init_gvec_cart()
+    {
+        gvec_cart_ = mdarray<double, 2>(3, count());
+        gkvec_cart_ = mdarray<double, 2>(3, count());
+
+        for (int igloc = 0; igloc < count(); igloc++) {
+            int ig = offset() + igloc;
+            auto G = gvec_by_full_index(gvec_full_index_(ig));
+            auto gc = lattice_vectors_ * vector3d<double>(G[0], G[1], G[2]);
+            auto gkc = lattice_vectors_ * (vector3d<double>(G[0], G[1], G[2]) + vk_);
+            for (int x: {0, 1, 2}) {
+                gvec_cart_(x, igloc) = gc[x];
+                gkvec_cart_(x, igloc) = gkc[x];
+            }
+        }
     }
 
     /// Initialize everything.
@@ -412,6 +435,8 @@ class Gvec
             TERMINATE("first G-vector is not zero");
         }
 
+        init_gvec_cart();
+
         find_gvec_shells();
 
         if (gvec_base_) {
@@ -440,7 +465,6 @@ class Gvec
                 }
             }
         }
-
         // TODO: add a check for gvec_base (there is already a test for this).
     }
 
@@ -511,7 +535,6 @@ class Gvec
             reduce_gvec_       = src__.reduce_gvec_;
             bare_gvec_         = src__.bare_gvec_;
             num_gvec_          = src__.num_gvec_;
-            //comm_              = std::move(src__.comm_);
             gvec_full_index_   = std::move(src__.gvec_full_index_);
             gvec_shell_        = std::move(src__.gvec_shell_);
             num_gvec_shells_   = std::move(src__.num_gvec_shells_);
@@ -541,9 +564,26 @@ class Gvec
         return comm_;
     }
 
+    /// Set the new reciprocal lattice vectors.
+    /** For the varibale-cell relaxation runs we need an option to preserve the number of G- and G+k vectors. 
+     *  Here we can set the new lattice vectors and update the relevant members of the Gvec class. */
+    inline matrix3d<double> const& lattice_vectors(matrix3d<double> lattice_vectors__)
+    {
+        lattice_vectors_ = lattice_vectors__;
+        init_gvec_cart();
+        find_gvec_shells();
+        return lattice_vectors_;
+    }
+
     inline matrix3d<double> const& lattice_vectors() const
     {
         return lattice_vectors_;
+    }
+
+    /// Return the volume of the real space unit cell that corresponds to the reciprocal lattice of G-vectors.
+    inline double omega() const
+    {
+        return std::pow(twopi, 3) / std::abs(lattice_vectors().det());
     }
 
     /// Return the total number of G-vectors within the cutoff.
@@ -576,7 +616,7 @@ class Gvec
     /** The \em count and \em offset are borrowed from the MPI terminology for data distribution. */
     inline int count() const
     {
-        return gvec_distr_.counts[comm().rank()];
+        return gvec_count(comm().rank());
     }
 
     /// Offset (in the global index) of G-vectors for a fine-grained distribution.
@@ -590,7 +630,7 @@ class Gvec
     /** The \em count and \em offset are borrowed from the MPI terminology for data distribution. */
     inline int offset() const
     {
-        return gvec_distr_.offsets[comm().rank()];
+        return gvec_offset(comm().rank());
     }
 
     /// Return number of G-vector shells.
@@ -613,17 +653,33 @@ class Gvec
     }
 
     /// Return G vector in Cartesian coordinates.
+    template <index_domain_t idx_t>
     inline vector3d<double> gvec_cart(int ig__) const
     {
-        auto G = gvec_by_full_index(gvec_full_index_(ig__));
-        return lattice_vectors_ * vector3d<double>(G[0], G[1], G[2]);
+        switch (idx_t) {
+            case index_domain_t::local: {
+                return vector3d<double>(gvec_cart_(0, ig__), gvec_cart_(1, ig__), gvec_cart_(2, ig__));
+            }
+            case index_domain_t::global: {
+                auto G = gvec_by_full_index(gvec_full_index_(ig__));
+                return lattice_vectors_ * vector3d<double>(G[0], G[1], G[2]);
+            }
+        }
     }
 
     /// Return G+k vector in Cartesian coordinates.
+    template <index_domain_t idx_t>
     inline vector3d<double> gkvec_cart(int ig__) const
     {
-        auto G = gvec_by_full_index(gvec_full_index_(ig__));
-        return lattice_vectors_ * (vector3d<double>(G[0], G[1], G[2]) + vk_);
+        switch (idx_t) {
+            case index_domain_t::local: {
+                return vector3d<double>(gkvec_cart_(0, ig__), gkvec_cart_(1, ig__), gkvec_cart_(2, ig__));
+            }
+            case index_domain_t::global: {
+                auto G = gvec_by_full_index(gvec_full_index_(ig__));
+                return lattice_vectors_ * (vector3d<double>(G[0], G[1], G[2]) + vk_);
+            }
+        }
     }
 
     inline int shell(int ig__) const

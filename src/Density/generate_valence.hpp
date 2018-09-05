@@ -97,27 +97,27 @@ inline void Density::generate_valence(K_point_set& ks__)
             auto cs = mdarray<double, 1>(&rho_mag_coarse_[j]->f_rg(0), ctx_.fft_coarse().local_size()).checksum();
             ctx_.fft_coarse().comm().allreduce(&cs, 1);
             if (ctx_.comm().rank() == 0) {
-                print_checksum("rho_mag_coarse_rg", cs);
+                utils::print_checksum("rho_mag_coarse_rg", cs);
             }
         }
         /* transform to PW domain */
         rho_mag_coarse_[j]->fft_transform(-1);
         /* map to fine G-vector grid */
         for (int igloc = 0; igloc < ctx_.gvec_coarse().count(); igloc++) {
-            rho_vec_[j]->f_pw_local(ctx_.gvec().gvec_base_mapping(igloc)) = rho_mag_coarse_[j]->f_pw_local(igloc);
+            component(j).f_pw_local(ctx_.gvec().gvec_base_mapping(igloc)) = rho_mag_coarse_[j]->f_pw_local(igloc);
         }
     }
     ctx_.fft_coarse().dismiss();
 
     if (!ctx_.full_potential()) {
         augment(ks__);
-        
+
         if (ctx_.control().print_hash_ && ctx_.comm().rank() == 0) {
-            auto h = mdarray<double_complex, 1>(&rho_->f_pw_local(0), ctx_.gvec().count()).hash();
-            print_hash("rho", h);
+            auto h = mdarray<double_complex, 1>(&rho().f_pw_local(0), ctx_.gvec().count()).hash();
+            utils::print_hash("rho", h);
         }
 
-        double nel = rho_->f_0().real() * unit_cell_.omega();
+        double nel = rho().f_0().real() * unit_cell_.omega();
         /* check the number of electrons */
         if (std::abs(nel - unit_cell_.num_electrons()) > 1e-8 && ctx_.comm().rank() == 0) {
             std::stringstream s;

@@ -3,35 +3,63 @@ module sddk
 
     interface
 
-        subroutine sddk_delete_object(object_id)&
+        !subroutine sddk_delete_object(object_id)&
+        !    &bind(C, name="sddk_delete_object")
+        !    integer,                 intent(in)  :: object_id
+        !end subroutine
+
+        subroutine sddk_delete_object(handler)&
             &bind(C, name="sddk_delete_object")
-            integer,                 intent(in)  :: object_id
+            use, intrinsic :: ISO_C_BINDING
+            type(C_PTR),             intent(inout)  :: handler
         end subroutine
 
-        subroutine sddk_create_fft_grid(dims, fft_grid_id)&
-            &bind(C, name="sddk_create_fft_grid")
-            integer,                 intent(in)  :: dims(3)
-            integer,                 intent(out) :: fft_grid_id
-        end subroutine
+        !subroutine sddk_create_fft_grid(dims, fft_grid_id)&
+        !    &bind(C, name="sddk_create_fft_grid")
+        !    integer,                 intent(in)  :: dims(3)
+        !    integer,                 intent(out) :: fft_grid_id
+        !end subroutine
 
-        subroutine sddk_create_fft(fft_grid_id, fcomm, fft_id)&
+        subroutine sddk_create_fft(initial_dims, fcomm, handler)&
             &bind(C, name="sddk_create_fft")
-            integer,                 intent(in)  :: fft_grid_id
-            integer,                 intent(in)  :: fcomm
-            integer,                 intent(out) :: fft_id
+            use, intrinsic :: ISO_C_BINDING
+            integer(C_INT),          intent(in)  :: initial_dims
+            integer(C_INT),          intent(in)  :: fcomm
+            type(C_PTR),             intent(out) :: handler
         end subroutine
 
-        subroutine sddk_create_gvec(vk, b1, b2, b3, gmax, reduce_gvec, comm, comm_fft, gvec_id)&
+        subroutine sddk_create_gkvec(vk, b1, b2, b3, gmax, reduce_gvec, comm, handler)&
+            &bind(C, name="sddk_create_gkvec")
+            use, intrinsic :: ISO_C_BINDING
+            real(C_DOUBLE),          intent(in)  :: vk(3)
+            real(C_DOUBLE),          intent(in)  :: b1(3)
+            real(C_DOUBLE),          intent(in)  :: b2(3)
+            real(C_DOUBLE),          intent(in)  :: b3(3)
+            real(C_DOUBLE),          intent(in)  :: gmax
+            logical(C_BOOL),         intent(in)  :: reduce_gvec
+            integer(C_INT),          intent(in)  :: comm
+            type(C_PTR),             intent(out) :: handler
+        end subroutine
+
+        subroutine sddk_create_gvec(b1, b2, b3, gmax, reduce_gvec, comm, handler)&
             &bind(C, name="sddk_create_gvec")
-            real(8),                 intent(in)  :: vk(3)
-            real(8),                 intent(in)  :: b1(3)
-            real(8),                 intent(in)  :: b2(3)
-            real(8),                 intent(in)  :: b3(3)
-            real(8),                 intent(in)  :: gmax
-            integer,                 intent(in)  :: reduce_gvec
-            integer,                 intent(in)  :: comm
-            integer,                 intent(in)  :: comm_fft
-            integer,                 intent(out) :: gvec_id
+            use, intrinsic :: ISO_C_BINDING
+            real(C_DOUBLE),          intent(in)  :: b1(3)
+            real(C_DOUBLE),          intent(in)  :: b2(3)
+            real(C_DOUBLE),          intent(in)  :: b3(3)
+            real(C_DOUBLE),          intent(in)  :: gmax
+            logical(C_BOOL),         intent(in)  :: reduce_gvec
+            integer(C_INT),          intent(in)  :: comm
+            type(C_PTR),             intent(out) :: handler
+        end subroutine
+
+        subroutine sddk_create_gvec_partition(gvec_handler, fft_comm, comm_ortho_fft, handler)&
+            &bind(C, name="sddk_create_gvec_partition")
+            use, intrinsic :: ISO_C_BINDING
+            type(C_PTR),             intent(in)  :: gvec_handler
+            integer(C_INT),          intent(in)  :: fft_comm
+            integer(C_INT),          intent(in)  :: comm_ortho_fft
+            type(C_PTR),             intent(out) :: handler
         end subroutine
 
         subroutine sddk_get_num_gvec(gvec_id, num_gvec)&
@@ -147,6 +175,13 @@ contains
         end do
         c_string(len_trim(f_string) + 1) = C_NULL_CHAR
     end function c_str
+
+    function c_logical(val) result(c_val)
+        implicit none
+        logical, intent(in) :: val
+        logical(C_BOOL)     :: c_val
+        c_val = val
+    end function c_logical
 
     subroutine sddk_get_wave_functions_prime_ptr(wf_id, wf_ptr)
         implicit none

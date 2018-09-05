@@ -1,4 +1,4 @@
-// Copyright (c) 2013-2017 Anton Kozhevnikov, Thomas Schulthess
+// Copyright (c) 2013-2018 Anton Kozhevnikov, Thomas Schulthess
 // All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without modification, are permitted provided that
@@ -32,48 +32,105 @@ namespace sddk {
 
 class memory_pool {
   private:
-    size_t pos_;
-    
-    sddk::mdarray<int8_t, 1> pool_;
 
-    std::list<std::unique_ptr<sddk::mdarray<int8_t, 1>>> tmp_pool_;
+    std::map<memory_t, mdarray<int8_t, 1>> pool_;
+    std::map<memory_t, size_t> pool_pos_;
+    std::map<memory_t, std::vector<mdarray<int8_t, 1>>> tmp_pool_;
 
   public:
-    memory_pool()
-    {
-    }
     
-    /// Allocate n elements of type T.
-    template <typename T>
+    /// Allocate n elements of type T in a specified memory.
+    template <typename T, memory_t mem_type>
     T* allocate(size_t n__)
     {
-        //static_assert(std::is_pod<T>::value, "not a simple data type");
-        
         size_t sz = n__ * sizeof(T);
-        if (pos_ + sz <= pool_.size()) {
-            T* ptr = reinterpret_cast<T*>(&pool_[pos_]);
-            pos_ += sz;
+
+        if (!pool_pos_.count(mem_type)) {
+            pool_pos_[mem_type] = 0;
+        }
+        //if (!pool_.count(mem_type)) {
+        //    pool_[mem_type] = mdarray<int8_t, 1>();
+        //}
+        //if (!tmp_pool_.count(mem_type)) {
+        //    tmp_pool_[mem_type];
+        //}
+
+        size_t pos = pool_pos_[mem_type];
+        if (pos + sz <= pool_[mem_type].size()) {
+            T* ptr = reinterpret_cast<T*>(pool_[mem_type].template at<device<mem_type>::type>(pos));
+            pool_pos_[mem_type] += sz;
             return ptr;
         } else {
-            tmp_pool_.emplace_back(new sddk::mdarray<int8_t, 1>(sz));
-            return reinterpret_cast<T*>(tmp_pool_.back()->template at<CPU>());
+            tmp_pool_[mem_type].emplace_back(mdarray<int8_t, 1>(sz, mem_type));
+            return reinterpret_cast<T*>(tmp_pool_[mem_type].back().template at<device<mem_type>::type>());
         }
     }
 
+    template <memory_t mem_type>
     void reset()
     {
         size_t sz{0};
-        for (auto& e: tmp_pool_) {
-            sz += e->size();
+        if (tmp_pool_.count(mem_type)) {
+            for (auto& e: tmp_pool_[mem_type]) {
+                sz += e.size();
+            }
         }
         if (sz != 0) {
-            sz += pool_.size();
-            tmp_pool_.clear();
-            pool_ = sddk::mdarray<int8_t, 1>(sz);
+            sz += pool_[mem_type].size();
+            tmp_pool_[mem_type].clear();
+            pool_[mem_type] = mdarray<int8_t, 1>(sz, mem_type);
         }
-        pos_ = 0;
+        pool_pos_[mem_type] = 0;
     }
 };
+
+//class memory_pool {
+//  private:
+//    size_t pos_{0};
+//
+//    memory_t mem_type_{memory_t::none};
+//    
+//    sddk::mdarray<int8_t, 1> pool_;
+//
+//    std::list<std::unique_ptr<sddk::mdarray<int8_t, 1>>> tmp_pool_;
+//
+//  public:
+//    memory_pool(memory_t mem_type__ = memory_t::host)
+//        : mem_type_(mem_type__)
+//    {
+//    }
+//    
+//    /// Allocate n elements of type T.
+//    template <typename T, device_t pu>
+//    T* allocate(size_t n__)
+//    {
+//        //static_assert(std::is_pod<T>::value, "not a simple data type");
+//        
+//        size_t sz = n__ * sizeof(T);
+//        if (pos_ + sz <= pool_.size()) {
+//            T* ptr = reinterpret_cast<T*>(pool_.at<pu>(pos_));
+//            pos_ += sz;
+//            return ptr;
+//        } else {
+//            tmp_pool_.emplace_back(new sddk::mdarray<int8_t, 1>(sz, mem_type_));
+//            return reinterpret_cast<T*>(tmp_pool_.back()->template at<pu>());
+//        }
+//    }
+//
+//    void reset()
+//    {
+//        size_t sz{0};
+//        for (auto& e: tmp_pool_) {
+//            sz += e->size();
+//        }
+//        if (sz != 0) {
+//            sz += pool_.size();
+//            tmp_pool_.clear();
+//            pool_ = sddk::mdarray<int8_t, 1>(sz, mem_type_);
+//        }
+//        pos_ = 0;
+//    }
+//};
 
 }
 

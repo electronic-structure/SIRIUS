@@ -25,8 +25,8 @@
 #ifndef __RADIAL_INTEGRALS_H__
 #define __RADIAL_INTEGRALS_H__
 
-#include "Unit_cell/unit_cell.h"
-#include "sbessel.h"
+#include "Unit_cell/unit_cell.hpp"
+#include "sbessel.hpp"
 
 namespace sirius {
 
@@ -60,6 +60,15 @@ class Radial_integrals_base
     /** The following condition is satisfied: q = grid_q[iq] + dq */
     inline std::pair<int, double> iqdq(double q__) const
     {
+        if (q__ > grid_q_.last()) {
+            std::stringstream s;
+            s << "[sirius::Radial_integrals_base::iddq] q-point is out of range" << std::endl
+              << "  q : " << q__ << std::endl
+              << "  last point of the q-grid : " << grid_q_.last();
+            std::cout << s.str() << "\n";
+            printf("%s\n", s.str().c_str());
+            TERMINATE(s);
+        }
         std::pair<int, double> result;
         /* find index of q-point */
         result.first = static_cast<int>((grid_q_.num_points() - 1) * q__ / grid_q_.last());
@@ -83,6 +92,7 @@ class Radial_integrals_base
 
 /// Radial integrals of the atomic centered orbitals.
 /** Used in initialize_subspace and in the hubbard correction. */
+template <bool jl_deriv>
 class Radial_integrals_atomic_wf : public Radial_integrals_base<2>
 {
   private:
@@ -115,11 +125,14 @@ class Radial_integrals_atomic_wf : public Radial_integrals_base<2>
                 auto& wf = atom_type.ps_atomic_wf(i);
                 const int l = std::abs(wf.first);
 
-                const double norm = inner(wf.second, wf.second, 0);
-
                 #pragma omp parallel for
                 for (int iq = 0; iq < nq(); iq++) {
-                    values_(i, iat)(iq) = sirius::inner(jl(iq)[l], wf.second, 1) / std::sqrt(norm);
+                    if (jl_deriv) {
+                        auto s = jl(iq).deriv_q(l);
+                        values_(i, iat)(iq) = sirius::inner(s, wf.second, 1);
+                    } else {
+                        values_(i, iat)(iq) = sirius::inner(jl(iq)[l], wf.second, 1);
+                    }
                 }
 
                 values_(i, iat).interpolate();
@@ -297,6 +310,16 @@ class Radial_integrals_rho_pseudo : public Radial_integrals_base<1>
     {
         values_ = mdarray<Spline<double>, 1>(unit_cell_.num_atom_types());
         generate();
+
+        if (unit_cell_.parameters().control().print_checksum_ && unit_cell_.comm().rank() == 0) {
+            double cs{0};
+            for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
+                for (int iq = 0; iq < grid_q_.num_points(); iq++) {
+                    cs += values_(iat)(iq);
+                }
+            }
+            utils::print_checksum("Radial_integrals_rho_pseudo", cs);
+        }
     }
 };
 
@@ -468,48 +491,6 @@ class Radial_integrals_beta_jl : public Radial_integrals_base<3>
     }
 };
 
-/// Radial integrals for the step function of the LAPW method.
-/** Radial integrals have the following expression:
- *  \f[
- *      \Theta(\alpha, G) = \int_{0}^{R_{\alpha}} \frac{\sin(Gr)}{Gr} r^2 dr =
- *          \left\{ \begin{array}{ll} \displaystyle R_{\alpha}^3 / 3 & G=0 \\
- *          \Big( \sin(GR_{\alpha}) - GR_{\alpha}\cos(GR_{\alpha}) \Big) / G^3 & G \ne 0 \end{array} \right.
- *  \f]
- */
-//class Radial_integrals_theta : public Radial_integrals_base<1>
-//{
-//  private:
-//    void generate()
-//    {
-//        PROFILE("sirius::Radial_integrals|theta");
-//
-//        for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
-//            auto& atom_type = unit_cell_.atom_type(iat);
-//            auto R          = atom_type.mt_radius();
-//            values_(iat)    = Spline<double>(grid_q_);
-//
-//            #pragma omp parallel for
-//            for (int iq = 0; iq < grid_q_.num_points(); iq++) {
-//                if (iq == 0) {
-//                    values_(iat)[iq] = std::pow(R, 3) / 3.0;
-//                } else {
-//                    double g         = grid_q_[iq];
-//                    values_(iat)[iq] = (std::sin(g * R) - g * R * std::cos(g * R)) / std::pow(g, 3);
-//                }
-//            }
-//            values_(iat).interpolate();
-//        }
-//    }
-//
-//  public:
-//    Radial_integrals_theta(Unit_cell const& unit_cell__, double qmax__, int np__)
-//        : Radial_integrals_base<1>(unit_cell__, qmax__, np__)
-//    {
-//        values_ = mdarray<Spline<double>, 1>(unit_cell_.num_atom_types());
-//        generate();
-//    }
-//};
-
 template <bool jl_deriv>
 class Radial_integrals_vloc : public Radial_integrals_base<1>
 {
@@ -553,7 +534,7 @@ class Radial_integrals_vloc : public Radial_integrals_base<1>
                 if (jl_deriv) { /* integral with derivative of j0(q*r) over q */
                     for (int ir = 0; ir < rg.num_points(); ir++) {
                         double x = rg[ir];
-                        s(ir)    = (x * vloc[ir] + atom_type.zn() * gsl_sf_erf(x)) *
+                        s(ir)    = (x * vloc[ir] + atom_type.zn() * std::erf(x)) *
                                    (std::sin(g * x) - g * x * std::cos(g * x));
                     }
                 } else {           /* integral with j0(q*r) */
@@ -562,7 +543,7 @@ class Radial_integrals_vloc : public Radial_integrals_base<1>
                             unit_cell_.parameters().parameters_input().esm_bc_ != "pbc") {
                             for (int ir = 0; ir < rg.num_points(); ir++) {
                                 double x = rg[ir];
-                                s(ir)    = (x * vloc[ir] + atom_type.zn() * gsl_sf_erf(x)) * x;
+                                s(ir)    = (x * vloc[ir] + atom_type.zn() * std::erf(x)) * x;
                             }
                         } else {
                             for (int ir = 0; ir < rg.num_points(); ir++) {
@@ -573,7 +554,7 @@ class Radial_integrals_vloc : public Radial_integrals_base<1>
                     } else {
                         for (int ir = 0; ir < rg.num_points(); ir++) {
                             double x = rg[ir];
-                            s(ir)    = (x * vloc[ir] + atom_type.zn() * gsl_sf_erf(x)) * std::sin(g * x);
+                            s(ir)    = (x * vloc[ir] + atom_type.zn() * std::erf(x)) * std::sin(g * x);
                         }
                     }
                 }
@@ -592,6 +573,7 @@ class Radial_integrals_vloc : public Radial_integrals_base<1>
         generate();
     }
 
+    /// Special implementation to recover the true radial integral value.
     inline double value(int iat__, double q__) const
     {
         auto idx = iqdq(q__);
@@ -603,7 +585,8 @@ class Radial_integrals_vloc : public Radial_integrals_base<1>
             }
         } else {
             auto& atom_type = unit_cell_.atom_type(iat__);
-            auto q2         = std::pow(q__, 2);
+
+            auto q2 = std::pow(q__, 2);
             if (jl_deriv) {
                 if (!unit_cell_.parameters().parameters_input().enable_esm_ ||
                     unit_cell_.parameters().parameters_input().esm_bc_ == "pbc") {
@@ -646,7 +629,7 @@ class Radial_integrals_rho_free_atom : public Radial_integrals_base<1>
                     values_(iat)(iq) = s.interpolate().integrate(2);
                 } else {
                     for (int ir = 0; ir < s.num_points(); ir++) {
-                        s(ir) = atom_type.free_atom_density(ir) * std::sin(g * atom_type.free_atom_radial_grid(ir)) / g;
+                        s(ir) = atom_type.free_atom_density(ir) * std::sin(g * atom_type.free_atom_radial_grid(ir));// / g;
                     }
                     values_(iat)(iq) = s.interpolate().integrate(1);
                 }
@@ -661,6 +644,17 @@ class Radial_integrals_rho_free_atom : public Radial_integrals_base<1>
     {
         values_ = mdarray<Spline<double>, 1>(unit_cell_.num_atom_types());
         generate();
+    }
+
+    /// Special implementation to recover the true radial integral value.
+    inline double value(int iat__, double q__) const
+    {
+        auto idx = iqdq(q__);
+        if (std::abs(q__) < 1e-12) {
+            return values_(iat__)(0);
+        } else {
+            return values_(iat__)(idx.first, idx.second) / q__;
+        }
     }
 };
 

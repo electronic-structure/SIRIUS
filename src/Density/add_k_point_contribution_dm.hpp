@@ -133,8 +133,8 @@ inline void Density::add_k_point_contribution_dm(K_point* kp__, mdarray<double_c
                 int nbnd_loc = spl_nbnd.local_size();
 
                 /* auxiliary arrays */
-                mdarray<double_complex, 3> bp1(nbeta, nbnd_loc, 2);
-                mdarray<double_complex, 3> bp2(nbeta, nbnd_loc, 2);
+                mdarray<double_complex, 3> bp1(nbeta, nbnd_loc, ctx_.num_spins());
+                mdarray<double_complex, 3> bp2(nbeta, nbnd_loc, ctx_.num_spins());
 
                 for (int ispn = 0; ispn < ctx_.num_spins(); ispn++) {
                     /* compute <beta|psi> */

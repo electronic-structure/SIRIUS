@@ -28,19 +28,15 @@
 namespace sirius {
 
 /// Types of radial grid.
-enum class radial_grid_t
+enum class radial_grid_t : int
 {
-    linear_grid = 0,
+    linear = 0,
 
-    exponential_grid = 1,
+    exponential = 1,
 
-    pow2_grid = 2,
+    power = 2,
 
-    pow3_grid = 3,
-
-    scaled_pow_grid = 4,
-
-    lin_exp_grid = 5
+    lin_exp = 3
 };
 
 /// Base class for radial grids.
@@ -240,7 +236,7 @@ template<typename T>
 class Radial_grid_exp: public Radial_grid<T>
 {
   public:
-    Radial_grid_exp(int num_points__, T rmin__, T rmax__, double p__ = 1.0)
+    Radial_grid_exp(int num_points__, T rmin__, T rmax__, T p__ = 1.0)
         : Radial_grid<T>(num_points__)
     {
         /* x_i = x_min * (x_max/x_min) ^ (i / (N - 1)) */
@@ -257,19 +253,25 @@ template<typename T>
 class Radial_grid_lin_exp: public Radial_grid<T>
 {
   public:
-    Radial_grid_lin_exp(int num_points__, T rmin__, T rmax__)
+    Radial_grid_lin_exp(int num_points__, T rmin__, T rmax__, T p__ = 6.0)
         : Radial_grid<T>(num_points__)
     {
         /* x_i = x_min + (x_max - x_min) * A(t)
-         * A(0) = 0; A(1) = 1
-         * A(t) ~ b * t + Exp[t^a] - 1 */
-        T alpha{6.0};
+           A(0) = 0; A(1) = 1
+           A(t) ~ b * t + Exp[t^a] - 1 */
+        T alpha = p__;
         T beta = 1e-6 * this->num_points() / (rmax__ - rmin__);
         T A = 1.0 / (std::exp(static_cast<T>(1)) + beta - static_cast<T>(1));
         for (int i = 0; i < this->num_points(); i++) {
             T t = static_cast<T>(i) / (this->num_points() - 1);
             this->x_[i] = rmin__ + (rmax__ - rmin__) * (beta * t + std::exp(std::pow(t, alpha)) - static_cast<T>(1)) * A;
         }
+        //T beta = std::log((rmax__ - rmin__ * (num_points__ - 1)) / rmin__);
+        //for (int i = 0; i < this->num_points(); i++) {
+        //    T t = static_cast<T>(i) / (this->num_points() - 1);
+        //    this->x_[i] = rmin__ * (i + std::exp(beta * std::pow(t, 1)));
+        //}
+
         this->init();
         this->name_ = "linear_exponential";
     }
@@ -296,29 +298,25 @@ Radial_grid<T> Radial_grid_factory(radial_grid_t grid_type__,
                                    int           num_points__,
                                    T             rmin__,
                                    T             rmax__,
-                                   double        p__ = 1.0)
+                                   double        p__)
 {
     Radial_grid<T> rgrid;
 
     switch (grid_type__) {
-        case radial_grid_t::linear_grid: {
+        case radial_grid_t::linear: {
             rgrid = Radial_grid_lin<T>(num_points__, rmin__, rmax__);
             break;
         }
-        case radial_grid_t::exponential_grid: {
+        case radial_grid_t::exponential: {
             rgrid = Radial_grid_exp<T>(num_points__, rmin__, rmax__, p__);
             break;
         }
-        case radial_grid_t::pow2_grid: {
-            rgrid = Radial_grid_pow<T>(num_points__, rmin__, rmax__, 2.0);
+        case radial_grid_t::power: {
+            rgrid = Radial_grid_pow<T>(num_points__, rmin__, rmax__, p__);
             break;
         }
-        case radial_grid_t::pow3_grid: {
-            rgrid = Radial_grid_pow<T>(num_points__, rmin__, rmax__, 3.0);
-            break;
-        }
-        case radial_grid_t::lin_exp_grid: {
-            rgrid = Radial_grid_lin_exp<T>(num_points__, rmin__, rmax__);
+        case radial_grid_t::lin_exp: {
+            rgrid = Radial_grid_lin_exp<T>(num_points__, rmin__, rmax__, p__);
             break;
         }
         default: {
@@ -327,6 +325,29 @@ Radial_grid<T> Radial_grid_factory(radial_grid_t grid_type__,
     }
     return std::move(rgrid);
 };
+
+inline std::pair<radial_grid_t, double> get_radial_grid_t(std::string str__)
+{
+    auto pos = str__.find(",");
+    if (pos == std::string::npos) {
+        std::stringstream s;
+        s << "wrong string for the radial grid type: " << str__;
+        throw std::runtime_error(s.str());
+    }
+
+    std::string name = str__.substr(0, pos);
+    double p = std::stod(str__.substr(pos + 1));
+
+    const std::map<std::string, radial_grid_t> map_to_type = {
+        {"linear", radial_grid_t::linear},
+        {"exponential", radial_grid_t::exponential},
+        {"power", radial_grid_t::power},
+        {"lin_exp", radial_grid_t::lin_exp}
+    };
+
+    return std::make_pair(map_to_type.at(name), p);
+}
+
 
 }
 

@@ -39,7 +39,7 @@ namespace geometry3d {
 
 /// Simple implementation of 3d vector.
 template <typename T>
-class vector3d: public std::array<T, 3>
+class vector3d : public std::array<T, 3>
 {
   public:
     /// Create zero vector
@@ -79,9 +79,10 @@ class vector3d: public std::array<T, 3>
             (*this)[x] = ptr__[x];
         }
     }
-    
+
     /// Create from array.
-    vector3d(std::array<T, 3> v__) {
+    vector3d(std::array<T, 3> v__)
+    {
         for (int x : {0, 1, 2}) {
             (*this)[x] = v__[x];
         }
@@ -90,7 +91,7 @@ class vector3d: public std::array<T, 3>
     /// Copy constructor.
     vector3d(vector3d<T> const& vec__)
     {
-        for(int x: {0, 1, 2}) {
+        for (int x : {0, 1, 2}) {
             (*this)[x] = vec__[x];
         }
     }
@@ -129,7 +130,7 @@ class vector3d: public std::array<T, 3>
 
     inline vector3d<T>& operator+=(vector3d<T> const& b)
     {
-        for (int x: {0, 1, 2}) {
+        for (int x : {0, 1, 2}) {
             (*this)[x] += b[x];
         }
         return *this;
@@ -137,7 +138,7 @@ class vector3d: public std::array<T, 3>
 
     inline vector3d<T>& operator-=(vector3d<T> const& b)
     {
-        for (int x: {0, 1, 2}) {
+        for (int x : {0, 1, 2}) {
             (*this)[x] -= b[x];
         }
         return *this;
@@ -168,7 +169,6 @@ class vector3d: public std::array<T, 3>
         }
         return a;
     }
-    
 };
 
 template <typename T, typename U>
@@ -221,8 +221,8 @@ class matrix3d
     /// Construct matrix from std::vector.
     matrix3d(std::vector<std::vector<T>> src__)
     {
-        for(int i = 0; i < 3; i++) {
-            for(int j = 0; j < 3; j++) {
+        for (int i = 0; i < 3; i++) {
+            for (int j = 0; j < 3; j++) {
                 mtrx_[i][j] = src__[i][j];
             }
         }
@@ -373,12 +373,38 @@ matrix3d<T> transpose(matrix3d<T> src)
     return mtrx;
 }
 
+template <typename T>
+matrix3d<T> inverse_aux(matrix3d<T> src, T d)
+{
+    matrix3d<T> mtrx;
+
+    mtrx(0, 0) = d * (src(1, 1) * src(2, 2) - src(1, 2) * src(2, 1));
+    mtrx(0, 1) = d * (src(0, 2) * src(2, 1) - src(0, 1) * src(2, 2));
+    mtrx(0, 2) = d * (src(0, 1) * src(1, 2) - src(0, 2) * src(1, 1));
+    mtrx(1, 0) = d * (src(1, 2) * src(2, 0) - src(1, 0) * src(2, 2));
+    mtrx(1, 1) = d * (src(0, 0) * src(2, 2) - src(0, 2) * src(2, 0));
+    mtrx(1, 2) = d * (src(0, 2) * src(1, 0) - src(0, 0) * src(1, 2));
+    mtrx(2, 0) = d * (src(1, 0) * src(2, 1) - src(1, 1) * src(2, 0));
+    mtrx(2, 1) = d * (src(0, 1) * src(2, 0) - src(0, 0) * src(2, 1));
+    mtrx(2, 2) = d * (src(0, 0) * src(1, 1) - src(0, 1) * src(1, 0));
+
+    return mtrx;
+}
+
+/// Return inverse of the integer matrix
+matrix3d<int> inverse(matrix3d<int> src)
+{
+    int t1 = src.det();
+    if (std::abs(t1) != 1) {
+        throw std::runtime_error("integer matrix can't be inverted");
+    }
+    return inverse_aux(src, t1);
+}
+
 /// Return inverse of the matrix.
 template <typename T>
 matrix3d<T> inverse(matrix3d<T> src)
 {
-    matrix3d<T> mtrx;
-
     T t1 = src.det();
 
     if (std::abs(t1) < 1e-10) {
@@ -386,18 +412,7 @@ matrix3d<T> inverse(matrix3d<T> src)
     }
 
     t1 = 1.0 / t1;
-
-    mtrx(0, 0) = t1 * (src(1, 1) * src(2, 2) - src(1, 2) * src(2, 1));
-    mtrx(0, 1) = t1 * (src(0, 2) * src(2, 1) - src(0, 1) * src(2, 2));
-    mtrx(0, 2) = t1 * (src(0, 1) * src(1, 2) - src(0, 2) * src(1, 1));
-    mtrx(1, 0) = t1 * (src(1, 2) * src(2, 0) - src(1, 0) * src(2, 2));
-    mtrx(1, 1) = t1 * (src(0, 0) * src(2, 2) - src(0, 2) * src(2, 0));
-    mtrx(1, 2) = t1 * (src(0, 2) * src(1, 0) - src(0, 0) * src(1, 2));
-    mtrx(2, 0) = t1 * (src(1, 0) * src(2, 1) - src(1, 1) * src(2, 0));
-    mtrx(2, 1) = t1 * (src(0, 1) * src(2, 0) - src(0, 0) * src(2, 1));
-    mtrx(2, 2) = t1 * (src(0, 0) * src(1, 1) - src(0, 1) * src(1, 0));
-
-    return mtrx;
+    return inverse_aux(src, t1);
 }
 
 template <typename T>
@@ -414,7 +429,7 @@ std::ostream& operator<<(std::ostream& out, matrix3d<T>& v)
         }
         out << "}";
         if (i != 2) {
-            out <<",";
+            out << ",";
         } else {
             out << "}";
         }
@@ -446,7 +461,7 @@ inline std::pair<vector3d<double>, vector3d<int>> reduce_coordinates(vector3d<do
             v.second[i] += 1;
         }
     }
-    for (int x: {0, 1, 2}) {
+    for (int x : {0, 1, 2}) {
         if (std::abs(coord[x] - (v.first[x] + v.second[x])) > eps) {
             std::stringstream s;
             s << "wrong coordinate reduction" << std::endl
@@ -482,6 +497,6 @@ inline vector3d<int> find_translations(double radius__, matrix3d<double> const& 
     return {limits[0], limits[1], limits[2]};
 }
 
-} // namespace
+} // namespace geometry3d
 
 #endif // __GEOMETRY3D_HPP__

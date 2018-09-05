@@ -25,9 +25,11 @@
 #ifndef __FREE_ATOM_HPP__
 #define __FREE_ATOM_HPP__
 
-#include "atom_type.h"
+#include "atom_type.hpp"
 
 namespace sirius {
+
+// TODO: pass grid parameters or set a good default
 
 /// Full potential free atom solver.
 class Free_atom : public Atom_type
@@ -49,25 +51,25 @@ class Free_atom : public Atom_type
   public:
 
     Free_atom(Free_atom&& src) = default;
-    
+
     /// Constructor.
     Free_atom(Simulation_parameters const& param__,
               std::string                  symbol__)
         : Atom_type(param__, symbol__, atomic_name[atomic_zn.at(symbol__) - 1], atomic_zn.at(symbol__), 0.0,
-                    atomic_conf[atomic_zn.at(symbol__) - 1], radial_grid_t::lin_exp_grid)
+                    atomic_conf[atomic_zn.at(symbol__) - 1])
         , NIST_LDA_Etot_(atomic_energy_NIST_LDA[atomic_zn.at(symbol__) - 1])
     {
-        radial_grid_ = Radial_grid_exp<double>(2000 + 150 * zn(), 1e-7, 20.0 + 0.25 * zn());
+        radial_grid_ = Radial_grid_exp<double>(2000 + 150 * zn(), 1e-7, 20.0 + 0.25 * zn(), 1.0);
     }
 
     /// Constructor.
     Free_atom(Simulation_parameters const& param__,
               int                          zn__)
         : Atom_type(param__, atomic_symb[zn__ - 1], atomic_name[zn__ - 1], zn__, 0.0,
-                    atomic_conf[zn__ - 1], radial_grid_t::lin_exp_grid)
+                    atomic_conf[zn__ - 1])
         , NIST_LDA_Etot_(atomic_energy_NIST_LDA[zn__ - 1])
     {
-        radial_grid_ = Radial_grid_exp<double>(2000 + 150 * zn(), 1e-7, 20.0 + 0.25 * zn());
+        radial_grid_ = Radial_grid_exp<double>(2000 + 150 * zn(), 1e-7, 20.0 + 0.25 * zn(), 1.0);
     }
 
     json ground_state(double energy_tol, double charge_tol, bool rel)
@@ -80,9 +82,14 @@ class Free_atom : public Atom_type
         free_atom_orbital_density_ = mdarray<double, 2>(np, num_atomic_levels());
         free_atom_wave_functions_  = mdarray<double, 2>(np, num_atomic_levels());
 
-        XC_functional Ex("XC_LDA_X", 1);
-        XC_functional Ec("XC_LDA_C_VWN", 1);
-        Ex.set_relativistic(rel);
+        XC_functional *Ex = nullptr;
+        XC_functional Ec("XC_LDA_C_VWN", 1);;
+        if (rel) {
+          TERMINATE("Fixme : the libxc staring with version 4 changed the way to set relativitic LDA exchange");
+          Ex = new XC_functional("XC_LDA_REL_X", 1);
+        } else {
+          Ex = new XC_functional("XC_LDA_X", 1);
+        }
 
         std::vector<double> veff(np);
         std::vector<double> vrho(np);
@@ -93,7 +100,7 @@ class Free_atom : public Atom_type
             vrho[i] = 0;
         }
 
-        Mixer<double>* mixer = new Broyden1<double>(0, np, 12, 0.8, Communicator::self());
+        Mixer<double>* mixer = new Broyden1<double>(0, np, 12, 0.8, 0.1, 1.0, Communicator::self());
         for (int i = 0; i < np; i++) {
             mixer->input_local(i, vrho[i]);
         }
@@ -183,7 +190,7 @@ class Free_atom : public Atom_type
             }
 
             /* compute XC potential and energy */
-            Ex.get_lda(rho.num_points(), &rho(0), &vx[0], &ex[0]);
+            Ex->get_lda(rho.num_points(), &rho(0), &vx[0], &ex[0]);
             Ec.get_lda(rho.num_points(), &rho(0), &vc[0], &ec[0]);
             for (int ir = 0; ir < rho.num_points(); ir++) {
                 vxc[ir] = (vx[ir] + vc[ir]);
@@ -249,7 +256,7 @@ class Free_atom : public Atom_type
             dict["num_scf_iterations"] = num_iter;
         } else {
             dict["converged"] = false;
-        } 
+        }
         dict["energy_diff"] = energy_diff;
         dict["charge_rms"] = charge_rms;
         dict["energy_tot"] = energy_tot;
@@ -298,7 +305,7 @@ class Free_atom : public Atom_type
         //        }
         //        int n = lo_desc["n"];
         //        int o = lo_desc["o"];
-        //        
+        //
         //        //std::cout << r << "\n";
 
         //    }

@@ -7,8 +7,9 @@
 #include <magma.h>
 #include <magma_z.h>
 #include <magma_d.h>
-#include <../control/magma_threadsetting.h>
 #include <cstring>
+
+#include "magma_threadsetting.h"
 
 namespace magma {
 
@@ -398,4 +399,3 @@ inline int ztrtri(char uplo, int n, magmaDoubleComplex* A, int lda)
 } // namespace magma
 
 #endif
-

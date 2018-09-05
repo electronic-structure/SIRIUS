@@ -119,7 +119,7 @@ void test_diag(BLACS_grid const& blacs_grid__,
             printf("complex data type\n");
         }
     }
-    sddk::timer t1("evp");
+    utils::timer t1("evp");
     if (test_gen__) {
         if (n__ == nev__) {
             solver->solve(n__, A, B, eval.data(), Z);
@@ -296,7 +296,7 @@ int main(int argn, char** argv)
     call_test(mpi_grid_dims, N, n, nev, bs, test_gen, name, fname, repeat, type);
     Communicator::world().barrier();
     if (Communicator::world().rank() == 0) {
-        sddk::timer::print();
+        utils::timer::print();
     }
     sirius::finalize();
 }

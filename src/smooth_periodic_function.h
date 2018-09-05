@@ -210,34 +210,11 @@ class Smooth_periodic_function
             return cs;
         }
 
-        /// Compute inner product <f|g>
-        T inner(Smooth_periodic_function<T> const& g__) const
+        inline double_complex checksum_pw() const
         {
-            PROFILE("sirius::Periodic_function::inner");
-
-            assert(this->fft_ == g__.fft_);
-
-            T result_rg{0};
-
-            #pragma omp parallel
-            {
-                T rt{0};
-
-                #pragma omp for schedule(static)
-                for (int irloc = 0; irloc < this->fft_->local_size(); irloc++) {
-                    rt += type_wrapper<T>::bypass(std::conj(this->f_rg(irloc))) * g__.f_rg(irloc);
-                }
-
-                #pragma omp critical
-                result_rg += rt;
-            }
-            double omega = std::pow(twopi, 3) / std::abs(this->gvec().lattice_vectors().det());
-
-            result_rg *= (omega / this->fft_->size());
-
-            this->fft_->comm().allreduce(&result_rg, 1);
-
-            return result_rg;
+            double_complex cs = this->f_pw_local_.checksum();
+            this->gvecp_->gvec().comm().allreduce(&cs, 1);
+            return cs;
         }
 
         inline uint64_t hash_f_pw() const
@@ -315,12 +292,13 @@ class Smooth_periodic_function_gradient
 /// Gradient of the function in the plane-wave domain.
 inline Smooth_periodic_function_gradient<double> gradient(Smooth_periodic_function<double>& f__)
 {
+    utils::timer t1("sirius::Smooth_periodic_function_gradient|gradient");
+
     Smooth_periodic_function_gradient<double> g(f__.fft(), f__.gvec_partition());
 
     #pragma omp parallel for schedule(static)
     for (int igloc = 0; igloc < f__.gvec().count(); igloc++) {
-        int ig = f__.gvec().offset() + igloc;
-        auto G = f__.gvec().gvec_cart(ig);
+        auto G = f__.gvec().gvec_cart<index_domain_t::local>(igloc);
         for (int x: {0, 1, 2}) {
             g[x].f_pw_local(igloc) = f__.f_pw_local(igloc) * double_complex(0, G[x]);
         }
@@ -331,12 +309,13 @@ inline Smooth_periodic_function_gradient<double> gradient(Smooth_periodic_functi
 /// Laplacian of the function in the plane-wave domain.
 inline Smooth_periodic_function<double> laplacian(Smooth_periodic_function<double>& f__)
 {
+    utils::timer t1("sirius::Smooth_periodic_function_gradient|laplacian");
+
     Smooth_periodic_function<double> g(f__.fft(), f__.gvec_partition());
 
     #pragma omp parallel for schedule(static)
     for (int igloc = 0; igloc < f__.gvec().count(); igloc++) {
-        int ig = f__.gvec().offset() + igloc;
-        auto G = f__.gvec().gvec_cart(ig);
+        auto G = f__.gvec().gvec_cart<index_domain_t::local>(igloc);
         g.f_pw_local(igloc) = f__.f_pw_local(igloc) * double_complex(-std::pow(G.length(), 2), 0);
     }
 
@@ -348,6 +327,8 @@ inline Smooth_periodic_function<T> dot(Smooth_periodic_function_gradient<T>& gra
                                        Smooth_periodic_function_gradient<T>& grad_g__)
 
 {
+    utils::timer t1("sirius::Smooth_periodic_function_gradient|dot");
+
     assert(&grad_f__.fft() == &grad_g__.fft());
     assert(&grad_f__.gvec_partition() == &grad_g__.gvec_partition());
 
@@ -363,6 +344,28 @@ inline Smooth_periodic_function<T> dot(Smooth_periodic_function_gradient<T>& gra
     }
 
     return std::move(result);
+}
+
+/// Compute inner product <f|g>
+template <typename T>
+T inner(Smooth_periodic_function<T> const& f__, Smooth_periodic_function<T> const& g__)
+{
+    utils::timer t1("sirius::Smooth_periodic_function|inner");
+
+    assert(&f__.fft() == &g__.fft());
+
+    T result_rg{0};
+
+    #pragma omp parallel for schedule(static) reduction(+:result_rg)
+    for (int irloc = 0; irloc < f__.fft().local_size(); irloc++) {
+        result_rg += type_wrapper<T>::bypass(std::conj(f__.f_rg(irloc))) * g__.f_rg(irloc);
+    }
+
+    result_rg *= (f__.gvec().omega() / f__.fft().size());
+
+    f__.fft().comm().allreduce(&result_rg, 1);
+
+    return result_rg;
 }
 
 } // namespace sirius

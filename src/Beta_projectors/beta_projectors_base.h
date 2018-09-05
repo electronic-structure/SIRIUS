@@ -75,7 +75,7 @@ class Beta_projectors_base
 
     /// Coordinates of G+k vectors used by GPU kernel.
     mdarray<double, 2> gkvec_coord_;
-    
+
     /// Phase-factor independent coefficients of |beta> functions for atom types.
     std::array<matrix<double_complex>, N> pw_coeffs_t_;
 
@@ -139,10 +139,10 @@ class Beta_projectors_base
 
             if (ctx_.processing_unit() == GPU) {
                 beta_chunks_[ib].desc_.allocate(memory_t::device);
-                beta_chunks_[ib].desc_.copy<memory_t::host, memory_t::device>();
+                beta_chunks_[ib].desc_.template copy<memory_t::host, memory_t::device>();
 
                 beta_chunks_[ib].atom_pos_.allocate(memory_t::device);
-                beta_chunks_[ib].atom_pos_.copy<memory_t::host, memory_t::device>();
+                beta_chunks_[ib].atom_pos_.template copy<memory_t::host, memory_t::device>();
             }
         }
 

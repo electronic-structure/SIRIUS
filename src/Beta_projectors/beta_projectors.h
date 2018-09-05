@@ -26,7 +26,7 @@
 #define __BETA_PROJECTORS_H__
 
 #include "communicator.hpp"
-#include "Unit_cell/unit_cell.h"
+#include "Unit_cell/unit_cell.hpp"
 #include "wave_functions.hpp"
 #include "simulation_context.h"
 #include "beta_projectors_base.h"
@@ -45,7 +45,7 @@ class Beta_projectors: public Beta_projectors_base<1>
             if (!num_beta_t()) {
                 return;
             }
-            
+
             auto& comm = gkvec_.comm();
 
             auto& beta_radial_integrals = ctx_.beta_ri();
@@ -60,9 +60,9 @@ class Beta_projectors: public Beta_projectors_base<1>
             for (int igkloc = 0; igkloc < num_gkvec_loc(); igkloc++) {
                 int igk = igk__[igkloc];
                 /* vs = {r, theta, phi} */
-                auto vs = SHT::spherical_coordinates(gkvec_.gkvec_cart(igk));
+                auto vs = SHT::spherical_coordinates(gkvec_.gkvec_cart<index_domain_t::global>(igk));
                 /* compute real spherical harmonics for G+k vector */
-                std::vector<double> gkvec_rlm(Utils::lmmax(ctx_.unit_cell().lmax()));
+                std::vector<double> gkvec_rlm(utils::lmmax(ctx_.unit_cell().lmax()));
                 SHT::spherical_harmonics(ctx_.unit_cell().lmax(), vs[1], vs[2], &gkvec_rlm[0]);
                 for (int iat = 0; iat < ctx_.unit_cell().num_atom_types(); iat++) {
                     auto& atom_type = ctx_.unit_cell().atom_type(iat);
@@ -82,7 +82,7 @@ class Beta_projectors: public Beta_projectors_base<1>
                 auto c1 = pw_coeffs_t_[0].checksum();
                 comm.allreduce(&c1, 1);
                 if (comm.rank() == 0) {
-                    print_checksum("beta_pw_coeffs_t", c1);
+                    utils::print_checksum("beta_pw_coeffs_t", c1);
                 }
             }
 
@@ -93,7 +93,7 @@ class Beta_projectors: public Beta_projectors_base<1>
                 pw_coeffs_t_[0].copy<memory_t::host, memory_t::device>();
             }
         }
-                    
+
     public:
 
         Beta_projectors(Simulation_context& ctx__,

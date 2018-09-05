@@ -26,7 +26,6 @@
 #define __SIMULATION_PARAMETERS_H__
 
 #include "typedefs.h"
-#include "utils.h"
 #include "input.h"
 
 namespace sirius {
@@ -47,18 +46,25 @@ class Simulation_parameters
     /// Type of electronic structure method.
     electronic_structure_method_t electronic_structure_method_{electronic_structure_method_t::full_potential_lapwlo};
 
+    /// Parameters of the iterative solver.
     Iterative_solver_input iterative_solver_input_;
 
+    /// Parameters of the mixer.
     Mixer_input mixer_input_;
 
+    /// Description of the unit cell.
     Unit_cell_input unit_cell_input_;
 
+    /// Parameters controlling the execution.
     Control_input control_input_;
 
+    /// Basic input parameters of PP-PW and FP-LAPW methods.
     Parameters_input parameters_input_;
 
+    /// Internal parameters that control the numerical implementation.
     Settings_input settings_input_;
 
+    /// LDA+U input parameters.
     Hubbard_input hubbard_input_;
 
   public:
@@ -72,7 +78,7 @@ class Simulation_parameters
             return;
         }
 
-        json dict = Utils::read_json_from_file_or_string(str__);
+        json dict = utils::read_json_from_file_or_string(str__);
 
         /* read unit cell */
         unit_cell_input_.read(dict);
@@ -262,7 +268,7 @@ class Simulation_parameters
 
     inline int lmmax_apw() const
     {
-        return Utils::lmmax(parameters_input_.lmax_apw_);
+        return utils::lmmax(parameters_input_.lmax_apw_);
     }
 
     inline int lmax_rho() const
@@ -272,7 +278,7 @@ class Simulation_parameters
 
     inline int lmmax_rho() const
     {
-        return Utils::lmmax(parameters_input_.lmax_rho_);
+        return utils::lmmax(parameters_input_.lmax_rho_);
     }
 
     inline int lmax_pot() const
@@ -282,7 +288,7 @@ class Simulation_parameters
 
     inline int lmmax_pot() const
     {
-        return Utils::lmmax(parameters_input_.lmax_pot_);
+        return utils::lmmax(parameters_input_.lmax_pot_);
     }
 
     inline double aw_cutoff() const
@@ -325,14 +331,14 @@ class Simulation_parameters
     {
         return (num_mag_dims() == 3) ? 3 : num_spins();
     }
-    
-    /// Number of spin dimensions of some arrays in case of magnetic calculation.
+
+    /// Number of independent spin dimensions of some arrays in case of magnetic calculation.
     /** Returns 1 for non magnetic calculation, 2 for spin-collinear case and 1 for non colllinear case. */
     inline int num_spin_dims()
     {
         return (num_mag_dims() == 3) ? 1 : num_spins();
     }
-    
+
     /// Set the number of first-variational states.
     inline int num_fv_states(int num_fv_states__)
     {
@@ -437,24 +443,30 @@ class Simulation_parameters
         return parameters_input_.xc_functionals_;
     }
 
+    /// Get the name of the standard eigen-value solver to use.
     inline std::string const& std_evp_solver_name() const
     {
         return control_input_.std_evp_solver_name_;
     }
 
-    inline void set_std_evp_solver_name(std::string name__)
+    /// Set the name of the standard eigen-value solver to use.
+    inline std::string& std_evp_solver_name(std::string name__)
     {
         control_input_.std_evp_solver_name_ = name__;
+        return control_input_.std_evp_solver_name_;
     }
 
+    /// Get the name of the generalized eigen-value solver to use.
     inline std::string const& gen_evp_solver_name() const
     {
         return control_input_.gen_evp_solver_name_;
     }
 
-    inline void set_gen_evp_solver_name(std::string name__)
+    /// Set the name of the generalized eigen-value solver to use.
+    inline std::string& gen_evp_solver_name(std::string name__)
     {
         control_input_.gen_evp_solver_name_ = name__;
+        return control_input_.gen_evp_solver_name_;
     }
 
     inline relativity_t valence_relativity() const
@@ -503,9 +515,10 @@ class Simulation_parameters
         return parameters_input_.use_symmetry_;
     }
 
-    inline void set_use_symmetry(bool use_symmetry__)
+    inline bool use_symmetry(bool use_symmetry__)
     {
         parameters_input_.use_symmetry_ = use_symmetry__;
+        return use_symmetry__;
     }
 
     inline double iterative_solver_tolerance() const

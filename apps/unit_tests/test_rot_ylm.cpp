@@ -40,8 +40,8 @@ void test_symmetry()
             scoord = SHT::spherical_coordinates(coord);
 
             int lmax = 10;
-            mdarray<double_complex, 1> ylm(Utils::lmmax(lmax));
-            mdarray<double, 1> rlm(Utils::lmmax(lmax));
+            mdarray<double_complex, 1> ylm(utils::lmmax(lmax));
+            mdarray<double, 1> rlm(utils::lmmax(lmax));
             SHT::spherical_harmonics(lmax, scoord[1], scoord[2], &ylm(0));
             SHT::spherical_harmonics(lmax, scoord[1], scoord[2], &rlm(0));
             
@@ -58,36 +58,36 @@ void test_symmetry()
             vector3d<double> scoord2;
             scoord2 = SHT::spherical_coordinates(coord2);
 
-            mdarray<double_complex, 1> ylm2(Utils::lmmax(lmax));
-            mdarray<double, 1> rlm2(Utils::lmmax(lmax));
+            mdarray<double_complex, 1> ylm2(utils::lmmax(lmax));
+            mdarray<double, 1> rlm2(utils::lmmax(lmax));
             SHT::spherical_harmonics(lmax, scoord2[1], scoord2[2], &ylm2(0));
             SHT::spherical_harmonics(lmax, scoord2[1], scoord2[2], &rlm2(0));
 
-            mdarray<double_complex, 2> ylm_rot_mtrx(Utils::lmmax(lmax), Utils::lmmax(lmax));
-            mdarray<double, 2> rlm_rot_mtrx(Utils::lmmax(lmax), Utils::lmmax(lmax));
-            sddk::timer t0("rotation_matrix_Ylm");
+            mdarray<double_complex, 2> ylm_rot_mtrx(utils::lmmax(lmax), utils::lmmax(lmax));
+            mdarray<double, 2> rlm_rot_mtrx(utils::lmmax(lmax), utils::lmmax(lmax));
+            utils::timer t0("rotation_matrix_Ylm");
             SHT::rotation_matrix(lmax, ang, proper_rotation, ylm_rot_mtrx);
             t0.stop();
-            sddk::timer t1("rotation_matrix_Rlm");
+            utils::timer t1("rotation_matrix_Rlm");
             SHT::rotation_matrix(lmax, ang, proper_rotation, rlm_rot_mtrx);
             t1.stop();
 
-            mdarray<double_complex, 1> ylm1(Utils::lmmax(lmax));
+            mdarray<double_complex, 1> ylm1(utils::lmmax(lmax));
             ylm1.zero();
 
-            mdarray<double, 1> rlm1(Utils::lmmax(lmax));
+            mdarray<double, 1> rlm1(utils::lmmax(lmax));
             rlm1.zero();
 
-            for (int i = 0; i < Utils::lmmax(lmax); i++)
+            for (int i = 0; i < utils::lmmax(lmax); i++)
             {
-                for (int j = 0; j < Utils::lmmax(lmax); j++) ylm1(i) += ylm_rot_mtrx(j, i) * ylm(j);
+                for (int j = 0; j < utils::lmmax(lmax); j++) ylm1(i) += ylm_rot_mtrx(j, i) * ylm(j);
 
-                for (int j = 0; j < Utils::lmmax(lmax); j++) rlm1(i) += rlm_rot_mtrx(j, i) * rlm(j);
+                for (int j = 0; j < utils::lmmax(lmax); j++) rlm1(i) += rlm_rot_mtrx(j, i) * rlm(j);
             }
 
             double d1 = 0;
             double d2 = 0;
-            for (int i = 0; i < Utils::lmmax(lmax); i++)
+            for (int i = 0; i < utils::lmmax(lmax); i++)
             {
                 d1 += std::abs(ylm1(i) - ylm2(i));
                 d2 += std::abs(rlm1(i) - rlm2(i));
@@ -106,7 +106,7 @@ int main(int argn, char** argv)
 {
     sirius::initialize(1);
     test_symmetry();
-    sddk::timer::print();
+    utils::timer::print();
     sirius::finalize();
 
     return 0;
