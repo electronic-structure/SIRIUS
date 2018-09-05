@@ -33,7 +33,6 @@
 #include "radial_solver.h"
 #include "Potential/xc_functional.hpp"
 #include "simulation_parameters.h"
-//#include "SHT/sht.hpp"
 #include "radial_functions_index.hpp"
 #include "basis_functions_index.hpp"
 #include "hubbard_orbitals_descriptor.hpp"
@@ -731,14 +730,22 @@ class Atom_type
         return num_valence_electrons_;
     }
 
+    /// Get free atom density at i-th point of radial grid.
     inline double free_atom_density(const int idx) const
     {
         return free_atom_density_spline_(idx);
     }
 
+    /// Get free atom density at point x.
     inline double free_atom_density(double x) const
     {
         return free_atom_density_spline_.at_point(x);
+    }
+
+    /// Set the free atom all-electron density.
+    inline void free_atom_density(std::vector<double> rho__)
+    {
+        free_atom_density_ = rho__;
     }
 
     inline int num_aw_descriptors() const
@@ -960,12 +967,6 @@ class Atom_type
             TERMINATE("wrong number of radial points");
         }
         free_atom_radial_grid_ = Radial_grid_ext<double>(num_points__, points__);
-    }
-
-    inline void set_free_atom_density(int num_points__, double const* dens__)
-    {
-        free_atom_density_.resize(num_points__);
-        std::memcpy(free_atom_density_.data(), dens__, num_points__ * sizeof(double));
     }
 
     inline double_complex f_coefficients(int xi1, int xi2, int s1, int s2) const
