@@ -2,7 +2,10 @@ import sys
 
 # @fortran begin function                                    {type} {name} {doc-string}
 # @fortran       argument {in|out|inout} {required|optional} {type} {name} {doc-string}
+# [@fortran details]
+# [detailed documentation]
 # @fortran end
+# TODO: parse with regexp
 
 in_type_map = {
     'void*'   : 'type(C_PTR)',
