@@ -2322,4 +2322,13 @@ void sirius_set_equivalent_atoms(void* const* handler__,
     sim_ctx.unit_cell().set_equivalent_atoms(equivalent_atoms__);
 }
 
+/* @fortran begin function void sirius_update_atomic_potential   Set the new spherical potential.
+   @fortran argument in required void*  handler                  Ground state handler.
+   @fortran end */
+void sirius_update_atomic_potential(void* const* handler__)
+{
+    auto& gs = static_cast<utils::any_ptr*>(*handler__)->get<sirius::DFT_ground_state>();
+    gs.potential().update_atomic_potential();
+}
+
 } // extern "C"

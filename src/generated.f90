@@ -2396,3 +2396,19 @@ end interface
 call sirius_set_equivalent_atoms_aux(handler,equivalent_atoms)
 end subroutine sirius_set_equivalent_atoms
 
+!> @brief Set the new spherical potential.
+!> @param [in] handler Ground state handler.
+subroutine sirius_update_atomic_potential(handler)
+implicit none
+type(C_PTR), intent(in) :: handler
+interface
+subroutine sirius_update_atomic_potential_aux(handler)&
+&bind(C, name="sirius_update_atomic_potential")
+use, intrinsic :: ISO_C_BINDING
+type(C_PTR), intent(in) :: handler
+end subroutine
+end interface
+
+call sirius_update_atomic_potential_aux(handler)
+end subroutine sirius_update_atomic_potential
+
