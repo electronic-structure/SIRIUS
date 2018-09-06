@@ -75,6 +75,10 @@ class Energy:
                 k, ispn = key
                 w = self.kpointset[k].weight()
                 bnd_occ = np.array(self.kpointset[k].band_occupancy(ispn))
+                if np.isclose(bnd_occ, 0).any():
+                    # print('WARNING: encountered unoccupied band')
+                    # TODO: handle this properly
+                    continue
                 # scale columns by 1/bnd_occ
                 benergies = np.einsum('ij,ij,j->j', val, np.conj(cn[key]),
                                       1 / (bnd_occ * w))
