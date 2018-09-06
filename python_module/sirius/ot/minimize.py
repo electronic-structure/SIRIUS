@@ -59,6 +59,7 @@ def ls_qinterp(x0, p, f, dfx0, s=0.2):
     # print('ls_qinterp::tmin:', tmin)
 
     if a <= 0:
+        print('ls_qinterp: not convex!')
         raise ValueError('ls_qinterp: not convex!')
     x = x0 + tmin * p
 
@@ -68,6 +69,7 @@ def ls_qinterp(x0, p, f, dfx0, s=0.2):
         # revert coefficients to x0
         f0r = f(x0)  # never remove this, need side effects
         assert (np.isclose(f0, f0r))
+        print('ls_qinterp: did not improve the solution')
         raise ValueError('ls_qinterp did not improve the solution')
     return x, fnext
 
