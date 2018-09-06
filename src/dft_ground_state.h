@@ -388,7 +388,7 @@ class DFT_ground_state
                 case electronic_structure_method_t::pseudopotential: {
                     //tot_en = (kset_.valence_eval_sum() - energy_veff() + energy_vloc() - potential_.PAW_one_elec_energy()) +
                     //         0.5 * energy_vha() + energy_exc() + potential_.PAW_total_energy() + ewald_energy_;
-                    tot_en = (kset_.valence_eval_sum() - energy_vxc() - potential_.PAW_one_elec_energy()) -
+                    tot_en = (kset_.valence_eval_sum() - energy_vxc() - energy_bxc() - potential_.PAW_one_elec_energy()) -
                              0.5 * energy_vha() + energy_exc() + potential_.PAW_total_energy() + ewald_energy_;
                     break;
                 }
