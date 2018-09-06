@@ -376,9 +376,10 @@ PYBIND11_MODULE(py_sirius, m)
             return (i >= 0 && i < ks.num_kpoints());
         })
         .def("__getitem__", [](K_point_set& ks, int i) -> K_point& {
-            if (ks[i] == nullptr) {
+            if (ks[i] == nullptr || i >= ks.num_kpoints()) {
                 throw std::runtime_error("invalid memory access in K_point_set");
             }
+
             return *ks[i];
         },
              py::return_value_policy::reference_internal)
@@ -499,6 +500,7 @@ PYBIND11_MODULE(py_sirius, m)
                     hamiltonian.apply_h_s<complex_double>(&kp, ispn, N, n, wf, &wf_out, nullptr);
                 }
             } else {
+                std::cerr << "python module:: H applied at gamma-point\n";
                 for (int ispn = 0; ispn < num_sc; ++ispn) {
                     hamiltonian.apply_h_s<double>(&kp, ispn, N, n, wf, &wf_out, nullptr);
                 }
