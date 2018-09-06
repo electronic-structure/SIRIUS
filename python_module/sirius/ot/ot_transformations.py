@@ -82,7 +82,7 @@ class ConstrainedGradient:
         c0 -- initial pw coefficients
 
         Returns:
-        tuple -- (c, Λ, invU, sinU)
+        tuple -- (c, Λ, sinU, R)
         """
         # make sure x has type np.matrix
         x = np.matrix(x, copy=False)
