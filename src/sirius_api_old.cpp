@@ -1,17 +1,3 @@
-//==
-//== /// Set the table of equivalent atoms.
-//== /** \param [in] equivalent_atoms table of equivalent atoms
-//==
-//==     Equivalent atoms are symmetry related and belong to the same atom symmetry class. If equivalence table is not
-//==     provided by user, \a spglib is called. In case of magnetic symmetry \a spglib is of no use and euivalence table
-//==     must be provided.
-//== */
-//== void sirius_set_equivalent_atoms(int32_t* equivalent_atoms__)
-//== {
-//==     sim_ctx->unit_cell().set_equivalent_atoms(equivalent_atoms__);
-//== }
-//==
-//==
 //== /// Get maximum number of muffin-tin radial points.
 //== /** \param [out] max_num_mt_points maximum number of muffin-tin points */
 //== void sirius_get_max_num_mt_points(ftn_int* max_num_mt_points__)

@@ -28,7 +28,7 @@
 #include "simulation_context.h"
 #include "periodic_function.h"
 #include "Density/augmentation_operator.hpp"
-#include "Beta_projectors/beta_projectors.h"
+#include "Beta_projectors/beta_projectors.hpp"
 
 namespace sirius {
 
