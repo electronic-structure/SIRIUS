@@ -97,6 +97,7 @@ class Energy:
                 for j, ek in enumerate(benergies):
                     assert(np.abs(np.imag(ek)) < 1e-10)
                     self.kpointset[k].set_band_energy(j, ispn, np.real(ek))
+                self.kpointset.sync_band_energies()
             return pp_total_energy(self.potential, self.density,
                                    self.kpointset, self.ctx)
         else:
@@ -121,6 +122,7 @@ class Energy:
             ek = np.diag(HH)
             for i, ek in enumerate(ek):
                 k.set_band_energy(i, ispn, ek)
+            self.kpointset.sync_band_energies()
             return pp_total_energy(self.potential, self.density,
                                    self.kpointset, self.ctx)
 

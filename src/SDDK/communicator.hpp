@@ -230,7 +230,11 @@ struct mpi_comm_deleter
 {
     void operator()(MPI_Comm* comm__) const
     {
-        CALL_MPI(MPI_Comm_free, (comm__));
+        int mpi_finalized_flag;
+        MPI_Finalized(&mpi_finalized_flag);
+        if (!mpi_finalized_flag) {
+            CALL_MPI(MPI_Comm_free, (comm__));
+        }
         delete comm__;
     }
 };
