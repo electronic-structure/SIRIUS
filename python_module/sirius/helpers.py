@@ -16,7 +16,7 @@ def make_dict(ctx, ks, x_ticks, x_axis):
 
     dict["bands"] = []
 
-    for ik in range(ks.num_kpoints()):
+    for ik in range(len(ks)):
         bnd_k = {}
         bnd_k["kpoint"] = [0.0, 0.0, 0.0]
         for x in range(3):
