@@ -18,7 +18,7 @@ def beta_fletcher_reves(dfnext, df, P=None):
     """
     """
     if P is None:
-        return np.real(np.asscalar(inner(dfnext, dfnext) / inner(df, df)))
+        return np.real(inner(dfnext, dfnext) / inner(df, df))
     else:
         return np.real(inner(dfnext, P * dfnext) / inner(df, P * df))
 
@@ -28,7 +28,7 @@ def beta_polak_ribiere(dfnext, df, P=None):
     """
 
     if P is None:
-        return np.asscalar(np.real(inner(dfnext, dfnext - df)) / np.real(inner(df, df)))
+        return np.real(inner(dfnext, dfnext - df)) / np.real(inner(df, df))
     else:
         return np.real(inner(P * dfnext, dfnext - df) / inner(df, P * df))
 
@@ -54,13 +54,10 @@ def ls_qinterp(x0, p, f, dfx0, s=0.2):
     # g(t) = a * t^2 + b * t + c
     c = f0
     a = (f1 - b * s - c) / s**2
-    # min_t g(t)
-    tmin = -b / (2 * a)
-    # print('ls_qinterp::tmin:', tmin)
-
-    if a <= 0:
+    if a <= 1e-12:
         print('ls_qinterp: not convex!')
         raise ValueError('ls_qinterp: not convex!')
+    tmin = -b / (2 * a)
     x = x0 + tmin * p
 
     fnext = f(x)
@@ -270,7 +267,7 @@ def minimize(x0,
                 p = -M @ dfx + b * p
             else:
                 p = -pdfx + b * p
-            if (inner(p, dfx) > 0):
+            if (np.real(inner(p, dfx)) > 0):
                 if M is not None:
                     p = -M @ dfx
                 else:

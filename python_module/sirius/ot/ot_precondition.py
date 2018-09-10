@@ -10,7 +10,7 @@ def make_kinetic_precond(kpointset, c0, eps=0.1, asPwCoeffs=False):
     from scipy.sparse import dia_matrix
     import numpy as np
 
-    nk = kpointset.num_kpoints()
+    nk = len(kpointset)
     nc = kpointset.ctx().num_spins()
     unit_cell = kpointset.unit_cell()
     if nc == 1 and nk == 1 and not asPwCoeffs:
