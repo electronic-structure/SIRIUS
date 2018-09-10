@@ -40,7 +40,15 @@ class CoefficientArray:
     def sum(self, **kwargs):
         """
         """
-        return sum([np.sum(v) for _, v in self.items()])
+        from mpi4py import MPI
+        loc_sum = np.array(sum([np.sum(v) for _, v in self.items()]), dtype=np.complex128)
+        rcvBuf = np.array(0.0, dtype=np.complex128)
+
+        MPI.COMM_WORLD.Allreduce(
+            [loc_sum, MPI.DOUBLE_COMPLEX],
+            [rcvBuf, MPI.DOUBLE_COMPLEX],
+                op=MPI.SUM)
+        return np.asscalar(rcvBuf)
 
     def __mul__(self, other):
         """

@@ -105,11 +105,19 @@ PYBIND11_MODULE(py_sirius, m)
     int mpi_init_flag;
     MPI_Initialized(&mpi_init_flag);
     if (mpi_init_flag == true) {
-        std::cout << "loading SIRIUS python module, MPI already initialized" << "\n";
+        int rank;
+        MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+        if (rank == 0)
+            std::cout << "loading SIRIUS python module, MPI already initialized"
+                      << "\n";
         sirius::initialize(false);
     } else {
-        std::cout << "loading SIRIUS python module, initialize MPI" << "\n";
         sirius::initialize(true);
+        int rank;
+        MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+        if (rank == 0)
+            std::cout << "loading SIRIUS python module, initialize MPI"
+                      << "\n";
     }
     auto atexit = py::module::import("atexit");
     atexit.attr("register")(py::cpp_function([]() {
@@ -366,24 +374,24 @@ PYBIND11_MODULE(py_sirius, m)
         .def("initialize", &K_point_set::initialize, py::arg("counts") = std::vector<int>{})
         .def("ctx", &K_point_set::ctx, py::return_value_policy::reference_internal)
         .def("unit_cell", &K_point_set::unit_cell, py::return_value_policy::reference_internal)
-        .def("num_kpoints", &K_point_set::num_kpoints)
+        .def("_num_kpoints", &K_point_set::num_kpoints)
+        .def("size", [](K_point_set& ks) -> int {
+            return ks.spl_num_kpoints().local_size();
+        })
         .def("energy_fermi", &K_point_set::energy_fermi)
         .def("get_band_energies", &K_point_set::get_band_energies)
         .def("find_band_occupancies", &K_point_set::find_band_occupancies)
         .def("sync_band_energies", &K_point_set::sync_band_energies)
         .def("valence_eval_sum", &K_point_set::valence_eval_sum)
         .def("__contains__", [](K_point_set& ks, int i) {
-            return (i >= 0 && i < ks.num_kpoints());
+            return (i >= 0 && i < ks.spl_num_kpoints().local_size());
         })
         .def("__getitem__", [](K_point_set& ks, int i) -> K_point& {
-            if (ks[i] == nullptr || i >= ks.num_kpoints()) {
-                throw std::runtime_error("invalid memory access in K_point_set");
-            }
-
-            return *ks[i];
-        },
-             py::return_value_policy::reference_internal)
-        .def("__len__", &K_point_set::num_kpoints)
+            return *ks[ks.spl_num_kpoints(i)];
+        }, py::return_value_policy::reference_internal)
+        .def("__len__", [](K_point_set const& ks) {
+            return ks.spl_num_kpoints().local_size();
+        })
         .def("add_kpoint", [](K_point_set& ks, std::vector<double> v, double weight) {
             ks.add_kpoint(v.data(), weight);
         })

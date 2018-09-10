@@ -494,6 +494,10 @@ class K_point
 
         inline Wave_functions& spinor_wave_functions()
         {
+            if (!spinor_wave_functions_) {
+                throw std::runtime_error("K_point::spinor_wave_functions was not initialized\n");
+            }
+
             return *spinor_wave_functions_;
         }
 
