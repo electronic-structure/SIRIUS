@@ -25,7 +25,7 @@
 #ifndef __STRESS_HPP__
 #define __STRESS_HPP__
 
-#include "Beta_projectors/beta_projectors_strain_deriv.h"
+#include "Beta_projectors/beta_projectors_strain_deriv.hpp"
 #include "non_local_functor.hpp"
 
 namespace sirius {

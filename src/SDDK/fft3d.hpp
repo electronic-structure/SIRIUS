@@ -19,7 +19,7 @@
 
 /** \file fft3d.hpp
  *
- *  \brief Contains declaration and partial implementation of FFT3D class.
+ *  \brief Contains declaration and partial implementation of sddk::FFT3D class.
  */
 
 #ifndef __FFT3D_HPP__

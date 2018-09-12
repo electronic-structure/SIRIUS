@@ -34,8 +34,10 @@
 #include <sys/time.h>
 #include <unistd.h>
 
+/// Namespace for simple utility functions.
 namespace utils {
 
+/// Terminate the execution and print the info message.
 inline void terminate(const char* file_name__, int line_number__, const std::string& message__)
 {
     std::stringstream s;
@@ -44,17 +46,20 @@ inline void terminate(const char* file_name__, int line_number__, const std::str
     throw std::runtime_error(s.str());
 }
 
+/// Terminate the execution and print the info message.
 inline void terminate(const char* file_name__, int line_number__, const std::stringstream& message__)
 {
     terminate(file_name__, line_number__, message__.str());
 }
 
+/// Issue a warning message.
 inline void warning(const char* file_name__, int line_number__, const std::string& message__)
 {
     printf("\n=== Warning at line %i of file %s ===\n", line_number__, file_name__);
     printf("%s\n\n", message__.c_str());
 }
 
+/// Issue a warning message.
 inline void warning(const char* file_name__, int line_number__, const std::stringstream& message__)
 {
     warning(file_name__, line_number__, message__.str());

@@ -17,16 +17,16 @@
 // CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR 
 // OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-/** \file beta_projectors_gradient.h
+/** \file beta_projectors_gradient.hpp
  *
  *  \brief Contains declaration and implementation of sirius::Beta_projectors_gradient class.
  */
 
-#ifndef __BETA_PROJECTORS_GRADIENT_H__
-#define __BETA_PROJECTORS_GRADIENT_H__
+#ifndef __BETA_PROJECTORS_GRADIENT_HPP__
+#define __BETA_PROJECTORS_GRADIENT_HPP__
 
-#include "beta_projectors_base.h"
-#include "beta_projectors.h"
+#include "beta_projectors_base.hpp"
+#include "beta_projectors.hpp"
 
 namespace sirius {
 
@@ -39,7 +39,7 @@ class Beta_projectors_gradient: public Beta_projectors_base<3>
         if (!num_beta_t()) {
             return;
         }
-        
+
         for (int x = 0; x < 3; x++) {
             #pragma omp parallel for
             for (int i = 0; i < num_beta_t(); i++) {
@@ -65,4 +65,4 @@ class Beta_projectors_gradient: public Beta_projectors_base<3>
 
 }
 
-#endif // __BETA_PROJECTORS_GRADIENT_H__
+#endif // __BETA_PROJECTORS_GRADIENT_HPP__

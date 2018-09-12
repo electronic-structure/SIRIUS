@@ -1,3 +1,27 @@
+// Copyright (c) 2013-2018 Anton Kozhevnikov, Thomas Schulthess
+// All rights reserved.
+//
+// Redistribution and use in source and binary forms, with or without modification, are permitted provided that
+// the following conditions are met:
+//
+// 1. Redistributions of source code must retain the above copyright notice, this list of conditions and the
+//    following disclaimer.
+// 2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions
+//    and the following disclaimer in the documentation and/or other materials provided with the distribution.
+//
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED
+// WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A
+// PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
+// ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+// PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+// CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
+// OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+/** \file generate_rho_aug.hpp
+ *
+ *  \brief Generate augmentation charge.
+ */
+
 template <device_t pu>
 inline void Density::generate_rho_aug(mdarray<double_complex, 2>& rho_aug__)
 {
@@ -12,7 +36,7 @@ inline void Density::generate_rho_aug(mdarray<double_complex, 2>& rho_aug__)
     for (int iat = 0; iat < unit_cell_.num_atom_types(); iat++) {
         auto& atom_type = unit_cell_.atom_type(iat);
 
-        #ifdef __GPU
+#ifdef __GPU
         if (ctx_.processing_unit() == GPU) {
             acc::sync_stream(0);
             if (iat + 1 != unit_cell_.num_atom_types() && ctx_.unit_cell().atom_type(iat + 1).augment() &&
@@ -20,7 +44,7 @@ inline void Density::generate_rho_aug(mdarray<double_complex, 2>& rho_aug__)
                 ctx_.augmentation_op(iat + 1).prepare(0);
             }
         }
-        #endif
+#endif
 
         if (!atom_type.augment() || atom_type.num_atoms() == 0) {
             continue;
@@ -59,13 +83,13 @@ inline void Density::generate_rho_aug(mdarray<double_complex, 2>& rho_aug__)
                                   &dm_pw(0, 0), dm_pw.ld());
                 t3.stop();
 
-                #ifdef __PRINT_OBJECT_CHECKSUM
+#ifdef __PRINT_OBJECT_CHECKSUM
                 {
                     auto cs = dm_pw.checksum();
                     ctx_.comm().allreduce(&cs, 1);
                     DUMP("checksum(dm_pw) : %18.10f", cs);
                 }
-                #endif
+#endif
 
                 utils::timer t4("sirius::Density::generate_rho_aug|sum");
                 #pragma omp parallel for
@@ -85,7 +109,7 @@ inline void Density::generate_rho_aug(mdarray<double_complex, 2>& rho_aug__)
             }
         }
 
-        #ifdef __GPU
+#ifdef __GPU
         if (pu == GPU) {
             dm.allocate(memory_t::device);
             dm.copy<memory_t::host, memory_t::device>();
@@ -118,7 +142,7 @@ inline void Density::generate_rho_aug(mdarray<double_complex, 2>& rho_aug__)
             acc::sync_stream(1);
             ctx_.augmentation_op(iat).dismiss();
         }
-        #endif
+#endif
     }
 
     if (pu == GPU) {

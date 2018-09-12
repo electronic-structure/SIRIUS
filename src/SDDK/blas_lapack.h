@@ -1,3 +1,6 @@
+/** \file blas_lapack.h
+ *  \brief Interface to some BLAS/LAPACK functions.
+ */
 #ifndef __BLAS_H__
 #define __BLAS_H__
 

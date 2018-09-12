@@ -19,8 +19,7 @@
 
 /** \file atom_type.hpp
  *
- *  \brief Contains definition of sirius::radial_functions_index and sirius::basis_functions_index classes
- *         and declaration and partial implementation of sirius::Atom_type class.
+ *  \brief Contains declaration and implementation of sirius::Atom_type class.
  */
 
 #ifndef __ATOM_TYPE_HPP__
@@ -36,6 +35,7 @@
 #include "radial_functions_index.hpp"
 #include "basis_functions_index.hpp"
 #include "hubbard_orbitals_descriptor.hpp"
+
 namespace sirius {
 
 /// Defines the properties of atom type.

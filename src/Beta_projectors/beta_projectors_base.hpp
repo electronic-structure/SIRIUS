@@ -17,13 +17,13 @@
 // CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR 
 // OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-/** \file beta_projectors_base.h
+/** \file beta_projectors_base.hpp
  *
  *  \brief Contains declaration and implementation of sirius::Beta_projectors_base class.
  */
 
-#ifndef __BETA_PROJECTORS_BASE_H__
-#define __BETA_PROJECTORS_BASE_H__
+#ifndef __BETA_PROJECTORS_BASE_HPP__
+#define __BETA_PROJECTORS_BASE_HPP__
 
 namespace sirius {
 

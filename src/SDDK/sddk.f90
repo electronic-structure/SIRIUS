@@ -1,3 +1,6 @@
+!> @file sddk.f90
+!! @brief SDDK interface to Fortran
+
 module sddk
     use, intrinsic :: ISO_C_BINDING
 

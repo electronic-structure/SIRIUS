@@ -159,6 +159,7 @@ class Hamiltonian
                           Wave_functions* hphi__,
                           Wave_functions* ophi__) const;
 
+    /// Apply magnetic field to first-variational LAPW wave-functions.
     inline void apply_magnetic_field(K_point*                     kp__,
                                      Wave_functions&              fv_states__,
                                      std::vector<Wave_functions>& hpsi__) const;

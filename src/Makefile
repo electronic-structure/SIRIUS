@@ -54,14 +54,8 @@ debug: $(OBJ_DBG) sirius_api.o sirius.o
 	ar -r libsirius_f.a $(OBJ_DBG) sirius_api.o sirius.o
 
 
-# TODO: platform-independent python script
 log:
-	@echo "#ifndef __VERSION_H__" > version.h
-	@echo "#define __VERSION_H__" >> version.h
-	@echo "const char* const git_hash = \"$(shell git rev-parse HEAD)\";" >> version.h
-	@echo "const char* const git_branchname = \"$(shell git describe --all)\";" >> version.h
-	@echo "const char* const build_date = \"$(shell date +"%a, %e %b %Y %H:%M:%S")\";" >> version.h
-	@echo "#endif" >> version.h
+	python gen_version.py
 
 clean:
 	rm -f $(OBJ) *.o *.a *.mod

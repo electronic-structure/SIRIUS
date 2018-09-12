@@ -19,7 +19,7 @@
 
 /** \file dmatrix.hpp
  *
- *  \brief Contains definition and implementaiton of dmatrix class.
+ *  \brief Contains definition and implementaiton of sddk::dmatrix class.
  */
 
 #ifndef __DMATRIX_HPP__

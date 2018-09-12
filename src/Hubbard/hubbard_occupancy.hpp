@@ -1,12 +1,37 @@
-/// as the name says. We compute the occupation numbers associated to
-/// the hubbard wavefunctions (locally centered orbitals, wannier
-/// functions, etc) that are relevant for the hubbard correction.
+// Copyright (c) 2013-2018 Mathieu Taillefumier, Anton Kozhevnikov, Thomas Schulthess
+// All rights reserved.
+//
+// Redistribution and use in source and binary forms, with or without modification, are permitted provided that
+// the following conditions are met:
+//
+// 1. Redistributions of source code must retain the above copyright notice, this list of conditions and the
+//    following disclaimer.
+// 2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions
+//    and the following disclaimer in the documentation and/or other materials provided with the distribution.
+//
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED
+// WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A
+// PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
+// ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+// PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+// CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
+// OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-/// These quantities are defined by
-///    \f[ n_{m,m'}^I \sigma = \sum_{kv} f(\varepsilon_{kv}) |<\psi_{kv}| phi_I_m>|^2 \f]
-/// where \f[m=-l\cdot l$ (same for m')\f], I is the atom.
+/** \file hubbard_occupancy.hpp
+ *
+ *  \brief Generate occupation matrix for Hubbard orbitals.
+ */
 
-/// We need to symmetrize them
+/** Compute the occupation numbers associated to the hubbard wavefunctions (locally centered orbitals, wannier
+ *  functions, etc) that are relevant for the hubbard correction.
+ *
+ * These quantities are defined by
+ * \f[
+ *    n_{m,m'}^I \sigma = \sum_{kv} f(\varepsilon_{kv}) |<\psi_{kv}| phi_I_m>|^2 
+ * \f]
+ * where \f[m=-l\cdot l$ (same for m')\f], I is the atom.
+ *
+ * Requires symmetrization. */
 void Hubbard::hubbard_compute_occupation_numbers(K_point_set& kset_)
 {
     if (!ctx_.hubbard_correction()) {
@@ -16,12 +41,11 @@ void Hubbard::hubbard_compute_occupation_numbers(K_point_set& kset_)
     this->occupancy_number_.zero();
 
     int HowManyBands = -1;
-    // if we are doing calculations for non colinear magnetism or
-    // simple LDA then do not change the number of bands. the factor
-    // two is important for colinear magnetism since the up-up and
-    // down-down blocks are decoupled but the wave-functions are up
-    // and down are still stored as a spinor to conserve space.
-
+    /* if we are doing calculations for non colinear magnetism or
+       simple LDA then do not change the number of bands. the factor
+       two is important for colinear magnetism since the up-up and
+       down-down blocks are decoupled but the wave-functions are up
+       and down are still stored as a spinor to conserve space. */
     for (int ikloc = 0; ikloc < kset_.spl_num_kpoints().local_size(); ikloc++) {
         int  ik = kset_.spl_num_kpoints(ikloc);
         auto kp = kset_[ik];
@@ -32,12 +56,11 @@ void Hubbard::hubbard_compute_occupation_numbers(K_point_set& kset_)
         }
     }
 
-    // now for each spin components and each atom we need to calculate
-    // <psi_{nk}|phi^I_m'><phi^I_m|psi_{nk}>
-
+    /* now for each spin components and each atom we need to calculate
+     <psi_{nk}|phi^I_m'><phi^I_m|psi_{nk}> */
     int Ncf = 1;
     if (ctx_.num_mag_dims() == 1) {
-        // !!! colinear magnetism. We need to have 2 times more space.
+        /* !!! colinear magnetism. We need to have 2 times more space. */
         Ncf = 2;
     }
 
@@ -49,8 +72,8 @@ void Hubbard::hubbard_compute_occupation_numbers(K_point_set& kset_)
 
     #ifdef __GPU
     if (ctx_.processing_unit() == GPU) {
-        // the communicator is always of size 1.  I need to allocate memory
-        // on the device manually
+        /* the communicator is always of size 1.  I need to allocate memory
+           on the device manually */
         dm.allocate(memory_t::device);
     }
     #endif

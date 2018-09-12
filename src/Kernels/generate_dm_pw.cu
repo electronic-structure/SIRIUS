@@ -1,17 +1,31 @@
+// Copyright (c) 2013-2018 Anton Kozhevnikov, Thomas Schulthess
+// All rights reserved.
+//
+// Redistribution and use in source and binary forms, with or without modification, are permitted provided that
+// the following conditions are met:
+//
+// 1. Redistributions of source code must retain the above copyright notice, this list of conditions and the
+//    following disclaimer.
+// 2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions
+//    and the following disclaimer in the documentation and/or other materials provided with the distribution.
+//
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED
+// WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A
+// PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
+// ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+// PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+// CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
+// OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+/** \file generate_dm_pw.cu
+ *
+ *  \brief CUDA kernel to generate a product of phase-factors and density matrix.
+ */
+
 #include "../SDDK/GPU/cuda_common.hpp"
 #include "../SDDK/GPU/cuda.hpp"
 #include "../SDDK/GPU/cublas.hpp"
 
-//extern "C" void* cuda_malloc(size_t size);
-//extern "C" void cuda_free(void* ptr);
-//extern "C" void cublas_zgemm(int transa, int transb, int32_t m, int32_t n, int32_t k, 
-//                             cuDoubleComplex* alpha, cuDoubleComplex const* a, int32_t lda, cuDoubleComplex const* b, 
-//                             int32_t ldb, cuDoubleComplex* beta, cuDoubleComplex* c, int32_t ldc, int stream_id);
-//
-//extern "C" void cublas_dgemm(int transa, int transb, int32_t m, int32_t n, int32_t k, 
-//                             double* alpha, double const* a, int32_t lda, double const* b, 
-//                             int32_t ldb, double* beta, double* c, int32_t ldc, int stream_id);
-//
 __global__ void generate_phase_factors_conj_gpu_kernel
 (
     int num_gvec_loc__, 
@@ -28,12 +42,11 @@ __global__ void generate_phase_factors_conj_gpu_kernel
 
     int igloc = blockIdx.x * blockDim.x + threadIdx.x;
 
-    if (igloc < num_gvec_loc__)
-    {
+    if (igloc < num_gvec_loc__) {
         int gvx = gvec__[array2D_offset(igloc, 0, num_gvec_loc__)];
         int gvy = gvec__[array2D_offset(igloc, 1, num_gvec_loc__)];
         int gvz = gvec__[array2D_offset(igloc, 2, num_gvec_loc__)];
-    
+
         double p = twopi * (ax * gvx + ay * gvy + az * gvz);
         phase_factors__[array2D_offset(igloc, ia, num_gvec_loc__)] = make_cuDoubleComplex(cos(p), -sin(p));
     }
