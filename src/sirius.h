@@ -49,7 +49,7 @@ using json = nlohmann::json;
 #include "Unit_cell/unit_cell.hpp"
 #include "Band/band.hpp"
 #include "Potential/potential.hpp"
-#include "dft_ground_state.h"
+#include "dft_ground_state.hpp"
 
 #if defined(__PLASMA)
 extern "C" void plasma_init(int num_cores);

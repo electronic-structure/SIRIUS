@@ -19,7 +19,7 @@
 
 /** \file fft3d_grid.hpp
  *
- *  \brief Contains declaration and implementation of FFT3D_grid class.
+ *  \brief Contains declaration and implementation of sddk::FFT3D_grid class.
  */
 
 #ifndef __FFT3D_GRID_HPP__

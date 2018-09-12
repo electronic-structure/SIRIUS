@@ -1,3 +1,5 @@
+!> @file test.f90
+!! @brief Test SDDK Fortran interface.
 program test_sddk
 use sddk
 use mpi

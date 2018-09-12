@@ -1,3 +1,27 @@
+// Copyright (c) 2013-2018 Anton Kozhevnikov, Thomas Schulthess
+// All rights reserved.
+//
+// Redistribution and use in source and binary forms, with or without modification, are permitted provided that
+// the following conditions are met:
+//
+// 1. Redistributions of source code must retain the above copyright notice, this list of conditions and the
+//    following disclaimer.
+// 2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions
+//    and the following disclaimer in the documentation and/or other materials provided with the distribution.
+//
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED
+// WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A
+// PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
+// ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+// PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+// CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
+// OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+/** \file sddk_api.cpp
+ *
+ *  \brief Fortran interface for the SDDK library.
+ */
+
 #include "sddk.hpp"
 #include "../utils/any_ptr.hpp"
 
@@ -8,53 +32,12 @@ using ftn_double         = double;
 using ftn_logical        = bool;
 using ftn_double_complex = std::complex<double>;
 
-///// List of all allocated objects.
-//std::vector<void*> sddk_objects;
-//
-///// Mapping between object id and its class name.
-//std::map<int, std::string> sddk_objects_class_name;
-//
-///// Get a free slot int the list of sddk objects.
-//inline int get_next_free_object_id()
-//{
-//    for (int i = 0; i < static_cast<int>(sddk_objects.size()); i++) {
-//        if (sddk_objects[i] == nullptr) {
-//            return i;
-//        }
-//    }
-//    sddk_objects.push_back(nullptr);
-//    return static_cast<int>(sddk_objects.size() - 1);
-//}
-
 extern "C" {
 
 void sddk_init()
 {
     /* something useful can be done here */
 }
-
-///// Delete allocated object.
-//void sddk_delete_object(ftn_int* object_id__)
-//{
-//    int id = *object_id__;
-//    void* ptr = sddk_objects[id];
-//
-//    if (sddk_objects_class_name[id] == "FFT3D_grid") {
-//        delete reinterpret_cast<FFT3D_grid*>(ptr);
-//    } else if (sddk_objects_class_name[id] == "Gvec") {
-//        delete reinterpret_cast<Gvec*>(ptr);
-//    } else if (sddk_objects_class_name[id] == "FFT3D") {
-//        delete reinterpret_cast<FFT3D*>(ptr);
-//    } else if (sddk_objects_class_name[id] == "Wave_functions") {
-//        delete reinterpret_cast<Wave_functions*>(ptr);
-//    } else {
-//        std::stringstream s;
-//        s << "wrong class name (" << sddk_objects_class_name[id] << ") for object id " << id;
-//        throw std::runtime_error(s.str());
-//    }
-//    sddk_objects[id] = nullptr;
-//    sddk_objects_class_name[id] = "";
-//}
 
 void sddk_delete_object(void** handler__)
 {

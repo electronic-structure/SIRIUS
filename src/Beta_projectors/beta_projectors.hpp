@@ -17,19 +17,19 @@
 // CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR 
 // OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-/** \file beta_projectors.h
+/** \file beta_projectors.hpp
  *
  *  \brief Contains declaration and implementation of sirius::Beta_projectors class.
  */
 
-#ifndef __BETA_PROJECTORS_H__
-#define __BETA_PROJECTORS_H__
+#ifndef __BETA_PROJECTORS_HPP__
+#define __BETA_PROJECTORS_HPP__
 
 #include "communicator.hpp"
 #include "Unit_cell/unit_cell.hpp"
 #include "wave_functions.hpp"
 #include "simulation_context.h"
-#include "beta_projectors_base.h"
+#include "beta_projectors_base.hpp"
 
 namespace sirius {
 

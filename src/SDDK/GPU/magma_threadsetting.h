@@ -8,6 +8,11 @@
        @author Azzam Haidar
 */
 
+/** \file magma_threadsetting.h
+ *
+ *  \brief Internal MAGMA file which is missing in the standard installation.
+ */
+
 #ifndef MAGMA_THREADSETTING_H
 #define MAGMA_THREADSETTING_H
 

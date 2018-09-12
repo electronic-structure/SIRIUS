@@ -25,10 +25,9 @@
 #ifndef __NON_LOCAL_FUNCTOR_HPP__
 #define __NON_LOCAL_FUNCTOR_HPP__
 
-#include "simulation_context.h"
-#include "periodic_function.h"
+#include "periodic_function.hpp"
 #include "Density/augmentation_operator.hpp"
-#include "Beta_projectors/beta_projectors.h"
+#include "Beta_projectors/beta_projectors.hpp"
 
 namespace sirius {
 

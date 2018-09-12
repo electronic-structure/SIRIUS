@@ -129,8 +129,8 @@ inline void Hamiltonian::set_fv_h_o<CPU, electronic_structure_method_t::full_pot
     }
     double tval = t1.stop();
     if (kp__->comm().rank() == 0 && ctx_.control().print_performance_) {
-        DUMP("effective zgemm performance: %12.6f GFlops",
-             2 * 8e-9 * kp__->num_gkvec() * kp__->num_gkvec() * unit_cell_.mt_aw_basis_size() / tval);
+        printf("effective zgemm performance: %12.6f GFlops",
+               2 * 8e-9 * kp__->num_gkvec() * kp__->num_gkvec() * unit_cell_.mt_aw_basis_size() / tval);
     }
 
     /* add interstitial contributon */

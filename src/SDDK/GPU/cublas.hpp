@@ -18,7 +18,7 @@
 // OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 /** \file cublas.hpp
- *   
+ *
  *  \brief Interface to cuBLAS related functions.
  */
 
@@ -26,8 +26,6 @@
 #define __CUBLAS__HPP__
 
 #include <unistd.h>
-//#include <cublas.h>
-//#include <cublas_v2.h>
 #include "cuda.hpp"
 
 extern "C" cublasStatus_t cublasGetError();
@@ -58,7 +56,6 @@ inline void error_message(cublasStatus_t status)
         }
     }
 }
-
 
 #ifdef NDEBUG
 #define CALL_CUBLAS(func__, args__)                                                 \

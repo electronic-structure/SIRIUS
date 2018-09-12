@@ -1,5 +1,5 @@
 !> @file sirius.f90
-!! @brierf SIRIUS interface to Fortran
+!! @brief SIRIUS interface to Fortran
 module sirius
 
 use, intrinsic :: ISO_C_BINDING

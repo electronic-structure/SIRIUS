@@ -28,10 +28,10 @@
 #include <complex>
 
 const int major_version = 5;
-const int minor_version = 6;
+const int minor_version = 8;
 
 /// NIST value for the inverse fine structure (http://physics.nist.gov/cuu/Constants/index.html)
-const double speed_of_light = 137.035999139; 
+const double speed_of_light = 137.035999139;
 
 // This value reproduces NIST ScRLDA total energy much better.
 //const double speed_of_light = 137.0359895;

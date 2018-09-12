@@ -17,7 +17,7 @@
 // CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
 // OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-/** \file dft_ground_state.h
+/** \file dft_ground_state.hpp
  *
  *  \brief Contains definition and partial implementation of sirius::DFT_ground_state class.
  */
@@ -43,6 +43,7 @@ class DFT_ground_state
         /// Context of simulation.
         Simulation_context& ctx_;
 
+        /// Set of k-points that are used to generate density.
         K_point_set& kset_;
 
         Unit_cell& unit_cell_;
@@ -312,7 +313,9 @@ class DFT_ground_state
         }
 
         /// Total energy of the electronic subsystem.
-        /** From the definition of the density functional we have:
+        /** <b> Full potential total energy </b>
+         *
+         *  From the definition of the density functional we have:
          *  \f[
          *      E[\rho] = T[\rho] + E^{H}[\rho] + E^{XC}[\rho] + E^{ext}[\rho]
          *  \f]
@@ -334,45 +337,81 @@ class DFT_ground_state
          *      \frac{1}{2} \int V^{H,el}({\bf r}) \rho^{nuc}({\bf r}) d{\bf r}
          *  \f]
          *
+         *  <b> Pseudopotential total energy </b>
+         *
          *  Total energy in PW-PP method has the following expression:
          *  \f[
-         *    E_{tot} = \sum_{i} f_i \langle \psi_i | \Big( \hat T + \sum_{\xi \xi'} |\beta_{\xi} \rangle D_{\xi \xi'}^{ion} \langle \beta_{\xi'} |\Big) | \psi_i \rangle +
-         *     \int V^{ion}({\bf r})\rho({\bf r})d{\bf r} + \frac{1}{2} \int V^{H}({\bf r})\rho({\bf r})d{\bf r} + E^{XC}[\rho + \rho_{core}]
+         *    E_{tot} = \sum_{i} f_i \sum_{\sigma \sigma'} \langle \psi_i^{\sigma'} | \Big( \hat T + \sum_{\xi \xi'} 
+         *    |\beta_{\xi} \rangle D_{\xi \xi'}^{ion} \delta_{\sigma \sigma'} \langle \beta_{\xi'} |\Big) | \psi_i^{\sigma} \rangle +
+         *     \int V^{ion}({\bf r})\rho({\bf r})d{\bf r} + \frac{1}{2} \int V^{H}({\bf r})\rho({\bf r})d{\bf r} +
+         *      E^{XC}[\rho + \rho_{core}, |{\bf m}|]
          *  \f]
-         *  The following rearrangement is performed:
+         *  Ionic contrihution to the non-local part of pseudopotential is diagonal in spin. The following rearrangement 
+         *  is performed next:
          *  \f[
-         *     \int V^{ion}({\bf r})\rho({\bf r})d{\bf r} + \frac{1}{2} \int V^{H}({\bf r})\rho({\bf r})d{\bf r} = \\
-         *     \int V^{ion}({\bf r})\rho({\bf r})d{\bf r} + \int V^{H}({\bf r})\rho({\bf r})d{\bf r} + \int V^{XC}({\bf r})\rho({\bf r})d{\bf r} -
-         *     \frac{1}{2} \int V^{H}({\bf r})\rho({\bf r})d{\bf r} - \int V^{XC}({\bf r})\rho({\bf r})d{\bf r}  = \\
-         *      \int V^{eff}({\bf r})\rho({\bf r})d{\bf r} - \frac{1}{2} \int V^{H}({\bf r})\rho({\bf r})d{\bf r} - \int V^{XC}({\bf r})\rho({\bf r})d{\bf r} = \\
-         *      \int V^{eff}({\bf r})\rho^{ps}({\bf r})d{\bf r} + \int V^{eff}({\bf r})\rho^{aug}({\bf r})d{\bf r} - \frac{1}{2} \int V^{H}({\bf r})\rho({\bf r})d{\bf r} - \int V^{XC}({\bf r})\rho({\bf r})d{\bf r}
+         *     \int \rho({\bf r}) \Big( V^{ion}({\bf r}) + \frac{1}{2} V^{H}({\bf r}) \Big) d{\bf r} = \\
+         *     \int \rho({\bf r}) \Big( V^{ion}({\bf r}) + V^{H}({\bf r}) + V^{XC}({\bf r}) \Big) d{\bf r} + 
+         *     \int {\bf m}({\bf r}) {\bf B}^{XC}({\bf r}) d{\bf r} -
+         *     \frac{1}{2} \int V^{H}({\bf r})\rho({\bf r})d{\bf r} - \int V^{XC}({\bf r})\rho({\bf r})d{\bf r} - 
+         *     \int {\bf m}({\bf r}) {\bf B}^{XC}({\bf r}) d{\bf r}  = \\
+         *     \sum_{\sigma \sigma'}\int \rho_{\sigma \sigma'}({\bf r}) V_{\sigma' \sigma}^{eff}({\bf r}) d{\bf r} - 
+         *     \frac{1}{2} \int V^{H}({\bf r})\rho({\bf r})d{\bf r} - \int V^{XC}({\bf r})\rho({\bf r})d{\bf r} - 
+         *     \int {\bf m}({\bf r}) {\bf B}^{XC}({\bf r}) d{\bf r}
          *  \f]
          *  Where
          *  \f[
-         *    V^{eff}({\bf r}) = V^{H}({\bf r}) + V^{XC}({\bf r}) + V^{ion}({\bf r})
+         *    \rho_{\sigma \sigma'}({\bf r}) = \sum_{i}^{occ} f_{i} \psi_{i}^{\sigma' *}({\bf r})\psi_{i}^{\sigma}({\bf r})
          *  \f]
-         *  Next, we use the definition of \f$ \rho^{aug} \f$:
+         *  is a \f$ 2 \times 2 \f$ density matrix and
          *  \f[
-         *    \int V^{eff}({\bf r})\rho^{aug}({\bf r})d{\bf r} = \int V^{eff}({\bf r}) \sum_{i}\sum_{\xi \xi'} f_i \langle \psi_i | \beta_{\xi} \rangle Q_{\xi \xi'}({\bf r}) \langle \beta_{\xi'} | \psi_i \rangle d{\bf r} =
-         *     \sum_{i}\sum_{\xi \xi'} f_i \langle \psi_i | \beta_{\xi} \rangle D_{\xi \xi'}^{aug} \langle \beta_{\xi'} | \psi_i \rangle
+         *    V_{\sigma\sigma'}^{eff}({\bf r})=\Big({\bf I}V^{eff}({\bf r})+{\boldsymbol \sigma}{\bf B}^{XC}({\bf r}) \Big) =
+         *      \left( \begin{array}{cc} V^{eff}({\bf r})+B_z^{XC}({\bf r}) & B_x^{XC}({\bf r})-iB_y^{XC}({\bf r}) \\
+         *          B_x^{XC}({\bf r})+iB_y^{XC}({\bf r})  & V^{eff}({\bf r})-B_z^{XC}({\bf r}) \end{array} \right)
+         *  \f]
+         *  is a \f$ 2 \times 2 \f$ matrix potential (see \ref dft for the full derivation).
+         *
+         *  We are interested in this term:
+         *  \f[
+         *   \sum_{\sigma \sigma'}\int \rho_{\sigma \sigma'}({\bf r}) V_{\sigma' \sigma}^{eff}({\bf r}) d{\bf r} = 
+         *    \int V^{eff}({\bf r})\rho({\bf r})d{\bf r} + \int {\bf m}({\bf r}) {\bf B}^{XC}({\bf r}) d{\bf r}
+         *  \f]
+         *
+         * We are going to split density into two contributions (sum of occupied bands \f$ \rho^{ps} \f$ and augmented charge 
+         * \f$ \rho^{aug} \f$) and use the definition of \f$ \rho^{aug} \f$:
+         *  \f[
+         *    \sum_{\sigma \sigma'}\int \rho_{\sigma \sigma'}^{aug}({\bf r}) V_{\sigma' \sigma}^{eff}({\bf r}) d{\bf r} = 
+         *    \sum_{\sigma \sigma'}\int \sum_{i} \sum_{\xi \xi'} f_i \langle \psi_i^{\sigma'} | \beta_{\xi} \rangle 
+         *     Q_{\xi \xi'}({\bf r}) \langle \beta_{\xi'} | \psi_i^{\sigma} \rangle V_{\sigma' \sigma}^{eff}({\bf r}) d{\bf r} =
+         *     \sum_{\sigma \sigma'} \sum_{i}\sum_{\xi \xi'} f_i \langle \psi_i^{\sigma'} | \beta_{\xi} \rangle 
+         *      D_{\xi \xi', \sigma' \sigma}^{aug} \langle \beta_{\xi'} | \psi_i^{\sigma} \rangle
          *  \f]
          *  Now we can rewrite the total energy expression:
          *  \f[
-         *    E_{tot} = \sum_{i} f_i \langle \psi_i | \Big( \hat T + \sum_{\xi \xi'} |\beta_{\xi} \rangle D_{\xi \xi'}^{ion} + D_{\xi \xi'}^{aug} \langle \beta_{\xi'} |\Big) | \psi_i \rangle +
-         *      \int V^{eff}({\bf r})\rho^{ps}({\bf r})d{\bf r} - \frac{1}{2} \int V^{H}({\bf r})\rho({\bf r})d{\bf r} - \int V^{XC}({\bf r})\rho({\bf r}) d{\bf r} + E^{XC}[\rho + \rho_{core}]
+         *    E_{tot} = \sum_{i} f_i \sum_{\sigma \sigma'} \langle \psi_i^{\sigma'} | \Big( \hat T + \sum_{\xi \xi'} |\beta_{\xi} 
+         *    \rangle D_{\xi \xi'}^{ion} \delta_{\sigma \sigma'} + D_{\xi \xi', \sigma' \sigma}^{aug} \langle \beta_{\xi'} |\Big) | 
+         *    \psi_i^{\sigma} \rangle + \sum_{\sigma \sigma}
+         *     \int V^{eff}_{\sigma' \sigma}({\bf r})\rho^{ps}_{\sigma \sigma'}({\bf r})d{\bf r} - 
+         *     \frac{1}{2} \int V^{H}({\bf r})\rho({\bf r})d{\bf r} - \int V^{XC}({\bf r})\rho({\bf r}) d{\bf r} -
+         *     \int {\bf m}({\bf r}) {\bf B}^{XC}({\bf r}) d{\bf r} + E^{XC}[\rho + \rho_{core}, |{\bf m}|]
          *  \f]
          *  From the Kohn-Sham equations
          *  \f[
-         *    \Big( \hat T + \sum_{\xi \xi'} |\beta_{\xi} \rangle D_{\xi \xi'}^{ion} + D_{\xi \xi'}^{aug} \langle \beta_{\xi'}| + \hat V^{eff} \Big) | \psi_i \rangle = \varepsilon_i \Big( 1+\hat S \Big) |\psi_i \rangle
+         *    \hat T |\psi_i^{\sigma} \rangle + \sum_{\sigma'} \sum_{\xi \xi'} \Big( |\beta_{\xi} 
+         *    \rangle D_{\xi \xi', \sigma' \sigma} \langle \beta_{\xi'}| + \hat V^{eff}_{\sigma' \sigma} \Big) 
+         *    | \psi_i^{\sigma'} \rangle = \varepsilon_i \Big( 1+\hat S \Big) |\psi_i^{\sigma} \rangle
          *  \f]
-         *  we can extract the sum
+         *  we immediately obtain that
          *  \f[
-         *    \sum_{i} f_i \langle \psi_i | \Big( \hat T + \sum_{\xi \xi'} |\beta_{\xi} \rangle D_{\xi \xi'}^{ion} + D_{\xi \xi'}^{aug} \langle \beta_{\xi'} |\Big) | \psi_i \rangle  =
-         *     \sum_{i} f_i \varepsilon_i - \int V^{eff}({\bf r}) \rho^{ps}({\bf r}) d{\bf r}
+         *    \sum_{i} f_i \varepsilon_i = \sum_{i} f_i \sum_{\sigma \sigma'} \langle \psi_i^{\sigma'} | \Big( \hat T + \sum_{\xi \xi'} |\beta_{\xi} 
+         *    \rangle D_{\xi \xi', \sigma' \sigma} \langle \beta_{\xi'} |\Big) | 
+         *    \psi_i^{\sigma} \rangle + \sum_{\sigma \sigma}
+         *     \int V^{eff}_{\sigma' \sigma}({\bf r})\rho^{ps}_{\sigma \sigma'}({\bf r})d{\bf r}  
          *  \f]
-         *  Combining all together we obtain the following expression for total energy:
+         *  and the total energy expression simplifies to:
          *  \f[
-         *    E_{tot} = \sum_{i} f_i \varepsilon_i - \frac{1}{2} \int V^{H}({\bf r})\rho({\bf r})d{\bf r} - \int V^{XC}({\bf r})\rho({\bf r}) d{\bf r} + E^{XC}[\rho + \rho_{core}]
+         *    E_{tot} = \sum_{i} f_i \varepsilon_i - \frac{1}{2} \int V^{H}({\bf r})\rho({\bf r})d{\bf r} - 
+         *    \int V^{XC}({\bf r})\rho({\bf r}) d{\bf r} - \int {\bf m}({\bf r}) {\bf B}^{XC}({\bf r}) d{\bf r} + 
+         *     E^{XC}[\rho + \rho_{core}, |{\bf m}|]
          *  \f]
          */
         double total_energy() const
@@ -388,7 +427,7 @@ class DFT_ground_state
                 case electronic_structure_method_t::pseudopotential: {
                     //tot_en = (kset_.valence_eval_sum() - energy_veff() + energy_vloc() - potential_.PAW_one_elec_energy()) +
                     //         0.5 * energy_vha() + energy_exc() + potential_.PAW_total_energy() + ewald_energy_;
-                    tot_en = (kset_.valence_eval_sum() - energy_vxc() - potential_.PAW_one_elec_energy()) -
+                    tot_en = (kset_.valence_eval_sum() - energy_vxc() - energy_bxc() - potential_.PAW_one_elec_energy()) -
                              0.5 * energy_vha() + energy_exc() + potential_.PAW_total_energy() + ewald_energy_;
                     break;
                 }

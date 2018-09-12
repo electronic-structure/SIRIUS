@@ -25,7 +25,6 @@
 #ifndef __LOCAL_OPERATOR_HPP__
 #define __LOCAL_OPERATOR_HPP__
 
-#include "periodic_function.h"
 #include "Potential/potential.hpp"
 
 #ifdef __GPU

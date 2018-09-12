@@ -25,8 +25,7 @@
 #ifndef __POTENTIAL_HPP__
 #define __POTENTIAL_HPP__
 
-#include "periodic_function.h"
-#include "spheric_function.h"
+#include "periodic_function.hpp"
 #include "simulation_context.h"
 #include "Density/density.hpp"
 

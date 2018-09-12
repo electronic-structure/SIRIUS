@@ -63,12 +63,16 @@ enum class electronic_structure_method_t
     pseudopotential
 };
 
+/// Type of a function domain.
 enum function_domain_t
 {
+    /// Spatial domain.
     spatial,
+    /// Spectral domain.
     spectral
 };
 
+/// Simple random number generator.
 inline uint32_t rnd()
 {
     static uint32_t a = 123456;

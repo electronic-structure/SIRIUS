@@ -1,4 +1,7 @@
 // Warning! This is an automatically generated header file!
+/** \file atomic_data.hpp
+ *  \brief Basic atomic data information.
+ */
 
 #ifndef __ATOMIC_DATA_HPP__
 #define __ATOMIC_DATA_HPP__

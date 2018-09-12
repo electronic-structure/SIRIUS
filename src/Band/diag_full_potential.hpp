@@ -96,7 +96,7 @@ inline void Band::diag_full_potential_first_variation_exact(K_point& kp, Hamilto
 
     if (ctx_.control().verbosity_ >= 4 && kp.comm().rank() == 0) {
         for (int i = 0; i < ctx_.num_fv_states(); i++) {
-            DUMP("eval[%i]=%20.16f", i, eval[i]);
+            printf("eval[%i]=%20.16f", i, eval[i]);
         }
     }
 
@@ -104,7 +104,7 @@ inline void Band::diag_full_potential_first_variation_exact(K_point& kp, Hamilto
         auto z1 = kp.fv_eigen_vectors().checksum();
         kp.comm().allreduce(&z1, 1);
         if (kp.comm().rank() == 0) {
-            DUMP("checksum(fv_eigen_vectors): %18.10f %18.10f", std::real(z1), std::imag(z1));
+            utils::print_checksum("fv_eigen_vectors", z1);
         }
     }
 

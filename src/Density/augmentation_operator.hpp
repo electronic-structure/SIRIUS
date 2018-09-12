@@ -25,7 +25,7 @@
 #ifndef __AUGMENTATION_OPERATOR_HPP__
 #define __AUGMENTATION_OPERATOR_HPP__
 
-#include "radial_integrals.h"
+#include "radial_integrals.hpp"
 
 namespace sirius {
 

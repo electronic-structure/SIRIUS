@@ -27,10 +27,10 @@
 
 #include <algorithm>
 
-#include "version.h"
+#include "version.hpp"
 #include "simulation_parameters.h"
 #include "mpi_grid.hpp"
-#include "radial_integrals.h"
+#include "radial_integrals.hpp"
 #include "utils/utils.hpp"
 #include "memory_pool.hpp"
 #include "Density/augmentation_operator.hpp"
@@ -1253,7 +1253,7 @@ inline void Simulation_context::print_info()
     strftime(buf, sizeof(buf), "%a, %e %b %Y %H:%M:%S", ptm);
 
     printf("\n");
-    printf("SIRIUS version : %2i.%02i\n", major_version, minor_version);
+    printf("SIRIUS version : %i.%i\n", major_version, minor_version);
     printf("git hash       : %s\n", git_hash);
     printf("git branch     : %s\n", git_branchname);
     printf("build date     : %s\n", build_date);

@@ -22,15 +22,13 @@
  *  \brief Contains defintion and implementation of sirius::Force class.
  */
 
-
 #ifndef __FORCE_HPP__
 #define __FORCE_HPP__
 
-#include "simulation_context.h"
-#include "periodic_function.h"
+#include "periodic_function.hpp"
 #include "Density/augmentation_operator.hpp"
-#include "Beta_projectors/beta_projectors.h"
-#include "Beta_projectors/beta_projectors_gradient.h"
+#include "Beta_projectors/beta_projectors.hpp"
+#include "Beta_projectors/beta_projectors_gradient.hpp"
 #include "non_local_functor.hpp"
 
 namespace sirius {
