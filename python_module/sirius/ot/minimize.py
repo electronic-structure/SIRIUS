@@ -55,7 +55,6 @@ def ls_qinterp(x0, p, f, dfx0, s=0.2):
     c = f0
     a = (f1 - b * s - c) / s**2
     if a <= 1e-12:
-        print('ls_qinterp: not convex!')
         raise ValueError('ls_qinterp: not convex!')
     tmin = -b / (2 * a)
     x = x0 + tmin * p
@@ -66,7 +65,6 @@ def ls_qinterp(x0, p, f, dfx0, s=0.2):
         # revert coefficients to x0
         f0r = f(x0)  # never remove this, need side effects
         assert (np.isclose(f0, f0r))
-        print('ls_qinterp: did not improve the solution')
         raise ValueError('ls_qinterp did not improve the solution')
     return x, fnext
 
@@ -163,6 +161,7 @@ def ls_bracketing(x0, p, f, dfx0, tau=0.5, maxiter=40, **kwargs):
             # print('ls_bracketing: ds: %.4g' % ds)
     else:
         if not fn < f0 and np.abs(fn - f0) > 1e-10:
+            print('ls_bracketing has failded')
             raise ValueError(
                 'failed to find a step length after maxiter=%d iterations.' %
                 maxiter)
@@ -201,6 +200,8 @@ def minimize(x0,
     success    -- converged to specified tolerance
     [history]  -- if log==True
     """
+    from ..helpers import Logger
+    logger = Logger()
 
     if mtype == 'FR':
         beta = beta_fletcher_reves
@@ -235,8 +236,7 @@ def minimize(x0,
             xnext, fnext = linesearch(x, p, f, dfx)
         except ValueError:
             # fall back to bracketing line-search
-            print('%d line-search resort to fallback' % i)
-            assert (linesearch is not ls_bracketing)
+            logger.print('%d line-search resort to fallback' % i)
             xnext, fnext = ls_golden(x, p, f, a=0, b=5)
 
         pdfprev = pdfx
@@ -247,11 +247,11 @@ def minimize(x0,
         res = np.real(inner(pdfx, pdfx))
 
         if verbose:
-            print('%4d %16.9f (Ha)  residual: %.3e' % (i, fnext, res))
+            logger.print('%4d %16.9f (Ha)  residual: %.3e' % (i, fnext, res))
         x = xnext
 
         if res < tol:
-            print('minimization: success after', i + 1, ' iterations')
+            logger.print('minimization: success after', i + 1, ' iterations')
             break
 
         # conjugate search direction for next iteration
