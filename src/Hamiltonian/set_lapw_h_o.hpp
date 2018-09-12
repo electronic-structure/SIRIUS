@@ -241,10 +241,10 @@ inline void Hamiltonian::set_fv_h_o<GPU, electronic_structure_method_t::full_pot
     acc::copyout(o__.at<CPU>(), o__.ld(), o__.at<GPU>(), o__.ld(), kp__->num_gkvec_row(), kp__->num_gkvec_col());
 
     double tval = t1.stop();
-    if (kp__->comm().rank() == 0 && ctx_.control().print_performance_) {
-        DUMP("effective zgemm performance: %12.6f GFlops",
-             2 * 8e-9 * kp__->num_gkvec() * kp__->num_gkvec() * unit_cell_.mt_aw_basis_size() / tval);
-    }
+    //if (kp__->comm().rank() == 0 && ctx_.control().print_performance_) {
+    //    DUMP("effective zgemm performance: %12.6f GFlops",
+    //         2 * 8e-9 * kp__->num_gkvec() * kp__->num_gkvec() * unit_cell_.mt_aw_basis_size() / tval);
+    //}
 
     /* add interstitial contributon */
     set_fv_h_o_it(kp__, h__, o__);
