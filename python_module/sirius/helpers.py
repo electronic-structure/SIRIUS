@@ -28,3 +28,40 @@ def make_dict(ctx, ks, x_ticks, x_axis):
         bnd_k["values"] = bnd_e
         dict["bands"].append(bnd_k)
     return dict
+
+
+class Singleton(type):
+    _instances = {}
+
+    def __call__(cls, *args, **kwargs):
+        if cls not in cls._instances:
+            cls._instances[cls] = super(Singleton, cls).__call__(
+                *args, **kwargs)
+        return cls._instances[cls]
+
+
+class Logger:
+    __metaclass__ = Singleton
+
+    def __init__(self, fout=None, comm=None, all_print=False):
+        from mpi4py import MPI
+        self.fout = fout
+        self._all_print = all_print
+        if self.fout is not None:
+            with open(self.fout, 'w'):
+                print('')
+        if comm is None:
+            self.comm = MPI.COMM_WORLD
+        else:
+            self.comm = comm
+
+    def print(self, *args):
+        """
+
+        """
+        if self.comm.rank == 0 or self._all_print:
+            if self.fout is not None:
+                with open(self.fout, 'a') as fh:
+                    print(*args, file=fh)
+            else:
+                print(*args)
