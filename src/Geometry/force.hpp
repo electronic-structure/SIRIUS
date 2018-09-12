@@ -25,8 +25,7 @@
 #ifndef __FORCE_HPP__
 #define __FORCE_HPP__
 
-#include "simulation_context.h"
-#include "periodic_function.h"
+#include "periodic_function.hpp"
 #include "Density/augmentation_operator.hpp"
 #include "Beta_projectors/beta_projectors.hpp"
 #include "Beta_projectors/beta_projectors_gradient.hpp"

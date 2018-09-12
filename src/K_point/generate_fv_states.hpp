@@ -18,14 +18,14 @@
 // OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 /** \file generate_fv_states.hpp
- *   
+ *
  *  \brief Contains implementation of sirius::K_point::generate_fv_states method.
  */
 
 inline void K_point::generate_fv_states()
 {
     PROFILE("sirius::K_point::generate_fv_states");
-    
+
     if (!ctx_.full_potential()) {
         return;
     }

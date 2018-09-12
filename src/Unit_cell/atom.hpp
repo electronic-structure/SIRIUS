@@ -306,11 +306,11 @@ class Atom
             for (int j = 0; j < (int)idx_ri.size(1); j++) {
                 result(j) = inner(rf_spline[idx_ri(0, j)], vrf_spline[idx_ri(1, j)], 2);
             }
-            if (type().parameters().control().print_performance_) {
-                double tval = t2.stop();
-                DUMP("spline CPU integration performance: %12.6f GFlops",
-                     1e-9 * double(idx_ri.size(1)) * nmtp * 85 / tval);
-            }
+            //if (type().parameters().control().print_performance_) {
+            //    double tval = t2.stop();
+            //    DUMP("spline CPU integration performance: %12.6f GFlops",
+            //         1e-9 * double(idx_ri.size(1)) * nmtp * 85 / tval);
+            //}
         }
 
         int n{0};
@@ -336,9 +336,9 @@ class Atom
             }
         }
 
-        if (type().parameters().control().print_checksum_) {
-            DUMP("checksum(h_radial_integrals): %18.10f", h_radial_integrals_.checksum());
-        }
+        //if (type().parameters().control().print_checksum_) {
+        //    DUMP("checksum(h_radial_integrals): %18.10f", h_radial_integrals_.checksum());
+        //}
     }
 
     /// Return pointer to corresponding atom type class.

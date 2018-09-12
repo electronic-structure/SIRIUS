@@ -86,7 +86,7 @@ void Hamiltonian::apply_h_s(K_point* kp__,
     t1 += omp_get_wtime();
 
     if (kp__->comm().rank() == 0 && ctx_.control().print_performance_) {
-        DUMP("hloc performace: %12.6f bands/sec", n__ / t1);
+        printf("hloc performace: %12.6f bands/sec", n__ / t1);
     }
 
     int nsc = (ispn__ == 2) ? 2 : 1;

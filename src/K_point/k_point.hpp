@@ -25,7 +25,6 @@
 #ifndef __K_POINT_HPP__
 #define __K_POINT_HPP__
 
-#include "periodic_function.h"
 #include "matching_coefficients.h"
 #include "Beta_projectors/beta_projectors.hpp"
 #include "wave_functions.hpp"
@@ -369,16 +368,16 @@ class K_point
         /// Generate two-component spinor wave functions
         inline void generate_spinor_wave_functions();
 
-        inline void generate_atomic_centered_wavefunctions(const int num_ao__, Wave_functions &phi);
+        inline void generate_atomic_wave_functions(const int num_ao__, Wave_functions &phi);
 
-        inline void generate_atomic_centered_wavefunctions_aux(const int num_ao__, Wave_functions &phi, std::vector<int> &offset, bool hubbard);
+        inline void generate_atomic_wave_functions_aux(const int num_ao__, Wave_functions &phi, std::vector<int> &offset, bool hubbard);
 
-        void compute_gradient_wavefunctions(Wave_functions &phi,
-                                            const int starting_position_i,
-                                            const int num_wf,
-                                            Wave_functions &dphi,
-                                            const int starting_position_j,
-                                            const int direction);
+        void compute_gradient_wave_functions(Wave_functions &phi,
+                                             const int starting_position_i,
+                                             const int num_wf,
+                                             Wave_functions &dphi,
+                                             const int starting_position_j,
+                                             const int direction);
 
         void save(int id);
 
@@ -1282,7 +1281,7 @@ inline void K_point::get_sv_eigen_vectors(mdarray<double_complex, 2>& sv_evec)
 #include "generate_gklo_basis.hpp"
 #include "initialize.hpp"
 #include "test_fv_states.hpp"
-#include "generate_atomic_centered_wavefunctions.hpp"
+#include "generate_atomic_wave_functions.hpp"
 
 }
 

@@ -1,3 +1,8 @@
+/** \file elpa.h
+ *
+ *  \brief Interface to ELPA library.
+ */
+
  /*! \brief C interface to driver function "elpa_solve_evp_real_double"
  *
  *  \param  na                        Order of matrix a

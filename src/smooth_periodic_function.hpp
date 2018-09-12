@@ -17,14 +17,14 @@
 // CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR 
 // OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-/** \file smooth_periodic_function.h
- *   
+/** \file smooth_periodic_function.hpp
+ *
  *  \brief Contains declaration and implementation of sirius::Smooth_periodic_function and 
  *         sirius::Smooth_periodic_function_gradient classes.
  */
 
-#ifndef __SMOOTH_PERIODIC_FUNCTION_H__
-#define __SMOOTH_PERIODIC_FUNCTION_H__
+#ifndef __SMOOTH_PERIODIC_FUNCTION_HPP__
+#define __SMOOTH_PERIODIC_FUNCTION_HPP__
 
 namespace sirius {
 
@@ -370,4 +370,4 @@ T inner(Smooth_periodic_function<T> const& f__, Smooth_periodic_function<T> cons
 
 } // namespace sirius
 
-#endif // __SMOOTH_PERIODIC_FUNCTION_H__
+#endif // __SMOOTH_PERIODIC_FUNCTION_HPP__

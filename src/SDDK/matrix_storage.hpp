@@ -19,7 +19,7 @@
 
 /** \file matrix_storage.hpp
  *
- *  \brief Contains definition and implementaiton of matrix_storage class.
+ *  \brief Contains definition and implementaiton of sddk::matrix_storage class.
  */
 
 #ifndef __MATRIX_STORAGE_HPP__

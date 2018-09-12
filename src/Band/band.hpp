@@ -25,7 +25,7 @@
 #ifndef __BAND_HPP__
 #define __BAND_HPP__
 
-#include "periodic_function.h"
+#include "periodic_function.hpp"
 #include "K_point/k_point_set.hpp"
 #include "Hamiltonian/hamiltonian.hpp"
 

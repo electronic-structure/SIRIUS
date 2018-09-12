@@ -44,6 +44,11 @@ chvd       1975, pp. 44-51.
 chvd
 */  
 
+/** \file lebedev_grids.hpp
+ *
+ *  \brief Generate Lebedev-Laikov grids on the sphere.
+ */
+
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>

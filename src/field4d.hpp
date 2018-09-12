@@ -19,7 +19,7 @@
 
 /** \file field4d.hpp
  *
- *  \brief Base class for Density and Potential.
+ *  \brief Base class for sirius::Density and sirius::Potential.
  */
 
 #ifndef __FIELD4D_HPP__

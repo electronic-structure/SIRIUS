@@ -19,7 +19,7 @@
 
 /** \file communicator.hpp
  *
- *  \brief Contains declaration and implementation of Communicator class.
+ *  \brief Contains declaration and implementation of sddk::Communicator class.
  */
 
 #ifndef __COMMUNICATOR_HPP__

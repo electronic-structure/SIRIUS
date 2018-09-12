@@ -17,13 +17,13 @@
 // CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
 // OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-/** \file radial_integrals.h
+/** \file radial_integrals.hpp
  *
  *  \brief Representation of various radial integrals.
  */
 
-#ifndef __RADIAL_INTEGRALS_H__
-#define __RADIAL_INTEGRALS_H__
+#ifndef __RADIAL_INTEGRALS_HPP__
+#define __RADIAL_INTEGRALS_HPP__
 
 #include "Unit_cell/unit_cell.hpp"
 #include "sbessel.hpp"

@@ -19,7 +19,7 @@
 
 /** \file hdf5_tree.hpp
  *
- *  \brief Contains definition and implementation of sirius::HDF5_tree class.
+ *  \brief Contains definition and implementation of sddk::HDF5_tree class.
  */
 
 #ifndef __HDF5_TREE_HPP__

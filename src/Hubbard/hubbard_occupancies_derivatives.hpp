@@ -1,3 +1,27 @@
+// Copyright (c) 2013-2018 Mathieu Taillefumier, Anton Kozhevnikov, Thomas Schulthess
+// All rights reserved.
+//
+// Redistribution and use in source and binary forms, with or without modification, are permitted provided that
+// the following conditions are met:
+//
+// 1. Redistributions of source code must retain the above copyright notice, this list of conditions and the
+//    following disclaimer.
+// 2. Redistributions in binary form must reproduce the above copyright notice, this list of conditions
+//    and the following disclaimer in the documentation and/or other materials provided with the distribution.
+//
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND ANY EXPRESS OR IMPLIED
+// WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A
+// PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR
+// ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+// PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+// CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
+// OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+/** \file hubbard_occupancies_derivatives.hpp
+ *
+ *  \brief Generate derivatives of occupancy matrix.
+ */
+
 // compute the forces for the simplex LDA+U method not the fully
 // rotationally invariant one. It can not be used for LDA+U+SO either
 
@@ -14,10 +38,10 @@ void Hubbard::compute_occupancies_derivatives(K_point&                    kp,
     // derivatives of the hubbard wave functions are needed.
     auto& phi = kp.hubbard_wave_functions();
 
-    kp.generate_atomic_centered_wavefunctions_aux(this->number_of_hubbard_orbitals(),
-                                                  phi,
-                                                  this->offset,
-                                                  true);
+    kp.generate_atomic_wave_functions_aux(this->number_of_hubbard_orbitals(),
+                                          phi,
+                                          this->offset,
+                                          true);
 
     Beta_projectors_gradient bp_grad_(ctx_, kp.gkvec(), kp.igk_loc(), kp.beta_projectors());
     kp.beta_projectors().prepare();
@@ -111,7 +135,7 @@ void Hubbard::compute_occupancies_derivatives(K_point&                    kp,
                 // compute the derivatives of the hubbard wave functions
                 // |phi_m^J> (J = atom_id) compared to a displacement of atom J.
 
-                kp.compute_gradient_wavefunctions(phi, this->offset[atom_id], lmax_at, phitmp, this->offset[atom_id], dir);
+                kp.compute_gradient_wave_functions(phi, this->offset[atom_id], lmax_at, phitmp, this->offset[atom_id], dir);
 
                 #if defined(__GPU)
                 if (ctx_.processing_unit() == GPU) {
@@ -228,12 +252,12 @@ void Hubbard::compute_occupancies_stress_derivatives(K_point&                   
         augment = ctx_.unit_cell().atom_type(ia).augment();
     }
 
-    // initialize the beta projectors and derivatives
+    /* initialize the beta projectors and derivatives */
     kp.beta_projectors().prepare();
     bp_strain_deriv.prepare();
 
-    // compute the hubbard orbitals
-    kp.generate_atomic_centered_wavefunctions_aux(this->number_of_hubbard_orbitals(), phi, this->offset, true);
+    /* compute the hubbard orbitals */
+    kp.generate_atomic_wave_functions_aux(this->number_of_hubbard_orbitals(), phi, this->offset, true);
 
     #ifdef __GPU
     if (ctx_.processing_unit() == GPU) {

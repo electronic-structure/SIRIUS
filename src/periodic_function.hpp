@@ -17,17 +17,17 @@
 // CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR
 // OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-/** \file periodic_function.h
+/** \file periodic_function.hpp
  *
  *  \brief Contains declaration and partial implementation of sirius::Periodic_function class.
  */
 
-#ifndef __PERIODIC_FUNCTION_H__
-#define __PERIODIC_FUNCTION_H__
+#ifndef __PERIODIC_FUNCTION_HPP__
+#define __PERIODIC_FUNCTION_HPP__
 
 #include "simulation_context.h"
 #include "spheric_function.h"
-#include "smooth_periodic_function.h"
+#include "smooth_periodic_function.hpp"
 
 namespace sirius {
 
@@ -369,4 +369,4 @@ class Periodic_function : public Smooth_periodic_function<T>
 
 } // namespace sirius
 
-#endif // __PERIODIC_FUNCTION_H__
+#endif // __PERIODIC_FUNCTION_HPP__

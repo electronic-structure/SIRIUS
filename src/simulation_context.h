@@ -27,10 +27,10 @@
 
 #include <algorithm>
 
-#include "version.h"
+#include "version.hpp"
 #include "simulation_parameters.h"
 #include "mpi_grid.hpp"
-#include "radial_integrals.h"
+#include "radial_integrals.hpp"
 #include "utils/utils.hpp"
 #include "memory_pool.hpp"
 #include "Density/augmentation_operator.hpp"
