@@ -36,6 +36,7 @@
 
 namespace sddk {
 
+/// Simple profiler and function call tracker.
 class profiler
 {
   private:
